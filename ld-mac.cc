@@ -29,7 +29,6 @@
 
 #include <assert.h>
 #include <dlfcn.h>
-#include <elf.h>
 #include <execinfo.h>
 #include <limits.h>
 #include <signal.h>
