@@ -1,0 +1,20 @@
+This is a Mach-O loader for linux.
+
+* Usage
+
+% make
+% ./ld-mac mac_binary [options...]
+
+* Notice
+
+- Running all Mac binaries isn't my goal. Only command line tools such
+  as compiler tool chain can be executed by this loader.
+- Currently, this only supports x86-64.
+
+* License
+
+Simplified BSD License.
+
+Note that all files in "include" directory and some files in "libmac"
+were copied from Apple's Libc-594.9.1.
+http://www.opensource.apple.com/release/mac-os-x-1064/
