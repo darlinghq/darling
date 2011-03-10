@@ -29,7 +29,9 @@
 
 #include <assert.h>
 #include <dlfcn.h>
+#include <errno.h>
 #include <execinfo.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
@@ -44,10 +46,12 @@
 #include <string>
 #include <vector>
 
+#include "fat.h"
 #include "mach-o.h"
 
 #ifdef NOLOG
 # define LOG if (0) cout
+//# define LOG cerr
 #else
 # define LOG cerr
 #endif
@@ -234,7 +238,7 @@ class MachOLoader {
       intptr vmsize = seg->vmsize;
       void* mapped = mmap((void*)seg->vmaddr, filesize, prot,
                           MAP_PRIVATE | MAP_FIXED,
-                          mach.fd(), seg->fileoff);
+                          mach.fd(), mach.offset() + seg->fileoff);
       if (mapped == MAP_FAILED) {
         perror("mmap failed");
         abort();
@@ -515,7 +519,28 @@ int main(int argc, char* argv[], char* envp[]) {
       (char*)dlsym(RTLD_DEFAULT, "__darwin_executable_path");
   realpath(argv[0], darwin_executable_path);
 
-  MachO mach(argv[0]);
+  int fd = open(argv[0], O_RDONLY);
+  if (fd < 0) {
+    fprintf(stderr, "%s: %s\n", argv[0], strerror(errno));
+    exit(1);
+  }
+
+  size_t offset = 0, len = 0;
+  map<string, fat_arch> archs;
+  if (readFatInfo(fd, &archs)) {
+    map<string, fat_arch>::const_iterator found = archs.find("x86-64");
+    if (found == archs.end()) {
+      fprintf(stderr,
+              "%s is a fat binary, but doesn't contain x86-64 binary\n",
+              argv[0]);
+      exit(1);
+    }
+    offset = found->second.offset;
+    len = found->second.size;
+    LOG << "fat offset=" << offset << ", len=" << len << endl;
+  }
+
+  MachO mach(fd, offset, len);
   g_mach = &mach;
   if (mach.is64()) {
     loadMachO<true>(mach, argc, argv, envp);

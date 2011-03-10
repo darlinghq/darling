@@ -198,12 +198,14 @@ MachO::MachO(const char* filename) {
 }
 
 MachO::MachO(int fd, size_t offset, size_t len) {
+  lseek(fd, 0, SEEK_SET);
   init(fd, offset, len);
 }
 
 void MachO::init(int fd, size_t offset, size_t len) {
   assert(fd);
   fd_ = fd;
+  offset_ = offset;
   if (!len) {
     len = lseek(fd_, 0, SEEK_END);
   }

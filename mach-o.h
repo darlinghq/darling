@@ -47,6 +47,7 @@ class MachO {
   };
 
   explicit MachO(const char* filename);
+  // Take ownership of fd.
   MachO(int fd, size_t offset, size_t len);
 
   ~MachO();
@@ -68,6 +69,7 @@ class MachO {
   bool is64() const { return is64_; }
 
   int fd() const { return fd_; }
+  size_t offset() const { return offset_; }
 
  private:
   // If len is 0, the size of file will be used as len.
@@ -81,6 +83,7 @@ class MachO {
   uint64_t entry_;
   bool is64_;
   int fd_;
+  size_t offset_;
 };
 
 #endif  // MACH_O_H_

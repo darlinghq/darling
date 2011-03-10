@@ -25,10 +25,10 @@ $(MACTXTS): %.txt: %.bin
 extract: extract.o fat.o
 	g++ $^ -o $@ -g -I. -W -Wall
 
-macho2elf: macho2elf.o mach-o.o fat.o
+macho2elf: macho2elf.o mach-o.o
 	g++ $^ -o $@ -g
 
-ld-mac: ld-mac.o mach-o.o
+ld-mac: ld-mac.o mach-o.o fat.o
 	g++ $^ -o $@ -g -ldl
 
 libmac/libmac.so: libmac/mac.o
