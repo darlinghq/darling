@@ -47,6 +47,7 @@ class MachO {
   };
 
   explicit MachO(const char* filename);
+  MachO(int fd, size_t offset, size_t len);
 
   ~MachO();
 
@@ -69,6 +70,8 @@ class MachO {
   int fd() const { return fd_; }
 
  private:
+  // If len is 0, the size of file will be used as len.
+  void init(int fd, size_t offset, size_t len);
   void readBind(const uint8_t* p, const uint8_t* end);
 
   vector<segment_command_64*> segments64_;

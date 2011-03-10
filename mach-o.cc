@@ -25,6 +25,7 @@
 // OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -188,16 +189,27 @@ void MachO::readBind(const uint8_t* p, const uint8_t* end) {
 }
 
 MachO::MachO(const char* filename) {
-  fd_ = open(filename, O_RDONLY);
-  if (fd_ < 0) {
+  int fd = open(filename, O_RDONLY);
+  if (fd < 0) {
     fprintf(stderr, "open %s: %s\n", filename, strerror(errno));
     exit(1);
   }
+  init(fd, 0, 0);
+}
 
-  off_t len = lseek(fd_, 0, SEEK_END);
+MachO::MachO(int fd, size_t offset, size_t len) {
+  init(fd, offset, len);
+}
+
+void MachO::init(int fd, size_t offset, size_t len) {
+  assert(fd);
+  fd_ = fd;
+  if (!len) {
+    len = lseek(fd_, 0, SEEK_END);
+  }
   char* bin = reinterpret_cast<char*>(
     mmap(NULL, len,
-         PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, fd_, 0));
+         PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, fd_, offset));
   base_ = bin;
 
   mach_header* header = reinterpret_cast<mach_header*>(bin);
