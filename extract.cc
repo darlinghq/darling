@@ -40,33 +40,9 @@
 
 #include "mach-o/fat.h"
 
+#include "fat.h"
+
 using namespace std;
-
-bool be = false;
-
-static void fixEndian(uint32_t* p) {
-  if (!be) {
-    return;
-  }
-
-  uint32_t v = *p;
-  *p = (v << 24) | ((v << 8) & 0x00ff0000) | ((v >> 8) & 0xff00) | (v >> 24);
-}
-
-static const char* getArchName(uint32_t a) {
-  switch (a) {
-  case CPU_TYPE_X86:
-    return "x86";
-  case CPU_TYPE_X86_64:
-    return "x86-64";
-  case CPU_TYPE_POWERPC:
-    return "ppc";
-  case CPU_TYPE_POWERPC64:
-    return "ppc64";
-  default:
-    return "???";
-  }
-}
 
 int main(int argc, char* argv[]) {
   if (argc < 2) {
@@ -84,55 +60,38 @@ int main(int argc, char* argv[]) {
   char* bin = reinterpret_cast<char*>(
     mmap(NULL, len,
          PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, fd, 0));
+  if (bin == MAP_FAILED) {
+    perror("mmap");
+    exit(1);
+  }
 
-  fat_header* header = reinterpret_cast<fat_header*>(bin);
-
-  if (header->magic == FAT_CIGAM) {
-    be = true;
-  } else if (header->magic != FAT_MAGIC) {
+  map<string, fat_arch> archs;
+  if (!readFatInfo(fd, &archs)) {
     fprintf(stderr, "Not fat\n");
     exit(1);
   }
 
-  fixEndian(&header->nfat_arch);
-
-  printf("magic=%x nfat_arch=%d\n",
-         header->magic, header->nfat_arch);
-
-  map<string, fat_arch*> archs;
-
-  char* fat_ptr = bin + sizeof(fat_header);
-  for (uint32_t i = 0; i < header->nfat_arch; i++) {
-    fat_arch* arch = reinterpret_cast<fat_arch*>(fat_ptr);
-
-    fixEndian(&arch->cputype);
-    fixEndian(&arch->cpusubtype);
-    fixEndian(&arch->offset);
-    fixEndian(&arch->size);
-    fixEndian(&arch->align);
-
-    const char* name = getArchName(arch->cputype);
-
+  printf("%lu archs:\n", archs.size());
+  for (map<string, fat_arch>::const_iterator iter = archs.begin();
+       iter != archs.end();
+       ++iter) {
+    const fat_arch& arch = iter->second;
     printf("cputype=%d (%s) cpusubtype=%d offset=%d size=%d align=%d\n",
-           arch->cputype, name, arch->cpusubtype,
-           arch->offset, arch->size, arch->align);
-
-    archs.insert(make_pair(name, arch));
-
-    fat_ptr += sizeof(fat_arch);
+           arch.cputype, iter->first.c_str(), arch.cpusubtype,
+           arch.offset, arch.size, arch.align);
   }
 
   for (int i = 2; i + 1 < argc; i += 2) {
     const char* arch_name = argv[i];
-    map<string, fat_arch*>::const_iterator found = archs.find(arch_name);
+    map<string, fat_arch>::const_iterator found = archs.find(arch_name);
     if (found == archs.end()) {
       printf("unknown arch: %s\n", arch_name);
       continue;
     }
 
-    fat_arch* arch = found->second;
+    const fat_arch& arch = found->second;
     FILE* fp = fopen(argv[i+1], "wb");
-    fwrite(bin + arch->offset, 1, arch->size, fp);
+    fwrite(bin + arch.offset, 1, arch.size, fp);
     fclose(fp);
   }
 }
