@@ -44,9 +44,9 @@
 #include <runetype.h>
 
 #ifdef NOLOG
-# define LOGF(fmt, ...) if (0) fprintf(stderr, fmt, __VA_ARGS__)
+# define LOGF(...) if (0) fprintf(stderr, __VA_ARGS__)
 #else
-# define LOGF(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
+# define LOGF(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
 typedef __darwin_rune_t rune_t;
@@ -594,7 +594,10 @@ int __darwin_open(const char* path, int flags, mode_t mode) {
 int __darwin_execv(const char* path, char* argv[]) {
   int i, argc;
   LOGF("execv: path=%s\n", path);
-  for (argc = 0; argv[argc]; argc++) {}
+  for (argc = 0; argv[argc]; argc++) {
+    LOGF("%s ", argv[argc]);
+  }
+  LOGF("\n");
   char** new_argv = malloc(sizeof(char*) * (argc + 2));
   new_argv[0] = __loader_path;
   for (i = 0; i < argc + 1; i++) {
