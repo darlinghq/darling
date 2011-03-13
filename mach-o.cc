@@ -96,15 +96,12 @@ static int64_t sleb128(const uint8_t*& p) {
   return r;
 }
 
-void MachO::readBind(const uint8_t* p, const uint8_t* end) {
-  uint8_t ordinal = 0;
-  const char* sym_name;
-  uint8_t type = BIND_TYPE_POINTER;
-  int64_t addend = 0;
-  int seg_index = 0;
-  uint64_t seg_offset = 0;
+struct MachO::BindState {
+  explicit BindState(MachO* mach0)
+    : mach(mach0), ordinal(0), sym_name(NULL), type(BIND_TYPE_POINTER),
+      addend(0), seg_index(0), seg_offset(0) {}
 
-  while (p < end) {
+  void readBindOp(const uint8_t*& p) {
     uint8_t op = *p & BIND_OPCODE_MASK;
     uint8_t imm = *p & BIND_IMMEDIATE_MASK;
     p++;
@@ -152,39 +149,69 @@ void MachO::readBind(const uint8_t* p, const uint8_t* end) {
       seg_offset += uleb128(p);
       break;
 
-    case BIND_OPCODE_DO_BIND: {
-      MachO::Bind* bind = new MachO::Bind();
-      uint64_t vmaddr;
-      if (is64_) {
-        vmaddr = segments64_[seg_index]->vmaddr;
-      } else {
-        vmaddr = segments_[seg_index]->vmaddr;
-      }
-      LOGF("do bind! %s seg_index=%d seg_offset=%llu "
-           "type=%d ordinal=%d addend=%lld vmaddr=%p\n",
-           sym_name, seg_index, (ull)seg_offset,
-           type, ordinal, (ll)addend, (void*)vmaddr);
-      bind->name = sym_name;
-      bind->vmaddr = vmaddr + seg_offset;
-      bind->type = type;
-      bind->ordinal = ordinal;
-      binds_.push_back(bind);
-
-      seg_offset += is64_ ? 8 : 4;
-
+    case BIND_OPCODE_DO_BIND:
+      doBind();
       break;
-    }
 
     case BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB:
-      fprintf(stderr, "not impl\n");
+      doBind();
+      seg_offset += uleb128(p);
       break;
 
     case BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED:
-    case BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB:
+      doBind();
+      seg_offset += imm * mach->ptrsize_;
+      break;
+
+    case BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB: {
+      uint64_t count = uleb128(p);
+      uint64_t skip = uleb128(p);
+      for (uint64_t i = 0; i < count; i++) {
+        doBind();
+        seg_offset += skip;
+      }
+      break;
+    }
 
     default:
-      fprintf(stderr, "unknown op\n");
+      fprintf(stderr, "unknown op: %x\n", op);
     }
+  }
+
+  void doBind() {
+    MachO::Bind* bind = new MachO::Bind();
+    uint64_t vmaddr;
+    if (mach->is64_) {
+      vmaddr = mach->segments64_[seg_index]->vmaddr;
+    } else {
+      vmaddr = mach->segments_[seg_index]->vmaddr;
+    }
+    LOGF("do bind! %s seg_index=%d seg_offset=%llu "
+         "type=%d ordinal=%d addend=%lld vmaddr=%p\n",
+         sym_name, seg_index, (ull)seg_offset,
+         type, ordinal, (ll)addend, (void*)vmaddr);
+    bind->name = sym_name;
+    bind->vmaddr = vmaddr + seg_offset;
+    bind->type = type;
+    bind->ordinal = ordinal;
+    mach->binds_.push_back(bind);
+
+    seg_offset += mach->ptrsize_;
+  }
+
+  MachO* mach;
+  uint8_t ordinal;
+  const char* sym_name;
+  uint8_t type;
+  int64_t addend;
+  int seg_index;
+  uint64_t seg_offset;
+};
+
+void MachO::readBind(const uint8_t* p, const uint8_t* end) {
+  BindState state(this);
+  while (p < end) {
+    state.readBindOp(p);
   }
 }
 
@@ -227,6 +254,7 @@ void MachO::init(int fd, size_t offset, size_t len) {
     fprintf(stderr, "Not mach-o\n");
     exit(1);
   }
+  ptrsize_ = is64_ ? 8 : 4;
 
   if ((header->cputype & 0x00ffffff) != CPU_TYPE_X86) {
     fprintf(stderr, "Unsupported CPU\n");

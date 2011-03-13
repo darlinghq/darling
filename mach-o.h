@@ -72,6 +72,9 @@ class MachO {
   size_t offset() const { return offset_; }
 
  private:
+  class BindState;
+  friend class MachO::BindState;
+
   // If len is 0, the size of file will be used as len.
   void init(int fd, size_t offset, size_t len);
   void readBind(const uint8_t* p, const uint8_t* end);
@@ -82,6 +85,7 @@ class MachO {
   const char* base_;
   uint64_t entry_;
   bool is64_;
+  int ptrsize_;
   int fd_;
   size_t offset_;
 };
