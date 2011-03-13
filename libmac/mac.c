@@ -761,6 +761,14 @@ void __assert_rtn(const char* func, const char* file, int line,
   abort();
 }
 
+// We don't have DWARF to handle exception. Let's show some info and abort.
+// This works well for apple's ld.
+void __darwin___cxa_throw(char** obj) {
+  fprintf(stderr, "__cxa_throw: obj=%p\n", obj);
+  fprintf(stderr, "%s\n", *obj);
+  abort();
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
