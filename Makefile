@@ -32,7 +32,7 @@ ld-mac: ld-mac.o mach-o.o fat.o
 	g++ $^ -o $@ -g -ldl
 
 libmac/libmac.so: libmac/mac.o
-	gcc -shared $^ -o $@
+	gcc -shared $^ -o $@ -luuid
 
 clean:
 	rm -f *.o *.d */*.o */*.d $(EXES)
