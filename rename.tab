@@ -60,6 +60,7 @@ WRAP(fileno)
 RENAME(__srget, __darwin_fgetc)
 RENAME(__swbuf, __darwin_fputc)
 
+RENAME(__toupper, toupper)
 RENAME(__tolower, tolower)
 
 RENAME(opendir$INODE64, opendir)
@@ -75,6 +76,7 @@ RENAME(lstat$INODE64, __darwin_lstat)
 WRAP(open)
 
 RENAME(strlcpy, strncpy)
+RENAME(strlcat, strncat)
 
 WRAP(mmap)
 WRAP(sysctl)

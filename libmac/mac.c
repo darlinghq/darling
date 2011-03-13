@@ -730,6 +730,14 @@ const NXArchInfo* NXGetArchInfoFromName(const char *name) {
   return NULL;
 }
 
+void __assert_rtn(const char* func, const char* file, int line,
+                  const char* failedexpr) {
+  fprintf(stderr,
+          "Assertion failed: (%s), function %s, file %s, line %d.\n",
+          failedexpr, func, file, line);
+  abort();
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
