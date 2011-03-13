@@ -206,7 +206,7 @@ struct __darwin_host_basic_info {
 };
 
 int host_info(int host, int flavor,
-              struct __darwin_host_basic_info* info, void* info_cnt) {
+              struct __darwin_host_basic_info* info, int* info_cnt) {
   if (flavor != 1) {
     fprintf(stderr, "host_info with flavor=%d isn't supported yet.\n", flavor);
     abort();
@@ -216,6 +216,29 @@ int host_info(int host, int flavor,
   memset(info, 0, sizeof(*info));
   info->cpu_type = 16777223;
   info->cpu_subtype = 3;
+
+  *info_cnt = sizeof(*info);
+
+  return 0;
+}
+
+struct __darwin_host_load_info {
+  int avenrun[3];
+  int mach_factor[3];
+};
+
+int host_statistics(int host, int flavor,
+                    struct __darwin_host_load_info* info, int* info_cnt) {
+  // TODO(hamaji): implement this.
+  info->avenrun[0] = 0;
+  info->avenrun[1] = 0;
+  info->avenrun[2] = 0;
+  info->mach_factor[0] = 0;
+  info->mach_factor[1] = 0;
+  info->avenrun[2] = 0;
+
+  *info_cnt = sizeof(*info);
+
   return 0;
 }
 
