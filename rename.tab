@@ -85,3 +85,7 @@ RENAME(realpath$DARWIN_EXTSN, realpath)
 
 WRAP(execv)
 WRAP(execvp)
+
+RENAME(CC_MD5_Init, MD5_Init)
+RENAME(CC_MD5_Update, MD5_Update)
+RENAME(CC_MD5_Final, MD5_Final)
