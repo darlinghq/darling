@@ -65,6 +65,11 @@ RENAME(__tolower, tolower)
 RENAME(opendir$INODE64, opendir)
 RENAME(readdir$INODE64, readdir)
 
+WRAP(stat)
+WRAP(fstat)
+RENAME(stat$INODE64, __darwin_stat)
+RENAME(fstat$INODE64, __darwin_fstat)
+
 WRAP(open)
 
 RENAME(strlcpy, strncpy)

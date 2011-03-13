@@ -114,7 +114,7 @@ static void __translate_stat(struct stat64* linux_buf,
   mac->st_ctimespec.tv_sec = linux_buf->st_ctime;
 }
 
-int stat$INODE64(const char* path, struct __darwin_stat64* mac) {
+int __darwin_stat(const char* path, struct __darwin_stat64* mac) {
   LOGF("stat: path=%s buf=%p\n", path, mac);
   struct stat64 linux_buf;
   int ret = stat64(path, &linux_buf);
@@ -122,7 +122,7 @@ int stat$INODE64(const char* path, struct __darwin_stat64* mac) {
   return ret;
 }
 
-int fstat$INODE64(int fd, struct __darwin_stat64* mac) {
+int __darwin_fstat(int fd, struct __darwin_stat64* mac) {
   LOGF("fstat: fd=%d buf=%p\n", fd, mac);
   LOGF("fstat: size_offset=%ld\n", (char*)&mac->st_size - (char*)mac);
   fflush(stdout);
