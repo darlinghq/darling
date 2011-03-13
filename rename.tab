@@ -67,8 +67,10 @@ RENAME(readdir$INODE64, readdir)
 
 WRAP(stat)
 WRAP(fstat)
+WRAP(lstat)
 RENAME(stat$INODE64, __darwin_stat)
 RENAME(fstat$INODE64, __darwin_fstat)
+RENAME(lstat$INODE64, __darwin_lstat)
 
 WRAP(open)
 

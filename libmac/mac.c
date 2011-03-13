@@ -125,9 +125,16 @@ int __darwin_stat(const char* path, struct __darwin_stat64* mac) {
 int __darwin_fstat(int fd, struct __darwin_stat64* mac) {
   LOGF("fstat: fd=%d buf=%p\n", fd, mac);
   LOGF("fstat: size_offset=%ld\n", (char*)&mac->st_size - (char*)mac);
-  fflush(stdout);
   struct stat64 linux_buf;
   int ret = fstat64(fd, &linux_buf);
+  __translate_stat(&linux_buf, mac);
+  return ret;
+}
+
+int __darwin_lstat(const char* path, struct __darwin_stat64* mac) {
+  LOGF("lstat: path=%s buf=%p\n", path, mac);
+  struct stat64 linux_buf;
+  int ret = lstat64(path, &linux_buf);
   __translate_stat(&linux_buf, mac);
   return ret;
 }
