@@ -72,6 +72,9 @@ for pkg in $PKGS; do
     cd ..
   fi
 done
-ln -sf root/System/Library/Frameworks root/Library/Frameworks
+
+ln -sf ../../System/Library/Frameworks root/Library/Frameworks
+cd root/usr/lib
+ln -s system/* .
 
 echo "The package was unpacked into $dir/root"
