@@ -772,6 +772,18 @@ void __darwin___cxa_throw(char** obj) {
   abort();
 }
 
+size_t strlcpy(char* dst, const char* src, size_t size) {
+  dst[size - 1] = '\0';
+  strncpy(dst, src, size - 1);
+  return strlen(dst);
+}
+
+size_t strlcat(char* dst, const char* src, size_t size) {
+  dst[size - 1] = '\0';
+  strncat(dst, src, size - strlen(dst) - 1);
+  return strlen(dst);
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
