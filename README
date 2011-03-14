@@ -5,6 +5,18 @@ This is a Mach-O loader for linux.
 % make
 % ./ld-mac mac_binary [options...]
 
+* How to use compiler tool chains of Xcode
+
+Get xcode_3.2.6_and_ios_sdk_4.3__final.dmg (or another xcode package).
+
+% git clone git@github.com:shinh/maloader.git
+% ./maloader/unpack_xcode.sh xcode_3.2.6_and_ios_sdk_4.3__final.dmg
+% sudo cp -a xcode_3.2.6_and_ios_sdk_4.3__final/root /usr/i686-apple-darwin10
+% cd maloader
+% make
+% ./ld-mac /usr/i686-apple-darwin10/usr/bin/gcc mach/hello.c
+% ./ld-mac a.out
+
 * Notice
 
 - Running all Mac binaries isn't my goal. Only command line tools such
