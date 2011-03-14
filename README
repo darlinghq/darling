@@ -17,6 +17,18 @@ Get xcode_3.2.6_and_ios_sdk_4.3__final.dmg (or another xcode package).
 % ./ld-mac /usr/i686-apple-darwin10/usr/bin/gcc mach/hello.c
 % ./ld-mac a.out
 
+* How to run Mach-O binaries using binfmt_misc
+
+% sudo sh -c 'echo :Mach-O fat:M::\\xca\\xfe\\xba\\xbe::/home/i/wrk/maloader/ld-mac: > /proc/sys/fs/binfmt_misc/register'
+% sudo sh -c 'echo :Mach-O 64bit:M::\\xcf\\xfa\\xed\\xfe::/home/i/wrk/maloader/ld-mac: > /proc/sys/fs/binfmt_misc/register'
+% /usr/i686-apple-darwin10/usr/bin/gcc mach/hello.c
+% ./a.out
+
+To remove the entries, run the following commands:
+
+% sudo sh -c 'echo -1 > /proc/sys/fs/binfmt_misc/Mach-O\ fat'
+% sudo sh -c 'echo -1 > /proc/sys/fs/binfmt_misc/Mach-O\ 64bit'
+
 * Notice
 
 - Running all Mac binaries isn't my goal. Only command line tools such
