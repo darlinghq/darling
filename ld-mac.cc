@@ -341,7 +341,7 @@ class MachOLoader {
       ((void(*)())*init_func)();
     }
 
-    LOG << "booting from " << mach.entry() << "..." << endl;
+    LOG << "booting from " << (void*)mach.entry() << "..." << endl;
     fflush(stdout);
     assert(argc > 0);
     boot(mach.entry(), argc, argv, envp);
