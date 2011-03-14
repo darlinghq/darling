@@ -42,6 +42,7 @@
 
 #ifdef NOLOG
 # define LOGF(...) if (0) fprintf(stderr, __VA_ARGS__)
+//# define LOGF(...) fprintf(stderr, __VA_ARGS__)
 #else
 # define LOGF(...) fprintf(stderr, __VA_ARGS__)
 #endif
@@ -154,11 +155,13 @@ struct MachO::BindState {
       break;
 
     case BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB:
+      LOGF("BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB\n");
       doBind();
       seg_offset += uleb128(p);
       break;
 
     case BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED:
+      LOGF("BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED %d\n", (int)imm);
       doBind();
       seg_offset += imm * mach->ptrsize_;
       break;
@@ -166,6 +169,8 @@ struct MachO::BindState {
     case BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB: {
       uint64_t count = uleb128(p);
       uint64_t skip = uleb128(p);
+      LOGF("BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB %u %u\n",
+           (unsigned)count, (unsigned)skip);
       for (uint64_t i = 0; i < count; i++) {
         doBind();
         seg_offset += skip;
@@ -301,6 +306,16 @@ void MachO::init(int fd, size_t offset, size_t len) {
              sec.offset, sec.align,
              sec.reloff, sec.nreloc, sec.flags,
              sec.reserved1, sec.reserved2, sec.reserved3);
+
+        int section_type = sec.flags & SECTION_TYPE;
+        if (section_type == S_MOD_INIT_FUNC_POINTERS) {
+          for (uint64_t p = sec.addr;
+               p < sec.addr + sec.size;
+               p += ptrsize_) {
+            init_funcs_.push_back(p);
+          }
+        }
+        // TODO(hamaji): Support term_funcs.
       }
 
       break;

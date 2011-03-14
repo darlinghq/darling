@@ -245,15 +245,15 @@ class MachOLoader {
       }
 
       if (vmsize != filesize) {
-          assert(vmsize > filesize);
-          void* mapped = mmap((void*)(seg->vmaddr + filesize),
-                                      vmsize - filesize, prot,
-                                      MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
-                                      0, 0);
-          if (mapped == MAP_FAILED) {
-              perror("mmap failed");
-              abort();
-          }
+        assert(vmsize > filesize);
+        void* mapped = mmap((void*)(seg->vmaddr + filesize),
+                            vmsize - filesize, prot,
+                            MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
+                            0, 0);
+        if (mapped == MAP_FAILED) {
+          perror("mmap failed");
+          abort();
+        }
       }
     }
 
@@ -334,6 +334,12 @@ class MachOLoader {
                  0x1000);
     mprotect(trampoline_start_addr, trampoline_size,
              PROT_READ | PROT_WRITE | PROT_EXEC);
+
+    for (size_t i = 0; i < mach.init_funcs().size(); i++) {
+      void** init_func = (void**)mach.init_funcs()[i];
+      LOG << "calling initializer function " << *init_func << endl;
+      ((void(*)())*init_func)();
+    }
 
     LOG << "booting from " << mach.entry() << "..." << endl;
     fflush(stdout);
