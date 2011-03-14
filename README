@@ -29,6 +29,32 @@ To remove the entries, run the following commands:
 % sudo sh -c 'echo -1 > /proc/sys/fs/binfmt_misc/Mach-O\ fat'
 % sudo sh -c 'echo -1 > /proc/sys/fs/binfmt_misc/Mach-O\ 64bit'
 
+* Which programs should work
+
+OK
+
+- gcc (but link with -g doesn't work because we cannot run dsymutil)
+- otool
+- nm
+- dyldinfo
+- dwarfdump
+- strip
+- size
+
+not OK
+
+- dsymutil
+- llvm-gcc
+- gnumake and bsdmake
+- lex and flex
+- ar
+- cpp
+- m4
+- gdb
+- libtool
+- nasm and ndisasm (i386)
+- mpicc, mpicxx, and mpic++
+
 * Notice
 
 - Running all Mac binaries isn't my goal. Only command line tools such
