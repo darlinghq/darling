@@ -673,7 +673,11 @@ int __darwin_execvp(const char* file, char* argv[]) {
   } else {
     char* path = find_in_path(file);
     LOGF("execvp: file=%s path=%s\n", file, path);
-    //fprintf(stderr, "execvp: file=%s path=%s\n", file, path);
+    if (!path) {
+      // This should fail.
+      return execvp(file, argv);
+    }
+
     argv[0] = path;
     return __darwin_execv(path, argv);
   }
