@@ -29,7 +29,7 @@ macho2elf: macho2elf.o mach-o.o
 	g++ $^ -o $@ -g
 
 ld-mac: ld-mac.o mach-o.o fat.o
-	g++ $^ -o $@ -g -ldl
+	g++ $^ -o $@ -g -ldl -lpthread
 
 # TODO(hamaji): autotoolize?
 libmac/libmac.so: libmac/mac.o
