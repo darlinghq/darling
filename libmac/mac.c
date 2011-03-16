@@ -419,6 +419,9 @@ __darwin_FILE* __darwin_stdout;
 __darwin_FILE* __darwin_stderr;
 
 static __darwin_FILE* __init_darwin_FILE(FILE* linux_fp) {
+  if (!linux_fp)
+    return NULL;
+
   __darwin_FILE* fp = (__darwin_FILE*)malloc(sizeof(__darwin_FILE));
   fp->_p = NULL;
   fp->_r = -1;
@@ -430,25 +433,16 @@ static __darwin_FILE* __init_darwin_FILE(FILE* linux_fp) {
 }
 
 __darwin_FILE* __darwin_fopen(const char* path, const char* mode) {
-  FILE* fp = fopen(path, mode);
-  if (!fp)
-    return NULL;
-  return __init_darwin_FILE(fp);
+  return __init_darwin_FILE(fopen(path, mode));
 }
 
 __darwin_FILE* __darwin_fdopen(int fd, const char* mode) {
-  FILE* fp = fdopen(fd, mode);
-  if (!fp)
-    return NULL;
-  return __init_darwin_FILE(fp);
+  return __init_darwin_FILE(fdopen(fd, mode));
 }
 
 __darwin_FILE* __darwin_freopen(const char* path, const char* mode,
                                 __darwin_FILE* fp) {
-  FILE* new_fp = freopen(path, mode, fp->linux_fp);
-  if (!new_fp)
-    return NULL;
-  return __init_darwin_FILE(new_fp);
+  return __init_darwin_FILE(freopen(path, mode, fp->linux_fp));
 }
 
 int __darwin_fclose(__darwin_FILE* fp) {
@@ -546,6 +540,10 @@ int __darwin_ferror(__darwin_FILE* fp) {
 
 int __darwin_fileno(__darwin_FILE* fp) {
   return fileno(fp->linux_fp);
+}
+
+__darwin_FILE* __darwin_tmpfile() {
+  return __init_darwin_FILE(tmpfile());
 }
 
 char __darwin_executable_path[PATH_MAX];
