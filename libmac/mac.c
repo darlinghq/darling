@@ -487,6 +487,10 @@ int __darwin_ungetc(int c, __darwin_FILE* fp) {
   return ungetc(c, fp->linux_fp);
 }
 
+int __darwin_putc(int c, __darwin_FILE* fp) {
+  return putc(c, fp->linux_fp);
+}
+
 int __darwin_fputc(int c, __darwin_FILE* fp) {
   return fputc(c, fp->linux_fp);
 }
