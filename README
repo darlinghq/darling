@@ -5,6 +5,10 @@ This is a Mach-O loader for linux.
 % make
 % ./ld-mac mac_binary [options...]
 
+You need OpenCFLite (http://sourceforge.net/projects/opencflite/)
+installed if you want to run some programs such as dsymutil.
+opencflite-476.17.2 is recommended.
+
 * How to use compiler tool chains of Xcode
 
 Get xcode_3.2.6_and_ios_sdk_4.3__final.dmg (or another xcode package).
@@ -33,22 +37,22 @@ To remove the entries, run the following commands:
 
 OK
 
-- gcc (but link with -g doesn't work because we cannot run dsymutil)
+- gcc-4.2 (link with -g requires OpenCFLite)
 - otool
 - nm
 - dyldinfo
 - dwarfdump
 - strip
 - size
+- dsymutil (need OpenCFLite)
+- cpp-4.2
 
 not OK
 
-- dsymutil
 - llvm-gcc
 - gnumake and bsdmake
 - lex and flex
 - ar
-- cpp
 - m4
 - gdb
 - libtool
