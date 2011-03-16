@@ -60,7 +60,9 @@ class MachO {
     return segments_;
   }
 
-  const vector<Bind*> binds() const { return binds_; }
+  const vector<const char*>& dylibs() const { return dylibs_; }
+
+  const vector<Bind*>& binds() const { return binds_; }
 
   const char* base() const { return base_; }
 
@@ -82,6 +84,7 @@ class MachO {
 
   vector<segment_command_64*> segments64_;
   vector<segment_command*> segments_;
+  vector<const char*> dylibs_;
   vector<Bind*> binds_;
   const char* base_;
   uint64_t entry_;

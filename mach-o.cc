@@ -455,9 +455,9 @@ void MachO::init(int fd, size_t offset, size_t len) {
     }
 
     case LC_LOAD_DYLIB: {
-      dylib* lib = reinterpret_cast<dylib*>(
-        cmds_ptr + sizeof(uint32_t) * 2);
+      dylib* lib = reinterpret_cast<dylib*>(cmds_ptr + sizeof(uint32_t) * 2);
       LOGF("dylib: %s\n", cmds_ptr + lib->name.offset);
+      dylibs_.push_back(cmds_ptr + lib->name.offset);
       break;
     }
 
