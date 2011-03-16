@@ -62,7 +62,6 @@ using namespace std;
 class MachO;
 
 static map<string, string> g_rename;
-static const MachO* g_mach = NULL;
 // TODO(hamaji): We might want to control this behavior with a flag.
 #ifdef NOLOG
 static bool g_use_trampoline = false;
@@ -412,20 +411,6 @@ void loadMachO(const MachO& mach, int argc, char** argv, char** envp) {
   loader.load(mach, argc, argv, envp);
 }
 
-static void lookupSymbol(const MachO& mach, void* addr,
-                         const char** out_sym, ptrdiff_t* out_diff) {
-  *out_sym = NULL;
-  *out_diff = INT_MAX;
-  for (size_t i = 0; i < mach.binds().size(); i++) {
-    MachO::Bind* bind = mach.binds()[i];
-    ptrdiff_t diff = (char*)addr - (char*)bind->vmaddr;
-    if (diff >= 0 && diff < *out_diff) {
-      *out_sym = bind->name;
-      *out_diff = diff;
-    }
-  }
-}
-
 #if 0
 static int getBacktrace(void** trace, int max_depth) {
     typedef struct frame {
@@ -459,17 +444,7 @@ static void handleSignal(int signum, siginfo_t* siginfo, void* vuc) {
     if (syms[i] && syms[i][0] != '[') {
       fprintf(stderr, "%s\n", syms[i]);
     } else {
-      const char* sym = NULL;
-      if (g_mach) {
-        ptrdiff_t diff;
-        lookupSymbol(*g_mach, trace[i], &sym, &diff);
-        if (sym) {
-          fprintf(stderr, "%s(+%ld) %p\n", sym, (long)diff, trace[i]);
-        }
-      }
-      if (!sym) {
-        fprintf(stderr, "%p\n", trace[i]);
-      }
+      fprintf(stderr, "%p\n", trace[i]);
     }
   }
 }
@@ -547,7 +522,6 @@ int main(int argc, char* argv[], char* envp[]) {
   }
 
   MachO mach(fd, offset, len);
-  g_mach = &mach;
   if (mach.is64()) {
     loadMachO<true>(mach, argc, argv, envp);
   } else {
