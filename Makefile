@@ -31,8 +31,9 @@ macho2elf: macho2elf.o mach-o.o
 ld-mac: ld-mac.o mach-o.o fat.o
 	g++ $^ -o $@ -g -ldl
 
+# TODO(hamaji): autotoolize?
 libmac/libmac.so: libmac/mac.o
-	gcc -shared $^ -o $@ -luuid -lcrypto
+	gcc -shared $^ -o $@ -luuid -lcrypto -lCoreFoundation || (echo "*** libCoreFoundation not found ***"; gcc -shared $^ -o $@ -luuid -lcrypto)
 
 clean:
 	rm -f *.o *.d */*.o */*.d $(EXES)
