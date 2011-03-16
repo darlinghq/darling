@@ -30,6 +30,7 @@
 #define _GNU_SOURCE
 
 #include <dirent.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -474,6 +475,10 @@ long __darwin_ftell(__darwin_FILE* fp) {
   return ftell(fp->linux_fp);
 }
 
+int __darwin_getc(__darwin_FILE* fp) {
+  return getc(fp->linux_fp);
+}
+
 int __darwin_fgetc(__darwin_FILE* fp) {
   return fgetc(fp->linux_fp);
 }
@@ -791,6 +796,44 @@ size_t strlcat(char* dst, const char* src, size_t size) {
 int __mb_cur_max() {
   // TODO(hamaji): Incorrect for most locales.
   return 1;
+}
+
+typedef struct {
+  void* ss_sp;
+  size_t ss_size;
+  int ss_flags;
+} __darwin_stack_t;
+
+int __darwin_sigaltstack(const __darwin_stack_t* ss, __darwin_stack_t* oss) {
+  return 0;
+
+#if 0
+  stack_t linux_ss;
+  stack_t linux_oss;
+  linux_ss.ss_sp = ss->ss_sp;
+  linux_ss.ss_size = ss->ss_size;
+  linux_ss.ss_flags = ss->ss_flags;
+  if (oss) {
+    linux_oss.ss_sp = oss->ss_sp;
+    linux_oss.ss_size = oss->ss_size;
+    linux_oss.ss_flags = oss->ss_flags;
+  }
+  int r = sigaltstack(&linux_ss, &linux_oss);
+  if (oss) {
+    oss->ss_sp = linux_oss.ss_sp;
+    oss->ss_size = linux_oss.ss_size;
+    oss->ss_flags = linux_oss.ss_flags;
+  }
+  return r;
+#endif
+}
+
+int __darwin_sigaction() {
+  return 0;
+}
+
+void* __darwin_signal() {
+  return NULL;
 }
 
 __attribute__((constructor)) void initMac() {
