@@ -788,6 +788,11 @@ size_t strlcat(char* dst, const char* src, size_t size) {
   return strlen(dst);
 }
 
+int __mb_cur_max() {
+  // TODO(hamaji): Incorrect for most locales.
+  return 1;
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
