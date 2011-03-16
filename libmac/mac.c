@@ -475,6 +475,10 @@ long __darwin_ftell(__darwin_FILE* fp) {
   return ftell(fp->linux_fp);
 }
 
+void __darwin_rewind(__darwin_FILE* fp) {
+  return rewind(fp->linux_fp);
+}
+
 int __darwin_getc(__darwin_FILE* fp) {
   return getc(fp->linux_fp);
 }
