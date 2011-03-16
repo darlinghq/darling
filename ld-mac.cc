@@ -209,7 +209,7 @@ class MachOLoader {
     }
   }
 
-  void load(const MachO& mach, int argc, char** argv, char** envp) {
+  void load(const MachO& mach, vector<uint64_t>* init_funcs) {
     const vector<Segment*>& segments = Helpers::segments(mach);
     for (size_t i = 0; i < segments.size(); i++) {
       Segment* seg = segments[i];
@@ -326,6 +326,15 @@ class MachOLoader {
       }
     }
 
+    for (size_t i = 0; i < mach.init_funcs().size(); i++) {
+      init_funcs->push_back(mach.init_funcs()[i]);
+    }
+  }
+
+  void run(const MachO& mach, int argc, char** argv, char** envp) {
+    vector<uint64_t> init_funcs;
+    load(mach, &init_funcs);
+
     char* trampoline_start_addr =
         (char*)(((uintptr_t)&trampoline_[0]) & ~0xfff);
     uint64_t trampoline_size =
@@ -334,8 +343,8 @@ class MachOLoader {
     mprotect(trampoline_start_addr, trampoline_size,
              PROT_READ | PROT_WRITE | PROT_EXEC);
 
-    for (size_t i = 0; i < mach.init_funcs().size(); i++) {
-      void** init_func = (void**)mach.init_funcs()[i];
+    for (size_t i = 0; i < init_funcs.size(); i++) {
+      void** init_func = (void**)init_funcs[i];
       LOG << "calling initializer function " << *init_func << endl;
       ((void(*)())*init_func)();
     }
@@ -408,7 +417,7 @@ void MachOLoader<false>::boot(
 template <bool is64>
 void loadMachO(const MachO& mach, int argc, char** argv, char** envp) {
   MachOLoader<is64> loader;
-  loader.load(mach, argc, argv, envp);
+  loader.run(mach, argc, argv, envp);
 }
 
 #if 0
