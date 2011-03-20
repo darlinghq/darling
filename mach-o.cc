@@ -243,10 +243,15 @@ void MachO::readExport(const uint8_t* start,
 
   if (uint8_t term_size = *p++) {
     const uint8_t* expected_term_end = p + term_size;
-    uint64_t flag = uleb128(p);
-    uint64_t addr = uleb128(p);
+    Export exp;
+    exp.name = *name_buf;
+    exp.flag = uleb128(p);
+    exp.addr = uleb128(p);
     LOGF("export: %s %lu %p\n",
-         name_buf->c_str(), (long)flag, (void*)addr);
+         name_buf->c_str(), (long)exp.flag, (void*)exp.addr);
+
+    exports_.push_back(exp);
+
     assert(expected_term_end == p);
   }
 

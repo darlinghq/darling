@@ -214,7 +214,9 @@ class MachOLoader {
     }
   }
 
-  void load(const MachO& mach, vector<uint64_t>* init_funcs) {
+  void load(const MachO& mach,
+            vector<uint64_t>* init_funcs,
+            map<string, MachO::Export>* exports) {
     intptr slide = 0;
 
     const vector<Segment*>& segments = Helpers::segments(mach);
@@ -287,7 +289,7 @@ class MachOLoader {
       }
 
       auto_ptr<MachO> dylib_mach(readMachO(dylib.c_str(), ARCH_NAME));
-      load(*dylib_mach, init_funcs);
+      load(*dylib_mach, init_funcs, exports);
     }
 
     unsigned int common_code_size = (unsigned int)trampoline_.size();
@@ -314,7 +316,15 @@ class MachOLoader {
         }
 
         void** ptr = (void**)(bind->vmaddr + slide);
-        void* sym = dlsym(RTLD_DEFAULT, name);
+        void* sym = NULL;
+        const map<string, MachO::Export>::const_iterator export_found =
+            exports->find(bind->name);
+        if (export_found != exports->end()) {
+          sym = (void*)export_found->second.addr;
+        }
+        if (!sym) {
+          sym = dlsym(RTLD_DEFAULT, name);
+        }
         if (!sym) {
             ERR << name << ": undefined symbol" << endl;
             sym = (void*)&undefinedFunction;
@@ -359,11 +369,20 @@ class MachOLoader {
         abort();
       }
     }
+
+    for (size_t i = 0; i < mach.exports().size(); i++) {
+      MachO::Export exp = mach.exports()[i];
+      exp.addr += slide;
+      if (!exports->insert(make_pair(exp.name, exp)).second) {
+        fprintf(stderr, "duplicated exported symbol: %s\n", exp.name.c_str());
+      }
+    }
   }
 
   void run(const MachO& mach, int argc, char** argv, char** envp) {
     vector<uint64_t> init_funcs;
-    load(mach, &init_funcs);
+    map<string, MachO::Export> exports;
+    load(mach, &init_funcs, &exports);
 
     char* trampoline_start_addr =
         (char*)(((uintptr_t)&trampoline_[0]) & ~0xfff);

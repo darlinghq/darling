@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 
+#include <string>
 #include <vector>
 
 #include "mach-o/loader.h"
@@ -44,6 +45,12 @@ class MachO {
     int64_t addend;
     uint8_t type;
     uint8_t ordinal;
+  };
+
+  struct Export {
+    string name;
+    uint64_t addr;
+    uint32_t flag;
   };
 
   explicit MachO(const char* filename);
@@ -63,6 +70,8 @@ class MachO {
   const vector<const char*>& dylibs() const { return dylibs_; }
 
   const vector<Bind*>& binds() const { return binds_; }
+
+  const vector<Export>& exports() const { return exports_; }
 
   const char* base() const { return base_; }
 
@@ -88,6 +97,7 @@ class MachO {
   vector<segment_command*> segments_;
   vector<const char*> dylibs_;
   vector<Bind*> binds_;
+  vector<Export> exports_;
   const char* base_;
   uint64_t entry_;
   vector<uint64_t> init_funcs_;
