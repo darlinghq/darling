@@ -33,6 +33,7 @@
 #include <execinfo.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <memory>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +41,7 @@
 #include <sys/mman.h>
 #include <ucontext.h>
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <set>
@@ -70,6 +72,9 @@ static bool g_use_trampoline = true;
 #endif
 static vector<const char*> g_bound_names;
 static set<string> g_no_trampoline;
+
+// We only support x86-64 for now.
+static const char* ARCH_NAME = "x86-64";
 
 static void initRename() {
 #define RENAME(src, dst) g_rename.insert(make_pair(#src, #dst));
@@ -210,6 +215,8 @@ class MachOLoader {
   }
 
   void load(const MachO& mach, vector<uint64_t>* init_funcs) {
+    intptr slide = 0;
+
     const vector<Segment*>& segments = Helpers::segments(mach);
     for (size_t i = 0; i < segments.size(); i++) {
       Segment* seg = segments[i];
@@ -220,7 +227,7 @@ class MachOLoader {
 
       LOG << seg->segname << ": "
           << "fileoff=" << seg->fileoff
-          << "vmaddr=" << seg->vmaddr << endl;
+          << ", vmaddr=" << seg->vmaddr << endl;
 
       int prot = 0;
       if (seg->initprot & VM_PROT_READ) {
@@ -234,8 +241,16 @@ class MachOLoader {
       }
 
       intptr filesize = alignMem(seg->filesize, 0x1000);
+      intptr vmaddr = seg->vmaddr + slide;
+      if (vmaddr < last_addr_) {
+        LOG << "vmaddr=" << (void*)vmaddr
+            << ", last_addr=" << (void*)last_addr_ << endl;
+        assert(i == 0);
+        vmaddr = last_addr_;
+        slide = vmaddr - seg->vmaddr;
+      }
       intptr vmsize = seg->vmsize;
-      void* mapped = mmap((void*)seg->vmaddr, filesize, prot,
+      void* mapped = mmap((void*)vmaddr, filesize, prot,
                           MAP_PRIVATE | MAP_FIXED,
                           mach.fd(), mach.offset() + seg->fileoff);
       if (mapped == MAP_FAILED) {
@@ -245,7 +260,7 @@ class MachOLoader {
 
       if (vmsize != filesize) {
         assert(vmsize > filesize);
-        void* mapped = mmap((void*)(seg->vmaddr + filesize),
+        void* mapped = mmap((void*)(vmaddr + filesize),
                             vmsize - filesize, prot,
                             MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
                             0, 0);
@@ -254,6 +269,25 @@ class MachOLoader {
           abort();
         }
       }
+
+      last_addr_ = max(last_addr_, (intptr)vmaddr + vmsize);
+    }
+
+    for (size_t i = 0; i < mach.init_funcs().size(); i++) {
+      init_funcs->push_back(mach.init_funcs()[i]);
+    }
+
+    for (size_t i = 0; i < mach.dylibs().size(); i++) {
+      string dylib = mach.dylibs()[i];
+      // For now, we assume a dylib is a system library if its path
+      // starts with /
+      // TODO(hamaji): Do something?
+      if (dylib[0] == '/') {
+        continue;
+      }
+
+      auto_ptr<MachO> dylib_mach(readMachO(dylib.c_str(), ARCH_NAME));
+      load(*dylib_mach, init_funcs);
     }
 
     unsigned int common_code_size = (unsigned int)trampoline_.size();
@@ -279,7 +313,7 @@ class MachOLoader {
           name = found->second.c_str();
         }
 
-        void** ptr = (void**)bind->vmaddr;
+        void** ptr = (void**)(bind->vmaddr + slide);
         void* sym = dlsym(RTLD_DEFAULT, name);
         if (!sym) {
             ERR << name << ": undefined symbol" << endl;
@@ -324,10 +358,6 @@ class MachOLoader {
         fprintf(stderr, "Unknown bind type: %d\n", bind->type);
         abort();
       }
-    }
-
-    for (size_t i = 0; i < mach.init_funcs().size(); i++) {
-      init_funcs->push_back(mach.init_funcs()[i]);
     }
   }
 
@@ -386,6 +416,7 @@ class MachOLoader {
   }
 
   string trampoline_;
+  intptr last_addr_;
 };
 
 template <>
@@ -509,31 +540,10 @@ int main(int argc, char* argv[], char* envp[]) {
       (char*)dlsym(RTLD_DEFAULT, "__darwin_executable_path");
   realpath(argv[0], darwin_executable_path);
 
-  int fd = open(argv[0], O_RDONLY);
-  if (fd < 0) {
-    fprintf(stderr, "%s: %s\n", argv[0], strerror(errno));
-    exit(1);
-  }
-
-  size_t offset = 0, len = 0;
-  map<string, fat_arch> archs;
-  if (readFatInfo(fd, &archs)) {
-    map<string, fat_arch>::const_iterator found = archs.find("x86-64");
-    if (found == archs.end()) {
-      fprintf(stderr,
-              "%s is a fat binary, but doesn't contain x86-64 binary\n",
-              argv[0]);
-      exit(1);
-    }
-    offset = found->second.offset;
-    len = found->second.size;
-    LOG << "fat offset=" << offset << ", len=" << len << endl;
-  }
-
-  MachO mach(fd, offset, len);
-  if (mach.is64()) {
-    loadMachO<true>(mach, argc, argv, envp);
+  auto_ptr<MachO> mach(readMachO(argv[0], ARCH_NAME));
+  if (mach->is64()) {
+    loadMachO<true>(*mach, argc, argv, envp);
   } else {
-    loadMachO<false>(mach, argc, argv, envp);
+    loadMachO<false>(*mach, argc, argv, envp);
   }
 }

@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "fat.h"
 #include "mach-o.h"
 #include "mach-o/loader.h"
 
@@ -475,4 +476,29 @@ MachO::~MachO() {
   }
   // need munmap
   close(fd_);
+}
+
+MachO* readMachO(const char* path, const char* arch) {
+  int fd = open(path, O_RDONLY);
+  if (fd < 0) {
+    fprintf(stderr, "%s: %s\n", path, strerror(errno));
+    exit(1);
+  }
+
+  size_t offset = 0, len = 0;
+  map<string, fat_arch> archs;
+  if (readFatInfo(fd, &archs)) {
+    map<string, fat_arch>::const_iterator found = archs.find(arch);
+    if (found == archs.end()) {
+      fprintf(stderr,
+              "%s is a fat binary, but doesn't contain %s binary\n",
+              path, arch);
+      exit(1);
+    }
+    offset = found->second.offset;
+    len = found->second.size;
+    LOGF("fat offset=%lu, len=%lu\n", offset, len);
+  }
+
+  return new MachO(fd, offset, len);
 }

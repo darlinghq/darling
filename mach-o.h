@@ -95,4 +95,6 @@ class MachO {
   size_t offset_;
 };
 
+MachO* readMachO(const char* path, const char* arch);
+
 #endif  // MACH_O_H_
