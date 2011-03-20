@@ -221,6 +221,51 @@ void MachO::readBind(const uint8_t* p, const uint8_t* end) {
   }
 }
 
+void MachO::readExport(const uint8_t* start,
+                       const uint8_t* p,
+                       const uint8_t* end,
+                       string* name_buf) {
+  LOGF("readExport: %p-%p\n", p, end);
+#if 0
+  char buf[17];
+  buf[16] = '\0';
+  for (int i = 0; i < 16*8; i++) {
+    LOGF("%02x ", p[i]);
+    buf[i % 16] = p[i] < 32 ? '?' : p[i];
+    if (i % 16 == 15) LOGF("%s\n", buf);
+  }
+#endif
+
+  if (p >= end) {
+    fprintf(stderr, "broken export trie\n");
+    exit(1);
+  }
+
+  if (uint8_t term_size = *p++) {
+    const uint8_t* expected_term_end = p + term_size;
+    uint64_t flag = uleb128(p);
+    uint64_t addr = uleb128(p);
+    LOGF("export: %s %lu %p\n",
+         name_buf->c_str(), (long)flag, (void*)addr);
+    assert(expected_term_end == p);
+  }
+
+  const uint8_t num_children = *p++;
+  for (uint8_t i = 0; i < num_children; i++) {
+    size_t orig_name_size = name_buf->size();
+    while (*p) {
+      name_buf->push_back(*p++);
+    }
+    p++;
+
+    uint64_t off = uleb128(p);
+    assert(off != 0);
+    readExport(start, start + off, end, name_buf);
+
+    name_buf->resize(orig_name_size);
+  }
+}
+
 MachO::MachO(const char* filename) {
   int fd = open(filename, O_RDONLY);
   if (fd < 0) {
@@ -348,6 +393,16 @@ void MachO::init(int fd, size_t offset, size_t len) {
           bin + dyinfo->lazy_bind_off);
         const uint8_t* end = p + dyinfo->lazy_bind_size;
         readBind(p, end);
+      }
+
+      {
+        const uint8_t* p = reinterpret_cast<uint8_t*>(
+          bin + dyinfo->export_off);
+        const uint8_t* end = p + dyinfo->export_size;
+        if (dyinfo->export_off && dyinfo->export_size) {
+          string buf;
+          readExport(p, p, end, &buf);
+        }
       }
 
       break;

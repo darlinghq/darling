@@ -81,6 +81,8 @@ class MachO {
   // If len is 0, the size of file will be used as len.
   void init(int fd, size_t offset, size_t len);
   void readBind(const uint8_t* p, const uint8_t* end);
+  void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
+                  string* name_buf);
 
   vector<segment_command_64*> segments64_;
   vector<segment_command*> segments_;
