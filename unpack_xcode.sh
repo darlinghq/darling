@@ -73,7 +73,7 @@ for pkg in $PKGS; do
   fi
 done
 
-ln -sf ../../System/Library/Frameworks root/Library/Frameworks
+ln -sf "../../System/Library/Frameworks root/Library/Frameworks"
 cd root/usr/lib
 ln -s system/* .
 
