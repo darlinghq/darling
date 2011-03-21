@@ -842,6 +842,32 @@ void* __darwin_signal() {
   return NULL;
 }
 
+typedef struct malloc_statistics_t {
+  unsigned blocks_in_use;
+  size_t size_in_use;
+  size_t max_size_in_use;
+  size_t size_allocated;
+} __darwin_malloc_statistics_t;
+
+void* malloc_default_zone() {
+  return NULL;
+}
+
+void malloc_zone_statistics(void* zone, __darwin_malloc_statistics_t* stats) {
+  fprintf(stderr, "malloc_zone_statistics\n");
+  memset(stats, 0, sizeof(stats));
+}
+
+int task_get_exception_ports() {
+  fprintf(stderr, "task_get_exception_ports\n");
+  return 0;
+}
+
+int task_set_exception_ports() {
+  fprintf(stderr, "task_set_exception_ports\n");
+  return 0;
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
