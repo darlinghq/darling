@@ -216,11 +216,7 @@ class MachOLoader {
     }
   }
 
-  void load(const MachO& mach,
-            vector<uint64_t>* init_funcs,
-            map<string, MachO::Export>* exports) {
-    intptr slide = 0;
-
+  void loadSegments(const MachO& mach, intptr* slide) {
     const vector<Segment*>& segments = Helpers::segments(mach);
     for (size_t i = 0; i < segments.size(); i++) {
       Segment* seg = segments[i];
@@ -245,13 +241,13 @@ class MachOLoader {
       }
 
       intptr filesize = alignMem(seg->filesize, 0x1000);
-      intptr vmaddr = seg->vmaddr + slide;
+      intptr vmaddr = seg->vmaddr + *slide;
       if (vmaddr < last_addr_) {
         LOG << "vmaddr=" << (void*)vmaddr
             << ", last_addr=" << (void*)last_addr_ << endl;
         assert(i == 0);
         vmaddr = last_addr_;
-        slide = vmaddr - seg->vmaddr;
+        *slide = vmaddr - seg->vmaddr;
       }
       intptr vmsize = seg->vmsize;
       void* mapped = mmap((void*)vmaddr, filesize, prot,
@@ -276,11 +272,15 @@ class MachOLoader {
 
       last_addr_ = max(last_addr_, (intptr)vmaddr + vmsize);
     }
+  }
 
+  void loadInitFuncs(const MachO& mach) {
     for (size_t i = 0; i < mach.init_funcs().size(); i++) {
-      init_funcs->push_back(mach.init_funcs()[i]);
+      init_funcs_.push_back(mach.init_funcs()[i]);
     }
+  }
 
+  void loadDylibs(const MachO& mach) {
     for (size_t i = 0; i < mach.dylibs().size(); i++) {
       string dylib = mach.dylibs()[i];
       // For now, we assume a dylib is a system library if its path
@@ -304,9 +304,11 @@ class MachOLoader {
       }
 
       auto_ptr<MachO> dylib_mach(readMachO(dylib.c_str(), ARCH_NAME));
-      load(*dylib_mach, init_funcs, exports);
+      load(*dylib_mach);
     }
+  }
 
+  void doBind(const MachO& mach, intptr slide) {
     unsigned int common_code_size = (unsigned int)trampoline_.size();
     // Ensure that we won't change the address.
     trampoline_.reserve(common_code_size +
@@ -333,8 +335,8 @@ class MachOLoader {
         void** ptr = (void**)(bind->vmaddr + slide);
         void* sym = NULL;
         const map<string, MachO::Export>::const_iterator export_found =
-            exports->find(bind->name);
-        if (export_found != exports->end()) {
+            exports_.find(bind->name);
+        if (export_found != exports_.end()) {
           sym = (void*)export_found->second.addr;
         }
         if (!sym) {
@@ -384,20 +386,34 @@ class MachOLoader {
         abort();
       }
     }
+  }
 
+  void loadExports(const MachO& mach, intptr slide) {
     for (size_t i = 0; i < mach.exports().size(); i++) {
       MachO::Export exp = mach.exports()[i];
       exp.addr += slide;
-      if (!exports->insert(make_pair(exp.name, exp)).second) {
+      if (!exports_.insert(make_pair(exp.name, exp)).second) {
         fprintf(stderr, "duplicated exported symbol: %s\n", exp.name.c_str());
       }
     }
   }
 
+  void load(const MachO& mach) {
+    intptr slide = 0;
+
+    loadSegments(mach, &slide);
+
+    loadInitFuncs(mach);
+
+    loadDylibs(mach);
+
+    doBind(mach, slide);
+
+    loadExports(mach, slide);
+  }
+
   void run(const MachO& mach, int argc, char** argv, char** envp) {
-    vector<uint64_t> init_funcs;
-    map<string, MachO::Export> exports;
-    load(mach, &init_funcs, &exports);
+    load(mach);
 
     char* trampoline_start_addr =
         (char*)(((uintptr_t)&trampoline_[0]) & ~0xfff);
@@ -407,8 +423,8 @@ class MachOLoader {
     mprotect(trampoline_start_addr, trampoline_size,
              PROT_READ | PROT_WRITE | PROT_EXEC);
 
-    for (size_t i = 0; i < init_funcs.size(); i++) {
-      void** init_func = (void**)init_funcs[i];
+    for (size_t i = 0; i < init_funcs_.size(); i++) {
+      void** init_func = (void**)init_funcs_[i];
       LOG << "calling initializer function " << *init_func << endl;
       ((void(*)())*init_func)();
     }
@@ -451,6 +467,8 @@ class MachOLoader {
 
   string trampoline_;
   intptr last_addr_;
+  vector<uint64_t> init_funcs_;
+  map<string, MachO::Export> exports_;
 };
 
 template <>
@@ -480,7 +498,7 @@ void MachOLoader<false>::boot(
 }
 
 template <bool is64>
-void loadMachO(const MachO& mach, int argc, char** argv, char** envp) {
+void runMachO(const MachO& mach, int argc, char** argv, char** envp) {
   MachOLoader<is64> loader;
   loader.run(mach, argc, argv, envp);
 }
@@ -576,8 +594,8 @@ int main(int argc, char* argv[], char* envp[]) {
 
   auto_ptr<MachO> mach(readMachO(argv[0], ARCH_NAME));
   if (mach->is64()) {
-    loadMachO<true>(*mach, argc, argv, envp);
+    runMachO<true>(*mach, argc, argv, envp);
   } else {
-    loadMachO<false>(*mach, argc, argv, envp);
+    runMachO<false>(*mach, argc, argv, envp);
   }
 }
