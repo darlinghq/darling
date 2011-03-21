@@ -979,6 +979,11 @@ static void do_nothing() {
 void __keymgr_dwarf2_register_sections() {
 }
 
+void _ZNSt13basic_filebufIcSt11char_traitsIcEE7seekoffExSt12_Ios_SeekdirSt13_Ios_Openmode() {
+  fprintf(stderr, "_ZNSt13basic_filebufIcSt11char_traitsIcEE7seekoffExSt12_Ios_SeekdirSt13_Ios_Openmode called\n");
+  abort();
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
