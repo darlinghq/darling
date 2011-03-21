@@ -8,15 +8,29 @@ MACSRCS=$(wildcard mach/*.c)
 MACBINS=$(MACSRCS:.c=.bin)
 MACTXTS=$(MACSRCS:.c=.txt)
 
+OS=$(shell uname)
+
+ifeq ($(OS), Linux)
+MAC_TOOL_DIR=/usr/i686-apple-darwin10
+MAC_BIN_DIR=$(MAC_TOOL_DIR)/usr/bin
+MAC_CC=PATH=$(MAC_BIN_DIR) ./ld-mac $(MAC_BIN_DIR)/gcc --sysroot=$(MAC_TOOL_DIR)
+MAC_OTOOL=./ld-mac $(MAC_BIN_DIR)/otool
+MAC_TARGETS=ld-mac $(MACBINS) $(MACTXTS)
+else
+MAC_CC=$(CC)
+MAC_OTOOL=otool
+MAC_TARGETS=$(MACBINS) $(MACTXTS)
+endif
+
 all: $(EXES)
 
-mac: $(MACBINS) $(MACTXTS)
+mach: $(MAC_TARGETS)
 
 $(MACBINS): %.bin: %.c
-	$(CC) -g $^ -o $@
+	$(MAC_CC) -g $^ -o $@
 
 $(MACTXTS): %.txt: %.bin
-	otool -hLltvV $^ > $@
+	$(MAC_OTOOL) -hLltvV $^ > $@
 
 #ok: macho2elf
 #	./genelf.sh
