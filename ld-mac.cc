@@ -76,6 +76,8 @@ static set<string> g_no_trampoline;
 // We only support x86-64 for now.
 static const char* ARCH_NAME = "x86-64";
 
+static char* g_darwin_executable_path;
+
 static void initRename() {
 #define RENAME(src, dst) g_rename.insert(make_pair(#src, #dst));
 #define WRAP(src) RENAME(src, __darwin_ ## src)
@@ -286,6 +288,19 @@ class MachOLoader {
       // TODO(hamaji): Do something?
       if (dylib[0] == '/') {
         continue;
+      }
+
+      static const char executable_str[] = "@executable_path";
+      static const size_t executable_str_len = strlen(executable_str);
+      if (!strncmp(dylib.c_str(), executable_str, executable_str_len)) {
+        string dir = g_darwin_executable_path;
+        size_t found = dir.rfind('/');
+        if (found == string::npos) {
+          dir = ".";
+        } else {
+          dir = dir.substr(0, found);
+        }
+        dylib.replace(0, executable_str_len, dir);
       }
 
       auto_ptr<MachO> dylib_mach(readMachO(dylib.c_str(), ARCH_NAME));
@@ -555,9 +570,9 @@ int main(int argc, char* argv[], char* envp[]) {
     argv++;
   }
 
-  char* darwin_executable_path =
+  g_darwin_executable_path =
       (char*)dlsym(RTLD_DEFAULT, "__darwin_executable_path");
-  realpath(argv[0], darwin_executable_path);
+  realpath(argv[0], g_darwin_executable_path);
 
   auto_ptr<MachO> mach(readMachO(argv[0], ARCH_NAME));
   if (mach->is64()) {
