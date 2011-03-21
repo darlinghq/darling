@@ -37,17 +37,17 @@ $(MACTXTS): %.txt: %.bin
 #	touch $@
 
 extract: extract.o fat.o
-	g++ $^ -o $@ -g -I. -W -Wall
+	$(CXX) $^ -o $@ -g -I. -W -Wall
 
 macho2elf: macho2elf.o mach-o.o fat.o
-	g++ $^ -o $@ -g
+	$(CXX) $^ -o $@ -g
 
 ld-mac: ld-mac.o mach-o.o fat.o
-	g++ $^ -o $@ -g -ldl -lpthread
+	$(CXX) $^ -o $@ -g -ldl -lpthread
 
 # TODO(hamaji): autotoolize?
 libmac/libmac.so: libmac/mac.o
-	gcc -shared $^ -o $@ -luuid -lcrypto -lCoreFoundation || (echo "*** libCoreFoundation not found ***"; gcc -shared $^ -o $@ -luuid -lcrypto)
+	$(CC) -shared $^ -o $@ -luuid -lcrypto -lCoreFoundation || (echo "*** libCoreFoundation not found ***"; gcc -shared $^ -o $@ -luuid -lcrypto)
 
 clean:
 	rm -f *.o *.d */*.o */*.d $(EXES)
