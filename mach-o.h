@@ -39,6 +39,11 @@ using namespace std;
 
 class MachO {
  public:
+  struct Rebase {
+    uint64_t vmaddr;
+    uint8_t type;
+  };
+
   struct Bind {
     uint64_t vmaddr;
     const char* name;
@@ -69,6 +74,8 @@ class MachO {
 
   const vector<const char*>& dylibs() const { return dylibs_; }
 
+  const vector<Rebase*>& rebases() const { return rebases_; }
+
   const vector<Bind*>& binds() const { return binds_; }
 
   const vector<Export>& exports() const { return exports_; }
@@ -84,11 +91,14 @@ class MachO {
   size_t offset() const { return offset_; }
 
  private:
+  class RebaseState;
+  friend class MachO::RebaseState;
   class BindState;
   friend class MachO::BindState;
 
   // If len is 0, the size of file will be used as len.
   void init(int fd, size_t offset, size_t len);
+  void readRebase(const uint8_t* p, const uint8_t* end);
   void readBind(const uint8_t* p, const uint8_t* end);
   void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
                   string* name_buf);
@@ -96,6 +106,7 @@ class MachO {
   vector<segment_command_64*> segments64_;
   vector<segment_command*> segments_;
   vector<const char*> dylibs_;
+  vector<Rebase*> rebases_;
   vector<Bind*> binds_;
   vector<Export> exports_;
   const char* base_;

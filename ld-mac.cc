@@ -274,9 +274,28 @@ class MachOLoader {
     }
   }
 
-  void loadInitFuncs(const MachO& mach) {
+  void doRebase(const MachO& mach, intptr slide) {
+    for (size_t i = 0; i < mach.rebases().size(); i++) {
+      const MachO::Rebase& rebase = *mach.rebases()[i];
+      switch (rebase.type) {
+      case REBASE_TYPE_POINTER: {
+        char** ptr = (char**)(rebase.vmaddr + slide);
+        LOG << "rebase: " << i << ": " << (void*)rebase.vmaddr
+            << *ptr << " => " << (*ptr + slide) << " @" << ptr << endl;
+        *ptr += slide;
+        break;
+      }
+
+      default:
+        fprintf(stderr, "Unknown rebase type: %d\n", rebase.type);
+        exit(1);
+      }
+    }
+  }
+
+  void loadInitFuncs(const MachO& mach, intptr slide) {
     for (size_t i = 0; i < mach.init_funcs().size(); i++) {
-      init_funcs_.push_back(mach.init_funcs()[i]);
+      init_funcs_.push_back(mach.init_funcs()[i] + slide);
     }
   }
 
@@ -403,7 +422,9 @@ class MachOLoader {
 
     loadSegments(mach, &slide);
 
-    loadInitFuncs(mach);
+    doRebase(mach, slide);
+
+    loadInitFuncs(mach, slide);
 
     loadDylibs(mach);
 

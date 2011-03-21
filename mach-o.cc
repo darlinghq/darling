@@ -98,6 +98,102 @@ static int64_t sleb128(const uint8_t*& p) {
   return r;
 }
 
+struct MachO::RebaseState {
+  explicit RebaseState(MachO* mach0)
+    : mach(mach0), type(0), seg_index(0), seg_offset(0) {}
+
+  bool readRebaseOp(const uint8_t*& p) {
+    uint8_t op = *p & REBASE_OPCODE_MASK;
+    uint8_t imm = *p & REBASE_IMMEDIATE_MASK;
+    p++;
+    switch (op) {
+    case REBASE_OPCODE_DONE:
+      return false;
+
+    case REBASE_OPCODE_SET_TYPE_IMM:
+      type = imm;
+      break;
+
+    case REBASE_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB:
+      seg_index = imm;
+      seg_offset = uleb128(p);
+      break;
+
+    case REBASE_OPCODE_ADD_ADDR_ULEB:
+      seg_offset += uleb128(p);
+      break;
+
+    case REBASE_OPCODE_ADD_ADDR_IMM_SCALED:
+      seg_offset += imm * mach->ptrsize_;
+      break;
+
+    case REBASE_OPCODE_DO_REBASE_IMM_TIMES:
+      for (int i = 0; i < imm; i++) {
+        addRebase();
+      }
+      break;
+
+    case REBASE_OPCODE_DO_REBASE_ULEB_TIMES: {
+      int count = uleb128(p);
+      for (int i = 0; i < count; i++) {
+        addRebase();
+      }
+      break;
+    }
+
+    case REBASE_OPCODE_DO_REBASE_ADD_ADDR_ULEB:
+      addRebase();
+      seg_offset += uleb128(p);
+      break;
+
+    case REBASE_OPCODE_DO_REBASE_ULEB_TIMES_SKIPPING_ULEB: {
+      int count = uleb128(p);
+      uint64_t skip = uleb128(p);
+      for (int i = 0; i < count; i++) {
+        addRebase();
+        seg_offset += skip;
+      }
+      break;
+    }
+
+    default:
+      fprintf(stderr, "unknown op: %x\n", op);
+    }
+
+    return true;
+  }
+
+  void addRebase() {
+    MachO::Rebase* rebase = new MachO::Rebase();
+    uint64_t vmaddr;
+    if (mach->is64_) {
+      vmaddr = mach->segments64_[seg_index]->vmaddr;
+    } else {
+      vmaddr = mach->segments_[seg_index]->vmaddr;
+    }
+    LOGF("add rebase! seg_index=%d seg_offset=%llu type=%d vmaddr=%p\n",
+         seg_index, (ull)seg_offset, type, (void*)vmaddr);
+    rebase->vmaddr = vmaddr + seg_offset;
+    rebase->type = type;
+    mach->rebases_.push_back(rebase);
+
+    seg_offset += mach->ptrsize_;
+  }
+
+  MachO* mach;
+  uint8_t type;
+  int seg_index;
+  uint64_t seg_offset;
+};
+
+void MachO::readRebase(const uint8_t* p, const uint8_t* end) {
+  RebaseState state(this);
+  while (p < end) {
+    if (!state.readRebaseOp(p))
+      break;
+  }
+}
+
 struct MachO::BindState {
   explicit BindState(MachO* mach0)
     : mach(mach0), ordinal(0), sym_name(NULL), type(BIND_TYPE_POINTER),
@@ -152,18 +248,18 @@ struct MachO::BindState {
       break;
 
     case BIND_OPCODE_DO_BIND:
-      doBind();
+      addBind();
       break;
 
     case BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB:
       LOGF("BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB\n");
-      doBind();
+      addBind();
       seg_offset += uleb128(p);
       break;
 
     case BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED:
       LOGF("BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED %d\n", (int)imm);
-      doBind();
+      addBind();
       seg_offset += imm * mach->ptrsize_;
       break;
 
@@ -173,7 +269,7 @@ struct MachO::BindState {
       LOGF("BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB %u %u\n",
            (unsigned)count, (unsigned)skip);
       for (uint64_t i = 0; i < count; i++) {
-        doBind();
+        addBind();
         seg_offset += skip;
       }
       break;
@@ -184,7 +280,7 @@ struct MachO::BindState {
     }
   }
 
-  void doBind() {
+  void addBind() {
     MachO::Bind* bind = new MachO::Bind();
     uint64_t vmaddr;
     if (mach->is64_) {
@@ -192,7 +288,7 @@ struct MachO::BindState {
     } else {
       vmaddr = mach->segments_[seg_index]->vmaddr;
     }
-    LOGF("do bind! %s seg_index=%d seg_offset=%llu "
+    LOGF("add bind! %s seg_index=%d seg_offset=%llu "
          "type=%d ordinal=%d addend=%lld vmaddr=%p\n",
          sym_name, seg_index, (ull)seg_offset,
          type, ordinal, (ll)addend, (void*)vmaddr);
@@ -385,6 +481,15 @@ void MachO::init(int fd, size_t offset, size_t len) {
            dyinfo->weak_bind_off, dyinfo->weak_bind_size,
            dyinfo->lazy_bind_off, dyinfo->lazy_bind_size,
            dyinfo->export_off, dyinfo->export_size);
+
+      {
+        const uint8_t* p = reinterpret_cast<uint8_t*>(
+          bin + dyinfo->rebase_off);
+        const uint8_t* end = p + dyinfo->rebase_size;
+        if (dyinfo->rebase_off && dyinfo->rebase_size) {
+          readRebase(p, end);
+        }
+      }
 
       {
         const uint8_t* p = reinterpret_cast<uint8_t*>(
