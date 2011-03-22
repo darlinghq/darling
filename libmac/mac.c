@@ -868,6 +868,13 @@ int task_set_exception_ports() {
   return 0;
 }
 
+char*** _NSGetEnviron() {
+  return &environ;
+}
+
+// TODO(hamaji): Need to do something.
+void __darwin_posix_spawn_file_actions_destroy() {}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
