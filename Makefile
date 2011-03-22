@@ -4,9 +4,12 @@ CFLAGS=$(GCCFLAGS) -fPIC
 
 EXES=libmac/libmac.so extract macho2elf ld-mac
 
-MACSRCS=$(wildcard mach/*.c)
-MACBINS=$(MACSRCS:.c=.bin)
-MACTXTS=$(MACSRCS:.c=.txt)
+MAC_C_SRCS=$(wildcard mach/*.c)
+MAC_CXX_SRCS=$(wildcard mach/*.cc)
+MAC_C_BINS=$(MAC_C_SRCS:.c=.c.bin)
+MAC_CXX_BINS=$(MAC_CXX_SRCS:.cc=.cc.bin)
+MACBINS=$(MAC_C_BINS) $(MAC_CXX_BINS)
+MACTXTS=$(MACBINS:.bin=.txt)
 
 OS=$(shell uname)
 
@@ -14,10 +17,12 @@ ifeq ($(OS), Linux)
 MAC_TOOL_DIR=/usr/i686-apple-darwin10
 MAC_BIN_DIR=$(MAC_TOOL_DIR)/usr/bin
 MAC_CC=PATH=$(MAC_BIN_DIR) ./ld-mac $(MAC_BIN_DIR)/gcc --sysroot=$(MAC_TOOL_DIR)
+MAC_CXX=PATH=$(MAC_BIN_DIR) ./ld-mac $(MAC_BIN_DIR)/g++ --sysroot=$(MAC_TOOL_DIR)
 MAC_OTOOL=./ld-mac $(MAC_BIN_DIR)/otool
 MAC_TARGETS=ld-mac $(MACBINS) $(MACTXTS)
 else
 MAC_CC=$(CC)
+MAC_CXX=$(CXX)
 MAC_OTOOL=otool
 MAC_TARGETS=$(MACBINS) $(MACTXTS)
 endif
@@ -29,8 +34,11 @@ mach: $(MAC_TARGETS)
 check: all mach
 	./runtests.sh
 
-$(MACBINS): %.bin: %.c
+$(MAC_C_BINS): %.c.bin: %.c
 	$(MAC_CC) -g $^ -o $@
+
+$(MAC_CXX_BINS): %.cc.bin: %.cc
+	$(MAC_CXX) -g $^ -o $@
 
 $(MACTXTS): %.txt: %.bin
 	$(MAC_OTOOL) -hLltvV $^ > $@
