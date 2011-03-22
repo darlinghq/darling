@@ -221,7 +221,7 @@ class MachOLoader {
     for (size_t i = 0; i < segments.size(); i++) {
       Segment* seg = segments[i];
       const char* name = seg->segname;
-      if (!strcmp(name, SEG_PAGEZERO)) {
+      if (!strcmp(name, SEG_PAGEZERO) || !strcmp(name, SEG_LINKEDIT)) {
         continue;
       }
 
