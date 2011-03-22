@@ -3,7 +3,7 @@
 int main(int argc, char* argv[]) {
   if (argc < 2) {
     fprintf(stderr, "need file name\n");
-    return 1;
+    return 0;
   }
 
   FILE* fp = fopen(argv[1], "rb");
@@ -15,4 +15,5 @@ int main(int argc, char* argv[]) {
     if (len != 4096) break;
   }
   fclose(fp);
+  return 0;
 }

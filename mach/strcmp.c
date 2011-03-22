@@ -8,4 +8,5 @@ int main(int argc, char* argv[]) {
     puts("no");
   }
   puts("done");
+  return 0;
 }

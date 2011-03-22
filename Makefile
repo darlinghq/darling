@@ -26,6 +26,9 @@ all: $(EXES)
 
 mach: $(MAC_TARGETS)
 
+check: all mach
+	./runtests.sh
+
 $(MACBINS): %.bin: %.c
 	$(MAC_CC) -g $^ -o $@
 
