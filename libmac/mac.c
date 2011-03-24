@@ -30,6 +30,7 @@
 #define _GNU_SOURCE
 
 #include <dirent.h>
+#include <err.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -46,6 +47,7 @@
 
 #ifdef NOLOG
 # define LOGF(...) if (0) fprintf(stderr, __VA_ARGS__)
+//# define LOGF(...) fprintf(stderr, __VA_ARGS__)
 #else
 # define LOGF(...) fprintf(stderr, __VA_ARGS__)
 #endif
@@ -692,6 +694,26 @@ int __darwin_execvp(const char* file, char* argv[]) {
     argv[0] = path;
     return __darwin_execv(path, argv);
   }
+}
+
+int __darwin_execl(const char* path, ...) {
+  err(1, "execl is not implemented yet\n");
+  return 0;
+}
+
+int __darwin_execlp(const char* file, const char* arg, ...) {
+  err(1, "execlp is not implemented yet\n");
+  return 0;
+}
+
+int __darwin_execve(const char* file, const char** argv, const char** envp) {
+  err(1, "execve is not implemented yet\n");
+  return 0;
+}
+
+int __darwin_execle(const char* file, const char* arg, ...) {
+  err(1, "execle is not implemented yet\n");
+  return 0;
 }
 
 typedef struct {
