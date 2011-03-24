@@ -281,7 +281,8 @@ class MachOLoader {
       case REBASE_TYPE_POINTER: {
         char** ptr = (char**)(rebase.vmaddr + slide);
         LOG << "rebase: " << i << ": " << (void*)rebase.vmaddr
-            << *ptr << " => " << (*ptr + slide) << " @" << ptr << endl;
+            << (void*)*ptr << " => "
+            << (void*)(*ptr + slide) << " @" << ptr << endl;
         *ptr += slide;
         break;
       }
