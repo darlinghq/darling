@@ -90,6 +90,8 @@ WRAP(execl)
 WRAP(execlp)
 WRAP(execve)
 WRAP(execle)
+WRAP(posix_spawn)
+WRAP(posix_spawnp)
 
 RENAME(CC_MD5_Init, MD5_Init)
 RENAME(CC_MD5_Update, MD5_Update)

@@ -32,6 +32,7 @@
 #include <dirent.h>
 #include <err.h>
 #include <signal.h>
+#include <spawn.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -604,26 +605,25 @@ int __darwin_open(const char* path, int flags, mode_t mode) {
   return open(path, linux_flags, mode);
 }
 
-int __darwin_execv(const char* path, char* argv[]) {
+static char** add_loader_to_argv(char* argv[]) {
   int i, argc;
-  LOGF("execv: path=%s\n", path);
-  for (argc = 0; argv[argc]; argc++) {
-    LOGF("%s ", argv[argc]);
-  }
+  for (argc = 0; argv[argc]; argc++);
   LOGF("\n");
   char** new_argv = malloc(sizeof(char*) * (argc + 2));
   new_argv[0] = __loader_path;
   for (i = 0; i < argc + 1; i++) {
     new_argv[i + 1] = argv[i];
   }
+  return new_argv;
+}
 
-#if 0
-  printf("*** execv: ");
-  for (i = 0; i < argc + 1; i++) {
-    printf("%s ", new_argv[i]);
+int __darwin_execv(const char* path, char* argv[]) {
+  char** new_argv = add_loader_to_argv(argv);
+  LOGF("execv: path=%s\n", path);
+  int i;
+  for (i = 0; new_argv[i]; i++) {
+    LOGF("%s ", new_argv[i]);
   }
-  puts("");
-#endif
 
   return execvp(__loader_path, new_argv);
 }
@@ -713,6 +713,33 @@ int __darwin_execve(const char* file, const char** argv, const char** envp) {
 
 int __darwin_execle(const char* file, const char* arg, ...) {
   err(1, "execle is not implemented yet\n");
+  return 0;
+}
+
+int __darwin_posix_spawn(pid_t* pid,
+                         const char* path,
+                         const posix_spawn_file_actions_t* file_actions,
+                         const posix_spawnattr_t* attrp,
+                         char* argv[],
+                         char* const envp[]) {
+  char** new_argv = add_loader_to_argv(argv);
+  int r = posix_spawn(pid,
+                      __loader_path,
+                      file_actions,
+                      attrp,
+                      new_argv,
+                      envp);
+  free(new_argv);
+  return r;
+}
+
+int __darwin_posix_spawnp(pid_t *pid,
+                          const char* file,
+                          const posix_spawn_file_actions_t* file_actions,
+                          const posix_spawnattr_t* attrp,
+                          char* const argv[],
+                          char* const envp[]) {
+  err(1, "posix_spawnp is not implemented yet\n");
   return 0;
 }
 
