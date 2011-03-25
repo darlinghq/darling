@@ -43,7 +43,7 @@ def bt():
 
     i = 0
     while frame:
-        s = gdb.execute('p dumpExportedSymbol((void*)0x%x)' % frame.pc(),
+        s = gdb.execute('p dumpSymbol((void*)0x%x)' % frame.pc(),
                         to_string=True)
         m = re.match(r'.*"(.*)"$', s)
         if m:

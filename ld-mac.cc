@@ -634,7 +634,7 @@ static int getBacktrace(void** trace, int max_depth) {
 }
 #endif
 
-static const char* dumpExportedSymbol(void* p) {
+static const char* dumpSymbol(void* p) {
   return g_file_map.dumpSymbol(p);
 }
 
@@ -654,7 +654,7 @@ static void handleSignal(int signum, siginfo_t* siginfo, void* vuc) {
     if (syms[i] && syms[i][0] != '[') {
       fprintf(stderr, "%s\n", syms[i]);
     } else {
-      const char* s = dumpExportedSymbol(trace[i]);
+      const char* s = dumpSymbol(trace[i]);
       if (s) {
         fprintf(stderr, "%s\n", s);
       } else {
