@@ -22,7 +22,7 @@ def bt():
         if m:
             pipe.write("%s\n" % m.group(1))
         else:
-            pipe.write("0x%x\n" % frame.pc())
+            pipe.write("0x%x %s\n" % (frame.pc(), frame.function()))
         frame = frame.older()
         i += 1
 
