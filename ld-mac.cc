@@ -252,7 +252,7 @@ class MachOLoader {
         *slide = vmaddr - seg->vmaddr;
       }
       intptr vmsize = seg->vmsize;
-      LOG << "mmap(file) " << mach.filename()
+      LOG << "mmap(file) " << mach.filename() << ' ' << name
           << ": " << (void*)vmaddr << "-" << (void*)(vmaddr + filesize)
           << " offset=" << mach.offset() + seg->fileoff << endl;
       void* mapped = mmap((void*)vmaddr, filesize, prot,
@@ -264,8 +264,9 @@ class MachOLoader {
 
       if (vmsize != filesize) {
         assert(vmsize > filesize);
-        LOG << "mmap(anon) " << mach.filename()
-            << ": " << (void*)vmaddr << "-" << (void*)(vmaddr + filesize)
+        LOG << "mmap(anon) " << mach.filename() << ' ' << name
+            << ": " << (void*)(vmaddr + filesize) << "-"
+            << (void*)(vmaddr + vmsize)
             << endl;
         void* mapped = mmap((void*)(vmaddr + filesize),
                             vmsize - filesize, prot,
@@ -286,7 +287,7 @@ class MachOLoader {
       switch (rebase.type) {
       case REBASE_TYPE_POINTER: {
         char** ptr = (char**)(rebase.vmaddr + slide);
-        LOG << "rebase: " << i << ": " << (void*)rebase.vmaddr
+        LOG << "rebase: " << i << ": " << (void*)rebase.vmaddr << ' '
             << (void*)*ptr << " => "
             << (void*)(*ptr + slide) << " @" << ptr << endl;
         *ptr += slide;
