@@ -73,6 +73,8 @@ static bool g_use_trampoline = true;
 #endif
 static vector<const char*> g_bound_names;
 static set<string> g_no_trampoline;
+// TODO(hamaji): Need one more layer to filter invalid PCs.
+static map<uintptr_t, string> g_exported_symbol_map;
 
 // We only support x86-64 for now.
 static const char* ARCH_NAME = "x86-64";
@@ -217,7 +219,10 @@ class MachOLoader {
     }
   }
 
-  void loadSegments(const MachO& mach, intptr* slide) {
+  void loadSegments(const MachO& mach, intptr* slide, intptr* base) {
+    *base = 0;
+    --*base;
+
     const vector<Segment*>& segments = Helpers::segments(mach);
     for (size_t i = 0; i < segments.size(); i++) {
       Segment* seg = segments[i];
@@ -251,6 +256,8 @@ class MachOLoader {
         vmaddr = last_addr_;
         *slide = vmaddr - seg->vmaddr;
       }
+      *base = min(*base, vmaddr);
+
       intptr vmsize = seg->vmsize;
       LOG << "mmap(file) " << mach.filename() << ' ' << name
           << ": " << (void*)vmaddr << "-" << (void*)(vmaddr + filesize)
@@ -415,20 +422,22 @@ class MachOLoader {
     }
   }
 
-  void loadExports(const MachO& mach, intptr slide) {
+  void loadExports(const MachO& mach, intptr base) {
     for (size_t i = 0; i < mach.exports().size(); i++) {
       MachO::Export exp = mach.exports()[i];
-      exp.addr += slide;
+      exp.addr += base;
       if (!exports_.insert(make_pair(exp.name, exp)).second) {
         fprintf(stderr, "duplicated exported symbol: %s\n", exp.name.c_str());
       }
+      g_exported_symbol_map.insert(make_pair(exp.addr, exp.name.substr(1)));
     }
   }
 
   void load(const MachO& mach) {
     intptr slide = 0;
+    intptr base = 0;
 
-    loadSegments(mach, &slide);
+    loadSegments(mach, &slide, &base);
 
     doRebase(mach, slide);
 
@@ -438,7 +447,7 @@ class MachOLoader {
 
     doBind(mach, slide);
 
-    loadExports(mach, slide);
+    loadExports(mach, base);
   }
 
   void run(const MachO& mach, int argc, char** argv, char** envp) {
@@ -549,6 +558,20 @@ static int getBacktrace(void** trace, int max_depth) {
 }
 #endif
 
+static bool dumpExportedSymbol(void* p) {
+  uintptr_t addr = reinterpret_cast<uintptr_t>(p);
+  map<uintptr_t, string>::const_iterator found =
+      g_exported_symbol_map.lower_bound(addr);
+  if (found == g_exported_symbol_map.begin()) {
+    return false;
+  }
+
+  --found;
+  fprintf(stderr, "%s(+%lx) [%p]\n",
+          found->second.c_str(), addr - found->first, p);
+  return true;
+}
+
 /* signal handler for fatal errors */
 static void handleSignal(int signum, siginfo_t* siginfo, void* vuc) {
   ucontext_t *uc = (ucontext_t*)vuc;
@@ -561,11 +584,13 @@ static void handleSignal(int signum, siginfo_t* siginfo, void* vuc) {
   int len = backtrace(trace, 99);
   //int len = getBacktrace(trace, 99);
   char** syms = backtrace_symbols(trace, len);
-  for (int i = 0; i < len; i++) {
+  for (int i = len - 1; i > 0; i--) {
     if (syms[i] && syms[i][0] != '[') {
       fprintf(stderr, "%s\n", syms[i]);
     } else {
-      fprintf(stderr, "%p\n", trace[i]);
+      if (!dumpExportedSymbol(trace[i])) {
+        fprintf(stderr, "%p\n", trace[i]);
+      }
     }
   }
 }
