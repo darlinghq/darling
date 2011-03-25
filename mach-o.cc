@@ -367,7 +367,8 @@ void MachO::readExport(const uint8_t* start,
   }
 }
 
-MachO::MachO(const char* filename) {
+MachO::MachO(const char* filename)
+  : filename_(filename) {
   int fd = open(filename, O_RDONLY);
   if (fd < 0) {
     fprintf(stderr, "open %s: %s\n", filename, strerror(errno));
@@ -376,7 +377,8 @@ MachO::MachO(const char* filename) {
   init(fd, 0, 0);
 }
 
-MachO::MachO(int fd, size_t offset, size_t len) {
+MachO::MachO(const char* filename, int fd, size_t offset, size_t len)
+  : filename_(filename) {
   lseek(fd, 0, SEEK_SET);
   init(fd, offset, len);
 }
@@ -665,5 +667,5 @@ MachO* readMachO(const char* path, const char* arch) {
     LOGF("fat offset=%lu, len=%lu\n", offset, len);
   }
 
-  return new MachO(fd, offset, len);
+  return new MachO(path, fd, offset, len);
 }

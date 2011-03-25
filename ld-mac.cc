@@ -29,6 +29,7 @@
 
 #include <assert.h>
 #include <dlfcn.h>
+#include <err.h>
 #include <errno.h>
 #include <execinfo.h>
 #include <fcntl.h>
@@ -243,30 +244,35 @@ class MachOLoader {
       intptr filesize = alignMem(seg->filesize, 0x1000);
       intptr vmaddr = seg->vmaddr + *slide;
       if (vmaddr < last_addr_) {
-        LOG << "vmaddr=" << (void*)vmaddr
+        LOG << "will rebase: filename=" << mach.filename()
+            << ", vmaddr=" << (void*)vmaddr
             << ", last_addr=" << (void*)last_addr_ << endl;
         assert(i == 0);
         vmaddr = last_addr_;
         *slide = vmaddr - seg->vmaddr;
       }
       intptr vmsize = seg->vmsize;
+      LOG << "mmap(file) " << mach.filename()
+          << ": " << (void*)vmaddr << "-" << (void*)(vmaddr + filesize)
+          << " offset=" << mach.offset() + seg->fileoff << endl;
       void* mapped = mmap((void*)vmaddr, filesize, prot,
                           MAP_PRIVATE | MAP_FIXED,
                           mach.fd(), mach.offset() + seg->fileoff);
       if (mapped == MAP_FAILED) {
-        perror("mmap failed");
-        abort();
+        err(1, "%s mmap(file) failed", mach.filename().c_str());
       }
 
       if (vmsize != filesize) {
         assert(vmsize > filesize);
+        LOG << "mmap(anon) " << mach.filename()
+            << ": " << (void*)vmaddr << "-" << (void*)(vmaddr + filesize)
+            << endl;
         void* mapped = mmap((void*)(vmaddr + filesize),
                             vmsize - filesize, prot,
                             MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
                             0, 0);
         if (mapped == MAP_FAILED) {
-          perror("mmap failed");
-          abort();
+          err(1, "%s mmap(anon) failed", mach.filename().c_str());
         }
       }
 

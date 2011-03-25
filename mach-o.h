@@ -60,9 +60,11 @@ class MachO {
 
   explicit MachO(const char* filename);
   // Take ownership of fd.
-  MachO(int fd, size_t offset, size_t len);
+  MachO(const char* filename, int fd, size_t offset, size_t len);
 
   ~MachO();
+
+  const string& filename() const { return filename_; }
 
   const vector<segment_command_64*>& segments64() const {
     return segments64_;
@@ -103,6 +105,7 @@ class MachO {
   void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
                   string* name_buf);
 
+  string filename_;
   vector<segment_command_64*> segments64_;
   vector<segment_command*> segments_;
   vector<const char*> dylibs_;
