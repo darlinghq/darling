@@ -20,9 +20,9 @@ def bt():
                         to_string=True)
         m = re.match(r'.*"(.*)"$', s)
         if m:
-            pipe.write("%s\n" % m.group(1))
+            pipe.write("#%-2d %s\n" % (i, m.group(1)))
         else:
-            pipe.write("0x%x %s\n" % (frame.pc(), frame.function()))
+            pipe.write("#%-2d 0x%x %s\n" % (i, frame.pc(), frame.function()))
         frame = frame.older()
         i += 1
 
