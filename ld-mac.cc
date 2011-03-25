@@ -73,7 +73,7 @@ static bool g_use_trampoline = true;
 #endif
 static vector<const char*> g_bound_names;
 static set<string> g_no_trampoline;
-static map<uintptr_t, string> g_exported_symbol_map;
+static map<uintptr_t, pair<string, uintptr_t> > g_exported_symbol_map;
 
 // We only support x86-64 for now.
 static const char* ARCH_NAME = "x86-64";
@@ -421,14 +421,16 @@ class MachOLoader {
     }
   }
 
-  void loadExports(const MachO& mach, intptr base) {
+  void loadExports(const MachO& mach, intptr slide, intptr base) {
     for (size_t i = 0; i < mach.exports().size(); i++) {
       MachO::Export exp = mach.exports()[i];
       exp.addr += base;
       if (!exports_.insert(make_pair(exp.name, exp)).second) {
         fprintf(stderr, "duplicated exported symbol: %s\n", exp.name.c_str());
       }
-      g_exported_symbol_map.insert(make_pair(exp.addr, exp.name.substr(1)));
+      g_exported_symbol_map.insert(
+          make_pair(exp.addr,
+                    make_pair(exp.name.substr(1), slide)));
     }
   }
 
@@ -446,14 +448,14 @@ class MachOLoader {
 
     doBind(mach, slide);
 
-    loadExports(mach, base);
+    loadExports(mach, slide, base);
   }
 
   void run(const MachO& mach, int argc, char** argv, char** envp) {
     load(mach);
 
-    g_exported_symbol_map.insert(make_pair(last_addr_ + 1,
-                                           "*** last addr ***"));
+    g_exported_symbol_map.insert(
+        make_pair(last_addr_ + 1, make_pair("*** last addr ***", 0)));
 
     char* trampoline_start_addr =
         (char*)(((uintptr_t)&trampoline_[0]) & ~0xfff);
@@ -564,16 +566,19 @@ static char g_dumped_stack_frame_buf[4096];
 
 static const char* dumpExportedSymbol(void* p) {
   uintptr_t addr = reinterpret_cast<uintptr_t>(p);
-  map<uintptr_t, string>::const_iterator found =
-      g_exported_symbol_map.lower_bound(addr);
+  map<uintptr_t, pair<string, uintptr_t> >::const_iterator found =
+    g_exported_symbol_map.lower_bound(addr);
   if (found == g_exported_symbol_map.begin() ||
       found == g_exported_symbol_map.end()) {
     return NULL;
   }
 
   --found;
-  snprintf(g_dumped_stack_frame_buf, 4095, "%s(+%lx) [%p]",
-           found->second.c_str(), addr - found->first, p);
+  const char* name = found->second.first.c_str();
+  uintptr_t func_offset = addr - found->first;
+  uintptr_t file_offset = (uintptr_t)p - found->second.second;
+  snprintf(g_dumped_stack_frame_buf, 4095, "%s(+%lx) [%p(%lx)]",
+           name, func_offset, p, file_offset);
   return g_dumped_stack_frame_buf;
 }
 
