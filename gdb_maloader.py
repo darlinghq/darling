@@ -49,7 +49,12 @@ def bt():
         if m:
             pipe.write("#%-2d %s\n" % (i, m.group(1)))
         else:
-            pipe.write("#%-2d 0x%x %s\n" % (i, frame.pc(), frame.function()))
+            sal = frame.find_sal()
+            lineno = ''
+            if sal.symtab:
+                lineno = ' at %s:%d' % (sal.symtab, sal.line)
+            pipe.write("#%-2d 0x%x %s%s\n" %
+                       (i, frame.pc(), frame.name(), lineno))
         frame = frame.older()
         i += 1
 
