@@ -558,18 +558,20 @@ static int getBacktrace(void** trace, int max_depth) {
 }
 #endif
 
-static bool dumpExportedSymbol(void* p) {
+static char g_dumped_stack_frame_buf[4096];
+
+static const char* dumpExportedSymbol(void* p) {
   uintptr_t addr = reinterpret_cast<uintptr_t>(p);
   map<uintptr_t, string>::const_iterator found =
       g_exported_symbol_map.lower_bound(addr);
   if (found == g_exported_symbol_map.begin()) {
-    return false;
+    return NULL;
   }
 
   --found;
-  fprintf(stderr, "%s(+%lx) [%p]\n",
-          found->second.c_str(), addr - found->first, p);
-  return true;
+  snprintf(g_dumped_stack_frame_buf, 4095, "%s(+%lx) [%p]",
+           found->second.c_str(), addr - found->first, p);
+  return g_dumped_stack_frame_buf;
 }
 
 /* signal handler for fatal errors */
@@ -588,7 +590,10 @@ static void handleSignal(int signum, siginfo_t* siginfo, void* vuc) {
     if (syms[i] && syms[i][0] != '[') {
       fprintf(stderr, "%s\n", syms[i]);
     } else {
-      if (!dumpExportedSymbol(trace[i])) {
+      const char* s = dumpExportedSymbol(trace[i]);
+      if (s) {
+        fprintf(stderr, "%s\n", s);
+      } else {
         fprintf(stderr, "%p\n", trace[i]);
       }
     }
