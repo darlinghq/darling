@@ -49,6 +49,7 @@
 #include <string>
 #include <vector>
 
+#include "env_flags.h"
 #include "fat.h"
 #include "mach-o.h"
 
@@ -62,15 +63,11 @@
 
 using namespace std;
 
+DEFINE_bool(TRACE_FUNCTIONS, false, "Show calling functions");
+
 class MachO;
 
 static map<string, string> g_rename;
-// TODO(hamaji): We might want to control this behavior with a flag.
-#ifdef NOLOG
-static bool g_use_trampoline = false;
-#else
-static bool g_use_trampoline = true;
-#endif
 static vector<const char*> g_bound_names;
 static set<string> g_no_trampoline;
 static map<uintptr_t, pair<string, uintptr_t> > g_exported_symbol_map;
@@ -148,7 +145,7 @@ class MachOLoader {
   typedef typename Helpers::mach_segment Segment;
  public:
   MachOLoader() {
-    if (g_use_trampoline) {
+    if (FLAGS_TRACE_FUNCTIONS) {
       // Push all arguments into stack.
 
       // push %rax
@@ -383,7 +380,7 @@ class MachOLoader {
         LOG << "bind " << name << ": "
             << *ptr << " => " << sym << " @" << ptr << endl;
 
-        if (g_use_trampoline && !g_no_trampoline.count(name)) {
+        if (FLAGS_TRACE_FUNCTIONS && !g_no_trampoline.count(name)) {
           LOG << "Generating trampoline for " << name << "..." << endl;
 
           *ptr = &trampoline_[0] + trampoline_.size();
