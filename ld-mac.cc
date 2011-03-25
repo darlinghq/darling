@@ -52,15 +52,8 @@
 
 #include "env_flags.h"
 #include "fat.h"
+#include "log.h"
 #include "mach-o.h"
-
-#ifdef NOLOG
-# define LOG if (0) cout
-//# define LOG cerr
-#else
-# define LOG cerr
-#endif
-#define ERR cerr
 
 using namespace std;
 

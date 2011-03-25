@@ -25,32 +25,6 @@
 // OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
 
-#ifndef ENV_FLAGS_H_
-#define ENV_FLAGS_H_
+#include "env_flags.h"
 
-#include <stdlib.h>
-#include <string.h>
-
-#define LD_MAC_EnvToBool(envname, dflt)                                 \
-  (!getenv(envname) ? (dflt) : memchr("tTyY1\0", getenv(envname)[0], 6) != NULL)
-
-#define LD_MAC_DECLARE_VARIABLE(type, name, tn)                         \
-  namespace FLAG__namespace_do_not_use_directly_use_LD_MAC_DECLARE_##tn##_instead { \
-  extern type FLAGS_##name;                                             \
-  }                                                                     \
-  using FLAG__namespace_do_not_use_directly_use_LD_MAC_DECLARE_##tn##_instead::FLAGS_##name
-
-#define LD_MAC_DEFINE_VARIABLE(type, name, value, meaning, tn)            \
-  namespace FLAG__namespace_do_not_use_directly_use_LD_MAC_DECLARE_##tn##_instead { \
-    type FLAGS_##name(value);                                           \
-  }                                                                     \
-  using FLAG__namespace_do_not_use_directly_use_LD_MAC_DECLARE_##tn##_instead::FLAGS_##name;
-
-#define DECLARE_bool(name)                      \
-  LD_MAC_DECLARE_VARIABLE(bool, name, bool)
-
-#define DEFINE_bool(name, value, meaning)                               \
-  LD_MAC_DEFINE_VARIABLE(bool, name, LD_MAC_EnvToBool("LD_MAC_" #name, value), \
-                         meaning, bool)
-
-#endif  // ENV_FLAGS_H_
+DEFINE_bool(LOG, false, "Output bunch of logs");

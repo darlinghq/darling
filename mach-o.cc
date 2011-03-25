@@ -38,15 +38,9 @@
 #include <unistd.h>
 
 #include "fat.h"
+#include "log.h"
 #include "mach-o.h"
 #include "mach-o/loader.h"
-
-#ifdef NOLOG
-# define LOGF(...) if (0) fprintf(stderr, __VA_ARGS__)
-//# define LOGF(...) fprintf(stderr, __VA_ARGS__)
-#else
-# define LOGF(...) fprintf(stderr, __VA_ARGS__)
-#endif
 
 typedef long long ll;
 typedef unsigned long long ull;

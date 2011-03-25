@@ -1,4 +1,4 @@
-GCCFLAGS=-g -Iinclude -Wall -MMD -fno-omit-frame-pointer -DNOLOG
+GCCFLAGS=-g -Iinclude -Wall -MMD -fno-omit-frame-pointer
 CXXFLAGS=$(GCCFLAGS) -W -Werror
 CFLAGS=$(GCCFLAGS) -fPIC
 
@@ -50,10 +50,10 @@ $(MACTXTS): %.txt: %.bin
 extract: extract.o fat.o
 	$(CXX) $^ -o $@ -g -I. -W -Wall
 
-macho2elf: macho2elf.o mach-o.o fat.o
+macho2elf: macho2elf.o mach-o.o fat.o log.o
 	$(CXX) $^ -o $@ -g
 
-ld-mac: ld-mac.o mach-o.o fat.o
+ld-mac: ld-mac.o mach-o.o fat.o log.o
 	$(CXX) $^ -o $@ -g -ldl -lpthread
 
 # TODO(hamaji): autotoolize?
