@@ -42,6 +42,8 @@
 #include "mach-o.h"
 #include "mach-o/loader.h"
 
+DEFINE_bool(READ_SYMBOLS, true, "Read symbols for better backtrace");
+
 typedef long long ll;
 typedef unsigned long long ull;
 
@@ -524,22 +526,28 @@ void MachO::init(int fd, size_t offset, size_t len) {
 
       symtab = reinterpret_cast<uint32_t*>(bin + symtab_cmd->symoff);
       symstrtab = bin + symtab_cmd->stroff;
-      for (uint32_t i = 0; i < symtab_cmd->nsyms; i++) {
-        if (is64_) {
-          LOGF("%d %s(%d) %p %d\n",
-               i, symstrtab + symtab[0], symtab[0],
-               (void*)*(uint64_t*)(symtab + 1),
-               symtab[3]);
-          symtab += 4;
-        } else {
-          LOGF("%d %s(%d) %p %d\n",
-               i, symstrtab + symtab[0], symtab[0],
-               (void*)*(uint32_t*)(symtab + 1),
-               symtab[2]);
-          symtab += 3;
+
+      if (FLAGS_READ_SYMBOLS) {
+        for (uint32_t i = 0; i < symtab_cmd->nsyms; i++) {
+          Symbol sym;
+          if (is64_) {
+            sym.name = symstrtab + symtab[0];
+            sym.addr = *(uint64_t*)(symtab + 2);
+            LOGF("%d %s(%d) %p %d\n",
+                 i, sym.name.c_str(), symtab[0], (void*)sym.addr,
+                 symtab[3]);
+            symtab += 4;
+          } else {
+            sym.name = symstrtab + symtab[0];
+            sym.addr = (uint64_t)*(uint32_t*)(symtab + 1);
+            LOGF("%d %s(%d) %p %d\n",
+                 i, sym.name.c_str(), symtab[0], (void*)sym.addr,
+                 symtab[2]);
+            symtab += 3;
+          }
+          symbols_.push_back(sym);
         }
       }
-      symtab = reinterpret_cast<uint32_t*>(bin + symtab_cmd->symoff);
       break;
     }
 

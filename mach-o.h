@@ -58,6 +58,11 @@ class MachO {
     uint32_t flag;
   };
 
+  struct Symbol {
+    string name;
+    uint64_t addr;
+  };
+
   explicit MachO(const char* filename);
   // Take ownership of fd.
   MachO(const char* filename, int fd, size_t offset, size_t len);
@@ -81,6 +86,8 @@ class MachO {
   const vector<Bind*>& binds() const { return binds_; }
 
   const vector<Export>& exports() const { return exports_; }
+
+  const vector<Symbol>& symbols() const { return symbols_; }
 
   const char* base() const { return base_; }
 
@@ -112,6 +119,7 @@ class MachO {
   vector<Rebase*> rebases_;
   vector<Bind*> binds_;
   vector<Export> exports_;
+  vector<Symbol> symbols_;
   const char* base_;
   uint64_t entry_;
   vector<uint64_t> init_funcs_;

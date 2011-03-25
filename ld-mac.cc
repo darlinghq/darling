@@ -65,7 +65,7 @@ class MachO;
 static map<string, string> g_rename;
 static vector<const char*> g_bound_names;
 static set<string> g_no_trampoline;
-static map<uintptr_t, pair<string, uintptr_t> > g_exported_symbol_map;
+static map<uintptr_t, pair<string, uintptr_t> > g_symbol_map;
 
 // We only support x86-64 for now.
 static const char* ARCH_NAME = "x86-64";
@@ -415,16 +415,24 @@ class MachOLoader {
     }
   }
 
-  void loadExports(const MachO& mach, intptr slide, intptr base) {
+  void loadExports(const MachO& mach, intptr base) {
     for (size_t i = 0; i < mach.exports().size(); i++) {
       MachO::Export exp = mach.exports()[i];
       exp.addr += base;
       if (!exports_.insert(make_pair(exp.name, exp)).second) {
         fprintf(stderr, "duplicated exported symbol: %s\n", exp.name.c_str());
       }
-      g_exported_symbol_map.insert(
-          make_pair(exp.addr,
-                    make_pair(exp.name.substr(1), slide)));
+    }
+  }
+
+  void loadSymbols(const MachO& mach, intptr slide) {
+    for (size_t i = 0; i < mach.symbols().size(); i++) {
+      MachO::Symbol sym = mach.symbols()[i];
+      if (sym.name.empty() || sym.name[0] != '_')
+        continue;
+      sym.addr += slide;
+      g_symbol_map.insert(make_pair(sym.addr,
+                                    make_pair(sym.name.substr(1), slide)));
     }
   }
 
@@ -442,13 +450,15 @@ class MachOLoader {
 
     doBind(mach, slide);
 
-    loadExports(mach, slide, base);
+    loadExports(mach, base);
+
+    loadSymbols(mach, slide);
   }
 
   void run(const MachO& mach, int argc, char** argv, char** envp) {
     load(mach);
 
-    g_exported_symbol_map.insert(
+    g_symbol_map.insert(
         make_pair(last_addr_ + 1, make_pair("*** last addr ***", 0)));
 
     char* trampoline_start_addr =
@@ -566,9 +576,8 @@ static char g_dumped_stack_frame_buf[4096];
 static const char* dumpExportedSymbol(void* p) {
   uintptr_t addr = reinterpret_cast<uintptr_t>(p);
   map<uintptr_t, pair<string, uintptr_t> >::const_iterator found =
-    g_exported_symbol_map.lower_bound(addr);
-  if (found == g_exported_symbol_map.begin() ||
-      found == g_exported_symbol_map.end()) {
+      g_symbol_map.lower_bound(addr);
+  if (found == g_symbol_map.begin() || found == g_symbol_map.end()) {
     return NULL;
   }
 
