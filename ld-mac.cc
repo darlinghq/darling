@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <ucontext.h>
 
 #include <algorithm>
@@ -64,6 +65,7 @@
 using namespace std;
 
 DEFINE_bool(TRACE_FUNCTIONS, false, "Show calling functions");
+DEFINE_bool(PRINT_TIME, false, "Print time spent in this loader");
 
 class MachO;
 
@@ -76,6 +78,8 @@ static map<uintptr_t, pair<string, uintptr_t> > g_exported_symbol_map;
 static const char* ARCH_NAME = "x86-64";
 
 static char* g_darwin_executable_path;
+
+static clock_t g_start_time;
 
 static void initRename() {
 #define RENAME(src, dst) g_rename.insert(make_pair(#src, #dst));
@@ -462,6 +466,11 @@ class MachOLoader {
     mprotect(trampoline_start_addr, trampoline_size,
              PROT_READ | PROT_WRITE | PROT_EXEC);
 
+    if (FLAGS_PRINT_TIME) {
+      double elapsed = ((double)clock() - g_start_time) / CLOCKS_PER_SEC;
+      printf("Elapsed time: %f sec\n", elapsed);
+    }
+
     for (size_t i = 0; i < init_funcs_.size(); i++) {
       void** init_func = (void**)init_funcs_[i];
       LOG << "calling initializer function " << *init_func << endl;
@@ -619,6 +628,7 @@ static void initSignalHandler() {
 }
 
 int main(int argc, char* argv[], char* envp[]) {
+  g_start_time = clock();
   initSignalHandler();
   initRename();
   initNoTrampoline();
