@@ -73,7 +73,6 @@ static bool g_use_trampoline = true;
 #endif
 static vector<const char*> g_bound_names;
 static set<string> g_no_trampoline;
-// TODO(hamaji): Need one more layer to filter invalid PCs.
 static map<uintptr_t, string> g_exported_symbol_map;
 
 // We only support x86-64 for now.
@@ -453,6 +452,9 @@ class MachOLoader {
   void run(const MachO& mach, int argc, char** argv, char** envp) {
     load(mach);
 
+    g_exported_symbol_map.insert(make_pair(last_addr_ + 1,
+                                           "*** last addr ***"));
+
     char* trampoline_start_addr =
         (char*)(((uintptr_t)&trampoline_[0]) & ~0xfff);
     uint64_t trampoline_size =
@@ -564,7 +566,8 @@ static const char* dumpExportedSymbol(void* p) {
   uintptr_t addr = reinterpret_cast<uintptr_t>(p);
   map<uintptr_t, string>::const_iterator found =
       g_exported_symbol_map.lower_bound(addr);
-  if (found == g_exported_symbol_map.begin()) {
+  if (found == g_exported_symbol_map.begin() ||
+      found == g_exported_symbol_map.end()) {
     return NULL;
   }
 
