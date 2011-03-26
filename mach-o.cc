@@ -524,7 +524,8 @@ void MachO::init(int fd, size_t offset, size_t len) {
            symtab_cmd->symoff, symtab_cmd->nsyms,
            symtab_cmd->stroff, symtab_cmd->strsize);
 
-      symtab = reinterpret_cast<uint32_t*>(bin + symtab_cmd->symoff);
+      uint32_t* symtab_top = symtab =
+          reinterpret_cast<uint32_t*>(bin + symtab_cmd->symoff);
       symstrtab = bin + symtab_cmd->stroff;
 
       if (FLAGS_READ_SYMBOLS) {
@@ -548,6 +549,10 @@ void MachO::init(int fd, size_t offset, size_t len) {
           symbols_.push_back(sym);
         }
       }
+
+      // Will be used by other load commands.
+      symtab = symtab_top;
+
       break;
     }
 
@@ -589,7 +594,7 @@ void MachO::init(int fd, size_t offset, size_t len) {
         uint32_t* sym = symtab;
         sym += index * (is64_ ? 4 : 3);
 
-        LOGF("dylib %d %s(%u)%s%s\n",
+        LOGF("dysym %d %s(%u)%s%s\n",
              j, symstrtab + sym[0], index, local, abs);
       }
 
