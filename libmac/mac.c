@@ -48,9 +48,9 @@
 
 #ifdef NOLOG
 # define LOGF(...) if (0) fprintf(stderr, __VA_ARGS__)
-//# define LOGF(...) fprintf(stderr, __VA_ARGS__)
 #else
-# define LOGF(...) fprintf(stderr, __VA_ARGS__)
+int LIBMAC_LOG;
+# define LOGF(...) if (LIBMAC_LOG) fprintf(stderr, __VA_ARGS__)
 #endif
 
 typedef __darwin_rune_t rune_t;

@@ -715,6 +715,11 @@ static void initLibMac() {
     exit(1);
   }
 
+  int* LIBMAC_LOG = (int*)dlsym(RTLD_DEFAULT, "LIBMAC_LOG");
+  if (LIBMAC_LOG) {
+    *LIBMAC_LOG = FLAGS_LOG;
+  }
+
   char* loader_path = (char*)dlsym(RTLD_DEFAULT, "__loader_path");
   if (!loader_path) {
     fprintf(stderr, "wrong libmac: __loader_path not found\n");
