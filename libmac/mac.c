@@ -624,6 +624,7 @@ int __darwin_execv(const char* path, char* argv[]) {
   for (i = 0; new_argv[i]; i++) {
     LOGF("%s ", new_argv[i]);
   }
+  LOGF("\n");
 
   return execvp(__loader_path, new_argv);
 }
