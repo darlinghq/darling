@@ -677,21 +677,58 @@ static void initSignalHandler() {
   sigaction(SIGABRT, &sigact, NULL);
 }
 
+static bool loadLibMac(const char* mypath) {
+  if (dlopen("libmac.so", RTLD_NOW | RTLD_GLOBAL)) {
+    return true;
+  }
+
+  if (dlopen("libmac/libmac.so", RTLD_NOW | RTLD_GLOBAL)) {
+    return true;
+  }
+
+  char buf[PATH_MAX + 100];
+  strcpy(buf, mypath);
+  char* p = strrchr(buf, '/');
+  if (!p) {
+    fprintf(stderr, "Weird loader path: %s\n", mypath);
+    exit(1);
+  }
+  strcpy(p, "/libmac/libmac.so");
+
+  if (dlopen(buf, RTLD_NOW | RTLD_GLOBAL)) {
+    return true;
+  }
+
+  return false;
+}
+
+static void initLibMac() {
+  char mypath[PATH_MAX + 1];
+  ssize_t l = readlink("/proc/self/exe", mypath, PATH_MAX);
+  if (l < 0) {
+    err(1, "readlink for /proc/self/exe");
+  }
+  mypath[l] = '\0';
+
+  if (!loadLibMac(mypath)) {
+    fprintf(stderr, "libmac not found\n");
+    exit(1);
+  }
+
+  char* loader_path = (char*)dlsym(RTLD_DEFAULT, "__loader_path");
+  if (!loader_path) {
+    fprintf(stderr, "wrong libmac: __loader_path not found\n");
+    exit(1);
+  }
+  strcpy(loader_path, mypath);
+}
+
 int main(int argc, char* argv[], char* envp[]) {
   g_start_time = clock();
   initSignalHandler();
   initRename();
   initNoTrampoline();
-
-  if (!dlopen("libmac.so", RTLD_NOW | RTLD_GLOBAL)) {
-    if (!dlopen("libmac/libmac.so", RTLD_NOW | RTLD_GLOBAL)) {
-      fprintf(stderr, "libmac not found\n");
-      exit(1);
-    }
-  }
-
-  char* loader_path = (char*)dlsym(RTLD_DEFAULT, "__loader_path");
-  realpath(argv[0], loader_path);
+  initLibMac();
 
   argc--;
   argv++;
