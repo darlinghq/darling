@@ -36,3 +36,8 @@ define mbt
   mreload
   python gdb_maloader.bt()
 end
+
+define mbtr
+  mreload
+  python gdb_maloader.bt(demangle=False)
+end

@@ -30,7 +30,7 @@ import os
 import re
 import sys
 
-def bt():
+def bt(demangle=True):
     # Find the newest frame.
     frame = gdb.selected_frame()
     while True:
@@ -39,7 +39,10 @@ def bt():
             break
         frame = next
 
-    pipe = os.popen('c++filt', 'w')
+    if demangle:
+        pipe = os.popen('c++filt', 'w')
+    else:
+        pipe = sys.stdout
 
     i = 0
     while frame:
