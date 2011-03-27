@@ -25,6 +25,8 @@
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 
+set follow-fork-mode child
+
 python sys.path.insert(0, '.')
 python import gdb_maloader
 
