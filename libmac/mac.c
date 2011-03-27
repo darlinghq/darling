@@ -968,7 +968,7 @@ int __darwin_pthread_mutexattr_setpshared(pthread_mutexattr_t* attr,
 int __darwin_pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr,
                                            int pshared) {
   pshared = __translate_pshared(pshared);
-  return pthread_mutexattr_setpshared(attr, pshared);
+  return pthread_rwlockattr_setpshared(attr, pshared);
 }
 
 __attribute__((constructor)) void initMac() {
