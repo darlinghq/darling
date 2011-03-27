@@ -119,3 +119,7 @@ RENAME(__lshrdi3, __lshrti3)
 RENAME(__moddi3, __modti3)
 RENAME(__udivdi3, __udivti3)
 RENAME(__umoddi3, __umodti3)
+
+// TODO(hamaji): pthread_mutexattr_gettype and pthread_mutexattr_getpshared
+WRAP(pthread_mutexattr_settype)
+WRAP(pthread_mutexattr_setpshared)

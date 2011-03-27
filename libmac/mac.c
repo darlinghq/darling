@@ -31,6 +31,7 @@
 
 #include <dirent.h>
 #include <err.h>
+#include <pthread.h>
 #include <signal.h>
 #include <spawn.h>
 #include <stdarg.h>
@@ -924,6 +925,44 @@ char*** _NSGetEnviron() {
 
 // TODO(hamaji): Need to do something.
 void __darwin_posix_spawn_file_actions_destroy() {}
+
+#define __DARWIN_PTHREAD_MUTEX_NORMAL 0
+#define __DARWIN_PTHREAD_MUTEX_ERRORCHECK 1
+#define __DARWIN_PTHREAD_MUTEX_RECURSIVE 2
+int __darwin_pthread_mutexattr_settype(pthread_mutexattr_t* attr, int kind) {
+  switch (kind) {
+  case __DARWIN_PTHREAD_MUTEX_NORMAL:
+    kind = PTHREAD_MUTEX_FAST_NP;
+    break;
+  case __DARWIN_PTHREAD_MUTEX_ERRORCHECK:
+    kind = PTHREAD_MUTEX_ERRORCHECK_NP;
+    break;
+  case __DARWIN_PTHREAD_MUTEX_RECURSIVE:
+    kind = PTHREAD_MUTEX_RECURSIVE_NP;
+    break;
+  default:
+    fprintf(stderr, "Unknown pthread_mutexattr_settype kind: %d\n", kind);
+  }
+  return pthread_mutexattr_settype(attr, kind);
+}
+
+#define __DARWIN_PTHREAD_PROCESS_SHARED 1
+#define __DARWIN_PTHREAD_PROCESS_PRIVATE 2
+int __darwin_pthread_mutexattr_setpshared(pthread_mutexattr_t* attr,
+                                          int pshared) {
+  switch (pshared) {
+  case __DARWIN_PTHREAD_PROCESS_SHARED:
+    pshared = PTHREAD_PROCESS_SHARED;
+    break;
+  case __DARWIN_PTHREAD_PROCESS_PRIVATE:
+    pshared = PTHREAD_PROCESS_PRIVATE;
+    break;
+  default:
+    fprintf(stderr, "Unknown pthread_mutexattr_setpshared pshared: %d\n",
+            pshared);
+  }
+  return pthread_mutexattr_setpshared(attr, pshared);
+}
 
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
