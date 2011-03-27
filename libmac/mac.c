@@ -948,19 +948,26 @@ int __darwin_pthread_mutexattr_settype(pthread_mutexattr_t* attr, int kind) {
 
 #define __DARWIN_PTHREAD_PROCESS_SHARED 1
 #define __DARWIN_PTHREAD_PROCESS_PRIVATE 2
-int __darwin_pthread_mutexattr_setpshared(pthread_mutexattr_t* attr,
-                                          int pshared) {
+static int __translate_pshared(int pshared) {
   switch (pshared) {
   case __DARWIN_PTHREAD_PROCESS_SHARED:
-    pshared = PTHREAD_PROCESS_SHARED;
-    break;
+    return PTHREAD_PROCESS_SHARED;
   case __DARWIN_PTHREAD_PROCESS_PRIVATE:
-    pshared = PTHREAD_PROCESS_PRIVATE;
-    break;
+    return PTHREAD_PROCESS_PRIVATE;
   default:
     fprintf(stderr, "Unknown pthread_mutexattr_setpshared pshared: %d\n",
             pshared);
+    return pshared;
   }
+}
+int __darwin_pthread_mutexattr_setpshared(pthread_mutexattr_t* attr,
+                                          int pshared) {
+  pshared = __translate_pshared(pshared);
+  return pthread_mutexattr_setpshared(attr, pshared);
+}
+int __darwin_pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr,
+                                           int pshared) {
+  pshared = __translate_pshared(pshared);
   return pthread_mutexattr_setpshared(attr, pshared);
 }
 
