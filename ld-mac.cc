@@ -520,6 +520,11 @@ class MachOLoader {
   }
 
   void run(const MachO& mach, int argc, char** argv, char** envp) {
+    // I don't understand what it is.
+    char* apple[2];
+    apple[0] = argv[0];
+    apple[1] = NULL;
+
     load(mach);
 
     g_file_map.addWatchDog(last_addr_ + 1);
@@ -540,7 +545,8 @@ class MachOLoader {
     for (size_t i = 0; i < init_funcs_.size(); i++) {
       void** init_func = (void**)init_funcs_[i];
       LOG << "calling initializer function " << *init_func << endl;
-      ((void(*)())*init_func)();
+      ((void(*)(int, char**, char**, char**))*init_func)(
+          argc, argv, envp, apple);
     }
 
     LOG << "booting from " << (void*)mach.entry() << "..." << endl;
