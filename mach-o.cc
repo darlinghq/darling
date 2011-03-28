@@ -120,10 +120,10 @@ class MachOImpl : public MachO {
   void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
                   string* name_buf);
 
-  void readClassicLazyBind(const section_64& sec,
-                           uint32_t* dysyms,
-                           uint32_t* symtab,
-                           const char* symstrtab) {
+  void readClassicBind(const section_64& sec,
+                       uint32_t* dysyms,
+                       uint32_t* symtab,
+                       const char* symstrtab) {
     uint32_t indirect_offset = sec.reserved1;
     int count = sec.size / ptrsize_;
     for (int i = 0; i < count; i++) {
@@ -464,7 +464,7 @@ void MachOImpl::init(int fd, size_t offset, size_t len) {
   uint32_t* dysyms = NULL;
   const char* symstrtab = NULL;
   dyld_info_command* dyinfo = NULL;
-  vector<section_64*> lazy_bind_sections;
+  vector<section_64*> bind_sections;
 
   for (uint32_t i = 0; i < header->ncmds; i++) {
     uint32_t cmd = *reinterpret_cast<uint32_t*>(cmds_ptr);
@@ -507,8 +507,9 @@ void MachOImpl::init(int fd, size_t offset, size_t len) {
           }
           break;
         }
+        case S_NON_LAZY_SYMBOL_POINTERS:
         case S_LAZY_SYMBOL_POINTERS: {
-          lazy_bind_sections.push_back(sections + j);
+          bind_sections.push_back(sections + j);
           break;
         }
         default:
@@ -700,10 +701,10 @@ void MachOImpl::init(int fd, size_t offset, size_t len) {
 
   LOGF("%p vs %p\n", cmds_ptr, bin + len);
 
-  // No LC_DYLD_INFO_ONLY, we will read classic lazy binding info.
+  // No LC_DYLD_INFO_ONLY, we will read classic binding info.
   if (!dyinfo && dysyms && symtab && symstrtab) {
-    for (size_t i = 0; i < lazy_bind_sections.size(); i++) {
-      readClassicLazyBind(*lazy_bind_sections[i], dysyms, symtab, symstrtab);
+    for (size_t i = 0; i < bind_sections.size(); i++) {
+      readClassicBind(*bind_sections[i], dysyms, symtab, symstrtab);
     }
   }
 }
