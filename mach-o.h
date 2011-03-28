@@ -65,7 +65,7 @@ class MachO {
 
   static MachO* read(const char* path, const char* arch, bool need_exports);
 
-  virtual ~MachO();
+  virtual ~MachO() {}
 
   const string& filename() const { return filename_; }
 
@@ -97,24 +97,7 @@ class MachO {
   int fd() const { return fd_; }
   size_t offset() const { return offset_; }
 
- private:
-  class RebaseState;
-  friend class MachO::RebaseState;
-  class BindState;
-  friend class MachO::BindState;
-
-  explicit MachO(const char* filename);
-  // Take ownership of fd.
-  MachO(const char* filename, int fd, size_t offset, size_t len,
-        bool need_exports);
-
-  // If len is 0, the size of file will be used as len.
-  void init(int fd, size_t offset, size_t len);
-  void readRebase(const uint8_t* p, const uint8_t* end);
-  void readBind(const uint8_t* p, const uint8_t* end);
-  void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
-                  string* name_buf);
-
+ protected:
   string filename_;
   vector<segment_command_64*> segments64_;
   vector<segment_command*> segments_;
@@ -130,8 +113,6 @@ class MachO {
   int ptrsize_;
   int fd_;
   size_t offset_;
-
-  bool need_exports_;
 };
 
 #endif  // MACH_O_H_

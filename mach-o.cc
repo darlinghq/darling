@@ -100,8 +100,31 @@ static int64_t sleb128(const uint8_t*& p) {
   return r;
 }
 
-struct MachO::RebaseState {
-  explicit RebaseState(MachO* mach0)
+class MachOImpl : public MachO {
+ public:
+  // Take ownership of fd.
+  MachOImpl(const char* filename, int fd, size_t offset, size_t len,
+            bool need_exports);
+  virtual ~MachOImpl();
+
+ private:
+  class RebaseState;
+  friend class MachOImpl::RebaseState;
+  class BindState;
+  friend class MachOImpl::BindState;
+
+  // If len is 0, the size of file will be used as len.
+  void init(int fd, size_t offset, size_t len);
+  void readRebase(const uint8_t* p, const uint8_t* end);
+  void readBind(const uint8_t* p, const uint8_t* end);
+  void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
+                  string* name_buf);
+
+  bool need_exports_;
+};
+
+struct MachOImpl::RebaseState {
+  explicit RebaseState(MachOImpl* mach0)
     : mach(mach0), type(0), seg_index(0), seg_offset(0) {}
 
   bool readRebaseOp(const uint8_t*& p) {
@@ -182,13 +205,13 @@ struct MachO::RebaseState {
     seg_offset += mach->ptrsize_;
   }
 
-  MachO* mach;
+  MachOImpl* mach;
   uint8_t type;
   int seg_index;
   uint64_t seg_offset;
 };
 
-void MachO::readRebase(const uint8_t* p, const uint8_t* end) {
+void MachOImpl::readRebase(const uint8_t* p, const uint8_t* end) {
   RebaseState state(this);
   while (p < end) {
     if (!state.readRebaseOp(p))
@@ -196,8 +219,8 @@ void MachO::readRebase(const uint8_t* p, const uint8_t* end) {
   }
 }
 
-struct MachO::BindState {
-  explicit BindState(MachO* mach0)
+struct MachOImpl::BindState {
+  explicit BindState(MachOImpl* mach0)
     : mach(mach0), ordinal(0), sym_name(NULL), type(BIND_TYPE_POINTER),
       addend(0), seg_index(0), seg_offset(0) {}
 
@@ -304,7 +327,7 @@ struct MachO::BindState {
     seg_offset += mach->ptrsize_;
   }
 
-  MachO* mach;
+  MachOImpl* mach;
   uint8_t ordinal;
   const char* sym_name;
   uint8_t type;
@@ -313,17 +336,17 @@ struct MachO::BindState {
   uint64_t seg_offset;
 };
 
-void MachO::readBind(const uint8_t* p, const uint8_t* end) {
+void MachOImpl::readBind(const uint8_t* p, const uint8_t* end) {
   BindState state(this);
   while (p < end) {
     state.readBindOp(p);
   }
 }
 
-void MachO::readExport(const uint8_t* start,
-                       const uint8_t* p,
-                       const uint8_t* end,
-                       string* name_buf) {
+void MachOImpl::readExport(const uint8_t* start,
+                           const uint8_t* p,
+                           const uint8_t* end,
+                           string* name_buf) {
   LOGF("readExport: %p-%p\n", p, end);
 #if 0
   char buf[17];
@@ -370,24 +393,15 @@ void MachO::readExport(const uint8_t* start,
   }
 }
 
-MachO::MachO(const char* filename)
-  : filename_(filename), need_exports_(true) {
-  int fd = open(filename, O_RDONLY);
-  if (fd < 0) {
-    fprintf(stderr, "open %s: %s\n", filename, strerror(errno));
-    exit(1);
-  }
-  init(fd, 0, 0);
-}
-
-MachO::MachO(const char* filename, int fd, size_t offset, size_t len,
-             bool need_exports)
-  : filename_(filename), need_exports_(need_exports) {
+MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
+                     bool need_exports) {
+  filename_ = filename;
+  need_exports_ = need_exports;
   lseek(fd, 0, SEEK_SET);
   init(fd, offset, len);
 }
 
-void MachO::init(int fd, size_t offset, size_t len) {
+void MachOImpl::init(int fd, size_t offset, size_t len) {
   CHECK(fd);
   fd_ = fd;
   offset_ = offset;
@@ -654,7 +668,7 @@ void MachO::init(int fd, size_t offset, size_t len) {
   LOGF("%p vs %p\n", cmds_ptr, bin + len);
 }
 
-MachO::~MachO() {
+MachOImpl::~MachOImpl() {
   for (size_t i = 0; i < binds_.size(); i++) {
     delete binds_[i];
   }
@@ -684,5 +698,5 @@ MachO* MachO::read(const char* path, const char* arch, bool need_exports) {
     LOGF("fat offset=%lu, len=%lu\n", offset, len);
   }
 
-  return new MachO(path, fd, offset, len, need_exports);
+  return new MachOImpl(path, fd, offset, len, need_exports);
 }
