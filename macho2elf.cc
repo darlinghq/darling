@@ -37,6 +37,7 @@
 #include <string.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -665,10 +666,11 @@ int main(int argc, char* argv[]) {
     exit(1);
   }
 
-  MachO mach(args[0].c_str());
-  if (mach.is64()) {
-    emitELF<true>(mach, args[1].c_str());
+  auto_ptr<MachO> mach(MachO::read(argv[0], "x86-64",
+                                   false  /* need_exports */));
+  if (mach->is64()) {
+    emitELF<true>(*mach, args[1].c_str());
   } else {
-    emitELF<false>(mach, args[1].c_str());
+    emitELF<false>(*mach, args[1].c_str());
   }
 }

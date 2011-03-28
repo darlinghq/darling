@@ -401,8 +401,8 @@ class MachOLoader {
         dylib.replace(0, executable_str_len, dir);
       }
 
-      auto_ptr<MachO> dylib_mach(readMachO(dylib.c_str(), ARCH_NAME,
-                                           true  /* need_exports */));
+      auto_ptr<MachO> dylib_mach(MachO::read(dylib.c_str(), ARCH_NAME,
+                                             true  /* need_exports */));
       load(*dylib_mach);
     }
   }
@@ -766,8 +766,8 @@ int main(int argc, char* argv[], char* envp[]) {
       (char*)dlsym(RTLD_DEFAULT, "__darwin_executable_path");
   realpath(argv[0], g_darwin_executable_path);
 
-  auto_ptr<MachO> mach(readMachO(argv[0], ARCH_NAME,
-                                 false  /* need_exports */));
+  auto_ptr<MachO> mach(MachO::read(argv[0], ARCH_NAME,
+                                   false  /* need_exports */));
   if (mach->is64()) {
     runMachO<true>(*mach, argc, argv, envp);
   } else {

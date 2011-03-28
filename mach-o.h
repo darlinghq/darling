@@ -63,12 +63,9 @@ class MachO {
     uint64_t addr;
   };
 
-  explicit MachO(const char* filename);
-  // Take ownership of fd.
-  MachO(const char* filename, int fd, size_t offset, size_t len,
-        bool need_exports);
+  static MachO* read(const char* path, const char* arch, bool need_exports);
 
-  ~MachO();
+  virtual ~MachO();
 
   const string& filename() const { return filename_; }
 
@@ -106,6 +103,11 @@ class MachO {
   class BindState;
   friend class MachO::BindState;
 
+  explicit MachO(const char* filename);
+  // Take ownership of fd.
+  MachO(const char* filename, int fd, size_t offset, size_t len,
+        bool need_exports);
+
   // If len is 0, the size of file will be used as len.
   void init(int fd, size_t offset, size_t len);
   void readRebase(const uint8_t* p, const uint8_t* end);
@@ -131,7 +133,5 @@ class MachO {
 
   bool need_exports_;
 };
-
-MachO* readMachO(const char* path, const char* arch, bool need_exports);
 
 #endif  // MACH_O_H_

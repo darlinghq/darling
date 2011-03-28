@@ -662,7 +662,7 @@ MachO::~MachO() {
   close(fd_);
 }
 
-MachO* readMachO(const char* path, const char* arch, bool need_exports) {
+MachO* MachO::read(const char* path, const char* arch, bool need_exports) {
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
     fprintf(stderr, "%s: %s\n", path, strerror(errno));
