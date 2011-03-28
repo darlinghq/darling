@@ -448,7 +448,7 @@ class MachOLoader {
         sym += bind->addend;
 
         LOG << "bind " << name << ": "
-            << *ptr << " => " << sym << " @" << ptr << endl;
+            << *ptr << " => " << (void*)sym << " @" << ptr << endl;
 
         if (FLAGS_TRACE_FUNCTIONS && !g_no_trampoline.count(name)) {
           LOG << "Generating trampoline for " << name << "..." << endl;
