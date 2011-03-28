@@ -120,6 +120,28 @@ class MachOImpl : public MachO {
   void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
                   string* name_buf);
 
+  void readClassicLazyBind(const section_64& sec,
+                           uint32_t* dysyms,
+                           uint32_t* symtab,
+                           const char* symstrtab) {
+    uint32_t indirect_offset = sec.reserved1;
+    int count = sec.size / ptrsize_;
+    for (int i = 0; i < count; i++) {
+      uint32_t dysym = dysyms[indirect_offset + i];
+      uint32_t index = dysym & 0x3fffffff;
+      uint32_t* sym = symtab;
+      sym += index * (is64_ ? 4 : 3);
+
+      MachO::Bind* bind = new MachO::Bind();
+      bind->name = symstrtab + sym[0];
+      bind->vmaddr = sec.addr + i * ptrsize_;
+      bind->addend = 0;
+      bind->type = BIND_TYPE_POINTER;
+      bind->ordinal = 1;
+      binds_.push_back(bind);
+    }
+  }
+
   bool need_exports_;
 };
 
@@ -439,7 +461,10 @@ void MachOImpl::init(int fd, size_t offset, size_t len) {
   }
 
   uint32_t* symtab = NULL;
+  uint32_t* dysyms = NULL;
   const char* symstrtab = NULL;
+  dyld_info_command* dyinfo = NULL;
+  vector<section_64*> lazy_bind_sections;
 
   for (uint32_t i = 0; i < header->ncmds; i++) {
     uint32_t cmd = *reinterpret_cast<uint32_t*>(cmds_ptr);
@@ -475,22 +500,28 @@ void MachOImpl::init(int fd, size_t offset, size_t len) {
              sec.reserved1, sec.reserved2, sec.reserved3);
 
         int section_type = sec.flags & SECTION_TYPE;
-        if (section_type == S_MOD_INIT_FUNC_POINTERS) {
-          for (uint64_t p = sec.addr;
-               p < sec.addr + sec.size;
-               p += ptrsize_) {
+        switch (section_type) {
+        case S_MOD_INIT_FUNC_POINTERS: {
+          for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += ptrsize_) {
             init_funcs_.push_back(p);
           }
+          break;
         }
-        // TODO(hamaji): Support term_funcs.
+        case S_LAZY_SYMBOL_POINTERS: {
+          lazy_bind_sections.push_back(sections + j);
+          break;
+        }
+        default:
+          // TODO(hamaji): Support term_funcs.
+          ;
+        }
       }
 
       break;
     }
 
     case LC_DYLD_INFO_ONLY: {
-      dyld_info_command* dyinfo =
-        reinterpret_cast<dyld_info_command*>(cmds_ptr);
+      dyinfo = reinterpret_cast<dyld_info_command*>(cmds_ptr);
       LOGF("dyld info: rebase_off=%u rebase_size=%u "
            "bind_off=%u bind_size=%u "
            "weak_bind_off=%u weak_bind_size=%u "
@@ -603,9 +634,11 @@ void MachOImpl::init(int fd, size_t offset, size_t len) {
            dysymtab_cmd->extreloff, dysymtab_cmd->nextrel,
            dysymtab_cmd->locreloff, dysymtab_cmd->nlocrel);
 
+      if (dysymtab_cmd->nindirectsyms) {
+          dysyms = reinterpret_cast<uint32_t*>(
+              bin + dysymtab_cmd->indirectsymoff);
+      }
       if (FLAGS_READ_DYSYMTAB) {
-        uint32_t* dysyms = reinterpret_cast<uint32_t*>(
-            bin + dysymtab_cmd->indirectsymoff);
         for (uint32_t j = 0; j < dysymtab_cmd->nindirectsyms; j++) {
           uint32_t dysym = dysyms[j];
           uint32_t index = dysym & 0x3fffffff;
@@ -666,6 +699,13 @@ void MachOImpl::init(int fd, size_t offset, size_t len) {
   }
 
   LOGF("%p vs %p\n", cmds_ptr, bin + len);
+
+  // No LC_DYLD_INFO_ONLY, we will read classic lazy binding info.
+  if (!dyinfo && dysyms && symtab && symstrtab) {
+    for (size_t i = 0; i < lazy_bind_sections.size(); i++) {
+      readClassicLazyBind(*lazy_bind_sections[i], dysyms, symtab, symstrtab);
+    }
+  }
 }
 
 MachOImpl::~MachOImpl() {
