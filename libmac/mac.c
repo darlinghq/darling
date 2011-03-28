@@ -971,8 +971,18 @@ int __darwin_pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr,
   return pthread_rwlockattr_setpshared(attr, pshared);
 }
 
+void* mach_init_routine;
+void* _cthread_init_routine;
+static void do_nothing() {
+}
+
+void __keymgr_dwarf2_register_sections() {
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
   __darwin_stderr = __init_darwin_FILE(stderr);
+  mach_init_routine = &do_nothing;
+  _cthread_init_routine = &do_nothing;
 }
