@@ -1,4 +1,4 @@
-GCCFLAGS=-g -Iinclude -Wall -MMD -fno-omit-frame-pointer
+GCCFLAGS=-g -Iinclude -Wall -MMD -fno-omit-frame-pointer -O
 CXXFLAGS=$(GCCFLAGS) -W -Werror
 CFLAGS=$(GCCFLAGS) -fPIC
 
