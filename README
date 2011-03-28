@@ -2,7 +2,7 @@ This is a Mach-O loader for linux.
 
 * Usage
 
-% make
+% make release
 % ./ld-mac mac_binary [options...]
 
 You need OpenCFLite (http://sourceforge.net/projects/opencflite/)
@@ -17,7 +17,7 @@ Get xcode_3.2.6_and_ios_sdk_4.3__final.dmg (or another xcode package).
 % ./maloader/unpack_xcode.sh xcode_3.2.6_and_ios_sdk_4.3__final.dmg
 % sudo cp -a xcode_3.2.6_and_ios_sdk_4.3__final/root /usr/i686-apple-darwin10
 % cd maloader
-% make
+% make release
 % ./ld-mac /usr/i686-apple-darwin10/usr/bin/gcc mach/hello.c
 % ./ld-mac a.out
 
