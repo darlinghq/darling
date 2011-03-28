@@ -164,6 +164,15 @@ static void undefinedFunction() {
   abort();
 }
 
+static void doNothing() {
+}
+
+static bool lookupDyldFunction(const char* name, uint64_t* addr) {
+  LOG << "lookupDyldFunction: " << name << endl;
+  *addr = (int64_t)&doNothing;
+  return true;
+}
+
 static uint64_t alignMem(uint64_t p, uint64_t a) {
   a--;
   return (p + a) & ~a;
@@ -521,6 +530,14 @@ class MachOLoader {
     loadSymbols(mach, slide, base);
   }
 
+  void setupDyldData(const MachO& mach) {
+    if (!mach.dyld_data())
+      return;
+
+    void** dyld_data = (void**)mach.dyld_data();
+    dyld_data[1] = reinterpret_cast<void*>(&lookupDyldFunction);
+  }
+
   void run(const MachO& mach, int argc, char** argv, char** envp) {
     // I don't understand what it is.
     char* apple[2];
@@ -528,6 +545,7 @@ class MachOLoader {
     apple[1] = NULL;
 
     load(mach);
+    setupDyldData(mach);
 
     g_file_map.addWatchDog(last_addr_ + 1);
 

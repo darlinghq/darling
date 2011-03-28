@@ -424,6 +424,8 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
 }
 
 void MachOImpl::init(int fd, size_t offset, size_t len) {
+  dyld_data_ = 0;
+
   CHECK(fd);
   fd_ = fd;
   offset_ = offset;
@@ -498,6 +500,11 @@ void MachOImpl::init(int fd, size_t offset, size_t len) {
              sec.offset, sec.align,
              sec.reloff, sec.nreloc, sec.flags,
              sec.reserved1, sec.reserved2, sec.reserved3);
+
+        if (!strcmp(sec.sectname, "__dyld") &&
+            !strcmp(sec.segname, "__DATA")) {
+          dyld_data_ = sec.addr;
+        }
 
         int section_type = sec.flags & SECTION_TYPE;
         switch (section_type) {

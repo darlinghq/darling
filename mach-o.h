@@ -90,7 +90,10 @@ class MachO {
   const char* base() const { return base_; }
 
   uint64_t entry() const { return entry_; }
+
   const vector<uint64_t>& init_funcs() const { return init_funcs_; }
+
+  uint64_t dyld_data() const { return dyld_data_; }
 
   bool is64() const { return is64_; }
 
@@ -109,6 +112,7 @@ class MachO {
   const char* base_;
   uint64_t entry_;
   vector<uint64_t> init_funcs_;
+  uint64_t dyld_data_;
   bool is64_;
   int ptrsize_;
   int fd_;
