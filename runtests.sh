@@ -44,5 +44,8 @@ echo "Running gcc mach/hello.c"
 echo "Running gcc -g mach/hello.c"
 PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g mach/hello.c
 
+echo "Running clang -c mach/hello.c"
+./ld-mac $MAC_BIN_DIR/clang -c mach/hello.c
+
 echo
 echo '*** ALL TESTS PASS ***'
