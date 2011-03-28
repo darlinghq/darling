@@ -65,7 +65,8 @@ class MachO {
 
   explicit MachO(const char* filename);
   // Take ownership of fd.
-  MachO(const char* filename, int fd, size_t offset, size_t len);
+  MachO(const char* filename, int fd, size_t offset, size_t len,
+        bool need_exports);
 
   ~MachO();
 
@@ -127,8 +128,10 @@ class MachO {
   int ptrsize_;
   int fd_;
   size_t offset_;
+
+  bool need_exports_;
 };
 
-MachO* readMachO(const char* path, const char* arch);
+MachO* readMachO(const char* path, const char* arch, bool need_exports);
 
 #endif  // MACH_O_H_
