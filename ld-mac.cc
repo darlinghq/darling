@@ -90,7 +90,7 @@ class FileMap {
 
   void addWatchDog(uintptr_t addr) {
     bool r = maps_.insert(make_pair(addr, (SymbolMap*)NULL)).second;
-    assert(r);
+    CHECK(r);
   }
 
   const char* dumpSymbol(void* p) {
@@ -316,7 +316,7 @@ class MachOLoader {
         LOG << "will rebase: filename=" << mach.filename()
             << ", vmaddr=" << (void*)vmaddr
             << ", last_addr=" << (void*)last_addr_ << endl;
-        assert(i == 0);
+        CHECK(i == 0);
         vmaddr = last_addr_;
         *slide = vmaddr - seg->vmaddr;
       }
@@ -334,7 +334,7 @@ class MachOLoader {
       }
 
       if (vmsize != filesize) {
-        assert(vmsize > filesize);
+        CHECK(vmsize > filesize);
         LOG << "mmap(anon) " << mach.filename() << ' ' << name
             << ": " << (void*)(vmaddr + filesize) << "-"
             << (void*)(vmaddr + vmsize)
@@ -553,7 +553,7 @@ class MachOLoader {
 
     LOG << "booting from " << (void*)mach.entry() << "..." << endl;
     fflush(stdout);
-    assert(argc > 0);
+    CHECK(argc > 0);
     boot(mach.entry(), argc, argv, envp);
     /*
       int (*fp)(int, char**, char**) =

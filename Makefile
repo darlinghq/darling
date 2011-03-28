@@ -1,5 +1,5 @@
-PROFILE_FLAGS=
-GCCFLAGS=-g -Iinclude -Wall -MMD -fno-omit-frame-pointer -O $(PROFILE_FLAGS)
+GCC_EXTRA_FLAGS=
+GCCFLAGS=-g -Iinclude -Wall -MMD -fno-omit-frame-pointer -O $(GCC_EXTRA_FLAGS)
 CXXFLAGS=$(GCCFLAGS) -W -Werror
 CFLAGS=$(GCCFLAGS) -fPIC
 
@@ -31,7 +31,10 @@ endif
 all: $(EXES)
 
 profile:
-	make clean all PROFILE_FLAGS=-pg
+	make clean all GCC_EXTRA_FLAGS=-pg
+
+release:
+	make clean all "GCC_EXTRA_FLAGS=-DNOLOG -DNDEBUG"
 
 mach: $(MAC_TARGETS)
 
@@ -52,13 +55,13 @@ $(MACTXTS): %.txt: %.bin
 #	touch $@
 
 extract: extract.o fat.o
-	$(CXX) $^ -o $@ -g -I. -W -Wall $(PROFILE_FLAGS)
+	$(CXX) $^ -o $@ -g -I. -W -Wall $(GCC_EXTRA_FLAGS)
 
 macho2elf: macho2elf.o mach-o.o fat.o log.o
-	$(CXX) $^ -o $@ -g $(PROFILE_FLAGS)
+	$(CXX) $^ -o $@ -g $(GCC_EXTRA_FLAGS)
 
 ld-mac: ld-mac.o mach-o.o fat.o log.o
-	$(CXX) $^ -o $@ -g -ldl -lpthread $(PROFILE_FLAGS)
+	$(CXX) $^ -o $@ -g -ldl -lpthread $(GCC_EXTRA_FLAGS)
 
 # TODO(hamaji): autotoolize?
 libmac/libmac.so: libmac/mac.o

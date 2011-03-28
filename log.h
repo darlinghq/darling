@@ -28,6 +28,8 @@
 #ifndef LOG_H_
 #define LOG_H_
 
+#include <assert.h>
+
 #include "env_flags.h"
 
 DECLARE_bool(LOG);
@@ -41,5 +43,12 @@ DECLARE_bool(LOG);
 #endif
 
 #define ERR cerr
+
+#ifdef NDEBUG
+// Do an extra check to avoid warning around unused local variables.
+# define CHECK(r) do { if (!(r)) assert(r); } while (0)
+#else
+# define CHECK(r) assert(r);
+#endif
 
 #endif

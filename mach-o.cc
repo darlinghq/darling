@@ -25,7 +25,6 @@
 // OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -42,7 +41,13 @@
 #include "mach-o.h"
 #include "mach-o/loader.h"
 
-DEFINE_bool(READ_SYMTAB, true, "Read symtab for better backtrace");
+DEFINE_bool(READ_SYMTAB,
+#ifdef NDEBUG
+            false,
+#else
+            true,
+#endif
+            "Read symtab for better backtrace");
 DEFINE_bool(READ_DYSYMTAB, false, "Read dysymtab");
 
 typedef long long ll;
@@ -346,7 +351,7 @@ void MachO::readExport(const uint8_t* start,
 
     exports_.push_back(exp);
 
-    assert(expected_term_end == p);
+    CHECK(expected_term_end == p);
   }
 
   const uint8_t num_children = *p++;
@@ -358,7 +363,7 @@ void MachO::readExport(const uint8_t* start,
     p++;
 
     uint64_t off = uleb128(p);
-    assert(off != 0);
+    CHECK(off != 0);
     readExport(start, start + off, end, name_buf);
 
     name_buf->resize(orig_name_size);
@@ -383,7 +388,7 @@ MachO::MachO(const char* filename, int fd, size_t offset, size_t len,
 }
 
 void MachO::init(int fd, size_t offset, size_t len) {
-  assert(fd);
+  CHECK(fd);
   fd_ = fd;
   offset_ = offset;
   if (!len) {
