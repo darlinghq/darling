@@ -42,7 +42,8 @@
 #include "mach-o.h"
 #include "mach-o/loader.h"
 
-DEFINE_bool(READ_SYMBOLS, true, "Read symbols for better backtrace");
+DEFINE_bool(READ_SYMTAB, true, "Read symtab for better backtrace");
+DEFINE_bool(READ_DYSYMTAB, false, "Read dysymtab");
 
 typedef long long ll;
 typedef unsigned long long ull;
@@ -529,7 +530,7 @@ void MachO::init(int fd, size_t offset, size_t len) {
           reinterpret_cast<uint32_t*>(bin + symtab_cmd->symoff);
       symstrtab = bin + symtab_cmd->stroff;
 
-      if (FLAGS_READ_SYMBOLS) {
+      if (FLAGS_READ_SYMTAB) {
         for (uint32_t i = 0; i < symtab_cmd->nsyms; i++) {
           Symbol sym;
           if (is64_) {
@@ -559,7 +560,7 @@ void MachO::init(int fd, size_t offset, size_t len) {
 
     case LC_DYSYMTAB: {
       dysymtab_command* dysymtab_cmd =
-        reinterpret_cast<dysymtab_command*>(cmds_ptr);
+          reinterpret_cast<dysymtab_command*>(cmds_ptr);
 
       LOGF("dysym:\n"
            " ilocalsym=%u nlocalsym=%u\n"
@@ -582,27 +583,29 @@ void MachO::init(int fd, size_t offset, size_t len) {
            dysymtab_cmd->extreloff, dysymtab_cmd->nextrel,
            dysymtab_cmd->locreloff, dysymtab_cmd->nlocrel);
 
-      uint32_t* dysyms = reinterpret_cast<uint32_t*>(
-        bin + dysymtab_cmd->indirectsymoff);
-      for (uint32_t j = 0; j < dysymtab_cmd->nindirectsyms; j++) {
-        uint32_t dysym = dysyms[j];
-        uint32_t index = dysym & 0x3fffffff;
-        const char* local =
-          (dysym & INDIRECT_SYMBOL_LOCAL) ? " local" : "";
-        const char* abs =
-          (dysym & INDIRECT_SYMBOL_ABS) ? " abs" : "";
+      if (FLAGS_READ_DYSYMTAB) {
+        uint32_t* dysyms = reinterpret_cast<uint32_t*>(
+            bin + dysymtab_cmd->indirectsymoff);
+        for (uint32_t j = 0; j < dysymtab_cmd->nindirectsyms; j++) {
+          uint32_t dysym = dysyms[j];
+          uint32_t index = dysym & 0x3fffffff;
+          const char* local =
+            (dysym & INDIRECT_SYMBOL_LOCAL) ? " local" : "";
+          const char* abs =
+            (dysym & INDIRECT_SYMBOL_ABS) ? " abs" : "";
 
-        uint32_t* sym = symtab;
-        sym += index * (is64_ ? 4 : 3);
+          uint32_t* sym = symtab;
+          sym += index * (is64_ ? 4 : 3);
 
-        LOGF("dysym %d %s(%u)%s%s\n",
-             j, symstrtab + sym[0], index, local, abs);
-      }
+          LOGF("dysym %d %s(%u)%s%s\n",
+               j, symstrtab + sym[0], index, local, abs);
+        }
 
-      uint32_t* dymods = reinterpret_cast<uint32_t*>(
-        bin + dysymtab_cmd->modtaboff);
-      for (uint32_t j = 0; j < dysymtab_cmd->nmodtab; j++) {
-        LOGF("dymods: %u\n", dymods[j]);
+        uint32_t* dymods = reinterpret_cast<uint32_t*>(
+            bin + dysymtab_cmd->modtaboff);
+        for (uint32_t j = 0; j < dysymtab_cmd->nmodtab; j++) {
+          LOGF("dymods: %u\n", dymods[j]);
+        }
       }
 
       break;
