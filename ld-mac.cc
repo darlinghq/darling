@@ -431,19 +431,20 @@ class MachOLoader {
         }
 
         void** ptr = (void**)(bind->vmaddr + slide);
-        void* sym = NULL;
+        char* sym = NULL;
         const map<string, MachO::Export>::const_iterator export_found =
             exports_.find(bind->name);
         if (export_found != exports_.end()) {
-          sym = (void*)export_found->second.addr;
+          sym = (char*)export_found->second.addr;
         }
         if (!sym) {
-          sym = dlsym(RTLD_DEFAULT, name);
+          sym = (char*)dlsym(RTLD_DEFAULT, name);
         }
         if (!sym) {
             ERR << name << ": undefined symbol" << endl;
-            sym = (void*)&undefinedFunction;
+            sym = (char*)&undefinedFunction;
         }
+        sym += bind->addend;
 
         LOG << "bind " << name << ": "
             << *ptr << " => " << sym << " @" << ptr << endl;

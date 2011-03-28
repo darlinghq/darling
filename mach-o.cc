@@ -290,6 +290,7 @@ struct MachO::BindState {
          type, ordinal, (ll)addend, (void*)vmaddr);
     bind->name = sym_name;
     bind->vmaddr = vmaddr + seg_offset;
+    bind->addend = addend;
     bind->type = type;
     bind->ordinal = ordinal;
     mach->binds_.push_back(bind);
