@@ -103,6 +103,7 @@ static int64_t sleb128(const uint8_t*& p) {
 class MachOImpl : public MachO {
  public:
   // Take ownership of fd.
+  // If len is 0, the size of file will be used as len.
   MachOImpl(const char* filename, int fd, size_t offset, size_t len,
             bool need_exports);
   virtual ~MachOImpl();
@@ -113,8 +114,6 @@ class MachOImpl : public MachO {
   class BindState;
   friend class MachOImpl::BindState;
 
-  // If len is 0, the size of file will be used as len.
-  void init(int fd, size_t offset, size_t len);
   void readRebase(const uint8_t* p, const uint8_t* end);
   void readBind(const uint8_t* p, const uint8_t* end);
   void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
@@ -419,19 +418,16 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
                      bool need_exports) {
   filename_ = filename;
   need_exports_ = need_exports;
-  lseek(fd, 0, SEEK_SET);
-  init(fd, offset, len);
-}
-
-void MachOImpl::init(int fd, size_t offset, size_t len) {
   dyld_data_ = 0;
-
   CHECK(fd);
   fd_ = fd;
   offset_ = offset;
+
   if (!len) {
     len = lseek(fd_, 0, SEEK_END);
   }
+  lseek(fd, 0, SEEK_SET);
+
   char* bin = reinterpret_cast<char*>(
     mmap(NULL, len,
          PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, fd_, offset));
