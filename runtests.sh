@@ -47,5 +47,18 @@ PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g mach/hello.c
 echo "Running clang -c mach/hello.c"
 ./ld-mac $MAC_BIN_DIR/clang -c mach/hello.c
 
+# Need this file from Xcode 4
+CLANG=$MAC_BIN_DIR/clang-137
+if [ -x $CLANG ]; then
+    for i in mach/*.c; do
+        echo "Compiling $i with clang"
+        ./ld-mac $CLANG -Wl,-syslibroot,$MAC_TOOL_DIR -isysroot $MAC_TOOL_DIR $i -o $i.clang.bin
+        echo "Running $i.clang.bin"
+        $i.clang.bin
+    done
+else
+    echo "$CLANG not found, skipping some tests with it"
+fi
+
 echo
 echo '*** ALL TESTS PASS ***'

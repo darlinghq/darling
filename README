@@ -45,8 +45,8 @@ OK
 - dsymutil (need OpenCFLite)
 - cpp-4.2
 - clang
--- clang-70 (xcode 3.2.6): linking wasn't checked due to lack of -sysroot
--- clang-137 (xcode 4.0): OK, but cannot execute linked binary w/ ld-mac
+-- clang-70 (xcode 3.2.6): linking wasn't checked due to lack of sysroot
+-- clang-137 (xcode 4.0): OK
 
 not OK
 
