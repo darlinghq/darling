@@ -39,7 +39,7 @@
 
 set -e
 
-PKGS="MacOSX10.6 gcc4.2 gcc4.0 llvm-gcc4.2 DeveloperToolsCLI"
+PKGS="MacOSX10.6 gcc4.2 gcc4.0 llvm-gcc4.2 DeveloperToolsCLI clang"
 
 dmg=$1
 dir=`basename $dmg .dmg`
