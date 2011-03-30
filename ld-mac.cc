@@ -660,8 +660,10 @@ static int getBacktrace(void** trace, int max_depth) {
 }
 #endif
 
-static const char* dumpSymbol(void* p) {
-  return g_file_map.dumpSymbol(p);
+extern "C" {
+  const char* dumpSymbol(void* p) {
+    return g_file_map.dumpSymbol(p);
+  }
 }
 
 /* signal handler for fatal errors */
