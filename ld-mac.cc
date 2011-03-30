@@ -782,7 +782,9 @@ int main(int argc, char* argv[], char* envp[]) {
 
   g_darwin_executable_path =
       (char*)dlsym(RTLD_DEFAULT, "__darwin_executable_path");
-  realpath(argv[0], g_darwin_executable_path);
+  if (!realpath(argv[0], g_darwin_executable_path)) {
+    err(1, "realpath for %s failed", argv[0]);
+  }
 
   auto_ptr<MachO> mach(MachO::read(argv[0], ARCH_NAME,
                                    false  /* need_exports */));
