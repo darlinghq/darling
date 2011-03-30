@@ -1,3 +1,5 @@
+VERSION=0.1
+
 GCC_EXTRA_FLAGS=
 GCCFLAGS=-g -Iinclude -Wall -MMD -fno-omit-frame-pointer -O $(GCC_EXTRA_FLAGS)
 CXXFLAGS=$(GCCFLAGS) -W -Werror
@@ -66,6 +68,9 @@ ld-mac: ld-mac.o mach-o.o fat.o log.o
 # TODO(hamaji): autotoolize?
 libmac/libmac.so: libmac/mac.o
 	$(CC) -shared $^ -o $@ -luuid -lcrypto -lCoreFoundation || (echo "*** libCoreFoundation not found ***"; gcc -shared $^ -o $@ -luuid -lcrypto)
+
+dist:
+	cd /tmp && rm -fr maloader && git clone git@github.com:shinh/maloader.git && rm -fr maloader/.git && mv maloader maloader-$(VERSION) && tar -cvzf maloader-$(VERSION).tar.gz maloader-$(VERSION)
 
 clean:
 	rm -f *.o *.d */*.o */*.d $(EXES)
