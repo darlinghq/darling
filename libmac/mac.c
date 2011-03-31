@@ -927,8 +927,18 @@ char*** _NSGetEnviron() {
   return &environ;
 }
 
-// TODO(hamaji): Need to do something.
-void __darwin_posix_spawn_file_actions_destroy() {}
+// It seems the size of posix_spawn_file_actions_t of Mac is smaller
+// than Linux so modifying posix_spawn_file_actions_t allocated in
+// Mac's stack would cause stack overflow. Let's wrap it.
+int __darwin_posix_spawn_file_actions_init(posix_spawn_file_actions_t** p) {
+  *p = (posix_spawn_file_actions_t*)malloc(sizeof(posix_spawn_file_actions_t));
+  return posix_spawn_file_actions_init(*p);
+}
+int __darwin_posix_spawn_file_actions_destroy(posix_spawn_file_actions_t** p) {
+  int r = posix_spawn_file_actions_destroy(*p);
+  free(*p);
+  return r;
+}
 
 #define __DARWIN_PTHREAD_MUTEX_NORMAL 0
 #define __DARWIN_PTHREAD_MUTEX_ERRORCHECK 1

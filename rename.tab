@@ -106,6 +106,7 @@ WRAP(signal)
 WRAP(sigaction)
 WRAP(sigaltstack)
 
+WRAP(posix_spawn_file_actions_init)
 WRAP(posix_spawn_file_actions_destroy)
 
 RENAME(__ashldi3, __ashlti3)
