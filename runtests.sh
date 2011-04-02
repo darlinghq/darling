@@ -54,7 +54,7 @@ if [ -x $CLANG ]; then
         echo "Compiling $i with clang"
         ./ld-mac $CLANG -Wl,-syslibroot,$MAC_TOOL_DIR -isysroot $MAC_TOOL_DIR $i -o $i.clang.bin
         echo "Running $i.clang.bin"
-        $i.clang.bin
+        ./ld-mac $i.clang.bin
     done
 else
     echo "$CLANG not found, skipping some tests with it"
