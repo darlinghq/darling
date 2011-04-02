@@ -722,16 +722,20 @@ int __darwin_execle(const char* file, const char* arg, ...) {
   return 0;
 }
 
+// It seems the size of posix_spawn_file_actions_t of Mac is smaller
+// than Linux so modifying posix_spawn_file_actions_t allocated in
+// Mac's stack would cause stack overflow. Let's wrap it.
+
 int __darwin_posix_spawn(pid_t* pid,
                          const char* path,
-                         const posix_spawn_file_actions_t* file_actions,
+                         const posix_spawn_file_actions_t** file_actions,
                          const posix_spawnattr_t* attrp,
                          char* argv[],
                          char* const envp[]) {
   char** new_argv = add_loader_to_argv(argv);
   int r = posix_spawn(pid,
                       __loader_path,
-                      file_actions,
+                      *file_actions,
                       attrp,
                       new_argv,
                       envp);
@@ -747,6 +751,40 @@ int __darwin_posix_spawnp(pid_t *pid,
                           char* const envp[]) {
   err(1, "posix_spawnp is not implemented yet\n");
   return 0;
+}
+
+int __darwin_posix_spawn_file_actions_init(posix_spawn_file_actions_t** p) {
+  *p = (posix_spawn_file_actions_t*)malloc(sizeof(posix_spawn_file_actions_t));
+  return posix_spawn_file_actions_init(*p);
+}
+
+int __darwin_posix_spawn_file_actions_destroy(posix_spawn_file_actions_t** p) {
+  int r = posix_spawn_file_actions_destroy(*p);
+  free(*p);
+  return r;
+}
+
+int __darwin_posix_spawn_file_actions_addopen(
+    posix_spawn_file_actions_t** file_actions,
+    int fd,
+    const char* path,
+    int oflag,
+    int mode) {
+    return posix_spawn_file_actions_addopen(
+        *file_actions, fd, path, oflag, mode);
+}
+
+int __darwin_posix_spawn_file_actions_addclose(
+    posix_spawn_file_actions_t** file_actions,
+    int fd) {
+    return posix_spawn_file_actions_addclose(*file_actions, fd);
+}
+
+int __darwin_posix_spawn_file_actions_adddup2(
+    posix_spawn_file_actions_t** file_actions,
+    int fd,
+    int newfd) {
+    return posix_spawn_file_actions_adddup2(*file_actions, fd, newfd);
 }
 
 typedef struct {
@@ -925,19 +963,6 @@ int task_set_exception_ports() {
 
 char*** _NSGetEnviron() {
   return &environ;
-}
-
-// It seems the size of posix_spawn_file_actions_t of Mac is smaller
-// than Linux so modifying posix_spawn_file_actions_t allocated in
-// Mac's stack would cause stack overflow. Let's wrap it.
-int __darwin_posix_spawn_file_actions_init(posix_spawn_file_actions_t** p) {
-  *p = (posix_spawn_file_actions_t*)malloc(sizeof(posix_spawn_file_actions_t));
-  return posix_spawn_file_actions_init(*p);
-}
-int __darwin_posix_spawn_file_actions_destroy(posix_spawn_file_actions_t** p) {
-  int r = posix_spawn_file_actions_destroy(*p);
-  free(*p);
-  return r;
 }
 
 #define __DARWIN_PTHREAD_MUTEX_NORMAL 0

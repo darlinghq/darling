@@ -94,6 +94,12 @@ WRAP(execle)
 WRAP(posix_spawn)
 WRAP(posix_spawnp)
 
+WRAP(posix_spawn_file_actions_init)
+WRAP(posix_spawn_file_actions_destroy)
+WRAP(posix_spawn_file_actions_addopen)
+WRAP(posix_spawn_file_actions_addclose)
+WRAP(posix_spawn_file_actions_adddup2)
+
 RENAME(CC_MD5_Init, MD5_Init)
 RENAME(CC_MD5_Update, MD5_Update)
 RENAME(CC_MD5_Final, MD5_Final)
@@ -105,9 +111,6 @@ RENAME(atexit, __cxa_atexit)
 WRAP(signal)
 WRAP(sigaction)
 WRAP(sigaltstack)
-
-WRAP(posix_spawn_file_actions_init)
-WRAP(posix_spawn_file_actions_destroy)
 
 RENAME(__ashldi3, __ashlti3)
 RENAME(__ashrdi3, __ashrti3)
