@@ -47,6 +47,14 @@ PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g mach/hello.c
 echo "Running clang -c mach/hello.c"
 ./ld-mac $MAC_BIN_DIR/clang -c mach/hello.c
 
+echo "Running dylib tests"
+
+PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g -dynamiclib mach/dylib/lib.c -o mach/dylib/lib.dylib
+PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
+
+echo "Running mach/dylib/main"
+mach/dylib/main
+
 # Need this file from Xcode 4
 CLANG=$MAC_BIN_DIR/clang-137
 if [ -x $CLANG ]; then
