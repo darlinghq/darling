@@ -1,4 +1,4 @@
-This is a Mach-O loader for linux.
+This is a userland Mach-O loader for linux.
 
 * Usage
 
@@ -65,6 +65,14 @@ not OK
 - Running all Mac binaries isn't my goal. Only command line tools such
   as compiler tool chain can be executed by this loader.
 - Currently, this only supports x86-64.
+
+* TODO
+
+- make clang plugins work
+- read dwarf for better backtracing
+- make llvm-gcc work
+- 32bit support
+- handle dwarf and C++ exception
 
 * License
 
