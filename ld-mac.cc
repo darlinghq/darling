@@ -768,7 +768,9 @@ static void initLibMac() {
 static string ld_mac_dlerror_buf;
 static bool ld_mac_dlerror_is_set;
 
-static void* ld_mac_dlopen(const char* filename, int /* flag */) {
+static void* ld_mac_dlopen(const char* filename, int flag) {
+  LOG << "ld_mac_dlopen: " << filename << " " << flag << endl;
+
   // TODO(hamaji): Handle failures.
   auto_ptr<MachO> dylib_mach(MachO::read(filename, ARCH_NAME,
                                          true  /* need_exports */));
@@ -794,6 +796,8 @@ static const char* ld_mac_dlerror(void) {
 }
 
 static void* ld_mac_dlsym(void* handle, const char* symbol) {
+  LOG << "ld_mac_dlsym: " << symbol << endl;
+
   map<string, MachO::Export>* exports = (map<string, MachO::Export>*)handle;
   map<string, MachO::Export>::const_iterator found = exports->find(
       string("_") + symbol);
