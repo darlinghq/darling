@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 int main() {
-    if (hello("world") != 42)
-        abort();
-    return 0;
+  if (hello("world") != 42)
+    abort();
+  return 0;
 }
