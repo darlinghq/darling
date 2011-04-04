@@ -765,7 +765,11 @@ static void initLibMac() {
   strcpy(loader_path, mypath);
 }
 
+static string ld_mac_dlerror_buf;
+static bool ld_mac_dlerror_is_set;
+
 static void* ld_mac_dlopen(const char* filename, int /* flag */) {
+  // TODO(hamaji): Handle failures.
   auto_ptr<MachO> dylib_mach(MachO::read(filename, ARCH_NAME,
                                          true  /* need_exports */));
 
@@ -782,8 +786,11 @@ static int ld_mac_dlclose(void* handle) {
   return 0;
 }
 
-static char* ld_mac_dlerror(void) {
-  return NULL;
+static const char* ld_mac_dlerror(void) {
+  if (!ld_mac_dlerror_is_set)
+    return NULL;
+  ld_mac_dlerror_is_set = false;
+  return ld_mac_dlerror_buf.c_str();
 }
 
 static void* ld_mac_dlsym(void* handle, const char* symbol) {
@@ -791,6 +798,8 @@ static void* ld_mac_dlsym(void* handle, const char* symbol) {
   map<string, MachO::Export>::const_iterator found = exports->find(
       string("_") + symbol);
   if (found == exports->end()) {
+    ld_mac_dlerror_is_set = true;
+    ld_mac_dlerror_buf = string("undefined symbol: ") + symbol;
     return NULL;
   }
   return (void*)found->second.addr;
