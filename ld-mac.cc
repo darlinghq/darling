@@ -784,11 +784,15 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
 }
 
 static int ld_mac_dlclose(void* handle) {
+  LOG << "ld_mac_dlclose" << endl;
+
   delete (map<string, MachO::Export>*)handle;
   return 0;
 }
 
 static const char* ld_mac_dlerror(void) {
+  LOG << "ld_mac_dlerror" << endl;
+
   if (!ld_mac_dlerror_is_set)
     return NULL;
   ld_mac_dlerror_is_set = false;
