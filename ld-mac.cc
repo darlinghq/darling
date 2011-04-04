@@ -145,6 +145,9 @@ static char* g_darwin_executable_path;
 
 static clock_t g_start_time;
 
+// TODO(hamaji): Need a static type...
+static void* g_loader;
+
 static void initRename() {
 #define RENAME(src, dst) g_rename.insert(make_pair(#src, #dst));
 #define WRAP(src) RENAME(src, __darwin_ ## src)
@@ -497,11 +500,12 @@ class MachOLoader {
     }
   }
 
-  void loadExports(const MachO& mach, intptr base) {
+  void loadExports(const MachO& mach, intptr base,
+                   map<string, MachO::Export>* exports) {
     for (size_t i = 0; i < mach.exports().size(); i++) {
       MachO::Export exp = mach.exports()[i];
       exp.addr += base;
-      if (!exports_.insert(make_pair(exp.name, exp)).second) {
+      if (!exports->insert(make_pair(exp.name, exp)).second) {
         fprintf(stderr, "duplicated exported symbol: %s\n", exp.name.c_str());
       }
     }
@@ -511,7 +515,10 @@ class MachOLoader {
     g_file_map.add(mach, slide, base);
   }
 
-  void load(const MachO& mach) {
+  void load(const MachO& mach, map<string, MachO::Export>* exports = NULL) {
+    if (!exports) {
+      exports = &exports_;
+    }
     intptr slide = 0;
     intptr base = 0;
 
@@ -525,7 +532,7 @@ class MachOLoader {
 
     doBind(mach, slide);
 
-    loadExports(mach, base);
+    loadExports(mach, base, exports);
 
     loadSymbols(mach, slide, base);
   }
@@ -640,7 +647,9 @@ void MachOLoader<false>::boot(
 template <bool is64>
 void runMachO(const MachO& mach, int argc, char** argv, char** envp) {
   MachOLoader<is64> loader;
+  g_loader = &loader;
   loader.run(mach, argc, argv, envp);
+  g_loader = NULL;
 }
 
 #if 0
@@ -756,6 +765,50 @@ static void initLibMac() {
   strcpy(loader_path, mypath);
 }
 
+static void* ld_mac_dlopen(const char* filename, int /* flag */) {
+  auto_ptr<MachO> dylib_mach(MachO::read(filename, ARCH_NAME,
+                                         true  /* need_exports */));
+
+  // TODO(hamaji): Consider 32bit.
+  MachOLoader<true>* loader = (MachOLoader<true>*)g_loader;
+  CHECK(loader);
+  map<string, MachO::Export>* exports = new map<string, MachO::Export>;
+  loader->load(*dylib_mach, exports);
+  return exports;
+}
+
+static int ld_mac_dlclose(void* handle) {
+  delete (map<string, MachO::Export>*)handle;
+  return 0;
+}
+
+static char* ld_mac_dlerror(void) {
+  return NULL;
+}
+
+static void* ld_mac_dlsym(void* handle, const char* symbol) {
+  map<string, MachO::Export>* exports = (map<string, MachO::Export>*)handle;
+  map<string, MachO::Export>::const_iterator found = exports->find(
+      string("_") + symbol);
+  if (found == exports->end()) {
+    return NULL;
+  }
+  return (void*)found->second.addr;
+}
+
+void initDlfcn() {
+#define SET_DLFCN_FUNC(f)                                   \
+  do {                                                      \
+    void** p = (void**)dlsym(RTLD_DEFAULT, "ld_mac_" #f);   \
+    *p = (void*)&ld_mac_ ## f;                              \
+  } while (0)
+
+  SET_DLFCN_FUNC(dlopen);
+  SET_DLFCN_FUNC(dlclose);
+  SET_DLFCN_FUNC(dlerror);
+  SET_DLFCN_FUNC(dlsym);
+}
+
 int main(int argc, char* argv[], char* envp[]) {
   if (FLAGS_PRINT_TIME) {
     g_start_time = clock();
@@ -764,6 +817,7 @@ int main(int argc, char* argv[], char* envp[]) {
   initRename();
   initNoTrampoline();
   initLibMac();
+  initDlfcn();
 
   argc--;
   argv++;

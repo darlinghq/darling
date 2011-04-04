@@ -130,5 +130,11 @@ WRAP(pthread_mutexattr_settype)
 WRAP(pthread_mutexattr_setpshared)
 WRAP(pthread_rwlockattr_setpshared)
 
+WRAP(dlopen)
+WRAP(dlclose)
+WRAP(dlerror)
+WRAP(dlsym)
+// TODO(hamaji): dladdr?
+
 RENAME(_ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode,
        _ZNSt12__basic_fileIcE8sys_openEP8_IO_FILESt13_Ios_Openmode)

@@ -1023,6 +1023,27 @@ void _ZNSt13basic_filebufIcSt11char_traitsIcEE7seekoffExSt12_Ios_SeekdirSt13_Ios
   abort();
 }
 
+void* (*ld_mac_dlopen)(const char* filename, int flag);
+int (*ld_mac_dlclose)(void* handle);
+char* (*ld_mac_dlerror)(void);
+void* (*ld_mac_dlsym)(void* handle, const char* symbol);
+
+void* __darwin_dlopen(const char* filename, int flag) {
+  return ld_mac_dlopen(filename, flag);
+}
+
+int __darwin_dlclose(void* handle) {
+  return ld_mac_dlclose(handle);
+}
+
+char* __darwin_dlerror(void) {
+  return ld_mac_dlerror();
+}
+
+void* __darwin_dlsym(void* handle, const char* symbol) {
+  return ld_mac_dlsym(handle, symbol);
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
