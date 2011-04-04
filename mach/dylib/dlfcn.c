@@ -3,7 +3,11 @@
 #include <stdlib.h>
 
 int main() {
+#ifdef __APPLE__
   void* h = dlopen("mach/dylib/lib.dylib", RTLD_NOW);
+#else
+  void* h = dlopen("mach/dylib/lib.so", RTLD_NOW);
+#endif
   if (!h) {
     fprintf(stderr, "dlopen failed\n");
     abort();
