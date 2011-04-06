@@ -54,5 +54,16 @@ int main() {
     abort();
   }
 
+  int* check_value = (int*)dlsym(h, "check_value");
+  if (!check_value) {
+    fprintf(stderr, "dlsym failed: %s\n", dlerror());
+    abort();
+  }
+
+  if (*check_value != 999) {
+    fprintf(stderr, "initializer function didn't run?\n");
+    abort();
+  }
+
   return 0;
 }
