@@ -413,8 +413,7 @@ class MachOLoader {
         dylib.replace(0, executable_str_len, dir);
       }
 
-      auto_ptr<MachO> dylib_mach(MachO::read(dylib.c_str(), ARCH_NAME,
-                                             true  /* need_exports */));
+      auto_ptr<MachO> dylib_mach(MachO::read(dylib.c_str(), ARCH_NAME));
       load(*dylib_mach);
     }
   }
@@ -772,8 +771,7 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
   LOG << "ld_mac_dlopen: " << filename << " " << flag << endl;
 
   // TODO(hamaji): Handle failures.
-  auto_ptr<MachO> dylib_mach(MachO::read(filename, ARCH_NAME,
-                                         true  /* need_exports */));
+  auto_ptr<MachO> dylib_mach(MachO::read(filename, ARCH_NAME));
 
   // TODO(hamaji): Consider 32bit.
   MachOLoader<true>* loader = (MachOLoader<true>*)g_loader;
@@ -860,8 +858,7 @@ int main(int argc, char* argv[], char* envp[]) {
   if (!realpath(argv[0], g_darwin_executable_path)) {
   }
 
-  auto_ptr<MachO> mach(MachO::read(argv[0], ARCH_NAME,
-                                   false  /* need_exports */));
+  auto_ptr<MachO> mach(MachO::read(argv[0], ARCH_NAME));
   if (mach->is64()) {
     runMachO<true>(*mach, argc, argv, envp);
   } else {

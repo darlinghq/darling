@@ -63,7 +63,8 @@ class MachO {
     uint64_t addr;
   };
 
-  static MachO* read(const char* path, const char* arch, bool need_exports);
+  static MachO* read(const char* path, const char* arch,
+                     bool need_exports = true);
 
   virtual ~MachO() {}
 
