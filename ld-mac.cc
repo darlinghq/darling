@@ -544,6 +544,20 @@ class MachOLoader {
     dyld_data[1] = reinterpret_cast<void*>(&lookupDyldFunction);
   }
 
+  void runInitFuncs(int argc, char** argv, char** envp, char** apple) {
+    for (size_t i = 0; i < init_funcs_.size(); i++) {
+      void** init_func = (void**)init_funcs_[i];
+      LOG << "calling initializer function " << *init_func << endl;
+      if (argc >= 0) {
+        ((void(*)(int, char**, char**, char**))*init_func)(
+            argc, argv, envp, apple);
+      } else {
+        ((void(*)())*init_func)();
+      }
+    }
+    init_funcs_.clear();
+  }
+
   void run(const MachO& mach, int argc, char** argv, char** envp) {
     // I don't understand what it is.
     char* apple[2];
@@ -568,12 +582,7 @@ class MachOLoader {
       printf("Elapsed time: %f sec\n", elapsed);
     }
 
-    for (size_t i = 0; i < init_funcs_.size(); i++) {
-      void** init_func = (void**)init_funcs_[i];
-      LOG << "calling initializer function " << *init_func << endl;
-      ((void(*)(int, char**, char**, char**))*init_func)(
-          argc, argv, envp, apple);
-    }
+    runInitFuncs(argc, argv, envp, apple);
 
     LOG << "booting from " << (void*)mach.entry() << "..." << endl;
     fflush(stdout);
@@ -778,6 +787,7 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
   CHECK(loader);
   map<string, MachO::Export>* exports = new map<string, MachO::Export>;
   loader->load(*dylib_mach, exports);
+  loader->runInitFuncs(-1, NULL, NULL, NULL);
   return exports;
 }
 
