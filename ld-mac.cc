@@ -224,7 +224,8 @@ class MachOLoader {
   typedef typename Helpers::intptr intptr;
   typedef typename Helpers::mach_segment Segment;
  public:
-  MachOLoader() {
+  MachOLoader()
+    : last_addr_(0) {
     if (FLAGS_TRACE_FUNCTIONS) {
       // Push all arguments into stack.
 
