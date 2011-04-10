@@ -29,19 +29,25 @@
 
 set -e
 
+# Run small unit tests
+
 for i in mach/*.bin; do
     echo "Running $i"
     ./ld-mac ./$i
 done
 
+# Run regressions tests with real compilers
+
 MAC_TOOL_DIR=/usr/i686-apple-darwin10
 MAC_BIN_DIR=$MAC_TOOL_DIR/usr/bin
 
 apple() {
-  gcc="$1"
-  shift
-  PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/$gcc --sysroot=$MAC_TOOL_DIR "$@"
+    gcc="$1"
+    shift
+    PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/$gcc --sysroot=$MAC_TOOL_DIR "$@"
 }
+
+# Run GCC with ld-mac
 
 echo "Running gcc -c mach/hello.c"
 ./ld-mac $MAC_BIN_DIR/gcc -c mach/hello.c
@@ -50,16 +56,12 @@ echo "Running gcc mach/hello.c"
 echo "Running gcc -g mach/hello.c"
 PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g mach/hello.c
 
+# Run clang with ld-mac
+
 echo "Running clang -c mach/hello.c"
 ./ld-mac $MAC_BIN_DIR/clang -c mach/hello.c
 
-echo "Running dylib tests"
-
-apple gcc -g -dynamiclib mach/dylib/lib.c -o mach/dylib/lib.dylib
-apple gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
-
-echo "Running mach/dylib/main"
-mach/dylib/main
+# Check dylib
 
 echo "Running dylib tests"
 
@@ -69,10 +71,20 @@ apple gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
 echo "Running mach/dylib/main"
 mach/dylib/main
 
-apple gcc --sysroot=$MAC_TOOL_DIR -g mach/dylib/dlfcn.c -o mach/dylib/dlfcn
+echo "Running dylib tests"
+
+apple gcc -g -dynamiclib mach/dylib/lib.c -o mach/dylib/lib.dylib
+apple gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
+
+echo "Running mach/dylib/main"
+mach/dylib/main
+
+apple gcc -g mach/dylib/dlfcn.c -o mach/dylib/dlfcn
 
 echo "Running mach/dylib/dlfcn"
 mach/dylib/dlfcn
+
+# Check dylib with weak symbols
 
 echo "Running dylib tests with a weak symbol"
 
@@ -86,6 +98,7 @@ mach/dylib/weak_main
 echo "Running mach/dylib/weak_main-dl"
 mach/dylib/weak_main-dl
 
+# Compile and run unit tests with clang
 
 # Need this file from Xcode 4
 CLANG=$MAC_BIN_DIR/clang-137
