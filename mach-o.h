@@ -50,6 +50,7 @@ class MachO {
     int64_t addend;
     uint8_t type;
     uint8_t ordinal;
+    bool is_weak;
   };
 
   struct Export {

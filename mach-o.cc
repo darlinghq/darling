@@ -110,7 +110,7 @@ class MachOImpl : public MachO {
   friend class MachOImpl::BindState;
 
   void readRebase(const uint8_t* p, const uint8_t* end);
-  void readBind(const uint8_t* p, const uint8_t* end);
+  void readBind(const uint8_t* p, const uint8_t* end, bool is_weak);
   void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
                   string* name_buf);
 
@@ -236,9 +236,9 @@ void MachOImpl::readRebase(const uint8_t* p, const uint8_t* end) {
 }
 
 struct MachOImpl::BindState {
-  explicit BindState(MachOImpl* mach0)
+  BindState(MachOImpl* mach0, bool is_weak0)
     : mach(mach0), ordinal(0), sym_name(NULL), type(BIND_TYPE_POINTER),
-      addend(0), seg_index(0), seg_offset(0) {}
+      addend(0), seg_index(0), seg_offset(0), is_weak(is_weak0) {}
 
   void readBindOp(const uint8_t*& p) {
     uint8_t op = *p & BIND_OPCODE_MASK;
@@ -332,12 +332,13 @@ struct MachOImpl::BindState {
     LOGF("add bind! %s seg_index=%d seg_offset=%llu "
          "type=%d ordinal=%d addend=%lld vmaddr=%p\n",
          sym_name, seg_index, (ull)seg_offset,
-         type, ordinal, (ll)addend, (void*)vmaddr);
+         type, ordinal, (ll)addend, (void*)(vmaddr + seg_offset));
     bind->name = sym_name;
     bind->vmaddr = vmaddr + seg_offset;
     bind->addend = addend;
     bind->type = type;
     bind->ordinal = ordinal;
+    bind->is_weak = is_weak;
     mach->binds_.push_back(bind);
 
     seg_offset += mach->ptrsize_;
@@ -350,10 +351,11 @@ struct MachOImpl::BindState {
   int64_t addend;
   int seg_index;
   uint64_t seg_offset;
+  bool is_weak;
 };
 
-void MachOImpl::readBind(const uint8_t* p, const uint8_t* end) {
-  BindState state(this);
+void MachOImpl::readBind(const uint8_t* p, const uint8_t* end, bool is_weak) {
+  BindState state(this, is_weak);
   while (p < end) {
     state.readBindOp(p);
   }
@@ -545,14 +547,21 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
         const uint8_t* p = reinterpret_cast<uint8_t*>(
           bin + dyinfo->bind_off);
         const uint8_t* end = p + dyinfo->bind_size;
-        readBind(p, end);
+        readBind(p, end, false);
       }
 
       {
         const uint8_t* p = reinterpret_cast<uint8_t*>(
           bin + dyinfo->lazy_bind_off);
         const uint8_t* end = p + dyinfo->lazy_bind_size;
-        readBind(p, end);
+        readBind(p, end, false);
+      }
+
+      {
+        const uint8_t* p = reinterpret_cast<uint8_t*>(
+          bin + dyinfo->weak_bind_off);
+        const uint8_t* end = p + dyinfo->weak_bind_size;
+        readBind(p, end, true);
       }
 
       if (need_exports_) {

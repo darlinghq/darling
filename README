@@ -68,7 +68,6 @@ not OK
 
 * TODO
 
-- make clang plugins work
 - read dwarf for better backtracing
 - make llvm-gcc work
 - 32bit support

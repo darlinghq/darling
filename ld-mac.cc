@@ -434,30 +434,39 @@ class MachOLoader {
 
       if (bind->type == BIND_TYPE_POINTER) {
         const char* name = bind->name + 1;
-
-        map<string, string>::const_iterator found =
-            g_rename.find(name);
-        if (found != g_rename.end()) {
-          LOG << "Applying renaming: " << name
-              << " => " << found->second.c_str() << endl;
-          name = found->second.c_str();
-        }
-
         void** ptr = (void**)(bind->vmaddr + slide);
         char* sym = NULL;
-        const map<string, MachO::Export>::const_iterator export_found =
-            exports_.find(bind->name);
-        if (export_found != exports_.end()) {
-          sym = (char*)export_found->second.addr;
-        }
-        if (!sym) {
-          sym = (char*)dlsym(RTLD_DEFAULT, name);
-        }
-        if (!sym) {
+
+        if (bind->is_weak) {
+          pair<map<string, char*>::const_iterator, bool> p =
+              seen_weak_binds_.insert(make_pair(name, (char*)*ptr));
+          if (p.second) {
+            continue;
+          }
+          sym = p.first->second;
+        } else {
+          map<string, string>::const_iterator found =
+              g_rename.find(name);
+          if (found != g_rename.end()) {
+            LOG << "Applying renaming: " << name
+                << " => " << found->second.c_str() << endl;
+            name = found->second.c_str();
+          }
+
+          const map<string, MachO::Export>::const_iterator export_found =
+              exports_.find(bind->name);
+          if (export_found != exports_.end()) {
+            sym = (char*)export_found->second.addr;
+          }
+          if (!sym) {
+            sym = (char*)dlsym(RTLD_DEFAULT, name);
+          }
+          if (!sym) {
             ERR << name << ": undefined symbol" << endl;
             sym = (char*)&undefinedFunction;
+          }
+          sym += bind->addend;
         }
-        sym += bind->addend;
 
         LOG << "bind " << name << ": "
             << *ptr << " => " << (void*)sym << " @" << ptr << endl;
@@ -505,6 +514,7 @@ class MachOLoader {
     for (size_t i = 0; i < mach.exports().size(); i++) {
       MachO::Export exp = mach.exports()[i];
       exp.addr += base;
+      // TODO(hamaji): Not 100% sure, but we may need to consider weak symbols.
       if (!exports->insert(make_pair(exp.name, exp)).second) {
         fprintf(stderr, "duplicated exported symbol: %s\n", exp.name.c_str());
       }
@@ -625,6 +635,7 @@ class MachOLoader {
   intptr last_addr_;
   vector<uint64_t> init_funcs_;
   map<string, MachO::Export> exports_;
+  map<string, char*> seen_weak_binds_;
 };
 
 template <>
