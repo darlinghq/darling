@@ -74,6 +74,19 @@ apple gcc --sysroot=$MAC_TOOL_DIR -g mach/dylib/dlfcn.c -o mach/dylib/dlfcn
 echo "Running mach/dylib/dlfcn"
 mach/dylib/dlfcn
 
+echo "Running dylib tests with a weak symbol"
+
+apple g++ -g -fPIC -dynamiclib mach/dylib/weak_lib.cc -o mach/dylib/weak_lib.dylib
+apple g++ -g -fPIC mach/dylib/weak_main.cc -o mach/dylib/weak_main mach/dylib/weak_lib.dylib
+apple g++ -g -fPIC mach/dylib/weak_main.cc -o mach/dylib/weak_main-dl -DDL
+
+echo "Running mach/dylib/weak_main"
+mach/dylib/weak_main
+
+echo "Running mach/dylib/weak_main-dl"
+mach/dylib/weak_main-dl
+
+
 # Need this file from Xcode 4
 CLANG=$MAC_BIN_DIR/clang-137
 if [ -x $CLANG ]; then
