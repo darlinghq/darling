@@ -66,6 +66,25 @@ static map<string, string> g_rename;
 static vector<const char*> g_bound_names;
 static set<string> g_no_trampoline;
 
+struct Timer {
+  Timer() : start_time(0) {}
+
+  void start() {
+    if (FLAGS_PRINT_TIME) {
+      start_time = clock();
+    }
+  }
+
+  void print(const char* name) {
+    if (FLAGS_PRINT_TIME) {
+      double elapsed = ((double)clock() - start_time) / CLOCKS_PER_SEC;
+      printf("Elapsed time (%s): %f sec\n", name, elapsed);
+    }
+  }
+
+  clock_t start_time;
+};
+
 class FileMap {
  public:
   void add(const MachO& mach, uintptr_t slide, uintptr_t base) {
@@ -143,7 +162,7 @@ static const char* ARCH_NAME = "x86-64";
 
 static char* g_darwin_executable_path;
 
-static clock_t g_start_time;
+static Timer g_timer;
 
 // TODO(hamaji): Need a static type...
 static void* g_loader;
@@ -588,10 +607,7 @@ class MachOLoader {
     mprotect(trampoline_start_addr, trampoline_size,
              PROT_READ | PROT_WRITE | PROT_EXEC);
 
-    if (FLAGS_PRINT_TIME) {
-      double elapsed = ((double)clock() - g_start_time) / CLOCKS_PER_SEC;
-      printf("Elapsed time: %f sec\n", elapsed);
-    }
+    g_timer.print(mach.filename().c_str());
 
     runInitFuncs(argc, argv, envp, apple);
 
@@ -791,6 +807,9 @@ static bool ld_mac_dlerror_is_set;
 static void* ld_mac_dlopen(const char* filename, int flag) {
   LOG << "ld_mac_dlopen: " << filename << " " << flag << endl;
 
+  Timer timer;
+  timer.start();
+
   // TODO(hamaji): Handle failures.
   auto_ptr<MachO> dylib_mach(MachO::read(filename, ARCH_NAME));
 
@@ -799,6 +818,9 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
   CHECK(loader);
   map<string, MachO::Export>* exports = new map<string, MachO::Export>;
   loader->load(*dylib_mach, exports);
+
+  timer.print(filename);
+
   loader->runInitFuncs(-1, NULL, NULL, NULL);
   return exports;
 }
@@ -847,9 +869,7 @@ void initDlfcn() {
 }
 
 int main(int argc, char* argv[], char* envp[]) {
-  if (FLAGS_PRINT_TIME) {
-    g_start_time = clock();
-  }
+  g_timer.start();
   initSignalHandler();
   initRename();
   initNoTrampoline();
