@@ -37,6 +37,12 @@ done
 MAC_TOOL_DIR=/usr/i686-apple-darwin10
 MAC_BIN_DIR=$MAC_TOOL_DIR/usr/bin
 
+apple() {
+  gcc="$1"
+  shift
+  PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/$gcc --sysroot=$MAC_TOOL_DIR "$@"
+}
+
 echo "Running gcc -c mach/hello.c"
 ./ld-mac $MAC_BIN_DIR/gcc -c mach/hello.c
 echo "Running gcc mach/hello.c"
@@ -49,21 +55,21 @@ echo "Running clang -c mach/hello.c"
 
 echo "Running dylib tests"
 
-PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g -dynamiclib mach/dylib/lib.c -o mach/dylib/lib.dylib
-PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
+apple gcc -g -dynamiclib mach/dylib/lib.c -o mach/dylib/lib.dylib
+apple gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
 
 echo "Running mach/dylib/main"
 mach/dylib/main
 
 echo "Running dylib tests"
 
-PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g -dynamiclib mach/dylib/lib.c -o mach/dylib/lib.dylib
-PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
+apple gcc -g -dynamiclib mach/dylib/lib.c -o mach/dylib/lib.dylib
+apple gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
 
 echo "Running mach/dylib/main"
 mach/dylib/main
 
-PATH=$MAC_BIN_DIR ./ld-mac $MAC_BIN_DIR/gcc --sysroot=$MAC_TOOL_DIR -g mach/dylib/dlfcn.c -o mach/dylib/dlfcn
+apple gcc --sysroot=$MAC_TOOL_DIR -g mach/dylib/dlfcn.c -o mach/dylib/dlfcn
 
 echo "Running mach/dylib/dlfcn"
 mach/dylib/dlfcn
