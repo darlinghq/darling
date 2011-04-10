@@ -68,15 +68,10 @@ struct sym64 {
 static uint64_t uleb128(const uint8_t*& p) {
   uint64_t r = 0;
   int s = 0;
-  for (;;) {
-    uint8_t b = *p++;
-    if (b < 0x80) {
-      r += b << s;
-      break;
-    }
-    r += (b & 0x7f) << s;
+  do {
+    r |= (uint64_t)(*p & 0x7f) << s;
     s += 7;
-  }
+  } while (*p++ >= 0x80);
   return r;
 }
 
@@ -90,11 +85,11 @@ static int64_t sleb128(const uint8_t*& p) {
         r -= (0x80 - b) << s;
       }
       else {
-        r += (b & 0x3f) << s;
+        r |= (b & 0x3f) << s;
       }
       break;
     }
-    r += (b & 0x7f) << s;
+    r |= (b & 0x7f) << s;
     s += 7;
   }
   return r;
