@@ -48,6 +48,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <tr1/unordered_map>
 #include <vector>
 
 #include "env_flags.h"
@@ -56,6 +57,7 @@
 #include "mach-o.h"
 
 using namespace std;
+using namespace std::tr1;
 
 DEFINE_bool(TRACE_FUNCTIONS, false, "Show calling functions");
 DEFINE_bool(PRINT_TIME, false, "Print time spent in this loader");
@@ -217,7 +219,7 @@ static void dumpInt(int bound_name_id) {
   fflush(stdout);
 }
 
-typedef map<string, MachO::Export> Exports;
+typedef unordered_map<string, MachO::Export> Exports;
 
 template <bool is64>
 struct BitsHelpers {
