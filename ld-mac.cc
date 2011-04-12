@@ -439,11 +439,19 @@ class MachOLoader {
   }
 
   void doBind(const MachO& mach, intptr slide) {
+    const char* last_weak_name = "";
+    char* last_weak_sym = NULL;
+    vector<pair<string, char*> >::iterator
+        seen_weak_bind_iter = seen_weak_binds_.begin(),
+        seen_weak_bind_end = seen_weak_binds_.end();
+    size_t seen_weak_binds_orig_size = seen_weak_binds_.size();
+
     unsigned int common_code_size = (unsigned int)trampoline_.size();
     // Ensure that we won't change the address.
     trampoline_.reserve(common_code_size +
                         (1 + 6 + 5 + 10 + 3 + 2 + 1) * mach.binds().size());
     g_bound_names.resize(mach.binds().size());
+
     for (size_t i = 0; i < mach.binds().size(); i++) {
       MachO::Bind* bind = mach.binds()[i];
       if (bind->name[0] != '_') {
@@ -457,12 +465,24 @@ class MachOLoader {
         char* sym = NULL;
 
         if (bind->is_weak) {
-          pair<map<string, char*>::const_iterator, bool> p =
-              seen_weak_binds_.insert(make_pair(name, (char*)*ptr));
-          if (p.second) {
-            continue;
+          if (!strcmp(last_weak_name, name)) {
+            sym = last_weak_sym;
+          } else {
+            last_weak_name = name;
+            if (seen_weak_bind_iter != seen_weak_bind_end &&
+                !strcmp(seen_weak_bind_iter->first.c_str(), name)) {
+              last_weak_sym = sym = seen_weak_bind_iter->second;
+              seen_weak_bind_iter++;
+            } else {
+              last_weak_sym = (char*)*ptr;
+              seen_weak_binds_.push_back(make_pair(name, last_weak_sym));
+              while (seen_weak_bind_iter != seen_weak_bind_end &&
+                     strcmp(seen_weak_bind_iter->first.c_str(), name) <= 0) {
+                seen_weak_bind_iter++;
+              }
+              continue;
+            }
           }
-          sym = p.first->second;
         } else {
           map<string, string>::const_iterator found =
               g_rename.find(name);
@@ -526,6 +546,10 @@ class MachOLoader {
         abort();
       }
     }
+
+    inplace_merge(seen_weak_binds_.begin(),
+                  seen_weak_binds_.begin() + seen_weak_binds_orig_size,
+                  seen_weak_binds_.end());
   }
 
   void loadExports(const MachO& mach, intptr base,
@@ -651,7 +675,7 @@ class MachOLoader {
   intptr last_addr_;
   vector<uint64_t> init_funcs_;
   map<string, MachO::Export> exports_;
-  map<string, char*> seen_weak_binds_;
+  vector<pair<string, char*> > seen_weak_binds_;
 };
 
 template <>
