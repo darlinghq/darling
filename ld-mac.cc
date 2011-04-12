@@ -217,6 +217,8 @@ static void dumpInt(int bound_name_id) {
   fflush(stdout);
 }
 
+typedef map<string, MachO::Export> Exports;
+
 template <bool is64>
 struct BitsHelpers {
   typedef uint64_t intptr;
@@ -492,7 +494,7 @@ class MachOLoader {
             name = found->second.c_str();
           }
 
-          const map<string, MachO::Export>::const_iterator export_found =
+          const Exports::const_iterator export_found =
               exports_.find(bind->name);
           if (export_found != exports_.end()) {
             sym = (char*)export_found->second.addr;
@@ -552,8 +554,7 @@ class MachOLoader {
                   seen_weak_binds_.end());
   }
 
-  void loadExports(const MachO& mach, intptr base,
-                   map<string, MachO::Export>* exports) {
+  void loadExports(const MachO& mach, intptr base, Exports* exports) {
     for (size_t i = 0; i < mach.exports().size(); i++) {
       MachO::Export exp = mach.exports()[i];
       exp.addr += base;
@@ -568,7 +569,7 @@ class MachOLoader {
     g_file_map.add(mach, slide, base);
   }
 
-  void load(const MachO& mach, map<string, MachO::Export>* exports = NULL) {
+  void load(const MachO& mach, Exports* exports = NULL) {
     if (!exports) {
       exports = &exports_;
     }
@@ -674,7 +675,7 @@ class MachOLoader {
   string trampoline_;
   intptr last_addr_;
   vector<uint64_t> init_funcs_;
-  map<string, MachO::Export> exports_;
+  Exports exports_;
   vector<pair<string, char*> > seen_weak_binds_;
 };
 
@@ -840,7 +841,7 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
   // TODO(hamaji): Consider 32bit.
   MachOLoader<true>* loader = (MachOLoader<true>*)g_loader;
   CHECK(loader);
-  map<string, MachO::Export>* exports = new map<string, MachO::Export>;
+  Exports* exports = new Exports();
   loader->load(*dylib_mach, exports);
 
   timer.print(filename);
@@ -852,7 +853,7 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
 static int ld_mac_dlclose(void* handle) {
   LOG << "ld_mac_dlclose" << endl;
 
-  delete (map<string, MachO::Export>*)handle;
+  delete (Exports*)handle;
   return 0;
 }
 
@@ -868,9 +869,8 @@ static const char* ld_mac_dlerror(void) {
 static void* ld_mac_dlsym(void* handle, const char* symbol) {
   LOG << "ld_mac_dlsym: " << symbol << endl;
 
-  map<string, MachO::Export>* exports = (map<string, MachO::Export>*)handle;
-  map<string, MachO::Export>::const_iterator found = exports->find(
-      string("_") + symbol);
+  Exports* exports = (Exports*)handle;
+  Exports::const_iterator found = exports->find(string("_") + symbol);
   if (found == exports->end()) {
     ld_mac_dlerror_is_set = true;
     ld_mac_dlerror_buf = string("undefined symbol: ") + symbol;
