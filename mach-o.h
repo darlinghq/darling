@@ -86,7 +86,7 @@ class MachO {
 
   const vector<Bind*>& binds() const { return binds_; }
 
-  const vector<Export>& exports() const { return exports_; }
+  const vector<Export*>& exports() const { return exports_; }
 
   const vector<Symbol>& symbols() const { return symbols_; }
 
@@ -110,7 +110,7 @@ class MachO {
   vector<const char*> dylibs_;
   vector<Rebase*> rebases_;
   vector<Bind*> binds_;
-  vector<Export> exports_;
+  vector<Export*> exports_;
   vector<Symbol> symbols_;
   const char* base_;
   uint64_t entry_;

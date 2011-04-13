@@ -386,12 +386,12 @@ void MachOImpl::readExport(const uint8_t* start,
 
   if (uint8_t term_size = *p++) {
     const uint8_t* expected_term_end = p + term_size;
-    Export exp;
-    exp.name = *name_buf;
-    exp.flag = uleb128(p);
-    exp.addr = uleb128(p);
+    Export* exp = new Export;
+    exp->name = *name_buf;
+    exp->flag = uleb128(p);
+    exp->addr = uleb128(p);
     LOGF("export: %s %lu %p\n",
-         name_buf->c_str(), (long)exp.flag, (void*)exp.addr);
+         name_buf->c_str(), (long)exp->flag, (void*)exp->addr);
 
     exports_.push_back(exp);
 
@@ -733,6 +733,10 @@ void MachOImpl::close() {
     delete rebases_[i];
   }
   rebases_.clear();
+  for (size_t i = 0; i < exports_.size(); i++) {
+    delete exports_[i];
+  }
+  exports_.clear();
 
   if (mapped_) {
     munmap(mapped_, mapped_size_);

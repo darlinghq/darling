@@ -559,7 +559,7 @@ class MachOLoader {
   void loadExports(const MachO& mach, intptr base, Exports* exports) {
     exports->rehash(exports->size() + mach.exports().size());
     for (size_t i = 0; i < mach.exports().size(); i++) {
-      MachO::Export exp = mach.exports()[i];
+      MachO::Export exp = *mach.exports()[i];
       exp.addr += base;
       // TODO(hamaji): Not 100% sure, but we may need to consider weak symbols.
       if (!exports->insert(make_pair(exp.name, exp)).second) {
