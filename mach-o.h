@@ -68,6 +68,7 @@ class MachO {
                      bool need_exports = true);
 
   virtual ~MachO() {}
+  virtual void close() = 0;
 
   const string& filename() const { return filename_; }
 

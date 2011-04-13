@@ -615,7 +615,7 @@ class MachOLoader {
     init_funcs_.clear();
   }
 
-  void run(const MachO& mach, int argc, char** argv, char** envp) {
+  void run(MachO& mach, int argc, char** argv, char** envp) {
     // I don't understand what it is.
     char* apple[2];
     apple[0] = argv[0];
@@ -635,6 +635,8 @@ class MachOLoader {
              PROT_READ | PROT_WRITE | PROT_EXEC);
 
     g_timer.print(mach.filename().c_str());
+
+    mach.close();
 
     runInitFuncs(argc, argv, envp, apple);
 
@@ -708,7 +710,7 @@ void MachOLoader<false>::boot(
 }
 
 template <bool is64>
-void runMachO(const MachO& mach, int argc, char** argv, char** envp) {
+void runMachO(MachO& mach, int argc, char** argv, char** envp) {
   MachOLoader<is64> loader;
   g_loader = &loader;
   loader.run(mach, argc, argv, envp);

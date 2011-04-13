@@ -102,6 +102,7 @@ class MachOImpl : public MachO {
   MachOImpl(const char* filename, int fd, size_t offset, size_t len,
             bool need_exports);
   virtual ~MachOImpl();
+  virtual void close();
 
  private:
   class RebaseState;
@@ -136,6 +137,8 @@ class MachOImpl : public MachO {
     }
   }
 
+  char* mapped_;
+  size_t mapped_size_;
   bool need_exports_;
 };
 
@@ -412,7 +415,8 @@ void MachOImpl::readExport(const uint8_t* start,
 }
 
 MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
-                     bool need_exports) {
+                     bool need_exports)
+  : mapped_(NULL), mapped_size_(len) {
   filename_ = filename;
   need_exports_ = need_exports;
   dyld_data_ = 0;
@@ -420,13 +424,13 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
   fd_ = fd;
   offset_ = offset;
 
-  if (!len) {
-    len = lseek(fd_, 0, SEEK_END);
+  if (!mapped_size_) {
+    mapped_size_ = lseek(fd_, 0, SEEK_END);
   }
   lseek(fd, 0, SEEK_SET);
 
-  char* bin = reinterpret_cast<char*>(
-    mmap(NULL, len,
+  char* bin = mapped_ = reinterpret_cast<char*>(
+    mmap(NULL, mapped_size_,
          PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, fd_, offset));
   base_ = bin;
 
@@ -706,7 +710,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
     cmds_ptr += reinterpret_cast<uint32_t*>(cmds_ptr)[1];
   }
 
-  LOGF("%p vs %p\n", cmds_ptr, bin + len);
+  LOGF("%p vs %p\n", cmds_ptr, bin + mapped_size_);
 
   // No LC_DYLD_INFO_ONLY, we will read classic binding info.
   if (!dyinfo && dysyms && symtab && symstrtab) {
@@ -717,11 +721,25 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
 }
 
 MachOImpl::~MachOImpl() {
+  close();
+}
+
+void MachOImpl::close() {
   for (size_t i = 0; i < binds_.size(); i++) {
     delete binds_[i];
   }
-  // need munmap
-  close(fd_);
+  binds_.clear();
+  for (size_t i = 0; i < rebases_.size(); i++) {
+    delete rebases_[i];
+  }
+  rebases_.clear();
+
+  if (mapped_) {
+    munmap(mapped_, mapped_size_);
+    ::close(fd_);
+    mapped_ = NULL;
+    fd_ = -1;
+  }
 }
 
 MachO* MachO::read(const char* path, const char* arch, bool need_exports) {
