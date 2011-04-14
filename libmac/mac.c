@@ -733,9 +733,12 @@ int __darwin_posix_spawn(pid_t* pid,
                          char* argv[],
                          char* const envp[]) {
   char** new_argv = add_loader_to_argv(argv);
+  const posix_spawn_file_actions_t* fa = NULL;
+  if (file_actions)
+    fa = *file_actions;
   int r = posix_spawn(pid,
                       __loader_path,
-                      *file_actions,
+                      fa,
                       attrp,
                       new_argv,
                       envp);
