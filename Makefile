@@ -1,4 +1,4 @@
-VERSION=0.1
+VERSION=0.2
 
 GCC_EXTRA_FLAGS=
 GCCFLAGS=-g -Iinclude -Wall -MMD -fno-omit-frame-pointer -O $(GCC_EXTRA_FLAGS)
