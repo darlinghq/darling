@@ -39,8 +39,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -1045,6 +1046,30 @@ char* __darwin_dlerror(void) {
 
 void* __darwin_dlsym(void* handle, const char* symbol) {
   return ld_mac_dlsym(handle, symbol);
+}
+
+#define __DARWIN_SYS_NAMELEN 256
+typedef struct {
+  char sysname[__DARWIN_SYS_NAMELEN];
+  char nodename[__DARWIN_SYS_NAMELEN];
+  char release[__DARWIN_SYS_NAMELEN];
+  char version[__DARWIN_SYS_NAMELEN];
+  char machine[__DARWIN_SYS_NAMELEN];
+} __darwin_utsname;
+
+int __darwin_uname(__darwin_utsname* buf) {
+  struct utsname linux_buf;
+  int r = uname(&linux_buf);
+  if (r)
+    return r;
+
+  // TODO(hamaji): Emulate Snow leopard
+  strcpy(buf->sysname, "Darwin");
+  strcpy(buf->nodename, linux_buf.nodename);
+  strcpy(buf->release, "10.6.0");
+  strcpy(buf->version, "Darwin Kernel Version 10.6.0: Wed Nov 10 18:13:17 PST 2010; root:xnu-1504.9.26~3/RELEASE_I386");
+  strcpy(buf->machine, "i386");
+  return 0;
 }
 
 __attribute__((constructor)) void initMac() {

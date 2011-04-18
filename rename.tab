@@ -138,3 +138,5 @@ WRAP(dlsym)
 
 RENAME(_ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode,
        _ZNSt12__basic_fileIcE8sys_openEP8_IO_FILESt13_Ios_Openmode)
+
+WRAP(uname)
