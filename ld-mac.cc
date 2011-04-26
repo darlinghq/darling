@@ -65,7 +65,7 @@ DEFINE_bool(PRINT_TIME, false, "Print time spent in this loader");
 class MachO;
 
 static map<string, string> g_rename;
-static vector<const char*> g_bound_names;
+static vector<string> g_bound_names;
 static set<string> g_no_trampoline;
 
 struct Timer {
@@ -211,11 +211,12 @@ static void dumpInt(int bound_name_id) {
     fprintf(stderr, "%d: bound function id overflow\n", bound_name_id);
     return;
   }
-  if (!g_bound_names[bound_name_id]) {
+  if (g_bound_names[bound_name_id].empty()) {
     fprintf(stderr, "%d: unbound function id\n", bound_name_id);
     return;
   }
-  printf("calling %s(%d)\n", g_bound_names[bound_name_id], bound_name_id);
+  printf("calling %s(%d)\n",
+         g_bound_names[bound_name_id].c_str(), bound_name_id);
   fflush(stdout);
 }
 
