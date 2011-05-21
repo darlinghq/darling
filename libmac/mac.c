@@ -303,6 +303,7 @@ void *__darwin_mmap(void *addr, size_t length, int prot, int flags,
 
 #define HW_NCPU 3
 #define HW_PHYSMEM 5
+#define HW_USERMEM 6
 #define HW_AVAILCPU 25
 
 #define KERN_OSRELEASE 2
@@ -343,12 +344,13 @@ int __darwin_sysctl(int* name, u_int namelen,
           break;
 
         case HW_PHYSMEM:
+        case HW_USERMEM:
           val = 2147483648;
           break;
 
         default:
-          fprintf(stderr, "sysctl(HW) with oldp=%u isn't supported yet.\n",
-                  *oldp);
+          fprintf(stderr, "sysctl(HW) with name[1]=%d isn't supported yet.\n",
+                  name[1]);
           abort();
       }
 
