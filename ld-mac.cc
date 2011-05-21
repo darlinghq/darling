@@ -250,6 +250,14 @@ class MachOLoader {
  public:
   MachOLoader()
     : last_addr_(0) {
+    dylib_to_so_.insert(make_pair(
+                          "/System/Library/Frameworks/CoreFoundation.framework"
+                          "/Versions/A/CoreFoundation",
+                          "libCoreFoundation.so"));
+    dylib_to_so_.insert(make_pair(
+                          "/usr/lib/libncurses.5.4.dylib",
+                          "libncurses.so"));
+
     if (FLAGS_TRACE_FUNCTIONS) {
       // Push all arguments into stack.
 
@@ -418,6 +426,19 @@ class MachOLoader {
   void loadDylibs(const MachO& mach) {
     for (size_t i = 0; i < mach.dylibs().size(); i++) {
       string dylib = mach.dylibs()[i];
+
+      if (!loaded_dylibs_.insert(dylib).second)
+        continue;
+
+      const string so = dylib_to_so_[dylib];
+      if (!so.empty()) {
+        LOG << "Loading " << so << " for " << dylib << endl;
+        if (!dlopen(so.c_str(), RTLD_LAZY | RTLD_GLOBAL)) {
+          fprintf(stderr, "Couldn't load %s for %s\n",
+                  so.c_str(), dylib.c_str());
+        }
+      }
+
       // For now, we assume a dylib is a system library if its path
       // starts with /
       // TODO(hamaji): Do something?
@@ -683,6 +704,8 @@ class MachOLoader {
   vector<uint64_t> init_funcs_;
   Exports exports_;
   vector<pair<string, char*> > seen_weak_binds_;
+  map<string, string> dylib_to_so_;
+  set<string> loaded_dylibs_;
 };
 
 template <>
@@ -782,11 +805,11 @@ static void initSignalHandler() {
 }
 
 static bool loadLibMac(const char* mypath) {
-  if (dlopen("libmac.so", RTLD_NOW | RTLD_GLOBAL)) {
+  if (dlopen("libmac.so", RTLD_LAZY | RTLD_GLOBAL)) {
     return true;
   }
 
-  if (dlopen("libmac/libmac.so", RTLD_NOW | RTLD_GLOBAL)) {
+  if (dlopen("libmac/libmac.so", RTLD_LAZY | RTLD_GLOBAL)) {
     return true;
   }
 

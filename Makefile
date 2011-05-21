@@ -67,7 +67,7 @@ ld-mac: ld-mac.o mach-o.o fat.o log.o
 
 # TODO(hamaji): autotoolize?
 libmac/libmac.so: libmac/mac.o
-	$(CC) -shared $^ -o $@ -luuid -lcrypto -lCoreFoundation || (echo "*** libCoreFoundation not found ***"; gcc -shared $^ -o $@ -luuid -lcrypto)
+	$(CC) -shared $^ -o $@ -luuid -lcrypto
 
 dist:
 	cd /tmp && rm -fr maloader-$(VERSION) && git clone git@github.com:shinh/maloader.git && rm -fr maloader/.git && mv maloader maloader-$(VERSION) && tar -cvzf maloader-$(VERSION).tar.gz maloader-$(VERSION)
