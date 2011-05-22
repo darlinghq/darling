@@ -110,12 +110,17 @@ class MachOImpl : public MachO {
   class BindState;
   friend class MachOImpl::BindState;
 
+  template <class segment_command, class section>
+  void readSegment(char* cmds_ptr,
+                   vector<segment_command*>* segments,
+                   vector<section*>* bind_sections);
   void readRebase(const uint8_t* p, const uint8_t* end);
   void readBind(const uint8_t* p, const uint8_t* end, bool is_weak);
   void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end,
                   string* name_buf);
 
-  void readClassicBind(const section_64& sec,
+  template <class section>
+  void readClassicBind(const section& sec,
                        uint32_t* dysyms,
                        uint32_t* symtab,
                        const char* symstrtab) {
@@ -141,6 +146,62 @@ class MachOImpl : public MachO {
   size_t mapped_size_;
   bool need_exports_;
 };
+
+template <class segment_command, class section>
+void MachOImpl::readSegment(char* cmds_ptr,
+                            vector<segment_command*>* segments,
+                            vector<section*>* bind_sections) {
+  segment_command* segment =
+    reinterpret_cast<segment_command*>(cmds_ptr);
+  segments->push_back(segment);
+
+  LOGF("segment %s: vmaddr=%p vmsize=%llu "
+       "fileoff=%llu filesize=%llu "
+       "maxprot=%d initprot=%d nsects=%u flags=%u\n",
+       segment->segname,
+       (void*)segment->vmaddr, (ull)segment->vmsize,
+       (ull)segment->fileoff, (ull)segment->filesize,
+       segment->maxprot, segment->initprot,
+       segment->nsects, segment->flags);
+
+  section* sections = reinterpret_cast<section*>(
+      cmds_ptr + sizeof(segment_command));
+  for (uint32_t j = 0; j < segment->nsects; j++) {
+    const section& sec = sections[j];
+    LOGF("section %s in %s: "
+         "addr=%p size=%llu offset=%u align=%u "
+         "reloff=%u nreloc=%u flags=%u "
+         "reserved1=%u reserved2=%u\n",
+         sec.sectname, sec.segname,
+         (void*)sec.addr, (ull)sec.size,
+         sec.offset, sec.align,
+         sec.reloff, sec.nreloc, sec.flags,
+         sec.reserved1, sec.reserved2);
+
+    if (!strcmp(sec.sectname, "__dyld") &&
+        !strcmp(sec.segname, "__DATA")) {
+      dyld_data_ = sec.addr;
+    }
+
+    int section_type = sec.flags & SECTION_TYPE;
+    switch (section_type) {
+    case S_MOD_INIT_FUNC_POINTERS: {
+      for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += ptrsize_) {
+        init_funcs_.push_back(p);
+      }
+      break;
+    }
+    case S_NON_LAZY_SYMBOL_POINTERS:
+    case S_LAZY_SYMBOL_POINTERS: {
+      bind_sections->push_back(sections + j);
+      break;
+    }
+    default:
+      // TODO(hamaji): Support term_funcs.
+      ;
+    }
+  }
+}
 
 struct MachOImpl::RebaseState {
   explicit RebaseState(MachOImpl* mach0)
@@ -463,7 +524,8 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
   uint32_t* dysyms = NULL;
   const char* symstrtab = NULL;
   dyld_info_command* dyinfo = NULL;
-  vector<section_64*> bind_sections;
+  vector<section_64*> bind_sections_64;
+  vector<section*> bind_sections_32;
 
   for (uint32_t i = 0; i < header->ncmds; i++) {
     uint32_t cmd = *reinterpret_cast<uint32_t*>(cmds_ptr);
@@ -471,57 +533,14 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
 
     switch (cmd) {
     case LC_SEGMENT_64: {
-      segment_command_64* segment =
-        reinterpret_cast<segment_command_64*>(cmds_ptr);
-      segments64_.push_back(segment);
+      readSegment<segment_command_64, section_64>(
+          cmds_ptr, &segments64_, &bind_sections_64);
+      break;
+    }
 
-      LOGF("segment %s: vmaddr=%p vmsize=%llu "
-           "fileoff=%llu filesize=%llu "
-           "maxprot=%d initprot=%d nsects=%u flags=%u\n",
-           segment->segname,
-           (void*)segment->vmaddr, (ull)segment->vmsize,
-           (ull)segment->fileoff, (ull)segment->filesize,
-           segment->maxprot, segment->initprot,
-           segment->nsects, segment->flags);
-
-      section_64* sections = reinterpret_cast<section_64*>(
-        cmds_ptr + sizeof(segment_command_64));
-      for (uint32_t j = 0; j < segment->nsects; j++) {
-        const section_64& sec = sections[j];
-        LOGF("section %s in %s: "
-             "addr=%p size=%llu offset=%u align=%u "
-             "reloff=%u nreloc=%u flags=%u "
-             "reserved1=%u reserved2=%u reserved3=%u\n",
-             sec.sectname, sec.segname,
-             (void*)sec.addr, (ull)sec.size,
-             sec.offset, sec.align,
-             sec.reloff, sec.nreloc, sec.flags,
-             sec.reserved1, sec.reserved2, sec.reserved3);
-
-        if (!strcmp(sec.sectname, "__dyld") &&
-            !strcmp(sec.segname, "__DATA")) {
-          dyld_data_ = sec.addr;
-        }
-
-        int section_type = sec.flags & SECTION_TYPE;
-        switch (section_type) {
-        case S_MOD_INIT_FUNC_POINTERS: {
-          for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += ptrsize_) {
-            init_funcs_.push_back(p);
-          }
-          break;
-        }
-        case S_NON_LAZY_SYMBOL_POINTERS:
-        case S_LAZY_SYMBOL_POINTERS: {
-          bind_sections.push_back(sections + j);
-          break;
-        }
-        default:
-          // TODO(hamaji): Support term_funcs.
-          ;
-        }
-      }
-
+    case LC_SEGMENT: {
+      readSegment<segment_command, section>(
+          cmds_ptr, &segments_, &bind_sections_32);
       break;
     }
 
@@ -714,8 +733,13 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
 
   // No LC_DYLD_INFO_ONLY, we will read classic binding info.
   if (!dyinfo && dysyms && symtab && symstrtab) {
-    for (size_t i = 0; i < bind_sections.size(); i++) {
-      readClassicBind(*bind_sections[i], dysyms, symtab, symstrtab);
+    for (size_t i = 0; i < bind_sections_64.size(); i++) {
+      readClassicBind<section_64>(
+          *bind_sections_64[i], dysyms, symtab, symstrtab);
+    }
+    for (size_t i = 0; i < bind_sections_32.size(); i++) {
+      readClassicBind<section>(
+          *bind_sections_32[i], dysyms, symtab, symstrtab);
     }
   }
 }
