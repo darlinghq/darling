@@ -258,6 +258,20 @@ class MachOLoader {
                           "/usr/lib/libncurses.5.4.dylib",
                           "libncurses.so"));
 
+    symbol_to_so_.insert(make_pair("uuid_clear", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_compare", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_copy", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_generate", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_generate_random", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_generate_time", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_is_null", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_pack", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_parse", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_unpack", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_unparse", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_unparse_lower", "libuuid.so"));
+    symbol_to_so_.insert(make_pair("uuid_unparse_upper", "libuuid.so"));
+
     if (FLAGS_TRACE_FUNCTIONS) {
       // Push all arguments into stack.
 
@@ -525,6 +539,18 @@ class MachOLoader {
           }
           if (!sym) {
             sym = (char*)dlsym(RTLD_DEFAULT, name);
+            if (!sym) {
+              map<string, string>::const_iterator iter =
+                symbol_to_so_.find(name);
+              if (iter != symbol_to_so_.end()) {
+                if (dlopen(iter->second.c_str(), RTLD_LAZY | RTLD_GLOBAL)) {
+                  sym = (char*)dlsym(RTLD_DEFAULT, name);
+                } else {
+                  fprintf(stderr, "Couldn't load %s for %s\n",
+                          iter->second.c_str(), name);
+                }
+              }
+            }
           }
           if (!sym) {
             ERR << name << ": undefined symbol" << endl;
@@ -705,6 +731,7 @@ class MachOLoader {
   Exports exports_;
   vector<pair<string, char*> > seen_weak_binds_;
   map<string, string> dylib_to_so_;
+  map<string, string> symbol_to_so_;
   set<string> loaded_dylibs_;
 };
 
