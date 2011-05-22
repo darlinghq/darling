@@ -140,7 +140,7 @@ class FileMap {
         symbol_map.symbols.lower_bound(addr);
     if (found == symbol_map.symbols.begin()) {
       snprintf(dumped_stack_frame_buf_, 4095, "%s [%p(%lx)]",
-               symbol_map.filename.c_str(), (void*)addr, file_offset);
+               symbol_map.filename.c_str(), (void*)addr, (long)file_offset);
       return dumped_stack_frame_buf_;
     }
 
@@ -148,8 +148,8 @@ class FileMap {
     const char* name = found->second.c_str();
     uintptr_t func_offset = addr - found->first;
     snprintf(dumped_stack_frame_buf_, 4095, "%s(%s+%lx) [%p(%lx)]",
-             symbol_map.filename.c_str(), name, func_offset,
-             (void*)addr, file_offset);
+             symbol_map.filename.c_str(), name, (long)func_offset,
+             (void*)addr, (long)file_offset);
     return dumped_stack_frame_buf_;
   }
 
@@ -743,6 +743,7 @@ class MachOLoader {
 template <>
 void MachOLoader<true>::boot(
     uint64_t entry, int argc, char** argv, char** envp) {
+#ifdef __x86_64__
   __asm__ volatile(" mov %1, %%eax;\n"
                    " mov %2, %%rdx;\n"
                    " push $0;\n"
@@ -757,6 +758,11 @@ void MachOLoader<true>::boot(
                    ::"r"(entry), "r"(argc), "r"(argv + argc), "r"(envp)
                    :"%rax", "%rdx");
   //fprintf(stderr, "done!\n");
+#else
+  __asm__ volatile(""
+                   ::"r"(entry), "r"(argc), "r"(argv), "r"(envp));
+  abort();
+#endif
 }
 
 template <>
@@ -800,7 +806,13 @@ extern "C" {
 /* signal handler for fatal errors */
 static void handleSignal(int signum, siginfo_t* siginfo, void* vuc) {
   ucontext_t *uc = (ucontext_t*)vuc;
-  void* pc = (void*)uc->uc_mcontext.gregs[REG_RIP];
+  void* pc = (void*)uc->uc_mcontext.gregs[
+#ifdef __x86_64__
+    REG_RIP
+#else
+    REG_EIP
+#endif
+    ];
 
   fprintf(stderr, "%s(%d) %d (@%p) PC: %p\n\n",
           strsignal(signum), signum, siginfo->si_code, siginfo->si_addr, pc);

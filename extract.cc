@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
     exit(1);
   }
 
-  printf("%lu archs:\n", archs.size());
+  printf("%lu archs:\n", (unsigned long)archs.size());
   for (map<string, fat_arch>::const_iterator iter = archs.begin();
        iter != archs.end();
        ++iter) {

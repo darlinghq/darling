@@ -130,7 +130,7 @@ int __darwin_stat(const char* path, struct __darwin_stat64* mac) {
 
 int __darwin_fstat(int fd, struct __darwin_stat64* mac) {
   LOGF("fstat: fd=%d buf=%p\n", fd, mac);
-  LOGF("fstat: size_offset=%ld\n", (char*)&mac->st_size - (char*)mac);
+  LOGF("fstat: size_offset=%d\n", (int)((char*)&mac->st_size - (char*)mac));
   struct stat64 linux_buf;
   int ret = fstat64(fd, &linux_buf);
   __translate_stat(&linux_buf, mac);
@@ -281,7 +281,7 @@ int vm_deallocate() {
 void *__darwin_mmap(void *addr, size_t length, int prot, int flags,
                     int fd, off_t offset) {
   LOGF("mmap: addr=%p length=%lu prot=%d flags=%d fd=%d offset=%lu\n",
-       addr, length, prot, flags, fd, offset);
+       addr, (unsigned long)length, prot, flags, fd, offset);
 
   // MAP_ANON is 0x1000 on darwin but 0x20 on linux.
   //
@@ -332,7 +332,8 @@ int __darwin_sysctl(int* name, u_int namelen,
     case CTL_HW: {
       if (*oldlenp != sizeof(unsigned int)) {
         fprintf(stderr,
-                "sysctl(HW) with oldlenp=%lu isn't supported yet.\n", *oldlenp);
+                "sysctl(HW) with oldlenp=%lu isn't supported yet.\n",
+                (unsigned long)*oldlenp);
         abort();
       }
 
@@ -345,7 +346,7 @@ int __darwin_sysctl(int* name, u_int namelen,
 
         case HW_PHYSMEM:
         case HW_USERMEM:
-          val = 2147483648;
+          val = 2147483648U;
           break;
 
         default:

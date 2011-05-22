@@ -765,7 +765,8 @@ MachO* MachO::read(const char* path, const char* arch, bool need_exports) {
     }
     offset = found->second.offset;
     len = found->second.size;
-    LOGF("fat offset=%lu, len=%lu\n", offset, len);
+    LOGF("fat offset=%lu, len=%lu\n",
+         (unsigned long)offset, (unsigned long)len);
   }
 
   return new MachOImpl(path, fd, offset, len, need_exports);
