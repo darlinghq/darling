@@ -34,18 +34,23 @@
 #   % ./binfmt_misc.sh
 #   % ./binfmt_misc.sh stop
 
-ld_mac_dir=$(cd $(dirname $0); pwd)
-
 cmd=$1
 if [ "x$cmd" = "x" ]; then
     cmd=start
 fi
 
+if [ "x$2" = "x" ]; then
+    ld_mac_dir=$(cd $(dirname $0); pwd)
+    ld_mac=$ld_mac_dir/ld-mac
+else
+    ld_mac="$2"
+fi
+
 case $cmd in
     start)
         sudo sh -c "
-echo :Mach-O '64bit:M::\\xcf\\xfa\\xed\\xfe::$ld_mac_dir/ld-mac:' > /proc/sys/fs/binfmt_misc/register
-echo :Mach-O 'fat:M::\\xca\\xfe\\xba\\xbe::$ld_mac_dir/ld-mac:' > /proc/sys/fs/binfmt_misc/register
+echo :Mach-O '64bit:M::\\xcf\\xfa\\xed\\xfe::$ld_mac:' > /proc/sys/fs/binfmt_misc/register
+echo :Mach-O 'fat:M::\\xca\\xfe\\xba\\xbe::$ld_mac:' > /proc/sys/fs/binfmt_misc/register
 "
         echo "binfmt_misc for mach-o was registered"
     ;;
