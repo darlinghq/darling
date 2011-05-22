@@ -159,8 +159,13 @@ class FileMap {
 
 static FileMap g_file_map;
 
-// We only support x86-64 for now.
-static const char* ARCH_NAME = "x86-64";
+static const char* ARCH_NAME =
+#ifdef __x86_64__
+  "x86-64"
+#else
+  "i386"
+#endif
+  ;
 
 static char* g_darwin_executable_path;
 
