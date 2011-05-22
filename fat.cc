@@ -43,7 +43,7 @@ static void fixEndian(uint32_t* p, bool be) {
 static string getArchName(uint32_t a) {
   switch (a) {
   case CPU_TYPE_X86:
-    return "x86";
+    return "i386";
   case CPU_TYPE_X86_64:
     return "x86-64";
   case CPU_TYPE_POWERPC:
