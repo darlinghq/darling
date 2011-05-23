@@ -712,7 +712,11 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
         LOGF(" %d:%x", i, p[i]);
       }
       LOGF("\n");
-      entry_ = reinterpret_cast<uint64_t*>(cmds_ptr)[18];
+      if (is64_) {
+        entry_ = reinterpret_cast<uint64_t*>(cmds_ptr)[18];
+      } else {
+        entry_ = reinterpret_cast<uint32_t*>(cmds_ptr)[14];
+      }
       LOGF("entry=%llx\n", (ull)entry_);
       break;
     }
