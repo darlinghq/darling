@@ -143,3 +143,13 @@ WRAP(uname)
 
 // TODO(hamaji): Not sure if this is right...
 RENAME(select$1050, select)
+
+#define UNIX2003(sym) RENAME(sym ## $UNIX2003, __darwin_ ## sym)
+UNIX2003(fopen)
+UNIX2003(fputs)
+UNIX2003(freopen)
+UNIX2003(fwrite)
+UNIX2003(fdopen)
+UNIX2003(popen)
+UNIX2003(tempnam)
+#undef UNIX2003
