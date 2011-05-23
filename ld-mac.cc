@@ -768,8 +768,26 @@ void MachOLoader<true>::boot(
 template <>
 void MachOLoader<false>::boot(
     uint64_t entry, int argc, char** argv, char** envp) {
+#ifdef __x86_64__
   __asm__ volatile(""
                    ::"r"(entry), "r"(argc), "r"(argv), "r"(envp));
+  abort();
+#else
+  __asm__ volatile(" mov %1, %%eax;\n"
+                   " mov %2, %%edx;\n"
+                   " push $0;\n"
+                   ".loop64:\n"
+                   " sub $8, %%edx;\n"
+                   " push (%%edx);\n"
+                   " dec %%eax;\n"
+                   " jnz .loop64;\n"
+                   " mov %1, %%eax;\n"
+                   " push %%eax;\n"
+                   " jmp *%0;\n"
+                   // TODO(hamaji): Fix parameters
+                   ::"r"(entry), "r"(argc), "r"(argv), "g"(envp)
+                   :"%eax", "%edx");
+#endif
 }
 
 template <bool is64>
