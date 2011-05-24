@@ -112,6 +112,7 @@ WRAP(signal)
 WRAP(sigaction)
 WRAP(sigaltstack)
 
+#ifdef __x86_64__
 RENAME(__ashldi3, __ashlti3)
 RENAME(__ashrdi3, __ashrti3)
 RENAME(__cmpdi2, __cmpti2)
@@ -124,6 +125,7 @@ RENAME(__lshrdi3, __lshrti3)
 RENAME(__moddi3, __modti3)
 RENAME(__udivdi3, __udivti3)
 RENAME(__umoddi3, __umodti3)
+#endif
 
 // TODO(hamaji): *attr_gettype and *attr_getpshared
 WRAP(pthread_mutexattr_settype)
