@@ -227,31 +227,23 @@ static void dumpInt(int bound_name_id) {
 
 typedef unordered_map<string, MachO::Export> Exports;
 
-template <bool is64>
-struct BitsHelpers {
+class MachOLoader {
+#ifdef __x86_64__
   typedef uint64_t intptr;
-  typedef segment_command_64 mach_segment;
+  typedef segment_command_64 Segment;
 
-  static const vector<mach_segment*>& segments(const MachO& mach) {
+  static const vector<Segment*>& getSegments(const MachO& mach) {
     return mach.segments64();
   }
-};
-
-template <>
-struct BitsHelpers<false> {
+#else
   typedef uint32_t intptr;
-  typedef segment_command mach_segment;
+  typedef segment_command Segment;
 
-  static const vector<mach_segment*>& segments(const MachO& mach) {
+  static const vector<Segment*>& getSegments(const MachO& mach) {
     return mach.segments();
   }
-};
+#endif
 
-template <bool is64>
-class MachOLoader {
-  typedef BitsHelpers<is64> Helpers;
-  typedef typename Helpers::intptr intptr;
-  typedef typename Helpers::mach_segment Segment;
  public:
   MachOLoader()
     : last_addr_(0) {
@@ -351,7 +343,7 @@ class MachOLoader {
     *base = 0;
     --*base;
 
-    const vector<Segment*>& segments = Helpers::segments(mach);
+    const vector<Segment*>& segments = getSegments(mach);
     for (size_t i = 0; i < segments.size(); i++) {
       Segment* seg = segments[i];
       const char* name = seg->segname;
@@ -751,8 +743,7 @@ class MachOLoader {
   set<string> loaded_dylibs_;
 };
 
-template <>
-void MachOLoader<true>::boot(
+void MachOLoader::boot(
     uint64_t entry, int argc, char** argv, char** envp) {
 #ifdef __x86_64__
   __asm__ volatile(" mov %1, %%eax;\n"
@@ -769,20 +760,6 @@ void MachOLoader<true>::boot(
                    ::"r"(entry), "r"(argc), "r"(argv + argc), "r"(envp)
                    :"%rax", "%rdx");
   //fprintf(stderr, "done!\n");
-#else
-  __asm__ volatile(""
-                   ::"r"(entry), "r"(argc), "r"(argv), "r"(envp));
-  abort();
-#endif
-}
-
-template <>
-void MachOLoader<false>::boot(
-    uint64_t entry, int argc, char** argv, char** envp) {
-#ifdef __x86_64__
-  __asm__ volatile(""
-                   ::"r"(entry), "r"(argc), "r"(argv), "r"(envp));
-  abort();
 #else
   __asm__ volatile(" mov %1, %%eax;\n"
                    " mov %2, %%edx;\n"
@@ -801,9 +778,8 @@ void MachOLoader<false>::boot(
 #endif
 }
 
-template <bool is64>
 void runMachO(MachO& mach, int argc, char** argv, char** envp) {
-  MachOLoader<is64> loader;
+  MachOLoader loader;
   g_loader = &loader;
   loader.run(mach, argc, argv, envp);
   g_loader = NULL;
@@ -941,7 +917,7 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
   auto_ptr<MachO> dylib_mach(MachO::read(filename, ARCH_NAME));
 
   // TODO(hamaji): Consider 32bit.
-  MachOLoader<true>* loader = (MachOLoader<true>*)g_loader;
+  MachOLoader* loader = (MachOLoader*)g_loader;
   CHECK(loader);
   Exports* exports = new Exports();
   loader->load(*dylib_mach, exports);
@@ -1027,9 +1003,5 @@ int main(int argc, char* argv[], char* envp[]) {
   }
 
   auto_ptr<MachO> mach(MachO::read(argv[0], ARCH_NAME));
-  if (mach->is64()) {
-    runMachO<true>(*mach, argc, argv, envp);
-  } else {
-    runMachO<false>(*mach, argc, argv, envp);
-  }
+  runMachO(*mach, argc, argv, envp);
 }
