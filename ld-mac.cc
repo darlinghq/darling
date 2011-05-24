@@ -999,5 +999,16 @@ int main(int argc, char* argv[], char* envp[]) {
   }
 
   auto_ptr<MachO> mach(MachO::read(argv[0], ARCH_NAME));
+#ifdef __x86_64__
+  if (!mach->is64()) {
+    fprintf(stderr, "%s: not 64bit binary\n", argv[0]);
+    exit(1);
+  }
+#else
+  if (mach->is64()) {
+    fprintf(stderr, "%s: not 32bit binary\n", argv[0]);
+    exit(1);
+  }
+#endif
   runMachO(*mach, argc, argv, envp);
 }
