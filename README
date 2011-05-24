@@ -31,6 +31,21 @@ To remove the entries, run the following commands:
 
 % ./binfmt_misc.sh stop
 
+* How to try 32bit support
+
+% make clean all BITS=32
+
+If you see permission errors like
+
+ld-mac: ./mach/hello.c.bin mmap(file) failed: Operation not permitted
+
+you should run the following command to allow users to mmap files to
+addresses less than 0x10000.
+
+% sudo sh -c 'echo 4096 > /proc/sys/vm/mmap_min_addr'
+
+Or, running ld-mac as a super user would also work.
+
 * Which programs should work
 
 OK
@@ -64,7 +79,6 @@ not OK
 
 - Running all Mac binaries isn't my goal. Only command line tools such
   as compiler tool chain can be executed by this loader.
-- Currently, this only supports x86-64.
 - A slide about this: http://shinh.skr.jp/slide/ldmac/000.html
 
 * TODO
