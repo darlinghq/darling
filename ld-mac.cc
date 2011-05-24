@@ -858,10 +858,6 @@ static bool loadLibMac(const char* mypath) {
     return true;
   }
 
-  if (dlopen("libmac/libmac.so", RTLD_LAZY | RTLD_GLOBAL)) {
-    return true;
-  }
-
   char buf[PATH_MAX + 100];
   strcpy(buf, mypath);
   char* p = strrchr(buf, '/');
@@ -869,9 +865,9 @@ static bool loadLibMac(const char* mypath) {
     fprintf(stderr, "Weird loader path: %s\n", mypath);
     exit(1);
   }
-  strcpy(p, "/libmac/libmac.so");
+  strcpy(p, "/libmac.so");
 
-  if (dlopen(buf, RTLD_NOW | RTLD_GLOBAL)) {
+  if (dlopen(buf, RTLD_LAZY | RTLD_GLOBAL)) {
     return true;
   }
 

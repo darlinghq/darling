@@ -6,7 +6,7 @@ GCCFLAGS=-g -Iinclude -Wall -MMD -fno-omit-frame-pointer -O $(GCC_EXTRA_FLAGS)
 CXXFLAGS=$(GCCFLAGS) -W -Werror
 CFLAGS=$(GCCFLAGS) -fPIC
 
-EXES=libmac/libmac.so extract macho2elf ld-mac
+EXES=libmac.so extract macho2elf ld-mac
 
 MAC_C_SRCS=$(wildcard mach/*.c)
 MAC_CXX_SRCS=$(wildcard mach/*.cc)
@@ -67,7 +67,7 @@ ld-mac: ld-mac.o mach-o.o fat.o log.o
 	$(CXX) $^ -o $@ -g -ldl -lpthread $(GCC_EXTRA_FLAGS)
 
 # TODO(hamaji): autotoolize?
-libmac/libmac.so: libmac/mac.o
+libmac.so: libmac/mac.o
 	$(CC) -shared $^ -o $@ -lcrypto $(GCC_EXTRA_FLAGS)
 
 dist:
