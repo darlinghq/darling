@@ -764,16 +764,16 @@ void MachOLoader::boot(
   __asm__ volatile(" mov %1, %%eax;\n"
                    " mov %2, %%edx;\n"
                    " push $0;\n"
-                   ".loop64:\n"
-                   " sub $8, %%edx;\n"
+                   ".loop32:\n"
+                   " sub $4, %%edx;\n"
                    " push (%%edx);\n"
                    " dec %%eax;\n"
-                   " jnz .loop64;\n"
+                   " jnz .loop32;\n"
                    " mov %1, %%eax;\n"
                    " push %%eax;\n"
                    " jmp *%0;\n"
                    // TODO(hamaji): Fix parameters
-                   ::"r"(entry), "r"(argc), "r"(argv), "g"(envp)
+                   ::"r"(entry), "r"(argc), "r"(argv + argc), "g"(envp)
                    :"%eax", "%edx");
 #endif
 }
