@@ -505,30 +505,41 @@ class MachOLoader {
       }
 
       if (bind->type == BIND_TYPE_POINTER) {
-        const char* name = bind->name + 1;
+        string name = bind->name + 1;
         void** ptr = (void**)(bind->vmaddr + slide);
         char* sym = NULL;
 
         if (bind->is_weak) {
-          if (!strcmp(last_weak_name, name)) {
+          if (!strcmp(last_weak_name, name.c_str())) {
             sym = last_weak_sym;
           } else {
-            last_weak_name = name;
+            last_weak_name = name.c_str();
             if (seen_weak_bind_iter != seen_weak_bind_end &&
-                !strcmp(seen_weak_bind_iter->first.c_str(), name)) {
+                !strcmp(seen_weak_bind_iter->first.c_str(), name.c_str())) {
               last_weak_sym = sym = seen_weak_bind_iter->second;
               seen_weak_bind_iter++;
             } else {
               last_weak_sym = (char*)*ptr;
               seen_weak_binds_.push_back(make_pair(name, last_weak_sym));
               while (seen_weak_bind_iter != seen_weak_bind_end &&
-                     strcmp(seen_weak_bind_iter->first.c_str(), name) <= 0) {
+                     strcmp(seen_weak_bind_iter->first.c_str(),
+                            name.c_str()) <= 0) {
                 seen_weak_bind_iter++;
               }
               continue;
             }
           }
         } else {
+#ifndef __x86_64__
+          static const char* SUF_UNIX03 = "$UNIX2003";
+          static const size_t SUF_UNIX03_LEN = strlen(SUF_UNIX03);
+          if (name.size() > SUF_UNIX03_LEN &&
+              !strcmp(name.c_str() + name.size() - SUF_UNIX03_LEN,
+                      SUF_UNIX03)) {
+            name = name.substr(0, name.size() - SUF_UNIX03_LEN);
+          }
+#endif
+
           map<string, string>::const_iterator found =
               g_rename.find(name);
           if (found != g_rename.end()) {
@@ -543,16 +554,16 @@ class MachOLoader {
             sym = (char*)export_found->second.addr;
           }
           if (!sym) {
-            sym = (char*)dlsym(RTLD_DEFAULT, name);
+            sym = (char*)dlsym(RTLD_DEFAULT, name.c_str());
             if (!sym) {
               map<string, string>::const_iterator iter =
                 symbol_to_so_.find(name);
               if (iter != symbol_to_so_.end()) {
                 if (dlopen(iter->second.c_str(), RTLD_LAZY | RTLD_GLOBAL)) {
-                  sym = (char*)dlsym(RTLD_DEFAULT, name);
+                  sym = (char*)dlsym(RTLD_DEFAULT, name.c_str());
                 } else {
                   fprintf(stderr, "Couldn't load %s for %s\n",
-                          iter->second.c_str(), name);
+                          iter->second.c_str(), name.c_str());
                 }
               }
             }
