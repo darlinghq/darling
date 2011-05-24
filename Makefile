@@ -45,10 +45,10 @@ check: all mach
 	./runtests.sh
 
 $(MAC_C_BINS): %.c.bin: %.c
-	$(MAC_CC) -g $^ -o $@
+	$(MAC_CC) -g -arch i386 -arch x86_64 $^ -o $@
 
 $(MAC_CXX_BINS): %.cc.bin: %.cc
-	$(MAC_CXX) -g $^ -o $@
+	$(MAC_CXX) -g -arch i386 -arch x86_64 $^ -o $@
 
 $(MACTXTS): %.txt: %.bin
 	$(MAC_OTOOL) -hLltvV $^ > $@
