@@ -65,6 +65,15 @@ struct sym64 {
   uint32_t flag;
 };
 
+// See mach-o/nlist.h for this layout
+struct nlist {
+  uint32_t n_strx;
+  uint8_t n_type;
+  uint8_t n_sect;
+  uint16_t n_desc;
+  uint64_t n_value;
+};
+
 static uint64_t uleb128(const uint8_t*& p) {
   uint64_t r = 0;
   int s = 0;
@@ -165,7 +174,7 @@ void MachOImpl::readSegment(char* cmds_ptr,
        segment->nsects, segment->flags);
 
   section* sections = reinterpret_cast<section*>(
-      cmds_ptr + sizeof(segment_command));
+    cmds_ptr + sizeof(segment_command));
   for (uint32_t j = 0; j < segment->nsects; j++) {
     const section& sec = sections[j];
     LOGF("section %s in %s: "
@@ -615,21 +624,18 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
       if (FLAGS_READ_SYMTAB) {
         for (uint32_t i = 0; i < symtab_cmd->nsyms; i++) {
           Symbol sym;
+          nlist* nl = (nlist*)symtab;
+          sym.name = symstrtab + nl->n_strx;
           if (is64_) {
-            sym.name = symstrtab + symtab[0];
-            sym.addr = *(uint64_t*)(symtab + 2);
-            LOGF("%d %s(%d) %p %d\n",
-                 i, sym.name.c_str(), symtab[0], (void*)sym.addr,
-                 symtab[3]);
+            sym.addr = nl->n_value;
             symtab += 4;
           } else {
-            sym.name = symstrtab + symtab[0];
-            sym.addr = (uint64_t)*(uint32_t*)(symtab + 1);
-            LOGF("%d %s(%d) %p %d\n",
-                 i, sym.name.c_str(), symtab[0], (void*)sym.addr,
-                 symtab[2]);
+            sym.addr = (uint32_t)nl->n_value;
             symtab += 3;
           }
+
+          LOGF("%d %s(%d) %p\n",
+               i, sym.name.c_str(), nl->n_strx, (void*)sym.addr);
           symbols_.push_back(sym);
         }
       }
