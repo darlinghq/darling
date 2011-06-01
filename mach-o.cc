@@ -547,7 +547,9 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
     exit(1);
   }
 
-  struct load_command* cmds_ptr = reinterpret_cast<struct load_command*>(bin + sizeof(mach_header) + (is64_ ? sizeof(uint32_t) : 0));
+  struct load_command* cmds_ptr = reinterpret_cast<struct load_command*>(
+                                  bin + (is64_ ? sizeof(mach_header_64)
+                                               : sizeof(mach_header)));
 
   uint32_t* symtab = NULL;
   uint32_t* dysyms = NULL;
