@@ -194,6 +194,10 @@ void MachOImpl::readSegment(char* cmds_ptr,
 
     int section_type = sec.flags & SECTION_TYPE;
     switch (section_type) {
+    case S_REGULAR:
+        /* Regular section: nothing to do */
+        break;
+
     case S_MOD_INIT_FUNC_POINTERS: {
       for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += ptrsize_) {
         init_funcs_.push_back(p);
@@ -205,9 +209,28 @@ void MachOImpl::readSegment(char* cmds_ptr,
       bind_sections->push_back(sections + j);
       break;
     }
-    default:
+    case S_ZEROFILL:
+    case S_CSTRING_LITERALS:
+    case S_4BYTE_LITERALS:
+    case S_8BYTE_LITERALS:
+    case S_LITERAL_POINTERS:
+    case S_SYMBOL_STUBS:
+    case S_MOD_TERM_FUNC_POINTERS:
       // TODO(hamaji): Support term_funcs.
-      ;
+    case S_COALESCED:
+    case S_GB_ZEROFILL:
+    case S_INTERPOSING:
+    case S_16BYTE_LITERALS:
+    case S_DTRACE_DOF:
+    case S_LAZY_DYLIB_SYMBOL_POINTERS:
+      LOGF("FIXME: section type %d will not be handled for %s in %s\n",
+           section_type, sec.sectname, sec.segname);
+      break;
+
+    default:
+        fprintf(stderr, "Unknown section type: %d\n", section_type);
+        abort();
+        break;
     }
   }
 }
