@@ -430,7 +430,10 @@ class MachOLoader {
 
   void loadInitFuncs(const MachO& mach, intptr slide) {
     for (size_t i = 0; i < mach.init_funcs().size(); i++) {
-      init_funcs_.push_back(mach.init_funcs()[i] + slide);
+      intptr addr = mach.init_funcs()[i] + slide;
+      LOG << "Registering init func " << (void*)addr
+          << " from " << mach.filename() << endl;
+      init_funcs_.push_back(addr);
     }
   }
 
