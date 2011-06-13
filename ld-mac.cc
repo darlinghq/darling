@@ -476,7 +476,7 @@ class MachOLoader {
   }
 
   void doBind(const MachO& mach, intptr slide) {
-    const char* last_weak_name = "";
+    string last_weak_name = "";
     char* last_weak_sym = NULL;
     vector<pair<string, char*> >::iterator
         seen_weak_bind_iter = seen_weak_binds_.begin(),
@@ -502,10 +502,10 @@ class MachOLoader {
         char* sym = NULL;
 
         if (bind->is_weak) {
-          if (!strcmp(last_weak_name, name.c_str())) {
+          if (last_weak_name == name) {
             sym = last_weak_sym;
           } else {
-            last_weak_name = name.c_str();
+            last_weak_name = name;
             if (seen_weak_bind_iter != seen_weak_bind_end &&
                 !strcmp(seen_weak_bind_iter->first.c_str(), name.c_str())) {
               last_weak_sym = sym = seen_weak_bind_iter->second;
