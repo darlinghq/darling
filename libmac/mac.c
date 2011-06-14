@@ -1075,6 +1075,25 @@ int __darwin_uname(__darwin_utsname* buf) {
   return 0;
 }
 
+typedef struct {
+  int (*compar)(void*, const void*, const void*);
+  void* thunk;
+} __darwin_qsort_r_context;
+
+int __darwin_qsort_r_helper(const void* a, const void* b, void* data) {
+  __darwin_qsort_r_context* ctx = (__darwin_qsort_r_context*)data;
+  return ctx->compar(ctx->thunk, a, b);
+}
+
+void __darwin_qsort_r(void* base, size_t nel, size_t width, void* thunk,
+                      int (*compar)(void*, const void*, const void*)) {
+  LOGF("qsort_r: %p %p\n", compar, thunk);
+  __darwin_qsort_r_context ctx;
+  ctx.compar = compar;
+  ctx.thunk = thunk;
+  qsort_r(base, nel, width, &__darwin_qsort_r_helper, &ctx);
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);

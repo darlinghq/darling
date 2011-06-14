@@ -146,3 +146,5 @@ WRAP(uname)
 
 // TODO(hamaji): Not sure if this is right...
 RENAME(select$1050, select)
+
+WRAP(qsort_r)
