@@ -749,8 +749,18 @@ class MachOLoader {
 void MachOLoader::boot(
     uint64_t entry, int argc, char** argv, char** envp) {
 #ifdef __x86_64__
+  // 0x08: argc
+  // 0x10: argv[0]
+  // 0x18: argv[1]
+  //  ...: argv[n]
+  //       0
+  //       envp[0]
+  //       envp[1]
+  //       envp[n]
   __asm__ volatile(" mov %1, %%eax;\n"
                    " mov %2, %%rdx;\n"
+                   " push $0;\n"
+                   // TODO(hamaji): envp
                    " push $0;\n"
                    ".loop64:\n"
                    " sub $8, %%rdx;\n"
