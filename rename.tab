@@ -103,6 +103,7 @@ WRAP(posix_spawn_file_actions_adddup2)
 RENAME(CC_MD5_Init, MD5_Init)
 RENAME(CC_MD5_Update, MD5_Update)
 RENAME(CC_MD5_Final, MD5_Final)
+RENAME(CC_MD5, MD5)
 
 WRAP(__cxa_throw)
 
