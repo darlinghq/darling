@@ -381,6 +381,12 @@ int __darwin_sysctl(int* name, u_int namelen,
   }
 }
 
+/* stdio buffers */
+struct __darwin_sbuf {
+        unsigned char   *_base;
+        int             _size;
+};
+
 // Unfortunately, putc_nolock depends on FILE's layout,
 // so we need to wrap linux's FILE with darwin's layout.
 typedef struct __darwin_sFILE {
@@ -390,10 +396,10 @@ typedef struct __darwin_sFILE {
   // TODO(hamaji): we need to modify this value with ferror and feof...
   short   _flags;         /* flags, below; this FILE is free if 0 */
   short   _file;          /* fileno, if Unix descriptor, else -1 */
-#if 0
-  struct  __sbuf _bf;     /* the buffer (at least 1 byte, if !NULL) */
+  struct  __darwin_sbuf _bf;     /* the buffer (at least 1 byte, if !NULL) */
   int     _lbfsize;       /* 0 or -_bf._size, for inline putc */
 
+#if 0
   /* operations */
   void    *_cookie;       /* cookie passed to io functions */
   int     (*_close)(void *);
@@ -436,6 +442,7 @@ static __darwin_FILE* __init_darwin_FILE(FILE* linux_fp) {
   fp->_w = -1;
   fp->_flags = 0;
   fp->_file = fileno(linux_fp);
+  fp->_lbfsize = 0;
   fp->linux_fp = linux_fp;
   return fp;
 }
