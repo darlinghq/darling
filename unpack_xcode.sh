@@ -52,7 +52,8 @@ cd $dir
 7z x 5.hfs
 
 for pkg in $PKGS; do
-  7z x -y */Packages/$pkg.pkg
+  # Xcode4 doesn't have gcc4.0
+  7z x -y */Packages/$pkg.pkg || continue
   7z x -y Payload
   mkdir -p $pkg
   cd $pkg
@@ -67,7 +68,7 @@ for pkg in $PKGS; do
   if [ $pkg = "MacOSX10.6" ]; then
     cp -R $pkg/SDKs/*/* root
   else
-    cd $pkg
+    cd $pkg || continue
     tar -c * | tar -xC ../root
     cd ..
   fi
