@@ -514,7 +514,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
   if (header->magic == MH_MAGIC_64) {
     is64_ = true;
   } else  if (header->magic != MH_MAGIC) {
-    fprintf(stderr, "Not mach-o\n");
+    fprintf(stderr, "Not mach-o: %s\n", filename);
     exit(1);
   }
   ptrsize_ = is64_ ? 8 : 4;
