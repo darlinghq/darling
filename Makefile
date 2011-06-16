@@ -34,10 +34,20 @@ endif
 all: $(EXES)
 
 profile:
-	make clean all GCC_EXTRA_FLAGS=-pg
+	$(MAKE) clean
+	$(MAKE) all GCC_EXTRA_FLAGS=-pg
 
 release:
-	make clean all "GCC_EXTRA_FLAGS=-DNOLOG -DNDEBUG"
+	$(MAKE) clean
+	$(MAKE) all "GCC_EXTRA_FLAGS=-DNOLOG -DNDEBUG"
+
+both:
+	$(MAKE) clean
+	$(MAKE) BITS=32 all
+	mv ld-mac ld-mac32
+	mv libmac.so libmac32.so
+	$(MAKE) clean
+	$(MAKE) BITS=64 all
 
 mach: $(MAC_TARGETS)
 
