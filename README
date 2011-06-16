@@ -33,7 +33,8 @@ To remove the entries, run the following command:
 
 * How to try 32bit support
 
-% make clean all BITS=32
+% make clean
+% make all BITS=32
 
 If you see permission errors like
 
@@ -45,6 +46,22 @@ addresses less than 0x10000.
 % sudo sh -c 'echo 4096 > /proc/sys/vm/mmap_min_addr'
 
 Or, running ld-mac as a super user would also work.
+
+* How to run both 64bit Mach-O and 32bit Mach-O binaries
+
+% make both
+% ./binfmt_misc.sh start `pwd`/ld-mac.sh
+% /usr/i686-apple-darwin10/usr/bin/gcc -arch i386 mach/hello.c -o hello32
+% /usr/i686-apple-darwin10/usr/bin/gcc -arch x86_64 mach/hello.c -o hello64
+% /usr/i686-apple-darwin10/usr/bin/gcc -arch i386 -arch x86_64 mach/hello.c -o hello
+% ./hello32
+Hello, 32bit world!
+% ./hello64
+Hello, 64bit world!
+% ./hello
+Hello, 64bit world!
+% LD_MAC_BITS=32 ./hello
+Hello, 32bit world!
 
 * Which programs should work
 
