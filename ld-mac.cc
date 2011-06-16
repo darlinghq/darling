@@ -159,13 +159,13 @@ class FileMap {
 
 static FileMap g_file_map;
 
-static const char* ARCH_NAME =
 #ifdef __x86_64__
-  "x86-64"
+static const char* ARCH_NAME = "x86-64";
+static const int BITS = 64;
 #else
-  "i386"
+static const char* ARCH_NAME = "i386";
+static const int BITS = 32;
 #endif
-  ;
 
 static char* g_darwin_executable_path;
 
@@ -880,6 +880,11 @@ static bool loadLibMac(const char* mypath) {
   }
   strcpy(p, "/libmac.so");
 
+  if (dlopen(buf, RTLD_LAZY | RTLD_GLOBAL)) {
+    return true;
+  }
+
+  sprintf(p, "/libmac%d.so", BITS);
   if (dlopen(buf, RTLD_LAZY | RTLD_GLOBAL)) {
     return true;
   }
