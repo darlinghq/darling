@@ -50,14 +50,16 @@ case $cmd in
     start)
         sudo sh -c "
 echo :Mach-O '64bit:M::\\xcf\\xfa\\xed\\xfe::$ld_mac:' > /proc/sys/fs/binfmt_misc/register
+echo :Mach-O '32bit:M::\\xce\\xfa\\xed\\xfe::$ld_mac:' > /proc/sys/fs/binfmt_misc/register
 echo :Mach-O 'fat:M::\\xca\\xfe\\xba\\xbe::$ld_mac:' > /proc/sys/fs/binfmt_misc/register
 "
         echo "binfmt_misc for mach-o was registered"
     ;;
     stop)
         sudo sh -c '
-echo -1 > /proc/sys/fs/binfmt_misc/Mach-O\ fat
 echo -1 > /proc/sys/fs/binfmt_misc/Mach-O\ 64bit
+echo -1 > /proc/sys/fs/binfmt_misc/Mach-O\ 32bit
+echo -1 > /proc/sys/fs/binfmt_misc/Mach-O\ fat
 '
         echo "binfmt_misc for mach-o was unregistered"
         ;;
