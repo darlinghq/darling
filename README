@@ -27,7 +27,7 @@ Get xcode_3.2.6_and_ios_sdk_4.3__final.dmg (or another xcode package).
 % /usr/i686-apple-darwin10/usr/bin/gcc mach/hello.c
 % ./a.out
 
-To remove the entries, run the following commands:
+To remove the entries, run the following command:
 
 % ./binfmt_misc.sh stop
 
@@ -65,6 +65,7 @@ OK
 
 not OK
 
+- ld in xcode4
 - llvm-gcc
 - gnumake and bsdmake
 - lex and flex
@@ -85,7 +86,8 @@ not OK
 
 - read dwarf for better backtracing
 - make llvm-gcc work
-- 32bit support
+- make ld in xcode4 work
+- improve 32bit support
 - handle dwarf and C++ exception
 
 * License
