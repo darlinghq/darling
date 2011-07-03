@@ -564,13 +564,13 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
     switch (cmds_ptr->cmd) {
     case LC_SEGMENT_64: {
       readSegment<segment_command_64, section_64>(
-          (char *)cmds_ptr, &segments64_, &bind_sections_64);
+          (char*)cmds_ptr, &segments64_, &bind_sections_64);
       break;
     }
 
     case LC_SEGMENT: {
       readSegment<segment_command, section>(
-          (char *)cmds_ptr, &segments_, &bind_sections_32);
+          (char*)cmds_ptr, &segments_, &bind_sections_32);
       break;
     }
 
@@ -724,7 +724,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
 
     case LC_LOAD_DYLINKER: {
       lc_str name = reinterpret_cast<struct dylinker_command*>(cmds_ptr)->name;
-      LOGF("dylinker: %s\n", (char *)cmds_ptr + name.offset);
+      LOGF("dylinker: %s\n", (char*)cmds_ptr + name.offset);
       break;
     }
 
@@ -749,14 +749,15 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
 
     case LC_LOAD_DYLIB: {
       dylib* lib = &reinterpret_cast<dylib_command*>(cmds_ptr)->dylib;
-      LOGF("dylib: '%s'\n", (char *)cmds_ptr + lib->name.offset);
-      dylibs_.push_back((char *)cmds_ptr + lib->name.offset);
+      LOGF("dylib: '%s'\n", (char*)cmds_ptr + lib->name.offset);
+      dylibs_.push_back((char*)cmds_ptr + lib->name.offset);
       break;
     }
 
     }
 
-    cmds_ptr = reinterpret_cast<load_command*>(reinterpret_cast<char *>(cmds_ptr) + cmds_ptr->cmdsize);
+    cmds_ptr = reinterpret_cast<load_command*>(
+        reinterpret_cast<char*>(cmds_ptr) + cmds_ptr->cmdsize);
   }
 
   LOGF("%p vs %p\n", cmds_ptr, bin + mapped_size_);
