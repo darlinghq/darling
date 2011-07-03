@@ -194,6 +194,10 @@ void MachOImpl::readSegment(char* cmds_ptr,
 
     int section_type = sec.flags & SECTION_TYPE;
     switch (section_type) {
+    case S_REGULAR:
+        /* Regular section: nothing to do */
+        break;
+
     case S_MOD_INIT_FUNC_POINTERS: {
       for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += ptrsize_) {
         init_funcs_.push_back(p);
@@ -205,9 +209,28 @@ void MachOImpl::readSegment(char* cmds_ptr,
       bind_sections->push_back(sections + j);
       break;
     }
-    default:
+    case S_ZEROFILL:
+    case S_CSTRING_LITERALS:
+    case S_4BYTE_LITERALS:
+    case S_8BYTE_LITERALS:
+    case S_LITERAL_POINTERS:
+    case S_SYMBOL_STUBS:
+    case S_MOD_TERM_FUNC_POINTERS:
       // TODO(hamaji): Support term_funcs.
-      ;
+    case S_COALESCED:
+    case S_GB_ZEROFILL:
+    case S_INTERPOSING:
+    case S_16BYTE_LITERALS:
+    case S_DTRACE_DOF:
+    case S_LAZY_DYLIB_SYMBOL_POINTERS:
+      LOGF("FIXME: section type %d will not be handled for %s in %s\n",
+           section_type, sec.sectname, sec.segname);
+      break;
+
+    default:
+        fprintf(stderr, "Unknown section type: %d\n", section_type);
+        abort();
+        break;
     }
   }
 }
@@ -524,10 +547,9 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
     exit(1);
   }
 
-  char* cmds_ptr = bin + sizeof(mach_header);
-  if (is64_) {
-    cmds_ptr += sizeof(uint32_t);
-  }
+  struct load_command* cmds_ptr = reinterpret_cast<struct load_command*>(
+                                  bin + (is64_ ? sizeof(mach_header_64)
+                                               : sizeof(mach_header)));
 
   uint32_t* symtab = NULL;
   uint32_t* dysyms = NULL;
@@ -536,20 +558,19 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
   vector<section_64*> bind_sections_64;
   vector<section*> bind_sections_32;
 
-  for (uint32_t i = 0; i < header->ncmds; i++) {
-    uint32_t cmd = *reinterpret_cast<uint32_t*>(cmds_ptr);
-    LOGF("%x\n", cmd);
+  for (uint32_t ii = 0; ii < header->ncmds; ii++) {
+    LOGF("cmd type:%x\n", cmds_ptr->cmd);
 
-    switch (cmd) {
+    switch (cmds_ptr->cmd) {
     case LC_SEGMENT_64: {
       readSegment<segment_command_64, section_64>(
-          cmds_ptr, &segments64_, &bind_sections_64);
+          (char *)cmds_ptr, &segments64_, &bind_sections_64);
       break;
     }
 
     case LC_SEGMENT: {
       readSegment<segment_command, section>(
-          cmds_ptr, &segments_, &bind_sections_32);
+          (char *)cmds_ptr, &segments_, &bind_sections_32);
       break;
     }
 
@@ -702,9 +723,8 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
     }
 
     case LC_LOAD_DYLINKER: {
-      lc_str name = *reinterpret_cast<lc_str*>(
-        cmds_ptr + sizeof(uint32_t) * 2);
-      LOGF("dylinker: %s\n", cmds_ptr + name.offset);
+      lc_str name = reinterpret_cast<struct dylinker_command*>(cmds_ptr)->name;
+      LOGF("dylinker: %s\n", (char *)cmds_ptr + name.offset);
       break;
     }
 
@@ -728,15 +748,15 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
     }
 
     case LC_LOAD_DYLIB: {
-      dylib* lib = reinterpret_cast<dylib*>(cmds_ptr + sizeof(uint32_t) * 2);
-      LOGF("dylib: %s\n", cmds_ptr + lib->name.offset);
-      dylibs_.push_back(cmds_ptr + lib->name.offset);
+      dylib* lib = &reinterpret_cast<dylib_command*>(cmds_ptr)->dylib;
+      LOGF("dylib: '%s'\n", (char *)cmds_ptr + lib->name.offset);
+      dylibs_.push_back((char *)cmds_ptr + lib->name.offset);
       break;
     }
 
     }
 
-    cmds_ptr += reinterpret_cast<uint32_t*>(cmds_ptr)[1];
+    cmds_ptr = reinterpret_cast<load_command*>(reinterpret_cast<char *>(cmds_ptr) + cmds_ptr->cmdsize);
   }
 
   LOGF("%p vs %p\n", cmds_ptr, bin + mapped_size_);

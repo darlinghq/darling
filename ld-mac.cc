@@ -172,7 +172,8 @@ static char* g_darwin_executable_path;
 static Timer g_timer;
 
 // TODO(hamaji): Need a static type...
-static void* g_loader;
+class MachOLoader;
+static MachOLoader* g_loader;
 
 static void initRename() {
 #define RENAME(src, dst) g_rename.insert(make_pair(#src, #dst));
@@ -931,7 +932,7 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
   auto_ptr<MachO> dylib_mach(MachO::read(filename, ARCH_NAME));
 
   // TODO(hamaji): Consider 32bit.
-  MachOLoader* loader = (MachOLoader*)g_loader;
+  MachOLoader* loader = g_loader;
   CHECK(loader);
   Exports* exports = new Exports();
   loader->load(*dylib_mach, exports);

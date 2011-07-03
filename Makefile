@@ -77,8 +77,8 @@ ld-mac: ld-mac.o mach-o.o fat.o log.o
 	$(CXX) $^ -o $@ -g -ldl -lpthread $(GCC_EXTRA_FLAGS)
 
 # TODO(hamaji): autotoolize?
-libmac.so: libmac/mac.o
-	$(CC) -shared $^ -o $@ -lcrypto $(GCC_EXTRA_FLAGS)
+libmac.so: libmac/mac.o libmac/strmode.c
+	$(CC) -shared $^ $(CFLAGS) -o $@ -lcrypto $(GCC_EXTRA_FLAGS)
 
 dist:
 	cd /tmp && rm -fr maloader-$(VERSION) && git clone git@github.com:shinh/maloader.git && rm -fr maloader/.git && mv maloader maloader-$(VERSION) && tar -cvzf maloader-$(VERSION).tar.gz maloader-$(VERSION)
