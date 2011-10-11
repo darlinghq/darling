@@ -527,7 +527,7 @@ class ELFBuilder {
     sym->st_shndx = shndx;
     sym_index = sym - (Sym*)s->data.data();
     printf("sym: %x %p index=%d\n",
-           sym->st_name, (void*)sym->st_value, sym_index);
+           sym->st_name, (void*)(intptr_t)sym->st_value, sym_index);
     hs = symtab->hash;
     if (hs) {
       int *ptr, *base;

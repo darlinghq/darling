@@ -168,7 +168,7 @@ void MachOImpl::readSegment(char* cmds_ptr,
        "fileoff=%llu filesize=%llu "
        "maxprot=%d initprot=%d nsects=%u flags=%u\n",
        segment->segname,
-       (void*)segment->vmaddr, (ull)segment->vmsize,
+       (void*)(intptr_t)segment->vmaddr, (ull)segment->vmsize,
        (ull)segment->fileoff, (ull)segment->filesize,
        segment->maxprot, segment->initprot,
        segment->nsects, segment->flags);
@@ -182,7 +182,7 @@ void MachOImpl::readSegment(char* cmds_ptr,
          "reloff=%u nreloc=%u flags=%u "
          "reserved1=%u reserved2=%u\n",
          sec.sectname, sec.segname,
-         (void*)sec.addr, (ull)sec.size,
+         (void*)(intptr_t)sec.addr, (ull)sec.size,
          sec.offset, sec.align,
          sec.reloff, sec.nreloc, sec.flags,
          sec.reserved1, sec.reserved2);
