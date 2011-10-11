@@ -91,7 +91,10 @@ int main(int argc, char* argv[]) {
 
     const fat_arch& arch = found->second;
     FILE* fp = fopen(argv[i+1], "wb");
-    fwrite(bin + arch.offset, 1, arch.size, fp);
+    if (fwrite(bin + arch.offset, 1, arch.size, fp) != arch.size) {
+        printf("failed to fwrite\n");
+        exit(1);
+    }
     fclose(fp);
   }
 }

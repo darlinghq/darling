@@ -61,6 +61,18 @@ static uint64_t alignMem(uint64_t p, uint64_t a) {
   return (p + a) & ~a;
 }
 
+static void fwrite_checked(const void* ptr,
+                           size_t size,
+                           size_t nmemb,
+                           FILE* stream) {
+  size_t r = fwrite(ptr, size, nmemb, stream);
+  if (r != nmemb) {
+    fprintf(stderr, "fwrite failed\n");
+    abort();
+  }
+}
+
+
 template <bool is64>
 struct BitsHelpers {
   typedef Elf64_Ehdr Elf_Ehdr;
@@ -173,7 +185,7 @@ class ELFBuilder {
     ehdr.e_shentsize = sizeof(Shdr);
     ehdr.e_shnum = 0;
     ehdr.e_shstrndx = 0;
-    fwrite(&ehdr, sizeof(ehdr), 1, fp_);
+    fwrite_checked(&ehdr, sizeof(ehdr), 1, fp_);
 
     intptr offset = sizeof(Ehdr) + sizeof(Phdr) * num_phdr;
     Phdr phdr;
@@ -188,7 +200,7 @@ class ELFBuilder {
     phdr.p_memsz = phdr.p_filesz;
     phdr.p_flags = PF_R;
     phdr.p_align = 1;
-    fwrite(&phdr, sizeof(phdr), 1, fp_);
+    fwrite_checked(&phdr, sizeof(phdr), 1, fp_);
 
     offset += phdr.p_filesz;
 
@@ -218,7 +230,7 @@ class ELFBuilder {
         phdr.p_flags |= PF_X;
       }
       phdr.p_align = 0x1000;
-      fwrite(&phdr, sizeof(phdr), 1, fp_);
+      fwrite_checked(&phdr, sizeof(phdr), 1, fp_);
 
       const char* sec_name = seg->segname;
       int flags = SHF_ALLOC;
@@ -260,11 +272,11 @@ class ELFBuilder {
     phdr.p_memsz = phdr.p_filesz;
     phdr.p_flags = PF_R | PF_W;
     phdr.p_align = 8;
-    fwrite(&phdr, sizeof(phdr), 1, fp_);
+    fwrite_checked(&phdr, sizeof(phdr), 1, fp_);
 
     phdr.p_type = PT_DYNAMIC;
     phdr.p_filesz = sizeof(Dyn) * num_dyns;
-    fwrite(&phdr, sizeof(phdr), 1, fp_);
+    fwrite_checked(&phdr, sizeof(phdr), 1, fp_);
 
     Section* dynamic = newSection(".dynamic", SHT_DYNAMIC);
     dynamic->entsize = sizeof(Dyn);
@@ -275,7 +287,7 @@ class ELFBuilder {
     offset += phdr.p_filesz;
     dynamic_offset += phdr.p_filesz;
 
-    fwrite(loader, strlen(loader) + 1, 1, fp_);
+    fwrite_checked(loader, strlen(loader) + 1, 1, fp_);
 
     for (size_t i = 0; i < segments.size(); i++) {
       Segment* seg = segments[i];
@@ -284,7 +296,7 @@ class ELFBuilder {
         continue;
       }
 
-      fwrite(mach.base() + seg->fileoff, 1, seg->filesize, fp_);
+      fwrite_checked(mach.base() + seg->fileoff, 1, seg->filesize, fp_);
     }
 
     Symtab* symtab = newSymtab(".dynsym", SHT_DYNSYM, ".dynstr", ".hash");
@@ -365,13 +377,16 @@ class ELFBuilder {
     assert(num_dyns == dyns.size());
 
     for (size_t i = 0; i < dyns.size(); i++) {
-      fwrite(&dyns[i], 1, sizeof(Dyn), fp_);
+      fwrite_checked(&dyns[i], 1, sizeof(Dyn), fp_);
     }
-    fwrite(symtab->hash->data.data(), symtab->hash->data.size(), 1, fp_);
-    fwrite(symtab->sym->data.data(), symtab->sym->data.size(), 1, fp_);
-    fwrite(symtab->str->data.data(), symtab->str->data.size(), 1, fp_);
+    fwrite_checked(symtab->hash->data.data(),
+                   symtab->hash->data.size(), 1, fp_);
+    fwrite_checked(symtab->sym->data.data(),
+                   symtab->sym->data.size(), 1, fp_);
+    fwrite_checked(symtab->str->data.data(),
+                   symtab->str->data.size(), 1, fp_);
     for (size_t i = 0; i < rels.size(); i++) {
-      fwrite(&rels[i], 1, sizeof(Rel), fp_);
+      fwrite_checked(&rels[i], 1, sizeof(Rel), fp_);
     }
 
     delete symtab;
@@ -384,7 +399,7 @@ class ELFBuilder {
       sec->name_offset = putELFStr(shstrtab, sec->name.c_str());
     }
 
-    fwrite(shstrtab->data.data(), shstrtab->data.size(), 1, fp_);
+    fwrite_checked(shstrtab->data.data(), shstrtab->data.size(), 1, fp_);
     offset += shstrtab->data.size();
 
     ehdr.e_shoff = offset;
@@ -413,15 +428,15 @@ class ELFBuilder {
       //shdr.sh_addralign = sec->align;
       shdr.sh_addralign = 0;
       shdr.sh_entsize = sec->entsize;
-      fwrite(&shdr, 1, sizeof(shdr), fp_);
+      fwrite_checked(&shdr, 1, sizeof(shdr), fp_);
     }
     ehdr.e_shnum = sections_.size();
 
     char padding[4096];
-    fwrite(padding, 1, sizeof(padding), fp_);
+    fwrite_checked(padding, 1, sizeof(padding), fp_);
 
     fseek(fp_, 0, SEEK_SET);
-    fwrite(&ehdr, sizeof(ehdr), 1, fp_);
+    fwrite_checked(&ehdr, sizeof(ehdr), 1, fp_);
   }
 
  private:
