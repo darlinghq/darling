@@ -69,7 +69,7 @@ apple gcc -g -dynamiclib mach/dylib/lib.c -o mach/dylib/lib.dylib
 apple gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
 
 echo "Running mach/dylib/main"
-mach/dylib/main
+./ld-mac mach/dylib/main
 
 echo "Running dylib tests"
 
@@ -77,12 +77,12 @@ apple gcc -g -dynamiclib mach/dylib/lib.c -o mach/dylib/lib.dylib
 apple gcc -g mach/dylib/main.c mach/dylib/lib.dylib -o mach/dylib/main
 
 echo "Running mach/dylib/main"
-mach/dylib/main
+./ld-mac mach/dylib/main
 
 apple gcc -g mach/dylib/dlfcn.c -o mach/dylib/dlfcn
 
 echo "Running mach/dylib/dlfcn"
-mach/dylib/dlfcn
+./ld-mac mach/dylib/dlfcn
 
 # Check dylib with weak symbols
 
@@ -93,10 +93,10 @@ apple g++ -g -fPIC mach/dylib/weak_main.cc -o mach/dylib/weak_main mach/dylib/we
 apple g++ -g -fPIC mach/dylib/weak_main.cc -o mach/dylib/weak_main-dl -DDL
 
 echo "Running mach/dylib/weak_main"
-mach/dylib/weak_main
+./ld-mac mach/dylib/weak_main
 
 echo "Running mach/dylib/weak_main-dl"
-mach/dylib/weak_main-dl
+./ld-mac mach/dylib/weak_main-dl
 
 # Compile and run unit tests with clang
 
