@@ -39,10 +39,22 @@
 
 set -e
 
-PKGS="MacOSX10.6 gcc4.2 gcc4.0 llvm-gcc4.2 DeveloperToolsCLI clang"
-
 dmg=$1
 dir=`basename $dmg .dmg`
+
+if echo $dmg | grep xcode_4.1; then
+  PKGS="MacOSX10.6 gcc4.2 llvm-gcc4.2 DeveloperToolsCLI clang"
+  XCODE=xcode_4.1
+  PKG_DIR="Applications/Install Xcode.app/Contents/Resources/Packages"
+elif echo $dmg | grep xcode_3; then
+  PKGS="MacOSX10.6 gcc4.2 gcc4.0 llvm-gcc4.2 DeveloperToolsCLI clang"
+  XCODE=xcode_3
+  PKG_DIR="*/Packages"
+else
+  PKGS="MacOSX10.6 gcc4.2 llvm-gcc4.2 DeveloperToolsCLI clang"
+  XCODE=xcode_4.0
+  PKG_DIR="*/Packages"
+fi
 
 rm -fr $dir
 mkdir $dir
@@ -51,9 +63,13 @@ cd $dir
 7z x ../$dmg
 7z x 5.hfs
 
+if [ $XCODE = "xcode_4.1" ]; then
+  7z x -y "Install Xcode/InstallXcode.pkg"
+  7z x -y InstallXcode.pkg/Payload
+fi
+
 for pkg in $PKGS; do
-  # Xcode4 doesn't have gcc4.0
-  7z x -y */Packages/$pkg.pkg || continue
+  7z x -y "$PKG_DIR/$pkg.pkg"
   7z x -y Payload
   mkdir -p $pkg
   cd $pkg
