@@ -225,6 +225,23 @@ static void dumpInt(int bound_name_id) {
   fflush(stdout);
 }
 
+static MachO* loadDylib(string dylib) {
+  static const char executable_str[] = "@executable_path";
+  static const size_t executable_str_len = strlen(executable_str);
+  if (!strncmp(dylib.c_str(), executable_str, executable_str_len)) {
+    string dir = g_darwin_executable_path;
+    size_t found = dir.rfind('/');
+    if (found == string::npos) {
+      dir = ".";
+    } else {
+      dir = dir.substr(0, found);
+    }
+    dylib.replace(0, executable_str_len, dir);
+  }
+
+  return MachO::read(dylib.c_str(), ARCH_NAME);
+}
+
 typedef unordered_map<string, MachO::Export> Exports;
 
 class MachOLoader {
@@ -473,7 +490,7 @@ class MachOLoader {
         dylib.replace(0, executable_str_len, dir);
       }
 
-      auto_ptr<MachO> dylib_mach(MachO::read(dylib.c_str(), ARCH_NAME));
+      auto_ptr<MachO> dylib_mach(loadDylib(dylib.c_str()));
       load(*dylib_mach);
     }
   }
@@ -928,7 +945,7 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
   timer.start();
 
   // TODO(hamaji): Handle failures.
-  auto_ptr<MachO> dylib_mach(MachO::read(filename, ARCH_NAME));
+  auto_ptr<MachO> dylib_mach(loadDylib(filename));
 
   MachOLoader* loader = g_loader;
   CHECK(loader);
