@@ -916,6 +916,29 @@ size_t strlcat(char* dst, const char* src, size_t size) {
   return strlen(dst);
 }
 
+// TODO(hamaji): The following three functions are slow.
+
+void memset_pattern4(char* b, const char* pattern4, size_t len) {
+  size_t i;
+  for (i = 0; i < len; i++) {
+    b[i] = pattern4[i % 4];
+  }
+}
+
+void memset_pattern8(char* b, const char* pattern4, size_t len) {
+  size_t i;
+  for (i = 0; i < len; i++) {
+    b[i] = pattern4[i % 8];
+  }
+}
+
+void memset_pattern16(char* b, const char* pattern4, size_t len) {
+  size_t i;
+  for (i = 0; i < len; i++) {
+    b[i] = pattern4[i % 16];
+  }
+}
+
 int __mb_cur_max() {
   // TODO(hamaji): Incorrect for most locales.
   return 1;
