@@ -498,9 +498,7 @@ class MachOLoader {
   void doBind(const MachO& mach, intptr slide) {
     string last_weak_name = "";
     char* last_weak_sym = NULL;
-    vector<pair<string, char*> >::iterator
-        seen_weak_bind_iter = seen_weak_binds_.begin(),
-        seen_weak_bind_end = seen_weak_binds_.end();
+    size_t seen_weak_bind_index = 0;
     size_t seen_weak_binds_orig_size = seen_weak_binds_.size();
 
     unsigned int common_code_size = (unsigned int)trampoline_.size();
@@ -526,17 +524,20 @@ class MachOLoader {
             sym = last_weak_sym;
           } else {
             last_weak_name = name;
-            if (seen_weak_bind_iter != seen_weak_bind_end &&
-                !strcmp(seen_weak_bind_iter->first.c_str(), name.c_str())) {
-              last_weak_sym = sym = seen_weak_bind_iter->second;
-              seen_weak_bind_iter++;
+            if (seen_weak_bind_index != seen_weak_binds_orig_size &&
+                !strcmp(seen_weak_binds_[seen_weak_bind_index].first.c_str(),
+                        name.c_str())) {
+              last_weak_sym = sym =
+                  seen_weak_binds_[seen_weak_bind_index].second;
+              seen_weak_bind_index++;
             } else {
               last_weak_sym = (char*)*ptr;
               seen_weak_binds_.push_back(make_pair(name, last_weak_sym));
-              while (seen_weak_bind_iter != seen_weak_bind_end &&
-                     strcmp(seen_weak_bind_iter->first.c_str(),
-                            name.c_str()) <= 0) {
-                seen_weak_bind_iter++;
+              while (seen_weak_bind_index != seen_weak_binds_orig_size &&
+                     strcmp(
+                         seen_weak_binds_[seen_weak_bind_index].first.c_str(),
+                         name.c_str()) <= 0) {
+                seen_weak_bind_index++;
               }
               continue;
             }
