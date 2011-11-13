@@ -82,7 +82,6 @@ OK
 
 not OK
 
-- ld in xcode4
 - llvm-gcc
 - gnumake and bsdmake
 - lex and flex
