@@ -395,7 +395,7 @@ class MachOLoader {
       }
       *base = min(*base, vmaddr);
 
-      intptr vmsize = seg->vmsize;
+      intptr vmsize = alignMem(seg->vmsize, 0x1000);
       LOG << "mmap(file) " << mach.filename() << ' ' << name
           << ": " << (void*)vmaddr << "-" << (void*)(vmaddr + filesize)
           << " offset=" << mach.offset() + seg->fileoff << endl;
@@ -407,11 +407,11 @@ class MachOLoader {
       }
 
       if (vmsize != filesize) {
-        CHECK(vmsize > filesize);
         LOG << "mmap(anon) " << mach.filename() << ' ' << name
             << ": " << (void*)(vmaddr + filesize) << "-"
             << (void*)(vmaddr + vmsize)
             << endl;
+        CHECK(vmsize > filesize);
         void* mapped = mmap((void*)(vmaddr + filesize),
                             vmsize - filesize, prot,
                             MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
