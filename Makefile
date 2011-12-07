@@ -54,6 +54,11 @@ mach: $(MAC_TARGETS)
 check: all mach
 	./runtests.sh
 
+check-all: check
+	rm -f $(MACBINS)
+	MACOSX_DEPLOYMENT_TARGET=10.5 make mach
+	MACOSX_DEPLOYMENT_TARGET=10.5 ./runtests.sh
+
 $(MAC_C_BINS): %.c.bin: %.c
 	$(MAC_CC) -g -arch i386 -arch x86_64 $^ -o $@
 
