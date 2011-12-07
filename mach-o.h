@@ -47,10 +47,14 @@ class MachO {
   struct Bind {
     uint64_t vmaddr;
     const char* name;
-    int64_t addend;
+    union {
+      int64_t addend;
+      uint64_t value;
+    };
     uint8_t type;
     uint8_t ordinal;
     bool is_weak;
+    bool is_classic;
   };
 
   struct Export {

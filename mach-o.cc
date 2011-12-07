@@ -145,13 +145,15 @@ class MachOImpl : public MachO {
       MachO::Bind* bind = new MachO::Bind();
       bind->name = symstrtab + sym->n_strx;
       bind->vmaddr = sec.addr + i * ptrsize_;
-      bind->addend = 0;
+      bind->value = sym->n_value;
       bind->type = BIND_TYPE_POINTER;
       bind->ordinal = 1;
+      bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
+      bind->is_classic = true;
       LOGF("add classic bind! %s type=%d sect=%d desc=%d value=%lld "
-           "vmaddr=%p\n",
+           "vmaddr=%p is_weak=%d\n",
            bind->name, sym->n_type, sym->n_sect, sym->n_desc, (ll)sym->n_value,
-           (void*)(bind->vmaddr));
+           (void*)(bind->vmaddr), bind->is_weak);
       binds_.push_back(bind);
     }
   }
@@ -431,9 +433,9 @@ struct MachOImpl::BindState {
       vmaddr = mach->segments_[seg_index]->vmaddr;
     }
     LOGF("add bind! %s seg_index=%d seg_offset=%llu "
-         "type=%d ordinal=%d addend=%lld vmaddr=%p\n",
+         "type=%d ordinal=%d addend=%lld vmaddr=%p is_weak=%d\n",
          sym_name, seg_index, (ull)seg_offset,
-         type, ordinal, (ll)addend, (void*)(vmaddr + seg_offset));
+         type, ordinal, (ll)addend, (void*)(vmaddr + seg_offset), is_weak);
     bind->name = sym_name;
     bind->vmaddr = vmaddr + seg_offset;
     bind->addend = addend;

@@ -531,7 +531,11 @@ class MachOLoader {
                   seen_weak_binds_[seen_weak_bind_index].second;
               seen_weak_bind_index++;
             } else {
-              last_weak_sym = (char*)*ptr;
+              if (bind->is_classic) {
+                *ptr = last_weak_sym = (char*)bind->value;
+              } else {
+                last_weak_sym = (char*)*ptr;
+              }
               seen_weak_binds_.push_back(make_pair(name, last_weak_sym));
               while (seen_weak_bind_index != seen_weak_binds_orig_size &&
                      strcmp(
