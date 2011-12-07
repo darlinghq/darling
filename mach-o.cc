@@ -74,6 +74,8 @@ struct nlist {
   uint64_t n_value;
 };
 
+#define N_WEAK_DEF      0x0080
+
 static uint64_t uleb128(const uint8_t*& p) {
   uint64_t r = 0;
   int s = 0;
@@ -138,15 +140,18 @@ class MachOImpl : public MachO {
     for (int i = 0; i < count; i++) {
       uint32_t dysym = dysyms[indirect_offset + i];
       uint32_t index = dysym & 0x3fffffff;
-      uint32_t* sym = symtab;
-      sym += index * (is64_ ? 4 : 3);
+      nlist* sym = (nlist*)(symtab + index * (is64_ ? 4 : 3));
 
       MachO::Bind* bind = new MachO::Bind();
-      bind->name = symstrtab + sym[0];
+      bind->name = symstrtab + sym->n_strx;
       bind->vmaddr = sec.addr + i * ptrsize_;
       bind->addend = 0;
       bind->type = BIND_TYPE_POINTER;
       bind->ordinal = 1;
+      LOGF("add classic bind! %s type=%d sect=%d desc=%d value=%lld "
+           "vmaddr=%p\n",
+           bind->name, sym->n_type, sym->n_sect, sym->n_desc, (ll)sym->n_value,
+           (void*)(bind->vmaddr));
       binds_.push_back(bind);
     }
   }
