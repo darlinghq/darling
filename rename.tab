@@ -75,9 +75,9 @@ WRAP(readdir)
 WRAP(stat)
 WRAP(fstat)
 WRAP(lstat)
-RENAME(stat$INODE64, __darwin_stat)
-RENAME(fstat$INODE64, __darwin_fstat)
-RENAME(lstat$INODE64, __darwin_lstat)
+RENAME(stat$INODE64, __darwin_stat64)
+RENAME(fstat$INODE64, __darwin_fstat64)
+RENAME(lstat$INODE64, __darwin_lstat64)
 
 WRAP(open)
 

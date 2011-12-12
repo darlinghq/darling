@@ -79,7 +79,7 @@ typedef uint32_t __darwin_uid_t;
 typedef uint32_t __darwin_gid_t;
 
 // From /usr/include/sys/stat.h
-typedef struct __darwin_stat64 {
+struct __darwin_stat64 {
   __darwin_dev_t st_dev;
   __darwin_mode_t st_mode;
   __darwin_nlink_t st_nlink;
@@ -99,10 +99,31 @@ typedef struct __darwin_stat64 {
   __uint32_t st_gen;
   __int32_t st_lspare;
   __int64_t st_qspare[2];
-} __darwin_stat64;
+};
 
-static void __translate_stat(struct stat64* linux_buf,
-                             struct __darwin_stat64* mac) {
+struct __darwin_stat {
+  __darwin_dev_t st_dev;
+  uint32_t st_ino;
+  __darwin_mode_t st_mode;
+  __darwin_nlink_t st_nlink;
+  __darwin_uid_t st_uid;
+  __darwin_gid_t st_gid;
+  __darwin_dev_t st_rdev;
+  struct __darwin_timespec st_atimespec;
+  struct __darwin_timespec st_mtimespec;
+  struct __darwin_timespec st_ctimespec;
+  off_t st_size;
+  // TODO(hamaji): the size is not checked after this field.
+  blkcnt_t st_blocks;
+  blksize_t st_blksize;
+  __uint32_t st_flags;
+  __uint32_t st_gen;
+  __int32_t st_lspare;
+  __int64_t st_qspare[2];
+};
+
+static void __translate_stat64(struct stat64* linux_buf,
+                               struct __darwin_stat64* mac) {
   // TODO(hamaji): this memset seems to cause overflow... why?
   //memset(mac, 0, sizeof(*mac));
   mac->st_dev = linux_buf->st_dev;
@@ -120,7 +141,51 @@ static void __translate_stat(struct stat64* linux_buf,
   mac->st_ctimespec.tv_sec = linux_buf->st_ctime;
 }
 
-int __darwin_stat(const char* path, struct __darwin_stat64* mac) {
+static void __translate_stat(struct stat64* linux_buf,
+                             struct __darwin_stat* mac) {
+  // TODO(hamaji): this memset seems to cause overflow... why?
+  //memset(mac, 0, sizeof(*mac));
+  mac->st_dev = linux_buf->st_dev;
+  mac->st_mode = linux_buf->st_mode;
+  mac->st_nlink = linux_buf->st_nlink;
+  mac->st_ino = linux_buf->st_ino;
+  mac->st_uid = linux_buf->st_uid;
+  mac->st_gid = linux_buf->st_gid;
+  mac->st_rdev = linux_buf->st_rdev;
+  mac->st_size = linux_buf->st_size;
+  mac->st_blksize = linux_buf->st_blksize;
+  mac->st_blocks = linux_buf->st_blocks;
+  mac->st_atimespec.tv_sec = linux_buf->st_atime;
+  mac->st_mtimespec.tv_sec = linux_buf->st_mtime;
+  mac->st_ctimespec.tv_sec = linux_buf->st_ctime;
+}
+
+int __darwin_stat64(const char* path, struct __darwin_stat64* mac) {
+  LOGF("stat64: path=%s buf=%p\n", path, mac);
+  struct stat64 linux_buf;
+  int ret = stat64(path, &linux_buf);
+  __translate_stat64(&linux_buf, mac);
+  return ret;
+}
+
+int __darwin_fstat64(int fd, struct __darwin_stat64* mac) {
+  LOGF("fstat64: fd=%d buf=%p\n", fd, mac);
+  LOGF("fstat: size_offset=%d\n", (int)((char*)&mac->st_size - (char*)mac));
+  struct stat64 linux_buf;
+  int ret = fstat64(fd, &linux_buf);
+  __translate_stat64(&linux_buf, mac);
+  return ret;
+}
+
+int __darwin_lstat64(const char* path, struct __darwin_stat64* mac) {
+  LOGF("lstat64: path=%s buf=%p\n", path, mac);
+  struct stat64 linux_buf;
+  int ret = lstat64(path, &linux_buf);
+  __translate_stat64(&linux_buf, mac);
+  return ret;
+}
+
+int __darwin_stat(const char* path, struct __darwin_stat* mac) {
   LOGF("stat: path=%s buf=%p\n", path, mac);
   struct stat64 linux_buf;
   int ret = stat64(path, &linux_buf);
@@ -128,7 +193,7 @@ int __darwin_stat(const char* path, struct __darwin_stat64* mac) {
   return ret;
 }
 
-int __darwin_fstat(int fd, struct __darwin_stat64* mac) {
+int __darwin_fstat(int fd, struct __darwin_stat* mac) {
   LOGF("fstat: fd=%d buf=%p\n", fd, mac);
   LOGF("fstat: size_offset=%d\n", (int)((char*)&mac->st_size - (char*)mac));
   struct stat64 linux_buf;
@@ -137,7 +202,7 @@ int __darwin_fstat(int fd, struct __darwin_stat64* mac) {
   return ret;
 }
 
-int __darwin_lstat(const char* path, struct __darwin_stat64* mac) {
+int __darwin_lstat(const char* path, struct __darwin_stat* mac) {
   LOGF("lstat: path=%s buf=%p\n", path, mac);
   struct stat64 linux_buf;
   int ret = lstat64(path, &linux_buf);
