@@ -581,6 +581,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
       break;
     }
 
+    case LC_DYLD_INFO:
     case LC_DYLD_INFO_ONLY: {
       dyinfo = reinterpret_cast<dyld_info_command*>(cmds_ptr);
       LOGF("dyld info: rebase_off=%u rebase_size=%u "

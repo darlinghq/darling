@@ -534,7 +534,13 @@ class MachOLoader {
               if (bind->is_classic) {
                 *ptr = last_weak_sym = (char*)bind->value;
               } else {
-                last_weak_sym = (char*)*ptr;
+                const Exports::const_iterator export_found =
+                    exports_.find(bind->name);
+                if (export_found != exports_.end()) {
+                  *ptr = last_weak_sym = (char*)export_found->second.addr;
+                } else {
+                  last_weak_sym = (char*)*ptr;
+                }
               }
               seen_weak_binds_.push_back(make_pair(name, last_weak_sym));
               while (seen_weak_bind_index != seen_weak_binds_orig_size &&
@@ -668,9 +674,9 @@ class MachOLoader {
 
     loadDylibs(mach);
 
-    doBind(mach, slide);
-
     loadExports(mach, base, exports);
+
+    doBind(mach, slide);
 
     loadSymbols(mach, slide, base);
   }
