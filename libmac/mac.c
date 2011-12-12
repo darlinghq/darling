@@ -146,16 +146,43 @@ int __darwin_lstat(const char* path, struct __darwin_stat64* mac) {
 }
 
 // From /usr/include/sys/dirent.h
+#define __DARWIN_MAXPATHLEN 1024
+struct __darwin_dirent64 {
+  uint64_t d_ino;
+  uint64_t d_seekoff;
+  uint16_t d_reclen;
+  uint16_t d_namlen;
+  uint8_t d_type;
+  char d_name[__DARWIN_MAXPATHLEN];
+};
+
 #define __DARWIN_MAXNAMLEN 255
 struct __darwin_dirent {
-  __darwin_ino64_t d_ino;
+  uint32_t d_ino;
   uint16_t d_reclen;
   uint8_t d_type;
   uint8_t d_namlen;
   char d_name[__DARWIN_MAXNAMLEN + 1];
 };
 
-struct __darwin_dirent* readdir$INODE64(DIR* dirp) {
+struct __darwin_dirent64* __darwin_readdir64(DIR* dirp) {
+  static struct __darwin_dirent64 mac;
+  struct dirent* linux_buf = readdir(dirp);
+  if (!linux_buf) {
+    return NULL;
+  }
+  mac.d_ino = linux_buf->d_ino;
+  mac.d_reclen = linux_buf->d_reclen;
+  mac.d_type = linux_buf->d_type;
+  mac.d_namlen = strlen(linux_buf->d_name);
+  // TODO(hamaji): I hope this won't be used.
+  mac.d_seekoff = 0;
+  strcpy(mac.d_name, linux_buf->d_name);
+  LOGF("readdir64: %s\n", mac.d_name);
+  return &mac;
+}
+
+struct __darwin_dirent* __darwin_readdir(DIR* dirp) {
   static struct __darwin_dirent mac;
   struct dirent* linux_buf = readdir(dirp);
   if (!linux_buf) {
@@ -166,6 +193,7 @@ struct __darwin_dirent* readdir$INODE64(DIR* dirp) {
   mac.d_type = linux_buf->d_type;
   mac.d_namlen = strlen(linux_buf->d_name);
   strcpy(mac.d_name, linux_buf->d_name);
+  LOGF("readdir: %s\n", mac.d_name);
   return &mac;
 }
 
