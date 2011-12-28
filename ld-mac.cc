@@ -399,6 +399,9 @@ class MachOLoader {
       LOG << "mmap(file) " << mach.filename() << ' ' << name
           << ": " << (void*)vmaddr << "-" << (void*)(vmaddr + filesize)
           << " offset=" << mach.offset() + seg->fileoff << endl;
+      if (filesize == 0) {
+        continue;
+      }
       void* mapped = mmap((void*)vmaddr, filesize, prot,
                           MAP_PRIVATE | MAP_FIXED,
                           mach.fd(), mach.offset() + seg->fileoff);
