@@ -644,6 +644,8 @@ int __darwin_vfprintf(__darwin_FILE* fp, const char* fmt, va_list ap) {
 }
 
 int __darwin_fflush(__darwin_FILE* fp) {
+  if (!fp)
+    return fflush(NULL);
   return fflush(fp->linux_fp);
 }
 
