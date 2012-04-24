@@ -266,6 +266,18 @@ int __maskrune(__darwin_ct_rune_t _c, unsigned long _f) {
   return _DefaultRuneLocale.__runetype[_c & 0xff] & _f;
 }
 
+int __maskrune_l(__darwin_ct_rune_t _c, unsigned long _f, void* l) {
+  return __maskrune(_c, _f);
+}
+
+size_t mbstowcs_l(wchar_t* pwcs, const char* s, size_t n, void* l) {
+  return mbstowcs(pwcs, s, n);
+}
+
+size_t wcswidth_l(wchar_t* pwcs, size_t n, void* l) {
+  return wcswidth(pwcs, n);
+}
+
 void libiconv_set_relocation_prefix(const char* orig, const char* curr) {
   // TODO: What should we do?
   abort();
