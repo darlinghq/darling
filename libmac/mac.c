@@ -31,6 +31,7 @@
 
 #include <dirent.h>
 #include <err.h>
+#include <locale.h>
 #include <pthread.h>
 #include <signal.h>
 #include <spawn.h>
@@ -1253,6 +1254,44 @@ unsigned int arc4random() {
     initialized = 1;
   }
   return rand();
+}
+
+#define __DARWIN_LC_ALL_MASK            (  __DARWIN_LC_COLLATE_MASK \
+                                         | __DARWIN_LC_CTYPE_MASK \
+                                         | __DARWIN_LC_MESSAGES_MASK \
+                                         | __DARWIN_LC_MONETARY_MASK \
+                                         | __DARWIN_LC_NUMERIC_MASK \
+                                         | __DARWIN_LC_TIME_MASK )
+#define __DARWIN_LC_COLLATE_MASK        (1 << 0)
+#define __DARWIN_LC_CTYPE_MASK          (1 << 1)
+#define __DARWIN_LC_MESSAGES_MASK       (1 << 2)
+#define __DARWIN_LC_MONETARY_MASK       (1 << 3)
+#define __DARWIN_LC_NUMERIC_MASK        (1 << 4)
+#define __DARWIN_LC_TIME_MASK           (1 << 5)
+
+locale_t __darwin_newlocale(int category_mask, const char* locale,
+                            locale_t base) {
+  LOGF("newlocale: %d %p %p\n", category_mask, locale, base);
+  int linux_category_mask = 0;
+  if (__DARWIN_LC_COLLATE_MASK & category_mask)
+    linux_category_mask |= LC_COLLATE_MASK;
+  if (__DARWIN_LC_CTYPE_MASK & category_mask)
+    linux_category_mask |= LC_CTYPE_MASK;
+  if (__DARWIN_LC_MESSAGES_MASK & category_mask)
+    linux_category_mask |= LC_MESSAGES_MASK;
+  if (__DARWIN_LC_MONETARY_MASK & category_mask)
+    linux_category_mask |= LC_MONETARY_MASK;
+  if (__DARWIN_LC_NUMERIC_MASK & category_mask)
+    linux_category_mask |= LC_NUMERIC_MASK;
+  if (__DARWIN_LC_TIME_MASK & category_mask)
+    linux_category_mask |= LC_TIME_MASK;
+  // Apple's newlocale allows base=LC_GLOBAL_LOCALE, while glibc crashes.
+  // It seems the behavior is unspecified for this case.
+  // http://pubs.opengroup.org/onlinepubs/9699919799/functions/newlocale.html
+  // We'll use current locale (NULL) instead of the global locale.
+  if (base == LC_GLOBAL_LOCALE)
+    base = NULL;
+  return newlocale(linux_category_mask, locale, base);
 }
 
 __attribute__((constructor)) void initMac() {
