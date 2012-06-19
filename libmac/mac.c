@@ -1177,6 +1177,11 @@ void _ZNSt13basic_filebufIcSt11char_traitsIcEE7seekoffExSt12_Ios_SeekdirSt13_Ios
   abort();
 }
 
+void _ZNSi5seekgExSt12_Ios_Seekdir() {
+  fprintf(stderr, "_ZNSi5seekgExSt12_Ios_Seekdir called\n");
+  abort();
+}
+
 void* (*ld_mac_dlopen)(const char* filename, int flag);
 int (*ld_mac_dlclose)(void* handle);
 char* (*ld_mac_dlerror)(void);
@@ -1239,6 +1244,15 @@ void __darwin_qsort_r(void* base, size_t nel, size_t width, void* thunk,
   ctx.compar = compar;
   ctx.thunk = thunk;
   qsort_r(base, nel, width, &__darwin_qsort_r_helper, &ctx);
+}
+
+unsigned int arc4random() {
+  static int initialized = 0;
+  if (!initialized) {
+    srand(time(NULL));
+    initialized = 1;
+  }
+  return rand();
 }
 
 __attribute__((constructor)) void initMac() {
