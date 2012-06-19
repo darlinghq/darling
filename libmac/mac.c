@@ -1291,6 +1291,13 @@ locale_t __darwin_newlocale(int category_mask, const char* locale,
   // We'll use current locale (NULL) instead of the global locale.
   if (base == LC_GLOBAL_LOCALE)
     base = NULL;
+  // It seems the following 5 locales are the same as "C" for Mac.
+  if (!strcmp(locale, "en_US") ||
+      !strcmp(locale, "en_US.ISO8859-1") ||
+      !strcmp(locale, "en_US.ISO8859-15") ||
+      !strcmp(locale, "en_US.US-ASCII") ||
+      !strcmp(locale, "en_US.UTF-8"))
+    locale = "C";
   return newlocale(linux_category_mask, locale, base);
 }
 
