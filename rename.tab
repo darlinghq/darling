@@ -151,3 +151,5 @@ RENAME(select$1050, select)
 WRAP(qsort_r)
 
 WRAP(newlocale)
+
+WRAP(compat_mode)

@@ -1301,6 +1301,14 @@ locale_t __darwin_newlocale(int category_mask, const char* locale,
   return newlocale(linux_category_mask, locale, base);
 }
 
+int __darwin_compat_mode(const char* function, const char* mode) {
+  LOGF("compat_mode: %s %s\n", function, mode);
+  // We don't consider bootstrap, legacy, and error.
+  // http://opensource.apple.com/source/Libc/Libc-763.13/gen/get_compat.c
+  // TODO(hamaji): Support binary operators.
+  return !strcasecmp(mode, "unix2003");
+}
+
 __attribute__((constructor)) void initMac() {
   __darwin_stdin = __init_darwin_FILE(stdin);
   __darwin_stdout = __init_darwin_FILE(stdout);
