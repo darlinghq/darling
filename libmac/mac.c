@@ -300,7 +300,13 @@ int mach_timebase_info(struct mach_timebase_info* info) {
   return 0;
 }
 
-void* mach_task_self_;
+struct task_t
+{
+  pid_t pid;
+};
+
+static task_t mach_task_self_static = { getpid(); };
+task_t* mach_task_self_ = &mach_task_self_static;
 
 // From /usr/include/mach/host_info.h
 struct __darwin_host_basic_info {
@@ -364,33 +370,9 @@ void* mach_host_self() {
   //abort();
   return NULL;
 }
-
 int mach_port_deallocate() {
   // TODO(hamaji): leak
   //abort();
-  return 0;
-}
-
-/* FIXME implement vm_function corectly.
- * OznOg Obviosly, all this remain completelly wrong because completely void.
- * This functions allow programs to start correctly and usually to run (almost)
- * correctly, but the memory managment remains wrong. I do not really have good ideas
- * to handle all this without reimplementing the whole memory managment now. Feel free
- * to give me some good ideas.
- * I do not think implementing vm_allocate vm_deallocate and vm_msync is a priority
- * but I guess some programs really need them to work correctly.
- */
-int vm_msync(int target_task, void** addr, size_t size, int flags) {
-  return 0;
-}
-
-int vm_allocate(int target_task, void** addr, size_t size, int flags) {
-  *addr = calloc(size, 1);
-  return 0;
-}
-
-int vm_deallocate() {
-  // TODO(hamaji): munmap, maybe
   return 0;
 }
 
