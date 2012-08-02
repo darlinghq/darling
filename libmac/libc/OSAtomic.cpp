@@ -218,7 +218,15 @@ void OSSpinLockUnlock(OSSpinLock *lock)
 // http://i.stack.imgur.com/FSBA3.png
 void OSAtomicEnqueue(OSQueueHead *list, void *_new, size_t offset)
 {
-	LIBC_STUB();
+	long* newNext = reinterpret_cast<long*>(reinterpret_cast<char*>(_new) + offset);
+	*newNext = 0;
+
+	// If the queue is not empty
+	if (!__sync_bool_compare_and_swap(list->p, 0, _new))
+	{
+		void* prevTop = __sync_lock_test_and_set(list->p, _new);
+		*newNext = prevTop; // FIXME: this place may cause races with OSAtomicDequeue
+	}
 }
 
 void* OSAtomicDequeue(OSQueueHead *list, size_t offset)
