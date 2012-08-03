@@ -1,0 +1,6 @@
+#!/bin/sh
+
+awk '/#define DARWIN_([A-Z]+) ([0-9]+)/ { printf("darwin_to_linux[%s] = %s;\n", $2, substr($2, 8)); }' < "$1" > "darwin_to_linux.map"
+
+awk '/#define DARWIN_([A-Z]+) ([0-9]+)/ { printf("linux_to_darwin[%s] = %s;\n", substr($2, 8), $2); }' < "$1" > "linux_to_darwin.map"
+
