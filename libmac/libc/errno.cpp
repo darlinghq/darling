@@ -70,15 +70,4 @@ void __darwin_perror(const char *s)
 	errno = errnoLinuxToDarwin(errno);
 }
 
-void verrc(int eval, int code, const char *fmt, va_list args)
-{
-	errno = errnoDarwinToLinux(code);
-	verr(eval, fmt, args);
-}
-
-void vwarnc(int code, const char *fmt, va_list args)
-{
-	errno = errnoDarwinToLinux(code);
-	vwarn(fmt, args);
-}
 
