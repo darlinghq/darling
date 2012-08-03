@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <cstring>
 #include <cstdio>
+#include <err.h>
 #include "errno.h"
 #include "darwin_errno_codes.h"
 
@@ -67,5 +68,17 @@ void __darwin_perror(const char *s)
 	::perror(s);
 	// Now map it back again
 	errno = errnoLinuxToDarwin(errno);
+}
+
+void verrc(int eval, int code, const char *fmt, va_list args)
+{
+	errno = errnoDarwinToLinux(code);
+	verr(eval, fmt, args);
+}
+
+void vwarnc(int code, const char *fmt, va_list args)
+{
+	errno = errnoDarwinToLinux(code);
+	vwarn(fmt, args);
 }
 

@@ -1,20 +1,21 @@
+section .tdata
+
+warnc_orig_retaddr: dq 0
+
 section .text
 
 global errc
 global warnc
-global verrc
-global vwarnc
 
 extern errnoDarwinToLinux
 extern __errno_location
 extern err
 extern warn
-extern verr
-extern vwarn
 
 remove_and_convert:
 	; save return EIP in ecx
 	pop rcx
+
 	; ebp+8 is code (argument 2)
 	mov rdx, [rsp+16]
 	; move the first argument to the position of the second one
@@ -29,7 +30,7 @@ remove_and_convert:
 	; we need to convert it
 	push rdx
 	call errnoDarwinToLinux
-	pop rdx ; remove argument
+	add rsp, 8 ; remove argument
 	push rax ; now we have the converted errno
 
 	call __errno_location
@@ -40,18 +41,15 @@ remove_and_convert:
 
 errc:
 	call remove_and_convert
-	jmp err
+	jmp err ; it doesn't return, no need to deal with the modified stack
 
 warnc:
 	call remove_and_convert
-	jmp warn
-
-verrc:
-	call remove_and_convert
-	jmp verr
-
-vwarnc:
-	call remove_and_convert
-	jmp vwarn
-
+	mov rbx, [rsp]
+	mov [warnc_orig_retaddr], rbx ; store original return EIP
+	pop rbx ; make room for our own
+	call warn
+	; add a fictional argument back to the stack
+	sub rsp, 8
+	jmp [warnc_orig_retaddr]
 
