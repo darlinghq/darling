@@ -36,10 +36,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "fat.h"
+#include "FatMachO.h"
 #include "log.h"
-#include "mach-o.h"
-#include "mach-o/loader.h"
+#include "MachO.h"
+#include <mach-o/loader.h>
 
 DEFINE_bool(READ_SYMTAB,
 #ifdef NDEBUG
@@ -50,6 +50,7 @@ DEFINE_bool(READ_SYMTAB,
             "Read symtab for better backtrace");
 DEFINE_bool(READ_DYSYMTAB, false, "Read dysymtab");
 
+using namespace std;
 typedef long long ll;
 typedef unsigned long long ull;
 
@@ -152,7 +153,7 @@ class MachOImpl : public MachO {
       bind->is_classic = true;
       LOGF("add classic bind! %s type=%d sect=%d desc=%d value=%lld "
            "vmaddr=%p is_weak=%d\n",
-           bind->name, sym->n_type, sym->n_sect, sym->n_desc, (ll)sym->n_value,
+           bind->name.c_str(), sym->n_type, sym->n_sect, sym->n_desc, (ll)sym->n_value,
            (void*)(bind->vmaddr), bind->is_weak);
       m_binds.push_back(bind);
     }
@@ -587,12 +588,12 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
     case LC_DYLD_INFO:
     case LC_DYLD_INFO_ONLY: {
       dyinfo = reinterpret_cast<dyld_info_command*>(cmds_ptr);
-      LOGF("dyld info: rem_baseoff=%u rem_basesize=%u "
+      LOGF("dyld info: rebase_off=%u rebase_size=%u "
            "bind_off=%u bind_size=%u "
            "weak_bind_off=%u weak_bind_size=%u "
            "lazy_bind_off=%u lazy_bind_size=%u "
            "export_off=%u export_size=%u\n",
-           dyinfo->rem_baseoff, dyinfo->rem_basesize,
+           dyinfo->rebase_off, dyinfo->rebase_size,
            dyinfo->bind_off, dyinfo->bind_size,
            dyinfo->weak_bind_off, dyinfo->weak_bind_size,
            dyinfo->lazy_bind_off, dyinfo->lazy_bind_size,
@@ -600,9 +601,9 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
 
       {
         const uint8_t* p = reinterpret_cast<uint8_t*>(
-          bin + dyinfo->rem_baseoff);
-        const uint8_t* end = p + dyinfo->rem_basesize;
-        if (dyinfo->rem_baseoff && dyinfo->rem_basesize) {
+          bin + dyinfo->rebase_off);
+        const uint8_t* end = p + dyinfo->rebase_size;
+        if (dyinfo->rebase_off && dyinfo->rebase_size) {
           readRebase(p, end);
         }
       }
@@ -812,10 +813,10 @@ void MachOImpl::close() {
   }
 }
 
-MachO* MachO::read(std::string path, const char* arch, bool need_exports) {
+MachO* MachO::readFile(std::string path, const char* arch, bool need_exports) {
   int fd = open(path.c_str(), O_RDONLY);
   if (fd < 0) {
-    fprintf(stderr, "%s: %s\n", path, strerror(errno));
+    fprintf(stderr, "%s: %s\n", path.c_str(), strerror(errno));
     exit(1);
   }
 
@@ -826,7 +827,7 @@ MachO* MachO::read(std::string path, const char* arch, bool need_exports) {
     if (found == archs.end()) {
       fprintf(stderr,
               "%s is a fat binary, but doesn't contain %s binary\n",
-              path, arch);
+              path.c_str(), arch);
       exit(1);
     }
     offset = found->second.offset;
@@ -835,5 +836,5 @@ MachO* MachO::read(std::string path, const char* arch, bool need_exports) {
          (unsigned long)offset, (unsigned long)len);
   }
 
-  return new MachOImpl(path, fd, offset, len, need_exports);
+  return new MachOImpl(path.c_str(), fd, offset, len, need_exports);
 }

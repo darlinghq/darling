@@ -52,9 +52,9 @@
 #include <vector>
 
 #include "env_flags.h"
-#include "fat.h"
+#include "FatMachO.h"
 #include "log.h"
-#include "mach-o.h"
+#include "MachO.h"
 
 using namespace std;
 using namespace std::tr1;
@@ -239,7 +239,7 @@ static MachO* loadDylib(string dylib) {
     dylib.replace(0, executable_str_len, dir);
   }
 
-  return MachO::read(dylib.c_str(), ARCH_NAME);
+  return MachO::readFile(dylib.c_str(), ARCH_NAME);
 }
 
 typedef unordered_map<string, MachO::Export> Exports;
@@ -518,7 +518,7 @@ class MachOLoader {
       }
 
       if (bind->type == BIND_TYPE_POINTER) {
-        string name = bind->name + 1;
+        string name = bind->name.substr(1);
         void** ptr = (void**)(bind->vmaddr + slide);
         char* sym = NULL;
 
@@ -1046,7 +1046,7 @@ int main(int argc, char* argv[], char* envp[]) {
   if (!realpath(argv[0], g_darwin_executable_path)) {
   }
 
-  auto_ptr<MachO> mach(MachO::read(argv[0], ARCH_NAME));
+  auto_ptr<MachO> mach(MachO::readFile(argv[0], ARCH_NAME));
 #ifdef __x86_64__
   if (!mach->is64()) {
     fprintf(stderr, "%s: not 64bit binary\n", argv[0]);

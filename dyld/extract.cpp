@@ -41,7 +41,7 @@
 
 #include <mach-o/fat.h>
 
-#include "fat.h"
+#include "FatMachO.h"
 
 static std::string getFileName(std::string path);
 

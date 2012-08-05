@@ -39,7 +39,7 @@
 class MachO
 {
 public:
-	static MachO* readFile(const char* path, const char* arch, bool need_exports = true);
+	static MachO* readFile(std::string path, const char* arch, bool need_exports = true);
 
 	virtual ~MachO() {}
 	virtual void close() = 0;
@@ -69,14 +69,14 @@ public:
 
 	struct Export
 	{
-		string std::name;
+		std::string name;
 		uint64_t addr;
 		uint32_t flag;
 	};
 
 	struct Symbol
 	{
-		string std::name;
+		std::string name;
 		uint64_t addr;
 	};
 
@@ -105,7 +105,7 @@ public:
 	const std::vector<uint64_t>& init_funcs() const { return m_init_funcs; }
 	const std::vector<uint64_t>& exit_funcs() const { return m_exit_funcs; }
 
-	uint64_t dyld_data() const { return dyld_data_; }
+	uint64_t dyld_data() const { return m_dyld_data; }
 
 	bool is64() const { return m_is64; }
 

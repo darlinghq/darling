@@ -6,6 +6,8 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libmach-o)
+
 
 set(dyld_SRCS
 	FatMachO.cpp
