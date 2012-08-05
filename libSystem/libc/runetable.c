@@ -55,6 +55,9 @@
  * SUCH DAMAGE.
  */
 
+#include "rune.h"
+#include <mac-ctype.h>
+
 _RuneLocale _DefaultRuneLocale = {
     _RUNE_MAGIC_A,
     "none",

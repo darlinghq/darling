@@ -1,5 +1,6 @@
 #include "OSAtomic.h"
 #include "libc-stub.h"
+#include <cstdio>
 #include <cassert>
 #include <sched.h>
 
@@ -218,6 +219,7 @@ void OSSpinLockUnlock(OSSpinLock *lock)
 // http://i.stack.imgur.com/FSBA3.png
 void OSAtomicEnqueue(OSQueueHead *list, void *_new, size_t offset)
 {
+	/*
 	long* newNext = reinterpret_cast<long*>(reinterpret_cast<char*>(_new) + offset);
 	*newNext = 0;
 
@@ -227,6 +229,8 @@ void OSAtomicEnqueue(OSQueueHead *list, void *_new, size_t offset)
 		void* prevTop = __sync_lock_test_and_set(list->p, _new);
 		*newNext = prevTop; // FIXME: this place may cause races with OSAtomicDequeue
 	}
+	*/
+	LIBC_STUB();
 }
 
 void* OSAtomicDequeue(OSQueueHead *list, size_t offset)

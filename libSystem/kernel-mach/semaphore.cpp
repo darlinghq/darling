@@ -1,13 +1,16 @@
 #include "semaphore.h"
+#include "mach-stub.h"
+#include <unistd.h>
+#include <errno.h>
 
-kern_return_t semaphore_create(task_t task, semaphore_t *semaphore, int policy, int value)
+kern_return_t semaphore_create(darwin_task_t* task, semaphore_t *semaphore, int policy, int value)
 {
 	CHECK_TASK_SELF(task);
 
 	if (!semaphore)
 		return KERN_INVALID_ARGUMENT;
 
-	*semaphore = new semaphore;
+	*semaphore = new struct semaphore;
 	if (!*semaphore)
 		return KERN_RESOURCE_SHORTAGE;
 
@@ -23,7 +26,7 @@ kern_return_t semaphore_create(task_t task, semaphore_t *semaphore, int policy, 
 	return KERN_SUCCESS;
 }
 
-kern_return_t semaphore_destroy(task_t task, semaphore_t semaphore)
+kern_return_t semaphore_destroy(darwin_task_t* task, semaphore_t semaphore)
 {
 	CHECK_TASK_SELF(task);
 

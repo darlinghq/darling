@@ -55,6 +55,9 @@
  * SUCH DAMAGE.
  */
 
+#include <runetype.h>
+#include "rune.h"
+
 rune_t
 _none_sgetrune(string, n, result)
         const char *string;

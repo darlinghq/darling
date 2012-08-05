@@ -45,6 +45,8 @@
 #include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
 
 #include <mac-ctype.h>
 #include <runetype.h>
@@ -58,14 +60,6 @@ int LIBMAC_LOG;
 
 typedef __darwin_rune_t rune_t;
 typedef int __darwin_ct_rune_t;     /* ct_rune_t */
-
-#define _INVALID_RUNE _DefaultRuneLocale.__invalid_rune
-
-#include "errno.c"
-#include "none.c"
-#include "popcountdi2.c"
-#include "runetable.c"
-#include "stack_protector-obsd.c"
 
 struct __darwin_timespec {
   time_t tv_sec;
@@ -299,14 +293,6 @@ int mach_timebase_info(struct mach_timebase_info* info) {
   info->denom = CLOCKS_PER_SEC;
   return 0;
 }
-
-struct task_t
-{
-  pid_t pid;
-};
-
-static task_t mach_task_self_static = { getpid(); };
-task_t* mach_task_self_ = &mach_task_self_static;
 
 // From /usr/include/mach/host_info.h
 struct __darwin_host_basic_info {

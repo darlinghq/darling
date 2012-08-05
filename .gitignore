@@ -18,3 +18,7 @@
 ehthumbs.db
 Icon?
 Thumbs.db
+
+.kdev_include_paths
+*~
+
