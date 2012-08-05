@@ -136,15 +136,15 @@ class MachOImpl : public MachO {
                        uint32_t* symtab,
                        const char* symstrtab) {
     uint32_t indirect_offset = sec.reserved1;
-    int count = sec.size / ptrsize_;
+    int count = sec.size / m_ptrsize;
     for (int i = 0; i < count; i++) {
       uint32_t dysym = dysyms[indirect_offset + i];
       uint32_t index = dysym & 0x3fffffff;
-      nlist* sym = (nlist*)(symtab + index * (is64_ ? 4 : 3));
+      nlist* sym = (nlist*)(symtab + index * (m_is64 ? 4 : 3));
 
       MachO::Bind* bind = new MachO::Bind();
       bind->name = symstrtab + sym->n_strx;
-      bind->vmaddr = sec.addr + i * ptrsize_;
+      bind->vmaddr = sec.addr + i * m_ptrsize;
       bind->value = sym->n_value;
       bind->type = BIND_TYPE_POINTER;
       bind->ordinal = 1;
@@ -154,13 +154,13 @@ class MachOImpl : public MachO {
            "vmaddr=%p is_weak=%d\n",
            bind->name, sym->n_type, sym->n_sect, sym->n_desc, (ll)sym->n_value,
            (void*)(bind->vmaddr), bind->is_weak);
-      binds_.push_back(bind);
+      m_binds.push_back(bind);
     }
   }
 
   char* mapped_;
   size_t mapped_size_;
-  bool need_exports_;
+  bool need_m_exports;
 };
 
 template <class segment_command, class section>
@@ -196,7 +196,7 @@ void MachOImpl::readSegment(char* cmds_ptr,
 
     if (!strcmp(sec.sectname, "__dyld") &&
         !strcmp(sec.segname, "__DATA")) {
-      dyld_data_ = sec.addr;
+      m_dyld_data = sec.addr;
     }
 
     int section_type = sec.flags & SECTION_TYPE;
@@ -206,11 +206,16 @@ void MachOImpl::readSegment(char* cmds_ptr,
         break;
 
     case S_MOD_INIT_FUNC_POINTERS: {
-      for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += ptrsize_) {
-        init_funcs_.push_back(p);
+      for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += m_ptrsize) {
+        m_init_funcs.push_back(p);
       }
       break;
     }
+    case S_MOD_TERM_FUNC_POINTERS:
+      for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += m_ptrsize) {
+        m_exit_funcs.push_back(p);
+      }
+      break;
     case S_NON_LAZY_SYMBOL_POINTERS:
     case S_LAZY_SYMBOL_POINTERS: {
       bind_sections->push_back(sections + j);
@@ -222,8 +227,6 @@ void MachOImpl::readSegment(char* cmds_ptr,
     case S_8BYTE_LITERALS:
     case S_LITERAL_POINTERS:
     case S_SYMBOL_STUBS:
-    case S_MOD_TERM_FUNC_POINTERS:
-      // TODO(hamaji): Support term_funcs.
     case S_COALESCED:
     case S_GB_ZEROFILL:
     case S_INTERPOSING:
@@ -268,7 +271,7 @@ struct MachOImpl::RebaseState {
       break;
 
     case REBASE_OPCODE_ADD_ADDR_IMM_SCALED:
-      seg_offset += imm * mach->ptrsize_;
+      seg_offset += imm * mach->m_ptrsize;
       break;
 
     case REBASE_OPCODE_DO_REBASE_IMM_TIMES:
@@ -310,18 +313,18 @@ struct MachOImpl::RebaseState {
   void addRebase() {
     MachO::Rebase* rebase = new MachO::Rebase();
     uint64_t vmaddr;
-    if (mach->is64_) {
-      vmaddr = mach->segments64_[seg_index]->vmaddr;
+    if (mach->m_is64) {
+      vmaddr = mach->m_segments64[seg_index]->vmaddr;
     } else {
-      vmaddr = mach->segments_[seg_index]->vmaddr;
+      vmaddr = mach->m_segments[seg_index]->vmaddr;
     }
     LOGF("add rebase! seg_index=%d seg_offset=%llu type=%d vmaddr=%p\n",
          seg_index, (ull)seg_offset, type, (void*)vmaddr);
     rebase->vmaddr = vmaddr + seg_offset;
     rebase->type = type;
-    mach->rebases_.push_back(rebase);
+    mach->m_rebases.push_back(rebase);
 
-    seg_offset += mach->ptrsize_;
+    seg_offset += mach->m_ptrsize;
   }
 
   MachOImpl* mach;
@@ -404,7 +407,7 @@ struct MachOImpl::BindState {
     case BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED:
       LOGF("BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED %d\n", (int)imm);
       addBind();
-      seg_offset += imm * mach->ptrsize_;
+      seg_offset += imm * mach->m_ptrsize;
       break;
 
     case BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB: {
@@ -427,10 +430,10 @@ struct MachOImpl::BindState {
   void addBind() {
     MachO::Bind* bind = new MachO::Bind();
     uint64_t vmaddr;
-    if (mach->is64_) {
-      vmaddr = mach->segments64_[seg_index]->vmaddr;
+    if (mach->m_is64) {
+      vmaddr = mach->m_segments64[seg_index]->vmaddr;
     } else {
-      vmaddr = mach->segments_[seg_index]->vmaddr;
+      vmaddr = mach->m_segments[seg_index]->vmaddr;
     }
     LOGF("add bind! %s seg_index=%d seg_offset=%llu "
          "type=%d ordinal=%d addend=%lld vmaddr=%p is_weak=%d\n",
@@ -442,9 +445,9 @@ struct MachOImpl::BindState {
     bind->type = type;
     bind->ordinal = ordinal;
     bind->is_weak = is_weak;
-    mach->binds_.push_back(bind);
+    mach->m_binds.push_back(bind);
 
-    seg_offset += mach->ptrsize_;
+    seg_offset += mach->m_ptrsize;
   }
 
   MachOImpl* mach;
@@ -493,7 +496,7 @@ void MachOImpl::readExport(const uint8_t* start,
     LOGF("export: %s %lu %p\n",
          name_buf->c_str(), (long)exp->flag, (void*)exp->addr);
 
-    exports_.push_back(exp);
+    m_exports.push_back(exp);
 
     CHECK(expected_term_end == p);
   }
@@ -517,22 +520,22 @@ void MachOImpl::readExport(const uint8_t* start,
 MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
                      bool need_exports)
   : mapped_(NULL), mapped_size_(len) {
-  filename_ = filename;
-  need_exports_ = need_exports;
-  dyld_data_ = 0;
+  m_filename = filename;
+  need_m_exports = need_exports;
+  m_dyld_data = 0;
   CHECK(fd);
-  fd_ = fd;
-  offset_ = offset;
+  m_fd = fd;
+  m_offset = offset;
 
   if (!mapped_size_) {
-    mapped_size_ = lseek(fd_, 0, SEEK_END);
+    mapped_size_ = lseek(m_fd, 0, SEEK_END);
   }
   lseek(fd, 0, SEEK_SET);
 
   char* bin = mapped_ = reinterpret_cast<char*>(
     mmap(NULL, mapped_size_,
-         PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, fd_, offset));
-  base_ = bin;
+         PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, m_fd, offset));
+  m_base = bin;
 
   mach_header* header = reinterpret_cast<mach_header*>(bin);
   LOGF("magic=%x cpu=%d cpusub=%d file=%d ncmds=%d sizecmd=%d flags=%x\n",
@@ -540,14 +543,14 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
        header->filetype, header->ncmds, header->sizeofcmds,
        header->flags);
 
-  is64_ = false;
+  m_is64 = false;
   if (header->magic == MH_MAGIC_64) {
-    is64_ = true;
+    m_is64 = true;
   } else  if (header->magic != MH_MAGIC) {
     fprintf(stderr, "Not mach-o: %s\n", filename);
     exit(1);
   }
-  ptrsize_ = is64_ ? 8 : 4;
+  m_ptrsize = m_is64 ? 8 : 4;
 
   if ((header->cputype & 0x00ffffff) != CPU_TYPE_X86) {
     fprintf(stderr, "Unsupported CPU\n");
@@ -555,7 +558,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
   }
 
   struct load_command* cmds_ptr = reinterpret_cast<struct load_command*>(
-                                  bin + (is64_ ? sizeof(mach_header_64)
+                                  bin + (m_is64 ? sizeof(mach_header_64)
                                                : sizeof(mach_header)));
 
   uint32_t* symtab = NULL;
@@ -571,25 +574,25 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
     switch (cmds_ptr->cmd) {
     case LC_SEGMENT_64: {
       readSegment<segment_command_64, section_64>(
-          (char*)cmds_ptr, &segments64_, &bind_sections_64);
+          (char*)cmds_ptr, &m_segments64, &bind_sections_64);
       break;
     }
 
     case LC_SEGMENT: {
       readSegment<segment_command, section>(
-          (char*)cmds_ptr, &segments_, &bind_sections_32);
+          (char*)cmds_ptr, &m_segments, &bind_sections_32);
       break;
     }
 
     case LC_DYLD_INFO:
     case LC_DYLD_INFO_ONLY: {
       dyinfo = reinterpret_cast<dyld_info_command*>(cmds_ptr);
-      LOGF("dyld info: rebase_off=%u rebase_size=%u "
+      LOGF("dyld info: rem_baseoff=%u rem_basesize=%u "
            "bind_off=%u bind_size=%u "
            "weak_bind_off=%u weak_bind_size=%u "
            "lazy_bind_off=%u lazy_bind_size=%u "
            "export_off=%u export_size=%u\n",
-           dyinfo->rebase_off, dyinfo->rebase_size,
+           dyinfo->rem_baseoff, dyinfo->rem_basesize,
            dyinfo->bind_off, dyinfo->bind_size,
            dyinfo->weak_bind_off, dyinfo->weak_bind_size,
            dyinfo->lazy_bind_off, dyinfo->lazy_bind_size,
@@ -597,9 +600,9 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
 
       {
         const uint8_t* p = reinterpret_cast<uint8_t*>(
-          bin + dyinfo->rebase_off);
-        const uint8_t* end = p + dyinfo->rebase_size;
-        if (dyinfo->rebase_off && dyinfo->rebase_size) {
+          bin + dyinfo->rem_baseoff);
+        const uint8_t* end = p + dyinfo->rem_basesize;
+        if (dyinfo->rem_baseoff && dyinfo->rem_basesize) {
           readRebase(p, end);
         }
       }
@@ -625,7 +628,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
         readBind(p, end, true);
       }
 
-      if (need_exports_) {
+      if (need_m_exports) {
         const uint8_t* p = reinterpret_cast<uint8_t*>(
           bin + dyinfo->export_off);
         const uint8_t* end = p + dyinfo->export_size;
@@ -655,7 +658,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
           Symbol sym;
           nlist* nl = (nlist*)symtab;
           sym.name = symstrtab + nl->n_strx;
-          if (is64_) {
+          if (m_is64) {
             sym.addr = nl->n_value;
             symtab += 4;
           } else {
@@ -665,7 +668,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
 
           LOGF("%d %s(%d) %p\n",
                i, sym.name.c_str(), nl->n_strx, (void*)sym.addr);
-          symbols_.push_back(sym);
+          m_symbols.push_back(sym);
         }
       }
 
@@ -714,7 +717,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
             (dysym & INDIRECT_SYMBOL_ABS) ? " abs" : "";
 
           uint32_t* sym = symtab;
-          sym += index * (is64_ ? 4 : 3);
+          sym += index * (m_is64 ? 4 : 3);
 
           LOGF("dysym %d %s(%u)%s%s\n",
                j, symstrtab + sym[0], index, local, abs);
@@ -746,19 +749,19 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len,
         LOGF(" %d:%x", i, p[i]);
       }
       LOGF("\n");
-      if (is64_) {
-        entry_ = reinterpret_cast<uint64_t*>(cmds_ptr)[18];
+      if (m_is64) {
+        m_entry = reinterpret_cast<uint64_t*>(cmds_ptr)[18];
       } else {
-        entry_ = reinterpret_cast<uint32_t*>(cmds_ptr)[14];
+        m_entry = reinterpret_cast<uint32_t*>(cmds_ptr)[14];
       }
-      LOGF("entry=%llx\n", (ull)entry_);
+      LOGF("entry=%llx\n", (ull)m_entry);
       break;
     }
 
     case LC_LOAD_DYLIB: {
       dylib* lib = &reinterpret_cast<dylib_command*>(cmds_ptr)->dylib;
       LOGF("dylib: '%s'\n", (char*)cmds_ptr + lib->name.offset);
-      dylibs_.push_back((char*)cmds_ptr + lib->name.offset);
+      m_dylibs.push_back((char*)cmds_ptr + lib->name.offset);
       break;
     }
 
@@ -788,29 +791,29 @@ MachOImpl::~MachOImpl() {
 }
 
 void MachOImpl::close() {
-  for (size_t i = 0; i < binds_.size(); i++) {
-    delete binds_[i];
+  for (size_t i = 0; i < m_binds.size(); i++) {
+    delete m_binds[i];
   }
-  binds_.clear();
-  for (size_t i = 0; i < rebases_.size(); i++) {
-    delete rebases_[i];
+  m_binds.clear();
+  for (size_t i = 0; i < m_rebases.size(); i++) {
+    delete m_rebases[i];
   }
-  rebases_.clear();
-  for (size_t i = 0; i < exports_.size(); i++) {
-    delete exports_[i];
+  m_rebases.clear();
+  for (size_t i = 0; i < m_exports.size(); i++) {
+    delete m_exports[i];
   }
-  exports_.clear();
+  m_exports.clear();
 
   if (mapped_) {
     munmap(mapped_, mapped_size_);
-    ::close(fd_);
+    ::close(m_fd);
     mapped_ = NULL;
-    fd_ = -1;
+    m_fd = -1;
   }
 }
 
-MachO* MachO::read(const char* path, const char* arch, bool need_exports) {
-  int fd = open(path, O_RDONLY);
+MachO* MachO::read(std::string path, const char* arch, bool need_exports) {
+  int fd = open(path.c_str(), O_RDONLY);
   if (fd < 0) {
     fprintf(stderr, "%s: %s\n", path, strerror(errno));
     exit(1);
@@ -818,7 +821,7 @@ MachO* MachO::read(const char* path, const char* arch, bool need_exports) {
 
   size_t offset = 0, len = 0;
   map<string, fat_arch> archs;
-  if (readFatInfo(fd, &archs)) {
+  if (FatMachO::readFatInfo(fd, &archs)) {
     map<string, fat_arch>::const_iterator found = archs.find(arch);
     if (found == archs.end()) {
       fprintf(stderr,

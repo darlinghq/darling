@@ -25,17 +25,20 @@
 // OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
 
-#ifndef FAT_H_
-#define FAT_H_
+#ifndef FATMACHO_H_
+#define FATMACHO_H_
 
 #include <map>
 #include <string>
 
-#include "mach-o/fat.h"
+#include <mach-o/fat.h>
 
-using namespace std;
+namespace FatMachO
+{
 
-// Reads fd and fill fat info. Returns true if fd is a fat binary.
-bool readFatInfo(int fd, map<string, fat_arch>* fat);
+	// Reads fd and fills fat info. Returns true if fd is a valid fat binary.
+	bool readFatInfo(int fd, std::map<std::string, fat_arch>* fat);
+
+}
 
 #endif  // FAT_H_
