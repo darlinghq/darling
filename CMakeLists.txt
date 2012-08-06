@@ -8,6 +8,8 @@ endif(COMMAND cmake_policy)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/libmach-o)
 
+configure_file(config.h.in config.h)
+
 set(mach-o_SRCS
 	src/libmach-o/MachO.cpp
 	src/libmach-o/FatMachO.cpp
@@ -33,15 +35,15 @@ add_executable(dyld ${dyld_SRCS})
 
 target_link_libraries(dyld -ldl -lpthread mach-o)
 
-set(fatmacho-exract_SRCS
+set(fatmacho-extract_SRCS
 	src/dyld/extract.cpp
 )
 
-add_executable(fatmacho-exract ${fatmacho-exract_SRCS})
+add_executable(fatmacho-extract ${fatmacho-extract_SRCS})
 
-target_link_libraries(fatmacho-exract -ldl -lpthread mach-o)
+target_link_libraries(fatmacho-extract -ldl -lpthread mach-o)
 
-install(TARGETS dyld fatmacho-exract DESTINATION bin)
+install(TARGETS dyld fatmacho-extract DESTINATION bin)
 
 
 add_subdirectory(src/libSystem)

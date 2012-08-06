@@ -3,7 +3,7 @@
 # Generates a direct mapping between two functions in assembly code
 
 (
-echo "section .text"
+echo ".text"
 echo
 
 while read line; do
@@ -13,8 +13,8 @@ while read line; do
 		continue
 	fi
 
-	echo "global ${arrIN[0]}"
-	echo "extern ${arrIN[1]}"
+	echo ".global ${arrIN[0]}"
+	echo ".extern ${arrIN[1]}"
 	echo "${arrIN[0]}:"
 	echo "	jmp ${arrIN[1]}"
 	echo

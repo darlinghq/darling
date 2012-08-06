@@ -56,6 +56,7 @@
 #include "log.h"
 #include "MachO.h"
 #include "FileMap.h"
+#include "arch.h"
 
 using namespace std;
 using namespace std::tr1;
@@ -69,35 +70,8 @@ static map<string, string> g_rename;
 static vector<string> g_bound_names;
 static set<string> g_no_trampoline;
 
-struct Timer {
-  Timer() : start_time(0) {}
-
-  void start() {
-    if (FLAGS_PRINT_TIME) {
-      start_time = clock();
-    }
-  }
-
-  void print(const char* name) {
-    if (FLAGS_PRINT_TIME) {
-      double elapsed = ((double)clock() - start_time) / CLOCKS_PER_SEC;
-      printf("Elapsed time (%s): %f sec\n", name, elapsed);
-    }
-  }
-
-  clock_t start_time;
-};
-
 
 static FileMap g_file_map;
-
-#ifdef __x86_64__
-static const char* ARCH_NAME = "x86-64";
-static const int BITS = 64;
-#else
-static const char* ARCH_NAME = "i386";
-static const int BITS = 32;
-#endif
 
 static char* g_darwin_executable_path;
 
@@ -106,6 +80,7 @@ static Timer g_timer;
 class MachOLoader;
 static MachOLoader* g_loader;
 
+/*
 static void initRename() {
 #define RENAME(src, dst) g_rename.insert(make_pair(#src, #dst));
 #define WRAP(src) RENAME(src, __darwin_ ## src)
@@ -113,6 +88,7 @@ static void initRename() {
 #undef RENAME
 #undef WRAP
 }
+*/
 
 static void initNoTrampoline() {
 #define NO_TRAMPOLINE(name) g_no_trampoline.insert(#name);
@@ -196,6 +172,7 @@ class MachOLoader {
  public:
   MachOLoader()
     : last_addr_(0) {
+	// TODO: this is very wrong
     dylib_to_so_.insert(make_pair(
                           "/System/Library/Frameworks/CoreFoundation.framework"
                           "/Versions/A/CoreFoundation",
@@ -488,6 +465,7 @@ class MachOLoader {
             }
           }
         } else {
+			// TODO: remove, replace with aliases
 #ifndef __x86_64__
           static const char* SUF_UNIX03 = "$UNIX2003";
           static const size_t SUF_UNIX03_LEN = strlen(SUF_UNIX03);
@@ -720,6 +698,9 @@ void MachOLoader::boot(
   //       envp[0]
   //       envp[1]
   //       envp[n]
+  
+  // TODO: minimize assembly code
+  
   __asm__ volatile(" mov %1, %%eax;\n"
                    " mov %2, %%rdx;\n"
                    " push $0;\n"
@@ -829,6 +810,7 @@ static void initSignalHandler() {
   sigaction(SIGABRT, &sigact, NULL);
 }
 
+/*
 static bool loadLibMac(const char* mypath) {
   if (dlopen("libmac.so", RTLD_LAZY | RTLD_GLOBAL)) {
     return true;
@@ -854,7 +836,9 @@ static bool loadLibMac(const char* mypath) {
 
   return false;
 }
+*/
 
+/*
 static void initLibMac() {
   char mypath[PATH_MAX + 1];
   ssize_t l = readlink("/proc/self/exe", mypath, PATH_MAX);
@@ -880,11 +864,14 @@ static void initLibMac() {
   }
   strcpy(loader_path, mypath);
 }
+*/
 
+// TODO: OMG
 static string ld_mac_dlerror_buf;
 static bool ld_mac_dlerror_is_set;
 
-static void* ld_mac_dlopen(const char* filename, int flag) {
+// TODO: broken - should support multiple loads and native libs
+void* __darwin_dlopen(const char* filename, int flag) {
   LOG << "ld_mac_dlopen: " << filename << " " << flag << endl;
 
   Timer timer;
@@ -904,14 +891,15 @@ static void* ld_mac_dlopen(const char* filename, int flag) {
   return exports;
 }
 
-static int ld_mac_dlclose(void* handle) {
+// TODO: broken - should decrease the reference count
+static int __darwin_dlclose(void* handle) {
   LOG << "ld_mac_dlclose" << endl;
 
   delete (Exports*)handle;
   return 0;
 }
 
-static const char* ld_mac_dlerror(void) {
+static const char* __darwin_dlerror(void) {
   LOG << "ld_mac_dlerror" << endl;
 
   if (!ld_mac_dlerror_is_set)
@@ -920,7 +908,7 @@ static const char* ld_mac_dlerror(void) {
   return ld_mac_dlerror_buf.c_str();
 }
 
-static void* ld_mac_dlsym(void* handle, const char* symbol) {
+static void* __darwin_dlsym(void* handle, const char* symbol) {
   LOG << "ld_mac_dlsym: " << symbol << endl;
 
   Exports* exports = (Exports*)handle;
@@ -933,6 +921,7 @@ static void* ld_mac_dlsym(void* handle, const char* symbol) {
   return (void*)found->second.addr;
 }
 
+/*
 void initDlfcn() {
 #define SET_DLFCN_FUNC(f)                                   \
   do {                                                      \
@@ -945,6 +934,7 @@ void initDlfcn() {
   SET_DLFCN_FUNC(dlerror);
   SET_DLFCN_FUNC(dlsym);
 }
+*/
 
 int main(int argc, char* argv[], char* envp[]) {
   g_timer.start();
