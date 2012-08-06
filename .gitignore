@@ -21,4 +21,9 @@ Thumbs.db
 
 .kdev_include_paths
 *~
+Makefile
+CMakeFiles
+cmake_install.cmake
+CMakeCache.txt
+
 

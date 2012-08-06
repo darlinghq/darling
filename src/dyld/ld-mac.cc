@@ -55,6 +55,7 @@
 #include "FatMachO.h"
 #include "log.h"
 #include "MachO.h"
+#include "FileMap.h"
 
 using namespace std;
 using namespace std::tr1;
@@ -87,75 +88,6 @@ struct Timer {
   clock_t start_time;
 };
 
-class FileMap {
- public:
-  void add(const MachO& mach, uintptr_t slide, uintptr_t base) {
-    SymbolMap* symbol_map = new SymbolMap();
-    symbol_map->filename = mach.filename();
-    symbol_map->base = base;
-    if (!maps_.insert(make_pair(base, symbol_map)).second) {
-      err(1, "dupicated base addr: %p in %s",
-          (void*)base, mach.filename().c_str());
-    }
-
-    for (size_t i = 0; i < mach.symbols().size(); i++) {
-      MachO::Symbol sym = mach.symbols()[i];
-      if (sym.name.empty() || sym.name[0] != '_')
-        continue;
-      sym.addr += slide;
-      if (sym.addr < base)
-        continue;
-      symbol_map->symbols.insert(make_pair(sym.addr, sym.name.substr(1)));
-    }
-  }
-
-  void addWatchDog(uintptr_t addr) {
-    bool r = maps_.insert(make_pair(addr, (SymbolMap*)NULL)).second;
-    CHECK(r);
-  }
-
-  const char* dumpSymbol(void* p) {
-    uintptr_t addr = reinterpret_cast<uintptr_t>(p);
-    map<uintptr_t, SymbolMap*>::const_iterator found = maps_.upper_bound(addr);
-    if (found == maps_.begin() || found == maps_.end()) {
-      return NULL;
-    }
-
-    --found;
-    return dumpSymbolFromMap(*found->second, addr);
-  }
-
- private:
-  struct SymbolMap {
-    string filename;
-    map<uintptr_t, string> symbols;
-    uintptr_t base;
-  };
-
-  const char* dumpSymbolFromMap(const SymbolMap& symbol_map, uintptr_t addr) {
-    uintptr_t file_offset = addr - symbol_map.base;
-
-    // Use lower_bound as PC may be in just after call.
-    map<uintptr_t, string>::const_iterator found =
-        symbol_map.symbols.lower_bound(addr);
-    if (found == symbol_map.symbols.begin()) {
-      snprintf(dumped_stack_frame_buf_, 4095, "%s [%p(%lx)]",
-               symbol_map.filename.c_str(), (void*)addr, (long)file_offset);
-      return dumped_stack_frame_buf_;
-    }
-
-    --found;
-    const char* name = found->second.c_str();
-    uintptr_t func_offset = addr - found->first;
-    snprintf(dumped_stack_frame_buf_, 4095, "%s(%s+%lx) [%p(%lx)]",
-             symbol_map.filename.c_str(), name, (long)func_offset,
-             (void*)addr, (long)file_offset);
-    return dumped_stack_frame_buf_;
-  }
-
-  map<uintptr_t, SymbolMap*> maps_;
-  char dumped_stack_frame_buf_[4096];
-};
 
 static FileMap g_file_map;
 
