@@ -70,7 +70,6 @@ static map<string, string> g_rename;
 static vector<string> g_bound_names;
 static set<string> g_no_trampoline;
 
-
 static FileMap g_file_map;
 
 static char* g_darwin_executable_path;

@@ -45,5 +45,4 @@ target_link_libraries(fatmacho-extract -ldl -lpthread mach-o)
 
 install(TARGETS dyld fatmacho-extract DESTINATION bin)
 
-
 add_subdirectory(src/libSystem)
