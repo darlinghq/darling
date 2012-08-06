@@ -39,6 +39,7 @@
 class MachO
 {
 public:
+	__attribute__ ((visibility ("default")))
 	static MachO* readFile(std::string path, const char* arch, bool need_exports = true);
 
 	virtual ~MachO() {}
@@ -80,13 +81,9 @@ public:
 		uint64_t addr;
 	};
 
-	const std::vector<segment_command_64*>& segments64() const {
-		return m_segments64;
-	}
+	const std::vector<segment_command_64*>& segments64() const { return m_segments64; }
 
-	const std::vector<segment_command*>& segments() const {
-		return m_segments;
-	}
+	const std::vector<segment_command*>& segments() const { return m_segments; }
 
 	const std::vector<const char*>& dylibs() const { return m_dylibs; }
 

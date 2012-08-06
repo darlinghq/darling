@@ -10,10 +10,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libmach-o)
 
 
 set(dyld_SRCS
-	FatMachO.cpp
+	FileMap.cpp
 	ld-mac.cc
 	log.cc
-	mach-o.cc
 )
 
 add_executable(dyld ${dyld_SRCS})
@@ -22,11 +21,10 @@ target_link_libraries(dyld -ldl -lpthread)
 
 set(fatmacho-exract_SRCS
 	extract.cpp
-	FatMachO.cpp
 )
 
 add_executable(fatmacho-exract ${fatmacho-exract_SRCS})
 
-target_link_libraries(fatmacho-exract -ldl -lpthread)
+target_link_libraries(fatmacho-exract -ldl -lpthread mach-o)
 
 install(TARGETS dyld fatmacho-exract DESTINATION bin)

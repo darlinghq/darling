@@ -37,6 +37,7 @@ namespace FatMachO
 {
 
 	// Reads fd and fills fat info. Returns true if fd is a valid fat binary.
+	__attribute__ ((visibility ("default")))
 	bool readFatInfo(int fd, std::map<std::string, fat_arch>* fat);
 
 }
