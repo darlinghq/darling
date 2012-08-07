@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <err.h>
 #include "errno.h"
+#include "trace.h"
 #include "darwin_errno_codes.h"
 
 static void initErrnoMappingTable() __attribute__ ((constructor));
@@ -55,18 +56,21 @@ int errnoLinuxToDarwin(int err)
 
 char* __darwin_strerror(int errnum)
 {
+	TRACE(errnum);
 	errnum = errnoDarwinToLinux(errnum);
 	return ::strerror(errnum);
 }
 
 int __darwin_strerror_r(int errnum, char *strerrbuf, size_t buflen)
 {
+	TRACE() << ARG(errnum) << ARGP(strerrbuf) << ARG(buflen);
 	errnum = errnoDarwinToLinux(errnum);
 	return ::__xpg_strerror_r(errnum, strerrbuf, buflen);
 }
 
 void __darwin_perror(const char *s)
 {
+	TRACE(s);
 	// First map the error back
 	errno = errnoDarwinToLinux(errno);
 	::perror(s);

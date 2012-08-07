@@ -7,6 +7,8 @@ int __darwin_sysctl(int* name, u_int namelen,
                     void* newp, size_t newlen) {
 	int i;
 	
+	TRACE(name, namelen, oldp, oldlenp, newp, newlen);
+	
 	LOGF("sysctl: namelen=%u", namelen);
 	for (i = 0; i < namelen; i++)
 		LOGF(" name[%d]=%d", i, name[i]);

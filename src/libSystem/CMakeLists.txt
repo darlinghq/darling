@@ -8,9 +8,10 @@ endif(COMMAND cmake_policy)
 enable_language(ASM-ATT)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/xnu)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/xnu/mach)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/xnu/bsd)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/darwin)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/mach)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/bsd)
 
 set(libc_SRCS
 	libc/mac.c

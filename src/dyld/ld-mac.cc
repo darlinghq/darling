@@ -95,9 +95,10 @@ static void initNoTrampoline() {
 #undef NO_TRAMPOLINE
 }
 
-static void undefinedFunction() {
-  fprintf(stderr, "Undefined function called\n");
-  abort();
+static void* undefinedFunction() {
+  fprintf(stderr, "Undefined function called, returning NULL\n");
+  //abort();
+  return 0;
 }
 
 static void doNothing() {
@@ -172,6 +173,7 @@ class MachOLoader {
   MachOLoader()
     : last_addr_(0) {
 	// TODO: this is very wrong
+	/*
     dylib_to_so_.insert(make_pair(
                           "/System/Library/Frameworks/CoreFoundation.framework"
                           "/Versions/A/CoreFoundation",
@@ -193,6 +195,7 @@ class MachOLoader {
     symbol_to_so_.insert(make_pair("uuid_unparse", "libuuid.so"));
     symbol_to_so_.insert(make_pair("uuid_unparse_lower", "libuuid.so"));
     symbol_to_so_.insert(make_pair("uuid_unparse_upper", "libuuid.so"));
+	*/
 
     if (FLAGS_TRACE_FUNCTIONS) {
       // Push all arguments into stack.
@@ -328,6 +331,7 @@ class MachOLoader {
                             MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
                             0, 0);
         if (mapped == MAP_FAILED) {
+		  // TODO: insert a suggestion for a fix on 32bit systems
           err(1, "%s mmap(anon) failed", mach.filename().c_str());
         }
       }
@@ -356,6 +360,8 @@ class MachOLoader {
     }
   }
 
+// FIXME: this is wrong
+// init funcs must be kept separate for every MachO for later init support (dlopen())
   void loadInitFuncs(const MachO& mach, intptr slide) {
     for (size_t i = 0; i < mach.init_funcs().size(); i++) {
       intptr addr = mach.init_funcs()[i] + slide;
@@ -369,9 +375,11 @@ class MachOLoader {
     for (size_t i = 0; i < mach.dylibs().size(); i++) {
       string dylib = mach.dylibs()[i];
 
+	  // TODO: replace whole loop body with __darwin_dlopen()
       if (!loaded_dylibs_.insert(dylib).second)
         continue;
 
+	  // TODO: remove this
       const string so = dylib_to_so_[dylib];
       if (!so.empty()) {
         LOG << "Loading " << so << " for " << dylib << endl;
@@ -383,11 +391,12 @@ class MachOLoader {
 
       // For now, we assume a dylib is a system library if its path
       // starts with /
-      // TODO(hamaji): Do something?
+      // TODO: try loading a .so, then try a .dylib. First try with a prefix.
       if (dylib[0] == '/') {
         continue;
       }
 
+		// TODO: we cannot consider . as the @executable_path
       static const char executable_str[] = "@executable_path";
       static const size_t executable_str_len = strlen(executable_str);
       if (!strncmp(dylib.c_str(), executable_str, executable_str_len)) {
@@ -475,6 +484,7 @@ class MachOLoader {
           }
 #endif
 
+		// TODO: no renaming
           map<string, string>::const_iterator found =
               g_rename.find(name);
           if (found != g_rename.end()) {
@@ -483,13 +493,16 @@ class MachOLoader {
             name = found->second.c_str();
           }
 
+		// TODO: use __darwin_dlsym instead
           const Exports::const_iterator export_found =
               exports_.find(bind->name);
           if (export_found != exports_.end()) {
             sym = (char*)export_found->second.addr;
           }
           if (!sym) {
+			  // TODO: try prefixes
             sym = (char*)dlsym(RTLD_DEFAULT, name.c_str());
+			// TODO: remove this
             if (!sym) {
               map<string, string>::const_iterator iter =
                 symbol_to_so_.find(name);
@@ -503,6 +516,8 @@ class MachOLoader {
               }
             }
           }
+          
+          // TODO: idea: dynamically create undefined functions that would print out their name when called
           if (!sym) {
             ERR << name << ": undefined symbol" << endl;
             sym = (char*)&undefinedFunction;
@@ -698,9 +713,9 @@ void MachOLoader::boot(
   //       envp[1]
   //       envp[n]
   
-  // TODO: minimize assembly code
+  // TODO: add 'apple'!
   
-  __asm__ volatile(" mov %1, %%eax;\n"
+  __asm__ volatile(" mov %1, %%rax;\n"
                    " mov %2, %%rdx;\n"
                    " push $0;\n"
                    // TODO(hamaji): envp
@@ -873,6 +888,7 @@ static bool ld_mac_dlerror_is_set;
 void* __darwin_dlopen(const char* filename, int flag) {
   LOG << "ld_mac_dlopen: " << filename << " " << flag << endl;
 
+  // TODO: should return main executable on filename == NULL
   Timer timer;
   timer.start();
 
@@ -909,6 +925,8 @@ static const char* __darwin_dlerror(void) {
 
 static void* __darwin_dlsym(void* handle, const char* symbol) {
   LOG << "ld_mac_dlsym: " << symbol << endl;
+  
+  // TODO: support RTLD_DEFAULT
 
   Exports* exports = (Exports*)handle;
   Exports::const_iterator found = exports->find(string("_") + symbol);
@@ -934,50 +952,3 @@ void initDlfcn() {
   SET_DLFCN_FUNC(dlsym);
 }
 */
-
-int main(int argc, char* argv[], char* envp[]) {
-  g_timer.start();
-  initSignalHandler();
-  initRename();
-  initNoTrampoline();
-  initLibMac();
-  initDlfcn();
-
-  argc--;
-  argv++;
-  for (;;) {
-    if (argc == 0) {
-      fprintf(stderr, "An argument required.\n");
-      exit(1);
-    }
-
-    const char* arg = argv[0];
-    if (arg[0] != '-') {
-      break;
-    }
-
-    // TODO(hamaji): Do something for switches.
-
-    argc--;
-    argv++;
-  }
-
-  g_darwin_executable_path =
-      (char*)dlsym(RTLD_DEFAULT, "__darwin_executable_path");
-  if (!realpath(argv[0], g_darwin_executable_path)) {
-  }
-
-  auto_ptr<MachO> mach(MachO::readFile(argv[0], ARCH_NAME));
-#ifdef __x86_64__
-  if (!mach->is64()) {
-    fprintf(stderr, "%s: not 64bit binary\n", argv[0]);
-    exit(1);
-  }
-#else
-  if (mach->is64()) {
-    fprintf(stderr, "%s: not 32bit binary\n", argv[0]);
-    exit(1);
-  }
-#endif
-  runMachO(*mach, argc, argv, envp);
-}
