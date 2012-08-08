@@ -7,7 +7,7 @@ extern "C"
 {
 #endif
 
-// int *__error(); /* generated code */
+int *__error();
 int cthread_errno(void);
 
 char* __darwin_strerror(int errnum);

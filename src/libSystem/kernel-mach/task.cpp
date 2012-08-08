@@ -1,3 +1,4 @@
+#include "config.h"
 #include "task.h"
 #include <sys/types.h>
 #include <unistd.h>

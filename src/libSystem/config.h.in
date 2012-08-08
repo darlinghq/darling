@@ -1,0 +1,18 @@
+
+
+/*
+ * Credit: 
+ *
+ *    David Chisnall
+ *       http://comments.gmane.org/gmane.comp.desktop.etoile.devel/1556
+ *
+ *       */
+
+#ifdef __block
+#       undef __block
+#       include <unistd.h>
+#       define __block __attribute__((__blocks__(byref)))
+#else
+#       include <unistd.h>
+#endif
+

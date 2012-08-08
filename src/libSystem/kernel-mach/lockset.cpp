@@ -1,3 +1,4 @@
+#include "config.h"
 #include "lockset.h"
 #include <cstring>
 #include <pthread.h>
@@ -15,7 +16,7 @@ struct lock_set
 
 kern_return_t lock_acquire(lock_set_t lock_set, int lock_id)
 {
-	TRACE(lock_set, lock_id);
+	TRACE2(lock_set, lock_id);
 	if (!lock_set || lock_id >= lock_set->lock_count)
 		return KERN_INVALID_ARGUMENT;
 	
@@ -45,7 +46,7 @@ kern_return_t lock_make_stable(lock_set_t lock_set, int lock_id)
 
 kern_return_t lock_release(lock_set_t lock_set, int lock_id)
 {
-	TRACE(lock_set, lock_id);
+	TRACE2(lock_set, lock_id);
 	
 	if (!lock_set || lock_id >= lock_set->lock_count)
 		return KERN_INVALID_ARGUMENT;
@@ -65,7 +66,7 @@ kern_return_t lock_set_create(darwin_task_t* task, lock_set_t* lockset, int lock
 {
 	*lockset = 0;
 	
-	TRACE(task, lockset, locks, policy);
+	TRACE4(task, lockset, locks, policy);
 	CHECK_TASK_SELF(task);
 	
 	if (locks <= 0 || !lockset)
@@ -108,7 +109,7 @@ kern_return_t lock_set_create(darwin_task_t* task, lock_set_t* lockset, int lock
 
 kern_return_t lock_set_destroy (darwin_task_t* task, lock_set_t lockset)
 {
-	TRACE(task, lockset);
+	TRACE2(task, lockset);
 	CHECK_TASK_SELF(task);
 	
 	if (!lockset)
@@ -132,7 +133,7 @@ kern_return_t lock_set_destroy (darwin_task_t* task, lock_set_t lockset)
 
 kern_return_t lock_try (lock_set_t lock_set, int lock_id)
 {
-	TRACE(lock_set, lock_id);
+	TRACE2(lock_set, lock_id);
 	if (!lock_set || lock_id >= lock_set->lock_count)
 		return KERN_INVALID_ARGUMENT;
 	

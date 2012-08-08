@@ -47,7 +47,7 @@ static char sccsid[] = "@(#)err.c	8.1 (Berkeley) 6/4/93";
 //#include "un-namespace.h"
 
 #ifdef __BLOCKS__
-#include <Block.h>
+#include <objc/blocks_runtime.h>
 #endif /* __BLOCKS__ */
 //#include "libc_private.h"
 
@@ -177,7 +177,7 @@ __darwin_err_set_exit_b(void (^ef)(int))
 #endif /* __BLOCKS__ */
 #endif /* !BUILDING_VARIANT */
 
-__weak_reference(__darwin__err, __darwin_err);
+/*__weak_reference(__darwin__err, __darwin_err);*/
 
 void
 __darwin__err(int eval, const char *fmt, ...)
@@ -256,7 +256,7 @@ __darwin_verrx(int eval, const char *fmt, va_list ap)
 	exit(eval);
 }
 
-__weak_reference(__darwin__warn, __darwin_warn);
+/* __weak_reference(__darwin__warn, __darwin_warn); */
 
 void
 __darwin__warn(const char *fmt, ...)

@@ -5,12 +5,14 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-enable_language(ASM-ATT)
+enable_language(ASM_NASM)
 
-SET (CMAKE_C_COMPILER "/usr/bin/clang")
-SET (CMAKE_CXX_FLAGS "-O2 -fblocks")
-SET (CMAKE_CXX_COMPILER "/usr/bin/clang++")
+configure_file(config.h.in config.h)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fblocks")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu)

@@ -29,6 +29,7 @@
 
 #define _GNU_SOURCE
 
+#include "config.h"
 #include <dirent.h>
 #include <err.h>
 #include <locale.h>
@@ -987,7 +988,7 @@ void* malloc_default_zone() {
 
 void malloc_zone_statistics(void* zone, __darwin_malloc_statistics_t* stats) {
   fprintf(stderr, "malloc_zone_statistics\n");
-  memset(stats, 0, sizeof(stats));
+  memset(stats, 0, sizeof(*stats));
 }
 
 int task_get_exception_ports() {

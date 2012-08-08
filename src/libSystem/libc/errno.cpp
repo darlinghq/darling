@@ -1,4 +1,4 @@
-
+#include "config.h"
 #include <string.h>
 #include <errno.h>
 #include <cstring>
@@ -19,6 +19,13 @@ extern "C" const int __darwin_sys_nerr = 0;
 // For a non-gnu version of strerror_r
 extern "C" int __xpg_strerror_r (int __errnum, char *__buf, size_t __buflen)
      __THROW __nonnull ((2));
+
+/*
+int* __error()
+{
+	return &errno;
+}
+*/
 
 int cthread_errno()
 {
@@ -56,7 +63,7 @@ int errnoLinuxToDarwin(int err)
 
 char* __darwin_strerror(int errnum)
 {
-	TRACE(errnum);
+	TRACE1(errnum);
 	errnum = errnoDarwinToLinux(errnum);
 	return ::strerror(errnum);
 }
@@ -70,7 +77,7 @@ int __darwin_strerror_r(int errnum, char *strerrbuf, size_t buflen)
 
 void __darwin_perror(const char *s)
 {
-	TRACE(s);
+	TRACE1(s);
 	// First map the error back
 	errno = errnoDarwinToLinux(errno);
 	::perror(s);

@@ -1,13 +1,25 @@
+#include "config.h"
 #include "sysctl.h"
 #include "log.h"
+#include "trace.h"
+#include "darwin_errno_codes.h"
+#include <errno.h>
 #include <unistd.h>
 
-int __darwin_sysctl(int* name, u_int namelen,
+#define CTL_KERN 1
+#define CTL_HW 6
+
+#define HW_NCPU 3
+#define HW_PHYSMEM 5
+#define HW_USERMEM 6
+#define HW_AVAILCPU 25
+
+int __darwin_sysctl(int* name, unsigned int namelen,
                     void* oldp, size_t* oldlenp,
                     void* newp, size_t newlen) {
 	int i;
 	
-	TRACE(name, namelen, oldp, oldlenp, newp, newlen);
+	TRACE6(name, namelen, oldp, oldlenp, newp, newlen);
 	
 	LOGF("sysctl: namelen=%u", namelen);
 	for (i = 0; i < namelen; i++)

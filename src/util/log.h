@@ -29,10 +29,12 @@
 #define LOG_H_
 
 #include <assert.h>
+#include <stdio.h>
 
-#include "env_flags.h"
+//#include "env_flags.h"
 
-DECLARE_bool(LOG);
+//DECLARE_bool(LOG);
+#define FLAGS_LOG 1
 
 #ifdef NOLOG
 # define LOG if (0) cout

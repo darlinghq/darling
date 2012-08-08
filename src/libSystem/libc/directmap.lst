@@ -25,3 +25,5 @@ CC_MD5;MD5
 __darwin_atexit;__cxa_atexit
 _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode;_ZNSt12__basic_fileIcE8sys_openEP8_IO_FILESt13_Ios_Openmode
 select$1050;select
+__darwin_warn;__darwin__warn
+__darwin_err;__darwin__err

@@ -1,3 +1,4 @@
+#include "config.h"
 #include "semaphore.h"
 #include "mach-stub.h"
 #include "trace.h"
@@ -6,7 +7,7 @@
 
 kern_return_t semaphore_create(darwin_task_t* task, semaphore_t *semaphore, int policy, int value)
 {
-	TRACE(task, semaphore, policy, value);
+	TRACE4(task, semaphore, policy, value);
 	CHECK_TASK_SELF(task);
 
 	if (!semaphore)
@@ -30,7 +31,7 @@ kern_return_t semaphore_create(darwin_task_t* task, semaphore_t *semaphore, int 
 
 kern_return_t semaphore_destroy(darwin_task_t* task, semaphore_t semaphore)
 {
-	TRACE(task, semaphore);
+	TRACE2(task, semaphore);
 	CHECK_TASK_SELF(task);
 
 	if (!semaphore)
@@ -45,7 +46,7 @@ kern_return_t semaphore_destroy(darwin_task_t* task, semaphore_t semaphore)
 
 kern_return_t semaphore_signal(semaphore_t semaphore)
 {
-	TRACE(semaphore);
+	TRACE1(semaphore);
 	if (!semaphore)
 		return KERN_INVALID_ARGUMENT;
 
@@ -62,7 +63,7 @@ kern_return_t semaphore_signal_all(semaphore_t semaphore)
 
 kern_return_t semaphore_wait(semaphore_t semaphore)
 {
-	TRACE(semaphore);
+	TRACE1(semaphore);
 	if (!semaphore)
 		return KERN_INVALID_ARGUMENT;
 

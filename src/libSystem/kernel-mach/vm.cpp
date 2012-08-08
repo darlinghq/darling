@@ -1,4 +1,4 @@
-
+#include "config.h"
 #include "vm.h"
 #include "task.h"
 #include "mach-stub.h"
@@ -47,7 +47,7 @@ static bool memory_writable(void* ptr, size_t bytes)
 
 kern_return_t vm_msync(vm_task_t target_task, void* addr, vm_size_t size, vm_sync_t in_flags)
 {
-	TRACE(target_task, addr, size, in_flags);
+	TRACE4(target_task, addr, size, in_flags);
 	CHECK_TASK_SELF(target_task);
 	
 	int flags = 0;
@@ -66,7 +66,7 @@ kern_return_t vm_msync(vm_task_t target_task, void* addr, vm_size_t size, vm_syn
 
 kern_return_t vm_allocate(vm_task_t target_task, void** addr, vm_size_t size, boolean_t anywhere)
 {
-	TRACE(target_task, addr, size, anywhere);
+	TRACE4(target_task, addr, size, anywhere);
 	CHECK_TASK_SELF(target_task);
 	
 	int flags = MAP_ANONYMOUS|MAP_PRIVATE;
@@ -90,7 +90,7 @@ kern_return_t vm_allocate(vm_task_t target_task, void** addr, vm_size_t size, bo
 
 kern_return_t vm_deallocate(vm_task_t target_task, void* addr, vm_size_t size)
 {
-	TRACE(target_task, addr, size);
+	TRACE3(target_task, addr, size);
 	CHECK_TASK_SELF(target_task);
 	
 	if (::munmap(addr, size) == -1)
@@ -101,7 +101,7 @@ kern_return_t vm_deallocate(vm_task_t target_task, void* addr, vm_size_t size)
 
 kern_return_t vm_copy(vm_task_t target_task, const void* source_address, vm_size_t count, void* dest_address)
 {
-	TRACE(target_task, source_address, count, dest_address);
+	TRACE4(target_task, source_address, count, dest_address);
 	CHECK_TASK_SELF(target_task);
 	
 	if (!memory_readable(source_address, count))
@@ -115,7 +115,7 @@ kern_return_t vm_copy(vm_task_t target_task, const void* source_address, vm_size
 
 kern_return_t vm_write(vm_task_t target_task, void* address, const void* data, vm_size_t data_count)
 {
-	TRACE(target_task, address, data, data_count);
+	TRACE4(target_task, address, data, data_count);
 	CHECK_TASK_SELF(target_task);
 	
 	if (!memory_writable(address, data_count))
@@ -154,7 +154,7 @@ kern_return_t vm_map(vm_task_t target_task, void* address, vm_size_t size, void*
 
 kern_return_t vm_protect(vm_task_t target_task, void* address, vm_size_t size, boolean_t set_maximum, vm_prot_t new_protection)
 {
-	TRACE(target_task, address, size, set_maximum, new_protection);
+	TRACE5(target_task, address, size, set_maximum, new_protection);
 	CHECK_TASK_SELF(target_task);
 	
 	// FIXME: Here we ignore set_maximum, not sure what to do with that
@@ -182,7 +182,7 @@ kern_return_t vm_protect(vm_task_t target_task, void* address, vm_size_t size, b
 
 kern_return_t vm_read(vm_task_t target_task, const void* address, vm_size_t size, void** data_out, natural_t* data_count)
 {
-	TRACE(target_task, address, size, data_out, data_count);
+	TRACE5(target_task, address, size, data_out, data_count);
 	CHECK_TASK_SELF(target_task);
 	
 	if (!memory_readable(address, size))
