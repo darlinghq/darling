@@ -380,91 +380,6 @@ void *__darwin_mmap(void *addr, size_t length, int prot, int flags,
   return mmap(addr, length, prot, flags, fd, offset);
 }
 
-// From /usr/include/sys/sysctl.h
-
-#define CTL_KERN 1
-#define CTL_HW 6
-
-#define HW_NCPU 3
-#define HW_PHYSMEM 5
-#define HW_USERMEM 6
-#define HW_AVAILCPU 25
-
-#define KERN_OSRELEASE 2
-
-int __darwin_sysctl(int* name, u_int namelen,
-                    unsigned int* oldp, size_t* oldlenp,
-                    void* newp, size_t newlen) {
-  int i;
-  LOGF("sysctl: namelen=%u", namelen);
-  for (i = 0; i < namelen; i++) {
-    LOGF(" name[%d]=%d", i, name[i]);
-  }
-  LOGF(" newp=%p\n", newp);
-
-  if (newp) {
-    fprintf(stderr, "sysctl with newp isn't supported yet.\n");
-    abort();
-  }
-
-  if (namelen != 2) {
-    fprintf(stderr, "sysctl with namelen=%u isn't supported yet.\n", namelen);
-    abort();
-  }
-
-  switch (name[0]) {
-    case CTL_HW: {
-      if (*oldlenp != sizeof(unsigned int)) {
-        fprintf(stderr,
-                "sysctl(HW) with oldlenp=%lu isn't supported yet.\n",
-                (unsigned long)*oldlenp);
-        abort();
-      }
-
-      unsigned int val = 0;
-      switch (name[1]) {
-        case HW_NCPU:
-        case HW_AVAILCPU:
-          val = 1;
-          break;
-
-        case HW_PHYSMEM:
-        case HW_USERMEM:
-          val = 2147483648U;
-          break;
-
-        default:
-          fprintf(stderr, "sysctl(HW) with name[1]=%d isn't supported yet.\n",
-                  name[1]);
-          abort();
-      }
-
-      *oldp = val;
-      return 0;
-    }
-
-    case CTL_KERN: {
-      switch (name[1]) {
-        case KERN_OSRELEASE:
-          strcpy((char*)oldp, "10.6.0");
-          *oldlenp = 7;
-          break;
-
-        default:
-          fprintf(stderr, "sysctl(KERN) with oldp=%u isn't supported yet.\n",
-                  *oldp);
-          abort();
-      }
-      return 0;
-    }
-
-    default:
-      fprintf(stderr,
-              "sysctl with name[0]=%d isn't supported yet.\n", name[0]);
-      abort();
-  }
-}
-
 /* stdio buffers */
 struct __darwin_sbuf {
         unsigned char   *_base;
@@ -512,9 +427,9 @@ typedef struct __darwin_sFILE {
   FILE* linux_fp;
 } __darwin_FILE;
 
-__darwin_FILE* __darwin_stdin;
-__darwin_FILE* __darwin_stdout;
-__darwin_FILE* __darwin_stderr;
+__darwin_FILE* __stdinp;
+__darwin_FILE* __stdoutp;
+__darwin_FILE* __stderrp;
 
 static __darwin_FILE* __init_darwin_FILE(FILE* linux_fp) {
   if (!linux_fp)
@@ -651,7 +566,7 @@ __darwin_FILE* __darwin_tmpfile() {
   return __init_darwin_FILE(tmpfile());
 }
 
-char __darwin_executable_path[PATH_MAX];
+extern char __darwin_executable_path[PATH_MAX];
 char __loader_path[PATH_MAX];
 
 int _NSGetExecutablePath(char* buf, unsigned int* size) {
@@ -992,7 +907,8 @@ size_t strlcat(char* dst, const char* src, size_t size) {
   return strlen(dst);
 }
 
-// TODO(hamaji): The following three functions are slow.
+// The following three functions are slow.
+// But they're no faster on Darwin either.
 
 void memset_pattern4(char* b, const char* pattern4, size_t len) {
   size_t i;
@@ -1015,9 +931,9 @@ void memset_pattern16(char* b, const char* pattern4, size_t len) {
   }
 }
 
-int __mb_cur_max() {
-  // TODO(hamaji): Incorrect for most locales.
-  return 1;
+int __mb_cur_max()
+{
+	return MB_CUR_MAX;
 }
 
 typedef struct {
@@ -1141,16 +1057,6 @@ static void do_nothing() {
 void __keymgr_dwarf2_register_sections() {
 }
 
-void _ZNSt13basic_filebufIcSt11char_traitsIcEE7seekoffExSt12_Ios_SeekdirSt13_Ios_Openmode() {
-  fprintf(stderr, "_ZNSt13basic_filebufIcSt11char_traitsIcEE7seekoffExSt12_Ios_SeekdirSt13_Ios_Openmode called\n");
-  abort();
-}
-
-void _ZNSi5seekgExSt12_Ios_Seekdir() {
-  fprintf(stderr, "_ZNSi5seekgExSt12_Ios_Seekdir called\n");
-  abort();
-}
-
 void* (*ld_mac_dlopen)(const char* filename, int flag);
 int (*ld_mac_dlclose)(void* handle);
 char* (*ld_mac_dlerror)(void);
@@ -1174,26 +1080,26 @@ void* __darwin_dlsym(void* handle, const char* symbol) {
 
 #define __DARWIN_SYS_NAMELEN 256
 typedef struct {
-  char sysname[__DARWIN_SYS_NAMELEN];
-  char nodename[__DARWIN_SYS_NAMELEN];
-  char release[__DARWIN_SYS_NAMELEN];
-  char version[__DARWIN_SYS_NAMELEN];
-  char machine[__DARWIN_SYS_NAMELEN];
+	char sysname[__DARWIN_SYS_NAMELEN];
+	char nodename[__DARWIN_SYS_NAMELEN];
+	char release[__DARWIN_SYS_NAMELEN];
+	char version[__DARWIN_SYS_NAMELEN];
+	char machine[__DARWIN_SYS_NAMELEN];
 } __darwin_utsname;
 
 int __darwin_uname(__darwin_utsname* buf) {
-  struct utsname linux_buf;
-  int r = uname(&linux_buf);
-  if (r)
-    return r;
+	struct utsname linux_buf;
+	int r = uname(&linux_buf);
+	if (r)
+	return r;
 
-  // TODO(hamaji): Emulate Snow leopard
-  strcpy(buf->sysname, "Darwin");
-  strcpy(buf->nodename, linux_buf.nodename);
-  strcpy(buf->release, "10.6.0");
-  strcpy(buf->version, "Darwin Kernel Version 10.6.0: Wed Nov 10 18:13:17 PST 2010; root:xnu-1504.9.26~3/RELEASE_I386");
-  strcpy(buf->machine, "i386");
-  return 0;
+	// Linux's buf size is currently much smaller, only 65, so strcpy() is safe
+	strcpy(buf->sysname, linux_buf.sysname);
+	strcpy(buf->nodename, linux_buf.nodename);
+	strcpy(buf->release, linux_buf.release);
+	strcpy(buf->version, linux_buf.version);
+	strcpy(buf->machine, linux_buf.machine);
+	return 0;
 }
 
 typedef struct {
@@ -1278,9 +1184,9 @@ int __darwin_compat_mode(const char* function, const char* mode) {
 }
 
 __attribute__((constructor)) void initMac() {
-  __darwin_stdin = __init_darwin_FILE(stdin);
-  __darwin_stdout = __init_darwin_FILE(stdout);
-  __darwin_stderr = __init_darwin_FILE(stderr);
+  __stderrp = __init_darwin_FILE(stdin);
+  __stdoutp = __init_darwin_FILE(stdout);
+  __stdinp = __init_darwin_FILE(stderr);
   mach_init_routine = &do_nothing;
   _cthread_init_routine = &do_nothing;
 }

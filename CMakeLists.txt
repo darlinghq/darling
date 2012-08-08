@@ -6,7 +6,11 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/libmach-o)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/util)
+
+configure_file(config.h.in config.h)
 
 set(mach-o_SRCS
 	src/libmach-o/MachO.cpp
@@ -15,7 +19,7 @@ set(mach-o_SRCS
 	src/libmach-o/BindState.cpp
 	src/libmach-o/leb.cpp
 	src/libmach-o/MachOImpl.cpp
-	src/libmach-o/log.cc
+	src/util/log.cc
 )
 
 add_library(mach-o SHARED ${mach-o_SRCS})
@@ -26,22 +30,23 @@ target_link_libraries(mach-o -ldl -lpthread)
 set(dyld_SRCS
 	src/dyld/FileMap.cpp
 	src/dyld/ld-mac.cc
-	src/dyld/log.cc
+	src/util/log.cc
+	src/util/trace.cpp
 )
 
 add_executable(dyld ${dyld_SRCS})
 
 target_link_libraries(dyld -ldl -lpthread mach-o)
 
-set(fatmacho-exract_SRCS
+set(fatmacho-extract_SRCS
 	src/dyld/extract.cpp
 )
 
-add_executable(fatmacho-exract ${fatmacho-exract_SRCS})
+add_executable(fatmacho-extract ${fatmacho-extract_SRCS})
 
-target_link_libraries(fatmacho-exract -ldl -lpthread mach-o)
+target_link_libraries(fatmacho-extract -ldl -lpthread mach-o)
 
-install(TARGETS dyld fatmacho-exract DESTINATION bin)
-
+install(TARGETS dyld fatmacho-extract DESTINATION bin)
 
 add_subdirectory(src/libSystem)
+

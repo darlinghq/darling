@@ -5,10 +5,17 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/xnu)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/xnu/mach)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/xnu/bsd)
+enable_language(ASM-ATT)
+
+SET (CMAKE_C_COMPILER "/usr/bin/clang")
+SET (CMAKE_CXX_FLAGS "-O2 -fblocks")
+SET (CMAKE_CXX_COMPILER "/usr/bin/clang++")
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/darwin)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/mach)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/bsd)
 
 set(libc_SRCS
 	libc/mac.c
@@ -20,6 +27,8 @@ set(libc_SRCS
 	libc/errno.cpp
 	libc/OSAtomic.cpp
 	libc/strmode.c
+	libc/directmap.asm
+	libc/sysctl.cpp
 )
 
 set(bsdkern_SRCS
@@ -34,6 +43,8 @@ set(machkern_SRCS
 )
 
 add_library(System.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
+# -luuid to make uuid_ functions available for Darwin apps
+target_link_libraries(System.dylib -ldl -lpthread -luuid)
 
 install(TARGETS System.dylib DESTINATION lib)
 
