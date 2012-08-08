@@ -7,6 +7,10 @@ endif(COMMAND cmake_policy)
 
 enable_language(ASM-ATT)
 
+SET (CMAKE_C_COMPILER "/usr/bin/clang")
+SET (CMAKE_CXX_FLAGS "-O2 -fblocks")
+SET (CMAKE_CXX_COMPILER "/usr/bin/clang++")
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu)

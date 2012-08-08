@@ -41,6 +41,6 @@ public:
 #define TRACE(a,b,c) TRACE() << ARG(a) << ARG(b) << ARG(c)
 #define TRACE(a,b,c,d) TRACE() << ARG(a) << ARG(b) << ARG(c) << ARG(d)
 #define TRACE(a,b,c,d,e) TRACE() << ARG(a) << ARG(b) << ARG(c) << ARG(d) << ARG(e)
-#define TRACE(a,b,c,d,e,d) TRACE() << ARG(a) << ARG(b) << ARG(c) << ARG(d) << ARG(e) << ARG(f)
+#define TRACE(a,b,c,d,e,f) TRACE() << ARG(a) << ARG(b) << ARG(c) << ARG(d) << ARG(e) << ARG(f)
 
 #endif
