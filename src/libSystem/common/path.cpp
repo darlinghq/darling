@@ -1,7 +1,9 @@
 #include "path.h"
+#include "config.h"
 #include <sys/types.h>
 #include <dirent.h>
 #include <cstring>
+#include <unistd.h>
 #ifdef TEST_PATH
 #	include <iostream>
 #endif
@@ -11,6 +13,9 @@ void translatePathCI(char* path)
 	char* p = path;
 	char* const end = path + strlen(path);
 	char buffer[PATH_MAX];
+	
+	if (::access(path, R_OK) == 0) // shortcut
+		return;
 	
 	if (*p == '/')
 		p++;

@@ -33,6 +33,7 @@ set(libc_SRCS
 	libc/sysctl.cpp
 	libc/dir.cpp
 	libc/string.cpp
+	libc/exec.cpp
 	common/path.cpp
 )
 

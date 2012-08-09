@@ -84,6 +84,8 @@ bool FatMachO::readFatInfo(int fd, std::map<std::string, fat_arch>* fat)
 
 	if (be)
 		fixEndian(header.nfat_arch);
+	else if (header.magic != FAT_MAGIC)
+		return false;
 	
 	for (uint32_t i = 0; i < header.nfat_arch; i++)
 	{
