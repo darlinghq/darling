@@ -130,10 +130,10 @@ extern _ZNSt12__basic_fileIcE8sys_openEP8_IO_FILESt13_Ios_Openmode
 _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode:
 	jmp _ZNSt12__basic_fileIcE8sys_openEP8_IO_FILESt13_Ios_Openmode WRT ..plt
 
-global select$1050
-extern select
-select$1050:
-	jmp select WRT ..plt
+global __darwin_select$1050
+extern __darwin_select
+__darwin_select$1050:
+	jmp __darwin_select WRT ..plt
 
 global __darwin_warn
 extern __darwin__warn
@@ -144,4 +144,14 @@ global __darwin_err
 extern __darwin__err
 __darwin_err:
 	jmp __darwin__err WRT ..plt
+
+global __darwin_opendir$INODE64
+extern __darwin_opendir
+__darwin_opendir$INODE64:
+	jmp __darwin_opendir WRT ..plt
+
+global __darwin_telldir$INODE64
+extern telldir
+__darwin_telldir$INODE64:
+	jmp telldir WRT ..plt
 

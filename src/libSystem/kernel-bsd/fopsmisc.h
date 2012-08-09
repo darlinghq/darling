@@ -1,5 +1,6 @@
 #ifndef FOPSMISC_H
 #define FOPSMISC_H
+#include <sys/stat.h>
 
 extern "C"
 {

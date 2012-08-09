@@ -85,4 +85,6 @@ void __darwin_perror(const char *s)
 	errno = errnoLinuxToDarwin(errno);
 }
 
+void errnoOut() { errno = errnoLinuxToDarwin(errno); }
+void errnoIn() { errno = errnoDarwinToLinux(errno); }
 

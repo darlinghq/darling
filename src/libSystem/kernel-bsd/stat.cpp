@@ -1,6 +1,6 @@
 #include "config.h"
 #include "stat.h"
-#include "util/trace.h"
+#include "trace.h"
 #include "common/path.h"
 #include "libc/errno.h"
 #include <sys/types.h>

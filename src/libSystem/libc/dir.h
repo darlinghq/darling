@@ -3,6 +3,7 @@
 #include "common/path.h"
 #include <sys/types.h>
 #include <dirent.h>
+#include <stdint.h>
 
 struct darwin_dirent64
 {

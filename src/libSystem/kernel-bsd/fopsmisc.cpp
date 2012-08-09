@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cstring>
 
 int __darwin_access(const char *pathname, int mode)
 {
@@ -18,8 +19,8 @@ int __darwin_chown(const char *path, uid_t owner, gid_t group)
 }
 
 MAP_FUNCTION3(int,fchown,int,uid_t,gid_t);
-MAP_FUNCTION3(int,fchmod,int,mode_t);
-MAP_FUNCTION3(int,fchdir,int);
+MAP_FUNCTION2(int,fchmod,int,mode_t);
+MAP_FUNCTION1(int,fchdir,int);
 
 int __darwin_lchown(const char *path, uid_t owner, gid_t group)
 {
@@ -87,7 +88,7 @@ int __darwin_mkdir(const char *pathname, mode_t mode)
 
 int __darwin_chdir(const char *path)
 {
-	return AutoPathErrno<int>(mkdir, path);
+	return AutoPathErrno<int>(chdir, path);
 }
 
 int __darwin_acct(const char *filename)

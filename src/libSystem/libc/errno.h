@@ -1,6 +1,7 @@
 #ifndef DARWIN_ERRNO_H
 #define DARWIN_ERRNO_H
 #include <stdarg.h>
+#include <errno.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -19,7 +20,7 @@ int __darwin_strerror_r(int errnum, char *strerrbuf, size_t buflen);
 
 int errnoDarwinToLinux(int err);
 int errnoLinuxToDarwin(int err);
-void errnoOut() { errno = errnoLinuxToDarwin(errno); }
-void errnoIn() { errno = errnoDarwinToLinux(errno); }
+void errnoOut();
+void errnoIn();
 
 #endif

@@ -2,10 +2,11 @@
 #include "dir.h"
 #include "trace.h"
 #include "errno.h"
-#include "util/trace.h"
+#include "trace.h"
 #include "common/auto.h"
 #include "common/path.h"
 #include <cstdlib>
+#include <cstring>
 
 static darwin_dirent* convertDirent(const struct dirent* ent);
 static darwin_dirent64* convertDirent64(const struct dirent* ent);
@@ -57,7 +58,7 @@ darwin_dirent* convertDirent(const struct dirent* linux_buf)
 	return &mac;
 }
 
-darwin_dirent64* convertDirent64(const struct dirent* linux_buf);
+darwin_dirent64* convertDirent64(const struct dirent* linux_buf)
 {
 	static __thread darwin_dirent64 mac;
 	
@@ -90,14 +91,14 @@ DIR* __darwin_opendir(const char *name)
 
 MAP_FUNCTION1(DIR*, fdopendir, int);
 MAP_FUNCTION1(int, closedir, DIR*);
-MAP_FUNCTION4(ssize_t, getdirentries, int, char*, int, off_t);
+MAP_FUNCTION4(ssize_t, getdirentries, int, char*, size_t, off_t*);
 
 // scandir impl
 
 static __thread int (*orig_filter)(const struct darwin_dirent *) = 0;
-static __thread int (*orig_compar)(const struct darwin_dirent *) = 0;
+static __thread int (*orig_compar)(const struct darwin_dirent **, const struct darwin_dirent **) = 0;
 static __thread int (*orig_filter64)(const struct darwin_dirent64 *) = 0;
-static __thread int (*orig_compar64)(const struct darwin_dirent64 *) = 0;
+static __thread int (*orig_compar64)(const struct darwin_dirent64 **, const struct darwin_dirent64 **) = 0;
 
 static int native_filter(const struct dirent* e)
 {
@@ -114,7 +115,7 @@ static int native_compar(const struct dirent** a, const struct dirent** b)
 	xa = *convertDirent(*a);
 	xb = *convertDirent(*b);
 	
-	return orig_compar(&aa, &bb);
+	return orig_compar(const_cast<const darwin_dirent **>(&aa), const_cast<const darwin_dirent **>(&bb));
 }
 
 static int native_filter64(const struct dirent* e)
@@ -132,7 +133,7 @@ static int native_compar64(const struct dirent** a, const struct dirent** b)
 	xa = *convertDirent64(*a);
 	xb = *convertDirent64(*b);
 	
-	return orig_compar64(&aa, &bb);
+	return orig_compar64(const_cast<const darwin_dirent64 **>(&aa), const_cast<const darwin_dirent64 **>(&bb));
 }
 
 int __darwin_scandir(const char *dirp, struct darwin_dirent ***namelist,
@@ -162,7 +163,7 @@ int __darwin_scandir(const char *dirp, struct darwin_dirent ***namelist,
 		for (int i = 0; i < rv; i++)
 		{
 			(*namelist)[i] = reinterpret_cast<struct darwin_dirent*>(malloc(sizeof(struct darwin_dirent)));
-			*(*namelist)[i] = convertDirent(nl[i]);
+			*(*namelist)[i] = *convertDirent(nl[i]);
 			free(nl[i]);
 		}
 		free(nl);
@@ -197,7 +198,7 @@ int __darwin_scandir64(const char *dirp, struct darwin_dirent64 ***namelist,
 		for (int i = 0; i < rv; i++)
 		{
 			(*namelist)[i] = reinterpret_cast<struct darwin_dirent64*>(malloc(sizeof(struct darwin_dirent64)));
-			*(*namelist)[i] = convertDirent64(nl[i]);
+			*(*namelist)[i] = *convertDirent64(nl[i]);
 			free(nl[i]);
 		}
 		free(nl);
@@ -207,15 +208,18 @@ int __darwin_scandir64(const char *dirp, struct darwin_dirent64 ***namelist,
 
 template<typename T, typename Func> int darwin_sortconv(const void *a, const void *b, Func f)
 {
-	const T** aa = reinterpret_cast<const T**>(a);
-	const T** bb = reinterpret_cast<const T**>(b);
-	dirent na, nb;
-	dirent *pna, *pnb;
+	const T** aa = reinterpret_cast<const T**>(const_cast<void*>(a));
+	const T** bb = reinterpret_cast<const T**>(const_cast<void*>(b));
+	struct dirent na, nb;
+	struct dirent *pna, *pnb;
 	
-	strcpy(na->d_name, (*aa)->d_name);
-	strcpy(nb->d_name, (*bb)->d_name);
+	pna = &na;
+	pnb = &nb;
 	
-	return f(&pna, &pnb);
+	strcpy(pna->d_name, (*aa)->d_name);
+	strcpy(pnb->d_name, (*bb)->d_name);
+	
+	return f(const_cast<const dirent**>(&pna), const_cast<const dirent**>(&pnb));
 }
 
 int __darwin_alphasort(const void *a, const void *b)
