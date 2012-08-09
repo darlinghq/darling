@@ -12,9 +12,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <linux/limits.h>
-#include <mach/vm_types.h>
-#include <mach-o/fat.h>
-#include <mach-o/loader.h>
+#include "MachO.h"
 
 extern char g_loader_path[PATH_MAX];
 
@@ -80,23 +78,6 @@ static char* const* prependLoaderPath(char *const argv[], const char* fullMachoP
 	return const_cast<char* const*>(rv);
 }
 
-static bool isMachO(const char* path)
-{
-	bool is_macho = false;
-	int fd = ::open(path, O_RDONLY);
-	
-	if (fd != -1)
-	{
-		uint32_t magic;
-		if (::read(fd, &magic, 4) == 4)
-		{
-			is_macho = ( magic == MH_MAGIC_64 || magic == MH_MAGIC || magic == FAT_CIGAM || FAT_MAGIC );
-		}
-		::close(fd);
-	}
-	return is_macho;
-}
-
 int __darwin_execl(const char *path, const char *arg, ...)
 {
 	va_list vl;
@@ -152,7 +133,7 @@ int __darwin_execv(const char *path, char *const argv[])
 {
 	path = translatePathCI(path);
 	
-	if (!isMachO(path))
+	if (!MachO::isMachO(path))
 	{
 		int rv = execv(path, argv);
 		errnoOut();
@@ -190,7 +171,7 @@ int __darwin_execvpe(const char *file, char *const argv[], char *const envp[])
 		return -1;
 	}
 	
-	if (!isMachO(path))
+	if (!MachO::isMachO(path))
 	{
 		int rv = execv(path, argv);
 		errnoOut();

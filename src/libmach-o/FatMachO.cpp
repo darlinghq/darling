@@ -38,9 +38,9 @@
 #include <map>
 #include <sstream>
 
-static void fixEndian(uint32_t& p)
+template<typename T32> void fixEndian(T32& p)
 {
-	uint32_t v = p;
+	T32 v = p;
 	p = (v << 24) | ((v << 8) & 0x00ff0000) | ((v >> 8) & 0xff00) | (v >> 24);
 }
 

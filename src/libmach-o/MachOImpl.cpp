@@ -35,6 +35,8 @@
 #include <mach-o/loader.h>
 #include <sys/mman.h>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #define N_WEAK_DEF			0x0080
 #define FLAGS_READ_SYMTAB	1

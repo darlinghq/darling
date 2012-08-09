@@ -34,13 +34,15 @@
 #include <string>
 #include <vector>
 
-#include "mach-o/loader.h"
+#include <mach/vm_types.h>
+#include <mach-o/loader.h>
 
 class MachO
 {
 public:
 	__attribute__ ((visibility ("default")))
 	static MachO* readFile(std::string path, const char* arch, bool need_exports = true);
+	static bool isMachO(const char* path);
 
 	virtual ~MachO() {}
 	virtual void close() = 0;

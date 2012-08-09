@@ -32,6 +32,7 @@
 #include "log.h"
 #include "leb.h"
 #include <cstdio>
+#include <cstring>
 
 typedef long long ll;
 typedef unsigned long long ull;

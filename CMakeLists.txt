@@ -6,6 +6,8 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/xnu)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/xnu/bsd)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/libmach-o)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/util)

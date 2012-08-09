@@ -13,6 +13,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fblocks")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libmach-o)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu)
@@ -54,7 +55,7 @@ set(machkern_SRCS
 
 add_library(System.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
 # -luuid to make uuid_ functions available for Darwin apps
-target_link_libraries(System.dylib -ldl -lpthread -luuid)
+target_link_libraries(System.dylib -ldl -lpthread -luuid mach-o)
 
 install(TARGETS System.dylib DESTINATION lib)
 

@@ -66,3 +66,20 @@ MachO* MachO::readFile(std::string path, const char* arch, bool need_exports)
 
 	return new MachOImpl(path.c_str(), fd, offset, len, need_exports);
 }
+
+bool MachO::isMachO(const char* path)
+{
+	bool is_macho = false;
+	int fd = ::open(path, O_RDONLY);
+	
+	if (fd != -1)
+	{
+		uint32_t magic;
+		if (::read(fd, &magic, 4) == 4)
+		{
+			is_macho = ( magic == MH_MAGIC_64 || magic == MH_MAGIC || magic == FAT_CIGAM || magic == FAT_MAGIC );
+		}
+		::close(fd);
+	}
+	return is_macho;
+}
