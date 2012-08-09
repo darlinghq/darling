@@ -82,6 +82,8 @@ int __darwin_ferror(__darwin_FILE* fp);
 int __darwin_fileno(__darwin_FILE* fp);
 __darwin_FILE* __darwin_tmpfile();
 
+// extra func
+char *__darwin_realpath(const char *path, char *resolved_path);
 
 }
 

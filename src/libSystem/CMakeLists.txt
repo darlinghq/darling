@@ -35,6 +35,7 @@ set(libc_SRCS
 	libc/dir.cpp
 	libc/string.cpp
 	libc/exec.cpp
+	libc/stdio.cpp
 	common/path.cpp
 )
 

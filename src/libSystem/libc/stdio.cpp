@@ -2,6 +2,9 @@
 #include "common/path.h"
 #include <cstdio>
 #include <cstdlib>
+#include <errno.h>
+#include "errno.h"
+#include "darwin_errno_codes.h"
 #include "log.h"
 
 extern "C" __darwin_FILE* __stdinp;
@@ -174,5 +177,21 @@ __attribute__((constructor)) static void initStdio()
 	__stdinp = InitDarwinFILE(stderr);
 }
 
+char *__darwin_realpath(const char *path, char *resolved_path)
+{
+	if (!path)
+	{
+		errno = DARWIN_EINVAL;
+		return 0;
+	}
+	
+	path = translatePathCI(path);
+	
+	char* rv = realpath(path, resolved_path);
+	if (!rv)
+		errnoOut();
+	
+	return rv;
+}
 
 
