@@ -24,6 +24,11 @@ CC_MD5_Final;MD5_Final
 CC_MD5;MD5
 __darwin_atexit;__cxa_atexit
 _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode;_ZNSt12__basic_fileIcE8sys_openEP8_IO_FILESt13_Ios_Openmode
-select$1050;select
+__darwin_select$1050;__darwin_select
+__darwin_select;select;   TEMPORARY, needs to be implemented!
 __darwin_warn;__darwin__warn
 __darwin_err;__darwin__err
+
+;; dir.cpp
+__darwin_opendir$INODE64;__darwin_opendir
+__darwin_telldir$INODE64;telldir

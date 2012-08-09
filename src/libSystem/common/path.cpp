@@ -38,7 +38,7 @@ void translatePathCI(char* path)
 		memcpy(buffer, p, nextp-p);
 		buffer[nextp-p] = 0;
 		
-		while (ent = ::readdir(dir))
+		while ((ent = ::readdir(dir)) != 0)
 		{
 			if (strcasecmp(ent->d_name, buffer))
 				continue;
@@ -55,6 +55,14 @@ void translatePathCI(char* path)
 		memcpy(p, good, nextp-p);
 		p = nextp + 1; // skip the slash
 	}
+}
+
+char* translatePathCI(const char* path)
+{
+	static __thread char buf[DARWIN_MAXPATHLEN];
+	strcpy(buf, path);
+	translatePathCI(buf);
+	return buf;
 }
 
 #ifdef TEST_PATH

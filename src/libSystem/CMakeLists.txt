@@ -31,9 +31,13 @@ set(libc_SRCS
 	libc/strmode.c
 	libc/directmap.asm
 	libc/sysctl.cpp
+	libc/dir.cpp
+	common/path.cpp
 )
 
 set(bsdkern_SRCS
+	kernel-bsd/stat.cpp
+	kernel-bsd/fopsmisc.cpp
 )
 
 set(machkern_SRCS

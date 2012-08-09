@@ -74,6 +74,15 @@ typedef uint64_t __darwin_ino64_t;
 typedef uint32_t __darwin_uid_t;
 typedef uint32_t __darwin_gid_t;
 
+// target: current (INODE64)
+// sizeof() = 144 on x86_64
+// sizeof() = 108 on x86
+
+// target: legacy (10.3)
+// sizeof() = 120 on x86_64
+// sizeof() = 96 on x86
+// 92
+
 // From /usr/include/sys/stat.h
 struct __darwin_stat64 {
   __darwin_dev_t st_dev;
@@ -87,10 +96,9 @@ struct __darwin_stat64 {
   struct __darwin_timespec st_mtimespec;
   struct __darwin_timespec st_ctimespec;
   struct __darwin_timespec st_birthtimespec;
-  off_t st_size;
-  // TODO(hamaji): the size is not checked after this field.
-  blkcnt_t st_blocks;
-  blksize_t st_blksize;
+  uint64_t st_size;
+  uint64_t st_blocks;
+  uint32_t st_blksize;
   __uint32_t st_flags;
   __uint32_t st_gen;
   __int32_t st_lspare;
@@ -108,10 +116,9 @@ struct __darwin_stat {
   struct __darwin_timespec st_atimespec;
   struct __darwin_timespec st_mtimespec;
   struct __darwin_timespec st_ctimespec;
-  off_t st_size;
-  // TODO(hamaji): the size is not checked after this field.
-  blkcnt_t st_blocks;
-  blksize_t st_blksize;
+  uint64_t st_size;
+  uint64_t st_blocks;
+  uint32_t st_blksize;
   __uint32_t st_flags;
   __uint32_t st_gen;
   __int32_t st_lspare;
@@ -204,58 +211,6 @@ int __darwin_lstat(const char* path, struct __darwin_stat* mac) {
   int ret = lstat64(path, &linux_buf);
   __translate_stat(&linux_buf, mac);
   return ret;
-}
-
-// From /usr/include/sys/dirent.h
-#define __DARWIN_MAXPATHLEN 1024
-struct __darwin_dirent64 {
-  uint64_t d_ino;
-  uint64_t d_seekoff;
-  uint16_t d_reclen;
-  uint16_t d_namlen;
-  uint8_t d_type;
-  char d_name[__DARWIN_MAXPATHLEN];
-};
-
-#define __DARWIN_MAXNAMLEN 255
-struct __darwin_dirent {
-  uint32_t d_ino;
-  uint16_t d_reclen;
-  uint8_t d_type;
-  uint8_t d_namlen;
-  char d_name[__DARWIN_MAXNAMLEN + 1];
-};
-
-struct __darwin_dirent64* __darwin_readdir64(DIR* dirp) {
-  static struct __darwin_dirent64 mac;
-  struct dirent* linux_buf = readdir(dirp);
-  if (!linux_buf) {
-    return NULL;
-  }
-  mac.d_ino = linux_buf->d_ino;
-  mac.d_reclen = linux_buf->d_reclen;
-  mac.d_type = linux_buf->d_type;
-  mac.d_namlen = strlen(linux_buf->d_name);
-  // TODO(hamaji): I hope this won't be used.
-  mac.d_seekoff = 0;
-  strcpy(mac.d_name, linux_buf->d_name);
-  LOGF("readdir64: %s\n", mac.d_name);
-  return &mac;
-}
-
-struct __darwin_dirent* __darwin_readdir(DIR* dirp) {
-  static struct __darwin_dirent mac;
-  struct dirent* linux_buf = readdir(dirp);
-  if (!linux_buf) {
-    return NULL;
-  }
-  mac.d_ino = linux_buf->d_ino;
-  mac.d_reclen = linux_buf->d_reclen;
-  mac.d_type = linux_buf->d_type;
-  mac.d_namlen = strlen(linux_buf->d_name);
-  strcpy(mac.d_name, linux_buf->d_name);
-  LOGF("readdir: %s\n", mac.d_name);
-  return &mac;
 }
 
 int __maskrune(__darwin_ct_rune_t _c, unsigned long _f) {
