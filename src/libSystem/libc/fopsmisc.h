@@ -6,6 +6,8 @@ extern "C"
 
 char *__darwin_realpath(const char *path, char *resolved_path);
 
+// TODO: mkstemp, mktemp and friends
+
 }
 
 #endif

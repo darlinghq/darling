@@ -401,6 +401,7 @@ void* malloc_default_zone() {
   return NULL;
 }
 
+// TODO: implement via mallinfo
 void malloc_zone_statistics(void* zone, __darwin_malloc_statistics_t* stats) {
   fprintf(stderr, "malloc_zone_statistics\n");
   memset(stats, 0, sizeof(*stats));
