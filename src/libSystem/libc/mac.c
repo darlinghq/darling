@@ -179,53 +179,6 @@ int _NSGetExecutablePath(char* buf, unsigned int* size) {
   return 0;
 }
 
-int __darwin_open(const char* path, int flags, mode_t mode) {
-  LOGF("open path=%s flags=%d\n", path, flags);
-  int linux_flags = 0;
-  linux_flags |= flags & O_ACCMODE;
-  // O_SHLOCK
-  if (flags & 0x10) {
-    fprintf(stderr, "Unsupported open flag=%d\n", flags);
-    abort();
-  }
-  // O_EXLOCK
-  if (flags & 0x20) {
-    fprintf(stderr, "Unsupported open flag=%d\n", flags);
-    abort();
-  }
-  if (flags & 0x40) linux_flags |= O_ASYNC;
-  if (flags & 0x80) linux_flags |= O_SYNC;
-  if (flags & 0x100) linux_flags |= O_NOFOLLOW;
-  if (flags & 0x200) linux_flags |= O_CREAT;
-  if (flags & 0x400) linux_flags |= O_TRUNC;
-  if (flags & 0x800) linux_flags |= O_EXCL;
-  // O_EVTONLY
-  if (flags & 0x8000) {
-    fprintf(stderr, "Unsupported open flag=%d\n", flags);
-    abort();
-  }
-  if (flags & 0x20000) linux_flags |= O_NOCTTY;
-  if (flags & 0x100000) linux_flags |= O_DIRECTORY;
-  // O_SYMLINK
-  if (flags & 0x200000) {
-    fprintf(stderr, "Unsupported open flag=%d\n", flags);
-    abort();
-  }
-  if (flags & 0x400000) linux_flags |= O_DSYNC;
-  // O_POPUP
-  if (flags & 0x80000000) {
-    fprintf(stderr, "Unsupported open flag=%d\n", flags);
-    abort();
-  }
-  // O_ALERT
-  if (flags & 0x20000000) {
-    fprintf(stderr, "Unsupported open flag=%d\n", flags);
-    abort();
-  }
-
-  return open(path, linux_flags, mode);
-}
-
 static char** add_loader_to_argv(char* argv[]) {
   int i, argc;
   for (argc = 0; argv[argc]; argc++);

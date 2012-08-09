@@ -39,6 +39,7 @@ set(libc_SRCS
 set(bsdkern_SRCS
 	kernel-bsd/stat.cpp
 	kernel-bsd/fopsmisc.cpp
+	kernel-bsd/io.cpp
 )
 
 set(machkern_SRCS
