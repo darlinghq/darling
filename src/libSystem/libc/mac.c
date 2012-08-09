@@ -83,22 +83,6 @@ void libiconv_set_relocation_prefix(const char* orig, const char* curr) {
   abort();
 }
 
-// TODO: We need rdtsc.
-struct mach_timebase_info {
-  uint32_t numer;
-  uint32_t denom;
-};
-
-uint64_t mach_absolute_time() {
-  return clock();
-}
-
-int mach_timebase_info(struct mach_timebase_info* info) {
-  info->numer = 1;
-  info->denom = CLOCKS_PER_SEC;
-  return 0;
-}
-
 // From /usr/include/mach/host_info.h
 struct __darwin_host_basic_info {
   int max_cpus;
@@ -185,191 +169,6 @@ void *__darwin_mmap(void *addr, size_t length, int prot, int flags,
   return mmap(addr, length, prot, flags, fd, offset);
 }
 
-/* stdio buffers */
-struct __darwin_sbuf {
-        unsigned char   *_base;
-        int             _size;
-};
-
-// Unfortunately, putc_nolock depends on FILE's layout,
-// so we need to wrap linux's FILE with darwin's layout.
-typedef struct __darwin_sFILE {
-  unsigned char *_p;      /* current position in (some) buffer */
-  int     _r;             /* read space left for getc() */
-  int     _w;             /* write space left for putc() */
-  // TODO(hamaji): we need to modify this value with ferror and feof...
-  short   _flags;         /* flags, below; this FILE is free if 0 */
-  short   _file;          /* fileno, if Unix descriptor, else -1 */
-  struct  __darwin_sbuf _bf;     /* the buffer (at least 1 byte, if !NULL) */
-  int     _lbfsize;       /* 0 or -_bf._size, for inline putc */
-
-#if 0
-  /* operations */
-  void    *_cookie;       /* cookie passed to io functions */
-  int     (*_close)(void *);
-  int     (*_read) (void *, char *, int);
-  fpos_t  (*_seek) (void *, fpos_t, int);
-  int     (*_write)(void *, const char *, int);
-
-  /* separate buffer for long sequences of ungetc() */
-  struct  __sbuf _ub;     /* ungetc buffer */
-  struct __sFILEX *_extra; /* additions to FILE to not break ABI */
-  int     _ur;            /* saved _r when _r is counting ungetc data */
-
-  /* tricks to meet minimum requirements even when malloc() fails */
-  unsigned char _ubuf[3]; /* guarantee an ungetc() buffer */
-  unsigned char _nbuf[1]; /* guarantee a getc() buffer */
-
-  /* separate buffer for fgetln() when line crosses buffer boundary */
-  struct  __sbuf _lb;     /* buffer for fgetln() */
-
-  /* Unix stdio files get aligned to block boundaries on fseek() */
-  int     _blksize;       /* stat.st_blksize (may be != _bf._size) */
-  fpos_t  _offset;        /* current lseek offset (see WARNING) */
-
-#endif
-
-  FILE* linux_fp;
-} __darwin_FILE;
-
-__darwin_FILE* __stdinp;
-__darwin_FILE* __stdoutp;
-__darwin_FILE* __stderrp;
-
-static __darwin_FILE* __init_darwin_FILE(FILE* linux_fp) {
-  if (!linux_fp)
-    return NULL;
-
-  __darwin_FILE* fp = (__darwin_FILE*)malloc(sizeof(__darwin_FILE));
-  fp->_p = NULL;
-  fp->_r = -1;
-  fp->_w = -1;
-  fp->_flags = 0;
-  fp->_file = fileno(linux_fp);
-  fp->_lbfsize = 0;
-  fp->linux_fp = linux_fp;
-  return fp;
-}
-
-__darwin_FILE* __darwin_fopen(const char* path, const char* mode) {
-  return __init_darwin_FILE(fopen(path, mode));
-}
-
-__darwin_FILE* __darwin_fdopen(int fd, const char* mode) {
-  return __init_darwin_FILE(fdopen(fd, mode));
-}
-
-__darwin_FILE* __darwin_freopen(const char* path, const char* mode,
-                                __darwin_FILE* fp) {
-  return __init_darwin_FILE(freopen(path, mode, fp->linux_fp));
-}
-
-int __darwin_fclose(__darwin_FILE* fp) {
-  int r = fclose(fp->linux_fp);
-  free(fp);
-  return r;
-}
-
-size_t __darwin_fread(void* ptr, size_t size, size_t nmemb,
-                      __darwin_FILE* fp) {
-  return fread(ptr, size, nmemb, fp->linux_fp);
-}
-
-size_t __darwin_fwrite(void* ptr, size_t size, size_t nmemb,
-                       __darwin_FILE* fp) {
-  return fwrite(ptr, size, nmemb, fp->linux_fp);
-}
-
-int __darwin_fseek(__darwin_FILE* fp, long offset, int whence) {
-  return fseek(fp->linux_fp, offset, whence);
-}
-
-long __darwin_ftell(__darwin_FILE* fp) {
-  return ftell(fp->linux_fp);
-}
-
-void __darwin_rewind(__darwin_FILE* fp) {
-  return rewind(fp->linux_fp);
-}
-
-int __darwin_getc(__darwin_FILE* fp) {
-  return getc(fp->linux_fp);
-}
-
-int __darwin_fgetc(__darwin_FILE* fp) {
-  return fgetc(fp->linux_fp);
-}
-
-int __darwin_ungetc(int c, __darwin_FILE* fp) {
-  return ungetc(c, fp->linux_fp);
-}
-
-char* __darwin_fgets(char* s, int size, __darwin_FILE* fp) {
-  return fgets(s, size, fp->linux_fp);
-}
-
-int __darwin_putc(int c, __darwin_FILE* fp) {
-  return putc(c, fp->linux_fp);
-}
-
-int __darwin_fputc(int c, __darwin_FILE* fp) {
-  return fputc(c, fp->linux_fp);
-}
-
-int __darwin_fputs(const char* s, __darwin_FILE* fp) {
-  return fputs(s, fp->linux_fp);
-}
-
-int __darwin_fprintf(__darwin_FILE* fp, const char* fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  int r = vfprintf(fp->linux_fp, fmt, ap);
-  va_end(ap);
-  return r;
-}
-
-int __darwin_vfscanf(__darwin_FILE* fp, const char* fmt, va_list ap) {
-  return vfscanf(fp->linux_fp, fmt, ap);
-}
-
-int __darwin_fscanf(__darwin_FILE* fp, const char* fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  int r = vfscanf(fp->linux_fp, fmt, ap);
-  va_end(ap);
-  return r;
-}
-
-int __darwin_vfprintf(__darwin_FILE* fp, const char* fmt, va_list ap) {
-  return vfprintf(fp->linux_fp, fmt, ap);
-}
-
-int __darwin_fflush(__darwin_FILE* fp) {
-  if (!fp)
-    return fflush(NULL);
-  return fflush(fp->linux_fp);
-}
-
-void __darwin_setbuf(__darwin_FILE* fp, char* buf) {
-  setbuf(fp->linux_fp, buf);
-}
-
-void __darwin_setbuffer(__darwin_FILE* fp, char* buf, size_t size) {
-  setbuffer(fp->linux_fp, buf, size);
-}
-
-int __darwin_ferror(__darwin_FILE* fp) {
-  LOGF("ferror: %d\n", ferror(fp->linux_fp));
-  return ferror(fp->linux_fp);
-}
-
-int __darwin_fileno(__darwin_FILE* fp) {
-  return fileno(fp->linux_fp);
-}
-
-__darwin_FILE* __darwin_tmpfile() {
-  return __init_darwin_FILE(tmpfile());
-}
 
 extern char __darwin_executable_path[PATH_MAX];
 char __loader_path[PATH_MAX];
@@ -700,47 +499,6 @@ void __darwin___cxa_throw(char** obj) {
   abort();
 }
 
-size_t strlcpy(char* dst, const char* src, size_t size) {
-  dst[size - 1] = '\0';
-  strncpy(dst, src, size - 1);
-  return strlen(dst);
-}
-
-size_t strlcat(char* dst, const char* src, size_t size) {
-  dst[size - 1] = '\0';
-  strncat(dst, src, size - strlen(dst) - 1);
-  return strlen(dst);
-}
-
-// The following three functions are slow.
-// But they're no faster on Darwin either.
-
-void memset_pattern4(char* b, const char* pattern4, size_t len) {
-  size_t i;
-  for (i = 0; i < len; i++) {
-    b[i] = pattern4[i % 4];
-  }
-}
-
-void memset_pattern8(char* b, const char* pattern4, size_t len) {
-  size_t i;
-  for (i = 0; i < len; i++) {
-    b[i] = pattern4[i % 8];
-  }
-}
-
-void memset_pattern16(char* b, const char* pattern4, size_t len) {
-  size_t i;
-  for (i = 0; i < len; i++) {
-    b[i] = pattern4[i % 16];
-  }
-}
-
-int __mb_cur_max()
-{
-	return MB_CUR_MAX;
-}
-
 typedef struct {
   void* ss_sp;
   size_t ss_size;
@@ -809,78 +567,22 @@ char*** _NSGetEnviron() {
   return &environ;
 }
 
-#define __DARWIN_PTHREAD_MUTEX_NORMAL 0
-#define __DARWIN_PTHREAD_MUTEX_ERRORCHECK 1
-#define __DARWIN_PTHREAD_MUTEX_RECURSIVE 2
-int __darwin_pthread_mutexattr_settype(pthread_mutexattr_t* attr, int kind) {
-  switch (kind) {
-  case __DARWIN_PTHREAD_MUTEX_NORMAL:
-    kind = PTHREAD_MUTEX_FAST_NP;
-    break;
-  case __DARWIN_PTHREAD_MUTEX_ERRORCHECK:
-    kind = PTHREAD_MUTEX_ERRORCHECK_NP;
-    break;
-  case __DARWIN_PTHREAD_MUTEX_RECURSIVE:
-    kind = PTHREAD_MUTEX_RECURSIVE_NP;
-    break;
-  default:
-    fprintf(stderr, "Unknown pthread_mutexattr_settype kind: %d\n", kind);
-  }
-  return pthread_mutexattr_settype(attr, kind);
+
+
+
+static void do_nothing(void) {
+}
+static void* do_nothing2(void) {
+	return 0;
+}
+static void do_nothing3(int status) {
 }
 
-#define __DARWIN_PTHREAD_PROCESS_SHARED 1
-#define __DARWIN_PTHREAD_PROCESS_PRIVATE 2
-static int __translate_pshared(int pshared) {
-  switch (pshared) {
-  case __DARWIN_PTHREAD_PROCESS_SHARED:
-    return PTHREAD_PROCESS_SHARED;
-  case __DARWIN_PTHREAD_PROCESS_PRIVATE:
-    return PTHREAD_PROCESS_PRIVATE;
-  default:
-    fprintf(stderr, "Unknown pthread_mutexattr_setpshared pshared: %d\n",
-            pshared);
-    return pshared;
-  }
-}
-int __darwin_pthread_mutexattr_setpshared(pthread_mutexattr_t* attr,
-                                          int pshared) {
-  pshared = __translate_pshared(pshared);
-  return pthread_mutexattr_setpshared(attr, pshared);
-}
-int __darwin_pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr,
-                                           int pshared) {
-  pshared = __translate_pshared(pshared);
-  return pthread_rwlockattr_setpshared(attr, pshared);
-}
-
-void* mach_init_routine;
-void* _cthread_init_routine;
-static void do_nothing() {
-}
+void (*mach_init_routine)(void) = do_nothing;
+void* (*_cthread_init_routine)(void) = do_nothing2;
+void (*_cthread_exit_routine) (int) = do_nothing3;
 
 void __keymgr_dwarf2_register_sections() {
-}
-
-void* (*ld_mac_dlopen)(const char* filename, int flag);
-int (*ld_mac_dlclose)(void* handle);
-char* (*ld_mac_dlerror)(void);
-void* (*ld_mac_dlsym)(void* handle, const char* symbol);
-
-void* __darwin_dlopen(const char* filename, int flag) {
-  return ld_mac_dlopen(filename, flag);
-}
-
-int __darwin_dlclose(void* handle) {
-  return ld_mac_dlclose(handle);
-}
-
-char* __darwin_dlerror(void) {
-  return ld_mac_dlerror();
-}
-
-void* __darwin_dlsym(void* handle, const char* symbol) {
-  return ld_mac_dlsym(handle, symbol);
 }
 
 #define __DARWIN_SYS_NAMELEN 256
@@ -986,12 +688,4 @@ int __darwin_compat_mode(const char* function, const char* mode) {
   // http://opensource.apple.com/source/Libc/Libc-763.13/gen/get_compat.c
   // TODO(hamaji): Support binary operators.
   return !strcasecmp(mode, "unix2003");
-}
-
-__attribute__((constructor)) void initMac() {
-  __stderrp = __init_darwin_FILE(stdin);
-  __stdoutp = __init_darwin_FILE(stdout);
-  __stdinp = __init_darwin_FILE(stderr);
-  mach_init_routine = &do_nothing;
-  _cthread_init_routine = &do_nothing;
 }

@@ -64,7 +64,7 @@
 //#include <mach/machine/vm_types.h>
 //#include <mach/boolean.h>
 
-typedef uint32_t integer_t;
+//typedef uint32_t integer_t;
 
 typedef integer_t	cpu_type_t;
 typedef integer_t	cpu_subtype_t;

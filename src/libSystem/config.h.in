@@ -16,3 +16,6 @@
 #       include <unistd.h>
 #endif
 
+#include <stdint.h>
+
+#define __uint64_t uint64_t

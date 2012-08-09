@@ -32,6 +32,7 @@ set(libc_SRCS
 	libc/directmap.asm
 	libc/sysctl.cpp
 	libc/dir.cpp
+	libc/string.cpp
 	common/path.cpp
 )
 
@@ -45,6 +46,7 @@ set(machkern_SRCS
 	kernel-mach/lockset.cpp
 	kernel-mach/semaphore.cpp
 	kernel-mach/task.cpp
+	kernel-mach/time.cpp
 	kernel-mach/vm.cpp
 )
 

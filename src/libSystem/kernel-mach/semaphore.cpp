@@ -1,11 +1,12 @@
 #include "config.h"
+#include <semaphore.h>
 #include "semaphore.h"
 #include "mach-stub.h"
 #include "trace.h"
 #include <unistd.h>
 #include <errno.h>
 
-kern_return_t semaphore_create(darwin_task_t* task, semaphore_t *semaphore, int policy, int value)
+kern_return_t semaphore_create(darwin_task_t* task, esemaphore_t *semaphore, int policy, int value)
 {
 	TRACE4(task, semaphore, policy, value);
 	CHECK_TASK_SELF(task);
@@ -29,7 +30,7 @@ kern_return_t semaphore_create(darwin_task_t* task, semaphore_t *semaphore, int 
 	return KERN_SUCCESS;
 }
 
-kern_return_t semaphore_destroy(darwin_task_t* task, semaphore_t semaphore)
+kern_return_t semaphore_destroy(darwin_task_t* task, esemaphore_t semaphore)
 {
 	TRACE2(task, semaphore);
 	CHECK_TASK_SELF(task);
@@ -44,7 +45,7 @@ kern_return_t semaphore_destroy(darwin_task_t* task, semaphore_t semaphore)
 	return KERN_SUCCESS;
 }
 
-kern_return_t semaphore_signal(semaphore_t semaphore)
+kern_return_t semaphore_signal(esemaphore_t semaphore)
 {
 	TRACE1(semaphore);
 	if (!semaphore)
@@ -56,12 +57,12 @@ kern_return_t semaphore_signal(semaphore_t semaphore)
 	return KERN_SUCCESS;
 }
 
-kern_return_t semaphore_signal_all(semaphore_t semaphore)
+kern_return_t semaphore_signal_all(esemaphore_t semaphore)
 {
 	MACH_STUB();
 }
 
-kern_return_t semaphore_wait(semaphore_t semaphore)
+kern_return_t semaphore_wait(esemaphore_t semaphore)
 {
 	TRACE1(semaphore);
 	if (!semaphore)
