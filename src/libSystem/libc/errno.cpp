@@ -45,20 +45,27 @@ void initErrnoMappingTable()
 	darwin_to_linux[_DARWIN_EBADMACHO] = ENOEXEC;
 }
 
-int errnoDarwinToLinux(int err)
+static int errnoDoMap(int err, int* map)
 {
 	if (err < sizeof(darwin_to_linux)/sizeof(darwin_to_linux[0])-1)
-		return darwin_to_linux[err];
+	{
+		int e = map[err];
+		if (!e)
+			e = err; // preserve the original value and hope for the best
+		return e;
+	}
 	else
 		return 0;
 }
 
+int errnoDarwinToLinux(int err)
+{
+	return errnoDoMap(err, darwin_to_linux);
+}
+
 int errnoLinuxToDarwin(int err)
 {
-	if (err < sizeof(linux_to_darwin)/sizeof(linux_to_darwin[0])-1)
-		return linux_to_darwin[err];
-    else
-        return 0;
+	return errnoDoMap(err, linux_to_darwin);
 }
 
 char* __darwin_strerror(int errnum)

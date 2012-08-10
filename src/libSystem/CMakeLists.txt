@@ -37,6 +37,7 @@ set(libc_SRCS
 	libc/exec.cpp
 	libc/stdio.cpp
 	libc/fopsmisc.cpp
+	libc/aio.cpp
 	common/path.cpp
 )
 
@@ -44,6 +45,8 @@ set(bsdkern_SRCS
 	kernel-bsd/stat.cpp
 	kernel-bsd/fopsmisc.cpp
 	kernel-bsd/io.cpp
+	kernel-bsd/wait.cpp
+	kernel-bsd/sockets.cpp
 )
 
 set(machkern_SRCS

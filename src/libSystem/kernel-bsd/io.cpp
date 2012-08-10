@@ -80,4 +80,17 @@ int __darwin_creat(const char *pathname, mode_t mode)
 MAP_FUNCTION1(int,close,int);
 MAP_FUNCTION1(int,fsync,int);
 MAP_FUNCTION1(int,fdatasync,int);
+MAP_FUNCTION3(ssize_t,read,int,void*,size_t);
+MAP_FUNCTION3(ssize_t,write,int,const void*,size_t);
+
+off64_t __darwin_lseek(int fd, off64_t offset, int whence)
+{
+	off64_t rv = lseek64(fd, offset, whence);
+	if (rv == -1)
+		errnoOut();
+	return rv;
+}
+
+MAP_FUNCTION1(int,dup,int);
+MAP_FUNCTION2(int,dup2,int,int);
 
