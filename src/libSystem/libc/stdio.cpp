@@ -2,9 +2,11 @@
 #include "errno.h"
 #include "common/path.h"
 #include "common/auto.h"
+#include "darwin_errno_codes.h"
 #include <cstdio>
 #include <cstdlib>
 #include <errno.h>
+#include <stdio_ext.h>
 #include "log.h"
 
 extern "C" __darwin_FILE* __stdinp;
@@ -25,6 +27,14 @@ static __darwin_FILE* InitDarwinFILE(FILE* linux_fp)
 	fp->_lbfsize = 0;
 	fp->linux_fp = linux_fp;
 	return fp;
+}
+
+template<typename RetVal, typename Func, typename... Params> RetVal AutoFileErrno(Func f, __darwin_FILE* file, Params... params)
+{
+	RetVal rv = f(params..., file->linux_fp);
+	if (!retvalOK(rv))
+		errnoOut();
+	return rv;
 }
 
 __darwin_FILE* __darwin_fopen(const char* path, const char* mode)
@@ -169,6 +179,120 @@ __darwin_FILE* __darwin_tmpfile()
 {
 	return InitDarwinFILE(tmpfile());
 }
+
+int __darwin_feof(__darwin_FILE *stream)
+{
+	if (!stream)
+	{
+		errno = DARWIN_EINVAL;
+		return -1;
+	}
+	else
+	{
+		int rv = feof(stream->linux_fp);
+		if (rv == -1)
+			errnoOut();
+		return rv;
+	}
+}
+
+void __darwin_clearerr(__darwin_FILE *stream)
+{
+	if (stream)
+		clearerr(stream->linux_fp);
+}
+
+int __darwin_fgetpos(__darwin_FILE *stream, fpos_t *pos)
+{
+	if (!stream)
+	{
+		errno = DARWIN_EINVAL;
+		return -1;
+	}
+	else
+	{
+		int rv = fgetpos(stream->linux_fp, pos);
+		if (rv == -1)
+			errnoOut();
+		return rv;
+	}
+}
+
+int __darwin_fsetpos(__darwin_FILE *stream, fpos_t *pos)
+{
+	if (!stream)
+    {
+        errno = DARWIN_EINVAL;
+        return -1;
+    }
+    else
+    {
+        int rv = fsetpos(stream->linux_fp, pos);
+        if (rv == -1)
+            errnoOut();
+        return rv;
+    }
+}
+
+int __darwin_fpurge(__darwin_FILE *stream)
+{
+	if (!stream)
+	{
+		errno = DARWIN_EINVAL;
+		return -1;
+	}
+	else
+	{
+		__fpurge(stream->linux_fp);
+		return 0;
+	}
+}
+
+int __darwin_getw(__darwin_FILE *stream)
+{
+	return AutoFileErrno<int>(getw, stream);
+}
+
+int __darwin_putw(int w, __darwin_FILE *stream)
+{
+	return AutoFileErrno<int>(putw, stream, w);
+}
+
+wint_t __darwin_fgetwc(__darwin_FILE *stream)
+{
+	return AutoFileErrno<wint_t>(fgetwc, stream);
+}
+
+wint_t __darwin_getwc(__darwin_FILE *stream)
+{
+	return AutoFileErrno<wint_t>(getwc, stream);
+}
+
+wint_t __darwin_fputwc(wchar_t wc, __darwin_FILE *stream)
+{
+	return AutoFileErrno<wint_t>(fputwc, stream, wc);
+}
+
+wint_t __darwin_putwc(wchar_t wc, __darwin_FILE *stream)
+{
+	return AutoFileErrno<wint_t>(putwc, stream, wc);
+}
+
+int __darwin_fputws(const wchar_t *ws, __darwin_FILE *stream)
+{
+	return AutoFileErrno<int>(fputws, stream, ws);
+}
+
+wchar_t *__darwin_fgetws(wchar_t *ws, int n, __darwin_FILE *stream)
+{
+	return AutoFileErrno<wchar_t*>(fgetws, stream, ws, n);
+}
+
+wint_t __darwin_ungetwc(wint_t wc, __darwin_FILE *stream)
+{
+	return AutoFileErrno<wint_t>(ungetwc, stream, wc);
+}
+
 
 __attribute__((constructor)) static void initStdio()
 {

@@ -2,6 +2,7 @@
 #define LIBC_STDIO_H
 #include <cstdio>
 #include <stdarg.h>
+#include <wchar.h>
 
 /* stdio buffers */
 struct __darwin_sbuf
@@ -82,7 +83,22 @@ int __darwin_ferror(__darwin_FILE* fp);
 int __darwin_fileno(__darwin_FILE* fp);
 __darwin_FILE* __darwin_tmpfile();
 
-// TODO: feof
+int __darwin_feof(__darwin_FILE *stream);
+void __darwin_clearerr(__darwin_FILE *stream);
+
+int __darwin_fgetpos(__darwin_FILE *stream, fpos_t *pos);
+int __darwin_fsetpos(__darwin_FILE *stream, fpos_t *pos);
+int __darwin_fpurge(__darwin_FILE *stream);
+int __darwin_getw(__darwin_FILE *stream);
+int __darwin_putw(int w, __darwin_FILE *stream);
+wint_t __darwin_fgetwc(__darwin_FILE *stream);
+wint_t __darwin_getwc(__darwin_FILE *stream);
+wint_t __darwin_fputwc(wchar_t wc, __darwin_FILE *stream);
+wint_t __darwin_putwc(wchar_t wc, __darwin_FILE *stream);
+int __darwin_fputws(const wchar_t *ws, __darwin_FILE *stream);
+wchar_t *__darwin_fgetws(wchar_t *ws, int n, __darwin_FILE *stream);
+wint_t __darwin_ungetwc(wint_t wc, __darwin_FILE *stream);
+
 
 int __darwin_remove(const char* path);
 

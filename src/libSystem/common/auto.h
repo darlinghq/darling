@@ -12,9 +12,18 @@ inline bool retvalOK(int p) { return p != -1; }
 template<typename RetVal, typename Func, typename... Params> RetVal AutoPathErrno(Func f, const char* pathname, Params... params)
 {
 	RetVal rv = f(translatePathCI(pathname), params...);
-	if (rv == -1)
+	if (!retvalOK(rv))
 		errnoOut();
 	return rv;
+}
+
+template<typename RetVal, typename Func, typename... Params> RetVal AutoPathErrno(Func f, char* pathname, Params... params)
+{
+	translatePathCI(pathname);
+    RetVal rv = f(pathname, params...);
+    if (!retvalOK(rv))
+        errnoOut();
+    return rv;
 }
 
 template<typename RetVal, typename Func, typename... Params> RetVal AutoErrno(Func f, Params... params)
