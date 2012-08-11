@@ -21,6 +21,13 @@
 #define DARWIN_SO_ERROR 0x1007
 #define DARWIN_SO_TYPE 0x1008
 
+#define DARWIN_AF_UNSPEC 0
+#define DARWIN_AF_UNIX 1
+#define DARWIN_AF_INET 2
+#define DARWIN_AF_APPLETALK 16
+#define DARWIN_AF_IPX 23
+#define DARWIN_AF_INET6 30
+
 extern "C"
 {
 
@@ -31,6 +38,10 @@ ssize_t __darwin_recvfrom(int socket, void * buffer, size_t length, int flags, s
 int __darwin_getsockopt(int socket, int level, int option_name, void * option_value, socklen_t * option_len);
 
 int __darwin_setsockopt(int socket, int level, int option_name, const void *option_value, socklen_t option_len);
+
+int __darwin_socket(int domain, int type, int protocol);
+int __darwin_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+int __darwin_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
 }
 
