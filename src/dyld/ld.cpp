@@ -4,14 +4,18 @@
 #include "MachO.h"
 #include "mutex.h"
 #include "trace.h"
+#include "FileMap.h"
 #include <config.h>
 #include <unistd.h>
 #include <map>
 #include <string>
+#include <limits.h>
 
 static Mutex g_ldMutex;
-static std::map<string, LoadedLibrary> g_ldLibraries;
+static std::map<std::string, LoadedLibrary> g_ldLibraries;
 static __thread char g_ldError[256] = "";
+
+extern char g_darwin_executable_path[PATH_MAX];
 
 // TODO: this may need a rework for a 32bit loader on a 64bit system
 static const char* g_searchPath[] = {
@@ -25,6 +29,7 @@ extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
 extern int g_argc;
 extern char** g_argv;
+extern FileMap g_file_map;
 
 #define RET_IF(x) { if (void* p = x) return p; }
 
@@ -162,6 +167,7 @@ void* attemptDlopen(const char* filename, int flag)
 				lib->refCount = 1;
 				lib->type = LoadedLibraryNative;
 				lib->nativeRef = d;
+				lib->slide = lib->base = 0;
 				
 				g_ldLibraries[name] = lib;
 				return lib;
@@ -186,10 +192,17 @@ void* attemptDlopen(const char* filename, int flag)
 				lib->machoRef = machO;
 				
 				bool global = flags & RTLD_GLOBAL && !(flags & RTLD_LOCAL);
-				// TODO: deal with global
-				g_loader->load(*dylib_mach, exports, true);
-				//g_loader->
-				// TODO: run initializers
+				
+				if (!global)
+				{
+					lib->exports = new Exports;
+					g_loader->load(*dylib_mach, lib->exports, true);
+				}
+				else
+					g_loader->load(*dylib_mach, 0, true);
+				
+				const char* apple[2] = { g_darwin_executable_path, 0 };
+				g_loader->runPendingInitFuncs(g_argc, g_argv, environ, apple);
 				
 				g_ldLibraries[name] = lib;
 				return lib;
@@ -210,6 +223,39 @@ int __darwin_dlclose(void* handle)
 	MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
 	
+	if (!handle)
+		return 0;
+	
+	LoadedLibrary* lib = dynamic_cast<LoadedLibrary*>(handle);
+	if (!lib)
+	{
+		strcpy(g_ldError, "Invalid handle passed to __darwin_dlclose()");
+		return -1;
+	}
+	
+	lib->refCount--;
+	
+	if (lib->type == LoadedLibraryNative)
+		::dlclose(lib->nativeRef);
+	if (!lib->refCount)
+	{
+		if (lib->type == LoadedLibraryDylib)
+		{
+			// TODO: unmap in g_loader!
+			delete lib->exports;
+			
+			for (std::map<std::string,LoadedLibrary>::iterator it = g_ldLibraries.begin(); it != g_ldLibraries.end(); it++)
+			{
+				if (it->second == lib)
+				{
+					g_ldLibraries.erase(it);
+					delete lib;
+					break;
+				}
+			}
+		}
+	}
+	
 	return 0;
 }
 
@@ -226,6 +272,77 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 	
 	MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
+	
+	if (handle == DARWIN_RTLD_NEXT || handle == DARWIN_RTLD_SELF || handle == DARWIN_RTLD_MAIN_ONLY || !handle)
+	{
+		LOG("Cannot yet handle certain DARWIN_RTLD_* search strategies, falling back to RTLD_DEFAULT");
+		handle = DARWIN_RTLD_DEFAULT;
+	}
+
+handling:
+	if (handle == DARWIN_RTLD_DEFAULT)
+	{
+		// First try native with the __darwin prefix
+		void* sym;
+		char* buf = reinterpret_cast<char*>(malloc(strlen(symbol+20)));
+		strcpy(buf, "__darwin_");
+		strcat(buf, symbol);
+		
+		sym = ::dlsym(RTLD_DEFAULT, buf);
+		if (sym)
+			return sym;
+		
+		// Now try Darwin libraries
+		const Exports& e = g_loader.getExports();
+		Exports::const_iterator itSym = lib->exports->find(symbol);
+		if (itSym == e.const_end())
+		{
+			// Now try without a prefix
+			sym = ::dlsym(RTLD_DEFAULT, symbol);
+			if (sym)
+				return sym;
+			
+			// Now we fail
+			snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot find symbol '%s'", symbol);
+			return 0;
+		}
+		else
+			return itSym->second.addr;
+	}
+	else
+	{
+		LoadedLibrary* lib = dynamic_cast<LoadedLibrary*>(handle);
+		if (!lib)
+		{
+			strcpy(g_ldError, "Invalid handle passed to __darwin_dlsym()");
+			return 0;
+		}
+		
+		if (lib->type == LoadedLibraryNative)
+		{
+			void* rv = ::dlsym(lib->nativeRef, symbol);
+			if (!rv)
+				strcpy(g_ldError, ::dlerror());
+			return rv;
+		}
+		else if (!lib->exports)
+		{
+			// TODO: this isn't 100% correct
+			handle = DARWIN_RTLD_DEFAULT;
+			goto handling;
+		}
+		else
+		{
+			Exports::iterator itSym = lib->exports->find(symbol);
+			if (itSym == lib->exports->end())
+			{
+				snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot find symbol '%s'", symbol);
+				return 0;
+			}
+			else
+				return itSym->second.addr;
+		}
+	}
 }
 
 int __darwin_dladdr(void *addr, Dl_info *info)
@@ -234,4 +351,9 @@ int __darwin_dladdr(void *addr, Dl_info *info)
 	
 	MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
+	
+	
+	// TODO: implement - examine g_file_map
+	strcpy(g_ldError, "Not implemented yet");
+	return -1;
 }

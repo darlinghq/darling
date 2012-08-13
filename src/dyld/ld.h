@@ -1,6 +1,7 @@
 #ifndef DARWIN_LD_H
 #define DARWIN_LD_H
 #include <dlfcn.h>
+#include "MachOLoader.h"
 
 #define DARWIN_RTLD_LAZY		0x1
 #define DARWIN_RTLD_NOW			0x2
@@ -26,8 +27,9 @@ int __darwin_dladdr(void *addr, Dl_info *info);
 
 }
 
-#ifdef DARWIN_LD_INTERNAL
 enum LoadedLibraryType { LoadedLibraryDylib, LoadedLibraryNative };
+
+typedef std::unordered_map<std::string, MachO::Export> Exports;
 
 struct LoadedLibrary
 {
@@ -39,7 +41,9 @@ struct LoadedLibrary
 		void* nativeRef;
 		MachO* machoRef;
 	};
+	//intptr slide;
+    //intptr base;
+	Exports* exports;
 };
-#endif
 
 #endif

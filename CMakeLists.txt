@@ -31,7 +31,7 @@ target_link_libraries(mach-o -ldl -lpthread)
 
 set(dyld_SRCS
 	src/dyld/FileMap.cpp
-	src/dyld/ld-mac.cc
+	src/dyld/MachOLoader.cpp
 	src/util/log.cc
 	src/util/trace.cpp
 )
