@@ -7,9 +7,22 @@ endif(COMMAND cmake_policy)
 
 enable_language(ASM_NASM)
 
+if (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
+	message(FATAL_ERROR "Clang is the only supported compiler.")
+endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
+
 configure_file(config.h.in config.h)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fblocks")
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fblocks -std=c++0x")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
+
+#find_path(LIBCXX_INCLUDE_DIR c++/v1/vector)
+#if (DEFINED LIBCXX_INCLUDE_DIR)
+#    message(STATUS "Found libcxx in ${LIBCXX_INCLUDE_DIR}")
+#else (DEFINED LIBCXX_INCLUDE_DIR)
+#    message(FATAL_ERROR "libcxx not found")
+#endif (DEFINED LIBCXX_INCLUDE_DIR)
+
+#include_directories(${LIBCXX_INCLUDE_DIR})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
@@ -60,7 +73,7 @@ set(machkern_SRCS
 
 add_library(System.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
 # -luuid to make uuid_ functions available for Darwin apps
-target_link_libraries(System.dylib -ldl -lpthread -luuid mach-o)
+target_link_libraries(System.dylib -ldl -lpthread -luuid -lmach-o)
 
 install(TARGETS System.dylib DESTINATION lib)
 
