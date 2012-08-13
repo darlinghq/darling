@@ -1,7 +1,8 @@
 #ifndef DARWIN_LD_H
 #define DARWIN_LD_H
 #include <dlfcn.h>
-#include "MachOLoader.h"
+#include <unordered_map>
+//#include "MachOLoader.h"
 
 #define DARWIN_RTLD_LAZY		0x1
 #define DARWIN_RTLD_NOW			0x2

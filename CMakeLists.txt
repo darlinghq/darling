@@ -6,11 +6,14 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/xnu)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/xnu/bsd)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/libmach-o)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/util)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 configure_file(config.h.in config.h)
 
@@ -32,6 +35,8 @@ target_link_libraries(mach-o -ldl -lpthread)
 set(dyld_SRCS
 	src/dyld/FileMap.cpp
 	src/dyld/MachOLoader.cpp
+	src/dyld/ld.cpp
+	src/dyld/dyld.cpp
 	src/util/log.cc
 	src/util/trace.cpp
 )
@@ -50,5 +55,6 @@ target_link_libraries(fatmacho-extract -ldl -lpthread mach-o)
 
 install(TARGETS dyld fatmacho-extract DESTINATION bin)
 
-add_subdirectory(src/libSystem src/libunwind-darwin)
+add_subdirectory(src/libSystem)
+add_subdirectory(src/libunwind-darwin)
 

@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <cstdlib>
 #include <stdexcept>
+#include <cstring>
 
 char g_darwin_executable_path[PATH_MAX];
 char g_loader_path[PATH_MAX];
@@ -27,9 +28,9 @@ int main(int argc, char** argv, char** envp)
 	if (!::realpath(argv[1], g_darwin_executable_path))
 		::strcpy(g_darwin_executable_path, argv[1]);
 	
-	initSignalHandler();
+	//initSignalHandler();
 	//initRename();
-	initNoTrampoline();
+	//initNoTrampoline();
 	//initLibMac();
 	//initDlfcn();
 
@@ -53,7 +54,7 @@ int main(int argc, char** argv, char** envp)
 		g_loader = new MachOLoader;
 		g_argv = argv+1;
 		g_argc = argc-1;
-		loader->run(*g_mainBinary, argc-1, argv+1, envp);
+		g_loader->run(*g_mainBinary, argc-1, argv+1, envp);
 		
 		delete g_loader;
 		g_loader = 0;

@@ -3,9 +3,11 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <pair>
+#include <utility>
 #include <stdint.h>
+#include "MachO.h"
 #include "arch.h"
+#include "ld.h"
 
 class MachOLoader
 {
@@ -13,16 +15,12 @@ class MachOLoader
 public:
 	typedef segment_command_64 Segment;
 private:
-	static inline const vector<Segment*>& getSegments(const MachO& mach) {
-		return mach.segments64();
-	}
+	static inline const std::vector<Segment*>& getSegments(const MachO& mach) { return mach.segments64(); }
 #else
 public:
 	typedef segment_command Segment;
 private:
-	static inline const vector<Segment*>& getSegments(const MachO& mach) {
-		return mach.segments();
-	}
+	static inline const std::vector<Segment*>& getSegments(const MachO& mach) { return mach.segments(); }
 #endif
 
 public:

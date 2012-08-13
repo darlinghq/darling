@@ -11,7 +11,7 @@ class Mutex
 public:
 	Mutex()
 	{
-		pthread_mutex_init(&m_mutex);
+		pthread_mutex_init(&m_mutex, 0);
 	}
 	~Mutex()
 	{

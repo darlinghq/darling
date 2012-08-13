@@ -3,12 +3,18 @@
 #include "ld.h"
 #include "log.h"
 #include "trace.h"
+#include "FileMap.h"
+#include <limits.h>
+#include <iostream>
+#include <cstring>
 #include <cstdio>
 #include <cassert>
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
+#include <set>
 #include <sys/mman.h>
+#include <errno.h>
 
 #define FLAGS_TRACE_FUNCTIONS 0
 
@@ -18,8 +24,10 @@ static std::vector<std::string> g_bound_names;
 static std::set<std::string> g_no_trampoline;
 
 extern char g_darwin_executable_path[PATH_MAX];
+extern int g_argc;
+extern char** g_argv;
 
-static void initNoTrampoline() __attribute__((constructor))
+__attribute__((constructor)) static void initNoTrampoline()
 {
 #define NO_TRAMPOLINE(name) g_no_trampoline.insert(#name);
 #include "no_trampoline.tab"
@@ -197,9 +205,9 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 		{
 			LOG << "will rebase: filename=" << mach.filename()
 				<< ", vmaddr=" << (void*)vmaddr
-				<< ", last_addr=" << (void*)last_addr_ <<std::endl;
+				<< ", last_addr=" << (void*)m_last_addr <<std::endl;
 			assert(i == 0);
-			vmaddr = last_addr_;
+			vmaddr = m_last_addr;
 			*slide = vmaddr - seg->vmaddr;
 		}
 		*base = std::min(*base, vmaddr);
@@ -217,7 +225,11 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 							mach.fd(), mach.offset() + seg->fileoff);
 		
 		if (mapped == MAP_FAILED)
-			err(1, "%s mmap(file) failed", mach.filename().c_str());
+		{
+			std::stringstream ss;
+			ss << "Failed to mmap '" << mach.filename() << "': " << strerror(errno);
+			throw std::runtime_error(ss.str());
+		}
 
 		if (vmsize != filesize)
 		{
@@ -236,7 +248,9 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 			if (mapped == MAP_FAILED)
 			{
 				// TODO: insert a suggestion for a fix on 32bit systems
-				err(1, "%s mmap(anon) failed", mach.filename().c_str());
+				std::stringstream ss;
+				ss << "mmap(anon) failed on '" << mach.filename() << "': " << strerror(errno);
+				throw std::runtime_error(ss.str());
 			}
 		}
 
@@ -301,13 +315,13 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 		MachO::Bind* bind = mach.binds()[i];
 		if (bind->name[0] != '_')
 		{
-			LOG << bind->name << ": skipping" << endl;
+			LOG << bind->name << ": skipping" << std::endl;
 			continue;
 		}
 
 		if (bind->type == BIND_TYPE_POINTER)
 		{
-			string name = bind->name.substr(1);
+			std::string name = bind->name.substr(1);
 			void** ptr = (void**)(bind->vmaddr + slide);
 			char* sym = 0;
 
@@ -320,10 +334,10 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 				else
 				{
 					last_weak_name = name;
-					if (seen_weak_bind_index != seen_weak_binds_orig_size && !strcmp(seen_weak_binds_[seen_weak_bind_index].first.c_str(), name.c_str()))
+					if (seen_weak_bind_index != seen_weak_binds_orig_size && !strcmp(m_seen_weak_binds[seen_weak_bind_index].first.c_str(), name.c_str()))
 					{
 						last_weak_sym = sym =
-						seen_weak_binds_[seen_weak_bind_index].second;
+						m_seen_weak_binds[seen_weak_bind_index].second;
 						seen_weak_bind_index++;
 					}
 					else
@@ -334,16 +348,16 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 						}
 						else
 						{
-							const Exports::const_iterator export_found = exports_.find(bind->name);
-							if (export_found != exports_.end())
+							const Exports::const_iterator export_found = m_exports.find(bind->name);
+							if (export_found != m_exports.end())
 								*ptr = last_weak_sym = (char*)export_found->second.addr;
 							else
 								last_weak_sym = (char*)*ptr;
 						}
 					}
 					
-					seen_weak_binds_.push_back(make_pair(name, last_weak_sym));
-					while (seen_weak_bind_index != seen_weak_binds_orig_size && strcmp(seen_weak_binds_[seen_weak_bind_index].first.c_str(), name.c_str()) <= 0)
+					m_seen_weak_binds.push_back(make_pair(name, last_weak_sym));
+					while (seen_weak_bind_index != seen_weak_binds_orig_size && strcmp(m_seen_weak_binds[seen_weak_bind_index].first.c_str(), name.c_str()) <= 0)
 						seen_weak_bind_index++;
 					
 					continue;
@@ -362,23 +376,23 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 				}
 #endif
 		
-				sym = reinterpret_cast<char*>(__darwin_dlsym(DARWIN_RTLD_GLOBAL, name.c_str()));
+				sym = reinterpret_cast<char*>(__darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str()));
 				if (!sym)
 				{
 					std::stringstream ss;
 					ss << "Undefined symbol: " << name;
-					throw std::runtime_error(ss);
+					throw std::runtime_error(ss.str());
 				}
 				
 				sym += bind->addend;
 			}
 
 			LOG << "bind " << name << ": "
-				<< *ptr << " => " << (void*)sym << " @" << ptr << endl;
+				<< *ptr << " => " << (void*)sym << " @" << ptr << std::endl;
 
 			if (FLAGS_TRACE_FUNCTIONS && !g_no_trampoline.count(name))
 			{
-				LOG << "Generating trampoline for " << name << "..." << endl;
+				LOG << "Generating trampoline for " << name << "..." << std::endl;
 
 				*ptr = &m_trampoline[0] + m_trampoline.size();
 				g_bound_names[i] = name;
@@ -415,7 +429,7 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 		{
 			std::stringstream ss;
 			ss << "Unknown bind type: " << bind->type;
-			throw std::runtime_exception(ss.str());
+			throw std::runtime_error(ss.str());
 		}
 	}
 
@@ -448,7 +462,7 @@ void MachOLoader::loadSymbols(const MachO& mach, intptr slide, intptr base)
 void MachOLoader::load(const MachO& mach, Exports* exports)
 {
 	if (!exports)
-		exports = m_exports;
+		exports = &m_exports;
 
 	intptr slide = 0;
 	intptr base = 0;
@@ -457,7 +471,8 @@ void MachOLoader::load(const MachO& mach, Exports* exports)
 
 	doRebase(mach, slide);
 
-	runPendingInitFuncs(mach, slide);
+	//char* apple[2] = { g_darwin_executable_path, 0};
+	loadInitFuncs(mach, slide /*, g_argc, g_argv, environ, apple*/);
 
 	loadDylibs(mach);
 
@@ -504,15 +519,15 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 	g_file_map.addWatchDog(m_last_addr + 1);
 
 	char* trampoline_start_addr = (char*)(((uintptr_t)&m_trampoline[0]) & ~0xfff);
-    uint64_t trampoline_size = alignMem(&trampoline_[0] + m_trampoline.size() - trampoline_start_addr, 0x1000);
+	uint64_t trampoline_size = alignMem(&m_trampoline[0] + m_trampoline.size() - trampoline_start_addr, 0x1000);
 	
-    ::mprotect(trampoline_start_addr, trampoline_size, PROT_READ | PROT_WRITE | PROT_EXEC);
+	::mprotect(trampoline_start_addr, trampoline_size, PROT_READ | PROT_WRITE | PROT_EXEC);
 
 	//g_timer.print(mach.filename().c_str());
 
 	mach.close();
 
-	runInitFuncs(argc, argv, envp, apple);
+	runPendingInitFuncs(argc, argv, envp, apple);
 
 	LOG << "booting from " << (void*)mach.entry() << "..." << std::endl;
 	
@@ -570,18 +585,18 @@ void MachOLoader::boot( uint64_t entry, int argc, char** argv, char** envp)
   
   // TODO: add 'apple'!
   
-  __asm__ volatile(" mov %1, %%rax;\n"
+  __asm__ volatile(" movl %1, %%eax;\n"
                    " mov %2, %%rdx;\n"
-                   " push $0;\n"
+                   " pushq $0;\n"
                    // TODO(hamaji): envp
-                   " push $0;\n"
+                   " pushq $0;\n"
                    ".loop64:\n"
-                   " sub $8, %%rdx;\n"
-                   " push (%%rdx);\n"
+                   " subq $8, %%rdx;\n"
+                   " pushq (%%rdx);\n"
                    " dec %%eax;\n"
                    " jnz .loop64;\n"
-                   " mov %1, %%eax;\n"
-                   " push %%rax;\n"
+                   " movl %1, %%eax;\n"
+                   " pushq %%rax;\n"
                    " jmp *%0;\n"
                    ::"r"(entry), "r"(argc), "r"(argv + argc), "r"(envp)
                    :"%rax", "%rdx");

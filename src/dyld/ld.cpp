@@ -1,18 +1,21 @@
 #define DARWIN_LD_INTERNAL
+#include "MachOLoader.h"
 #include "ld.h"
 #include "arch.h"
 #include "MachO.h"
 #include "mutex.h"
 #include "trace.h"
 #include "FileMap.h"
-#include <config.h>
+#include "config.h"
+#include "log.h"
 #include <unistd.h>
 #include <map>
 #include <string>
+#include <cstring>
 #include <limits.h>
 
-static Mutex g_ldMutex;
-static std::map<std::string, LoadedLibrary> g_ldLibraries;
+static Darling::Mutex g_ldMutex;
+static std::map<std::string, LoadedLibrary*> g_ldLibraries;
 static __thread char g_ldError[256] = "";
 
 extern char g_darwin_executable_path[PATH_MAX];
@@ -35,9 +38,9 @@ extern FileMap g_file_map;
 
 void* __darwin_dlopen(const char* filename, int flag)
 {
-	TRACE(filename, flag);
+	TRACE2(filename, flag);
 	
-	MutexLock l(g_ldMutex);
+	Darling::MutexLock l(g_ldMutex);
 	
 	g_ldError[0] = 0;
 	
@@ -137,7 +140,7 @@ void* attemptDlopen(const char* filename, int flag)
 			return 0;
 	}
 	
-	std::map<std::string,LoadedLibrary>::iterator it = g_ldLibraries.find(name);
+	std::map<std::string,LoadedLibrary*>::iterator it = g_ldLibraries.find(name);
 	if (it != g_ldLibraries.end())
 	{
 		// TODO: flags
@@ -167,7 +170,7 @@ void* attemptDlopen(const char* filename, int flag)
 				lib->refCount = 1;
 				lib->type = LoadedLibraryNative;
 				lib->nativeRef = d;
-				lib->slide = lib->base = 0;
+				//lib->slide = lib->base = 0;
 				
 				g_ldLibraries[name] = lib;
 				return lib;
@@ -191,17 +194,17 @@ void* attemptDlopen(const char* filename, int flag)
 				lib->type = LoadedLibraryDylib;
 				lib->machoRef = machO;
 				
-				bool global = flags & RTLD_GLOBAL && !(flags & RTLD_LOCAL);
+				bool global = flag & RTLD_GLOBAL && !(flag & RTLD_LOCAL);
 				
 				if (!global)
 				{
 					lib->exports = new Exports;
-					g_loader->load(*dylib_mach, lib->exports, true);
+					g_loader->load(*machO, lib->exports);
 				}
 				else
-					g_loader->load(*dylib_mach, 0, true);
+					g_loader->load(*machO, 0);
 				
-				const char* apple[2] = { g_darwin_executable_path, 0 };
+				char* apple[2] = { g_darwin_executable_path, 0 };
 				g_loader->runPendingInitFuncs(g_argc, g_argv, environ, apple);
 				
 				g_ldLibraries[name] = lib;
@@ -209,7 +212,7 @@ void* attemptDlopen(const char* filename, int flag)
 			}
 			catch (const std::exception& e)
 			{
-				strcpy(g_ldError, e.what().c_str());
+				strcpy(g_ldError, e.what());
 				return 0;
 			}
 		}
@@ -218,20 +221,20 @@ void* attemptDlopen(const char* filename, int flag)
 
 int __darwin_dlclose(void* handle)
 {
-	TRACE(handle);
+	TRACE1(handle);
 	
-	MutexLock l(g_ldMutex);
+	Darling::MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
 	
 	if (!handle)
 		return 0;
 	
-	LoadedLibrary* lib = dynamic_cast<LoadedLibrary*>(handle);
-	if (!lib)
+	LoadedLibrary* lib = reinterpret_cast<LoadedLibrary*>(handle);
+	/*if (!lib)
 	{
 		strcpy(g_ldError, "Invalid handle passed to __darwin_dlclose()");
 		return -1;
-	}
+	}*/
 	
 	lib->refCount--;
 	
@@ -244,7 +247,7 @@ int __darwin_dlclose(void* handle)
 			// TODO: unmap in g_loader!
 			delete lib->exports;
 			
-			for (std::map<std::string,LoadedLibrary>::iterator it = g_ldLibraries.begin(); it != g_ldLibraries.end(); it++)
+			for (std::map<std::string,LoadedLibrary*>::iterator it = g_ldLibraries.begin(); it != g_ldLibraries.end(); it++)
 			{
 				if (it->second == lib)
 				{
@@ -261,21 +264,21 @@ int __darwin_dlclose(void* handle)
 
 const char* __darwin_dlerror(void)
 {
-	TRACE();
+	//TRACE();
 	
 	return g_ldError[0] ? g_ldError : 0;
 }
 
 void* __darwin_dlsym(void* handle, const char* symbol)
 {
-	TRACE(handle, symbol);
+	TRACE2(handle, symbol);
 	
-	MutexLock l(g_ldMutex);
+	Darling::MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
 	
 	if (handle == DARWIN_RTLD_NEXT || handle == DARWIN_RTLD_SELF || handle == DARWIN_RTLD_MAIN_ONLY || !handle)
 	{
-		LOG("Cannot yet handle certain DARWIN_RTLD_* search strategies, falling back to RTLD_DEFAULT");
+		LOG << "Cannot yet handle certain DARWIN_RTLD_* search strategies, falling back to RTLD_DEFAULT\n";
 		handle = DARWIN_RTLD_DEFAULT;
 	}
 
@@ -293,9 +296,9 @@ handling:
 			return sym;
 		
 		// Now try Darwin libraries
-		const Exports& e = g_loader.getExports();
-		Exports::const_iterator itSym = lib->exports->find(symbol);
-		if (itSym == e.const_end())
+		const Exports& e = g_loader->getExports();
+		Exports::const_iterator itSym = e.find(symbol);
+		if (itSym == e.end())
 		{
 			// Now try without a prefix
 			sym = ::dlsym(RTLD_DEFAULT, symbol);
@@ -307,16 +310,16 @@ handling:
 			return 0;
 		}
 		else
-			return itSym->second.addr;
+			return reinterpret_cast<void*>(itSym->second.addr);
 	}
 	else
 	{
-		LoadedLibrary* lib = dynamic_cast<LoadedLibrary*>(handle);
-		if (!lib)
+		LoadedLibrary* lib = reinterpret_cast<LoadedLibrary*>(handle);
+		/*if (!lib)
 		{
 			strcpy(g_ldError, "Invalid handle passed to __darwin_dlsym()");
 			return 0;
-		}
+		}*/
 		
 		if (lib->type == LoadedLibraryNative)
 		{
@@ -340,16 +343,16 @@ handling:
 				return 0;
 			}
 			else
-				return itSym->second.addr;
+				return reinterpret_cast<void*>(itSym->second.addr);
 		}
 	}
 }
 
 int __darwin_dladdr(void *addr, Dl_info *info)
 {
-	TRACE(addr, info);
+	TRACE2(addr, info);
 	
-	MutexLock l(g_ldMutex);
+	Darling::MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
 	
 	

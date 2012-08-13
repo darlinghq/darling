@@ -6,7 +6,7 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 set (unwind_SRCS
-	emutls.c
+#	emutls.c
 	unwind-c.c
 	unwind-compat.c
 	unwind-dw2-fde-darwin.c
@@ -16,5 +16,5 @@ set (unwind_SRCS
 )
 
 add_library(unwind-darwin SHARED ${unwind_SRCS})
-target_link_libraries(unwind-darwin -Tlink.cmd)
+#target_link_libraries(unwind-darwin -Tlink.cmd)
 install(TARGETS unwind-darwin DESTINATION lib)

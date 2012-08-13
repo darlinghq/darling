@@ -40,8 +40,8 @@ extern "C" {
 
 /* @@@ The IA-64 ABI uses uint64 throughout.  Most places this is
    inefficient for 32-bit and smaller machines.  */
-typedef unsigned _Unwind_Word __attribute__((__mode__(__unwind_word__)));
-typedef signed _Unwind_Sword __attribute__((__mode__(__unwind_word__)));
+typedef unsigned long _Unwind_Word /*__attribute__((__mode__(__unwind_word__)))*/;
+typedef signed long _Unwind_Sword /*__attribute__((__mode__(__unwind_word__)))*/;
 #if defined(__ia64__) && defined(__hpux__)
 typedef unsigned _Unwind_Ptr __attribute__((__mode__(__word__)));
 #else
@@ -57,6 +57,7 @@ typedef unsigned _Unwind_Exception_Class __attribute__((__mode__(__DI__)));
 
 /* The unwind interface uses reason codes in several contexts to
    identify the reasons for failures or other actions.  */
+#ifndef __clang__
 typedef enum
 {
   _URC_NO_REASON = 0,
@@ -69,7 +70,7 @@ typedef enum
   _URC_INSTALL_CONTEXT = 7,
   _URC_CONTINUE_UNWIND = 8
 } _Unwind_Reason_Code;
-
+#endif
 
 /* The unwind interface uses a pointer to an exception header object
    as its representation of an exception being thrown. In general, the

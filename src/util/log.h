@@ -37,10 +37,10 @@
 #define FLAGS_LOG 1
 
 #ifdef NOLOG
-# define LOG if (0) cout
+# define LOG if (0) std::cout
 # define LOGF(...) if (0) fprintf(stderr, __VA_ARGS__)
 #else
-# define LOG if (FLAGS_LOG) cerr
+# define LOG if (FLAGS_LOG) std::cerr
 # define LOGF(...) if (FLAGS_LOG) fprintf(stderr, __VA_ARGS__)
 #endif
 
