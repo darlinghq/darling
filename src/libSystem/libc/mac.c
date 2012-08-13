@@ -169,9 +169,17 @@ void *__darwin_mmap(void *addr, size_t length, int prot, int flags,
   return mmap(addr, length, prot, flags, fd, offset);
 }
 
+extern char* dyld_getDarwinExecutablePath();
+extern char* dyld_getLoaderPath();
 
-extern char __darwin_executable_path[PATH_MAX];
-char __loader_path[PATH_MAX];
+char* __darwin_executable_path = 0;
+char* __loader_path = 0;
+
+__attribute__((constructor)) void getLoaderGlobals()
+{
+	 __darwin_executable_path = dyld_getDarwinExecutablePath();
+	 __loader_path = dyld_getLoaderPath();
+}
 
 int _NSGetExecutablePath(char* buf, unsigned int* size) {
   strcpy(buf, __darwin_executable_path);

@@ -66,3 +66,15 @@ int main(int argc, char** argv, char** envp)
 		return 1;
 	}
 }
+
+extern "C" const char* dyld_getDarwinExecutablePath()
+{
+	return g_darwin_executable_path;
+}
+
+extern "C" const char* dyld_getLoaderPath()
+{
+	return g_loader_path;
+}
+
+

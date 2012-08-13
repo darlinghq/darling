@@ -88,6 +88,9 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 
 	section* sections = reinterpret_cast<section*>(cmds_ptr + sizeof(segment_command));
 	
+	if (!strcmp(segment->segname, "__TEXT"))
+		m_text_offset = (intptr_t) segment->vmaddr; // needed for LC_MAIN
+	
 	for (uint32_t j = 0; j < segment->nsects; j++)
 	{
 		const section& sec = sections[j];
@@ -231,6 +234,8 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 	CHECK(fd);
 	m_fd = fd;
 	m_offset = offset;
+	m_text_offset = 0;
+	m_main = 0;
 
 	if (!m_mapped_size)
 		m_mapped_size = ::lseek(m_fd, 0, SEEK_END);
@@ -474,6 +479,14 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 				m_entry = reinterpret_cast<uint32_t*>(cmds_ptr)[14];
 			
 			LOGF("entry=%llx\n", (ull)m_entry);
+			break;
+		}
+		
+		case LC_MAIN:
+		{
+			entry_point_command* cmd = reinterpret_cast<entry_point_command*>(cmds_ptr);
+			LOGF("MAIN: entry offset: %x\n", cmd->entryoff);
+			m_main = reinterpret_cast<uint64_t>(m_text_offset + cmd->entryoff);
 			break;
 		}
 

@@ -42,6 +42,7 @@ class MachO
 public:
 	__attribute__ ((visibility ("default")))
 	static MachO* readFile(std::string path, const char* arch, bool need_exports = true);
+	__attribute__ ((visibility ("default")))
 	static bool isMachO(const char* path);
 
 	virtual ~MachO() {}
@@ -100,6 +101,7 @@ public:
 	const char* base() const { return m_base; }
 
 	uint64_t entry() const { return m_entry; }
+	uint64_t main() const { return m_main; }
 
 	const std::vector<uint64_t>& init_funcs() const { return m_init_funcs; }
 	const std::vector<uint64_t>& exit_funcs() const { return m_exit_funcs; }
@@ -121,7 +123,7 @@ public:
 	std::vector<Export*> m_exports;
 	std::vector<Symbol> m_symbols;
 	const char* m_base;
-	uint64_t m_entry;
+	uint64_t m_entry, m_main;
 	std::vector<uint64_t> m_init_funcs;
 	std::vector<uint64_t> m_exit_funcs;
 	uint64_t m_dyld_data;

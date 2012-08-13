@@ -73,7 +73,7 @@ set(machkern_SRCS
 
 add_library(System.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
 # -luuid to make uuid_ functions available for Darwin apps
-target_link_libraries(System.dylib -ldl -lpthread -luuid -lmach-o)
+target_link_libraries(System.dylib -ldl -lpthread -luuid -lmach-o -l:libobjc.so.4 -lrt -lssl)
 
 install(TARGETS System.dylib DESTINATION lib)
 

@@ -15,11 +15,6 @@ extern _ZNSt13basic_filebufIcSt11char_traitsIcEE7seekoffElSt12_Ios_SeekdirSt13_I
 _ZNSt13basic_filebufIcSt11char_traitsIcEE7seekoffExSt12_Ios_SeekdirSt13_Ios_Openmode:
 	jmp _ZNSt13basic_filebufIcSt11char_traitsIcEE7seekoffElSt12_Ios_SeekdirSt13_Ios_Openmode WRT ..plt
 
-global _ZNSt12__basic_fileIcE7seekoffExSt12_Ios_SeekdirSt13_Ios_Openmode
-extern _ZNSt12__basic_fileIcE7seekoffElSt12_Ios_SeekdirSt13_Ios_Openmode
-_ZNSt12__basic_fileIcE7seekoffExSt12_Ios_SeekdirSt13_Ios_Openmode:
-	jmp _ZNSt12__basic_fileIcE7seekoffElSt12_Ios_SeekdirSt13_Ios_Openmode WRT ..plt
-
 global _ZNSi5seekgExSt12_Ios_Seekdir
 extern _ZNSi5seekgElSt12_Ios_Seekdir
 _ZNSi5seekgExSt12_Ios_Seekdir:
@@ -80,26 +75,6 @@ extern opendir
 opendir$INODE64:
 	jmp opendir WRT ..plt
 
-global readdir$INODE64
-extern __darwin_readdir64
-readdir$INODE64:
-	jmp __darwin_readdir64 WRT ..plt
-
-global stat$INODE64
-extern __darwin_stat64
-stat$INODE64:
-	jmp __darwin_stat64 WRT ..plt
-
-global fstat$INODE64
-extern __darwin_fstat64
-fstat$INODE64:
-	jmp __darwin_fstat64 WRT ..plt
-
-global lstat$INODE64
-extern __darwin_lstat64
-lstat$INODE64:
-	jmp __darwin_lstat64 WRT ..plt
-
 global CC_MD5_Init
 extern MD5_Init
 CC_MD5_Init:
@@ -124,11 +99,6 @@ global __darwin_atexit
 extern __cxa_atexit
 __darwin_atexit:
 	jmp __cxa_atexit WRT ..plt
-
-global _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode
-extern _ZNSt12__basic_fileIcE8sys_openEP8_IO_FILESt13_Ios_Openmode
-_ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode:
-	jmp _ZNSt12__basic_fileIcE8sys_openEP8_IO_FILESt13_Ios_Openmode WRT ..plt
 
 global __darwin_select$1050
 extern __darwin_select

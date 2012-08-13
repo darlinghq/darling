@@ -14,13 +14,14 @@ int cthread_errno(void);
 char* __darwin_strerror(int errnum);
 int __darwin_strerror_r(int errnum, char *strerrbuf, size_t buflen);
 
-#ifdef __cplusplus
-}
-#endif
-
 int errnoDarwinToLinux(int err);
 int errnoLinuxToDarwin(int err);
 void errnoOut();
 void errnoIn();
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

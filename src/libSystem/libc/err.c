@@ -184,7 +184,7 @@ __darwin__err(int eval, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	verrc(eval, errno, fmt, ap);
+	__darwin_verrc(eval, errno, fmt, ap);
 	va_end(ap);
 }
 
@@ -194,7 +194,7 @@ __darwin_verr(eval, fmt, ap)
 	const char *fmt;
 	va_list ap;
 {
-	verrc(eval, errno, fmt, ap);
+	__darwin_verrc(eval, errno, fmt, ap);
 }
 
 void
@@ -202,7 +202,7 @@ __darwin_errc(int eval, int code, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	verrc(eval, code, fmt, ap);
+	__darwin_verrc(eval, code, fmt, ap);
 	va_end(ap);
 }
 
@@ -211,7 +211,7 @@ __darwin_verrc(int eval, int code, const char *fmt, va_list ap)
 {
 	code = errnoDarwinToLinux(code);
 	if (_e_err_file == 0)
-		err_set_file((FILE *)0);
+		__darwin_err_set_file((FILE *)0);
 	fprintf(_e_err_file, "%s: ", program_invocation_name);
 	if (fmt != NULL) {
 		_e_visprintf(_e_err_file, fmt, ap);
@@ -233,7 +233,7 @@ __darwin_errx(int eval, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	verrx(eval, fmt, ap);
+	__darwin_verrx(eval, fmt, ap);
 	va_end(ap);
 }
 
@@ -241,7 +241,7 @@ void
 __darwin_verrx(int eval, const char *fmt, va_list ap)
 {
 	if (_e_err_file == 0)
-		err_set_file((FILE *)0);
+		__darwin_err_set_file((FILE *)0);
 	fprintf(_e_err_file, "%s: ", program_invocation_name);
 	if (fmt != NULL)
 		_e_visprintf(_e_err_file, fmt, ap);
@@ -263,14 +263,14 @@ __darwin__warn(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	vwarnc(errno, fmt, ap);
+	__darwin_vwarnc(errno, fmt, ap);
 	va_end(ap);
 }
 
 void
 __darwin_vwarn(const char *fmt, va_list ap)
 {
-	vwarnc(errno, fmt, ap);
+	__darwin_vwarnc(errno, fmt, ap);
 }
 
 void
@@ -278,7 +278,7 @@ __darwin_arnc(int code, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	vwarnc(code, fmt, ap);
+	__darwin_vwarnc(code, fmt, ap);
 	va_end(ap);
 }
 
@@ -287,7 +287,7 @@ __darwin_vwarnc(int code, const char *fmt, va_list ap)
 {
 	code = errnoDarwinToLinux(code);
 	if (_e_err_file == 0)
-		err_set_file((FILE *)0);
+		__darwin_err_set_file((FILE *)0);
 	fprintf(_e_err_file, "%s: ", program_invocation_name);
 	if (fmt != NULL) {
 		_e_visprintf(_e_err_file, fmt, ap);
@@ -301,7 +301,7 @@ __darwin_warnx(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	vwarnx(fmt, ap);
+	__darwin_vwarnx(fmt, ap);
 	va_end(ap);
 }
 
@@ -309,7 +309,7 @@ void
 __darwin_vwarnx(const char *fmt, va_list ap)
 {
 	if (_e_err_file == 0)
-		err_set_file((FILE *)0);
+		__darwin_err_set_file((FILE *)0);
 	fprintf(_e_err_file, "%s: ", program_invocation_name);
 	if (fmt != NULL)
 		_e_visprintf(_e_err_file, fmt, ap);

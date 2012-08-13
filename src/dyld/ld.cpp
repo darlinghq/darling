@@ -12,6 +12,8 @@
 #include <map>
 #include <string>
 #include <cstring>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <limits.h>
 
 static Darling::Mutex g_ldMutex;
@@ -53,9 +55,11 @@ void* __darwin_dlopen(const char* filename, int flag)
 	flag = translateFlags(flag);
 	
 	std::string path;
+start_search:
 	if (*filename == '/')
 	{
 		path = std::string(filename) + ".so";
+		LOG << "Trying " << path << std::endl;
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
 		
@@ -69,6 +73,20 @@ void* __darwin_dlopen(const char* filename, int flag)
 		path = std::string(LIB_PATH) + filename;
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
+		
+		if (strcmp(INSTALL_PREFIX, "/usr") != 0)
+		{
+			// We need to change the prefix in filename if present
+			if (strncmp(filename, "/usr", 4) == 0 && strncmp(filename, INSTALL_PREFIX, strlen(INSTALL_PREFIX)) != 0)
+			{
+				char* name = reinterpret_cast<char*>(alloca( strlen(INSTALL_PREFIX) + strlen(filename) + 1 ));
+				strcpy(name, INSTALL_PREFIX);
+				strcat(name, filename+4);
+				filename = name;
+				LOG << "Remapping prefix, loading " << name << " instead\n";
+				goto start_search;
+			}
+		}
 	}
 	else if (strncmp(filename, "@executable_path", 16) == 0)
 	{
@@ -127,18 +145,28 @@ static int translateFlags(int flag)
 	return native_flags;
 }
 
+static bool isSymlink(const char* path)
+{
+	struct stat st;
+	if (::stat(path, &st) == -1)
+		return false;
+	return S_ISLNK(st.st_mode);
+}
+
 void* attemptDlopen(const char* filename, int flag)
 {
 	char name[2048];
 	
+	TRACE2(filename,flag);
+	
 	// Resolve symlinks so that we don't load the same library multiple times
-	if (::readlink(filename, name, sizeof name) == -1)
+	if (isSymlink(filename) && ::readlink(filename, name, sizeof name) == -1)
 	{
-		if (errno == EINVAL)
-			strcpy(name, filename);
-		else
-			return 0;
+		LOG << "Invalid symlink found: " << filename << std::endl;
+		return 0;
 	}
+	else
+		strcpy(name, filename);
 	
 	std::map<std::string,LoadedLibrary*>::iterator it = g_ldLibraries.find(name);
 	if (it != g_ldLibraries.end())
@@ -160,6 +188,7 @@ void* attemptDlopen(const char* filename, int flag)
 		// we followed a link, so we need to check for .so., too
 		if ((p && name+strlen(name)-p == 3) || strstr(name, ".so.")) // endsWith()
 		{
+			LOG << "Loading a native library " << name << std::endl;
 			// We're loading a native library
 			// TODO: flags
 			void* d = ::dlopen(name, RTLD_NOW);
@@ -177,6 +206,7 @@ void* attemptDlopen(const char* filename, int flag)
 			}
 			else
 			{
+				LOG << "Library failed to load: " << ::dlerror() << std::endl;
 				strcpy(g_ldError, ::dlerror());
 				return 0;
 			}

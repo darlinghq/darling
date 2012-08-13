@@ -7,6 +7,10 @@ echo "section text"
 echo
 
 while read line; do
+	if [[ $line == ";;*" ]]; then
+		continue
+	fi
+
 	arrIN=(${line//;/ })
 
 	if [ ${#arrIN[@]} -ne 2 ]; then

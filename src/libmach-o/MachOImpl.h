@@ -64,6 +64,7 @@ private:
 	char* m_mapped;
 	size_t m_mapped_size;
 	bool m_need_exports;
+	intptr_t m_text_offset;
 	
 	struct sym
 	{
@@ -88,6 +89,14 @@ private:
 		uint16_t n_desc;
 		uint64_t n_value;
 	};
+};
+
+#define LC_MAIN (0x28|LC_REQ_DYLD)
+struct entry_point_command {
+	uint32_t  cmd;  /* LC_MAIN only used in MH_EXECUTE filetypes */
+	uint32_t  cmdsize;      /* 24 */
+	uint64_t  entryoff;     /* file (__TEXT) offset of main() */
+	uint64_t  stacksize;/* if not zero, initial stack size */
 };
 
 #endif

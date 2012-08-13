@@ -164,6 +164,7 @@ void MachOLoader::loadDylibs(const MachO& mach)
 
 		// __darwin_dlopen checks if already loaded
 		// automatically adds a reference if so
+		
 		if (!__darwin_dlopen(dylib.c_str(), DARWIN_RTLD_GLOBAL))
 			throw std::runtime_error("Cannot load " + dylib + "!");
 	}
@@ -528,20 +529,28 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 	mach.close();
 
 	runPendingInitFuncs(argc, argv, envp, apple);
-
-	LOG << "booting from " << (void*)mach.entry() << "..." << std::endl;
 	
 	fflush(stdout);
 	assert(argc > 0);
-	
-	boot(mach.entry(), argc, argv, envp);
-	
-	/*
-		int (*fp)(int, char**, char**) =
-		(int(*)(int, char**, char**))mach.entry();
-		int ret = fp(argc, argv, envp);
-		exit(ret);
-	*/
+
+	if (mach.entry())
+	{
+		LOG << "booting from " << (void*)mach.entry() << "..." << std::endl;
+		LOG << "==========\n";
+		boot(mach.entry(), argc, argv, envp);
+	}
+	else if (mach.main())
+	{
+		LOG << "running main at " << (void*) mach.main() << "...\n";
+		LOG << "==========\n";
+		
+		int (*pMain)(int, char**, char**, char**) = reinterpret_cast<int (*)(int, char**, char**, char**)>(mach.main());
+		
+		int rv = pMain(argc, argv, envp, apple);
+		exit(rv);
+	}
+	else
+		throw std::runtime_error("No entry point found");
 }
 
 void MachOLoader::pushTrampolineCode(unsigned int c)

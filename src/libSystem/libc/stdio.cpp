@@ -9,9 +9,9 @@
 #include <stdio_ext.h>
 #include "log.h"
 
-extern "C" __darwin_FILE* __stdinp;
-extern "C" __darwin_FILE* __stdoutp;
-extern "C" __darwin_FILE* __stderrp;
+extern "C" __darwin_FILE* __stdinp = 0;
+extern "C" __darwin_FILE* __stdoutp = 0;
+extern "C" __darwin_FILE* __stderrp = 0;
 
 static __darwin_FILE* InitDarwinFILE(FILE* linux_fp)
 {
