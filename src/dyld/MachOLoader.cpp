@@ -642,5 +642,13 @@ void MachOLoader::boot( uint64_t entry, int argc, char** argv, char** envp)
 #endif
 }
 
+#ifdef DEBUG
+// GDB helper
+extern "C" const char* dumpSymbol(void* p)
+{
+	return g_file_map.dumpSymbol(p);
+}
+#endif
+
 
 

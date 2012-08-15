@@ -82,16 +82,27 @@ const char* FileMap::dumpSymbolFromMap(const SymbolMap& symbol_map, uintptr_t ad
 	std::map<uintptr_t, std::string>::const_iterator found = symbol_map.symbols.lower_bound(addr);
 	if (found == symbol_map.symbols.begin())
 	{
-		snprintf(m_dumped_stack_frame_buf, 4095, "%s [%p(%lx)]",
-			symbol_map.filename.c_str(), (void*)addr, (long)file_offset);
+#ifdef __i386__
+		const char* fmt_string = "0x%08lx in ?? () from %s";
+#else
+		const char* fmt_string = "0x%016lx in ?? () from %s";
+#endif
+		snprintf(m_dumped_stack_frame_buf, 4095, fmt_string,
+			(void*)addr, symbol_map.filename.c_str());
 		return m_dumped_stack_frame_buf;
 	}
 
 	--found;
+	
+#ifdef __i386__
+	const char* fmt_string = "0x%08lx in %s () from %s";
+#else
+	const char* fmt_string = "0x%016lx in %s () from %s";
+#endif
+	
 	const char* name = found->second.c_str();
 	uintptr_t func_offset = addr - found->first;
-	snprintf(m_dumped_stack_frame_buf, 4095, "%s(%s+%lx) [%p(%lx)]",
-		symbol_map.filename.c_str(), name, (long)func_offset,
-		(void*)addr, (long)file_offset);
+	snprintf(m_dumped_stack_frame_buf, 4095, fmt_string,
+		(void*)addr, name, symbol_map.filename.c_str());
 	return m_dumped_stack_frame_buf;
 }

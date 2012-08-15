@@ -55,9 +55,16 @@ def bt(demangle=True):
             sal = frame.find_sal()
             lineno = ''
             if sal.symtab:
-                lineno = ' at %s:%d' % (sal.symtab, sal.line)
-            pipe.write("#%-2d 0x%x %s%s\n" %
-                       (i, frame.pc(), frame.name(), lineno))
+                lineno = 'at %s:%d' % (sal.symtab, sal.line)
+            else:
+                soname = gdb.solib_name(frame.pc())
+                if soname:
+                    lineno = 'from %s' % (soname)
+            framename = frame.name()
+            if not framename:
+                framename = '??'
+            pipe.write("#%-2d 0x%016x in %s () %s\n" %
+                       (i, frame.pc(), framename, lineno))
         frame = frame.older()
         i += 1
 
