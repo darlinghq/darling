@@ -28,7 +28,7 @@ int __darwin_dladdr(void *addr, Dl_info *info);
 
 }
 
-enum LoadedLibraryType { LoadedLibraryDylib, LoadedLibraryNative };
+enum LoadedLibraryType { LoadedLibraryDylib, LoadedLibraryNative, LoadedLibraryDummy };
 
 typedef std::unordered_map<std::string, MachO::Export> Exports;
 

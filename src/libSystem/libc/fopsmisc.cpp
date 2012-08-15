@@ -17,6 +17,9 @@ char *__darwin_realpath(const char *path, char *resolved_path)
 	
 	path = translatePathCI(path);
 	
+	if (!resolved_path) // DARWIN_EXTSN
+		resolved_path = static_cast<char*>(malloc(DARWIN_MAXPATHLEN));
+	
 	char* rv = realpath(path, resolved_path);
 	if (!rv)
 		errnoOut();

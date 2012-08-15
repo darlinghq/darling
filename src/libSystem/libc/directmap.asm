@@ -120,8 +120,73 @@ extern __darwin_opendir
 __darwin_opendir$INODE64:
 	jmp __darwin_opendir WRT ..plt
 
+global __darwin_rewinddir$INODE64
+extern __darwin_rewinddir
+__darwin_rewinddir$INODE64:
+	jmp __darwin_rewinddir WRT ..plt
+
 global __darwin_telldir$INODE64
 extern telldir
 __darwin_telldir$INODE64:
 	jmp telldir WRT ..plt
+
+global __darwin_curl_mfprintf
+extern __darwin_fprintf
+__darwin_curl_mfprintf:
+	jmp __darwin_fprintf WRT ..plt
+
+global __darwin_curl_mvfprintf
+extern __darwin_vfprintf
+__darwin_curl_mvfprintf:
+	jmp __darwin_vfprintf WRT ..plt
+
+global realpath$DARWIN_EXTSN
+extern __darwin_realpath
+realpath$DARWIN_EXTSN:
+	jmp __darwin_realpath WRT ..plt
+
+global libintl_gettext
+extern gettext
+libintl_gettext:
+	jmp gettext WRT ..plt
+
+global libintl_dgettext
+extern dgettext
+libintl_dgettext:
+	jmp dgettext WRT ..plt
+
+global libintl_ngettext
+extern ngettext
+libintl_ngettext:
+	jmp ngettext WRT ..plt
+
+global libintl_dngettext
+extern dngettext
+libintl_dngettext:
+	jmp dngettext WRT ..plt
+
+global libintl_dcngettext
+extern dcngettext
+libintl_dcngettext:
+	jmp dcngettext WRT ..plt
+
+global libintl_textdomain
+extern textdomain
+libintl_textdomain:
+	jmp textdomain WRT ..plt
+
+global libintl_bindtextdomain
+extern bindtextdomain
+libintl_bindtextdomain:
+	jmp bindtextdomain WRT ..plt
+
+global libintl_bind_textdomain
+extern bind_textdomain_codeset
+libintl_bind_textdomain:
+	jmp bind_textdomain_codeset WRT ..plt
+
+global libintl_setlocale
+extern setlocale
+libintl_setlocale:
+	jmp setlocale WRT ..plt
 

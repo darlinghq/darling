@@ -53,7 +53,7 @@ set(fatmacho-extract_SRCS
 
 add_executable(fatmacho-extract ${fatmacho-extract_SRCS})
 
-target_link_libraries(fatmacho-extract -ldl -lpthread mach-o)
+target_link_libraries(fatmacho-extract -ldl -lpthread mach-o -Wl,-export-dynamic)
 
 install(TARGETS dyld fatmacho-extract DESTINATION bin)
 

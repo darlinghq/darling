@@ -51,6 +51,7 @@ set(libc_SRCS
 	libc/stdio.cpp
 	libc/fopsmisc.cpp
 	libc/aio.cpp
+	libc/mount.cpp
 	common/path.cpp
 )
 
@@ -60,6 +61,7 @@ set(bsdkern_SRCS
 	kernel-bsd/io.cpp
 	kernel-bsd/wait.cpp
 	kernel-bsd/sockets.cpp
+	kernel-bsd/fs.cpp
 )
 
 set(machkern_SRCS
@@ -71,9 +73,9 @@ set(machkern_SRCS
 	kernel-mach/vm.cpp
 )
 
-add_library(System.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
+add_library(System.B.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
 # -luuid to make uuid_ functions available for Darwin apps
-target_link_libraries(System.dylib -ldl -lpthread -luuid -lmach-o -l:libobjc.so.4 -lrt -lssl)
+target_link_libraries(System.B.dylib -ldl -lpthread -luuid -lmach-o -l:libobjc.so.4 -lrt -lssl)
 
-install(TARGETS System.dylib DESTINATION lib)
+install(TARGETS System.B.dylib DESTINATION lib)
 

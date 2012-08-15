@@ -1,3 +1,4 @@
+#include "config.h"
 #include "wait.h"
 #include "libc/errno.h"
 #include "libc/darwin_errno_codes.h"

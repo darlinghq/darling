@@ -165,8 +165,13 @@ void MachOLoader::loadDylibs(const MachO& mach)
 		// __darwin_dlopen checks if already loaded
 		// automatically adds a reference if so
 		
-		if (!__darwin_dlopen(dylib.c_str(), DARWIN_RTLD_GLOBAL))
-			throw std::runtime_error("Cannot load " + dylib + "!");
+		if (!__darwin_dlopen(dylib.c_str(), DARWIN_RTLD_GLOBAL|DARWIN_RTLD_NOW))
+		{
+			LOG << "Failed to dlopen " << dylib << ", throwing an exception\n";
+			std::stringstream ss;
+			ss << "Cannot load " << dylib << ": " << __darwin_dlerror();
+			throw std::runtime_error(ss.str());
+		}
 	}
 }
 
@@ -380,12 +385,21 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 				sym = reinterpret_cast<char*>(__darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str()));
 				if (!sym)
 				{
-					std::stringstream ss;
-					ss << "Undefined symbol: " << name;
-					throw std::runtime_error(ss.str());
+					const char* ign_sym = getenv("DYLD_IGN_MISSING_SYMS");
+					if (ign_sym && atoi(ign_sym))
+					{
+						std::cerr << "!!! Undefined symbol: " << name << std::endl;
+						sym = reinterpret_cast<char*>(undefinedFunction);
+					}
+					else
+					{
+						std::stringstream ss;
+						ss << "Undefined symbol: " << name;
+						throw std::runtime_error(ss.str());
+					}
 				}
-				
-				sym += bind->addend;
+				else
+					sym += bind->addend;
 			}
 
 			LOG << "bind " << name << ": "

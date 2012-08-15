@@ -37,6 +37,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <stdexcept>
 
 #define N_WEAK_DEF			0x0080
 #define FLAGS_READ_SYMTAB	1
@@ -235,7 +236,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 	m_fd = fd;
 	m_offset = offset;
 	m_text_offset = 0;
-	m_main = 0;
+	m_main = m_entry = 0;
 
 	if (!m_mapped_size)
 		m_mapped_size = ::lseek(m_fd, 0, SEEK_END);
@@ -245,15 +246,14 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 	char* bin = m_mapped = reinterpret_cast<char*>(
 		::mmap(NULL, m_mapped_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, m_fd, offset)
 	);
+	
+	if (bin == MAP_FAILED)
+		throw std::runtime_error("Cannot mmap Mach-O file");
+	
 	m_base = bin;
 
 	mach_header* header = reinterpret_cast<mach_header*>(bin);
 	
-	LOGF("magic=%x cpu=%d cpusub=%d file=%d ncmds=%d sizecmd=%d flags=%x\n",
-		header->magic, header->cputype, header->cpusubtype,
-		header->filetype, header->ncmds, header->sizeofcmds,
-		header->flags);
-
 	m_is64 = false;
 	if (header->magic == MH_MAGIC_64)
 		m_is64 = true;
@@ -262,6 +262,12 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 		fprintf(stderr, "Not mach-o: %s\n", filename);
 		exit(1); // TODO: throw instead
 	}
+	
+	LOGF("magic=%x cpu=%d cpusub=%d file=%d ncmds=%d sizecmd=%d flags=%x\n",
+		header->magic, header->cputype, header->cpusubtype,
+		header->filetype, header->ncmds, header->sizeofcmds,
+		header->flags);
+
 	m_ptrsize = m_is64 ? 8 : 4;
 
 	if ((header->cputype & 0x00ffffff) != CPU_TYPE_X86)

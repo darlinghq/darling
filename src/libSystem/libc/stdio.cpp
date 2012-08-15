@@ -1,3 +1,4 @@
+#include "config.h"
 #include "stdio.h"
 #include "errno.h"
 #include "common/path.h"
@@ -7,11 +8,19 @@
 #include <cstdlib>
 #include <errno.h>
 #include <stdio_ext.h>
+#include <cstring>
+#include <string>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "log.h"
 
-extern "C" __darwin_FILE* __stdinp = 0;
-extern "C" __darwin_FILE* __stdoutp = 0;
-extern "C" __darwin_FILE* __stderrp = 0;
+//extern "C"
+//{
+__darwin_FILE* __stdinp  asm("__stdinp") = 0;
+__darwin_FILE* __stdoutp asm("__stdoutp") = 0;
+__darwin_FILE* __stderrp asm("__stderrp") = 0;
+//}
 
 static __darwin_FILE* InitDarwinFILE(FILE* linux_fp)
 {
@@ -39,7 +48,30 @@ template<typename RetVal, typename Func, typename... Params> RetVal AutoFileErrn
 
 __darwin_FILE* __darwin_fopen(const char* path, const char* mode)
 {
-	return InitDarwinFILE(fopen(translatePathCI(path), mode));
+	path = translatePathCI(path);
+	
+	if (!strchr(mode, 'x'))
+		return InitDarwinFILE(fopen(path, mode));
+	else // DARWIN_EXTSN
+	{
+		std::string m = mode;
+		size_t pos = m.find('x');
+		m.erase(pos, 1);
+		
+		int flags = O_CREAT | O_EXCL;
+		if (m.find('a') != std::string::npos)
+			flags |= O_APPEND;
+		if (m.find('+') != std::string::npos)
+			flags |= O_RDWR;
+		else
+			flags |= O_WRONLY;
+		
+		int fd = ::open(path, flags, 0666);
+		if (fd == -1)
+			return 0;
+		else
+			return __darwin_fdopen(fd, m.c_str());
+	}
 }
 
 __darwin_FILE* __darwin_fdopen(int fd, const char* mode)
@@ -296,9 +328,9 @@ wint_t __darwin_ungetwc(wint_t wc, __darwin_FILE *stream)
 
 __attribute__((constructor)) static void initStdio()
 {
-	__stderrp = InitDarwinFILE(stdin);
+	__stderrp = InitDarwinFILE(stderr);
 	__stdoutp = InitDarwinFILE(stdout);
-	__stdinp = InitDarwinFILE(stderr);
+	__stdinp = InitDarwinFILE(stdin);
 }
 
 int __darwin_remove(const char* path)

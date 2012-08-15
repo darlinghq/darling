@@ -15,10 +15,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include <regex.h>
+#include <cassert>
 
 static Darling::Mutex g_ldMutex;
 static std::map<std::string, LoadedLibrary*> g_ldLibraries;
 static __thread char g_ldError[256] = "";
+static regex_t g_reAutoMappable;
+static LoadedLibrary g_dummyLibrary;
 
 extern char g_darwin_executable_path[PATH_MAX];
 
@@ -27,16 +31,32 @@ static const char* g_searchPath[] = {
 	LIB_PATH, "/usr/lib", "/usr/local/lib"
 };
 
+static const char* g_suffixes[] = { "$DARWIN_EXTSN", "$UNIX2003", "$NOCANCEL" };
+
 static void* attemptDlopen(const char* filename, int flag);
 static int translateFlags(int flags);
+__attribute__((constructor)) static void initLD();
 
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
+extern char g_sysroot[PATH_MAX];
 extern int g_argc;
 extern char** g_argv;
 extern FileMap g_file_map;
 
 #define RET_IF(x) { if (void* p = x) return p; }
+
+static void initLD()
+{
+	int rv = regcomp(&g_reAutoMappable, "/(lib[[:alnum:]\\-]+)\\.([[:digit:]]+)(\\.[[:digit:]]+)?\\.dylib", REG_EXTENDED);
+	assert(rv == 0);
+	
+	g_dummyLibrary.name = "/dev/null";
+	g_dummyLibrary.refCount = 1;
+	g_dummyLibrary.type = LoadedLibraryDummy;
+	g_dummyLibrary.nativeRef = 0;
+	g_dummyLibrary.exports = 0;
+}
 
 void* __darwin_dlopen(const char* filename, int flag)
 {
@@ -58,6 +78,18 @@ void* __darwin_dlopen(const char* filename, int flag)
 start_search:
 	if (*filename == '/')
 	{
+		if (g_sysroot[0])
+		{
+			path = g_sysroot + std::string(filename) + ".so";
+			LOG << "Trying " << path << std::endl;
+			if (::access(path.c_str(), R_OK) == 0)
+				RET_IF( attemptDlopen(path.c_str(), flag) );
+			
+			path = std::string(g_sysroot) + filename;
+			if (::access(path.c_str(), R_OK) == 0)
+				RET_IF( attemptDlopen(path.c_str(), flag) );
+		}
+		
 		path = std::string(filename) + ".so";
 		LOG << "Trying " << path << std::endl;
 		if (::access(path.c_str(), R_OK) == 0)
@@ -73,6 +105,34 @@ start_search:
 		path = std::string(LIB_PATH) + filename;
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
+		
+		regmatch_t matches[3];
+		if (regexec(&g_reAutoMappable, filename, 3, matches, 0) == 0)
+		{
+			path = std::string(filename, matches[0].rm_so+1);
+			path += std::string(filename + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+			path += ".so.";
+			path += std::string(filename + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+			
+			if (::access(path.c_str(), R_OK) == 0)
+			{
+				LOG << "Warning: Automatically mapping " << filename << " to " << path << std::endl;
+				RET_IF( attemptDlopen(path.c_str(), flag) );
+			}
+			
+			//path = std::string(filename, matches[0].rm_so+1);
+			path = std::string(filename + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+			path += ".so.";
+			path += std::string(filename + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+			
+			LOG << path << std::endl;
+			
+			//if (::access(path.c_str(), R_OK) == 0)
+			//{
+				LOG << "Warning: Trying to remap " << filename << " to " << path << std::endl;
+				RET_IF( attemptDlopen(path.c_str(), flag) );
+			//}
+		}
 		
 		if (strcmp(INSTALL_PREFIX, "/usr") != 0)
 		{
@@ -123,7 +183,8 @@ start_search:
 		}
 	}
 	
-	strcpy(g_ldError, "File not found");
+	if (!g_ldError[0])
+		snprintf(g_ldError, sizeof(g_ldError)-1, "File not found: %s", filename);
 	return 0;
 }
 
@@ -148,7 +209,7 @@ static int translateFlags(int flag)
 static bool isSymlink(const char* path)
 {
 	struct stat st;
-	if (::stat(path, &st) == -1)
+	if (::lstat(path, &st) == -1)
 		return false;
 	return S_ISLNK(st.st_mode);
 }
@@ -159,14 +220,26 @@ void* attemptDlopen(const char* filename, int flag)
 	
 	TRACE2(filename,flag);
 	
+	strcpy(name, filename);
+	
 	// Resolve symlinks so that we don't load the same library multiple times
-	if (isSymlink(filename) && ::readlink(filename, name, sizeof name) == -1)
+	if (isSymlink(filename))
 	{
-		LOG << "Invalid symlink found: " << filename << std::endl;
-		return 0;
+		ssize_t len = ::readlink(filename, name, sizeof name);
+		if (len == -1)
+		{
+			LOG << "Invalid symlink found: " << filename << std::endl;
+			return 0;
+		}
+		else
+			name[len] = 0;
 	}
-	else
-		strcpy(name, filename);
+	
+	if (strcmp(name, "/dev/null") == 0)
+	{
+		// We return a dummy
+		return &g_dummyLibrary;
+	}
 	
 	std::map<std::string,LoadedLibrary*>::iterator it = g_ldLibraries.find(name);
 	if (it != g_ldLibraries.end())
@@ -191,9 +264,11 @@ void* attemptDlopen(const char* filename, int flag)
 			LOG << "Loading a native library " << name << std::endl;
 			// We're loading a native library
 			// TODO: flags
-			void* d = ::dlopen(name, RTLD_NOW);
+			void* d = ::dlopen(name, RTLD_NOW|RTLD_GLOBAL);
 			if (d != 0)
 			{
+				LOG << "Native library loaded\n";
+				
 				LoadedLibrary* lib = new LoadedLibrary;
 				lib->name = name;
 				lib->refCount = 1;
@@ -206,13 +281,20 @@ void* attemptDlopen(const char* filename, int flag)
 			}
 			else
 			{
-				LOG << "Library failed to load: " << ::dlerror() << std::endl;
-				strcpy(g_ldError, ::dlerror());
+				LOG << "Native library failed to load\n";
+				
+				const char* err;
+				if ((err = ::dlerror()) && !g_ldError[0]) // we don't overwrite previous errors
+				{
+					LOG << "Library failed to load: " << err << std::endl;
+					strcpy(g_ldError, err);
+				}
 				return 0;
 			}
 		}
 		else
 		{
+			LOG << "Loading a Mach-O library\n";
 			// We're loading a Mach-O library
 			try
 			{
@@ -299,12 +381,30 @@ const char* __darwin_dlerror(void)
 	return g_ldError[0] ? g_ldError : 0;
 }
 
+static const char* translateSymbol(const char* symbol)
+{
+	std::string s = symbol;
+	static char symbuffer[255];
+	
+	for (int i = 0; i < sizeof(g_suffixes) / sizeof(g_suffixes[0]); i++)
+	{
+		size_t pos = s.find(g_suffixes[i]);
+		if (pos != std::string::npos)
+			s.erase(pos, strlen(g_suffixes[i]));
+	}
+	
+	strcpy(symbuffer, s.c_str());
+	return symbuffer;
+}
+
 void* __darwin_dlsym(void* handle, const char* symbol)
 {
 	TRACE2(handle, symbol);
 	
 	Darling::MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
+	
+	symbol = translateSymbol(symbol);
 	
 	if (handle == DARWIN_RTLD_NEXT || handle == DARWIN_RTLD_SELF || handle == DARWIN_RTLD_MAIN_ONLY || !handle)
 	{
@@ -317,7 +417,7 @@ handling:
 	{
 		// First try native with the __darwin prefix
 		void* sym;
-		char* buf = reinterpret_cast<char*>(malloc(strlen(symbol+20)));
+		char* buf = reinterpret_cast<char*>(malloc(strlen(symbol)+20));
 		strcpy(buf, "__darwin_");
 		strcat(buf, symbol);
 		
@@ -357,6 +457,11 @@ handling:
 			if (!rv)
 				strcpy(g_ldError, ::dlerror());
 			return rv;
+		}
+		else if (lib->type == LoadedLibraryDummy)
+		{
+			snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot find symbol '%s'", symbol);
+			return 0;
 		}
 		else if (!lib->exports)
 		{

@@ -31,10 +31,15 @@
 #include <assert.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+#	include <iostream>
+#endif
+
 //#include "env_flags.h"
 
 //DECLARE_bool(LOG);
-#define FLAGS_LOG 1
+extern bool g_loggingEnabled;
+#define FLAGS_LOG g_loggingEnabled
 
 #ifdef NOLOG
 # define LOG if (0) std::cout

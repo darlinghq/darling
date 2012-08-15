@@ -27,7 +27,7 @@
 
 set follow-fork-mode child
 
-python sys.path.insert(0, '.')
+python sys.path.insert(0, './tools/')
 python import gdb_maloader
 
 define mreload

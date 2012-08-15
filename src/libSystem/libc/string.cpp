@@ -1,5 +1,6 @@
 #include "string.h"
 #include <cstdlib>
+#include <ctype.h>
 
 size_t strlcpy(char* dst, const char* src, size_t size)
 {
@@ -40,3 +41,14 @@ int __mb_cur_max()
 {
 	return MB_CUR_MAX;
 }
+
+int __toupper(int c)
+{
+	return toupper(c);
+}
+
+int __tolower(int c)
+{
+	return tolower(c);
+}
+

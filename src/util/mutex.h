@@ -11,7 +11,10 @@ class Mutex
 public:
 	Mutex()
 	{
-		pthread_mutex_init(&m_mutex, 0);
+		pthread_mutexattr_t attr;
+		pthread_mutexattr_init(&attr);
+		pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&m_mutex, &attr);
 	}
 	~Mutex()
 	{

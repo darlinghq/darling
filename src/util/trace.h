@@ -1,10 +1,9 @@
 #ifndef DARLING_TRACE_H
 #define DARLING_TRACE_H
 #include <iostream>
+#include "log.h"
 
-extern bool g_enableTrace;
 void logTrace(const char* funcName, ...);
-void enableTrace(bool enable);
 
 struct ArgName
 {
@@ -14,7 +13,8 @@ struct ArgName
 
 template<typename T> void logPrint(T value)
 {
-	std::cerr << value;
+	if (g_loggingEnabled)
+		std::cerr << value;
 }
 template<> void logPrint<const char*>(const char* value);
 template<> void logPrint<std::string>(std::string value);
