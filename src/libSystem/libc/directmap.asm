@@ -121,9 +121,14 @@ __darwin_opendir$INODE64:
 	jmp __darwin_opendir WRT ..plt
 
 global __darwin_rewinddir$INODE64
-extern __darwin_rewinddir
+extern rewinddir
 __darwin_rewinddir$INODE64:
-	jmp __darwin_rewinddir WRT ..plt
+	jmp rewinddir WRT ..plt
+
+global __darwin_rewinddir
+extern rewinddir
+__darwin_rewinddir:
+	jmp rewinddir WRT ..plt
 
 global __darwin_telldir$INODE64
 extern telldir
@@ -180,9 +185,9 @@ extern bindtextdomain
 libintl_bindtextdomain:
 	jmp bindtextdomain WRT ..plt
 
-global libintl_bind_textdomain
+global libintl_bind_textdomain_codeset
 extern bind_textdomain_codeset
-libintl_bind_textdomain:
+libintl_bind_textdomain_codeset:
 	jmp bind_textdomain_codeset WRT ..plt
 
 global libintl_setlocale

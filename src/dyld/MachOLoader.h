@@ -8,6 +8,7 @@
 #include "MachO.h"
 #include "arch.h"
 #include "ld.h"
+#include "UndefinedFunction.h"
 
 class MachOLoader
 {
@@ -73,6 +74,7 @@ private:
 	std::vector<uint64_t> m_init_funcs;
 	Exports m_exports;
 	std::vector<std::pair<std::string, char*> > m_seen_weak_binds;
+	UndefMgr* m_pUndefMgr;
 
 };
 

@@ -121,7 +121,7 @@ int __darwin_getfsstat(struct __darwin_statfs* buf, int bufsize, int flags)
 	return __darwin_getfsstatGen(buf, bufsize, flags);
 }
 
-int __darwin_getfsstat64(struct __darwin_statfs* buf, int bufsize, int flags)
+int __darwin_getfsstat64(struct __darwin_statfs64* buf, int bufsize, int flags)
 {
 	return __darwin_getfsstatGen(buf, bufsize, flags);
 }

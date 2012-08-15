@@ -83,6 +83,7 @@ static void dumpInt(int bound_name_id)
 MachOLoader::MachOLoader()
 : m_last_addr(0)
 {
+	m_pUndefMgr = new UndefMgr;
 	if (FLAGS_TRACE_FUNCTIONS)
 	{
 		// Push all arguments into stack.
@@ -226,9 +227,7 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 		if (filesize == 0)
 			continue;
 		
-		void* mapped = ::mmap((void*)vmaddr, filesize, prot,
-							MAP_PRIVATE | MAP_FIXED,
-							mach.fd(), mach.offset() + seg->fileoff);
+		void* mapped = ::mmap((void*)vmaddr, filesize, prot, MAP_PRIVATE | MAP_FIXED, mach.fd(), mach.offset() + seg->fileoff);
 		
 		if (mapped == MAP_FAILED)
 		{
@@ -236,20 +235,17 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 			ss << "Failed to mmap '" << mach.filename() << "': " << strerror(errno);
 			throw std::runtime_error(ss.str());
 		}
+		
+		assert(vmsize >= filesize);
 
-		if (vmsize != filesize)
+		if (vmsize > filesize)
 		{
 			LOG << "mmap(anon) " << mach.filename() << ' ' << name
 				<< ": " << (void*)(vmaddr + filesize) << "-"
 				<< (void*)(vmaddr + vmsize)
 				<<std::endl;
-				
-			assert(vmsize > filesize);
 			
-			void* mapped = ::mmap((void*)(vmaddr + filesize),
-								vmsize - filesize, prot,
-								MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
-								0, 0);
+			void* mapped = ::mmap(reinterpret_cast<char*>(vmaddr) + filesize, vmsize - filesize, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, 0, 0);
 								
 			if (mapped == MAP_FAILED)
 			{
@@ -389,7 +385,11 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 					if (ign_sym && atoi(ign_sym))
 					{
 						std::cerr << "!!! Undefined symbol: " << name << std::endl;
-						sym = reinterpret_cast<char*>(undefinedFunction);
+						
+						char* dname = new char[name.size()+1];
+						strcpy(dname, name.c_str());
+						
+						sym = reinterpret_cast<char*>(m_pUndefMgr->generateNew(dname));
 					}
 					else
 					{

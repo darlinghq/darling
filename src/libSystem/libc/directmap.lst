@@ -24,7 +24,8 @@ __darwin_err;__darwin__err
 
 ;;; dir.cpp
 __darwin_opendir$INODE64;__darwin_opendir
-__darwin_rewinddir$INODE64;__darwin_rewinddir
+__darwin_rewinddir$INODE64;rewinddir
+__darwin_rewinddir;rewinddir
 __darwin_telldir$INODE64;telldir
 
 __darwin_curl_mfprintf;__darwin_fprintf
@@ -39,7 +40,7 @@ libintl_dngettext;dngettext
 libintl_dcngettext;dcngettext
 libintl_textdomain;textdomain
 libintl_bindtextdomain;bindtextdomain
-libintl_bind_textdomain;bind_textdomain_codeset
+libintl_bind_textdomain_codeset;bind_textdomain_codeset
 libintl_setlocale;setlocale
 
 

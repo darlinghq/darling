@@ -259,8 +259,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 		m_is64 = true;
 	else if (header->magic != MH_MAGIC)
 	{
-		fprintf(stderr, "Not mach-o: %s\n", filename);
-		exit(1); // TODO: throw instead
+		throw std::runtime_error("Not a Mach-O file");
 	}
 	
 	LOGF("magic=%x cpu=%d cpusub=%d file=%d ncmds=%d sizecmd=%d flags=%x\n",
@@ -272,8 +271,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 
 	if ((header->cputype & 0x00ffffff) != CPU_TYPE_X86)
 	{
-		fprintf(stderr, "Unsupported CPU\n");
-		exit(1); // TODO: throw instead
+		throw std::runtime_error("Unsupported CPU type in Mach-O");
 	}
 	
 	// TODO: split into a method

@@ -37,6 +37,7 @@ target_link_libraries(mach-o -ldl -lpthread)
 set(dyld_SRCS
 	src/dyld/FileMap.cpp
 	src/dyld/MachOLoader.cpp
+	src/dyld/UndefinedFunction.cpp
 	src/dyld/ld.cpp
 	src/dyld/dyld.cpp
 	src/util/log.cc
