@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 	if (argc < 2)
 	{
 		std::cerr << "Usage: " << argv[0] << " <file> [arch] [option]\n";
-		std::cerr << "\nOptions:"
+		std::cerr << "\nOptions:\n"
 			"\t-d --dylibs\tList dylibs (default)\n"
 			"\t-s --symbols\tList symbols\n"
 			"\t-e --exports\tList exports\n"
