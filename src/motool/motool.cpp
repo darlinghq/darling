@@ -6,15 +6,27 @@
 #include <fcntl.h>
 #include <map>
 #include <vector>
+#include <sstream>
 #include <stdexcept>
+#include <cstring>
+#include <iomanip>
 
-void printBinInfo(const char* path, const char* arch);
+enum OpMode { ModeDylibs, ModeSymbols, ModeExports, ModeBinds };
+
+void printBinInfo(const char* path, const char* arch, const char* opt);
+OpMode getOpMode(const char* opt);
 
 int main(int argc, char** argv)
 {
-	if (argc != 2 && argc != 3)
+	if (argc < 2)
 	{
-		std::cerr << "Usage: " << argv[0] << " <file> [arch]\n";
+		std::cerr << "Usage: " << argv[0] << " <file> [arch] [option]\n";
+		std::cerr << "\nOptions:"
+			"\t-d --dylibs\tList dylibs (default)\n"
+			"\t-s --symbols\tList symbols\n"
+			"\t-e --exports\tList exports\n"
+			"\t-b --binds\tList binds\n"
+			"\n";
 		return 1;
 	}
 	
@@ -29,9 +41,12 @@ int main(int argc, char** argv)
 		std::map<std::string, fat_arch> archs;
 		if (FatMachO::readFatInfo(fd, &archs))
 		{
-			if (argc == 3)
+			if (argc >= 3)
 			{
-				printBinInfo(argv[1], argv[2]);
+				const char* opt = 0;
+				if (argc >= 4)
+					opt = argv[3];
+				printBinInfo(argv[1], argv[2], opt);
 			}
 			else
 			{
@@ -46,7 +61,13 @@ int main(int argc, char** argv)
 			}
 		}
 		else
-			printBinInfo(argv[1], 0);
+		{
+			const char* opt = 0;
+			if (argc >= 3)
+				opt = argv[2];
+			printBinInfo(argv[1], 0, opt);
+		}
+		
 		::close(fd);
 	}
 	catch (const std::exception& e)
@@ -56,17 +77,109 @@ int main(int argc, char** argv)
 	}
 }
 
-void printBinInfo(const char* path, const char* arch)
+void printBinInfo(const char* path, const char* arch, const char* opt)
 {
 	MachO* macho = MachO::readFile(path, arch, true);
 	if (!macho)
 		throw std::runtime_error("Load failed");
 	
-	std::cout << "Dylibs:\n";
-	for (size_t i = 0; i < macho->dylibs().size(); i++)
+	OpMode opmode = getOpMode(opt);
+	
+	switch (opmode)
 	{
-		std::cout << "\t" << macho->dylibs()[i] << std::endl;
+		case ModeDylibs:
+		{
+			std::cout << "Dylibs:\n";
+			for (size_t i = 0; i < macho->dylibs().size(); i++)
+			{
+				std::cout << "\t" << macho->dylibs()[i] << std::endl;
+			}
+			break;
+		}
+		case ModeSymbols:
+		{
+			std::cout << "Symbols:\n";
+			for (size_t i = 0; i < macho->symbols().size(); i++)
+			{
+				const MachO::Symbol& s = macho->symbols()[i];
+				if (!s.addr)
+					continue;
+				
+				std::cout << '\t' << s.name << " at " << "[0x" << std::hex << std::setfill('0');
+				
+				if (macho->is64())
+					std::cout << std::setw(16);
+				else
+					std::cout << std::setw(8);
+				
+				std::cout << s.addr << std::setw(0) << std::dec << ']' << std::endl;
+			}
+			break;
+		}
+		case ModeExports:
+		{
+			std::cout << "Exports:\n";
+			for (size_t i = 0; i < macho->exports().size(); i++)
+			{
+				const MachO::Export* e = macho->exports()[i];
+				
+				std::cout << '\t' << e->name << " at " << "[0x" << std::hex << std::setfill('0');
+				
+				if (macho->is64())
+					std::cout << std::setw(16);
+				else
+					std::cout << std::setw(8);
+				
+				std::cout << e->addr << std::setw(0) << "] (flag: " << e->flag << ")" << std::dec << std::endl;
+			}
+			break;
+		}
+		case ModeBinds:
+		{
+			std::cout << "Binds:\n";
+			for (size_t i = 0; i < macho->binds().size(); i++)
+			{
+				const MachO::Bind* b = macho->binds()[i];
+				std::cout << '\t' << b->name << " at " << "[0x" << std::hex << std::setfill('0');
+				
+				if (macho->is64())
+					std::cout << std::setw(16);
+				else
+					std::cout << std::setw(8);
+				
+				std::cout << b->vmaddr << std::setw(0) << "] (addend: " << b->addend << ", type: " << int(b->type) << ", ordinal: " << int(b->ordinal) << ")";
+				
+				if (b->is_weak)
+					std::cout << 'W';
+				if (b->is_classic)
+					std::cout << 'C';
+				
+				std::cout << std::dec << std::endl;
+			}
+			break;
+		}
 	}
 	
 	delete macho;
 }
+
+OpMode getOpMode(const char* opt)
+{
+	if (!opt)
+		return ModeDylibs;
+	if (!strcmp(opt, "-d") || !strcmp(opt, "--dylibs"))
+		return ModeDylibs;
+	else if (!strcmp(opt, "-s") || !strcmp(opt, "--symbols"))
+		return ModeSymbols;
+	else if (!strcmp(opt, "-e") || !strcmp(opt, "--exports"))
+		return ModeExports;
+	else if (!strcmp(opt, "-b") || !strcmp(opt, "--binds"))
+		return ModeBinds;
+	else
+	{
+		std::stringstream ss;
+		ss << "Unknown option: " << opt;
+		throw std::runtime_error(ss.str());
+	}
+}
+
