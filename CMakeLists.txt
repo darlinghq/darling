@@ -45,7 +45,6 @@ set(dyld_SRCS
 )
 
 add_executable(dyld ${dyld_SRCS})
-
 target_link_libraries(dyld -ldl -lpthread mach-o)
 
 set(fatmacho-extract_SRCS
@@ -53,10 +52,16 @@ set(fatmacho-extract_SRCS
 )
 
 add_executable(fatmacho-extract ${fatmacho-extract_SRCS})
-
 target_link_libraries(fatmacho-extract -ldl -lpthread mach-o -Wl,-export-dynamic)
 
-install(TARGETS dyld fatmacho-extract DESTINATION bin)
+set(motool_SRCS
+	src/motool/motool.cpp
+)
+
+add_executable(motool ${motool_SRCS})
+target_link_libraries(motool mach-o)
+
+install(TARGETS dyld fatmacho-extract motool DESTINATION bin)
 
 add_subdirectory(src/libSystem)
 add_subdirectory(src/libunwind-darwin)
