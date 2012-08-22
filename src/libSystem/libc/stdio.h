@@ -99,6 +99,10 @@ int __darwin_fputws(const wchar_t *ws, __darwin_FILE *stream);
 wchar_t *__darwin_fgetws(wchar_t *ws, int n, __darwin_FILE *stream);
 wint_t __darwin_ungetwc(wint_t wc, __darwin_FILE *stream);
 
+// Internal Darwin Libc functions
+int __darwin___srget(__darwin_FILE* f);
+int __darwin___swbuf(int c, __darwin_FILE* f);
+int __darwin___svfscanf(__darwin_FILE* f, const char* fmt, va_list va);
 
 int __darwin_remove(const char* path);
 

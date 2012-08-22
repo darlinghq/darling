@@ -151,6 +151,21 @@ int __darwin_fputs(const char* s, __darwin_FILE* fp)
 	return fputs(s, fp->linux_fp);
 }
 
+int __darwin___srget(__darwin_FILE* f)
+{
+	return getc_unlocked(f->linux_fp);
+}
+
+int __darwin___swbuf(int c, __darwin_FILE* f)
+{
+	return putc_unlocked(c, f->linux_fp);
+}
+
+int __darwin___svfscanf(__darwin_FILE* f, const char* fmt, va_list va)
+{
+	return vfscanf(f->linux_fp, fmt, va);
+}
+
 int __darwin_fprintf(__darwin_FILE* fp, const char* fmt, ...)
 {
 	va_list ap;
