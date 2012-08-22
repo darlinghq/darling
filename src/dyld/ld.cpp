@@ -220,19 +220,10 @@ void* attemptDlopen(const char* filename, int flag)
 	
 	TRACE2(filename,flag);
 	
-	strcpy(name, filename);
-	
-	// Resolve symlinks so that we don't load the same library multiple times
-	if (isSymlink(filename))
+	if (!realpath(filename, name))
 	{
-		ssize_t len = ::readlink(filename, name, sizeof name);
-		if (len == -1)
-		{
-			LOG << "Invalid symlink found: " << filename << std::endl;
-			return 0;
-		}
-		else
-			name[len] = 0;
+		strcpy(g_ldError, strerror(errno));
+		return 0;
 	}
 	
 	if (strcmp(name, "/dev/null") == 0)
@@ -299,6 +290,12 @@ void* attemptDlopen(const char* filename, int flag)
 			try
 			{
 				MachO* machO = MachO::readFile(name, ARCH_NAME);
+				if (!machO)
+				{
+					snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot parse Mach-O library: %s", name);
+					return 0;
+				}
+				
 				LoadedLibrary* lib = new LoadedLibrary;
 				
 				lib->name = name;
