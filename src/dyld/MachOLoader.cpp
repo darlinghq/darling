@@ -15,6 +15,7 @@
 #include <set>
 #include <sys/mman.h>
 #include <errno.h>
+#include <dlfcn.h>
 
 #define FLAGS_TRACE_FUNCTIONS 0
 
@@ -315,18 +316,13 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 	for (size_t i = 0; i < mach.binds().size(); i++)
 	{
 		MachO::Bind* bind = mach.binds()[i];
-		if (bind->name[0] != '_')
-		{
-			LOG << bind->name << ": skipping" << std::endl;
-			continue;
-		}
 
 		if (bind->type == BIND_TYPE_POINTER)
 		{
 			std::string name = bind->name.substr(1);
 			void** ptr = (void**)(bind->vmaddr + slide);
 			char* sym = 0;
-
+			
 			if (bind->is_weak)
 			{
 				if (last_weak_name == name)
@@ -377,26 +373,39 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 				name = name.substr(0, name.size() - SUF_UNIX03_LEN);
 				}
 #endif
-		
-				sym = reinterpret_cast<char*>(__darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str()));
+
+				if (bind->name[0] != '_')
+				{
+					// assume local (e.g. dyld_stub_binder)
+					name = bind->name; // for correct error reporting
+					sym = reinterpret_cast<char*>(dlsym(dlopen(0, 0), bind->name.c_str()));
+				}
+				else
+					sym = reinterpret_cast<char*>(__darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str()));
+				
 				if (!sym)
 				{
 					const char* ign_sym = getenv("DYLD_IGN_MISSING_SYMS");
-					if (ign_sym && atoi(ign_sym))
+					//if (!bind->addend)
 					{
-						std::cerr << "!!! Undefined symbol: " << name << std::endl;
-						
-						char* dname = new char[name.size()+1];
-						strcpy(dname, name.c_str());
-						
-						sym = reinterpret_cast<char*>(m_pUndefMgr->generateNew(dname));
+						if (ign_sym && atoi(ign_sym))
+						{
+							std::cerr << "!!! Undefined symbol: " << name << std::endl;
+							
+							char* dname = new char[name.size()+1];
+							strcpy(dname, name.c_str());
+							
+							sym = reinterpret_cast<char*>(m_pUndefMgr->generateNew(dname));
+						}
+						else
+						{
+							std::stringstream ss;
+							ss << "Undefined symbol: " << name;
+							throw std::runtime_error(ss.str());
+						}
 					}
-					else
-					{
-						std::stringstream ss;
-						ss << "Undefined symbol: " << name;
-						throw std::runtime_error(ss.str());
-					}
+					//else
+					//	sym = reinterpret_cast<char*>(bind->addend + slide);
 				}
 				else
 					sym += bind->addend;
@@ -486,10 +495,9 @@ void MachOLoader::load(const MachO& mach, Exports* exports)
 
 	doRebase(mach, slide);
 
-	//char* apple[2] = { g_darwin_executable_path, 0};
-	loadInitFuncs(mach, slide /*, g_argc, g_argv, environ, apple*/);
-
 	loadDylibs(mach);
+	
+	loadInitFuncs(mach, slide);
 
 	loadExports(mach, base, exports);
 
@@ -515,10 +523,21 @@ void MachOLoader::runPendingInitFuncs(int argc, char** argv, char** envp, char**
 		void** init_func = (void**) m_init_funcs[i];
 		LOG << "calling initializer function " << *init_func << std::endl;
 		
+		// TODO: missing ProgramVars! http://blogs.embarcadero.com/eboling/2010/01/29/5639/
+		/*
+		 *	struct ProgramVars {
+			const void*	mh;
+			int*		NXArgcPtr;
+			const char***	NXArgvPtr;
+			const char***	environPtr;
+			const char**	__prognamePtr;
+			};
+		*/
+		
 		if (argc >= 0)
 			((void(*)(int, char**, char**, char**))*init_func)(argc, argv, envp, apple);
 		else
-			((void(*)())*init_func)();
+			((void(*)())*init_func)(); // ?!
 	}
 	m_init_funcs.clear();
 }

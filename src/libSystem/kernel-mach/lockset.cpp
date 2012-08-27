@@ -62,7 +62,7 @@ kern_return_t lock_release(lock_set_t lock_set, int lock_id)
 	return KERN_SUCCESS;
 }
 
-kern_return_t lock_set_create(darwin_task_t* task, lock_set_t* lockset, int locks, int policy)
+kern_return_t lock_set_create(darwin_task_t task, lock_set_t* lockset, int locks, int policy)
 {
 	*lockset = 0;
 	
@@ -107,7 +107,7 @@ kern_return_t lock_set_create(darwin_task_t* task, lock_set_t* lockset, int lock
 	return KERN_SUCCESS;
 }
 
-kern_return_t lock_set_destroy (darwin_task_t* task, lock_set_t lockset)
+kern_return_t lock_set_destroy (darwin_task_t task, lock_set_t lockset)
 {
 	TRACE2(task, lockset);
 	CHECK_TASK_SELF(task);

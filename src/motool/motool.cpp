@@ -20,6 +20,7 @@ int main(int argc, char** argv)
 {
 	if (argc < 2)
 	{
+		std::cerr << "Mach Object File Format (Mach-O) Tool\n";
 		std::cerr << "Usage: " << argv[0] << " <file> [arch] [option]\n";
 		std::cerr << "\nOptions:\n"
 			"\t-d --dylibs\tList dylibs (default)\n"

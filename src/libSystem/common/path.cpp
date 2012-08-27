@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <cstring>
 #include <unistd.h>
+#include "trace.h"
 #ifdef TEST_PATH
 #	include <iostream>
 #endif
@@ -64,10 +65,12 @@ void translatePathCI(char* path)
 
 char* translatePathCI(const char* path)
 {
-	static __thread char buf[DARWIN_MAXPATHLEN];
+	//TRACE1(path);
+	static char buf[DARWIN_MAXPATHLEN];
 	strcpy(buf, path);
 	translatePathCI(buf);
 	return buf;
+	//return strdup(path);
 }
 
 #ifdef TEST_PATH
