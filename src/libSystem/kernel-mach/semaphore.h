@@ -14,9 +14,9 @@ typedef semaphore* esemaphore_t;
 extern "C"
 {
 
-kern_return_t semaphore_create(darwin_task_t* task, esemaphore_t *semaphore, int policy, int value);
+kern_return_t semaphore_create(darwin_task_t task, esemaphore_t *semaphore, int policy, int value);
 
-kern_return_t semaphore_destroy(darwin_task_t* task, esemaphore_t semaphore);
+kern_return_t semaphore_destroy(darwin_task_t task, esemaphore_t semaphore);
 
 kern_return_t semaphore_signal(esemaphore_t semaphore);
 

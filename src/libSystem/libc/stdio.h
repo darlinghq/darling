@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <stdarg.h>
 #include <wchar.h>
+#include <bits/basic_file.h>
 
 /* stdio buffers */
 struct __darwin_sbuf
@@ -105,6 +106,8 @@ int __darwin___swbuf(int c, __darwin_FILE* f);
 int __darwin___svfscanf(__darwin_FILE* f, const char* fmt, va_list va);
 
 int __darwin_remove(const char* path);
+
+std::__basic_file<char>* _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode(std::__basic_file<char>* pThis, __darwin_FILE* f, std::ios_base::openmode mode);
 
 }
 

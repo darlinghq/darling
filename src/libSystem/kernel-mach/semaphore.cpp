@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-kern_return_t semaphore_create(darwin_task_t* task, esemaphore_t *semaphore, int policy, int value)
+kern_return_t semaphore_create(darwin_task_t task, esemaphore_t *semaphore, int policy, int value)
 {
 	TRACE4(task, semaphore, policy, value);
 	CHECK_TASK_SELF(task);
@@ -30,7 +30,7 @@ kern_return_t semaphore_create(darwin_task_t* task, esemaphore_t *semaphore, int
 	return KERN_SUCCESS;
 }
 
-kern_return_t semaphore_destroy(darwin_task_t* task, esemaphore_t semaphore)
+kern_return_t semaphore_destroy(darwin_task_t task, esemaphore_t semaphore)
 {
 	TRACE2(task, semaphore);
 	CHECK_TASK_SELF(task);

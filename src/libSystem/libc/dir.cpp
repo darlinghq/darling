@@ -83,6 +83,7 @@ darwin_dirent64* convertDirent64(const struct dirent* linux_buf)
 
 DIR* __darwin_opendir(const char *name)
 {
+	TRACE1(name);
 	DIR* rv = opendir(translatePathCI(name));
 	if (!rv)
 		errnoOut();

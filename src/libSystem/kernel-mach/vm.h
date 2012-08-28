@@ -15,7 +15,7 @@
 extern "C"
 {
   
-typedef darwin_task_t* vm_task_t;
+typedef darwin_task_t vm_task_t;
 
 kern_return_t vm_msync(vm_task_t target_task, void* addr, vm_size_t size, vm_sync_t in_flags);
 kern_return_t vm_allocate(vm_task_t target_task, void** addr, vm_size_t size, boolean_t anywhere);

@@ -83,38 +83,6 @@ void libiconv_set_relocation_prefix(const char* orig, const char* curr) {
   abort();
 }
 
-// From /usr/include/mach/host_info.h
-struct __darwin_host_basic_info {
-  int max_cpus;
-  int avail_cpus;
-  int memory_size;
-  unsigned int cpu_type;
-  unsigned int cpu_subtype;
-  unsigned int cpu_threadtype;
-  int physical_cpu;
-  int physical_cpu_max;
-  int logical_cpu;
-  int logical_cpu_max;
-  uint64_t max_mem;
-};
-
-int host_info(int host, int flavor,
-              struct __darwin_host_basic_info* info, int* info_cnt) {
-  if (flavor != 1) {
-    fprintf(stderr, "host_info with flavor=%d isn't supported yet.\n", flavor);
-    abort();
-  }
-
-  // TODO(hamaji): only supports x86-64.
-  memset(info, 0, sizeof(*info));
-  info->cpu_type = 16777223;
-  info->cpu_subtype = 3;
-
-  *info_cnt = sizeof(*info);
-
-  return 0;
-}
-
 struct __darwin_host_load_info {
   int avenrun[3];
   int mach_factor[3];

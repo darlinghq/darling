@@ -3,6 +3,7 @@
 #include "common/path.h"
 #include "libc/darwin_errno_codes.h"
 #include "libc/errno.h"
+#include "trace.h"
 #include <cstring>
 #include <cstdlib>
 #include <unistd.h>
@@ -80,6 +81,8 @@ static char* const* prependLoaderPath(char *const argv[], const char* fullMachoP
 
 int __darwin_execl(const char *path, const char *arg, ...)
 {
+	TRACE1(path);
+	
 	va_list vl;
 	va_start(vl, arg);
 	std::vector<char*> argv;
@@ -96,6 +99,8 @@ int __darwin_execl(const char *path, const char *arg, ...)
 
 int __darwin_execlp(const char *file, const char *arg, ...)
 {
+	TRACE1(file);
+	
 	va_list vl;
 	va_start(vl, arg);
 	std::vector<char*> argv;
@@ -112,6 +117,8 @@ int __darwin_execlp(const char *file, const char *arg, ...)
 
 int __darwin_execle(const char *path, const char *arg, ... /*, char * const envp[]*/)
 {
+	TRACE1(path);
+	
 	va_list vl;
 	va_start(vl, arg);
 	std::vector<char*> argv;
@@ -131,6 +138,7 @@ int __darwin_execle(const char *path, const char *arg, ... /*, char * const envp
 
 int __darwin_execv(const char *path, char *const argv[])
 {
+	TRACE1(path);
 	path = translatePathCI(path);
 	
 	if (!MachO::isMachO(path))
@@ -152,6 +160,8 @@ int __darwin_execv(const char *path, char *const argv[])
 
 int __darwin_execvp(const char *file, char *const argv[])
 {
+	TRACE1(file);
+	
 	const char* path = findInPath(file);
 	if (!path)
 	{
@@ -164,6 +174,8 @@ int __darwin_execvp(const char *file, char *const argv[])
 
 int __darwin_execvpe(const char *file, char *const argv[], char *const envp[])
 {
+	TRACE1(file);
+	
 	const char* path = findInPath(file);
 	if (!path)
 	{

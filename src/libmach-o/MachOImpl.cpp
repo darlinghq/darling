@@ -111,41 +111,41 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 		int section_type = sec.flags & SECTION_TYPE;
 		switch (section_type)
 		{
-		case S_REGULAR:
+		case S_REGULAR: // 0x0
 			/* Regular section: nothing to do */
 			break;
 
-		case S_MOD_INIT_FUNC_POINTERS:
+		case S_MOD_INIT_FUNC_POINTERS: // 0x9
 		{
 			for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += m_ptrsize)
 				m_init_funcs.push_back(p);
 			
 			break;
 		}
-		case S_MOD_TERM_FUNC_POINTERS:
+		case S_MOD_TERM_FUNC_POINTERS: // 0xA
 			for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += m_ptrsize)
 				m_exit_funcs.push_back(p);
 			
 			break;
-		case S_NON_LAZY_SYMBOL_POINTERS:
-		case S_LAZY_SYMBOL_POINTERS:
+		case S_NON_LAZY_SYMBOL_POINTERS: // 0x6
+		case S_LAZY_SYMBOL_POINTERS: // 0x7
 			bind_sections->push_back(sections + j);
 			break;
 		
 		case S_ZEROFILL:
-		case S_CSTRING_LITERALS:
-		case S_4BYTE_LITERALS:
-		case S_8BYTE_LITERALS:
-		case S_LITERAL_POINTERS:
-		case S_SYMBOL_STUBS:
+		case S_CSTRING_LITERALS: // 0x2
+		case S_4BYTE_LITERALS: // 0x3
+		case S_8BYTE_LITERALS: // 0x4
+		case S_LITERAL_POINTERS: // 0x5
+		case S_SYMBOL_STUBS: // 0x8, byte size of stub in reserved2
 		case S_COALESCED:
 		case S_GB_ZEROFILL:
-		case S_INTERPOSING:
+		case S_INTERPOSING: // 0xD
 		case S_16BYTE_LITERALS:
 		case S_DTRACE_DOF:
 		case S_LAZY_DYLIB_SYMBOL_POINTERS:
-			LOGF("FIXME: section type %d will not be handled for %s in %s\n",
-				section_type, sec.sectname, sec.segname);
+			LOGF("FIXME: section type %d will not be handled for %s in %s (%p)\n",
+				section_type, sec.sectname, sec.segname, sec.addr);
 			break;
 
 		default:
@@ -510,9 +510,11 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 
 	LOGF("%p vs %p\n", cmds_ptr, bin + m_mapped_size);
 
+	LOGF("dyinfo: %p, dysyms: %p, symtab: %p, symstrtab: %p, symbol count: %d\n", dyinfo, dysyms, symtab, symstrtab, m_symbols.size());
 	// No LC_DYLD_INFO_ONLY, we will read classic binding info.
 	if (!dyinfo && dysyms && symtab && symstrtab)
 	{
+		LOGF("Reading classic binding info\n");
 		for (size_t i = 0; i < bind_sections_64.size(); i++)
 		{
 			readClassicBind<section_64>(*bind_sections_64[i], dysyms, symtab, symstrtab);

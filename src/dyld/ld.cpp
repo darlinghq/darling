@@ -169,6 +169,13 @@ start_search:
 	}
 	else
 	{
+		if (const char* ldp = getenv("DYLD_LIBRARY_PATH"))
+		{
+			path = std::string(ldp) + "/" + filename;
+			if (::access(path.c_str(), R_OK) == 0)
+				RET_IF( attemptDlopen(path.c_str(), flag) );
+		}
+		
 		for (int i = 0; i < sizeof(g_searchPath) / sizeof(g_searchPath[0]); i++)
 		{
 			path = std::string(g_searchPath[i]) + "/" + filename + ".so";
@@ -425,6 +432,10 @@ handling:
 		// Now try Darwin libraries
 		const Exports& e = g_loader->getExports();
 		Exports::const_iterator itSym = e.find(symbol);
+		
+		if (itSym == e.end())
+			itSym = e.find(std::string("_") + symbol);
+		
 		if (itSym == e.end())
 		{
 			// Now try without a prefix
@@ -492,3 +503,16 @@ int __darwin_dladdr(void *addr, Dl_info *info)
 	strcpy(g_ldError, "Not implemented yet");
 	return -1;
 }
+
+extern "C" void* dyld_stub_binder()
+{
+	long arg1, arg2;
+	asm ("movq (%%rsp), %%rbx;"
+		"movq %%rbx, %0;"
+		"movq 4(%%rsp), %%rbx;"
+		"movq %%rbx, %1;"
+		: "=r" (arg1), "=r" (arg2)
+	);
+	return 0;
+}
+

@@ -352,3 +352,9 @@ int __darwin_remove(const char* path)
 {
 	return AutoPathErrno<int>(remove, path);
 }
+
+std::__basic_file<char>* _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode(std::__basic_file<char>* pThis, __darwin_FILE* f, std::ios_base::openmode mode)
+{
+	return pThis->sys_open(f->linux_fp, mode);
+}
+
