@@ -19,6 +19,15 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 configure_file(config.h.in config.h)
 
+set(util-SRCS
+	src/util/log.cc
+	src/util/trace.cpp
+	src/util/IniConfig.cpp
+)
+
+add_library(util ${util-SRCS})
+set_target_properties(util PROPERTIES COMPILE_FLAGS "-fPIC")
+
 set(mach-o_SRCS
 	src/libmach-o/MachO.cpp
 	src/libmach-o/FatMachO.cpp
@@ -26,26 +35,24 @@ set(mach-o_SRCS
 	src/libmach-o/BindState.cpp
 	src/libmach-o/leb.cpp
 	src/libmach-o/MachOImpl.cpp
-	src/util/log.cc
 )
 
 add_library(mach-o SHARED ${mach-o_SRCS})
 set_target_properties(mach-o PROPERTIES VERSION 1.0.0 SOVERSION 1.0)
 set_target_properties(mach-o PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
-target_link_libraries(mach-o -ldl -lpthread)
+target_link_libraries(mach-o -ldl -lpthread util)
 
 set(dyld_SRCS
 	src/dyld/FileMap.cpp
 	src/dyld/MachOLoader.cpp
 	src/dyld/UndefinedFunction.cpp
+	src/dyld/Trampoline.cpp
 	src/dyld/ld.cpp
 	src/dyld/dyld.cpp
-	src/util/log.cc
-	src/util/trace.cpp
 )
 
 add_executable(dyld ${dyld_SRCS})
-target_link_libraries(dyld -ldl -lpthread mach-o)
+target_link_libraries(dyld -ldl -lpthread mach-o util)
 
 set(fatmacho-extract_SRCS
 	src/dyld/extract.cpp
@@ -62,7 +69,10 @@ add_executable(motool ${motool_SRCS})
 target_link_libraries(motool mach-o)
 
 install(TARGETS dyld fatmacho-extract motool DESTINATION bin)
+install(TARGETS mach-o DESTINATION lib)
+install(FILES etc/dylib.conf DESTINATION /etc/darling)
 
 add_subdirectory(src/libSystem)
 add_subdirectory(src/libunwind-darwin)
+#add_subdirectory(src/CoreServices)
 

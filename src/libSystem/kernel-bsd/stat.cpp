@@ -116,3 +116,14 @@ int __darwin_lstat(const char* path, struct __darwin_stat* mac)
 	convertStat(&linux_buf, mac);
 	return ret;
 }
+
+#ifdef TEST
+int main()
+{
+	printf("sizeof(__darwin_stat64) = %d\n", sizeof(struct __darwin_stat64));
+	printf("sizeof(__darwin_stat) = %d\n", sizeof(struct __darwin_stat));
+	return 0;
+}
+
+#endif
+

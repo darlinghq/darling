@@ -2,20 +2,6 @@
 #include <cstdlib>
 #include <ctype.h>
 
-size_t strlcpy(char* dst, const char* src, size_t size)
-{
-	dst[size - 1] = '\0';
-	strncpy(dst, src, size - 1);
-	return strlen(dst);
-}
-
-size_t strlcat(char* dst, const char* src, size_t size)
-{
-	dst[size - 1] = '\0';
-	strncat(dst, src, size - strlen(dst) - 1);
-	return strlen(dst);
-}
-
 // The following three functions are slow.
 // But they're no faster on Darwin either.
 
@@ -37,7 +23,7 @@ void memset_pattern16(char* b, const char* pattern4, size_t len)
 		b[i] = pattern4[i % 16];
 }
 
-int __mb_cur_max()
+int ___mb_cur_max()
 {
 	return MB_CUR_MAX;
 }

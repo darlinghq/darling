@@ -83,42 +83,6 @@ void libiconv_set_relocation_prefix(const char* orig, const char* curr) {
   abort();
 }
 
-struct __darwin_host_load_info {
-  int avenrun[3];
-  int mach_factor[3];
-};
-
-int host_statistics(int host, int flavor,
-                    struct __darwin_host_load_info* info, int* info_cnt) {
-  // TODO(hamaji): implement this.
-  info->avenrun[0] = 0;
-  info->avenrun[1] = 0;
-  info->avenrun[2] = 0;
-  info->mach_factor[0] = 0;
-  info->mach_factor[1] = 0;
-  info->avenrun[2] = 0;
-
-  *info_cnt = sizeof(*info);
-
-  return 0;
-}
-
-char* mach_error_string() {
-  //abort();
-  //return "";
-  return "mach_error_string";
-}
-
-void* mach_host_self() {
-  //abort();
-  return NULL;
-}
-int mach_port_deallocate() {
-  // TODO(hamaji): leak
-  //abort();
-  return 0;
-}
-
 void *__darwin_mmap(void *addr, size_t length, int prot, int flags,
                     int fd, off_t offset) {
   LOGF("mmap: addr=%p length=%lu prot=%d flags=%d fd=%d offset=%lu\n",
@@ -137,23 +101,7 @@ void *__darwin_mmap(void *addr, size_t length, int prot, int flags,
   return mmap(addr, length, prot, flags, fd, offset);
 }
 
-extern char* dyld_getDarwinExecutablePath();
-extern char* dyld_getLoaderPath();
-
-char* __darwin_executable_path = 0;
-char* __loader_path = 0;
-
-__attribute__((constructor)) void getLoaderGlobals()
-{
-	 __darwin_executable_path = dyld_getDarwinExecutablePath();
-	 __loader_path = dyld_getLoaderPath();
-}
-
-int _NSGetExecutablePath(char* buf, unsigned int* size) {
-  strcpy(buf, __darwin_executable_path);
-  *size = strlen(__darwin_executable_path);
-  return 0;
-}
+extern char* __loader_path;
 
 static char** add_loader_to_argv(char* argv[]) {
   int i, argc;
@@ -233,83 +181,6 @@ int __darwin_posix_spawn_file_actions_adddup2(
     int fd,
     int newfd) {
     return posix_spawn_file_actions_adddup2(*file_actions, fd, newfd);
-}
-
-typedef struct {
-  const char *name;
-  unsigned int cputype;
-  unsigned int cpusubtype;
-  int byteorder;
-  const char *description;
-} NXArchInfo;
-
-// This was dumped on snow leopard.
-NXArchInfo __darwin_all_arch_infos[] = {
-  // The first entry indicates the local arch.
-  { "hppa", 11, 0, 2, "HP-PA" },
-  { "i386", 7, 3, 1, "Intel 80x86" },
-  { "x86_64", 16777223, 3, 1, "Intel x86-64" },
-  { "i860", 15, 0, 2, "Intel 860" },
-  { "m68k", 6, 1, 2, "Motorola 68K" },
-  { "m88k", 13, 0, 2, "Motorola 88K" },
-  { "ppc", 18, 0, 2, "PowerPC" },
-  { "ppc64", 16777234, 0, 2, "PowerPC 64-bit" },
-  { "sparc", 14, 0, 2, "SPARC" },
-  { "arm", 12, 0, 1, "ARM" },
-  { "any", -1, -1, 0, "Architecture Independent" },
-  { "veo", 255, 2, 2, "veo" },
-  { "hppa7100LC", 11, 1, 2, "HP-PA 7100LC" },
-  { "m68030", 6, 3, 2, "Motorola 68030" },
-  { "m68040", 6, 2, 2, "Motorola 68040" },
-  { "i486", 7, 4, 1, "Intel 80486" },
-  { "i486SX", 7, 132, 1, "Intel 80486SX" },
-  { "pentium", 7, 5, 1, "Intel Pentium" },
-  { "i586", 7, 5, 1, "Intel 80586" },
-  { "pentpro", 7, 22, 1, "Intel Pentium Pro" },
-  { "i686", 7, 22, 1, "Intel Pentium Pro" },
-  { "pentIIm3", 7, 54, 1, "Intel Pentium II Model 3" },
-  { "pentIIm5", 7, 86, 1, "Intel Pentium II Model 5" },
-  { "pentium4", 7, 10, 1, "Intel Pentium 4" },
-  { "ppc601", 18, 1, 2, "PowerPC 601" },
-  { "ppc603", 18, 3, 2, "PowerPC 603" },
-  { "ppc603e", 18, 4, 2, "PowerPC 603e" },
-  { "ppc603ev", 18, 5, 2, "PowerPC 603ev" },
-  { "ppc604", 18, 6, 2, "PowerPC 604" },
-  { "ppc604e", 18, 7, 2, "PowerPC 604e" },
-  { "ppc750", 18, 9, 2, "PowerPC 750" },
-  { "ppc7400", 18, 10, 2, "PowerPC 7400" },
-  { "ppc7450", 18, 11, 2, "PowerPC 7450" },
-  { "ppc970", 18, 100, 2, "PowerPC 970" },
-  { "ppc970-64", 16777234, 100, 2, "PowerPC 970 64-bit" },
-  { "armv4t", 12, 5, 1, "arm v4t" },
-  { "armv5", 12, 7, 1, "arm v5" },
-  { "xscale", 12, 8, 1, "arm xscale" },
-  { "armv6", 12, 6, 1, "arm v6" },
-  { "armv7", 12, 9, 1, "arm v7" },
-  { "little", -1, 0, 1, "Little Endian" },
-  { "big", -1, 1, 2, "Big Endian" },
-  { "veo1", 255, 1, 2, "veo 1" },
-  { "veo2", 255, 2, 2, "veo 2" },
-  { NULL, 0, 0, 0, NULL },
-};
-
-NXArchInfo __darwin_local_arch_info = { "i486", 7, 4, 1, "Intel 80486" };
-
-const NXArchInfo* NXGetAllArchInfos() {
-  return __darwin_all_arch_infos;
-}
-
-const NXArchInfo* NXGetLocalArchInfo() {
-  return &__darwin_local_arch_info;
-}
-
-const NXArchInfo* NXGetArchInfoFromName(const char *name) {
-  NXArchInfo* info = __darwin_all_arch_infos;
-  for (; info->name; info++) {
-    if (!strcmp(info->name, name))
-      return info;
-  }
-  return NULL;
 }
 
 void __assert_rtn(const char* func, const char* file, int line,
@@ -393,11 +264,6 @@ int task_set_exception_ports() {
   return 0;
 }
 
-char*** _NSGetEnviron() {
-  return &environ;
-}
-
-
 
 
 static void do_nothing(void) {
@@ -437,34 +303,6 @@ int __darwin_uname(__darwin_utsname* buf) {
 	strcpy(buf->version, linux_buf.version);
 	strcpy(buf->machine, linux_buf.machine);
 	return 0;
-}
-
-typedef struct {
-  int (*compar)(void*, const void*, const void*);
-  void* thunk;
-} __darwin_qsort_r_context;
-
-int __darwin_qsort_r_helper(const void* a, const void* b, void* data) {
-  __darwin_qsort_r_context* ctx = (__darwin_qsort_r_context*)data;
-  return ctx->compar(ctx->thunk, a, b);
-}
-
-void __darwin_qsort_r(void* base, size_t nel, size_t width, void* thunk,
-                      int (*compar)(void*, const void*, const void*)) {
-  LOGF("qsort_r: %p %p\n", compar, thunk);
-  __darwin_qsort_r_context ctx;
-  ctx.compar = compar;
-  ctx.thunk = thunk;
-  qsort_r(base, nel, width, &__darwin_qsort_r_helper, &ctx);
-}
-
-unsigned int arc4random() {
-  static int initialized = 0;
-  if (!initialized) {
-    srand(time(NULL));
-    initialized = 1;
-  }
-  return rand();
 }
 
 #define __DARWIN_LC_ALL_MASK            (  __DARWIN_LC_COLLATE_MASK \

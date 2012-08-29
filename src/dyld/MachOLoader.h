@@ -9,6 +9,7 @@
 #include "arch.h"
 #include "ld.h"
 #include "UndefinedFunction.h"
+#include "Trampoline.h"
 
 class MachOLoader
 {
@@ -64,18 +65,13 @@ public:
 private:
 	// Jumps to the application entry
 	void boot(uint64_t entry, int argc, char** argv, char** envp);
-	
-	void pushTrampolineCode(unsigned int c);
-	void pushTrampolineCode64(uint64_t c);
-	void pushTrampolineCode32(uint32_t c);
 private:
-	std::string m_trampoline;
 	intptr m_last_addr;
 	std::vector<uint64_t> m_init_funcs;
 	Exports m_exports;
 	std::vector<std::pair<std::string, char*> > m_seen_weak_binds;
 	UndefMgr* m_pUndefMgr;
-
+	TrampolineMgr* m_pTrampolineMgr;
 };
 
 #endif

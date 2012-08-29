@@ -1,6 +1,7 @@
 #ifndef MACH_TASK_H
 #define MACH_TASK_H
 #include <sys/types.h>
+#include <mach/kern_return.h>
 
 struct darwin_task
 {
@@ -14,6 +15,7 @@ extern "C"
 {
 	extern darwin_task_t mach_task_self_;
 	inline darwin_task_t mach_task_self() { return mach_task_self_; }
+	kern_return_t mach_port_deallocate(darwin_task_t task, void* port);
 }
 
 #endif

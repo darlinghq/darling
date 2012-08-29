@@ -8,10 +8,13 @@
 #include <stdexcept>
 #include <cstring>
 #include <cassert>
+#include <locale.h>
+#include <mcheck.h>
 
 char g_darwin_executable_path[PATH_MAX];
 char g_loader_path[PATH_MAX];
 char g_sysroot[PATH_MAX] = "";
+bool g_trampoline = false;
 
 MachO* g_mainBinary = 0;
 MachOLoader* g_loader = 0;
@@ -29,7 +32,9 @@ int main(int argc, char** argv, char** envp)
 		std::cerr << "Environment variables:\n"
 			"\tDYLD_DEBUG=1 - enable debug info (lots of output)\n"
 			"\tDYLD_IGN_MISSING_SYMS=1 - replace missing symbol references with a stub function\n"
-			"\tDYLD_SYSROOT=<path> - set the base for library path resolution (overrides autodetection)\n";
+			"\tDYLD_SYSROOT=<path> - set the base for library path resolution (overrides autodetection)\n"
+			"\tDYLD_MTRACE=1 - enable mtrace\n"
+			"\tDYLD_TRAMPOLINE=1 - access all bound functions via a debug trampoline\n";
 		return 1;
 	}
 	
@@ -38,11 +43,11 @@ int main(int argc, char** argv, char** envp)
 	if (!::realpath(argv[1], g_darwin_executable_path))
 		::strcpy(g_darwin_executable_path, argv[1]);
 	
-	//initSignalHandler();
-	//initRename();
-	//initNoTrampoline();
-	//initLibMac();
-	//initDlfcn();
+	setlocale(LC_CTYPE, "");
+	if (getenv("DYLD_MTRACE") && atoi(getenv("DYLD_MTRACE")))
+		mtrace();
+	if (getenv("DYLD_TRAMPOLINE") && atoi(getenv("DYLD_TRAMPOLINE")))
+		g_trampoline = true;
 
 	g_mainBinary = MachO::readFile(argv[1], ARCH_NAME);
 	try

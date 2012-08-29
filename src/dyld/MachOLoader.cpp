@@ -17,7 +17,7 @@
 #include <errno.h>
 #include <dlfcn.h>
 
-#define FLAGS_TRACE_FUNCTIONS 0
+#define FLAGS_TRACE_FUNCTIONS g_trampol
 
 FileMap g_file_map;
 static std::map<std::string, std::string> g_rename;
@@ -27,20 +27,7 @@ static std::set<std::string> g_no_trampoline;
 extern char g_darwin_executable_path[PATH_MAX];
 extern int g_argc;
 extern char** g_argv;
-
-__attribute__((constructor)) static void initNoTrampoline()
-{
-#define NO_TRAMPOLINE(name) g_no_trampoline.insert(#name);
-#include "no_trampoline.tab"
-#undef NO_TRAMPOLINE
-}
-
-static void* undefinedFunction()
-{
-	fprintf(stderr, "Undefined function called, returning NULL\n");
-	//abort();
-	return 0;
-}
+extern bool g_trampoline;
 
 static void doNothing()
 {
@@ -82,80 +69,12 @@ static void dumpInt(int bound_name_id)
 }
 
 MachOLoader::MachOLoader()
-: m_last_addr(0)
+: m_last_addr(0), m_pTrampolineMgr(0)
 {
 	m_pUndefMgr = new UndefMgr;
-	if (FLAGS_TRACE_FUNCTIONS)
-	{
-		// Push all arguments into stack.
 
-		// push %rax
-		pushTrampolineCode(0x50);
-		// push %rdi
-		pushTrampolineCode(0x57);
-		// push %rsi
-		pushTrampolineCode(0x56);
-		// push %rdx
-		pushTrampolineCode(0x52);
-		// push %rcx
-		pushTrampolineCode(0x51);
-		// push %r8
-		pushTrampolineCode(0x5041);
-		// push %r9
-		pushTrampolineCode(0x5141);
-
-		// push %xmm0..%xmm7
-		for (int i = 0; i < 8; i++)
-		{
-			// sub $8, %rsp
-			pushTrampolineCode(0x08ec8348);
-
-			// movq %xmmN, (%rsp)
-			pushTrampolineCode(0xd60f66);
-			pushTrampolineCode(4 + i * 8);
-			pushTrampolineCode(0x24);
-		}
-
-		// mov %r10, %rdi
-		pushTrampolineCode(0xd7894c);
-
-		// mov $func, %rdx
-		pushTrampolineCode(0xba48);
-		pushTrampolineCode64((unsigned long long)(void*)&dumpInt);
-
-		// call *%rdx
-		pushTrampolineCode(0xd2ff);
-
-		// pop %xmm7..%xmm0
-		for (int i = 7; i >= 0; i--)
-		{
-			// movq (%rsp), %xmmN
-			pushTrampolineCode(0x7e0ff3);
-			pushTrampolineCode(4 + i * 8);
-			pushTrampolineCode(0x24);
-
-			// add $8, %rsp
-			pushTrampolineCode(0x08c48348);
-		}
-
-		// pop %r9
-		pushTrampolineCode(0x5941);
-		// pop %r8
-		pushTrampolineCode(0x5841);
-		// pop %rcx
-		pushTrampolineCode(0x59);
-		// pop %rdx
-		pushTrampolineCode(0x5a);
-		// pop %rsi
-		pushTrampolineCode(0x5e);
-		// pop %rdi
-		pushTrampolineCode(0x5f);
-		// pop %rax
-		pushTrampolineCode(0x58);
-
-		// ret
-		pushTrampolineCode(0xc3);
-	}
+	if (g_trampoline)
+		m_pTrampolineMgr = new TrampolineMgr;
 }
 
 void MachOLoader::loadDylibs(const MachO& mach)
@@ -182,6 +101,9 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 {
 	*base = 0;
 	--*base;
+	
+	if (m_pTrampolineMgr)
+		m_pTrampolineMgr->invalidateMemoryMap();
 
 	const std::vector<Segment*>& segments = getSegments(mach);
 	for (size_t i = 0; i < segments.size(); i++)
@@ -271,9 +193,9 @@ void MachOLoader::doRebase(const MachO& mach, intptr slide)
 			case REBASE_TYPE_POINTER:
 			{
 				char** ptr = (char**)(rebase.vmaddr + slide);
-				LOG << "rebase: " << i << ": " << (void*)rebase.vmaddr << ' '
+				/*LOG << "rebase: " << i << ": " << (void*)rebase.vmaddr << ' '
 					<< (void*)*ptr << " => "
-					<< (void*)(*ptr + slide) << " @" << ptr <<std::endl;
+					<< (void*)(*ptr + slide) << " @" << ptr <<std::endl;*/
 				*ptr += slide;
 				break;
 			}
@@ -414,40 +336,10 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 			LOG << "bind " << name << ": "
 				<< *ptr << " => " << (void*)sym << " @" << ptr << std::endl;
 
-			if (FLAGS_TRACE_FUNCTIONS && !g_no_trampoline.count(name))
-			{
-				LOG << "Generating trampoline for " << name << "..." << std::endl;
-
-				*ptr = &m_trampoline[0] + m_trampoline.size();
-				g_bound_names[i] = name;
-
-				// push %rax  ; to adjust alignment for sse
-				pushTrampolineCode(0x50);
-
-				// mov $i, %r10d
-				pushTrampolineCode(0xba41);
-				pushTrampolineCode32((unsigned int)i);
-
-				// call &m_trampoline[0]
-				pushTrampolineCode(0xe8);
-				pushTrampolineCode32((unsigned int)(-4-m_trampoline.size()));
-
-				// mov $sym, %r10
-				pushTrampolineCode(0xba49);
-				pushTrampolineCode64((unsigned long long)(void*)sym);
-				// call *%r10
-				pushTrampolineCode(0xd2ff41);
-
-				// pop %r10
-				pushTrampolineCode(0x5a41);
-
-				// ret
-				pushTrampolineCode(0xc3);
-			}
+			if (g_trampoline)
+				*ptr = m_pTrampolineMgr->generate(sym, name.c_str());
 			else
-			{
 				*ptr = sym;
-			}
 		}
 		else
 		{
@@ -552,11 +444,6 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 
 	g_file_map.addWatchDog(m_last_addr + 1);
 
-	char* trampoline_start_addr = (char*)(((uintptr_t)&m_trampoline[0]) & ~0xfff);
-	uint64_t trampoline_size = alignMem(&m_trampoline[0] + m_trampoline.size() - trampoline_start_addr, 0x1000);
-	
-	::mprotect(trampoline_start_addr, trampoline_size, PROT_READ | PROT_WRITE | PROT_EXEC);
-
 	//g_timer.print(mach.filename().c_str());
 
 	mach.close();
@@ -584,33 +471,6 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 	}
 	else
 		throw std::runtime_error("No entry point found");
-}
-
-void MachOLoader::pushTrampolineCode(unsigned int c)
-{
-	while (c)
-	{
-		m_trampoline.push_back(c & 255);
-		c >>= 8;
-	}
-}
-
-void MachOLoader::pushTrampolineCode64(uint64_t c)
-{
-	for (int i = 0; i < 8; i++)
-	{
-		m_trampoline.push_back(c & 255);
-		c >>= 8;
-	}
-}
-
-void MachOLoader::pushTrampolineCode32(uint32_t c)
-{
-	for (int i = 0; i < 4; i++)
-	{
-		m_trampoline.push_back(c & 255);
-		c >>= 8;
-	}
 }
 
 void MachOLoader::boot( uint64_t entry, int argc, char** argv, char** envp)

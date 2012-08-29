@@ -1,0 +1,6 @@
+#ifndef UNICODEUTILITIES_H
+#define UNICODEUTILITIES_H
+
+
+
+#endif

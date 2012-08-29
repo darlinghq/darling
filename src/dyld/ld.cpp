@@ -8,6 +8,8 @@
 #include "FileMap.h"
 #include "config.h"
 #include "log.h"
+#include "IniConfig.h"
+#include "stlutils.h"
 #include <unistd.h>
 #include <map>
 #include <string>
@@ -24,14 +26,16 @@ static __thread char g_ldError[256] = "";
 static regex_t g_reAutoMappable;
 static LoadedLibrary g_dummyLibrary;
 
-extern char g_darwin_executable_path[PATH_MAX];
-
-// TODO: this may need a rework for a 32bit loader on a 64bit system
 static const char* g_searchPath[] = {
-	LIB_PATH, "/usr/lib", "/usr/local/lib"
+	LIB_PATH
+#ifdef __i386__
+	"/usr/lib32", "/usr/local/lib32", "/lib32"
+#endif
+	"/usr/lib", "/usr/local/lib", "/lib",
 };
 
 static const char* g_suffixes[] = { "$DARWIN_EXTSN", "$UNIX2003", "$NOCANCEL" };
+static IniConfig* g_iniConfig = 0;
 
 static void* attemptDlopen(const char* filename, int flag);
 static int translateFlags(int flags);
@@ -48,7 +52,8 @@ extern FileMap g_file_map;
 
 static void initLD()
 {
-	int rv = regcomp(&g_reAutoMappable, "/(lib[[:alnum:]\\-]+)\\.([[:digit:]]+)(\\.[[:digit:]]+)?\\.dylib", REG_EXTENDED);
+	//int rv = regcomp(&g_reAutoMappable, "/(lib[[:alnum:]\\-]+)\\.([[:digit:]]+)(\\.[[:digit:]]+)?\\.dylib", REG_EXTENDED);
+	int rv = regcomp(&g_reAutoMappable, "/(lib[[:alnum:]\\-]+)\\.(.+)\\.dylib", REG_EXTENDED);
 	assert(rv == 0);
 	
 	g_dummyLibrary.name = "/dev/null";
@@ -56,6 +61,15 @@ static void initLD()
 	g_dummyLibrary.type = LoadedLibraryDummy;
 	g_dummyLibrary.nativeRef = 0;
 	g_dummyLibrary.exports = 0;
+	
+	try
+	{
+		g_iniConfig = new IniConfig("/etc/darling/dylib.conf");
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+	}
 }
 
 void* __darwin_dlopen(const char* filename, int flag)
@@ -78,6 +92,25 @@ void* __darwin_dlopen(const char* filename, int flag)
 start_search:
 	if (*filename == '/')
 	{
+		if (g_iniConfig && g_iniConfig->hasSection("aliases"))
+		{
+			const IniConfig::ValueMap* m = g_iniConfig->getSection("aliases");
+			if (map_contains(*m, filename))
+			{
+				path = map_get(*m, filename);
+				LOG << "Trying " << path << std::endl;
+				RET_IF( attemptDlopen(path.c_str(), flag) );
+			}
+
+			path = strrchr(filename, '/')+1;
+			if (map_contains(*m, path))
+			{
+				path = map_get(*m, path);
+				LOG << "Trying " << path << std::endl;
+				RET_IF( attemptDlopen(path.c_str(), flag) );
+			}
+		}
+		
 		if (g_sysroot[0])
 		{
 			path = g_sysroot + std::string(filename) + ".so";
@@ -175,6 +208,17 @@ start_search:
 			if (::access(path.c_str(), R_OK) == 0)
 				RET_IF( attemptDlopen(path.c_str(), flag) );
 		}
+
+		if (g_iniConfig && g_iniConfig->hasSection("aliases"))
+		{
+			const IniConfig::ValueMap* m = g_iniConfig->getSection("aliases");
+			if (map_contains(*m, filename))
+			{
+				path = map_get(*m, filename);
+				LOG << "Trying " << path << std::endl;
+				RET_IF( attemptDlopen(path.c_str(), flag) );
+			}
+		}
 		
 		for (int i = 0; i < sizeof(g_searchPath) / sizeof(g_searchPath[0]); i++)
 		{
@@ -227,11 +271,17 @@ void* attemptDlopen(const char* filename, int flag)
 	
 	TRACE2(filename,flag);
 	
-	if (!realpath(filename, name))
+	// We need to run access() here not to use realpath for "libncurses.so.5" for example
+	if (::access(filename, R_OK) == 0)
 	{
-		strcpy(g_ldError, strerror(errno));
-		return 0;
+		if (!realpath(filename, name))
+		{
+			strcpy(g_ldError, strerror(errno));
+			return 0;
+		}
 	}
+	else
+		strcpy(name, filename);
 	
 	if (strcmp(name, "/dev/null") == 0)
 	{

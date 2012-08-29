@@ -55,10 +55,10 @@ int __darwin_sysctl(int* name, unsigned int namelen,
 		switch (name[1])
 		{
 		case HW_NCPU:
-			val = sysconf(_SC_NPROCESSORS_ONLN);
+			val = ::sysconf(_SC_NPROCESSORS_CONF);
 			break;
 		case HW_AVAILCPU:
-			val = ::sysconf(_SC_NPROCESSORS_CONF);
+			val = ::sysconf(_SC_NPROCESSORS_ONLN);
 			break;
 		case HW_PHYSMEM:
 		case HW_USERMEM:
