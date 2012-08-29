@@ -310,6 +310,7 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 					const char* ign_sym = getenv("DYLD_IGN_MISSING_SYMS");
 					//if (!bind->addend)
 					{
+#ifdef __x86_64__
 						if (ign_sym && atoi(ign_sym))
 						{
 							std::cerr << "!!! Undefined symbol: " << name << std::endl;
@@ -320,6 +321,7 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 							sym = reinterpret_cast<char*>(m_pUndefMgr->generateNew(dname));
 						}
 						else
+#endif
 						{
 							std::stringstream ss;
 							ss << "Undefined symbol: " << name;

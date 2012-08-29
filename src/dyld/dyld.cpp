@@ -46,8 +46,10 @@ int main(int argc, char** argv, char** envp)
 	setlocale(LC_CTYPE, "");
 	if (getenv("DYLD_MTRACE") && atoi(getenv("DYLD_MTRACE")))
 		mtrace();
+#ifdef __x86_64__
 	if (getenv("DYLD_TRAMPOLINE") && atoi(getenv("DYLD_TRAMPOLINE")))
 		g_trampoline = true;
+#endif
 
 	g_mainBinary = MachO::readFile(argv[1], ARCH_NAME);
 	try
