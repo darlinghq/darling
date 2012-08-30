@@ -548,10 +548,18 @@ int __darwin_dladdr(void *addr, Dl_info *info)
 	Darling::MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
 	
+	if (!g_file_map.findSymbolInfo(addr, info))
+	{
+		strcpy(g_ldError, "Specified address not mapped to a Mach-O file");
+		return -1;
+	}
+	if (!info->dli_fbase)
+	{
+		strcpy(g_ldError, "Specified address not resolvable to a symbol");
+		return -1;
+	}
 	
-	// TODO: implement - examine g_file_map
-	strcpy(g_ldError, "Not implemented yet");
-	return -1;
+	return 0;
 }
 
 extern "C" void* dyld_stub_binder()

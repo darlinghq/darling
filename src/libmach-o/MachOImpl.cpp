@@ -107,6 +107,19 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 
 		if (!strcmp(sec.sectname, "__dyld") && !strcmp(sec.segname, "__DATA"))
 			m_dyld_data = sec.addr;
+		if (!strcmp(sec.segname, "__TEXT"))
+		{
+			if (!strcmp(sec.sectname, "__eh_frame"))
+			{
+				m_eh_frame.first = sec.addr;
+				m_eh_frame.second = sec.addr + sec.size;
+			}
+			else if (!strcmp(sec.sectname, "__unwind_info"))
+			{
+				m_unwind_info.first = sec.addr;
+				m_unwind_info.second = sec.addr + sec.size;
+			}
+		}
 
 		int section_type = sec.flags & SECTION_TYPE;
 		switch (section_type)

@@ -105,6 +105,9 @@ public:
 
 	const std::vector<uint64_t>& init_funcs() const { return m_init_funcs; }
 	const std::vector<uint64_t>& exit_funcs() const { return m_exit_funcs; }
+	
+	std::pair<uint64_t,uint64_t> get_eh_frame() const { return m_eh_frame; }
+	std::pair<uint64_t,uint64_t> get_unwind_info() const { return m_unwind_info; }
 
 	uint64_t dyld_data() const { return m_dyld_data; }
 
@@ -127,6 +130,8 @@ public:
 	std::vector<uint64_t> m_init_funcs;
 	std::vector<uint64_t> m_exit_funcs;
 	uint64_t m_dyld_data;
+	std::pair<uint64_t,uint64_t> m_eh_frame;
+	std::pair<uint64_t,uint64_t> m_unwind_info;
 	bool m_is64;
 	int m_ptrsize;
 	int m_fd;

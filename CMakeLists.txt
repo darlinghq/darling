@@ -5,6 +5,7 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+enable_language(ASM_NASM)
 ADD_DEFINITIONS(-ggdb -DDEBUG)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -47,6 +48,7 @@ set(dyld_SRCS
 	src/dyld/MachOLoader.cpp
 	src/dyld/UndefinedFunction.cpp
 	src/dyld/Trampoline.cpp
+	src/dyld/trampoline_helper.asm
 	src/dyld/ld.cpp
 	src/dyld/dyld.cpp
 )

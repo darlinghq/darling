@@ -229,10 +229,6 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 	size_t seen_weak_bind_index = 0;
 	size_t seen_weak_binds_orig_size = m_seen_weak_binds.size();
 
-	unsigned int common_code_size = (unsigned int)m_trampoline.size();
-	// Ensure that we won't change the address.
-	m_trampoline.reserve(common_code_size +
-						(1 + 6 + 5 + 10 + 3 + 2 + 1) * mach.binds().size());
 	g_bound_names.resize(mach.binds().size());
 
 	for (size_t i = 0; i < mach.binds().size(); i++)
@@ -527,7 +523,7 @@ void MachOLoader::boot( uint64_t entry, int argc, char** argv, char** envp)
 // GDB helper
 extern "C" const char* dumpSymbol(void* p)
 {
-	return g_file_map.dumpSymbol(p);
+	return g_file_map.gdbInfoForAddr(p);
 }
 #endif
 

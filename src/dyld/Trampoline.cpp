@@ -6,8 +6,14 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 TrampolineMgr* TrampolineMgr::m_pInstance = 0;
+int TrampolineMgr::m_nDepth = 0;
+std::map<std::string, TrampolineMgr::FunctionInfo> TrampolineMgr::m_functionInfo;
+
+extern "C" void reg_saveall();
+extern "C" void reg_restoreall();
 
 TrampolineMgr::TrampolineMgr(int entries)
 	: m_nNext(0)
@@ -27,13 +33,12 @@ TrampolineMgr::TrampolineMgr(int entries)
 
 	m_pMem = static_cast<Trampoline*>(mem);
 	m_nMax = bytes / sizeof(Trampoline);
-	m_nBytes = bytes;
 
 }
 
 TrampolineMgr::~TrampolineMgr()
 {
-	::munmap(m_pMem, m_nBytes);
+	::munmap(m_pMem, m_nMax * sizeof(Trampoline));
 }
 
 void* TrampolineMgr::generate(void* targetAddr, const char* name)
@@ -46,7 +51,7 @@ void* TrampolineMgr::generate(void* targetAddr, const char* name)
 		throw std::runtime_error("TrampolineMgr buffer full");
 
 	m_entries.push_back(e);
-	m_pMem[m_nNext].init(m_nNext, TrampolineMgr::printInfo);
+	m_pMem[m_nNext].init(m_nNext, TrampolineMgr::printInfo, TrampolineMgr::printInfoR);
 	
 	void* addr = &m_pMem[m_nNext++];
 	// std::cout << "Trampoline for " << name << " is at " << addr << std::endl;
@@ -93,32 +98,209 @@ void TrampolineMgr::loadMemoryMap()
 	}
 }
 
-void* TrampolineMgr::printInfo(uint32_t index)
+void TrampolineMgr::loadFunctionInfo(const char* path)
 {
-	std::cerr << m_pInstance->m_entries[index].name << "() called\n" << std::flush;
+	std::ifstream file(path);
+	std::string line;
+	
+	while (std::getline(file, line))
+	{
+		size_t p = line.find(':');
+		if (p == std::string::npos)
+			continue;
+		
+		FunctionInfo info;
+		info.retType = line.at(p+1);
+		info.arguments = line.substr(p+2);
+		
+		m_functionInfo[line.substr(0, p)] = info;
+	}
+}
+
+void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
+{	
+	FunctionInfo* info = 0;
+	const std::string& name = m_pInstance->m_entries[index].name;
+	auto it = m_functionInfo.find(name);
+	
+	std::cerr << std::string(m_nDepth, ' ');
+	
+	if (it != m_functionInfo.end())
+	{
+		ArgumentWalker w(stack);
+		bool first = true;
+		
+		std::cerr << name << '(';
+		
+		for (char c : it->second.arguments)
+		{
+			if (!first)
+				std::cerr << ", ";
+			else
+				first = false;
+			
+			std::cerr << w.next(c);
+		}
+		std::cerr << ")\n" << std::flush;
+	}
+	else
+		std::cerr << m_pInstance->m_entries[index].name << "(?)\n" << std::flush;
+	m_pInstance->m_entries[index].retAddr = stack->retAddr;
+	
+	m_nDepth++;
+	
 	return m_pInstance->m_entries[index].addr;
 }
 
-void Trampoline::init(uint32_t i, void* (*pDebug)(uint32_t))
+void* TrampolineMgr::printInfoR(uint32_t index, CallStack* stack)
 {
-	// See /tools/trampoline.asm for source
+	void* rv = m_pInstance->m_entries[index].retAddr;
 	
-	memcpy(code1, "\x50\x53\x57\x56\x52\x51\x41\x50\x41\x51\x48\x81\xec\x80\x00\x00\x00\xf3\x0f\x7f"
-			"\x04\x24\xf3\x0f\x7f\x4c\x24\x10\xf3\x0f\x7f\x54\x24\x20\xf3\x0f"
-			"\x7f\x5c\x24\x30\xf3\x0f\x7f\x64\x24\x40\xf3\x0f\x7f\x6c\x24\x50"
-			"\xf3\x0f\x7f\x74\x24\x60\xf3\x0f\x7f\x7c\x24\x70\xbf", sizeof(code1));
-	index = i;
-	code2[0] = 0x48;
-	code2[1] = 0xba;
-	debugFcn = uint64_t(pDebug);
+	m_pInstance->m_entries[index].retAddr = 0;
+	m_nDepth--;
 	
-	memcpy(code3, "\xff\xd2\x49\x89\xc3"
-			"\xf3\x0f\x6f\x7c\x24\x70\xf3\x0f\x6f\x74\x24\x60\xf3\x0f\x6f\x6c"
-			"\x24\x50\xf3\x0f\x6f\x64\x24\x40\xf3\x0f\x6f\x5c\x24\x30\xf3\x0f"
-			"\x6f\x54\x24\x20\xf3\x0f\x6f\x4c\x24\x10\xf3\x0f\x6f\x04\x24\x48"
-			"\x81\xc4\x80\x00\x00\x00\x41\x59\x41\x58\x59\x5a\x5e\x5f\x5b\x58\x41\xff\xe3", sizeof(code3));
+	const std::string& name = m_pInstance->m_entries[index].name;
+	auto it = m_functionInfo.find(name);
+	
+	std::cerr << std::string(m_nDepth, ' ');
+	
+	if (it != m_functionInfo.end())
+	{
+		ArgumentWalker w(stack);
+		std::cerr << "-> " << w.ret(it->second.retType) << '\n' << std::flush;
+	}
+	else
+		std::cerr << "-> ?\n" << std::flush;
+	
+	// standard retval in rax, double in xmm0
+	return rv;
 }
 
+void Trampoline::init(uint32_t i, void* (*pDebug)(uint32_t,TrampolineMgr::CallStack*), void* (*pDebugR)(uint32_t,TrampolineMgr::CallStack*))
+{
+	// See trampoline in trampoline_helper.asm for source
+	memcpy(this, "\x49\xba\xb6\xb5\xb4\xb3\xb2\xb1\xb0\x00\x41\xff\xd2\xbf"
+		"\x56\x34\x12\x00\x48\x89\xe6\x48\xb9\xff\xee\xdd\xcc\xbb\xaa\x00\x00"
+		"\xff\xd1\x49\x89\xc3\x49\xba\xc6\xc5\xc4\xc3\xc2\xc1\xc0\x00\x41\xff"
+		"\xd2\x4c\x8d\x15\x08\x00\x00\x00\x4c\x89\x14\x24\x41\xff\xe3\x90\x49"
+		"\xba\xb6\xb5\xb4\xb3\xb2\xb1\xb0\x00\x41\xff\xd2\xbf\x56\x34\x12\x00"
+		"\x48\x89\xe6\x48\xb9\xa6\xa5\xa4\xa3\xa2\xa1\xa0\x00\xff\xd1\x49\x89"
+		"\xc3\x49\xba\xc6\xc5\xc4\xc3\xc2\xc1\xc0\x00\x41\xff\xd2\x41\xff\xe3",
+		sizeof(*this)
+	);
+	
+	this->reg_saveall = reinterpret_cast<uint64_t>(::reg_saveall);
+	this->reg_saveall2 = reinterpret_cast<uint64_t>(::reg_saveall);
+	this->reg_restoreall = reinterpret_cast<uint64_t>(::reg_restoreall);
+	this->reg_restoreall2 = reinterpret_cast<uint64_t>(::reg_restoreall);
+	this->index = i;
+	this->index2 = i;
+	this->debugFcn = reinterpret_cast<uint64_t>(pDebug);
+	this->debugFcnR = reinterpret_cast<uint64_t>(pDebugR);
+}
+
+TrampolineMgr::ArgumentWalker::ArgumentWalker(CallStack* stack)
+: m_stack(stack), m_indexInt(0), m_indexXmm(0)
+{
+}
+
+uint64_t TrampolineMgr::ArgumentWalker::next64bit()
+{
+	uint64_t rv;
+	if (m_indexInt == 0)
+		rv = m_stack->rdi;
+	else if (m_indexInt == 1)
+		rv = m_stack->rsi;
+	else if (m_indexInt == 2)
+		rv = m_stack->rdx;
+	else if (m_indexInt == 3)
+		rv = m_stack->rcx;
+	else if (m_indexInt == 4)
+		rv = m_stack->r8;
+	else if (m_indexInt == 5)
+		rv = m_stack->r9;
+	else
+		throw std::out_of_range("7th int argument not supported");
+	
+	m_indexInt++;
+	return rv;
+}
+
+long double TrampolineMgr::ArgumentWalker::nextDouble()
+{
+	long double rv;
+	if (m_indexXmm >= 0 && m_indexXmm <= 7)
+		return m_stack->xmm[m_indexXmm];
+	else
+		throw std::out_of_range("8th double argument not supported");
+	
+	m_indexXmm++;
+	return rv;
+}
+
+std::string TrampolineMgr::ArgumentWalker::next(char type)
+{
+	std::stringstream ss;
+	
+	if (type == 'u')
+		ss << next64bit();
+	else if (type == 'i')
+	{
+		uint64_t u = next64bit();
+		ss << *((int64_t*) &u);
+	}
+	else if (type == 'f')
+	{
+		long double d = nextDouble();
+		ss << *((float*)&d);
+	}
+	else if (type == 'd')
+	{
+		long double d = nextDouble();
+		ss << *((double*)&d);
+	}
+	else if (type == 'p')
+		ss << "0x" << std::hex << (void*)next64bit() << std::dec;
+	else if (type == 's')
+		ss << (const char*)next64bit();
+	else if (type == 'v')
+		ss << "(void)";
+	else
+		ss << '?';
+	
+	return ss.str();
+}
+
+std::string TrampolineMgr::ArgumentWalker::ret(char type)
+{
+	std::stringstream ss;
+	
+	if (type == 'u')
+		ss << m_stack->rax;
+	else if (type == 'i')
+	{
+		uint64_t u = m_stack->rax;
+		ss << *((int64_t*) &u);
+	}
+	else if (type == 'f')
+	{
+		long double d = m_stack->xmm[0];
+		ss << *((float*)&d);
+	}
+	else if (type == 'd')
+	{
+		long double d = m_stack->xmm[0];
+		ss << *((double*)&d);
+	}
+	else if (type == 'p')
+		ss << "0x" << std::hex << (void*)m_stack->rax << std::dec;
+	else if (type == 's')
+		ss << (const char*)m_stack->rax;
+	else
+		ss << '?';
+	
+	return ss.str();
+}
 
 #ifdef TEST
 
@@ -130,6 +312,7 @@ double mytestfunc(int a, int b, double c)
 int main()
 {
 	TrampolineMgr* mgr = new TrampolineMgr;
+	TrampolineMgr::loadFunctionInfo("/tmp/fi");
 	
 	double (*pFunc)(int,int,double) = (double (*)(int,int,double)) mgr->generate((void*) &mytestfunc, "mytestfunc");
 	std::cout << pFunc(2,3,0.5) << std::endl;
