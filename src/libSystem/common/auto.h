@@ -1,5 +1,7 @@
 #ifndef COMMON_AUTO_H
 #define COMMON_AUTO_H
+#include "path.h"
+#include "../libc/errno.h"
 
 inline bool retvalOK(void* p) { return p != 0; }
 inline bool retvalOK(int p) { return p != -1; }
@@ -32,6 +34,17 @@ template<typename RetVal, typename Func, typename... Params> RetVal AutoErrno(Fu
 	if (!retvalOK(rv))
 		errnoOut();
 	return rv;
+}
+
+namespace Darling
+{
+	struct MappedFlag
+	{
+		int darwin;
+		int native;
+	};
+	int flagsDarwinToNative(MappedFlag* flags, size_t count, int darwin);
+	int flagsNativeToDarwin(MappedFlag* flags, size_t count, int native);
 }
 
 #endif

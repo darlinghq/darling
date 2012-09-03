@@ -1,6 +1,7 @@
 #ifndef DARWIN_ERRNO_H
 #define DARWIN_ERRNO_H
 #include <stdarg.h>
+#include <stddef.h>
 #include <errno.h>
 
 #ifdef __cplusplus

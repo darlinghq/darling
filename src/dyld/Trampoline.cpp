@@ -62,6 +62,8 @@ bool TrampolineMgr::isExecutable(void* addr)
 {
 	if (m_memoryMap.empty())
 		loadMemoryMap();
+		
+	// std::cout << "isExecutable(): " << addr << std::endl;
 	
 	for (auto it = m_memoryMap.begin(); it != m_memoryMap.end(); it++)
 	{
@@ -91,9 +93,9 @@ void TrampolineMgr::loadMemoryMap()
 		pages.start = (void*) strtol(s, (char**) &s, 16);
 		s++;
 		pages.end = (void*) strtol(s, (char**) &s, 16);
-		pages.executable = *(s+3) == 'x';
+		pages.executable = (*(s+3) == 'x') && (*(s+2) == '-'); // not writable
 		
-		// std::cout << line << " -> " << pages.start << " - " << pages.end << " " << pages.executable << std::endl;
+		//std::cout << line << " -> " << pages.start << " - " << pages.end << " " << pages.executable << std::endl;
 		m_memoryMap.push_back(pages);
 	}
 }
@@ -204,6 +206,12 @@ TrampolineMgr::ArgumentWalker::ArgumentWalker(CallStack* stack)
 {
 }
 
+TrampolineMgr::ArgumentWalker::ArgumentWalker(CallStack* stack, OutputArguments args)
+: m_stack(stack), m_indexInt(0), m_indexXmm(0), m_pointers(args)
+{
+}
+
+
 uint64_t TrampolineMgr::ArgumentWalker::next64bit()
 {
 	uint64_t rv;
@@ -241,6 +249,7 @@ long double TrampolineMgr::ArgumentWalker::nextDouble()
 std::string TrampolineMgr::ArgumentWalker::next(char type)
 {
 	std::stringstream ss;
+	void* ptr;
 	
 	if (type == 'u')
 		ss << next64bit();
@@ -259,14 +268,27 @@ std::string TrampolineMgr::ArgumentWalker::next(char type)
 		long double d = nextDouble();
 		ss << *((double*)&d);
 	}
-	else if (type == 'p')
-		ss << "0x" << std::hex << (void*)next64bit() << std::dec;
+	else if (type == 'p' || isupper(type))
+	{
+		ptr = (void*) next64bit();
+		ss << ptr;
+	}
+	else if (type == 'c')
+		ss << char(next64bit());
 	else if (type == 's')
-		ss << (const char*)next64bit();
+	{
+		const char* s = (const char*) next64bit();
+		ss << (void*)s;
+		if (s)
+			ss << " \"" << safeString(s) << '"';
+	}
 	else if (type == 'v')
 		ss << "(void)";
 	else
 		ss << '?';
+		
+	if (isupper(type))
+		m_pointers.push_back(std::make_pair(tolower(type), ptr));
 	
 	return ss.str();
 }
@@ -277,6 +299,8 @@ std::string TrampolineMgr::ArgumentWalker::ret(char type)
 	
 	if (type == 'u')
 		ss << m_stack->rax;
+	else if (type == 'c')
+		ss << char(m_stack->rax);
 	else if (type == 'i')
 	{
 		uint64_t u = m_stack->rax;
@@ -292,14 +316,43 @@ std::string TrampolineMgr::ArgumentWalker::ret(char type)
 		long double d = m_stack->xmm[0];
 		ss << *((double*)&d);
 	}
-	else if (type == 'p')
-		ss << "0x" << std::hex << (void*)m_stack->rax << std::dec;
+	else if (type == 'p' || isupper(type))
+		ss << (void*)m_stack->rax << std::dec;
 	else if (type == 's')
-		ss << (const char*)m_stack->rax;
+	{
+		const char* s = (const char*) m_stack->rax;
+		ss << (void*)s << " \"" <<  safeString(s) << '"';
+	}
 	else
 		ss << '?';
 	
 	return ss.str();
+}
+
+std::string TrampolineMgr::ArgumentWalker::safeString(const char* in)
+{
+	if (!in)
+		return std::string();
+	
+	std::stringstream rv;
+	while (*in)
+	{
+		if (*in >= 32)
+			rv << *in;
+		else
+		{
+			if (*in == '\n')
+				rv << "\\n";
+			else if (*in == '\r')
+				rv << "\\r";
+			else if (*in == '\t')
+				rv << "\\t";
+			else
+				rv << "\\x" << std::hex << int(*in);
+		}
+		in++;
+	}
+	return rv.str();
 }
 
 #ifdef TEST
@@ -315,7 +368,9 @@ int main()
 	TrampolineMgr::loadFunctionInfo("/tmp/fi");
 	
 	double (*pFunc)(int,int,double) = (double (*)(int,int,double)) mgr->generate((void*) &mytestfunc, "mytestfunc");
-	std::cout << pFunc(2,3,0.5) << std::endl;
+	int (*pPrintf)(FILE* f, const char*,...) = (int (*)(FILE* f, const char*,...)) mgr->generate((void*) &fprintf, "printf");
+	//std::cout << pFunc(2,3,0.5) << std::endl;
+	pPrintf(stdout, "Hello world: %s\n", "Test");
 	
 	delete mgr;
 	return 0;

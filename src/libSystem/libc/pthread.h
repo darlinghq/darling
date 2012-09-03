@@ -15,6 +15,12 @@ struct __darwin_pthread_rwlock_t
 	uint32_t signature;
 	pthread_rwlock_t native; // this will fit on Linux
 };
+struct __darwin_pthread_mutex_t
+{
+	enum { SIGNATURE_MACRO_INITIALIZED = 0x32aaaba7, SIGNATURE_MACRO_INITIALIZED_R = 0x32AAABA2, SIGNATURE_MACRO_INITIALIZED_E = 0x32AAABA1, SIGNATURE_NATIVE_INITIALIZED = 0x12345678 };
+	uint32_t signature;
+	pthread_mutex_t native; // this will fit on Linux (40 vs 64)
+};
 
 extern "C"
 {
@@ -32,6 +38,13 @@ int __darwin_pthread_rwlock_trywrlock(__darwin_pthread_rwlock_t *rwlock);
 int __darwin_pthread_rwlock_wrlock(__darwin_pthread_rwlock_t *rwlock);
 int __darwin_pthread_rwlock_timedrdlock(__darwin_pthread_rwlock_t* rwlock, const struct timespec* abs_timeout);
 int __darwin_pthread_rwlock_unlock(__darwin_pthread_rwlock_t *rwlock);
+
+// pthread_mutex
+int __darwin_pthread_mutex_init(__darwin_pthread_mutex_t*, const pthread_mutexattr_t* attr);
+int __darwin_pthread_mutex_destroy(__darwin_pthread_mutex_t* mutex);
+int __darwin_pthread_mutex_lock(__darwin_pthread_mutex_t* mutex);
+int __darwin_pthread_mutex_trylock(__darwin_pthread_mutex_t* mutex);
+int __darwin_pthread_mutex_unlock(__darwin_pthread_mutex_t* mutex);
 
 // TODO: add other pthread functions for errno translation
 

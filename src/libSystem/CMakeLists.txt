@@ -58,6 +58,8 @@ set(libc_SRCS
 	libc/misc.cpp
 	libc/pthread.cpp
 	libc/sysconf.cpp
+	libc/net.cpp
+	common/auto.cpp
 	common/path.cpp
 )
 

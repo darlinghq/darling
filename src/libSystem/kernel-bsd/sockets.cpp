@@ -11,7 +11,9 @@
 #include <cstring>
 #include <poll.h>
 
-static short familyDarwinToLinux(short f)
+using namespace Darling;
+
+short Darling::familyDarwinToLinux(short f)
 {
 	switch (f)
 	{
@@ -32,7 +34,7 @@ static short familyDarwinToLinux(short f)
 	}
 }
 
-static short familyLinuxToDarwin(short f)
+short Darling::familyLinuxToDarwin(short f)
 {
 	switch (f)
 	{
@@ -53,18 +55,20 @@ static short familyLinuxToDarwin(short f)
 	}
 }
 
-static bool sockaddrFixupIn(struct sockaddr* addr, socklen_t len)
+bool Darling::sockaddrFixupIn(struct sockaddr* addr, socklen_t len)
 {
 	if (offsetof(struct sockaddr,sa_family) == 0)
 	{
 		// BSD/Darwin has offset of 1
-		memmove(addr, reinterpret_cast<char*>(addr)+1, len-1);
+		//memmove(addr, reinterpret_cast<char*>(addr)+1, len-1);
+		short f = *reinterpret_cast<short*>(reinterpret_cast<char*>(addr)+1);
+		addr->sa_family = f;
 	}
 	addr->sa_family = familyDarwinToLinux(addr->sa_family);
 	return addr->sa_family != -1;
 }
 
-static bool sockaddrFixupOut(struct sockaddr* addr, socklen_t len)
+bool Darling::sockaddrFixupOut(struct sockaddr* addr, socklen_t len)
 {
 	bool ok;
 	addr->sa_family = familyLinuxToDarwin(addr->sa_family);
@@ -73,7 +77,9 @@ static bool sockaddrFixupOut(struct sockaddr* addr, socklen_t len)
 	if (offsetof(struct sockaddr,sa_family) == 0)
 	{
 		// BSD/Darwin has offset of 1
-		memmove(reinterpret_cast<char*>(addr)+1, addr, len-1);
+		// memmove(reinterpret_cast<char*>(addr)+1, addr, len-1);
+		short f = addr->sa_family;
+		*reinterpret_cast<short*>(reinterpret_cast<char*>(addr)+1) = f;
 	}
 	return ok;
 }
@@ -220,13 +226,13 @@ int __darwin_setsockopt(int socket, int level, int option_name, const void *opti
 
 int __darwin_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
-	struct sockaddr* ma = reinterpret_cast<struct sockaddr*>(alloca(sizeof(addrlen)));
+	struct sockaddr* ma = reinterpret_cast<struct sockaddr*>(malloc(addrlen));
 	
 	memcpy(ma, addr, addrlen);
-	ma->sa_family = familyDarwinToLinux(addr->sa_family);
 	
-	if (ma->sa_family == -1)
+	if (!sockaddrFixupIn(ma, addrlen))
 	{
+		free(ma);
 		errno = DARWIN_EAFNOSUPPORT;
 		return -1;
 	}
@@ -235,6 +241,7 @@ int __darwin_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 		int rv = ::connect(sockfd, ma, addrlen);
 		if (rv == -1)
 			errnoOut();
+		free(ma);
 		return rv;
 	}
 }

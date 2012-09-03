@@ -45,4 +45,12 @@ int __darwin_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
 }
 
+namespace Darling
+{
+	short familyDarwinToLinux(short f);
+	short familyLinuxToDarwin(short f);
+	bool sockaddrFixupIn(struct sockaddr* addr, socklen_t len);
+	bool sockaddrFixupOut(struct sockaddr* addr, socklen_t len);
+}
+
 #endif

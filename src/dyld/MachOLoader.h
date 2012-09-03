@@ -64,7 +64,7 @@ public:
 	const Exports& getExports() const { return m_exports; }
 private:
 	// Jumps to the application entry
-	void boot(uint64_t entry, int argc, char** argv, char** envp);
+	void boot(uint64_t entry, int argc, char** argv, char** envp, char** apple);
 private:
 	intptr m_last_addr;
 	std::vector<uint64_t> m_init_funcs;

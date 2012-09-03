@@ -29,15 +29,11 @@ extern int g_argc;
 extern char** g_argv;
 extern bool g_trampoline;
 
-static void doNothing()
-{
-}
-
-static bool lookupDyldFunction(const char* name, uint64_t* addr)
+static bool lookupDyldFunction(const char* name, void** addr)
 {
 	LOG << "lookupDyldFunction: " << name <<std::endl;
-	*addr = (int64_t)&doNothing;
-	return true;
+	*addr = dlsym(dlopen(0, 0), name);
+	return (*addr) != 0;
 }
 
 static uint64_t alignMem(uint64_t p, uint64_t a)
@@ -74,15 +70,19 @@ MachOLoader::MachOLoader()
 	m_pUndefMgr = new UndefMgr;
 
 	if (g_trampoline)
+	{
 		m_pTrampolineMgr = new TrampolineMgr;
+		
+		const char* info = getenv("TRAMPOLINE_INFO");
+		if (info)
+			TrampolineMgr::loadFunctionInfo(info);
+	}
 }
 
 void MachOLoader::loadDylibs(const MachO& mach)
 {
-	for (size_t i = 0; i < mach.dylibs().size(); i++)
+	for (std::string dylib : mach.dylibs())
 	{
-		std::string dylib = mach.dylibs()[i];
-
 		// __darwin_dlopen checks if already loaded
 		// automatically adds a reference if so
 		
@@ -106,9 +106,8 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 		m_pTrampolineMgr->invalidateMemoryMap();
 
 	const std::vector<Segment*>& segments = getSegments(mach);
-	for (size_t i = 0; i < segments.size(); i++)
+	for (Segment* seg : segments)
 	{
-		Segment* seg = segments[i];
 		const char* name = seg->segname;
 		if (!strcmp(name, SEG_PAGEZERO))
 			continue;
@@ -136,7 +135,7 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 			LOG << "will rebase: filename=" << mach.filename()
 				<< ", vmaddr=" << (void*)vmaddr
 				<< ", last_addr=" << (void*)m_last_addr <<std::endl;
-			assert(i == 0);
+			assert(seg == segments[0]);
 			vmaddr = m_last_addr;
 			*slide = vmaddr - seg->vmaddr;
 		}
@@ -185,14 +184,13 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 
 void MachOLoader::doRebase(const MachO& mach, intptr slide)
 {
-	for (size_t i = 0; i < mach.rebases().size(); i++)
+	for (const MachO::Rebase* rebase : mach.rebases())
 	{
-		const MachO::Rebase& rebase = *mach.rebases()[i];
-		switch (rebase.type)
+		switch (rebase->type)
 		{
 			case REBASE_TYPE_POINTER:
 			{
-				char** ptr = (char**)(rebase.vmaddr + slide);
+				char** ptr = (char**)(rebase->vmaddr + slide);
 				/*LOG << "rebase: " << i << ": " << (void*)rebase.vmaddr << ' '
 					<< (void*)*ptr << " => "
 					<< (void*)(*ptr + slide) << " @" << ptr <<std::endl;*/
@@ -203,7 +201,7 @@ void MachOLoader::doRebase(const MachO& mach, intptr slide)
 			default:
 			{
 				std::stringstream ss;
-				ss << "Unknown rebase type: " << rebase.type;
+				ss << "Unknown rebase type: " << rebase->type;
 				
 				throw std::runtime_error(ss.str());
 			}
@@ -213,11 +211,10 @@ void MachOLoader::doRebase(const MachO& mach, intptr slide)
 
 void MachOLoader::loadInitFuncs(const MachO& mach, intptr slide)
 {
-	for (size_t i = 0; i < mach.init_funcs().size(); i++)
+	for (intptr addr : mach.init_funcs())
 	{
-		intptr addr = mach.init_funcs()[i] + slide;
-		LOG << "Registering init func " << (void*)addr
-			<< " from " << mach.filename() << std::endl;
+		addr += slide;
+		LOG << "Registering init func " << (void*)addr << " from " << mach.filename() << std::endl;
 		m_init_funcs.push_back(addr);
 	}
 }
@@ -231,10 +228,8 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 
 	g_bound_names.resize(mach.binds().size());
 
-	for (size_t i = 0; i < mach.binds().size(); i++)
+	for (MachO::Bind* bind : mach.binds())
 	{
-		MachO::Bind* bind = mach.binds()[i];
-
 		if (bind->type == BIND_TYPE_POINTER)
 		{
 			std::string name = bind->name.substr(1);
@@ -356,13 +351,12 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 {
 	exports->rehash(exports->size() + mach.exports().size());
 	
-	for (size_t i = 0; i < mach.exports().size(); i++)
+	for (MachO::Export* exp : mach.exports())
 	{
-		MachO::Export exp = *mach.exports()[i];
-		exp.addr += base;
+		exp->addr += base;
 		// TODO(hamaji): Not 100% sure, but we may need to consider weak symbols.
-		if (!exports->insert(make_pair(exp.name, exp)).second)
-			fprintf(stderr, "duplicated exported symbol: %s\n", exp.name.c_str());
+		if (!exports->insert(make_pair(exp->name, *exp)).second)
+			fprintf(stderr, "duplicated exported symbol: %s\n", exp->name.c_str());
 	}
 }
 
@@ -455,7 +449,7 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 	{
 		LOG << "booting from " << (void*)mach.entry() << "..." << std::endl;
 		LOG << "==========\n";
-		boot(mach.entry(), argc, argv, envp);
+		boot(mach.entry(), argc, argv, envp, apple);
 	}
 	else if (mach.main())
 	{
@@ -471,52 +465,38 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 		throw std::runtime_error("No entry point found");
 }
 
-void MachOLoader::boot( uint64_t entry, int argc, char** argv, char** envp)
+static inline int findLast(char** array)
+{
+	for (int i = 0; ; i++)
+	{
+		if (!array[i])
+			return i;
+	}
+}
+
+void MachOLoader::boot( uint64_t entry, int argc, char** argv, char** envp, char** apple)
 {
 #ifdef __x86_64__
-  // 0x08: argc
-  // 0x10: argv[0]
-  // 0x18: argv[1]
-  //  ...: argv[n]
-  //       0
-  //       envp[0]
-  //       envp[1]
-  //       envp[n]
-  
-  // TODO: add 'apple'!
-  
-  __asm__ volatile(" movl %1, %%eax;\n"
-                   " mov %2, %%rdx;\n"
-                   " pushq $0;\n"
-                   // TODO(hamaji): envp
-                   " pushq $0;\n"
-                   ".loop64:\n"
-                   " subq $8, %%rdx;\n"
-                   " pushq (%%rdx);\n"
-                   " dec %%eax;\n"
-                   " jnz .loop64;\n"
-                   " movl %1, %%eax;\n"
-                   " pushq %%rax;\n"
-                   " jmp *%0;\n"
-                   ::"r"(entry), "r"(argc), "r"(argv + argc), "r"(envp)
-                   :"%rax", "%rdx");
-  //fprintf(stderr, "done!\n");
+#	define PUSH(val) __asm__ volatile("pushq %0" :: "r"(uint64_t(val)) :)
+#	define JUMP(addr) __asm__ volatile("jmpq *%0" :: "m"(addr) :)
 #else
-  __asm__ volatile(" mov %1, %%eax;\n"
-                   " mov %2, %%edx;\n"
-                   " push $0;\n"
-                   ".loop32:\n"
-                   " sub $4, %%edx;\n"
-                   " push (%%edx);\n"
-                   " dec %%eax;\n"
-                   " jnz .loop32;\n"
-                   " mov %1, %%eax;\n"
-                   " push %%eax;\n"
-                   " jmp *%0;\n"
-                   // TODO(hamaji): Fix parameters
-                   ::"r"(entry), "r"(argc), "r"(argv + argc), "g"(envp)
-                   :"%eax", "%edx");
+#	define PUSH(val) __asm__ volatile("pushl %0" :: "r"(uint32_t(val)) :)
+#	define JUMP(addr) __asm__ volatile("jmp *%0" :: "r"(addr) :)
 #endif
+
+	for (int i = findLast(apple); i >= 0; i--)
+		PUSH(apple[i]);
+
+	for (int i = findLast(envp); i >= 0; i--)
+		PUSH(envp[i]);
+
+	assert(!argv[argc]);
+
+	for (int i = argc; i >= 0; i--)
+		PUSH(argv[i]);
+
+	PUSH(argc);
+	JUMP(entry);
 }
 
 #ifdef DEBUG

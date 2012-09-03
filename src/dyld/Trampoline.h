@@ -34,11 +34,13 @@ private:
 	static void* printInfo(uint32_t index, CallStack* stack);
 	static void* printInfoR(uint32_t index, CallStack* stack);
 private:
+	typedef std::vector<std::pair<char,void*> > OutputArguments;
 	struct AddrEntry
 	{
 		std::string name;
 		void* addr;
 		void* retAddr; // not reentrant
+		OutputArguments pointers; // not reentrant
 	};
 	struct MemoryPages
 	{
@@ -58,13 +60,18 @@ private:
 	{
 	public:
 		ArgumentWalker(CallStack* stack);
+		ArgumentWalker(CallStack* stack, OutputArguments args /* for printInfoR only */);
 		uint64_t next64bit();
 		long double nextDouble();
 		std::string next(char type);
 		std::string ret(char type);
+		OutputArguments getOutputArguments() { return m_pointers; }
+	private:
+		static std::string safeString(const char* in);
 	private:
 		CallStack* m_stack;
 		int m_indexInt, m_indexXmm;
+		OutputArguments m_pointers;
 	};
 	
 	static TrampolineMgr* m_pInstance;

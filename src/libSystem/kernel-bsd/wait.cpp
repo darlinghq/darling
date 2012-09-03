@@ -31,5 +31,5 @@ pid_t __darwin_wait4(pid_t pid, int *stat_loc, int options, struct rusage *rusag
 pid_t __darwin_waitpid(pid_t pid, int *stat_loc, int options)
 {
 	pid_t rv = waitpid(pid, stat_loc, options);
-	
+	return rv; // TODO
 }

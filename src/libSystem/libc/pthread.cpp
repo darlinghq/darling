@@ -64,6 +64,41 @@ template<typename Func, typename... Args> int AutoAllocLockGeneric(Func f, __dar
 	return rv;
 }
 
+template<typename Func, typename... Args> int AutoAllocMutexGeneric(Func f, __darwin_pthread_mutex_t* mutex, Args... args)
+{
+	int rv;
+	if (mutex->signature != __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED)
+	{
+		pthread_mutexattr_t mta;
+		pthread_mutexattr_init(&mta);
+		int type;
+
+		switch (mutex->signature)
+		{
+		case __darwin_pthread_mutex_t::SIGNATURE_MACRO_INITIALIZED_R:
+			type = PTHREAD_MUTEX_RECURSIVE;
+			break;
+		case __darwin_pthread_mutex_t::SIGNATURE_MACRO_INITIALIZED_E:
+			type = PTHREAD_MUTEX_ERRORCHECK;
+			break;
+		case __darwin_pthread_mutex_t::SIGNATURE_MACRO_INITIALIZED:
+		default:
+			type = PTHREAD_MUTEX_NORMAL;
+		}
+
+		pthread_mutexattr_settype(&mta, type);
+
+		rv = __darwin_pthread_mutex_init(mutex, &mta);
+		if (rv)
+			return rv;
+	}
+
+	rv = f(&mutex->native, args...);
+	if (rv)
+		rv = errnoLinuxToDarwin(rv);
+	return rv;
+}
+
 int __darwin_pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr, int pshared)
 {
 	pshared = TranslatePshared(pshared);
@@ -123,6 +158,42 @@ int __darwin_pthread_rwlock_timedrdlock(__darwin_pthread_rwlock_t* rwlock, const
 int __darwin_pthread_rwlock_unlock(__darwin_pthread_rwlock_t *rwlock)
 {
 	return AutoAllocLockGeneric(pthread_rwlock_unlock, rwlock);
+}
+
+int __darwin_pthread_mutex_init(__darwin_pthread_mutex_t* mutex, const pthread_mutexattr_t* attr)
+{
+	int rv = pthread_mutex_init(&mutex->native, attr);
+	mutex->signature = __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED; 
+	if (rv)
+		rv = errnoLinuxToDarwin(rv);
+	return rv;
+}
+
+int __darwin_pthread_mutex_destroy(__darwin_pthread_mutex_t* mutex)
+{
+	if (mutex->signature == __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED)
+	{
+		int rv = pthread_mutex_destroy(&mutex->native);
+		if (rv)
+			rv = errnoLinuxToDarwin(rv);
+		return rv;
+	}
+	return 0;
+}
+
+int __darwin_pthread_mutex_lock(__darwin_pthread_mutex_t* mutex)
+{
+	return AutoAllocMutexGeneric(pthread_mutex_lock, mutex);
+}
+
+int __darwin_pthread_mutex_trylock(__darwin_pthread_mutex_t* mutex)
+{
+	return AutoAllocMutexGeneric(pthread_mutex_trylock, mutex);
+}
+
+int __darwin_pthread_mutex_unlock(__darwin_pthread_mutex_t* mutex)
+{
+	return AutoAllocMutexGeneric(pthread_mutex_unlock, mutex);
 }
 
 
