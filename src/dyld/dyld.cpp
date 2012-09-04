@@ -2,6 +2,7 @@
 #include "MachOLoader.h"
 #include "arch.h"
 #include "log.h"
+#include "binfmt_misc.h"
 #include <iostream>
 #include <limits.h>
 #include <cstdlib>
@@ -15,6 +16,9 @@ char g_darwin_executable_path[PATH_MAX];
 char g_loader_path[PATH_MAX];
 char g_sysroot[PATH_MAX] = "";
 bool g_trampoline = false;
+
+extern "C" char* __loader_path;
+char* __loader_path = g_loader_path;
 
 MachO* g_mainBinary = 0;
 MachOLoader* g_loader = 0;
@@ -38,22 +42,38 @@ int main(int argc, char** argv, char** envp)
 		return 1;
 	}
 	
-	if (!::realpath(argv[0], g_loader_path))
-		::strcpy(g_loader_path, argv[0]);
-	if (!::realpath(argv[1], g_darwin_executable_path))
-		::strcpy(g_darwin_executable_path, argv[1]);
-	
-	setlocale(LC_CTYPE, "");
-	if (getenv("DYLD_MTRACE") && atoi(getenv("DYLD_MTRACE")))
-		mtrace();
-#ifdef __x86_64__
-	if (getenv("DYLD_TRAMPOLINE") && atoi(getenv("DYLD_TRAMPOLINE")))
-		g_trampoline = true;
-#endif
-
-	g_mainBinary = MachO::readFile(argv[1], ARCH_NAME);
 	try
 	{
+		if (!::realpath(argv[0], g_loader_path))
+			::strcpy(g_loader_path, argv[0]);
+
+		if (argc == 2)
+		{
+			if (!strcmp(argv[1], "--register"))
+			{
+				Darling::binfmtRegister(g_loader_path);
+				return 0;
+			}
+			else if (!strcmp(argv[1], "--deregister"))
+			{
+				Darling::binfmtDeregister();
+				return 0;
+			}
+		}
+
+		if (!::realpath(argv[1], g_darwin_executable_path))
+			::strcpy(g_darwin_executable_path, argv[1]);
+	
+		setlocale(LC_CTYPE, "");
+		if (getenv("DYLD_MTRACE") && atoi(getenv("DYLD_MTRACE")))
+			mtrace();
+#ifdef __x86_64__
+		if (getenv("DYLD_TRAMPOLINE") && atoi(getenv("DYLD_TRAMPOLINE")))
+			g_trampoline = true;
+#endif
+
+		g_mainBinary = MachO::readFile(argv[1], ARCH_NAME);
+		
 		if (!g_mainBinary)
 			throw std::runtime_error("Cannot open binary file");
 #ifdef __x86_64__

@@ -27,6 +27,7 @@ private:
 
 public:
 	MachOLoader();
+	~MachOLoader();
 	
 	// Maps module segments into the memory
 	void loadSegments(const MachO& mach, intptr* slide, intptr* base);
@@ -50,7 +51,7 @@ public:
 	void loadSymbols(const MachO& mach, intptr slide, intptr base);
 	
 	// Loads a Mach-O file and does all the processing
-	void load(const MachO& mach, Exports* exports = 0);
+	void load(const MachO& mach, std::string sourcePath, Exports* exports = 0);
 	
 	// Dyld data contains an accessor to internal dyld functionality. This stores the accessor pointer.
 	void setupDyldData(const MachO& mach);
@@ -62,6 +63,7 @@ public:
 	void run(MachO& mach, int argc, char** argv, char** envp);
 	
 	const Exports& getExports() const { return m_exports; }
+	
 private:
 	// Jumps to the application entry
 	void boot(uint64_t entry, int argc, char** argv, char** envp, char** apple);
@@ -72,6 +74,7 @@ private:
 	std::vector<std::pair<std::string, char*> > m_seen_weak_binds;
 	UndefMgr* m_pUndefMgr;
 	TrampolineMgr* m_pTrampolineMgr;
+	void* m_pCXX;
 };
 
 #endif

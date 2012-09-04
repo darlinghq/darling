@@ -1,9 +1,11 @@
+#include "config.h"
 #include "MachOLoader.h"
 #include "MachO.h"
 #include "ld.h"
 #include "log.h"
 #include "trace.h"
 #include "FileMap.h"
+#include "stlutils.h"
 #include <limits.h>
 #include <iostream>
 #include <cstring>
@@ -17,12 +19,8 @@
 #include <errno.h>
 #include <dlfcn.h>
 
-#define FLAGS_TRACE_FUNCTIONS g_trampol
-
 FileMap g_file_map;
-static std::map<std::string, std::string> g_rename;
 static std::vector<std::string> g_bound_names;
-static std::set<std::string> g_no_trampoline;
 
 extern char g_darwin_executable_path[PATH_MAX];
 extern int g_argc;
@@ -77,6 +75,20 @@ MachOLoader::MachOLoader()
 		if (info)
 			TrampolineMgr::loadFunctionInfo(info);
 	}
+	
+	m_pCXX = dlopen(LIBCXXDARWIN_PATH, RTLD_LOCAL|RTLD_NOW);
+	if (!m_pCXX)
+	{
+		std::stringstream ss;
+		ss << LIBCXXDARWIN_PATH " failed to load: ";
+		ss << dlerror();
+		throw std::runtime_error(ss.str());
+	}
+}
+
+MachOLoader::~MachOLoader()
+{
+	dlclose(m_pCXX);
 }
 
 void MachOLoader::loadDylibs(const MachO& mach)
@@ -293,6 +305,11 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 					name = bind->name; // for correct error reporting
 					sym = reinterpret_cast<char*>(dlsym(dlopen(0, 0), bind->name.c_str()));
 				}
+				else if (string_startsWith(bind->name, "___cxa_") || string_startsWith(bind->name, "__Unwind_"))
+				{
+					LOG << "Special symbol handling used: " << bind->name << std::endl;
+					sym = reinterpret_cast<char*>(dlsym(m_pCXX, bind->name.c_str()+1));
+				}
 				else
 					sym = reinterpret_cast<char*>(__darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str()));
 				
@@ -367,7 +384,7 @@ void MachOLoader::loadSymbols(const MachO& mach, intptr slide, intptr base)
 }
 
 
-void MachOLoader::load(const MachO& mach, Exports* exports)
+void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports)
 {
 	if (!exports)
 		exports = &m_exports;
@@ -431,7 +448,7 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 {
 	char* apple[2] = { g_darwin_executable_path, 0 };
 
-	load(mach);
+	load(mach, g_darwin_executable_path);
 	setupDyldData(mach);
 
 	g_file_map.addWatchDog(m_last_addr + 1);

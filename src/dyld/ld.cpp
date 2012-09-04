@@ -329,10 +329,10 @@ void* attemptDlopen(const char* filename, int flag)
 			}
 			else
 			{
-				LOG << "Native library failed to load\n";
+				const char* err = ::dlerror();
+				LOG << "Native library failed to load: " << err << std::endl;
 				
-				const char* err;
-				if ((err = ::dlerror()) && !g_ldError[0]) // we don't overwrite previous errors
+				if (err && !g_ldError[0]) // we don't overwrite previous errors
 				{
 					LOG << "Library failed to load: " << err << std::endl;
 					strcpy(g_ldError, err);
@@ -365,7 +365,7 @@ void* attemptDlopen(const char* filename, int flag)
 				if (!global)
 				{
 					lib->exports = new Exports;
-					g_loader->load(*machO, lib->exports);
+					g_loader->load(*machO, name, lib->exports);
 				}
 				else
 					g_loader->load(*machO, 0);

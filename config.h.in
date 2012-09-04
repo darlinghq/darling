@@ -3,6 +3,7 @@
 
 #define LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib/darling"
 #define INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"
+#define LIBCXXDARWIN_PATH INSTALL_PREFIX "/lib/libcxxdarwin.so"
 
 /*
  * Credit: 

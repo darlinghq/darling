@@ -43,7 +43,7 @@ set(libc_SRCS
 	libc/errno.cpp
 	libc/OSAtomic.cpp
 	libc/strmode.c
-	libc/directmap.asm
+	libc/directmap.nasm
 	libc/sysctl.cpp
 	libc/dir.cpp
 	libc/string.cpp

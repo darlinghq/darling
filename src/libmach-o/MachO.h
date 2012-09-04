@@ -115,6 +115,8 @@ public:
 
 	int fd() const { return m_fd; }
 	size_t offset() const { return m_offset; }
+	
+	mach_header header() const { return m_header; }
 
  protected:
 	std::string m_filename;
@@ -136,6 +138,7 @@ public:
 	int m_ptrsize;
 	int m_fd;
 	size_t m_offset;
+	mach_header m_header;
 };
 
 #endif	// MACH_O_H_

@@ -17,15 +17,23 @@ FileMap::~FileMap()
 
 void FileMap::add(const MachO& mach, uintptr_t slide, uintptr_t base)
 {
-	SymbolMap* symbol_map = new SymbolMap();
+	ImageMap* symbol_map = new ImageMap;
+
 	symbol_map->filename = mach.filename();
 	symbol_map->base = base;
+	symbol_map->slide = slide;
+	symbol_map->header = mach.header();
+	symbol_map->eh_frame = mach.get_eh_frame();
+	symbol_map->unwind_info = mach.get_unwind_info();
+
 	if (!m_maps.insert(std::make_pair(base, symbol_map)).second)
 	{
 		std::stringstream ss;
 		ss << "dupicated base addr: " << (void*) base << " in " << mach.filename();
 		throw std::runtime_error(ss.str());
 	}
+
+	m_maps_vec.push_back(symbol_map);
 
 	for (MachO::Symbol sym : mach.symbols())
 	{
@@ -40,11 +48,11 @@ void FileMap::add(const MachO& mach, uintptr_t slide, uintptr_t base)
 
 void FileMap::addWatchDog(uintptr_t addr)
 {
-	bool r = m_maps.insert(std::make_pair(addr, (SymbolMap*)NULL)).second;
+	bool r = m_maps.insert(std::make_pair(addr, (ImageMap*)NULL)).second;
 	assert(r);
 }
 
-const char* FileMap::gdbInfoForAddr(void* p)
+const char* FileMap::gdbInfoForAddr(const void* p)
 {
 	Dl_info i;
 	
@@ -75,12 +83,33 @@ const char* FileMap::gdbInfoForAddr(void* p)
 	return m_dumped_stack_frame_buf;
 }
 
-bool FileMap::findSymbolInfo(void* p, Dl_info* info)
+const char* FileMap::fileNameForAddr(const void* p)
+{
+	const ImageMap* map = imageMapForAddr(p);
+	if (!map)
+		return 0;
+	return map->filename.c_str();
+}
+
+const FileMap::ImageMap* FileMap::imageMapForAddr(const void* p)
 {
 	uintptr_t addr = reinterpret_cast<uintptr_t>(p);
-	const SymbolMap* symbol_map;
+	const ImageMap* symbol_map;
 	
-	std::map<uintptr_t, SymbolMap*>::const_iterator found = m_maps.upper_bound(addr);
+	std::map<uintptr_t, ImageMap*>::const_iterator found = m_maps.upper_bound(addr);
+	if (found == m_maps.begin() || found == m_maps.end())
+		return 0;
+	
+	--found;
+	return found->second;
+}
+
+bool FileMap::findSymbolInfo(const void* p, Dl_info* info)
+{
+	uintptr_t addr = reinterpret_cast<uintptr_t>(p);
+	const ImageMap* symbol_map;
+	
+	std::map<uintptr_t, ImageMap*>::const_iterator found = m_maps.upper_bound(addr);
 	if (found == m_maps.begin() || found == m_maps.end())
 		return false;
 	

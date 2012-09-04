@@ -183,22 +183,6 @@ int __darwin_posix_spawn_file_actions_adddup2(
     return posix_spawn_file_actions_adddup2(*file_actions, fd, newfd);
 }
 
-void __assert_rtn(const char* func, const char* file, int line,
-                  const char* failedexpr) {
-  fprintf(stderr,
-          "Assertion failed: (%s), function %s, file %s, line %d.\n",
-          failedexpr, func, file, line);
-  abort();
-}
-
-// We don't have DWARF to handle exception. Let's show some info and abort.
-// This works well for apple's ld.
-void __darwin___cxa_throw(char** obj) {
-  fprintf(stderr, "__cxa_throw: obj=%p\n", obj);
-  fprintf(stderr, "%s\n", *obj);
-  abort();
-}
-
 typedef struct {
   void* ss_sp;
   size_t ss_size;

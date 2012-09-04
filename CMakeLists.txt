@@ -5,6 +5,7 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+enable_language(ASM-ATT)
 enable_language(ASM_NASM)
 ADD_DEFINITIONS(-ggdb -DDEBUG)
 
@@ -23,6 +24,7 @@ configure_file(config.h.in config.h)
 set(util-SRCS
 	src/util/log.cc
 	src/util/trace.cpp
+	src/util/stlutils.cpp
 	src/util/IniConfig.cpp
 )
 
@@ -48,9 +50,12 @@ set(dyld_SRCS
 	src/dyld/MachOLoader.cpp
 	src/dyld/UndefinedFunction.cpp
 	src/dyld/Trampoline.cpp
-	src/dyld/trampoline_helper.asm
+	src/dyld/trampoline_helper.nasm
 	src/dyld/ld.cpp
 	src/dyld/dyld.cpp
+	src/dyld/public.cpp
+	src/dyld/keymgr.cpp
+	src/dyld/binfmt_misc.cpp
 )
 
 add_executable(dyld ${dyld_SRCS})
@@ -75,6 +80,6 @@ install(TARGETS mach-o DESTINATION lib)
 install(FILES etc/dylib.conf DESTINATION /etc/darling)
 
 add_subdirectory(src/libSystem)
-add_subdirectory(src/libunwind-darwin)
+add_subdirectory(src/libcxxdarwin)
 #add_subdirectory(src/CoreServices)
 

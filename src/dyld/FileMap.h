@@ -16,18 +16,27 @@ public:
 
 	void addWatchDog(uintptr_t addr);
 
-	const char* gdbInfoForAddr(void* p);
-	bool findSymbolInfo(void* addr, Dl_info* p); // used by __darwin_dladdr
-
-private:
-	struct SymbolMap
+	struct ImageMap
 	{
 		std::string filename;
 		std::map<uintptr_t, std::string> symbols;
-		uintptr_t base;
+		uintptr_t base, slide;
+		mach_header header;
+		std::pair<uint64_t,uint64_t> eh_frame;
+		std::pair<uint64_t,uint64_t> unwind_info;
 	};
+	
+	const ImageMap* imageMapForAddr(const void* p);
+	const char* fileNameForAddr(const void* p);
+	const char* gdbInfoForAddr(const void* p);
+	bool findSymbolInfo(const void* addr, Dl_info* p); // used by __darwin_dladdr
 
-	std::map<uintptr_t, SymbolMap*> m_maps;
+	const std::vector<ImageMap*>& images() const { return m_maps_vec; }
+
+private:
+
+	std::map<uintptr_t, ImageMap*> m_maps;
+	std::vector<ImageMap*> m_maps_vec; // for easier access
 	char m_dumped_stack_frame_buf[4096];
 };
 

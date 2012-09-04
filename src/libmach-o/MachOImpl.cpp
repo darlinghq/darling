@@ -112,12 +112,12 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 			if (!strcmp(sec.sectname, "__eh_frame"))
 			{
 				m_eh_frame.first = sec.addr;
-				m_eh_frame.second = sec.addr + sec.size;
+				m_eh_frame.second = sec.size;
 			}
 			else if (!strcmp(sec.sectname, "__unwind_info"))
 			{
 				m_unwind_info.first = sec.addr;
-				m_unwind_info.second = sec.addr + sec.size;
+				m_unwind_info.second = sec.size;
 			}
 		}
 
@@ -266,6 +266,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 	m_base = bin;
 
 	mach_header* header = reinterpret_cast<mach_header*>(bin);
+	memcpy(&m_header, header, sizeof(*header));
 	
 	m_is64 = false;
 	if (header->magic == MH_MAGIC_64)
