@@ -87,6 +87,10 @@ __darwin_FILE* __darwin_tmpfile();
 int __darwin_feof(__darwin_FILE *stream);
 void __darwin_clearerr(__darwin_FILE *stream);
 
+// pipes
+__darwin_FILE* __darwin_popen(const char* command, const char* type);
+int __darwin_pclose(__darwin_FILE* stream);
+
 int __darwin_fgetpos(__darwin_FILE *stream, fpos_t *pos);
 int __darwin_fsetpos(__darwin_FILE *stream, fpos_t *pos);
 int __darwin_fpurge(__darwin_FILE *stream);

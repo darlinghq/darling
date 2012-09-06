@@ -3,6 +3,7 @@
 #include "errno.h"
 #include "common/path.h"
 #include "common/auto.h"
+#include "trace.h"
 #include "darwin_errno_codes.h"
 #include <cstdio>
 #include <cstdlib>
@@ -13,7 +14,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <typeinfo>
 #include "log.h"
+
+extern char g_sysroot[PATH_MAX];
 
 //extern "C"
 //{
@@ -35,6 +40,7 @@ static __darwin_FILE* InitDarwinFILE(FILE* linux_fp)
 	fp->_file = fileno(linux_fp);
 	fp->_lbfsize = 0;
 	fp->linux_fp = linux_fp;
+	
 	return fp;
 }
 
@@ -48,7 +54,22 @@ template<typename RetVal, typename Func, typename... Params> RetVal AutoFileErrn
 
 __darwin_FILE* __darwin_fopen(const char* path, const char* mode)
 {
-	path = translatePathCI(path);
+	TRACE2(path, mode);
+	if (!strchr(mode, 'w') && g_sysroot[0])
+	{
+		const char* prefixed;
+		std::string lpath = g_sysroot;
+		lpath += '/';
+		lpath += path;
+		
+		prefixed = translatePathCI(lpath.c_str());
+		if (::access(prefixed, F_OK) == 0)
+			path = prefixed;
+		else
+			path = translatePathCI(path);
+	}
+	else
+		path = translatePathCI(path);
 	
 	if (!strchr(mode, 'x'))
 		return InitDarwinFILE(fopen(path, mode));
@@ -74,6 +95,20 @@ __darwin_FILE* __darwin_fopen(const char* path, const char* mode)
 	}
 }
 
+__darwin_FILE* __darwin_popen(const char* command, const char* type)
+{
+	return InitDarwinFILE(popen(command, type)); // translatePathCI?
+}
+
+int __darwin_pclose(__darwin_FILE* stream)
+{
+	int r = pclose(stream->linux_fp);
+	delete stream;
+	if (r == -1)
+		errnoOut();
+	return r;
+}
+
 __darwin_FILE* __darwin_fdopen(int fd, const char* mode)
 {
 	return InitDarwinFILE(fdopen(fd, mode));
@@ -88,6 +123,10 @@ int __darwin_fclose(__darwin_FILE* fp)
 {
 	int r = fclose(fp->linux_fp);
 	delete fp;
+
+	if (r == -1)
+		errnoOut();
+
 	return r;
 }
 
@@ -133,6 +172,7 @@ int __darwin_ungetc(int c, __darwin_FILE* fp)
 
 char* __darwin_fgets(char* s, int size, __darwin_FILE* fp)
 {
+	std::cout << typeid(fp).name() << " ptr: " << fp << std::endl;
 	return fgets(s, size, fp->linux_fp);
 }
 
