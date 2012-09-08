@@ -10,7 +10,7 @@ TraceHelper::TraceHelper(const char* funcName)
 TraceHelper::~TraceHelper()
 {
 	if (g_loggingEnabled)
-		std::cerr << std::endl;
+		std::cerr << std::endl << std::flush;
 }
 
 template<> void logPrint<std::string>(std::string value)
