@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <vector>
+#include <iostream>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -20,6 +21,9 @@ extern char g_loader_path[PATH_MAX];
 static const char* findInPath(const char* file)
 {
 	static __thread char buffer[DARWIN_MAXPATHLEN];
+	
+	if (*file == '/')
+		return file;
 	
 	if (strchr(file, '/') != 0)
 	{
@@ -88,6 +92,7 @@ int __darwin_execl(const char *path, const char *arg, ...)
 	std::vector<char*> argv;
 	char* an_arg;
 	
+	argv.push_back(const_cast<char*>(arg));
 	while ((an_arg = va_arg(vl, char*)) != 0)
 		argv.push_back(an_arg);
 	
@@ -106,6 +111,7 @@ int __darwin_execlp(const char *file, const char *arg, ...)
 	std::vector<char*> argv;
 	char* an_arg;
 	
+	argv.push_back(const_cast<char*>(arg));
 	while ((an_arg = va_arg(vl, char*)) != 0)
 		argv.push_back(an_arg);
 	
@@ -125,6 +131,7 @@ int __darwin_execle(const char *path, const char *arg, ... /*, char * const envp
 	char* an_arg;
 	char** envp;
 
+	argv.push_back(const_cast<char*>(arg));
 	while ((an_arg = va_arg(vl, char*)) != 0)
 		argv.push_back(an_arg);
 	
@@ -150,7 +157,10 @@ int __darwin_execv(const char *path, char *const argv[])
 	else
 	{
 		argv = prependLoaderPath(argv, path);
-		int rv = execv(g_loader_path, argv);
+		int rv = execvp(g_loader_path, argv);
+		
+		std::cout << "Executing with loader at " << g_loader_path << std::endl;
+		
 		errnoOut();
 		
 		delete [] argv;
@@ -165,6 +175,7 @@ int __darwin_execvp(const char *file, char *const argv[])
 	const char* path = findInPath(file);
 	if (!path)
 	{
+		std::cout << "Path failed to be located: " << file << std::endl;
 		errno = DARWIN_ENOENT;
 		return -1;
 	}
