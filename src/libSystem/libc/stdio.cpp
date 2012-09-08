@@ -172,7 +172,6 @@ int __darwin_ungetc(int c, __darwin_FILE* fp)
 
 char* __darwin_fgets(char* s, int size, __darwin_FILE* fp)
 {
-	std::cout << typeid(fp).name() << " ptr: " << fp << std::endl;
 	return fgets(s, size, fp->linux_fp);
 }
 
@@ -380,6 +379,10 @@ wint_t __darwin_ungetwc(wint_t wc, __darwin_FILE *stream)
 	return AutoFileErrno<wint_t>(ungetwc, stream, wc);
 }
 
+int __darwin_setvbuf(__darwin_FILE* stream, char* buffer, int mode, size_t size)
+{
+	return setvbuf(stream->linux_fp, buffer, mode, size);
+}
 
 __attribute__((constructor)) static void initStdio()
 {
