@@ -95,6 +95,21 @@ extern MD5
 CC_MD5:
 	jmp MD5 WRT ..plt
 
+global CC_SHA1_Init
+extern SHA1_Init
+CC_SHA1_Init:
+	jmp SHA1_Init WRT ..plt
+
+global CC_SHA1_Update
+extern SHA1_Update
+CC_SHA1_Update:
+	jmp SHA1_Update WRT ..plt
+
+global CC_SHA1_Final
+extern SHA1_Final
+CC_SHA1_Final:
+	jmp SHA1_Final WRT ..plt
+
 global __darwin_atexit
 extern __cxa_atexit
 __darwin_atexit:

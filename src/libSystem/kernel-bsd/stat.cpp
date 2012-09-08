@@ -6,6 +6,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
+
+extern char g_sysroot[PATH_MAX];
 
 static void convertStat64(struct stat64* linux_buf, struct __darwin_stat64* mac)
 {
@@ -49,6 +52,24 @@ int __darwin_stat64(const char* path, struct __darwin_stat64* mac)
 {
 	TRACE2(path, mac);
 	struct stat64 linux_buf;
+	
+	if (g_sysroot[0])
+	{
+		const char* prefixed;
+		std::string lpath = g_sysroot;
+		
+		lpath += '/';
+		lpath += path;
+		
+		prefixed = translatePathCI(lpath.c_str());
+		if (::access(prefixed, F_OK) == 0)
+			path = prefixed;
+		else
+			path = translatePathCI(path);
+	}
+	else
+		path = translatePathCI(path);
+	
 	int ret = stat64(translatePathCI(path), &linux_buf);
 	if (ret == -1)
 		errnoOut();

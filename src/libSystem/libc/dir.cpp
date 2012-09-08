@@ -7,6 +7,9 @@
 #include "common/path.h"
 #include <cstdlib>
 #include <cstring>
+#include <limits.h>
+
+extern char g_sysroot[PATH_MAX];
 
 static darwin_dirent* convertDirent(const struct dirent* ent);
 static darwin_dirent64* convertDirent64(const struct dirent* ent);
@@ -84,7 +87,26 @@ darwin_dirent64* convertDirent64(const struct dirent* linux_buf)
 DIR* __darwin_opendir(const char *name)
 {
 	TRACE1(name);
-	DIR* rv = opendir(translatePathCI(name));
+	
+	if (g_sysroot[0])
+	{
+		const char* prefixed;
+		std::string lpath = g_sysroot;
+		
+		lpath += '/';
+		lpath += name;
+		
+		prefixed = translatePathCI(lpath.c_str());
+		
+		if (::access(prefixed, F_OK) == 0)
+			name = prefixed;
+		else
+			name = translatePathCI(name);
+	}
+	else
+		name = translatePathCI(name);
+	
+	DIR* rv = opendir(name);
 	if (!rv)
 		errnoOut();
 	return rv;

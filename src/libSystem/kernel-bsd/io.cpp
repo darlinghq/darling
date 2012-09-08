@@ -6,7 +6,10 @@
 #include "libc/darwin_errno_codes.h"
 #include "common/path.h"
 #include "common/auto.h"
+#include <limits.h>
 #include <errno.h>
+
+extern char g_sysroot[PATH_MAX];
 
 int __darwin_open(const char* path, int flags, mode_t mode)
 {
@@ -65,8 +68,30 @@ int __darwin_open(const char* path, int flags, mode_t mode)
 		fprintf(stderr, "Unsupported open flag=%d\n", flags);
 		return -1;
 	}
+	
+	// Apply sysroot
+	//std::cout << "File: " << path << std::endl;
+	//std::cout << "Sysroot: " << g_sysroot << std::endl;
+	// std::cout << "Flag: " << (linux_flags & O_RDONLY) << std::endl;
+	if ( (linux_flags & O_ACCMODE) == 0 && g_sysroot[0])
+	{
+		const char* prefixed;
+		std::string lpath = g_sysroot;
+		
+		lpath += '/';
+		lpath += path;
+		
+		prefixed = translatePathCI(lpath.c_str());
+		
+		if (::access(prefixed, F_OK) == 0)
+			path = prefixed;
+		else
+			path = translatePathCI(path);
+	}
+	else
+		path = translatePathCI(path);
 
-	int rv = open(translatePathCI(path), linux_flags, mode);
+	int rv = open(path, linux_flags, mode);
 	if (rv == -1)
 		errnoOut();
 	return rv;

@@ -17,6 +17,9 @@ CC_MD5_Init;MD5_Init
 CC_MD5_Update;MD5_Update
 CC_MD5_Final;MD5_Final
 CC_MD5;MD5
+CC_SHA1_Init;SHA1_Init
+CC_SHA1_Update;SHA1_Update
+CC_SHA1_Final;SHA1_Final
 __darwin_atexit;__cxa_atexit
 __darwin_select$1050;__darwin_select
 __darwin_warn;__darwin__warn

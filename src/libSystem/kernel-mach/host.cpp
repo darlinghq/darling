@@ -60,7 +60,7 @@ kern_return_t host_info(host_t host, int flavor, host_basic_info* info, long* in
 		return KERN_FAILURE;
 	}
 	
-	memset(info, 0, *info_cnt);
+	memset(info, 0, sizeof(*info));
 
 #if defined(__i386__)
 	info->cpu_type = CPU_TYPE_I386;

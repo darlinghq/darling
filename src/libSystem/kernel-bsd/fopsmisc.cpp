@@ -7,9 +7,35 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cstring>
+#include <string>
+#include <cstdlib>
+#include <iostream>
+#include <limits.h>
+
+extern char g_sysroot[PATH_MAX];
 
 int __darwin_access(const char *pathname, int mode)
 {
+	//std::cout << "access: " << pathname << std::endl;
+	if ((mode & W_OK) == 0 && g_sysroot[0])
+	{
+		// Try to apply a sysroot prefix
+		const char* prefixed;
+		std::string lpath = g_sysroot;
+		
+		lpath += '/';
+		lpath += pathname;
+		
+		prefixed = translatePathCI(lpath.c_str());
+		if (::access(prefixed, F_OK) == 0)
+		{
+			int rv = ::access(prefixed, mode);
+			if (rv == -1)
+				errnoOut();
+			return rv;
+		}
+	}
+	
 	return AutoPathErrno<int>(access, pathname, mode);
 }
 

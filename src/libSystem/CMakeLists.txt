@@ -59,6 +59,8 @@ set(libc_SRCS
 	libc/pthread.cpp
 	libc/sysconf.cpp
 	libc/net.cpp
+	libc/getpwent.cpp
+	libc/signals.cpp
 	common/auto.cpp
 	common/path.cpp
 )

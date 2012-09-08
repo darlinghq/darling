@@ -9,7 +9,7 @@
 #define __DARWIN_PTHREAD_PROCESS_SHARED 1
 #define __DARWIN_PTHREAD_PROCESS_PRIVATE 2
 
-struct __darwin_pthread_rwlock_t
+struct __darwin_pthread_rwlock_t // 200 bytes on Darwin
 {
 	enum { SIGNATURE_MACRO_INITIALIZED = 0x2da8b3b4, SIGNATURE_NATIVE_INITIALIZED = 0x12345678 };
 	uint32_t signature;
@@ -21,6 +21,9 @@ struct __darwin_pthread_mutex_t
 	uint32_t signature;
 	pthread_mutex_t native; // this will fit on Linux (40 vs 64)
 };
+
+static_assert(sizeof(pthread_mutex_t) <= 60, "pthread_mutex_t is too big on this platform!");
+static_assert(sizeof(pthread_rwlock_t) <= 196, "pthread_rwlock_t is too big on this platform!");
 
 extern "C"
 {

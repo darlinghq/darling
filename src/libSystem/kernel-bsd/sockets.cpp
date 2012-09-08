@@ -87,13 +87,16 @@ bool Darling::sockaddrFixupOut(struct sockaddr* addr, socklen_t len)
 int __darwin_select(int fd, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout)
 {
 	struct timeval backup;
-	memcpy(&backup, timeout, sizeof(backup)); // emulate BSD behavior
+	
+	if (timeout)
+		memcpy(&backup, timeout, sizeof(backup)); // emulate BSD behavior
 	
 	int rv = ::select(fd, readfds, writefds, exceptfds, timeout);
 	if (rv == -1)
 		errnoOut();
 	
-	memcpy(timeout, &backup, sizeof(backup));
+	if (timeout)
+		memcpy(timeout, &backup, sizeof(backup));
 	return rv;
 }
 

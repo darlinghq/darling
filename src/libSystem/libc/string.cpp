@@ -23,6 +23,11 @@ void memset_pattern16(char* b, const char* pattern4, size_t len)
 		b[i] = pattern4[i % 16];
 }
 
+int __mb_cur_max()
+{
+	return MB_CUR_MAX;
+}
+
 int ___mb_cur_max()
 {
 	return MB_CUR_MAX;
