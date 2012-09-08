@@ -15,6 +15,10 @@ reg_saveall: ; 192 bytes on stack
 	push rcx
 	push r8
 	push r9
+	push r12
+	push r13
+	push r14
+	push r15
 	sub rsp, 128 ; 8*16
 	movdqu [rsp], xmm0
 	movdqu [rsp+16], xmm1
@@ -37,6 +41,10 @@ reg_restoreall:
     movdqu xmm1, [rsp+16]
     movdqu xmm0, [rsp]
     add rsp, 128
+    pop r15
+    pop r14
+    pop r13
+    pop r12
     pop r9
     pop r8
     pop rcx

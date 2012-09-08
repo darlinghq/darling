@@ -14,6 +14,7 @@ std::map<std::string, TrampolineMgr::FunctionInfo> TrampolineMgr::m_functionInfo
 
 extern "C" void reg_saveall();
 extern "C" void reg_restoreall();
+extern char** g_argv;
 
 TrampolineMgr::TrampolineMgr(int entries)
 	: m_nNext(0)
@@ -29,11 +30,18 @@ TrampolineMgr::TrampolineMgr(int entries)
 
 	mem = ::mmap(0, bytes, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 	if (mem == MAP_FAILED)
-	throw std::runtime_error("Failed to map pages for TrampolineMgr");
+		throw std::runtime_error("Failed to map pages for TrampolineMgr");
 
 	m_pMem = static_cast<Trampoline*>(mem);
 	m_nMax = bytes / sizeof(Trampoline);
+	
+	if (char* p = get_current_dir_name())
+	{
+		m_wd = p;
+		free(p);
+	}
 
+	std::cout << logPath() << std::endl;
 }
 
 TrampolineMgr::~TrampolineMgr()
@@ -119,34 +127,73 @@ void TrampolineMgr::loadFunctionInfo(const char* path)
 	}
 }
 
+std::string TrampolineMgr::timeStamp()
+{
+	char buf[50];
+	time_t t = time(0);
+	struct tm tm;
+
+	localtime_r(&t, &tm);
+	strftime(buf, sizeof(buf), "%H:%M:%S", &tm);
+
+	return buf;
+}
+
+std::string TrampolineMgr::logPath()
+{
+	pid_t pid = getpid();
+	std::stringstream ss;
+	std::string progname = g_argv[0];
+	size_t pos;
+
+	pos = progname.rfind('/');
+	if (pos != std::string::npos)
+		progname = progname.substr(pos+1);
+
+	ss << m_wd << '/' << progname << '.' << pid << ".log";
+	return ss.str();
+}
+
+bool TrampolineMgr::openLog(std::ofstream& stream)
+{
+	stream.open(logPath(), std::ios_base::out | std::ios_base::app);
+	return stream.is_open();
+}
+
 void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 {	
 	FunctionInfo* info = 0;
 	const std::string& name = m_pInstance->m_entries[index].name;
 	auto it = m_functionInfo.find(name);
+	std::ofstream logFile;
+	std::ostream* out = &logFile;
+
+	if (!m_pInstance->openLog(logFile))
+		out = &(*out);
 	
-	std::cerr << std::string(m_nDepth, ' ');
+	(*out) << std::string(m_nDepth, ' ');
+	(*out) << '[' << timeStamp() << "] ";
 	
 	if (it != m_functionInfo.end())
 	{
 		ArgumentWalker w(stack);
 		bool first = true;
 		
-		std::cerr << name << '(';
+		(*out) << name << '(';
 		
 		for (char c : it->second.arguments)
 		{
 			if (!first)
-				std::cerr << ", ";
+				(*out) << ", ";
 			else
 				first = false;
 			
-			std::cerr << w.next(c);
+			(*out) << w.next(c);
 		}
-		std::cerr << ")\n" << std::flush;
+		(*out) << ")\n" << std::flush;
 	}
 	else
-		std::cerr << m_pInstance->m_entries[index].name << "(?)\n" << std::flush;
+		(*out) << m_pInstance->m_entries[index].name << "(?)\n" << std::flush;
 	m_pInstance->m_entries[index].retAddr = stack->retAddr;
 	
 	m_nDepth++;
@@ -157,6 +204,11 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 void* TrampolineMgr::printInfoR(uint32_t index, CallStack* stack)
 {
 	void* rv = m_pInstance->m_entries[index].retAddr;
+	std::ofstream logFile;
+	std::ostream* out = &logFile;
+
+	if (!m_pInstance->openLog(logFile))
+		out = &(*out);
 	
 	m_pInstance->m_entries[index].retAddr = 0;
 	m_nDepth--;
@@ -164,15 +216,16 @@ void* TrampolineMgr::printInfoR(uint32_t index, CallStack* stack)
 	const std::string& name = m_pInstance->m_entries[index].name;
 	auto it = m_functionInfo.find(name);
 	
-	std::cerr << std::string(m_nDepth, ' ');
+	(*out) << std::string(m_nDepth, ' ');
+	(*out) << '[' << timeStamp() << "] ";
 	
 	if (it != m_functionInfo.end())
 	{
 		ArgumentWalker w(stack);
-		std::cerr << "-> " << w.ret(it->second.retType) << '\n' << std::flush;
+		(*out) << "-> " << w.ret(it->second.retType) << '\n' << std::flush;
 	}
 	else
-		std::cerr << "-> ?\n" << std::flush;
+		(*out) << "-> ?\n" << std::flush;
 	
 	// standard retval in rax, double in xmm0
 	return rv;

@@ -5,6 +5,7 @@
 #include <string>
 #include <list>
 #include <map>
+#include <fstream>
 
 struct Trampoline;
 
@@ -24,13 +25,16 @@ public:
 	struct CallStack
 	{
 		long double xmm[8]; // xmm7-xmm0
-		uint64_t r9, r8, rcx, rdx, rsi, rdi, rbx, rax;
+		uint64_t r15, r14, r13, r12, r9, r8, rcx, rdx, rsi, rdi, rbx, rax;
 		void* retAddr;
 	};
 	#pragma pack()
 private:
 	void loadMemoryMap();
 	
+	std::string logPath();
+	bool openLog(std::ofstream& stream);
+	static std::string timeStamp();
 	static void* printInfo(uint32_t index, CallStack* stack);
 	static void* printInfoR(uint32_t index, CallStack* stack);
 private:
@@ -81,6 +85,7 @@ private:
 
 	std::vector<AddrEntry> m_entries;
 	std::list<MemoryPages> m_memoryMap;
+	std::string m_wd;
 	static int m_nDepth;
 	static std::map<std::string, FunctionInfo> m_functionInfo;
 };
