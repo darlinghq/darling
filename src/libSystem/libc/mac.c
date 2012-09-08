@@ -213,14 +213,6 @@ int __darwin_sigaltstack(const __darwin_stack_t* ss, __darwin_stack_t* oss) {
 #endif
 }
 
-int __darwin_sigaction() {
-  return 0;
-}
-
-void* __darwin_signal() {
-  return NULL;
-}
-
 typedef struct malloc_statistics_t {
   unsigned blocks_in_use;
   size_t size_in_use;
