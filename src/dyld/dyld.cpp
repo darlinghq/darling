@@ -90,9 +90,9 @@ int main(int argc, char** argv, char** envp)
 		}
 #endif
 
-		g_loader = new MachOLoader;
 		g_argv = argv+1;
 		g_argc = argc-1;
+		g_loader = new MachOLoader;
 		
 		autoSysrootSearch();
 		

@@ -368,7 +368,7 @@ void* attemptDlopen(const char* filename, int flag)
 					g_loader->load(*machO, name, lib->exports);
 				}
 				else
-					g_loader->load(*machO, 0);
+					g_loader->load(*machO, name, 0);
 				
 				char* apple[2] = { g_darwin_executable_path, 0 };
 				g_loader->runPendingInitFuncs(g_argc, g_argv, environ, apple);
