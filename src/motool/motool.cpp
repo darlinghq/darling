@@ -11,10 +11,11 @@
 #include <cstring>
 #include <iomanip>
 
-enum OpMode { ModeDylibs, ModeSymbols, ModeExports, ModeBinds };
+enum OpMode { ModeDylibs, ModeSymbols, ModeExports, ModeBinds, ModeSegments };
 
 void printBinInfo(const char* path, const char* arch, const char* opt);
 OpMode getOpMode(const char* opt);
+std::string protString(int prot);
 
 int main(int argc, char** argv)
 {
@@ -27,6 +28,7 @@ int main(int argc, char** argv)
 			"\t-s --symbols\tList symbols\n"
 			"\t-e --exports\tList exports\n"
 			"\t-b --binds\tList binds\n"
+			"\t-g --segments\tList segments and sections\n"
 			"\n";
 		return 1;
 	}
@@ -75,6 +77,20 @@ int main(int argc, char** argv)
 	{
 		std::cerr << e.what() << std::endl;
 		return 2;
+	}
+}
+
+template<typename SegType> void printSegments(std::vector<SegType*> segs)
+{
+	for (auto* seg : segs)
+	{
+		std::cout << "Name: " << seg->segname << std::endl;
+		std::cout << "Addr: 0x" << seg->vmaddr << std::endl;
+		std::cout << "Offset in file: 0x" << seg->fileoff << std::endl;
+		std::cout << "Size in file: 0x" << seg->filesize << std::endl;
+		std::cout << "Initial protection: " << protString(seg->initprot) << std::endl;
+		std::cout << "Max protection: " << protString(seg->maxprot) << std::endl;
+		std::cout << std::endl;
 	}
 }
 
@@ -159,6 +175,14 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 			}
 			break;
 		}
+		case ModeSegments:
+		{
+			std::cout << "Segments:\n" << std::hex;
+			printSegments(macho->segments64());
+			printSegments(macho->segments());
+
+			break;
+		}
 	}
 	
 	delete macho;
@@ -176,11 +200,25 @@ OpMode getOpMode(const char* opt)
 		return ModeExports;
 	else if (!strcmp(opt, "-b") || !strcmp(opt, "--binds"))
 		return ModeBinds;
+	else if (!strcmp(opt, "-g") || !strcmp(opt, "--segments"))
+		return ModeSegments;
 	else
 	{
 		std::stringstream ss;
 		ss << "Unknown option: " << opt;
 		throw std::runtime_error(ss.str());
 	}
+}
+
+std::string protString(int prot)
+{
+	char rv[4] = "---";
+	if (prot & VM_PROT_READ)
+		rv[0] = 'r';
+	if (prot & VM_PROT_WRITE)
+		rv[1] = 'w';
+	if (prot & VM_PROT_EXECUTE)
+		rv[2] = 'x';
+	return rv;
 }
 
