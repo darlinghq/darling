@@ -30,7 +30,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #include "coretypes.h"
 #include "tm.h"
 #include "dwarf2.h"
-#include "unwind.h"
+#include "unwind-generic.h"
 #define NO_BASE_OF_ENCODED_VALUE
 #include "unwind-pe.h"
 #include "unwind-dw2-fde.h"

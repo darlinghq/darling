@@ -26,7 +26,7 @@
 #if defined (USE_GAS_SYMVER) && defined (USE_LIBUNWIND_EXCEPTIONS)
 #include "tconfig.h"
 #include "tsystem.h"
-#include "unwind.h"
+#include "unwind-generic.h"
 #include "unwind-dw2-fde.h"
 #include "unwind-compat.h"
 

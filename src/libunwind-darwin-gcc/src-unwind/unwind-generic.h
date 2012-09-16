@@ -25,8 +25,8 @@
 /* This is derived from the C++ ABI for IA-64.  Where we diverge
    for cross-architecture compatibility are noted with "@@@".  */
 
-#ifndef _UNWIND_H
-#define _UNWIND_H
+#ifndef _UNWIND_HX
+#define _UNWIND_HX
 
 #ifndef HIDE_EXPORTS
 #pragma GCC visibility push(default)
@@ -45,19 +45,19 @@ typedef signed long _Unwind_Sword /*__attribute__((__mode__(__unwind_word__)))*/
 #if defined(__ia64__) && defined(__hpux__)
 typedef unsigned _Unwind_Ptr __attribute__((__mode__(__word__)));
 #else
-typedef unsigned _Unwind_Ptr __attribute__((__mode__(__pointer__)));
+typedef unsigned long _Unwind_Ptr /*__attribute__((__mode__(__pointer__)))*/;
 #endif
-typedef unsigned _Unwind_Internal_Ptr __attribute__((__mode__(__pointer__)));
+typedef unsigned long _Unwind_Internal_Ptr /*__attribute__((__mode__(__pointer__)))*/;
 
 /* @@@ The IA-64 ABI uses a 64-bit word to identify the producer and
    consumer of an exception.  We'll go along with this for now even on
    32-bit machines.  We'll need to provide some other option for
    16-bit machines and for machines with > 8 bits per byte.  */
-typedef unsigned _Unwind_Exception_Class __attribute__((__mode__(__DI__)));
+typedef unsigned long long _Unwind_Exception_Class /*__attribute__((__mode__(__DI__)))*/;
 
 /* The unwind interface uses reason codes in several contexts to
    identify the reasons for failures or other actions.  */
-#ifndef __clang__
+
 typedef enum
 {
   _URC_NO_REASON = 0,
@@ -70,7 +70,7 @@ typedef enum
   _URC_INSTALL_CONTEXT = 7,
   _URC_CONTINUE_UNWIND = 8
 } _Unwind_Reason_Code;
-#endif
+
 
 /* The unwind interface uses a pointer to an exception header object
    as its representation of an exception being thrown. In general, the

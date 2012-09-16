@@ -26,7 +26,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 #include "tconfig.h"
 #include "tsystem.h"
-#include "unwind.h"
+#include "unwind-generic.h"
 #define NO_SIZE_OF_ENCODED_VALUE
 #include "unwind-pe.h"
 

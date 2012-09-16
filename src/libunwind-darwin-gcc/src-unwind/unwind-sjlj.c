@@ -27,7 +27,7 @@
 #include "tsystem.h"
 #include "coretypes.h"
 #include "tm.h"
-#include "unwind.h"
+//#include "unwind.h"
 #include "gthr.h"
 
 #ifdef __USING_SJLJ_EXCEPTIONS__

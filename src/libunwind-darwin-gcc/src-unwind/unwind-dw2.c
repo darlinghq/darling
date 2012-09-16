@@ -28,7 +28,7 @@
 #include "coretypes.h"
 #include "tm.h"
 #include "dwarf2.h"
-#include "unwind.h"
+#include "unwind-generic.h"
 #ifdef __USING_SJLJ_EXCEPTIONS__
 # define NO_SIZE_OF_ENCODED_VALUE
 #endif
