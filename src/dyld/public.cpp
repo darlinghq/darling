@@ -158,7 +158,7 @@ static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 	if (cbdata->info->dwarf_section) // we already have a match
 		return 0;
 
-	std::cout << "Looking into " << info->dlpi_name << std::endl;
+	//std::cout << "Looking into " << info->dlpi_name << std::endl;
 
 	if (size < offsetof(struct dl_phdr_info, dlpi_phnum))
 		return 0;
@@ -166,11 +166,12 @@ static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 	for (int i = 0; i < info->dlpi_phnum; i++)
 	{
 		const ElfW(Phdr)* phdr = &info->dlpi_phdr[i];
-
+		/*
 		if (strstr(info->dlpi_name, "cxxdarwin"))
 		{
 			std::cout << "type: " << phdr->p_type << "; vaddr: " << phdr->p_vaddr << std::endl;
 		}
+		*/
 		
 		if (phdr->p_type == PT_LOAD)
 		{
@@ -184,7 +185,7 @@ static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 		}
 		else if (phdr->p_type == PT_GNU_EH_FRAME)
 		{
-			std::cout << "Found .eh_frame_hdr in " << info->dlpi_name << std::endl;
+			//std::cout << "Found .eh_frame_hdr in " << info->dlpi_name << std::endl;
 			ehdr = (eh_frame_hdr*) (uintptr_t(info->dlpi_addr) + phdr->p_vaddr);
 			// cbdata->info->dwarf_section_length = phdr->p_memsz;
 		}
@@ -192,7 +193,7 @@ static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 
 	if (addrMatch && ehdr)
 	{
-		std::cout << "*** Match found! " << info->dlpi_name << std::endl;
+		//std::cout << "*** Match found! " << info->dlpi_name << std::endl;
 		
 		// Now we find .eh_frame from .eh_frame_hdr
 		if (ehdr->version != 1)

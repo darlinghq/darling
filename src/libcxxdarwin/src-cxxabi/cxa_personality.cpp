@@ -833,11 +833,12 @@ _UA_CLEANUP_PHASE
         Else a cleanup is not found: return _URC_CONTINUE_UNWIND
 */
 
+extern "C"
 _Unwind_Reason_Code
 #if __arm__
 __gxx_personality_sj0
 #else
-__gxx_personality_v0
+__darwin___gxx_personality_v0
 #endif
                     (int version, _Unwind_Action actions, uint64_t exceptionClass,
                      _Unwind_Exception* unwind_exception, _Unwind_Context* context)

@@ -488,11 +488,11 @@ bool UnwindCursor<A,R>::getInfoFromDwarfSection(pint_t pc, pint_t mh, pint_t ehS
 	if ( !foundFDE ) {
 		// otherwise, search cache of previously found FDEs
 		pint_t cachedFDE = DwarfFDECache<A>::findFDE(mh, pc);
-		fprintf(stderr, "getInfoFromDwarfSection(pc=0x%llX) cachedFDE=0x%llX\n", (uint64_t)pc, (uint64_t)cachedFDE);
+		//fprintf(stderr, "getInfoFromDwarfSection(pc=0x%llX) cachedFDE=0x%llX\n", (uint64_t)pc, (uint64_t)cachedFDE);
 		if ( cachedFDE != 0 ) {
 			foundFDE = CFI_Parser<A>::findFDE(fAddressSpace, pc, ehSectionStart, sectionLength, cachedFDE, &fdeInfo, &cieInfo);
 			foundInCache = foundFDE;
-			fprintf(stderr, "cachedFDE=0x%llX, foundInCache=%d\n", (uint64_t)cachedFDE, foundInCache);
+			//fprintf(stderr, "cachedFDE=0x%llX, foundInCache=%d\n", (uint64_t)cachedFDE, foundInCache);
 		}
 	}
 #endif
@@ -516,8 +516,8 @@ bool UnwindCursor<A,R>::getInfoFromDwarfSection(pint_t pc, pint_t mh, pint_t ehS
 			fInfo.extra				= (unw_word_t)mh;
 			if ( !foundInCache && (sectionOffsetOfFDE == 0) ) {
 				// don't add to cache entries the compact encoding table can find quickly
-				fprintf(stderr, "getInfoFromDwarfSection(pc=0x%0llX), mh=0x%llX, start_ip=0x%0llX, fde=0x%0llX, personality=0x%0llX\n", 
-					(uint64_t)pc, (uint64_t)mh, fInfo.start_ip, fInfo.unwind_info, fInfo.handler);
+				//fprintf(stderr, "getInfoFromDwarfSection(pc=0x%0llX), mh=0x%llX, start_ip=0x%0llX, fde=0x%0llX, personality=0x%0llX\n", 
+				//	(uint64_t)pc, (uint64_t)mh, fInfo.start_ip, fInfo.unwind_info, fInfo.handler);
 #if !FOR_DYLD
 				DwarfFDECache<A>::add(mh, fdeInfo.pcStart, fdeInfo.pcEnd, fdeInfo.fdeStart);
 #endif

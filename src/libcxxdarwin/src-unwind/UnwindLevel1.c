@@ -34,12 +34,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <execinfo.h>
+#include <dlfcn.h>
 
 #include "libunwind.h"
 #include "unwind.h"
 #include "InternalMacros.h"
 
-extern void* __gxx_personality_v0;
+void* __darwin___gxx_personality_v0();
+void* __gxx_personality_v0();
 
 #if __ppc__ || __i386__ ||  __x86_64__
 
@@ -90,16 +92,13 @@ static _Unwind_Reason_Code unwind_phase1(unw_context_t* uc, struct _Unwind_Excep
 			__personality_routine p = (__personality_routine)(long)(frameInfo.handler);
 			_Unwind_Reason_Code personalityResult;
 			
-			if (((long)p) == 0x432080)
-				personalityResult = _URC_CONTINUE_UNWIND;
-			else
-			{
+			if (p == dlsym(0, "__gxx_personality_v0"))
+				p = __darwin___gxx_personality_v0;
 			
-				DEBUG_PRINT_UNWINDING("unwind_phase1(ex_ojb=%p): calling personality function %p\n", exception_object, p);
-				personalityResult = (*p)(1, _UA_SEARCH_PHASE, 
-						exception_object->exception_class, exception_object, 
-						(struct _Unwind_Context*)(&cursor1));
-			}
+			DEBUG_PRINT_UNWINDING("unwind_phase1(ex_ojb=%p): calling personality function %p\n", exception_object, p);
+			personalityResult = (*p)(1, _UA_SEARCH_PHASE, 
+					exception_object->exception_class, exception_object, 
+					(struct _Unwind_Context*)(&cursor1));
 			
 			switch ( personalityResult ) {
 				case _URC_HANDLER_FOUND:
@@ -170,6 +169,8 @@ static _Unwind_Reason_Code unwind_phase2(unw_context_t* uc, struct _Unwind_Excep
 		// if there is a personality routine, tell it we are unwinding
 		if ( frameInfo.handler != 0 ) {
 			__personality_routine p = (__personality_routine)(long)(frameInfo.handler);
+			if (p == dlsym(0, "__gxx_personality_v0"))
+				p = __darwin___gxx_personality_v0;
 			_Unwind_Action action = _UA_CLEANUP_PHASE;
 			if ( sp == exception_object->private_2 )
 				action = (_Unwind_Action)(_UA_CLEANUP_PHASE|_UA_HANDLER_FRAME); // tell personality this was the frame it marked in phase 1
