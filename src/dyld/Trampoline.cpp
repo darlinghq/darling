@@ -7,10 +7,15 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <stack>
 
 TrampolineMgr* TrampolineMgr::m_pInstance = 0;
-int TrampolineMgr::m_nDepth = 0;
 std::map<std::string, TrampolineMgr::FunctionInfo> TrampolineMgr::m_functionInfo;
+struct timeval TrampolineMgr::m_startup;
+
+static __thread std::stack<TrampolineMgr::ReturnInfo>* g_returnInfo;
+static std::ofstream* g_logger = 0;
+static pid_t g_loggerForPid = 0;
 
 extern "C" void reg_saveall();
 extern "C" void reg_restoreall();
@@ -40,6 +45,8 @@ TrampolineMgr::TrampolineMgr(int entries)
 		m_wd = p;
 		free(p);
 	}
+
+	::gettimeofday(&m_startup, nullptr);
 
 	std::cout << logPath() << std::endl;
 }
@@ -127,16 +134,57 @@ void TrampolineMgr::loadFunctionInfo(const char* path)
 	}
 }
 
+std::string TrampolineMgr::formatTime(double ms)
+{
+	const double HRS = 1000.0*60*60;
+	const double MINS = 1000.0*60;
+	const double SECS = 1000.0;
+	std::stringstream ss;
+
+	if (ms >= HRS)
+	{
+		int hrs = int(ms / HRS);
+		ss << hrs << 'h';
+		ms -= double(hrs) * HRS;
+	}
+	if (ms >= MINS)
+	{
+		int mins = int(ms / MINS);
+		ss << mins << 'm';
+		ms -= double(mins) * MINS;
+	}
+	if (ms >= SECS)
+	{
+		int secs = int(ms / SECS);
+		ss << secs << 's';
+		ms -= double(secs) * SECS;
+	}
+	ss << ms << "ms";
+	return ss.str();
+}
+
+std::string TrampolineMgr::callTime()
+{
+	double ms;
+	struct timeval now;
+
+	::gettimeofday(&now, nullptr);
+	ms = (now.tv_sec - g_returnInfo->top().callTime.tv_sec) * 1000;
+	ms += (now.tv_usec - g_returnInfo->top().callTime.tv_usec) / 1000.0;
+
+	return formatTime(ms);
+}
+
 std::string TrampolineMgr::timeStamp()
 {
-	char buf[50];
-	time_t t = time(0);
-	struct tm tm;
+	double ms;
+	struct timeval now;
 
-	localtime_r(&t, &tm);
-	strftime(buf, sizeof(buf), "%H:%M:%S", &tm);
+	::gettimeofday(&now, nullptr);
+	ms = (now.tv_sec - m_pInstance->m_startup.tv_sec) * 1000;
+	ms += (now.tv_usec - m_pInstance->m_startup.tv_usec) / 1000.0;
 
-	return buf;
+	return formatTime(ms);
 }
 
 std::string TrampolineMgr::logPath()
@@ -154,10 +202,23 @@ std::string TrampolineMgr::logPath()
 	return ss.str();
 }
 
-bool TrampolineMgr::openLog(std::ofstream& stream)
+std::ostream* TrampolineMgr::getLogger()
 {
-	stream.open(logPath(), std::ios_base::out | std::ios_base::app);
-	return stream.is_open();
+	if (g_loggerForPid == getpid())
+		return g_logger ? g_logger : &std::cerr;
+	else
+	{
+		delete g_logger;
+		g_logger = new std::ofstream(logPath(), std::ios_base::out | std::ios_base::app);
+
+		if (!g_logger->is_open())
+		{
+			delete g_logger;
+			g_logger = 0;
+		}
+		g_loggerForPid = getpid();
+		return g_logger;
+	}
 }
 
 void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
@@ -165,14 +226,14 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 	FunctionInfo* info = 0;
 	const std::string& name = m_pInstance->m_entries[index].name;
 	auto it = m_functionInfo.find(name);
-	std::ofstream logFile;
-	std::ostream* out = &logFile;
+	std::ostream* out;
+	ReturnInfo retInfo;
 
-	if (!m_pInstance->openLog(logFile))
-		out = &(*out);
+	out = m_pInstance->getLogger();
 	
-	(*out) << std::string(m_nDepth, ' ');
-	(*out) << '[' << timeStamp() << "] ";
+	std::string stamp = timeStamp();
+	(*out) << '[' << stamp << "]";
+	(*out) << std::string((20 - stamp.size()) + g_returnInfo ? g_returnInfo->size() : 0, ' ');
 	
 	if (it != m_functionInfo.end())
 	{
@@ -194,39 +255,44 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 	}
 	else
 		(*out) << m_pInstance->m_entries[index].name << "(?)\n" << std::flush;
-	m_pInstance->m_entries[index].retAddr = stack->retAddr;
-	
-	m_nDepth++;
+
+	if (!g_returnInfo)
+		g_returnInfo = new std::stack<TrampolineMgr::ReturnInfo>;
+
+	retInfo.retAddr = stack->retAddr;
+	gettimeofday(&retInfo.callTime, 0);
+
+	g_returnInfo->push(retInfo);
 	
 	return m_pInstance->m_entries[index].addr;
 }
 
 void* TrampolineMgr::printInfoR(uint32_t index, CallStack* stack)
 {
-	void* rv = m_pInstance->m_entries[index].retAddr;
-	std::ofstream logFile;
-	std::ostream* out = &logFile;
+	void* rv = g_returnInfo->top().retAddr;
+	std::ostream* out;
 
-	if (!m_pInstance->openLog(logFile))
-		out = &(*out);
-	
-	m_pInstance->m_entries[index].retAddr = 0;
-	m_nDepth--;
-	
+	out = m_pInstance->getLogger();
+
 	const std::string& name = m_pInstance->m_entries[index].name;
 	auto it = m_functionInfo.find(name);
 	
-	(*out) << std::string(m_nDepth, ' ');
-	(*out) << '[' << timeStamp() << "] ";
-	
+	std::string stamp = timeStamp();
+	(*out) << '[' << stamp << "]";
+	(*out) << std::string((20 - stamp.size()) + g_returnInfo ? g_returnInfo->size() : 0, ' ');
+
 	if (it != m_functionInfo.end())
 	{
 		ArgumentWalker w(stack);
-		(*out) << "-> " << w.ret(it->second.retType) << '\n' << std::flush;
+		(*out) << "-> " << w.ret(it->second.retType);
 	}
 	else
-		(*out) << "-> ?\n" << std::flush;
+		(*out) << "-> ?";
+
+	(*out) << " {" << callTime() << "}\n" << std::flush; 
 	
+	g_returnInfo->pop();
+
 	// standard retval in rax, double in xmm0
 	return rv;
 }
@@ -234,6 +300,7 @@ void* TrampolineMgr::printInfoR(uint32_t index, CallStack* stack)
 void Trampoline::init(uint32_t i, void* (*pDebug)(uint32_t,TrampolineMgr::CallStack*), void* (*pDebugR)(uint32_t,TrampolineMgr::CallStack*))
 {
 	// See trampoline in trampoline_helper.asm for source
+#ifdef __x86_64__
 	memcpy(this, "\x49\xba\xb6\xb5\xb4\xb3\xb2\xb1\xb0\x00\x41\xff\xd2\xbf"
 		"\x56\x34\x12\x00\x48\x89\xe6\x48\xb9\xff\xee\xdd\xcc\xbb\xaa\x00\x00"
 		"\xff\xd1\x49\x89\xc3\x49\xba\xc6\xc5\xc4\xc3\xc2\xc1\xc0\x00\x41\xff"
@@ -243,6 +310,17 @@ void Trampoline::init(uint32_t i, void* (*pDebug)(uint32_t,TrampolineMgr::CallSt
 		"\xc3\x49\xba\xc6\xc5\xc4\xc3\xc2\xc1\xc0\x00\x41\xff\xd2\x41\xff\xe3",
 		sizeof(*this)
 	);
+#else
+	memcpy(this, "\x68\xa3\xa2\xa1\xa0\xc3\x54\x68\x78\x56\x34\x12\x68\xb3"
+		"\xb2\xb1\xb0\xc3\x89\x44\x24\xf8\x68\xc3\xc2\xc1\xc0\xc3\xe8\x00"
+		"\x00\x00\x00\x8b\x04\x24\x83\xc0\x10\x89\x04\x24\x8b\x44\x24\xe0"
+		"\xff\xe0\x90\x68\xa3\xa2\xa1\xa0\xc3\x54\x68\x78\x56\x34\x12\x68"
+		"\xb9\xb9\xb9\xb9\xc3\x89\x44\x24\xf8\x68\xc3\xc2\xc1\xc0\xc3\x8b"
+		"\x4c\x24\xe0\xff\xe1",
+		sizeof(*this)
+	);
+
+#endif
 	
 	this->reg_saveall = reinterpret_cast<uint64_t>(::reg_saveall);
 	this->reg_saveall2 = reinterpret_cast<uint64_t>(::reg_saveall);
@@ -255,16 +333,26 @@ void Trampoline::init(uint32_t i, void* (*pDebug)(uint32_t,TrampolineMgr::CallSt
 }
 
 TrampolineMgr::ArgumentWalker::ArgumentWalker(CallStack* stack)
-: m_stack(stack), m_indexInt(0), m_indexXmm(0)
+: m_stack(stack)
 {
+#ifdef __x86_64__
+	m_indexInt = m_indexXmm = 0;
+#else
+	m_indexArg = 0;
+#endif
 }
 
 TrampolineMgr::ArgumentWalker::ArgumentWalker(CallStack* stack, OutputArguments args)
-: m_stack(stack), m_indexInt(0), m_indexXmm(0), m_pointers(args)
+: m_stack(stack), m_pointers(args)
 {
+#ifdef __x86_64__
+	m_indexInt = m_indexXmm = 0;
+#else
+	m_indexArg = 0;
+#endif
 }
 
-
+#ifdef __x86_64__
 uint64_t TrampolineMgr::ArgumentWalker::next64bit()
 {
 	uint64_t rv;
@@ -287,7 +375,19 @@ uint64_t TrampolineMgr::ArgumentWalker::next64bit()
 	return rv;
 }
 
-long double TrampolineMgr::ArgumentWalker::nextDouble()
+long long TrampolineMgr::ArgumentWalker::nextLL()
+{
+	uint64_t v = next64bit();
+	return *((long*) &v);
+}
+
+int TrampolineMgr::ArgumentWalker::nextInt()
+{
+	uint64_t v = next64bit();
+	return *((int*) &v);
+}
+
+long double TrampolineMgr::ArgumentWalker::nextLongDouble()
 {
 	long double rv;
 	if (m_indexXmm >= 0 && m_indexXmm <= 7)
@@ -299,38 +399,90 @@ long double TrampolineMgr::ArgumentWalker::nextDouble()
 	return rv;
 }
 
+double TrampolineMgr::ArgumentWalker::nextDouble()
+{
+	long double v = nextLongDouble();
+	return *((double*)&v);
+}
+
+float TrampolineMgr::ArgumentWalker::nextFloat()
+{
+	long double v = nextLongDouble();
+	return *((float*)&v);
+}
+
+void* TrampolineMgr::ArgumentWalker::nextPointer()
+{
+	uint64_t v = next64bit();
+	return (void*) v;
+}
+
+#else
+
+void* TrampolineMgr::ArgumentWalker::nextPointer()
+{
+	uint32_t v = m_stack->arguments[m_indexArg++];
+	return (void*) v;
+}
+
+int TrampolineMgr::ArgumentWalker::nextInt()
+{
+	uint32_t v = m_stack->arguments[m_indexArg++];
+	return *((int*) &v);
+}
+
+long long TrampolineMgr::ArgumentWalker::nextLL()
+{
+	union
+	{
+		uint32_t b32[2];
+		long long b64;
+	} ll;
+
+	ll.b32[0] = m_stack->arguments[m_indexArg+1];
+	ll.b32[1] = m_stack->arguments[m_indexArg];
+	m_indexArg += 2;
+
+	return ll.b64;
+}
+
+float TrampolineMgr::ArgumentWalker::nextFloat()
+{
+	uint32_t v = m_stack->arguments[m_indexArg++];
+	return *((float*) &v);
+}
+
+double TrampolineMgr::ArgumentWalker::nextDouble()
+{
+	double* d = (double*) &m_stack->arguments[m_indexArg];
+	m_indexArg += 2;
+	return *d;
+}
+
+#endif
+
 std::string TrampolineMgr::ArgumentWalker::next(char type)
 {
 	std::stringstream ss;
 	void* ptr;
 	
 	if (type == 'u')
-		ss << next64bit();
+		ss << unsigned(nextInt());
 	else if (type == 'i')
-	{
-		uint64_t u = next64bit();
-		ss << *((int64_t*) &u);
-	}
+		ss << nextInt();
+	else if (type == 'q')
+		ss << nextLL();
 	else if (type == 'f')
-	{
-		long double d = nextDouble();
-		ss << *((float*)&d);
-	}
+		ss << nextFloat();
 	else if (type == 'd')
-	{
-		long double d = nextDouble();
-		ss << *((double*)&d);
-	}
+		ss << nextDouble();
 	else if (type == 'p' || isupper(type))
-	{
-		ptr = (void*) next64bit();
-		ss << ptr;
-	}
+		ss << nextPointer();
 	else if (type == 'c')
-		ss << char(next64bit());
+		ss << char(nextInt());
 	else if (type == 's')
 	{
-		const char* s = (const char*) next64bit();
+		const char* s = (const char*) nextPointer();
 		ss << (void*)s;
 		if (s)
 			ss << " \"" << safeString(s) << '"';
@@ -346,6 +498,7 @@ std::string TrampolineMgr::ArgumentWalker::next(char type)
 	return ss.str();
 }
 
+#ifdef __x86_64__
 std::string TrampolineMgr::ArgumentWalker::ret(char type)
 {
 	std::stringstream ss;
@@ -381,6 +534,14 @@ std::string TrampolineMgr::ArgumentWalker::ret(char type)
 	
 	return ss.str();
 }
+#else
+std::string TrampolineMgr::ArgumentWalker::ret(char type)
+{
+	std::stringstream ss;
+	// TODO
+	return ss.str();
+}
+#endif
 
 std::string TrampolineMgr::ArgumentWalker::safeString(const char* in)
 {

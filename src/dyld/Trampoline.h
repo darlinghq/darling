@@ -6,6 +6,7 @@
 #include <list>
 #include <map>
 #include <fstream>
+#include <sys/time.h>
 
 struct Trampoline;
 
@@ -21,30 +22,46 @@ public:
 	
 	static void loadFunctionInfo(const char* path);
 	
-	#pragma pack(1)
+#pragma pack(1)
+#ifdef __x86_64__
 	struct CallStack
 	{
 		long double xmm[8]; // xmm7-xmm0
 		uint64_t r15, r14, r13, r12, r9, r8, rcx, rdx, rsi, rdi, rbx, rax;
 		void* retAddr;
 	};
-	#pragma pack()
+#else
+	struct CallStack
+	{
+		uint32_t edi, esi, edx, ecx, ebx, eax;
+		void* retAddr;
+		uint32_t arguments[];
+	};
+#endif
+#pragma pack()
 private:
 	void loadMemoryMap();
 	
 	std::string logPath();
-	bool openLog(std::ofstream& stream);
+	std::ostream* getLogger();
 	static std::string timeStamp();
+	static std::string callTime();
+	static std::string formatTime(double ms);
 	static void* printInfo(uint32_t index, CallStack* stack);
 	static void* printInfoR(uint32_t index, CallStack* stack);
-private:
+public:
 	typedef std::vector<std::pair<char,void*> > OutputArguments;
+	struct ReturnInfo
+	{
+		void* retAddr;
+		OutputArguments pointers;
+		struct timeval callTime;
+	};
+private:
 	struct AddrEntry
 	{
 		std::string name;
 		void* addr;
-		void* retAddr; // not reentrant
-		OutputArguments pointers; // not reentrant
 	};
 	struct MemoryPages
 	{
@@ -65,8 +82,15 @@ private:
 	public:
 		ArgumentWalker(CallStack* stack);
 		ArgumentWalker(CallStack* stack, OutputArguments args /* for printInfoR only */);
+#ifdef __x86_64__
 		uint64_t next64bit();
-		long double nextDouble();
+		long double nextLongDouble();
+#endif
+		int nextInt();
+		long long nextLL();
+		float nextFloat();
+		double nextDouble();
+		void* nextPointer();
 		std::string next(char type);
 		std::string ret(char type);
 		OutputArguments getOutputArguments() { return m_pointers; }
@@ -74,7 +98,11 @@ private:
 		static std::string safeString(const char* in);
 	private:
 		CallStack* m_stack;
+#ifdef __x86_64__
 		int m_indexInt, m_indexXmm;
+#else
+		int m_indexArg;
+#endif
 		OutputArguments m_pointers;
 	};
 	
@@ -86,15 +114,18 @@ private:
 	std::vector<AddrEntry> m_entries;
 	std::list<MemoryPages> m_memoryMap;
 	std::string m_wd;
-	static int m_nDepth;
+	static struct timeval m_startup;
 	static std::map<std::string, FunctionInfo> m_functionInfo;
 };
 
 #pragma pack(1)
-struct Trampoline // 119 bytes // 63 code // 56 pointers
+struct Trampoline
 {
 	void init(uint32_t index, void* (*pDebug)(uint32_t,TrampolineMgr::CallStack*), void* (*pDebugR)(uint32_t,TrampolineMgr::CallStack*));
 
+#ifdef __x86_64__
+
+	// 119 bytes // 63 code // 56 pointers
 	char code1[2];
 	uint64_t reg_saveall;
 	char code2[4];
@@ -113,6 +144,28 @@ struct Trampoline // 119 bytes // 63 code // 56 pointers
 	uint64_t reg_restoreall2;
 	char code9[9];
 	char padding[1];
+#else
+	// 83 bytes
+	char code1;
+	uint32_t reg_saveall;
+	char code2[3];
+	uint32_t index;
+	char code3;
+	uint32_t debugFcn;
+	char code4[6];
+	uint32_t reg_restoreall;
+	char code5[23];
+	uint32_t reg_saveall2;
+	char code6[3];
+	uint32_t index2;
+	char code7;
+	uint32_t debugFcnR;
+	char code8[6];
+	uint32_t reg_restoreall2;
+	char code9[7];
+	char padding[1];
+
+#endif
 };
 #pragma pack()
 

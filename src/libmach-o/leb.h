@@ -30,7 +30,10 @@
 #define LEB_H
 #include <stdint.h>
 
+__attribute__ ((visibility ("default")))
 uint64_t uleb128(const uint8_t*& p);
+
+__attribute__ ((visibility ("default")))
 int64_t sleb128(const uint8_t*& p);
 
 #endif

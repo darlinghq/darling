@@ -447,6 +447,11 @@ void MachOLoader::runPendingInitFuncs(int argc, char** argv, char** envp, char**
 void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 {
 	char* apple[2] = { g_darwin_executable_path, 0 };
+	std::vector<char*> envCopy;
+	
+	//for (int i = 0; envp[i]; i++)
+	//	envCopy.push_back(envp[i]);
+	envCopy.push_back(0);
 
 	load(mach, g_darwin_executable_path);
 	setupDyldData(mach);
@@ -457,7 +462,7 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 
 	mach.close();
 
-	runPendingInitFuncs(argc, argv, envp, apple);
+	runPendingInitFuncs(argc, argv, &envCopy[0], apple);
 	
 	fflush(stdout);
 	assert(argc > 0);

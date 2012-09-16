@@ -2,7 +2,9 @@
 #include "signals.h"
 #include "errno.h"
 #include "common/auto.h"
+#include "Bidimap.h"
 #include <signal.h>
+#include <iostream>
 #include <memory>
 #include "darwin_errno_codes.h"
 
@@ -16,16 +18,87 @@ static Darling::MappedFlag g_sigactionFlags[] = {
 	{ DARWIN_SA_SIGINFO, SA_SIGINFO }
 };
 
+typedef void(*HandlerType)(int,siginfo_t*,void*);
+static int g_sigLinuxToDarwin[33], g_sigDarwinToLinux[33];
+static const int SIGNAL_MAX = 31;
+static HandlerType g_darwinHandlers[32];
+
+__attribute__((constructor))
+static void initializeSignalMaps()
+{
+	Darling::Bidimap<int,33> map(g_sigLinuxToDarwin, g_sigDarwinToLinux);
+	map.put(SIGHUP, DARWIN_SIGHUP);
+	map.put(SIGINT, DARWIN_SIGINT);
+	map.put(SIGQUIT, DARWIN_SIGQUIT);
+	map.put(SIGILL, DARWIN_SIGILL);
+	map.put(SIGTRAP, DARWIN_SIGTRAP);
+	map.put(SIGABRT, DARWIN_SIGABRT);
+	map.put(SIGPOLL, DARWIN_SIGPOLL);
+	map.put(SIGFPE, DARWIN_SIGFPE);
+	map.put(SIGKILL, DARWIN_SIGKILL);
+	map.put(SIGBUS, DARWIN_SIGBUS);
+	map.put(SIGSEGV, DARWIN_SIGSEGV);
+	map.put(SIGSYS, DARWIN_SIGSYS);
+	map.put(SIGPIPE, DARWIN_SIGPIPE);
+	map.put(SIGALRM, DARWIN_SIGALRM);
+	map.put(SIGTERM, DARWIN_SIGTERM);
+	map.put(SIGURG, DARWIN_SIGURG);
+	map.put(SIGSTOP, DARWIN_SIGSTOP);
+	map.put(SIGTSTP, DARWIN_SIGTSTP);
+	map.put(SIGCONT, DARWIN_SIGCONT);
+	map.put(SIGCHLD, DARWIN_SIGCHLD);
+	map.put(SIGTTIN, DARWIN_SIGTTIN);
+	map.put(SIGTTOU, DARWIN_SIGTTOU);
+	map.put(SIGIO, DARWIN_SIGIO);
+	map.put(SIGXCPU, DARWIN_SIGXCPU);
+	map.put(SIGXFSZ, DARWIN_SIGXFSZ);
+	map.put(SIGVTALRM, DARWIN_SIGVTALRM);
+	map.put(SIGPROF, DARWIN_SIGPROF);
+	map.put(SIGWINCH, DARWIN_SIGWINCH);
+	//map.put(SIGINFO, DARWIN_SIGINFO); // N/A on Linux
+	map.put(SIGUSR1, DARWIN_SIGUSR1);
+	map.put(SIGUSR2, DARWIN_SIGUSR2);
+
+	std::fill(g_darwinHandlers, g_darwinHandlers+32, reinterpret_cast<HandlerType>(SIG_DFL));
+}
+
+int Darling::signalLinuxToDarwin(int sig)
+{
+	return g_sigLinuxToDarwin[sig];
+}
+
+int Darling::signalDarwinToLinux(int sig)
+{
+	return g_sigDarwinToLinux[sig];
+}
+
+static void GenericHandler(int sig, siginfo_t* p, void* p2)
+{
+	int dsig = g_sigLinuxToDarwin[sig];
+	g_darwinHandlers[sig](dsig, p, p2);
+}
+
+sighandler_t __darwin_signal(int signum, sighandler_t handler)
+{
+	signum = g_sigDarwinToLinux[signum];
+	g_darwinHandlers[signum] = reinterpret_cast<HandlerType>(handler);
+
+	if (handler != SIG_DFL && handler != SIG_IGN && handler)
+		handler = reinterpret_cast<sighandler_t>(GenericHandler);
+
+	return signal(signum, handler);
+}
+
 static sigset_t sigsetDarwinToLinux(const __darwin_sigset_t* set)
 {
 	sigset_t rv;
 
 	sigemptyset(&rv);
 
-	for (int i = 0; i < 19; i++)
+	for (int i = 0; i <= SIGNAL_MAX; i++)
 	{
 		if (*set & (1 << i))
-			sigaddset(&rv, i+1);
+			sigaddset(&rv, g_sigDarwinToLinux[i+1]);
 	}
 
 	return rv;
@@ -35,20 +108,24 @@ static __darwin_sigset_t sigsetLinuxToDarwin(const sigset_t* set)
 {
 	__darwin_sigset_t rv = 0;
 
-	for (int i = 0; i < 19; i++)
+	for (int i = 0; i <= SIGNAL_MAX; i++)
 	{
 		if (sigismember(set, i+1) > 0)
-			rv |= (1 << (i+1));
+			rv |= (1 << g_sigLinuxToDarwin[i+1]);
 	}
 
 	return rv;
 }
 
 // TODO: check siginfo compatibility
+// TODO: map signal numbers for 
 int __darwin_sigaction(int signum, const struct __darwin_sigaction* act, struct __darwin_sigaction* oldact)
 {
 	std::unique_ptr<struct sigaction> nact;
 	std::unique_ptr<struct sigaction> noldact;
+	HandlerType oldhdl = 0;
+
+	signum = g_sigDarwinToLinux[signum];
 
 	if (oldact)
 		noldact.reset(new struct sigaction);
@@ -60,6 +137,15 @@ int __darwin_sigaction(int signum, const struct __darwin_sigaction* act, struct 
 		nact->sa_handler = act->xsa_handler;
 		nact->sa_sigaction = act->xsa_sigaction;
 		nact->sa_mask = sigsetDarwinToLinux(&act->sa_mask);
+		oldhdl = g_darwinHandlers[signum];
+
+		// defer a user-supplied function to a wrapper that will translate the signal number
+		if (act->xsa_handler != 0 && act->xsa_handler != SIG_IGN && act->xsa_handler != SIG_DFL)
+		{
+			//std::cout << "Setting GenericHandler for " << signum << std::endl;
+			nact->sa_sigaction = GenericHandler;
+		}
+		g_darwinHandlers[signum] = act->xsa_sigaction;
 	}
 
 	int rv = sigaction(signum, nact.get(), noldact.get());
@@ -72,6 +158,7 @@ int __darwin_sigaction(int signum, const struct __darwin_sigaction* act, struct 
 			oldact->xsa_sigaction = noldact->sa_sigaction;
 		else
 			oldact->xsa_handler = noldact->sa_handler;
+		oldact->xsa_sigaction = oldhdl;
 		oldact->sa_mask = sigsetLinuxToDarwin(&noldact->sa_mask);
 	}
 	if (rv == -1)
@@ -88,13 +175,13 @@ int __darwin_sigemptyset(__darwin_sigset_t *set)
 
 int __darwin_sigfillset(__darwin_sigset_t *set)
 {
-	*set = 0x7ffff; // 19 signals on Linux
+	*set = 0xffffffff;
 	return 0;
 }
 
 int __darwin_sigaddset(__darwin_sigset_t *set, int signum)
 {
-	if (signum > 19)
+	if (signum >= SIGNAL_MAX)
 	{
 		errno = DARWIN_EINVAL;
 		return -1;
@@ -108,7 +195,7 @@ int __darwin_sigaddset(__darwin_sigset_t *set, int signum)
 
 int __darwin_sigdelset(__darwin_sigset_t *set, int signum)
 {
-	if (signum > 19)
+	if (signum >= SIGNAL_MAX)
 	{
 		errno = DARWIN_EINVAL;
 		return -1;
@@ -122,7 +209,7 @@ int __darwin_sigdelset(__darwin_sigset_t *set, int signum)
 
 int __darwin_sigismember(__darwin_sigset_t *set, int signum)
 {
-	if (signum > 19)
+	if (signum >= SIGNAL_MAX)
 	{
 		errno = DARWIN_EINVAL;
 		return -1;
@@ -172,6 +259,7 @@ int __darwin_sigwait(const __darwin_sigset_t *set, int *sig)
 	int rv = sigwait(&nset, sig);
 	if (rv == -1)
 		errnoOut();
+	*sig = g_sigLinuxToDarwin[*sig];
 	return rv;
 }
 

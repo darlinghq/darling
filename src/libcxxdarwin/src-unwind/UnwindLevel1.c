@@ -39,6 +39,8 @@
 #include "unwind.h"
 #include "InternalMacros.h"
 
+extern void* __gxx_personality_v0;
+
 #if __ppc__ || __i386__ ||  __x86_64__
 
 static _Unwind_Reason_Code unwind_phase1(unw_context_t* uc, struct _Unwind_Exception* exception_object)
@@ -46,12 +48,15 @@ static _Unwind_Reason_Code unwind_phase1(unw_context_t* uc, struct _Unwind_Excep
 	unw_cursor_t cursor1; 
 	unw_init_local(&cursor1, uc);
 	
+	int count = 0;
+	
 	// walk each frame looking for a place to stop
-	for (bool handlerNotFound = true; handlerNotFound; ) {
+	for (bool handlerNotFound = true; handlerNotFound; count++) {
 
 		// ask libuwind to get next frame (skip over first which is _Unwind_RaiseException)
 		int stepResult = unw_step(&cursor1);
 		if ( stepResult == 0 ) {
+			if (count < 2) continue;
 			DEBUG_PRINT_UNWINDING("unwind_phase1(ex_ojb=%p): unw_step() reached bottom => _URC_END_OF_STACK\n", exception_object); 
 			return _URC_END_OF_STACK;
 		}
@@ -83,10 +88,19 @@ static _Unwind_Reason_Code unwind_phase1(unw_context_t* uc, struct _Unwind_Excep
 		// if there is a personality routine, ask it if it will want to stop at this frame
 		if ( frameInfo.handler != 0 ) {
 			__personality_routine p = (__personality_routine)(long)(frameInfo.handler);
-			DEBUG_PRINT_UNWINDING("unwind_phase1(ex_ojb=%p): calling personality function %p\n", exception_object, p);
-			_Unwind_Reason_Code personalityResult = (*p)(1, _UA_SEARCH_PHASE, 
+			_Unwind_Reason_Code personalityResult;
+			
+			if (((long)p) == 0x432080)
+				personalityResult = _URC_CONTINUE_UNWIND;
+			else
+			{
+			
+				DEBUG_PRINT_UNWINDING("unwind_phase1(ex_ojb=%p): calling personality function %p\n", exception_object, p);
+				personalityResult = (*p)(1, _UA_SEARCH_PHASE, 
 						exception_object->exception_class, exception_object, 
 						(struct _Unwind_Context*)(&cursor1));
+			}
+			
 			switch ( personalityResult ) {
 				case _URC_HANDLER_FOUND:
 					// found a catch clause or locals that need destructing in this frame
@@ -279,13 +293,38 @@ EXPORT _Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception* exce
 	DEBUG_PRINT_API("_Unwind_RaiseException(ex_obj=%p)\n", exception_object);
 	unw_context_t uc;
 	unw_getcontext(&uc);
-	
+#if 0
 	void* bt[3];
 	backtrace(bt, 3);
 	
+	// rsp = 56
+	// rbp = 48
 	char* ptr = ((char*)&uc) + 128;
 	*((long*) ptr) = bt[2];
+
+	void* origRsp;
+	void* origRbp;
+	
+	ptr = ((char*)&uc) + 56;
+	
+	long* stack = (long*) ptr;
+	while (true)
+	{
+		if (*stack == bt[2])
+		{
+			origRbp = *(stack-1);
+			origRsp = ++stack;
+		}
+		ptr++;
+		stack = (long*) ptr;
+	}
+	*((long*) ptr) = 0x7FFFFFFFDAB8LL;
+	ptr = ((char*)&uc) + 48;
+	*((long*) ptr) = 0x7fffffffdaf0;
+	printf("Fixed\n");
+	
 	//unw_set_reg(&uc, UNW_REG_IP, bt[2]);
+#endif
 
 	// mark that this is a non-forced unwind, so _Unwind_Resume() can do the right thing
 	exception_object->private_1	= 0;

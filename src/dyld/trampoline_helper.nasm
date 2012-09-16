@@ -1,3 +1,5 @@
+%ifidn __OUTPUT_FORMAT__, elf64
+
 BITS 64
 section text
 
@@ -92,3 +94,79 @@ after_jump:
 	call r10
 	jmp r11 ; now we "return" to the original function
 
+%elifidn __OUTPUT_FORMAT__, elf
+
+BITS 32
+section text
+
+;global trampoline
+global reg_saveall
+global reg_restoreall
+
+reg_saveall: ; 24 bytes on stack
+	xchg eax, [esp]
+
+	push ebx
+	push ecx
+	push edx
+	push esi
+	push edi
+
+    jmp eax
+
+reg_restoreall:
+	pop ebx
+	mov eax, [esp+24]
+	mov [esp+24], ebx
+
+	pop edi
+	pop esi
+	pop edx
+	pop ecx
+	pop ebx
+
+	ret
+
+trampoline:
+	push 0xa0a1a2a3 ; call reg_saveall
+	ret
+	push esp
+	push 0x12345678 ; index in entry table
+	push 0xb0b1b2b3
+	ret ; call print function
+
+	mov [esp-8], eax
+	push 0xc0c1c2c3 ; call reg_restoreall
+	ret
+
+	; we cannot use IP-relative lea on 32bit x86
+	call get_eip
+get_eip:
+	mov eax, [esp]
+	add eax, 0x10 ; this gives us the address of after_jump
+	mov [esp], eax
+	mov eax, [esp-32]
+
+	jmp eax ; call the real function
+
+ALIGN 2
+after_jump:
+	push 0xa0a1a2a3
+	ret ; call reg_saveall
+	push esp
+	push 0x12345678 ; index in entry table
+	push 0xb9b9b9b9 ; print function 2
+	ret
+
+	mov [esp-8], eax ; real return address
+	push 0xc0c1c2c3
+	ret ; call reg_restoreall
+
+	mov ecx, [esp-32]
+	jmp ecx ; return to the original caller
+
+%else
+
+%error "Unsupported platform"
+
+%endif

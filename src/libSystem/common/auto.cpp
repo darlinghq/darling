@@ -1,6 +1,6 @@
 #include "auto.h"
 
-int Darling::flagsDarwinToNative(MappedFlag* flags, size_t count, int darwin)
+int Darling::flagsDarwinToNative(const MappedFlag* flags, size_t count, int darwin)
 {
 	int out = 0;
 	for (size_t i = 0; i < count; i++)
@@ -11,7 +11,7 @@ int Darling::flagsDarwinToNative(MappedFlag* flags, size_t count, int darwin)
 	return out;
 }
 
-int Darling::flagsNativeToDarwin(MappedFlag* flags, size_t count, int native)
+int Darling::flagsNativeToDarwin(const MappedFlag* flags, size_t count, int native)
 {
 	int out = 0;
 	for (size_t i = 0; i < count; i++)

@@ -564,6 +564,7 @@ int __darwin_dladdr(void *addr, Dl_info *info)
 
 extern "C" void* dyld_stub_binder()
 {
+	/*
 	long arg1, arg2;
 	asm ("movq (%%rsp), %%rbx;"
 		"movq %%rbx, %0;"
@@ -571,6 +572,8 @@ extern "C" void* dyld_stub_binder()
 		"movq %%rbx, %1;"
 		: "=r" (arg1), "=r" (arg2)
 	);
+	*/
+	// TODO
 	return 0;
 }
 

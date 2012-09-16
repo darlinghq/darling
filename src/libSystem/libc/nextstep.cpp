@@ -3,7 +3,9 @@
 #include <cstring>
 #include <unistd.h>
 
+static char** my_environ = environ;
+
 char*** _NSGetEnviron()
 {
-	return &environ;
+	return &my_environ;
 }

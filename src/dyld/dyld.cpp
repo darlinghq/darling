@@ -64,13 +64,11 @@ int main(int argc, char** argv, char** envp)
 		if (!::realpath(argv[1], g_darwin_executable_path))
 			::strcpy(g_darwin_executable_path, argv[1]);
 	
-		setlocale(LC_CTYPE, "");
+		// setlocale(LC_CTYPE, "");
 		if (getenv("DYLD_MTRACE") && atoi(getenv("DYLD_MTRACE")))
 			mtrace();
-#ifdef __x86_64__
 		if (getenv("DYLD_TRAMPOLINE") && atoi(getenv("DYLD_TRAMPOLINE")))
 			g_trampoline = true;
-#endif
 
 		g_mainBinary = MachO::readFile(argv[1], ARCH_NAME);
 		

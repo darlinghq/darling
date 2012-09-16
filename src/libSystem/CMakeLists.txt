@@ -61,6 +61,7 @@ set(libc_SRCS
 	libc/net.cpp
 	libc/getpwent.cpp
 	libc/signals.cpp
+	libc/termios.cpp
 	common/auto.cpp
 	common/path.cpp
 )
@@ -86,7 +87,8 @@ set(machkern_SRCS
 
 add_library(System.B.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
 # -luuid to make uuid_ functions available for Darwin apps
-target_link_libraries(System.B.dylib -ldl -lpthread -luuid -lmach-o -l:libobjc.so.4 -lrt -lssl -lbsd)
+target_link_libraries(System.B.dylib -ldl -lpthread -luuid -l:../../libmach-o.so -lrt -lssl -lbsd -l:libobjc.so.4)
+add_dependencies(System.B.dylib mach-o)
 
-install(TARGETS System.B.dylib DESTINATION lib)
+install(TARGETS System.B.dylib DESTINATION lib${SUFFIX})
 

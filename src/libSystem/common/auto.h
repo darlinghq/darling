@@ -43,8 +43,8 @@ namespace Darling
 		int darwin;
 		int native;
 	};
-	int flagsDarwinToNative(MappedFlag* flags, size_t count, int darwin);
-	int flagsNativeToDarwin(MappedFlag* flags, size_t count, int native);
+	int flagsDarwinToNative(const MappedFlag* flags, size_t count, int darwin);
+	int flagsNativeToDarwin(const MappedFlag* flags, size_t count, int native);
 }
 
 #endif

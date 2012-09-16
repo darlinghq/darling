@@ -18,7 +18,7 @@ int main()
 
 END
 
-gcc -w $cfile -o $cfile.bin
+gcc -w $3 $cfile -o $cfile.bin
 $cfile.bin
 
 rm $cfile*
