@@ -17,6 +17,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 set(objcdarwin_SRCS
 	objc_msgSend.nasm
+	objc_msgSend_fixup.nasm
 	dummy.c
 )
 
