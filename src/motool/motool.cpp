@@ -107,18 +107,17 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 		case ModeDylibs:
 		{
 			std::cout << "Dylibs:\n";
-			for (size_t i = 0; i < macho->dylibs().size(); i++)
+			for (const char* name : macho->dylibs())
 			{
-				std::cout << "\t" << macho->dylibs()[i] << std::endl;
+				std::cout << "\t" << name << std::endl;
 			}
 			break;
 		}
 		case ModeSymbols:
 		{
 			std::cout << "Symbols:\n";
-			for (size_t i = 0; i < macho->symbols().size(); i++)
+			for (const MachO::Symbol& s : macho->symbols())
 			{
-				const MachO::Symbol& s = macho->symbols()[i];
 				if (!s.addr)
 					continue;
 				
@@ -136,10 +135,8 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 		case ModeExports:
 		{
 			std::cout << "Exports:\n";
-			for (size_t i = 0; i < macho->exports().size(); i++)
+			for (const MachO::Export* e : macho->exports())
 			{
-				const MachO::Export* e = macho->exports()[i];
-				
 				std::cout << '\t' << e->name << " at " << "[0x" << std::hex << std::setfill('0');
 				
 				if (macho->is64())
@@ -154,9 +151,8 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 		case ModeBinds:
 		{
 			std::cout << "Binds:\n";
-			for (size_t i = 0; i < macho->binds().size(); i++)
+			for (const MachO::Bind* b : macho->binds())
 			{
-				const MachO::Bind* b = macho->binds()[i];
 				std::cout << '\t' << b->name << " at " << "[0x" << std::hex << std::setfill('0');
 				
 				if (macho->is64())

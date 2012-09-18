@@ -2,11 +2,24 @@
 
 BUILDSERVER="osx"
 
+set -e
+
 runtest() {
 	source="$1"
+	extension="${source##*.}"
 	source_fn=$(echo "$source" | sed 's/\//_/g')
 
-	set -e
+	case "$extension" in
+		"cpp")
+			tool="g++"
+			;;
+		"c" | "m")
+			tool="gcc"
+			;;
+		*)
+			echo "Unsupported file type: $extension"
+			exit 1
+	esac
 
 	echo "====="
 	echo "Running test '$source'"
@@ -18,7 +31,7 @@ runtest() {
 	echo "Copying the source code to Darwin..."
 	scp "$source" "$BUILDSERVER:/tmp/$$.$source_fn" >/dev/null
 	echo "Building the source code for Darwin..."
-	ssh "$BUILDSERVER" "g++ $cflags '/tmp/$$.$source_fn' -o '/tmp/$$.$source_fn.bin'"
+	ssh "$BUILDSERVER" "$tool $cflags '/tmp/$$.$source_fn' -o '/tmp/$$.$source_fn.bin'"
 	echo "Copying the binary over..."
 	scp "$BUILDSERVER:/tmp/$$.$source_fn.bin" "/tmp" >/dev/null
 	ssh "$BUILDSERVER" "rm -f /tmp/$$.$source_fn*"
@@ -28,7 +41,7 @@ runtest() {
 	rm -f "/tmp/$$.$source_fn.bin"
 
 	echo "Compiling native..."
-	g++ $cflags "$source" -o "/tmp/$$.$source_fn.bin"
+	$tool $cflags "$source" -o "/tmp/$$.$source_fn.bin"
 	echo "Running native binary..."
 	out_native=$("/tmp/$$.$source_fn.bin")
 

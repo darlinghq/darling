@@ -5,6 +5,7 @@
 #include "trace.h"
 #include <cstring>
 #include <cstdlib>
+#include <map>
 #include <link.h>
 #include <stddef.h>
 #include "../libmach-o/leb.h"
@@ -34,10 +35,12 @@ const char* _dyld_get_image_name(uint32_t image_index)
 
 void _dyld_register_func_for_add_image(void (*func)(const struct mach_header* mh, intptr_t vmaddr_slide))
 {
+	// This would be needed for the GCC libunwind
 }
 
 void _dyld_register_func_for_remove_image(void (*func)(const struct mach_header* mh, intptr_t vmaddr_slide))
 {
+	// This would be needed for the GCC libunwind
 }
 
 int32_t NSVersionOfRunTimeLibrary(const char* libraryName)
@@ -99,33 +102,33 @@ static uintptr_t readEncodedPointer(const eh_frame_hdr* hdr)
 	{
 		case 1: // unsigned LEB
 		{
-			const uint8_t* ptr = (uint8_t*) hdr->eh_frame_ptr;
+			const uint8_t* ptr = reinterpret_cast<const uint8_t*>(hdr->eh_frame_ptr);
 			val = uleb128(ptr);
 			break;
 		}
 		case 2: // 2 bytes
-			val = *((uint16_t*) hdr->eh_frame_ptr);
+			val = *reinterpret_cast<const uint16_t*>(hdr->eh_frame_ptr);
 			break;
 		case 3:
-			val = *((uint32_t*) hdr->eh_frame_ptr);
+			val = *reinterpret_cast<const uint32_t*>(hdr->eh_frame_ptr);
 			break;
 		case 4:
-			val = *((uint64_t*) hdr->eh_frame_ptr);
+			val = *reinterpret_cast<const uint64_t*>(hdr->eh_frame_ptr);
 			break;
 		case 9: // signed LEB
 		{
-			const uint8_t* ptr = (uint8_t*) hdr->eh_frame_ptr;
+			const uint8_t* ptr = reinterpret_cast<const uint8_t*>(hdr->eh_frame_ptr);
 			val = sleb128(ptr);
 			break;
 		}
 		case 0xa:
-			val = *((int16_t*) hdr->eh_frame_ptr);
+			val = *reinterpret_cast<const int16_t*>(hdr->eh_frame_ptr);
 			break;
 		case 0xb:
-			val = *((int32_t*) hdr->eh_frame_ptr);
+			val = *reinterpret_cast<const int32_t*>(hdr->eh_frame_ptr);
 			break;
 		case 0xc:
-			val = *((int64_t*) hdr->eh_frame_ptr);
+			val = *reinterpret_cast<const int64_t*>(hdr->eh_frame_ptr);
 			break;
 		default:
 			return 0;
@@ -136,10 +139,10 @@ static uintptr_t readEncodedPointer(const eh_frame_hdr* hdr)
 		case 0: // no change
 			break;
 		case 0x10: // pcrel
-			val += uintptr_t(hdr) + 4;
+			val += reinterpret_cast<uintptr_t>(hdr) + 4;
 			break;
 		case 0x30: // eh_frame_hdr rel
-			val += uintptr_t(hdr);
+			val += reinterpret_cast<uintptr_t>(hdr);
 			break;
 		default:
 			return 0;
@@ -175,18 +178,18 @@ static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 		
 		if (phdr->p_type == PT_LOAD)
 		{
-			void* from = (void*) (uintptr_t(info->dlpi_addr) + uintptr_t(phdr->p_vaddr));
-			void* to = ((char*)from) + phdr->p_memsz;
+			void* from = reinterpret_cast<void*>(uintptr_t(info->dlpi_addr) + uintptr_t(phdr->p_vaddr));
+			void* to = reinterpret_cast<char*>(from) + phdr->p_memsz;
 
 			if (cbdata->addr >= from && cbdata->addr < to)
 				addrMatch = true;
 			if (to > maxAddr)
-				maxAddr = to; // TODO: this could be improved
+				maxAddr = to; // TODO: could this be improved? libunwind does the same
 		}
 		else if (phdr->p_type == PT_GNU_EH_FRAME)
 		{
 			//std::cout << "Found .eh_frame_hdr in " << info->dlpi_name << std::endl;
-			ehdr = (eh_frame_hdr*) (uintptr_t(info->dlpi_addr) + phdr->p_vaddr);
+			ehdr = reinterpret_cast<eh_frame_hdr*>(uintptr_t(info->dlpi_addr) + phdr->p_vaddr);
 			// cbdata->info->dwarf_section_length = phdr->p_memsz;
 		}
 	}
@@ -198,7 +201,7 @@ static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 		// Now we find .eh_frame from .eh_frame_hdr
 		if (ehdr->version != 1)
 			return 0;
-		cbdata->info->dwarf_section = (void*) readEncodedPointer(ehdr);
+		cbdata->info->dwarf_section = reinterpret_cast<void*>(readEncodedPointer(ehdr));
 		cbdata->info->dwarf_section_length = uintptr_t(maxAddr) - uintptr_t(cbdata->info->dwarf_section);
 	}
 
@@ -224,8 +227,12 @@ bool _dyld_find_unwind_sections(void* addr, struct dyld_unwind_sections* info)
 		info->mh = &map->header;
 		info->dwarf_section = reinterpret_cast<const void*>(map->eh_frame.first + map->slide);
 		info->dwarf_section_length = map->eh_frame.second;
-		info->compact_unwind_section = 0; //reinterpret_cast<const void*>(map->unwind_info.first + map->slide);
-		info->compact_unwind_section_length = 0; //map->unwind_info.second;
+
+		// FIXME: we would get "malformed __unwind_info" warnings otherwise
+		// info->compact_unwind_section = reinterpret_cast<const void*>(map->unwind_info.first + map->slide);
+		// info->compact_unwind_section_length = map->unwind_info.second;
+		info->compact_unwind_section = 0;
+		info->compact_unwind_section_length = 0;
 
 		return true;
 	}
