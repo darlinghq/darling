@@ -5,13 +5,22 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+if (SUFFIX)
+	set(MULTILIB TRUE)
+endif (SUFFIX)
+
+if (SUFFIX STREQUAL "32")
+	message(STATUS "This is a 32bit build")
+	set(CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -m32")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
+	set(CMAKE_ASM_NASM_OBJECT_FORMAT "elf")
+	SET(CMAKE_C_SIZEOF_DATA_PTR 4)
+endif(SUFFIX STREQUAL "32")
+
 enable_language(ASM-ATT)
 enable_language(ASM_NASM)
 ADD_DEFINITIONS(-ggdb -DDEBUG)
-
-if (SUFFIX STREQUAL "32")
-	set(CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -m32")
-endif(SUFFIX STREQUAL "32")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

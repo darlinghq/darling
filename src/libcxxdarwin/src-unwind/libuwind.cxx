@@ -28,7 +28,7 @@
 #include <mach/machine.h>
 #include <new>
 
-#include "libunwind.h"
+#include "../include/libunwind.h"
 #include "libunwind_priv.h"
 
 #include "UnwindCursor.hpp"

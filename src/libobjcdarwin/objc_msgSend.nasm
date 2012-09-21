@@ -67,7 +67,7 @@ objc_msgSend:
 	
 	mov ecx, [esp+8]
 	mov [esp+4], ecx
-	mov [esp+8], eax
+	xchg [esp+8], eax
 	call objc_msg_lookup WRT ..plt
 	
 	jmp eax

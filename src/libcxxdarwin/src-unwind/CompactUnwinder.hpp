@@ -33,7 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <libunwind.h>
+#include "../include/libunwind.h"
 #include <mach-o/compact_unwind_encoding.h>
 
 #include "AddressSpace.hpp"

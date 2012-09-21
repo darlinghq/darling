@@ -13,7 +13,7 @@ TrampolineMgr* TrampolineMgr::m_pInstance = 0;
 std::map<std::string, TrampolineMgr::FunctionInfo> TrampolineMgr::m_functionInfo;
 struct timeval TrampolineMgr::m_startup;
 
-static __thread std::stack<TrampolineMgr::ReturnInfo>* g_returnInfo;
+static __thread std::stack<TrampolineMgr::ReturnInfo>* g_returnInfo = 0;
 static std::ofstream* g_logger = 0;
 static pid_t g_loggerForPid = 0;
 
@@ -231,9 +231,13 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 
 	out = m_pInstance->getLogger();
 	
+	if (!g_returnInfo)
+		g_returnInfo = new std::stack<TrampolineMgr::ReturnInfo>;
+	
 	std::string stamp = timeStamp();
-	(*out) << '[' << stamp << "]";
-	(*out) << std::string((20 - stamp.size()) + g_returnInfo ? g_returnInfo->size() : 0, ' ');
+	(*out) << std::string(20 - stamp.size(), ' ');
+	(*out) << '[' << stamp << "] ";
+	(*out) << std::string(g_returnInfo->size(), ' ');
 	
 	if (it != m_functionInfo.end())
 	{
@@ -256,9 +260,6 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 	else
 		(*out) << m_pInstance->m_entries[index].name << "(?)\n" << std::flush;
 
-	if (!g_returnInfo)
-		g_returnInfo = new std::stack<TrampolineMgr::ReturnInfo>;
-
 	retInfo.retAddr = stack->retAddr;
 	gettimeofday(&retInfo.callTime, 0);
 
@@ -278,8 +279,9 @@ void* TrampolineMgr::printInfoR(uint32_t index, CallStack* stack)
 	auto it = m_functionInfo.find(name);
 	
 	std::string stamp = timeStamp();
-	(*out) << '[' << stamp << "]";
-	(*out) << std::string((20 - stamp.size()) + g_returnInfo ? g_returnInfo->size() : 0, ' ');
+	(*out) << std::string(20 - stamp.size(), ' ');
+	(*out) << '[' << stamp << "] ";
+	(*out) << std::string(g_returnInfo->size(), ' ');
 
 	if (it != m_functionInfo.end())
 	{

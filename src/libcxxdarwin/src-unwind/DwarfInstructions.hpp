@@ -36,7 +36,7 @@
 #include <algorithm>
 #include <vector>
 
-#include <libunwind.h>
+#include "../include/libunwind.h"
 #include <mach-o/compact_unwind_encoding.h>
 
 #include "dwarf2.h"

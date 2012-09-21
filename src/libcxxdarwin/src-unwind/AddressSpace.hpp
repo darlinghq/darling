@@ -39,7 +39,7 @@
 #include <Availability.h>
 
 #include "FileAbstraction.hpp"
-#include "libunwind.h"
+#include "../include/libunwind.h"
 #include "InternalMacros.h"
 #include "dwarf2.h"
 

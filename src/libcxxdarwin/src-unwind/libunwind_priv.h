@@ -26,7 +26,7 @@
 #ifndef __LIBUNWIND_PRIV__
 #define __LIBUNWIND_PRIV__
 
-#include <libunwind.h>
+#include "../include/libunwind.h"
 
 #ifdef __cplusplus
 extern "C" {

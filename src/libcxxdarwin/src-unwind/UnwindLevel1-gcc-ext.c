@@ -32,8 +32,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "libunwind.h"
-#include "unwind.h"
+#include "../include/libunwind.h"
+#include "../include/unwind.h"
 #include "libunwind_priv.h"
 #include "InternalMacros.h"
 

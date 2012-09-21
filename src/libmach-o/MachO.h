@@ -33,6 +33,7 @@
 
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 #include <mach/vm_types.h>
 #include <mach-o/loader.h>
@@ -139,6 +140,15 @@ public:
 	int m_fd;
 	size_t m_offset;
 	mach_header m_header;
+};
+
+class fat_architecture_not_supported : public std::exception
+{
+public:
+	fat_architecture_not_supported(std::vector<std::string> archs) : m_archs(archs) {}
+	inline const std::vector<std::string>& archs() const { return m_archs; }
+private:
+	std::vector<std::string> m_archs;
 };
 
 #endif	// MACH_O_H_

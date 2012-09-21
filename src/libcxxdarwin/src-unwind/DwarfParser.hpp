@@ -35,7 +35,7 @@
 
 #include <vector>
 
-#include "libunwind.h"
+#include "../include/libunwind.h"
 #include "dwarf2.h"
 
 #include "AddressSpace.hpp"

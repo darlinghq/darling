@@ -55,8 +55,11 @@ MachO* MachO::readFile(std::string path, const char* arch, bool need_exports)
 		std::map<std::string, fat_arch>::const_iterator found = archs.find(arch);
 		if (found == archs.end())
 		{
-			std::cerr << path << " is a fat binary, but doesn't support the following architecture: " << arch << std::endl;
-			return 0;
+			std::vector<std::string> varchs;
+			for (auto elem : archs)
+				varchs.push_back(elem.first);
+
+			throw fat_architecture_not_supported(varchs);
 		}
     
 		offset = found->second.offset;

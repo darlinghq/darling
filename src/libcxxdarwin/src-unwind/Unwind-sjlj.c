@@ -36,7 +36,7 @@
 #if !FOR_DYLD
 	#include <System/pthread_machdep.h>
 #endif
-#include "unwind.h"
+#include "../include/unwind.h"
 #include "InternalMacros.h"
 
 //

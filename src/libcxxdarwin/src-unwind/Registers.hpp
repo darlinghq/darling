@@ -36,7 +36,7 @@
 #include <mach-o/loader.h>
 #include <mach-o/getsect.h>
 
-#include "libunwind.h"
+#include "../include/libunwind.h"
 #include "InternalMacros.h"
 
 namespace libunwind {

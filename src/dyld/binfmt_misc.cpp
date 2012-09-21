@@ -18,17 +18,19 @@ void Darling::binfmtRegister(const char* loader)
 	if (!reg.is_open())
 		throw std::runtime_error("Cannot register the binfmt_misc handler, is binfmt_misc kernel support loaded and mounted?");
 
-	// TODO: universal file handling will need to be reworked for multilib environments
-	reg << ":Mach-O Universal:M::\\xca\\xfe\\xba\\xbe::" << loader << ":\n";
-	reg.close();
-
-	reg.open("/proc/sys/fs/binfmt_misc/register");
 #ifdef __x86_64__
 	reg << ":Mach-O 64bit:M::\\xcf\\xfa\\xed\\xfe::" << loader << ":\n";
 #else
 	reg << ":Mach-O 32bit:M::\\xce\\xfa\\xed\\xfe::" << loader << ":\n";
 #endif
 	reg.close();
+
+	// In multilib environments, register FAT Mach-O files with dyld64 only
+#if !defined(MULTILIB) || defined(__x86_64__)
+	reg.open("/proc/sys/fs/binfmt_misc/register");
+	reg << ":Mach-O Universal:M::\\xca\\xfe\\xba\\xbe::" << loader << ":\n";
+	reg.close();
+#endif
 }
 
 static void deregister(const char* fmt)

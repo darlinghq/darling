@@ -35,7 +35,7 @@
 #include <pthread.h>
 
 #include "../dyld/public.h"
-#include "libunwind.h"
+#include "../include/libunwind.h"
 
 #include "AddressSpace.hpp"
 #include "Registers.hpp"

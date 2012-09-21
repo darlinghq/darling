@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <cstring>
 #include <cassert>
+#include <algorithm>
 #include <locale.h>
 #include <mcheck.h>
 
@@ -99,6 +100,21 @@ int main(int argc, char** argv, char** envp)
 		delete g_loader;
 		g_loader = 0;
 		return 2;
+	}
+	catch (fat_architecture_not_supported& e)
+	{
+		if (char* p = strstr(argv[0], "/" DYLD_FULL_NAME)) // multilib
+		{
+			// Try to automatically execute "the other" dyld on multilib systems
+			// if that other dyld's platform is supported in the fat binary
+			if (std::find(e.archs().begin(), e.archs().end(), ARCH_CROSS_NAME) != e.archs().end())
+			{
+				strcpy(p+1, DYLD_CROSS_NAME);
+				execvp(argv[0], argv);
+			}
+		}
+		
+		std::cerr << argv[1] << " is a fat binary, but doesn't support the following architecture: " << ARCH_NAME << std::endl;
 	}
 	catch (std::exception& e)
 	{

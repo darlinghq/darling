@@ -36,8 +36,8 @@
 #include <execinfo.h>
 #include <dlfcn.h>
 
-#include "libunwind.h"
-#include "unwind.h"
+#include "../include/libunwind.h"
+#include "../include/unwind.h"
 #include "InternalMacros.h"
 
 void* __darwin___gxx_personality_v0();
