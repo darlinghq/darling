@@ -1,6 +1,8 @@
 #!/bin/sh
 
 BUILDSERVER="osx"
+CPPFLAGS=""
+DYLD="dyld"
 
 set -e
 
@@ -26,7 +28,7 @@ runtest() {
 	echo "====="
 
 	cflags="$(grep '// CFLAGS' "$source" || true)"
-	cflags="-w $(echo "$cflags" | cut -b 12-)"
+	cflags="$CPPFLAGS -w $(echo "$cflags" | cut -b 12-)"
 
 	echo "Copying the source code to Darwin..."
 	scp "$source" "$BUILDSERVER:/tmp/$$.$source_fn" >/dev/null
@@ -37,7 +39,7 @@ runtest() {
 	ssh "$BUILDSERVER" "rm -f /tmp/$$.$source_fn*"
 
 	echo "Running Darwin binary..."
-	out_darwin=$(dyld "/tmp/$$.$source_fn.bin")
+	out_darwin=$($DYLD "/tmp/$$.$source_fn.bin")
 	rm -f "/tmp/$$.$source_fn.bin"
 
 	echo "Compiling native..."
@@ -61,6 +63,12 @@ runtest() {
 
 	echo "Everything OK, outputs match"
 }
+
+if [[ "$0" == *runtest32 ]]; then
+	CPPFLAGS="-m32"
+	DYLD="dyld32"
+	echo "32-bit mode"
+fi
 
 for test in "$@"; do
 	runtest "$test"
