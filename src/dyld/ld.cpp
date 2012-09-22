@@ -27,10 +27,8 @@ static regex_t g_reAutoMappable;
 static LoadedLibrary g_dummyLibrary;
 
 static const char* g_searchPath[] = {
-	LIB_PATH
-#ifdef __i386__
-	"/usr/lib32", "/usr/local/lib32", "/lib32"
-#endif
+	LIB_PATH,
+	"/usr/" LIB_DIR_NAME, "/usr/local/" LIB_DIR_NAME, "/" LIB_DIR_NAME
 	"/usr/lib", "/usr/local/lib", "/lib",
 };
 
@@ -124,6 +122,12 @@ start_search:
 		}
 		
 		path = std::string(filename) + ".so";
+#ifdef MULTILIB
+		{
+			size_t pos = path.find("/lib/");
+			path.replace(pos, 5, "/" LIB_DIR_NAME "/");
+		}
+#endif
 		LOG << "Trying " << path << std::endl;
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );

@@ -44,6 +44,8 @@ public:
 	// Resolves all external symbols required by this module
 	void doBind(const MachO& mach, intptr slide);
 	
+	void doMProtect();
+	
 	// Creates a list of publicly visible functions in this module
 	void loadExports(const MachO& mach, intptr base, Exports* exports);
 	
@@ -67,6 +69,9 @@ public:
 private:
 	// Jumps to the application entry
 	void boot(uint64_t entry, int argc, char** argv, char** envp, char** apple);
+
+	// checks sysctl mmap_min_addr
+	static void checkMmapMinAddr(intptr addr);
 private:
 	intptr m_last_addr;
 	std::vector<uint64_t> m_init_funcs;
@@ -75,6 +80,15 @@ private:
 	UndefMgr* m_pUndefMgr;
 	TrampolineMgr* m_pTrampolineMgr;
 	void* m_pCXX;
+	
+	// Pending calls to mprotect
+	struct MProtect
+	{
+		void* addr;
+		size_t len;
+		int prot;
+	};
+	std::vector<MProtect> m_mprotects;
 };
 
 #endif

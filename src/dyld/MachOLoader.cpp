@@ -108,6 +108,12 @@ void MachOLoader::loadDylibs(const MachO& mach)
 	}
 }
 
+void MachOLoader::doMProtect()
+{
+	for (MProtect p : m_mprotects)
+		::mprotect(p.addr, p.len, p.prot);
+	m_mprotects.clear();
+}
 
 void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 {
@@ -128,15 +134,25 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 			<< "fileoff=" << seg->fileoff
 			<< ", vmaddr=" << seg->vmaddr <<std::endl;
 
-		int prot = 0;
+		int prot = 0, maxprot = 0;
+
 		if (seg->initprot & VM_PROT_READ)
 			prot |= PROT_READ;
-		
+
 		if (seg->initprot & VM_PROT_WRITE)
 			prot |= PROT_WRITE;
 		
 		if (seg->initprot & VM_PROT_EXECUTE)
 			prot |= PROT_EXEC;
+
+		if (seg->maxprot & VM_PROT_READ)
+			maxprot |= PROT_READ;
+
+		if (seg->maxprot & VM_PROT_WRITE)
+			maxprot |= PROT_WRITE;
+
+		if (seg->maxprot & VM_PROT_EXECUTE)
+			maxprot |= PROT_EXEC;
 		
 
 		intptr filesize = alignMem(seg->filesize, 0x1000);
@@ -161,7 +177,11 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 		if (filesize == 0)
 			continue;
 		
-		void* mapped = ::mmap((void*)vmaddr, filesize, prot, MAP_PRIVATE | MAP_FIXED, mach.fd(), mach.offset() + seg->fileoff);
+		checkMmapMinAddr(vmaddr);
+		
+		void* mapped = ::mmap((void*)vmaddr, filesize, maxprot, MAP_PRIVATE | MAP_FIXED, mach.fd(), mach.offset() + seg->fileoff);
+
+		m_mprotects.push_back(MProtect{(void*) vmaddr, filesize, prot});
 		
 		if (mapped == MAP_FAILED)
 		{
@@ -183,7 +203,6 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 								
 			if (mapped == MAP_FAILED)
 			{
-				// TODO: insert a suggestion for a fix on 32bit systems
 				std::stringstream ss;
 				ss << "mmap(anon) failed on '" << mach.filename() << "': " << strerror(errno);
 				throw std::runtime_error(ss.str());
@@ -194,26 +213,63 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 	}
 }
 
+void MachOLoader::checkMmapMinAddr(intptr addr)
+{
+	static intptr minimum = -1;
+	if (minimum == intptr(-1))
+	{
+		std::ifstream f("/proc/sys/vm/mmap_min_addr");
+
+		if (!f.is_open())
+			minimum = 0;
+		else
+			f >> minimum;
+	}
+
+	if (addr < minimum)
+	{
+		std::stringstream ss;
+		ss << "Your vm.mmap_min_addr is too low for this application to be loaded. ";
+		ss << "Try running `sysctl -w vm.mmap_min_addr=\"" << addr << "\"'";
+		throw std::runtime_error(ss.str());
+	}
+}
+
 void MachOLoader::doRebase(const MachO& mach, intptr slide)
 {
 	for (const MachO::Rebase* rebase : mach.rebases())
 	{
+		void* addr = reinterpret_cast<void*>(rebase->vmaddr + slide);
 		switch (rebase->type)
 		{
 			case REBASE_TYPE_POINTER:
 			{
-				char** ptr = (char**)(rebase->vmaddr + slide);
+				uintptr_t* ptr = reinterpret_cast<uintptr_t*>(addr);
 				/*LOG << "rebase: " << i << ": " << (void*)rebase.vmaddr << ' '
 					<< (void*)*ptr << " => "
 					<< (void*)(*ptr + slide) << " @" << ptr <<std::endl;*/
 				*ptr += slide;
 				break;
 			}
+			case REBASE_TYPE_TEXT_ABSOLUTE32:
+			{
+				uint32_t* ptr = reinterpret_cast<uint32_t*>(addr);
+				*ptr = mach.fixEndian(*ptr);
+				*ptr += static_cast<uint32_t>(slide);
+				break;
+			}
+			case REBASE_TYPE_TEXT_PCREL32: // TODO: test it
+			{
+				uint32_t* ptr = reinterpret_cast<uint32_t*>(addr);
+				*ptr = mach.fixEndian(*ptr);
+				*ptr = uintptr_t(addr) + 4 - (*ptr);
+				break;
+			}
 
 			default:
 			{
 				std::stringstream ss;
-				ss << "Unknown rebase type: " << rebase->type;
+				ss << "Unknown rebase type: " << int(rebase->type);
 				
 				throw std::runtime_error(ss.str());
 			}
@@ -395,6 +451,7 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	loadSegments(mach, &slide, &base);
 
 	doRebase(mach, slide);
+	doMProtect(); // decrease the segment protection value
 
 	loadDylibs(mach);
 	

@@ -33,6 +33,10 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/mach)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/bsd)
 
+ADD_CUSTOM_COMMAND(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/directmap.nasm"
+	COMMAND "${CMAKE_CURRENT_BINARY_DIR}/../../genfuncmap" ARGS "${CMAKE_CURRENT_SOURCE_DIR}/libc/directmap.lst" "${CMAKE_CURRENT_BINARY_DIR}/directmap.nasm")
+
+
 set(libc_SRCS
 	libc/mac.c
 	libc/none.c
@@ -43,7 +47,7 @@ set(libc_SRCS
 	libc/errno.cpp
 	libc/OSAtomic.cpp
 	libc/strmode.c
-	libc/directmap.nasm
+	${CMAKE_CURRENT_BINARY_DIR}/directmap.nasm
 	libc/sysctl.cpp
 	libc/dir.cpp
 	libc/string.cpp

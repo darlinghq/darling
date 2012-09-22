@@ -1,9 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib/darling"
+#define LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib@SUFFIX@/darling"
+#define LIB_DIR_NAME "lib@SUFFIX@"
 #define INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"
-#define LIBCXXDARWIN_PATH INSTALL_PREFIX "/lib/libcxxdarwin.so"
+#define LIBCXXDARWIN_PATH INSTALL_PREFIX "/lib@SUFFIX@/libcxxdarwin.so"
 
 #cmakedefine MULTILIB
 

@@ -118,6 +118,9 @@ public:
 	size_t offset() const { return m_offset; }
 	
 	mach_header header() const { return m_header; }
+	bool reverse_endian() const { return m_reverse_endian; } // true if the file has a different endianness than the current platform
+	
+	inline uint32_t fixEndian(uint32_t i) const { return m_reverse_endian ? __builtin_bswap32(i) : i; }
 
  protected:
 	std::string m_filename;
@@ -140,6 +143,7 @@ public:
 	int m_fd;
 	size_t m_offset;
 	mach_header m_header;
+	bool m_reverse_endian;
 };
 
 class fat_architecture_not_supported : public std::exception

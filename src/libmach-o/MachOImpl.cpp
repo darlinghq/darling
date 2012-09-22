@@ -271,10 +271,13 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 	m_is64 = false;
 	if (header->magic == MH_MAGIC_64)
 		m_is64 = true;
-	else if (header->magic != MH_MAGIC)
+	else if (header->magic == MH_CIGAM)
 	{
-		throw std::runtime_error("Not a Mach-O file");
+		m_reverse_endian = true;
+		throw std::runtime_error("Unsupported endianness"); // TODO: start swapping the byte order of all structures
 	}
+	else if (header->magic != MH_MAGIC)
+		throw std::runtime_error("Not a Mach-O file");
 	
 	LOGF("magic=%x cpu=%d cpusub=%d file=%d ncmds=%d sizecmd=%d flags=%x\n",
 		header->magic, header->cputype, header->cpusubtype,
