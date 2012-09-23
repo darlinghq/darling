@@ -269,6 +269,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 	memcpy(&m_header, header, sizeof(*header));
 	
 	m_is64 = false;
+	m_reverse_endian = false;
 	if (header->magic == MH_MAGIC_64)
 		m_is64 = true;
 	else if (header->magic == MH_CIGAM)

@@ -245,15 +245,17 @@ void MachOLoader::doRebase(const MachO& mach, intptr slide)
 			case REBASE_TYPE_POINTER:
 			{
 				uintptr_t* ptr = reinterpret_cast<uintptr_t*>(addr);
-				/*LOG << "rebase: " << i << ": " << (void*)rebase.vmaddr << ' '
+				LOG << "rebase(ptr): " << addr << ' '
 					<< (void*)*ptr << " => "
-					<< (void*)(*ptr + slide) << " @" << ptr <<std::endl;*/
+					<< (void*)(*ptr + slide) << " @" << ptr <<std::endl;
 				*ptr += slide;
 				break;
 			}
 			case REBASE_TYPE_TEXT_ABSOLUTE32:
 			{
 				uint32_t* ptr = reinterpret_cast<uint32_t*>(addr);
+				LOG << "rebase(abs32): " << addr << ' '
+					<< (void*)*ptr << " => " << (void*)(mach.fixEndian(*ptr) + slide) << std::endl;
 				*ptr = mach.fixEndian(*ptr);
 				*ptr += static_cast<uint32_t>(slide);
 				break;
@@ -261,6 +263,8 @@ void MachOLoader::doRebase(const MachO& mach, intptr slide)
 			case REBASE_TYPE_TEXT_PCREL32: // TODO: test it
 			{
 				uint32_t* ptr = reinterpret_cast<uint32_t*>(addr);
+				LOG << "rebase(pcrel32): " << addr << ' '
+					<< (void*)*ptr << " => " << (void*)(uintptr_t(addr) + 4 - mach.fixEndian(*ptr)) << std::endl;
 				*ptr = mach.fixEndian(*ptr);
 				*ptr = uintptr_t(addr) + 4 - (*ptr);
 				break;
