@@ -79,7 +79,6 @@ private:
 	std::vector<std::pair<std::string, char*> > m_seen_weak_binds;
 	UndefMgr* m_pUndefMgr;
 	TrampolineMgr* m_pTrampolineMgr;
-	void* m_pCXX;
 	
 	// Pending calls to mprotect
 	struct MProtect

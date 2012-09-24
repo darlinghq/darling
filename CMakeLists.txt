@@ -102,7 +102,7 @@ endif(NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 install(TARGETS mach-o DESTINATION lib${SUFFIX})
 
 add_subdirectory(src/libSystem)
-add_subdirectory(src/libcxxdarwin)
+#add_subdirectory(src/libcxxdarwin)
 add_subdirectory(src/libobjcdarwin)
 #add_subdirectory(src/libunwind-darwin-gcc)
 add_subdirectory(src/libncurses)

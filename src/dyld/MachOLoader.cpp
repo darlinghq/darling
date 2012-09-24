@@ -27,6 +27,10 @@ extern int g_argc;
 extern char** g_argv;
 extern bool g_trampoline;
 
+// These are GCC internals
+extern "C" void __register_frame(void*);
+extern "C" void __unregister_frame(void*);
+
 static bool lookupDyldFunction(const char* name, void** addr)
 {
 	LOG << "lookupDyldFunction: " << name <<std::endl;
@@ -75,20 +79,10 @@ MachOLoader::MachOLoader()
 		if (info)
 			TrampolineMgr::loadFunctionInfo(info);
 	}
-	
-	m_pCXX = dlopen(LIBCXXDARWIN_PATH, RTLD_LOCAL|RTLD_NOW);
-	if (!m_pCXX)
-	{
-		std::stringstream ss;
-		ss << LIBCXXDARWIN_PATH " failed to load: ";
-		ss << dlerror();
-		throw std::runtime_error(ss.str());
-	}
 }
 
 MachOLoader::~MachOLoader()
 {
-	dlclose(m_pCXX);
 }
 
 void MachOLoader::loadDylibs(const MachO& mach)
@@ -211,6 +205,8 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 
 		m_last_addr = std::max(m_last_addr, (intptr)vmaddr + vmsize);
 	}
+	
+	__register_frame(reinterpret_cast<void*>(mach.get_eh_frame().first));
 }
 
 void MachOLoader::checkMmapMinAddr(intptr addr)
@@ -364,11 +360,6 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 					// assume local (e.g. dyld_stub_binder)
 					name = bind->name; // for correct error reporting
 					sym = reinterpret_cast<char*>(dlsym(dlopen(0, 0), bind->name.c_str()));
-				}
-				else if (string_startsWith(bind->name, "___cxa_") || string_startsWith(bind->name, "__Unwind_"))
-				{
-					LOG << "Special symbol handling used: " << bind->name << std::endl;
-					sym = reinterpret_cast<char*>(dlsym(m_pCXX, bind->name.c_str()+1));
 				}
 				else
 					sym = reinterpret_cast<char*>(__darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str()));
