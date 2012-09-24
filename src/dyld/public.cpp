@@ -121,6 +121,7 @@ static uintptr_t readEncodedPointer(const eh_frame_hdr* hdr)
 			val = sleb128(ptr);
 			break;
 		}
+		// FIXME: add 'dlpi_addr' (base address) to these?
 		case 0xa:
 			val = *reinterpret_cast<const int16_t*>(hdr->eh_frame_ptr);
 			break;
@@ -220,6 +221,7 @@ bool _dyld_find_unwind_sections(void* addr, struct dyld_unwind_sections* info)
 		CBData data = { addr, info };
 
 		dl_iterate_phdr(dlCallback, &data);
+		std::cout << "Dwarf section at " << info->dwarf_section << std::endl;
 		return info->dwarf_section != 0;
 	}
 	else // in Mach-O

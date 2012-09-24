@@ -212,7 +212,7 @@ const char* CFI_Parser<A>::decodeFDE(A& addressSpace, pint_t fdeStart, FDE_Info*
 template <typename A>
 bool CFI_Parser<A>::findFDE(A& addressSpace, pint_t pc, pint_t ehSectionStart, uint32_t sectionLength, pint_t fdeHint, FDE_Info* fdeInfo, CIE_Info* cieInfo)
 {
-	//fprintf(stderr, "findFDE(0x%llX)\n", (long long)pc);
+	fprintf(stderr, "findFDE(0x%llX)\n", (long long)pc);
 	pint_t p = (fdeHint != 0) ? fdeHint : ehSectionStart;
 	const pint_t ehSectionEnd = p + sectionLength;
 	while ( p < ehSectionEnd ) {
@@ -269,28 +269,28 @@ bool CFI_Parser<A>::findFDE(A& addressSpace, pint_t pc, pint_t ehSectionStart, u
 						fdeInfo->fdeInstructions = p;
 						fdeInfo->pcStart = pcStart;
 						fdeInfo->pcEnd = pcStart+pcRange;
-						//fprintf(stderr, "findFDE(pc=0x%llX) found with pcRange [0x%08llX, 0x%08llX)\n",(uint64_t)pc, (uint64_t)pcStart, (uint64_t)(pcStart+pcRange));
+						fprintf(stderr, "findFDE(pc=0x%llX) found with pcRange [0x%08llX, 0x%08llX)\n",(uint64_t)pc, (uint64_t)pcStart, (uint64_t)(pcStart+pcRange));
 						return true;
 					}
 					else {
-						//fprintf(stderr, "findFDE(pc=0x%llX) not found with pcRange [0x%08llX, 0x%08llX)\n",(uint64_t)pc, (uint64_t)pcStart, (uint64_t)(pcStart+pcRange));
+						fprintf(stderr, "findFDE(pc=0x%llX) not found with pcRange [0x%08llX, 0x%08llX)\n",(uint64_t)pc, (uint64_t)pcStart, (uint64_t)(pcStart+pcRange));
 						// pc is not in begin/range, skip this FDE
 					}
 				}
 				else {
 					// malformed CIE, now augmentation describing pc range encoding
-					//fprintf(stderr, "malformed CIE\n");
+					fprintf(stderr, "malformed CIE\n");
 				}
 			}
 			else {
 				// malformed FDE.  CIE is bad
-				//fprintf(stderr, "malformed FDE, cieStart=0x%llX, ehSectionStart=0x%llX, ehSectionEnd=0x%llX\n",
-				//	(uint64_t)cieStart, (uint64_t)ehSectionStart, (uint64_t)ehSectionEnd);
+				fprintf(stderr, "malformed FDE, cieStart=0x%llX, ehSectionStart=0x%llX, ehSectionEnd=0x%llX\n",
+					(uint64_t)cieStart, (uint64_t)ehSectionStart, (uint64_t)ehSectionEnd);
 			}
 			p = nextCFI;
 		}
 	}
-	//fprintf(stderr, "findFDE(pc=0x%llX) not found\n",(uint64_t)pc);
+	fprintf(stderr, "findFDE(pc=0x%llX) not found\n",(uint64_t)pc);
 	return false;
 }
 
@@ -302,7 +302,7 @@ bool CFI_Parser<A>::findFDE(A& addressSpace, pint_t pc, pint_t ehSectionStart, u
 template <typename A>
 const char* CFI_Parser<A>::parseCIE(A& addressSpace, pint_t cie, CIE_Info* cieInfo)
 {
-	//fprintf(stderr, "parseCIE(0x%llX)\n", (long long)cie);
+	fprintf(stderr, "parseCIE(0x%llX)\n", (long long)cie);
 	cieInfo->pointerEncoding = 0;
 	cieInfo->lsdaEncoding = 0;
 	cieInfo->personalityEncoding = 0;
@@ -463,7 +463,7 @@ const char* CFI_Parser<A>::getCFIs(A& addressSpace, pint_t ehSectionStart, uint3
 			pint_t offsetOfFunctionAddress = p-currentCFI;
 			pint_t pcStart = addressSpace.getEncodedP(p, nextCFI, cieInfo.pointerEncoding);
 			pint_t pcRange = addressSpace.getEncodedP(p, nextCFI, cieInfo.pointerEncoding & 0x0F);
-			//fprintf(stderr, "FDE with pcRange [0x%08llX, 0x%08llX)\n",(uint64_t)pcStart, (uint64_t)(pcStart+pcRange));
+			fprintf(stderr, "FDE with pcRange [0x%08llX, 0x%08llX)\n",(uint64_t)pcStart, (uint64_t)(pcStart+pcRange));
 			// test if pc is within the function this FDE covers
 			entry.function.address = pcStart;
 			entry.function.offsetInFDE = offsetOfFunctionAddress;

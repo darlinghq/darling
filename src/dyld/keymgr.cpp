@@ -38,11 +38,11 @@ void* _keymgr_get_and_lock_processwide_ptr(unsigned key)
 void _keymgr_set_and_unlock_processwide_ptr(unsigned key, void* ptr)
 {
 	m_keymgr[key].value = ptr;
-	pthread_mutex_lock(&m_keymgr[key].mutex);
+	pthread_mutex_unlock(&m_keymgr[key].mutex);
 }
 
 void _keymgr_unlock_processwide_ptr(unsigned key)
 {
-	pthread_mutex_lock(&m_keymgr[key].mutex);
+	pthread_mutex_unlock(&m_keymgr[key].mutex);
 }
 

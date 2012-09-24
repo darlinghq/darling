@@ -6,9 +6,11 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 enable_language(ASM-ATT)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w -std=c99 -D__darwin_natural_t=long -I./include -I ../../include/darwin -fPIC -Ddladdr=__darwin_dladdr -gdwarf-2")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${CMAKE_CURRENT_SOURCE_DIR}/include -stdlib=libc++ -fPIC -Ddl_info=Dl_info -Ddladdr=__darwin_dladdr -Wno-format -gdwarf-2")
-set(CMAKE_SHARED_LINKER_FLAGS "-stdlib=libc++ -Wl,-Bsymbolic -Wl,-Bsymbolic-functions")
+
+# -fexceptions is needed here for x86
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w -std=c99 -D__darwin_natural_t=long -I./include -I ../../include/darwin -fPIC -Ddladdr=__darwin_dladdr -gdwarf-2 -fexceptions")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${CMAKE_CURRENT_SOURCE_DIR}/include -stdlib=libc++ -fPIC -Ddl_info=Dl_info -Ddladdr=__darwin_dladdr -Wno-format -gdwarf-2 -fexceptions")
+set(CMAKE_SHARED_LINKER_FLAGS "-stdlib=libc++ -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -fexceptions")
 
 if (SUFFIX STREQUAL "32")
 	set(FLAGS "-m32")
