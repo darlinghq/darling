@@ -1,11 +1,12 @@
+global trampoline_start
+global trampoline_end
+global reg_saveall
+global reg_restoreall
+
 %ifidn __OUTPUT_FORMAT__, elf64
 
 BITS 64
 section text
-
-;global trampoline
-global reg_saveall
-global reg_restoreall
 
 reg_saveall: ; 192 bytes on stack
 	pop r10 ; remove retaddr from stack
@@ -35,26 +36,26 @@ reg_saveall: ; 192 bytes on stack
 reg_restoreall:
 	pop r10 ; remove retaddr from stack
 	movdqu xmm7, [rsp+112]
-    movdqu xmm6, [rsp+96]
-    movdqu xmm5, [rsp+80]
-    movdqu xmm4, [rsp+64]
-    movdqu xmm3, [rsp+48]
-    movdqu xmm2, [rsp+32]
-    movdqu xmm1, [rsp+16]
-    movdqu xmm0, [rsp]
-    add rsp, 128
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop r9
-    pop r8
-    pop rcx
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rbx
-    pop rax
+	movdqu xmm6, [rsp+96]
+	movdqu xmm5, [rsp+80]
+	movdqu xmm4, [rsp+64]
+	movdqu xmm3, [rsp+48]
+	movdqu xmm2, [rsp+32]
+	movdqu xmm1, [rsp+16]
+	movdqu xmm0, [rsp]
+	add rsp, 128
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop r9
+	pop r8
+	pop rcx
+	pop rdx
+	pop rsi
+	pop rdi
+	pop rbx
+	pop rax
 	jmp r10
 
 ; This is duplicated for every mapped function
@@ -93,32 +94,35 @@ after_jump:
 	mov r10, qword 0xc0c1c2c3c4c5c6 ; call reg_restoreall
 	call r10
 	jmp r11 ; now we "return" to the original function
-
+trampoline_end:
+	nop
 %elifidn __OUTPUT_FORMAT__, elf
 
 BITS 32
 section text
 
-;global trampoline
-global reg_saveall
-global reg_restoreall
+%define SavedRegLen 32
 
 reg_saveall: ; 24 bytes on stack
-	xchg eax, [esp]
+	pop eax
 
 	push ebx
 	push ecx
 	push edx
 	push esi
 	push edi
+	sub esp, 8
+	;fstp qword [esp]
 
-    jmp eax
+	jmp eax
 
 reg_restoreall:
 	pop ebx
-	mov eax, [esp+24]
-	mov [esp+24], ebx
+	mov eax, [esp+SavedRegLen-4]
+	mov [esp+SavedRegLen-4], ebx
 
+	;fld qword [esp]
+	add esp, 8
 	pop edi
 	pop esi
 	pop edx
@@ -127,44 +131,50 @@ reg_restoreall:
 
 	ret
 
-trampoline:
-	push 0xa0a1a2a3 ; call reg_saveall
-	ret
+trampoline_start:
+	push eax
+	mov eax, 0xa0a1a2a3 ; call reg_saveall
+	call eax
+	
 	push esp
 	push 0x12345678 ; index in entry table
-	push 0xb0b1b2b3
-	ret ; call print function
+	mov eax, 0xb0b1b2b3
+	call eax ; call print function
+	add esp, 8
 
 	mov [esp-8], eax
-	push 0xc0c1c2c3 ; call reg_restoreall
-	ret
+	mov eax, 0xc0c1c2c3 ; call reg_restoreall
+	call eax
 
 	; we cannot use IP-relative lea on 32bit x86
 	call get_eip
 get_eip:
-	mov eax, [esp]
-	add eax, 0x10 ; this gives us the address of after_jump
+	pop eax
+	add eax, 0xD ; this gives us the address of after_jump
 	mov [esp], eax
-	mov eax, [esp-32]
+	mov eax, [esp-SavedRegLen-8]
 
 	jmp eax ; call the real function
 
 ALIGN 2
 after_jump:
-	push 0xa0a1a2a3
-	ret ; call reg_saveall
+	push eax
+	mov eax, 0xa0a1a2a3
+	call eax ; call reg_saveall
 	push esp
 	push 0x12345678 ; index in entry table
-	push 0xb9b9b9b9 ; print function 2
-	ret
+	mov eax, 0xb9b9b9b9 ; print function 2
+	call eax
+	add esp, 8
 
 	mov [esp-8], eax ; real return address
-	push 0xc0c1c2c3
-	ret ; call reg_restoreall
+	mov eax, 0xc0c1c2c3
+	call eax ; call reg_restoreall
 
-	mov ecx, [esp-32]
+	mov ecx, [esp-SavedRegLen-8]
 	jmp ecx ; return to the original caller
-
+trampoline_end:
+	nop
 %else
 
 %error "Unsupported platform"

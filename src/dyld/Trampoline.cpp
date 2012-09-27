@@ -19,7 +19,14 @@ static pid_t g_loggerForPid = 0;
 
 extern "C" void reg_saveall();
 extern "C" void reg_restoreall();
+extern "C" void* trampoline_start;
+extern "C" void* trampoline_end;
+
+#ifndef TEST
 extern char** g_argv;
+#else
+const char* g_argv[] = { "Trampoline", 0 };
+#endif
 
 TrampolineMgr::TrampolineMgr(int entries)
 	: m_nNext(0)
@@ -301,28 +308,8 @@ void* TrampolineMgr::printInfoR(uint32_t index, CallStack* stack)
 
 void Trampoline::init(uint32_t i, void* (*pDebug)(uint32_t,TrampolineMgr::CallStack*), void* (*pDebugR)(uint32_t,TrampolineMgr::CallStack*))
 {
-	// See trampoline in trampoline_helper.asm for source
-#ifdef __x86_64__
-	memcpy(this, "\x49\xba\xb6\xb5\xb4\xb3\xb2\xb1\xb0\x00\x41\xff\xd2\xbf"
-		"\x56\x34\x12\x00\x48\x89\xe6\x48\xb9\xff\xee\xdd\xcc\xbb\xaa\x00\x00"
-		"\xff\xd1\x49\x89\xc3\x49\xba\xc6\xc5\xc4\xc3\xc2\xc1\xc0\x00\x41\xff"
-		"\xd2\x4c\x8d\x15\x08\x00\x00\x00\x4c\x89\x14\x24\x41\xff\xe3\x90\x49"
-		"\xba\xb6\xb5\xb4\xb3\xb2\xb1\xb0\x00\x41\xff\xd2\xbf\x56\x34\x12\x00"
-		"\x48\x89\xe6\x48\xb9\xa6\xa5\xa4\xa3\xa2\xa1\xa0\x00\xff\xd1\x49\x89"
-		"\xc3\x49\xba\xc6\xc5\xc4\xc3\xc2\xc1\xc0\x00\x41\xff\xd2\x41\xff\xe3",
-		sizeof(*this)
-	);
-#else
-	memcpy(this, "\x68\xa3\xa2\xa1\xa0\xc3\x54\x68\x78\x56\x34\x12\x68\xb3"
-		"\xb2\xb1\xb0\xc3\x89\x44\x24\xf8\x68\xc3\xc2\xc1\xc0\xc3\xe8\x00"
-		"\x00\x00\x00\x8b\x04\x24\x83\xc0\x10\x89\x04\x24\x8b\x44\x24\xe0"
-		"\xff\xe0\x90\x68\xa3\xa2\xa1\xa0\xc3\x54\x68\x78\x56\x34\x12\x68"
-		"\xb9\xb9\xb9\xb9\xc3\x89\x44\x24\xf8\x68\xc3\xc2\xc1\xc0\xc3\x8b"
-		"\x4c\x24\xe0\xff\xe1",
-		sizeof(*this)
-	);
-
-#endif
+	uintptr_t funcLen = uintptr_t(&trampoline_end) - uintptr_t(&trampoline_start);
+	memcpy(this, &trampoline_start, funcLen);
 	
 	this->reg_saveall = reinterpret_cast<uint64_t>(::reg_saveall);
 	this->reg_saveall2 = reinterpret_cast<uint64_t>(::reg_saveall);
@@ -509,7 +496,7 @@ std::string TrampolineMgr::ArgumentWalker::ret(char type)
 		ss << m_stack->rax;
 	else if (type == 'c')
 		ss << char(m_stack->rax);
-	else if (type == 'i')
+	else if (type == 'i' || type == 'q')
 	{
 		uint64_t u = m_stack->rax;
 		ss << *((int64_t*) &u);
@@ -540,7 +527,49 @@ std::string TrampolineMgr::ArgumentWalker::ret(char type)
 std::string TrampolineMgr::ArgumentWalker::ret(char type)
 {
 	std::stringstream ss;
-	// TODO
+	
+	if (type == 'u')
+		ss << m_stack->eax;
+	else if (type == 'c')
+		ss << char(m_stack->eax);
+	else if (type == 'i')
+	{
+		uint32_t u = m_stack->eax;
+		ss << *((int32_t*) &u);
+	}
+	else if (type == 'q')
+	{
+		union
+		{
+			int64_t v64;
+			uint32_t v32[2];
+		} q;
+		
+		q.v32[0] = m_stack->eax;
+		q.v32[1] = m_stack->edx;
+		
+		ss << q.v64;
+	}
+	else if (type == 'f')
+	{
+		double d = m_stack->st0;
+		ss << * (((float*)&d)+1);
+	}
+	else if (type == 'd')
+	{
+		double d = m_stack->st0;
+		ss << d;
+	}
+	else if (type == 'p' || isupper(type))
+		ss << (void*)m_stack->eax << std::dec;
+	else if (type == 's')
+	{
+		const char* s = (const char*) m_stack->eax;
+		ss << (void*)s << " \"" <<  safeString(s) << '"';
+	}
+	else
+		ss << '?';
+	
 	return ss.str();
 }
 #endif
@@ -573,9 +602,14 @@ std::string TrampolineMgr::ArgumentWalker::safeString(const char* in)
 
 #ifdef TEST
 
-double mytestfunc(int a, int b, double c)
+float mytestfunc(int a, int b, double c)
 {
 	return a*b+c;
+}
+
+long long qfunc()
+{
+	return 1;
 }
 
 int main()
@@ -583,10 +617,10 @@ int main()
 	TrampolineMgr* mgr = new TrampolineMgr;
 	TrampolineMgr::loadFunctionInfo("/tmp/fi");
 	
-	double (*pFunc)(int,int,double) = (double (*)(int,int,double)) mgr->generate((void*) &mytestfunc, "mytestfunc");
+	float (*pFunc)(int,int,double) = (float (*)(int,int,double)) mgr->generate((void*) &mytestfunc, "mytestfunc");
 	int (*pPrintf)(FILE* f, const char*,...) = (int (*)(FILE* f, const char*,...)) mgr->generate((void*) &fprintf, "printf");
-	//std::cout << pFunc(2,3,0.5) << std::endl;
-	pPrintf(stdout, "Hello world: %s\n", "Test");
+	std::cout << pFunc(2,3,0.5) << std::endl;
+	//pPrintf(stdout, "Hello world: %s\n", "Test");
 	
 	delete mgr;
 	return 0;

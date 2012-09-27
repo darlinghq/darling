@@ -33,6 +33,7 @@ public:
 #else
 	struct CallStack
 	{
+		double st0;
 		uint32_t edi, esi, edx, ecx, ebx, eax;
 		void* retAddr;
 		uint32_t arguments[];
@@ -145,25 +146,25 @@ struct Trampoline
 	char code9[9];
 	char padding[1];
 #else
-	// 83 bytes
-	char code1;
+	// 62+4*8=94 bytes
+	char code1[2];
 	uint32_t reg_saveall;
-	char code2[3];
+	char code2[4];
 	uint32_t index;
 	char code3;
 	uint32_t debugFcn;
-	char code4[6];
+	char code4[10];
 	uint32_t reg_restoreall;
-	char code5[23];
+	char code5[22];
 	uint32_t reg_saveall2;
-	char code6[3];
+	char code6[4];
 	uint32_t index2;
 	char code7;
 	uint32_t debugFcnR;
-	char code8[6];
+	char code8[10];
 	uint32_t reg_restoreall2;
-	char code9[7];
-	char padding[1];
+	char code9[8];
+	//char padding[1];
 
 #endif
 };
