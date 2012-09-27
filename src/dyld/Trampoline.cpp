@@ -550,12 +550,12 @@ std::string TrampolineMgr::ArgumentWalker::ret(char type)
 		
 		ss << q.v64;
 	}
-	else if (type == 'f')
-	{
-		double d = m_stack->st0;
-		ss << * (((float*)&d)+1);
-	}
-	else if (type == 'd')
+	//else if (type == 'f')
+	//{
+	//	double d = m_stack->st0;
+	//	ss << * (((float*)&d)+1);
+	//}
+	else if (type == 'd' || type == 'f')
 	{
 		double d = m_stack->st0;
 		ss << d;

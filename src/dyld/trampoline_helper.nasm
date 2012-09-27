@@ -112,7 +112,7 @@ reg_saveall: ; 24 bytes on stack
 	push esi
 	push edi
 	sub esp, 8
-	;fstp qword [esp]
+	fstp qword [esp]
 
 	jmp eax
 
@@ -121,7 +121,7 @@ reg_restoreall:
 	mov eax, [esp+SavedRegLen-4]
 	mov [esp+SavedRegLen-4], ebx
 
-	;fld qword [esp]
+	fld qword [esp]
 	add esp, 8
 	pop edi
 	pop esi
