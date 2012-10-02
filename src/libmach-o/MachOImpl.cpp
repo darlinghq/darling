@@ -95,6 +95,8 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 	for (uint32_t j = 0; j < segment->nsects; j++)
 	{
 		const section& sec = sections[j];
+		Section savedSection{sec.segname, sec.sectname, uintptr_t(sec.addr), uintptr_t(sec.size)};
+		
 		LOGF("section %s in %s: "
 				"addr=%p size=%llu offset=%u align=%u "
 				"reloff=%u nreloc=%u flags=%u "
@@ -105,16 +107,22 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 				sec.reloff, sec.nreloc, sec.flags,
 				sec.reserved1, sec.reserved2);
 
-		if (!strcmp(sec.sectname, "__dyld") && !strcmp(sec.segname, "__DATA"))
+		if (savedSection.section.size() > sizeof(sec.sectname))
+			savedSection.section.resize(sizeof(sec.sectname));
+		if (savedSection.segment.size() > sizeof(sec.segname))
+			savedSection.segment.resize(sizeof(sec.segname));
+		m_sections.push_back(savedSection);
+
+		if (savedSection.section == "__dyld" && savedSection.segment == "__DATA")
 			m_dyld_data = sec.addr;
-		if (!strcmp(sec.segname, "__TEXT"))
+		if (savedSection.segment == "__TEXT")
 		{
-			if (!strcmp(sec.sectname, "__eh_frame"))
+			if (savedSection.section == "__eh_frame")
 			{
 				m_eh_frame.first = sec.addr;
 				m_eh_frame.second = sec.size;
 			}
-			else if (!strcmp(sec.sectname, "__unwind_info"))
+			else if (savedSection.section == "__unwind_info")
 			{
 				m_unwind_info.first = sec.addr;
 				m_unwind_info.second = sec.size;

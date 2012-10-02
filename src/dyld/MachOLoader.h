@@ -49,9 +49,6 @@ public:
 	// Creates a list of publicly visible functions in this module
 	void loadExports(const MachO& mach, intptr base, Exports* exports);
 	
-	// Puts all symbol addresses into a global map
-	void loadSymbols(const MachO& mach, intptr slide, intptr base);
-	
 	// Loads a Mach-O file and does all the processing
 	void load(const MachO& mach, std::string sourcePath, Exports* exports = 0);
 	

@@ -1,1 +1,0 @@
-/* This file is needed for CMake to use the GCC linker */

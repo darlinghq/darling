@@ -84,6 +84,12 @@ public:
 		std::string name;
 		uint64_t addr;
 	};
+	
+	struct Section
+	{
+		std::string segment, section;
+		uintptr_t addr, size;
+	};
 
 	const std::vector<segment_command_64*>& segments64() const { return m_segments64; }
 
@@ -119,6 +125,7 @@ public:
 	
 	mach_header header() const { return m_header; }
 	bool reverse_endian() const { return m_reverse_endian; } // true if the file has a different endianness than the current platform
+	const std::vector<Section> sections() const { return m_sections; }
 	
 	inline uint32_t fixEndian(uint32_t i) const { return m_reverse_endian ? __builtin_bswap32(i) : i; }
 
@@ -144,6 +151,7 @@ public:
 	size_t m_offset;
 	mach_header m_header;
 	bool m_reverse_endian;
+	std::vector<Section> m_sections;
 };
 
 class fat_architecture_not_supported : public std::exception

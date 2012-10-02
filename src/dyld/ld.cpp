@@ -1,3 +1,4 @@
+#include "config.h"
 #define DARWIN_LD_INTERNAL
 #include "MachOLoader.h"
 #include "ld.h"
@@ -6,7 +7,6 @@
 #include "mutex.h"
 #include "trace.h"
 #include "FileMap.h"
-#include "config.h"
 #include "log.h"
 #include "IniConfig.h"
 #include "stlutils.h"
@@ -19,6 +19,8 @@
 #include <limits.h>
 #include <regex.h>
 #include <cassert>
+#include <list>
+#include <algorithm>
 
 static Darling::Mutex g_ldMutex;
 static std::map<std::string, LoadedLibrary*> g_ldLibraries;
@@ -38,6 +40,7 @@ static IniConfig* g_iniConfig = 0;
 static void* attemptDlopen(const char* filename, int flag);
 static int translateFlags(int flags);
 __attribute__((constructor)) static void initLD();
+static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
@@ -441,17 +444,33 @@ const char* __darwin_dlerror(void)
 
 static const char* translateSymbol(const char* symbol)
 {
-	std::string s = symbol;
+	bool translated = false;
 	static char symbuffer[255];
-	
-	for (int i = 0; i < sizeof(g_suffixes) / sizeof(g_suffixes[0]); i++)
+
+	strcpy(symbuffer, symbol);
+
+	for (auto f : g_dlsymHooks)
 	{
-		size_t pos = s.find(g_suffixes[i]);
-		if (pos != std::string::npos)
-			s.erase(pos, strlen(g_suffixes[i]));
+		if (f(symbuffer))
+		{
+			translated = true;
+			break;
+		}
 	}
 	
-	strcpy(symbuffer, s.c_str());
+	if (!translated)
+	{
+		std::string s = symbol;
+		for (int i = 0; i < sizeof(g_suffixes) / sizeof(g_suffixes[0]); i++)
+		{
+			size_t pos = s.find(g_suffixes[i]);
+			if (pos != std::string::npos)
+				s.erase(pos, strlen(g_suffixes[i]));
+		}
+	
+		strcpy(symbuffer, s.c_str());
+	}
+
 	return symbuffer;
 }
 
@@ -579,5 +598,17 @@ extern "C" void* dyld_stub_binder()
 	*/
 	// TODO
 	return 0;
+}
+
+void Darling::registerDlsymHook(Darling::DlsymHookFunc func)
+{
+	g_dlsymHooks.push_front(func);
+}
+
+void Darling::deregisterDlsymHook(Darling::DlsymHookFunc func)
+{
+	//auto it = std::find(g_dlsymHooks.begin(), g_dlsymHooks.end(), func);
+	//if (it != g_dlsymHooks.end())
+	//	g_dlsymHooks.erase(it);
 }
 

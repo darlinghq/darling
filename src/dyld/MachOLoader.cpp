@@ -6,6 +6,7 @@
 #include "trace.h"
 #include "FileMap.h"
 #include "stlutils.h"
+#include "public.h"
 #include <limits.h>
 #include <iostream>
 #include <cstring>
@@ -26,6 +27,7 @@ extern char g_darwin_executable_path[PATH_MAX];
 extern int g_argc;
 extern char** g_argv;
 extern bool g_trampoline;
+extern std::set<LoaderHookFunc*> g_machoLoaderHooks;
 
 // These are GCC internals
 extern "C" void __register_frame(void*);
@@ -205,8 +207,9 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 
 		m_last_addr = std::max(m_last_addr, (intptr)vmaddr + vmsize);
 	}
-	
-	__register_frame(reinterpret_cast<void*>(mach.get_eh_frame().first));
+
+	if (mach.get_eh_frame().first)
+		__register_frame(reinterpret_cast<void*>(mach.get_eh_frame().first));
 }
 
 void MachOLoader::checkMmapMinAddr(intptr addr)
@@ -429,11 +432,6 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 }
 
 
-void MachOLoader::loadSymbols(const MachO& mach, intptr slide, intptr base)
-{
-	g_file_map.add(mach, slide, base);
-}
-
 
 void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports)
 {
@@ -456,7 +454,10 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 
 	doBind(mach, slide);
 
-	loadSymbols(mach, slide, base);
+	const FileMap::ImageMap* img = g_file_map.add(mach, slide, base);
+
+	for (LoaderHookFunc* func : g_machoLoaderHooks)
+		func(&img->header, slide);
 }
 
 

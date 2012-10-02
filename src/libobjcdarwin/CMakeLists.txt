@@ -12,17 +12,18 @@ enable_language(ASM_NASM)
 #endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 
 #configure_file(config.h.in config.h)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fblocks -std=c++0x")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -fPIC -ggdb")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -ggdb")
 
 set(objcdarwin_SRCS
 	objc_msgSend.nasm
 	objc_msgSend_fixup.nasm
-	dummy.c
+	NameTranslate.cpp
+	ClassRegister.cpp
 )
 
 add_library(objc.A.dylib SHARED ${objcdarwin_SRCS})
-target_link_libraries(objc.A.dylib -l:libobjc.so.4)
+target_link_libraries(objc.A.dylib -l:libobjc.so.4 -lgnustep-base)
 
 install(TARGETS objc.A.dylib DESTINATION lib${SUFFIX})
 

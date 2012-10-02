@@ -15,7 +15,7 @@ FileMap::~FileMap()
 	}
 }
 
-void FileMap::add(const MachO& mach, uintptr_t slide, uintptr_t base)
+const FileMap::ImageMap* FileMap::add(const MachO& mach, uintptr_t slide, uintptr_t base)
 {
 	ImageMap* symbol_map = new ImageMap;
 
@@ -25,6 +25,7 @@ void FileMap::add(const MachO& mach, uintptr_t slide, uintptr_t base)
 	symbol_map->header = mach.header();
 	symbol_map->eh_frame = mach.get_eh_frame();
 	symbol_map->unwind_info = mach.get_unwind_info();
+	symbol_map->sections = mach.sections();
 
 	if (!m_maps.insert(std::make_pair(base, symbol_map)).second)
 	{
@@ -44,6 +45,8 @@ void FileMap::add(const MachO& mach, uintptr_t slide, uintptr_t base)
 			continue;
 		symbol_map->symbols.insert(std::make_pair(sym.addr, sym.name.substr(1)));
 	}
+
+	return symbol_map;
 }
 
 void FileMap::addWatchDog(uintptr_t addr)

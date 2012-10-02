@@ -47,4 +47,11 @@ struct LoadedLibrary
 	Exports* exports;
 };
 
+namespace Darling
+{
+	typedef bool (*DlsymHookFunc)(char* symName);
+	void registerDlsymHook(DlsymHookFunc func);
+	void deregisterDlsymHook(DlsymHookFunc func);
+};
+
 #endif

@@ -6,12 +6,15 @@
 #include <cstring>
 #include <cstdlib>
 #include <map>
+#include <set>
 #include <link.h>
 #include <stddef.h>
 #include "../libmach-o/leb.h"
 
 extern FileMap g_file_map;
 extern "C" char* dyld_getDarwinExecutablePath();
+
+std::set<LoaderHookFunc*> g_machoLoaderHooks;
 
 uint32_t _dyld_image_count(void)
 {
@@ -33,14 +36,47 @@ const char* _dyld_get_image_name(uint32_t image_index)
 	return g_file_map.images().at(image_index)->filename.c_str();
 }
 
-void _dyld_register_func_for_add_image(void (*func)(const struct mach_header* mh, intptr_t vmaddr_slide))
+char* getsectdata(const struct mach_header* header, const char* segname, const char* sectname, unsigned long* size)
 {
-	// This would be needed for the GCC libunwind
+	FileMap::ImageMap* imageMap = 0;
+
+	// Find the loaded image the header belongs to
+	for (FileMap::ImageMap* entry : g_file_map.images())
+	{
+		if (&entry->header == header)
+		{
+			imageMap = entry;
+			break;
+		}
+	}
+
+	if (!imageMap)
+		return 0; // Original dyld's man page indicates that it would still somehow proceed, but we don't bother
+	
+	for (const MachO::Section& sect : imageMap->sections)
+	{
+		if (sect.segment == segname && sect.section == sectname)
+		{
+			char* addr = reinterpret_cast<char*>(sect.addr);
+
+			*size = sect.size;
+			addr += imageMap->slide;
+
+			return addr;
+		}
+	}
+	return 0;
 }
 
-void _dyld_register_func_for_remove_image(void (*func)(const struct mach_header* mh, intptr_t vmaddr_slide))
+void _dyld_register_func_for_add_image(LoaderHookFunc* func)
 {
-	// This would be needed for the GCC libunwind
+	// Needed for ObjC
+	g_machoLoaderHooks.insert(func);
+}
+
+void _dyld_register_func_for_remove_image(LoaderHookFunc* func)
+{
+	g_machoLoaderHooks.erase(func);
 }
 
 int32_t NSVersionOfRunTimeLibrary(const char* libraryName)

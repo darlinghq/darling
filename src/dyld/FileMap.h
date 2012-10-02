@@ -12,7 +12,9 @@ class FileMap
 public:
 	~FileMap();
 	
-	void add(const MachO& mach, uintptr_t slide, uintptr_t base);
+	struct ImageMap;
+
+	const ImageMap* add(const MachO& mach, uintptr_t slide, uintptr_t base);
 
 	void addWatchDog(uintptr_t addr);
 
@@ -24,6 +26,7 @@ public:
 		mach_header header;
 		std::pair<uint64_t,uint64_t> eh_frame;
 		std::pair<uint64_t,uint64_t> unwind_info;
+		std::vector<MachO::Section> sections;
 	};
 	
 	const ImageMap* imageMapForAddr(const void* p);

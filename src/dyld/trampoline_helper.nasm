@@ -59,7 +59,7 @@ reg_restoreall:
 	jmp r10
 
 ; This is duplicated for every mapped function
-trampoline:
+trampoline_start:
 	mov r10, qword 0xb0b1b2b3b4b5b6
 	call r10 ; call reg_saveall
 
