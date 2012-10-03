@@ -199,22 +199,8 @@ void MachOImpl::readBind(const uint8_t* p, const uint8_t* end, bool is_weak)
 
 void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end, std::string* name_buf)
 {
-	LOGF("readExport: %p-%p\n", p, end);
-#if 0
-  char buf[17];
-  buf[16] = '\0';
-  for (int i = 0; i < 16*8; i++) {
-    LOGF("%02x ", p[i]);
-    buf[i % 16] = p[i] < 32 ? '?' : p[i];
-    if (i % 16 == 15) LOGF("%s\n", buf);
-  }
-#endif
-
 	if (p >= end)
-	{
-		fprintf(stderr, "broken export trie\n"); // TODO: throw an exception instead
-		exit(1);
-	}
+		throw std::runtime_error("broken export trie");
 
 	if (uint8_t term_size = *p++)
 	{
@@ -228,7 +214,7 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 
 		m_exports.push_back(exp);
 
-		CHECK(expected_term_end == p);
+		assert(expected_term_end == p);
 	}
 
 	const uint8_t num_children = *p++;
@@ -240,7 +226,7 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 		p++;
 
 		uint64_t off = uleb128(p);
-		CHECK(off != 0);
+		assert(off != 0);
 		readExport(start, start + off, end, name_buf);
 
 		name_buf->resize(orig_name_size);
@@ -253,7 +239,9 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 	m_filename = filename;
 	m_need_exports = need_exports;
 	m_dyld_data = 0;
-	CHECK(fd);
+	
+	assert(fd > 0);
+
 	m_fd = fd;
 	m_offset = offset;
 	m_text_offset = 0;
@@ -288,10 +276,9 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 	else if (header->magic != MH_MAGIC)
 		throw std::runtime_error("Not a Mach-O file");
 	
-	LOGF("magic=%x cpu=%d cpusub=%d file=%d ncmds=%d sizecmd=%d flags=%x\n",
-		header->magic, header->cputype, header->cpusubtype,
-		header->filetype, header->ncmds, header->sizeofcmds,
-		header->flags);
+	LOG << "magic=" << std::hex << header->magic << std::dec << " cpu=" << header->cputype
+		<< " cpusub=" << header->cpusubtype << " filetype=" << header->filetype << " ncmds="
+		<< header->ncmds << " sizeofcmds=" << header->sizeofcmds << " flags=" << std::hex << header->flags << std::dec << std::endl;
 
 	m_ptrsize = m_is64 ? 8 : 4;
 
@@ -536,11 +523,11 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 
 	LOGF("%p vs %p\n", cmds_ptr, bin + m_mapped_size);
 
-	LOGF("dyinfo: %p, dysyms: %p, symtab: %p, symstrtab: %p, symbol count: %d\n", dyinfo, dysyms, symtab, symstrtab, m_symbols.size());
+	LOG << "dyinfo: " << dyinfo << ", dysyms: " << dysyms << ", symtab: " << symtab << ", symstrtab: " << symstrtab << ", symbol count: " << m_symbols.size() << std::endl;
 	// No LC_DYLD_INFO_ONLY, we will read classic binding info.
 	if (!dyinfo && dysyms && symtab && symstrtab)
 	{
-		LOGF("Reading classic binding info\n");
+		LOG << "Reading classic binding info\n";
 		for (size_t i = 0; i < bind_sections_64.size(); i++)
 		{
 			readClassicBind<section_64>(*bind_sections_64[i], dysyms, symtab, symstrtab);

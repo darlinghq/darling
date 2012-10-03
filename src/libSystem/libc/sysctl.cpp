@@ -17,25 +17,23 @@
 int __darwin_sysctl(int* name, unsigned int namelen,
                     void* oldp, size_t* oldlenp,
                     void* newp, size_t newlen) {
-	int i;
-	
 	TRACE6(name, namelen, oldp, oldlenp, newp, newlen);
 	
-	LOGF("sysctl: namelen=%u", namelen);
-	for (i = 0; i < namelen; i++)
-		LOGF(" name[%d]=%d", i, name[i]);
-	LOGF(" newp=%p\n", newp);
+	LOG << "sysctl: namelen=" << namelen;
+	for (int i = 0; i < namelen; i++)
+		LOG << " name[" << i << "]=" << name[i];
+	LOG << " newp=" << newp << std::endl;
 
 	if (newp)
 	{
-		fprintf(stderr, "sysctl with newp isn't supported yet.\n");
+		LOG << "sysctl with newp isn't supported yet.\n";
 		errno = DARWIN_EINVAL;
 		return -1;
 	}
 
 	if (namelen != 2)
 	{
-		fprintf(stderr, "sysctl with namelen=%u isn't supported yet.\n", namelen);
+		LOG << "sysctl with namelen=" << namelen << " isn't supported yet.\n";
 		errno = DARWIN_EINVAL;
 		return -1;
 	}
@@ -46,7 +44,7 @@ int __darwin_sysctl(int* name, unsigned int namelen,
 	{
 		if (*oldlenp != 4 && *oldlenp != 8)
 		{
-			fprintf(stderr, "sysctl(HW) with oldlenp=%lu isn't supported yet.\n", (unsigned long)*oldlenp);
+			LOG << "sysctl(HW) with oldlenp=" << *oldlenp << " isn't supported yet.\n";
 			errno = DARWIN_EINVAL;
 			return -1;
 		}
@@ -70,7 +68,7 @@ int __darwin_sysctl(int* name, unsigned int namelen,
 		}
 
 		default:
-			fprintf(stderr, "sysctl(HW) with name[1]=%d isn't supported yet.\n", name[1]);
+			LOG << "sysctl(HW) with name[1]=" << name[1] << " isn't supported yet.\n";
         
 			errno = DARWIN_EINVAL;
 			return -1;
@@ -95,7 +93,7 @@ int __darwin_sysctl(int* name, unsigned int namelen,
 				break;
 
 			default:
-				fprintf(stderr, "sysctl(KERN) with oldp=%u isn't supported yet.\n", *oldp);
+				LOG << "sysctl(KERN) with name[1]=" << name[1] << " isn't supported yet.\n";
 				errno = DARWIN_EINVAL;
 				return -1;
 		}
@@ -103,7 +101,7 @@ int __darwin_sysctl(int* name, unsigned int namelen,
 	}
 
 	default:
-		fprintf(stderr, "sysctl with name[0]=%d isn't supported yet.\n", name[0]);
+		LOG << "sysctl with name[0]=" << name[0] << " isn't supported yet.\n";
 		errno = DARWIN_EINVAL;
 		return -1;
 	}

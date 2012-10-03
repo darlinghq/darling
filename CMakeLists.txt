@@ -38,7 +38,7 @@ configure_file(config.h.in config.h)
 add_executable(genfuncmap src/util/genfuncmap.cpp)
 
 set(util-SRCS
-	src/util/log.cc
+	src/util/log.cpp
 	src/util/trace.cpp
 	src/util/stlutils.cpp
 	src/util/IniConfig.cpp
