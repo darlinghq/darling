@@ -14,12 +14,15 @@ enable_language(ASM_NASM)
 #configure_file(config.h.in config.h)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -fPIC -ggdb")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -ggdb")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC")
 
 set(objcdarwin_SRCS
 	objc_msgSend.nasm
 	objc_msgSend_fixup.nasm
+	objc_msgSend_stret.nasm
+	registers.nasm
 	NameTranslate.cpp
-	ClassRegister.cpp
+	ClassRegister.mm
 )
 
 add_library(objc.A.dylib SHARED ${objcdarwin_SRCS})

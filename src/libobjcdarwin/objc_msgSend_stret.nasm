@@ -1,4 +1,4 @@
-global __darwin_objc_msgSend_fixup
+global __darwin_objc_msgSend_stret
 
 extern objcdarwin_class_lookup
 extern objc_msg_lookup
@@ -11,11 +11,8 @@ extern objcdarwin_RestoreRegisters
 BITS 64
 section text
 
-;__darwin_objc_msgSend_fixed:
-;	add rsi, 8
-;	jmp __darwin_objc_msgSend WRT ..plt
-
-__darwin_objc_msgSend_fixup:
+; Compared to ordinary msgSend, arguments are shifted by one - first arg is the stret
+__darwin_objc_msgSend_stret:
 	; Procedure:
 	; 1) get the converted GNU class from an Apple class
 	; 2) convert Apple selector to GNU
@@ -23,25 +20,20 @@ __darwin_objc_msgSend_fixup:
 	; 4) jump to the pointer returned by objc_msg_lookup
 	
 	call objcdarwin_SaveRegisters WRT ..plt
+	mov rdi, rsi
 	call objcdarwin_class_lookup WRT ..plt
-	mov [rsp], rax ; save the converted value
+	mov [rsp+8], rax ; save the converted value
 	
 	; move the second argument into the first argument
-	mov rdi, [rsp+8]
-	add rdi, 8 ; the selector itself is the second element of what we receive as SEL
-	mov rdi, [rdi]
+	mov rdi, [rsp+16]
 	call sel_get_any_uid WRT ..plt
 	; rax now has the GNU selector
 	; move rax to the second argument
 	mov rsi, rax
-
+	mov [rsp+16], rax
 	; restore the first argument
-	mov rdi, [rsp]
+	mov rdi, [rsp+8]
 	call objc_msg_lookup WRT ..plt
-
-	; optimize the next call by fixing the function pointer
-	mov rsi, [rsp+8]
-	;mov [rsi], rax ; TODO: fixups not working, the target method still isn't getting the selector it expects
 	
 	call objcdarwin_RestoreRegisters WRT ..plt
 	jmp rax
@@ -51,36 +43,30 @@ __darwin_objc_msgSend_fixup:
 BITS 32
 section text
 
-__darwin_objc_msgSend_fixup:
+__darwin_objc_msgSend_stret:
 	
-	mov ecx, [esp+4]
+	mov ecx, [esp+8]
 	push ecx ; arg for func call
 	
 	call objcdarwin_class_lookup ;WRT ..plt
 	
 	add esp, 4 ; remove argument
-	mov [esp+4], eax ; change the class id
+	mov [esp+8], eax ; change the class id
 	
-	mov ecx, [esp+8] ; second argument
-	add ecx, 4 ; the selector itself is the second element of what we receive as SEL
-	mov ecx, [ecx]
+	mov ecx, [esp+12] ; second argument
 	push ecx
 	
 	call sel_get_any_uid ;WRT ..plt
 	
 	add esp, 4
-	mov [esp+8], eax
+	mov [esp+12], eax
 	
 	push eax ; reuse the sel_get_any_uid retval
-	mov eax, [esp+8]
+	mov eax, [esp+12]
 	push eax ; class id
 	
 	call objc_msg_lookup ;WRT ..plt
 	add esp, 8
-
-	; optimize the next call by fixing the function pointer
-	mov ecx, [esp+8]
-	;mov [ecx], eax ; TODO: fixups not working, the target method still isn't getting the selector it expects
 	
 	jmp eax
 

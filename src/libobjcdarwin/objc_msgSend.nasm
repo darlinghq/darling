@@ -3,34 +3,13 @@ global __darwin_objc_msgSend
 extern objcdarwin_class_lookup
 extern objc_msg_lookup
 extern sel_get_any_uid
+extern objcdarwin_SaveRegisters
+extern objcdarwin_RestoreRegisters
 
 %ifidn __OUTPUT_FORMAT__, elf64
 
 BITS 64
 section text
-
-SaveRegisters:
-	pop r11
-	
-	push r9
-	push r8
-	push rcx
-	push rdx
-	push rsi
-	push rdi
-	
-	; save xmms?
-	jmp r11
-
-RestoreRegisters:
-	pop r11
-	pop rdi
-	pop rsi
-	pop rdx
-	pop rcx
-	pop r8
-	pop r9
-	jmp r11
 
 __darwin_objc_msgSend:
 	; Procedure:
@@ -39,7 +18,7 @@ __darwin_objc_msgSend:
 	; 3) run objc_msg_lookup
 	; 4) jump to the pointer returned by objc_msg_lookup
 	
-	call SaveRegisters
+	call objcdarwin_SaveRegisters WRT ..plt
 	call objcdarwin_class_lookup WRT ..plt
 	mov [rsp], rax ; save the converted value
 	
@@ -49,19 +28,18 @@ __darwin_objc_msgSend:
 	; rax now has the GNU selector
 	; move rax to the second argument
 	mov rsi, rax
+	mov [rsp+8], rax
 	; restore the first argument
 	mov rdi, [rsp]
 	call objc_msg_lookup WRT ..plt
 	
-	call RestoreRegisters
+	call objcdarwin_RestoreRegisters WRT ..plt
 	jmp rax
 
 %elifidn __OUTPUT_FORMAT__, elf
 
 BITS 32
 section text
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;; TODO!!!
 
 __darwin_objc_msgSend:
 	;enter 8

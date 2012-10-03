@@ -1,8 +1,13 @@
 #ifndef CLASSREGISTER_H
 #define CLASSREGISTER_H
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <cstddef>
 #include <objc/runtime.h>
+
+#ifndef INTPTR_MAX
+#error
+#endif
 
 struct method_t
 {
@@ -20,6 +25,20 @@ struct method_list_t
 	uint32_t entsize() const { return entsize_and_flags & ~uint32_t(3); }
 };
 
+struct ivar_t
+{
+	uintptr_t* offset;
+	const char* name;
+	const char* type;
+	uint32_t alignment, size;
+};
+
+struct ivar_list_t
+{
+	uint32_t entsize, count;
+	ivar_t ivar_list[];
+};
+
 struct class_ro_t
 {
 	uint32_t flags, instStart, instSize;
@@ -30,6 +49,7 @@ struct class_ro_t
 	const char* className;
 	const method_list_t* baseMethods; // instance methods for classes, static methods for metaclasses
 	const void* baseProtocols;
+	const ivar_list_t* ivars;
 
 	void* todo[2]; // TODO: two more pointers
 };
@@ -108,9 +128,9 @@ struct old_category
 
 struct old_ivar
 {
-	char *ivar_name;
-	char *ivar_type;
-	int ivar_offset;
+	char *name;
+	char *type;
+	int offset;
 #ifdef __x86_64__
 	int space;
 #endif
@@ -118,7 +138,7 @@ struct old_ivar
 
 struct old_ivar_list
 {
-	int ivar_count;
+	int count;
 #ifdef __x86_64__
 	int space;
 #endif

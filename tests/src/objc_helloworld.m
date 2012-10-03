@@ -1,4 +1,3 @@
-// CFLAGS: -lobjc
 #include <stdio.h>
 #import <Foundation/NSObject.h>
 
@@ -11,16 +10,27 @@
 @implementation helloclass
 - (void)doHello:(int)a :(int)b :(int)c :(int)d :(int)e :(int)f :(int)g
 {
-        puts("Hello world");
+        printf("Hello world, %d %d %d %d %d %d %d\n", a, b, c, d, e, f, g);
 }
 @end
 
+void run()
+{
+	helloclass* c = [helloclass alloc];
+	puts("After alloc");
+	[c init];
+	puts("After init");
+	[c doHello:1:2:3:4:5:6:7];
+	puts("After hello");
+	[c release];
+	puts("After release");
+}
+
 int main()
 {
-        helloclass* c = [[helloclass alloc] init];
-		[c doHellox:1:2:3:4:5:6:7];
-        [c release];
-        return 0;
+	run();
+	run();
+	return 0;
 }
 
 

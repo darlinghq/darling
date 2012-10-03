@@ -9,7 +9,7 @@ set -e
 failure() {
 	tput setaf 1
 	tput bold
-	echo "Test failure - the last command failed to execute"
+	echo "Benchmark failure - the last command failed to execute"
 	tput sgr0
 }
 
@@ -21,7 +21,7 @@ runtest() {
 	source_fn=$(echo "$source" | sed 's/\//_/g')
 
 	cflags="$(grep '// CFLAGS' "$source" || true)"
-	cflags="$CPPFLAGS -w $(echo "$cflags" | cut -b 12-)"
+	cflags="-O3 $CPPFLAGS -w $(echo "$cflags" | cut -b 12-)"
 
 	case "$extension" in
 		"cpp")
@@ -45,7 +45,7 @@ runtest() {
 
 	tput bold
 	echo "====="
-	echo "Running test '$source'"
+	echo "Running benchmark '$source'"
 	echo "====="
 	tput sgr0
 
@@ -61,38 +61,19 @@ runtest() {
 	ssh "$BUILDSERVER" "rm -f /tmp/$$.$source_fn*"
 
 	echo "Running Darwin binary..."
-	out_darwin=$($DYLD "/tmp/$$.$source_fn.bin")
+	tput bold
+	time $DYLD "/tmp/$$.$source_fn.bin"
+	tput sgr0
 	rm -f "/tmp/$$.$source_fn.bin"
 
 	echo "Compiling native..."
 	$native_tool $cflags $cflags_native "$source" -o "/tmp/$$.$source_fn.bin"
 	echo "Running native binary..."
-	out_native=$("/tmp/$$.$source_fn.bin")
-
-	if [ "$out_darwin" != "$out_native" ]; then
-		tput setaf 1
-		tput bold
-		echo "*** ERROR: Outputs do not match!"
-		tput sgr0
-		echo "---"
-		tput setaf 3
-		echo "Darwin build:"
-		tput sgr0
-		echo "---"
-		echo "$out_darwin"
-		echo "---"
-		tput setaf 3
-		echo "Native build:"
-		tput sgr0
-		echo "---"
-		echo "$out_native"
-		exit 1
-	fi
-	rm -f "/tmp/$$.$source_fn.bin"
-
-	tput setaf 2
-	echo "Everything OK, outputs match"
+	tput bold
+	time "/tmp/$$.$source_fn.bin"
 	tput sgr0
+
+	rm -f "/tmp/$$.$source_fn.bin"
 }
 
 if [[ "$0" == *runtest32 ]]; then
@@ -108,11 +89,4 @@ fi
 for test in "$@"; do
 	runtest "$test"
 done
-
-tput bold
-tput setaf 2
-echo '====='
-echo 'ALL GOOD'
-echo '====='
-tput sgr0
 
