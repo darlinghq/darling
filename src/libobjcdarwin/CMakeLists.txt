@@ -17,10 +17,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC")
 
 set(objcdarwin_SRCS
-	objc_msgSend.nasm
 	objc_msgSend_fixup.nasm
-	objc_msgSend_stret.nasm
-	registers.nasm
+	objc_msgSendSuper.nasm
 	NameTranslate.cpp
 	ClassRegister.mm
 )

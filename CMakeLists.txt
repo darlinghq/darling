@@ -21,6 +21,7 @@ endif(SUFFIX STREQUAL "32")
 enable_language(ASM-ATT)
 enable_language(ASM_NASM)
 ADD_DEFINITIONS(-ggdb -DDEBUG)
+#ADD_DEFINITIONS(-O3)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

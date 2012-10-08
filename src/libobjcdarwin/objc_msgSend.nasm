@@ -5,6 +5,7 @@ extern objc_msg_lookup
 extern sel_get_any_uid
 extern objcdarwin_SaveRegisters
 extern objcdarwin_RestoreRegisters
+extern objcdarwin_sel_lookup
 
 %ifidn __OUTPUT_FORMAT__, elf64
 
@@ -24,7 +25,7 @@ __darwin_objc_msgSend:
 	
 	; move the second argument into the first argument
 	mov rdi, [rsp+8]
-	call sel_get_any_uid WRT ..plt
+	call objcdarwin_sel_lookup WRT ..plt
 	; rax now has the GNU selector
 	; move rax to the second argument
 	mov rsi, rax
@@ -55,7 +56,7 @@ __darwin_objc_msgSend:
 	mov ecx, [esp+8] ; second argument
 	push ecx
 	
-	call sel_get_any_uid ;WRT ..plt
+	call objcdarwin_sel_lookup ;WRT ..plt
 	
 	add esp, 4
 	mov [esp+8], eax

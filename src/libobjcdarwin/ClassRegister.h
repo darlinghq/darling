@@ -3,171 +3,107 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <cstddef>
+#include <algorithm>
 #include <objc/runtime.h>
+#include "AppleLayout.h"
+#include "../util/log.h"
 
-#ifndef INTPTR_MAX
-#error
-#endif
+/* TODO?
+ * __DATA,__objc_classlist  was __OBJC2,__class_list
+ * __DATA,__objc_catlist  was __OBJC2,__category_list
+ * __DATA,__objc_protolist  was __OBJC2,__protocol_list
+ * __DATA,__objc_msgrefs  was __OBJC2,__message_refs
+ * __DATA,__objc_classrefs  was __OBJC2,__class_refs
+ * __DATA,__objc_superrefs  was __OBJC2,__super_refs
+ * __DATA,__objc_imageinfo  was __OBJC,__image_info
+ * */
 
-struct method_t
+static const char* SEG_DATA = "__DATA";
+static const char* SEG_OBJC_CLASSLIST_NEW = SEG_DATA;
+static const char* SECT_OBJC_CLASSLIST_NEW = "__objc_classlist";
+static const char* SEG_OBJC_CLASSREFS_NEW = SEG_DATA;
+static const char* SECT_OBJC_CLASSREFS_NEW = "__objc_classrefs";
+static const char* SEG_OBJC_SUPERREFS_NEW = SEG_DATA;
+static const char* SECT_OBJC_SUPERREFS_NEW = "__objc_superrefs";
+static const char* SEG_OBJC_SELREFS_NEW = SEG_DATA;
+static const char* SECT_OBJC_SELREFS_NEW = "__objc_selrefs";
+static const char* SEG_OBJC_MSGREFS_NEW = SEG_DATA; // used with objc_msgSend_fixup
+static const char* SECT_OBJC_MSGREFS_NEW = "__objc_msgrefs";
+static const char* SEG_OBJC_PROTOREFS_NEW = SEG_DATA;
+static const char* SECT_OBJC_PROTOREFS_NEW = "__objc_protorefs";
+static const char* SEG_OBJC_PROTOLIST_NEW = SEG_DATA;
+static const char* SECT_OBJC_PROTOLIST_NEW = "__objc_protolist";
+
+static const char* SEG_OBJC = "__OBJC";
+static const char* SEG_OBJC_CLASSLIST_OLD = SEG_OBJC;
+static const char* SECT_OBJC_CLASSLIST_OLD = "__class";
+static const char* SEG_OBJC_METALIST_OLD = SEG_OBJC;
+static const char* SECT_OBJC_METALIST_OLD = "__meta_class";
+static const char* SEG_OBJC_CLASSREFS_OLD = SEG_OBJC;
+static const char* SECT_OBJC_CLASSREFS_OLD = "__cls_refs";
+static const char* SEG_OBJC_SELREFS_OLD = SEG_OBJC;
+static const char* SECT_OBJC_SELREFS_OLD = "__message_refs";
+static const char* SEG_OBJC_PROTOCOLS_OLD = SEG_OBJC;
+static const char* SECT_OBJC_PROTOCOLS_OLD = "__protocol";
+static const char* SEG_OBJC_PROTOEXT_OLD = SEG_OBJC;
+static const char* SECT_OBJC_PROTOEXT_OLD = "__protocol_ext";
+
+static void ProcessImageLoad(const struct mach_header* mh, intptr_t slide);
+static void ProcessImageUnload(const struct mach_header* mh, intptr_t slide);
+static Class RegisterClass(const class_t* cls, intptr_t slide);
+static Class RegisterClass(old_class* cls);
+static void ProcessProtocolsNew(const struct mach_header* mh, intptr_t slide);
+static void ProcessProtocolsOld(const struct mach_header* mh, intptr_t slide);
+static Protocol* RegisterProtocol(const protocol_t* prot, intptr_t slide);
+static Protocol* RegisterProtocol(old_protocol* prot, uintptr_t extStart, unsigned long extLen);
+static void UpdateSelectors(const struct mach_header* mh, intptr_t slide);
+static void ProcessRuntimeOld(const struct mach_header* mh, intptr_t slide, old_class* classes, unsigned long size);
+static void ProcessRuntimeNew(const struct mach_header* mh, intptr_t slide, const class_t** classes, unsigned long size);
+static void ConvertProperties(Class c, const property_list_t* props);
+static void RegisterProtocolMethods(Protocol* p, const method_list_t* list, const char** extTypes, size_t& extIndex, bool required, bool instance);
+static void RegisterProtocolMethods(Protocol* p, const old_method_decl_list* list, bool required, bool instance);
+
+template<typename OrigType, typename NewType>
+static void find_and_fix(OrigType** start, OrigType** end, const OrigType* what, const NewType* ptr)
 {
-	const char* selName;
-	const char* types;
-	void* impl;
-};
-
-struct method_list_t
-{
-	uint32_t entsize_and_flags;
-	uint32_t count;
-	method_t method_list[0];
-
-	uint32_t entsize() const { return entsize_and_flags & ~uint32_t(3); }
-};
-
-struct ivar_t
-{
-	uintptr_t* offset;
-	const char* name;
-	const char* type;
-	uint32_t alignment, size;
-};
-
-struct ivar_list_t
-{
-	uint32_t entsize, count;
-	ivar_t ivar_list[];
-};
-
-struct class_ro_t
-{
-	uint32_t flags, instStart, instSize;
-#ifdef __x86_64__
-	uint32_t nothing;
-#endif
-	void* ivarLayout;
-	const char* className;
-	const method_list_t* baseMethods; // instance methods for classes, static methods for metaclasses
-	const void* baseProtocols;
-	const ivar_list_t* ivars;
-
-	void* todo[2]; // TODO: two more pointers
-};
-
-struct class_rw_t
-{
-	uint32_t flags, version;
-	class_ro_t* ro;
-
-	union
+	OrigType** pos = std::find(start, end, const_cast<OrigType*>(what));
+	if (pos != end)
 	{
-		method_list_t* method_list;
-		method_list_t** method_lists;
-	};
-
-	void* todo[4]; // TODO: four more pointers
-};
-
-struct class_t
-{
-	class_t* isa; // instance of
-	class_t* superclass;
-	void* cache; // empty cache imported here
-	void* vtable;
-	uintptr_t data_and_flags;
-
-	// TODO: WTF? Should be rw data
-	class_ro_t* data() const
-	{
-		uintptr_t p = data_and_flags & ~uintptr_t(3);
-		return reinterpret_cast<class_ro_t*>(p);
+		LOG << "ObjC fixup @" << pos << ": " << *pos << " -> " << ptr << std::endl;
+		*reinterpret_cast<uintptr_t*>(pos) = reinterpret_cast<uintptr_t>(ptr);
 	}
-};
+}
 
-union old_class_ptr
+// mprotect() requires that mem be on a page boundary.
+// This function satisfies this requirement.
+static int mprotect_pagemult(void* mem, size_t len, int prot);
+
+template<typename T>
+int mprotect_pagemult(T** mem, size_t len, int prot)
 {
-	struct old_class* cls;
-	const char* name;
-	uintptr_t ptrValue;
-};
+	return mprotect_pagemult(reinterpret_cast<void*>(mem), len, prot);
+}
 
-struct old_class
+/* UNUSED
+template<typename ForwardIterator, typename T, typename Processor> process_split_sections(ForwardIterator start, ForwardIterator end, const T& sep, Processor proc)
 {
-	old_class_ptr isa;
-	old_class_ptr super_class;
-	const char *name;
-	long version;
-	long info;
-	long instance_size;
-	struct old_ivar_list *ivars;
-	struct old_method_list *methodList;
-	void* cache;
-	struct old_protocol_list *protocols;
-	// CLS_EXT only
-	const uint8_t *ivar_layout;
-	struct old_class_ext *ext;
-};
+	ForwardIterator beg = start;
+	while (start != end)
+	{
+		if (*start == sep)
+		{
+			proc(beg, start);
+			start++;
+			beg = start;
+		}
+		else
+			start++;
+	}
 
-struct old_class_ext
-{
-	uint32_t size;
-	const uint8_t *weak_ivar_layout;
-	struct old_property_list **propertyLists;
-};
-
-struct old_category
-{
-	char *category_name;
-	char *class_name;
-	struct old_method_list *instance_methods;
-	struct old_method_list *class_methods;
-	struct old_protocol_list *protocols;
-	uint32_t size;
-	struct old_property_list *instance_properties;
-};
-
-struct old_ivar
-{
-	char *name;
-	char *type;
-	int offset;
-#ifdef __x86_64__
-	int space;
-#endif
-};
-
-struct old_ivar_list
-{
-	int count;
-#ifdef __x86_64__
-	int space;
-#endif
-	/* variable length structure */
-	struct old_ivar ivar_list[1];
-};
-
-
-struct old_method
-{
-	const char* selName;
-	const char* types;
-    void* impl;
-};
-
-struct old_method_list
-{
-	struct old_method_list *obsolete;
-
-	int count;
-#ifdef __x86_64__
-	int space;
-#endif
-	/* variable length structure */
-	struct old_method method_list[1];
-};
-
-
-extern "C" Class objcdarwin_class_lookup(const class_t* cls);
+	if (beg != end)
+		proc(beg, end);
+}
+*/
 
 #endif
 
