@@ -1,5 +1,6 @@
-#ifndef APPLELAYOUT_H
-#define APPLELAYOUT_H
+#ifndef NEW_APPLELAYOUT_H
+#define NEW_APPLELAYOUT_H
+#include "../common/AppleLayout.h"
 #include <iterator>
 
 struct method_t
@@ -79,15 +80,6 @@ struct protocol_list_t
 	protocol_iterator<protocol_list_t> end(intptr_t slide) const { return protocol_iterator<protocol_list_t>(this, count, slide); }
 };
 
-struct old_method_decl
-{
-	const char *name, *types;
-};
-struct old_method_decl_list
-{
-	int count;
-	old_method_decl list[];
-};
 struct property_t
 {
 	const char *name, *attributes;
@@ -97,37 +89,6 @@ struct property_list_t
 {
 	uint32_t entsize, count;
 	property_t list[];
-};
-typedef property_t old_property;
-typedef property_list_t old_property_list;
-
-struct old_protocol;
-struct old_protocol_list
-{
-	old_protocol_list* linked;
-	long count;
-	old_protocol* list[];
-};
-
-struct old_protocol_ext
-{
-	uint32_t size;
-	old_method_decl_list *optMethods, *optStaticMethods;
-	old_property_list* properties;
-	const char** extMethTypes;
-};
-
-struct old_protocol
-{
-	union
-	{
-		id isa;
-		old_protocol_ext* ext; // __protocol_ext section
-		uintptr_t ext_ptrValue;
-	};
-	const char* name;
-	old_protocol_list* protocols;
-	old_method_decl_list *methods, *staticMethods;
 };
 
 struct class_ro_t
@@ -146,22 +107,6 @@ struct class_ro_t
 	const property_list_t* baseProperties;
 };
 
-#if 0 // UNUSED
-struct class_rw_t
-{
-	uint32_t flags, version;
-	class_ro_t* ro;
-
-	union
-	{
-		method_list_t* method_list;
-		method_list_t** method_lists;
-	};
-
-	void* todo[4]; // TODO: four more pointers
-};
-#endif
-
 struct class_t
 {
 	class_t* isa; // instance of
@@ -170,7 +115,6 @@ struct class_t
 	void* vtable;
 	uintptr_t data_and_flags;
 
-	// TODO: WTF? Should be rw data
 	class_ro_t* data() const
 	{
 		uintptr_t p = data_and_flags & ~uintptr_t(3);
@@ -178,104 +122,53 @@ struct class_t
 	}
 };
 
-union old_class_ptr
+struct category_t
 {
-	struct old_class* cls;
 	const char* name;
-	uintptr_t ptrValue;
-	Class clsNew;
+	id cls;
+	method_list_t *methods, *staticMethods;
+	protocol_list_t *protocols;
+	property_list_t *properties;
 };
 
-struct old_class
-{
-	old_class_ptr isa;
-	old_class_ptr super_class;
-	const char *name;
-	long version;
-	long info;
-	long instance_size;
-	struct old_ivar_list *ivars;
-	struct old_method_list *methodList;
-	void* cache;
-	struct old_protocol_list *protocols;
-	// CLS_EXT only
-	const uint8_t *ivar_layout;
-	struct old_class_ext *ext;
-};
-
-struct old_class_ext
-{
-	uint32_t size;
-	const uint8_t *weak_ivar_layout;
-	old_property_list **propertyLists;
-};
-
-struct old_category
-{
-	char *category_name;
-	char *class_name;
-	struct old_method_list *instance_methods;
-	struct old_method_list *class_methods;
-	struct old_protocol_list *protocols;
-	uint32_t size;
-	old_property_list *instance_properties;
-};
-
-struct old_ivar
-{
-	char *name;
-	char *type;
-	int offset;
-#ifdef __x86_64__
-	int space;
+#ifndef CLS_CLASS
+#define CLS_CLASS               0x1
+#define CLS_META                0x2
+#define CLS_POSING              0x8
+#define CLS_METHOD_ARRAY        0x100
+#define CLS_HAS_CXX_STRUCTORS   0x2000
+#define CLS_NO_METHOD_ARRAY     0x4000
+#define CLS_HAS_LOAD_METHOD     0x8000
+#define CLS_NO_PROPERTY_ARRAY	0x80000
 #endif
-};
 
-struct old_ivar_list
-{
-	int count;
-#ifdef __x86_64__
-	int space;
-#endif
-	/* variable length structure */
-	struct old_ivar ivar_list[1];
-};
+static const char* SEG_DATA = "__DATA";
+static const char* SEG_OBJC_CLASSLIST_NEW = SEG_DATA;
+static const char* SECT_OBJC_CLASSLIST_NEW = "__objc_classlist";
+static const char* SEG_OBJC_CLASSREFS_NEW = SEG_DATA;
+static const char* SECT_OBJC_CLASSREFS_NEW = "__objc_classrefs";
+static const char* SEG_OBJC_SUPERREFS_NEW = SEG_DATA;
+static const char* SECT_OBJC_SUPERREFS_NEW = "__objc_superrefs";
+static const char* SEG_OBJC_SELREFS_NEW = SEG_DATA;
+static const char* SECT_OBJC_SELREFS_NEW = "__objc_selrefs";
+static const char* SEG_OBJC_MSGREFS_NEW = SEG_DATA; // used with objc_msgSend_fixup
+static const char* SECT_OBJC_MSGREFS_NEW = "__objc_msgrefs";
+static const char* SEG_OBJC_PROTOREFS_NEW = SEG_DATA;
+static const char* SECT_OBJC_PROTOREFS_NEW = "__objc_protorefs";
+static const char* SEG_OBJC_PROTOLIST_NEW = SEG_DATA;
+static const char* SECT_OBJC_PROTOLIST_NEW = "__objc_protolist";
+static const char* SEG_OBJC_CATLIST_NEW = SEG_DATA;
+static const char* SECT_OBJC_CATLIST_NEW = "__objc_catlist";
 
-
-struct old_method
-{
-	const char* selName;
-	const char* types;
-    void* impl;
-};
-
-struct old_method_list
-{
-	struct old_method_list *obsolete;
-
-	int count;
-#ifdef __x86_64__
-	int space;
-#endif
-	/* variable length structure */
-	struct old_method method_list[1];
-};
-
-union selref
-{
-	const char* selName;
-	SEL sel;
-};
-struct msgref
-{
-	void* objc_msgSend_fixup; // function pointer
-	selref sel;
-};
-union clsref
-{
-	const char* clsName;
-	Class cls;
-};
+/* TODO?
+ * __DATA,__objc_classlist  was __OBJC2,__class_list
+ * __DATA,__objc_catlist  was __OBJC2,__category_list
+ * __DATA,__objc_protolist  was __OBJC2,__protocol_list
+ * __DATA,__objc_msgrefs  was __OBJC2,__message_refs
+ * __DATA,__objc_classrefs  was __OBJC2,__class_refs
+ * __DATA,__objc_superrefs  was __OBJC2,__super_refs
+ * __DATA,__objc_imageinfo  was __OBJC,__image_info
+ * */
 
 #endif
 

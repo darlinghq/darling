@@ -36,7 +36,7 @@ runtest() {
 			darwin_tool="gcc"
 			native_tool="clang"
 			cflags_native="-l:libobjc.so.4 -lgnustep-base"
-			cflags_darwin="-lobjc"
+			cflags_darwin="-lobjc -framework foundation"
 			;;
 		*)
 			echo "Unsupported file type: $extension"
