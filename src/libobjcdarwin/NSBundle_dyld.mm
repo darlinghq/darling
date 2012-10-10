@@ -1,7 +1,10 @@
 #import "NSBundle_dyld.h"
 #import <limits.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSProcessInfo.h>
+#import <Foundation/NSAutoreleasePool.h>
 #include <string>
+#include <cstring>
 #include <cstdio>
 #include <algorithm>
 #include "../util/log.h"
@@ -16,6 +19,17 @@ __attribute__((constructor)) static void myinit()
 	LOG << "Swizzling methods in NSBundle\n";
 	
 	MethodSwizzle(objc_getMetaClass("NSBundle"), @selector(mainBundle), @selector(x_mainBundle));
+	
+	const char* last = strrchr(g_darwin_executable_path, '/');
+	if (last != 0)
+	{
+		last++;
+		
+		NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+		NSString* str = [NSString stringWithUTF8String:last];
+		[[NSProcessInfo processInfo] setProcessName:str];
+		[pool drain];
+	}
 }
 
 
