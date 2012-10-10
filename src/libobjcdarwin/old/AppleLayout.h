@@ -158,6 +158,8 @@ struct old_category
 	old_property_list* properties; // since version 7
 };
 
+// static const size_t sizeof_old_category_4 = offsetof(old_category, protocols);
+// static const size_t sizeof_old_category_5 = offsetof(old_category, size);
 
 static const char* SEG_OBJC = "__OBJC";
 static const char* SEG_OBJC_CLASSLIST_OLD = SEG_OBJC;
@@ -174,6 +176,8 @@ static const char* SEG_OBJC_PROTOEXT_OLD = SEG_OBJC;
 static const char* SECT_OBJC_PROTOEXT_OLD = "__protocol_ext";
 static const char* SEG_OBJC_MODINFO_OLD = SEG_OBJC;
 static const char* SECT_OBJC_MODINFO_OLD = "__module_info";
+static const char* SEG_OBJC_CATEGORIES_OLD = SEG_OBJC;
+static const char* SECT_OBJC_CATEGORIES_OLD = "__category";
 
 #ifndef CLS_CLASS
 #define CLS_CLASS               0x1

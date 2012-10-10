@@ -35,6 +35,8 @@ set(objcdarwin_SRCS
 	new/class.cpp
 	new/ivar.cpp
 	new/protocol.cpp
+	
+	NSBundle_dyld.mm
 )
 
 add_library(objc.A.dylib SHARED ${objcdarwin_SRCS})

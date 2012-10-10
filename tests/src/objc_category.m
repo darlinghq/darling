@@ -1,6 +1,13 @@
 #import <Foundation/NSString.h>
 #include <stdio.h>
 
+// for old runtime testing
+@interface RandomClass : NSObject
+@end
+
+@implementation RandomClass
+@end
+
 @interface NSString (MyCategory)
 +(void) dummy;
 @end

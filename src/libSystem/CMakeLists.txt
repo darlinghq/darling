@@ -8,7 +8,7 @@ endif(COMMAND cmake_policy)
 enable_language(ASM_NASM)
 
 if (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
-	message(FATAL_ERROR "Clang is the only supported compiler.")
+	message(FATAL_ERROR "Clang is the only supported compiler (${CMAKE_CXX_COMPILER} used).")
 endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 
 configure_file(config.h.in config.h)

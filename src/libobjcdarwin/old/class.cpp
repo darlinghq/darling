@@ -35,14 +35,7 @@ Class RegisterClass(old_class* cls, bool hasExt)
 	if (cls->ivars)
 		ConvertIvarList(conv, cls->ivars);
 	if (cls->protocols)
-	{
-		for (long i = 0; i < cls->protocols->count; i++)
-		{
-			Protocol* p = objc_getProtocol(cls->protocols->list[i]->name);
-			assert(p != nullptr);
-			class_addProtocol(conv, p);
-		}
-	}
+		AddClassProtocols(conv, cls->protocols);
 	
 	if (hasExt && cls->ext && cls->ext->propertyLists)
 	{
@@ -71,6 +64,15 @@ Class RegisterClass(old_class* cls, bool hasExt)
 	return conv;
 }
 
+void AddClassProtocols(Class conv, old_protocol_list* list)
+{
+	for (long i = 0; i < list->count; i++)
+	{
+		Protocol* p = objc_getProtocol(list->list[i]->name);
+		assert(p != nullptr);
+		class_addProtocol(conv, p);
+	}
+}
 
 void ProcessClassesOld(const struct mach_header* mh, intptr_t slide, module_info* info)
 {

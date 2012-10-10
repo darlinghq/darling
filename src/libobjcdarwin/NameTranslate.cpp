@@ -2,8 +2,8 @@
 #include <memory>
 #include <dlfcn.h>
 
-extern "C" void* _objc_empty_cache = 0;
-extern "C" void* _objc_empty_vtable = 0;
+__attribute__((visibility ("default"))) extern "C" void* _objc_empty_cache = 0;
+__attribute__((visibility ("default"))) extern "C" void* _objc_empty_vtable = 0;
 
 namespace Darling
 {

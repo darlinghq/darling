@@ -57,6 +57,7 @@ void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 		if (modinfo)
 		{
 			ProcessClassesOld(mh, slide, modinfo);
+			ProcessCategoriesOld(mh, slide, modinfo);
 		}
 	}
 	else

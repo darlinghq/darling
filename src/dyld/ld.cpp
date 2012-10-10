@@ -128,7 +128,8 @@ start_search:
 #ifdef MULTILIB
 		{
 			size_t pos = path.find("/lib/");
-			path.replace(pos, 5, "/" LIB_DIR_NAME "/");
+			if (pos != std::string::npos)
+				path.replace(pos, 5, "/" LIB_DIR_NAME "/");
 		}
 #endif
 		LOG << "Trying " << path << std::endl;
