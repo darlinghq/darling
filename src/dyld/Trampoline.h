@@ -49,6 +49,7 @@ public:
 		long double xmm[8]; // xmm7-xmm0
 		uint64_t r15, r14, r13, r12, r9, r8, rcx, rdx, rsi, rdi, rbx, rax;
 		void* retAddr;
+		uint64_t moreArguments[];
 	};
 #else
 	struct CallStack
@@ -70,14 +71,10 @@ private:
 	static std::string formatTime(double ms);
 	static void* printInfo(uint32_t index, CallStack* stack);
 	static void* printInfoR(uint32_t index, CallStack* stack);
+	static bool loadObjCHelper();
 public:
 	typedef std::vector<std::pair<char,void*> > OutputArguments;
-	struct ReturnInfo
-	{
-		void* retAddr;
-		OutputArguments pointers;
-		struct timeval callTime;
-	};
+	
 private:
 	struct AddrEntry
 	{
@@ -99,6 +96,7 @@ private:
 		char retType;
 		std::string arguments;
 	};
+	
 	class ArgumentWalker
 	{
 	public:
@@ -127,6 +125,15 @@ private:
 #endif
 		OutputArguments m_pointers;
 	};
+public:
+	struct ReturnInfo
+	{
+		void* retAddr;
+		OutputArguments pointers;
+		struct timeval callTime;
+		std::map<std::string, FunctionInfo>::iterator it;
+	};
+private:
 	
 	static TrampolineMgr* m_pInstance;
 
@@ -138,6 +145,7 @@ private:
 	std::string m_wd;
 	static struct timeval m_startup;
 	static std::map<std::string, FunctionInfo> m_functionInfo;
+	static void* m_objcDarwin;
 };
 
 #pragma pack(1)

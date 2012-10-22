@@ -1,5 +1,5 @@
-global __darwin_objc_msgSendSuper ; TODO: requires extracting superclass from Class
-global __darwin_objc_msgSendSuper2
+global __darwin_objc_msgSendSuper
+global __darwin_objc_msgSendSuper2 ; requires extracting superclass from Class
 global __darwin_objc_msgSendSuper2_stret
 extern objc_msg_lookup_super
 

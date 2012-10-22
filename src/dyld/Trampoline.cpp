@@ -28,15 +28,20 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <sstream>
 #include <stack>
 #include <cxxabi.h>
+#include <dlfcn.h>
 #include "../util/log.h"
+#include "../util/stlutils.h"
 
 TrampolineMgr* TrampolineMgr::m_pInstance = 0;
 std::map<std::string, TrampolineMgr::FunctionInfo> TrampolineMgr::m_functionInfo;
 struct timeval TrampolineMgr::m_startup;
+void* TrampolineMgr::m_objcDarwin = 0;
 
 static __thread std::stack<TrampolineMgr::ReturnInfo>* g_returnInfo = 0;
 static std::ofstream* g_logger = 0;
 static pid_t g_loggerForPid = 0;
+static const char* LIB_OBJCDARWIN = "libobjc.A.dylib.so";
+static std::string (*objc_helper)(const std::string& /*invoker*/, void* /*arg1*/, void* /*arg2*/, std::string& /*searchable*/) = 0;
 
 extern "C" void reg_saveall();
 extern "C" void reg_restoreall();
@@ -279,30 +284,61 @@ std::ostream* TrampolineMgr::getLogger()
 	}
 }
 
+bool TrampolineMgr::loadObjCHelper()
+{
+	m_objcDarwin = ::dlopen(LIB_OBJCDARWIN, RTLD_NOW | RTLD_NOLOAD);
+	if (!m_objcDarwin)
+		return false;
+	*((void**)&objc_helper) = ::dlsym(m_objcDarwin, "trampoline_objcMsgInfo");
+	if (!objc_helper)
+		return false;
+	return true;
+}
+
 void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 {	
 	FunctionInfo* info = 0;
 	const AddrEntry& e = m_pInstance->m_entries[index];
-	auto it = m_functionInfo.find(e.name);
+	std::map<std::string, FunctionInfo>::iterator it;
+	std::string stamp;
 	std::ostream* out;
 	ReturnInfo retInfo;
+	ArgumentWalker w(stack);
+	std::string searchable = e.name;
 
+	stamp = timeStamp();
 	out = m_pInstance->getLogger();
 	
 	if (!g_returnInfo)
 		g_returnInfo = new std::stack<TrampolineMgr::ReturnInfo>;
 	
-	std::string stamp = timeStamp();
 	(*out) << std::string(20 - stamp.size(), ' ');
 	(*out) << '[' << stamp << "] ";
 	(*out) << std::string(g_returnInfo->size(), ' ');
 	
+	// Special handling for Objective-C
+	if (string_startsWith(e.name, "objc_msgSend"))
+	{
+		if (!objc_helper)
+		{
+			if (!loadObjCHelper())
+				goto no_objc;
+		}
+		
+		if (string_endsWith(e.name, "ret"))
+			w.nextPointer(); // skip the fpret/stret argument
+		
+		(*out) << objc_helper(e.name, w.nextPointer(), w.nextPointer(), searchable);
+	}
+	else no_objc:
+		(*out) << e.printName;
+	(*out) << '(';
+	
+	it = m_functionInfo.find(searchable);
+	
 	if (it != m_functionInfo.end())
 	{
-		ArgumentWalker w(stack);
 		bool first = true;
-		
-		(*out) << e.printName << '(';
 		
 		for (char c : it->second.arguments)
 		{
@@ -316,10 +352,11 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 		(*out) << ") ";
 	}
 	else
-		(*out) << e.printName << "(?) ";
+		(*out) << "?) ";
 	(*out) << "ret_ip=" << stack->retAddr /*<< '(' << m_pInstance->inFile(stack->retAddr) << ')'*/ << std::endl << std::flush;
 
 	retInfo.retAddr = stack->retAddr;
+	retInfo.it = it;
 	gettimeofday(&retInfo.callTime, 0);
 
 	g_returnInfo->push(retInfo);
@@ -334,8 +371,7 @@ void* TrampolineMgr::printInfoR(uint32_t index, CallStack* stack)
 
 	out = m_pInstance->getLogger();
 
-	const std::string& name = m_pInstance->m_entries[index].name;
-	auto it = m_functionInfo.find(name);
+	auto it = g_returnInfo->top().it;
 	
 	std::string stamp = timeStamp();
 	(*out) << std::string(20 - stamp.size(), ' ');
@@ -408,7 +444,7 @@ uint64_t TrampolineMgr::ArgumentWalker::next64bit()
 	else if (m_indexInt == 5)
 		rv = m_stack->r9;
 	else
-		throw std::out_of_range("7th int argument not supported");
+		rv = m_stack->moreArguments[m_indexInt-6];
 	
 	m_indexInt++;
 	return rv;

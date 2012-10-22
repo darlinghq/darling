@@ -25,6 +25,7 @@ set(objcdarwin_SRCS
 	objc_msgSend.nasm
 	NameTranslate.cpp
 	ClassRegister.cpp
+	TrampolineHelper.cpp
 	
 	common/attribute.cpp
 	common/property.cpp
