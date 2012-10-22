@@ -11,6 +11,7 @@
 
 extern char g_darwin_executable_path[PATH_MAX];
 static NSBundle* _mainBundle = 0;
+static NSAutoreleasePool* g_pool = 0;
 
 void MethodSwizzle(Class aClass, SEL orig_sel, SEL alt_sel);
 
@@ -20,18 +21,23 @@ __attribute__((constructor)) static void myinit()
 	
 	MethodSwizzle(objc_getMetaClass("NSBundle"), @selector(mainBundle), @selector(x_mainBundle));
 	
+	g_pool = [[NSAutoreleasePool alloc] init];
+	
 	const char* last = strrchr(g_darwin_executable_path, '/');
 	if (last != 0)
 	{
 		last++;
 		
-		NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
 		NSString* str = [NSString stringWithUTF8String:last];
 		[[NSProcessInfo processInfo] setProcessName:str];
-		[pool drain];
 	}
 }
 
+__attribute__((destructor)) static void myexit()
+{
+	[g_pool drain];
+	g_pool = 0;
+}
 
 @implementation NSBundle (NSBundle_dyld)
 /*
@@ -55,6 +61,14 @@ __attribute__((constructor)) static void myinit()
 
 		path.resize(pos+1);
 		//path += "Resources";
+		
+		if ((pos = path.find(".app/")) != std::string::npos)
+		{
+			// "path.endsWith()"
+			// if (path.compare(path.size()-7, 7, "/MacOS/") == 0)
+			// 	path.resize(path.size() - 7);
+			path.resize(pos+6);
+		}
 
 		LOG << "NSBundle::x_mainBundle(): deduced " << path << " as resource path\n";
 

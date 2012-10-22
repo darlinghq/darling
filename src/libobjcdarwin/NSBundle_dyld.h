@@ -1,6 +1,5 @@
 #ifndef NSBUNDLE_DYLD_H
 #define NSBUNDLE_DYLD_H
-#define __STDC_LIMIT_MACROS
 #include <Foundation/NSBundle.h>
 
 @interface NSBundle (NSBundle_dyld)

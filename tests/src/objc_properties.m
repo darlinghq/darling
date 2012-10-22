@@ -3,20 +3,17 @@
 #import <objc/runtime.h>
 
 @interface helloclass : NSObject {
-	@private int var;
+	@private int varName;
 }
-@property (readwrite,assign) int var;
+@property (readwrite,assign) int propName;
 @end
 
 @implementation helloclass
-@synthesize var;
+@synthesize propName = varName;
 @end
 
 int main()
 {
-	helloclass* c = [helloclass new];
-	c.var = 5;
-
 	unsigned int outCount, i;
 	objc_property_t *properties = class_copyPropertyList([helloclass class], &outCount);
 	printf("%u properties\n", outCount);

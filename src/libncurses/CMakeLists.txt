@@ -23,5 +23,5 @@ add_library(ncurses.5.4.dylib SHARED ${libncurses_SRCS})
 # -luuid to make uuid_ functions available for Darwin apps
 target_link_libraries(ncurses.5.4.dylib -lncurses)
 
-install(TARGETS ncurses.5.4.dylib DESTINATION lib${SUFFIX})
+install(TARGETS ncurses.5.4.dylib DESTINATION "lib${SUFFIX}/darling")
 

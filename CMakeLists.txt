@@ -75,15 +75,18 @@ set(dyld_SRCS
 	src/dyld/binfmt_misc.cpp
 )
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+#SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
+
 add_executable(dyld${SUFFIX} ${dyld_SRCS})
 target_link_libraries(dyld${SUFFIX} -ldl -lpthread mach-o util)
 
-set(fatmacho-extract_SRCS
-	src/dyld/extract.cpp
-)
+#set(fatmacho-extract_SRCS
+#	src/dyld/extract.cpp
+#)
 
-add_executable(fatmacho-extract ${fatmacho-extract_SRCS})
-target_link_libraries(fatmacho-extract -ldl -lpthread -l:./libmach-o.so -Wl,-export-dynamic)
+#add_executable(fatmacho-extract ${fatmacho-extract_SRCS})
+#target_link_libraries(fatmacho-extract -ldl -lpthread -l:./libmach-o.so -Wl,-export-dynamic)
 
 set(motool_SRCS
 	src/motool/motool.cpp
@@ -96,18 +99,21 @@ install(TARGETS dyld${SUFFIX} DESTINATION bin)
 
 # If building on a 64bit system, only install these for 64bits
 if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
-	install(TARGETS fatmacho-extract motool DESTINATION bin)
+	install(TARGETS motool DESTINATION bin)
 	install(FILES etc/dylib.conf DESTINATION /etc/darling)
+	add_subdirectory(src/macbinary)
+	add_subdirectory(src/libmacarchive)
 endif(NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 
-install(TARGETS mach-o DESTINATION lib${SUFFIX})
+install(TARGETS mach-o DESTINATION "lib${SUFFIX}/darling")
 
 add_subdirectory(src/libSystem)
 #add_subdirectory(src/libcxxdarwin)
 add_subdirectory(src/libobjcdarwin)
 #add_subdirectory(src/libunwind-darwin-gcc)
 add_subdirectory(src/libncurses)
-#add_subdirectory(src/CoreServices)
+add_subdirectory(src/CoreSecurity)
+add_subdirectory(src/thin)
 
 add_dependencies(dyld${SUFFIX} mach-o)
 add_dependencies(System.B.dylib genfuncmap)

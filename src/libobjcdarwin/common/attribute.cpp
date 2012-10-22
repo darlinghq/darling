@@ -1,4 +1,5 @@
 #include "attribute.h"
+#include "../../util/log.h"
 #include <cassert>
 
 bool nextAttribute(objc_property_attribute_t& next, const char*& pos, std::vector<std::string>& strings)
@@ -38,6 +39,8 @@ bool nextAttribute(objc_property_attribute_t& next, const char*& pos, std::vecto
 		strings.push_back(std::string(start, pos-start));
 		next.value = strings.back().c_str();
 	}
+	
+	LOG << "Attr: name: " << next.name << "; value: " << next.value << std::endl;
 
 	return true;
 }

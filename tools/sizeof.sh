@@ -2,7 +2,7 @@
 
 set -e
 
-cfile=/tmp/sizeof.$$.c
+cfile=/tmp/sizeof.$$.cpp
 include="$1"
 struct="$2"
 
@@ -18,7 +18,7 @@ int main()
 
 END
 
-gcc -w $cfile -o $cfile.bin
+g++ -w $cfile -o $cfile.bin
 $cfile.bin
 
 rm $cfile*

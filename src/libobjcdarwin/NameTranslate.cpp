@@ -40,6 +40,11 @@ static bool ClassTranslator(char* name)
 
 		return true;
 	}
+	else if (strcmp(name, "__CFConstantStringClassReference") == 0)
+	{
+		strcpy(name, "_OBJC_CLASS_NSCFString");
+		return true;
+	}
 
 	return false;
 }

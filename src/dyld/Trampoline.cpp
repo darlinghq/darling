@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2012 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "Trampoline.h"
 #include <unistd.h>
 #include <sys/mman.h>
@@ -8,6 +27,8 @@
 #include <fstream>
 #include <sstream>
 #include <stack>
+#include <cxxabi.h>
+#include "../util/log.h"
 
 TrampolineMgr* TrampolineMgr::m_pInstance = 0;
 std::map<std::string, TrampolineMgr::FunctionInfo> TrampolineMgr::m_functionInfo;
@@ -68,9 +89,26 @@ void* TrampolineMgr::generate(void* targetAddr, const char* name)
 	if ((targetAddr > m_pMem && targetAddr < m_pMem+m_nMax) || !isExecutable(targetAddr))
 		return targetAddr; // will not create a trampoline for a trampoline
 
-	AddrEntry e = { name, targetAddr };
+	AddrEntry e = { name, name, targetAddr };
 	if (m_nNext >= m_nMax)
 		throw std::runtime_error("TrampolineMgr buffer full");
+	
+	//std::cout << e.name << std::endl;
+	if (e.name.compare(0, 2, "_Z") == 0)
+	{
+		int status;
+		char* n = abi::__cxa_demangle(e.name.c_str(), 0, 0, &status);
+		
+		//std::cout << n << std::endl;
+		
+		if (n)
+		{
+			e.printName = n;
+			e.printName += " - ";
+			e.printName += e.name;
+			free(n);
+		}
+	}
 
 	m_entries.push_back(e);
 	m_pMem[m_nNext].init(m_nNext, TrampolineMgr::printInfo, TrampolineMgr::printInfoR);
@@ -96,6 +134,16 @@ bool TrampolineMgr::isExecutable(void* addr)
 	return false;
 }
 
+std::string TrampolineMgr::inFile(void* addr)
+{
+	for (auto it = m_memoryMap.begin(); it != m_memoryMap.end(); it++)
+	{
+		if (addr >= it->start && addr < it->end)
+			return it->file;
+	}
+	return "?";
+}
+
 void TrampolineMgr::invalidateMemoryMap()
 {
 	m_memoryMap.clear();
@@ -116,6 +164,9 @@ void TrampolineMgr::loadMemoryMap()
 		s++;
 		pages.end = (void*) strtol(s, (char**) &s, 16);
 		pages.executable = (*(s+3) == 'x') && (*(s+2) == '-'); // not writable
+		
+		if (line.size() > 74)
+			pages.file = line.substr(73);
 		
 		//std::cout << line << " -> " << pages.start << " - " << pages.end << " " << pages.executable << std::endl;
 		m_memoryMap.push_back(pages);
@@ -231,8 +282,8 @@ std::ostream* TrampolineMgr::getLogger()
 void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 {	
 	FunctionInfo* info = 0;
-	const std::string& name = m_pInstance->m_entries[index].name;
-	auto it = m_functionInfo.find(name);
+	const AddrEntry& e = m_pInstance->m_entries[index];
+	auto it = m_functionInfo.find(e.name);
 	std::ostream* out;
 	ReturnInfo retInfo;
 
@@ -251,7 +302,7 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 		ArgumentWalker w(stack);
 		bool first = true;
 		
-		(*out) << name << '(';
+		(*out) << e.printName << '(';
 		
 		for (char c : it->second.arguments)
 		{
@@ -262,10 +313,11 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 			
 			(*out) << w.next(c);
 		}
-		(*out) << ")\n" << std::flush;
+		(*out) << ") ";
 	}
 	else
-		(*out) << m_pInstance->m_entries[index].name << "(?)\n" << std::flush;
+		(*out) << e.printName << "(?) ";
+	(*out) << "ret_ip=" << stack->retAddr /*<< '(' << m_pInstance->inFile(stack->retAddr) << ')'*/ << std::endl << std::flush;
 
 	retInfo.retAddr = stack->retAddr;
 	gettimeofday(&retInfo.callTime, 0);
@@ -290,15 +342,13 @@ void* TrampolineMgr::printInfoR(uint32_t index, CallStack* stack)
 	(*out) << '[' << stamp << "] ";
 	(*out) << std::string(g_returnInfo->size(), ' ');
 
+	ArgumentWalker w(stack);
 	if (it != m_functionInfo.end())
-	{
-		ArgumentWalker w(stack);
 		(*out) << "-> " << w.ret(it->second.retType);
-	}
 	else
-		(*out) << "-> ?";
+		(*out) << "-> ? (" << w.ret('p') << ')';
 
-	(*out) << " {" << callTime() << "}\n" << std::flush; 
+	(*out) << " {" << callTime() << "} errno=" << errno << std::endl << std::flush; 
 	
 	g_returnInfo->pop();
 

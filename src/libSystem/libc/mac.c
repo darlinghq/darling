@@ -273,10 +273,15 @@ int __darwin_uname(__darwin_utsname* buf) {
 	return r;
 
 	// Linux's buf size is currently much smaller, only 65, so strcpy() is safe
-	strcpy(buf->sysname, linux_buf.sysname);
+	//strcpy(buf->sysname, linux_buf.sysname);
+	//strcpy(buf->nodename, linux_buf.nodename);
+	//strcpy(buf->release, linux_buf.release);
+	//strcpy(buf->version, linux_buf.version);
+	//strcpy(buf->machine, linux_buf.machine);
+	strcpy(buf->sysname, "Darwin");
 	strcpy(buf->nodename, linux_buf.nodename);
-	strcpy(buf->release, linux_buf.release);
-	strcpy(buf->version, linux_buf.version);
+	strcpy(buf->release, "12.0.0");
+	strcpy(buf->version, "Darwin Kernel Version 12.0.0");
 	strcpy(buf->machine, linux_buf.machine);
 	return 0;
 }

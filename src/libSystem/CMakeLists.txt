@@ -94,5 +94,5 @@ add_library(System.B.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
 target_link_libraries(System.B.dylib -ldl -lpthread -luuid -l:../../libmach-o.so -lrt -lssl -lbsd -l:libobjc.so.4)
 add_dependencies(System.B.dylib mach-o)
 
-install(TARGETS System.B.dylib DESTINATION lib${SUFFIX})
+install(TARGETS System.B.dylib DESTINATION "lib${SUFFIX}/darling")
 
