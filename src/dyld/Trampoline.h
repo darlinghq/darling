@@ -145,7 +145,6 @@ private:
 	std::string m_wd;
 	static struct timeval m_startup;
 	static std::map<std::string, FunctionInfo> m_functionInfo;
-	static void* m_objcDarwin;
 };
 
 #pragma pack(1)

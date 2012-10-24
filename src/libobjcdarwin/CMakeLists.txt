@@ -25,7 +25,7 @@ set(objcdarwin_SRCS
 	objc_msgSend.nasm
 	NameTranslate.cpp
 	ClassRegister.cpp
-	TrampolineHelper.cpp
+	TrampolineHelper.mm
 	
 	common/attribute.cpp
 	common/property.cpp
@@ -48,7 +48,7 @@ set(objcdarwin_SRCS
 )
 
 add_library(objc.A.dylib SHARED ${objcdarwin_SRCS})
-target_link_libraries(objc.A.dylib -l:libobjc.so.4 -lgnustep-base)
+target_link_libraries(objc.A.dylib -l:libobjc.so.4 -lgnustep-base -l:../../libutil.a)
 
-install(TARGETS objc.A.dylib DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS objc.A.dylib DESTINATION "lib${SUFFIX}")
 

@@ -3,11 +3,12 @@
 #include <stdint.h>
 #include <string.h>
 
-// From /usr/include/sys/sysctl.h
+// http://fxr.watson.org/fxr/source/bsd/sys/sysctl.h?v=xnu-1228#L373
 
 #define CTL_KERN 1
 #define CTL_HW 6
 #define KERN_OSRELEASE 2
+#define KERN_OSVERSION 65
 
 extern "C" int __darwin_sysctl(int* name, unsigned int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen);
 

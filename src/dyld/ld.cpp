@@ -37,6 +37,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #include <limits.h>
 #include <regex.h>
+#include <libgen.h>
 #include <cassert>
 #include <list>
 #include <algorithm>
@@ -63,6 +64,7 @@ static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
+extern char g_darwin_loader_path[PATH_MAX];
 extern char g_sysroot[PATH_MAX];
 extern int g_argc;
 extern char** g_argv;
@@ -90,6 +92,19 @@ static void initLD()
 	{
 		std::cerr << e.what() << std::endl;
 	}
+}
+
+static std::string replacePathPrefix(const char* prefix, const char* prefixed, const char* replacement)
+{
+	std::string path = replacement;
+	char* repl = new char[strlen(replacement)];
+	
+	strcpy(repl, replacement);
+	path = dirname(repl);
+	path += (prefixed + strlen(prefix));
+	
+	delete [] repl;
+	return path;
 }
 
 void* __darwin_dlopen(const char* filename, int flag)
@@ -210,23 +225,18 @@ start_search:
 	}
 	else if (strncmp(filename, "@executable_path", 16) == 0)
 	{
-		size_t lastSlash;
-		path = g_darwin_executable_path;
-		
-		lastSlash = path.rfind('/');
-		if (lastSlash != std::string::npos)
-		{
-			path.resize(lastSlash);
-			path += filename + 16;
-		}
-		else
-		{
-			path = filename + 16;
-		}
-		
+		path = replacePathPrefix("@executable_path", filename, g_darwin_executable_path);
+		std::cout << "Full path: " << path << std::endl;
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
 	}
+	else if (strncmp(filename, "@loader_path", 12) == 0)
+	{
+		path = replacePathPrefix("@loader_path", filename, g_darwin_loader_path);
+		if (::access(path.c_str(), R_OK) == 0)
+			RET_IF( attemptDlopen(path.c_str(), flag) );
+	}
+	// TODO: @rpath - https://wincent.com/wiki/@executable_path,_@load_path_and_@rpath
 	else
 	{
 		if (const char* ldp = getenv("DYLD_LIBRARY_PATH"))

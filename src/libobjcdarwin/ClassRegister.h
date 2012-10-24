@@ -1,6 +1,8 @@
 #ifndef CLASSREGISTER_H
 #define CLASSREGISTER_H
-#define __STDC_LIMIT_MACROS
+#ifndef __STDC_LIMIT_MACROS
+#	define __STDC_LIMIT_MACROS
+#endif
 #include <stdint.h>
 #include <cstddef>
 #include <algorithm>

@@ -17,6 +17,6 @@ set(macarchive_SRCS
 add_library(macarchive SHARED ${macarchive_SRCS})
 target_link_libraries(macarchive -lssl -lz -lbz2)
 
-install(TARGETS macarchive DESTINATION "lib{SUFFIX}/darling")
+install(TARGETS macarchive DESTINATION "lib${SUFFIX}/darling")
 
 

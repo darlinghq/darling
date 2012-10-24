@@ -74,10 +74,15 @@ int __darwin_sysctl(int* name, unsigned int namelen,
 			return -1;
 		}
 
-		if (*oldlenp == 4)
-			*reinterpret_cast<uint32_t*>(oldp) = val;
-		else if (*oldlenp == 8)
-			*reinterpret_cast<uint64_t*>(oldp) = val;
+		if (oldp)
+		{
+			if (*oldlenp == 4)
+				*reinterpret_cast<uint32_t*>(oldp) = val;
+			else if (*oldlenp == 8)
+				*reinterpret_cast<uint64_t*>(oldp) = val;
+		}
+		else
+			*oldlenp = sizeof(long);
 		return 0;
     }
 
@@ -88,7 +93,14 @@ int __darwin_sysctl(int* name, unsigned int namelen,
 			case KERN_OSRELEASE:
 				
 				// TODO: use real uname?
-				strcpy((char*)oldp, "10.6.0");
+				if (oldp)
+					strcpy((char*)oldp, "10.7.0");
+				*oldlenp = 7;
+				break;
+				
+			case KERN_OSVERSION:
+				if (oldp)
+					strcpy((char*)oldp, "10J869");
 				*oldlenp = 7;
 				break;
 

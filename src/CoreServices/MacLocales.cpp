@@ -1,14 +1,16 @@
 #include "MacLocales.h"
 #include "MacErrors.h"
 #include "libSystem/libc/darwin_errno_codes.h"
+#include "libSystem/libc/errno.h"
 #include <unicode/locid.h>
 #include <unicode/coll.h>
 #include <cstring>
 #include <algorithm>
 #include <iconv.h>
+#include <errno.h>
 #include <cassert>
 
-static iconv_t g_icUtf32ToUtf16 = -1;
+static iconv_t g_icUtf32ToUtf16 = nullptr;
 
 __attribute__((constructor)) void initConversions()
 {
@@ -29,7 +31,8 @@ OSStatus LocaleRefFromLangOrRegionCode(LangCode langCode, RegionCode regionCode,
 		return 0;
 	}
 
-	// TODO: This needs to be checked for ABI compatibility
+	// LocaleRef is a pointer to a struct
+	// Instead of storing a pointer, we simply use 4 bytes of the pointer to save the lang code
 	char lc[3], rc[3];
 	lc[0] = char(langCode & 255);
 	lc[1] = char(langCode >> 8);
@@ -162,53 +165,59 @@ OSStatus LocaleGetName(LocaleRef ref, LocaleOperationVariant variant, uint32_t n
 	str += ")";
 
 	const UChar* buf = str.getTerminatedBuffer();
-	size_t inLen = (str.length+1) * sizeof(UChar);
+	size_t inLen = (str.length()+1) * sizeof(UChar);
 	size_t outLen = maxLen * sizeof(Utf16Char);
 	const char* inbuf = reinterpret_cast<const char*>(buf);
 	char* outbuf = reinterpret_cast<char*>(displayName);
-	size_t r = iconv(g_icUtf32ToUtf16, &inbuf, &inLen, &outbuf, &outLen);
+	size_t r = iconv(g_icUtf32ToUtf16, const_cast<char**>(&inbuf), &inLen, &outbuf, &outLen);
 
 	if (r == size_t(-1))
 	{
 		if (errno == E2BIG)
 		{
 			displayName[maxLen-1] = 0;
-			rv = maxLen;
+			r = maxLen;
 		}
 		else
 		{
-			*lenOut = 0;
+			r = 0;
 			*displayName = 0;
-			return makeOSStatus(errnoLinuxToDarwin());
+			return makeOSStatus(errnoLinuxToDarwin(errno));
 		}
 	}
 	
-	*lenOut = rv;
+	*lenOut = r;
 	return 0;
 }
 
 OSStatus LocaleCountNames(LocaleRef ref, LocaleOperationVariant variant, uint32_t nameMask, unsigned long* countOut)
 {
+	return unimpErr;
 }
 
 OSStatus LocaleGetIndName(LocaleRef ref, LocaleOperationVariant variant, uint32_t nameMask, unsigned long index, unsigned long maxLen, unsigned long* lenOut, Utf16Char* displayName, LocaleRef* displayLocale)
 {
+	return unimpErr;
 }
 
 OSStatus LocaleGetRegionLanguageName(RegionCode regionCode, char name[256])
 {
+	return unimpErr;
 }
 
 OSStatus LocaleOperationGetName(LocaleOperationClass cls, LocaleRef ref, unsigned long maxLen, unsigned long* lenOut, Utf16Char* displayName)
 {
+	return unimpErr;
 }
 
 OSStatus LocaleOperationCountNames(LocaleOperationClass cls, unsigned long* count)
 {
+	return unimpErr;
 }
 
 OSStatus LocaleOperationGetIndName(LocaleOperationClass cls, unsigned long index, unsigned long maxLen, unsigned long* lenOut, Utf16Char* displayName, LocaleRef* displayLocale)
 {
+	return unimpErr;
 }
 
 

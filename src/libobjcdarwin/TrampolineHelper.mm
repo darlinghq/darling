@@ -2,6 +2,8 @@
 #include <objc/runtime.h>
 #include <cstring>
 #include <sstream>
+#include <iostream>
+#include <Foundation/NSObject.h>
 #include "visibility.h"
 #include "../util/stlutils.h"
 
@@ -26,29 +28,57 @@ std::string trampoline_objcMsgInfo(const std::string& invoker, void* arg1, SEL s
 	else
 		obj = id(arg1);
 	
+	if (string_endsWith(invoker, "_fixup"))
+	{
+		struct fixable
+		{
+			void* pfn;
+			SEL sel;
+		};
+		const fixable* f = (fixable*) sel;
+		sel = f->sel;
+	}
+	
+	const char* selname = sel_getName(sel);
 	if (obj)
 	{
-		type = object_getClass(obj);
+		const char* clsname;
+		bool isMeta;
 		
-		if (class_isMetaClass(type))
+		type = object_getClass(obj);
+		clsname = class_getName(type);
+		
+		isMeta = class_isMetaClass(type) == YES;
+		if (isMeta)
 			ret << "+[";
 		else
 			ret << "-[";
+			
+		// std::cout << "Resp: " << bool([[NSObject class] instancesRespondToSelector:@selector(description)]) << std::endl;
 		
-		ret << class_getName(type);
 		searchable = ret.str();
+		if ( (!isMeta && [NSObject instancesRespondToSelector:sel]) ||
+			(isMeta && ([[NSObject class] instancesRespondToSelector:sel] || !strcmp(selname, "alloc")))
+		)
+		{
+			searchable += "NSObject";
+		}
+		else
+			searchable += clsname;
+		
+		ret << clsname;
 		
 		ret << '(';
 		ret << obj << ") ";
 		
 		searchable += ' ';
-		searchable += sel_getName(sel);
+		searchable += selname;
 		searchable += ']';
 	}
 	else
 		ret << "?[nil(0x0) ";
 	
-	ret << sel_getName(sel);
+	ret << selname;
 	ret << ']';
 	
 	return ret.str();

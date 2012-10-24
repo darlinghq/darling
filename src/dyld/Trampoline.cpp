@@ -35,7 +35,6 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 TrampolineMgr* TrampolineMgr::m_pInstance = 0;
 std::map<std::string, TrampolineMgr::FunctionInfo> TrampolineMgr::m_functionInfo;
 struct timeval TrampolineMgr::m_startup;
-void* TrampolineMgr::m_objcDarwin = 0;
 
 static __thread std::stack<TrampolineMgr::ReturnInfo>* g_returnInfo = 0;
 static std::ofstream* g_logger = 0;
@@ -185,7 +184,7 @@ void TrampolineMgr::loadFunctionInfo(const char* path)
 	
 	while (std::getline(file, line))
 	{
-		size_t p = line.find(':');
+		size_t p = line.rfind(':');
 		if (p == std::string::npos)
 			continue;
 		
@@ -222,7 +221,8 @@ std::string TrampolineMgr::formatTime(double ms)
 		ss << secs << 's';
 		ms -= double(secs) * SECS;
 	}
-	ss << ms << "ms";
+	ss << int(ms) /*<< "ms"*/; // double value here sometime causes crashes, why?
+	ss << '.' << int(ms*10)%10 << "ms"; // workaround
 	return ss.str();
 }
 
@@ -286,34 +286,29 @@ std::ostream* TrampolineMgr::getLogger()
 
 bool TrampolineMgr::loadObjCHelper()
 {
-	m_objcDarwin = ::dlopen(LIB_OBJCDARWIN, RTLD_NOW | RTLD_NOLOAD);
-	if (!m_objcDarwin)
-		return false;
-	*((void**)&objc_helper) = ::dlsym(m_objcDarwin, "trampoline_objcMsgInfo");
-	if (!objc_helper)
-		return false;
-	return true;
+	*((void**)&objc_helper) = ::dlsym(RTLD_DEFAULT, "trampoline_objcMsgInfo");
+	return objc_helper != 0;
 }
 
 void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
-{	
-	FunctionInfo* info = 0;
+{
 	const AddrEntry& e = m_pInstance->m_entries[index];
+	FunctionInfo* info = 0;
 	std::map<std::string, FunctionInfo>::iterator it;
-	std::string stamp;
 	std::ostream* out;
 	ReturnInfo retInfo;
 	ArgumentWalker w(stack);
 	std::string searchable = e.name;
 
-	stamp = timeStamp();
 	out = m_pInstance->getLogger();
 	
 	if (!g_returnInfo)
 		g_returnInfo = new std::stack<TrampolineMgr::ReturnInfo>;
+		
+	std::string stamp = timeStamp();
 	
 	(*out) << std::string(20 - stamp.size(), ' ');
-	(*out) << '[' << stamp << "] ";
+	(*out) << '[' << timeStamp() << "] ";
 	(*out) << std::string(g_returnInfo->size(), ' ');
 	
 	// Special handling for Objective-C
@@ -334,6 +329,7 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 		(*out) << e.printName;
 	(*out) << '(';
 	
+	// std::cout << "Looking for " << searchable << std::endl;
 	it = m_functionInfo.find(searchable);
 	
 	if (it != m_functionInfo.end())
@@ -353,7 +349,7 @@ void* TrampolineMgr::printInfo(uint32_t index, CallStack* stack)
 	}
 	else
 		(*out) << "?) ";
-	(*out) << "ret_ip=" << stack->retAddr /*<< '(' << m_pInstance->inFile(stack->retAddr) << ')'*/ << std::endl << std::flush;
+	(*out) << "ret_ip=" << stack->retAddr << std::endl << std::flush;
 
 	retInfo.retAddr = stack->retAddr;
 	retInfo.it = it;

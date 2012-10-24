@@ -43,6 +43,8 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 FileMap g_file_map;
 static std::vector<std::string> g_bound_names;
 
+char g_darwin_loader_path[PATH_MAX] = "";
+
 extern char g_darwin_executable_path[PATH_MAX];
 extern int g_argc;
 extern char** g_argv;
@@ -460,6 +462,9 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 
 	intptr slide = 0;
 	intptr base = 0;
+	
+	strncpy(g_darwin_loader_path, sourcePath.c_str(), PATH_MAX-1);
+	g_darwin_loader_path[PATH_MAX-1] = 0;
 
 	loadSegments(mach, &slide, &base);
 

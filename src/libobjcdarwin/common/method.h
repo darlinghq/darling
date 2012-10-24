@@ -13,7 +13,7 @@ template<typename ListType> void ConvertMethodListGen(Class c, const ListType* l
 
 		LOG << "Method: selName: " << m->selName << "; types: " << m->types << "; impl: " << m->impl << std::endl;
 
-		SEL sel = sel_registerName(m->selName);
+		SEL sel = sel_registerTypedName_np(m->selName, m->types);
 		class_addMethod(c, sel, reinterpret_cast<IMP>(m->impl), m->types);
 	}
 }
