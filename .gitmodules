@@ -1,0 +1,3 @@
+[submodule "tests/libsshcxx"]
+	path = tests/libsshcxx
+	url = git://git.dolezel.info/libsshcxx.git

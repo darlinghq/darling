@@ -60,7 +60,7 @@ runtest() {
 	scp "$BUILDSERVER:/tmp/$$.$source_fn.bin" "/tmp" >/dev/null
 	ssh "$BUILDSERVER" "rm -f /tmp/$$.$source_fn*"
 
-	echo "Running Darwin binary..."
+	echo "Running Darwin binary locally..."
 	out_darwin=$($DYLD "/tmp/$$.$source_fn.bin")
 	rm -f "/tmp/$$.$source_fn.bin"
 
