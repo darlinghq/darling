@@ -1,30 +1,22 @@
-// Copyright 2011 Shinichiro Hamaji. All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//
-//   1. Redistributions of source code must retain the above copyright
-//      notice, this list of  conditions and the following disclaimer.
-//
-//   2. Redistributions in binary form must reproduce the above
-//      copyright notice, this list of conditions and the following
-//      disclaimer in the documentation and/or other materials
-//      provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY Shinichiro Hamaji ``AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Shinichiro Hamaji OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
-// USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
-// OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-// SUCH DAMAGE.
+/*
+This file is part of Darling.
 
+Copyright (C) 2012 Lubos Dolezel
+Copyright (C) 2011 Shinichiro Hamaji
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifndef MACH_O_H_
 #define MACH_O_H_
@@ -105,7 +97,7 @@ public:
 
 	const std::vector<Symbol>& symbols() const { return m_symbols; }
 
-	const char* base() const { return m_base; }
+	uintptr_t base() const { return m_base; }
 
 	uint64_t entry() const { return m_entry; }
 	uint64_t main() const { return m_main; }
@@ -138,7 +130,7 @@ public:
 	std::vector<Bind*> m_binds;
 	std::vector<Export*> m_exports;
 	std::vector<Symbol> m_symbols;
-	const char* m_base;
+	uintptr_t m_base;
 	uint64_t m_entry, m_main;
 	std::vector<uint64_t> m_init_funcs;
 	std::vector<uint64_t> m_exit_funcs;
@@ -162,5 +154,8 @@ public:
 private:
 	std::vector<std::string> m_archs;
 };
+
+// we express stub binds as another type of ordinary bind
+#define BIND_TYPE_STUB 100
 
 #endif	// MACH_O_H_

@@ -315,7 +315,7 @@ void MachOLoader::loadInitFuncs(const MachO& mach, intptr slide)
 void MachOLoader::doBind(const MachO& mach, intptr slide)
 {
 	std::string last_weak_name;
-	char* last_weak_sym = 0;
+	uintptr_t last_weak_sym = 0;
 	size_t seen_weak_bind_index = 0;
 	size_t seen_weak_binds_orig_size = m_seen_weak_binds.size();
 
@@ -323,11 +323,11 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 
 	for (MachO::Bind* bind : mach.binds())
 	{
-		if (bind->type == BIND_TYPE_POINTER)
+		if (bind->type == BIND_TYPE_POINTER || bind->type == BIND_TYPE_STUB)
 		{
 			std::string name = bind->name.substr(1);
-			void** ptr = (void**)(bind->vmaddr + slide);
-			char* sym = 0;
+			uintptr_t* ptr = (uintptr_t*)(bind->vmaddr + slide);
+			uintptr_t sym = 0;
 			
 			if (bind->is_weak)
 			{
@@ -348,15 +348,15 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 					{
 						if (bind->is_classic)
 						{
-							*ptr = last_weak_sym = (char*)bind->value;
+							*ptr = last_weak_sym = (uintptr_t)bind->value;
 						}
 						else
 						{
 							const Exports::const_iterator export_found = m_exports.find(bind->name);
 							if (export_found != m_exports.end())
-								*ptr = last_weak_sym = (char*)export_found->second.addr;
+								*ptr = last_weak_sym = (uintptr_t)export_found->second.addr;
 							else
-								last_weak_sym = (char*)*ptr;
+								last_weak_sym = *ptr;
 						}
 					}
 					
@@ -384,10 +384,10 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 				{
 					// assume local (e.g. dyld_stub_binder)
 					name = bind->name; // for correct error reporting
-					sym = reinterpret_cast<char*>(dlsym(dlopen(0, 0), bind->name.c_str()));
+					sym = reinterpret_cast<uintptr_t>(dlsym(dlopen(0, 0), bind->name.c_str()));
 				}
 				else
-					sym = reinterpret_cast<char*>(__darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str()));
+					sym = reinterpret_cast<uintptr_t>(__darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str()));
 				
 				if (!sym)
 				{
@@ -402,7 +402,7 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 							char* dname = new char[name.size()+1];
 							strcpy(dname, name.c_str());
 							
-							sym = reinterpret_cast<char*>(m_pUndefMgr->generateNew(dname));
+							sym = reinterpret_cast<uintptr_t>(m_pUndefMgr->generateNew(dname));
 						}
 						else
 #endif
@@ -423,9 +423,27 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 				<< *ptr << " => " << (void*)sym << " @" << ptr << std::endl;
 
 			if (g_trampoline)
-				*ptr = m_pTrampolineMgr->generate(sym, name.c_str());
-			else
+				sym = (uintptr_t) m_pTrampolineMgr->generate((void*)sym, name.c_str());
+			if (bind->type == BIND_TYPE_POINTER)
+			{
 				*ptr = sym;
+			}
+#ifdef __i386__
+			else if (bind->type == BIND_TYPE_STUB)
+			{
+				struct jmp_instr
+				{
+					uint8_t relJmp;
+					uint32_t addr;
+				} __attribute__((packed));
+				static_assert(sizeof(jmp_instr) == 5, "Incorrect jmp instruction size");
+
+				jmp_instr* instr = reinterpret_cast<jmp_instr*>(ptr);
+
+				instr->relJmp = 0xE9; // x86 jmp rel32
+				instr->addr = sym - uint32_t(ptr) + sizeof(jmp_instr);
+			}
+#endif
 		}
 		else
 		{

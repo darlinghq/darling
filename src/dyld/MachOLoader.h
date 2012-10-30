@@ -93,7 +93,7 @@ private:
 	intptr m_last_addr;
 	std::vector<uint64_t> m_init_funcs;
 	Exports m_exports;
-	std::vector<std::pair<std::string, char*> > m_seen_weak_binds;
+	std::vector<std::pair<std::string, uintptr_t> > m_seen_weak_binds;
 	UndefMgr* m_pUndefMgr;
 	TrampolineMgr* m_pTrampolineMgr;
 	

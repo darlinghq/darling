@@ -31,8 +31,6 @@ OSStatus LocaleRefFromLangOrRegionCode(LangCode langCode, RegionCode regionCode,
 		return 0;
 	}
 
-	// LocaleRef is a pointer to a struct
-	// Instead of storing a pointer, we simply use 4 bytes of the pointer to save the lang code
 	char lc[3], rc[3];
 	lc[0] = char(langCode & 255);
 	lc[1] = char(langCode >> 8);
@@ -157,32 +155,54 @@ OSStatus LocaleGetName(LocaleRef ref, LocaleOperationVariant variant, uint32_t n
 
 	// variant and nameMask currently ignored
 	
+	size_t r;
 	UnicodeString str, str2;
 	loc.getDisplayLanguage(locDisplay, str);
 	str += " (";
 	loc.getDisplayCountry(locDisplay, str2);
 	str += str2;
 	str += ")";
-
-	const UChar* buf = str.getTerminatedBuffer();
-	size_t inLen = (str.length()+1) * sizeof(UChar);
-	size_t outLen = maxLen * sizeof(Utf16Char);
-	const char* inbuf = reinterpret_cast<const char*>(buf);
-	char* outbuf = reinterpret_cast<char*>(displayName);
-	size_t r = iconv(g_icUtf32ToUtf16, const_cast<char**>(&inbuf), &inLen, &outbuf, &outLen);
-
-	if (r == size_t(-1))
+	
+	static_assert(sizeof(UChar) == 4 || sizeof(UChar) == 2, "Unsupported UChar size");
+	
+	if (sizeof(UChar) == 4)
 	{
-		if (errno == E2BIG)
+		const UChar* buf = str.getTerminatedBuffer();
+		size_t inLen = (str.length()+1) * sizeof(UChar);
+		size_t outLen = maxLen * sizeof(Utf16Char);
+		const char* inbuf = reinterpret_cast<const char*>(buf);
+		char* outbuf = reinterpret_cast<char*>(displayName);
+		
+		r = iconv(g_icUtf32ToUtf16, const_cast<char**>(&inbuf), &inLen, &outbuf, &outLen);
+
+		if (r == size_t(-1))
 		{
-			displayName[maxLen-1] = 0;
-			r = maxLen;
+			if (errno == E2BIG)
+			{
+				displayName[maxLen-1] = 0;
+				r = maxLen;
+				return -30001;
+			}
+			else
+			{
+				r = 0;
+				*displayName = 0;
+				return makeOSStatus(errnoLinuxToDarwin(errno));
+			}
+		}
+	}
+	else if (sizeof(UChar) == sizeof(Utf16Char))
+	{
+		if (str.length()+1 > maxLen)
+		{
+			*lenOut = str.length()+1;
+			*displayName = 0;
+			return -30001;
 		}
 		else
 		{
-			r = 0;
-			*displayName = 0;
-			return makeOSStatus(errnoLinuxToDarwin(errno));
+			memcpy(displayName, str.getTerminatedBuffer(), (str.length()+1) * sizeof(UChar));
+			r = str.length()+1;
 		}
 	}
 	
@@ -207,16 +227,22 @@ OSStatus LocaleGetRegionLanguageName(RegionCode regionCode, char name[256])
 
 OSStatus LocaleOperationGetName(LocaleOperationClass cls, LocaleRef ref, unsigned long maxLen, unsigned long* lenOut, Utf16Char* displayName)
 {
+	*lenOut = 0;
+	*displayName = 0;
 	return unimpErr;
 }
 
 OSStatus LocaleOperationCountNames(LocaleOperationClass cls, unsigned long* count)
 {
+	*count = 0;
 	return unimpErr;
 }
 
 OSStatus LocaleOperationGetIndName(LocaleOperationClass cls, unsigned long index, unsigned long maxLen, unsigned long* lenOut, Utf16Char* displayName, LocaleRef* displayLocale)
 {
+	*displayName = 0;
+	*displayLocale = 0;
+	*lenOut = 0;
 	return unimpErr;
 }
 

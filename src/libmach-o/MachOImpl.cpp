@@ -1,30 +1,22 @@
-// Copyright 2011 Shinichiro Hamaji. All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//
-//   1. Redistributions of source code must retain the above copyright
-//      notice, this list of  conditions and the following disclaimer.
-//
-//   2. Redistributions in binary form must reproduce the above
-//      copyright notice, this list of conditions and the following
-//      disclaimer in the documentation and/or other materials
-//      provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY Shinichiro Hamaji ``AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Shinichiro Hamaji OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
-// USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
-// OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-// SUCH DAMAGE.
+/*
+This file is part of Darling.
 
+Copyright (C) 2012 Lubos Dolezel
+Copyright (C) 2011 Shinichiro Hamaji
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include "MachOImpl.h"
 #include "log.h"
@@ -46,8 +38,8 @@
 template <class section>
 void MachOImpl::readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* symtab, const char* symstrtab)
 {
-	uint32_t indirect_offset = sec.reserved1;
-	int count = sec.size / m_ptrsize;
+	const uint32_t indirect_offset = sec.reserved1;
+	const int count = sec.size / m_ptrsize;
 	
 	for (int i = 0; i < count; i++)
 	{
@@ -63,14 +55,45 @@ void MachOImpl::readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* 
 		bind->ordinal = 1;
 		bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
 		bind->is_classic = true;
-		LOGF("add classic bind! %s type=%d sect=%d desc=%d value=%lld "
-			"vmaddr=%p is_weak=%d\n",
-			bind->name.c_str(), sym->n_type, sym->n_sect, sym->n_desc, (ll)sym->n_value,
-			(void*)(bind->vmaddr), bind->is_weak);
+		LOG << "add classic bind: " << bind->name << " type=" << sym->n_type << " sect=" << sym->n_sect
+			<< " desc=" << sym->n_desc << " value=" << sym->n_value << " vmaddr=" << (void*)(bind->vmaddr)
+			<< " is_weak=" << bind->is_weak << std::endl;
 		m_binds.push_back(bind);
     }
 }
 
+void MachOImpl::readStubBind(const section& sec,  uint32_t* dysyms, uint32_t* symtab, const char* symstrtab)
+{
+	const uint32_t element_size = sec.reserved2;
+	const uint32_t indirect_offset = sec.reserved1;
+	const int count = sec.size / element_size;
+
+	if (element_size != 5)
+	{
+		LOG << "MachOImpl::readStubBind(): cannot handle stubs of elem size != 5, size=" << element_size << std::endl;
+		return;
+	}
+
+	for (int i = 0; i < count; i++)
+	{
+		uint32_t dysym = dysyms[indirect_offset + i];
+		uint32_t index = dysym & 0x3fffffff;
+		nlist* sym = (nlist*)(symtab + index * 3);
+
+		MachO::Bind* bind = new MachO::Bind();
+		bind->name = symstrtab + sym->n_strx;
+		bind->vmaddr = sec.addr + i * element_size;
+		bind->value = sym->n_value;
+		bind->type = BIND_TYPE_STUB;
+		bind->ordinal = 1;
+		bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
+		bind->is_classic = true;
+
+		m_binds.push_back(bind);
+
+		LOG << "add stub bind: " << bind->name.c_str() << " vmaddr=" << (void*) bind->vmaddr << std::endl;
+	}
+}
 
 template <class segment_command, class section>
 void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segments, std::vector<section*>* bind_sections)
@@ -78,14 +101,11 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 	segment_command* segment = reinterpret_cast<segment_command*>(cmds_ptr);
 	segments->push_back(segment);
 
-	LOGF("segment %s: vmaddr=%p vmsize=%llu "
-		"fileoff=%llu filesize=%llu "
-		"maxprot=%d initprot=%d nsects=%u flags=%u\n",
-		segment->segname,
-		(void*)(intptr_t)segment->vmaddr, (ull)segment->vmsize,
-		(ull)segment->fileoff, (ull)segment->filesize,
-		segment->maxprot, segment->initprot,
-		segment->nsects, segment->flags);
+	LOG << "segment " << segment->segname << ": vmaddr=" << (void*)segment->vmaddr
+		<< " vmsize=" << std::hex << segment->vmsize << " file_offset=" << segment->fileoff
+		<< " file_size=" << segment->filesize << " maxprot=" << segment->maxprot
+		<< " init_prot=" << segment->initprot << " nsects=" << std::dec << segment->nsects
+		<< " flags=" << std::hex << segment->flags << std::dec << std::endl;
 
 	section* sections = reinterpret_cast<section*>(cmds_ptr + sizeof(segment_command));
 	
@@ -96,16 +116,13 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 	{
 		const section& sec = sections[j];
 		Section savedSection{sec.segname, sec.sectname, uintptr_t(sec.addr), uintptr_t(sec.size)};
-		
-		LOGF("section %s in %s: "
-				"addr=%p size=%llu offset=%u align=%u "
-				"reloff=%u nreloc=%u flags=%u "
-				"reserved1=%u reserved2=%u\n",
-				sec.sectname, sec.segname,
-				(void*)(intptr_t)sec.addr, (ull)sec.size,
-				sec.offset, sec.align,
-				sec.reloff, sec.nreloc, sec.flags,
-				sec.reserved1, sec.reserved2);
+	
+		LOG << "section " << sec.sectname << " in " << sec.segname << ": addr="
+			<< ((void*)(uintptr_t)sec.addr) << " size=" << std::hex << sec.size << " offset="
+			<< sec.offset << " align=" << sec.align << " reloff=" << sec.reloff
+			<< " nreloc=" << std::dec << sec.nreloc << " flags=" << std::hex
+			<< sec.flags << " reserved1=" << sec.reserved1 << " reserved2="
+			<< sec.reserved2 << std::dec << std::endl;
 
 		if (savedSection.section.size() > sizeof(sec.sectname))
 			savedSection.section.resize(sizeof(sec.sectname));
@@ -153,24 +170,27 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 			bind_sections->push_back(sections + j);
 			break;
 		
+		case S_SYMBOL_STUBS: // 0x8, byte size of element in reserved2, indir offset in reserved1
+			//assert(!m_is64);
+			if (!m_is64)
+				bind_sections->push_back(sections + j);
+			break;
 		case S_ZEROFILL:
 		case S_CSTRING_LITERALS: // 0x2
 		case S_4BYTE_LITERALS: // 0x3
 		case S_8BYTE_LITERALS: // 0x4
 		case S_LITERAL_POINTERS: // 0x5
-		case S_SYMBOL_STUBS: // 0x8, byte size of stub in reserved2
 		case S_COALESCED:
 		case S_GB_ZEROFILL:
 		case S_INTERPOSING: // 0xD
 		case S_16BYTE_LITERALS:
 		case S_DTRACE_DOF:
 		case S_LAZY_DYLIB_SYMBOL_POINTERS:
-			LOGF("FIXME: section type %d will not be handled for %s in %s (%p)\n",
-				section_type, sec.sectname, sec.segname, sec.addr);
+			LOG << "Section " << sec.sectname << " in " << sec.segname << " not handled with type " << std::hex << section_type << std::dec << std::endl;
 			break;
 
 		default:
-			fprintf(stderr, "Unknown section type: %d\n", section_type);
+			std::cerr << "ERROR: Section " << sec.sectname << " in " << sec.segname << " has unknown type " << std::hex << section_type << std::dec << std::endl;
 			abort();
 			break;
 		}
@@ -209,8 +229,7 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 		exp->name = *name_buf;
 		exp->flag = uleb128(p);
 		exp->addr = uleb128(p);
-		LOGF("export: %s %lu %p\n",
-				name_buf->c_str(), (long)exp->flag, (void*)exp->addr);
+		LOG << "export: " << name_buf << " flags=" << std::hex << exp->flag << std::dec << " addr=" << (void*)exp->addr << std::endl;
 
 		m_exports.push_back(exp);
 
@@ -252,16 +271,16 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 
 	::lseek(fd, 0, SEEK_SET);
 
-	char* bin = m_mapped = reinterpret_cast<char*>(
+	void* bin = m_mapped = reinterpret_cast<char*>(
 		::mmap(NULL, m_mapped_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, m_fd, offset)
 	);
 	
 	if (bin == MAP_FAILED)
 		throw std::runtime_error("Cannot mmap Mach-O file");
 	
-	m_base = bin;
+	m_base = uintptr_t(bin);
 
-	mach_header* header = reinterpret_cast<mach_header*>(bin);
+	const mach_header* header = reinterpret_cast<mach_header*>(bin);
 	memcpy(&m_header, header, sizeof(*header));
 	
 	m_is64 = false;
@@ -286,11 +305,14 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 	{
 		throw std::runtime_error("Unsupported CPU type in Mach-O");
 	}
-	
-	// TODO: split into a method
 
+	processLoaderCommands(header);
+}
+
+void MachOImpl::processLoaderCommands(const mach_header* header)
+{
 	struct load_command* cmds_ptr = reinterpret_cast<struct load_command*>(
-		bin + (m_is64 ? sizeof(mach_header_64) : sizeof(mach_header))
+		m_base + (m_is64 ? sizeof(mach_header_64) : sizeof(mach_header))
 	);
 
 	uint32_t* symtab = 0;
@@ -302,7 +324,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 
 	for (uint32_t ii = 0; ii < header->ncmds; ii++)
 	{
-		LOGF("cmd type:%x\n", cmds_ptr->cmd);
+		LOG << "loader command type=" << std::hex << cmds_ptr->cmd << std::dec << std::endl;
 
 		switch (cmds_ptr->cmd)
 		{
@@ -332,7 +354,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 
 			{
 				const uint8_t* p = reinterpret_cast<uint8_t*>(
-					bin + dyinfo->rebase_off);
+					m_base + dyinfo->rebase_off);
 				const uint8_t* end = p + dyinfo->rebase_size;
 				if (dyinfo->rebase_off && dyinfo->rebase_size)
 					readRebase(p, end);
@@ -340,21 +362,21 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 
 			{
 				const uint8_t* p = reinterpret_cast<uint8_t*>(
-					bin + dyinfo->bind_off);
+					m_base + dyinfo->bind_off);
 				const uint8_t* end = p + dyinfo->bind_size;
 				readBind(p, end, false);
 			}
 
 			{
 				const uint8_t* p = reinterpret_cast<uint8_t*>(
-					bin + dyinfo->lazy_bind_off);
+					m_base + dyinfo->lazy_bind_off);
 				const uint8_t* end = p + dyinfo->lazy_bind_size;
 				readBind(p, end, false);
 			}
 
 			{
 				const uint8_t* p = reinterpret_cast<uint8_t*>(
-					bin + dyinfo->weak_bind_off);
+					m_base + dyinfo->weak_bind_off);
 				const uint8_t* end = p + dyinfo->weak_bind_size;
 				readBind(p, end, true);
 			}
@@ -362,7 +384,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 			if (m_need_exports)
 			{
 				const uint8_t* p = reinterpret_cast<uint8_t*>(
-					bin + dyinfo->export_off);
+					m_base + dyinfo->export_off);
 				const uint8_t* end = p + dyinfo->export_size;
 				if (dyinfo->export_off && dyinfo->export_size)
 				{
@@ -382,8 +404,8 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 				symtab_cmd->symoff, symtab_cmd->nsyms,
 				symtab_cmd->stroff, symtab_cmd->strsize);
 
-			uint32_t* symtab_top = symtab = reinterpret_cast<uint32_t*>(bin + symtab_cmd->symoff);
-			symstrtab = bin + symtab_cmd->stroff;
+			uint32_t* symtab_top = symtab = reinterpret_cast<uint32_t*>(m_base + symtab_cmd->symoff);
+			symstrtab = (const char*) m_base + symtab_cmd->stroff;
 
 			if (FLAGS_READ_SYMTAB)
 			{
@@ -443,7 +465,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 			if (dysymtab_cmd->nindirectsyms)
 			{
 				dysyms = reinterpret_cast<uint32_t*>(
-					bin + dysymtab_cmd->indirectsymoff);
+					m_base + dysymtab_cmd->indirectsymoff);
 			}
 			if (FLAGS_READ_DYSYMTAB)
 			{
@@ -462,7 +484,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 					LOGF("dysym %d %s(%u)%s%s\n", j, symstrtab + sym[0], index, local, abs);
 				}
 
-				uint32_t* dymods = reinterpret_cast<uint32_t*>( bin + dysymtab_cmd->modtaboff);
+				uint32_t* dymods = reinterpret_cast<uint32_t*>( m_base + dysymtab_cmd->modtaboff);
 				for (uint32_t j = 0; j < dysymtab_cmd->nmodtab; j++)
 					LOGF("dymods: %u\n", dymods[j]);
 			}
@@ -473,7 +495,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 		case LC_LOAD_DYLINKER:
 		{
 			lc_str name = reinterpret_cast<struct dylinker_command*>(cmds_ptr)->name;
-			LOGF("dylinker: %s\n", (char*)cmds_ptr + name.offset);
+			LOG << "dynamic linker: " << ((char*)cmds_ptr + name.offset) << std::endl;
 			break;
 		}
 
@@ -483,26 +505,20 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 		case LC_UNIXTHREAD:
 		{
 			uint32_t* p = reinterpret_cast<uint32_t*>(cmds_ptr);
-			LOGF("UNIXTHREAD");
-			
-			for (uint32_t i = 2; i < p[1]; i++)
-				LOGF(" %d:%x", i, p[i]);
-			
-			LOGF("\n");
 			
 			if (m_is64)
 				m_entry = reinterpret_cast<uint64_t*>(cmds_ptr)[18];
 			else
 				m_entry = reinterpret_cast<uint32_t*>(cmds_ptr)[14];
 			
-			LOGF("entry=%llx\n", (ull)m_entry);
+			LOG << "UNIXTHREAD entry=" << (void*)m_entry << std::endl;
 			break;
 		}
 		
 		case LC_MAIN:
 		{
 			entry_point_command* cmd = reinterpret_cast<entry_point_command*>(cmds_ptr);
-			LOGF("MAIN: entry offset: %x\n", cmd->entryoff);
+			LOG << "Main: entry offset: " << std::hex << cmd->entryoff << std::dec << std::endl;
 			m_main = reinterpret_cast<uint64_t>(m_text_offset + cmd->entryoff);
 			break;
 		}
@@ -510,8 +526,9 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 		case LC_LOAD_DYLIB:
 		{
 			dylib* lib = &reinterpret_cast<dylib_command*>(cmds_ptr)->dylib;
-			LOGF("dylib: '%s'\n", (char*)cmds_ptr + lib->name.offset);
-			m_dylibs.push_back((char*)cmds_ptr + lib->name.offset);
+			const char* name = (char*)cmds_ptr + lib->name.offset;
+			LOG << "dylib: '" << name << "'\n";
+			m_dylibs.push_back(name);
 			break;
 		}
 
@@ -521,7 +538,7 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 		reinterpret_cast<char*>(cmds_ptr) + cmds_ptr->cmdsize);
 	}
 
-	LOGF("%p vs %p\n", cmds_ptr, bin + m_mapped_size);
+	//LOGF("%p vs %p\n", cmds_ptr, bin + m_mapped_size);
 
 	LOG << "dyinfo: " << dyinfo << ", dysyms: " << dysyms << ", symtab: " << symtab << ", symstrtab: " << symstrtab << ", symbol count: " << m_symbols.size() << std::endl;
 	// No LC_DYLD_INFO_ONLY, we will read classic binding info.
@@ -534,7 +551,10 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 		}
 		for (size_t i = 0; i < bind_sections_32.size(); i++)
 		{
-			readClassicBind<section>(*bind_sections_32[i], dysyms, symtab, symstrtab);
+			if ((bind_sections_32[i]->flags & SECTION_TYPE) == S_SYMBOL_STUBS)
+				readStubBind(*bind_sections_32[i], dysyms, symtab, symstrtab);
+			else
+				readClassicBind<section>(*bind_sections_32[i], dysyms, symtab, symstrtab);
 		}
 	}
 }
