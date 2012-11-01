@@ -1,8 +1,6 @@
 #ifndef IOKIT_CONSTANTS_H
 #define IOKIT_CONSTANTS_H
 
-#define kIOMasterPortDefault NULL
-
 #define kIOProviderClassKey		"IOProviderClass"
 #define kIOBSDNameKey			"BSD Name"
 #define kIONameMatchKey			"IONameMatch"
@@ -35,7 +33,7 @@
 // USB
 #define kIOUSBDeviceClassName		"IOUSBDevice"
 #define kIOUSBInterfaceClassName	"IOUSBInterface"
-#define kIOHIDDeviceKey				"IOHIDDevice"
+#define kIOHIDDeviceKey			"IOHIDDevice"
 
 #endif
 

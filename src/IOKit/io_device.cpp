@@ -1,5 +1,6 @@
 #include "io_device.h"
 #include <cstdlib>
+#include <cstring>
 #include "cfutil.h"
 
 static const property_mapping generic_properties[] = {
@@ -18,6 +19,15 @@ io_device::io_device(struct udev_device* dev)
 io_device::~io_device()
 {
 	udev_device_unref(m_device);
+}
+
+bool io_device::operator==(const io_object& that)
+{
+	const io_device* dthat = dynamic_cast<const io_device*>(&that);
+	if (!dthat)
+		return false;
+	
+	return strcmp(udev_device_get_syspath(m_device), udev_device_get_syspath(dthat->m_device)) == 0;
 }
 
 const char* io_device::property(const char* name)

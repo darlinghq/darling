@@ -8,6 +8,8 @@ public:
 	io_device_iterator(struct udev_enumerate* uenum);
 	virtual ~io_device_iterator();
 	virtual io_object_t next() override;
+	virtual void reset() override;
+	virtual bool operator==(const io_object& that) override;
 private:
 	struct udev* m_udev;
 	struct udev_enumerate* m_uenum;

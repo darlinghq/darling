@@ -22,6 +22,7 @@ set(IOKit_SRCS
 	port.c
 	service.mm
 	io_object.cpp
+	io_iterator.cpp
 	io_device_iterator.cpp
 	io_device.cpp
 	io_device_usb.cpp

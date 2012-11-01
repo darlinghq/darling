@@ -12,9 +12,11 @@ class io_device : public io_object
 public:
 	io_device(struct udev_device* device);
 	virtual ~io_device();
+	
 	virtual void properties(CFMutableDictionaryRef dict, CFAllocatorRef allocator);
 	virtual CFTypeRef property(CFStringRef name, CFAllocatorRef allocator);
 	virtual io_device* parent();
+	virtual bool operator==(const io_object& that) override;
 	
 	const char* sysname();
 	const char* property(const char* name);

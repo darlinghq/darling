@@ -15,15 +15,12 @@
 #include "io_device_iterator.h"
 #include "cfutil.h"
 
+const void* kIOMasterPortDefault = 0;
+
 static void filterByBSDName(struct udev_enumerate* uenum, CFStringRef str);
 static void filterByClass(struct udev_enumerate* uenum, CFStringRef str);
 static void filterByDriver(struct udev_enumerate* uenum, CFStringRef str);
 static void filterByProperties(struct udev_enumerate* uenum, CFDictionaryRef dict);
-
-io_object_t IOIteratorNext(io_iterator_t iter)
-{
-	return iter->next();
-}
 
 static CFMutableDictionaryRef createMatchingDictionary(CFStringRef key, CFStringRef value)
 {
@@ -81,18 +78,6 @@ int IOServiceGetMatchingServices(void* port, CFDictionaryRef rules, io_device_it
 	return 0;
 }
 
-int IOIteratorIsValid(io_iterator_t iter)
-{
-	return iter != nullptr;
-}
-
-int IOObjectRelease(io_object_t obj)
-{
-	delete obj;
-	return 0;
-}
-
-
 int IORegistryEntryCreateCFProperties(io_object_t obj, CFMutableDictionaryRef* props, CFAllocatorRef allocator, int opts)
 {
 	io_device* dev = dynamic_cast<io_device*>(obj);
@@ -110,6 +95,31 @@ int IORegistryEntryCreateCFProperties(io_object_t obj, CFMutableDictionaryRef* p
 	}
 }
 
+CFTypeRef IORegistryEntryCreateCFProperty(io_object_t obj, CFStringRef key, CFAllocatorRef allocator, int opts)
+{
+	io_device* dev = dynamic_cast<io_device*>(obj);
+
+	if (!dev)
+		return nullptr;
+	else
+		return dev->property(key, allocator);
+}
+
+int IORegistryEntryGetParentEntry(io_object_t obj, void* planeName /* TODO */, io_object_t* parent)
+{
+	io_device* dev = dynamic_cast<io_device*>(obj);
+	if (!dev)
+	{
+		*parent = nullptr;
+		return -1;
+	}
+	else
+	{
+		*parent = dev->parent();
+		return 0;
+	}
+}
+
 void filterByClass(struct udev_enumerate* uenum, CFStringRef str)
 {
 	if (strCFEqual(str, kIOEthernetInterfaceClass))
@@ -117,7 +127,9 @@ void filterByClass(struct udev_enumerate* uenum, CFStringRef str)
 	else if (strCFEqual(str, kIOSerialBSDServiceValue))
 		udev_enumerate_add_match_subsystem(uenum, "tty");
 	else if (strCFEqual(str, kIOUSBDeviceClassName))
-		udev_enumerate_add_match_subsystem(uenum, "usb");
+		udev_enumerate_add_match_property(uenum, "DEVTYPE", "usb_device");
+	else if (strCFEqual(str, kIOUSBInterfaceClassName))
+		udev_enumerate_add_match_property(uenum, "DEVTYPE", "usb_interface");
 	else if (strCFEqual(str, kIOHIDDeviceKey))
 		udev_enumerate_add_match_subsystem(uenum, "hidraw");
 }
@@ -132,6 +144,7 @@ void filterByDriver(struct udev_enumerate* uenum, CFStringRef str)
 {
 	const char* driver = nullptr;
 
+	// TODO: USB interface vs. device
 	if (strCFEqual(str, "AppleUSBEHCI"))
 		driver = "ehci_hcd";
 	else if (strCFEqual(str, "AppleUSBOHCI"))
