@@ -25,6 +25,7 @@ set(IOKit_SRCS
 	io_device_iterator.cpp
 	io_device.cpp
 	io_device_usb.cpp
+	io_device_net.cpp
 )
 
 add_library(IOKit SHARED ${IOKit_SRCS})

@@ -151,8 +151,8 @@ void filterByDriver(struct udev_enumerate* uenum, CFStringRef str)
 void filterByProperties(struct udev_enumerate* uenum, CFDictionaryRef dict)
 {
 	size_t size = CFDictionaryGetCount(dict);
-    CFStringRef* keys = new CFStringRef[size];
-    CFDictionaryGetKeysAndValues(dict, (const void **) keys, nullptr);
+	CFStringRef* keys = new CFStringRef[size];
+	CFDictionaryGetKeysAndValues(dict, (const void **) keys, nullptr);
 
 	for (size_t i = 0; i < size; i++)
 	{

@@ -2,6 +2,12 @@
 #include <cstdlib>
 #include "cfutil.h"
 
+static const property_mapping generic_properties[] = {
+	property_mapping{ CFSTR("IOVendor"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { if (const char* name = d->property("ID_VENDOR")) return strToCF(name, a); else return strToCF(d->property("ID_VENDOR_FROM_DATABASE"), a); } },
+	property_mapping{ CFSTR("IOModel"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { if (const char* name = d->property("ID_MODEL")) return strToCF(name, a); else return strToCF(d->property("ID_MODEL_FROM_DATABASE"), a); } },
+	property_mapping{ CFSTR("BSD Name"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { if (const char* name = d->sysname()) return strToCF(name, a); else return strToCF(d->property("INTERFACE"), a);  } }, // name or property INTERFACE
+};
+
 io_device::io_device(struct udev_device* dev)
 	: m_device(dev)
 {
@@ -54,45 +60,69 @@ CFNumberRef io_device::sysattrNum(const char* name, CFAllocatorRef allocator)
 
 CFTypeRef io_device::retrieve(const property_mapping* mapping, CFAllocatorRef allocator)
 {
-	const char* value = nullptr;
-	if (mapping->linuxProperty)
-		value = property(mapping->linuxProperty);
-	else if (mapping->linuxSysAttr)
-		value = sysattr(mapping->linuxSysAttr);
-	if (!value)
-		return nullptr;
-	
-	if (mapping->dataType == property_mapping::String)
-		return strToCF(value, allocator);
+	if (mapping->evaluator)
+		return mapping->evaluator(this, allocator);
 	else
 	{
-		int base = (mapping->dataType == property_mapping::Number10) ? 10 : 16;
-		char* end;
-		long lvalue = strtol(value, &end, base);
-
-		if (end == value)
+		const char* value = nullptr;
+		if (mapping->linuxProperty)
+			value = property(mapping->linuxProperty);
+		else if (mapping->linuxSysAttr)
+			value = sysattr(mapping->linuxSysAttr);
+		if (!value)
 			return nullptr;
+		
+		if (mapping->dataType == property_mapping::String)
+			return strToCF(value, allocator);
+		else
+		{
+			int base = (mapping->dataType == property_mapping::Number10) ? 10 : 16;
+			char* end;
+			long lvalue = strtol(value, &end, base);
 
-		return CFNumberCreate(allocator, kCFNumberLongType, &lvalue);
+			if (end == value)
+				return nullptr;
+
+			return CFNumberCreate(allocator, kCFNumberLongType, &lvalue);
+		}
 	}
+}
+
+void io_device::retrieveAll(CFMutableDictionaryRef dict, const property_mapping* mapping, size_t count, CFAllocatorRef allocator)
+{
+	for (size_t i = 0; i < count; i++)
+	{
+		CFTypeRef val = retrieve(mapping + i, allocator);
+		CFDictionarySetValue(dict, mapping[i].appleName, val);
+	}
+}
+
+CFTypeRef io_device::retrieve(const property_mapping* mapping, size_t count, CFStringRef name, CFAllocatorRef allocator)
+{
+	for (size_t i = 0; i < count; i++)
+	{
+		if (CFStringCompare(name, mapping[i].appleName, CFStringCompareFlags(0)) == 0)
+			return retrieve(mapping + i, allocator);
+	}
+	return nullptr;
+}
+
+io_device* io_device::parent()
+{
+	return nullptr; // not implemented yet
+}
+
+const char* io_device::sysname()
+{
+	return udev_device_get_sysname(m_device);
 }
 
 void io_device::properties(CFMutableDictionaryRef dict, CFAllocatorRef allocator)
 {
+	retrieveAll(dict, generic_properties, sizeof(generic_properties) / sizeof(generic_properties[0]), allocator);
 }
 
 CFTypeRef io_device::property(CFStringRef name, CFAllocatorRef allocator)
 {
-	return nullptr;
+	return retrieve(generic_properties, sizeof(generic_properties) / sizeof(generic_properties[0]), name, allocator);
 }
-
-const property_mapping* property_mapping::find(const property_mapping* map, size_t count, CFStringRef what)
-{
-	for (size_t i = 0; i < count; i++)
-	{
-		if (CFStringCompare(map[i].appleName, what, CFStringCompareFlags(0)) == 0)
-			return map + i;
-	}
-	return nullptr;
-}
-

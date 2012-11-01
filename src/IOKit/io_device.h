@@ -14,12 +14,17 @@ public:
 	virtual ~io_device();
 	virtual void properties(CFMutableDictionaryRef dict, CFAllocatorRef allocator);
 	virtual CFTypeRef property(CFStringRef name, CFAllocatorRef allocator);
-protected:
+	virtual io_device* parent();
+	
+	const char* sysname();
 	const char* property(const char* name);
 	const char* sysattr(const char* name);
 	CFStringRef sysattrStr(const char* name, CFAllocatorRef allocator);
 	CFNumberRef sysattrNum(const char* name, CFAllocatorRef allocator);
+protected:
 	CFTypeRef retrieve(const property_mapping* mapping, CFAllocatorRef allocator);
+	CFTypeRef retrieve(const property_mapping* mapping, size_t count, CFStringRef name, CFAllocatorRef allocator);
+	void retrieveAll(CFMutableDictionaryRef dict, const property_mapping* mapping, size_t count, CFAllocatorRef allocator);
 protected:
 	struct udev_device* m_device;
 	struct udev_list_entry *m_properties, *m_sysattrs;
@@ -27,15 +32,25 @@ protected:
 
 struct property_mapping
 {
+	enum DataType { String, Number10, Number16 };
+	typedef CFTypeRef (*EvaluatorType)(io_device*,CFAllocatorRef);
+	
+	property_mapping(CFStringRef appleName, const char* linuxProperty, const char* linuxSysAttr, DataType dataType)
+	: appleName(appleName), linuxProperty(linuxProperty), linuxSysAttr(linuxSysAttr), dataType(dataType), evaluator(0)
+	{
+	}
+	
+	property_mapping(CFStringRef appleName, EvaluatorType ev)
+	: appleName(appleName), evaluator(ev)
+	{
+	}
+	
 	CFStringRef appleName;
 	const char* linuxProperty;
 	const char* linuxSysAttr;
 
-	enum DataType { String, Number10, Number16 };
 	DataType dataType;
-
-	static const property_mapping* find(const property_mapping* map, size_t count, CFStringRef what);
+	EvaluatorType evaluator;
 };
 
 #endif
-
