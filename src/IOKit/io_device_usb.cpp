@@ -8,7 +8,15 @@ static const property_mapping usb_properties[] = {
 	property_mapping{ CFSTR("VendorID"), nullptr, "idVendor", property_mapping::Number16 },
 	property_mapping{ CFSTR("ProductID"), nullptr, "idProduct", property_mapping::Number16 },
 	property_mapping{ CFSTR("bInterfaceClass"), nullptr, "bInterfaceClass", property_mapping::Number16 },
+	property_mapping{ CFSTR("bInterfaceNumber"), nullptr, "bInterfaceNumber", property_mapping::Number16 },
 	property_mapping{ CFSTR("bDeviceClass"), nullptr, "bDeviceClass", property_mapping::Number16 },
+	property_mapping{ CFSTR("bDeviceSubClass"), nullptr, "bDeviceSubClass", property_mapping::Number16 },
+	property_mapping{ CFSTR("bDeviceProtocol"), nullptr, "bDeviceProtocol", property_mapping::Number16 },
+	property_mapping{ CFSTR("bMaxPacketSize0"), nullptr, "bMaxPacketSize0", property_mapping::Number10 },
+	property_mapping{ CFSTR("bNumConfigurations"), nullptr, "bNumConfigurations", property_mapping::Number10 },
+	property_mapping{ CFSTR("bNumEndpoints"), nullptr, "bNumEndpoints", property_mapping::Number10 },
+	property_mapping{ CFSTR("bConfigurationValue"), nullptr, "bConfigurationValue", property_mapping::Number10 },
+	property_mapping{ CFSTR("bcdDevice"), nullptr, "bcdDevice", property_mapping::Number16 },
 };
 
 
