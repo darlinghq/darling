@@ -115,6 +115,7 @@ add_subdirectory(src/libobjcdarwin)
 add_subdirectory(src/libncurses)
 add_subdirectory(src/CoreSecurity)
 add_subdirectory(src/CoreServices)
+add_subdirectory(src/IOKit)
 add_subdirectory(src/thin)
 
 add_dependencies(dyld${SUFFIX} mach-o)
