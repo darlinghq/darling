@@ -23,6 +23,7 @@ public:
 	const char* sysattr(const char* name);
 	CFStringRef sysattrStr(const char* name, CFAllocatorRef allocator);
 	CFNumberRef sysattrNum(const char* name, CFAllocatorRef allocator);
+	inline struct udev_device* device() { return m_device; }
 protected:
 	CFTypeRef retrieve(const property_mapping* mapping, CFAllocatorRef allocator);
 	CFTypeRef retrieve(const property_mapping* mapping, size_t count, CFStringRef name, CFAllocatorRef allocator);

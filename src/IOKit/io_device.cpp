@@ -3,10 +3,13 @@
 #include <cstring>
 #include "cfutil.h"
 
+static CFTypeRef ListDevSymlinks(io_device* d, CFAllocatorRef a);
+
 static const property_mapping generic_properties[] = {
 	property_mapping{ CFSTR("IOVendor"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { if (const char* name = d->property("ID_VENDOR")) return strToCF(name, a); else return strToCF(d->property("ID_VENDOR_FROM_DATABASE"), a); } },
 	property_mapping{ CFSTR("IOModel"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { if (const char* name = d->property("ID_MODEL")) return strToCF(name, a); else return strToCF(d->property("ID_MODEL_FROM_DATABASE"), a); } },
 	property_mapping{ CFSTR("BSD Name"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { if (const char* name = d->sysname()) return strToCF(name, a); else return strToCF(d->property("INTERFACE"), a);  } }, // name or property INTERFACE
+	property_mapping{ CFSTR("BSD Names"), ListDevSymlinks },
 	property_mapping{ CFSTR("BSD Major"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { return intToCF(d->property("MAJOR"), a); } },
 	property_mapping{ CFSTR("BSD Minor"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { return intToCF(d->property("MINOR"), a); } },
 };
@@ -137,4 +140,18 @@ void io_device::properties(CFMutableDictionaryRef dict, CFAllocatorRef allocator
 CFTypeRef io_device::property(CFStringRef name, CFAllocatorRef allocator)
 {
 	return retrieve(generic_properties, sizeof(generic_properties) / sizeof(generic_properties[0]), name, allocator);
+}
+
+CFTypeRef ListDevSymlinks(io_device* d, CFAllocatorRef a)
+{
+	CFMutableDictionaryRef dict = CFDictionaryCreateMutable(a, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	struct udev_list_entry* e = udev_device_get_devlinks_list_entry(d->device());
+	
+	while (e != nullptr)
+	{
+		CFDictionarySetValue(dict, strToCF(udev_list_entry_get_name(e)), strToCF(udev_list_entry_get_value(e)));
+		e = udev_list_entry_get_next(e);
+	}
+	
+	return dict;
 }
