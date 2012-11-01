@@ -7,6 +7,8 @@ static const property_mapping generic_properties[] = {
 	property_mapping{ CFSTR("IOVendor"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { if (const char* name = d->property("ID_VENDOR")) return strToCF(name, a); else return strToCF(d->property("ID_VENDOR_FROM_DATABASE"), a); } },
 	property_mapping{ CFSTR("IOModel"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { if (const char* name = d->property("ID_MODEL")) return strToCF(name, a); else return strToCF(d->property("ID_MODEL_FROM_DATABASE"), a); } },
 	property_mapping{ CFSTR("BSD Name"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { if (const char* name = d->sysname()) return strToCF(name, a); else return strToCF(d->property("INTERFACE"), a);  } }, // name or property INTERFACE
+	property_mapping{ CFSTR("BSD Major"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { return intToCF(d->property("MAJOR"), a); } },
+	property_mapping{ CFSTR("BSD Minor"), [](io_device* d, CFAllocatorRef a) -> CFTypeRef { return intToCF(d->property("MINOR"), a); } },
 };
 
 io_device::io_device(struct udev_device* dev)
