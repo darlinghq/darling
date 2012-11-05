@@ -9,6 +9,7 @@
 #include "old/category.h"
 #include "new/category.h"
 #include "common/selector.h"
+#include "common/cfstring.h"
 #include <map>
 
 // Superclass references in Mach-O don't use classref
@@ -67,6 +68,7 @@ void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 
 	ProcessCategoriesNew(mh, slide);
 	UpdateSelectors(mh, slide);
+	UpdateCFStrings(mh);
 }
 
 void ProcessImageUnload(const struct mach_header* mh, intptr_t)

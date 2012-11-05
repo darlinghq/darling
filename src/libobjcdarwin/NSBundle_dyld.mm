@@ -6,10 +6,13 @@
 #include <string>
 #include <cstring>
 #include <cstdio>
+#include <unistd.h>
 #include <algorithm>
 #include "../util/log.h"
 
 extern char g_darwin_executable_path[PATH_MAX];
+extern int g_argc;
+extern char** g_argv;
 static NSBundle* _mainBundle = 0;
 static NSAutoreleasePool* g_pool = 0;
 
@@ -21,8 +24,12 @@ __attribute__((constructor)) static void myinit()
 	
 	MethodSwizzle(objc_getMetaClass("NSBundle"), @selector(mainBundle), @selector(x_mainBundle));
 	
+	// Many OS X apps assume that there is a "default" autorelease pool provided
 	g_pool = [[NSAutoreleasePool alloc] init];
 	
+	GSInitializeProcess(g_argc, g_argv, environ);
+	
+	/*
 	const char* last = strrchr(g_darwin_executable_path, '/');
 	if (last != 0)
 	{
@@ -31,6 +38,7 @@ __attribute__((constructor)) static void myinit()
 		NSString* str = [NSString stringWithUTF8String:last];
 		[[NSProcessInfo processInfo] setProcessName:str];
 	}
+	*/
 }
 
 __attribute__((destructor)) static void myexit()

@@ -30,6 +30,7 @@ set(objcdarwin_SRCS
 	common/attribute.cpp
 	common/property.cpp
 	common/selector.cpp
+	common/cfstring.cpp
 	
 	old/category.cpp
 	old/class.cpp
@@ -42,7 +43,7 @@ set(objcdarwin_SRCS
 	new/protocol.cpp
 	
 	NSBundle_dyld.mm
-	NSCFString.mm
+	#NSCFString.mm
 	misc.mm
 	zero.c
 )
