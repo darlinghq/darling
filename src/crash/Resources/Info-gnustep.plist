@@ -1,0 +1,13 @@
+{
+    ApplicationDescription = "Forced quit dialog";
+    ApplicationName = crash;
+    ApplicationRelease = "0.1";
+    Copyright = "Copyright (C) 2012 Lubos Dolezel";
+    CopyrightDescription = "Released under GNU GPLv3+";
+    FullVersionID = "0.1";
+    GSMainMarkupFile = "";
+    NSExecutable = crash;
+    NSMainNibFile = "crash.gorm";
+    NSPrincipalClass = NSApplication;
+    NSRole = Application;
+}

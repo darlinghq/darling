@@ -1,0 +1,28 @@
+{
+    "## Comment" = "Do NOT change this file, Gorm maintains it";
+    CrashManager = {
+	Actions = (
+	    "close:",
+	    "debugInfo:",
+	    "reopen:"
+	);
+	Outlets = (
+	    descriptionLabel
+	);
+	Super = NSObject;
+    };
+    FirstResponder = {
+	Actions = (
+	    "debugInfo:",
+	    "reopen:"
+	);
+	Super = NSObject;
+    };
+    NewClass1 = {
+	Actions = (
+	);
+	Outlets = (
+	);
+	Super = NSWindow;
+    };
+}

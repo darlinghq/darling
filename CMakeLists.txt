@@ -103,6 +103,7 @@ if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 	install(FILES etc/dylib.conf DESTINATION /etc/darling)
 	add_subdirectory(src/macbinary)
 	add_subdirectory(src/libmacarchive)
+	add_subdirectory(src/crash)
 	add_subdirectory(tests)
 endif(NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 
