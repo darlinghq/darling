@@ -6,6 +6,8 @@ extern objc_msgSend
 BITS 64
 section text
 
+; TODO: msgSendSuper2_fixup...
+
 __darwin_objc_msgSend_fixup:
 	mov rsi, [rsi+8]
 	jmp objc_msgSend WRT ..plt

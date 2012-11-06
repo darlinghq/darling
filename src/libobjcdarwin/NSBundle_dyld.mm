@@ -70,12 +70,16 @@ __attribute__((destructor)) static void myexit()
 		path.resize(pos+1);
 		//path += "Resources";
 		
-		if ((pos = path.find(".app/")) != std::string::npos)
+		if ((pos = path.rfind("Contents/")) != std::string::npos)
+		{
+			path.resize(pos+8);
+		}
+		else if ((pos = path.rfind(".app/")) != std::string::npos)
 		{
 			// "path.endsWith()"
 			// if (path.compare(path.size()-7, 7, "/MacOS/") == 0)
 			// 	path.resize(path.size() - 7);
-			path.resize(pos+6);
+			path.resize(pos+4);
 		}
 
 		LOG << "NSBundle::x_mainBundle(): deduced " << path << " as resource path\n";

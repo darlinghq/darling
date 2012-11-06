@@ -14,16 +14,19 @@ std::string trampoline_objcMsgInfo(const std::string& invoker, void* arg1, SEL s
 	id obj;
 	Class type;
 	std::stringstream ret;
+	bool superCall = false;
 	
 	if (string_startsWith(invoker, "objc_msgSendSuper2"))
 	{
 		const objc_super* s = static_cast<objc_super*>(arg1);
 		obj = (id) class_getSuperclass(Class(s->super_class));
+		superCall = true;
 	}
 	else if (string_startsWith(invoker, "objc_msgSendSuper"))
 	{
 		const objc_super* s = static_cast<objc_super*>(arg1);
 		obj = (id) s->super_class;
+		superCall = true;
 	}
 	else
 		obj = id(arg1);
@@ -49,7 +52,7 @@ std::string trampoline_objcMsgInfo(const std::string& invoker, void* arg1, SEL s
 		clsname = class_getName(type);
 		
 		isMeta = class_isMetaClass(type) == YES;
-		if (isMeta)
+		if (isMeta && !superCall)
 			ret << "+[";
 		else
 			ret << "-[";

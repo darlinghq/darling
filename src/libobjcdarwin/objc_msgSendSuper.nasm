@@ -8,50 +8,89 @@ extern objc_msg_lookup_super
 BITS 64
 section text
 
-__darwin_objc_msgSendSuper2:
-	mov rdi, [rdi+8]
-	
-__darwin_objc_msgSendSuper:
+%macro SaveRegisters 0
 	push rdi
 	push rsi
 	push rdx
 	push rcx
 	push r8
 	push r9
-	
-	call objc_msg_lookup_super WRT ..plt
-	
+%endmacro
+
+%macro RestoreRegisters 0
 	pop r9
 	pop r8
 	pop rcx
 	pop rdx
 	pop rsi
 	pop rdi
+%endmacro
+
+__darwin_objc_msgSendSuper2:
+	SaveRegisters
 	
+	; Make a copy of the struct on stack
+	mov rax, [rdi]
+	mov [rsp-16], rax
+	mov rax, [rdi+8]
+	mov rax, [rax+8] ; load superclass
+	mov [rsp-8], rax
+
+	sub rsp, 16
+	mov rdi, rsp
+	
+	call objc_msg_lookup_super WRT ..plt
+	
+	add rsp, 16
+	
+	RestoreRegisters
+	
+	mov rdi, [rdi]
+	jmp rax
+	
+__darwin_objc_msgSendSuper:
+	SaveRegisters
+	
+	call objc_msg_lookup_super WRT ..plt
+	
+	RestoreRegisters
+	
+	mov rdi, [rdi]
 	jmp rax
 
 __darwin_objc_msgSendSuper2_stret:
-	mov rdi, [rdi+8]
+	SaveRegisters
+	
+	; Make a copy of the struct on stack
+	mov rax, [rsi]
+	mov [rsp-16], rax
+	mov rax, [rsi+8]
+	mov rax, [rax+8] ; load superclass
+	mov [rsp-8], rax
+
+	sub rsp, 16
+	mov rdi, rsp
+	mov rsi, rdx
+	
+	call objc_msg_lookup_super WRT ..plt
+	
+	add rsp, 16
+	
+	RestoreRegisters
+	
+	mov rsi, [rsi]
+	jmp rax
 __darwin_objc_msgSendSuper_stret:
-	push rdi
-	push rsi
-	push rdx
-	push rcx
-	push r8
-	push r9
+	SaveRegisters
 	
 	mov rdi, rsi
 	mov rsi, rdx
 	
 	call objc_msg_lookup_super WRT ..plt
 	
-	pop r9
-	pop r8
-	pop rcx
-	pop rdx
-	pop rsi
-	pop rdi
+	RestoreRegisters
 	
+	mov rsi, [rsi]
 	jmp rax
 
 %elifidn __OUTPUT_FORMAT__, elf
@@ -59,6 +98,7 @@ __darwin_objc_msgSendSuper_stret:
 BITS 32
 section text
 
+; TODO: needs fixing like above
 __darwin_objc_msgSendSuper2:
 	mov eax, [esp+4]
 	mov eax, [eax+4]
