@@ -1,4 +1,4 @@
-#import <Foundation/NSString.h>
+#import <Foundation/NSObject.h>
 #include <stdio.h>
 
 // for old runtime testing
@@ -8,11 +8,11 @@
 @implementation RandomClass
 @end
 
-@interface NSString (MyCategory)
+@interface NSObject (MyCategory)
 +(void) dummy;
 @end
 
-@implementation NSString (MyCategory)
+@implementation NSObject (MyCategory)
 +(void) dummy
 {
 	puts("dummy called");
@@ -21,7 +21,7 @@
 
 int main()
 {
-	[NSString dummy];
+	[NSObject dummy];
 	return 0;
 }
 
