@@ -112,7 +112,7 @@ int main(int argc, char** argv, char** envp)
 		// The Linux kernel doesn't really support this - it remembers the byte length of the cmdline, which will now decrease.
 		// Any app that examines this process' /proc/.../cmdline will from now on see a group of empty arguments after the real arguments.
 		// We fix this for NSProcessInfo in libobjcdarwin.
-		
+		/*	
 		uintptr_t totalLen = argv[argc-1] + strlen(argv[argc-1]) + 1 - argv[0];
 		uintptr_t shortenedLen = totalLen - (strlen(argv[0]) + 1);
 
@@ -125,14 +125,15 @@ int main(int argc, char** argv, char** envp)
 			if (!argv[0][pos])
 				argv[index++] = &argv[0][pos+1];
 		}
+		*/
 
-		g_argv = argv;
-		g_argc = argc;
+		g_argv = argv+1;
+		g_argc = argc-1;
 		g_loader = new MachOLoader;
 		
 		autoSysrootSearch();
 		
-		g_loader->run(*g_mainBinary, argc, argv, envp);
+		g_loader->run(*g_mainBinary, g_argc, g_argv, envp);
 		
 		delete g_loader;
 		g_loader = 0;

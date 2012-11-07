@@ -5,7 +5,6 @@ boostxml::boostxml()
 	m_xml << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
 	m_xml << "<TestLog>\n";
 	m_xml << "\t<TestSuite name=\"Darling\">\n";
-	m_xml << "\t<TestSuite name=\"tests\">\n";
 }
 
 void boostxml::addOK(const std::string& path, int time)
@@ -27,7 +26,7 @@ void boostxml::addFailure(const std::string& path, int time, const std::string& 
 
 std::string boostxml::str()
 {
-	m_xml << "\t</TestSuite></TestSuite>\n</TestLog>\n";
+	m_xml << "\t</TestSuite>\n</TestLog>\n";
 	return m_xml.str();
 }
 
