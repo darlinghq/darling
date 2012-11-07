@@ -18,11 +18,10 @@ void boostxml::addOK(const std::string& path, int time)
 void boostxml::addFailure(const std::string& path, int time, const std::string& error)
 {
 	m_xml << "\t\t<TestCase name=\"" << extractName(path) << "\">\n";
-	m_xml << "\t\t\t<TestingTime>" << time << "</TestingTime>\n";
 	m_xml << "\t\t\t<Error file=\"" << path << "\" line=\"0\">\n";
-	//m_xml << "<![CDATA[" << error << "]]>\n";
-	m_xml << error;
+	m_xml << "<![CDATA[" << error << "]]>\n";
 	m_xml << "\t\t\t</Error>\n";
+	m_xml << "\t\t\t<TestingTime>" << time << "</TestingTime>\n";
 	m_xml << "\t\t</TestCase>\n";
 }
 
