@@ -104,11 +104,11 @@ if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 	add_subdirectory(src/macbinary)
 	add_subdirectory(src/libmacarchive)
 	add_subdirectory(src/crash)
-	add_subdirectory(tests)
 endif(NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 
 install(TARGETS mach-o DESTINATION "lib${SUFFIX}/darling")
 
+add_subdirectory(tests)
 add_subdirectory(src/libSystem)
 #add_subdirectory(src/libcxxdarwin)
 add_subdirectory(src/libobjcdarwin)
