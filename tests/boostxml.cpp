@@ -2,6 +2,7 @@
 
 boostxml::boostxml()
 {
+	m_xml << "<?xml version="1.0" encoding=\"UTF-8\"?>\n";
 	m_xml << "<TestLog>\n";
 	m_xml << "\t<TestSuite name=\"Darling\">\n";
 }
