@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 		g_sftp.reset(g_ssh->sftpChannel());
 
 		int failures = 0;
-		int offset = 1;
+		int offset = 0;
 		timer tm;
 		std::ofstream xml;
 		boostxml bxml;
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
 			offset++;
 		}
 		
-		for (int i = offset; i < argc; i++)
+		for (int i = offset+1; i < argc; i++)
 		{
 			time_t timeStart, timeEnd;
 			try
@@ -140,8 +140,6 @@ int main(int argc, char** argv)
 
 				failures++;
 			}
-
-			xml << bxml.str();
 		}
 		
 		if (!failures)
@@ -156,6 +154,7 @@ int main(int argc, char** argv)
 		}
 		
 		termcolor::reset();
+		xml << bxml.str();
 	}
 	catch (const compile_error& e)
 	{
