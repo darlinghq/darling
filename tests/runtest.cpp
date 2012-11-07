@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 		g_sftp.reset(g_ssh->sftpChannel());
 
 		int failures = 0;
-		int offset = 0;
+		int offset = 1;
 		timer tm;
 		std::ofstream xml;
 		boostxml bxml;
