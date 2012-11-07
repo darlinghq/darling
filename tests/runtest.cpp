@@ -37,8 +37,6 @@ int main(int argc, char** argv)
 	
 	bits(argv[0]);
 
-	boostxml bxml;
-
 	try
 	{
 		std::cout << "Opening SSH connection...\n";
@@ -54,9 +52,14 @@ int main(int argc, char** argv)
 		int failures = 0;
 		int i = 1;
 		timer tm;
+		std::ofstream xml;
+		boostxml bxml;
 
 		if (argc >= 2 && strncmp(argv[1], "--xml=", 6) == 0)
+		{
+			xml.open(argv[1] + 6, std::ofstream::out);
 			i++;
+		}
 		
 		for (; i < argc; i++)
 		{
@@ -135,6 +138,8 @@ int main(int argc, char** argv)
 
 				failures++;
 			}
+
+			xml << bxml.str();
 		}
 		
 		if (!failures)
