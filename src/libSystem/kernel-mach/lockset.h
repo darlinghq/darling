@@ -6,7 +6,9 @@
 struct lock_set;
 typedef lock_set* lock_set_t;
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 kern_return_t lock_acquire(lock_set_t lock_set, int lock_id);
 
@@ -24,7 +26,9 @@ kern_return_t lock_set_destroy (darwin_task_t task, lock_set_t lock_set);
 
 kern_return_t lock_try (lock_set_t lock_set, int lock_id);
 
+#ifdef __cplusplus
 }
+#endif
 
 
 #endif

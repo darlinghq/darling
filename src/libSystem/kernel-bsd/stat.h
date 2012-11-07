@@ -66,8 +66,10 @@ struct __darwin_stat {
   __int64_t st_qspare[2];
 };
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 int __darwin_stat64(const char* path, struct __darwin_stat64* mac) asm("__darwin_stat$INODE64");
 int __darwin_fstat64(int fd, struct __darwin_stat64* mac) asm("__darwin_fstat$INODE64");
@@ -77,6 +79,8 @@ int __darwin_stat(const char* path, struct __darwin_stat* mac);
 int __darwin_fstat(int fd, struct __darwin_stat* mac);
 int __darwin_lstat(const char* path, struct __darwin_stat* mac);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif

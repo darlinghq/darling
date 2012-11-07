@@ -20,8 +20,10 @@
 #define DARWIN_O_POPUP 0x80000000
 #define DARWIN_O_ALERT 0x20000000
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 int __darwin_open(const char* path, int flags, mode_t mode);
 int __darwin_creat(const char *pathname, mode_t mode);
@@ -29,6 +31,14 @@ int __darwin_close(int fd);
 int __darwin_fsync(int fd);
 int __darwin_fdatasync(int fd);
 
+#ifdef __cplusplus
 }
+
+namespace Darling
+{
+	int openflagsDarwinToNative(int flags);
+	int openflagsNativeToDarwin(int flags);
+}
+#endif
 
 #endif

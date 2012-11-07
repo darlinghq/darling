@@ -2,8 +2,10 @@
 #define LIBC_GETPWENT_H
 #include <sys/types.h>
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 struct __darwin_passwd
 {
@@ -32,7 +34,9 @@ int __darwin_setpassent(int stayopen);
 // void __darwin_setpwent();
 // void __darwin_endpwent();
 
+#ifdef __cplusplus
 }
+#endif
 
 
 #endif

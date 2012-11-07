@@ -2,8 +2,10 @@
 #define LIBC_AIO_H
 #include <aio.h>
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 #define DARWIN_LIO_NOWAIT              0x1
 #define DARWIN_LIO_WAIT                0x2
@@ -28,7 +30,9 @@ int __darwin_aio_suspend(const struct aiocb * const aiocb_list[], int nitems, co
 int __darwin_aio_cancel(int fd, struct aiocb *aiocbp); // flags
 int __darwin_lio_listio(int mode, struct aiocb *const aiocb_list[], int nitems, struct sigevent *sevp); // flags
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

@@ -11,11 +11,15 @@ struct darwin_task
 
 typedef darwin_task* darwin_task_t;
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 	extern darwin_task_t mach_task_self_;
 	inline darwin_task_t mach_task_self() { return mach_task_self_; }
 	kern_return_t mach_port_deallocate(darwin_task_t task, void* port);
+#ifdef __cplusplus
 }
+#endif
 
 #endif

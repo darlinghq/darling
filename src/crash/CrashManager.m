@@ -2,6 +2,7 @@
 #include <Foundation/NSProcessInfo.h>
 #include <Foundation/NSArray.h>
 #include <Foundation/NSString.h>
+#include <Foundation/NSFileManager.h>
 #include "CrashManager.h"
 
 @implementation CrashManager
@@ -45,6 +46,8 @@
 
 		[elems release];
 		[text release];
+		
+		[[NSFileManager defaultManager] removeItemAtPath:dumpPath error:NULL];
 	}
 
 	return self;

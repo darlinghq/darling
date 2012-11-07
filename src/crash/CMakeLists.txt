@@ -9,6 +9,8 @@ endif(COMMAND cmake_policy)
 #	message(FATAL_ERROR "Clang is the only supported compiler.")
 #endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 
+# CMake is broken and uses C++ flags for ObjC
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")
 
 set(crash_SRCS
 	AppController.m

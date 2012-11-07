@@ -5,6 +5,8 @@
 #include "termcolor.h"
 #include "pstream.h"
 #include "exceptions.h"
+#include "boostxml.h"
+#include "timer.h"
 #include <memory>
 #include <stdexcept>
 #include <sstream>
@@ -35,6 +37,8 @@ int main(int argc, char** argv)
 	
 	bits(argv[0]);
 
+	boostxml bxml;
+
 	try
 	{
 		std::cout << "Opening SSH connection...\n";
@@ -48,9 +52,15 @@ int main(int argc, char** argv)
 		g_sftp.reset(g_ssh->sftpChannel());
 
 		int failures = 0;
+		int i = 1;
+		timer tm;
+
+		if (argc >= 2 && strncmp(argv[1], "--xml=", 6) == 0)
+			i++;
 		
-		for (int i = 1; i < argc; i++)
+		for (; i < argc; i++)
 		{
+			time_t timeStart, timeEnd;
 			try
 			{
 				termcolor::set(termcolor::WHITE, termcolor::BLACK, termcolor::BRIGHT);
@@ -59,7 +69,10 @@ int main(int argc, char** argv)
 				std::cout << "=======\n";
 				termcolor::reset();
 				
+				tm.start();
+
 				runTest(argv[i]);
+				bxml.addOK(argv[i], tm.stop());
 				
 				termcolor::set(termcolor::GREEN, termcolor::BLACK, termcolor::BRIGHT);
 				std::cout << "*** Test OK!\n";
@@ -72,6 +85,7 @@ int main(int argc, char** argv)
 				termcolor::reset();
 				
 				std::cerr << e.what() << std::endl;
+				bxml.addFailure(argv[i], tm.stop(), e.what());
 				
 				failures++;
 			}
@@ -90,7 +104,35 @@ int main(int argc, char** argv)
 				std::cerr << "Local output:\n";
 				termcolor::reset();
 				std::cerr << e.local();
+
+				std::stringstream ss;
+				ss << "Test outputs differ!\n\n";
+				ss << "Remote output:\n";
+				ss << e.remote() << "\n\n";
+				ss << "Local output:\n";
+				ss << e.local();
+				bxml.addFailure(argv[i], tm.stop(), ss.str());
 				
+				failures++;
+			}
+			catch (const nonzero_exit_error& e)
+			{
+				termcolor::setBright(termcolor::RED);
+				std::cerr << "*** Non-zero exit status!\n";
+				termcolor::reset();
+
+				termcolor::setBright(termcolor::WHITE);
+				std::cerr << ((e.remote()) ? "remote" : "local" );
+				std::cerr << " test output leading to the error:\n";
+				termcolor::reset();
+				std::cerr << e.output();
+
+				std::stringstream ss;
+				ss << "Non-zero exit status (" << ((e.remote() ? "remote" : "local")) << ")\n";
+				ss << e.output();
+
+				bxml.addFailure(argv[i], tm.stop(), ss.str());
+
 				failures++;
 			}
 		}
@@ -98,7 +140,7 @@ int main(int argc, char** argv)
 		if (!failures)
 		{
 			termcolor::setBright(termcolor::GREEN);
-			std::cout << "ALL OK!";
+			std::cout << "ALL OK!\n";
 		}
 		else
 		{
@@ -169,7 +211,7 @@ void runTest(const char* path)
 		rv = g_ssh->runCommand(binary, out, err);
 		
 		if (rv)
-			throw std::runtime_error("Non-zero exit status from remotely run binary");
+			throw nonzero_exit_error(true, out);
 
 		std::cout << "Downloading...\n";
 		// download the Mach-O executable
@@ -185,7 +227,7 @@ void runTest(const char* path)
 		rv = loc->wait();
 		
 		if (rv)
-			throw std::runtime_error("Non-zero exit status from locally run binary");
+			throw nonzero_exit_error(false, locOut.str());
 
 		if (locOut.str() != out)
 			throw different_output_error(out, locOut.str());

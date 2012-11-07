@@ -11,12 +11,36 @@
 
 extern char g_sysroot[PATH_MAX];
 
+static const Darling::MappedFlag g_openflags[] = {
+	{ DARWIN_O_ASYNC, O_ASYNC}, { DARWIN_O_SYNC, O_SYNC }, { DARWIN_O_NOFOLLOW, O_NOFOLLOW},
+	{ DARWIN_O_CREAT, O_CREAT }, { DARWIN_O_TRUNC, O_TRUNC }, { DARWIN_O_EXCL, O_EXCL },
+	{ DARWIN_O_NOCTTY, O_NOCTTY }, { DARWIN_O_DIRECTORY, O_DIRECTORY }, { DARWIN_O_DSYNC, O_DSYNC },
+};
+
+int Darling::openflagsDarwinToNative(int flags)
+{
+	return Darling::flagsDarwinToNative(g_openflags, sizeof(g_openflags)/sizeof(g_openflags[0]), flags);
+}
+
+int Darling::openflagsNativeToDarwin(int flags)
+{
+	return Darling::flagsNativeToDarwin(g_openflags, sizeof(g_openflags)/sizeof(g_openflags[0]), flags);
+}
+
 int __darwin_open(const char* path, int flags, mode_t mode)
 {
 	TRACE3(path,flags,mode);
 	
 	int linux_flags = 0;
 	linux_flags |= flags & O_ACCMODE;
+
+	if (flags & ( DARWIN_O_EVTONLY|DARWIN_O_SYMLINK|DARWIN_O_POPUP|DARWIN_O_ALERT))
+	{
+		LOG << "Unsupported open flags: " << flags << std::endl;
+		errno = DARWIN_EINVAL;
+		return -1;
+	}
+	linux_flags |= Darling::flagsDarwinToNative(g_openflags, sizeof(g_openflags)/sizeof(g_openflags[0]), flags);
 	
 	if (flags & DARWIN_O_SHLOCK)
 	{
@@ -29,43 +53,6 @@ int __darwin_open(const char* path, int flags, mode_t mode)
 	{
 		fprintf(stderr, "Unsupported open flag=%d\n", flags);
 		errno = DARWIN_EINVAL;
-		return -1;
-	}
-	if (flags & DARWIN_O_ASYNC) linux_flags |= O_ASYNC;
-	if (flags & DARWIN_O_SYNC) linux_flags |= O_SYNC;
-	if (flags & DARWIN_O_NOFOLLOW) linux_flags |= O_NOFOLLOW;
-	if (flags & DARWIN_O_CREAT) linux_flags |= O_CREAT;
-	if (flags & DARWIN_O_TRUNC) linux_flags |= O_TRUNC;
-	if (flags & DARWIN_O_EXCL) linux_flags |= O_EXCL;
-	
-	if (flags & DARWIN_O_EVTONLY)
-	{
-		errno = DARWIN_EINVAL;
-		fprintf(stderr, "Unsupported open flag=%d\n", flags);
-		return -1;
-	}
-	if (flags & DARWIN_O_NOCTTY) linux_flags |= O_NOCTTY;
-	if (flags & DARWIN_O_DIRECTORY) linux_flags |= O_DIRECTORY;
-	
-	if (flags & DARWIN_O_SYMLINK)
-	{
-		errno = DARWIN_EINVAL;
-		fprintf(stderr, "Unsupported open flag=%d\n", flags);
-		return -1;
-	}
-	if (flags & DARWIN_O_DSYNC) linux_flags |= O_DSYNC;
-	
-	if (flags & DARWIN_O_POPUP)
-	{
-		errno = DARWIN_EINVAL;
-		fprintf(stderr, "Unsupported open flag=%d\n", flags);
-		return -1;
-	}
-	
-	if (flags & DARWIN_O_ALERT)
-	{
-		errno = DARWIN_EINVAL;
-		fprintf(stderr, "Unsupported open flag=%d\n", flags);
 		return -1;
 	}
 	

@@ -11,6 +11,8 @@
 char *__darwin_realpath(const char *path, char *resolved_path)
 {
 	TRACE2(path, resolved_path);
+	bool ownbuf = false;
+	
 	if (!path)
 	{
 		errno = DARWIN_EINVAL;
@@ -20,11 +22,18 @@ char *__darwin_realpath(const char *path, char *resolved_path)
 	path = translatePathCI(path);
 	
 	if (!resolved_path) // DARWIN_EXTSN
+	{
+		ownbuf = true;
 		resolved_path = static_cast<char*>(malloc(DARWIN_MAXPATHLEN));
+	}
 	
 	char* rv = realpath(path, resolved_path);
 	if (!rv)
+	{
+		if (ownbuf)
+			free(resolved_path);
 		errnoOut();
+	}
 	
 	return rv;
 }

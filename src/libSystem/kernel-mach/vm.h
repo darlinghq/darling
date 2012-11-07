@@ -12,8 +12,10 @@
 #include <mach/vm_types.h>
 #include <mach/memory_object_types.h>
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
   
 typedef darwin_task_t vm_task_t;
 
@@ -42,7 +44,8 @@ kern_return_t vm_remap(vm_task_t target_task, void* target_address, vm_size_t si
 
 kern_return_t vm_wire(host_priv_t host, vm_task_t target_task, void* address, vm_size_t size, vm_prot_t wired_access);
 
-
+#ifdef __cplusplus
 } // extern "C"
+#endif
 
 #endif

@@ -2,8 +2,10 @@
 #define FOPSMISC_H
 #include <sys/stat.h>
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 int __darwin_access(const char *pathname, int mode);
 int __darwin_chown(const char *path, uid_t owner, gid_t group);
@@ -25,7 +27,9 @@ int __darwin_mkdir(const char *pathname, mode_t mode);
 int __darwin_chdir(const char *path);
 int __darwin_acct(const char *filename);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

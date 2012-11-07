@@ -28,8 +28,10 @@
 #define DARWIN_AF_IPX 23
 #define DARWIN_AF_INET6 30
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 int __darwin_select(int fd, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
 ssize_t __darwin_sendto(int socket, const void *buffer, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
@@ -43,6 +45,7 @@ int __darwin_socket(int domain, int type, int protocol);
 int __darwin_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int __darwin_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
+#ifdef __cplusplus
 }
 
 namespace Darling
@@ -52,5 +55,6 @@ namespace Darling
 	bool sockaddrFixupIn(struct sockaddr* addr, socklen_t len);
 	bool sockaddrFixupOut(struct sockaddr* addr, socklen_t len);
 }
+#endif
 
 #endif

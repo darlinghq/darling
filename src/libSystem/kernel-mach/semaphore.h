@@ -11,8 +11,10 @@ struct semaphore
 
 typedef semaphore* esemaphore_t;
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 kern_return_t semaphore_create(darwin_task_t task, esemaphore_t *semaphore, int policy, int value);
 
@@ -24,7 +26,9 @@ kern_return_t semaphore_signal_all(esemaphore_t semaphore);
 
 kern_return_t semaphore_wait(esemaphore_t semaphore);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

@@ -63,9 +63,10 @@ struct __darwin_statfs
 	long    f_reserved4[4];
 };
 
-
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 int __darwin_statfs(const char* path, struct __darwin_statfs* buf);
 int __darwin_statfs64(const char* path, struct __darwin_statfs64* buf) asm("__darwin_statfs$INODE64");
@@ -74,6 +75,7 @@ int __darwin_fstatfs64(int fd, struct __darwin_statfs64* buf) asm("__darwin_fsta
 int __darwin_getfsstat(struct __darwin_statfs* buf, int bufsize, int flags);
 int __darwin_getfsstat64(struct __darwin_statfs64* buf, int bufsize, int flags) asm("__darwin_getfsstat$INODE64");
 
+#ifdef __cplusplus
 }
 
 // out assumed to have been zeroed out
@@ -82,5 +84,6 @@ void StatfsLinuxToDarwin(const char* path, const struct statvfs* in, struct __da
 
 struct mntent;
 struct mntent* findMountForPath(const char* path);
+#endif
 
 #endif

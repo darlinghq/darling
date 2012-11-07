@@ -10,7 +10,9 @@ struct OSQueueHead
     long l;
 };
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 int32_t OSAtomicAdd32(int32_t theAmount, volatile int32_t *theValue);
 
@@ -98,7 +100,9 @@ void OSAtomicEnqueue(OSQueueHead *list, void *_new, size_t offset);
 
 void* OSAtomicDequeue(OSQueueHead *list, size_t offset);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

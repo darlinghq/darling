@@ -11,14 +11,18 @@ struct NXArchInfo
 	const char* description;
 };
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 const NXArchInfo* NXGetAllArchInfos();
 const NXArchInfo* NXGetLocalArchInfo();
 const NXArchInfo* NXGetArchInfoFromName(const char *name);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

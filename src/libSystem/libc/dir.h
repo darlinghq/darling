@@ -25,8 +25,10 @@ struct darwin_dirent {
 };
 #pragma pack()
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 darwin_dirent64* __darwin_readdir64(DIR* dirp) asm("__darwin_readdir$INODE64");
 darwin_dirent* __darwin_readdir(DIR* dirp);
@@ -55,6 +57,8 @@ int __darwin_alphasort64(const void *a, const void *b) asm("__darwin_alphasort$I
 int __darwin_versionsort(const void *a, const void *b);
 int __darwin_versionsort64(const void *a, const void *b) asm("__darwin_versionsort$INODE64");
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
