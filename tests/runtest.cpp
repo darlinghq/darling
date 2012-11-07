@@ -36,6 +36,8 @@ int main(int argc, char** argv)
 	}
 	
 	bits(argv[0]);
+	if (const char* cmd = getenv("DYLD"))
+		DYLD_COMMAND = cmd;
 
 	try
 	{
@@ -50,7 +52,7 @@ int main(int argc, char** argv)
 		g_sftp.reset(g_ssh->sftpChannel());
 
 		int failures = 0;
-		int i = 1;
+		int offset = 0;
 		timer tm;
 		std::ofstream xml;
 		boostxml bxml;
@@ -58,17 +60,17 @@ int main(int argc, char** argv)
 		if (argc >= 2 && strncmp(argv[1], "--xml=", 6) == 0)
 		{
 			xml.open(argv[1] + 6, std::ofstream::out);
-			i++;
+			offset++;
 		}
 		
-		for (; i < argc; i++)
+		for (int i = offset; i < argc; i++)
 		{
 			time_t timeStart, timeEnd;
 			try
 			{
 				termcolor::set(termcolor::WHITE, termcolor::BLACK, termcolor::BRIGHT);
 				std::cout << "=======\n";
-				std::cout << "Running test (" << i << '/' << argc-1 << "): " << argv[i] << std::endl;
+				std::cout << "Running test (" << i-offset << '/' << argc-1 << "): " << argv[i] << std::endl;
 				std::cout << "=======\n";
 				termcolor::reset();
 				
