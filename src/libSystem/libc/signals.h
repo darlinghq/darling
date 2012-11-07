@@ -48,7 +48,7 @@ struct __darwin_sigaction
 	union
 	{
 		void    (*xsa_handler)(int); // sa_handler is often broken due to macro pollution
-		void    (*xsa_sigaction)(int, struct siginfo *, void*);
+		void    (*xsa_sigaction)(int, siginfo_t *, void*);
 	};
 	__darwin_sigset_t sa_mask;
 	int     sa_flags;
