@@ -1,4 +1,4 @@
-//  -framework foundation -framework corefoundation -framework coreservices
+// CFLAGS: -framework foundation -framework corefoundation -framework coreservices
 // http://www.cocoabuilder.com/archive/cocoa/144537-human-readable-locale-names.html
 
 #import <Foundation/Foundation.h>
