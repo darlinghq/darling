@@ -100,11 +100,36 @@ __darwin_objc_msgSendSuper_stret:
 BITS 32
 section text
 
-; TODO: needs fixing like above
+%macro DereferenceArgument  1
+	mov [esp-4], eax ; save the IMP
+	mov eax, [esp+(%1*4)] ; get objc_super*
+	mov eax, [eax] ; get the first member's value
+	mov [esp+(%1*4)], eax ; fix the first argument
+	mov eax, [esp-4] ; restore the IMP
+%endmacro
+
 __darwin_objc_msgSendSuper2:
-	mov eax, [esp+4]
-	mov eax, [eax+4]
-	mov [esp+4], eax
+	mov eax, [esp+4] ; get objc_super*
+	; make a copy on the stack
+	mov ecx, [eax] ; 1st elem
+	mov [esp-8], ecx
+	mov ecx, [eax+4] ; 2nd elem
+	mov ecx, [ecx+4] ; get superclass from objc_class
+	mov [esp-4], ecx
+
+	sub esp, 8
+	mov eax, [esp+16]; SEL (2nd argument)
+	push eax
+	lea eax, [esp+12]; fixed objc_super (1st argument)
+	push eax
+
+	call objc_msg_lookup_super
+
+	add esp, 16 ; remove args & struct from the stack
+
+	DereferenceArgument 1
+
+	jmp eax
 	
 __darwin_objc_msgSendSuper:
 
@@ -114,16 +139,21 @@ __darwin_objc_msgSendSuper:
 	push eax
 	call objc_msg_lookup_super
 	add esp, 8
+
+	DereferenceArgument 1
+
 	jmp eax
 
 __darwin_objc_msgSendSuper2_stret:
 	mov eax, [esp+12]
 	push eax
-	mov eax, [esp+20]
+	mov eax, [esp+12]
 	push eax
 	
 	call objc_msg_lookup_super
 	sub esp, 8
+
+	DereferenceArgument 2
 	
 	jmp eax
 
