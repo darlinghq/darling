@@ -266,12 +266,14 @@ start_search:
 		for (int i = 0; i < sizeof(g_searchPath) / sizeof(g_searchPath[0]); i++)
 		{
 			path = std::string(g_searchPath[i]) + "/" + filename + ".so";
+			LOG << "Trying " << path << std::endl;
 			if (::access(path.c_str(), R_OK) == 0)
 				RET_IF( attemptDlopen(path.c_str(), flag) );
 		}
 		for (int i = 0; i < sizeof(g_searchPath) / sizeof(g_searchPath[0]); i++)
 		{
 			path = std::string(g_searchPath[i]) + "/" + filename;
+			LOG << "Trying " << path << std::endl;
 			if (::access(path.c_str(), R_OK) == 0)
 				RET_IF( attemptDlopen(path.c_str(), flag) );
 		}
