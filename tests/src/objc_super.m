@@ -33,12 +33,19 @@ subclass* c;
 	//printf("self at %p\n", self);
 	[super doHello];
 }
+
+- (BOOL)respondsToSelector:(SEL)aSelector
+{
+	return [super respondsToSelector:aSelector];
+}
+
 @end
 
 int main()
 {
 	c = [subclass new];
 	//printf("Obj at %p\n", c);
+	printf("Responds: %d\n", [c respondsToSelector:@selector(doHello)]);
 	[c doHello];
 	[c release];
 	return 0;

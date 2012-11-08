@@ -1,5 +1,7 @@
 global __darwin_objc_msgSend_fixup
+global objc_msgSendSuper2_fixup
 extern objc_msgSend
+extern __darwin_objc_msgSendSuper2
 
 section .note.GNU-stack noalloc noexec nowrite progbits
 
@@ -13,6 +15,10 @@ section text
 __darwin_objc_msgSend_fixup:
 	mov rsi, [rsi+8]
 	jmp objc_msgSend WRT ..plt
+
+objc_msgSendSuper2_fixup:
+	mov rsi, [rsi+8]
+	jmp __darwin_objc_msgSendSuper2 WRT ..plt
 
 %elifidn __OUTPUT_FORMAT__, elf
 
