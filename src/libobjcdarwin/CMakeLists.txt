@@ -11,13 +11,14 @@ enable_language(ASM_NASM)
 #	message(FATAL_ERROR "Clang is the only supported compiler.")
 #endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 
+if (BITS EQUAL 64) # Would need to be extended for ARM
+	set(OBJC_ABI_2 TRUE)
+	message(STATUS "Building ObjC ABI 2")
+endif(BITS EQUAL 64)
+
 configure_file(config.h.in config.h)
 
 add_definitions(-D__STDC_LIMIT_MACROS)
-
-if (BITS EQUAL 64) # Would need to be extended for ARM
-	set(OBJC_ABI_2 TRUE)
-endif(BITS EQUAL 64)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -fPIC -fvisibility=hidden -ggdb")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -fvisibility=hidden -ggdb")
