@@ -1,13 +1,18 @@
+#include "config.h"
 #include "ClassRegister.h"
 #include "../dyld/public.h"
 #include "../util/trace.h"
 #include "../util/log.h"
-#include "old/protocol.h"
-#include "new/protocol.h"
-#include "old/class.h"
-#include "new/class.h"
-#include "old/category.h"
-#include "new/category.h"
+
+#ifndef OBJC_ABI_2
+#	include "old/protocol.h"
+#	include "old/class.h"
+#	include "old/category.h"
+#else
+#	include "new/protocol.h"
+#	include "new/class.h"
+#	include "new/category.h"
+#endif
 #include "common/selector.h"
 #include "common/cfstring.h"
 #include <map>
@@ -37,36 +42,33 @@ __attribute__((constructor))
 void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 {
 	unsigned long size;
-	const class_t** classes;
 
+#ifdef OBJC_ABI_2
+	const class_t** classes;
 	ProcessProtocolsNew(mh, slide);
-	ProcessProtocolsOld(mh, slide);
 
 	classes = reinterpret_cast<const class_t**>(
 		getsectdata(mh, SEG_OBJC_CLASSLIST_NEW, SECT_OBJC_CLASSLIST_NEW, &size)
 	);
-
-	if (!classes)
-	{
-		// Try the old runtime
-		module_info* modinfo;
-
-		modinfo = reinterpret_cast<module_info*>(
-			getsectdata(mh, SEG_OBJC_MODINFO_OLD, SECT_OBJC_MODINFO_OLD, &size)
-		);
-
-		if (modinfo)
-		{
-			ProcessClassesOld(mh, slide, modinfo);
-			ProcessCategoriesOld(mh, slide, modinfo);
-		}
-	}
-	else
-	{
+	if (classes)
 		ProcessClassesNew(mh, slide, classes, size);
-	}
 
 	ProcessCategoriesNew(mh, slide);
+#else
+	module_info* modinfo;
+	ProcessProtocolsOld(mh, slide);
+
+	modinfo = reinterpret_cast<module_info*>(
+		getsectdata(mh, SEG_OBJC_MODINFO_OLD, SECT_OBJC_MODINFO_OLD, &size)
+	);
+
+	if (modinfo)
+	{
+		ProcessClassesOld(mh, slide, modinfo);
+		ProcessCategoriesOld(mh, slide, modinfo);
+	}
+#endif
+
 	UpdateSelectors(mh, slide);
 	UpdateCFStrings(mh);
 }

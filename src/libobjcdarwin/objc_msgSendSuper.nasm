@@ -3,6 +3,8 @@ global __darwin_objc_msgSendSuper2 ; requires extracting superclass from Class
 global __darwin_objc_msgSendSuper2_stret
 extern objc_msg_lookup_super
 
+section .note.GNU-stack noalloc noexec nowrite progbits
+
 %ifidn __OUTPUT_FORMAT__, elf64
 
 BITS 64

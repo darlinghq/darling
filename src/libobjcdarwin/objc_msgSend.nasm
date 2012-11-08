@@ -2,6 +2,8 @@ global __darwin_objc_msgSend_noarg
 
 extern objc_msgSend
 
+section .note.GNU-stack noalloc noexec nowrite progbits
+
 %ifidn __OUTPUT_FORMAT__, elf64
 
 BITS 64

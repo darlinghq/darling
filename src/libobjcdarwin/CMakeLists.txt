@@ -11,9 +11,13 @@ enable_language(ASM_NASM)
 #	message(FATAL_ERROR "Clang is the only supported compiler.")
 #endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 
-#configure_file(config.h.in config.h)
+configure_file(config.h.in config.h)
 
 add_definitions(-D__STDC_LIMIT_MACROS)
+
+if (BITS EQUAL 64) # Would need to be extended for ARM
+	set(OBJC_ABI_2 TRUE)
+endif(BITS EQUAL 64)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -fPIC -fvisibility=hidden -ggdb")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -fvisibility=hidden -ggdb")
@@ -23,6 +27,7 @@ set(objcdarwin_SRCS
 	objc_msgSend_fixup.nasm
 	objc_msgSendSuper.nasm
 	objc_msgSend.nasm
+	
 	NameTranslate.cpp
 	ClassRegister.cpp
 	TrampolineHelper.mm
@@ -32,21 +37,34 @@ set(objcdarwin_SRCS
 	common/selector.cpp
 	common/cfstring.cpp
 	
-	old/category.cpp
-	old/class.cpp
-	old/ivar.mm
-	old/protocol.cpp
-	
-	new/category.cpp
-	new/class.cpp
-	new/ivar.cpp
-	new/protocol.cpp
-	
 	NSBundle_dyld.mm
-	#NSCFString.mm
 	misc.mm
 	zero.c
 )
+
+if(NOT OBJC_ABI_2)
+	set(objcdarwin_SRCS
+		${objcdarwin_SRCS}
+		
+		old/exceptions.cpp
+		old/category.cpp
+		old/class.cpp
+		old/ivar.mm
+		old/protocol.cpp
+	)
+else(NOT OBJC_ABI_2)
+	set(objcdarwin_SRCS
+		${objcdarwin_SRCS}
+		
+		new/exceptions.cpp
+		new/category.cpp
+		new/class.cpp
+		new/ivar.cpp
+		new/protocol.cpp
+		
+		new/return.nasm
+	)
+endif(NOT OBJC_ABI_2)
 
 add_library(objc.A.dylib SHARED ${objcdarwin_SRCS})
 target_link_libraries(objc.A.dylib -l:libobjc.so.4 -lgnustep-base -l:../../libutil.a)

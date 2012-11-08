@@ -52,7 +52,10 @@ int main(int argc, char** argv, char** envp)
 {
 	if (argc == 1)
 	{
-		std::cerr << "This is Darwin dyld for " ARCH_NAME ". ";
+		std::cerr << "This is Darling dyld for " ARCH_NAME ".\n";
+		std::cerr << "Copyright (C) 2012 Lubos Dolezel\n"
+			"Copyright (C) 2011 Shinichiro Hamaji\n\n";
+		
 		std::cerr << "Usage: " << argv[0] << " program-path [arguments...]\n\n";
 		std::cerr << "Environment variables:\n"
 			"\tDYLD_DEBUG=1 - enable debug info (lots of output)\n"

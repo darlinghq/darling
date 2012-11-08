@@ -17,6 +17,14 @@ typedef uint64_t intptr;
 
 typedef uint32_t intptr;
 
+#elif defined(__arm__)
+#	define ARCH_NAME		"arm"
+#	define ARCH_CROSS_NAME	""
+#	define DYLD_FULL_NAME	"dyld"
+#	define DYLD_CROSS_NAME	"dyld"
+
+typedef uint32_t intptr;
+
 #else
 #	error Unsupported platform
 #endif

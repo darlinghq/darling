@@ -1,9 +1,15 @@
 #include <cstring>
 #include <memory>
 #include <dlfcn.h>
+#include <cstdio>
+#include "visibility.h"
 
-__attribute__((visibility ("default"))) extern "C" void* _objc_empty_cache = 0;
-__attribute__((visibility ("default"))) extern "C" void* _objc_empty_vtable = 0;
+DARLING_VISIBLE extern "C" void* _objc_empty_cache = 0;
+DARLING_VISIBLE extern "C" void* _objc_empty_vtable = 0;
+
+#ifdef __x86_64__
+DARLING_VISIBLE extern "C" void* _objc_dummy_ehtype = 0;
+#endif
 
 namespace Darling
 {
@@ -28,6 +34,15 @@ __attribute__((destructor))
 
 static bool ClassTranslator(char* name)
 {
+#ifdef __x86_64__
+	if (strncmp(name, "OBJC_EHTYPE_$_", 14) == 0)
+	{
+		strcpy(name, "_objc_dummy_ehtype");
+		return true;
+	}
+	else
+#endif
+	
 	if (char* off = strstr(name, "_$_"))
 	{
 		size_t offset = off - name;
@@ -40,11 +55,19 @@ static bool ClassTranslator(char* name)
 
 		return true;
 	}
+	// Or we could create a variable like this and memcpy the objc_class
 	else if (strcmp(name, "__CFConstantStringClassReference") == 0)
 	{
 		strcpy(name, "_OBJC_CLASS_NSCFString");
 		return true;
 	}
+#ifdef __x86_64__
+	else if (strcmp(name, "__objc_personality_v0") == 0)
+	{
+		strcpy(name, "__gnu_objc_personality_v0");
+		return true;
+	}
+#endif
 
 	return false;
 }
