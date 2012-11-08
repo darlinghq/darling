@@ -124,6 +124,7 @@ void* __darwin_dlopen(const char* filename, int flag)
 	flag = translateFlags(flag);
 	
 	std::string path;
+#if 0
 start_search:
 	if (*filename == '/')
 	{
@@ -223,7 +224,9 @@ start_search:
 			}
 		}
 	}
-	else if (strncmp(filename, "@executable_path", 16) == 0)
+	else
+#endif
+	if (strncmp(filename, "@executable_path", 16) == 0)
 	{
 		path = replacePathPrefix("@executable_path", filename, g_darwin_executable_path);
 		std::cout << "Full path: " << path << std::endl;
@@ -256,6 +259,9 @@ start_search:
 				RET_IF( attemptDlopen(path.c_str(), flag) );
 			}
 		}
+
+		if (strncmp(filename, "/usr/lib/", 9) == 0)
+			filename = filename + 9;
 		
 		for (int i = 0; i < sizeof(g_searchPath) / sizeof(g_searchPath[0]); i++)
 		{

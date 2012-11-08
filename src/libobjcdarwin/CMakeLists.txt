@@ -16,7 +16,8 @@ if (BITS EQUAL 64) # Would need to be extended for ARM
 	message(STATUS "Building ObjC ABI 2")
 endif(BITS EQUAL 64)
 
-configure_file(config.h.in config.h)
+configure_file(config.h.in objc_config.h)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_definitions(-D__STDC_LIMIT_MACROS)
 
@@ -70,5 +71,5 @@ endif(NOT OBJC_ABI_2)
 add_library(objc.A.dylib SHARED ${objcdarwin_SRCS})
 target_link_libraries(objc.A.dylib -l:libobjc.so.4 -lgnustep-base -l:../../libutil.a)
 
-install(TARGETS objc.A.dylib DESTINATION "lib${SUFFIX}")
+install(TARGETS objc.A.dylib DESTINATION "lib${SUFFIX}/darling")
 
