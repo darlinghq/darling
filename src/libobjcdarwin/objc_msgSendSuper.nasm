@@ -100,14 +100,17 @@ __darwin_objc_msgSendSuper_stret:
 BITS 32
 section text
 
+extern  _GLOBAL_OFFSET_TABLE_
+
 %macro DereferenceArgument  1
-	mov [esp-4], eax ; save the IMP
-	mov eax, [esp+(%1*4)] ; get objc_super*
+	push eax ; save the IMP
+	mov eax, [ebp+(%1*4)+8] ; get objc_super*
 	mov eax, [eax] ; get the first member's value
-	mov [esp+(%1*4)], eax ; fix the first argument
-	mov eax, [esp-4] ; restore the IMP
+	mov [ebp+(%1*4)+8], eax ; fix the first argument
+	pop eax ; restore the IMP
 %endmacro
 
+; NOT USED
 __darwin_objc_msgSendSuper2:
 	mov eax, [esp+4] ; get objc_super*
 	; make a copy on the stack
@@ -123,37 +126,61 @@ __darwin_objc_msgSendSuper2:
 	lea eax, [esp+4]; fixed objc_super (1st argument)
 	push eax
 
-	call objc_msg_lookup_super
+	call objc_msg_lookup_super WRT ..plt
 
 	add esp, 16 ; remove args & struct from the stack
 
-	DereferenceArgument 1
+	DereferenceArgument 0
 
 	jmp eax
 	
 __darwin_objc_msgSendSuper:
 
-	mov eax, [esp+8]
+	push ebp
+	mov ebp, esp
+	push ebx
+	call .get_GOT
+.get_GOT:
+	pop ebx
+	add ebx, _GLOBAL_OFFSET_TABLE_+$$-.get_GOT wrt ..gotpc
+
+	mov eax, [ebp+12]
 	push eax
-	mov eax, [esp+8]
+	mov eax, [ebp+8]
 	push eax
-	call objc_msg_lookup_super
+	call objc_msg_lookup_super WRT ..plt
 	add esp, 8
 
-	DereferenceArgument 1
+	DereferenceArgument 0
+
+	mov ebx, [ebp-4]
+	mov esp, ebp
+	pop ebp
 
 	jmp eax
 
 __darwin_objc_msgSendSuper2_stret:
-	mov eax, [esp+12]
+	push ebp
+	mov ebp, esp
+	push ebx
+	call .get_GOT
+.get_GOT:
+	pop ebx
+	add ebx, _GLOBAL_OFFSET_TABLE_+$$-.get_GOT wrt ..gotpc
+
+	mov eax, [ebp+16]
 	push eax
-	mov eax, [esp+12]
+	mov eax, [ebp+12]
 	push eax
 	
-	call objc_msg_lookup_super
+	call objc_msg_lookup_super WRT ..plt
 	sub esp, 8
 
-	DereferenceArgument 2
+	DereferenceArgument 1
+
+	mov ebx, [ebp-4]
+	mov esp, ebp
+	pop ebp
 	
 	jmp eax
 
