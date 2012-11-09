@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <assert.h>
 #import <Foundation/NSObject.h>
 
 struct st
@@ -16,6 +17,8 @@ struct st
 @implementation helloclass
 + (struct st)mult:(float)a :(float)b
 {
+	assert(self == [helloclass class]);
+	
 	struct st s;
 	s.f1 = a+b;
 	return s;

@@ -84,9 +84,15 @@ void ProcessClassesNew(const struct mach_header* mh, intptr_t slide, const class
 		Class c = RegisterClass(cls, slide);
 
 		if (class_refs)
+		{
 			find_and_fix(class_refs, class_refs_end, cls, c);
+			find_and_fix(class_refs, class_refs_end, cls->isa, object_getClass(id(c)));
+		}
 		if (super_refs)
+		{
 			find_and_fix(super_refs, super_refs_end, cls, c);
+			find_and_fix(super_refs, super_refs_end, cls->isa, object_getClass(id(c)));
+		}
 	}
 
 }

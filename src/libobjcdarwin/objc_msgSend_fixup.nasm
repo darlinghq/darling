@@ -1,7 +1,12 @@
 global __darwin_objc_msgSend_fixup
 global objc_msgSendSuper2_fixup
+global objc_msgSendSuper2_stret_fixup
+global __darwin_objc_msgSend_fpret_fixup
+global __darwin_objc_msgSend_fp2ret_fixup
 extern objc_msgSend
+extern objc_msgSend_fpret
 extern __darwin_objc_msgSendSuper2
+extern __darwin_objc_msgSendSuper2_stret
 
 section .note.GNU-stack noalloc noexec nowrite progbits
 
@@ -10,7 +15,10 @@ section .note.GNU-stack noalloc noexec nowrite progbits
 BITS 64
 section text
 
-; TODO: msgSendSuper2_fixup...
+__darwin_objc_msgSend_fp2ret_fixup:
+__darwin_objc_msgSend_fpret_fixup:
+	mov rsi, [rsi+8]
+	jmp objc_msgSend_fpret WRT ..plt
 
 __darwin_objc_msgSend_fixup:
 	mov rsi, [rsi+8]
@@ -19,6 +27,10 @@ __darwin_objc_msgSend_fixup:
 objc_msgSendSuper2_fixup:
 	mov rsi, [rsi+8]
 	jmp __darwin_objc_msgSendSuper2 WRT ..plt
+
+objc_msgSendSuper2_stret_fixup:
+	mov rdx, [rdx+8]
+	jmp __darwin_objc_msgSendSuper2_stret WRT ..plt
 
 %elifidn __OUTPUT_FORMAT__, elf
 
