@@ -103,11 +103,9 @@ section text
 extern  _GLOBAL_OFFSET_TABLE_
 
 %macro DereferenceArgument  1
-	push eax ; save the IMP
-	mov eax, [ebp+(%1*4)+8] ; get objc_super*
-	mov eax, [eax] ; get the first member's value
-	mov [ebp+(%1*4)+8], eax ; fix the first argument
-	pop eax ; restore the IMP
+	mov ecx, [ebp+(%1*4)+8] ; get objc_super*
+	mov ecx, [ecx] ; get the first member's value
+	mov [ebp+(%1*4)+8], ecx ; fix the first argument
 %endmacro
 
 ; NOT USED
