@@ -134,7 +134,7 @@ void ProcessClassesOld(const struct mach_header* mh, intptr_t slide, module_info
 	for (uint16_t i = 0; i < info->symtab->countClasses; i++)
 	{
 		old_class* cls = static_cast<old_class*>(info->symtab->classesAndCategories[i])->isa.cls;
-		Class c = (Class) objc_getMetaClass(cls->name);
+		Class c = (Class) objc_getMetaClass(cls->super_class.name);
 		LOG << "ObjC fixup super_class @" << cls << ": " << cls->name << " -> " << c << std::endl;
 		cls->super_class.clsNew = c;
 	}

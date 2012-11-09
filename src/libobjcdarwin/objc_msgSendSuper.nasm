@@ -108,7 +108,7 @@ section text
 	mov eax, [esp-4] ; restore the IMP
 %endmacro
 
-__darwin_objc_msgSendSuper:
+__darwin_objc_msgSendSuper2:
 	mov eax, [esp+4] ; get objc_super*
 	; make a copy on the stack
 	mov ecx, [eax] ; 1st elem
@@ -131,7 +131,7 @@ __darwin_objc_msgSendSuper:
 
 	jmp eax
 	
-__darwin_objc_msgSendSuper_xxx:
+__darwin_objc_msgSendSuper:
 
 	mov eax, [esp+8]
 	push eax
