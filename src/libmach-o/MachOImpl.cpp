@@ -226,8 +226,17 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 	{
 		const uint8_t* expected_term_end = p + term_size;
 		Export* exp = new Export;
+		
 		exp->name = *name_buf;
 		exp->flag = uleb128(p);
+		
+		// TODO: flag == 8 (EXPORT_SYMBOL_FLAGS_REEXPORT)
+		if (exp->flag & 8)
+		{
+			LOG << "FIXME: reexports not currently handled\n";
+			return;
+		}
+		
 		exp->addr = uleb128(p);
 		LOG << "export: " << name_buf << " flags=" << std::hex << exp->flag << std::dec << " addr=" << (void*)exp->addr << std::endl;
 
