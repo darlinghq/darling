@@ -28,6 +28,9 @@
 #define DARWIN_F_UNLCK 2
 #define DARWIN_F_WRLCK 3
 
+#define DARWIN_F_PEOFPOSMODE 3
+#define DARWIN_F_VOLPOSMODE 4 
+
 struct __darwin_flock
 {
 	int64_t l_start;
@@ -35,6 +38,20 @@ struct __darwin_flock
 	pid_t l_pid;
     short l_type;
     short l_whence;
+};
+
+struct __darwin_fallocate
+{
+	uint32_t flags;
+	int mode;
+	uint64_t offset, length;
+	uint64_t allocated;
+};
+
+struct __darwin_rdadvise
+{
+	uint64_t offset;
+	int count;
 };
 
 #ifdef __cplusplus
