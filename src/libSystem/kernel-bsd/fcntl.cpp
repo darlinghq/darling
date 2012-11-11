@@ -247,7 +247,6 @@ int __darwin_fcntl(int fd, int cmd, void* arg)
 			errno = DARWIN_ENOSYS;
 			return -1;
 		}
-		// TODO: other values
 
 		default:
 			errno = DARWIN_EINVAL;
