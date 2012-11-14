@@ -88,6 +88,7 @@ set(machkern_SRCS
 	kernel-mach/task.cpp
 	kernel-mach/time.cpp
 	kernel-mach/vm.cpp
+	kernel-mach/Futex.cpp
 )
 
 add_library(System.B.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})

@@ -6,12 +6,12 @@
 #include <unistd.h>
 #include "mach-stub.h"
 #include "trace.h"
+#include "Futex.h"
 
 struct lock_set
 {
 	int lock_count;
-	pthread_mutex_t* mutexes;
-	pthread_t* anonymous_recipients;
+	Darling::Futex* futexes;
 };
 
 kern_return_t lock_acquire(lock_set_t lock_set, int lock_id)
@@ -20,8 +20,7 @@ kern_return_t lock_acquire(lock_set_t lock_set, int lock_id)
 	if (!lock_set || lock_id >= lock_set->lock_count)
 		return KERN_INVALID_ARGUMENT;
 	
-	if (::pthread_mutex_lock(lock_set->mutexes+lock_id))
-		return KERN_FAILURE;
+	lock_set->futexes[lock_id].acquire();
 	
 	return KERN_SUCCESS;
 }
@@ -31,17 +30,26 @@ kern_return_t lock_handoff(lock_set_t lock_set, int lock_id)
 	if (!lock_set || lock_id >= lock_set->lock_count)
 		return KERN_INVALID_ARGUMENT;
 	
-	MACH_STUB();
+	lock_set->futexes[lock_id].handoff();
+	
+	return KERN_SUCCESS;
 }
 
 kern_return_t lock_handoff_accept(lock_set_t lock_set, int lock_id)
 {
-	MACH_STUB();
+	if (!lock_set || lock_id >= lock_set->lock_count)
+		return KERN_INVALID_ARGUMENT;
+	
+	if (!lock_set->futexes[lock_id].handoff_accept())
+		return KERN_ALREADY_WAITING;
+	else
+		return KERN_SUCCESS;
 }
 
 kern_return_t lock_make_stable(lock_set_t lock_set, int lock_id)
 {
-	MACH_STUB();
+	// Whatever the hell is an unstable lock
+	return KERN_SUCCESS;
 }
 
 kern_return_t lock_release(lock_set_t lock_set, int lock_id)
@@ -51,13 +59,7 @@ kern_return_t lock_release(lock_set_t lock_set, int lock_id)
 	if (!lock_set || lock_id >= lock_set->lock_count)
 		return KERN_INVALID_ARGUMENT;
 	
-	if (::pthread_mutex_unlock(lock_set->mutexes+lock_id))
-	{
-		if (errno == EPERM)
-			return KERN_INVALID_RIGHT;
-		else
-			return KERN_FAILURE;
-	}
+	lock_set->futexes[lock_id].release();
 	
 	return KERN_SUCCESS;
 }
@@ -77,32 +79,10 @@ kern_return_t lock_set_create(darwin_task_t task, lock_set_t* lockset, int locks
 		return KERN_RESOURCE_SHORTAGE;
 	
 	(*lockset)->lock_count = locks;
-	(*lockset)->mutexes = 0;
-	(*lockset)->anonymous_recipients = 0;
 	
-	(*lockset)->mutexes = new pthread_mutex_t[locks];
-	if (!(*lockset)->mutexes)
+	(*lockset)->futexes = new Darling::Futex[locks];
+	if (!(*lockset)->futexes)
 		return KERN_RESOURCE_SHORTAGE;
-	
-	::memset((*lockset)->mutexes, 0, sizeof(pthread_mutex_t)*locks);
-	
-	(*lockset)->anonymous_recipients = new pthread_t[locks];
-	if (!(*lockset)->anonymous_recipients)
-	{
-		lock_set_destroy(mach_task_self(), *lockset);
-		return KERN_RESOURCE_SHORTAGE;
-	}
-	
-	::memset((*lockset)->anonymous_recipients, 0, sizeof(pthread_t) * locks);
-	
-	for (int i = 0; i < locks; i++)
-	{
-		if (::pthread_mutex_init((*lockset)->mutexes+i, 0))
-		{
-			lock_set_destroy(mach_task_self(), *lockset);
-			return KERN_RESOURCE_SHORTAGE;
-		}
-	}
 	
 	return KERN_SUCCESS;
 }
@@ -115,17 +95,7 @@ kern_return_t lock_set_destroy (darwin_task_t task, lock_set_t lockset)
 	if (!lockset)
 		return KERN_INVALID_ARGUMENT;
 	
-	if (lockset->mutexes)
-	{
-		for (int i = 0; i < lockset->lock_count; i++)
-		{
-			//if (lockset->mutexes[i])
-				::pthread_mutex_destroy(lockset->mutexes+i);
-		}
-	}
-	
-	delete [] lockset->mutexes;
-	delete [] lockset->anonymous_recipients;
+	delete [] lockset->futexes;
 	delete lockset;
 	
 	return KERN_SUCCESS;
@@ -137,13 +107,12 @@ kern_return_t lock_try (lock_set_t lock_set, int lock_id)
 	if (!lock_set || lock_id >= lock_set->lock_count)
 		return KERN_INVALID_ARGUMENT;
 	
-	if (::pthread_mutex_trylock(lock_set->mutexes+lock_id))
-	{
-		if (errno == EBUSY)
-			return KERN_LOCK_OWNED;
-		return KERN_FAILURE;
-	}
-	
-	return KERN_SUCCESS;
+	Darling::Futex::TryAcquireResult result = lock_set->futexes[lock_id].try_acquire();
+	if (result == Darling::Futex::ResultAlreadyOwned)
+		return KERN_LOCK_OWNED_SELF;
+	else if (result == Darling::Futex::ResultLocked)
+		return KERN_LOCK_OWNED;
+	else
+		return KERN_SUCCESS;
 }
 
