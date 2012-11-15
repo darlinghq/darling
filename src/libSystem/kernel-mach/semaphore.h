@@ -4,9 +4,14 @@
 #include "task.h"
 #include <mach/kern_return.h>
 
+namespace Darling
+{
+	class FutexSemaphore;
+}
+
 struct semaphore
 {
-	sem_t sem;
+	Darling::FutexSemaphore* sem;
 };
 
 typedef semaphore* esemaphore_t;
