@@ -123,8 +123,10 @@ add_subdirectory(src/libncurses)
 add_subdirectory(src/CoreSecurity)
 add_subdirectory(src/CoreServices)
 add_subdirectory(src/IOKit)
+add_subdirectory(src/libcrashhandler)
 add_subdirectory(src/thin)
 
 add_dependencies(dyld${SUFFIX} mach-o)
 add_dependencies(System.B.dylib genfuncmap)
+add_dependencies(Cocoa crashhandler)
 
