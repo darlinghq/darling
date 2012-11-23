@@ -49,6 +49,8 @@ int __darwin_pthread_mutex_lock(__darwin_pthread_mutex_t* mutex);
 int __darwin_pthread_mutex_trylock(__darwin_pthread_mutex_t* mutex);
 int __darwin_pthread_mutex_unlock(__darwin_pthread_mutex_t* mutex);
 
+pid_t __darwin_pthread_mach_thread_np(pthread_t pth);
+
 // TODO: add other pthread functions for errno translation
 
 }

@@ -2,6 +2,19 @@
 #include "errno.h"
 #include <cstdio>
 
+// This makes puppies die
+struct pthread_internal
+{
+	void* ptrs[26];
+	pid_t tid;
+};
+
+pid_t __darwin_pthread_mach_thread_np(pthread_t pth)
+{
+	const pthread_internal* x = reinterpret_cast<pthread_internal*>(pth);
+	return x->tid;
+}
+
 int __darwin_pthread_mutexattr_settype(pthread_mutexattr_t* attr, int kind)
 {
 	switch (kind)

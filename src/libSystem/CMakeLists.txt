@@ -83,12 +83,13 @@ set(bsdkern_SRCS
 set(machkern_SRCS
 	kernel-mach/host.cpp
 	kernel-mach/lockset.cpp
-	kernel-mach/misc.cpp
 	kernel-mach/semaphore.cpp
 	kernel-mach/task.cpp
 	kernel-mach/time.cpp
 	kernel-mach/vm.cpp
+	kernel-mach/error.cpp
 	kernel-mach/Futex.cpp
+	kernel-mach/FutexSemaphore.cpp
 )
 
 add_library(System.B.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
