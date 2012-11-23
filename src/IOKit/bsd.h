@@ -1,6 +1,8 @@
 #ifndef IOKIT_BSD_H
 #define IOKIT_BSD_H
+extern "C" {
 #include <CoreFoundation/CFDictionary.h>
+}
 #include <string>
 
 extern "C"

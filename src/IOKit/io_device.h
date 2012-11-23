@@ -1,7 +1,9 @@
 #ifndef IOKIT_IODEVICE_H
 #define IOKIT_IODEVICE_H
+extern "C" {
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFNumber.h>
+}
 #include <libudev.h>
 #include "io_object.h"
 

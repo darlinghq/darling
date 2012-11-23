@@ -10,7 +10,7 @@ target_link_libraries(AppKit -lgnustep-gui -lopal)
 SET_TARGET_PROPERTIES(AppKit PROPERTIES LINKER_LANGUAGE C)
 
 add_library(Cocoa SHARED)
-target_link_libraries(Cocoa -lgnustep-gui -lopal)
+target_link_libraries(Cocoa -lgnustep-gui -lopal crashhandler)
 SET_TARGET_PROPERTIES(Cocoa PROPERTIES LINKER_LANGUAGE C)
 
 install(TARGETS Cocoa AppKit DESTINATION "lib${SUFFIX}/darling")

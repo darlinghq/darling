@@ -5,7 +5,9 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include "constants.h"
+extern "C" {
 #include <CoreFoundation/CFString.h>
+}
 
 std::string DarlingTranslateBSDName(const char* name);
 bool DarlingFindBSDName(const char* name, char* path);

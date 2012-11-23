@@ -29,6 +29,12 @@ static CFMutableDictionaryRef createMatchingDictionary(CFStringRef key, CFString
 	return dict;
 }
 
+int IOMasterPort(void* bootstrapPort, void** masterPort)
+{
+	*masterPort = (void*) kIOMasterPortDefault;
+	return 0;
+}
+
 CFMutableDictionaryRef IOServiceMatching(const char* service)
 {
 	static CFStringRef str = CFSTR(kIOProviderClassKey);
