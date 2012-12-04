@@ -299,6 +299,8 @@ static int translateFlags(int flag)
 		native_flags |= RTLD_NOLOAD;
 	if (flag & DARWIN_RTLD_NODELETE)
 		native_flags |= RTLD_NODELETE;
+	if (flag & __DARLING_RTLD_NOBIND)
+		native_flags |= __DARLING_RTLD_NOBIND;
 	return native_flags;
 }
 
@@ -399,6 +401,7 @@ void* attemptDlopen(const char* filename, int flag)
 				}
 				
 				LoadedLibrary* lib = new LoadedLibrary;
+				bool nobind = (flag & __DARLING_RTLD_NOBIND) != 0;
 				
 				lib->name = name;
 				lib->refCount = 1;
@@ -410,13 +413,16 @@ void* attemptDlopen(const char* filename, int flag)
 				if (!global)
 				{
 					lib->exports = new Exports;
-					g_loader->load(*machO, name, lib->exports);
+					g_loader->load(*machO, name, lib->exports, nobind);
 				}
 				else
-					g_loader->load(*machO, name, 0);
+					g_loader->load(*machO, name, 0, nobind);
 				
-				char* apple[2] = { g_darwin_executable_path, 0 };
-				g_loader->runPendingInitFuncs(g_argc, g_argv, environ, apple);
+				if (!nobind)
+				{
+					char* apple[2] = { g_darwin_executable_path, 0 };
+					g_loader->runPendingInitFuncs(g_argc, g_argv, environ, apple);
+				}
 				
 				g_ldLibraries[name] = lib;
 				return lib;
@@ -519,8 +525,6 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 	Darling::MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
 	
-	symbol = translateSymbol(symbol);
-	
 	if (handle == DARWIN_RTLD_NEXT || handle == DARWIN_RTLD_SELF || handle == DARWIN_RTLD_MAIN_ONLY || !handle)
 	{
 		LOG << "Cannot yet handle certain DARWIN_RTLD_* search strategies, falling back to RTLD_DEFAULT\n";
@@ -550,7 +554,7 @@ handling:
 		if (itSym == e.end())
 		{
 			// Now try without a prefix
-			sym = ::dlsym(RTLD_DEFAULT, symbol);
+			sym = ::dlsym(RTLD_DEFAULT, translateSymbol(symbol));
 			if (sym)
 				return sym;
 			

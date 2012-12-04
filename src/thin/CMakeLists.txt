@@ -9,9 +9,9 @@ add_library(AppKit SHARED)
 target_link_libraries(AppKit -lgnustep-gui -lopal)
 SET_TARGET_PROPERTIES(AppKit PROPERTIES LINKER_LANGUAGE C)
 
-add_library(Cocoa SHARED)
-target_link_libraries(Cocoa -lgnustep-gui -lopal crashhandler)
-SET_TARGET_PROPERTIES(Cocoa PROPERTIES LINKER_LANGUAGE C)
+add_library(Carbon SHARED)
+target_link_libraries(Carbon CoreServices)
+SET_TARGET_PROPERTIES(Carbon PROPERTIES LINKER_LANGUAGE C)
 
-install(TARGETS Cocoa AppKit DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS AppKit Carbon DESTINATION "lib${SUFFIX}/darling")
 

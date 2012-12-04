@@ -35,7 +35,7 @@ __attribute__((destructor))
 static bool ClassTranslator(char* name)
 {
 #ifdef __x86_64__
-	if (strncmp(name, "OBJC_EHTYPE_$_", 14) == 0)
+	if (strncmp(name, "OBJC_EHTYPE_$_", 14) == 0 || strcmp(name, "OBJC_EHTYPE_id") == 0)
 	{
 		strcpy(name, "_objc_dummy_ehtype");
 		return true;

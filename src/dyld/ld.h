@@ -30,6 +30,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #define DARWIN_RTLD_NOLOAD		0x10
 #define DARWIN_RTLD_NODELETE	0x80
 #define DARWIN_RTLD_FIRST		0x100
+#define __DARLING_RTLD_NOBIND	0x20000000
 
 #define DARWIN_RTLD_NEXT		((void*)-1)
 #define DARWIN_RTLD_DEFAULT		((void*)-2)

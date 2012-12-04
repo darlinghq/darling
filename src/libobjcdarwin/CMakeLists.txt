@@ -41,7 +41,6 @@ set(objcdarwin_SRCS
 	
 	NSBundle_dyld.mm
 	misc.mm
-	zero.c
 )
 
 if(NOT OBJC_ABI_2)

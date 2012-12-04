@@ -10,7 +10,7 @@ endif(COMMAND cmake_policy)
 #endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 
 #configure_file(config.h.in config.h)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -21,6 +21,8 @@ set(CoreServices_SRCS
 	MacLocales.cpp
 	UnicodeUtilities.cpp
 	Gestalt.cpp
+	FileManager.cpp
+	DateTimeUtils.cpp
 )
 
 add_library(CoreServices SHARED ${CoreServices_SRCS})

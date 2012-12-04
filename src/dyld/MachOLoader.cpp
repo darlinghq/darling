@@ -109,14 +109,18 @@ MachOLoader::~MachOLoader()
 {
 }
 
-void MachOLoader::loadDylibs(const MachO& mach)
+void MachOLoader::loadDylibs(const MachO& mach, bool nobind)
 {
 	for (std::string dylib : mach.dylibs())
 	{
 		// __darwin_dlopen checks if already loaded
 		// automatically adds a reference if so
 		
-		if (!__darwin_dlopen(dylib.c_str(), DARWIN_RTLD_GLOBAL|DARWIN_RTLD_NOW))
+		int flags = DARWIN_RTLD_GLOBAL|DARWIN_RTLD_NOW;
+		if (nobind)
+			flags |= __DARLING_RTLD_NOBIND; 
+
+		if (!__darwin_dlopen(dylib.c_str(), flags))
 		{
 			LOG << "Failed to dlopen " << dylib << ", throwing an exception\n";
 			std::stringstream ss;
@@ -229,9 +233,6 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 
 		m_last_addr = std::max(m_last_addr, (intptr)vmaddr + vmsize);
 	}
-
-	if (mach.get_eh_frame().first)
-		__register_frame(reinterpret_cast<void*>(mach.get_eh_frame().first + *slide));
 }
 
 void MachOLoader::checkMmapMinAddr(intptr addr)
@@ -473,7 +474,7 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 
 
 
-void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports)
+void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports, bool nobind)
 {
 	if (!exports)
 		exports = &m_exports;
@@ -489,20 +490,38 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	doRebase(mach, slide);
 	doMProtect(); // decrease the segment protection value
 
-	loadDylibs(mach);
+	loadDylibs(mach, nobind);
 	
 	loadInitFuncs(mach, slide);
 
 	loadExports(mach, base, exports);
 
-	doBind(mach, slide);
+	if (!nobind)
+		doBind(mach, slide);
 
 	const FileMap::ImageMap* img = g_file_map.add(mach, slide, base);
 
-	for (LoaderHookFunc* func : g_machoLoaderHooks)
-		func(&img->header, slide);
+	if (!nobind)
+	{
+		for (LoaderHookFunc* func : g_machoLoaderHooks)
+			func(&img->header, slide);
+	}
+	else
+		m_pendingBinds.push_back(PendingBind{ &mach, &img->header, slide });
 }
 
+void MachOLoader::doPendingBinds()
+{
+	for (const PendingBind& b : m_pendingBinds)
+	{
+		doBind(*b.macho, b.slide);
+		if (b.macho->get_eh_frame().first)
+			__register_frame(reinterpret_cast<void*>(b.macho->get_eh_frame().first + b.slide));
+		for (LoaderHookFunc* func : g_machoLoaderHooks)
+			func(b.header, b.slide);
+	}
+	m_pendingBinds.clear();
+}
 
 void MachOLoader::setupDyldData(const MachO& mach)
 {
@@ -549,7 +568,7 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 	//	envCopy.push_back(envp[i]);
 	envCopy.push_back(0);
 
-	load(mach, g_darwin_executable_path);
+	load(mach, g_darwin_executable_path, nullptr, true);
 	setupDyldData(mach);
 
 	g_file_map.addWatchDog(m_last_addr + 1);
@@ -558,6 +577,7 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 
 	mach.close();
 
+	doPendingBinds();
 	runPendingInitFuncs(argc, argv, &envCopy[0], apple);
 	
 	fflush(stdout);

@@ -59,7 +59,7 @@ public:
 	void loadInitFuncs(const MachO& mach, intptr slide);
 	
 	// Loads libraries this module depends on
-	void loadDylibs(const MachO& mach);
+	void loadDylibs(const MachO& mach, bool nobinds);
 	
 	// Resolves all external symbols required by this module
 	void doBind(const MachO& mach, intptr slide);
@@ -70,13 +70,16 @@ public:
 	void loadExports(const MachO& mach, intptr base, Exports* exports);
 	
 	// Loads a Mach-O file and does all the processing
-	void load(const MachO& mach, std::string sourcePath, Exports* exports = 0);
+	void load(const MachO& mach, std::string sourcePath, Exports* exports = 0, bool nobind = false);
 	
 	// Dyld data contains an accessor to internal dyld functionality. This stores the accessor pointer.
 	void setupDyldData(const MachO& mach);
 	
 	// Runs initializer functions that have not been run yet
 	void runPendingInitFuncs(int argc, char** argv, char** envp, char** apple);
+
+	// Performs pending binds. Used when loading the main executable and its dependencies.
+	void doPendingBinds();
 	
 	// Starts an application
 	void run(MachO& mach, int argc, char** argv, char** envp);
@@ -105,6 +108,15 @@ private:
 		int prot;
 	};
 	std::vector<MProtect> m_mprotects;
+
+	// Pending libs that require binding
+	struct PendingBind
+	{
+		const MachO* macho;
+		const mach_header* header;
+		intptr slide;
+	};
+	std::vector<PendingBind> m_pendingBinds;
 };
 
 #endif

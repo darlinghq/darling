@@ -49,6 +49,7 @@ set(util-SRCS
 	src/util/trace.cpp
 	src/util/stlutils.cpp
 	src/util/IniConfig.cpp
+	src/util/leb.cpp
 )
 
 add_library(util ${util-SRCS})
@@ -59,7 +60,6 @@ set(mach-o_SRCS
 	src/libmach-o/FatMachO.cpp
 	src/libmach-o/RebaseState.cpp
 	src/libmach-o/BindState.cpp
-	src/libmach-o/leb.cpp
 	src/libmach-o/MachOImpl.cpp
 )
 
@@ -116,7 +116,7 @@ install(TARGETS mach-o DESTINATION "lib${SUFFIX}/darling")
 
 add_subdirectory(tests)
 add_subdirectory(src/libSystem)
-#add_subdirectory(src/libcxxdarwin)
+add_subdirectory(src/Cocoa)
 add_subdirectory(src/libobjcdarwin)
 #add_subdirectory(src/libunwind-darwin-gcc)
 add_subdirectory(src/libncurses)

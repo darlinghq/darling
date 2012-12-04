@@ -66,6 +66,7 @@ set(libc_SRCS
 	libc/getpwent.cpp
 	libc/signals.cpp
 	libc/termios.cpp
+	libc/attrlist.cpp
 	common/auto.cpp
 	common/path.cpp
 )

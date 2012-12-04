@@ -28,7 +28,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <link.h>
 #include <stddef.h>
-#include "../libmach-o/leb.h"
+#include "../util/leb.h"
 
 extern FileMap g_file_map;
 extern "C" char* dyld_getDarwinExecutablePath();
