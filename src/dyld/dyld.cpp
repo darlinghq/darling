@@ -138,7 +138,7 @@ int main(int argc, char** argv, char** envp)
 		autoSysrootSearch();
 		bool forceBind = false;
 		
-		if (getenv("DYLD_BIND_AT_LAUNCH") != nullptr)
+		if (g_trampoline || getenv("DYLD_BIND_AT_LAUNCH") != nullptr)
 			forceBind = true;
 		
 		g_loader->run(*g_mainBinary, g_argc, g_argv, envp, forceBind);

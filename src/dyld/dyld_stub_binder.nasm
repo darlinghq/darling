@@ -32,6 +32,7 @@ section text
 
 dyld_stub_binder:
 
+	push eax
 	call reg_saveall ; 32 bytes
 	mov eax, [esp+32] ; cache
 	mov ecx, [esp+32+4] ; offset
@@ -41,11 +42,11 @@ dyld_stub_binder:
 	call dyld_stub_binder_fixup
 	add esp, 8
 
-	mov [esp-4], eax ; save the real addr somewhere
+	mov [esp-12], eax ; save the real addr somewhere
 	call reg_restoreall
 
-	mov eax, [esp-32-4] ; restore the real addr
-	add esp, 8 ; remove arguments to dyld_stub_binder
+	mov eax, [esp-0x2c] ; restore the real addr
+	add esp, 8 ; remove arguments to dyld_stub_binder THIS SHOULDN'T WORK!
 	jmp eax
 
 %else
