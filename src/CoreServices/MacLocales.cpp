@@ -9,8 +9,15 @@
 #include <iconv.h>
 #include <errno.h>
 #include <cassert>
+#include <string>
+#include <map>
+#include "../util/mutex.h"
 
 static iconv_t g_icUtf32ToUtf16 = nullptr;
+
+static std::map<std::string,int> g_mapLocaleString;
+static std::map<int,std::string> g_mapLocaleStringRev;
+static Darling::Mutex g_mapLocaleStringMutex;
 
 __attribute__((constructor)) void initConversions()
 {
@@ -23,11 +30,38 @@ __attribute__((destructor)) void exitConversions()
 	iconv_close(g_icUtf32ToUtf16);
 }
 
+static int getLocaleUID(const std::string& str)
+{
+	auto it = g_mapLocaleString.find(str);
+	if (it != g_mapLocaleString.end())
+		return it->second;
+	else
+	{
+		g_mapLocaleStringMutex.lock();
+		size_t id = g_mapLocaleString.size()+1;
+		
+		g_mapLocaleString[str] = id;
+		g_mapLocaleStringRev[id] = str;
+		g_mapLocaleStringMutex.unlock();
+		
+		return id;
+	}
+}
+
+static const char* getLocaleString(int uid)
+{
+	auto it = g_mapLocaleStringRev.find(uid);
+	if (it != g_mapLocaleStringRev.end())
+		return it->second.c_str();
+	else
+		return "INVALID";
+}
+
 OSStatus LocaleRefFromLangOrRegionCode(LangCode langCode, RegionCode regionCode, LocaleRef* refOut)
 {
 	if (langCode == kTextLanguageDontCare || regionCode == kTextRegionDontCare)
 	{
-		*refOut = Locale::getDefault().getName();
+		*refOut = getLocaleUID(Locale::getDefault().getName());
 		return 0;
 	}
 
@@ -47,7 +81,7 @@ OSStatus LocaleRefFromLangOrRegionCode(LangCode langCode, RegionCode regionCode,
 	}
 	else
 	{
-		*refOut = loc.getName();
+		*refOut = getLocaleUID(loc.getName());
 		return 0;
 	}
 }
@@ -62,14 +96,14 @@ OSStatus LocaleRefFromLocaleString(const char* str, LocaleRef* refOut)
 	}
 	else
 	{
-		*refOut = loc.getName();
+		*refOut = getLocaleUID(loc.getBaseName());
 		return 0;
 	}
 }
 
 OSStatus LocaleRefGetPartString(LocaleRef ref, uint32_t partMask, unsigned long maxStringLen, char* stringOut)
 {
-	Locale loc(ref);
+	Locale loc(getLocaleString(ref));
 	char buffer[50] = "";
 
 	if (loc.isBogus())
@@ -139,7 +173,7 @@ OSStatus LocaleOperationGetLocales(LocaleOperationClass cls, unsigned long max, 
 
 		for (int i = 0; i < cc && i < max; i++)
 		{
-			out[i].ref = locales[i].getName();
+			out[i].ref = getLocaleUID(locales[i].getName());
 			out[i].variant = 0;
 		}
 		*countOut = std::min<int32_t>(cc, max);
@@ -150,8 +184,8 @@ OSStatus LocaleOperationGetLocales(LocaleOperationClass cls, unsigned long max, 
 OSStatus LocaleGetName(LocaleRef ref, LocaleOperationVariant variant, uint32_t nameMask,
 	LocaleRef refDisplay, unsigned long maxLen, unsigned long* lenOut, Utf16Char* displayName)
 {
-	Locale loc(ref);
-	Locale locDisplay(refDisplay);
+	Locale loc(getLocaleString(ref));
+	Locale locDisplay(getLocaleString(refDisplay));
 
 	// variant and nameMask currently ignored
 	

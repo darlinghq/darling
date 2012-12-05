@@ -20,11 +20,11 @@ void *
 start_routine(void *id)
 {
     semaphore_signal(g_sem[1]);
-    printf("thread: %lx about to decrement semaphore count\n", id);
+    fprintf(stderr, "thread: %lx about to decrement semaphore count\n", id);
     semaphore_wait(g_sem[0]);
-    printf("thread: %lx succeeded in decrementing semaphore count\n", id);
+    fprintf(stderr, "thread: %lx succeeded in decrementing semaphore count\n", id);
     semaphore_signal(g_sem[1]);
-    return (void *)0;
+    return NULL;
 }
 
 int

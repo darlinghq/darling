@@ -7,7 +7,7 @@ typedef int16_t RegionCode;
 typedef int16_t LangCode;
 typedef int16_t Utf16Char;
 
-typedef const char* LocaleRef;
+typedef int LocaleRef;
 typedef uint32_t LocaleOperationClass;
 typedef uint32_t LocaleOperationVariant;
 
