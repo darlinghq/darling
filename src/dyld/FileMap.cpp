@@ -34,7 +34,7 @@ FileMap::~FileMap()
 	}
 }
 
-const FileMap::ImageMap* FileMap::add(const MachO& mach, uintptr_t slide, uintptr_t base)
+const FileMap::ImageMap* FileMap::add(const MachO& mach, uintptr_t slide, uintptr_t base, bool bindLazy)
 {
 	ImageMap* symbol_map = new ImageMap;
 
@@ -45,6 +45,16 @@ const FileMap::ImageMap* FileMap::add(const MachO& mach, uintptr_t slide, uintpt
 	symbol_map->eh_frame = mach.get_eh_frame();
 	symbol_map->unwind_info = mach.get_unwind_info();
 	symbol_map->sections = mach.sections();
+	
+	if (!bindLazy)
+	{
+		for (auto* b : mach.binds())
+		{
+			if (!b->is_lazy)
+				continue;
+			symbol_map->lazy_binds.push_back(*b);
+		}
+	}
 
 	if (!m_maps.insert(std::make_pair(base, symbol_map)).second)
 	{
@@ -113,7 +123,7 @@ const char* FileMap::fileNameForAddr(const void* p)
 	return map->filename.c_str();
 }
 
-const FileMap::ImageMap* FileMap::imageMapForAddr(const void* p)
+FileMap::ImageMap* FileMap::imageMapForAddr(const void* p)
 {
 	uintptr_t addr = reinterpret_cast<uintptr_t>(p);
 	const ImageMap* symbol_map;

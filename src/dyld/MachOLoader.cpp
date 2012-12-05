@@ -50,6 +50,7 @@ extern int g_argc;
 extern char** g_argv;
 extern bool g_trampoline;
 extern std::set<LoaderHookFunc*> g_machoLoaderHooks;
+extern MachOLoader* g_loader;
 
 // These are GCC internals
 extern "C" void __register_frame(void*);
@@ -109,16 +110,20 @@ MachOLoader::~MachOLoader()
 {
 }
 
-void MachOLoader::loadDylibs(const MachO& mach, bool nobind)
+void MachOLoader::loadDylibs(const MachO& mach, bool nobind, bool bindLazy)
 {
 	for (std::string dylib : mach.dylibs())
 	{
 		// __darwin_dlopen checks if already loaded
 		// automatically adds a reference if so
 		
-		int flags = DARWIN_RTLD_GLOBAL|DARWIN_RTLD_NOW;
+		int flags = DARWIN_RTLD_GLOBAL;
 		if (nobind)
 			flags |= __DARLING_RTLD_NOBIND; 
+		if (bindLazy)
+			flags |= DARWIN_RTLD_LAZY;
+		else
+			flags |= DARWIN_RTLD_NOW;
 
 		if (!__darwin_dlopen(dylib.c_str(), flags))
 		{
@@ -313,22 +318,35 @@ void MachOLoader::loadInitFuncs(const MachO& mach, intptr slide)
 	}
 }
 
-void MachOLoader::doBind(const MachO& mach, intptr slide)
+void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, bool resolveLazy)
 {
 	std::string last_weak_name;
 	uintptr_t last_weak_sym = 0;
 	size_t seen_weak_bind_index = 0;
 	size_t seen_weak_binds_orig_size = m_seen_weak_binds.size();
+	uintptr_t sym;
 
-	g_bound_names.resize(mach.binds().size());
+	g_bound_names.resize(binds.size());
 
-	for (MachO::Bind* bind : mach.binds())
+	for (MachO::Bind* bind : binds)
 	{
+		if (bind->is_lazy)
+		{
+			if (!resolveLazy)
+			{
+				LOG << "Delaying lazy bind resolution, offset=" << std::hex << bind->offset << std::dec << std::endl;
+				continue;
+			}
+			else
+				LOG << "Lazy bind resolution forced\n";
+		}
+		
 		if (bind->type == BIND_TYPE_POINTER || bind->type == BIND_TYPE_STUB)
 		{
 			std::string name = bind->name.substr(1);
 			uintptr_t* ptr = (uintptr_t*)(bind->vmaddr + slide);
-			uintptr_t sym = 0;
+
+			sym = 0;
 			
 			if (bind->is_weak)
 			{
@@ -421,7 +439,7 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 			}
 
 			LOG << "bind " << name << ": "
-				<< *ptr << " => " << (void*)sym << " @" << ptr << std::endl;
+				<< std::hex << *ptr << std::dec << " => " << (void*)sym << " @" << ptr << std::endl;
 
 			if (g_trampoline)
 				sym = (uintptr_t) m_pTrampolineMgr->generate((void*)sym, name.c_str());
@@ -455,6 +473,8 @@ void MachOLoader::doBind(const MachO& mach, intptr slide)
 	}
 
 	std::inplace_merge(m_seen_weak_binds.begin(), m_seen_weak_binds.begin() + seen_weak_binds_orig_size, m_seen_weak_binds.end());
+
+	return reinterpret_cast<void*>(sym);
 }
 
 
@@ -474,7 +494,7 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 
 
 
-void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports, bool nobind)
+void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports, bool bindLater, bool bindLazy)
 {
 	if (!exports)
 		exports = &m_exports;
@@ -490,31 +510,35 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	doRebase(mach, slide);
 	doMProtect(); // decrease the segment protection value
 
-	loadDylibs(mach, nobind);
+	loadDylibs(mach, bindLater, bindLazy);
 	
 	loadInitFuncs(mach, slide);
 
 	loadExports(mach, base, exports);
 
-	if (!nobind)
-		doBind(mach, slide);
+	if (!bindLater)
+		doBind(mach.binds(), slide, !bindLazy);
 
-	const FileMap::ImageMap* img = g_file_map.add(mach, slide, base);
+	const FileMap::ImageMap* img = g_file_map.add(mach, slide, base, bindLazy);
 
-	if (!nobind)
+	if (!bindLater)
 	{
 		for (LoaderHookFunc* func : g_machoLoaderHooks)
 			func(&img->header, slide);
 	}
 	else
-		m_pendingBinds.push_back(PendingBind{ &mach, &img->header, slide });
+	{
+		LOG << mach.binds().size() << " binds pending\n";
+		m_pendingBinds.push_back(PendingBind{ &mach, &img->header, slide, bindLazy });
+	}
 }
 
 void MachOLoader::doPendingBinds()
 {
 	for (const PendingBind& b : m_pendingBinds)
 	{
-		doBind(*b.macho, b.slide);
+		LOG << "Perform " << b.macho->binds().size() << " binds\n";
+		doBind(b.macho->binds(), b.slide, b.bindLazy);
 		if (b.macho->get_eh_frame().first)
 			__register_frame(reinterpret_cast<void*>(b.macho->get_eh_frame().first + b.slide));
 		for (LoaderHookFunc* func : g_machoLoaderHooks)
@@ -559,7 +583,7 @@ void MachOLoader::runPendingInitFuncs(int argc, char** argv, char** envp, char**
 }
 
 
-void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
+void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp, bool bindLazy)
 {
 	char* apple[2] = { g_darwin_executable_path, 0 };
 	std::vector<char*> envCopy;
@@ -568,17 +592,17 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp)
 	//	envCopy.push_back(envp[i]);
 	envCopy.push_back(0);
 
-	load(mach, g_darwin_executable_path, nullptr, true);
+	load(mach, g_darwin_executable_path, nullptr, true, bindLazy);
 	setupDyldData(mach);
 
 	g_file_map.addWatchDog(m_last_addr + 1);
 
 	//g_timer.print(mach.filename().c_str());
 
-	mach.close();
-
 	doPendingBinds();
 	runPendingInitFuncs(argc, argv, &envCopy[0], apple);
+	
+	mach.close();
 	
 	fflush(stdout);
 	assert(argc > 0);
@@ -635,6 +659,57 @@ void MachOLoader::boot( uint64_t entry, int argc, char** argv, char** envp, char
 
 	PUSH(argc);
 	JUMP(entry);
+}
+
+extern "C" void* dyld_stub_binder_fixup(FileMap::ImageMap** imageMap, uintptr_t lazyOffset)
+{
+	if (!*imageMap)
+	{
+		LOG << "Finding image for address " << imageMap << std::endl;
+		*imageMap = g_file_map.imageMapForAddr(reinterpret_cast<void*>(imageMap));
+
+		if (!*imageMap)
+		{
+			std::cerr << "dyld_stub_binder_fixup(): Image map not found for " << imageMap << std::endl;
+			abort();
+		}
+	}
+
+	std::vector<MachO::Bind*> toBind; // will hold only the single item we need to bind
+	std::list<MachO::Bind>::iterator it;
+
+	(*imageMap)->mutex_lazy_binds.lock();
+	it = (*imageMap)->lazy_binds.begin();
+
+	while (it != (*imageMap)->lazy_binds.end())
+	{
+		if (it->offset == lazyOffset)
+		{
+			toBind.push_back(&*it);
+			break;
+		}
+		it++;
+	}
+
+	if (toBind.empty())
+	{
+		std::cerr << "dyld_stub_binder_fixup(): Lazy bind not found for offset " << std::hex << lazyOffset << std::dec << std::endl;
+		abort();
+	}
+
+	void* addr;
+	try
+	{
+		addr = g_loader->doBind(toBind, (*imageMap)->slide, true);
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "dyld_stub_binder_fixup(): Failed to resolve the symbol: " << e.what() << std::endl;
+		abort();
+	}
+
+	(*imageMap)->mutex_lazy_binds.unlock();
+	return addr;
 }
 
 #ifdef DEBUG

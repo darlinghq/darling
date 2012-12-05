@@ -23,8 +23,10 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <string>
 #include <map>
+#include <list>
 #include "MachO.h"
 #include <dlfcn.h>
+#include "../util/mutex.h"
 
 class FileMap
 {
@@ -33,7 +35,7 @@ public:
 	
 	struct ImageMap;
 
-	const ImageMap* add(const MachO& mach, uintptr_t slide, uintptr_t base);
+	const ImageMap* add(const MachO& mach, uintptr_t slide, uintptr_t base, bool bindLazy);
 
 	void addWatchDog(uintptr_t addr);
 
@@ -46,9 +48,12 @@ public:
 		std::pair<uint64_t,uint64_t> eh_frame;
 		std::pair<uint64_t,uint64_t> unwind_info;
 		std::vector<MachO::Section> sections;
+
+		std::list<MachO::Bind> lazy_binds;
+		Darling::Mutex mutex_lazy_binds;
 	};
 	
-	const ImageMap* imageMapForAddr(const void* p);
+	ImageMap* imageMapForAddr(const void* p);
 	const char* fileNameForAddr(const void* p);
 	const char* gdbInfoForAddr(const void* p);
 	bool findSymbolInfo(const void* addr, Dl_info* p); // used by __darwin_dladdr

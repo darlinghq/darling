@@ -59,25 +59,43 @@ OSStatus FSPathMakeRefWithOptions(const uint8_t* path, long options, FSRef* fsre
 		return noErr;
 	}
 
-	size_t pos = 1;
-	struct stat st;
-	int componentPos = 0;
-	do
+	std::vector<std::string> components = string_explode(fullPath, '/', false);
+	std::string position = "/";
+	size_t pos;
+
+	for (size_t pos = 0; pos < components.size(); pos++)
 	{
-		std::string component;
+		bool found = false;
+		struct dirent* ent;
 
-		pos = fullPath.find('/', pos);
-		component = fullPath.substr(0, pos);
-		
-		if (::lstat(component.c_str(), &st) == -1)
+		DIR* dir = opendir(position.c_str());
+		if (!dir)
 			return makeOSStatus(errno);
-		
-		fsref->inodes[componentPos++] = st.st_ino;
-	}
-	while (pos != std::string::npos);
 
-	if (isDirectory)
-		*isDirectory = S_ISDIR(st.st_mode);
+		while ((ent = readdir(dir)))
+		{
+			if (components[pos] == ent->d_name)
+			{
+				found = true;
+				fsref->inodes[pos] = ent->d_ino;
+
+				if (pos+1 == components.size() && isDirectory != nullptr)
+					*isDirectory = ent->d_type == DT_DIR;
+				break;
+			}
+		}
+
+		closedir(dir);
+
+		if (!found)
+			return fnfErr;
+
+		if (!string_endsWith(position, "/"))
+			position += '/';
+		position += components[pos];
+
+		pos++;
+	}
 
 	return noErr; 
 }
@@ -97,7 +115,8 @@ char* realpath_ns(const char* path)
 	complete = (char*) malloc(strlen(real) + strlen(bname) + 2);
 
 	strcpy(complete, real);
-	strcat(complete, "/");
+	if (strrchr(complete, '/') != complete+strlen(complete)-1)
+		strcat(complete, "/");
 	strcat(complete, bname);
 
 	free(real);
@@ -119,6 +138,8 @@ bool FSRefMakePath(const FSRef* fsref, std::string& out)
 
 		while ((ent = readdir(dir)))
 		{
+			if (strcmp(ent->d_name, "..") == 0 || strcmp(ent->d_name, ".") == 0)
+				continue;
 			if (ent->d_ino == inode)
 			{
 				found = true;
@@ -289,27 +310,21 @@ bool hasgid(gid_t gid)
 
 Boolean CFURLGetFSRef(CFURLRef urlref, FSRef* fsref)
 {
-	char* buf;
+	std::unique_ptr<char[]> buf;
 	CFIndex len;
 	CFStringRef sref = CFURLCopyFileSystemPath(urlref, kCFURLPOSIXPathStyle);
 
 	if (!sref)
 		return false;
 
-	len = CFStringGetLength(sref)*4+1;
-	buf = new char[len];
+	len = CFStringGetMaximumSizeForEncoding(CFStringGetLength(sref), kCFStringEncodingUTF8);
+	buf.reset(new char[len]);
 
-	if (!CFStringGetCString(sref, buf, len, kCFStringEncodingUTF8))
-	{
-		delete [] buf;
+	if (!CFStringGetCString(sref, buf.get(), len, kCFStringEncodingUTF8))
 		return false;
-	}
 
 	CFRelease(sref);
 
-	OSErr err = FSPathMakeRef((uint8_t*) buf, fsref, nullptr);
-	delete [] buf;
-
-	return err == noErr;
+	return FSPathMakeRef((uint8_t*) buf.get(), fsref, nullptr) == noErr;
 }
 

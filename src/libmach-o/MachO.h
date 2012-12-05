@@ -60,8 +60,8 @@ public:
 		};
 		uint8_t type;
 		uint8_t ordinal;
-		bool is_weak;
-		bool is_classic;
+		bool is_weak, is_lazy, is_classic;
+		uintptr_t offset; // Needed to find the right bind when doing lazy binding
 	};
 
 	struct Export

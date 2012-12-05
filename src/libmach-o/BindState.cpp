@@ -37,23 +37,30 @@
 typedef long long ll;
 typedef unsigned long long ull;
 
-BindState::BindState(MachOImpl* mach0, bool is_weak0)
+BindState::BindState(MachOImpl* mach0, bool is_weak0, bool is_lazy0)
 	: mach(mach0), ordinal(0), sym_name(NULL), type(BIND_TYPE_POINTER),
-	addend(0), seg_index(0), seg_offset(0), is_weak(is_weak0)
+	addend(0), seg_index(0), seg_offset(0), is_weak(is_weak0), is_lazy(is_lazy0),
+	last_start(nullptr)
 {
 }
 
-void BindState::readBindOp(const uint8_t*& p)
+void BindState::readBindOp(const uint8_t* bindsStart, const uint8_t*& p)
 {
+	uintptr_t offset;
 	uint8_t op = *p & BIND_OPCODE_MASK;
 	uint8_t imm = *p & BIND_IMMEDIATE_MASK;
-	p++;
 	
-	LOGF("bind: op=%x imm=%d\n", op, imm);
+	if (!last_start)
+		last_start = bindsStart;
+	offset = last_start - bindsStart;
+	
+	LOG << "bind: op=" << std::hex << int(op) << " imm=" << int(imm) << std::dec << " @" << (void*)p << ", bindsStart at " << (void*)bindsStart << std::endl;
+	p++;
 	
 	switch (op)
 	{
 	case BIND_OPCODE_DONE:
+		last_start = p;
 		break;
 
 	case BIND_OPCODE_SET_DYLIB_ORDINAL_IMM:
@@ -96,18 +103,18 @@ void BindState::readBindOp(const uint8_t*& p)
 		break;
 
 	case BIND_OPCODE_DO_BIND:
-		addBind();
+		addBind(offset);
 		break;
 
 	case BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB:
 		LOGF("BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB\n");
-		addBind();
+		addBind(offset);
 		seg_offset += uleb128(p);
 		break;
 
 	case BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED:
 		LOGF("BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED %d\n", (int)imm);
-		addBind();
+		addBind(offset);
 		seg_offset += imm * mach->m_ptrsize;
 		break;
 
@@ -118,7 +125,7 @@ void BindState::readBindOp(const uint8_t*& p)
 			(unsigned)count, (unsigned)skip);
 		for (uint64_t i = 0; i < count; i++)
 		{
-			addBind();
+			addBind(offset);
 			seg_offset += skip;
 		}
 		break;
@@ -129,7 +136,7 @@ void BindState::readBindOp(const uint8_t*& p)
 	}
  }
 
-void BindState::addBind()
+void BindState::addBind(uintptr_t offset)
 {
 	MachO::Bind* bind = new MachO::Bind();
 	uint64_t vmaddr;
@@ -148,6 +155,11 @@ void BindState::addBind()
 	bind->type = type;
 	bind->ordinal = ordinal;
 	bind->is_weak = is_weak;
+	bind->is_lazy = is_lazy;
+	
+	if (is_lazy)
+		bind->offset = offset;
+	
 	mach->m_binds.push_back(bind);
 
 	seg_offset += mach->m_ptrsize;

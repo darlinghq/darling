@@ -59,18 +59,20 @@ public:
 	void loadInitFuncs(const MachO& mach, intptr slide);
 	
 	// Loads libraries this module depends on
-	void loadDylibs(const MachO& mach, bool nobinds);
+	void loadDylibs(const MachO& mach, bool nobinds, bool bindLazy);
 	
 	// Resolves all external symbols required by this module
-	void doBind(const MachO& mach, intptr slide);
+	void* doBind(const std::vector<MachO::Bind*>& binds, intptr slide, bool resolveLazy = false);
 	
+	// Calls mprotect() to switch segment protections to the "initial" value.
+	// We initially set the maximum value.
 	void doMProtect();
 	
 	// Creates a list of publicly visible functions in this module
 	void loadExports(const MachO& mach, intptr base, Exports* exports);
 	
 	// Loads a Mach-O file and does all the processing
-	void load(const MachO& mach, std::string sourcePath, Exports* exports = 0, bool nobind = false);
+	void load(const MachO& mach, std::string sourcePath, Exports* exports = 0, bool bindLater = false, bool bindLazy = false);
 	
 	// Dyld data contains an accessor to internal dyld functionality. This stores the accessor pointer.
 	void setupDyldData(const MachO& mach);
@@ -82,7 +84,7 @@ public:
 	void doPendingBinds();
 	
 	// Starts an application
-	void run(MachO& mach, int argc, char** argv, char** envp);
+	void run(MachO& mach, int argc, char** argv, char** envp, bool bindLazy = false);
 	
 	const Exports& getExports() const { return m_exports; }
 	
@@ -115,6 +117,7 @@ private:
 		const MachO* macho;
 		const mach_header* header;
 		intptr slide;
+		bool bindLazy;
 	};
 	std::vector<PendingBind> m_pendingBinds;
 };

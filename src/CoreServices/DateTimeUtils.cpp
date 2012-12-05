@@ -1,7 +1,7 @@
 #include "DateTimeUtils.h"
 #include <climits>
 
-UTCDateTime time_tToUTC(time_t t)
+UTCDateTime Darling::time_tToUTC(time_t t)
 {
 	UTCDateTime rv;
 	uint64_t time = t + UNIX_OFFSET;

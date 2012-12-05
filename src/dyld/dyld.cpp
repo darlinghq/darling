@@ -60,9 +60,10 @@ int main(int argc, char** argv, char** envp)
 		std::cerr << "Environment variables:\n"
 			"\tDYLD_DEBUG=1 - enable debug info (lots of output)\n"
 			"\tDYLD_IGN_MISSING_SYMS=1 - replace missing symbol references with a stub function\n"
-			"\tDYLD_SYSROOT=<path> - set the base for library path resolution (overrides autodetection)\n"
 			"\tDYLD_MTRACE=1 - enable mtrace\n"
-			"\tDYLD_TRAMPOLINE=1 - access all bound functions via a debug trampoline\n";
+			"\tDYLD_TRAMPOLINE=1 - access all bound functions via a debug trampoline\n"
+			"\tDYLD_ROOT_PATH=<path> - set the base for library path resolution (overrides autodetection)\n"
+			"\tDYLD_BIND_AT_LAUNCH=1 - force dyld to bind all lazy references on startup\n";
 		return 1;
 	}
 	
@@ -135,8 +136,12 @@ int main(int argc, char** argv, char** envp)
 		g_loader = new MachOLoader;
 		
 		autoSysrootSearch();
+		bool forceBind = false;
 		
-		g_loader->run(*g_mainBinary, g_argc, g_argv, envp);
+		if (getenv("DYLD_BIND_AT_LAUNCH") != nullptr)
+			forceBind = true;
+		
+		g_loader->run(*g_mainBinary, g_argc, g_argv, envp, forceBind);
 		
 		delete g_loader;
 		g_loader = 0;
@@ -176,7 +181,7 @@ extern "C" const char* dyld_getLoaderPath()
 
 void autoSysrootSearch()
 {
-	if (const char* s = getenv("DYLD_SYSROOT"))
+	if (const char* s = getenv("DYLD_ROOT_PATH"))
 	{
 		strncpy(g_sysroot, s, PATH_MAX-1);
 		g_sysroot[PATH_MAX-1] = 0;

@@ -49,7 +49,7 @@ private:
 		void readSegment(char* cmds_ptr, std::vector<segment_command*>* segments, std::vector<section*>* bind_sections);
 		
 	void readRebase(const uint8_t* p, const uint8_t* end);
-	void readBind(const uint8_t* p, const uint8_t* end, bool is_weak);
+	void readBind(const uint8_t* p, const uint8_t* end, bool is_weak, bool is_lazy = false);
 	void readExport(const uint8_t* start, const uint8_t* p, const uint8_t* end, std::string* name_buf);
 
 	template <class section>

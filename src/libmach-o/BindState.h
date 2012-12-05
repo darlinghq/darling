@@ -32,11 +32,11 @@
 
 struct BindState
 {
-	BindState(MachOImpl* mach0, bool is_weak0);
+	BindState(MachOImpl* mach0, bool is_weak0, bool is_lazy0);
 
-	void readBindOp(const uint8_t*& p);
+	void readBindOp(const uint8_t* bindsStart, const uint8_t*& p);
 
-	void addBind();
+	void addBind(uintptr_t offset);
 
 	MachOImpl* mach;
 	uint8_t ordinal;
@@ -45,7 +45,8 @@ struct BindState
 	int64_t addend;
 	int seg_index;
 	uint64_t seg_offset;
-	bool is_weak;
+	bool is_weak, is_lazy;
+	const uint8_t* last_start;
 };
 
 

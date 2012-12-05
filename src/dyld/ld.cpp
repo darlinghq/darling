@@ -409,14 +409,15 @@ void* attemptDlopen(const char* filename, int flag)
 				lib->machoRef = machO;
 				
 				bool global = flag & RTLD_GLOBAL && !(flag & RTLD_LOCAL);
+				bool lazy = flag & RTLD_LAZY && !(flag & RTLD_NOW);
 				
 				if (!global)
 				{
 					lib->exports = new Exports;
-					g_loader->load(*machO, name, lib->exports, nobind);
+					g_loader->load(*machO, name, lib->exports, nobind, lazy);
 				}
 				else
-					g_loader->load(*machO, name, 0, nobind);
+					g_loader->load(*machO, name, 0, nobind, lazy);
 				
 				if (!nobind)
 				{
@@ -554,7 +555,9 @@ handling:
 		if (itSym == e.end())
 		{
 			// Now try without a prefix
-			sym = ::dlsym(RTLD_DEFAULT, translateSymbol(symbol));
+			const char* translated = translateSymbol(symbol);
+			LOG << "Trying " << translated << std::endl;
+			sym = ::dlsym(RTLD_DEFAULT, translated);
 			if (sym)
 				return sym;
 			
@@ -624,21 +627,6 @@ int __darwin_dladdr(void *addr, Dl_info *info)
 		return -1;
 	}
 	
-	return 0;
-}
-
-extern "C" void* dyld_stub_binder()
-{
-	/*
-	long arg1, arg2;
-	asm ("movq (%%rsp), %%rbx;"
-		"movq %%rbx, %0;"
-		"movq 4(%%rsp), %%rbx;"
-		"movq %%rbx, %1;"
-		: "=r" (arg1), "=r" (arg2)
-	);
-	*/
-	// TODO
 	return 0;
 }
 

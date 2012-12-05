@@ -1,4 +1,4 @@
-project(CoreServices)
+project(CoreFoundation)
 
 cmake_minimum_required(VERSION 2.4.0)
 if(COMMAND cmake_policy)
@@ -17,16 +17,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 
-set(CoreServices_SRCS
-	MacLocales.cpp
-	UnicodeUtilities.cpp
-	Gestalt.cpp
-	FileManager.cpp
-	DateTimeUtils.cpp
+set(CoreFoundation_SRCS
+	NameTranslate.cpp
 )
 
-add_library(CoreServices SHARED ${CoreServices_SRCS})
-target_link_libraries(CoreServices -licuuc System.B.dylib util)
+add_library(CoreFoundation SHARED ${CoreFoundation_SRCS})
+target_link_libraries(CoreFoundation -lgnustep-corebase objc.A.dylib)
 
-install(TARGETS CoreServices DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS CoreFoundation DESTINATION "lib${SUFFIX}/darling")
 

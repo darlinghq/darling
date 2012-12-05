@@ -208,12 +208,13 @@ void MachOImpl::readRebase(const uint8_t* p, const uint8_t* end)
 }
 
 
-void MachOImpl::readBind(const uint8_t* p, const uint8_t* end, bool is_weak)
+void MachOImpl::readBind(const uint8_t* start, const uint8_t* end, bool is_weak, bool is_lazy)
 {
-	BindState state(this, is_weak);
+	BindState state(this, is_weak, is_lazy);
+	const uint8_t* p = start;
 	while (p < end)
 	{
-		state.readBindOp(p);
+		state.readBindOp(start, p);
 	}
 }
 
@@ -380,7 +381,8 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 				const uint8_t* p = reinterpret_cast<uint8_t*>(
 					m_base + dyinfo->lazy_bind_off);
 				const uint8_t* end = p + dyinfo->lazy_bind_size;
-				readBind(p, end, false);
+				LOG << "Lazy bindings start at " << (void*)p << std::endl;
+				readBind(p, end, false, true);
 			}
 
 			{

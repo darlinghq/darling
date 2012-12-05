@@ -185,6 +185,8 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 					std::cout << 'W';
 				if (b->is_classic)
 					std::cout << 'C';
+				if (b->is_lazy)
+					std::cout << 'L';
 				
 				std::cout << std::dec << std::endl;
 			}

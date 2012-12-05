@@ -74,6 +74,7 @@ set(dyld_SRCS
 	src/dyld/UndefinedFunction.cpp
 	src/dyld/Trampoline.cpp
 	src/dyld/trampoline_helper.nasm
+	src/dyld/dyld_stub_binder.nasm
 	src/dyld/ld.cpp
 	src/dyld/dyld.cpp
 	src/dyld/public.cpp
@@ -118,7 +119,7 @@ add_subdirectory(tests)
 add_subdirectory(src/libSystem)
 add_subdirectory(src/Cocoa)
 add_subdirectory(src/libobjcdarwin)
-#add_subdirectory(src/libunwind-darwin-gcc)
+add_subdirectory(src/CoreFoundation)
 add_subdirectory(src/libncurses)
 add_subdirectory(src/CoreSecurity)
 add_subdirectory(src/CoreServices)
