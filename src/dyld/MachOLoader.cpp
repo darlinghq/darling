@@ -676,19 +676,16 @@ extern "C" void* dyld_stub_binder_fixup(FileMap::ImageMap** imageMap, uintptr_t 
 	}
 
 	std::vector<MachO::Bind*> toBind; // will hold only the single item we need to bind
-	std::list<MachO::Bind>::iterator it;
 
 	(*imageMap)->mutex_lazy_binds.lock();
-	it = (*imageMap)->lazy_binds.begin();
 
-	while (it != (*imageMap)->lazy_binds.end())
+	for (auto it = (*imageMap)->lazy_binds.begin(); it != (*imageMap)->lazy_binds.end(); it++)
 	{
 		if (it->offset == lazyOffset)
 		{
 			toBind.push_back(&*it);
 			break;
 		}
-		it++;
 	}
 
 	if (toBind.empty())
