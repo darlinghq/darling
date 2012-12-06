@@ -22,8 +22,12 @@ void __darwin_objc_exception_throw(objc_object* object)
 	}
 	else
 	{
-		m_lastBlock->exceptionObject = object;
-		longjmp(m_lastBlock->buffer, true);
+		TryBlock* currentBlock = m_lastBlock;
+		
+		currentBlock->exceptionObject = object;
+		m_lastBlock = m_lastBlock->previousBlock;
+
+		longjmp(currentBlock->buffer, true);
 	}
 }
 
@@ -48,7 +52,7 @@ void objc_exception_try_exit(TryBlock* state)
 void* objc_exception_extract(TryBlock* state)
 {
 	TRACE1(state);
-	return m_lastBlock->exceptionObject;
+	return state->exceptionObject;
 }
 
 int objc_exception_match(objc_class* cls, objc_object* object)
