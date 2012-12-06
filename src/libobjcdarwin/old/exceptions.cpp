@@ -37,6 +37,11 @@ void objc_exception_try_enter(TryBlock* state)
 void objc_exception_try_exit(TryBlock* state)
 {
 	TRACE1(state);
+	if (state != m_lastBlock)
+	{
+		std::cerr << "Incorrect try-block state passed to objc_exception_try_exit\n";
+		abort();
+	}
 	m_lastBlock = state->previousBlock;
 }
 
