@@ -77,31 +77,36 @@ template<typename Func, typename... Args> int AutoAllocLockGeneric(Func f, __dar
 	return rv;
 }
 
+static int InitializeMacroInitializedMutex(__darwin_pthread_mutex_t* mutex)
+{
+	pthread_mutexattr_t mta;
+	pthread_mutexattr_init(&mta);
+	int type;
+
+	switch (mutex->signature)
+	{
+	case __darwin_pthread_mutex_t::SIGNATURE_MACRO_INITIALIZED_R:
+		type = PTHREAD_MUTEX_RECURSIVE;
+		break;
+	case __darwin_pthread_mutex_t::SIGNATURE_MACRO_INITIALIZED_E:
+		type = PTHREAD_MUTEX_ERRORCHECK;
+		break;
+	case __darwin_pthread_mutex_t::SIGNATURE_MACRO_INITIALIZED:
+	default:
+		type = PTHREAD_MUTEX_NORMAL;
+	}
+
+	pthread_mutexattr_settype(&mta, type);
+
+	return __darwin_pthread_mutex_init(mutex, &mta);
+}
+
 template<typename Func, typename... Args> int AutoAllocMutexGeneric(Func f, __darwin_pthread_mutex_t* mutex, Args... args)
 {
 	int rv;
 	if (mutex->signature != __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED)
 	{
-		pthread_mutexattr_t mta;
-		pthread_mutexattr_init(&mta);
-		int type;
-
-		switch (mutex->signature)
-		{
-		case __darwin_pthread_mutex_t::SIGNATURE_MACRO_INITIALIZED_R:
-			type = PTHREAD_MUTEX_RECURSIVE;
-			break;
-		case __darwin_pthread_mutex_t::SIGNATURE_MACRO_INITIALIZED_E:
-			type = PTHREAD_MUTEX_ERRORCHECK;
-			break;
-		case __darwin_pthread_mutex_t::SIGNATURE_MACRO_INITIALIZED:
-		default:
-			type = PTHREAD_MUTEX_NORMAL;
-		}
-
-		pthread_mutexattr_settype(&mta, type);
-
-		rv = __darwin_pthread_mutex_init(mutex, &mta);
+		rv = InitializeMacroInitializedMutex(mutex);
 		if (rv)
 			return rv;
 	}
@@ -207,6 +212,38 @@ int __darwin_pthread_mutex_trylock(__darwin_pthread_mutex_t* mutex)
 int __darwin_pthread_mutex_unlock(__darwin_pthread_mutex_t* mutex)
 {
 	return AutoAllocMutexGeneric(pthread_mutex_unlock, mutex);
+}
+
+int __darwin_pthread_cond_timedwait(pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex, const struct timespec *abstime)
+{
+	int rv;
+	if (mutex->signature != __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED)
+	{
+		rv = InitializeMacroInitializedMutex(mutex);
+        if (rv)
+            return rv;
+	}
+
+	rv = pthread_cond_timedwait(cond, &mutex->native, abstime);
+	if (rv)
+		rv = errnoLinuxToDarwin(rv);
+	return rv;
+}
+
+int __darwin_pthread_cond_wait(pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex)
+{
+	int rv;
+	if (mutex->signature != __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED)
+	{
+		rv = InitializeMacroInitializedMutex(mutex);
+        if (rv)
+            return rv;
+	}
+
+	rv = pthread_cond_wait(cond, &mutex->native);
+	if (rv)
+		rv = errnoLinuxToDarwin(rv);
+	return rv;
 }
 
 
