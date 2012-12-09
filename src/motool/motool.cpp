@@ -35,42 +35,64 @@ enum OpMode { ModeDylibs, ModeSymbols, ModeExports, ModeBinds, ModeSegments };
 void printBinInfo(const char* path, const char* arch, const char* opt);
 OpMode getOpMode(const char* opt);
 std::string protString(int prot);
+void processArchArgument(std::string& fileName, std::string& arch);
+std::string autoSelectArchitecture(const std::map<std::string, fat_arch>& archs);
+
+const char* g_archPrio[] = 
+#ifdef __x86_64__
+	{ "x86-64", "x86", nullptr }
+#elif defined(__i386__)
+	{ "x86", "x86-64", nullptr }
+#elif defined(__ppc__)
+	{ "ppc", nullptr }
+#elif defined(__ppc64__)
+	{ "ppc64", nullptr }
+#elif defined (__arm__)
+	{ "arm", nullptr }
+#endif
+;
 
 int main(int argc, char** argv)
 {
 	if (argc < 2)
 	{
 		std::cerr << "Mach Object File Format (Mach-O) Tool\n";
-		std::cerr << "Usage: " << argv[0] << " <file> [arch] [option]\n";
+		std::cerr << "Usage: " << argv[0] << " <file>[:arch] [option]\n";
 		std::cerr << "\nOptions:\n"
 			"\t-d --dylibs\tList dylibs (default)\n"
 			"\t-s --symbols\tList symbols\n"
 			"\t-e --exports\tList exports\n"
 			"\t-b --binds\tList binds\n"
 			"\t-g --segments\tList segments and sections\n"
+			"\t-f --fat\tList FAT Mach-O architectures\n"
 			"\n";
 		return 1;
 	}
 	
 	try
 	{
-		int fd = ::open(argv[1], O_RDONLY);
+		std::string fileName = argv[1];
+		std::string arch;
+		
+		processArchArgument(fileName, arch);
+		
+		int fd = ::open(fileName.c_str(), O_RDONLY);
 		if (fd == -1)
 			throw std::runtime_error("Cannot open file");
 		
-		std::cout << "Processing file: " << argv[1] << std::endl;
+		std::cout << "Processing file: " << fileName << std::endl;
 		
 		std::map<std::string, fat_arch> archs;
 		if (FatMachO::readFatInfo(fd, &archs))
 		{
-			if (argc >= 3)
-			{
-				const char* opt = 0;
-				if (argc >= 4)
-					opt = argv[3];
-				printBinInfo(argv[1], argv[2], opt);
-			}
-			else
+			if (archs.empty())
+				throw std::runtime_error("FAT Mach-O file contains no subfiles!");
+			if (arch.empty())
+				arch = autoSelectArchitecture(archs);
+			
+			std::cout << "Selected architecture: " << arch << std::endl;
+
+			if (argc >= 3 && ( !strcmp(argv[2], "-f") || !strcmp(argv[2], "--fat")))
 			{
 				// print fat info
 				std::cout << "Fat file architectures:\n";
@@ -79,7 +101,13 @@ int main(int argc, char** argv)
 				{
 					std::cout << "\t" << it->first << std::endl;
 				}
-				std::cout << "\nPass the architecture name as the second argument to get more info on that subfile.\n";
+			}
+			else
+			{
+				const char* opt = 0;
+				if (argc >= 3)
+					opt = argv[2];
+				printBinInfo(fileName.c_str(), arch.c_str(), opt);
 			}
 		}
 		else
@@ -87,7 +115,7 @@ int main(int argc, char** argv)
 			const char* opt = 0;
 			if (argc >= 3)
 				opt = argv[2];
-			printBinInfo(argv[1], 0, opt);
+			printBinInfo(fileName.c_str(), 0, opt);
 		}
 		
 		::close(fd);
@@ -237,5 +265,33 @@ std::string protString(int prot)
 	if (prot & VM_PROT_EXECUTE)
 		rv[2] = 'x';
 	return rv;
+}
+
+void processArchArgument(std::string& fileName, std::string& arch)
+{
+	size_t p = fileName.find(':');
+	if (p != std::string::npos)
+	{
+		arch = fileName.substr(p+1);
+		fileName.resize(p);
+	}
+}
+
+std::string autoSelectArchitecture(const std::map<std::string, fat_arch>& archs)
+{
+	std::string choice;
+	for (int i = 0; g_archPrio[i] != nullptr; i++)
+	{
+		if (archs.find(g_archPrio[i]) != archs.end())
+		{
+			choice = g_archPrio[i];
+			break;
+		}
+	}
+	
+	if (choice.empty())
+		choice = archs.begin()->first;
+	
+	return choice;
 }
 
