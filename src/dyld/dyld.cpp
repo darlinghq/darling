@@ -37,6 +37,7 @@ char g_darwin_executable_path[PATH_MAX];
 char g_loader_path[PATH_MAX];
 char g_sysroot[PATH_MAX] = "";
 bool g_trampoline = false;
+bool g_noWeak = false;
 
 extern "C" char* __loader_path;
 char* __loader_path = g_loader_path;
@@ -94,6 +95,8 @@ int main(int argc, char** argv, char** envp)
 			mtrace();
 		if (getenv("DYLD_TRAMPOLINE") && atoi(getenv("DYLD_TRAMPOLINE")))
 			g_trampoline = true;
+		if (getenv("DYLD_NO_WEAK"))
+			g_noWeak = true;
 
 		g_mainBinary = MachO::readFile(argv[1], ARCH_NAME);
 		

@@ -49,6 +49,7 @@ extern char g_darwin_executable_path[PATH_MAX];
 extern int g_argc;
 extern char** g_argv;
 extern bool g_trampoline;
+extern bool g_noWeak;
 extern std::set<LoaderHookFunc*> g_machoLoaderHooks;
 extern MachOLoader* g_loader;
 
@@ -350,6 +351,8 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 			
 			if (bind->is_weak)
 			{
+				if (g_noWeak)
+					continue;
 				if (last_weak_name == name)
 				{
 					sym = last_weak_sym;
@@ -371,11 +374,18 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 						}
 						else
 						{
-							const Exports::const_iterator export_found = m_exports.find(bind->name);
-							if (export_found != m_exports.end())
-								*ptr = last_weak_sym = (uintptr_t)export_found->second.addr;
+							void* expAddr = __darwin_dlsym(__DARLING_RTLD_STRONG, name.c_str());
+							if (expAddr != nullptr)
+							{
+								LOG << "Weak reference overridden for " << name << std::endl;
+								LOG << (void*)*ptr << " -> " << (void*)expAddr << " @" << ptr << std::endl;
+								*ptr = last_weak_sym = (uintptr_t)expAddr;
+							}
 							else
+							{
+								LOG << "Weak reference not overriden for " << name << std::endl;
 								last_weak_sym = *ptr;
+							}
 						}
 					}
 					
@@ -474,6 +484,7 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 
 	std::inplace_merge(m_seen_weak_binds.begin(), m_seen_weak_binds.begin() + seen_weak_binds_orig_size, m_seen_weak_binds.end());
 
+	// This return value is used by dyld_stub_binder
 	return reinterpret_cast<void*>(sym);
 }
 
@@ -488,7 +499,11 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 		exp->addr += base;
 		// TODO(hamaji): Not 100% sure, but we may need to consider weak symbols.
 		if (!exports->insert(make_pair(exp->name, *exp)).second)
-			fprintf(stderr, "duplicated exported symbol: %s\n", exp->name.c_str());
+		{
+			// Until we support two-level namespaces, duplicate symbols may happen where they would not happen on Darwin.
+			// In this case we simply use the first known symbol.
+			LOG << "Warning: duplicate exported symbol name: " << exp->name << std::endl;
+		}
 	}
 }
 
@@ -496,14 +511,16 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 
 void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports, bool bindLater, bool bindLazy)
 {
-	if (!exports)
-		exports = &m_exports;
-
 	intptr slide = 0;
 	intptr base = 0;
+
+	m_exports.push_back(exports);
 	
-	strncpy(g_darwin_loader_path, sourcePath.c_str(), PATH_MAX-1);
-	g_darwin_loader_path[PATH_MAX-1] = 0;
+	if (!g_darwin_loader_path[0])
+	{
+		strncpy(g_darwin_loader_path, sourcePath.c_str(), PATH_MAX-1);
+		g_darwin_loader_path[PATH_MAX-1] = 0;
+	}
 
 	loadSegments(mach, &slide, &base);
 
@@ -592,7 +609,8 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp, bool bind
 	//	envCopy.push_back(envp[i]);
 	envCopy.push_back(0);
 
-	load(mach, g_darwin_executable_path, nullptr, true, bindLazy);
+	m_mainExports = new Exports;
+	load(mach, g_darwin_executable_path, m_mainExports, true, bindLazy);
 	setupDyldData(mach);
 
 	g_file_map.addWatchDog(m_last_addr + 1);

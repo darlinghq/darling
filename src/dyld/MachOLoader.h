@@ -86,7 +86,8 @@ public:
 	// Starts an application
 	void run(MachO& mach, int argc, char** argv, char** envp, bool bindLazy = false);
 	
-	const Exports& getExports() const { return m_exports; }
+	const std::list<Exports*>& getExports() const { return m_exports; }
+	Exports* getMainExecutableExports() const { return m_mainExports; }
 	
 private:
 	// Jumps to the application entry
@@ -97,7 +98,8 @@ private:
 private:
 	intptr m_last_addr;
 	std::vector<uint64_t> m_init_funcs;
-	Exports m_exports;
+	std::list<Exports*> m_exports;
+	Exports* m_mainExports;
 	std::vector<std::pair<std::string, uintptr_t> > m_seen_weak_binds;
 	UndefMgr* m_pUndefMgr;
 	TrampolineMgr* m_pTrampolineMgr;

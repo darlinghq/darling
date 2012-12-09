@@ -41,6 +41,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <cassert>
 #include <list>
 #include <algorithm>
+#include <execinfo.h>
 
 static Darling::Mutex g_ldMutex;
 static std::map<std::string, LoadedLibrary*> g_ldLibraries;
@@ -229,7 +230,7 @@ start_search:
 	if (strncmp(filename, "@executable_path", 16) == 0)
 	{
 		path = replacePathPrefix("@executable_path", filename, g_darwin_executable_path);
-		std::cout << "Full path: " << path << std::endl;
+		//std::cout << "Full path: " << path << std::endl;
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
 	}
@@ -411,13 +412,13 @@ void* attemptDlopen(const char* filename, int flag)
 				bool global = flag & RTLD_GLOBAL && !(flag & RTLD_LOCAL);
 				bool lazy = flag & RTLD_LAZY && !(flag & RTLD_NOW);
 				
-				if (!global)
-				{
+				//if (!global)
+				//{
 					lib->exports = new Exports;
 					g_loader->load(*machO, name, lib->exports, nobind, lazy);
-				}
-				else
-					g_loader->load(*machO, name, 0, nobind, lazy);
+				//}
+				//else
+				//	g_loader->load(*machO, name, 0, nobind, lazy);
 				
 				if (!nobind)
 				{
@@ -519,21 +520,24 @@ static const char* translateSymbol(const char* symbol)
 	return symbuffer;
 }
 
-void* __darwin_dlsym(void* handle, const char* symbol)
+void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 {
 	TRACE2(handle, symbol);
 	
 	Darling::MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;
 	
-	if (handle == DARWIN_RTLD_NEXT || handle == DARWIN_RTLD_SELF || handle == DARWIN_RTLD_MAIN_ONLY || !handle)
-	{
-		LOG << "Cannot yet handle certain DARWIN_RTLD_* search strategies, falling back to RTLD_DEFAULT\n";
+	if (!handle)
 		handle = DARWIN_RTLD_DEFAULT;
-	}
 
-handling:
-	if (handle == DARWIN_RTLD_DEFAULT)
+	//if (handle == DARWIN_RTLD_NEXT || handle == DARWIN_RTLD_SELF || handle == DARWIN_RTLD_MAIN_ONLY || !handle)
+	//{
+	//	LOG << "Cannot yet handle certain DARWIN_RTLD_* search strategies, falling back to RTLD_DEFAULT\n";
+	//	handle = DARWIN_RTLD_DEFAULT;
+	//}
+
+//handling:
+	if (handle == DARWIN_RTLD_DEFAULT || handle == __DARLING_RTLD_STRONG)
 	{
 		// First try native with the __darwin prefix
 		void* sym;
@@ -546,22 +550,73 @@ handling:
 			return sym;
 		
 		// Now try Darwin libraries
-		const Exports& e = g_loader->getExports();
-		Exports::const_iterator itSym = e.find(symbol);
-		
-		if (itSym == e.end())
-			itSym = e.find(std::string("_") + symbol);
-		
-		if (itSym == e.end())
+		const std::list<Exports*>& le = g_loader->getExports();
+		std::list<Exports*>::const_iterator it = le.begin();
+
+		while (it != le.end())
 		{
-			// Now try without a prefix
-			const char* translated = translateSymbol(symbol);
-			LOG << "Trying " << translated << std::endl;
-			sym = ::dlsym(RTLD_DEFAULT, translated);
-			if (sym)
-				return sym;
-			
-			// Now we fail
+			const Exports* e = *it;
+			Exports::const_iterator itSym = e->find(symbol);
+		
+			if (itSym == e->end())
+				itSym = e->find(std::string("_") + symbol); // TODO: WTF?
+		
+			if (itSym != e->end())
+			{
+				if (handle != __DARLING_RTLD_STRONG || !(itSym->second.flag & 4))
+					return reinterpret_cast<void*>(itSym->second.addr);
+			}
+			it++;
+		}
+
+		// Now try without a prefix
+		const char* translated = translateSymbol(symbol);
+		LOG << "Trying " << translated << std::endl;
+		sym = ::dlsym(RTLD_DEFAULT, translated);
+		if (sym)
+			return sym;
+
+		// Now we fail
+		snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot find symbol '%s'", symbol);
+		return nullptr;
+	}
+	else if (handle == DARWIN_RTLD_NEXT)
+	{
+		// For this, we'll have to rethink and integrate Exports in MachOLoader and LoadedLibrary in here
+		abort();
+	}
+	else if (handle == DARWIN_RTLD_MAIN_ONLY || handle == DARWIN_RTLD_SELF)
+	{
+		Exports* exports = nullptr;
+		if (handle == DARWIN_RTLD_MAIN_ONLY)
+			exports = g_loader->getMainExecutableExports();
+		else
+		{
+			void* retaddr;
+			const char* name;
+
+			backtrace(&retaddr, 1);
+
+			name = g_file_map.fileNameForAddr(retaddr);
+			if (!name)
+			{
+				strcpy(g_ldError, "Couldn't determine the current module");
+				return nullptr;
+			}
+
+			auto it = g_ldLibraries.find(name);
+			if (it == g_ldLibraries.end())
+			{
+				strcpy(g_ldError, "Couldn't determine the current module by path");
+				return nullptr;
+			}
+
+			exports = it->second->exports;
+		}
+
+		Exports::iterator itSym = exports->find(symbol);
+		if (itSym == exports->end())
+		{
 			snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot find symbol '%s'", symbol);
 			return 0;
 		}
@@ -570,12 +625,9 @@ handling:
 	}
 	else
 	{
-		LoadedLibrary* lib = reinterpret_cast<LoadedLibrary*>(handle);
-		/*if (!lib)
-		{
-			strcpy(g_ldError, "Invalid handle passed to __darwin_dlsym()");
-			return 0;
-		}*/
+		LoadedLibrary* lib = nullptr;
+		
+		lib = reinterpret_cast<LoadedLibrary*>(handle);
 		
 		if (lib->type == LoadedLibraryNative)
 		{
@@ -589,12 +641,12 @@ handling:
 			snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot find symbol '%s'", symbol);
 			return 0;
 		}
-		else if (!lib->exports)
-		{
-			// TODO: this isn't 100% correct
-			handle = DARWIN_RTLD_DEFAULT;
-			goto handling;
-		}
+		//else if (!lib->exports)
+		//{
+		//	// TODO: this isn't 100% correct
+		//	handle = DARWIN_RTLD_DEFAULT;
+		//	goto handling;
+		//}
 		else
 		{
 			Exports::iterator itSym = lib->exports->find(symbol);

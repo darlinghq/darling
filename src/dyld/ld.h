@@ -37,13 +37,16 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #define DARWIN_RTLD_SELF		((void*)-3)
 #define DARWIN_RTLD_MAIN_ONLY	((void*)-5)
 
+// Internal, only for weak symbol resolution
+#define __DARLING_RTLD_STRONG ((void*)-20)
+
 extern "C"
 {
 
 void* __darwin_dlopen(const char* filename, int flag);
 int __darwin_dlclose(void* handle);
 const char* __darwin_dlerror(void);
-void* __darwin_dlsym(void* handle, const char* symbol);
+void* __darwin_dlsym(void* handle, const char* symbol, void* extra = nullptr);
 int __darwin_dladdr(void *addr, Dl_info *info);
 
 }
