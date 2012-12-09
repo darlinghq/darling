@@ -68,6 +68,16 @@ static bool ClassTranslator(char* name)
 		return true;
 	}
 #endif
+	else if (*name == 'k')
+	{
+		// TODO: this may be worth doing differently
+		char* pos = strstr(name, "Key");
+		if (pos == name + strlen(name) - 3)
+		{
+			*pos = 0;
+			return true;
+		}
+	}
 
 	return false;
 }
