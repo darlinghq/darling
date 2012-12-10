@@ -115,6 +115,7 @@ int __darwin_remove(const char* path);
 
 std::__basic_file<char>* _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode(std::__basic_file<char>* pThis, __darwin_FILE* f, std::ios_base::openmode mode);
 void _ZN9__gnu_cxx13stdio_filebufIcSt11char_traitsIcEEC1EP7__sFILESt13_Ios_Openmodem(__gnu_cxx::stdio_filebuf<char, std::char_traits<char> >* pThis, __darwin_FILE* f, std::_Ios_Openmode m, unsigned long l);
+void _ZN9__gnu_cxx13stdio_filebufIcSt11char_traitsIcEEC2EP7__sFILESt13_Ios_Openmodem(__gnu_cxx::stdio_filebuf<char, std::char_traits<char> >* pThis, __darwin_FILE* f, std::_Ios_Openmode m, unsigned long l);
 
 }
 

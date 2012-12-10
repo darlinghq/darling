@@ -16,7 +16,6 @@ const char* file = "/tmp/__test123";
 int main()
 {
 	//__gnu_cxx::stdio_filebuf<char> out;
-	char text[8001] = "";
 	const char* file = "/tmp/__test123";
 
 	for (int i = 0; i < 800; i++)
@@ -40,8 +39,11 @@ void test1()
 void test2()
 {
 	std::filebuf out2;
+	size_t len;
 	out2.open(file, std::ios_base::binary|std::ios_base::in|std::ios_base::out|std::ios_base::trunc);
-	out2.sputn(text, strlen(text));
+	len = strlen(text);
+	printf("Len %d\n", len);
+	out2.sputn(text, len);
 	out2.close();
 
 	printFile(file);
