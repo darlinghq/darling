@@ -36,6 +36,14 @@ template<typename RetVal, typename Func, typename... Params> RetVal AutoErrno(Fu
 	return rv;
 }
 
+template<typename Func, typename... Params> int AutoErrnoPosix(Func f, Params... params)
+{
+	int rv = f(params...);
+	if (rv != 0)
+		rv = errnoLinuxToDarwin(rv);
+	return rv;
+}
+
 namespace Darling
 {
 	struct MappedFlag

@@ -67,6 +67,9 @@ set(libc_SRCS
 	libc/signals.cpp
 	libc/termios.cpp
 	libc/attrlist.cpp
+	libc/spawn.cpp
+	libc/xlocale.cpp
+	libc/malloc_zone.cpp
 	common/auto.cpp
 	common/path.cpp
 )
@@ -91,6 +94,7 @@ set(machkern_SRCS
 	kernel-mach/error.cpp
 	kernel-mach/Futex.cpp
 	kernel-mach/FutexSemaphore.cpp
+	kernel-mach/compat.cpp
 )
 
 add_library(System.B.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})

@@ -18,7 +18,7 @@
 
 extern char g_loader_path[PATH_MAX];
 
-static const char* findInPath(const char* file)
+const char* Darling::findInPath(const char* file)
 {
 	static __thread char buffer[DARWIN_MAXPATHLEN];
 	
@@ -67,7 +67,7 @@ static const char* findInPath(const char* file)
 	return 0;
 }
 
-static char* const* prependLoaderPath(char *const argv[], const char* fullMachoPath)
+char* const* Darling::prependLoaderPath(char *const argv[], const char* fullMachoPath)
 {
 	int count = 0;
 	const char** rv;
@@ -156,8 +156,8 @@ int __darwin_execv(const char *path, char *const argv[])
 	}
 	else
 	{
-		argv = prependLoaderPath(argv, path);
-		int rv = execvp(g_loader_path, argv);
+		argv = Darling::prependLoaderPath(argv, path);
+		int rv = execvp(g_loader_path, argv); // TODO: change to execv?
 		
 		std::cout << "Executing with loader at " << g_loader_path << std::endl;
 		
@@ -172,7 +172,7 @@ int __darwin_execvp(const char *file, char *const argv[])
 {
 	TRACE1(file);
 	
-	const char* path = findInPath(file);
+	const char* path = Darling::findInPath(file);
 	if (!path)
 	{
 		std::cout << "Path failed to be located: " << file << std::endl;
@@ -187,7 +187,7 @@ int __darwin_execvpe(const char *file, char *const argv[], char *const envp[])
 {
 	TRACE1(file);
 	
-	const char* path = findInPath(file);
+	const char* path = Darling::findInPath(file);
 	if (!path)
 	{
 		errno = DARWIN_ENOENT;
@@ -202,7 +202,7 @@ int __darwin_execvpe(const char *file, char *const argv[], char *const envp[])
 	}
 	else
 	{
-		argv = prependLoaderPath(argv, path);
+		argv = Darling::prependLoaderPath(argv, path);
 		int rv = execvpe(g_loader_path, argv, envp);
 		errnoOut();
 		

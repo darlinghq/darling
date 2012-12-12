@@ -70,14 +70,6 @@ int __maskrune_l(__darwin_ct_rune_t _c, unsigned long _f, void* l) {
   return __maskrune(_c, _f);
 }
 
-size_t mbstowcs_l(wchar_t* pwcs, const char* s, size_t n, void* l) {
-  return mbstowcs(pwcs, s, n);
-}
-
-size_t wcswidth_l(wchar_t* pwcs, size_t n, void* l) {
-  return wcswidth(pwcs, n);
-}
-
 void libiconv_set_relocation_prefix(const char* orig, const char* curr) {
   // TODO: What should we do?
   abort();
@@ -101,134 +93,6 @@ void *__darwin_mmap(void *addr, size_t length, int prot, int flags,
   return mmap(addr, length, prot, flags, fd, offset);
 }
 
-extern char* __loader_path;
-
-static char** add_loader_to_argv(char* argv[]) {
-  int i, argc;
-  for (argc = 0; argv[argc]; argc++);
-  LOGF("\n");
-  char** new_argv = malloc(sizeof(char*) * (argc + 2));
-  new_argv[0] = __loader_path;
-  for (i = 0; i < argc + 1; i++) {
-    new_argv[i + 1] = argv[i];
-  }
-  return new_argv;
-}
-
-// It seems the size of posix_spawn_file_actions_t of Mac is smaller
-// than Linux so modifying posix_spawn_file_actions_t allocated in
-// Mac's stack would cause stack overflow. Let's wrap it.
-
-int __darwin_posix_spawn(pid_t* pid,
-                         const char* path,
-                         const posix_spawn_file_actions_t** file_actions,
-                         const posix_spawnattr_t* attrp,
-                         char* argv[],
-                         char* const envp[]) {
-  char** new_argv = add_loader_to_argv(argv);
-  const posix_spawn_file_actions_t* fa = NULL;
-  if (file_actions)
-    fa = *file_actions;
-  int r = posix_spawn(pid,
-                      __loader_path,
-                      fa,
-                      attrp,
-                      new_argv,
-                      envp);
-  free(new_argv);
-  return r;
-}
-
-int __darwin_posix_spawnp(pid_t *pid,
-                          const char* file,
-                          const posix_spawn_file_actions_t* file_actions,
-                          const posix_spawnattr_t* attrp,
-                          char* const argv[],
-                          char* const envp[]) {
-  err(1, "posix_spawnp is not implemented yet\n");
-  return 0;
-}
-
-int __darwin_posix_spawn_file_actions_init(posix_spawn_file_actions_t** p) {
-  *p = (posix_spawn_file_actions_t*)malloc(sizeof(posix_spawn_file_actions_t));
-  return posix_spawn_file_actions_init(*p);
-}
-
-int __darwin_posix_spawn_file_actions_destroy(posix_spawn_file_actions_t** p) {
-  int r = posix_spawn_file_actions_destroy(*p);
-  free(*p);
-  return r;
-}
-
-int __darwin_posix_spawn_file_actions_addopen(
-    posix_spawn_file_actions_t** file_actions,
-    int fd,
-    const char* path,
-    int oflag,
-    int mode) {
-    return posix_spawn_file_actions_addopen(
-        *file_actions, fd, path, oflag, mode);
-}
-
-int __darwin_posix_spawn_file_actions_addclose(
-    posix_spawn_file_actions_t** file_actions,
-    int fd) {
-    return posix_spawn_file_actions_addclose(*file_actions, fd);
-}
-
-int __darwin_posix_spawn_file_actions_adddup2(
-    posix_spawn_file_actions_t** file_actions,
-    int fd,
-    int newfd) {
-    return posix_spawn_file_actions_adddup2(*file_actions, fd, newfd);
-}
-
-typedef struct {
-  void* ss_sp;
-  size_t ss_size;
-  int ss_flags;
-} __darwin_stack_t;
-
-int __darwin_sigaltstack(const __darwin_stack_t* ss, __darwin_stack_t* oss) {
-  return 0;
-
-#if 0
-  stack_t linux_ss;
-  stack_t linux_oss;
-  linux_ss.ss_sp = ss->ss_sp;
-  linux_ss.ss_size = ss->ss_size;
-  linux_ss.ss_flags = ss->ss_flags;
-  if (oss) {
-    linux_oss.ss_sp = oss->ss_sp;
-    linux_oss.ss_size = oss->ss_size;
-    linux_oss.ss_flags = oss->ss_flags;
-  }
-  int r = sigaltstack(&linux_ss, &linux_oss);
-  if (oss) {
-    oss->ss_sp = linux_oss.ss_sp;
-    oss->ss_size = linux_oss.ss_size;
-    oss->ss_flags = linux_oss.ss_flags;
-  }
-  return r;
-#endif
-}
-
-typedef struct malloc_statistics_t {
-  unsigned blocks_in_use;
-  size_t size_in_use;
-  size_t max_size_in_use;
-  size_t size_allocated;
-} __darwin_malloc_statistics_t;
-
-void* malloc_default_zone() {
-  return NULL;
-}
-
-// TODO: implement via mallinfo
-void malloc_zone_statistics(void* zone, __darwin_malloc_statistics_t* stats) {
-  fprintf(stderr, "malloc_zone_statistics\n");
-  memset(stats, 0, sizeof(*stats));
-}
 
 int task_get_exception_ports() {
   fprintf(stderr, "task_get_exception_ports\n");
@@ -238,52 +102,6 @@ int task_get_exception_ports() {
 int task_set_exception_ports() {
   fprintf(stderr, "task_set_exception_ports\n");
   return 0;
-}
-
-
-
-static void do_nothing(void) {
-}
-static void* do_nothing2(void) {
-	return 0;
-}
-static void do_nothing3(int status) {
-}
-
-void (*mach_init_routine)(void) = do_nothing;
-void* (*_cthread_init_routine)(void) = do_nothing2;
-void (*_cthread_exit_routine) (int) = do_nothing3;
-
-void __keymgr_dwarf2_register_sections() {
-}
-
-#define __DARWIN_SYS_NAMELEN 256
-typedef struct {
-	char sysname[__DARWIN_SYS_NAMELEN];
-	char nodename[__DARWIN_SYS_NAMELEN];
-	char release[__DARWIN_SYS_NAMELEN];
-	char version[__DARWIN_SYS_NAMELEN];
-	char machine[__DARWIN_SYS_NAMELEN];
-} __darwin_utsname;
-
-int __darwin_uname(__darwin_utsname* buf) {
-	struct utsname linux_buf;
-	int r = uname(&linux_buf);
-	if (r)
-	return r;
-
-	// Linux's buf size is currently much smaller, only 65, so strcpy() is safe
-	//strcpy(buf->sysname, linux_buf.sysname);
-	//strcpy(buf->nodename, linux_buf.nodename);
-	//strcpy(buf->release, linux_buf.release);
-	//strcpy(buf->version, linux_buf.version);
-	//strcpy(buf->machine, linux_buf.machine);
-	strcpy(buf->sysname, "Darwin");
-	strcpy(buf->nodename, linux_buf.nodename);
-	strcpy(buf->release, "12.0.0");
-	strcpy(buf->version, "Darwin Kernel Version 12.0.0");
-	strcpy(buf->machine, linux_buf.machine);
-	return 0;
 }
 
 #define __DARWIN_LC_ALL_MASK            (  __DARWIN_LC_COLLATE_MASK \

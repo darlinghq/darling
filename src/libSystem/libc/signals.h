@@ -77,6 +77,9 @@ namespace Darling
 {
 	int signalLinuxToDarwin(int sig);
 	int signalDarwinToLinux(int sig);
+
+	sigset_t sigsetDarwinToLinux(const __darwin_sigset_t* set);
+	__darwin_sigset_t sigsetLinuxToDarwin(const sigset_t* set);
 }
 
 #endif

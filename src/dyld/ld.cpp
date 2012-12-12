@@ -87,7 +87,7 @@ static void initLD()
 	
 	try
 	{
-		g_iniConfig = new IniConfig("/etc/darling/dylib.conf");
+		g_iniConfig = new IniConfig(ETC_DARLING_PATH "/dylib.conf");
 	}
 	catch (const std::exception& e)
 	{
