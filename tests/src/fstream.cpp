@@ -9,6 +9,7 @@
 void printFile(const char* path);
 void test1();
 void test2();
+void test3();
 
 char text[8001] = "";
 const char* file = "/tmp/__test123";
@@ -23,6 +24,7 @@ int main()
 	
 	test1();
 	test2();
+	test3();
 
 	return 0;
 }
@@ -45,6 +47,15 @@ void test2()
 	printf("Len %d\n", len);
 	out2.sputn(text, len);
 	out2.close();
+
+	printFile(file);
+}
+
+void test3()
+{
+	std::ofstream of(file, std::ios_base::binary|std::ios_base::in|std::ios_base::out|std::ios_base::trunc);
+	of.write(text, strlen(text));
+	of.close();
 
 	printFile(file);
 }
