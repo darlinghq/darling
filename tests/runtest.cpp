@@ -13,6 +13,7 @@
 #include <cstring>
 #include <fstream>
 #include <unistd.h>
+#include <sys/stat.h>
 
 const char* DYLD_COMMAND = "dyld";
 const char* OSX_HOST = "osx";
@@ -189,18 +190,22 @@ void runTest(const char* path)
 	std::stringstream cmd;
 	std::string binary;
 	std::string out, err;
-	std::string filename = "/tmp/darlingtest-";
+	std::string dirname, filename = "/tmp/darlingtest-";
 	int rv;
 
 	filename += getenv("USER");
 	filename += '/';
+	dirname = filename;
 	filename += uniqueName(path);
+
+	mkdir(dirname.c_str(), 0700);
 
 	binary = stripext(filename);
 	
 	termcolor::set(termcolor::WHITE, termcolor::BLACK, termcolor::DIM);
 
 	std::cout << "Uploading " << path << "...\n";
+	g_sftp->mkdir(dirname.c_str(), 0700);
 	// upload the source code
 	g_sftp->upload(path, filename);
 
