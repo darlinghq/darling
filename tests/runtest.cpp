@@ -189,9 +189,11 @@ void runTest(const char* path)
 	std::stringstream cmd;
 	std::string binary;
 	std::string out, err;
-	std::string filename = "/tmp/";
+	std::string filename = "/tmp/darlingtest-";
 	int rv;
 
+	filename += getenv("USER");
+	filename += '/';
 	filename += uniqueName(path);
 
 	binary = stripext(filename);
@@ -237,6 +239,18 @@ void runTest(const char* path)
 
 		if (locOut.str() != out)
 			throw different_output_error(out, locOut.str());
+
+		// clean up locally
+		unlink(binary.c_str());
+
+		try
+		{
+			// clean up remotely
+			g_sftp->unlink(binary);
+			g_sftp->unlink(filename);
+		}
+		catch (...) {}
+
 	}
 	catch (...)
 	{
