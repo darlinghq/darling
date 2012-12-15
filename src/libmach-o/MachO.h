@@ -89,6 +89,8 @@ public:
 
 	const std::vector<const char*>& dylibs() const { return m_dylibs; }
 
+	const std::vector<const char*>& rpaths() const { return m_rpaths; }
+
 	const std::vector<Rebase*>& rebases() const { return m_rebases; }
 
 	const std::vector<Bind*>& binds() const { return m_binds; }
@@ -126,6 +128,7 @@ public:
 	std::vector<segment_command_64*> m_segments64;
 	std::vector<segment_command*> m_segments;
 	std::vector<const char*> m_dylibs;
+	std::vector<const char*> m_rpaths;
 	std::vector<Rebase*> m_rebases;
 	std::vector<Bind*> m_binds;
 	std::vector<Export*> m_exports;

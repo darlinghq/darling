@@ -544,6 +544,15 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 			break;
 		}
 
+		case LC_RPATH:
+		{
+			lc_str path = reinterpret_cast<rpath_command*>(cmds_ptr)->path;
+			const char* rpath = (char*)cmds_ptr + path.offset;
+			LOG << "rpath: '" << rpath << "'\n";
+			m_rpaths.push_back(rpath);
+			break;
+		}
+
 	}
 
 	cmds_ptr = reinterpret_cast<load_command*>(
