@@ -55,6 +55,13 @@ static const char* g_searchPath[] = {
 	"/usr/lib", "/usr/local/lib", "/lib",
 };
 
+static const char* g_rpathSearch[] = {
+	"",
+	"/Frameworks/",
+	"/OtherFrameworks/",
+	"/SharedFrameworks/",
+};
+
 static const char* g_suffixes[] = { "$DARWIN_EXTSN", "$UNIX2003", "$NOCANCEL" };
 static IniConfig* g_iniConfig = 0;
 
@@ -63,6 +70,7 @@ static int translateFlags(int flags);
 __attribute__((constructor)) static void initLD();
 static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 
+extern MachO* g_mainBinary;
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
 extern char g_darwin_loader_path[PATH_MAX];
@@ -240,7 +248,21 @@ start_search:
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
 	}
+	else if (strncmp(filename, "@rpath", 6) == 0)
+	{
+		// @rpath - https://wincent.com/wiki/@executable_path,_@load_path_and_@rpath
+		for (std::vector<const char*>::const_iterator rpath = g_mainBinary->rpaths().begin(); rpath != g_mainBinary->rpaths().end(); rpath++)
+		{
+			for (int i = 0; i < sizeof(g_rpathSearch) / sizeof(g_rpathSearch[0]); i++)
+			{
+				std::string rpathSearch = *rpath;
+				rpathSearch += g_rpathSearch[i];
+				path = replacePathPrefix("@rpath", filename, rpathSearch.c_str());
 	// TODO: @rpath - https://wincent.com/wiki/@executable_path,_@load_path_and_@rpath
+				RET_IF( __darwin_dlopen(path.c_str(), flag) );
+			}
+		}
+	}
 	else
 	{
 		if (const char* ldp = getenv("DYLD_LIBRARY_PATH"))
