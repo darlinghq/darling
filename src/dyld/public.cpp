@@ -28,6 +28,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <link.h>
 #include <stddef.h>
+#include "../util/log.h"
 #include "../util/leb.h"
 
 extern FileMap g_file_map;
@@ -58,6 +59,13 @@ const char* _dyld_get_image_name(uint32_t image_index)
 char* getsectdata(const struct mach_header* header, const char* segname, const char* sectname, unsigned long* size)
 {
 	FileMap::ImageMap* imageMap = 0;
+	
+	if (!segname || !sectname || !size)
+	{
+		LOG << "Warning: getsectdata() called with NULL pointers\n";
+		// abort();
+		return nullptr;
+	}
 
 	// Find the loaded image the header belongs to
 	for (FileMap::ImageMap* entry : g_file_map.images())
