@@ -22,6 +22,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include "FatMachO.h"
 #include "MachOImpl.h"
 #include <cstdio>
+#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/types.h>
