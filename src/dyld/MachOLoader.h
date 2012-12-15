@@ -122,6 +122,8 @@ private:
 		bool bindLazy;
 	};
 	std::vector<PendingBind> m_pendingBinds;
+	
+	std::vector<std::string> m_rpathContext;
 };
 
 #endif

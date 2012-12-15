@@ -40,6 +40,9 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 // Internal, only for weak symbol resolution
 #define __DARLING_RTLD_STRONG ((void*)-20)
 
+typedef void* NSSymbol;
+typedef void* NSModule;
+
 extern "C"
 {
 
@@ -49,12 +52,25 @@ const char* __darwin_dlerror(void);
 void* __darwin_dlsym(void* handle, const char* symbol, void* extra = nullptr);
 int __darwin_dladdr(void *addr, Dl_info *info);
 
+// Obsolete (or "not recommended") APIs
+NSSymbol NSLookupAndBindSymbol(const char* symbolName);
+void* NSAddressOfSymbol(NSSymbol nssymbol);
+NSSymbol NSLookupSymbolInModule(NSModule module, const char* symbolName);
+const char* NSNameOfSymbol(NSSymbol nssymbol);
+int NSIsSymbolNameDefined(const char* name);
+NSModule NSModuleForSymbol(NSSymbol symbol);
+int NSIsSymbolNameDefinedInImage(const struct mach_header *image, const char *symbolName);
+const char* NSNameOfModule(NSModule m); 
+const char* NSLibraryNameForModule(NSModule m);
+// TODO: rest of these NS* calls if used anywhere
+
 }
 
 enum LoadedLibraryType { LoadedLibraryDylib, LoadedLibraryNative, LoadedLibraryDummy };
 
 typedef std::unordered_map<std::string, MachO::Export> Exports;
 
+// TODO: this should be united with the list in FileMap
 struct LoadedLibrary
 {
 	std::string name;
@@ -75,6 +91,7 @@ namespace Darling
 	typedef bool (*DlsymHookFunc)(char* symName);
 	void registerDlsymHook(DlsymHookFunc func);
 	void deregisterDlsymHook(DlsymHookFunc func);
+	void* DlopenWithContext(const char* filename, int flag, const std::vector<std::string>& rpaths, bool* notFoundError = nullptr);
 };
 
 #endif

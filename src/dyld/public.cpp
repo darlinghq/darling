@@ -42,7 +42,7 @@ uint32_t _dyld_image_count(void)
 
 const struct mach_header* _dyld_get_image_header(uint32_t image_index)
 {
-	return &g_file_map.images().at(image_index)->header;
+	return g_file_map.images().at(image_index)->header;
 }
 
 intptr_t _dyld_get_image_vmaddr_slide(uint32_t image_index)
@@ -62,7 +62,7 @@ char* getsectdata(const struct mach_header* header, const char* segname, const c
 	// Find the loaded image the header belongs to
 	for (FileMap::ImageMap* entry : g_file_map.images())
 	{
-		if (&entry->header == header)
+		if (entry->header == header)
 		{
 			imageMap = entry;
 			break;
@@ -281,7 +281,7 @@ bool _dyld_find_unwind_sections(void* addr, struct dyld_unwind_sections* info)
 	}
 	else // in Mach-O
 	{
-		info->mh = &map->header;
+		info->mh = map->header;
 		info->dwarf_section = reinterpret_cast<const void*>(map->eh_frame.first + map->slide);
 		info->dwarf_section_length = map->eh_frame.second;
 

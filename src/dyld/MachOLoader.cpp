@@ -126,7 +126,7 @@ void MachOLoader::loadDylibs(const MachO& mach, bool nobind, bool bindLazy)
 		else
 			flags |= DARWIN_RTLD_NOW;
 
-		if (!__darwin_dlopen(dylib.c_str(), flags))
+		if (!Darling::DlopenWithContext(dylib.c_str(), flags, m_rpathContext))
 		{
 			LOG << "Failed to dlopen " << dylib << ", throwing an exception\n";
 			std::stringstream ss;
@@ -329,7 +329,7 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 
 	g_bound_names.resize(binds.size());
 
-	for (MachO::Bind* bind : binds)
+	for (const MachO::Bind* bind : binds)
 	{
 		if (bind->is_lazy)
 		{
@@ -513,6 +513,8 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 {
 	intptr slide = 0;
 	intptr base = 0;
+	const FileMap::ImageMap* img;
+	size_t origRpathCount;
 
 	m_exports.push_back(exports);
 	
@@ -526,8 +528,13 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 
 	doRebase(mach, slide);
 	doMProtect(); // decrease the segment protection value
-
+	
+	img = g_file_map.add(mach, slide, base, bindLazy);
+	origRpathCount = m_rpathContext.size();
+	
+	m_rpathContext.insert(m_rpathContext.end(), img->rpaths.begin(), img->rpaths.end());
 	loadDylibs(mach, bindLater, bindLazy);
+	m_rpathContext.resize(origRpathCount);
 	
 	loadInitFuncs(mach, slide);
 
@@ -536,17 +543,15 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	if (!bindLater)
 		doBind(mach.binds(), slide, !bindLazy);
 
-	const FileMap::ImageMap* img = g_file_map.add(mach, slide, base, bindLazy);
-
 	if (!bindLater)
 	{
 		for (LoaderHookFunc* func : g_machoLoaderHooks)
-			func(&img->header, slide);
+			func(img->header, slide);
 	}
 	else
 	{
 		LOG << mach.binds().size() << " binds pending\n";
-		m_pendingBinds.push_back(PendingBind{ &mach, &img->header, slide, bindLazy });
+		m_pendingBinds.push_back(PendingBind{ &mach, img->header, slide, bindLazy });
 	}
 }
 
@@ -679,12 +684,12 @@ void MachOLoader::boot( uint64_t entry, int argc, char** argv, char** envp, char
 	JUMP(entry);
 }
 
-extern "C" void* dyld_stub_binder_fixup(FileMap::ImageMap** imageMap, uintptr_t lazyOffset)
+extern "C" void* dyld_stub_binder_fixup(const FileMap::ImageMap** imageMap, uintptr_t lazyOffset)
 {
 	if (!*imageMap)
 	{
 		LOG << "Finding image for address " << imageMap << std::endl;
-		*imageMap = g_file_map.imageMapForAddr(reinterpret_cast<void*>(imageMap));
+		*imageMap = g_file_map.imageMapForAddr((void*) imageMap);
 
 		if (!*imageMap)
 		{
@@ -701,7 +706,7 @@ extern "C" void* dyld_stub_binder_fixup(FileMap::ImageMap** imageMap, uintptr_t 
 	{
 		if (it->offset == lazyOffset)
 		{
-			toBind.push_back(&*it);
+			toBind.push_back(const_cast<MachO::Bind*>(&*it));
 			break;
 		}
 	}
