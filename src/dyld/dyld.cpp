@@ -25,6 +25,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include "binfmt_misc.h"
 #include <iostream>
 #include <limits.h>
+#include <unistd.h>
 #include <cstdlib>
 #include <stdexcept>
 #include <cstring>
