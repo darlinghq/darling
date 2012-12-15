@@ -205,7 +205,10 @@ void runTest(const char* path)
 	termcolor::set(termcolor::WHITE, termcolor::BLACK, termcolor::DIM);
 
 	std::cout << "Uploading " << path << "...\n";
-	g_sftp->mkdir(dirname.c_str(), 0700);
+	try
+	{
+		g_sftp->mkdir(dirname.c_str(), 0700);
+	} catch (...) {}
 	// upload the source code
 	g_sftp->upload(path, filename);
 
