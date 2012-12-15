@@ -258,8 +258,14 @@ start_search:
 				std::string rpathSearch = *rpath;
 				rpathSearch += g_rpathSearch[i];
 				path = replacePathPrefix("@rpath", filename, rpathSearch.c_str());
-	// TODO: @rpath - https://wincent.com/wiki/@executable_path,_@load_path_and_@rpath
 				RET_IF( __darwin_dlopen(path.c_str(), flag) );
+
+				// Stop if there was an error, vs just not found
+				if (g_ldError[0] && (strncmp(g_ldError, "File not found", 14) != 0))
+				{
+					//std::cout << "RPATH: " << g_ldError << std::endl;
+					return 0;
+				}
 			}
 		}
 	}
