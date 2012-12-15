@@ -1,3 +1,4 @@
+#include "objc_config.h"
 #include "selector.h"
 #include "../new/AppleLayout.h"
 #include "../old/AppleLayout.h"
@@ -10,6 +11,7 @@ void UpdateSelectors(const struct mach_header* mh, intptr_t slide)
 	msgref* msg_refs;
 	unsigned long selsize, msgsize;
 
+#ifdef OBJC_ABI_2
 	sel_refs = reinterpret_cast<selref*>(
 		getsectdata(mh, SEG_OBJC_SELREFS_NEW, SECT_OBJC_SELREFS_NEW, &selsize)
 	);
@@ -18,12 +20,12 @@ void UpdateSelectors(const struct mach_header* mh, intptr_t slide)
 		getsectdata(mh, SEG_OBJC_MSGREFS_NEW, SECT_OBJC_MSGREFS_NEW, &msgsize)
 	);
 	
-	if (!sel_refs)
-	{
-		sel_refs = reinterpret_cast<selref*>(
-			getsectdata(mh, SEG_OBJC_SELREFS_OLD, SECT_OBJC_SELREFS_OLD, &selsize)
-		);
-	}
+#else
+	
+	sel_refs = reinterpret_cast<selref*>(
+		getsectdata(mh, SEG_OBJC_SELREFS_OLD, SECT_OBJC_SELREFS_OLD, &selsize)
+	);
+#endif
 
 	if (sel_refs)
 	{
@@ -34,6 +36,8 @@ void UpdateSelectors(const struct mach_header* mh, intptr_t slide)
 			sel_refs[i].sel = native;
 		}
 	}
+	
+#ifdef OBJC_ABI_2
 	if (msg_refs)
 	{
 		for (size_t i = 0; i < msgsize / sizeof(msgref); i++)
@@ -43,4 +47,5 @@ void UpdateSelectors(const struct mach_header* mh, intptr_t slide)
 			msg_refs[i].sel.sel = native;
 		}
 	}
+#endif
 }
