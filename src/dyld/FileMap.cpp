@@ -30,7 +30,8 @@ FileMap::~FileMap()
 {
 	for (auto m : m_maps)
 	{
-		delete m.second->header;
+		if (m.second)
+			delete m.second->header;
 		delete m.second;
 	}
 }
