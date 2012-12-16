@@ -74,7 +74,6 @@ static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
-extern char g_darwin_loader_path[PATH_MAX];
 extern char g_sysroot[PATH_MAX];
 extern int g_argc;
 extern char** g_argv;
@@ -163,7 +162,7 @@ void* Darling::DlopenWithContext(const char* filename, int flag, const std::vect
 	}
 	else if (strncmp(filename, "@loader_path", 12) == 0)
 	{
-		path = replacePathPrefix("@loader_path", filename, g_darwin_loader_path);
+		path = replacePathPrefix("@loader_path", filename, g_loader->getCurrentLoader().c_str());
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
 	}

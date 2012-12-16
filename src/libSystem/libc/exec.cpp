@@ -16,7 +16,7 @@
 #include <linux/limits.h>
 #include "MachO.h"
 
-extern char g_loader_path[PATH_MAX];
+extern char g_dyld_path[4096];
 
 const char* Darling::findInPath(const char* file)
 {
@@ -75,7 +75,7 @@ char* const* Darling::prependLoaderPath(char *const argv[], const char* fullMach
 	while (argv[count++]);
 	
 	rv = new const char*[count+1];
-	rv[0] = g_loader_path;
+	rv[0] = g_dyld_path;
 	memcpy(rv+1, argv, count * sizeof(char*));
 	
 	rv[1] = fullMachoPath;
@@ -157,9 +157,9 @@ int __darwin_execv(const char *path, char *const argv[])
 	else
 	{
 		argv = Darling::prependLoaderPath(argv, path);
-		int rv = execvp(g_loader_path, argv); // TODO: change to execv?
+		int rv = execvp(g_dyld_path, argv); // TODO: change to execv?
 		
-		std::cout << "Executing with loader at " << g_loader_path << std::endl;
+		LOG << "Executing with loader at " << g_dyld_path << std::endl;
 		
 		errnoOut();
 		
@@ -175,7 +175,7 @@ int __darwin_execvp(const char *file, char *const argv[])
 	const char* path = Darling::findInPath(file);
 	if (!path)
 	{
-		std::cout << "Path failed to be located: " << file << std::endl;
+		LOG << "Path failed to be located: " << file << std::endl;
 		errno = DARWIN_ENOENT;
 		return -1;
 	}
@@ -203,7 +203,7 @@ int __darwin_execvpe(const char *file, char *const argv[], char *const envp[])
 	else
 	{
 		argv = Darling::prependLoaderPath(argv, path);
-		int rv = execvpe(g_loader_path, argv, envp);
+		int rv = execvpe(g_dyld_path, argv, envp);
 		errnoOut();
 		
 		delete [] argv;

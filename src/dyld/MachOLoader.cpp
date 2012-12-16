@@ -39,6 +39,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/mman.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <libgen.h>
 
 FileMap g_file_map;
 static std::vector<std::string> g_bound_names;
@@ -507,7 +508,24 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 	}
 }
 
+const std::string& MachOLoader::getCurrentLoader() const
+{
+	assert(!m_loaderPath.empty());
+	return m_loaderPath.top();
+}
 
+void MachOLoader::pushCurrentLoader(const char* currentLoader)
+{
+	char path[4096];
+	strcpy(path, currentLoader);
+	// @loader_path contains the directory where the Mach-O file currently loading other libraries resides
+	m_loaderPath.push(dirname(path));
+}
+
+void MachOLoader::popCurrentLoader()
+{
+	m_loaderPath.pop();
+}
 
 void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports, bool bindLater, bool bindLazy)
 {
@@ -517,12 +535,7 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	size_t origRpathCount;
 
 	m_exports.push_back(exports);
-	
-	if (!g_darwin_loader_path[0])
-	{
-		strncpy(g_darwin_loader_path, sourcePath.c_str(), PATH_MAX-1);
-		g_darwin_loader_path[PATH_MAX-1] = 0;
-	}
+	pushCurrentLoader(sourcePath.c_str());
 
 	loadSegments(mach, &slide, &base);
 
@@ -557,6 +570,8 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 		LOG << mach.binds().size() << " binds pending\n";
 		m_pendingBinds.push_back(PendingBind{ &mach, img->header, slide, bindLazy });
 	}
+	
+	popCurrentLoader();
 }
 
 void MachOLoader::doPendingBinds()
