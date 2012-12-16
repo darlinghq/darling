@@ -529,17 +529,21 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	doRebase(mach, slide);
 	doMProtect(); // decrease the segment protection value
 	
-	img = g_file_map.add(mach, slide, base, bindLazy);
+	
 	origRpathCount = m_rpathContext.size();
 	
-	m_rpathContext.insert(m_rpathContext.end(), img->rpaths.begin(), img->rpaths.end());
+	for (const char* rpath : mach.rpaths())
+		m_rpathContext.push_back(rpath);
 	loadDylibs(mach, bindLater, bindLazy);
 	m_rpathContext.resize(origRpathCount);
 	
 	loadInitFuncs(mach, slide);
 
 	loadExports(mach, base, exports);
-
+	
+	
+	img = g_file_map.add(mach, slide, base, bindLazy);
+	
 	if (!bindLater)
 		doBind(mach.binds(), slide, !bindLazy);
 
