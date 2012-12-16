@@ -196,6 +196,7 @@ void setupExecutablePath(const char* relativePath)
 	
 	// @executable_path should point to the directory containing the main executable file
 	::strcpy(g_darwin_executable_path, dirname(path));
+	LOG << "@executable_path is " << g_darwin_executable_path << std::endl;
 }
 
 void setupDyldPath(const char* relativePath)

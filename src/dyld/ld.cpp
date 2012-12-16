@@ -106,13 +106,7 @@ static void initLD()
 static std::string replacePathPrefix(const char* prefix, const char* prefixed, const char* replacement)
 {
 	std::string path = replacement;
-	char* repl = new char[strlen(replacement)];
-	
-	strcpy(repl, replacement);
-	path = dirname(repl);
 	path += (prefixed + strlen(prefix));
-	
-	delete [] repl;
 	return path;
 }
 
@@ -156,7 +150,7 @@ void* Darling::DlopenWithContext(const char* filename, int flag, const std::vect
 	if (strncmp(filename, "@executable_path", 16) == 0)
 	{
 		path = replacePathPrefix("@executable_path", filename, g_darwin_executable_path);
-		//std::cout << "Full path: " << path << std::endl;
+		LOG << "Full path after replacing @executable_path: " << path << std::endl;
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
 	}
