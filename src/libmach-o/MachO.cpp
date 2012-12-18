@@ -30,6 +30,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <cstring>
 #include <map>
+#include <unistd.h>
 
 MachO* MachO::readFile(std::string path, const char* arch, bool need_exports)
 {

@@ -32,6 +32,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <locale.h>
 #include <mcheck.h>
+#include <unistd.h>
 
 char g_darwin_executable_path[PATH_MAX];
 char g_loader_path[PATH_MAX];

@@ -30,6 +30,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
+#include <unistd.h>
 
 #define N_WEAK_DEF			0x0080
 #define FLAGS_READ_SYMTAB	1
