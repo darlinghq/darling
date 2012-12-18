@@ -15,7 +15,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "MachO.h"
@@ -25,6 +25,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include "binfmt_misc.h"
 #include <iostream>
 #include <limits.h>
+#include <unistd.h>
 #include <cstdlib>
 #include <stdexcept>
 #include <cstring>
@@ -33,15 +34,13 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <locale.h>
 #include <mcheck.h>
 #include <unistd.h>
+#include <libgen.h>
 
-char g_darwin_executable_path[PATH_MAX];
-char g_loader_path[PATH_MAX];
-char g_sysroot[PATH_MAX] = "";
+char g_darwin_executable_path[4096] = "";
+char g_dyld_path[4096] = "";
+char g_sysroot[4096] = "";
 bool g_trampoline = false;
 bool g_noWeak = false;
-
-extern "C" char* __loader_path;
-char* __loader_path = g_loader_path;
 
 MachO* g_mainBinary = 0;
 MachOLoader* g_loader = 0;
@@ -49,6 +48,8 @@ int g_argc;
 char** g_argv;
 
 static void autoSysrootSearch();
+static void setupExecutablePath(const char* relativePath);
+static void setupDyldPath(const char* relativePath);
 
 int main(int argc, char** argv, char** envp)
 {
@@ -71,14 +72,14 @@ int main(int argc, char** argv, char** envp)
 	
 	try
 	{
-		if (!::realpath(argv[0], g_loader_path))
-			::strcpy(g_loader_path, argv[0]);
+		if (!::realpath(argv[0], g_dyld_path))
+			::strcpy(g_dyld_path, argv[0]);
 
 		if (argc == 2)
 		{
 			if (!strcmp(argv[1], "--register"))
 			{
-				Darling::binfmtRegister(g_loader_path);
+				Darling::binfmtRegister(g_dyld_path);
 				return 0;
 			}
 			else if (!strcmp(argv[1], "--deregister"))
@@ -87,9 +88,10 @@ int main(int argc, char** argv, char** envp)
 				return 0;
 			}
 		}
-
-		if (!::realpath(argv[1], g_darwin_executable_path))
-			::strcpy(g_darwin_executable_path, argv[1]);
+		
+		setupDyldPath(argv[0]);
+		// sets up @executable_path
+		setupExecutablePath(argv[1]);
 	
 		// setlocale(LC_CTYPE, "");
 		if (getenv("DYLD_MTRACE") && atoi(getenv("DYLD_MTRACE")))
@@ -180,7 +182,28 @@ extern "C" const char* dyld_getDarwinExecutablePath()
 
 extern "C" const char* dyld_getLoaderPath()
 {
-	return g_loader_path;
+	return g_loader->getCurrentLoader().c_str();
+}
+
+void setupExecutablePath(const char* relativePath)
+{
+	char path[PATH_MAX];
+	
+	if (!::realpath(relativePath, path))
+	{
+		// We'll probably fail a bit later anyway
+		return;
+	}
+	
+	// @executable_path should point to the directory containing the main executable file
+	::strcpy(g_darwin_executable_path, dirname(path));
+	LOG << "@executable_path is " << g_darwin_executable_path << std::endl;
+}
+
+void setupDyldPath(const char* relativePath)
+{
+	if (!::realpath(relativePath, g_dyld_path))
+		::strcpy(g_dyld_path, relativePath);
 }
 
 void autoSysrootSearch()

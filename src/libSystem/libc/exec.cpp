@@ -16,9 +16,9 @@
 #include <linux/limits.h>
 #include "MachO.h"
 
-extern char g_loader_path[PATH_MAX];
+extern char g_dyld_path[4096];
 
-static const char* findInPath(const char* file)
+const char* Darling::findInPath(const char* file)
 {
 	static __thread char buffer[DARWIN_MAXPATHLEN];
 	
@@ -67,7 +67,7 @@ static const char* findInPath(const char* file)
 	return 0;
 }
 
-static char* const* prependLoaderPath(char *const argv[], const char* fullMachoPath)
+char* const* Darling::prependLoaderPath(char *const argv[], const char* fullMachoPath)
 {
 	int count = 0;
 	const char** rv;
@@ -75,7 +75,7 @@ static char* const* prependLoaderPath(char *const argv[], const char* fullMachoP
 	while (argv[count++]);
 	
 	rv = new const char*[count+1];
-	rv[0] = g_loader_path;
+	rv[0] = g_dyld_path;
 	memcpy(rv+1, argv, count * sizeof(char*));
 	
 	rv[1] = fullMachoPath;
@@ -156,10 +156,10 @@ int __darwin_execv(const char *path, char *const argv[])
 	}
 	else
 	{
-		argv = prependLoaderPath(argv, path);
-		int rv = execvp(g_loader_path, argv);
+		argv = Darling::prependLoaderPath(argv, path);
+		int rv = execvp(g_dyld_path, argv); // TODO: change to execv?
 		
-		std::cout << "Executing with loader at " << g_loader_path << std::endl;
+		LOG << "Executing with loader at " << g_dyld_path << std::endl;
 		
 		errnoOut();
 		
@@ -172,10 +172,10 @@ int __darwin_execvp(const char *file, char *const argv[])
 {
 	TRACE1(file);
 	
-	const char* path = findInPath(file);
+	const char* path = Darling::findInPath(file);
 	if (!path)
 	{
-		std::cout << "Path failed to be located: " << file << std::endl;
+		LOG << "Path failed to be located: " << file << std::endl;
 		errno = DARWIN_ENOENT;
 		return -1;
 	}
@@ -187,7 +187,7 @@ int __darwin_execvpe(const char *file, char *const argv[], char *const envp[])
 {
 	TRACE1(file);
 	
-	const char* path = findInPath(file);
+	const char* path = Darling::findInPath(file);
 	if (!path)
 	{
 		errno = DARWIN_ENOENT;
@@ -202,8 +202,8 @@ int __darwin_execvpe(const char *file, char *const argv[], char *const envp[])
 	}
 	else
 	{
-		argv = prependLoaderPath(argv, path);
-		int rv = execvpe(g_loader_path, argv, envp);
+		argv = Darling::prependLoaderPath(argv, path);
+		int rv = execvpe(g_dyld_path, argv, envp);
 		errnoOut();
 		
 		delete [] argv;

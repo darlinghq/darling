@@ -6,6 +6,8 @@
 #define LIB_DIR_NAME "lib@SUFFIX@"
 #define INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"
 
+#define ETC_DARLING_PATH "/etc/darling"
+
 #cmakedefine MULTILIB
 
 /*

@@ -14,7 +14,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "config.h"
@@ -55,6 +55,15 @@ static const char* g_searchPath[] = {
 	"/usr/lib", "/usr/local/lib", "/lib",
 };
 
+/*
+static const char* g_rpathSearch[] = {
+	"",
+	"/Frameworks/",
+	"/OtherFrameworks/",
+	"/SharedFrameworks/",
+};
+*/
+
 static const char* g_suffixes[] = { "$DARWIN_EXTSN", "$UNIX2003", "$NOCANCEL" };
 static IniConfig* g_iniConfig = 0;
 
@@ -65,7 +74,6 @@ static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
-extern char g_darwin_loader_path[PATH_MAX];
 extern char g_sysroot[PATH_MAX];
 extern int g_argc;
 extern char** g_argv;
@@ -87,7 +95,7 @@ static void initLD()
 	
 	try
 	{
-		g_iniConfig = new IniConfig("/etc/darling/dylib.conf");
+		g_iniConfig = new IniConfig(ETC_DARLING_PATH "/dylib.conf");
 	}
 	catch (const std::exception& e)
 	{
@@ -98,23 +106,38 @@ static void initLD()
 static std::string replacePathPrefix(const char* prefix, const char* prefixed, const char* replacement)
 {
 	std::string path = replacement;
-	char* repl = new char[strlen(replacement)];
-	
-	strcpy(repl, replacement);
-	path = dirname(repl);
 	path += (prefixed + strlen(prefix));
-	
-	delete [] repl;
 	return path;
 }
 
 void* __darwin_dlopen(const char* filename, int flag)
 {
+	void* callerLocation;
+	std::vector<std::string> rpathList;
+	const FileMap::ImageMap *mainExecutable, *callerExecutable;
+	
+	callerLocation = __builtin_return_address(0);
+	mainExecutable = g_file_map.mainExecutable();
+	callerExecutable = g_file_map.imageMapForAddr(callerLocation);
+	
+	rpathList.insert(rpathList.end(), mainExecutable->rpaths.begin(), mainExecutable->rpaths.end());
+	if (callerExecutable != nullptr && callerExecutable != mainExecutable)
+		rpathList.insert(rpathList.end(), callerExecutable->rpaths.begin(), callerExecutable->rpaths.end());
+	
+	return Darling::DlopenWithContext(filename, flag, rpathList);
+}
+
+void* Darling::DlopenWithContext(const char* filename, int flag, const std::vector<std::string>& rpaths, bool* notFoundError)
+{
 	TRACE2(filename, flag);
 	
 	Darling::MutexLock l(g_ldMutex);
+	std::string path;
 	
 	g_ldError[0] = 0;
+	
+	if (notFoundError != nullptr)
+		*notFoundError = false;
 	
 	if (!filename)
 	{
@@ -123,124 +146,40 @@ void* __darwin_dlopen(const char* filename, int flag)
 	}
 	
 	flag = translateFlags(flag);
-	
-	std::string path;
-#if 0
-start_search:
-	if (*filename == '/')
-	{
-		if (g_iniConfig && g_iniConfig->hasSection("aliases"))
-		{
-			const IniConfig::ValueMap* m = g_iniConfig->getSection("aliases");
-			if (map_contains(*m, filename))
-			{
-				path = map_get(*m, filename);
-				LOG << "Trying " << path << std::endl;
-				RET_IF( attemptDlopen(path.c_str(), flag) );
-			}
 
-			path = strrchr(filename, '/')+1;
-			if (map_contains(*m, path))
-			{
-				path = map_get(*m, path);
-				LOG << "Trying " << path << std::endl;
-				RET_IF( attemptDlopen(path.c_str(), flag) );
-			}
-		}
-		
-		if (g_sysroot[0])
-		{
-			path = g_sysroot + std::string(filename) + ".so";
-			LOG << "Trying " << path << std::endl;
-			if (::access(path.c_str(), R_OK) == 0)
-				RET_IF( attemptDlopen(path.c_str(), flag) );
-			
-			path = std::string(g_sysroot) + filename;
-			if (::access(path.c_str(), R_OK) == 0)
-				RET_IF( attemptDlopen(path.c_str(), flag) );
-		}
-		
-		path = std::string(filename) + ".so";
-#ifdef MULTILIB
-		{
-			size_t pos = path.find("/lib/");
-			if (pos != std::string::npos)
-				path.replace(pos, 5, "/" LIB_DIR_NAME "/");
-		}
-#endif
-		LOG << "Trying " << path << std::endl;
-		if (::access(path.c_str(), R_OK) == 0)
-			RET_IF( attemptDlopen(path.c_str(), flag) );
-		
-		path = std::string(LIB_PATH) + filename + ".so";
-		if (::access(path.c_str(), R_OK) == 0)
-			RET_IF( attemptDlopen(path.c_str(), flag) );
-		
-		if (::access(filename, R_OK) == 0)
-			RET_IF( attemptDlopen(filename, flag) );
-		
-		path = std::string(LIB_PATH) + filename;
-		if (::access(path.c_str(), R_OK) == 0)
-			RET_IF( attemptDlopen(path.c_str(), flag) );
-		
-		regmatch_t matches[3];
-		if (regexec(&g_reAutoMappable, filename, 3, matches, 0) == 0)
-		{
-			path = std::string(filename, matches[0].rm_so+1);
-			path += std::string(filename + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-			path += ".so.";
-			path += std::string(filename + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
-			
-			if (::access(path.c_str(), R_OK) == 0)
-			{
-				LOG << "Warning: Automatically mapping " << filename << " to " << path << std::endl;
-				RET_IF( attemptDlopen(path.c_str(), flag) );
-			}
-			
-			//path = std::string(filename, matches[0].rm_so+1);
-			path = std::string(filename + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-			path += ".so.";
-			path += std::string(filename + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
-			
-			LOG << path << std::endl;
-			
-			//if (::access(path.c_str(), R_OK) == 0)
-			//{
-				LOG << "Warning: Trying to remap " << filename << " to " << path << std::endl;
-				RET_IF( attemptDlopen(path.c_str(), flag) );
-			//}
-		}
-		
-		if (strcmp(INSTALL_PREFIX, "/usr") != 0)
-		{
-			// We need to change the prefix in filename if present
-			if (strncmp(filename, "/usr", 4) == 0 && strncmp(filename, INSTALL_PREFIX, strlen(INSTALL_PREFIX)) != 0)
-			{
-				char* name = reinterpret_cast<char*>(alloca( strlen(INSTALL_PREFIX) + strlen(filename) + 1 ));
-				strcpy(name, INSTALL_PREFIX);
-				strcat(name, filename+4);
-				filename = name;
-				LOG << "Remapping prefix, loading " << name << " instead\n";
-				goto start_search;
-			}
-		}
-	}
-	else
-#endif
 	if (strncmp(filename, "@executable_path", 16) == 0)
 	{
 		path = replacePathPrefix("@executable_path", filename, g_darwin_executable_path);
-		//std::cout << "Full path: " << path << std::endl;
+		LOG << "Full path after replacing @executable_path: " << path << std::endl;
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
 	}
 	else if (strncmp(filename, "@loader_path", 12) == 0)
 	{
-		path = replacePathPrefix("@loader_path", filename, g_darwin_loader_path);
+		path = replacePathPrefix("@loader_path", filename, g_loader->getCurrentLoader().c_str());
 		if (::access(path.c_str(), R_OK) == 0)
 			RET_IF( attemptDlopen(path.c_str(), flag) );
 	}
-	// TODO: @rpath - https://wincent.com/wiki/@executable_path,_@load_path_and_@rpath
+	else if (strncmp(filename, "@rpath", 6) == 0)
+	{
+		// @rpath - https://wincent.com/wiki/@executable_path,_@load_path_and_@rpath
+		for (std::string rpathSearch : rpaths)
+		{
+			//for (const char* extraSuffix : g_rpathSearch) // TODO: do we need this?
+			const char* extraSuffix = "";
+			{
+				bool recNotFoundError;
+				rpathSearch += extraSuffix;
+				path = replacePathPrefix("@rpath", filename, rpathSearch.c_str());
+				
+				RET_IF( DlopenWithContext(path.c_str(), flag, rpaths, &recNotFoundError) );
+
+				// Stop if there was an error, vs just not found
+				if (!recNotFoundError)
+					return nullptr;
+			}
+		}
+	}
 	else
 	{
 		if (const char* ldp = getenv("DYLD_LIBRARY_PATH"))
@@ -281,8 +220,14 @@ start_search:
 	}
 	
 	if (!g_ldError[0])
+	{
 		snprintf(g_ldError, sizeof(g_ldError)-1, "File not found: %s", filename);
-	return 0;
+		
+		if (notFoundError != nullptr)
+			*notFoundError = true;
+	}
+	
+	return nullptr;
 }
 
 static int translateFlags(int flag)
@@ -518,6 +463,74 @@ static const char* translateSymbol(const char* symbol)
 	}
 
 	return symbuffer;
+}
+
+NSSymbol NSLookupAndBindSymbol(const char* symbolName)
+{
+	return __darwin_dlsym(DARWIN_RTLD_DEFAULT, symbolName);
+}
+
+NSSymbol NSLookupSymbolInModule(NSModule module, const char* symbolName)
+{
+	return __darwin_dlsym(module, symbolName);
+}
+
+const char* NSNameOfSymbol(NSSymbol symbolAddr)
+{
+	Dl_info info;
+	
+	if (!__darwin_dladdr(symbolAddr, &info))
+		return nullptr;
+	
+	return info.dli_sname;
+}
+
+void* NSAddressOfSymbol(NSSymbol nssymbol)
+{
+	return nssymbol;
+}
+
+int NSIsSymbolNameDefined(const char* name)
+{
+	return NSLookupAndBindSymbol(name) != nullptr;
+}
+
+NSModule NSModuleForSymbol(NSSymbol symbol)
+{
+	const FileMap::ImageMap* map = g_file_map.imageMapForAddr(symbol);
+	
+	if (!map)
+		return nullptr;
+	
+	auto it = g_ldLibraries.find(map->filename);
+	if (it == g_ldLibraries.end())
+		return nullptr;
+	
+	return it->second;
+}
+
+int NSIsSymbolNameDefinedInImage(const struct mach_header *image, const char *symbolName)
+{
+	// TODO: this inefficient double search will be avoided when we unite LoadedLibrary and FileMap::ImageMap
+	const FileMap::ImageMap* map = g_file_map.imageMapForHeader(image);
+	LoadedLibrary* ldlib = g_ldLibraries[map->filename];
+	
+	return __darwin_dlsym(ldlib, symbolName) != nullptr;
+}
+
+const char* NSNameOfModule(NSModule m)
+{
+	if (!m)
+		return nullptr;
+	
+	LoadedLibrary* ldlib = static_cast<LoadedLibrary*>(m);
+	return ldlib->name.c_str();
+}
+
+const char* NSLibraryNameForModule(NSModule m)
+{
+	// TODO: we need to check what these two functions return on a real system
+	return NSNameOfModule(m);
 }
 
 void* __darwin_dlsym(void* handle, const char* symbol, void* extra)

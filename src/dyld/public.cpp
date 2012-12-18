@@ -14,7 +14,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "config.h"
@@ -28,6 +28,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <link.h>
 #include <stddef.h>
+#include "../util/log.h"
 #include "../util/leb.h"
 
 extern FileMap g_file_map;
@@ -42,7 +43,7 @@ uint32_t _dyld_image_count(void)
 
 const struct mach_header* _dyld_get_image_header(uint32_t image_index)
 {
-	return &g_file_map.images().at(image_index)->header;
+	return g_file_map.images().at(image_index)->header;
 }
 
 intptr_t _dyld_get_image_vmaddr_slide(uint32_t image_index)
@@ -58,11 +59,18 @@ const char* _dyld_get_image_name(uint32_t image_index)
 char* getsectdata(const struct mach_header* header, const char* segname, const char* sectname, unsigned long* size)
 {
 	FileMap::ImageMap* imageMap = 0;
+	
+	if (!segname || !sectname || !size)
+	{
+		LOG << "Warning: getsectdata() called with NULL pointers\n";
+		// abort();
+		return nullptr;
+	}
 
 	// Find the loaded image the header belongs to
 	for (FileMap::ImageMap* entry : g_file_map.images())
 	{
-		if (&entry->header == header)
+		if (entry->header == header)
 		{
 			imageMap = entry;
 			break;
@@ -281,7 +289,7 @@ bool _dyld_find_unwind_sections(void* addr, struct dyld_unwind_sections* info)
 	}
 	else // in Mach-O
 	{
-		info->mh = &map->header;
+		info->mh = map->header;
 		info->dwarf_section = reinterpret_cast<const void*>(map->eh_frame.first + map->slide);
 		info->dwarf_section_length = map->eh_frame.second;
 

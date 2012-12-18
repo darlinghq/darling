@@ -15,7 +15,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef MACHOLOADER_H
@@ -24,6 +24,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <map>
 #include <utility>
+#include <stack>
 #include <stdint.h>
 #include "MachO.h"
 #include "arch.h"
@@ -89,12 +90,17 @@ public:
 	const std::list<Exports*>& getExports() const { return m_exports; }
 	Exports* getMainExecutableExports() const { return m_mainExports; }
 	
+	// Gets the path to the currently loaded Mach-O file
+	const std::string& getCurrentLoader() const;
+	
 private:
 	// Jumps to the application entry
 	void boot(uint64_t entry, int argc, char** argv, char** envp, char** apple);
 
 	// checks sysctl mmap_min_addr
 	static void checkMmapMinAddr(intptr addr);
+	void pushCurrentLoader(const char* currentLoader);
+	void popCurrentLoader();
 private:
 	intptr m_last_addr;
 	std::vector<uint64_t> m_init_funcs;
@@ -122,6 +128,9 @@ private:
 		bool bindLazy;
 	};
 	std::vector<PendingBind> m_pendingBinds;
+	
+	std::vector<std::string> m_rpathContext;
+	std::stack<std::string> m_loaderPath;
 };
 
 #endif

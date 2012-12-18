@@ -15,7 +15,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "MachOImpl.h"
@@ -26,6 +26,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <mach-o/loader.h>
 #include <sys/mman.h>
+#include <unistd.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -541,6 +542,15 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 			const char* name = (char*)cmds_ptr + lib->name.offset;
 			LOG << "dylib: '" << name << "'\n";
 			m_dylibs.push_back(name);
+			break;
+		}
+
+		case LC_RPATH:
+		{
+			lc_str path = reinterpret_cast<rpath_command*>(cmds_ptr)->path;
+			const char* rpath = (char*)cmds_ptr + path.offset;
+			LOG << "rpath: '" << rpath << "'\n";
+			m_rpaths.push_back(rpath);
 			break;
 		}
 

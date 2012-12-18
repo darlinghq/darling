@@ -89,7 +89,7 @@ sighandler_t __darwin_signal(int signum, sighandler_t handler)
 	return signal(signum, handler);
 }
 
-static sigset_t sigsetDarwinToLinux(const __darwin_sigset_t* set)
+sigset_t Darling::sigsetDarwinToLinux(const __darwin_sigset_t* set)
 {
 	sigset_t rv;
 
@@ -104,7 +104,7 @@ static sigset_t sigsetDarwinToLinux(const __darwin_sigset_t* set)
 	return rv;
 }
 
-static __darwin_sigset_t sigsetLinuxToDarwin(const sigset_t* set)
+__darwin_sigset_t Darling::sigsetLinuxToDarwin(const sigset_t* set)
 {
 	__darwin_sigset_t rv = 0;
 
@@ -136,7 +136,7 @@ int __darwin_sigaction(int signum, const struct __darwin_sigaction* act, struct 
 		nact->sa_flags = Darling::flagsDarwinToNative(g_sigactionFlags, sizeof(g_sigactionFlags)/sizeof(g_sigactionFlags[0]), act->sa_flags);
 		nact->sa_handler = act->xsa_handler;
 		nact->sa_sigaction = act->xsa_sigaction;
-		nact->sa_mask = sigsetDarwinToLinux(&act->sa_mask);
+		nact->sa_mask = Darling::sigsetDarwinToLinux(&act->sa_mask);
 		oldhdl = g_darwinHandlers[signum];
 
 		// defer a user-supplied function to a wrapper that will translate the signal number
@@ -159,7 +159,7 @@ int __darwin_sigaction(int signum, const struct __darwin_sigaction* act, struct 
 		else
 			oldact->xsa_handler = noldact->sa_handler;
 		oldact->xsa_sigaction = oldhdl;
-		oldact->sa_mask = sigsetLinuxToDarwin(&noldact->sa_mask);
+		oldact->sa_mask = Darling::sigsetLinuxToDarwin(&noldact->sa_mask);
 	}
 	if (rv == -1)
 		errnoOut();
@@ -228,7 +228,7 @@ int __darwin_sigprocmask(int how, const __darwin_sigset_t *set, __darwin_sigset_
 	if (set)
 	{
 		nset.reset(new sigset_t);
-		*nset = sigsetDarwinToLinux(set);
+		*nset = Darling::sigsetDarwinToLinux(set);
 	}
 	if (oldset)
 		noldset.reset(new sigset_t);
@@ -239,14 +239,14 @@ int __darwin_sigprocmask(int how, const __darwin_sigset_t *set, __darwin_sigset_
 	if (rv == -1)
 		errnoOut();
 	else if (oldset)
-		*oldset = sigsetLinuxToDarwin(noldset.get());
+		*oldset = Darling::sigsetLinuxToDarwin(noldset.get());
 	
 	return rv;
 }
 
 int __darwin_sigsuspend(const __darwin_sigset_t *mask)
 {
-	sigset_t set = sigsetDarwinToLinux(mask);
+	sigset_t set = Darling::sigsetDarwinToLinux(mask);
 	int rv = sigsuspend(&set);
 	if (rv == -1)
 		errnoOut();
@@ -255,7 +255,7 @@ int __darwin_sigsuspend(const __darwin_sigset_t *mask)
 
 int __darwin_sigwait(const __darwin_sigset_t *set, int *sig)
 {
-	sigset_t nset = sigsetDarwinToLinux(set);
+	sigset_t nset = Darling::sigsetDarwinToLinux(set);
 	int rv = sigwait(&nset, sig);
 	if (rv == -1)
 		errnoOut();
@@ -271,7 +271,7 @@ int __darwin_sigpending(__darwin_sigset_t *set)
 	if (rv == -1)
 		errnoOut();
 	else
-		*set = sigsetLinuxToDarwin(&nset);
+		*set = Darling::sigsetLinuxToDarwin(&nset);
 	return rv;
 }
 

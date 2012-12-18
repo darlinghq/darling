@@ -46,3 +46,7 @@ void _keymgr_unlock_processwide_ptr(unsigned key)
 	pthread_mutex_unlock(&m_keymgr[key].mutex);
 }
 
+void __keymgr_dwarf2_register_sections()
+{
+}
+

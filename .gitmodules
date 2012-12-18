@@ -1,3 +1,6 @@
 [submodule "tests/libsshcxx"]
 	path = tests/libsshcxx
 	url = git://git.dolezel.info/libsshcxx.git
+[submodule "src/darling-mach"]
+	path = src/darling-mach
+	url = git@github.com:LubosD/darling-mach.git

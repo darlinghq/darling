@@ -15,7 +15,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "config.h"
@@ -39,6 +39,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/mman.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <libgen.h>
 
 FileMap g_file_map;
 static std::vector<std::string> g_bound_names;
@@ -126,7 +127,7 @@ void MachOLoader::loadDylibs(const MachO& mach, bool nobind, bool bindLazy)
 		else
 			flags |= DARWIN_RTLD_NOW;
 
-		if (!__darwin_dlopen(dylib.c_str(), flags))
+		if (!Darling::DlopenWithContext(dylib.c_str(), flags, m_rpathContext))
 		{
 			LOG << "Failed to dlopen " << dylib << ", throwing an exception\n";
 			std::stringstream ss;
@@ -329,7 +330,7 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 
 	g_bound_names.resize(binds.size());
 
-	for (MachO::Bind* bind : binds)
+	for (const MachO::Bind* bind : binds)
 	{
 		if (bind->is_lazy)
 		{
@@ -507,47 +508,70 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 	}
 }
 
+const std::string& MachOLoader::getCurrentLoader() const
+{
+	assert(!m_loaderPath.empty());
+	return m_loaderPath.top();
+}
 
+void MachOLoader::pushCurrentLoader(const char* currentLoader)
+{
+	char path[4096];
+	strcpy(path, currentLoader);
+	// @loader_path contains the directory where the Mach-O file currently loading other libraries resides
+	m_loaderPath.push(dirname(path));
+}
+
+void MachOLoader::popCurrentLoader()
+{
+	m_loaderPath.pop();
+}
 
 void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports, bool bindLater, bool bindLazy)
 {
 	intptr slide = 0;
 	intptr base = 0;
+	const FileMap::ImageMap* img;
+	size_t origRpathCount;
 
 	m_exports.push_back(exports);
-	
-	if (!g_darwin_loader_path[0])
-	{
-		strncpy(g_darwin_loader_path, sourcePath.c_str(), PATH_MAX-1);
-		g_darwin_loader_path[PATH_MAX-1] = 0;
-	}
+	pushCurrentLoader(sourcePath.c_str());
 
 	loadSegments(mach, &slide, &base);
 
 	doRebase(mach, slide);
 	doMProtect(); // decrease the segment protection value
-
+	
+	
+	origRpathCount = m_rpathContext.size();
+	
+	for (const char* rpath : mach.rpaths())
+		m_rpathContext.push_back(rpath);
 	loadDylibs(mach, bindLater, bindLazy);
+	m_rpathContext.resize(origRpathCount);
 	
 	loadInitFuncs(mach, slide);
 
 	loadExports(mach, base, exports);
-
+	
+	
+	img = g_file_map.add(mach, slide, base, bindLazy);
+	
 	if (!bindLater)
 		doBind(mach.binds(), slide, !bindLazy);
-
-	const FileMap::ImageMap* img = g_file_map.add(mach, slide, base, bindLazy);
 
 	if (!bindLater)
 	{
 		for (LoaderHookFunc* func : g_machoLoaderHooks)
-			func(&img->header, slide);
+			func(img->header, slide);
 	}
 	else
 	{
 		LOG << mach.binds().size() << " binds pending\n";
-		m_pendingBinds.push_back(PendingBind{ &mach, &img->header, slide, bindLazy });
+		m_pendingBinds.push_back(PendingBind{ &mach, img->header, slide, bindLazy });
 	}
+	
+	popCurrentLoader();
 }
 
 void MachOLoader::doPendingBinds()
@@ -679,12 +703,12 @@ void MachOLoader::boot( uint64_t entry, int argc, char** argv, char** envp, char
 	JUMP(entry);
 }
 
-extern "C" void* dyld_stub_binder_fixup(FileMap::ImageMap** imageMap, uintptr_t lazyOffset)
+extern "C" void* dyld_stub_binder_fixup(const FileMap::ImageMap** imageMap, uintptr_t lazyOffset)
 {
 	if (!*imageMap)
 	{
 		LOG << "Finding image for address " << imageMap << std::endl;
-		*imageMap = g_file_map.imageMapForAddr(reinterpret_cast<void*>(imageMap));
+		*imageMap = g_file_map.imageMapForAddr((void*) imageMap);
 
 		if (!*imageMap)
 		{
@@ -701,7 +725,7 @@ extern "C" void* dyld_stub_binder_fixup(FileMap::ImageMap** imageMap, uintptr_t 
 	{
 		if (it->offset == lazyOffset)
 		{
-			toBind.push_back(&*it);
+			toBind.push_back(const_cast<MachO::Bind*>(&*it));
 			break;
 		}
 	}

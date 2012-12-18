@@ -15,6 +15,12 @@ int __darwin_execvpe(const char *file, char *const argv[], char *const envp[]);
 
 #ifdef __cplusplus
 }
+
+namespace Darling
+{
+	const char* findInPath(const char* file);
+	char* const* prependLoaderPath(char *const argv[], const char* fullMachoPath);
+}
 #endif
 
 #endif

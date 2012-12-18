@@ -7,6 +7,7 @@ extern "C" {
 void* _keymgr_get_and_lock_processwide_ptr(unsigned key);
 void _keymgr_set_and_unlock_processwide_ptr(unsigned key, void* ptr);
 void _keymgr_unlock_processwide_ptr(unsigned key);
+void __keymgr_dwarf2_register_sections();
 
 }
 
