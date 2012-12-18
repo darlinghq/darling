@@ -33,7 +33,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <locale.h>
 #include <mcheck.h>
-#include <unistd.h>
 #include <libgen.h>
 
 char g_darwin_executable_path[4096] = "";

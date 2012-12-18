@@ -30,7 +30,6 @@
 #include <stdexcept>
 #include <cstring>
 #include <iomanip>
-#include <unistd.h>
 
 enum OpMode { ModeDylibs, ModeSymbols, ModeExports, ModeBinds, ModeSegments };
 
