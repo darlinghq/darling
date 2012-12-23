@@ -585,9 +585,17 @@ void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 		// Now try without a prefix
 		const char* translated = translateSymbol(symbol);
 		LOG << "Trying " << translated << std::endl;
-		sym = ::dlsym(RTLD_DEFAULT, translated);
-		if (sym)
-			return sym;
+		
+		for (auto& pair : g_ldLibraries)
+		{
+			if (pair.second->type == LoadedLibraryNative)
+			{
+				LOG << "Trying in " << pair.first << std::endl;
+				RET_IF(::dlsym(pair.second->nativeRef, translated));
+			}
+		}
+		
+		RET_IF(::dlsym(RTLD_DEFAULT, translated));
 
 		// Now we fail
 		snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot find symbol '%s'", symbol);
