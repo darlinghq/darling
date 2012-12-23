@@ -592,10 +592,15 @@ void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 			{
 				LOG << "Trying in " << pair.first << std::endl;
 				RET_IF(::dlsym(pair.second->nativeRef, translated));
+				if (strcmp(translated, symbol) != 0)
+					RET_IF(::dlsym(pair.second->nativeRef, symbol));
 			}
 		}
 		
 		RET_IF(::dlsym(RTLD_DEFAULT, translated));
+		
+		if (strcmp(translated, symbol) != 0)
+			RET_IF(::dlsym(RTLD_DEFAULT, symbol));
 
 		// Now we fail
 		snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot find symbol '%s'", symbol);
