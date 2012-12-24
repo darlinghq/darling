@@ -83,4 +83,9 @@ In `src/tests/libsshcxx`, a copy of my libssh C++ wrapper should check itself ou
 
 Find out how Darling can help you with debugging at http://darling.dolezel.info/en/Debugging
 
+## What NOT to do
+
+To avoid mistakes:
+
+* DO NOT use opencflite and similar Apple CFLite forks, unless you know what you're doing. They lack bridging support with gnustep-base. Bridging between gnustep-corebase and -base is at least work in progress. Should CFLite forks ever fix a bug for you, please help fix the problem in gnustep-corebase.
 

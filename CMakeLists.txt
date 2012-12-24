@@ -129,6 +129,7 @@ add_subdirectory(src/CoreServices)
 add_subdirectory(src/IOKit)
 add_subdirectory(src/libcrashhandler)
 add_subdirectory(src/thin)
+add_subdirectory(src/cxx)
 
 add_dependencies(dyld${SUFFIX} mach-o)
 add_dependencies(System.B.dylib genfuncmap)

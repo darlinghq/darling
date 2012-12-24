@@ -169,8 +169,8 @@ void* Darling::DlopenWithContext(const char* filename, int flag, const std::vect
 			const char* extraSuffix = "";
 			{
 				bool recNotFoundError;
-				rpathSearch += extraSuffix;
-				path = replacePathPrefix("@rpath", filename, rpathSearch.c_str());
+				std::string rpathSearchExtra = rpathSearch + extraSuffix;
+				path = replacePathPrefix("@rpath", filename, rpathSearchExtra.c_str());
 				
 				RET_IF( DlopenWithContext(path.c_str(), flag, rpaths, &recNotFoundError) );
 
@@ -585,9 +585,22 @@ void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 		// Now try without a prefix
 		const char* translated = translateSymbol(symbol);
 		LOG << "Trying " << translated << std::endl;
-		sym = ::dlsym(RTLD_DEFAULT, translated);
-		if (sym)
-			return sym;
+		
+		for (auto& pair : g_ldLibraries)
+		{
+			if (pair.second->type == LoadedLibraryNative)
+			{
+				LOG << "Trying in " << pair.first << std::endl;
+				RET_IF(::dlsym(pair.second->nativeRef, translated));
+				if (strcmp(translated, symbol) != 0)
+					RET_IF(::dlsym(pair.second->nativeRef, symbol));
+			}
+		}
+		
+		RET_IF(::dlsym(RTLD_DEFAULT, translated));
+		
+		if (strcmp(translated, symbol) != 0)
+			RET_IF(::dlsym(RTLD_DEFAULT, symbol));
 
 		// Now we fail
 		snprintf(g_ldError, sizeof(g_ldError)-1, "Cannot find symbol '%s'", symbol);
