@@ -31,6 +31,7 @@ __darwin_FILE* __stdoutp asm("__stdoutp") = 0;
 __darwin_FILE* __stderrp asm("__stderrp") = 0;
 //}
 
+__darwin_FILE* __sF[3];
 static __darwin_FILE* InitDarwinFILE(FILE* linux_fp)
 {
 	if (!linux_fp)
@@ -403,6 +404,9 @@ __attribute__((constructor)) static void initStdio()
 	__stderrp = InitDarwinFILE(stderr);
 	__stdoutp = InitDarwinFILE(stdout);
 	__stdinp = InitDarwinFILE(stdin);
+	__sF[0] = __stdoutp;
+	__sF[1] = __stdinp;
+	__sF[2] = __stderrp;
 }
 
 int __darwin_remove(const char* path)

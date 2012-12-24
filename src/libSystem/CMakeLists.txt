@@ -72,6 +72,7 @@ set(libc_SRCS
 	libc/malloc_zone.cpp
 	common/auto.cpp
 	common/path.cpp
+        common/keymgr.cpp
 )
 
 set(bsdkern_SRCS

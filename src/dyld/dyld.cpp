@@ -45,7 +45,8 @@ MachO* g_mainBinary = 0;
 MachOLoader* g_loader = 0;
 int g_argc;
 char** g_argv;
-
+int NXArgc;
+char ** NXArgv;
 static void autoSysrootSearch();
 static void setupExecutablePath(const char* relativePath);
 static void setupDyldPath(const char* relativePath);
@@ -138,6 +139,8 @@ int main(int argc, char** argv, char** envp)
 
 		g_argv = argv+1;
 		g_argc = argc-1;
+                NXArgc = g_argc;
+                NXArgv = g_argv;
 		g_loader = new MachOLoader;
 		
 		autoSysrootSearch();
