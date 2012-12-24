@@ -14,6 +14,19 @@
 #define HW_USERMEM 6
 #define HW_AVAILCPU 25
 
+int __darwin_sysctlbyname(const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen)
+{
+    int l = strlen(name);
+    int * intname = new int[l];
+    for ( int i = 0; i < l; i++ )
+    {
+        intname[i] = name[i];
+    }
+    int ret =__darwin_sysctl(intname,l,oldp,oldlenp,newp,newlen);
+    delete[] intname;
+    return ret;
+}
+
 int __darwin_sysctl(int* name, unsigned int namelen,
                     void* oldp, size_t* oldlenp,
                     void* newp, size_t newlen) {

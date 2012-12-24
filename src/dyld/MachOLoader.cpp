@@ -315,7 +315,7 @@ void MachOLoader::loadInitFuncs(const MachO& mach, intptr slide)
 	for (intptr addr : mach.init_funcs())
 	{
 		addr += slide;
-		LOG << "Registering init func " << (void*)addr << " from " << mach.filename() << std::endl;
+		std::cerr << "Registering init func " << (void*)addr << " from " << mach.filename() << std::endl;
 		m_init_funcs.push_back(addr);
 	}
 }
@@ -602,7 +602,7 @@ void MachOLoader::runPendingInitFuncs(int argc, char** argv, char** envp, char**
 	for (size_t i = 0; i < m_init_funcs.size(); i++)
 	{
 		void** init_func = (void**) m_init_funcs[i];
-		LOG << "calling initializer function " << *init_func << std::endl;
+		std::cerr << "calling initializer function " << init_func << "(" << *init_func << ")" << std::endl;
 		
 		// TODO: missing ProgramVars! http://blogs.embarcadero.com/eboling/2010/01/29/5639/
 		/*
