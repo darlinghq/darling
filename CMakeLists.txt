@@ -37,8 +37,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/libmach-o)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/util)
 include_directories(${CMAKE_BINARY_DIR}) # for config.h
-include_directories(/usr/include/GNUstep)
-
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 

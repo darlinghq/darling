@@ -18,8 +18,6 @@ endif(BITS EQUAL 64)
 
 configure_file(config.h.in objc_config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(/usr/include/GNUstep/)
-
 
 add_definitions(-D__STDC_LIMIT_MACROS)
 
