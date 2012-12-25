@@ -93,6 +93,7 @@ static void findSearchpaths(std::string ldconfig_file){
 			g_searchPath.push_back(line);	
 		}
 	}
+    read.close();
 }
 
 
