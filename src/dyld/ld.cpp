@@ -32,6 +32,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <map>
 #include <string>
+//#include <fstream>
 #include <cstring>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,11 +50,11 @@ static __thread char g_ldError[256] = "";
 static regex_t g_reAutoMappable;
 static LoadedLibrary g_dummyLibrary;
 
-static const char* g_searchPath[] = {
+static std::list<std::string>g_searchPath;/*= {
 	LIB_PATH,
 	"/usr/" LIB_DIR_NAME, "/usr/local/" LIB_DIR_NAME, "/" LIB_DIR_NAME
 	"/usr/lib", "/usr/local/lib", "/lib",
-};
+};*/
 
 /*
 static const char* g_rpathSearch[] = {
@@ -81,6 +82,25 @@ extern FileMap g_file_map;
 
 #define RET_IF(x) { if (void* p = x) return p; }
 
+static void findSearchpaths(std::string ldconfig_file){
+	std::ifstream read;
+	read.open(ldconfig_file);
+	if(!read.is_open())
+		std::cerr << "can't read ldconfig config file - " << ldconfig_file  << std::endl;
+	std::string line;
+	while(std::getline(read,line)){
+		line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));	
+		if(line.find("include") == 0){
+			line = line.substr(7);
+			line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+			findSearchpaths(line);
+		}else{
+			g_searchPath.push_back(line);	
+		}
+	}
+}
+
+
 static void initLD()
 {
 	//int rv = regcomp(&g_reAutoMappable, "/(lib[[:alnum:]\\-]+)\\.([[:digit:]]+)(\\.[[:digit:]]+)?\\.dylib", REG_EXTENDED);
@@ -101,6 +121,11 @@ static void initLD()
 	{
 		std::cerr << e.what() << std::endl;
 	}
+	//add hardcoded library paths
+	g_searchPath.push_back("/lib");
+	g_searchPath.push_back("/usr/lib");
+	//find paths from ldconfig
+	findSearchpaths(LD_SO_CONFIG);
 }
 
 static std::string replacePathPrefix(const char* prefix, const char* prefixed, const char* replacement)
@@ -203,19 +228,19 @@ void* Darling::DlopenWithContext(const char* filename, int flag, const std::vect
 		if (strncmp(filename, "/usr/lib/", 9) == 0)
 			filename = filename + 9;
 		
-		for (int i = 0; i < sizeof(g_searchPath) / sizeof(g_searchPath[0]); i++)
+		std::list<std::string>::iterator it;
+		for (it=g_searchPath.begin(); it!=g_searchPath.end(); ++it)
 		{
-			path = std::string(g_searchPath[i]) + "/" + filename + ".so";
+			path = *it + "/" + filename;
 			LOG << "Trying " << path << std::endl;
-			if (::access(path.c_str(), R_OK) == 0)
+			if (::access(path.c_str(), R_OK) == 0){
 				RET_IF( attemptDlopen(path.c_str(), flag) );
-		}
-		for (int i = 0; i < sizeof(g_searchPath) / sizeof(g_searchPath[0]); i++)
-		{
-			path = std::string(g_searchPath[i]) + "/" + filename;
-			LOG << "Trying " << path << std::endl;
-			if (::access(path.c_str(), R_OK) == 0)
-				RET_IF( attemptDlopen(path.c_str(), flag) );
+			}
+			else{
+				if (::access((path+".so").c_str(), R_OK) == 0)
+                                RET_IF( attemptDlopen(path.c_str(), flag) );
+			
+			}
 		}
 	}
 	
