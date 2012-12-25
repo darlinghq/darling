@@ -32,6 +32,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <map>
 #include <string>
+//#include <fstream>
 #include <cstring>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,7 +50,11 @@ static __thread char g_ldError[256] = "";
 static regex_t g_reAutoMappable;
 static LoadedLibrary g_dummyLibrary;
 
-static std::list<std::string>g_searchPath;
+static std::list<std::string>g_searchPath;/*= {
+	LIB_PATH,
+	"/usr/" LIB_DIR_NAME, "/usr/local/" LIB_DIR_NAME, "/" LIB_DIR_NAME
+	"/usr/lib", "/usr/local/lib", "/lib",
+};*/
 
 /*
 static const char* g_rpathSearch[] = {
