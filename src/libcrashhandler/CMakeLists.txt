@@ -13,6 +13,7 @@ set(crashhandler_src
 
 set_source_files_properties(${crashhandler_src} PROPERTIES LANGUAGE C) # Stupid CMake thinks that ObjC is C++
 
+include_directories(/usr/include/GNUstep)
 add_library(crashhandler SHARED ${crashhandler_src})
 target_link_libraries(crashhandler -lgnustep-gui -lgnustep-base)
 
