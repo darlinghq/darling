@@ -14,7 +14,6 @@ add_library(stdc++-darwin SHARED filebuf_abi_fix.cpp)
 
 #add_dependencies(stdc++_darwinx stdc++_darwin)
 
-add_custom_command(TARGET stdc++-darwin PRE_LINK COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/genrenames.txt)
 target_link_libraries(stdc++-darwin -T${CMAKE_CURRENT_SOURCE_DIR}/renames.cmd)
 
 install(TARGETS stdc++-darwin DESTINATION "lib${SUFFIX}/darling")
