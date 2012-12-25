@@ -1,0 +1,3 @@
+nm filebuf_abi_fix.o | grep basic_filebuf | grep -v Ev | cut -f 3 -d' ' | sed '/^$/d' > orignames.txt
+( for line in $(cat orignames.txt ); do echo "$line __darwin_$line"; done ) > renames.list
+( for line in $(cat orignames.txt ); do echo "$line = __darwin_$line;"; done ) > renames.cmd
