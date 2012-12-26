@@ -181,7 +181,7 @@ int __darwin_pthread_rwlock_unlock(__darwin_pthread_rwlock_t *rwlock)
 int __darwin_pthread_mutex_init(__darwin_pthread_mutex_t* mutex, const pthread_mutexattr_t* attr)
 {
 	int rv = pthread_mutex_init(&mutex->native, attr);
-	mutex->signature = __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED; 
+	mutex->signature = __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED;
 	if (rv)
 		rv = errnoLinuxToDarwin(rv);
 	return rv;
@@ -214,7 +214,56 @@ int __darwin_pthread_mutex_unlock(__darwin_pthread_mutex_t* mutex)
 	return AutoAllocMutexGeneric(pthread_mutex_unlock, mutex);
 }
 
-int __darwin_pthread_cond_timedwait(pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex, const struct timespec *abstime)
+template<typename Func, typename... Args> int AutoAllocConditionGeneric(Func f, __darwin_pthread_cond_t* cond, Args... args)
+{
+	int rv;
+	if (cond->signature != __darwin_pthread_cond_t::SIGNATURE_NATIVE_INITIALIZED)
+	{
+		rv = __darwin_pthread_cond_init(cond, nullptr);
+		if (rv)
+			return rv;
+	}
+
+	rv = f(cond->native, args...);
+	if (rv)
+		rv = errnoLinuxToDarwin(rv);
+	return rv;
+}
+
+int __darwin_pthread_cond_init(__darwin_pthread_cond_t *cond, const pthread_condattr_t *attr)
+{
+	cond->native = new pthread_cond_t;
+	int rv = pthread_cond_init(cond->native, attr);
+	cond->signature = __darwin_pthread_cond_t::SIGNATURE_NATIVE_INITIALIZED;
+	if (rv)
+		rv = errnoLinuxToDarwin(rv);
+	return rv;
+}
+
+int __darwin_pthread_cond_destroy(__darwin_pthread_cond_t *cond)
+{
+	if (cond->signature == __darwin_pthread_cond_t::SIGNATURE_NATIVE_INITIALIZED)
+	{
+		int rv = pthread_cond_destroy(cond->native);
+		delete cond->native;
+		if (rv)
+			rv = errnoLinuxToDarwin(rv);
+		return rv;
+	}
+	return 0;
+}
+
+int __darwin_pthread_cond_signal(__darwin_pthread_cond_t *cond)
+{
+	return AutoAllocConditionGeneric(pthread_cond_signal, cond);
+}
+
+int __darwin_pthread_cond_broadcast(__darwin_pthread_cond_t *cond)
+{
+	return AutoAllocConditionGeneric(pthread_cond_broadcast, cond);
+}
+
+int __darwin_pthread_cond_timedwait(__darwin_pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex, const struct timespec *abstime)
 {
 	int rv;
 	if (mutex->signature != __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED)
@@ -224,13 +273,10 @@ int __darwin_pthread_cond_timedwait(pthread_cond_t *cond, __darwin_pthread_mutex
             return rv;
 	}
 
-	rv = pthread_cond_timedwait(cond, &mutex->native, abstime);
-	if (rv)
-		rv = errnoLinuxToDarwin(rv);
-	return rv;
+	return AutoAllocConditionGeneric(pthread_cond_timedwait, cond, &mutex->native, abstime);
 }
 
-int __darwin_pthread_cond_wait(pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex)
+int __darwin_pthread_cond_wait(__darwin_pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex)
 {
 	int rv;
 	if (mutex->signature != __darwin_pthread_mutex_t::SIGNATURE_NATIVE_INITIALIZED)
@@ -240,10 +286,6 @@ int __darwin_pthread_cond_wait(pthread_cond_t *cond, __darwin_pthread_mutex_t* m
             return rv;
 	}
 
-	rv = pthread_cond_wait(cond, &mutex->native);
-	if (rv)
-		rv = errnoLinuxToDarwin(rv);
-	return rv;
+	return AutoAllocConditionGeneric(pthread_cond_wait, cond, &mutex->native);
 }
-
 
