@@ -40,9 +40,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // Internal, only for weak symbol resolution
 #define __DARLING_RTLD_STRONG ((void*)-20)
 
-#ifndef LD_SO_CONFIG
-# define LD_SO_CONFIG "/etc/ld.so.conf"
-#endif
+#define LD_SO_CONFIG "/etc/ld.so.conf"
 
 typedef void* NSSymbol;
 typedef void* NSModule;
