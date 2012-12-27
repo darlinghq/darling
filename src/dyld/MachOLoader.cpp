@@ -40,6 +40,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <errno.h>
 #include <dlfcn.h>
 #include <libgen.h>
+#include "GDBInterface.h"
 
 FileMap g_file_map;
 static std::vector<std::string> g_bound_names;
@@ -144,7 +145,7 @@ void MachOLoader::doMProtect()
 	m_mprotects.clear();
 }
 
-void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
+void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base, ELFBlock &elf)
 {
 	*base = 0;
 	--*base;
@@ -239,6 +240,8 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 		}
 
 		m_last_addr = std::max(m_last_addr, (intptr)vmaddr + vmsize);
+
+		elf.addSection(name, (void*)vmaddr, vmsize, 0);
 	}
 }
 
@@ -491,7 +494,7 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 
 
 
-void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
+void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports, ELFBlock &elf)
 {
 	exports->rehash(exports->size() + mach.exports().size());
 	
@@ -505,6 +508,8 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 			// In this case we simply use the first known symbol.
 			LOG << "Warning: duplicate exported symbol name: " << exp->name << std::endl;
 		}
+
+		elf.addSymbol(exp->name, (void*)exp->addr);
 	}
 }
 
@@ -527,7 +532,7 @@ void MachOLoader::popCurrentLoader()
 	m_loaderPath.pop();
 }
 
-void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports, bool bindLater, bool bindLazy)
+void MachOLoader::load(const MachO& mach, std::string sourcePath, ELFBlock &elf, Exports* exports, bool bindLater, bool bindLazy)
 {
 	intptr slide = 0;
 	intptr base = 0;
@@ -537,7 +542,7 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	m_exports.push_back(exports);
 	pushCurrentLoader(sourcePath.c_str());
 
-	loadSegments(mach, &slide, &base);
+	loadSegments(mach, &slide, &base, elf);
 
 	doRebase(mach, slide);
 	doMProtect(); // decrease the segment protection value
@@ -552,7 +557,7 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	
 	loadInitFuncs(mach, slide);
 
-	loadExports(mach, base, exports);
+	loadExports(mach, base, exports, elf);
 	
 	
 	img = g_file_map.add(mach, slide, base, bindLazy);
@@ -634,10 +639,12 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp, bool bind
 	envCopy.push_back(0);
 
 	m_mainExports = new Exports;
-	load(mach, g_darwin_executable_path, m_mainExports, true, bindLazy);
+	m_mainELF = new ELFBlock(mach.filename());
+	load(mach, g_darwin_executable_path, *m_mainELF, m_mainExports, true, bindLazy);
 	setupDyldData(mach);
 
 	g_file_map.addWatchDog(m_last_addr + 1);
+	GDBInterface::addELF(m_mainELF);
 
 	//g_timer.print(mach.filename().c_str());
 

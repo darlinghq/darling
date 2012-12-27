@@ -42,6 +42,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <list>
 #include <algorithm>
 #include <execinfo.h>
+#include "GDBInterface.h"
 
 static Darling::Mutex g_ldMutex;
 static std::map<std::string, LoadedLibrary*> g_ldLibraries;
@@ -363,10 +364,12 @@ void* attemptDlopen(const char* filename, int flag)
 				//if (!global)
 				//{
 					lib->exports = new Exports;
-					g_loader->load(*machO, name, lib->exports, nobind, lazy);
+					g_loader->load(*machO, name, lib->elf, lib->exports, nobind, lazy);
 				//}
 				//else
 				//	g_loader->load(*machO, name, 0, nobind, lazy);
+
+				GDBInterface::addELF(&lib->elf);
 				
 				if (!nobind)
 				{

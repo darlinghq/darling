@@ -22,6 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <dlfcn.h>
 #include <unordered_map>
 //#include "MachOLoader.h"
+#include "ELFBlock.h"
 
 #define DARWIN_RTLD_LAZY		0x1
 #define DARWIN_RTLD_NOW			0x2
@@ -84,6 +85,9 @@ struct LoadedLibrary
 	//intptr slide;
     //intptr base;
 	Exports* exports;
+	ELFBlock elf;
+
+	LoadedLibrary(void) : elf(name) {}
 };
 
 namespace Darling
