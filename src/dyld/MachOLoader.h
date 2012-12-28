@@ -97,6 +97,8 @@ private:
 	// Jumps to the application entry
 	void boot(uint64_t entry, int argc, char** argv, char** envp, char** apple);
 
+	void writeBind(int type, uintptr_t* ptr, uintptr_t newAddr);
+
 	// checks sysctl mmap_min_addr
 	static void checkMmapMinAddr(intptr addr);
 	void pushCurrentLoader(const char* currentLoader);

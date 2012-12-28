@@ -41,6 +41,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <dlfcn.h>
 #include <libgen.h>
 #include "GDBInterface.h"
+#include "dyld.h"
 
 FileMap g_file_map;
 static std::vector<std::string> g_bound_names;
@@ -48,8 +49,6 @@ static std::vector<std::string> g_bound_names;
 char g_darwin_loader_path[PATH_MAX] = "";
 
 extern char g_darwin_executable_path[PATH_MAX];
-extern int g_argc;
-extern char** g_argv;
 extern bool g_trampoline;
 extern bool g_noWeak;
 extern std::set<LoaderHookFunc*> g_machoLoaderHooks;
@@ -374,7 +373,8 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 					{
 						if (bind->is_classic)
 						{
-							*ptr = last_weak_sym = (uintptr_t)bind->value;
+							writeBind(bind->type, ptr, uintptr_t(bind->value));
+							last_weak_sym = uintptr_t(bind->value);
 						}
 						else
 						{
@@ -383,7 +383,10 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 							{
 								LOG << "Weak reference overridden for " << name << std::endl;
 								LOG << (void*)*ptr << " -> " << (void*)expAddr << " @" << ptr << std::endl;
-								*ptr = last_weak_sym = (uintptr_t)expAddr;
+
+								writeBind(bind->type, ptr, uintptr_t(expAddr));
+
+								*ptr = last_weak_sym = uintptr_t(expAddr);
 							}
 							else
 							{
@@ -457,26 +460,8 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 
 			if (g_trampoline)
 				sym = (uintptr_t) m_pTrampolineMgr->generate((void*)sym, name.c_str());
-			if (bind->type == BIND_TYPE_POINTER)
-			{
-				*ptr = sym;
-			}
-#ifdef __i386__
-			else if (bind->type == BIND_TYPE_STUB)
-			{
-				struct jmp_instr
-				{
-					uint8_t relJmp;
-					uint32_t addr;
-				} __attribute__((packed));
-				static_assert(sizeof(jmp_instr) == 5, "Incorrect jmp instruction size");
 
-				jmp_instr* instr = reinterpret_cast<jmp_instr*>(ptr);
-
-				instr->relJmp = 0xE9; // x86 jmp rel32
-				instr->addr = sym - uint32_t(ptr) + sizeof(jmp_instr);
-			}
-#endif
+			writeBind(bind->type, ptr, sym);
 		}
 		else
 		{
@@ -492,7 +477,28 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 	return reinterpret_cast<void*>(sym);
 }
 
+void MachOLoader::writeBind(int type, uintptr_t* ptr, uintptr_t newAddr)
+{
+	if (type == BIND_TYPE_POINTER)
+		*ptr = newAddr;
 
+#ifdef __i386__
+	else if (type == BIND_TYPE_STUB)
+	{
+		struct jmp_instr
+		{
+			uint8_t relJmp;
+			uint32_t addr;
+		} __attribute__((packed));
+		static_assert(sizeof(jmp_instr) == 5, "Incorrect jmp instruction size");
+
+		jmp_instr* instr = reinterpret_cast<jmp_instr*>(ptr);
+
+		instr->relJmp = 0xE9; // x86 jmp rel32
+		instr->addr = newAddr - uint32_t(ptr) - sizeof(jmp_instr);
+	}
+#endif
+}
 
 void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports, ELFBlock &elf)
 {

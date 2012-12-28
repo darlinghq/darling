@@ -35,6 +35,12 @@ void* _keymgr_get_and_lock_processwide_ptr(unsigned key)
 	return rv;
 }
 
+int _keymgr_get_and_lock_processwide_ptr_2(unsigned key, void** result)
+{
+	*result = _keymgr_get_and_lock_processwide_ptr(key);
+	return 0; // TODO
+}
+
 void _keymgr_set_and_unlock_processwide_ptr(unsigned key, void* ptr)
 {
 	m_keymgr[key].value = ptr;

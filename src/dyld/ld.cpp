@@ -43,6 +43,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <execinfo.h>
 #include "GDBInterface.h"
+#include "dyld.h"
 
 static Darling::Mutex g_ldMutex;
 static std::map<std::string, LoadedLibrary*> g_ldLibraries;
@@ -72,25 +73,34 @@ static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
 extern char g_sysroot[PATH_MAX];
-extern int g_argc;
-extern char** g_argv;
 extern FileMap g_file_map;
 
 #define RET_IF(x) { if (void* p = x) return p; }
 
-static void findSearchpaths(std::string ldconfig_file){
-	std::ifstream read;
-	read.open(ldconfig_file);
+static void findSearchpaths(std::string ldconfig_file)
+{
+	std::ifstream read(ldconfig_file);
+
 	if(!read.is_open())
-		std::cerr << "can't read ldconfig config file - " << ldconfig_file  << std::endl;
+		LOG << "can't read ldconfig config file - " << ldconfig_file  << std::endl;
+
 	std::string line;
-	while(std::getline(read,line)){
+	while(std::getline(read,line))
+	{
 		line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));	
-		if(line.find("include") == 0){
+
+		if(line.find("include") == 0)
+		{
 			line = line.substr(7);
 			line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
-			findSearchpaths(line);
-		}else{
+
+			if (line.find('*') == std::string::npos)
+				findSearchpaths(line);
+			else
+				; // TODO: handle wildcards
+		}
+		else
+		{
 			g_searchPath.push_back(line);	
 		}
 	}
