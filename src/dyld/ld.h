@@ -87,7 +87,9 @@ struct LoadedLibrary
 	//intptr slide;
     //intptr base;
 	Exports* exports;
+#ifdef DEBUG
 	ELFBlock elf;
+#endif
 
 	LoadedLibrary(void) : elf(name) {}
 };

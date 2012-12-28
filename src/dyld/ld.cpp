@@ -391,15 +391,15 @@ void* attemptDlopen(const char* filename, int flag)
 				// Insert an entry before doing the full load to prevent recursive loading
 				g_ldLibraries[name] = lib;
 
-				//if (!global)
-				//{
-					lib->exports = new Exports;
-					g_loader->load(*machO, name, lib->elf, lib->exports, nobind, lazy);
-				//}
-				//else
-				//	g_loader->load(*machO, name, 0, nobind, lazy);
+				lib->exports = new Exports;
+
+#ifdef DEBUG
+				g_loader->load(*machO, name, lib->exports, nobind, lazy, &lib->elf);
 
 				GDBInterface::addELF(&lib->elf);
+#else
+				g_loader->load(*machO, name, lib->exports, nobind, lazy);
+#endif
 				
 				if (!nobind)
 				{

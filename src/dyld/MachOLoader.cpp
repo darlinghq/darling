@@ -62,6 +62,10 @@ static bool lookupDyldFunction(const char* name, void** addr)
 {
 	LOG << "lookupDyldFunction: " << name <<std::endl;
 	*addr = dlsym(dlopen(0, 0), name);
+
+	if (!*addr)
+		*addr = (void*) (void (*)()) []() { LOG << "Fake dyld function called\n"; };
+
 	return (*addr) != 0;
 }
 
@@ -144,7 +148,7 @@ void MachOLoader::doMProtect()
 	m_mprotects.clear();
 }
 
-void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base, ELFBlock &elf)
+void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base, ELFBlock* elf)
 {
 	*base = 0;
 	--*base;
@@ -240,7 +244,8 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base, E
 
 		m_last_addr = std::max(m_last_addr, (intptr)vmaddr + vmsize);
 
-		elf.addSection(name, (void*)vmaddr, vmsize, 0);
+		if (elf)
+			elf->addSection(name, (void*)vmaddr, vmsize, 0);
 	}
 }
 
@@ -500,7 +505,7 @@ void MachOLoader::writeBind(int type, uintptr_t* ptr, uintptr_t newAddr)
 #endif
 }
 
-void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports, ELFBlock &elf)
+void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports, ELFBlock* elf)
 {
 	exports->rehash(exports->size() + mach.exports().size());
 	
@@ -515,7 +520,8 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports, 
 			LOG << "Warning: duplicate exported symbol name: " << exp->name << std::endl;
 		}
 
-		elf.addSymbol(exp->name, (void*)exp->addr);
+		if (elf)
+			elf->addSymbol(exp->name, (void*)exp->addr);
 	}
 }
 
@@ -538,7 +544,7 @@ void MachOLoader::popCurrentLoader()
 	m_loaderPath.pop();
 }
 
-void MachOLoader::load(const MachO& mach, std::string sourcePath, ELFBlock &elf, Exports* exports, bool bindLater, bool bindLazy)
+void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports, bool bindLater, bool bindLazy, ELFBlock* elf)
 {
 	intptr slide = 0;
 	intptr base = 0;
@@ -645,8 +651,12 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp, bool bind
 	envCopy.push_back(0);
 
 	m_mainExports = new Exports;
+
+#ifdef DEBUG
 	m_mainELF = new ELFBlock(mach.filename());
-	load(mach, g_darwin_executable_path, *m_mainELF, m_mainExports, true, bindLazy);
+#endif
+
+	load(mach, g_darwin_executable_path, m_mainExports, true, bindLazy, m_mainELF);
 	setupDyldData(mach);
 
 	g_file_map.addWatchDog(m_last_addr + 1);

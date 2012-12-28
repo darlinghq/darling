@@ -78,7 +78,6 @@ set(dyld_SRCS
 	src/dyld/ld.cpp
 	src/dyld/dyld.cpp
 	src/dyld/public.cpp
-	src/dyld/keymgr.cpp
 	src/dyld/binfmt_misc.cpp
 	src/dyld/ELFBlock.cpp
 	src/dyld/GDBInterface.cpp
