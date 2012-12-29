@@ -576,5 +576,9 @@ _keymgr_get_lock_count_processwide_ptr (unsigned int key)
 }
 
 /*********************************************/
+/* dummy */
 
+void __keymgr_dwarf2_register_sections(void)
+{
+}
 
