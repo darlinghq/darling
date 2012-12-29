@@ -1,3 +1,5 @@
+R"(
+
 __error;__errno_location
 
 # libstdc++
@@ -50,4 +52,5 @@ libintl_bindtextdomain;bindtextdomain
 libintl_bind_textdomain_codeset;bind_textdomain_codeset
 libintl_setlocale;setlocale
 
+)"
 
