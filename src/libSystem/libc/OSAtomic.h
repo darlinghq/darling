@@ -12,6 +12,8 @@ struct OSQueueHead
 
 #ifdef __cplusplus
 extern "C" {
+#else
+#define bool int
 #endif
 
 int32_t OSAtomicAdd32(int32_t theAmount, volatile int32_t *theValue);
@@ -96,9 +98,9 @@ void OSSpinLockLock(OSSpinLock *lock);
 
 void OSSpinLockUnlock(OSSpinLock *lock);
 
-void OSAtomicEnqueue(OSQueueHead *list, void *_new, size_t offset);
+void OSAtomicEnqueue(struct OSQueueHead *list, void *_new, size_t offset);
 
-void* OSAtomicDequeue(OSQueueHead *list, size_t offset);
+void* OSAtomicDequeue(struct OSQueueHead *list, size_t offset);
 
 #ifdef __cplusplus
 }

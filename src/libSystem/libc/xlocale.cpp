@@ -19,7 +19,27 @@ size_t mbstowcs_l(wchar_t* pwcs, const char* s, size_t n, locale_t l)
 
 size_t wcswidth_l(wchar_t* pwcs, size_t n, locale_t l)
 {
-	 return UseLocale<size_t>(wcswidth, l, pwcs, n);
+	return UseLocale<size_t>(wcswidth, l, pwcs, n);
+}
+
+int mbtowc_l(wchar_t* pwc, const char* s, size_t n, locale_t l)
+{
+	return UseLocale<int>(mbtowc, l, pwc, s, n);
+}
+
+size_t mbrtowc_l(wchar_t * pwc, const char * s, size_t n, mbstate_t * ps, locale_t l)
+{
+	return UseLocale<size_t>(mbrtowc, l, pwc, s, n, ps);
+}
+
+int mblen_l(const char *s, size_t n, locale_t l)
+{
+	return UseLocale<int>(mblen, l, s, n);
+}
+
+size_t wcrtomb_l(char * s, wchar_t wc, mbstate_t * ps, locale_t l)
+{
+	return UseLocale<size_t>(wcrtomb, l, s, wc, ps);
 }
 
 int iswnumber(wint_t wc) throw()

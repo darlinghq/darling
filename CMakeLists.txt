@@ -78,8 +78,9 @@ set(dyld_SRCS
 	src/dyld/ld.cpp
 	src/dyld/dyld.cpp
 	src/dyld/public.cpp
-	src/dyld/keymgr.cpp
 	src/dyld/binfmt_misc.cpp
+	src/dyld/ELFBlock.cpp
+	src/dyld/GDBInterface.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
@@ -129,7 +130,8 @@ add_subdirectory(src/CoreServices)
 add_subdirectory(src/IOKit)
 add_subdirectory(src/libcrashhandler)
 add_subdirectory(src/thin)
-add_subdirectory(src/cxx)
+# Not ready yet
+# add_subdirectory(src/cxx)
 
 add_dependencies(dyld${SUFFIX} mach-o)
 add_dependencies(System.B.dylib genfuncmap)

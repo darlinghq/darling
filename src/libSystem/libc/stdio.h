@@ -17,14 +17,24 @@ struct __darwin_sbuf
 // so we need to wrap linux's FILE with darwin's layout.
 typedef struct __darwin_sFILE
 {
-  unsigned char *_p;      /* current position in (some) buffer */
-  int     _r;             /* read space left for getc() */
-  int     _w;             /* write space left for putc() */
-  // TODO(hamaji): we need to modify this value with ferror and feof...
-  short   _flags;         /* flags, below; this FILE is free if 0 */
-  short   _file;          /* fileno, if Unix descriptor, else -1 */
-  struct  __darwin_sbuf _bf;     /* the buffer (at least 1 byte, if !NULL) */
-  int     _lbfsize;       /* 0 or -_bf._size, for inline putc */
+	union
+	{
+#if defined(__x86_64__) || defined(__ppc64__)
+		char __identical_size[152];
+#else
+		char __identical_size[88];
+#endif
+
+		struct
+		{
+			unsigned char *_p;      /* current position in (some) buffer */
+			int     _r;             /* read space left for getc() */
+			int     _w;             /* write space left for putc() */
+			// TODO(hamaji): we need to modify this value with ferror and feof...
+			short   _flags;         /* flags, below; this FILE is free if 0 */
+			short   _file;          /* fileno, if Unix descriptor, else -1 */
+			struct  __darwin_sbuf _bf;     /* the buffer (at least 1 byte, if !NULL) */
+			int     _lbfsize;       /* 0 or -_bf._size, for inline putc */
 
 #if 0
   /* operations */
@@ -52,7 +62,9 @@ typedef struct __darwin_sFILE
 
 #endif
 
-  FILE* linux_fp;
+			FILE* linux_fp;
+		};
+	};
 } __darwin_FILE;
 
 extern "C"

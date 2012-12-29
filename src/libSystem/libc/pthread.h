@@ -15,11 +15,19 @@ struct __darwin_pthread_rwlock_t // 200 bytes on Darwin
 	uint32_t signature;
 	pthread_rwlock_t native; // this will fit on Linux
 };
+
 struct __darwin_pthread_mutex_t
 {
-	enum { SIGNATURE_MACRO_INITIALIZED = 0x32aaaba7, SIGNATURE_MACRO_INITIALIZED_R = 0x32AAABA2, SIGNATURE_MACRO_INITIALIZED_E = 0x32AAABA1, SIGNATURE_NATIVE_INITIALIZED = 0x12345678 };
+	enum { SIGNATURE_MACRO_INITIALIZED = 0x32aaaba7, SIGNATURE_MACRO_INITIALIZED_R = 0x32aaaba2, SIGNATURE_MACRO_INITIALIZED_E = 0x32aaaba1, SIGNATURE_NATIVE_INITIALIZED = 0x12345678 };
 	uint32_t signature;
 	pthread_mutex_t native; // this will fit on Linux (40 vs 64)
+};
+
+struct __darwin_pthread_cond_t
+{
+	enum { SIGNATURE_MACRO_INITIALIZED = 0x3cb0b1bb, SIGNATURE_NATIVE_INITIALIZED = 0x12345678 };
+	uint32_t signature;
+	pthread_cond_t *native; // this will NOT fit on linux (48 vs 44) (allocated instead)
 };
 
 static_assert(sizeof(pthread_mutex_t) <= 60, "pthread_mutex_t is too big on this platform!");
@@ -50,8 +58,12 @@ int __darwin_pthread_mutex_trylock(__darwin_pthread_mutex_t* mutex);
 int __darwin_pthread_mutex_unlock(__darwin_pthread_mutex_t* mutex);
 
 // pthread_cond
-int __darwin_pthread_cond_timedwait(pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex, const struct timespec *abstime);
-int __darwin_pthread_cond_wait(pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex);
+int __darwin_pthread_cond_init(__darwin_pthread_cond_t *cond, const pthread_condattr_t *attr);
+int __darwin_pthread_cond_destroy(__darwin_pthread_cond_t *cond);
+int __darwin_pthread_cond_signal(__darwin_pthread_cond_t *cond);
+int __darwin_pthread_cond_broadcast(__darwin_pthread_cond_t *cond);
+int __darwin_pthread_cond_timedwait(__darwin_pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex, const struct timespec *abstime);
+int __darwin_pthread_cond_wait(__darwin_pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex);
 
 pid_t __darwin_pthread_mach_thread_np(pthread_t pth);
 

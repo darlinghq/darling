@@ -26,17 +26,16 @@ extern char g_sysroot[PATH_MAX];
 
 //extern "C"
 //{
-__darwin_FILE* __stdinp  asm("__stdinp") = 0;
-__darwin_FILE* __stdoutp asm("__stdoutp") = 0;
-__darwin_FILE* __stderrp asm("__stderrp") = 0;
+
+__darwin_FILE __sF[3] asm("__sF");
+
+__darwin_FILE* __stdinp  asm("__stdinp") = &__sF[0];
+__darwin_FILE* __stdoutp asm("__stdoutp") = &__sF[1];
+__darwin_FILE* __stderrp asm("__stderrp") = &__sF[2];
 //}
 
-static __darwin_FILE* InitDarwinFILE(FILE* linux_fp)
+static __darwin_FILE* InitDarwinFILE(FILE* linux_fp, __darwin_FILE* fp)
 {
-	if (!linux_fp)
-		return 0;
-
-	__darwin_FILE* fp = new __darwin_FILE;
 	fp->_p = NULL;
 	fp->_r = -1;
 	fp->_w = -1;
@@ -47,6 +46,16 @@ static __darwin_FILE* InitDarwinFILE(FILE* linux_fp)
 	
 	return fp;
 }
+
+static __darwin_FILE* InitDarwinFILE(FILE* linux_fp)
+{
+	if (!linux_fp)
+		return 0;
+
+	__darwin_FILE* fp = new __darwin_FILE;
+	return InitDarwinFILE(linux_fp, fp);
+}
+
 
 template<typename RetVal, typename Func, typename... Params> RetVal AutoFileErrno(Func f, __darwin_FILE* file, Params... params)
 {
@@ -400,9 +409,9 @@ int __darwin_setvbuf(__darwin_FILE* stream, char* buffer, int mode, size_t size)
 
 __attribute__((constructor)) static void initStdio()
 {
-	__stderrp = InitDarwinFILE(stderr);
-	__stdoutp = InitDarwinFILE(stdout);
-	__stdinp = InitDarwinFILE(stdin);
+	InitDarwinFILE(stderr, __stderrp);
+	InitDarwinFILE(stdout, __stdoutp);
+	InitDarwinFILE(stdin, __stdinp);
 }
 
 int __darwin_remove(const char* path)

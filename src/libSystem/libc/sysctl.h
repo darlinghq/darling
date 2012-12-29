@@ -10,6 +10,12 @@
 #define KERN_OSRELEASE 2
 #define KERN_OSVERSION 65
 
-extern "C" int __darwin_sysctl(int* name, unsigned int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen);
+extern "C" {
+
+int __darwin_sysctl(int* name, unsigned int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen);
+
+int __darwin_sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen);
+
+}
 
 #endif

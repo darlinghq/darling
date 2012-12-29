@@ -13,7 +13,7 @@ endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 
 configure_file(config.h.in config.h)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fblocks -std=c++0x")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -D_GNU_SOURCE")
 
 #find_path(LIBCXX_INCLUDE_DIR c++/v1/vector)
 #if (DEFINED LIBCXX_INCLUDE_DIR)
@@ -97,7 +97,8 @@ set(machkern_SRCS
 	kernel-mach/compat.cpp
 )
 
-add_library(System.B.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS} ${machkern_SRCS})
+add_library(System.B.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS}
+	${machkern_SRCS} keymgr/keymgr.c)
 # -luuid to make uuid_ functions available for Darwin apps
 target_link_libraries(System.B.dylib -ldl -lpthread -luuid -l:../../libmach-o.so -lrt -lssl -lbsd -l:libobjc.so.4)
 add_dependencies(System.B.dylib mach-o)

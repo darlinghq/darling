@@ -45,6 +45,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <execinfo.h>
 #include <stlutils.h>
 #include <dirent.h>
+#include "GDBInterface.h"
+#include "dyld.h"
 
 static Darling::Mutex g_ldMutex;
 static std::map<std::string, LoadedLibrary*> g_ldLibraries;
@@ -74,8 +76,6 @@ static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
 extern char g_sysroot[PATH_MAX];
-extern int g_argc;
-extern char** g_argv;
 extern FileMap g_file_map;
 
 #define RET_IF(x) { if (void* p = x) return p; }
@@ -381,7 +381,7 @@ void* attemptDlopen(const char* filename, int flag)
 			{
 				const char* err = ::dlerror();
 				LOG << "Native library failed to load: " << err << std::endl;
-				
+
 				if (err && !g_ldError[0]) // we don't overwrite previous errors
 				{
 					LOG << "Library failed to load: " << err << std::endl;
@@ -413,14 +413,19 @@ void* attemptDlopen(const char* filename, int flag)
 				
 				bool global = flag & RTLD_GLOBAL && !(flag & RTLD_LOCAL);
 				bool lazy = flag & RTLD_LAZY && !(flag & RTLD_NOW);
-				
-				//if (!global)
-				//{
-					lib->exports = new Exports;
-					g_loader->load(*machO, name, lib->exports, nobind, lazy);
-				//}
-				//else
-				//	g_loader->load(*machO, name, 0, nobind, lazy);
+
+				// Insert an entry before doing the full load to prevent recursive loading
+				g_ldLibraries[name] = lib;
+
+				lib->exports = new Exports;
+
+#ifdef DEBUG
+				g_loader->load(*machO, name, lib->exports, nobind, lazy, &lib->elf);
+
+				GDBInterface::addELF(&lib->elf);
+#else
+				g_loader->load(*machO, name, lib->exports, nobind, lazy);
+#endif
 				
 				if (!nobind)
 				{
@@ -428,7 +433,6 @@ void* attemptDlopen(const char* filename, int flag)
 					g_loader->runPendingInitFuncs(g_argc, g_argv, environ, apple);
 				}
 				
-				g_ldLibraries[name] = lib;
 				return lib;
 			}
 			catch (const std::exception& e)
