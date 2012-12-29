@@ -41,7 +41,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <cassert>
 #include <list>
 #include <algorithm>
+#include <regex>
 #include <execinfo.h>
+#include <stlutils.h>
+#include <dirent.h>
 
 static Darling::Mutex g_ldMutex;
 static std::map<std::string, LoadedLibrary*> g_ldLibraries;
@@ -77,20 +80,53 @@ extern FileMap g_file_map;
 
 #define RET_IF(x) { if (void* p = x) return p; }
 
-static void findSearchpaths(std::string ldconfig_file){
+static void findSearchPaths(std::string ldconfig_file){
 	std::ifstream read;
 	read.open(ldconfig_file);
 	if(!read.is_open())
 		std::cerr << "can't read ldconfig config file - " << ldconfig_file  << std::endl;
 	std::string line;
 	while(std::getline(read,line)){
-		line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));	
+        string_lstrip(line);
 		if(line.find("include") == 0){
 			line = line.substr(7);
-			line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
-			findSearchpaths(line);
-		}else{
-			g_searchPath.push_back(line);	
+            string_lstrip(line);
+            if (::access(line.c_str(), R_OK) == 0){
+                findSearchPaths(line);
+            }
+            else{
+                size_t pos = line.rfind("/");
+                if(pos == std::string::npos){
+                    std::cerr << "incorrect include filename - " << line  << std::endl;
+                    return;
+                }
+                std::string pattern = line.substr(pos+1);
+                std::string regex_specials ("[]().?:!+^-");
+                string_escape(pattern, regex_specials);
+                string_replaceAll(pattern, "*", ".*");
+                std::string dir = line.substr(0, pos+1);
+                DIR *dp;
+                dirent *dirp;
+                dp = opendir( dir.c_str() );
+                if (dp == NULL) {
+                    std::cerr << "incorrect include filename - " << line  << std::endl;
+                    return;
+                }
+                std::regex e(pattern);
+                while ((dirp = readdir( dp ))){
+                    std::string name = dirp->d_name;
+                    if ((dirp->d_type == 10 || dirp->d_type == 8) && std::regex_match (name,e)){
+                        findSearchPaths(dir+name);
+                        std::cout << dir+name << std::endl;
+                    }
+                }
+                //std::cout << pattern << std::endl << dir << std::endl;
+
+
+            }
+        }else{
+            if(!line.empty())
+                g_searchPath.push_back(line);
 		}
 	}
     read.close();
@@ -121,7 +157,7 @@ static void initLD()
 	g_searchPath.push_back("/lib");
 	g_searchPath.push_back("/usr/lib");
 	//find paths from ldconfig
-	findSearchpaths(LD_SO_CONFIG);
+	findSearchPaths(LD_SO_CONFIG);
 }
 
 static std::string replacePathPrefix(const char* prefix, const char* prefixed, const char* replacement)
