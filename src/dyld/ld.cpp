@@ -117,10 +117,9 @@ static void findSearchPaths(std::string ldconfig_file){
                     std::string name = dirp->d_name;
                     if ((dirp->d_type == 10 || dirp->d_type == 8) && std::regex_match (name,e)){
                         findSearchPaths(dir+name);
-                        std::cout << dir+name << std::endl;
                     }
                 }
-                //std::cout << pattern << std::endl << dir << std::endl;
+
 
 
             }
