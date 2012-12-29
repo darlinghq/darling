@@ -11,6 +11,37 @@ int main(int argc, char** argv)
 	std::ifstream ifs(argv[1]);
 	std::ofstream ofs(argv[2]);
 
+	ofs << "section .note.GNU-stack noalloc noexec nowrite progbits\n";
+	ofs << "%ifidn __OUTPUT_FORMAT__, elf\n"
+		"extern  _GLOBAL_OFFSET_TABLE_\n";
+	ofs << "global ebxsave\n"
+		"section .tbss\nalign 4\n"
+		"ebxsave: dd 0\n"
+
+		"section .text\n"
+
+		"%macro EbxGet 0\n"
+		"mov eax, ebx\n"
+		"call    .get_GOT\n"
+		".get_GOT:\n" 
+		"pop     ebx\n" 
+		"add     ebx, _GLOBAL_OFFSET_TABLE_+$$-.get_GOT wrt ..gotpc\n"
+		"mov     ecx, [ebxsave wrt ..tlsie]\n"
+		"mov     [gs:ecx], eax\n"
+		"%endmacro\n"
+		
+		"%macro EbxRestore 0\n"
+		"mov     ecx, [ebxsave wrt ..tlsie]\n"
+		"mov     ebx, [gs:ecx]\n"
+		"%endmacro\n"
+		
+		"%else\n"
+		
+		"%macro EbxGet 0\n%endmacro\n"
+		"%macro EbxRestore 0\n%endmacro\n"
+
+		"%endif\n";
+
 	while (std::getline(ifs, line))
 	{
 		if (line.empty())
@@ -42,7 +73,9 @@ int main(int argc, char** argv)
 		ofs << "global " << tok[0] << std::endl
 			<< "extern " << tok[1] << std::endl
 			<< tok[0] << ":\n"
-			<< "\tjmp " << tok[1] << " WRT ..plt\n";
+			<< "\tEbxGet\n"
+			<< "\tjmp " << tok[1] << " WRT ..plt\n"
+			<< "\tEbxRestore\n";
 		
 		if (o32 || o64)
 			ofs << "%endif\n";

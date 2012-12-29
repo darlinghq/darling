@@ -377,9 +377,18 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 					else
 					{
 						if (bind->is_classic)
+						//if (false)
 						{
-							writeBind(bind->type, ptr, uintptr_t(bind->value));
-							last_weak_sym = uintptr_t(bind->value);
+							uintptr_t addr = bind->value;
+							if (!addr)
+							{
+								LOG << "Trying to resolve classic,weak,null\n";
+								addr = (uintptr_t) __darwin_dlsym(__DARLING_RTLD_STRONG, name.c_str());
+							}
+							LOG << "Bind (classic, weak) @" << ptr << " -> " << std::hex << uintptr_t(addr) << std::dec << std::endl;
+							
+							writeBind(bind->type, ptr, uintptr_t(addr));
+							last_weak_sym = uintptr_t(addr);
 						}
 						else
 						{
