@@ -376,6 +376,7 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 						else
 						{
 							void* expAddr = __darwin_dlsym(__DARLING_RTLD_STRONG, name.c_str());
+							void* expAddr = __darwin_dlsym(__DARLING_RTLD_STRONG, name.c_str());
 							if (expAddr != nullptr)
 							{
 								LOG << "Weak reference overridden for " << name << std::endl;
