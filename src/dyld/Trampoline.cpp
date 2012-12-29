@@ -48,7 +48,7 @@ extern "C" void* trampoline_start;
 extern "C" void* trampoline_end;
 
 #ifndef TEST
-extern char** g_argv;
+#	include "dyld.h"
 #else
 const char* g_argv[] = { "Trampoline", 0 };
 #endif

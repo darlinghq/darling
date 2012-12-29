@@ -22,6 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <dlfcn.h>
 #include <unordered_map>
 //#include "MachOLoader.h"
+#include "ELFBlock.h"
 
 #define DARWIN_RTLD_LAZY		0x1
 #define DARWIN_RTLD_NOW			0x2
@@ -39,6 +40,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 // Internal, only for weak symbol resolution
 #define __DARLING_RTLD_STRONG ((void*)-20)
+
+#define LD_SO_CONFIG "/etc/ld.so.conf"
 
 typedef void* NSSymbol;
 typedef void* NSModule;
@@ -84,6 +87,11 @@ struct LoadedLibrary
 	//intptr slide;
     //intptr base;
 	Exports* exports;
+#ifdef DEBUG
+	ELFBlock elf;
+#endif
+
+	LoadedLibrary(void) : elf(name) {}
 };
 
 namespace Darling

@@ -42,6 +42,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <list>
 #include <algorithm>
 #include <execinfo.h>
+#include "GDBInterface.h"
+#include "dyld.h"
 
 static Darling::Mutex g_ldMutex;
 static std::map<std::string, LoadedLibrary*> g_ldLibraries;
@@ -49,11 +51,7 @@ static __thread char g_ldError[256] = "";
 static regex_t g_reAutoMappable;
 static LoadedLibrary g_dummyLibrary;
 
-static const char* g_searchPath[] = {
-	LIB_PATH,
-	"/usr/" LIB_DIR_NAME, "/usr/local/" LIB_DIR_NAME, "/" LIB_DIR_NAME
-	"/usr/lib", "/usr/local/lib", "/lib",
-};
+static std::list<std::string>g_searchPath;
 
 /*
 static const char* g_rpathSearch[] = {
@@ -75,11 +73,39 @@ static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
 extern char g_sysroot[PATH_MAX];
-extern int g_argc;
-extern char** g_argv;
 extern FileMap g_file_map;
 
 #define RET_IF(x) { if (void* p = x) return p; }
+
+static void findSearchpaths(std::string ldconfig_file)
+{
+	std::ifstream read(ldconfig_file);
+
+	if(!read.is_open())
+		LOG << "can't read ldconfig config file - " << ldconfig_file  << std::endl;
+
+	std::string line;
+	while(std::getline(read,line))
+	{
+		line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));	
+
+		if(line.find("include") == 0)
+		{
+			line = line.substr(7);
+			line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+
+			if (line.find('*') == std::string::npos)
+				findSearchpaths(line);
+			else
+				; // TODO: handle wildcards
+		}
+		else
+		{
+			g_searchPath.push_back(line);	
+		}
+	}
+}
+
 
 static void initLD()
 {
@@ -101,6 +127,11 @@ static void initLD()
 	{
 		std::cerr << e.what() << std::endl;
 	}
+	//add hardcoded library paths
+	g_searchPath.push_back("/lib");
+	g_searchPath.push_back("/usr/lib");
+	//find paths from ldconfig
+	findSearchpaths(LD_SO_CONFIG);
 }
 
 static std::string replacePathPrefix(const char* prefix, const char* prefixed, const char* replacement)
@@ -203,19 +234,19 @@ void* Darling::DlopenWithContext(const char* filename, int flag, const std::vect
 		if (strncmp(filename, "/usr/lib/", 9) == 0)
 			filename = filename + 9;
 		
-		for (int i = 0; i < sizeof(g_searchPath) / sizeof(g_searchPath[0]); i++)
+		std::list<std::string>::iterator it;
+		for (it=g_searchPath.begin(); it!=g_searchPath.end(); ++it)
 		{
-			path = std::string(g_searchPath[i]) + "/" + filename + ".so";
+			path = *it + "/" + filename;
 			LOG << "Trying " << path << std::endl;
-			if (::access(path.c_str(), R_OK) == 0)
+			if (::access(path.c_str(), R_OK) == 0){
 				RET_IF( attemptDlopen(path.c_str(), flag) );
-		}
-		for (int i = 0; i < sizeof(g_searchPath) / sizeof(g_searchPath[0]); i++)
-		{
-			path = std::string(g_searchPath[i]) + "/" + filename;
-			LOG << "Trying " << path << std::endl;
-			if (::access(path.c_str(), R_OK) == 0)
-				RET_IF( attemptDlopen(path.c_str(), flag) );
+			}
+			else{
+				if (::access((path+".so").c_str(), R_OK) == 0)
+                                RET_IF( attemptDlopen(path.c_str(), flag) );
+			
+			}
 		}
 	}
 	
@@ -324,7 +355,7 @@ void* attemptDlopen(const char* filename, int flag)
 			{
 				const char* err = ::dlerror();
 				LOG << "Native library failed to load: " << err << std::endl;
-				
+
 				if (err && !g_ldError[0]) // we don't overwrite previous errors
 				{
 					LOG << "Library failed to load: " << err << std::endl;
@@ -356,14 +387,19 @@ void* attemptDlopen(const char* filename, int flag)
 				
 				bool global = flag & RTLD_GLOBAL && !(flag & RTLD_LOCAL);
 				bool lazy = flag & RTLD_LAZY && !(flag & RTLD_NOW);
-				
-				//if (!global)
-				//{
-					lib->exports = new Exports;
-					g_loader->load(*machO, name, lib->exports, nobind, lazy);
-				//}
-				//else
-				//	g_loader->load(*machO, name, 0, nobind, lazy);
+
+				// Insert an entry before doing the full load to prevent recursive loading
+				g_ldLibraries[name] = lib;
+
+				lib->exports = new Exports;
+
+#ifdef DEBUG
+				g_loader->load(*machO, name, lib->exports, nobind, lazy, &lib->elf);
+
+				GDBInterface::addELF(&lib->elf);
+#else
+				g_loader->load(*machO, name, lib->exports, nobind, lazy);
+#endif
 				
 				if (!nobind)
 				{
@@ -371,7 +407,6 @@ void* attemptDlopen(const char* filename, int flag)
 					g_loader->runPendingInitFuncs(g_argc, g_argv, environ, apple);
 				}
 				
-				g_ldLibraries[name] = lib;
 				return lib;
 			}
 			catch (const std::exception& e)
