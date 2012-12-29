@@ -41,7 +41,7 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include <pthread.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <libkern/OSAtomic.h>
+#include "../libc/OSAtomic.h"
 #include <stdint.h>
 #include "keymgr.h"
 
