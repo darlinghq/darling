@@ -52,6 +52,16 @@ void malloc_zone_free(malloc_zone_t *zone, void *ptr)
 	return free(ptr);
 }
 
+void malloc_set_zone_name(malloc_zone_t *zone, const char *name)
+{
+	// TODO
+}
+const char *malloc_get_zone_name(malloc_zone_t *zone)
+{
+	// TODO
+	return "malloc_get_zone_name_NotImplemented";
+}
+
 void malloc_zone_statistics(malloc_zone_t* zone, __darwin_malloc_statistics_t* stats)
 {
 	struct mallinfo info = mallinfo();

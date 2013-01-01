@@ -27,6 +27,8 @@ void* malloc_zone_valloc(malloc_zone_t *zone, size_t size);
 void* malloc_zone_realloc(malloc_zone_t *zone, void *ptr, size_t size);
 void* malloc_zone_memalign(malloc_zone_t *zone, size_t alignment, size_t size);
 void malloc_zone_free(malloc_zone_t *zone, void *ptr);
+void malloc_set_zone_name(malloc_zone_t *zone, const char *name);
+const char *malloc_get_zone_name(malloc_zone_t *zone);
 
 void malloc_zone_statistics(malloc_zone_t* zone, __darwin_malloc_statistics_t* stats);
 
