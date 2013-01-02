@@ -126,12 +126,6 @@ int _NSGetExecutablePath(char* buf, unsigned int* size)
 	return 0;
 }
 
-void __assert_rtn(const char* func, const char* file, int line, const char* failedexpr)
-{
-	fprintf(stderr, "Assertion failed: (%s), function %s, file %s, line %d.\n", failedexpr, func, file, line);
-	abort();
-}
-
 const char* dyld_image_path_containing_address(const void* addr)
 {
 	return g_file_map.fileNameForAddr(addr);

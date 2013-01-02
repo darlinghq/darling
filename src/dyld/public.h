@@ -52,9 +52,6 @@ int32_t NSVersionOfLinkTimeLibrary(const char* libraryName);
 
 int _NSGetExecutablePath(char* buf, uint32_t* bufsize);
 
-void __assert_rtn(const char* func, const char* file, int line, const char* failedexpr);
-
-
 const char* dyld_image_path_containing_address(const void* addr);
 bool _dyld_find_unwind_sections(void* addr, struct dyld_unwind_sections* info);
 

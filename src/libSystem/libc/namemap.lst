@@ -1,6 +1,7 @@
 R"(
 
 __error;__errno_location
+__assert_rtn;__assert_fail
 
 # libstdc++
 64!_ZNSt13basic_filebufIwSt11char_traitsIwEE7seekoffExSt12_Ios_SeekdirSt13_Ios_Openmode;_ZNSt13basic_filebufIwSt11char_traitsIwEE7seekoffElSt12_Ios_SeekdirSt13_Ios_Openmode
