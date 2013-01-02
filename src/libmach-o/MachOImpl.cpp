@@ -56,6 +56,13 @@ void MachOImpl::readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* 
 		bind->ordinal = 1;
 		bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
 		bind->is_classic = true;
+
+		if (!m_is64)
+		{
+			bind->vmaddr &= 0xffffffff;
+			bind->value &= 0xffffffff;
+		}
+
 		LOG << "add classic bind: " << bind->name << " type=" << int(sym->n_type) << " sect=" << int(sym->n_sect)
 			<< " desc=" << sym->n_desc << " value=" << sym->n_value << " vmaddr=" << (void*)(bind->vmaddr)
 			<< " is_weak=" << bind->is_weak << std::endl;
@@ -90,6 +97,12 @@ void MachOImpl::readStubBind(const section& sec,  uint32_t* dysyms, uint32_t* sy
 		bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
 		bind->is_classic = true;
 
+		if (!m_is64)
+		{
+			bind->vmaddr &= 0xffffffff;
+			bind->value &= 0xffffffff;
+		}
+
 		m_binds.push_back(bind);
 
 		LOG << "add stub bind: " << bind->name.c_str() << " vmaddr=" << (void*) bind->vmaddr << std::endl;
@@ -102,8 +115,8 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 	segment_command* segment = reinterpret_cast<segment_command*>(cmds_ptr);
 	segments->push_back(segment);
 
-	LOG << "segment " << segment->segname << ": vmaddr=" << (void*)segment->vmaddr
-		<< " vmsize=" << std::hex << segment->vmsize << " file_offset=" << segment->fileoff
+	LOG << "segment " << segment->segname << ": vmaddr=" << std::hex << segment->vmaddr
+		<< " vmsize=" << segment->vmsize << " file_offset=" << segment->fileoff
 		<< " file_size=" << segment->filesize << " maxprot=" << segment->maxprot
 		<< " init_prot=" << segment->initprot << " nsects=" << std::dec << segment->nsects
 		<< " flags=" << std::hex << segment->flags << std::dec << std::endl;
@@ -653,7 +666,7 @@ void MachOImpl::readInternalRelocation(const struct relocation_info* reloc)
 			return;
 		}
 
-		rebase = new Rebase { reloc->r_address, REBASE_TYPE_POINTER };
+		rebase = new Rebase { uint64_t(reloc->r_address) & 0xffffffff, REBASE_TYPE_POINTER };
 	}
 
 	if (rebase)

@@ -23,6 +23,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "MachO.h"
 #include <mach-o/loader.h>
 #include <mach-o/reloc.h>
+#ifdef __x86_64__
+#	include <mach-o/x86_64/reloc.h>
+#elif defined(__powerpc__)
+#	include <mach-o/ppc/reloc.h>
+#endif
 #include <stdint.h>
 #include <vector>
 #include <string>

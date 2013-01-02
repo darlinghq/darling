@@ -157,6 +157,12 @@ void BindState::addBind(uintptr_t offset)
 	bind->is_weak = is_weak;
 	bind->is_lazy = is_lazy;
 	
+	if (!mach->m_is64)
+	{
+		bind->vmaddr &= 0xffffffff;
+		bind->addend &= 0xffffffff;
+	}
+	
 	if (is_lazy)
 		bind->offset = offset;
 	

@@ -319,6 +319,9 @@ void MachOLoader::doRebase(const MachO& mach, intptr slide)
 
 void MachOLoader::doRelocations(const std::vector<MachO::Relocation*>& rels, intptr base, intptr slide)
 {
+	m_lastResolvedSymbol.clear();
+	m_lastResolvedAddress = 0;
+
 	for (const MachO::Relocation* rel : rels)
 	{
 		uintptr_t* ptr = (uintptr_t*) (uintptr_t(rel->addr) /*+ base*/ + slide);
@@ -363,6 +366,9 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 	uintptr_t sym;
 
 	g_bound_names.resize(binds.size());
+
+	m_lastResolvedSymbol.clear();
+	m_lastResolvedAddress = 0;
 
 	for (const MachO::Bind* bind : binds)
 	{
@@ -447,7 +453,7 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 			}
 			else // not weak
 			{
-				sym = getSymbolAddress(bind->name);
+				sym = getSymbolAddress(bind->name, bind, slide);
 
 				if (!bind->is_classic)
 					sym += bind->addend;
@@ -475,10 +481,13 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 	return reinterpret_cast<void*>(sym);
 }
 
-uintptr_t MachOLoader::getSymbolAddress(const std::string& oname)
+uintptr_t MachOLoader::getSymbolAddress(const std::string& oname, const MachO::Bind* bind, intptr slide)
 {
 	std::string name;
 	uintptr_t sym;
+
+	if (oname == m_lastResolvedSymbol)
+		return m_lastResolvedAddress;
 
 	if (oname[0] != '_')
 	{
@@ -503,7 +512,7 @@ uintptr_t MachOLoader::getSymbolAddress(const std::string& oname)
 	if (!sym)
 	{
 		static const char* ign_sym = getenv("DYLD_IGN_MISSING_SYMS");
-		//if (!bind->addend)
+		if (!bind || !bind->is_classic || !bind->value)
 		{
 #ifdef __x86_64__
 			if (ign_sym && atoi(ign_sym))
@@ -523,9 +532,12 @@ uintptr_t MachOLoader::getSymbolAddress(const std::string& oname)
 				throw std::runtime_error(ss.str());
 			}
 		}
-		//else
-		//	sym = reinterpret_cast<char*>(bind->addend + slide);
+		else
+			sym = uintptr_t(bind->value) + slide;
 	}
+
+	m_lastResolvedSymbol = oname;
+	m_lastResolvedAddress = sym;
 
 	return sym;
 }

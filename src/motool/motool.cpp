@@ -208,7 +208,14 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 				else
 					std::cout << std::setw(8);
 				
-				std::cout << b->vmaddr << std::setw(0) << "] (addend: " << b->addend << ", type: " << int(b->type) << ", ordinal: " << int(b->ordinal) << ")";
+				std::cout << b->vmaddr << std::setw(0) << "] ";
+
+				if (!b->is_classic)
+					std::cout << "(addend: " << b->addend;
+				else
+					std::cout << "(value: " << b->value;
+
+				std::cout << ", type: " << int(b->type) << ", ordinal: " << int(b->ordinal) << ")";
 				
 				if (b->is_weak)
 					std::cout << 'W';

@@ -102,7 +102,7 @@ private:
 
 	void writeBind(int type, uintptr_t* ptr, uintptr_t newAddr);
 	// The name should include the extra underscore at the beginning
-	uintptr_t getSymbolAddress(const std::string& name);
+	uintptr_t getSymbolAddress(const std::string& name, const MachO::Bind* bind = nullptr, intptr slide = 0);
 
 	// checks sysctl mmap_min_addr
 	static void checkMmapMinAddr(intptr addr);
@@ -139,6 +139,9 @@ private:
 	
 	std::vector<std::string> m_rpathContext;
 	std::stack<std::string> m_loaderPath;
+
+	std::string m_lastResolvedSymbol;
+	uintptr_t m_lastResolvedAddress;
 };
 
 #endif
