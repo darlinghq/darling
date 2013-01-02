@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2012 Lubos Dolezel
+Copyright (C) 2012-2013 Lubos Dolezel
 Copyright (C) 2011 Shinichiro Hamaji
 
 Darling is free software: you can redistribute it and/or modify
@@ -56,7 +56,7 @@ void MachOImpl::readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* 
 		bind->ordinal = 1;
 		bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
 		bind->is_classic = true;
-		LOG << "add classic bind: " << bind->name << " type=" << sym->n_type << " sect=" << sym->n_sect
+		LOG << "add classic bind: " << bind->name << " type=" << int(sym->n_type) << " sect=" << int(sym->n_sect)
 			<< " desc=" << sym->n_desc << " value=" << sym->n_value << " vmaddr=" << (void*)(bind->vmaddr)
 			<< " is_weak=" << bind->is_weak << std::endl;
 		m_binds.push_back(bind);
@@ -330,6 +330,10 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 	uint32_t* dysyms = 0;
 	const char* symstrtab = 0;
 	dyld_info_command* dyinfo = 0;
+
+	struct relocation_info *ext_relocinfo = 0, *loc_relocinfo = 0;
+	uint32_t ext_reloccount = 0, loc_reloccount = 0;
+
 	std::vector<section_64*> bind_sections_64;
 	std::vector<section*> bind_sections_32;
 
@@ -479,6 +483,17 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 				dysyms = reinterpret_cast<uint32_t*>(
 					m_base + dysymtab_cmd->indirectsymoff);
 			}
+			if (dysymtab_cmd->nextrel)
+			{
+				ext_reloccount = dysymtab_cmd->nextrel;
+				ext_relocinfo = reinterpret_cast<relocation_info*>(m_base + dysymtab_cmd->extreloff);
+			}
+			if (dysymtab_cmd->nlocrel)
+			{
+				loc_reloccount = dysymtab_cmd->nlocrel;
+				loc_relocinfo = reinterpret_cast<relocation_info*>(m_base + dysymtab_cmd->locreloff);
+			}
+
 			if (FLAGS_READ_DYSYMTAB)
 			{
 				for (uint32_t j = 0; j < dysymtab_cmd->nindirectsyms; j++)
@@ -578,6 +593,149 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 				readClassicBind<section>(*bind_sections_32[i], dysyms, symtab, symstrtab);
 		}
 	}
+
+	if (ext_relocinfo)
+	{
+		for (uint32_t i = 0; i < ext_reloccount; i++)
+			readExternalRelocation(&ext_relocinfo[i], symtab, symstrtab);
+	}
+	if (loc_relocinfo)
+	{
+		for (uint32_t i = 0; i < loc_reloccount; i++)
+			readInternalRelocation(&loc_relocinfo[i]);
+	}
+}
+
+#if defined(__i386__)
+#	define RELOC_VANILLA GENERIC_RELOC_VANILLA
+#	define RELOC_PTRLEN 2
+#elif defined(__x86_64__)
+#	define RELOC_VANILLA X86_64_RELOC_UNSIGNED
+#	define RELOC_PTRLEN 3
+#endif
+
+void MachOImpl::readInternalRelocation(const struct relocation_info* reloc)
+{
+	Rebase* rebase;
+
+#ifndef __x86_64__ // "In the OS X x86-64 environment scattered relocations are not used."
+	if (reloc->r_address & R_SCATTERED)
+	{
+		const scattered_relocation_info* scattered = reinterpret_cast<const scattered_relocation_info*>(reloc);
+		if (scattered->r_type != RELOC_VANILLA)
+		{
+			LOG << "Unhandled internal reloc type " << scattered->r_type << std::endl;
+			return;
+		}
+
+		if (scattered->r_length != RELOC_PTRLEN)
+		{
+			LOG << "Unsupported relocation length: " << reloc->r_length << std::endl;
+			return;
+		}
+
+		rebase = new Rebase { scattered->r_address, REBASE_TYPE_POINTER };
+	}
+	else
+#endif
+	{
+		if (reloc->r_symbolnum == R_ABS)
+			return;
+		if (reloc->r_type != RELOC_VANILLA)
+		{
+			LOG << "Unhandled internal reloc type " << reloc->r_type << std::endl;
+			return;
+		}
+
+		if (reloc->r_length != RELOC_PTRLEN)
+		{
+			LOG << "Unsupported relocation length: " << reloc->r_length << std::endl;
+			return;
+		}
+
+		rebase = new Rebase { reloc->r_address, REBASE_TYPE_POINTER };
+	}
+
+	if (rebase)
+		m_rebases.push_back(rebase);
+}
+
+void MachOImpl::readExternalRelocation(const struct relocation_info* reloc, uint32_t* symtab, const char* symstrtab)
+{
+	if (!reloc->r_extern)
+		throw std::runtime_error("Invalid external relocation");	
+
+	// Disabled, not implemented in original dyld
+#if !defined(__x86_64__) && 0 // "In the OS X x86-64 environment scattered relocations are not used."
+	if (reloc->r_address & R_SCATTERED)
+	{
+		const scattered_relocation_info* scattered = reinterpret_cast<const scattered_relocation_info*>(reloc);
+		LOG << "Scattered relocation not handled!\n";
+	}
+	else
+#endif
+	{
+		if (reloc->r_length != RELOC_PTRLEN)
+		{
+			LOG << "Unsupported relocation length: " << reloc->r_length << std::endl;
+			return;
+		}
+
+		if (reloc->r_type == RELOC_VANILLA)
+		{
+			Relocation* relocation = new Relocation;
+			nlist* sym = (nlist*)(symtab + reloc->r_symbolnum * (m_is64 ? 4 : 3));
+
+			relocation->addr = reloc->r_address;
+			relocation->name = symstrtab + sym->n_strx;
+			relocation->pcrel = reloc->r_pcrel != 0;
+
+			m_relocations.push_back(relocation);
+		}
+		else
+			LOG << "Unsupported relocation type: " << reloc->r_type << std::endl;
+
+		// At least on i386 and x86-64, this is not implemented in original dyld
+		/*
+		switch (reloc->r_type)
+		{
+#if defined(__i386__)
+		case GENERIC_RELOC_VANILLA:
+		case GENERIC_RELOC_PAIR:
+		case GENERIC_RELOC_SECTDIFF:
+		case GENERIC_RELOC_LOCAL_SECTDIFF:
+		case GENERIC_RELOC_PB_LA_PTR:
+#elif defined(__x86_64__)
+		case X86_64_RELOC_BRANCH:
+		case X86_64_RELOC_GOT_LOAD:
+		case X86_64_RELOC_GOT:
+		case X86_64_RELOC_SIGNED:
+		case X86_64_RELOC_UNSIGNED:
+		case X86_64_RELOC_SUBTRACTOR:
+#elif defined (__powerpc__)
+		case PPC_RELOC_VANILLA:
+		case PPC_RELOC_PAIR:
+		case PPC_RELOC_BR14:
+		case PPC_RELOC_BR24:
+		case PPC_RELOC_HI16:
+		case PPC_RELOC_LO16:
+		case PPC_RELOC_HA16:
+		case PPC_RELOC_LO14:
+		case PPC_RELOC_SECTDIFF:
+		case PPC_RELOC_LOCAL_SECTDIFF:
+		case PPC_RELOC_PB_LA_PTR:
+		case PPC_RELOC_HI16_SECTDIFF:
+		case PPC_RELOC_LO16_SECTDIFF:
+		case PPC_RELOC_HA16_SECTDIFF:
+		case PPC_RELOC_JBSR:
+		case PPC_RELOC_LO14_SECTDIFF:
+			// TODO: ppc
+			LOG << "PowerPC relocations not handled!\n";
+			break;
+#endif
+		}
+		*/
+	}
 }
 
 MachOImpl::~MachOImpl()
@@ -587,18 +745,21 @@ MachOImpl::~MachOImpl()
 
 void MachOImpl::close()
 {
-	for (size_t i = 0; i < m_binds.size(); i++)
-		delete m_binds[i];
-	
+	for (auto* b : m_binds)
+		delete b;
 	m_binds.clear();
-	for (size_t i = 0; i < m_rebases.size(); i++)
-		delete m_rebases[i];
-	
+
+	for (auto* r : m_rebases)
+		delete r;
 	m_rebases.clear();
-	for (size_t i = 0; i < m_exports.size(); i++)
-		delete m_exports[i];
-	
+
+	for (auto* e : m_exports)
+		delete e;
 	m_exports.clear();
+
+	for (auto* r : m_relocations)
+		delete r;
+	m_relocations.clear();
 
 	if (m_mapped)
 	{

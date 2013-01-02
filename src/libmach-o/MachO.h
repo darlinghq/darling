@@ -83,6 +83,13 @@ public:
 		uintptr_t addr, size;
 	};
 
+	struct Relocation
+	{
+		uint64_t addr;
+		std::string name; // symbol name
+		bool pcrel; // i386
+	};
+
 	const std::vector<segment_command_64*>& segments64() const { return m_segments64; }
 
 	const std::vector<segment_command*>& segments() const { return m_segments; }
@@ -98,6 +105,7 @@ public:
 	const std::vector<Export*>& exports() const { return m_exports; }
 
 	const std::vector<Symbol>& symbols() const { return m_symbols; }
+	const std::vector<Relocation*>& relocations() const { return m_relocations; }
 
 	uintptr_t base() const { return m_base; }
 
@@ -133,6 +141,7 @@ public:
 	std::vector<Bind*> m_binds;
 	std::vector<Export*> m_exports;
 	std::vector<Symbol> m_symbols;
+	std::vector<Relocation*> m_relocations;
 	uintptr_t m_base;
 	uint64_t m_entry, m_main;
 	std::vector<uint64_t> m_init_funcs;

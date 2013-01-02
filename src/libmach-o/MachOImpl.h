@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2012 Lubos Dolezel
+Copyright (C) 2012-2013 Lubos Dolezel
 Copyright (C) 2011 Shinichiro Hamaji
 
 Darling is free software: you can redistribute it and/or modify
@@ -22,6 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define MACHOIMPL_H
 #include "MachO.h"
 #include <mach-o/loader.h>
+#include <mach-o/reloc.h>
 #include <stdint.h>
 #include <vector>
 #include <string>
@@ -55,6 +56,11 @@ private:
 	template <class section>
 		void readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* symtab, const char* symstrtab);
 	void readStubBind(const section& sec,  uint32_t* dysyms, uint32_t* symtab, const char* symstrtab);
+
+	// classic
+	void readExternalRelocation(const struct relocation_info* reloc, uint32_t* symtab, const char* symstrtab);
+	// classic
+	void readInternalRelocation(const struct relocation_info* reloc);
 
 	char* m_mapped;
 	size_t m_mapped_size;
