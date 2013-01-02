@@ -19,8 +19,8 @@ __attribute__((destructor)) static void freeMemory();
 static void crashHandler(int signo, siginfo_t* info, void*);
 
 // Defined in Darling dyld
-extern char** g_argv;
-extern int g_argc;
+extern char** g_argv asm("NXArgv");
+extern int g_argc asm("NXArgc");
 static char** g_argvCopy = NULL; // out private copy
 static char* g_originalCwd = NULL;
 

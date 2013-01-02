@@ -11,8 +11,8 @@
 #include "../util/log.h"
 
 extern char g_darwin_executable_path[PATH_MAX];
-extern int g_argc;
-extern char** g_argv;
+extern int g_argc asm("NXArgc");
+extern char** g_argv asm("NXArgv");
 static NSBundle* _mainBundle = 0;
 static NSAutoreleasePool* g_pool = 0;
 
