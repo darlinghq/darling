@@ -44,6 +44,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <execinfo.h>
 #include "GDBInterface.h"
 #include "dyld.h"
+#include <glob.h>
 
 static Darling::Mutex g_ldMutex;
 static std::map<std::string, LoadedLibrary*> g_ldLibraries;
@@ -77,8 +78,9 @@ extern FileMap g_file_map;
 
 #define RET_IF(x) { if (void* p = x) return p; }
 
-static void findSearchpaths(std::string ldconfig_file)
-{
+static void findSearchpathsWildcard(std::string ldconfig_file_pattern);
+
+static void findSearchpaths(std::string ldconfig_file){
 	std::ifstream read(ldconfig_file);
 
 	if(!read.is_open())
@@ -97,7 +99,7 @@ static void findSearchpaths(std::string ldconfig_file)
 			if (line.find('*') == std::string::npos)
 				findSearchpaths(line);
 			else
-				; // TODO: handle wildcards
+				findSearchpathsWildcard(line);
 		}
 		else
 		{
@@ -106,6 +108,18 @@ static void findSearchpaths(std::string ldconfig_file)
 	}
 }
 
+static void findSearchpathsWildcard(std::string ldconfig_file_pattern)
+{
+	// Use glob to break down wildcards (ex. "/etc/ld.so.conf.d/*.conf")
+	glob_t globbuf;
+	
+	glob(ldconfig_file_pattern.c_str(), GLOB_NOSORT, nullptr, &globbuf);
+
+	for (size_t i = 0; i < globbuf.gl_pathc; i++)
+		findSearchpaths(globbuf.gl_pathv[i]);
+
+	globfree(&globbuf);
+}
 
 static void initLD()
 {
@@ -128,10 +142,11 @@ static void initLD()
 		std::cerr << e.what() << std::endl;
 	}
 	//add hardcoded library paths
+	g_searchPath.push_back(LIB_PATH);
 	g_searchPath.push_back("/lib");
 	g_searchPath.push_back("/usr/lib");
 	//find paths from ldconfig
-	findSearchpaths(LD_SO_CONFIG);
+	findSearchpathsWildcard(LD_SO_CONFIG);
 }
 
 static std::string replacePathPrefix(const char* prefix, const char* prefixed, const char* replacement)
