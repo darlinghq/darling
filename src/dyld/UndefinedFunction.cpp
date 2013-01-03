@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2012 Lubos Dolezel
+Copyright (C) 2012-2013 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,74 +21,84 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <sys/mman.h>
 #include <stdexcept>
-#include <sstream>
 #include <dlfcn.h>
-#include <llvm/Module.h>
-#include <llvm/Function.h>
-#include <llvm/PassManager.h>
-#include <llvm/Analysis/Verifier.h>
-#include <llvm/Assembly/PrintModulePass.h>
-#include <llvm/Support/IRBuilder.h>
-#include <llvm/Constant.h>
-#include "llvm/Type.h"
-#include <llvm/ExecutionEngine/JIT.h>
-#include <llvm/Support/TargetSelect.h>
-#include <stdio.h>
-static char undef_fmt[] = "Undefined function: %s\n";
+
 UndefMgr::UndefMgr(int entries)
+: m_nNext(0)
 {
-  
+	int ps = getpagesize();
+	void* mem;
+	
+	int bytes = entries * sizeof(UndefinedFunction);
+	bytes = (bytes + ps - 1) / ps * ps;
+	
+	mem = ::mmap(0, bytes, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+	if (mem == MAP_FAILED)
+		throw std::runtime_error("Failed to map pages for UndefMgr");
+	
+	m_pMem = static_cast<UndefinedFunction*>(mem);
+	m_nMax = bytes / sizeof(UndefinedFunction);
+	m_nBytes = bytes;
 }
 
 UndefMgr::~UndefMgr()
 {
-
+	::munmap(m_pMem, m_nBytes);
 }
 
 void* UndefMgr::generateNew(const char* name)
 {
-  UndefinedFunction * uf = new UndefinedFunction();
-  uf->init(name);
-  return uf->getPointer();
+	if (m_nNext >= m_nMax)
+		throw std::runtime_error("UndefMgr buffer full");
+	
+	m_pMem[m_nNext].init(name);
+	return &m_pMem[m_nNext++];
 }
 
 void UndefinedFunction::init(const char* name)
 {
-  std::stringstream ss;
-  ss << "undefined_function_" << name;
-  mod = new llvm::Module(ss.str().c_str(),llvm::getGlobalContext());
-  llvm::Type * params1_p[2];
-  params1_p[0] = llvm::PointerType::getInt32PtrTy(llvm::getGlobalContext());
-  params1_p[1] = llvm::PointerType::getInt8PtrTy(llvm::getGlobalContext());
-  llvm::ArrayRef<llvm::Type*> params1(params1_p,2);
-  llvm::FunctionType* FuncTy_7 = llvm::FunctionType::get(
-  /*Result=*/llvm::IntegerType::get(mod->getContext(), 32),
-  /*Params=*/params1,
-  /*isVarArg=*/true);
-  llvm_fprintf = llvm::cast<llvm::Function>(mod->getOrInsertFunction("fprintf",FuncTy_7));
-  llvm::Function* uf = llvm::cast<llvm::Function>( mod->getOrInsertFunction("undefinedfunction",llvm::Type::getVoidTy(llvm::getGlobalContext()), NULL));
-  llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm::getGlobalContext(),"entry",uf);
-  llvm::IRBuilder<> b(entry);
-  llvm::Value* f = llvm::cast<llvm::Value>(llvm::ConstantExpr::getIntToPtr(llvm::ConstantInt::get(llvm::PointerType::getInt32PtrTy(llvm::getGlobalContext()),(uint64_t)stderr),llvm::Type::getInt32PtrTy(llvm::getGlobalContext())));
-   
-  llvm::Value* pp0 = b.CreateGlobalStringPtr(undef_fmt);
-  llvm::Value* pp1 = b.CreateGlobalStringPtr(name);
-  b.CreateCall3(llvm_fprintf,f,pp0,pp1,"fprintf");
-  b.CreateRet(NULL);
-  llvm::verifyModule(*mod);
-  std::string es;
-  llvm::InitializeNativeTarget();
-  llvm::EngineBuilder eb = llvm::EngineBuilder(mod);
-  eb.setEngineKind(llvm::EngineKind::JIT);
-  eb.setErrorStr(&es);
-  llvm::ExecutionEngine * ee = eb.create();
-  ptr = ee->getPointerToFunction(uf);
-  
-  
-}
-void* UndefinedFunction::getPointer()
-{
-  return ptr;
+#if defined(__x86_64__)
+	_asm1[0] = 0x48;
+	_asm1[1] = 0xbf;
+	_asm2[0] = 0x48;
+	_asm2[1] = 0xbe;
+	_asm3[0] = 0x48;
+	_asm3[1] = 0xba;
+	_asm4[0] = 0x48;
+	_asm4[1] = 0xbb;
+	_asm5[0] = 0x48;
+	_asm5[1] = 0x31;
+	_asm5[2] = 0xc0;
+	_asm5[3] = 0xff;
+	_asm5[4] = 0xd3;
+	_asm5[5] = 0x48;
+	_asm5[6] = 0x31;
+	_asm5[7] = 0xc0;
+	_asm5[8] = 0xc3;
+#elif defined(__i386__)
+	_asm1[0] = 0xb8;
+	_asm2[0] = 0x50;
+	_asm2[1] = 0xb8;
+	_asm3[0] = 0x50;
+	_asm3[1] = 0xb8;
+	_asm4[0] = 0x50;
+	_asm4[1] = 0xb8;
+	_asm5[0] = 0xff;
+	_asm5[1] = 0xd0;
+	_asm5[2] = 0x83;
+	_asm5[3] = 0xc4;
+	_asm5[4] = 0x0c;
+	_asm5[5] = 0x31;
+	_asm5[6] = 0xc0;
+	_asm5[7] = 0xc3;
+#else
+#   error Unsupported platform!
+#endif
+
+	pStderr = stderr;
+	pErrMsg = "Undefined function called: %s\n";
+	pFuncName = name;
+	pFprintf = dlsym(RTLD_DEFAULT, "fprintf");
 }
 
 #ifdef TEST

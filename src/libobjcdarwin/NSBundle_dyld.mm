@@ -63,11 +63,13 @@ __attribute__((destructor)) static void myexit()
 	if (!_mainBundle)
 	{
 		std::string path = g_darwin_executable_path;
-		size_t pos = path.find_last_of('/');
-		if (pos == std::string::npos)
-			return nil;
+		size_t pos;
 
-		path.resize(pos+1);
+		//size_t pos = path.find_last_of('/');
+		//if (pos == std::string::npos)
+		//	return nil;
+
+		//path.resize(pos+1);
 		//path += "Resources";
 		
 		if ((pos = path.rfind("Contents/")) != std::string::npos)

@@ -51,7 +51,7 @@ public:
 	~MachOLoader();
 	
 	// Maps module segments into the memory
-	void loadSegments(const MachO& mach, intptr* slide, intptr* base, ELFBlock* elf = nullptr);
+	void loadSegments(const MachO& mach, intptr* slide, intptr* base);
 	
 	
 	void doRebase(const MachO& mach, intptr slide);
@@ -73,10 +73,10 @@ public:
 	void doMProtect();
 	
 	// Creates a list of publicly visible functions in this module
-	void loadExports(const MachO& mach, intptr base, Exports* exports, ELFBlock* elf = nullptr);
+	void loadExports(const MachO& mach, intptr base, Exports* exports);
 	
 	// Loads a Mach-O file and does all the processing
-	void load(const MachO& mach, std::string sourcePath, Exports* exports = 0, bool bindLater = false, bool bindLazy = false, ELFBlock* elf = nullptr);
+	void load(const MachO& mach, std::string sourcePath, Exports* exports = 0, bool bindLater = false, bool bindLazy = false);
 	
 	// Dyld data contains an accessor to internal dyld functionality. This stores the accessor pointer.
 	void setupDyldData(const MachO& mach);
@@ -113,7 +113,6 @@ private:
 	std::vector<uint64_t> m_init_funcs;
 	std::list<Exports*> m_exports;
 	Exports* m_mainExports;
-	ELFBlock *m_mainELF;
 	std::vector<std::pair<std::string, uintptr_t> > m_seen_weak_binds;
 	UndefMgr* m_pUndefMgr;
 	TrampolineMgr* m_pTrampolineMgr;
