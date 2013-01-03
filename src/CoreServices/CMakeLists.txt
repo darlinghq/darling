@@ -23,6 +23,9 @@ set(CoreServices_SRCS
 	Gestalt.cpp
 	FileManager.cpp
 	DateTimeUtils.cpp
+	FixMath.cpp
+	ToolUtils.cpp
+	Math64.cpp
 )
 
 add_library(CoreServices SHARED ${CoreServices_SRCS})

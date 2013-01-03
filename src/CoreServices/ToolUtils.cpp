@@ -17,19 +17,47 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef GESTALT_H
-#define GESTALT_H
+#include "ToolUtils.h"
 
-#define gestaltSystemVersion 'sysv'
-#define gestaltSystemVersionMajor 'sys1'
-#define gestaltSystemVersionMinor 'sys2'
-#define gestaltSystemVersionPatch 'sys3'
 
-#define gestaltSysArchitecture 'sysa'
-#define gestaltPowerPC 2
-#define gestaltIntel 10
+int BitTst(const void* bytePtr, long bitNum)
+{
+	const long* v = static_cast<const long*>(bytePtr);
+	return !!(*v & (1 << bitNum));
+}
 
-extern "C" OSStatus Gestalt(uint32_t type, int* value);
+void BitSet(void* bytePtr, long bitNum)
+{
+	long* v = static_cast<long*>(bytePtr);
+	*v |= (1 << bitNum);
+}
 
-#endif
+void BitClr(void* bytePtr, long bitNum)
+{
+	long* v = static_cast<long*>(bytePtr);
+	*v &= ~(1 << bitNum);
+}
+
+long BitAnd(long v1, long v2)
+{
+	return v1 & v2;
+}
+
+long BitXor(long v1, long v2)
+{
+	return v1 ^ v2;
+}
+
+long BitNot(long v1)
+{
+	return ~v1;
+}
+
+long BitShift(long value, short count)
+{
+	if (count >= 0)
+		return value << count;
+	else
+		return value >> (-count);
+}
 
