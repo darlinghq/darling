@@ -199,13 +199,15 @@ wide* WideMultiply(int32_t a, int32_t b, wide* dst)
 
 int32_t WideDivide(const wide* divd, int32_t divs, int32_t* remainder)
 {
-	*remainder = *divd % divs;
+	if (remainder)
+		*remainder = *divd % divs;
 	return int32_t(*divd / divs);
 }
 
 wide* WideWideDivide(wide* divd, int32_t divs, int32_t* remainder)
 {
-	*remainder = *divd % divs;
+	if (remainder)
+		*remainder = *divd % divs;
 	*divd /= divs;
 	return divd;
 }
