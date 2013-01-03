@@ -514,7 +514,6 @@ uintptr_t MachOLoader::getSymbolAddress(const std::string& oname, const MachO::B
 		static const char* ign_sym = getenv("DYLD_IGN_MISSING_SYMS");
 		if (!bind || !bind->is_classic || !bind->value)
 		{
-#ifdef __x86_64__
 			if (ign_sym && atoi(ign_sym))
 			{
 				std::cerr << "!!! Undefined symbol: " << name << std::endl;
@@ -525,7 +524,6 @@ uintptr_t MachOLoader::getSymbolAddress(const std::string& oname, const MachO::B
 				sym = reinterpret_cast<uintptr_t>(m_pUndefMgr->generateNew(dname));
 			}
 			else
-#endif
 			{
 				std::stringstream ss;
 				ss << "Undefined symbol: " << name;

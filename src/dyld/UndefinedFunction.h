@@ -19,23 +19,29 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef UNDEFINEDFUNCTION_H
 #define UNDEFINEDFUNCTION_H
-#include <cstdio>
 
 #pragma pack(1)
-struct UndefinedFunction
+namespace llvm
 {
+  class Module;
+  class Function;
+  class FunctionType;
+  
+class Value;
+class ExecutionEngine;
+}
+class UndefinedFunction
+{
+public:
 	void init(const char* name);
 
-	char _asm1[2];
-	void* pStderr;
-	char _asm2[2];
-	const void* pErrMsg;
-	char _asm3[2];
-	const void* pFuncName;
-	char _asm4[2];
-	const void* pFprintf;
-	char _asm5[9];
-	char padding[7]; // to 48 bytes
+	void* getPointer();
+private:
+  llvm::Module* mod;
+  llvm::Function* llvm_fprintf;
+  llvm::Value* undefined_func_format;
+  llvm::ExecutionEngine* ee;
+  void * ptr;
 };
 #pragma pack()
 
@@ -49,7 +55,8 @@ public:
 	void* generateNew(const char* name);
 private:
 	UndefinedFunction* m_pMem;
-	int m_nMax, m_nNext, m_nBytes;
+	
+	
 };
 
 #endif
