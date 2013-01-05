@@ -262,6 +262,13 @@ void* Darling::DlopenWithContext(const char* filename, int flag, const std::vect
 			
 			}
 		}
+		
+		// Unlike ld-linux, dyld seems to search in . too
+		if (!strchr(filename, '/'))
+		{
+			if (::access(filename, R_OK) == 0)
+				RET_IF( attemptDlopen(filename, flag) );
+		}
 	}
 	
 	if (!g_ldError[0])
@@ -405,7 +412,6 @@ void* attemptDlopen(const char* filename, int flag)
 				// Insert an entry before doing the full load to prevent recursive loading
 				g_ldLibraries[name] = lib;
 
-				g_loader->load(*machO, name, lib->exports, nobind, lazy);
 				//if (!global)
 				//{
 					lib->exports = new Exports;
