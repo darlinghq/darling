@@ -68,7 +68,7 @@ else(NOT OBJC_ABI_2)
 endif(NOT OBJC_ABI_2)
 
 add_library(objc.A.dylib SHARED ${objcdarwin_SRCS})
-target_link_libraries(objc.A.dylib -l:libobjc.so.4 -lgnustep-base -l:../../libutil.a)
+target_link_libraries(objc.A.dylib -l:libobjc.so.4 -lgnustep-base util)
 
 install(TARGETS objc.A.dylib DESTINATION "lib${SUFFIX}/darling")
 
