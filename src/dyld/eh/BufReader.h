@@ -59,9 +59,9 @@ public:
 	bool atEnd() const { return m_pPos == m_pEnd; }
 	uintptr_t pos() const { return reinterpret_cast<uintptr_t>(m_pPos); }
 	void moveTo(uintptr_t pos) { m_pPos = reinterpret_cast<const char*>(pos); }
-private:
+protected:
 	void checkRead(size_t bytes) const;
-private:
+protected:
 	const char *m_pStart, *m_pPos, *m_pEnd;
 };
 

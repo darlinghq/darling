@@ -41,7 +41,7 @@ public:
 	// Frees all the internal structures
 	void clear();
 	
-	void swapRegisterNumbers(const std::vector<std::pair<int, int>>& swapList);
+	void swapRegisterNumbers(const std::map<int, int>& swapList);
 private:
 	struct CIE;
 	struct FDE;
@@ -59,7 +59,7 @@ private:
 	void storeCIE(BufWriter& writer, CIE* cie);
 	void storeFDE(BufWriter& writer, FDE* fde, CIE* cie, uintptr_t cieStart);
 	
-	static void swapRegisterNumbers(std::vector<uint8_t>& where, const std::vector<std::pair<int, int>>& swapList);
+	static void swapRegisterNumbers(std::vector<uint8_t>& where, const std::map<int, int>& swapList, uint8_t ptrEncoding);
 private:
 	// Needed for relative pointer adjustments
 	uintptr_t m_originalStart, m_originalEnd;

@@ -24,7 +24,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits>
 #include <memory>
 #include <cstring>
-#include "../../util/log.h"
+#include "log.h"
+#include "CFIWalker.h"
 
 EHSection::EHSection()
 {
@@ -362,18 +363,31 @@ void EHSection::storeFDE(BufWriter& writer, FDE* fde, CIE* cie, uintptr_t cieSta
 		*totalLength64 = writer.pos() - startPos;
 }
 
-void EHSection::swapRegisterNumbers(const std::vector<std::pair<int, int>>& swapList)
+void EHSection::swapRegisterNumbers(const std::map<int, int>& swapList)
 {
 	for (CIE* cie : m_cies)
 	{
-		swapRegisterNumbers(cie->instructions, swapList);
+		swapRegisterNumbers(cie->instructions, swapList, cie->ptrEncoding);
 		
 		for (FDE* fde : cie->fdes)
-			swapRegisterNumbers(fde->instructions, swapList);
+			swapRegisterNumbers(fde->instructions, swapList, cie->ptrEncoding);
 	}
 }
 
-void EHSection::swapRegisterNumbers(std::vector<uint8_t>& where, const std::vector<std::pair<int, int>>& swapList)
+void EHSection::swapRegisterNumbers(std::vector<uint8_t>& where, const std::map<int, int>& swapList, uint8_t ptrEncoding)
 {
-	// TODO:
+	CFIWalker walker(&where[0], where.size(), ptrEncoding);
+	
+	walker.walk((void*) &swapList,
+		[](void* sl, int regNo) -> int
+		{
+			const std::map<int, int>* swapList = static_cast<const std::map<int, int>*>(sl);
+			auto it = swapList->find(regNo);
+			
+			if (it != swapList->end())
+				return it->second;
+			else
+				return regNo;
+		}
+	);
 }

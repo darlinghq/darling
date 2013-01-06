@@ -665,10 +665,23 @@ void MachOLoader::doPendingBinds()
 				EHSection ehSection;
 				void *reworked_eh_data, *original_eh_data;
 				
+				// On Darwin/i386, esp and ebp register numbers are swapped
+#ifdef __i386__
+				static const std::map<int, int> regSwap = {
+					std::make_pair<int, int>(4, 5),
+					std::make_pair<int, int>(5, 4)
+				};
+#endif
+				
 				original_eh_data = (void*) (eh_frame.first + b.slide);
 				LOG << "Reworking __eh_frame at " << original_eh_data << std::endl;
 				
 				ehSection.load(original_eh_data, eh_frame.second);
+				
+#ifdef __i386__
+				ehSection.swapRegisterNumbers(regSwap);
+#endif
+				
 				ehSection.store(&reworked_eh_data, nullptr);
 				
 				LOG << "Registering reworked __eh_frame at " << reworked_eh_data << std::endl;

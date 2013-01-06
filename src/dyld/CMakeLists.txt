@@ -7,6 +7,8 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 set(dyld_SRCS
+	eh/BufReWriter.cpp
+	eh/CFIWalker.cpp
 	eh/DwarfPointer.cpp
 	eh/BufWriter.cpp
 	eh/BufReader.cpp
