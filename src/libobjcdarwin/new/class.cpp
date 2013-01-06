@@ -50,17 +50,31 @@ Class RegisterClass(const class_t* cls, intptr_t slide)
 	objc_registerClassPair(conv);
 	LOG << "ObjC class " << cls->data()->className << " now @" << conv << std::endl;
 	g_classPointers[cls] = conv;
+	g_classPointers[cls->isa] = object_getClass(id(conv));
 
 	return conv;
 }
 
 void ProcessClassesNew(const struct mach_header* mh, intptr_t slide, const class_t** classes, unsigned long size)
 {
-	class_t **class_refs, **class_refs_end, **super_refs, **super_refs_end;
-	unsigned long refsize, refsize_s;
 	std::vector<const class_t*> vecClasses;
 	std::set<const class_t*> setClasses;
+	
+	std::copy(classes, classes+size/sizeof(class_t*), std::inserter(setClasses, setClasses.begin()));
 
+	topology_sort<const class_t>(setClasses, vecClasses,
+		[&setClasses](const class_t* t) { return setClasses.count(t->superclass) ? std::set<const class_t*>{t->superclass} : std::set<const class_t*>();  }
+	);
+
+	for (const class_t* cls : vecClasses)
+		RegisterClass(cls, slide);
+}
+
+void UpdateClassRefs(const struct mach_header* mh)
+{
+	unsigned long refsize, refsize_s;
+	class_t **class_refs, **class_refs_end, **super_refs, **super_refs_end;
+	
 	class_refs = reinterpret_cast<class_t**>(
 		getsectdata(mh, SEG_OBJC_CLASSREFS_NEW, SECT_OBJC_CLASSREFS_NEW, &refsize)
 	);
@@ -72,27 +86,11 @@ void ProcessClassesNew(const struct mach_header* mh, intptr_t slide, const class
 	
 	if (super_refs)
 		super_refs_end = super_refs + refsize_s / sizeof(class_t*);
-
-	std::copy(classes, classes+size/sizeof(class_t*), std::inserter(setClasses, setClasses.begin()));
-
-	topology_sort<const class_t>(setClasses, vecClasses,
-		[&setClasses](const class_t* t) { return setClasses.count(t->superclass) ? std::set<const class_t*>{t->superclass} : std::set<const class_t*>();  }
-	);
-
-	for (const class_t* cls : vecClasses)
-	{
-		Class c = RegisterClass(cls, slide);
-
-		if (class_refs)
-		{
-			find_and_fix(class_refs, class_refs_end, cls, c);
-			find_and_fix(class_refs, class_refs_end, cls->isa, object_getClass(id(c)));
-		}
-		if (super_refs)
-		{
-			find_and_fix(super_refs, super_refs_end, cls, c);
-			find_and_fix(super_refs, super_refs_end, cls->isa, object_getClass(id(c)));
-		}
-	}
-
+	
+	if (class_refs)
+		find_and_fix((void**) class_refs, (void**) class_refs_end, g_classPointers);
+	
+	if (super_refs)
+		find_and_fix((void**) super_refs, (void**) super_refs_end, g_classPointers);
 }
+

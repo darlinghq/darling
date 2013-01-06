@@ -102,23 +102,6 @@ void ProcessClassesOld(const struct mach_header* mh, intptr_t slide, module_info
 	for (old_class* c : vecClasses)
 		RegisterClass(c, info->version >= 6);
 
-	clsref* class_refs;
-	unsigned long refsize;
-
-	class_refs = reinterpret_cast<clsref*>(
-		getsectdata(mh, SEG_OBJC_CLASSREFS_OLD, SECT_OBJC_CLASSREFS_OLD, &refsize)
-	);
-
-	if (class_refs)
-	{
-		for (size_t i = 0; i < refsize / sizeof(clsref); i++)
-		{
-			Class c = (Class) objc_getClass(class_refs[i].clsName);
-			LOG << "ObjC fixup classref @" << &class_refs[i].cls << ": " << class_refs[i].cls << " -> " << c << std::endl;
-			class_refs[i].cls = c;
-		}
-	}
-
 	// Change class names in 'super_class' from strings to pointers to Class
 	// for (size_t i = 0; i < size / sizeof(old_class); i++)
 	for (uint16_t i = 0; i < info->symtab->countClasses; i++)
@@ -139,3 +122,24 @@ void ProcessClassesOld(const struct mach_header* mh, intptr_t slide, module_info
 		cls->super_class.clsNew = c;
 	}
 }
+
+void UpdateClassRefs(const struct mach_header* mh)
+{
+	clsref* class_refs;
+	unsigned long refsize;
+
+	class_refs = reinterpret_cast<clsref*>(
+		getsectdata(mh, SEG_OBJC_CLASSREFS_OLD, SECT_OBJC_CLASSREFS_OLD, &refsize)
+	);
+
+	if (class_refs)
+	{
+		for (size_t i = 0; i < refsize / sizeof(clsref); i++)
+		{
+			Class c = (Class) objc_getClass(class_refs[i].clsName);
+			LOG << "ObjC fixup classref @" << &class_refs[i].cls << ": " << class_refs[i].cls << " -> " << c << std::endl;
+			class_refs[i].cls = c;
+		}
+	}
+}
+

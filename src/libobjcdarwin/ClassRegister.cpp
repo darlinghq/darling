@@ -69,6 +69,7 @@ void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 	}
 #endif
 
+	UpdateClassRefs(mh);
 	UpdateSelectors(mh, slide);
 	UpdateCFStrings(mh);
 }
