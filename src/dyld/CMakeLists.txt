@@ -7,6 +7,10 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 set(dyld_SRCS
+	eh/DwarfPointer.cpp
+	eh/BufWriter.cpp
+	eh/BufReader.cpp
+	eh/EHSection.cpp
 	FileMap.cpp
 	MachOLoader.cpp
 	Trampoline.cpp

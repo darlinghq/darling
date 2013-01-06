@@ -40,6 +40,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <errno.h>
 #include <dlfcn.h>
 #include <libgen.h>
+#include "eh/EHSection.h"
 
 FileMap g_file_map;
 static std::vector<std::string> g_bound_names;
@@ -655,12 +656,25 @@ void MachOLoader::doPendingBinds()
 	{
 		LOG << "Perform " << b.macho->binds().size() << " binds\n";
 		doBind(b.macho->binds(), b.slide, b.bindLazy);
-		if (b.macho->get_eh_frame().first)
+
+		auto eh_frame = b.macho->get_eh_frame();
+		if (eh_frame.first)
 		{
-			void* frame = reinterpret_cast<void*>(b.macho->get_eh_frame().first + b.slide);
-			LOG << "Registering EH frame at " << frame << std::endl;
-			__register_frame(frame);
+			EHSection ehSection;
+			void* eh_data;
+			uintptr_t bytes;
+			void* eh_frame_ptr;
+			
+			eh_frame_ptr = (void*) (eh_frame.first + b.slide);
+			LOG << "Reworking __eh_frame at " << eh_frame_ptr << std::endl;
+			
+			ehSection.load(eh_frame_ptr, eh_frame.second);
+			ehSection.store(&eh_data, &bytes);
+			
+			LOG << "Registering reworked __eh_frame at " << eh_data << std::endl;
+			__register_frame(eh_data); // TODO: free when unloading the image
 		}
+
 		for (LoaderHookFunc* func : g_machoLoaderHooks)
 			func(b.header, b.slide);
 	}
