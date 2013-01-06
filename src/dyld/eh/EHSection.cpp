@@ -79,7 +79,7 @@ void EHSection::load(const void* start, uintptr_t length)
 			loadCIE(reader, endPos, location);
 		else
 		{
-			uintptr_t pos = reader.pos() - sizeof(id); // offset is from the id field
+			uintptr_t pos = reader.pos() - sizeof(id); // offset is from the id field to the length field of CIE
 			pos -= id;
 			
 			auto it = m_ciePositions.find(pos);
@@ -186,15 +186,9 @@ void EHSection::loadFDE(BufReader& reader, uint64_t endPos, CIE* cie)
 	fde->length = reader.readDwarfPointer(cie->ptrEncoding); // if ptrEncoding is relative, then in context of length, it is still just a plain number
 	
 	if (*cie->augmentationString == 'z')
-	{
 		fde->augmentationDataLength = reader.readLEB128();
-		//fde->augmentationData = reinterpret_cast<const uint8_t*>(reader.readBlock(fde->augmentationDataLength));
-	}
 	else
-	{
 		fde->augmentationDataLength = 0;
-		//fde->augmentationData = nullptr;
-	}
 	
 	if (strchr(cie->augmentationString, 'L') && cie->lsdaEncoding != 0xff) // DW_EH_PE_omit
 		fde->lsdaPointer = reader.readDwarfPointer(cie->lsdaEncoding);
@@ -234,7 +228,8 @@ void EHSection::store(void** mem, uintptr_t* length)
 	// terminating entry
 	writer.write32(0);
 	
-	*length = writer.pos() - reinterpret_cast<uintptr_t>(*mem);
+	if (length != nullptr)
+		*length = writer.pos() - reinterpret_cast<uintptr_t>(*mem);
 }
 
 void EHSection::storeCIE(BufWriter& writer, CIE* cie)
@@ -270,10 +265,6 @@ void EHSection::storeCIE(BufWriter& writer, CIE* cie)
 	else
 		throw std::runtime_error("Invalid CIE version");
 	
-	// TODO: cie->lsdaEncodingPtr
-	// augmentation data length will always be
-	// 1 + 1 + 1 + 4|8
-	
 	uint64_t augLength = 0;
 	if (strchr(cie->augmentationString, 'L'))
 		augLength++;
@@ -299,7 +290,7 @@ void EHSection::storeCIE(BufWriter& writer, CIE* cie)
 				break;
 			case 'P':
 			{
-				cie->personality.relocateToAddr(writer.pos()+1, m_originalStart, m_originalEnd); // not relocated?!
+				cie->personality.relocateToAddr(writer.pos()+1, m_originalStart, m_originalEnd);
 				writer.write(cie->personality.encoding);
 				writer.writeDwarfPointer(cie->personality);
 				break;
@@ -348,7 +339,7 @@ void EHSection::storeFDE(BufWriter& writer, FDE* fde, CIE* cie, uintptr_t cieSta
 	
 	fde->startAddress.relocateToAddr(writer.pos(), m_originalStart, m_originalEnd);
 	writer.writeDwarfPointer(fde->startAddress);
-	writer.writeDwarfPointer(fde->length); // length cannot be relative
+	writer.writeDwarfPointer(fde->length);
 	
 	if (*cie->augmentationString == 'z')
 	{
@@ -373,4 +364,16 @@ void EHSection::storeFDE(BufWriter& writer, FDE* fde, CIE* cie, uintptr_t cieSta
 
 void EHSection::swapRegisterNumbers(const std::vector<std::pair<int, int>>& swapList)
 {
+	for (CIE* cie : m_cies)
+	{
+		swapRegisterNumbers(cie->instructions, swapList);
+		
+		for (FDE* fde : cie->fdes)
+			swapRegisterNumbers(fde->instructions, swapList);
+	}
+}
+
+void EHSection::swapRegisterNumbers(std::vector<uint8_t>& where, const std::vector<std::pair<int, int>>& swapList)
+{
+	// TODO:
 }

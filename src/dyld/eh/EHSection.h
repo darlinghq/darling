@@ -58,6 +58,8 @@ private:
 	
 	void storeCIE(BufWriter& writer, CIE* cie);
 	void storeFDE(BufWriter& writer, FDE* fde, CIE* cie, uintptr_t cieStart);
+	
+	static void swapRegisterNumbers(std::vector<uint8_t>& where, const std::vector<std::pair<int, int>>& swapList);
 private:
 	// Needed for relative pointer adjustments
 	uintptr_t m_originalStart, m_originalEnd;
@@ -65,7 +67,6 @@ private:
 	struct FDE
 	{
 		DwarfPointer startAddress, length;
-		const uint8_t* augmentationData;
 		int64_t augmentationDataLength;
 		DwarfPointer lsdaPointer;
 		

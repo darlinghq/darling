@@ -660,19 +660,25 @@ void MachOLoader::doPendingBinds()
 		auto eh_frame = b.macho->get_eh_frame();
 		if (eh_frame.first)
 		{
-			EHSection ehSection;
-			void* eh_data;
-			uintptr_t bytes;
-			void* eh_frame_ptr;
-			
-			eh_frame_ptr = (void*) (eh_frame.first + b.slide);
-			LOG << "Reworking __eh_frame at " << eh_frame_ptr << std::endl;
-			
-			ehSection.load(eh_frame_ptr, eh_frame.second);
-			ehSection.store(&eh_data, &bytes);
-			
-			LOG << "Registering reworked __eh_frame at " << eh_data << std::endl;
-			__register_frame(eh_data); // TODO: free when unloading the image
+			try
+			{
+				EHSection ehSection;
+				void *reworked_eh_data, *original_eh_data;
+				
+				original_eh_data = (void*) (eh_frame.first + b.slide);
+				LOG << "Reworking __eh_frame at " << original_eh_data << std::endl;
+				
+				ehSection.load(original_eh_data, eh_frame.second);
+				ehSection.store(&reworked_eh_data, nullptr);
+				
+				LOG << "Registering reworked __eh_frame at " << reworked_eh_data << std::endl;
+				__register_frame(reworked_eh_data); // TODO: free when unloading the image
+			}
+			catch (const std::exception& e)
+			{
+				LOG << "Failed to rework the __eh_frame: " << e.what() << std::endl;
+				LOG << "Exception handling WILL NOT WORK!\n";
+			}
 		}
 
 		for (LoaderHookFunc* func : g_machoLoaderHooks)
