@@ -246,7 +246,7 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 		exp->flag = uleb128(p);
 		
 		// TODO: flag == 8 (EXPORT_SYMBOL_FLAGS_REEXPORT)
-		if (exp->flag & 8)
+		if (exp->flag & EXPORT_SYMBOL_FLAGS_REEXPORT)
 		{
 			LOG << "FIXME: reexports not currently handled\n";
 			return;
@@ -254,6 +254,12 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 		
 		exp->addr = uleb128(p);
 		LOG << "export: " << name_buf << " flags=" << std::hex << exp->flag << std::dec << " addr=" << (void*)exp->addr << std::endl;
+
+		if (exp->flag & EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER)
+		{
+			(void)uleb128(p); // TODO: save & use the resolver info for lazy pointers
+			LOG << "FIXME: resolver not currently handled\n";
+		}
 
 		m_exports.push_back(exp);
 
@@ -564,6 +570,10 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		}
 
 		case LC_LOAD_DYLIB:
+		case LC_LOAD_WEAK_DYLIB:
+		case LC_LAZY_LOAD_DYLIB:
+		case LC_REEXPORT_DYLIB:
+		case LC_LOAD_UPWARD_DYLIB:
 		{
 			dylib* lib = &reinterpret_cast<dylib_command*>(cmds_ptr)->dylib;
 			const char* name = (char*)cmds_ptr + lib->name.offset;
@@ -580,6 +590,25 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 			m_rpaths.push_back(rpath);
 			break;
 		}
+
+		case LC_SUB_FRAMEWORK:
+		case LC_SUB_UMBRELLA:
+		case LC_SUB_CLIENT:
+		case LC_SUB_LIBRARY:
+		case LC_FUNCTION_STARTS:
+		case LC_DATA_IN_CODE:
+		case LC_CODE_SIGNATURE:
+		case LC_SEGMENT_SPLIT_INFO:
+		case LC_ID_DYLIB:
+		case LC_VERSION_MIN_MACOSX:
+		case LC_VERSION_MIN_IPHONEOS:
+		case LC_SOURCE_VERSION:
+		case LC_DYLIB_CODE_SIGN_DRS:
+			break;
+
+		default:
+			std::cerr << "Unhandled loader command " << std::hex << (int)cmds_ptr->cmd << std::dec << std::endl;
+			break;
 
 	}
 
