@@ -310,9 +310,9 @@ const char* compiler(const char* path)
 		throw std::runtime_error("Unsupported file name");
 
 	if (!strcmp(suffix, ".c") || !strcmp(suffix, ".m"))
-		return "gcc";
+		return "clang";
 	else if (!strcmp(suffix, ".cpp") || !strcmp(suffix, ".mm"))
-		return "g++";
+		return "clang++";
 	else
 		throw std::runtime_error("Unsupported file name");
 }
