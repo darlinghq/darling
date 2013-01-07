@@ -1,3 +1,5 @@
+section .note.GNU-stack noalloc noexec nowrite progbits
+
 extern reg_saveall
 extern reg_restoreall
 extern dyld_stub_binder_fixup ; void* dyld_stub_binder_fixup(void* cache, uintptr_t index)
