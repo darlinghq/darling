@@ -622,8 +622,8 @@ void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 
 		while (it != le.end())
 		{
-			const Exports* e = *it;
-			Exports::const_iterator itSym = e->find(symbol);
+			Exports* e = *it;
+			Exports::iterator itSym = e->find(symbol);
 		
 			if (itSym == e->end())
 				itSym = e->find(std::string("_") + symbol); // TODO: WTF?
@@ -631,7 +631,21 @@ void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 			if (itSym != e->end())
 			{
 				if (handle != __DARLING_RTLD_STRONG || !(itSym->second.flag & 4))
+				{
+					MachO::Export& exp = itSym->second;
+
+					// If there is a resolver function, we lazily call it now
+					// and update the original stub address with the real one returned.
+
+					if (exp.resolver)
+					{
+						typedef uintptr_t (ResolverFunc)();
+						ResolverFunc* func = (ResolverFunc*) exp.resolver;
+						exp.addr = func();
+						exp.resolver = 0;
+					}
 					return reinterpret_cast<void*>(itSym->second.addr);
+				}
 			}
 			it++;
 		}

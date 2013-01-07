@@ -31,6 +31,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "ld.h"
 #include "UndefinedFunction.h"
 #include "Trampoline.h"
+#include "FileMap.h"
 
 class MachOLoader
 {
@@ -87,6 +88,11 @@ public:
 	// Performs pending binds. Used when loading the main executable and its dependencies.
 	void doPendingBinds();
 	
+	void doPendingTLS();
+	
+	// Processes information from MachO and calls the TLS infrastructure to set things up
+	void setupTLS(const MachO& mach, const FileMap::ImageMap* img, intptr slide);
+	
 	// Starts an application
 	void run(MachO& mach, int argc, char** argv, char** envp, bool bindLazy = false);
 	
@@ -135,6 +141,16 @@ private:
 		bool bindLazy;
 	};
 	std::vector<PendingBind> m_pendingBinds;
+	
+	// Pending TLS variables
+	// Because of initializers, we need to run them after the binds are done
+	struct PendingTLS
+	{
+		const MachO* mach;
+		const FileMap::ImageMap* img;
+		intptr slide;
+	};
+	std::vector<PendingTLS> m_pendingTLS;
 	
 	std::vector<std::string> m_rpathContext;
 	std::stack<std::string> m_loaderPath;

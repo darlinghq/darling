@@ -18,10 +18,12 @@ set(dyld_SRCS
 	Trampoline.cpp
 	trampoline_helper.nasm
 	dyld_stub_binder.nasm
+	tls_helper.nasm
 	ld.cpp
 	dyld.cpp
 	public.cpp
 	binfmt_misc.cpp
+	TLS.cpp
 )
 
 if (DEBUG)

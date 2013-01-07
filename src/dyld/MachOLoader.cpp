@@ -38,9 +38,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <sys/mman.h>
 #include <errno.h>
+#include <unistd.h>
 #include <dlfcn.h>
 #include <libgen.h>
 #include "eh/EHSection.h"
+#include "TLS.h"
 
 FileMap g_file_map;
 static std::vector<std::string> g_bound_names;
@@ -72,28 +74,6 @@ static uint64_t alignMem(uint64_t p, uint64_t a)
 {
 	a--;
 	return (p + a) & ~a;
-}
-
-static void dumpInt(int bound_name_id)
-{
-	if (bound_name_id < 0)
-	{
-		fprintf(stderr, "%d: negative bound function id\n", bound_name_id);
-		return;
-	}
-	if (bound_name_id >= (int)g_bound_names.size())
-	{
-		fprintf(stderr, "%d: bound function id overflow\n", bound_name_id);
-		return;
-	}
-	if (g_bound_names[bound_name_id].empty())
-	{
-		fprintf(stderr, "%d: unbound function id\n", bound_name_id);
-		return;
-	}
-	printf("calling %s(%d)\n",
-			g_bound_names[bound_name_id].c_str(), bound_name_id);
-	fflush(stdout);
 }
 
 MachOLoader::MachOLoader()
@@ -166,9 +146,7 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 		if (!strcmp(name, SEG_PAGEZERO))
 			continue;
 
-		LOG << seg->segname << ": "
-			<< "fileoff=" << seg->fileoff
-			<< ", vmaddr=" << seg->vmaddr <<std::endl;
+		LOG << seg->segname << ": " << "fileoff=" << seg->fileoff << ", vmaddr=" << seg->vmaddr <<std::endl;
 
 		int prot = 0, maxprot = 0;
 
@@ -191,8 +169,11 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 			maxprot |= PROT_EXEC;
 		
 
-		intptr filesize = alignMem(seg->filesize, 0x1000);
+		intptr filesize = alignMem(seg->filesize, getpagesize());
 		intptr vmaddr = seg->vmaddr + *slide;
+		
+		if (!vmaddr)
+			throw std::runtime_error("Address 0x0 is invalid for mapping");
 		
 		if (vmaddr < m_last_addr)
 		{
@@ -205,7 +186,7 @@ void MachOLoader::loadSegments(const MachO& mach, intptr* slide, intptr* base)
 		}
 		*base = std::min(*base, vmaddr);
 
-		intptr vmsize = alignMem(seg->vmsize, 0x1000);
+		intptr vmsize = alignMem(seg->vmsize, getpagesize());
 		LOG << "mmap(file) " << mach.filename() << ' ' << name
 			<< ": " << (void*)vmaddr << "-" << (void*)(vmaddr + filesize)
 			<< " offset=" << mach.offset() + seg->fileoff <<std::endl;
@@ -573,6 +554,9 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 	for (MachO::Export* exp : mach.exports())
 	{
 		exp->addr += base;
+		if (exp->resolver) // EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER support
+			exp->resolver += base;
+
 		// TODO(hamaji): Not 100% sure, but we may need to consider weak symbols.
 		if (!exports->insert(make_pair(exp->name, *exp)).second)
 		{
@@ -638,6 +622,7 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 
 	if (!bindLater)
 	{
+		setupTLS(mach, img, slide);
 		for (LoaderHookFunc* func : g_machoLoaderHooks)
 			func(img->header, slide);
 	}
@@ -645,9 +630,40 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	{
 		LOG << mach.binds().size() << " binds pending\n";
 		m_pendingBinds.push_back(PendingBind{ &mach, img->header, slide, bindLazy });
+		m_pendingTLS.push_back(PendingTLS { &mach, img, slide} );
 	}
 	
 	popCurrentLoader();
+}
+
+void MachOLoader::doPendingTLS()
+{
+	for (PendingTLS& tls : m_pendingTLS)
+		setupTLS(*tls.mach, tls.img, tls.slide);
+	
+	m_pendingTLS.clear();
+}
+
+void MachOLoader::setupTLS(const MachO& mach, const FileMap::ImageMap* image, intptr slide)
+{
+	std::vector<tlv_descriptor*> descriptors;
+	const std::vector<MachO::TLVSection>& tlvSections = mach.tlv_sections();
+	std::vector<void*> initializers;
+	
+	if (tlvSections.empty())
+		return;
+	
+	for (MachO::TLVSection sect : tlvSections)
+	{
+		tlv_descriptor* des = reinterpret_cast<tlv_descriptor*>(sect.firstDescriptor+slide);
+		for (size_t i = 0; i < sect.count; i++)
+			descriptors.push_back(&des[i]);
+	}
+	
+	for (uint64_t offset : mach.tlv_init_funcs())
+		initializers.push_back((void*) (offset+slide));
+	
+	Darling::TLSSetup((void*) image, descriptors, initializers, (void*) mach.tlv_initial_values().first, mach.tlv_initial_values().second);
 }
 
 void MachOLoader::doPendingBinds()
@@ -754,6 +770,7 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp, bool bind
 	//g_timer.print(mach.filename().c_str());
 
 	doPendingBinds();
+	doPendingTLS();
 	runPendingInitFuncs(argc, argv, &envCopy[0], apple);
 	
 	mach.close();

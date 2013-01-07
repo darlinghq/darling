@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2012 Lubos Dolezel
+Copyright (C) 2012-2013 Lubos Dolezel
 Copyright (C) 2011 Shinichiro Hamaji
 
 Darling is free software: you can redistribute it and/or modify
@@ -69,6 +69,7 @@ public:
 		std::string name;
 		uint64_t addr;
 		uint32_t flag;
+		uint64_t resolver; // address of the resolver function, addr contains a stub
 	};
 
 	struct Symbol
@@ -88,6 +89,12 @@ public:
 		uint64_t addr;
 		std::string name; // symbol name
 		bool pcrel; // i386
+	};
+
+	struct TLVSection
+	{
+		uintptr_t firstDescriptor;
+		unsigned long count;
 	};
 
 	const std::vector<segment_command_64*>& segments64() const { return m_segments64; }
@@ -118,6 +125,11 @@ public:
 	std::pair<uint64_t,uint64_t> get_eh_frame() const { return m_eh_frame; }
 	std::pair<uint64_t,uint64_t> get_unwind_info() const { return m_unwind_info; }
 
+	// TLS
+	const std::vector<uint64_t>& tlv_init_funcs() const { return m_tlv_init_funcs; }
+	std::pair<uint64_t,uint64_t> tlv_initial_values() const { return m_tlv; }
+	const std::vector<TLVSection>& tlv_sections() const { return m_tlv_sections; }
+
 	uint64_t dyld_data() const { return m_dyld_data; }
 
 	bool is64() const { return m_is64; }
@@ -146,9 +158,15 @@ public:
 	uint64_t m_entry, m_main;
 	std::vector<uint64_t> m_init_funcs;
 	std::vector<uint64_t> m_exit_funcs;
+	std::vector<uint64_t> m_tlv_init_funcs;
+	std::vector<TLVSection> m_tlv_sections;
 	uint64_t m_dyld_data;
+	// first: address
+	// second: length
 	std::pair<uint64_t,uint64_t> m_eh_frame;
 	std::pair<uint64_t,uint64_t> m_unwind_info;
+	std::pair<uint64_t,uint64_t> m_tlv; // address contains initial values
+	
 	bool m_is64;
 	int m_ptrsize;
 	int m_fd;

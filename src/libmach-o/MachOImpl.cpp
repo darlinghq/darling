@@ -189,6 +189,34 @@ void MachOImpl::readSegment(char* cmds_ptr, std::vector<segment_command*>* segme
 			if (!m_is64)
 				bind_sections->push_back(sections + j);
 			break;
+
+		// Thread Local Storage (TLS) support
+		case S_THREAD_LOCAL_REGULAR: // initial TLS values
+		case S_THREAD_LOCAL_ZEROFILL: // initial TLS values
+		{
+			LOG << "TLS initial values at " << std::hex << sec.addr << std::dec << "; " << sec.size << " bytes\n";
+			if (!m_tlv.first)
+				m_tlv = std::make_pair<uint64_t,uint64_t>(uint64_t(sec.addr), uint64_t(sec.size));
+			else
+				m_tlv.second = (sec.addr+sec.size) - m_tlv.first; // extend it to the end of this section
+			break;
+		}
+		case S_THREAD_LOCAL_INIT_FUNCTION_POINTERS: // TLV initializers
+		{
+			for (uint64_t p = sec.addr; p < sec.addr + sec.size; p += m_ptrsize)
+				m_tlv_init_funcs.push_back(p);
+			break;
+		}
+		case S_THREAD_LOCAL_VARIABLES: // TLV descriptors
+		{
+			TLVSection sect = { uintptr_t(sec.addr), uintptr_t(sec.size / sizeof(tlv_descriptor)) };
+			
+			LOG << "TLS descriptors at " << std::hex << sect.firstDescriptor << std::dec << "; count: " << sect.count << std::endl;
+			
+			m_tlv_sections.push_back(sect);
+			break;
+		}
+		case S_THREAD_LOCAL_VARIABLE_POINTERS: // pointers to TLV descriptors
 		case S_ZEROFILL:
 		case S_CSTRING_LITERALS: // 0x2
 		case S_4BYTE_LITERALS: // 0x3
@@ -244,6 +272,7 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 		
 		exp->name = *name_buf;
 		exp->flag = uleb128(p);
+		exp->resolver = 0;
 		
 		// TODO: flag == 8 (EXPORT_SYMBOL_FLAGS_REEXPORT)
 		if (exp->flag & EXPORT_SYMBOL_FLAGS_REEXPORT)
@@ -256,10 +285,7 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 		LOG << "export: " << name_buf << " flags=" << std::hex << exp->flag << std::dec << " addr=" << (void*)exp->addr << std::endl;
 
 		if (exp->flag & EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER)
-		{
-			(void)uleb128(p); // TODO: save & use the resolver info for lazy pointers
-			LOG << "FIXME: resolver not currently handled\n";
-		}
+			exp->resolver = uleb128(p);
 
 		m_exports.push_back(exp);
 
@@ -545,6 +571,17 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 			break;
 		}
 
+		case LC_DYLD_ENVIRONMENT:
+		{
+			lc_str name = reinterpret_cast<struct dylinker_command*>(cmds_ptr)->name;
+			const char* str = ((char*)cmds_ptr + name.offset);
+			LOG << "environment variable: " << str << std::endl;
+
+			putenv(strdup(str));
+
+			break;
+		}
+
 		case LC_UUID:
 			break;
 
@@ -591,6 +628,31 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 			break;
 		}
 
+		case LC_VERSION_MIN_MACOSX:
+		case LC_VERSION_MIN_IPHONEOS:
+		{
+			version_min_command* cmd = reinterpret_cast<version_min_command*>(cmds_ptr);
+			LOG << "Version requirements: OS X: "
+				<< (cmd->version >> 16) << '.'
+				<< ((cmd->version >> 8) & 0xf) << '.'
+				<< (cmd->version & 0xf)
+				<< "; SDK: "
+				<< (cmd->sdk >> 16) << '.'
+				<< ((cmd->sdk >> 8) & 0xf) << '.'
+				<< (cmd->sdk & 0xf)
+				<< std::endl;
+			break;
+		}
+		case LC_SOURCE_VERSION:
+		{
+			source_version_command* cmd = reinterpret_cast<source_version_command*>(cmds_ptr);
+			LOG << "Original source version: "
+				<< (cmd->version >> 40) << '.'
+				<< ((cmd->version >> 30) & 0x3ff) << '.'
+				<< ((cmd->version >> 20) & 0x3ff) << '.'
+				<< ((cmd->version >> 10) & 0x3ff) << '.'
+				<< (cmd->version & 0x3ff) << std::endl;
+		}
 		case LC_SUB_FRAMEWORK:
 		case LC_SUB_UMBRELLA:
 		case LC_SUB_CLIENT:
@@ -600,9 +662,6 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		case LC_CODE_SIGNATURE:
 		case LC_SEGMENT_SPLIT_INFO:
 		case LC_ID_DYLIB:
-		case LC_VERSION_MIN_MACOSX:
-		case LC_VERSION_MIN_IPHONEOS:
-		case LC_SOURCE_VERSION:
 		case LC_DYLIB_CODE_SIGN_DRS:
 			break;
 
