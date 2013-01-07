@@ -459,7 +459,7 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 					sym += bind->addend;
 			}
 
-			LOG << "bind " << name << ": "
+			LOG << "bind " << bind->name << ": "
 				<< std::hex << *ptr << std::dec << " => " << (void*)sym << " @" << ptr << std::endl;
 #ifdef DEBUG
 			if (g_trampoline)

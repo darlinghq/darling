@@ -302,7 +302,6 @@ void EHSection::storeCIE(BufWriter& writer, CIE* cie)
 			{
 				std::stringstream ss;
 				ss << "Unsupported character in CIE augmentation string: " << *augP;
-				delete cie;
 				
 				throw std::runtime_error(ss.str());
 			}

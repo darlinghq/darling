@@ -47,7 +47,10 @@ uint8_t CFIWalker::processMixedInstr(void* opaque, int (*mapRegisterNumber)(void
 	int newRegNo = mapRegisterNumber(opaque, origRegNo);
 	
 	if (origRegNo != newRegNo)
-		return (uint8_t) (instr & 0xC0) | newRegNo;
+	{
+		LOG << "Updating mixed instr. register number: " << origRegNo << " -> " << newRegNo << std::endl;
+		return (uint8_t) (instr & 0xC0) | (newRegNo & 0x3f);
+	}
 	else
 		return instr;
 }
