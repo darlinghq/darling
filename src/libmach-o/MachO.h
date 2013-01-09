@@ -131,6 +131,9 @@ public:
 	const std::vector<TLVSection>& tlv_sections() const { return m_tlv_sections; }
 
 	uint64_t dyld_data() const { return m_dyld_data; }
+	
+	__attribute__ ((visibility ("default")))
+	uint64_t relocation_base() const;
 
 	bool is64() const { return m_is64; }
 

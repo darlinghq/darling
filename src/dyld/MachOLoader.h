@@ -67,7 +67,7 @@ public:
 	void* doBind(const std::vector<MachO::Bind*>& binds, intptr slide, bool resolveLazy = false);
 
 	// Binds external relocations
-	void doRelocations(const std::vector<MachO::Relocation*>& rels, intptr base, intptr slide);
+	void doRelocations(const std::vector<MachO::Relocation*>& rels, intptr segmentBase, intptr slide);
 	
 	// Calls mprotect() to switch segment protections to the "initial" value.
 	// We initially set the maximum value.

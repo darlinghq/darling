@@ -299,19 +299,19 @@ void MachOLoader::doRebase(const MachO& mach, intptr slide)
 	}
 }
 
-void MachOLoader::doRelocations(const std::vector<MachO::Relocation*>& rels, intptr base, intptr slide)
+void MachOLoader::doRelocations(const std::vector<MachO::Relocation*>& rels, intptr segmentBase, intptr slide)
 {
-	TRACE2(base, slide);
+	TRACE2(segmentBase, slide);
 	m_lastResolvedSymbol.clear();
 	m_lastResolvedAddress = 0;
 	
 #ifdef __i386__
-	base = 0; // TODO: WTF? But this helps.
+	segmentBase = 0; // TODO: WTF? But this helps.
 #endif
 
 	for (const MachO::Relocation* rel : rels)
 	{
-		uintptr_t* ptr = (uintptr_t*) (uintptr_t(rel->addr) + base + slide);
+		uintptr_t* ptr = (uintptr_t*) (uintptr_t(rel->addr) + segmentBase + slide);
 		uintptr_t symbol;
 		uintptr_t value = *ptr;
 
@@ -597,7 +597,7 @@ void MachOLoader::popCurrentLoader()
 void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* exports, bool bindLater, bool bindLazy)
 {
 	intptr slide = 0;
-	intptr base = 0;
+	intptr base = 0, segmentBase;
 	const FileMap::ImageMap* img;
 	size_t origRpathCount;
 
@@ -625,7 +625,10 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	
 	if (!bindLater)
 		doBind(mach.binds(), slide, !bindLazy);
-	doRelocations(mach.relocations(), base, slide);
+	
+	segmentBase = mach.relocation_base();
+	
+	doRelocations(mach.relocations(), segmentBase, slide);
 	doMProtect(); // decrease the segment protection value
 
 	if (!bindLater)

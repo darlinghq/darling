@@ -79,3 +79,37 @@ bool MachO::isMachO(const char* path)
 	}
 	return is_macho;
 }
+
+uint64_t MachO::relocation_base() const
+{
+	uint64_t addr;
+	if (is64())
+	{
+		for (segment_command_64* seg : m_segments64)
+		{
+			if (seg->initprot & VM_PROT_WRITE)
+			{
+				addr = seg->vmaddr;
+				break;
+			}
+		}
+	}
+	else
+	{
+		if (m_header.flags & MH_SPLIT_SEGS)
+		{
+			for (segment_command* seg : m_segments)
+			{
+				if (seg->initprot & VM_PROT_WRITE)
+				{
+					addr = uint64_t(seg->vmaddr) & 0xffffffff;
+					break;
+				}
+			}
+		}
+		else
+			addr = uint64_t(m_segments[0]->vmaddr) & 0xffffffff;
+	}
+	return addr;
+}
+
