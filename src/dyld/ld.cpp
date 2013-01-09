@@ -649,11 +649,11 @@ void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 			}
 			it++;
 		}
-
+		
 		// Now try without a prefix
 		const char* translated = translateSymbol(symbol);
 		LOG << "Trying " << translated << std::endl;
-		
+#if 0 // FIXME: This causes serious regressions!
 		for (auto& pair : g_ldLibraries)
 		{
 			if (pair.second->type == LoadedLibraryNative)
@@ -664,6 +664,7 @@ void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 					RET_IF(::dlsym(pair.second->nativeRef, symbol));
 			}
 		}
+#endif
 		
 		RET_IF(::dlsym(RTLD_DEFAULT, translated));
 		

@@ -60,7 +60,7 @@ public:
 		};
 		uint8_t type;
 		uint8_t ordinal;
-		bool is_weak, is_lazy, is_classic;
+		bool is_weak, is_lazy, is_classic, is_local;
 		uintptr_t offset; // Needed to find the right bind when doing lazy binding
 	};
 

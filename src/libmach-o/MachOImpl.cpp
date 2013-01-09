@@ -25,6 +25,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "leb.h"
 
 #include <mach-o/loader.h>
+#include <mach-o/nlist.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <cstdio>
@@ -48,6 +49,13 @@ void MachOImpl::readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* 
 		uint32_t index = dysym & 0x3fffffff;
 		nlist* sym = (nlist*)(symtab + index * (m_is64 ? 4 : 3));
 
+		if ((sym->n_type & N_TYPE) == N_ABS) // N_ABS
+			continue;
+		if (sym->n_type & N_STAB)
+			continue;
+		if ((dysym & INDIRECT_SYMBOL_LOCAL) || (dysym & INDIRECT_SYMBOL_ABS))
+			continue;
+
 		MachO::Bind* bind = new MachO::Bind();
 		bind->name = symstrtab + sym->n_strx;
 		bind->vmaddr = sec.addr + i * m_ptrsize;
@@ -56,6 +64,7 @@ void MachOImpl::readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* 
 		bind->ordinal = 1;
 		bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
 		bind->is_classic = true;
+		bind->is_local = (sym->n_type & N_TYPE) == N_SECT;
 
 		if (!m_is64)
 		{
@@ -63,9 +72,9 @@ void MachOImpl::readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* 
 			bind->value &= 0xffffffff;
 		}
 
-		LOG << "add classic bind: " << bind->name << " type=" << int(sym->n_type) << " sect=" << int(sym->n_sect)
+		LOG << "add classic bind: " << bind->name << '(' << index << ") type=" << int(sym->n_type) << " sect=" << int(sym->n_sect)
 			<< " desc=" << sym->n_desc << " value=" << sym->n_value << " vmaddr=" << (void*)(bind->vmaddr)
-			<< " is_weak=" << bind->is_weak << std::endl;
+			<< " is_weak=" << bind->is_weak << " is_local=" << bind->is_local << std::endl;
 		m_binds.push_back(bind);
     }
 }
@@ -76,9 +85,11 @@ void MachOImpl::readStubBind(const section& sec,  uint32_t* dysyms, uint32_t* sy
 	const uint32_t indirect_offset = sec.reserved1;
 	const int count = sec.size / element_size;
 
+	if (!sec.size)
+		return;
 	if (element_size != 5)
 	{
-		LOG << "MachOImpl::readStubBind(): cannot handle stubs of elem size != 5, size=" << element_size << std::endl;
+		LOG << "MachOImpl::readStubBind(): cannot handle stubs of elem size != 5, size=" << element_size << "; vmaddr: 0x" << std::hex << sec.addr << std::dec << std::endl;
 		return;
 	}
 
@@ -663,10 +674,15 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		case LC_SEGMENT_SPLIT_INFO:
 		case LC_ID_DYLIB:
 		case LC_DYLIB_CODE_SIGN_DRS:
+		case LC_TWOLEVEL_HINTS:
+			break;
+
+		case LC_PREBOUND_DYLIB:
+			LOG << "LC_PREBOUND_DYLIB not handled\n"; // TODO: do we have to care?
 			break;
 
 		default:
-			std::cerr << "Unhandled loader command " << std::hex << (int)cmds_ptr->cmd << std::dec << std::endl;
+			std::cerr << "Unhandled loader command " << std::hex << (int)cmds_ptr->cmd << std::dec << " - this could result in crashes" << std::endl;
 			break;
 
 	}
@@ -677,7 +693,7 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 
 	//LOGF("%p vs %p\n", cmds_ptr, bin + m_mapped_size);
 
-	LOG << "dyinfo: " << dyinfo << ", dysyms: " << dysyms << ", symtab: " << symtab << ", symstrtab: " << symstrtab << ", symbol count: " << m_symbols.size() << std::endl;
+	LOG << "dyinfo: " << dyinfo << ", dysyms: " << dysyms << ", symtab: " << symtab << ", symstrtab: " << (void*)symstrtab << ", symbol count: " << m_symbols.size() << std::endl;
 	// No LC_DYLD_INFO_ONLY, we will read classic binding info.
 	if (!dyinfo && dysyms && symtab && symstrtab)
 	{
@@ -693,17 +709,17 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 			else
 				readClassicBind<section>(*bind_sections_32[i], dysyms, symtab, symstrtab);
 		}
-	}
 
-	if (ext_relocinfo)
-	{
-		for (uint32_t i = 0; i < ext_reloccount; i++)
-			readExternalRelocation(&ext_relocinfo[i], symtab, symstrtab);
-	}
-	if (loc_relocinfo)
-	{
-		for (uint32_t i = 0; i < loc_reloccount; i++)
-			readInternalRelocation(&loc_relocinfo[i]);
+		if (ext_relocinfo)
+		{
+			for (uint32_t i = 0; i < ext_reloccount; i++)
+				readExternalRelocation(&ext_relocinfo[i], symtab, symstrtab);
+		}
+		if (loc_relocinfo)
+		{
+			for (uint32_t i = 0; i < loc_reloccount; i++)
+				readInternalRelocation(&loc_relocinfo[i]);
+		}
 	}
 }
 
@@ -790,6 +806,9 @@ void MachOImpl::readExternalRelocation(const struct relocation_info* reloc, uint
 			relocation->addr = reloc->r_address;
 			relocation->name = symstrtab + sym->n_strx;
 			relocation->pcrel = reloc->r_pcrel != 0;
+			
+			LOG << "External relocation: " << std::hex << relocation->addr << std::dec
+				<< "; name: " << relocation->name << "; pcrel: " << relocation->pcrel << std::endl;
 
 			m_relocations.push_back(relocation);
 		}

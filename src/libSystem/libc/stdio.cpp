@@ -275,7 +275,6 @@ void __darwin_setbuffer(__darwin_FILE* fp, char* buf, size_t size)
 
 int __darwin_ferror(__darwin_FILE* fp)
 {
-	LOGF("ferror: %d\n", ferror(fp->linux_fp));
 	return ferror(fp->linux_fp);
 }
 

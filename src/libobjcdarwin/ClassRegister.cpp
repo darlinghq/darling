@@ -62,7 +62,7 @@ void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 		getsectdata(mh, SEG_OBJC_MODINFO_OLD, SECT_OBJC_MODINFO_OLD, &size)
 	);
 
-	if (modinfo)
+	if (modinfo && modinfo->symtab)
 	{
 		ProcessClassesOld(mh, slide, modinfo);
 		ProcessCategoriesOld(mh, slide, modinfo);

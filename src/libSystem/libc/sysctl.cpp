@@ -34,7 +34,7 @@ int __darwin_sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* n
 		return -1;
 	}
 
-	if (!strcmp(name, "hw.physicalcpu") || !strcmp(name, "hw.logicalcpu"))
+	if (!strcmp(name, "hw.physicalcpu") || !strcmp(name, "hw.logicalcpu") || !strcmp(name, "hw.ncpu"))
 		val = ::sysconf(_SC_NPROCESSORS_ONLN);
 	else if (!strcmp(name, "hw.physicalcpu_max") || !strcmp(name, "hw.logicalcpu_max"))
 		val = ::sysconf(_SC_NPROCESSORS_CONF);
