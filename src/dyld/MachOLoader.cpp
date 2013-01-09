@@ -304,10 +304,6 @@ void MachOLoader::doRelocations(const std::vector<MachO::Relocation*>& rels, int
 	TRACE2(segmentBase, slide);
 	m_lastResolvedSymbol.clear();
 	m_lastResolvedAddress = 0;
-	
-#ifdef __i386__
-	segmentBase = 0; // TODO: WTF? But this helps.
-#endif
 
 	for (const MachO::Relocation* rel : rels)
 	{
