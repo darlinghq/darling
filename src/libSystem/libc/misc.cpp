@@ -2,6 +2,7 @@
 #include "misc.h"
 #include "trace.h"
 #include <langinfo.h>
+#include <cstdlib>
 
 const char* locale_charset()
 {
@@ -20,3 +21,9 @@ extern "C" void* __darwin_realloc(void* p, size_t s)
 	//	p = 0;
 	return realloc(p,s);
 }
+
+int __darwin_atexit(void (*function)(void))
+{
+	return atexit(function);
+}
+

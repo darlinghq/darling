@@ -6,6 +6,8 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
+
 if (SUFFIX)
 	set(MULTILIB TRUE)
 endif (SUFFIX)
@@ -25,6 +27,24 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 endif (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 
 message(STATUS "This is a ${BITS}-bit build")
+
+include(FindPkgConfig)
+include(FindGnustepBase)
+include(FindGnustepCorebase)
+include(FindGnustepGui)
+include(FindLibkqueue)
+include(FindLibobjc2)
+include(FindOpal)
+
+pkg_check_modules(libbsd REQUIRED "libbsd >= 0.4.2")
+pkg_check_modules(libudev REQUIRED "libudev")
+
+find_package(GnustepBase REQUIRED)
+find_package(GnustepCorebase REQUIRED)
+find_package(GnustepGui REQUIRED)
+find_package(Libkqueue REQUIRED)
+find_package(Libobjc2 REQUIRED)
+find_package(Opal REQUIRED)
 
 if (SUFFIX STREQUAL "32")
 	set(CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -m32")
@@ -49,6 +69,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/libmach-o)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/util)
 include_directories(${CMAKE_BINARY_DIR}) # for config.h
+
+include_directories(${LIBGNUSTEPBASE_INCLUDE_DIR})
+include_directories(${LIBGNUSTEPCOREBASE_INCLUDE_DIR})
+include_directories(${LIBKQUEUE_INCLUDE_DIR})
+include_directories(${LIBOBJC2_INCLUDE_DIR})
+include_directories(${LIBOPAL_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 

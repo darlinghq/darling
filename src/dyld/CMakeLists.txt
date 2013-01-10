@@ -44,3 +44,8 @@ target_link_libraries(dyld${SUFFIX} -ldl -lpthread mach-o util)
 
 install(TARGETS dyld${SUFFIX} DESTINATION bin)
 
+if (SUFFIX STREQUAL "64")
+	add_executable(dyld dyld-multilib.c)
+	install(TARGETS dyld DESTINATION bin)
+endif (SUFFIX STREQUAL "64")
+

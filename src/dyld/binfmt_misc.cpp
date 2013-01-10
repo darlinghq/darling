@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2012 Lubos Dolezel
+Copyright (C) 2012-2013 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -37,10 +37,12 @@ void Darling::binfmtRegister(const char* loader)
 	if (!reg.is_open())
 		throw std::runtime_error("Cannot register the binfmt_misc handler, is binfmt_misc kernel support loaded and mounted?");
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__powerpc64__)
 	reg << ":Mach-O 64bit:M::\\xcf\\xfa\\xed\\xfe::" << loader << ":\n";
-#else
+#elif defined(__i386__) || defined(__powerpc__)
 	reg << ":Mach-O 32bit:M::\\xce\\xfa\\xed\\xfe::" << loader << ":\n";
+#else
+#	error Unuspported platform
 #endif
 	reg.close();
 
@@ -64,10 +66,10 @@ void Darling::binfmtDeregister()
 	checkRoot();
 
 	deregister("Mach-O Universal");
-#ifdef __x86_64__
-	deregister("Mach-O 64bit");
-#else
-	deregister("Mach-O 32bit");
-#endif
+
+	if (sizeof(void*) == 8)
+		deregister("Mach-O 64bit");
+	else
+		deregister("Mach-O 32bit");
 }
 
