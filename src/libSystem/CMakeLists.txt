@@ -70,6 +70,7 @@ set(libc_SRCS
 	libc/xlocale.cpp
 	libc/malloc_zone.cpp
 	libc/namemap.cpp
+	libc/asl.cpp
 	common/auto.cpp
 	common/path.cpp
 )
