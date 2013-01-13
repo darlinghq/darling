@@ -382,10 +382,11 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		m_base + (m_is64 ? sizeof(mach_header_64) : sizeof(mach_header))
 	);
 
-	uint32_t* symtab = 0;
-	uint32_t* dysyms = 0;
-	const char* symstrtab = 0;
-	dyld_info_command* dyinfo = 0;
+	uint32_t* symtab = nullptr;
+	uint32_t* dysyms = nullptr;
+	const char* symstrtab = nullptr;
+	dyld_info_command* dyinfo = nullptr;
+	dysymtab_command* dysymtab_cmd = nullptr;
 
 	struct relocation_info *ext_relocinfo = 0, *loc_relocinfo = 0;
 	uint32_t ext_reloccount = 0, loc_reloccount = 0;
@@ -511,7 +512,7 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 
 		case LC_DYSYMTAB:
 		{
-			dysymtab_command* dysymtab_cmd = reinterpret_cast<dysymtab_command*>(cmds_ptr);
+			dysymtab_cmd = reinterpret_cast<dysymtab_command*>(cmds_ptr);
 
 			LOGF("dysym:\n"
 				" ilocalsym=%u nlocalsym=%u\n"
@@ -719,6 +720,23 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		{
 			for (uint32_t i = 0; i < loc_reloccount; i++)
 				readInternalRelocation(&loc_relocinfo[i]);
+		}
+	}
+
+	if (dysymtab_cmd != nullptr)
+	{
+		int expStart, expCount;
+		expStart = dysymtab_cmd->iextdefsym;
+		expCount = dysymtab_cmd->nextdefsym;
+
+		for (int i = expStart; i < expStart+expCount; i++)
+		{
+			Export* exp = new Export;
+			exp->name = m_symbols[i].name;
+			exp->addr = m_symbols[i].addr;
+			exp->flag = 0;
+			exp->resolver = 0;
+			m_exports.push_back(exp);
 		}
 	}
 }
