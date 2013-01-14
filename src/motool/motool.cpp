@@ -1,7 +1,7 @@
 /*
  * This file is part of Darling.
  *
- * Copyright (C) 2012 Lubos Dolezel
+ * Copyright (C) 2012-2013 Lubos Dolezel
  *
  * Darling is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 #include <cstring>
 #include <iomanip>
 
-enum OpMode { ModeDylibs, ModeSymbols, ModeExports, ModeBinds, ModeSegments };
+enum OpMode { ModeDylibs, ModeSymbols, ModeExports, ModeBinds, ModeSegments, ModeRelocations, ModeRebases };
 
 void printBinInfo(const char* path, const char* arch, const char* opt);
 OpMode getOpMode(const char* opt);
@@ -64,6 +64,8 @@ int main(int argc, char** argv)
 			"\t-s --symbols\tList symbols\n"
 			"\t-e --exports\tList exports\n"
 			"\t-b --binds\tList binds\n"
+			"\t-r --reloc\tList external relocations\n"
+			"\t-a --rebases\tList rebases\n"
 			"\t-g --segments\tList segments and sections\n"
 			"\t-f --fat\tList FAT Mach-O architectures\n"
 			"\n";
@@ -236,6 +238,45 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 
 			break;
 		}
+		case ModeRebases:
+		{
+			std::cout << "Rebases:\n";
+
+			for (MachO::Rebase* r : macho->rebases())
+			{
+				std::cout << "\t at [0x" << std::hex << std::setfill('0');
+
+				if (macho->is64())
+					std::cout << std::setw(16);
+				else
+					std::cout << std::setw(8);
+
+				std::cout << r->vmaddr << std::dec << std::setw(0) << "]\n";
+			}
+			break;
+		}
+		case ModeRelocations:
+		{
+			std::cout << "External relocations:\n";
+
+			for (MachO::Relocation* r : macho->relocations())
+			{
+				std::cout << '\t' << r->name << " at " << "[0x" << std::hex << std::setfill('0');
+				
+				if (macho->is64())
+					std::cout << std::setw(16);
+				else
+					std::cout << std::setw(8);
+				
+				std::cout << r->addr << std::setw(0) << "] ";
+
+				if (r->pcrel)
+					std::cout << "PC-REL";
+				std::cout << std::endl;
+			}
+			break;
+		}
+
 	}
 	
 	delete macho;
@@ -255,6 +296,10 @@ OpMode getOpMode(const char* opt)
 		return ModeBinds;
 	else if (!strcmp(opt, "-g") || !strcmp(opt, "--segments"))
 		return ModeSegments;
+	else if (!strcmp(opt, "-r") || !strcmp(opt, "--reloc"))
+		return ModeRelocations;
+	else if (!strcmp(opt, "-a") || !strcmp(opt, "--rebases"))
+		return ModeRebases;
 	else
 	{
 		std::stringstream ss;
