@@ -1,0 +1,4 @@
+created thread1=0
+created thread2=1
+created thread3=2
+main: about to signal all threads

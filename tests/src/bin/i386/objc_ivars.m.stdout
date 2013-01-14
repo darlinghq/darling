@@ -1,0 +1,5 @@
+instance size: 12
+after alloc
+after ivarSet
+Hello world, 3
+after doHello

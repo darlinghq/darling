@@ -1,0 +1,5 @@
+Pass [nsstr isEqual:cfstr]: OK
+Pass [nsstr isEqualToString:cfstr]: OK
+Pass [cfstr isEqual:nsstr]: OK
+Pass [cfstr isEqualToString:nsstr]: OK
+Pass [nsstr hash] == [cfstr hash]: OK

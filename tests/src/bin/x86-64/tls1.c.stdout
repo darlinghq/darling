@@ -1,0 +1,3 @@
+main: var = 123
+main: var = 321
+thread: var = 123

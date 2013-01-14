@@ -1,0 +1,5 @@
+Constructor called
+main: var = 123
+main: var = 321
+thread: var = 0 <- this seems to be broken on all platforms
+Destructor called
