@@ -4,14 +4,24 @@ import glob
 import subprocess
 from xml.dom.minidom import Document
 
-TEST_ARCHITECTURES = tuple([ "i386", "x86-64" ])
+TEST_ARCHITECTURES = [ "i386", "x86-64" ]
 TEST_PLATFORMS = tuple([ "10.2", "10.6", "10.8" ])
 
 successful_tests = {}
 failed_tests = {}
+dyld_command = "dyld"
 
 def main():
+	global dyld_command
 	orig_cwd = os.getcwd()
+
+	if 'DYLD' in os.environ:
+		dyld_command = os.environ['DYLD']
+
+	if dyld_command.endswith('32'):
+		TEST_ARCHITECTURES.remove('x86-64')
+	elif dyld_command.endswith('64'):
+		TEST_ARCHITECTURES.remove('i386')
 
 	os.chdir(os.path.dirname(os.path.realpath(__file__)))
 	tests = glob.glob('i386/*.stdout');
@@ -49,7 +59,7 @@ def runTest(fileName):
 				continue
 
 			try:
-				output = subprocess.check_output(["dyld", path + ".bin"])
+				output = subprocess.check_output([dyld_command, path + ".bin"])
 
 				if output != expectedOutput:
 					description = "Expected output:\n" + expectedOutput + "\n\nActual output:\n" + output
