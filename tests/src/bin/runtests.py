@@ -2,6 +2,7 @@
 import os
 import glob
 import subprocess
+import time
 from xml.dom.minidom import Document
 
 TEST_ARCHITECTURES = [ "i386", "x86-64" ]
@@ -59,7 +60,9 @@ def runTest(fileName):
 				continue
 
 			try:
+				time_start = time.time()
 				output = subprocess.check_output([dyld_command, path + ".bin"])
+				elapsed_time = int( (time.time()-time_start)*1e6 )
 
 				if output != expectedOutput:
 					description = "Expected output:\n" + expectedOutput + "\n\nActual output:\n" + output
@@ -67,12 +70,13 @@ def runTest(fileName):
 					print "*** FAILED!"
 					print description
 
-					failed_tests[arch][plat].append({ 'test': fileName, 'output': description })
+					failed_tests[arch][plat].append({ 'test': fileName, 'output': description, 'time': elapsed_time })
 				else:
-					successful_tests[arch][plat].append({ 'test': fileName, 'output': output })
+					successful_tests[arch][plat].append({ 'test': fileName, 'output': output, 'time': elapsed_time })
 
 			except subprocess.CalledProcessError:
-				failed_tests[arch][plat].append({ 'test': fileName, 'output': "Non-zero exit code" })
+				elapsed_time = int( (time.time()-time_start)*1e6 )
+				failed_tests[arch][plat].append({ 'test': fileName, 'output': "Non-zero exit code", 'time': elapsed_time })
 
 def writeTestResults(outFile, sourcesDir):
 	doc = Document()
@@ -99,12 +103,20 @@ def writeTestResults(outFile, sourcesDir):
 				errorNode.setAttribute("line", "0")
 				errorNode.appendChild(doc.createTextNode(test['output']))
 
+				timeNode = doc.createElement("TestingTime")
+				timeNode.appendChild(doc.createTextNode(str(test['time'])))
+				testNode.appendChild(timeNode)
+
 				testNode.appendChild(errorNode)
 				platNode.appendChild(testNode)
 
 			for test in successful_tests[arch][plat]:
 				testNode = doc.createElement("TestCase")
  				testNode.setAttribute("name", test['test'])
+
+				timeNode = doc.createElement("TestingTime")
+				timeNode.appendChild(doc.createTextNode(str(test['time'])))
+				testNode.appendChild(timeNode)
 				platNode.appendChild(testNode)
 
 			archNode.appendChild(platNode)
