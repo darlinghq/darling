@@ -96,7 +96,7 @@ def writeTestResults(outFile, sourcesDir):
 
 				errorNode = doc.createElement("Error")
 				errorNode.setAttribute("file", sourcesDir + '/' + test['test'])
-				errorNode.setAttribute("line", 0)
+				errorNode.setAttribute("line", "0")
 				errorNode.appendChild(doc.createTextNode(test['output']))
 
 				testNode.appendChild(errorNode)

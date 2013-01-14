@@ -89,10 +89,6 @@ if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 	add_subdirectory(src/crash)
 endif(NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 
-if (WITH_TESTS)
-	add_subdirectory(tests)
-endif (WITH_TESTS)
-
 add_subdirectory(src/util)
 add_subdirectory(src/libmach-o)
 add_subdirectory(src/dyld)
