@@ -70,9 +70,15 @@ set(libc_SRCS
 	libc/xlocale.cpp
 	libc/malloc_zone.cpp
 	libc/namemap.cpp
-	libc/asl.cpp
 	common/auto.cpp
 	common/path.cpp
+)
+
+set(asl_SRCS
+	asl/asl.cpp
+	asl/ASLClient.cpp
+	asl/ASLMsg.cpp
+	asl/ASLResponse.cpp
 )
 
 set(bsdkern_SRCS
@@ -99,7 +105,7 @@ set(machkern_SRCS
 )
 
 add_library(System.B.dylib SHARED ${libc_SRCS} ${bsdkern_SRCS}
-	${machkern_SRCS} keymgr/keymgr.c)
+	${machkern_SRCS} ${asl_SRCS} keymgr/keymgr.c)
 # -luuid to make uuid_ functions available for Darwin apps
 target_link_libraries(System.B.dylib -ldl -lpthread -luuid mach-o -lrt -lssl -lbsd -l:libobjc.so.4)
 add_dependencies(System.B.dylib mach-o)
