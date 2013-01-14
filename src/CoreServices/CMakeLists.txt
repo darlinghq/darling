@@ -28,6 +28,11 @@ set(CoreServices_SRCS
 	Math64.cpp
 )
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+#SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_library(CoreServices SHARED ${CoreServices_SRCS})
 target_link_libraries(CoreServices -licuuc System.B.dylib util
 	-lgnustep-corebase)

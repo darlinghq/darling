@@ -16,10 +16,12 @@
 #include "common/selector.h"
 #include "common/cfstring.h"
 #include <map>
+#include <queue>
 
 // Superclass references in Mach-O don't use classref
 // Neither do category class references
 std::map<const void*,Class> g_classPointers;
+std::queue<Class> g_pendingInitClasses;
 
 // Here we process Mach-O files that have been loaded before this native library
 // Then we register a handler to process all images loaded in the future
@@ -72,6 +74,15 @@ void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 	UpdateClassRefs(mh);
 	UpdateSelectors(mh, slide);
 	UpdateCFStrings(mh);
+
+	static SEL selInit = sel_getUid("init");
+	while (!g_pendingInitClasses.empty())
+	{
+		id c = (id)  g_pendingInitClasses.front();
+		IMP imp = objc_msg_lookup(c, selInit);
+		g_pendingInitClasses.pop();
+		imp(c, selInit);
+	}
 }
 
 void ProcessImageUnload(const struct mach_header* mh, intptr_t)
