@@ -62,7 +62,7 @@ def runTest(fileName):
 			try:
 				time_start = time.time()
 				output = subprocess.check_output([dyld_command, path + ".bin"])
-				elapsed_time = int( (time.time()-time_start)*1e6 )
+				elapsed_time = (time.time()-time_start)
 
 				if output != expectedOutput:
 					description = "Expected output:\n" + expectedOutput + "\n\nActual output:\n" + output
@@ -75,55 +75,52 @@ def runTest(fileName):
 					successful_tests[arch][plat].append({ 'test': fileName, 'output': output, 'time': elapsed_time })
 
 			except subprocess.CalledProcessError:
-				elapsed_time = int( (time.time()-time_start)*1e6 )
+				elapsed_time = (time.time()-time_start)
 				failed_tests[arch][plat].append({ 'test': fileName, 'output': "Non-zero exit code", 'time': elapsed_time })
 
 def writeTestResults(outFile, sourcesDir):
 	doc = Document()
 	file = open(outFile, "w")
 
-	testLog = doc.createElement("TestLog");
+	testLog = doc.createElement("testsuites");
 
 	for arch in TEST_ARCHITECTURES:
 
-		archNode = doc.createElement("TestSuite")
-		archNode.setAttribute("name", arch)
-
 		for plat in TEST_PLATFORMS:
 
-			platNode = doc.createElement("TestSuite")
-			platNode.setAttribute("name", plat)
+			platNode = doc.createElement("testsuite")
+			platNode.setAttribute("name", arch+"/"+plat)
+			platNode.setAttribute("tests", str(len(failed_tests[arch][plat]) + len(successful_tests[arch][plat])))
 
 			for test in failed_tests[arch][plat]:
-				testNode = doc.createElement("TestCase")
+				testNode = doc.createElement("testcase")
 				testNode.setAttribute("name", test['test'])
 
-				errorNode = doc.createElement("Error")
-				errorNode.setAttribute("file", sourcesDir + '/' + test['test'])
-				errorNode.setAttribute("line", "0")
+				errorNode = doc.createElement("failure")
+				#errorNode.setAttribute("file", sourcesDir + '/' + test['test'])
+				#errorNode.setAttribute("line", "0")
 				errorNode.appendChild(doc.createTextNode(test['output']))
 
-				timeNode = doc.createElement("TestingTime")
-				timeNode.appendChild(doc.createTextNode(str(test['time'])))
-				testNode.appendChild(timeNode)
+				#timeNode = doc.createElement("TestingTime")
+				testNode.setAttribute("time", str(test['time']) + "s")
+				#testNode.appendChild(timeNode)
 
 				testNode.appendChild(errorNode)
 				platNode.appendChild(testNode)
 
 			for test in successful_tests[arch][plat]:
-				testNode = doc.createElement("TestCase")
+				testNode = doc.createElement("testcase")
  				testNode.setAttribute("name", test['test'])
 
-				timeNode = doc.createElement("TestingTime")
-				timeNode.appendChild(doc.createTextNode(str(test['time'])))
-				testNode.appendChild(timeNode)
+				#timeNode = doc.createElement("TestingTime")
+				testNode.setAttribute("time", str(test['time']) + "s")
+				#testNode.appendChild(timeNode)
 				platNode.appendChild(testNode)
 
-			archNode.appendChild(platNode)
-		testLog.appendChild(archNode)
+			testLog.appendChild(platNode)
 
 	doc.appendChild(testLog)
-	doc.writexml(file)
+	doc.writexml(file, encoding="utf-8")
 	file.close()
 
 
