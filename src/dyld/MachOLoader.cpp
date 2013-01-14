@@ -299,15 +299,15 @@ void MachOLoader::doRebase(const MachO& mach, intptr slide)
 	}
 }
 
-void MachOLoader::doRelocations(const std::vector<MachO::Relocation*>& rels, intptr segmentBase, intptr slide)
+void MachOLoader::doRelocations(const std::vector<MachO::Relocation*>& rels, intptr slide)
 {
-	TRACE2(segmentBase, slide);
+	TRACE1(slide);
 	m_lastResolvedSymbol.clear();
 	m_lastResolvedAddress = 0;
 
 	for (const MachO::Relocation* rel : rels)
 	{
-		uintptr_t* ptr = (uintptr_t*) (uintptr_t(rel->addr) + segmentBase + slide);
+		uintptr_t* ptr = (uintptr_t*) (uintptr_t(rel->addr) + slide);
 		uintptr_t symbol;
 		uintptr_t value = *ptr;
 
@@ -622,9 +622,7 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	if (!bindLater)
 		doBind(mach.binds(), slide, !bindLazy);
 	
-	segmentBase = mach.relocation_base();
-	
-	doRelocations(mach.relocations(), segmentBase, slide);
+	doRelocations(mach.relocations(), slide);
 	doMProtect(); // decrease the segment protection value
 
 	if (!bindLater)
