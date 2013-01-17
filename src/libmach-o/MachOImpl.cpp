@@ -292,11 +292,11 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 			return;
 		}
 		
-		exp->addr = uleb128(p);
-		LOG << "export: " << name_buf << " flags=" << std::hex << exp->flag << std::dec << " addr=" << (void*)exp->addr << std::endl;
+		exp->addr = uleb128(p) + m_text_offset;
+		LOG << "export: " << *name_buf << " flags=" << std::hex << exp->flag << std::dec << " addr=" << (void*)exp->addr << std::endl;
 
 		if (exp->flag & EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER)
-			exp->resolver = uleb128(p);
+			exp->resolver = uleb128(p) + m_text_offset;
 
 		m_exports.push_back(exp);
 
@@ -789,7 +789,7 @@ void MachOImpl::readInternalRelocation(const struct relocation_info* reloc)
 			return;
 		}
 
-		rebase = new Rebase { uint64_t(reloc->r_address + relocBase) & 0xffffffff, REBASE_TYPE_POINTER };
+		rebase = new Rebase { uint64_t(reloc->r_address + relocBase), REBASE_TYPE_POINTER };
 
 		LOG << "Adding a rebase: 0x" << std::hex << rebase->vmaddr << std::dec << std::endl;
 	}

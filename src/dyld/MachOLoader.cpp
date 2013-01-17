@@ -557,9 +557,9 @@ void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
 	
 	for (MachO::Export* exp : mach.exports())
 	{
-		exp->addr += base;
+		exp->addr += slide;
 		if (exp->resolver) // EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER support
-			exp->resolver += base;
+			exp->resolver += slide;
 
 		// TODO(hamaji): Not 100% sure, but we may need to consider weak symbols.
 		if (!exports->insert(make_pair(exp->name, *exp)).second)
@@ -604,7 +604,6 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 
 	doRebase(mach, slide);
 	
-	
 	origRpathCount = m_rpathContext.size();
 	
 	for (const char* rpath : mach.rpaths())
@@ -615,7 +614,6 @@ void MachOLoader::load(const MachO& mach, std::string sourcePath, Exports* expor
 	loadInitFuncs(mach, slide);
 
 	loadExports(mach, base, exports);
-	
 	
 	img = g_file_map.add(mach, slide, base, bindLazy);
 	
