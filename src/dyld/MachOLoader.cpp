@@ -551,7 +551,7 @@ void MachOLoader::writeBind(int type, uintptr_t* ptr, uintptr_t newAddr)
 #endif
 }
 
-void MachOLoader::loadExports(const MachO& mach, intptr base, Exports* exports)
+void MachOLoader::loadExports(const MachO& mach, intptr slide, Exports* exports)
 {
 	exports->rehash(exports->size() + mach.exports().size());
 	
