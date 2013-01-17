@@ -49,6 +49,8 @@ private:
 	friend class RebaseState;
 	friend class BindState;
 
+	template<typename T> inline uint64_t ptrTo64(T value) { return (is64()) ? value : (uint64_t(value) & 0xffffffff); }
+
 	void processLoaderCommands(const mach_header* header);
 
 	template <class segment_command, class section>
