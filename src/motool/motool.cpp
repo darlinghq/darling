@@ -93,8 +93,6 @@ int main(int argc, char** argv)
 			if (arch.empty())
 				arch = autoSelectArchitecture(archs);
 			
-			std::cout << "Selected architecture: " << arch << std::endl;
-
 			if (argc >= 3 && ( !strcmp(argv[2], "-f") || !strcmp(argv[2], "--fat")))
 			{
 				// print fat info
@@ -151,6 +149,8 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 		throw std::runtime_error("Load failed");
 	
 	OpMode opmode = getOpMode(opt);
+
+	std::cout << "Platform: " << macho->platform() << std::endl;
 	
 	switch (opmode)
 	{

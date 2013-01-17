@@ -113,3 +113,24 @@ uint64_t MachO::relocation_base() const
 	return addr;
 }
 
+const char* MachO::platform() const
+{
+	switch (m_header.cputype)
+	{
+		//case CPU_TYPE_MC680x0:
+		//	return "m68k";
+		case CPU_TYPE_X86:
+			return "i386";
+		case CPU_TYPE_X86_64:
+			return "x86-64";
+		case CPU_TYPE_POWERPC:
+			return "ppc";
+		case CPU_TYPE_POWERPC64:
+			return "ppc64";
+		case CPU_TYPE_ARM:
+			return "arm";
+		default:
+			return "?";
+	}
+}
+

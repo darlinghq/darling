@@ -38,6 +38,9 @@ public:
 	__attribute__ ((visibility ("default")))
 	static bool isMachO(const char* path);
 
+	__attribute__ ((visibility ("default")))
+		const char* platform() const;
+
 	virtual ~MachO() {}
 	virtual void close() = 0;
 

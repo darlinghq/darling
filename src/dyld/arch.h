@@ -25,6 +25,21 @@ typedef uint32_t intptr;
 
 typedef uint32_t intptr;
 
+#elif defined(__powerpc__)
+#	define ARCH_NAME		"ppc"
+#   define ARCH_CROSS_NAME  "ppc64"
+#   define DYLD_FULL_NAME   "dyld32"
+#   define DYLD_CROSS_NAME  "dyld64"
+
+typedef uint32_t intptr;
+
+#elif defined(__powerpc64__)
+#   define ARCH_NAME        "ppc64"
+#   define ARCH_CROSS_NAME  "ppc"
+#   define DYLD_FULL_NAME   "dyld64"
+#   define DYLD_CROSS_NAME  "dyld32"
+
+
 #else
 #	error Unsupported platform
 #endif

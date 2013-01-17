@@ -35,6 +35,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <mcheck.h>
 #include <libgen.h>
 #include "dyld.h"
+#include <darwin/mach/machine.h>
 
 char g_darwin_executable_path[4096] = "";
 char g_dyld_path[4096] = "";
@@ -50,6 +51,7 @@ char** g_argv;
 static void autoSysrootSearch();
 static void setupExecutablePath(const char* relativePath);
 static void setupDyldPath(const char* relativePath);
+static void checkPlatform(const char* arg1, const MachO* macho);
 
 int main(int argc, char** argv, char** envp)
 {
@@ -107,19 +109,9 @@ int main(int argc, char** argv, char** envp)
 		
 		if (!g_mainBinary)
 			throw std::runtime_error("Cannot open binary file");
-#ifdef __x86_64__
-		if (!g_mainBinary->is64())
-		{
-			std::cerr << argv[1] << ": Cannot execute binary file.\nThis version of Darwin dyld cannot run binaries for x86.\n";
-			return -ENOEXEC;
-		}
-#else
-		if (g_mainBinary->is64())
-		{
-			std::cerr << argv[1] << ": Cannot execute binary file.\nThis version of Darwin dyld cannot run binaries for x86-64.\n";
-			return -ENOEXEC;
-		}
-#endif
+
+		checkPlatform(argv[1], g_mainBinary);
+
 		// Modify the argument list so that the dyld name disappears from the process list.
 		// The Linux kernel doesn't really support this - it remembers the byte length of the cmdline, which will now decrease.
 		// Any app that examines this process' /proc/.../cmdline will from now on see a group of empty arguments after the real arguments.
@@ -229,6 +221,16 @@ void autoSysrootSearch()
 			strncpy(g_sysroot, sysroot.c_str(), PATH_MAX-1);
 			g_sysroot[PATH_MAX-1] = 0;
 		}
+	}
+}
+
+void checkPlatform(const char* argv1, const MachO* macho)
+{
+	const char* plat = macho->platform();
+	if (strcmp(plat, ARCH_NAME) != 0)
+	{
+		std::cerr << argv1 << ": Cannot execute binary file.\nThis version of Darwin dyld cannot run binaries for " << plat << ".\n";
+		exit(-ENOEXEC);
 	}
 }
 

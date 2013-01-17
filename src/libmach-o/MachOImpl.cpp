@@ -356,11 +356,6 @@ MachOImpl::MachOImpl(const char* filename, int fd, size_t offset, size_t len, bo
 
 	m_ptrsize = m_is64 ? 8 : 4;
 
-	if ((header->cputype & 0x00ffffff) != CPU_TYPE_X86)
-	{
-		throw std::runtime_error("Unsupported CPU type in Mach-O");
-	}
-
 	processLoaderCommands(header);
 }
 
@@ -664,6 +659,7 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		case LC_ID_DYLIB:
 		case LC_DYLIB_CODE_SIGN_DRS:
 		case LC_TWOLEVEL_HINTS:
+		case LC_ENCRYPTION_INFO: // iOS only?
 			break;
 
 		case LC_PREBOUND_DYLIB:
