@@ -70,6 +70,8 @@ set(libc_SRCS
 	libc/xlocale.cpp
 	libc/malloc_zone.cpp
 	libc/namemap.cpp
+	libc/vis.c
+	libc/unvis.c
 	common/auto.cpp
 	common/path.cpp
 )
@@ -77,6 +79,7 @@ set(libc_SRCS
 set(asl_SRCS
 	asl/asl.cpp
 	asl/ASLClient.cpp
+	asl/ASLSyslogClient.cpp
 	asl/ASLMsg.cpp
 	asl/ASLResponse.cpp
 )

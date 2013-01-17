@@ -1,5 +1,6 @@
 #ifndef ASLCLIENT_H
 #define ASLCLIENT_H
+#include <set>
 
 class ASLMsg;
 class ASLResponse;
@@ -14,8 +15,12 @@ public:
 	virtual int setFilter(int filter);
 	bool willBeFilteredOut(int level);
 	virtual ASLResponse* search(ASLMsg* query) = 0;
+
+	virtual bool addLogFile(int fd);
+	virtual bool removeLogFile(int fd);
 protected:
 	int m_filter;
+	std::set<int> m_extraFiles;
 };
 
 #endif
