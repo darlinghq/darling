@@ -25,7 +25,7 @@ bool ASLMsg::set(const char* key, int op, const char* value)
 	if (op && m_type != ASL_TYPE_QUERY)
 		return false;
 
-	MapValue v = { value, op };
+	MapValue v = { (value) ? value : "(nil)", op };
 	m_pairs[key] = v;
 	return true;
 }
