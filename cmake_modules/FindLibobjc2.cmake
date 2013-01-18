@@ -6,6 +6,7 @@ find_path(LIBOBJC2_INCLUDE_DIR objc/objc-arc.h
 	PATHS
 	/usr/include
 	/usr/local/include
+	/usr/include/GNUstep
 )
 
 find_library(LIBOBJC2_LIBRARY
