@@ -1,0 +1,6 @@
+proc_name() retval: [OK]
+proc_name() strstr: [OK]
+proc_listpids() retval: [OK]
+proc_listpids() PROC_UID_ONLY: [OK]
+proc_listpidspath retval: [OK]
+proc_listpidspath pid: [OK]
