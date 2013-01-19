@@ -75,7 +75,7 @@ void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 	UpdateSelectors(mh, slide);
 	UpdateCFStrings(mh);
 
-	static SEL selInit = sel_getUid("init");
+	static SEL selInit = sel_getUid("load");
 	while (!g_pendingInitClasses.empty())
 	{
 		id c = (id)  g_pendingInitClasses.front();
