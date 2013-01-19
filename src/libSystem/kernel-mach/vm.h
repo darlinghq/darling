@@ -43,6 +43,7 @@ kern_return_t vm_remap(vm_task_t target_task, void* target_address, vm_size_t si
                   vm_prot_t cur_protection, vm_prot_t max_protection, vm_inherit_t inheritance);
 
 kern_return_t vm_wire(host_priv_t host, vm_task_t target_task, void* address, vm_size_t size, vm_prot_t wired_access);
+kern_return_t mach_vm_region_recurse(vm_task_t target_task, void *address, vm_size_t *size, natural_t *nesting_depth, void* info, mach_msg_type_number_t *infoCnt);
 
 #ifdef __cplusplus
 } // extern "C"

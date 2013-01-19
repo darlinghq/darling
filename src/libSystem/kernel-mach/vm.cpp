@@ -222,3 +222,11 @@ kern_return_t vm_wire(host_priv_t host, vm_task_t target_task, void* address, vm
 	CHECK_TASK_SELF(target_task);
 	MACH_STUB();
 }
+
+kern_return_t mach_vm_region_recurse(vm_task_t target_task, void *address, vm_size_t *size, natural_t *nesting_depth, void* info, mach_msg_type_number_t *infoCnt)
+{
+	// TODO: browse /proc/$pid/maps
+	*infoCnt = 0;
+	return KERN_SUCCESS;
+}
+

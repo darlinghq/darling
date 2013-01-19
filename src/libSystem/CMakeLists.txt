@@ -92,6 +92,7 @@ set(bsdkern_SRCS
 	kernel-bsd/sockets.cpp
 	kernel-bsd/fs.cpp
 	kernel-bsd/fcntl.cpp
+	kernel-bsd/proc.cpp
 )
 
 set(machkern_SRCS

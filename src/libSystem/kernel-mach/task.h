@@ -40,12 +40,7 @@ extern "C"
 	kern_return_t task_info(task_name_t target_task, task_flavor_t flavor, task_info_t task_info_out, mach_msg_type_number_t *task_info_outCnt);
 
 	// mach_vm.h
-	kern_return_t mach_vm_region_recurse(vm_map_t target_task, mach_vm_address_t *address, mach_vm_size_t *size, natural_t *nesting_depth, vm_region_recurse_info_t info, mach_msg_type_number_t *infoCnt);
 
-	// libproc.h
-	int proc_name(int pid, void * buffer, uint32_t buffersize);
-	int proc_pidpath(int pid, void * buffer, uint32_t buffersize);
-	int proc_pidinfo(int pid, int flavor, uint64_t arg, void *buffer, int buffersize);
 #ifdef __cplusplus
 }
 #endif

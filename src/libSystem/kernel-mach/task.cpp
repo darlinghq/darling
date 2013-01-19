@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <execinfo.h>
+#include <fstream>
+#include <sstream>
 
 darwin_task_t mach_task_self_ = new darwin_task(::getpid());
 
@@ -84,11 +86,12 @@ kern_return_t task_info(task_name_t target_task, task_flavor_t flavor, task_info
 			task_dyld_info_t dyld_info = (task_dyld_info_t)task_info_out;
 			dyld_info->all_image_info_addr = (mach_vm_address_t)&dyld_all_image_infos;
 			dyld_info->all_image_info_size = sizeof(dyld_all_image_infos);
-#ifdef __x86_64__
-			dyld_info->all_image_info_format = TASK_DYLD_ALL_IMAGE_INFO_64;
-#else
-			dyld_info->all_image_info_format = TASK_DYLD_ALL_IMAGE_INFO_32;
-#endif
+
+			if (sizeof(void*) == 8)
+				dyld_info->all_image_info_format = TASK_DYLD_ALL_IMAGE_INFO_64;
+			else
+				dyld_info->all_image_info_format = TASK_DYLD_ALL_IMAGE_INFO_32;
+
 			break;
 		}
 		default:
@@ -103,39 +106,4 @@ kern_return_t task_info(task_name_t target_task, task_flavor_t flavor, task_info
 	return KERN_SUCCESS;
 }
 
-kern_return_t mach_vm_region_recurse(vm_map_t target_task, mach_vm_address_t *address, mach_vm_size_t *size, natural_t *nesting_depth, vm_region_recurse_info_t info, mach_msg_type_number_t *infoCnt)
-{
-	// TODO
-	*infoCnt = 0;
-	return KERN_SUCCESS;
-}
 
-int proc_name(int pid, void * buffer, uint32_t buffersize)
-{
-	// TODO: get process name
-	if (buffer)
-	{
-		*(char*)buffer = 0;
-	}
-	return 0;
-}
-
-int proc_pidpath(int pid, void * buffer, uint32_t buffersize)
-{
-	// TODO: get process path
-	if (buffer)
-	{
-		*(char*)buffer = 0;
-	}
-	return 0;
-}
-
-int proc_pidinfo(int pid, int flavor, uint64_t arg, void *buffer, int buffersize)
-{
-	// TODO: get other pid info?
-	if (buffer)
-	{
-		*(char*)buffer = 0;
-	}
-	return 0;
-}
