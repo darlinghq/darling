@@ -26,6 +26,8 @@ set(CoreServices_SRCS
 	FixMath.cpp
 	ToolUtils.cpp
 	Math64.cpp
+	DriverSynchronization.cpp
+	DriverServices.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
