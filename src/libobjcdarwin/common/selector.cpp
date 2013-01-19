@@ -32,7 +32,7 @@ void UpdateSelectors(const struct mach_header* mh, intptr_t slide)
 		for (size_t i = 0; i < selsize / sizeof(selref); i++)
 		{
 			SEL native = sel_getUid(sel_refs[i].selName);
-			LOG << "ObjC SEL fixup @" << (sel_refs+i) << ": " << sel_refs[i].sel << " -> " << native << std::endl;
+			LOG << "ObjC SEL \"" << sel_refs[i].selName << "\" fixup @" << (sel_refs+i) << ": " << sel_refs[i].sel << " -> " << native << std::endl;
 			sel_refs[i].sel = native;
 		}
 	}
@@ -43,7 +43,7 @@ void UpdateSelectors(const struct mach_header* mh, intptr_t slide)
 		for (size_t i = 0; i < msgsize / sizeof(msgref); i++)
 		{
 			SEL native = sel_getUid(msg_refs[i].sel.selName);
-			LOG << "ObjC msgref fixup @" << &msg_refs[i].sel.sel << ": " << msg_refs[i].sel.sel << " -> " << native << std::endl;
+			LOG << "ObjC msgref \"" << msg_refs[i].sel.selName << "\" fixup @" << &msg_refs[i].sel.sel << ": " << msg_refs[i].sel.sel << " -> " << native << std::endl;
 			msg_refs[i].sel.sel = native;
 		}
 	}
