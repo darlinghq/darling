@@ -39,5 +39,7 @@ typedef unsigned char** StringHandle;
 typedef char* Ptr;
 typedef char** Handle;
 
+typedef int32_t OSStatus;
+
 #endif
 
