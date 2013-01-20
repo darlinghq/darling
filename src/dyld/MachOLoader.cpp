@@ -355,6 +355,9 @@ void* MachOLoader::doBind(const std::vector<MachO::Bind*>& binds, intptr slide, 
 
 	for (const MachO::Bind* bind : binds)
 	{
+		if (bind->name.empty())
+			continue; // WTF...
+		
 		if (bind->is_lazy)
 		{
 			if (!resolveLazy)
