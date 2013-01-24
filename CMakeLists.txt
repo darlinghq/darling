@@ -103,8 +103,7 @@ add_subdirectory(src/CoreGraphics)
 add_subdirectory(src/IOKit)
 add_subdirectory(src/libcrashhandler)
 add_subdirectory(src/thin)
-# Not ready yet
-# add_subdirectory(src/cxx)
+add_subdirectory(src/libstdc++darwin)
 
 add_dependencies(dyld${SUFFIX} mach-o)
 add_dependencies(Cocoa crashhandler)

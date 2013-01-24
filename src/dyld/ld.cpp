@@ -61,6 +61,8 @@ static int translateFlags(int flags);
 __attribute__((constructor)) static void initLD();
 static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 
+static void* g_libStdCxxDarwin = nullptr;
+
 extern MachOLoader* g_loader;
 extern char g_darwin_executable_path[PATH_MAX];
 extern char g_sysroot[PATH_MAX];
@@ -94,6 +96,10 @@ static void findSearchpaths(std::string ldconfig_file)
 		}
 		else
 		{
+			size_t pos = line.find('#');
+			if (pos != std::string::npos)
+				line.resize(pos);
+			// TODO: trim
 			g_searchPath.push_back(line);	
 		}
 	}
@@ -237,16 +243,14 @@ void* Darling::DlopenWithContext(const char* filename, int flag, const std::vect
 		// @rpath - https://wincent.com/wiki/@executable_path,_@load_path_and_@rpath
 		for (std::string rpathSearch : rpaths)
 		{
-			{
-				bool recNotFoundError;
-				path = replacePathPrefix("@rpath", filename, rpathSearch.c_str());
-				
-				RET_IF( DlopenWithContext(path.c_str(), flag, rpaths, &recNotFoundError) );
+			bool recNotFoundError;
+			path = replacePathPrefix("@rpath", filename, rpathSearch.c_str());
+			
+			RET_IF( DlopenWithContext(path.c_str(), flag, rpaths, &recNotFoundError) );
 
-				// Stop if there was an error, vs just not found
-				if (!recNotFoundError)
-					return nullptr;
-			}
+			// Stop if there was an error, vs just not found
+			if (!recNotFoundError)
+				return nullptr;
 		}
 	}
 	else
@@ -374,7 +378,15 @@ void* attemptDlopen(const char* filename, int flag)
 			LOG << "Loading a native library " << name << std::endl;
 			// We're loading a native library
 			// TODO: flags
-			void* d = ::dlopen(name, RTLD_NOW|RTLD_GLOBAL);
+			int flags = RTLD_NOW | RTLD_GLOBAL;
+			void* d;
+			
+			// TODO: another hack location for libstdc++darwin.so
+			if (strcmp(name, "libstdc++darwin.so") == 0)
+				flags |= RTLD_DEEPBIND;
+			
+			d = ::dlopen(name, flags);
+			
 			if (d != 0)
 			{
 				LOG << "Native library loaded\n";
@@ -385,6 +397,9 @@ void* attemptDlopen(const char* filename, int flag)
 				lib->type = LoadedLibraryNative;
 				lib->nativeRef = d;
 				//lib->slide = lib->base = 0;
+				
+				if (strstr(name, "libstdc++darwin") != nullptr)
+					g_libStdCxxDarwin = d;
 				
 				g_ldLibraries[name] = lib;
 				return lib;
@@ -682,6 +697,13 @@ void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 			}
 		}
 #endif
+
+		// FIXME: this is very crude, but simple and effective...
+		// "St" == namespace std
+		if (g_libStdCxxDarwin && strstr(translated, "St") != nullptr)
+		{
+			RET_IF(::dlsym(g_libStdCxxDarwin, translated));
+		}
 		
 		RET_IF(::dlsym(RTLD_DEFAULT, translated));
 		
