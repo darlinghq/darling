@@ -49,7 +49,10 @@ __attribute__((destructor)) void exitConversions()
 	iconv_close(g_icUtf32ToUtf16);
 }
 
-static int getLocaleUID(const std::string& str)
+namespace Darling
+{
+
+int getLocaleUID(const std::string& str)
 {
 	auto it = g_mapLocaleString.find(str);
 	if (it != g_mapLocaleString.end())
@@ -67,7 +70,7 @@ static int getLocaleUID(const std::string& str)
 	}
 }
 
-static const char* getLocaleString(int uid)
+const char* getLocaleString(int uid)
 {
 	auto it = g_mapLocaleStringRev.find(uid);
 	if (it != g_mapLocaleStringRev.end())
@@ -75,6 +78,10 @@ static const char* getLocaleString(int uid)
 	else
 		return "INVALID";
 }
+
+}
+
+using namespace Darling;
 
 OSStatus LocaleRefFromLangOrRegionCode(LangCode langCode, RegionCode regionCode, LocaleRef* refOut)
 {
