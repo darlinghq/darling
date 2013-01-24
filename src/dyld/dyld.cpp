@@ -38,6 +38,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <darwin/mach/machine.h>
 
 char g_darwin_executable_path[4096] = "";
+char g_darwin_executable[4096] = "";
 char g_dyld_path[4096] = "";
 char g_sysroot[4096] = "";
 bool g_trampoline = false;
@@ -171,7 +172,7 @@ int main(int argc, char** argv, char** envp)
 
 extern "C" const char* dyld_getDarwinExecutablePath()
 {
-	return g_darwin_executable_path;
+	return g_darwin_executable;
 }
 
 extern "C" const char* dyld_getLoaderPath()
@@ -189,7 +190,7 @@ void setupExecutablePath(const char* relativePath)
 		return;
 	}
 	
-	// @executable_path should point to the directory containing the main executable file
+	::strcpy(g_darwin_executable, path);
 	::strcpy(g_darwin_executable_path, dirname(path));
 	LOG << "@executable_path is " << g_darwin_executable_path << std::endl;
 }

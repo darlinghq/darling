@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -8,6 +9,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <limits.h>
 
 struct fat_arch
 {
@@ -20,12 +22,18 @@ struct fat_arch
 
 void junction(const char* target, int argc, char** argv);
 const char* decideFat(int fd, bool swapEndian);
+int registerDeregister(const char* argv0, bool reg);
+int registerDeregisterRun(const char* argv0, const char* bits, bool reg);
 
 int main(int argc, char** argv)
 {
 	uint32_t signature;
 	int fd;
 	const char* target = "64";
+	bool reg;
+	
+	if (argc == 2 && (reg = !strcmp(argv[1], "--register") || !strcmp(argv[1], "--deregister")))
+		return registerDeregister(argv[0], reg);
 
 	fd = open(argv[1], O_RDONLY | O_CLOEXEC);
 
@@ -97,4 +105,41 @@ const char* decideFat(int fd, bool swapEndian)
 	
 	return rv;
 }
+
+int registerDeregister(const char* argv0, bool reg)
+{
+	int ec, rv = 0;
+	
+	if ((ec = registerDeregisterRun(argv0, "64", reg)))
+		rv = ec;
+	if ((ec = registerDeregisterRun(argv0, "32", reg)))
+		rv = ec;
+	
+	return rv;
+}
+
+int registerDeregisterRun(const char* argv0, const char* bits, bool reg)
+{
+	char path[PATH_MAX];
+	const char* argument = (reg) ? "--register" : "--deregister";
+	
+	strncpy(path, argv0, PATH_MAX-1);
+	path[PATH_MAX-1] = 0;
+	
+	strcat(path, bits);
+	
+	if (!fork())
+	{
+		execl(path, path, argument, NULL);
+		exit(1);
+	}
+	else
+	{
+		int status;
+		
+		wait(&status);
+		return WEXITSTATUS(status);
+	}
+}
+
 

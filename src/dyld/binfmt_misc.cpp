@@ -39,7 +39,7 @@ void Darling::binfmtRegister(const char* loader)
 
 #if defined(__x86_64__) || defined(__powerpc64__)
 	reg << ":Mach-O 64bit:M::\\xcf\\xfa\\xed\\xfe::" << loader << ":\n";
-#elif defined(__i386__) || defined(__powerpc__)
+#elif defined(__i386__) || defined(__powerpc__) || defined(__arm__)
 	reg << ":Mach-O 32bit:M::\\xce\\xfa\\xed\\xfe::" << loader << ":\n";
 #else
 #	error Unuspported platform
@@ -47,10 +47,19 @@ void Darling::binfmtRegister(const char* loader)
 	reg.close();
 
 	// In multilib environments, register FAT Mach-O files with dyld64 only
-#if !defined(MULTILIB) || defined(__x86_64__)
+#if !defined(MULTILIB)
 	reg.open("/proc/sys/fs/binfmt_misc/register");
 	reg << ":Mach-O Universal:M::\\xca\\xfe\\xba\\xbe::" << loader << ":\n";
 	reg.close();
+#elif defined(__x86_64__) || defined(__powerpc64__)
+	{
+		std::string universalLoader = loader;
+		universalLoader.resize(universalLoader.size() - 2);
+		
+		reg.open("/proc/sys/fs/binfmt_misc/register");
+		reg << ":Mach-O Universal:M::\\xca\\xfe\\xba\\xbe::" << universalLoader.c_str() << ":\n";
+		reg.close();
+	}
 #endif
 }
 

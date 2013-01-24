@@ -49,7 +49,7 @@ static std::vector<std::string> g_bound_names;
 
 char g_darwin_loader_path[PATH_MAX] = "";
 
-extern char g_darwin_executable_path[PATH_MAX];
+extern char g_darwin_executable_path[PATH_MAX], g_darwin_executable[PATH_MAX];
 extern bool g_trampoline;
 extern bool g_noWeak;
 extern std::set<LoaderHookFunc*> g_machoLoaderHooks;
@@ -582,7 +582,10 @@ const std::string& MachOLoader::getCurrentLoader() const
 
 void MachOLoader::pushCurrentLoader(const char* currentLoader)
 {
-	m_loaderPath.push(currentLoader);
+	char path[4096];
+	strcpy(path, currentLoader);
+	// @loader_path contains the directory where the Mach-O file currently loading other libraries resides
+	m_loaderPath.push(dirname(path));
 }
 
 void MachOLoader::popCurrentLoader()
@@ -757,7 +760,7 @@ void MachOLoader::runPendingInitFuncs(int argc, char** argv, char** envp, char**
 
 void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp, bool bindLazy)
 {
-	char* apple[2] = { g_darwin_executable_path, 0 };
+	char* apple[2] = { g_darwin_executable, 0 };
 	std::vector<char*> envCopy;
 	
 	//for (int i = 0; envp[i]; i++)
@@ -765,7 +768,7 @@ void MachOLoader::run(MachO& mach, int argc, char** argv, char** envp, bool bind
 	envCopy.push_back(0);
 
 	m_mainExports = new Exports;
-	load(mach, g_darwin_executable_path, m_mainExports, true, bindLazy);
+	load(mach, g_darwin_executable, m_mainExports, true, bindLazy);
 	setupDyldData(mach);
 
 	g_file_map.addWatchDog(m_last_addr + 1);
