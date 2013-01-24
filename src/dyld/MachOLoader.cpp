@@ -582,10 +582,7 @@ const std::string& MachOLoader::getCurrentLoader() const
 
 void MachOLoader::pushCurrentLoader(const char* currentLoader)
 {
-	char path[4096];
-	strcpy(path, currentLoader);
-	// @loader_path contains the directory where the Mach-O file currently loading other libraries resides
-	m_loaderPath.push(dirname(path));
+	m_loaderPath.push(currentLoader);
 }
 
 void MachOLoader::popCurrentLoader()
