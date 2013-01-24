@@ -21,7 +21,7 @@
 // Superclass references in Mach-O don't use classref
 // Neither do category class references
 std::map<const void*,Class> g_classPointers;
-std::queue<Class> g_pendingInitClasses;
+std::queue<std::pair<Class,IMP>> g_pendingInitClasses;
 
 // Here we process Mach-O files that have been loaded before this native library
 // Then we register a handler to process all images loaded in the future
@@ -78,10 +78,9 @@ void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 	static SEL selInit = sel_getUid("load");
 	while (!g_pendingInitClasses.empty())
 	{
-		id c = (id)  g_pendingInitClasses.front();
-		IMP imp = objc_msg_lookup(c, selInit);
+		auto pair = g_pendingInitClasses.front();
 		g_pendingInitClasses.pop();
-		imp(c, selInit);
+		pair.second(reinterpret_cast<objc_object*>(pair.first), selInit);
 	}
 }
 
