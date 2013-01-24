@@ -71,8 +71,6 @@ int __maskrune_l(__darwin_ct_rune_t _c, unsigned long _f, void* l) {
 }
 
 void libiconv_set_relocation_prefix(const char* orig, const char* curr) {
-  // TODO: What should we do?
-  abort();
 }
 
 void *__darwin_mmap(void *addr, size_t length, int prot, int flags,

@@ -74,6 +74,14 @@ bool NameTranslator(char* symName)
 		strcpy(symName, it->second.c_str());
 		return true;
 	}
+	
+	it = g_nameMap.find(std::string("__darwin_")+symName);
+	if (it != g_nameMap.end())
+	{
+		strcpy(symName, it->second.c_str());
+		return true;
+	}
+	
 	return false;
 }
 
