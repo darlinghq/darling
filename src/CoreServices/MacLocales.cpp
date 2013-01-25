@@ -25,29 +25,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unicode/coll.h>
 #include <cstring>
 #include <algorithm>
-#include <iconv.h>
 #include <errno.h>
 #include <cassert>
 #include <string>
 #include <map>
 #include "../util/mutex.h"
 
-static iconv_t g_icUtf32ToUtf16 = nullptr;
-
 static std::map<std::string,int> g_mapLocaleString;
 static std::map<int,std::string> g_mapLocaleStringRev;
 static Darling::Mutex g_mapLocaleStringMutex;
-
-__attribute__((constructor)) void initConversions()
-{
-	g_icUtf32ToUtf16 = iconv_open("UTF-16", "UTF-32");
-	assert(g_icUtf32ToUtf16 != iconv_t(-1));
-}
-
-__attribute__((destructor)) void exitConversions()
-{
-	iconv_close(g_icUtf32ToUtf16);
-}
 
 namespace Darling
 {
@@ -223,51 +209,13 @@ OSStatus LocaleGetName(LocaleRef ref, LocaleOperationVariant variant, uint32_t n
 	str += str2;
 	str += ")";
 	
-	static_assert(sizeof(UChar) == 4 || sizeof(UChar) == 2, "Unsupported UChar size");
+	int32_t req = str.extract(0, str.length(), (char*) displayName, maxLen * sizeof(Utf16Char), "UTF-16");
+	*lenOut = req / sizeof(Utf16Char);
 	
-	if (sizeof(UChar) == 4)
-	{
-		const UChar* buf = str.getTerminatedBuffer();
-		size_t inLen = (str.length()+1) * sizeof(UChar);
-		size_t outLen = maxLen * sizeof(Utf16Char);
-		const char* inbuf = reinterpret_cast<const char*>(buf);
-		char* outbuf = reinterpret_cast<char*>(displayName);
-		
-		r = iconv(g_icUtf32ToUtf16, const_cast<char**>(&inbuf), &inLen, &outbuf, &outLen);
-
-		if (r == size_t(-1))
-		{
-			if (errno == E2BIG)
-			{
-				displayName[maxLen-1] = 0;
-				r = maxLen;
-				return -30001;
-			}
-			else
-			{
-				r = 0;
-				*displayName = 0;
-				return makeOSStatus(errnoLinuxToDarwin(errno));
-			}
-		}
-	}
-	else if (sizeof(UChar) == sizeof(Utf16Char))
-	{
-		if (str.length()+1 > maxLen)
-		{
-			*lenOut = str.length()+1;
-			*displayName = 0;
-			return -30001;
-		}
-		else
-		{
-			memcpy(displayName, str.getTerminatedBuffer(), (str.length()+1) * sizeof(UChar));
-			r = str.length()+1;
-		}
-	}
-	
-	*lenOut = r;
-	return 0;
+	if (req > maxLen * sizeof(Utf16Char))
+		return kLocalesBufferTooSmallErr;
+	else
+		return noErr;
 }
 
 OSStatus LocaleCountNames(LocaleRef ref, LocaleOperationVariant variant, uint32_t nameMask, unsigned long* countOut)
