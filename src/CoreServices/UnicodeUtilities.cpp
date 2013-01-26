@@ -23,7 +23,18 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unicode/sortkey.h>
 #include <string>
 #include <cstring>
+#include <endian.h>
 #include "MacErrors.h"
+#include "util/log.h"
+
+// UniChar uses platform endianness, whereas ICU expects BE by default
+#if __BYTE_ORDER == __BIG_ENDIAN
+#	define UNICHAR_ENCODING "UTF-16BE"
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
+#	define UNICHAR_ENCODING "UTF-16LE"
+#else
+#	error Cannot determine endianness!
+#endif
 
 namespace Darling
 {
@@ -48,14 +59,16 @@ static UColAttributeValue optsToColAttr(uint32_t options)
 
 OSStatus UCCreateCollator(LocaleRef locale, LocaleOperationVariant opVariant, uint32_t options, CollatorRef* collator)
 {
-	UErrorCode code;
-	Collator* c = Collator::createInstance(Darling::getLocaleString(locale), code);
+	UErrorCode code = U_ZERO_ERROR;
+	const char* localeStr = Darling::getLocaleString(locale);
+	Collator* c = Collator::createInstance(localeStr, code);
 	
 	*collator = c;
 	
 	if (!c)
 		return paramErr;
 	
+	code = U_ZERO_ERROR;
 	c->setAttribute(UCOL_STRENGTH, optsToColAttr(options), code);
 	return noErr;
 }
@@ -65,10 +78,10 @@ OSStatus UCGetCollationKey(CollatorRef collator, const UniChar* text, unsigned l
 	if (!text || !actualKeySize || !collationKey || !collator)
 		return paramErr;
 	
-	UnicodeString str1((const char*) text, textlen*2, "UTF-16");
+	UnicodeString str1((const char*) text, textlen*2, UNICHAR_ENCODING);
 	Collator* c = static_cast<Collator*>(collator);
 	CollationKey key;
-	UErrorCode code;
+	UErrorCode code = U_ZERO_ERROR;
 	int32_t count;
 	const uint8_t* data;
 	
@@ -97,7 +110,7 @@ OSStatus UCCompareCollationKeys(const uint32_t* key1, unsigned long key1len, con
 	CollationKey ckey1((const uint8_t*)key1, key1len);
 	CollationKey ckey2((const uint8_t*)key2, key2len);
 	UCollationResult result;
-	UErrorCode code;
+	UErrorCode code = U_ZERO_ERROR;
 	
 	result = ckey1.compareTo(ckey2, code);
 	
@@ -127,11 +140,11 @@ OSStatus UCCompareText(CollatorRef collator, const UniChar* text1, unsigned long
 	if (!text1 || !text2 || !collator)
 		return paramErr;
 	
-	UnicodeString str1((const char*) text1, text1len*2, "UTF-16");
-	UnicodeString str2((const char*) text2, text2len*2, "UTF-16");
+	UnicodeString str1((const char*) text1, text1len*2, UNICHAR_ENCODING);
+	UnicodeString str2((const char*) text2, text2len*2, UNICHAR_ENCODING);
 	Collator* c = static_cast<Collator*>(collator);
 	UCollationResult result;
-	UErrorCode code;
+	UErrorCode code = U_ZERO_ERROR;
 	
 	result = c->compare(str1, str2, code);
 	
@@ -139,7 +152,7 @@ OSStatus UCCompareText(CollatorRef collator, const UniChar* text1, unsigned long
 		return -1;
 	
 	if (equiv != nullptr)
-		*equiv = result == UCOL_EQUAL;
+		*equiv = (result == UCOL_EQUAL);
 	
 	if (order != nullptr)
 	{
@@ -163,10 +176,11 @@ OSStatus UCDisposeCollator(CollatorRef* collator)
 
 OSStatus UCCompareTextDefault(uint32_t options, const UniChar* text1, unsigned long text1len, const UniChar* text2, unsigned long text2len, Boolean* equiv, int32_t* order)
 {
-	UErrorCode code;
+	UErrorCode code = U_ZERO_ERROR;
 	Collator* col = Collator::createInstance(code);
 	OSStatus rv;
 	
+	code = U_ZERO_ERROR;
 	col->setAttribute(UCOL_STRENGTH, optsToColAttr(options), code);
 	rv = UCCompareText(col, text1, text1len, text2, text2len, equiv, order);
 	
@@ -176,10 +190,11 @@ OSStatus UCCompareTextDefault(uint32_t options, const UniChar* text1, unsigned l
 
 OSStatus UCCompareTextNoLocale(uint32_t options, const UniChar* text1, unsigned long text1len, const UniChar* text2, unsigned long text2len, Boolean* equiv, int32_t* order)
 {
-	UErrorCode code;
+	UErrorCode code = U_ZERO_ERROR;
 	Collator* col = Collator::createInstance(Locale::getRoot(), code); // is getRoot correct?
 	OSStatus rv;
 	
+	code = U_ZERO_ERROR;
 	col->setAttribute(UCOL_STRENGTH, optsToColAttr(options), code);
 	rv = UCCompareText(col, text1, text1len, text2, text2len,  equiv, order);
 	
