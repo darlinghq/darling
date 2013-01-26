@@ -20,6 +20,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "CoreEndian.h"
 #include <endian.h>
 #include <stdint.h>
+#include <map>
+#include "MacErrors.h"
+#include "util/mutex.h"
+
+static std::map<
+	std::pair<uint32_t,uint32_t>,
+	std::pair<CEFlipper,void*>
+	> g_flippers;
+static Darling::Mutex g_flippersMutex;
 
 template <typename T> T bswap(T value);
 
@@ -262,3 +271,37 @@ UInt64 EndianU64_NtoL(UInt64 value)
 	return NtoL(value);
 }
 
+OSStatus CoreEndianFlipData(uint32_t dataDomain, uint32_t dataType, int16_t id, void* data, unsigned long length, Boolean isNative)
+{
+	Darling::MutexLock l(g_flippersMutex);
+	auto it = g_flippers.find(std::make_pair(dataDomain, dataType));
+	
+	if (it == g_flippers.end())
+		return handlerNotFoundErr;
+	
+	return it->second.first(dataDomain, dataType, id, data, length, isNative, it->second.second);
+}
+
+OSStatus CoreEndianInstallFlipper(uint32_t dataDomain, uint32_t dataType, CEFlipper flipper, void* opaque)
+{
+	Darling::MutexLock l(g_flippersMutex);
+	g_flippers[std::make_pair(dataDomain, dataType)] = std::make_pair(flipper, opaque);
+	return noErr;
+}
+
+OSStatus CoreEndianGetFlipper(uint32_t dataDomain, uint32_t dataType, CEFlipper* flipper, void** opaque)
+{
+	Darling::MutexLock l(g_flippersMutex);
+	auto it = g_flippers.find(std::make_pair(dataDomain, dataType));
+	
+	*opaque = nullptr;
+	*flipper = nullptr;
+	
+	if (it == g_flippers.end())
+		return paramErr;
+	
+	*flipper = it->second.first;
+	*opaque = it->second.second;
+	
+	return noErr;
+}

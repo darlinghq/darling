@@ -70,6 +70,12 @@ UInt64 EndianU64_LtoN(UInt64 value);
 UInt64 EndianU64_NtoB(UInt64 value);
 UInt64 EndianU64_NtoL(UInt64 value);
 
+typedef OSStatus (*CEFlipper)(uint32_t dataDomain, uint32_t dataType, int16_t id, void* data, unsigned long length, Boolean isNative, void* opaque);
+
+OSStatus CoreEndianFlipData(uint32_t dataDomain, uint32_t dataType, int16_t id, void* data, unsigned long length, Boolean isNative);
+OSStatus CoreEndianInstallFlipper(uint32_t dataDomain, uint32_t dataType, CEFlipper flipper, void* opaque);
+OSStatus CoreEndianGetFlipper(uint32_t dataDomain, uint32_t dataType, CEFlipper* flipper, void** opaque);
+
 }
 
 #endif
