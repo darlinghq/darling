@@ -18,6 +18,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 
 set(CoreServices_SRCS
+	CoreEndian.cpp
 	Multiprocessing.cpp
 	TextUtils.cpp
 	MacMemory.cpp
