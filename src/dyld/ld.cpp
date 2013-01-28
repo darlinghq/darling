@@ -702,7 +702,12 @@ void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 		// "St" == namespace std
 		if (g_libStdCxxDarwin && strstr(translated, "St") != nullptr)
 		{
-			RET_IF(::dlsym(g_libStdCxxDarwin, translated));
+			//static void* self = ::dlopen(nullptr, RTLD_LAZY);
+			//RET_IF(::dlsym(self, translated));
+			if (strcmp(translated, "_ZSt4cout") && strcmp(translated, "_ZSt4cin") && strcmp(translated, "_ZSt4cerr"))
+			{
+				RET_IF(::dlsym(g_libStdCxxDarwin, translated));
+			}
 		}
 		
 		RET_IF(::dlsym(RTLD_DEFAULT, translated));
