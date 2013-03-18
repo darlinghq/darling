@@ -25,6 +25,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <string>
 #include <vector>
+#include <list>
 #include <stdexcept>
 
 #include <mach/vm_types.h>
@@ -122,8 +123,8 @@ public:
 	uint64_t entry() const { return m_entry; }
 	uint64_t main() const { return m_main; }
 
-	const std::vector<uint64_t>& init_funcs() const { return m_init_funcs; }
-	const std::vector<uint64_t>& exit_funcs() const { return m_exit_funcs; }
+	const std::list<uint64_t>& init_funcs() const { return m_init_funcs; }
+	const std::list<uint64_t>& exit_funcs() const { return m_exit_funcs; }
 	
 	std::pair<uint64_t,uint64_t> get_eh_frame() const { return m_eh_frame; }
 	std::pair<uint64_t,uint64_t> get_unwind_info() const { return m_unwind_info; }
@@ -162,8 +163,8 @@ public:
 	std::vector<Relocation*> m_relocations;
 	uintptr_t m_base;
 	uint64_t m_entry, m_main;
-	std::vector<uint64_t> m_init_funcs;
-	std::vector<uint64_t> m_exit_funcs;
+	std::list<uint64_t> m_init_funcs;
+	std::list<uint64_t> m_exit_funcs;
 	std::vector<uint64_t> m_tlv_init_funcs;
 	std::vector<TLVSection> m_tlv_sections;
 	uint64_t m_dyld_data;

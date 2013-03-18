@@ -666,6 +666,19 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 			LOG << "LC_PREBOUND_DYLIB not handled\n"; // TODO: do we have to care?
 			break;
 
+		case LC_ROUTINES:
+		{
+			routines_command* cmd = reinterpret_cast<routines_command*>(cmds_ptr);
+			m_init_funcs.push_front(uint64_t(cmd->init_address) & 0xffffffff);
+			break;
+		}
+		case LC_ROUTINES_64:
+		{
+			routines_command_64* cmd = reinterpret_cast<routines_command_64*>(cmds_ptr);
+			m_init_funcs.push_front(cmd->init_address);
+			break;
+		}
+
 		default:
 			std::cerr << "Unhandled loader command " << std::hex << (int)cmds_ptr->cmd << std::dec << " - this could result in crashes" << std::endl;
 			break;
