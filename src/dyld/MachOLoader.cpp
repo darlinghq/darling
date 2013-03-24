@@ -41,6 +41,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <dlfcn.h>
 #include <libgen.h>
+#include <pthread.h>
 #include "eh/EHSection.h"
 #include "TLS.h"
 
@@ -91,6 +92,9 @@ MachOLoader::MachOLoader()
 			TrampolineMgr::loadFunctionInfo(info);
 	}
 #endif
+
+	static pthread_once_t once_control = PTHREAD_ONCE_INIT;
+	pthread_once(&once_control, Darling::initLD);
 }
 
 MachOLoader::~MachOLoader()

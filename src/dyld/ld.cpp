@@ -58,7 +58,7 @@ static IniConfig* g_iniConfig = 0;
 
 static void* attemptDlopen(const char* filename, int flag);
 static int translateFlags(int flags);
-__attribute__((constructor)) static void initLD();
+
 static std::list<Darling::DlsymHookFunc> g_dlsymHooks;
 
 static void* g_libStdCxxDarwin = nullptr;
@@ -118,7 +118,7 @@ static void findSearchpathsWildcard(std::string ldconfig_file_pattern)
 	globfree(&globbuf);
 }
 
-static void initLD()
+void Darling::initLD()
 {
 	int rv = regcomp(&g_reFrameworkPath, "/System/Library/Frameworks/([a-zA-Z0-9\\.]+)/Versions/([a-zA-Z0-9\\.]+)/.*", REG_EXTENDED);
 	assert(rv == 0);

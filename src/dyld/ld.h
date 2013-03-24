@@ -94,6 +94,7 @@ namespace Darling
 	void registerDlsymHook(DlsymHookFunc func);
 	void deregisterDlsymHook(DlsymHookFunc func);
 	void* DlopenWithContext(const char* filename, int flag, const std::vector<std::string>& rpaths, bool* notFoundError = nullptr);
+	void initLD();
 };
 
 #endif
