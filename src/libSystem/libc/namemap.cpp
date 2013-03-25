@@ -16,7 +16,7 @@ static const char* g_directmap =
 #include "namemap.lst"
 ;
 
-static std::map<std::string,std::string> g_nameMap;
+static std::map<std::string,std::string>* g_nameMap;
 
 static bool NameTranslator(char* symName);
 
@@ -25,6 +25,8 @@ __attribute__((constructor))
 {
 	std::istringstream istr(g_directmap);
 	std::string line;
+
+	g_nameMap = new std::map<std::string,std::string>;
 
 	while (std::getline(istr, line))
 	{
@@ -54,7 +56,7 @@ __attribute__((constructor))
 		}
 
 		// std::cout << segs[0] << " -> " << segs[1] << std::endl;
-		g_nameMap[segs[0]] = segs[1];
+		(*g_nameMap)[segs[0]] = segs[1];
 	}
 
 	Darling::registerDlsymHook(NameTranslator);
@@ -64,19 +66,20 @@ __attribute__((destructor))
 	static void exitTranslation()
 {
 	Darling::deregisterDlsymHook(NameTranslator);
+	delete g_nameMap;
 }
 
 bool NameTranslator(char* symName)
 {
-	auto it = g_nameMap.find(symName);
-	if (it != g_nameMap.end())
+	auto it = g_nameMap->find(symName);
+	if (it != g_nameMap->end())
 	{
 		strcpy(symName, it->second.c_str());
 		return true;
 	}
 	
-	it = g_nameMap.find(std::string("__darwin_")+symName);
-	if (it != g_nameMap.end())
+	it = g_nameMap->find(std::string("__darwin_")+symName);
+	if (it != g_nameMap->end())
 	{
 		strcpy(symName, it->second.c_str());
 		return true;
