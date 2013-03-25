@@ -38,6 +38,7 @@ include(FindOpal)
 
 pkg_check_modules(libbsd REQUIRED "libbsd >= 0.4.2")
 pkg_check_modules(libudev REQUIRED "libudev")
+#set(CMAKE_ASM_NASM_COMPILER "nasm")
 
 find_package(GnustepBase REQUIRED)
 find_package(GnustepCorebase REQUIRED)

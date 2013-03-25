@@ -19,7 +19,7 @@ set(crash_SRCS
 )
 
 add_executable(crash ${crash_SRCS})
-target_link_libraries(crash -lgnustep-base -lgnustep-gui)
+target_link_libraries(crash -lgnustep-base -lgnustep-gui ${GNUSTEP_OBJC_CFLAGS})
 
 install(TARGETS crash DESTINATION "libexec/darling/crash.app/")
 
