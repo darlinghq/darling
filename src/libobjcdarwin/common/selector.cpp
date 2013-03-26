@@ -1,4 +1,3 @@
-#include "objc_config.h"
 #include "selector.h"
 #include "../new/AppleLayout.h"
 #include "../old/AppleLayout.h"

@@ -1,7 +1,0 @@
-#ifndef OBJC_CONFIG_H
-#define OBJC_CONFIG_H
-
-#cmakedefine OBJC_ABI_2
-
-#endif
-

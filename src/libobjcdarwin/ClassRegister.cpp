@@ -14,7 +14,6 @@
 #	include "new/category.h"
 #endif
 #include "common/selector.h"
-#include "common/cfstring.h"
 #include <map>
 #include <queue>
 
@@ -73,7 +72,6 @@ void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 
 	UpdateClassRefs(mh);
 	UpdateSelectors(mh, slide);
-	UpdateCFStrings(mh);
 
 	static SEL selInit = sel_getUid("load");
 	while (!g_pendingInitClasses.empty())

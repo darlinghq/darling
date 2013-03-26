@@ -12,7 +12,7 @@ void ConvertIvarList(Class c, const old_ivar_list* list)
 		NSUInteger size, alignment;
 
 		NSGetSizeAndAlignment(v->type, &size, &alignment);
-		alignment = 1; // TODO: why do we need alignment when we have an offset?
+		alignment = __builtin_ffs(alignment) - 1; // TODO: why do we need alignment when we have an offset?
 		
 		LOG << "Ivar: name: " << v->name << "; type: " << v->type << "; offset: " << v->offset << "; size: " << size << "; alignment: " << alignment << std::endl;
 		class_addIvar(c, v->name, size, alignment, v->type);

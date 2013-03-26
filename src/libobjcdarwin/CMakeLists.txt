@@ -13,10 +13,10 @@ enable_language(ASM_NASM)
 
 if (BITS EQUAL 64) # Would need to be extended for ARM
 	set(OBJC_ABI_2 TRUE)
+	add_definitions(-DOBJC_ABI_2=1)
 	message(STATUS "Building ObjC ABI 2")
 endif(BITS EQUAL 64)
 
-configure_file(config.h.in objc_config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_definitions(-D__STDC_LIMIT_MACROS)

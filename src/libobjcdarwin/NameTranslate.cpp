@@ -55,12 +55,6 @@ static bool ClassTranslator(char* name)
 
 		return true;
 	}
-	// Or we could create a variable like this and memcpy the objc_class
-	else if (strcmp(name, "__CFConstantStringClassReference") == 0)
-	{
-		strcpy(name, "_OBJC_CLASS_NSCFString");
-		return true;
-	}
 #ifdef __x86_64__
 	else if (strcmp(name, "__objc_personality_v0") == 0)
 	{
