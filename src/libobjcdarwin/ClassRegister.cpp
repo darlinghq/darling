@@ -1,4 +1,3 @@
-#include "objc_config.h"
 #include "ClassRegister.h"
 #include "../dyld/public.h"
 #include "../util/trace.h"
