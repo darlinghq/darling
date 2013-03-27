@@ -135,7 +135,9 @@ __darwin_FILE* __darwin_freopen(const char* path, const char* mode, __darwin_FIL
 int __darwin_fclose(__darwin_FILE* fp)
 {
 	int r = fclose(fp->linux_fp);
-	delete fp;
+
+	if (fp != __stdinp && fp != __stdoutp && fp != __stderrp)
+		delete fp;
 
 	if (r == -1)
 		errnoOut();
