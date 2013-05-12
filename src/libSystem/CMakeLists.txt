@@ -72,6 +72,7 @@ set(libc_SRCS
 	libc/namemap.cpp
 	libc/vis.c
 	libc/unvis.c
+	libc/math.cpp
 	common/auto.cpp
 	common/path.cpp
 )
