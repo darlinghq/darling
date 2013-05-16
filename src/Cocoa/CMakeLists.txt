@@ -11,7 +11,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(Cocoa SHARED zero.c)
-target_link_libraries(Cocoa -lgnustep-gui -lopal crashhandler CoreFoundation)
+target_link_libraries(Cocoa -lgnustep-gui CoreFoundation)
 
 install(TARGETS Cocoa DESTINATION "lib${SUFFIX}/darling")
 

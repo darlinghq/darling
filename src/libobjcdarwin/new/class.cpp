@@ -51,7 +51,7 @@ Class RegisterClass(const class_t* cls, intptr_t slide)
 	LOG << "ObjC class " << cls->data()->className << " now @" << conv << std::endl;
 	g_classPointers[cls] = conv;
 	g_classPointers[cls->isa] = object_getClass(id(conv));
-
+	
 	return conv;
 }
 

@@ -6,7 +6,7 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 add_library(AppKit SHARED)
-target_link_libraries(AppKit -lgnustep-gui -lopal)
+target_link_libraries(AppKit -lgnustep-gui)
 SET_TARGET_PROPERTIES(AppKit PROPERTIES LINKER_LANGUAGE C)
 
 add_library(Carbon SHARED)

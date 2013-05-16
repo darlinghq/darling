@@ -47,6 +47,21 @@ template <> uint64_t bswap(uint64_t value)
 	return __builtin_bswap64(value);
 }
 
+template <> int16_t bswap(int16_t value)
+{
+	return __builtin_bswap16(value);
+}
+
+template <> int32_t bswap(int32_t value)
+{
+	return __builtin_bswap32(value);
+}
+
+template <> int64_t bswap(int64_t value)
+{
+	return __builtin_bswap64(value);
+}
+
 template <typename T> T LtoN(T value)
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN

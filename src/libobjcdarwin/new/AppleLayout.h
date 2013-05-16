@@ -74,10 +74,10 @@ struct protocol_list_t
 	uintptr_t list[]; // the compiler doesn't add a rebase here
 	inline const protocol_t* elem(size_t i, uintptr_t slide) const
 	{
-		return reinterpret_cast<const protocol_t*>(list[i] + slide);
+		return reinterpret_cast<const protocol_t*>(list[i] + 0);
 	}
-	protocol_iterator<protocol_list_t> begin(intptr_t slide) const { return protocol_iterator<protocol_list_t>(this, 0, slide); }
-	protocol_iterator<protocol_list_t> end(intptr_t slide) const { return protocol_iterator<protocol_list_t>(this, count, slide); }
+	protocol_iterator<protocol_list_t> begin(intptr_t slide) const { return protocol_iterator<protocol_list_t>(this, 0, 0); }
+	protocol_iterator<protocol_list_t> end(intptr_t slide) const { return protocol_iterator<protocol_list_t>(this, count, 0); }
 };
 
 struct property_t

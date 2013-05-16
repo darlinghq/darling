@@ -30,6 +30,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <iconv.h>
 #include <alloca.h>
 #include <libgen.h>
+#include <sstream>
+#include <fstream>
+#include <map>
+#include <regex.h>
 #include "DateTimeUtils.h"
 #include "../util/stlutils.h"
 
@@ -347,3 +351,98 @@ Boolean CFURLGetFSRef(CFURLRef urlref, FSRef* fsref)
 	return FSPathMakeRef((uint8_t*) buf.get(), fsref, nullptr) == noErr;
 }
 
+static std::string getUserDirsConfigPath()
+{
+	std::stringstream ss;
+	const char *home, *config;
+	
+	config = getenv("XDG_CONFIG_HOME");
+	
+	if (!config)
+	{
+		home = getenv("HOME");
+		if (!home)
+			return std::string();
+	
+		ss << home << "/.config";
+	}
+	else
+		ss << config;
+	ss << "user-dirs.dirs";
+	
+	return ss.str();
+}
+
+static std::string extractXDGValue(const char* home, const std::string& line)
+{
+	regmatch_t matches[2];
+	static regex_t regexp = []() -> regex_t {
+		regex_t re;
+		regcomp(&re, "=\"([^\"]+)\"", REG_EXTENDED);
+		return re;
+	}();
+	
+	if (regexec(&regexp, line.c_str(), 2, matches, 0) == 0)
+	{
+		std::string value = line.substr(matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+		size_t pos = value.find("$HOME");
+		
+		if (pos != std::string::npos)
+			value.replace(pos, 5, home);
+		return value;
+	}
+	
+	return std::string();
+}
+
+OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSRef* location)
+{
+	if (folderType == kTemporaryFolderType)
+	{
+		const char* tmpdir = getenv("TMPDIR");
+		
+		if (!tmpdir)
+			tmpdir = "/tmp";
+		
+		FSPathMakeRef((const uint8_t*) tmpdir, location, nullptr);
+		
+		if (createFolder && access(tmpdir, F_OK) != 0)
+			mkdir(tmpdir, 0777);
+		
+		return noErr;
+	}
+	else if (folderType == kDesktopFolderType || folderType == kSystemDesktopFolderType)
+	{
+		std::string xdgConfig = getUserDirsConfigPath();
+		std::ifstream cfg(xdgConfig.c_str());
+		std::string line, desktop;
+		const char* home = getenv("HOME");
+		
+		desktop = home;
+		desktop += "/Desktop";
+	
+		if (cfg.is_open())
+		{
+			while (std::getline(cfg, line))
+			{
+				if (line.compare(0, 17, "XDG_DESKTOP_DIR=\"") == 0)
+				{
+					std::string d = extractXDGValue(home, line);
+					if (!d.empty())
+						desktop = d;
+					
+					break;
+				}
+			}
+		}
+		
+		FSPathMakeRef((const uint8_t*) desktop.c_str(), location, nullptr);
+		
+		if (createFolder && access(desktop.c_str(), F_OK) != 0)
+			mkdir(desktop.c_str(), 0777);
+		
+		return noErr;
+	}
+	else
+		return unimpErr;
+}
