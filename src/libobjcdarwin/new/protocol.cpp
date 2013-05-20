@@ -30,9 +30,14 @@ void RegisterProtocolMethods(Protocol* p, const method_list_t* list, const char*
 
 Protocol* RegisterProtocol(const protocol_t* prot, intptr_t slide)
 {
-	// For reasons unknown, the NSObject protocol is duplicated into the binaries
-	if (strcmp(prot->name, "NSObject") == 0)
-		return objc_getProtocol(prot->name);
+	Protocol *existingProtocol = objc_getProtocol(prot->name);
+
+	// Return existing protocols
+	if (existingProtocol)
+	{
+		LOG << "Found existing ObjC Protocol: " << prot->name << std::endl;
+		return existingProtocol;
+	}
 
 	LOG << "Processing ObjC Protocol: " << prot->name << std::endl;
 	Protocol* conv = objc_allocateProtocol(prot->name);
