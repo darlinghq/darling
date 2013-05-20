@@ -21,6 +21,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 set(CoreFoundation_SRCS
 	#NameTranslate.cpp
 	AppleCFString.mm
+	CFUtilities.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
