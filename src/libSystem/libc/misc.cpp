@@ -3,6 +3,7 @@
 #include "trace.h"
 #include <langinfo.h>
 #include <cstdlib>
+#include <cstring>
 
 const char* locale_charset()
 {
@@ -27,3 +28,9 @@ int __darwin_atexit(void (*function)(void))
 	return atexit(function);
 }
 
+void* __darwin_malloc(size_t size)
+{
+	void* p = malloc(size);
+	memset(p, 0, size);
+	return p;
+}
