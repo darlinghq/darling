@@ -68,6 +68,8 @@ const char* NSLibraryNameForModule(NSModule m);
 
 }
 
+// FIXME: cleanup urgently needed!
+#ifdef MACHOLOADER_H
 enum LoadedLibraryType { LoadedLibraryDylib, LoadedLibraryNative, LoadedLibraryDummy };
 
 typedef std::unordered_map<std::string, MachO::Export> Exports;
@@ -87,6 +89,7 @@ struct LoadedLibrary
     //intptr base;
 	Exports* exports;
 };
+#endif
 
 namespace Darling
 {

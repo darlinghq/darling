@@ -1,14 +1,11 @@
-#import "NSBundle_dyld.h"
-#import <limits.h>
-#import <Foundation/NSString.h>
-#import <Foundation/NSProcessInfo.h>
+#include "NSDarwinBundle.h"
 #import <Foundation/NSAutoreleasePool.h>
+#import <Foundation/NSProcessInfo.h>
 #include <string>
-#include <cstring>
-#include <cstdio>
-#include <unistd.h>
 #include <algorithm>
+#include <unistd.h>
 #include "../util/log.h"
+#include "../dyld/ld.h"
 
 extern char g_darwin_executable_path[PATH_MAX];
 extern int g_argc asm("NXArgc");
@@ -16,29 +13,19 @@ extern char** g_argv asm("NXArgv");
 static NSBundle* _mainBundle = 0;
 static NSAutoreleasePool* g_pool = 0;
 
-void MethodSwizzle(Class aClass, SEL orig_sel, SEL alt_sel);
+static void MethodSwizzle(Class aClass, SEL orig_sel, SEL alt_sel);
 
 __attribute__((constructor)) static void myinit()
 {
 	LOG << "Swizzling methods in NSBundle\n";
 	
 	MethodSwizzle(objc_getMetaClass("NSBundle"), @selector(mainBundle), @selector(x_mainBundle));
-	
+	[NSBundle mainBundle];
+
+	GSInitializeProcess(g_argc, g_argv, environ);
+
 	// Many OS X apps assume that there is a "default" autorelease pool provided
 	g_pool = [[NSAutoreleasePool alloc] init];
-	
-	GSInitializeProcess(g_argc, g_argv, environ);
-	
-	/*
-	const char* last = strrchr(g_darwin_executable_path, '/');
-	if (last != 0)
-	{
-		last++;
-		
-		NSString* str = [NSString stringWithUTF8String:last];
-		[[NSProcessInfo processInfo] setProcessName:str];
-	}
-	*/
 }
 
 __attribute__((destructor)) static void myexit()
@@ -47,15 +34,27 @@ __attribute__((destructor)) static void myexit()
 	g_pool = 0;
 }
 
-@implementation NSBundle (NSBundle_dyld)
-/*
-+(void) load
+@implementation NSDarwinBundle
++ (long) _loadModuleWithFilename: (NSString*)filename
+                     errorStream: (FILE*)errorStream
+                    loadCallback: (void (*)(Class, struct objc_category *))loadCallback
+                          header: (void**)header
+                   debugFilename: (NSString*)debugFilename
 {
-	LOG << "Swizzling methods in NSBundle\n";
-	RenameSelector([self class], @selector(mainBundle), @selector(gnu_mainBundle));
-	RenameSelector([self class], @selector(x_mainBundle), @selector(mainBundle));
+	const char* path = [filename UTF8String];
+	void* lib = __darwin_dlopen(path, DARWIN_RTLD_LAZY);
+
+	// TODO: report loaded classes via loadCallback
+
+	if (!lib)
+		fprintf(errorStream, "Failed to __darwin_dlopen: %s\n", __darwin_dlerror());
+
+	return lib ? 0 : 1;
 }
-*/
+
+@end
+
+@implementation NSBundle (NSBundle_Darling)
 
 +(NSBundle*) x_mainBundle
 {
@@ -91,11 +90,6 @@ __attribute__((destructor)) static void myexit()
 	}
 
 	return _mainBundle;
-}
-
-+(NSBundle*) x_bundleForClass: (Class) aClass
-{
-	return [super gnu_bundleForClass:aClass];
 }
 
 @end

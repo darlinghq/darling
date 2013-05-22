@@ -5,6 +5,7 @@
 #include "ivar.h"
 #include "../common/property.h"
 #include <map>
+#include <algorithm>
 
 extern std::map<const void*,Class> g_classPointers;
 
@@ -74,13 +75,14 @@ void AddClassProtocols(Class conv, old_protocol_list* list)
 	}
 }
 
-void ProcessClassesOld(const struct mach_header* mh, intptr_t slide, module_info* info)
+std::vector<const char*> ProcessClassesOld(const struct mach_header* mh, intptr_t slide, module_info* info)
 {
 	unsigned long cstrLen;
 	void* ptr;
 	std::vector<old_class*> vecClasses;
 	std::set<old_class*> setClasses;
 	std::map<const char*,old_class*> mapClassNames;
+	std::vector<const char*> vecClassNames;
 
 	// ptr = getsectdata(mh, "__TEXT", "__cstring", &cstrLen);
 	// if (ptr)
@@ -121,6 +123,10 @@ void ProcessClassesOld(const struct mach_header* mh, intptr_t slide, module_info
 		LOG << "ObjC fixup super_class @" << cls << ": " << cls->name << " -> " << c << std::endl;
 		cls->super_class.clsNew = c;
 	}
+
+	std::transform(mapClassNames.begin(), mapClassNames.end(), vecClassNames.begin(), [](const std::pair<const char*,old_class*>& p) { return p.first; });
+
+	return vecClassNames;
 }
 
 void UpdateClassRefs(const struct mach_header* mh)

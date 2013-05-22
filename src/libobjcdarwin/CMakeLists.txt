@@ -21,7 +21,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_definitions(-D__STDC_LIMIT_MACROS)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -fPIC -fvisibility=hidden -ggdb")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -fPIC -fvisibility=hidden -fconstant-string-class=NSConstantString -ggdb")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -fvisibility=hidden -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC")
 
@@ -39,7 +39,7 @@ set(objcdarwin_SRCS
 	common/selector.cpp
 	common/cfstring.cpp
 	
-	NSBundle_dyld.mm
+	NSDarwinFramework.mm
 	misc.mm
 )
 
@@ -68,7 +68,7 @@ else(NOT OBJC_ABI_2)
 endif(NOT OBJC_ABI_2)
 
 add_library(objc.A.dylib SHARED ${objcdarwin_SRCS})
-target_link_libraries(objc.A.dylib -lgnustep-base util ${GNUSTEP_OBJC_CFLAGS})
+target_link_libraries(objc.A.dylib Foundation util ${GNUSTEP_OBJC_CFLAGS})
 
 install(TARGETS objc.A.dylib DESTINATION "lib${SUFFIX}/darling")
 

@@ -55,10 +55,11 @@ Class RegisterClass(const class_t* cls, intptr_t slide)
 	return conv;
 }
 
-void ProcessClassesNew(const struct mach_header* mh, intptr_t slide, const class_t** classes, unsigned long size)
+std::vector<const char*> ProcessClassesNew(const struct mach_header* mh, intptr_t slide, const class_t** classes, unsigned long size)
 {
 	std::vector<const class_t*> vecClasses;
 	std::set<const class_t*> setClasses;
+	std::vector<const char*> classNames;
 	
 	std::copy(classes, classes+size/sizeof(class_t*), std::inserter(setClasses, setClasses.begin()));
 
@@ -67,7 +68,12 @@ void ProcessClassesNew(const struct mach_header* mh, intptr_t slide, const class
 	);
 
 	for (const class_t* cls : vecClasses)
+	{
 		RegisterClass(cls, slide);
+		classNames.push_back(cls->data()->className);
+	}
+
+	return classNames;
 }
 
 void UpdateClassRefs(const struct mach_header* mh)
