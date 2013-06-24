@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <iostream>
 #include <memory>
+#include <cassert>
 #include "darwin_errno_codes.h"
 
 static Darling::MappedFlag g_sigactionFlags[] = {
@@ -75,7 +76,9 @@ int Darling::signalDarwinToLinux(int sig)
 static void GenericHandler(int sig, siginfo_t* p, void* p2)
 {
 	int dsig = g_sigLinuxToDarwin[sig];
+	std::cout << "GenericHandler invoking " << (void*)g_darwinHandlers[sig] << " for sig " << dsig << std::endl;
 	g_darwinHandlers[sig](dsig, p, p2);
+	std::cout << "Handler exited\n";
 }
 
 sighandler_t __darwin_signal(int signum, sighandler_t handler)
@@ -134,15 +137,18 @@ int __darwin_sigaction(int signum, const struct __darwin_sigaction* act, struct 
 	{
 		nact.reset(new struct sigaction);
 		nact->sa_flags = Darling::flagsDarwinToNative(g_sigactionFlags, sizeof(g_sigactionFlags)/sizeof(g_sigactionFlags[0]), act->sa_flags);
+		nact->sa_flags |= SA_SIGINFO;
 		nact->sa_handler = act->xsa_handler;
 		nact->sa_sigaction = act->xsa_sigaction;
 		nact->sa_mask = Darling::sigsetDarwinToLinux(&act->sa_mask);
 		oldhdl = g_darwinHandlers[signum];
 
 		// defer a user-supplied function to a wrapper that will translate the signal number
-		if (act->xsa_handler != 0 && act->xsa_handler != SIG_IGN && act->xsa_handler != SIG_DFL)
+		if (act->xsa_handler != SIG_IGN && act->xsa_handler != SIG_DFL)
 		{
-			//std::cout << "Setting GenericHandler for " << signum << std::endl;
+			assert(act->xsa_handler != SIG_IGN);
+			assert(act->xsa_handler != ((void (*)(int))1));
+			std::cout << "Setting GenericHandler for " << signum << " (orig handler: " << ((void*)act->xsa_handler) << "!= " << (void*)SIG_IGN << ")" <<  std::endl;
 			nact->sa_sigaction = GenericHandler;
 		}
 		g_darwinHandlers[signum] = act->xsa_sigaction;
@@ -160,6 +166,8 @@ int __darwin_sigaction(int signum, const struct __darwin_sigaction* act, struct 
 			oldact->xsa_handler = noldact->sa_handler;
 		oldact->xsa_sigaction = oldhdl;
 		oldact->sa_mask = Darling::sigsetLinuxToDarwin(&noldact->sa_mask);
+		
+		std::cout << "Old handler for " << signum << ": " << (void*)oldhdl << std::endl;
 	}
 	if (rv == -1)
 		errnoOut();

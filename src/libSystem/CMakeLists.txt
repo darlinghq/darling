@@ -40,7 +40,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/bsd)
 set(libc_SRCS
 	libc/mac.c
 	libc/none.c
-	libc/popcountdi2.c
+	libc/popcount.c
 	libc/runetable.c
 	libc/stack_protector-obsd.c
 	libc/err.c
@@ -73,6 +73,8 @@ set(libc_SRCS
 	libc/vis.c
 	libc/unvis.c
 	libc/math.cpp
+	libc/sigsetjmp.cpp
+	libc/setjmp.nasm
 	common/auto.cpp
 	common/path.cpp
 )

@@ -36,6 +36,8 @@
 #define DARWIN_F_PEOFPOSMODE 3
 #define DARWIN_F_VOLPOSMODE 4 
 
+#define DARWIN_O_NONBLOCK 4
+
 struct __darwin_flock
 {
 	int64_t l_start;

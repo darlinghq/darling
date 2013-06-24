@@ -38,16 +38,24 @@ int __darwin_fcntl(int fd, int cmd, void* arg)
 			}
 			else
 			{
-				return Darling::openflagsNativeToDarwin(value);
+				int d = Darling::openflagsNativeToDarwin(value);
+				if (value & O_NONBLOCK)
+					d |= DARWIN_O_NONBLOCK;
+				return d;
 			}
 			break;
 		}
 		case DARWIN_F_SETFL:
 		{
-			int value = (int)(uintptr_t) arg;
+			int orig = (int)(uintptr_t) arg;
+			int value;
 			value = Darling::openflagsDarwinToNative(value);
+			
+			if (orig & DARWIN_O_NONBLOCK)
+				value |= O_NONBLOCK;
+			
 			cmd = F_SETFL;
-			arg = (void*) value;
+			arg = (void*)(uintptr_t(value) & 0xffffffff);
 			break;
 		}
 		case DARWIN_F_GETOWN:

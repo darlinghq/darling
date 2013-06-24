@@ -8,14 +8,14 @@ extern "C"
 #define DARWIN_NCCS 20
 struct __darwin_termios
 {
-	long c_iflag; // 4 on Linux, 4/8 on BSD
-	long c_oflag;
-	long c_cflag;
-	long c_lflag;
-	cc_t c_line; // 1
+	unsigned long c_iflag; // 4 on Linux, 4/8 on BSD
+	unsigned long c_oflag;
+	unsigned long c_cflag;
+	unsigned long c_lflag;
+	//cc_t c_line; // 1
 	cc_t c_cc[DARWIN_NCCS]; // 32 on Linux, 20 on BSD
-	long c_ispeed; // 4 on Linux, 4/8 on BSD
-	long c_ospeed;
+	unsigned long c_ispeed; // 4 on Linux, 4/8 on BSD
+	unsigned long c_ospeed;
 };
 
 int __darwin_tcgetattr(int fd, struct __darwin_termios *termios_p);

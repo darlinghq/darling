@@ -37,17 +37,15 @@ const static Darling::MappedFlag g_localFlags[] = {
 
 static void termiosDarwinToLinux(const struct __darwin_termios* p, struct termios* n)
 {
-	n->c_ispeed = p->c_ispeed;
-	n->c_ospeed = p->c_ospeed;
-	n->c_line = p->c_line;
+	memset(n, 0, sizeof(*n));
+	cfsetispeed(n, p->c_ispeed);
+	cfsetospeed(n, p->c_ospeed);
+	//n->c_line = p->c_line;
 
 	memset(n->c_cc, 0, sizeof(n->c_cc));
 
 	for (int i = 0; i < sizeof(g_ccIndices) / sizeof(g_ccIndices[0]); i++)
-	{
-		if (p->c_cc[g_ccIndices[i][0]])
-			n->c_cc[g_ccIndices[i][1]] = 1;
-	}
+		n->c_cc[g_ccIndices[i][1]] = p->c_cc[g_ccIndices[i][0]];
 
 	n->c_oflag = Darling::flagsDarwinToNative(g_outputFlags, sizeof(g_outputFlags)/sizeof(g_outputFlags[0]), p->c_oflag);
 	n->c_iflag = Darling::flagsDarwinToNative(g_inputFlags, sizeof(g_inputFlags)/sizeof(g_inputFlags[0]), p->c_iflag);
@@ -57,17 +55,15 @@ static void termiosDarwinToLinux(const struct __darwin_termios* p, struct termio
 
 static void termiosLinuxToDarwin(const struct termios* p, struct __darwin_termios* d)
 {
-	d->c_ispeed = p->c_ispeed;
-	d->c_ospeed = p->c_ospeed;
-	d->c_line = p->c_line;
+	memset(d, 0, sizeof(*d));
+	d->c_ispeed = cfgetispeed(p);
+	d->c_ospeed = cfgetospeed(p);
+	//d->c_line = p->c_line;
 
 	memset(d->c_cc, 0, sizeof(d->c_cc));
 
 	for (int i = 0; i < sizeof(g_ccIndices) / sizeof(g_ccIndices[0]); i++)
-	{
-		if (p->c_cc[g_ccIndices[i][1]])
-			d->c_cc[g_ccIndices[i][0]] = 1;
-	}
+		d->c_cc[g_ccIndices[i][0]] = p->c_cc[g_ccIndices[i][1]];
 
 	d->c_oflag = Darling::flagsNativeToDarwin(g_outputFlags, sizeof(g_outputFlags)/sizeof(g_outputFlags[0]), p->c_oflag);
 	d->c_iflag = Darling::flagsNativeToDarwin(g_inputFlags, sizeof(g_inputFlags)/sizeof(g_inputFlags[0]), p->c_iflag);
