@@ -19,9 +19,14 @@ set(libncurses_SRCS
 	wrap.c
 )
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+#SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_library(ncurses.5.4.dylib SHARED ${libncurses_SRCS})
 # -luuid to make uuid_ functions available for Darwin apps
 target_link_libraries(ncurses.5.4.dylib -lncurses)
 
-install(TARGETS ncurses.5.4.dylib DESTINATION "lib${SUFFIX}")
+install(TARGETS ncurses.5.4.dylib DESTINATION "lib${SUFFIX}/darling")
 
