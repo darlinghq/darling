@@ -14,7 +14,9 @@
 ; GNU General Public License for more details.
 
 ; You should have received a copy of the GNU General Public License
-; along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+; along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+
+section .note.GNU-stack noalloc noexec nowrite progbits
 
 global trampoline_start
 global trampoline_end
@@ -85,7 +87,9 @@ trampoline_start:
 	mov rsi, rsp
 	mov rcx, qword 0xaabbccddeeff ; print function (saves orig ret address)
 
+	sub rsp, 8 ; align stack to 16
 	call rcx
+	add rsp, 8
 
 	mov r11, rax ; save the right addr
 
@@ -106,7 +110,11 @@ after_jump:
 	mov rdi, 0x123456
 	mov rsi, rsp
 	mov rcx, qword 0xa0a1a2a3a4a5a6 ; retval print function (returns orig ret address)
+	
+	sub rsp, 8 ; align stack to 16
 	call rcx
+	add rsp, 8
+	
 	mov r11, rax
 
 	mov r10, qword 0xc0c1c2c3c4c5c6 ; call reg_restoreall

@@ -268,6 +268,14 @@ void* Darling::DlopenWithContext(const char* filename, int flag, const std::vect
 		if (strncmp(filename, "/usr/lib/", 9) == 0)
 			filename = filename + 9;
 		
+		if (g_sysroot[0])
+		{
+			path = g_sysroot;
+			path += filename;
+			LOG << "Trying " << path << std::endl;
+			RET_IF( attemptDlopen(path.c_str(), flag) );
+		}
+		
 		std::list<std::string>::iterator it;
 		for (it=g_searchPath.begin(); it!=g_searchPath.end(); ++it)
 		{

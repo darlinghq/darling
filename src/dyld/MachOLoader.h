@@ -114,6 +114,8 @@ private:
 	static void checkMmapMinAddr(intptr addr);
 	void pushCurrentLoader(const char* currentLoader);
 	void popCurrentLoader();
+	
+	void fillInProgramVars(Exports* exports);
 private:
 	intptr m_last_addr;
 	std::vector<uint64_t> m_init_funcs;
