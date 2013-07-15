@@ -289,3 +289,8 @@ int __darwin_pthread_cond_wait(__darwin_pthread_cond_t *cond, __darwin_pthread_m
 	return AutoAllocConditionGeneric(pthread_cond_wait, cond, &mutex->native);
 }
 
+int __darwin_pthread_once(__darwin_pthread_once_t *once_control, void (*init_routine)(void))
+{
+	return pthread_once(&once_control->native, init_routine);
+}
+

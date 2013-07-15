@@ -30,11 +30,24 @@ struct __darwin_pthread_cond_t
 	pthread_cond_t *native; // this will NOT fit on linux (48 vs 44) (allocated instead)
 };
 
+struct __darwin_pthread_once_t
+{
+	enum { SIGNATURE_MACRO_INITIALIZED = 0x30b1bcba };
+	uint32_t signature;
+	union
+	{
+		uint32_t data[2];
+		pthread_once_t native;
+	};
+};
+
 static_assert(sizeof(pthread_mutex_t) <= 60, "pthread_mutex_t is too big on this platform!");
 static_assert(sizeof(pthread_rwlock_t) <= 196, "pthread_rwlock_t is too big on this platform!");
 
 extern "C"
 {
+
+int __darwin_pthread_once(__darwin_pthread_once_t *once_control, void (*init_routine)(void));
 
 int __darwin_pthread_mutexattr_settype(pthread_mutexattr_t* attr, int kind);
 int __darwin_pthread_mutexattr_setpshared(pthread_mutexattr_t* attr, int pshared);
