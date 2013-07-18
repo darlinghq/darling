@@ -67,7 +67,8 @@ char* translatePathCI(const char* path)
 {
 	//TRACE1(path);
 	static char buf[DARWIN_MAXPATHLEN];
-	strcpy(buf, path);
+	if (path != &buf[0])
+		strcpy(buf, path);
 	translatePathCI(buf);
 	return buf;
 	//return strdup(path);
