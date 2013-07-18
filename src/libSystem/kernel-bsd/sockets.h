@@ -28,12 +28,18 @@
 #define DARWIN_AF_IPX 23
 #define DARWIN_AF_INET6 30
 
+struct __darwin_timeval
+{
+	long tv_sec;
+	int tv_usec;
+};
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-int __darwin_select(int fd, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
+int __darwin_select(int fd, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct __darwin_timeval* timeout);
 ssize_t __darwin_sendto(int socket, const void *buffer, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
 ssize_t __darwin_recvfrom(int socket, void * buffer, size_t length, int flags, struct sockaddr * address, socklen_t * address_len);
 

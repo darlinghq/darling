@@ -65,14 +65,14 @@ bool Darling::sockaddrFixupIn(struct sockaddr* addr, socklen_t len)
 		addr->sa_family = f;
 	}
 	addr->sa_family = familyDarwinToLinux(addr->sa_family);
-	return addr->sa_family != -1;
+	return addr->sa_family != 0xffff;
 }
 
 bool Darling::sockaddrFixupOut(struct sockaddr* addr, socklen_t len)
 {
 	bool ok;
 	addr->sa_family = familyLinuxToDarwin(addr->sa_family);
-	ok = addr->sa_family != -1;
+	ok = addr->sa_family != 0xffff;
 	
 	if (offsetof(struct sockaddr,sa_family) == 0)
 	{
@@ -84,19 +84,22 @@ bool Darling::sockaddrFixupOut(struct sockaddr* addr, socklen_t len)
 	return ok;
 }
 
-int __darwin_select(int fd, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout)
+int __darwin_select(int fd, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, __darwin_timeval* timeout)
 {
-	struct timeval backup;
-	
-	if (timeout)
-		memcpy(&backup, timeout, sizeof(backup)); // emulate BSD behavior
-	
-	int rv = ::select(fd, readfds, writefds, exceptfds, timeout);
+	struct timeval n;
+	int rv;
+
+	if (timeout != nullptr)
+	{
+		n = timeval { timeout->tv_sec, timeout->tv_usec };
+		rv = ::select(fd, readfds, writefds, exceptfds, &n);
+	}
+	else
+		rv = ::select(fd, readfds, writefds, exceptfds, nullptr);
+
 	if (rv == -1)
 		errnoOut();
 	
-	if (timeout)
-		memcpy(timeout, &backup, sizeof(backup));
 	return rv;
 }
 
