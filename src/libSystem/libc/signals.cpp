@@ -76,9 +76,9 @@ int Darling::signalDarwinToLinux(int sig)
 static void GenericHandler(int sig, siginfo_t* p, void* p2)
 {
 	int dsig = g_sigLinuxToDarwin[sig];
-	std::cout << "GenericHandler invoking " << (void*)g_darwinHandlers[sig] << " for sig " << dsig << std::endl;
+	//std::cout << "GenericHandler invoking " << (void*)g_darwinHandlers[sig] << " for sig " << dsig << std::endl;
 	g_darwinHandlers[sig](dsig, p, p2);
-	std::cout << "Handler exited\n";
+	//std::cout << "Handler exited\n";
 }
 
 sighandler_t __darwin_signal(int signum, sighandler_t handler)
@@ -148,7 +148,7 @@ int __darwin_sigaction(int signum, const struct __darwin_sigaction* act, struct 
 		{
 			assert(act->xsa_handler != SIG_IGN);
 			assert(act->xsa_handler != ((void (*)(int))1));
-			std::cout << "Setting GenericHandler for " << signum << " (orig handler: " << ((void*)act->xsa_handler) << "!= " << (void*)SIG_IGN << ")" <<  std::endl;
+			//std::cout << "Setting GenericHandler for " << signum << " (orig handler: " << ((void*)act->xsa_handler) << "!= " << (void*)SIG_IGN << ")" <<  std::endl;
 			nact->sa_sigaction = GenericHandler;
 		}
 		g_darwinHandlers[signum] = act->xsa_sigaction;
@@ -167,7 +167,7 @@ int __darwin_sigaction(int signum, const struct __darwin_sigaction* act, struct 
 		oldact->xsa_sigaction = oldhdl;
 		oldact->sa_mask = Darling::sigsetLinuxToDarwin(&noldact->sa_mask);
 		
-		std::cout << "Old handler for " << signum << ": " << (void*)oldhdl << std::endl;
+		//std::cout << "Old handler for " << signum << ": " << (void*)oldhdl << std::endl;
 	}
 	if (rv == -1)
 		errnoOut();
