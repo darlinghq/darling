@@ -395,6 +395,7 @@ static std::string extractXDGValue(const char* home, const std::string& line)
 	return std::string();
 }
 
+// TODO: Test this function!
 OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSRef* location)
 {
 	if (folderType == kTemporaryFolderType)

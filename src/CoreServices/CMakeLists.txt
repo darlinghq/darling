@@ -32,6 +32,7 @@ set(CoreServices_SRCS
 	Math64.cpp
 	DriverSynchronization.cpp
 	DriverServices.cpp
+	Components.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
@@ -40,7 +41,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(CoreServices SHARED ${CoreServices_SRCS})
-target_link_libraries(CoreServices -licuuc System.B.dylib util
+target_link_libraries(CoreServices -licuuc System.B.dylib util AudioUnit
 	-lgnustep-corebase)
 
 install(TARGETS CoreServices DESTINATION "lib${SUFFIX}/darling")

@@ -1,8 +1,10 @@
 #ifndef MACTYPES_H
 #define MACTYPES_H
 #include <stdint.h>
+#include <CoreFoundation/CFBase.h>
 
 class _StringHandle;
+#if 0 // declared in CFBase.h
 typedef int8_t SInt8;
 typedef uint8_t UInt8;
 typedef int16_t SInt16;
@@ -11,6 +13,9 @@ typedef int32_t SInt32;
 typedef uint32_t UInt32;
 typedef int64_t SInt64;
 typedef uint64_t UInt64;
+typedef float Float32;
+typedef double Float64;
+#endif
 
 typedef uint32_t OptionBits;
 
@@ -42,6 +47,7 @@ typedef char* Ptr;
 typedef char** Handle;
 
 typedef int32_t OSStatus;
+typedef uint32_t OSType;
 
 #endif
 
