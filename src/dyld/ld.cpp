@@ -629,7 +629,7 @@ const char* NSLibraryNameForModule(NSModule m)
 
 void* __darwin_dlsym(void* handle, const char* symbol, void* extra)
 {
-	TRACE2(handle, symbol);
+	// TRACE2(handle, symbol);
 	
 	Darling::MutexLock l(g_ldMutex);
 	g_ldError[0] = 0;

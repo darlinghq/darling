@@ -1,11 +1,13 @@
 #include "Components.h"
 #include "ComponentsInternal.h"
 #include <AudioUnit/AUComponent.h>
-#include <AudioUnit/AUComponentInternal.h>
+#include <AudioUnit/AudioUnitBase.h>
 #include <CoreServices/MacErrors.h>
+#include <util/debug.h>
 
 Component FindNextComponent(Component prev, ComponentDescription* desc)
 {
+	TRACE2(prev, desc);
 	if ((desc->componentType & 0xffff0000) == kComponentTypeAudioUnit)
 	{
 		return AudioComponentFindNext((AudioComponent) prev, (AudioComponentDescription*) desc);
@@ -26,6 +28,8 @@ long CountComponents(ComponentDescription* desc)
 
 OSErr OpenAComponent(Component comp, ComponentInstance* out)
 {
+	TRACE1(comp);
+
 	if (!out)
 		return paramErr;
 
@@ -47,6 +51,8 @@ OSErr OpenAComponent(Component comp, ComponentInstance* out)
 
 ComponentInstance OpenComponent(Component comp)
 {
+	TRACE1(comp);
+
 	ComponentInstance inst;
 	OpenAComponent(comp, &inst);
 	return inst;
@@ -54,6 +60,8 @@ ComponentInstance OpenComponent(Component comp)
 
 OSErr CloseComponent(ComponentInstance inst)
 {
+	TRACE1(inst);
+
 	delete inst;
 	return noErr;
 }

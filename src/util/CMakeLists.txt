@@ -7,8 +7,7 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 set(util-SRCS
-	log.cpp
-	trace.cpp
+	debug.cpp
 	stlutils.cpp
 	IniConfig.cpp
 	leb.cpp

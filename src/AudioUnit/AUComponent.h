@@ -5,6 +5,7 @@
 #include <CoreFoundation/CFString.h>
 
 class AudioUnitComponent;
+
 typedef Component AudioComponent;
 typedef AudioUnitComponent* AudioComponentInstance;
 typedef ComponentDescription AudioComponentDescription;

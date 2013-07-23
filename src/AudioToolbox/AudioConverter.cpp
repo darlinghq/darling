@@ -1,6 +1,6 @@
 #include "AudioConverterInternal.h"
 #include <CoreServices/MacErrors.h>
-#include "log.h"
+#include <util/debug.h>
 
 // http://blinkingblip.wordpress.com/
 
@@ -39,19 +39,19 @@ OSStatus AudioConverterDispose(AudioConverterRef inAudioConverter)
 
 OSStatus AudioConverterGetProperty(AudioConverterRef inAudioConverter, AudioConverterPropertyID inPropertyID, UInt32 *ioPropertyDataSize, void *outPropertyData)
 {
-	LOG << "AudioConverterGetProperty(): FIXME\n";
+	STUB();
 	return unimpErr;
 }
 
 OSStatus AudioConverterGetPropertyInfo(AudioConverterRef inAudioConverter, AudioConverterPropertyID inPropertyID, UInt32 *outSize, Boolean *outWritable)
 {
-	LOG << "AudioConverterGetPropertyInfo(): FIXME\n";
+	STUB();
 	return unimpErr;
 }
 
 OSStatus AudioConverterSetProperty(AudioConverterRef inAudioConverter, AudioConverterPropertyID inPropertyID, UInt32 inPropertyDataSize, const void *inPropertyData)
 {
-	LOG << "AudioConverterSetProperty(): FIXME\n";
+	STUB();
 	return unimpErr;
 }
 
@@ -79,7 +79,7 @@ OSStatus AudioConverterConvertBuffer(AudioConverterRef inAudioConverter, UInt32 
 
 OSStatus AudioConverterFillComplexBuffer(AudioConverterRef inAudioConverter, AudioConverterComplexInputDataProc inInputDataProc, void *inInputDataProcUserData, UInt32 *ioOutputDataPacketSize, AudioBufferList *outOutputData, AudioStreamPacketDescription*outPacketDescription)
 {
-	LOG << "AudioConverterFillComplexBuffer(): FIXME\n";
+	STUB();
 	return unimpErr;
 }
 
@@ -95,6 +95,8 @@ OSStatus AudioConverterConvertComplexBuffer(AudioConverterRef inAudioConverter, 
 
 		if (dataPacketDescription)
 			*dataPacketDescription = nullptr;
+		
+		// TODO
 
 		return unimpErr;
 	};
@@ -126,7 +128,12 @@ void AudioConverter::flush()
 
 OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat, AudioConverter** out)
 {
+	TRACE2(inSourceFormat, inDestinationFormat);
+	
+	// TODO: create a special case for when *inSourceFormat == *inDestinationFormat?
+
 	AVCodec *codecIn, *codecOut;
+	AVCodecContext *cIn;
 	enum AVCodecID idIn, idOut;
 
 	*out = nullptr;
@@ -150,7 +157,16 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 
 	*out = new AudioConverter(inSourceFormat, inDestinationFormat);
 
-	(*out)->m_decoder = avcodec_alloc_context3(codecIn);
+	(*out)->m_decoder = cIn = avcodec_alloc_context3(codecIn);
+	
+	if (inSourceFormat->mFormatID == kAudioFormatLinearPCM)
+	{
+		cIn->channels = inSourceFormat->mChannelsPerFrame;
+		cIn->sample_rate = inSourceFormat->mSampleRate;
+		
+		LOG << "Converting from PCM with " << cIn->channels << " channels at " << cIn->sample_rate << " Hz\n";
+	}
+	
 	if (avcodec_open2((*out)->m_decoder, codecIn, nullptr) < 0)
 	{
 		delete *out;

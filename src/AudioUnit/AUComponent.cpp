@@ -1,11 +1,13 @@
 #include "AUComponent.h"
-#include "AUComponentInternal.h"
-#include "log.h"
+#include "AudioUnitALSA.h"
+#include <util/debug.h>
 #include <alsa/asoundlib.h>
 #include <CoreServices/MacErrors.h>
 
 AudioComponent AudioComponentFindNext(AudioComponent inAComponent, AudioComponentDescription *inDesc)
 {
+	TRACE2(inAComponent, inDesc);
+
 	int index = -1;
 
 	if (inDesc->componentType != kAudioUnitType_Output && inDesc->componentType != kAudioUnitType_Mixer)
@@ -44,6 +46,8 @@ Boolean AudioComponentInstanceCanDo(AudioComponentInstance inInstance, SInt16 in
 
 OSStatus AudioComponentInstanceDispose(AudioComponentInstance inInstance)
 {
+	TRACE1(inInstance);
+
 	delete inInstance;
 	return noErr;
 }
@@ -55,7 +59,9 @@ AudioComponent AudioComponentInstanceGetComponent(AudioComponentInstance inInsta
 
 OSStatus AudioComponentInstanceNew(AudioComponent inComponent, AudioComponentInstance *outInstance)
 {
-	*outInstance = AudioUnitComponent::create(GetComponentIndex(inComponent));
+	TRACE1(inComponent);
+
+	*outInstance = AudioUnitALSA::create(GetComponentIndex(inComponent));
 	return *outInstance ? noErr : paramErr;
 }
 
@@ -93,31 +99,3 @@ UInt32 AudioComponentCount(AudioComponentDescription *inDesc)
 	return count;
 }
 
-//////////////////
-
-AudioUnitComponent::AudioUnitComponent(int cardIndex, char* cardName)
-: m_cardIndex(cardIndex), m_cardName(cardName)
-{
-}
-
-AudioUnitComponent* AudioUnitComponent::create(int cardIndex)
-{
-	char* name;
-	
-	if (cardIndex > 0)
-	{
-		if (snd_card_get_name(cardIndex, &name))
-			return nullptr;
-	}
-	else
-	{
-		name = strdup("default");
-	}
-	
-	return new AudioUnitComponent(cardIndex, name);
-}
-
-AudioUnitComponent::~AudioUnitComponent()
-{
-	free(m_cardName);
-}

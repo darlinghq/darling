@@ -1,8 +1,11 @@
 #ifndef AUDIOCONVERTERINTERNAL_H
 #define AUDIOCONVERTERINTERNAL_H
 #include "AudioConverter.h"
+
+extern "C" {
 //#include <libavresample/avresample.h>
 #include <libavcodec/avcodec.h>
+}
 
 class AudioConverter
 {

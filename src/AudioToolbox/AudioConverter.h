@@ -1,7 +1,7 @@
 #ifndef AUDIOCONVERTER_H
 #define AUDIOCONVERTER_H
 #include <CoreServices/MacTypes.h>
-#include "CoreAudioTypes.h"
+#include <CoreAudio/CoreAudioTypes.h>
 
 extern "C" {
 

@@ -42,6 +42,23 @@ struct AudioStreamPacketDescription
 	UInt32 mDataByteSize;
 };
 
+struct SMPTETime
+{
+	SInt64 mSubframes, mSubframeDivisor;
+	UInt32 mCounter, mType, mFlags;
+	SInt16 mHours, mMinutes, mSeconds, mFrames;
+};
+
+struct AudioTimeStamp
+{
+	Float64 mSampleTime;
+	UInt64 mHostTime;
+	Float64 mRateScalar;
+	UInt64 mWordClockTime;
+	SMPTETime mSMPTETime;
+	UInt32 mFlags, mReserved;
+};
+
 enum
 {
 	kAudioFormatLinearPCM               = 'lpcm',

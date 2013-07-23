@@ -22,7 +22,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(AudioToolbox SHARED ${AudioToolbox_SRCS})
-target_link_libraries(AudioToolbox util -lavcodec -lavresample)
+target_link_libraries(AudioToolbox util -lavcodec -lavresample CoreFoundation)
 
 install(TARGETS AudioToolbox DESTINATION "lib${SUFFIX}/darling")
 
