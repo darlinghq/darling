@@ -20,7 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "config.h"
 #include "MachOLoader.h"
-#include "MachO.h"
+#include <libmach-o/MachO.h>
 #include "ld.h"
 #include "log.h"
 #include "trace.h"

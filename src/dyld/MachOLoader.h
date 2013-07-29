@@ -26,7 +26,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <stack>
 #include <stdint.h>
-#include "MachO.h"
+#include <libmach-o/MachO.h>
 #include "arch.h"
 #include "ld.h"
 #include "UndefinedFunction.h"

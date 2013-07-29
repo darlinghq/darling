@@ -24,6 +24,11 @@ set(dyld_SRCS
 	public.cpp
 	binfmt_misc.cpp
 	TLS.cpp
+	
+	MachOObject.cpp
+	LoadableObject.cpp
+	NativeObject.cpp
+	MachOMgr.cpp
 )
 
 if (DEBUG)

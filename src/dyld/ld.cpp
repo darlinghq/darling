@@ -22,7 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "MachOLoader.h"
 #include "ld.h"
 #include "arch.h"
-#include "MachO.h"
+#include <libmach-o/MachO.h>
 #include "mutex.h"
 #include "trace.h"
 #include "FileMap.h"

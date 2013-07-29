@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "MachO.h"
+#include <libmach-o/MachO.h>
 #include "MachOLoader.h"
 #include "arch.h"
 #include "log.h"

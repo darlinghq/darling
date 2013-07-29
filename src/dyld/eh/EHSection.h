@@ -42,6 +42,9 @@ public:
 	void clear();
 	
 	void swapRegisterNumbers(const std::map<int, int>& swapList);
+	
+	// Used to free the memory allocated by store()
+	inline static void free(void* mem) { delete [] (char*) mem; }
 private:
 	struct CIE;
 	struct FDE;

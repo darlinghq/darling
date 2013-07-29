@@ -24,7 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <map>
 #include <list>
-#include "MachO.h"
+#include <libmach-o/MachO.h>
 #include <dlfcn.h>
 #include "../util/mutex.h"
 
