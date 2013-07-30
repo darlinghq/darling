@@ -4,6 +4,10 @@ project(libstdc++darwin)
 SET(CMAKE_CXX_COMPILER "/usr/bin/g++")
 set(CMAKE_CXX_FLAGS "")
 
+if (SUFFIX STREQUAL "32")
+	set(CMAKE_CXX_FLAGS "-m32")
+endif (SUFFIX STREQUAL "32")
+
 cmake_minimum_required(VERSION 2.4.0)
 
 add_definitions(-Bsymbolic -fno-weak)

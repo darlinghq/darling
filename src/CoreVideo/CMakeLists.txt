@@ -1,4 +1,4 @@
-project(AudioToolbox)
+project(CoreVideo)
 
 cmake_minimum_required(VERSION 2.4.0)
 if(COMMAND cmake_policy)
@@ -12,9 +12,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 
-set(AudioToolbox_SRCS
-	AudioConverter.cpp
-	AudioFile.cpp
+set(CoreVideo_SRCS
+	CoreVideo.cpp
+	CVDisplayLink.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
@@ -22,8 +22,8 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_library(AudioToolbox SHARED ${AudioToolbox_SRCS})
-target_link_libraries(AudioToolbox util -lavcodec -lavresample -lavformat CoreFoundation)
+add_library(CoreVideo SHARED ${CoreVideo_SRCS})
+target_link_libraries(CoreVideo util)
 
-install(TARGETS AudioToolbox DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS CoreVideo DESTINATION "lib${SUFFIX}/darling")
 

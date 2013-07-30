@@ -17,8 +17,8 @@
  * along with Darling.  If not, see <http://www.gnu.org/licenses/>.
  * */
 
-#include "MachO.h"
-#include "FatMachO.h"
+#include <libmach-o/MachO.h>
+#include <libmach-o/FatMachO.h>
 #include <iostream>
 #include <sys/types.h>
 #include <sys/stat.h>
