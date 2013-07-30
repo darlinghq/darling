@@ -37,7 +37,7 @@ public:
 	// Returns the main executable module - the one you can call run() on
 	MachOObject* mainModule() { return m_mainModule; }
 	
-	// Searches all loaded modules for an exported symbol
+	// Searches all loaded modules for an exported symbol, prefering non-weak symbols
 	void* getExportedSymbol(const std::string& symbolName);
 	
 	// DYLD_BIND_AT_LAUNCH
@@ -63,6 +63,9 @@ public:
 	// Darling specific: DYLD_IGN_MISSING_SYMS
 	inline void setIgnoreMissingSymbols(bool ignoreMissingSymbols) { m_ignoreMissingSymbols = ignoreMissingSymbols; }
 	inline bool ignoreMissingSymbols() const { return m_ignoreMissingSymbols; }
+	
+	inline void setSysRoot(const std::string& sysroot) { m_sysroot = sysroot; }
+	inline const std::string& sysRoot() const { return m_sysroot; }
 private:
 	// map by base address
 	std::map<void*, MachOObject*> m_objects;
@@ -74,7 +77,7 @@ private:
 	mutable Darling::RWMutex m_lock;
 	MachOObject* m_mainModule;
 	bool m_bindAtLaunch, m_printInitializers, m_printLibraries, m_useTrampolines, m_ignoreMissingSymbols;
-	std::string m_libraryPath;
+	std::string m_libraryPath, m_sysroot;
 	
 	UndefMgr* m_pUndefMgr;
 	TrampolineMgr* m_pTrampolineMgr;

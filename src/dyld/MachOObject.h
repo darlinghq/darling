@@ -14,7 +14,7 @@ struct ProgramVars;
 class MachOObject : public LoadableObject
 {
 public:
-	MachOObject(const std::string& path, const char* arch);
+	MachOObject(const std::string& path);
 	
 	// takes ownership of `file'
 	MachOObject(MachO* file);
@@ -42,7 +42,7 @@ public:
 	virtual void load() override;
 	virtual void unload() override;
 	
-	virtual void* getExportedSymbol(const std::string& symbolName) const override;
+	virtual void* getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const override;
 	virtual bool findSymbolInfo(const void* addr, Dl_info* p) const override;
 	
 	bool isMainModule() const;
@@ -56,7 +56,8 @@ public:
 	void* getSection(const std::string& segmentName, const std::string& sectionName, uintptr_t* sectionSize = nullptr);
 	
 protected:
-	friend class MachOMgr;
+	friend class DylibSearch;
+	friend class LoadableObject;
 	
 	void setRequesterRunpaths(const std::vector<const char*>& rpaths) { m_parentRpaths = rpaths; }
 	const std::vector<const char*>& runPaths() const { return m_file->rpaths(); }
@@ -67,7 +68,9 @@ private:
 	
 	void loadSegments();
 	void unloadSegments();
+	void setInitialSegmentProtection();
 	void readSymbols();
+	void readExports();
 	
 	void rebase();
 	
@@ -84,11 +87,15 @@ private:
 	void performRelocations();
 	void performBinds();
 	void* performBind(MachO::Bind* bind);
+	void writeBind(MachO::Bind* bind, void* addr);
 	
 	void detectAbsolutePath();
 	void* resolveSymbol(const std::string& name);
 	
 	void jumpToStart();
+	
+	void setupTLS();
+	void teardownTLS();
 	
 	static int machoProtectionFlagsToMmap(int machoFlags);
 	static uintptr_t pageAlign(uintptr_t what);
@@ -102,7 +109,7 @@ private:
 	uintptr_t m_slide = 0;
 	
 	std::vector<void*> m_initializers, m_finalizers;
-	std::unordered_map<std::string, void*> m_exports;
+	mutable std::unordered_map<std::string, MachO::Export> m_exports; // mutable because of 'resolver' functions
 	std::map<void*, const char*> m_symbols;
 	std::vector<LoadableObject*> m_dependencies;
 	

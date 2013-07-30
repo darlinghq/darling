@@ -1,6 +1,7 @@
 #include "MachOObject.h"
 #include <climits>
 #include <cstring>
+#include <cassert>
 #include <stdexcept>
 #include <sstream>
 #include <fstream>
@@ -12,6 +13,9 @@
 #include "MachOMgr.h"
 #include "eh/EHSection.h"
 #include "ld.h"
+#include "DylibSearch.h"
+#include "arch.h"
+#include "TLS.h"
 
 // FIXME: this needs to go away
 extern "C" int g_argc asm("NXArgc");
@@ -33,9 +37,9 @@ struct DyldSectData
 	ProgramVars vars;
 };
 
-MachOObject::MachOObject(const std::string& path, const char* arch)
+MachOObject::MachOObject(const std::string& path)
 {
-	m_file = MachO::readFile(path, arch);
+	m_file = MachO::readFile(path, ARCH_NAME);
 	
 	if (!m_file)
 	{
@@ -90,6 +94,7 @@ void MachOObject::load()
 		rebase();
 	
 	readSymbols();
+	readExports();
 	loadDependencies();
 	
 	performRelocations();
@@ -100,6 +105,9 @@ void MachOObject::load()
 	if (isMainModule())
 		fillInProgramVars();
 	fillInDyldData();
+	
+	setInitialSegmentProtection();
+	setupTLS();
 	
 	runInitializers();
 	
@@ -112,6 +120,7 @@ void MachOObject::load()
 
 void MachOObject::unload()
 {
+	teardownTLS();
 	runFinalizers();
 	unloadSegments();
 	unregisterEHSection();
@@ -156,9 +165,9 @@ void MachOObject::loadSegments()
 			m_base = (void*) seg->vmaddr;
 		
 		if (!m_base)
-			throw std::runtime_error("Cannot map to 0x0");
+			m_base = MachOMgr::instance()->maxAddress();
 		
-		if ((void*)seg->vmaddr < m_base)
+		if ((void*)seg->vmaddr < m_base && !isMainModule())
 			m_slide = uintptr_t(m_base) - seg->vmaddr;
 		
 		mappingSize = pageAlign(seg->filesize);
@@ -195,6 +204,15 @@ void MachOObject::loadSegments()
 				throw std::runtime_error(ss.str());
 			}
 		}
+	}
+}
+
+void MachOObject::setInitialSegmentProtection()
+{
+	for (const Mapping& map : m_mappings)
+	{
+		if (::mprotect(map.start, map.size, map.initprot) == -1)
+			throw std::runtime_error("Failed to mprotect() memory");
 	}
 }
 
@@ -314,7 +332,38 @@ void MachOObject::writeBind(int type, uintptr_t* ptr, uintptr_t newAddr)
 
 void MachOObject::loadDependencies()
 {
-	// TODO
+	for (std::string dylib : m_file->dylibs())
+	{
+		LoadableObject* dep;
+		
+		if (dylib.empty())
+		{
+			ERROR() << "Empty dylib dependency in " << path();
+			continue;
+		}
+		
+		std::string path = DylibSearch::instance()->resolve(dylib, this);
+		if (path.empty())
+		{
+			std::stringstream ss;
+			ss << "dyld: Library not loaded: " << dylib;
+			throw std::runtime_error(ss.str());
+		}
+		
+		dep = MachOMgr::instance()->lookup(path);
+		if (dep != nullptr)
+		{
+			dep->addRef();
+			m_dependencies.push_back(dep);
+		}
+		else
+		{
+			dep = LoadableObject::instantiateForPath(path, this);
+			dep->load();
+			
+			m_dependencies.push_back(dep);
+		}
+	}
 }
 
 void MachOObject::readSymbols()
@@ -327,13 +376,40 @@ void MachOObject::readSymbols()
 	}
 }
 
+void MachOObject::readExports()
+{
+	for (MachO::Export* exp : m_file->exports())
+	{
+		MachO::Export e = *exp;
+		e.addr += m_slide;
+		
+		if (e.resolver && (e.flag & EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER)) // EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER support
+			e.resolver += m_slide;
+		
+		m_exports[e.name] = e;
+	}
+}
 
-void* MachOObject::getExportedSymbol(const std::string& symbolName) const
+void* MachOObject::getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const
 {
 	auto it = m_exports.find(symbolName);
 	
 	if (it != m_exports.end())
-		return it->second;
+	{
+		if (nonWeakOnly && (it->second.flag & EXPORT_SYMBOL_FLAGS_WEAK_DEFINITION))
+			return nullptr;
+		
+		if (it->second.resolver && (it->second.flag & EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER))
+		{
+			typedef void* (*Resolver)();
+			
+			Resolver res = Resolver(it->second.resolver);
+			it->second.addr = (uint64_t) res();
+			it->second.resolver = 0;
+		}
+		
+		return (void*)it->second.addr;
+	}
 	else
 		return nullptr;
 }
@@ -375,19 +451,19 @@ void MachOObject::fillInProgramVars()
 	{
 		auto it = m_exports.find("_NXArgc");
 		if (it != m_exports.end())
-			*((int*)it->second) = g_argc;
+			*((int*)it->second.addr) = g_argc;
 		
 		it = m_exports.find("_NXArgv");
 		if (it != m_exports.end())
-			*((char***)it->second) = g_argv;
+			*((char***)it->second.addr) = g_argv;
 		
 		it = m_exports.find("_environ");
 		if (it != m_exports.end())
-			*((char***)it->second) = environ;
+			*((char***)it->second.addr) = environ;
 		
 		it = m_exports.find("___progname");
 		if (it != m_exports.end())
-			*((const char**)it->second) = g_argv[0];
+			*((const char**)it->second.addr) = g_argv[0];
 	}
 }
 
@@ -463,7 +539,7 @@ void MachOObject::registerEHSection()
 		ehSection.store(&m_reworkedEHData, nullptr);
 		
 		LOG << "Registering reworked __eh_frame at " << m_reworkedEHData << std::endl;
-		__register_frame(m_reworkedEHData); // TODO: free when unloading the image
+		__register_frame(m_reworkedEHData);
 	}
 	catch (const std::exception& e)
 	{
@@ -522,8 +598,75 @@ void MachOObject::performBinds()
 
 void* MachOObject::performBind(MachO::Bind* bind)
 {
-	// TODO
-	return nullptr;
+	if (bind->type == BIND_TYPE_POINTER || bind->type == BIND_TYPE_STUB)
+	{
+		void* addr = nullptr;
+		
+		if (bind->is_classic && bind->is_local)
+			addr = (void*) bind->value;
+		else
+			addr = resolveSymbol(bind->name);
+		
+		if (!addr && !bind->is_weak)
+		{
+			if (MachOMgr::instance()->ignoreMissingSymbols())
+			{
+				// TODO: create a dummy function
+				bind->addend = 0;
+			}
+			else
+			{
+				std::stringstream ss;
+				ss << "Symbol not found: " << bind->name;
+				throw std::runtime_error(ss.str());
+			}
+		}
+		
+		if (!bind->is_classic)
+			addr = (void*) (uintptr_t(addr) + bind->addend);
+		
+		if (addr && MachOMgr::instance()->useTrampolines())
+		{
+			// TODO: swap addr for a trampoline
+		}
+		
+		writeBind(bind, addr);
+		
+		return addr;
+	}
+	else
+	{
+		std::stringstream ss;
+		ss << "Unknown bind type: 0x" << std::hex << bind->type;
+		throw std::runtime_error(ss.str());
+	}
+}
+
+void MachOObject::writeBind(MachO::Bind* bind, void* addr)
+{
+	void** bindLoc = (void**)(bind->vmaddr + m_slide);
+	
+	if (bind->type == BIND_TYPE_POINTER)
+	{
+		if (*bindLoc != addr)
+			*bindLoc = addr;
+	}
+#ifdef __i386__
+	else if (bind->type == BIND_TYPE_STUB)
+	{
+		struct jmp_instr
+		{
+			uint8_t relJmp;
+			uint32_t addr;
+		} __attribute__((packed));
+		static_assert(sizeof(jmp_instr) == 5, "Incorrect jmp instruction size");
+
+		jmp_instr* instr = reinterpret_cast<jmp_instr*>(bindLoc);
+
+		instr->relJmp = 0xE9; // x86 jmp rel32
+		instr->addr = addr - uint32_t(bindLoc) - sizeof(jmp_instr);
+	}
+#endif
 }
 
 void* MachOObject::resolveSymbol(const std::string& name)
@@ -549,15 +692,7 @@ void* MachOObject::resolveSymbol(const std::string& name)
 
 	addr = __darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str() + 1);
 	
-	if (!addr && MachOMgr::instance()->ignoreMissingSymbols())
-	{
-		// TODO:
-	}
 	
-	if (addr && MachOMgr::instance()->useTrampolines())
-	{
-		// TODO:
-	}
 	
 	return addr;
 }
@@ -693,3 +828,29 @@ void* MachOObject::getSection(const std::string& segmentName, const std::string&
 	return nullptr;
 }
 
+void MachOObject::setupTLS()
+{
+	std::vector<tlv_descriptor*> descriptors;
+	const std::vector<MachO::TLVSection>& tlvSections = m_file->tlv_sections();
+	std::vector<void*> initializers;
+	
+	if (tlvSections.empty())
+		return;
+	
+	for (MachO::TLVSection sect : tlvSections)
+	{
+		tlv_descriptor* des = reinterpret_cast<tlv_descriptor*>(sect.firstDescriptor+m_slide);
+		for (size_t i = 0; i < sect.count; i++)
+			descriptors.push_back(&des[i]);
+	}
+	
+	for (uint64_t offset : m_file->tlv_init_funcs())
+		initializers.push_back((void*) (offset+m_slide));
+	
+	Darling::TLSSetup(this, descriptors, initializers, (void*) (m_file->tlv_initial_values().first+m_slide), m_file->tlv_initial_values().second);
+}
+
+void MachOObject::teardownTLS()
+{
+	Darling::TLSTeardown(this);
+}

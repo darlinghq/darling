@@ -53,7 +53,7 @@ int NativeObject::translateFlags(int flag)
 	return native_flags;
 }
 
-void* NativeObject::getExportedSymbol(const std::string& symbolName) const
+void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const
 {
 	return ::dlsym(m_nativeRef, symbolName.c_str());
 }

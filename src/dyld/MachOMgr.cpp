@@ -1,6 +1,7 @@
 #include "MachOMgr.h"
 #include <cassert>
 #include <algorithm>
+#include <bits/wordsize.h>
 #include "MachOObject.h"
 
 MachOMgr::MachOMgr()
@@ -29,7 +30,17 @@ void* MachOMgr::maxAddress() const
 	Darling::RWMutexReadLock l(m_lock);
 	
 	if (m_objects.empty())
-		return 0;
+	{
+		// This is normally used only for:
+		// a) DYLD_PRELOAD
+		// b) Standalone use of libdyld
+		
+#if (__WORDSIZE == 64)
+		return (void*) 0x200000000L;
+#else
+		return (void*) 0x1000000;
+#endif
+	}
 	else
 	{
 		auto it = m_objects.end();
@@ -64,6 +75,8 @@ void MachOMgr::add(MachOObject* obj, bool mainModule)
 		assert(m_mainModule == nullptr);
 		m_mainModule = obj;
 	}
+	
+	// TODO: add support for loader hooks
 }
 
 template <typename Key, typename Value> void mapEraseByValue(std::map<Key, Value>& map, const Value& v)
@@ -92,15 +105,32 @@ void MachOMgr::remove(MachOObject* obj)
 	
 	if (m_mainModule == obj)
 		m_mainModule = nullptr;
+	
+	// TODO: add support for loader hooks
 }
 
 void* MachOMgr::getExportedSymbol(const std::string& symbolName)
 {
+	void* weak = nullptr;
 	for (MachOObject* obj : m_objectsInOrder)
 	{
-		void* p = obj->getExportedSymbol(symbolName);
+		void* p = obj->getExportedSymbol(symbolName, true); // try non-weak only
 		if (p)
 			return p;
+		
+		if (!weak)
+			weak = obj->getExportedSymbol(symbolName, false); // save the first weak export as a fallback
 	}
-	return nullptr;
+	
+	return weak;
 }
+
+MachOObject* MachOMgr::lookup(const std::string& absolutePath)
+{
+	auto it = m_objectNames.find(absolutePath);
+	if (it != m_objectNames.end())
+		return it->second;
+	else
+		return nullptr;
+}
+

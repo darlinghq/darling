@@ -10,7 +10,7 @@ public:
 	
 	virtual void load() override;
 	virtual void unload() override;
-	virtual void* getExportedSymbol(const std::string& symbolName) const override;
+	virtual void* getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const override;
 	virtual bool findSymbolInfo(const void* addr, Dl_info* p) const override;
 private:
 	int translateFlags(int flag);

@@ -29,6 +29,7 @@ set(dyld_SRCS
 	LoadableObject.cpp
 	NativeObject.cpp
 	MachOMgr.cpp
+	DylibSearch.cpp
 )
 
 if (DEBUG)

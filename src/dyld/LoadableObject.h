@@ -3,6 +3,8 @@
 #include <dlfcn.h>
 #include <string>
 
+class MachOObject;
+
 class LoadableObject
 {
 protected:
@@ -13,11 +15,13 @@ public:
 	virtual void load() = 0;
 	virtual void unload() = 0;
 	
-	virtual void* getExportedSymbol(const std::string& symbolName) const = 0;
+	virtual void* getExportedSymbol(const std::string& symbolName, bool nonWeakOnly = false) const = 0;
 	virtual bool findSymbolInfo(const void* addr, Dl_info* p) const = 0;
 	
 	int addRef();
 	int delRef();
+protected:
+	static LoadableObject* instantiateForPath(const std::string& path, MachOObject* requester);
 protected:
 	int m_refs = 1;
 	int m_attribs = 0;
