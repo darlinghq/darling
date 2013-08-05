@@ -18,11 +18,10 @@
 #include <typeinfo>
 #include "log.h"
 #include <ext/stdio_filebuf.h>
+#include <dyld/MachOMgr.h>
 
 template class __gnu_cxx::stdio_filebuf<char, std::char_traits<char> >;
 template class std::basic_filebuf<char, std::char_traits<char> >;
-
-extern char g_sysroot[PATH_MAX];
 
 //extern "C"
 //{
@@ -68,10 +67,10 @@ template<typename RetVal, typename Func, typename... Params> RetVal AutoFileErrn
 __darwin_FILE* __darwin_fopen(const char* path, const char* mode)
 {
 	TRACE2(path, mode);
-	if (!strchr(mode, 'w') && g_sysroot[0])
+	if (!strchr(mode, 'w') && Darling::MachOMgr::instance()->hasSysRoot())
 	{
 		const char* prefixed;
-		std::string lpath = g_sysroot;
+		std::string lpath = Darling::MachOMgr::instance()->sysRoot();
 		lpath += '/';
 		lpath += path;
 		

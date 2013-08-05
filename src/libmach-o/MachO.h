@@ -44,6 +44,7 @@ public:
 
 	virtual ~MachO() {}
 	virtual void close() = 0;
+	inline void closeFd() { ::close(m_fd); m_fd = -1; }
 
 	const std::string& filename() const { return m_filename; }
 	

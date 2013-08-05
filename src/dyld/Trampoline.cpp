@@ -48,7 +48,8 @@ extern "C" void* trampoline_start;
 extern "C" void* trampoline_end;
 
 #ifndef TEST
-#	include "dyld.h"
+#	include "MachOMgr.h"
+#	include "MachOObject.h"
 #else
 const char* g_argv[] = { "Trampoline", 0 };
 #endif
@@ -79,7 +80,10 @@ TrampolineMgr::TrampolineMgr(int entries)
 	}
 
 	::gettimeofday(&m_startup, nullptr);
+}
 
+void TrampolineMgr::printPath()
+{
 	std::cout << logPath() << std::endl;
 }
 
@@ -254,12 +258,12 @@ std::string TrampolineMgr::logPath()
 {
 	pid_t pid = getpid();
 	std::stringstream ss;
-	std::string progname = g_argv[0];
-	size_t pos;
+	const char* progname = Darling::MachOMgr::instance()->mainModule()->name();
+	//size_t pos;
 
-	pos = progname.rfind('/');
-	if (pos != std::string::npos)
-		progname = progname.substr(pos+1);
+	//pos = progname.rfind('/');
+	//if (pos != std::string::npos)
+	//	progname = progname.substr(pos+1);
 
 	ss << m_wd << '/' << progname << '.' << pid << ".log";
 	return ss.str();

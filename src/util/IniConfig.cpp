@@ -103,7 +103,7 @@ std::string& IniConfig::trim(std::string& str)
 	return str;
 }
 
-const IniConfig::ValueMap* IniConfig::getSection(std::string section) const
+const IniConfig::ValueMap* IniConfig::getSection(const std::string& section) const
 {
 	SectionMap::const_iterator it = m_sections.find(section);
 	if (it == m_sections.end())

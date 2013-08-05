@@ -87,9 +87,9 @@ trampoline_start:
 	mov rsi, rsp
 	mov rcx, qword 0xaabbccddeeff ; print function (saves orig ret address)
 
-	sub rsp, 8 ; align stack to 16
+	;sub rsp, 8 ; align stack to 16
 	call rcx
-	add rsp, 8
+	;add rsp, 8
 
 	mov r11, rax ; save the right addr
 
@@ -111,9 +111,9 @@ after_jump:
 	mov rsi, rsp
 	mov rcx, qword 0xa0a1a2a3a4a5a6 ; retval print function (returns orig ret address)
 	
-	sub rsp, 8 ; align stack to 16
+	;sub rsp, 8 ; align stack to 16
 	call rcx
-	add rsp, 8
+	;add rsp, 8
 	
 	mov r11, rax
 

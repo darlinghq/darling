@@ -8,8 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits.h>
-
-extern char g_sysroot[PATH_MAX];
+#include <dyld/MachOMgr.h>
 
 static darwin_dirent* convertDirent(const struct dirent* ent);
 static darwin_dirent64* convertDirent64(const struct dirent* ent);
@@ -88,10 +87,10 @@ DIR* __darwin_opendir(const char *name)
 {
 	TRACE1(name);
 	
-	if (g_sysroot[0])
+	if (Darling::MachOMgr::instance()->hasSysRoot())
 	{
 		const char* prefixed;
-		std::string lpath = g_sysroot;
+		std::string lpath = Darling::MachOMgr::instance()->sysRoot();
 		
 		lpath += '/';
 		lpath += name;

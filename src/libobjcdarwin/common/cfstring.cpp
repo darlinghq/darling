@@ -1,4 +1,4 @@
-#include "../../dyld/public.h"
+#include <dyld/dyld_public.h>
 #include <stdint.h>
 #include <cstring>
 #include <algorithm>

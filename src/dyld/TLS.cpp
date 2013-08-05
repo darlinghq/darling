@@ -98,7 +98,9 @@ void Darling::TLSTeardown(void* imageKey)
 	auto it = m_images.find(imageKey);
 	pthread_key_t key;
 
-	assert(it != m_images.end());
+	if (it == m_images.end())
+		return;
+
 	key = it->second->key;
 	
 	// TODO: What to do with live objects with C++11 destructors? Does Apple's dyld handle this?

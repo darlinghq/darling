@@ -102,6 +102,8 @@ void OSAtomicEnqueue(struct OSQueueHead *list, void *_new, size_t offset);
 
 void* OSAtomicDequeue(struct OSQueueHead *list, size_t offset);
 
+void OSMemoryBarrier();
+
 #ifdef __cplusplus
 }
 #endif

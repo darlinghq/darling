@@ -7,13 +7,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <limits.h>
-
-extern char g_sysroot[PATH_MAX];
+#include <dyld/MachOMgr.h>
 
 static void convertStat64(struct stat64* linux_buf, struct __darwin_stat64* mac)
 {
-	// TODO(hamaji): this memset seems to cause overflow... why?
-	//memset(mac, 0, sizeof(*mac));
 	mac->st_dev = linux_buf->st_dev;
 	mac->st_mode = linux_buf->st_mode;
 	mac->st_nlink = linux_buf->st_nlink;
@@ -31,8 +28,6 @@ static void convertStat64(struct stat64* linux_buf, struct __darwin_stat64* mac)
 
 static void convertStat(struct stat64* linux_buf, struct __darwin_stat* mac)
 {
-	// TODO(hamaji): this memset seems to cause overflow... why?
-	//memset(mac, 0, sizeof(*mac));
 	mac->st_dev = linux_buf->st_dev;
 	mac->st_mode = linux_buf->st_mode;
 	mac->st_nlink = linux_buf->st_nlink;
@@ -53,10 +48,10 @@ int __darwin_stat64(const char* path, struct __darwin_stat64* mac)
 	TRACE2(path, mac);
 	struct stat64 linux_buf;
 	
-	if (g_sysroot[0])
+	if (Darling::MachOMgr::instance()->hasSysRoot())
 	{
 		const char* prefixed;
-		std::string lpath = g_sysroot;
+		std::string lpath = Darling::MachOMgr::instance()->sysRoot();
 		
 		lpath += '/';
 		lpath += path;

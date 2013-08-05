@@ -1,237 +1,74 @@
-/*
-This file is part of Darling.
-
-Copyright (C) 2012-2013 Lubos Dolezel
-Copyright (C) 2011 Shinichiro Hamaji
-
-Darling is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Darling is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Darling.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#include <libmach-o/MachO.h>
-#include "MachOLoader.h"
-#include "arch.h"
-#include "log.h"
-#include "binfmt_misc.h"
+#include "MachOMgr.h"
+#include "MachOObject.h"
 #include <iostream>
-#include <limits.h>
-#include <unistd.h>
-#include <cstdlib>
 #include <stdexcept>
-#include <cstring>
-#include <cassert>
-#include <algorithm>
-#include <locale.h>
-#include <mcheck.h>
-#include <libgen.h>
-#include "dyld.h"
-#include <darwin/mach/machine.h>
+#include <cstdlib>
+#include "arch.h"
 
-char g_darwin_executable_path[4096] = "";
-char g_darwin_executable[4096] = "";
-char g_dyld_path[4096] = "";
-char g_sysroot[4096] = "";
-bool g_trampoline = false;
-bool g_noWeak = false;
+static void printHelp(const char* argv0);
 
-MachO* g_mainBinary = 0;
-MachOLoader* g_loader = 0;
-int g_argc;
-char** g_argv;
-
-static void autoSysrootSearch();
-static void setupExecutablePath(const char* relativePath);
-static void setupDyldPath(const char* relativePath);
-static void checkPlatform(const char* arg1, const MachO* macho);
+using namespace Darling;
 
 int main(int argc, char** argv, char** envp)
 {
-	if (argc == 1)
+	if (argc < 2)
 	{
-		std::cerr << "This is Darling dyld for " ARCH_NAME ".\n";
-		std::cerr << "Copyright (C) 2012-2013 Lubos Dolezel\n"
-			"Copyright (C) 2011 Shinichiro Hamaji\n\n";
-		
-		std::cerr << "Usage: " << argv[0] << " program-path [arguments...]\n\n";
-		std::cerr << "Environment variables:\n"
-			"\tDYLD_DEBUG=1 - enable debug info (lots of output)\n"
-			"\tDYLD_MTRACE=1 - enable mtrace\n"
-#ifdef DEBUG
-			"\tDYLD_IGN_MISSING_SYMS=1 - replace missing symbol references with a stub function\n"
-			"\tDYLD_TRAMPOLINE=1 - access all bound functions via a debug trampoline\n"
-#endif
-			"\tDYLD_ROOT_PATH=<path> - set the base for library path resolution (overrides autodetection)\n"
-			"\tDYLD_BIND_AT_LAUNCH=1 - force dyld to bind all lazy references on startup\n";
+		printHelp(argv[0]);
 		return 1;
 	}
-	
+
 	try
 	{
-		if (!::realpath(argv[0], g_dyld_path))
-			::strcpy(g_dyld_path, argv[0]);
-
-		if (argc == 2)
-		{
-			if (!strcmp(argv[1], "--register"))
-			{
-				Darling::binfmtRegister(g_dyld_path);
-				return 0;
-			}
-			else if (!strcmp(argv[1], "--deregister"))
-			{
-				Darling::binfmtDeregister();
-				return 0;
-			}
-		}
+		MachOObject* obj;
+		MachOMgr* mgr = MachOMgr::instance();
 		
-		setupDyldPath(argv[0]);
-		// sets up @executable_path
-		setupExecutablePath(argv[1]);
-	
-		// setlocale(LC_CTYPE, "");
-		if (getenv("DYLD_MTRACE") && atoi(getenv("DYLD_MTRACE")))
-			mtrace();
-		if (getenv("DYLD_TRAMPOLINE") && atoi(getenv("DYLD_TRAMPOLINE")))
-			g_trampoline = true;
-		if (getenv("DYLD_NO_WEAK"))
-			g_noWeak = true;
+		mgr->detectSysRootFromPath(argv[1]);
+		mgr->setPrintInitializers(getenv("DYLD_PRINT_INITIALIZERS") != nullptr);
+		mgr->setPrintLibraries(getenv("DYLD_PRINT_LIBRARIES") != nullptr);
+		mgr->setBindAtLaunch(getenv("DYLD_BIND_AT_LAUNCH") != nullptr);
+		mgr->setIgnoreMissingSymbols(getenv("DYLD_IGN_MISSING_SYMS") != nullptr);
+		mgr->setPrintSegments(getenv("DYLD_PRINT_SEGMENTS") != nullptr);
+		mgr->setPrintBindings(getenv("DYLD_PRINT_BINDINGS") != nullptr);
+		mgr->setPrintRpathExpansion(getenv("DYLD_PRINT_RPATHS") != nullptr);
 
-		g_mainBinary = MachO::readFile(argv[1], ARCH_NAME);
+		if (const char* path = getenv("DYLD_LIBRARY_PATH"))
+			mgr->setLibraryPath(path);
+		if (const char* path = getenv("DYLD_ROOT_PATH"))
+			mgr->setSysRoot(path);
+		if (const char* path = getenv("DYLD_TRAMPOLINE"))
+			mgr->setUseTrampolines(true, path);
 		
-		if (!g_mainBinary)
-			throw std::runtime_error("Cannot open binary file");
+		obj = new MachOObject(argv[1]);
+		obj->setCommandLine(argc-1, &argv[1], envp);
 
-		checkPlatform(argv[1], g_mainBinary);
-
-		// Modify the argument list so that the dyld name disappears from the process list.
-		// The Linux kernel doesn't really support this - it remembers the byte length of the cmdline, which will now decrease.
-		// Any app that examines this process' /proc/.../cmdline will from now on see a group of empty arguments after the real arguments.
-		// We fix this for NSProcessInfo in libobjcdarwin.
-		/*	
-		uintptr_t totalLen = argv[argc-1] + strlen(argv[argc-1]) + 1 - argv[0];
-		uintptr_t shortenedLen = totalLen - (strlen(argv[0]) + 1);
-
-		memmove(argv[0], argv[1], shortenedLen);
-		memset(argv[0]+shortenedLen, 0, totalLen - shortenedLen);
-
-		// Reconstruct the argv array
-		for (int pos = 0, index = 1; index < argc-1; pos++)
-		{
-			if (!argv[0][pos])
-				argv[index++] = &argv[0][pos+1];
-		}
-		*/
-
-		g_argv = argv+1;
-		g_argc = argc-1;
-		g_loader = new MachOLoader;
-		
-		autoSysrootSearch();
-		bool forceBind = false;
-		
-		if (g_trampoline || getenv("DYLD_BIND_AT_LAUNCH") != nullptr)
-			forceBind = true;
-		
-		g_loader->run(*g_mainBinary, g_argc, g_argv, envp, forceBind);
-		
-		delete g_loader;
-		g_loader = 0;
-		return 2;
+		obj->load();
+		obj->run();
 	}
-	catch (fat_architecture_not_supported& e)
-	{
-		if (char* p = strstr(argv[0], "/" DYLD_FULL_NAME)) // multilib
-		{
-			// Try to automatically execute "the other" dyld on multilib systems
-			// if that other dyld's platform is supported in the fat binary
-			if (std::find(e.archs().begin(), e.archs().end(), ARCH_CROSS_NAME) != e.archs().end())
-			{
-				strcpy(p+1, DYLD_CROSS_NAME);
-				execvp(argv[0], argv);
-			}
-		}
-		
-		std::cerr << argv[1] << " is a fat binary, but doesn't support the following architecture: " << ARCH_NAME << std::endl;
-	}
-	catch (std::exception& e)
+	catch (const std::exception& e)
 	{
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
 }
 
-extern "C" const char* dyld_getDarwinExecutablePath()
+static void printHelp(const char* argv0)
 {
-	return g_darwin_executable;
-}
+	std::cerr << "This is Darling dyld for " ARCH_NAME ", a dynamic loader for Mach-O executables.\n\n";
+	std::cerr << "Copyright (C) 2012-2013 Lubos Dolezel\n"
+		<< "Originally based on maloader by Shinichiro Hamaji.\n\n";
 
-extern "C" const char* dyld_getLoaderPath()
-{
-	return g_loader->getCurrentLoader().c_str();
-}
+	std::cerr << "Usage: " << argv0 << " program-path [arguments...]\n\n";
 
-void setupExecutablePath(const char* relativePath)
-{
-	char path[PATH_MAX];
-	
-	if (!::realpath(relativePath, path))
-	{
-		// We'll probably fail a bit later anyway
-		return;
-	}
-	
-	::strcpy(g_darwin_executable, path);
-	::strcpy(g_darwin_executable_path, dirname(path));
-	LOG << "@executable_path is " << g_darwin_executable_path << std::endl;
-}
-
-void setupDyldPath(const char* relativePath)
-{
-	if (!::realpath(relativePath, g_dyld_path))
-		::strcpy(g_dyld_path, relativePath);
-}
-
-void autoSysrootSearch()
-{
-	if (const char* s = getenv("DYLD_ROOT_PATH"))
-	{
-		strncpy(g_sysroot, s, PATH_MAX-1);
-		g_sysroot[PATH_MAX-1] = 0;
-	}
-	else
-	{
-		std::string path = g_darwin_executable_path;
-		size_t pos = path.rfind("/usr/");
-	
-		LOG << "Looking for SYSROOT signs in " << g_darwin_executable_path << std::endl;
-	
-		if (pos != std::string::npos && pos > 0)
-		{
-			std::string sysroot = path.substr(0, pos);
-			LOG << "SYSROOT detected to be " << sysroot << std::endl;
-			strncpy(g_sysroot, sysroot.c_str(), PATH_MAX-1);
-			g_sysroot[PATH_MAX-1] = 0;
-		}
-	}
-}
-
-void checkPlatform(const char* argv1, const MachO* macho)
-{
-	const char* plat = macho->platform();
-	if (strcmp(plat, ARCH_NAME) != 0)
-	{
-		std::cerr << argv1 << ": Cannot execute binary file.\nThis version of Darwin dyld cannot run binaries for " << plat << ".\n";
-		exit(-ENOEXEC);
-	}
+	std::cerr << "Environment variables:\n"
+		"\tDYLD_DEBUG=expr - enable(+) or disable(-) debugging channels (debug, trace, error), e.g. +debug,-error\n"
+		"\tDYLD_TRAMPOLINE=file - enable debugging trampolines, with argument info in file\n"
+		"\tDYLD_IGN_MISSING_SYMS - replace missing symbols with a stub function\n\n"
+		"\tDYLD_ROOT_PATH=<path> - set the base for library path resolution (overrides autodetection)\n"
+		"\tDYLD_BIND_AT_LAUNCH - force dyld to bind all lazy references on startup\n"
+		"\tDYLD_PRINT_INITIALIZERS - print initializers when they are invoked\n"
+		"\tDYLD_PRINT_LIBRARIES - print libraries when they are loaded\n"
+		"\tDYLD_PRINT_SEGMENTS - print segments when they are mapped into memory\n"
+		"\tDYLD_PRINT_BINDINGS - print out when binds/ext. relocs are being resolved\n"
+		"\tDYLD_PRINT_RPATHS - print @rpath resolution attempts\n\n";
 }
 

@@ -4,15 +4,29 @@
 #include <stdexcept>
 #include "MachOMgr.h"
 #include <iostream>
+#include <cstdlib>
+#include <link.h>
+
+namespace Darling {
 
 NativeObject::NativeObject(const std::string& path)
-: m_path(path)
+: m_path(path), m_name(path)
+{
+}
+
+NativeObject::NativeObject(void* nativeRef, const std::string& name)
+	: m_nativeRef(nativeRef), m_path(name), m_name(name)
 {
 }
 
 void NativeObject::load()
 {
-	m_nativeRef = ::dlopen(m_path.c_str(), translateFlags(m_attribs));
+	int flags = 0;
+
+	flags |= globalExports() ? RTLD_GLOBAL : RTLD_LOCAL;
+	flags |= bindAllAtLoad() ? RTLD_NOW : RTLD_LAZY;
+
+	m_nativeRef = ::dlopen(m_path.c_str(), flags);
 	if (!m_nativeRef)
 	{
 		const char* err = ::dlerror();
@@ -23,42 +37,75 @@ void NativeObject::load()
 	}
 	else
 	{
+
+		updateName();
+
 		if (MachOMgr::instance()->printLibraries())
 			std::cerr << "dyld: Loaded " << m_path << std::endl;
+
+		MachOMgr::instance()->add(this);
 	}
 }
 
 void NativeObject::unload()
 {
-	::dlclose(m_nativeRef);
+	MachOMgr::instance()->remove(this);
+
+	if (m_path.find('/') != std::string::npos)
+		::dlclose(m_nativeRef);
 }
 
-int NativeObject::translateFlags(int flag)
+void NativeObject::updateName()
 {
-	int native_flags = 0;
-	if (flag & DARWIN_RTLD_LAZY)
-		native_flags |= RTLD_LAZY;
-	if (flag & DARWIN_RTLD_NOW)
-		native_flags |= RTLD_NOW;
-	if (flag & DARWIN_RTLD_LOCAL)
-		native_flags |= RTLD_LOCAL;
-	if (flag & DARWIN_RTLD_GLOBAL)
-		native_flags |= RTLD_GLOBAL;
-	if (flag & DARWIN_RTLD_NOLOAD)
-		native_flags |= RTLD_NOLOAD;
-	if (flag & DARWIN_RTLD_NODELETE)
-		native_flags |= RTLD_NODELETE;
-	//if (flag & __DARLING_RTLD_NOBIND)
-	//	native_flags |= __DARLING_RTLD_NOBIND;
-	return native_flags;
+	struct link_map* map = nullptr;
+	size_t pos;
+
+	dlinfo(m_nativeRef, RTLD_DI_LINKMAP, &map);
+
+	if (map)
+	{
+		char* real = realpath(map->l_name, nullptr);
+		if (real)
+		{
+			m_path = real;
+			free(real);
+		}
+	}
+
+	pos = m_path.rfind('/');
+	if (pos == std::string::npos)
+		m_name = m_path;
+	else
+		m_name = m_path.substr(pos+1);
 }
 
 void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const
 {
-	return ::dlsym(m_nativeRef, symbolName.c_str());
+	void* addr;
+	std::string prefixed = "__darwin_" + symbolName;
+
+	addr = ::dlsym(m_nativeRef, prefixed.c_str());
+
+	if (!addr)
+		addr = ::dlsym(m_nativeRef, symbolName.c_str());
+
+	return addr;
 }
 
 bool NativeObject::findSymbolInfo(const void* addr, Dl_info* p) const
 {
 	return ::dladdr(addr, p) != 0;
 }
+
+const char* NativeObject::name() const
+{
+	return m_name.c_str();
+}
+
+const std::string& NativeObject::path() const
+{
+	return m_path;
+}
+
+} // namespace Darling
+

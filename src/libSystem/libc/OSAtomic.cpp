@@ -207,7 +207,7 @@ void OSSpinLockLock(OSSpinLock *lock)
 {
 	// We cannot use pthread spinlocks, these need init and destruction
 	while (!OSSpinLockTry(lock))
-		sched_yield(); // TODO: still a busy wait...
+		sched_yield();
 }
 
 void OSSpinLockUnlock(OSSpinLock *lock)
@@ -236,5 +236,11 @@ void OSAtomicEnqueue(OSQueueHead *list, void *_new, size_t offset)
 void* OSAtomicDequeue(OSQueueHead *list, size_t offset)
 {
 	LIBC_STUB();
+	return nullptr;
+}
+
+__attribute__((naked)) void OSMemoryBarrier()
+{
+	__atomic_thread_fence(__ATOMIC_SEQ_CST);
 }
 

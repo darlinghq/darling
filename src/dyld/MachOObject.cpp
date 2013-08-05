@@ -1,3 +1,4 @@
+#include "dl_public.h"
 #include "MachOObject.h"
 #include <climits>
 #include <cstring>
@@ -12,14 +13,15 @@
 #include <iostream>
 #include "MachOMgr.h"
 #include "eh/EHSection.h"
-#include "ld.h"
 #include "DylibSearch.h"
 #include "arch.h"
 #include "TLS.h"
 
 // FIXME: this needs to go away
-extern "C" int g_argc asm("NXArgc");
-extern "C" char** g_argv asm("NXArgv");
+extern "C" int g_argc asm("NXArgc") = 0;
+extern "C" char** g_argv asm("NXArgv") = nullptr;
+
+namespace Darling {
 
 struct ProgramVars
 {
@@ -86,6 +88,15 @@ bool MachOObject::isMainModule() const
 
 void MachOObject::load()
 {
+	if (isLoaded())
+		throw std::logic_error("Module already loaded");
+	if (strcmp(m_file->platform(), ARCH_NAME) != 0)
+	{
+		std::stringstream ss;
+		ss << "This version of Darling dyld cannot load binaries for " << m_file->platform() << ".";
+		throw std::runtime_error(ss.str());
+	}
+	
 	m_base = MachOMgr::instance()->maxAddress();
 	
 	loadSegments();
@@ -95,6 +106,9 @@ void MachOObject::load()
 	
 	readSymbols();
 	readExports();
+
+	MachOMgr::instance()->add(this, isMainModule());
+
 	loadDependencies();
 	
 	performRelocations();
@@ -109,10 +123,10 @@ void MachOObject::load()
 	setInitialSegmentProtection();
 	setupTLS();
 	
+	MachOMgr::instance()->notifyAdd(this);
 	runInitializers();
 	
-	MachOMgr::instance()->add(this, isMainModule());
-	m_file->close();
+	m_file->closeFd();
 	
 	if (MachOMgr::instance()->printLibraries())
 		std::cerr << "dyld: Loaded " << this->path() << std::endl;
@@ -120,6 +134,11 @@ void MachOObject::load()
 
 void MachOObject::unload()
 {
+	if (!isLoaded())
+		throw std::logic_error("Module not loaded");
+	
+	MachOMgr::instance()->remove(this);
+	
 	teardownTLS();
 	runFinalizers();
 	unloadSegments();
@@ -129,8 +148,11 @@ void MachOObject::unload()
 		dep->delRef();
 	
 	m_dependencies.clear();
-	
-	MachOMgr::instance()->remove(this);
+}
+
+bool MachOObject::isLoaded() const
+{
+	return !m_mappings.empty();
 }
 
 #if (__WORDSIZE == 64)
@@ -165,8 +187,18 @@ void MachOObject::loadSegments()
 			m_base = (void*) seg->vmaddr;
 		
 		if (!m_base)
-			m_base = MachOMgr::instance()->maxAddress();
+		{
+			// This is normally used only for:
+			// a) DYLD_PRELOAD
+			// b) Standalone use of libdyld
 		
+#if (__WORDSIZE == 64)
+			m_base = (void*) 0x200000000L;
+#else
+			m_base = (void*) 0x1000000;
+#endif
+		}
+
 		if ((void*)seg->vmaddr < m_base && !isMainModule())
 			m_slide = uintptr_t(m_base) - seg->vmaddr;
 		
@@ -176,8 +208,9 @@ void MachOObject::loadSegments()
 		initprot = machoProtectionFlagsToMmap(seg->initprot);
 		
 		checkMappingAddr(mappingAddr);
-		
-		LOG << "Mapping segment " << seg->segname << " from " << m_file->filename() << " to " << mappingAddr << ", slide is " << m_slide << std::endl;
+	
+		if (MachOMgr::instance()->printSegments())
+			std::cerr << "dyld: Mapping segment " << seg->segname << " from " << m_file->filename() << " to " << mappingAddr << ", slide is " << m_slide << std::endl;
 		
 		rv = ::mmap(mappingAddr, mappingSize, maxprot, MAP_FIXED | MAP_PRIVATE, m_file->fd(), m_file->offset() + seg->fileoff);
 		if (rv == MAP_FAILED)
@@ -189,7 +222,7 @@ void MachOObject::loadSegments()
 		
 		m_mappings.push_back(Mapping { mappingAddr, seg->vmsize, initprot, maxprot });
 		
-		if (seg->vmsize < mappingSize)
+		if (seg->vmsize > mappingSize)
 		{
 			// Map empty pages to cover the vmsize range
 			mappingAddr = (void*) (seg->vmaddr + m_slide + mappingSize);
@@ -212,7 +245,11 @@ void MachOObject::setInitialSegmentProtection()
 	for (const Mapping& map : m_mappings)
 	{
 		if (::mprotect(map.start, map.size, map.initprot) == -1)
-			throw std::runtime_error("Failed to mprotect() memory");
+		{
+			std::stringstream ss;
+			ss << "Failed to mprotect() memory: " << strerror(errno);
+			throw std::runtime_error(ss.str());
+		}
 	}
 }
 
@@ -292,7 +329,7 @@ void MachOObject::rebase()
 			{
 				uint32_t* ptr = reinterpret_cast<uint32_t*>(addr);
 				*ptr = m_file->fixEndian(*ptr);
-				*ptr = uintptr_t(addr) + 4 - (*ptr);
+				*ptr = uintptr_t(addr) - 4 - (*ptr);
 				break;
 			}
 
@@ -307,8 +344,11 @@ void MachOObject::rebase()
 	}
 }
 
-void MachOObject::writeBind(int type, uintptr_t* ptr, uintptr_t newAddr)
+void MachOObject::writeBind(int type, void** ptr, void* newAddr, const std::string& name)
 {
+	if (MachOMgr::instance()->printBindings())
+		std::cerr << "dyld: Binding " << name << " at " << ptr << ": " << (void*)(*ptr) << " -> " << (void*)newAddr << std::endl;
+
 	if (type == BIND_TYPE_POINTER)
 		*ptr = newAddr;
 
@@ -326,6 +366,10 @@ void MachOObject::writeBind(int type, uintptr_t* ptr, uintptr_t newAddr)
 
 		instr->relJmp = 0xE9; // x86 jmp rel32
 		instr->addr = newAddr - uint32_t(ptr) - sizeof(jmp_instr);
+	}
+	else if (type == BIND_TYPE_PCREL)
+	{
+		*ptr = newAddr - uintptr_t(ptr) - 4;
 	}
 #endif
 }
@@ -470,16 +514,15 @@ void MachOObject::fillInProgramVars()
 void MachOObject::fillInDyldData()
 {
 	DyldSectData* dyld = (DyldSectData*) getSection("__DATA", "__dyld");
-	dyld->funcLookupPtr = lookupDyldFunction;
+	if (dyld)
+		dyld->funcLookupPtr = lookupDyldFunction;
 }
 
 bool MachOObject::lookupDyldFunction(const char* name, void** addr)
 {
 	LOG << "lookupDyldFunction: " << name << std::endl;
 	
-	static void* self = dlopen(0, 0);
-	
-	*addr = dlsym(self, name);
+	*addr = dlsym(RTLD_DEFAULT, name);
 
 	if (!*addr)
 		*addr = (void*) (void (*)()) []() { LOG << "Fake dyld function called\n"; };
@@ -497,7 +540,7 @@ ProgramVars* MachOObject::getProgramVars()
 		uintptr_t size;
 		DyldSectData* dyld = (DyldSectData*) getSection("__DATA", "__dyld", &size);
 		
-		if (size > sizeof(void*)*2)
+		if (dyld && size > sizeof(void*)*2)
 			vars = &dyld->vars;
 	}
 	
@@ -572,14 +615,16 @@ void MachOObject::performRelocations()
 #ifdef __i386__
 		if (rel->pcrel)
 		{
-			LOG << "reloc(pcrel): @" << ptr << " " << std::hex << *ptr << " -> " << (value - uintptr_t(ptr) - 4) << std::dec << std::endl;
-			*ptr = value - uintptr_t(ptr) - 4;
+			//LOG << "reloc(pcrel): @" << ptr << " " << std::hex << *ptr << " -> " << (value - uintptr_t(ptr) - 4) << std::dec << std::endl;
+			writeBind(BIND_TYPE_PCREL, (void**) ptr, (void*) value, rel->name);
+			//*ptr = value - uintptr_t(ptr) - 4;
 		}
 		else
 #endif
 		{
-			LOG << "reloc: @" << ptr << " " << std::hex << *ptr << " -> " << value << std::dec << std::endl;
+			//LOG << "reloc: @" << ptr << " " << std::hex << *ptr << " -> " << value << std::dec << std::endl;
 			*ptr = value;
+			writeBind(BIND_TYPE_POINTER, (void**) ptr, (void*) value, rel->name);
 		}
 	}
 }
@@ -609,9 +654,9 @@ void* MachOObject::performBind(MachO::Bind* bind)
 		
 		if (!addr && !bind->is_weak)
 		{
-			if (MachOMgr::instance()->ignoreMissingSymbols())
+			if (MachOMgr::instance()->ignoreMissingSymbols() && bind->name[0] == '_')
 			{
-				// TODO: create a dummy function
+				addr = MachOMgr::instance()->undefMgr()->generateNew(bind->name.c_str()+1);
 				bind->addend = 0;
 			}
 			else
@@ -625,12 +670,14 @@ void* MachOObject::performBind(MachO::Bind* bind)
 		if (!bind->is_classic)
 			addr = (void*) (uintptr_t(addr) + bind->addend);
 		
-		if (addr && MachOMgr::instance()->useTrampolines())
+		if (addr && MachOMgr::instance()->useTrampolines() && bind->name[0] == '_')
 		{
-			// TODO: swap addr for a trampoline
+			TrampolineMgr* mgr = MachOMgr::instance()->trampolineMgr();
+
+			addr = mgr->generate(addr, bind->name.c_str()+1);
 		}
 		
-		writeBind(bind, addr);
+		writeBind(bind->type, (void**)(bind->vmaddr + m_slide), addr, bind->name);
 		
 		return addr;
 	}
@@ -642,38 +689,11 @@ void* MachOObject::performBind(MachO::Bind* bind)
 	}
 }
 
-void MachOObject::writeBind(MachO::Bind* bind, void* addr)
-{
-	void** bindLoc = (void**)(bind->vmaddr + m_slide);
-	
-	if (bind->type == BIND_TYPE_POINTER)
-	{
-		if (*bindLoc != addr)
-			*bindLoc = addr;
-	}
-#ifdef __i386__
-	else if (bind->type == BIND_TYPE_STUB)
-	{
-		struct jmp_instr
-		{
-			uint8_t relJmp;
-			uint32_t addr;
-		} __attribute__((packed));
-		static_assert(sizeof(jmp_instr) == 5, "Incorrect jmp instruction size");
-
-		jmp_instr* instr = reinterpret_cast<jmp_instr*>(bindLoc);
-
-		instr->relJmp = 0xE9; // x86 jmp rel32
-		instr->addr = addr - uint32_t(bindLoc) - sizeof(jmp_instr);
-	}
-#endif
-}
-
 void* MachOObject::resolveSymbol(const std::string& name)
 {
 	void* addr;
 	
-	if (!name.empty())
+	if (name.empty())
 		return nullptr;
 	
 	if (name[0] != '_')
@@ -683,18 +703,7 @@ void* MachOObject::resolveSymbol(const std::string& name)
 		return addr;
 	}
 	
-#ifndef __x86_64__
-	if (name.size() > 10 && name.compare(name.size()-10, 10, "$UNIX_2003") == 0)
-	{
-		name.resize(name.size() - 10);
-	}
-#endif
-
-	addr = __darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str() + 1);
-	
-	
-	
-	return addr;
+	return __darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str() + 1);
 }
 
 void MachOObject::runInitializers()
@@ -706,12 +715,12 @@ void MachOObject::runInitializers()
 	
 	for (uint64_t offset : m_file->init_funcs())
 	{
-		Initializer init = Initializer(offset + m_slide);
+		Initializer* init = (Initializer*)(offset + m_slide);
 		
 		if (MachOMgr::instance()->printInitializers())
-			std::cerr << "dyld: Running initializer at " << (void*)init << std::endl;
+			std::cerr << "dyld: Running initializer at " << (void*)*init << std::endl;
 		
-		init(g_argc, g_argv, environ, apple, pvars);
+		(*init)(g_argc, g_argv, environ, apple, pvars);
 	}
 }
 
@@ -721,35 +730,63 @@ void MachOObject::runFinalizers()
 	
 	for (uint64_t offset : m_file->exit_funcs())
 	{
-		Finalizer fini = Finalizer(offset + m_slide);
-		fini();
+		Finalizer* fini = (Finalizer*)(offset + m_slide);
+		(*fini)();
 	}
 }
 
 void MachOObject::detectAbsolutePath()
 {
 	char path[PATH_MAX];
+	size_t pos;
 	
 	realpath(m_file->filename().c_str(), path);
 	
 	m_absolutePath = path;
 	m_absolutePathDir = dirname(path);
+
+	pos = m_absolutePath.rfind('/');
+
+	if (pos == std::string::npos)
+		m_name = m_absolutePath;
+	else
+		m_name = m_absolutePath.substr(pos+1);
 }
 
 void MachOObject::setCommandLine(int argc, char** argv, char** envp)
 {
-	assert(m_argv[m_argc] == nullptr);
+	if (argv[argc] != nullptr)
+		throw std::invalid_argument("argv is not nullptr terminated");
+	if (!isMainModule())
+		throw std::logic_error("setCommandLine() used on a non-main module");
 	
 	m_argc = argc;
 	m_argv = argv;
 	m_envp = envp;
+	
+	// FIXME: this needs to go away
+	g_argc = argc;
+	g_argv = argv;
 }
 
 void MachOObject::commandLine(int* argc, char*** argv, char*** envp)
 {
-	*argc = m_argc;
-	*argv = m_argv;
-	*envp = m_envp;
+	if (argc)
+		*argc = m_argc;
+	if (argv)
+		*argv = m_argv;
+	if (envp)
+		*envp = m_envp;
+}
+
+void MachOObject::commandLine(int** argc, char**** argv, char**** envp)
+{
+	if (argc)
+		*argc = &m_argc;
+	if (argv)
+		*argv = &m_argv;
+	if (envp)
+		*envp = &m_envp;
 }
 
 void MachOObject::run()
@@ -758,6 +795,9 @@ void MachOObject::run()
 		throw std::runtime_error("Tried to run a file that is not the main module");
 	
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
+
+	if (MachOMgr::instance()->useTrampolines())
+		MachOMgr::instance()->trampolineMgr()->printPath();
 	
 	if (m_file->entry())
 	{
@@ -778,15 +818,6 @@ void MachOObject::run()
 		throw std::runtime_error("No entry point found");
 }
 
-static inline int findLast(char** array)
-{
-	for (int i = 0; ; i++)
-	{
-		if (!array[i])
-			return i;
-	}
-}
-
 void MachOObject::jumpToStart()
 {
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
@@ -800,10 +831,10 @@ void MachOObject::jumpToStart()
 #	define JUMP(addr) __asm__ volatile("jmp *%0" :: "r"(addr) :)
 #endif
 
-	for (int i = findLast(apple); i >= 0; i--)
+	for (int i = std::char_traits<char*>::length(apple)-1; i >= 0; i--)
 		PUSH(apple[i]);
 
-	for (int i = findLast(m_envp); i >= 0; i--)
+	for (int i = std::char_traits<char*>::length(m_envp)-1; i >= 0; i--)
 		PUSH(m_envp[i]);
 
 	for (int i = m_argc; i >= 0; i--)
@@ -811,20 +842,33 @@ void MachOObject::jumpToStart()
 
 	PUSH(m_argc);
 	JUMP(entry);
+
+	__builtin_unreachable();
 }
 
 
 void* MachOObject::getSection(const std::string& segmentName, const std::string& sectionName, uintptr_t* sectionSize)
 {
+	LOG << "Looking for section " << sectionName << " in segment " << segmentName << std::endl;
+
 	for (const MachO::Section& sect : m_file->sections())
 	{
-		if (sect.segment == segmentName && sect.section == sectionName)
+		if ((segmentName.empty() || sect.segment == segmentName) && sect.section == sectionName)
 		{
+			void* addr;
+
 			if (sectionSize)
 				*sectionSize = sect.size;
-			return (void*) (sect.addr + m_slide);
+
+			addr = (void*) (sect.addr + m_slide);
+
+			LOG << "...found at " << addr << std::endl;
+
+			return addr;
 		}
 	}
+
+	LOG << "...not found\n";
 	return nullptr;
 }
 
@@ -854,3 +898,94 @@ void MachOObject::teardownTLS()
 {
 	Darling::TLSTeardown(this);
 }
+
+void* MachOObject::doLazyBind(uintptr_t lazyOffset)
+{
+	for (MachO::Bind* bind : m_file->binds())
+	{
+		if (bind->is_lazy && bind->offset == lazyOffset)
+		{
+			try
+			{
+				return performBind(bind);
+			}
+			catch (const std::exception& e)
+			{
+				std::cerr << "dyld_stub_binder_fixup(): Failed to resolve the symbol: " << e.what() << std::endl;
+				abort();
+			}
+		}
+	}
+
+	std::cerr << "dyld_stub_binder_fixup(): Lazy bind not found for offset " << std::hex << lazyOffset << std::dec << std::endl;
+	abort();
+}
+
+const char* MachOObject::name() const
+{
+	return m_name.c_str();
+}
+
+void* MachOObject::getExportedSymbolRecursive(const std::string& symbolName) const
+{
+	std::set<const LoadableObject*> seen;
+	void* addr;
+
+	seen.insert(this);
+
+	if ((addr = getExportedSymbol(symbolName, false)))
+		return addr;
+
+	return getExportedSymbolRecursive(symbolName, seen);
+}
+
+void* MachOObject::getExportedSymbolRecursive(const std::string& symbolName, std::set<const LoadableObject*>& visited) const
+{
+	std::set<const MachOObject*> recurse;
+
+	for (const LoadableObject* dep : m_dependencies)
+	{
+		void* addr;
+
+		if (visited.find(dep) != visited.end())
+			continue;
+
+		visited.insert(dep);
+
+		if ((addr = dep->getExportedSymbol(symbolName, false)))
+			return addr;
+
+		if (const MachOObject* obj = dynamic_cast<const MachOObject*>(dep))
+			recurse.insert(obj);
+	}
+
+	for (const MachOObject* obj : recurse)
+	{
+		void* addr;
+
+		if ((addr = obj->getExportedSymbolRecursive(symbolName, visited)))
+			return addr;
+	}
+
+	return nullptr;
+}
+
+void* MachOObject::dyld_stub_binder_fixup(MachOObject** obj, uintptr_t lazyOffset)
+{
+	if (!*obj)
+	{
+		LOG << "Finding MachOObject for address " << obj << std::endl;
+		*obj = MachOMgr::instance()->objectForAddress((void*) obj);
+
+		if (!*obj)
+		{
+			std::cerr << "dyld_stub_binder_fixup(): Mach-O object not found for " << obj << std::endl;
+			abort();
+		}
+	}
+
+	return (*obj)->doLazyBind(lazyOffset);
+}
+
+
+} // namespace Darling

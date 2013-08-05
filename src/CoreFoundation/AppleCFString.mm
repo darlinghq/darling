@@ -47,5 +47,30 @@ Class* __CFConstantStringClassReference  __attribute__ ((weak, alias ("_OBJC_CLA
 	else
 		return _data._asciiData;
 }
+
+- (NSUInteger) retainCount
+{
+	return UINT_MAX;
+}
+
+- (id) retain
+{
+	return self;
+}
+
+- (void) release
+{
+}
+
+- (id) autorelease
+{
+	return self;
+}
+
+- (NSZone*) zone
+{
+	return NSDefaultMallocZone();
+}
+
 @end
 

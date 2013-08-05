@@ -22,6 +22,9 @@ static void passwdLinuxToDarwin(const struct passwd* in, __darwin_passwd* out)
 
 static __darwin_passwd* passwdLinuxToDarwin(const struct passwd* in)
 {
+	if (!in)
+		return nullptr;
+
 	static __thread __darwin_passwd pwd;
 	passwdLinuxToDarwin(in, &pwd);
 	return &pwd;

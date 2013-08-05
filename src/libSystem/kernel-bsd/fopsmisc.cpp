@@ -11,17 +11,16 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits.h>
-
-extern char g_sysroot[PATH_MAX];
+#include <dyld/MachOMgr.h>
 
 int __darwin_access(const char *pathname, int mode)
 {
 	//std::cout << "access: " << pathname << std::endl;
-	if ((mode & W_OK) == 0 && g_sysroot[0])
+	if ((mode & W_OK) == 0 && Darling::MachOMgr::instance()->hasSysRoot())
 	{
 		// Try to apply a sysroot prefix
 		const char* prefixed;
-		std::string lpath = g_sysroot;
+		std::string lpath = Darling::MachOMgr::instance()->sysRoot();
 		
 		lpath += '/';
 		lpath += pathname;

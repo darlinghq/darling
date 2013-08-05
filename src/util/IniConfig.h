@@ -15,9 +15,9 @@ public:
 	typedef std::map<std::string, ValueMap*> SectionMap;
 
 	std::vector<std::string> getSections() const;
-	const ValueMap* getSection(std::string section) const;
+	const ValueMap* getSection(const std::string& section) const;
 
-	inline bool hasSection(const char* name) const { return getSection(name) != 0; }
+	inline bool hasSection(const std::string& name) const { return getSection(name) != 0; }
 protected:
 	void loadConfig(std::ifstream& f);
 	static std::string& trim(std::string& str);

@@ -8,8 +8,7 @@
 #include "common/auto.h"
 #include <limits.h>
 #include <errno.h>
-
-extern char g_sysroot[PATH_MAX];
+#include <dyld/MachOMgr.h>
 
 static const Darling::MappedFlag g_openflags[] = {
 	{ DARWIN_O_ASYNC, O_ASYNC}, { DARWIN_O_SYNC, O_SYNC }, { DARWIN_O_NOFOLLOW, O_NOFOLLOW},
@@ -60,10 +59,10 @@ int __darwin_open(const char* path, int flags, mode_t mode)
 	//std::cout << "File: " << path << std::endl;
 	//std::cout << "Sysroot: " << g_sysroot << std::endl;
 	// std::cout << "Flag: " << (linux_flags & O_RDONLY) << std::endl;
-	if ( (linux_flags & O_ACCMODE) == 0 && g_sysroot[0])
+	if ( (linux_flags & O_ACCMODE) == 0 && Darling::MachOMgr::instance()->hasSysRoot())
 	{
 		const char* prefixed;
-		std::string lpath = g_sysroot;
+		std::string lpath = Darling::MachOMgr::instance()->sysRoot();
 		
 		lpath += '/';
 		lpath += path;

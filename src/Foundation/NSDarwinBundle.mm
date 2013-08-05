@@ -4,10 +4,11 @@
 #include <string>
 #include <algorithm>
 #include <unistd.h>
-#include "../util/log.h"
-#include "../dyld/ld.h"
+#include <util/debug.h>
+#include <dyld/MachOMgr.h>
+#include <dyld/MachOObject.h>
+#include <dyld/dl_public.h>
 
-extern char g_darwin_executable_path[PATH_MAX];
 extern int g_argc asm("NXArgc");
 extern char** g_argv asm("NXArgv");
 static NSBundle* _mainBundle = 0;
@@ -60,7 +61,7 @@ __attribute__((destructor)) static void myexit()
 	LOG << "x_mainBundle() called\n";
 	if (!_mainBundle)
 	{
-		std::string path = g_darwin_executable_path;
+		std::string path = Darling::MachOMgr::instance()->mainModule()->path();
 		size_t pos;
 
 		//size_t pos = path.find_last_of('/');

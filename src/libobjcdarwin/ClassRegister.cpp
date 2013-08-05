@@ -1,7 +1,6 @@
 #include "ClassRegister.h"
-#include "../dyld/public.h"
-#include "../util/trace.h"
-#include "../util/log.h"
+#include <dyld/dyld_public.h>
+#include <util/debug.h>
 
 #ifndef OBJC_ABI_2
 #	include "old/protocol.h"
@@ -37,11 +36,11 @@ static void ReplaceStringInPlace(std::string& subject, const std::string& search
 __attribute__((constructor))
 	void RegisterAlreadyLoadedClasses()
 {
-	for (uint32_t i = 0; i < _dyld_image_count(); i++)
-	{
-		const struct mach_header* hdr = _dyld_get_image_header(i);
-		ProcessImageLoad(hdr, 0);
-	}
+	//for (uint32_t i = 0; i < _dyld_image_count(); i++)
+	//{
+	//	const struct mach_header* hdr = _dyld_get_image_header(i);
+	//	ProcessImageLoad(hdr, 0);
+	//}
 
 	_dyld_register_func_for_add_image(ProcessImageLoad);
 	_dyld_register_func_for_remove_image(ProcessImageUnload);

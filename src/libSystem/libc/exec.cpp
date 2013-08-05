@@ -16,7 +16,20 @@
 #include <linux/limits.h>
 #include "MachO.h"
 
-extern char g_dyld_path[4096];
+// FIXME: this will fail when a 32-bit OS X app exec()s a 64-bit OS X app (or vice versa)!
+static const char* getSelfPath()
+{
+	static char selfpath[PATH_MAX];
+	
+	if (!selfpath[0])
+	{
+		int rd = readlink("/proc/self/exe", selfpath, sizeof(selfpath)-1);
+		if (rd != -1)
+			selfpath[rd] = 0;
+	}
+	
+	return selfpath;
+}
 
 const char* Darling::findInPath(const char* file)
 {
@@ -75,7 +88,7 @@ char* const* Darling::prependLoaderPath(char *const argv[], const char* fullMach
 	while (argv[count++]);
 	
 	rv = new const char*[count+1];
-	rv[0] = g_dyld_path;
+	rv[0] = getSelfPath();
 	memcpy(rv+1, argv, count * sizeof(char*));
 	
 	rv[1] = fullMachoPath;
@@ -157,9 +170,9 @@ int __darwin_execv(const char *path, char *const argv[])
 	else
 	{
 		argv = Darling::prependLoaderPath(argv, path);
-		int rv = execvp(g_dyld_path, argv); // TODO: change to execv?
+		int rv = execvp(getSelfPath(), argv); // TODO: change to execv?
 		
-		LOG << "Executing with loader at " << g_dyld_path << std::endl;
+		LOG << "Executing with loader at " << getSelfPath() << std::endl;
 		
 		errnoOut();
 		
@@ -203,7 +216,7 @@ int __darwin_execvpe(const char *file, char *const argv[], char *const envp[])
 	else
 	{
 		argv = Darling::prependLoaderPath(argv, path);
-		int rv = execvpe(g_dyld_path, argv, envp);
+		int rv = execvpe(getSelfPath(), argv, envp);
 		errnoOut();
 		
 		delete [] argv;

@@ -1,7 +1,7 @@
 #include "./protocol.h"
 #include <cstring>
-#include "../../util/log.h"
-#include "../../dyld/public.h"
+#include <util/debug.h>
+#include <dyld/dyld_public.h>
 #include "../common/ref.h"
 #include "../common/property.h"
 #include "../TopologySort.h"

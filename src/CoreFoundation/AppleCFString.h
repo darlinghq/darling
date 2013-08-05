@@ -25,6 +25,12 @@
 - (unichar)characterAtIndex:(NSUInteger)index;
 - (void)getCharacters:(unichar *)buffer range:(NSRange)aRange;
 - (const char *)UTF8String;
+
+- (NSUInteger) retainCount;
+- (id) retain;
+- (void) release;
+- (id) autorelease;
+- (NSZone*) zone;
 @end
 #pragma pack()
 

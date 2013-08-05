@@ -4,15 +4,22 @@
 #include "NativeObject.h"
 #include "arch.h"
 
+namespace Darling {
+	
+LoadableObject::LoadableObject()
+{
+	m_refs = 1;
+}
+
 int LoadableObject::addRef()
 {
-	return __sync_add_and_fetch(&m_refs, 1);
+	return ++m_refs;
 }
 
 int LoadableObject::delRef()
 {
-	int refs = __sync_add_and_fetch(&m_refs, -1);
-	if (!refs)
+	int refs = --m_refs;
+	if (!refs && !m_noDelete)
 	{
 		unload();
 		delete this;
@@ -34,3 +41,5 @@ LoadableObject* LoadableObject::instantiateForPath(const std::string& path, Mach
 		return new NativeObject(path);
 	}
 }
+
+} // namespace Darling

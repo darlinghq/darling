@@ -13,15 +13,13 @@ set(dyld_SRCS
 	eh/BufWriter.cpp
 	eh/BufReader.cpp
 	eh/EHSection.cpp
-	FileMap.cpp
-	MachOLoader.cpp
 	Trampoline.cpp
 	trampoline_helper.nasm
 	dyld_stub_binder.nasm
 	tls_helper.nasm
-	ld.cpp
 	dyld.cpp
-	public.cpp
+	dyld_public.cpp
+	dl_public.cpp
 	binfmt_misc.cpp
 	TLS.cpp
 	

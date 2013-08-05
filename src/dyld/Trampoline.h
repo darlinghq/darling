@@ -35,6 +35,7 @@ public:
 	TrampolineMgr(int minTrampolines = 4096);
 	~TrampolineMgr();
 
+	void printPath();
 	void* generate(void* targetAddr, const char* name);
 	bool isExecutable(void* targetAddr);
 	std::string inFile(void* addr);

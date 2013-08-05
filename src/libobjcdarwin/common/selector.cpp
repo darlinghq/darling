@@ -1,8 +1,8 @@
 #include "selector.h"
 #include "../new/AppleLayout.h"
 #include "../old/AppleLayout.h"
-#include "../../dyld/public.h"
-#include "../../util/log.h"
+#include <dyld/dyld_public.h>
+#include <util/debug.h>
 
 void UpdateSelectors(const struct mach_header* mh, intptr_t slide)
 {
