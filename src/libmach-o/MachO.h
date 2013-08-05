@@ -27,6 +27,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <list>
 #include <stdexcept>
+#include <unistd.h>
 
 #include <mach/vm_types.h>
 #include <mach-o/loader.h>
@@ -195,5 +196,6 @@ private:
 
 // we express stub binds as another type of ordinary bind
 #define BIND_TYPE_STUB 100
+#define BIND_TYPE_PCREL 101
 
 #endif	// MACH_O_H_

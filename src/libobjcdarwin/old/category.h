@@ -4,7 +4,7 @@
 #include "./AppleLayout.h"
 #include <objc/runtime.h>
 #include <stdint.h>
-#include "../../dyld/public.h"
+#include <dyld/dyld_public.h>
 
 void ProcessCategoriesOld(const struct mach_header* mh, intptr_t slide, module_info* modinfo);
 

@@ -365,11 +365,11 @@ void MachOObject::writeBind(int type, void** ptr, void* newAddr, const std::stri
 		jmp_instr* instr = reinterpret_cast<jmp_instr*>(ptr);
 
 		instr->relJmp = 0xE9; // x86 jmp rel32
-		instr->addr = newAddr - uint32_t(ptr) - sizeof(jmp_instr);
+		instr->addr = uint32_t(newAddr) - uint32_t(ptr) - sizeof(jmp_instr);
 	}
 	else if (type == BIND_TYPE_PCREL)
 	{
-		*ptr = newAddr - uintptr_t(ptr) - 4;
+		*ptr = (void*) (uint32_t(newAddr) - uintptr_t(ptr) - 4);
 	}
 #endif
 }

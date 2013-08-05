@@ -66,7 +66,7 @@ char* getsectdata(const struct mach_header* header, const char* segname, const c
 	if (!segname)
 		segname = "";
 
-	return (char*) obj->getSection(segname, sectname, size);
+	return (char*) obj->getSection(segname, sectname, (uintptr_t*) size);
 }
 
 void _dyld_register_func_for_add_image(MachOMgr::LoaderHookFunc* func)
