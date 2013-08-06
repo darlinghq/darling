@@ -73,25 +73,6 @@ int __maskrune_l(__darwin_ct_rune_t _c, unsigned long _f, void* l) {
 void libiconv_set_relocation_prefix(const char* orig, const char* curr) {
 }
 
-void *__darwin_mmap(void *addr, size_t length, int prot, int flags,
-                    int fd, off_t offset) {
-  LOGF("mmap: addr=%p length=%lu prot=%d flags=%d fd=%d offset=%lu\n",
-       addr, (unsigned long)length, prot, flags, fd, offset);
-
-  // MAP_ANON is 0x1000 on darwin but 0x20 on linux.
-  //
-  // The following flags are darwin only.
-  // #define MAP_RENAME       0x0020 /* Sun: rename private pages to file */
-  // #define MAP_NORESERVE    0x0040 /* Sun: don't reserve needed swap area */
-  // #define MAP_RESERVED0080 0x0080 /* previously unimplemented MAP_INHERIT */
-  // #define MAP_NOEXTEND     0x0100 /* for MAP_FILE, don't change file size */
-  // #define MAP_HASSEMAPHORE 0x0200 /* region may contain semaphores */
-  // #define MAP_NOCACHE      0x0400 /* don't cache pages for this mapping */
-  flags = (flags & 0x1f) | (flags & 0x1000 ? MAP_ANONYMOUS : 0);
-  return mmap(addr, length, prot, flags, fd, offset);
-}
-
-
 int task_get_exception_ports() {
   fprintf(stderr, "task_get_exception_ports\n");
   return 0;

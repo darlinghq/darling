@@ -1,7 +1,8 @@
 #ifndef LIBC_STUB_H
 #define LIBC_STUB_H
+#include <util/debug.h>
 
-#define LIBC_STUB() { fprintf(stderr, "LIBC_STUB(): %s\n", __PRETTY_FUNCTION__); }
+#define LIBC_STUB() STUB()
 
 #endif
 
