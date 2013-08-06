@@ -10,6 +10,7 @@ set(util-SRCS
 	debug.cpp
 	stlutils.cpp
 	IniConfig.cpp
+	Regexp.cpp
 	leb.cpp
 )
 

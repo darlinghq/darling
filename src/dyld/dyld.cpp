@@ -3,9 +3,14 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <string>
+#include <sstream>
+#include <util/stlutils.h>
+#include <util/Regexp.h>
 #include "arch.h"
 
 static void printHelp(const char* argv0);
+static std::string locateBundleExecutable(const std::string& bundlePath);
 
 using namespace Darling;
 
@@ -21,8 +26,13 @@ int main(int argc, char** argv, char** envp)
 	{
 		MachOObject* obj;
 		MachOMgr* mgr = MachOMgr::instance();
-		
+		std::string executable;
+
+		executable = locateBundleExecutable(argv[1]);
+		argv[1] = const_cast<char*>(executable.c_str());
+
 		mgr->detectSysRootFromPath(argv[1]);
+
 		mgr->setPrintInitializers(getenv("DYLD_PRINT_INITIALIZERS") != nullptr);
 		mgr->setPrintLibraries(getenv("DYLD_PRINT_LIBRARIES") != nullptr);
 		mgr->setBindAtLaunch(getenv("DYLD_BIND_AT_LAUNCH") != nullptr);
@@ -46,8 +56,8 @@ int main(int argc, char** argv, char** envp)
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << e.what() << std::endl;
-		return 1;
+		std::cerr << "dyld: Cannot execute binary file: " << e.what() << std::endl;
+		return ENOSYS;
 	}
 }
 
@@ -70,5 +80,25 @@ static void printHelp(const char* argv0)
 		"\tDYLD_PRINT_SEGMENTS - print segments when they are mapped into memory\n"
 		"\tDYLD_PRINT_BINDINGS - print out when binds/ext. relocs are being resolved\n"
 		"\tDYLD_PRINT_RPATHS - print @rpath resolution attempts\n\n";
+}
+
+static std::string locateBundleExecutable(const std::string& bundlePath)
+{
+	Regexp re(".*/([^\\.]+)\\.app/?$", true);
+	if (re.matches(bundlePath))
+	{
+		std::stringstream ss;
+		ss << bundlePath;
+
+		if (bundlePath.back() != '/')
+			ss << '/';
+
+		ss << "Contents/MacOS/";
+		ss << re.group(1);
+
+		return ss.str();
+	}
+	else
+		return bundlePath;
 }
 

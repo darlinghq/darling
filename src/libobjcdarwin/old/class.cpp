@@ -124,7 +124,9 @@ std::vector<const char*> ProcessClassesOld(const struct mach_header* mh, intptr_
 		cls->super_class.clsNew = c;
 	}
 
-	std::transform(mapClassNames.begin(), mapClassNames.end(), vecClassNames.begin(), [](const std::pair<const char*,old_class*>& p) { return p.first; });
+	//std::transform(mapClassNames.begin(), mapClassNames.end(), vecClassNames.begin(), [](const std::pair<const char*,old_class*>& p) { return p.first; });
+	for (auto it = mapClassNames.begin(); it != mapClassNames.end(); it++)
+		vecClassNames.push_back(it->first);
 
 	return vecClassNames;
 }

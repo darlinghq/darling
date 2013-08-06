@@ -2,7 +2,7 @@
 #define DYLIBSEARCH_H
 #include <util/IniConfig.h>
 #include <string>
-#include <regex.h>
+#include <util/Regexp.h>
 
 namespace Darling {
 
@@ -23,7 +23,7 @@ private:
 	static std::string filenameFromPath(const std::string& path);
 private:
 	IniConfig* m_config;
-	regex_t m_reFrameworkPath;
+	Regexp m_reFrameworkPath;
 };
 
 }

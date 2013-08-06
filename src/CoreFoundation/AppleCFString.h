@@ -2,7 +2,8 @@
 #define APPLECFSTRING_H
 #include <stdint.h>
 #include <limits.h>
-#import <Foundation/NSString.h>
+#include <CoreFoundation/CFString.h>
+#include <Foundation/NSString.h>
 
 #pragma pack(1)
 @interface AppleCFString : NSString
@@ -31,6 +32,7 @@
 - (void) release;
 - (id) autorelease;
 - (NSZone*) zone;
+- (CFTypeID) _cfTypeID;
 @end
 #pragma pack()
 

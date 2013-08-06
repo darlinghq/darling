@@ -12,12 +12,10 @@
 namespace Darling {
 
 DylibSearch::DylibSearch()
+	: m_reFrameworkPath("/System/Library/Frameworks/([a-zA-Z0-9\\.]+)/Versions/([a-zA-Z0-9\\.]+)/.*")
 {
 	try
 	{
-		int rv = regcomp(&m_reFrameworkPath, "/System/Library/Frameworks/([a-zA-Z0-9\\.]+)/Versions/([a-zA-Z0-9\\.]+)/.*", REG_EXTENDED);
-	    assert(rv == 0);
-
 		m_config = new IniConfig(ETC_DARLING_PATH "/dylib.conf");
 	}
 	catch (const std::exception& e)
@@ -119,24 +117,21 @@ const char* DylibSearch::resolveAlias(const std::string& library)
 		if (it != m->end())
 			return it->second.c_str();
 	}
-	if (library.compare(0, 27, "/System/Library/Frameworks/", 27) == 0)
+
+	if (m_reFrameworkPath.matches(library))
 	{
-		regmatch_t match[3];
-		if (regexec(&m_reFrameworkPath, library.c_str(), sizeof(match)/sizeof(match[0]), match, 0) != REG_NOMATCH)
+		std::string name, version;
+		
+		name = m_reFrameworkPath.group(1);
+		version = m_reFrameworkPath.group(2);
+			
+		if (m_config->hasSection(name))
 		{
-			std::string name, version;
-			
-			name = library.substr(match[1].rm_so, match[1].rm_eo - match[1].rm_so);
-			version = library.substr(match[2].rm_so, match[2].rm_eo - match[2].rm_so);
-			
-			if (m_config->hasSection(name))
-			{
-				const IniConfig::ValueMap* m = m_config->getSection(name);
-				auto it = m->find(version);
+			const IniConfig::ValueMap* m = m_config->getSection(name);
+			auto it = m->find(version);
 				
-				if (it != m->end())
-					return it->second.c_str();
-			}
+			if (it != m->end())
+				return it->second.c_str();
 		}
 	}
 	return nullptr;

@@ -7,6 +7,14 @@ extern "C" Class* __CFConstantStringClassReference;
 
 Class* __CFConstantStringClassReference  __attribute__ ((weak, alias ("_OBJC_CLASS_AppleCFString")));
 
+__attribute__((constructor)) static void forceAppleCFStringLoad()
+{
+	// The runtime seems to expect at least one instance of AppleCFString to be created
+	// before it starts working. Since constant string in application images are not
+	// "created", random failures occured.
+	[[AppleCFString alloc] dealloc];
+}
+
 @implementation AppleCFString
 - (NSUInteger)length
 {
@@ -70,6 +78,11 @@ Class* __CFConstantStringClassReference  __attribute__ ((weak, alias ("_OBJC_CLA
 - (NSZone*) zone
 {
 	return NSDefaultMallocZone();
+}
+
+- (CFTypeID) _cfTypeID
+{
+	return CFStringGetTypeID();
 }
 
 @end

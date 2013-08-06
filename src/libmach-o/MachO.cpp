@@ -37,8 +37,8 @@ MachO* MachO::readFile(std::string path, const char* arch, bool need_exports)
 	int fd = ::open(path.c_str(), O_RDONLY);
 	if (fd < 0)
 	{
-		std::cerr << path << ": " << strerror(errno) << std::endl;
-		return 0;
+		//std::cerr << path << ": " << strerror(errno) << std::endl;
+		return nullptr;
 	}
 
 	size_t offset = 0, len = 0;
