@@ -15,6 +15,8 @@ public:
 	io_device(struct udev_device* device);
 	virtual ~io_device();
 	
+	static io_device* create(udev_device* dev);
+	
 	virtual void properties(CFMutableDictionaryRef dict, CFAllocatorRef allocator);
 	virtual CFTypeRef property(CFStringRef name, CFAllocatorRef allocator);
 	virtual io_device* parent();
@@ -32,7 +34,6 @@ protected:
 	void retrieveAll(CFMutableDictionaryRef dict, const property_mapping* mapping, size_t count, CFAllocatorRef allocator);
 protected:
 	struct udev_device* m_device;
-	struct udev_list_entry *m_properties, *m_sysattrs;
 };
 
 struct property_mapping

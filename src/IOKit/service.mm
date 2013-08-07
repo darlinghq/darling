@@ -7,8 +7,10 @@
 #include <stdlib.h>
 #include <list>
 #include <string>
+#include <fstream>
 #include <sys/types.h>
 #include <dirent.h>
+#include <cstdlib>
 #include "../util/stlutils.h"
 #include "../util/log.h"
 #include "io_device.h"
@@ -55,9 +57,9 @@ CFMutableDictionaryRef IOBSDNameMatching(void* iokitPort, unsigned int options, 
 
 int IOServiceGetMatchingServices(void* port, CFDictionaryRef rules, io_device_iterator_t* iter)
 {
-	size_t size = CFDictionaryGetCount(rules);
-	CFStringRef* keys = new CFStringRef[size];
-	CFDictionaryGetKeysAndValues(rules, (const void **) keys, nullptr);
+	//size_t size = CFDictionaryGetCount(rules);
+	//std::unique_ptr<CFStringRef[]> keys (new CFStringRef[size]);
+	//CFDictionaryGetKeysAndValues(rules, (const void **) keys, nullptr);
 	struct udev* udev;
 	struct udev_enumerate* uenum;
 	struct udev_list_entry* list;
@@ -74,9 +76,6 @@ int IOServiceGetMatchingServices(void* port, CFDictionaryRef rules, io_device_it
 
 	if ((value = CFDictionaryGetValue(rules, CFSTR(kIOPropertyMatchKey))))
 		filterByProperties(uenum, (CFDictionaryRef) value);
-
-	delete [] keys;
-	udev_unref(udev);
 
 	udev_enumerate_scan_devices(uenum);
 	*iter = new io_device_iterator(uenum);
@@ -167,6 +166,36 @@ void filterByDriver(struct udev_enumerate* uenum, CFStringRef str)
 	udev_enumerate_add_match_property(uenum, "driver", driver);
 }
 
+static std::string detectPrimaryInterface()
+{
+	std::ifstream routes;
+	
+	if (const char* iface = getenv("IOKIT_PRIMARY_IFACE"))
+		return iface;
+	
+	routes.open("/proc/net/route");
+	
+	if (routes.is_open())
+	{
+		std::string ifaceName, destination;
+		
+		while (!routes.eof())
+		{
+			routes >> ifaceName >> destination;
+			
+			if (destination == "00000000")
+			{
+				LOG << "Primary network interface detected to be " << ifaceName << std::endl;
+				return ifaceName;
+			}
+			
+			std::getline(routes, ifaceName); // drop the rest of the line
+		}
+	}
+	
+	return std::string();
+}
+
 void filterByProperties(struct udev_enumerate* uenum, CFDictionaryRef dict)
 {
 	size_t size = CFDictionaryGetCount(dict);
@@ -176,9 +205,9 @@ void filterByProperties(struct udev_enumerate* uenum, CFDictionaryRef dict)
 	for (size_t i = 0; i < size; i++)
 	{
 		const void* value = CFDictionaryGetValue(dict, keys[i]);
-		const char* svalue = nullptr;
 		const char* key = nullptr;
 		CFStringRef str = keys[i];
+		std::string svalue;
 
 		if (strCFEqual(str, "VendorID"))
 		{
@@ -192,12 +221,14 @@ void filterByProperties(struct udev_enumerate* uenum, CFDictionaryRef dict)
 		}
 		else if (strCFEqual(str, "IOPrimaryInterface"))
 		{
-			key = "INTERFACE";
-			svalue = "eth0";
+			svalue = detectPrimaryInterface();
+			if (!svalue.empty())
+				key = "INTERFACE";
+			//svalue = "eth0";
 		}
 
 		if (key != nullptr)
-			udev_enumerate_add_match_property(uenum, key, svalue);
+			udev_enumerate_add_match_property(uenum, key, svalue.c_str());
 		else
 			LOG << "Ignoring property " << [(NSString*) str UTF8String] << " in IOKit filterByProperties\n";
 	}

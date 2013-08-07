@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <linux/if_arp.h>
+#include <util/debug.h>
 
 /*
 #define kIOInterfaceUnit		"IOInterfaceUnit"
@@ -12,6 +13,8 @@
 #define kIOMACAddress			"IOMACAddress"
 #define kIOPrimaryInterface		"IOPrimaryInterface"
 */
+
+#define kIOEthernetAddressSize 6
 
 static CFTypeRef ConvertInterfaceType(io_device* d, CFAllocatorRef allocator);
 static CFTypeRef ConvertMACAddress(io_device* d, CFAllocatorRef allocator);
@@ -26,6 +29,7 @@ static const property_mapping iface_properties[] = {
 
 CFTypeRef io_device_net::property(CFStringRef name, CFAllocatorRef allocator)
 {
+	LOG << "io_device_net::property(): " << CFStringGetCStringPtr(name, kCFStringEncodingASCII) << std::endl;
 	CFTypeRef v = retrieve(iface_properties, sizeof(iface_properties) / sizeof(iface_properties[0]), name, allocator);
 	if (v)
 		return v;
@@ -84,7 +88,13 @@ static const property_mapping ctrl_properties[] = {
 
 CFTypeRef io_device_net_ctrl::property(CFStringRef name, CFAllocatorRef allocator)
 {
-	return io_device::property(name, allocator);
+	LOG << "io_device_net_ctrl::property(): " << CFStringGetCStringPtr(name, kCFStringEncodingASCII) << std::endl;
+	
+	CFTypeRef v = retrieve(ctrl_properties, sizeof(ctrl_properties) / sizeof(ctrl_properties[0]), name, allocator);
+	if (v)
+		return v;
+	else
+		return io_device::property(name, allocator);
 }
 
 void io_device_net_ctrl::properties(CFMutableDictionaryRef dict, CFAllocatorRef allocator)
@@ -100,16 +110,18 @@ CFTypeRef ConvertMACAddress(io_device* d, CFAllocatorRef allocator)
 	if (!addr)
 		return nullptr;
 	
-	UInt8* bytes = new UInt8[len];
+	UInt8* bytes = new UInt8[kIOEthernetAddressSize];
 	CFTypeRef rv;
 	
-	for (int i = 0; i < len; i++)
+	memset(bytes, 0, kIOEthernetAddressSize);
+	
+	for (int i = 0; i < std::min(len, kIOEthernetAddressSize); i++)
 	{
 		long byte = strtol(addr + i*3, nullptr, 16);
 		bytes[i] = UInt8(byte);
 	}
 	
-	rv = CFDataCreate(allocator, bytes, len);
+	rv = CFDataCreate(allocator, bytes, kIOEthernetAddressSize);
 	
 	delete [] bytes;
 	return rv;

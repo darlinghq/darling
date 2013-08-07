@@ -1,7 +1,9 @@
 #include "io_device.h"
 #include <cstdlib>
 #include <cstring>
+#include "io_device_net.h"
 #include "cfutil.h"
+#include <util/debug.h>
 
 static CFTypeRef ListDevSymlinks(io_device* d, CFAllocatorRef a);
 
@@ -17,13 +19,23 @@ static const property_mapping generic_properties[] = {
 io_device::io_device(struct udev_device* dev)
 	: m_device(dev)
 {
-	m_properties = udev_device_get_properties_list_entry(m_device);
-	m_sysattrs = udev_device_get_sysattr_list_entry(m_device);
 }
 
 io_device::~io_device()
 {
 	udev_device_unref(m_device);
+}
+
+io_device* io_device::create(udev_device* dev)
+{
+	const char* subsystem = udev_device_get_subsystem(dev);
+	
+	LOG << "Creating an io_device for subsystem " << subsystem << std::endl;
+	
+	if (strcmp(subsystem, "net") == 0)
+		return new io_device_net(dev);
+	else
+		return new io_device(dev); // generic device
 }
 
 bool io_device::operator==(const io_object& that)
@@ -37,20 +49,12 @@ bool io_device::operator==(const io_object& that)
 
 const char* io_device::property(const char* name)
 {
-	struct udev_list_entry* p = udev_list_entry_get_by_name(m_properties, name);
-	if (p != nullptr)
-		return udev_list_entry_get_value(p);
-	else
-		return nullptr;
+	return udev_device_get_property_value(m_device, name);
 }
 
 const char* io_device::sysattr(const char* name)
 {
-	struct udev_list_entry* p = udev_list_entry_get_by_name(m_sysattrs, name);
-	if (p != nullptr)
-		return udev_list_entry_get_value(p);
-	else
-		return nullptr;
+	return udev_device_get_sysattr_value(m_device, name);
 }
 
 CFStringRef io_device::sysattrStr(const char* name, CFAllocatorRef allocator)

@@ -6,7 +6,7 @@
 io_device_iterator::io_device_iterator(udev_enumerate* uenum)
 	: m_uenum(uenum)
 {
-	m_udev = udev_new();
+	m_udev = udev_enumerate_get_udev(m_uenum);
 	reset();
 }
 
@@ -36,6 +36,6 @@ io_object_t io_device_iterator::next()
 	{
 		udev_device* dev = udev_device_new_from_syspath(m_udev, udev_list_entry_get_name(m_next));
 		m_next = udev_list_entry_get_next(m_next);
-		return new io_device(dev);
+		return io_device::create(dev);
 	}
 }
