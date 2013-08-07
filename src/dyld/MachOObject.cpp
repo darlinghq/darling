@@ -199,7 +199,7 @@ void MachOObject::loadSegments()
 #endif
 		}
 
-		if ((void*)seg->vmaddr < m_base && !isMainModule())
+		if ((void*)seg->vmaddr < m_base && !isMainModule() && !m_slide)
 			m_slide = uintptr_t(m_base) - seg->vmaddr;
 		
 		mappingSize = pageAlign(seg->filesize);
@@ -210,7 +210,7 @@ void MachOObject::loadSegments()
 		checkMappingAddr(mappingAddr);
 	
 		if (MachOMgr::instance()->printSegments())
-			std::cerr << "dyld: Mapping segment " << seg->segname << " from " << m_file->filename() << " to " << mappingAddr << ", slide is " << m_slide << std::endl;
+			std::cerr << "dyld: Mapping segment " << seg->segname << " from " << m_file->filename() << " to " << mappingAddr << ", slide is 0x" << std::hex << m_slide << std::dec << std::endl;
 		
 		rv = ::mmap(mappingAddr, mappingSize, maxprot, MAP_FIXED | MAP_PRIVATE, m_file->fd(), m_file->offset() + seg->fileoff);
 		if (rv == MAP_FAILED)
@@ -346,6 +346,7 @@ void MachOObject::rebase()
 
 void MachOObject::writeBind(int type, void** ptr, void* newAddr, const std::string& name)
 {
+	assert(newAddr != nullptr);
 	if (MachOMgr::instance()->printBindings())
 		std::cerr << "dyld: Binding " << name << " at " << ptr << ": " << (void*)(*ptr) << " -> " << (void*)newAddr << std::endl;
 
@@ -436,7 +437,7 @@ void MachOObject::readExports()
 
 void* MachOObject::getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const
 {
-	auto it = m_exports.find(symbolName);
+	auto it = m_exports.find("_"+symbolName);
 	
 	if (it != m_exports.end())
 	{
@@ -677,7 +678,8 @@ void* MachOObject::performBind(MachO::Bind* bind)
 			addr = mgr->generate(addr, bind->name.c_str()+1);
 		}
 		
-		writeBind(bind->type, (void**)(bind->vmaddr + m_slide), addr, bind->name);
+		//if (addr != nullptr)
+			writeBind(bind->type, (void**)(bind->vmaddr + m_slide), addr, bind->name);
 		
 		return addr;
 	}
