@@ -28,15 +28,8 @@ set(dyld_SRCS
 	NativeObject.cpp
 	MachOMgr.cpp
 	DylibSearch.cpp
+	UndefinedFunction.cpp
 )
-
-if (DEBUG)
-	set(dyld_SRCS
-		${dyld_SRCS}
-		UndefinedFunction.cpp
-	)
-
-endif (DEBUG)
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 #SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
