@@ -75,6 +75,8 @@ set(libc_SRCS
 	libc/math.cpp
 	libc/sigsetjmp.cpp
 	libc/setjmp.nasm
+	libc/confstr.cpp
+	libc/progname.cpp
 	common/auto.cpp
 	common/path.cpp
 )

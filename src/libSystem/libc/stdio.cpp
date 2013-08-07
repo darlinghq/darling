@@ -19,6 +19,9 @@
 #include "log.h"
 #include <ext/stdio_filebuf.h>
 #include <dyld/MachOMgr.h>
+#include <bsd/stdio.h>
+#include <bsd/libutil.h>
+#include <bsd/wchar.h>
 
 template class __gnu_cxx::stdio_filebuf<char, std::char_traits<char> >;
 template class std::basic_filebuf<char, std::char_traits<char> >;
@@ -58,7 +61,7 @@ static __darwin_FILE* InitDarwinFILE(FILE* linux_fp)
 
 template<typename RetVal, typename Func, typename... Params> RetVal AutoFileErrno(Func f, __darwin_FILE* file, Params... params)
 {
-	RetVal rv = f(params..., file->linux_fp);
+	RetVal rv = f(params..., file ? file->linux_fp : nullptr);
 	if (!retvalOK(rv))
 		errnoOut();
 	return rv;
@@ -343,20 +346,6 @@ int __darwin_fsetpos(__darwin_FILE *stream, fpos_t *pos)
     }
 }
 
-int __darwin_fpurge(__darwin_FILE *stream)
-{
-	if (!stream)
-	{
-		errno = DARWIN_EINVAL;
-		return -1;
-	}
-	else
-	{
-		__fpurge(stream->linux_fp);
-		return 0;
-	}
-}
-
 int __darwin_getw(__darwin_FILE *stream)
 {
 	return AutoFileErrno<int>(getw, stream);
@@ -417,6 +406,37 @@ __attribute__((constructor)) static void initStdio()
 int __darwin_remove(const char* path)
 {
 	return AutoPathErrno<int>(remove, path);
+}
+
+char* __darwin_fgetln(__darwin_FILE* f, size_t* lenp)
+{
+	return fgetln(f ? f->linux_fp : nullptr, lenp);
+}
+
+int __darwin_fpurge(__darwin_FILE *stream)
+{
+	if (!stream)
+	{
+		errno = DARWIN_EINVAL;
+		return -1;
+	}
+	else
+	{
+		__fpurge(stream->linux_fp);
+		return 0;
+	}
+}
+
+// bsd/libutil.h
+char* __darwin_fparseln(__darwin_FILE* f, size_t* a2, size_t* a3, const char* a4, int a5)
+{
+	return fparseln(f ? f->linux_fp : nullptr, a2, a3, a4, a5);
+}
+
+// bsd/wchar.h
+wchar_t* __darwin_fgetwln(__darwin_FILE* f, size_t* len)
+{
+	return fgetwln(f ? f->linux_fp : nullptr, len);
 }
 
 std::__basic_file<char>* _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode(std::__basic_file<char>* pThis, __darwin_FILE* f, std::ios_base::openmode mode)

@@ -127,6 +127,15 @@ int __darwin___svfscanf(__darwin_FILE* f, const char* fmt, va_list va);
 
 int __darwin_remove(const char* path);
 
+// bsd/stdio.h
+char* __darwin_fgetln(__darwin_FILE* f, size_t* lenp);
+
+// bsd/libutil.h
+char* __darwin_fparseln(__darwin_FILE* f, size_t* a2, size_t* a3, const char* a4, int a5);
+
+// bsd/wchar.h
+wchar_t* __darwin_fgetwln(__darwin_FILE* f, size_t* len);
+
 std::__basic_file<char>* _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode(std::__basic_file<char>* pThis, __darwin_FILE* f, std::ios_base::openmode mode);
 void _ZN9__gnu_cxx13stdio_filebufIcSt11char_traitsIcEEC1EP7__sFILESt13_Ios_Openmodem(__gnu_cxx::stdio_filebuf<char, std::char_traits<char> >* pThis, __darwin_FILE* f, std::_Ios_Openmode m, unsigned long l);
 void _ZN9__gnu_cxx13stdio_filebufIcSt11char_traitsIcEEC2EP7__sFILESt13_Ios_Openmodem(__gnu_cxx::stdio_filebuf<char, std::char_traits<char> >* pThis, __darwin_FILE* f, std::_Ios_Openmode m, unsigned long l);
