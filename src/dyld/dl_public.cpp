@@ -12,6 +12,9 @@
 
 // This would require g++ 4.8 runtime
 //static thread_local std::string g_lastError;
+
+#define thread_local __thread
+
 static thread_local char g_lastError[1024];
 static thread_local bool g_lastErrorRead = false;
 

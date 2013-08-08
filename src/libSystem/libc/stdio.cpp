@@ -1,4 +1,4 @@
-#include "config.h"
+#include "libsystem-config.h"
 #include "stdio.h"
 #include "errno.h"
 #include "common/path.h"
@@ -21,7 +21,10 @@
 #include <dyld/MachOMgr.h>
 #include <bsd/stdio.h>
 #include <bsd/libutil.h>
-#include <bsd/wchar.h>
+
+#ifdef HAS_BSD_WCHAR_H
+#	include <bsd/wchar.h>
+#endif
 
 template class __gnu_cxx::stdio_filebuf<char, std::char_traits<char> >;
 template class std::basic_filebuf<char, std::char_traits<char> >;
@@ -433,11 +436,13 @@ char* __darwin_fparseln(__darwin_FILE* f, size_t* a2, size_t* a3, const char* a4
 	return fparseln(f ? f->linux_fp : nullptr, a2, a3, a4, a5);
 }
 
+#ifdef HAS_BSD_WCHAR_H
 // bsd/wchar.h
 wchar_t* __darwin_fgetwln(__darwin_FILE* f, size_t* len)
 {
 	return fgetwln(f ? f->linux_fp : nullptr, len);
 }
+#endif
 
 std::__basic_file<char>* _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode(std::__basic_file<char>* pThis, __darwin_FILE* f, std::ios_base::openmode mode)
 {

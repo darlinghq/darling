@@ -9,12 +9,8 @@ add_library(AppKit SHARED)
 target_link_libraries(AppKit -lgnustep-gui)
 SET_TARGET_PROPERTIES(AppKit PROPERTIES LINKER_LANGUAGE C)
 
-add_library(Carbon SHARED)
-target_link_libraries(Carbon CoreServices)
-SET_TARGET_PROPERTIES(Carbon PROPERTIES LINKER_LANGUAGE C)
-
 add_library(auto SHARED)
 SET_TARGET_PROPERTIES(auto PROPERTIES LINKER_LANGUAGE C)
 
-install(TARGETS AppKit Carbon auto DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS AppKit auto DESTINATION "lib${SUFFIX}/darling")
 

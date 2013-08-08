@@ -5,6 +5,8 @@ extern "C" void __cxa_rethrow();
 extern "C" void* __cxa_begin_catch(void*);
 extern "C" void __cxa_end_catch();
 
+#define thread_local __thread
+
 static thread_local bool m_cxx = false;
 
 void __darwin_objc_exception_rethrow()

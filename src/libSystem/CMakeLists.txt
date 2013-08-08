@@ -7,11 +7,14 @@ endif(COMMAND cmake_policy)
 
 enable_language(ASM_NASM)
 
+include(CheckIncludeFile)
+CHECK_INCLUDE_FILE(bsd/wchar.h HAS_BSD_WCHAR_H)
+
 if (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 	message(FATAL_ERROR "Clang is the only supported compiler (${CMAKE_CXX_COMPILER} used).")
 endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 
-configure_file(config.h.in config.h)
+configure_file(config.h.in libsystem-config.h)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fblocks -std=c++11")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -D_GNU_SOURCE")
 
@@ -25,6 +28,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -D_GNU_SOURCE")
 #include_directories(${LIBCXX_INCLUDE_DIR})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libmach-o)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
@@ -39,7 +43,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/bsd)
 
 set(libc_SRCS
 	libc/mac.c
-	libc/none.c
+	libc/rune-none.c
 	libc/popcount.c
 	libc/runetable.c
 	libc/stack_protector-obsd.c

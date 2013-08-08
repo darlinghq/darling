@@ -20,3 +20,5 @@
 
 #define __uint64_t uint64_t
 #define __darwin_natural_t long
+
+#cmakedefine HAS_BSD_WCHAR_H
