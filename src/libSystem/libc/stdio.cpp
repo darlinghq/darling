@@ -430,13 +430,13 @@ int __darwin_fpurge(__darwin_FILE *stream)
 	}
 }
 
+#ifdef HAS_BSD_WCHAR_H
 // bsd/libutil.h
 char* __darwin_fparseln(__darwin_FILE* f, size_t* a2, size_t* a3, const char* a4, int a5)
 {
 	return fparseln(f ? f->linux_fp : nullptr, a2, a3, a4, a5);
 }
 
-#ifdef HAS_BSD_WCHAR_H
 // bsd/wchar.h
 wchar_t* __darwin_fgetwln(__darwin_FILE* f, size_t* len)
 {
