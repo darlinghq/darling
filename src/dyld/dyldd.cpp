@@ -7,6 +7,7 @@
 #include <set>
 #include <string>
 #include <unistd.h>
+#include <cstdlib>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -21,9 +22,13 @@ using namespace Darling;
 
 static void resolve(MachOObject* obj, std::set<std::string>& deps);
 static const char* c(const char* color);
+static void showHelp(const char* argv0);
 
 int main(int argc, char** argv, char** envp)
 {
+	if (argc != 2)
+		showHelp(argv[0]);
+	
 	try
 	{
 		MachOObject* obj;
@@ -93,4 +98,15 @@ const char* c(const char* color)
 {
 	static bool tty = isatty(1);
 	return tty ? color : "";
+}
+
+void showHelp(const char* argv0)
+{
+	std::cerr << "Darling dyldd is a tool that recursively displays dependencies of a given Mach-O executable.\n";
+	std::cerr << "Copyright (C) 2012-2013 Lubos Dolezel\n\n";
+	std::cerr << "Usage: " << argv0 << " executable\n\n";
+	std::cerr << "If your terminal supports colors, then native dependencies are " << c(ANSI_COLOR_GREEN) << "green" << c(ANSI_COLOR_RESET)
+		<< " and Mach-O dependencies are " << c(ANSI_COLOR_BLUE) << "blue" << c(ANSI_COLOR_RESET) << ".\n";	
+	
+	exit(1);
 }
