@@ -2,8 +2,8 @@
 #include "nextstep.h"
 #include <cstring>
 #include <unistd.h>
-#include <dyld/MachOMgr.h>
-#include <dyld/MachOObject.h>
+#include <libdyld/MachOMgr.h>
+#include <libdyld/MachOObject.h>
 
 using namespace Darling;
 

@@ -22,6 +22,7 @@ section .note.GNU-stack noalloc noexec nowrite progbits
 
 extern darling_tls_get_native
 extern darling_tls_allocate
+extern _GLOBAL_OFFSET_TABLE_
 
 global darling_tls_get_addr
 
@@ -31,9 +32,10 @@ BITS 64
 section text
 
 darling_tls_get_addr:
-	call darling_tls_get_native ; fast three-instruction function
-	
 	push rdi
+	call darling_tls_get_native WRT ..plt ; fast three-instruction function
+	
+	mov rdi, [rsp]
 	mov rdi, [rdi+8]
 	mov rax, [rax+rdi*8]
 	pop rdi
@@ -60,7 +62,7 @@ slow_path:
 	fxsave [rbp-592]
 	
 	mov rdi, [rdi+8] ; pass the pthread_key
-	call darling_tls_allocate
+	call darling_tls_allocate WRT ..plt
 	
 	fxrstor  [rbp-592]
 	mov r11, [rbp-64]
@@ -82,10 +84,18 @@ BITS 32
 section text
 
 darling_tls_get_addr:
+
+	push ebx
+    call .get_GOT
+.get_GOT:
+    pop ebx
+    add ebx, _GLOBAL_OFFSET_TABLE_+$$-.get_GOT wrt ..gotpc
+
 	mov ecx, eax     ; eax will get destroyed
-	call darling_tls_get_native ; fast three-instruction function
 	push ecx
+	call darling_tls_get_native WRT ..plt ; fast three-instruction function
 	
+	mov ecx, [esp]
 	mov ecx, [ecx+4] ; add the pthread key
 	mov eax, [eax+ecx*4]   ; read the value at the key
 
@@ -94,16 +104,20 @@ darling_tls_get_addr:
 	
 	pop ecx
 	add eax, [ecx+8] ; add the offset
+
+	pop ebx
 	ret
 
 slow_path:
 	mov ecx, [esp]
 	push dword [ecx+4]     ; pass the pthread_key
-	call darling_tls_allocate
+	call darling_tls_allocate WRT ..plt
 	pop ecx
 	pop ecx
 	
 	add eax, [ecx+8] ; add the offset
+
+	pop ebx
 	ret
 
 %else

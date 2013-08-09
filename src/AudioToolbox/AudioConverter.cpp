@@ -2,6 +2,10 @@
 #include <CoreServices/MacErrors.h>
 #include <util/debug.h>
 
+extern "C" {
+#include <libavcodec/avcodec.h>
+}
+
 // http://blinkingblip.wordpress.com/
 
 __attribute__((constructor)) static void init_avcodec()
@@ -184,9 +188,9 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 AudioConverter::~AudioConverter()
 {
 	if (m_decoder)
-		av_free(m_decoder);
+		avcodec_close(m_decoder);
 	if (m_encoder)
-		av_free(m_encoder);
+		avcodec_close(m_encoder);
 	//if (m_resampler)
 	//	avresample_free(&m_resampler);
 }

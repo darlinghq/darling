@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <unistd.h>
 #include <util/debug.h>
-#include <dyld/MachOMgr.h>
-#include <dyld/MachOObject.h>
-#include <dyld/dl_public.h>
+#include <libdyld/MachOMgr.h>
+#include <libdyld/MachOObject.h>
+#include <libdyld/dl_public.h>
 
 extern int g_argc asm("NXArgc");
 extern char** g_argv asm("NXArgv");

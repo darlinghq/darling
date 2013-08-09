@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <limits.h>
-#include <dyld/MachOMgr.h>
+#include <libdyld/MachOMgr.h>
 
 static void convertStat64(struct stat64* linux_buf, struct __darwin_stat64* mac)
 {

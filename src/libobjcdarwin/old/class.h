@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
-#include <dyld/dyld_public.h>
+#include <libdyld/dyld_public.h>
 
 Class RegisterClass(old_class* cls, bool hasExt);
 std::vector<const char*> ProcessClassesOld(const struct mach_header* mh, intptr_t slide, module_info* info);

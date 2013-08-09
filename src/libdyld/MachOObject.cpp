@@ -63,6 +63,7 @@ void MachOObject::postConstruct()
 {
 	detectAbsolutePath();
 	m_header = m_file->header();
+	m_rpaths.insert(m_rpaths.begin(), m_file->rpaths().begin(), m_file->rpaths().end());
 	m_bindAllAtLoad = MachOMgr::instance()->bindAtLaunch();
 }
 

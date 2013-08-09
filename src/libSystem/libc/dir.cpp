@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits.h>
-#include <dyld/MachOMgr.h>
+#include <libdyld/MachOMgr.h>
 
 static darwin_dirent* convertDirent(const struct dirent* ent);
 static darwin_dirent64* convertDirent64(const struct dirent* ent);

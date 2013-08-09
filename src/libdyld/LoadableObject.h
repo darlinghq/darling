@@ -41,8 +41,9 @@ public:
 
 	inline void setNoDelete(bool noDelete) { m_noDelete = noDelete; }
 	inline bool noDelete() const { return m_noDelete; }
-protected:
+	
 	static LoadableObject* instantiateForPath(const std::string& path, MachOObject* requester);
+	
 protected:
 	std::atomic<int> m_refs;
 	bool m_globalExports = true;

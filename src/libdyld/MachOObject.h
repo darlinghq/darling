@@ -92,12 +92,14 @@ public:
 	inline void setNoRecursion(bool noRecursion) { m_noRecursion = noRecursion; }
 	inline bool noRecursion() const { return m_noRecursion; }
 	
+	std::vector<const char*> declaredDependencies() const { return m_file->dylibs(); }
+	
 protected:
 	friend class DylibSearch;
 	friend class LoadableObject;
 	
-	void setRequesterRunpaths(const std::vector<const char*>& rpaths) { m_parentRpaths = rpaths; }
-	const std::vector<const char*>& runPaths() const { return m_file->rpaths(); }
+	void setRequesterRunpaths(const std::vector<const char*>& rpaths) { m_rpaths.insert(m_rpaths.begin(), rpaths.begin(), rpaths.end()); }
+	const std::vector<const char*>& runPaths() const { return m_rpaths; }
 	
 	ProgramVars* getProgramVars();
 private:
@@ -163,7 +165,7 @@ private:
 		int initprot, maxprot;
 	};
 	std::vector<Mapping> m_mappings;
-	std::vector<const char*> m_parentRpaths;
+	std::vector<const char*> m_rpaths;
 	void* m_reworkedEHData = nullptr;
 	
 	std::string m_absolutePath, m_absolutePathDir, m_name;

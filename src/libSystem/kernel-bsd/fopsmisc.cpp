@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits.h>
-#include <dyld/MachOMgr.h>
+#include <libdyld/MachOMgr.h>
 
 int __darwin_access(const char *pathname, int mode)
 {

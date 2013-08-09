@@ -90,6 +90,7 @@ endif(NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 
 add_subdirectory(src/util)
 add_subdirectory(src/libmach-o)
+add_subdirectory(src/libdyld)
 add_subdirectory(src/dyld)
 add_subdirectory(src/libSystem)
 add_subdirectory(src/Cocoa)
@@ -110,6 +111,7 @@ add_subdirectory(src/OpenGL)
 add_subdirectory(src/thin)
 add_subdirectory(src/libstdc++darwin)
 
-add_dependencies(dyld${SUFFIX} mach-o)
+add_dependencies(dyld mach-o)
+add_dependencies(dyld-bin dyld)
 add_dependencies(Cocoa crashhandler)
 

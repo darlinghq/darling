@@ -1,5 +1,5 @@
-#include "MachOMgr.h"
-#include "MachOObject.h"
+#include <libdyld/MachOMgr.h>
+#include <libdyld/MachOObject.h>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -7,7 +7,7 @@
 #include <sstream>
 #include <util/stlutils.h>
 #include <util/Regexp.h>
-#include "arch.h"
+#include <libdyld/arch.h>
 
 static void printHelp(const char* argv0);
 static std::string locateBundleExecutable(const std::string& bundlePath);

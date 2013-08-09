@@ -18,7 +18,7 @@
 #include <typeinfo>
 #include "log.h"
 #include <ext/stdio_filebuf.h>
-#include <dyld/MachOMgr.h>
+#include <libdyld/MachOMgr.h>
 #include <bsd/stdio.h>
 #include <bsd/libutil.h>
 

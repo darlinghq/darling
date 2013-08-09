@@ -3,7 +3,7 @@
 #include "./AppleLayout.h"
 #include <objc/runtime.h>
 #include <stdint.h>
-#include <dyld/dyld_public.h>
+#include <libdyld/dyld_public.h>
 
 void RegisterProtocolMethods(Protocol* p, const old_method_decl_list* list, bool required, bool instance);
 Protocol* RegisterProtocol(old_protocol* prot, uintptr_t extStart, unsigned long extLen);

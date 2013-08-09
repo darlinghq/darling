@@ -1,8 +1,10 @@
 #include "selector.h"
 #include "../new/AppleLayout.h"
 #include "../old/AppleLayout.h"
-#include <dyld/dyld_public.h>
+#include <libdyld/dyld_public.h>
 #include <util/debug.h>
+#include <utility>
+#include <cstring>
 
 void UpdateSelectors(const struct mach_header* mh, intptr_t slide)
 {
@@ -48,3 +50,30 @@ void UpdateSelectors(const struct mach_header* mh, intptr_t slide)
 	}
 #endif
 }
+
+
+static const std::pair<const char*, const char*> equivalentTypes[] = {
+	std::make_pair("CGRect", "_NSRect"),
+	std::make_pair("CGPoint", "_NSPoint"),
+	std::make_pair("CGSize", "_NSSize")
+};
+
+void ConvertSelectorType(std::string& selType)
+{
+	bool changed = false;
+	for (auto p : equivalentTypes)
+	{
+		size_t pos;
+		
+		while ((pos = selType.find(p.first)) != std::string::npos)
+		{
+			selType.replace(pos, strlen(p.first), p.second);
+			changed = true;
+		}
+	}
+	
+	if (changed)
+		LOG << "convertSelectorType: new type info is " << selType << std::endl;
+}
+
+

@@ -1,4 +1,4 @@
-project(dyld)
+project(dyld-bin)
 
 cmake_minimum_required(VERSION 2.4.0)
 
@@ -7,28 +7,7 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 set(dyld_SRCS
-	eh/BufReWriter.cpp
-	eh/CFIWalker.cpp
-	eh/DwarfPointer.cpp
-	eh/BufWriter.cpp
-	eh/BufReader.cpp
-	eh/EHSection.cpp
-	Trampoline.cpp
-	trampoline_helper.nasm
-	dyld_stub_binder.nasm
-	tls_helper.nasm
 	dyld.cpp
-	dyld_public.cpp
-	dl_public.cpp
-	binfmt_misc.cpp
-	TLS.cpp
-	
-	MachOObject.cpp
-	LoadableObject.cpp
-	NativeObject.cpp
-	MachOMgr.cpp
-	DylibSearch.cpp
-	UndefinedFunction.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
@@ -36,13 +15,21 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_executable(dyld${SUFFIX} ${dyld_SRCS})
-target_link_libraries(dyld${SUFFIX} -ldl -lpthread mach-o util)
+add_executable(dyld-bin ${dyld_SRCS})
+set_target_properties(dyld-bin PROPERTIES OUTPUT_NAME dyld${SUFFIX})
+target_link_libraries(dyld-bin -l:../libdyld/libdyld.so util)
 
-install(TARGETS dyld${SUFFIX} DESTINATION bin)
+if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
+	add_executable(dyldd dyldd.cpp)
+	target_link_libraries(dyldd -l:../libdyld/libdyld.so util)
+	install(TARGETS dyldd DESTINATION bin)
+endif (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
+
+install(TARGETS dyld-bin DESTINATION bin)
 
 if (SUFFIX STREQUAL "64")
-	add_executable(dyld dyld-multilib.c)
-	install(TARGETS dyld DESTINATION bin)
+	add_executable(dyld-multilib dyld-multilib.c)
+	set_target_properties(dyld-multilib PROPERTIES OUTPUT_NAME dyld)
+	install(TARGETS dyld-multilib DESTINATION bin)
 endif (SUFFIX STREQUAL "64")
 

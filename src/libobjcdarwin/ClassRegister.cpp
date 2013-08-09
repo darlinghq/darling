@@ -1,5 +1,5 @@
 #include "ClassRegister.h"
-#include <dyld/dyld_public.h>
+#include <libdyld/dyld_public.h>
 #include <util/debug.h>
 
 #ifndef OBJC_ABI_2

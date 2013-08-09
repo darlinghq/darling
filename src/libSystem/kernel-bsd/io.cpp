@@ -8,7 +8,7 @@
 #include "common/auto.h"
 #include <limits.h>
 #include <errno.h>
-#include <dyld/MachOMgr.h>
+#include <libdyld/MachOMgr.h>
 
 static const Darling::MappedFlag g_openflags[] = {
 	{ DARWIN_O_ASYNC, O_ASYNC}, { DARWIN_O_SYNC, O_SYNC }, { DARWIN_O_NOFOLLOW, O_NOFOLLOW},

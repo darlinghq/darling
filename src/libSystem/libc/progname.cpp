@@ -1,6 +1,6 @@
 #include <bsd/stdlib.h>
-#include <dyld/MachOMgr.h>
-#include <dyld/MachOObject.h>
+#include <libdyld/MachOMgr.h>
+#include <libdyld/MachOObject.h>
 
 using namespace Darling;
 

@@ -2,6 +2,11 @@
 #define COMMON_METHOD_H
 #include <queue>
 #include <cstring>
+#include <string>
+#include <objc/runtime.h>
+#include <util/debug.h>
+#include <cassert>
+#include "selector.h"
 
 extern std::queue<std::pair<Class, IMP>> g_pendingInitClasses;
 
@@ -18,8 +23,14 @@ template<typename ListType> void ConvertMethodListGen(Class c, const ListType* l
 
 		LOG << "Method: selName: " << m->selName << "; types: " << m->types << "; impl: " << m->impl << std::endl;
 
-		SEL sel = sel_registerTypedName_np(m->selName, m->types);
-		class_addMethod(c, sel, imp, m->types);
+		SEL sel;
+		std::string selType = m->types;
+		
+		ConvertSelectorType(selType);
+		
+		sel = sel_registerTypedName_np(m->selName, selType.c_str());
+		
+		class_addMethod(c, sel, imp, selType.c_str());
 
 		if (isMeta && strcmp(m->selName, "load") == 0)
 			g_pendingInitClasses.push(std::make_pair<objc_class*,IMP>((Class)c, *imp));

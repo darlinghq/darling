@@ -21,7 +21,8 @@ int LoadableObject::delRef()
 	int refs = --m_refs;
 	if (!refs && !m_noDelete)
 	{
-		unload();
+		if (isLoaded())
+			unload();
 		delete this;
 	}
 	

@@ -3,6 +3,7 @@ section .note.GNU-stack noalloc noexec nowrite progbits
 extern reg_saveall
 extern reg_restoreall
 extern dyld_stub_binder_fixup ; void* dyld_stub_binder_fixup(void* cache, uintptr_t index)
+extern _GLOBAL_OFFSET_TABLE_
 global dyld_stub_binder
 
 ; Stub identifier is pushed first
@@ -15,15 +16,16 @@ section text
 
 dyld_stub_binder:
 
-	call reg_saveall ; 224 bytes
+	call reg_saveall WRT ..plt ; 224 bytes
 	mov rdi, [rsp+224] ; cache
 	mov rsi, [rsp+224+8] ; offset
 
-	call dyld_stub_binder_fixup
+	call dyld_stub_binder_fixup WRT ..plt
 
-	mov r11, rax
-	call reg_restoreall
+	mov [rsp+224], rax
+	call reg_restoreall WRT ..plt
 	
+	mov r11, [rsp]
 	add rsp, 16 ; remove arguments to dyld_stub_binder
 	jmp r11
 
@@ -34,21 +36,31 @@ section text
 
 dyld_stub_binder:
 
+	push ebx
+	
+	call .get_GOT
+.get_GOT:
+	pop ebx
+	add ebx, _GLOBAL_OFFSET_TABLE_+$$-.get_GOT wrt ..gotpc
+
 	push eax
-	call reg_saveall ; 32 bytes
-	mov eax, [esp+32] ; cache
-	mov ecx, [esp+32+4] ; offset
+	call reg_saveall WRT ..plt  ; 32 bytes
+	mov eax, [esp+32+4] ; cache
+	mov ecx, [esp+32+4+4] ; offset
 	push ecx
 	push eax
 
-	call dyld_stub_binder_fixup
+	call dyld_stub_binder_fixup WRT ..plt
 	add esp, 8
 
-	mov [esp-12], eax ; save the real addr somewhere
-	call reg_restoreall
+	mov [esp+32+4], eax ; save the real addr somewhere
+	call reg_restoreall WRT ..plt
 
-	mov eax, [esp-0x2c] ; restore the real addr
+	mov eax, [esp+4] ; restore the real addr
+	
+	pop ebx
 	add esp, 8 ; remove arguments to dyld_stub_binder THIS SHOULDN'T WORK!
+	
 	jmp eax
 
 %else
