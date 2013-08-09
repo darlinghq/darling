@@ -33,16 +33,18 @@ int main(int argc, char** argv, char** envp)
 	{
 		MachOObject* obj;
 		std::set<std::string> deps;
-	
+		MachOMgr* mgr = MachOMgr::instance();
+		
+		mgr->setLoadAnyArchitecture(true);
 		obj = new MachOObject(argv[1]);
 		
-		MachOMgr::instance()->add(obj, true);
+		mgr->add(obj, true);
 		
 		std::cout << c(ANSI_COLOR_GRAY) << "Resolving dependencies of " << obj->path() << "\n\n" << c(ANSI_COLOR_RESET);
 		
 		resolve(obj, deps);
 		
-		MachOMgr::instance()->remove(obj);
+		mgr->remove(obj);
 	}
 	catch (const std::exception& e)
 	{

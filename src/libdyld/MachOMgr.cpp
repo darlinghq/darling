@@ -10,8 +10,8 @@ namespace Darling {
 
 MachOMgr::MachOMgr()
 : m_mainModule(nullptr), m_bindAtLaunch(false), m_printInitializers(false),
-  m_printLibraries(false),
-  m_printSegments(false), m_printBindings(false), m_printRpathExpansion(false),
+  m_printLibraries(false), m_printSegments(false), m_printBindings(false),
+  m_printRpathExpansion(false), m_loadAny(false),
   m_pUndefMgr(nullptr), m_pTrampolineMgr(nullptr), m_addedDefaultLoader(false)
 {
 }

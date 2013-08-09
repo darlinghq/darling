@@ -41,7 +41,7 @@ struct DyldSectData
 
 MachOObject::MachOObject(const std::string& path)
 {
-	m_file = MachO::readFile(path, ARCH_NAME);
+	m_file = MachO::readFile(path, ARCH_NAME, true, MachOMgr::instance()->loadAnyArchitecture());
 	
 	if (!m_file)
 	{

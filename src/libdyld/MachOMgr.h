@@ -89,6 +89,11 @@ public:
 	inline void setPrintRpathExpansion(bool print) { m_printRpathExpansion = print; }
 	inline bool printRpathExpansion() const { return m_printRpathExpansion; }
 	
+	// Will enable loading of architectures that won't run on the current CPU.
+	// Useful only for dyldd, not for general use.
+	inline void setLoadAnyArchitecture(bool loadAny) { m_loadAny = loadAny; }
+	inline bool loadAnyArchitecture() const { return m_loadAny; }
+	
 	bool detectSysRootFromPath(std::string path);
 	inline void setSysRoot(const std::string& sysroot) { m_sysroot = sysroot; }
 	inline const std::string& sysRoot() const { return m_sysroot; }
@@ -125,7 +130,7 @@ private:
 	mutable Darling::RWMutex m_lock;
 	MachOObject* m_mainModule;
 	bool m_bindAtLaunch, m_printInitializers, m_printLibraries;
-	bool m_printSegments, m_printBindings, m_printRpathExpansion;
+	bool m_printSegments, m_printBindings, m_printRpathExpansion, m_loadAny;
 	std::string m_libraryPath, m_sysroot;
 	
 	UndefMgr* m_pUndefMgr;

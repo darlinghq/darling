@@ -36,7 +36,7 @@ class MachO
 {
 public:
 	__attribute__ ((visibility ("default")))
-	static MachO* readFile(std::string path, const char* arch, bool need_exports = true);
+	static MachO* readFile(std::string path, const char* arch, bool need_exports = true, bool loadAny = false);
 	__attribute__ ((visibility ("default")))
 	static bool isMachO(const char* path);
 

@@ -32,7 +32,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 #include <map>
 
-MachO* MachO::readFile(std::string path, const char* arch, bool need_exports)
+MachO* MachO::readFile(std::string path, const char* arch, bool need_exports, bool loadAny)
 {
 	int fd = ::open(path.c_str(), O_RDONLY);
 	if (fd < 0)
@@ -48,11 +48,18 @@ MachO* MachO::readFile(std::string path, const char* arch, bool need_exports)
 		std::map<std::string, fat_arch>::const_iterator found = archs.find(arch);
 		if (found == archs.end())
 		{
-			std::vector<std::string> varchs;
-			for (auto elem : archs)
-				varchs.push_back(elem.first);
+			if (loadAny)
+			{
+				found = archs.begin();
+			}
+			else
+			{
+				std::vector<std::string> varchs;
+				for (auto elem : archs)
+					varchs.push_back(elem.first);
 
-			throw fat_architecture_not_supported(varchs);
+				throw fat_architecture_not_supported(varchs);
+			}
 		}
     
 		offset = found->second.offset;
