@@ -26,6 +26,7 @@ Class RegisterClass(const class_t* cls, intptr_t slide)
 		super = reinterpret_cast<Class>(cls->superclass);
 	
 	LOG << "...superclass is @" << super << std::endl;
+	assert(objc_getClass(cls->data()->className) == nullptr);
 	conv = objc_allocateClassPair(super, cls->data()->className, 0);
 	
 	const class_ro_t* ro = cls->data();

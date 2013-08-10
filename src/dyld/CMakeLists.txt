@@ -8,6 +8,7 @@ endif(COMMAND cmake_policy)
 
 set(dyld_SRCS
 	dyld.cpp
+	dirstructure.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")

@@ -8,9 +8,10 @@
 #include <util/stlutils.h>
 #include <util/Regexp.h>
 #include <libdyld/arch.h>
+#include "dirstructure.h"
 
 static void printHelp(const char* argv0);
-static std::string locateBundleExecutable(const std::string& bundlePath);
+static std::string locateBundleExecutable(std::string bundlePath);
 
 using namespace Darling;
 
@@ -21,6 +22,9 @@ int main(int argc, char** argv, char** envp)
 		printHelp(argv[0]);
 		return 1;
 	}
+	
+	if (!HasUserDirectoryStructure())
+		SetupUserDirectoryStructure();
 
 	try
 	{
@@ -82,9 +86,12 @@ static void printHelp(const char* argv0)
 		"\tDYLD_PRINT_RPATHS - print @rpath resolution attempts\n\n";
 }
 
-static std::string locateBundleExecutable(const std::string& bundlePath)
+static std::string locateBundleExecutable(std::string bundlePath)
 {
 	Regexp re(".*/([^\\.]+)\\.app/?$", true);
+	
+	bundlePath = "./" + bundlePath; // TODO: fix the regexp to work without this
+	
 	if (re.matches(bundlePath))
 	{
 		std::stringstream ss;

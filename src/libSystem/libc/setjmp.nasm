@@ -95,7 +95,11 @@ extern  _GLOBAL_OFFSET_TABLE_
 
 __darwin_setjmp:
 
+	mov eax, [esp+4]
+	push eax
 	gotcall __darwin_savesigs
+	add esp, 4
+	
 	jmp no_sig_save
 
 __darwin_sigsetjmp:
@@ -103,7 +107,11 @@ __darwin_sigsetjmp:
 	test dword [esp+8], 0
 	je .no_sig_save_z
 
+	mov eax, [esp+4]
+	push eax
 	gotcall __darwin_savesigs
+	add esp, 4
+	
 	jmp no_sig_save
 
 .no_sig_save_z:
@@ -130,7 +138,10 @@ no_sig_save:
 
 __darwin_longjmp:
 __darwin_siglongjmp:
+	mov eax, [esp+4]
+	push eax
 	gotcall __darwin_restoresigs
+	add esp, 4
 
 no_sig_restore:
 
