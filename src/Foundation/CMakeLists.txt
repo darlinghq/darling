@@ -22,6 +22,7 @@ set(Foundation_SRCS
 	NameTranslate.cpp
 	NSDarwinBundle.mm
 	NSAppleEventDescriptor.mm
+	NSAppleEventManager.mm
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
