@@ -90,9 +90,9 @@ static std::string locateBundleExecutable(std::string bundlePath)
 {
 	Regexp re(".*/([^\\.]+)\\.app/?$", true);
 	
-	bundlePath = "./" + bundlePath; // TODO: fix the regexp to work without this
+	std::string myBundlePath = "./" + bundlePath; // TODO: fix the regexp to work without this
 	
-	if (re.matches(bundlePath))
+	if (re.matches(myBundlePath))
 	{
 		std::stringstream ss;
 		ss << bundlePath;
