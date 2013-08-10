@@ -14,6 +14,7 @@
 #include "common/selector.h"
 #include <map>
 #include <queue>
+#include <cassert>
 #include "NSDarwinFramework.h"
 
 // Superclass references in Mach-O don't use classref
@@ -93,6 +94,7 @@ void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 	{
 		// Generate a NSFramework_XXXX class for GNUstep's NSBundle
 		const char* path = dyld_image_path_containing_address(dataPtr);
+		assert(path != nullptr);
 		RegisterFramework(&classNames[0], classNames.size(), path);
 	}
 

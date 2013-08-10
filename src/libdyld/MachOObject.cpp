@@ -69,6 +69,7 @@ void MachOObject::postConstruct()
 
 MachOObject::~MachOObject()
 {
+	LOG << "deleting " << name() << " at " << this << std::endl;
 	delete m_file;
 }
 
@@ -97,8 +98,6 @@ void MachOObject::load()
 		ss << "This version of Darling dyld cannot load binaries for " << m_file->platform() << ".";
 		throw std::runtime_error(ss.str());
 	}
-	
-	m_base = MachOMgr::instance()->maxAddress();
 	
 	loadSegments();
 	
@@ -185,23 +184,28 @@ void MachOObject::loadSegments()
 		assert(seg->vmsize >= seg->filesize);
 		
 		if (!m_base)
-			m_base = (void*) seg->vmaddr;
-		
-		if (!m_base)
 		{
-			// This is normally used only for:
-			// a) DYLD_PRELOAD
-			// b) Standalone use of libdyld
-		
-#if (__WORDSIZE == 64)
-			m_base = (void*) 0x200000000L;
-#else
-			m_base = (void*) 0x1000000;
-#endif
+			m_base = (void*) seg->vmaddr;
+			
+			if (!m_base)
+				m_base = MachOMgr::instance()->maxAddress();
+			
+			if (!m_base)
+			{
+				// This is normally used only for:
+				// a) DYLD_PRELOAD
+				// b) Standalone use of libdyld
+			
+	#if (__WORDSIZE == 64)
+				m_base = (void*) 0x200000000L;
+	#else
+				m_base = (void*) 0x1000000;
+	#endif
+			}
+			
+			if ((void*)seg->vmaddr != m_base && !isMainModule() && !m_slide)
+				m_slide = uintptr_t(m_base) - seg->vmaddr;
 		}
-
-		if ((void*)seg->vmaddr < m_base && !isMainModule() && !m_slide)
-			m_slide = uintptr_t(m_base) - seg->vmaddr;
 		
 		mappingSize = pageAlign(seg->filesize);
 		mappingAddr = (void*) (seg->vmaddr + m_slide);

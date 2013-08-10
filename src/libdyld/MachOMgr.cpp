@@ -4,6 +4,7 @@
 #include <bits/wordsize.h>
 #include "MachOObject.h"
 #include "NativeObject.h"
+#include <util/debug.h>
 #include <dlfcn.h>
 
 namespace Darling {
@@ -19,7 +20,7 @@ MachOMgr::MachOMgr()
 MachOMgr::~MachOMgr()
 {
 	if (m_mainModule)
-		m_mainModule->unload();
+		m_mainModule->delRef();
 
 	while (!m_loadablesInOrder.empty())
 	{
@@ -143,12 +144,14 @@ void MachOMgr::remove(MachOObject* obj)
 
 void MachOMgr::add(NativeObject* obj)
 {
+	LOG << "MachOMgr::add: "  << obj << " - " << obj->name() << std::endl;
 	m_loadablesInOrder.push_back(obj);
 	m_nativeRefToObject[obj->nativeRef()] = obj;
 }
 
 void MachOMgr::remove(NativeObject* obj)
 {
+	LOG << "MachOMgr::remove: "  << obj << " - " << obj->name() << std::endl;
 	auto it = std::find(m_loadablesInOrder.begin(), m_loadablesInOrder.end(), obj);
 	if (it != m_loadablesInOrder.end())
 		m_loadablesInOrder.erase(it);
