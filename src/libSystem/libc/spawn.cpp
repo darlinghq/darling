@@ -166,7 +166,10 @@ int __darwin_posix_spawn(pid_t* pid, const char* path, const __darwin_posix_spaw
 	path = translatePathCI(path);
 
 	if (MachO::isMachO(path))
-		argv = argv_copy = Darling::prependLoaderPath(argv, path);	
+	{
+		argv = argv_copy = Darling::prependLoaderPath(argv, path);
+		path = argv[0];
+	}
 
 	err = AutoErrnoPosix(posix_spawn, pid, path, file_actions ? file_actions->native : nullptr,
 			attrp ? attrp->native : nullptr, argv, envp);
