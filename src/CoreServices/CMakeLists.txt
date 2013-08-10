@@ -33,6 +33,7 @@ set(CoreServices_SRCS
 	DriverSynchronization.cpp
 	DriverServices.cpp
 	Components.cpp
+	Processes.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")

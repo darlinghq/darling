@@ -68,7 +68,7 @@ std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
 
 	// Try the path as is
 	if (::access(dylib.c_str(), F_OK) == 0)
-		return dylib;
+		return realpath(dylib);
 	
 	// If absolute, search in sysroot
 	if (dylib[0] == '/' && !MachOMgr::instance()->sysRoot().empty())
@@ -176,6 +176,24 @@ std::string DylibSearch::resolveViaRpath(std::string name, MachOObject* requeste
 	}
 	
 	return std::string();
+}
+
+std::string DylibSearch::realpath(const std::string& path)
+{
+	char* real;
+	std::string rv;
+	
+	real = ::realpath(path.c_str(), nullptr);
+	
+	if (real)
+	{
+		rv = real;
+	
+		free(real);
+		return rv;
+	}
+	else
+		return path;
 }
 
 } // namespace Darling

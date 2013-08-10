@@ -221,7 +221,7 @@ void MachOObject::loadSegments()
 			throw std::runtime_error(ss.str());
 		}
 		
-		m_mappings.push_back(Mapping { mappingAddr, seg->vmsize, initprot, maxprot });
+		m_mappings.push_back(Mapping { mappingAddr, pageAlign(seg->vmsize), initprot, maxprot });
 		
 		if (seg->vmsize > mappingSize)
 		{
@@ -658,6 +658,7 @@ void* MachOObject::performBind(MachO::Bind* bind)
 		{
 			if (MachOMgr::instance()->ignoreMissingSymbols() && bind->name[0] == '_')
 			{
+				ERROR().write("Creating a fake implementation for " + bind->name.substr(1));
 				addr = MachOMgr::instance()->undefMgr()->generateNew(bind->name.c_str()+1);
 				bind->addend = 0;
 			}
@@ -698,6 +699,8 @@ void* MachOObject::resolveSymbol(const std::string& name)
 	
 	if (name.empty())
 		return nullptr;
+	if (name == "__mh_dylib_header")
+		return m_base;
 	
 	if (name[0] != '_')
 	{

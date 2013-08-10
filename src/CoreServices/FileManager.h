@@ -152,6 +152,7 @@ OSStatus FSPathMakeRef(const uint8_t* path, FSRef* fsref, Boolean* isDirectory);
 OSStatus FSPathMakeRefWithOptions(const uint8_t* path, long options, FSRef* fsref, Boolean* isDirectory);
 OSStatus FSRefMakePath(const FSRef* fsref, uint8_t* path, uint32_t maxSize);
 Boolean CFURLGetFSRef(CFURLRef urlref, FSRef* fsref);
+CFURLRef CFURLCreateFromFSRef(CFAllocatorRef alloc, FSRef* location);
 OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSRef* location);
 
 OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* infoOut, HFSUniStr255* nameOut, FSSpecPtr fsspec, FSRef* parentDir);

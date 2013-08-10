@@ -45,8 +45,14 @@ void* MachOMgr::maxAddress() const
 	else
 	{
 		auto it = m_objects.end();
+		void* addr;
+		
 		it--;
-		return it->second->maxAddress();
+		addr = it->second->maxAddress();
+		
+		assert(uintptr_t(addr) % getpagesize() == 0);
+		
+		return addr;
 	}
 }
 
