@@ -41,7 +41,6 @@
 #include <ostream>
 #include <bits/codecvt.h>
 #include <cstdio>             // For BUFSIZ
-#include <bits/basic_file.h>  // For __basic_file, __c_lock
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
 #include <string>             // For std::string overloads.
 #endif

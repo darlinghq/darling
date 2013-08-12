@@ -42,7 +42,7 @@ void NativeObject::load()
 
 		if (MachOMgr::instance()->printLibraries())
 			std::cerr << "dyld: Loaded " << m_path << std::endl;
-
+		
 		MachOMgr::instance()->add(this);
 	}
 }
@@ -85,6 +85,9 @@ void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWea
 	std::string prefixed = "__darwin_" + symbolName;
 
 	addr = ::dlsym(m_nativeRef, prefixed.c_str());
+	
+	if (!addr)
+		addr = ::dlvsym(m_nativeRef, symbolName.c_str(), "DARLING");
 
 	if (!addr)
 		addr = ::dlsym(m_nativeRef, symbolName.c_str());

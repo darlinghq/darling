@@ -1,16 +1,18 @@
 project(libstdc++darwin)
 
 # clang doesn't support linker scripts (-T)
-SET(CMAKE_CXX_COMPILER "/usr/bin/g++")
-set(CMAKE_CXX_FLAGS "")
+#SET(CMAKE_CXX_COMPILER "/usr/bin/g++")
+#set(CMAKE_CXX_FLAGS "")
 
 if (SUFFIX STREQUAL "32")
 	set(CMAKE_CXX_FLAGS "-m32")
 endif (SUFFIX STREQUAL "32")
 
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/version.map -Wl,-Bsymbolic")
+
 cmake_minimum_required(VERSION 2.4.0)
 
-add_definitions(-Bsymbolic -fno-weak)
+add_definitions(-Bsymbolic) # -fno-weak
 add_library(stdc++darwin SHARED filebuf_abi_fix.cpp)
 
 #add_custom_target(stdc++_darwinx ALL COMMAND echo objcopy

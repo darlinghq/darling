@@ -272,7 +272,7 @@ int __darwin_fflush(__darwin_FILE* fp)
 
 void __darwin_setbuf(__darwin_FILE* fp, char* buf)
 {
-	setbuf(fp->linux_fp, buf);
+	setbuf(fp ? fp->linux_fp : NULL, buf);
 }
 
 void __darwin_setbuffer(__darwin_FILE* fp, char* buf, size_t size)
@@ -282,12 +282,12 @@ void __darwin_setbuffer(__darwin_FILE* fp, char* buf, size_t size)
 
 int __darwin_ferror(__darwin_FILE* fp)
 {
-	return ferror(fp->linux_fp);
+	return ferror(fp ? fp->linux_fp : nullptr);
 }
 
 int __darwin_fileno(__darwin_FILE* fp)
 {
-	return fileno(fp->linux_fp);
+	return fileno(fp ? fp->linux_fp : nullptr);
 }
 
 __darwin_FILE* __darwin_tmpfile()
@@ -444,10 +444,10 @@ wchar_t* __darwin_fgetwln(__darwin_FILE* f, size_t* len)
 }
 #endif
 
-std::__basic_file<char>* _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode(std::__basic_file<char>* pThis, __darwin_FILE* f, std::ios_base::openmode mode)
-{
-	return pThis->sys_open(f->linux_fp, mode);
-}
+//std::__basic_file<char>* _ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode(std::__basic_file<char>* pThis, __darwin_FILE* f, std::ios_base::openmode mode)
+//{
+//	return pThis->sys_open(f->linux_fp, mode);
+//}
 
 #ifdef __x86_64__
 
