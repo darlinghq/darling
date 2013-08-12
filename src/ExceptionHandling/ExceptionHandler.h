@@ -4,7 +4,7 @@
 
 @interface NSExceptionHandler : NSObject
 {
-	@private
+@private
 	id _delegate;
 	unsigned int _handlingMask, _hangingMask;
 }
@@ -15,6 +15,15 @@
 @property (nonatomic) unsigned int exceptionHangingMask;
 @property (nonatomic, retain) id delegate;
 
+@end
+
+@interface NSObject (NSExceptionHandlerAdditions)
+-(BOOL) exceptionHandler:(NSExceptionHandler*) sender
+   shouldHandleException:(NSException*) exception
+                    mask:(unsigned int) aMask;
+-(BOOL) exceptionHandler:(NSExceptionHandler*) sender
+      shouldLogException:(NSException*) exception
+                    mask:(unsigned int) aMask;
 @end
 
 enum
