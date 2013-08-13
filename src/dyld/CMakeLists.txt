@@ -18,11 +18,11 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_executable(dyld-bin ${dyld_SRCS})
 set_target_properties(dyld-bin PROPERTIES OUTPUT_NAME dyld${SUFFIX})
-target_link_libraries(dyld-bin -l:../libdyld/libdyld.so util mach-o)
+target_link_libraries(dyld-bin dyld util mach-o)
 
 #if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 	add_executable(dyldd dyldd.cpp)
-	target_link_libraries(dyldd -l:../libdyld/libdyld.so util mach-o)
+	target_link_libraries(dyldd dyld util mach-o)
 	install(TARGETS dyldd DESTINATION bin)
 	#endif (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 
