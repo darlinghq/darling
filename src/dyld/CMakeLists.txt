@@ -20,17 +20,17 @@ add_executable(dyld-bin ${dyld_SRCS})
 set_target_properties(dyld-bin PROPERTIES OUTPUT_NAME dyld${SUFFIX})
 target_link_libraries(dyld-bin -l:../libdyld/libdyld.so util mach-o)
 
-if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
+#if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 	add_executable(dyldd dyldd.cpp)
 	target_link_libraries(dyldd -l:../libdyld/libdyld.so util mach-o)
 	install(TARGETS dyldd DESTINATION bin)
-endif (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
+	#endif (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 
 install(TARGETS dyld-bin DESTINATION bin)
 
-if (SUFFIX STREQUAL "64")
+if (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 	add_executable(dyld-multilib dyld-multilib.c)
 	set_target_properties(dyld-multilib PROPERTIES OUTPUT_NAME dyld)
 	install(TARGETS dyld-multilib DESTINATION bin)
-endif (SUFFIX STREQUAL "64")
+endif (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 
