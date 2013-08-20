@@ -1,0 +1,6 @@
+#ifndef FRAMEWORKS_H
+#define FRAMEWORKS_H
+
+#cmakedefine FRAMEWORK_COREAUDIO
+
+#endif
