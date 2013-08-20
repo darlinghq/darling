@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <sstream>
 #include <util/stlutils.h>
@@ -17,7 +18,7 @@ using namespace Darling;
 
 int main(int argc, char** argv, char** envp)
 {
-	if (argc < 2)
+	if (argc < 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
 	{
 		printHelp(argv[0]);
 		return 1;

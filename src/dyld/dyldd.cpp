@@ -8,6 +8,7 @@
 #include <string>
 #include <unistd.h>
 #include <cstdlib>
+#include <cstring>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -26,7 +27,7 @@ static void showHelp(const char* argv0);
 
 int main(int argc, char** argv, char** envp)
 {
-	if (argc != 2)
+	if (argc != 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
 		showHelp(argv[0]);
 	
 	try
