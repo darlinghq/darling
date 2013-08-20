@@ -1,4 +1,4 @@
-project(objc.A.dylib)
+project(libobjc)
 
 cmake_minimum_required(VERSION 2.4.0)
 if(COMMAND cmake_policy)
@@ -67,8 +67,8 @@ else(NOT OBJC_ABI_2)
 	)
 endif(NOT OBJC_ABI_2)
 
-add_library(objc.A.dylib SHARED ${objcdarwin_SRCS})
-target_link_libraries(objc.A.dylib Foundation util ${GNUSTEP_OBJC_CFLAGS})
+add_library(objcdarwin SHARED ${objcdarwin_SRCS})
+target_link_libraries(objcdarwin Foundation util ${GNUSTEP_OBJC_CFLAGS})
 
-install(TARGETS objc.A.dylib DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS objcdarwin DESTINATION "lib${SUFFIX}/darling")
 
