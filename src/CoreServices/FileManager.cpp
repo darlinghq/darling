@@ -34,13 +34,18 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <fstream>
 #include <map>
 #include <regex.h>
+#include <fcntl.h>
 #include "DateTimeUtils.h"
-#include "../util/stlutils.h"
+#include <util/stlutils.h>
+#include <util/debug.h>
+#include <libSystem/libc/errno.h>
+#include <libSystem/common/path.h>
 
 // Doesn't resolve the last symlink
 // Mallocates a new buffer
 static char* realpath_ns(const char* path);
 static bool FSRefMakePath(const FSRef* ref, std::string& out);
+static bool FSRefParamMakePath(const FSRefParam* param, std::string& out);
 // Is the current user member of the specified group?
 static bool hasgid(gid_t gid);
 
@@ -180,6 +185,37 @@ bool FSRefMakePath(const FSRef* fsref, std::string& out)
 	return true;
 }
 
+bool FSRefParamMakePath(const FSRefParam* param, std::string& out)
+{
+	std::string dir;
+	CFStringRef str;
+	std::unique_ptr<char[]> buf;
+	size_t bufsize;
+	Boolean success;
+	
+	if (!FSRefMakePath(param->ref, dir))
+		return false;
+	
+	out = translatePathCI(dir.c_str());
+	if (out.back() != '/')
+		out += '/';
+	
+	str = CFStringCreateWithCharacters(NULL, param->name, param->nameLength);
+	bufsize = CFStringGetLength(str)*4+1;
+	buf.reset(new char[bufsize]);
+	
+	success = CFStringGetCString(str, buf.get(), bufsize, kCFStringEncodingUTF8);
+	CFRelease(str);
+	
+	if (success)
+	{
+		out += buf.get();
+		return true;
+	}
+	else
+		return false;
+}
+
 OSStatus FSRefMakePath(const FSRef* fsref, uint8_t* path, uint32_t maxSize)
 {
 	std::string rpath;
@@ -205,21 +241,10 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 
 	if (nameOut)
 	{
-		iconv_t ic = iconv_open("UTF-16", "UTF-8");
-		size_t s;
-		const char* inbuf = path.c_str();
-		char* outbuf = reinterpret_cast<char*>(nameOut->unicode);
-		size_t inbytesleft = path.size(), outbytesleft = sizeof(nameOut->unicode);
-
-		if (ic == iconv_t(-1))
-			return -1;
-
-		memset(nameOut->unicode, 0, outbytesleft);
-		s = iconv(ic, (char**) &inbuf, &inbytesleft, &outbuf, &outbytesleft);
-
-		iconv_close(ic);
-		if (s == size_t(-1))
-			return -1;
+		CFStringRef cfstr = CFStringCreateWithCString(NULL, path.c_str(), kCFStringEncodingUTF8);
+		nameOut->length = std::min<size_t>(path.length(), 255);
+		CFStringGetCharacters(cfstr, CFRangeMake(0, nameOut->length), nameOut->unicode);
+		CFRelease(cfstr);
 	}
 
 	if (parentDir)
@@ -462,3 +487,83 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSR
 	else
 		return unimpErr;
 }
+
+OSErr PBCreateDirectoryUnicodeSync(FSRefParam* paramBlock)
+{
+	std::string path;
+	
+	if (!FSRefParamMakePath(paramBlock, path))
+		return fnfErr;
+	if (mkdir(path.c_str(), 0777) == -1)
+		return makeOSStatus(errnoLinuxToDarwin(errno));
+	
+	if (paramBlock->newRef)
+		FSPathMakeRef((uint8_t*) path.c_str(), paramBlock->newRef, nullptr);
+	
+	return noErr;
+}
+
+OSErr PBCreateFileUnicodeSync(FSRefParam* paramBlock)
+{
+	std::string path;
+	
+	if (!FSRefParamMakePath(paramBlock, path))
+		return fnfErr;
+	if (open(path.c_str(), O_CREAT|O_EXCL, 0666) == -1)
+		return makeOSStatus(errnoLinuxToDarwin(errno));
+	
+	if (paramBlock->newRef)
+		FSPathMakeRef((uint8_t*) path.c_str(), paramBlock->newRef, nullptr);
+	
+	return noErr;
+}
+
+OSErr PBGetCatalogInfoSync(FSRefParam *paramBlock)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSErr PBMakeFSRefUnicodeSync(FSRefParam *paramBlock)
+{
+	std::string path;
+	
+	if (!paramBlock->newRef)
+		return paramErr;
+	if (!FSRefParamMakePath(paramBlock, path))
+		return fnfErr;
+	FSPathMakeRef((uint8_t*) path.c_str(), paramBlock->newRef, nullptr);
+	
+	return noErr;
+}
+
+OSErr PBOpenForkSync(FSForkIOParam *paramBlock)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSErr PBReadForkSync(FSForkIOParam *paramBlock)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSErr PBWriteForkSync(FSForkIOParam *paramBlock)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSErr PBIterateForksSync(FSForkIOParam *paramBlock)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSErr PBCloseForkSync(FSForkIOParam *paramBlock)
+{
+	STUB();
+	return unimpErr;
+}
+

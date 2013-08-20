@@ -24,6 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <dirent.h>
 #include "MacErrors.h"
 #include "DateTimeUtils.h"
+#include "MacTypes.h"
 #include <CoreFoundation/CFURL.h>
 
 extern "C" {
@@ -96,6 +97,72 @@ struct FSCatalogInfo
 	uint32_t textEncodingHint;
 };
 
+typedef void* IOCompletionUPP;
+typedef void* QElemPtr;
+typedef uint16_t FSAllocationFlags;
+typedef uint32_t FSCatalogInfoBitmap;
+typedef unsigned long UniCharCount;
+typedef uint32_t TextEncoding;
+
+struct FSRefParam
+{
+	QElemPtr qLink;
+	short qType;
+	short ioTrap;
+	Ptr ioCmdAddr;
+	IOCompletionUPP ioCompletion;
+	volatile OSErr ioResult;
+	const Str255* ioNamePtr;
+	short ioVRefNum;
+	SInt16 reserved1;
+	UInt8 reserved2;
+	UInt8 reserved3;
+	const FSRef* ref;
+	FSCatalogInfoBitmap whichInfo;
+	FSCatalogInfo* catInfo;
+	UniCharCount nameLength;
+	const UniChar* name;
+	long ioDirID;
+	FSSpec* spec;
+	FSRef* parentRef;
+	FSRef* newRef;
+	TextEncoding textEncodingHint;
+	HFSUniStr255* outName;
+};
+
+struct CatPositionRec
+{
+	long initialize;
+	short priv[6];
+};
+
+struct FSForkIOParam
+{
+	QElemPtr qLink;
+	short qType;
+	short ioTrap;
+	Ptr ioCmdAddr;
+	IOCompletionUPP ioCompletion;
+	volatile OSErr ioResult;
+	void * reserved1;
+	SInt16 reserved2;
+	SInt16 forkRefNum;
+	UInt8 reserved3;
+	SInt8 permissions;
+	const FSRef * ref;
+	Ptr buffer;
+	UInt32 requestCount;
+	UInt32 actualCount;
+	UInt16 positionMode;
+	SInt64 positionOffset;
+	FSAllocationFlags allocationFlags;
+	UInt64 allocationAmount;
+	UniCharCount forkNameLength;
+	const UniChar * forkName;
+	CatPositionRec forkIterator;
+	HFSUniStr255 * outForkName;
+};
+
 enum
 {
 	kFSPathMakeRefDefaultOptions = 0,
@@ -156,6 +223,16 @@ CFURLRef CFURLCreateFromFSRef(CFAllocatorRef alloc, FSRef* location);
 OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSRef* location);
 
 OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* infoOut, HFSUniStr255* nameOut, FSSpecPtr fsspec, FSRef* parentDir);
+
+OSErr PBCreateDirectoryUnicodeSync(FSRefParam* paramBlock);
+OSErr PBCreateFileUnicodeSync(FSRefParam* paramBlock);
+OSErr PBGetCatalogInfoSync(FSRefParam *paramBlock);
+OSErr PBMakeFSRefUnicodeSync(FSRefParam *paramBlock);
+OSErr PBOpenForkSync(FSForkIOParam *paramBlock);
+OSErr PBReadForkSync(FSForkIOParam *paramBlock);
+OSErr PBWriteForkSync(FSForkIOParam *paramBlock);
+OSErr PBIterateForksSync(FSForkIOParam *paramBlock);
+OSErr PBCloseForkSync(FSForkIOParam *paramBlock);
 
 }
 

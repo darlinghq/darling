@@ -46,6 +46,7 @@ typedef unsigned char** StringHandle;
 typedef char* Ptr;
 typedef char** Handle;
 
+typedef int16_t OSErr;
 typedef int32_t OSStatus;
 typedef uint32_t OSType;
 
