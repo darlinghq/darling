@@ -35,7 +35,9 @@ int main(int argc, char** argv, char** envp)
 		std::set<std::string> deps;
 		MachOMgr* mgr = MachOMgr::instance();
 		
+		mgr->detectSysRootFromPath(argv[1]);
 		mgr->setLoadAnyArchitecture(true);
+		
 		obj = new MachOObject(argv[1]);
 		
 		mgr->add(obj, true);
