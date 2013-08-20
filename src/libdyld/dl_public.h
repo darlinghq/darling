@@ -1,6 +1,7 @@
 #ifndef DL_PUBLIC_H
 #define DL_PUBLIC_H
 #include <dlfcn.h>
+#include <string>
 
 #define DARWIN_RTLD_LAZY		0x1
 #define DARWIN_RTLD_NOW			0x2
@@ -22,6 +23,8 @@ namespace Darling
 	typedef bool (*DlsymHookFunc)(char* symName);
 	void registerDlsymHook(DlsymHookFunc func);
 	void deregisterDlsymHook(DlsymHookFunc func);
+	
+	void dl_setLastError(const std::string& str);
 }
 
 typedef void* NSSymbol;

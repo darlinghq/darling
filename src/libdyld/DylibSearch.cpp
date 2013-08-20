@@ -12,7 +12,8 @@
 namespace Darling {
 
 DylibSearch::DylibSearch()
-	: m_reFrameworkPath("/System/Library/Frameworks/([a-zA-Z0-9\\.]+)/Versions/([a-zA-Z0-9\\.]+)/.*")
+	: m_reFrameworkPath("/System/Library/Frameworks/([a-zA-Z0-9\\.]+)/Versions/([a-zA-Z0-9\\.]+)/.*"),
+	m_reDefaultFrameworkPath("/System/Library/Frameworks/([a-zA-Z0-9\\.]+)/([a-zA-Z0-9\\.]+)")
 {
 	try
 	{
@@ -28,6 +29,16 @@ DylibSearch* DylibSearch::instance()
 {
 	static DylibSearch singleton;
 	return &singleton;
+}
+
+void DylibSearch::setAdditionalPaths(const std::string& paths)
+{
+	m_extraPaths = string_explode(paths, ':', false);
+}
+
+void DylibSearch::setAdditionalSuffixes(const std::vector<std::string>& suffixes)
+{
+	m_suffixes = suffixes;
 }
 
 std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
@@ -61,26 +72,57 @@ std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
 	if (const char* aliasTarget = resolveAlias(dylib))
 		return aliasTarget;
 	
-	// Search in DYLD_LIBRARY_PATH
-	std::string ldpath = resolveInLdPath(dylib);
-	if (!ldpath.empty())
-		return ldpath;
-
-	// Try the path as is
-	if (::access(dylib.c_str(), F_OK) == 0)
-		return realpath(dylib);
+	// Search in extra paths
+	std::string epath;
+	epath = resolveInPathList(dylib, m_extraPaths);
+	if (!epath.empty())
+		return epath;
 	
+	// Search in DYLD_LIBRARY_PATH
+	epath = resolveInLdPath(dylib);
+	if (!epath.empty())
+		return epath;
+	
+	// Try the path as is
+	epath = checkPresence(dylib);
+	if (!epath.empty())
+		return epath;
+
 	// If absolute, search in sysroot
 	if (dylib[0] == '/' && !MachOMgr::instance()->sysRoot().empty())
 	{
 		std::string path = MachOMgr::instance()->sysRoot();
 		path += '/';
 		path += dylib;
-
-		if (::access(path.c_str(), F_OK) == 0)
-			return path;
+		
+		epath = checkPresence(path);
+		if (!epath.empty())
+			return epath;
 	}
 
+	return std::string();
+}
+
+std::string DylibSearch::checkPresence(const std::string& path)
+{
+	std::string str = path;
+	
+	if (::access(str.c_str(), F_OK) == 0)
+		return str;
+	
+	str += ".dylib";
+	
+	if (::access(str.c_str(), F_OK) == 0)
+		return str;
+	
+	for (const std::string& suffix : m_suffixes)
+	{
+		str = path + suffix;
+		
+		if (::access(str.c_str(), F_OK) == 0)
+			return str;
+	}
+	
 	return std::string();
 }
 
@@ -93,8 +135,13 @@ std::string DylibSearch::resolveInLdPath(std::string name)
 		return std::string();
 
 	elems = string_explode(name, ':');
+	
+	return resolveInPathList(name, elems);
+}
 
-	for (const std::string& e : elems)
+std::string DylibSearch::resolveInPathList(std::string name, const std::vector<std::string>& paths)
+{
+	for (const std::string& e : paths)
 	{
 		std::string path = e + "/" + name;
 
@@ -134,6 +181,25 @@ const char* DylibSearch::resolveAlias(const std::string& library)
 				return it->second.c_str();
 		}
 	}
+	
+	if (m_reDefaultFrameworkPath.matches(library))
+	{
+		std::string name;
+		
+		name = m_reDefaultFrameworkPath.group(1);
+		
+		if (m_config->hasSection(name))
+		{
+			const IniConfig::ValueMap* m = m_config->getSection(name);
+			auto it = m->find("default");
+			
+			if (it != m->end())
+				return it->second.c_str();
+			else
+				return m->begin()->second.c_str();
+		}
+	}
+	
 	return nullptr;
 }
 
