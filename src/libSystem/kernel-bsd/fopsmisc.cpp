@@ -113,6 +113,20 @@ int __darwin_mkdir(const char *pathname, mode_t mode)
 
 int __darwin_chdir(const char *path)
 {
+	if (Darling::MachOMgr::instance()->hasSysRoot())
+	{
+		// Try to apply a sysroot prefix
+		const char* prefixed;
+		std::string lpath = Darling::MachOMgr::instance()->sysRoot();
+		
+		lpath += '/';
+		lpath += path;
+		
+		prefixed = translatePathCI(lpath.c_str());
+		if (::chdir(prefixed) == 0)
+			return 0;
+	}
+	
 	return AutoPathErrno<int>(chdir, path);
 }
 
