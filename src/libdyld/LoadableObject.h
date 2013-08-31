@@ -42,7 +42,7 @@ public:
 	inline void setNoDelete(bool noDelete) { m_noDelete = noDelete; }
 	inline bool noDelete() const { return m_noDelete; }
 	
-	static LoadableObject* instantiateForPath(const std::string& path, MachOObject* requester);
+	static LoadableObject* instantiateForPath(const std::string& path, MachOObject* requester, int flag = 0);
 	
 protected:
 	std::atomic<int> m_refs;
