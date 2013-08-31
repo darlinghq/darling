@@ -2,6 +2,7 @@
 #include <libmach-o/MachO.h>
 #include "MachOObject.h"
 #include "NativeObject.h"
+#include "dl_public.h"
 #include "arch.h"
 
 namespace Darling {
@@ -29,12 +30,13 @@ int LoadableObject::delRef()
 	return refs;
 }
 
-LoadableObject* LoadableObject::instantiateForPath(const std::string& path, MachOObject* requester)
+LoadableObject* LoadableObject::instantiateForPath(const std::string& path, MachOObject* requester, int flag)
 {
 	if (MachO::isMachO(path.c_str()))
 	{
 		MachOObject* obj = new MachOObject(path);
 		obj->setRequesterRunpaths(requester->runPaths());
+		obj->setNoRecursion(flag & DARWIN_RTLD_FIRST);
 		return obj;
 	}
 	else

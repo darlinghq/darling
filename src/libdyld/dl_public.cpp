@@ -36,7 +36,7 @@ void* __darwin_dlopen(const char* filename, int flag)
 	if (!filename)
 		return MachOMgr::instance()->mainModule();
 	
-	resolved = DylibSearch::instance()->resolve(filename, nullptr);
+	resolved = DylibSearch::instance()->resolve(filename, MachOMgr::instance()->mainModule());
 
 	LOG << "dlopen(): " << filename << " resolved to " << resolved << std::endl;
 	if (resolved.empty())
@@ -63,17 +63,7 @@ void* __darwin_dlopen(const char* filename, int flag)
 		{
 			try
 			{
-				if (MachO::isMachO(resolved.c_str()))
-				{
-					MachOObject* mach;
-
-					obj = mach = new MachOObject(resolved);
-					mach->setNoRecursion(flag & DARWIN_RTLD_FIRST);
-				}
-				else
-				{
-					obj = new NativeObject(resolved);
-				}
+				obj = LoadableObject::instantiateForPath(resolved, MachOMgr::instance()->mainModule(), flag);
 
 				if (flag & DARWIN_RTLD_NOW)
 					obj->setBindAllAtLoad(true);
