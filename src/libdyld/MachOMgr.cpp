@@ -225,8 +225,12 @@ void* MachOMgr::getExportedSymbol(const std::string& symbolName, LoadableObject*
 LoadableObject* MachOMgr::lookup(const std::string& absolutePath)
 {
 	Darling::RWMutexReadLock l(m_lock);
+
+	char path[PATH_MAX];
 	
-	auto it = m_objectNames.find(absolutePath);
+	realpath(absolutePath.c_str(), path);
+
+	auto it = m_objectNames.find(path);
 	if (it != m_objectNames.end())
 		return it->second;
 	else
