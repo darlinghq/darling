@@ -55,6 +55,7 @@ set(libc_SRCS
 	libc/dir.cpp
 	libc/string.cpp
 	libc/exec.cpp
+	libc/uname.cpp
 	libc/stdio.cpp
 	libc/fopsmisc.cpp
 	libc/aio.cpp

@@ -5,13 +5,16 @@
 #include <ctype.h>
 #include <iostream>
 
-IniConfig::IniConfig(const char* path)
+IniConfig::IniConfig(const char* path, bool silentFail)
 {
 	std::ifstream file(path);
 	if (!file.is_open())
-		throw std::runtime_error("Specified config file not found!");
-
-	loadConfig(file);
+	{
+		if (!silentFail)
+			throw std::runtime_error("Specified config file not found!");
+	}
+	else
+		loadConfig(file);
 }
 
 IniConfig::~IniConfig()

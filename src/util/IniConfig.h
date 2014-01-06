@@ -8,7 +8,7 @@
 class IniConfig
 {
 public:
-	IniConfig(const char* path);
+	IniConfig(const char* path, bool silentFail = false);
 	~IniConfig();
 	
 	typedef std::map<std::string, std::string> ValueMap;

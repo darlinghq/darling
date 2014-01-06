@@ -1,4 +1,4 @@
-#include "config,h"
+#include "../../config.h"
 #include "uname.h"
 #include "errno.h"
 #include <errno.h>
@@ -35,7 +35,7 @@ int __darwin_uname(__darwin_utsname* buf)
 	strcpy(buf->release, nbuf.release);
 	strcpy(buf->version, nbuf.version);
 #else
-	static IniConfig iniConfig(ETC_DARWIN_PATH "/version.conf");
+	static IniConfig iniConfig(ETC_DARLING_PATH "/version.conf", true);
 	const char *sysname = nullptr, *release = nullptr, *version = nullptr;
 
 	if (iniConfig.hasSection("uname"))
