@@ -2,14 +2,11 @@ This is a userspace compatibility layer for running Darwin/OS X binaries on Linu
 
 # General information
 
-For more information (such as **build instructions**), visit http://darling.dolezel.info
+For more information (such as **build instructions**), visit http://www.darlinghq.org
 
 # Hacking tutorial
 
-Want to help and don't know what's currently important? Let me know!
-Google Group: https://groups.google.com/d/forum/darling-project
-
-**Important:** Use git clone -r (as in recursive) to check out this project.
+Want to help? Visit the developer zone at http://www.darlinghq.org/developer-zone
 
 ## Directory tree
 
@@ -77,11 +74,9 @@ The testing procedure implemented in `src/tests/runtest.cpp` is as follows:
 6. It compares the stdout contents of dyld with that of the remotely run binary.
 7. Should the stdout contents differ or should the process exit with a non-zero code on either of the systems, the test has failed.
 
-In `src/tests/libsshcxx`, a copy of my libssh C++ wrapper should check itself out.
-
 ## Debugging
 
-Find out how Darling can help you with debugging at http://darling.dolezel.info/en/Debugging
+Find out how Darling can help you with debugging at http://www.darlinghq.org/for-developers/debugging-in-darling
 
 ## What NOT to do
 
