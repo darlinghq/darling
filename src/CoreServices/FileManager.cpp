@@ -44,7 +44,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // Doesn't resolve the last symlink
 // Mallocates a new buffer
 static char* realpath_ns(const char* path);
-static bool FSRefMakePath(const FSRef* ref, std::string& out);
+/*static*/ bool FSRefMakePath(const FSRef* ref, std::string& out);
 static bool FSRefParamMakePath(const FSRefParam* param, std::string& out);
 // Is the current user member of the specified group?
 static bool hasgid(gid_t gid);

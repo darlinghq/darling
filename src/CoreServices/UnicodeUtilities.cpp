@@ -23,18 +23,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unicode/sortkey.h>
 #include <string>
 #include <cstring>
-#include <endian.h>
+#include "UniChar.h"
 #include "MacErrors.h"
 #include "util/log.h"
-
-// UniChar uses platform endianness, whereas ICU expects BE by default
-#if __BYTE_ORDER == __BIG_ENDIAN
-#	define UNICHAR_ENCODING "UTF-16BE"
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
-#	define UNICHAR_ENCODING "UTF-16LE"
-#else
-#	error Cannot determine endianness!
-#endif
 
 namespace Darling
 {

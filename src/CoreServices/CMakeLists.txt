@@ -34,6 +34,7 @@ set(CoreServices_SRCS
 	DriverServices.cpp
 	Components.cpp
 	Processes.cpp
+	LaunchServices.cpp
 )
 
 if (WITH_COREAUDIO)
