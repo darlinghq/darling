@@ -80,6 +80,8 @@ void QNSEventDispatcher::flush()
 
 bool QNSEventDispatcher::hasPendingEvents()
 {
+	extern Q_CORE_EXPORT uint qGlobalPostedEventsCount();
+	return qGlobalPostedEventsCount() > 0;
 }
 
 void QNSEventDispatcher::interrupt()
@@ -88,6 +90,19 @@ void QNSEventDispatcher::interrupt()
 
 bool QNSEventDispatcher::processEvents(QEventLoop::ProcessEventsFlags flags)
 {
+	emit awake();
+	
+	QCoreApplication::sendPostedEvents(0, -1);
+	
+	if (flags & QEventLoop::ExcludeSocketNotifiers)
+		; // TODO
+	if (flags & QEventLoop::X11ExcludeTimers)
+		; // TODO
+	
+	[m_runLoop runUntilDate: [NSDate distantPast]];
+	QCoreApplication::sendPostedEvents(0, -1);
+	
+	return true;
 }
 
 void QNSEventDispatcher::registerSocketNotifier(QSocketNotifier* notifier)
