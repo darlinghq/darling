@@ -5,6 +5,7 @@
 #include <QSocketNotifier>
 #include <Foundation/NSInvocation.h>
 #include <QPair>
+#include "NSX11Event.h"
 
 @interface NSStream (Private)
 - (void) _setLoopID: (void *)ref;
@@ -61,10 +62,18 @@
 }
 @end
 
+QNSEventDispatcher* QNSEventDispatcher::instance()
+{
+	static QNSEventDispatcher instance;
+	return &instance;
+}
+
 QNSEventDispatcher::QNSEventDispatcher()
 {
 	m_runLoop = [NSRunLoop currentRunLoop];
 	m_timerInvocation = [[NSTimerInvocation alloc] initWithEventDispatcher: this];
+
+	setEventFilter(captureAllFilter);
 }
 
 QNSEventDispatcher::~QNSEventDispatcher()
@@ -72,6 +81,13 @@ QNSEventDispatcher::~QNSEventDispatcher()
 	// kill all timers
 	[m_runLoop release];
 	[m_timerInvocation release];
+}
+
+bool QNSEventDispatcher::captureAllFilter(void* msg)
+{
+	XEvent* ev = static_cast<XEvent*>(msg);
+	instance()->m_events.enqueue(*ev);
+	return true;
 }
 
 void QNSEventDispatcher::flush()
@@ -224,5 +240,17 @@ bool QNSEventDispatcher::unregisterTimers(QObject* object)
 
 void QNSEventDispatcher::wakeUp()
 {
+}
+
+NSEvent* QNSEventDispatcher::peekEvent()
+{
+	XEvent ev = m_events.head();
+	return [NSEvent eventWithCGEvent: &ev];
+}
+
+NSEvent* QNSEventDispatcher::takeEvent()
+{
+	XEvent ev = m_events.dequeue();
+	return [NSEvent eventWithCGEvent: &ev];
 }
 

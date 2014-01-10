@@ -1,27 +1,88 @@
 #ifndef NSEVENT_H_
 #define NSEVENT_H_
 #include <Foundation/NSObject.h>
+#include <Foundation/NSGeometry.h>
+#include <CoreGraphics/CGBase.h>
+#include <CoreGraphics/CGEventRef.h>
 
-#ifdef DARLING_BUILD
-#	include <QEvent>
-#endif
+@class NSGraphicsContext;
+@class NSWindow;
+typedef NSUInteger NSEventPhase;
+typedef NSUInteger NSEventType;
+typedef NSUInteger NSPointingDeviceType;
+typedef unsigned long long NSEventMask;
 
-@interface NSEvent : NSObject
-#ifdef DARLING_BUILD
-{
-	QEvent* m_event;
-	bool m_owner;
-}
+@interface NSEvent : NSObject <NSCopying, NSCoding>
+// TODO: static stuff
++ (NSEvent *)eventWithCGEvent:(CGEventRef)cgEvent;
 
--(QEvent*) _qtEvent;
+- (id)initWithCoder:(NSCoder *)decoder;
+- (void)encodeWithCoder:(NSCoder *)encoder;
 
--(id) initWithQEvent: (QEvent*) event
-           ownership: (BOOL) owner;
+- (id)copyWithZone:(NSZone *)zone;
+- (NSGraphicsContext *)context;
+- (NSInteger)absoluteX;
+- (NSInteger)absoluteY;
+- (NSInteger)absoluteZ;
+- (NSUInteger)buttonMask;
+- (NSInteger)buttonNumber;
+- (NSUInteger)capabilityMask;
+- (CGEventRef)CGEvent;
+- (NSString *)characters;
+- (NSString *)charactersIgnoringModifiers;
+- (NSInteger)clickCount;
+- (NSInteger)data1;
+- (NSInteger)data2;
+- (CGFloat)deltaX;
+- (CGFloat)deltaY;
+- (CGFloat)deltaZ;
+- (NSUInteger)deviceID;
+- (NSInteger)eventNumber;
+- (const void *)eventRef;
+- (BOOL)hasPreciseScrollingDeltas;
+- (BOOL)isARepeat;
+- (BOOL)isDirectionInvertedFromDevice;
+- (BOOL)isEnteringProximity;
+- (unsigned short)keyCode;
+- (NSPoint)locationInWindow;
+- (CGFloat)magnification;
+- (NSUInteger)modifierFlags;
+- (NSEventPhase)momentumPhase;
+- (NSEventPhase)phase;
+- (NSUInteger)pointingDeviceID;
+- (NSUInteger)pointingDeviceSerialNumber;
+- (NSPointingDeviceType)pointingDeviceType;
+- (float)pressure;
+- (float)rotation;
+- (CGFloat)scrollingDeltaX;
+- (CGFloat)scrollingDeltaY;
+- (short)subtype;
+- (NSUInteger)systemTabletID;
+- (NSUInteger)tabletID;
+- (float)tangentialPressure;
+- (NSPoint)tilt;
+- (NSTimeInterval)timestamp;
+- (NSInteger)trackingNumber;
+- (NSEventType)type;
+- (unsigned long long)uniqueID;
+- (void *)userData;
+- (id)vendorDefined;
+- (NSUInteger)vendorID;
+- (NSUInteger)vendorPointingDeviceType;
+- (NSWindow *)window;
+- (NSInteger)windowNumber;
 
-#endif
-
--(void) dealloc;
 @end
+
+enum {
+   NSEventPhaseNone        = 0,
+   NSEventPhaseBegan       = 0x1 << 0,
+   NSEventPhaseStationary  = 0x1 << 1,
+   NSEventPhaseChanged     = 0x1 << 2,
+   NSEventPhaseEnded       = 0x1 << 3,
+   NSEventPhaseCancelled   = 0x1 << 4,
+   NSEventPhaseMayBegin    = 0x1 << 5
+};
 
 enum {
    NSLeftMouseDown      = 1,
@@ -56,7 +117,6 @@ enum {
    NSEventTypeSmartMagnify = 32,
    NSEventTypeQuickLook   = 33
 };
-typedef NSUInteger NSEventType;
 
 enum {
    NSLeftMouseDownMask      = 1 << NSLeftMouseDown,
@@ -91,7 +151,6 @@ enum {
    NSEventMaskSmartMagnify = 1ULL << NSEventTypeSmartMagnify,
    NSAnyEventMask           = 0xffffffffU
 };
-typedef unsigned long long NSEventMask;
 inline NSUInteger NSEventMaskFromType(NSEventType type) { return (1 << type); };
 
 #endif

@@ -17,8 +17,6 @@ class NSApplicationEventFilter;
 #ifdef DARLING_BUILD
 {
 	bool m_running;
-	NSApplicationEventFilter* m_eventFilter;
-	QNSEventDispatcher* m_dispatcher;
 	QApplication* m_application;
 }
 #endif

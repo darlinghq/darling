@@ -1,5 +1,5 @@
 #include "NSApplication.h"
-#include "NSEvent.h"
+#include "NSX11Event.h"
 #include <Foundation/NSRunLoop.h>
 #include <Foundation/NSProcessInfo.h>
 #include <Foundation/NSBundle.h>
@@ -8,13 +8,15 @@
 #include <QQueue>
 #include <unistd.h>
 #include <mutex>
+#include <memory>
 
 id NSApp = nullptr;
 
+/*
 class NSApplicationEventFilter : public QObject
 {
 public:
-	QEvent* takeEvent()
+	std::shared_ptr<QEvent> takeEvent()
 	{
 		if (m_queue.isEmpty())
 			return nullptr;
@@ -22,23 +24,39 @@ public:
 			return m_queue.dequeue();
 	}
 	
-	QEvent* peekEvent()
+	std::shared_ptr<QEvent> peekEvent()
 	{
 		if (m_queue.isEmpty())
 			return nullptr;
 		else
 			return m_queue.head();
 	}
+private:
+	static QEvent* cloneEvent(QEvent* e)
+	{
+		switch (e->type())
+		{
+			//case 
+			default:
+				return nullptr;
+		}
+	}
 protected:
 	bool eventFilter(QObject* obj, QEvent* event) override
 	{
 		// TODO: Manually create clones of all events that may happen in this application and enqueue them.
 		// Let the other functions pass.
-		return QObject::eventFilter(obj, event);
+		QEvent* clone = cloneEvent(event);
+
+		if (!clone)
+			return QObject::eventFilter(obj, event);
+		else
+			return true;
 	}
 private:
-	QQueue<QEvent*> m_queue;
+	QQueue<std::shared_ptr<QEvent>> m_queue;
 };
+*/
 
 @implementation NSApplication
 +(NSApplication*) sharedApplication
@@ -70,11 +88,8 @@ private:
 		qargs << nullptr;
 		
 		m_running = false;
-		m_dispatcher = new QNSEventDispatcher;
+		QNSEventDispatcher::instance(); // force singleton creation
 		m_application = new QApplication(argc, qargs.data());
-		
-		m_eventFilter = new NSApplicationEventFilter;
-		m_application->installEventFilter(m_eventFilter);
 	}
 	return self;
 }
@@ -82,8 +97,6 @@ private:
 -(void) dealloc
 {
 	delete m_application;
-	delete m_eventFilter;
-	delete m_dispatcher;
 	[super dealloc];
 }
 
@@ -130,7 +143,7 @@ private:
 {
 	// TODO: mask and other arguments!
 	NSTimeInterval interval = 0;
-	QEvent* qevent;
+	NSEvent* event;
 	
 	if (expiration != nullptr)
 		interval = [expiration timeIntervalSinceNow];
@@ -141,24 +154,27 @@ private:
 		m_application->processEvents(QEventLoop::AllEvents);
 	
 	if (flag)
-		qevent = m_eventFilter->takeEvent();
+		event = QNSEventDispatcher::instance()->takeEvent();
 	else
-		qevent = m_eventFilter->peekEvent();
+		event = QNSEventDispatcher::instance()->peekEvent();
 	
-	if (qevent != nullptr)
-	{
-		NSEvent* nsevent = [[NSEvent alloc] initWithQEvent: qevent
-		                                         ownership: flag];
-		return [nsevent autorelease];
-	}
-	else
-		return nullptr;
+	return event;
 }
 
 - (void)sendEvent:(NSEvent *)anEvent
 {
-	QEvent* event = [anEvent _qtEvent];
-	m_application->sendEvent(m_application, event);
+	XEvent* event = [anEvent CGEvent];
+
+	if (event != nullptr)
+	{
+		// It is a wrapped X11 event
+		m_application->x11ProcessEvent(event);
+	}
+	else
+	{
+		// It is an application-generated event
+		// TODO: Wrap it and pass it through Qt's event system
+	}
 }
 @end
 

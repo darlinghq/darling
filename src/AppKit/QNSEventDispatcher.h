@@ -2,9 +2,13 @@
 #define QNSEVENTDISPATCHER_H
 #include <QtCore/qabstracteventdispatcher.h>
 #include <QHash>
+#include <QQueue>
+#include <QTimerEvent>
 #include <Foundation/NSRunLoop.h>
 #include <Foundation/NSTimer.h>
 #include <Foundation/NSStream.h>
+#include <X11/Xlib.h>
+#include "NSEvent.h"
 
 class QNSEventDispatcher;
 @interface NSTimerInvocation : NSObject
@@ -26,9 +30,12 @@ class QNSEventDispatcher;
 
 class QNSEventDispatcher : public QAbstractEventDispatcher
 {
-public:
+private:
 	QNSEventDispatcher();
-	virtual ~QNSEventDispatcher();
+	~QNSEventDispatcher();
+	static bool captureAllFilter(void* msg);
+public:
+	static QNSEventDispatcher* instance();
 
 	virtual void flush() override;
 	virtual bool hasPendingEvents() override;
@@ -43,6 +50,8 @@ public:
 	virtual void wakeUp() override;
 
 	void fireTimer(int timerId);
+	NSEvent* peekEvent();
+	NSEvent* takeEvent();
 private:
 	struct MyTimerInfo
 	{
@@ -60,6 +69,7 @@ private:
 	QHash<int, MyTimerInfo> m_timers;
 	QHash<QSocketNotifier*, MySocketInfo> m_sockets;
 	NSTimerInvocation* m_timerInvocation;
+	QQueue<XEvent> m_events;
 };
 
 #endif

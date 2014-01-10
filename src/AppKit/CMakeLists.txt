@@ -29,6 +29,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 set(AppKit_SRCS
 	NSApplication.mm
 	NSEvent.mm
+	NSX11Event.mm
 	QNSEventDispatcher.mm
 )
 
