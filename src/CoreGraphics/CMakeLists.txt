@@ -13,12 +13,16 @@ endif(COMMAND cmake_policy)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
 
+add_definitions(-D__STDC_LIMIT_MACROS)
+add_definitions(-DDARLING_BUILD)
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 
 set(CoreGraphics_SRCS
 	CGDirectDisplay.mm
+	CGGeometry.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
@@ -27,7 +31,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(CoreGraphics SHARED ${CoreGraphics_SRCS})
-target_link_libraries(CoreGraphics -lopal -lgnustep-corebase -lX11 -lXrandr)
+target_link_libraries(CoreGraphics -lopal -lgnustep-corebase -lX11 -lXrandr -lgnustep-corebase)
 
 install(TARGETS CoreGraphics DESTINATION "lib${SUFFIX}/darling")
 

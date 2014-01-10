@@ -19,6 +19,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include "CGDirectDisplay.h"
+#include <CoreFoundation/CFString.h>
+#include <CoreFoundation/CFNumber.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
 #include <cstdlib>
@@ -237,7 +239,7 @@ CFArrayRef CGDisplayCopyAllDisplayModes(CGDirectDisplayID id)
 		rates = XRRConfigRates (rrc, i, &nRates);
 		for (int j = 0; j < nRates; j++)
 		{
-			CFMutableDictionaryRef dictR = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, dict);
+			CFMutableDictionaryRef dictR = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, (CFDictionaryRef) dict);
 			CFDictAddInt(dictR, kCGDisplayRefreshRate, rates[j]);
 			CFDictAddInt(dictR, kCGDisplayMode, (i << 16) | rates[j]);
 
@@ -249,7 +251,7 @@ CFArrayRef CGDisplayCopyAllDisplayModes(CGDirectDisplayID id)
 	}
 
 	XRRFreeScreenConfigInfo(rrc);
-	return rv;
+	return (CFArrayRef) rv;
 }
 
 CGError CGDisplaySwitchToMode(CGDirectDisplayID id, CFDictionaryRef mode)
@@ -315,7 +317,7 @@ CFDictionaryRef CGDisplayCurrentMode(CGDirectDisplayID id)
 
 	XRRFreeScreenConfigInfo(rrc);
 
-	return dict;
+	return (CFDictionaryRef) dict;
 }
 
 CGDisplayModeRef CGDisplayCopyDisplayMode(CGDirectDisplayID id)
