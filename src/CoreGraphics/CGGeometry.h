@@ -9,31 +9,40 @@ BEGIN_EXTERN_C
 
 struct CGPoint
 {
-   CGFloat x;
-   CGFloat y;
+	CGFloat x;
+	CGFloat y;
 };
 typedef struct CGPoint CGPoint;
 
 struct CGSize
 {
-   CGFloat width;
-   CGFloat height;
+	CGFloat width;
+	CGFloat height;
 };
 typedef struct CGSize CGSize;
 
 struct CGVector
 {
-   CGFloat dx;
-   CGFloat dy;
+	CGFloat dx;
+	CGFloat dy;
 };
 typedef struct CGVector CGVector;
 
 struct CGRect
 {
-   CGPoint origin;
-   CGSize size;
+	CGPoint origin;
+	CGSize size;
 };
 typedef struct CGRect CGRect;
+
+enum CGRectEdge
+{
+	CGRectMinXEdge,
+	CGRectMinYEdge,
+	CGRectMaxXEdge,
+	CGRectMaxYEdge
+};
+typedef enum CGRectEdge CGRectEdge;
 
 extern const CGRect CGRectInfinite;
 extern const CGPoint CGPointZero;
@@ -68,6 +77,12 @@ CGFloat CGRectGetMidX(CGRect rect);
 CGFloat CGRectGetMidY(CGRect rect);
 bool CGRectIsNull(CGRect rect);
 bool CGRectIsInfinite(CGRect rect);
+bool CGRectContainsPoint(CGRect rect, CGPoint point);
+bool CGRectContainsRect(CGRect rect1, CGRect rect2);
+
+CGRect CGRectStandardize(CGRect rect);
+CGRect CGRectOffset(CGRect rect, CGFloat dx, CGFloat dy);
+CGRect CGRectIntegral(CGRect rect);
 
 END_EXTERN_C
 

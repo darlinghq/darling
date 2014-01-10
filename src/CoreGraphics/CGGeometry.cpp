@@ -1,5 +1,6 @@
 #include "CGGeometry.h"
 #include <limits>
+#include <cmath>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFString.h>
 
@@ -106,6 +107,48 @@ bool CGRectIsInfinite(CGRect rect)
 bool CGRectIsEmpty(CGRect rect)
 {
 	return rect.size.height == 0 && rect.size.width == 0;
+}
+
+bool CGRectContainsPoint(CGRect rect, CGPoint point)
+{
+	return point.x >= rect.origin.x && point.x < rect.origin.x+rect.size.width
+		&& point.y >= rect.origin.y && point.y < rect.origin.y+rect.size.height;
+}
+
+bool CGRectContainsRect(CGRect rect1, CGRect rect2)
+{
+	return CGRectContainsPoint(rect1, rect2.origin)
+		&& CGRectContainsPoint(rect1, CGPoint { rect2.origin.x+rect2.size.width, rect2.origin.y+rect2.size.height });
+}
+
+CGRect CGRectStandardize(CGRect rect)
+{
+	if (rect.size.width < 0)
+	{
+		rect.origin.x += rect.size.width;
+		rect.size.width = -rect.size.width;
+	}
+	
+	if (rect.size.height < 0)
+	{
+		rect.origin.y += rect.size.height;
+		rect.size.height = -rect.size.height;
+	}
+	
+	return rect;
+}
+
+CGRect CGRectOffset(CGRect rect, CGFloat dx, CGFloat dy)
+{
+	return CGRect { CGPoint { rect.origin.x+dx, rect.origin.y+dy }, rect.size };
+}
+
+CGRect CGRectIntegral(CGRect rect)
+{
+	return CGRect {
+		CGPoint { std::floor(rect.origin.x), std::floor(rect.origin.y) },
+		CGSize { std::ceil(rect.size.width), std::ceil(rect.size.height) }
+	};
 }
 
 CFDictionaryRef CGPointCreateDictionaryRepresentation(CGPoint point)
