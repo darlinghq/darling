@@ -17,6 +17,11 @@
 - (NSInteger)windowNumber;
 - (NSWindow*) window;
 - (NSPoint)locationInWindow;
+- (NSInteger)buttonNumber;
+- (unsigned short)keyCode;
+
+- (NSString *)characters;
+- (NSString *)charactersIgnoringModifiers;
 @end
 
 #endif

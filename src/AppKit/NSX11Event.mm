@@ -1,4 +1,6 @@
 #include "NSX11Event.h"
+#include <X11/Xutil.h>
+#include <Foundation/NSException.h>
 
 @implementation NSX11Event
 
@@ -76,6 +78,59 @@
 {
 	//return NSPoint{m_event.x, m_event.y+1};
 	return NSPoint{0, 0};
+}
+
+// TODO: check event type and throw inconsistency exceptions
+- (NSInteger)buttonNumber
+{
+	return m_event.xbutton.button;
+}
+
+- (unsigned short)keyCode
+{
+	NSEventType type = [self type];
+	
+	if (type != NSKeyDown && type != NSKeyUp)
+	{
+		[NSException raise: NSInternalInconsistencyException
+					format: @"Invalid NSEvent type for this call"];
+	}
+	
+	return m_event.xkey.keycode;
+}
+
+- (NSString *)characters
+{
+	NSEventType type = [self type];
+	
+	if (type != NSKeyDown && type != NSKeyUp)
+	{
+		[NSException raise: NSInternalInconsistencyException
+					format: @"Invalid NSEvent type for this call"];
+	}
+	
+	char text[10];
+	XLookupString(&m_event.xkey, text, sizeof(text), nullptr, nullptr);
+	return [NSString stringWithUTF8String: text];
+}
+
+- (NSString *)charactersIgnoringModifiers
+{
+	NSEventType type = [self type];
+	
+	if (type != NSKeyDown && type != NSKeyUp)
+	{
+		[NSException raise: NSInternalInconsistencyException
+					format: @"Invalid NSEvent type for this call"];
+	}
+	
+	char text[10];
+	XKeyEvent ev = m_event.xkey;
+	
+	ev.state = 0x10;
+	
+	XLookupString(&ev, text, sizeof(text), nullptr, nullptr);
+	return [NSString stringWithUTF8String: text];
 }
 
 @end

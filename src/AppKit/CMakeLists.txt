@@ -39,7 +39,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(AppKit SHARED ${AppKit_SRCS})
-target_link_libraries(AppKit -lgnustep-base ${QT_LIBRARIES})
+target_link_libraries(AppKit -lgnustep-base -lX11 ${QT_LIBRARIES})
 
 install(TARGETS AppKit DESTINATION "lib${SUFFIX}/darling")
 
