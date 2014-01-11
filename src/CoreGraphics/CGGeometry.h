@@ -83,6 +83,10 @@ bool CGRectContainsRect(CGRect rect1, CGRect rect2);
 CGRect CGRectStandardize(CGRect rect);
 CGRect CGRectOffset(CGRect rect, CGFloat dx, CGFloat dy);
 CGRect CGRectIntegral(CGRect rect);
+CGRect CGRectIntersection(CGRect r1, CGRect r2);
+CGRect CGRectInset(CGRect rect, CGFloat dx, CGFloat dy);
+CGRect CGRectUnion(CGRect r1, CGRect r2);
+void CGRectDivide(CGRect rect, CGRect* slice, CGRect* remainder, CGFloat amount, CGRectEdge edge);
 
 END_EXTERN_C
 

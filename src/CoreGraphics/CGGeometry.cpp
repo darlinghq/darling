@@ -1,6 +1,8 @@
 #include "CGGeometry.h"
 #include <limits>
 #include <cmath>
+#include <cstring>
+#include <algorithm>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFString.h>
 
@@ -149,6 +151,130 @@ CGRect CGRectIntegral(CGRect rect)
 		CGPoint { std::floor(rect.origin.x), std::floor(rect.origin.y) },
 		CGSize { std::ceil(rect.size.width), std::ceil(rect.size.height) }
 	};
+}
+
+CGRect CGRectIntersection(CGRect r1, CGRect r2)
+{
+	r1 = CGRectStandardize(r1);
+	r2 = CGRectStandardize(r2);
+	
+	CGFloat x0 = std::max(r1.origin.x, r2.origin.x);
+	CGFloat x1 = std::min(r1.origin.x + r1.size.width, r2.origin.x + r2.size.width);
+	
+	if (x0 <= x1)
+	{
+		CGFloat y0 = std::max(r1.origin.y, r2.origin.y);
+		CGFloat y1 = std::min(r1.origin.y + r1.size.height, r2.origin.y + r2.size.height);
+		
+		if (y0 <= y1)
+		{
+			return CGRect {
+				CGPoint { x0, y0 },
+				CGSize { x1 - x0, y1 - y0 }
+			};
+		}
+	}
+	
+	return CGRectNull;
+}
+
+CGRect CGRectInset(CGRect rect, CGFloat dx, CGFloat dy)
+{
+	if (cgabs(dx)*2 > rect.size.width || cgabs(dy)*2 > rect.size.height)
+		return CGRectNull;
+	
+	rect.origin.x -= dx;
+	rect.origin.y -= dy;
+	rect.size.width -= dx*2;
+	rect.size.height -= dy*2;
+	
+	return rect;
+}
+
+CGRect CGRectUnion(CGRect r1, CGRect r2)
+{
+	if (CGRectIsNull(r1))
+		return r2;
+	if (CGRectIsNull(r2))
+		return r1;
+	
+	r1 = CGRectStandardize(r1);
+	r2 = CGRectStandardize(r2);
+	
+	CGFloat x0 = std::min(r1.origin.x, r2.origin.x);
+	CGFloat x1 = std::max(r1.origin.x + r1.size.width, r2.origin.x + r2.size.width);
+	CGFloat y0 = std::min(r1.origin.y, r2.origin.y);
+	CGFloat y1 = std::max(r1.origin.y + r1.size.height, r2.origin.y + r2.size.height);
+	
+	return CGRect {
+		CGPoint { x0, y0 },
+		CGSize { x1 - x0, y1 - y0 }
+	};
+}
+
+void CGRectDivide(CGRect rect, CGRect* slice, CGRect* remainder, CGFloat amount, CGRectEdge edge)
+{
+	rect = CGRectStandardize(rect);
+	
+	if (((edge == CGRectMinXEdge || edge == CGRectMaxXEdge) && amount > rect.size.width)
+		|| ((edge == CGRectMinYEdge || edge == CGRectMaxYEdge) && amount > rect.size.height))
+	{
+		memcpy(slice, &rect, sizeof(CGRect));
+		memcpy(remainder, &CGRectZero, sizeof(CGRect));
+		return;
+	}
+	
+	switch (edge)
+	{
+		case CGRectMinXEdge:
+			slice->origin.x = rect.origin.x;
+			slice->origin.y = rect.origin.y;
+			slice->size.width = amount;
+			slice->size.height = rect.size.height;
+			
+			remainder->origin.x = rect.origin.x + amount;
+			remainder->origin.y = rect.origin.y;
+			remainder->size.width = rect.size.width - amount;
+			remainder->size.height = rect.size.height;
+			
+			break;
+		case CGRectMinYEdge:
+			slice->origin.x = rect.origin.x;
+			slice->origin.y = rect.origin.y;
+			slice->size.width = rect.size.width;
+			slice->size.height = amount;
+			
+			remainder->origin.x = rect.origin.x;
+			remainder->origin.y = rect.origin.y + amount;
+			remainder->size.width = rect.size.width;
+			remainder->size.height = rect.size.height - amount;
+			
+			break;
+		case CGRectMaxXEdge:
+			slice->origin.x = rect.origin.x + rect.size.width - amount;
+			slice->origin.y = rect.origin.y;
+			slice->size.width = amount;
+			slice->size.height = rect.size.height;
+			
+			remainder->origin.x = rect.origin.x;
+			remainder->origin.y = rect.origin.y;
+			remainder->size.width = rect.size.width - amount;
+			remainder->size.height = rect.size.height;
+			
+			break;
+		case CGRectMaxYEdge:
+			slice->origin.x = rect.origin.x;
+			slice->origin.y = rect.origin.y + rect.size.height - amount;
+			slice->size.width = rect.size.width;
+			slice->size.height = amount;
+			
+			remainder->origin.x = rect.origin.x;
+			remainder->origin.y = rect.origin.y;
+			remainder->size.width = rect.size.width;
+			remainder->size.height = rect.size.height - amount;
+			
+			break;
+	}
 }
 
 CFDictionaryRef CGPointCreateDictionaryRepresentation(CGPoint point)
