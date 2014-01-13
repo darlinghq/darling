@@ -468,3 +468,13 @@ void _ZN9__gnu_cxx13stdio_filebufIcSt11char_traitsIcEEC2EP7__sFILESt13_Ios_Openm
 
 #endif
 
+char* ctermid_r(char* p)
+{
+	static __thread char buf[PATH_MAX];
+
+	if (p)
+		return ctermid(p);
+	else
+		return ctermid(buf);
+}
+
