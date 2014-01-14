@@ -10,6 +10,75 @@
 #include <unicode/unistr.h>
 #include "UniChar.h"
 
+namespace
+{
+    const std::string g_scXdgOpenPath = "/usr/bin/xdg-open";
+    const std::string g_scXdgMimePath = "/usr/bin/xdg-mime";
+
+    std::string launchApp(const std::string &app, const std::vector<std::string> &args, bool async = false)
+    {
+        std::string buffer;
+        char **argv = new char*[args.size()+1];
+        int index=0;
+        argv[0] = strdup(app.c_str());
+        std::for_each(std::begin(args), std::end(args), [&argv,&index](const std::string &arg)
+        {
+            argv[++index] = strdup(arg.c_str());
+        });
+        argv[++index] = 0;
+
+        int pipes[2];
+        pipe(pipes);
+
+        pid_t newPid = fork();
+
+        if (newPid == 0) {
+            if (!async) {
+                close(pipes[0]);
+                dup2(pipes[1], 1);
+                close(pipes[1]);
+            }
+            // close stdin
+            close(0);
+            execv(argv[0], reinterpret_cast<char *const*>(argv));
+            perror("Unable to launch process");
+            exit(20);
+        }
+        else if( newPid > 0 ) {
+            close(pipes[1]);
+            if (!async) {
+                char cBuffer[1024];
+
+                while(read(pipes[0], cBuffer,sizeof(cBuffer)) != 0) {
+                    buffer += cBuffer;
+                }
+                buffer +='\0';
+                wait();
+            }
+        }
+        for(std::size_t i = 0;i< args.size()+1;++i){
+            free(argv[i]);
+        }
+        delete[] (argv);
+
+        return buffer;
+    }
+
+    std::string mimeForFile(const std::string &url)
+    {
+        std::vector<std::string> args {"query", "filetype",url};
+        std::string out = launchApp(g_scXdgMimePath,args);
+
+        return out;
+    }
+
+    std::string getDefaultApplication(std::string mimeType)
+    {
+        return launchApp(g_scXdgMimePath,std::vector<std::string> {"query","default", mimeType});
+    }
+}
+
+
 // in FileManager.cpp
 bool FSRefMakePath(const FSRef* ref, std::string& out);
 
@@ -140,7 +209,12 @@ OSStatus LSSetExtensionHiddenForURL(CFURLRef inURL, Boolean hide)
 OSStatus LSOpenCFURLRef(CFURLRef inURL, CFURLRef *outLaunchedURL)
 {
 	// TODO: use 'xdg-mime query' and 'xdg-mime default' to determine the app?
-	// TODO: use xdg-open to start the app
+
+    const char *str = CFStringGetCStringPtr(CFURLGetString(inURL),CFStringGetSystemEncoding());
+    std::vector<std::string> args;
+    args.push_back(str);
+    launchApp(g_scXdgOpenPath,args);
+    outLaunchedURL = nullptr;
 	return unimpErr;
 }
 
