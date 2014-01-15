@@ -107,6 +107,7 @@ add_subdirectory(src/ExceptionHandling)
 add_subdirectory(src/IOKit)
 add_subdirectory(src/Foundation)
 add_subdirectory(src/Carbon)
+add_subdirectory(src/SystemConfiguration)
 
 if (WITH_COREAUDIO)
 	add_subdirectory(src/AudioUnit)
