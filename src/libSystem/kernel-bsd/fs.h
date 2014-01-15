@@ -75,6 +75,10 @@ int __darwin_fstatfs64(int fd, struct __darwin_statfs64* buf) asm("__darwin_fsta
 int __darwin_getfsstat(struct __darwin_statfs* buf, int bufsize, int flags);
 int __darwin_getfsstat64(struct __darwin_statfs64* buf, int bufsize, int flags) asm("__darwin_getfsstat$INODE64");
 
+int chflags(const char *path, unsigned int flags);
+int fchflags(int fd, unsigned int flags);
+int lchflags(const char *path, unsigned int flags);
+
 #ifdef __cplusplus
 }
 

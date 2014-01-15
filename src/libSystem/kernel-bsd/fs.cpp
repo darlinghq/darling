@@ -2,6 +2,7 @@
 #include "fs.h"
 #include <cstring>
 #include "common/path.h"
+#include "common/auto.h"
 #include "libc/errno.h"
 #include "libc/darwin_errno_codes.h"
 #include <mntent.h>
@@ -9,7 +10,10 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 #include <sys/statvfs.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
+#include <linux/fs.h>
 #include "log.h"
 
 template<typename Out> void StatfsLinuxToDarwinGen(const char* path, const struct statvfs* in, Out* out)
@@ -159,3 +163,51 @@ struct mntent* findMountForPath(const char* path)
 	endmntent(f);
 	return rv;
 }
+
+#define EXT2_IMMUTABLE_FL		0x00000010
+#define EXT2_APPEND_FL			0x00000020
+#define EXT2_NODUMP_FL			0x00000040
+
+#define	UF_NODUMP		0x00000001
+#define	UF_IMMUTABLE	0x00000002
+#define	UF_APPEND		0x00000004
+
+static const Darling::MappedFlag g_fflags[] = {
+	{ UF_NODUMP, EXT2_NODUMP_FL}, { UF_IMMUTABLE, EXT2_IMMUTABLE_FL }, { UF_APPEND, EXT2_APPEND_FL},
+};
+
+int chflags(const char *path, unsigned int flags)
+{
+	int rv;
+	int fd = ::open(path, O_RDWR);
+	if (fd == -1)
+	{
+		errnoOut();
+		return -1;
+	}
+	
+	rv = fchflags(fd, flags);
+	::close(fd);
+	
+	return rv;
+}
+
+int fchflags(int fd, unsigned int flags)
+{
+	int rv;
+	
+	flags = Darling::flagsDarwinToNative(g_fflags, sizeof(g_fflags)/sizeof(g_fflags[0]), flags);
+	rv = ioctl(fd, FS_IOC_SETFLAGS, &flags);
+	
+	if (rv)
+		errnoOut();
+	
+	return rv;
+}
+
+int lchflags(const char *path, unsigned int flags)
+{
+	return DARWIN_ENOSYS; // not possible on Linux
+}
+
+
