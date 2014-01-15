@@ -72,6 +72,7 @@ void* __darwin_dlopen(const char* filename, int flag)
 			}
 			catch (const std::exception& e)
 			{
+				LOG << "dlopen() failed with an error: " << e.what() << std::endl;
 				dl_setLastError(e.what());
 				return nullptr;
 			}

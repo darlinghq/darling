@@ -144,7 +144,7 @@ private:
 	
 	static int machoProtectionFlagsToMmap(int machoFlags);
 	static uintptr_t pageAlign(uintptr_t what);
-	static void checkMappingAddr(void* addr);
+	static uintptr_t getMinMappingAddr();
 	static void writeBind(int type, void** ptr, void* newAddr, const std::string& name);
 	static bool lookupDyldFunction(const char* name, void** addr);
 private:

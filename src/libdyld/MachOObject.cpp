@@ -190,6 +190,9 @@ void MachOObject::loadSegments()
 			if (!m_base)
 				m_base = MachOMgr::instance()->maxAddress();
 			
+			if (m_base && m_base < (void*)getMinMappingAddr())
+				m_base = (void*) getMinMappingAddr();
+			
 			if (!m_base)
 			{
 				// This is normally used only for:
@@ -203,7 +206,7 @@ void MachOObject::loadSegments()
 	#endif
 			}
 			
-			if ((void*)seg->vmaddr != m_base && !isMainModule() && !m_slide)
+			if ((void*)seg->vmaddr != m_base && !m_slide)
 				m_slide = uintptr_t(m_base) - seg->vmaddr;
 		}
 		
@@ -211,8 +214,6 @@ void MachOObject::loadSegments()
 		mappingAddr = (void*) (seg->vmaddr + m_slide);
 		maxprot = machoProtectionFlagsToMmap(seg->maxprot);
 		initprot = machoProtectionFlagsToMmap(seg->initprot);
-		
-		checkMappingAddr(mappingAddr);
 	
 		if (MachOMgr::instance()->printSegments())
 			std::cerr << "dyld: Mapping segment " << seg->segname << " from " << m_file->filename() << " to " << mappingAddr << ", slide is 0x" << std::hex << m_slide << std::dec << std::endl;
@@ -286,26 +287,20 @@ int MachOObject::machoProtectionFlagsToMmap(int machoFlags)
 	return prot;
 }
 
-void MachOObject::checkMappingAddr(void* addr)
+uintptr_t MachOObject::getMinMappingAddr()
 {
-	static intptr_t minimum = -1;
+	static uintptr_t minimum = -1;
 	if (minimum == -1)
 	{
 		std::ifstream f("/proc/sys/vm/mmap_min_addr");
 
 		if (!f.is_open())
-			minimum = 0;
+			minimum = 0x1000;
 		else
 			f >> minimum;
 	}
 
-	if (addr < (void*)minimum)
-	{
-		std::stringstream ss;
-		ss << "Your vm.mmap_min_addr is too low for this application to be loaded. ";
-		ss << "Try running `sysctl -w vm.mmap_min_addr=\"" << addr << "\"'";
-		throw std::runtime_error(ss.str());
-	}
+	return minimum;
 }
 
 void MachOObject::rebase()
@@ -819,7 +814,7 @@ void MachOObject::run()
 	{
 		LOG << "Running main at " << (void*) m_file->main() << "...\n";
 		
-		int (*pMain)(int, char**, char**, char**) = reinterpret_cast<int (*)(int, char**, char**, char**)>(m_file->main());
+		int (*pMain)(int, char**, char**, char**) = reinterpret_cast<int (*)(int, char**, char**, char**)>(m_file->main() + m_slide);
 		
 		int rv = pMain(m_argc, m_argv, m_envp, apple);
 		exit(rv);
@@ -831,7 +826,7 @@ void MachOObject::run()
 void MachOObject::jumpToStart()
 {
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
-	uintptr_t entry = m_file->entry();
+	uintptr_t entry = m_file->entry() + m_slide;
 	
 #ifdef __x86_64__
 #	define PUSH(val) __asm__ volatile("pushq %0" :: "r"(uint64_t(val)) :)
