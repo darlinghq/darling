@@ -17,11 +17,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 
-set(IOKit_SRCS
+set(SystemConfiguration_SRCS
 	SCDynamicStoreCopySpecific.cpp
 )
 
-add_library(SystemConfiguration SHARED ${IOKit_SRCS})
+add_library(SystemConfiguration SHARED ${SystemConfiguration_SRCS})
 target_link_libraries(SystemConfiguration -lgnustep-corebase)
 
 install(TARGETS SystemConfiguration DESTINATION "lib${SUFFIX}/darling")
