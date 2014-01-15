@@ -2,6 +2,12 @@
 #include <X11/Xutil.h>
 #include <Foundation/NSException.h>
 
+static void throwInconsistency()
+{
+	[NSException raise: NSInternalInconsistencyException
+				format: @"Invalid NSEvent type for this call"];
+}
+
 @implementation NSX11Event
 
 -(id) initWithXEvent: (XEvent*) event
@@ -91,10 +97,7 @@
 	NSEventType type = [self type];
 	
 	if (type != NSKeyDown && type != NSKeyUp)
-	{
-		[NSException raise: NSInternalInconsistencyException
-					format: @"Invalid NSEvent type for this call"];
-	}
+		throwInconsistency();
 	
 	return m_event.xkey.keycode;
 }
@@ -104,10 +107,7 @@
 	NSEventType type = [self type];
 	
 	if (type != NSKeyDown && type != NSKeyUp)
-	{
-		[NSException raise: NSInternalInconsistencyException
-					format: @"Invalid NSEvent type for this call"];
-	}
+		throwInconsistency();
 	
 	char text[10];
 	XLookupString(&m_event.xkey, text, sizeof(text), nullptr, nullptr);
@@ -119,10 +119,7 @@
 	NSEventType type = [self type];
 	
 	if (type != NSKeyDown && type != NSKeyUp)
-	{
-		[NSException raise: NSInternalInconsistencyException
-					format: @"Invalid NSEvent type for this call"];
-	}
+		throwInconsistency();
 	
 	char text[10];
 	XKeyEvent ev = m_event.xkey;

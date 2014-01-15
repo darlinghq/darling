@@ -19,7 +19,7 @@ include(${QT_USE_FILE})
 #configure_file(config.h.in config.h)
 add_definitions(-D__STDC_LIMIT_MACROS)
 add_definitions(-DDARLING_BUILD)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fconstant-string-class=NSConstantString")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fconstant-string-class=NSConstantString -fblocks")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -30,6 +30,9 @@ set(AppKit_SRCS
 	NSApplication.mm
 	NSEvent.mm
 	NSX11Event.mm
+	NSResponder.mm
+	NSView.mm
+	NSWindow.mm
 	QNSEventDispatcher.mm
 )
 
