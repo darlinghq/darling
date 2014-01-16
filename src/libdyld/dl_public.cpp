@@ -143,7 +143,8 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 	removeSuffix(name, "$UNIX2003");
 	removeSuffix(name, "$DARWIN_EXTSN");
 	removeSuffix(name, "$NOCANCEL");
-	
+    removeSuffix(name, "$INODE64");
+
 	translated = processSymbolViaHooks(name);
 
 	if (handle == DARWIN_RTLD_DEFAULT)
