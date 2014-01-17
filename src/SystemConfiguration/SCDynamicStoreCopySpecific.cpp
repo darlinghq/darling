@@ -12,13 +12,18 @@
 
 const CFStringRef kSCPropNetProxiesExceptionsList 	= CFSTR("ExceptionsList");
 const CFStringRef kSCPropNetProxiesHTTPEnable 		= CFSTR("HTTPEnable");
+const CFStringRef kSCPropNetProxiesHTTPSEnable 		= CFSTR("HTTPSEnable");
 const CFStringRef kSCPropNetProxiesHTTPPort 		= CFSTR("HTTPPort");
+const CFStringRef kSCPropNetProxiesHTTPProxy 		= CFSTR("HTTPProxy");
 const CFStringRef kSCPropNetProxiesHTTPSProxy 		= CFSTR("HTTPSProxy");
 const CFStringRef kSCPropNetProxiesHTTPSPort 		= CFSTR("HTTPSPort");
 const CFStringRef kSCPropNetProxiesFTPEnable 		= CFSTR("FTPEnable");
 const CFStringRef kSCPropNetProxiesFTPProxy 		= CFSTR("FTPProxy");
 const CFStringRef kSCPropNetProxiesFTPPort 		= CFSTR("FTPPort");
 const CFStringRef kSCPropNetProxiesFTPPassive 		= CFSTR("FTPPassive");
+const CFStringRef kSCPropNetProxiesSOCKSEnable		= CFSTR("SOCKSEnable");
+const CFStringRef kSCPropNetProxiesSOCKSPort 		= CFSTR("SOCKSPort");
+const CFStringRef kSCPropNetProxiesSOCKSProxy 		= CFSTR("SOCKSProxy");
 
 CFStringRef SCDynamicStoreCopyComputerName (SCDynamicStoreRef store, CFStringEncoding *nameEncoding){
 	LOG << "fixme: SCDynamicStoreCopyComputerName() - stub" << std::endl;
