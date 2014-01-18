@@ -18,7 +18,8 @@ static void MethodSwizzle(Class aClass, SEL orig_sel, SEL alt_sel);
 
 __attribute__((constructor)) static void myinit()
 {
-	GSInitializeProcess(g_argc, g_argv, environ);
+	if (g_argv != nullptr)
+		GSInitializeProcess(g_argc, g_argv, environ);
 	LOG << "Swizzling methods in NSBundle\n";
 	
 	MethodSwizzle(objc_getMetaClass("NSBundle"), @selector(mainBundle), @selector(x_mainBundle));
