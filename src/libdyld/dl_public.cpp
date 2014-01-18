@@ -255,14 +255,15 @@ int NSIsSymbolNameDefinedInImage(const struct mach_header *image, const char *sy
 
 const char* NSNameOfModule(NSModule m)
 {
-	STUB();
-	return nullptr;
+	return NSLibraryNameForModule(m);
 }
 
 const char* NSLibraryNameForModule(NSModule m)
 {
-	STUB();
-	return nullptr;
+	if (!m)
+		return nullptr;
+	
+	return m->path().c_str();
 }
 
 void Darling::registerDlsymHook(DlsymHookFunc func)

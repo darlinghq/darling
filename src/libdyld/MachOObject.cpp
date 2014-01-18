@@ -346,7 +346,7 @@ void MachOObject::rebase()
 
 void MachOObject::writeBind(int type, void** ptr, void* newAddr, const std::string& name)
 {
-	assert(newAddr != nullptr);
+	//assert(newAddr != nullptr);
 	if (MachOMgr::instance()->printBindings())
 		std::cerr << "dyld: Binding " << name << " at " << ptr << ": " << (void*)(*ptr) << " -> " << (void*)newAddr << std::endl;
 
@@ -714,7 +714,12 @@ void* MachOObject::resolveSymbol(const std::string& name)
 void MachOObject::runInitializers()
 {
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
-	ProgramVars* pvars = MachOMgr::instance()->mainModule()->getProgramVars();
+	ProgramVars* pvars = nullptr;
+	
+	if (MachOMgr::instance()->mainModule() != nullptr)
+		pvars = MachOMgr::instance()->mainModule()->getProgramVars();
+	else
+		; // TODO: provide an alternative ProgramVars instance
 	
 	typedef void (*Initializer)(int argc, char** argv, char** envp, char** apple, ProgramVars* progvars);
 	
@@ -834,6 +839,8 @@ void MachOObject::jumpToStart()
 #elif defined(__i386__)
 #	define PUSH(val) __asm__ volatile("pushl %0" :: "r"(uint32_t(val)) :)
 #	define JUMP(addr) __asm__ volatile("jmp *%0" :: "r"(addr) :)
+#else
+#	error Unsupported platform!
 #endif
 
 	for (int i = std::char_traits<char*>::length(apple)-1; i >= 0; i--)
