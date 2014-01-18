@@ -20,6 +20,7 @@ __assert_rtn;__assert_fail
 
 32!_Znwm;_Znwj
 32!_Znam;_Znaj
+32!_ZNSt6locale5_ImplC2ERKS0_m;_ZNSt6locale5_ImplC2ERKS0_j
 
 opendir$INODE64;opendir
 CC_MD5_Init;MD5_Init
