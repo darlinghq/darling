@@ -1,9 +1,5 @@
 #ifndef NSAPPLICATION_H
 #define NSAPPLICATION_H
-#include "AppKit.h"
-#include "NSResponder.h"
-#include "NSApplicationDelegate.h"
-
 #ifdef DARLING_BUILD
 #	include <QEventLoop>
 #	include <QApplication>
@@ -11,6 +7,10 @@
 
 class NSApplicationEventFilter;
 #endif
+
+#include "NSResponder.h"
+#include "NSApplicationDelegate.h"
+#include "AppKitDefines.h"
 
 @class NSEvent;
 
@@ -89,6 +89,40 @@ extern NSString *NSApplicationDidChangeScreenParametersNotification;
 
 
 END_EXTERN_C
+
+enum {
+    NSUserInterfaceLayoutDirectionLeftToRight = 0,
+    NSUserInterfaceLayoutDirectionRightToLeft = 1
+};
+typedef NSInteger NSUserInterfaceLayoutDirection;
+
+@interface NSApplication (NSApplicationLayoutDirection)
+- (NSUserInterfaceLayoutDirection)userInterfaceLayoutDirection;
+@end
+
+enum {
+    NSApplicationPresentationDefault = 0,
+    NSApplicationPresentationAutoHideDock = (1 << 0),
+    NSApplicationPresentationHideDock = (1 << 1),
+
+    NSApplicationPresentationAutoHideMenuBar = (1 << 2),
+    NSApplicationPresentationHideMenuBar = (1 << 3),
+
+    NSApplicationPresentationDisableAppleMenu = (1 << 4),
+    NSApplicationPresentationDisableProcessSwitching = (1 << 5),
+    NSApplicationPresentationDisableForceQuit = (1 << 6),
+    NSApplicationPresentationDisableSessionTermination = (1 << 7),
+    NSApplicationPresentationDisableHideApplication = (1 << 8),
+    NSApplicationPresentationDisableMenuBarTransparency = (1 << 9)
+};
+
+enum {
+    NSApplicationPresentationFullScreen = (1 << 10),
+    NSApplicationPresentationAutoHideToolbar = (1 << 11)
+};
+
+typedef NSUInteger NSApplicationPresentationOptions;
+
 
 #endif
 

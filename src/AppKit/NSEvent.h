@@ -153,4 +153,12 @@ enum {
 };
 inline NSUInteger NSEventMaskFromType(NSEventType type) { return (1 << type); };
 
+enum {
+    NSEventGestureAxisNone = 0,
+    NSEventGestureAxisHorizontal,
+    NSEventGestureAxisVertical
+};
+typedef NSInteger NSEventGestureAxis;
+
+
 #endif
