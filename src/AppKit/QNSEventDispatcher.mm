@@ -5,7 +5,6 @@
 #include <QSocketNotifier>
 #include <Foundation/NSInvocation.h>
 #include <QPair>
-#include "NSX11Event.h"
 
 @interface NSStream (Private)
 - (void) _setLoopID: (void *)ref;
@@ -72,8 +71,6 @@ QNSEventDispatcher::QNSEventDispatcher()
 {
 	m_runLoop = [NSRunLoop currentRunLoop];
 	m_timerInvocation = [[NSTimerInvocation alloc] initWithEventDispatcher: this];
-
-	setEventFilter(captureAllFilter);
 }
 
 QNSEventDispatcher::~QNSEventDispatcher()
@@ -81,13 +78,6 @@ QNSEventDispatcher::~QNSEventDispatcher()
 	// kill all timers
 	[m_runLoop release];
 	[m_timerInvocation release];
-}
-
-bool QNSEventDispatcher::captureAllFilter(void* msg)
-{
-	XEvent* ev = static_cast<XEvent*>(msg);
-	instance()->m_events.enqueue(*ev);
-	return true;
 }
 
 void QNSEventDispatcher::flush()
@@ -149,10 +139,10 @@ void QNSEventDispatcher::registerSocketNotifier(QSocketNotifier* notifier)
 	                  forMode: NSDefaultRunLoopMode];
 }
 
-void QNSEventDispatcher::registerTimer(int timerId, int interval, QObject* object)
+void QNSEventDispatcher::registerTimer(int timerId, int interval, Qt::TimerType timerType, QObject* object)
 {
 	NSTimer* timer;
-	MyTimerInfo info = { interval, object };
+	MyTimerInfo info = { interval, timerType, object };
 	NSInvocation* invocation = [NSInvocation new];
 
 	[invocation setTarget: m_timerInvocation];
@@ -179,6 +169,21 @@ void QNSEventDispatcher::fireTimer(int timerId)
 	QCoreApplication::sendEvent(m_timers[timerId].target, &ev);
 }
 
+int QNSEventDispatcher::remainingTime(int timerId)
+{
+	if (!m_nsTimers.contains(timerId))
+		return -1;
+	
+	NSTimer* timer = m_nsTimers[timerId];
+	NSDate* date = [timer fireDate];
+
+	NSTimeInterval ti = [date timeIntervalSinceNow];
+	if (ti <= 0)
+		return 0;
+	else
+		return int(ti * 1000);
+}
+
 QList<QAbstractEventDispatcher::TimerInfo> QNSEventDispatcher::registeredTimers(QObject* object) const
 {
 	QList<TimerInfo> rv;
@@ -186,7 +191,7 @@ QList<QAbstractEventDispatcher::TimerInfo> QNSEventDispatcher::registeredTimers(
 	for (auto it = m_timers.begin(); it != m_timers.end(); it++)
 	{
 		if (it.value().target == object)
-			rv << TimerInfo(it.key(), it.value().interval);
+			rv << TimerInfo(it.key(), it.value().interval, it.value().type);
 	}
 
 	return rv;
@@ -242,15 +247,4 @@ void QNSEventDispatcher::wakeUp()
 {
 }
 
-NSEvent* QNSEventDispatcher::peekEvent()
-{
-	XEvent ev = m_events.head();
-	return [NSEvent eventWithCGEvent: &ev];
-}
-
-NSEvent* QNSEventDispatcher::takeEvent()
-{
-	XEvent ev = m_events.dequeue();
-	return [NSEvent eventWithCGEvent: &ev];
-}
 

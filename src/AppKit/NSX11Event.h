@@ -1,13 +1,13 @@
 #ifndef NSX11EVENT_H
 #define NSX11EVENT_H
 #include "NSEvent.h"
-#include <X11/Xlib.h>
+#include <xcb/xcb.h>
 #include <Foundation/NSDate.h>
 
 @interface NSX11Event : NSEvent
 {
 	@public
-	XEvent m_event;
+	xcb_generic_event_t m_event;
 	NSTimeInterval m_ts;
 }
 

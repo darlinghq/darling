@@ -2,17 +2,20 @@
 #import <Foundation/NSGeometry.h>
 #import <AppKit/NSGraphics.h>
 
+#ifdef DARLING_BUILD
+#include <QScreen>
+#endif
+
 @class NSArray, NSColorSpace;
 
 typedef struct NSScreenAuxiliary NSScreenAuxiliaryOpaque;
 
 @interface NSScreen : NSObject {
 
-@private
-    NSRect _frame;
-    NSWindowDepth _depth;
-    int _screenNumber;
-    id _auxiliaryStorage;
+#ifdef DARLING_BUILD
+	@public
+	QScreen* _screen;
+#endif
 }
 
 + (NSArray *)screens;

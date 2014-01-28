@@ -1,5 +1,5 @@
-#include "NSApplication.h"
-#include "NSX11Event.h"
+#include <AppKit/NSApplication.h>
+#include "NSQEvent.h"
 #include <Foundation/NSRunLoop.h>
 #include <Foundation/NSProcessInfo.h>
 #include <Foundation/NSBundle.h>
@@ -29,24 +29,34 @@ DEFINE_CONSTANT(NSApplicationWillUpdateNotification);
 DEFINE_CONSTANT(NSApplicationWillTerminateNotification);
 DEFINE_CONSTANT(NSApplicationDidChangeScreenParametersNotification);
 
-/*
+
 class NSApplicationEventFilter : public QObject
 {
 public:
-	std::shared_ptr<QEvent> takeEvent()
+	NSApplicationEventFilter(QObject* parent) : QObject(parent) {}
+
+	std::shared_ptr<QEvent> takeEvent(WId& wid)
 	{
 		if (m_queue.isEmpty())
 			return nullptr;
 		else
-			return m_queue.dequeue();
+		{
+			auto e = m_queue.dequeue();
+			wid = e.second;
+			return e.first;
+		}
 	}
 	
-	std::shared_ptr<QEvent> peekEvent()
+	std::shared_ptr<QEvent> peekEvent(WId& wid)
 	{
 		if (m_queue.isEmpty())
 			return nullptr;
 		else
-			return m_queue.head();
+		{
+			auto e = m_queue.head();
+			wid = e.second;
+			return e.first;
+		}
 	}
 private:
 	static QEvent* cloneEvent(QEvent* e)
@@ -62,18 +72,25 @@ protected:
 	bool eventFilter(QObject* obj, QEvent* event) override
 	{
 		// TODO: Manually create clones of all events that may happen in this application and enqueue them.
-		// Let the other functions pass.
-		QEvent* clone = cloneEvent(event);
+		// Let the other events pass.
 
-		if (!clone)
-			return QObject::eventFilter(obj, event);
-		else
-			return true;
+		QWindow* targetWin = qobject_cast<QWindow*>(obj);
+
+		if (targetWin != nullptr)
+		{
+			QEvent* clone = cloneEvent(event);
+
+			if (clone)
+			{
+				m_queue.enqueue(QPair<std::shared_ptr<QEvent>, WId>(std::shared_ptr<QEvent>(clone), targetWin->winId()));
+				return true;
+			}
+		}
+		return QObject::eventFilter(obj, event);
 	}
 private:
-	QQueue<std::shared_ptr<QEvent>> m_queue;
+	QQueue<QPair<std::shared_ptr<QEvent>, WId>> m_queue;
 };
-*/
 
 @implementation NSApplication
 +(NSApplication*) sharedApplication
@@ -107,8 +124,10 @@ private:
 		qargs << nullptr;
 		
 		m_running = false;
-		QNSEventDispatcher::instance(); // force singleton creation
-		m_application = new QApplication(argc, qargs.data());
+		QCoreApplication::setEventDispatcher(QNSEventDispatcher::instance());
+		m_application = new QGuiApplication(argc, qargs.data());
+		m_eventFilter = new NSApplicationEventFilter(m_application);
+		m_application->installEventFilter(m_eventFilter);
 	}
 	return self;
 }
@@ -214,6 +233,8 @@ private:
 	// TODO: mask and other arguments!
 	NSTimeInterval interval = 0;
 	NSEvent* event;
+	std::shared_ptr<QEvent> qevent;
+	WId wid;
 	
 	if (expiration != nullptr)
 		interval = [expiration timeIntervalSinceNow];
@@ -224,21 +245,24 @@ private:
 		m_application->processEvents(QEventLoop::AllEvents);
 	
 	if (flag)
-		event = QNSEventDispatcher::instance()->takeEvent();
+		qevent = m_eventFilter->takeEvent(wid);
 	else
-		event = QNSEventDispatcher::instance()->peekEvent();
+		qevent = m_eventFilter->peekEvent(wid);
 	
-	return event;
+	event = [[NSQEvent alloc] initWithQEvent: qevent WId: wid];
+	
+	return [event autorelease];
 }
 
 - (void)sendEvent:(NSEvent *)anEvent
 {
-	XEvent* event = [anEvent CGEvent];
+	QEvent* qevent = [anEvent CGEvent];
+	WId wid = [anEvent windowNumber];
 
-	if (event != nullptr)
+	if (qevent != nullptr)
 	{
 		// It is a wrapped X11 event
-		m_application->x11ProcessEvent(event);
+		m_application->sendEvent(QWindow::fromWinId(wid), qevent);
 	}
 	else
 	{

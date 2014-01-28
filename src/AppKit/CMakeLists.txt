@@ -5,12 +5,9 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-set(QT_USE_QTDECLARATIVE TRUE)
-find_package(Qt4 REQUIRED)
-
-add_definitions(${QT_DEFINITIONS})
-include_directories(${QT_INCLUDE_DIR})
-include(${QT_USE_FILE})
+find_package(Qt5Declarative REQUIRED)
+find_package(Qt5Widgets REQUIRED)
+find_package(Qt5Quick REQUIRED)
 
 #if (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 #	message(FATAL_ERROR "Clang is the only supported compiler.")
@@ -19,20 +16,22 @@ include(${QT_USE_FILE})
 #configure_file(config.h.in config.h)
 add_definitions(-D__STDC_LIMIT_MACROS)
 add_definitions(-DDARLING_BUILD)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fconstant-string-class=NSConstantString -fblocks")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fconstant-string-class=NSConstantString -fblocks -fobjc-runtime=gnustep-1.7")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 
 set(AppKit_SRCS
 	NSApplication.mm
 	NSEvent.mm
-	NSX11Event.mm
+	NSQEvent.mm
 	NSResponder.mm
 	NSView.mm
 	NSWindow.mm
+	Util.mm
 	QNSEventDispatcher.mm
 )
 
@@ -42,7 +41,8 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(AppKit SHARED ${AppKit_SRCS})
-target_link_libraries(AppKit -lgnustep-base -lX11 ${QT_LIBRARIES})
+target_link_libraries(AppKit -lgnustep-base -lX11)
+qt5_use_modules(AppKit Declarative Widgets Quick)
 
 install(TARGETS AppKit DESTINATION "lib${SUFFIX}/darling")
 

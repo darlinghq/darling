@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFString.h>
+#include <QRect>
 
 const CGRect CGRectInfinite = { CGPoint { -CGFLOAT_MAX / 2, -CGFLOAT_MAX / 2 }, CGSize { CGFLOAT_MAX, CGFLOAT_MAX } };
 const CGPoint CGPointZero = { 0, 0 };
@@ -398,5 +399,6 @@ bool CGRectMakeWithDictionaryRepresentation(CFDictionaryRef dict, CGRect *rect)
 		&& CFNumberGetValue(w, kCFNumberCGFloatType, &rect->size.width)
 		&& CFNumberGetValue(h, kCFNumberCGFloatType, &rect->size.height);
 }
+
 
 

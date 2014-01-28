@@ -1,4 +1,4 @@
-#include "NSView.h"
+#include <AppKit/NSView.h>
 
 @implementation NSView
 @end

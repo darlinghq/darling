@@ -1,5 +1,4 @@
 #include "NSX11Event.h"
-#include <X11/Xutil.h>
 #include <Foundation/NSException.h>
 
 static void throwInconsistency()
@@ -10,7 +9,7 @@ static void throwInconsistency()
 
 @implementation NSX11Event
 
--(id) initWithXEvent: (XEvent*) event
+-(id) initWithXCBEvent: (xcb_generic_event_t*) event
 {
 	self = [super init];
 	m_event = *event;
@@ -30,14 +29,14 @@ static void throwInconsistency()
 
 - (NSEventType)type
 {
-	switch (m_event.type)
+	switch (m_event.response_type)
 	{
-		case KeyPress:
+		case XCB_KEY_PRESS:
 			return NSKeyDown;
-		case KeyRelease:
+		case XCB_KEY_RELEASE:
 			return NSKeyUp;
-		case ButtonPress:
-			switch (m_event.xbutton.button)
+		case XCB_BUTTON_PRESS:
+			switch (((xcb_button_press_event_t*)&m_event)->detail)
 			{
 				case 1:
 					return NSLeftMouseDown;
@@ -49,8 +48,8 @@ static void throwInconsistency()
 				default:
 					return NSOtherMouseDown;
 			}
-		case ButtonRelease:
-			switch (m_event.xbutton.button)
+		case XCB_BUTTON_RELEASE:
+			switch (((xcb_button_press_event_t*)&m_event)->detail)
 			{
 				case 1:
 					return NSLeftMouseUp;
@@ -59,11 +58,11 @@ static void throwInconsistency()
 				default:
 					return NSOtherMouseUp;
 			}
-		case EnterNotify:
+		case XCB_ENTER_NOTIFY:
 			return NSMouseEntered;
-		case LeaveNotify:
+		case XCB_LEAVE_NOTIFY:
 			return NSMouseExited;
-		case MotionNotify:
+		case XCB_MOTION_NOTIFY:
 			return NSMouseMoved; // TODO: NSLeftMouseDragged / NSRightMouseDragged
 		default:
 			return NSAppKitDefined;
@@ -72,7 +71,7 @@ static void throwInconsistency()
 
 - (NSInteger)windowNumber
 {
-	return m_event.xany.window;
+	return ((xcb_button_press_event_t*)&m_event)->root;
 }
 
 - (NSWindow*) window
@@ -89,7 +88,7 @@ static void throwInconsistency()
 // TODO: check event type and throw inconsistency exceptions
 - (NSInteger)buttonNumber
 {
-	return m_event.xbutton.button;
+	return ((xcb_button_press_event_t*)&m_event)->detail;
 }
 
 - (unsigned short)keyCode
@@ -99,11 +98,12 @@ static void throwInconsistency()
 	if (type != NSKeyDown && type != NSKeyUp)
 		throwInconsistency();
 	
-	return m_event.xkey.keycode;
+	return ((xcb_key_press_event_t*) &m_event)->detail;
 }
 
 - (NSString *)characters
 {
+	/*
 	NSEventType type = [self type];
 	
 	if (type != NSKeyDown && type != NSKeyUp)
@@ -112,10 +112,13 @@ static void throwInconsistency()
 	char text[10];
 	XLookupString(&m_event.xkey, text, sizeof(text), nullptr, nullptr);
 	return [NSString stringWithUTF8String: text];
+	*/
+	return nullptr; // TODO: not easily doable with xcb
 }
 
 - (NSString *)charactersIgnoringModifiers
 {
+	/*
 	NSEventType type = [self type];
 	
 	if (type != NSKeyDown && type != NSKeyUp)
@@ -128,6 +131,8 @@ static void throwInconsistency()
 	
 	XLookupString(&ev, text, sizeof(text), nullptr, nullptr);
 	return [NSString stringWithUTF8String: text];
+	*/
+	return nullptr; // TODO: not easily doable with xcb
 }
 
 @end

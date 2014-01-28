@@ -13,6 +13,7 @@ struct CGPoint
 	CGFloat y;
 };
 typedef struct CGPoint CGPoint;
+//typedef struct CGPoint NSPoint;
 
 struct CGSize
 {
@@ -20,6 +21,7 @@ struct CGSize
 	CGFloat height;
 };
 typedef struct CGSize CGSize;
+//typedef struct CGSize NSSize;
 
 struct CGVector
 {
@@ -34,6 +36,7 @@ struct CGRect
 	CGSize size;
 };
 typedef struct CGRect CGRect;
+//typedef struct CGRect NSRect;
 
 enum CGRectEdge
 {
@@ -87,6 +90,7 @@ CGRect CGRectIntersection(CGRect r1, CGRect r2);
 CGRect CGRectInset(CGRect rect, CGFloat dx, CGFloat dy);
 CGRect CGRectUnion(CGRect r1, CGRect r2);
 void CGRectDivide(CGRect rect, CGRect* slice, CGRect* remainder, CGFloat amount, CGRectEdge edge);
+
 
 END_EXTERN_C
 

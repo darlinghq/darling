@@ -7,8 +7,7 @@
 #include <Foundation/NSRunLoop.h>
 #include <Foundation/NSTimer.h>
 #include <Foundation/NSStream.h>
-#include <X11/Xlib.h>
-#include "NSEvent.h"
+#include <AppKit/NSEvent.h>
 
 class QNSEventDispatcher;
 @interface NSTimerInvocation : NSObject
@@ -33,7 +32,6 @@ class QNSEventDispatcher : public QAbstractEventDispatcher
 private:
 	QNSEventDispatcher();
 	~QNSEventDispatcher();
-	static bool captureAllFilter(void* msg);
 public:
 	static QNSEventDispatcher* instance();
 
@@ -42,20 +40,20 @@ public:
 	virtual void interrupt() override;
 	virtual bool processEvents(QEventLoop::ProcessEventsFlags flags) override;
 	virtual void registerSocketNotifier(QSocketNotifier* notifier) override;
-	virtual void registerTimer(int timerId, int interval, QObject* object) override;
+	virtual void registerTimer(int timerId, int interval, Qt::TimerType timerType, QObject* object) override;
 	virtual QList<TimerInfo> registeredTimers(QObject* object) const override;
 	virtual void unregisterSocketNotifier(QSocketNotifier* notifier) override;
 	virtual bool unregisterTimer(int timerId) override;
 	virtual bool unregisterTimers(QObject* object) override;
 	virtual void wakeUp() override;
+	virtual int remainingTime(int timerId) override;
 
 	void fireTimer(int timerId);
-	NSEvent* peekEvent();
-	NSEvent* takeEvent();
 private:
 	struct MyTimerInfo
 	{
 		int interval;
+		Qt::TimerType type;
 		QObject* target;
 	};
 	struct MySocketInfo
@@ -69,7 +67,6 @@ private:
 	QHash<int, MyTimerInfo> m_timers;
 	QHash<QSocketNotifier*, MySocketInfo> m_sockets;
 	NSTimerInvocation* m_timerInvocation;
-	QQueue<XEvent> m_events;
 };
 
 #endif

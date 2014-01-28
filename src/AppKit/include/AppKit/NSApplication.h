@@ -2,7 +2,7 @@
 #define NSAPPLICATION_H
 #ifdef DARLING_BUILD
 #	include <QEventLoop>
-#	include <QApplication>
+#	include <QGuiApplication>
 #	include "QNSEventDispatcher.h"
 
 class NSApplicationEventFilter;
@@ -18,8 +18,9 @@ class NSApplicationEventFilter;
 #ifdef DARLING_BUILD
 {
 	bool m_running;
-	QApplication* m_application;
+	QGuiApplication* m_application;
 	id<NSApplicationDelegate> m_delegate;
+	NSApplicationEventFilter* m_eventFilter;
 }
 #endif
 

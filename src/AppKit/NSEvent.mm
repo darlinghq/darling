@@ -1,12 +1,12 @@
-#include "NSEvent.h"
-#include "NSX11Event.h"
+#include <AppKit/NSEvent.h>
+#include "NSQEvent.h"
 
 @implementation NSEvent
 
 + (NSEvent *)eventWithCGEvent:(CGEventRef)cgEvent
 {
-	NSX11Event* ev = [[NSX11Event alloc] init];
-	ev->m_event = *cgEvent;
+	NSQEvent* ev = [[NSQEvent alloc] init];
+	ev->m_event = std::shared_ptr<QEvent>(cgEvent);
 	return [ev autorelease];
 }
 

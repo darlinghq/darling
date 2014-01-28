@@ -8,6 +8,11 @@
 #import <AppKit/NSUserInterfaceItemIdentification.h>
 #import <AppKit/NSAnimation.h>
 
+#ifdef DARLING_BUILD
+#	include <QQuickWindow>
+#	include <memory>
+#endif
+
 @class NSButton, NSButtonCell, NSColor, NSImage, NSPasteboard, NSScreen;
 @class NSNotification, NSText, NSView, NSMutableSet, NSSet, NSDate;
 @class NSToolbar, NSGraphicsContext, NSURL, NSColorSpace;
@@ -179,95 +184,11 @@ typedef NSUInteger NSWindowButton;
 
 @interface NSWindow : NSResponder <NSAnimatablePropertyContainer, NSUserInterfaceValidations, NSUserInterfaceItemIdentification>
 {
-
-    NSRect _frame;
-    id _contentView;
-    id _delegate;
-    NSResponder *_firstResponder;
-    NSView *_lastLeftHit;
-    NSView *_lastRightHit;
-    id _counterpart;
-    id _fieldEditor;
-    int _winEventMask;
-    NSInteger _windowNum;
-    int _level;
-    NSColor *_backgroundColor;
-    id _borderView;
-    unsigned char _postingDisabled;
-    unsigned char _styleMask;
-    unsigned char _flushDisabled;
-    unsigned char _reservedWindow1;
-    void *_cursorRects;
-    void *_trectTable;
-    NSImage *_miniIcon;
-    int32_t _bamboo;
-    NSMutableSet *_dragTypes;
-    NSURL *_representedURL;
-    NSSize *_sizeLimits;
-    NSString *_frameSaveName;
-    NSSet *_regDragTypes;
-    struct __wFlags {
-        unsigned int backing:2;
-        unsigned int visible:1;
-        unsigned int isMainWindow:1;
-        unsigned int isKeyWindow:1;
-        unsigned int hidesOnDeactivate:1;
-        unsigned int dontFreeWhenClosed:1;
-        unsigned int oneShot:1;
-        unsigned int deferred:1;
-        unsigned int cursorRectsDisabled:1;
-        unsigned int haveFreeCursorRects:1;
-        unsigned int validCursorRects:1;
-        unsigned int docEdited:1;
-        unsigned int dynamicDepthLimit:1;
-        unsigned int worksWhenModal:1;
-        unsigned int limitedBecomeKey:1;
-        unsigned int needsFlush:1;
-        unsigned int viewsNeedDisplay:1;
-        unsigned int ignoredFirstMouse:1;
-        unsigned int repostedFirstMouse:1;
-        unsigned int windowDying:1;
-        unsigned int tempHidden:1;
-        unsigned int floatingPanel:1;
-        unsigned int wantsToBeOnMainScreen:1;
-        unsigned int optimizedDrawingOk:1;
-        unsigned int optimizeDrawing:1;
-        unsigned int titleIsRepresentedFilename:1;
-        unsigned int excludedFromWindowsMenu:1;
-        unsigned int depthLimit:4;
-        unsigned int delegateReturnsValidRequestor:1;
-        unsigned int lmouseupPending:1;
-        unsigned int rmouseupPending:1;
-        unsigned int wantsToDestroyRealWindow:1;
-        unsigned int wantsToRegDragTypes:1;
-        unsigned int sentInvalidateCursorRectsMsg:1;
-        unsigned int avoidsActivation:1;
-        unsigned int frameSavedUsingTitle:1;
-        unsigned int didRegDragTypes:1;
-        unsigned int delayedOneShot:1;
-        unsigned int postedNeedsDisplayNote:1;
-        unsigned int postedInvalidCursorRectsNote:1;
-        unsigned int initialFirstResponderTempSet:1;
-        unsigned int autodisplay:1;
-        unsigned int tossedFirstEvent:1;
-        unsigned int isImageCache:1;
-        unsigned int _unused:3;
-        unsigned int keyViewSelectionDirection:2;
-        unsigned int defaultButtonCellKETemporarilyDisabled:1;
-        unsigned int defaultButtonCellKEDisabled:1;
-        unsigned int menuHasBeenSet:1;
-        unsigned int wantsToBeModal:1;
-        unsigned int showingModalFrame:1;
-        unsigned int isTerminating:1;
-        unsigned int win32MouseActivationInProgress:1;
-        unsigned int makingFirstResponderForMouseDown:1;
-        unsigned int needsZoom:1;
-        unsigned int sentWindowNeedsDisplayMsg:1;
-        unsigned int liveResizeActive:1;
-    } _wFlags;
-    id _defaultButtonCell;
-    NSView *_initialFirstResponder;
-    NSWindowAuxiliary *_auxiliaryStorage;
+#ifdef DARLING_BUILD
+	std::shared_ptr<QQuickWindow> _window;
+	CGFloat _opacity;
+	bool _releasedWhenClosed;
+#endif
 }
 
 + (NSRect)frameRectForContentRect:(NSRect)cRect styleMask:(NSUInteger)aStyle;
