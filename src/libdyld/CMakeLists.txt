@@ -6,6 +6,8 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+message(STATUS ${CMAKE_SYSTEM_PROCESSOR})
+
 set(dyld_SRCS
 	eh/BufReWriter.cpp
 	eh/CFIWalker.cpp

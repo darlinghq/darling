@@ -177,6 +177,7 @@ void MachOObject::loadSegments()
 		int initprot, maxprot;
 		void* mappingAddr;
 		void* rv;
+		int flags = MAP_PRIVATE;
 		
 		if (strcmp(seg->segname, SEG_PAGEZERO) == 0)
 			continue;
@@ -218,12 +219,21 @@ void MachOObject::loadSegments()
 		if (MachOMgr::instance()->printSegments())
 			std::cerr << "dyld: Mapping segment " << seg->segname << " from " << m_file->filename() << " to " << mappingAddr << ", slide is 0x" << std::hex << m_slide << std::dec << std::endl;
 		
-		rv = ::mmap(mappingAddr, mappingSize, maxprot, MAP_FIXED | MAP_PRIVATE, m_file->fd(), m_file->offset() + seg->fileoff);
+		// The first segment can be moved by mmap, but not the following ones
+		if (mappingAddr != m_base)
+			flags |= MAP_FIXED;
+
+		rv = ::mmap(mappingAddr, mappingSize, maxprot, flags, m_file->fd(), m_file->offset() + seg->fileoff);
 		if (rv == MAP_FAILED)
 		{
 			std::stringstream ss;
 			ss << "Failed to mmap '" << m_file->filename() << "': " << strerror(errno);
 			throw std::runtime_error(ss.str());
+		}
+		if (rv != mappingAddr)
+		{
+			m_slide += (intptr_t(rv) - intptr_t(mappingAddr));
+			m_base = rv;
 		}
 		
 		m_mappings.push_back(Mapping { mappingAddr, pageAlign(seg->vmsize), initprot, maxprot });
@@ -583,7 +593,9 @@ void MachOObject::registerEHSection()
 		ehSection.store(&m_reworkedEHData, nullptr);
 		
 		LOG << "Registering reworked __eh_frame at " << m_reworkedEHData << std::endl;
+#ifndef __arm__
 		__register_frame(m_reworkedEHData);
+#endif
 	}
 	catch (const std::exception& e)
 	{
@@ -595,7 +607,9 @@ void MachOObject::unregisterEHSection()
 {
 	if (m_reworkedEHData)
 	{
+#ifndef __arm__
 		__deregister_frame(m_reworkedEHData);
+#endif
 		EHSection::free(m_reworkedEHData);
 		m_reworkedEHData = nullptr;
 	}
@@ -655,6 +669,7 @@ void* MachOObject::performBind(MachO::Bind* bind)
 		
 		if (!addr && !bind->is_weak)
 		{
+#ifdef HAS_DEBUG_HELPERS
 			if (MachOMgr::instance()->ignoreMissingSymbols() && bind->name[0] == '_')
 			{
 				ERROR().write("Creating a fake implementation for " + bind->name.substr(1));
@@ -662,6 +677,7 @@ void* MachOObject::performBind(MachO::Bind* bind)
 				bind->addend = 0;
 			}
 			else
+#endif
 			{
 				std::stringstream ss;
 				ss << "Symbol not found: " << bind->name;
@@ -671,13 +687,15 @@ void* MachOObject::performBind(MachO::Bind* bind)
 		
 		if (!bind->is_classic)
 			addr = (void*) (uintptr_t(addr) + bind->addend);
-		
+
+#ifdef HAS_DEBUG_HELPERS
 		if (addr && MachOMgr::instance()->useTrampolines() && bind->name[0] == '_')
 		{
 			TrampolineMgr* mgr = MachOMgr::instance()->trampolineMgr();
 
 			addr = mgr->generate(addr, bind->name.c_str()+1);
 		}
+#endif
 		
 		//if (addr != nullptr)
 			writeBind(bind->type, (void**)(bind->vmaddr + m_slide), addr, bind->name);
@@ -806,8 +824,10 @@ void MachOObject::run()
 	
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
 
+#ifdef HAS_DEBUG_HELPERS
 	if (MachOMgr::instance()->useTrampolines())
 		MachOMgr::instance()->trampolineMgr()->printPath();
+#endif
 	
 	if (m_file->entry())
 	{
@@ -839,8 +859,11 @@ void MachOObject::jumpToStart()
 #elif defined(__i386__)
 #	define PUSH(val) __asm__ volatile("pushl %0" :: "r"(uint32_t(val)) :)
 #	define JUMP(addr) __asm__ volatile("jmp *%0" :: "r"(addr) :)
-#else
-#	error Unsupported platform!
+#elif defined(__arm__)
+#	define PUSH(val) __asm__ volatile("push {%0}" :: "r"(uint32_t(val)) :)
+#	define JUMP(addr) __asm__ volatile("bx %0" :: "r"(addr) :)
+#else 
+#       error Unsupported platform!
 #endif
 
 	for (int i = std::char_traits<char*>::length(apple)-1; i >= 0; i--)
@@ -886,6 +909,7 @@ void* MachOObject::getSection(const std::string& segmentName, const std::string&
 
 void MachOObject::setupTLS()
 {
+#ifdef HAS_TLS_SUPPORT
 	std::vector<tlv_descriptor*> descriptors;
 	const std::vector<MachO::TLVSection>& tlvSections = m_file->tlv_sections();
 	std::vector<void*> initializers;
@@ -904,11 +928,14 @@ void MachOObject::setupTLS()
 		initializers.push_back((void*) (offset+m_slide));
 	
 	Darling::TLSSetup(this, descriptors, initializers, (void*) (m_file->tlv_initial_values().first+m_slide), m_file->tlv_initial_values().second);
+#endif
 }
 
 void MachOObject::teardownTLS()
 {
+#ifdef HAS_TLS_SUPPORT
 	Darling::TLSTeardown(this);
+#endif
 }
 
 void* MachOObject::doLazyBind(uintptr_t lazyOffset)
