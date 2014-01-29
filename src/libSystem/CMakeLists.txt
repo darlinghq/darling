@@ -90,7 +90,7 @@ set(libc_SRCS
 
 if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86.*")
 	set(libc_SRCS ${libc_SRCS} libc/setjmp.nasm)
-elif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
+elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
 	set(libc_SRCS ${libc_SRCS} libc/setjmp-arm.s)
 endif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86.*")
 
