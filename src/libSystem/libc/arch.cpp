@@ -62,6 +62,8 @@ const NXArchInfo* NXGetLocalArchInfo()
 	return &__darwin_all_arch_infos[1];
 #elif defined(__x86_64__)
 	return &__darwin_all_arch_infos[2];
+#elif defined(__arm__)
+	return &__darwin_all_arch_infos[9];
 #else
 #	error Unsupported architecture!
 #endif

@@ -29,7 +29,7 @@
 #ifndef _MACH_MACHINE_THREAD_STATE_H_
 #define _MACH_MACHINE_THREAD_STATE_H_
 
-#if defined (__i386__) || defined(__x86_64__)
+#if defined (__i386__) || defined(__x86_64__) || defined(__arm__)
 #include "mach/i386/thread_state.h"
 #else
 #error architecture not supported

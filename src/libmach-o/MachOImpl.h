@@ -27,6 +27,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #	include <mach-o/x86_64/reloc.h>
 #elif defined(__powerpc__)
 #	include <mach-o/ppc/reloc.h>
+#elif defined(__arm__)
+#	include <mach-o/arm/reloc.h>
 #endif
 #include <stdint.h>
 #include <vector>

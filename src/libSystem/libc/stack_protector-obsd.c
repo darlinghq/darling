@@ -29,6 +29,7 @@
 static char rcsid[] = "$OpenBSD: stack_protector.c,v 1.3 2002/12/10 08:53:42 etoh Exp $";
 #endif
 
+#include "config.h"
 #include <stdlib.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>

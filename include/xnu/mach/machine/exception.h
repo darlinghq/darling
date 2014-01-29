@@ -29,7 +29,7 @@
 #ifndef _MACH_MACHINE_EXCEPTION_H_
 #define _MACH_MACHINE_EXCEPTION_H_
 
-#if defined (__i386__) || defined(__x86_64__)
+#if defined (__i386__) || defined(__x86_64__) || defined(__arm__)
 #include "mach/i386/exception.h"
 #else
 #error architecture not supported

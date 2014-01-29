@@ -15,6 +15,11 @@ struct darwin_jmp_buf_t
 	stack_t stack;
 };
 
+#define JMP_BUF_HAS_STACK
+
+typedef darwin_jmp_buf_t* darwin_jmp_buf;
+typedef darwin_jmp_buf darwin_sigjmp_buf;
+
 #elif defined(__i386__)
 
 struct darwin_jmp_buf_t
@@ -26,12 +31,38 @@ struct darwin_jmp_buf_t
 	stack_t stack;
 };
 
-#else
-#	error Unsupported platform!
-#endif
+#define JMP_BUF_HAS_STACK
 
 typedef darwin_jmp_buf_t* darwin_jmp_buf;
 typedef darwin_jmp_buf darwin_sigjmp_buf;
+
+#elif defined(__arm__)
+
+struct darwin_jmp_buf_t
+{
+	int32_t r4, r5, r6, r7, r8, r10, r11;
+	int32_t sp, lr;
+	int32_t d8, d9, d10, d11, d12, d13, d14, d15;
+	int32_t sig, fstmx;
+	int32_t reserved;
+};
+
+struct darwin_sigjmp_buf_t
+{
+        int32_t r4, r5, r6, r7, r8, r10, r11;
+        int32_t sp, lr;
+        int32_t d8, d9, d10, d11, d12, d13, d14, d15;
+        int32_t sig, fstmx;
+        int32_t reserved;
+	__darwin_sigset_t sigset;
+};
+
+typedef darwin_jmp_buf_t* darwin_jmp_buf;
+typedef darwin_sigjmp_buf_t* darwin_sigjmp_buf;
+
+#else
+#	error Unsupported platform!
+#endif
 
 extern "C" {
 

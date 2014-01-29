@@ -5,7 +5,9 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+if (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
 enable_language(ASM_NASM)
+endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
 
 include(CheckIncludeFile)
 CHECK_INCLUDE_FILE(bsd/wchar.h HAS_BSD_WCHAR_H)
@@ -85,6 +87,12 @@ set(libc_SRCS
 	common/auto.cpp
 	common/path.cpp
 )
+
+if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86.*")
+	set(libc_SRCS ${libc_SRCS} libc/setjmp.nasm)
+elif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
+	set(libc_SRCS ${libc_SRCS} libc/setjmp-arm.s)
+endif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86.*")
 
 set(asl_SRCS
 	asl/asl.cpp

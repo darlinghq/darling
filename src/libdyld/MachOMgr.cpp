@@ -13,7 +13,7 @@ MachOMgr::MachOMgr()
 : m_mainModule(nullptr), m_bindAtLaunch(false), m_printInitializers(false),
   m_printLibraries(false), m_printSegments(false), m_printBindings(false),
   m_printRpathExpansion(false), m_loadAny(false),
-  m_pUndefMgr(nullptr), m_pTrampolineMgr(nullptr), m_addedDefaultLoader(false)
+  m_addedDefaultLoader(false)
 {
 }
 
@@ -261,6 +261,7 @@ bool MachOMgr::detectSysRootFromPath(std::string path)
 	return false;
 }
 
+#ifdef HAS_DEBUG_HELPERS
 void MachOMgr::setUseTrampolines(bool useTrampolines, const std::string& funcInfo)
 {
 	delete m_pTrampolineMgr;
@@ -285,6 +286,15 @@ void MachOMgr::setIgnoreMissingSymbols(bool ignoreMissingSymbols)
 	else
 		m_pUndefMgr = nullptr;
 }
+#else
+void MachOMgr::setUseTrampolines(bool useTrampolines, const std::string& funcInfo)
+{
+}
+
+void MachOMgr::setIgnoreMissingSymbols(bool ignoreMissingSymbols)
+{
+}
+#endif
 
 } // namespace Darling
 

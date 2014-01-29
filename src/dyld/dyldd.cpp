@@ -108,7 +108,7 @@ const char* c(const char* color)
 void showHelp(const char* argv0)
 {
 	std::cerr << "Darling dyldd is a tool that recursively displays dependencies of a given Mach-O executable.\n";
-	std::cerr << "Copyright (C) 2012-2013 Lubos Dolezel\n\n";
+	std::cerr << "Copyright (C) 2012-2014 Lubos Dolezel\n\n";
 	std::cerr << "Usage: " << argv0 << " executable\n\n";
 	std::cerr << "If your terminal supports colors, then native dependencies are " << c(ANSI_COLOR_GREEN) << "green" << c(ANSI_COLOR_RESET)
 		<< " and Mach-O dependencies are " << c(ANSI_COLOR_BLUE) << "blue" << c(ANSI_COLOR_RESET) << ".\n";	

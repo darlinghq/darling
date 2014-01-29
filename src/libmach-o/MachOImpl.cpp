@@ -26,6 +26,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
+#include <mach-o/reloc.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <cstdio>
@@ -584,10 +585,20 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		{
 			uint32_t* p = reinterpret_cast<uint32_t*>(cmds_ptr);
 			
-			if (m_is64)
+			switch (m_header.cputype)
+			{
+			case CPU_TYPE_X86_64:
 				m_entry = reinterpret_cast<uint64_t*>(cmds_ptr)[18];
-			else
+				break;
+			case CPU_TYPE_X86:
 				m_entry = reinterpret_cast<uint32_t*>(cmds_ptr)[14];
+				break;
+			case CPU_TYPE_ARM:
+				m_entry = reinterpret_cast<uint32_t*>(cmds_ptr)[19];
+				break;
+			default:
+				LOG << "LC_UNIXTHREAD for unsupported arch\n";
+			}
 			
 			LOG << "UNIXTHREAD entry=" << (void*)m_entry << std::endl;
 			break;
@@ -627,7 +638,7 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		case LC_VERSION_MIN_IPHONEOS:
 		{
 			version_min_command* cmd = reinterpret_cast<version_min_command*>(cmds_ptr);
-			LOG << "Version requirements: OS X: "
+			LOG << "Version requirements: OS X/iOS: "
 				<< (cmd->version >> 16) << '.'
 				<< ((cmd->version >> 8) & 0xf) << '.'
 				<< (cmd->version & 0xf)
@@ -744,6 +755,11 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 #elif defined(__x86_64__)
 #	define RELOC_VANILLA X86_64_RELOC_UNSIGNED
 #	define RELOC_PTRLEN 3
+#elif defined(__arm__)
+#	define RELOC_VANILLA ARM_RELOC_VANILLA
+#	define RELOC_PTRLEN 2
+#else
+#	error Unsupported platform!
 #endif
 
 void MachOImpl::readInternalRelocation(const struct relocation_info* reloc)

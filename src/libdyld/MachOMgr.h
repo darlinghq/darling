@@ -6,8 +6,10 @@
 #include <vector>
 #include <set>
 #include <util/rwmutex.h>
-#include "UndefinedFunction.h"
-#include "Trampoline.h"
+#if defined(__i386__) || defined(__x86_64__)
+#	include "UndefinedFunction.h"
+#	include "Trampoline.h"
+#endif
 
 struct mach_header;
 
@@ -68,14 +70,20 @@ public:
 	// DYLD_LIBRARY_PATH
 	inline void setLibraryPath(const std::string& paths) { m_libraryPath = paths; }
 	inline const std::string& libraryPath() const { return m_libraryPath; }
-	
-	// Darling specific: DYLD_TRAMPOLINES
-	void setUseTrampolines(bool useTrampolines, const std::string& funcInfo);
-	inline bool useTrampolines() const { return m_pTrampolineMgr != nullptr; }
-	
+
+        // Darling specific: DYLD_TRAMPOLINES
+        void setUseTrampolines(bool useTrampolines, const std::string& funcInfo);
+
 	// Darling specific: DYLD_IGN_MISSING_SYMS
-	void setIgnoreMissingSymbols(bool ignoreMissingSymbols);
+        void setIgnoreMissingSymbols(bool ignoreMissingSymbols);	
+	
+#ifdef HAS_DEBUG_HELPERS
+	inline bool useTrampolines() const { return m_pTrampolineMgr != nullptr; }
 	inline bool ignoreMissingSymbols() const { return m_pUndefMgr != nullptr; }
+#else
+	inline bool useTrampolines() const { return false; }
+	inline bool ignoreMissingSymbols() const { return false; }
+#endif
 
 	// DYLD_PRINT_SEGMENTS
 	inline void setPrintSegments(bool printSegments) { m_printSegments = printSegments; }
@@ -111,8 +119,11 @@ public:
 protected:
 	friend class MachOObject;
 
+#ifdef HAS_DEBUG_HELPERS
 	inline UndefMgr* undefMgr() { return m_pUndefMgr; }
 	inline TrampolineMgr* trampolineMgr() { return m_pTrampolineMgr; }
+#endif
+
 private:
 	// map by base address
 	std::map<void*, MachOObject*> m_objects;
@@ -132,9 +143,11 @@ private:
 	bool m_bindAtLaunch, m_printInitializers, m_printLibraries;
 	bool m_printSegments, m_printBindings, m_printRpathExpansion, m_loadAny;
 	std::string m_libraryPath, m_sysroot;
-	
-	UndefMgr* m_pUndefMgr;
-	TrampolineMgr* m_pTrampolineMgr;
+
+#ifdef HAS_DEBUG_HELPERS
+	UndefMgr* m_pUndefMgr = nullptr;
+	TrampolineMgr* m_pTrampolineMgr = nullptr;
+#endif
 	
 	std::set<LoaderHookFunc*> m_loadHooks, m_unloadHooks;
 	bool m_addedDefaultLoader;

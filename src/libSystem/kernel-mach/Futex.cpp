@@ -1,3 +1,4 @@
+#include "config.h"
 #include "Futex.h"
 #include <unistd.h>
 #include <sys/syscall.h>

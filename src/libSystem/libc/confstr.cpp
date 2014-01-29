@@ -1,3 +1,4 @@
+#include "config.h"
 #include "confstr.h"
 #include <unistd.h>
 #include <errno.h>

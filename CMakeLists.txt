@@ -25,6 +25,52 @@ endif (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 
 message(STATUS "This is a ${BITS}-bit build")
 
+if (DEBUG)
+	ADD_DEFINITIONS(-ggdb -DDEBUG)
+endif (DEBUG)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/xnu)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/xnu/bsd)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/darwin)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/util)
+include_directories(${CMAKE_BINARY_DIR}) # for config.h
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+configure_file(config.h.in config.h)
+
+######################
+# iOS build          #
+######################
+
+if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
+
+message(STATUS "Building Darling for iOS binary translation")
+
+add_subdirectory(src/util)
+add_subdirectory(src/libmach-o)
+add_subdirectory(src/libdyld)
+add_subdirectory(src/dyld)
+add_subdirectory(src/libSystem)
+
+add_dependencies(dyld mach-o)
+add_dependencies(dyld-bin dyld)
+
+# TODO: iOS will use a different set
+install(FILES etc/dylib.conf DESTINATION /etc/darling)
+
+# TODO: more libs
+
+else (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
+
+#####################
+# OS X build        #
+#####################
+
+message(STATUS "Building Darling for OS X binary translation")
+
 include(FindPkgConfig)
 include(FindGnustepBase)
 include(FindGnustepCorebase)
@@ -59,18 +105,6 @@ endif (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 enable_language(ASM-ATT)
 enable_language(ASM_NASM)
 
-if (DEBUG)
-	ADD_DEFINITIONS(-ggdb -DDEBUG)
-endif (DEBUG)
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/xnu)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/xnu/bsd)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/darwin)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/util)
-include_directories(${CMAKE_BINARY_DIR}) # for config.h
 
 include_directories(${LIBGNUSTEPBASE_INCLUDE_DIR})
 include_directories(${LIBGNUSTEPCOREBASE_INCLUDE_DIR})
@@ -78,9 +112,7 @@ include_directories(${LIBKQUEUE_INCLUDE_DIR})
 include_directories(${LIBOBJC2_INCLUDE_DIR})
 include_directories(${LIBOPAL_INCLUDE_DIR})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-configure_file(config.h.in config.h)
 configure_file(frameworks.h.in frameworks.h)
 
 # If building on a 64bit system, only install these for 64bits
@@ -123,3 +155,6 @@ add_subdirectory(src/libstdc++darwin)
 add_dependencies(dyld mach-o)
 add_dependencies(dyld-bin dyld)
 add_dependencies(Cocoa crashhandler)
+
+endif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
+

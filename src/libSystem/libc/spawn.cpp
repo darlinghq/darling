@@ -1,3 +1,4 @@
+#include "config.h"
 #include "spawn.h"
 #include "errno.h"
 #include "../common/auto.h"

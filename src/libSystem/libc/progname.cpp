@@ -1,3 +1,4 @@
+#include "config.h"
 #include <bsd/stdlib.h>
 #include <libdyld/MachOMgr.h>
 #include <libdyld/MachOObject.h>

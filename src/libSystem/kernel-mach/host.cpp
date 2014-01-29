@@ -68,6 +68,9 @@ kern_return_t host_info(host_t host, int flavor, host_basic_info* info, long* in
 #elif defined(__x86_64__)
 	info->cpu_type = CPU_TYPE_I386; // TODO: check the behavior on Darwin!
 	info->cpu_subtype = CPU_SUBTYPE_I386_ALL;
+#elif defined(__arm__)
+	info->cpu_type = CPU_TYPE_ARM;
+	info->cpu_subtype = CPU_SUBTYPE_ARM_ALL;
 #else
 #	error Unsupported platform
 #endif
