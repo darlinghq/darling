@@ -82,6 +82,7 @@ public:
 	{
 		std::string name;
 		uint64_t addr;
+		bool thumb; // arm
 	};
 	
 	struct Section

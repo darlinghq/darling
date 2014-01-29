@@ -178,7 +178,12 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 				else
 					std::cout << std::setw(8);
 				
-				std::cout << s.addr << std::setw(0) << std::dec << ']' << std::endl;
+				std::cout << s.addr << std::setw(0) << std::dec << ']';
+				
+				if (s.thumb)
+					std::cout << " THUMB";
+				
+				std::cout << std::endl;
 			}
 			break;
 		}

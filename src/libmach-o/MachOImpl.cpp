@@ -471,6 +471,12 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 					Symbol sym;
 					nlist* nl = (nlist*)symtab;
 					sym.name = symstrtab + nl->n_strx;
+					
+					if (m_header.cputype == CPU_TYPE_ARM)
+						sym.thumb = nl->n_desc & N_ARM_THUMB_DEF;
+					else
+						sym.thumb = false;
+					
 					if (m_is64)
 					{
 						sym.addr = nl->n_value;
@@ -742,6 +748,10 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 			Export* exp = new Export;
 			exp->name = m_symbols[i].name;
 			exp->addr = m_symbols[i].addr;
+			
+			if (m_header.cputype == CPU_TYPE_ARM && m_symbols[i].thumb)
+				exp->addr |= 1;
+			
 			exp->flag = 0;
 			exp->resolver = 0;
 			m_exports.push_back(exp);
