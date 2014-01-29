@@ -186,54 +186,46 @@ void MachOObject::loadSegments()
 		
 		if (!m_base)
 		{
-			m_base = (void*) seg->vmaddr;
+			mappingAddr = (void*) seg->vmaddr;
 			
-			if (!m_base)
-				m_base = MachOMgr::instance()->maxAddress();
-			
-			if (m_base && m_base < (void*)getMinMappingAddr())
-				m_base = (void*) getMinMappingAddr();
-			
-			if (!m_base)
-			{
-				// This is normally used only for:
-				// a) DYLD_PRELOAD
-				// b) Standalone use of libdyld
-			
-	#if (__WORDSIZE == 64)
-				m_base = (void*) 0x200000000L;
-	#else
-				m_base = (void*) 0x1000000;
-	#endif
-			}
-			
-			if ((void*)seg->vmaddr != m_base && !m_slide)
-				m_slide = uintptr_t(m_base) - seg->vmaddr;
+			if (mappingAddr < MachOMgr::instance()->maxAddress())
+				mappingAddr = MachOMgr::instance()->maxAddress();
 		}
+		else
+			mappingAddr = (void*) (seg->vmaddr + m_slide);
 		
 		mappingSize = pageAlign(seg->filesize);
-		mappingAddr = (void*) (seg->vmaddr + m_slide);
 		maxprot = machoProtectionFlagsToMmap(seg->maxprot);
 		initprot = machoProtectionFlagsToMmap(seg->initprot);
 	
 		if (MachOMgr::instance()->printSegments())
 			std::cerr << "dyld: Mapping segment " << seg->segname << " from " << m_file->filename() << " to " << mappingAddr << ", slide is 0x" << std::hex << m_slide << std::dec << std::endl;
 		
+#ifndef __arm__ // All executables on iOS are PIE
 		// The first segment can be moved by mmap, but not the following ones
-		if (mappingAddr != m_base)
+		if (m_base || !(m_file->header().flags & MH_PIE))
 			flags |= MAP_FIXED;
+#endif
 
 		rv = ::mmap(mappingAddr, mappingSize, maxprot, flags, m_file->fd(), m_file->offset() + seg->fileoff);
 		if (rv == MAP_FAILED)
 		{
 			std::stringstream ss;
-			ss << "Failed to mmap '" << m_file->filename() << "': " << strerror(errno);
+			
+			if (errno == EPERM && uintptr_t(mappingAddr) < getMinMappingAddr())
+			{
+				ss << "This executable is not position independent and your vm.mmap_min_addr is too low to load it. ";
+				ss << "As low as " << uintptr_t(mappingAddr) << " is needed.";
+			}
+			else
+				ss << "Failed to mmap '" << m_file->filename() << "': " << strerror(errno);
 			throw std::runtime_error(ss.str());
 		}
-		if (rv != mappingAddr)
+		if (!m_base)
 		{
-			m_slide += (intptr_t(rv) - intptr_t(mappingAddr));
+			m_slide = (intptr_t(rv) - intptr_t(seg->vmaddr));
 			m_base = rv;
+			mappingAddr = rv;
 		}
 		
 		m_mappings.push_back(Mapping { mappingAddr, pageAlign(seg->vmsize), initprot, maxprot });
