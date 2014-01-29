@@ -844,31 +844,36 @@ void MachOObject::jumpToStart()
 {
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
 	uintptr_t entry = m_file->entry() + m_slide;
+	void** sp;
+	int pushCount = 0;
 	
 #ifdef __x86_64__
-#	define PUSH(val) __asm__ volatile("pushq %0" :: "r"(uint64_t(val)) :)
-#	define JUMP(addr) __asm__ volatile("jmpq *%0" :: "m"(addr) :)
+#	define GETSP(ptr) __asm__ volatile("movq %%rsp, %0" : "=r"(ptr) ::)
+#	define JUMPX(pushCount, addr) __asm__ volatile("sub %%rsp, %1; jmpq *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
 #elif defined(__i386__)
-#	define PUSH(val) __asm__ volatile("pushl %0" :: "r"(uint32_t(val)) :)
-#	define JUMP(addr) __asm__ volatile("jmp *%0" :: "r"(addr) :)
+#	define GETSP(ptr) __asm__ volatile("movl %%esp, %0" : "=m"(ptr) ::)
+#	define JUMPX(pushCount, addr) __asm__ volatile("sub %%esp, %1; jmp *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
 #elif defined(__arm__)
-#	define PUSH(val) __asm__ volatile("push {%0}" :: "r"(uint32_t(val)) :)
-#	define JUMP(addr) __asm__ volatile("bx %0" :: "r"(addr) :)
+#	define GETSP(ptr) __asm__ volatile("mov %0, sp" : "=r"(ptr) ::)
+#	define JUMPX(pushCount, addr) __asm__ volatile("sub sp, %1; bx %0" :: "r"(addr), "r"(pushCount * sizeof(void*)) :)
 #else 
 #       error Unsupported platform!
 #endif
+	
+	GETSP(sp);
+	sp--;
 
 	for (int i = std::char_traits<char*>::length(apple)-1; i >= 0; i--)
-		PUSH(apple[i]);
+		sp[-(pushCount++)] = apple[i];
 
 	for (int i = std::char_traits<char*>::length(m_envp)-1; i >= 0; i--)
-		PUSH(m_envp[i]);
+		sp[-(pushCount++)] = m_envp[i];
 
 	for (int i = m_argc; i >= 0; i--)
-		PUSH(m_argv[i]);
+		sp[-(pushCount++)] = m_argv[i];
 
-	PUSH(m_argc);
-	JUMP(entry);
+	sp[-(pushCount++)] = (void*) uintptr_t(m_argc);
+	JUMPX(pushCount, entry);
 
 	__builtin_unreachable();
 }
