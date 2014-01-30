@@ -16,6 +16,14 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
+
+    add_definitions(-DHAS_DEBUG_HELPERS)
+    add_definitions(-DHAS_TLS_SUPPORT)
+
+endif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
+
+
 add_executable(dyld-bin ${dyld_SRCS})
 set_target_properties(dyld-bin PROPERTIES OUTPUT_NAME dyld${SUFFIX})
 target_link_libraries(dyld-bin dyld util mach-o)

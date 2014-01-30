@@ -40,7 +40,11 @@ int main(int argc, char** argv, char** envp)
 
 		mgr->setPrintInitializers(getenv("DYLD_PRINT_INITIALIZERS") != nullptr);
 		mgr->setPrintLibraries(getenv("DYLD_PRINT_LIBRARIES") != nullptr);
+#ifdef __arm__ // dyld_stub_binder hasn't been ported to ARM yet
+		mgr->setBindAtLaunch(true);
+#else
 		mgr->setBindAtLaunch(getenv("DYLD_BIND_AT_LAUNCH") != nullptr);
+#endif
 		mgr->setIgnoreMissingSymbols(getenv("DYLD_IGN_MISSING_SYMS") != nullptr);
 		mgr->setPrintSegments(getenv("DYLD_PRINT_SEGMENTS") != nullptr);
 		mgr->setPrintBindings(getenv("DYLD_PRINT_BINDINGS") != nullptr);

@@ -849,10 +849,10 @@ void MachOObject::jumpToStart()
 	
 #ifdef __x86_64__
 #	define GETSP(ptr) __asm__ volatile("movq %%rsp, %0" : "=r"(ptr) ::)
-#	define JUMPX(pushCount, addr) __asm__ volatile("sub %%rsp, %1; jmpq *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
+#	define JUMPX(pushCount, addr) __asm__ volatile("sub %1, %%rsp; jmpq *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
 #elif defined(__i386__)
 #	define GETSP(ptr) __asm__ volatile("movl %%esp, %0" : "=m"(ptr) ::)
-#	define JUMPX(pushCount, addr) __asm__ volatile("sub %%esp, %1; jmp *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
+#	define JUMPX(pushCount, addr) __asm__ volatile("sub %1, %%esp; jmp *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
 #elif defined(__arm__)
 #	define GETSP(ptr) __asm__ volatile("mov %0, sp" : "=r"(ptr) ::)
 #	define JUMPX(pushCount, addr) __asm__ volatile("sub sp, %1; bx %0" :: "r"(addr), "r"(pushCount * sizeof(void*)) :)
@@ -864,15 +864,15 @@ void MachOObject::jumpToStart()
 	sp--;
 
 	for (int i = std::char_traits<char*>::length(apple)-1; i >= 0; i--)
-		sp[-(pushCount++)] = apple[i];
+		*(sp-(pushCount++)) = apple[i];
 
 	for (int i = std::char_traits<char*>::length(m_envp)-1; i >= 0; i--)
-		sp[-(pushCount++)] = m_envp[i];
+		*(sp-(pushCount++)) = m_envp[i];
 
 	for (int i = m_argc; i >= 0; i--)
-		sp[-(pushCount++)] = m_argv[i];
+		*(sp-(pushCount++)) = m_argv[i];
 
-	sp[-(pushCount++)] = (void*) uintptr_t(m_argc);
+	*(sp-(pushCount++)) = (void*) uintptr_t(m_argc);
 	JUMPX(pushCount, entry);
 
 	__builtin_unreachable();
