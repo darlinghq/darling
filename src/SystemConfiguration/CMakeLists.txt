@@ -24,5 +24,5 @@ set(SystemConfiguration_SRCS
 add_library(SystemConfiguration SHARED ${SystemConfiguration_SRCS})
 target_link_libraries(SystemConfiguration -lgnustep-corebase)
 
-install(TARGETS SystemConfiguration DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS SystemConfiguration DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

@@ -16,5 +16,5 @@ set_source_files_properties(${crashhandler_src} PROPERTIES LANGUAGE C) # Stupid 
 add_library(crashhandler SHARED ${crashhandler_src})
 target_link_libraries(crashhandler -lgnustep-gui -lgnustep-base)
 
-install(TARGETS crashhandler DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS crashhandler DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 
