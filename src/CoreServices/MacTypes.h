@@ -50,5 +50,12 @@ typedef int16_t OSErr;
 typedef int32_t OSStatus;
 typedef uint32_t OSType;
 
+enum {
+	kDurationImmediate = 0,
+	kDurationForever = 0x7FFFFFFF,
+	kDurationMillisecond = 1,
+	kDurationMicrosecond = -1
+};
+
 #endif
 
