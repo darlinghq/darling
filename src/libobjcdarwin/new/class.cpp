@@ -45,6 +45,13 @@ Class RegisterClass(const class_t* cls, intptr_t slide)
 		ConvertProperties(ro->baseProperties, [conv](const char* name, const objc_property_attribute_t* attr, unsigned int count) { class_addProperty(conv, name, attr, count); bug_gnustepFixPropertyCount(conv); });
 	}
 	
+	#ifdef __i386__
+	if (ro->instSize) {
+		conv->instance_size = ro->instSize;
+		conv->isa->instance_size = roMeta->instSize;
+	}
+	#endif
+
 	// conv->instance_size = ro->instSize;
 	// conv->isa->instance_size = roMeta->instSize;
 	
