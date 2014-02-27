@@ -45,6 +45,7 @@ Class RegisterClass(const class_t* cls, intptr_t slide)
 		ConvertProperties(ro->baseProperties, [conv](const char* name, const objc_property_attribute_t* attr, unsigned int count) { class_addProperty(conv, name, attr, count); bug_gnustepFixPropertyCount(conv); });
 	}
 	
+<<<<<<< HEAD
         #ifdef __i386__
         if (ro->instSize != conv->instance_size) {
             throw std::logic_error("Instance size not copied");
@@ -53,6 +54,15 @@ Class RegisterClass(const class_t* cls, intptr_t slide)
             throw std::logic_error("Instance size not copied (meta)");
         }
         #endif
+=======
+	#ifdef __i386__
+	if (ro->instSize) {
+		conv->instance_size = ro->instSize;
+		conv->isa->instance_size = roMeta->instSize;
+	}
+	#endif
+
+>>>>>>> e22e287e6d5e4a9e40b8e928a3f4041696b1f5f2
 	// conv->instance_size = ro->instSize;
 	// conv->isa->instance_size = roMeta->instSize;
 	
