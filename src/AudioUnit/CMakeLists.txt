@@ -6,7 +6,7 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 #configure_file(config.h.in config.h)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fblocks")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -25,7 +25,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(AudioUnit SHARED ${AudioUnit_SRCS})
-target_link_libraries(AudioUnit util -lasound)
+target_link_libraries(AudioUnit util -lasound -ldispatch)
 
 install(TARGETS AudioUnit DESTINATION "lib${SUFFIX}/darling")
 

@@ -1,3 +1,4 @@
+#include "config.h"
 #include "AudioUnit.h"
 #include "AudioUnitALSA.h"
 #include <log.h>

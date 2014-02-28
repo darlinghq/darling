@@ -1,3 +1,4 @@
+#include "config.h"
 #include "AUComponent.h"
 #include "AudioUnitALSA.h"
 #include <util/debug.h>
