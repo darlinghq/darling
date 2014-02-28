@@ -55,6 +55,9 @@ public:
 	void registerLoadHook(LoaderHookFunc* func);
 	void registerUnloadHook(LoaderHookFunc* func);
 	
+	void deregisterLoadHook(LoaderHookFunc* func);
+	void deregisterUnloadHook(LoaderHookFunc* func);
+	
 	// DYLD_BIND_AT_LAUNCH
 	inline void setBindAtLaunch(bool bindAtLaunch) { m_bindAtLaunch = bindAtLaunch; }
 	inline bool bindAtLaunch() const { return m_bindAtLaunch || useTrampolines(); }

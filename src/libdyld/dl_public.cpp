@@ -18,7 +18,7 @@
 static thread_local char g_lastError[1024];
 static thread_local bool g_lastErrorRead = false;
 
-static std::set<Darling::DlsymHookFunc> g_dlsymHooks;
+static std::set<Darling::DlsymHookFunc>* g_dlsymHooks = new std::set<Darling::DlsymHookFunc>;
 
 using namespace Darling;
 
@@ -116,7 +116,7 @@ static std::string processSymbolViaHooks(const std::string& symbol)
 
 	strcpy(translated, symbol.c_str());
 
-	for (Darling::DlsymHookFunc hook : g_dlsymHooks)
+	for (Darling::DlsymHookFunc hook : *g_dlsymHooks)
 	{
 		if (hook(translated))
 			return translated;
@@ -268,11 +268,11 @@ const char* NSLibraryNameForModule(NSModule m)
 
 void Darling::registerDlsymHook(DlsymHookFunc func)
 {
-	g_dlsymHooks.insert(func);
+	g_dlsymHooks->insert(func);
 }
 
 void Darling::deregisterDlsymHook(DlsymHookFunc func)
 {
-	//g_dlsymHooks.erase(func);
+	g_dlsymHooks->erase(func);
 }
 

@@ -79,6 +79,16 @@ void _dyld_register_func_for_remove_image(MachOMgr::LoaderHookFunc* func)
 	MachOMgr::instance()->registerUnloadHook(func);
 }
 
+void _dyld_deregister_func_for_add_image(MachOMgr::LoaderHookFunc* func)
+{
+	MachOMgr::instance()->deregisterLoadHook(func);
+}
+
+void _dyld_deregister_func_for_remove_image(MachOMgr::LoaderHookFunc* func)
+{
+	MachOMgr::instance()->deregisterUnloadHook(func);
+}
+
 
 const char* dyld_image_path_containing_address(const void* addr)
 {

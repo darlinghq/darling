@@ -49,6 +49,12 @@ __attribute__((constructor))
 	//std::cout << "Done registering\n";
 }
 
+__attribute__((destructor))
+	void DeregisterHooks()
+{
+	_dyld_deregister_func_for_add_image(ProcessImageLoad);
+	_dyld_deregister_func_for_remove_image(ProcessImageUnload);
+}
 
 void ProcessImageLoad(const struct mach_header* mh, intptr_t slide)
 {

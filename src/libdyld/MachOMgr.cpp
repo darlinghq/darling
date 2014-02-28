@@ -88,6 +88,21 @@ void MachOMgr::registerUnloadHook(LoaderHookFunc* func)
 	m_unloadHooks.insert(func);
 }
 
+void MachOMgr::deregisterLoadHook(LoaderHookFunc* func)
+{
+	Darling::RWMutexWriteLock l(m_lock);
+	
+	m_loadHooks.erase(func);
+}
+
+void MachOMgr::deregisterUnloadHook(LoaderHookFunc* func)
+{
+	Darling::RWMutexWriteLock l(m_lock);
+	
+	m_unloadHooks.erase(func);
+}
+
+
 void MachOMgr::add(MachOObject* obj, bool mainModule)
 {
 	Darling::RWMutexWriteLock l(m_lock);
