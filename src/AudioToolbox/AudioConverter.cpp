@@ -232,7 +232,7 @@ enum AVCodecID AudioConverter::CACodecToAV(const AudioStreamBasicDescription* de
 				}
 
 				if (desc->mBitsPerChannel != 8 && desc->mFormatFlags & kAudioFormatFlagIsBigEndian)
-					cid++;
+					cid = (enum AVCodecID)(int(cid)+1);
 				return cid;
 			}
 			else
@@ -249,7 +249,7 @@ enum AVCodecID AudioConverter::CACodecToAV(const AudioStreamBasicDescription* de
 				}
 
 				if (desc->mBitsPerChannel != 8 && desc->mFormatFlags & kAudioFormatFlagIsBigEndian)
-					cid++;
+					cid = (enum AVCodecID)(int(cid)+1);
 				return cid;
 			}
 			return AV_CODEC_ID_NONE;

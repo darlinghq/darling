@@ -1,3 +1,4 @@
+#include "config.h"
 #include "Components.h"
 #include "ComponentsInternal.h"
 #include "frameworks.h"
@@ -9,7 +10,7 @@
 Component FindNextComponent(Component prev, ComponentDescription* desc)
 {
 	TRACE2(prev, desc);
-#ifdef FRAMERWORK_COREAUDIO
+#ifdef FRAMEWORK_COREAUDIO
 	if ((desc->componentType & 0xffff0000) == kComponentTypeAudioUnit)
 	{
 		return AudioComponentFindNext((AudioComponent) prev, (AudioComponentDescription*) desc);
@@ -21,7 +22,7 @@ Component FindNextComponent(Component prev, ComponentDescription* desc)
 
 long CountComponents(ComponentDescription* desc)
 {
-#ifdef FRAMERWORK_COREAUDIO
+#ifdef FRAMEWORK_COREAUDIO
 	if ((desc->componentType & 0xffff0000) == kComponentTypeAudioUnit)
 	{
 		return AudioComponentCount((AudioComponentDescription*) desc);
@@ -40,7 +41,7 @@ OSErr OpenAComponent(Component comp, ComponentInstance* out)
 
 	*out = nullptr;
 
-#ifdef FRAMERWORK_COREAUDIO
+#ifdef FRAMEWORK_COREAUDIO
 	if (GetComponentType(comp) == kComponentTypeAudioUnit)
 	{
 		AudioComponentInstance inst;

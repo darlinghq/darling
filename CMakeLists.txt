@@ -39,7 +39,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/util)
 include_directories(${CMAKE_BINARY_DIR}) # for config.h
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-configure_file(config.h.in config.h)
 
 ######################
 # iOS build          #
@@ -142,6 +141,7 @@ add_subdirectory(src/Carbon)
 add_subdirectory(src/SystemConfiguration)
 
 if (WITH_COREAUDIO)
+	set(FRAMEWORK_COREAUDIO TRUE)
 	add_subdirectory(src/AudioUnit)
 	add_subdirectory(src/AudioToolbox)
 endif (WITH_COREAUDIO)
@@ -158,3 +158,4 @@ add_dependencies(Cocoa crashhandler)
 
 endif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
 
+configure_file(config.h.in config.h)
