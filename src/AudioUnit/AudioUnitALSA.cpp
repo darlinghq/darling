@@ -6,6 +6,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <memory>
+#include <cstdio>
 #include <dispatch/dispatch.h>
 
 static dispatch_queue_t g_audioQueue;
@@ -100,9 +101,6 @@ OSStatus AudioUnitALSA::init()
 		if (m_pcmOutput || m_pcmInput)
 			return kAudioUnitErr_Initialized;
 		
-		//if (!m_renderCallback.inputProc)
-		//	throw std::runtime_error("No render callback set");
-		
 		if (m_configOutputPlayback.mFormatFlags & kAudioFormatFlagIsNonInterleaved)
 		{
 			ERROR() << "Non-interleaved audio not supported yet\n";
@@ -149,6 +147,7 @@ OSStatus AudioUnitALSA::init()
 			if (err)
 				throwAlsaError("Failed to set sample rate", err);
 			
+			LOG << "Channel count: " << m_configOutputPlayback.mChannelsPerFrame << std::endl;
 			err = snd_pcm_hw_params_set_channels(m_pcmOutput, hw_params, m_configOutputPlayback.mChannelsPerFrame);
 			if (err)
 				throwAlsaError("Failed to set channel count", err);
@@ -223,17 +222,17 @@ void AudioUnitALSA::processAudioEvent(struct pollfd origPoll, int event)
 	
 	TRACE1(event);
 
-	pfd.revents = POLLIN;
+	pfd.revents = event;
 
 	err = snd_pcm_poll_descriptors_revents(m_pcmOutput, &pfd, 1, &revents);
 	if (err != 0)
 		ERROR() << "snd_pcm_poll_descriptors_revents() failed: " << snd_strerror(err);
 	
-	if (revents == POLLIN)
+	if (revents & POLLIN)
 	{
 		ERROR() << "Audio capture unsupported";
 	}
-	else if (revents == POLLOUT)
+	if (revents & POLLOUT)
 	{
 		requestDataForPlayback();
 	}
@@ -246,6 +245,7 @@ void AudioUnitALSA::requestDataForPlayback()
 	AudioBufferList bufs;
 	OSStatus err;
 	std::unique_ptr<uint8_t[]> data;
+	static int fout = open("/tmp/pcmdata.raw", O_WRONLY|O_CREAT, 0666);
 	
 	TRACE();
 	
@@ -260,19 +260,30 @@ void AudioUnitALSA::requestDataForPlayback()
 	bufs.mBuffers[0].mData = data.get();
 	
 	err = m_renderCallback.inputProc(m_renderCallback.inputProcRefCon, &flags, &ts, 0 /* playback */, 4096, &bufs);
+	
 	if (err != noErr)
 	{
 		ERROR() << "Render callback failed with error " << err;
-		stop();
+		// Fill with silence
+		
+		UInt32 bytes = m_configOutputPlayback.mBytesPerFrame * 4096;
+		memset(data.get(), 0, bytes);
+		bufs.mBuffers[0].mDataByteSize = bytes;
 	}
-	else
+	
+	if (bufs.mBuffers[0].mDataByteSize > 0)
 	{
-		int wr;
+		int wr, towrite;
 		
 		// TODO: non-interleaved audio
-		wr = snd_pcm_writei(m_pcmOutput, bufs.mBuffers[0].mData, bufs.mBuffers[0].mDataByteSize);
-		if (wr != bufs.mBuffers[0].mDataByteSize)
+		LOG << "Writing " << bufs.mBuffers[0].mDataByteSize << " bytes into sound card\n";
+		
+		towrite = bufs.mBuffers[0].mDataByteSize / m_configOutputPlayback.mBytesPerFrame;
+		wr = snd_pcm_writei(m_pcmOutput, bufs.mBuffers[0].mData, towrite);
+		if (wr != towrite)
 		{
+			if (wr == -EPIPE)
+				; // TODO: underruns
 			if (wr < 0)
 				ERROR() << "snd_pcm_writei() failed: " << snd_strerror(wr);
 			else
@@ -336,7 +347,7 @@ OSStatus AudioUnitALSA::start()
 				
 				if (cur.events & POLLOUT)
 				{
-					source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, pollfds[i].fd, 0, g_audioQueue);
+					source = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, pollfds[i].fd, 0, g_audioQueue);
 					dispatch_source_set_event_handler(source, ^{
 						processAudioEvent(cur, POLLOUT);
 					});
@@ -364,6 +375,8 @@ OSStatus AudioUnitALSA::start()
 
 OSStatus AudioUnitALSA::stop()
 {
+	TRACE();
+	
 	for (dispatch_source_t src : m_sources)
 		dispatch_source_cancel(src);
 	m_sources.clear();
