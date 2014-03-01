@@ -9,6 +9,8 @@
 
 namespace Darling {
 
+bool MachOMgr::m_bTerminated = false;
+
 MachOMgr::MachOMgr()
 : m_mainModule(nullptr), m_bindAtLaunch(false), m_printInitializers(false),
   m_printLibraries(false), m_printSegments(false), m_printBindings(false),
@@ -27,6 +29,8 @@ MachOMgr::~MachOMgr()
 		LoadableObject* obj = m_loadablesInOrder.front();
 		obj->unload();
 	}
+	
+	m_bTerminated = true;
 }
 
 MachOMgr* MachOMgr::instance()

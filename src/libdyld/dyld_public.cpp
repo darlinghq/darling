@@ -81,12 +81,14 @@ void _dyld_register_func_for_remove_image(MachOMgr::LoaderHookFunc* func)
 
 void _dyld_deregister_func_for_add_image(MachOMgr::LoaderHookFunc* func)
 {
-	MachOMgr::instance()->deregisterLoadHook(func);
+	if (!MachOMgr::isTerminated()) // MachOMgr singleton may be destroyed before modules are unloaded
+		MachOMgr::instance()->deregisterLoadHook(func);
 }
 
 void _dyld_deregister_func_for_remove_image(MachOMgr::LoaderHookFunc* func)
 {
-	MachOMgr::instance()->deregisterUnloadHook(func);
+	if (!MachOMgr::isTerminated()) // MachOMgr singleton may be destroyed before modules are unloaded
+		MachOMgr::instance()->deregisterUnloadHook(func);
 }
 
 

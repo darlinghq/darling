@@ -21,7 +21,7 @@ class NativeObject;
 
 class MachOMgr
 {
-private:
+public:
 	MachOMgr();
 	~MachOMgr();
 public:
@@ -74,11 +74,11 @@ public:
 	inline void setLibraryPath(const std::string& paths) { m_libraryPath = paths; }
 	inline const std::string& libraryPath() const { return m_libraryPath; }
 
-        // Darling specific: DYLD_TRAMPOLINES
-        void setUseTrampolines(bool useTrampolines, const std::string& funcInfo);
+	// Darling specific: DYLD_TRAMPOLINES
+	void setUseTrampolines(bool useTrampolines, const std::string& funcInfo);
 
 	// Darling specific: DYLD_IGN_MISSING_SYMS
-        void setIgnoreMissingSymbols(bool ignoreMissingSymbols);	
+	void setIgnoreMissingSymbols(bool ignoreMissingSymbols);	
 	
 #ifdef HAS_DEBUG_HELPERS
 	inline bool useTrampolines() const { return m_pTrampolineMgr != nullptr; }
@@ -119,6 +119,8 @@ public:
 	void add(NativeObject* obj);
 	void remove(NativeObject* obj);
 	void notifyAdd(MachOObject* obj);
+	
+	static bool isTerminated() { return m_bTerminated; }
 protected:
 	friend class MachOObject;
 
@@ -154,6 +156,7 @@ private:
 	
 	std::set<LoaderHookFunc*> m_loadHooks, m_unloadHooks;
 	bool m_addedDefaultLoader;
+	static bool m_bTerminated;
 };
 
 } // namespace Darling
