@@ -101,14 +101,6 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 				m_inputUnit.destInputNumber = 0;
 				m_inputUnit.sourceAudioUnit = new AudioUnitRenderer(*(AURenderCallbackStruct*) data);
 			}
-			else if (scope == kAudioUnitScope_Output)
-			{
-				if (elem != 1)
-					return kAudioUnitErr_InvalidElement;
-				
-				CloseComponent(m_outputUnit.sourceAudioUnit);
-				m_outputUnit.sourceAudioUnit = new AudioUnitRenderer(*(AURenderCallbackStruct*) data);
-			}
 			else
 				return kAudioUnitErr_InvalidScope;
 			

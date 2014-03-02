@@ -24,10 +24,6 @@ public:
 protected:
 	AudioStreamBasicDescription m_configOutputPlayback, m_configInputPlayback, m_configInputCapture, m_configOutputCapture;
 	AudioUnitConnection m_inputUnit;
-	
-	// Only for render callbacks on AudioOutputUnit recorders.
-	// Real unit connection would be placed into the destination unit.
-	AudioUnitConnection m_outputUnit;
 	bool m_shouldAllocateBuffer = true;
 };
 
