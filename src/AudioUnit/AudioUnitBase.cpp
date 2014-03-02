@@ -5,7 +5,6 @@
 #include <cstring>
 
 AudioUnitComponent::AudioUnitComponent()
-	: m_enableOutput(true), m_enableInput(false)
 {
 	// Default audio params
 	m_configOutputPlayback = AudioStreamBasicDescription {
@@ -34,6 +33,10 @@ OSStatus AudioUnitComponent::getPropertyInfo(AudioUnitPropertyID prop, AudioUnit
 			break;
 		case kAudioUnitProperty_SetRenderCallback:
 			*dataSize = sizeof(AURenderCallbackStruct);
+			*writable = true;
+			break;
+		case kAudioUnitProperty_ShouldAllocateBuffer:
+			*dataSize = sizeof(int);
 			*writable = true;
 			break;
 		default:
@@ -79,32 +82,6 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 
 			return noErr;
 		}
-		case kAudioOutputUnitProperty_EnableIO:
-		{
-			const UInt32* state;
-
-			if (dataSize != sizeof(UInt32))
-				return kAudioUnitErr_InvalidParameter;
-
-			state = static_cast<const UInt32*>(data);
-			
-			if (scope == kAudioUnitScope_Output)
-			{
-				if (elem != 0)
-					return kAudioUnitErr_InvalidElement;
-				m_enableOutput = *state != 0;
-			}
-			else if (scope == kAudioUnitScope_Input)
-			{
-				if (elem != 1)
-					return kAudioUnitErr_InvalidElement;
-				m_enableInput = *state != 0;
-			}
-			else
-				return kAudioUnitErr_InvalidScope;
-
-			return noErr;
-		}
 		case kAudioUnitProperty_SetRenderCallback:
 		{
 			if (dataSize != sizeof(AURenderCallbackStruct))
@@ -115,6 +92,15 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 				return kAudioUnitErr_InvalidElement;
 			
 			memcpy(&m_renderCallback, data, dataSize);
+			return noErr;
+		}
+		case kAudioUnitProperty_ShouldAllocateBuffer:
+		{
+			int* b = (int*) data;
+			if (dataSize < sizeof(int))
+				return kAudioUnitErr_InvalidParameter;
+			
+			m_shouldAllocateBuffer = *b != 0;
 			return noErr;
 		}
 		default:
@@ -158,31 +144,13 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 
 			return noErr;
 		}
-		case kAudioOutputUnitProperty_EnableIO:
+		case kAudioUnitProperty_ShouldAllocateBuffer:
 		{
-			UInt32* state;
-
+			int* out = (int*) data;
 			if (*dataSize < sizeof(UInt32))
 				return kAudioUnitErr_InvalidParameter;
-
-			state = static_cast<UInt32*>(data);
-
-			if (scope == kAudioUnitScope_Output)
-			{
-				if (elem != 0)
-					return kAudioUnitErr_InvalidElement;
-				*state = m_enableOutput;
-			}
-			else if (scope == kAudioUnitScope_Input)
-			{
-				if (elem != 1)
-					return kAudioUnitErr_InvalidElement;
-				*state = m_enableInput;
-			}
-			else
-				return kAudioUnitErr_InvalidScope;
-
-			*dataSize = sizeof(UInt32);
+			
+			*out = m_shouldAllocateBuffer;
 			return noErr;
 		}
 		default:

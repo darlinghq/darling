@@ -55,7 +55,7 @@ OSStatus AudioComponentInstanceDispose(AudioComponentInstance inInstance)
 
 AudioComponent AudioComponentInstanceGetComponent(AudioComponentInstance inInstance)
 {
-	return CreateComponent(kComponentTypeAudioUnit, inInstance->cardIndex());
+	return CreateComponent(kComponentTypeAudioUnit, static_cast<AudioOutputUnitComponent*>(inInstance)->cardIndex());
 }
 
 OSStatus AudioComponentInstanceNew(AudioComponent inComponent, AudioComponentInstance *outInstance)

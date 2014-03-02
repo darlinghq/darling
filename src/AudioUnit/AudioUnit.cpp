@@ -1,5 +1,6 @@
 #include "config.h"
 #include "AudioUnit.h"
+#include "AudioOutputUnitComponent.h"
 #include "AudioUnitALSA.h"
 #include <log.h>
 #include <trace.h>
@@ -30,14 +31,12 @@ OSStatus AudioUnitRemoveRenderNotify(AudioUnit inUnit, AURenderCallback inProc, 
 
 OSStatus AudioUnitRender(AudioUnit inUnit, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inOutputBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData)
 {
-	STUB();
-	return unimpErr;
+	return inUnit->render(ioActionFlags, inTimeStamp, inOutputBusNumber, inNumberFrames, ioData);
 }
 
 OSStatus AudioUnitReset(AudioUnit inUnit, AudioUnitScope inScope, AudioUnitElement inElement)
 {
-	STUB();
-	return noErr;
+	return inUnit->reset(inScope, inElement);
 }
 
 OSStatus AudioUnitGetProperty(AudioUnit inUnit, AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, void* outData, UInt32 *ioDataSize)
@@ -57,12 +56,12 @@ OSStatus AudioUnitSetProperty(AudioUnit inUnit, AudioUnitPropertyID inID, AudioU
 
 OSStatus AudioOutputUnitStart(AudioUnit inUnit)
 {
-	return inUnit->start();
+	return static_cast<AudioOutputUnitComponent*>(inUnit)->start();
 }
 
 OSStatus AudioOutputUnitStop(AudioUnit inUnit)
 {
-	return inUnit->stop();
+	return static_cast<AudioOutputUnitComponent*>(inUnit)->stop();
 }
 
 

@@ -5,9 +5,9 @@
 #include <alsa/asoundlib.h>
 #include <dispatch/dispatch.h>
 #include <vector>
-#include "AudioUnitBase.h"
+#include "AudioOutputUnitComponent.h"
 
-class AudioUnitALSA : public AudioUnitComponent
+class AudioUnitALSA : public AudioOutputUnitComponent
 {
 private:
 	AudioUnitALSA(int cardIndex, char* cardName);
@@ -22,9 +22,31 @@ public:
 
 	OSStatus start() override;
 	OSStatus stop() override;
+	
+	OSStatus reset(AudioUnitScope inScope, AudioUnitElement inElement) override;
+	
+	OSStatus render(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) override;
 private:
+	void initOutput();
+	void initInput();
+	
+	void startOutput();
+	void startInput();
+	
 	void processAudioEvent(struct pollfd origPoll, int event);
 	void requestDataForPlayback();
+	void pushDataFromInput();
+	
+	OSStatus renderOutput(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData);
+	OSStatus renderInterleavedOutput(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData);
+	OSStatus renderPlanarOutput(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData);
+	
+	OSStatus renderInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData);
+	OSStatus renderInterleavedInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData);
+	OSStatus renderPlanarInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData);
+	
+	inline bool isOutputPlanar() const { return m_configOutputPlayback.mFormatFlags & kAudioFormatFlagIsNonInterleaved; }
+	inline bool isInputPlanar() const { return m_configInputCapture.mFormatFlags & kAudioFormatFlagIsNonInterleaved; }
 private:
 	int m_cardIndex;
 	char* m_cardName;

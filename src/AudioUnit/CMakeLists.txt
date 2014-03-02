@@ -15,6 +15,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 set(AudioUnit_SRCS
 	AUComponent.cpp
 	AudioUnit.cpp
+	AudioOutputUnitComponent.cpp
 	AudioUnitBase.cpp
 	AudioUnitALSA.cpp
 )
