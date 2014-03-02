@@ -32,6 +32,7 @@ private:
 	
 	void startOutput();
 	void startInput();
+	void startDescriptors(const struct pollfd* fds, int count);
 	
 	void processAudioEvent(struct pollfd origPoll, int event);
 	void requestDataForPlayback();

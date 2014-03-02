@@ -18,6 +18,7 @@ set(AudioUnit_SRCS
 	AudioOutputUnitComponent.cpp
 	AudioUnitBase.cpp
 	AudioUnitALSA.cpp
+	AudioUnitRenderer.cpp
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")

@@ -57,5 +57,13 @@ struct AURenderCallbackStruct
 	void *inputProcRefCon;
 };
 
+struct AudioUnitConnection
+{
+	AudioUnit sourceAudioUnit;
+	UInt32 sourceOutputNumber;
+	UInt32 destInputNumber;
+};
+
+
 #endif
 

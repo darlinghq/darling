@@ -9,6 +9,7 @@ class AudioUnitComponent : public CarbonComponent
 {
 public:
 	AudioUnitComponent();
+    virtual ~AudioUnitComponent();
 
 	virtual OSStatus init() = 0;
 	virtual OSStatus deinit() = 0;
@@ -22,7 +23,11 @@ public:
 	virtual OSStatus getPropertyInfo(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, UInt32* dataSize, Boolean* writable);
 protected:
 	AudioStreamBasicDescription m_configOutputPlayback, m_configInputPlayback, m_configInputCapture, m_configOutputCapture;
-	AURenderCallbackStruct m_renderCallback;
+	AudioUnitConnection m_inputUnit;
+	
+	// Only for render callbacks on AudioOutputUnit recorders.
+	// Real unit connection would be placed into the destination unit.
+	AudioUnitConnection m_outputUnit;
 	bool m_shouldAllocateBuffer = true;
 };
 

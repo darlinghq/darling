@@ -1,5 +1,6 @@
 #include "AudioUnitBase.h"
 #include "AudioUnitProperties.h"
+#include "AudioUnitRenderer.h"
 #include <CoreServices/MacErrors.h>
 #include <util/debug.h>
 #include <cstring>
@@ -14,10 +15,14 @@ AudioUnitComponent::AudioUnitComponent()
 	memcpy(&m_configInputPlayback, &m_configOutputPlayback, sizeof(AudioStreamBasicDescription));
 	memcpy(&m_configInputCapture, &m_configOutputPlayback, sizeof(AudioStreamBasicDescription));
 	memcpy(&m_configOutputCapture, &m_configOutputPlayback, sizeof(AudioStreamBasicDescription));
-
-	memset(&m_renderCallback, 0, sizeof(m_renderCallback));
+	
+	memset(&m_inputUnit, 0, sizeof(m_inputUnit));
 }
 
+AudioUnitComponent::~AudioUnitComponent()
+{
+	CloseComponent(m_inputUnit.sourceAudioUnit);
+}
 
 OSStatus AudioUnitComponent::getPropertyInfo(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, UInt32* dataSize, Boolean* writable)
 {
@@ -86,12 +91,39 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 		{
 			if (dataSize != sizeof(AURenderCallbackStruct))
 				return kAudioUnitErr_InvalidParameter;
+			if (scope == kAudioUnitScope_Input)
+			{
+				if (elem != 0)
+					return kAudioUnitErr_InvalidElement;
+				
+				CloseComponent(m_inputUnit.sourceAudioUnit);
+				m_inputUnit.sourceOutputNumber = 0;
+				m_inputUnit.destInputNumber = 0;
+				m_inputUnit.sourceAudioUnit = new AudioUnitRenderer(*(AURenderCallbackStruct*) data);
+			}
+			else if (scope == kAudioUnitScope_Output)
+			{
+				if (elem != 1)
+					return kAudioUnitErr_InvalidElement;
+				
+				CloseComponent(m_outputUnit.sourceAudioUnit);
+				m_outputUnit.sourceAudioUnit = new AudioUnitRenderer(*(AURenderCallbackStruct*) data);
+			}
+			else
+				return kAudioUnitErr_InvalidScope;
+			
+			return noErr;
+		}
+		case kAudioUnitProperty_MakeConnection:
+		{
+			if (dataSize != sizeof(AudioUnitConnection))
+				return kAudioUnitErr_InvalidParameter;
 			if (scope != kAudioUnitScope_Input)
 				return kAudioUnitErr_InvalidScope;
-			if (elem != 0)
-				return kAudioUnitErr_InvalidElement;
 			
-			memcpy(&m_renderCallback, data, dataSize);
+			CloseComponent(m_inputUnit.sourceAudioUnit);
+			memcpy(&m_inputUnit, data, sizeof(AudioUnitConnection));
+			
 			return noErr;
 		}
 		case kAudioUnitProperty_ShouldAllocateBuffer:

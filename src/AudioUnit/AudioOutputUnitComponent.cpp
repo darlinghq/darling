@@ -1,5 +1,11 @@
 #include "AudioOutputUnitComponent.h"
 #include <CoreServices/MacErrors.h>
+#include <cstring>
+
+AudioOutputUnitComponent::AudioOutputUnitComponent()
+{
+	memset(&m_outputCallback, 0, sizeof(m_outputCallback));
+}
 
 OSStatus AudioOutputUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, const void* data, UInt32 dataSize)
 {
@@ -30,6 +36,20 @@ OSStatus AudioOutputUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUn
 				return kAudioUnitErr_InvalidScope;
 
 			return noErr;
+		}
+		case kAudioUnitProperty_SetRenderCallback:
+		{
+			if (dataSize != sizeof(AURenderCallbackStruct))
+				return kAudioUnitErr_InvalidParameter;
+			if (scope == kAudioUnitScope_Output)
+			{
+				if (elem != 1)
+					return kAudioUnitErr_InvalidElement;
+				
+				memcpy(&m_outputCallback, data, sizeof(AURenderCallbackStruct));
+				
+				return noErr;
+			}
 		}
 		default:
 			return AudioUnitComponent::setProperty(prop, scope, elem, data, dataSize);

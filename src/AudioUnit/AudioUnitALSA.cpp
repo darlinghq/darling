@@ -285,7 +285,7 @@ void AudioUnitALSA::requestDataForPlayback()
 		bufs.mBuffers[0].mData = nullptr;
 	}
 	
-	err = m_renderCallback.inputProc(m_renderCallback.inputProcRefCon, &flags, &ts, kOutputBus, 4096, &bufs);
+	err = AudioUnitRender(m_inputUnit.sourceAudioUnit, &flags, &ts, kOutputBus, 4096, &bufs);
 	
 	if (err != noErr)
 	{
@@ -406,11 +406,14 @@ do_write:
 	else if (wr < sampleCount)
 		ERROR() << "snd_pcm_writen(): not all data written?";
 	
-	return unimpErr;
+	return noErr;
 }
 
 OSStatus AudioUnitALSA::renderInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
 {
+	if (!m_outputCallback.inputProc)
+		return noErr; // We don't push, we should be polled
+	
 	if (!isInputPlanar())
 		return renderInterleavedInput(ioActionFlags, inTimeStamp, inNumberFrames, ioData);
 	else
@@ -434,6 +437,9 @@ void AudioUnitALSA::startOutput()
 	std::unique_ptr<struct pollfd[]> pollfds;
 	int count, err;
 	
+	if (!m_inputUnit.sourceAudioUnit)
+		throw std::runtime_error("No input unit set");
+	
 	err = snd_pcm_prepare(m_pcmOutput);
 	if (err != 0)
 		throwAlsaError("snd_pcm_prepare() failed", err);
@@ -445,15 +451,19 @@ void AudioUnitALSA::startOutput()
 		throw std::runtime_error("snd_pcm_poll_descriptors() failed");
 	
 	LOG << "ALSA descriptor count: " << count << std::endl;
-	
+	startDescriptors(pollfds.get(), count);
+}
+
+void AudioUnitALSA::startDescriptors(const struct pollfd* pollfds, int count)
+{
 	for (int i = 0; i < count; i++)
 	{
 		dispatch_source_t source;
-		struct pollfd cur = pollfds[i];
+		const struct pollfd& cur = pollfds[i];
 		
 		if (cur.events & POLLIN)
 		{
-			source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, pollfds[i].fd, 0, g_audioQueue);
+			source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, cur.fd, 0, g_audioQueue);
 			dispatch_source_set_event_handler(source, ^{
 				processAudioEvent(cur, POLLIN);
 			});
@@ -463,7 +473,7 @@ void AudioUnitALSA::startOutput()
 		
 		if (cur.events & POLLOUT)
 		{
-			source = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, pollfds[i].fd, 0, g_audioQueue);
+			source = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, cur.fd, 0, g_audioQueue);
 			dispatch_source_set_event_handler(source, ^{
 				processAudioEvent(cur, POLLOUT);
 			});
@@ -493,9 +503,6 @@ OSStatus AudioUnitALSA::start()
 	
 	try
 	{
-		if (!m_renderCallback.inputProc)
-			throw std::runtime_error("No render callback set");
-	
 		if (m_pcmInput)
 			startInput();
 

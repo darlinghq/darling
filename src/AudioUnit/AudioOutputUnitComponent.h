@@ -5,6 +5,8 @@
 class AudioOutputUnitComponent : public AudioUnitComponent
 {
 public:
+	AudioOutputUnitComponent();
+	
 	virtual OSStatus setProperty(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, const void* data, UInt32 dataSize) override;
 	virtual OSStatus getProperty(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, void* data, UInt32* dataSize) override;
 	virtual OSStatus getPropertyInfo(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, UInt32* dataSize, Boolean* writable) override;
@@ -15,6 +17,7 @@ public:
 	virtual int cardIndex() const = 0;
 protected:
 	bool m_enableOutput = true, m_enableInput = false;
+	AURenderCallbackStruct m_outputCallback;
 };
 
 #endif
