@@ -5,16 +5,20 @@
 #include <util/debug.h>
 #include <cstring>
 
-AudioUnitComponent::AudioUnitComponent()
+AudioUnitComponent::AudioUnitComponent(size_t numElements)
 {
+	m_config.resize(numElements);
+	
 	// Default audio params
-	m_configOutputPlayback = AudioStreamBasicDescription {
+	const AudioStreamBasicDescription defaultConfig = AudioStreamBasicDescription {
 		44100.0, kAudioFormatLinearPCM, kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked,
 		4, 1, 4, 2, 16, 0
 	};
-	memcpy(&m_configInputPlayback, &m_configOutputPlayback, sizeof(AudioStreamBasicDescription));
-	memcpy(&m_configInputCapture, &m_configOutputPlayback, sizeof(AudioStreamBasicDescription));
-	memcpy(&m_configOutputCapture, &m_configOutputPlayback, sizeof(AudioStreamBasicDescription));
+	
+	for (size_t i = 0; i < numElements; i++)
+	{
+		m_config[i] = std::pair<AudioStreamBasicDescription, AudioStreamBasicDescription>(defaultConfig, defaultConfig);
+	}
 	
 	memset(&m_inputUnit, 0, sizeof(m_inputUnit));
 }
@@ -59,29 +63,20 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 	{
 		case kAudioUnitProperty_StreamFormat:
 		{
-			if (dataSize != sizeof(AudioStreamBasicDescription))
+			const AudioStreamBasicDescription* newConfig = static_cast<const AudioStreamBasicDescription*>(data);
+			
+			if (dataSize != sizeof(*newConfig))
 				return kAudioUnitErr_InvalidParameter;
+			
+			if (elem >= m_config.size())
+				return kAudioUnitErr_InvalidElement;
 
 			// TODO: perform validation
 
 			if (scope == kAudioUnitScope_Output)
-			{
-				if (elem == 0)
-					memcpy(&m_configOutputPlayback, data, dataSize);
-				else if (elem == 1)
-					memcpy(&m_configOutputCapture, data, dataSize);
-				else
-					return kAudioUnitErr_InvalidElement;
-			}
+				m_config[elem].second = *newConfig;
 			else if (scope == kAudioUnitScope_Input)
-			{
-				if (elem == 0)
-					memcpy(&m_configInputPlayback, data, dataSize);
-				else if (elem == 1)
-					memcpy(&m_configInputCapture, data, dataSize);
-				else
-					return kAudioUnitErr_InvalidElement;
-			}
+				m_config[elem].first = *newConfig;
 			else
 				return kAudioUnitErr_InvalidScope;
 
@@ -91,18 +86,18 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 		{
 			if (dataSize != sizeof(AURenderCallbackStruct))
 				return kAudioUnitErr_InvalidParameter;
-			if (scope == kAudioUnitScope_Input)
-			{
+			//if (scope == kAudioUnitScope_Input)
+			//{
 				if (elem != 0)
 					return kAudioUnitErr_InvalidElement;
 				
-				CloseComponent(m_inputUnit.sourceAudioUnit);
+				CloseComponent(m_inputUnit.sourceAudioUnit); // TODO: wrong, we may not own the unit!
 				m_inputUnit.sourceOutputNumber = 0;
 				m_inputUnit.destInputNumber = 0;
 				m_inputUnit.sourceAudioUnit = new AudioUnitRenderer(*(AURenderCallbackStruct*) data);
-			}
-			else
-				return kAudioUnitErr_InvalidScope;
+			//}
+			//else
+			//	return kAudioUnitErr_InvalidScope;
 			
 			return noErr;
 		}
@@ -113,7 +108,7 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 			if (scope != kAudioUnitScope_Input)
 				return kAudioUnitErr_InvalidScope;
 			
-			CloseComponent(m_inputUnit.sourceAudioUnit);
+			CloseComponent(m_inputUnit.sourceAudioUnit); // TODO: wrong, we may not own the unit!
 			memcpy(&m_inputUnit, data, sizeof(AudioUnitConnection));
 			
 			return noErr;
@@ -140,27 +135,18 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 	{
 		case kAudioUnitProperty_StreamFormat:
 		{
+			AudioStreamBasicDescription* newConfig = static_cast<AudioStreamBasicDescription*>(data);
+			
 			if (*dataSize < sizeof(AudioStreamBasicDescription))
 				return kAudioUnitErr_InvalidParameter;
+			
+			if (elem >= m_config.size())
+				return kAudioUnitErr_InvalidElement;
 
 			if (scope == kAudioUnitScope_Output)
-			{
-				if (elem == 0)
-					memcpy(data, &m_configOutputPlayback, *dataSize);
-				else if (elem == 1)
-					memcpy(data, &m_configOutputCapture, *dataSize);
-				else
-					return kAudioUnitErr_InvalidElement;
-			}
+				*newConfig = m_config[elem].second;
 			else if (scope == kAudioUnitScope_Input)
-			{
-				if (elem == 0)
-					memcpy(data, &m_configInputPlayback, *dataSize);
-				else if (elem == 1)
-					memcpy(data, &m_configInputCapture, *dataSize);
-				else
-					return kAudioUnitErr_InvalidElement;
-			}
+				*newConfig = m_config[elem].first;
 			else
 				return kAudioUnitErr_InvalidScope;
 

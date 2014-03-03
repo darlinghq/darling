@@ -3,12 +3,14 @@
 
 #include "AudioUnit.h"
 #include "AudioUnitProperties.h"
+#include <vector>
 #include <CoreServices/ComponentsInternal.h>
 
 class AudioUnitComponent : public CarbonComponent
 {
+protected:
+	AudioUnitComponent(size_t numElements);
 public:
-	AudioUnitComponent();
     virtual ~AudioUnitComponent();
 
 	virtual OSStatus init() = 0;
@@ -22,7 +24,8 @@ public:
 	virtual OSStatus getProperty(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, void* data, UInt32* dataSize);
 	virtual OSStatus getPropertyInfo(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, UInt32* dataSize, Boolean* writable);
 protected:
-	AudioStreamBasicDescription m_configOutputPlayback, m_configInputPlayback, m_configInputCapture, m_configOutputCapture;
+	std::vector<std::pair<AudioStreamBasicDescription, AudioStreamBasicDescription>> m_config;
+	//AudioStreamBasicDescription m_configOutputPlayback, m_configInputPlayback, m_configInputCapture, m_configOutputCapture;
 	AudioUnitConnection m_inputUnit;
 	bool m_shouldAllocateBuffer = true;
 };

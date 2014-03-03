@@ -7,6 +7,11 @@
 #include <vector>
 #include "AudioOutputUnitComponent.h"
 
+#ifndef kOutputBus
+#	define kOutputBus		0 // playback
+#	define kInputBus		1 // recording
+#endif
+
 class AudioUnitALSA : public AudioOutputUnitComponent
 {
 private:
@@ -46,8 +51,8 @@ private:
 	OSStatus renderInterleavedInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData);
 	OSStatus renderPlanarInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData);
 	
-	inline bool isOutputPlanar() const { return m_configOutputPlayback.mFormatFlags & kAudioFormatFlagIsNonInterleaved; }
-	inline bool isInputPlanar() const { return m_configInputCapture.mFormatFlags & kAudioFormatFlagIsNonInterleaved; }
+	inline bool isOutputPlanar() const { return m_config[kOutputBus].second.mFormatFlags & kAudioFormatFlagIsNonInterleaved; }
+	inline bool isInputPlanar() const { return m_config[kInputBus].first.mFormatFlags & kAudioFormatFlagIsNonInterleaved; }
 private:
 	int m_cardIndex;
 	char* m_cardName;

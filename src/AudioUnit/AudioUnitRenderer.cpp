@@ -2,7 +2,7 @@
 #include <CoreServices/MacErrors.h>
 
 AudioUnitRenderer::AudioUnitRenderer(const AURenderCallbackStruct& cb)
-: m_renderCallback(cb)
+: AudioUnitComponent(1), m_renderCallback(cb)
 {
 }
 

@@ -9,8 +9,6 @@
 #include <cstdio>
 #include <dispatch/dispatch.h>
 
-#define kOutputBus		0
-#define kInputBus		1
 #define SAMPLE_PERIOD	4096
 
 static dispatch_queue_t g_audioQueue;
@@ -110,7 +108,14 @@ void AudioUnitALSA::initOutput()
 	{
 		// Configure ALSA based on m_configOutputPlayback
 		int err;
-		unsigned int rate = m_configOutputPlayback.mSampleRate;
+		const AudioStreamBasicDescription& alsaConfig = m_config[kOutputBus].second;
+		unsigned int rate = alsaConfig.mSampleRate;
+		
+		//if (memcmp(&m_config[kOutputBus].second, &m_config[kOutputBus].first, sizeof(AudioStreamBasicDescription)) != 0)
+		//	throw std::runtime_error("Different input and HW config not implemented yet");
+		
+		// Let ALSA do the conversion on its own
+		m_config[kOutputBus].second = m_config[kOutputBus].first;
 		
 		err = snd_pcm_open(&m_pcmOutput, m_cardName, SND_PCM_STREAM_PLAYBACK, 0);
 		if (err)
@@ -132,7 +137,7 @@ void AudioUnitALSA::initOutput()
 		if (err)
 			throwAlsaError("Failed to set interleaved access", err);
 		
-		err = snd_pcm_hw_params_set_format(m_pcmOutput, hw_params, alsaFormatForASBD(m_configOutputPlayback));
+		err = snd_pcm_hw_params_set_format(m_pcmOutput, hw_params, alsaFormatForASBD(alsaConfig));
 		if (err)
 			throwAlsaError("Failed to set format", err);
 		
@@ -140,8 +145,8 @@ void AudioUnitALSA::initOutput()
 		if (err)
 			throwAlsaError("Failed to set sample rate", err);
 		
-		LOG << "Channel count: " << m_configOutputPlayback.mChannelsPerFrame << std::endl;
-		err = snd_pcm_hw_params_set_channels(m_pcmOutput, hw_params, m_configOutputPlayback.mChannelsPerFrame);
+		LOG << "Channel count: " << alsaConfig.mChannelsPerFrame << std::endl;
+		err = snd_pcm_hw_params_set_channels(m_pcmOutput, hw_params, alsaConfig.mChannelsPerFrame);
 		if (err)
 			throwAlsaError("Failed to set channel count", err);
 		
@@ -193,6 +198,19 @@ void AudioUnitALSA::initOutput()
 void AudioUnitALSA::initInput()
 {
 	STUB();
+	
+	try
+	{
+		//if (memcmp(&m_config[kInputBus].second, &m_config[kInputBus].first, sizeof(AudioStreamBasicDescription)) != 0)
+		//	throw std::runtime_error("Different input and HW config not implemented yet");
+		
+		// Let ALSA do the conversion on its own
+		m_config[kInputBus].first = m_config[kInputBus].second;
+	}
+	catch (...)
+	{
+		throw;
+	}
 }
 
 OSStatus AudioUnitALSA::init()
@@ -271,7 +289,8 @@ void AudioUnitALSA::requestDataForPlayback()
 	std::unique_ptr<uint8_t[]> data;
 	snd_pcm_uframes_t availFrames;
 	snd_htimestamp_t alsaTimestamp;
-	UInt32 cc = m_configOutputPlayback.mChannelsPerFrame;
+	const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
+	UInt32 cc = config.mChannelsPerFrame;
 	
 	TRACE();
 	
@@ -292,7 +311,7 @@ void AudioUnitALSA::requestDataForPlayback()
 	{
 		if (isOutputPlanar())
 		{
-			UInt32 bytesPerChannel = m_configOutputPlayback.mBytesPerFrame * SAMPLE_PERIOD;
+			UInt32 bytesPerChannel = config.mBytesPerFrame * SAMPLE_PERIOD;
 			
 			data.reset(new uint8_t[cc*bytesPerChannel]);
 			
@@ -306,7 +325,7 @@ void AudioUnitALSA::requestDataForPlayback()
 		else
 		{
 			bufs->mBuffers[0].mNumberChannels = cc;
-			bufs->mBuffers[0].mDataByteSize = m_configOutputPlayback.mBytesPerFrame * SAMPLE_PERIOD;
+			bufs->mBuffers[0].mDataByteSize = config.mBytesPerFrame * SAMPLE_PERIOD;
 		
 			data.reset(new uint8_t[bufs->mBuffers[0].mDataByteSize]);
 			bufs->mBuffers[0].mData = data.get();
@@ -340,7 +359,7 @@ void AudioUnitALSA::requestDataForPlayback()
 		ERROR() << "Render callback failed with error " << err;
 		
 		// Fill with silence, the error may be temporary
-		UInt32 bytes = m_configOutputPlayback.mBytesPerFrame * SAMPLE_PERIOD;
+		UInt32 bytes = config.mBytesPerFrame * SAMPLE_PERIOD;
 		
 		if (!m_shouldAllocateBuffer)
 		{
@@ -385,29 +404,30 @@ void AudioUnitALSA::pushDataFromInput()
 	std::unique_ptr<uint8_t[]> data;
 	snd_pcm_uframes_t availFrames;
 	snd_htimestamp_t alsaTimestamp;
+	const AudioStreamBasicDescription& config = m_config[kInputBus].second;
 	
 	TRACE();
 	
 	memset(&ts, 0, sizeof(ts));
 	
-	if (isInputPlanar())
-	{
-		UInt32 cc = m_configInputCapture.mChannelsPerFrame;
-		bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList) + (cc-1)*sizeof(AudioBuffer));
-		bufs->mNumberBuffers = cc;
-	}
-	else
-	{
-		bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList));
-		bufs->mNumberBuffers = 1;
-	}
-	
 	if (m_shouldAllocateBuffer)
 	{
 		if (isInputPlanar())
 		{
-			UInt32 cc = m_configInputCapture.mChannelsPerFrame;
-			UInt32 bytesPerChannel = m_configInputCapture.mBytesPerFrame * SAMPLE_PERIOD;
+			UInt32 cc = config.mChannelsPerFrame;
+			bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList) + (cc-1)*sizeof(AudioBuffer));
+			bufs->mNumberBuffers = cc;
+		}
+		else
+		{
+			bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList));
+			bufs->mNumberBuffers = 1;
+		}
+		
+		if (isInputPlanar())
+		{
+			UInt32 cc = config.mChannelsPerFrame;
+			UInt32 bytesPerChannel = config.mBytesPerFrame * SAMPLE_PERIOD;
 			
 			data.reset(new uint8_t[cc*bytesPerChannel]);
 			
@@ -420,15 +440,17 @@ void AudioUnitALSA::pushDataFromInput()
 		}
 		else
 		{
-			bufs->mBuffers[0].mNumberChannels = m_configInputCapture.mChannelsPerFrame;
-			bufs->mBuffers[0].mDataByteSize = m_configInputCapture.mBytesPerFrame * SAMPLE_PERIOD;
+			bufs->mBuffers[0].mNumberChannels = config.mChannelsPerFrame;
+			bufs->mBuffers[0].mDataByteSize = config.mBytesPerFrame * SAMPLE_PERIOD;
 	
 			data.reset(new uint8_t[bufs->mBuffers[0].mDataByteSize]);
 			bufs->mBuffers[0].mData = data.get();
 		}
 		
-		render(&flags, &ts, kInputBus, SAMPLE_PERIOD, bufs);
+		//render(&flags, &ts, kInputBus, SAMPLE_PERIOD, bufs);
 	}
+	else
+		bufs = nullptr;
 	
 	// TODO: fill in AudioTimeStamp based on alsaTimestamp
 	snd_pcm_htimestamp(m_pcmOutput, &availFrames, &alsaTimestamp);
@@ -459,12 +481,13 @@ OSStatus AudioUnitALSA::renderOutput(AudioUnitRenderActionFlags *ioActionFlags, 
 OSStatus AudioUnitALSA::renderInterleavedOutput(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
 {
 	int wr, sampleCount;
+	const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
 	
 	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
 	{
 		LOG << "Writing " << ioData->mBuffers[i].mDataByteSize << " bytes into sound card\n";
 		
-		sampleCount = ioData->mBuffers[i].mDataByteSize / m_configOutputPlayback.mBytesPerFrame;
+		sampleCount = ioData->mBuffers[i].mDataByteSize / config.mBytesPerFrame;
 
 do_write:
 		wr = snd_pcm_writei(m_pcmOutput, ioData->mBuffers[i].mData, sampleCount);
@@ -492,8 +515,9 @@ OSStatus AudioUnitALSA::renderPlanarOutput(AudioUnitRenderActionFlags *ioActionF
 {
 	std::unique_ptr<void*[]> bufferPointers (new void*[ioData->mNumberBuffers]);
 	int size, sampleCount, wr;
+	const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
 	
-	if (ioData->mNumberBuffers != m_configOutputCapture.mChannelsPerFrame)
+	if (ioData->mNumberBuffers != config.mChannelsPerFrame)
 	{
 		ERROR() << "Incorrect buffer count for planar audio, only " << ioData->mNumberBuffers;
 		return paramErr;
@@ -512,7 +536,7 @@ OSStatus AudioUnitALSA::renderPlanarOutput(AudioUnitRenderActionFlags *ioActionF
 	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
 		bufferPointers[i] = ioData->mBuffers[i].mData;
 	
-	sampleCount = size / m_configOutputPlayback.mBytesPerFrame;
+	sampleCount = size / config.mBytesPerFrame;
 	
 do_write:
 	wr = snd_pcm_writen(m_pcmOutput, bufferPointers.get(), sampleCount);
@@ -549,12 +573,13 @@ OSStatus AudioUnitALSA::renderInput(AudioUnitRenderActionFlags *ioActionFlags,co
 OSStatus AudioUnitALSA::renderInterleavedInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
 {
 	int wr, sampleCount;
+	const AudioStreamBasicDescription& config = m_config[kInputBus].second;
 	
 	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
 	{
 		LOG << "Reading up to " << ioData->mBuffers[i].mDataByteSize << " bytes from sound card\n";
 		
-		sampleCount = ioData->mBuffers[i].mDataByteSize / m_configOutputPlayback.mBytesPerFrame;
+		sampleCount = ioData->mBuffers[i].mDataByteSize / config.mBytesPerFrame;
 
 do_write:
 		wr = snd_pcm_writei(m_pcmOutput, ioData->mBuffers[i].mData, sampleCount);
@@ -572,7 +597,7 @@ do_write:
 			}
 		}
 		
-		ioData->mBuffers[i].mDataByteSize = wr * m_configOutputPlayback.mBytesPerFrame;
+		ioData->mBuffers[i].mDataByteSize = wr * config.mBytesPerFrame;
 	}
 	
 	return noErr;
@@ -582,8 +607,9 @@ OSStatus AudioUnitALSA::renderPlanarInput(AudioUnitRenderActionFlags *ioActionFl
 {
 	std::unique_ptr<void*[]> bufferPointers (new void*[ioData->mNumberBuffers]);
 	int size, sampleCount, wr;
+	const AudioStreamBasicDescription& config = m_config[kInputBus].second;
 	
-	if (ioData->mNumberBuffers != m_configOutputCapture.mChannelsPerFrame)
+	if (ioData->mNumberBuffers != config.mChannelsPerFrame)
 	{
 		ERROR() << "Incorrect buffer count for planar audio, only " << ioData->mNumberBuffers;
 		return paramErr;
@@ -602,7 +628,7 @@ OSStatus AudioUnitALSA::renderPlanarInput(AudioUnitRenderActionFlags *ioActionFl
 	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
 		bufferPointers[i] = ioData->mBuffers[i].mData;
 	
-	sampleCount = size / m_configOutputPlayback.mBytesPerFrame;
+	sampleCount = size / config.mBytesPerFrame;
 	
 do_write:
 	wr = snd_pcm_readn(m_pcmInput, bufferPointers.get(), sampleCount);
@@ -621,7 +647,7 @@ do_write:
 	}
 	
 	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
-		ioData->mBuffers[i].mDataByteSize = sampleCount * m_configOutputPlayback.mBytesPerFrame;
+		ioData->mBuffers[i].mDataByteSize = sampleCount * config.mBytesPerFrame;
 	
 	return noErr;
 }

@@ -3,6 +3,7 @@
 #include <cstring>
 
 AudioOutputUnitComponent::AudioOutputUnitComponent()
+: AudioUnitComponent(2)
 {
 	memset(&m_outputCallback, 0, sizeof(m_outputCallback));
 }
@@ -37,19 +38,19 @@ OSStatus AudioOutputUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUn
 
 			return noErr;
 		}
-		case kAudioUnitProperty_SetRenderCallback:
+		case kAudioOutputUnitProperty_SetInputCallback:
 		{
 			if (dataSize != sizeof(AURenderCallbackStruct))
 				return kAudioUnitErr_InvalidParameter;
-			if (scope == kAudioUnitScope_Output)
-			{
+			//if (scope == kAudioUnitScope_Output)
+			//{
 				if (elem != 1)
 					return kAudioUnitErr_InvalidElement;
 				
 				memcpy(&m_outputCallback, data, sizeof(AURenderCallbackStruct));
 				
 				return noErr;
-			}
+			//}
 		}
 		default:
 			return AudioUnitComponent::setProperty(prop, scope, elem, data, dataSize);
