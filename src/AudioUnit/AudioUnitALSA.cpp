@@ -9,8 +9,9 @@
 #include <cstdio>
 #include <dispatch/dispatch.h>
 
-#define kOutputBus	0
-#define kInputBus	1
+#define kOutputBus		0
+#define kInputBus		1
+#define SAMPLE_PERIOD	4096
 
 static dispatch_queue_t g_audioQueue;
 
@@ -159,13 +160,17 @@ void AudioUnitALSA::initOutput()
 		if (err)
 			throwAlsaError("Failed to init sw params", err);
 		
-		err = snd_pcm_sw_params_set_avail_min(m_pcmOutput, sw_params, 4096); // TODO: 4096?
+		err = snd_pcm_sw_params_set_avail_min(m_pcmOutput, sw_params, SAMPLE_PERIOD);
 		if (err)
 			throwAlsaError("snd_pcm_sw_params_set_avail_min() failed", err);
 		
 		err = snd_pcm_sw_params_set_start_threshold(m_pcmOutput, sw_params, 0U);
 		if (err)
 			throwAlsaError("snd_pcm_sw_params_set_start_threshold() failed", err);
+		
+		err = snd_pcm_sw_params_set_tstamp_mode(m_pcmOutput, sw_params, SND_PCM_TSTAMP_ENABLE);
+		if (err)
+			throwAlsaError("snd_pcm_sw_params_set_tstamp_mode() failed", err);
 		
 		err = snd_pcm_sw_params(m_pcmOutput, sw_params);
 		if (err)
@@ -261,55 +266,176 @@ void AudioUnitALSA::requestDataForPlayback()
 {
 	AudioUnitRenderActionFlags flags;
 	AudioTimeStamp ts;
-	AudioBufferList bufs;
+	AudioBufferList* bufs;
 	OSStatus err;
 	std::unique_ptr<uint8_t[]> data;
+	snd_pcm_uframes_t availFrames;
+	snd_htimestamp_t alsaTimestamp;
+	UInt32 cc = m_configOutputPlayback.mChannelsPerFrame;
 	
 	TRACE();
 	
 	memset(&ts, 0, sizeof(ts));
 	
-	bufs.mNumberBuffers = 1;
-	
-	if (m_shouldAllocateBuffer)
+	if (isOutputPlanar())
 	{
-		bufs.mBuffers[0].mNumberChannels = m_configOutputPlayback.mChannelsPerFrame;
-		bufs.mBuffers[0].mDataByteSize = m_configOutputPlayback.mBytesPerFrame * 4096;
-	
-		data.reset(new uint8_t[bufs.mBuffers[0].mDataByteSize]);
-		bufs.mBuffers[0].mData = data.get();
+		bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList) + (cc-1)*sizeof(AudioBuffer));
+		bufs->mNumberBuffers = cc;
 	}
 	else
 	{
-		bufs.mBuffers[0].mDataByteSize = 0;
-		bufs.mBuffers[0].mData = nullptr;
+		bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList));
+		bufs->mNumberBuffers = 1;
 	}
 	
-	err = AudioUnitRender(m_inputUnit.sourceAudioUnit, &flags, &ts, kOutputBus, 4096, &bufs);
+	if (m_shouldAllocateBuffer)
+	{
+		if (isOutputPlanar())
+		{
+			UInt32 bytesPerChannel = m_configOutputPlayback.mBytesPerFrame * SAMPLE_PERIOD;
+			
+			data.reset(new uint8_t[cc*bytesPerChannel]);
+			
+			for (UInt32 i = 0; i < cc; i++)
+			{
+				bufs->mBuffers[i].mNumberChannels = 1;
+				bufs->mBuffers[i].mDataByteSize = bytesPerChannel;
+				bufs->mBuffers[i].mData = data.get() + i*bytesPerChannel;
+			}
+		}
+		else
+		{
+			bufs->mBuffers[0].mNumberChannels = cc;
+			bufs->mBuffers[0].mDataByteSize = m_configOutputPlayback.mBytesPerFrame * SAMPLE_PERIOD;
+		
+			data.reset(new uint8_t[bufs->mBuffers[0].mDataByteSize]);
+			bufs->mBuffers[0].mData = data.get();
+		}
+	}
+	else
+	{
+		if (isOutputPlanar())
+		{
+			for (UInt32 i = 0; i < cc; i++)
+			{
+				bufs->mBuffers[i].mDataByteSize = 0;
+				bufs->mBuffers[i].mData = nullptr;
+			}
+		}
+		else
+		{
+			bufs->mBuffers[0].mDataByteSize = 0;
+			bufs->mBuffers[0].mData = nullptr;
+		}
+	}
+	
+	snd_pcm_htimestamp(m_pcmOutput, &availFrames, &alsaTimestamp);
+	
+	// TODO: fill in AudioTimeStamp based on alsaTimestamp
+	
+	err = AudioUnitRender(m_inputUnit.sourceAudioUnit, &flags, &ts, kOutputBus, SAMPLE_PERIOD, bufs);
 	
 	if (err != noErr)
 	{
 		ERROR() << "Render callback failed with error " << err;
 		
 		// Fill with silence, the error may be temporary
-		UInt32 bytes = m_configOutputPlayback.mBytesPerFrame * 4096;
+		UInt32 bytes = m_configOutputPlayback.mBytesPerFrame * SAMPLE_PERIOD;
 		
 		if (!m_shouldAllocateBuffer)
-			data.reset(new uint8_t[bufs.mBuffers[0].mDataByteSize]);
+		{
+			if (isOutputPlanar())
+			{
+				data.reset(new uint8_t[bytes*cc]);
+				memset(data.get(), 0, bytes*cc);
+			}
+			else
+			{
+				data.reset(new uint8_t[bytes]);
+				memset(data.get(), 0, bytes);
+			}
+		}
 		
-		memset(data.get(), 0, bytes);
-		
-		bufs.mBuffers[0].mData = data.get();
-		bufs.mBuffers[0].mDataByteSize = bytes;
+		if (isOutputPlanar())
+		{
+			for (UInt32 i = 0; i < cc; i++)
+			{
+				bufs->mBuffers[i].mData = data.get() + bytes*i;
+				bufs->mBuffers[i].mDataByteSize = bytes;
+			}
+		}
+		else
+		{
+			bufs->mBuffers[0].mData = data.get();
+			bufs->mBuffers[0].mDataByteSize = bytes;
+		}
 	}
 	
-	if (bufs.mBuffers[0].mDataByteSize > 0)
-		render(&flags, &ts, 0, 4096, &bufs);
+	render(&flags, &ts, kOutputBus, SAMPLE_PERIOD, bufs);
+	
+	operator delete(bufs);
 }
 
 void AudioUnitALSA::pushDataFromInput()
 {
-	ERROR() << "Audio capture unsupported";
+	AudioUnitRenderActionFlags flags;
+	AudioTimeStamp ts;
+	AudioBufferList* bufs;
+	OSStatus err;
+	std::unique_ptr<uint8_t[]> data;
+	snd_pcm_uframes_t availFrames;
+	snd_htimestamp_t alsaTimestamp;
+	
+	TRACE();
+	
+	memset(&ts, 0, sizeof(ts));
+	
+	if (isInputPlanar())
+	{
+		UInt32 cc = m_configInputCapture.mChannelsPerFrame;
+		bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList) + (cc-1)*sizeof(AudioBuffer));
+		bufs->mNumberBuffers = cc;
+	}
+	else
+	{
+		bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList));
+		bufs->mNumberBuffers = 1;
+	}
+	
+	if (m_shouldAllocateBuffer)
+	{
+		if (isInputPlanar())
+		{
+			UInt32 cc = m_configInputCapture.mChannelsPerFrame;
+			UInt32 bytesPerChannel = m_configInputCapture.mBytesPerFrame * SAMPLE_PERIOD;
+			
+			data.reset(new uint8_t[cc*bytesPerChannel]);
+			
+			for (UInt32 i = 0; i < cc; i++)
+			{
+				bufs->mBuffers[i].mNumberChannels = 1;
+				bufs->mBuffers[i].mDataByteSize = bytesPerChannel;
+				bufs->mBuffers[i].mData = data.get() + i*bytesPerChannel;
+			}
+		}
+		else
+		{
+			bufs->mBuffers[0].mNumberChannels = m_configInputCapture.mChannelsPerFrame;
+			bufs->mBuffers[0].mDataByteSize = m_configInputCapture.mBytesPerFrame * SAMPLE_PERIOD;
+	
+			data.reset(new uint8_t[bufs->mBuffers[0].mDataByteSize]);
+			bufs->mBuffers[0].mData = data.get();
+		}
+		
+		render(&flags, &ts, kInputBus, SAMPLE_PERIOD, bufs);
+	}
+	
+	// TODO: fill in AudioTimeStamp based on alsaTimestamp
+	snd_pcm_htimestamp(m_pcmOutput, &availFrames, &alsaTimestamp);
+	
+	m_outputCallback.inputProc(m_outputCallback.inputProcRefCon, &flags, &ts, kInputBus, SAMPLE_PERIOD, bufs);
+	
+	operator delete(bufs);
 }
 
 OSStatus AudioUnitALSA::render(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData)
@@ -422,14 +548,82 @@ OSStatus AudioUnitALSA::renderInput(AudioUnitRenderActionFlags *ioActionFlags,co
 
 OSStatus AudioUnitALSA::renderInterleavedInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
 {
-	STUB();
-	return unimpErr;
+	int wr, sampleCount;
+	
+	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
+	{
+		LOG << "Reading up to " << ioData->mBuffers[i].mDataByteSize << " bytes from sound card\n";
+		
+		sampleCount = ioData->mBuffers[i].mDataByteSize / m_configOutputPlayback.mBytesPerFrame;
+
+do_write:
+		wr = snd_pcm_writei(m_pcmOutput, ioData->mBuffers[i].mData, sampleCount);
+		if (wr < 0)
+		{
+			if (wr == -EINTR || wr == -EPIPE)
+			{
+				snd_pcm_recover(m_pcmOutput, wr, false);
+				goto do_write;
+			}
+			else
+			{
+				ERROR() << "snd_pcm_writei() failed: " << snd_strerror(wr);
+				return kAudioUnitErr_NoConnection;
+			}
+		}
+		
+		ioData->mBuffers[i].mDataByteSize = wr * m_configOutputPlayback.mBytesPerFrame;
+	}
+	
+	return noErr;
 }
 
 OSStatus AudioUnitALSA::renderPlanarInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
 {
-	STUB();
-	return unimpErr;
+	std::unique_ptr<void*[]> bufferPointers (new void*[ioData->mNumberBuffers]);
+	int size, sampleCount, wr;
+	
+	if (ioData->mNumberBuffers != m_configOutputCapture.mChannelsPerFrame)
+	{
+		ERROR() << "Incorrect buffer count for planar audio, only " << ioData->mNumberBuffers;
+		return paramErr;
+	}
+	
+	size = ioData->mBuffers[0].mDataByteSize;
+	for (UInt32 i = 1; i < ioData->mNumberBuffers; i++)
+	{
+		if (size != ioData->mBuffers[i].mDataByteSize)
+		{
+			ERROR() << "Bad buffer size in buffer " << i;
+			return paramErr;
+		}
+	}
+	
+	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
+		bufferPointers[i] = ioData->mBuffers[i].mData;
+	
+	sampleCount = size / m_configOutputPlayback.mBytesPerFrame;
+	
+do_write:
+	wr = snd_pcm_readn(m_pcmInput, bufferPointers.get(), sampleCount);
+	if (wr < 0)
+	{
+		if (wr == -EINTR || wr == -EPIPE)
+		{
+			snd_pcm_recover(m_pcmInput, wr, false);
+			goto do_write;
+		}
+		else
+		{
+			ERROR() << "snd_pcm_writen() failed: " << snd_strerror(wr);
+			return kAudioUnitErr_NoConnection;
+		}
+	}
+	
+	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
+		ioData->mBuffers[i].mDataByteSize = sampleCount * m_configOutputPlayback.mBytesPerFrame;
+	
+	return noErr;
 }
 
 void AudioUnitALSA::startOutput()
