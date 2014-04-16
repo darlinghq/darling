@@ -74,6 +74,9 @@ public:
 	inline void setLibraryPath(const std::string& paths) { m_libraryPath = paths; }
 	inline const std::string& libraryPath() const { return m_libraryPath; }
 
+	// Only call this method if you're loading a Mach-O library into a native process!
+	void addDefaultLoader();
+
 	// Darling specific: DYLD_TRAMPOLINES
 	void setUseTrampolines(bool useTrampolines, const std::string& funcInfo);
 

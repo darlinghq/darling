@@ -106,16 +106,21 @@ void MachOMgr::deregisterUnloadHook(LoaderHookFunc* func)
 	m_unloadHooks.erase(func);
 }
 
+void MachOMgr::addDefaultLoader()
+{
+	if (!m_addedDefaultLoader)
+	{
+		add(new NativeObject(RTLD_DEFAULT, "<default>"));
+		m_addedDefaultLoader = true;
+	}
+}
 
 void MachOMgr::add(MachOObject* obj, bool mainModule)
 {
 	Darling::RWMutexWriteLock l(m_lock);
 
-	if (!m_addedDefaultLoader && mainModule)
-	{
-		add(new NativeObject(RTLD_DEFAULT, "<default>"));
-		m_addedDefaultLoader = true;
-	}
+	if (mainModule)
+		addDefaultLoader();
 	
 	m_objects[obj->baseAddress()] = obj;
 	m_objectNames[obj->path()] = obj;

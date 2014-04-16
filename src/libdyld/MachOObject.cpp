@@ -1,6 +1,6 @@
 #include "dl_public.h"
 #include "MachOObject.h"
-#include <climits>
+#include <limits>
 #include <cstring>
 #include <cassert>
 #include <stdexcept>
@@ -203,9 +203,26 @@ void MachOObject::loadSegments()
 		
 #ifndef __arm__ // All executables on iOS are PIE
 		// The first segment can be moved by mmap, but not the following ones
-		if (m_base || !(m_file->header().flags & MH_PIE))
+		auto filetype = m_file->header().filetype;
+		if (m_base || (!(m_file->header().flags & MH_PIE) && filetype != MH_DYLIB && filetype != MH_BUNDLE))
 			flags |= MAP_FIXED;
+		else
 #endif
+		{
+			// When letting the system decide where to place the mapping, we need to make sure that the spot chosen
+			// is big enough for all segments
+			uintptr_t size = getTotalMappingSize();
+			rv = ::mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0, 0);
+			if (rv == MAP_FAILED)
+			{
+				std::stringstream ss;
+				ss << "Failed to mmap temporary anonymous range: "  << strerror(errno);
+				throw std::runtime_error(ss.str());
+			}
+			
+			flags |= MAP_FIXED;
+			mappingAddr = rv;
+		}
 
 		rv = ::mmap(mappingAddr, mappingSize, maxprot, flags, m_file->fd(), m_file->offset() + seg->fileoff);
 		if (rv == MAP_FAILED)
@@ -229,16 +246,17 @@ void MachOObject::loadSegments()
 		}
 		
 		m_mappings.push_back(Mapping { mappingAddr, pageAlign(seg->vmsize), initprot, maxprot });
-		
+
 		if (seg->vmsize > mappingSize)
 		{
 			// Map empty pages to cover the vmsize range
 			mappingAddr = (void*) (seg->vmaddr + m_slide + mappingSize);
 			mappingSize = seg->vmsize - mappingSize;
 			
-			rv = ::mmap(mappingAddr, mappingSize, maxprot, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+			//rv = ::mmap(mappingAddr, mappingSize, maxprot, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+			int err = ::mprotect(mappingAddr, mappingSize, maxprot);
 			
-			if (rv == MAP_FAILED)
+			if (err)
 			{
 				std::stringstream ss;
 				ss << "Failed to mmap anonymous pages for '" << m_file->filename() << "': " << strerror(errno);
@@ -246,6 +264,25 @@ void MachOObject::loadSegments()
 			}
 		}
 	}
+}
+
+uintptr_t MachOObject::getTotalMappingSize()
+{
+	uintptr_t minAddr = std::numeric_limits<uintptr_t>::max();
+	uintptr_t maxAddr = 0;
+
+	for (Segment* seg : getSegments(*m_file))
+	{
+		if (seg->vmaddr < minAddr)
+			minAddr = seg->vmaddr;
+		if (seg->vmaddr+seg->vmsize > maxAddr)
+			maxAddr = seg->vmaddr+seg->vmsize;
+	}
+
+	if (!maxAddr)
+		return 0;
+	else
+		return maxAddr-minAddr;
 }
 
 void MachOObject::setInitialSegmentProtection()
@@ -723,6 +760,7 @@ void* MachOObject::resolveSymbol(const std::string& name)
 
 void MachOObject::runInitializers()
 {
+	return;
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
 	ProgramVars* pvars = nullptr;
 	

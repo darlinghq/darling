@@ -147,6 +147,8 @@ private:
 	static uintptr_t getMinMappingAddr();
 	static void writeBind(int type, void** ptr, void* newAddr, const std::string& name);
 	static bool lookupDyldFunction(const char* name, void** addr);
+
+	uintptr_t getTotalMappingSize();
 private:
 	MachO* m_file;
 	int m_refs = 1;
