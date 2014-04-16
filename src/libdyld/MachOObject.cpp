@@ -69,7 +69,8 @@ void MachOObject::postConstruct()
 
 MachOObject::~MachOObject()
 {
-	LOG << "deleting " << name() << " at " << this << std::endl;
+	if (isLoaded())
+		unload();
 	delete m_file;
 }
 
