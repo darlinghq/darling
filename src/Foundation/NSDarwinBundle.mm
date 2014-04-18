@@ -22,7 +22,7 @@ __attribute__((constructor)) static void myinit()
 		GSInitializeProcess(g_argc, g_argv, environ);
 	LOG << "Swizzling methods in NSBundle\n";
 	
-	MethodSwizzle(objc_getMetaClass("NSBundle"), @selector(mainBundle), @selector(x_mainBundle));
+	// MethodSwizzle(objc_getMetaClass("NSBundle"), @selector(mainBundle), @selector(x_mainBundle));
 	//[NSBundle mainBundle];
 
 	// Many OS X apps assume that there is a "default" autorelease pool provided
@@ -57,7 +57,8 @@ __attribute__((destructor)) static void myexit()
 
 @implementation NSBundle (NSBundle_Darling)
 
-+(NSBundle*) x_mainBundle
+//+(NSBundle*) x_mainBundle
++(NSBundle*) mainBundle
 {
 	LOG << "x_mainBundle() called\n";
 	if (!_mainBundle)
