@@ -32,6 +32,9 @@ extern "C"
 
 darwin_dirent64* __darwin_readdir64(DIR* dirp) asm("__darwin_readdir$INODE64");
 darwin_dirent* __darwin_readdir(DIR* dirp);
+int __darwin_readdir_r(DIR *dirp, struct darwin_dirent *entry, struct darwin_dirent **result);
+int __darwin_readdir_r64(DIR *dirp, struct darwin_dirent64 *entry, struct darwin_dirent64 **result) asm("__darwin_readdir_r$INODE64");
+
 DIR* __darwin_opendir(const char *name); // opendir$INODE64 in aliases
 // DIR* __darwin_fdopendir(int fd); // not present on Darwin
 int __darwin_closedir(DIR *dirp);
