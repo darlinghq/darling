@@ -26,6 +26,7 @@ int __darwin_atexit(void (*function)(void))
 void* __darwin_malloc(size_t size)
 {
 	void* p = malloc(size);
-	memset(p, 0, size);
+	if (p != nullptr)
+		memset(p, 0, size);
 	return p;
 }
