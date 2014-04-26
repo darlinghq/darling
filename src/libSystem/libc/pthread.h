@@ -8,6 +8,8 @@
 #define __DARWIN_PTHREAD_MUTEX_RECURSIVE 2
 #define __DARWIN_PTHREAD_PROCESS_SHARED 1
 #define __DARWIN_PTHREAD_PROCESS_PRIVATE 2
+#define __DARWIN_PTHREAD_CREATE_JOINABLE 1
+#define __DARWIN_PTHREAD_CREATE_DETACHED 2
 
 struct __darwin_pthread_rwlock_t // 200 bytes on Darwin
 {
@@ -79,6 +81,12 @@ int __darwin_pthread_cond_timedwait(__darwin_pthread_cond_t *cond, __darwin_pthr
 int __darwin_pthread_cond_wait(__darwin_pthread_cond_t *cond, __darwin_pthread_mutex_t* mutex);
 
 pid_t __darwin_pthread_mach_thread_np(pthread_t pth);
+
+size_t pthread_get_stacksize_np(pthread_t pth);
+void* pthread_get_stackaddr_np(pthread_t pth);
+
+int __darwin_pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate);
+int __darwin_pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate);
 
 // TODO: add other pthread functions for errno translation
 

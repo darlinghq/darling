@@ -294,3 +294,70 @@ int __darwin_pthread_once(__darwin_pthread_once_t *once_control, void (*init_rou
 	return pthread_once(&once_control->native, init_routine);
 }
 
+size_t pthread_get_stacksize_np(pthread_t pth)
+{
+	pthread_attr_t attr;
+	void* addr;
+	size_t size = 0;
+
+	if (pthread_getattr_np(pth, &attr) == 0)
+	{
+		pthread_attr_getstack(&attr, &addr, &size);
+		pthread_attr_destroy(&attr);
+	}
+
+	return size;
+}
+
+void* pthread_get_stackaddr_np(pthread_t pth)
+{
+	pthread_attr_t attr;
+	void* addr = nullptr;
+	size_t size = 0;
+
+	if (pthread_getattr_np(pth, &attr) == 0)
+	{
+		pthread_attr_getstack(&attr, &addr, &size);
+		pthread_attr_destroy(&attr);
+	}
+
+	return addr;
+}
+
+int __darwin_pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate)
+{
+	int err;
+
+	if (detachstate == __DARWIN_PTHREAD_CREATE_JOINABLE)
+		detachstate = PTHREAD_CREATE_JOINABLE;
+	else if (detachstate == __DARWIN_PTHREAD_CREATE_DETACHED)
+		detachstate = PTHREAD_CREATE_DETACHED;
+
+	err = pthread_attr_setdetachstate(attr, detachstate);
+
+	if (err != 0)
+		err = errnoLinuxToDarwin(err);
+
+	return err;
+}
+
+int __darwin_pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate)
+{
+	int err;
+
+	err = pthread_attr_getdetachstate(attr, detachstate);
+
+	if (err != 0)
+	{
+		err = errnoLinuxToDarwin(err);
+		return err;
+	}
+	
+	if (*detachstate == PTHREAD_CREATE_JOINABLE)
+		*detachstate = __DARWIN_PTHREAD_CREATE_JOINABLE;
+	else if (*detachstate == PTHREAD_CREATE_DETACHED)
+		*detachstate = __DARWIN_PTHREAD_CREATE_DETACHED;
+
+	return 0;
+}
+
