@@ -35,7 +35,7 @@ LoadableObject* LoadableObject::instantiateForPath(const std::string& path, Mach
 	if (MachO::isMachO(path.c_str()))
 	{
 		MachOObject* obj = new MachOObject(path);
-		obj->setRequesterRunpaths(requester->runPaths());
+		obj->setRequesterRunpaths(requester);
 		obj->setNoRecursion(flag & DARWIN_RTLD_FIRST);
 		return obj;
 	}

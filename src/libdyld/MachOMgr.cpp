@@ -27,7 +27,11 @@ MachOMgr::~MachOMgr()
 	while (!m_loadablesInOrder.empty())
 	{
 		LoadableObject* obj = m_loadablesInOrder.front();
-		obj->unload();
+		
+		if (dynamic_cast<NativeObject*>(obj) != nullptr)
+			obj->unload();
+		else
+			m_loadablesInOrder.pop_front(); // let ld.so do it on its own, otherwise crashes may follow
 	}
 	
 	m_bTerminated = true;

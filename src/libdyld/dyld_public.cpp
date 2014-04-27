@@ -172,3 +172,14 @@ void __dyld_mod_term_funcs()
 {
 }
 
+bool _dyld_bind_fully_image_containing_address(const void* address)
+{
+	return __dyld_bind_fully_image_containing_address(address);
+}
+
+bool __dyld_bind_fully_image_containing_address(const void* address)
+{
+	STUB();
+	return true;
+}
+

@@ -142,7 +142,7 @@ private:
 	// list with load order
 	std::vector<MachOObject*> m_objectsInOrder;
 	// this is needed for RTLD_NEXT only
-	std::vector<LoadableObject*> m_loadablesInOrder;
+	std::list<LoadableObject*> m_loadablesInOrder;
 
 	std::map<void*,NativeObject*> m_nativeRefToObject;
 	

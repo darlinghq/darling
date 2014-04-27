@@ -98,8 +98,8 @@ protected:
 	friend class DylibSearch;
 	friend class LoadableObject;
 	
-	void setRequesterRunpaths(const std::vector<const char*>& rpaths) { m_rpaths.insert(m_rpaths.begin(), rpaths.begin(), rpaths.end()); }
-	const std::vector<const char*>& runPaths() const { return m_rpaths; }
+	void setRequesterRunpaths(MachOObject* requester);
+	const std::vector<std::string>& runPaths() const { return m_rpaths; }
 	
 	ProgramVars* getProgramVars();
 private:
@@ -110,6 +110,8 @@ private:
 	void setInitialSegmentProtection();
 	void readSymbols();
 	void readExports();
+
+	static std::string expandLoaderPath(std::string path, MachOObject* loader);
 	
 	void rebase();
 	
@@ -167,7 +169,7 @@ private:
 		int initprot, maxprot;
 	};
 	std::vector<Mapping> m_mappings;
-	std::vector<const char*> m_rpaths;
+	std::vector<std::string> m_rpaths;
 	void* m_reworkedEHData = nullptr;
 	
 	std::string m_absolutePath, m_absolutePathDir, m_name;

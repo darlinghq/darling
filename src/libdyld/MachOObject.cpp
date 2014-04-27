@@ -3,6 +3,7 @@
 #include <limits>
 #include <cstring>
 #include <cassert>
+#include <cstdlib>
 #include <stdexcept>
 #include <sstream>
 #include <fstream>
@@ -63,7 +64,31 @@ void MachOObject::postConstruct()
 {
 	detectAbsolutePath();
 	m_header = m_file->header();
-	m_rpaths.insert(m_rpaths.begin(), m_file->rpaths().begin(), m_file->rpaths().end());
+
+	for (std::string rpath : m_file->rpaths())
+	{
+		if (rpath.compare(0, 16, "@executable_path") == 0)
+		{
+			if (isMainModule())
+				rpath.replace(0, 16, directory());
+			else
+			{
+				MachOObject* mainModule = MachOMgr::instance()->mainModule();
+			
+				if (!mainModule)
+					throw std::runtime_error("Cannot resolve @executable_path without a main module");
+			
+				rpath.replace(0, 16, mainModule->directory());
+			}
+		}
+		else if (rpath.compare(0, 12, "@loader_path") == 0)
+		{
+			rpath = expandLoaderPath(rpath, this);
+		}
+
+		m_rpaths.push_back(rpath);
+	}
+
 	m_bindAllAtLoad = MachOMgr::instance()->bindAtLaunch();
 }
 
@@ -72,6 +97,24 @@ MachOObject::~MachOObject()
 	if (isLoaded())
 		unload();
 	delete m_file;
+}
+
+std::string MachOObject::expandLoaderPath(std::string path, MachOObject* loader)
+{
+	char* p;
+	path.replace(0, 12, loader->directory());
+	p = realpath(path.c_str(), nullptr);
+			
+	path = p;
+	free(p);
+
+	return path;
+}
+
+void MachOObject::setRequesterRunpaths(MachOObject* requester)
+{
+	const auto& rpaths = requester->m_rpaths;
+	m_rpaths.insert(m_rpaths.begin(), rpaths.begin(), rpaths.end());
 }
 
 void* MachOObject::maxAddress() const

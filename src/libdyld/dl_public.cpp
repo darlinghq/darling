@@ -32,11 +32,17 @@ void Darling::dl_setLastError(const std::string& str)
 void* __darwin_dlopen(const char* filename, int flag)
 {
 	std::string resolved;
+	MachOObject* callerModule;
+	void* callerLocation = __builtin_return_address(0);
 
 	if (!filename)
 		return MachOMgr::instance()->mainModule();
+
+	callerModule = MachOMgr::instance()->objectForAddress(callerLocation);
+	if (!callerModule)
+		callerModule = MachOMgr::instance()->mainModule();
 	
-	resolved = DylibSearch::instance()->resolve(filename, MachOMgr::instance()->mainModule());
+	resolved = DylibSearch::instance()->resolve(filename, callerModule);
 
 	LOG << "dlopen(): " << filename << " resolved to " << resolved << std::endl;
 	if (resolved.empty())
@@ -63,7 +69,7 @@ void* __darwin_dlopen(const char* filename, int flag)
 		{
 			try
 			{
-				obj = LoadableObject::instantiateForPath(resolved, MachOMgr::instance()->mainModule(), flag);
+				obj = LoadableObject::instantiateForPath(resolved, callerModule, flag);
 
 				if (flag & DARWIN_RTLD_NOW)
 					obj->setBindAllAtLoad(true);
