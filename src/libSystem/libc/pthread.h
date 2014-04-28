@@ -2,6 +2,14 @@
 #define LIBC_PTHREAD_H
 #include <pthread.h>
 #include <stdint.h>
+#include "signals.h"
+
+#ifdef __cplusplus
+namespace Darling
+{
+	pid_t tidForPthread(pthread_t pth);
+}
+#endif
 
 #define __DARWIN_PTHREAD_MUTEX_NORMAL 0
 #define __DARWIN_PTHREAD_MUTEX_ERRORCHECK 1
@@ -49,6 +57,8 @@ static_assert(sizeof(pthread_rwlock_t) <= 196, "pthread_rwlock_t is too big on t
 extern "C"
 {
 
+int __darwin_pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+
 int __darwin_pthread_once(__darwin_pthread_once_t *once_control, void (*init_routine)(void));
 
 int __darwin_pthread_mutexattr_settype(pthread_mutexattr_t* attr, int kind);
@@ -87,6 +97,8 @@ void* pthread_get_stackaddr_np(pthread_t pth);
 
 int __darwin_pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate);
 int __darwin_pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate);
+
+int __darwin_pthread_sigmask(int how, const __darwin_sigset_t *set, __darwin_sigset_t *oldset);
 
 // TODO: add other pthread functions for errno translation
 
