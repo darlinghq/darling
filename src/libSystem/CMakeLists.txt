@@ -125,6 +125,7 @@ set(machkern_SRCS
 	kernel-mach/Futex.cpp
 	kernel-mach/FutexSemaphore.cpp
 	kernel-mach/compat.cpp
+	kernel-mach/thread.cpp
 )
 
 add_library(System SHARED ${libc_SRCS} ${bsdkern_SRCS}

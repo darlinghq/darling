@@ -176,6 +176,7 @@ kern_return_t host_statistics(host_t host, int flavor, void* out, long* out_cnt)
 
 host_t mach_host_self()
 {
-	host* h = static_cast<host*>(malloc(sizeof(struct host)));
-	return h;
+	static struct host h;
+	return &h;
 }
+
