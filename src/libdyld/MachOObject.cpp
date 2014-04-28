@@ -804,7 +804,6 @@ void* MachOObject::resolveSymbol(const std::string& name)
 
 void MachOObject::runInitializers()
 {
-	return;
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
 	ProgramVars* pvars = nullptr;
 	
