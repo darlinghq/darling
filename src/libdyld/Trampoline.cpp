@@ -97,6 +97,10 @@ void* TrampolineMgr::generate(void* targetAddr, const char* name)
 {
 	if ((targetAddr > m_pMem && targetAddr < m_pMem+m_nMax) || !isExecutable(targetAddr))
 		return targetAddr; // will not create a trampoline for a trampoline
+	if (strcmp(name, "dlopen") == 0)
+		return targetAddr; // trampolines break RPATH resolution in dlopen
+	if (strcmp(name, "dlsym") == 0)
+		return targetAddr; // trampolines break RTLD_SELF
 
 	AddrEntry e = { name, name, targetAddr };
 	if (m_nNext >= m_nMax)
