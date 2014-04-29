@@ -2,7 +2,9 @@ This is a userspace compatibility layer for running Darwin/OS X binaries on Linu
 
 # General information
 
-For more information (such as **build instructions**), visit http://www.darlinghq.org
+For more information visit http://www.darlinghq.org
+
+**Build instructions** are avaiable here: http://www.darlinghq.org/build-instructions
 
 # Hacking tutorial
 
