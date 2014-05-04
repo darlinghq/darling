@@ -297,10 +297,10 @@ void MachOObject::loadSegments()
 			mappingAddr = (void*) (seg->vmaddr + m_slide + mappingSize);
 			mappingSize = seg->vmsize - mappingSize;
 			
-			//rv = ::mmap(mappingAddr, mappingSize, maxprot, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-			int err = ::mprotect(mappingAddr, mappingSize, maxprot);
+			rv = ::mmap(mappingAddr, mappingSize, maxprot, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+			//int err = ::mprotect(mappingAddr, mappingSize, maxprot);
 			
-			if (err)
+			if (rv == MAP_FAILED)
 			{
 				std::stringstream ss;
 				ss << "Failed to mmap anonymous pages for '" << m_file->filename() << "': " << strerror(errno);
