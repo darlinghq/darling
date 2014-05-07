@@ -8,7 +8,12 @@ MAP_FUNCTION1(int,aio_write,struct aiocb*);
 
 int __darwin_aio_fsync(int op, struct aiocb *aiocbp)
 {
-	// TODO
+	int rv = aio_fsync(op, aiocbp);
+	if (rv > 0)
+		rv = errnoLinuxToDarwin(rv);
+	else if (rv == -1)
+		errnoOut();
+	return rv;
 }
 
 int __darwin_aio_error(const struct aiocb *aiocbp)
@@ -26,11 +31,21 @@ MAP_FUNCTION3(int,aio_suspend,const struct aiocb * const*,int,const struct times
 
 int __darwin_aio_cancel(int fd, struct aiocb *aiocbp)
 {
-	// TODO
+	int rv = aio_cancel(fd, aiocbp);
+	if (rv > 0)
+		rv = errnoLinuxToDarwin(rv);
+	else if (rv == -1)
+		errnoOut();
+	return rv;
 }
 
 int __darwin_lio_listio(int mode, struct aiocb *const aiocb_list[], int nitems, struct sigevent *sevp)
 {
-	// TODO
+	int rv = lio_listio(mode, aiocb_list, nitems, sevp);
+	if (rv > 0)
+		rv = errnoLinuxToDarwin(rv);
+	else if (rv == -1)
+		errnoOut();
+	return rv;
 }
 
