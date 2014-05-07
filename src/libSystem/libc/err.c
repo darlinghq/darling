@@ -27,7 +27,9 @@
  * SUCH DAMAGE.
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE
+#endif
 
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)err.c	8.1 (Berkeley) 6/4/93";
