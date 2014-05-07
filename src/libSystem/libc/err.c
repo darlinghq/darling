@@ -219,12 +219,14 @@ __darwin_verrc(int eval, int code, const char *fmt, va_list ap)
 	}
 	fprintf(_e_err_file, "%s\n", strerror(code));
 	if (_e_err_exit.type)
+	{
 #ifdef __BLOCKS__
 		if (_e_err_exit.type == ERR_EXIT_BLOCK)
 			_e_err_exit.block(eval);
 		else
 #endif /* __BLOCKS__ */
 			_e_err_exit.func(eval);
+	}
 	exit(eval);
 }
 
@@ -247,12 +249,14 @@ __darwin_verrx(int eval, const char *fmt, va_list ap)
 		_e_visprintf(_e_err_file, fmt, ap);
 	fprintf(_e_err_file, "\n");
 	if (_e_err_exit.type)
+	{
 #ifdef __BLOCKS__
 		if (_e_err_exit.type == ERR_EXIT_BLOCK)
 			_e_err_exit.block(eval);
 		else
 #endif /* __BLOCKS__ */
 			_e_err_exit.func(eval);
+	}
 	exit(eval);
 }
 
