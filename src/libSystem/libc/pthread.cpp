@@ -1,18 +1,81 @@
 #include "pthread.h"
 #include "errno.h"
 #include <cstdio>
+#include <unistd.h>
+#include <map>
+#include <memory>
+#include <util/mutex.h>
+#include <sys/syscall.h>
 
-// This makes puppies die
-struct pthread_internal
+static Darling::Mutex g_pthreadMutex;
+static pthread_key_t g_pthreadDestructor;
+static std::map<pthread_t, pid_t> g_pthreadToTid __attribute__ ((init_priority (101)));
+
+static void pthread_destroyed(void*)
 {
-	void* ptrs[26];
-	pid_t tid;
+	Darling::MutexLock lock(g_pthreadMutex);
+	auto it = g_pthreadToTid.find(pthread_self());
+
+	if (it != g_pthreadToTid.end())
+		g_pthreadToTid.erase(it);
+}
+
+__attribute__((constructor))
+static void initPthreadDestructor()
+{
+	pthread_key_create(&g_pthreadDestructor, pthread_destroyed);
+	g_pthreadToTid[pthread_self()] = syscall(SYS_gettid);
+}
+
+struct WrapPthreadArg
+{
+	void *(*start_routine) (void *);
+	void *arg;
 };
+
+static void* StartRoutineWrapper(void* a)
+{
+	WrapPthreadArg* wrap = static_cast<WrapPthreadArg*>(a);
+	WrapPthreadArg mywrap = *wrap;
+
+	// Set something into the key so that we get called when the thread exits
+	// (and however it exits)
+	pthread_setspecific(g_pthreadDestructor, &mywrap);
+
+	g_pthreadMutex.lock();
+	g_pthreadToTid[pthread_self()] = syscall(SYS_gettid);
+	g_pthreadMutex.unlock();
+
+	delete wrap;
+
+	return mywrap.start_routine(mywrap.arg);
+}
+
+pid_t Darling::tidForPthread(pthread_t pth)
+{
+	Darling::MutexLock lock(g_pthreadMutex);
+	auto it = g_pthreadToTid.find(pth);
+
+	if (it != g_pthreadToTid.end())
+		return it->second;
+	else
+		return 0;
+}
+
+int __darwin_pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg)
+{
+	WrapPthreadArg* wrap = new WrapPthreadArg { start_routine, arg };
+	int rv = pthread_create(thread, attr, StartRoutineWrapper, wrap);
+
+	if (rv != 0)
+		delete wrap;
+
+	return errnoLinuxToDarwin(rv);
+}
 
 pid_t __darwin_pthread_mach_thread_np(pthread_t pth)
 {
-	const pthread_internal* x = reinterpret_cast<pthread_internal*>(pth);
-	return x->tid;
+	return Darling::tidForPthread(pth);
 }
 
 int __darwin_pthread_mutexattr_settype(pthread_mutexattr_t* attr, int kind)
@@ -292,5 +355,96 @@ int __darwin_pthread_cond_wait(__darwin_pthread_cond_t *cond, __darwin_pthread_m
 int __darwin_pthread_once(__darwin_pthread_once_t *once_control, void (*init_routine)(void))
 {
 	return pthread_once(&once_control->native, init_routine);
+}
+
+size_t pthread_get_stacksize_np(pthread_t pth)
+{
+	pthread_attr_t attr;
+	void* addr;
+	size_t size = 0;
+
+	if (pthread_getattr_np(pth, &attr) == 0)
+	{
+		pthread_attr_getstack(&attr, &addr, &size);
+		pthread_attr_destroy(&attr);
+	}
+
+	return size;
+}
+
+void* pthread_get_stackaddr_np(pthread_t pth)
+{
+	pthread_attr_t attr;
+	void* addr = nullptr;
+	size_t size = 0;
+
+	if (pthread_getattr_np(pth, &attr) == 0)
+	{
+		pthread_attr_getstack(&attr, &addr, &size);
+		pthread_attr_destroy(&attr);
+	}
+
+	return addr;
+}
+
+int __darwin_pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate)
+{
+	int err;
+
+	if (detachstate == __DARWIN_PTHREAD_CREATE_JOINABLE)
+		detachstate = PTHREAD_CREATE_JOINABLE;
+	else if (detachstate == __DARWIN_PTHREAD_CREATE_DETACHED)
+		detachstate = PTHREAD_CREATE_DETACHED;
+
+	err = pthread_attr_setdetachstate(attr, detachstate);
+
+	if (err != 0)
+		err = errnoLinuxToDarwin(err);
+
+	return err;
+}
+
+int __darwin_pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate)
+{
+	int err;
+
+	err = pthread_attr_getdetachstate(attr, detachstate);
+
+	if (err != 0)
+	{
+		err = errnoLinuxToDarwin(err);
+		return err;
+	}
+	
+	if (*detachstate == PTHREAD_CREATE_JOINABLE)
+		*detachstate = __DARWIN_PTHREAD_CREATE_JOINABLE;
+	else if (*detachstate == PTHREAD_CREATE_DETACHED)
+		*detachstate = __DARWIN_PTHREAD_CREATE_DETACHED;
+
+	return 0;
+}
+
+int __darwin_pthread_sigmask(int how, const __darwin_sigset_t *set, __darwin_sigset_t *oldset)
+{
+	std::unique_ptr<sigset_t> nset;
+	std::unique_ptr<sigset_t> noldset;
+
+	if (set)
+	{
+		nset.reset(new sigset_t);
+		*nset = Darling::sigsetDarwinToLinux(set);
+	}
+	if (oldset)
+		noldset.reset(new sigset_t);
+
+	// -1 -> conversion from Darwin to Linux
+	int rv = pthread_sigmask(how - 1, nset.get(), noldset.get());
+
+	if (rv == -1)
+		errnoOut();
+	else if (oldset)
+		*oldset = Darling::sigsetLinuxToDarwin(noldset.get());
+	
+	return rv;
 }
 

@@ -65,12 +65,12 @@ void UndefinedFunction::init(const char* name)
 	_asm3[0] = 0x48;
 	_asm3[1] = 0xba;
 	_asm4[0] = 0x48;
-	_asm4[1] = 0xbb;
+	_asm4[1] = 0xb9;
 	_asm5[0] = 0x48;
 	_asm5[1] = 0x31;
 	_asm5[2] = 0xc0;
 	_asm5[3] = 0xff;
-	_asm5[4] = 0xd3;
+	_asm5[4] = 0xd1;
 	_asm5[5] = 0x48;
 	_asm5[6] = 0x31;
 	_asm5[7] = 0xc0;

@@ -12,6 +12,7 @@
 #define HW_NCPU 3
 #define HW_PHYSMEM 5
 #define HW_USERMEM 6
+#define HW_MEMSIZE 24
 #define HW_AVAILCPU 25
 
 int __darwin_sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
@@ -103,6 +104,7 @@ int __darwin_sysctl(int* name, unsigned int namelen,
 			break;
 		case HW_PHYSMEM:
 		case HW_USERMEM:
+		case HW_MEMSIZE:
 		{
 			long pages = ::sysconf(_SC_PHYS_PAGES);
 			long page_size = ::sysconf(_SC_PAGE_SIZE);

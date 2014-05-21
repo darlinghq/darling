@@ -83,6 +83,9 @@ void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWea
 {
 	void* addr;
 	std::string prefixed = "__darwin_" + symbolName;
+	
+	if (symbolName == "main")
+		return nullptr; // Don't return main() from Darling itself
 
 	addr = ::dlsym(m_nativeRef, prefixed.c_str());
 	

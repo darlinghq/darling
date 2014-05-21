@@ -34,4 +34,6 @@ inline OSStatus makeOSStatus(int errNo) { return 100000 + errNo; }
 #define kAudioUnitErr_InvalidOfflineRender	-10848	
 #define kAudioUnitErr_Unauthorized	-10847
 
+#define kMPTimeoutErr -29296
+
 #endif

@@ -3,6 +3,7 @@
 #include <semaphore.h>
 #include "task.h"
 #include <mach/kern_return.h>
+#include <mach/clock_types.h>
 
 namespace Darling
 {
@@ -30,6 +31,8 @@ kern_return_t semaphore_signal(esemaphore_t semaphore);
 kern_return_t semaphore_signal_all(esemaphore_t semaphore);
 
 kern_return_t semaphore_wait(esemaphore_t semaphore);
+
+kern_return_t semaphore_timedwait(esemaphore_t semaphore, mach_timespec_t ts);
 
 #ifdef __cplusplus
 }

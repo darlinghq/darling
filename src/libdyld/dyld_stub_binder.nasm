@@ -19,8 +19,11 @@ dyld_stub_binder:
 	call reg_saveall WRT ..plt ; 224 bytes
 	mov rdi, [rsp+224] ; cache
 	mov rsi, [rsp+224+8] ; offset
+	sub rsp, 8 ; maintain 16-byte stack alignment
 
 	call dyld_stub_binder_fixup WRT ..plt
+	
+	add rsp, 8 ; maintain 16-byte stack alignment
 
 	mov [rsp+224], rax
 	call reg_restoreall WRT ..plt

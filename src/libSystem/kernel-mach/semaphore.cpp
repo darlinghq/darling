@@ -73,3 +73,9 @@ kern_return_t semaphore_wait(esemaphore_t semaphore)
 	return KERN_SUCCESS;
 }
 
+kern_return_t semaphore_timedwait(esemaphore_t semaphore, mach_timespec_t ts)
+{
+	STUB();
+	return semaphore_wait(semaphore);
+}
+

@@ -18,7 +18,7 @@
 static thread_local char g_lastError[1024];
 static thread_local bool g_lastErrorRead = false;
 
-static std::set<Darling::DlsymHookFunc> g_dlsymHooks;
+static std::set<Darling::DlsymHookFunc>* g_dlsymHooks = new std::set<Darling::DlsymHookFunc>;
 
 using namespace Darling;
 
@@ -32,11 +32,17 @@ void Darling::dl_setLastError(const std::string& str)
 void* __darwin_dlopen(const char* filename, int flag)
 {
 	std::string resolved;
+	MachOObject* callerModule;
+	void* callerLocation = __builtin_return_address(0);
 
 	if (!filename)
 		return MachOMgr::instance()->mainModule();
+
+	callerModule = MachOMgr::instance()->objectForAddress(callerLocation);
+	if (!callerModule)
+		callerModule = MachOMgr::instance()->mainModule();
 	
-	resolved = DylibSearch::instance()->resolve(filename, MachOMgr::instance()->mainModule());
+	resolved = DylibSearch::instance()->resolve(filename, callerModule);
 
 	LOG << "dlopen(): " << filename << " resolved to " << resolved << std::endl;
 	if (resolved.empty())
@@ -63,7 +69,7 @@ void* __darwin_dlopen(const char* filename, int flag)
 		{
 			try
 			{
-				obj = LoadableObject::instantiateForPath(resolved, MachOMgr::instance()->mainModule(), flag);
+				obj = LoadableObject::instantiateForPath(resolved, callerModule, flag);
 
 				if (flag & DARWIN_RTLD_NOW)
 					obj->setBindAllAtLoad(true);
@@ -116,7 +122,7 @@ static std::string processSymbolViaHooks(const std::string& symbol)
 
 	strcpy(translated, symbol.c_str());
 
-	for (Darling::DlsymHookFunc hook : g_dlsymHooks)
+	for (Darling::DlsymHookFunc hook : *g_dlsymHooks)
 	{
 		if (hook(translated))
 			return translated;
@@ -268,11 +274,11 @@ const char* NSLibraryNameForModule(NSModule m)
 
 void Darling::registerDlsymHook(DlsymHookFunc func)
 {
-	g_dlsymHooks.insert(func);
+	g_dlsymHooks->insert(func);
 }
 
 void Darling::deregisterDlsymHook(DlsymHookFunc func)
 {
-	//g_dlsymHooks.erase(func);
+	g_dlsymHooks->erase(func);
 }
 

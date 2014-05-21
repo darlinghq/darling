@@ -12,7 +12,7 @@ extern "C" {
 std::string DarlingTranslateBSDName(const char* name);
 bool DarlingFindBSDName(const char* name, char* path);
 
-/*
+#if 0
 CFMutableDictionaryRef IOBSDNameMatching(void* iokitPort, unsigned int options, const char* bsdName)
 {
 	// Search /sys/class/* for a device called bsdName
@@ -25,7 +25,7 @@ CFMutableDictionaryRef IOBSDNameMatching(void* iokitPort, unsigned int options, 
 	else
 		return NULL;
 }
-*/
+#endif
 
 
 std::string DarlingTranslateBSDName(const char* name)

@@ -9,6 +9,7 @@
 #include <cstring>
 #include <limits.h>
 #include <libdyld/MachOMgr.h>
+#include "darwin_errno_codes.h"
 
 static darwin_dirent* convertDirent(const struct dirent* ent);
 static darwin_dirent64* convertDirent64(const struct dirent* ent);
@@ -39,6 +40,48 @@ darwin_dirent* __darwin_readdir(DIR* dirp)
 	}
 	
 	return convertDirent(linux_buf);
+}
+
+template <typename EntType, typename ConvType>
+int __darwin_readdir_r_generic(DIR *dirp, EntType *entry, EntType **result, ConvType convFunc)
+{
+	struct dirent ent;
+	struct dirent* native_result;
+	int rv;
+
+	if (!result || !entry)
+	{
+		errno = DARWIN_EINVAL;
+		return -1;
+	}
+
+	rv = readdir_r(dirp, &ent, &native_result);
+
+	if (rv != 0)
+	{
+		errnoOut();
+		return rv;
+	}
+
+	if (!native_result)
+		*result = nullptr;
+	else
+	{
+		*entry = *convFunc(&ent);
+		*result = entry;
+	}
+
+	return rv;
+}
+
+int __darwin_readdir_r(DIR *dirp, struct darwin_dirent *entry, struct darwin_dirent **result)
+{
+	return __darwin_readdir_r_generic(dirp, entry, result, convertDirent);
+}
+
+int __darwin_readdir_r64(DIR *dirp, struct darwin_dirent64 *entry, struct darwin_dirent64 **result)
+{
+	return __darwin_readdir_r_generic(dirp, entry, result, convertDirent64);
 }
 
 darwin_dirent* convertDirent(const struct dirent* linux_buf)

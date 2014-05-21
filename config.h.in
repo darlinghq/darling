@@ -9,6 +9,7 @@
 #define ETC_DARLING_PATH "/etc/darling"
 
 #cmakedefine MULTILIB
+#cmakedefine FRAMEWORK_COREAUDIO
 
 /*
  * Credit: 

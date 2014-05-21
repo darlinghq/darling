@@ -1,8 +1,9 @@
 #include "dl_public.h"
 #include "MachOObject.h"
-#include <climits>
+#include <limits>
 #include <cstring>
 #include <cassert>
+#include <cstdlib>
 #include <stdexcept>
 #include <sstream>
 #include <fstream>
@@ -63,14 +64,57 @@ void MachOObject::postConstruct()
 {
 	detectAbsolutePath();
 	m_header = m_file->header();
-	m_rpaths.insert(m_rpaths.begin(), m_file->rpaths().begin(), m_file->rpaths().end());
+
+	for (std::string rpath : m_file->rpaths())
+	{
+		if (rpath.compare(0, 16, "@executable_path") == 0)
+		{
+			if (isMainModule())
+				rpath.replace(0, 16, directory());
+			else
+			{
+				MachOObject* mainModule = MachOMgr::instance()->mainModule();
+			
+				if (!mainModule)
+					throw std::runtime_error("Cannot resolve @executable_path without a main module");
+			
+				rpath.replace(0, 16, mainModule->directory());
+			}
+		}
+		else if (rpath.compare(0, 12, "@loader_path") == 0)
+		{
+			rpath = expandLoaderPath(rpath, this);
+		}
+
+		m_rpaths.push_back(rpath);
+	}
+
 	m_bindAllAtLoad = MachOMgr::instance()->bindAtLaunch();
 }
 
 MachOObject::~MachOObject()
 {
-	LOG << "deleting " << name() << " at " << this << std::endl;
+	if (isLoaded())
+		unload();
 	delete m_file;
+}
+
+std::string MachOObject::expandLoaderPath(std::string path, MachOObject* loader)
+{
+	char* p;
+	path.replace(0, 12, loader->directory());
+	p = realpath(path.c_str(), nullptr);
+			
+	path = p;
+	free(p);
+
+	return path;
+}
+
+void MachOObject::setRequesterRunpaths(MachOObject* requester)
+{
+	const auto& rpaths = requester->m_rpaths;
+	m_rpaths.insert(m_rpaths.begin(), rpaths.begin(), rpaths.end());
 }
 
 void* MachOObject::maxAddress() const
@@ -203,9 +247,26 @@ void MachOObject::loadSegments()
 		
 #ifndef __arm__ // All executables on iOS are PIE
 		// The first segment can be moved by mmap, but not the following ones
-		if (m_base || !(m_file->header().flags & MH_PIE))
+		auto filetype = m_file->header().filetype;
+		if (m_base || (!(m_file->header().flags & MH_PIE) && filetype != MH_DYLIB && filetype != MH_BUNDLE))
 			flags |= MAP_FIXED;
+		else
 #endif
+		{
+			// When letting the system decide where to place the mapping, we need to make sure that the spot chosen
+			// is big enough for all segments
+			uintptr_t size = getTotalMappingSize();
+			rv = ::mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0, 0);
+			if (rv == MAP_FAILED)
+			{
+				std::stringstream ss;
+				ss << "Failed to mmap temporary anonymous range: "  << strerror(errno);
+				throw std::runtime_error(ss.str());
+			}
+			
+			flags |= MAP_FIXED;
+			mappingAddr = rv;
+		}
 
 		rv = ::mmap(mappingAddr, mappingSize, maxprot, flags, m_file->fd(), m_file->offset() + seg->fileoff);
 		if (rv == MAP_FAILED)
@@ -229,7 +290,7 @@ void MachOObject::loadSegments()
 		}
 		
 		m_mappings.push_back(Mapping { mappingAddr, pageAlign(seg->vmsize), initprot, maxprot });
-		
+
 		if (seg->vmsize > mappingSize)
 		{
 			// Map empty pages to cover the vmsize range
@@ -237,6 +298,7 @@ void MachOObject::loadSegments()
 			mappingSize = seg->vmsize - mappingSize;
 			
 			rv = ::mmap(mappingAddr, mappingSize, maxprot, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+			//int err = ::mprotect(mappingAddr, mappingSize, maxprot);
 			
 			if (rv == MAP_FAILED)
 			{
@@ -246,6 +308,27 @@ void MachOObject::loadSegments()
 			}
 		}
 	}
+}
+
+uintptr_t MachOObject::getTotalMappingSize()
+{
+	uintptr_t minAddr = std::numeric_limits<uintptr_t>::max();
+	uintptr_t maxAddr = 0;
+
+	for (Segment* seg : getSegments(*m_file))
+	{
+		if (strcmp(seg->segname, "__PAGEZERO") == 0)
+			continue;
+		if (seg->vmaddr < minAddr)
+			minAddr = seg->vmaddr;
+		if (seg->vmaddr+seg->vmsize > maxAddr)
+			maxAddr = seg->vmaddr+seg->vmsize;
+	}
+
+	if (!maxAddr)
+		return 0;
+	else
+		return maxAddr-minAddr;
 }
 
 void MachOObject::setInitialSegmentProtection()

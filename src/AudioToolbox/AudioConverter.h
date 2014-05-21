@@ -3,8 +3,9 @@
 #include <CoreServices/MacTypes.h>
 #include <CoreAudio/CoreAudioTypes.h>
 
+#ifdef __cplusplus
 extern "C" {
-
+#endif
 
 
 class AudioConverter;
@@ -26,7 +27,9 @@ OSStatus AudioConverterConvertBuffer(AudioConverterRef inAudioConverter, UInt32 
 OSStatus AudioConverterFillComplexBuffer(AudioConverterRef inAudioConverter, AudioConverterComplexInputDataProc inInputDataProc, void *inInputDataProcUserData, UInt32 *ioOutputDataPacketSize, AudioBufferList *outOutputData, AudioStreamPacketDescription*outPacketDescription);
 OSStatus AudioConverterConvertComplexBuffer(AudioConverterRef inAudioConverter, UInt32 inNumberPCMFrames, const AudioBufferList *inInputData, AudioBufferList *outOutputData);
 
+#ifdef __cplusplus
 }
+#endif
 
 
 #endif

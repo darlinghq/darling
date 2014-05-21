@@ -191,6 +191,7 @@ class fat_architecture_not_supported : public std::exception
 public:
 	fat_architecture_not_supported(std::vector<std::string> archs) : m_archs(archs) {}
 	inline const std::vector<std::string>& archs() const { return m_archs; }
+	const char* what() const throw() { return "Given fat executables does not contain binary for current architecture"; }
 private:
 	std::vector<std::string> m_archs;
 };

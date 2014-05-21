@@ -29,6 +29,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stack>
 #include <cxxabi.h>
 #include <dlfcn.h>
+#include <sys/syscall.h>
 #include "../util/log.h"
 #include "../util/stlutils.h"
 
@@ -37,8 +38,8 @@ std::map<std::string, TrampolineMgr::FunctionInfo> TrampolineMgr::m_functionInfo
 struct timeval TrampolineMgr::m_startup;
 
 static __thread std::stack<TrampolineMgr::ReturnInfo>* g_returnInfo = 0;
-static std::ofstream* g_logger = 0;
-static pid_t g_loggerForPid = 0;
+static __thread std::ofstream* g_logger = 0;
+static __thread pid_t g_loggerForPid = 0;
 static const char* LIB_OBJCDARWIN = "libobjc.A.dylib.so";
 static std::string (*objc_helper)(const std::string& /*invoker*/, void* /*arg1*/, void* /*arg2*/, std::string& /*searchable*/) = 0;
 
@@ -96,6 +97,10 @@ void* TrampolineMgr::generate(void* targetAddr, const char* name)
 {
 	if ((targetAddr > m_pMem && targetAddr < m_pMem+m_nMax) || !isExecutable(targetAddr))
 		return targetAddr; // will not create a trampoline for a trampoline
+	if (strcmp(name, "dlopen") == 0)
+		return targetAddr; // trampolines break RPATH resolution in dlopen
+	if (strcmp(name, "dlsym") == 0)
+		return targetAddr; // trampolines break RTLD_SELF
 
 	AddrEntry e = { name, name, targetAddr };
 	if (m_nNext >= m_nMax)
@@ -256,7 +261,7 @@ std::string TrampolineMgr::timeStamp()
 
 std::string TrampolineMgr::logPath()
 {
-	pid_t pid = getpid();
+	pid_t pid = syscall(SYS_gettid);
 	std::stringstream ss;
 	const char* progname = Darling::MachOMgr::instance()->mainModule()->name();
 	//size_t pos;
@@ -271,7 +276,7 @@ std::string TrampolineMgr::logPath()
 
 std::ostream* TrampolineMgr::getLogger()
 {
-	if (g_loggerForPid == getpid())
+	if (g_loggerForPid == syscall(SYS_gettid))
 		return g_logger ? g_logger : &std::cerr;
 	else
 	{

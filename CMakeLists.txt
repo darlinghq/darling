@@ -39,7 +39,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/util)
 include_directories(${CMAKE_BINARY_DIR}) # for config.h
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-configure_file(config.h.in config.h)
 
 ######################
 # iOS build          #
@@ -102,6 +101,8 @@ if (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 	set(SUFFIX "64")
 endif (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+
 enable_language(ASM-ATT)
 enable_language(ASM_NASM)
 
@@ -141,10 +142,16 @@ add_subdirectory(src/Foundation)
 add_subdirectory(src/Carbon)
 add_subdirectory(src/SystemConfiguration)
 
+# Experimental stuff!
 if (WITH_COREAUDIO)
+	set(FRAMEWORK_COREAUDIO TRUE)
 	add_subdirectory(src/AudioUnit)
 	add_subdirectory(src/AudioToolbox)
 endif (WITH_COREAUDIO)
+if (WITH_DARLING_APPKIT)
+	set(FRAMEWORK_APPKIT TRUE)
+	add_subdirectory(src/AppKit)
+endif (WITH_DARLING_APPKIT)
 
 add_subdirectory(src/CoreVideo)
 add_subdirectory(src/OpenGL)
@@ -158,3 +165,4 @@ add_dependencies(Cocoa crashhandler)
 
 endif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm.*")
 
+configure_file(config.h.in config.h)

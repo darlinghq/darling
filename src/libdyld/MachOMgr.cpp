@@ -9,6 +9,8 @@
 
 namespace Darling {
 
+bool MachOMgr::m_bTerminated = false;
+
 MachOMgr::MachOMgr()
 : m_mainModule(nullptr), m_bindAtLaunch(false), m_printInitializers(false),
   m_printLibraries(false), m_printSegments(false), m_printBindings(false),
@@ -25,8 +27,14 @@ MachOMgr::~MachOMgr()
 	while (!m_loadablesInOrder.empty())
 	{
 		LoadableObject* obj = m_loadablesInOrder.front();
-		obj->unload();
+		
+		if (dynamic_cast<NativeObject*>(obj) != nullptr)
+			obj->unload();
+		else
+			m_loadablesInOrder.pop_front(); // let ld.so do it on its own, otherwise crashes may follow
 	}
+	
+	m_bTerminated = true;
 }
 
 MachOMgr* MachOMgr::instance()
@@ -88,15 +96,35 @@ void MachOMgr::registerUnloadHook(LoaderHookFunc* func)
 	m_unloadHooks.insert(func);
 }
 
-void MachOMgr::add(MachOObject* obj, bool mainModule)
+void MachOMgr::deregisterLoadHook(LoaderHookFunc* func)
 {
 	Darling::RWMutexWriteLock l(m_lock);
+	
+	m_loadHooks.erase(func);
+}
 
-	if (!m_addedDefaultLoader && mainModule)
+void MachOMgr::deregisterUnloadHook(LoaderHookFunc* func)
+{
+	Darling::RWMutexWriteLock l(m_lock);
+	
+	m_unloadHooks.erase(func);
+}
+
+void MachOMgr::addDefaultLoader()
+{
+	if (!m_addedDefaultLoader)
 	{
 		add(new NativeObject(RTLD_DEFAULT, "<default>"));
 		m_addedDefaultLoader = true;
 	}
+}
+
+void MachOMgr::add(MachOObject* obj, bool mainModule)
+{
+	Darling::RWMutexWriteLock l(m_lock);
+
+	if (mainModule)
+		addDefaultLoader();
 	
 	m_objects[obj->baseAddress()] = obj;
 	m_objectNames[obj->path()] = obj;

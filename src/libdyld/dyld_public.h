@@ -49,7 +49,11 @@ char* getsectdata(const struct mach_header* header, const char* segname, const c
 
 void _dyld_register_func_for_add_image(Darling::MachOMgr::LoaderHookFunc* func);
 void _dyld_register_func_for_remove_image(Darling::MachOMgr::LoaderHookFunc* func);
+void _dyld_deregister_func_for_add_image(Darling::MachOMgr::LoaderHookFunc* func);
+void _dyld_deregister_func_for_remove_image(Darling::MachOMgr::LoaderHookFunc* func);
 
+bool _dyld_bind_fully_image_containing_address(const void* address);
+bool __dyld_bind_fully_image_containing_address(const void* address);
 void __dyld_make_delayed_module_initializer_calls();
 void __dyld_mod_term_funcs();
 

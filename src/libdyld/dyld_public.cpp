@@ -79,6 +79,18 @@ void _dyld_register_func_for_remove_image(MachOMgr::LoaderHookFunc* func)
 	MachOMgr::instance()->registerUnloadHook(func);
 }
 
+void _dyld_deregister_func_for_add_image(MachOMgr::LoaderHookFunc* func)
+{
+	if (!MachOMgr::isTerminated()) // MachOMgr singleton may be destroyed before modules are unloaded
+		MachOMgr::instance()->deregisterLoadHook(func);
+}
+
+void _dyld_deregister_func_for_remove_image(MachOMgr::LoaderHookFunc* func)
+{
+	if (!MachOMgr::isTerminated()) // MachOMgr singleton may be destroyed before modules are unloaded
+		MachOMgr::instance()->deregisterUnloadHook(func);
+}
+
 
 const char* dyld_image_path_containing_address(const void* addr)
 {
@@ -158,5 +170,16 @@ void __dyld_make_delayed_module_initializer_calls()
 
 void __dyld_mod_term_funcs()
 {
+}
+
+bool _dyld_bind_fully_image_containing_address(const void* address)
+{
+	return __dyld_bind_fully_image_containing_address(address);
+}
+
+bool __dyld_bind_fully_image_containing_address(const void* address)
+{
+	STUB();
+	return true;
 }
 

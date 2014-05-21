@@ -35,6 +35,8 @@ set(CoreServices_SRCS
 	Components.cpp
 	Processes.cpp
 	LaunchServices.cpp
+	OpenTransport.cpp
+	Timer.cpp
 )
 
 if (WITH_COREAUDIO)

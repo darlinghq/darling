@@ -1,24 +1,32 @@
 #include "AudioUnitBase.h"
 #include "AudioUnitProperties.h"
+#include "AudioUnitRenderer.h"
 #include <CoreServices/MacErrors.h>
 #include <util/debug.h>
 #include <cstring>
 
-AudioUnitComponent::AudioUnitComponent()
-	: m_enableOutput(true), m_enableInput(false)
+AudioUnitComponent::AudioUnitComponent(size_t numElements)
 {
+	m_config.resize(numElements);
+	
 	// Default audio params
-	m_configOutputPlayback = AudioStreamBasicDescription {
+	const AudioStreamBasicDescription defaultConfig = AudioStreamBasicDescription {
 		44100.0, kAudioFormatLinearPCM, kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked,
 		4, 1, 4, 2, 16, 0
 	};
-	memcpy(&m_configInputPlayback, &m_configOutputPlayback, sizeof(AudioStreamBasicDescription));
-	memcpy(&m_configInputCapture, &m_configOutputPlayback, sizeof(AudioStreamBasicDescription));
-	memcpy(&m_configOutputCapture, &m_configOutputPlayback, sizeof(AudioStreamBasicDescription));
-
-	memset(&m_renderCallback, 0, sizeof(m_renderCallback));
+	
+	for (size_t i = 0; i < numElements; i++)
+	{
+		m_config[i] = std::pair<AudioStreamBasicDescription, AudioStreamBasicDescription>(defaultConfig, defaultConfig);
+	}
+	
+	memset(&m_inputUnit, 0, sizeof(m_inputUnit));
 }
 
+AudioUnitComponent::~AudioUnitComponent()
+{
+	CloseComponent(m_inputUnit.sourceAudioUnit);
+}
 
 OSStatus AudioUnitComponent::getPropertyInfo(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, UInt32* dataSize, Boolean* writable)
 {
@@ -36,6 +44,10 @@ OSStatus AudioUnitComponent::getPropertyInfo(AudioUnitPropertyID prop, AudioUnit
 			*dataSize = sizeof(AURenderCallbackStruct);
 			*writable = true;
 			break;
+		case kAudioUnitProperty_ShouldAllocateBuffer:
+			*dataSize = sizeof(int);
+			*writable = true;
+			break;
 		default:
 			return kAudioUnitErr_InvalidProperty;
 	}
@@ -51,55 +63,20 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 	{
 		case kAudioUnitProperty_StreamFormat:
 		{
-			if (dataSize != sizeof(AudioStreamBasicDescription))
+			const AudioStreamBasicDescription* newConfig = static_cast<const AudioStreamBasicDescription*>(data);
+			
+			if (dataSize != sizeof(*newConfig))
 				return kAudioUnitErr_InvalidParameter;
+			
+			if (elem >= m_config.size())
+				return kAudioUnitErr_InvalidElement;
 
 			// TODO: perform validation
 
 			if (scope == kAudioUnitScope_Output)
-			{
-				if (elem == 0)
-					memcpy(&m_configOutputPlayback, data, dataSize);
-				else if (elem == 1)
-					memcpy(&m_configOutputCapture, data, dataSize);
-				else
-					return kAudioUnitErr_InvalidElement;
-			}
+				m_config[elem].second = *newConfig;
 			else if (scope == kAudioUnitScope_Input)
-			{
-				if (elem == 0)
-					memcpy(&m_configInputPlayback, data, dataSize);
-				else if (elem == 1)
-					memcpy(&m_configInputCapture, data, dataSize);
-				else
-					return kAudioUnitErr_InvalidElement;
-			}
-			else
-				return kAudioUnitErr_InvalidScope;
-
-			return noErr;
-		}
-		case kAudioOutputUnitProperty_EnableIO:
-		{
-			const UInt32* state;
-
-			if (dataSize != sizeof(UInt32))
-				return kAudioUnitErr_InvalidParameter;
-
-			state = static_cast<const UInt32*>(data);
-			
-			if (scope == kAudioUnitScope_Output)
-			{
-				if (elem != 0)
-					return kAudioUnitErr_InvalidElement;
-				m_enableOutput = *state != 0;
-			}
-			else if (scope == kAudioUnitScope_Input)
-			{
-				if (elem != 1)
-					return kAudioUnitErr_InvalidElement;
-				m_enableInput = *state != 0;
-			}
+				m_config[elem].first = *newConfig;
 			else
 				return kAudioUnitErr_InvalidScope;
 
@@ -109,12 +86,40 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 		{
 			if (dataSize != sizeof(AURenderCallbackStruct))
 				return kAudioUnitErr_InvalidParameter;
+			//if (scope == kAudioUnitScope_Input)
+			//{
+				if (elem != 0)
+					return kAudioUnitErr_InvalidElement;
+				
+				CloseComponent(m_inputUnit.sourceAudioUnit); // TODO: wrong, we may not own the unit!
+				m_inputUnit.sourceOutputNumber = 0;
+				m_inputUnit.destInputNumber = 0;
+				m_inputUnit.sourceAudioUnit = new AudioUnitRenderer(*(AURenderCallbackStruct*) data);
+			//}
+			//else
+			//	return kAudioUnitErr_InvalidScope;
+			
+			return noErr;
+		}
+		case kAudioUnitProperty_MakeConnection:
+		{
+			if (dataSize != sizeof(AudioUnitConnection))
+				return kAudioUnitErr_InvalidParameter;
 			if (scope != kAudioUnitScope_Input)
 				return kAudioUnitErr_InvalidScope;
-			if (elem != 0)
-				return kAudioUnitErr_InvalidElement;
 			
-			memcpy(&m_renderCallback, data, dataSize);
+			CloseComponent(m_inputUnit.sourceAudioUnit); // TODO: wrong, we may not own the unit!
+			memcpy(&m_inputUnit, data, sizeof(AudioUnitConnection));
+			
+			return noErr;
+		}
+		case kAudioUnitProperty_ShouldAllocateBuffer:
+		{
+			int* b = (int*) data;
+			if (dataSize < sizeof(int))
+				return kAudioUnitErr_InvalidParameter;
+			
+			m_shouldAllocateBuffer = *b != 0;
 			return noErr;
 		}
 		default:
@@ -130,27 +135,18 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 	{
 		case kAudioUnitProperty_StreamFormat:
 		{
+			AudioStreamBasicDescription* newConfig = static_cast<AudioStreamBasicDescription*>(data);
+			
 			if (*dataSize < sizeof(AudioStreamBasicDescription))
 				return kAudioUnitErr_InvalidParameter;
+			
+			if (elem >= m_config.size())
+				return kAudioUnitErr_InvalidElement;
 
 			if (scope == kAudioUnitScope_Output)
-			{
-				if (elem == 0)
-					memcpy(data, &m_configOutputPlayback, *dataSize);
-				else if (elem == 1)
-					memcpy(data, &m_configOutputCapture, *dataSize);
-				else
-					return kAudioUnitErr_InvalidElement;
-			}
+				*newConfig = m_config[elem].second;
 			else if (scope == kAudioUnitScope_Input)
-			{
-				if (elem == 0)
-					memcpy(data, &m_configInputPlayback, *dataSize);
-				else if (elem == 1)
-					memcpy(data, &m_configInputCapture, *dataSize);
-				else
-					return kAudioUnitErr_InvalidElement;
-			}
+				*newConfig = m_config[elem].first;
 			else
 				return kAudioUnitErr_InvalidScope;
 
@@ -158,31 +154,13 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 
 			return noErr;
 		}
-		case kAudioOutputUnitProperty_EnableIO:
+		case kAudioUnitProperty_ShouldAllocateBuffer:
 		{
-			UInt32* state;
-
+			int* out = (int*) data;
 			if (*dataSize < sizeof(UInt32))
 				return kAudioUnitErr_InvalidParameter;
-
-			state = static_cast<UInt32*>(data);
-
-			if (scope == kAudioUnitScope_Output)
-			{
-				if (elem != 0)
-					return kAudioUnitErr_InvalidElement;
-				*state = m_enableOutput;
-			}
-			else if (scope == kAudioUnitScope_Input)
-			{
-				if (elem != 1)
-					return kAudioUnitErr_InvalidElement;
-				*state = m_enableInput;
-			}
-			else
-				return kAudioUnitErr_InvalidScope;
-
-			*dataSize = sizeof(UInt32);
+			
+			*out = m_shouldAllocateBuffer;
 			return noErr;
 		}
 		default:
