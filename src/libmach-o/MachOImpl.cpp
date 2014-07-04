@@ -567,6 +567,7 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		}
 
 		case LC_LOAD_DYLINKER:
+		case LC_ID_DYLINKER:
 		{
 			lc_str name = reinterpret_cast<struct dylinker_command*>(cmds_ptr)->name;
 			LOG << "dynamic linker: " << ((char*)cmds_ptr + name.offset) << std::endl;
