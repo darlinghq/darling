@@ -390,7 +390,7 @@ void AudioUnitALSA::requestDataForPlayback()
 		}
 	}
 	
-	render(&flags, &ts, kOutputBus, SAMPLE_PERIOD, bufs);
+	m_lastRenderError = render(&flags, &ts, kOutputBus, SAMPLE_PERIOD, bufs);
 	
 	operator delete(bufs);
 }

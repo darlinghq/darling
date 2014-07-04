@@ -195,6 +195,12 @@ OSStatus AudioConverter::setProperty(AudioConverterPropertyID inPropertyID, UInt
 	return unimpErr;
 }
 
+OSStatus AudioConverter::getPropertyInfo(AudioConverterPropertyID inPropertyID, UInt32 *outSize, Boolean *outWritable)
+{
+	STUB();
+	return unimpErr;
+}
+
 template <typename T> OSStatus getPropertyT(UInt32 *ioPropertyDataSize, const T* localProperty, void* propertyTarget)
 {
 	T* t = static_cast<T*>(propertyTarget);

@@ -22,6 +22,7 @@ public:
 	
 	OSStatus setProperty(AudioConverterPropertyID inPropertyID, UInt32 inPropertyDataSize, const void *inPropertyData);
 	OSStatus getProperty(AudioConverterPropertyID inPropertyID, UInt32 *ioPropertyDataSize, void *outPropertyData);
+	OSStatus getPropertyInfo(AudioConverterPropertyID inPropertyID, UInt32 *outSize, Boolean *outWritable);
 private:
 	static enum AVCodecID CACodecToAV(const AudioStreamBasicDescription* desc);
 	static enum AVSampleFormat CACodecSampleFormat(const AudioStreamBasicDescription* desc);

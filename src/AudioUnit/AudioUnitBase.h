@@ -4,12 +4,13 @@
 #include "AudioUnit.h"
 #include "AudioUnitProperties.h"
 #include <vector>
+#include <CoreFoundation/CFString.h>
 #include <CoreServices/ComponentsInternal.h>
 
 class AudioUnitComponent : public CarbonComponent
 {
 protected:
-	AudioUnitComponent(size_t numElements);
+	AudioUnitComponent(std::initializer_list<CFStringRef> elements);
 public:
     virtual ~AudioUnitComponent();
 
@@ -24,10 +25,12 @@ public:
 	virtual OSStatus getProperty(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, void* data, UInt32* dataSize);
 	virtual OSStatus getPropertyInfo(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, UInt32* dataSize, Boolean* writable);
 protected:
+	std::vector<CFStringRef> m_elementNames;
 	std::vector<std::pair<AudioStreamBasicDescription, AudioStreamBasicDescription>> m_config;
 	//AudioStreamBasicDescription m_configOutputPlayback, m_configInputPlayback, m_configInputCapture, m_configOutputCapture;
 	AudioUnitConnection m_inputUnit;
 	bool m_shouldAllocateBuffer = true;
+	OSStatus m_lastRenderError = 0;
 };
 
 #endif
