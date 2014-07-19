@@ -9,8 +9,8 @@
 #include "darwin_errno_codes.h"
 
 static void initErrnoMappingTable() __attribute__ ((constructor));
-static int darwin_to_linux[130];
-static int linux_to_darwin[130];
+static int darwin_to_linux[140];
+static int linux_to_darwin[140];
 
 // This is deprecated, we don't bother to support that
 extern "C" const char * const __darwin_sys_errlist[0];
