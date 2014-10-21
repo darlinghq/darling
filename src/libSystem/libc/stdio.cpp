@@ -1,3 +1,4 @@
+#include <bsd/stdio.h>
 #include "libsystem-config.h"
 #include "stdio.h"
 #include "errno.h"
@@ -5,6 +6,7 @@
 #include "common/auto.h"
 #include "trace.h"
 #include "darwin_errno_codes.h"
+#include <bsd/libutil.h>
 #include <cstdio>
 #include <cstdlib>
 #include <errno.h>
@@ -19,8 +21,6 @@
 #include "log.h"
 #include <ext/stdio_filebuf.h>
 #include <libdyld/MachOMgr.h>
-#include <bsd/stdio.h>
-#include <bsd/libutil.h>
 
 #ifdef HAS_BSD_WCHAR_H
 #	include <bsd/wchar.h>
@@ -413,7 +413,7 @@ int __darwin_remove(const char* path)
 
 char* __darwin_fgetln(__darwin_FILE* f, size_t* lenp)
 {
-	return fgetln(f ? f->linux_fp : nullptr, lenp);
+	return ::fgetln(f ? f->linux_fp : nullptr, lenp);
 }
 
 int __darwin_fpurge(__darwin_FILE *stream)
