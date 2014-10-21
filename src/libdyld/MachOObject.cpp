@@ -185,8 +185,12 @@ void MachOObject::unload()
 	
 	teardownTLS();
 	runFinalizers();
-	unloadSegments();
-	unregisterEHSection();
+	
+	if (!MachOMgr::instance()->isDestroying())
+	{
+		unloadSegments();
+		unregisterEHSection();
+	}
 	
 	for (LoadableObject* dep : m_dependencies)
 		dep->delRef();

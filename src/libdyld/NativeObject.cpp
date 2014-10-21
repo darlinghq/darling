@@ -51,8 +51,11 @@ void NativeObject::unload()
 {
 	MachOMgr::instance()->remove(this);
 
-	if (m_path.find('/') != std::string::npos)
-		::dlclose(m_nativeRef);
+	if (!MachOMgr::instance()->isDestroying())
+	{
+		if (m_path.find('/') != std::string::npos)
+			::dlclose(m_nativeRef);
+	}
 }
 
 void NativeObject::updateName()
