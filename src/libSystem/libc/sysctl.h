@@ -9,6 +9,7 @@
 #define CTL_HW 6
 #define KERN_OSRELEASE 2
 #define KERN_OSVERSION 65
+#define KERN_BOOTTIME 21
 
 extern "C" {
 

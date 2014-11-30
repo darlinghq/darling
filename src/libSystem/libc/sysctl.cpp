@@ -5,6 +5,9 @@
 #include "darwin_errno_codes.h"
 #include <errno.h>
 #include <unistd.h>
+#include <ctime>
+#include <sys/sysinfo.h>
+#include <sys/time.h>
 
 #define CTL_KERN 1
 #define CTL_HW 6
@@ -28,17 +31,38 @@ int __darwin_sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* n
 		return -1;
 	}
 
+	/*
 	if (*oldlenp != 4 && *oldlenp != 8)
 	{
 		LOG << "sysctl(HW) with oldlenp=" << *oldlenp << " isn't supported yet.\n";
 		errno = DARWIN_EINVAL;
 		return -1;
 	}
+	*/
 
 	if (!strcmp(name, "hw.physicalcpu") || !strcmp(name, "hw.logicalcpu") || !strcmp(name, "hw.ncpu"))
 		val = ::sysconf(_SC_NPROCESSORS_ONLN);
 	else if (!strcmp(name, "hw.physicalcpu_max") || !strcmp(name, "hw.logicalcpu_max"))
 		val = ::sysconf(_SC_NPROCESSORS_CONF);
+	else if (!strcmp(name, "kern.boottime"))
+	{
+		struct timeval tv;
+		struct sysinfo si;
+		
+		if (*oldlenp < sizeof(struct timeval))
+		{
+			errno = DARWIN_ENOMEM;
+			return -1;
+		}
+		
+		sysinfo(&si);
+		gettimeofday(&tv, nullptr);
+		tv.tv_sec -= si.uptime;
+		
+		*oldlenp = sizeof(struct timeval);
+		memcpy(oldp, &tv, sizeof(tv));
+		return 0;
+	}
 	else
 	{
 		errno = DARWIN_EINVAL;
@@ -148,6 +172,26 @@ int __darwin_sysctl(int* name, unsigned int namelen,
 					strcpy((char*)oldp, "10J869");
 				*oldlenp = 7;
 				break;
+				
+			case KERN_BOOTTIME:
+			{
+				struct timeval tv;
+				struct sysinfo si;
+				
+				if (*oldlenp < sizeof(struct timeval))
+				{
+					errno = DARWIN_ENOMEM;
+					return -1;
+				}
+				
+				sysinfo(&si);
+				gettimeofday(&tv, nullptr);
+				tv.tv_sec -= si.uptime;
+				
+				*oldlenp = sizeof(struct timeval);
+				memcpy(oldp, &tv, sizeof(tv));
+				return 0;
+			}
 
 			default:
 				LOG << "sysctl(KERN) with name[1]=" << name[1] << " isn't supported yet.\n";
