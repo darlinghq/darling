@@ -33,7 +33,7 @@ set(gen_sources #asl.c
 	getvfsbyname.c
 	isinf.c
 	isnan.c
-	magazine_malloc.c
+	#magazine_malloc.c # magazine or scalable
 	malloc.c
 	nanosleep.c
 	nftw.c
@@ -159,4 +159,4 @@ SET_SOURCE_FILES_PROPERTIES(FreeBSD/waitpid.c PROPERTIES COMPILE_FLAGS "${CMAKE_
 #set(gen_sources ${gen_sources}
 #	NetBSD/utmpx.c)
 
-add_library(libc-gen STATIC ${gen_sources})
+add_library(libc-gen OBJECT ${gen_sources})

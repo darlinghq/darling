@@ -40,5 +40,5 @@ set(db_sources ${db_sources}
 	recno/FreeBSD/rec_seq.c
 	recno/FreeBSD/rec_utils.c)
 
-add_library(libc-db STATIC ${db_sources})
+add_library(libc-db OBJECT ${db_sources})
 

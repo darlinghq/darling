@@ -19,4 +19,4 @@ set(compat_sources ${compat_sources}
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/creat.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_CREAT")
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/killpg.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_KILLPG")
 
-add_library(libc-compat STATIC ${compat_sources})
+add_library(libc-compat OBJECT ${compat_sources})

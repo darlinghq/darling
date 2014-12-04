@@ -34,4 +34,4 @@ set(gdtoa_sources ${gdtoa_sources}
 	FreeBSD/machdep_ldisQ.c
 	FreeBSD/machdep_ldisx.c)
 
-add_library(libc-gdtoa STATIC ${gdtoa_sources})
+add_library(libc-gdtoa OBJECT ${gdtoa_sources})
