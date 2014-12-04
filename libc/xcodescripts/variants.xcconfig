@@ -1,0 +1,99 @@
+#include "libc.xcconfig"
+
+// Variants. All variants contain all source files but all excluded. Specific variants then include the files they need.
+VARIANT_EXCLUDED_SOURCE_FILE_NAMES = *
+VARIANT_INCLUDED_SOURCE_FILE_NAMES = forceLibcToBuild.c $(VARIANT_$(VARIANT)_INCLUDE)
+VARIANT_PREPROCESSOR_MACROS = -DBUILDING_VARIANT $(VARIANT_$(VARIANT)_MACROS)
+
+SYSTEM_FRAMEWORK_HEADERS = $(DERIVED_FILES_DIR)/System.framework/Versions/B/PrivateHeaders
+HEADER_SEARCH_PATHS = $(FreeBSD_SEARCH_PATHS) $(inherited)
+
+VARIANT_CANCELABLE_MACROS = -DVARIANT_CANCELABLE
+
+VARIANT_CANCELABLE_INCLUDE = $(VARIANT_CANCELABLE_INCLUDE_compat) $(VARIANT_CANCELABLE_INCLUDE_gen) $(VARIANT_CANCELABLE_INCLUDE_net) $(VARIANT_CANCELABLE_INCLUDE_pthreads) $(VARIANT_CANCELABLE_INCLUDE_sys)
+
+VARIANT_CANCELABLE_INCLUDE_compat = creat.c sigcompat.c
+VARIANT_CANCELABLE_INCLUDE_gen = lockf.c nanosleep.c pause.c pselect.c sleep.c termios.c usleep.c wait.c waitpid.c
+VARIANT_CANCELABLE_INCLUDE_net = recv.c send.c
+VARIANT_CANCELABLE_INCLUDE_pthreads = pthread_cancelable.c
+VARIANT_CANCELABLE_INCLUDE_sys = system.c
+
+// $DARWINEXTSN
+
+VARIANT_DARWINEXTSN_MACROS = -DVARIANT_DARWINEXTSN
+
+VARIANT_DARWINEXTSN_INCLUDE = $(VARIANT_DARWINEXTSN_INCLUDE_gen) $(VARIANT_DARWINEXTSN_INCLUDE_stdio) $(VARIANT_DARWINEXTSN_INCLUDE_stdlib) $(VARIANT_DARWINEXTSN_INCLUDE_sys)
+
+VARIANT_DARWINEXTSN_INCLUDE_gen = pselect.c popen.c
+VARIANT_DARWINEXTSN_INCLUDE_stdio = fdopen.c fopen.c
+VARIANT_DARWINEXTSN_INCLUDE_stdlib = realpath.c
+VARIANT_DARWINEXTSN_INCLUDE_sys = getgroups.c
+
+// $DARWINEXTSN + no cancel (everyone else is cancelable anyway)
+
+VARIANT_DARWINEXTSN_CANCELABLE_MACROS = -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN
+VARIANT_DARWINEXTSN_CANCELABLE_INCLUDE = pselect.c
+
+// Pre-1050 symbols
+
+VARIANT_PRE1050_MACROS = $(VARIANT_PRE1050_MACROS_$(PLATFORM_NAME))
+VARIANT_PRE1050_MACROS_macosx = -U__DARWIN_VERS_1050 -D__DARWIN_VERS_1050=0 -DVARIANT_PRE1050
+VARIANT_PRE1050_INCLUDE = $(VARIANT_PRE1050_INCLUDE_$(PLATFORM_NAME))
+VARIANT_PRE1050_INCLUDE_macosx = daemon.c $(VARIANT_PRE1050_INCLUDE_$(PLATFORM_NAME)_$(CURRENT_ARCH))
+VARIANT_PRE1050_INCLUDE_macosx_x86_64 = pselect.c
+
+// Legacy symbols
+VARIANT_LEGACY_MACROS = -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_64_BIT_INO_T -D__DARWIN_64_BIT_INO_T=0 -DVARIANT_LEGACY
+
+VARIANT_LEGACY_INCLUDE = $(VARIANT_LEGACY_INCLUDE_$(CURRENT_ARCH))
+VARIANT_LEGACY_INCLUDE_i386 = $(VARIANT_LEGACY_INCLUDE_compat) $(VARIANT_LEGACY_INCLUDE_gdtoa) $(VARIANT_LEGACY_INCLUDE_gen) $(VARIANT_LEGACY_INCLUDE_locale) $(VARIANT_LEGACY_INCLUDE_net) $(VARIANT_LEGACY_INCLUDE_pthreads) $(VARIANT_LEGACY_INCLUDE_regex) $(VARIANT_LEGACY_INCLUDE_stdio) $(VARIANT_LEGACY_INCLUDE_stdlib) $(VARIANT_LEGACY_INCLUDE_stdtime) $(VARIANT_LEGACY_INCLUDE_string) $(VARIANT_LEGACY_INCLUDE_sys)
+
+VARIANT_LEGACY_INCLUDE_compat = creat.c setregid.c setreuid.c sigcompat.c killpg.c
+VARIANT_LEGACY_INCLUDE_gdtoa = gdtoa-strtof.c gdtoa-strtod.c gdtoa-strtodg.c
+VARIANT_LEGACY_INCLUDE_gen = clock.c closedir.c confstr.c crypt.c fnmatch.c lockf.c nanosleep.c nftw.c nice.c opendir.c pause.c popen.c pselect.c rewinddir.c seekdir.c setmode.c sleep.c telldir.c termios.c timezone.c ttyname.c usleep.c wait.c waitpid.c
+VARIANT_LEGACY_INCLUDE_locale = wcsftime.c
+VARIANT_LEGACY_INCLUDE_net = recv.c send.c
+VARIANT_LEGACY_INCLUDE_pthreads = pthread.c pthread_cancelable.c pthread_cond.c pthread_mutex.c pthread_rwlock.c
+VARIANT_LEGACY_INCLUDE_regex = regcomp.c
+VARIANT_LEGACY_INCLUDE_stdio = fdopen.c fopen.c fputs.c freopen.c fwrite.c tempnam.c
+VARIANT_LEGACY_INCLUDE_stdlib = getopt.c putenv.c realpath.c setenv.c system.c
+VARIANT_LEGACY_INCLUDE_stdtime = localtime.c strftime.c strptime.c
+VARIANT_LEGACY_INCLUDE_string = strerror.c
+VARIANT_LEGACY_INCLUDE_sys = msgctl.c semctl.c shmctl.c
+
+// INODE32 symbols
+
+VARIANT_INODE32_MACROS = -U__DARWIN_64_BIT_INO_T -D__DARWIN_64_BIT_INO_T=0 -DVARIANT_INODE32
+
+VARIANT_INODE32_INCLUDE = $(VARIANT_INODE32_INCLUDE_$(CURRENT_ARCH))
+VARIANT_INODE32_INCLUDE_i386 = $(VARIANT_INODE32_INCLUDE_gen) $(VARIANT_INODE32_INCLUDE_sys)
+VARIANT_INODE32_INCLUDE_x86_64 = $(VARIANT_INODE32_INCLUDE_gen) $(VARIANT_INODE32_INCLUDE_sys)
+
+VARIANT_INODE32_INCLUDE_gen = fts.c getmntinfo.c glob.c nftw.c opendir.c readdir.c rewinddir.c scandir.c seekdir.c telldir.c scandir_b.c
+VARIANT_INODE32_INCLUDE_sys = statx_np.c
+
+// DYLD (libc.a)
+
+VARIANT_DYLD_MACROS = -UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN -U__DARWIN_NON_CANCELABLE -D__DARWIN_NON_CANCELABLE=0
+
+VARIANT_DYLD_INCLUDE = $(VARIANT_DYLD_INCLUDE_generic) $(VARIANT_DYLD_INCLUDE_$(CURRENT_ARCH))
+
+VARIANT_DYLD_INCLUDE_generic = $(VARIANT_DYLD_INCLUDE_gen) $(VARIANT_DYLD_INCLUDE_pthreads) $(VARIANT_DYLD_INCLUDE_stdlib) $(VARIANT_DYLD_INCLUDE_string) $(VARIANT_DYLD_INCLUDE_sys) $(VARIANT_DYLD_INCLUDE_threads)
+VARIANT_DYLD_INCLUDE_gen = _simple.c arc4random.c closedir.c dirfd.c getcwd.c getpagesize.c nanosleep.c opendir.c readdir.c scandir.c sysctl.c sysctlbyname.c telldir.c usleep.c
+VARIANT_DYLD_INCLUDE_pthreads = pthread.c pthread_mutex.c pthread_tsd.c
+VARIANT_DYLD_INCLUDE_stdlib = atexit.c exit.c gettimeofday.c heapsort.c merge.c qsort.c reallocf.c realpath.c
+VARIANT_DYLD_INCLUDE_string = strcat.c strchr.c strcpy.c strdup.c strlcat.c strlcpy.c strncmp.c strnlen.c strrchr.c strstr.c
+VARIANT_DYLD_INCLUDE_sys = errno.c
+VARIANT_DYLD_INCLUDE_threads = mig_support.c
+
+VARIANT_DYLD_INCLUDE_x86_64 = x86_64/pthreads/pthread_set_self.s x86_64/pthreads/pthread_self.s x86_64/pthreads/pthread_getspecific.s x86_64/pthreads/preempt.s x86_64/string/__bzero.s x86_64/string/bcopy_sse3x.s x86_64/string/bzero_sse2.s x86_64/string/ffs.s x86_64/string/longcopy_sse3x.s x86_64/string/strcmp.s x86_64/string/strlen.s x86_64/string/strncpy.s x86_64/sys/OSAtomic.s x86_64/sys/i386_gettimeofday_asm.s x86_64/sys/spinlocks_asm.s x86_64/sys/nanotime.s
+
+VARIANT_DYLD_INCLUDE_i386 = i386/gen/icacheinval.s i386/gen/cpu_number.s i386/pthreads/preempt.s i386/pthreads/pthread_set_self.s i386/pthreads/pthread_self.s i386/pthreads/pthread_getspecific.s i386/string/__bzero.s i386/string/bcopy_scalar.s i386/string/bzero_scalar.s i386/string/ffs.s i386/string/memcmp.s i386/string/memset_pattern_sse2.s i386/string/strcmp.s i386/string/strlen.s i386/string/strncpy.s i386/sys/OSAtomic.s i386/sys/i386_gettimeofday_asm.s i386/sys/mach_absolute_time_asm.s i386/sys/spinlocks_asm.s
+
+VARIANT_DYLD_INCLUDE_armv7 = arm/gen/icacheinval.s arm/pthreads/pthread_getspecific.s arm/pthreads/pthread_self.s arm/pthreads/pthread_set_self.s arm/string/bcopy_Generic.s arm/string/bzero_Generic.s arm/string/ffs.s arm/string/strcmp.s arm/string/strlen.s arm/string/strnlen.s strncpy.c arm/sys/OSAtomic.c arm/sys/OSAtomicUP.c arm/sys/OSAtomic_resolvers.c arm/sys/Spinlocks.c arm/sys/SpinlocksUP.c arm/sys/SpinlocksWFE.c arm/sys/arm_commpage_gettimeofday.c arm/sys/mach_absolute_time.s
+
+VARIANT_DYLD_INCLUDE_armv7k = $(VARIANT_DYLD_INCLUDE_armv7)
+VARIANT_DYLD_INCLUDE_armv7f = $(VARIANT_DYLD_INCLUDE_armv7)
+
+VARIANT_DYLD_INCLUDE_armv6 = $(VARIANT_DYLD_INCLUDE_armv7) arm/sys/OSAtomic-v4.c
+

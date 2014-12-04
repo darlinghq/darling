@@ -1,0 +1,31 @@
+.Dd March 11, 2005
+.Dt USELOCALE 3
+.Os
+.Sh NAME
+.Nm uselocale
+.Nd Set the per-thread locale
+.Sh SYNOPSIS
+.In xlocale.h
+.Ft locale_t
+.Fn uselocale "locale_t loc"
+.Sh DESCRIPTION
+Sets the per-thread locale to
+.Va loc .
+Specify
+.Dv LC_GLOBAL_LOCALE
+to turn off any per-thread locale.
+Pass
+.Dv NULL
+to return the current value of the per-thread locale (or
+.Dv LC_GLOBAL_LOCALE )
+without changing the locale.
+.Sh RETURN VALUES
+Returns the previous locale, or
+.Dv LC_GLOBAL_LOCALE
+if no per-thread locale was in effect.
+.Sh SEE ALSO
+.Xr duplocale 3 ,
+.Xr freelocale 3 ,
+.Xr newlocale 3 ,
+.Xr querylocale 3 ,
+.Xr xlocale 3

@@ -1,0 +1,289 @@
+/*
+ * Copyright (c) 2000-2009 Apple Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+
+/*
+ * File:	mach/mach_host.defs
+ *
+ * Abstract:
+ *	Mach host operations support.  Includes processor allocation and
+ *	control.  
+ */
+
+subsystem
+#if	KERNEL_SERVER
+	  KernelServer
+#endif	/* KERNEL_SERVER */
+		       mach_host 200;
+
+/*
+ *	Basic types
+ */
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include <mach/clock_types.defs>
+#include <mach_debug/mach_debug_types.defs>
+
+/*
+ * References to host objects are returned by:
+ *	mach_host_self() - trap
+ */
+
+/*
+ *	Return information about this host.
+ */
+routine host_info(
+		host		: host_t;
+		flavor		: host_flavor_t;
+	out	host_info_out	: host_info_t, CountInOut);
+
+/*
+ *	Get string describing current kernel version.
+ */
+routine	host_kernel_version(
+		host		: host_t;
+	out	kernel_version	: kernel_version_t);
+
+/*
+ *      Get host page size
+ *	(compatibility for running old libraries on new kernels -
+ *	host_page_size() is now a library routine based on constants)
+ */
+routine _host_page_size(
+		host		: host_t;
+	out	out_page_size	: vm_size_t);
+
+/*
+ *	Allow pagers to create named entries that point to un-mapped
+ *	abstract memory object.  The named entries are generally mappable
+ *	and can be subsetted through the mach_make_memory_entry call
+ */
+routine mach_memory_object_memory_entry(
+		host		:host_t;
+		internal	:boolean_t;
+		size		:vm_size_t;
+		permission	:vm_prot_t;
+		pager		:memory_object_t;
+	out	entry_handle	:mach_port_move_send_t);
+
+
+/*
+ *      Get processor info for all the processors on this host.
+ *	The returned data is an OOL array of processor info.
+ */
+routine host_processor_info(
+		host			: host_t;
+                flavor          	: processor_flavor_t;
+	out	out_processor_count 	: natural_t;
+        out     out_processor_info  	: processor_info_array_t);
+
+/*
+ * 	Return host IO master access port
+ */
+routine host_get_io_master(
+                host            : host_t;
+        out     io_master       : io_master_t);
+
+/*
+ *	Get service port for a processor set.
+ *	Available to all.
+ */
+routine host_get_clock_service(
+		host		: host_t;
+		clock_id	: clock_id_t;
+	out	clock_serv	: clock_serv_t);
+
+/*
+ * kernel module interface (obsolete as of SnowLeopard)
+ * see mach/kmod.h
+ */
+/* kmod_ MIG calls now return KERN_NOT_SUPPORTED on PPC/i386/x86_64. */
+routine	kmod_get_info(
+		host		: host_t;
+	out	modules		: kmod_args_t);
+
+/*
+ *	Returns information about the memory allocation zones.
+ *      Supported in all kernels..
+ *
+ *	DEPRECATED!  Use mach_zone_info() instead.
+ */
+routine host_zone_info(
+		host		: host_priv_t;
+	out	names		: zone_name_array_t,
+					Dealloc;
+	out	info		: zone_info_array_t,
+					Dealloc);
+
+/*
+ *	Returns information about the global VP table.
+ *      Only supported in MACH_VM_DEBUG kernels,
+ *      otherwise returns KERN_FAILURE.
+ */
+routine host_virtual_physical_table_info(
+		host		: host_t;
+	out	info		: hash_info_bucket_array_t,
+					Dealloc);
+
+
+skip; /* was host_ipc_hash_info */
+skip; /* was enable_bluebox */
+skip; /* was disable_bluebox */
+
+/*
+ * JMM - Keep processor_set related items at the end for easy
+ * removal.
+ */
+/*
+ *	Get default processor set for host.
+ */
+routine processor_set_default(
+		host		: host_t;
+	out	default_set	: processor_set_name_t);
+
+/*
+ *	Create new processor set.  Returns real port for manipulations,
+ *	and name port for obtaining information.
+ */
+routine processor_set_create(
+		host		: host_t;
+	out	new_set		: processor_set_t;
+	out	new_name	: processor_set_name_t);
+
+/*
+ * 	Temporary interfaces for conversion to 64 bit data path 
+ */
+
+routine mach_memory_object_memory_entry_64(
+		host		:host_t;
+		internal	:boolean_t;
+		size		:memory_object_size_t;
+		permission	:vm_prot_t;
+		pager		:memory_object_t;
+	out	entry_handle	:mach_port_move_send_t);
+
+/*
+ *	Return statistics from this host.
+ */
+routine host_statistics(
+		host_priv	: host_t;
+		flavor		: host_flavor_t;
+	out	host_info_out	: host_info_t, CountInOut);
+
+routine host_request_notification(
+		host		: host_t;
+		notify_type	: host_flavor_t;
+		notify_port	: mach_port_make_send_once_t);
+
+routine host_lockgroup_info(
+		host		: host_t;
+	out	lockgroup_info	: lockgroup_info_array_t,
+					Dealloc);
+
+/*
+ *	Return 64-bit statistics from this host.
+ */
+routine host_statistics64(
+		host_priv	: host_t;
+		flavor		: host_flavor_t;
+	out	host_info64_out	: host_info64_t, CountInOut);
+
+/*
+ *	Returns information about the memory allocation zones.
+ *      Data returned is compatible with various caller and kernel
+ *	address space sizes (unlike host_zone_info()).
+ */
+routine mach_zone_info(
+		host		: host_priv_t;
+	out	names		: mach_zone_name_array_t,
+					Dealloc;
+	out	info		: mach_zone_info_array_t,
+					Dealloc);
+
+skip;
+
+/*
+ *	Create a new voucher by running a series of commands against
+ *	<key, previous-voucher> pairs of resource attributes.
+ */
+routine host_create_mach_voucher(
+		host		: host_t;
+		recipes		: mach_voucher_attr_raw_recipe_array_t;
+	out	voucher		: ipc_voucher_t);
+
+/*
+ *	Register a resource manager with the kernel.  A new key is selected.
+ */
+routine host_register_mach_voucher_attr_manager(
+		host		: host_t;
+		attr_manager	: mach_voucher_attr_manager_t;
+		default_value	: mach_voucher_attr_value_handle_t;
+	out	new_key		: mach_voucher_attr_key_t;
+	out	new_attr_control: ipc_voucher_attr_control_t);
+
+/*
+ *	Register a resource manager (with a well-known key value) with the kernel.
+ */
+routine host_register_well_known_mach_voucher_attr_manager(
+		host		: host_t;
+		attr_manager	: mach_voucher_attr_manager_t;
+		default_value	: mach_voucher_attr_value_handle_t;
+		key		: mach_voucher_attr_key_t;
+	out	new_attr_control: ipc_voucher_attr_control_t);
+
+/* vim: set ft=c : */

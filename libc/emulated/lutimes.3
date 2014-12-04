@@ -1,0 +1,62 @@
+.Dd Aug 13, 2006
+.Dt LUTIMES 3
+.Os
+.Sh NAME
+.Nm lutimes
+.Nd set file access and modification times of symlink
+.Sh SYNOPSIS
+.In sys/time.h
+.Ft int
+.Fn lutimes "const char *path" "struct timeval times[2]"
+.Sh DESCRIPTION
+The access and modification times of the file named by
+.Fa path
+are changed as specified by the argument
+.Fa times ,
+even if
+.Fa path
+specifies a symbolic link (for
+.Xr utimes 2
+the times of the file referenced by the symbolic link are changed).
+.Pp
+If
+.Fa times
+is
+.Dv NULL ,
+the access and modification times are set to the current time.
+The caller must be the owner of the file, have permission to
+write the file, or be the super-user.
+.Pp
+If
+.Fa times
+is
+.Pf non- Dv NULL ,
+it is assumed to point to an array of two timeval structures.
+The access time is set to the value of the first element, and the
+modification time is set to the value of the second element.
+The caller must be the owner of the file or be the super-user.
+.Pp
+In either case, the inode-change-time of the file is set to the current
+time.
+.Sh NOTE
+Instead of being a system call,
+.Fn lutimes
+is emulated using
+.Xr setattrlist 2 .
+Not all file systems support
+.Xr setattrlist 2 .
+.Sh RETURN VALUES
+Upon successful completion, a value of 0 is returned.
+Otherwise, -1 is returned and the global variable
+.Va errno
+is set to indicate the error.
+.Sh ERRORS
+The
+.Fn lutimes
+call may return the same errors as
+.Xr utimes 2
+and
+.Xr setattrlist 2 .
+.Sh SEE ALSO
+.Xr utimes 2 ,
+.Xr setattrlist 2

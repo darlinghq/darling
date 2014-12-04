@@ -1,0 +1,137 @@
+.\" Copyright (c) 1990, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek.
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)strcasecmp.3	8.1 (Berkeley) 6/9/93
+.\" $FreeBSD: src/lib/libc/string/strcasecmp.3,v 1.13 2009/04/07 13:42:53 trasz Exp $
+.\"
+.Dd June 9, 1993
+.Dt STRCASECMP 3
+.Os
+.Sh NAME
+.Nm strcasecmp ,
+.Nm strcasecmp_l ,
+.Nm strncasecmp ,
+.Nm strncasecmp_l
+.Nd compare strings, ignoring case
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In strings.h
+.Ft int
+.Fo strcasecmp
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fc
+.Ft int
+.Fo strncasecmp
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fa "size_t n"
+.Fc
+.In strings.h
+.In xlocale.h
+.Ft int
+.Fo strcasecmp_l
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo strncasecmp_l
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fa "size_t n"
+.Fa "locale_t loc"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn strcasecmp
+and
+.Fn strncasecmp
+functions
+compare the null-terminated strings
+.Fa s1
+and
+.Fa s2 .
+.Pp
+The
+.Fn strncasecmp
+compares at most
+.Fa n
+characters.
+.Pp
+Although the
+.Fn strcasecmp
+and
+.Fn strncasecmp
+functions use the current locale, the
+.Fn strcasecmp_l
+and
+.Fn strncasecmp_l
+functions may be passed locales directly. See
+.Xr xlocale 3
+for more information.
+.Sh RETURN VALUES
+The
+.Fn strcasecmp
+and
+.Fn strncasecmp
+return an integer greater than, equal to, or less than 0,
+according as
+.Fa s1
+is lexicographically greater than, equal to, or less than
+.Fa s2
+after translation of each corresponding character to lower-case.
+The strings themselves are not modified.
+The comparison is done using unsigned characters, so that
+.Sq Li \e200
+is greater than
+.Ql \e0 .
+.Sh SEE ALSO
+.Xr bcmp 3 ,
+.Xr memcmp 3 ,
+.Xr strcmp 3 ,
+.Xr strcoll 3 ,
+.Xr strxfrm 3 ,
+.Xr tolower 3 ,
+.Xr xlocale 3
+.Sh HISTORY
+The
+.Fn strcasecmp
+and
+.Fn strncasecmp
+functions first appeared in
+.Bx 4.4 .
+Their prototypes existed previously in
+.In string.h
+before they were moved to
+.In strings.h
+for
+.St -p1003.1-2001
+compliance.

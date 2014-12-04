@@ -1,0 +1,118 @@
+.\" Copyright (c) 1985, 1991 Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     from: @(#)rint.3	5.1 (Berkeley) 5/2/91
+.\"	$Id: round.3,v 1.4 2004/12/20 21:35:46 scp Exp $
+.\"
+.Dd July 02, 2008
+.Dt ROUND 3
+.Os
+.Sh NAME
+.Nm round ,
+.Nm lround ,
+.Nm llround
+.Nd round to integral value, regardless of rounding direction
+.Sh SYNOPSIS
+.Fd #include <math.h>
+.Ft double
+.Fn round "double x"
+.Ft long double
+.Fn roundl "long double x"
+.Ft float
+.Fn roundf "float x"
+.Ft long int
+.Fn lround "double x"
+.Ft long int
+.Fn lroundl "long double x"
+.Ft long int
+.Fn lroundf "float x"
+.Ft long long int
+.Fn llround "double x"
+.Ft long long int
+.Fn llroundl "long double x"
+.Ft long long int
+.Fn llroundf "float x"
+.Sh DESCRIPTION
+The
+.Fn round
+functions return the integral value
+nearest to
+.Fa x
+rounding half-way cases away from zero, regardless of the current rounding direction.
+.Pp
+The
+.Fn lround
+and
+.Fn llround
+functions return the integral value nearest to 
+.Fa x
+(rounding half-way cases away from zero, regardless of the current rounding direction) in the return formats specified.  If the rounded
+value is outside the range of the return type, the numeric result is unspecified and the
+"invalid" floating-point exception is raised. A range error may occur if the magnitude of 
+.Fa x 
+is too large. 
+.Sh SPECIAL VALUES
+.Fn round "±0"
+returns ±0.
+.Pp
+.Fn round "±infinity"
+returns ±infinity.
+.Pp
+The
+.Fn round
+functions may, but are not required to, raise the "inexact" floating-point exception for non-integer numeric arguments.
+.Pp
+The
+.Fn lround
+and
+.Fn llround
+functions need not raise the "inexact" floating-point exception for non-integer arguments that round to within the range of the return type.
+.Sh NOTE
+The
+.Fn roundtol
+function is deprecated.  Please use the C99 function
+.Fn lround
+instead.
+.Sh SEE ALSO
+.Xr abs 3 ,
+.Xr fabs 3 ,
+.Xr ceil 3 ,
+.Xr floor 3 ,
+.Xr math 3 ,
+.Xr rint 3
+.Sh STANDARDS
+The
+.Fn round
+, 
+.Fn lround
+, and
+.Fn llround
+functions conform to ISO/IEC 9899:1999(E).

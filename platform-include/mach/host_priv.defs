@@ -1,0 +1,369 @@
+/*
+ * Copyright (c) 2000-2004 Apple Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989,1988 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+
+/*
+ *	Matchmaker definitions file for Mach kernel interface.
+ */
+subsystem
+#if	KERNEL_USER
+	  KernelUser
+#endif	/* KERNEL_USER */
+#if	KERNEL_SERVER
+	  KernelServer
+#endif	/* KERNEL_SERVER */
+		       host_priv 400;
+
+#ifdef	KERNEL_USER
+userprefix r_;
+#endif	/* KERNEL_USER */
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include <mach/clock_types.defs>
+#include <mach_debug/mach_debug_types.defs>
+
+/*
+ *      Get boot configuration information from kernel.
+ */
+routine host_get_boot_info(
+		host_priv	: host_priv_t;
+	out	boot_info	: kernel_boot_info_t);
+
+/*
+ *	Reboot this host.
+ *	Only available to privileged users.
+ */
+routine host_reboot(
+		host_priv	: host_priv_t;
+		options		: int);
+
+
+/*
+ *	Return privileged statistics from this host.
+ */
+routine host_priv_statistics(
+		host_priv	: host_priv_t;
+		flavor		: host_flavor_t;
+	out	host_info_out	: host_info_t, CountInOut);
+
+/*
+ *	Sets the default memory manager, the port to which
+ *	newly-created temporary memory objects are delivered.
+ *	[See (memory_object_default)memory_object_create.]
+ *	Also sets the default cluster size used for pagein/pageout
+ *	to this port.
+ *	The old memory manager port is returned.
+ */
+routine host_default_memory_manager(
+		host_priv	: host_priv_t;
+	inout	default_manager	: memory_object_default_t = 
+					MACH_MSG_TYPE_MAKE_SEND;
+		cluster_size	: memory_object_cluster_size_t);
+
+
+/*
+ *	Specify that the range of the virtual address space
+ *	of the target task must not cause page faults for
+ *	the indicated accesses.
+ *
+ *	[ To unwire the pages, specify VM_PROT_NONE. ]
+ */
+routine	vm_wire(
+		host_priv	: host_priv_t;
+		task		: vm_map_t;
+		address		: vm_address_t;
+		size		: vm_size_t;
+		desired_access	: vm_prot_t);
+
+/*
+ *	Specify that the target thread must always be able
+ *	to run and to allocate memory.
+ */
+routine	thread_wire(
+		host_priv	: host_priv_t;
+		thread		: thread_act_t;
+		wired		: boolean_t);
+
+/*
+ *	Allocate zero-filled, wired, contiguous physical memory
+ *	in the address space of the target task, either at the
+ *	specified address, or wherever space can be found (if
+ *	anywhere is TRUE), of the specified size.  The address
+ *	at which the allocation actually took place is returned.
+ *	All pages will be entered into the task's pmap immediately,
+ *	with VM_PROT_ALL.
+ *
+ *	In addition to all the failure modes of its cousin,
+ *	vm_allocate, this call may also fail if insufficient
+ *	contiguous memory exists to satisfy the request.
+ *
+ *	Memory obtained from this call should be freed the
+ *	normal way, via vm_deallocate.
+ *
+ *	N.B.  This is an EXPERIMENTAL interface!
+ */
+routine	vm_allocate_cpm(
+		host_priv	: host_priv_t;
+		task		: vm_map_t;
+	inout	address		: vm_address_t;
+		size		: vm_size_t;
+		flags		: int);
+
+/*
+ *	Get list of processors on this host.
+ */
+routine host_processors(
+		host_priv		: host_priv_t;
+	out	out_processor_list	: processor_array_t);
+
+
+/*
+ *	Get control port for a system-wide clock.
+ *	Privileged.
+ */
+routine host_get_clock_control(
+		host_priv	: host_priv_t;
+		clock_id	: clock_id_t;
+	out	clock_ctrl	: clock_ctrl_t);
+
+
+/*
+ * kernel module interface (obsolete as of SnowLeopard)
+ * see mach/kmod.h
+ */
+/* kmod_ MIG calls now return KERN_NOT_SUPPORTED on PPC/i386/x86_64. */
+routine kmod_create(
+		host_priv	: host_priv_t;
+		info		: vm_address_t;
+	out	module		: kmod_t);
+
+routine kmod_destroy(
+		host_priv	: host_priv_t;
+		module		: kmod_t);
+
+routine	kmod_control(
+		host_priv	: host_priv_t;
+		module		: kmod_t;
+		flavor		: kmod_control_flavor_t;
+	inout	data		: kmod_args_t);
+
+/*
+ * 	Get a given special port for a given node.
+ * 	Special ports are defined in host_special_ports.h;
+ * 	examples include the master device port.
+ * 	There are a limited number of slots available for system servers.
+ */
+routine host_get_special_port(
+                host_priv       : host_priv_t;
+                node            : int;
+                which           : int;
+        out     port            : mach_port_t);
+
+/*
+ * 	Set a given special port for the local node.
+ * 	See host_get_special_port.
+ */
+routine host_set_special_port(
+                host_priv       : host_priv_t;
+                which           : int;
+                port            : mach_port_t);
+
+/*
+ * Set an exception handler for a host on one or more exception types.
+ * These handlers are invoked for all threads on the host if there are
+ * no task or thread-specific exception handlers or those handlers returned
+ * an error.
+ */
+routine	host_set_exception_ports(
+		host_priv	: host_priv_t;
+		exception_mask	: exception_mask_t;
+		new_port	: mach_port_t;
+		behavior	: exception_behavior_t;
+		new_flavor	: thread_state_flavor_t);
+
+
+/*
+ * Lookup some of the old exception handlers for a host
+ */
+routine	host_get_exception_ports(
+		host_priv	: host_priv_t;
+		exception_mask	: exception_mask_t;
+	  out	masks		: exception_mask_array_t;
+	  out	old_handlers	: exception_handler_array_t, SameCount;
+	  out	old_behaviors	: exception_behavior_array_t, SameCount;
+	  out	old_flavors	: exception_flavor_array_t, SameCount);
+
+
+/*
+ * Set an exception handler for a host on one or more exception types.
+ * At the same time, return the previously defined exception handlers for
+ * those types.
+ */
+routine	host_swap_exception_ports(
+		host_priv	: host_priv_t;
+		exception_mask	: exception_mask_t;
+		new_port	: mach_port_t;
+		behavior	: exception_behavior_t;
+		new_flavor	: thread_state_flavor_t;
+	  out	masks		: exception_mask_array_t;
+	  out	old_handlerss	: exception_handler_array_t, SameCount;
+	  out	old_behaviors	: exception_behavior_array_t, SameCount;
+	  out	old_flavors	: exception_flavor_array_t, SameCount);
+
+skip; /* old host_load_symbol_table */
+
+/*
+ *	Specify that the range of the virtual address space
+ *	of the target task must not cause page faults for
+ *	the indicated accesses.
+ *
+ *	[ To unwire the pages, specify VM_PROT_NONE. ]
+ */
+routine	mach_vm_wire(
+		host_priv	: host_priv_t;
+		task		: vm_map_t;
+		address		: mach_vm_address_t;
+		size		: mach_vm_size_t;
+		desired_access	: vm_prot_t);
+
+/*
+ * JMM - Keep all processor_set related items at the end for easy
+ * removal.
+ */
+/*
+ *	List all processor sets on host.
+ */
+routine host_processor_sets(
+		host_priv	: host_priv_t;
+	out	processor_sets	: processor_set_name_array_t);
+
+/*
+ *	Get control port for a processor set.
+ */
+routine host_processor_set_priv(
+		host_priv	: host_priv_t;
+		set_name	: processor_set_name_t;
+	out	set		: processor_set_t);
+
+/************************** Warning *************************************/
+/*       The following routines are going away in a future release	*/
+/*	use the appropriate variant of host_set_special_port instead	*/
+/************************************************************************/
+ 
+/*
+ *	Set the dynamic_pager control port. Other entities
+ *	can request a send right to this port to talk with
+ *	the dynamic_pager utility, setting behavioral parameters
+ *	within the dynamic pager and getting low/high backing store
+ *	resource notifications.
+ */
+routine set_dp_control_port(    
+		host		: host_priv_t;
+	in	control_port	: mach_port_t);
+
+/*
+ *	Get the dynamic_pager control port.  This port
+ *	allows the holder to talk directly with the dynamic
+ *	pager utility.
+ */
+routine get_dp_control_port(    
+		host		: host_priv_t;
+	out	contorl_port    :mach_port_t);
+
+/*
+ *	Set the UserNotification daemon access port for this host. 
+ *	If this value is already set, the kernel will discard its
+ *	reference to the previously registered port.
+ */
+routine host_set_UNDServer(    
+		host		: host_priv_t;
+	in	server		: UNDServerRef);
+
+/*
+ *	Get the UserNotification daemon access port for this host.
+ *	This can then be used to communicate with that daemon, which
+ *	in turn communicates with the User through whatever means
+ *	available (pop-up-menus for GUI systems, text for non-GUI, etc..).
+ *
+ *	Access to this port is restricted to privileged clients because
+ *	it is a special purpose port intended for kernel clients.  User
+ *	level clients should go directly to the CFUserNotifcation services.
+ */
+routine host_get_UNDServer(    
+		host		: host_priv_t;
+	out	server		: UNDServerRef);
+
+/*
+ * Perform an operation with a kernel extension, on the kext loading system,
+ * or request information about loaded kexts or the state of the kext loading
+ * system.
+ * Active operations (load, unload, disable/enable) require host_priv/root access.
+ * Info retrieval does not.
+ *
+ * WARNING: THIS ROUTINE IS PRIVATE TO THE KEXT-MANAGEMENT STACK AND IS
+ * SUBJECT TO CHANGE AT ANY TIME.
+ */
+routine kext_request(
+        host_priv      : host_priv_t;
+    in  user_log_flags : uint32_t;
+    in  request_data   : pointer_t;
+    out response_data  : pointer_t;
+    out log_data       : pointer_t;
+    out op_result      : kern_return_t);
+
+/* vim: set ft=c : */

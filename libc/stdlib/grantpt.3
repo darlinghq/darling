@@ -1,0 +1,241 @@
+.\"
+.\" Copyright (c) 2002 The FreeBSD Project, Inc.
+.\" All rights reserved.
+.\"
+.\" This software includes code contributed to the FreeBSD Project
+.\" by Ryan Younce of North Carolina State University.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. Neither the name of the FreeBSD Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived from
+.\"    this software without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE FREEBSD PROJECT AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+.\" PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FREEBSD PROJECT
+.\" OR ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+.\" SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+.\" TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+.\" PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+.\" LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+.\" NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+.\" SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/lib/libc/stdlib/grantpt.3,v 1.3 2003/09/14 13:41:57 ru Exp $
+.\"
+.Dd February 2, 2005
+.Os
+.Dt GRANTPT 3
+.Sh NAME
+.Nm grantpt ,
+.Nm posix_openpt ,
+.Nm ptsname ,
+.Nm unlockpt
+.Nd pseudo-terminal access functions
+.Sh SYNOPSIS
+.In stdlib.h
+.Ft int
+.Fo grantpt
+.Fa "int fildes"
+.Fc
+.Ft "char *"
+.Fo ptsname
+.Fa "int fildes"
+.Fc
+.Ft int
+.Fo unlockpt
+.Fa "int fildes"
+.Fc
+.In stdlib.h
+.In fcntl.h
+.Ft int
+.Fo posix_openpt
+.Fa "int oflag"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn grantpt ,
+.Fn ptsname ,
+.Fn unlockpt ,
+and
+.Fn posix_openpt
+functions allow access to pseudo-terminal devices.
+The first three functions accept a file descriptor
+that references the master half of a pseudo-terminal pair.
+This file descriptor is created with
+.Fn posix_openpt .
+.Pp
+The
+.Fn grantpt
+function is used to establish ownership and permissions
+of the slave device counterpart to the master device
+specified with
+.Fa fildes .
+The slave device's ownership is set to the real user ID
+of the calling process; its permissions are set to
+user readable-writable and group writable.
+The group owner of the slave device is also set to the group
+.Dq Li tty
+if it exists on the system; otherwise, it
+is left untouched.
+.Pp
+The
+.Fn ptsname
+function returns the full pathname of the slave device
+counterpart to the master device specified with
+.Fa fildes .
+This value can be used
+to subsequently open the appropriate slave after
+.Fn posix_openpt
+and
+.Fn grantpt
+have been called.
+.Pp
+The
+.Fn unlockpt
+function unlocks the slave pseudo-terminal device associated
+with the master device to which
+.Fa fildes
+refers.
+.Pp
+The
+.Fn posix_openpt
+function opens the first available master pseudo-terminal
+device and returns a descriptor to it.
+The
+.Fa oflag
+argument
+specifies the flags used for opening the device:
+.Bl -tag -width ".Dv O_NOCTTY"
+.It Dv O_RDWR
+Open for reading and writing.
+.It Dv O_NOCTTY
+If set, do not allow the terminal to become
+the controlling terminal for the calling process.
+.El
+.Sh RETURN VALUES
+.Rv -std grantpt unlockpt
+.Pp
+The
+.Fn ptsname
+function returns a pointer to the name
+of the slave device on success; otherwise a
+.Dv NULL
+pointer is returned and the global variable
+.Va errno
+is set to indicate the error.
+.Pp
+The
+.Fn posix_openpt
+function returns a file descriptor to the first
+available master pseudo-terminal device on success;
+otherwise \-1 is returned and the global variable
+.Va errno
+is set to indicate the error.
+.Sh ERRORS
+The
+.Fn grantpt ,
+.Fn ptsname ,
+and
+.Fn unlockpt
+functions may fail and set
+.Va errno
+to:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+.Fa fildes
+is not a master pseudo-terminal device.
+.El
+.Pp
+In addition, the
+.Fn grantpt
+function may set
+.Va errno
+to:
+.Bl -tag -width Er
+.It Bq Er EACCES
+The slave pseudo-terminal device could not be accessed.
+.El
+.Pp
+The
+.Fn posix_openpt
+function may fail and set
+.Va errno
+to:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+.Fa oflag
+consists of an invalid mode bit.
+.It Bq Er EAGAIN
+The system has no available pseudo-terminal devices.
+.El
+.Pp
+The
+.Fn grantpt ,
+.Fn ptsname ,
+and
+.Fn unlockpt
+functions may also fail and set
+.Va errno
+for any of the errors specified for the
+.Xr fstat 2
+system call.
+.Pp
+The
+.Fn posix_openpt
+function may also fail and set
+.Va errno
+for any of the errors specified for the
+.Xr open 2
+system call.
+.Sh LEGACY SYNOPSIS
+.Fd #include <stdlib.h>
+.Fd #include <fcntl.h>
+.Pp
+.Ft int
+.br
+.Fo grantpt
+.Fa "int fildes"
+.Fc ;
+.Pp
+.Ft "char *"
+.br
+.Fo ptsname
+.Fa "int fildes"
+.Fc ;
+.Pp
+.Ft int
+.br
+.Fo unlockpt
+.Fa "int fildes"
+.Fc ;
+.Pp
+.Fd #include <fcntl.h>
+.Pp
+.Ft int
+.br
+.Fo posix_openpt
+.Fa "int oflag"
+.Fc ;
+.Sh SEE ALSO
+.Xr open 2 ,
+.Xr pty 4 ,
+.Xr tty 4 ,
+.Xr compat 5
+.Sh STANDARDS
+The
+.Fn grantpt ,
+.Fn ptsname ,
+.Fn unlockpt ,
+and
+.Fn posix_openpt
+functions conform to
+.St -p1003.1-2001 .

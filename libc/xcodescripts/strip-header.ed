@@ -1,0 +1,2 @@
+g/^\/\/Begin-Libc$/.,/^\/\/End-Libc$/d
+w

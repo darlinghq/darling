@@ -1,0 +1,181 @@
+.\" $NetBSD$
+.\" Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. The name of the author may not be used to endorse or promote products
+.\"    derived from this software without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+.\" INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+.\" AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+.\" THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+.\" EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+.\" PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+.\" OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+.\" WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+.\" OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+.\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\"	OpenBSD: tsearch.3,v 1.2 1998/06/21 22:13:49 millert Exp
+.\" $FreeBSD: src/lib/libc/stdlib/tsearch.3,v 1.15 2006/06/23 13:36:33 keramida Exp $
+.\"
+.Dd June 15, 1997
+.Dt TSEARCH 3
+.Os
+.Sh NAME
+.Nm tdelete ,
+.Nm tfind ,
+.Nm tsearch ,
+.Nm twalk
+.Nd manipulate binary search trees
+.Sh SYNOPSIS
+.In search.h
+.Ft void *
+.Fo tdelete
+.Fa "const void *restrict key"
+.Fa "void **restrict rootp"
+.Fa "int (*compar) (const void *key1, const void *key2)"
+.Fc
+.Ft void *
+.Fo tfind
+.Fa "const void *key"
+.Fa "void *const *rootp"
+.Fa "int (*compar) (const void *key1, const void *key2)"
+.Fc
+.Ft void *
+.Fo tsearch
+.Fa "const void *key"
+.Fa "void **rootp"
+.Fa "int (*compar) (const void *key1, const void *key2)"
+.Fc
+.Ft void
+.Fo twalk
+.Fa "const void *root"
+.Fa "void (*action) (const void *node, VISIT order, int level)"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn tdelete ,
+.Fn tfind ,
+.Fn tsearch ,
+and
+.Fn twalk
+functions manage binary search trees, based on algorithms T and D
+from Knuth (6.2.2).
+The comparison function passed in by
+the user takes two arguments, each of which is a key
+pointer.
+This function has the same style of return values as
+.Xr strcmp 3 .
+.Pp
+The
+.Fn tfind
+function
+searches for a node whose key matches the argument
+.Fa key
+in the binary tree rooted at
+.Fa rootp ,
+returning a pointer to the node if it is found and NULL
+if it is not.
+.Pp
+Note that a node is itself a pointer to the key of the node.
+Thus, you should generally cast this result to a
+double pointer to the data type stored in the tree, for example
+(struct myType **), and use double indirection to retrieve the
+original key value.
+.Pp
+The
+.Fn tsearch
+function is identical to
+.Fn tfind
+except that, if no match is found,
+it inserts a new node for the
+.Fa key
+into the tree and returns a pointer to the node.
+If
+.Fa rootp
+points to a NULL value, a new binary search tree is created.
+.Pp
+The
+.Fn tdelete
+function deletes a node from the specified binary search tree
+and returns a pointer to the parent of the node that was deleted.
+It takes the same arguments as
+.Fn tfind
+and
+.Fn tsearch .
+If the node to be deleted is the root of the binary search tree,
+.Fa rootp
+will be adjusted.
+.Pp
+The
+.Fn twalk
+function walks the binary search tree rooted in
+.Fa root
+and calls the function
+.Fa action
+on each node.
+The
+.Fa action
+function is called with three arguments: a pointer to the current node,
+a value from the enum
+.Sy "typedef enum { preorder, postorder, endorder, leaf } VISIT;"
+specifying the traversal type, and a node level (where level
+zero is the root of the tree).
+.Pp
+As
+.Fn twalk
+traverses the tree, it calls the
+.Fa action
+function with the traversal type "preorder"
+before visiting the left subtree of the
+.Fa node ,
+with the
+traversal type "postorder" before visiting the right subtree
+of the
+.Fa node ,
+and with the traversal type "endorder" after
+visiting the right subtree of the
+.Fa node .
+.Pp.
+The
+.Fa action
+function is called only once for a leaf-node, with the
+traversal type "leaf."
+.Pp
+Note: the names for the traversal types differ somewhat from
+common parlance.  The traversal type "postorder" corresponds
+to what would typically be referred to as in-order, and the
+traversal type "endorder" corresponds to what would typically
+be referred to as post-order.
+.Sh RETURN VALUES
+The
+.Fn tsearch
+function returns NULL if allocation of a new node fails (usually
+due to a lack of free memory).
+.Pp
+The
+.Fn tfind ,
+.Fn tsearch ,
+and
+.Fn tdelete
+functions
+return NULL if
+.Fa rootp
+is NULL or the node cannot be found.
+.Pp
+The
+.Fn twalk
+function returns no value.
+.Sh SEE ALSO
+.Xr bsearch 3 ,
+.Xr hsearch 3 ,
+.Xr lsearch 3

@@ -1,0 +1,174 @@
+.Dd February 3, 2011
+.Dt ACL_COPY_EXT 3
+.Sh NAME
+.Nm acl_copy_ext ,
+.Nm acl_copy_ext_native ,
+.Nm acl_copy_int ,
+.Nm acl_copy_int_native,
+.Nm acl_size
+.Nd convert an ACL to and from an external representation
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/acl.h
+.Ft ssize_t
+.Fo acl_copy_ext
+.Fa "void *buf"
+.Fa "acl_t acl"
+.Fa "ssize_t size"
+.Fc
+.Ft ssize_t
+.Fo acl_copy_ext_native
+.Fa "void *buf"
+.Fa "acl_t acl"
+.Fa "ssize_t size"
+.Fc
+.Ft acl_t
+.Fo acl_copy_int
+.Fa "const void *buf"
+.Fc
+.Ft acl_t
+.Fo acl_copy_int_native
+.Fa "const void *buf"
+.Fc
+.Ft ssize_t
+.Fo acl_size
+.Fa "acl_t acl"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn acl_copy_ext
+and
+.Fn acl_copy_ext_native
+functions convert the ACL given by the argument
+.Fa acl
+into a binary external representation that can be saved to a file,
+passed to another program, etc.
+This external representation is written to the buffer pointed to by the argument
+.Fa buf ,
+which is assumed to have at least the number of contiguous bytes passed in the
+.Fa size
+argument.
+The number of bytes actually written is returned.
+.Pp
+The
+.Fn acl_copy_ext
+function writes data in big-endian byte-order, and so is portable across
+machines with different byte-order.
+To the contrary, the
+.Fn acl_copy_ext_native
+function uses the machine's native byte-order, and so is only portable to
+machines of like byte-order.
+.Pp
+The
+.Fn acl_copy_int
+and
+.Fn acl_copy_int_native
+functions do the reverse conversion; the ACL represented by the external
+representation passed in the argument
+.Fa buf ,
+is returned.
+The
+.Fn acl_copy_int
+function expects an external representation in big-endian byte-order (as
+returned by
+.Fn acl_copy_ext ) ,
+while
+.Fn acl_copy_int_native
+expects an external representation in native byte-order (as returned by
+.Fn acl_copy_ext_native ) .
+.Pp
+The
+.Fn acl_size
+function returns the corresponding external representation size, in bytes, for
+the given ACL passed in the argument
+.Fa acl .
+This size can be used to allocate sufficient memory for the buffer in
+subsequent calls to
+.Fn acl_copy_ext
+and
+.Fn acl_copy_ext_native .
+.Sh RETURN VALUES
+Upon successful completion, the
+.Fn acl_copy_ext
+and
+.Fn acl_copy_ext_native
+functions shall return the number of bytes actually written to the buffer.
+Otherwise, a value of
+.Va -1
+shall be returned and
+.Va errno
+shall be set to indicate the error.
+.Pp
+Upon successful completion, the
+.Fn acl_copy_int
+and
+.Fn acl_copy_int_native
+functions shall return the ACL represented by the external representation
+passed in the buffer.
+Otherwise, a value of
+.Va (acl_t)NULL
+shall be returned and
+.Va errno
+shall be set to indicate the error.
+.Pp
+Upon successful completion, the
+.Fn acl_size
+function shall return the size of the external representation.
+Otherwise, a value of
+.Va -1
+shall be returned and
+.Va errno
+shall be set to indicate the error.
+.Sh ERRORS
+The
+.Fn acl_copy_ext
+and
+.Fn acl_copy_ext_native
+functions fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Argument
+.Fa acl
+does not point to a valid ACL.
+.It Bq Er ERANGE
+The given buffer is too small to contain the converted external representation.
+.El
+.Pp
+The
+.Fn acl_copy_int
+and
+.Fn acl_copy_int_native
+functions fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The buffer does not contain a valid external representation.
+.El
+.Pp
+The
+.Fn acl_size
+function fails if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Argument
+.Fa acl
+does not point to a valid ACL.
+.El
+.Sh NOTE
+While the external representation may use pre-existing data structures,
+no assumptions on the internal structure should be made.
+.Pp
+The
+.Xr acl_to_text 3
+and
+.Xr acl_from_text 3
+functions also convert to and from a different external representation,
+a human-readable string.
+Neither of these representations are cross-platform, lacking a cross-platform
+standard.
+.Sh SEE ALSO
+.Xr acl 3 ,
+.Xr acl_from_text 3 ,
+.Xr acl_to_text 3
+.Sh AUTHORS
+.An Michael Smith
+.An Robert N M Watson

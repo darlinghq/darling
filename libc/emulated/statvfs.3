@@ -1,0 +1,214 @@
+.\"
+.\" Copyright 2002 Massachusetts Institute of Technology
+.\"
+.\" Permission to use, copy, modify, and distribute this software and
+.\" its documentation for any purpose and without fee is hereby
+.\" granted, provided that both the above copyright notice and this
+.\" permission notice appear in all copies, that both the above
+.\" copyright notice and this permission notice appear in all
+.\" supporting documentation, and that the name of M.I.T. not be used
+.\" in advertising or publicity pertaining to distribution of the
+.\" software without specific, written prior permission.  M.I.T. makes
+.\" no representations about the suitability of this software for any
+.\" purpose.  It is provided "as is" without express or implied
+.\" warranty.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY M.I.T. ``AS IS''.  M.I.T. DISCLAIMS
+.\" ALL EXPRESS OR IMPLIED WARRANTIES WITH REGARD TO THIS SOFTWARE,
+.\" INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT
+.\" SHALL M.I.T. BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+.\" SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+.\" LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+.\" USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+.\" ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/lib/libc/gen/statvfs.3,v 1.7 2003/06/08 10:01:51 charnier Exp $
+.\"
+.Dd July 13, 2002
+.Dt STATVFS 3
+.Os
+.Sh NAME
+.Nm fstatvfs ,
+.Nm statvfs
+.Nd retrieve file system information
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/statvfs.h
+.Ft int
+.Fo fstatvfs
+.Fa "int fildes"
+.Fa "struct statvfs *buf"
+.Fc
+.Ft int
+.Fo statvfs
+.Fa "const char *restrict path"
+.Fa "struct statvfs *restrict buf"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn statvfs
+and
+.Fn fstatvfs
+functions attempt to fill the structure pointed to by
+.Fa buf
+with file system
+statistics, but portable applications must not depend on this.
+Applications must pass a pathname or file descriptor which refers to a
+file on the file system in which they are interested.
+.Pp
+The
+.Vt statvfs
+structure contains the following members:
+.Bl -tag -offset indent -width ".Va f_namemax"
+.It Va f_namemax
+The maximum length in bytes of a file name on this file system.
+Applications should use
+.Xr pathconf 2
+instead.
+.It Va f_fsid
+Not meaningful in this implementation.
+.It Va f_frsize
+The size in bytes of the minimum unit of allocation on this
+file system.
+(This corresponds to the
+.Va f_bsize
+member of
+.Vt "struct statfs" . )
+.It Va f_bsize
+The preferred length of I/O requests for files on this file system.
+(Corresponds to the
+.Va f_iosize
+member of
+.Vt "struct statfs" . )
+.It Va f_flag
+Flags describing mount options for this file system; see below.
+.El
+.Pp
+In addition, there are three members of type
+.Vt fsfilcnt_t ,
+which represent counts of file serial numbers
+.Em ( i.e. ,
+inodes); these are named
+.Va f_files , f_favail ,
+and
+.Va f_ffree ,
+and represent the number of file serial numbers which exist in total,
+are available to unprivileged processes, and are available to
+privileged processes, respectively.
+Likewise, the members
+.Va f_blocks , f_bavail ,
+and
+.Va f_bfree
+(all of type
+.Vt fsblkcnt_t )
+represent the respective allocation-block counts.
+.Pp
+There are two flags defined for the
+.Va f_flag
+member:
+.Bl -tag -offset indent -width ".Dv ST_NOSUID"
+.It Dv ST_RDONLY
+The file system is mounted read-only.
+.It Dv ST_NOSUID
+The semantics of the
+.Dv S_ISUID
+and
+.Dv S_ISGID
+file mode bits
+are not supported by, or are disabled on, this file system.
+.El
+.Sh IMPLEMENTATION NOTES
+The
+.Fn statvfs
+and
+.Fn fstatvfs
+functions are implemented as wrappers around the
+.Fn statfs
+and
+.Fn fstatfs
+functions, respectively.
+Not all the information provided by those functions is made available
+through this interface.
+.Sh RETURN VALUES
+.Rv -std statvfs fstatvfs
+.Sh ERRORS
+The
+.Fn statvfs
+function fails if one or more of the following are true:
+.Bl -tag -width Er
+.It Bq Er EACCES
+Search permission is denied for a component of the path prefix of
+.Fa path .
+.It Bq Er EFAULT
+.Fa Buf
+or
+.Fa path
+points to an invalid address.
+.It Bq Er EIO
+An
+.Tn I/O
+error occurred while reading from or writing to the file system.
+.It Bq Er ELOOP
+Too many symbolic links were encountered in translating
+.Fa path .
+.It Bq Er ENAMETOOLONG
+The length of a component of
+.Fa path
+exceeds 
+.Dv {NAME_MAX}
+characters, or the length of
+.Fa path
+exceeds 
+.Dv {PATH_MAX}
+characters.
+.It Bq Er ENOENT
+The file referred to by
+.Fa path
+does not exist.
+.It Bq Er ENOTDIR
+A component of the path prefix of
+.Fa Path
+is not a directory.
+.El
+.Pp
+The
+.Fn fstatvfs
+functions fails if one or more of the following are true:
+.Bl -tag -width Er
+.It Bq Er EBADF
+.Fa fildes
+is not a valid open file descriptor.
+.It Bq Er EFAULT
+.Fa Buf
+points to an invalid address.
+.It Bq Er EIO
+An
+.Tn I/O
+error occurred while reading from or writing to the file system.
+.El
+.Sh SEE ALSO
+.Xr statfs 2
+.Sh STANDARDS
+The
+.Fn statvfs
+and
+.Fn fstatvfs
+functions conform to
+.St -p1003.1-2001 .
+As standardized, portable applications cannot depend on these functions
+returning any valid information at all.
+This implementation attempts to provide as much useful information as
+is provided by the underlying file system, subject to the limitations
+of the specified data types.
+.Sh AUTHORS
+The
+.Fn statvfs
+and
+.Fn fstatvfs
+manual page was originally written by
+.An Garrett Wollman Aq wollman@FreeBSD.org .

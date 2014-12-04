@@ -1,0 +1,75 @@
+.\" Copyright (c) 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     from: @(#)cos.3	5.1 (Berkeley) 5/2/91
+.\"	$Id: frexp.3,v 1.4 2004/12/20 21:35:45 scp Exp $
+.\"
+.Dd December 11, 2006
+.Dt FREXP 3
+.Os
+.Sh NAME
+.Nm frexp
+.Nd break floating-point number into normalized fraction and power of 2
+.Sh SYNOPSIS
+.Fd #include <math.h>
+.Ft double
+.Fn frexp "double value" "int *exp"
+.Ft long double
+.Fn frexpl "long double value" "int *exp"
+.Ft float
+.Fn frexpf "float value" "int *exp"
+.Sh DESCRIPTION
+The
+.Fn frexp
+functions break the floating-point number 
+.Fa value
+into a normalized fraction and an
+integral power of 2. They store the integer in the int object pointed to by
+.Fa exp.
+.Pp
+The functions return a number x such that x has a magnitude in the interval [1/2, 1) or 0, and
+value = x*(2**exp).
+.Sh SPECIAL VALUES
+.Fn frexp "±0" "exp"
+returns ±0, and stores 0 in the object pointed to by exp.
+.Pp
+.Fn frexp "±infinity" "exp"
+returns ±infinity, and stores an unspecified value in the object pointed to by exp.
+.Pp
+.Fn frexp "Nan" "exp"
+returns a Nan, and stores an unspecified value in the object pointed to by exp.
+.Sh SEE ALSO
+.Xr math 3 ,
+.Xr scalbn
+.Sh STANDARDS
+The
+.Fn frexp
+functions conform to ISO/IEC 9899:1999(E).

@@ -1,0 +1,109 @@
+.\" Copyright (c) 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"	@(#)tcsetpgrp.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/gen/tcsetpgrp.3,v 1.9 2001/10/01 16:08:51 ru Exp $
+.\"
+.Dd June 4, 1993
+.Dt TCSETPGRP 3
+.Os
+.Sh NAME
+.Nm tcsetpgrp
+.Nd set foreground process group ID
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In unistd.h
+.Ft int
+.Fo tcsetpgrp
+.Fa "int fildes"
+.Fa "pid_t pgid_id"
+.Fc
+.Sh DESCRIPTION
+If the process has a controlling terminal, the
+.Fn tcsetpgrp
+function sets the foreground process group ID associated with the
+terminal device to
+.Fa pgid_id .
+The terminal device associated with
+.Fa fildes
+must be the controlling terminal of the calling process and the
+controlling terminal must be currently associated with the session
+of the calling process.
+The value of
+.Fa pgid_id
+must be the same as the process group ID of a process in the same
+session as the calling process.
+.Sh RETURN VALUES
+.Rv -std tcsetpgrp
+.Sh ERRORS
+The
+.Fn tcsetpgrp
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa fildes
+argument is not a valid file descriptor.
+.It Bq Er EINVAL
+An invalid value of
+.Fa pgid_id
+was specified.
+.It Bq Er ENOTTY
+The calling process does not have a controlling terminal, or the file
+represented by
+.Fa fildes
+is not the controlling terminal, or the controlling terminal is no
+longer associated with the session of the calling process.
+.It Bq Er EPERM
+The
+.Fa pgid_id
+argument does not match the process group ID of a process in the same
+session as the calling process.
+.El
+.Sh LEGACY SYNOPSIS
+.Fd #include <sys/types.h>
+.Fd #include <unistd.h>
+.Pp
+The include file
+.In sys/types.h
+is necessary.
+.Sh SEE ALSO
+.Xr setpgid 2 ,
+.Xr setsid 2 ,
+.Xr tcgetpgrp 3 ,
+.Xr compat 5
+.Sh STANDARDS
+The
+.Fn tcsetpgrp
+function is expected to be compliant with the
+.St -p1003.1-88
+specification.

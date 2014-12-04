@@ -1,0 +1,472 @@
+.\" Copyright (c) 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     from: @(#)acos.3	5.1 (Berkeley) 5/2/91
+.\"	$Id: math.3,v 1.2 2003/08/17 20:36:47 scp Exp $
+.\"
+.Dd June 11, 2008
+.Dt MATH 3
+.Os
+.Sh NAME
+.Nm math
+.Nd mathematical library functions
+.Sh SYNOPSIS
+.Fd #include <math.h>
+.Sh DESCRIPTION
+The header file math.h provides function prototypes and macros for working with
+C99 floating point values.
+.Pp
+Each math.h function is provided in three variants: single, double and extended precision.
+The single and double precision variants operate on IEEE-754 single and double precision
+values, which correspond to the C types
+.Ft float
+and
+.Ft double ,
+respectively.
+.Pp
+On Intel Macs, the C type
+.Ft long double
+corresponds to 80-bit IEEE-754 double extended precision.  On PowerPC Macs, the C type
+.Ft long double
+corresponds by default to ordinary double precision, but a 128-bit non-IEEE-754 long double
+type is also available via the compiler flag
+.Ft -mlong-double-128 
+and linker flag
+.Ft -lmx .
+.Pp
+Details of the floating point formats can be found via "man float".
+.Pp
+Users who need to repeatedly perform the same calculation on a large set of data will
+probably find that the vector math library (composed of vMathLib and vForce) yields
+better performance for their needs than sequential calls to the libm.
+.Pp
+Users who need to perform mathematical operations on complex floating-point numbers should
+consult the man pages for the complex portion of the math library, via "man complex".
+.Sh LIST OF FUNCTIONS
+Each of the functions that use floating-point values are provided in single, double, 
+and extended precision; the double precision prototypes are listed here.  The man
+pages for the individual functions provide more details on their use, special cases, and
+prototypes for their single and extended precision versions.
+.Pp
+.Ft int
+.Fn fpclassify "double"
+.br
+.Ft int
+.Fn isfinite "double"
+.br
+.Ft int
+.Fn isinf "double"
+.br
+.Ft int
+.Fn isnan "double"
+.br
+.Ft int
+.Fn isnormal "double"
+.br
+.Ft int
+.Fn signbit "double"
+.Pp
+These function-like macros are used to classify a single floating-point argument.
+.Pp
+.Ft double
+.Fn copysign "double, double"
+.br
+.Ft double
+.Fn nextafter "double, double"
+.Pp
+.Fn copysign "x, y"
+returns the value equal in magnitude to 
+.Fa x
+with the sign of
+.Fa y .
+.Fn nextafter "x, y"
+returns the next floating-point number after
+.Fa x
+in the direction of
+.Fa y .
+Both are correctly-rounded.
+.Pp
+.Ft double
+.Fn nan "const char *tag"
+.Pp
+The
+.Fn nan
+function returns a quiet NaN, without raising the invalid flag.
+.Pp
+.Ft double
+.Fn ceil "double"
+.br
+.Ft double
+.Fn floor "double"
+.br
+.Ft double
+.Fn nearbyint "double"
+.br
+.Ft double
+.Fn rint "double"
+.br
+.Ft double
+.Fn round "double"
+.br
+.Ft long int
+.Fn lrint "double"
+.br
+.Ft long int
+.Fn lround "double"
+.br
+.Ft long long int
+.Fn llrint "double"
+.br
+.Ft long long int
+.Fn llround "double"
+.br
+.Ft double
+.Fn trunc "double"
+.Pp
+These functions provide various means to round floating-point values to integral values.  They are correctly rounded.
+.Pp
+.Ft double
+.Fn fmod "double, double"
+.br
+.Ft double
+.Fn remainder "double, double"
+.br
+.Ft double
+.Fn remquo "double x, double y, int *"
+.Pp
+These return a remainder of the division of x by y with an integral quotient.
+.Fn remquo
+additionally provides access to a few lower bits of the quotient.  They are correctly rounded.
+.Pp
+.Ft double
+.Fn fdim "double, double"
+.br
+.Ft double
+.Fn fmax "double, double"
+.br
+.Ft double
+.Fn fmin "double, double"
+.Pp
+.Fn fmax "x, y"
+and
+.Fn fmin "x, y"
+return the maximum and minimum of
+.Fa x
+and
+.Fa y ,
+respectively.
+.Fn fdim "x, y"
+returns the positive difference of
+.Fa x 
+and
+.Fa y .  All are correctly rounded.
+.Pp
+.Ft double
+.Fn fma "double x, double y, double z"
+.Pp
+.Fn fma "x, y, z"
+computes the value (x*y) + z as though without intermediate rounding.  It is correctly rounded.
+.Pp
+.Ft double
+.Fn fabs "double"
+.br
+.Ft double
+.Fn sqrt "double"
+.br
+.Ft double
+.Fn cbrt "double"
+.br
+.Ft double
+.Fn hypot "double, double"
+.Pp
+.Fn fabs "x",
+.Fn sqrt "x",
+and
+.Fn cbrt "x"
+return the absolute value, square root, and cube root of
+.Fa x ,
+respectively.
+.Fn hypot "x, y"
+returns sqrt(x*x + y*y).
+.Fn fabs
+and
+.Fn sqrt
+are correctly rounded.
+.Pp
+.Ft double
+.Fn exp "double"
+.br
+.Ft double
+.Fn exp2 "double"
+.br
+.Ft double
+.Fn expm1 "double"
+.Pp
+.Fn exp "x" ,
+.Fn exp2 "x" ,
+and
+.Fn expm1 "x"
+return e**x, 2**x, and e**x - 1, respectively.
+.Pp
+.Ft double
+.Fn log "double"
+.br
+.Ft double
+.Fn log2 "double"
+.br
+.Ft double
+.Fn log10 "double"
+.br
+.Ft double
+.Fn log1p "double"
+.Pp
+.Fn log "x" ,
+.Fn log2 "x" ,
+and
+.Fn log10 "x"
+return the natural, base-2, and base-10 logarithms of
+.Fa x ,
+respectively.
+.Fn log1p "x"
+returns the natural log of 1+x.
+.Pp
+.Ft double
+.Fn logb "double"
+.br
+.Ft int
+.Fn ilogb "double"
+.Pp
+.Fn logb "x"
+and
+.Fn ilogb "x"
+return the exponent of
+.Fa x .
+.Pp
+.Ft double
+.Fn modf "double, double *"
+.br
+.Ft double
+.Fn frexp "double, int *"
+.Pp
+.Fn modf "x, &y"
+returns the fractional part of
+.Fa x
+and stores the integral part in
+.Fa y .
+.Fn frexp "x, &n"
+returns the mantissa of
+.Fa x
+and stores the exponent in
+.Fa n .  They are correctly rounded.
+.Pp
+.Ft double
+.Fn ldexp "double, int"
+.br
+.Ft double
+.Fn scalbn "double, int"
+.br
+.Ft double
+.Fn scalbln "double, long int"
+.Pp
+.Fn ldexp "x, n" ,
+.Fn scalbn "x, n" ,
+and
+.Fn scalbln "x, n"
+return x*2**n.  They are correctly rounded.
+.Pp
+.Ft double
+.Fn pow "double, double"
+.Pp
+.Fn pow "x,y"
+returns x raised to the power y.
+.Pp
+.Ft double
+.Fn cos "double"
+.br
+.Ft double
+.Fn sin "double"
+.br
+.Ft double
+.Fn tan "double"
+.Pp
+.Fn cos "x" ,
+.Fn sin "x" ,
+and
+.Fn tan "x"
+return the cosine, sine and tangent of
+.Fa x ,
+respectively.
+.Pp
+.Ft double
+.Fn cosh "double"
+.br
+.Ft double
+.Fn sinh "double"
+.br
+.Ft double
+.Fn tanh "double"
+.Pp
+.Fn cosh "x" ,
+.Fn sinh "x" ,
+and
+.Fn tanh "x"
+return the hyperbolic cosine, hyperbolic sine and hyperbolic tangent of
+.Fa x ,
+respectively.
+.Pp
+.Ft double
+.Fn acos "double"
+.br
+.Ft double
+.Fn asin "double"
+.br
+.Ft double
+.Fn atan "double"
+.br
+.Ft double
+.Fn atan2 "double, double"
+.Pp
+.Fn acos "x" ,
+.Fn asin "x" ,
+and
+.Fn atan "x"
+return the inverse cosine, inverse sine and inverse tangent of
+.Fa x ,
+respectively.
+.Fn atan2 "y, x"
+returns the inverse tangent of y/x, with sign chosen according to the quadrant of (x,y).
+.Pp
+.Ft double
+.Fn acosh "double"
+.br
+.Ft double
+.Fn asinh "double"
+.br
+.Ft double
+.Fn atanh "double"
+.Pp
+.Fn acosh "x" ,
+.Fn asinh "x" ,
+and
+.Fn atanh "x"
+return the inverse hyperbolic cosine, inverse hyperbolic sine and inverse hyperbolic tangent of
+.Fa x ,
+respectively.
+.Pp
+.Ft double
+.Fn tgamma "double"
+.br
+.Ft double
+.Fn lgamma "double"
+.Pp
+.Fn tgamma "x"
+and
+.Fn lgamma "x"
+return the values of the gamma function and its logarithm evalutated at
+.Fa x ,
+respectively.
+.Pp
+.Ft double
+.Fn j0 "double"
+.br
+.Ft double
+.Fn j1 "double"
+.br
+.Ft double
+.Fn jn "int" "double"
+.br
+.Ft double
+.Fn y0 "double"
+.br
+.Ft double
+.Fn y1 "double"
+.br
+.Ft double
+.Fn yn "int" "double"
+.Pp
+.Fn j0 "x" ,
+.Fn j1 "x" ,
+and
+.Fn jn "x"
+return the values of the zeroth, first, and nth Bessel function of the first kind evaluated at
+.Fa x ,
+respectively.
+.Fn y0 "x" ,
+.Fn y1 "x" ,
+and
+.Fn yn "x"
+return the values of the zeroth, first, and nth Bessel function of the second kind evaluated at
+.Fa x ,
+respectively.
+.Pp
+.Ft double
+.Fn erf "double"
+.br
+.Ft double
+.Fn erfc "double"
+.Pp
+.Fn erf "x"
+and
+.Fn erfc "x"
+return the values of the error function and the complementary error function evaluated at
+.Fa x ,
+respectively.
+.Sh MATHEMATICAL CONSTANTS
+In addition to the functions listed above, math.h defines a number of useful constants,
+listed below.  All are defined as C99 floating-point constants.
+.nf
+.ta \w'M_2_SQRTPI'u+6
+.sp 1
+CONSTANT	VALUE
+M_E	base of natural logarithm, e
+M_LOG2E	log2(e)
+M_LOG10E	log10(e)
+M_LN2	ln(2)
+M_LN10	ln(10)
+M_PI	pi
+M_PI_2	pi / 2
+M_PI_4	pi / 4
+M_1_PI	1 / pi
+M_2_PI	2 / pi
+M_2_SQRTPI	2 / sqrt(pi)
+M_SQRT2	sqrt(2)
+M_SQRT1_2	sqrt(1/2)
+.ta
+.fi
+.Sh IEEE STANDARD 754 FLOATING\-POINT ARITHMETIC
+The libm functions declared in math.h provide mathematical library functions in
+single-, double-, and extended-precision IEEE-754 floating-point formats on Intel macs,
+and in single- and double-precision IEEE-754 floating-point formats on PowerPC macs.
+.Sh SEE ALSO
+.Xr float 3 ,
+.Xr complex 3
+.Sh STANDARDS
+The <math.h> functions conform to the ISO/IEC 9899:1999(E) standard.

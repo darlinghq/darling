@@ -1,0 +1,96 @@
+.\" Copyright (c) 2006 Apple Computer, Inc.  All rights reserved.
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\"
+.\" The contents of this file constitute Original Code as defined in and
+.\" are subject to the Apple Public Source License Version 1.1 (the
+.\" "License").  You may not use this file except in compliance with the
+.\" License.  Please obtain a copy of the License at
+.\" http://www.apple.com/publicsource and read it before using this file.
+.\"
+.\" This Original Code and all software distributed under the License are
+.\" distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
+.\" License for the specific language governing rights and limitations
+.\" under the License.
+.\"
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.Dd April 9, 2008
+.Dt POSIX_MEMALIGN 3
+.Os
+.Sh NAME
+.Nm posix_memalign
+.Nd aligned memory allocation
+.Sh SYNOPSIS
+.In stdlib.h
+.Ft int
+.Fo posix_memalign
+.Fa "void **memptr"
+.Fa "size_t alignment"
+.Fa "size_t size"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn posix_memalign
+function allocates
+.Fa size
+bytes of memory such that the allocation's base address is an exact multiple of
+.Fa alignment ,
+and returns the allocation in the value pointed to by
+.Fa memptr .
+.Pp
+The requested
+.Fa alignment
+must be a power of 2 at least as large as
+.Fn sizeof "void *" .
+.Pp
+Memory that is allocated via
+.Fn posix_memalign
+can be used as an argument in subsequent calls to
+.Xr realloc 3 ,
+.Xr reallocf 3 ,
+and
+.Xr free 3 .
+(Note however, that the allocation returned by
+.Xr realloc 3 
+or
+.Xr reallocf 3 
+is not guaranteed to preserve the original
+.Fa alignment ) .
+.Sh NOTES
+.Fn posix_memalign
+should be used judiciously as the algorithm that realizes the
+.Fa alignment
+constraint can incur significant memory overhead.
+.Sh RETURN VALUES
+The
+.Fn posix_memalign
+function returns the value 0 if successful; otherwise it returns an error value.
+.Sh ERRORS
+The
+.Fn posix_memalign
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The
+.Fa alignment
+parameter is not a power of 2 at least as large as
+.Fn sizeof "void *" .
+.It Bq Er ENOMEM
+Memory allocation error.
+.El
+.Sh SEE ALSO
+.Xr free 3 ,
+.Xr malloc 3 ,
+.Xr realloc 3 ,
+.Xr reallocf 3 ,
+.Xr valloc 3 ,
+.Xr malloc_zone_memalign 3
+.Sh STANDARDS
+The
+.Fn posix_memalign
+function conforms to
+.St -p1003.1-2001 .

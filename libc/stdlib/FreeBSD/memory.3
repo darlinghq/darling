@@ -1,0 +1,136 @@
+.\" Copyright (c) 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)memory.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/stdlib/memory.3,v 1.12 2007/01/09 00:28:10 imp Exp $
+.\"
+.Dd June 4, 1993
+.Dt MEMORY 3
+.Os
+.Sh NAME
+.Nm alloca ,
+.Nm calloc ,
+.Nm free ,
+.Nm malloc ,
+.Nm mmap ,
+.Nm realloc
+.Nd general memory allocation operations
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In stdlib.h
+.Ft void *
+.Fo alloca
+.Fa "size_t size"
+.Fc
+.Ft void *
+.Fo calloc
+.Fa "size_t nelem"
+.Fa "size_t elsize"
+.Fc
+.Ft void
+.Fo free
+.Fa "void *ptr"
+.Fc
+.Ft void *
+.Fo malloc
+.Fa "size_t size"
+.Fc
+.Ft void *
+.Fo realloc
+.Fa "void *ptr"
+.Fa "size_t size"
+.Fc
+.In sys/mman.h
+.Ft void *
+.Fo mmap
+.Fa "void * addr"
+.Fa "size_t len"
+.Fa "int prot"
+.Fa "int flags"
+.Fa "int fildes"
+.Fa "off_t off"
+.Fc
+.Sh DESCRIPTION
+These functions allocate and free memory for the calling process.
+They are described in the
+individual manual pages.
+.Sh LEGACY SYNOPSIS
+.Fd #include <sys/types.h>
+.Fd #include <sys/mman.h>
+.Pp
+.Ft void *
+.br
+.Fo mmap
+.Fa "void * addr"
+.Fa "size_t len"
+.Fa "int prot"
+.Fa "int flags"
+.Fa "int fildes"
+.Fa "off_t off"
+.Fc ;
+.Pp
+The include file
+.In sys/types.h
+is needed for this function.
+.Sh COMPATIBILITY
+.Fn mmap
+now returns with
+.Va errno
+set to EINVAL in places that historically succeeded.
+The rules have changed as follows:
+.Bl -bullet
+.It
+The
+.Fa flags
+parameter must specify either MAP_PRIVATE or MAP_SHARED.
+.It
+The
+.Fa size
+parameter must not be 0.
+.It
+The
+.Fa off
+parameter must be a multiple of pagesize,
+as returned by
+.Fn sysconf .
+.El
+.Sh SEE ALSO
+.Xr mmap 2 ,
+.Xr alloca 3 ,
+.Xr calloc 3 ,
+.Xr free 3 ,
+.Xr malloc 3 ,
+.Xr realloc 3 ,
+.Xr compat 5
+.Sh STANDARDS
+These functions, with the exception of
+.Fn alloca
+and
+.Fn mmap
+conform to
+.St -isoC .

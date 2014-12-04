@@ -1,0 +1,302 @@
+.\" $NetBSD: pthread_mutexattr.3,v 1.3 2003/07/04 08:36:06 wiz Exp $
+.\"
+.\" Copyright (c) 2002 The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. Neither the name of The NetBSD Foundation nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific prior written permission.
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" Copyright (C) 2000 Jason Evans <jasone@FreeBSD.org>.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice(s), this list of conditions and the following disclaimer as
+.\"    the first lines of this file unmodified other than the possible
+.\"    addition of one or more copyright notices.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice(s), this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER(S) ``AS IS'' AND ANY
+.\" EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) BE
+.\" LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+.\" BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+.\" WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+.\" OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+.\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/lib/libpthread/man/pthread_mutexattr.3,v 1.8 2002/09/16 19:29:29 mini Exp $
+.Dd January 30, 2003
+.Dt PTHREAD_MUTEXATTR 3
+.Os
+.Sh NAME
+.Nm pthread_mutexattr_destroy ,
+.Nm pthread_mutexattr_getprioceiling ,
+.Nm pthread_mutexattr_getprotocol ,
+.Nm pthread_mutexattr_gettype ,
+.Nm pthread_mutexattr_init ,
+.Nm pthread_mutexattr_setprioceiling ,
+.Nm pthread_mutexattr_setprotocol ,
+.Nm pthread_mutexattr_settype
+.Nd mutex attribute operations
+.Sh SYNOPSIS
+.Fd #include <pthread.h>
+.Ft int
+.Fo pthread_mutexattr_destroy
+.Fa "pthread_mutexattr_t *attr"
+.Fc
+.Ft int
+.Fo pthread_mutexattr_getprioceiling
+.Fa "const pthread_mutexattr_t *restrict attr"
+.Fa "int *restrict prioceiling"
+.Fc
+.\" To match the SUS, this should be:
+.\" .Ft int
+.\" .Fo pthread_mutexattr_getprioceiling
+.\" .Fa "pthread_mutexattr_t *restrict attr"
+.\" .Fa "int *restrict prioceiling"
+.\" .Fc
+.Ft int
+.Fo pthread_mutexattr_getprotocol
+.Fa "const pthread_mutexattr_t *restrict attr"
+.Fa "int *restrict protocol"
+.Fc
+.\" To match the SUS, this should be:
+.\" .Ft int
+.\" .Fo pthread_mutexattr_getprotocol
+.\" .Fa "pthread_mutexattr_t *restrict attr"
+.\" .Fa "int *restrict protocol"
+.\" .Fc
+.Ft int
+.Fo pthread_mutexattr_gettype
+.Fa "const pthread_mutexattr_t *restrict attr"
+.Fa "int *restrict type"
+.Fc
+.\" To match the SUS, this should be:
+.\" .Ft int
+.\" .Fo pthread_mutexattr_gettype
+.\" .Fa "pthread_mutexattr_t *restrict attr"
+.\" .Fa "int *restrict type"
+.\" .Fc
+.Ft int
+.Fo pthread_mutexattr_init
+.Fa "pthread_mutexattr_t *attr"
+.Fc
+.Ft int
+.Fo pthread_mutexattr_setprioceiling
+.Fa "pthread_mutexattr_t *attr"
+.Fa "int prioceiling"
+.Fc
+.Ft int
+.Fo pthread_mutexattr_setprotocol
+.Fa "pthread_mutexattr_t *attr"
+.Fa "int protocol"
+.Fc
+.Ft int
+.Fo pthread_mutexattr_settype
+.Fa "pthread_mutexattr_t *attr"
+.Fa "int type"
+.Fc
+.Sh DESCRIPTION
+Mutex attributes are used to specify parameters to
+.Fn pthread_mutex_init .
+One attribute object can be used in multiple calls to
+.Fn pthread_mutex_init ,
+with or without modifications between calls.
+.Pp
+The
+.Fn pthread_mutexattr_init
+function initializes
+.Fa attr
+with all of the default mutex attributes.
+.Pp
+The
+.Fn pthread_mutexattr_destroy
+function destroys
+.Fa attr .
+.Pp
+The
+.Fn pthread_mutexattr_settype
+function sets the mutex type value of the attribute.  Valid mutex types are:
+.Dv PTHREAD_MUTEX_NORMAL ,
+.Dv PTHREAD_MUTEX_ERRORCHECK ,
+.Dv PTHREAD_MUTEX_RECURSIVE ,
+and
+.Dv PTHREAD_MUTEX_DEFAULT .
+The default mutex type for
+.Fn pthread_mutexattr_init
+is
+.Dv PTHREAD_MUTEX_DEFAULT .
+.Pp
+.Dv PTHREAD_MUTEX_NORMAL
+mutexes do not check for usage errors.
+.Dv PTHREAD_MUTEX_NORMAL
+mutexes will deadlock if reentered, and result in undefined behavior if a
+locked mutex is unlocked by another thread.  Attempts to unlock an already
+unlocked
+.Dv PTHREAD_MUTEX_NORMAL
+mutex will result in undefined behavior.
+.Pp
+.Dv PTHREAD_MUTEX_ERRORCHECK
+mutexes do check for usage errors.
+If an attempt is made to relock a
+.Dv PTHREAD_MUTEX_ERRORCHECK
+mutex without first dropping the lock, an error will be returned.
+If a thread attempts to unlock a
+.Dv PTHREAD_MUTEX_ERRORCHECK
+mutex that is locked by another thread, an error will be returned.  If a
+thread attempts to unlock a
+.Dv PTHREAD_MUTEX_ERRORCHECK
+thread that is unlocked, an error will be returned.
+.Pp
+.Dv PTHREAD_MUTEX_RECURSIVE
+mutexes allow recursive locking.
+An attempt to relock a
+.Dv PTHREAD_MUTEX_RECURSIVE
+mutex that is already locked by the same thread succeeds.  An equivalent
+number of
+.Xr pthread_mutex_unlock 3
+calls are needed before the mutex will wake another thread waiting on this
+lock.  If a thread attempts to unlock a
+.Dv PTHREAD_MUTEX_RECURSIVE
+mutex that is locked by another thread, an error will be returned.  If a thread attemps to unlock a
+.Dv PTHREAD_MUTEX_RECURSIVE
+thread that is unlocked, an error will be returned.
+.Pp
+.Dv PTHREAD_MUTEX_DEFAULT
+mutexes result in undefined behavior if reentered.
+Unlocking a
+.Dv PTHREAD_MUTEX_DEFAULT
+mutex locked by another thread will result in undefined behavior.  Attempts to unlock an already
+unlocked
+.Dv PTHREAD_MUTEX_DEFAULT
+mutex will result in undefined behavior.
+.Pp
+.Fn pthread_mutexattr_gettype
+functions copy the type value of the attribute to the location pointed to by the second parameter.
+.Pp
+The
+.Fn pthread_mutexattr_set*
+functions set the attribute that corresponds to each function name.
+.Pp
+The
+.Fn pthread_mutexattr_get*
+functions copy the value of the attribute that corresponds to each function name
+to the location pointed to by the second function parameter.
+.Sh RETURN VALUES
+If successful, these functions return 0.
+Otherwise, an error number is returned to indicate the error.
+.Sh ERRORS
+.Fn pthread_mutexattr_init
+will fail if:
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+Out of memory.
+.El
+.Pp
+.Fn pthread_mutexattr_destroy
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Pp
+.Fn pthread_mutexattr_setprioceiling
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr ,
+or invalid value for
+.Fa prioceiling .
+.El
+.Pp
+.Fn pthread_mutexattr_getprioceiling
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Pp
+.Fn pthread_mutexattr_setprotocol
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr ,
+or invalid value for
+.Fa protocol .
+.El
+.Pp
+.Fn pthread_mutexattr_getprotocol
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Pp
+.Fn pthread_mutexattr_settype
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr ,
+or invalid value for
+.Fa type .
+.El
+.Pp
+.Fn pthread_mutexattr_gettype
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Sh SEE ALSO
+.Xr pthread_mutex_init 3
+.Sh STANDARDS
+.Fn pthread_mutexattr_init
+and
+.Fn pthread_mutexattr_destroy
+conform to
+.St -p1003.1-96
+.Pp
+.Fn pthread_mutexattr_setprioceiling ,
+.Fn pthread_mutexattr_getprioceiling ,
+.Fn pthread_mutexattr_setprotocol ,
+.Fn pthread_mutexattr_getprotocol ,
+.Fn pthread_mutexattr_settype ,
+and
+.Fn pthread_mutexattr_gettype
+conform to
+.St -susv2

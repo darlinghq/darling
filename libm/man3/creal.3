@@ -1,0 +1,60 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CREAL 3
+.Os BSD 4
+.Sh NAME
+.Nm creal
+.Nd complex real-part function
+.br
+.Nm cimag
+.Nd complex imaginary-part function
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double
+.Fn creal "double complex z"
+.Ft long double
+.Fn creall "long double complex z"
+.Ft float
+.Fn crealf "float complex z"
+.Pp
+.Ft double
+.Fn cimag "double complex z"
+.Ft long double
+.Fn cimagl "long double complex z"
+.Ft float
+.Fn cimagf "float complex z"
+.Sh DESCRIPTION
+.Fn creal "z"
+extracts the real part of the complex floating-point number
+.Fa z .
+.Fn cimag "z"
+extracts the imaginary part of the complex floating-point number
+.Fa z .
+.Pp
+If 
+.Fa z
+= x+iy, then
+.Fn creal "z"
+= x 
+and
+.Fn cimag "z"
+= y.
+.Sh EXAMPLES
+The function foo defined in the example below returns its complex
+argument with the imaginary part scaled by a factor of 2.
+.Bd -literal -offset indent
+#include <complex.h>
+
+double complex foo(double complex z) {
+  return creal(z) + 2.0*cimag(z)*I;
+}
+.Ed
+.Sh SEE ALSO
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn creal
+and
+.Fn cimag
+functions conform to ISO/IEC 9899:1999(E).

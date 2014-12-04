@@ -1,0 +1,42 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CPROJ 3
+.Os BSD 4
+.Sh NAME
+.Nm cproj
+.Nd projection onto the Riemann sphere
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double complex
+.Fn cproj "double complex z"
+.Ft long double complex
+.Fn cprojl "long double complex z"
+.Ft float complex
+.Fn cprojf "float complex z"
+.Sh DESCRIPTION
+.Fn cproj "z"
+computes the projection of a complex floating-point number
+.Fa z
+onto the Riemann sphere: for any finite
+.Fa z ,
+.Fn cproj "z"
+= z, but all complex infinities (including infinities with one NaN part)
+project to positive infinity on the real axis.
+.Pp
+Specifically, if
+.Fa z
+= x + iy has an infinite part (one of x or y is infinity), then
+.Fn cproj "z"
+is equivalent to INFINITY + I*copysign(0.0,cimag(z)).
+.Sh NOTE
+.Fn cproj
+projects onto the C99 "Riemann Sphere", which may not agree with the mathematical
+notion of the Riemann Sphere; in particular, it has two infinites (inf ± 0i) and
+four zeroes (±0 ± 0i).
+.Sh SEE ALSO
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn cproj
+function conforms to ISO/IEC 9899:1999(E).

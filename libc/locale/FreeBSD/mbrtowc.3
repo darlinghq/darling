@@ -1,0 +1,161 @@
+.\" Copyright (c) 2002-2004 Tim J. Robbins
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/lib/libc/locale/mbrtowc.3,v 1.5 2004/06/30 19:32:41 ru Exp $
+.\"
+.Dd April 8, 2004
+.Dt MBRTOWC 3
+.Os
+.Sh NAME
+.Nm mbrtowc ,
+.Nm mbrtowc_l
+.Nd "convert a character to a wide-character code (restartable)"
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In wchar.h
+.Ft size_t
+.Fo mbrtowc
+.Fa "wchar_t *restrict pwc"
+.Fa "const char *restrict s"
+.Fa "size_t n"
+.Fa "mbstate_t *restrict ps"
+.Fc
+.In wchar.h
+.In xlocale.h
+.Ft size_t
+.Fo mbrtowc_l
+.Fa "wchar_t *restrict pwc"
+.Fa "const char *restrict s"
+.Fa "size_t n"
+.Fa "mbstate_t *restrict ps"
+.Fa "locale_t loc"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn mbrtowc
+function inspects at most
+.Fa n
+bytes, pointed to by
+.Fa s ,
+to determine the number of bytes needed to complete the next multibyte
+character.
+If a character can be completed, and
+.Fa pwc
+is not
+.Dv NULL ,
+the wide character which is represented by
+.Fa s
+is stored in the
+.Vt wchar_t
+it points to.
+.Pp
+If
+.Fa s
+is
+.Dv NULL ,
+.Fn mbrtowc
+behaves as if
+.Fa pwc
+were
+.Dv NULL ,
+.Fa s
+were an empty string
+.Pq Qq ,
+and
+.Fa n
+were 1.
+.Pp
+The
+.Vt mbstate_t
+argument,
+.Fa ps ,
+is used to keep track of the shift state.
+If it is
+.Dv NULL ,
+.Fn mbrtowc
+uses an internal, static
+.Vt mbstate_t
+object, which is initialized to the initial conversion state
+at program startup.
+.Pp
+While the
+.Fn mbrtowc
+function uses the current locale, the
+.Fn mbrtowc_l
+function may be passed a locale directly. See
+.Xr xlocale 3
+for more information.
+.Sh RETURN VALUES
+The
+.Fn mbrtowc
+functions returns:
+.Bl -tag -width indent
+.It 0
+The next
+.Fa n
+or fewer bytes
+represent the null wide character
+.Pq Li "L'\e0'" .
+.It >0
+The next
+.Fa n
+or fewer bytes
+represent a valid character,
+.Fn mbrtowc
+returns the number of bytes used to complete the multibyte character.
+.It Po Vt size_t Pc Ns \-2
+The next
+.Fa n
+contribute to, but do not complete, a valid multibyte character sequence,
+and all
+.Fa n
+bytes have been processed.
+.It Po Vt size_t Pc Ns \-1
+An encoding error has occurred.
+The next
+.Fa n
+or fewer bytes do not contribute to a valid multibyte character.
+.El
+.Sh ERRORS
+The
+.Fn mbrtowc
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er EILSEQ
+An invalid multibyte sequence was detected.
+.It Bq Er EINVAL
+The conversion state is invalid.
+.El
+.Sh SEE ALSO
+.Xr mbtowc 3 ,
+.Xr multibyte 3 ,
+.Xr setlocale 3 ,
+.Xr wcrtomb 3 ,
+.Xr xlocale 3
+.Sh STANDARDS
+The
+.Fn mbrtowc
+function conforms to
+.St -isoC-99 .

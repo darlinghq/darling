@@ -1,0 +1,146 @@
+.\" Copyright (c) 1985, 1991 Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     from: @(#)erf.3	6.4 (Berkeley) 4/20/91
+.\"	$Id: tgamma.3,v 1.4 2004/12/20 21:35:46 scp Exp $
+.\"
+.Dd July 02, 2008
+.Dt TGAMMA 3
+.Sh NAME
+.Nm tgamma ,
+.Nm lgamma ,
+.Nm gamma
+.Nd gamma and log of gamma
+.Sh SYNOPSIS
+.Fd #include <math.h>
+.Ft double
+.Fn tgamma "double x"
+.Ft long double
+.Fn tgammal "long double x"
+.Ft float
+.Fn tgammaf "float x"
+.Ft double
+.Fn lgamma_r "double x, int *psigngam"
+.Ft long double
+.Fn lgammal_r "long double x, int *psigngam"
+.Ft float
+.Fn lgammaf_r "float x, int *psigngam"
+.Ft double
+.Fn lgamma "double x"
+.Ft long double
+.Fn lgammal "long double x"
+.Ft float
+.Fn lgammaf "float x"
+.Sh DESCRIPTION
+.Fn tgamma
+calculates the gamma function of x.
+.Fn lgamma
+calculates the natural logorithm of the absolute value of the gamma function of x.
+.Fn gamma
+is the same function as tgamma. Its use is deprecated. 
+.Pp
+.Fn lgamma_r
+is a thread-safe alternative to
+.Fn lgamma .
+Instead of setting the global variable
+.Fa signgam ,
+it stores the sign of Gamma(x) in the location pointed to by its second argument.
+In order to use the 
+.Fn lgamma_r
+function, define the macro _REENTRANT before including <math.h>.
+.Sh SPECIAL VALUES
+.Fn tgamma "±0"
+returns ±infinity and raises the "divide-by-zero" floating-point exception.
+.Pp
+.Fn tgamma "x"
+returns a NaN and raises the "invalid" floating-point exception if x is a negative integer. 
+.Pp
+.Fn tgamma "-infinity"
+returns a NaN and raises the "invalid" floating-point exception.
+.Pp
+.Fn tgamma "+infinity"
+returns +infinity.
+.Pp
+.Fn tgamma "x"
+generates a domain error if x is a negative integer or if the result cannnot be respresented when x is 0.
+.Pp
+A range error may occur if the magnitude of x is too large or too small.
+.Pp
+.Fn lgamma "1"
+returns +0.
+.Pp
+.Fn lgamma "2"
+returns +0.
+.Pp
+.Fn lgamma "x"
+returns +infinity and raises the "divide-by-zero" floating-point exception if x is a negative integer or 0.
+.Pp
+.Fn lgamma "±infinity"
+returns +infinity.
+.Pp
+.Fn lgamma "x"
+generates a range error if x is too large.
+.Pp
+A range error may occur if x is a negative integer or 0.
+.Sh NOTE
+.Fn lgamma "x"
+and its variants have the (non-threadsafe) side-effect of setting the global variable 
+.Fa signgam
+to ±1, equal to the sign of
+.Fn tgamma "x" .
+.Fn lgamma_r "x, psigngam"
+instead sets the user-allocated integer pointed to by the
+.Fa psigngam
+argument.
+.Pp
+.Fn gamma
+and
+.Fn gamma_r
+are deprecated, and should not be used.  The
+.Fn tgamma
+function should be used instead.  Note, however, that on some platforms,
+.Fn gamma
+and
+.Fn gamma_r
+historically computed the log of the Gamma function, instead of the Gamma function
+itself.  When porting code from such platforms, it will be necessary to use
+.Fn lgamma
+or 
+.Fn lgamma_r
+instead.
+.Sh SEE ALSO
+.Xr math 3
+.Sh STANDARDS
+The
+.Fn tgamma
+, and
+.Fn lgamma
+functions conform to ISO/IEC 9899:1999(E).

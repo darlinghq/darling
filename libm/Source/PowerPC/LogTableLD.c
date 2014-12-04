@@ -1,0 +1,130 @@
+/*
+ * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_LICENSE_HEADER_START@
+ * 
+ * The contents of this file constitute Original Code as defined in and
+ * are subject to the Apple Public Source License Version 1.1 (the
+ * "License").  You may not use this file except in compliance with the
+ * License.  Please obtain a copy of the License at
+ * http://www.apple.com/publicsource and read it before using this file.
+ * 
+ * This Original Code and all software distributed under the License are
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
+ * 
+ * @APPLE_LICENSE_HEADER_END@
+ */
+// $Revision: 1.2 $
+/* - -- --- ---- ----- ------------------------------------------------- */
+/*                                                                       */
+/*    Copyright (C) 1994 Taligent, Inc. All rights reserved.             */
+/*                                                                       */
+/*    This code is copyrighted. Under the copyright laws, this code may  */
+/*         not be copied, in whole or part, without prior written        */
+/*         consent of Taligent.                                          */
+/*                                                                       */
+/*    RESTRICTED RIGHTS LEGEND: Use, duplication, or disclosure by the   */
+/*         government is subject to restrictions as set forth in         */
+/*         subparagraph (c)(l)(ii) of the Rights in Technical Data and   */
+/*         Computer Software clause at DFARS 252.227-7013 and            */
+/*         FAR 52.227-19.                                                */
+/*                                                                       */
+/*    This product may be protected by one or more U.S. and              */
+/*        International Patents.                                         */
+/*                                                                       */
+/*    TRADEMARKS: Taligent and the Taligent Design Mark are registered   */
+/*        trademarks of Taligent, Inc.                                   */
+/*                                                                       */
+/* - -- --- ---- ----- ------------------------------------------------- */
+
+/****************************************************************************
+*
+*   FILE:  LogTableLD.C
+*
+*   Description:
+*      This file contains the uint32_t array LogTableLD[] used in the
+*      approximation for Log, Log2, Log10, Log1Plus and Power functions
+*      (long double precision) in <Numerics.h> for PowerPC & RS/6000 platforms:
+*
+*      Copyright (C) 1994 Taligent, Inc. All rights reserved.
+*
+*      Modified for Taligent by Yinsun Feng, April, 1994.
+*
+*   MODIFICATION HISTORY:
+*
+****************************************************************************/
+#include "stdint.h"
+
+__private_extern__
+const uint32_t LogTableLD[]  __attribute__ ((aligned(8))) = {
+
+   0x3FF02000, 0x00026746,   0x3FEFC07F, 0x01F74C65,   0x3F7FE02A, 0x6D72E887,   0x3B3F98BF, 0x5125A0D9,
+   0x3FF06000, 0x000C15E4,   0x3FEF4465, 0x9E332ED4,   0x3F97B91B, 0x0AC9738C,   0x3B56E8A1, 0xB39F02BA,  
+   0x3FF0A000, 0x0014A543,   0x3FEECC07, 0xB2DBAE11,   0x3FA39E87, 0xBC7A8F8A,   0x3B626302, 0xA58A48BC,  
+   0x3FF0E000, 0x0011E06B,   0x3FEE573A, 0xC8E1C131,   0x3FAB42DD, 0x7337D5A8,   0x3B6B338C, 0x5DDA3A53,  
+   0x3FF12000, 0x0013DA38,   0x3FEDE5D6, 0xE3D5DDB6,   0x3FB16536, 0xEFCC407C,   0x3B715E8E, 0x0264EABA,  
+   0x3FF16000, 0x000A2948,   0x3FED77B6, 0x54A6F07C,   0x3FB51B07, 0x3F9BCF0A,   0x3B74DB56, 0xDE56C8EF,  
+   0x3FF1A000, 0x0012B0CD,   0x3FED0CB5, 0x8F4FF21D,   0x3FB8C345, 0xD7411583,   0x3B786152, 0x587782F8,  
+   0x3FF1E000, 0x000EE3A6,   0x3FECA4B3, 0x054705AF,   0x3FBC5E54, 0x90310477,   0x3B7C237F, 0x7657770C,
+   0x3FF22000, 0x00153135,   0x3FEC3F8F, 0x01A2F19D,   0x3FBFEC91, 0x33073D1A,   0x3B7FACCC, 0x73F05939,
+   0x3FF26000, 0x00241909,   0x3FEBDD2B, 0x895D49D0,   0x3FC1B72A, 0xD62ADC8D,   0x3B817554, 0xB20DE7D5,   
+   0x3FF2A000, 0x002BCBD4,   0x3FEB7D6C, 0x3D998F3A,   0x3FC371FC, 0x214B8C8E,   0x3B82E934, 0xDA5043A5,   
+   0x3FF2E000, 0x000DA3AC,   0x3FEB2036, 0x4058E6DD,   0x3FC526E5, 0xE3FE32D7,   0x3B851132, 0xC8E084BC,   
+   0x3FF32000, 0x0021AE4E,   0x3FEAC570, 0x1A964A93,   0x3FC6D60F, 0xE7FB3D90,   0x3B86BC1B, 0x66F15A74,   
+   0x3FF36000, 0x00196038,   0x3FEA6D01, 0xA6AD7E27,   0x3FC87FA0, 0x65C86E05,   0x3B887653, 0xDF907BC0,   
+   0x3FF3A000, 0x0021FEB5,   0x3FEA16D3, 0xF94D19C3,   0x3FCA23BC, 0x20C06EFE,   0x3B8A0FA9, 0x3CB516A7,   
+   0x3FF3E000, 0x000D0738,   0x3FE9C2D1, 0x4ED3BE0F,   0x3FCBC286, 0x7481747C,   0x3B8BA61B, 0x516322DC,   
+   0x3FF42000, 0x0026BB6E,   0x3FE970E4, 0xF7DBC1DE,   0x3FCD5C21, 0x6C46142A,   0x3B8CF4E4, 0x5F70ECE3,   
+   0x3FF46000, 0x001A700A,   0x3FE920FB, 0x49B04706,   0x3FCEF0AD, 0xCC826F72,   0x3B8ECCCF, 0xC2085FC9,   
+   0x3FF4A000, 0x0013F66B,   0x3FE8D301, 0x8D1811ED,   0x3FD04025, 0x94F2C209,   0x3B903E90, 0x5D16156B,   
+   0x3FF4E000, 0x0011F43B,   0x3FE886E5, 0xF09697FA,   0x3FD1058B, 0xF9E55645,   0x3B90EE57, 0x086B5AEC,   
+   0x3FF52000, 0x00219250,   0x3FE83C97, 0x7A8C3A9F,   0x3FD1C898, 0xC1CF4F30,   0x3B919E40, 0xEDF99C22,   
+   0x3FF56000, 0x0025844D,   0x3FE7F405, 0xFCD7747F,   0x3FD2895A, 0x144EDB60,   0x3B926EE9, 0x301CD24B,   
+   0x3FF5A000, 0x00426EFC,   0x3FE7AD22, 0x08983088,   0x3FD347DD, 0x9B5D1A24,   0x3B934057, 0xA2FCAF6F,   
+   0x3FF5E000, 0x0023BDD6,   0x3FE767DC, 0xE40E6B97,   0x3FD40430, 0x86EF39B2,   0x3B93FF8C, 0x8952354B,   
+   0x3FF62000, 0x003B535A,   0x3FE72428, 0x7F08D1CD,   0x3FD4BE5F, 0x96231467,   0x3B94825C, 0xC3371E24,   
+   0x3FF66000, 0x001DA1F2,   0x3FE6E1F7, 0x6B24E9B5,   0x3FD57677, 0x179A1CC5,   0x3B956330, 0xFA60E69E,   
+   0x3FF6A000, 0x0037A0C1,   0x3FE6A13C, 0xD11BCEC4,   0x3FD62C82, 0xF35722D2,   0x3B95FA0B, 0x10B586EE,   
+   0x3FF6E000, 0x001B76C0,   0x3FE661EC, 0x6A364397,   0x3FD6E08E, 0xAA78789F,   0x3B96D198, 0x6621D929,   
+   0x3FF72000, 0x003ED5D5,   0x3FE623FA, 0x76C53936,   0x3FD792A5, 0x608B2E43,   0x3B976089, 0x3B698591,   
+   0x3FF76000, 0x003610DA,   0x3FE5E75B, 0xB89D6C37,   0x3FD842D1, 0xDAB292E6,   0x3B982832, 0xEB89C0AF,   
+   0x3FF7A000, 0x0016DE9E,   0x3FE5AC05, 0x6AEC6020,   0x3FD8F11E, 0x877456E8,   0x3B98DD6D, 0x9D2A6F65,   
+   0x3FF7E000, 0x004C046C,   0x3FE571ED, 0x3C0C2377,   0x3FD99D95, 0x81E3A6B3,   0x3B99848C, 0x4BFDF0E3,   
+   0x3FE82000, 0x00393E5C,   0x3FF53909, 0x48C1B475,   0xBFD21445, 0x6C76DD04,   0x3B91F8C3, 0x3DC493A4,   
+   0x3FE86000, 0x003EFB2C,   0x3FF50150, 0x14CB09F5,   0xBFD16B5C, 0xCB079DCA,   0x3B910FAA, 0x072FC35E,   
+   0x3FE8A000, 0x003E6A46,   0x3FF4CAB8, 0x86F0FC55,   0xBFD0C42D, 0x66BF2B99,   0x3B905CD8, 0x563746EF,   
+   0x3FE8E000, 0x00477E7A,   0x3FF49539, 0xE377A7F3,   0xBFD01EAE, 0x556ED4C7,   0x3B8F705E, 0xB9C5B7AA,   
+   0x3FE92000, 0x0037DAA4,   0x3FF460CB, 0xC7C8826B,   0xBFCEF5AD, 0xE3C07315,   0x3B8DE963, 0x957971E5,   
+   0x3FE96000, 0x0031BEA8,   0x3FF42D66, 0x25AD915C,   0xBFCDB13D, 0xAFD99B61,   0x3B8D27CB, 0xE3668C21,   
+   0x3FE9A000, 0x0031523A,   0x3FF3FB01, 0x3F899EFB,   0xBFCC6FFB, 0xC5F9B1E6,   0x3B8BE9E5, 0x5F85EE97,   
+   0x3FE9E000, 0x00343918,   0x3FF3C995, 0xA453BC21,   0xBFCB31D8, 0x56597734,   0x3B8AF392, 0xD52D7571,   
+   0x3FEA2000, 0x00199638,   0x3FF3991C, 0x2C054DA3,   0xBFC9F6C4, 0x068B3974,   0x3B89EE78, 0x9ACC9199,   
+   0x3FEA6000, 0x0033C6EC,   0x3FF3698D, 0xF3B7EB7F,   0xBFC8BEAF, 0xEA3DB758,   0x3B889436, 0x63D97AE8,   
+   0x3FEAA000, 0x00276244,   0x3FF33AE4, 0x5B3B4ABA,   0xBFC7898D, 0x8486F5D7,   0x3B86F513, 0xCA9E0A1C,   
+   0x3FEAE000, 0x001DE89C,   0x3FF30D19, 0x011B9DF1,   0xBFC6574E, 0xBDFDA066,   0x3B86222A, 0xB12C0834,   
+   0x3FEB2000, 0x0037A536,   0x3FF2E025, 0xC024C7B9,   0xBFC527E5, 0xE39B1FE9,   0x3B8458D5, 0xE445BFCF,   
+   0x3FEB6000, 0x000CCE1A,   0x3FF2B404, 0xACF86B95,   0xBFC3FB45, 0xA55D490D,   0x3B83C23D, 0xACE1BFEC,   
+   0x3FEBA000, 0x002CA378,   0x3FF288B0, 0x126ABD40,   0xBFC2D161, 0x0BB7AC3B,   0x3B82B40D, 0x1D2C66D4,   
+   0x3FEBE000, 0x00343A2E,   0x3FF25E22, 0x705E28E9,   0xBFC1AA2B, 0x7D342442,   0x3B812B63, 0x558826AF,   
+   0x3FEC2000, 0x0038FF08,   0x3FF23456, 0x7875D88C,   0xBFC08598, 0xB49AD49F,   0x3B7F3F8E, 0x64C28802,   
+   0x3FEC6000, 0x001B33E6,   0x3FF20B47, 0x0C567468,   0xBFBEC739, 0x8214A4A6,   0x3B7E277B, 0xA41F0AAF,   
+   0x3FECA000, 0x00119564,   0x3FF1E2EF, 0x3B34BBBD,   0xBFBC8858, 0x011F0A29,   0x3B7C3C3D, 0xB4C961E9,   
+   0x3FECE000, 0x001996BC,   0x3FF1BB4A, 0x4037367A,   0xBFBA4E76, 0x3FCEDEB6,   0x3B7989B5, 0x3403569D,   
+   0x3FED2000, 0x0027E986,   0x3FF19453, 0x80748B78,   0xBFB8197E, 0x2DE212FA,   0x3B779AB6, 0x2FAC97BD,   
+   0x3FED6000, 0x0019EB78,   0x3FF16E06, 0x8933124A,   0xBFB5E95A, 0x4CB5AE64,   0x3B754C62, 0x7502E4A2,   
+   0x3FEDA000, 0x0012ADBC,   0x3FF1485F, 0x0DFFE7A7,   0xBFB3BDF5, 0xA73085C0,   0x3B7355A8, 0xD9528443,   
+   0x3FEDE000, 0x0020DF02,   0x3FF12358, 0xE74A54DA,   0xBFB1973B, 0xD02CA8E2,   0x3B711C99, 0x788FFA22,   
+   0x3FEE2000, 0x001D96D8,   0x3FF0FEF0, 0x10EE3E82,   0xBFAEEA31, 0xBE0FD392,   0x3B6E25BF, 0x730D5F04,   
+   0x3FEE6000, 0x000AA830,   0x3FF0DB20, 0xA8895CA2,   0xBFAAAEF2, 0xD0476EBF,   0x3B6A4412, 0x0CC9DB9D,   
+   0x3FEEA000, 0x001B75A4,   0x3FF0B7E6, 0xEC16A042,   0xBFA67C94, 0xF109A73B,   0x3B653651, 0xD572AAB2,   
+   0x3FEEE000, 0x0017A242,   0x3FF0953F, 0x38F457BA,   0xBFA252F3, 0x2E052CD8,   0x3B60EC4F, 0x64C2DE39,   
+   0x3FEF2000, 0x000CF922,   0x3FF07326, 0x0A411C88,   0xBF9C63D2, 0xEA69DB02,   0x3B5C53BD, 0xE86F9708,   
+   0x3FEF6000, 0x000BAB68,   0x3FF05197, 0xF7D12236,   0xBF9432A9, 0x241B2F6E,   0x3B53F5BE, 0x52B566FB,   
+   0x3FEFA000, 0x000E227C,   0x3FF03091, 0xB51821B3,   0xBF882448, 0x9FF5499F,   0x3B472044, 0xA44CCF4D,   
+   0x3FF00000, 0x00000000,   0x3FF00000, 0x00000000,   0x00000000, 0x00000000,   0x00000000, 0x00000000   
+};

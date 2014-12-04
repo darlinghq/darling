@@ -1,0 +1,148 @@
+.\" Copyright (c) 1985, 1991 Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     from: @(#)exp.3	6.12 (Berkeley) 7/31/91
+.\"	$Id: log.3,v 1.5 2004/12/20 21:35:45 scp Exp $
+.\"
+.Dd December 11, 2006
+.Dt LOG 3
+.Os BSD 4
+.Sh NAME
+.Nm log ,
+.Nm log2 ,
+.Nm log10 ,
+.Nm log1p ,
+.Nd logarithm functions
+.Sh SYNOPSIS
+.Fd #include <math.h>
+.Ft double
+.Fn log "double x"
+.Ft long double
+.Fn logl "long double x"
+.Ft float
+.Fn logf "float x"
+.Ft double
+.Fn log2 "double x"
+.Ft long double
+.Fn log2l "long double x"
+.Ft float
+.Fn log2f "float x"
+.Ft double
+.Fn log10 "double x"
+.Ft long double
+.Fn log10l "long double x"
+.Ft float
+.Fn log10f "float x"
+.Ft double
+.Fn log1p "double x"
+.Ft long double
+.Fn log1pl "long double x"
+.Ft float
+.Fn log1pf "float x"
+.Sh DESCRIPTION
+The
+.Fn log
+function computes the value of the natural logarithm of argument 
+.Fa x.
+.Pp
+The
+.Fn log2
+function computes the value of the logarithm of argument
+.Fa x
+to base 2.
+.Pp
+The
+.Fn log10
+function computes the value of the logarithm of argument
+.Fa x
+to base 10.
+.Pp
+The
+.Fn log1p
+function computes
+the value of log(1+x) accurately even for very small values of
+.Fa x .
+.Sh SPECIAL VALUES
+.Fn log "±0"
+, 
+.Fn log2 "±0"
+, and 
+.Fn log10 "±0"
+return -infinity and raise the "divide-by-zero" floating-point exception.
+.Pp
+.Fn log "1"
+, 
+.Fn log2 "1"
+, and 
+.Fn log10 "1"
+return +0.
+.Pp
+.Fn log "x"
+, 
+.Fn log2 "x"
+, and 
+.Fn log10 "x"
+return a NaN and raise the "invalid" floating-point exception for x < 0.
+.Pp
+.Fn log "+infinity"
+, 
+.Fn log2 "+infinity"
+, and 
+.Fn log10 "+infinity"
+return +infinity.
+.Pp
+.Fn log1p "±0"
+returns ±0.
+.Pp
+.Fn log1p "-1"
+returns -infinity and raises the "divide-by-zero" floating-point exception.
+.Pp
+.Fn log1p "x"
+returns a NaN and raises the "invalid" floating-point exception for x < -1.
+.Pp
+.Fn log1p "+infinity"
+returns +infinity.
+.Sh SEE ALSO
+.Xr math 3 ,
+.Xr exp 3 ,
+.Xr exp2 3 ,
+.Xr expm1 3 ,
+.Xr pow 3
+.Sh STANDARDS
+The
+.Fn log
+, 
+.Fn log2
+, 
+.Fn log10
+, and
+.Fn log1p
+functions conform to ISO/IEC 9899:1999(E).

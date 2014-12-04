@@ -1,0 +1,86 @@
+.\" Copyright (c) 2004-2007 Apple Inc. All rights reserved.
+.Dd December 31, 2007
+.Dt PTHREAD_ATTR 3
+.Os
+.Sh NAME
+.Nm pthread_attr_getdetachstate ,
+.Nm pthread_attr_setdetachstate
+.Nd thread attribute operations
+.Sh SYNOPSIS
+.Fd #include <pthread.h>
+.Ft int
+.Fo pthread_attr_getdetachstate
+.Fa "const pthread_attr_t *attr"
+.Fa "int *detachstate"
+.Fc
+.Ft int
+.Fo pthread_attr_setdetachstate
+.Fa "pthread_attr_t *attr"
+.Fa "int detachstate"
+.Fc
+.Sh DESCRIPTION
+Thread attributes are used to specify parameters to
+.Fn pthread_create .
+One attribute object can be used in multiple calls to
+.Fn pthread_create ,
+with or without modifications between calls.
+.Pp
+One of these thread attributes governs the creation state of the new thread. The new thread
+can be either created "detached" or "joinable". The constants corresponding to these states are PTHREAD_CREATE_DETACHED and PTHREAD_CREATE_JOINABLE respectively.
+Creating a "joinable" thread allows the user
+to call
+.Fn pthread_join 
+and
+.Fn pthread_detach ,
+with the new thread's ID. A "detached" thread's ID cannot be used with
+.Fn pthread_join 
+and
+.Fn pthread_detach .
+The default value for the "detachstate" attribute is PTHREAD_CREATE_JOINABLE.
+.Pp
+The
+.Fn pthread_attr_setdetachstate
+function sets the thread's "detachstate" attribute.
+.Pp
+The "detachstate" attribute is set within the
+.Fa attr
+argument, which can subsequently be used as an argument to
+.Fn pthread_create .
+.Sh RETURN VALUES
+If successful, these functions return 0.
+Otherwise, an error number is returned to indicate the error.
+.Fn pthread_attr_getdetachstate ,
+on success, will copy the value of the thread's "detachstate" attribute
+to the location pointed to by the second function parameter.
+.Sh ERRORS
+.Fn pthread_attr_getdetachstate
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr
+.El
+.Pp
+.Fn pthread_attr_setdetachstate
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr
+or
+.Fa detachstate .
+.El
+.Pp
+.Sh SEE ALSO
+.Xr pthread_create 3 ,
+.Xr pthread_join 3 ,
+.Xr pthread_attr_init 3 ,
+.Xr pthread_detach 3
+.Sh STANDARDS
+.Fn pthread_attr_setdetachstate ,
+.Fn pthread_attr_getdetachstate
+conform to
+.St -p1003.1-96
+.Pp

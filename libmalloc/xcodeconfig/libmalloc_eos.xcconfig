@@ -1,0 +1,12 @@
+#include "libmalloc.xcconfig"
+
+BUILD_VARIANTS = normal
+EXECUTABLE_PREFIX = lib
+INSTALL_PATH = /usr/local/lib/eOS
+PRODUCT_NAME = malloc_eOS
+SKIP_INSTALL = YES
+SKIP_INSTALL[sdk=iphoneos*] = NO
+STRIP_INSTALLED_PRODUCT = NO
+VERSIONING_SYSTEM = apple-generic
+MACH_O_TYPE = staticlib
+OTHER_LDFLAGS =

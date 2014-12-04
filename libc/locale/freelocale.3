@@ -1,0 +1,30 @@
+.Dd March 11, 2005
+.Dt FREELOCALE 3
+.Os
+.Sh NAME
+.Nm freelocale
+.Nd Frees an allocated locale
+.Sh SYNOPSIS
+.In xlocale.h
+.Ft int
+.Fn freelocale "locale_t loc"
+.Sh DESCRIPTION
+Frees the storage associated with
+.Va loc .
+Sub-structures have their reference counts reduced,
+and are freed if the reference count becomes zero.
+.Sh RETURN VALUES
+Returns zero on success, -1 on error. An error will occur if
+.Va loc
+is not a
+.Vt locale_t ,
+or is
+.Dv NULL
+or
+.Dv LC_GLOBAL_LOCALE .
+.Sh SEE ALSO
+.Xr duplocale 3 ,
+.Xr newlocale 3 ,
+.Xr querylocale 3 ,
+.Xr uselocale 3 ,
+.Xr xlocale 3

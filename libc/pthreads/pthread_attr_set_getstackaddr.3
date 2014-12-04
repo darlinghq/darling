@@ -1,0 +1,74 @@
+.\" Copyright (c) 2004-2007 Apple Inc. All rights reserved.
+.Dd December 31, 2007
+.Dt PTHREAD_ATTR 3
+.Os
+.Sh NAME
+.Nm pthread_attr_getstackaddr ,
+.Nm pthread_attr_setstackaddr
+.Nd thread attribute operations
+.Sh SYNOPSIS
+.Fd #include <pthread.h>
+.Ft int
+.Fo pthread_attr_getstackaddr
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "void **restrict stackaddr"
+.Fc
+.Ft int
+.Fo pthread_attr_setstackaddr
+.Fa "pthread_attr_t *attr"
+.Fa "void *stackaddr"
+.Fc
+.Sh DESCRIPTION
+Thread attributes are used to specify parameters to
+.Fn pthread_create .
+One attribute object can be used in multiple calls to
+.Fn pthread_create ,
+with or without modifications between calls.
+.Pp
+The functions 
+.Fn pthread_attr_setstackaddr
+and 
+.Fn pthread_attr_getstackaddr
+respectively, set and get the address at which the stack of the newly created thread should be located.
+The stackaddr attribute is set within the
+.Fa attr
+argument, which can subsequently be used as an argument to
+.Fn pthread_create .
+.Sh RETURN VALUES
+If successful, these functions return 0.
+Otherwise, an error number is returned to indicate the error.
+.Fn pthread_attr_getstackaddr
+returns the stackaddr attribute value in 
+.Fa stackaddr 
+if successful.
+.Sh ERRORS
+.Fn pthread_attr_setstackaddr
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.\" ========
+.El
+.Pp
+.Fn pthread_attr_getstackaddr
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.\" ========
+.El
+.Pp
+.Sh SEE ALSO
+.Xr pthread_create 3 ,
+.Xr pthread_attr_init 3 ,
+.Xr pthread_attr_setdetachstate 3 ,
+.Xr pthread_attr_setstacksize 3
+.Sh STANDARDS
+.Fn pthread_attr_setstackaddr ,
+.Fn pthread_attr_getstackaddr ,
+conform to
+.St -p1003.1-96

@@ -1,0 +1,67 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CSIN 3
+.Os BSD 4
+.Sh NAME
+.Nm csin
+.Nd complex sine function
+.br
+.Nm ccos
+.Nd complex cosine function
+.br
+.Nm ctan
+.Nd complex tangent function
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double complex
+.Fn csin "double complex z"
+.Ft long double complex
+.Fn csinl "long double complex z"
+.Ft float complex
+.Fn csinf "float complex z"
+.Ft double complex
+.Fn ccos "double complex z"
+.Ft long double complex
+.Fn ccosl "long double complex z"
+.Ft float complex
+.Fn ccosf "float complex z"
+.Ft double complex
+.Fn ctan "double complex z"
+.Ft long double complex
+.Fn ctanl "long double complex z"
+.Ft float complex
+.Fn ctanf "float complex z"
+.Sh DESCRIPTION
+.Fn csin "z"
+computes the sine of the complex floating-point number
+.Fa z .
+.Pp
+.Fn ccos "z"
+computes the cosine of the complex floating-point number
+.Fa z .
+.Pp
+.Fn ctan "z"
+computes the tangent of the complex floating-point number
+.Fa z .
+.Sh NOTES
+csin, ccos, and ctan are defined in terms of the complex hyperbolic functions as follows:
+.Bd -literal -offset indent
+csin(z) = -i * csinh(i*z),
+.br
+ccos(z) = ccosh(i*z),
+.br
+ctan(z) = -i * ctanh(i*z).
+.Ed
+.Sh SEE ALSO
+.Xr csinh 3
+.Xr ccosh 3
+.Xr ctanh 3
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn csin ,
+.Fn ccos ,
+and
+.Fn ctan
+functions conform to ISO/IEC 9899:1999(E).

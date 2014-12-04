@@ -1,0 +1,47 @@
+#include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
+#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
+
+DEAD_CODE_STRIPPING = NO
+
+SUPPORTED_PLATFORMS = macosx iphoneos iphonesimulator iphoneosnano iphonesimulatornano
+BUILD_VARIANTS = normal debug
+
+OTHER_CFLAGS = -fdollars-in-identifiers -fno-common
+OTHER_CFLAGS_debug = -fstack-protector -fno-inline -O0 -DDEBUG=1
+
+//GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES
+GCC_WARN_UNUSED_FUNCTION = YES
+GCC_WARN_UNUSED_LABEL = YES
+//GCC_WARN_UNUSED_PARAMETER = YES
+GCC_WARN_UNUSED_VALUE = YES
+GCC_WARN_UNUSED_VARIABLE = YES
+
+LINK_WITH_STANDARD_LIBRARIES = NO
+OTHER_LDFLAGS = -all_load -L/usr/lib/system -umbrella System $(CR_LDFLAGS) $(LIBCOMPILER_RT_LDFLAGS) $(LIBDYLD_LDFLAGS) $(LIBSYSCALL_LDFLAGS) $(LIBPLATFORM_LDFLAGS) $(UPLINK_LDFLAGS)
+
+CR_LDFLAGS = -lCrashReporterClient
+LIBCOMPILER_RT_LDFLAGS = -lcompiler_rt
+LIBPLATFORM_LDFLAGS = -lsystem_platform
+LIBPLATFORM_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_platform
+LIBSYSCALL_LDFLAGS = -lsystem_kernel
+LIBSYSCALL_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_kernel
+LIBDYLD_LDFLAGS = -ldyld
+
+// TODO: Eliminate the crosslink between libmalloc and Libc (stdio for stack logging, spinlocks)
+UPLINK_LDFLAGS = -Wl,-upward-lsystem_c
+UPLINK_LDFLAGS[sdk=iphonesimulator*] = -Wl,-upward-lsystem_sim_c
+
+ORDER_FILE = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/$(PRODUCT_NAME).order
+ORDER_FILE[sdk=iphonesimulator*] =
+
+DYLIB_CURRENT_VERSION = $(CURRENT_PROJECT_VERSION)
+
+PRODUCT_NAME = libsystem_malloc
+PUBLIC_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/include/malloc
+PRIVATE_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/local/include
+
+INSTALL_PATH_ACTUAL = /usr/lib/system
+INSTALL_PATH[sdk=macosx*] = $(INSTALL_PATH_ACTUAL)
+
+SYSTEM_FRAMEWORK_HEADERS = $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+HEADER_SEARCH_PATHS = $(DERIVED_FILES_DIR)/dtrace $(SRCROOT)/include $(SYSTEM_FRAMEWORK_HEADERS) $(SDKROOT)/usr/local/include $(inherited)

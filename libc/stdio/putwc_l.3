@@ -1,0 +1,78 @@
+.\"	$NetBSD: putwc.3,v 1.2 2002/02/07 07:00:26 ross Exp $
+.\"
+.\" Copyright (c) 1990, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek and the American National Standards Committee X3,
+.\" on Information Processing Systems.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)putc.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/stdio/putwc.3,v 1.7 2004/03/16 13:30:11 tjr Exp $
+.\"
+.Dd March 11, 2005
+.Dt PUTWC_L 3
+.Os
+.Sh NAME
+.Nm fputwc_l ,
+.Nm putwc_l ,
+.Nm putwchar_l
+.Nd output a wide character to a stream
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In stdio.h
+.In wchar.h
+.In xlocale.h
+.Ft wint_t
+.Fn fputwc_l "wchar_t wc" "FILE *stream" "locale_t loc"
+.Ft wint_t
+.Fn putwc_l "wchar_t wc" "FILE *stream" "locale_t loc"
+.Ft wint_t
+.Fn putwchar_l "wchar_t wc" "locale_t loc"
+.Sh DESCRIPTION
+The
+.Fn fputwc_l ,
+.Fn putwc_l ,
+and
+.Fn putwchar_l
+functions are extended locale versions of the
+.Fn fputwc ,
+.Fn putwc ,
+and
+.Fn putwchar
+functions, respectively.
+Refer to their manual pages for details.
+Also, see
+.Xr xlocale 3 for more information about extended locales.
+.Sh SEE ALSO
+.Xr putwc 3 ,
+.Xr xlocale 3

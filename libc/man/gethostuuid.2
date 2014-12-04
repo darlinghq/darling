@@ -1,0 +1,55 @@
+.Dd Nov 5, 2008
+.Dt GETHOSTUUID \&2 "Mac OS X System Calls Manual"
+.Os "Mac OS X"
+.Sh NAME
+.Nm gethostuuid
+.Nd return a unique identifier for the current machine
+.Sh SYNOPSIS
+.In unistd.h
+.Ft int
+.Fo gethostuuid
+.Fa "uuid_t id"
+.Fa "const struct timespec *wait"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn gethostuuid
+function returns a 16-byte
+.Ft uuid_t
+specified by
+.Fa id ,
+that uniquely identifies the current machine.
+Be aware that the hardware identifiers that
+.Fn gethostuuid
+uses to generate the UUID can themselves be modified.
+.Pp
+The
+.Fa wait
+argument is a pointer to a
+.Ft "struct timespec"
+that specifies the maximum time to wait for the result.
+Setting the
+.Fa tv_sec
+and
+.Fa tv_nsec
+fields to zero means to wait indefinitely until it completes.
+.Sh RETURN VALUES
+The
+.Fn gethostuuid
+function returns zero on success or -1 on error.
+.Sh ERRORS
+The
+.Fn gethostuuid
+functions fails if:
+.Bl -tag -width Er
+.It Bq Er EFAULT
+.Fa wait
+points to memory that is not a valid part of the process
+address space.
+.It Bq Er EWOULDBLOCK
+The
+.Fa wait
+timeout expired before the UUID could be obtained.
+.El
+.Sh SEE ALSO
+.Xr uuid 3
