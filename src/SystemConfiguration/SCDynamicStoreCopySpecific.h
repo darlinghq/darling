@@ -1,22 +1,13 @@
+#ifndef SCDYNAMICSTORECOPYSPECIFIC_H
+#define SCDYNAMICSTORECOPYSPECIFIC_H
+
 #include <CoreFoundation/CoreFoundation.h>
 #include <SystemConfiguration/SCDynamicStore.h>
+#include <SystemConfiguration/SCSchemaDefinitions.h>
 
+#ifdef __cplusplus
 extern "C" {
-
-CF_EXPORT const CFStringRef kSCPropNetProxiesExceptionsList;
-CF_EXPORT const CFStringRef kSCPropNetProxiesHTTPEnable;
-CF_EXPORT const CFStringRef kSCPropNetProxiesHTTPSEnable;
-CF_EXPORT const CFStringRef kSCPropNetProxiesHTTPPort;
-CF_EXPORT const CFStringRef kSCPropNetProxiesHTTPProxy;
-CF_EXPORT const CFStringRef kSCPropNetProxiesHTTPSProxy;
-CF_EXPORT const CFStringRef kSCPropNetProxiesHTTPSPort;
-CF_EXPORT const CFStringRef kSCPropNetProxiesFTPEnable;
-CF_EXPORT const CFStringRef kSCPropNetProxiesFTPProxy;
-CF_EXPORT const CFStringRef kSCPropNetProxiesFTPPort;
-CF_EXPORT const CFStringRef kSCPropNetProxiesFTPPassive;
-CF_EXPORT const CFStringRef kSCPropNetProxiesSOCKSEnable;
-CF_EXPORT const CFStringRef kSCPropNetProxiesSOCKSPort;
-CF_EXPORT const CFStringRef kSCPropNetProxiesSOCKSProxy;
+#endif
 
 CFStringRef SCDynamicStoreCopyComputerName (SCDynamicStoreRef store, CFStringEncoding *nameEncoding);
 CFStringRef SCDynamicStoreCopyConsoleUser (SCDynamicStoreRef store, uid_t *uid, gid_t *gid);
@@ -24,4 +15,9 @@ CFStringRef SCDynamicStoreCopyLocalHostName (SCDynamicStoreRef store);
 CFStringRef SCDynamicStoreCopyLocation (SCDynamicStoreRef store);
 CFDictionaryRef SCDynamicStoreCopyProxies (SCDynamicStoreRef store);
 
+#ifdef __cplusplus
 }
+#endif
+
+#endif
+

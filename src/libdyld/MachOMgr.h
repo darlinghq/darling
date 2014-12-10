@@ -123,6 +123,7 @@ public:
 	void remove(NativeObject* obj);
 	void notifyAdd(MachOObject* obj);
 	
+	bool isDestroying() const { return m_destroying; }
 	static bool isTerminated() { return m_bTerminated; }
 protected:
 	friend class MachOObject;
@@ -159,6 +160,7 @@ private:
 	
 	std::set<LoaderHookFunc*> m_loadHooks, m_unloadHooks;
 	bool m_addedDefaultLoader;
+	bool m_destroying;
 	static bool m_bTerminated;
 };
 

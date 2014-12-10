@@ -58,6 +58,9 @@ int main(int argc, char** argv, char** envp)
 			mgr->setUseTrampolines(true, path);
 		
 		obj = new MachOObject(argv[1]);
+		if (!obj->isMainModule())
+			throw std::runtime_error("Not an MH_EXECUTE file");
+		
 		obj->setCommandLine(argc-1, &argv[1], envp);
 
 		obj->load();

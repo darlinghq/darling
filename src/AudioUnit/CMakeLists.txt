@@ -28,7 +28,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(AudioUnit SHARED ${AudioUnit_SRCS})
-target_link_libraries(AudioUnit util -lasound -ldispatch)
+target_link_libraries(AudioUnit util -lasound -ldispatch -lgnustep-corebase)
 
 install(TARGETS AudioUnit DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

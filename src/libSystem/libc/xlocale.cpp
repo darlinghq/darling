@@ -77,3 +77,13 @@ wctype_t wctype_l(const char *property, locale_t loc) throw()
 	return UseLocale<int>(wctype, loc, property);
 }
 
+int ___mb_cur_max_l(locale_t loc)
+{
+	return UseLocale<int>(___mb_cur_max, loc);
+}
+
+int ___mb_cur_max(void)
+{
+	return MB_CUR_MAX;
+}
+

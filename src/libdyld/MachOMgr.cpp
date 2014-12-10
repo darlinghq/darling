@@ -15,12 +15,14 @@ MachOMgr::MachOMgr()
 : m_mainModule(nullptr), m_bindAtLaunch(false), m_printInitializers(false),
   m_printLibraries(false), m_printSegments(false), m_printBindings(false),
   m_printRpathExpansion(false), m_loadAny(false),
-  m_addedDefaultLoader(false)
+  m_addedDefaultLoader(false), m_destroying(false)
 {
 }
 
 MachOMgr::~MachOMgr()
 {
+	m_destroying = true;
+	
 	if (m_mainModule)
 		m_mainModule->delRef();
 

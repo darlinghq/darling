@@ -19,6 +19,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
 
 set(SystemConfiguration_SRCS
 	SCDynamicStoreCopySpecific.cpp
+	SCSchemaDefinitions.cpp
 )
 
 add_library(SystemConfiguration SHARED ${SystemConfiguration_SRCS})

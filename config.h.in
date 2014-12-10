@@ -10,6 +10,7 @@
 
 #cmakedefine MULTILIB
 #cmakedefine FRAMEWORK_COREAUDIO
+#cmakedefine FRAMEWORK_APPKIT
 
 /*
  * Credit: 

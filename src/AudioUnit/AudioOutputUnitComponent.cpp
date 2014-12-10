@@ -3,7 +3,7 @@
 #include <cstring>
 
 AudioOutputUnitComponent::AudioOutputUnitComponent()
-: AudioUnitComponent(2)
+: AudioUnitComponent({ CFSTR("Sound card output"), CFSTR("Sound card input") })
 {
 	memset(&m_outputCallback, 0, sizeof(m_outputCallback));
 }

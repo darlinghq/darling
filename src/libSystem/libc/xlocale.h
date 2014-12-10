@@ -38,6 +38,9 @@ int iswnumber(wint_t wc) throw();
 int iswctype_l(wint_t wc, wctype_t charclass, locale_t loc) throw();
 wctype_t wctype_l(const char *property, locale_t loc) throw();
 
+int ___mb_cur_max_l(locale_t loc);
+int ___mb_cur_max(void);
+
 
 /*
 TODO:

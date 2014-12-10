@@ -185,8 +185,12 @@ void MachOObject::unload()
 	
 	teardownTLS();
 	runFinalizers();
-	unloadSegments();
-	unregisterEHSection();
+	
+	if (!MachOMgr::instance()->isDestroying())
+	{
+		unloadSegments();
+		unregisterEHSection();
+	}
 	
 	for (LoadableObject* dep : m_dependencies)
 		dep->delRef();
@@ -317,7 +321,7 @@ uintptr_t MachOObject::getTotalMappingSize()
 
 	for (Segment* seg : getSegments(*m_file))
 	{
-		if (strcmp(seg->segname, "__PAGEZERO") == 0)
+		if (strcmp(seg->segname, SEG_PAGEZERO) == 0)
 			continue;
 		if (seg->vmaddr < minAddr)
 			minAddr = seg->vmaddr;

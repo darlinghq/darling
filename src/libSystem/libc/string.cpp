@@ -28,11 +28,6 @@ int __mb_cur_max()
 	return MB_CUR_MAX;
 }
 
-int ___mb_cur_max()
-{
-	return MB_CUR_MAX;
-}
-
 int __toupper(int c)
 {
 	return toupper(c);

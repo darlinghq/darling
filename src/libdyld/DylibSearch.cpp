@@ -216,7 +216,7 @@ std::string DylibSearch::resolveViaRpath(std::string name, MachOObject* requeste
 {
 	bool print = MachOMgr::instance()->printRpathExpansion();
 
-	for (const auto rpath : requester->runPaths())
+	for (const auto& rpath : requester->runPaths())
 	{
 		std::string expanded = name;
 		std::string result;

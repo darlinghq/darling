@@ -40,8 +40,7 @@ OSStatus AudioConverterGetProperty(AudioConverterRef inAudioConverter, AudioConv
 
 OSStatus AudioConverterGetPropertyInfo(AudioConverterRef inAudioConverter, AudioConverterPropertyID inPropertyID, UInt32 *outSize, Boolean *outWritable)
 {
-	STUB();
-	return unimpErr;
+	return inAudioConverter->getPropertyInfo(inPropertyID, outSize, outWritable);
 }
 
 OSStatus AudioConverterSetProperty(AudioConverterRef inAudioConverter, AudioConverterPropertyID inPropertyID, UInt32 inPropertyDataSize, const void *inPropertyData)
@@ -81,8 +80,10 @@ OSStatus AudioConverterConvertComplexBuffer(AudioConverterRef inAudioConverter, 
 	OSStatus status;
 	UInt32 dataPacketSize;
 	int64_t totalOutBytes = 0;
-
-	AudioConverterComplexInputDataProc proc = [](AudioConverterRef audioConverter, UInt32* numberDataPackets, AudioBufferList* data, AudioStreamPacketDescription** dataPacketDescription, void* userData) -> OSStatus
+	typedef OSStatus (^CallbackBlock)(AudioConverterRef audioConverter, UInt32* numberDataPackets, AudioBufferList* data, AudioStreamPacketDescription** dataPacketDescription);
+	
+	CallbackBlock callbackBlock =
+		^(AudioConverterRef audioConverter, UInt32* numberDataPackets, AudioBufferList* data, AudioStreamPacketDescription** dataPacketDescription)
 	{
 		const AudioBufferList *inInputData = (AudioBufferList*) inInputData;
 
@@ -92,6 +93,13 @@ OSStatus AudioConverterConvertComplexBuffer(AudioConverterRef inAudioConverter, 
 		// TODO
 
 		return unimpErr;
+	};
+
+	// Squeezing a block through a function pointer
+	AudioConverterComplexInputDataProc proc = [](AudioConverterRef audioConverter, UInt32* numberDataPackets, AudioBufferList* data, AudioStreamPacketDescription** dataPacketDescription, void* userData) -> OSStatus
+	{
+		CallbackBlock callbackBlock = (CallbackBlock) userData;
+		return callbackBlock(audioConverter, numberDataPackets, data, dataPacketDescription);
 	};
 
 	for (UInt32 i = 0; i < outOutputData->mNumberBuffers; i++)

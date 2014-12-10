@@ -7,8 +7,11 @@
 extern "C" {
 #endif
 
-
+#ifdef __cplusplus
 class AudioConverter;
+#else
+typedef struct AudioConverter AudioConverter;
+#endif
 
 typedef UInt32 AudioConverterPropertyID;
 typedef AudioConverter* AudioConverterRef;

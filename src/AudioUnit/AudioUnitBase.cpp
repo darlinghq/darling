@@ -5,9 +5,10 @@
 #include <util/debug.h>
 #include <cstring>
 
-AudioUnitComponent::AudioUnitComponent(size_t numElements)
+AudioUnitComponent::AudioUnitComponent(std::initializer_list<CFStringRef> elements)
 {
-	m_config.resize(numElements);
+	m_elementNames.insert(m_elementNames.end(), elements.begin(), elements.end());
+	m_config.resize(m_elementNames.size());
 	
 	// Default audio params
 	const AudioStreamBasicDescription defaultConfig = AudioStreamBasicDescription {
@@ -15,7 +16,7 @@ AudioUnitComponent::AudioUnitComponent(size_t numElements)
 		4, 1, 4, 2, 16, 0
 	};
 	
-	for (size_t i = 0; i < numElements; i++)
+	for (size_t i = 0; i < m_config.size(); i++)
 	{
 		m_config[i] = std::pair<AudioStreamBasicDescription, AudioStreamBasicDescription>(defaultConfig, defaultConfig);
 	}
@@ -48,6 +49,22 @@ OSStatus AudioUnitComponent::getPropertyInfo(AudioUnitPropertyID prop, AudioUnit
 			*dataSize = sizeof(int);
 			*writable = true;
 			break;
+		case kAudioUnitProperty_ElementCount:
+			*dataSize = sizeof(UInt32);
+			*writable = false;
+			break;
+		case kAudioUnitProperty_LastRenderError: // TODO: implement
+			*dataSize = sizeof(OSStatus);
+			*writable = false;
+			break;
+		case kAudioUnitProperty_SampleRate: // TODO: implement
+			*dataSize = sizeof(Float64);
+			*writable = true; // TODO: query itself on kAudioUnitProperty_StreamFormat if writable
+			break;
+		case kAudioUnitProperty_ElementName:
+			*dataSize = sizeof(CFStringRef);
+			*writable = false;
+			break;
 		default:
 			return kAudioUnitErr_InvalidProperty;
 	}
@@ -77,6 +94,8 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 				m_config[elem].second = *newConfig;
 			else if (scope == kAudioUnitScope_Input)
 				m_config[elem].first = *newConfig;
+			else if (scope == kAudioUnitScope_Global)
+				m_config[0].second = *newConfig;
 			else
 				return kAudioUnitErr_InvalidScope;
 
@@ -107,6 +126,9 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 				return kAudioUnitErr_InvalidParameter;
 			if (scope != kAudioUnitScope_Input)
 				return kAudioUnitErr_InvalidScope;
+			
+			// TODO: support multiple units!
+			// TODO: reconfigure input format based on output format
 			
 			CloseComponent(m_inputUnit.sourceAudioUnit); // TODO: wrong, we may not own the unit!
 			memcpy(&m_inputUnit, data, sizeof(AudioUnitConnection));
@@ -147,6 +169,8 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 				*newConfig = m_config[elem].second;
 			else if (scope == kAudioUnitScope_Input)
 				*newConfig = m_config[elem].first;
+			if (scope == kAudioUnitScope_Global)
+				*newConfig = m_config[0].second;
 			else
 				return kAudioUnitErr_InvalidScope;
 
@@ -161,6 +185,26 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 				return kAudioUnitErr_InvalidParameter;
 			
 			*out = m_shouldAllocateBuffer;
+			return noErr;
+		}
+		case kAudioUnitProperty_ElementCount:
+		{
+			UInt32* out = (UInt32*) data;
+			if (*dataSize < sizeof(UInt32))
+				return kAudioUnitErr_InvalidParameter;
+			
+			*out = m_config.size();
+			return noErr;
+		}
+		case kAudioUnitProperty_ElementName:
+		{
+			CFStringRef* out = (CFStringRef*) data;
+			if (*dataSize != sizeof(CFStringRef))
+				return kAudioUnitErr_InvalidParameter;
+			if (elem >= m_elementNames.size())
+				return kAudioUnitErr_InvalidElement;
+			
+			*out = m_elementNames[elem];
 			return noErr;
 		}
 		default:
