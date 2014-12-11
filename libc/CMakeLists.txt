@@ -23,6 +23,7 @@ add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__)
 add_definitions("'-D__weak_reference(sym,alias)=__asm__(\".weak alias\");__asm__(\".equ alias, sym\")'")
+add_definitions("'-D__warn_references(name,warning)='")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--unresolved-symbols=ignore-all")
@@ -36,6 +37,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/gen")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/locale/FreeBSD")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/NetBSD")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/stdtime/FreeBSD")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../external/libdispatch")
 
 add_subdirectory(db) # produces libc-db
 add_subdirectory(compat-43) # produces libc-compat
@@ -49,6 +51,7 @@ add_subdirectory(string)
 add_subdirectory(stdtime)
 add_subdirectory(sys)
 add_subdirectory(stdlib)
+add_subdirectory(stdio)
 
 add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-db>
@@ -61,6 +64,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-string>
 	$<TARGET_OBJECTS:libc-stdtime>
 	$<TARGET_OBJECTS:libc-sys>
-	$<TARGET_OBJECTS:libc-stdlib>)
+	$<TARGET_OBJECTS:libc-stdlib>
+	$<TARGET_OBJECTS:libc-stdio>)
 
 #SET_TARGET_PROPERTIES(system_c PROPERTIES LINKER_LANGUAGE C)

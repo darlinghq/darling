@@ -36,9 +36,9 @@ set(stdlib_sources ${stdlib_sources}
 	FreeBSD/lsearch.c
 	FreeBSD/merge_b.c
 	FreeBSD/merge.c
-	FreeBSD/psort_b.c
+	#FreeBSD/psort_b.c
 	FreeBSD/psort.c
-	FreeBSD/psort_r.c
+	#FreeBSD/psort_r.c
 	FreeBSD/putenv.c
 	#FreeBSD/qsort.c
 	#FreeBSD/qsort_r.c
