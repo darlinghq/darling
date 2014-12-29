@@ -2,7 +2,7 @@ project(libc-pthreads)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include/commpage.h -include ${CMAKE_CURRENT_SOURCE_DIR}/../../platform-include/sys/time.h")
+set(CMAKE_C_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include/commpage.h -include ${CMAKE_CURRENT_SOURCE_DIR}/../../platform-include/sys/time.h")
 
 set(pthreads_sources
 	pthread.c
@@ -19,4 +19,10 @@ SET_SOURCE_FILES_PROPERTIES(pthread_cancelable.c PROPERTIES COMPILE_FLAGS "${CMA
 SET_SOURCE_FILES_PROPERTIES(thread_setup.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
 
 add_library(libc-pthreads OBJECT ${pthreads_sources})
+
+set(pthreads-cancelable_sources
+	pthread_cancelable.c)
+
+add_library(libc-pthreads_cancelable OBJECT ${pthreads-cancelable_sources})
+SET_TARGET_PROPERTIES(libc-pthreads_cancelable PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_CANCELABLE")
 

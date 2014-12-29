@@ -334,7 +334,13 @@ int	cfsetispeed(struct termios *, speed_t);
 int	cfsetospeed(struct termios *, speed_t);
 int	tcgetattr(int, struct termios *);
 int	tcsetattr(int, int, const struct termios *);
+
+#ifndef LIBC_ALIAS_TCDRAIN
 int	tcdrain(int) __DARWIN_ALIAS_C(tcdrain);
+#else
+int	tcdrain(int) LIBC_ALIAS_C(tcdrain);
+#endif
+
 int	tcflow(int, int);
 int	tcflush(int, int);
 int	tcsendbreak(int, int);

@@ -23,7 +23,9 @@ add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
-add_definitions("'-D__weak_reference(sym,alias)=__asm__(\".weak alias\");__asm__(\".equ alias, sym\")'")
+add_definitions(-D__LIBC__ -D__DARWIN_UNIX03=1 -D__DARWIN_64_BIT_INO_T=1 -D__DARWIN_NON_CANCELABLE=1 -D__DARWIN_VERS_1050=1)
+# add_definitions("'-D__weak_reference(sym,alias)=__asm__(\".weak \" \\\#alias );__asm__(\".equ \" \\\#alias \", \" \\\#sym)'")
+add_definitions("'-D__weak_reference(sym,alias)='")
 add_definitions("'-D__warn_references(name,warning)='")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
@@ -60,8 +62,10 @@ add_subdirectory(pthreads)
 add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-db>
 	$<TARGET_OBJECTS:libc-compat>
+	$<TARGET_OBJECTS:libc-compat_cancelable>
 	$<TARGET_OBJECTS:libc-emulated>
 	$<TARGET_OBJECTS:libc-gen>
+	$<TARGET_OBJECTS:libc-gen_cancelable>
 	$<TARGET_OBJECTS:libc-gmon>
 	$<TARGET_OBJECTS:libc-uuid>
 	$<TARGET_OBJECTS:libc-util>
@@ -69,10 +73,12 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-stdtime>
 	$<TARGET_OBJECTS:libc-sys>
 	$<TARGET_OBJECTS:libc-stdlib>
+	$<TARGET_OBJECTS:libc-stdlib_cancelable>
 	$<TARGET_OBJECTS:libc-stdio>
 	$<TARGET_OBJECTS:libc-secure>
 	$<TARGET_OBJECTS:libc-regex>
-	$<TARGET_OBJECTS:libc-pthreads>)
+	$<TARGET_OBJECTS:libc-pthreads>
+	$<TARGET_OBJECTS:libc-pthreads_cancelable>)
 
 # TODO: see ./xcodescripts/variants.xcconfig
 

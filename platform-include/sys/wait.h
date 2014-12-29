@@ -245,8 +245,18 @@ union wait {
 #endif /* !__DARWIN_UNIX03 */
 
 __BEGIN_DECLS
+#ifndef LIBC_ALIAS_WAIT
 pid_t	wait(int *) __DARWIN_ALIAS_C(wait);
+#else
+pid_t	wait(int *) LIBC_ALIAS_C(wait);
+#endif
+
+#ifndef LIBC_ALIAS_WAITPID
 pid_t	waitpid(pid_t, int *, int) __DARWIN_ALIAS_C(waitpid);
+#else
+pid_t	waitpid(pid_t, int *, int) LIBC_ALIAS_C(waitpid);
+#endif
+
 #ifndef _ANSI_SOURCE
 int	waitid(idtype_t, id_t, siginfo_t *, int) __DARWIN_ALIAS_C(waitid);
 #endif /* !_ANSI_SOURCE */

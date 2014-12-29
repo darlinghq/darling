@@ -469,7 +469,11 @@ int	open(const char *, int, ...) __DARWIN_ALIAS_C(open);
 #if __DARWIN_C_LEVEL >= 200809L
 int	openat(int, const char *, int, ...) __DARWIN_NOCANCEL(openat) __OSX_AVAILABLE_STARTING(__MAC_10_10, __IPHONE_8_0);
 #endif
+#ifndef LIBC_ALIAS_CREAT
 int	creat(const char *, mode_t) __DARWIN_ALIAS_C(creat);
+#else
+int	creat(const char *, mode_t) LIBC_ALIAS_C(creat);
+#endif
 int	fcntl(int, int, ...) __DARWIN_ALIAS_C(fcntl);
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 

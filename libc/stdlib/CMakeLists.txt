@@ -2,7 +2,7 @@ project(libc-stdlib)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D__DYNAMIC__ -D__BLOCKS__ -fblocks")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D__DYNAMIC__ -D__BLOCKS__ -fblocks -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
 
 set(stdlib_sources a64l.c grantpt.c l64a.c qsort_b-fbsd.c)
 
@@ -74,6 +74,11 @@ set(stdlib_sources ${stdlib_sources}
 	NetBSD/strfmon.c
 )
 
-#SET_SOURCE_FILES_PROPERTIES(FreeBSD/killpg.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_KILLPG")
+SET_SOURCE_FILES_PROPERTIES(FreeBSD/system.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SYSTEM")
 
 add_library(libc-stdlib OBJECT ${stdlib_sources})
+
+# Cancelable variant
+set(stdlib-cancelable_sources FreeBSD/system.c)
+add_library(libc-stdlib_cancelable OBJECT ${stdlib-cancelable_sources})
+SET_TARGET_PROPERTIES(libc-stdlib_cancelable PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_CANCELABLE")
