@@ -485,6 +485,7 @@
 /*
  * symbol versioning macros
  */
+#ifndef DARLING
 #define __DARWIN_ALIAS(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_UNIX03)
 #define __DARWIN_ALIAS_C(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_NON_CANCELABLE __DARWIN_SUF_UNIX03)
 #define __DARWIN_ALIAS_I(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_64_BIT_INO_T __DARWIN_SUF_UNIX03)
@@ -499,6 +500,29 @@
 
 #define __DARWIN_EXTSN(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_EXTSN)
 #define __DARWIN_EXTSN_C(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_EXTSN __DARWIN_SUF_NON_CANCELABLE)
+#else // DARLING
+/*
+ * Darling doesn't use underscore prefixing for symbols just like the rest of the Linux world.
+ * Using prefixing causes symbol naming conflicts, i.e. the following declarations result in the same symbol name:
+ * * pthread_testcancel() asm("_pthread_testcancel");
+ * * _pthread_testcancel()
+ * while on OS X, the latter would have symbol name __pthread_testcancel().
+ */
+#define __DARWIN_ALIAS(sym)		__asm(__STRING(sym) __DARWIN_SUF_UNIX03)
+#define __DARWIN_ALIAS_C(sym)		__asm(__STRING(sym) __DARWIN_SUF_NON_CANCELABLE __DARWIN_SUF_UNIX03)
+#define __DARWIN_ALIAS_I(sym)		__asm(__STRING(sym) __DARWIN_SUF_64_BIT_INO_T __DARWIN_SUF_UNIX03)
+#define __DARWIN_NOCANCEL(sym)  	__asm(__STRING(sym) __DARWIN_SUF_NON_CANCELABLE)
+#define __DARWIN_INODE64(sym)		__asm(__STRING(sym) __DARWIN_SUF_64_BIT_INO_T)
+
+#define __DARWIN_1050(sym)		__asm(__STRING(sym) __DARWIN_SUF_1050)
+#define __DARWIN_1050ALIAS(sym)		__asm(__STRING(sym) __DARWIN_SUF_1050 __DARWIN_SUF_UNIX03)
+#define __DARWIN_1050ALIAS_C(sym)	__asm(__STRING(sym) __DARWIN_SUF_1050 __DARWIN_SUF_NON_CANCELABLE __DARWIN_SUF_UNIX03)
+#define __DARWIN_1050ALIAS_I(sym)	__asm(__STRING(sym) __DARWIN_SUF_1050 __DARWIN_SUF_64_BIT_INO_T __DARWIN_SUF_UNIX03)
+#define __DARWIN_1050INODE64(sym)	__asm(__STRING(sym) __DARWIN_SUF_1050 __DARWIN_SUF_64_BIT_INO_T)
+
+#define __DARWIN_EXTSN(sym)		__asm(__STRING(sym) __DARWIN_SUF_EXTSN)
+#define __DARWIN_EXTSN_C(sym)		__asm(__STRING(sym) __DARWIN_SUF_EXTSN __DARWIN_SUF_NON_CANCELABLE)
+#endif // DARLING
 
 /*
  * symbol release macros

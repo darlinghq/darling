@@ -89,6 +89,7 @@
 /*
  * symbol versioning macros
  */
+#ifndef DARLING
 #define LIBC_ALIAS(sym)		__asm("_" __STRING(sym) LIBC_SUF_UNIX03)
 #define LIBC_ALIAS_C(sym)	__asm("_" __STRING(sym) LIBC_SUF_NON_CANCELABLE LIBC_SUF_UNIX03)
 #define LIBC_ALIAS_I(sym)	__asm("_" __STRING(sym) LIBC_SUF_64_BIT_INO_T LIBC_SUF_UNIX03)
@@ -102,6 +103,24 @@
 
 #define LIBC_EXTSN(sym)		__asm("_" __STRING(sym) LIBC_SUF_EXTSN)
 #define LIBC_EXTSN_C(sym)	__asm("_" __STRING(sym) LIBC_SUF_EXTSN LIBC_SUF_NON_CANCELABLE)
+
+#else // DARLING
+
+#define LIBC_ALIAS(sym)		__asm(__STRING(sym) LIBC_SUF_UNIX03)
+#define LIBC_ALIAS_C(sym)	__asm(__STRING(sym) LIBC_SUF_NON_CANCELABLE LIBC_SUF_UNIX03)
+#define LIBC_ALIAS_I(sym)	__asm(__STRING(sym) LIBC_SUF_64_BIT_INO_T LIBC_SUF_UNIX03)
+#define LIBC_INODE64(sym)	__asm(__STRING(sym) LIBC_SUF_64_BIT_INO_T)
+
+#define LIBC_1050(sym)		__asm(__STRING(sym) LIBC_SUF_1050)
+#define LIBC_1050ALIAS(sym)	__asm(__STRING(sym) LIBC_SUF_1050 LIBC_SUF_UNIX03)
+#define LIBC_1050ALIAS_C(sym)	__asm(__STRING(sym) LIBC_SUF_1050 LIBC_SUF_NON_CANCELABLE LIBC_SUF_UNIX03)
+#define LIBC_1050ALIAS_I(sym)	__asm(__STRING(sym) LIBC_SUF_1050 LIBC_SUF_64_BIT_INO_T LIBC_SUF_UNIX03)
+#define LIBC_1050INODE64(sym)	__asm(__STRING(sym) LIBC_SUF_1050 LIBC_SUF_64_BIT_INO_T)
+
+#define LIBC_EXTSN(sym)		__asm(__STRING(sym) LIBC_SUF_EXTSN)
+#define LIBC_EXTSN_C(sym)	__asm(__STRING(sym) LIBC_SUF_EXTSN LIBC_SUF_NON_CANCELABLE)
+
+#endif // DARLING
 
 extern int __pthread_tsd_first;
 extern int pthread_key_init_np(int, void (*)(void *));

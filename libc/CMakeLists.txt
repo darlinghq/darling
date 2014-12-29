@@ -22,10 +22,11 @@ endif(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__)
+add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 add_definitions("'-D__weak_reference(sym,alias)=__asm__(\".weak alias\");__asm__(\".equ alias, sym\")'")
 add_definitions("'-D__warn_references(name,warning)='")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--unresolved-symbols=ignore-all")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat")
@@ -52,6 +53,9 @@ add_subdirectory(stdtime)
 add_subdirectory(sys)
 add_subdirectory(stdlib)
 add_subdirectory(stdio)
+add_subdirectory(secure)
+add_subdirectory(regex)
+add_subdirectory(pthreads)
 
 add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-db>
@@ -65,6 +69,11 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-stdtime>
 	$<TARGET_OBJECTS:libc-sys>
 	$<TARGET_OBJECTS:libc-stdlib>
-	$<TARGET_OBJECTS:libc-stdio>)
+	$<TARGET_OBJECTS:libc-stdio>
+	$<TARGET_OBJECTS:libc-secure>
+	$<TARGET_OBJECTS:libc-regex>
+	$<TARGET_OBJECTS:libc-pthreads>)
+
+# TODO: see ./xcodescripts/variants.xcconfig
 
 #SET_TARGET_PROPERTIES(system_c PROPERTIES LINKER_LANGUAGE C)

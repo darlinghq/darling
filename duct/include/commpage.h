@@ -46,5 +46,6 @@ extern uint8_t __commpage[];
 
 #define _COMM_PAGE_END                  (_COMM_PAGE_START_ADDRESS+0xfff)        /* end of common page */
 
+#define _COMM_PAGE_TEXT_START		(_COMM_PAGE_START_ADDRESS+0x1000)
 
 #endif
