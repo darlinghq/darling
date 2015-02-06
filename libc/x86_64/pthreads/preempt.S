@@ -30,8 +30,9 @@
  * All registers preserved (but does clear the %ebx preemption flag).
  */
 	.align 2
-	.private_extern _preempt
+	.globl _preempt
 _preempt:
+#ifndef DARLING /* Modified by Lubos Dolezel, DARLING-TODO */
 	pushq	%rax
 	pushq	%rcx
 	pushq	%r11
@@ -41,6 +42,7 @@ _preempt:
 	popq	%r11
 	popq	%rcx
 	popq	%rax
+#endif
 	ret
 
 /* Subroutine to back off if we cannot get the spinlock.  Called
@@ -51,7 +53,7 @@ _preempt:
  * Uses: %rax.
  */
 	.align 2
-	.private_extern _backoff
+	.globl _backoff
 _backoff:
 	testl	%ebx,%ebx	// does kernel want to preempt us?
 	jz	1f		// no

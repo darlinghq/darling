@@ -1,3 +1,4 @@
+/* Modified by Lubos Dolezel for GCC/Linux */
 /*
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
@@ -319,7 +320,7 @@ name:
 	call	*%edx
 #elif defined(__x86_64__)
 #define CALL_EXTERN_AGAIN(func)	\
-	call	func
+	call	func@PLT
 #endif
 
 #if defined(__i386__)

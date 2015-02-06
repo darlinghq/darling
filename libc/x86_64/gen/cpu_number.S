@@ -38,7 +38,7 @@
 
 /* return logical cpu number in %rax */
 
-	.private_extern _cpu_number
+	.globl _cpu_number
 _cpu_number:
 	push	%rbp
 	mov	%rsp,%rbp

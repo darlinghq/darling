@@ -1,3 +1,4 @@
+/* Modified by Lubos Dolezel for Linux support */
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  *
@@ -22,16 +23,17 @@
  */
 
 #include "pthread_machdep.h"
+#include <architecture/i386/asm_help.h>
 
 .text
 .align 2, 0x90
-.globl _thread_start
-_thread_start:
+.globl _start_wqthread
+_start_wqthread:
 // This routine is never called directly by user code, jumped from kernel
         push   %rbp
         mov    %rsp,%rbp
         sub    $24,%rsp		// align the stack
-        call   __pthread_start
-	leave
+        CALL_EXTERN(__pthread_wqthread)
+		leave
         ret
 

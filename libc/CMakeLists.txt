@@ -3,8 +3,14 @@ project(darling-libsystem_c)
 cmake_minimum_required(VERSION 2.4.0)
 if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
+	cmake_policy(SET CMP0018 NEW)
 endif(COMMAND cmake_policy)
 
+if ((${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64") AND (${CMAKE_C_FLAGS} MATCHES ".*-m32.*"))
+	set(CMAKE_SYSTEM_PROCESSOR "i686")
+endif()
+
+message(STATUS "Building for ${CMAKE_SYSTEM_PROCESSOR}, ${CMAKE_C_FLAGS}")
 
 # -DHAVE_STDINT_H=1 -I libc/include -I platform-include/ -I kernel-include/ -I
 # libc/locale/ -I libc/locale/FreeBSD/ -I libc/stdtime/FreeBSD -I
@@ -21,7 +27,7 @@ endif(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 
 add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
-add_definitions(-D__APPLE__)
+add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 add_definitions(-D__LIBC__ -D__DARWIN_UNIX03=1 -D__DARWIN_64_BIT_INO_T=1 -D__DARWIN_NON_CANCELABLE=1 -D__DARWIN_VERS_1050=1)
 # add_definitions("'-D__weak_reference(sym,alias)=__asm__(\".weak \" \\\#alias );__asm__(\".equ \" \\\#alias \", \" \\\#sym)'")
@@ -63,6 +69,15 @@ add_subdirectory(nls)
 add_subdirectory(net)
 add_subdirectory(locale)
 
+# The following generate libc-hwplat
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
+	add_subdirectory(i386)
+endif()
+
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+	add_subdirectory(x86_64)
+endif()
+
 add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-db>
 	$<TARGET_OBJECTS:libc-compat>
@@ -86,7 +101,8 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-posix1e>
 	$<TARGET_OBJECTS:libc-nls>
 	$<TARGET_OBJECTS:libc-net>
-	$<TARGET_OBJECTS:libc-locale>)
+	$<TARGET_OBJECTS:libc-locale>
+	$<TARGET_OBJECTS:libc-hwplat>)
 
 # TODO: see ./xcodescripts/variants.xcconfig
 

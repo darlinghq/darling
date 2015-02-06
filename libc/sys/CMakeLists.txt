@@ -5,7 +5,6 @@ cmake_minimum_required(VERSION 2.4.0)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 set(sys_sources chmodx_np.c
-	context-stubs.c
 	crt_externs.c
 	errno.c
 	fork.c
@@ -29,6 +28,10 @@ set(sys_sources chmodx_np.c
 	statx_np.c
 	umaskx_np.c
 )
+
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
+	set(sys_sources ${sys_sources} context-stubs.cpp)
+endif()
 
 SET_SOURCE_FILES_PROPERTIES(semctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SEMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
 SET_SOURCE_FILES_PROPERTIES(shmctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SEMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")

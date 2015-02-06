@@ -20,11 +20,12 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-#import <architecture/i386/asm_help.h>
+#include <architecture/i386/asm_help.h>
 
 .text
 	.globl mcount
 mcount:
+#ifndef DARLING /* DARLING-TODO, moncount is defunct/deprecated API */
 	pushq	%rbp             // setup mcount's frame
 	movq	%rsp,    %rbp
 	subq	$64,     %rsp    // allocate space for storage and alignment
@@ -49,4 +50,5 @@ mcount:
 
 	movq	%rbp, %rsp
 	popq	%rbp             // tear down frame
+#endif
 	ret

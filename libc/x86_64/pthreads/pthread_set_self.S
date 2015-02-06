@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 Apple Inc. All rights reserved.
+ * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,17 +21,15 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#include "pthread_machdep.h"
+#include <mach/i386/syscall_sw.h>
 
 .text
 .align 2, 0x90
-.globl _start_wqthread
-_start_wqthread:
-// This routine is never called directly by user code, jumped from kernel
-        push   %rbp
-        mov    %rsp,%rbp
-        sub    $24,%rsp		// align the stack
-        call   __pthread_wqthread
-		leave
-        ret
-
+.globl ___pthread_set_self
+___pthread_set_self:
+#ifndef DARLING /* DARLING-TODO, Modified by Lubos Dolezel */
+	movl	$0, %esi	// 0 as the second argument
+	movl    $ SYSCALL_CONSTRUCT_MDEP(3), %eax	// Machine-dependent syscall number 3
+	MACHDEP_SYSCALL_TRAP
+#endif
+	ret
