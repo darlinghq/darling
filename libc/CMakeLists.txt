@@ -58,6 +58,7 @@ add_subdirectory(stdio)
 add_subdirectory(secure)
 add_subdirectory(regex)
 add_subdirectory(pthreads)
+add_subdirectory(posix1e)
 
 add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-db>
@@ -78,7 +79,8 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-secure>
 	$<TARGET_OBJECTS:libc-regex>
 	$<TARGET_OBJECTS:libc-pthreads>
-	$<TARGET_OBJECTS:libc-pthreads_cancelable>)
+	$<TARGET_OBJECTS:libc-pthreads_cancelable>
+	$<TARGET_OBJECTS:libc-posix1e>)
 
 # TODO: see ./xcodescripts/variants.xcconfig
 
