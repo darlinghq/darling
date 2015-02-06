@@ -1,4 +1,27 @@
 /*
+ * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_LICENSE_HEADER_START@
+ * 
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
+ * 
+ * @APPLE_LICENSE_HEADER_END@
+ */
+/*
  * ++Copyright++ 1983, 1993
  * -
  * Copyright (c) 1983, 1993
@@ -58,13 +81,12 @@
  *	$Id: inet.h,v 1.10 2006/02/01 18:09:47 majka Exp $
  */
 
-#ifndef _ARPA_INET_H_
-#define	_ARPA_INET_H_
+#ifndef _INET_H_
+#define	_INET_H_
 
-/* External definitions for functions in inet(3), addr2ascii(3) */
+/* External definitions for functions in inet(3) */
 
-#include <sys/cdefs.h>
-#include <sys/_types.h>
+#include <_types.h>
 #include <stdint.h>		/* uint32_t uint16_t */
 #include <machine/endian.h>	/* htonl() and family if (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
 #include <sys/_endian.h>	/* htonl() and family if (_POSIX_C_SOURCE && !_DARWIN_C_SOURCE) */
@@ -76,7 +98,6 @@ in_addr_t	 inet_addr(const char *);
 char		*inet_ntoa(struct in_addr);
 const char	*inet_ntop(int, const void *, char *, socklen_t);
 int		 inet_pton(int, const char *, void *);
-
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 int		 ascii2addr(int, const char *, void *);
 char		*addr2ascii(int, const void *, int, char *);
@@ -88,10 +109,10 @@ in_addr_t	 inet_network(const char *);
 char		*inet_net_ntop(int, const void *, int, char *, __darwin_size_t);
 int		 inet_net_pton(int, const char *, void *, __darwin_size_t);
 char	 	*inet_neta(in_addr_t, char *, __darwin_size_t);
-unsigned int	 inet_nsap_addr(const char *, unsigned char *, int);
-char	*inet_nsap_ntoa(int, const unsigned char *, char *);
+unsigned int	 inet_nsap_addr(const char *, unsigned char *, int maxlen);
+char	*inet_nsap_ntoa(int, const unsigned char *, char *ascii);
 #endif /* (_POSIX_C_SOURCE && !_DARWIN_C_SOURCE) */
 
 __END_DECLS
 
-#endif /* !_ARPA_INET_H_ */
+#endif /* !_INET_H_ */

@@ -60,6 +60,7 @@ add_subdirectory(regex)
 add_subdirectory(pthreads)
 add_subdirectory(posix1e)
 add_subdirectory(nls)
+add_subdirectory(net)
 
 add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-db>
@@ -82,7 +83,8 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-pthreads>
 	$<TARGET_OBJECTS:libc-pthreads_cancelable>
 	$<TARGET_OBJECTS:libc-posix1e>
-	$<TARGET_OBJECTS:libc-nls>)
+	$<TARGET_OBJECTS:libc-nls>
+	$<TARGET_OBJECTS:libc-net>)
 
 # TODO: see ./xcodescripts/variants.xcconfig
 
