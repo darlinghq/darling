@@ -1,5 +1,8 @@
 // Note that while this file has a .s extension it is not intended to be assmbled directly
 // but rather included with appropriate #defines in place.
+
+#define _log log@PLT
+#define __logup _logup@PLT
 	
 // double log1p( double x )
 ENTRY( log1p )

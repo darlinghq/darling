@@ -86,8 +86,8 @@ typedef union
     //Macros to extend the set of intrinsics to allow for memory operands
     #define _mm_cmplt_sdm( _xd, _m64 )   ({ register xDouble _r = _xd; asm( "cmpltsd %1, %0" : "+x" (_r) : "m" (*(_m64)) ); /*return*/ _r; })
     #define _mm_cmple_sdm( _xd, _m64 )   ({ register xDouble _r = _xd; asm( "cmplesd %1, %0" : "+x" (_r) : "m" (*(_m64)) ); /*return*/ _r; })
-    #define _mm_cmpgt_sdm( _xd, _m64 )   ({ register xDouble _r; asm( "movsd %1, %0" : "=x" (_r) : "m" (*(_m64)) ); _r = (xDouble) __builtin_ia32_cmpltsd( _r, _xd ); /*return*/ _r; })
-    #define _mm_cmpge_sdm( _xd, _m64 )   ({ register xDouble _r; asm( "movsd %1, %0" : "=x" (_r) : "m" (*(_m64)) ); _r = (xDouble) __builtin_ia32_cmplesd( _r, _xd ); /*return*/ _r; })
+    #define _mm_cmpgt_sdm( _xd, _m64 )   ({ register xDouble _r; asm( "movsd %1, %0" : "=x" (_r) : "m" (*(_m64)) ); _r = (xDouble) _mm_cmplt_sdm( _r, &_xd ); /*return*/ _r; })
+    #define _mm_cmpge_sdm( _xd, _m64 )   ({ register xDouble _r; asm( "movsd %1, %0" : "=x" (_r) : "m" (*(_m64)) ); _r = (xDouble) _mm_cmple_sdm( _r, &_xd ); /*return*/ _r; })
     #define _mm_cmpeq_sdm( _xd, _m64 )   ({ register xDouble _r = _xd; asm( "cmpeqsd %1, %0" : "+x" (_r) : "m" (*(_m64)) ); /*return*/ _r; })
     #define _mm_cmpne_sdm( _xd, _m64 )   ({ register xDouble _r = _xd; asm( "cmpneqsd %1, %0" : "+x" (_r) : "m" (*(_m64)) ); /*return*/ _r; })
     #define _mm_add_sdm( _xd, _m64 )     ({ register xDouble _r = _xd; asm( "addsd %1, %0" : "+x" (_r) : "m" (*(_m64)) ); /*return*/ _r; })

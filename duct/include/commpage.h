@@ -1,8 +1,11 @@
 #ifndef COMMPAGE_H
 #define COMMPAGE_H
+
+#ifndef __ASSEMBLER__
 #include <stdint.h>
 
 extern uint8_t __commpage[];
+#endif
 
 #define _COMM_PAGE_BASE_ADDRESS (__commpage)
 #define _COMM_PAGE_AREA_LENGTH        ( 1 * 4096 )                            /* reserved length of entire comm area */

@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
  *
@@ -20,14 +21,14 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 #define	ENTRY(name)							      \
-  .globl _##name;				      			      \
-  .align 4;							      	      \
-  _##name##:								      
+  .globl name;				      			      \
+  .align (2<<4);							      	      \
+  name##:								      
 
 #define	PRIVATE_ENTRY(name)							      \
-  .private_extern _##name;				      			      \
-  .align 4;							      	      \
-  _##name##:								      
+  .globl name; .hidden name;				      			      \
+  .align (2<<4);							      	      \
+  name##:								      
 
 #undef	END
 #define END(name)	/* NOTHING */
