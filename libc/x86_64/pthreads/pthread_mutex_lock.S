@@ -24,11 +24,15 @@
 #include <machine/cpu_capabilities.h>
 #include <architecture/i386/asm_help.h>
 
+#ifdef DARLING
+#	define __commpage_pthread_mutex_lock _commpage_pthread_mutex_lock
+#endif
+
 #define	PTHRW_LVAL    0
 #define	PTHRW_UVAL    4
 
 	.text
-	.align	2
+	.align	(2<<2)
 	.globl	__commpage_pthread_mutex_lock
 __commpage_pthread_mutex_lock:
 #ifndef DARLING /* DARLING-TODO, Modified by Lubos Dolezel */

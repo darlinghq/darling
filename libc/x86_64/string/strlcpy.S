@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  *
@@ -43,6 +44,10 @@
 // with one exception: 0x01 bytes preceeding the first zero are also
 // mapped to 0x80.
 
+#ifdef DARLING
+#	define _strlcpy strlcpy
+#endif
+
         .text
         .globl _strlcpy
 
@@ -51,7 +56,7 @@
 //	%rsi = source ptr
 //	%rdx = length
 
-        .align 	4
+        .align 	(2<<4)
 _strlcpy:				// size_t *strlcpy(char *dst, const char *src, size_t size);
 	movl	%esi,%ecx		// copy source ptr
 	movq	%rdi,%r10		// copy dest ptr

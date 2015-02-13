@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
  *
@@ -34,10 +35,14 @@
 // reading bytes past the difference.  To avoid this, we never do a load
 // that crosses a page boundary.
 
+#ifdef DARLING
+#	define _strcmp strcmp
+#endif
+
         .text
         .globl _strcmp
 
-        .align 	4
+        .align 	(2<<4)
 _strcmp:				// int strcmp(const char *s1,const char *s2);
 
 // In order to avoid spurious page faults, we loop over:

@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005-2006 Apple Computer, Inc. All rights reserved.
  *
@@ -34,12 +35,16 @@
 // reading bytes past the difference.  To avoid this, we never do a load
 // that crosses a page boundary.
 
+#ifdef DARLING
+#	define _strncmp strncmp
+#endif
+
 #define	kShort	20			// too short for vectors (must be >16)
 
         .text
         .globl _strncmp
 
-        .align 	4
+        .align 	(2<<4)
 _strncmp:				// int strncmp(const char *s1, const char *s2, size_t len);
 	cmpq	$(kShort),%rdx		// worth accelerating?
 	ja	LNotShort		// yes

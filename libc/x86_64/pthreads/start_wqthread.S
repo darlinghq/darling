@@ -25,8 +25,13 @@
 #include "pthread_machdep.h"
 #include <architecture/i386/asm_help.h>
 
+#ifdef DARLING
+#	define _start_wqthread start_wqthread
+#	define __pthread_wqthread _pthread_wqthread
+#endif
+
 .text
-.align 2, 0x90
+.align (2<<2), 0x90
 .globl _start_wqthread
 _start_wqthread:
 // This routine is never called directly by user code, jumped from kernel

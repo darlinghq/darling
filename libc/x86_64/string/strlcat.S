@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  *
@@ -46,6 +47,10 @@
 // On Core2 class machines, this algorithm seems to be faster than the
 // naive byte-by-byte version for operands longer than about 11 bytes.  
 
+#ifdef DARLING
+#	define _strlcat strlcat
+#endif
+
         .text
         .globl _strlcat
 
@@ -58,7 +63,7 @@
 //	%rsi = source ptr
 //	%rdx = size
 
-        .align 	4
+        .align 	(2<<4)
 _strlcat:				// size_t *strlcat(char *dst, const char *src, size_t size);
 	movl	%edi,%ecx		// copy buffer ptr
 	movq	%rdi,%r10		// save copies of buffer ptr and length

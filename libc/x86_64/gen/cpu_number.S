@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
@@ -35,6 +36,10 @@
  * The IDTR is loaded by the kernel for each processor at startup - see
  * osfmk/i386/mp_desc.c.
  */
+ 
+#ifdef DARLING
+#	define _cpu_number cpu_number
+#endif
 
 /* return logical cpu number in %rax */
 

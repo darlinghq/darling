@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  * Copyright (c) 2003-2006 Apple Computer, Inc. All rights reserved.
@@ -24,10 +25,14 @@
  
  
  #include <machine/cpu_capabilities.h>
-
+ 
+#ifdef DARLING
+#	define _sys_icache_invalidate sys_icache_invalidate
+#	define _sys_dcache_flush sys_dcache_flush
+#endif
 
     .text
-    .align 4, 0x00
+    .align (2<<4), 0x00
 
 /* void sys_icache_invalidate(addr_t start, int length) */
 

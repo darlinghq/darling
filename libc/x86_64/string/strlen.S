@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005-2007 Apple Inc. All rights reserved.
  *
@@ -31,9 +32,13 @@
  * We favor the fall-through (ie, short operand) path.
  */
 
+#ifdef DARLING
+#	define _strlen strlen
+#endif
+
         .text
         .globl  _strlen
-        .align  4, 0x90
+        .align  (2<<4), 0x90
 _strlen:				// size_t strlen(char *b);
 	pxor	%xmm0,%xmm0		// zero %xmm0
 	movl	%edi,%ecx		// copy low half of ptr

@@ -23,8 +23,12 @@
 
 #include <mach/i386/syscall_sw.h>
 
+#ifdef DARLING
+#	define ___pthread_set_self __pthread_set_self
+#endif
+
 .text
-.align 2, 0x90
+.align (2<<2), 0x90
 .globl ___pthread_set_self
 ___pthread_set_self:
 #ifndef DARLING /* DARLING-TODO, Modified by Lubos Dolezel */

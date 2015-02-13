@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
  *
@@ -36,10 +37,14 @@
 //
 // We align the destination, because unaligned vector stores are slow.
 
+#ifdef DARLING
+#	define _strcpy strcpy
+#endif
+
         .text
         .globl _strcpy
 
-        .align 	4
+        .align 	(2<<4)
 _strcpy:				// char *strcpy(const char *dst, const char *src);
 	movq	%rdi,%rcx	// preserve dest ptr so we can return it
 	movl	%edi,%edx		// copy low 4 bytes of dest ptr

@@ -9,21 +9,21 @@ set(string_sources
 	stpcpy.c
 	stpncpy.c
 	strcat.c
-	strcpy.c
-	strlcat.c
-	strlcpy.c
+	# strcpy.c # in assembly
+	# strlcat.c # in assembly
+	# strlcpy.c # in assembly
 	strncat.c
 	# strncpy.c # in assembly
 )
 
 set(string_sources ${string_sources}
-	FreeBSD/bcmp.c
+	# FreeBSD/bcmp.c # in assembly
 	FreeBSD/bcopy.c
 	FreeBSD/bzero.c
 	FreeBSD/index.c
 	FreeBSD/memccpy.c
 	FreeBSD/memchr.c
-	FreeBSD/memcmp.c
+	# FreeBSD/memcmp.c # in assembly
 	FreeBSD/memcpy.c
 	FreeBSD/memmem.c
 	FreeBSD/memmove.c
@@ -37,9 +37,9 @@ set(string_sources ${string_sources}
 	FreeBSD/strcspn.c
 	FreeBSD/strdup.c
 	FreeBSD/strerror.c
-	FreeBSD/strlen.c
+	# FreeBSD/strlen.c # in assembly
 	FreeBSD/strmode.c
-	FreeBSD/strncmp.c
+	# FreeBSD/strncmp.c # in assembly
 	FreeBSD/strndup.c                                                                                                                   
 	FreeBSD/strnlen.c                                                                                                                   
 	FreeBSD/strnstr.c                                                                                                                   

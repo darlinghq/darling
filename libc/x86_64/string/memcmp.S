@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
  *
@@ -40,8 +41,13 @@
 
 #define	kShort	18			// too short for vectors (must be >16)
 
+#ifdef DARLING
+#	define _memcmp memcmp
+#	define _bcmp bcmp
+#endif
+
         .text
-        .align 	4
+        .align 	(2<<4)
 
         .globl _memcmp
         .globl _bcmp

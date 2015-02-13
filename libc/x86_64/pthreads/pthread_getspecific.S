@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
  *
@@ -23,9 +24,13 @@
 
 #include "pthread_machdep.h"
 
+#ifdef DARLING
+#	define _pthread_getspecific pthread_getspecific
+#endif
+
 .text
-.align 2, 0x90
+.align (2<<2), 0x90
 .globl _pthread_getspecific
 _pthread_getspecific:
-	movq	%gs:(,%rdi,8),%rax
+	movq	%fs:(,%rdi,8),%rax // Changed to fs for Darling
 	ret
