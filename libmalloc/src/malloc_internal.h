@@ -25,14 +25,14 @@
 #define __MALLOC_INTERNAL_H
 
 #include <TargetConditionals.h>
-#include <os/lock_private.h>
+//#include <os/lock_private.h>
 
 #if TARGET_OS_EMBEDDED && !defined(MALLOC_USE_OS_LOCK_HANDOFF)
 #define MALLOC_USE_OS_LOCK_HANDOFF 1 // <rdar://problem/13807682>
 #endif
 
 #if !TARGET_IPHONE_SIMULATOR || MALLOC_USE_OS_LOCK_HANDOFF
-#define MALLOC_USE_OS_LOCK 1 // <rdar://problem/16104834> <rdar://problem/16230083>
+//#define MALLOC_USE_OS_LOCK 1 // <rdar://problem/16104834> <rdar://problem/16230083>
 #endif
 
 #if MALLOC_USE_OS_LOCK_HANDOFF
