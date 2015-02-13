@@ -27,6 +27,7 @@ set(x86_64_sources
 	gen/_ctx_start.S
 	gen/getcontext.S
 	gen/_setcontext.S
+	../i386/pthreads/init_cpu_capabilities.c
 )
 
 add_definitions(-D_preempt=preempt)

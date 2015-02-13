@@ -78,6 +78,8 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
 	add_subdirectory(x86_64)
 endif()
 
+add_subdirectory(darwin)
+
 add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-db>
 	$<TARGET_OBJECTS:libc-compat>
@@ -102,7 +104,8 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-nls>
 	$<TARGET_OBJECTS:libc-net>
 	$<TARGET_OBJECTS:libc-locale>
-	$<TARGET_OBJECTS:libc-hwplat>)
+	$<TARGET_OBJECTS:libc-hwplat>
+	$<TARGET_OBJECTS:libc-darwin>)
 
 # TODO: see ./xcodescripts/variants.xcconfig
 
