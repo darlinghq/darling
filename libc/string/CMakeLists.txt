@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 2.4.0)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_SECURE__STRING_H_")
 
 set(string_sources
-	memset_pattern.c
+	# memset_pattern.c # in assembly
 	stpcpy.c
 	stpncpy.c
 	strcat.c
@@ -13,7 +13,7 @@ set(string_sources
 	strlcat.c
 	strlcpy.c
 	strncat.c
-	strncpy.c
+	# strncpy.c # in assembly
 )
 
 set(string_sources ${string_sources}
@@ -27,7 +27,7 @@ set(string_sources ${string_sources}
 	FreeBSD/memcpy.c
 	FreeBSD/memmem.c
 	FreeBSD/memmove.c
-	FreeBSD/memset.c
+	# FreeBSD/memset.c # in assembly
 	FreeBSD/rindex.c
 	FreeBSD/strcasecmp.c
 	FreeBSD/strcasestr.c

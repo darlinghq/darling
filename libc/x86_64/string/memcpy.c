@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  *
@@ -33,8 +34,8 @@ static const platfunc_descriptor *memcpy_platfunc_descriptors[] = {
 	0
 };
 
-void *memcpy_chooser() __asm__("_memcpy");
+void *memcpy_chooser() __asm__("memcpy");
 void *memcpy_chooser() {
-	__asm__(".desc _memcpy, 0x100");
+	// __asm__(".desc _memcpy, 0x100");
 	return find_platform_function((const platfunc_descriptor **) memcpy_platfunc_descriptors);
 }

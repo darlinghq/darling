@@ -1,3 +1,5 @@
+// Modified by Lubos Dolezel for Darling
+
 /*
  * Copyright (c) 2003-2010 Apple Inc. All rights reserved.
  *
@@ -52,7 +54,15 @@
  */
 #define	MP_SPIN_TRIES	1000
 
+#ifndef DARLING
+
 #define PLATFUNC_VARIANT_NAME(name, variant) _ ## name ## $VARIANT$ ## variant
+
+#else
+
+#define PLATFUNC_VARIANT_NAME(name, variant) name ##$VARIANT$ ## variant
+
+#endif
 
 #if defined (__i386__)
 #define PLATFUNC_DESCRIPTOR_FIELD_POINTER .long
@@ -75,6 +85,14 @@
 
 #define	PLATFUNC_DESCRIPTOR(name, variant, must, cant)
 
+#elif defined(DARLING)
+
+
+#define PLATFUNC_FUNCTION_START_GENERIC(name, variant, codetype, alignment) \
+	PLATFUNC_FUNCTION_START(name, variant, codetype, alignment)
+
+#define	PLATFUNC_DESCRIPTOR(name, variant, must, cant)
+
 #else /* VARIANT_DYLD */
 
 #define PLATFUNC_FUNCTION_START_GENERIC PLATFUNC_FUNCTION_START
@@ -90,11 +108,23 @@
 
 #endif /* VARIANT_DYLD */
 
+#ifdef DARLING
+
+#define PLATFUNC_FUNCTION_START(name, variant, codetype, alignment) \
+	.text ;\
+	.align (2<<alignment), 0x90 ;\
+	.globl PLATFUNC_VARIANT_NAME(name,variant) ## ;\
+	PLATFUNC_VARIANT_NAME(name,variant) ##:
+
+#else
+
 #define PLATFUNC_FUNCTION_START(name, variant, codetype, alignment) \
 	.text ;\
 	.align alignment, 0x90 ;\
 	.private_extern PLATFUNC_VARIANT_NAME(name, variant) ;\
 	PLATFUNC_VARIANT_NAME(name, variant) ## :
+
+#endif
 
 #else /* __ASSEMBLER__ */
 

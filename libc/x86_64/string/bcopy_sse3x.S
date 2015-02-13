@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
  *
@@ -35,6 +36,10 @@
  *
  * The following #defines are tightly coupled to the u-architecture:
  */
+
+#ifdef DARLING
+#	define _longcopy longcopy@PLT
+#endif
 
 #define kShort  80			// too short to bother with SSE (must be >=80)
 #define kVeryLong   (500*1024)          // large enough for non-temporal stores (>=8192 and <2GB)

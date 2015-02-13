@@ -50,6 +50,29 @@ set(x86_64_sources ${x86_64_sources}
 	pthreads/thread_start.S
 )
 
+set(x86_64_sources ${x86_64_sources}
+	string/bcopy.c
+	string/bcopy_sse3x.S
+	string/bcopy_sse42.S
+	string/bzero.c
+	string/__bzero.S
+	string/bzero_sse2.S
+	string/bzero_sse42.S
+	string/ffs.S
+	string/longcopy_sse3x.S
+	string/memcmp.S
+	string/memcpy.c
+	string/memmove.c
+	string/memset.S
+	string/strcmp.S
+	string/strcpy.S
+	string/strlcat.S
+	string/strlcpy.S
+	string/strlen.S
+	string/strncmp.S
+	string/strncpy.S
+)
+
 add_library(libc-hwplat OBJECT ${x86_64_sources})
 
 

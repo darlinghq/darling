@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
  *
@@ -55,7 +56,12 @@
 
 // void longcopy(const void *dest, void *sou, size_t len)
 
-	.private_extern _longcopy
+#ifdef DARLING
+#	define _longcopy longcopy
+#	define _memcpy memcpy@PLT
+#endif
+
+//	.private_extern _longcopy
 _longcopy:
 	pushq	%rbp			// set up a frame for backtraces
 	movq	%rsp,%rbp
@@ -96,7 +102,7 @@ LBigChunkLoop:
 //	ecx = scratch reg used to read a byte of each cache line
 //	eax = chunk offset
 
-	.align	4,0x90			// 16-byte align inner loops
+	.align	(2<<4),0x90			// 16-byte align inner loops
 LTouchLoop:
 	movzb	(%rsi,%rax),%ecx	// touch line 0, 2, 4, or 6 of page
 	movzb	1*64(%rsi,%rax),%ecx	// touch line 1, 3, 5, or 7
