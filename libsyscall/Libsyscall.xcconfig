@@ -1,0 +1,38 @@
+#include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
+
+#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
+// Set INSTALL_PATH[sdk=macosx*] when SimulatorSupport.xcconfig is unavailable
+INSTALL_PATH[sdk=macosx*] = $(INSTALL_PATH_ACTUAL)
+
+BUILD_VARIANTS = normal
+SUPPORTED_PLATFORMS = macosx iphoneos iphoneosnano
+ONLY_ACTIVE_ARCH = NO
+DEAD_CODE_STRIPPING = YES
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+INSTALL_PATH_ACTUAL = /usr/lib/system
+PUBLIC_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/include
+PRIVATE_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/local/include
+OS_PRIVATE_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/local/include/os
+EXECUTABLE_PREFIX = libsystem_
+PRODUCT_NAME = kernel
+ALWAYS_SEARCH_USER_PATHS = NO
+ORDER_FILE[sdk=iphoneos*] = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/libsystem_kernel.order
+OTHER_CFLAGS = -fdollars-in-identifiers -no-cpp-precomp -fno-common -fno-stack-protector -momit-leaf-frame-pointer -DLIBSYSCALL_INTERFACE -D__DARWIN_VERS_1050=1
+OTHER_CFLAGS[sdk=macosx*] = $(inherited) -DSYSCALL_PRE1050
+OTHER_CFLAGS[sdk=macosx*][arch=x86_64*] = $(inherited) -DNO_SYSCALL_LEGACY
+OTHER_CFLAGS[sdk=iphoneos*] = $(inherited) -DNO_SYSCALL_LEGACY
+GCC_PREPROCESSOR_DEFINITIONS = CF_OPEN_SOURCE CF_EXCLUDE_CSTD_HEADERS DEBUG _FORTIFY_SOURCE=0
+HEADER_SEARCH_PATHS = $(PROJECT_DIR)/mach $(PROJECT_DIR)/os $(PROJECT_DIR)/wrappers $(PROJECT_DIR)/wrappers/string $(PROJECT_DIR)/wrappers/libproc $(PROJECT_DIR)/wrappers/libproc/spawn $(BUILT_PRODUCTS_DIR)/internal_hdr/include $(BUILT_PRODUCTS_DIR)/mig_hdr/local/include $(BUILT_PRODUCTS_DIR)/mig_hdr/include $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+WARNING_CFLAGS = -Wmost
+GCC_TREAT_WARNINGS_AS_ERRORS = YES
+GCC_WARN_ABOUT_MISSING_NEWLINE = YES
+CODE_SIGN_IDENTITY = -
+DYLIB_CURRENT_VERSION = $(RC_ProjectSourceVersion)
+DYLIB_LDFLAGS = -umbrella System -all_load -Wl,-alias_list,$(SRCROOT)/Libsyscall.aliases
+DYLIB_LDFLAGS[sdk=iphoneos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
+OTHER_LDFLAGS = 
+INSTALLHDRS_SCRIPT_PHASE = YES
+INSTALLHDRS_COPY_PHASE = YES
+USE_HEADERMAP = NO
+LINK_WITH_STANDARD_LIBRARIES = NO
+ALWAYS_SEARCH_USER_PATHS = YES
