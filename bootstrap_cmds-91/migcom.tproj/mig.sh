@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # Copyright (c) 1999-2008 Apple Inc. All rights reserved.
+# Modified by Lubos Dolezel for Darling
 #
 # @APPLE_LICENSE_HEADER_START@
 #
@@ -88,7 +89,7 @@ cppflags="-D__MACH30__"
 files=
 arch=`/usr/bin/arch`
 
-WORKTMP=`/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mig.XXXXXX"`
+WORKTMP=`mktemp -d "${TMPDIR:-/tmp}/mig.XXXXXX"`
 if [ $? -ne 0 ]; then
       echo "Failure creating temporary work directory: ${WORKTMP}"
       echo "Exiting..."
@@ -206,6 +207,6 @@ do
     rm -f "${temp}.c"
 done
 
-/bin/rmdir "${WORKTMP}"
+rmdir "${WORKTMP}"
 exit 0
 
