@@ -47,6 +47,9 @@ extern uint8_t __commpage[];
 #define _COMM_PAGE_GTOD_NS_BASE         (_COMM_PAGE_START_ADDRESS+0x070)        /* used by gettimeofday() */
 #define _COMM_PAGE_GTOD_SEC_BASE        (_COMM_PAGE_START_ADDRESS+0x078)        /* used by gettimeofday() */
 
+#define _COMM_PAGE_APPROX_TIME_SUPPORTED (_COMM_PAGE_START_ADDRESS+0x080)
+#define _COMM_PAGE_APPROX_TIME (_COMM_PAGE_START_ADDRESS+0x088)
+
 #define _COMM_PAGE_END                  (_COMM_PAGE_START_ADDRESS+0xfff)        /* end of common page */
 
 #define _COMM_PAGE_TEXT_START		(_COMM_PAGE_START_ADDRESS+0x1000)
