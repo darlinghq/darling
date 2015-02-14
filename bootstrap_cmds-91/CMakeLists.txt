@@ -6,7 +6,9 @@ find_package(BISON)
 find_package(FLEX)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-add_definitions(-Du_int=unsigned -D__int64_t=int64_t -D__int32_t=int32_t -D__darwin_natural_t=long -D__uint32_t=uint32_t -D__uint16_t=uint16_t -D__uint64_t=uint64_t -D_BSD_I386__TYPES_H_)
+add_definitions(-Du_int=unsigned -D__int64_t=int64_t -D__int32_t=int32_t
+	-D__darwin_natural_t=long -D__uint32_t=uint32_t -D__uint16_t=uint16_t
+	-D__uint64_t=uint64_t -D_BSD_I386__TYPES_H_ -D__LITTLE_ENDIAN__)
 add_definitions('-DMIG_VERSION="1.0"')
 add_definitions('-D__private_extern__=')
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
