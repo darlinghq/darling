@@ -11,6 +11,8 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include")
 add_definitions(-DPRIVATE)
 
+mig(mach/exc.defs)
+
 set(syscall_sources
 	#wrappers/coalition.c
 	# wrappers/__commpage_gettimeofday.c
@@ -70,6 +72,7 @@ set(syscall_sources
 	#wrappers/legacy/socketpair.c
 
 	custom/errno.c
+	${CMAKE_CURRENT_BINARY_DIR}/excUser.c
 	)
 
 add_library(libsyscall OBJECT ${syscall_sources})

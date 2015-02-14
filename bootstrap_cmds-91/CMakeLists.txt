@@ -6,11 +6,8 @@ find_package(BISON)
 find_package(FLEX)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-add_definitions(-Du_int=unsigned -D__int64_t=int64_t -D__int32_t=int32_t
-	-D__darwin_natural_t=long -D__uint32_t=uint32_t -D__uint16_t=uint16_t
-	-D__uint64_t=uint64_t -D_BSD_I386__TYPES_H_ -D__LITTLE_ENDIAN__)
+add_definitions(-Du_int=unsigned -D__int64_t=int64_t -D__int32_t=int32_t -D__darwin_natural_t=long -D__uint32_t=uint32_t -D__uint16_t=uint16_t -D__uint64_t=uint64_t -D_BSD_I386__TYPES_H_)
 add_definitions('-DMIG_VERSION="1.0"')
-add_definitions('-D__private_extern__=')
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/mach)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/migcom.tproj)
@@ -37,3 +34,14 @@ set(mig_sources
 )
 
 add_executable(migcom ${mig_sources})
+
+add_custom_target(mig
+	COMMAND
+	awk -v "migcc=${CMAKE_C_COMPILER}"
+	-v "migcom=${CMAKE_CURRENT_BINARY_DIR}/migcom"
+	-f "${CMAKE_CURRENT_SOURCE_DIR}/migcom.tproj/mig.awk"
+	"${CMAKE_CURRENT_SOURCE_DIR}/migcom.tproj/mig.sh" ">${CMAKE_BINARY_DIR}/mig"
+	&& chmod 0755 "${CMAKE_BINARY_DIR}/mig"
+	)
+
+add_dependencies(migcom "mig")
