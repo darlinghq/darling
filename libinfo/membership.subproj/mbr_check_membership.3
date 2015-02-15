@@ -1,0 +1,109 @@
+.\" Copyright (c) 2005-2011 Apple Inc
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of Apple Computer nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"
+.Dd November 5, 2011
+.Dt MBR_CHECK_MEMBERSHIP 3
+.Os "Mac OS X"
+.Sh NAME
+.Nm mbr_check_membership,
+.Nm mbr_check_service_membership
+.Nd check whether a user is a member of a group or service ACL
+.Sh SYNOPSIS
+.In membership.h
+.Ft int
+.Fn mbr_check_membership "uuid_t user" "uuid_t group" "int *ismember"
+.Ft int
+.Fn mbr_check_service_membership "uuid_t user" "const char *service" "int *ismember"
+.Sh DESCRIPTION
+.Fn mbr_check_membership
+tests if a given user is a member of a group (either direct or indirect via a
+nested group).
+.Fa ismember
+is set to 1 if the user is a member or 0 if not a member of the group.  
+.Fn mbr_check_service_membership
+similarly tests if a given user is a member of a service ACL group.  Service
+ACLs are special groups defined with the prefix "com.apple.access_".  The
+service is then prefixed (e.g., "afp" would check "com.apple.access_afp").
+There is a special group that grants accessto all services called
+"com.apple.access_all_services".
+.Pp
+Users may belong to any number of groups.
+.Fn mbr_check_membership
+should always be used to check group membership, rather than calling
+.Xr getgroups 2
+or
+.Xr getgrouplist 2 .
+The
+.Xr setgroups 2
+and
+.Xr getgroups 2
+routines are limited to a fixed number of gids,
+and so may not include all of a user's groups.
+.Pp
+There are two special cases.
+If the two uuids are equal, then 
+.Fa ismember
+is set to 1.
+If the
+.Fa group
+uuid is equal to the reserved "everyone" uuid (ABCDEFAB-CDEF-ABCD-EFAB-CDEF0000000C), then
+.Fa ismember
+will be set to 1 for any valid user.
+.Pp
+Group membership information is managed by
+.Xr opendirectoryd 8 .
+.Sh RETURN VALUES
+.Fn mbr_check_membership
+does not test whether
+.Fa group
+exists or not.
+Querying membership for a nonexistent group will result in
+.Fa ismember
+being set to 0.  The function returns 0 on success or one of the following error
+codes on failure:
+.Bl -tag -width Er
+.It Bq Er EIO
+Communication with
+.Xr openditectoryd 8
+failed.
+.It Bq Er ENOENT
+.Fa user
+can not be found.
+.El
+.Pp
+.Fn mbr_check_service_membership
+is identical to
+.Fn mbr_check_membership
+except that ENOENT means no service ACL has been defined.
+.Pp
+.Sh SEE ALSO
+.Xr odutil 1 ,
+.Xr setgroups 2 ,
+.Xr getgroups 2 ,
+.Xr mbr_uid_to_uuid 3 ,
+.Xr opendirectoryd 8

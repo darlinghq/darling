@@ -1,0 +1,328 @@
+.\" Copyright (c) 1989, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     From: @(#)getgrent.3	8.2 (Berkeley) 4/19/94
+.\" $FreeBSD: src/lib/libc/gen/getgrent.3,v 1.28 2007/01/09 00:27:53 imp Exp $
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\"
+.\" Portions Copyright (c) 2003-2013 Apple Inc.  All Rights Reserved.
+.\"
+.\" This file contains Original Code and/or Modifications of Original Code
+.\" as defined in and that are subject to the Apple Public Source License
+.\" Version 2.0 (the 'License'). You may not use this file except in
+.\" compliance with the License. Please obtain a copy of the License at
+.\" http://www.opensource.apple.com/apsl/ and read it before using this
+.\" file.
+.\"
+.\" The Original Code and all software distributed under the License are
+.\" distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+.\" Please see the License for the specific language governing rights and
+.\" limitations under the License.
+.\"
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.Dd October 26, 2011
+.Dt GETGRENT 3
+.Os
+.Sh NAME
+.Nm getgrent ,
+.\".Nm getgrent_r ,
+.Nm getgrnam ,
+.Nm getgrnam_r ,
+.Nm getgrgid ,
+.Nm getgrgid_r ,
+.Nm getgruuid ,
+.Nm getgruuid_r ,
+.Nm setgroupent ,
+.Nm setgrent ,
+.Nm endgrent
+.Nd group database operations
+.Sh LIBRARY
+Standard system libraries.
+.Sh SYNOPSIS
+.In grp.h
+.In uuid/uuid.h
+.Ft struct group *
+.Fn getgrent void
+.\".Ft int
+.\".Fn getgrent_r "struct group *grp" "char *buffer" "size_t bufsize" "struct group **result"
+.Ft struct group *
+.Fn getgrnam "const char *name"
+.Ft int
+.Fn getgrnam_r "const char *name" "struct group *grp" "char *buffer" "size_t bufsize" "struct group **result"
+.Ft struct group *
+.Fn getgrgid "gid_t gid"
+.Ft int
+.Fn getgrgid_r "gid_t gid" "struct group *grp" "char *buffer" "size_t bufsize" "struct group **result"
+.Ft int
+.Fn getgruuid "uuid_t uuid"
+.Ft int
+.Fn getgruuid_r "uuid_t uuid" "struct group *grp" "char *buffer" "size_t bufsize" "struct group **result"
+.Ft int
+.Fn setgroupent "int stayopen"
+.Ft void
+.Fn setgrent void
+.Ft void
+.Fn endgrent void
+.Sh DESCRIPTION
+.\"These functions operate on the group database file
+These functions obtain information from
+.Xr opendirectoryd 8 ,
+including records in
+.Pa /etc/group
+which is described
+in
+.Xr group 5 .
+Each line of the database is defined by the structure
+.Vt group
+found in the include
+file
+.In grp.h :
+.Bd -literal -offset indent
+struct group {
+	char	*gr_name;	/* group name */
+	char	*gr_passwd;	/* group password */
+	gid_t	gr_gid;		/* group id */
+	char	**gr_mem;	/* group members */
+};
+.Ed
+.Pp
+The functions
+.Fn getgrnam ,
+.Fn getgrgid ,
+and
+.Fn getgruuid
+search the group database for the given group name pointed to by
+.Fa name ,
+the group id given by
+.Fa gid ,
+or the UUID given by
+.Fa uuid 
+respectively, returning the first one encountered.
+Identical group
+names, group gids, or uuids may result in undefined behavior.
+.Pp
+Note that the groups file
+.Pa /etc/group
+does not contain group UUIDs.
+The UUID for a group may be found using
+.Fn mbr_gid_to_uuid .
+.Pp
+On OS X, these routines are thread-safe and return a pointer to a
+thread-specific data structure.  The contents of this data
+structure are automatically released by subsequent calls to
+any of these routines on the same thread, or when the thread exits.
+These routines are therefore unsuitable for use in libraries or frameworks,
+from where they may overwrite the per-thread data that the calling
+application expects to find as a result of its own calls to these
+routines. Library and framework code should use the alternative reentrant 
+variants detailed below.
+.Pp
+The
+.Fn getgrent
+function
+searches all available directory services on it's first invocation.
+It caches the returned entries in a list
+and returns group entries one at a time.
+.Pp
+.Em NOTE
+that 
+.Fn getgrent
+may cause a very lengthy search for group records by
+.Nm opendirectoryd
+and may result in a large number of group records being cached
+by the calling process.
+Use of this function is not advised.
+.Pp
+The functions
+.Fn getgrnam_r , 
+.Fn getgrgid_r ,
+and
+.Fn getgruuid_r
+are alternative versions of
+.Fn getgrnam ,
+.Fn getgrgid ,
+and
+.Fn getgruuid
+respectively.
+The caller must provide storage for the results of the search in
+the
+.Fa grp ,
+.Fa buffer ,
+.Fa bufsize ,
+and
+.Fa result
+arguments.
+When these functions are successful, the
+.Fa grp
+argument will be filled-in, and a pointer to that argument will be
+stored in
+.Fa result .
+If an entry is not found or an error occurs,
+.Fa result
+will be set to
+.Dv NULL .
+.Pp
+These functions will open the group file for reading, if necessary.
+.Pp
+The
+.Fn setgroupent
+function causes
+.Fn getgrent
+to ``rewind'' to the beginning of the list of entries cached by a previous
+.Fn getgrent
+call.
+The cache is not cleared.
+The
+.Fa stayopen
+parameter value is unused on OS X.
+.Pp
+The
+.Fn setgrent
+and
+.Fn endgrent
+functions clear the cached results from a previous
+.Fn getgrent
+call.
+.Sh RETURN VALUES
+The functions
+.Fn getgrent ,
+.Fn getgrnam ,
+and
+.Fn getgrgid ,
+return a pointer to a group structure on success or
+.Dv NULL
+if the entry is not found or if an error occurs.
+If an error does occur,
+.Va errno
+will be set.
+Note that programs must explicitly set
+.Va errno
+to zero before calling any of these functions if they need to
+distinguish between a non-existent entry and an error.
+The functions
+.Fn getgrnam_r ,
+.Fn getgrgid_r ,
+and
+.Fn getgruuid_r
+return 0 if no error occurred, or an error number to indicate failure.
+It is not an error if a matching entry is not found.
+(Thus, if
+.Fa result
+is set to
+.Dv NULL
+and the return value is 0, no matching entry exists.)
+.Pp
+.Fn setgroupent
+returns the value 1 if successful, otherwise the value
+0 is returned.
+The functions
+.Fn setgrent ,
+.Fn endgrent ,
+and
+.Fn setgrfile
+have no return value.
+.Sh FILES
+.Bl -tag -width /etc/group -compact
+.It Pa /etc/group
+group database file
+.El
+.Sh COMPATIBILITY
+The historic function
+.Fn setgrfile ,
+which allowed the specification of alternate group databases, has
+been deprecated and is no longer available.
+.Sh SEE ALSO
+.Xr getpwent 3 ,
+.Xr group 5 ,
+.Xr mbr_gid_to_uuid 3, 
+.Xr opendirectory 8 ,
+.Xr yp 8
+.Sh STANDARDS
+The
+.Fn getgrent ,
+.Fn getgrnam ,
+.Fn getgrnam_r ,
+.Fn getgrgid ,
+.Fn getgrgid_r
+and
+.Fn endgrent
+functions conform to
+.St -p1003.1-96 .
+The
+.Fn setgrent
+function differs from that standard in that its return type is
+.Vt int
+rather than
+.Vt void .
+.Sh HISTORY
+The functions
+.Fn endgrent ,
+.Fn getgrent ,
+.Fn getgrnam ,
+.Fn getgrgid ,
+and
+.Fn setgrent
+appeared in
+.At v7 .
+The functions
+.Fn setgrfile
+and
+.Fn setgroupent
+appeared in
+.Bx 4.3 Reno .
+The functions
+.\".Fn getgrent_r ,
+.\".Fn getgrnam_r ,
+.Fn getgrnam_r
+and
+.Fn getgrgid_r
+appeared in
+.Fx 5.1 .
+The functions
+.Fn getgruuid
+and
+.Fn getgruuid_r
+appeared in Mac OS X 10.8.
+.Sh BUGS
+The functions
+.Fn getgrent ,
+.Fn getgrnam ,
+.Fn getgrgid ,
+.Fn getgruuid ,
+.Fn setgroupent
+and
+.Fn setgrent
+leave their results in an internal thread-specific memory and return
+a pointer to that object.
+Subsequent calls to
+the same function
+will modify the same object.

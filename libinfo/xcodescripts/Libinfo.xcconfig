@@ -1,0 +1,50 @@
+#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
+
+INSTALLHDRS_SCRIPT_PHASE = YES
+
+GCC_PREPROCESSOR_DEFINITIONS = __DARWIN_NON_CANCELABLE=1 __MigTypeCheck=1 INET6=1
+GCC_PREPROCESSOR_DEFINITIONS[sdk=iphone*] = CONFIG_IPHONE $(GCC_PREPROCESSOR_DEFINITIONS)
+GCC_PREPROCESSOR_DEFINITIONS[sdk=macosx*] = CONFIG_MAC DS_AVAILABLE SYNTH_ROOTFS $(GCC_PREPROCESSOR_DEFINITIONS)
+
+INSTALL_PATH_ACTUAL = /usr/lib/system
+INSTALL_PATH[sdk=macosx*] = $(INSTALL_PATH_ACTUAL)
+
+EXECUTABLE_PREFIX = libsystem_
+EXECUTABLE_PREFIX[sdk=iphonesimulator*] = libsystem_sim_
+
+ORDER_FILE[sdk=macosx*] = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/libsystem_info.order
+ORDER_FILE[sdk=iphoneos*] = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/libsystem_info.order
+
+LINK_WITH_STANDARD_LIBRARIES = NO
+
+LIBCOMPILER_RT_LDFLAGS = -lcompiler_rt
+LIBCOMPILER_RT_LDFLAGS[sdk=iphonesimulator*] = -lcompiler_rt_sim
+LIBMALLOC_LDFLAGS = -lsystem_malloc
+LIBMALLOC_LDFLAGS[sdk=iphonesimulator*] = -Wl,-upward-lSystem
+LIBPLATFORM_LDFLAGS = -lsystem_platform
+LIBPLATFORM_LDFLAGS[sdk=iphonesimulator*] = -Wl,-upward-lSystem
+LIBPTHREAD_LDFLAGS = -lsystem_pthread
+LIBPTHREAD_LDFLAGS[sdk=iphonesimulator*] = -Wl,-upward-lSystem
+LIBSYSCALL_LDFLAGS = -lsystem_kernel
+LIBSYSCALL_LDFLAGS[sdk=iphonesimulator*] = -Wl,-upward-lSystem
+LIBM_LDFLAGS = -lsystem_m
+LIBM_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_m
+LIBDYLD_LDFLAGS = -ldyld
+LIBDYLD_LDFLAGS[sdk=iphonesimulator*] = -ldyld_sim
+LIBC_LDFLAGS = -lsystem_c
+LIBC_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_c
+LIBDISPATCH_LDFLAGS = -ldispatch
+LIBLAUNCH_LDFLAGS = -llaunch
+LIBLAUNCH_LDFLAGS[sdk=iphonesimulator*] =
+LIBASL_LDFLAGS = -lsystem_asl
+LIBASL_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_asl
+LIBBLOCKS_LDFLAGS = -lsystem_blocks
+LIBBLOCKS_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_blocks
+LIBDNSD_LDFLAGS = -lsystem_dnssd
+LIBDNSD_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_dnssd
+LIBNOTIFY_LDFLAGS = -lsystem_notify
+LIBNOTIFY_LDFLAGS[sdk=iphonesimulator*] = -lnotify_sim
+LIBXPC_LDFLAGS = -lxpc
+LIBNETWORK_LDFLAGS = -Wl,-upward-lsystem_network
+
+OTHER_LDFLAGS = -all_load -umbrella System -L/usr/lib/system $(LIBCOMPILER_RT_LDFLAGS) $(LIBDYLD_LDFLAGS) $(LIBSYSCALL_LDFLAGS) $(LIBMALLOC_LDFLAGS) $(LIBPLATFORM_LDFLAGS) $(LIBPTHREAD_LDFLAGS) $(LIBC_LDFLAGS) $(LIBDISPATCH_LDFLAGS) $(LIBLAUNCH_LDFLAGS) $(LIBASL_LDFLAGS) $(LIBBLOCKS_LDFLAGS) $(LIBDNSD_LDFLAGS) $(LIBNOTIFY_LDFLAGS) $(LIBXPC_LDFLAGS) $(LIBNETWORK_LDFLAGS)
