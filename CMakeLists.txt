@@ -19,4 +19,5 @@ add_subdirectory(libc)
 add_subdirectory(libm)
 add_subdirectory(libmalloc)
 add_subdirectory(libsystem)
+add_subdirectory(keymgr)
 

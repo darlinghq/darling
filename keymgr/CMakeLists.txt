@@ -1,4 +1,4 @@
-project(darling-libsystem_init)
+project(keymgr)
 
 cmake_minimum_required(VERSION 2.4.0)
 
@@ -20,10 +20,9 @@ add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
-set(libsystem_sources
-	init.c
-	dummy.c
+set(keymgr_sources
+	keymgr.c
 )
 
-add_library(system SHARED ${libsystem_sources})
-target_link_libraries(system system_malloc system_c system_kernel keymgr)
+add_library(keymgr SHARED ${keymgr_sources})
+
