@@ -1,0 +1,498 @@
+/*
+ * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_FREE_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+/*
+ *	File:	mach/vm_map.defs
+ *
+ *	Exported (native-sized) kernel VM calls.
+ */
+
+subsystem
+#if	KERNEL_SERVER
+	  KernelServer
+#endif	/* KERNEL_SERVER */
+	  vm_map 3800;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include <mach_debug/mach_debug_types.defs>
+
+#if !KERNEL && !LIBSYSCALL_INTERFACE
+#define PREFIX(NAME) _kernelrpc_ ## NAME
+#else
+#define PREFIX(NAME) NAME
+#endif
+
+/*
+ *      Returns information about the contents of the virtual
+ *      address space of the target task at the specified
+ *      address.  The returned protection, inheritance, sharing
+ *      and memory object values apply to the entire range described
+ *      by the address range returned; the memory object offset
+ *      corresponds to the beginning of the address range.
+ *      [If the specified address is not allocated, the next
+ *      highest address range is described.  If no addresses beyond
+ *      the one specified are allocated, the call returns KERN_NO_SPACE.]
+ */
+routine vm_region(
+                target_task     : vm_map_t;
+	inout	address		: vm_address_t;
+        out     size            : vm_size_t;
+		flavor		: vm_region_flavor_t;
+	out	info		: vm_region_info_t, CountInOut;
+        out     object_name     : memory_object_name_t =
+                                        MACH_MSG_TYPE_MOVE_SEND
+                                        ctype: mach_port_t);
+
+/*
+ *	Allocate zero-filled memory in the address space
+ *	of the target task, either at the specified address,
+ *	or wherever space can be found (if anywhere is TRUE),
+ *	of the specified size.  The address at which the
+ *	allocation actually took place is returned.
+ */
+
+#if !KERNEL && !LIBSYSCALL_INTERFACE
+skip;
+#else
+routine PREFIX(vm_allocate)(
+		target_task	: vm_task_entry_t;
+	inout	address		: vm_address_t;
+		size		: vm_size_t;
+		flags		: int);
+
+#endif
+
+/*
+ *	Deallocate the specified range from the virtual
+ *	address space of the target task.
+ */
+
+#if !KERNEL && !LIBSYSCALL_INTERFACE
+skip;
+#else
+routine PREFIX(vm_deallocate)(
+		target_task	: vm_task_entry_t;
+		address		: vm_address_t;
+		size		: vm_size_t);
+
+#endif
+
+/*
+ *	Set the current or maximum protection attribute
+ *	for the specified range of the virtual address
+ *	space of the target task.  The current protection
+ *	limits the memory access rights of threads within
+ *	the task; the maximum protection limits the accesses
+ *	that may be given in the current protection.
+ *	Protections are specified as a set of {read, write, execute}
+ *	*permissions*.
+ */
+
+#if !KERNEL && !LIBSYSCALL_INTERFACE
+skip;
+#else
+routine PREFIX(vm_protect)(
+		target_task	: vm_task_entry_t;
+		address		: vm_address_t;
+		size		: vm_size_t;
+		set_maximum	: boolean_t;
+		new_protection	: vm_prot_t);
+#endif
+
+/*
+ *	Set the inheritance attribute for the specified range
+ *	of the virtual address space of the target task.
+ *	The inheritance value is one of {none, copy, share}, and
+ *	specifies how the child address space should acquire
+ *	this memory at the time of a task_create call.
+ */
+routine vm_inherit(
+		target_task	: vm_task_entry_t;
+		address		: vm_address_t;
+		size		: vm_size_t;
+		new_inheritance	: vm_inherit_t);
+
+/*
+ *	Returns the contents of the specified range of the
+ *	virtual address space of the target task.  [The
+ *	range must be aligned on a virtual page boundary,
+ *	and must be a multiple of pages in extent.  The
+ *	protection on the specified range must permit reading.]
+ */
+routine PREFIX(vm_read) (
+		target_task	: vm_map_t;
+		address		: vm_address_t;
+		size		: vm_size_t;
+	out	data		: pointer_t);
+
+/* 
+ * List corrollary to vm_read, returns mapped contents of specified
+ * ranges within target address space.
+ */
+routine vm_read_list(
+		target_task 	: vm_map_t;
+	inout	data_list   	: vm_read_entry_t;
+		count		: natural_t);
+
+/*
+ *	Writes the contents of the specified range of the
+ *	virtual address space of the target task.  [The
+ *	range must be aligned on a virtual page boundary,
+ *	and must be a multiple of pages in extent.  The
+ *	protection on the specified range must permit writing.]
+ */
+routine vm_write(
+		target_task	: vm_map_t;
+		address		: vm_address_t;
+		data		: pointer_t);
+
+/*
+ *	Copy the contents of the source range of the virtual
+ *	address space of the target task to the destination
+ *	range in that same address space.  [Both of the
+ *	ranges must be aligned on a virtual page boundary,
+ *	and must be multiples of pages in extent.  The
+ *	protection on the source range must permit reading,
+ *	and the protection on the destination range must
+ *	permit writing.]
+ */
+routine vm_copy(
+		target_task	: vm_map_t;
+		source_address	: vm_address_t;
+		size		: vm_size_t;
+		dest_address	: vm_address_t);
+
+/*
+ *	Returns the contents of the specified range of the
+ *	virtual address space of the target task.  [There
+ *	are no alignment restrictions, and the results will
+ *      overwrite the area pointed to by data - which must
+ *      already exist. The protection on the specified range
+ *	must permit reading.]
+ */
+routine vm_read_overwrite(
+		target_task	: vm_map_t;
+		address		: vm_address_t;
+		size		: vm_size_t;
+		data		: vm_address_t;
+	out	outsize		: vm_size_t);
+
+
+routine vm_msync(
+		target_task	: vm_map_t;
+		address		: vm_address_t;
+		size		: vm_size_t;
+		sync_flags	: vm_sync_t );
+
+/*
+ *	Set the paging behavior attribute for the specified range
+ *	of the virtual address space of the target task.
+ *	The behavior value is one of {default, random, forward 
+ *	sequential, reverse sequential} and indicates the expected
+ *	page reference pattern for the specified range.
+ */
+routine vm_behavior_set(
+		target_task	: vm_map_t;
+		address		: vm_address_t;
+		size		: vm_size_t;
+		new_behavior	: vm_behavior_t);
+
+
+/*
+ *	Map a user-defined memory object into the virtual address
+ *	space of the target task.  If desired (anywhere is TRUE),
+ *	the kernel will find a suitable address range of the
+ *	specified size; else, the specific address will be allocated.
+ *
+ *	The beginning address of the range will be aligned on a virtual
+ *	page boundary, be at or beyond the address specified, and
+ *	meet the mask requirements (bits turned on in the mask must not
+ *	be turned on in the result); the size of the range, in bytes,
+ *	will be rounded	up to an integral number of virtual pages.
+ *
+ *	The memory in the resulting range will be associated with the
+ *	specified memory object, with the beginning of the memory range
+ *	referring to the specified offset into the memory object.
+ *
+ *	The mapping will take the current and maximum protections and
+ *	the inheritance attributes specified; see the vm_protect and
+ *	vm_inherit calls for a description of these attributes.
+ *
+ *	If desired (copy is TRUE), the memory range will be filled
+ *	with a copy of the data from the memory object; this copy will
+ *	be private to this mapping in this target task.  Otherwise,
+ *	the memory in this mapping will be shared with other mappings
+ *	of the same memory object at the same offset (in this task or
+ *	in other tasks).  [The Mach kernel only enforces shared memory
+ *	consistency among mappings on one host with similar page alignments.
+ *	The user-defined memory manager for this object is responsible
+ *	for further consistency.]
+ */
+routine PREFIX(vm_map) (
+		target_task	: vm_task_entry_t;
+	inout	address		: vm_address_t;
+		size		: vm_size_t;
+		mask		: vm_address_t;
+		flags		: int;
+		object		: mem_entry_name_port_t;
+		offset		: vm_offset_t;
+		copy		: boolean_t;
+		cur_protection	: vm_prot_t;
+		max_protection	: vm_prot_t;
+		inheritance	: vm_inherit_t);
+
+/*
+ *	Set/Get special properties of memory associated
+ *	to some virtual address range, such as cachability, 
+ *	migrability, replicability.  Machine-dependent.
+ */
+routine vm_machine_attribute(
+		target_task	: vm_map_t;
+		address		: vm_address_t;
+		size		: vm_size_t;
+		attribute	: vm_machine_attribute_t;
+	inout	value		: vm_machine_attribute_val_t);
+
+/*
+ *      Map portion of a task's address space.
+ */
+routine PREFIX(vm_remap) (
+		target_task	: vm_map_t;
+	inout	target_address	: vm_address_t;
+		size		: vm_size_t;
+		mask		: vm_address_t;
+		flags		: int;
+		src_task	: vm_map_t;
+		src_address	: vm_address_t;
+		copy		: boolean_t;
+	out	cur_protection	: vm_prot_t;
+	out	max_protection	: vm_prot_t;
+		inheritance	: vm_inherit_t);
+
+/*
+ *	Require that all future virtual memory allocation
+ *	allocates wired memory.  Setting must_wire to FALSE
+ *	disables the wired future feature.
+ */
+routine task_wire(
+		target_task	: vm_map_t;
+		must_wire	: boolean_t);
+
+	
+/*
+ *	Allow application level processes to create named entries which
+ *	correspond to mapped portions of their address space.  These named
+ *	entries can then be manipulated, shared with other processes in
+ *	other address spaces and ultimately mapped in ohter address spaces
+ */
+
+routine mach_make_memory_entry(
+		target_task	:vm_map_t;
+	inout	size		:vm_size_t;
+		offset		:vm_offset_t;
+		permission	:vm_prot_t;
+	out	object_handle	:mem_entry_name_port_move_send_t;
+		parent_entry	:mem_entry_name_port_t);
+
+/*
+ *      Give the caller information on the given location in a virtual
+ *      address space.  If a page is mapped return ref and dirty info.
+ */
+routine vm_map_page_query(
+                target_map      :vm_map_t;
+                offset          :vm_offset_t;
+        out     disposition     :integer_t;
+        out     ref_count       :integer_t);
+
+/*
+ *	Returns information about a region of memory.
+ *	Includes info about the chain of objects rooted at that region.
+ *      Only available in MACH_VM_DEBUG compiled kernels,
+ *      otherwise returns KERN_FAILURE.
+ */
+routine mach_vm_region_info(
+		task		: vm_map_t;
+		address		: vm_address_t;
+	out	region		: vm_info_region_t;
+	out	objects		: vm_info_object_array_t);
+
+routine	vm_mapped_pages_info(
+		task		: vm_map_t;
+	out	pages		: page_address_array_t);
+
+#if 0
+/*
+ *    Allow application level processes to create named entries which
+ *    are backed by sub-maps which describe regions of address space.
+ *    These regions of space can have objects mapped into them and
+ *    in turn, can be mapped into target address spaces 
+ */
+
+routine	vm_region_object_create(
+		target_task	:vm_map_t;
+	in	size		:vm_size_t;
+	out	region_object	:mach_port_move_send_t);
+#else
+skip; /* was vm_region_object_create */
+#endif
+
+/*
+ *	A recursive form of vm_region which probes submaps withint the
+ *	address space.
+ */
+routine vm_region_recurse(
+                target_task     : vm_map_t;
+	inout	address		: vm_address_t;
+        out     size            : vm_size_t;
+	inout	nesting_depth	: natural_t;
+	out	info		: vm_region_recurse_info_t,CountInOut);
+
+
+/* 
+ *	The routines below are temporary, meant for transitional use
+ *	as their counterparts are moved from 32 to 64 bit data path
+ */
+
+
+routine vm_region_recurse_64(
+                target_task     : vm_map_t;
+	inout	address		: vm_address_t;
+        out     size            : vm_size_t;
+	inout	nesting_depth	: natural_t;
+	out	info		: vm_region_recurse_info_t,CountInOut);
+
+routine mach_vm_region_info_64(
+		task		: vm_map_t;
+		address		: vm_address_t;
+	out	region		: vm_info_region_64_t;
+	out	objects		: vm_info_object_array_t);
+
+routine vm_region_64(
+                target_task     : vm_map_t;
+	inout	address		: vm_address_t;
+        out     size            : vm_size_t;
+		flavor		: vm_region_flavor_t;
+	out	info		: vm_region_info_t, CountInOut;
+        out     object_name     : memory_object_name_t =
+                                        MACH_MSG_TYPE_MOVE_SEND
+                                        ctype: mach_port_t);
+
+routine mach_make_memory_entry_64(
+		target_task	:vm_map_t;
+	inout	size		:memory_object_size_t;
+		offset		:memory_object_offset_t;
+		permission	:vm_prot_t;
+	out	object_handle	:mach_port_move_send_t;
+		parent_entry	:mem_entry_name_port_t);
+
+
+
+routine vm_map_64(
+		target_task	: vm_task_entry_t;
+	inout	address		: vm_address_t;
+		size		: vm_size_t;
+		mask		: vm_address_t;
+		flags		: int;
+		object		: mem_entry_name_port_t;
+		offset		: memory_object_offset_t;
+		copy		: boolean_t;
+		cur_protection	: vm_prot_t;
+		max_protection	: vm_prot_t;
+		inheritance	: vm_inherit_t);
+
+#if 0
+/*
+ * The UPL interfaces are not ready for user-level export.
+ */
+routine vm_map_get_upl(
+		target_task	: vm_map_t;
+		address		: vm_map_offset_t;
+	inout	size		: vm_size_t;
+	out	upl		: upl_t;
+	out	page_info	: upl_page_info_array_t, CountInOut;
+	inout	flags		: integer_t;
+		force_data_sync	: integer_t);
+
+routine vm_upl_map(
+		target_task	: vm_map_t;
+		upl		: upl_t;
+	inout	address		: vm_address_t);
+
+routine vm_upl_unmap(
+		target_task	: vm_map_t;
+		upl		: upl_t);
+#else
+skip; /* was vm_map_get_upl */
+skip; /* was vm_upl_map */
+skip; /* was vm_upl_unmap */
+#endif		
+
+/*
+ *	Control behavior and investigate state of a "purgable" object in
+ *	the virtual address space of the target task.  A purgable object is
+ *	created via a call to vm_allocate() with VM_FLAGS_PURGABLE
+ *	specified.  See the routine implementation for a complete
+ *	definition of the routine.
+ */
+routine vm_purgable_control(
+		target_task	: vm_map_t;
+		address		: vm_address_t;
+		control		: vm_purgable_t;
+	inout	state		: int);
+
+/* vim: set ft=c : */

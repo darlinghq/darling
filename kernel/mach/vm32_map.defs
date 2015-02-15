@@ -1,0 +1,284 @@
+/*
+ * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_FREE_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+/*
+ *	File:	mach/vm_map.defs
+ *
+ *	Exported kernel VM calls for 32-bit client tasks.
+ */
+
+subsystem
+#if	KERNEL_SERVER
+	  KernelServer
+#endif	/* KERNEL_SERVER */
+	  map 3800;
+
+serverprefix vm32_;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include <mach_debug/mach_debug_types.defs>
+
+#if VM32_SUPPORT
+
+/* See vm_map.defs for more information */
+
+routine region(
+                target_task     : vm_map_t;
+	inout	address		: vm32_address_t;
+        out     size            : vm32_size_t;
+		flavor		: vm_region_flavor_t;
+	out	info		: vm_region_info_t, CountInOut;
+        out     object_name     : memory_object_name_t =
+                                        MACH_MSG_TYPE_MOVE_SEND
+                                        ctype: mach_port_t);
+
+routine allocate(
+		target_task	: vm_task_entry_t;
+	inout	address		: vm32_address_t;
+		size		: vm32_size_t;
+		flags		: int);
+
+routine deallocate(
+		target_task	: vm_task_entry_t;
+		address		: vm32_address_t;
+		size		: vm32_size_t);
+
+routine protect(
+		target_task	: vm_task_entry_t;
+		address		: vm32_address_t;
+		size		: vm32_size_t;
+		set_maximum	: boolean_t;
+		new_protection	: vm_prot_t);
+
+routine inherit(
+		target_task	: vm_task_entry_t;
+		address		: vm32_address_t;
+		size		: vm32_size_t;
+		new_inheritance	: vm_inherit_t);
+
+routine read(
+		target_task	: vm_map_t;
+		address		: vm32_address_t;
+		size		: vm32_size_t;
+	out	data		: pointer_t);
+
+routine read_list(
+		target_task 	: vm_map_t;
+	inout	data_list   	: vm32_read_entry_t;
+		count		: natural_t);
+
+routine write(
+		target_task	: vm_map_t;
+		address		: vm32_address_t;
+		data		: pointer_t);
+
+routine copy(
+		target_task	: vm_map_t;
+		source_address	: vm32_address_t;
+		size		: vm32_size_t;
+		dest_address	: vm32_address_t);
+
+routine read_overwrite(
+		target_task	: vm_map_t;
+		address		: vm32_address_t;
+		size		: vm32_size_t;
+		data		: vm32_address_t;
+	out	outsize		: vm32_size_t);
+
+
+routine msync(
+		target_task	: vm_map_t;
+		address		: vm32_address_t;
+		size		: vm32_size_t;
+		sync_flags	: vm_sync_t );
+
+routine behavior_set(
+		target_task	: vm_map_t;
+		address		: vm32_address_t;
+		size		: vm32_size_t;
+		new_behavior	: vm_behavior_t);
+
+routine map(
+		target_task	: vm_task_entry_t;
+	inout	address		: vm32_address_t;
+		size		: vm32_size_t;
+		mask		: vm32_address_t;
+		flags		: int;
+		object		: mem_entry_name_port_t;
+		offset		: vm32_offset_t;
+		copy		: boolean_t;
+		cur_protection	: vm_prot_t;
+		max_protection	: vm_prot_t;
+		inheritance	: vm_inherit_t);
+
+routine machine_attribute(
+		target_task	: vm_map_t;
+		address		: vm32_address_t;
+		size		: vm32_size_t;
+		attribute	: vm_machine_attribute_t;
+	inout	value		: vm_machine_attribute_val_t);
+
+routine remap(
+		target_task	: vm_map_t;
+	inout	target_address	: vm32_address_t;
+		size		: vm32_size_t;
+		mask		: vm32_address_t;
+		anywhere	: boolean_t;
+		src_task	: vm_map_t;
+		src_address	: vm32_address_t;
+		copy		: boolean_t;
+	out	cur_protection	: vm_prot_t;
+	out	max_protection	: vm_prot_t;
+		inheritance	: vm_inherit_t);
+
+routine _task_wire(
+		target_task	: vm_map_t;
+		must_wire	: boolean_t);
+
+routine make_memory_entry(
+		target_task	:vm_map_t;
+	inout	size		:vm32_size_t;
+		offset		:vm32_offset_t;
+		permission	:vm_prot_t;
+	out	object_handle	:mem_entry_name_port_move_send_t;
+		parent_entry	:mem_entry_name_port_t);
+
+routine map_page_query(
+                target_map      :vm_map_t;
+                offset          :vm32_offset_t;
+        out     disposition     :integer_t;
+        out     ref_count       :integer_t);
+
+routine region_info(
+		task		: vm_map_t;
+		address		: vm32_address_t;
+	out	region		: vm_info_region_t;
+	out	objects		: vm_info_object_array_t);
+
+routine mapped_pages_info(
+		task		: vm_map_t;
+	out	pages		: page_address_array_t);
+
+skip; /* was vm_region_object_create */
+
+routine region_recurse(
+                target_task     : vm_map_t;
+	inout	address		: vm32_address_t;
+        out     size            : vm32_size_t;
+	inout	nesting_depth	: natural_t;
+	out	info		: vm_region_recurse_info_t,CountInOut);
+
+routine region_recurse_64(
+                target_task     : vm_map_t;
+	inout	address		: vm32_address_t;
+        out     size            : vm32_size_t;
+	inout	nesting_depth	: natural_t;
+	out	info		: vm_region_recurse_info_t,CountInOut);
+
+routine region_info_64(
+		task		: vm_map_t;
+		address		: vm32_address_t;
+	out	region		: vm_info_region_64_t;
+	out	objects		: vm_info_object_array_t);
+
+routine region_64(
+                target_task     : vm_map_t;
+	inout	address		: vm32_address_t;
+        out     size            : vm32_size_t;
+		flavor		: vm_region_flavor_t;
+	out	info		: vm_region_info_t, CountInOut;
+        out     object_name     : memory_object_name_t =
+                                        MACH_MSG_TYPE_MOVE_SEND
+                                        ctype: mach_port_t);
+
+routine make_memory_entry_64(
+		target_task	:vm_map_t;
+	inout	size		:memory_object_size_t;
+		offset		:memory_object_offset_t;
+		permission	:vm_prot_t;
+	out	object_handle	:mach_port_move_send_t;
+		parent_entry	:mem_entry_name_port_t);
+
+
+
+routine map_64(
+		target_task	: vm_task_entry_t;
+	inout	address		: vm32_address_t;
+		size		: vm32_size_t;
+		mask		: vm32_address_t;
+		flags		: int;
+		object		: mem_entry_name_port_t;
+		offset		: memory_object_offset_t;
+		copy		: boolean_t;
+		cur_protection	: vm_prot_t;
+		max_protection	: vm_prot_t;
+		inheritance	: vm_inherit_t);
+
+skip; /* was vm_map_get_upl */
+skip; /* was vm_upl_map */
+skip; /* was vm_upl_unmap */
+
+routine purgable_control(
+		target_task	: vm_map_t;
+		address		: vm32_address_t;
+		control		: vm_purgable_t;
+	inout	state		: int);
+
+#endif /* VM32_SUPPORT */
+
+/* vim: set ft=c : */

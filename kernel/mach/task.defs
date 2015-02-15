@@ -1,0 +1,454 @@
+/*
+ * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_FREE_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+/*
+ *	File:	mach/mach_port.defs
+ *	Author:	Rich Draves
+ *
+ *	Exported kernel calls.
+ */
+
+subsystem
+#if	KERNEL_SERVER
+	  KernelServer
+#endif	/* KERNEL_SERVER */
+	  task 3400;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include <mach_debug/mach_debug_types.defs>
+
+/*
+ *	Create a new task with an empty set of IPC rights,
+ *	and having an address space constructed from the
+ *	target task (or empty, if inherit_memory is FALSE).
+ */
+routine task_create(
+		target_task	: task_t;
+		ledgers		: ledger_array_t;
+		inherit_memory	: boolean_t;
+	out	child_task	: task_t);
+
+/*
+ *	Destroy the target task, causing all of its threads
+ *	to be destroyed, all of its IPC rights to be deallocated,
+ *	and all of its address space to be deallocated.
+ */
+routine task_terminate(
+		target_task	: task_t);
+
+/*
+ *	Returns the set of threads belonging to the target task.
+ */
+routine task_threads(
+		target_task	: task_t;
+	out	act_list	: thread_act_array_t);
+
+/*
+ *	Stash a handful of ports for the target task; child
+ *	tasks inherit this stash at task_create time.
+ */
+routine	mach_ports_register(
+		target_task	: task_t;
+		init_port_set	: mach_port_array_t =
+					^array[] of mach_port_t);
+
+/*
+ *	Retrieve the stashed ports for the target task.
+ */
+routine	mach_ports_lookup(
+		target_task	: task_t;
+	out	init_port_set	: mach_port_array_t =
+					^array[] of mach_port_t);
+
+/*
+ *      Returns information about the target task.
+ */
+routine task_info(
+                target_task     : task_name_t;
+                flavor          : task_flavor_t;
+        out     task_info_out   : task_info_t, CountInOut);
+
+/*
+ * Set task information.
+ */
+routine	task_set_info(
+		target_task	: task_t;
+		flavor		: task_flavor_t;
+		task_info_in	: task_info_t);
+
+/*
+ *	Increment the suspend count for the target task.
+ *	No threads within a task may run when the suspend
+ *	count for that task is non-zero.
+ */
+routine	task_suspend(
+		target_task	: task_t);
+
+
+/*
+ *	Decrement the suspend count for the target task,
+ *	if the count is currently non-zero.  If the resulting
+ *	suspend	count is zero, then threads within the task
+ *	that also have non-zero suspend counts may execute.
+ */
+routine	task_resume(
+		target_task	: task_t);
+
+/*
+ *	Returns the current value of the selected special port
+ *	associated with the target task.
+ */
+routine task_get_special_port(
+		task		: task_t;
+		which_port	: int;
+	out	special_port	: mach_port_t);
+
+/*
+ *	Set one of the special ports associated with the
+ *	target task.
+ */
+routine task_set_special_port(
+		task		: task_t;
+		which_port	: int;
+		special_port	: mach_port_t);
+
+/*
+ *	Create a new thread within the target task, returning
+ *	the port representing the first thr_act in that new thread.  The
+ *	initial execution state of the thread is undefined.
+ */
+routine
+#ifdef KERNEL_SERVER
+thread_create_from_user(
+#else
+thread_create(
+#endif
+		parent_task	: task_t;
+	out	child_act	: thread_act_t);
+
+/*
+ *      Create a new thread within the target task, returning
+ *      the port representing that new thread.  The new thread 
+ *	is not suspended; its initial execution state is given
+ *	by flavor and new_state. Returns the port representing 
+ *	the new thread.
+ */
+routine
+#ifdef KERNEL_SERVER
+thread_create_running_from_user(
+#else
+thread_create_running(
+#endif
+                parent_task     : task_t;
+                flavor          : thread_state_flavor_t;
+                new_state       : thread_state_t;
+        out     child_act       : thread_act_t);
+
+/*
+ * Set an exception handler for a task on one or more exception types.
+ * These handlers are invoked for all threads in the task if there are
+ * no thread-specific exception handlers or those handlers returned an
+ * error.
+ */
+routine	task_set_exception_ports(
+		task		: task_t;
+		exception_mask	: exception_mask_t;
+		new_port	: mach_port_t;
+		behavior	: exception_behavior_t;
+		new_flavor	: thread_state_flavor_t);
+
+
+/*
+ * Lookup some of the old exception handlers for a task
+ */
+routine	task_get_exception_ports(
+		task		: task_t;
+		exception_mask	: exception_mask_t;
+	  out	masks		: exception_mask_array_t;
+	  out	old_handlers	: exception_handler_array_t, SameCount;
+	  out	old_behaviors	: exception_behavior_array_t, SameCount;
+	  out	old_flavors	: exception_flavor_array_t, SameCount);
+
+
+/*
+ * Set an exception handler for a thread on one or more exception types.
+ * At the same time, return the previously defined exception handlers for
+ * those types.
+ */
+routine	task_swap_exception_ports(
+		task		: task_t;
+		exception_mask	: exception_mask_t;
+		new_port	: mach_port_t;
+		behavior	: exception_behavior_t;
+		new_flavor	: thread_state_flavor_t;
+	  out	masks		: exception_mask_array_t;
+	  out	old_handlerss	: exception_handler_array_t, SameCount;
+	  out	old_behaviors	: exception_behavior_array_t, SameCount;
+	  out	old_flavors	: exception_flavor_array_t, SameCount);
+
+/*
+ * OBSOLETE interface.
+ */
+routine lock_set_create(
+		task		: task_t;
+	out	new_lock_set	: lock_set_t;
+		n_ulocks	: int;
+		policy		: int);
+
+/*
+ * OBSOLETE interface.
+ */
+routine lock_set_destroy(
+		task		: task_t;
+		lock_set	: lock_set_t);
+
+/*
+ * Create and destroy semaphore synchronizers on a
+ * per-task basis (i.e. the task owns them).
+ */
+
+routine semaphore_create(
+		task		: task_t;
+	out	semaphore	: semaphore_t;
+		policy		: int;
+		value		: int);
+
+routine semaphore_destroy(
+		task		: task_t;
+		semaphore	: semaphore_consume_ref_t);
+
+/*
+ * Set/get policy information for a task.
+ * (Approved Mac OS X microkernel interface)
+ */
+
+routine task_policy_set(
+	task			: task_t;
+	flavor			: task_policy_flavor_t;
+	policy_info		: task_policy_t);
+
+routine task_policy_get(
+	task			: task_t;
+	flavor			: task_policy_flavor_t;
+out	policy_info		: task_policy_t, CountInOut;
+inout	get_default		: boolean_t);
+
+/*
+ *	Removed from the kernel.
+ */
+#if KERNEL_SERVER
+skip;
+#else
+routine task_sample(
+		task		: task_t;
+		reply		: mach_port_make_send_t);
+#endif
+
+/*
+ * JMM - Everything from here down is likely to go away soon
+ */
+/*
+ * OBSOLETE interface.
+ */
+routine task_policy(
+	task			: task_t;
+	policy			: policy_t;
+	base			: policy_base_t;
+	set_limit		: boolean_t;
+	change			: boolean_t);
+
+
+/*
+ *	Establish a user-level handler for the specified
+ *	system call.
+ */
+routine task_set_emulation(
+		target_port	: task_t;
+		routine_entry_pt: vm_address_t;
+		routine_number  : int);	
+
+/*
+ *	Get user-level handler entry points for all
+ *	emulated system calls.
+ */
+routine task_get_emulation_vector(
+		task		: task_t;
+	out	vector_start	: int;
+	out	emulation_vector: emulation_vector_t);
+
+/*
+ *	Establish user-level handlers for the specified
+ *	system calls. Non-emulated system calls are specified
+ *	with emulation_vector[i] == EML_ROUTINE_NULL.
+ */
+routine task_set_emulation_vector(
+		task		: task_t;
+		vector_start	: int;
+		emulation_vector: emulation_vector_t);
+
+
+/*
+ *      Establish restart pc for interrupted atomic sequences.
+ */
+routine task_set_ras_pc(
+		target_task     : task_t;
+		basepc          : vm_address_t;
+		boundspc        : vm_address_t);
+
+
+/*
+ * Return zone info as seen/used by this task.
+ */
+routine task_zone_info(
+		target_task	: task_t;
+	out	names		: mach_zone_name_array_t,
+					Dealloc;
+	out	info		: task_zone_info_array_t,
+					Dealloc);
+
+
+/* 
+ * JMM - Want to eliminate processor_set so keep them at the end.
+ */
+
+/*
+ *	Assign task to processor set.
+ */
+routine task_assign(
+		task		: task_t;
+		new_set		: processor_set_t;
+		assign_threads	: boolean_t);
+
+/*
+ *	Assign task to default set.
+ */
+routine task_assign_default(
+		task		: task_t;
+		assign_threads	: boolean_t);
+
+/*
+ *	Get current assignment for task.
+ */
+routine task_get_assignment(
+		task		: task_t;
+	out	assigned_set	: processor_set_name_t);
+
+/*
+ * OBSOLETE interface.
+ */
+routine task_set_policy(
+	task			: task_t;
+	pset			: processor_set_t;
+	policy			: policy_t;
+	base			: policy_base_t;
+	limit			: policy_limit_t;
+	change			: boolean_t);
+
+/*
+ * Read the selected state which is to be installed on new 
+ * threads in the task as they are created.
+ */
+routine task_get_state(
+		task		: task_t;
+		flavor		: thread_state_flavor_t;
+	out	old_state	: thread_state_t, CountInOut);
+ 
+/*
+ * Set the selected state information to be installed on
+ * all subsequently created threads in the task.
+ */
+routine	task_set_state(
+		task		: task_t;
+		flavor		: thread_state_flavor_t;
+		new_state	: thread_state_t);
+
+/*
+ * Change the task's physical footprint limit (in MB).
+ */
+routine task_set_phys_footprint_limit(
+		task		: task_t;
+		new_limit	: int;
+	out old_limit	: int);
+
+routine task_suspend2(
+		target_task : task_t;
+	out suspend_token : task_suspension_token_t);
+
+routine task_resume2(
+		suspend_token : task_suspension_token_t);
+
+routine task_purgable_info(
+		task 		: task_t;
+	out	stats		: task_purgable_info_t);
+
+routine task_get_mach_voucher(
+		task		: task_t;
+		which		: mach_voucher_selector_t;
+	out	voucher		: ipc_voucher_t);
+
+routine task_set_mach_voucher(
+		task		: task_t;
+		voucher		: ipc_voucher_t);
+
+routine task_swap_mach_voucher(
+		task		: task_t;
+		new_voucher	: ipc_voucher_t;
+	inout	old_voucher	: ipc_voucher_t);
+
+/* vim: set ft=c : */
+
