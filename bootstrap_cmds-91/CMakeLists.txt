@@ -35,7 +35,9 @@ set(mig_sources
 
 add_executable(migcom ${mig_sources})
 
-add_custom_target(mig
+add_custom_command(
+	DEPENDS migcom
+	OUTPUT "${CMAKE_BINARY_DIR}/mig"
 	COMMAND
 	awk -v "migcc=${CMAKE_C_COMPILER}"
 	-v "migcom=${CMAKE_CURRENT_BINARY_DIR}/migcom"
@@ -44,4 +46,4 @@ add_custom_target(mig
 	&& chmod 0755 "${CMAKE_BINARY_DIR}/mig"
 	)
 
-add_dependencies(migcom "mig")
+
