@@ -8,6 +8,18 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 set(MIG_EXECUTABLE "${CMAKE_BINARY_DIR}/mig")
 
 FUNCTION(mig defFileName)
+	if (NOT MIG_USER_SOURCE_SUFFIX)
+		set (MIG_USER_SOURCE_SUFFIX "User.c")
+	endif (NOT MIG_USER_SOURCE_SUFFIX)
+	if (NOT MIG_USER_HEADER_SUFFIX)
+		set (MIG_USER_HEADER_SUFFIX ".h")
+	endif (NOT MIG_USER_HEADER_SUFFIX)
+	if (NOT MIG_SERVER_SOURCE_SUFFIX)
+		set (MIG_SERVER_SOURCE_SUFFIX "Server.c")
+	endif (NOT MIG_SERVER_SOURCE_SUFFIX)
+	if (NOT MIG_SERVER_HEADER_SUFFIX)
+		set (MIG_SERVER_HEADER_SUFFIX "Server.h")
+	endif (NOT MIG_SERVER_HEADER_SUFFIX)
 	
 	get_directory_property(DirDefs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMPILE_DEFINITIONS)
 	get_directory_property(InclDirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} INCLUDE_DIRECTORIES)
@@ -23,36 +35,32 @@ FUNCTION(mig defFileName)
 	# message(STATUS "MIG flags: ${MIG_FLAGS}")
 	separate_arguments(MIG_FLAGS)
 	
-	string(REPLACE ".defs" "" bareName "${defFileName}")
-	get_filename_component(bareName "${bareName}" NAME)
+	string(REPLACE ".defs" "" relativeName "${defFileName}")
+	get_filename_component(bareName "${relativeName}" NAME)
+	get_filename_component(dirName "${relativeName}" DIRECTORY)
+	
+	if (dirName)
+		add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${dirName}
+		COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/${dirName})
+	endif (dirName)
+	
 	add_custom_command(OUTPUT
-		${CMAKE_CURRENT_BINARY_DIR}/${bareName}User.c
-		${CMAKE_CURRENT_BINARY_DIR}/${bareName}.h
-		${CMAKE_CURRENT_BINARY_DIR}/${bareName}Server.c
-		${CMAKE_CURRENT_BINARY_DIR}/${bareName}Server.h
+		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
+		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
+		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
+		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
 		COMMAND
 		${MIG_EXECUTABLE}
-		-user ${CMAKE_CURRENT_BINARY_DIR}/${bareName}User.c
-		-header ${CMAKE_CURRENT_BINARY_DIR}/${bareName}.h
-		-server ${CMAKE_CURRENT_BINARY_DIR}/${bareName}Server.c
-		-sheader ${CMAKE_CURRENT_BINARY_DIR}/${bareName}Server.h
+		-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
+		-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
+		-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
+		-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
 		${MIG_FLAGS}
 		${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
-		DEPENDS "${CMAKE_BINARY_DIR}/mig"
+		DEPENDS
+		"${CMAKE_BINARY_DIR}/mig"
+		"${CMAKE_CURRENT_BINARY_DIR}/${dirName}"
 	)
-	#execute_process(COMMAND ${MIG_EXECUTABLE}
-	#	-user ${CMAKE_CURRENT_BINARY_DIR}/${bareName}User.c
-	#	-header ${CMAKE_CURRENT_BINARY_DIR}/${bareName}.h
-	#	-server ${CMAKE_CURRENT_BINARY_DIR}/${bareName}Server.c
-	#	-sheader ${CMAKE_CURRENT_BINARY_DIR}/${bareName}Server.h
-	#	${MIG_FLAGS}
-	#	${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
-	#	RESULT_VARIABLE MigResult
-	#)
-	
-	#if(NOT "${MigResult}" STREQUAL 0)
-	#	message(SEND_ERROR "mig failed")
-	#endif()
 ENDFUNCTION(mig)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")

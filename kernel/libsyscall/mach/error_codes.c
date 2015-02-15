@@ -64,6 +64,7 @@
 
 #include <mach/error.h>
 #include "errorlib.h"
+#ifndef DARLING
 #include "err_libkern.sub"
 #include "err_iokit.sub"
 #include "err_ipc.sub"
@@ -71,8 +72,10 @@
 #include "err_mach_ipc.sub"
 #include "err_server.sub"
 #include "err_us.sub"
+#endif
 
 const struct error_system _mach_errors[err_max_system+1] = {
+#ifndef DARLING
 	/* 0; err_kern */
 	{
 		errlib_count(err_os_sub),
@@ -154,6 +157,7 @@ const struct error_system _mach_errors[err_max_system+1] = {
 	/* 0x3a */ errorlib_system_null, /* 0x3b */ errorlib_system_null,
 	/* 0x3c */ errorlib_system_null, /* 0x3d */ errorlib_system_null,
 	/* 0x3e */ errorlib_system_null, /* 0x3f */ errorlib_system_null,
+#endif
 };
 
 // int error_system_count = errlib_count(_mach_errors);

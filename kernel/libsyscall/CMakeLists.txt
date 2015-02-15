@@ -5,13 +5,32 @@ cmake_minimum_required(VERSION 2.4.0)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -nostdinc")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/wrappers")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/mach")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../iokit")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/os")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../platform-include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DPRIVATE)
+add_definitions('-D__XNU_PRIVATE_EXTERN=')
+#add_definitions(-DKERNEL)
 
+set(MIG_USER_HEADER_SUFFIX "_internal.h")
 mig(mach/exc.defs)
+mig(mach/host_priv.defs)
+mig(mach/host_security.defs)
+mig(mach/ledger.defs)
+mig(mach/lock_set.defs)
+mig(mach/mach_host.defs)
+mig(mach/mach_port.defs)
+mig(mach/mach_vm.defs)
+mig(mach/mach_voucher.defs)
+mig(mach/notify.defs)
+mig(mach/processor_set.defs)
+mig(mach/processor.defs)
+mig(mach/task.defs)
+mig(mach/thread_act.defs)
+mig(mach/vm_map.defs)
 
 set(syscall_sources
 	#wrappers/coalition.c
@@ -72,7 +91,67 @@ set(syscall_sources
 	#wrappers/legacy/socketpair.c
 
 	custom/errno.c
-	${CMAKE_CURRENT_BINARY_DIR}/excUser.c
-	)
+	
+	# MIG generated files
+	${CMAKE_CURRENT_BINARY_DIR}/mach/excUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/host_privUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/host_securityUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/ledgerUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/lock_setUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/mach_hostUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/mach_portUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/mach_vmUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/mach_voucherUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/notifyUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/processor_setUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/processorUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/taskUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/thread_actUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/vm_mapUser.c
+	
+	mach/mach_init.c
+	mach/clock_sleep.c
+	mach/dylib_link.c
+	mach/error_codes.c
+	mach/exc_catcher.c
+	mach/exc_catcher_state.c
+	mach/exc_catcher_state_identity.c
+	mach/fprintf_stderr.c
+	mach/mach_error.c
+	mach/mach_error_string.c
+	mach/mach_init.c
+	mach/mach_legacy.c
+	mach/mach_msg.c
+	mach/mach_port.c
+	mach/mach_vm.c
+	mach/mig_allocate.c
+	mach/mig_deallocate.c
+	mach/mig_reply_port.c
+	mach/mig_reply_setup.c
+	mach/mig_strncpy.c
+	mach/ms_thread_switch.c
+	mach/panic.c
+	mach/port_obj.c
+	mach/semaphore.c
+	mach/slot_name.c
+	mach/string.c
+	mach/thread_act.c
+
+)
+
+mig(mach/host_priv.defs)
+mig(mach/host_security.defs)
+mig(mach/ledger.defs)
+mig(mach/lock_set.defs)
+mig(mach/mach_host.defs)
+mig(mach/mach_port.defs)
+mig(mach/mach_vm.defs)
+mig(mach/mach_voucher.defs)
+mig(mach/notify.defs)
+mig(mach/processor_set.defs)
+mig(mach/processor.defs)
+mig(mach/task.defs)
+mig(mach/thread_act.defs)
+mig(mach/vm_map.defs)
 
 add_library(libsyscall OBJECT ${syscall_sources})
