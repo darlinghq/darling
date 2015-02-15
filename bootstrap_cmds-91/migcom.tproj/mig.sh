@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (c) 1999-2008 Apple Inc. All rights reserved.
 # Modified by Lubos Dolezel for Darling
