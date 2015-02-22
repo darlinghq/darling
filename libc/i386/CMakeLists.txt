@@ -19,6 +19,6 @@ set(i386_sources
 	gen/_setcontext.S
 )
 
-add_library(libc-i386 OBJECT ${i386_sources})
+add_library(libc-hwplat OBJECT ${i386_sources})
 
 
