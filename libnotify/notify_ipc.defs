@@ -1,0 +1,373 @@
+/*
+ * Copyright (c) 2003-2011 Apple Inc. All rights reserved.
+ *
+ * @APPLE_LICENSE_HEADER_START@
+ *
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_LICENSE_HEADER_END@
+ */
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+subsystem notify_ipc 78945668;
+serverprefix _;
+
+import <sys/types.h>;
+
+import "notify_ipc_types.h";
+
+type notify_name    = ^ array [] of MACH_MSG_TYPE_BYTE
+	ctype : caddr_t;
+
+routine _notify_server_post
+(
+	server : mach_port_t;
+	name : notify_name;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_register_plain
+(
+	server : mach_port_t;
+	name : notify_name;
+	out token : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_register_check
+(
+	server : mach_port_t;
+	name : notify_name;
+	out size : int;
+	out slot : int;
+	out token : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_register_signal
+(
+	server : mach_port_t;
+	name : notify_name;
+	sig: int;
+	out token : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_register_file_descriptor
+(
+	server : mach_port_t;
+	name : notify_name;
+	fileport : mach_port_move_send_t;
+	ntoken : int;
+	out token : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_register_mach_port
+(
+	server : mach_port_t;
+	name : notify_name;
+	port : mach_port_move_send_t;
+	ntoken : int;
+	out token : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_set_owner
+(
+	server : mach_port_t;
+	name : notify_name;
+	user : int;
+	group : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_get_owner
+(
+	server : mach_port_t;
+	name : notify_name;
+	out user : int;
+	out group : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_set_access
+(
+	server : mach_port_t;
+	name : notify_name;
+	mode : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_get_access
+(
+	server : mach_port_t;
+	name : notify_name;
+	out mode : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_release_name
+(
+	server : mach_port_t;
+	name : notify_name;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_cancel
+(
+	server : mach_port_t;
+	token : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_check
+(
+	server : mach_port_t;
+	token : int;
+	out check : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_get_state
+(
+	server : mach_port_t;
+	token : int;
+	out state : uint64_t;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_set_state
+(
+	server : mach_port_t;
+	token : int;
+	state : uint64_t;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+skip; /* formerly _notify_server_get_val */
+
+skip; /* formerly _notify_server_set_val */
+
+routine _notify_server_monitor_file
+(
+	server : mach_port_t;
+	token : int;
+	path : notify_name;
+	flags : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_suspend
+(
+	server : mach_port_t;
+	token : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_resume
+(
+	server : mach_port_t;
+	token : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_suspend_pid
+(
+	server : mach_port_t;
+	pid : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_resume_pid
+(
+	server : mach_port_t;
+	pid : int;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_simple_post
+(
+	server : mach_port_t;
+	name : notify_name;
+	ServerAuditToken audit : audit_token_t
+);
+
+/* Additions for version 2 - more async support */
+
+routine _notify_server_post_2
+(
+	server : mach_port_t;
+	name : notify_name;
+	out name_id : uint64_t;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_post_3
+(
+	server : mach_port_t;
+	name_id : uint64_t;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_post_4
+(
+	server : mach_port_t;
+	name : notify_name;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_register_plain_2
+(
+	server : mach_port_t;
+	name : notify_name;
+	token : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_register_check_2
+(
+	server : mach_port_t;
+	name : notify_name;
+	token: int;
+	out size : int;
+	out slot : int;
+	out name_id : uint64_t;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_register_signal_2
+(
+	server : mach_port_t;
+	name : notify_name;
+	token : int;
+	sig: int;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_register_file_descriptor_2
+(
+	server : mach_port_t;
+	name : notify_name;
+	token: int;
+	fileport : mach_port_move_send_t;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_register_mach_port_2
+(
+	server : mach_port_t;
+	name : notify_name;
+	token: int;
+	port : mach_port_move_send_t;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_cancel_2
+(
+	server : mach_port_t;
+	token : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_get_state_2
+(
+	server : mach_port_t;
+	name_id : uint64_t;
+	out state : uint64_t;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_get_state_3
+(
+	server : mach_port_t;
+	token : int;
+	out state : uint64_t;
+	out nid : uint64_t;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_set_state_2
+(
+	server : mach_port_t;
+	name_id : uint64_t;
+	state : uint64_t;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_set_state_3
+(
+	server : mach_port_t;
+	token : int;
+	state : uint64_t;
+	out nid : uint64_t;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+simpleroutine _notify_server_monitor_file_2
+(
+	server : mach_port_t;
+	token : int;
+	path : notify_name;
+	flags : int;
+	ServerAuditToken audit : audit_token_t
+);
+
+routine _notify_server_regenerate
+(
+	server : mach_port_t;
+	name : notify_name;
+	token : int;
+	reg_type : uint32_t;
+	port : mach_port_make_send_t;
+	sig: int;
+	prev_slot: int;
+	prev_state : uint64_t;
+	prev_time : uint64_t;
+	path : notify_name;
+	path_flags: int;
+	out new_slot : int;
+	out new_name_id : uint64_t;
+	out status : int;
+	ServerAuditToken audit : audit_token_t
+);
