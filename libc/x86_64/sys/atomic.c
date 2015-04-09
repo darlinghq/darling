@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  *
@@ -24,6 +25,7 @@
 #include <machine/cpu_capabilities.h>
 #include "platfunc.h"
 
+#ifndef DARLING
 #define	RESOLVER_UP_MP(symbol)	\
 	PLATFUNC_DESCRIPTOR(symbol, up, kUP, 0); \
 	PLATFUNC_DESCRIPTOR(symbol, mp, 0, kUP); \
@@ -37,6 +39,10 @@
 		__asm__(".symbol_resolver _" #symbol); \
 		return find_platform_function((const platfunc_descriptor**) symbol ## _platfunc_descriptors); \
 	}
+
+#else // ELF doesn't support symbol resolvers
+#define RESOLVER_UP_MP(symbol) __weak_reference(symbol ## $VARIANT$mp, symbol);
+#endif
 
 RESOLVER_UP_MP(OSAtomicAnd32)
 RESOLVER_UP_MP(OSAtomicAnd32Barrier)

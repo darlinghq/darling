@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2003-2009 Apple, Inc. All rights reserved.
  *
@@ -64,6 +65,10 @@ PLATFUNC_FUNCTION_START(spin_lock, up, 64, 4)
 	xorl		%eax, %eax
 	orl		$-1, %edx
 	cmpxchgl	%edx, (%r8)
+#ifdef DARLING
+	jnz 	0b
+	ret
+#else
 	jnz		1f
 	ret
 1:
@@ -74,6 +79,7 @@ PLATFUNC_FUNCTION_START(spin_lock, up, 64, 4)
 	movl		$(SYSCALL_CONSTRUCT_MACH(61)),%eax	/* 61 = thread_switch */
 	syscall
 	jmp		0b
+#endif
 PLATFUNC_DESCRIPTOR(OSSpinLockLock,up,kUP,0)
 PLATFUNC_DESCRIPTOR(_spin_lock,up,kUP,0)
 PLATFUNC_DESCRIPTOR(spin_lock,up,kUP,0)
@@ -95,6 +101,9 @@ PLATFUNC_FUNCTION_START_GENERIC(spin_lock, mp, 64, 4)
 	movl		$(MP_SPIN_TRIES), %edx
 2:					/* spin for awhile before relinquish */
 	pause	
+#ifdef DARLING
+	jmp 0b
+#else
 	cmpl		%eax, (%r8)
 	jz		0b
 	decl		%edx
@@ -106,6 +115,7 @@ PLATFUNC_FUNCTION_START_GENERIC(spin_lock, mp, 64, 4)
 	movl		$(SYSCALL_CONSTRUCT_MACH(61)),%eax	/* 61 = thread_switch */
 	syscall
 	jmp		0b
+#endif
 PLATFUNC_DESCRIPTOR(OSSpinLockLock,mp,0,kUP)
 PLATFUNC_DESCRIPTOR(_spin_lock,mp,0,kUP)
 PLATFUNC_DESCRIPTOR(spin_lock,mp,0,kUP)

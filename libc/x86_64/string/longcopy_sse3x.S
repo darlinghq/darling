@@ -59,6 +59,7 @@
 #ifdef DARLING
 #	define _longcopy longcopy
 #	define _memcpy memcpy@PLT
+.globl longcopy
 #endif
 
 //	.private_extern _longcopy

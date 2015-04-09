@@ -55,6 +55,11 @@
 #define JB_FPCONTROL	76
 #define JB_MASK			80
 
+#ifdef DARLING
+#	define __setjmp _setjmp
+#	define __longjmp _longjmp
+#endif
+
 LEAF(__setjmp, 0)
 	// %rdi is a jmp_buf (struct sigcontext *)
 

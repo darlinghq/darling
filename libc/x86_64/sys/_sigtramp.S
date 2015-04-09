@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007, 2011 Apple Inc. All rights reserved.
  *
@@ -41,6 +42,12 @@
 #define MCONTEXT_SS_R8		80
 #define MCONTEXT_SS_RIP		144
 
+#ifdef DARLING
+#	define __sigtramp _sigtramp
+#	define ___sigreturn __sigreturn@PLT
+#	define ___in_sigtramp __in_sigtramp@GOTPCREL
+#endif
+
 /* register use:
 	%rbx	uctx
 	
@@ -54,9 +61,13 @@ _sigtramp(
 )
 */
 
+#ifdef DARLING
+#	define __sigtramp _sigtramp
+#endif
+
 	.globl __sigtramp
 	.text
-	.align 4,0x90
+	.align 1<<4
 __sigtramp:
 Lstart:
 	/* Although this routine does not need any stack frame, various parts
@@ -151,8 +162,13 @@ Lend:
 	 DW_OP_breg(3), UCONTEXT_UC_MCONTEXT, DW_OP_deref,		\
 	 DW_OP_plus_uconst, MCONTEXT_SS_R8+(8*(regno-8)), 1
 
+#ifndef DARLING
 	/* Unwind tables.  */
 	.section __TEXT,__eh_frame,coalesced,no_toc+strip_static_syms+live_support
+#else
+	.text
+#endif
+
 EH_frame1:
 	.set L$set$0,LECIE1-LSCIE1
 	.long L$set$0	# Length of Common Information Entry
@@ -172,7 +188,7 @@ LSCIE1:
 	.byte	0x1	# uleb128 0x1
 	.byte	DW_CFA_offset(16)	// duplicate DW_CFA_offset (rip, -8) tells linker to not make compact unwind
 	.byte	0x1	# uleb128 0x1
-	.align 3
+	.align 1<<3
 LECIE1:
 	.globl _sigtramp.eh
 _sigtramp.eh:
@@ -248,7 +264,10 @@ Lcfa_start:
 	.byte  DW_OP_plus_uconst, MCONTEXT_SS_RSP, DW_OP_deref
 Lcfa_end:
 
-	.align 3
+	.align 1<<3
 LEFDE1:
-		
+
+#ifndef DARLING
 	.subsections_via_symbols
+#endif
+

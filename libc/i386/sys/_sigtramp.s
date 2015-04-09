@@ -23,6 +23,10 @@
 
 #include <sys/syscall.h>
 
+#ifdef DARLING
+#	define ___in_sigtramp __in_sigtramp
+#endif
+
 #if defined(__DYNAMIC__)
 	.globl ___in_sigtramp
 	.data

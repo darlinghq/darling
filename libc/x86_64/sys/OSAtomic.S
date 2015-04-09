@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  * Copyright (c) 2004-2006 Apple Computer, Inc. All rights reserved.
@@ -27,7 +28,7 @@
 #include <architecture/i386/asm_help.h>
 
 #define DECLARE(x)   \
-	.align 2, 0x90      ; \
+	.align 1<<2      ; \
 	.globl x            ; \
 	.globl x ## Barrier ; \
 x:                  ; \
@@ -40,6 +41,7 @@ x ## Barrier:
 #define ATOMIC_RET_ORIG	0
 #define ATOMIC_RET_NEW	1
 
+#ifndef DARLING
 // compare and exchange 32-bit
 // xchg32 <new> <dst> <mp>
 .macro xchg32
@@ -56,6 +58,24 @@ x ## Barrier:
 	.endif
 	cmpxchg		$0, ($1)
 .endm
+#else
+// compare and exchange 32-bit
+// xchg32 <new> <dst> <mp>
+.macro xchg32 a0, a1, a2
+	.if \a2 == ATOMIC_MP
+	lock
+	.endif
+	cmpxchgl	\a0, (\a1)
+.endm
+
+// xchg64 <new> <dst> <mp>
+.macro xchg64 a0, a1, a2
+	.if \a2 == ATOMIC_MP
+	lock
+	.endif
+	cmpxchg		\a0, (\a1)
+.endm
+#endif
 
 #define	ATOMIC_ARITHMETIC(instr, orig, mp)	\
 	movl	(%rsi), %eax	/* get 2nd arg -> eax */ ;\
@@ -304,6 +324,7 @@ _OSAtomicDequeue:		// %rdi == list head, %rsi == offset
 	popq	%rbx
 	ret			// ptr to 1st element in Q still in %rax
 
+#ifndef DARLING // PFZ stuff not supported
 /*
  *	typedef	volatile struct {
  *		void	*opaque1;  <-- ptr to first queue element or null
@@ -345,6 +366,8 @@ _OSAtomicFifoDequeue:
 1:	
 	popq	%rbx
 	ret			// ptr to 1st element in Q in %rax
+
+#endif
 
 // Local Variables:
 // tab-width: 8

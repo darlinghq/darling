@@ -74,6 +74,20 @@ set(x86_64_sources ${x86_64_sources}
 	string/strncpy.S
 )
 
+add_definitions(-DkUP=0x8000)
+set(x86_64_sources ${x86_64_sources}
+	sys/atomic.c
+	sys/i386_gettimeofday_asm.S
+	#sys/nanotime.S # Fully dependent on commpage! TODO: reimplement in system_kernel
+	sys/OSAtomic.S
+	sys/_setjmp.S
+	sys/setjmp.S
+	sys/_sigtramp.S
+	sys/spinlocks_asm.S
+	sys/spinlocks.c
+)
+
+
 add_library(libc-hwplat OBJECT ${x86_64_sources})
 
 

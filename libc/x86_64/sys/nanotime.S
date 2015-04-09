@@ -28,56 +28,35 @@
 
 #include <sys/appleapiopts.h>
 #include <machine/cpu_capabilities.h>
-#include "platfunc.h"
 
-#define NSEC_PER_SEC	1000*1000*1000
-#define NSEC_PER_USEC	1000
+#ifdef DARLING
+#	define _mach_absolute_time mach_absolute_time
+#endif
 
-	.private_extern ___commpage_gettimeofday
-	.align 4, 0x90
-___commpage_gettimeofday:
-// %rdi = ptr to timeval
-	pushq	%rbp			// set up a frame for backtraces
-	pushq	%r12			// push callee-saved registers we want to use
-	pushq	%r13
-	pushq	%r14
-	subq	$8, %rsp
+/*
+ * 64-bit version _mach_absolute_time.  We return the 64-bit nanotime in %rax,
+ */
+	.globl	_mach_absolute_time
+_mach_absolute_time:
+	pushq	%rbp				// set up a frame for backtraces
 	movq	%rsp,%rbp
-	movq	%rdi,%r12		// save ptr to timeval
-	movq	$(_COMM_PAGE_TIME_DATA_START),%r13
-0:
-	movl	_GTOD_GENERATION(%r13),%r14d	// get generation (0 if disabled)
-	testl	%r14d,%r14d		// disabled?
-	jz	4f
-
-	call	_mach_absolute_time	// get %rax <- nanotime()
+	movq	$(_COMM_PAGE_TIME_DATA_START),%rsi
+1:
+	movl	_NT_GENERATION(%rsi),%r8d	// get generation
+	testl	%r8d,%r8d			// if 0, data is being changed...
+	jz	1b				// ...so loop until stable
+	lfence
+	rdtsc					// edx:eax := tsc
+	lfence
+	shlq	$32,%rdx			// rax := ((edx << 32) | eax), ie 64-bit tsc
+	orq	%rdx,%rax
+	subq	_NT_TSC_BASE(%rsi), %rax	// rax := (tsc - base_tsc)
+	movl	_NT_SCALE(%rsi),%ecx
+	mulq	%rcx				// rdx:rax := (tsc - base_tsc) * scale
+	shrdq	$32,%rdx,%rax			// _COMM_PAGE_NT_SHIFT is always 32
+	addq	_NT_NS_BASE(%rsi),%rax		// (((tsc - base_tsc) * scale) >> 32) + ns_base
 	
-	movl	_GTOD_SEC_BASE(%r13),%r8d	// get _COMM_PAGE_TIMESTAMP
-	subq	_GTOD_NS_BASE(%r13),%rax	// generate nanoseconds since timestamp
-	cmpl	_GTOD_GENERATION(%r13),%r14d	// has data changed out from under us?
-	jne	0b
-	
-	movl	$ NSEC_PER_SEC,%ecx
-	movq	%rax,%rdx
-	shrq	$32,%rdx		// get high half of delta in %edx
-	divl	%ecx			// %eax <- seconds since timestamp, %edx <- nanoseconds
-	addl	%eax,%r8d		// add seconds elapsed to timestamp seconds
-
-	movl	$ NSEC_PER_USEC,%ecx
-	movl	%edx,%eax
-	xorl	%edx,%edx
-	divl	%ecx			// divide residual ns by 1000 to get residual us in %eax
-	
-	movq	%r8,(%r12)		// store 64-bit seconds into timeval
-	movl	%eax,8(%r12)		// store 32-bit useconds into timeval
-	xorl	%eax,%eax		// return 0 for success
-3:
-	addq	$8, %rsp
-	popq	%r14
-	popq	%r13
-	popq	%r12
+	cmpl	_NT_GENERATION(%rsi),%r8d	// did the data change during computation?
+	jne	1b
 	popq	%rbp
 	ret
-4:					// fail
-	movl	$1,%eax
-	jmp	3b

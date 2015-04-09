@@ -82,5 +82,6 @@ add_subdirectory(libsyscall)
 
 add_library(system_kernel SHARED
 	$<TARGET_OBJECTS:libsyscall>)
+target_link_libraries(system_kernel system_duct)
 
 add_dependencies(system_kernel migcom)

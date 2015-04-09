@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
@@ -41,6 +42,14 @@
  * restored.
  *
  */
+
+#ifdef DARLING
+#	define _setjmp setjmp
+#	define __setjmp _setjmp@PLT
+#	define _longjmp longjmp
+#	define __longjmp _longjmp@PLT
+#	define _mach_absolute_time mach_absolute_time@PLT
+#endif
 
 #include <architecture/i386/asm_help.h>
 

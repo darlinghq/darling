@@ -211,6 +211,10 @@ _inet_aton_check(const char *cp, struct in_addr *addr, int strict)
 	return (1);
 }
 
+#ifdef __inet_aton
+#error fuck
+#endif
+
 int
 inet_aton(const char *cp, struct in_addr *addr)
 {
