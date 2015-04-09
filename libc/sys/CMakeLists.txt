@@ -6,7 +6,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 set(sys_sources chmodx_np.c
 	crt_externs.c
-	errno.c
+	#errno.c # Moved by Apple into libsystem_kernel
 	fork.c
 	getgroups.c
 	#getiopolicy_np.c
