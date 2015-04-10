@@ -36,8 +36,10 @@ set(mig_sources
 add_executable(migcom ${mig_sources})
 
 add_custom_command(
-	DEPENDS migcom
-	OUTPUT "${CMAKE_BINARY_DIR}/mig"
+	TARGET migcom
+	POST_BUILD
+	#DEPENDS migcom
+	#OUTPUT "${CMAKE_BINARY_DIR}/mig"
 	COMMAND
 	awk -v "migcc=${CMAKE_C_COMPILER}"
 	-v "migcom=${CMAKE_CURRENT_BINARY_DIR}/migcom"

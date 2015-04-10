@@ -58,7 +58,7 @@ FUNCTION(mig defFileName)
 		${MIG_FLAGS}
 		${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
 		DEPENDS
-		"${CMAKE_BINARY_DIR}/mig"
+		migcom
 		"${CMAKE_CURRENT_BINARY_DIR}/${dirName}"
 	)
 ENDFUNCTION(mig)
