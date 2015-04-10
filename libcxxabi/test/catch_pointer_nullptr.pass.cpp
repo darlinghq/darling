@@ -1,0 +1,93 @@
+//===--------------------- catch_pointer_nullptr.cpp ----------------------===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is dual licensed under the MIT and the University of Illinois Open
+// Source Licenses. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+
+#include <cassert>
+#include <cstdlib>
+
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+
+struct A {};
+
+#if __has_feature(cxx_nullptr)
+
+void test1()
+{
+    try
+    {
+        throw nullptr;
+        assert(false);
+    }
+    catch (int*)
+    {
+    }
+    catch (long*)
+    {
+        assert(false);
+    }
+}
+
+void test2()
+{
+    try
+    {
+        throw nullptr;
+        assert(false);
+    }
+    catch (A*)
+    {
+    }
+    catch (int*)
+    {
+        assert(false);
+    }
+}
+
+template <class Catch>
+void catch_nullptr_test() {
+  try {
+    throw nullptr;
+    assert(false);
+  } catch (Catch) {
+    // nothing todo
+  } catch (...) {
+    assert(false);
+  }
+}
+
+#else
+
+void test1()
+{
+}
+
+void test2()
+{
+}
+
+template <class Catch>
+void catch_nullptr_test()
+{
+}
+
+#endif
+
+int main()
+{
+  // catch naked nullptrs
+  test1();
+  test2();
+
+  catch_nullptr_test<int*>();
+  catch_nullptr_test<int**>();
+  catch_nullptr_test<int A::*>();
+  catch_nullptr_test<const int A::*>();
+  catch_nullptr_test<int A::**>();
+}

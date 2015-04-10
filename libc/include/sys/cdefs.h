@@ -122,8 +122,16 @@
 
 #endif // DARLING
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int __pthread_tsd_first;
 extern int pthread_key_init_np(int, void (*)(void *));
+
+#ifdef __cplusplus
+}
+#endif
 
 #define	__LIBC_PTHREAD_KEY(x)		(__pthread_tsd_first + (x))
 

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>OpenSourceImportDate</key>
+		<string>2007-07-19</string>
+		<key>OpenSourceLicense</key>
+		<string>GPL+exception</string>
+		<key>OpenSourceLicenseFile</key>
+		<string>libstdcxx.txt</string>
+		<key>OpenSourceSHA1</key>
+		<string>b8a55b13c4e38fae78d5db9a456e2d4ffe003118</string>
+		<key>OpenSourceModifications</key>
+		<array>
+			<string>Allow tildes in build directory name.</string>
+			<string>Reduce emergency buffer size.</string>
+			<string>Support keymgr.</string>
+			<string>Support for testing after installation.</string>
+			<string>Limited support for -malign-natural.</string>
+			<string>Fix libtool bug for Jaguar.</string>
+			<string>Handle 'semun' definition on Jaguar.</string>
+			<string>Don't export libm functions on Jaguar.</string>
+			<string>Add test for stdexcept visibility</string>
+			<string>reconfigure for x86 visibility</string>
+			<string>reconfigure libiberty</string>
+			<string>Revert typeinfo ABI to 4.0.0</string>
+			<string>Set -fvisibility-inlines-hidden for x86.</string>
+			<string>Add suppport for darwin10.</string>
+			<string>remove functionality split off to libc++abi level</string>
+		</array>
+		<key>OpenSourceProject</key>
+		<string>gcc</string>
+		<key>OpenSourceURL</key>
+		<string>ftp://ftp.gnu.org/gnu/gcc/gcc-4.2.1/gcc-4.2.1.tar.bz2</string>
+		<key>OpenSourceVersion</key>
+		<string>4.2.1</string>
+		<key>OpenSourceWebsiteURL</key>
+		<string>http://gcc.gnu.org/</string>
+	</dict>
+</array>
+</plist>

@@ -1,0 +1,124 @@
+# Get sources
+set(LIBCXXABI_SOURCES
+  abort_message.cpp
+  cxa_aux_runtime.cpp
+  cxa_default_handlers.cpp
+  cxa_demangle.cpp
+  cxa_exception.cpp
+  cxa_exception_storage.cpp
+  cxa_guard.cpp
+  cxa_handlers.cpp
+  cxa_new_delete.cpp
+  cxa_personality.cpp
+  cxa_unexpected.cpp
+  cxa_vector.cpp
+  cxa_virtual.cpp
+  exception.cpp
+  private_typeinfo.cpp
+  stdexcept.cpp
+  typeinfo.cpp
+)
+
+if (UNIX AND NOT (APPLE OR CYGWIN))
+  list(APPEND LIBCXXABI_SOURCES cxa_thread_atexit.cpp)
+endif()
+
+set(LIBCXXABI_HEADERS ../include/cxxabi.h)
+
+# Add all the headers to the project for IDEs.
+if (MSVC_IDE OR XCODE)
+  # Force them all into the headers dir on MSVC, otherwise they end up at
+  # project scope because they don't have extensions.
+  if (MSVC_IDE)
+    source_group("Header Files" FILES ${LIBCXXABI_HEADERS})
+  endif()
+endif()
+
+include_directories("${LIBCXXABI_LIBCXX_INCLUDES}")
+
+if (LIBCXXABI_HAS_CXA_THREAD_ATEXIT_IMPL)
+  add_definitions(-DHAVE___CXA_THREAD_ATEXIT_IMPL)
+endif()
+
+# Generate library list.
+set(libraries ${LIBCXXABI_CXX_ABI_LIBRARIES})
+append_if(libraries LIBCXXABI_HAS_C_LIB c)
+if (LIBCXXABI_ENABLE_THREADS)
+  append_if(libraries LIBCXXABI_HAS_PTHREAD_LIB pthread)
+endif()
+
+if (LIBCXXABI_USE_LLVM_UNWINDER)
+  list(APPEND libraries unwind)
+else()
+  append_if(libraries LIBCXXABI_HAS_GCC_EH_LIB gcc_eh)
+endif()
+
+# Setup flags.
+append_if(LIBCXXABI_COMPILE_FLAGS LIBCXXABI_HAS_FPIC_FLAG -fPIC)
+append_if(LIBCXXABI_LINK_FLAGS LIBCXXABI_HAS_NODEFAULTLIBS_FLAG -nodefaultlibs)
+
+set(LIBCXXABI_SHARED_LINK_FLAGS)
+
+if ( APPLE )
+  if ( CMAKE_OSX_DEPLOYMENT_TARGET STREQUAL "10.6" )
+    list(APPEND LIBCXXABI_COMPILE_FLAGS "-U__STRICT_ANSI__")
+    list(APPEND LIBCXXABI_SHARED_LINK_FLAGS
+      "-compatibility_version 1"
+      "-current_version 1"
+      "-install_name /usr/lib/libc++abi.1.dylib")
+    list(APPEND LIBCXXABI_LINK_FLAGS
+        "/usr/lib/libSystem.B.dylib")
+  else()
+    list(APPEND LIBCXXABI_SHARED_LINK_FLAGS
+      "-compatibility_version 1"
+      "-install_name /usr/lib/libc++abi.1.dylib")
+  endif()
+endif()
+
+string(REPLACE ";" " " LIBCXXABI_COMPILE_FLAGS "${LIBCXXABI_COMPILE_FLAGS}")
+string(REPLACE ";" " " LIBCXXABI_LINK_FLAGS "${LIBCXXABI_LINK_FLAGS}")
+string(REPLACE ";" " " LIBCXXABI_SHARED_LINK_FLAGS "${LIBCXXABI_SHARED_LINK_FLAGS}")
+
+# Add a object library that contains the compiled source files.
+add_library(cxxabi_objects OBJECT ${LIBCXXABI_SOURCES} ${LIBCXXABI_HEADERS})
+
+set_target_properties(cxxabi_objects
+  PROPERTIES
+    COMPILE_FLAGS "${LIBCXXABI_COMPILE_FLAGS}"
+  )
+
+set(LIBCXXABI_TARGETS)
+
+# Build the shared library.
+if (LIBCXXABI_ENABLE_SHARED)
+  add_library(cxxabi_shared SHARED $<TARGET_OBJECTS:cxxabi_objects>)
+  target_link_libraries(cxxabi_shared ${libraries})
+  set_target_properties(cxxabi_shared
+    PROPERTIES
+      LINK_FLAGS    "${LIBCXXABI_LINK_FLAGS} ${LIBCXXABI_SHARED_LINK_FLAGS}"
+      OUTPUT_NAME   "c++abi"
+      VERSION       "1.0"
+      SOVERSION     "1"
+    )
+  list(APPEND LIBCXXABI_TARGETS "cxxabi_shared")
+endif()
+
+# Build the static library.
+if (LIBCXXABI_ENABLE_STATIC)
+  add_library(cxxabi_static STATIC $<TARGET_OBJECTS:cxxabi_objects>)
+  target_link_libraries(cxxabi_static ${libraries})
+  set_target_properties(cxxabi_static
+    PROPERTIES
+      LINK_FLAGS    "${LIBCXXABI_LINK_FLAGS}"
+      OUTPUT_NAME   "c++abi"
+  )
+  list(APPEND LIBCXXABI_TARGETS "cxxabi_static")
+endif()
+
+# Add a meta-target for both libraries.
+add_custom_target(cxxabi DEPENDS ${LIBCXXABI_TARGETS})
+
+install(TARGETS ${LIBCXXABI_TARGETS}
+  LIBRARY DESTINATION lib${LIBCXXABI_LIBDIR_SUFFIX}
+  ARCHIVE DESTINATION lib${LIBCXXABI_LIBDIR_SUFFIX}
+  )
