@@ -30,7 +30,7 @@ if (LIBCXXABI_USE_LLVM_UNWINDER)
   list(APPEND LIBCXXABI_TEST_DEPS unwind)
 endif()
 
-add_lit_testsuite(check-libcxxabi "Running libcxxabi tests"
-  ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS ${LIBCXXABI_TEST_DEPS}
-  )
+#add_lit_testsuite(check-libcxxabi "Running libcxxabi tests"
+#  ${CMAKE_CURRENT_BINARY_DIR}
+#  DEPENDS ${LIBCXXABI_TEST_DEPS}
+#  )

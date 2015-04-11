@@ -38,3 +38,25 @@ add_subdirectory(libsystem)
 add_subdirectory(keymgr)
 add_subdirectory(duct/src)
 add_subdirectory(libstdcxx)
+
+######################
+# libc++ & libc++abi #
+######################
+set(CMAKE_CXX_FLAGS_SAVED ${CMAKE_CXX_FLAGS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostdinc -nostdinc++")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/locale)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/locale/FreeBSD)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/stdtime/FreeBSD)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/pthreads)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/include/FreeBSD)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/include)
+set(LIBCXXABI_LIBCXX_PATH "{CMAKE_CURRENT_SOURCE_DIR}/libcxx")
+set(LIBCXXABI_LIBCXX_INCLUDES "-I${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include")
+
+add_subdirectory(libcxxabi)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_SAVED} -std=c++11 -msse -msse2 -msse3 -nostdinc -nostdinc++ -include ${CMAKE_CURRENT_SOURCE_DIR}/libc/include/xlocale.h")
+set(LIBCXX_HAS_STDCXX11_FLAG TRUE)
+add_definitions(-D_USE_EXTENDED_LOCALES_)
+add_subdirectory(libcxx)

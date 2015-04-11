@@ -89,4 +89,4 @@ set(libstdcxx_sources
 	src/wstring-inst.cc
 )
 
-add_library(libstdcxx SHARED ${libstdcxx_sources})
+add_library(stdcxx SHARED ${libstdcxx_sources})
