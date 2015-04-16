@@ -38,7 +38,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../external/libdispatch")
 add_subdirectory(db) # produces libc-db
 add_subdirectory(compat-43) # produces libc-compat
 add_subdirectory(emulated) # produces libc-emulated
-#add_subdirectory(gdtoa) # produces libc-gdtoa
+add_subdirectory(gdtoa) # produces libc-gdtoa
 add_subdirectory(gen)
 add_subdirectory(gmon)
 add_subdirectory(uuid)
@@ -72,6 +72,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-compat>
 	$<TARGET_OBJECTS:libc-compat_cancelable>
 	$<TARGET_OBJECTS:libc-emulated>
+	$<TARGET_OBJECTS:libc-gdtoa>
 	$<TARGET_OBJECTS:libc-gen>
 	$<TARGET_OBJECTS:libc-gen_cancelable>
 	$<TARGET_OBJECTS:libc-gmon>

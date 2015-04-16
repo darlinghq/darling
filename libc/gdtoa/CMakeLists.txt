@@ -29,9 +29,9 @@ set(gdtoa_sources ${gdtoa_sources}
 	FreeBSD/glue.c
 	FreeBSD/_hdtoa.c
 	FreeBSD/_ldtoa.c
-	FreeBSD/machdep_ldisd.c
-	FreeBSD/machdep_ldisdd.c
-	FreeBSD/machdep_ldisQ.c
+	#FreeBSD/machdep_ldisd.c # these are not for x86
+	#FreeBSD/machdep_ldisdd.c
+	#FreeBSD/machdep_ldisQ.c
 	FreeBSD/machdep_ldisx.c)
 
 add_library(libc-gdtoa OBJECT ${gdtoa_sources})
