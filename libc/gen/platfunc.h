@@ -40,7 +40,7 @@
 // This is a shared macro which calls PLATFUNC_VARIANT_NAME which has different
 // implementations in __ASSEMBLER__ and !__ASSEMBLER__
 #define PLATFUNC_DESCRIPTOR_NAME(name, variant) \
-	PLATFUNC_VARIANT_NAME(platfunc_ ## name, variant)
+	PLATFUNC_VARIANT_NAME(name, variant)
 
 #ifdef	__ASSEMBLER__
 

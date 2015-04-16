@@ -23,6 +23,7 @@
  */
 
 #include <machine/cpu_capabilities.h>
+#include <sys/types.h>
 #include "platfunc.h"
 
 PLATFUNC_DESCRIPTOR_PROTOTYPE(bcopy, sse42)
@@ -34,15 +35,18 @@ static const platfunc_descriptor *bcopy_platfunc_descriptors[] = {
 	0
 };
 
-void *bcopy_chooser()
+void bcopy_chooser(const void *src, void *dest, size_t n)
 #ifndef DARLING
 __asm__("_bcopy");
 #else
 __asm__("bcopy");
 #endif
-void *bcopy_chooser() {
+void bcopy_chooser(const void *src, void *dest, size_t n) {
 #ifndef DARLING
 	__asm__(".desc _bcopy, 0x100");
 #endif
-	return find_platform_function((const platfunc_descriptor **) bcopy_platfunc_descriptors);
+	void (*impl)(const void *src, void *dest, size_t n);
+	impl = find_platform_function((const platfunc_descriptor **) bcopy_platfunc_descriptors);
+	
+	impl(src, dest, n);
 }
