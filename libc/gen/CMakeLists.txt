@@ -45,7 +45,7 @@ set(gen_sources #asl.c
 	scalable_malloc.c
 	setlogin.c 
 	sigsetops.c
-	#_simple.c
+	_simple.c
 	stack_logging.c
 	stack_logging_disk.c 
 	strtofflags.c

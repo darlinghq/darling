@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling (dummyfied ASL stuff until implemented)
 /*
  * Copyright (c) 2005, 2006, 2009 Apple Computer, Inc. All rights reserved.
  *
@@ -39,7 +40,9 @@
 #include <pthread.h>
 #include <errno.h>
 #include <servers/bootstrap.h>
+#ifndef DARLING
 #include <asl_ipc.h>
+#endif
 
 #include "_simple.h"
 
@@ -632,6 +635,7 @@ _simple_sfree(_SIMPLE_STRING b)
 static void
 _simple_asl_init(void)
 {
+#ifndef DARLING
 	kern_return_t status;
 	char *str;
 
@@ -643,11 +647,14 @@ _simple_asl_init(void)
 		status = bootstrap_look_up(bootstrap_port, ASL_SERVICE_NAME, &asl_port);
 		if (status != KERN_SUCCESS) asl_port = MACH_PORT_NULL;
 	}
+#endif
 }
 
 void
 _simple_asl_log_prog(int level, const char *facility, const char *message, const char *prog)
 {
+#ifndef DARLING
+
     _SIMPLE_STRING b;
 
     if (pthread_once(&asl_init_once, _simple_asl_init) != 0) return;
@@ -705,6 +712,7 @@ _simple_asl_log_prog(int level, const char *facility, const char *message, const
     } while (0);
 
    _simple_sfree(b);
+#endif
 }
 
 void
