@@ -19,5 +19,5 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--unresolved-symbols=ignore-all")
 
 
-add_library(system_duct SHARED commpage.c libnotify.c)
+add_library(system_duct SHARED commpage.c libnotify.c numcpus.c)
 
