@@ -41,7 +41,7 @@
 	}
 
 #else // ELF doesn't support symbol resolvers
-#define RESOLVER_UP_MP(symbol) __weak_reference(symbol ## $VARIANT$mp, symbol);
+#define RESOLVER_UP_MP(symbol) __asm__(".globl " #symbol); __asm__(#symbol ": jmp " #symbol "$VARIANT$mp@PLT");
 #endif
 
 RESOLVER_UP_MP(OSAtomicAnd32)
