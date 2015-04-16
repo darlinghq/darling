@@ -3,6 +3,7 @@ project(libc-db)
 cmake_minimum_required(VERSION 2.4.0)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c89")
+add_definitions(-D__DBINTERFACE_PRIVATE)
 
 set(db_sources btree/FreeBSD/bt_close.c
 	btree/FreeBSD/bt_conv.c
