@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# Modified by Lubos Dolezel for Darling (remove 1 underscore from symbols)
 #
 # Copyright (c) 2006-2014 Apple Inc. All rights reserved.
 #
@@ -100,7 +101,7 @@ my %Symbols = (
     "quota" => {
         c_sym => "quota",
         syscall => "quota",
-        asm_sym => "_quota",
+        asm_sym => "quota",
         is_private => undef,
         is_custom => undef,
         nargs => 4,
@@ -110,7 +111,7 @@ my %Symbols = (
     "setquota" => {
         c_sym => "setquota",
         syscall => "setquota",
-        asm_sym => "_setquota",
+        asm_sym => "setquota",
         is_private => undef,
         is_custom => undef,
         nargs => 2,
@@ -120,7 +121,7 @@ my %Symbols = (
     "syscall" => {
         c_sym => "syscall",
         syscall => "syscall",
-        asm_sym => "_syscall",
+        asm_sym => "syscall",
         is_private => undef,
         is_custom => undef,
         nargs => 0,
@@ -217,7 +218,7 @@ sub readMaster {
         $Symbols{$name} = {
             c_sym => $name,
             syscall => $name,
-            asm_sym => $no_syscall_stub ? "___$name" : "_$name",
+            asm_sym => $no_syscall_stub ? "__$name" : "$name",
             is_private => $no_syscall_stub,
             is_custom => undef,
             nargs => $nargs,
@@ -330,6 +331,7 @@ sub writeStubForSymbol {
     
     print $f "#define __SYSCALL_32BIT_ARG_BYTES $$symbol{bytes}\n";
     print $f "#include \"SYS.h\"\n\n";
+    
     if (scalar(@conditions)) {
         printf $f "#ifndef SYS_%s\n", $$symbol{syscall};
         printf $f "#error \"SYS_%s not defined. The header files libsyscall is building against do not match syscalls.master.\"\n", $$symbol{syscall};

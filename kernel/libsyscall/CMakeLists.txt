@@ -2,6 +2,8 @@ project(libsyscall)
 
 cmake_minimum_required(VERSION 2.4.0)
 
+enable_language(C ASM)
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -nostdinc")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/wrappers")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/mach")
@@ -14,6 +16,8 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DPRIVATE)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
 #add_definitions(-DKERNEL)
+
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/darwin.map")
 
 set(MIG_USER_HEADER_SUFFIX "_internal.h")
 mig(mach/exc.defs)
@@ -137,6 +141,8 @@ set(syscall_sources
 	mach/string.c
 	mach/thread_act.c
 
+	Platforms/syscall.s
+	Platforms/MacOSX/x86_64/syscall.s
 )
 
 mig(mach/host_priv.defs)
