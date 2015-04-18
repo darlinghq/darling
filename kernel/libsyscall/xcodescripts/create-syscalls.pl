@@ -364,7 +364,7 @@ sub writeAliasesForSymbol {
             my $sym = (grep { $_ eq $arch } @{$$symbol{except}}) ? "__".$$symbol{asm_sym} : $$symbol{asm_sym};
 					
 						printf $f "\t.globl\t$alias_sym\n";
-						printf $f "\t.set\t$alias_sym, $sym\n";
+						printf $f "\t\t$alias_sym = $sym\n";
         }
 				printf $f "#endif\n\n";
     }

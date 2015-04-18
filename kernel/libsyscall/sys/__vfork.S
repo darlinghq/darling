@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -36,6 +37,11 @@
  */
 
 #include "SYS.h"
+
+#ifdef DARLING
+#define ___vfork __vfork
+#define _cerror cerror
+#endif
 
 #if defined(__i386__)
 
@@ -133,6 +139,6 @@ L2:
 #endif
 #if defined(__x86_64__)
 	.globl	vfork
-	.set	vfork, __vfork
+		vfork = __vfork
 #endif
 

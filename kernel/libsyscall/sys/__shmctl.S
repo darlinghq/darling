@@ -11,6 +11,6 @@ __SYSCALL2(__shmctl, shmctl, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	shmctl
-	.set	shmctl, __shmctl
+		shmctl = __shmctl
 #endif
 

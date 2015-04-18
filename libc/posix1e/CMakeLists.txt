@@ -8,7 +8,7 @@ set(posix1e_sources
 	acl_file.c
 	acl_flag.c
 	acl_perm.c
-	#acl_translate.c # doesn't build
+	#acl_translate.c # doesn't build, ducted
 )
 
 add_library(libc-posix1e OBJECT ${posix1e_sources})

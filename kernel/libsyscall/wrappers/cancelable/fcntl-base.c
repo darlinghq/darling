@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2004, 2006 Apple Computer, Inc. All rights reserved.
  *
@@ -21,6 +22,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 #include <stdarg.h>
+#include <sys/fcntl.h>
 
 int __FCNTL(int, int, void *);
 

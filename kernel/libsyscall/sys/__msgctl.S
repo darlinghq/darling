@@ -11,6 +11,6 @@ __SYSCALL2(__msgctl, msgctl, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	msgctl
-	.set	msgctl, __msgctl
+		msgctl = __msgctl
 #endif
 

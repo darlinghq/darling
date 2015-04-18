@@ -11,6 +11,6 @@ __SYSCALL2(__open, open, 3, cerror)
 
 #if defined(__x86_64__)
 	.globl	open
-	.set	open, __open
+		open = __open
 #endif
 

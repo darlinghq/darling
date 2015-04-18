@@ -11,6 +11,6 @@ __SYSCALL2(__mac_execve, __mac_execve, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	__sandbox_me
-	.set	__sandbox_me, __mac_execve
+		__sandbox_me = __mac_execve
 #endif
 

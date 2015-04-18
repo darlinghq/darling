@@ -11,6 +11,6 @@ __SYSCALL2(__pread_nocancel, pread_nocancel, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	pread$NOCANCEL
-	.set	pread$NOCANCEL, __pread_nocancel
+		pread$NOCANCEL = __pread_nocancel
 #endif
 

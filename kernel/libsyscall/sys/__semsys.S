@@ -11,6 +11,6 @@ __SYSCALL2(__semsys, semsys, 5, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	semsys
-	.set	semsys, __semsys
+		semsys = __semsys
 #endif
 

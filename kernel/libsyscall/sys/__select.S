@@ -11,6 +11,6 @@ __SYSCALL2(__select, select, 5, cerror)
 
 #if defined(__x86_64__)
 	.globl	select$DARWIN_EXTSN
-	.set	select$DARWIN_EXTSN, __select
+		select$DARWIN_EXTSN = __select
 #endif
 

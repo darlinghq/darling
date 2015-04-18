@@ -11,6 +11,6 @@ __SYSCALL2(__getsgroups, getsgroups, 2, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	getsgroups_np
-	.set	getsgroups_np, __getsgroups
+		getsgroups_np = __getsgroups
 #endif
 

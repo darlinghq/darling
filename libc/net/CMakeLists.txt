@@ -3,7 +3,7 @@ project(libc-net)
 cmake_minimum_required(VERSION 2.4.0)
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../../platform-include/net/if_var.h")
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
 
 add_definitions(-Dinet_aton=__inet_aton -Dinet_addr=__inet_addr)
 

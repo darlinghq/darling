@@ -11,6 +11,6 @@ __SYSCALL2(__getattrlist, getattrlist, 5, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	getattrlist
-	.set	getattrlist, __getattrlist
+		getattrlist = __getattrlist
 #endif
 

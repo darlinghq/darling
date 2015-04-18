@@ -11,6 +11,6 @@ __SYSCALL2(__write_nocancel, write_nocancel, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	write$NOCANCEL
-	.set	write$NOCANCEL, __write_nocancel
+		write$NOCANCEL = __write_nocancel
 #endif
 

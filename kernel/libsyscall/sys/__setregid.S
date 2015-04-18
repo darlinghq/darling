@@ -11,6 +11,6 @@ __SYSCALL2(__setregid, setregid, 2, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	setregid
-	.set	setregid, __setregid
+		setregid = __setregid
 #endif
 

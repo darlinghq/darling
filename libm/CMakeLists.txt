@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.4.0)
 enable_language(C ASM)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -DBUILDING_FOR_CARBONCORE_LEGACY")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w") # -DBUILDING_FOR_CARBONCORE_LEGACY")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
@@ -95,7 +95,7 @@ set(libm_sources
 	Source/Intel/log2f.S
 	Source/Intel/log2.S
 	Source/Intel/logf.S
-	Source/Intel/log.S
+	#Source/Intel/log.S
 	Source/Intel/lrintl.S
 	Source/Intel/lroundf.S
 	Source/Intel/lroundl.S

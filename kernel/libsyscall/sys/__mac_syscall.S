@@ -11,6 +11,6 @@ __SYSCALL2(__mac_syscall, __mac_syscall, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	__sandbox_ms
-	.set	__sandbox_ms, __mac_syscall
+		__sandbox_ms = __mac_syscall
 #endif
 

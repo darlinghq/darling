@@ -11,6 +11,6 @@ __SYSCALL2(__connect, connect, 3, cerror)
 
 #if defined(__x86_64__)
 	.globl	connect
-	.set	connect, __connect
+		connect = __connect
 #endif
 

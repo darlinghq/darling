@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -29,6 +30,10 @@
 
 #include "SYS.h"
 
+#ifdef DARLING
+#	define ___syscall __syscall
+#endif
+
 #if defined(__i386__)
 
 LEAF(___syscall, 0)
@@ -55,6 +60,6 @@ __SYSCALL(___syscall, syscall, 0);
 #endif
 #if defined(__x86_64__)
 	.globl	syscall
-	.set	syscall, __syscall
+		syscall = __syscall
 #endif
 

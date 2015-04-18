@@ -42,7 +42,7 @@
 
 #else
 
-#define RESOLVER_UP_MP(symbol) __weak_reference(symbol ## $VARIANT$mp, symbol);
+#define RESOLVER_UP_MP(symbol) __asm__(".globl " #symbol); __asm__(#symbol " = " #symbol "$VARIANT$mp"); //  __weak_reference(symbol ## $VARIANT$mp, symbol);
 
 #endif
 

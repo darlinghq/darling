@@ -11,6 +11,6 @@ __SYSCALL2(stat64, stat64, 2, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	stat$INODE64
-	.set	stat$INODE64, stat64
+		stat$INODE64 = stat64
 #endif
 

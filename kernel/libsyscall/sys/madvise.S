@@ -11,6 +11,6 @@ __SYSCALL2(madvise, madvise, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	posix_madvise
-	.set	posix_madvise, madvise
+		posix_madvise = madvise
 #endif
 

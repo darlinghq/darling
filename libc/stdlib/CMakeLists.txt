@@ -36,12 +36,12 @@ set(stdlib_sources ${stdlib_sources}
 	FreeBSD/lsearch.c
 	FreeBSD/merge_b.c
 	FreeBSD/merge.c
-	#FreeBSD/psort_b.c
+	FreeBSD/psort_b.c
 	FreeBSD/psort.c
-	#FreeBSD/psort_r.c
+	FreeBSD/psort_r.c
 	FreeBSD/putenv.c
-	#FreeBSD/qsort.c
-	#FreeBSD/qsort_r.c
+	FreeBSD/qsort.c
+	FreeBSD/qsort_r.c
 	FreeBSD/radixsort.c
 	FreeBSD/rand.c
 	FreeBSD/random.c
@@ -74,6 +74,8 @@ set(stdlib_sources ${stdlib_sources}
 	NetBSD/strfmon.c
 )
 
+SET_SOURCE_FILES_PROPERTIES(FreeBSD/psort_b.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DI_AM_PSORT_B")
+SET_SOURCE_FILES_PROPERTIES(FreeBSD/psort_r.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DI_AM_PSORT_R")
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/system.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SYSTEM")
 
 add_library(libc-stdlib OBJECT ${stdlib_sources})

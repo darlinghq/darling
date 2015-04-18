@@ -11,6 +11,6 @@ __SYSCALL2(__close_nocancel, close_nocancel, 1, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	close$NOCANCEL
-	.set	close$NOCANCEL, __close_nocancel
+		close$NOCANCEL = __close_nocancel
 #endif
 

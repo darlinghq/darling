@@ -11,6 +11,6 @@ __SYSCALL2(__aio_suspend_nocancel, aio_suspend_nocancel, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	aio_suspend$NOCANCEL
-	.set	aio_suspend$NOCANCEL, __aio_suspend_nocancel
+		aio_suspend$NOCANCEL = __aio_suspend_nocancel
 #endif
 

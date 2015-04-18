@@ -11,6 +11,6 @@ __SYSCALL2(__recvfrom, recvfrom, 6, cerror)
 
 #if defined(__x86_64__)
 	.globl	recvfrom
-	.set	recvfrom, __recvfrom
+		recvfrom = __recvfrom
 #endif
 

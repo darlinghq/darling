@@ -11,6 +11,6 @@ __SYSCALL2(__mprotect, mprotect, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	mprotect
-	.set	mprotect, __mprotect
+		mprotect = __mprotect
 #endif
 

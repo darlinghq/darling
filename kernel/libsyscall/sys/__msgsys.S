@@ -11,6 +11,6 @@ __SYSCALL2(__msgsys, msgsys, 5, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	msgsys
-	.set	msgsys, __msgsys
+		msgsys = __msgsys
 #endif
 

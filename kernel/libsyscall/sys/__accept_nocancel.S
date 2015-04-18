@@ -11,6 +11,6 @@ __SYSCALL2(__accept_nocancel, accept_nocancel, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	accept$NOCANCEL
-	.set	accept$NOCANCEL, __accept_nocancel
+		accept$NOCANCEL = __accept_nocancel
 #endif
 

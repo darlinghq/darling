@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -29,6 +30,10 @@
 
 #include "SYS.h"
 
+#ifdef DARLING
+#	define ___pipe __pipe
+#endif
+
 #if defined(__i386__)
 
 PSEUDO_INT(___pipe, pipe, 0)
@@ -51,6 +56,6 @@ PSEUDO(___pipe, pipe, 0, cerror_nocancel)
 #endif
 #if defined(__x86_64__)
 	.globl	pipe
-	.set	pipe, __pipe
+		pipe = __pipe
 #endif
 

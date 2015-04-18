@@ -11,6 +11,6 @@ __SYSCALL2(__openat, openat, 4, cerror)
 
 #if defined(__x86_64__)
 	.globl	openat
-	.set	openat, __openat
+		openat = __openat
 #endif
 

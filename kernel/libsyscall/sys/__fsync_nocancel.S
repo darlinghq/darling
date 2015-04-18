@@ -11,6 +11,6 @@ __SYSCALL2(__fsync_nocancel, fsync_nocancel, 1, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	fsync$NOCANCEL
-	.set	fsync$NOCANCEL, __fsync_nocancel
+		fsync$NOCANCEL = __fsync_nocancel
 #endif
 

@@ -11,6 +11,6 @@ __SYSCALL2(__sendmsg, sendmsg, 3, cerror)
 
 #if defined(__x86_64__)
 	.globl	sendmsg
-	.set	sendmsg, __sendmsg
+		sendmsg = __sendmsg
 #endif
 

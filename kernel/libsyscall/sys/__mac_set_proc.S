@@ -11,6 +11,6 @@ __SYSCALL2(__mac_set_proc, __mac_set_proc, 1, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	__sandbox_msp
-	.set	__sandbox_msp, __mac_set_proc
+		__sandbox_msp = __mac_set_proc
 #endif
 

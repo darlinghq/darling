@@ -11,6 +11,6 @@ __SYSCALL2(__pwrite_nocancel, pwrite_nocancel, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	pwrite$NOCANCEL
-	.set	pwrite$NOCANCEL, __pwrite_nocancel
+		pwrite$NOCANCEL = __pwrite_nocancel
 #endif
 

@@ -11,6 +11,6 @@ __SYSCALL2(__setreuid, setreuid, 2, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	setreuid
-	.set	setreuid, __setreuid
+		setreuid = __setreuid
 #endif
 

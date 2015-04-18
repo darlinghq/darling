@@ -11,6 +11,6 @@ __SYSCALL2(__msgsnd_nocancel, msgsnd_nocancel, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	msgsnd$NOCANCEL
-	.set	msgsnd$NOCANCEL, __msgsnd_nocancel
+		msgsnd$NOCANCEL = __msgsnd_nocancel
 #endif
 

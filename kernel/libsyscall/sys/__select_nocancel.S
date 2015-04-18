@@ -11,6 +11,6 @@ __SYSCALL2(__select_nocancel, select_nocancel, 5, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	select$DARWIN_EXTSN$NOCANCEL
-	.set	select$DARWIN_EXTSN$NOCANCEL, __select_nocancel
+		select$DARWIN_EXTSN$NOCANCEL = __select_nocancel
 #endif
 

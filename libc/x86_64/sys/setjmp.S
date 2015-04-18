@@ -45,10 +45,13 @@
 
 #ifdef DARLING
 #	define _setjmp setjmp
-#	define __setjmp _setjmp@PLT
+#	define __setjmp _setjmp
 #	define _longjmp longjmp
-#	define __longjmp _longjmp@PLT
-#	define _mach_absolute_time mach_absolute_time@PLT
+#	define __longjmp _longjmp
+#	define _mach_absolute_time mach_absolute_time
+#	define _sigaltstack sigaltstack
+#	define __sigunaltstack _sigunaltstack
+#	define _sigprocmask sigprocmask
 #endif
 
 #include <architecture/i386/asm_help.h>

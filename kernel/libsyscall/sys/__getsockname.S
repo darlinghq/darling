@@ -11,6 +11,6 @@ __SYSCALL2(__getsockname, getsockname, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	getsockname
-	.set	getsockname, __getsockname
+		getsockname = __getsockname
 #endif
 

@@ -11,6 +11,6 @@ __SYSCALL2(__connect_nocancel, connect_nocancel, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	connect$NOCANCEL
-	.set	connect$NOCANCEL, __connect_nocancel
+		connect$NOCANCEL = __connect_nocancel
 #endif
 

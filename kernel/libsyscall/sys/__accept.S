@@ -11,6 +11,6 @@ __SYSCALL2(__accept, accept, 3, cerror)
 
 #if defined(__x86_64__)
 	.globl	accept
-	.set	accept, __accept
+		accept = __accept
 #endif
 

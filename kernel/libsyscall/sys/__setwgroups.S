@@ -11,6 +11,6 @@ __SYSCALL2(__setwgroups, setwgroups, 2, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	setwgroups_np
-	.set	setwgroups_np, __setwgroups
+		setwgroups_np = __setwgroups
 #endif
 

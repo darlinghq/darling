@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -28,10 +29,15 @@
 
 #include "SYS.h"
 
+#ifdef DARLING
+#	define ___getpid __getpid
+#endif
+
 #if defined(__i386__)
 
 	.data
-	.private_extern __current_pid
+	.globl __current_pid
+	.hidden __current_pid
 L__current_pid_addr:
  __current_pid:
 	.long 0
@@ -73,7 +79,8 @@ LEAF(___getpid, 0)
 #elif defined(__x86_64__)
 
 	.data
-	.private_extern __current_pid
+	.globl __current_pid
+	.hidden __current_pid
 __current_pid:
 	.long 0
 

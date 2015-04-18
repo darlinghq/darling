@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2011 Apple Inc. All rights reserved.
  *
@@ -43,7 +44,7 @@ LABEL(tramp_cerror)
 	subl	$16, %esp
 	movl	%edx, 4(%esp)
 	movl	%eax, (%esp)
-	CALL_EXTERN(_cerror)
+	CALL_EXTERN(cerror)
 	movl	4(%esp), %esp
 	ret
 
@@ -53,7 +54,7 @@ LABEL(tramp_cerror_nocancel)
 	subl	$16, %esp
 	movl	%edx, 4(%esp)
 	movl	%eax, (%esp)
-	CALL_EXTERN(_cerror_nocancel)
+	CALL_EXTERN(cerror_nocancel)
 	movl	4(%esp), %esp
 	ret
 
@@ -68,7 +69,7 @@ _i386_get_ldt:
 	movl    $6,%eax
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
-	jmp		tramp_cerror
+	jmp		tramp_cerror@PLT
 2:	ret
 
 
@@ -78,7 +79,7 @@ _i386_set_ldt:
 	movl    $5,%eax
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
-	jmp		tramp_cerror
+	jmp		tramp_cerror@PLT
 2:	ret
 
 #elif defined(__x86_64__)
@@ -90,7 +91,7 @@ _i386_get_ldt:
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
 	movq	%rax, %rdi
-	jmp		_cerror
+	jmp		cerror@PLT
 2:	ret
 
 
@@ -101,7 +102,7 @@ _i386_set_ldt:
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
 	movq	%rax, %rdi
-	jmp		_cerror
+	jmp		cerror@PLT
 2:	ret
 
 #endif

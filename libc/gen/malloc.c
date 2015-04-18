@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999, 2006-2008 Apple Inc. All rights reserved.
  *
@@ -212,7 +213,9 @@ malloc_error_break(void) {
 	// that will be called after an error message appears.  It does not make
 	// sense for developers to call this function, so it is marked
 	// __private_extern__ to prevent it from becoming API.
+#ifndef DARLING
 	MAGMALLOC_MALLOCERRORBREAK(); // DTrace USDT probe
+#endif
 }
 
 __private_extern__ boolean_t __stack_logging_locked();

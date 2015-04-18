@@ -11,6 +11,6 @@ __SYSCALL2(__semctl, semctl, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	semctl
-	.set	semctl, __semctl
+		semctl = __semctl
 #endif
 

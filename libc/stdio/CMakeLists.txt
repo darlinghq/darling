@@ -3,6 +3,8 @@ project(libc-stdio)
 cmake_minimum_required(VERSION 2.4.0)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_C99_SOURCE -D_FORTIFY_SOURCE=0 -D__va_list=__builtin_va_list")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
+
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa/FreeBSD")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa")
 
@@ -105,6 +107,17 @@ set(stdio_sources
 	FreeBSD/wsetup.c
 )
 
-#SET_SOURCE_FILES_PROPERTIES(FreeBSD/snprintf.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS}")
+# SET_SOURCE_FILES_PROPERTIES(FreeBSD/fopen.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DVARIANT_DARWINEXTSN")
 
 add_library(libc-stdio OBJECT ${stdio_sources})
+SET_TARGET_PROPERTIES(libc-stdio PROPERTIES COMPILE_DEFINITIONS "VARIANT_DARWINEXTSN")
+
+# ***
+# Legacy variants
+# ***
+
+set(stdio-legacy_sources FreeBSD/fopen.c FreeBSD/fdopen.c)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE")
+add_library(libc-stdio_legacy OBJECT ${stdio-legacy_sources})
+SET_TARGET_PROPERTIES(libc-stdio_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+

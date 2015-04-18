@@ -11,6 +11,6 @@ __SYSCALL2(__getpeername, getpeername, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	getpeername
-	.set	getpeername, __getpeername
+		getpeername = __getpeername
 #endif
 

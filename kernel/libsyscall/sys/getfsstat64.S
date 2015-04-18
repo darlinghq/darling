@@ -11,6 +11,6 @@ __SYSCALL2(getfsstat64, getfsstat64, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	getfsstat$INODE64
-	.set	getfsstat$INODE64, getfsstat64
+		getfsstat$INODE64 = getfsstat64
 #endif
 

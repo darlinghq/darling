@@ -11,6 +11,6 @@ __SYSCALL2(__sem_wait_nocancel, sem_wait_nocancel, 1, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	sem_wait$NOCANCEL
-	.set	sem_wait$NOCANCEL, __sem_wait_nocancel
+		sem_wait$NOCANCEL = __sem_wait_nocancel
 #endif
 

@@ -11,6 +11,6 @@ __SYSCALL2(__sem_open, sem_open, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	sem_open
-	.set	sem_open, __sem_open
+		sem_open = __sem_open
 #endif
 

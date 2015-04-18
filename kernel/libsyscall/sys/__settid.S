@@ -11,6 +11,6 @@ __SYSCALL2(__settid, settid, 2, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	pthread_setugid_np
-	.set	pthread_setugid_np, __settid
+		pthread_setugid_np = __settid
 #endif
 

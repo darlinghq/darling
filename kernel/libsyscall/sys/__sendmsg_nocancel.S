@@ -11,6 +11,6 @@ __SYSCALL2(__sendmsg_nocancel, sendmsg_nocancel, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	sendmsg$NOCANCEL
-	.set	sendmsg$NOCANCEL, __sendmsg_nocancel
+		sendmsg$NOCANCEL = __sendmsg_nocancel
 #endif
 

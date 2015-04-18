@@ -11,6 +11,6 @@ __SYSCALL2(__bind, bind, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	bind
-	.set	bind, __bind
+		bind = __bind
 #endif
 

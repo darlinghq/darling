@@ -11,6 +11,6 @@ __SYSCALL2(__shm_open, shm_open, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	shm_open
-	.set	shm_open, __shm_open
+		shm_open = __shm_open
 #endif
 

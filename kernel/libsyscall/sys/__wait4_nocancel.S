@@ -11,6 +11,6 @@ __SYSCALL2(__wait4_nocancel, wait4_nocancel, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	wait4
-	.set	wait4, __wait4_nocancel
+		wait4 = __wait4_nocancel
 #endif
 

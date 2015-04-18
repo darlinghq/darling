@@ -11,6 +11,6 @@ __SYSCALL2(__access_extended, access_extended, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	accessx_np
-	.set	accessx_np, __access_extended
+		accessx_np = __access_extended
 #endif
 

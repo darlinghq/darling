@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -28,6 +29,11 @@
 /* Copyright (c) 1992 NeXT Computer, Inc.  All rights reserved. */
 
 #include "SYS.h"
+
+#ifdef DARLING
+#	define ___ptrace __ptrace
+#	define _errno errno
+#endif
 
 #if defined(__i386__)
 

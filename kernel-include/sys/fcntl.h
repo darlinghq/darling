@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
  *
@@ -244,6 +245,7 @@ typedef __darwin_pid_t	pid_t;
 #define	F_GETLK		7		/* get record locking information */
 #define	F_SETLK		8		/* set record locking information */
 #define	F_SETLKW	9		/* F_SETLK; wait if blocked */
+#define F_SETLKWTIMEOUT	10
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 #define F_FLUSH_DATA    40
 #define F_CHKCLEAN      41              /* Used for regression test */
@@ -297,6 +299,7 @@ typedef __darwin_pid_t	pid_t;
 #define F_SETBACKINGSTORE	70	/* Mark the file as being the backing store for another filesystem */
 #define F_GETPATH_MTMINFO	71 	/* return the full path of the FD, but error in specific mtmd circumstances */
 
+#define F_GETCODEDIR		72
 /* 72 is free.  It used to be F_GETENCRYPTEDDATA, which is now removed. */
 
 #define F_SETNOSIGPIPE		73	/* No SIGPIPE generated on EPIPE */
@@ -309,6 +312,7 @@ typedef __darwin_pid_t	pid_t;
 
 #define F_GETPROTECTIONLEVEL	77	/* Get the protection version number for this filesystem */
 
+#define F_FINDSIGS			78
 
 // FS-specific fcntl()'s numbers begin at 0x00010000 and go up
 #define FCNTL_FS_SPECIFIC_BASE  0x00010000

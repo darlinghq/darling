@@ -77,7 +77,7 @@ static inline int _fegetexceptflag(fexcept_t *flagp, int excepts)
 }
 
 
-#if defined( BUILDING_FOR_CARBONCORE_LEGACY )
+#if defined( BUILDING_FOR_CARBONCORE_LEGACY ) || defined(DARLING)
 
 const fenv_t _FE_DFL_ENV                        = { DEFAULT_CONTROL, 
                                                     DEFAULT_STATUS, 

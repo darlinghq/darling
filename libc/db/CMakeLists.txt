@@ -3,6 +3,8 @@ project(libc-db)
 cmake_minimum_required(VERSION 2.4.0)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c89")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
+
 add_definitions(-D__DBINTERFACE_PRIVATE)
 
 set(db_sources btree/FreeBSD/bt_close.c
@@ -20,7 +22,8 @@ set(db_sources btree/FreeBSD/bt_close.c
 	btree/FreeBSD/bt_utils.c)
 
 set(db_sources ${db_sources}
-	db/FreeBSD/db.c)
+	db/FreeBSD/db.c
+	mpool/FreeBSD/mpool.c)
 
 set(db_sources ${db_sources}
 	hash/FreeBSD/hash_bigkey.c

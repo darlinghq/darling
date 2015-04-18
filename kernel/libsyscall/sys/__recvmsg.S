@@ -11,6 +11,6 @@ __SYSCALL2(__recvmsg, recvmsg, 3, cerror)
 
 #if defined(__x86_64__)
 	.globl	recvmsg
-	.set	recvmsg, __recvmsg
+		recvmsg = __recvmsg
 #endif
 

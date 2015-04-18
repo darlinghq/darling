@@ -11,6 +11,6 @@ __SYSCALL2(__sendto_nocancel, sendto_nocancel, 6, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	sendto$NOCANCEL
-	.set	sendto$NOCANCEL, __sendto_nocancel
+		sendto$NOCANCEL = __sendto_nocancel
 #endif
 

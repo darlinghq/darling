@@ -11,6 +11,6 @@ __SYSCALL2(__socketpair, socketpair, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	socketpair
-	.set	socketpair, __socketpair
+		socketpair = __socketpair
 #endif
 

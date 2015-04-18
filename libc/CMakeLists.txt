@@ -22,7 +22,7 @@ add_definitions("'-D__warn_references(name,warning)='")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--unresolved-symbols=ignore-all -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/darwin.map")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/pthreads")
@@ -84,6 +84,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-stdlib>
 	$<TARGET_OBJECTS:libc-stdlib_cancelable>
 	$<TARGET_OBJECTS:libc-stdio>
+	$<TARGET_OBJECTS:libc-stdio_legacy>
 	$<TARGET_OBJECTS:libc-secure>
 	$<TARGET_OBJECTS:libc-regex>
 	$<TARGET_OBJECTS:libc-pthreads>

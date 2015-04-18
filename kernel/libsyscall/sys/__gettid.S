@@ -11,6 +11,6 @@ __SYSCALL2(__gettid, gettid, 2, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	pthread_getugid_np
-	.set	pthread_getugid_np, __gettid
+		pthread_getugid_np = __gettid
 #endif
 

@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -28,6 +29,10 @@
 
 #include "SYS.h"
 
+#ifdef DARLING
+#	define ___lseek __lseek
+#endif
+
 #if defined(__x86_64__)
 
 __SYSCALL(___lseek, lseek, 3)
@@ -41,6 +46,6 @@ __SYSCALL_INT(___lseek, lseek, 3)
 #endif
 #if defined(__x86_64__)
 	.globl	lseek
-	.set	lseek, __lseek
+		lseek = __lseek
 #endif
 

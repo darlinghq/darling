@@ -11,6 +11,6 @@ __SYSCALL2(__listen, listen, 2, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	listen
-	.set	listen, __listen
+		listen = __listen
 #endif
 

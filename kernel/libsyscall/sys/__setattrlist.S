@@ -11,6 +11,6 @@ __SYSCALL2(__setattrlist, setattrlist, 5, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	setattrlist
-	.set	setattrlist, __setattrlist
+		setattrlist = __setattrlist
 #endif
 

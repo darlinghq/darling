@@ -75,6 +75,10 @@ x ## Barrier:
 	.endif
 	cmpxchg		\a0, (\a1)
 .endm
+
+#define _OSMemoryBarrier OSMemoryBarrier
+#define _OSAtomicEnqueue OSAtomicEnqueue
+#define _OSAtomicDequeue OSAtomicDequeue
 #endif
 
 #define	ATOMIC_ARITHMETIC(instr, orig, mp)	\

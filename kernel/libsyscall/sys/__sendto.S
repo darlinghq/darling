@@ -11,6 +11,6 @@ __SYSCALL2(__sendto, sendto, 6, cerror)
 
 #if defined(__x86_64__)
 	.globl	sendto
-	.set	sendto, __sendto
+		sendto = __sendto
 #endif
 

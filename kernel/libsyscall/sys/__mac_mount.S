@@ -11,6 +11,6 @@ __SYSCALL2(__mac_mount, __mac_mount, 5, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	__sandbox_mm
-	.set	__sandbox_mm, __mac_mount
+		__sandbox_mm = __mac_mount
 #endif
 

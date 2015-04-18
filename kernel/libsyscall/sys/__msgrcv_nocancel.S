@@ -11,6 +11,6 @@ __SYSCALL2(__msgrcv_nocancel, msgrcv_nocancel, 5, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	msgrcv$NOCANCEL
-	.set	msgrcv$NOCANCEL, __msgrcv_nocancel
+		msgrcv$NOCANCEL = __msgrcv_nocancel
 #endif
 

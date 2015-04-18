@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -28,6 +29,10 @@
 /* Copyright 1998 Apple Computer, Inc. */
 
 #include "SYS.h"
+
+#ifdef DARLING
+#	define ___gettimeofday __gettimeofday
+#endif
 
 #if defined(__i386__)
 

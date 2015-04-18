@@ -11,6 +11,6 @@ __SYSCALL2(__poll_nocancel, poll_nocancel, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	poll$NOCANCEL
-	.set	poll$NOCANCEL, __poll_nocancel
+		poll$NOCANCEL = __poll_nocancel
 #endif
 

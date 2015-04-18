@@ -11,6 +11,6 @@ __SYSCALL2(__exit, exit, 1, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	_exit
-	.set	_exit, __exit
+		_exit = __exit
 #endif
 

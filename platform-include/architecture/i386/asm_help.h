@@ -345,7 +345,7 @@ L ## var ## __non_lazy_ptr:	; \
 	NON_LAZY_STUB(func)
 #elif defined(__x86_64__)
 #define BRANCH_EXTERN(func)	\
-	jmp	func
+	jmp	func@PLT
 #endif
 
 #if defined(__i386__)
@@ -381,10 +381,10 @@ L ## var ## __non_lazy_ptr:	; \
 #endif
 
 #else
-#define BRANCH_EXTERN(func)	jmp	func
-#define PUSH_EXTERN(var)	push	var
-#define CALL_EXTERN(func)	call	func
-#define CALL_EXTERN_AGAIN(func)	call	func
+#define BRANCH_EXTERN(func)	jmp	func@PLT
+#define PUSH_EXTERN(var)	push	var@GOTPCREL
+#define CALL_EXTERN(func)	call	func@PLT
+#define CALL_EXTERN_AGAIN(func)	call	func@PLT
 #if defined(__i386__)
 #define REG_TO_EXTERN(reg, var)	mov	reg, var
 #define EXTERN_TO_REG(var, reg)	mov	$ ## var, reg

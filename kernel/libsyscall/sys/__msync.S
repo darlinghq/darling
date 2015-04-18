@@ -11,6 +11,6 @@ __SYSCALL2(__msync, msync, 3, cerror)
 
 #if defined(__x86_64__)
 	.globl	msync
-	.set	msync, __msync
+		msync = __msync
 #endif
 

@@ -11,6 +11,6 @@ __SYSCALL2(fstatfs64, fstatfs64, 2, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	fstatfs$INODE64
-	.set	fstatfs$INODE64, fstatfs64
+		fstatfs$INODE64 = fstatfs64
 #endif
 

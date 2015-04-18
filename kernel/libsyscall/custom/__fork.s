@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2010 Apple Inc. All rights reserved.
  *
@@ -45,6 +46,11 @@
  */
 
 #include "SYS.h"
+
+#ifdef DARLING
+#	define ___fork __fork
+#	define _cerror cerror
+#endif
 
 #if defined(__i386__)
 

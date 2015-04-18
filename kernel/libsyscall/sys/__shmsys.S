@@ -11,6 +11,6 @@ __SYSCALL2(__shmsys, shmsys, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	shmsys
-	.set	shmsys, __shmsys
+		shmsys = __shmsys
 #endif
 

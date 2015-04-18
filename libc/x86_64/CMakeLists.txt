@@ -84,7 +84,7 @@ set(x86_64_sources ${x86_64_sources}
 	sys/setjmp.S
 	sys/_sigtramp.S
 	sys/spinlocks_asm.S
-	sys/spinlocks.c
+	#sys/spinlocks.c # aliases in other complation units don't work, work done in spinlocks_asm.S
 )
 
 

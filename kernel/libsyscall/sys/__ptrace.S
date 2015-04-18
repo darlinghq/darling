@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -29,6 +30,11 @@
 
 #include "SYS.h"
 
+#ifdef DARLING
+#	define ___ptrace __ptrace
+#	define _errno errno
+#endif
+
 #if defined(__i386__)
 
 	.globl	_errno
@@ -55,6 +61,6 @@ LEAF(___ptrace, 0)
 #endif
 #if defined(__x86_64__)
 	.globl	ptrace
-	.set	ptrace, __ptrace
+		ptrace = __ptrace
 #endif
 

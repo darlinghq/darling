@@ -11,6 +11,6 @@ __SYSCALL2(__recvmsg_nocancel, recvmsg_nocancel, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	recvmsg$NOCANCEL
-	.set	recvmsg$NOCANCEL, __recvmsg_nocancel
+		recvmsg$NOCANCEL = __recvmsg_nocancel
 #endif
 

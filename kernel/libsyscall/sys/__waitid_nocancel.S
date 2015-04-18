@@ -11,6 +11,6 @@ __SYSCALL2(__waitid_nocancel, waitid_nocancel, 4, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	waitid$NOCANCEL
-	.set	waitid$NOCANCEL, __waitid_nocancel
+		waitid$NOCANCEL = __waitid_nocancel
 #endif
 

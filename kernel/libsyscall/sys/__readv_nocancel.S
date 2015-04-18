@@ -11,6 +11,6 @@ __SYSCALL2(__readv_nocancel, readv_nocancel, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	readv$NOCANCEL
-	.set	readv$NOCANCEL, __readv_nocancel
+		readv$NOCANCEL = __readv_nocancel
 #endif
 

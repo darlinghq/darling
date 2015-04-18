@@ -11,6 +11,6 @@ __SYSCALL2(__lchown, lchown, 3, cerror_nocancel)
 
 #if defined(__x86_64__)
 	.globl	lchown
-	.set	lchown, __lchown
+		lchown = __lchown
 #endif
 
