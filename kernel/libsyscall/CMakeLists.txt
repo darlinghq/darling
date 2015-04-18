@@ -149,9 +149,6 @@ set(syscall_sources
 	mach/string.c
 	mach/thread_act.c
 
-	Platforms/syscall.s
-	Platforms/MacOSX/x86_64/syscall.s
-	
 	sys/__accept_nocancel.S
 	sys/__accept.S
 	sys/__access_extended.S
