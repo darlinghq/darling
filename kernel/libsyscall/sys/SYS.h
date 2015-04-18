@@ -137,7 +137,7 @@ LEAF(pseudo, 0)					;\
 #include <architecture/i386/asm_help.h>
 #include <mach/i386/syscall_sw.h>
 
-#ifndef DARLING
+#ifdef DARLING
 
 #define UNIX_SYSCALL(name, nargs)						 \
 	.globl	cerror								;\
