@@ -120,6 +120,7 @@ set(syscall_sources
 	${CMAKE_CURRENT_BINARY_DIR}/mach/taskUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/thread_actUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/vm_mapUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/clockUser.c
 	
 	mach/mach_init.c
 	mach/clock_sleep.c
@@ -539,6 +540,7 @@ set(syscall_sources
 	sys/writev.S
 )
 
+mig(mach/clock.defs)
 mig(mach/host_priv.defs)
 mig(mach/host_security.defs)
 mig(mach/ledger.defs)

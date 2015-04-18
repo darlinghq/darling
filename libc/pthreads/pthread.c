@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2000-2008 Apple Inc. All rights reserved.
  *
@@ -2055,7 +2056,7 @@ pthread_once(pthread_once_t *once_control,
 /*
  * Insert a cancellation point in a thread.
  */
-__private_extern__ void
+/*__private_extern__*/ void // accessed by libsystem.dylib
 _pthread_testcancel(pthread_t thread, int isconforming)
 {
 	LOCK(thread->lock);

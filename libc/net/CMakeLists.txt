@@ -25,6 +25,8 @@ set(net_sources
 	FreeBSD/send.c
 	FreeBSD/sockatmark.c
 	FreeBSD/sourcefilter.c
+	inet_ntop.c
+	inet_pton.c
 )
 
 add_library(libc-net OBJECT ${net_sources})

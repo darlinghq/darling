@@ -19,6 +19,7 @@ add_definitions(-D__LIBC__ -D__DARWIN_UNIX03=1 -D__DARWIN_64_BIT_INO_T=1 -D__DAR
 #add_definitions("'-D__weak_reference(sym,alias)=__asm__(\".weak \" \\\#alias );__asm__(\".equ \" \\\#alias \", \" \\\#sym)'")
 #add_definitions("'-D__weak_reference(sym,alias)='")
 add_definitions("'-D__warn_references(name,warning)='")
+add_definitions(-Ddladdr=__darwin_dladdr)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
@@ -55,6 +56,7 @@ add_subdirectory(posix1e)
 add_subdirectory(nls)
 add_subdirectory(net)
 add_subdirectory(locale)
+add_subdirectory(threads)
 
 # The following generate libc-hwplat
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
@@ -94,6 +96,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-net>
 	$<TARGET_OBJECTS:libc-locale>
 	$<TARGET_OBJECTS:libc-hwplat>
+	$<TARGET_OBJECTS:libc-threads>
 	$<TARGET_OBJECTS:libc-darwin>)
 
 # TODO: see ./xcodescripts/variants.xcconfig

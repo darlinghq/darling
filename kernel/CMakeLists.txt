@@ -79,9 +79,11 @@ add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
 add_subdirectory(libsyscall)
+add_subdirectory(mach_server/client)
 
 add_library(system_kernel SHARED
-	$<TARGET_OBJECTS:libsyscall>)
+	$<TARGET_OBJECTS:libsyscall>
+	$<TARGET_OBJECTS:mach_server_client>)
 target_link_libraries(system_kernel system_duct)
 
 add_dependencies(system_kernel migcom)

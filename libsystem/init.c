@@ -92,7 +92,7 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[], con
 		._pthread_exit_if_canceled = _pthread_exit_if_canceled,
 	};
 
-	_libkernel_init(libkernel_funcs);
+	__libkernel_init(&libkernel_funcs, envp, apple, vars);
 
 	bootstrap_init();
 	mach_init();
