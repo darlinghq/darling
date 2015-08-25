@@ -64,7 +64,7 @@ static void TLSRunDestructors(void* p)
 	while (dlist != nullptr);
 }
 
-__attribute__((naked)) void* Darling::TLSGetNative()
+void* Darling::TLSGetNative()
 {
 	return m_tlsData;
 }

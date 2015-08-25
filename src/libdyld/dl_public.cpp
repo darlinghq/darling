@@ -18,6 +18,9 @@
 static thread_local char g_lastError[1024];
 static thread_local bool g_lastErrorRead = false;
 
+extern "C" int g_argc asm("NXArgc");
+extern "C" char** g_argv asm("NXArgv");
+
 static std::set<Darling::DlsymHookFunc>* g_dlsymHooks = new std::set<Darling::DlsymHookFunc>;
 
 using namespace Darling;
@@ -280,5 +283,25 @@ void Darling::registerDlsymHook(DlsymHookFunc func)
 void Darling::deregisterDlsymHook(DlsymHookFunc func)
 {
 	g_dlsymHooks->erase(func);
+}
+
+struct ProgramVars
+{
+	const void* mh;
+	int* NXArgcPtr;
+	const char*** NXArgvPtr;
+	const char*** environPtr;
+	const char** __prognamePtr;
+};
+void __darling_get_args(int** argc, char**** argv, char**** env, struct ::ProgramVars* vars)
+{
+	*argc = &g_argc;
+	*argv = &g_argv;
+	*env = &environ;
+	vars->NXArgcPtr = &g_argc;
+	vars->NXArgvPtr = (const char***) &g_argv;
+	vars->environPtr = (const char***) &environ;
+	vars->__prognamePtr = (const char**) &argv[0];
+
 }
 

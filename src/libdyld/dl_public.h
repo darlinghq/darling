@@ -39,6 +39,8 @@ const char* __darwin_dlerror(void);
 void* __darwin_dlsym(void* handle, const char* symbol);
 int __darwin_dladdr(void *addr, Dl_info *info);
 
+void __darling_get_args(int** argc, char**** argv, char**** environ, struct ProgramVars* vars);
+
 // Obsolete (or "not recommended") APIs
 NSSymbol NSLookupAndBindSymbol(const char* symbolName);
 void* NSAddressOfSymbol(NSSymbol nssymbol);
