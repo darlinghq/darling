@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
  *
@@ -45,6 +46,8 @@
  * any improvements or extensions that they make and grant Carnegie the
  * rights to redistribute these changes.
  */
+ 
+#define __private_extern__ __attribute__ ((visibility ("default")))
 
 #include <stdio.h>
 #include <stdarg.h>

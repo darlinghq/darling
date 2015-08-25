@@ -23,6 +23,7 @@ add_definitions(-Ddladdr=__darwin_dladdr)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0") # development flags
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/darwin.map")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat")

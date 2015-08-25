@@ -143,8 +143,9 @@ LEAF(pseudo, 0)					;\
 	.globl	cerror								;\
 LEAF(name, 0)								;\
 	movl	$ SYS_##name, %eax			;\
-	call __darling_bsd_syscall@PLT							;\
-	jnb		2f							;\
+	call	__darling_bsd_syscall@PLT							;\
+	cmpq	$-4095, %rax			;\
+	jb		2f							;\
 	movq	%rax, %rdi							;\
 	BRANCH_EXTERN(cerror)							;\
 2:
@@ -152,8 +153,9 @@ LEAF(name, 0)								;\
 #define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
 	.globl	cerror								;\
 	movl	$ SYS_##name, %eax			;\
-	call __darling_bsd_syscall@PLT							;\
-	jnb		2f							;\
+	call	__darling_bsd_syscall@PLT							;\
+	cmpq	$-4095, %rax				;\
+	jb		2f							;\
 	movq	%rax, %rdi							;\
 	BRANCH_EXTERN(cerror)						;\
 2:

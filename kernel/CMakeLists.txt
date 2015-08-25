@@ -2,7 +2,9 @@ project(darling-libsystem_kernel)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -fblocks")
+add_subdirectory(emulation/linux)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -fblocks -ggdb")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -nostdinc")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 set(MIG_EXECUTABLE "${CMAKE_BINARY_DIR}/mig")
@@ -83,6 +85,7 @@ add_subdirectory(mach_server/client)
 
 add_library(system_kernel SHARED
 	$<TARGET_OBJECTS:libsyscall>
+	$<TARGET_OBJECTS:emulation>
 	$<TARGET_OBJECTS:mach_server_client>)
 target_link_libraries(system_kernel system_duct)
 

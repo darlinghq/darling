@@ -63,6 +63,9 @@ void __attribute__((visibility("hidden"))) *find_platform_function(const platfun
 		return descriptors[i]->address;
 	}
 
+	// FIXME: Until we have capability detection working, we just pick the first available implementation and use it
+	// This will cause issues on systems with a worse CPU installed.
+	return descriptors[0]->address;
 	/* We didn't find an acceptable implementation. (bug in data structures!) */
 	return NULL;
 }

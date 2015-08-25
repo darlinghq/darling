@@ -12,6 +12,7 @@ add_definitions(-D__ctx_start=_ctx_start)
 add_definitions(-D_cpu_number=cpu_number)
 add_definitions(-D_sys_icache_invalidate=sys_icache_invalidate)
 add_definitions(-D_sys_dcache_flush=sys_dcache_flush)
+add_definitions(-DPRIVATE)
 
 #set(CMAKE_C_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include/commpage.h -include ${CMAKE_CURRENT_SOURCE_DIR}/../../platform-include/sys/time.h")
 

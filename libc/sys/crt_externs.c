@@ -1,3 +1,4 @@
+/* Modified by Lubos Dolezel for Darling */
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -65,6 +66,14 @@ char **_NSGetProgname(void) {
 
 struct mach_header *_NSGetMachExecuteHeader(void) {
     return(USE_VAR(_mh_execute_header));
+}
+
+void __darling_set_libc_vars(int* argc, char*** argv, char*** env)
+{
+	NXArgc_pointer = argc;
+	NXArgv_pointer = argv;
+	environ_pointer = env;
+	__progname_pointer = &(*argv)[0];
 }
 
 #if __DYNAMIC__

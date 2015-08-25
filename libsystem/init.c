@@ -77,11 +77,21 @@ void cthread_set_errno_self(int);
 
 static void _pthread_exit_if_canceled(int err) { _pthread_testcancel(pthread_self(), 1);  }
 
+struct ProgramVars
+{
+        const void* mh;
+        int* NXArgcPtr;
+        const char*** NXArgvPtr;
+        const char*** environPtr;
+        const char** __prognamePtr;
+};
+
+
 /*
  * libsyscall_initializer() initializes all of libSystem.dylib <rdar://problem/4892197>
  */
 static __attribute__((constructor)) 
-void libSystem_initializer(int argc, const char* argv[], const char* envp[], const char* apple[], const struct ProgramVars* vars)
+void libSystem_initializer(/*int argc, const char* argv[], const char* envp[], const char* apple[], const struct ProgramVars* vars*/)
 {
     static const struct _libkernel_functions libkernel_funcs = {
 		.version = 1,
@@ -92,12 +102,22 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[], con
 		._pthread_exit_if_canceled = _pthread_exit_if_canceled,
 	};
 
-	__libkernel_init(&libkernel_funcs, envp, apple, vars);
+	int* argc;
+	char*** argv;
+	char*** envp;
+	char** apple = { NULL };
+	struct ProgramVars vars;
+
+	/* Early initialization - original Apple code assumes pthread_init() doesn't print errors */
+	__darling_get_args(&argc, &argv, &envp, &vars);
+	__darling_set_libc_vars(argc, argv, envp);
+
+	__libkernel_init(&libkernel_funcs, *envp, apple, &vars);
 
 	bootstrap_init();
 	mach_init();
 	pthread_init();
-	__libc_init(vars, libSystem_atfork_prepare, libSystem_atfork_parent, libSystem_atfork_child, apple);
+	__libc_init(&vars, libSystem_atfork_prepare, libSystem_atfork_parent, libSystem_atfork_child, apple);
 	__keymgr_initializer();
 	_dyld_initializer();
 	libdispatch_init();

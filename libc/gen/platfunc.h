@@ -87,11 +87,19 @@
 
 #elif defined(DARLING)
 
+#undef PLATFUNC_DESCRIPTOR_NAME
+#define PLATFUNC_DESCRIPTOR_NAME(name, variant) name##$VARIANT_DESC$##variant
 
 #define PLATFUNC_FUNCTION_START_GENERIC(name, variant, codetype, alignment) \
 	PLATFUNC_FUNCTION_START(name, variant, codetype, alignment)
 
-#define	PLATFUNC_DESCRIPTOR(name, variant, must, cant)
+#define	PLATFUNC_DESCRIPTOR(name, variant, must, cant) \
+	.globl PLATFUNC_DESCRIPTOR_NAME(name,variant) ;\
+	.hidden PLATFUNC_DESCRIPTOR_NAME(name,variant) ;\
+	PLATFUNC_DESCRIPTOR_NAME(name,variant) ## : ;\
+	PLATFUNC_DESCRIPTOR_FIELD_POINTER PLATFUNC_VARIANT_NAME(name,variant) ;\
+	.long must ;\
+	.long cant ;\
 
 #else /* VARIANT_DYLD */
 
@@ -128,7 +136,13 @@
 
 #else /* __ASSEMBLER__ */
 
+#ifdef DARLING
+#undef PLATFUNC_DESCRIPTOR_NAME
+#define PLATFUNC_DESCRIPTOR_NAME(name, variant) name ## $VARIANT_DESC$ ## variant
+#endif
+
 #define PLATFUNC_VARIANT_NAME(name, variant) name ## $VARIANT$ ## variant
+
 #define PLATFUNC_DESCRIPTOR_PROTOTYPE(name, variant) extern const platfunc_descriptor PLATFUNC_DESCRIPTOR_NAME(name, variant);
 #define PLATFUNC_DESCRIPTOR_REFERENCE(name, variant) &PLATFUNC_DESCRIPTOR_NAME(name, variant)
 
