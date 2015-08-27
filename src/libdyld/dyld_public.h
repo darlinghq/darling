@@ -42,6 +42,7 @@ struct dyld_unwind_sections
 uint32_t _dyld_image_count(void);
 const struct mach_header* _dyld_get_image_header(uint32_t image_index);
 intptr_t _dyld_get_image_vmaddr_slide(uint32_t image_index);
+intptr_t _dyld_get_image_slide(const struct mach_header* mh);
 const char* _dyld_get_image_name(uint32_t image_index);
 void* dyld_stub_binder_fixup(Darling::MachOObject** obj, uintptr_t lazyOffset);
 

@@ -48,6 +48,14 @@ intptr_t _dyld_get_image_vmaddr_slide(uint32_t image_index)
 	return MachOMgr::instance()->objectByIndex(image_index)->slide();
 }
 
+intptr_t _dyld_get_image_slide(const struct mach_header* mh)
+{
+	MachOObject* obj = MachOMgr::instance()->objectByHeader((mach_header*) mh);
+	if (obj != nullptr)
+		return obj->slide();
+	return 0;
+}
+
 const char* _dyld_get_image_name(uint32_t image_index)
 {
 	return MachOMgr::instance()->objectByIndex(image_index)->path().c_str();
