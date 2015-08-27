@@ -92,10 +92,18 @@ __attribute__((constructor)) void __init_errno_map(void)
 	linux_to_darwin[LINUX_EOPNOTSUPP] = EOPNOTSUPP;
 }
 
-int linux_error_to_bsd(int err)
+int errno_linux_to_bsd(int err)
 {
-	if (linux_to_darwin[err])
-		return linux_to_darwin[err];
+	int v = err;
+	if (v < 0)
+		v = -v;
+
+	if (linux_to_darwin[v])
+	{
+		v = linux_to_darwin[v];
+		return (err < 0) ? -v : v;
+	}
+
 	return err;
 }
 

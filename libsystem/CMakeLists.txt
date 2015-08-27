@@ -2,7 +2,7 @@ project(darling-libsystem_init)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--warn-unresolved-symbols -Wl,--unresolved-symbols=report-all")
 
 include_directories(${CMAKE_SOURCE_DIR}/libc/fbsdcompat)

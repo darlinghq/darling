@@ -9,4 +9,5 @@ __darling_bsd_syscall:
 .no_sys:
 	movq	%rax, %rdi
 	call	__unknown_syscall@PLT
+	ret
 

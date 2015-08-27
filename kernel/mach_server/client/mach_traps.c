@@ -1,6 +1,7 @@
 #define PRIVATE
 #include <mach/mach_traps.h>
 #include <mach/kern_return.h>
+#include <sys/mman.h>
 
 mach_port_name_t mach_reply_port(void)
 {
@@ -108,7 +109,8 @@ kern_return_t _kernelrpc_mach_vm_allocate_trap(
 				mach_vm_size_t size,
 				int flags)
 {
-	return KERN_FAILURE;
+	return _kernelrpc_mach_vm_map_trap(target, addr,
+			size, 0, flags, VM_PROT_READ | VM_PROT_WRITE);
 }
 
 kern_return_t _kernelrpc_mach_vm_deallocate_trap(
@@ -117,7 +119,17 @@ kern_return_t _kernelrpc_mach_vm_deallocate_trap(
 				mach_vm_size_t size
 )
 {
-	return KERN_FAILURE;
+	int ret;
+
+	if (target != 0 && target != mach_task_self())
+		return KERN_FAILURE;
+
+	ret = munmap(address, size);
+
+	if (ret == -1)
+		return KERN_FAILURE;
+
+	return KERN_SUCCESS;
 }
 
 kern_return_t _kernelrpc_mach_vm_protect_trap(
@@ -128,7 +140,24 @@ kern_return_t _kernelrpc_mach_vm_protect_trap(
 				vm_prot_t new_protection
 )
 {
-	return KERN_FAILURE;
+	int prot = 0;
+	int ret;
+
+	if (target != 0 && target != mach_task_self())
+		return KERN_FAILURE;
+
+	if (new_protection & VM_PROT_READ)
+		prot |= PROT_READ;
+	if (new_protection & VM_PROT_WRITE)
+		prot |= PROT_WRITE;
+	if (new_protection & VM_PROT_EXECUTE)
+		prot |= PROT_EXEC;
+
+	ret = mprotect(address, size, prot);
+	if (ret == -1)
+		return KERN_FAILURE;
+
+	return KERN_SUCCESS;
 }
 
 kern_return_t _kernelrpc_mach_vm_map_trap(
@@ -140,7 +169,32 @@ kern_return_t _kernelrpc_mach_vm_map_trap(
 				vm_prot_t cur_protection
 )
 {
-	return KERN_FAILURE;
+	// We cannot allocate memory in other processes
+	if (target != 0 && target != mach_task_self())
+		return KERN_FAILURE;
+
+	void* addr;
+	int prot = 0;
+	int posix_flags = MAP_ANON | MAP_PRIVATE;
+
+	if (cur_protection & VM_PROT_READ)
+		prot |= PROT_READ;
+	if (cur_protection & VM_PROT_WRITE)
+		prot |= PROT_WRITE;
+	if (cur_protection & VM_PROT_EXECUTE)
+		prot |= PROT_EXEC;
+
+	if (!(flags & VM_FLAGS_ANYWHERE))
+		posix_flags |= MAP_FIXED;
+
+	addr = mmap(*address, size, prot, posix_flags, -1, 0);
+	if (addr == MAP_FAILED)
+	{
+		return KERN_FAILURE;
+	}
+
+	*address = addr;
+	return KERN_SUCCESS;
 }
 
 kern_return_t _kernelrpc_mach_port_allocate_trap(

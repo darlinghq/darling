@@ -2,18 +2,14 @@
 #include <asm/unistd.h>
 #include "debug.h"
 #include "duct_errno.h"
-#include "write.h"
-
-void* __bsd_syscall_table[512] = {
-	[4] = sys_write,
-	[397] = sys_write_nocancel,
-};
+#include "syscalls.h"
 
 #ifdef __x86_64__
 __attribute__((naked))
 long linux_syscall(long a1, long a2, long a3, long a4, long a5, long a6, int nr)
 {
-	__asm__ ("movq 8(%rsp), %rax\n"
+	__asm__ ("movl 8(%rsp), %eax\n"
+			"movq %rcx, %r10\n"
 			"syscall\n"
 			"ret");
 }
@@ -21,7 +17,7 @@ long linux_syscall(long a1, long a2, long a3, long a4, long a5, long a6, int nr)
 #	error Unsupported platform!
 #endif
 
-int __unknown_syscall(int nr, ...)
+long __unknown_syscall(int nr, ...)
 {
 	__simple_printf("Unimplemented syscall (%d)\n", nr);
 	return -ENOSYS;

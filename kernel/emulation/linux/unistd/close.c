@@ -1,0 +1,21 @@
+#include "close.h"
+#include "../base.h"
+#include "../errno.h"
+#include <asm/unistd.h>
+
+int sys_close(int fd)
+{
+	return sys_close_nocancel(fd);
+}
+
+int sys_close_nocancel(int fd)
+{
+	int ret;
+
+	ret = LINUX_SYSCALL1(__NR_close, fd);
+	if (ret < 0)
+		ret = errno_linux_to_bsd(ret);
+
+	return ret;
+}
+
