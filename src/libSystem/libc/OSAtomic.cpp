@@ -239,7 +239,7 @@ void* OSAtomicDequeue(OSQueueHead *list, size_t offset)
 	return nullptr;
 }
 
-__attribute__((naked)) void OSMemoryBarrier()
+void OSMemoryBarrier()
 {
 	__atomic_thread_fence(__ATOMIC_SEQ_CST);
 }
