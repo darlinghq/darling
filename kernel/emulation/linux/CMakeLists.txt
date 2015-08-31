@@ -37,8 +37,14 @@ set(emulation_sources
 	unistd/getpid.c
 	unistd/lseek.c
 	unistd/ftruncate.c
+	unistd/access.c
 	signal/duct_signals.c
 	signal/kill.c
+	misc/ioctl.c
+	fcntl/open.c
+	network/socket.c
+	network/connect.c
+	dirent/getdirentries.c
 	syscalls-amd64.asm
 )
 
@@ -46,5 +52,11 @@ set_source_files_properties(mman.c PROPERTIES COMPILE_FLAGS
 	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include")
 set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS
 	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include")
+set_source_files_properties(network/socket.c PROPERTIES COMPILE_FLAGS
+	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include -I${CMAKE_CURRENT_SOURCE_DIR}/../../../kernel-include")
+set_source_files_properties(network/connect.c PROPERTIES COMPILE_FLAGS
+	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include -I${CMAKE_CURRENT_SOURCE_DIR}/../../../kernel-include")
+set_source_files_properties(dirent/getdirentries.c PROPERTIES COMPILE_FLAGS
+	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include -I${CMAKE_CURRENT_SOURCE_DIR}/../../../kernel-include")
 
 add_library(emulation OBJECT ${emulation_sources})
