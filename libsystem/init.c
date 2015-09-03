@@ -75,7 +75,7 @@ void _mig_set_reply_port(mach_port_t);
 
 void cthread_set_errno_self(int);
 
-static void _pthread_exit_if_canceled(int err) { _pthread_testcancel(pthread_self(), 1);  }
+static void _pthread_exit_if_canceled(int err) { if (pthread_self()) _pthread_testcancel(pthread_self(), 1);  }
 
 struct ProgramVars
 {
@@ -111,6 +111,11 @@ void libSystem_initializer(/*int argc, const char* argv[], const char* envp[], c
 	/* Early initialization - original Apple code assumes pthread_init() doesn't print errors */
 	__darling_get_args(&argc, &argv, &envp, &vars);
 	__darling_set_libc_vars(argc, argv, envp);
+	
+	/* cerror() calls require working pthread_self() */
+	char dummy_self[4096];
+	memset(dummy_self, 0, sizeof(dummy_self));
+	__pthread_set_self(dummy_self);
 
 	__libkernel_init(&libkernel_funcs, *envp, apple, &vars);
 

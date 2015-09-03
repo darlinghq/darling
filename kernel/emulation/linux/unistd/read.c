@@ -3,12 +3,12 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_read(int fd, void* mem, int len)
+long sys_read(int fd, void* mem, int len)
 {
 	return sys_read_nocancel(fd, mem, len);
 }
 
-int sys_read_nocancel(int fd, void* mem, int len)
+long sys_read_nocancel(int fd, void* mem, int len)
 {
 	int ret;
 

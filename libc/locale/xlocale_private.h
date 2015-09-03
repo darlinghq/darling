@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005, 2008 Apple Inc. All rights reserved.
  *
@@ -191,6 +192,7 @@ void	__xlocale_init(void);
 static inline __attribute__((always_inline)) locale_t
 __current_locale(void)
 {
+	if (__locale_key == ~0) return &__global_locale;
 	locale_t __locale = (locale_t)pthread_getspecific(__locale_key);
 	return (__locale ? __locale : &__global_locale);
 }

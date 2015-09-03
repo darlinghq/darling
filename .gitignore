@@ -1,7 +1,6 @@
 # CMake
 CMakeCache.txt
 CMakeFiles
-Makefile
 cmake_install.cmake
 install_manifest.txt
 
@@ -9,3 +8,7 @@ install_manifest.txt
 bootstrap_cmds-91/lexer.c
 bootstrap_cmds-91/parser.c
 bootstrap_cmds-91/parser.h
+*.cmd
+*.o
+*.ko
+

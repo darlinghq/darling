@@ -2,19 +2,51 @@
 #include <mach/mach_traps.h>
 #include <mach/kern_return.h>
 #include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include "../../lkm/api.h"
+
+#define UNIMPLEMENTED_TRAP() { char msg[] = "Called unimplemented Mach trap: "; write(2, msg, sizeof(msg)-1); write(2, __FUNCTION__, sizeof(__FUNCTION__)-1); write(2, "\n", 1); }
+
+static int driver_fd = -1;
+
+void mach_driver_init(void)
+{
+	if (driver_fd != -1)
+		close(driver_fd);
+
+	driver_fd = open("/dev/mach", O_RDWR);
+	if (driver_fd == -1)
+	{
+		const char* msg = "Cannot open /dev/mach. Aborting.\nMake sure you have loaded the darling-mach kernel module.\n";
+
+		write(2, msg, strlen(msg));
+		abort();
+	}
+
+	if (ioctl(driver_fd, NR_get_api_version, 0) != DARLING_MACH_API_VERSION)
+	{
+		const char* msg = "Darling Mach kernel module reports different API level. Aborting.\n";
+
+		write(2, msg, strlen(msg));
+		abort();
+	}
+}
 
 mach_port_name_t mach_reply_port(void)
 {
-	return 0;
+	return ioctl(driver_fd, NR_mach_reply_port, 0);;
 }
 
 mach_port_name_t thread_self_trap(void)
 {
+	UNIMPLEMENTED_TRAP();
 	return 0;
 }
 
 mach_port_name_t host_self_trap(void)
 {
+	UNIMPLEMENTED_TRAP();
 	return 0;
 }
 
@@ -27,6 +59,7 @@ mach_msg_return_t mach_msg_trap(
 				mach_msg_timeout_t timeout,
 				mach_port_name_t notify)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -41,18 +74,21 @@ mach_msg_return_t mach_msg_overwrite_trap(
 				mach_msg_header_t *rcv_msg,
 				mach_msg_size_t rcv_limit)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
 kern_return_t semaphore_signal_trap(
 				mach_port_name_t signal_name)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 					      
 kern_return_t semaphore_signal_all_trap(
 				mach_port_name_t signal_name)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -60,12 +96,14 @@ kern_return_t semaphore_signal_thread_trap(
 				mach_port_name_t signal_name,
 				mach_port_name_t thread_name)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
 kern_return_t semaphore_wait_trap(
 				mach_port_name_t wait_name)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -73,6 +111,7 @@ kern_return_t semaphore_wait_signal_trap(
 				mach_port_name_t wait_name,
 				mach_port_name_t signal_name)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -81,6 +120,7 @@ kern_return_t semaphore_timedwait_trap(
 				unsigned int sec,
 				clock_res_t nsec)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -90,6 +130,7 @@ kern_return_t semaphore_timedwait_signal_trap(
 				unsigned int sec,
 				clock_res_t nsec)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -100,6 +141,7 @@ kern_return_t clock_sleep_trap(
 				int sleep_nsec,
 				mach_timespec_t	*wakeup_time)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -203,6 +245,7 @@ kern_return_t _kernelrpc_mach_port_allocate_trap(
 				mach_port_name_t *name
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -212,6 +255,7 @@ kern_return_t _kernelrpc_mach_port_destroy_trap(
 				mach_port_name_t name
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -220,6 +264,7 @@ kern_return_t _kernelrpc_mach_port_deallocate_trap(
 				mach_port_name_t name
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -230,7 +275,14 @@ kern_return_t _kernelrpc_mach_port_mod_refs_trap(
 				mach_port_delta_t delta
 )
 {
-	return KERN_FAILURE;
+	struct mach_port_mod_refs_args args = {
+		.task_right_name = target,
+		.port_right_name = name,
+		.right_type = right,
+		.delta = delta
+	};
+
+	return ioctl(driver_fd, NR__kernelrpc_mach_port_mod_refs, &args);;
 }
 
 kern_return_t _kernelrpc_mach_port_move_member_trap(
@@ -239,6 +291,7 @@ kern_return_t _kernelrpc_mach_port_move_member_trap(
 				mach_port_name_t after
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -249,6 +302,7 @@ kern_return_t _kernelrpc_mach_port_insert_right_trap(
 				mach_msg_type_name_t polyPoly
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -258,6 +312,7 @@ kern_return_t _kernelrpc_mach_port_insert_member_trap(
 				mach_port_name_t pset
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -267,6 +322,7 @@ kern_return_t _kernelrpc_mach_port_extract_member_trap(
 				mach_port_name_t pset
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -277,6 +333,7 @@ kern_return_t _kernelrpc_mach_port_construct_trap(
 				mach_port_name_t *name
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -287,6 +344,7 @@ kern_return_t _kernelrpc_mach_port_destruct_trap(
 				uint64_t guard
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -297,6 +355,7 @@ kern_return_t _kernelrpc_mach_port_guard_trap(
 				boolean_t strict
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -306,6 +365,7 @@ kern_return_t _kernelrpc_mach_port_unguard_trap(
 				uint64_t guard
 )
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -315,6 +375,7 @@ kern_return_t macx_swapon(
 				int size,
 				int priority)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -322,6 +383,7 @@ kern_return_t macx_swapoff(
 				uint64_t filename,
 				int flags)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -331,28 +393,33 @@ kern_return_t macx_triggers(
 				int flags,
 				mach_port_t alert_port)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
 kern_return_t macx_backing_store_suspend(
 				boolean_t suspend)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
 kern_return_t macx_backing_store_recovery(
 				int pid)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
 boolean_t swtch_pri(int pri)
 {
+	UNIMPLEMENTED_TRAP();
 	return 0;
 }
 
 boolean_t swtch(void)
 {
+	UNIMPLEMENTED_TRAP();
 	return 0;
 }
 
@@ -361,11 +428,13 @@ kern_return_t syscall_thread_switch(
 				int option,
 				mach_msg_timeout_t option_time)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
 mach_port_name_t task_self_trap(void)
 {
+	UNIMPLEMENTED_TRAP();
 	return 0;
 }
 
@@ -378,6 +447,7 @@ kern_return_t task_for_pid(
 				int pid,
 				mach_port_name_t *t)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -386,6 +456,7 @@ kern_return_t task_name_for_pid(
 				int pid,
 				mach_port_name_t *tn)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
@@ -393,6 +464,7 @@ kern_return_t pid_for_task(
 				mach_port_name_t t,
 				int *x)
 {
+	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 

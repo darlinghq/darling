@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_setgid(int gid)
+long sys_setgid(int gid)
 {
 	int ret;
 

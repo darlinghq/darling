@@ -1,8 +1,8 @@
 #ifndef LINUX_GETDIRENTRIES_H
 #define LINUX_GETDIRENTRIES_H
 
-int sys_getdirentries(int fd, char* buf, unsigned int len, long* basep);
-int sys_getdirentries64(int fd, char* buf, unsigned int len, long* basep);
+long sys_getdirentries(int fd, char* buf, unsigned int len, long* basep);
+long sys_getdirentries64(int fd, char* buf, unsigned int len, long* basep);
 
 struct linux_dirent64
 {

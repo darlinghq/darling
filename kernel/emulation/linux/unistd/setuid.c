@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_setuid(int uid)
+long sys_setuid(int uid)
 {
 	int ret;
 

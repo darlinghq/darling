@@ -3,12 +3,12 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_pread(int fd, void* mem, int len, long long ofs)
+long sys_pread(int fd, void* mem, int len, long long ofs)
 {
 	return sys_pread_nocancel(fd, mem, len, ofs);
 }
 
-int sys_pread_nocancel(int fd, void* mem, int len, long long ofs)
+long sys_pread_nocancel(int fd, void* mem, int len, long long ofs)
 {
 	int ret;
 

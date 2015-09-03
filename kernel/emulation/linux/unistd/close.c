@@ -3,12 +3,12 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_close(int fd)
+long sys_close(int fd)
 {
 	return sys_close_nocancel(fd);
 }
 
-int sys_close_nocancel(int fd)
+long sys_close_nocancel(int fd)
 {
 	int ret;
 

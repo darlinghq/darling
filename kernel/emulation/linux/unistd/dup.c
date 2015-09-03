@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_dup(int fd)
+long sys_dup(int fd)
 {
 	int ret;
 

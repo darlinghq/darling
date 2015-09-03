@@ -1,7 +1,7 @@
 #ifndef LINUX_SOCKET_H
 #define LINUX_SOCKET_H
 
-int sys_socket(int domain, int type, int protocol);
+long sys_socket(int domain, int type, int protocol);
 
 #define LINUX_SYS_SOCKET	1
 

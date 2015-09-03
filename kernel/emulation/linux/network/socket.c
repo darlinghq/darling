@@ -5,7 +5,7 @@
 #include "../../../../platform-include/sys/socket.h"
 #include "../../../../platform-include/sys/errno.h"
 
-int sys_socket(int domain, int type, int protocol)
+long sys_socket(int domain, int type, int protocol)
 {
 	int ret;
 	int linux_domain;

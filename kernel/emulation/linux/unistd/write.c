@@ -3,12 +3,12 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_write(int fd, const void* mem, int len)
+long sys_write(int fd, const void* mem, int len)
 {
 	return sys_write_nocancel(fd, mem, len);
 }
 
-int sys_write_nocancel(int fd, const void* mem, int len)
+long sys_write_nocancel(int fd, const void* mem, int len)
 {
 	int ret;
 

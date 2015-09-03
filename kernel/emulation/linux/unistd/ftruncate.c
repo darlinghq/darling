@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_ftruncate(int fd, long long length)
+long sys_ftruncate(int fd, long long length)
 {
 	int ret;
 

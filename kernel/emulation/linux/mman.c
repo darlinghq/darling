@@ -51,7 +51,7 @@ void* sys_mmap(void* start, unsigned long len, int prot, int flags, int fd, long
 	return ret;
 }
 
-int sys_munmap(void* addr, unsigned long len)
+long sys_munmap(void* addr, unsigned long len)
 {
 	int ret;
 
@@ -62,7 +62,7 @@ int sys_munmap(void* addr, unsigned long len)
 	return ret;
 }
 
-int sys_mprotect(void* addr, unsigned long len, int prot)
+long sys_mprotect(void* addr, unsigned long len, int prot)
 {
 	int linux_prot, ret;
 
@@ -75,7 +75,7 @@ int sys_mprotect(void* addr, unsigned long len, int prot)
 	return ret;
 }
 
-int sys_mincore(void* addr, unsigned long len, unsigned char* vec)
+long sys_mincore(void* addr, unsigned long len, unsigned char* vec)
 {
 	int ret;
 

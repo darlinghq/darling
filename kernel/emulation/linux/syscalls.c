@@ -33,6 +33,7 @@
 #include "network/socket.h"
 #include "network/connect.h"
 #include "dirent/getdirentries.h"
+#include "stat/fstat.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -66,10 +67,12 @@ void* __bsd_syscall_table[512] = {
 	[182] = sys_setegid,
 	[183] = sys_seteuid,
 	[187] = sys_fdatasync,
+	[189] = sys_fstat,
 	[196] = sys_getdirentries,
 	[197] = sys_mmap,
 	[199] = sys_lseek,
 	[201] = sys_ftruncate,
+	[339] = sys_fstat64,
 	[344] = sys_getdirentries64,
 	[396] = sys_read_nocancel,
 	[397] = sys_write_nocancel,

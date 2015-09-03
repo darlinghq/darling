@@ -5,7 +5,7 @@
 #include "duct_signals.h"
 #include <asm/unistd.h>
 
-int sys_kill(int pid, int signum, int posix)
+long sys_kill(int pid, int signum, int posix)
 {
 	int ret, linux_signum;
 

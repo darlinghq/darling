@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_fchown(int fd, int uid, int gid)
+long sys_fchown(int fd, int uid, int gid)
 {
 	int ret;
 

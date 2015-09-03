@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_sync(void)
+long sys_sync(void)
 {
 	int ret;
 

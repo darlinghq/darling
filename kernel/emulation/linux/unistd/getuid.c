@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_getuid(void)
+long sys_getuid(void)
 {
 	int ret;
 

@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2010 Apple Inc. All rights reserved.
  *
@@ -29,6 +30,7 @@
 #include "_libkernel_init.h"
 
 extern int mach_init(void);
+extern void mach_driver_init(void);
 
 /* dlsym() funcptr is for legacy support in exc_catcher */
 void* (*_dlsym)(void*, const char*) __attribute__((visibility("hidden")));
@@ -46,5 +48,6 @@ __libkernel_init(_libkernel_functions_t fns,
 	if (fns->dlsym) {
 		_dlsym = fns->dlsym;
 	}
+	mach_driver_init();
 	mach_init();
 }

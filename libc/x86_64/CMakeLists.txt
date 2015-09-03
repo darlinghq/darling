@@ -47,7 +47,7 @@ set(x86_64_sources ${x86_64_sources}
 	pthreads/pthread_getspecific.S
 	pthreads/pthread_mutex_lock.S
 	pthreads/pthread_self.S
-	pthreads/pthread_set_self.S
+	#pthreads/pthread_set_self.S
 	pthreads/start_wqthread.S
 	pthreads/thread_start.S
 )

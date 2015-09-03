@@ -7,7 +7,7 @@
 extern unsigned long strlen(const char* s);
 extern char* strcpy(char* dest, const char* src);
 
-int sys_getdirentries(int fd, char* ibuf, unsigned int len, long* basep)
+long sys_getdirentries(int fd, char* ibuf, unsigned int len, long* basep)
 {
 	int ret, bpos = 0, opos = 0;
 	char buf[1024];
@@ -47,7 +47,7 @@ int sys_getdirentries(int fd, char* ibuf, unsigned int len, long* basep)
 
 struct dirent64 __DARWIN_STRUCT_DIRENTRY;
 
-int sys_getdirentries64(int fd, char* ibuf, unsigned int len, long* basep)
+long sys_getdirentries64(int fd, char* ibuf, unsigned int len, long* basep)
 {
 	int ret, bpos = 0, opos = 0;
 	char buf[1024];

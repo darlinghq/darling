@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_exit(int status)
+long sys_exit(int status)
 {
 	int ret;
 

@@ -1,7 +1,7 @@
 #ifndef LINUX_OPEN_H
 #define LINUX_OPEN_H
 
-int sys_open(const char* filename, int flags, unsigned int mode);
+long sys_open(const char* filename, int flags, unsigned int mode);
 
 #define LINUX_O_RDONLY 00
 #define LINUX_O_WRONLY 01

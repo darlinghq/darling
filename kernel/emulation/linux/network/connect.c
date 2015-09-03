@@ -7,7 +7,7 @@
 
 extern void *memcpy(void *dest, const void *src, unsigned long n);
 
-int sys_connect(int fd, const void* name, int socklen)
+long sys_connect(int fd, const void* name, int socklen)
 {
 	int ret;
 	int linux_domain;

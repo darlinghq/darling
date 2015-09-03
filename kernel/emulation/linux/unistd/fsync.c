@@ -3,12 +3,12 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_fsync(int fd)
+long sys_fsync(int fd)
 {
 	return sys_fsync_nocancel(fd);
 }
 
-int sys_fsync_nocancel(int fd)
+long sys_fsync_nocancel(int fd)
 {
 	int ret;
 

@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_fchmod(int fd, int mode)
+long sys_fchmod(int fd, int mode)
 {
 	int ret;
 

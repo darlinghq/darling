@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_ioctl(int fd, int req, void* arg)
+long sys_ioctl(int fd, int req, void* arg)
 {
 	int ret;
 

@@ -12,6 +12,8 @@ set(emulation_sources
 	syscalls.c
 	debug.c
 	errno.c
+	path.c
+	tls.c
 	unistd/write.c
 	unistd/read.c
 	unistd/pread.c
@@ -44,6 +46,8 @@ set(emulation_sources
 	fcntl/open.c
 	network/socket.c
 	network/connect.c
+	stat/fstat.c
+	stat/common.c
 	dirent/getdirentries.c
 	syscalls-amd64.asm
 )
@@ -57,6 +61,8 @@ set_source_files_properties(network/socket.c PROPERTIES COMPILE_FLAGS
 set_source_files_properties(network/connect.c PROPERTIES COMPILE_FLAGS
 	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include -I${CMAKE_CURRENT_SOURCE_DIR}/../../../kernel-include")
 set_source_files_properties(dirent/getdirentries.c PROPERTIES COMPILE_FLAGS
+	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include -I${CMAKE_CURRENT_SOURCE_DIR}/../../../kernel-include")
+set_source_files_properties(stat/common.c PROPERTIES COMPILE_FLAGS
 	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include -I${CMAKE_CURRENT_SOURCE_DIR}/../../../kernel-include")
 
 add_library(emulation OBJECT ${emulation_sources})

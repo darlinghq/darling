@@ -3,12 +3,12 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_pwrite(int fd, const void* mem, int len, long long ofs)
+long sys_pwrite(int fd, const void* mem, int len, long long ofs)
 {
 	return sys_pwrite_nocancel(fd, mem, len, ofs);
 }
 
-int sys_pwrite_nocancel(int fd, const void* mem, int len, long long ofs)
+long sys_pwrite_nocancel(int fd, const void* mem, int len, long long ofs)
 {
 	int ret;
 

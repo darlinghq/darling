@@ -32,5 +32,5 @@
 .align (2<<2), 0x90
 .globl _pthread_getspecific
 _pthread_getspecific:
-	movq	%fs:(,%rdi,8),%rax // Changed to fs for Darling
+	movq	%gs:(,%rdi,8),%rax
 	ret

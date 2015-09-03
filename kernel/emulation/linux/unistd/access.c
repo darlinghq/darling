@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_access(const char* filename, int amode)
+long sys_access(const char* filename, int amode)
 {
 	int ret;
 

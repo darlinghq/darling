@@ -17,7 +17,7 @@
 
 int oflags_bsd_to_linux(int flags);
 
-int sys_open(const char* filename, int flags, unsigned int mode)
+long sys_open(const char* filename, int flags, unsigned int mode)
 {
 	int ret, linux_flags;
 

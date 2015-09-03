@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_fdatasync(int fd)
+long sys_fdatasync(int fd)
 {
 	int ret;
 

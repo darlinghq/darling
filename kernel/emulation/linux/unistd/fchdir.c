@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_fchdir(int fd)
+long sys_fchdir(int fd)
 {
 	int ret;
 

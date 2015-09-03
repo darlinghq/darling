@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 
-int sys_getpid(void)
+long sys_getpid(void)
 {
 	int ret;
 

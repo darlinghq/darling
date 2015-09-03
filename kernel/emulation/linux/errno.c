@@ -1,4 +1,5 @@
 #include "errno.h"
+#include "base.h"
 #include "duct_errno.h"
 
 static int linux_to_darwin[512];
