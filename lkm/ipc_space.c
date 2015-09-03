@@ -1,30 +1,47 @@
 #include "ipc_space.h"
 #include "ipc_port.h"
+#include "debug.h"
 #include <linux/slab.h>
 
 void ipc_space_init(struct ipc_space_t* space)
 {
+	debug_msg("ipc_space_init() on space %p\n", space);
+
 	mutex_init(&space->mutex);
 	idr_init(&space->names);
 }
 
+static int __ipc_right_put(int id, void* p, void* data)
+{
+	struct mach_port_right* right;
+	
+	right = (struct mach_port_right*) p;
+	ipc_right_put(right);
+	
+	return 0;
+}
+
 void ipc_space_put(struct ipc_space_t* space)
 {
-	/* TODO: put all rights */
+	debug_msg("ipc_space_put() on space %p\n", space);
+
+	mutex_lock(&space->mutex);
+	
+	/* Destroy all rights */
+	idr_for_each(&space->names, __ipc_right_put, NULL);
+	
 	idr_destroy(&space->names);
 }
 
-mach_msg_return_t ipc_space_make_receive(struct ipc_space_t* space, struct mach_port_t* port, mach_port_name_t* name_out)
+mach_msg_return_t ipc_space_make_receive(struct ipc_space_t* space, darling_mach_port_t* port, mach_port_name_t* name_out)
 {
 	mach_msg_return_t ret;
-	struct mach_port_right* right;
+	struct mach_port_right* right = NULL;
 	int id;
 	
 	mutex_lock(&space->mutex);
 	
-	right = (struct mach_port_right*) kmalloc(sizeof(struct mach_port_right), GFP_KERNEL);
-	right->port = port;
-	right->type = MACH_PORT_RIGHT_RECEIVE;
+	right = ipc_right_new(port, MACH_PORT_RIGHT_RECEIVE);
 	
 	id = idr_alloc(&space->names, right, 1, -1, GFP_KERNEL);
 	if (id < 0)
@@ -34,28 +51,31 @@ mach_msg_return_t ipc_space_make_receive(struct ipc_space_t* space, struct mach_
 	}
 	
 	*name_out = id;
-	
 	mutex_unlock(&space->mutex);
 	
 	return KERN_SUCCESS;
 err:
 
-	kfree(right);
+	ipc_right_put(right);
+
 	mutex_unlock(&space->mutex);
 	return ret;
 }
 
-mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, struct mach_port_t* port, bool once, mach_port_name_t* name_out)
+mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out)
 {
 	mach_msg_return_t ret;
-	struct mach_port_right* right;
+	struct mach_port_right* right = NULL;
 	int id;
 	
 	mutex_lock(&space->mutex);
 	
-	right = (struct mach_port_right*) kmalloc(sizeof(struct mach_port_right), GFP_KERNEL);
-	right->port = port;
-	right->type = once ? MACH_PORT_RIGHT_SEND_ONCE : MACH_PORT_RIGHT_SEND;
+	right = ipc_right_new(port, once ? MACH_PORT_RIGHT_SEND_ONCE : MACH_PORT_RIGHT_SEND);
+	if (right == NULL)
+	{
+		ret = KERN_RESOURCE_SHORTAGE;
+		goto err;
+	}
 	
 	id = idr_alloc(&space->names, right, 1, -1, GFP_KERNEL);
 	if (id < 0)
@@ -64,10 +84,6 @@ mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, struct mach_por
 		goto err;
 	}
 	
-	if (once)
-		port->num_sorights++;
-	else
-		port->num_srights++;
 	*name_out = id;
 	
 	mutex_unlock(&space->mutex);
@@ -75,8 +91,8 @@ mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, struct mach_por
 	return KERN_SUCCESS;
 	
 err:
+	ipc_right_put(right);
 
-	kfree(right);
 	mutex_unlock(&space->mutex);
 	return ret;
 }
@@ -95,8 +111,8 @@ struct mach_port_right* ipc_space_lookup(struct ipc_space_t* space, mach_port_na
 
 mach_msg_return_t ipc_space_right_put(struct ipc_space_t* space, mach_port_name_t name)
 {
-	mach_msg_return_t ret;
 	struct mach_port_right* right;
+	darling_mach_port_t* port;
 	
 	mutex_lock(&space->mutex);
 	
@@ -107,39 +123,24 @@ mach_msg_return_t ipc_space_right_put(struct ipc_space_t* space, mach_port_name_
 		return KERN_INVALID_NAME;
 	}
 	
-	if (right->type == MACH_PORT_RIGHT_RECEIVE)
-	{
-		right->port->dead = 1;
-		
-		if (right->port->num_srights == 0
-			&& &right->port->num_sorights == 0)
-		{
-			mach_port_put(right->port);
-			right->port = NULL;
-		}
-		else
-		{
-			// TODO: wake up any pending senders
-		}
-	}
-	else if (right->type == MACH_PORT_RIGHT_SEND
-		|| right->type == MACH_PORT_RIGHT_SEND_ONCE)
-	{
-		if (PORT_IS_VALID(right->port))
-		{
-			if (right->type == MACH_PORT_RIGHT_SEND)
-				right->port->num_srights--;
-			else if (right->type == MACH_PORT_RIGHT_SEND_ONCE)
-				right->port->num_sorights;
-		}
-	}
+	port = right->port;
 	
 	idr_remove(&space->names, name);
-	kfree(right);
+	ipc_right_put(right);
 	
-	if (right->port != NULL)
-		mutex_unlock(&right->port->mutex);
+	if (PORT_IS_VALID(port))
+		mutex_unlock(&port->mutex);
 	
 	mutex_unlock(&space->mutex);
 	return KERN_SUCCESS;
+}
+
+void ipc_space_unlock(struct ipc_space_t* space)
+{
+	mutex_unlock(&space->mutex);
+}
+
+void ipc_space_lock(struct ipc_space_t* space)
+{
+	mutex_lock(&space->mutex);
 }

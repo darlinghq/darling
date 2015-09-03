@@ -3,15 +3,19 @@
 #include <linux/module.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
+#include <linux/list.h>
 #include <linux/sched.h>
+#include <linux/uaccess.h>
 #include "linuxmach.h"
 #include "ipc_space.h"
 #include "ipc_port.h"
 #include "api.h"
+#include "debug.h"
+#include "ipc_server.h"
 
 MODULE_LICENSE("GPL");
 
-typedef long (*trap_handler)(struct mach_task_t*, ...);
+typedef long (*trap_handler)(mach_task_t*, ...);
 
 static struct file_operations mach_chardev_ops = {
 	.open           = mach_dev_open,
@@ -21,7 +25,9 @@ static struct file_operations mach_chardev_ops = {
 	.owner          = THIS_MODULE
 };
 static const trap_handler mach_traps[20] = {
-	[NR_mach_reply_port] = (trap_handler) mach_reply_port_trap
+	[NR_get_api_version-DARLING_MACH_API_BASE] = (trap_handler) mach_get_api_version,
+	[NR_mach_reply_port-DARLING_MACH_API_BASE] = (trap_handler) mach_reply_port_trap,
+	[NR__kernelrpc_mach_port_mod_refs-DARLING_MACH_API_BASE] = (trap_handler) _kernelrpc_mach_port_mod_refs_trap,
 };
 
 static struct miscdevice mach_dev = {
@@ -51,35 +57,38 @@ static void mach_exit(void)
 
 int mach_dev_open(struct inode* ino, struct file* file)
 {
-	int err = 0;
-	struct mach_task_t* task;
+	darling_mach_port_t* port;
 	
-	task = (struct mach_task_t*) kmalloc(sizeof(struct mach_task_t), GFP_KERNEL);
-	ipc_space_init(&task->namespace);
-	task->pid = current->pid;
+	if (ipc_port_new(&port) != KERN_SUCCESS)
+		return -ENOMEM;
 	
-	file->private_data = task;
+	ipc_port_make_task(port, current->pid);
+	file->private_data = port;
 
 	return 0;
-fail:
-
-	return err;
 }
 
 int mach_dev_release(struct inode* ino, struct file* file)
 {
-	struct mach_task_t* task;
+	darling_mach_port_t* task_port;
+	mach_task_t* task;
 	
-	task = (struct mach_task_t*) file->private_data;
-	ipc_space_put(&task->namespace);
+	task_port = (darling_mach_port_t*) file->private_data;
+	ipc_port_put(task_port);
 	
 	return 0;
 }
 
 long mach_dev_ioctl(struct file* file, unsigned int ioctl_num, unsigned long ioctl_paramv)
 {
-	struct mach_task_t* mpdata = (struct mach_task_t*) file->private_data;
 	const unsigned int num_traps = sizeof(mach_traps) / sizeof(mach_traps[0]);
+	
+	darling_mach_port_t* task_port = (darling_mach_port_t*) file->private_data;
+	mach_task_t* task;
+	
+	debug_msg("function 0x%x called...\n", ioctl_num);
+	
+	ioctl_num -= DARLING_MACH_API_BASE;
 	
 	if (ioctl_num >= num_traps)
 		return -ENOSYS;
@@ -87,27 +96,94 @@ long mach_dev_ioctl(struct file* file, unsigned int ioctl_num, unsigned long ioc
 	if (!mach_traps[ioctl_num])
 		return -ENOSYS;
 	
-	return mach_traps[ioctl_num](mpdata, ioctl_paramv);
+	task = ipc_port_get_task(task_port);
+	
+	return mach_traps[ioctl_num](task, ioctl_paramv);
 }
 
-mach_port_name_t mach_reply_port_trap(struct mach_task_t* task)
+int mach_get_api_version(mach_task_t* task)
+{
+	return DARLING_MACH_API_VERSION;
+}
+
+mach_port_name_t mach_reply_port_trap(mach_task_t* task)
 {
 	mach_msg_return_t ret;
 	mach_port_name_t name;
-	struct mach_port_t* port;
+	darling_mach_port_t* port;
 	
-	ret = mach_port_new(&port);
+	ret = ipc_port_new(&port);
 	if (ret != KERN_SUCCESS)
 		return 0;
 	
 	ret = ipc_space_make_receive(&task->namespace, port, &name);
 	if (ret != KERN_SUCCESS)
 	{
-		mach_port_put(port);
+		ipc_port_put(port);
 		return 0;
 	}
 	
 	return name;
+}
+
+static mach_task_t* port_name_to_task(mach_task_t* task_self, mach_port_name_t name)
+{
+	struct mach_port_right* right;
+	mach_task_t* task;
+	
+	right = ipc_space_lookup(&task_self->namespace, name);
+	if (right == NULL)
+		return NULL;
+	
+	// NOTE: If XNU were to support accessing other tasks,
+	// we would need to safely add a reference to the task at this point.
+	task = ipc_port_get_task(right->port);
+	
+	ipc_port_unlock(right->port);
+	
+	return task;
+}
+
+kern_return_t _kernelrpc_mach_port_mod_refs_trap(mach_task_t* task_self,
+		struct mach_port_mod_refs_args* in_args)
+{
+	struct mach_port_mod_refs_args args;
+	struct mach_port_right* right = NULL;
+	kern_return_t ret;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	// We behave like XNU here
+	if (port_name_to_task(task_self, args.task_right_name) != task_self)
+	{
+		debug_msg("_kernelrpc_mach_port_mod_refs_trap() -> MACH_SEND_INVALID_DEST\n");
+		ret = MACH_SEND_INVALID_DEST;
+		goto err;
+	}
+	
+	ipc_space_lock(&task_self->namespace);
+	
+	right = ipc_space_lookup(&task_self->namespace, args.port_right_name);
+	if (right == NULL)
+	{
+		debug_msg("_kernelrpc_mach_port_mod_refs_trap() -> KERN_INVALID_NAME\n");
+		ret = KERN_INVALID_NAME;
+		goto err;
+	}
+	
+	ret = ipc_right_mod_refs(right, args.right_type, args.delta);
+	
+	if (right->num_refs == 0)
+		ipc_right_put(right);
+	
+err:
+	if (right != NULL)
+		ipc_port_unlock(right->port);
+	
+	ipc_space_unlock(&task_self->namespace);
+	
+	return ret;
 }
 
 module_init(mach_init);

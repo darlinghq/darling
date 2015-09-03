@@ -16,6 +16,9 @@ struct ipc_space_t
 void ipc_space_init(struct ipc_space_t* space);
 void ipc_space_put(struct ipc_space_t* space);
 
+void ipc_space_lock(struct ipc_space_t* space);
+void ipc_space_unlock(struct ipc_space_t* space);
+
 /*
  * Finds the right corresponding to the given name in the given space.
  * 
@@ -27,12 +30,12 @@ struct mach_port_right* ipc_space_lookup(struct ipc_space_t* space, mach_port_na
 /*
  * Locks the space. Expects the port to be locked.
  */
-mach_msg_return_t ipc_space_make_receive(struct ipc_space_t* space, struct mach_port_t* port, mach_port_name_t* name_out);
+mach_msg_return_t ipc_space_make_receive(struct ipc_space_t* space, darling_mach_port_t* port, mach_port_name_t* name_out);
 
 /*
  * Locks the space. Expects the port to be locked.
  */
-mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, struct mach_port_t* port, bool once, mach_port_name_t* name_out);
+mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out);
 
 /*
  * Deallocate a port name.
