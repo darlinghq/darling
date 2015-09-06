@@ -5,7 +5,11 @@
 
 #define DARLING_MACH_API_BASE		0x1000
 
-enum { NR_get_api_version = DARLING_MACH_API_BASE, NR_mach_reply_port, NR__kernelrpc_mach_port_mod_refs };
+enum { NR_get_api_version = DARLING_MACH_API_BASE,
+	NR_mach_reply_port,
+	NR__kernelrpc_mach_port_mod_refs,
+	NR_task_self_trap
+};
 
 struct mach_port_mod_refs_args
 {

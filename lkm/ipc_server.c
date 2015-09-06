@@ -33,6 +33,7 @@ void ipc_port_make_task(darling_mach_port_t* port, pid_t pid)
 	
 	task = (mach_task_t*) kmalloc(sizeof(mach_task_t), GFP_KERNEL);
 	task->pid = pid;
+	task->task_self = port;
 	
 	ipc_space_init(&task->namespace);
 	

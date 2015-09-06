@@ -24,11 +24,16 @@ static struct file_operations mach_chardev_ops = {
 	.compat_ioctl   = mach_dev_ioctl,
 	.owner          = THIS_MODULE
 };
+
+#define sc(n) n-DARLING_MACH_API_BASE
+
 static const trap_handler mach_traps[20] = {
-	[NR_get_api_version-DARLING_MACH_API_BASE] = (trap_handler) mach_get_api_version,
-	[NR_mach_reply_port-DARLING_MACH_API_BASE] = (trap_handler) mach_reply_port_trap,
-	[NR__kernelrpc_mach_port_mod_refs-DARLING_MACH_API_BASE] = (trap_handler) _kernelrpc_mach_port_mod_refs_trap,
+	[sc(NR_get_api_version)] = (trap_handler) mach_get_api_version,
+	[sc(NR_mach_reply_port)] = (trap_handler) mach_reply_port_trap,
+	[sc(NR__kernelrpc_mach_port_mod_refs)] = (trap_handler) _kernelrpc_mach_port_mod_refs_trap,
+	[sc(NR_task_self_trap)] = (trap_handler) mach_task_self_trap,
 };
+#undef sc
 
 static struct miscdevice mach_dev = {
 	MISC_DYNAMIC_MINOR,
@@ -184,6 +189,23 @@ err:
 	ipc_space_unlock(&task_self->namespace);
 	
 	return ret;
+}
+
+mach_port_name_t mach_task_self_trap(mach_task_t* task)
+{
+	mach_port_name_t name;
+	kern_return_t ret;
+	
+	ipc_space_lock(&task->namespace);
+	
+	ret = ipc_space_make_send(&task->namespace, task->task_self, false, &name);
+	
+	ipc_space_unlock(&task->namespace);
+	
+	if (ret == KERN_SUCCESS)
+		return name;
+	else
+		return 0;
 }
 
 module_init(mach_init);

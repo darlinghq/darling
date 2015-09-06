@@ -62,6 +62,29 @@ err:
 	return ret;
 }
 
+struct idr_right_find_arg
+{
+	darling_mach_port_t* port;
+	mach_port_name_t* name_out;
+};
+
+static int __ipc_right_find(int id, void* p, void* data)
+{
+	struct idr_right_find_arg* arg = (struct idr_right_find_arg*) data;
+	struct mach_port_right* right = (struct mach_port_right*) p;
+	
+	if (right->port == arg->port && right->type == MACH_PORT_RIGHT_SEND)
+	{
+		right->num_refs++;
+		*arg->name_out = id;
+		
+		/* End the search */
+		return 1;
+	}
+	
+	return 0;
+}
+
 mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out)
 {
 	mach_msg_return_t ret;
@@ -69,6 +92,25 @@ mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, darling_mach_po
 	int id;
 	
 	mutex_lock(&space->mutex);
+	
+	/* Memory optimization for MACH_PORT_RIGHT_SEND rights */
+	if (!once)
+	{
+		struct idr_right_find_arg arg = { port, name_out };
+		
+		*name_out = 0;
+		
+		/* Try to find an existing identical right for this port
+		 * and increment its reference count
+		 */
+		idr_for_each(&space->names, __ipc_right_find, &arg);
+		
+		if (*name_out != 0)
+		{
+			mutex_unlock(&space->mutex);
+			return KERN_SUCCESS;
+		}
+	}
 	
 	right = ipc_right_new(port, once ? MACH_PORT_RIGHT_SEND_ONCE : MACH_PORT_RIGHT_SEND);
 	if (right == NULL)
