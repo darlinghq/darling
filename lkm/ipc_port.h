@@ -48,6 +48,12 @@ mach_msg_return_t ipc_port_new(darling_mach_port_t** port);
 mach_msg_return_t ipc_port_put(darling_mach_port_t* port);
 
 /**
+ * Locks the port's mutex.
+ * Checks for null and dead ports.
+ */
+void ipc_port_lock(darling_mach_port_t* port);
+
+/**
  * Unlocks the port's mutex.
  * Checks for null and dead ports.
  */

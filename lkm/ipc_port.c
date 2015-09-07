@@ -57,6 +57,12 @@ mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 	return KERN_SUCCESS;
 }
 
+void ipc_port_lock(darling_mach_port_t* port)
+{
+	if (PORT_IS_VALID(port))
+		mutex_lock(&port->mutex);
+}
+
 void ipc_port_unlock(darling_mach_port_t* port)
 {
 	if (PORT_IS_VALID(port))

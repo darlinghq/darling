@@ -32,6 +32,7 @@ static const trap_handler mach_traps[20] = {
 	[sc(NR_mach_reply_port)] = (trap_handler) mach_reply_port_trap,
 	[sc(NR__kernelrpc_mach_port_mod_refs)] = (trap_handler) _kernelrpc_mach_port_mod_refs_trap,
 	[sc(NR_task_self_trap)] = (trap_handler) mach_task_self_trap,
+	[sc(NR__kernelrpc_mach_port_allocate)] = (trap_handler) _kernelrpc_mach_port_allocate_trap,
 };
 #undef sc
 
@@ -196,16 +197,70 @@ mach_port_name_t mach_task_self_trap(mach_task_t* task)
 	mach_port_name_t name;
 	kern_return_t ret;
 	
-	ipc_space_lock(&task->namespace);
+	ipc_port_lock(task->task_self);
 	
 	ret = ipc_space_make_send(&task->namespace, task->task_self, false, &name);
 	
-	ipc_space_unlock(&task->namespace);
+	ipc_port_unlock(task->task_self);
 	
 	if (ret == KERN_SUCCESS)
 		return name;
 	else
 		return 0;
+}
+
+kern_return_t _kernelrpc_mach_port_allocate_trap(mach_task_t* task, struct mach_port_allocate_args* in_out_args)
+{
+	struct mach_port_allocate_args args;
+	darling_mach_port_t* port;
+	kern_return_t ret;
+	
+	if (copy_from_user(&args, in_out_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	if (port_name_to_task(task, args.task_right_name) != task)
+	{
+		debug_msg("_kernelrpc_mach_port_allocate_trap() -> MACH_SEND_INVALID_DEST\n");
+		return MACH_SEND_INVALID_DEST;
+	}
+	
+	switch (args.right_type)
+	{
+		case MACH_PORT_RIGHT_RECEIVE:
+		{
+			ret = ipc_port_new(&port);
+			if (ret != KERN_SUCCESS)
+				return ret;
+			
+			break;
+		}
+		case MACH_PORT_RIGHT_DEAD_NAME:
+		{
+			port = PORT_DEAD;
+			break;
+		}
+		// TODO: missing MACH_PORT_RIGHT_PORT_SET
+		default:
+		{
+			return KERN_INVALID_VALUE;
+		}
+	}
+	
+	ret = ipc_space_make_receive(&task->namespace, port,
+								 &args.out_right_name);
+	if (ret != KERN_SUCCESS)
+	{
+		ipc_port_put(port);
+		return ret;
+	}
+	
+	if (copy_to_user(in_out_args, &args, sizeof(args)))
+	{
+		ipc_port_put(port);
+		return KERN_PROTECTION_FAILURE;
+	}
+	
+	return KERN_SUCCESS;
 }
 
 module_init(mach_init);

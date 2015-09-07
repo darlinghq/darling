@@ -16,19 +16,26 @@ struct mach_port_right* ipc_right_new(darling_mach_port_t* port, mach_port_right
 	right->type = type;
 	right->num_refs = 1;
 	
-	switch (type)
+	if (PORT_IS_VALID(port))
 	{
-		case MACH_PORT_RIGHT_RECEIVE:
-			break;
-		case MACH_PORT_RIGHT_SEND:
-			port->num_srights++;
-			break;
-		case MACH_PORT_RIGHT_SEND_ONCE:
-			port->num_sorights++;
-			break;
+		switch (type)
+		{
+			case MACH_PORT_RIGHT_RECEIVE:
+				break;
+			case MACH_PORT_RIGHT_SEND:
+				port->num_srights++;
+				break;
+			case MACH_PORT_RIGHT_SEND_ONCE:
+				port->num_sorights++;
+				break;
+		}
+		
+		list_add(&right->reflist, &port->refs);
 	}
-	
-	list_add(&right->reflist, &port->refs);
+	else if (port == PORT_DEAD)
+	{
+		right->type = MACH_PORT_RIGHT_DEAD_NAME;
+	}
 	
 	return right;
 }

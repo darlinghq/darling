@@ -245,8 +245,23 @@ kern_return_t _kernelrpc_mach_port_allocate_trap(
 				mach_port_name_t *name
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	kern_return_t ret;
+
+	struct mach_port_allocate_args args = {
+		.task_right_name = target,
+		.right_type = right,
+		.out_right_name = 0
+	};
+
+	ret = ioctl(driver_fd, NR__kernelrpc_mach_port_allocate,
+			&args);
+
+	if (ret == KERN_SUCCESS)
+		*name = args.out_right_name;
+	else
+		*name = 0;
+
+	return ret;
 }
 
 
@@ -434,8 +449,7 @@ kern_return_t syscall_thread_switch(
 
 mach_port_name_t task_self_trap(void)
 {
-	UNIMPLEMENTED_TRAP();
-	return 0;
+	return ioctl(driver_fd, NR_task_self_trap, 0);
 }
 
 /*
