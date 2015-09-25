@@ -10,7 +10,7 @@ ccflags-y := -I$(src)/../kernel-include \
 ifneq ($(KERNELRELEASE),)
 	obj-m := darling-mach.o
 	darling-mach-objs := linuxmach.o ipc_space.o \
-	    ipc_port.o ipc_right.o ipc_server.o
+	    ipc_port.o ipc_right.o ipc_server.o debug.o
 
 # Otherwise we were called directly from the command
 # line; invoke the kernel build system.

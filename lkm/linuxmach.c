@@ -181,7 +181,11 @@ kern_return_t _kernelrpc_mach_port_mod_refs_trap(mach_task_t* task_self,
 	ret = ipc_right_mod_refs(right, args.right_type, args.delta);
 	
 	if (right->num_refs == 0)
+	{
 		ipc_right_put(right);
+		ipc_space_name_put(&task_self->namespace, args.port_right_name);
+		right = NULL;
+	}
 	
 err:
 	if (right != NULL)

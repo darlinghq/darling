@@ -37,6 +37,7 @@ struct mach_port_right* ipc_right_new(darling_mach_port_t* port, mach_port_right
 		right->type = MACH_PORT_RIGHT_DEAD_NAME;
 	}
 	
+	debug_msg("Allocated right %p for port %p\n", right, port);
 	return right;
 }
 
@@ -44,6 +45,7 @@ void ipc_right_put(struct mach_port_right* right)
 {
 	darling_mach_port_t* port;
 	
+	debug_msg("ipc_right_put(%p)\n", right);
 	if (right == NULL)
 		return;
 	
@@ -51,6 +53,7 @@ void ipc_right_put(struct mach_port_right* right)
 	
 	if (right->type == MACH_PORT_RIGHT_RECEIVE)
 	{
+		debug_msg("\tCalling ipc_port_put()\n");
 		ipc_port_put(port);
 	}
 	else if (right->type == MACH_PORT_RIGHT_SEND
@@ -58,6 +61,7 @@ void ipc_right_put(struct mach_port_right* right)
 	{
 		if (PORT_IS_VALID(port))
 		{
+			debug_msg("\tChanging num of rights\n");
 			if (right->type == MACH_PORT_RIGHT_SEND)
 				port->num_srights--;
 			else if (right->type == MACH_PORT_RIGHT_SEND_ONCE)

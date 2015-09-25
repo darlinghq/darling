@@ -16,6 +16,7 @@ static int __ipc_right_put(int id, void* p, void* data)
 	struct mach_port_right* right;
 	
 	right = (struct mach_port_right*) p;
+
 	ipc_right_put(right);
 	
 	return 0;
@@ -167,7 +168,7 @@ mach_msg_return_t ipc_space_right_put(struct ipc_space_t* space, mach_port_name_
 	
 	port = right->port;
 	
-	idr_remove(&space->names, name);
+	ipc_space_name_put(space, name);
 	ipc_right_put(right);
 	
 	if (PORT_IS_VALID(port))
@@ -175,6 +176,11 @@ mach_msg_return_t ipc_space_right_put(struct ipc_space_t* space, mach_port_name_
 	
 	mutex_unlock(&space->mutex);
 	return KERN_SUCCESS;
+}
+
+void ipc_space_name_put(struct ipc_space_t* space, mach_port_name_t name)
+{
+	idr_remove(&space->names, name);
 }
 
 void ipc_space_unlock(struct ipc_space_t* space)

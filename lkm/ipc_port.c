@@ -22,7 +22,7 @@ mach_msg_return_t ipc_port_new(darling_mach_port_t** port_out)
 	
 	INIT_LIST_HEAD(&port->refs);
 	
-	debug_msg("Allocated new port: %p", port);
+	debug_msg("Allocated new port: %p\n", port);
 	
 	*port_out = port;
 	return KERN_SUCCESS;
@@ -31,7 +31,7 @@ mach_msg_return_t ipc_port_new(darling_mach_port_t** port_out)
 mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 {
 	struct list_head* p;
-	debug_msg("Deallocating port: %p", port);
+	debug_msg("Deallocating port: %p\n", port);
 	
 	if (port->is_server_port)
 	{
@@ -46,10 +46,11 @@ mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 
 		ref = list_entry(p, struct mach_port_right, reflist);
 		
-		debug_msg("Marking right %p as PORT_DEAD", ref);
+		debug_msg("Marking right %p as PORT_DEAD\n", ref);
 		ref->port = PORT_DEAD;
 		ref->type = MACH_PORT_RIGHT_DEAD_NAME;
 	}
+	debug_msg("All refs to port %p are now dead\n", port);
 	
 	// TODO: Wake up any pending senders etc.
 	

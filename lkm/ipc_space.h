@@ -45,4 +45,10 @@ mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, darling_mach_po
  */
 mach_msg_return_t ipc_space_right_put(struct ipc_space_t* space, mach_port_name_t name);
 
+/*
+ * Deallocate a port name. Does not delete the associated right.
+ * Space is expected to be locked
+ */
+void ipc_space_name_put(struct ipc_space_t* space, mach_port_name_t name);
+
 #endif
