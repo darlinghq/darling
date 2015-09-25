@@ -43,6 +43,7 @@ set(emulation_sources
 	signal/duct_signals.c
 	signal/kill.c
 	misc/ioctl.c
+	misc/thread_selfid.c
 	fcntl/open.c
 	network/socket.c
 	network/connect.c

@@ -29,6 +29,7 @@
 #include "unistd/ftruncate.h"
 #include "signal/kill.h"
 #include "misc/ioctl.h"
+#include "misc/thread_selfid.h"
 #include "fcntl/open.h"
 #include "network/socket.h"
 #include "network/connect.h"
@@ -74,6 +75,7 @@ void* __bsd_syscall_table[512] = {
 	[201] = sys_ftruncate,
 	[339] = sys_fstat64,
 	[344] = sys_getdirentries64,
+	[372] = sys_thread_selfid,
 	[396] = sys_read_nocancel,
 	[397] = sys_write_nocancel,
 	[399] = sys_close_nocancel,
