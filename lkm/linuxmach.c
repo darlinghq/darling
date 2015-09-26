@@ -33,6 +33,7 @@ static const trap_handler mach_traps[20] = {
 	[sc(NR__kernelrpc_mach_port_mod_refs)] = (trap_handler) _kernelrpc_mach_port_mod_refs_trap,
 	[sc(NR_task_self_trap)] = (trap_handler) mach_task_self_trap,
 	[sc(NR__kernelrpc_mach_port_allocate)] = (trap_handler) _kernelrpc_mach_port_allocate_trap,
+	[sc(NR_mach_msg_overwrite_trap)] = (trap_handler) mach_msg_overwrite_trap,
 };
 #undef sc
 
@@ -77,7 +78,6 @@ int mach_dev_open(struct inode* ino, struct file* file)
 int mach_dev_release(struct inode* ino, struct file* file)
 {
 	darling_mach_port_t* task_port;
-	mach_task_t* task;
 	
 	task_port = (darling_mach_port_t*) file->private_data;
 	ipc_port_put(task_port);
@@ -265,6 +265,52 @@ kern_return_t _kernelrpc_mach_port_allocate_trap(mach_task_t* task, struct mach_
 	}
 	
 	return KERN_SUCCESS;
+}
+
+kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
+		struct mach_msg_send_overwrite_args* in_args)
+{
+	struct mach_msg_send_overwrite_args args;
+	kern_return_t ret;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	if (args.option & MACH_SEND_MSG)
+	{
+		mach_msg_header_t* msg;
+		
+		if (args.send_size > 10*4096)
+			return MACH_SEND_NO_BUFFER;
+		if (args.send_size < sizeof(mach_msg_header_t))
+			return MACH_SEND_MSG_TOO_SMALL;
+		
+		msg = (mach_msg_header_t*) kmalloc(args.send_size, GFP_KERNEL);
+		if (msg == NULL)
+			return MACH_SEND_NO_BUFFER;
+		
+		if (msg->msgh_size > args.send_size - sizeof(mach_msg_header_t))
+		{
+			ret = MACH_SEND_MSG_TOO_SMALL;
+			goto send_err;
+		}
+		
+		ret = ipc_msg_send(task, msg,
+				(args.option & MACH_SEND_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE);
+		
+		if (ret != MACH_MSG_SUCCESS)
+		{
+send_err:
+			kfree(msg);
+			return ret;
+		}
+	}
+	
+	if (args.option & MACH_RCV_MSG)
+	{
+		
+	}
+	return MACH_MSG_SUCCESS;
 }
 
 module_init(mach_init);

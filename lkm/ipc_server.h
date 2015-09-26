@@ -1,5 +1,6 @@
 #ifndef IPC_SERVER_H
 #define IPC_SERVER_H
+#include "mach_includes.h"
 #include "ipc_port.h"
 #include "linuxmach.h"
 

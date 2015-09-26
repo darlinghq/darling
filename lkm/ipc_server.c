@@ -2,18 +2,8 @@
 #include "ipc_server.h"
 #include <linux/slab.h>
 #include "debug.h"
-
-static boolean_t dummy_task_server_handler(mach_msg_header_t* in, mach_msg_header_t* out)
-{
-	debug_msg("dummy_task_server_handler() invoked, msg=%p\n", in);
-	return false;
-}
-
-static boolean_t dummy_host_server_handler(mach_msg_header_t* in, mach_msg_header_t* out)
-{
-	debug_msg("dummy_host_server_handler() invoked, msg=%p\n", in);
-	return false;
-}
+#include "mig_includes_pre.h"
+#include "mig/mach_hostServer.h"
 
 static void task_free(server_port_t* kport)
 {
@@ -39,7 +29,7 @@ void ipc_port_make_task(darling_mach_port_t* port, pid_t pid)
 	
 	port->is_server_port = true;
 	port->server_port.port_type = IPC_SERVER_TYPE_TASK;
-	port->server_port.cb_handler = dummy_task_server_handler;
+	port->server_port.subsystem = MIG_SUBSYSTEM_NULL; // FIXME
 	port->server_port.private_data = task;
 	port->server_port.cb_free = task_free;
 }
@@ -58,6 +48,6 @@ void ipc_port_make_host(darling_mach_port_t* port)
 {
 	port->is_server_port = true;
 	port->server_port.port_type = IPC_SERVER_TYPE_HOST;
-	port->server_port.cb_handler = dummy_host_server_handler;
+	port->server_port.subsystem = (mig_subsystem_t) &mach_host_subsystem;
 	port->server_port.cb_free = NULL;
 }

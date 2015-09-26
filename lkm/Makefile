@@ -3,6 +3,7 @@ ccflags-y := -I$(src)/../kernel-include \
 		-I$(src)/../libc/include \
 		-DMACH_KERNEL_PRIVATE \
 		-DDARLING_DEBUG \
+		-D__LITTLE_ENDIAN__ \
 		-Wno-undef
 
 # If KERNELRELEASE is defined, we've been invoked from the
@@ -10,7 +11,9 @@ ccflags-y := -I$(src)/../kernel-include \
 ifneq ($(KERNELRELEASE),)
 	obj-m := darling-mach.o
 	darling-mach-objs := linuxmach.o ipc_space.o \
-	    ipc_port.o ipc_right.o ipc_server.o debug.o
+	    ipc_port.o ipc_right.o ipc_server.o debug.o \
+	    mig/clockServer.o mig/mach_hostServer.o \
+	    mig/duct.o
 
 # Otherwise we were called directly from the command
 # line; invoke the kernel build system.
