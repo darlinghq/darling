@@ -301,7 +301,11 @@ mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* msg,
 {
 	if (target->port->is_server_port)
 	{
-		
+		mig_subsystem_t subsystem = target->port->server_port.subsystem;
+		if (subsystem == MIG_SUBSYSTEM_NULL)
+		{
+			return KERN_NOT_SUPPORTED;
+		}
 	}
 	else
 	{

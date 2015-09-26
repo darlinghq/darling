@@ -43,11 +43,20 @@ static struct miscdevice mach_dev = {
 	&mach_chardev_ops,
 };
 
+darling_mach_port_t* host_port;
+
 static int mach_init(void)
 {
 	int err = misc_register(&mach_dev);
 	if (err < 0)
 		goto fail;
+
+	if (ipc_port_new(&host_port) != KERN_SUCCESS)
+	{
+		err = -ENOMEM;
+		goto fail;
+	}
+	ipc_port_make_host(host_port);
 
 	printk(KERN_INFO "Darling Mach kernel emulation loaded\n");
 	return 0;
@@ -58,6 +67,7 @@ fail:
 }
 static void mach_exit(void)
 {
+	ipc_port_put(host_port);
 	misc_deregister(&mach_dev);
 	printk(KERN_INFO "Darling Mach kernel emulation unloaded\n");
 }
@@ -206,6 +216,23 @@ mach_port_name_t mach_task_self_trap(mach_task_t* task)
 	ret = ipc_space_make_send(&task->namespace, task->task_self, false, &name);
 	
 	ipc_port_unlock(task->task_self);
+	
+	if (ret == KERN_SUCCESS)
+		return name;
+	else
+		return 0;
+}
+
+mach_port_name_t mach_host_self_trap(mach_task_t* task)
+{
+	mach_port_name_t name;
+	kern_return_t ret;
+	
+	ipc_port_lock(host_port);
+	
+	ret = ipc_space_make_send(&task->namespace, host_port, false, &name);
+	
+	ipc_port_unlock(host_port);
 	
 	if (ret == KERN_SUCCESS)
 		return name;

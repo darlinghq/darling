@@ -1,6 +1,17 @@
 #include "../mach_includes.h"
-#include "../mig_includes_pre.h"
-#include "../mig/mach_hostServer.h"
+#include <mach/host_info.h>
+#include <mach_debug/zone_info.h>
+#include <mach_debug/hash_info.h>
+#include <mach_debug/lockgroup_info.h>
+#include "../api.h"
+#include <generated/utsrelease.h>
+#include <linux/string.h>
+#include <linux/cpumask.h>
+#include <linux/mm.h>
+#include <linux/thread_info.h>
+#include <asm/page.h>
+
+static const char KERNEL_VERSION[] = "Darling Mach (API level " DARLING_MACH_API_VERSION_STR ") on Linux " UTS_RELEASE;
 
 kern_return_t host_info
 (
@@ -10,6 +21,58 @@ kern_return_t host_info
 	mach_msg_type_number_t *host_info_outCnt
 )
 {
+	switch (flavor)
+	{
+		case HOST_BASIC_INFO:
+		{
+			struct host_basic_info* hinfo;
+			struct sysinfo i;
+
+			hinfo = (struct host_basic_info*) host_info_out;
+
+			if (*host_info_outCnt < HOST_BASIC_INFO_OLD_COUNT)
+				return KERN_FAILURE;
+
+			si_meminfo(&i);
+			hinfo->memory_size = i.totalram;
+			hinfo->max_cpus = num_possible_cpus();
+			hinfo->avail_cpus = num_online_cpus();
+#if defined(__i386__)
+			hinfo->cpu_type = CPU_TYPE_I386;
+			hinfo->cpu_subtype = CPU_SUBTYPE_I386_ALL;
+#elif defined(__x86_64__)
+			if (!test_thread_flag(TIF_IA32))
+			{
+				hinfo->cpu_type = CPU_TYPE_X86_64;
+				hinfo->cpu_subtype = CPU_SUBTYPE_X86_64_ALL;
+			}
+			else
+			{
+				hinfo->cpu_type = CPU_TYPE_I386;
+				hinfo->cpu_subtype = CPU_SUBTYPE_I386_ALL;
+			}
+#else
+			hinfo->cpu_type = 0;
+			hinfo->cpu_subtype = 0;
+#endif
+
+			if (*host_info_outCnt <= HOST_BASIC_INFO_COUNT)
+			{
+				// TODO
+				*host_info_outCnt = HOST_BASIC_INFO_COUNT;
+			}
+			else
+				*host_info_outCnt = HOST_BASIC_INFO_OLD_COUNT;
+			
+			return KERN_SUCCESS;
+		}
+		//case HOST_PROCESSOR_SLOTS:
+		//	break;
+		case HOST_SCHED_INFO:
+			break;
+		default:
+			return KERN_NOT_SUPPORTED;
+	}
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -19,7 +82,8 @@ kern_return_t host_kernel_version
 	kernel_version_t kernel_version
 )
 {
-	return KERN_NOT_SUPPORTED;
+	strncpy(kernel_version, KERNEL_VERSION, sizeof(KERNEL_VERSION));
+	return KERN_SUCCESS;
 }
 
 kern_return_t _host_page_size
@@ -28,7 +92,8 @@ kern_return_t _host_page_size
 	vm_size_t *out_page_size
 )
 {
-	return KERN_NOT_SUPPORTED;
+	*out_page_size = PAGE_SIZE;
+	return KERN_SUCCESS;
 }
 
 kern_return_t mach_memory_object_memory_entry

@@ -1,7 +1,8 @@
 #ifndef LKM_API_H
 #define LKM_API_H
 
-#define DARLING_MACH_API_VERSION	1
+#define DARLING_MACH_API_VERSION		1
+#define DARLING_MACH_API_VERSION_STR	"1"
 
 #define DARLING_MACH_API_BASE		0x1000
 
@@ -9,6 +10,7 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_mach_reply_port,
 	NR__kernelrpc_mach_port_mod_refs,
 	NR_task_self_trap,
+	NR_host_self_trap,
 	NR__kernelrpc_mach_port_allocate,
 	NR_mach_msg_overwrite_trap
 };
