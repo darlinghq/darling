@@ -12,6 +12,7 @@ ifneq ($(KERNELRELEASE),)
 	obj-m := darling-mach.o
 	darling-mach-objs := linuxmach.o ipc_space.o \
 	    ipc_port.o ipc_right.o ipc_server.o debug.o \
+	    servers/mach_host.o servers/clock.o \
 	    mig/clockServer.o mig/mach_hostServer.o \
 	    mig/duct.o
 
