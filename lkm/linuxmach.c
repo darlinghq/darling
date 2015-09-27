@@ -325,6 +325,7 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 		ret = ipc_msg_send(task, msg,
 				(args.option & MACH_SEND_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE);
 		
+		kfree(msg);
 		if (ret != MACH_MSG_SUCCESS)
 		{
 send_err:

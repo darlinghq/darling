@@ -3,8 +3,7 @@
 #include "mach_includes.h"
 #include <linux/mutex.h>
 #include <linux/atomic.h>
-
-struct any_subsystem;
+#include <linux/wait.h>
 
 typedef struct server_port server_port_t;
 struct server_port
@@ -23,6 +22,8 @@ struct darling_mach_port
 	struct mutex mutex;
 	
 	struct list_head refs;
+	struct list_head messages;
+	wait_queue_head_t queue_send, queue_recv;
 
 	int num_srights;
 	int num_sorights;
@@ -41,6 +42,13 @@ struct darling_mach_port
 typedef struct darling_mach_port darling_mach_port_t;
 typedef struct mach_task mach_task_t;
 struct mach_port_right;
+
+struct ipc_delivered_msg
+{
+	struct list_head list;
+	mach_msg_header_t* msg;
+	bool delivered;
+};
 
 mach_msg_return_t ipc_port_new(darling_mach_port_t** port);
 

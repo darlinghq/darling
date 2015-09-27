@@ -2,6 +2,8 @@
 #include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/list.h>
+#include <linux/sched.h>
+#include <linux/jiffies.h>
 #include "debug.h"
 #include "ipc_right.h"
 #include "linuxmach.h"
@@ -22,6 +24,9 @@ mach_msg_return_t ipc_port_new(darling_mach_port_t** port_out)
 	port->is_server_port = false;
 	
 	INIT_LIST_HEAD(&port->refs);
+	INIT_LIST_HEAD(&port->messages);
+	init_waitqueue_head(&port->queue_send);
+	init_waitqueue_head(&port->queue_recv);
 	
 	debug_msg("Allocated new port: %p\n", port);
 	
@@ -298,18 +303,81 @@ mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* msg,
 		struct mach_port_right* target,
 		struct mach_port_right* reply,
 		mach_msg_timeout_t timeout)
-{
+{	
+	struct ipc_delivered_msg delivery;
+	
 	if (target->port->is_server_port)
 	{
-		mig_subsystem_t subsystem = target->port->server_port.subsystem;
+		mig_subsystem_t subsystem;
+		mig_routine_t routine;
+		mach_msg_header_t* reply_msg;
+		
+		subsystem = target->port->server_port.subsystem;
+		
+		if (reply->type != MACH_PORT_RIGHT_SEND_ONCE)
+		{
+			debug_msg("MIG call, but reply is not send once?\n");
+		}
+		
 		if (subsystem == MIG_SUBSYSTEM_NULL)
 		{
+			debug_msg("ipc_msg_deliver(): target port is server,"
+					" but no subsystem is assigned\n");
 			return KERN_NOT_SUPPORTED;
 		}
+		
+		routine = subsystem->server(msg);
+		if (routine == NULL)
+		{
+			debug_msg("ipc_msg_deliver(): invalid routine ID (0x%x)\n",
+					msg->msgh_id);
+			return KERN_INVALID_ARGUMENT;
+		}
+		
+		reply_msg = (mach_msg_header_t*) kmalloc(sizeof(mach_msg_header_t)
+				+ subsystem->maxsize, GFP_KERNEL);
+		
+		reply_msg->msgh_id = msg->msgh_id + 100;
+		reply_msg->msgh_local_port = MACH_PORT_NULL;
+		reply_msg->msgh_remote_port = msg->msgh_local_port;
+		reply_msg->msgh_bits = msg->msgh_bits;
+		reply_msg->msgh_voucher_port = msg->msgh_voucher_port;
+		
+		routine(msg, reply_msg);
+		
+		ipc_port_unlock(target->port);
+		
+		msg = reply_msg;
+		target = reply;
 	}
-	else
-	{
-		// TODO: Enqueue message and wait
-		return KERN_NOT_SUPPORTED;
+	
+	// Enqueue message
+	// TODO: Message memory ownership handling
+	INIT_LIST_HEAD(&delivery.list);
+	delivery.msg = msg;
+	delivery.delivered = false;
+	
+	list_add(&delivery.list, &target->port->messages);
+	
+	// Wake up waiting receivers
+	wake_up_interruptible(&target->port->queue_recv);
+	
+	// TODO: Wait (unless target is send once)
+	if (target->type != MACH_PORT_RIGHT_SEND_ONCE)
+	{	
+		ipc_port_unlock(target->port);
+		
+		// TODO: handle interruptions
+		if (timeout)
+		{
+			wait_event_interruptible_timeout(target->port->queue_send,
+					delivery.delivered, msecs_to_jiffies(timeout));
+		}
+		else
+		{
+			wait_event_interruptible(target->port->queue_send, delivery.delivered);
+		}
 	}
+	
+	return MACH_MSG_SUCCESS;
 }
