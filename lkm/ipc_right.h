@@ -22,6 +22,11 @@ struct mach_port_right* ipc_right_new(darling_mach_port_t* port, mach_port_right
  * If right->num_refs is 0 after this call, ipc_space_right_put() must be called.
  */
 kern_return_t ipc_right_mod_refs(struct mach_port_right* right, mach_port_right_t type, int refchange);
+
+/**
+ * right->port should be locked
+ * @param right
+ */
 void ipc_right_put(struct mach_port_right* right);
 
 #define PORT_NULL ((darling_mach_port_t*) 0)

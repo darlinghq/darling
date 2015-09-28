@@ -319,24 +319,24 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 		if (msg->msgh_size > args.send_size - sizeof(mach_msg_header_t))
 		{
 			ret = MACH_SEND_MSG_TOO_SMALL;
-			goto send_err;
-		}
-		
-		ret = ipc_msg_send(task, msg,
-				(args.option & MACH_SEND_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE);
-		
-		kfree(msg);
-		if (ret != MACH_MSG_SUCCESS)
-		{
-send_err:
 			kfree(msg);
 			return ret;
 		}
+		
+		ret = ipc_msg_send(task, msg,
+				(args.option & MACH_SEND_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE,
+				args.option);
+		
+		
+		if (ret != MACH_MSG_SUCCESS)
+			return ret;
 	}
 	
 	if (args.option & MACH_RCV_MSG)
 	{
-		
+		ret = ipc_msg_recv(task, args.rcv_name, args.rcv_msg, args.recv_size,
+				(args.option & MACH_RCV_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE,
+				args.option);
 	}
 	return MACH_MSG_SUCCESS;
 }

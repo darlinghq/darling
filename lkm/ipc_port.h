@@ -23,6 +23,7 @@ struct darling_mach_port
 	
 	struct list_head refs;
 	struct list_head messages;
+	unsigned int queue_size;
 	wait_queue_head_t queue_send, queue_recv;
 
 	int num_srights;
@@ -47,6 +48,7 @@ struct ipc_delivered_msg
 {
 	struct list_head list;
 	mach_msg_header_t* msg;
+	struct mach_port_right* reply;
 	bool delivered;
 };
 
@@ -71,7 +73,11 @@ void ipc_port_lock(darling_mach_port_t* port);
  */
 void ipc_port_unlock(darling_mach_port_t* port);
 
-mach_msg_return_t ipc_msg_send(mach_task_t* task, mach_msg_header_t* msg, mach_msg_timeout_t timeout);
+/**
+ * Frees msg (either directly or deletion is left to the receiver).
+ */
+mach_msg_return_t ipc_msg_send(mach_task_t* task, mach_msg_header_t* msg,
+		mach_msg_timeout_t timeout, int options);
 
 /**
  * Enqueues the given message for reception.
@@ -88,6 +94,14 @@ mach_msg_return_t ipc_msg_send(mach_task_t* task, mach_msg_header_t* msg, mach_m
 mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* msg,
 		struct mach_port_right* target,
 		struct mach_port_right* reply,
-		mach_msg_timeout_t timeout);
+		mach_msg_timeout_t timeout,
+		int options);
+
+mach_msg_return_t ipc_msg_recv(mach_task_t* task,
+		mach_port_name_t port_name,
+		mach_msg_header_t* msg,
+		mach_msg_size_t receive_limit,
+		mach_msg_timeout_t timeout,
+		int options);
 
 #endif
