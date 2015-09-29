@@ -3,6 +3,7 @@
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/sched.h>
+#include <linux/uaccess.h>
 #include <linux/jiffies.h>
 #include "debug.h"
 #include "ipc_right.h"
@@ -320,7 +321,7 @@ mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* in_msg,
 		int options)
 {	
 	mach_msg_return_t ret = MACH_MSG_SUCCESS;
-	struct ipc_delivered_msg delivery; // FIXME: must be allocated!
+	struct ipc_delivered_msg* delivery = NULL;
 	mach_msg_header_t* msg;
 	mach_msg_header_t* reply_msg = NULL;
 	struct mach_port_right* orig_target; // Right to destroy on success
@@ -378,16 +379,21 @@ mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* in_msg,
 	}
 	
 	// Enqueue message
-	INIT_LIST_HEAD(&delivery.list);
-	delivery.msg = msg;
-	delivery.delivered = false;
+	delivery = (struct ipc_delivered_msg*) kmalloc(
+			sizeof(struct ipc_delivered_msg), GFP_KERNEL);
+			
+	INIT_LIST_HEAD(&delivery->list);
+	delivery->msg = msg;
+	delivery->delivered = false;
+	delivery->recipient_freed = target->type == MACH_PORT_RIGHT_SEND_ONCE;
 	
 	if (msg->msgh_local_port != MACH_PORT_NULL)
-		delivery.reply = reply;
+		delivery->reply = reply;
 	else
-		delivery.reply = NULL;
+		delivery->reply = NULL;
 	
-	list_add(&delivery.list, &target->port->messages);
+	list_add(&delivery->list, &target->port->messages);
+	target->port->queue_size++;
 	
 	// Wake up waiting receivers
 	wake_up_interruptible(&target->port->queue_recv);
@@ -403,12 +409,12 @@ waiting:
 		if (timeout)
 		{
 			err = wait_event_interruptible_timeout(target->port->queue_send,
-					delivery.delivered, msecs_to_jiffies(timeout));
+					delivery->delivered, msecs_to_jiffies(timeout));
 		}
 		else
 		{
 			err = wait_event_interruptible(target->port->queue_send,
-					delivery.delivered);
+					delivery->delivered);
 		}
 		
 		if (err) // interruption
@@ -418,6 +424,8 @@ waiting:
 			else
 				goto waiting;
 		}
+
+		kfree(delivery);
 	}
 	else
 	{
@@ -430,16 +438,19 @@ waiting:
 		ipc_port_lock(target->port);
 		
 		// Port may have died
-		if (PORT_IS_VALID(target->port))
+		if (PORT_IS_VALID(target->port) && delivery != NULL)
 		{
-			if (!delivery.delivered)
+			if (!delivery->delivered)
 			{
 				if (reply_msg != NULL)
 					kfree(reply_msg);
 				
-				list_del(&delivery.list);
+				list_del(&delivery->list);
+				target->port->queue_size--;
 			}
 		}
+		
+		ipc_port_unlock(target->port);
 	}
 	else
 	{
@@ -453,6 +464,9 @@ waiting:
 			kfree(in_msg);
 	}
 	
+	if (target->type != MACH_PORT_RIGHT_SEND_ONCE && delivery != NULL)
+		kfree(delivery);
+	
 	return ret;
 }
 
@@ -465,6 +479,7 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 {
 	mach_msg_return_t ret = MACH_MSG_SUCCESS;
 	struct mach_port_right* right = NULL;
+	bool locked;
 	
 	ipc_space_lock(&task->namespace);
 	
@@ -472,8 +487,15 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 	if (right == NULL || right->type != MACH_PORT_RIGHT_RECEIVE)
 	{
 		ret = MACH_RCV_INVALID_NAME;
+		ipc_space_unlock(&task->namespace);
 		goto err;
 	}
+	
+	// Clone the right
+	right = ipc_right_new(right->port, MACH_PORT_RIGHT_RECEIVE);
+	locked = true;
+	
+	ipc_space_unlock(&task->namespace);
 	
 	while (true)
 	{
@@ -488,6 +510,7 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 		{
 			int err;
 			ipc_port_unlock(right->port);
+			locked = false;
 			
 			// wait for ipc_msg_deliver() to be called somewhere
 waiting:
@@ -508,7 +531,6 @@ waiting:
 				if (options & MACH_RCV_INTERRUPT)
 				{
 					ret = MACH_RCV_INTERRUPTED;
-					right = NULL; // because we're unlocked
 					goto err;
 				}
 				else
@@ -516,26 +538,79 @@ waiting:
 			}
 			
 			ipc_port_lock(right->port);
+			locked = true;
 		}
 		else
 		{
 			// There is a message in queue and we have the lock
-			// TODO: Dequeue the message and mark it as delivered
+			// Dequeue the message and mark it as delivered.
+			
+			struct ipc_delivered_msg* delivery;
+			
+			delivery = list_first_entry(&right->port->messages,
+					struct ipc_delivered_msg, list);
+			
+			right->port->queue_size--;
+			
+			if (delivery->msg->msgh_size > receive_limit)
+			{
+				if (!(options & MACH_RCV_LARGE))
+				{
+					// The message doesn't fit, so it is simply dropped.
+					ret = MACH_RCV_TOO_LARGE;
+				}
+				else
+				{
+					// TODO: Message size is passed to the recipient,
+					// so that he can allocate a larger message buffer.
+					// The message is NOT dequeued.
+				}
+			}
+			else
+			{
+				// Copy over the message to recipient's buffer.
+				// TODO: Handle special data (memory regions, port rights)
+				if (copy_to_user(delivery->msg, msg, msg->msgh_size))
+				{
+					ret = KERN_INVALID_ADDRESS;
+				}
+			}
+			
+			// TODO: Handle the reply port right before deletion
+			if (delivery->reply != NULL)
+				ipc_right_put(delivery->reply);
+			
+			// The message is always recipient-owned.
+			kfree(delivery->msg);
+			
+			// Dequeue the message
+			list_del(&delivery->list);
+			
+			if (delivery->recipient_freed)
+			{
+				// The message was delivered through a send-once right.
+				// The sender is not waiting for a notification, and we
+				// must delete the delivery.
+				kfree(delivery);
+			}
+			else
+			{
+				// Mark the message as delivered and wake up the sender.
+				delivery->delivered = true;
+				wake_up_interruptible(&right->port->queue_send);
+			}
+			
 			break;
 		}
 	}
 	
-	if (right != NULL)
-		ipc_port_unlock(right->port);
-	
-	ipc_space_unlock(&task->namespace);
-	
-	return ret;
-	
 err:
 	if (right != NULL)
-		ipc_port_unlock(right->port);
-
-	ipc_space_unlock(&task->namespace);
+	{
+		if (locked)
+			ipc_port_unlock(right->port);
+		ipc_right_put(right);
+	}
+	
 	return ret;
 }

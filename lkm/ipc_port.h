@@ -49,7 +49,11 @@ struct ipc_delivered_msg
 	struct list_head list;
 	mach_msg_header_t* msg;
 	struct mach_port_right* reply;
-	bool delivered;
+	
+	// Set to 1 after reception
+	unsigned char delivered : 1;
+	// Set to 1 if this struct is to be deleted by recipient
+	unsigned char recipient_freed : 1;
 };
 
 mach_msg_return_t ipc_port_new(darling_mach_port_t** port);
