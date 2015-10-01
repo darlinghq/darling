@@ -2,7 +2,9 @@
 #define IPC_RIGHT_H
 #include "mach_includes.h"
 #include <linux/list.h>
+#include "ipc_types.h"
 #include "ipc_port.h"
+#include "ipc_space.h"
 
 struct mach_port_right
 {
@@ -28,6 +30,18 @@ kern_return_t ipc_right_mod_refs(struct mach_port_right* right, mach_port_right_
  * @param right
  */
 void ipc_right_put(struct mach_port_right* right);
+
+/**
+ * Deallocates the right, removes the right name and unlocks the port
+ * if refcount is zero.
+ * Does nothing if refcount > 0.
+ * 
+ * right->port should be locked. Namespace should be locked.
+ * @param right
+ * @return true if right was destroyed
+ */
+bool ipc_right_put_if_noref(struct mach_port_right* right,
+		ipc_namespace_t* space, mach_port_name_t name);
 
 #define PORT_NULL ((darling_mach_port_t*) 0)
 #define PORT_DEAD ((darling_mach_port_t*) ~0)

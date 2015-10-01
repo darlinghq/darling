@@ -4,7 +4,8 @@
 #include <mach/port.h>
 #include <mach/message.h>
 #include <mach/mig.h>
-#include <mach/mach_types.h>
+#include <mach/mig_errors.h>
+// #include <mach/mach_types.h>
 
 /* Undef some names that conflict with Linux defines */
 #undef __used

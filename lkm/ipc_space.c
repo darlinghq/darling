@@ -3,7 +3,7 @@
 #include "debug.h"
 #include <linux/slab.h>
 
-void ipc_space_init(struct ipc_space_t* space)
+void ipc_space_init(ipc_namespace_t* space)
 {
 	debug_msg("ipc_space_init() on space %p\n", space);
 
@@ -22,7 +22,7 @@ static int __ipc_right_put(int id, void* p, void* data)
 	return 0;
 }
 
-void ipc_space_put(struct ipc_space_t* space)
+void ipc_space_put(ipc_namespace_t* space)
 {
 	debug_msg("ipc_space_put() on space %p\n", space);
 
@@ -34,7 +34,7 @@ void ipc_space_put(struct ipc_space_t* space)
 	idr_destroy(&space->names);
 }
 
-mach_msg_return_t ipc_space_make_receive(struct ipc_space_t* space, darling_mach_port_t* port, mach_port_name_t* name_out)
+mach_msg_return_t ipc_space_make_receive(ipc_namespace_t* space, darling_mach_port_t* port, mach_port_name_t* name_out)
 {
 	mach_msg_return_t ret;
 	struct mach_port_right* right = NULL;
@@ -86,7 +86,7 @@ static int __ipc_right_find(int id, void* p, void* data)
 	return 0;
 }
 
-mach_msg_return_t ipc_space_make_send(struct ipc_space_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out)
+mach_msg_return_t ipc_space_make_send(ipc_namespace_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out)
 {
 	mach_msg_return_t ret;
 	struct mach_port_right* right = NULL;
@@ -140,7 +140,7 @@ err:
 	return ret;
 }
 
-struct mach_port_right* ipc_space_lookup(struct ipc_space_t* space, mach_port_name_t name)
+struct mach_port_right* ipc_space_lookup(ipc_namespace_t* space, mach_port_name_t name)
 {
 	struct mach_port_right* right;
 	
@@ -152,7 +152,7 @@ struct mach_port_right* ipc_space_lookup(struct ipc_space_t* space, mach_port_na
 	return right;
 }
 
-mach_msg_return_t ipc_space_right_put(struct ipc_space_t* space, mach_port_name_t name)
+mach_msg_return_t ipc_space_right_put(ipc_namespace_t* space, mach_port_name_t name)
 {
 	struct mach_port_right* right;
 	darling_mach_port_t* port;
@@ -178,17 +178,17 @@ mach_msg_return_t ipc_space_right_put(struct ipc_space_t* space, mach_port_name_
 	return KERN_SUCCESS;
 }
 
-void ipc_space_name_put(struct ipc_space_t* space, mach_port_name_t name)
+void ipc_space_name_put(ipc_namespace_t* space, mach_port_name_t name)
 {
 	idr_remove(&space->names, name);
 }
 
-void ipc_space_unlock(struct ipc_space_t* space)
+void ipc_space_unlock(ipc_namespace_t* space)
 {
 	mutex_unlock(&space->mutex);
 }
 
-void ipc_space_lock(struct ipc_space_t* space)
+void ipc_space_lock(ipc_namespace_t* space)
 {
 	mutex_lock(&space->mutex);
 }

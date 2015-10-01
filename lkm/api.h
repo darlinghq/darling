@@ -12,7 +12,8 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_task_self_trap,
 	NR_host_self_trap,
 	NR__kernelrpc_mach_port_allocate,
-	NR_mach_msg_overwrite_trap
+	NR_mach_msg_overwrite_trap,
+	NR__kernelrpc_mach_port_deallocate,
 };
 
 struct mach_port_mod_refs_args
@@ -30,7 +31,7 @@ struct mach_port_allocate_args
 	unsigned int out_right_name;
 };
 
-struct mach_msg_send_overwrite_args
+struct mach_msg_overwrite_args
 {
 	void* msg;
 	unsigned int option;
@@ -41,6 +42,12 @@ struct mach_msg_send_overwrite_args
 	unsigned int notify;
 	void* rcv_msg;
 	unsigned int rcv_limit;
+};
+
+struct mach_port_deallocate_args
+{
+	unsigned int task_right_name;
+	unsigned int port_right_name;
 };
 
 #endif

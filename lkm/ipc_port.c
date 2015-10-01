@@ -6,7 +6,9 @@
 #include <linux/uaccess.h>
 #include <linux/jiffies.h>
 #include "debug.h"
+#include "task.h"
 #include "ipc_right.h"
+#include "ipc_space.h"
 #include "linuxmach.h"
 
 mach_msg_return_t ipc_port_new(darling_mach_port_t** port_out)
@@ -228,6 +230,10 @@ mach_msg_return_t ipc_msg_send(mach_task_t* task,
 	struct mach_port_right* in_local_right = NULL;
 	struct mach_port_right* out_local_right = NULL;
 	
+	debug_msg("ipc_msg_send(): remote=%d, local=%d\n",
+			msg->msgh_remote_port,
+			msg->msgh_local_port);
+	
 	type = MACH_MSGH_BITS_REMOTE(msg->msgh_bits);
 	resp_type = MACH_MSGH_BITS_LOCAL(msg->msgh_bits);
 	
@@ -319,12 +325,14 @@ mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* in_msg,
 		struct mach_port_right* reply,
 		mach_msg_timeout_t timeout,
 		int options)
-{	
+{
 	mach_msg_return_t ret = MACH_MSG_SUCCESS;
 	struct ipc_delivered_msg* delivery = NULL;
 	mach_msg_header_t* msg;
 	mach_msg_header_t* reply_msg = NULL;
 	struct mach_port_right* orig_target; // Right to destroy on success
+	
+	debug_msg("ipc_msg_deliver()\n");
 	
 	// MIG call handling
 	if (target->port->is_server_port)
@@ -364,8 +372,15 @@ mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* in_msg,
 		reply_msg->msgh_bits = in_msg->msgh_bits;
 		reply_msg->msgh_voucher_port = in_msg->msgh_voucher_port;
 		
+		debug_msg("ipc_msg_deliver(): invoke routine %d, msg size = %d\n",
+				in_msg->msgh_id, in_msg->msgh_size);
+		
+		reply_msg->msgh_size = sizeof(mig_reply_error_t);
 		routine(in_msg, reply_msg);
 		
+		debug_msg("ipc_msg_deliver(): reply size: %d, ret = 0x%x\n",
+				reply_msg->msgh_size,
+				((mig_reply_error_t*)reply_msg)->RetCode);
 		ipc_port_unlock(target->port);
 		
 		msg = reply_msg;
@@ -403,6 +418,8 @@ mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* in_msg,
 	{	
 		int err;
 		
+		debug_msg("-> waiting for delivery\n");
+		
 		ipc_port_unlock(target->port);
 		
 waiting:
@@ -425,11 +442,13 @@ waiting:
 				goto waiting;
 		}
 
+		debug_msg("\t-> kfree(delivery) #1\n");
 		kfree(delivery);
 	}
 	else
 	{
 		ipc_port_unlock(target->port);
+		delivery = NULL; // Don't free
 	}
 	
 	if (ret != MACH_MSG_SUCCESS)
@@ -464,8 +483,11 @@ waiting:
 			kfree(in_msg);
 	}
 	
-	if (target->type != MACH_PORT_RIGHT_SEND_ONCE && delivery != NULL)
+	if (delivery != NULL)
+	{
+		debug_msg("\t-> kfree(delivery) #2\n");
 		kfree(delivery);
+	}
 	
 	return ret;
 }
@@ -481,11 +503,16 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 	struct mach_port_right* right = NULL;
 	bool locked;
 	
+	debug_msg("ipc_msg_recv() on port %d\n",
+			port_name);
+	
 	ipc_space_lock(&task->namespace);
 	
 	right = ipc_space_lookup(&task->namespace, port_name);
 	if (right == NULL || right->type != MACH_PORT_RIGHT_RECEIVE)
 	{
+		debug_msg("\t-> MACH_RCV_INVALID_NAME\n");
+		
 		ret = MACH_RCV_INVALID_NAME;
 		ipc_space_unlock(&task->namespace);
 		goto err;
@@ -501,6 +528,7 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 	{
 		if (!PORT_IS_VALID(right->port))
 		{
+			debug_msg("\t-> MACH_RCV_PORT_DIED\n");
 			ret = MACH_RCV_PORT_DIED;
 			goto err;
 		}
@@ -511,6 +539,8 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 			int err;
 			ipc_port_unlock(right->port);
 			locked = false;
+			
+			debug_msg("\t-> going to wait\n");
 			
 			// wait for ipc_msg_deliver() to be called somewhere
 waiting:
@@ -547,11 +577,14 @@ waiting:
 			
 			struct ipc_delivered_msg* delivery;
 			
+			debug_msg("\t-> there's a msg in queue\n");
 			delivery = list_first_entry(&right->port->messages,
 					struct ipc_delivered_msg, list);
 			
 			right->port->queue_size--;
 			
+			debug_msg("\t-> msgh_size=%d, receive_limit=%d\n",
+					delivery->msg->msgh_size, receive_limit);
 			if (delivery->msg->msgh_size > receive_limit)
 			{
 				if (!(options & MACH_RCV_LARGE))
@@ -568,9 +601,12 @@ waiting:
 			}
 			else
 			{
+				debug_msg("\t-> copying msg (%d)\n",
+						delivery->msg->msgh_size);
+				
 				// Copy over the message to recipient's buffer.
 				// TODO: Handle special data (memory regions, port rights)
-				if (copy_to_user(delivery->msg, msg, msg->msgh_size))
+				if (copy_to_user(msg, delivery->msg, delivery->msg->msgh_size))
 				{
 					ret = KERN_INVALID_ADDRESS;
 				}
@@ -579,6 +615,8 @@ waiting:
 			// TODO: Handle the reply port right before deletion
 			if (delivery->reply != NULL)
 				ipc_right_put(delivery->reply);
+			
+			debug_msg("\t-> finalizing\n");
 			
 			// The message is always recipient-owned.
 			kfree(delivery->msg);

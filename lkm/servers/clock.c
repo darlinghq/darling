@@ -1,6 +1,9 @@
 #include "../mach_includes.h"
 #include "../mig_includes_pre.h"
-#include "../mig/clockServer.h"
+//#include "../mig/clockServer.h"
+#include "../ipc_port.h"
+#include <mach/mach_types.h>
+#include "clock.h"
 
 kern_return_t clock_get_time
 (

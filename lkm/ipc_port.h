@@ -1,6 +1,7 @@
 #ifndef IPC_PORT_H
 #define IPC_PORT_H
 #include "mach_includes.h"
+#include "ipc_types.h"
 #include <linux/mutex.h>
 #include <linux/atomic.h>
 #include <linux/wait.h>
@@ -22,9 +23,6 @@ struct darling_mach_port
 	struct mutex mutex;
 	
 	struct list_head refs;
-	struct list_head messages;
-	unsigned int queue_size;
-	wait_queue_head_t queue_send, queue_recv;
 
 	int num_srights;
 	int num_sorights;
@@ -37,11 +35,16 @@ struct darling_mach_port
 		/* If is_server_port is true */
 		server_port_t server_port;
 		
-		// TODO: members for message exchange
+		/* Members for message exchange */
+		struct
+		{
+			struct list_head messages;
+			unsigned int queue_size;
+			wait_queue_head_t queue_send, queue_recv;
+		};
 	};
 };
-typedef struct darling_mach_port darling_mach_port_t;
-typedef struct mach_task mach_task_t;
+
 struct mach_port_right;
 
 struct ipc_delivered_msg

@@ -6,12 +6,14 @@
 #include <linux/list.h>
 #include <linux/sched.h>
 #include <linux/uaccess.h>
+#include "task.h"
 #include "linuxmach.h"
 #include "ipc_space.h"
 #include "ipc_port.h"
 #include "api.h"
 #include "debug.h"
 #include "ipc_server.h"
+#include "servers/mach_host.h"
 
 MODULE_LICENSE("GPL");
 
@@ -34,6 +36,8 @@ static const trap_handler mach_traps[20] = {
 	[sc(NR_task_self_trap)] = (trap_handler) mach_task_self_trap,
 	[sc(NR__kernelrpc_mach_port_allocate)] = (trap_handler) _kernelrpc_mach_port_allocate_trap,
 	[sc(NR_mach_msg_overwrite_trap)] = (trap_handler) mach_msg_overwrite_trap,
+	[sc(NR_host_self_trap)] = (trap_handler) mach_host_self_trap,
+	[sc(NR__kernelrpc_mach_port_deallocate)] = (trap_handler) _kernelrpc_mach_port_deallocate_trap,
 };
 #undef sc
 
@@ -170,6 +174,8 @@ kern_return_t _kernelrpc_mach_port_mod_refs_trap(mach_task_t* task_self,
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return KERN_INVALID_ADDRESS;
 	
+	ipc_space_lock(&task_self->namespace);
+	
 	// We behave like XNU here
 	if (port_name_to_task(task_self, args.task_right_name) != task_self)
 	{
@@ -178,24 +184,18 @@ kern_return_t _kernelrpc_mach_port_mod_refs_trap(mach_task_t* task_self,
 		goto err;
 	}
 	
-	ipc_space_lock(&task_self->namespace);
-	
 	right = ipc_space_lookup(&task_self->namespace, args.port_right_name);
 	if (right == NULL)
 	{
-		debug_msg("_kernelrpc_mach_port_mod_refs_trap() -> KERN_INVALID_NAME\n");
+		debug_msg("_kernelrpc_mach_port_mod_refs_trap(%d) -> KERN_INVALID_NAME\n", args.port_right_name);
 		ret = KERN_INVALID_NAME;
 		goto err;
 	}
 	
 	ret = ipc_right_mod_refs(right, args.right_type, args.delta);
 	
-	if (right->num_refs == 0)
-	{
-		ipc_right_put(right);
-		ipc_space_name_put(&task_self->namespace, args.port_right_name);
+	if (ipc_right_put_if_noref(right, &task_self->namespace, args.port_right_name))
 		right = NULL;
-	}
 	
 err:
 	if (right != NULL)
@@ -240,20 +240,28 @@ mach_port_name_t mach_host_self_trap(mach_task_t* task)
 		return 0;
 }
 
-kern_return_t _kernelrpc_mach_port_allocate_trap(mach_task_t* task, struct mach_port_allocate_args* in_out_args)
+kern_return_t _kernelrpc_mach_port_allocate_trap(mach_task_t* task,
+		struct mach_port_allocate_args* in_out_args)
 {
 	struct mach_port_allocate_args args;
 	darling_mach_port_t* port;
-	kern_return_t ret;
+	kern_return_t ret = KERN_SUCCESS;
 	
 	if (copy_from_user(&args, in_out_args, sizeof(args)))
 		return KERN_INVALID_ADDRESS;
 	
+	ipc_space_lock(&task->namespace);
+	
 	if (port_name_to_task(task, args.task_right_name) != task)
 	{
 		debug_msg("_kernelrpc_mach_port_allocate_trap() -> MACH_SEND_INVALID_DEST\n");
-		return MACH_SEND_INVALID_DEST;
+		
+		ipc_space_unlock(&task->namespace);
+		ret = MACH_SEND_INVALID_DEST;
+		goto err;
 	}
+	
+	ipc_space_unlock(&task->namespace);
 	
 	switch (args.right_type)
 	{
@@ -282,23 +290,72 @@ kern_return_t _kernelrpc_mach_port_allocate_trap(mach_task_t* task, struct mach_
 	if (ret != KERN_SUCCESS)
 	{
 		ipc_port_put(port);
-		return ret;
+		goto err;
 	}
 	
 	if (copy_to_user(in_out_args, &args, sizeof(args)))
 	{
 		ipc_port_put(port);
-		return KERN_PROTECTION_FAILURE;
+		ret = KERN_PROTECTION_FAILURE;
+		goto err;
 	}
 	
-	return KERN_SUCCESS;
+err:
+	return ret;
+}
+
+kern_return_t _kernelrpc_mach_port_deallocate_trap(mach_task_t* task,
+		struct mach_port_deallocate_args* in_args)
+{
+	struct mach_port_deallocate_args args;
+	struct mach_port_right* right = NULL;
+	kern_return_t ret = KERN_SUCCESS;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	ipc_space_lock(&task->namespace);
+	
+	if (port_name_to_task(task, args.task_right_name) != task)
+	{
+		debug_msg("_kernelrpc_mach_port_deallocate_trap() -> MACH_SEND_INVALID_DEST\n");
+		
+		ret = MACH_SEND_INVALID_DEST;
+		goto err;
+	}
+	
+	right = ipc_space_lookup(&task->namespace, args.port_right_name);
+	if (right == NULL || right->type == MACH_PORT_RIGHT_RECEIVE)
+	{
+		debug_msg("_kernelrpc_mach_port_deallocate_trap() -> KERN_INVALID_RIGHT\n");
+		
+		ret = KERN_INVALID_RIGHT;
+		goto err;
+	}
+	
+	if (right->port != NULL)
+	{
+		ipc_right_mod_refs(right, right->type, -1);
+		
+		if (ipc_right_put_if_noref(right, &task->namespace, args.port_right_name))
+			right = NULL;
+	}
+	
+err:
+	if (right != NULL)
+		ipc_port_unlock(right->port);
+
+	ipc_space_unlock(&task->namespace);
+	return ret;
 }
 
 kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
-		struct mach_msg_send_overwrite_args* in_args)
+		struct mach_msg_overwrite_args* in_args)
 {
-	struct mach_msg_send_overwrite_args args;
-	kern_return_t ret;
+	struct mach_msg_overwrite_args args;
+	kern_return_t ret = MACH_MSG_SUCCESS;
+	
+	debug_msg("mach_msg_overwrite_trap()");
 	
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return KERN_INVALID_ADDRESS;
@@ -308,20 +365,27 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 		mach_msg_header_t* msg;
 		
 		if (args.send_size > 10*4096)
+		{
+			debug_msg("\t-> MACH_SEND_NO_BUFFER\n");
 			return MACH_SEND_NO_BUFFER;
+		}
 		if (args.send_size < sizeof(mach_msg_header_t))
+		{
+			debug_msg("\t-> MACH_SEND_MSG_TOO_SMALL\n");
 			return MACH_SEND_MSG_TOO_SMALL;
+		}
 		
 		msg = (mach_msg_header_t*) kmalloc(args.send_size, GFP_KERNEL);
 		if (msg == NULL)
 			return MACH_SEND_NO_BUFFER;
 		
-		if (msg->msgh_size > args.send_size - sizeof(mach_msg_header_t))
+		if (copy_from_user(msg, args.msg, args.send_size))
 		{
-			ret = MACH_SEND_MSG_TOO_SMALL;
 			kfree(msg);
-			return ret;
+			return KERN_INVALID_ADDRESS;
 		}
+		
+		msg->msgh_size = args.send_size;
 		
 		ret = ipc_msg_send(task, msg,
 				(args.option & MACH_SEND_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE,
@@ -338,7 +402,7 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 				(args.option & MACH_RCV_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE,
 				args.option);
 	}
-	return MACH_MSG_SUCCESS;
+	return ret;
 }
 
 module_init(mach_init);

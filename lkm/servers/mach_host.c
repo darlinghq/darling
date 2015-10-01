@@ -1,8 +1,8 @@
-#include "../mach_includes.h"
 #include <mach/host_info.h>
 #include <mach_debug/zone_info.h>
 #include <mach_debug/hash_info.h>
 #include <mach_debug/lockgroup_info.h>
+#include "../mach_includes.h"
 #include "../api.h"
 #include <generated/utsrelease.h>
 #include <linux/string.h>
@@ -10,8 +10,63 @@
 #include <linux/mm.h>
 #include <linux/thread_info.h>
 #include <asm/page.h>
+#include "../debug.h"
+#include "stub.h"
+#include "../mig_includes_pre.h"
+#include "../mig/mach_hostServer.h"
+#include "mach_host.h"
 
 static const char KERNEL_VERSION[] = "Darling Mach (API level " DARLING_MACH_API_VERSION_STR ") on Linux " UTS_RELEASE;
+
+extern darling_mach_port_t* host_port;
+
+struct host_private
+{
+	darling_mach_port_t* clock_port;
+};
+
+static
+void __host_free(server_port_t* port)
+{
+	struct host_private* priv;
+	
+	priv = (struct host_private*) port->private_data;
+	
+	ipc_port_put(priv->clock_port);
+	kfree(priv);
+}
+
+// Because including mig/clockServer.h is problematic
+extern mig_subsystem_t clock_subsystem;
+void ipc_port_make_clock(darling_mach_port_t* port)
+{
+	port->is_server_port = true;
+	port->server_port.subsystem = (mig_subsystem_t) &clock_subsystem;
+	port->server_port.cb_free = NULL;
+}
+
+void ipc_port_make_host(darling_mach_port_t* port)
+{
+	struct host_private* priv;
+	
+	port->is_server_port = true;
+	port->server_port.subsystem = (mig_subsystem_t) &mach_host_subsystem;
+	port->server_port.cb_free = __host_free;
+	
+	priv = (struct host_private*) kmalloc(sizeof(struct host_private),
+										GFP_KERNEL);
+	
+	port->server_port.private_data = priv;
+	
+	ipc_port_new(&priv->clock_port);
+	ipc_port_make_clock(priv->clock_port);
+}
+
+static inline
+struct host_private* get_host_private(void)
+{
+	return (struct host_private*) host_port->server_port.private_data;
+}
 
 kern_return_t host_info
 (
@@ -70,6 +125,15 @@ kern_return_t host_info
 		//	break;
 		case HOST_SCHED_INFO:
 			break;
+		case HOST_PRIORITY_INFO:
+			if (*host_info_outCnt < HOST_PRIORITY_INFO_COUNT)
+				return KERN_FAILURE;
+			
+			// Dummy data - called from pthread_init())
+			memset(host_info_out, 0, sizeof(host_priority_info_data_t));
+			*host_info_outCnt = HOST_PRIORITY_INFO_COUNT;
+			
+			return KERN_SUCCESS;
 		default:
 			return KERN_NOT_SUPPORTED;
 	}
@@ -106,6 +170,7 @@ kern_return_t mach_memory_object_memory_entry
 	mach_port_t *entry_handle
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -118,6 +183,7 @@ kern_return_t host_processor_info
 	mach_msg_type_number_t *out_processor_infoCnt
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -127,6 +193,7 @@ kern_return_t host_get_io_master
 	io_master_t *io_master
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -137,6 +204,8 @@ kern_return_t host_get_clock_service
 	clock_serv_t *clock_serv
 )
 {
+	darling_mach_port_t* clock = get_host_private()->clock_port;
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -147,6 +216,7 @@ kern_return_t kmod_get_info
 	mach_msg_type_number_t *modulesCnt
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -159,6 +229,7 @@ kern_return_t host_zone_info
 	mach_msg_type_number_t *infoCnt
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -169,6 +240,7 @@ kern_return_t host_virtual_physical_table_info
 	mach_msg_type_number_t *infoCnt
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -178,6 +250,7 @@ kern_return_t processor_set_default
 	processor_set_name_t *default_set
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -188,6 +261,7 @@ kern_return_t processor_set_create
 	processor_set_name_t *new_name
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -201,6 +275,7 @@ kern_return_t mach_memory_object_memory_entry_64
 	mach_port_t *entry_handle
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -212,6 +287,7 @@ kern_return_t host_statistics
 	mach_msg_type_number_t *host_info_outCnt
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -222,6 +298,7 @@ kern_return_t host_request_notification
 	mach_port_t notify_port
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -232,6 +309,7 @@ kern_return_t host_lockgroup_info
 	mach_msg_type_number_t *lockgroup_infoCnt
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -243,6 +321,7 @@ kern_return_t host_statistics64
 	mach_msg_type_number_t *host_info64_outCnt
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -255,6 +334,7 @@ kern_return_t mach_zone_info
 	mach_msg_type_number_t *infoCnt
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -263,6 +343,7 @@ kern_return_t mach_zone_force_gc
 	host_t host
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -274,6 +355,7 @@ kern_return_t host_create_mach_voucher
 	ipc_voucher_t *voucher
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -286,6 +368,7 @@ kern_return_t host_register_mach_voucher_attr_manager
 	ipc_voucher_attr_control_t *new_attr_control
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
 
@@ -298,5 +381,6 @@ kern_return_t host_register_well_known_mach_voucher_attr_manager
 	ipc_voucher_attr_control_t *new_attr_control
 )
 {
+	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }

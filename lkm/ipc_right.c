@@ -1,6 +1,7 @@
 #include "mach_includes.h"
 #include "ipc_right.h"
 #include "ipc_port.h"
+#include "ipc_space.h"
 #include "debug.h"
 #include <linux/slab.h>
 
@@ -66,9 +67,10 @@ void ipc_right_put(struct mach_port_right* right)
 				port->num_srights--;
 			else if (right->type == MACH_PORT_RIGHT_SEND_ONCE)
 				port->num_sorights--;
+			
+			list_del(&right->reflist);
 		}
 	}
-	list_del(&right->reflist);
 	
 	kfree(right);
 	
@@ -98,4 +100,27 @@ kern_return_t ipc_right_mod_refs(struct mach_port_right* right,
 		right, refchange, right->num_refs);
 	
 	return KERN_SUCCESS;
+}
+
+bool ipc_right_put_if_noref(struct mach_port_right* right,
+		ipc_namespace_t* space, mach_port_name_t name)
+{
+	mach_port_right_t type;
+	darling_mach_port_t* port;
+	
+	if (right->num_refs > 0)
+		return false;
+	
+	type = right->type;
+	port = right->port;
+	
+	ipc_right_put(right);
+	
+	// If the call above did not lead to destruction of the port,
+	// we unlock it
+	if (type != MACH_PORT_RIGHT_RECEIVE)
+		ipc_port_unlock(port);
+	
+	ipc_space_name_put(space, name);
+	return true;
 }
