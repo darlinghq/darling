@@ -29,12 +29,12 @@ void ipc_space_unlock(ipc_namespace_t* space);
 struct mach_port_right* ipc_space_lookup(ipc_namespace_t* space, mach_port_name_t name);
 
 /*
- * Locks the space. Expects the port to be locked.
+ * Locks and unlocks the space. Expects the port to be locked.
  */
 mach_msg_return_t ipc_space_make_receive(ipc_namespace_t* space, darling_mach_port_t* port, mach_port_name_t* name_out);
 
 /*
- * Locks the space. Expects the port to be locked.
+ * Locks and unlocks the space. Expects the port to be locked.
  */
 mach_msg_return_t ipc_space_make_send(ipc_namespace_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out);
 

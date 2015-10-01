@@ -11,6 +11,7 @@
 #include <linux/thread_info.h>
 #include <asm/page.h>
 #include "../debug.h"
+#include "../task.h"
 #include "stub.h"
 #include "../mig_includes_pre.h"
 #include "../mig/mach_hostServer.h"
@@ -19,10 +20,12 @@
 static const char KERNEL_VERSION[] = "Darling Mach (API level " DARLING_MACH_API_VERSION_STR ") on Linux " UTS_RELEASE;
 
 extern darling_mach_port_t* host_port;
+extern ipc_namespace_t kernel_namespace;
 
 struct host_private
 {
 	darling_mach_port_t* clock_port;
+	mach_port_name_t clock_send_right;
 };
 
 static
@@ -60,6 +63,9 @@ void ipc_port_make_host(darling_mach_port_t* port)
 	
 	ipc_port_new(&priv->clock_port);
 	ipc_port_make_clock(priv->clock_port);
+	
+	ipc_space_make_send(&kernel_namespace, priv->clock_port, false,
+		&priv->clock_send_right);
 }
 
 static inline
@@ -204,9 +210,16 @@ kern_return_t host_get_clock_service
 	clock_serv_t *clock_serv
 )
 {
-	darling_mach_port_t* clock = get_host_private()->clock_port;
-	UNIMPL_MIG_CALL();
-	return KERN_NOT_SUPPORTED;
+	mach_task_t* task = darling_task_get_current();
+	
+	if (!task)
+		return KERN_FAILURE;
+	
+	// MIG generated code will use MACH_MSG_TYPE_COPY_SEND
+	// disposition.
+	*clock_serv = get_host_private()->clock_send_right;
+	
+	return KERN_SUCCESS;
 }
 
 kern_return_t kmod_get_info

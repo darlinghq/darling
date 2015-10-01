@@ -10,4 +10,7 @@ typedef struct darling_mach_port darling_mach_port_t;
 struct mach_task;
 typedef struct mach_task mach_task_t;
 
+struct mach_port_right;
+typedef struct mach_port_right darling_mach_port_right_t;
+
 #endif

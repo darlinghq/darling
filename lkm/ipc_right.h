@@ -43,6 +43,11 @@ void ipc_right_put(struct mach_port_right* right);
 bool ipc_right_put_if_noref(struct mach_port_right* right,
 		ipc_namespace_t* space, mach_port_name_t name);
 
+/**
+ * Converts incoming port disposition to what the recipient will see.
+ */
+mach_msg_type_name_t ipc_right_receivers_type(mach_msg_type_name_t type);
+
 #define PORT_NULL ((darling_mach_port_t*) 0)
 #define PORT_DEAD ((darling_mach_port_t*) ~0)
 #define PORT_IS_VALID(port) (port != PORT_NULL && port != PORT_DEAD)

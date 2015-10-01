@@ -51,7 +51,8 @@ struct ipc_delivered_msg
 {
 	struct list_head list;
 	mach_msg_header_t* msg;
-	struct mach_port_right* reply;
+	darling_mach_port_right_t* reply;
+	darling_mach_port_right_t** ool_ports;
 	
 	// Set to 1 after reception
 	unsigned char delivered : 1;

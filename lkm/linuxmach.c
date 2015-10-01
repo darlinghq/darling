@@ -48,12 +48,16 @@ static struct miscdevice mach_dev = {
 };
 
 darling_mach_port_t* host_port;
+ipc_namespace_t kernel_namespace;
 
 static int mach_init(void)
 {
 	int err = misc_register(&mach_dev);
 	if (err < 0)
 		goto fail;
+	
+	darling_task_init();
+	ipc_space_init(&kernel_namespace);
 
 	if (ipc_port_new(&host_port) != KERN_SUCCESS)
 	{
@@ -72,6 +76,7 @@ fail:
 static void mach_exit(void)
 {
 	ipc_port_put(host_port);
+	ipc_space_put(&kernel_namespace);
 	misc_deregister(&mach_dev);
 	printk(KERN_INFO "Darling Mach kernel emulation unloaded\n");
 }
@@ -85,6 +90,8 @@ int mach_dev_open(struct inode* ino, struct file* file)
 	
 	ipc_port_make_task(port, current->pid);
 	file->private_data = port;
+	
+	darling_task_set_current(ipc_port_get_task(port));
 
 	return 0;
 }
@@ -95,6 +102,8 @@ int mach_dev_release(struct inode* ino, struct file* file)
 	
 	task_port = (darling_mach_port_t*) file->private_data;
 	ipc_port_put(task_port);
+	
+	darling_task_set_current(NULL);
 	
 	return 0;
 }

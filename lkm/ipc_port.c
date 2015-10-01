@@ -80,6 +80,7 @@ void ipc_port_unlock(darling_mach_port_t* port)
 		mutex_unlock(&port->mutex);
 }
 
+// TODO: mach_task_t -> ipc_space_t
 static
 mach_msg_return_t ipc_process_right(mach_task_t* task,
 		mach_msg_type_name_t type,
@@ -151,6 +152,7 @@ err:
 	return ret;
 }
 
+// TODO: mach_task_t -> ipc_space_t
 static
 mach_msg_return_t ipc_process_right_abort(mach_task_t* task,
 		mach_msg_type_name_t type,
@@ -166,6 +168,7 @@ mach_msg_return_t ipc_process_right_abort(mach_task_t* task,
 	return MACH_MSG_SUCCESS;
 }
 
+// TODO: mach_task_t -> ipc_space_t
 static
 mach_msg_return_t ipc_process_right_end(mach_task_t* task,
 		mach_msg_type_name_t type,
@@ -214,6 +217,7 @@ mach_msg_return_t ipc_process_right_end(mach_task_t* task,
 	return ret;
 }
 
+// TODO: mach_task_t -> ipc_space_t
 mach_msg_return_t ipc_msg_send(mach_task_t* task,
 		mach_msg_header_t* msg,
 		mach_msg_timeout_t timeout,
@@ -264,6 +268,9 @@ mach_msg_return_t ipc_msg_send(mach_task_t* task,
 	if (ret != MACH_MSG_SUCCESS)
 		goto err;
 	
+	// TODO: Process MACH_MSGH_BITS_COMPLEX
+	// TODO: Use ipc_right_receivers_type())
+	
 	// Cannot send messages to dead ports
 	if (!PORT_IS_VALID(out_remote_right->port))
 	{
@@ -284,8 +291,8 @@ mach_msg_return_t ipc_msg_send(mach_task_t* task,
 	
 	ipc_space_lock(&task->namespace);
 	
-	if (ret != MACH_MSG_SUCCESS)
-		goto err;
+	//if (ret != MACH_MSG_SUCCESS)
+	//	goto err;
 	
 	// Finish operation specified in type on target right
 	ipc_process_right_end(task, type, msg->msgh_remote_port, in_remote_right);
@@ -337,6 +344,8 @@ mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* in_msg,
 	// MIG call handling
 	if (target->port->is_server_port)
 	{
+		// TODO: move to a separate function that will end up calling
+		// ipc_msg_send() (needed for complex responses)
 		mig_subsystem_t subsystem;
 		mig_routine_t routine;
 		
@@ -376,6 +385,10 @@ mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* in_msg,
 				in_msg->msgh_id, in_msg->msgh_size);
 		
 		reply_msg->msgh_size = sizeof(mig_reply_error_t);
+		
+		// MIG generated code doesn't do this for us
+		((mig_reply_error_t*)reply_msg)->RetCode = KERN_SUCCESS;
+		
 		routine(in_msg, reply_msg);
 		
 		debug_msg("ipc_msg_deliver(): reply size: %d, ret = 0x%x\n",

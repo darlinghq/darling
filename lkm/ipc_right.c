@@ -124,3 +124,25 @@ bool ipc_right_put_if_noref(struct mach_port_right* right,
 	ipc_space_name_put(space, name);
 	return true;
 }
+
+mach_msg_type_name_t ipc_right_copyin_type(mach_msg_type_name_t type)
+{
+	switch (type)
+	{
+		case MACH_MSG_TYPE_MAKE_SEND:
+		case MACH_MSG_TYPE_COPY_SEND:
+		case MACH_MSG_TYPE_MOVE_SEND:
+			return MACH_MSG_TYPE_PORT_SEND;
+			
+		case MACH_MSG_TYPE_COPY_RECEIVE:
+		case MACH_MSG_TYPE_MOVE_RECEIVE:
+			return MACH_MSG_TYPE_PORT_RECEIVE;
+		
+		case MACH_MSG_TYPE_MAKE_SEND_ONCE:
+		case MACH_MSG_TYPE_MOVE_SEND_ONCE:
+			return MACH_MSG_TYPE_PORT_SEND_ONCE;
+			
+		default:
+			return MACH_MSG_TYPE_PORT_NONE;
+	}
+}
