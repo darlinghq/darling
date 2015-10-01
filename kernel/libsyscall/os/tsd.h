@@ -55,8 +55,10 @@ static __inline__ void*
 _os_tsd_get_direct(unsigned long slot)
 {
 	void *ret;
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__)
 	__asm__("mov %%fs:%1, %0" : "=r" (ret) : "m" (*(void **)(slot * sizeof(void *))));
+#elif defined(__x86_64__)
+	__asm__("mov %%gs:%1, %0" : "=r" (ret) : "m" (*(void **)(slot * sizeof(void *))));
 #endif
 
 
@@ -72,7 +74,7 @@ _os_tsd_set_direct(unsigned long slot, void* val)
 #elif defined(__i386__) && !defined(__PIC__)
 	__asm__("movl %1, %%fs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "ri" (val));
 #elif defined(__x86_64__)
-	__asm__("movq %1, %%fs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "rn" (val));
+	__asm__("movq %1, %%gs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "rn" (val));
 #endif
 
 	return 0;
