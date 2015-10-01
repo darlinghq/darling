@@ -292,8 +292,13 @@ kern_return_t _kernelrpc_mach_port_deallocate_trap(
 				mach_port_name_t name
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_deallocate_args args = {
+		.task_right_name = target,
+		.port_right_name = name
+	};
+
+	return ioctl(driver_fd, NR__kernelrpc_mach_port_deallocate,
+			&args);
 }
 
 kern_return_t _kernelrpc_mach_port_mod_refs_trap(
