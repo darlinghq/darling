@@ -35,7 +35,7 @@ void mach_driver_init(void)
 
 mach_port_name_t mach_reply_port(void)
 {
-	return ioctl(driver_fd, NR_mach_reply_port, 0);;
+	return ioctl(driver_fd, NR_mach_reply_port, 0);
 }
 
 mach_port_name_t thread_self_trap(void)
@@ -46,8 +46,7 @@ mach_port_name_t thread_self_trap(void)
 
 mach_port_name_t host_self_trap(void)
 {
-	UNIMPLEMENTED_TRAP();
-	return 0;
+	return ioctl(driver_fd, NR_host_self_trap, 0);
 }
 
 mach_msg_return_t mach_msg_trap(
@@ -59,8 +58,10 @@ mach_msg_return_t mach_msg_trap(
 				mach_msg_timeout_t timeout,
 				mach_port_name_t notify)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	return mach_msg_overwrite_trap(msg,
+			option, send_size, rcv_size,
+			rcv_name, timeout, notify,
+			msg, 0);
 }
 
 mach_msg_return_t mach_msg_overwrite_trap(
@@ -74,8 +75,20 @@ mach_msg_return_t mach_msg_overwrite_trap(
 				mach_msg_header_t *rcv_msg,
 				mach_msg_size_t rcv_limit)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_msg_overwrite_args args = {
+		.msg = msg,
+		.option = option,
+		.send_size = send_size,
+		.recv_size = rcv_size,
+		.rcv_name = rcv_name,
+		.timeout = timeout,
+		.notify = notify,
+		.rcv_msg = rcv_msg,
+		.rcv_limit = rcv_limit
+	};
+
+	return ioctl(driver_fd, NR_mach_msg_overwrite_trap,
+			&args);
 }
 
 kern_return_t semaphore_signal_trap(
