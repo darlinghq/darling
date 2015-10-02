@@ -34,7 +34,9 @@ void ipc_space_put(ipc_namespace_t* space)
 	idr_destroy(&space->names);
 }
 
-mach_msg_return_t ipc_space_make_receive(ipc_namespace_t* space, darling_mach_port_t* port, mach_port_name_t* name_out)
+mach_msg_return_t ipc_space_make_receive(ipc_namespace_t* space,
+		darling_mach_port_t* port,
+		mach_port_name_t* name_out)
 {
 	mach_msg_return_t ret;
 	struct mach_port_right* right = NULL;
@@ -61,6 +63,22 @@ err:
 
 	mutex_unlock(&space->mutex);
 	return ret;
+}
+
+mach_msg_return_t ipc_space_right_insert(ipc_namespace_t* space,
+		darling_mach_port_right_t* right,
+		mach_port_name_t* name_out)
+{
+	int id;
+	
+	id = idr_alloc(&space->names, right, 1, -1, GFP_KERNEL);
+	if (id < 0)
+	{
+		return KERN_RESOURCE_SHORTAGE;
+	}
+	
+	*name_out = id;
+	return KERN_SUCCESS;
 }
 
 struct idr_right_find_arg
@@ -156,6 +174,9 @@ mach_msg_return_t ipc_space_right_put(ipc_namespace_t* space, mach_port_name_t n
 {
 	struct mach_port_right* right;
 	darling_mach_port_t* port;
+	
+	if (!name)
+		return KERN_SUCCESS;
 	
 	mutex_lock(&space->mutex);
 	

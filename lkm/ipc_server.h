@@ -2,7 +2,7 @@
 #define IPC_SERVER_H
 #include "mach_includes.h"
 #include "ipc_port.h"
-#include "linuxmach.h"
+#include "traps.h"
 
 /*
  * The following functions associate a port with the named kernel server.

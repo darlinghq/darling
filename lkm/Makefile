@@ -10,9 +10,9 @@ ccflags-y := -I$(src)/../kernel-include \
 # kernel build system and can use its language.
 ifneq ($(KERNELRELEASE),)
 	obj-m := darling-mach.o
-	darling-mach-objs := linuxmach.o ipc_space.o \
+	darling-mach-objs := traps.o ipc_space.o \
 	    ipc_port.o ipc_right.o ipc_server.o debug.o \
-	    task.o \
+	    task.o ipc_msg.o \
 	    servers/mach_host.o servers/clock.o \
 	    mig/clockServer.o mig/mach_hostServer.o \
 	    mig/duct.o

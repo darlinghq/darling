@@ -39,6 +39,12 @@ mach_msg_return_t ipc_space_make_receive(ipc_namespace_t* space, darling_mach_po
 mach_msg_return_t ipc_space_make_send(ipc_namespace_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out);
 
 /*
+ * Inserts existing right into given namespace.
+ * Expects the space to be locked.
+ */
+mach_msg_return_t ipc_space_right_insert(ipc_namespace_t* space, darling_mach_port_right_t* right, mach_port_name_t* name_out);
+
+/*
  * Deallocate a port name.
  * 
  * Automatically deallocates port on last reference

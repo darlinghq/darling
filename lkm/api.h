@@ -33,14 +33,14 @@ struct mach_port_allocate_args
 
 struct mach_msg_overwrite_args
 {
-	void* msg;
+	union { void* msg; long long pad; };
 	unsigned int option;
 	unsigned int send_size;
 	unsigned int recv_size;
 	unsigned int rcv_name;
 	unsigned int timeout;
 	unsigned int notify;
-	void* rcv_msg;
+	union { void* rcv_msg; long long pad2; };
 	unsigned int rcv_limit;
 };
 

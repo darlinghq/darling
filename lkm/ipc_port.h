@@ -5,6 +5,7 @@
 #include <linux/mutex.h>
 #include <linux/atomic.h>
 #include <linux/wait.h>
+#include "ipc_msg.h"
 
 typedef struct server_port server_port_t;
 struct server_port
@@ -50,9 +51,7 @@ struct mach_port_right;
 struct ipc_delivered_msg
 {
 	struct list_head list;
-	mach_msg_header_t* msg;
-	darling_mach_port_right_t* reply;
-	darling_mach_port_right_t** ool_ports;
+	struct ipc_kmsg kmsg;
 	
 	// Set to 1 after reception
 	unsigned char delivered : 1;
@@ -80,36 +79,5 @@ void ipc_port_lock(darling_mach_port_t* port);
  * Checks for null and dead ports.
  */
 void ipc_port_unlock(darling_mach_port_t* port);
-
-/**
- * Frees msg (either directly or deletion is left to the receiver).
- */
-mach_msg_return_t ipc_msg_send(mach_task_t* task, mach_msg_header_t* msg,
-		mach_msg_timeout_t timeout, int options);
-
-/**
- * Enqueues the given message for reception.
- * 
- * For kernel server ports, the message will be processed immediately.
- * For userspace ports, the message will be enqueued and the call will block
- * until timeout expires.
- * 
- * @param msg Message to be delivered.
- * @param target Target port/right where to deliver the message.
- * @param reply Reply port/right.
- * @param timeout Timeout (or MACH_MSG_TIMEOUT_NONE).
- */
-mach_msg_return_t ipc_msg_deliver(mach_msg_header_t* msg,
-		struct mach_port_right* target,
-		struct mach_port_right* reply,
-		mach_msg_timeout_t timeout,
-		int options);
-
-mach_msg_return_t ipc_msg_recv(mach_task_t* task,
-		mach_port_name_t port_name,
-		mach_msg_header_t* msg,
-		mach_msg_size_t receive_limit,
-		mach_msg_timeout_t timeout,
-		int options);
 
 #endif

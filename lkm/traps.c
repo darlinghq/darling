@@ -7,9 +7,10 @@
 #include <linux/sched.h>
 #include <linux/uaccess.h>
 #include "task.h"
-#include "linuxmach.h"
+#include "traps.h"
 #include "ipc_space.h"
 #include "ipc_port.h"
+#include "ipc_msg.h"
 #include "api.h"
 #include "debug.h"
 #include "ipc_server.h"
@@ -395,11 +396,11 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 		}
 		
 		msg->msgh_size = args.send_size;
+		msg->msgh_bits &= MACH_MSGH_BITS_USER;
 		
-		ret = ipc_msg_send(task, msg,
+		ret = ipc_msg_send(&task->namespace, msg,
 				(args.option & MACH_SEND_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE,
 				args.option);
-		
 		
 		if (ret != MACH_MSG_SUCCESS)
 			return ret;

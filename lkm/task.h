@@ -3,6 +3,7 @@
 #include "ipc_types.h"
 #include "ipc_space.h"
 #include "ipc_port.h"
+#include <linux/thread_info.h>
 
 struct mach_task
 {
@@ -24,5 +25,15 @@ darling_task_get_current(void);
 
 void
 darling_task_set_current(mach_task_t* task);
+
+static inline bool
+task_is_64bit(void)
+{
+#if defined(__i386__)
+	return false;
+#elif defined(__x86_64__)
+	return !test_thread_flag(TIF_IA32);
+#endif
+}
 
 #endif
