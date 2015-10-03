@@ -153,13 +153,6 @@ mach_msg_return_t ipc_process_right_end(ipc_namespace_t* space,
 	return ret;
 }
 
-static
-mach_msg_return_t ipc_msg_recv_copyout_complex(ipc_namespace_t* space,
-							struct ipc_kmsg* kmsg)
-{
-	return KERN_FAILURE;
-}
-
 mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 		mach_msg_header_t* msg,
 		mach_msg_timeout_t timeout,
@@ -463,7 +456,7 @@ waiting:
 
 static
 bool walk_complex_msg(mach_msg_base_t* base,
-		bool (*cb)(mach_msg_type_descriptor_t*,void*),
+		bool (*cb)(mach_msg_type_descriptor_t*,int,void*),
 		void* private)
 {
 	struct complex_msg
@@ -488,14 +481,14 @@ bool walk_complex_msg(mach_msg_base_t* base,
 		switch (desc->type)
 		{
 			case MACH_MSG_PORT_DESCRIPTOR:
-				if (!cb(desc, private))
+				if (!cb(desc, i, private))
 					return false;
 				
 				next_descriptor += sizeof(mach_msg_port_descriptor_t);
 				break;
 				
 			case MACH_MSG_OOL_DESCRIPTOR:
-				if (!cb(desc, private))
+				if (!cb(desc, i, private))
 					return false;
 				
 				if (task_is_64bit())
@@ -505,7 +498,7 @@ bool walk_complex_msg(mach_msg_base_t* base,
 				break;
 			
 			case MACH_MSG_OOL_PORTS_DESCRIPTOR:
-				if (!cb(desc, private))
+				if (!cb(desc, i, private))
 					return false;
 				
 				if (task_is_64bit())
@@ -521,15 +514,14 @@ bool walk_complex_msg(mach_msg_base_t* base,
 
 struct ipc_msg_copyin_complex_args
 {
-	int complex_ports_allocd;
 	ipc_namespace_t* space;
 	struct ipc_kmsg* kmsg;
 	mach_msg_return_t ret;
-	int pos;
 };
 
 static
-bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc, void* p)
+bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc,
+		int index, void* p)
 {
 	struct ipc_msg_copyin_complex_args* args;
 	
@@ -542,19 +534,6 @@ bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc, void* p)
 			mach_msg_port_descriptor_t* port_desc;
 			darling_mach_port_right_t* right;
 
-			if (args->kmsg->complex_ports_count + 1 > args->complex_ports_allocd)
-			{
-				if (args->complex_ports_allocd > 0)
-					args->complex_ports_allocd *= 2;
-				else
-					args->complex_ports_allocd = 0;
-
-				args->kmsg->complex_ports = (darling_mach_port_right_t**)
-						krealloc(args->kmsg->complex_ports,
-							sizeof(void*) * args->complex_ports_allocd,
-							GFP_KERNEL);
-			}
-
 			port_desc = (mach_msg_port_descriptor_t*) desc;
 
 			right = ipc_space_lookup(args->space, port_desc->name);
@@ -565,12 +544,11 @@ bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc, void* p)
 			}
 			args->ret = ipc_process_right(args->space, port_desc->disposition,
 					right,
-					&args->kmsg->complex_ports[args->kmsg->complex_ports_count]);
+					&args->kmsg->complex_items[index].port);
 
 			if (args->ret != KERN_SUCCESS)
 				return false;
 
-			args->kmsg->complex_ports_count++;
 			break;
 		}
 	}
@@ -579,7 +557,7 @@ bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc, void* p)
 
 static
 bool __ipc_msg_copyin_complex_abort(mach_msg_type_descriptor_t* desc,
-		void* p)
+		int index, void* p)
 {
 	struct ipc_msg_copyin_complex_args* args;
 	
@@ -591,29 +569,28 @@ bool __ipc_msg_copyin_complex_abort(mach_msg_type_descriptor_t* desc,
 			mach_msg_port_descriptor_t* port_desc;
 			darling_mach_port_t* port;
 			
+			if (args->kmsg->complex_items[index].port == NULL)
+				break;
+			
 			port_desc = (mach_msg_port_descriptor_t*) desc;
-			port = args->kmsg->complex_ports[args->pos]->port;
+			port = args->kmsg->complex_items[index].port->port;
 			
 			ipc_process_right_abort(args->space,
 					port_desc->disposition,
-					args->kmsg->complex_ports[args->pos]);
+					args->kmsg->complex_items[index].port);
 			
 			ipc_port_unlock(port);
-			args->pos++;
 			
 			break;
 		}
 	}
-	
-	if (args->pos >= args->kmsg->complex_ports_count)
-		return false;
 	
 	return true;
 }
 
 static
 bool __ipc_msg_copyin_complex_finish(mach_msg_type_descriptor_t* desc,
-		void* p)
+		int index, void* p)
 {
 	struct ipc_msg_copyin_complex_args* args;
 	
@@ -626,7 +603,7 @@ bool __ipc_msg_copyin_complex_finish(mach_msg_type_descriptor_t* desc,
 			darling_mach_port_t* port;
 			
 			port_desc = (mach_msg_port_descriptor_t*) desc;
-			port = args->kmsg->complex_ports[args->pos]->port;
+			port = args->kmsg->complex_items[index].port->port;
 			
 			ipc_process_right_end(args->space,
 					port_desc->disposition,
@@ -634,14 +611,10 @@ bool __ipc_msg_copyin_complex_finish(mach_msg_type_descriptor_t* desc,
 					NULL);
 			
 			ipc_port_unlock(port);
-			args->pos++;
 			
 			break;
 		}
 	}
-	
-	if (args->pos >= args->kmsg->complex_ports_count)
-		return false;
 	
 	return true;
 }
@@ -652,13 +625,23 @@ mach_msg_return_t ipc_msg_complex_copyin(ipc_namespace_t* space,
 {
 	mach_msg_return_t ret = KERN_SUCCESS;
 	struct ipc_msg_copyin_complex_args args = {
-		.complex_ports_allocd = 0,
 		.space = space,
 		.kmsg = kmsg,
 		.ret = KERN_SUCCESS
 	};
+	struct complex_msg
+	{
+		mach_msg_base_t base;
+		mach_msg_type_descriptor_t desc; // first descriptor
+	};
 	
-	kmsg->complex_ports_count = 0;
+	struct complex_msg* complex;
+	
+	complex = (struct complex_msg*) kmsg->msg;
+	
+	kmsg->complex_items = (union complex_item*)
+			kzalloc(sizeof(void*) * complex->base.body.msgh_descriptor_count,
+				GFP_KERNEL);
 	
 	if (!walk_complex_msg((mach_msg_base_t*) kmsg->msg,
 		__ipc_msg_copyin_complex, &args))
@@ -673,16 +656,67 @@ mach_msg_return_t ipc_msg_complex_copyin(ipc_namespace_t* space,
 	
 err:
 	// Abort all operations
-	if (kmsg->complex_ports_count > 0)
-	{
-		args.pos = 0;
-		
-		walk_complex_msg((mach_msg_base_t*) kmsg->msg,
-			__ipc_msg_copyin_complex_abort, &args);
-	}
-	kfree(kmsg->complex_ports);
+
+	walk_complex_msg((mach_msg_base_t*) kmsg->msg,
+		__ipc_msg_copyin_complex_abort, &args);
+	kfree(kmsg->complex_items);
 	
 	return ret;
+}
+
+struct ipc_msg_copyout_complex_args
+{
+	ipc_namespace_t* space;
+	struct ipc_kmsg* kmsg;
+	mach_msg_return_t ret;
+};
+
+static
+bool __ipc_msg_copyout_complex(mach_msg_type_descriptor_t* desc,
+		int index, void* p)
+{
+	struct ipc_msg_copyout_complex_args* args;
+	
+	args = (struct ipc_msg_copyout_complex_args*) p;
+	switch (desc->type)
+	{
+		case MACH_MSG_PORT_DESCRIPTOR:
+		{
+			mach_msg_port_descriptor_t* port_desc;
+			mach_msg_return_t ret;
+			
+			port_desc = (mach_msg_port_descriptor_t*) desc;
+			port_desc->disposition =
+					ipc_right_copyin_type(port_desc->disposition);
+			
+			ret = ipc_space_right_insert(args->space,
+					args->kmsg->complex_items[index].port,
+					&port_desc->name);
+			if (ret != KERN_SUCCESS)
+				args->ret = ret;
+			break;
+		}
+	}
+	return true;
+}
+
+static
+mach_msg_return_t ipc_msg_copyout_complex(ipc_namespace_t* space,
+							struct ipc_kmsg* kmsg)
+{
+	struct ipc_msg_copyout_complex_args args = {
+		.space = space,
+		.kmsg = kmsg,
+		.ret = KERN_SUCCESS
+	};
+	if (kmsg->complex_items == NULL)
+		return KERN_SUCCESS;
+	
+	walk_complex_msg((mach_msg_base_t*) kmsg->msg,
+		__ipc_msg_copyout_complex, &args);
+	
+	kfree(kmsg->complex_items);
+	return args.ret;
 }
 
 mach_msg_return_t ipc_msg_recv(mach_task_t* task,
@@ -822,7 +856,7 @@ waiting:
 				if (MACH_MSGH_BITS_IS_COMPLEX(delivery->kmsg.msg->msgh_bits))
 				{
 					// Handle OOL rights, memory regions etc.
-					ipc_msg_recv_copyout_complex(&task->namespace,
+					ipc_msg_copyout_complex(&task->namespace,
 							&delivery->kmsg);
 				}
 				
@@ -834,10 +868,6 @@ waiting:
 			}
 			
 			debug_msg("\t-> finalizing\n");
-			
-			// Free OOL rights buffer in msg->ool
-			if (kmsg->complex_ports != NULL)
-				kfree(kmsg->complex_ports);
 			
 			// The message is always recipient-owned.
 			kfree(kmsg->msg);

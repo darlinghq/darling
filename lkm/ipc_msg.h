@@ -3,13 +3,16 @@
 #include "ipc_types.h"
 #include "mach_includes.h"
 
+union complex_item
+{
+	darling_mach_port_right_t* port;
+};
 struct ipc_kmsg
 {
 	mach_msg_header_t* msg;
 	darling_mach_port_right_t* target;
 	darling_mach_port_right_t* reply;
-	darling_mach_port_right_t** complex_ports;
-	unsigned int complex_ports_count;
+	union complex_item* complex_items;
 };
 
 /**
