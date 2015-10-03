@@ -39,6 +39,7 @@ static const trap_handler mach_traps[20] = {
 	[sc(NR_mach_msg_overwrite_trap)] = (trap_handler) mach_msg_overwrite_trap,
 	[sc(NR_host_self_trap)] = (trap_handler) mach_host_self_trap,
 	[sc(NR__kernelrpc_mach_port_deallocate)] = (trap_handler) _kernelrpc_mach_port_deallocate_trap,
+	[sc(NR__kernelrpc_mach_port_destroy)] = (trap_handler) _kernelrpc_mach_port_destroy_trap,
 };
 #undef sc
 
@@ -354,6 +355,33 @@ kern_return_t _kernelrpc_mach_port_deallocate_trap(mach_task_t* task,
 err:
 	if (right != NULL)
 		ipc_port_unlock(right->port);
+
+	ipc_space_unlock(&task->namespace);
+	return ret;
+}
+
+kern_return_t _kernelrpc_mach_port_destroy_trap(mach_task_t* task,
+		struct mach_port_destroy_args* in_args)
+{
+	struct mach_port_destroy_args args;
+	kern_return_t ret = KERN_SUCCESS;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	ipc_space_lock(&task->namespace);
+	
+	if (port_name_to_task(task, args.task_right_name) != task)
+	{
+		debug_msg("_kernelrpc_mach_port_destroy_trap() -> MACH_SEND_INVALID_DEST\n");
+		
+		ret = MACH_SEND_INVALID_DEST;
+		goto err;
+	}
+	
+	ret = ipc_space_right_put(&task->namespace, args.port_right_name);
+	
+err:
 
 	ipc_space_unlock(&task->namespace);
 	return ret;

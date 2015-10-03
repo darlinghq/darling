@@ -14,6 +14,8 @@ kern_return_t _kernelrpc_mach_port_mod_refs_trap(mach_task_t* task,
 		struct mach_port_mod_refs_args* args);
 kern_return_t _kernelrpc_mach_port_deallocate_trap(mach_task_t* task,
 		struct mach_port_deallocate_args* args);
+kern_return_t _kernelrpc_mach_port_destroy_trap(mach_task_t* task,
+		struct mach_port_destroy_args* args);
 mach_port_name_t mach_task_self_trap(mach_task_t* task);
 mach_port_name_t mach_host_self_trap(mach_task_t* task);
 kern_return_t _kernelrpc_mach_port_allocate_trap(mach_task_t* task,
