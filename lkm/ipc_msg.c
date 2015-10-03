@@ -248,6 +248,7 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 	
 	ret = ipc_msg_deliver(kmsg, timeout, options);
 	
+	kfree(kmsg);
 	return ret;
 	
 err:
@@ -535,6 +536,8 @@ bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc,
 			darling_mach_port_right_t* right;
 
 			port_desc = (mach_msg_port_descriptor_t*) desc;
+			
+			debug_msg("copyin right %d\n", port_desc->name);
 
 			right = ipc_space_lookup(args->space, port_desc->name);
 			if (right == NULL)
@@ -546,6 +549,7 @@ bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc,
 					right,
 					&args->kmsg->complex_items[index].port);
 
+			ipc_port_unlock(right->port);
 			if (args->ret != KERN_SUCCESS)
 				return false;
 
@@ -656,6 +660,7 @@ mach_msg_return_t ipc_msg_complex_copyin(ipc_namespace_t* space,
 	
 err:
 	// Abort all operations
+	debug_msg("copying abort, ret=%d\n", ret);
 
 	walk_complex_msg((mach_msg_base_t*) kmsg->msg,
 		__ipc_msg_copyin_complex_abort, &args);
@@ -714,6 +719,8 @@ mach_msg_return_t ipc_msg_copyout_complex(ipc_namespace_t* space,
 	
 	walk_complex_msg((mach_msg_base_t*) kmsg->msg,
 		__ipc_msg_copyout_complex, &args);
+	
+	debug_msg("ipc_msg_copyout_complex(): ret=%d\n", args.ret);
 	
 	kfree(kmsg->complex_items);
 	return args.ret;
