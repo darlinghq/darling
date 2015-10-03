@@ -11,7 +11,7 @@
 #include <linux/thread_info.h>
 #include <asm/page.h>
 #include "../debug.h"
-#include "../task.h"
+#include "../darling_task.h"
 #include "stub.h"
 #include "../mig_includes_pre.h"
 #include "../mig/mach_hostServer.h"
@@ -40,11 +40,11 @@ void __host_free(server_port_t* port)
 }
 
 // Because including mig/clockServer.h is problematic
-extern mig_subsystem_t clock_subsystem;
+extern struct mig_subsystem clock_subsystem;
 void ipc_port_make_clock(darling_mach_port_t* port)
 {
 	port->is_server_port = true;
-	port->server_port.subsystem = (mig_subsystem_t) &clock_subsystem;
+	port->server_port.subsystem = &clock_subsystem;
 	port->server_port.cb_free = NULL;
 }
 

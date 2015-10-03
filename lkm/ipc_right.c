@@ -77,6 +77,15 @@ void ipc_right_put(struct mach_port_right* right)
 	debug_msg("Deallocated right %p\n", right);
 }
 
+void ipc_right_put_cloned_receive(struct mach_port_right* right)
+{
+	if (right == NULL)
+		return;
+	
+	list_del(&right->reflist);
+	kfree(right);
+}
+
 kern_return_t ipc_right_mod_refs(struct mach_port_right* right,
 		mach_port_right_t type,
 		int refchange)

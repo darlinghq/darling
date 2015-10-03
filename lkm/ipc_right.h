@@ -31,6 +31,8 @@ kern_return_t ipc_right_mod_refs(struct mach_port_right* right, mach_port_right_
  */
 void ipc_right_put(struct mach_port_right* right);
 
+void ipc_right_put_cloned_receive(struct mach_port_right* right);
+
 /**
  * Deallocates the right, removes the right name and unlocks the port
  * if refcount is zero.

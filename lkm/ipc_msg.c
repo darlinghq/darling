@@ -6,7 +6,7 @@
 #include <linux/sched.h>
 #include <linux/uaccess.h>
 #include <linux/jiffies.h>
-#include "task.h"
+#include "darling_task.h"
 
 extern ipc_namespace_t kernel_namespace;
 
@@ -31,6 +31,8 @@ mach_msg_return_t ipc_process_right(ipc_namespace_t* space,
 			// in_remote_right must be a send right
 			if (in_right->type != MACH_PORT_RIGHT_SEND)
 			{
+				debug_msg("ipc_process_right(#1): MACH_SEND_INVALID_TYPE,"
+						" type=%d\n", in_right->type);
 				ret = MACH_SEND_INVALID_TYPE;
 				goto err;
 			}
@@ -49,6 +51,8 @@ mach_msg_return_t ipc_process_right(ipc_namespace_t* space,
 			// in_remote_right must be a receive right
 			if (in_right->type != MACH_PORT_RIGHT_RECEIVE)
 			{
+				debug_msg("ipc_process_right(#2): MACH_SEND_INVALID_TYPE,"
+						" type=%d\n", in_right->type);
 				ret = MACH_SEND_INVALID_TYPE;
 				goto err;
 			}
@@ -61,6 +65,8 @@ mach_msg_return_t ipc_process_right(ipc_namespace_t* space,
 			// in_remote_right must be a send-once right
 			if (in_right->type != MACH_PORT_RIGHT_SEND_ONCE)
 			{
+				debug_msg("ipc_process_right(#3): MACH_SEND_INVALID_TYPE,"
+						" type=%d\n", in_right->type);
 				ret = MACH_SEND_INVALID_TYPE;
 				goto err;
 			}
@@ -186,6 +192,7 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 	
 	if (in_remote_right == NULL)
 	{
+		debug_msg("ipc_msg_send(): in_remote_right is NULL\n");
 		ret = MACH_SEND_INVALID_DEST;
 		goto err;
 	}
@@ -197,6 +204,7 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 
 		if (in_local_right == NULL)
 		{
+			debug_msg("ipc_msg_send(): in_local_right is NULL\n");
 			ret = MACH_SEND_INVALID_REPLY;
 			goto err;
 		}
@@ -207,7 +215,10 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 			in_remote_right, &kmsg->target);
 	
 	if (ret != MACH_MSG_SUCCESS)
+	{
+		debug_msg("ipc_msg_send(): target right op failed (%d)\n", ret);
 		goto err;
+	}
 	
 	if (MACH_MSGH_BITS_IS_COMPLEX(msg->msgh_bits))
 	{
@@ -219,6 +230,7 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 	// Cannot send messages to dead ports
 	if (!PORT_IS_VALID(kmsg->target->port))
 	{
+		debug_msg("ipc_msg_send(): target port is dead\n");
 		ret = MACH_SEND_INVALID_DEST;
 		goto err;
 	}
@@ -229,7 +241,10 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 		ret = ipc_process_right(space, resp_type,
 				in_local_right, &kmsg->reply);
 		if (ret != MACH_MSG_SUCCESS)
+		{
+			debug_msg("ipc_msg_send(): reply right op failed (%d)\n", ret);
 			goto err;
+		}
 		
 		ipc_port_unlock(in_local_right->port);
 	}
@@ -905,7 +920,8 @@ err:
 	{
 		if (locked)
 			ipc_port_unlock(right->port);
-		ipc_right_put(right);
+		
+		ipc_right_put_cloned_receive(right);
 	}
 	
 	return ret;

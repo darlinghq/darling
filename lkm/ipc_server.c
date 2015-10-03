@@ -1,8 +1,10 @@
 #include "mach_includes.h"
 #include "ipc_server.h"
 #include <linux/slab.h>
-#include "task.h"
+#include "darling_task.h"
 #include "debug.h"
+
+extern struct mig_subsystem task_subsystem;
 
 static void task_free(server_port_t* kport)
 {
@@ -27,7 +29,7 @@ void ipc_port_make_task(darling_mach_port_t* port, pid_t pid)
 	ipc_space_init(&task->namespace);
 	
 	port->is_server_port = true;
-	port->server_port.subsystem = MIG_SUBSYSTEM_NULL; // FIXME
+	port->server_port.subsystem = &task_subsystem;
 	port->server_port.private_data = task;
 	port->server_port.cb_free = task_free;
 }
