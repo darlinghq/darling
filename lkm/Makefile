@@ -19,7 +19,7 @@ ifneq ($(KERNELRELEASE),)
 	    servers/task.o \
 	    mig/clockServer.o mig/mach_hostServer.o \
 	    mig/taskServer.o \
-	    mig/duct.o
+	    mig/duct.o proc_entry.o
 
 # Otherwise we were called directly from the command
 # line; invoke the kernel build system.

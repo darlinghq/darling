@@ -44,4 +44,6 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 		mach_msg_timeout_t timeout,
 		int options);
 
+int ipc_msg_count(void);
+
 #endif

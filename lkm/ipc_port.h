@@ -80,4 +80,6 @@ void ipc_port_lock(darling_mach_port_t* port);
  */
 void ipc_port_unlock(darling_mach_port_t* port);
 
+int ipc_port_count(void);
+
 #endif

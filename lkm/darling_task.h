@@ -26,6 +26,9 @@ darling_task_get_current(void);
 void
 darling_task_set_current(mach_task_t* task);
 
+unsigned int
+darling_get_task_count(void);
+
 static inline bool
 task_is_64bit(void)
 {

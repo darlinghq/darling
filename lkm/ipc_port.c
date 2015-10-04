@@ -2,11 +2,14 @@
 #include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/list.h>
+#include <linux/atomic.h>
 #include "debug.h"
 #include "darling_task.h"
 #include "ipc_right.h"
 #include "ipc_space.h"
 #include "traps.h"
+
+static atomic_t port_count = ATOMIC_INIT(0);
 
 mach_msg_return_t ipc_port_new(darling_mach_port_t** port_out)
 {
@@ -31,6 +34,7 @@ mach_msg_return_t ipc_port_new(darling_mach_port_t** port_out)
 	
 	debug_msg("Allocated new port: %p\n", port);
 	
+	atomic_inc(&port_count);
 	*port_out = port;
 	return KERN_SUCCESS;
 }
@@ -61,6 +65,7 @@ mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 	
 	// TODO: Wake up any pending senders etc.
 	
+	atomic_dec(&port_count);
 	kfree(port);
 	return KERN_SUCCESS;
 }
@@ -75,4 +80,9 @@ void ipc_port_unlock(darling_mach_port_t* port)
 {
 	if (PORT_IS_VALID(port))
 		mutex_unlock(&port->mutex);
+}
+
+int ipc_port_count(void)
+{
+	return atomic_read(&port_count);
 }

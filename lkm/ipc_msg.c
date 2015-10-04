@@ -6,13 +6,20 @@
 #include <linux/sched.h>
 #include <linux/uaccess.h>
 #include <linux/jiffies.h>
+#include <linux/atomic.h>
 #include "darling_task.h"
 
 extern ipc_namespace_t kernel_namespace;
+static atomic_t msgs_sent = ATOMIC_INIT(0);
 
 static
 mach_msg_return_t ipc_msg_complex_copyin(ipc_namespace_t* space,
 							struct ipc_kmsg* kmsg);
+
+int ipc_msg_count(void)
+{
+	return atomic_read(&msgs_sent);
+}
 
 static
 mach_msg_return_t ipc_process_right(ipc_namespace_t* space,
@@ -896,6 +903,8 @@ waiting:
 			
 			// Dequeue the message
 			list_del(&delivery->list);
+			
+			atomic_inc(&msgs_sent);
 			
 			if (delivery->recipient_freed)
 			{

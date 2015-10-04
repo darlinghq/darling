@@ -7,7 +7,8 @@
 #include <linux/printk.h>
 
 static spinlock_t my_lock;
-struct rb_root all_tasks = RB_ROOT;
+static struct rb_root all_tasks = RB_ROOT;
+static unsigned int task_count = 0;
 
 struct task_entry
 {
@@ -20,6 +21,12 @@ void
 darling_task_init(void)
 {
 	spin_lock_init(&my_lock);
+}
+
+unsigned int
+darling_get_task_count(void)
+{
+	return task_count;
 }
 
 mach_task_t*
@@ -90,6 +97,7 @@ darling_task_set_current(mach_task_t* task)
 				// Remove task from tree
 				rb_erase(*new, &all_tasks);
 				kfree(this);
+				task_count--;
 			}
 			
 			spin_unlock(&my_lock);
@@ -99,6 +107,7 @@ darling_task_set_current(mach_task_t* task)
 	
 	rb_link_node(&entry->node, parent, new);
 	rb_insert_color(&entry->node, &all_tasks);
+	task_count++;
 	
 	spin_unlock(&my_lock);
 }

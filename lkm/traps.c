@@ -14,6 +14,7 @@
 #include "api.h"
 #include "debug.h"
 #include "ipc_server.h"
+#include "proc_entry.h"
 #include "servers/mach_host.h"
 
 MODULE_LICENSE("GPL");
@@ -59,6 +60,7 @@ static int mach_init(void)
 		goto fail;
 	
 	darling_task_init();
+	setup_proc_entry();
 	ipc_space_init(&kernel_namespace);
 
 	if (ipc_port_new(&host_port) != KERN_SUCCESS)
@@ -79,6 +81,7 @@ static void mach_exit(void)
 {
 	ipc_port_put(host_port);
 	ipc_space_put(&kernel_namespace);
+	cleanup_proc_entry();
 	misc_deregister(&mach_dev);
 	printk(KERN_INFO "Darling Mach kernel emulation unloaded\n");
 }
