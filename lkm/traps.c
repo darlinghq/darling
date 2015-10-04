@@ -16,6 +16,7 @@
 #include "ipc_server.h"
 #include "proc_entry.h"
 #include "servers/mach_host.h"
+#include "primitives/semaphore.h"
 
 MODULE_LICENSE("GPL");
 
@@ -41,6 +42,12 @@ static const trap_handler mach_traps[20] = {
 	[sc(NR_host_self_trap)] = (trap_handler) mach_host_self_trap,
 	[sc(NR__kernelrpc_mach_port_deallocate)] = (trap_handler) _kernelrpc_mach_port_deallocate_trap,
 	[sc(NR__kernelrpc_mach_port_destroy)] = (trap_handler) _kernelrpc_mach_port_destroy_trap,
+	[sc(NR_semaphore_signal_trap)] = (trap_handler) semaphore_signal_trap,
+	[sc(NR_semaphore_signal_all_trap)] = (trap_handler) semaphore_signal_all_trap,
+	[sc(NR_semaphore_wait_trap)] = (trap_handler) semaphore_wait_trap,
+	[sc(NR_semaphore_wait_signal_trap)] = (trap_handler) semaphore_wait_signal_trap,
+	[sc(NR_semaphore_timedwait_signal_trap)] = (trap_handler) semaphore_timedwait_trap,
+	[sc(NR_semaphore_timedwait_trap)] = (trap_handler) semaphore_timedwait_signal_trap,
 };
 #undef sc
 
@@ -367,14 +374,22 @@ kern_return_t _kernelrpc_mach_port_destroy_trap(mach_task_t* task,
 		struct mach_port_destroy_args* in_args)
 {
 	struct mach_port_destroy_args args;
-	kern_return_t ret = KERN_SUCCESS;
 	
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return KERN_INVALID_ADDRESS;
 	
+	return _kernelrpc_mach_port_destroy(task, args.task_right_name,
+			args.port_right_name);
+}
+
+kern_return_t _kernelrpc_mach_port_destroy(mach_task_t* task,
+		mach_port_name_t task_name, mach_port_name_t right_name)
+{
+	kern_return_t ret = KERN_SUCCESS;
+	
 	ipc_space_lock(&task->namespace);
 	
-	if (port_name_to_task(task, args.task_right_name) != task)
+	if (port_name_to_task(task, task_name) != task)
 	{
 		debug_msg("_kernelrpc_mach_port_destroy_trap() -> MACH_SEND_INVALID_DEST\n");
 		
@@ -382,7 +397,7 @@ kern_return_t _kernelrpc_mach_port_destroy_trap(mach_task_t* task,
 		goto err;
 	}
 	
-	ret = ipc_space_right_put(&task->namespace, args.port_right_name);
+	ret = ipc_space_right_put(&task->namespace, right_name);
 	
 err:
 
@@ -443,6 +458,174 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 				(args.option & MACH_RCV_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE,
 				args.option);
 	}
+	return ret;
+}
+
+kern_return_t semaphore_signal_trap(mach_task_t* task,
+		struct semaphore_signal_args* in_args)
+{
+	struct semaphore_signal_args args;
+	darling_mach_port_right_t* right;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	ipc_space_lock(&task->namespace);
+	
+	right = ipc_space_lookup(&task->namespace, args.signal);
+	
+	ipc_space_unlock(&task->namespace);
+	
+	if (right == NULL || !PORT_IS_VALID(right->port))
+	{
+		if (right != NULL)
+			ipc_port_unlock(right->port);
+		return KERN_INVALID_ARGUMENT;
+	}
+	
+	return mach_semaphore_signal(right->port);
+}
+
+kern_return_t semaphore_signal_all_trap(mach_task_t* task,
+		struct semaphore_signal_all_args* in_args)
+{
+	struct semaphore_signal_all_args args;
+	darling_mach_port_right_t* right;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	ipc_space_lock(&task->namespace);
+	
+	right = ipc_space_lookup(&task->namespace, args.signal);
+	
+	ipc_space_unlock(&task->namespace);
+	
+	if (right == NULL || !PORT_IS_VALID(right->port))
+	{
+		if (right != NULL)
+			ipc_port_unlock(right->port);
+		return KERN_INVALID_ARGUMENT;
+	}
+	
+	return mach_semaphore_signal_all(right->port);
+}
+
+kern_return_t semaphore_wait_trap(mach_task_t* task,
+		struct semaphore_wait_args* in_args)
+{
+	struct semaphore_wait_args args;
+	darling_mach_port_right_t* right;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	ipc_space_lock(&task->namespace);
+	
+	right = ipc_space_lookup(&task->namespace, args.signal);
+	
+	ipc_space_unlock(&task->namespace);
+	
+	if (right == NULL || !PORT_IS_VALID(right->port))
+	{
+		if (right != NULL)
+			ipc_port_unlock(right->port);
+		return KERN_INVALID_ARGUMENT;
+	}
+	
+	return mach_semaphore_wait(right->port);
+}
+
+kern_return_t semaphore_wait_signal_trap(mach_task_t* task,
+		struct semaphore_wait_signal_args* in_args)
+{
+	struct semaphore_wait_signal_args args;
+	darling_mach_port_right_t *right_wait, *right_signal;
+	kern_return_t ret = KERN_SUCCESS;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	ipc_space_lock(&task->namespace);
+	
+	right_signal = ipc_space_lookup(&task->namespace, args.signal);
+	if (right_signal == NULL)
+	{
+		ipc_space_unlock(&task->namespace);
+		return KERN_INVALID_ARGUMENT;
+	}
+	
+	if (args.wait != 0)
+		right_wait = ipc_space_lookup(&task->namespace, args.wait);
+	else
+		right_wait = NULL;
+	
+	ipc_space_unlock(&task->namespace);
+	
+	if (right_wait != NULL)
+		ret = mach_semaphore_wait(right_wait->port);
+	
+	mach_semaphore_signal(right_signal->port);
+	
+	return ret;
+}
+
+kern_return_t semaphore_timedwait_trap(mach_task_t* task,
+		struct semaphore_timedwait_args* in_args)
+{
+	struct semaphore_timedwait_args args;
+	darling_mach_port_right_t* right;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	ipc_space_lock(&task->namespace);
+	
+	right = ipc_space_lookup(&task->namespace, args.wait);
+	
+	ipc_space_unlock(&task->namespace);
+	
+	if (right == NULL || !PORT_IS_VALID(right->port))
+	{
+		if (right != NULL)
+			ipc_port_unlock(right->port);
+		return KERN_INVALID_ARGUMENT;
+	}
+	
+	return mach_semaphore_timedwait(right->port, args.sec, args.nsec);
+}
+
+kern_return_t semaphore_timedwait_signal_trap(mach_task_t* task,
+		struct semaphore_timedwait_signal_args* in_args)
+{
+	struct semaphore_timedwait_signal_args args;
+	darling_mach_port_right_t *right_wait, *right_signal;
+	kern_return_t ret = KERN_SUCCESS;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	ipc_space_lock(&task->namespace);
+	
+	right_signal = ipc_space_lookup(&task->namespace, args.signal);
+	if (right_signal == NULL)
+	{
+		ipc_space_unlock(&task->namespace);
+		return KERN_INVALID_ARGUMENT;
+	}
+	
+	if (args.wait != 0)
+		right_wait = ipc_space_lookup(&task->namespace, args.wait);
+	else
+		right_wait = NULL;
+	
+	ipc_space_unlock(&task->namespace);
+	
+	if (right_wait != NULL)
+		ret = mach_semaphore_timedwait(right_wait->port, args.sec, args.nsec);
+	
+	mach_semaphore_signal(right_signal->port);
+	
 	return ret;
 }
 

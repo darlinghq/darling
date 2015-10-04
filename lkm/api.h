@@ -14,7 +14,13 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR__kernelrpc_mach_port_allocate,
 	NR_mach_msg_overwrite_trap,
 	NR__kernelrpc_mach_port_deallocate,
-	NR__kernelrpc_mach_port_destroy
+	NR__kernelrpc_mach_port_destroy,
+	NR_semaphore_signal_trap,
+	NR_semaphore_signal_all_trap,
+	NR_semaphore_wait_trap,
+	NR_semaphore_wait_signal_trap,
+	NR_semaphore_timedwait_signal_trap,
+	NR_semaphore_timedwait_trap
 };
 
 struct mach_port_mod_refs_args
@@ -55,6 +61,42 @@ struct mach_port_destroy_args
 {
 	unsigned int task_right_name;
 	unsigned int port_right_name;
+};
+
+struct semaphore_signal_args
+{
+	unsigned int signal;
+};
+
+struct semaphore_signal_all_args
+{
+	unsigned int signal;
+};
+
+struct semaphore_wait_args
+{
+	unsigned int signal;
+};
+
+struct semaphore_wait_signal_args
+{
+	unsigned int wait;
+	unsigned int signal;
+};
+
+struct semaphore_timedwait_signal_args
+{
+	unsigned int wait;
+	unsigned int signal;
+	unsigned int sec;
+	unsigned int nsec;
+};
+
+struct semaphore_timedwait_args
+{
+	unsigned int wait;
+	unsigned int sec;
+	unsigned int nsec;
 };
 
 #endif

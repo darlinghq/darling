@@ -16,7 +16,7 @@ ifneq ($(KERNELRELEASE),)
 	    ipc_port.o ipc_right.o ipc_server.o debug.o \
 	    darling_task.o ipc_msg.o \
 	    servers/mach_host.o servers/clock.o \
-	    servers/task.o \
+	    servers/task.o primitives/semaphore.o \
 	    mig/clockServer.o mig/mach_hostServer.o \
 	    mig/taskServer.o \
 	    mig/duct.o proc_entry.o

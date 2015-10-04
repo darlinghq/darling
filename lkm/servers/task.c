@@ -2,8 +2,15 @@
 #include <mach_debug/zone_info.h>
 #include "../mach_includes.h"
 #include "../debug.h"
+#include "../traps.h"
+#include "../darling_task.h"
+#include "../ipc_port.h"
+#include "../ipc_space.h"
+#include "../primitives/semaphore.h"
 #include "task.h"
 #include "stub.h"
+
+extern ipc_namespace_t kernel_namespace;
 
 kern_return_t task_create
 (
@@ -223,8 +230,26 @@ kern_return_t semaphore_create
 	int value
 )
 {
-	UNIMPL_MIG_CALL();
-	return KERN_NOT_SUPPORTED;
+	kern_return_t ret;
+	darling_mach_port_t* port;
+	mach_task_t* task_self;
+	
+	task_self = darling_task_get_current();
+	
+	// TODO: check task
+	
+	ret = ipc_port_new(&port);
+	if (ret != KERN_SUCCESS)
+		return ret;
+	
+	ret = ipc_space_make_send(&kernel_namespace, port, false, semaphore);
+	
+	if (ret != KERN_SUCCESS)
+		return ret;
+	
+	mach_semaphore_setup(port, value);
+	
+	return KERN_SUCCESS;
 }
 
 kern_return_t semaphore_destroy
@@ -233,8 +258,8 @@ kern_return_t semaphore_destroy
 	semaphore_t semaphore
 )
 {
-	UNIMPL_MIG_CALL();
-	return KERN_NOT_SUPPORTED;
+	return _kernelrpc_mach_port_destroy(darling_task_get_current(),
+			task, semaphore);
 }
 
 kern_return_t task_policy_set

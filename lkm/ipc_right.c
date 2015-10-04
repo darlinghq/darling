@@ -69,6 +69,10 @@ void ipc_right_put(struct mach_port_right* right)
 				port->num_sorights--;
 			
 			list_del(&right->reflist);
+			
+			// Special case for semaphores etc. where no receive port exists
+			if (list_empty(&port->refs))
+				ipc_port_put(port);
 		}
 	}
 	

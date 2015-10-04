@@ -23,4 +23,21 @@ kern_return_t _kernelrpc_mach_port_allocate_trap(mach_task_t* task,
 kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 		struct mach_msg_overwrite_args* args);
 
+kern_return_t semaphore_signal_trap(mach_task_t* task,
+		struct semaphore_signal_args* args);
+kern_return_t semaphore_signal_all_trap(mach_task_t* task,
+		struct semaphore_signal_all_args* args);
+kern_return_t semaphore_wait_trap(mach_task_t* task,
+		struct semaphore_wait_args* args);
+kern_return_t semaphore_wait_signal_trap(mach_task_t* task,
+		struct semaphore_wait_signal_args* args);
+kern_return_t semaphore_timedwait_trap(mach_task_t* task,
+		struct semaphore_timedwait_args* args);
+kern_return_t semaphore_timedwait_signal_trap(mach_task_t* task,
+		struct semaphore_timedwait_signal_args* args);
+
+// Internal
+kern_return_t _kernelrpc_mach_port_destroy(mach_task_t* task,
+		mach_port_name_t task_name, mach_port_name_t right_name);
+
 #endif

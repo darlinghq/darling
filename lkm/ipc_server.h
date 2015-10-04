@@ -4,6 +4,8 @@
 #include "ipc_port.h"
 #include "traps.h"
 
+#define PORT_TYPE_SEMAPHORE		1
+
 /*
  * The following functions associate a port with the named kernel server.
  * The port will no longer queue messages, instead the respective "Mach server"

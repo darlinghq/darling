@@ -94,15 +94,22 @@ mach_msg_return_t mach_msg_overwrite_trap(
 kern_return_t semaphore_signal_trap(
 				mach_port_name_t signal_name)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct semaphore_signal_args args = {
+		.signal = signal_name
+	};
+
+	return ioctl(driver_fd, NR_semaphore_signal_trap, &args);
 }
 					      
 kern_return_t semaphore_signal_all_trap(
 				mach_port_name_t signal_name)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct semaphore_signal_all_args args = {
+		.signal = signal_name
+	};
+
+	return ioctl(driver_fd, NR_semaphore_signal_all_trap,
+			&args);
 }
 
 kern_return_t semaphore_signal_thread_trap(
@@ -116,16 +123,24 @@ kern_return_t semaphore_signal_thread_trap(
 kern_return_t semaphore_wait_trap(
 				mach_port_name_t wait_name)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct semaphore_wait_args args = {
+		.signal = wait_name
+	};
+
+	return ioctl(driver_fd, NR_semaphore_wait_trap, &args);
 }
 
 kern_return_t semaphore_wait_signal_trap(
 				mach_port_name_t wait_name,
 				mach_port_name_t signal_name)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct semaphore_wait_signal_args args = {
+		.signal = signal_name,
+		.wait = wait_name
+	};
+
+	return ioctl(driver_fd, NR_semaphore_wait_signal_trap,
+			&args);
 }
 
 kern_return_t semaphore_timedwait_trap(
@@ -133,8 +148,14 @@ kern_return_t semaphore_timedwait_trap(
 				unsigned int sec,
 				clock_res_t nsec)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct semaphore_timedwait_args args = {
+		.wait = wait_name,
+		.sec = sec,
+		.nsec = nsec
+	};
+
+	return ioctl(driver_fd, NR_semaphore_timedwait_trap,
+			&args);
 }
 
 kern_return_t semaphore_timedwait_signal_trap(
@@ -143,8 +164,15 @@ kern_return_t semaphore_timedwait_signal_trap(
 				unsigned int sec,
 				clock_res_t nsec)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct semaphore_timedwait_signal_args args = {
+		.wait = wait_name,
+		.signal = signal_name,
+		.sec = sec,
+		.nsec = nsec
+	};
+
+	return ioctl(driver_fd, NR_semaphore_timedwait_signal_trap,
+			&args);
 }
 
 kern_return_t clock_sleep_trap(

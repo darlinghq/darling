@@ -10,7 +10,7 @@
 typedef struct server_port server_port_t;
 struct server_port
 {
-	/* E.g. IPC_SERVER_TYPE_TASK */
+	/* Used for non-server special ports (e.g. semaphores) */
 	int port_type;
 	
 	mig_subsystem_t subsystem;
