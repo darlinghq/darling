@@ -4,6 +4,9 @@
 #include "../ipc_port.h"
 #include <linux/semaphore.h>
 #include <linux/slab.h>
+#include <linux/atomic.h>
+
+static atomic_t sem_count = ATOMIC_INIT(0);
 
 static void
 mach_semaphore_destroy(server_port_t* port);
@@ -32,6 +35,8 @@ mach_semaphore_setup(darling_mach_port_t* port, int value)
 	ms->active = true;
 	sema_init(&ms->sem, value);
 	rwlock_init(&ms->rwlock);
+	
+	atomic_inc(&sem_count);
 }
 
 static void
@@ -47,6 +52,8 @@ mach_semaphore_destroy(server_port_t* port)
 	
 	kfree(port->private_data);
 	port->private_data = NULL;
+	
+	atomic_dec(&sem_count);
 }
 
 kern_return_t
@@ -160,4 +167,9 @@ mach_semaphore_timedwait(darling_mach_port_t* port, unsigned int sec,
 	
 	read_unlock(&ms->rwlock);
 	return ret;
+}
+
+int mach_semaphore_count(void)
+{
+	return atomic_read(&sem_count);
 }

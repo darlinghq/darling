@@ -62,7 +62,10 @@ ipc_namespace_t kernel_namespace;
 
 static int mach_init(void)
 {
-	int err = misc_register(&mach_dev);
+	// mach_port_name_t name;
+	int err;
+	
+	err = misc_register(&mach_dev);
 	if (err < 0)
 		goto fail;
 	
@@ -76,6 +79,7 @@ static int mach_init(void)
 		goto fail;
 	}
 	ipc_port_make_host(host_port);
+	// ipc_space_make_receive(&kernel_namespace, host_port, &name);
 
 	printk(KERN_INFO "Darling Mach kernel emulation loaded\n");
 	return 0;

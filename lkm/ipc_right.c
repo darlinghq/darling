@@ -70,9 +70,14 @@ void ipc_right_put(struct mach_port_right* right)
 			
 			list_del(&right->reflist);
 			
-			// Special case for semaphores etc. where no receive port exists
-			if (list_empty(&port->refs))
+			// Special case for semaphores etc. where no receive port exists.
+			// It cannot be applied to kernel server ports - these are
+			// released explicitly.
+			if (list_empty(&port->refs) && port->is_server_port
+					&& port->server_port.subsystem == NULL)
+			{
 				ipc_port_put(port);
+			}
 		}
 	}
 	

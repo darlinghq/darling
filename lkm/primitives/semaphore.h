@@ -20,4 +20,6 @@ kern_return_t
 mach_semaphore_timedwait(darling_mach_port_t* port, unsigned int sec,
 		unsigned int nsec);
 
+int mach_semaphore_count(void);
+
 #endif

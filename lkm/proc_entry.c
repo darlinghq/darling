@@ -8,6 +8,7 @@
 #include "proc_entry.h"
 #include "darling_task.h"
 #include "api.h"
+#include "primitives/semaphore.h"
 
 static struct proc_dir_entry *proc_mach;
 
@@ -28,6 +29,7 @@ static int mach_proc_show(struct seq_file *m, void *v)
 	
 	seq_printf(m, "Task count:\t%u\n", darling_get_task_count());
 	seq_printf(m, "Port count:\t%d\n", ipc_port_count());
+	seq_printf(m, "Sem count:\t%d\n", mach_semaphore_count());
 	seq_printf(m, "Msgs sent:\t%d\n", ipc_msg_count());
 	
 	return 0;
