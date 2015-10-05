@@ -27,6 +27,7 @@ set(sys_sources chmodx_np.c
 	slot_name.c
 	statx_np.c
 	umaskx_np.c
+	OpenBSD/stack_protector.c
 )
 
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
