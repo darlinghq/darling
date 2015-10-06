@@ -57,16 +57,16 @@ else()
 endif()
 
 # Generate library list.
-append_if(libraries LIBCXX_HAS_PTHREAD_LIB pthread)
-append_if(libraries LIBCXX_HAS_C_LIB c)
-append_if(libraries LIBCXX_HAS_M_LIB m)
-append_if(libraries LIBCXX_HAS_RT_LIB rt)
-append_if(libraries LIBCXX_HAS_GCC_S_LIB gcc_s)
+#append_if(libraries LIBCXX_HAS_PTHREAD_LIB pthread)
+#append_if(libraries LIBCXX_HAS_C_LIB c)
+#append_if(libraries LIBCXX_HAS_M_LIB m)
+#append_if(libraries LIBCXX_HAS_RT_LIB rt)
+#append_if(libraries LIBCXX_HAS_GCC_S_LIB gcc_s)
 
 if (LIBCXX_COVERAGE_LIBRARY)
   target_link_libraries(cxx ${LIBCXX_COVERAGE_LIBRARY})
 endif()
-target_link_libraries(cxx ${libraries})
+target_link_libraries(cxx ${libraries} system)
 
 
 # Setup flags.

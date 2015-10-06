@@ -42,16 +42,16 @@ endif()
 
 # Generate library list.
 set(libraries ${LIBCXXABI_CXX_ABI_LIBRARIES})
-append_if(libraries LIBCXXABI_HAS_C_LIB c)
-if (LIBCXXABI_ENABLE_THREADS)
-  append_if(libraries LIBCXXABI_HAS_PTHREAD_LIB pthread)
-endif()
+#append_if(libraries LIBCXXABI_HAS_C_LIB c)
+#if (LIBCXXABI_ENABLE_THREADS)
+#  append_if(libraries LIBCXXABI_HAS_PTHREAD_LIB pthread)
+#endif()
 
-if (LIBCXXABI_USE_LLVM_UNWINDER)
-  list(APPEND libraries unwind)
-else()
-  append_if(libraries LIBCXXABI_HAS_GCC_EH_LIB gcc_eh)
-endif()
+#if (LIBCXXABI_USE_LLVM_UNWINDER)
+#  list(APPEND libraries unwind)
+#else()
+#  append_if(libraries LIBCXXABI_HAS_GCC_EH_LIB gcc_eh)
+#endif()
 
 # Setup flags.
 append_if(LIBCXXABI_COMPILE_FLAGS LIBCXXABI_HAS_FPIC_FLAG -fPIC)
@@ -92,7 +92,7 @@ set(LIBCXXABI_TARGETS)
 # Build the shared library.
 if (LIBCXXABI_ENABLE_SHARED)
   add_library(cxxabi_shared SHARED $<TARGET_OBJECTS:cxxabi_objects>)
-  target_link_libraries(cxxabi_shared ${libraries})
+  target_link_libraries(cxxabi_shared ${libraries} system)
   set_target_properties(cxxabi_shared
     PROPERTIES
       LINK_FLAGS    "${LIBCXXABI_LINK_FLAGS} ${LIBCXXABI_SHARED_LINK_FLAGS}"
