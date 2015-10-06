@@ -1,3 +1,6 @@
 [submodule "external/libdispatch"]
 	path = external/libdispatch
 	url = https://github.com/nickhutchinson/libdispatch.git
+[submodule "external/libobjc2"]
+	path = external/libobjc2
+	url = https://github.com/LubosD/darling-libobjc2.git

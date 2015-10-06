@@ -39,6 +39,7 @@ add_subdirectory(libsystem)
 add_subdirectory(keymgr)
 add_subdirectory(duct/src)
 add_subdirectory(libstdcxx)
+add_subdirectory(external/libobjc2)
 
 ######################
 # libc++ & libc++abi #
