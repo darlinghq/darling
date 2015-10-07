@@ -64,3 +64,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_SAVED} -std=c++11 -msse -msse2 -msse3 -no
 set(LIBCXX_HAS_STDCXX11_FLAG TRUE)
 add_definitions(-D_USE_EXTENDED_LOCALES_)
 add_subdirectory(external/libcxx)
+
+#######################
+# Linux kernel module #
+#######################
+
+add_custom_target(lkm
+	COMMAND gmake
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/lkm")
+
