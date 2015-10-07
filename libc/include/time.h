@@ -1,3 +1,4 @@
+/* Modified for Darling by Lubos Dolezel (2015) */
 /*
  * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
  *
@@ -66,7 +67,8 @@
 #include <_types.h>
 
 #define __need_struct_timespec
-#include <_structs.h>
+//#include <_structs.h>
+#include "../../kernel-include/sys/_structs.h"
 
 #ifndef NULL
 #define NULL __DARWIN_NULL

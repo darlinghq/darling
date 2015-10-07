@@ -14,7 +14,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/locale)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/locale/FreeBSD)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/stdtime/FreeBSD)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/pthreads)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libcxxabi/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../external/libcxxabi/include)
 
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 add_definitions(-DBUILDING_LIBSTDCXX -D_LIBCPPABI_VERSION=1)
@@ -90,3 +90,4 @@ set(libstdcxx_sources
 )
 
 add_library(stdcxx SHARED ${libstdcxx_sources})
+target_link_libraries(stdcxx cxxabi_shared)

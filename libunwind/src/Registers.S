@@ -1,6 +1,7 @@
 
 #ifdef DARLING
 #	define __ZN9libunwind13Registers_x866jumptoEv _ZN9libunwind13Registers_x866jumptoEv
+#	define __ZN9libunwind16Registers_x86_646jumptoEv _ZN9libunwind16Registers_x86_646jumptoEv
 #endif
 
 #if __i386__

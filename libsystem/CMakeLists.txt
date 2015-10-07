@@ -27,4 +27,5 @@ set(libsystem_sources
 )
 
 add_library(system SHARED ${libsystem_sources})
-target_link_libraries(system system_malloc system_c system_kernel keymgr system_m unwind)
+target_link_libraries(system system_malloc system_c system_kernel keymgr
+	system_m unwind)
