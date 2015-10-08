@@ -13,7 +13,7 @@ CFLAGS_taskServer.o := -Dsemaphore_consume_ref_t=semaphore_t
 ifneq ($(KERNELRELEASE),)
 	obj-m := darling-mach.o
 	darling-mach-objs := traps.o ipc_space.o \
-	    ipc_port.o ipc_right.o ipc_server.o debug.o \
+	    ipc_port.o ipc_right.o ipc_server.o \
 	    darling_task.o ipc_msg.o \
 	    servers/mach_host.o servers/clock.o \
 	    servers/task.o primitives/semaphore.o \
