@@ -29,3 +29,8 @@ else
 default:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 endif
+
+clean:
+	rm -f *.o *.ko
+	rm -f *.mod.c
+	rm -rf modules.order Module.symvers
