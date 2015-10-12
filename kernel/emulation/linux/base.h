@@ -19,6 +19,13 @@
 
 long linux_syscall(long a1, long a2, long a3, long a4, long a5, long a6, int nr);
 
+#ifndef BUILDING_BASE_C
+
+VISIBLE
+int __linux_syscall(int nr, ...);
+
+#endif /* BUILDING_BASE_C */
+
 #ifdef __x86_64__
 #	define LL_ARG(x) (x)
 #else

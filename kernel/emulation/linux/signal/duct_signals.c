@@ -135,3 +135,28 @@ int signum_bsd_to_linux(int signum)
 	}
 }
 
+void sigset_linux_to_bsd(const linux_sigset_t* linux, sigset_t* bsd)
+{
+	int i;
+
+	*bsd = 0;
+
+	for (i = 0; i < 64; i++)
+	{
+		if (*linux & (1ull << i))
+			*bsd |= signum_linux_to_bsd(i+1);
+	}
+}
+
+void sigset_bsd_to_linux(const sigset_t* bsd, linux_sigset_t* linux)
+{
+	int i;
+
+	*linux = 0;
+	for (i = 0; i < 64; i++)
+	{
+		if (*bsd & (1ull << i))
+			*linux |= signum_bsd_to_linux(i+1);
+	}
+}
+

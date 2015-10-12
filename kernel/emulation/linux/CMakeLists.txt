@@ -50,13 +50,25 @@ set(emulation_sources
 	stat/fstat.c
 	stat/common.c
 	dirent/getdirentries.c
+	ext/epoll_create.c
+	ext/epoll_create1.c
+	ext/epoll_ctl.c
+	ext/epoll_wait.c
+	ext/inotify_init.c
+	ext/inotify_init1.c
+	ext/inotify_add_watch.c
+	ext/inotify_rm_watch.c
+	ext/eventfd.c
+	ext/eventfd_read.c
+	ext/eventfd_write.c
+	ext/signalfd.c
 	syscalls-amd64.asm
 )
 
 set_source_files_properties(mman.c PROPERTIES COMPILE_FLAGS
 	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include")
 set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS
-	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include")
+	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/libc/include -nostdinc")
 set_source_files_properties(network/socket.c PROPERTIES COMPILE_FLAGS
 	"-I${CMAKE_CURRENT_SOURCE_DIR}/../../../platform-include -I${CMAKE_CURRENT_SOURCE_DIR}/../../../kernel-include")
 set_source_files_properties(network/connect.c PROPERTIES COMPILE_FLAGS

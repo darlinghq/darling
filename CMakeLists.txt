@@ -3,6 +3,9 @@ project(darling-libsystem)
 cmake_minimum_required(VERSION 2.4.0)
 
 add_definitions(-D_DARWIN_C_SOURCE -D_POSIX_C_SOURCE -DDARLING)
+set(DARLING TRUE)
+set(DARLING_TOP_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
 if ((${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64") AND (${CMAKE_C_FLAGS} MATCHES ".*-m32.*"))
 	set(CMAKE_SYSTEM_PROCESSOR "i686")
 endif()
@@ -40,6 +43,7 @@ add_subdirectory(keymgr)
 add_subdirectory(duct/src)
 add_subdirectory(libstdcxx)
 add_subdirectory(external/libobjc2)
+add_subdirectory(external/libkqueue)
 
 ######################
 # libc++ & libc++abi #
