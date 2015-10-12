@@ -10,3 +10,6 @@
 [submodule "external/libcxxabi"]
 	path = external/libcxxabi
 	url = https://github.com/LubosD/darling-libcxxabi.git
+[submodule "external/libkqueue"]
+	path = external/libkqueue
+	url = https://github.com/darlinghq/darling-libkqueue.git
