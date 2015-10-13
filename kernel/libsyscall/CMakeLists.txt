@@ -292,10 +292,10 @@ set(syscall_sources
 	sys/issetugid.S
 	sys/kas_info.S
 	sys/__kdebug_trace.S
-	sys/kevent64.S
-	sys/kevent.S
+	#sys/kevent64.S
+	#sys/kevent.S
 	sys/__kill.S
-	sys/kqueue.S
+	#sys/kqueue.S
 	sys/__lchown.S
 	sys/ledger.S
 	sys/linkat.S
