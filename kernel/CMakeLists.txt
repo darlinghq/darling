@@ -87,6 +87,6 @@ add_library(system_kernel SHARED
 	$<TARGET_OBJECTS:libsyscall>
 	$<TARGET_OBJECTS:emulation>
 	$<TARGET_OBJECTS:mach_server_client>)
-target_link_libraries(system_kernel system_duct)
+target_link_libraries(system_kernel system_duct ${CMAKE_CURRENT_BINARY_DIR}/../external/libkqueue/libkqueue.a)
 
 add_dependencies(system_kernel migcom)
