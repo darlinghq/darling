@@ -12,7 +12,7 @@ int epoll_create1 (int __flags)
 	rv = LINUX_SYSCALL(__NR_epoll_create1, __flags);
 	if (rv < 0)
 	{
-		cerror(rv);
+		cerror(errno_linux_to_bsd(rv));
 		return -1;
 	}
 

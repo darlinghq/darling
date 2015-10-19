@@ -13,7 +13,7 @@ int __linux_eventfd (int __count, int __flags)
 			__flags);
 	if (rv < 0)
 	{
-		cerror(rv);
+		cerror(errno_linux_to_bsd(rv));
 		return -1;
 	}
 

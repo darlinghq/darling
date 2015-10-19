@@ -12,7 +12,7 @@ int inotify_rm_watch (int __fd, int __wd)
 	rv = LINUX_SYSCALL(__NR_inotify_rm_watch, __fd, __wd);
 	if (rv < 0)
 	{
-		cerror(rv);
+		cerror(errno_linux_to_bsd(rv));
 		return -1;
 	}
 

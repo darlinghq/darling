@@ -2,6 +2,11 @@ project(darling-libsystem_init)
 
 cmake_minimum_required(VERSION 2.4.0)
 
+if(COMMAND cmake_policy)
+	cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
+
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--warn-unresolved-symbols -Wl,--unresolved-symbols=report-all")
 
@@ -24,8 +29,9 @@ add_definitions(-Ddlsym=__darwin_dlsym)
 set(libsystem_sources
 	init.c
 	dummy.c
+	libmacho/arch.c
 )
 
 add_library(system SHARED ${libsystem_sources})
 target_link_libraries(system system_malloc system_c system_kernel keymgr
-	system_m unwind)
+	system_m unwind libdispatch_shared objc)

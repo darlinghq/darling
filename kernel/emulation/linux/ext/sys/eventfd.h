@@ -10,6 +10,12 @@
 #define eventfd_read	__linux_eventfd_read
 #define eventfd_write	__linux_eventfd_write
 
+enum {
+	EFD_SEMAPHORE = 00000001,
+	EFD_CLOEXEC = 02000000,
+	EFD_NONBLOCK = 00004000
+};
+
 typedef uint64_t eventfd_t;
 
 extern int __linux_eventfd (int __count, int __flags) __THROW;

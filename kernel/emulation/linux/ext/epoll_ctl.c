@@ -14,7 +14,7 @@ int epoll_ctl (int __epfd, int __op, int __fd,
 			__event);
 	if (rv < 0)
 	{
-		cerror(rv);
+		cerror(errno_linux_to_bsd(rv));
 		return -1;
 	}
 

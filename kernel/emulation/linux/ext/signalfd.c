@@ -16,7 +16,7 @@ int signalfd (int __fd, const sigset_t *__mask, int __flags)
 	rv = LINUX_SYSCALL(__NR_signalfd, linux_mask, __flags);
 	if (rv < 0)
 	{
-		cerror(rv);
+		cerror(errno_linux_to_bsd(rv));
 		return -1;
 	}
 

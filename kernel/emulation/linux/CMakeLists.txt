@@ -65,6 +65,8 @@ set(emulation_sources
 	ext/timerfd_create.c
 	ext/timerfd_settime.c
 	ext/timerfd_gettime.c
+	ext/clock_nanosleep.c
+	ext/clock_gettime.c
 	syscalls-amd64.asm
 )
 

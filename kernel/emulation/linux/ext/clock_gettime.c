@@ -1,15 +1,15 @@
-#include "./sys/epoll.h"
+#include "./sys/linux_time.h"
 #include "../errno.h"
 #include "../base.h"
 #include <asm/unistd.h>
 
 extern long cerror(int __err);
 
-int epoll_create (int __size)
+int clock_gettime (int __clockid, struct timespec* __res)
 {
 	int rv;
 
-	rv = LINUX_SYSCALL(__NR_epoll_create, __size);
+	rv = LINUX_SYSCALL(__NR_clock_gettime, __clockid, __res);
 	if (rv < 0)
 	{
 		cerror(errno_linux_to_bsd(rv));
