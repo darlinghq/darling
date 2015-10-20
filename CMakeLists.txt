@@ -1,6 +1,8 @@
 project(darling-libsystem)
 
 cmake_minimum_required(VERSION 2.4.0)
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include(mig)
 
 add_definitions(-D_DARWIN_C_SOURCE -D_POSIX_C_SOURCE -DDARLING)
 set(DARLING TRUE)
