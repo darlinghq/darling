@@ -112,6 +112,8 @@ kern_return_t host_info
 
 			if (*host_info_outCnt < HOST_BASIC_INFO_OLD_COUNT)
 				return KERN_FAILURE;
+			
+			memset(host_info_out, 0, *host_info_outCnt * sizeof(int));
 
 			si_meminfo(&i);
 			hinfo->memory_size = i.totalram;
@@ -135,11 +137,45 @@ kern_return_t host_info
 			hinfo->cpu_type = 0;
 			hinfo->cpu_subtype = 0;
 #endif
+			hinfo->cpu_threadtype = 0;
 
 			if (*host_info_outCnt <= HOST_BASIC_INFO_COUNT)
 			{
-				// TODO
+				int pos = 0, last_phys_id = -1;
+				
 				*host_info_outCnt = HOST_BASIC_INFO_COUNT;
+				hinfo->max_mem = i.totalram;
+				hinfo->logical_cpu = 0;
+				hinfo->physical_cpu = 0;
+				
+				while (1)
+				{
+					pos = cpumask_next(pos - 1, cpu_online_mask);
+					if (pos >= nr_cpu_ids)
+						break;
+					
+#if defined(__i386__) || defined(__x86_64__)
+					{
+						struct cpuinfo_x86* cpu;
+						cpu = &cpu_data(pos);
+						
+						hinfo->logical_cpu++;
+						
+						if (cpu->phys_proc_id == last_phys_id)
+						{
+							pos++;
+							continue;
+						}
+						
+						last_phys_id = cpu->phys_proc_id;
+						hinfo->physical_cpu += cpu->booted_cores;
+					}
+#endif
+					pos++;
+				}
+				
+				hinfo->logical_cpu_max = hinfo->logical_cpu;
+				hinfo->physical_cpu_max = hinfo->physical_cpu;
 			}
 			else
 				*host_info_outCnt = HOST_BASIC_INFO_OLD_COUNT;
