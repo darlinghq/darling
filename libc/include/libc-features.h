@@ -21,7 +21,7 @@
 #endif /* __DARWIN_ONLY_64_BIT_INO_T */
 #define __APPLE_PR3417676_HACK__ 1
 /* #undef PLOCKSTAT 1 */
-#define NOTIFY_TZ 1
+// #define NOTIFY_TZ 1 /* Darling: we don't have libnotify yet */
 /* #undef LIBC_NO_LIBCRASHREPORTERCLIENT */
 /* #undef FEATURE_SMALL_STDIOBUF */
 #define XPRINTF_PERF 1
