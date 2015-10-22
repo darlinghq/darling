@@ -69,6 +69,7 @@ set(emulation_sources
 	ext/timerfd_gettime.c
 	ext/clock_nanosleep.c
 	ext/clock_gettime.c
+	wqueue/bsdthread_register.c
 	syscalls-amd64.asm
 )
 

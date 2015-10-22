@@ -37,6 +37,7 @@
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
 #include "time/gettimeofday.h"
+#include "wqueue/bsdthread_register.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -79,6 +80,7 @@ void* __bsd_syscall_table[512] = {
 	[202] = sys_sysctl,
 	[339] = sys_fstat64,
 	[344] = sys_getdirentries64,
+	[366] = sys_bsdthread_register,
 	[372] = sys_thread_selfid,
 	[396] = sys_read_nocancel,
 	[397] = sys_write_nocancel,
