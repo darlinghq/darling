@@ -35,6 +35,7 @@
 #include "network/connect.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
+#include "time/gettimeofday.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -59,6 +60,7 @@ void* __bsd_syscall_table[512] = {
 	[95] = sys_fsync,
 	[97] = sys_socket,
 	[98] = sys_connect,
+	[116] = sys_gettimeofday,
 	[123] = sys_fchown,
 	[124] = sys_fchmod,
 	[147] = sys_setsid,
@@ -78,6 +80,7 @@ void* __bsd_syscall_table[512] = {
 	[372] = sys_thread_selfid,
 	[396] = sys_read_nocancel,
 	[397] = sys_write_nocancel,
+	[398] = sys_open_nocancel,
 	[399] = sys_close_nocancel,
 	[408] = sys_fsync_nocancel,
 	[414] = sys_pread_nocancel,

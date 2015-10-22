@@ -19,6 +19,11 @@ int oflags_bsd_to_linux(int flags);
 
 long sys_open(const char* filename, int flags, unsigned int mode)
 {
+	return sys_open_nocancel(filename, flags, mode);
+}
+
+long sys_open_nocancel(const char* filename, int flags, unsigned int mode)
+{
 	int ret, linux_flags;
 
 	linux_flags = oflags_bsd_to_linux(flags);
