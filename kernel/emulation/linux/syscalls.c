@@ -30,6 +30,7 @@
 #include "signal/kill.h"
 #include "misc/ioctl.h"
 #include "misc/thread_selfid.h"
+#include "misc/sysctl.h"
 #include "fcntl/open.h"
 #include "network/socket.h"
 #include "network/connect.h"
@@ -75,6 +76,7 @@ void* __bsd_syscall_table[512] = {
 	[197] = sys_mmap,
 	[199] = sys_lseek,
 	[201] = sys_ftruncate,
+	[202] = sys_sysctl,
 	[339] = sys_fstat64,
 	[344] = sys_getdirentries64,
 	[372] = sys_thread_selfid,

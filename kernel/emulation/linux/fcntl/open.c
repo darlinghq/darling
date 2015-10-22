@@ -17,6 +17,8 @@
 
 int oflags_bsd_to_linux(int flags);
 
+extern int strcmp(const char *s1, const char *s2);
+
 long sys_open(const char* filename, int flags, unsigned int mode)
 {
 	return sys_open_nocancel(filename, flags, mode);
@@ -34,6 +36,10 @@ long sys_open_nocancel(const char* filename, int flags, unsigned int mode)
 	}
 
 	// TODO: Check filename, handle wrong case
+
+	// XNU /dev/random behaves like Linux /dev/urandom
+	if (strcmp(filename, "/dev/random") == 0)
+		filename = "/dev/urandom";
 
 	ret = LINUX_SYSCALL(__NR_open, filename, linux_flags, mode);
 	if (ret < 0)
