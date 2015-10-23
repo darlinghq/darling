@@ -301,7 +301,7 @@ void __darling_get_args(int** argc, char**** argv, char**** env, struct ::Progra
 	vars->NXArgcPtr = &g_argc;
 	vars->NXArgvPtr = (const char***) &g_argv;
 	vars->environPtr = (const char***) &environ;
-	vars->__prognamePtr = (const char**) &argv[0];
+	vars->__prognamePtr = (const char**) &g_argv[0];
 
 }
 
