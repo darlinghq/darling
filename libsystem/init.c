@@ -74,6 +74,7 @@ mach_port_t _mig_get_reply_port(void);
 void _mig_set_reply_port(mach_port_t);
 
 void cthread_set_errno_self(int);
+void* pthread_self(void);
 
 static void _pthread_exit_if_canceled(int err) { if (pthread_self()) _pthread_testcancel(pthread_self(), 1);  }
 
