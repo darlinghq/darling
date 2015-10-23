@@ -39,7 +39,9 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_semaphore_wait_trap,
 	NR_semaphore_wait_signal_trap,
 	NR_semaphore_timedwait_signal_trap,
-	NR_semaphore_timedwait_trap
+	NR_semaphore_timedwait_trap,
+	NR_bsd_ioctl_trap,
+	NR_thread_self_trap
 };
 
 struct mach_port_mod_refs_args
@@ -116,6 +118,13 @@ struct semaphore_timedwait_args
 	unsigned int wait;
 	unsigned int sec;
 	unsigned int nsec;
+};
+
+struct bsd_ioctl_args
+{
+	int fd;
+	unsigned long long request;
+	unsigned long long arg;
 };
 
 #endif

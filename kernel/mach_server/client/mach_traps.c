@@ -40,8 +40,7 @@ mach_port_name_t mach_reply_port(void)
 
 mach_port_name_t thread_self_trap(void)
 {
-	UNIMPLEMENTED_TRAP();
-	return 0;
+	return ioctl(driver_fd, NR_thread_self_trap, 0);
 }
 
 mach_port_name_t host_self_trap(void)

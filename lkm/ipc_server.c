@@ -20,6 +20,7 @@
 #include "mach_includes.h"
 #include "ipc_server.h"
 #include <linux/slab.h>
+#include <linux/rwlock.h>
 #include "darling_task.h"
 #include "debug.h"
 
@@ -31,19 +32,24 @@ static void task_free(server_port_t* kport)
 	
 	task = (mach_task_t*) kport->private_data;
 	
+	darling_task_free_threads(task);
+	
 	/* Deallocate the port right space. Deletes all references. */
 	ipc_space_put(&task->namespace);
 	
 	kfree(task);
 }
 
-void ipc_port_make_task(darling_mach_port_t* port, pid_t pid)
+mach_task_t* ipc_port_make_task(darling_mach_port_t* port, pid_t pid)
 {
 	mach_task_t* task;
 	
 	task = (mach_task_t*) kmalloc(sizeof(mach_task_t), GFP_KERNEL);
 	task->pid = pid;
 	task->task_self = port;
+	task->threads.rb_node = NULL;
+	
+	rwlock_init(&task->threads_lock);
 	
 	ipc_space_init(&task->namespace);
 	
@@ -51,6 +57,8 @@ void ipc_port_make_task(darling_mach_port_t* port, pid_t pid)
 	port->server_port.subsystem = &task_subsystem;
 	port->server_port.private_data = task;
 	port->server_port.cb_free = task_free;
+	
+	return task;
 }
 
 mach_task_t* ipc_port_get_task(darling_mach_port_t* port)

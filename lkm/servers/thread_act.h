@@ -17,10 +17,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef SERVERS_STUB_H
-#define SERVERS_STUB_H
-#include "../debug.h"
+#ifndef SERVER_THREAD_ACT_H
+#define SERVER_THREAD_ACT_H
+#include "../ipc_types.h"
 
-#define UNIMPL_MIG_CALL() debug_msg("STUB MIG call %s in " __FILE__ "\n", __func__)
+void ipc_port_make_thread(darling_mach_port_t* port);
+pid_t get_thread_pid(darling_mach_port_t* port);
 
 #endif

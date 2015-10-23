@@ -7,6 +7,7 @@ ccflags-y := -I$(src)/../kernel-include \
 		-Wno-undef
 
 CFLAGS_taskServer.o := -Dsemaphore_consume_ref_t=semaphore_t
+CFLAGS_thread_actServer.o := -Dthread_act_consume_ref_t=thread_act_t
 
 # If KERNELRELEASE is defined, we've been invoked from the
 # kernel build system and can use its language.
@@ -18,8 +19,9 @@ ifneq ($(KERNELRELEASE),)
 	    servers/mach_host.o servers/clock.o \
 	    servers/task.o primitives/semaphore.o \
 	    mig/clockServer.o mig/mach_hostServer.o \
-	    mig/taskServer.o \
-	    mig/duct.o proc_entry.o
+	    mig/taskServer.o mig/thread_actServer.o \
+	    servers/thread_act.o \
+	    mig/duct.o proc_entry.o bsd_ioctl.o
 
 # Otherwise we were called directly from the command
 # line; invoke the kernel build system.

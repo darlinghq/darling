@@ -141,14 +141,14 @@ kern_return_t host_info
 
 			if (*host_info_outCnt <= HOST_BASIC_INFO_COUNT)
 			{
-				int pos = 0, last_phys_id = -1;
+				int pos, last_phys_id = -1;
 				
 				*host_info_outCnt = HOST_BASIC_INFO_COUNT;
 				hinfo->max_mem = i.totalram;
 				hinfo->logical_cpu = 0;
 				hinfo->physical_cpu = 0;
 				
-				while (1)
+				for (pos = 0;; pos++)
 				{
 					pos = cpumask_next(pos - 1, cpu_online_mask);
 					if (pos >= nr_cpu_ids)
@@ -162,16 +162,12 @@ kern_return_t host_info
 						hinfo->logical_cpu++;
 						
 						if (cpu->phys_proc_id == last_phys_id)
-						{
-							pos++;
 							continue;
-						}
 						
 						last_phys_id = cpu->phys_proc_id;
 						hinfo->physical_cpu += cpu->booted_cores;
 					}
 #endif
-					pos++;
 				}
 				
 				hinfo->logical_cpu_max = hinfo->logical_cpu;

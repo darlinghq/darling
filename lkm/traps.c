@@ -25,6 +25,8 @@
 #include <linux/list.h>
 #include <linux/sched.h>
 #include <linux/uaccess.h>
+#include <linux/file.h>
+#include <linux/dcache.h>
 #include "darling_task.h"
 #include "traps.h"
 #include "ipc_space.h"
@@ -34,7 +36,9 @@
 #include "debug.h"
 #include "ipc_server.h"
 #include "proc_entry.h"
+#include "bsd_ioctl.h"
 #include "servers/mach_host.h"
+#include "servers/thread_act.h"
 #include "primitives/semaphore.h"
 
 MODULE_LICENSE("GPL");
@@ -67,6 +71,8 @@ static const trap_handler mach_traps[20] = {
 	[sc(NR_semaphore_wait_signal_trap)] = (trap_handler) semaphore_wait_signal_trap,
 	[sc(NR_semaphore_timedwait_signal_trap)] = (trap_handler) semaphore_timedwait_trap,
 	[sc(NR_semaphore_timedwait_trap)] = (trap_handler) semaphore_timedwait_signal_trap,
+	[sc(NR_bsd_ioctl_trap)] = (trap_handler) bsd_ioctl_trap,
+	[sc(NR_thread_self_trap)] = (trap_handler) mach_thread_self_trap,
 };
 #undef sc
 
@@ -118,15 +124,26 @@ static void mach_exit(void)
 
 int mach_dev_open(struct inode* ino, struct file* file)
 {
-	darling_mach_port_t* port;
+	darling_mach_port_t* task_port;
+	darling_mach_port_t* thread_port;
+	mach_task_t* task;
 	
-	if (ipc_port_new(&port) != KERN_SUCCESS)
+	if (ipc_port_new(&task_port) != KERN_SUCCESS)
 		return -ENOMEM;
 	
-	ipc_port_make_task(port, current->pid);
-	file->private_data = port;
+	if (ipc_port_new(&thread_port) != KERN_SUCCESS)
+	{
+		ipc_port_put(task_port);
+		return -ENOMEM;
+	}
 	
-	darling_task_set_current(ipc_port_get_task(port));
+	task = ipc_port_make_task(task_port, current->pid);
+	file->private_data = task_port;
+	
+	ipc_port_make_thread(thread_port);
+	
+	darling_task_set_current(ipc_port_get_task(task_port));
+	darling_task_register_thread(task, thread_port);
 
 	return 0;
 }
@@ -258,6 +275,29 @@ mach_port_name_t mach_task_self_trap(mach_task_t* task)
 	ipc_port_lock(task->task_self);
 	
 	ret = ipc_space_make_send(&task->namespace, task->task_self, false, &name);
+	
+	ipc_port_unlock(task->task_self);
+	
+	if (ret == KERN_SUCCESS)
+		return name;
+	else
+		return 0;
+}
+
+mach_port_name_t mach_thread_self_trap(mach_task_t* task)
+{
+	mach_port_name_t name;
+	kern_return_t ret;
+	darling_mach_port_t* thread_port;
+	
+	ipc_port_lock(task->task_self);
+	
+	thread_port = darling_task_lookup_thread(task, current->pid);
+	
+	if (thread_port != NULL)
+		ret = ipc_space_make_send(&task->namespace, thread_port, false, &name);
+	else
+		ret = KERN_FAILURE;
 	
 	ipc_port_unlock(task->task_self);
 	
@@ -650,6 +690,47 @@ kern_return_t semaphore_timedwait_signal_trap(mach_task_t* task,
 	mach_semaphore_signal(right_signal->port);
 	
 	return ret;
+}
+
+long bsd_ioctl_trap(mach_task_t* task, struct bsd_ioctl_args* in_args)
+{
+	struct bsd_ioctl_args args;
+	struct file* f;
+	char name[60];
+	long retval = 0;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return -EFAULT;
+	
+	f = fget(args.fd);
+	if (f == NULL)
+		return -EBADF;
+	
+	if (f->f_op->unlocked_ioctl == NULL)
+	{
+		fput(f);
+		return -ENOTTY;
+	}
+	
+	if (d_path(&f->f_path, name, sizeof(name)) == NULL)
+	{
+		fput(f);
+		return -EBADF;
+	}
+	
+	// Perform ioctl translation based on name
+	if (strncmp(name, "socket:", 7) == 0)
+		bsd_ioctl_xlate_socket(&args);
+	else if (strncmp(name, "/dev/tty", 8) == 0)
+		bsd_ioctl_xlate_tty(&args);
+	else if (strncmp(name, "/dev/pts", 8) == 0)
+		bsd_ioctl_xlate_pts(&args);
+	
+	retval = f->f_op->unlocked_ioctl(f, args.request, args.arg);
+	
+	fput(f);
+	
+	return retval;
 }
 
 module_init(mach_init);

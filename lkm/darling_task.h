@@ -23,6 +23,8 @@
 #include "ipc_space.h"
 #include "ipc_port.h"
 #include <linux/thread_info.h>
+#include <linux/rbtree.h>
+#include <linux/spinlock.h>
 
 struct mach_task
 {
@@ -31,6 +33,9 @@ struct mach_task
 	
 	// TODO: add bootstrap port
 	darling_mach_port_t* task_self;
+	
+	rwlock_t threads_lock;
+	struct rb_root threads;
 };
 
 typedef struct mach_task mach_task_t;
@@ -47,6 +52,15 @@ darling_task_set_current(mach_task_t* task);
 
 unsigned int
 darling_get_task_count(void);
+
+void darling_task_register_thread(mach_task_t* task,
+		darling_mach_port_t* thread_port);
+void darling_task_deregister_thread(mach_task_t* task,
+		darling_mach_port_t* thread_port);
+darling_mach_port_t* darling_task_lookup_thread(mach_task_t* task,
+		pid_t thread);
+
+void darling_task_free_threads(mach_task_t* task);
 
 static inline bool
 task_is_64bit(void)

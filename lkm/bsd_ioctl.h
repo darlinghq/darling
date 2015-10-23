@@ -17,10 +17,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef SERVERS_STUB_H
-#define SERVERS_STUB_H
-#include "../debug.h"
+#ifndef BSD_IOCTL_H
+#define BSD_IOCTL_H
+#include "api.h"
 
-#define UNIMPL_MIG_CALL() debug_msg("STUB MIG call %s in " __FILE__ "\n", __func__)
+void bsd_ioctl_xlate_socket(struct bsd_ioctl_args* args);
+void bsd_ioctl_xlate_tty(struct bsd_ioctl_args* args);
+void bsd_ioctl_xlate_pts(struct bsd_ioctl_args* args);
 
 #endif

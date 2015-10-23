@@ -31,7 +31,7 @@
  * will be invoked.
  */
 
-void ipc_port_make_task(darling_mach_port_t* port, pid_t pid);
+mach_task_t* ipc_port_make_task(darling_mach_port_t* port, pid_t pid);
 mach_task_t* ipc_port_get_task(darling_mach_port_t* port);
 
 #endif
