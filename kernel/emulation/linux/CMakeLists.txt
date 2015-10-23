@@ -49,6 +49,7 @@ set(emulation_sources
 	network/socket.c
 	network/connect.c
 	stat/fstat.c
+	stat/stat.c
 	stat/common.c
 	dirent/getdirentries.c
 	time/gettimeofday.c

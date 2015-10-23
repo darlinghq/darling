@@ -36,6 +36,7 @@
 #include "network/connect.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
+#include "stat/stat.h"
 #include "time/gettimeofday.h"
 #include "wqueue/bsdthread_register.h"
 
@@ -72,12 +73,14 @@ void* __bsd_syscall_table[512] = {
 	[182] = sys_setegid,
 	[183] = sys_seteuid,
 	[187] = sys_fdatasync,
+	[188] = sys_stat,
 	[189] = sys_fstat,
 	[196] = sys_getdirentries,
 	[197] = sys_mmap,
 	[199] = sys_lseek,
 	[201] = sys_ftruncate,
 	[202] = sys_sysctl,
+	[338] = sys_stat64,
 	[339] = sys_fstat64,
 	[344] = sys_getdirentries64,
 	[366] = sys_bsdthread_register,
