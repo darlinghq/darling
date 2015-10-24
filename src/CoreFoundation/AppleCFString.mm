@@ -5,7 +5,7 @@
 extern "C" Class* _OBJC_CLASS_AppleCFString;
 extern "C" Class* __CFConstantStringClassReference;
 
-Class* __CFConstantStringClassReference  __attribute__ ((weak, alias ("_OBJC_CLASS_AppleCFString")));
+extern Class* __CFConstantStringClassReference  __attribute__ ((weak, alias ("_OBJC_CLASS_AppleCFString")));
 
 __attribute__((constructor)) static void forceAppleCFStringLoad()
 {
@@ -36,7 +36,7 @@ __attribute__((constructor)) static void forceAppleCFStringLoad()
 {
 	if (aRange.location+aRange.length > _length)
 		[NSException raise: NSRangeException format: @"Invalid range"];
-	
+
 	if (_flags & apple_unicode)
 	{
 		memcpy(buffer, _data._unicodeData + aRange.location, aRange.length);
