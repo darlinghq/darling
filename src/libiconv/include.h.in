@@ -1,0 +1,4 @@
+#define DLL_VARIABLE
+#define EXEEXT ""
+#define LIBDIR "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling"
+

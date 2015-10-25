@@ -64,7 +64,9 @@
  */
 
 //Begin-Libc
+#ifdef BUILDING_LIBC
 #include "xlocale_private.h"
+#endif
 //End-Libc
 #ifndef	_CTYPE_H_
 #define _CTYPE_H_
