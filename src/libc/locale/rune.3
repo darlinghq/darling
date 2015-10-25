@@ -1,0 +1,283 @@
+.\" Copyright (c) 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Paul Borman at Krystal Technologies.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"	@(#)rune.3	8.2 (Berkeley) 12/11/93
+.\" $FreeBSD: src/lib/libc/locale/rune.3,v 1.22 2002/12/19 09:40:22 ru Exp $
+.\"
+.Dd October 6, 2002
+.Dt RUNE 3
+.Os
+.Sh NAME
+.Nm setrunelocale ,
+.Nm setinvalidrune ,
+.Nm sgetrune ,
+.Nm sputrune ,
+.Nm fgetrune ,
+.Nm fungetrune ,
+.Nm fputrune
+.Nd rune support for C
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In rune.h
+.In errno.h
+.Ft int
+.Fn setrunelocale "char *locale"
+.Ft void
+.Fn setinvalidrune "rune_t rune"
+.Ft rune_t
+.Fn sgetrune "const char *string" "size_t n" "char const **result"
+.Ft int
+.Fn sputrune "rune_t rune" "char *string" "size_t n" "char **result"
+.Pp
+.In stdio.h
+.Ft long
+.Fn fgetrune "FILE *stream"
+.Ft int
+.Fn fungetrune "rune_t rune" "FILE *stream"
+.Ft int
+.Fn fputrune "rune_t rune" "FILE *stream"
+.Sh DESCRIPTION
+.Bf Em
+The
+.Bx 4.4
+.Dq rune
+functions have been deprecated in favour of the
+.Tn ISO
+C99 extended multibyte and wide character facilities
+and should not be used in new applications.
+.Ef
+Consider using
+.Xr setlocale 3 ,
+.Xr mbrtowc 3 ,
+.Xr wcrtomb 3 ,
+.Xr fgetwc 3 ,
+.Xr ungetwc 3 ,
+and
+.Xr fputwc 3
+instead.
+.Pp
+The
+.Fn setrunelocale
+controls the type of encoding used to represent runes as multibyte strings
+as well as the properties of the runes as defined in
+.Aq Pa ctype.h .
+The
+.Fa locale
+argument indicates which locale to load.
+If the locale is successfully loaded,
+.Dv 0
+is returned, otherwise an errno value is returned to indicate the
+type of error.
+.Pp
+The
+.Fn setinvalidrune
+function sets the value of the global value
+.Dv _INVALID_RUNE
+to be
+.Fa rune .
+.Pp
+The
+.Fn sgetrune
+function tries to read a single multibyte character from
+.Fa string ,
+which is at most
+.Fa n
+bytes long.
+If
+.Fn sgetrune
+is successful, the rune is returned.
+If
+.Fa result
+is not
+.Dv NULL ,
+.Fa *result
+will point to the first byte which was not converted in
+.Fa string .
+If the first
+.Fa n
+bytes of
+.Fa string
+do not describe a full multibyte character,
+.Dv _INVALID_RUNE
+is returned and
+.Fa *result
+will point to
+.Fa string .
+If there is an encoding error at the start of
+.Fa string ,
+.Dv _INVALID_RUNE
+is returned and
+.Fa *result
+will point to the second character of
+.Fa string .
+.Pp
+the
+.Fn sputrune
+function tries to encode
+.Fa rune
+as a multibyte string and store it at
+.Fa string ,
+but no more than
+.Fa n
+bytes will be stored.
+If
+.Fa result
+is not
+.Dv NULL ,
+.Fa *result
+will be set to point to the first byte in string following the new
+multibyte character.
+If
+.Fa string
+is
+.Dv NULL ,
+.Fa *result
+will point to
+.Dv "(char *)0 +"
+.Fa x ,
+where
+.Fa x
+is the number of bytes that would be needed to store the multibyte value.
+If the multibyte character would consist of more than
+.Fa n
+bytes and
+.Fa result
+is not
+.Dv NULL ,
+.Fa *result
+will be set to
+.Dv NULL .
+In all cases,
+.Fn sputrune
+will return the number of bytes which would be needed to store
+.Fa rune
+as a multibyte character.
+.Pp
+The
+.Fn fgetrune
+function operates the same as
+.Fn sgetrune
+with the exception that it attempts to read enough bytes from
+.Fa stream
+to decode a single rune.  It returns either
+.Dv EOF
+on end of file,
+.Dv _INVALID_RUNE
+on an encoding error, or the rune decoded if all went well.
+.Pp
+The
+.Fn fungetrune
+function pushes the multibyte encoding, as provided by
+.Fn sputrune ,
+of
+.Fa rune
+onto
+.Fa stream
+such that the next
+.Fn fgetrune
+call will return
+.Fa rune .
+It returns
+.Dv EOF
+if it fails and
+.Dv 0
+on success.
+.Pp
+The
+.Fn fputrune
+function writes the multibyte encoding of
+.Fa rune ,
+as provided by
+.Fn sputrune ,
+onto
+.Fa stream .
+It returns
+.Dv EOF
+on failure and
+.Dv 0
+on success.
+.Sh RETURN VALUES
+The
+.Fn setrunelocale
+function returns one of the following values:
+.Bl -tag -width Er
+.It Er 0
+The
+.Fn setrunelocale
+function
+was successful.
+.It Bq Er EINVAL
+The
+.Fa locale
+name was incorrect.
+.It Bq Er ENOENT
+The locale could not be found.
+.It Bq Er EFTYPE
+The file found was not a valid file.
+.El
+.Pp
+The
+.Fn sgetrune
+function either returns the rune read or
+.Dv _INVALID_RUNE .
+The
+.Fn sputrune
+function returns the number of bytes needed to store
+.Fa rune
+as a multibyte string.
+.Sh FILES
+.Bl -tag -width /usr/share/locale/locale/LC_CTYPE -compact
+.It Pa $PATH_LOCALE/ Ns Em locale Ns /LC_CTYPE
+.It Pa /usr/share/locale/ Ns Em locale Ns /LC_CTYPE
+binary LC_CTYPE file for the locale
+.Em locale .
+.El
+.Sh SEE ALSO
+.Xr mbrune 3 ,
+.Xr setlocale 3 ,
+.Xr euc 4 ,
+.Xr utf2 4 ,
+.Xr utf8 5
+.Sh HISTORY
+These functions first appeared in
+.Bx 4.4 .
+.Pp
+The
+.Fn setrunelocale
+function and the other non-ANSI rune functions were inspired by
+.Sy "Plan 9 from Bell Labs" .
+.\"They were conceived at the San Diego 1993 Summer USENIX conference by
+.\"Paul Borman of Krystal Technologies, Keith Bostic of CSRG and Andrew Hume
+.\"of Bell Labs.

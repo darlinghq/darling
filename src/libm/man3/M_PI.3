@@ -1,0 +1,62 @@
+.\" Stephen Canon, Apple Inc
+.Dd July 6, 2010
+.Dt M_PI 3
+.Os
+.Sh NAME
+.Nm constants
+.Nd mathematical library constants
+.Sh SYNOPSIS
+.Fd #include <math.h>
+.Sh DESCRIPTION
+The header file math.h provides macros that define a number of useful numerical
+constants.
+.Sh LIST OF CONSTANTS
+As required by the POSIX standard, these constants are double-precision literals,
+with enough digits specified as to ensure that they are correctly rounded in
+double-precision:
+.Pp
+.Dv M_E
+.Pp
+"Euler's constant" or e; the base of the natural logarithm.
+.Pp
+.Dv M_LOG2E
+.br
+.Dv M_LOG10E
+.Pp
+The logarithms of e in base 2 and 10, respectively.
+.Pp
+.Dv M_LN2
+.br
+.Dv M_LN10
+.Pp
+The natural logarithms of 2 and 10, respectively.  Note that these are the
+reciprocals of the preceeding two values.
+.Pp
+.Dv M_PI
+.br
+.Dv M_PI_2
+.br
+.Dv M_PI_4
+.Pp
+pi, pi/2, and pi/4, respectively.
+.Pp
+.Dv M_1_PI
+.br
+.Dv M_2_PI
+.Pp
+1/pi and 2/pi, respectively.
+.Pp
+.Dv M_2_SQRTPI
+.Pp
+Two divided by the square root of pi.
+.Pp
+.Dv M_SQRT2
+.br
+.Dv M_SQRT_1_2
+.Pp
+The square root of two and its reciprocal, respectively.
+.Sh SEE ALSO
+.Xr math 3 ,
+.Xr float 3 ,
+.Sh STANDARDS
+The <math.h> functions and macros conform to the ISO/IEC 9899:1999(E) standard.

@@ -1,0 +1,698 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 45;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		3FA21AC7148AA93000099D2F /* cli_apps */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 3FA21AC8148AA93000099D2F /* Build configuration list for PBXAggregateTarget "cli_apps" */;
+			buildPhases = (
+				3F947784191C32DC00A93E8E /* No Simulator Man Pages */,
+			);
+			dependencies = (
+				3FA21ACB148AA94A00099D2F /* PBXTargetDependency */,
+				3FA21ACD148AA94A00099D2F /* PBXTargetDependency */,
+			);
+			name = cli_apps;
+			productName = cli_apps;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		2D312B76102CA2E300F90022 /* libnotify.c in Sources */ = {isa = PBXBuildFile; fileRef = 2D312B73102CA2E300F90022 /* libnotify.c */; };
+		2D312B77102CA2E300F90022 /* notify_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 2D312B74102CA2E300F90022 /* notify_client.c */; };
+		2D312B78102CA2E300F90022 /* table.c in Sources */ = {isa = PBXBuildFile; fileRef = 2D312B75102CA2E300F90022 /* table.c */; };
+		2D312B7A102CA30200F90022 /* notify_ipc.defs in Sources */ = {isa = PBXBuildFile; fileRef = 2D312B79102CA30200F90022 /* notify_ipc.defs */; settings = {ATTRIBUTES = (Client, ); }; };
+		2D312B7E102CA32500F90022 /* notify_keys.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D312B7C102CA32500F90022 /* notify_keys.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		2D312B7F102CA32500F90022 /* notify.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D312B7D102CA32500F90022 /* notify.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		2D312B82102CA34D00F90022 /* libnotify.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D312B81102CA34D00F90022 /* libnotify.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		2D312B87102CA36C00F90022 /* table.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D312B85102CA36C00F90022 /* table.h */; };
+		2D38AA0A102CD88300D3D622 /* notify.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B92102CA38F00F90022 /* notify.3 */; };
+		2D38AA0B102CD89B00D3D622 /* notify_cancel.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B88102CA38F00F90022 /* notify_cancel.3 */; };
+		2D38AA0C102CD89B00D3D622 /* notify_check.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B89102CA38F00F90022 /* notify_check.3 */; };
+		2D38AA0D102CD8B800D3D622 /* notify_get_state.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B8A102CA38F00F90022 /* notify_get_state.3 */; };
+		2D38AA0E102CD8B800D3D622 /* notify_is_valid_token.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D6D820D18DA602A0034E7B4 /* notify_is_valid_token.3 */; };
+		2D38AA0F102CD8B800D3D622 /* notify_post.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B8B102CA38F00F90022 /* notify_post.3 */; };
+		2D38AA10102CD8B800D3D622 /* notify_register_check.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B8C102CA38F00F90022 /* notify_register_check.3 */; };
+		2D38AA11102CD8B800D3D622 /* notify_register_dispatch.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B8D102CA38F00F90022 /* notify_register_dispatch.3 */; };
+		2D38AA12102CD8B800D3D622 /* notify_register_file_descriptor.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B8E102CA38F00F90022 /* notify_register_file_descriptor.3 */; };
+		2D38AA13102CD8B800D3D622 /* notify_register_mach_port.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B8F102CA38F00F90022 /* notify_register_mach_port.3 */; };
+		2D38AA14102CD8B800D3D622 /* notify_register_signal.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B90102CA38F00F90022 /* notify_register_signal.3 */; };
+		2D38AA15102CD8B800D3D622 /* notify_set_state.3 in Copy man3 Files */ = {isa = PBXBuildFile; fileRef = 2D312B91102CA38F00F90022 /* notify_set_state.3 */; };
+		2DCB287210D99ADA00DF3A8D /* notify_private.h in Headers */ = {isa = PBXBuildFile; fileRef = 2DCB287110D99ADA00DF3A8D /* notify_private.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		3FA21ACF148AAA5000099D2F /* notify_proc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FA21A9C148AA7FA00099D2F /* notify_proc.c */; };
+		3FA21AD0148AAA5000099D2F /* notifyd.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FA21A9E148AA7FA00099D2F /* notifyd.c */; };
+		3FA21AD1148AAA5000099D2F /* pathwatch.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FA21AA0148AA7FA00099D2F /* pathwatch.c */; };
+		3FA21AD2148AAA5000099D2F /* service.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FA21AA2148AA7FA00099D2F /* service.c */; };
+		3FA21AD3148AAA5000099D2F /* timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FA21AA5148AA7FA00099D2F /* timer.c */; };
+		3FA21AD4148AAA5D00099D2F /* notifyd.8 in Install man page */ = {isa = PBXBuildFile; fileRef = 3FA21A9D148AA7FA00099D2F /* notifyd.8 */; };
+		3FA21AD5148AAA6E00099D2F /* notifyutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FA21AA9148AA82700099D2F /* notifyutil.c */; };
+		3FA21AD6148AAA7500099D2F /* notifyutil.1 in Install man page */ = {isa = PBXBuildFile; fileRef = 3FA21AA8148AA82700099D2F /* notifyutil.1 */; };
+		3FA21AD8148AAABE00099D2F /* com.apple.notifyd.plist in Install launchd.plist */ = {isa = PBXBuildFile; fileRef = 3FA21A99148AA7FA00099D2F /* com.apple.notifyd.plist */; };
+		3FA21AE6148AAEAC00099D2F /* notify_ipc.defs in Sources */ = {isa = PBXBuildFile; fileRef = 2D312B79102CA30200F90022 /* notify_ipc.defs */; settings = {ATTRIBUTES = (Client, Server, ); }; };
+		3FD0DBAD148AB12000C50811 /* libbsm.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 3FD0DBAC148AB12000C50811 /* libbsm.dylib */; };
+		FC7B7A53155781930064D203 /* notify_internal.h in Headers */ = {isa = PBXBuildFile; fileRef = FC7B7A52155781930064D203 /* notify_internal.h */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		3FA21ACA148AA94A00099D2F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 08FB7793FE84155DC02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3FA21AAF148AA8E300099D2F;
+			remoteInfo = notifyd;
+		};
+		3FA21ACC148AA94A00099D2F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 08FB7793FE84155DC02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3FA21ABD148AA8F000099D2F;
+			remoteInfo = notifyutil;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2D38AA09102CD87C00D3D622 /* Copy man3 Files */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = "$(INSTALL_PATH_PREFIX)/usr/share/man/man3";
+			dstSubfolderSpec = 0;
+			files = (
+				2D38AA0A102CD88300D3D622 /* notify.3 in Copy man3 Files */,
+				2D38AA0B102CD89B00D3D622 /* notify_cancel.3 in Copy man3 Files */,
+				2D38AA0C102CD89B00D3D622 /* notify_check.3 in Copy man3 Files */,
+				2D38AA0D102CD8B800D3D622 /* notify_get_state.3 in Copy man3 Files */,
+				2D38AA0E102CD8B800D3D622 /* notify_is_valid_token.3 in Copy man3 Files */,
+				2D38AA0F102CD8B800D3D622 /* notify_post.3 in Copy man3 Files */,
+				2D38AA10102CD8B800D3D622 /* notify_register_check.3 in Copy man3 Files */,
+				2D38AA11102CD8B800D3D622 /* notify_register_dispatch.3 in Copy man3 Files */,
+				2D38AA12102CD8B800D3D622 /* notify_register_file_descriptor.3 in Copy man3 Files */,
+				2D38AA13102CD8B800D3D622 /* notify_register_mach_port.3 in Copy man3 Files */,
+				2D38AA14102CD8B800D3D622 /* notify_register_signal.3 in Copy man3 Files */,
+				2D38AA15102CD8B800D3D622 /* notify_set_state.3 in Copy man3 Files */,
+			);
+			name = "Copy man3 Files";
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		3FA21AAE148AA8E300099D2F /* Install man page */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(INSTALL_PATH_PREFIX)/usr/share/man/man8";
+			dstSubfolderSpec = 0;
+			files = (
+				3FA21AD4148AAA5D00099D2F /* notifyd.8 in Install man page */,
+			);
+			name = "Install man page";
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		3FA21ABC148AA8F000099D2F /* Install man page */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(INSTALL_PATH_PREFIX)/usr/share/man/man1";
+			dstSubfolderSpec = 0;
+			files = (
+				3FA21AD6148AAA7500099D2F /* notifyutil.1 in Install man page */,
+			);
+			name = "Install man page";
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		3FA21AD7148AAAA600099D2F /* Install launchd.plist */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = "$(INSTALL_PATH_PREFIX)/System/Library/LaunchDaemons";
+			dstSubfolderSpec = 0;
+			files = (
+				3FA21AD8148AAABE00099D2F /* com.apple.notifyd.plist in Install launchd.plist */,
+			);
+			name = "Install launchd.plist";
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		2D312B73102CA2E300F90022 /* libnotify.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libnotify.c; sourceTree = "<group>"; };
+		2D312B74102CA2E300F90022 /* notify_client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = notify_client.c; sourceTree = "<group>"; };
+		2D312B75102CA2E300F90022 /* table.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = table.c; sourceTree = "<group>"; };
+		2D312B79102CA30200F90022 /* notify_ipc.defs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.mig; path = notify_ipc.defs; sourceTree = "<group>"; };
+		2D312B7C102CA32500F90022 /* notify_keys.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; path = notify_keys.h; sourceTree = "<group>"; };
+		2D312B7D102CA32500F90022 /* notify.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = notify.h; sourceTree = "<group>"; };
+		2D312B81102CA34D00F90022 /* libnotify.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libnotify.h; sourceTree = "<group>"; };
+		2D312B84102CA36C00F90022 /* notify_ipc_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = notify_ipc_types.h; sourceTree = "<group>"; };
+		2D312B85102CA36C00F90022 /* table.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = table.h; sourceTree = "<group>"; };
+		2D312B88102CA38F00F90022 /* notify_cancel.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_cancel.3; sourceTree = "<group>"; };
+		2D312B89102CA38F00F90022 /* notify_check.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_check.3; sourceTree = "<group>"; };
+		2D312B8A102CA38F00F90022 /* notify_get_state.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_get_state.3; sourceTree = "<group>"; };
+		2D312B8B102CA38F00F90022 /* notify_post.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_post.3; sourceTree = "<group>"; };
+		2D312B8C102CA38F00F90022 /* notify_register_check.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_register_check.3; sourceTree = "<group>"; };
+		2D312B8D102CA38F00F90022 /* notify_register_dispatch.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_register_dispatch.3; sourceTree = "<group>"; };
+		2D312B8E102CA38F00F90022 /* notify_register_file_descriptor.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_register_file_descriptor.3; sourceTree = "<group>"; };
+		2D312B8F102CA38F00F90022 /* notify_register_mach_port.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_register_mach_port.3; sourceTree = "<group>"; };
+		2D312B90102CA38F00F90022 /* notify_register_signal.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_register_signal.3; sourceTree = "<group>"; };
+		2D312B91102CA38F00F90022 /* notify_set_state.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_set_state.3; sourceTree = "<group>"; };
+		2D312B92102CA38F00F90022 /* notify.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify.3; sourceTree = "<group>"; };
+		2D6D820D18DA602A0034E7B4 /* notify_is_valid_token.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notify_is_valid_token.3; sourceTree = "<group>"; };
+		2DCB287110D99ADA00DF3A8D /* notify_private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = notify_private.h; sourceTree = "<group>"; };
+		2DF9EA0B102CF33400DE9E8D /* APPLE_LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = APPLE_LICENSE; sourceTree = "<group>"; };
+		3F82235D12B18551005DD509 /* libnotify.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = libnotify.xcconfig; sourceTree = "<group>"; };
+		3F8223B412B18877005DD509 /* libsystem_notify.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libsystem_notify.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		3F947780191C322100A93E8E /* no-sim-man.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "no-sim-man.sh"; sourceTree = "<group>"; };
+		3F947781191C322100A93E8E /* sim-compat-symlink.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "sim-compat-symlink.sh"; sourceTree = "<group>"; };
+		3F999961185C474E00EAD3A0 /* base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = base.xcconfig; sourceTree = "<group>"; };
+		3F999963185C474E00EAD3A0 /* notifyd.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = notifyd.xcconfig; sourceTree = "<group>"; };
+		3F999964185C474E00EAD3A0 /* notifyutil.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = notifyutil.xcconfig; sourceTree = "<group>"; };
+		3FA21A99148AA7FA00099D2F /* com.apple.notifyd.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.apple.notifyd.plist; sourceTree = "<group>"; };
+		3FA21A9A148AA7FA00099D2F /* notify.conf */ = {isa = PBXFileReference; lastKnownFileType = text; path = notify.conf; sourceTree = "<group>"; };
+		3FA21A9B148AA7FA00099D2F /* notify.conf.iPhone */ = {isa = PBXFileReference; lastKnownFileType = text; name = notify.conf.iPhone; path = ../notify.conf.iPhone; sourceTree = "<group>"; };
+		3FA21A9C148AA7FA00099D2F /* notify_proc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = notify_proc.c; sourceTree = "<group>"; };
+		3FA21A9D148AA7FA00099D2F /* notifyd.8 */ = {isa = PBXFileReference; lastKnownFileType = text; path = notifyd.8; sourceTree = "<group>"; };
+		3FA21A9E148AA7FA00099D2F /* notifyd.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = notifyd.c; sourceTree = "<group>"; };
+		3FA21A9F148AA7FA00099D2F /* notifyd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = notifyd.h; sourceTree = "<group>"; };
+		3FA21AA0148AA7FA00099D2F /* pathwatch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = pathwatch.c; sourceTree = "<group>"; };
+		3FA21AA1148AA7FA00099D2F /* pathwatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pathwatch.h; sourceTree = "<group>"; };
+		3FA21AA2148AA7FA00099D2F /* service.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = service.c; sourceTree = "<group>"; };
+		3FA21AA3148AA7FA00099D2F /* service.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = service.h; sourceTree = "<group>"; };
+		3FA21AA4148AA7FA00099D2F /* table.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = table.h; sourceTree = "<group>"; };
+		3FA21AA5148AA7FA00099D2F /* timer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = timer.c; sourceTree = "<group>"; };
+		3FA21AA6148AA7FA00099D2F /* timer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = timer.h; sourceTree = "<group>"; };
+		3FA21AA8148AA82700099D2F /* notifyutil.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = notifyutil.1; sourceTree = "<group>"; };
+		3FA21AA9148AA82700099D2F /* notifyutil.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = notifyutil.c; sourceTree = "<group>"; };
+		3FA21AB0148AA8E300099D2F /* notifyd */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = notifyd; sourceTree = BUILT_PRODUCTS_DIR; };
+		3FA21ABE148AA8F000099D2F /* notifyutil */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = notifyutil; sourceTree = BUILT_PRODUCTS_DIR; };
+		3FA21ADD148AABA900099D2F /* mk_notify_conf.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = mk_notify_conf.sh; sourceTree = "<group>"; };
+		3FA21ADF148AACA000099D2F /* notify.conf.MacOSX */ = {isa = PBXFileReference; lastKnownFileType = text; name = notify.conf.MacOSX; path = notifyd/notify.conf.MacOSX; sourceTree = SOURCE_ROOT; };
+		3FD0DBAC148AB12000C50811 /* libbsm.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libbsm.dylib; path = /usr/lib/libbsm.dylib; sourceTree = "<absolute>"; };
+		FC7B7A52155781930064D203 /* notify_internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = notify_internal.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3FA21AAD148AA8E300099D2F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3FD0DBAD148AB12000C50811 /* libbsm.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3FA21ABB148AA8F000099D2F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D289987405E68DCB004EDB86 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		08FB7794FE84155DC02AAC07 /* Libnotify */ = {
+			isa = PBXGroup;
+			children = (
+				3F94777F191C322100A93E8E /* xcodescripts */,
+				3F999960185C474E00EAD3A0 /* xcodeconfig */,
+				2D312B79102CA30200F90022 /* notify_ipc.defs */,
+				3FA21A97148AA7CD00099D2F /* libsystem_notify */,
+				3FA21AA7148AA82700099D2F /* notifyutil */,
+				3FA21A98148AA7FA00099D2F /* notifyd */,
+				2DF9EA0A102CF31700DE9E8D /* Additional Files */,
+				3FA21ACE148AAA0D00099D2F /* Products */,
+			);
+			name = Libnotify;
+			sourceTree = "<group>";
+		};
+		2D312B72102CA2C400F90022 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				2D312B73102CA2E300F90022 /* libnotify.c */,
+				2D312B74102CA2E300F90022 /* notify_client.c */,
+				2D312B75102CA2E300F90022 /* table.c */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		2D312B7B102CA30600F90022 /* Public Headers */ = {
+			isa = PBXGroup;
+			children = (
+				2D312B7C102CA32500F90022 /* notify_keys.h */,
+				2D312B7D102CA32500F90022 /* notify.h */,
+			);
+			name = "Public Headers";
+			sourceTree = "<group>";
+		};
+		2D312B80102CA33600F90022 /* Private Headers */ = {
+			isa = PBXGroup;
+			children = (
+				2DCB287110D99ADA00DF3A8D /* notify_private.h */,
+				2D312B81102CA34D00F90022 /* libnotify.h */,
+			);
+			name = "Private Headers";
+			sourceTree = "<group>";
+		};
+		2D312B83102CA35300F90022 /* Project Headers */ = {
+			isa = PBXGroup;
+			children = (
+				FC7B7A52155781930064D203 /* notify_internal.h */,
+				2D312B84102CA36C00F90022 /* notify_ipc_types.h */,
+				2D312B85102CA36C00F90022 /* table.h */,
+			);
+			name = "Project Headers";
+			sourceTree = "<group>";
+		};
+		2DF9EA0A102CF31700DE9E8D /* Additional Files */ = {
+			isa = PBXGroup;
+			children = (
+				2DF9EA0B102CF33400DE9E8D /* APPLE_LICENSE */,
+			);
+			name = "Additional Files";
+			sourceTree = "<group>";
+		};
+		3F94777F191C322100A93E8E /* xcodescripts */ = {
+			isa = PBXGroup;
+			children = (
+				3F947780191C322100A93E8E /* no-sim-man.sh */,
+				3F947781191C322100A93E8E /* sim-compat-symlink.sh */,
+			);
+			path = xcodescripts;
+			sourceTree = "<group>";
+		};
+		3F999960185C474E00EAD3A0 /* xcodeconfig */ = {
+			isa = PBXGroup;
+			children = (
+				3F999961185C474E00EAD3A0 /* base.xcconfig */,
+				3F82235D12B18551005DD509 /* libnotify.xcconfig */,
+				3F999963185C474E00EAD3A0 /* notifyd.xcconfig */,
+				3F999964185C474E00EAD3A0 /* notifyutil.xcconfig */,
+			);
+			path = xcodeconfig;
+			sourceTree = "<group>";
+		};
+		3FA21A97148AA7CD00099D2F /* libsystem_notify */ = {
+			isa = PBXGroup;
+			children = (
+				2D312B83102CA35300F90022 /* Project Headers */,
+				2D312B80102CA33600F90022 /* Private Headers */,
+				2D312B7B102CA30600F90022 /* Public Headers */,
+				2D312B72102CA2C400F90022 /* Source */,
+				C6A0FF2B0290797F04C91782 /* Documentation */,
+			);
+			name = libsystem_notify;
+			sourceTree = "<group>";
+		};
+		3FA21A98148AA7FA00099D2F /* notifyd */ = {
+			isa = PBXGroup;
+			children = (
+				3FA21ADC148AABA900099D2F /* Build Support */,
+				3FA21A99148AA7FA00099D2F /* com.apple.notifyd.plist */,
+				3FA21A9A148AA7FA00099D2F /* notify.conf */,
+				3FA21AAA148AA85300099D2F /* Source */,
+				3FA21A9D148AA7FA00099D2F /* notifyd.8 */,
+				3FA21AAB148AA86600099D2F /* Private Headers */,
+			);
+			path = notifyd;
+			sourceTree = "<group>";
+		};
+		3FA21AA7148AA82700099D2F /* notifyutil */ = {
+			isa = PBXGroup;
+			children = (
+				3FA21AA8148AA82700099D2F /* notifyutil.1 */,
+				3FA21AA9148AA82700099D2F /* notifyutil.c */,
+			);
+			path = notifyutil;
+			sourceTree = "<group>";
+		};
+		3FA21AAA148AA85300099D2F /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				3FA21A9C148AA7FA00099D2F /* notify_proc.c */,
+				3FA21A9E148AA7FA00099D2F /* notifyd.c */,
+				3FA21AA0148AA7FA00099D2F /* pathwatch.c */,
+				3FA21AA2148AA7FA00099D2F /* service.c */,
+				3FA21AA5148AA7FA00099D2F /* timer.c */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		3FA21AAB148AA86600099D2F /* Private Headers */ = {
+			isa = PBXGroup;
+			children = (
+				3FA21A9F148AA7FA00099D2F /* notifyd.h */,
+				3FA21AA1148AA7FA00099D2F /* pathwatch.h */,
+				3FA21AA3148AA7FA00099D2F /* service.h */,
+				3FA21AA4148AA7FA00099D2F /* table.h */,
+				3FA21AA6148AA7FA00099D2F /* timer.h */,
+			);
+			name = "Private Headers";
+			sourceTree = "<group>";
+		};
+		3FA21ACE148AAA0D00099D2F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3F8223B412B18877005DD509 /* libsystem_notify.dylib */,
+				3FA21AB0148AA8E300099D2F /* notifyd */,
+				3FA21ABE148AA8F000099D2F /* notifyutil */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3FA21ADC148AABA900099D2F /* Build Support */ = {
+			isa = PBXGroup;
+			children = (
+				3FD0DBAC148AB12000C50811 /* libbsm.dylib */,
+				3FA21ADF148AACA000099D2F /* notify.conf.MacOSX */,
+				3FA21A9B148AA7FA00099D2F /* notify.conf.iPhone */,
+				3FA21ADD148AABA900099D2F /* mk_notify_conf.sh */,
+			);
+			name = "Build Support";
+			path = xcodescripts;
+			sourceTree = "<group>";
+		};
+		C6A0FF2B0290797F04C91782 /* Documentation */ = {
+			isa = PBXGroup;
+			children = (
+				2D312B88102CA38F00F90022 /* notify_cancel.3 */,
+				2D312B89102CA38F00F90022 /* notify_check.3 */,
+				2D312B8A102CA38F00F90022 /* notify_get_state.3 */,
+				2D6D820D18DA602A0034E7B4 /* notify_is_valid_token.3 */,
+				2D312B8B102CA38F00F90022 /* notify_post.3 */,
+				2D312B8C102CA38F00F90022 /* notify_register_check.3 */,
+				2D312B8D102CA38F00F90022 /* notify_register_dispatch.3 */,
+				2D312B8E102CA38F00F90022 /* notify_register_file_descriptor.3 */,
+				2D312B8F102CA38F00F90022 /* notify_register_mach_port.3 */,
+				2D312B90102CA38F00F90022 /* notify_register_signal.3 */,
+				2D312B91102CA38F00F90022 /* notify_set_state.3 */,
+				2D312B92102CA38F00F90022 /* notify.3 */,
+			);
+			name = Documentation;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		D2AAC043055464E500DB518D /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2D312B7E102CA32500F90022 /* notify_keys.h in Headers */,
+				2D312B7F102CA32500F90022 /* notify.h in Headers */,
+				2D312B82102CA34D00F90022 /* libnotify.h in Headers */,
+				2D312B87102CA36C00F90022 /* table.h in Headers */,
+				2DCB287210D99ADA00DF3A8D /* notify_private.h in Headers */,
+				FC7B7A53155781930064D203 /* notify_internal.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		3FA21AAF148AA8E300099D2F /* notifyd */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3FA21AB8148AA8E300099D2F /* Build configuration list for PBXNativeTarget "notifyd" */;
+			buildPhases = (
+				3FA21AAC148AA8E300099D2F /* Sources */,
+				3FA21AAD148AA8E300099D2F /* Frameworks */,
+				3FA21AAE148AA8E300099D2F /* Install man page */,
+				3FA21AD7148AAAA600099D2F /* Install launchd.plist */,
+				3FA21ADB148AAB1C00099D2F /* Install notify.conf */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = notifyd;
+			productName = notifyd;
+			productReference = 3FA21AB0148AA8E300099D2F /* notifyd */;
+			productType = "com.apple.product-type.tool";
+		};
+		3FA21ABD148AA8F000099D2F /* notifyutil */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3FA21AC5148AA8F000099D2F /* Build configuration list for PBXNativeTarget "notifyutil" */;
+			buildPhases = (
+				3FA21ABA148AA8F000099D2F /* Sources */,
+				3FA21ABB148AA8F000099D2F /* Frameworks */,
+				3FA21ABC148AA8F000099D2F /* Install man page */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = notifyutil;
+			productName = notifyutil;
+			productReference = 3FA21ABE148AA8F000099D2F /* notifyutil */;
+			productType = "com.apple.product-type.tool";
+		};
+		D2AAC045055464E500DB518D /* libnotify */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DEB91EB08733DB70010E9CD /* Build configuration list for PBXNativeTarget "libnotify" */;
+			buildPhases = (
+				D2AAC043055464E500DB518D /* Headers */,
+				D2AAC044055464E500DB518D /* Sources */,
+				D289987405E68DCB004EDB86 /* Frameworks */,
+				2D38AA09102CD87C00D3D622 /* Copy man3 Files */,
+				3F947782191C324900A93E8E /* No Simulator Man Pages */,
+				3F947783191C327700A93E8E /* Sim compat symlink */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = libnotify;
+			productName = Libnotify;
+			productReference = 3F8223B412B18877005DD509 /* libsystem_notify.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+			};
+			buildConfigurationList = 1DEB91EF08733DB70010E9CD /* Build configuration list for PBXProject "Libnotify" */;
+			compatibilityVersion = "Xcode 3.1";
+			developmentRegion = English;
+			hasScannedForEncodings = 1;
+			knownRegions = (
+				English,
+				Japanese,
+				French,
+				German,
+			);
+			mainGroup = 08FB7794FE84155DC02AAC07 /* Libnotify */;
+			productRefGroup = 08FB7794FE84155DC02AAC07 /* Libnotify */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D2AAC045055464E500DB518D /* libnotify */,
+				3FA21AAF148AA8E300099D2F /* notifyd */,
+				3FA21ABD148AA8F000099D2F /* notifyutil */,
+				3FA21AC7148AA93000099D2F /* cli_apps */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		3F947782191C324900A93E8E /* No Simulator Man Pages */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/xcodescripts/no-sim-man.sh",
+			);
+			name = "No Simulator Man Pages";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = "/bin/bash -e -x";
+			shellScript = "exec \"${SCRIPT_INPUT_FILE_0}\"";
+		};
+		3F947783191C327700A93E8E /* Sim compat symlink */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/xcodescripts/sim-compat-symlink.sh",
+			);
+			name = "Sim compat symlink";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = "/bin/bash -e -x";
+			shellScript = "exec \"${SCRIPT_INPUT_FILE_0}\"";
+		};
+		3F947784191C32DC00A93E8E /* No Simulator Man Pages */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/xcodescripts/no-sim-man.sh",
+			);
+			name = "No Simulator Man Pages";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = "/bin/bash -e -x";
+			shellScript = "exec \"${SCRIPT_INPUT_FILE_0}\"";
+		};
+		3FA21ADB148AAB1C00099D2F /* Install notify.conf */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/notifyd/xcodescripts/mk_notify_conf.sh",
+			);
+			name = "Install notify.conf";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = "/bin/bash -e -x";
+			shellScript = "exec \"${SCRIPT_INPUT_FILE_0}\"";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3FA21AAC148AA8E300099D2F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3FA21AE6148AAEAC00099D2F /* notify_ipc.defs in Sources */,
+				3FA21ACF148AAA5000099D2F /* notify_proc.c in Sources */,
+				3FA21AD0148AAA5000099D2F /* notifyd.c in Sources */,
+				3FA21AD1148AAA5000099D2F /* pathwatch.c in Sources */,
+				3FA21AD2148AAA5000099D2F /* service.c in Sources */,
+				3FA21AD3148AAA5000099D2F /* timer.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3FA21ABA148AA8F000099D2F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3FA21AD5148AAA6E00099D2F /* notifyutil.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D2AAC044055464E500DB518D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2D312B7A102CA30200F90022 /* notify_ipc.defs in Sources */,
+				2D312B76102CA2E300F90022 /* libnotify.c in Sources */,
+				2D312B77102CA2E300F90022 /* notify_client.c in Sources */,
+				2D312B78102CA2E300F90022 /* table.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		3FA21ACB148AA94A00099D2F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3FA21AAF148AA8E300099D2F /* notifyd */;
+			targetProxy = 3FA21ACA148AA94A00099D2F /* PBXContainerItemProxy */;
+		};
+		3FA21ACD148AA94A00099D2F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3FA21ABD148AA8F000099D2F /* notifyutil */;
+			targetProxy = 3FA21ACC148AA94A00099D2F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1DEB91ED08733DB70010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F82235D12B18551005DD509 /* libnotify.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		1DEB91F108733DB70010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLY_RULES_IN_COPY_FILES = YES;
+			};
+			name = Release;
+		};
+		3FA21AB9148AA8E300099D2F /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F999963185C474E00EAD3A0 /* notifyd.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		3FA21AC6148AA8F000099D2F /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F999964185C474E00EAD3A0 /* notifyutil.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		3FA21AC9148AA93000099D2F /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F999961185C474E00EAD3A0 /* base.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB91EB08733DB70010E9CD /* Build configuration list for PBXNativeTarget "libnotify" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB91ED08733DB70010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1DEB91EF08733DB70010E9CD /* Build configuration list for PBXProject "Libnotify" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB91F108733DB70010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3FA21AB8148AA8E300099D2F /* Build configuration list for PBXNativeTarget "notifyd" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3FA21AB9148AA8E300099D2F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3FA21AC5148AA8F000099D2F /* Build configuration list for PBXNativeTarget "notifyutil" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3FA21AC6148AA8F000099D2F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3FA21AC8148AA93000099D2F /* Build configuration list for PBXAggregateTarget "cli_apps" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3FA21AC9148AA93000099D2F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

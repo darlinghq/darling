@@ -1,0 +1,144 @@
+.\" Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. The name of the author may not be used to endorse or promote products
+.\"    derived from this software without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+.\" INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+.\" AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+.\" THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+.\" EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+.\" PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+.\" OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+.\" WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+.\" OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+.\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $OpenBSD: a64l.3,v 1.5 2000/04/20 13:50:01 aaron Exp $
+.\"
+.Dd August 17, 1997
+.Dt A64L 3
+.Os
+.Sh NAME
+.Nm a64l ,
+.Nm l64a
+.Nd convert between 32-bit integer and radix-64 ASCII string
+.Sh SYNOPSIS
+.Fd #include <stdlib.h>
+.Ft long
+.Fn a64l "const char *s"
+.Ft char *
+.Fn l64a "long value"
+.Sh DESCRIPTION
+The
+.Fn a64l
+and
+.Fn l64a
+functions are used to maintain numbers stored in radix-64
+.Tn ASCII
+characters.
+This is a notation by which 32-bit integers
+can be represented by up to six characters; each character represents a
+.Dq digit
+in a radix-64 notation.
+.Pp
+The characters used to represent digits are
+.Ql \&.
+for 0,
+.Ql /
+for 1,
+.Ql 0
+through
+.Ql 9
+for 2-11,
+.Ql A
+through
+.Ql Z
+for 12-37, and
+.Ql a
+through
+.Ql z
+for 38-63.
+.Pp
+The
+.Fn a64l
+function takes a pointer to a null-terminated radix-64 representation
+and returns a corresponding 32-bit value.
+If the string pointed to by
+.Fa s
+contains more than six characters,
+.Fn a64l
+will use the first six.
+.Fn a64l
+scans the character string from left to right, decoding
+each character as a 6-bit radix-64 number.
+If a long integer is
+larger than 32 bits, the return value will be sign-extended.
+.Pp
+.Fn l64a
+takes a long integer argument
+.Fa value
+and returns a pointer to the corresponding radix-64 representation.
+.Sh RETURN VALUES
+On success,
+.Fn a64l
+returns a 32-bit representation of
+.Fa s .
+If
+.Fa s
+is a null pointer or if it contains digits other than those described above.
+.Fn a64l
+returns \-1 and sets the global variable
+.Va errno
+to
+.Er EINVAL .
+.Pp
+On success,
+.Fn l64a
+returns a pointer to a string containing the radix-64 representation of
+.Fa value .
+If
+.Fa value
+is 0,
+.Fn l64a
+returns a pointer to the empty string.
+If
+.Fa value
+is negative,
+.Fn l64a
+returns a null pointer and sets the global variable
+.Va errno
+to
+.Er EINVAL .
+.Sh WARNINGS
+The value returned by
+.Fn l64a
+is a pointer into a static buffer, the contents of which
+will be overwritten by subsequent calls.
+.Pp
+The value returned by
+.Fn a64l
+may be incorrect if the value is too large; for that reason, only strings
+that resulted from a call to
+.Fn l64a
+should be used to call
+.Fn a64l .
+.Pp
+If a long integer is larger than 32 bits, only the low-order
+32 bits are used.
+.Sh STANDARDS
+The
+.Fn a64l
+and
+.Fn l64a
+functions conform to
+.St -xpg4.2 .

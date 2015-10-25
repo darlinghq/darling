@@ -1,0 +1,10 @@
+#
+# Notification Center configuration file
+#
+
+reserve com.apple.system. 0 0 rwr-r-
+monitor com.apple.system.timezone /etc/localtime
+monitor com.apple.system.info:/etc/hosts /etc/hosts
+monitor com.apple.system.info:/etc/services /etc/services
+monitor com.apple.system.info:/etc/protocols /etc/protocols
+

@@ -1,0 +1,94 @@
+.\" Copyright (c) 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)devname.3	8.2 (Berkeley) 4/29/95
+.\" $FreeBSD: src/lib/libc/gen/devname.3,v 1.11 2001/10/01 16:08:50 ru Exp $
+.\"
+.Dd October 25, 2004
+.Dt DEVNAME 3
+.Os
+.Sh NAME
+.Nm devname ,
+.Nm devname_r
+.Nd get device name
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/stat.h
+.In stdlib.h
+.Ft char *
+.Fo devname
+.Fa "dev_t dev"
+.Fa "mode_t type"
+.Fc
+.Ft char *
+.Fo devname_r
+.Fa "dev_t dev"
+.Fa "mode_t type"
+.Fa "char *buf"
+.Fa "int len"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn devname
+function returns a pointer to the name of the block or character
+device in
+.Dq Pa /dev
+with a device number of
+.Fa dev ,
+and a file type matching the one encoded in
+.Fa type
+which must be one of
+.Dv S_IFBLK
+or
+.Dv S_IFCHR .
+If no device matches the specified values, or no information is
+available, NULL is returned.
+.Pp
+The
+.Fn devname
+function uses a static buffer, which will be overwritten
+on subsequent calls.
+The
+.Fn devname_r
+functions takes a buffer and length as arguments to avoid this problem.
+.Pp
+The traditional display for applications when no device is
+found is the string
+.Dq ?? .
+.Sh SEE ALSO
+.Xr stat 2 ,
+.Xr dev_mkdb 8
+.Sh HISTORY
+The
+.Fn devname
+function call appeared in
+.Bx 4.4 .

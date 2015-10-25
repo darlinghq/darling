@@ -1,0 +1,177 @@
+.\" Copyright (c) 1990, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" the American National Standards Committee X3, on Information
+.\" Processing Systems.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)qsort.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/stdlib/qsort.3,v 1.17 2007/01/09 00:28:10 imp Exp $
+.\"
+.Dd Nov 25, 2008
+.Dt PSORT 3
+.Os "Mac OS X"
+.Sh NAME
+.Nm psort ,
+#ifdef UNIFDEF_BLOCKS
+.Nm psort_b ,
+#endif
+.Nm psort_r
+.Nd parallel sort functions
+.Sh SYNOPSIS
+.In stdlib.h
+.Ft void
+.Fo psort
+.Fa "void *base"
+.Fa "size_t nel"
+.Fa "size_t width"
+.Fa "int \*[lp]*compar\*[rp]\*[lp]const void *, const void *\*[rp]"
+.Fc
+#ifdef UNIFDEF_BLOCKS
+.Ft void
+.Fo psort_b
+.Fa "void *base"
+.Fa "size_t nel"
+.Fa "size_t width"
+.Fa "int \*[lp]^compar\*[rp]\*[lp]const void *, const void *\*[rp]"
+.Fc
+#endif
+.Ft void
+.Fo psort_r
+.Fa "void *base"
+.Fa "size_t nel"
+.Fa "size_t width"
+.Fa "void *thunk"
+.Fa "int \*[lp]*compar\*[rp]\*[lp]void *, const void *, const void *\*[rp]"
+.Fc
+.Sh DESCRIPTION
+The
+#ifdef UNIFDEF_BLOCKS
+.Fn psort ,
+.Fn psort_b ,
+#else
+.Fn psort
+#endif
+and
+.Fn psort_r
+functions are parallel sort routines that are drop-in compatible with the
+corresponding
+.Fn qsort
+function (see
+.Xr qsort 3
+for a description of the arguments).
+On multiprocessor machines, multiple threads may be created to simultaneously
+perform the sort calculations, resulting in an overall faster sort result.
+Overhead in managing the threads limits the maximum speed improvement to
+somewhat less that the number of processors available.
+For example, on a 4-processor machine, a typical sort on a large array might
+result in 3.2 times faster sorting than a regular
+.Fn qsort .
+.Sh RESTRICTIONS
+Because of the multi-threaded nature of the sort, the comparison function
+is expected to perform its own synchronization that might be required for
+data physically
+.Em outside
+the two objects passed to the comparison function.
+However, no synchronization is required for the two
+object themselves, unless some third party is also accessing those objects.
+.Pp
+Additional memory is temporary allocated to deal with the parallel nature
+of the computation.
+.Pp
+Because of the overhead of maintaining multiple threads, the
+.Fn psort
+family of routines may choose to just call
+.Xr qsort 3
+when there is no advantage to parallelizing (for example, when the number of
+objects in the array is too small, or only one processor is available).
+.Pp
+Like
+.Xr qsort 3 ,
+the sort is not stable.
+.Sh RETURN VALUES
+The
+#ifdef UNIFDEF_BLOCKS
+.Fn psort ,
+.Fn psort_b
+#else
+.Fn psort
+#endif
+and
+.Fn psort_r
+functions
+return no value.
+.Sh SEE ALSO
+.Xr qsort 3
+.Sh SEE ALSO
+.Xr sort 1 ,
+.Xr radixsort 3
+.Rs
+.%A Hoare, C.A.R.
+.%D 1962
+.%T "Quicksort"
+.%J "The Computer Journal"
+.%V 5:1
+.%P pp. 10-15
+.Re
+.Rs
+.%A Williams, J.W.J
+.%D 1964
+.%T "Heapsort"
+.%J "Communications of the ACM"
+.%V 7:1
+.%P pp. 347-348
+.Re
+.Rs
+.%A Knuth, D.E.
+.%D 1968
+.%B "The Art of Computer Programming"
+.%V Vol. 3
+.%T "Sorting and Searching"
+.%P pp. 114-123, 145-149
+.Re
+.Rs
+.%A McIlroy, P.M.
+.%T "Optimistic Sorting and Information Theoretic Complexity"
+.%J "Fourth Annual ACM-SIAM Symposium on Discrete Algorithms"
+.%V January 1992
+.Re
+.Rs
+.%A Bentley, J.L.
+.%A McIlroy, M.D.
+.%T "Engineering a Sort Function"
+.%J "Software--Practice and Experience"
+.%V Vol. 23(11)
+.%P pp. 1249-1265
+.%D November\ 1993
+.Re
+.Sh STANDARDS
+The
+.Fn qsort
+function
+conforms to
+.St -isoC .

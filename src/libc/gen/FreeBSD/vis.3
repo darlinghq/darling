@@ -1,0 +1,308 @@
+.\" Copyright (c) 1989, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     From: @(#)vis.3	8.1 (Berkeley) 6/9/93
+.\" $FreeBSD: src/lib/libc/gen/vis.3,v 1.30 2007/01/09 00:27:56 imp Exp $
+.\"
+.Dd April 9, 2006
+.Dt VIS 3
+.Os
+.Sh NAME
+.Nm vis
+.Nd visually encode characters
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In vis.h
+.Ft char *
+.Fn vis "char *dst" "int c" "int flag" "int nextc"
+.Ft int
+.Fn strvis "char *dst" "const char *src" "int flag"
+.Ft int
+.Fn strvisx "char *dst" "const char *src" "size_t len" "int flag"
+.Sh DESCRIPTION
+The
+.Fn vis
+function
+copies into
+.Fa dst
+a string which represents the character
+.Fa c .
+If
+.Fa c
+needs no encoding, it is copied in unaltered.
+The string is
+null terminated, and a pointer to the end of the string is
+returned.
+The maximum length of any encoding is four
+characters (not including the trailing
+.Dv NUL ) ;
+thus, when
+encoding a set of characters into a buffer, the size of the buffer should
+be four times the number of characters encoded, plus one for the trailing
+.Dv NUL .
+The
+.Fa flag
+argument is used for altering the default range of
+characters considered for encoding and for altering the visual
+representation.
+The additional character,
+.Fa nextc ,
+is only used when selecting the
+.Dv VIS_CSTYLE
+encoding format (explained below).
+.Pp
+The
+.Fn strvis
+and
+.Fn strvisx
+functions copy into
+.Fa dst
+a visual representation of
+the string
+.Fa src .
+The
+.Fn strvis
+function encodes characters from
+.Fa src
+up to the
+first
+.Dv NUL .
+The
+.Fn strvisx
+function encodes exactly
+.Fa len
+characters from
+.Fa src
+(this
+is useful for encoding a block of data that may contain
+.Dv NUL Ns 's ) .
+Both forms
+.Dv NUL
+terminate
+.Fa dst .
+The size of
+.Fa dst
+must be four times the number
+of characters encoded from
+.Fa src
+(plus one for the
+.Dv NUL ) .
+Both
+forms return the number of characters in dst (not including
+the trailing
+.Dv NUL ) .
+.Pp
+The encoding is a unique, invertible representation composed entirely of
+graphic characters; it can be decoded back into the original form using
+the
+.Xr unvis 3
+or
+.Xr strunvis 3
+functions.
+.Pp
+There are two parameters that can be controlled: the range of
+characters that are encoded, and the type
+of representation used.
+By default, all non-graphic characters
+except space, tab, and newline are encoded.
+(See
+.Xr isgraph 3 . )
+The following flags
+alter this:
+.Bl -tag -width VIS_WHITEX
+.It Dv VIS_GLOB
+Also encode magic characters
+.Ql ( * ,
+.Ql \&? ,
+.Ql \&[
+and
+.Ql # )
+recognized by
+.Xr glob 3 .
+.It Dv VIS_SP
+Also encode space.
+.It Dv VIS_TAB
+Also encode tab.
+.It Dv VIS_NL
+Also encode newline.
+.It Dv VIS_WHITE
+Synonym for
+.Dv VIS_SP
+\&|
+.Dv VIS_TAB
+\&|
+.Dv VIS_NL .
+.It Dv VIS_SAFE
+Only encode "unsafe" characters.
+Unsafe means control
+characters which may cause common terminals to perform
+unexpected functions.
+Currently this form allows space,
+tab, newline, backspace, bell, and return - in addition
+to all graphic characters - unencoded.
+.El
+.Pp
+There are four forms of encoding.
+Most forms use the backslash character
+.Ql \e
+to introduce a special
+sequence; two backslashes are used to represent a real backslash.
+These are the visual formats:
+.Bl -tag -width VIS_HTTPSTYLE
+.It (default)
+Use an
+.Ql M
+to represent meta characters (characters with the 8th
+bit set), and use caret
+.Ql ^
+to represent control characters see
+.Pf ( Xr iscntrl 3 ) .
+The following formats are used:
+.Bl -tag -width xxxxx
+.It Dv \e^C
+Represents the control character
+.Ql C .
+Spans characters
+.Ql \e000
+through
+.Ql \e037 ,
+and
+.Ql \e177
+(as
+.Ql \e^? ) .
+.It Dv \eM-C
+Represents character
+.Ql C
+with the 8th bit set.
+Spans characters
+.Ql \e241
+through
+.Ql \e376 .
+.It Dv \eM^C
+Represents control character
+.Ql C
+with the 8th bit set.
+Spans characters
+.Ql \e200
+through
+.Ql \e237 ,
+and
+.Ql \e377
+(as
+.Ql \eM^? ) .
+.It Dv \e040
+Represents
+.Tn ASCII
+space.
+.It Dv \e240
+Represents Meta-space.
+.El
+.Pp
+.It Dv VIS_CSTYLE
+Use C-style backslash sequences to represent standard non-printable
+characters.
+The following sequences are used to represent the indicated characters:
+.Pp
+.Bl -tag -width ".Li \e0" -offset indent -compact
+.It Li \ea
+.Dv BEL No (007)
+.It Li \eb
+.Dv BS No (010)
+.It Li \ef
+.Dv NP No (014)
+.It Li \en
+.Dv NL No (012)
+.It Li \er
+.Dv CR No (015)
+.It Li \es
+.Dv SP No (040)
+.It Li \et
+.Dv HT No (011)
+.It Li \ev
+.Dv VT No (013)
+.It Li \e0
+.Dv NUL No (000)
+.El
+.Pp
+When using this format, the
+.Fa nextc
+argument is looked at to determine
+if a
+.Dv NUL
+character can be encoded as
+.Ql \e0
+instead of
+.Ql \e000 .
+If
+.Fa nextc
+is an octal digit, the latter representation is used to
+avoid ambiguity.
+.It Dv VIS_HTTPSTYLE
+Use URI encoding as described in RFC 1808.
+The form is
+.Ql %dd
+where
+.Ar d
+represents a hexadecimal digit.
+.It Dv VIS_OCTAL
+Use a three digit octal sequence.
+The form is
+.Ql \eddd
+where
+.Ar d
+represents an octal digit.
+.El
+.Pp
+There is one additional flag,
+.Dv VIS_NOSLASH ,
+which inhibits the
+doubling of backslashes and the backslash before the default
+format (that is, control characters are represented by
+.Ql ^C
+and
+meta characters as
+.Ql M-C ) .
+With this flag set, the encoding is
+ambiguous and non-invertible.
+.Sh SEE ALSO
+.Xr unvis 1 ,
+.Xr unvis 3
+.Rs
+.%A R. Fielding
+.%T Relative Uniform Resource Locators
+.%O RFC1808
+.Re
+.Sh HISTORY
+These functions first appeared in
+.Bx 4.4 .
+.Sh BUGS
+The
+.Nm
+family of functions do not recognize multibyte characters, and thus
+may consider them to be non-printable when they are in fact printable
+(and vice versa.)

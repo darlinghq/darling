@@ -1,0 +1,88 @@
+.Dd March 11, 2005
+.Dt NEWLOCALE 3
+.Os
+.Sh NAME
+.Nm newlocale
+.Nd Create a new locale
+.Sh SYNOPSIS
+.In xlocale.h
+.Ft locale_t
+.Fn newlocale "int mask" "const char * locale" "locale_t base"
+.Sh DESCRIPTION
+Creates a new
+.Vt locale_t
+based off the locale specified by
+.Va base .
+The categories specified by
+.Va mask
+will be replaced to correspond with the named
+.Va locale .
+.Pp
+The
+.Va mask
+is the logical OR of the following:
+.Bl -tag -width LC_MONETARY_MASK
+.It Dv LC_COLLATE_MASK
+Collation
+.It Dv LC_CTYPE_MASK
+Character type
+.It Dv LC_MESSAGES_MASK
+Messages
+.It Dv LC_MONETARY_MASK
+Monetary
+.It Dv LC_NUMERIC_MASK
+Numeric
+.It Dv LC_TIME_MASK
+Time
+.It Dv LC_ALL_MASK
+The logical OR of all of the above
+.El
+.Pp
+The
+.Va locale
+string is typically the name of one of the directories in
+.Pa /usr/share/locale .
+If
+.Va locale
+is
+.Dv NULL ,
+then the C locale is used. If
+.Va locale
+is an empty string, then it will look for environment variables:
+LC_ALL, then LC_* if the corresponding LC_*_MASK bit is set, then
+the LANG environment variable. If none of these are found, it
+will default to the C locale.
+.Pp
+If
+.Va base
+is
+.Dv NULL ,
+the current locale is used. If
+.Va base
+is
+.Dv LC_GLOBAL_LOCALE ,
+the global locale is used.
+.Pp
+If
+.Va mask
+is
+.Dv LC_ALL_MASK ,
+.Va base
+is ignored. In order to create a C
+.Vt locale_t
+value, use
+.Fn newlocale "LC_ALL_MASK" "NULL" "NULL" .
+.Sh RETURN VALUES
+Returns a new
+.Vt locale_t ,
+or
+.Dv NULL
+in case of error.
+New locales should be freed with
+.Xr freelocale 3 .
+.Sh SEE ALSO
+.Xr duplocale 3 ,
+.Xr freelocale 3 ,
+.Xr querylocale 3 ,
+.Xr uselocale 3 ,
+.Xr xlocale 3

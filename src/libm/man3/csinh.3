@@ -1,0 +1,73 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CSINH 3
+.Os BSD 4
+.Sh NAME
+.Nm csinh
+.Nd complex hyperbolic sine function
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double complex
+.Fn csinh "double complex z"
+.Ft long double complex
+.Fn csinhl "long double complex z"
+.Ft float complex
+.Fn csinhf "float complex z"
+.Sh DESCRIPTION
+.Fn csin "z"
+computes the hyperbolic sine of the complex floating-point number
+.Fa z .
+.Pp
+For all complex floating point numbers z,
+.Bd -literal -offset indent
+csinh(conj(z)) = conj(csinh(z)),
+.br
+csinh(-z) = -csinh(z).
+.Ed
+.Sh SPECIAL VALUES
+The symmetries of csinh() are used to abbreviate the specification of special values.
+.Pp
+.Fn csinh "0 + 0i"
+returns 0 + 0i.
+.Pp
+.Fn csinh "0 + inf i"
+returns 0 + NaN i, and raises the invalid flag.
+.Pp
+.Fn csinh "0 + NaN i"
+returns 0 + NaN i.
+.Pp
+.Fn csinh "x + inf i"
+returns NaN + NaN i, and raises the invalid flag, for finite nonzero x.
+.Pp
+.Fn csinh "x + NaN i"
+returns NaN + NaN i, for finite nonzero x.
+.Pp
+.Fn csinh "inf + 0i"
+returns inf + 0i.
+.Pp
+.Fn csinh "inf + yi"
+returns inf * cis(y), for finite positive y, where cis(y) = cos(y) + i*sin(y).
+.Pp
+.Fn csinh "inf + inf i"
+returns inf + NaN i, and raises the invalid flag.
+.Pp
+.Fn csinh "inf + NaN i"
+returns inf + NaN i.
+.Pp
+.Fn csinh "NaN + 0i"
+returns NaN + 0i.
+.Pp
+.Fn csinh "NaN + yi"
+returns NaN + NaN i, for nonzero numbers y.
+.Pp
+.Fn csinh "NaN + NaN i"
+returns NaN + NaN i.
+.Sh NOTES
+.Sh SEE ALSO
+.Xr csin 3
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn csinh
+function conforms to ISO/IEC 9899:1999(E).

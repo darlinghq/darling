@@ -1,0 +1,112 @@
+.\" Copyright (c) 1995
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software developed by the Computer Systems
+.\" Engineering group at Lawrence Berkeley Laboratory under DARPA contract
+.\" BG 91-66 and contributed to Berkeley.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd December 14, 1995
+.Dt LOGIN 3
+.Os
+.Sh NAME
+.Nm login ,
+.Nm logout ,
+.Nm logwtmp
+.Nd login utility functions (DEPRECATED)
+.Sh SYNOPSIS
+.Fd #include <util.h>
+.Ft void
+.Fn login "struct utmp *ut"
+.Ft int
+.Fn logout "const char *line"
+.Ft void
+.Fn logwtmp "const char *line" "const char *name" "const char *host"
+.Sh DESCRIPTION
+The
+.Fn login ,
+.Fn logout ,
+and
+.Fn logwtmp
+functions are
+.Sy DEPRECATED ;
+use
+.Xr pututxline 3
+instead.
+.Pp
+These functions operate on the database of current users in
+.Pa /var/run/utmpx
+and the system log file.
+Superuser permission is required.
+.Pp
+The
+.Fn login
+function updates the
+.Pa /var/run/utmpx
+files with user information contained in
+.Fa ut
+(after converting to a struct utmpx, as described in
+.Xr pututxline 3 ) .
+.Pp
+The
+.Fn logout
+function removes the entry from
+.Pa /var/run/utmpx
+corresponding to the device
+.Fa line .
+.Pp
+The
+.Fn logwtmp
+function adds an entry to
+the system log file.
+Since
+.Fn login
+will add the appropriate entry
+during a login,
+.Fn logwtmp
+is usually used for logouts.
+.Sh RETURN VALUES
+.Fn logout
+returns non-zero if it was able to find and delete an entry for
+.Fa line ,
+and zero if there is no entry for
+.Fa line
+in
+.Pa /var/run/utmpx .
+However, there is no error indication due to lack of permissions.
+.Sh FILES
+.Bl -tag -width /var/run/wtmp -compact
+.It Pa /dev/\(**
+.It Pa /var/run/utmpx
+.El
+.Sh SEE ALSO
+.Xr pututxline 3 ,
+.Xr utmp 5 ,
+.Xr utmpx 5

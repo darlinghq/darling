@@ -1,0 +1,121 @@
+.\" Copyright (c) 1985, 1991 Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     from: @(#)exp.3	6.12 (Berkeley) 7/31/91
+.\"	$Id: pow.3,v 1.4 2004/12/20 21:35:46 scp Exp $
+.\"
+.Dd December 11, 2006
+.Dt POW 3
+.Os BSD 4
+.Sh NAME
+.Nm pow
+.Nd power function
+.Sh SYNOPSIS
+.Fd #include <math.h>
+.Ft double
+.Fn pow "double x" "double y"
+.Ft long double
+.Fn powl "long double x" "long double y"
+.Ft float
+.Fn powf "float x" "float y"
+.Sh DESCRIPTION
+The
+.Fn pow
+functions compute 
+.Fa x
+raised to the power
+.Fa y .
+.Sh SPECIAL VALUES
+.Fn pow "±0" "y"
+returns ±infinity and raises the "divide-by-zero" floating-point exception for y an odd integer < 0. 
+.Pp
+.Fn pow "±0" "y"
+returns +infinity and raises the "divide-by-zero" floating-point exception for y < 0 and not an odd integer. 
+.Pp
+.Fn pow "±0" "y"
+returns ±0 for y an odd integer > 0. 
+.Pp
+.Fn pow "±0" "y"
+returns +0 for y > 0 and not an odd integer. 
+.Pp
+.Fn pow "-1" "±infinity"
+returns 1. 
+.Pp
+.Fn pow "1" "y"
+returns 1 for any y, even a NaN. 
+.Pp
+.Fn pow "x" "±0"
+returns 1 for any x, even a NaN. 
+.Pp
+.Fn pow "x" "y"
+returns a NaN and raises the "invalid" floating-point exception for finite x < 0 and finite non-integer y.
+.Pp
+.Fn pow "x" "-infinity"
+returns +infinity for |x| < 1.
+.Pp
+.Fn pow "x" "-infinity"
+returns +0 for |x| > 1.
+.Pp
+.Fn pow "x" "+infinity"
+returns +0 for |x| < 1.
+.Pp
+.Fn pow "x" "+infinity"
+returns +infinity for |x| > 1.
+.Pp
+.Fn pow "-infinity" "y"
+returns -0 for y an odd integer < 0.
+.Pp
+.Fn pow "-infinity" "y"
+returns +0 for y < 0 and not an odd integer.
+.Pp
+.Fn pow "-infinity" "y"
+returns -infinity for y an odd integer > 0.
+.Pp
+.Fn pow "-infinity" "y"
+returns +infinity for y > 0 and not an odd integer.
+.Pp
+.Fn pow "+infinity" "y"
+returns +0 for y < 0.
+.Pp
+.Fn pow "+infinity" "y"
+returns +infinity for y > 0.
+.Pp
+A domain error occurs if x is finite and negative and y is finite and not an integer.
+.Pp
+A domain error can occur if x is 0 and y less than or equal to 0.
+.Pp
+Range errors may occur.
+.Sh SEE ALSO
+.Xr math 3
+.Sh STANDARDS
+The
+.Fn pow
+function conforms to ISO/IEC 9899:1999(E).

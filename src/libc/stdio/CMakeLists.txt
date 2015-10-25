@@ -1,0 +1,123 @@
+project(libc-stdio)
+
+cmake_minimum_required(VERSION 2.4.0)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_C99_SOURCE -D_FORTIFY_SOURCE=0 -D__va_list=__builtin_va_list")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
+
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa/FreeBSD")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa")
+
+set(stdio_sources
+	FreeBSD/asprintf.c
+	FreeBSD/clrerr.c
+	FreeBSD/dprintf.c
+	FreeBSD/fclose.c
+	FreeBSD/fdopen.c
+	FreeBSD/feof.c
+	FreeBSD/ferror.c
+	FreeBSD/fflush.c
+	FreeBSD/fgetc.c
+	FreeBSD/fgetln.c
+	FreeBSD/fgetpos.c
+	FreeBSD/fgets.c
+	FreeBSD/fgetwc.c
+	FreeBSD/fgetwln.c
+	FreeBSD/fgetws.c
+	FreeBSD/fileno.c
+	FreeBSD/findfp.c
+	FreeBSD/flags.c
+	FreeBSD/_flock_stub.c
+	FreeBSD/fopen.c
+	FreeBSD/fprintf.c
+	FreeBSD/fpurge.c
+	FreeBSD/fputc.c
+	FreeBSD/fputs.c
+	FreeBSD/fputwc.c
+	FreeBSD/fputws.c
+	FreeBSD/fread.c
+	FreeBSD/freopen.c
+	FreeBSD/fscanf.c
+	FreeBSD/fseek.c
+	FreeBSD/fsetpos.c
+	FreeBSD/ftell.c
+	FreeBSD/funopen.c
+	FreeBSD/fvwrite.c
+	FreeBSD/fwalk.c
+	FreeBSD/fwide.c
+	FreeBSD/fwprintf.c
+	FreeBSD/fwrite.c
+	FreeBSD/fwscanf.c
+	FreeBSD/getc.c
+	FreeBSD/getchar.c
+	FreeBSD/getdelim.c
+	FreeBSD/getline.c
+	FreeBSD/gets.c
+	FreeBSD/getw.c
+	FreeBSD/getwc.c
+	FreeBSD/getwchar.c
+	FreeBSD/makebuf.c
+	FreeBSD/mktemp.c
+	FreeBSD/perror.c
+	FreeBSD/printf.c
+	FreeBSD/printf-pos.c
+	FreeBSD/putc.c
+	FreeBSD/putchar.c
+	FreeBSD/puts.c
+	FreeBSD/putw.c
+	FreeBSD/putwc.c
+	FreeBSD/putwchar.c
+	FreeBSD/refill.c
+	FreeBSD/remove.c
+	FreeBSD/rewind.c
+	FreeBSD/rget.c
+	FreeBSD/scanf.c
+	FreeBSD/setbuf.c
+	FreeBSD/setbuffer.c
+	FreeBSD/setvbuf.c
+	FreeBSD/snprintf.c
+	FreeBSD/sprintf.c
+	FreeBSD/sscanf.c
+	FreeBSD/stdio.c
+	FreeBSD/swprintf.c
+	FreeBSD/swscanf.c
+	FreeBSD/tempnam.c
+	FreeBSD/tmpfile.c
+	FreeBSD/tmpnam.c
+	FreeBSD/ungetc.c
+	FreeBSD/ungetwc.c
+	FreeBSD/vasprintf.c
+	FreeBSD/vdprintf.c
+	FreeBSD/vfprintf.c
+	FreeBSD/vfscanf.c
+	FreeBSD/vfwprintf.c
+	FreeBSD/vfwscanf.c
+	FreeBSD/vprintf.c
+	FreeBSD/vscanf.c
+	FreeBSD/vsnprintf.c
+	FreeBSD/vsprintf.c
+	FreeBSD/vsscanf.c
+	FreeBSD/vswprintf.c
+	FreeBSD/vswscanf.c
+	FreeBSD/vwprintf.c
+	FreeBSD/vwscanf.c
+	FreeBSD/wbuf.c
+	FreeBSD/wprintf.c
+	FreeBSD/wscanf.c
+	FreeBSD/wsetup.c
+)
+
+# SET_SOURCE_FILES_PROPERTIES(FreeBSD/fopen.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DVARIANT_DARWINEXTSN")
+
+add_library(libc-stdio OBJECT ${stdio_sources})
+SET_TARGET_PROPERTIES(libc-stdio PROPERTIES COMPILE_DEFINITIONS "VARIANT_DARWINEXTSN")
+
+# ***
+# Legacy variants
+# ***
+
+set(stdio-legacy_sources FreeBSD/fopen.c FreeBSD/fdopen.c)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE")
+add_library(libc-stdio_legacy OBJECT ${stdio-legacy_sources})
+SET_TARGET_PROPERTIES(libc-stdio_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+

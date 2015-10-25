@@ -1,0 +1,15 @@
+[submodule "src/external/libdispatch"]
+	path = src/external/libdispatch
+	url = https://github.com/LubosD/darling-libdispatch.git
+[submodule "src/external/libobjc2"]
+	path = src/external/libobjc2
+	url = https://github.com/LubosD/darling-libobjc2.git
+[submodule "src/external/libcxx"]
+	path = src/external/libcxx
+	url = https://github.com/LubosD/darling-libcxx.git
+[submodule "src/external/libcxxabi"]
+	path = src/external/libcxxabi
+	url = https://github.com/LubosD/darling-libcxxabi.git
+[submodule "src/external/libkqueue"]
+	path = src/external/libkqueue
+	url = https://github.com/darlinghq/darling-libkqueue.git

@@ -1,0 +1,215 @@
+.\"	$NetBSD: environ.7,v 1.4 1995/07/03 19:45:07 jtc Exp $
+.\"
+.\" Copyright (c) 1983, 1990, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"	@(#)environ.7	8.3 (Berkeley) 4/19/94
+.\"
+.Dd April 19, 1994
+.Dt ENVIRON 7
+.Os BSD 4.2
+.Sh NAME
+.Nm environ
+.Nd user environment
+.Sh SYNOPSIS
+.Ar extern char **environ ;
+.Sh DESCRIPTION
+An array of strings called the
+.Ar environment
+is made available by
+.Xr execve  2
+when a process begins.  By convention these strings have the form
+.Dq Ar name=value .
+The following names are used by various commands:
+.Bl -tag -width BLOCKSIZE
+.It Ev BLOCKSIZE
+The size of the block units used by several commands, most notably
+.Xr df 1 ,
+.Xr du 1
+and
+.Xr ls 1 .
+BLOCKSIZE may be specified in units of a byte by specifying a number, 
+in units of a kilobyte by specifying a number followed by ``K'' or
+``k'', in units of a megabyte by specifying a number followed by ``M''
+or ``m'' and in units of a gigabyte by specifying a number followed
+by ``G'' or ``g''.
+Sizes less than 512 bytes or greater than a gigabyte are ignored.
+.It Ev EXINIT
+A startup list of commands read by
+.Xr ex  1  ,
+.Xr edit  1 ,
+and
+.Xr vi  1  .
+.It Ev HOME
+A user's login directory, set by
+.Xr login  1
+from the password file
+.Xr passwd  5  .
+.It Ev PATH
+The sequence of directories, separated by colons, searched by
+.Xr csh  1  ,
+.Xr sh  1 ,
+.Xr system  3  ,
+.Xr execvp  3 ,
+etc, when looking for an executable file.
+PATH is set to ``/usr/bin:/bin'' initially by
+.Xr login  1  .
+.It Ev PRINTER
+The name of the default printer to be used by
+.Xr lpr  1  ,
+.Xr lpq  1 ,
+and
+.Xr lprm  1  .
+.It Ev SHELL
+The full pathname of the user's login shell.
+.It Ev TERM
+The kind of terminal for which output is to be prepared.
+This information is used by commands, such as
+.Xr nroff  1
+or
+.Xr plot 1
+which may exploit special terminal capabilities.  See
+.Pa /usr/share/misc/termcap
+.Pq Xr termcap 5
+for a list of terminal types.
+.It Ev TERMCAP
+The string describing the terminal in TERM, or, if
+it begins with a '/', the name of the termcap file.
+See
+.Ev TERMPATH
+below,
+.Xr termcap  5  ,
+and
+.Xr termcap  .
+.It Ev TERMPATH
+A sequence of pathnames of termcap files, separated by colons or spaces,
+which are searched for terminal descriptions in the order listed.  Having
+no
+.Ev TERMPATH
+is equivalent to a
+.Ev TERMPATH
+of
+.Dq Pa $HOME/.termcap:/etc/termcap .
+.Ev TERMPATH
+is ignored if
+.Ev TERMCAP
+contains a full pathname.
+.It Ev TMPDIR
+The directory in which to store temporary files.
+Most applications use either
+.Dq /tmp
+or
+.Dq /var/tmp .
+Setting this variable will make them use another directory.
+.It Ev TZ
+The timezone to use when displaying dates.
+The normal format is a pathname relative to
+.Dq /usr/share/zoneinfo .
+For example, the command
+.Dq env TZ=US/Pacific date
+displays the current time in California.
+See
+.Xr tzset 3
+for more information.
+.It Ev LOGNAME
+The login name of the user.
+.It Ev USER
+Deprecated synonym of
+.Ev LOGNAME
+(for backwards compatibility).
+.El
+.Pp
+Further names may be placed in the environment by the
+.Xr export
+command and
+.Ar name=value
+arguments in
+.Xr sh  1  ,
+or by the
+.Xr setenv
+command if you use
+.Xr csh  1  .
+It is unwise to change certain
+.Xr sh  1
+variables that are frequently exported by
+.Pa .profile
+files, such as
+.Ev MAIL ,
+.Ev PS1 ,
+.Ev PS2 ,
+and
+.Ev IFS ,
+unless you know what you are doing.
+.Sh PROGRAMMING
+Programs can query and modify the environment, using the environment routines
+.Xr getenv 3 ,
+.Xr putenv 3 ,
+.Xr setenv 3
+and
+.Xr unsetenv 3 .
+Direct access can be made through the global variable
+.Va environ ,
+though it is recommended that changes to the enviroment still be made through
+the environment routines.
+.Pp
+Shared libraries and bundles don't have direct access to
+.Va environ ,
+which is only available to the loader
+.Xr ld 1
+when a complete program is being linked.
+The environment routines can still be used, but if direct access to
+.Va environ
+is needed, the
+.Fn _NSGetEnviron
+routine, defined in
+.In crt_externs.h ,
+can be used to retrieve the address of
+.Va environ
+at runtime.
+.Sh SEE ALSO
+.Xr csh 1 ,
+.Xr ex 1 ,
+.Xr login 1 ,
+.Xr sh 1 ,
+.Xr getenv 3 ,
+.Xr putenv 3 ,
+.Xr setenv 3 ,
+.Xr unsetenv 3 ,
+.Xr execve 2 ,
+.Xr execle 3 ,
+.Xr system 3 ,
+.Xr termcap 3 ,
+.Xr termcap 5
+.Sh HISTORY
+The
+.Nm environ
+manual page appeared in
+.Bx 4.2 .

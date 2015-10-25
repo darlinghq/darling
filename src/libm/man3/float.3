@@ -1,0 +1,258 @@
+.\" Copyright (c) 1985, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     from: @(#)floor.3	6.5 (Berkeley) 4/19/91
+.\"	$Id: float.3,v 1.3 2004/12/02 18:29:12 scp Exp $
+.\"
+.Dd March 28, 2007
+.Dt FLOAT 3
+.ds up \fIulp\fR
+.ds nn \fINaN\fR
+.Os
+.Sh NAME
+.Nm float
+.Nd description of floating-point types available on OS X
+.Sh DESCRIPTION
+This page describes the available C floating-point types.  For a list of math library functions
+that operate on these types, see the page on the math library, "man math".
+.Sh TERMINOLOGY
+Floating point numbers are represented in three parts: a \fBsign\fR, a \fBmantissa\fR (or \fBsignificand\fR), 
+and an \fBexponent\fR.  Given such a representation with sign
+.Fa s ,
+mantissa
+.Fa m ,
+and exponent
+.Fa e ,
+the corresponding numerical value is
+.Fa s*m*2**e .
+.Pp
+Floating-point types differ in the number of bits of accuracy in the mantissa (called the \fBprecision\fR),
+and set of available exponents (the \fBexponent range\fR).
+.Pp
+Floating-point numbers with the maximum available exponent are reserved operands, denoting an \fBinfinity\fR if the
+significand is precisely zero, and a Not-a-Number, or \fBNaN\fR, otherwise.
+.Pp
+Floating-point numbers with the minimum available exponent are either \fBzero\fR if the significand is precisely zero,
+and \fBdenormal\fR otherwise.  Note that zero is signed: +0 and -0 are distinct floating point numbers.
+.Pp
+Floating-point numbers with exponents other than the maximum and minimum available are called \fBnormal\fR numbers.
+.Sh PROPERTIES OF IEEE-754 FLOATING-POINT
+Basic arithmetic operations in IEEE-754 floating-point are \fBcorrectly rounded\fR: this means that the result delivered
+is the same as the result that would be achieved by computing the exact real-number operation on the operands,
+then rounding the real-number result to a floating-point value.
+.Pp
+\fBOverflow\fR occurs when the value of the exact result is too large in magnitude to be represented in the
+floating-point type in which the computation is being performed; doing so would require an exponent outside of the
+exponent range of the type.  By default, computations that result in overflow return a signed infinity.
+.Pp
+\fBUnderflow\fR occurs when the value of the exact result is too small in magnitude to be represented as a normal
+number in the floating-point type in which the computation is being performed.  By default, underflow is gradual,
+and produces a denormal number or a zero.
+.Pp
+All floating-points number of a given type are integer multiples of the smallest non-zero floating-point number of
+that type; however, the converse is not true.  This means that, in the default mode, (x-y) = 0 only if x = y.
+.Pp
+The sign of zero transforms correctly through multiplication and division, and is preserved by addition of
+zeros with like signs, but x - x yields +0 for every finite floating-point number x.  The only operations that
+reveal the sign of a zero are x/(±0) and copysign(x,±0).  In particular, comparisons (x > y, x != y, etc) are not
+affected by the sign of zero.
+.Pp
+The sign of infinity transforms correctly through multiplication and division, and infinities are unaffected by addition
+or subtraction of any finite floating-point number.  But Inf-Inf, Inf*0, and Inf/Inf are, like 0/0 or sqrt(-3), invalid
+operations that produce NaN.
+.Pp
+NaNs are the default results of invalid operations, and they propagate through subsequent arithmetic operations.
+If x is a NaN, then x != x is TRUE, and every other comparison predicate (x > y, x = y, x <= y, etc) evaluates to
+FALSE, regardless of the value of y.  Additionally, predicates that entail an ordered comparison (rather than mere
+equality or inequality) signal Invalid Operation when one of the arguments is NaN.
+.Pp
+IEEE-754 provides five kinds of floating-point \fBexceptions\fR, listed below:
+.Pp
+.nf
+.ta \w'Invalid Operation'u+6n +\w'Gradual Underflow'u+2n
+Exception	Default Result
+.tc \(ru
+			
+.tc
+Invalid Operation	NaN or FALSE
+Overflow	±Infinity
+Divide by Zero	±Infinity
+Underflow	Gradual Underflow
+Inexact	Rounded Value
+.ta
+.fi
+.Pp
+NOTE: An exception is not an error unless it is handled incorrectly.  What makes a class of exceptions exceptional
+is that no single default response can be satisfactory in every instance.  On the other hand, because a default
+response will serve most instances of the exception satisfactorily, simply aborting the computation cannot be
+justified.
+.Pp
+For each kind of floating-point exception, IEEE-754 provides a flag that is raised each time its exception is
+signaled, and remains raised until the program resets it.  Programs may test, save, and restore the flags, or a subset
+thereof.
+.Sh PRECISION AND EXPONENT RANGE OF SPECIFIC FLOATING-POINT TYPES
+On both Intel and PPC macs, the type
+.Fa float
+corresponds to IEEE-754 single precision.  A single-precision number is represented in 32 bits, and has a precision
+of 24 significant bits, roughly like 7 significant decimal digits.  8 bits are used to encode the exponent, which gives 
+an exponent range from -126 to 127, inclusive.
+.Pp
+The header <float.h> defines several useful constants for the float type:
+.br
+.Fa FLT_MANT_DIG
+- The number of binary digits in the significand of a float.
+.br
+.Fa FLT_MIN_EXP
+- One more than the smallest exponent available in the float type.
+.br
+.Fa FLT_MAX_EXP
+- One more than the largest exponent available in the float type.
+.br
+.Fa FLT_DIG
+- the precision in decimal digits of a float.  A decimal value with this many digits, stored as a float, always
+yields the same value up to this many digits when converted back to decimal notation.
+.br
+.Fa FLT_MIN_10_EXP
+- the smallest n such that 10**n is a non-zero normal number as a float.
+.br
+.Fa FLT_MAX_10_EXP
+- the largest n such that 10**n is finite as a float.
+.br
+.Fa FLT_MIN
+- the smallest positive normal float.
+.br
+.Fa FLT_MAX
+- the largest finite float.
+.br
+.Fa FLT_EPSILON
+- the difference between 1.0 and the smallest float bigger than 1.0.
+.Pp
+On both Intel and PPC macs, the type
+.Fa double
+corresponds to IEEE-754 double precision.  A double-precision number is represented in 64 bits, and has a precision
+of 53 significant bits, roughly like 16 significant decimal digits.  11 bits are used to encode the exponent, which gives
+an exponent range from -1022 to 1023, inclusive.
+.Pp
+The header <float.h> defines several useful constants for the double type:
+.br
+.Fa DBL_MANT_DIG
+- The number of binary digits in the significand of a double.
+.br
+.Fa DBL_MIN_EXP
+- One more than the smallest exponent available in the double type.
+.br
+.Fa DBL_MAX_EXP
+- One more than the exponent available in the double type.
+.br
+.Fa DBL_DIG
+- the precision in decimal digits of a double.  A decimal value with this many digits, stored as a double, always
+yields the same value up to this many digits when converted back to decimal notation.
+.br
+.Fa DBL_MIN_10_EXP
+- the smallest n such that 10**n is a non-zero normal number as a double.
+.br
+.Fa DBL_MAX_10_EXP
+- the largest n such that 10**n is finite as a double.
+.br
+.Fa DBL_MIN
+- the smallest positive normal double.
+.br
+.Fa DBL_MAX
+- the largest finite double.
+.br
+.Fa DBL_EPSILON
+- the difference between 1.0 and the smallest double bigger than 1.0.
+.Pp
+On Intel macs, the type
+.Fa long double
+corresponds to IEEE-754 double extended precision.  A double extended number is represented in 80 bits, and has a
+precision of 64 significant bits, roughly like 19 significant decimal digits.  15 bits are used to encode the exponent,
+which gives an exponent range from -16383 to 16384, inclusive.
+.Pp
+The header <float.h> defines several useful constants for the long double type:
+.br
+.Fa LDBL_MANT_DIG
+- The number of binary digits in the significand of a long double.
+.br
+.Fa LDBL_MIN_EXP
+- One more than the smallest exponent available in the long double type.
+.br
+.Fa LDBL_MAX_EXP
+- One more than the exponent available in the long double type.
+.br
+.Fa LDBL_DIG
+- the precision in decimal digits of a long double.  A decimal value with this many digits, stored as a long double,
+always yields the same value up to this many digits when converted back to decimal notation.
+.br
+.Fa LDBL_MIN_10_EXP
+- the smallest n such that 10**n is a non-zero normal number as a long double.
+.br
+.Fa LDBL_MAX_10_EXP
+- the largest n such that 10**n is finite as a long double.
+.br
+.Fa LDBL_MIN
+- the smallest positive normal long double.
+.br
+.Fa LDBL_MAX
+- the largest finite long double.
+.br
+.Fa LDBL_EPSILON
+- the difference between 1.0 and the smallest long double bigger than 1.0.
+.Sh LONG DOUBLE ON POWERPC MACS
+On PowerPC macs, by default the type
+.Fa long double
+is mapped to IEEE-754 double precision, described above.  If additional precision is required, a non-IEEE-754 128
+bit long double format is also available.  To use this format, compile with the
+.Fa -mlong-double-128
+flag.  If you wish to use the <math.h> functions, you must include the linker flag
+.Fa -lmx 
+as well as the usual
+.Fa -lm .
+The -mlong-double-128 flag is only valid when the target architecture is ppc or ppc64.
+.Pp
+Each 128-bit long double is made up of two IEEE doubles (head and tail).  The value of the long double is the sum of the
+values of the two parts (unless the head double has value -0.0, in which case the value of the long double is -0.0).
+The value of the head is required to be the value of the long double rounded to the nearest double.  If the head is an
+infinity, the value of the long double is the value of the head, and the tail must be ±0.0.  The tail of a NaN can be
+any double value.  There are many 128-bit bit patterns that are not valid as long doubles.  These do not represet any
+value.
+.Pp
+The 128-bit long double format provides 106 significant bits, which is roughly like 31 significant decimal digits.  It
+has the same exponent range as double, from -1022 to 1023, inclusive.  The usual constants are provided from <float.h>,
+as described above.
+.Pp
+In the 128-bit long double format, addition and subtraction have a relative error bound of one \fBulp\fR, or 2**-106.
+Multiplication has a relative error within 2 ulps, and division a relative error within 3 ulps.
+.Sh SEE ALSO
+.Xr math 3 ,
+.Xr complex 3
+.Sh STANDARDS
+Floating-point arithmetic conforms to the ISO/IEC 9899:1999(E) standard.

@@ -1,0 +1,209 @@
+.\" Copyright (c) 1983, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)directory.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/gen/directory.3,v 1.12 2001/10/01 16:08:50 ru Exp $
+.\"
+.Dd June 4, 1993
+.Dt DIRECTORY 3
+.Os
+.Sh NAME
+.Nm closedir ,
+.Nm dirfd ,
+.Nm opendir ,
+.Nm readdir ,
+.Nm readdir_r ,
+.Nm rewinddir ,
+.Nm seekdir ,
+.Nm telldir
+.Nd directory operations
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In dirent.h
+.Ft int
+.Fn closedir "DIR *dirp"
+.Ft int
+.Fn dirfd "DIR *dirp"
+.Ft DIR *
+.Fn opendir "const char *dirname"
+.Ft struct dirent *
+.Fn readdir "DIR *dirp"
+.Ft int
+.Fn readdir_r "DIR *restrict dirp" "struct dirent *restrict entry" \
+    "struct dirent **restrict result"
+.Ft void
+.Fn rewinddir "DIR *dirp"
+.Ft void
+.Fn seekdir "DIR *dirp" "long  loc"
+.Ft long
+.Fn telldir "DIR *dirp"
+.Sh DESCRIPTION
+The
+.Fn opendir
+function
+opens the directory named by
+.Fa dirname ,
+associates a
+.Em directory stream
+with it,
+and returns a pointer to be used to identify the
+.Em directory stream
+in subsequent operations.  The pointer
+.Dv NULL
+is returned if
+.Fa dirname
+cannot be accessed or if it cannot
+.Xr malloc 3
+enough memory to hold the whole thing.
+.Pp
+The
+.Fn readdir
+function
+returns a pointer to the next directory entry.  It returns
+.Dv NULL
+upon reaching the end of the directory or detecting an invalid
+.Fn seekdir
+operation.
+.Pp
+.Fn readdir_r
+provides the same functionality as
+.Fn readdir ,
+but the caller must provide a directory
+.Fa entry
+buffer to store the results in.  If the read succeeds,
+.Fa result
+is pointed at the
+.Fa entry ;
+upon reaching the end of the directory,
+.Fa result
+is set to
+.Dv NULL .
+.Fn readdir_r
+returns 0 on success or an error number to indicate failure.
+.Pp
+The
+.Fn telldir
+function
+returns the current location associated with the named
+.Em directory stream .
+Values returned by
+.Fn telldir
+are good only for the lifetime of the
+.Dv DIR
+pointer (e.g.,
+.Fa dirp )
+from which they are derived.  If the directory is closed and then
+reopened, prior values returned by
+.Fn telldir
+will no longer be valid.
+.Pp
+The
+.Fn seekdir
+function
+sets the position of the next
+.Fn readdir
+operation on the
+.Em directory stream .
+The new position reverts to the one associated with the
+.Em directory stream
+when the
+.Fn telldir
+operation was performed.
+.Pp
+The
+.Fn rewinddir
+function
+resets the position of the named
+.Em directory stream
+to the beginning of the directory.
+.Pp
+The
+.Fn closedir
+function
+closes the named
+.Em directory stream
+and frees the structure associated with the
+.Fa dirp
+pointer,
+returning 0 on success.
+On failure, \-1 is returned and the global variable
+.Va errno
+is set to indicate the error.
+.Pp
+The
+.Fn dirfd
+function
+returns the integer file descriptor associated with the named
+.Em directory stream 
+on success, see
+.Xr open 2 .
+On failure, \-1 is returned and the global variable
+.Va errno
+is set to indicate the error.
+.Pp
+Sample code which searches a directory for entry ``name'' is:
+.Bd -literal -offset indent
+len = strlen(name);
+dirp = opendir(".");
+while ((dp = readdir(dirp)) != NULL)
+	if (dp->d_namlen == len && !strcmp(dp->d_name, name)) {
+		(void)closedir(dirp);
+		return FOUND;
+	}
+(void)closedir(dirp);
+return NOT_FOUND;
+.Ed
+.Sh LEGACY SYNOPSIS
+.Fd #include <sys/types.h>
+.Fd #include <dirent.h>
+.Pp
+.In sys/types.h
+is necessary for these functions.
+.Sh SEE ALSO
+.Xr close 2 ,
+.Xr lseek 2 ,
+.Xr open 2 ,
+.Xr read 2 ,
+.Xr compat 5 ,
+.Xr dir 5
+.Sh HISTORY
+The
+.Fn closedir ,
+.Fn dirfd ,
+.Fn opendir ,
+.Fn readdir ,
+.Fn rewinddir ,
+.Fn seekdir ,
+and
+.Fn telldir
+functions appeared in
+.Bx 4.2 .

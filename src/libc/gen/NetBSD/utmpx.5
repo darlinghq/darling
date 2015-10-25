@@ -1,0 +1,101 @@
+.\"	$NetBSD: utmpx.5,v 1.7 2008/04/30 13:10:57 martin Exp $
+.\"
+.\" Copyright (c) 2002 The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The NetBSD Foundation
+.\" by Thomas Klausner.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd January 31, 2007
+.Dt UTMPX 5
+.Os
+.Sh NAME
+.Nm utmpx
+.Nd user accounting database
+.Sh SYNOPSIS
+.In utmpx.h
+.Sh DESCRIPTION
+In contrast to
+.Pa utmp
+and
+.Pa wtmp ,
+the extended databases in
+.Pa utmpx
+and
+.Pa wtmpx
+reserve more space for logging hostnames, and also
+information on a process' ID, termination signal and exit status.
+.Pp
+The
+.Aq Pa utmpx.h
+header defines the structures and functions for logging user.
+Currently logged in users are tracked in
+.Pa /var/run/utmpx .
+The interface to the
+.Nm utmpx
+file is described in
+.Xr endutxent 3 .
+The file is not automatically created if they do not exist; it
+must be created manually.
+.Pp
+Traditionally, separate files would be used to store the running log of
+the logins and logouts
+.Pf ( Pa wtmpx ) ,
+and the last login of each user
+.Pf ( Pa lastlogx ) .
+With the availability of the Apple system log facility
+.Xr asl 3 ,
+these separate files can be replace with log entries, which are automatically
+generated when
+.Nm utmpx
+entries are written.
+The API to access the logins and logouts is described in
+.Xr endutxent_wtmp 3
+while the last login info is accessible with
+.Xr getlastlogx 3 .
+.Pp
+For compatibility, changes to
+.Nm utmpx
+are reflected in
+.Xr utmp 3
+(in the
+.Pa utmp ,
+.Pa wtmp
+and
+.Pa lastlog
+files),
+but not the other way around.
+.Sh FILES
+.Bl -tag -width /var/log/utmpx -compact
+.It Pa /var/run/utmpx
+The
+.Nm utmpx
+file.
+.El
+.Sh SEE ALSO
+.Xr asl 3 ,
+.Xr endutxent 3 ,
+.Xr endutxent_wtmp 3 ,
+.Xr getlastlogx 3 ,
+.Xr utmp 5

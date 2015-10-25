@@ -1,0 +1,116 @@
+/*
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * The contents of this file constitute Original Code as defined in and
+ * are subject to the Apple Public Source License Version 1.1 (the
+ * "License").  You may not use this file except in compliance with the
+ * License.  Please obtain a copy of the License at
+ * http://www.apple.com/publicsource and read it before using this file.
+ * 
+ * This Original Code and all software distributed under the License are
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+
+/*
+ *	File: 	err_libkern.sub
+ *	Author:	Nik Gervae, Apple Inc.
+ *	Date:	October 2008
+ *
+ *	error codes for Libkern/C++
+ */
+
+#include <libkern/OSReturn.h>
+#include <libkern/OSKextLib.h>
+
+
+/* These codes are specified in decimal in OSReturn.h.
+ */
+static const char * const err_codes_libkern_common[] = {
+	NO_SUCH_ERROR,
+	"(libkern/common) general/unspecified error",    /* 1 */
+};
+
+/* These codes are specified in decimal in OSReturn.h.
+ */
+static const char * const err_codes_libkern_metaclass[] = {
+	NO_SUCH_ERROR,
+	"(libkern/metaclass) runtime internal error",                                       /* 1 */
+	"(libkern/metaclass) class has instances",                                          /* 2 */
+	"(libkern/metaclass) OSMetaClass::preModLoad() not called, runtime internal error", /* 3 */
+	"(libkern/metaclass) allocation failure, internal data",                            /* 4 */
+	"(libkern/metaclass) allocation failure, class tracking dictionaries",              /* 5 */
+	"(libkern/metaclass) allocation failure, no kext/class set",                        /* 6 */
+	"(libkern/metaclass) failed to insert class into class dictionary",                 /* 7 */
+	"(libkern/metaclass) can't associate class with its superclass",                    /* 8 */
+	"(libkern/metaclass) can't find superclass during instance creation",               /* 9 */
+	"(libkern/metaclass) duplicate class name encountered",                             /* 10 */
+	"(libkern/metaclass) no kext for metaclass",                                        /* 11 */
+};
+
+/* These codes are specified in hexadecimal in OSKextLib.h.
+ */
+static const char * const err_codes_libkern_kext[] = {
+	NO_SUCH_ERROR,
+	"(libkern/kext) internal error",                                      /* 0x1 */
+	"(libkern/kext) allocation failure",                                  /* 0x2 */
+	"(libkern/kext) resource shortage",                                   /* 0x3 */
+	"(libkern/kext) not privileged",                                      /* 0x4 */
+	"(libkern/kext) invalid argument",                                    /* 0x5 */
+	"(libkern/kext) not found",                                           /* 0x6 */
+	"(libkern/kext) bad data (mkext/other)",                              /* 0x7 */
+	"(libkern/kext) XML (un)serialization error",                         /* 0x8 */
+	"(libkern/kext) function/version unsupported",                        /* 0x9 */
+	"(libkern/kext) function disabled",                                   /* 0xa */
+
+	"(libkern/kext) malformed kext (bundle layout/missing plist)",        /* 0xb */
+	"(libkern/kext) validation failure (plist/executable)",               /* 0xc */
+	"(libkern/kext) authentication failure (file ownership/permissions)", /* 0xd */
+	"(libkern/kext) dependency resolution failure",                       /* 0xe */
+	"(libkern/kext) requested architecture/executable not found",         /* 0xf */
+	"(libkern/kext) cache error",                                         /* 0x10 */
+
+	"(libkern/kext) operation deferred (queued to user space)",           /* 0x11 */
+	"(libkern/kext) operation/kext not allowed at current boot level",    /* 0x12 */
+	"(libkern/kext) not loadable (reason unspecified)",                   /* 0x13 */
+	"(libkern/kext) different version/uuid already loaded",               /* 0x14 */
+
+	"(libkern/kext) dependency load failed",                              /* 0x15 */
+	"(libkern/kext) link error",                                          /* 0x16 */
+	"(libkern/kext) kext (kmod) start/stop routine failed",               /* 0x17 */
+	"(libkern/kext) kext is in use or retained (cannot unload)",          /* 0x18 */
+	"(libkern/kext) kext request timed out",                              /* 0x19 */
+	"(libkern/kext) kext is stopping and cannot issue requests",          /* 0x1a */
+};
+
+/* libkern is err_system(0x37) */
+static const struct error_subsystem err_libkern_sub[] = {
+	/* subsystem 0 */
+    {
+        "(libkern/common)",
+        errlib_count(err_codes_libkern_common),
+        err_codes_libkern_common,
+	},
+    
+	/* subsystem 1 */
+    {
+        "(libkern/metaclass)",
+        errlib_count(err_codes_libkern_metaclass),
+        err_codes_libkern_metaclass,
+	},
+    
+	/* subsystem 2 */
+    {
+        "(libkern/kext)",
+        errlib_count(err_codes_libkern_kext),
+        err_codes_libkern_kext,
+	},
+};

@@ -1,0 +1,134 @@
+.\" Copyright (c) 1983, 1987, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     $Id: inet6_option_space.3,v 1.3 2005/01/19 00:30:03 majka Exp $
+.\" $FreeBSD: src/lib/libc/net/inet6_option_space.3,v 1.1.2.5 2001/08/17 15:42:38 ru Exp $
+.\"
+.Dd December 10, 1999
+.Dt INET6_OPTION_SPACE 3
+.Os
+.\"
+.Sh NAME
+.Nm inet6_option_space ,
+.Nm inet6_option_init ,
+.Nm inet6_option_append ,
+.Nm inet6_option_alloc ,
+.Nm inet6_option_next ,
+.Nm inet6_option_find
+.Nd IPv6 Hop-by-Hop and Destination Options manipulation
+.\"
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.Fd #include <sys/types.h>
+.Fd #include <netinet/in.h>
+.Ft "int"
+.Fn inet6_option_space "int nbytes"
+.Ft "int"
+.Fn inet6_option_init "void *bp" "struct cmsghdr **cmsgp" "int type"
+.Ft "int"
+.Fn inet6_option_append "struct cmsghdr *cmsg" "const u_int8_t *typep" "int multx" "int plusy"
+.Ft "u_int8_t *"
+.Fn inet6_option_alloc "struct cmsghdr *cmsg" "int datalen" "int multx" "int plusy"
+.Ft "int"
+.Fn inet6_option_next "const struct cmsghdr *cmsg" "u_int8_t **tptrp"
+.Ft "int"
+.Fn inet6_option_find "const struct cmsghdr *cmsg" "u_int8_t **tptrp" "int type"
+.\"
+.Sh DESCRIPTION
+.\"
+Building and parsing the Hop-by-Hop and Destination options is
+complicated due to alignment constranints, padding and
+ancillary data manipulation.
+RFC2292 defines a set of functions to help the application.
+The function prototypes for
+these functions are all in the
+.Aq Li netinet/in.h
+header.
+.Pp
+The full description of these functions is available in RFC2292.
+.\"
+.Sh DIAGNOSTICS
+.Fn inet6_option_init
+and
+.Fn inet6_option_append
+return
+.Li 0
+on success or
+.Li -1
+on an error.
+.Pp
+.Fn inet6_option_alloc
+returns
+.Dv NULL
+on an error.
+.Pp
+On errors,
+.Fn inet6_option_next
+and
+.Fn inet6_option_find
+return
+.Li -1
+setting
+.Fa *tptrp
+to non
+.Dv NULL
+value.
+.\"
+.Sh EXAMPLES
+RFC2292 gives comprehensive examples in chapter 6.
+.\"
+.Sh SEE ALSO
+.Rs
+.%A W. Stevens
+.%A M. Thomas
+.%T "Advanced Sockets API for IPv6"
+.%N RFC2292
+.%D February 1998
+.Re
+.Rs
+.%A S. Deering
+.%A R. Hinden
+.%T "Internet Protocol, Version 6 (IPv6) Specification"
+.%N RFC2460
+.%D December 1998
+.Re
+.\"
+.Sh HISTORY
+The implementation first appeared in KAME advanced networking kit.
+.\"
+.Sh STANDARDS
+The functions
+are documented in
+.Dq Advanced Sockets API for IPv6
+(RFC2292).
+.\"
+.Sh BUGS

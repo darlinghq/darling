@@ -1,0 +1,105 @@
+.\" $FreeBSD: src/lib/libc/sys/nanosleep.2,v 1.8.2.4 2001/12/14 18:34:01 ru Exp $
+.\"	$OpenBSD: nanosleep.2,v 1.1 1997/04/20 20:56:20 tholo Exp $
+.\"	$NetBSD: nanosleep.2,v 1.1 1997/04/17 18:12:02 jtc Exp $
+.\"
+.\" Copyright (c) 1986, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)sleep.3	8.1 (Berkeley) 6/4/93
+.\"
+.Dd April 17, 1997
+.Dt NANOSLEEP 2
+.Os
+.Sh NAME
+.Nm nanosleep
+.Nd suspend thread execution for an interval measured in nanoseconds
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In time.h
+.Ft int
+.Fo nanosleep
+.Fa "const struct timespec *rqtp"
+.Fa "struct timespec *rmtp"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn nanosleep
+function causes the calling thread to sleep
+for the amount of time specified in
+.Fa rqtp
+(the actual time slept may be longer, due to system latencies
+and possible limitations in the timer resolution of the hardware).
+An unmasked signal will
+cause
+.Fn nanosleep
+to terminate the sleep early, regardless of the
+.Dv SA_RESTART
+value on the interrupting signal.
+.Sh RETURN VALUES
+If
+.Fn nanosleep
+returns because the requested time has elapsed,
+the value returned will be zero.
+.Pp
+If
+.Fn nanosleep
+returns due to the delivery of a signal, the value returned
+will be the -1, and the global variable
+.Va errno
+will be set to indicate the interruption.
+If
+.Fa rmtp
+is
+.Pf non- Dv NULL ,
+the timespec structure it references is updated to contain the
+unslept amount (the request time minus the time actually slept).
+.Sh ERRORS
+The
+.Fn nanosleep
+call fails if:
+.Bl -tag -width Er
+.It Bq Er EINTR
+.Fn nanosleep
+was interrupted by the delivery of a signal.
+.It Bq Er EINVAL
+.Fa rqtp
+specified a nanosecond value less than zero
+or greater than or equal to 1000 million.
+.El
+.Sh SEE ALSO
+.Xr sigsuspend 2 ,
+.Xr sleep 3
+.Sh STANDARDS
+The
+.Fn nanosleep
+function conforms to
+.St -p1003.1b-93 .

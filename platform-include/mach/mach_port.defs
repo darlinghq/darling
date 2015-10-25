@@ -1,0 +1,614 @@
+/*
+ * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_FREE_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+/*
+ *	File:	mach/mach_port.defs
+ *	Author:	Rich Draves
+ *
+ *	Exported kernel calls.
+ */
+
+subsystem
+#if	KERNEL_SERVER
+	  KernelServer
+#endif	/* KERNEL_SERVER */
+	  mach_port 3200;
+
+#if !KERNEL && !LIBSYSCALL_INTERFACE
+	UserPrefix _kernelrpc_;
+#endif
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include <mach_debug/mach_debug_types.defs>
+
+/*
+ *	Returns the set of port and port set names
+ *	to which the target task has access, along with
+ *	the type (set or port) for each name.
+ */
+
+routine mach_port_names(
+		task		: ipc_space_t;
+	out	names		: mach_port_name_array_t;
+	out	types		: mach_port_type_array_t);
+
+/*
+ *	Returns the type (set or port) for the port name
+ *	within the target task.  Also indicates whether
+ *	there is a dead-name request for the name.
+ */
+
+routine mach_port_type(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+	out	ptype		: mach_port_type_t);
+
+/*
+ *	Changes the name by which a port (or port set) is known to
+ *	the target task.  The new name can't be in use.  The
+ *	old name becomes available for recycling.
+ *
+ *	This interface is OBSOLETE and will always
+ *	return KERN_NOT_SUPPORTED.
+ */
+
+routine mach_port_rename(
+		task		: ipc_space_t;
+		old_name	: mach_port_name_t;
+		new_name	: mach_port_name_t);
+
+/*
+ *	Allocates the specified kind of object, with the given name.
+ *	The right must be one of
+ *		MACH_PORT_RIGHT_RECEIVE
+ *		MACH_PORT_RIGHT_PORT_SET
+ *		MACH_PORT_RIGHT_DEAD_NAME
+ *	New port sets are empty.  New ports don't have any
+ *	send/send-once rights or queued messages.  The make-send
+ *	count is zero and their queue limit is MACH_PORT_QLIMIT_DEFAULT.
+ *	New sets, ports, and dead names have one user reference.
+ */
+
+routine mach_port_allocate_name(
+		task		: ipc_space_t;
+		right		: mach_port_right_t;
+		name		: mach_port_name_t);
+
+/*
+ *	Allocates the specified kind of object.
+ *	The right must be one of
+ *		MACH_PORT_RIGHT_RECEIVE
+ *		MACH_PORT_RIGHT_PORT_SET
+ *		MACH_PORT_RIGHT_DEAD_NAME
+ *	Like port_allocate_name, but the kernel picks a name.
+ *	It can use any name not associated with a right.
+ */
+
+routine mach_port_allocate(
+		task		: ipc_space_t;
+		right		: mach_port_right_t;
+	out	name		: mach_port_name_t);
+
+/*
+ *	Destroys all rights associated with the name and makes it
+ *	available for recycling immediately.  The name can be a
+ *	port (possibly with multiple user refs), a port set, or
+ *	a dead name (again, with multiple user refs).
+ */
+
+routine mach_port_destroy(
+		task		: ipc_space_t;
+		name		: mach_port_name_t);
+
+/*
+ *	Releases one send/send-once/dead-name user ref.
+ *	Just like mach_port_mod_refs -1, but deduces the
+ *	correct type of right.  This allows a user task
+ *	to release a ref for a port without worrying
+ *	about whether the port has died or not.
+ */
+
+routine mach_port_deallocate(
+		task		: ipc_space_t;
+		name		: mach_port_name_t);
+
+/*
+ *	A port set always has one user ref.
+ *	A send-once right always has one user ref.
+ *	A dead name always has one or more user refs.
+ *	A send right always has one or more user refs.
+ *	A receive right always has one user ref.
+ *	The right must be one of
+ *		MACH_PORT_RIGHT_RECEIVE
+ *		MACH_PORT_RIGHT_PORT_SET
+ *		MACH_PORT_RIGHT_DEAD_NAME
+ *		MACH_PORT_RIGHT_SEND
+ *		MACH_PORT_RIGHT_SEND_ONCE
+ */
+
+routine mach_port_get_refs(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		right		: mach_port_right_t;
+	out	refs		: mach_port_urefs_t);
+
+/*
+ *	The delta is a signed change to the task's
+ *	user ref count for the right.  Only dead names
+ *	and send rights can have a positive delta.
+ *	The resulting user ref count can't be negative.
+ *	If it is zero, the right is deallocated.
+ *	If the name isn't a composite right, it becomes
+ *	available for recycling.  The right must be one of
+ *		MACH_PORT_RIGHT_RECEIVE
+ *		MACH_PORT_RIGHT_PORT_SET
+ *		MACH_PORT_RIGHT_DEAD_NAME
+ *		MACH_PORT_RIGHT_SEND
+ *		MACH_PORT_RIGHT_SEND_ONCE
+ */
+
+routine mach_port_mod_refs(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		right		: mach_port_right_t;
+		delta		: mach_port_delta_t);
+
+/*
+ *	Peek at the message queue for the specified receive
+ *	right and return info about the message with the
+ *	sequence number matching the input.  If zero is
+ *	specified as the seqno, the first message in the
+ *	queue will be peeked.
+ *
+ *	Only the following trailer types are currently supported:
+ *	     MACH_RCV_TRAILER_TYPE(MACH_MSG_TRAILER_FORMAT_0)
+ *
+ *		or'ed with one of these element types:
+ *	     MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_NULL)
+ *	     MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_SEQNO)
+ *	     MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_SENDER)
+ *	     MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_AUDIT)
+ */
+routine mach_port_peek(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		trailer_type	: mach_msg_trailer_type_t;
+ inout		request_seqnop	: mach_port_seqno_t;
+ out		msg_sizep	: mach_msg_size_t;
+ out		msg_idp		: mach_msg_id_t;
+ out		trailer_infop	: mach_msg_trailer_info_t, CountInOut);		
+
+/*
+ *	Only valid for receive rights.
+ *	Sets the make-send count for the port.
+ */
+routine mach_port_set_mscount(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		mscount		: mach_port_mscount_t);
+
+/*
+ *	Only valid for port sets.  Returns a list of
+ *	the members.
+ */
+
+routine mach_port_get_set_status(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+	out	members		: mach_port_name_array_t);
+
+/*
+ *	Puts the member port (the task must have receive rights)
+ *	into the after port set.  If the port is already a member
+ *	of any set(s), it is atomically removed from those sets as
+ *	part of this operation.  (If after is MACH_PORT_NULL, the
+ *	port is still removed from all current sets).
+ */
+
+routine mach_port_move_member(
+		task		: ipc_space_t;
+		member		: mach_port_name_t;
+		after		: mach_port_name_t);
+
+/*
+ *	Requests a notification from the kernel.  The request
+ *	must supply the send-once right which is used for
+ *	the notification.  If a send-once right was previously
+ *	registered, it is returned.  The msgid must be one of:
+ *		MACH_NOTIFY_PORT_DESTROYED (receive rights)
+ *		MACH_NOTIFY_DEAD_NAME (send/receive/send-once rights)
+ *		MACH_NOTIFY_SEND_POSSIBLE (send/receive/send-once rights)
+ *		MACH_NOTIFY_NO_SENDERS (receive rights)
+ *
+ *	The sync value specifies whether a notification should
+ *	get sent immediately, if appropriate.  The exact meaning
+ *	depends on the notification:
+ *		MACH_NOTIFY_PORT_DESTROYED: must be zero.
+ *		MACH_NOTIFY_DEAD_NAME: if non-zero, then name can be dead,
+ *			and the notification gets sent immediately.
+ *			If zero, then name can't be dead.
+ *		MACH_NOTIFY_SEND_POSSIBLE: if non-zero, will generate a	send-
+ *			possible notification as soon as it is possible to send
+ *			to the port. If zero, will generate a send-possible
+ *			notification only after a subsequent failed send
+ *			(with MACH_SEND_NOTIFY option to mach_msg call).  Can
+ *			generate a dead-name notification if name is already dead
+ *			or becomes dead before a send-possible notification fires.
+ *		MACH_NOTIFY_NO_SENDERS: the notification gets sent
+ *			immediately if the current mscount is greater
+ *			than or equal to the sync value and there are no
+ *			extant send rights.
+ *
+ * If the name is deleted before a successfully registered notification
+ * is delivered, it is replaced with a port-deleted notification.
+ */
+
+routine mach_port_request_notification(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		msgid		: mach_msg_id_t;
+		sync		: mach_port_mscount_t;
+		notify		: mach_port_send_once_t;
+	out	previous	: mach_port_move_send_once_t);
+
+/*
+ *	Inserts the specified rights into the target task,
+ *	using the specified name.  If inserting send/receive
+ *	rights and the task already has send/receive rights
+ *	for the port, then the names must agree.  In any case,
+ *	the task gains a user ref for the port.
+ */
+
+routine mach_port_insert_right(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		poly		: mach_port_poly_t);
+
+/*
+ *	Returns the specified right for the named port
+ *	in the target task, extracting that right from
+ *	the target task.  The target task loses a user
+ *	ref and the name may be available for recycling.
+ *	msgt_name must be one of
+ *		MACH_MSG_TYPE_MOVE_RECEIVE
+ *		MACH_MSG_TYPE_COPY_SEND
+ *		MACH_MSG_TYPE_MAKE_SEND
+ *		MACH_MSG_TYPE_MOVE_SEND
+ *		MACH_MSG_TYPE_MAKE_SEND_ONCE
+ *		MACH_MSG_TYPE_MOVE_SEND_ONCE
+ */
+
+routine mach_port_extract_right(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		msgt_name	: mach_msg_type_name_t;
+	out	poly		: mach_port_poly_t);
+
+/*
+ *	Only valid for receive rights.
+ *	Sets the sequence number for the port.
+ */
+
+routine mach_port_set_seqno(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		seqno		: mach_port_seqno_t);
+
+/*
+ *      Returns information about a port.
+ */
+
+routine mach_port_get_attributes(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		flavor		: mach_port_flavor_t;
+	out	port_info_out	: mach_port_info_t, CountInOut);
+
+/*
+ *      Set attributes of a port
+ */
+
+routine mach_port_set_attributes(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		flavor		: mach_port_flavor_t;
+		port_info	: mach_port_info_t);
+
+
+/*
+ *	Allocates the specified kind of object, qos version.
+ *	The right must be
+ *		MACH_PORT_RIGHT_RECEIVE
+ *	Like port_allocate_name, but the kernel picks a name.
+ *	It can use any name not associated with a right.
+ */
+
+routine mach_port_allocate_qos(
+		task		: ipc_space_t;
+		right		: mach_port_right_t;
+	inout	qos		: mach_port_qos_t;
+	out	name		: mach_port_name_t);
+
+
+/*
+ *	Generic interface to allocation various kinds of ports.
+ *	Should never be called directly by users (at least not
+ *	unless they are exceedingly masochistic).
+ */
+
+routine mach_port_allocate_full(
+		task		: ipc_space_t;
+		right		: mach_port_right_t;
+		proto		: mach_port_t;
+	inout	qos		: mach_port_qos_t;
+	inout	name		: mach_port_name_t);
+
+
+/*
+ *	Pre-expand task port name space.
+ */
+routine task_set_port_space(
+		task		: ipc_space_t;
+		table_entries	: int);
+
+
+/*
+ *	Returns the exact number of extant send rights
+ *	for the given receive right.
+ *      This call is only valid on MACH_IPC_DEBUG kernels.
+ *      Otherwise, KERN_FAILURE is returned.
+ */
+routine	mach_port_get_srights(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+	out	srights		: mach_port_rights_t);
+
+
+/*
+ *	Returns information about an IPC space.
+ *      This call is only valid on MACH_IPC_DEBUG kernels.
+ *      Otherwise, KERN_FAILURE is returned.
+ */
+routine mach_port_space_info(
+		task		: ipc_space_t;
+	out	space_info	: ipc_info_space_t;
+	out	table_info	: ipc_info_name_array_t;
+	out	tree_info	: ipc_info_tree_name_array_t);
+
+/*
+ *	Returns information about the dead-name requests
+ *	registered with the named receive right.
+ *      This call is only valid on MACH_IPC_DEBUG kernels.
+ *      Otherwise, KERN_FAILURE is returned.
+ */
+routine mach_port_dnrequest_info(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+	out	dnr_total	: unsigned;	/* total size of table */
+	out	dnr_used	: unsigned);	/* amount used */
+
+/*
+ *	Return the type and address of the kernel object
+ *	that the given send/receive right represents.
+ *      This call is only valid on MACH_IPC_DEBUG kernels.
+ *      Otherwise, KERN_FAILURE is returned.
+ *
+ *	This interface is DEPRECATED in favor of the new
+ *	mach_port_kernel_object64() call (see below).
+ */
+routine	mach_port_kernel_object(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+	out	object_type	: unsigned;
+	out	object_addr	: unsigned);
+
+
+/*
+ *	Inserts the specified rights into the portset identified
+ *	by the <task, pset> pair.  The results of passing in the
+ *	Poly argument via the supplied disposition must yield a
+ *	receive right.
+ *
+ *	If the <task,pset> pair does not represent a valid portset
+ *	KERN_INVALID_RIGHT is returned.
+ *	
+ *	If the passed in name argument does not represent a receive
+ *	right, KERN_INVALID_CAPABILITY will be returned.
+ *
+ *	If the port represented by the receive right is already in
+ *	the portset, KERN_ALREADY_IN_SET is returned.
+ */
+routine mach_port_insert_member(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		pset		: mach_port_name_t);
+
+/*
+ *	Extracts the specified right from the named portset
+ *	in the target task.  
+ *	the target task.  The target task loses a user
+ *	ref and the name may be available for recycling.
+ *	msgt_name must be one of
+ *		MACH_MSG_TYPE_MOVE_RECEIVE
+ *		MACH_MSG_TYPE_COPY_SEND
+ *		MACH_MSG_TYPE_MAKE_SEND
+ *		MACH_MSG_TYPE_MOVE_SEND
+ *		MACH_MSG_TYPE_MAKE_SEND_ONCE
+ *		MACH_MSG_TYPE_MOVE_SEND_ONCE
+ */
+
+routine mach_port_extract_member(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		pset		: mach_port_name_t);
+
+/*
+ * Only valid for receive rights.
+ * Gets the context pointer for the port.
+ */
+
+routine mach_port_get_context(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+#ifdef LIBSYSCALL_INTERFACE
+	out context		: mach_port_context_t
+#else
+	out context		: mach_vm_address_t
+#endif
+	);
+
+/*
+ * Only valid for receive rights.
+ * Sets the context pointer for the port.
+ */
+
+routine mach_port_set_context(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+#ifdef LIBSYSCALL_INTERFACE
+		context		: mach_port_context_t
+#else
+		context		: mach_vm_address_t
+#endif
+		);
+
+/*
+ *	Return the type and address of the kernel object
+ *	that the given send/receive right represents.
+ *      This call is only valid on MACH_IPC_DEBUG kernels.
+ *      Otherwise, KERN_FAILURE is returned.
+ */
+routine	mach_port_kobject(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+	out	object_type	: natural_t;
+	out	object_addr	: mach_vm_address_t);
+
+
+/*
+ *	Constructs a right based on the options passed
+ *	in. Also allows guarding the port as one of the
+ *	options if the requested right is a receive
+ *	right.
+ */
+routine mach_port_construct(
+		task		: ipc_space_t;
+		options		: mach_port_options_ptr_t;
+#ifdef LIBSYSCALL_INTERFACE
+		context		: mach_port_context_t;
+#else
+		context		: uint64_t;
+#endif
+	out	name		: mach_port_name_t);
+
+/*
+ *	Destroys a mach port using the guard provided
+ *	for guarded ports. Also reduces the user ref
+ *	count for send rights as specified by srdelta.
+ */
+routine mach_port_destruct(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+		srdelta		: mach_port_delta_t;
+#ifdef LIBSYSCALL_INTERFACE
+		guard		: mach_port_context_t
+#else
+		guard		: uint64_t
+#endif		
+		);
+
+/*
+ *	Guard an already existing port. Allows guarding
+ *	receive rights only. Uses the context field in the
+ *	port structure to store the guard.
+ */
+routine mach_port_guard(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+#ifdef LIBSYSCALL_INTERFACE
+		guard		: mach_port_context_t;
+#else
+		guard		: uint64_t;
+#endif	
+		strict		: boolean_t);
+
+/*
+ *	Unguard a port guarded previously. For unguarded ports
+ *	or incorrect guards passed in it raises an exception
+ *	indicating guarding misbehavior.
+ */
+routine mach_port_unguard(
+		task		: ipc_space_t;
+		name		: mach_port_name_t;
+#ifdef LIBSYSCALL_INTERFACE
+		guard		: mach_port_context_t
+#else
+		guard		: uint64_t
+#endif	
+		);
+
+/*
+ *	Returns basic information about an IPC space.
+ *      This call is only valid on MACH_IPC_DEBUG kernels.
+ *      Otherwise, KERN_FAILURE is returned.
+ */
+routine mach_port_space_basic_info(
+		task		: ipc_space_t;
+	out	basic_info	: ipc_info_space_basic_t);
+
+/* vim: set ft=c : */

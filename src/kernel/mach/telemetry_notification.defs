@@ -1,0 +1,20 @@
+/*
+ * Copyright (c) 2012, Apple Inc.  All rights reserved.
+ */
+
+ /*
+ *  Interface definition for the telemetry facility.
+ */
+
+subsystem
+#if	KERNEL_USER
+    KernelUser
+#endif	/* KERNEL_USER */
+    telemetry_notification 5100;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+simpleroutine	telemetry_notification(
+	RequestPort	telemetry_port	: mach_port_t; 
+	in			flags			: uint32_t);

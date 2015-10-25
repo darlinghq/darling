@@ -1,0 +1,7 @@
+# Remove the weak-def bit from these external symbols
+# leave all type infos for binary compatibility
+__ZTV*
+__ZTT*
+__ZTC*
+__ZS*
+__ZN*

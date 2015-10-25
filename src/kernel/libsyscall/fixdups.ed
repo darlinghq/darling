@@ -1,0 +1,2 @@
+/<mach\/mig\.h>/;.+1,$g/<mach\/mig\.h>/d
+w

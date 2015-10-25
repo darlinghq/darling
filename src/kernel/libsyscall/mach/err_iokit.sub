@@ -1,0 +1,258 @@
+/*
+ * Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * The contents of this file constitute Original Code as defined in and
+ * are subject to the Apple Public Source License Version 1.1 (the
+ * "License").  You may not use this file except in compliance with the
+ * License.  Please obtain a copy of the License at
+ * http://www.apple.com/publicsource and read it before using this file.
+ * 
+ * This Original Code and all software distributed under the License are
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ *	File: 	err_iokit.sub
+ *	Author:	Godfrey van der Linden, Apple Computer, Inc
+ *	Date:	Sept, 2005
+ *
+ *	error codes for Mach and Unix kernels
+ */
+
+#include <TargetConditionals.h>
+#include <IOKit/IOReturn.h>
+#if !TARGET_OS_EMBEDDED
+#include <IOKit/usb/USB.h>
+#include <IOKit/firewire/IOFireWireLib.h>
+#endif
+
+static const struct error_sparse_map err_codes_iokit_common_map[] = {
+    err_code_map_entry(kIOReturnInvalid, kIOReturnInvalid ),
+    err_code_map_entry(kIOReturnError,   kIOReturnNotFound),
+};
+
+static const char * const err_codes_iokit_common[] = {
+    "(iokit/common) invalid - should never be seen",			// 0x001
+
+    "(iokit/common) general error",					// 0x2bc
+    "(iokit/common) can't allocate memory",				// 0x2bd
+    "(iokit/common) resource shortage",					// 0x2be
+    "(iokit/common) error during IPC",					// 0x2bf
+    "(iokit/common) no such device",					// 0x2c0
+    "(iokit/common) privilege violation",				// 0x2c1
+    "(iokit/common) invalid argument",					// 0x2c2
+    "(iokit/common) device read locked",				// 0x2c3
+    "(iokit/common) device write locked",				// 0x2c4
+    "(iokit/common) exclusive access and device already open",		// 0x2c5
+    "(iokit/common) sent/received messages had different msg_id",	// 0x2c6
+    "(iokit/common) unsupported function",				// 0x2c7
+    "(iokit/common) misc. VM failure",					// 0x2c8
+    "(iokit/common) internal error",					// 0x2c9
+    "(iokit/common) General I/O error",					// 0x2ca
+    "(iokit/common) ???",						// 0x2cb
+    "(iokit/common) can't acquire lock",				// 0x2cc
+    "(iokit/common) device not open",					// 0x2cd
+    "(iokit/common) read not supported",				// 0x2ce
+    "(iokit/common) write not supported",				// 0x2cf
+    "(iokit/common) alignment error",					// 0x2d0
+    "(iokit/common) Media Error",					// 0x2d1
+    "(iokit/common) device(s) still open",				// 0x2d2
+    "(iokit/common) rld failure",					// 0x2d3
+    "(iokit/common) DMA failure",					// 0x2d4
+    "(iokit/common) Device Busy",					// 0x2d5
+    "(iokit/common) I/O Timeout",					// 0x2d6
+    "(iokit/common) device offline",					// 0x2d7
+    "(iokit/common) not ready",						// 0x2d8
+    "(iokit/common) device not attached",				// 0x2d9
+    "(iokit/common) no DMA channels left",				// 0x2da
+    "(iokit/common) no space for data",					// 0x2db
+    "(iokit/common) ???",						// 0x2dc
+    "(iokit/common) port already exists",				// 0x2dd
+    "(iokit/common) can't wire down physical memory",			// 0x2de
+    "(iokit/common) no interrupt attached",				// 0x2df
+    "(iokit/common) no DMA frames enqueued",				// 0x2e0
+    "(iokit/common) oversized msg received on interrupt port",		// 0x2e1
+    "(iokit/common) not permitted",					// 0x2e2
+    "(iokit/common) no power to device",				// 0x2e3
+    "(iokit/common) media not present",					// 0x2e4
+    "(iokit/common) media not formatted",				// 0x2e5
+    "(iokit/common) no such mode",					// 0x2e6
+    "(iokit/common) data underrun",					// 0x2e7
+    "(iokit/common) data overrun",					// 0x2e8
+    "(iokit/common) the device is not working properly!",		// 0x2e9
+    "(iokit/common) a completion routine is required",			// 0x2ea
+    "(iokit/common) operation aborted",					// 0x2eb
+    "(iokit/common) bus bandwidth would be exceeded",			// 0x2ec
+    "(iokit/common) device not responding",				// 0x2ed
+    "(iokit/common) isochronous I/O request for distant past!",		// 0x2ee
+    "(iokit/common) isochronous I/O request for distant future",	// 0x2ef
+    "(iokit/common) data was not found",				// 0x2f0
+};
+
+#if !TARGET_OS_EMBEDDED
+static const struct error_sparse_map err_codes_iokit_usb_map[] = {
+    err_code_map_entry(kIOUSBCRCErr, kIOUSBDataToggleErr),
+    err_code_map_entry(kIOUSBPIDCheckErr, kIOUSBWrongPIDErr),
+    err_code_map_entry(kIOUSBReserved1Err, kIOUSBLinkErr),
+    err_code_map_entry(kIOUSBDeviceNotHighSpeed, kIOUSBTransactionTimeout),
+    err_code_map_entry(kIOUSBConfigNotFound,     kIOUSBEndpointNotFound),
+    err_code_map_entry(kIOUSBNotEnoughPowerErr,  kIOUSBUnknownPipeErr),
+};
+
+// error codes with in 0xe0004000
+static const char * const err_codes_iokit_usb[] = {
+    "(iokit/usb) USB Controller Error: bad CRC received",		// 0x001
+    "(iokit/usb) USB Controller Error:  bitstuffing",			// 0x002
+    "(iokit/usb) USB Controller Error: Bad data toggle",		// 0x003
+
+    "(iokit/usb) USB Controller Error: PID CRC error",			// 0x006
+    "(iokit/usb) USB Controller Error: Bad or wrong PID",		// 0x007
+
+    "(iokit/usb) Reserved",						// 0x00a
+    "(iokit/usb) Reserved",						// 0x00b
+    "(iokit/usb) USB Controller: Buffer Overrun",			// 0x00c
+    "(iokit/usb) USB Controller: Buffer Underrun ",			// 0x00d
+    "(iokit/usb) Transaction was not sent on the bus",			// 0x00e
+    "(iokit/usb) Transaction was not sent on the bus",			// 0x00f
+    "(iokit/usb) USB Controller: Link Error",				// 0x010
+
+    "(iokit/usb) device is not high speed, ehci driver returns error",	// 0x049
+    "(iokit/usb) synchronous usb request on the workloop thread",	// 0x04a
+    "(iokit/usb) high speed hub error during split transaction",	// 0x04b
+    "(iokit/usb) user land isoch call with unprepared frame-list",	// 0x04c
+    "(iokit/usb) user land isoch call with unprepared data buffer",	// 0x04d
+    "(iokit/usb) interface ref not recognized",				// 0x050
+    "(iokit/usb) pipe has stalled, error needs to be cleared",		// 0x04f
+    "(iokit/usb) transaction has been returned to the caller",		// 0x050
+    "(iokit/usb) transaction timed out",				// 0x051
+
+    "(iokit/usb) configuration not found",				// 0x056
+    "(iokit/usb) endpoint not found",					// 0x057
+
+    "(iokit/usb) not enough power for selected configuration",		// 0x05d
+    "(iokit/usb) not enough pipes in interface",			// 0x05e
+    "(iokit/usb) no async port",					// 0x05f
+    "(iokit/usb) too many pipes",					// 0x060
+    "(iokit/usb) pipe ref not recognized",				// 0x061
+};
+
+static const struct error_sparse_map err_codes_iokit_fw_map[] = {
+    err_code_map_entry(kIOConfigNoEntry, kIOFireWireBusReset),
+    err_code_map_entry(kIOFireWireBogusDCLProgram, kIOFireWireCompleting),
+    err_code_map_entry(kIOFWMessageServiceIsRequestingClose, kIOFWMessageTopologyChanged),
+};
+
+// error codes with in 0xe0008000
+static const char * const err_codes_iokit_fw[] = {
+    "(iokit/firewire) can't find requested entry in config ROM",	// 001
+    "(iokit/firewire) command pending (internal)",			// 002
+    "(iokit/firewire) DCL callback is final callback (internal)",	// 003
+    "(iokit/firewire) device rom changed, ref is no longer valid",	// 004
+    "(iokit/firewire) kIOFireWireAlreadyRegistered",			// 005
+    "(iokit/firewire) kIOFireWireMultipleTalkers",			// 006
+    "(iokit/firewire) kIOFireWireChannelActive",			// 007
+    "(iokit/firewire) kIOFireWireNoListenerOrTalker",			// 008
+    "(iokit/firewire) kIOFireWireNoChannels",				// 009
+    "(iokit/firewire) requested isoch channel is in use",		// 00A
+    "(iokit/firewire) kIOFireWireSeparateBus",				// 00B
+    "(iokit/firewire) kIOFireWireBadSelfIDs",				// 00C
+    "(iokit/firewire) kIOFireWireLowCableVoltage",			// 00D
+    "(iokit/firewire) kIOFireWireInsufficientPower",			// 00E
+    "(iokit/firewire) all transaction labels are in use",		// 00f
+    "(iokit/firewire) rcode 0, resp_complete",				// 010
+    "(iokit/firewire) rcode 1, reserved",				// 011
+    "(iokit/firewire) rcode 2, reserved",				// 012
+    "(iokit/firewire) rcode 3, reserved",				// 013
+    "(iokit/firewire) rcode 4, resp_conflict_error",			// 014
+    "(iokit/firewire) rcode 5, resp_data_error",			// 015
+    "(iokit/firewire) rcode 6, resp_type_error",			// 016
+    "(iokit/firewire) rcode 7, resp_address_error",			// 017
+    "(iokit/firewire) rcode 8, reserved",				// 018
+    "(iokit/firewire) rcode 9, reserved",				// 019
+    "(iokit/firewire) rcode 10, reserved",				// 01a
+    "(iokit/firewire) rcode 11, reserved",				// 01b
+    "(iokit/firewire) rcode 12, reserved",				// 01c
+    "(iokit/firewire) rcode 13, reserved",				// 01d
+    "(iokit/firewire) rcode 14, reserved",				// 01e
+    "(iokit/firewire) rcode 15, reserved",				// 01f
+    "(iokit/firewire) bus reset occurred, generation does not match",	// 020
+
+    "(iokit/firewire) DCL program contains an illegal DCL",		// 101
+    "(iokit/firewire) kIOFireWireTalkingAndListening",			// 102
+    "(iokit/firewire) system sleep, DCL program stopped",		// 103
+    "(iokit/firewire) command is actively completing (internal)",	// 104
+
+    "(iokit/firewire) device offline, please close device object",	// 7d0
+    "(iokit/firewire) more power may be available",			// 7d1
+    "(iokit/firewire) IOFireWire plane in registry updated",		// 7d2
+};
+
+// error codes with in 0xe0020000
+static const char * const err_codes_iokit_bluetooth[] = {
+    "(iokit/bluetooth) unknown error",					// 000
+    "(iokit/bluetooth) interrupted operation, hardware reset",		// 001
+    "(iokit/bluetooth) connection to device already exists",		// 002
+    "(iokit/bluetooth) no HCI controller",				// 003
+    "(iokit/bluetooth) changing power states is unsupported",		// 004
+};
+#endif /* !TARGET_OS_EMBEDDED */
+
+static const struct error_sparse_map err_iokit_sub_map[] = {
+    err_sub_map_entry(sub_iokit_common,          sub_iokit_pmu),
+    err_sub_map_entry(sub_iokit_vendor_specific, sub_iokit_reserved)
+};
+
+#define err_iokit_null_sub	{ "(iokit/?", 0 }
+static const struct error_subsystem err_iokit_sub[] =
+{
+    /* 0 */ {
+	"(iokit/common)",			// 0xe0000000
+	errlib_count(err_codes_iokit_common),
+	err_codes_iokit_common,
+	err_codes_iokit_common_map,
+	errlib_count(err_codes_iokit_common_map),
+    },
+#if !TARGET_OS_EMBEDDED
+    /*  1 */ {
+	"(iokit/usb)",				// 0xe0004000
+	errlib_count(err_codes_iokit_usb),
+	err_codes_iokit_usb,
+	err_codes_iokit_usb_map,
+	errlib_count(err_codes_iokit_usb_map),
+    },
+    /*  2 */ {
+	"(iokit/firewire)",			// 0xe0008000
+	errlib_count(err_codes_iokit_fw),
+	err_codes_iokit_fw,
+	err_codes_iokit_fw_map,
+	errlib_count(err_codes_iokit_fw_map),
+    },
+#endif /* !TARGET_OS_EMBEDDED */
+    /*  3 */ err_iokit_null_sub,		// 0xe000c000
+    /*  4 */ { "(iokit/blkstorage)", 0 },	// 0xe0010000
+    /*  5 */ { "(iokit/graphics)",   0 },	// 0xe0014000
+    /*  6 */ err_iokit_null_sub,		// 0xe0018000
+    /*  7 */ err_iokit_null_sub,		// 0xe001c000
+#if !TARGET_OS_EMBEDDED
+    /*  8 */ {
+	"(iokit/bluetooth)",			// 0xe0020000
+	errlib_count(err_codes_iokit_bluetooth),
+	err_codes_iokit_bluetooth,
+	NULL, 0,
+    },
+#endif /* !TARGET_OS_EMBEDDED */
+    /*  9 */ { "(iokit/pmu)",        0 },	// 0xe0024000
+    /* -2 */ { "(iokit/vendor)",     0 },	// 0xe0028000
+    /* -1 */ { "(iokit/reserved)",   0 },	// 0xe002c000
+};
+
+
+/* vim: set ft=c ts=8 sw=4: */

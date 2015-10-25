@@ -1,0 +1,31 @@
+.Dd March 11, 2005
+.Dt QUERYLOCALE 3
+.Os
+.Sh NAME
+.Nm querylocale
+.Nd Get locale name for a specified category
+.Sh SYNOPSIS
+.In xlocale.h
+.Ft const char *
+.Fn querylocale "int mask" "locale_t loc"
+.Sh DESCRIPTION
+Returns the name of the locale for the category specified by
+.Va mask .
+The
+.Va mask
+is scanned starting at the least significant bit,
+until the first set bit is found. This happens
+to scan the categories alphabetically, not 
+including
+.Dv LC_ALL_MASK ,
+but it is best to specify one category at a time.
+The available categories are documented in
+.Xr xlocale 3
+and
+.Xr newlocale 3 .
+.Sh SEE ALSO
+.Xr duplocale 3 ,
+.Xr freelocale 3 ,
+.Xr newlocale 3 ,
+.Xr uselocale 3 ,
+.Xr xlocale 3

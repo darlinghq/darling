@@ -1,0 +1,81 @@
+.\" Copyright (c) 2011 Apple Computer, Inc.  All rights reserved.
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\"
+.\" The contents of this file constitute Original Code as defined in and
+.\" are subject to the Apple Public Source License Version 1.1 (the
+.\" "License").  You may not use this file except in compliance with the
+.\" License.  Please obtain a copy of the License at
+.\" http://www.apple.com/publicsource and read it before using this file.
+.\"
+.\" This Original Code and all software distributed under the License are
+.\" distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
+.\" License for the specific language governing rights and limitations
+.\" under the License.
+.\"
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.Dd October 
+.Dt SYNC_VOLUME_NP 3
+.Os
+.Sh NAME
+.Nm sync_volume_np
+.Nd Sync a mounted filesystem
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In unistd.h
+.Ft int
+.Fn sync_volume_np "const char *path" "int flags"
+.Ft int
+.Fn fsync_volume_np "int fd" "int flags"
+.Sh DESCRIPTION
+The
+.Fn sync_volume_np
+function causes data and metadata on the filesystem containing
+.Ar path
+to be synced to disk; this may be any file or directory on that filesystem.  The
+.Fn fsync_volume_np
+does the same thing, but using an open file descriptor for that
+filesystem.
+Both functions take a flags parameter, with the currently-defined
+options:
+.Bl -tag -width SYNC_VOLUME_FULLSYNC -offset indent
+.It SYNC_VOLUME_FULLSYNC
+Request that the data and metadata be written to the disk hardware;
+if not set, then the hardware may keep it in cache.
+.It SYNC_VOLUME_WAIT
+Wait for the data and metadata to be written; if not set, then
+it will return when the requests have been made.
+.El
+.Sh RETURN VALUES
+Both functions return 0 on success, and a non-zero error code on error.
+.Sh ERRORS
+The
+.Fn fsync_volume_np
+function may return
+.Er EBADF
+if the
+.Ar fd
+parameter is not a valid, open file descriptor.
+The
+.Fn sync_volume_np
+function may return errors if:
+.Bl -tag -width ENAMETOOLONG
+.It Bq Er EACCES
+Search permission is denied for a component of the path prefix.
+.It Bq Er EIO
+An I/O error occurs while reading from or writing to the file system.
+.It Bq Er ELOOP
+Too many symbolic links are encountered in translating the pathname.
+This is taken to be indicative of a looping symbolic link.
+.It Bq Er ENAMETOOLONG
+A component of a pathname exceeds {NAME_MAX} characters, or an entire path name exceeds {PATH_MAX} characters.
+.It Bq Er ENOENT
+The named file does not exist.
+.It Bq Er ENOTDIR
+A component of the path prefix is not a directory.
+.El

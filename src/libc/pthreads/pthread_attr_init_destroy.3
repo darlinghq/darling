@@ -1,0 +1,64 @@
+.\" Copyright (c) 2004-2007 Apple Inc. All rights reserved.
+.Dd December 31, 2007
+.Dt PTHREAD_ATTR 3
+.Os
+.Sh NAME
+.Nm pthread_attr_destroy ,
+.Nm pthread_attr_init
+.Nd thread attribute operations
+.Sh SYNOPSIS
+.Fd #include <pthread.h>
+.Ft int
+.Fo pthread_attr_destroy
+.Fa "pthread_attr_t *attr"
+.Fc
+.Ft int
+.Fo pthread_attr_init
+.Fa "pthread_attr_t *attr"
+.Fc
+.Sh DESCRIPTION
+Thread attributes are used to specify parameters to
+.Fn pthread_create .
+One attribute object can be used in multiple calls to
+.Fn pthread_create ,
+with or without modifications between calls.
+.Pp
+The
+.Fn pthread_attr_init
+function initializes
+.Fa attr
+with all the default thread attributes.
+.Pp
+The
+.Fn pthread_attr_destroy
+function destroys
+.Fa attr .
+.Sh RETURN VALUES
+If successful, these functions return 0.
+Otherwise, an error number is returned to indicate the error.
+.Sh ERRORS
+.Fn pthread_attr_init
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er ENOMEM
+Out of memory.
+.El
+.Pp
+.Fn pthread_attr_destroy
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Pp
+.Sh SEE ALSO
+.Xr pthread_create 3
+.Sh STANDARDS
+.Fn pthread_attr_init ,
+.Fn pthread_attr_destroy
+conform to
+.St -p1003.1-96
+.Pp

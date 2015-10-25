@@ -1,0 +1,159 @@
+.\"	$OpenBSD: openpty.3,v 1.3 1996/11/24 23:53:12 millert Exp $
+.\" Copyright (c) 1995
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software developed by the Computer Systems
+.\" Engineering group at Lawrence Berkeley Laboratory under DARPA contract
+.\" BG 91-66 and contributed to Berkeley.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd April 5, 2008
+.Dt OPENPTY 3
+.Os
+.Sh NAME
+.Nm openpty ,
+.Nm login_tty ,
+.Nm forkpty
+.Nd tty utility functions
+.Sh SYNOPSIS
+.Fd #include <util.h>
+.Ft int
+.Fn openpty "int *amaster" "int *aslave" "char *name" "struct termios *termp" "struct winsize *winp"
+.Ft int
+.Fn login_tty "int fd"
+.Ft pid_t
+.Fn forkpty "int *amaster" "char *name" "struct termios *termp" "struct winsize *winp"
+.Sh DESCRIPTION
+The
+.Fn openpty ,
+.Fn login_tty ,
+and
+.Fn forkpty
+functions perform manipulations on ttys and pseudo-ttys.
+.Pp
+The
+.Fn openpty
+function allocates a pseudo-tty and returns file descriptors
+for the master and slave in
+.Fa amaster
+and
+.Fa aslave .
+If
+.Fa name
+is non-null, the filename of the slave is returned in
+.Fa name .
+If
+.Fa termp
+is non-null, the terminal parameters of the slave will be set to the
+values in
+.Fa termp .
+If
+.Fa winp
+is non-null, the window size of the slave will be set to the values in
+.Fa winp .
+.Pp
+The
+.Fn login_tty
+function prepares for a login on the tty
+.Fa fd
+(which may be a real tty device, or the slave of a pseudo-tty as
+returned by
+.Fn openpty )
+by creating a new session, making
+.Fa fd
+the controlling terminal for the current process, setting
+.Fa fd
+to be the standard input, output, and error streams of the current
+process, and closing
+.Fa fd .
+.Pp
+The
+.Fn forkpty
+function combines
+.Fn openpty ,
+.Fn fork ,
+and
+.Fn login_tty
+to creates a new process operating in a pseudo-tty.  The file
+descriptor of the master side of the pseudo-tty is returned in
+.Fa amaster ,
+and the filename of the slave in
+.Fa name
+if it is non-null.  The
+.Fa termp
+and
+.Fa winp
+parameters, if non-null, will determine the terminal attributes and
+window size of the slave side of the pseudo-tty.
+.Sh RETURN VALUES
+If a call to
+.Fn openpty ,
+.Fn login_tty ,
+or
+.Fn forkpty
+is not successful, -1 is returned and
+.Va errno
+is set to indicate the error.  Otherwise,
+.Fn openpty ,
+.Fn login_tty ,
+and the child process of
+.Fn forkpty
+return 0, and the parent process of
+.Fn forkpty
+returns the process ID of the child process.
+.Sh ERRORS
+.Fn openpty
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EAGAIN
+There are no available pseudo-ttys.
+.El
+.Pp
+.Fn login_tty
+will fail if
+.Fn ioctl
+fails to set
+.Fa fd
+to the controlling terminal of the current process.
+.Fn forkpty
+will fail if either
+.Fn openpty
+or
+.Fn fork
+fails.
+.Sh FILES
+.Bl -tag -width /dev/ttys[0-9][0-9][0-9] -compact
+.It Pa /dev/ptmx
+cloning pseudo-tty device
+.It Pa /dev/ttys[0-9][0-9][0-9]
+slave pseudo-tty devices
+.El
+.Sh SEE ALSO
+.Xr fork 2

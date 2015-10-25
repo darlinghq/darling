@@ -1,0 +1,162 @@
+.\" Copyright (c) 2008 Apple, Inc.  All rights reserved.
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\"
+.\" The contents of this file constitute Original Code as defined in and
+.\" are subject to the Apple Public Source License Version 1.1 (the
+.\" "License").  You may not use this file except in compliance with the
+.\" License.  Please obtain a copy of the License at
+.\" http://www.apple.com/publicsource and read it before using this file.
+.\"
+.\" This Original Code and all software distributed under the License are
+.\" distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
+.\" License for the specific language governing rights and limitations
+.\" under the License.
+.\"
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.Dd Aug 13, 2008
+.Dt MALLOC_ZONE_MALLOC 3
+.Os
+.Sh NAME
+.Nm malloc_create_zone ,
+.Nm malloc_destroy_zone ,
+.Nm malloc_default_zone ,
+.Nm malloc_zone_from_ptr ,
+.Nm malloc_zone_malloc ,
+.Nm malloc_zone_calloc ,
+.Nm malloc_zone_valloc ,
+.Nm malloc_zone_realloc ,
+.Nm malloc_zone_memalign ,
+.Nm malloc_zone_free
+.Nd zone-based memory allocation
+.Sh SYNOPSIS
+.In malloc/malloc.h
+.Ft malloc_zone_t *
+.Fo malloc_create_zone
+.Fa "vm_size_t start_size"
+.Fa "unsigned flags"
+.Fc
+.Ft void
+.Fo malloc_destroy_zone
+.Fa "malloc_zone_t *zone"
+.Fc
+.Ft malloc_zone_t *
+.Fo malloc_default_zone
+.Fa void
+.Fc
+.Ft malloc_zone_t *
+.Fo malloc_zone_from_ptr
+.Fa "const void *ptr"
+.Fc
+.Ft void *
+.Fo malloc_zone_malloc
+.Fa "malloc_zone_t *zone"
+.Fa "size_t size"
+.Fc
+.Ft void *
+.Fo malloc_zone_calloc
+.Fa "malloc_zone_t *zone"
+.Fa "size_t num_items"
+.Fa "size_t size"
+.Fc
+.Ft void *
+.Fo malloc_zone_valloc
+.Fa "malloc_zone_t *zone"
+.Fa "size_t size"
+.Fc
+.Ft void *
+.Fo malloc_zone_realloc
+.Fa "malloc_zone_t *zone"
+.Fa "void *ptr"
+.Fa "size_t size"
+.Fc
+.Ft void *
+.Fo malloc_zone_memalign
+.Fa "malloc_zone_t *zone"
+.Fa "size_t alignment"
+.Fa "size_t size"
+.Fc
+.Ft void
+.Fo malloc_zone_free
+.Fa "malloc_zone_t *zone"
+.Fa "void *ptr"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn malloc_create_zone
+function creates a malloc zone, advising an initial allocation of
+.Fa start_size
+bytes, and specifying 
+.Fa flags
+The returned malloc zone can be used to provide custom allocation and 
+deallocation behavior, and to retrieve additional information about the
+allocations in that zone.
+At present there are no client settable flag values recognized by malloc_create_zone(),
+the flags argument should always be passed as zero.
+.Pp
+The
+.Fn malloc_destroy_zone
+function deallocates all memory associated with objects in 
+.Fa zone
+as well as 
+.Fa zone
+itself.
+.Pp
+The
+.Fn malloc_default_zone
+function returns the default system malloc zone, used by
+.Xr malloc 3 ,
+and
+.Xr free 3 .
+.Pp
+The
+.Fn malloc_zone_from_ptr
+function returns a pointer to the malloc zone which contains
+.Fa ptr
+or NULL, if the pointer does not point to an allocated object in any current
+malloc zone.
+.Pp
+The
+.Fn malloc_zone_malloc ,
+.Fn malloc_zone_calloc ,
+.Fn malloc_zone_valloc ,
+.Fn malloc_zone_realloc ,
+.Fn malloc_zone_memalign ,
+and
+.Fn malloc_zone_free
+perform the same task on
+.Fa zone
+as their non-prefixed variants, 
+.Xr malloc 3 ,
+.Xr calloc 3 ,
+.Xr valloc 3 ,
+.Xr realloc 3 ,
+.Xr posix_memalign 3 ,
+and 
+.Xr free 3 perform on the default system malloc zone.
+.Sh RETURN VALUES
+The 
+.Fn malloc_create_zone ,
+.Fn malloc_default_zone ,
+and
+.Fn malloc_zone_from_ptr
+functions return a pointer to a malloc_zone_t structure, or NULL if there was
+an error.
+.Pp
+The 
+.Fn malloc_zone_malloc ,
+.Fn malloc_zone_calloc ,
+.Fn malloc_zone_valloc ,
+.Fn malloc_zone_realloc ,
+and
+.Fn malloc_zone_memalign
+functions return a pointer to allocated memory.  If there is an error, they 
+return a NULL pointer.  They are not required to set 
+.Va errno .
+.Sh SEE ALSO
+.Xr malloc 3 ,
+.Xr posix_memalign 3

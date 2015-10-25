@@ -1,0 +1,353 @@
+/*
+ * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_FREE_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+/*
+ *	File:	mach/mach_port.defs
+ *	Author:	Rich Draves
+ *
+ *	Exported kernel calls.
+ */
+
+subsystem
+#if	KERNEL_SERVER
+	  KernelServer
+#endif	/* KERNEL_SERVER */
+	  thread_act 3600;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+#if !KERNEL && !LIBSYSCALL_INTERFACE
+#define PREFIX(NAME) _kernelrpc_ ## NAME
+#else
+#define PREFIX(NAME) NAME
+#endif
+
+/*
+ *	Destroy the target thread.
+ *
+ *	JMM - For legacy reasons this consumes a reference to the
+ *	target thread.  This will have to change in the future because
+ *	we want the interfaces to be able to be defined in more standard
+ *	IDLs and transports, and most of them do not support the notion
+ *	of reference ownership transfers (just sharing).
+ */
+routine thread_terminate(
+		target_act	: thread_act_consume_ref_t); 
+
+
+/*
+ *	Return the selected state information for the target
+ *	thr_act.  If the thr_act is currently executing, the results
+ *	may be stale.  [Flavor THREAD_STATE_FLAVOR_LIST provides a
+ *	list of valid flavors for the target thread.]
+ */
+routine act_get_state(
+		target_act	: thread_act_t;
+		flavor		: int;
+	out	old_state	: thread_state_t, CountInOut);
+
+/*
+ *	Set the selected state information for the target thread.
+ *	If the thread is currently executing, the state change
+ *	may be ill-defined.
+ */
+routine
+#ifdef KERNEL_SERVER
+act_set_state_from_user(
+#else
+act_set_state(
+#endif
+		target_act	: thread_act_t;
+		flavor		: int;
+		new_state	: thread_state_t);
+
+/*
+ * Backward compatible old-style thread routines.
+ * These have different semantics than the new activation versions.
+ *
+ *	Return the selected state information for the target
+ *	thread.  If the thread is currently executing, the results
+ *	may be stale.  [Flavor THREAD_STATE_FLAVOR_LIST provides a
+ *	list of valid flavors for the target thr_act.]
+ */
+routine thread_get_state(
+		target_act	: thread_act_t;
+		flavor		: thread_state_flavor_t;
+	out	old_state	: thread_state_t, CountInOut);
+
+/*
+ *	Set the selected state information for the target thread.
+ *	If the thread is currently executing, the state change
+ *	may be ill-defined.
+ */
+routine
+#ifdef KERNEL_SERVER
+thread_set_state_from_user(
+#else
+thread_set_state(
+#endif
+		target_act	: thread_act_t;
+		flavor		: thread_state_flavor_t;
+		new_state	: thread_state_t);
+
+/*
+ *	Increment the suspend count for the target thread.
+ *	Once this call has completed, the thread will not
+ *	execute any further user or meta- instructions.
+ *	Once suspended, a thread may not execute again until
+ *	its suspend count is zero, and the suspend count
+ *	for its task is also zero.
+ */
+routine	thread_suspend(
+		target_act	: thread_act_t);
+
+/*
+ *	Decrement the suspend count for the target thread,
+ *	if that count is not already zero.
+ */
+routine	thread_resume(
+		target_act	: thread_act_t);
+
+/*
+ *	Cause any user or meta- instructions currently being
+ *	executed by the target thread to be aborted.  [Meta-
+ *	instructions consist of the basic traps for IPC
+ *	(e.g., msg_send, msg_receive) and self-identification
+ *	(e.g., task_self, thread_self, thread_reply).  Calls
+ *	described by MiG interfaces are not meta-instructions
+ *	themselves.]
+ */
+routine thread_abort(
+		target_act	: thread_act_t);
+
+/*
+ *	Cause any user or meta- instructions currently being
+ *	executed by the target thread to be aborted so that
+ *	they are transparently restartable.  This call fails
+ *	if the abort would result in a non-restartable condition.
+ *	Retry is the caller's responsibility.  [Meta-
+ *	instructions consist of the basic traps for IPC
+ *	(e.g., msg_send, msg_receive) and self-identification
+ *	(e.g., task_self, thread_self, thread_reply).  Calls
+ *	described by MiG interfaces are not meta-instructions
+ *	themselves.]
+ */
+routine thread_abort_safely(
+		target_act	: thread_act_t);
+
+
+routine thread_depress_abort(
+		thread		: thread_act_t);
+
+
+/*
+ *	Returns the current value of the selected special port
+ *	associated with the target thread.
+ */
+routine thread_get_special_port(
+		thr_act		: thread_act_t;
+		which_port	: int;
+	out	special_port	: mach_port_t);
+
+/*
+ *	Set one of the special ports associated with the
+ *	target thread.
+ */
+routine thread_set_special_port(
+		thr_act		: thread_act_t;
+		which_port	: int;
+		special_port	: mach_port_t);
+
+/*
+ *      Returns information about the target thread.
+ */
+routine thread_info(
+                target_act      : thread_act_t;
+                flavor          : thread_flavor_t;
+        out     thread_info_out : thread_info_t, CountInOut);
+
+/*
+ * Set an exception handler for a thread on one or more exception types
+ */
+routine		thread_set_exception_ports(
+			thread		: thread_act_t;
+			exception_mask	: exception_mask_t;
+			new_port	: mach_port_t;
+			behavior	: exception_behavior_t;
+			new_flavor	: thread_state_flavor_t);
+
+/*
+ * Lookup some of the old exception handlers for a thread
+ */
+routine		thread_get_exception_ports(
+			thread		: thread_act_t;
+			exception_mask	: exception_mask_t;
+		  out	masks		: exception_mask_array_t;
+		  out	old_handlers	: exception_handler_array_t, SameCount;
+		  out	old_behaviors	: exception_behavior_array_t, SameCount;
+		  out	old_flavors	: exception_flavor_array_t, SameCount);
+
+/*
+ * Set an exception handler for a thread on one or more exception types.
+ * At the same time, return the previously defined exception handlers for
+ * those types.
+ */
+routine		thread_swap_exception_ports(
+			thread		: thread_act_t;
+			exception_mask	: exception_mask_t;
+			new_port	: mach_port_t;
+			behavior	: exception_behavior_t;
+			new_flavor	: thread_state_flavor_t;
+		  out	masks		: exception_mask_array_t;
+		  out	old_handlers	: exception_handler_array_t, SameCount;
+		  out	old_behaviors	: exception_behavior_array_t, SameCount;
+		  out	old_flavors	: exception_flavor_array_t, SameCount);
+
+/*
+ * OBSOLETE interface.
+ */
+routine PREFIX(thread_policy)(
+	thr_act			: thread_act_t;
+	policy			: policy_t;
+	base			: policy_base_t;
+	set_limit		: boolean_t);
+
+/*
+ * Set/get policy information for a thread.
+ * (Approved Mac OS X microkernel interface)
+ */
+
+routine PREFIX(thread_policy_set)(
+	thread			: thread_act_t;
+	flavor			: thread_policy_flavor_t;
+	policy_info		: thread_policy_t);
+
+routine thread_policy_get(
+	thread			: thread_act_t;
+	flavor			: thread_policy_flavor_t;
+out	policy_info		: thread_policy_t, CountInOut;
+inout	get_default		: boolean_t);
+
+/*
+ *	Removed from the kernel.
+ */
+#if KERNEL_SERVER
+skip;
+#else
+routine thread_sample(
+		thread		: thread_act_t;
+		reply		: mach_port_make_send_t);
+#endif
+
+/*
+ *	ETAP has been removed from the kernel.
+ */
+#if KERNEL_SERVER
+skip;
+#else
+routine	etap_trace_thread(
+		target_act	: thread_act_t;
+		trace_status	: boolean_t);
+#endif
+
+/*
+ *	Assign thread to processor set.
+ */
+routine	thread_assign(
+		thread		: thread_act_t;
+		new_set		: processor_set_t);
+
+/*
+ *	Assign thread to default set.
+ */
+routine thread_assign_default(
+		thread		: thread_act_t);
+
+/*
+ *	Get current assignment for thread.
+ */
+routine thread_get_assignment(
+		thread		: thread_act_t;
+	out	assigned_set	: processor_set_name_t);
+
+
+/*
+ * OBSOLETE interface.
+ */
+routine PREFIX(thread_set_policy)(
+		thr_act		: thread_act_t;
+		pset		: processor_set_t;
+		policy		: policy_t;
+		base		: policy_base_t;
+		limit		: policy_limit_t);
+
+routine thread_get_mach_voucher(
+		thr_act		: thread_act_t;
+		which		: mach_voucher_selector_t;
+	out	voucher		: ipc_voucher_t);
+
+routine thread_set_mach_voucher(
+		thr_act		: thread_act_t;
+		voucher		: ipc_voucher_t);
+	
+routine thread_swap_mach_voucher(
+		thr_act		: thread_act_t;
+		new_voucher	: ipc_voucher_t;
+	inout	old_voucher	: ipc_voucher_t);
+
+/* vim: set ft=c : */

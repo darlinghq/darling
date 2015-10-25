@@ -1,0 +1,85 @@
+.\" Copyright (c) 2004-2007 Apple Inc. All rights reserved.
+.Dd December 31, 2007
+.Dt PTHREAD_ATTR 3
+.Os
+.Sh NAME
+.Nm pthread_attr_getinheritsched ,
+.Nm pthread_attr_setinheritsched 
+.Nd thread attribute operations
+.Sh SYNOPSIS
+.Fd #include <pthread.h>
+.Ft int
+.Fo pthread_attr_getinheritsched
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "int *restrict inheritsched"
+.Fc
+.Ft int
+.Fo pthread_attr_setinheritsched
+.Fa "pthread_attr_t *attr"
+.Fa "int inheritsched"
+.Fc
+.Sh DESCRIPTION
+Thread attributes are used to specify parameters to
+.Fn pthread_create .
+One attribute object can be used in multiple calls to
+.Fn pthread_create ,
+with or without modifications between calls.
+.Pp
+One of the thread attributes of interest is the "inheritsched" attribute. This attribute
+controls the scheduling policy and related attributes of the newly created thread. The values of the 
+"inheritsched" attribute can be either PTHREAD_INHERIT_SCHED or PTHREAD_EXPLICIT_SCHED.
+.Pp
+PTHREAD_INHERIT_SCHED
+.Pp	
+	Indicates that the newly created thread should inherit all it's scheduling related attributes from it's creating
+thread. It ignores the values of the relevant attributes within the
+.Fa attr
+argument.
+.Pp
+PTHREAD_EXPLICIT_SCHED
+.Pp	
+	Indicates that the newly created thread should set it's scheduling related attributes based on 
+.Fa attr
+argument.
+.Pp
+The
+.Fn pthread_attr_setinheritsched
+functions set the "inheritsched" attribute within the
+.Fa attr 
+argument to the desired value.
+.Pp
+The
+.Fn pthread_attr_getinheritsched
+functions copy the value of the "inheritsched" attribute to the location pointed to by the second function parameter.
+.Sh RETURN VALUES
+If successful, these functions return 0.
+Otherwise, an error number is returned to indicate the error.
+.Sh ERRORS
+.Pp
+.Fn pthread_attr_getinheritsched
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Pp
+.Fn pthread_attr_setinheritsched
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Sh SEE ALSO
+.Xr pthread_create 3 ,
+.Xr pthread_attr_init 3 ,
+.Xr pthread_attr_setschedparam 3
+.Sh STANDARDS
+.Pp
+.Fn pthread_attr_setinheritsched ,
+.Fn pthread_attr_getinheritsched 
+conform to
+.St -susv2

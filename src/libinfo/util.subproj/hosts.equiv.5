@@ -1,0 +1,179 @@
+.\"	$OpenBSD: hosts.equiv.5,v 1.1 1997/11/30 05:35:25 deraadt Exp $
+.\"
+.\" Copyright (c) 1997 Todd Vierling
+.\" Copyright (c) 1997 The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The NetBSD Foundation
+.\" by Todd Vierling <tv@pobox.com>.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"        This product includes software developed by the NetBSD
+.\"        Foundation, Inc. and its contributors.
+.\" 4. Neither the name of The NetBSD Foundation nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd November 26, 1997
+.Dt HOSTS.EQUIV 5
+.Os
+.Sh NAME
+.Nm hosts.equiv ,
+.Nm .rhosts
+.Nd trusted remote hosts and host-user pairs
+.Sh DESCRIPTION
+The
+.Nm hosts.equiv
+and
+.Nm .rhosts
+files list hosts and users which are ``trusted'' by the local host when a
+connection is made via
+.Xr rlogind 8 ,
+.Xr rshd 8 ,
+or any other server that uses
+.Xr ruserok 3 .
+This mechanism bypasses password checks, and is required for access via
+.Xr rsh 1 .
+.Pp
+Each line of these files has the format:
+.Pp
+.Bd -unfilled -offset indent -compact
+hostname [username]
+.Ed
+.Pp
+The
+.Em hostname
+may be specified as a host name (typically a fully qualified host
+name in a DNS environment) or address,
+.Em +@netgroup
+(from which only the host names are checked),
+or a ``+'' wildcard (allow all hosts).
+.Pp
+The
+.Em username ,
+if specified, may be given as a user name on the remote host,
+.Em +@netgroup
+(from which only the user names are checked),
+or a ``+'' wildcard (allow all remote users).
+.Pp
+If a
+.Em username
+is specified, only that user from the specified host may login to the
+local machine.  If a
+.Em username
+is not specified, any user may login with the same user name.
+.Sh EXAMPLES
+.Li somehost
+.Bd -filled -offset indent -compact
+A common usage:  users on
+.Em somehost
+may login to the local host as the same user name.
+.Ed
+.Li somehost username
+.Bd -filled -offset indent -compact
+The user
+.Em username
+on
+.Em somehost
+may login to the local host.  If specified in
+.Em /etc/hosts.equiv ,
+the user may login with only the same user name.
+.Ed
+.Li +@anetgroup username
+.Bd -filled -offset indent -compact
+The user
+.Em username
+may login to the local host from any machine listed in the netgroup
+.Em anetgroup .
+.Ed
+.Bd -literal -compact
++
++ +
+.Ed
+.Bd -filled -offset indent -compact
+Two severe security hazards.  In the first case, allows a user on any
+machine to login to the local host as the same user name.  In the second
+case, allows any user on any machine to login to the local host (as any
+user, if in
+.Em /etc/hosts.equiv ) .
+.Ed
+.Sh WARNINGS
+The username checks provided by this mechanism are
+.Em not
+secure, as the remote user name is received by the server unchecked
+for validity.  Therefore this mechanism should only be used
+in an environment where all hosts are completely trusted.
+.Pp
+A numeric host address instead of a host name can help security
+considerations somewhat; the address is then used directly by
+.Xr iruserok 3 .
+.Pp
+When a username (or netgroup, or +) is specified in
+.Em /etc/hosts.equiv ,
+that user (or group of users, or all users, respectively) may login to
+the local host as
+.Em any local user .
+Usernames in
+.Em /etc/hosts.equiv
+should therefore be used with extreme caution, or not at all.
+.Pp
+A
+.Em .rhosts
+file must be owned by the user whose home directory it resides in, and
+must be writable only by that user.
+.Pp
+Logins as root only check root's
+.Em .rhosts
+file; the
+.Em /etc/hosts.equiv
+file is not checked for security.  Access permitted through root's
+.Em .rhosts
+file is typically only for
+.Xr rsh 1 ,
+as root must still login on the console for an interactive login such as
+.Xr rlogin 1 .
+.Sh FILES
+.Bl -tag -width /etc/hosts.equiv -compact
+.It Pa /etc/hosts.equiv
+Global trusted host-user pairs list
+.It Pa ~/.rhosts
+Per-user trusted host-user pairs list
+.El
+.Sh SEE ALSO
+.Xr rcp 1 ,
+.Xr rlogin 1 ,
+.Xr rsh 1 ,
+.Xr rcmd 3 ,
+.Xr ruserok 3 ,
+.Xr netgroup 5
+.Sh HISTORY
+The
+.Nm .rhosts
+file format appeared in
+.Bx 4.2 .
+.Sh BUGS
+The
+.Xr ruserok 3
+implementation currently skips negative entries (preceded with a
+``-'' sign) and does not treat them as ``short-circuit'' negative entries.

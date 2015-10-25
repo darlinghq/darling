@@ -1,0 +1,22 @@
+/*
+ * Copyright (c) 2013, Apple Inc.  All rights reserved.
+ */
+
+ /*
+ *  Interface definition for the coalition facility.
+ */
+
+subsystem
+#if	KERNEL_USER
+    KernelUser
+#endif	/* KERNEL_USER */
+    coalition_notification 5300;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+/* This is likely to change with 15385886. */
+simpleroutine	coalition_notification(
+	RequestPort	coalition_port	: mach_port_t; 
+	in			id			: uint64_t;
+	in			flags			: uint32_t);

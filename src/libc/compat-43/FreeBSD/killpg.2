@@ -1,0 +1,105 @@
+.\" Copyright (c) 1980, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)killpg.2	8.1 (Berkeley) 6/2/93
+.\" $FreeBSD: src/lib/libc/compat-43/killpg.2,v 1.14 2007/01/09 00:27:49 imp Exp $
+.\"
+.Dd October 10, 2006
+.Dt KILLPG 2
+.Os
+.Sh NAME
+.Nm killpg
+.Nd send signal to a process group
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In signal.h
+.Ft int
+.Fn killpg "pid_t pgrp" "int sig"
+.Sh DESCRIPTION
+The
+.Fn killpg
+function
+sends the signal
+.Fa sig
+to the process group
+.Fa pgrp .
+See
+.Xr sigaction 2
+for a list of signals.
+If
+.Fa pgrp
+is 0,
+.Fn killpg
+sends the signal to the sending process's process group.
+.Pp
+The sending process and members of the process group must
+have the same effective user ID, or
+the sender must be the super-user.
+As a single special case the continue signal SIGCONT may be sent
+to any process with the same session ID as the caller.
+.Sh RETURN VALUES
+.Rv -std killpg
+.Sh ERRORS
+The
+.Fn killpg
+function
+will fail and no signal will be sent if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The
+.Fa sig
+argument
+is not a valid signal number.
+.It Bq Er EPERM
+The sending process is not the super-user and one or more
+of the target processes has an effective user ID different from that
+of the sending process.
+.It Bq Er ESRCH
+No process can be found in the process group specified by
+.Fa pgrp .
+.It Bq Er ESRCH
+The process group was given as 0
+but the sending process does not have a process group.
+.El
+.Sh LEGACY SYNOPSIS
+.Fd #include <sys/types.h>
+.Fd #include <signal.h>
+.Pp
+The include file
+.In sys/types.h
+is necessary.
+.Sh SEE ALSO
+.Xr getpgrp 2 ,
+.Xr kill 2 ,
+.Xr sigaction 2 ,
+.Xr compat 5
+.Sh HISTORY
+The
+.Fn killpg
+function appeared in
+.Bx 4.0 .

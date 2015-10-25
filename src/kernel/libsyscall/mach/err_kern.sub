@@ -1,0 +1,182 @@
+/*
+ * @OSF_COPYRIGHT@
+ */
+
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS 
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie the
+ * rights to redistribute these changes.
+ */
+
+/*
+ *	File: 	err_kern.sub
+ *	Author:	Douglas Orr, Carnegie Mellon University
+ *	Date:	Mar, 1988
+ *
+ *	error codes for Mach and Unix kernels
+ */
+
+static const char * const err_codes_kern[] = {
+	"(os/kern) successful",			/* 0 */
+	"(os/kern) invalid address",
+	"(os/kern) protection failure",
+	"(os/kern) no space available",
+	"(os/kern) invalid argument",
+	"(os/kern) failure",			/* 5 */
+	"(os/kern) resource shortage",
+	"(os/kern) not receiver",
+	"(os/kern) no access",
+	"(os/kern) memory failure",
+	"(os/kern) memory error",		/* 10 */
+	"(os/kern) already in set",
+	"(os/kern) not in set",
+	"(os/kern) name exists",
+	"(os/kern) aborted",
+	"(os/kern) invalid name",		/* 15 */
+	"(os/kern) invalid task",
+	"(os/kern) invalid right",
+	"(os/kern) invalid value",
+	"(os/kern) urefs overflow",
+	"(os/kern) invalid capability",		/* 20 */
+	"(os/kern) right exists",
+	"(os/kern) invalid host",
+	"(os/kern) memory present",
+	"(os/kern) memory data moved",
+	"(os/kern) memory restart copy",	/* 25 */
+	"(os/kern) invalid processor set",
+	"(os/kern) policy limit",
+	"(os/kern) invalid policy",
+	"(os/kern) invalid object",
+	"(os/kern) already waiting",		/* 30 */
+	"(os/kern) default set",
+	"(os/kern) exception protected",
+	"(os/kern) invalid ledger",
+	"(os/kern) invalid memory control",
+	"(os/kern) invalid security",		/* 35 */
+	"(os/kern) not depressed",
+	"(os/kern) object terminated",
+	"(os/kern) lock set destroyed",
+	"(os/kern) lock unstable",
+	"(os/kern) lock owned by another",	/* 40 */
+	"(os/kern) lock owned by self",
+	"(os/kern) semaphore destroyed",
+	"(os/kern) RPC terminated",
+	"(os/kern) terminate orphan",
+	"(os/kern) let orphan continue",	/* 45 */
+	"(os/kern) service not supported",
+	"(os/kern) remote node down",
+};
+
+static const char * const err_codes_unix[] = {
+	NO_SUCH_ERROR,
+	"(os/unix) no rights to object",
+	"(os/unix) file or directory does not exist",
+	"(os/unix) no such process",
+	"(os/unix) interrupted system call",
+	"(os/unix) i/o error",
+	"(os/unix) device does not exist",
+	"(os/unix) argument list is too long",
+	"(os/unix) invalid executable object format",
+	"(os/unix) bad file descriptor number",
+	"(os/unix) no child processes are present",
+	"(os/unix) no more processes are available",
+	"(os/unix) insufficient memory",
+	"(os/unix) access denied",
+	"(os/unix) memory access fault",
+	"(os/unix) block device required for operation",
+	"(os/unix) mount device busy",
+	"(os/unix) file already exists",
+	"(os/unix) cross device link",
+	"(os/unix) device does not exist",
+	"(os/unix) object is not a directory",
+	"(os/unix) object is a directory",
+	"(os/unix) invalid argument",
+	"(os/unix) internal file table overflow",
+	"(os/unix) maximum number of open files reached",
+	"(os/unix) object is not a tty-like device",
+	"(os/unix) executable object is in use",
+	"(os/unix) file is too large",
+	"(os/unix) no space is left on device",
+	"(os/unix) illegal seek attempt",
+	"(os/unix) read-only file system",
+	"(os/unix) too many links",
+	"(os/unix) broken pipe",
+	"(os/unix) argument is too large",
+	"(os/unix) result is out of range",
+	"(os/unix) operation on device would block",
+	"(os/unix) operation is now in progress",
+	"(os/unix) operation is already in progress",	
+	"(os/unix) socket operation attempted on non-socket object",
+	"(os/unix) destination address is required",
+	"(os/unix) message is too long",
+	"(os/unix) protocol type is incorrect for socket",
+	"(os/unix) protocol type is not availaible",
+	"(os/unix) protocol type is not supported",
+	"(os/unix) socket type is not supported",
+	"(os/unix) operation is not supported on sockets",
+	"(os/unix) protocol family is not supported",
+	"(os/unix) address family is not supported by protocol family",
+	"(os/unix) address is already in use",
+	"(os/unix) can't assign requested address",
+	"(os/unix) network is down",
+	"(os/unix) network is unreachable",
+	"(os/unix) network dropped connection on reset",
+	"(os/unix) software aborted connection",
+	"(os/unix) connection reset by peer",
+	"(os/unix) no buffer space is available",
+	"(os/unix) socket is already connected",
+	"(os/unix) socket is not connected",
+	"(os/unix) can't send after socket shutdown",
+	"(os/unix) too many references; can't splice",
+	"(os/unix) connection timed out",
+	"(os/unix) connection was refused",
+	"(os/unix) too many levels of symbolic links",
+	"(os/unix) file name exceeds system maximum limit",
+	"(os/unix) host is down",
+	"(os/unix) there is no route to host",
+	"(os/unix) directory is not empty",
+	"(os/unix) quota on number of processes exceeded",
+	"(os/unix) quota on number of users exceeded",
+	"(os/unix) quota on available disk space exceeded",
+};
+
+static const struct error_subsystem err_os_sub[] = {
+	{
+	"(os/kern)",
+	errlib_count(err_codes_kern),
+	err_codes_kern,
+	},
+	{
+	"(os/?)",
+	0,
+	},
+	{
+	"(os/?)",
+	0,
+	},
+	{
+	"(os/unix)",
+	errlib_count(err_codes_unix),
+	err_codes_unix,
+	},
+};

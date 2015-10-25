@@ -1,0 +1,139 @@
+.\"	$NetBSD: getlastlogx.3,v 1.2 2008/04/30 13:10:50 martin Exp $
+.\"
+.\" Copyright (c) 2003 The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The NetBSD Foundation
+.\" by Thomas Klausner.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd Dec 26, 2005
+.Dt GETLASTLOGX 3
+.Os
+.Sh NAME
+.Nm getlastlogx ,
+.Nm getlastlogxbyname ,
+.Nm getutmp ,
+.Nm getutmpx ,
+.Nm utmpxname
+.Nd user accounting database functions
+.Sh SYNOPSIS
+.In utmpx.h
+.Ft struct lastlogx *
+.Fn getlastlogx "uid_t uid" "struct lastlogx *ll"
+.Ft struct lastlogx *
+.Fn getlastlogxbyname "const char *name" "struct lastlogx *ll"
+.Ft void
+.Fn getutmp "const struct utmpx *ux" "struct utmp *u"
+.Ft void
+.Fn getutmpx "const struct utmp *u" "struct utmpx *ux"
+.Ft int
+.Fn utmpxname "const char *fname"
+.Sh DESCRIPTION
+The
+.Fn getlastlogx
+function looks up the entry for the user with user id
+.Fa uid
+and returns it in
+.Fa \&ll .
+If the provided
+.Fa \&ll
+is
+.Dv NULL ,
+the necessary space will be allocated by
+.Fn getlastlogx
+and should be
+.Fn free Ns d
+by the caller.
+The
+.Fn getlastlogxbyname
+function is similar to
+.Fn getlastlogx ,
+except the user name is passed.
+.Pp
+.Fn getutmp
+function fills out the entries in the struct utmp
+.Fa u
+with the data provided in the struct utmpx
+.Fa ux .
+.Fn getutmpx
+does the opposite, filling out the entries in the struct utmpx
+.Fa ux
+with the data provided in the struct utmp
+.Fa u ,
+and initializing all the unknown fields to 0.
+The sole exception is the
+.Fa ut_type
+field, which will be initialized to
+.Dv USER_PROCESS .
+.Pp
+A
+.Ft struct lastlogx
+is defined like this:
+.Bd -literal
+struct lastlogx {
+        struct timeval ll_tv;           /* time entry was created */
+        char ll_line[_UTX_LINESIZE];    /* tty name */
+        char ll_host[_UTX_HOSTSIZE];    /* host name */
+};
+.Ed
+.Pp
+The
+.Fn utmpxname
+function sets the default
+.Xr utmpx 5
+database file name to
+.Fa fname .
+.Sh RETURN VALUES
+.Fn getlastlogx
+and
+.Fn getlastlogxbyname
+return the found entry on success, or
+.Dv NULL
+if it could not open the database, could not find an entry matching
+.Fa uid
+or
+.Fa name ,
+or could not allocate the necessary space (in case
+.Fa \&ll
+was
+.Dv NULL ) .
+.Pp
+.Fn utmpxname
+returns 1 on success, or 0 if the supplied file name was too long or
+did not end with
+.Sq x .
+.Sh SEE ALSO
+.Xr endutxent 3 ,
+.Xr utmpx 5
+.Sh HISTORY
+The functions
+.Fn getutmp ,
+.Fn getutmpx ,
+and
+.Fn utmpxname
+first appeared in
+.Tn Solaris .
+.Nm getlastlogx
+first appeared in
+.Nx 2.0 .

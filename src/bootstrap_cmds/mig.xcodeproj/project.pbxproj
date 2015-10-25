@@ -1,0 +1,288 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		FC2E1879149BF95600349D18 /* mig.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FCAD5337149BF58700CE0B4B /* mig.1 */; };
+		FC2E187A149BF95600349D18 /* migcom.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FCAD533C149BF58700CE0B4B /* migcom.1 */; };
+		FCAD539C149BF58700CE0B4B /* error.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD532B149BF58700CE0B4B /* error.c */; };
+		FCAD539D149BF58700CE0B4B /* global.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD532D149BF58700CE0B4B /* global.c */; };
+		FCAD539F149BF58700CE0B4B /* header.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD5330149BF58700CE0B4B /* header.c */; };
+		FCAD53A0149BF58700CE0B4B /* lexxer.l in Sources */ = {isa = PBXBuildFile; fileRef = FCAD5334149BF58700CE0B4B /* lexxer.l */; };
+		FCAD53A2149BF58700CE0B4B /* mig.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD5338149BF58700CE0B4B /* mig.c */; };
+		FCAD53A3149BF58700CE0B4B /* parser.y in Sources */ = {isa = PBXBuildFile; fileRef = FCAD5340149BF58700CE0B4B /* parser.y */; };
+		FCAD53A4149BF58700CE0B4B /* routine.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD5343149BF58700CE0B4B /* routine.c */; };
+		FCAD53A5149BF58700CE0B4B /* server.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD5345149BF58700CE0B4B /* server.c */; };
+		FCAD53A6149BF58700CE0B4B /* statement.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD5346149BF58700CE0B4B /* statement.c */; };
+		FCAD53A7149BF58700CE0B4B /* string.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD5349149BF58700CE0B4B /* string.c */; };
+		FCAD53A8149BF58700CE0B4B /* type.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD534A149BF58700CE0B4B /* type.c */; };
+		FCAD53A9149BF58700CE0B4B /* user.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD534C149BF58700CE0B4B /* user.c */; };
+		FCAD53AA149BF58700CE0B4B /* utils.c in Sources */ = {isa = PBXBuildFile; fileRef = FCAD534D149BF58700CE0B4B /* utils.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FC2DBC52149BF01800EACA9D /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(DT_TOOLCHAIN_DIR)/usr/share/man/man1/";
+			dstSubfolderSpec = 0;
+			files = (
+				FC2E1879149BF95600349D18 /* mig.1 in CopyFiles */,
+				FC2E187A149BF95600349D18 /* migcom.1 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		FC2DBC54149BF01800EACA9D /* migcom */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = migcom; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC2E188C149C017900349D18 /* install-mig.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = "install-mig.sh"; sourceTree = "<group>"; };
+		FCAD532A149BF58700CE0B4B /* alloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = alloc.h; sourceTree = "<group>"; };
+		FCAD532B149BF58700CE0B4B /* error.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = error.c; sourceTree = "<group>"; };
+		FCAD532C149BF58700CE0B4B /* error.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = error.h; sourceTree = "<group>"; };
+		FCAD532D149BF58700CE0B4B /* global.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = global.c; sourceTree = "<group>"; };
+		FCAD532E149BF58700CE0B4B /* global.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = global.h; sourceTree = "<group>"; };
+		FCAD532F149BF58700CE0B4B /* handler.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = handler.c; sourceTree = "<group>"; };
+		FCAD5330149BF58700CE0B4B /* header.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = header.c; sourceTree = "<group>"; };
+		FCAD5333149BF58700CE0B4B /* lexxer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lexxer.h; sourceTree = "<group>"; };
+		FCAD5334149BF58700CE0B4B /* lexxer.l */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.lex; path = lexxer.l; sourceTree = "<group>"; };
+		FCAD5337149BF58700CE0B4B /* mig.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; path = mig.1; sourceTree = "<group>"; };
+		FCAD5338149BF58700CE0B4B /* mig.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mig.c; sourceTree = "<group>"; };
+		FCAD5339149BF58700CE0B4B /* mig.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = mig.sh; sourceTree = "<group>"; };
+		FCAD533A149BF58700CE0B4B /* mig_errors.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mig_errors.h; sourceTree = "<group>"; };
+		FCAD533B149BF58700CE0B4B /* mig_machine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mig_machine.h; sourceTree = "<group>"; };
+		FCAD533C149BF58700CE0B4B /* migcom.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; path = migcom.1; sourceTree = "<group>"; };
+		FCAD5340149BF58700CE0B4B /* parser.y */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.yacc; path = parser.y; sourceTree = "<group>"; };
+		FCAD5343149BF58700CE0B4B /* routine.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = routine.c; sourceTree = "<group>"; };
+		FCAD5344149BF58700CE0B4B /* routine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = routine.h; sourceTree = "<group>"; };
+		FCAD5345149BF58700CE0B4B /* server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = server.c; sourceTree = "<group>"; };
+		FCAD5346149BF58700CE0B4B /* statement.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = statement.c; sourceTree = "<group>"; };
+		FCAD5347149BF58700CE0B4B /* statement.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = statement.h; sourceTree = "<group>"; };
+		FCAD5348149BF58700CE0B4B /* strdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = strdefs.h; sourceTree = "<group>"; };
+		FCAD5349149BF58700CE0B4B /* string.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = string.c; sourceTree = "<group>"; };
+		FCAD534A149BF58700CE0B4B /* type.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = type.c; sourceTree = "<group>"; };
+		FCAD534B149BF58700CE0B4B /* type.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = type.h; sourceTree = "<group>"; };
+		FCAD534C149BF58700CE0B4B /* user.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = user.c; sourceTree = "<group>"; };
+		FCAD534D149BF58700CE0B4B /* utils.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = utils.c; sourceTree = "<group>"; };
+		FCAD534E149BF58700CE0B4B /* utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
+		FCAD534F149BF58700CE0B4B /* write.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = write.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FC2DBC51149BF01800EACA9D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		FC2DBC49149BF01800EACA9D = {
+			isa = PBXGroup;
+			children = (
+				FCAD5329149BF58700CE0B4B /* migcom */,
+				FC2E188B149C017900349D18 /* xcodescripts */,
+				FC2DBC55149BF01800EACA9D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FC2DBC55149BF01800EACA9D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FC2DBC54149BF01800EACA9D /* migcom */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FC2E188B149C017900349D18 /* xcodescripts */ = {
+			isa = PBXGroup;
+			children = (
+				FC2E188C149C017900349D18 /* install-mig.sh */,
+			);
+			path = xcodescripts;
+			sourceTree = "<group>";
+		};
+		FCAD5329149BF58700CE0B4B /* migcom */ = {
+			isa = PBXGroup;
+			children = (
+				FCAD532A149BF58700CE0B4B /* alloc.h */,
+				FCAD532B149BF58700CE0B4B /* error.c */,
+				FCAD532C149BF58700CE0B4B /* error.h */,
+				FCAD532D149BF58700CE0B4B /* global.c */,
+				FCAD532E149BF58700CE0B4B /* global.h */,
+				FCAD532F149BF58700CE0B4B /* handler.c */,
+				FCAD5330149BF58700CE0B4B /* header.c */,
+				FCAD5333149BF58700CE0B4B /* lexxer.h */,
+				FCAD5334149BF58700CE0B4B /* lexxer.l */,
+				FCAD5337149BF58700CE0B4B /* mig.1 */,
+				FCAD5338149BF58700CE0B4B /* mig.c */,
+				FCAD5339149BF58700CE0B4B /* mig.sh */,
+				FCAD533A149BF58700CE0B4B /* mig_errors.h */,
+				FCAD533B149BF58700CE0B4B /* mig_machine.h */,
+				FCAD533C149BF58700CE0B4B /* migcom.1 */,
+				FCAD5340149BF58700CE0B4B /* parser.y */,
+				FCAD5343149BF58700CE0B4B /* routine.c */,
+				FCAD5344149BF58700CE0B4B /* routine.h */,
+				FCAD5345149BF58700CE0B4B /* server.c */,
+				FCAD5346149BF58700CE0B4B /* statement.c */,
+				FCAD5347149BF58700CE0B4B /* statement.h */,
+				FCAD5348149BF58700CE0B4B /* strdefs.h */,
+				FCAD5349149BF58700CE0B4B /* string.c */,
+				FCAD534A149BF58700CE0B4B /* type.c */,
+				FCAD534B149BF58700CE0B4B /* type.h */,
+				FCAD534C149BF58700CE0B4B /* user.c */,
+				FCAD534D149BF58700CE0B4B /* utils.c */,
+				FCAD534E149BF58700CE0B4B /* utils.h */,
+				FCAD534F149BF58700CE0B4B /* write.h */,
+			);
+			name = migcom;
+			path = migcom.tproj;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FC2DBC53149BF01800EACA9D /* migcom */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC2DBC5E149BF01800EACA9D /* Build configuration list for PBXNativeTarget "migcom" */;
+			buildPhases = (
+				FC2DBC50149BF01800EACA9D /* Sources */,
+				FC2DBC51149BF01800EACA9D /* Frameworks */,
+				FC2DBC52149BF01800EACA9D /* CopyFiles */,
+				FC2E1884149BFF0900349D18 /* Run Script */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = migcom;
+			productName = mig;
+			productReference = FC2DBC54149BF01800EACA9D /* migcom */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FC2DBC4B149BF01800EACA9D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0430;
+				ORGANIZATIONNAME = "Apple Inc.";
+			};
+			buildConfigurationList = FC2DBC4E149BF01800EACA9D /* Build configuration list for PBXProject "mig" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = FC2DBC49149BF01800EACA9D;
+			productRefGroup = FC2DBC55149BF01800EACA9D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FC2DBC53149BF01800EACA9D /* migcom */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		FC2E1884149BFF0900349D18 /* Run Script */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Run Script";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = ". \"$PROJECT_DIR\"/xcodescripts/install-mig.sh";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		FC2DBC50149BF01800EACA9D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FCAD53A3149BF58700CE0B4B /* parser.y in Sources */,
+				FCAD53A0149BF58700CE0B4B /* lexxer.l in Sources */,
+				FCAD539C149BF58700CE0B4B /* error.c in Sources */,
+				FCAD539D149BF58700CE0B4B /* global.c in Sources */,
+				FCAD539F149BF58700CE0B4B /* header.c in Sources */,
+				FCAD53A2149BF58700CE0B4B /* mig.c in Sources */,
+				FCAD53A4149BF58700CE0B4B /* routine.c in Sources */,
+				FCAD53A5149BF58700CE0B4B /* server.c in Sources */,
+				FCAD53A6149BF58700CE0B4B /* statement.c in Sources */,
+				FCAD53A7149BF58700CE0B4B /* string.c in Sources */,
+				FCAD53A8149BF58700CE0B4B /* type.c in Sources */,
+				FCAD53A9149BF58700CE0B4B /* user.c in Sources */,
+				FCAD53AA149BF58700CE0B4B /* utils.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		FC2DBC5D149BF01800EACA9D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				COPY_PHASE_STRIP = YES;
+				CURRENT_PROJECT_VERSION = "$(RC_ProjectSourceVersion)";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = __;
+				WARNING_CFLAGS = "-Wall";
+			};
+			name = Release;
+		};
+		FC2DBC60149BF01800EACA9D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = "MIG_VERSION=\\\"$(RC_ProjectNameAndSourceVersion)\\\"";
+				INSTALL_PATH = "$(DT_TOOLCHAIN_DIR)/usr/libexec";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		FC2DBC4E149BF01800EACA9D /* Build configuration list for PBXProject "mig" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC2DBC5D149BF01800EACA9D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC2DBC5E149BF01800EACA9D /* Build configuration list for PBXNativeTarget "migcom" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC2DBC60149BF01800EACA9D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FC2DBC4B149BF01800EACA9D /* Project object */;
+}

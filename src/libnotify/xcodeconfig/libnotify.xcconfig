@@ -1,0 +1,31 @@
+#include "base.xcconfig"
+
+PRODUCT_NAME = libsystem_notify
+INSTALL_PATH_ACTUAL = /usr/lib/system
+PRIVATE_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/local/include
+PUBLIC_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/include
+DYLIB_CURRENT_VERSION = $(CURRENT_PROJECT_VERSION)
+EXECUTABLE_PREFIX = 
+BUILD_VARIANTS = normal
+CURRENT_PROJECT_VERSION = $(RC_ProjectSourceVersion)
+VERSION_INFO_PREFIX = __
+VERSIONING_SYSTEM = apple-generic
+
+LINK_WITH_STANDARD_LIBRARIES = NO
+OTHER_LDFLAGS = -umbrella System -L/usr/lib/system $(LDFLAGS_DYLD) $(LDFLAGS_COMPILER_RT) $(LDFLAGS_SYSCALL) $(LDFLAGS_PLATFORM) $(LDFLAGS_PTHREAD) $(LDFLAGS_MALLOC) $(LDFLAGS_C) $(LDFLAGS_BLOCKS) $(LDFLAGS_DISPATCH) $(LDFLAGS_XPC)
+
+LDFLAGS_DYLD = -ldyld
+LDFLAGS_COMPILER_RT = -lcompiler_rt
+LDFLAGS_SYSCALL = -lsystem_kernel
+LDFLAGS_SYSCALL[sdk=iphonesimulator*] = -lsystem_sim_kernel
+LDFLAGS_PLATFORM = -lsystem_platform
+LDFLAGS_PLATFORM[sdk=iphonesimulator*] = -lsystem_sim_platform
+LDFLAGS_PTHREAD = -lsystem_pthread
+LDFLAGS_PTHREAD[sdk=iphonesimulator*] = -lsystem_sim_pthread
+LDFLAGS_MALLOC = -lsystem_malloc
+LDFLAGS_C = -lsystem_c
+LDFLAGS_C[sdk=iphonesimulator*] = -lsystem_sim_c
+LDFLAGS_BLOCKS = -lsystem_blocks
+LDFLAGS_BLOCKS[sdk=iphonesimulator*] = -lsystem_sim_blocks
+LDFLAGS_DISPATCH = -ldispatch
+LDFLAGS_XPC = -lxpc

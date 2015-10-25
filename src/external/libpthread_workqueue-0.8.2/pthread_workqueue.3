@@ -1,0 +1,231 @@
+.\" Copyright (C) 2010 mark@heily.com
+.\" Copyright (C) 2009 sson@FreeBSD.org
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice(s), this list of conditions and the following disclaimer as
+.\"    the first lines of this file unmodified other than the possible
+.\"    addition of one or more copyright notices.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice(s), this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER(S) ``AS IS'' AND ANY
+.\" EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) BE
+.\" LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+.\" BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+.\" WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+.\" OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+.\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: $
+.Dd December 12, 2009
+.Dt PTHREAD_WORKQUEUE 3
+.Os
+.Sh NAME
+.Nm pthread_workqueue_init_np ,
+.Nm pthread_workqueue_create_np ,
+.Nm pthread_workqueue_additem_np 
+.Nd thread workqueue operations
+.Pp
+.Nm pthread_workqueue_attr_init_np ,
+.Nm pthread_workqueue_attr_destroy_np ,
+.Nm pthread_workqueue_attr_getovercommit_np ,
+.Nm pthread_workqueue_attr_setovercommit_np ,
+.Nm pthread_workqueue_attr_getqueuepriority_np ,
+.Nm pthread_workqueue_attr_setqueuepriority_np 
+.Nd thread workqueue attribute operations
+.Sh SYNOPSIS
+.In pthread_workqueue.h
+.Ft int
+.Fn pthread_workqueue_init_np "void"
+.Ft int
+.Fn pthread_workqueue_create_np "pthread_workqueue_t *workqp" "const pthread_workqueue_attr_t * attr"
+.Ft int
+.Fn pthread_workqueue_additem_np "pthread_workqueue_t workq" "void ( *workitem_func)(void *)" "void * workitem_arg" "pthread_workitem_handle_t * itemhandlep" "unsigned int *gencountp"
+.Ft int
+.Fn pthread_workqueue_attr_init_np "pthread_workqueue_attr_t *attr"
+.Ft int
+.Fn pthread_workqueue_attr_destroy_np "pthread_workqueue_attr_t *attr"
+.Ft int
+.Fn pthread_workqueue_attr_getovercommit_np "pthread_workqueue_attr_t *attr" "int *ocommp"
+.Ft int
+.Fn pthread_workqueue_attr_setovercommit_np "pthread_workqueue_attr_t *attr" "int ocomm"
+.Ft int
+.Fn pthread_workqueue_attr_getqueuepriority_np "pthread_workqueue_attr_t *attr" "int *qpriop"
+.Ft int
+.Fn pthread_workqueue_attr_setqueuepriority_np "pthread_workqueue_attr_t *attr" "int qprio"
+.Sh DESCRIPTION
+The 
+.Fn pthread_workqueue_*_np
+functions are used to create and submit work items to a thread pool.
+.Pp
+The user may create multiple work queues of different priority and
+manually overcommit the available resources.
+.Pp
+.Fn pthread_workqueue_init_np 
+allocates and initializes the thread workqueue subsystem.
+.Pp
+.Fn pthread_workqueue_create_np
+creates a new thread workqueue with the attributes given by
+.Fa attr .
+If 
+.Fa attr
+is NULL then the default attributes are used.
+A workqueue handle is returned in the
+.Fa workqp 
+parameter.
+.Pp
+Thread workqueue attributes are used to specify parameters to
+.Fn pthread_workqueue_create_np .
+One attribute object can be used in multiple calls to
+.Fn pthread_workqueue_create_np ,
+with or without modifications between calls.
+.Pp
+.Fn pthread_workqueue_additem_np
+is used to submit work items to the thread pool specified by
+.Fa workq
+parameter.
+The work item function and function argument are given by
+.Fa workitem_func
+and
+.Fa workitem_arg . 
+The work item handle is returned in 
+.Fa itemhandlep .
+.Pp
+The
+.Fn pthread_workqueue_attr_init_np
+function initializes
+.Fa attr
+with all the default thread workqueue attributes.
+.Pp
+The
+.Fn pthread_workqueue_attr_destroy_np
+function destroys
+.Fa attr .
+.Pp
+The
+.Fn pthread_workqueue_attr_set*_np
+functions set the attribute that corresponds to each function name.
+.Fn pthread_workqueue_attr_setovercommit_np
+can be used to set the overcommit flag.
+If the overcommit flag is set then more threads will be started, if
+needed, which may overcommit the physical resources of the system.
+.Fn pthread_workqueue_attr_setqueuepriority_np
+sets the queue priority attribute of the thread work queue and must be
+set to one of the following values:
+.Bl -tag -width "Va WORKQ_DEFAULT_PRIOQUEUE"
+.It Va WORKQ_HIGH_PRIOQUEUE
+Work items in the queue with this attribute will be given higher priority by
+the thread scheduler.
+.It Va WORKQ_DEFAULT_PRIOQUEUE 
+Work items in the queue with this attribute are given the default
+priority.
+.It Va WORKQ_LOW_PRIOQUEUE
+Work items in the queue with this attribute will be given lower priority
+by the thread scheduler. 
+.El
+.Pp
+The
+.Fn pthread_workqueue_attr_get*_np
+functions copy the value of the attribute that corresponds to each function name
+to the location pointed to by the second function parameter.
+.Sh RETURN VALUES
+If successful, these functions return 0.
+Otherwise, an error number is returned to indicate the error.
+.Sh ERRORS
+The
+.Fn pthread_workqueue_init_np
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+Out of memory.
+.El
+.Pp
+The
+.Fn pthread_workqueue_create_np
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+Out of memory.
+.El
+.Pp
+The
+.Fn pthread_workqueue_additem_np
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid workqueue handle.
+.It Bq Er ENOMEM
+Out of memory.
+.It Bq Er ESRCH
+Can not find workqueue.
+.El
+.Pp
+The
+.Fn pthread_workqueue_attr_init_np
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+Out of memory.
+.El
+.Pp
+The
+.Fn pthread_workqueue_attr_destroy_np
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Pp
+The
+.Fn pthread_workqueue_attr_setqueuepriority_np
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr
+or for 
+.Fa qprio.
+.El
+.Pp
+The
+.Fn pthread_workqueue_attr_setovercommit_np ,
+.Fn pthread_workqueue_attr_getovercommit_np
+and
+.Fn pthread_workqueue_attr_getqueuepriority_np
+functions will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Sh SEE ALSO
+.Xr pthread 3 ,
+.Xr sysctl 3
+.Sh BUGS
+There is no way, currently, to remove or destory work queues and pending
+work items other than exiting the process.
+.Pp
+All worker threads run at the same thread priority; however, items placed on high-priority workqueues will be executed before those on lower-priority workqueues.
+.Sh HISTORY
+This thread workqueues code was created to support Grand Central Dispatch (GCD
+or libdispatch) and first appeared in 
+.Fx 8.0 .
+.Sh AUTHORS
+.An "Mark Heily" Aq mark@heily.com .
+.Br
+.Pp
+Based on earlier work by
+.An "Stacey Son" Aq sson@FreeBSD.org
+and
+.An Apple, Inc.

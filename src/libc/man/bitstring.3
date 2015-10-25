@@ -1,0 +1,191 @@
+.\"	$NetBSD: bitstring.3,v 1.4 1994/11/30 15:24:31 jtc Exp $
+.\"
+.\" Copyright (c) 1989, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Paul Vixie.
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)bitstring.3	8.1 (Berkeley) 7/19/93
+.\"
+.Dd July 19, 1993
+.Dt BITSTRING 3
+.Os BSD 4
+.Sh NAME
+.Nm bit_alloc ,
+.Nm bit_clear ,
+.Nm bit_decl ,
+.Nm bit_ffs ,
+.Nm bit_nclear ,
+.Nm bit_nset,
+.Nm bit_set ,
+.Nm bitstr_size ,
+.Nm bit_test
+.Nd bit-string manipulation macros
+.Sh SYNOPSIS
+.Fd #include <bitstring.h>
+.Ft bitstr_t *
+.Fn bit_alloc "int nbits"
+.Fn bit_decl "bitstr_t *name" "int nbits"
+.Fn bit_clear "bitstr_t *name" "int bit"
+.Fn bit_ffc "bitstr_t *name" "int nbits" "int *value"
+.Fn bit_ffs "bitstr_t *name" "int nbits" "int *value"
+.Fn bit_nclear "bitstr_t *name" "int start" "int stop"
+.Fn bit_nset "bitstr_t *name" "int start" "int stop"
+.Fn bit_set "bitstr_t *name" "int bit"
+.Ft int
+.Fn bitstr_size "int nbits"
+.Ft int
+.Fn bit_test "bitstr_t *name" "int bit"
+.Sh DESCRIPTION
+These macros operate on strings of bits.
+.Pp
+The macro
+.Fn bit_alloc
+returns a pointer of type
+.Dq Fa "bitstr_t *"
+to sufficient space to store
+.Fa nbits
+bits, or
+.Dv NULL
+if no space is available.
+.Pp
+The macro
+.Fn bit_decl
+allocates sufficient space to store
+.Fa nbits
+bits on the stack.
+.Pp
+The macro
+.Fn bitstr_size
+returns the number of elements of type
+.Fa bitstr_t
+necessary to store
+.Fa nbits
+bits.
+This is useful for copying bit strings.
+.Pp
+The macros
+.Fn bit_clear
+and
+.Fn bit_set
+clear or set the zero-based numbered bit
+.Fa bit ,
+in the bit string
+.Ar name .
+.Pp
+The
+.Fn bit_nset
+and
+.Fn bit_nclear
+macros
+set or clear the zero-based numbered bits from
+.Fa start
+to
+.Fa stop
+in the bit string
+.Ar name .
+.Pp
+The
+.Fn bit_test
+macro
+evaluates to non-zero if the zero-based numbered bit
+.Fa bit
+of bit string
+.Fa name
+is set, and zero otherwise.
+.Pp
+The
+.Fn bit_ffs
+macro
+stores in the location referenced by
+.Fa value
+the zero-based number of the first bit set in the array of
+.Fa nbits
+bits referenced by
+.Fa name .
+If no bits are set, the location referenced by
+.Fa value
+is set to \-1.
+.Pp
+The macro
+.Fn bit_ffc
+stores in the location referenced by
+.Fa value
+the zero-based number of the first bit not set in the array of
+.Fa nbits
+bits referenced by
+.Fa name .
+If all bits are set, the location referenced by
+.Fa value
+is set to \-1.
+.Pp
+The macros
+.Fn bit_clear ,
+.Fn bit_set
+and
+.Fn bit_test
+will evaluate the
+.Fa bit
+argument more than once, so avoid using pre- or post-, increment or decrement.
+The arguments to the other macros are evaluated only once and may safely
+have side effects.
+.Sh EXAMPLE
+.Bd -literal -offset indent
+#include <limits.h>
+#include <bitstring.h>
+
+...
+#define	LPR_BUSY_BIT		0
+#define	LPR_FORMAT_BIT		1
+#define	LPR_DOWNLOAD_BIT	2
+...
+#define	LPR_AVAILABLE_BIT	9
+#define	LPR_MAX_BITS		10
+
+make_lpr_available()
+{
+	bitstr_t bit_decl(bitlist, LPR_MAX_BITS);
+	...
+	bit_nclear(bitlist, 0, LPR_MAX_BITS - 1);
+	...
+	if (!bit_test(bitlist, LPR_BUSY_BIT)) {
+		bit_clear(bitlist, LPR_FORMAT_BIT);
+		bit_clear(bitlist, LPR_DOWNLOAD_BIT);
+		bit_set(bitlist, LPR_AVAILABLE_BIT);
+	}
+}
+.Ed
+.Sh SEE ALSO
+.Xr malloc 3
+.Sh HISTORY
+The
+.Nm bitstring
+functions first appeared in 4.4BSD.

@@ -1,0 +1,220 @@
+.\" Copyright (c) 2006-2011 Apple Inc. All rights reserved.
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\"
+.\" This file contains Original Code and/or Modifications of Original Code
+.\" as defined in and that are subject to the Apple Public Source License
+.\" Version 2.0 (the 'License'). You may not use this file except in
+.\" compliance with the License. Please obtain a copy of the License at
+.\" http://www.opensource.apple.com/apsl/ and read it before using this
+.\" file.
+.\"
+.\" The Original Code and all software distributed under the License are
+.\" distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+.\" Please see the License for the specific language governing rights and
+.\" limitations under the License.
+.\"
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.\"
+.Dd November 4, 2011
+.Dt notifyutil 1
+.Os "Mac OS X"
+.Sh NAME
+.Nm notifyutil
+.Nd notification command line utility
+.Sh SYNOPSIS
+.Nm
+.Op Fl q
+.Op Fl v
+.Op Fl z Ar msec
+.Op Fl M
+.Op Fl R
+.Op command Li ...
+.Pp
+.Sh DESCRIPTION
+.Nm
+is a command-line utility for interacting with the
+.Xr notify 3
+notification system and the
+.Xr notifyd 8
+server.
+It may be used to post notifications, detect and report notifications,
+and to examine and set the state values associated with notification keys.
+.Pp
+If
+.Nm
+is used to monitor one or more notification keys,
+it prints the notification key when the corresponding notification is received.
+The
+.Fl v
+(verbose)
+and
+.Fl q
+(quiet) flags, if specified, modify the output behavior.
+.Pp
+The 
+.Fl v
+flag causes
+.Nm
+to print a time stamp, the notification key, the current state value for that key,
+and the type of the notification (port, file, etc).
+The
+.Fl q
+flag supresses any output except for state values fetched following a
+.Fl g
+command.
+.Pp
+Commands listed in the table below are processed in left to right order from the command line.
+.Pp
+.Bl -tag -width "-signal [#]" -compact -offset indent
+.It Fl p Ar key
+Post a notification for
+.Ar key .
+.It Fl w Ar key
+Register for
+.Ar key
+and wait forever for notifications.
+.It Fl Ar # Ar key
+Register for
+.Ar key
+and wait for
+.Ar #
+(an integer) notifications.
+.It ""
+.Li E.g.
+.Fl 1 Ar key
+waits for a single notification.
+.It Fl g Ar key
+Get state value for
+.Ar key .
+.It Fl s Ar key Ar val
+Set state value for
+.Ar key .
+.It Fl port
+Use mach port notifications for subsequent
+.Fl w
+or
+.Fl Ar #
+registrations.
+.It ""
+This is the default registration type.
+.It Fl file
+Use file descriptor notifications for subsequent registrations.
+.It Fl check
+Use shared memory notifications for subsequent registrations.
+.It Fl signal Op Ar #
+Use signal notifications for subsequent registrations.
+.It ""
+Signal 1 (HUP) is the default, but an alternate signal may be specified.
+.It Fl dispatch
+Use dispatch for subsequent registrations.
+.El
+.Pp
+When invoked with any combination of
+.Fl w
+and
+.Fl Ar #
+actions,
+.Nm
+registers for notification for the specified key(s).
+If any key is given with a
+.Fl w
+action,
+.Nm
+runs until interrupted with Control-C.
+If all registrations are invoked with
+.Fl Ar # ,
+the program continues to run until the corresponding number of notifications for each key have been received.
+.Pp
+By default,
+.Nm
+uses mach port registration (using
+.Fn notify_register_mach_port )
+for keys given with a
+.Fl w
+or
+.Fl Ar #
+flag.
+The
+.Fl file
+command causes
+.Nm 
+to use
+.Fn notify_register_file_descriptor
+for any subsequent
+.Fl w
+or 
+.Fl Ar #
+registrations.
+Similarly, 
+.Fl check
+causes
+.Nm 
+to use
+.Fn notify_register_check
+for subsequent registrations,
+.Fl signal
+switches to
+.Fn notify_register_signal ,
+and 
+.Fl dispatch
+causes it to use
+.Fn notify_register_dispatch
+for subsequent registrations.
+.Pp
+If any registrations are made following the use of the
+.Fl check
+command,
+.Nm
+will start a timer and check for shared memory notifications every 100 milliseconds.
+An alternate timer value may be set following the
+.Fl z
+flag.
+.Pp
+The 
+.Fl M
+flag causes
+.Nm
+to use multiplex all notifications over a single mach connection with
+.Nm notifyd .
+Notifications (except shared memory notifications)
+are received and redistributed by a dispatch handler.
+.Pp
+The
+.Fl R
+flag causes
+.Nm notifyutil
+to regenerate all its registrations in the unlikely event that
+.Nm notifyd
+restarts.
+.Pp
+Note that a notification key and its associated state variable only exist
+when there are one or more current registrations for that key.
+Setting the state for a key that has no registrations has no effect.
+Thus the command
+.Pp
+.Dl notifyutil -s foo.bar 123 -g foo.bar
+.Pp
+will print
+.Pp
+.Dl foo.bar 0
+.Pp
+unless foo.bar is registered by some other process.
+However, the command
+.Pp
+.Dl notifyutil -w foo.bar -s foo.bar 123 -g foo.bar
+.Pp
+prints
+.Pp
+.Dl foo.bar 123
+.Pp
+since the
+.Dq  -w foo.bar
+registration ensures the key and its state variable exist before the value is set,
+and continue to exist when the value is fetched.
+.Sh SEE ALSO
+notify(3), notifyd(8)
