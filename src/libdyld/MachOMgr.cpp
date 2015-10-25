@@ -114,11 +114,11 @@ void MachOMgr::deregisterUnloadHook(LoaderHookFunc* func)
 
 void MachOMgr::addDefaultLoader()
 {
-	if (!m_addedDefaultLoader)
-	{
-		add(new NativeObject(RTLD_DEFAULT, "<default>"));
-		m_addedDefaultLoader = true;
-	}
+//	if (!m_addedDefaultLoader)
+//	{
+//		add(new NativeObject(RTLD_DEFAULT, "<default>"));
+//		m_addedDefaultLoader = true;
+//	}
 }
 
 void MachOMgr::add(MachOObject* obj, bool mainModule)

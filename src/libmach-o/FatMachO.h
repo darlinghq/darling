@@ -31,7 +31,6 @@
 #include <map>
 #include <string>
 
-#include <mach/vm_types.h>
 #include <mach-o/fat.h>
 
 namespace FatMachO

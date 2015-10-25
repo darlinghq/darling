@@ -1,5 +1,5 @@
 #include "DylibSearch.h"
-#include "config.h"
+#include "darling-config.h"
 #include <stdexcept>
 #include <iostream>
 #include "MachOObject.h"

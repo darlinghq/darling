@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "RebaseState.h"
 #include "BindState.h"
 #include "leb.h"
+#include "cpu_types.h"
 
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
@@ -289,7 +290,7 @@ void MachOImpl::readExport(const uint8_t* start, const uint8_t* p, const uint8_t
 
 		m_exports.push_back(exp);
 
-		assert(expected_term_end == p);
+		assert(expected_term_end == p); // FIXME: This assert fails with dylibs in OS X SDK
 	}
 
 	const uint8_t num_children = *p++;

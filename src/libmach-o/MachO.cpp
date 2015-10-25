@@ -31,6 +31,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <cstring>
 #include <map>
+#include <mach/vm_prot.h>
+#include "cpu_types.h"
+
 
 MachO* MachO::readFile(std::string path, const char* arch, bool need_exports, bool loadAny)
 {

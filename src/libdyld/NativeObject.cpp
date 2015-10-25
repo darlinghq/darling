@@ -24,7 +24,8 @@ void NativeObject::load()
 	int flags = 0;
 
 	flags |= globalExports() ? RTLD_GLOBAL : RTLD_LOCAL;
-	flags |= bindAllAtLoad() ? RTLD_NOW : RTLD_LAZY;
+	//flags |= bindAllAtLoad() ? RTLD_NOW : RTLD_LAZY;
+	flags |= RTLD_LAZY;
 
 	m_nativeRef = ::dlopen(m_path.c_str(), flags);
 	if (!m_nativeRef)
@@ -85,20 +86,11 @@ void NativeObject::updateName()
 void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const
 {
 	void* addr;
-	std::string prefixed = "__darwin_" + symbolName;
 	
 	if (symbolName == "main")
 		return nullptr; // Don't return main() from Darling itself
 
-	addr = ::dlsym(m_nativeRef, prefixed.c_str());
-	
-	if (!addr)
-		addr = ::dlvsym(m_nativeRef, symbolName.c_str(), "DARLING");
-
-	if (!addr)
-		addr = ::dlsym(m_nativeRef, symbolName.c_str());
-
-	return addr;
+	return ::dlvsym(m_nativeRef, symbolName.c_str(), "DARWIN");
 }
 
 bool NativeObject::findSymbolInfo(const void* addr, Dl_info* p) const

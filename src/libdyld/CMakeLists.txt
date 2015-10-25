@@ -2,12 +2,18 @@ project(libdyld)
 
 cmake_minimum_required(VERSION 2.4.0)
 
+# set(CMAKE_ASM_NASM_OBJECT_FORMAT "elf") # TODO: for 32bit
+# enable_language(ASM_NASM)
+
 if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libmach-o)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/bsd)

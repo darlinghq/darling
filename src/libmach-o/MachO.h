@@ -29,8 +29,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <unistd.h>
 
-#include <mach/vm_types.h>
-#include <mach-o/loader.h>
+	//#include <mach/vm_types.h>
+#include "mach-o/loader.h"
 
 class MachO
 {

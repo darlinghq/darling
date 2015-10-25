@@ -149,10 +149,6 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 	
 	LOG << "__darwin_dlsym(): " << symbol << std::endl;
 
-	removeSuffix(name, "$UNIX2003");
-	removeSuffix(name, "$DARWIN_EXTSN");
-	removeSuffix(name, "$NOCANCEL");
-	
 	translated = processSymbolViaHooks(name);
 
 	if (handle == DARWIN_RTLD_DEFAULT)
