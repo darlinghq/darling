@@ -1,5 +1,5 @@
-ccflags-y := -I$(src)/../kernel-include \
-		-I$(src)/../platform-include \
+ccflags-y := -I$(src)/../../kernel-include \
+		-I$(src)/../../platform-include \
 		-I$(src)/../libc/include \
 		-DMACH_KERNEL_PRIVATE \
 		-DDARLING_DEBUG \
