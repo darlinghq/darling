@@ -141,4 +141,11 @@ set(libm_sources
 
 )
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_library(system_m SHARED ${libm_sources})
+
+install(TARGETS system_m DESTINATION lib${SUFFIX}/darling)
+

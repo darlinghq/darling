@@ -32,4 +32,11 @@ set(libmalloc_sources
 	src/stack_logging_disk.c
 )
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_library(system_malloc SHARED ${libmalloc_sources})
+
+install(TARGETS system_malloc DESTINATION lib${SUFFIX}/darling)
+

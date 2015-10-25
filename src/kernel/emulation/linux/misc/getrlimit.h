@@ -1,0 +1,46 @@
+#ifndef LINUX_GETRLIMIT_H
+#define LINUX_GETRLIMIT_H
+
+struct rlimit
+{
+	unsigned long long rlim_cur;
+	unsigned long long rlim_max;
+};
+
+enum {
+	LINUX_RLIMIT_CPU = 0,
+	LINUX_RLIMIT_FSIZE,
+	LINUX_RLIMIT_DATA,
+	LINUX_RLIMIT_STACK,
+	LINUX_RLIMIT_CORE,
+	LINUX_RLIMIT_RSS,
+	LINUX_RLIMIT_NPROC,
+	LINUX_RLIMIT_NOFILE,
+	LINUX_RLIMIT_MEMLOCK,
+	LINUX_RLIMIT_AS,
+	LINUX_RLIMIT_LOCKS,
+	LINUX_RLIMIT_SIGPENDING,
+	LINUX_RLIMIT_MSGQUEUE,
+	LINUX_RLIMIT_NICE,
+	LINUX_RLIMIT_RTPRIO,
+	LINUX_RLIMIT_RTTIME,
+};
+
+enum {
+	BSD_RLIMIT_CPU = 0,
+	BSD_RLIMIT_FSIZE,
+	BSD_RLIMIT_DATA,
+	BSD_RLIMIT_STACK,
+	BSD_RLIMIT_CORE,
+	BSD_RLIMIT_AS,
+	BSD_RLIMIT_MEMLOCK,
+	BSD_RLIMIT_NPROC,
+	BSD_RLIMIT_NOFILE,
+	BSD_RLIMIT_POSIX = 0x1000
+};
+
+long sys_getrlimit(unsigned int which, struct rlimit* rlp);
+unsigned int rlimit_bsd_to_linux(unsigned int which);
+
+#endif
+

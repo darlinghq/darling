@@ -125,6 +125,8 @@ public:
 	
 	bool isDestroying() const { return m_destroying; }
 	static bool isTerminated() { return m_bTerminated; }
+
+	void atexit();
 protected:
 	friend class MachOObject;
 

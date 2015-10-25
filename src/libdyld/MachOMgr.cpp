@@ -21,6 +21,11 @@ MachOMgr::MachOMgr()
 
 MachOMgr::~MachOMgr()
 {
+	atexit();
+}
+
+void MachOMgr::atexit()
+{
 	m_destroying = true;
 	
 	if (m_mainModule)

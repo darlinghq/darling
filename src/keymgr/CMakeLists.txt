@@ -24,5 +24,10 @@ set(keymgr_sources
 	keymgr.c
 )
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_library(keymgr SHARED ${keymgr_sources})
 
+install(TARGETS keymgr DESTINATION lib${SUFFIX}/darling)

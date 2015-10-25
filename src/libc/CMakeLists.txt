@@ -70,6 +70,10 @@ endif()
 
 add_subdirectory(darwin)
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-db>
 	$<TARGET_OBJECTS:libc-compat>
@@ -100,6 +104,8 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-threads>
 	$<TARGET_OBJECTS:libc-darwin>)
 target_link_libraries(system_c system_kernel)
+
+install(TARGETS system_c DESTINATION lib${SUFFIX}/darling)
 
 # TODO: see ./xcodescripts/variants.xcconfig
 

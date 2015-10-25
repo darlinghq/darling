@@ -26,11 +26,17 @@ add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_subdirectory(libsyscall)
 add_subdirectory(mach_server/client)
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_library(system_kernel SHARED
 	$<TARGET_OBJECTS:libsyscall>
 	$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:emulation>
 	$<TARGET_OBJECTS:mach_server_client>)
 target_link_libraries(system_kernel system_duct)
+
+install(TARGETS system_kernel DESTINATION lib${SUFFIX}/darling)
 
 add_dependencies(system_kernel migcom)

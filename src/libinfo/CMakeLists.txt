@@ -22,8 +22,14 @@ add_subdirectory(util.subproj)
 add_subdirectory(dns.subproj)
 #add_subdirectory(lookup.subproj)
 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_library(system_info SHARED $<TARGET_OBJECTS:info-util>
 	$<TARGET_OBJECTS:info-dns>
 	#$<TARGET_OBJECTS:info-lookup> # lookup doesn't build yet
 )
 target_link_libraries(system_info system_c)
+
+install(TARGETS system_info DESTINATION lib${SUFFIX}/darling)

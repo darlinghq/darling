@@ -30,6 +30,7 @@
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "misc/ioctl.h"
+#include "misc/getrlimit.h"
 #include "misc/thread_selfid.h"
 #include "misc/sysctl.h"
 #include "fcntl/open.h"
@@ -77,6 +78,7 @@ void* __bsd_syscall_table[512] = {
 	[187] = sys_fdatasync,
 	[188] = sys_stat,
 	[189] = sys_fstat,
+	[194] = sys_getrlimit,
 	[196] = sys_getdirentries,
 	[197] = sys_mmap,
 	[199] = sys_lseek,

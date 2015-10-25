@@ -902,6 +902,16 @@ void MachOObject::run()
 		throw std::runtime_error("Tried to run a file that is not the main module");
 	
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
+	void (*pAtExit)(void(*)());
+
+	pAtExit = reinterpret_cast<void(*)(void(*)())>(MachOMgr::instance()->getExportedSymbol("atexit"));
+
+	if (pAtExit != nullptr)
+	{
+		pAtExit([]() {
+				MachOMgr::instance()->atexit();
+		});
+	}
 
 #ifdef HAS_DEBUG_HELPERS
 	if (MachOMgr::instance()->useTrampolines())
@@ -919,9 +929,18 @@ void MachOObject::run()
 		LOG << "Running main at " << (void*) m_file->main() << "...\n";
 		
 		int (*pMain)(int, char**, char**, char**) = reinterpret_cast<int (*)(int, char**, char**, char**)>(m_file->main() + m_slide);
+		void (*pExit)(int);
+
+		pExit = reinterpret_cast<void(*)(int)>(MachOMgr::instance()->getExportedSymbol("exit"));
 		
 		int rv = pMain(m_argc, m_argv, m_envp, apple);
-		exit(rv);
+
+		if (pExit != nullptr)
+			pExit(rv);
+		else
+			abort();
+
+		__builtin_unreachable();
 	}
 	else
 		throw std::runtime_error("No entry point found");

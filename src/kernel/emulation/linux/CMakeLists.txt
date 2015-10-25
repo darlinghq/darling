@@ -46,6 +46,7 @@ set(emulation_sources
 	misc/ioctl.c
 	misc/thread_selfid.c
 	misc/sysctl.c
+	misc/getrlimit.c
 	fcntl/open.c
 	network/socket.c
 	network/connect.c
