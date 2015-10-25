@@ -60,6 +60,8 @@ public:
 
 	virtual void* getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const override;
 
+	virtual void atExit() override;
+
 	void* getExportedSymbolRecursive(const std::string& symbolName) const;
 
 	// Fills a Dl_info structure in a dladdr() manner

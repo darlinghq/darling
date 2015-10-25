@@ -21,11 +21,6 @@ MachOMgr::MachOMgr()
 
 MachOMgr::~MachOMgr()
 {
-	atexit();
-}
-
-void MachOMgr::atexit()
-{
 	m_destroying = true;
 	
 	if (m_mainModule)
@@ -42,6 +37,14 @@ void MachOMgr::atexit()
 	}
 	
 	m_bTerminated = true;
+}
+
+void MachOMgr::atexit()
+{
+	for (LoadableObject* obj : m_loadablesInOrder)
+	{
+		obj->atExit();
+	}
 }
 
 MachOMgr* MachOMgr::instance()

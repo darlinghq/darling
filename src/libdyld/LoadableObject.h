@@ -26,6 +26,9 @@ public:
 
 	// Absolute path to this object
 	virtual const std::string& path() const = 0;
+
+	// Stuf to do when libsystem's exit() is called
+	virtual void atExit() {};
 	
 	int addRef();
 	int delRef();

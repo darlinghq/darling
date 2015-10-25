@@ -1129,5 +1129,9 @@ void* MachOObject::dyld_stub_binder_fixup(MachOObject** obj, uintptr_t lazyOffse
 	return (*obj)->doLazyBind(lazyOffset);
 }
 
+void MachOObject::atExit()
+{
+	runFinalizers();
+}
 
 } // namespace Darling
