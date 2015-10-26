@@ -1,0 +1,3 @@
+#define ENABLE_EXTRA 1
+#define ENABLE_RELOCATABLE 1
+#define HAVE_UNISTD_H 1

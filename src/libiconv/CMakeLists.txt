@@ -2,6 +2,11 @@ project(libiconv)
 
 cmake_minimum_required(VERSION 2.4.0)
 
+if(COMMAND cmake_policy)
+	cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
+
+
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 	set(BITS 32)
 	add_definitions(-DTARGET_CPU_X86=1)
@@ -22,8 +27,11 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+add_definitions(-DHAVE_CONFIG_H)
 configure_file(include.h.in include.h)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libcharset/include)
 
@@ -50,10 +58,10 @@ set(iconv_SRCS
 	#lib/genflags.c
 	#lib/gentranslit.c
 	lib/iconv.c
-	lib/relocatable.c
+	#lib/relocatable.c
 	
 	libcharset/src/localcharset.c
-	libcharset/src/relocatable.c
+	#libcharset/src/relocatable.c
 )
 
 add_library(iconv SHARED ${iconv_SRCS}
