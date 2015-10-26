@@ -27,6 +27,7 @@
 #include "unistd/access.h"
 #include "unistd/lseek.h"
 #include "unistd/ftruncate.h"
+#include "unistd/readlink.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "misc/ioctl.h"
@@ -34,6 +35,7 @@
 #include "misc/thread_selfid.h"
 #include "misc/sysctl.h"
 #include "fcntl/open.h"
+#include "fcntl/fcntl.h"
 #include "network/socket.h"
 #include "network/connect.h"
 #include "dirent/getdirentries.h"
@@ -59,10 +61,12 @@ void* __bsd_syscall_table[512] = {
 	[41] = sys_dup,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,
+	[58] = sys_readlink,
 	[73] = sys_munmap,
 	[74] = sys_mprotect,
 	[78] = sys_mincore,
 	[90] = sys_dup2,
+	[92] = sys_fcntl,
 	[95] = sys_fsync,
 	[97] = sys_socket,
 	[98] = sys_connect,

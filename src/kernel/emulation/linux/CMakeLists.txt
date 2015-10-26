@@ -40,6 +40,7 @@ set(emulation_sources
 	unistd/lseek.c
 	unistd/ftruncate.c
 	unistd/access.c
+	unistd/readlink.c
 	signal/duct_signals.c
 	signal/kill.c
 	signal/sigaltstack.c
@@ -48,6 +49,7 @@ set(emulation_sources
 	misc/sysctl.c
 	misc/getrlimit.c
 	fcntl/open.c
+	fcntl/fcntl.c
 	network/socket.c
 	network/connect.c
 	stat/fstat.c

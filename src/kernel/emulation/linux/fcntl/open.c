@@ -80,3 +80,34 @@ int oflags_bsd_to_linux(int flags)
 	return linux_flags;
 }
 
+int oflags_linux_to_bsd(int flags)
+{
+	int bsd_flags = 0;
+
+	if (flags & LINUX_O_RDONLY) /* always false */
+		bsd_flags |= O_RDONLY;
+	if (flags & LINUX_O_WRONLY)
+		bsd_flags |= O_WRONLY;
+	if (flags & LINUX_O_RDWR)
+		bsd_flags |= O_RDWR;
+	if (flags & LINUX_O_NONBLOCK)
+		bsd_flags |= O_NONBLOCK;
+	if (flags & LINUX_O_APPEND)
+		bsd_flags |= O_APPEND;
+	if (flags & LINUX_O_CREAT)
+		bsd_flags |= O_CREAT;
+	if (flags & LINUX_O_TRUNC)
+		bsd_flags |= O_TRUNC;
+	if (flags & LINUX_O_EXCL)
+		bsd_flags |= O_EXCL;
+	if (flags & LINUX_O_CLOEXEC)
+		bsd_flags |= O_CLOEXEC;
+	if (flags & LINUX_O_NOFOLLOW)
+		bsd_flags |= O_NOFOLLOW;
+	if (flags & LINUX_O_DIRECTORY)
+		bsd_flags |= O_DIRECTORY;
+	if (flags & LINUX_O_CLOEXEC)
+		bsd_flags |= O_CLOEXEC;
+
+	return bsd_flags;
+}
