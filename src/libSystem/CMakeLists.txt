@@ -134,5 +134,5 @@ add_library(System SHARED ${libc_SRCS} ${bsdkern_SRCS}
 target_link_libraries(System -ldl -lpthread -luuid mach-o -lrt -lssl -lbsd -lutil ${GNUSTEP_OBJC_CFLAGS})
 add_dependencies(System mach-o)
 
-install(TARGETS System DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS System DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

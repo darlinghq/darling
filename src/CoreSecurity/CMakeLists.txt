@@ -26,5 +26,5 @@ set(cs_SRCS
 add_library(CoreSecurity SHARED ${cs_SRCS})
 target_link_libraries(CoreSecurity)
 
-install(TARGETS CoreSecurity DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS CoreSecurity DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

@@ -16,7 +16,7 @@ set(ExceptionHandling_SRCS
 	ExceptionHandler.mm
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 #SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -24,5 +24,5 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_library(ExceptionHandling SHARED ${ExceptionHandling_SRCS})
 target_link_libraries(ExceptionHandling util Foundation)
 
-install(TARGETS ExceptionHandling DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS ExceptionHandling DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

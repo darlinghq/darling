@@ -70,5 +70,5 @@ endif(NOT OBJC_ABI_2)
 add_library(objcdarwin SHARED ${objcdarwin_SRCS})
 target_link_libraries(objcdarwin Foundation util ${GNUSTEP_OBJC_CFLAGS})
 
-install(TARGETS objcdarwin DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS objcdarwin DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 
