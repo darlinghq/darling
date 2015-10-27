@@ -57,6 +57,7 @@ set(emulation_sources
 	stat/common.c
 	dirent/getdirentries.c
 	time/gettimeofday.c
+	ext/uname.c
 	ext/epoll_create.c
 	ext/epoll_create1.c
 	ext/epoll_ctl.c
