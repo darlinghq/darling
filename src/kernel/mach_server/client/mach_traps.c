@@ -274,6 +274,31 @@ kern_return_t _kernelrpc_mach_vm_map_trap(
 	{
 		return KERN_FAILURE;
 	}
+	
+	if (mask && ( ((uintptr_t)addr) & mask) != 0)
+	{
+		uintptr_t boundary, q, diff, iaddr;
+		
+		// Alignment was requested, but we couldn't get it the easy way
+		munmap(addr, size);
+		
+		// This may not work for some crazy masks. Consider using __builtin_clz().
+		boundary = mask + 1;
+		
+		iaddr = mmap(*address, size + boundary, prot, posix_flags, -1, 0);
+		if (iaddr == (uintptr_t) MAP_FAILED)
+			return KERN_FAILURE;
+		
+		q = (iaddr + (boundary-1)) / boundary * boundary;
+		diff = q - iaddr;
+		
+		if (diff > 0)
+			munmap(iaddr, diff);
+		if (boundary - diff > 0)
+			munmap((void*) (q + size), boundary - diff);
+		
+		addr = (void*) q;
+	}
 
 	*address = addr;
 	return KERN_SUCCESS;
