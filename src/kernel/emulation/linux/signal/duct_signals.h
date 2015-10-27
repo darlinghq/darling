@@ -1,6 +1,5 @@
 #ifndef LINUX_DUCT_SIGNALS_H
 #define LINUX_DUCT_SIGNALS_H
-#include <signal.h>
 
 #define LINUX_NSIG 32
 #define LINUX_SIGHUP 1
@@ -50,6 +49,10 @@
 #define LINUX_SIGSTKSZ 8192
 
 typedef unsigned long long linux_sigset_t;
+
+#ifndef __sigset_t_defined
+typedef unsigned int sigset_t;
+#endif
 
 int signum_linux_to_bsd(int signum);
 int signum_bsd_to_linux(int signum);

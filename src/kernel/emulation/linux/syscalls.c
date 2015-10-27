@@ -30,6 +30,8 @@
 #include "unistd/readlink.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
+#include "signal/sigaction.h"
+#include "signal/sigreturn.h"
 #include "misc/ioctl.h"
 #include "misc/getrlimit.h"
 #include "misc/thread_selfid.h"
@@ -59,6 +61,7 @@ void* __bsd_syscall_table[512] = {
 	[36] = sys_sync,
 	[37] = sys_kill,
 	[41] = sys_dup,
+	[46] = sys_sigaction,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,
 	[58] = sys_readlink,
@@ -79,6 +82,7 @@ void* __bsd_syscall_table[512] = {
 	[181] = sys_setgid,
 	[182] = sys_setegid,
 	[183] = sys_seteuid,
+	[184] = sys_sigreturn,
 	[187] = sys_fdatasync,
 	[188] = sys_stat,
 	[189] = sys_fstat,
