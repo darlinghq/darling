@@ -41,6 +41,7 @@ extern void bootstrap_init(void);		// from liblaunch.dylib
 extern void mach_init(void);			// from libsystem_mach.dylib
 extern void pthread_init(void);			// from libc.a
 extern void __libc_init(const struct ProgramVars *vars, void (*atfork_prepare)(void), void (*atfork_parent)(void), void (*atfork_child)(void), const char *apple[]);	// from libc.a
+extern void __malloc_init(const char* apple[]); // from libmalloc
 extern void __keymgr_initializer(void);		// from libkeymgr.a
 extern void _dyld_initializer(void);		// from libdyld.a
 extern void libdispatch_init(void);		// from libdispatch.a
@@ -124,6 +125,7 @@ void libSystem_initializer(/*int argc, const char* argv[], const char* envp[], c
 	mach_init();
 	pthread_init();
 	__libc_init(&vars, libSystem_atfork_prepare, libSystem_atfork_parent, libSystem_atfork_child, apple);
+	__malloc_init(apple);
 	__keymgr_initializer();
 	_dyld_initializer();
 	libdispatch_init();
