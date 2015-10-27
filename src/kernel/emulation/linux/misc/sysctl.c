@@ -10,6 +10,7 @@
 #include "sysctl_inc.h"
 #include <stddef.h>
 #include <limits.h>
+#include "../ext/sys/utsname.h"
 
 static long sysctl_name_to_oid(const char* name, int* oid_name,
 		unsigned long* oid_len);
@@ -30,6 +31,10 @@ enum {
 	_HW_CPUSUBTYPE,
 	_HW_CPUTHREADTYPE
 };
+
+static struct linux_utsname lu;
+static void copyout_string(const char* str, char* out, unsigned long* out_len);
+static void need_uname(void);
 
 long sys_sysctl(int* name, unsigned int nlen, void* old,
 		unsigned long* oldlen, void* _new, unsigned long newlen)
@@ -59,6 +64,18 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 		if (nlen != 2)
 			return -ENOTDIR;
 
+		// String values
+		switch (name[1])
+		{
+			case HW_MACHINE:
+			{
+				need_uname();
+				copyout_string(lu.machine, (char*) old, oldlen);
+				return 0;
+			}
+		}
+
+		// Integer values
 		if (*oldlen < sizeof(int))
 			return -EINVAL;
 		*oldlen = sizeof(int);
@@ -111,8 +128,51 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 			return 0;
 		}
 	}
+	else if (name[0] == CTL_KERN)
+	{
+		need_uname();
+
+		// String values
+		switch (name[1])
+		{
+			case KERN_OSTYPE:
+				copyout_string(lu.sysname, (char*) old, oldlen);
+				return 0;
+			case KERN_HOSTNAME:
+				copyout_string(lu.nodename, (char*) old, oldlen);
+				return 0;
+			case KERN_OSRELEASE:
+				copyout_string(lu.release, (char*) old, oldlen);
+				return 0;
+			case KERN_VERSION:
+				copyout_string(lu.version, (char*) old, oldlen);
+				return 0;
+			case KERN_DOMAINNAME:
+				copyout_string(lu.domainname, (char*) old, oldlen);
+				return 0;
+		}
+	}
 
 	return -ENOTDIR;
+}
+
+static void need_uname(void)
+{
+	// Cache __linux_uname results
+	if (!lu.sysname[0])
+	{
+		__linux_uname(&lu);
+	}
+}
+
+extern unsigned long strlcpy(char* dst, const char* src, unsigned long size);
+static void copyout_string(const char* str, char* out, unsigned long* out_len)
+{
+	unsigned long len;
+	len = strlcpy(out, str, *out_len);
+
+	if (len < *out_len)
+		*out_len = len;
 }
 
 static long sysctl_name_to_oid(const char* name, int* oid_name,
