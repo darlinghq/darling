@@ -1,0 +1,125 @@
+/*
+ * Copyright (c) 1999-2004 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_APACHE_LICENSE_HEADER_START@
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ * @APPLE_APACHE_LICENSE_HEADER_END@
+ */
+/*
+ * bootstrap -- fundamental service initiator and port server
+ * Mike DeMoney, NeXT, Inc.
+ * Copyright, 1990.  All rights reserved.
+ */
+
+subsystem bootstrap 400;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include "launchd_mig_types.defs"
+import "bootstrap_public.h";
+import "bootstrap_private.h";
+
+userprefix vproc_mig_;
+serverprefix job_mig_;
+
+routine create_server(
+		__bs_port	: job_t;
+		__server_cmd	: cmd_t;
+		__server_uid	: natural_t;
+		__on_demand	: boolean_t;
+	ServerAuditToken	__token	: audit_token_t;
+	out	__server_port	: mach_port_make_send_t);
+
+skip; /* Last used in 10.4. Was bootstrap_unprivileged() */
+
+routine check_in(
+			__bs_port	: job_t;
+			__service_name	: name_t;
+	ServerAuditToken	__token	: audit_token_t;
+		out	__service_port	: mach_port_move_receive_t);
+
+routine register(
+		__bs_port	: job_t;
+	ServerAuditToken	__token	: audit_token_t;
+		__service_name	: name_t;
+		__service_port	: mach_port_t);
+
+routine look_up(
+		__bs_port	: job_t;
+	ServerAuditToken	__token	: audit_token_t;
+		__service_name	: name_t;
+	out	__service_port	: mach_port_send_t);
+
+skip; /* last used in 10.4 */
+
+routine parent(
+		__bs_port	: job_t;
+	out	__parent_port	: mach_port_send_t);
+
+skip; /* last used in 10.4 */
+
+routine info(
+		__bs_port	: job_t;
+	out	__service_names	: name_array_t, dealloc;
+	out __service_active	: bootstrap_status_array_t, dealloc);
+
+routine subset(
+		__bs_port	: job_t;
+		__requestor_port: mach_port_t;
+	out	__subset_port	: mach_port_make_send_t);
+
+routine create_service(
+		__bs_port	: job_t;
+		__service_name	: name_t;
+	out	__service_port	: mach_port_t);
+
+routine transfer_subset(
+		__bs_port	: job_t;
+	out	__bs_reqport	: mach_port_t;
+	out	__bs_rcvright	: mach_port_move_receive_t;
+	out	__service_names	: name_array_t, dealloc;
+	out	__service_pids	: pointer_t, dealloc;
+	out	__service_ports	: mach_port_array_t, dealloc);
+
+routine getsocket(
+		__bs_port	: job_t;
+	out	__sockpath	: name_t);
+
+routine spawn(
+		__bs_port	: job_t;
+	ServerAuditToken	__token	: audit_token_t;
+		__chars		: _internal_string_t;
+		__argc		: uint32_t;
+		__envc		: uint32_t;
+		__flags		: uint64_t;
+		__umask		: uint16_t;
+	out	__pid		: pid_t;
+	out	__obsvr_port	: mach_port_make_send_t);
+
+routine wait(
+		__bs_port	: job_t;
+	sreplyport		__rport	: mach_port_make_send_once_t;
+	ServerAuditToken	__token	: audit_token_t;
+	out	__waitval	: integer_t);
+
+routine uncork_fork(
+		__bs_port	: job_t;
+	ServerAuditToken	__token	: audit_token_t);
+
+/* Essentially the inverse of bootstrap_unprivileged() */
+routine get_self(
+		__bs_port	: job_t;
+	ServerAuditToken        __token : audit_token_t;
+	out	__job_port	: mach_port_make_send_t);

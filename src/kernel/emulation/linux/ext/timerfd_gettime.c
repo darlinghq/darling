@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int timerfd_gettime (int __fd, struct itimerspec* __otmr)
 {
 	int rv;

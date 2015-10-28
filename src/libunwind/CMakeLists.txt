@@ -21,6 +21,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/stdtime/FreeBSD)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/pthreads)
 include_directories(${DARLING_TOP_DIRECTORY}/platform-include)
 
+add_definitions(-Ddladdr=__darwin_dladdr)
+
 set(libunwind_sources
 	src/libuwind.cxx
 	src/Registers.S

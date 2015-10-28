@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int inotify_init (void)
 {
 	int rv;

@@ -1,0 +1,13 @@
+.Dd April 6, 2004
+.Dt WAIT4PATH 1
+.Os "Mac OS X" 10.4
+.Sh NAME
+.Nm wait4path
+.Nd wait for given path to show up in the namespace
+.Sh SYNOPSIS
+.Nm
+.Ao Ar path Ac
+.Sh DESCRIPTION
+The
+.Nm
+program simply checks to see if the given path exists, and if so, it exits. Otherwise, it sleeps until the mount table is updated and checks again. The program will loop indefinitely until the path shows up in the file system namespace.

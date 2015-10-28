@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) 1999-2006 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_APACHE_LICENSE_HEADER_START@
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ * @APPLE_APACHE_LICENSE_HEADER_END@
+ */
+/*
+ * bootstrap -- fundamental service initiator and port server
+ * Mike DeMoney, NeXT, Inc.
+ * Copyright, 1990.  All rights reserved.
+ */
+
+/* These really should be a part of the standard types... */
+type mach_port_move_send_array_t = array[] of mach_port_move_send_t
+	ctype: mach_port_array_t;
+type mach_port_make_send_array_t = array[] of mach_port_make_send_t
+	ctype: mach_port_array_t;
+
+type pid_t = integer_t;
+type pid_array_t = ^array [] of pid_t;
+type uid_t = natural_t;
+type gid_t = natural_t;
+type vproc_gsk_t = integer_t;
+type logmsg_t = c_string[*:2048];
+type cmd_t = c_string[512];
+type name_t = c_string[128];
+type name_array_t = ^array [] of name_t;
+type bootstrap_property_t = natural_t;
+type bootstrap_property_array_t = ^array [] of bootstrap_property_t;
+type bootstrap_status_t = integer_t;
+type bootstrap_status_array_t = ^array [] of bootstrap_status_t;
+type uuid_t = array [16] of MACH_MSG_TYPE_BYTE;
+
+type job_t = mach_port_t
+	intran		: job_t job_mig_intran(mach_port_t) 
+	outtran		: mach_port_t job_mig_outtran(job_t)
+	destructor	: job_mig_destructor(job_t)
+	cusertype	: vproc_mig_t;

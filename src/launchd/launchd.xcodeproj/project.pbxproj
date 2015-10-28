@@ -1,0 +1,1421 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		726056200EA8088C00D65FE7 /* embedded */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 7260562B0EA808D800D65FE7 /* Build configuration list for PBXAggregateTarget "embedded" */;
+			buildPhases = (
+			);
+			dependencies = (
+				4B10F1E20F43BEA900875782 /* PBXTargetDependency */,
+				4B10F1F60F43BF8C00875782 /* PBXTargetDependency */,
+				726056270EA808B700D65FE7 /* PBXTargetDependency */,
+				726056290EA808B900D65FE7 /* PBXTargetDependency */,
+			);
+			name = embedded;
+			productName = embedded;
+		};
+		FC59A0750E8C88AC00D41150 /* default */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = FC59A08A0E8C890A00D41150 /* Build configuration list for PBXAggregateTarget "default" */;
+			buildPhases = (
+			);
+			dependencies = (
+				FC59A0800E8C88FA00D41150 /* PBXTargetDependency */,
+				FC59A0820E8C88FC00D41150 /* PBXTargetDependency */,
+				FC59A0DE0E8C8A7000D41150 /* PBXTargetDependency */,
+				FCC842810EA718A800C01666 /* PBXTargetDependency */,
+				FC59A09D0E8C893000D41150 /* PBXTargetDependency */,
+			);
+			name = default;
+			productName = launchd_agg;
+		};
+		FC59A07A0E8C88BB00D41150 /* launchd_libs */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = FC59A08B0E8C890A00D41150 /* Build configuration list for PBXAggregateTarget "launchd_libs" */;
+			buildPhases = (
+			);
+			dependencies = (
+				FC59A07E0E8C88C100D41150 /* PBXTargetDependency */,
+			);
+			name = launchd_libs;
+			productName = launchd_libs_agg;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		4B10F1B90F43BE7E00875782 /* internal.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0BD0E8C8A2A00D41150 /* internal.defs */; settings = {ATTRIBUTES = (Client, Server, ); }; };
+		4B10F1BA0F43BE7E00875782 /* job.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC3627DF0E9344BF0054F1A3 /* job.defs */; settings = {ATTRIBUTES = (Client, Server, ); }; };
+		4B10F1BB0F43BE7E00875782 /* job_reply.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC3629160E9348390054F1A3 /* job_reply.defs */; };
+		4B10F1BC0F43BE7E00875782 /* mach_exc.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC36291F0E9349410054F1A3 /* mach_exc.defs */; settings = {ATTRIBUTES = (Server, ); }; };
+		4B10F1BD0F43BE7E00875782 /* notify.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC36290C0E93475F0054F1A3 /* notify.defs */; settings = {ATTRIBUTES = (Server, ); }; };
+		4B10F1BE0F43BE7E00875782 /* launchd.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0C40E8C8A4700D41150 /* launchd.c */; };
+		4B10F1BF0F43BE7E00875782 /* runtime.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0B50E8C8A1F00D41150 /* runtime.c */; settings = {COMPILER_FLAGS = "-I\"$SYMROOT\""; }; };
+		4B10F1C00F43BE7E00875782 /* kill2.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0B30E8C8A1F00D41150 /* kill2.c */; };
+		4B10F1C10F43BE7E00875782 /* core.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0B70E8C8A1F00D41150 /* core.c */; };
+		4B10F1C20F43BE7E00875782 /* ipc.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0B10E8C8A1F00D41150 /* ipc.c */; };
+		4B10F1C30F43BE7E00875782 /* ktrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 72FDB15D0EA7D7B200B2AC84 /* ktrace.c */; };
+		4B10F1C40F43BE7E00875782 /* job_forward.defs in Sources */ = {isa = PBXBuildFile; fileRef = 72FDB1BF0EA7E21C00B2AC84 /* job_forward.defs */; };
+		4B10F1C60F43BE7E00875782 /* libbsm.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = FC36292C0E934AA40054F1A3 /* libbsm.dylib */; };
+		4B10F1C90F43BE7E00875782 /* launchd.conf.5 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0C30E8C8A4700D41150 /* launchd.conf.5 */; };
+		4B10F1CA0F43BE7E00875782 /* launchd.plist.5 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0C10E8C8A4700D41150 /* launchd.plist.5 */; };
+		4B10F1CC0F43BE7E00875782 /* launchd.8 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0C00E8C8A3A00D41150 /* launchd.8 */; };
+		4B10F1CD0F43BE7E00875782 /* rc.8 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0F80E8C8AC300D41150 /* rc.8 */; };
+		4B10F1CF0F43BE7E00875782 /* rc.netboot in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0F90E8C8AC300D41150 /* rc.netboot */; };
+		4B10F1E80F43BF5C00875782 /* launchctl.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0AE0E8C8A0E00D41150 /* launchctl.c */; settings = {COMPILER_FLAGS = "-I\"$SDKROOT\"/System/Library/Frameworks/System.framework/PrivateHeaders"; }; };
+		4B10F1EB0F43BF5C00875782 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC3628070E9345E10054F1A3 /* CoreFoundation.framework */; };
+		4B10F1EC0F43BF5C00875782 /* libedit.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = FCD713730E95DE49001B0111 /* libedit.dylib */; settings = {ATTRIBUTES = (Weak, ); }; };
+		4B10F1EF0F43BF5C00875782 /* launchctl.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0AD0E8C8A0E00D41150 /* launchctl.1 */; };
+		4B1D128B143505CB00A2BDED /* log.c in Sources */ = {isa = PBXBuildFile; fileRef = 4B1D1288143502DA00A2BDED /* log.c */; };
+		4B1D128C143505CD00A2BDED /* log.c in Sources */ = {isa = PBXBuildFile; fileRef = 4B1D1288143502DA00A2BDED /* log.c */; };
+		4B1D92010F8BDE7D00125940 /* launchd.ops in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4B1D91ED0F8BDE1A00125940 /* launchd.ops */; };
+		4B287733111A509400C07B35 /* helper.defs in Sources */ = {isa = PBXBuildFile; fileRef = 4B287732111A509400C07B35 /* helper.defs */; settings = {ATTRIBUTES = (Client, Server, ); }; };
+		4B28781B111A61A400C07B35 /* helper.defs in Sources */ = {isa = PBXBuildFile; fileRef = 4B287732111A509400C07B35 /* helper.defs */; };
+		4B7B6DA8143BD343000BCC80 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC36283E0E93463C0054F1A3 /* IOKit.framework */; };
+		4B949DD5143D010F008712B9 /* libCrashReporterClient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4B949DD4143D010F008712B9 /* libCrashReporterClient.a */; };
+		4B949DD6143D010F008712B9 /* libCrashReporterClient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4B949DD4143D010F008712B9 /* libCrashReporterClient.a */; };
+		4B9EDCA20EAFC77E00A78496 /* DiskArbitration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4B9EDCA10EAFC77E00A78496 /* DiskArbitration.framework */; };
+		4BF8727C1187A5F000CC7DB5 /* helper.defs in Sources */ = {isa = PBXBuildFile; fileRef = 4B287732111A509400C07B35 /* helper.defs */; };
+		60416D1B1402EE6900C190AA /* init.defs in Sources */ = {isa = PBXBuildFile; fileRef = 4BA2F5FC1243063D00C2AADD /* init.defs */; };
+		60416D1D1402EE6A00C190AA /* init.defs in Sources */ = {isa = PBXBuildFile; fileRef = 4BA2F5FC1243063D00C2AADD /* init.defs */; };
+		60416D1E1402EE7200C190AA /* domain.defs in Sources */ = {isa = PBXBuildFile; fileRef = 4B0FB8E91241FE3F00383109 /* domain.defs */; settings = {ATTRIBUTES = (Server, ); }; };
+		60416D1F1402EE7300C190AA /* domain.defs in Sources */ = {isa = PBXBuildFile; fileRef = 4B0FB8E91241FE3F00383109 /* domain.defs */; settings = {ATTRIBUTES = (Server, ); }; };
+		7215DE4C0EFAF2EC00ABD81E /* libauditd.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 7215DE4B0EFAF2EC00ABD81E /* libauditd.dylib */; };
+		726055EC0EA7EC2400D65FE7 /* mach_exc.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC36291F0E9349410054F1A3 /* mach_exc.defs */; settings = {ATTRIBUTES = (Server, ); }; };
+		72AFE8090EFAF3D9004BDA46 /* libauditd.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 7215DE4B0EFAF2EC00ABD81E /* libauditd.dylib */; };
+		72FDB15F0EA7D7B200B2AC84 /* ktrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 72FDB15D0EA7D7B200B2AC84 /* ktrace.c */; };
+		72FDB1C00EA7E21C00B2AC84 /* job_forward.defs in Sources */ = {isa = PBXBuildFile; fileRef = 72FDB1BF0EA7E21C00B2AC84 /* job_forward.defs */; };
+		FC3627BA0E9343220054F1A3 /* StartupItems.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0FD0E8C8ADF00D41150 /* StartupItems.c */; };
+		FC3627BB0E93432A0054F1A3 /* SystemStarter.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A1000E8C8ADF00D41150 /* SystemStarter.c */; };
+		FC3627D40E93439B0054F1A3 /* StartupItemContext.8 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0FE0E8C8ADF00D41150 /* StartupItemContext.8 */; };
+		FC3627D50E93439B0054F1A3 /* SystemStarter.8 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A1010E8C8ADF00D41150 /* SystemStarter.8 */; };
+		FC3627E00E9344BF0054F1A3 /* job.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC3627DF0E9344BF0054F1A3 /* job.defs */; };
+		FC3627E10E9344BF0054F1A3 /* job.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC3627DF0E9344BF0054F1A3 /* job.defs */; settings = {ATTRIBUTES = (Client, Server, ); }; };
+		FC3628080E9345E10054F1A3 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC3628070E9345E10054F1A3 /* CoreFoundation.framework */; };
+		FC3628090E9345E10054F1A3 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC3628070E9345E10054F1A3 /* CoreFoundation.framework */; };
+		FC36283F0E93463C0054F1A3 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC36283E0E93463C0054F1A3 /* IOKit.framework */; };
+		FC36290D0E93475F0054F1A3 /* notify.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC36290C0E93475F0054F1A3 /* notify.defs */; settings = {ATTRIBUTES = (Server, ); }; };
+		FC3629170E9348390054F1A3 /* job_reply.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC3629160E9348390054F1A3 /* job_reply.defs */; };
+		FC36292D0E934AA40054F1A3 /* libbsm.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = FC36292C0E934AA40054F1A3 /* libbsm.dylib */; };
+		FC59A0A60E8C89C100D41150 /* IPC.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0A50E8C89C100D41150 /* IPC.c */; };
+		FC59A0AF0E8C8A0E00D41150 /* launchctl.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0AE0E8C8A0E00D41150 /* launchctl.c */; settings = {COMPILER_FLAGS = "-I\"$SDKROOT\"/System/Library/Frameworks/System.framework/PrivateHeaders"; }; };
+		FC59A0B80E8C8A1F00D41150 /* ipc.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0B10E8C8A1F00D41150 /* ipc.c */; };
+		FC59A0B90E8C8A1F00D41150 /* kill2.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0B30E8C8A1F00D41150 /* kill2.c */; };
+		FC59A0BA0E8C8A1F00D41150 /* runtime.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0B50E8C8A1F00D41150 /* runtime.c */; settings = {COMPILER_FLAGS = "-I\"$SYMROOT\""; }; };
+		FC59A0BB0E8C8A1F00D41150 /* core.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0B70E8C8A1F00D41150 /* core.c */; };
+		FC59A0BF0E8C8A2A00D41150 /* internal.defs in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0BD0E8C8A2A00D41150 /* internal.defs */; settings = {ATTRIBUTES = (Client, Server, ); }; };
+		FC59A0C50E8C8A4700D41150 /* launchd.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0C40E8C8A4700D41150 /* launchd.c */; };
+		FC59A0DC0E8C8A6900D41150 /* launchproxy.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0DA0E8C8A6900D41150 /* launchproxy.c */; };
+		FC59A0ED0E8C8AA600D41150 /* vproc.h in Headers */ = {isa = PBXBuildFile; fileRef = FC59A0E20E8C8AA600D41150 /* vproc.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		FC59A0EE0E8C8AA600D41150 /* vproc_priv.h in Headers */ = {isa = PBXBuildFile; fileRef = FC59A0E30E8C8AA600D41150 /* vproc_priv.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		FC59A0EF0E8C8AA600D41150 /* vproc_internal.h in Headers */ = {isa = PBXBuildFile; fileRef = FC59A0E40E8C8AA600D41150 /* vproc_internal.h */; };
+		FC59A0F00E8C8AA600D41150 /* libvproc.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0E50E8C8AA600D41150 /* libvproc.c */; };
+		FC59A0F10E8C8AA600D41150 /* launch.h in Headers */ = {isa = PBXBuildFile; fileRef = FC59A0E60E8C8AA600D41150 /* launch.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		FC59A0F20E8C8AA600D41150 /* launch_priv.h in Headers */ = {isa = PBXBuildFile; fileRef = FC59A0E70E8C8AA600D41150 /* launch_priv.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		FC59A0F30E8C8AA600D41150 /* launch_internal.h in Headers */ = {isa = PBXBuildFile; fileRef = FC59A0E80E8C8AA600D41150 /* launch_internal.h */; };
+		FC59A0F40E8C8AA600D41150 /* liblaunch.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0E90E8C8AA600D41150 /* liblaunch.c */; };
+		FC59A0F50E8C8AA600D41150 /* bootstrap.h in Headers */ = {isa = PBXBuildFile; fileRef = FC59A0EA0E8C8AA600D41150 /* bootstrap.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		FC59A0F60E8C8AA600D41150 /* bootstrap_priv.h in Headers */ = {isa = PBXBuildFile; fileRef = FC59A0EB0E8C8AA600D41150 /* bootstrap_priv.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		FC59A0F70E8C8AA600D41150 /* libbootstrap.c in Sources */ = {isa = PBXBuildFile; fileRef = FC59A0EC0E8C8AA600D41150 /* libbootstrap.c */; };
+		FC59A0FC0E8C8ACE00D41150 /* reboot2.h in Headers */ = {isa = PBXBuildFile; fileRef = FC59A0FB0E8C8ACE00D41150 /* reboot2.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		FC7B87B30EA7199700542082 /* rc.netboot in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0F90E8C8AC300D41150 /* rc.netboot */; };
+		FC7B87B50EA719B000542082 /* rc.common in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0FA0E8C8AC300D41150 /* rc.common */; };
+		FC7B87E60EA719D900542082 /* launchd.8 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0C00E8C8A3A00D41150 /* launchd.8 */; };
+		FC7B87F60EA71A9F00542082 /* launchd.plist.5 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0C10E8C8A4700D41150 /* launchd.plist.5 */; };
+		FC7B87F70EA71A9F00542082 /* launchd.conf.5 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0C30E8C8A4700D41150 /* launchd.conf.5 */; };
+		FC7B87FB0EA71AC600542082 /* rc.8 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0F80E8C8AC300D41150 /* rc.8 */; };
+		FCC841CC0EA7138700C01666 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC36283E0E93463C0054F1A3 /* IOKit.framework */; };
+		FCD713010E95D4FF001B0111 /* launchctl.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0AD0E8C8A0E00D41150 /* launchctl.1 */; };
+		FCD713090E95D52E001B0111 /* launchproxy.8 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0DB0E8C8A6900D41150 /* launchproxy.8 */; };
+		FCD713130E95D56B001B0111 /* StartupItemContext in CopyFiles */ = {isa = PBXBuildFile; fileRef = FC59A0FF0E8C8ADF00D41150 /* StartupItemContext */; };
+		FCD713210E95D5DE001B0111 /* com.apple.SystemStarter.plist in CopyFiles */ = {isa = PBXBuildFile; fileRef = FCD713200E95D5D3001B0111 /* com.apple.SystemStarter.plist */; };
+		FCD713390E95D69E001B0111 /* wait4path.c in Sources */ = {isa = PBXBuildFile; fileRef = FCD713380E95D69E001B0111 /* wait4path.c */; };
+		FCD713450E95D71F001B0111 /* wait4path.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FCD713370E95D69E001B0111 /* wait4path.1 */; };
+		FCD713570E95D7D1001B0111 /* hostconfig in CopyFiles */ = {isa = PBXBuildFile; fileRef = FCD713520E95D7B3001B0111 /* hostconfig */; };
+		FCD713740E95DE49001B0111 /* libedit.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = FCD713730E95DE49001B0111 /* libedit.dylib */; settings = {ATTRIBUTES = (Weak, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4B10F1E10F43BEA900875782 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4B10F1B70F43BE7E00875782;
+			remoteInfo = "launchd-embedded";
+		};
+		4B10F1F50F43BF8C00875782 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4B10F1E60F43BF5C00875782;
+			remoteInfo = "launchctl-embedded";
+		};
+		726056260EA808B700D65FE7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FC59A0CD0E8C8A5C00D41150;
+			remoteInfo = launchproxy;
+		};
+		726056280EA808B900D65FE7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FCD7132A0E95D64D001B0111;
+			remoteInfo = wait4path;
+		};
+		FC59A07D0E8C88C100D41150 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FC59A05F0E8C885100D41150;
+			remoteInfo = launchd_libs;
+		};
+		FC59A07F0E8C88FA00D41150 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FC59A0530E8C884700D41150;
+			remoteInfo = launchd;
+		};
+		FC59A0810E8C88FC00D41150 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FC59A06C0E8C888A00D41150;
+			remoteInfo = launchctl;
+		};
+		FC59A09C0E8C893000D41150 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FC59A0900E8C892300D41150;
+			remoteInfo = SystemStarter;
+		};
+		FC59A0DD0E8C8A7000D41150 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FC59A0CD0E8C8A5C00D41150;
+			remoteInfo = launchproxy;
+		};
+		FCC842800EA718A800C01666 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC59A03F0E8C87FD00D41150 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FCD7132A0E95D64D001B0111;
+			remoteInfo = wait4path;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4B10F1C80F43BE7E00875782 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/share/man/man5;
+			dstSubfolderSpec = 0;
+			files = (
+				4B10F1C90F43BE7E00875782 /* launchd.conf.5 in CopyFiles */,
+				4B10F1CA0F43BE7E00875782 /* launchd.plist.5 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		4B10F1CB0F43BE7E00875782 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/share/man/man8;
+			dstSubfolderSpec = 0;
+			files = (
+				4B10F1CC0F43BE7E00875782 /* launchd.8 in CopyFiles */,
+				4B10F1CD0F43BE7E00875782 /* rc.8 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		4B10F1CE0F43BE7E00875782 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = private/etc;
+			dstSubfolderSpec = 0;
+			files = (
+				4B10F1CF0F43BE7E00875782 /* rc.netboot in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		4B10F1EE0F43BF5C00875782 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/share/man/man1;
+			dstSubfolderSpec = 0;
+			files = (
+				4B10F1EF0F43BF5C00875782 /* launchctl.1 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		4B1D91F40F8BDE6800125940 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/local/share/sandbox/operations/;
+			dstSubfolderSpec = 0;
+			files = (
+				4B1D92010F8BDE7D00125940 /* launchd.ops in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FC3627D60E9343B90054F1A3 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/share/man/man8;
+			dstSubfolderSpec = 0;
+			files = (
+				FC3627D40E93439B0054F1A3 /* StartupItemContext.8 in CopyFiles */,
+				FC3627D50E93439B0054F1A3 /* SystemStarter.8 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FC3627D70E9343B90054F1A3 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = private/etc;
+			dstSubfolderSpec = 0;
+			files = (
+				FC7B87B30EA7199700542082 /* rc.netboot in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FC7B87E80EA719DB00542082 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/share/man/man8;
+			dstSubfolderSpec = 0;
+			files = (
+				FC7B87E60EA719D900542082 /* launchd.8 in CopyFiles */,
+				FC7B87FB0EA71AC600542082 /* rc.8 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FC7B87FA0EA71AB400542082 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/share/man/man5;
+			dstSubfolderSpec = 0;
+			files = (
+				FC7B87F70EA71A9F00542082 /* launchd.conf.5 in CopyFiles */,
+				FC7B87F60EA71A9F00542082 /* launchd.plist.5 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FCD713050E95D513001B0111 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/share/man/man1;
+			dstSubfolderSpec = 0;
+			files = (
+				FCD713010E95D4FF001B0111 /* launchctl.1 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FCD713110E95D554001B0111 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/libexec;
+			dstSubfolderSpec = 0;
+			files = (
+				FCD713130E95D56B001B0111 /* StartupItemContext in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FCD713120E95D554001B0111 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/share/man/man8;
+			dstSubfolderSpec = 0;
+			files = (
+				FCD713090E95D52E001B0111 /* launchproxy.8 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FCD7131B0E95D59B001B0111 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = System/Library/LaunchDaemons;
+			dstSubfolderSpec = 0;
+			files = (
+				FCD713210E95D5DE001B0111 /* com.apple.SystemStarter.plist in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FCD7134D0E95D728001B0111 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = usr/share/man/man1;
+			dstSubfolderSpec = 0;
+			files = (
+				FCD713450E95D71F001B0111 /* wait4path.1 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FCD713590E95D7D8001B0111 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = private/etc;
+			dstSubfolderSpec = 0;
+			files = (
+				FCD713570E95D7D1001B0111 /* hostconfig in CopyFiles */,
+				FC7B87B50EA719B000542082 /* rc.common in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		4B0A3100131F24AC002DE2E5 /* types.defs */ = {isa = PBXFileReference; explicitFileType = sourcecode.mig; fileEncoding = 4; name = types.defs; path = usr/local/include/xpc/types.defs; sourceTree = SDKROOT; };
+		4B0FB8E91241FE3F00383109 /* domain.defs */ = {isa = PBXFileReference; explicitFileType = sourcecode.mig; fileEncoding = 4; name = domain.defs; path = usr/local/include/xpc/domain.defs; sourceTree = SDKROOT; };
+		4B10F1D30F43BE7E00875782 /* launchd */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = launchd; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B10F1F30F43BF5C00875782 /* launchctl */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = launchctl; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B1D12741433D79800A2BDED /* launchd.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = launchd.xcconfig; path = xcconfigs/launchd.xcconfig; sourceTree = "<group>"; };
+		4B1D12751433D7BE00A2BDED /* liblaunch.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = liblaunch.xcconfig; path = xcconfigs/liblaunch.xcconfig; sourceTree = "<group>"; };
+		4B1D12771433E5EB00A2BDED /* launchctl.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = launchctl.xcconfig; path = xcconfigs/launchctl.xcconfig; sourceTree = "<group>"; };
+		4B1D12781433E70400A2BDED /* launchd-postflight.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = "launchd-postflight.sh"; path = "xcscripts/launchd-postflight.sh"; sourceTree = "<group>"; };
+		4B1D12791433E76F00A2BDED /* liblaunch-postflight.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = "liblaunch-postflight.sh"; path = "xcscripts/liblaunch-postflight.sh"; sourceTree = "<group>"; };
+		4B1D127A1433E7A400A2BDED /* launchctl-postflight.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = "launchctl-postflight.sh"; path = "xcscripts/launchctl-postflight.sh"; sourceTree = "<group>"; };
+		4B1D127C1433E85A00A2BDED /* SystemStarter-postflight.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = "SystemStarter-postflight.sh"; path = "xcscripts/SystemStarter-postflight.sh"; sourceTree = "<group>"; };
+		4B1D127D1433E91D00A2BDED /* common.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = common.xcconfig; path = xcconfigs/common.xcconfig; sourceTree = "<group>"; };
+		4B1D1288143502DA00A2BDED /* log.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = log.c; path = src/log.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
+		4B1D128A143502F000A2BDED /* log.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = log.h; path = src/log.h; sourceTree = "<group>"; };
+		4B1D91ED0F8BDE1A00125940 /* launchd.ops */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = launchd.ops; path = liblaunch/launchd.ops; sourceTree = "<group>"; };
+		4B287732111A509400C07B35 /* helper.defs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.mig; name = helper.defs; path = src/helper.defs; sourceTree = "<group>"; };
+		4B43EAF314101C5800E9E776 /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = /System/Library/Frameworks/ServiceManagement.framework; sourceTree = "<absolute>"; };
+		4B949DD4143D010F008712B9 /* libCrashReporterClient.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libCrashReporterClient.a; path = usr/local/lib/libCrashReporterClient.a; sourceTree = SDKROOT; };
+		4B9EDCA10EAFC77E00A78496 /* DiskArbitration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DiskArbitration.framework; path = /System/Library/Frameworks/DiskArbitration.framework; sourceTree = "<absolute>"; };
+		4BA2F5FC1243063D00C2AADD /* init.defs */ = {isa = PBXFileReference; explicitFileType = sourcecode.mig; fileEncoding = 4; name = init.defs; path = usr/local/include/xpc/init.defs; sourceTree = SDKROOT; };
+		7215DE4B0EFAF2EC00ABD81E /* libauditd.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libauditd.dylib; path = /usr/lib/libauditd.dylib; sourceTree = "<absolute>"; };
+		721FBEA50EA7ABC40057462B /* config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = config.h; path = src/config.h; sourceTree = "<group>"; };
+		72FDB15D0EA7D7B200B2AC84 /* ktrace.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ktrace.c; path = src/ktrace.c; sourceTree = "<group>"; };
+		72FDB15E0EA7D7B200B2AC84 /* ktrace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ktrace.h; path = src/ktrace.h; sourceTree = "<group>"; };
+		72FDB1BF0EA7E21C00B2AC84 /* job_forward.defs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.mig; name = job_forward.defs; path = src/job_forward.defs; sourceTree = "<group>"; };
+		FC3627DF0E9344BF0054F1A3 /* job.defs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.mig; name = job.defs; path = src/job.defs; sourceTree = "<group>"; };
+		FC3628070E9345E10054F1A3 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = /System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<absolute>"; };
+		FC36283E0E93463C0054F1A3 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = /System/Library/Frameworks/IOKit.framework; sourceTree = "<absolute>"; };
+		FC36290C0E93475F0054F1A3 /* notify.defs */ = {isa = PBXFileReference; explicitFileType = sourcecode.mig; fileEncoding = 4; name = notify.defs; path = usr/include/mach/notify.defs; sourceTree = SDKROOT; };
+		FC3629160E9348390054F1A3 /* job_reply.defs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.mig; name = job_reply.defs; path = src/job_reply.defs; sourceTree = "<group>"; };
+		FC36291F0E9349410054F1A3 /* mach_exc.defs */ = {isa = PBXFileReference; explicitFileType = sourcecode.mig; fileEncoding = 4; name = mach_exc.defs; path = usr/include/mach/mach_exc.defs; sourceTree = SDKROOT; };
+		FC36292C0E934AA40054F1A3 /* libbsm.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libbsm.dylib; path = /usr/lib/libbsm.dylib; sourceTree = "<absolute>"; };
+		FC59A0540E8C884700D41150 /* launchd */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = launchd; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC59A0600E8C885100D41150 /* liblaunch.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = liblaunch.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC59A06D0E8C888A00D41150 /* launchctl */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = launchctl; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC59A0910E8C892300D41150 /* SystemStarter */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = SystemStarter; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC59A0A40E8C89C100D41150 /* IPC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IPC.h; path = SystemStarter/IPC.h; sourceTree = SOURCE_ROOT; };
+		FC59A0A50E8C89C100D41150 /* IPC.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = IPC.c; path = SystemStarter/IPC.c; sourceTree = SOURCE_ROOT; };
+		FC59A0AD0E8C8A0E00D41150 /* launchctl.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = launchctl.1; path = man/launchctl.1; sourceTree = SOURCE_ROOT; };
+		FC59A0AE0E8C8A0E00D41150 /* launchctl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = launchctl.c; path = support/launchctl.c; sourceTree = SOURCE_ROOT; };
+		FC59A0B00E8C8A1F00D41150 /* ipc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ipc.h; path = src/ipc.h; sourceTree = "<group>"; };
+		FC59A0B10E8C8A1F00D41150 /* ipc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ipc.c; path = src/ipc.c; sourceTree = "<group>"; };
+		FC59A0B20E8C8A1F00D41150 /* kill2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kill2.h; path = src/kill2.h; sourceTree = "<group>"; };
+		FC59A0B30E8C8A1F00D41150 /* kill2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = kill2.c; path = src/kill2.c; sourceTree = "<group>"; };
+		FC59A0B40E8C8A1F00D41150 /* runtime.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = runtime.h; path = src/runtime.h; sourceTree = "<group>"; };
+		FC59A0B50E8C8A1F00D41150 /* runtime.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = runtime.c; path = src/runtime.c; sourceTree = "<group>"; };
+		FC59A0B60E8C8A1F00D41150 /* core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = core.h; path = src/core.h; sourceTree = "<group>"; };
+		FC59A0B70E8C8A1F00D41150 /* core.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = core.c; path = src/core.c; sourceTree = "<group>"; };
+		FC59A0BC0E8C8A2A00D41150 /* job_types.defs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.mig; name = job_types.defs; path = src/job_types.defs; sourceTree = "<group>"; };
+		FC59A0BD0E8C8A2A00D41150 /* internal.defs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.mig; name = internal.defs; path = src/internal.defs; sourceTree = "<group>"; };
+		FC59A0C00E8C8A3A00D41150 /* launchd.8 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = launchd.8; path = man/launchd.8; sourceTree = "<group>"; };
+		FC59A0C10E8C8A4700D41150 /* launchd.plist.5 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = launchd.plist.5; path = man/launchd.plist.5; sourceTree = "<group>"; };
+		FC59A0C20E8C8A4700D41150 /* launchd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = launchd.h; path = src/launchd.h; sourceTree = "<group>"; };
+		FC59A0C30E8C8A4700D41150 /* launchd.conf.5 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = launchd.conf.5; path = man/launchd.conf.5; sourceTree = "<group>"; };
+		FC59A0C40E8C8A4700D41150 /* launchd.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = launchd.c; path = src/launchd.c; sourceTree = "<group>"; };
+		FC59A0CE0E8C8A5C00D41150 /* launchproxy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = launchproxy; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC59A0DA0E8C8A6900D41150 /* launchproxy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = launchproxy.c; path = support/launchproxy.c; sourceTree = SOURCE_ROOT; };
+		FC59A0DB0E8C8A6900D41150 /* launchproxy.8 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = launchproxy.8; path = man/launchproxy.8; sourceTree = SOURCE_ROOT; };
+		FC59A0E20E8C8AA600D41150 /* vproc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vproc.h; path = liblaunch/vproc.h; sourceTree = "<group>"; };
+		FC59A0E30E8C8AA600D41150 /* vproc_priv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vproc_priv.h; path = liblaunch/vproc_priv.h; sourceTree = "<group>"; };
+		FC59A0E40E8C8AA600D41150 /* vproc_internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vproc_internal.h; path = liblaunch/vproc_internal.h; sourceTree = "<group>"; };
+		FC59A0E50E8C8AA600D41150 /* libvproc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = libvproc.c; path = liblaunch/libvproc.c; sourceTree = SOURCE_ROOT; };
+		FC59A0E60E8C8AA600D41150 /* launch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = launch.h; path = liblaunch/launch.h; sourceTree = "<group>"; };
+		FC59A0E70E8C8AA600D41150 /* launch_priv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = launch_priv.h; path = liblaunch/launch_priv.h; sourceTree = "<group>"; };
+		FC59A0E80E8C8AA600D41150 /* launch_internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = launch_internal.h; path = liblaunch/launch_internal.h; sourceTree = "<group>"; };
+		FC59A0E90E8C8AA600D41150 /* liblaunch.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = liblaunch.c; path = liblaunch/liblaunch.c; sourceTree = SOURCE_ROOT; };
+		FC59A0EA0E8C8AA600D41150 /* bootstrap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bootstrap.h; path = liblaunch/bootstrap.h; sourceTree = "<group>"; };
+		FC59A0EB0E8C8AA600D41150 /* bootstrap_priv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bootstrap_priv.h; path = liblaunch/bootstrap_priv.h; sourceTree = "<group>"; };
+		FC59A0EC0E8C8AA600D41150 /* libbootstrap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = libbootstrap.c; path = liblaunch/libbootstrap.c; sourceTree = SOURCE_ROOT; };
+		FC59A0F80E8C8AC300D41150 /* rc.8 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = rc.8; path = man/rc.8; sourceTree = "<group>"; };
+		FC59A0F90E8C8AC300D41150 /* rc.netboot */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = rc.netboot; path = rc/rc.netboot; sourceTree = "<group>"; };
+		FC59A0FA0E8C8AC300D41150 /* rc.common */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = rc.common; path = rc/rc.common; sourceTree = "<group>"; };
+		FC59A0FB0E8C8ACE00D41150 /* reboot2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = reboot2.h; path = liblaunch/reboot2.h; sourceTree = SOURCE_ROOT; };
+		FC59A0FD0E8C8ADF00D41150 /* StartupItems.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = StartupItems.c; path = SystemStarter/StartupItems.c; sourceTree = SOURCE_ROOT; };
+		FC59A0FE0E8C8ADF00D41150 /* StartupItemContext.8 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = StartupItemContext.8; path = SystemStarter/StartupItemContext.8; sourceTree = SOURCE_ROOT; };
+		FC59A0FF0E8C8ADF00D41150 /* StartupItemContext */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = StartupItemContext; path = SystemStarter/StartupItemContext; sourceTree = SOURCE_ROOT; };
+		FC59A1000E8C8ADF00D41150 /* SystemStarter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = SystemStarter.c; path = SystemStarter/SystemStarter.c; sourceTree = SOURCE_ROOT; };
+		FC59A1010E8C8ADF00D41150 /* SystemStarter.8 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = SystemStarter.8; path = SystemStarter/SystemStarter.8; sourceTree = SOURCE_ROOT; };
+		FC59A1020E8C8ADF00D41150 /* StartupItems.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = StartupItems.h; path = SystemStarter/StartupItems.h; sourceTree = SOURCE_ROOT; };
+		FC59A1030E8C8ADF00D41150 /* SystemStarterIPC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SystemStarterIPC.h; path = SystemStarter/SystemStarterIPC.h; sourceTree = SOURCE_ROOT; };
+		FC59A1040E8C8ADF00D41150 /* SystemStarter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SystemStarter.h; path = SystemStarter/SystemStarter.h; sourceTree = SOURCE_ROOT; };
+		FCD713200E95D5D3001B0111 /* com.apple.SystemStarter.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = com.apple.SystemStarter.plist; path = SystemStarter/com.apple.SystemStarter.plist; sourceTree = "<group>"; };
+		FCD7132B0E95D64D001B0111 /* wait4path */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = wait4path; sourceTree = BUILT_PRODUCTS_DIR; };
+		FCD713370E95D69E001B0111 /* wait4path.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = wait4path.1; path = man/wait4path.1; sourceTree = "<group>"; };
+		FCD713380E95D69E001B0111 /* wait4path.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = wait4path.c; path = support/wait4path.c; sourceTree = "<group>"; };
+		FCD713520E95D7B3001B0111 /* hostconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = hostconfig; path = SystemStarter/hostconfig; sourceTree = "<group>"; };
+		FCD713730E95DE49001B0111 /* libedit.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libedit.dylib; path = /usr/lib/libedit.dylib; sourceTree = "<absolute>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4B10F1C50F43BE7E00875782 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B10F1C60F43BE7E00875782 /* libbsm.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4B10F1E90F43BF5C00875782 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B10F1EB0F43BF5C00875782 /* CoreFoundation.framework in Frameworks */,
+				4B7B6DA8143BD343000BCC80 /* IOKit.framework in Frameworks */,
+				4B10F1EC0F43BF5C00875782 /* libedit.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC59A0520E8C884700D41150 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC36292D0E934AA40054F1A3 /* libbsm.dylib in Frameworks */,
+				7215DE4C0EFAF2EC00ABD81E /* libauditd.dylib in Frameworks */,
+				4B949DD5143D010F008712B9 /* libCrashReporterClient.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC59A06B0E8C888A00D41150 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FCC841CC0EA7138700C01666 /* IOKit.framework in Frameworks */,
+				FC3628080E9345E10054F1A3 /* CoreFoundation.framework in Frameworks */,
+				FCD713740E95DE49001B0111 /* libedit.dylib in Frameworks */,
+				72AFE8090EFAF3D9004BDA46 /* libauditd.dylib in Frameworks */,
+				4B949DD6143D010F008712B9 /* libCrashReporterClient.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC59A08F0E8C892300D41150 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC3628090E9345E10054F1A3 /* CoreFoundation.framework in Frameworks */,
+				FC36283F0E93463C0054F1A3 /* IOKit.framework in Frameworks */,
+				4B9EDCA20EAFC77E00A78496 /* DiskArbitration.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC59A0CC0E8C8A5C00D41150 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FCD713290E95D64D001B0111 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4B1D12731433D77400A2BDED /* xcconfigs */ = {
+			isa = PBXGroup;
+			children = (
+				4B1D127D1433E91D00A2BDED /* common.xcconfig */,
+				4B1D12741433D79800A2BDED /* launchd.xcconfig */,
+				4B1D12751433D7BE00A2BDED /* liblaunch.xcconfig */,
+				4B1D12771433E5EB00A2BDED /* launchctl.xcconfig */,
+			);
+			name = xcconfigs;
+			sourceTree = "<group>";
+		};
+		4B1D12761433D94200A2BDED /* xcscripts */ = {
+			isa = PBXGroup;
+			children = (
+				4B1D12781433E70400A2BDED /* launchd-postflight.sh */,
+				4B1D12791433E76F00A2BDED /* liblaunch-postflight.sh */,
+				4B1D127A1433E7A400A2BDED /* launchctl-postflight.sh */,
+				4B1D127C1433E85A00A2BDED /* SystemStarter-postflight.sh */,
+			);
+			name = xcscripts;
+			sourceTree = "<group>";
+		};
+		4B2086731433CBEF006A5B71 /* man */ = {
+			isa = PBXGroup;
+			children = (
+				FC59A0C00E8C8A3A00D41150 /* launchd.8 */,
+				FC59A0C10E8C8A4700D41150 /* launchd.plist.5 */,
+				FC59A0C30E8C8A4700D41150 /* launchd.conf.5 */,
+				FC59A0AD0E8C8A0E00D41150 /* launchctl.1 */,
+				FC59A0DB0E8C8A6900D41150 /* launchproxy.8 */,
+				FCD713370E95D69E001B0111 /* wait4path.1 */,
+				FC59A0F80E8C8AC300D41150 /* rc.8 */,
+			);
+			name = man;
+			sourceTree = "<group>";
+		};
+		4B2086771433CE05006A5B71 /* public */ = {
+			isa = PBXGroup;
+			children = (
+				FC59A0E60E8C8AA600D41150 /* launch.h */,
+				FC59A0EA0E8C8AA600D41150 /* bootstrap.h */,
+				FC59A0E20E8C8AA600D41150 /* vproc.h */,
+			);
+			name = public;
+			sourceTree = "<group>";
+		};
+		4B2086781433CE0E006A5B71 /* private */ = {
+			isa = PBXGroup;
+			children = (
+				FC59A0E70E8C8AA600D41150 /* launch_priv.h */,
+				FC59A0EB0E8C8AA600D41150 /* bootstrap_priv.h */,
+				FC59A0E30E8C8AA600D41150 /* vproc_priv.h */,
+				FC59A0FB0E8C8ACE00D41150 /* reboot2.h */,
+			);
+			name = private;
+			sourceTree = "<group>";
+		};
+		4B2086791433CE49006A5B71 /* internal */ = {
+			isa = PBXGroup;
+			children = (
+				4B1D91ED0F8BDE1A00125940 /* launchd.ops */,
+				FC59A0E80E8C8AA600D41150 /* launch_internal.h */,
+				FC59A0E40E8C8AA600D41150 /* vproc_internal.h */,
+				721FBEA50EA7ABC40057462B /* config.h */,
+				FC59A0C20E8C8A4700D41150 /* launchd.h */,
+				FC59A0B00E8C8A1F00D41150 /* ipc.h */,
+				FC59A0B20E8C8A1F00D41150 /* kill2.h */,
+				FC59A0B40E8C8A1F00D41150 /* runtime.h */,
+				72FDB15E0EA7D7B200B2AC84 /* ktrace.h */,
+				FC59A0B60E8C8A1F00D41150 /* core.h */,
+				4B1D128A143502F000A2BDED /* log.h */,
+			);
+			name = internal;
+			sourceTree = "<group>";
+		};
+		4B20867A1433CE7E006A5B71 /* support */ = {
+			isa = PBXGroup;
+			children = (
+				FC59A0AE0E8C8A0E00D41150 /* launchctl.c */,
+				FC59A0DA0E8C8A6900D41150 /* launchproxy.c */,
+				FCD713380E95D69E001B0111 /* wait4path.c */,
+			);
+			name = support;
+			sourceTree = "<group>";
+		};
+		4B9EDCD70EAFD14500A78496 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				FC59A0BC0E8C8A2A00D41150 /* job_types.defs */,
+				FC3627DF0E9344BF0054F1A3 /* job.defs */,
+				FC3629160E9348390054F1A3 /* job_reply.defs */,
+				72FDB1BF0EA7E21C00B2AC84 /* job_forward.defs */,
+				FC59A0BD0E8C8A2A00D41150 /* internal.defs */,
+				4B287732111A509400C07B35 /* helper.defs */,
+				4B0A3100131F24AC002DE2E5 /* types.defs */,
+				4B0FB8E91241FE3F00383109 /* domain.defs */,
+				4BA2F5FC1243063D00C2AADD /* init.defs */,
+				FC36291F0E9349410054F1A3 /* mach_exc.defs */,
+				FC36290C0E93475F0054F1A3 /* notify.defs */,
+				FC59A0C40E8C8A4700D41150 /* launchd.c */,
+				FC59A0B10E8C8A1F00D41150 /* ipc.c */,
+				FC59A0B30E8C8A1F00D41150 /* kill2.c */,
+				FC59A0B50E8C8A1F00D41150 /* runtime.c */,
+				72FDB15D0EA7D7B200B2AC84 /* ktrace.c */,
+				FC59A0B70E8C8A1F00D41150 /* core.c */,
+				4B1D1288143502DA00A2BDED /* log.c */,
+			);
+			name = src;
+			sourceTree = "<group>";
+		};
+		4B9EDCD90EAFD19800A78496 /* rc */ = {
+			isa = PBXGroup;
+			children = (
+				FC59A0F90E8C8AC300D41150 /* rc.netboot */,
+				FC59A0FA0E8C8AC300D41150 /* rc.common */,
+			);
+			name = rc;
+			sourceTree = "<group>";
+		};
+		4BC868A6143CFC8C00B46F40 /* xcsupport */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = xcsupport;
+			sourceTree = "<group>";
+		};
+		FC36280C0E9345F60054F1A3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				4B949DD4143D010F008712B9 /* libCrashReporterClient.a */,
+				4B43EAF314101C5800E9E776 /* ServiceManagement.framework */,
+				4B9EDCA10EAFC77E00A78496 /* DiskArbitration.framework */,
+				FC36292C0E934AA40054F1A3 /* libbsm.dylib */,
+				7215DE4B0EFAF2EC00ABD81E /* libauditd.dylib */,
+				FCD713730E95DE49001B0111 /* libedit.dylib */,
+				FC3628070E9345E10054F1A3 /* CoreFoundation.framework */,
+				FC36283E0E93463C0054F1A3 /* IOKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		FC59A03D0E8C87FD00D41150 = {
+			isa = PBXGroup;
+			children = (
+				4B1D12731433D77400A2BDED /* xcconfigs */,
+				4B1D12761433D94200A2BDED /* xcscripts */,
+				4BC868A6143CFC8C00B46F40 /* xcsupport */,
+				4B2086771433CE05006A5B71 /* public */,
+				4B2086781433CE0E006A5B71 /* private */,
+				4B2086791433CE49006A5B71 /* internal */,
+				4B9EDCD70EAFD14500A78496 /* src */,
+				FC59A0E10E8C8A9400D41150 /* liblaunch */,
+				4B20867A1433CE7E006A5B71 /* support */,
+				4B2086731433CBEF006A5B71 /* man */,
+				4B9EDCD90EAFD19800A78496 /* rc */,
+				FC59A0A00E8C899600D41150 /* SystemStarter */,
+				FC36280C0E9345F60054F1A3 /* Frameworks */,
+				FC59A0550E8C884700D41150 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FC59A0550E8C884700D41150 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FC59A0600E8C885100D41150 /* liblaunch.dylib */,
+				FC59A0540E8C884700D41150 /* launchd */,
+				FC59A06D0E8C888A00D41150 /* launchctl */,
+				FC59A0910E8C892300D41150 /* SystemStarter */,
+				FC59A0CE0E8C8A5C00D41150 /* launchproxy */,
+				FCD7132B0E95D64D001B0111 /* wait4path */,
+				4B10F1D30F43BE7E00875782 /* launchd */,
+				4B10F1F30F43BF5C00875782 /* launchctl */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FC59A0A00E8C899600D41150 /* SystemStarter */ = {
+			isa = PBXGroup;
+			children = (
+				FCD713200E95D5D3001B0111 /* com.apple.SystemStarter.plist */,
+				FC59A1020E8C8ADF00D41150 /* StartupItems.h */,
+				FC59A1030E8C8ADF00D41150 /* SystemStarterIPC.h */,
+				FC59A1040E8C8ADF00D41150 /* SystemStarter.h */,
+				FC59A0A40E8C89C100D41150 /* IPC.h */,
+				FC59A0FD0E8C8ADF00D41150 /* StartupItems.c */,
+				FC59A1000E8C8ADF00D41150 /* SystemStarter.c */,
+				FC59A0A50E8C89C100D41150 /* IPC.c */,
+				FC59A0FF0E8C8ADF00D41150 /* StartupItemContext */,
+				FCD713520E95D7B3001B0111 /* hostconfig */,
+				FC59A0FE0E8C8ADF00D41150 /* StartupItemContext.8 */,
+				FC59A1010E8C8ADF00D41150 /* SystemStarter.8 */,
+			);
+			name = SystemStarter;
+			sourceTree = "<group>";
+		};
+		FC59A0E10E8C8A9400D41150 /* liblaunch */ = {
+			isa = PBXGroup;
+			children = (
+				FC59A0E50E8C8AA600D41150 /* libvproc.c */,
+				FC59A0E90E8C8AA600D41150 /* liblaunch.c */,
+				FC59A0EC0E8C8AA600D41150 /* libbootstrap.c */,
+			);
+			name = liblaunch;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		FC59A05C0E8C885100D41150 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC59A0ED0E8C8AA600D41150 /* vproc.h in Headers */,
+				FC59A0EE0E8C8AA600D41150 /* vproc_priv.h in Headers */,
+				FC59A0EF0E8C8AA600D41150 /* vproc_internal.h in Headers */,
+				FC59A0F10E8C8AA600D41150 /* launch.h in Headers */,
+				FC59A0F20E8C8AA600D41150 /* launch_priv.h in Headers */,
+				FC59A0F30E8C8AA600D41150 /* launch_internal.h in Headers */,
+				FC59A0F50E8C8AA600D41150 /* bootstrap.h in Headers */,
+				FC59A0F60E8C8AA600D41150 /* bootstrap_priv.h in Headers */,
+				FC59A0FC0E8C8ACE00D41150 /* reboot2.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		4B10F1B70F43BE7E00875782 /* launchd-embedded */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4B10F1D10F43BE7E00875782 /* Build configuration list for PBXNativeTarget "launchd-embedded" */;
+			buildPhases = (
+				4B10F1B80F43BE7E00875782 /* Sources */,
+				4B10F1C50F43BE7E00875782 /* Frameworks */,
+				4B10F1C80F43BE7E00875782 /* CopyFiles */,
+				4B10F1CB0F43BE7E00875782 /* CopyFiles */,
+				4B10F1CE0F43BE7E00875782 /* CopyFiles */,
+				4B10F1D00F43BE7E00875782 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "launchd-embedded";
+			productName = launchd;
+			productReference = 4B10F1D30F43BE7E00875782 /* launchd */;
+			productType = "com.apple.product-type.tool";
+		};
+		4B10F1E60F43BF5C00875782 /* launchctl-embedded */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4B10F1F10F43BF5C00875782 /* Build configuration list for PBXNativeTarget "launchctl-embedded" */;
+			buildPhases = (
+				4B10F1E70F43BF5C00875782 /* Sources */,
+				4B10F1E90F43BF5C00875782 /* Frameworks */,
+				4B10F1EE0F43BF5C00875782 /* CopyFiles */,
+				4B10F1F00F43BF5C00875782 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "launchctl-embedded";
+			productName = launchctl;
+			productReference = 4B10F1F30F43BF5C00875782 /* launchctl */;
+			productType = "com.apple.product-type.tool";
+		};
+		FC59A0530E8C884700D41150 /* launchd */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC59A0590E8C884800D41150 /* Build configuration list for PBXNativeTarget "launchd" */;
+			buildPhases = (
+				FC59A0510E8C884700D41150 /* Sources */,
+				FC59A0520E8C884700D41150 /* Frameworks */,
+				FC7B87FA0EA71AB400542082 /* CopyFiles */,
+				FC7B87E80EA719DB00542082 /* CopyFiles */,
+				FC3627D70E9343B90054F1A3 /* CopyFiles */,
+				FC7B87B20EA7195F00542082 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = launchd;
+			productName = launchd;
+			productReference = FC59A0540E8C884700D41150 /* launchd */;
+			productType = "com.apple.product-type.tool";
+		};
+		FC59A05F0E8C885100D41150 /* liblaunch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC59A0650E8C886700D41150 /* Build configuration list for PBXNativeTarget "liblaunch" */;
+			buildPhases = (
+				4B1D91F40F8BDE6800125940 /* CopyFiles */,
+				FC59A05C0E8C885100D41150 /* Headers */,
+				FC59A05D0E8C885100D41150 /* Sources */,
+				FC7B88230EA7280100542082 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = liblaunch;
+			productName = launchd_libs;
+			productReference = FC59A0600E8C885100D41150 /* liblaunch.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		FC59A06C0E8C888A00D41150 /* launchctl */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC59A0890E8C890A00D41150 /* Build configuration list for PBXNativeTarget "launchctl" */;
+			buildPhases = (
+				FC59A06A0E8C888A00D41150 /* Sources */,
+				FC59A06B0E8C888A00D41150 /* Frameworks */,
+				FCD713050E95D513001B0111 /* CopyFiles */,
+				FCC842860EA718C400C01666 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = launchctl;
+			productName = launchctl;
+			productReference = FC59A06D0E8C888A00D41150 /* launchctl */;
+			productType = "com.apple.product-type.tool";
+		};
+		FC59A0900E8C892300D41150 /* SystemStarter */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC59A09B0E8C892900D41150 /* Build configuration list for PBXNativeTarget "SystemStarter" */;
+			buildPhases = (
+				FC59A08E0E8C892300D41150 /* Sources */,
+				FC59A08F0E8C892300D41150 /* Frameworks */,
+				FC3627D60E9343B90054F1A3 /* CopyFiles */,
+				FCD713110E95D554001B0111 /* CopyFiles */,
+				FCD7131B0E95D59B001B0111 /* CopyFiles */,
+				FCD713590E95D7D8001B0111 /* CopyFiles */,
+				FCC8427E0EA7175100C01666 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SystemStarter;
+			productName = SystemStarter;
+			productReference = FC59A0910E8C892300D41150 /* SystemStarter */;
+			productType = "com.apple.product-type.tool";
+		};
+		FC59A0CD0E8C8A5C00D41150 /* launchproxy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC59A0D90E8C8A6000D41150 /* Build configuration list for PBXNativeTarget "launchproxy" */;
+			buildPhases = (
+				FC59A0CB0E8C8A5C00D41150 /* Sources */,
+				FC59A0CC0E8C8A5C00D41150 /* Frameworks */,
+				FCD713120E95D554001B0111 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = launchproxy;
+			productName = launchproxy;
+			productReference = FC59A0CE0E8C8A5C00D41150 /* launchproxy */;
+			productType = "com.apple.product-type.tool";
+		};
+		FCD7132A0E95D64D001B0111 /* wait4path */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FCD713340E95D65F001B0111 /* Build configuration list for PBXNativeTarget "wait4path" */;
+			buildPhases = (
+				FCD713280E95D64D001B0111 /* Sources */,
+				FCD713290E95D64D001B0111 /* Frameworks */,
+				FCD7134D0E95D728001B0111 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = wait4path;
+			productName = wait4path;
+			productReference = FCD7132B0E95D64D001B0111 /* wait4path */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FC59A03F0E8C87FD00D41150 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0500;
+			};
+			buildConfigurationList = FC59A0420E8C87FD00D41150 /* Build configuration list for PBXProject "launchd" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				English,
+				Japanese,
+				French,
+				German,
+			);
+			mainGroup = FC59A03D0E8C87FD00D41150;
+			productRefGroup = FC59A0550E8C884700D41150 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FC59A0750E8C88AC00D41150 /* default */,
+				726056200EA8088C00D65FE7 /* embedded */,
+				FC59A07A0E8C88BB00D41150 /* launchd_libs */,
+				FC59A0530E8C884700D41150 /* launchd */,
+				FC59A05F0E8C885100D41150 /* liblaunch */,
+				FC59A06C0E8C888A00D41150 /* launchctl */,
+				4B10F1B70F43BE7E00875782 /* launchd-embedded */,
+				4B10F1E60F43BF5C00875782 /* launchctl-embedded */,
+				FC59A0CD0E8C8A5C00D41150 /* launchproxy */,
+				FCD7132A0E95D64D001B0111 /* wait4path */,
+				FC59A0900E8C892300D41150 /* SystemStarter */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		4B10F1D00F43BE7E00875782 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = "set -ex\n\n/bin/bash ${BUILD_XCSCRIPTS_DIR}/launchd-postflight.sh";
+			showEnvVarsInLog = 0;
+		};
+		4B10F1F00F43BF5C00875782 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = "set -ex\n\n/bin/bash ${BUILD_XCSCRIPTS_DIR}/launchctl-postflight.sh";
+			showEnvVarsInLog = 0;
+		};
+		FC7B87B20EA7195F00542082 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = "set -ex\n\n/bin/bash ${BUILD_XCSCRIPTS_DIR}/launchd-postflight.sh";
+			showEnvVarsInLog = 0;
+		};
+		FC7B88230EA7280100542082 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = "set -ex\n\n/bin/bash ${BUILD_XCSCRIPTS_DIR}/liblaunch-postflight.sh";
+			showEnvVarsInLog = 0;
+		};
+		FCC8427E0EA7175100C01666 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = "set -ex\n\n/bin/bash ${BUILD_XCSCRIPTS_DIR}/SystemStarter-postflight.sh";
+			showEnvVarsInLog = 0;
+		};
+		FCC842860EA718C400C01666 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = "set -ex\n\n/bin/bash ${BUILD_XCSCRIPTS_DIR}/launchctl-postflight.sh";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4B10F1B80F43BE7E00875782 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				60416D1D1402EE6A00C190AA /* init.defs in Sources */,
+				60416D1F1402EE7300C190AA /* domain.defs in Sources */,
+				4BF8727C1187A5F000CC7DB5 /* helper.defs in Sources */,
+				4B10F1B90F43BE7E00875782 /* internal.defs in Sources */,
+				4B10F1BA0F43BE7E00875782 /* job.defs in Sources */,
+				4B10F1BB0F43BE7E00875782 /* job_reply.defs in Sources */,
+				4B10F1BC0F43BE7E00875782 /* mach_exc.defs in Sources */,
+				4B10F1BD0F43BE7E00875782 /* notify.defs in Sources */,
+				4B10F1C40F43BE7E00875782 /* job_forward.defs in Sources */,
+				4B10F1BE0F43BE7E00875782 /* launchd.c in Sources */,
+				4B10F1BF0F43BE7E00875782 /* runtime.c in Sources */,
+				4B10F1C00F43BE7E00875782 /* kill2.c in Sources */,
+				4B10F1C10F43BE7E00875782 /* core.c in Sources */,
+				4B10F1C20F43BE7E00875782 /* ipc.c in Sources */,
+				4B10F1C30F43BE7E00875782 /* ktrace.c in Sources */,
+				4B1D128C143505CD00A2BDED /* log.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4B10F1E70F43BF5C00875782 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B10F1E80F43BF5C00875782 /* launchctl.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC59A0510E8C884700D41150 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B28781B111A61A400C07B35 /* helper.defs in Sources */,
+				FC59A0BF0E8C8A2A00D41150 /* internal.defs in Sources */,
+				FC3627E10E9344BF0054F1A3 /* job.defs in Sources */,
+				FC3629170E9348390054F1A3 /* job_reply.defs in Sources */,
+				726055EC0EA7EC2400D65FE7 /* mach_exc.defs in Sources */,
+				FC36290D0E93475F0054F1A3 /* notify.defs in Sources */,
+				60416D1E1402EE7200C190AA /* domain.defs in Sources */,
+				60416D1B1402EE6900C190AA /* init.defs in Sources */,
+				72FDB1C00EA7E21C00B2AC84 /* job_forward.defs in Sources */,
+				FC59A0C50E8C8A4700D41150 /* launchd.c in Sources */,
+				FC59A0BA0E8C8A1F00D41150 /* runtime.c in Sources */,
+				FC59A0B90E8C8A1F00D41150 /* kill2.c in Sources */,
+				FC59A0BB0E8C8A1F00D41150 /* core.c in Sources */,
+				FC59A0B80E8C8A1F00D41150 /* ipc.c in Sources */,
+				72FDB15F0EA7D7B200B2AC84 /* ktrace.c in Sources */,
+				4B1D128B143505CB00A2BDED /* log.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC59A05D0E8C885100D41150 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B287733111A509400C07B35 /* helper.defs in Sources */,
+				FC3627E00E9344BF0054F1A3 /* job.defs in Sources */,
+				FC59A0F40E8C8AA600D41150 /* liblaunch.c in Sources */,
+				FC59A0F00E8C8AA600D41150 /* libvproc.c in Sources */,
+				FC59A0F70E8C8AA600D41150 /* libbootstrap.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC59A06A0E8C888A00D41150 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC59A0AF0E8C8A0E00D41150 /* launchctl.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC59A08E0E8C892300D41150 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC3627BB0E93432A0054F1A3 /* SystemStarter.c in Sources */,
+				FC3627BA0E9343220054F1A3 /* StartupItems.c in Sources */,
+				FC59A0A60E8C89C100D41150 /* IPC.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC59A0CB0E8C8A5C00D41150 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC59A0DC0E8C8A6900D41150 /* launchproxy.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FCD713280E95D64D001B0111 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FCD713390E95D69E001B0111 /* wait4path.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4B10F1E20F43BEA900875782 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4B10F1B70F43BE7E00875782 /* launchd-embedded */;
+			targetProxy = 4B10F1E10F43BEA900875782 /* PBXContainerItemProxy */;
+		};
+		4B10F1F60F43BF8C00875782 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4B10F1E60F43BF5C00875782 /* launchctl-embedded */;
+			targetProxy = 4B10F1F50F43BF8C00875782 /* PBXContainerItemProxy */;
+		};
+		726056270EA808B700D65FE7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FC59A0CD0E8C8A5C00D41150 /* launchproxy */;
+			targetProxy = 726056260EA808B700D65FE7 /* PBXContainerItemProxy */;
+		};
+		726056290EA808B900D65FE7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FCD7132A0E95D64D001B0111 /* wait4path */;
+			targetProxy = 726056280EA808B900D65FE7 /* PBXContainerItemProxy */;
+		};
+		FC59A07E0E8C88C100D41150 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FC59A05F0E8C885100D41150 /* liblaunch */;
+			targetProxy = FC59A07D0E8C88C100D41150 /* PBXContainerItemProxy */;
+		};
+		FC59A0800E8C88FA00D41150 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FC59A0530E8C884700D41150 /* launchd */;
+			targetProxy = FC59A07F0E8C88FA00D41150 /* PBXContainerItemProxy */;
+		};
+		FC59A0820E8C88FC00D41150 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FC59A06C0E8C888A00D41150 /* launchctl */;
+			targetProxy = FC59A0810E8C88FC00D41150 /* PBXContainerItemProxy */;
+		};
+		FC59A09D0E8C893000D41150 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FC59A0900E8C892300D41150 /* SystemStarter */;
+			targetProxy = FC59A09C0E8C893000D41150 /* PBXContainerItemProxy */;
+		};
+		FC59A0DE0E8C8A7000D41150 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FC59A0CD0E8C8A5C00D41150 /* launchproxy */;
+			targetProxy = FC59A0DD0E8C8A7000D41150 /* PBXContainerItemProxy */;
+		};
+		FCC842810EA718A800C01666 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FCD7132A0E95D64D001B0111 /* wait4path */;
+			targetProxy = FCC842800EA718A800C01666 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4B10F1D20F43BE7E00875782 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4B1D12741433D79800A2BDED /* launchd.xcconfig */;
+			buildSettings = {
+				SUPPORTED_PLATFORMS = iphoneos;
+			};
+			name = Release;
+		};
+		4B10F1F20F43BF5C00875782 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4B1D12771433E5EB00A2BDED /* launchctl.xcconfig */;
+			buildSettings = {
+				INSTALL_PATH = /bin;
+				PRODUCT_NAME = launchctl;
+				SUPPORTED_PLATFORMS = iphoneos;
+			};
+			name = Release;
+		};
+		726056210EA8088D00D65FE7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "launchd-embedded";
+			};
+			name = Release;
+		};
+		FC59A0410E8C87FD00D41150 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				CURRENT_PROJECT_VERSION = "$(RC_ProjectSourceVersion)";
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_MODEL_TUNING = "";
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_TREAT_IMPLICIT_FUNCTION_DECLARATIONS_AS_ERRORS = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_SHADOW = YES;
+				INSTALL_MODE_FLAG = "ugo-w,a+rX";
+				OTHER_CFLAGS = (
+					"-D__MigTypeCheck=1",
+					"-Dmig_external=__private_extern__",
+					"-D_DARWIN_USE_64_BIT_INODE=1",
+				);
+				STRIP_STYLE = all;
+				VERSIONING_SYSTEM = "apple-generic";
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wextra",
+					"-Waggregate-return",
+					"-Wmissing-declarations",
+				);
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		FC59A0580E8C884800D41150 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4B1D12741433D79800A2BDED /* launchd.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		FC59A0620E8C885100D41150 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4B1D12751433D7BE00A2BDED /* liblaunch.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		FC59A0700E8C888A00D41150 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4B1D12771433E5EB00A2BDED /* launchctl.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		FC59A0770E8C88AC00D41150 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "launchd-default";
+			};
+			name = Release;
+		};
+		FC59A07C0E8C88BC00D41150 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = liblaunch;
+			};
+			name = Release;
+		};
+		FC59A0940E8C892400D41150 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4B1D127D1433E91D00A2BDED /* common.xcconfig */;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /sbin;
+				PRODUCT_NAME = SystemStarter;
+				VALID_ARCHS = "i386 x86_64";
+			};
+			name = Release;
+		};
+		FC59A0D10E8C8A5C00D41150 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4B1D127D1433E91D00A2BDED /* common.xcconfig */;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/libexec;
+				PRODUCT_NAME = launchproxy;
+				SUPPORTED_PLATFORMS = "macosx iphoneos";
+			};
+			name = Release;
+		};
+		FCD7132E0E95D64E001B0111 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4B1D127D1433E91D00A2BDED /* common.xcconfig */;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /bin;
+				PRODUCT_NAME = wait4path;
+				SUPPORTED_PLATFORMS = "macosx iphoneos";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4B10F1D10F43BE7E00875782 /* Build configuration list for PBXNativeTarget "launchd-embedded" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B10F1D20F43BE7E00875782 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4B10F1F10F43BF5C00875782 /* Build configuration list for PBXNativeTarget "launchctl-embedded" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B10F1F20F43BF5C00875782 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7260562B0EA808D800D65FE7 /* Build configuration list for PBXAggregateTarget "embedded" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				726056210EA8088D00D65FE7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC59A0420E8C87FD00D41150 /* Build configuration list for PBXProject "launchd" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC59A0410E8C87FD00D41150 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC59A0590E8C884800D41150 /* Build configuration list for PBXNativeTarget "launchd" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC59A0580E8C884800D41150 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC59A0650E8C886700D41150 /* Build configuration list for PBXNativeTarget "liblaunch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC59A0620E8C885100D41150 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC59A0890E8C890A00D41150 /* Build configuration list for PBXNativeTarget "launchctl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC59A0700E8C888A00D41150 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC59A08A0E8C890A00D41150 /* Build configuration list for PBXAggregateTarget "default" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC59A0770E8C88AC00D41150 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC59A08B0E8C890A00D41150 /* Build configuration list for PBXAggregateTarget "launchd_libs" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC59A07C0E8C88BC00D41150 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC59A09B0E8C892900D41150 /* Build configuration list for PBXNativeTarget "SystemStarter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC59A0940E8C892400D41150 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC59A0D90E8C8A6000D41150 /* Build configuration list for PBXNativeTarget "launchproxy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC59A0D10E8C8A5C00D41150 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FCD713340E95D65F001B0111 /* Build configuration list for PBXNativeTarget "wait4path" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FCD7132E0E95D64E001B0111 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FC59A03F0E8C87FD00D41150 /* Project object */;
+}

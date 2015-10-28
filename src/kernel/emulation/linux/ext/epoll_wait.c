@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int epoll_wait (int __epfd, struct epoll_event *__events,
 		int __maxevents, int __timeout)
 {

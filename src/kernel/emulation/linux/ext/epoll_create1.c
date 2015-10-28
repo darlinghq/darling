@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int epoll_create1 (int __flags)
 {
 	int rv;

@@ -1,0 +1,35 @@
+.Dd July 7, 2002
+.Dt StartupItemContext 8
+.Os Darwin
+.Sh NAME
+.Nm StartupItemContext
+.\" The following lines are read in generating the apropos(man -k) database. Use only key
+.\" words here as the database is built based on the words here and in the .ND line.
+.\" Use .Nm macro to designate other names for the documented program.
+.Nd Execute a program in StartupItem context
+.Sh SYNOPSIS
+.Nm
+.Op Ar program Op Ar arguments
+.Sh DESCRIPTION
+The
+.Nm
+utility launches the specified program in StartupItem bootstrap context.  Each Darwin
+and Mac OS X login creates a unique bootstrap subset context to contain login specific
+Mach port registrations with the bootstrap server.  All such registrations performed
+within the context of that subset are only visible to other processes within that
+context or subsequent subsets of it.  Therefore, a Mach port based service/daemon
+launched within a login context will not be visible to other such contexts.
+.Pp
+To override this, a root user can use the
+.Nm
+utility to launch the program within the same bootstrap context as all other
+StartupItems. All subsequent Mach port bootstrap registrations perfomed by the program
+will be visible system-wide.
+.Sh NOTES
+All bootstrap port lookups will also be resticted
+to the StartupItem context. The services provided on a per-login basis (clipboard,
+etc...) will not be available to the program.
+.Sh SEE ALSO
+.\" List links in ascending order by section, alphabetically within a section.
+.\" Please do not reference files that do not exist without filing a bug report
+.Xr SystemStarter 8

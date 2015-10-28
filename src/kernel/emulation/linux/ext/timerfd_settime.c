@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int timerfd_settime (int __fd, int __flags,
 		const struct itimerspec* __utmr,
 		struct itimerspec* __otmr)

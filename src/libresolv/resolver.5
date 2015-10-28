@@ -1,0 +1,225 @@
+.\"	$OpenBSD: resolver.5,v 1.2 1997/03/12 10:42:19 downsj Exp $
+.\" Copyright (c) 1986 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms are permitted
+.\" provided that the above copyright notice and this paragraph are
+.\" duplicated in all such forms and that any documentation,
+.\" advertising materials, and other materials related to such
+.\" distribution and use acknowledge that the software was developed
+.\" by the University of California, Berkeley.  The name of the
+.\" University may not be used to endorse or promote products derived
+.\" from this software without specific prior written permission.
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\" Portions Copyright (c) 2003 by Apple Computer, Inc. 
+.\"
+.\"	@(#)resolver.5	5.9 (Berkeley) 12/14/89
+.\"	$From: resolver.5,v 8.3 1995/12/06 20:34:35 vixie Exp $
+.\"
+.Dd June 6, 2003
+.Dt resolver 5
+.Os "Mac OS X"
+.Sh NAME
+.Nm resolver
+.Nd resolver configuration file format
+.Sh DESCRIPTION
+The
+.Nm
+is a set of routines in the C library 
+.Xr resolv(3)
+that provide access to the Internet Domain Name System (DNS).
+A resolver configuration file contains information used to specify parameters
+for a DNS resolver client.
+The file contains a list of keywords with values that provide various types
+of resolver information.
+.Pp
+Mac OS X supports a DNS search strategy that may involve multiple
+DNS resolver clients.
+See the
+.Sx SEARCH STRATEGY
+section below for an overview of multi-client DNS
+search.
+.Pp
+Each DNS client is configured using the contents of a single configuration
+file of the format described below, or from a property list supplied from
+some other system configuration database.
+Note that the 
+.Pa /etc/resolv.conf
+file, which contains configuration for the default (or "primary") DNS resolver client,
+is maintained automatically by Mac OS X and should not be edited manually.
+Changes to the DNS configuration should be made by using the Network
+Preferences panel.
+.Pp
+The different configuration options are given below.
+.Ss nameserver
+Internet address (in dot notation for IPv4 or in colon notation for IPv6)
+of a name server that the resolver should query.
+The address may optionally have a trailing dot followed by a port number.
+For example, 
+.Li 10.0.0.17.55
+specifies that the nameserver at 10.0.0.17
+uses port 55.
+.Pp
+Up to
+.Va MAXNS 
+(currently 3) name servers may be listed,
+one per keyword.
+If there are multiple servers,
+the resolver library queries them in the order listed.
+The algorithm used is to try a name server, and if the query times out,
+try the next, until out of name servers,
+then repeat trying all the name servers
+until a maximum number of retries are made.
+.Ss port
+IP port number to be used for this resolver.
+The default port is 53.
+The port number for an individual nameserver may be specified as
+part of the nameserver address (see 
+.Sx nameserver 
+above) to override the default 
+or the port number specified as a value for this keyword.
+.Ss domain
+Domain name associated with this resolver configuration.
+This option is normally not required by the Mac OS X DNS search system
+when the resolver configuration is read from a file in the
+.Pa /etc/resolver
+directory.
+In that case the file name is used as the domain name.
+However, 
+.Sx domain
+must be provided when there are 
+multiple resolver clients for the same domain name, since multiple
+files may not exist having the same name.
+See the 
+.Sx SEARCH STRATEGY
+section for more details.
+.Ss search
+Search list for host-name lookup.
+This parameter is only used by the "Super" DNS resolver, which
+manages the DNS search strategy amongst multiple DNS resolver clients.
+Unqualified queries will be attempted using each component
+of the search list in turn until a match is found.
+Note that this process may be slow and will generate a lot of network
+traffic if the servers for the listed domains are not local,
+and that queries will time out if no server is available
+for one of the domains.
+.Pp
+The search list is currently limited to six domains
+with a total of 256 characters.
+.Ss search_order
+Only required for those clients that share a domain name with other clients.
+Queries will be sent to these clients in order by ascending
+.Sx search_order
+value.
+For example, this allows two clients for the ".local"
+domain, which is used by Apple's multicast DNS, but which may
+also be used at some sites as private DNS domain name.
+.Ss sortlist
+Sortlist allows addresses returned by gethostbyname to be sorted.
+A sortlist is specified by IP address netmask pairs. The netmask is
+optional and defaults to the natural netmask of the net. The IP address
+and optional network pairs are separated by slashes. Up to 10 pairs may
+be specified. For example: 
+.Bd -literal -offset indent
+ sortlist 130.155.160.0/255.255.240.0 130.155.0.0
+.Ed
+.Ss timeout
+Specifies the total amount of time allowed for a name resolution.
+This time interval is divided by the number of nameservers and the number
+of retries allowed for each nameserver.
+.Ss options
+Options allows certain internal resolver variables to be modified.
+The syntax is:
+.Pp
+options
+.Ar option Li "..."
+.Pp
+where 
+.Ar option
+is one of the following:
+.Bl -tag -width -indent
+.It Ar debug
+sets
+.Va RES_DEBUG
+in the resolver options.
+.It Ar timeout:n
+sets the per-retry timeout for resolver queries.
+The total timeout allowed for a query depends on the number of retries and the
+number of nameservers.  This value is ignored if a total timeout is specified
+using the
+.Sx timeout
+keyword (see above).
+.It Ar ndots:n
+Sets a threshold for the number of dots which
+must appear in a name given to
+.Sx res_query
+(see 
+.Xr resolver(3))
+before an initial absolute query will be made.  The default for
+.Ar n
+is ``1'', meaning that if there are any dots in a name, the name
+will be tried first as an absolute name before any 
+.Sx search
+list elements are appended to it.
+.Pp
+The keyword and value must appear on a single line,
+and the keyword must start the line.
+The value follows the keyword, separated by white space.
+.El
+.Sh SEARCH STRATEGY
+Mac OS X uses a DNS search strategy that supports multiple DNS
+client configurations.
+Each DNS client has its own set of nameserver
+addresses and its own set of operational parameters.
+Each client can perform DNS queries and searches independent of other clients.
+Each client has a symbolic name which is of the same format as a
+domain name, e.g. "apple.com".
+A special meta-client, known as the
+"Super" DNS client acts as a router for DNS queries.
+The Super client chooses among all available clients by finding a best match
+between the domain name given in a query and the names of all known clients.
+.Pp
+Queries for qualified names
+are sent using a client configuration
+that best matches the domain name given in the query.
+For example, if there is a client named "apple.com", a search for
+"www.apple.com" would use the resolver configuration specified for that client.
+The matching algorithm chooses the client with the maximum number of matching
+domain components.
+For example, if there are clients named "a.b.c", and "b.c", a search for
+"x.a.b.c" would use the "a.b.c" resolver configuration, while a search
+for "x.y.b.c" would use the "b.c" client.
+If there are no matches, the configuration settings in the default client,
+generally corresponding to the
+.Pa /etc/resolv.conf
+file or to the "primary" DNS
+configuration on the system are used for the query.
+.Pp
+If multiple clients are available for the same domain name, the clients ordered
+according to a
+.Sx search_order
+value (see above).
+Queries are sent to these resolvers in sequence by ascending value of
+search_order.
+.Pp
+The configuration for a particular client may be read from a file
+having the format described in this man page.
+These are at present located by the system in the 
+.Pa /etc/resolv.conf
+file and
+in the files found in the 
+.Pa /etc/resolver
+directory.
+However, client configurations are not limited to file storage.
+The implementation of the DNS multi-client search strategy may also locate
+client configuratins in other data sources, such as the System Configuration
+Database.
+Users of the DNS system should make no assumptions about the
+source of the configuration data.
+.Sh FILES
+/etc/resolv.conf, /etc/resolver/*
+.Sh SEE ALSO
+gethostbyname(2), getaddrinfo(3), resolver(3)

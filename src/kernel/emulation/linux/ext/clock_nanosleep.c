@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int clock_nanosleep (int __clockid, int __flags,
 		const struct timespec* __req,
 		struct timespec* __rem)

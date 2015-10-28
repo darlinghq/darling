@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int timerfd_create (int __clock_id, int __flags)
 {
 	int rv;

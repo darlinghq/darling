@@ -37,6 +37,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/locale/FreeBSD")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/NetBSD")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/stdtime/FreeBSD")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../external/libdispatch")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../external/libdispatch/private")
 
 add_subdirectory(db) # produces libc-db
 add_subdirectory(compat-43) # produces libc-compat
@@ -103,6 +104,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-locale>
 	$<TARGET_OBJECTS:libc-hwplat>
 	$<TARGET_OBJECTS:libc-threads>
+	$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:libc-darwin>)
 target_link_libraries(system_c system_kernel)
 

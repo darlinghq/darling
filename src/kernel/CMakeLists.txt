@@ -32,7 +32,7 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(system_kernel SHARED
 	$<TARGET_OBJECTS:libsyscall>
-	$<TARGET_OBJECTS:kqueue>
+	#$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:emulation>
 	$<TARGET_OBJECTS:mach_server_client>)
 target_link_libraries(system_kernel system_duct)

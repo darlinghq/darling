@@ -1,0 +1,69 @@
+.Dd 1 May, 2009
+.Dt launchd 8 
+.Os Darwin
+.Sh NAME
+.Nm launchd
+.Nd System wide and per-user daemon/agent manager
+.Sh SYNOPSIS
+.Nm
+.Op Fl d
+.Op Fl D
+.Op Fl s
+.Op Fl S Ar SessionType
+.Op Ar -- command Op Ar args ...
+.Sh DESCRIPTION
+.Nm 
+manages processes, both for the system as a whole and for individual users.
+The primary and preferred interface to
+.Nm
+is via the
+.Xr launchctl 1
+tool which (among other options) allows the user or administrator to load and unload jobs.
+Where possible, it is preferable for jobs to launch on demand based on criteria specified
+in their respective configuration files.
+.Pp
+During boot 
+.Nm
+is invoked by the kernel to run as the first process on the system and to further bootstrap the rest of the system.
+.Pp
+You cannot invoke
+.Nm
+directly.
+.Sh ENVIRONMENTAL VARIABLES
+.Bl -tag -width -indent
+.It Pa LAUNCHD_SOCKET
+This variable is exported when invoking a command via the launchd command line. It informs launchctl how to find the correct launchd to talk to.
+.El
+.Sh NOTES
+In Darwin, the canonical way to launch a daemon is through
+.Nm launchd
+as opposed to more traditional mechanisms or mechanisms provided in earlier versions of Mac OS X. These alternate methods should
+be considered deprecated and not suitable for new projects.
+.Pp
+In the
+.Nm launchd
+lexicon, a "daemon" is, by definition, a system-wide service of which there is one instance for all clients. An "agent" is a service that runs on
+a per-user basis. Daemons should not attempt to display UI or interact directly with a user's login session. Any and all work that involves interacting
+with a user should be done through agents. 
+.Pp
+If you wish your service to run as a certain user, in that user's environment, making it a
+.Nm launchd
+agent is the ONLY supported means of accomplishing this on Mac OS X. In other words, it is not sufficient to perform a
+.Xr setuid 2
+to become a user in the truest sense on Mac OS X.
+.Sh FILES
+.Bl -tag -width "/System/Library/LaunchDaemons" -compact
+.It Pa ~/Library/LaunchAgents
+Per-user agents provided by the user.
+.It Pa /Library/LaunchAgents
+Per-user agents provided by the administrator.
+.It Pa /Library/LaunchDaemons
+System-wide daemons provided by the administrator.
+.It Pa /System/Library/LaunchAgents
+Per-user agents provided by Mac OS X.
+.It Pa /System/Library/LaunchDaemons
+System-wide daemons provided by Mac OS X.
+.El
+.Sh SEE ALSO 
+.Xr launchctl 1 ,
+.Xr launchd.plist 5 ,

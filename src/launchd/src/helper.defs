@@ -1,0 +1,19 @@
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+import "vproc.h";
+import "vproc_priv.h";
+import "vproc_internal.h";
+
+subsystem launchd_helper 4241011;
+
+userprefix helper_downcall_;
+serverprefix helper_recv_;
+
+skip;
+
+/* For coreservicesd to harvest exit status, not actually for UserEventAgent. */
+simpleroutine
+wait(
+					p			: mach_port_move_send_once_t;
+					status		: int
+);

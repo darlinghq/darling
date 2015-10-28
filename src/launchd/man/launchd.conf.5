@@ -1,0 +1,30 @@
+.Dd 1 May, 2009
+.Dt launchd.conf 5
+.Os Darwin
+.Sh NAME
+.Nm launchd.conf
+.Nd launchd configuration file
+.Sh SYNOPSIS
+.Nm $HOME/.launchd.conf
+.Nm /etc/launchd.conf
+.Sh DESCRIPTION
+.Nm 
+contains a list of subcommands
+.Ar ( load ,
+.Ar unload ,
+etc.) to run via
+.Xr launchctl 1
+when
+.Xr launchd 8
+starts.
+.Sh FILES
+.Bl -tag -width "$HOME/.launchd.conf" -compact
+.It Pa $HOME/.launchd.conf
+Your launchd configuration file (currently unsupported).
+.It Pa /etc/launchd.conf
+The system's launchd configuration file.
+.El
+.Sh SEE ALSO 
+.Xr launchctl 1 ,
+.Xr launchd 8 ,
+.Xr launchd.plist 5

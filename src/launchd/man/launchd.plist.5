@@ -1,0 +1,516 @@
+.Dd 1 May, 2009
+.Dt launchd.plist 5
+.Os Darwin
+.Sh NAME
+.Nm launchd.plist
+.Nd System wide and per-user daemon/agent configuration files
+.Sh DESCRIPTION
+This document details the parameters that can be given to an XML property list that can be loaded into
+.Nm launchd
+with
+.Nm launchctl .
+.Sh EXPECTATIONS
+Daemons or agents managed by
+.Nm launchd
+are expected to behave certain ways.
+.Pp
+A daemon or agent launched by
+.Nm launchd
+MUST NOT do the following in the process directly launched by
+.Nm launchd :
+.Pp
+.Bl -bullet -offset indent -compact
+.It
+Call
+.Xr daemon 3 .
+.It
+Do the moral equivalent of
+.Xr daemon 3
+by calling
+.Xr fork 2
+and have the parent process
+.Xr exit 3
+or
+.Xr _exit 2 .
+.El
+.Pp
+A daemon or agent launched by
+.Nm launchd
+SHOULD NOT do the following as a part of their startup initialization:
+.Pp
+.Bl -bullet -offset indent -compact
+.It
+Setup the user ID or group ID.
+.It
+Setup the working directory.
+.It
+.Xr chroot 2
+.It
+.Xr setsid 2
+.It
+Close "stray" file descriptors.
+.It
+Change
+.Xr stdio 3
+to /dev/null.
+.It
+Setup resource limits with
+.Xr setrusage 2 .
+.It
+Setup priority with
+.Xr setpriority 2 .
+.It
+Ignore the SIGTERM signal.
+.El
+.Pp
+A daemon or agent launched by
+.Nm launchd
+SHOULD:
+.Pp
+.Bl -bullet -offset indent -compact
+.It
+Launch on demand given criteria specified in the XML property list.
+More information can be found later in this man page.
+.It
+Catch the SIGTERM signal.
+.El
+.Sh XML PROPERTY LIST KEYS
+The following keys can be used to describe the configuration details of your daemon or agent.
+Property lists are Apple's standard configuration file format. Please see
+.Xr plist 5
+for more information. Please note: property list files are expected to have their name end in ".plist".
+Also please note that it is the expected convention for launchd property list files to be named <Label>.plist.
+Thus, if your job label is "com.apple.sshd", your plist file should be named "com.apple.sshd.plist".
+.Pp
+.Bl -ohang
+.It Sy Label <string>
+This required key uniquely identifies the job to
+.Nm launchd .
+.It Sy Disabled <boolean>
+This optional key is used as a hint to 
+.Xr launchctl 1
+that it should not submit this job to 
+.Nm launchd
+when loading a job or jobs. The value of this key does NOT reflect the current state of the job on the running system. If you wish to know whether a job is loaded in launchd, reading this key from a configuration file yourself is not a
+sufficient test. You should query
+.Nm launchd
+for the presence of the job using the
+.Xr launchctl 1
+.Ar list
+subcommand or use the ServiceManagement framework's SMJobCopyDictionary() method.
+.Pp
+Note that as of Mac OS X v10.6, this key's value in a configuration
+file conveys a default value, which is changed with the 
+.Op Ar -w 
+option of the
+.Xr launchctl 1
+.Ar load 
+and
+.Ar unload
+subcommands. These subcommands no longer modify the configuration file, so the value displayed in the configuration file is not necessarily the value that
+.Xr launchctl 1
+will apply. See
+.Xr launchctl 1
+for more information. 
+.Pp
+Please also be mindful that you should only use this key if the provided
+on-demand and KeepAlive criteria are insufficient to describe the conditions under which your job needs to run. The cost
+to have a job loaded in
+.Nm launchd
+is negligible, so there is no harm in loading a job which only runs once or very rarely.
+.It Sy UserName <string>
+This optional key specifies the user to run the job as. This key is only applicable when launchd is running as root.
+.It Sy GroupName <string>
+This optional key specifies the group to run the job as. This key is only applicable when launchd is running as root. If UserName is set and GroupName is not, the the group will be set to the default group of the user.
+.It Sy inetdCompatibility <dictionary>
+The presence of this key specifies that the daemon expects to be run as if it were launched from inetd.
+.Bl -ohang -offset indent
+.It Sy Wait <boolean>
+This flag corresponds to the "wait" or "nowait" option of inetd. If true, then the listening socket is passed via the standard in/out/error file descriptors. If false, then
+.Xr accept 2
+is called on behalf of the job, and the result is passed via the standard in/out/error descriptors.
+.El
+.It Sy LimitLoadToHosts <array of strings>
+This configuration file only applies to the hosts listed with this key. Note: One should set kern.hostname in
+.Xr sysctl.conf 5
+for this feature to work reliably.
+.It Sy LimitLoadFromHosts <array of strings>
+This configuration file only applies to hosts NOT listed with this key. Note: One should set kern.hostname in
+.Xr sysctl.conf 5
+for this feature to work reliably.
+.It Sy LimitLoadToSessionType <string>
+This configuration file only applies to sessions of the type specified. This key is used
+in concert with the -S flag to
+.Nm launchctl .
+.It Sy Program <string>
+This key maps to the first argument of
+.Xr execvp 3 .
+If this key is missing, then the first element of the array of strings provided to the ProgramArguments will be used instead.
+This key is required in the absence of the ProgramArguments key.
+.It Sy ProgramArguments <array of strings>
+This key maps to the second argument of
+.Xr execvp 3 .
+This key is required in the absence of the Program key. Please note: many people are confused by this key. Please read
+.Xr execvp 3
+very carefully!
+.It Sy EnableGlobbing <boolean>
+This flag causes
+.Nm launchd
+to use the
+.Xr glob 3
+mechanism to update the program arguments before invocation.
+.It Sy EnableTransactions <boolean>
+This flag instructs
+.Nm launchd
+that the job promises to use
+.Xr vproc_transaction_begin 3
+and
+.Xr vproc_transaction_end 3
+to track outstanding transactions that need to be reconciled before the process can safely terminate. If no outstanding transactions are in progress, then
+.Nm launchd
+is free to send the SIGKILL signal.
+.It Sy OnDemand <boolean>
+This key was used in Mac OS X 10.4 to control whether a job was kept alive or not. The default was true.
+This key has been deprecated and replaced in Mac OS X 10.5 and later with the more powerful KeepAlive option.
+.It Sy KeepAlive <boolean or dictionary of stuff>
+This optional key is used to control whether your job is to be kept
+continuously running or to let demand and conditions control the invocation. The
+default is false and therefore only demand will start the job. The value may be
+set to true to unconditionally keep the job alive. Alternatively, a dictionary
+of conditions may be specified to selectively control whether
+.Nm launchd
+keeps a job alive or not. If multiple keys are provided, launchd ORs them, thus
+providing maximum flexibility to the job to refine the logic and stall if necessary. If
+.Nm launchd
+finds no reason to restart the job, it falls back on demand based invocation.
+Jobs that exit quickly and frequently when configured to be kept alive will be
+throttled to converve system resources.
+.Bl -ohang -offset indent
+.It Sy SuccessfulExit <boolean>
+If true, the job will be restarted as long as the program exits and with an exit
+status of zero.  If false, the job will be restarted in the inverse condition.
+This key implies that "RunAtLoad" is set to true, since the job needs to run at
+least once before we can get an exit status.
+.It Sy NetworkState <boolean>
+If true, the job will be kept alive as long as the network is up, where up is
+defined as at least one non-loopback interface being up and having IPv4 or IPv6
+addresses assigned to them.
+If false, the job will be kept alive in the inverse condition.
+.It Sy PathState <dictionary of booleans>
+Each key in this dictionary is a file-system path. If the value of the key is
+true, then the job will be kept alive as long as the path exists.
+If false, the job will be kept alive in the inverse condition. The intent of this
+feature is that two or more jobs may create semaphores in the file-system namespace.
+.It Sy OtherJobEnabled <dictionary of booleans>
+Each key in this dictionary is the label of another job. If the value of the key is
+true, then this job is kept alive as long as that other job is enabled. Otherwise,
+if the value is false, then this job is kept alive as long as the other job is disabled.
+This feature should not be considered a substitute for the use of IPC.
+.El
+.It Sy RunAtLoad <boolean>
+This optional key is used to control whether your job is launched once at the time the job is loaded. The default is false.
+.It Sy RootDirectory <string>
+This optional key is used to specify a directory to
+.Xr chroot 2
+to before running the job.
+.It Sy WorkingDirectory <string>
+This optional key is used to specify a directory to
+.Xr chdir 2
+to before running the job.
+.It Sy EnvironmentVariables <dictionary of strings>
+This optional key is used to specify additional environmental variables to be set before running the job.
+.It Sy Umask <integer>
+This optional key specifies what value should be passed to
+.Xr umask 2
+before running the job. Known bug: Property lists don't support octal, so please convert the value to decimal.
+.It Sy TimeOut <integer>
+The recommended idle time out (in seconds) to pass to the job. If no value is specified, a default time out will be supplied by
+.Nm launchd
+for use by the job at check in time.
+.It Sy ExitTimeOut <integer>
+The amount of time
+.Nm launchd
+waits before sending a SIGKILL signal. The default value is 20 seconds. The value zero is interpreted as infinity.
+.It Sy ThrottleInterval <integer>
+This key lets one override the default throttling policy imposed on jobs by
+.Nm launchd .
+The value is in seconds, and by default, jobs will not be spawned more than once every 10 seconds.
+The principle behind this is that jobs should linger around just in case they are needed again in the near future. This not only
+reduces the latency of responses, but it encourages developers to amortize the cost of program invocation.
+.It Sy InitGroups <boolean>
+This optional key specifies whether
+.Xr initgroups 3
+should be called before running the job.
+The default is true in 10.5 and false in 10.4. This key will be ignored if the UserName key is not set.
+.It Sy WatchPaths <array of strings>
+This optional key causes the job to be started if any one of the listed paths are modified.
+.It Sy QueueDirectories <array of strings>
+Much like the WatchPaths option, this key will watch the paths for modifications. The difference being that the job will only be started if the path is a directory and the directory is not empty.
+.It Sy StartOnMount <boolean>
+This optional key causes the job to be started every time a filesystem is mounted.
+.It Sy StartInterval <integer>
+This optional key causes the job to be started every N seconds.
+If the system is asleep, the job will be started the next time the computer
+wakes up.  If multiple intervals transpire before the computer is woken, those
+events will be coalesced into one event upon wake from sleep.
+.It Sy StartCalendarInterval <dictionary of integers or array of dictionary of integers>
+This optional key causes the job to be started every calendar interval as specified. Missing arguments are considered to be wildcard. The semantics are much like
+.Xr crontab 5 .
+Unlike cron which skips job invocations when the computer is asleep, launchd
+will start the job the next time the computer wakes up.  If multiple intervals
+transpire before the computer is woken, those events will be coalesced into one
+event upon wake from sleep.
+.Bl -ohang -offset indent
+.It Sy Minute <integer>
+The minute on which this job will be run.
+.It Sy Hour <integer>
+The hour on which this job will be run.
+.It Sy Day <integer>
+The day on which this job will be run.
+.It Sy Weekday <integer>
+The weekday on which this job will be run (0 and 7 are Sunday).
+.It Sy Month <integer>
+The month on which this job will be run.
+.El
+.It Sy StandardInPath <string>
+This optional key specifies what file should be used for data being supplied to stdin when using
+.Xr stdio 3 .
+.It Sy StandardOutPath <string>
+This optional key specifies what file should be used for data being sent to stdout when using
+.Xr stdio 3 .
+.It Sy StandardErrorPath <string>
+This optional key specifies what file should be used for data being sent to stderr when using
+.Xr stdio 3 .
+.It Sy Debug <boolean>
+This optional key specifies that
+.Nm launchd
+should adjust its log mask temporarily to LOG_DEBUG while dealing with this job.
+.It Sy WaitForDebugger <boolean>
+This optional key specifies that
+.Nm launchd
+should instruct the kernel to have the job wait for a debugger to attach before any code in the job is executed.
+.It Sy SoftResourceLimits <dictionary of integers>
+.It Sy HardResourceLimits <dictionary of integers>
+Resource limits to be imposed on the job. These adjust variables set with
+.Xr setrlimit 2 .
+The following keys apply:
+.Bl -ohang -offset indent
+.It Sy Core <integer>
+The largest size (in bytes) core file that may be created.
+.It Sy CPU <integer>
+The maximum amount of cpu time (in seconds) to be used by each process.
+.It Sy Data <integer>
+The maximum size (in bytes) of the data segment for a process; this defines how far a program may extend its break with the
+.Xr sbrk 2
+system call.
+.It Sy FileSize <integer>
+The largest size (in bytes) file that may be created.
+.It Sy MemoryLock <integer>
+The maximum size (in bytes) which a process may lock into memory using the
+.Xr mlock 2
+function.
+.It Sy NumberOfFiles <integer>
+The maximum number of open files for this process.
+Setting this value in a system wide daemon will set the 
+.Xr sysctl 3 
+kern.maxfiles (SoftResourceLimits) or kern.maxfilesperproc (HardResourceLimits) value in addition to the
+.Xr setrlimit 2
+values.
+.It Sy NumberOfProcesses <integer>
+The maximum number of simultaneous processes for this user id.
+Setting this value in a system wide daemon will set the 
+.Xr sysctl 3 
+kern.maxproc (SoftResourceLimits) or kern.maxprocperuid (HardResourceLimits) 
+value in addition to the
+.Xr setrlimit 2
+values.
+.It Sy ResidentSetSize <integer>
+The maximum size (in bytes) to which a process's resident set size may grow.
+This imposes a limit on the amount of physical memory to be given to a process;
+if memory is tight, the system will prefer to take memory from processes that
+are exceeding their declared resident set size.
+.It Sy Stack <integer>
+The maximum size (in bytes) of the stack segment for a process; this defines
+how far a program's stack segment may be extended.  Stack extension is
+performed automatically by the system.
+.El
+.It Sy Nice <integer>
+This optional key specifies what
+.Xr nice 3
+value should be applied to the daemon.
+.It Sy ProcessType <string>
+This optional key describes, at a high level, the intended purpose of the job.
+The system will apply resource limits based on what kind of job it is. If left
+unspecified, the system will apply light resource limits to the job, throttling
+its CPU usage and I/O bandwidth. The following are valid values:
+.Bl -ohang -offset indent
+.It Sy Background
+Background jobs are generally processes that do work that was not directly
+requested by the user. The resource limits applied to Background jobs are
+intended to prevent them from disrupting the user experience.
+.It Sy Standard
+Standard jobs are equivalent to no ProcessType being set.
+.It Sy Adaptive
+Adaptive jobs move between the Background and Interactive classifications based
+on activity over XPC connections. See
+.Xr xpc_transaction_begin 3
+for details.
+.It Sy Interactive
+Interactive jobs run with the same resource limitations as apps, that is to say,
+none. Interactive jobs are critical to maintaining a responsive user experience,
+and this key should only be used if an app's ability to be responsive depends
+on it, and cannot be made Adaptive.
+.El
+.It Sy LegacyTimers <boolean>
+This optional key controls the behavior of timers created by the job. By default
+on OS X Mavericks version 10.9 and later, timers created by launchd jobs are 
+coalesced. Batching the firing of timers with similar deadlines improves the 
+overall energy efficiency of the system. If this key is set to true, timers 
+created by the job will opt into less efficient but more precise behavior and
+not be coalesced with other timers.
+.It Sy AbandonProcessGroup <boolean>
+When a job dies,
+.Nm launchd
+kills any remaining processes with the same process group ID as the job.
+Setting this key to true disables that behavior.
+.It Sy LowPriorityIO <boolean>
+This optional key specifies whether the kernel should consider this daemon to be low priority when doing file system I/O.
+.It Sy LaunchOnlyOnce <boolean>
+This optional key specifies whether the job can only be run once and only once.
+In other words, if the job cannot be safely respawned without a full machine
+reboot, then set this key to be true.
+.It Sy MachServices <dictionary of booleans or a dictionary of dictionaries>
+This optional key is used to specify Mach services to be registered with the
+Mach bootstrap sub-system.  Each key in this dictionary should be the name of
+service to be advertised. The value of the key must be a boolean and set to true.
+Alternatively, a dictionary can be used instead of a simple true value.
+.Bl -ohang -offset indent
+.It Sy ResetAtClose <boolean>
+If this boolean is false, the port is recycled, thus leaving clients to remain oblivious
+to the demand nature of job. If the value is set to true, clients receive port
+death notifications when the job lets go of the receive right. The port will be
+recreated atomically with respect to bootstrap_look_up() calls, so that clients
+can trust that after receiving a port death notification, the new port will
+have already been recreated. Setting the value to true should be done with
+care. Not all clients may be able to handle this behavior. The default value is false.
+.It Sy HideUntilCheckIn <boolean>
+Reserve the name in the namespace, but cause bootstrap_look_up() to fail until the job has checked in with
+.Nm launchd .
+.El
+.Pp
+Finally, for the job itself, the values will be replaced with Mach ports at the time of check-in with
+.Nm launchd .
+.It Sy Sockets <dictionary of dictionaries... OR dictionary of array of dictionaries...>
+This optional key is used to specify launch on demand sockets that can be used to let
+.Nm launchd
+know when to run the job. The job must check-in to get a copy of the file descriptors using APIs outlined in
+.Xr launch 3 .
+The keys of the top level Sockets dictionary can be anything. They are meant for the application developer to use to
+differentiate which descriptors correspond to which application level protocols (e.g. http vs. ftp vs. DNS...).
+At check-in time, the value of each Sockets dictionary key will be an array of descriptors. Daemon/Agent writers should
+consider all descriptors of a given key to be to be effectively equivalent, even though each file descriptor likely represents
+a different networking protocol which conforms to the criteria specified in the job configuration file.
+.Pp
+The parameters below are used as inputs to call
+.Xr getaddrinfo 3 .
+.Bl -ohang -offset indent
+.It Sy SockType <string>
+This optional key tells
+.Nm launchctl
+what type of socket to create. The default is "stream" and other valid values for this key
+are "dgram" and "seqpacket" respectively.
+.It Sy SockPassive <boolean>
+This optional key specifies whether
+.Xr listen 2
+or
+.Xr connect 2
+should be called on the created file descriptor. The default is true ("to listen").
+.It Sy SockNodeName <string>
+This optional key specifies the node to
+.Xr connect 2
+or
+.Xr bind 2
+to.
+.It Sy SockServiceName <string>
+This optional key specifies the service on the node to
+.Xr connect 2
+or
+.Xr bind 2
+to.
+.It Sy SockFamily <string>
+This optional key can be used to specifically request that "IPv4" or "IPv6" socket(s) be created.
+.It Sy SockProtocol <string>
+This optional key specifies the protocol to be passed to
+.Xr socket 2 .
+The only value understood by this key at the moment is "TCP".
+.It Sy SockPathName <string>
+This optional key implies SockFamily is set to "Unix". It specifies the path to
+.Xr connect 2
+or
+.Xr bind 2
+to.
+.It Sy SecureSocketWithKey <string>
+This optional key is a variant of SockPathName. Instead of binding to a known
+path, a securely generated socket is created and the path is assigned to the
+environment variable that is inherited by all jobs spawned by launchd.
+.It Sy SockPathMode <integer>
+This optional key specifies the mode of the socket. Known bug: Property lists
+don't support octal, so please convert the value to decimal.
+.It Sy Bonjour <boolean or string or array of strings>
+This optional key can be used to request that the service be registered with the
+.Xr mDNSResponder 8 .
+If the value is boolean, the service name is inferred from the SockServiceName.
+.It Sy MulticastGroup <string>
+This optional key can be used to request that the datagram socket join a multicast group.
+If the value is a hostname, then
+.Xr getaddrinfo 3
+will be used to join the correct multicast address for a given socket family.
+If an explicit IPv4 or IPv6 address is given, it is required that the
+SockFamily family also be set, otherwise the results are undefined.
+.El
+.El
+.Pp
+.Sh DEPENDENCIES
+Unlike many bootstrapping daemons, launchd has no explicit dependency model.
+Interdependencies are expected to be solved through the use of IPC.
+It is therefore in the best interest of a job developer who expects dependents
+to define all of the sockets in the configuration file. This has the added
+benefit of making it possible to start the job based on demand instead of
+immediately.
+.Sh EXAMPLE XML PROPERTY LISTS
+.Pp
+The following XML Property List simply keeps "exampled" running continuously:
+.Pp
+.Dl <?xml version="1.0" encoding="UTF-8"?>
+.Dl <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+.Dl <plist version="1.0">
+.Dl <dict>
+.Dl 	<key>Label</key>
+.Dl 	<string>com.example.exampled</string>
+.Dl 	<key>ProgramArguments</key>
+.Dl 	<array>
+.Dl 		<string>exampled</string>
+.Dl 	</array>
+.Dl 	<key>KeepAlive</key>
+.Dl 	<true/>
+.Dl </dict>
+.Dl </plist>
+.Pp
+.Sh FILES
+.Bl -tag -width "/System/Library/LaunchDaemons" -compact
+.It Pa ~/Library/LaunchAgents
+Per-user agents provided by the user.
+.It Pa /Library/LaunchAgents
+Per-user agents provided by the administrator.
+.It Pa /Library/LaunchDaemons
+System-wide daemons provided by the administrator.
+.It Pa /System/Library/LaunchAgents
+Per-user agents provided by Mac OS X.
+.It Pa /System/Library/LaunchDaemons
+System-wide daemons provided by Mac OS X.
+.El
+.Sh SEE ALSO 
+.Xr launchctl 1 ,
+.Xr sysctl 3 ,
+.Xr launchd 8 ,
+.Xr plist 5

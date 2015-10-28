@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int inotify_add_watch (int __fd, const char *__name, uint32_t __mask)
 {
 	int rv;

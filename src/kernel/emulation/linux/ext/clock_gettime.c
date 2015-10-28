@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int clock_gettime (int __clockid, struct timespec* __res)
 {
 	int rv;

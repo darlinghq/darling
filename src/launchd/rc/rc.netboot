@@ -1,0 +1,234 @@
+#!/bin/sh
+##
+# Copyright 2002-2009 Apple Inc.
+#
+# This script configures NetBoot
+##
+
+. /etc/rc.common
+
+# 
+# Define: NETBOOT_SHADOW
+# Purpose:
+#   To change the behavior of the system when choosing a netboot shadow
+#   to use.
+# Values:
+#   -NETWORK-		Try to use the network for the shadow file, if
+#			that fails, use the local drive
+#   -NETWORK_ONLY-	Only use the network, fail if not available
+#   -LOCAL-		Use the local drive for the shadow file, if that
+#			fails, use the network
+#   -LOCAL_ONLY-	Only use the local drive for the shadow, fail if
+#			not available
+
+NETBOOT_MOUNT=/var/netboot
+NETBOOT_SHADOW=${NETBOOT_SHADOW:-NETWORK-}
+
+Failed()
+{
+	echo rc.netboot: $1
+	echo rc.netboot: $1 > /dev/console
+	sleep 5
+	exit 1
+}
+
+common_start()
+{
+    netboot_dir=$1
+    netboot_shadow=$2
+    if [ "${netboot_dir}" = "" ] ; then
+	Failed "netboot_dir is empty"
+    fi
+    if [ "${netboot_shadow}" = "" ] ; then
+	Failed "netboot_shadow is empty"
+    fi
+    netboot_shadow="${netboot_dir}/${netboot_shadow}"
+    if ! mkdir -p "${netboot_dir}" ; then
+	Failed "create ${netboot_dir} failed"
+    fi
+    chmod 700 "${netboot_dir}"
+    mount -u -o ro /
+    root_device=$(mount | sed -n 's:/dev/\(.*\) on / .*:\1:p')
+    case "${root_device}" in
+	vn*)
+	    if ! touch "${netboot_shadow}" ; then
+		Failed "create ${netboot_shadow} failed"
+	    fi
+	    chmod 600 "${netboot_shadow}"
+    	    if ! /usr/libexec/vndevice shadow "/dev/r${root_device}" "${netboot_shadow}" ; then
+		Failed "vndevice shadow failed"
+	    fi
+	    ;;
+	"")
+	    Failed "root device unknown"
+	    ;;
+	*)
+	    if ! touch "${netboot_shadow}" ; then
+		Failed "failed to create shadow ${netboot_shadow}"
+	    fi
+	    chmod 600 "${netboot_shadow}"
+	    if ! /usr/bin/nbdst -recycle "${root_device}" "${netboot_shadow}" ; then
+		Failed "nbdst failed"	
+	    fi
+	    ;;
+    esac
+}
+
+local_mount()
+{
+    tries=0
+    limit=11
+    while [ $tries -lt $limit ]; do
+	tries=$(( tries + 1 ))
+	volinfo=`autodiskmount -F 2>/dev/null`
+	if [ $? -ne 0 ]; then
+	    if [ $tries -lt $limit ]; then
+		echo "Waiting for local drives..."
+		echo "Waiting for local drives (retry ${tries}/$(( limit - 1 )))..." > /dev/console
+		sleep 5
+	    else
+		echo "autodiskmount -F found no local drives"
+		return 1
+	    fi
+	else
+	    tries=$limit
+	fi
+    done
+    set ${volinfo}
+    devname=$1
+    fstype=$2
+
+    mount -t "${fstype}" -o nosuid,nodev "/dev/${devname}" "${NETBOOT_MOUNT}" 2>&1
+    if [ $? -ne 0 ]; then
+	echo "mount of ${devname} failed"
+	return 1
+    fi
+    common_start "${NETBOOT_MOUNT}/.com.apple.NetBootX" shadowfile
+    return 0
+}
+
+network_mount()
+{
+    mount_from=$(ipconfig netbootoption shadow_mount_path 2>&1)
+    if [ $? -ne 0 ]; then
+	echo "no network shadow mount path available"
+	return 1
+    fi
+    shadow_path=$(ipconfig netbootoption shadow_file_path 2>&1)
+    if [ $? -ne 0 ]; then
+	echo "no network shadow file path available"
+	return 1
+    fi
+    case "${mount_from}" in
+	afp:*)
+		fstype=afp
+		kextload -v 0 /System/Library/Filesystems/AppleShare/asp_tcp.kext
+		kextload -v 0 /System/Library/Filesystems/AppleShare/afpfs.kext
+		;;
+ 	nfs:*) fstype=nfs;;
+	*) echo "unknown network filesystem mount from ${mount_from}"
+	   return 1
+	   ;;
+    esac
+    mount -t "${fstype}" -o nobrowse "${mount_from}" "${NETBOOT_MOUNT}"
+    if [ $? -ne 0 ]; then
+	echo "mount -t ${fstype} -o nobrowse ${mount_from} ${NETBOOT_MOUNT} failed"
+	return 1
+    fi
+    common_start "${NETBOOT_MOUNT}" "${shadow_path}"
+    return 0
+}
+
+do_start()
+{
+    case "${NETBOOT_SHADOW}" in
+	-LOCAL_ONLY-)
+		err=$(local_mount)
+		if [ $? -ne 0 ]; then
+		    Failed "${err}"
+		fi
+		;;
+	-LOCAL-)
+		err=$(local_mount)
+		if [ $? -ne 0 ]; then
+		    err=$(network_mount)
+		    if [ $? -ne 0 ]; then
+			Failed "Could not find a local or network drive"
+		    fi
+    		fi
+		;;
+	-NETWORK_ONLY-)
+		err=$(network_mount)
+		if [ $? -ne 0 ]; then
+		    Failed "${err}"
+		fi
+		;;
+
+	*)
+		err=$(network_mount)
+		if [ $? -ne 0 ]; then
+		    err=$(local_mount)
+		    if [ $? -ne 0 ]; then
+			Failed "Could not find a network or local drive"
+		    fi
+		fi
+		;;
+    esac
+
+}
+
+do_init()
+{
+    # attach the shadow file to the root disk image
+    do_start
+
+    # make sure the root filesystem is clean
+    fsck -p || fsck -fy || Failed "Could not clean root filesystem"
+
+    # make it writable
+    mount -uw /
+
+    # adjust /private/var/vm to point to the writable area (if not diskless)
+    swapdir=/private/var/vm
+    mounted_from=$(mount | sed -n 's:\(.*\) on .*/var/netboot.*:\1:p')
+    case "${mounted_from}" in
+	/dev/*)
+		netboot_dir="${NETBOOT_MOUNT}/.com.apple.NetBootX"
+		if [ -d "${netboot_dir}" ]; then
+			rm -rf "${swapdir}"
+			ln -s "${netboot_dir}" "${swapdir}"
+		fi
+		;;
+	*)
+	;;
+    esac
+
+    # set the ComputerName based on what the NetBoot server told us it was
+    machine_name=$(ipconfig netbootoption machine_name 2>&1)
+    if [ $? -ne 0 ]; then
+	echo "no machine name option available"
+    else
+	echo "Setting ComputerName to ${machine_name}"
+	scutil --set ComputerName "${machine_name}"
+    fi
+}
+
+
+if [ $# -lt 1 ] ; then
+    exit 0
+fi
+
+command=$1
+
+shift
+
+case "${command}" in
+    init)
+	do_init $@
+	;;
+esac 
+
+##
+# Exit
+##
+exit 0

@@ -1,0 +1,22 @@
+.Dd 1 May, 2009
+.Dt RC 8
+.Os Darwin
+.Sh NAME
+.Nm rc
+.Nd command script for boot
+.Sh SYNOPSIS
+.Nm rc
+.Nm rc.local
+.Sh DESCRIPTION
+.Nm rc.local
+is now unsupported and has been replaced with
+.Xr launchd 8 ,
+which bootstraps itself via the
+.Xr launchctl 1
+.Ar bootstrap
+subcommand to read in
+.Xr launchd 8
+jobs from the standard locations.
+.Sh SEE ALSO
+.Xr launchd 8 ,
+.Xr launchctl 1

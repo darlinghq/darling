@@ -1,0 +1,297 @@
+/*
+ * Copyright (c) 1999-2004 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_APACHE_LICENSE_HEADER_START@
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ * @APPLE_APACHE_LICENSE_HEADER_END@
+ */
+/*
+ * bootstrap -- fundamental service initiator and port server
+ * Mike DeMoney, NeXT, Inc.
+ * Copyright, 1990.  All rights reserved.
+ */
+
+subsystem job 400;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include "job_types.defs"
+import "vproc.h";
+import "vproc_priv.h";
+import "vproc_internal.h";
+
+userprefix vproc_mig_;
+serverprefix job_mig_;
+
+routine
+create_server(
+				j			: job_t;
+				servercmd	: cmd_t;
+				serveruid	: uid_t;
+				ondemand	: boolean_t;
+out				serverport	: mach_port_make_send_t
+);
+
+routine
+reboot2(
+				j			: job_t;
+				flags		: uint64_t
+);
+
+routine
+check_in2(
+				j			: job_t;
+				servicename	: name_t;
+out				serviceport	: mach_port_move_receive_t;
+out				instanceid	: uuid_t;
+				flags		: uint64_t
+);
+
+routine
+register2(
+				j			: job_t;
+				servicename	: name_t;
+				serviceport	: mach_port_t;
+				flags		: uint64_t
+);
+
+routine
+look_up2(
+				j			: job_t;
+sreplyport		rp			: mach_port_make_send_once_t;
+				servicename	: name_t;
+out				serviceport	: mach_port_t;
+UserAuditToken	servercreds	: audit_token_t;
+				targetpid	: pid_t;
+				instanceid	: uuid_t;
+				flags		: uint64_t
+);
+
+routine
+send_signal(
+				j			: job_t;
+sreplyport		rp			: mach_port_make_send_once_t;
+				label		: name_t;
+				sig			: integer_t
+);
+
+routine
+parent(
+				j			: job_t;
+sreplyport		rp			: mach_port_make_send_once_t;
+out				parentport	: mach_port_make_send_t
+);
+
+routine
+post_fork_ping(
+				j			: job_t;
+				taskport	: task_t;
+out				asport		: mach_port_t
+);
+
+routine
+info(
+				j			: job_t;
+out				names		: name_array_t, dealloc;
+out				jobs		: name_array_t, dealloc;
+out				actives		: bootstrap_status_array_t, dealloc;
+				flags		: uint64_t
+);
+
+routine
+subset(
+				j			: job_t;
+				reqport		: mach_port_t;
+out				subsetport	: mach_port_make_send_t
+);
+
+skip; /* Formerly setup_shmem. */
+
+routine
+take_subset(
+				j			: job_t;
+out				reqport		: mach_port_move_send_t;
+out				recvport	: mach_port_move_receive_t;
+out				jobs		: pointer_t, dealloc;
+out				ports		: mach_port_move_send_array_t, dealloc
+);
+
+routine
+getsocket(
+				j			: job_t;
+out				sockpath	: name_t
+);
+
+skip; /* Formerly spawn. */
+
+skip; /* Formerly wait. */
+
+skip; /* Formerly uncork_fork. */
+
+routine
+swap_integer(
+				j			: job_t;
+				inkey		: vproc_gsk_t;
+				outkey		: vproc_gsk_t;
+				inval		: int64_t;
+out				outval		: int64_t
+);
+
+routine
+log(
+				j			: job_t;
+				pri			: integer_t;
+				err			: integer_t;
+				message		: logmsg_t
+);
+
+routine
+lookup_per_user_context(
+				j			: job_t;
+				uid			: uid_t;
+out				userbport	: mach_port_t
+);
+
+routine
+move_subset(
+				j			: job_t;
+				targetport	: mach_port_t;
+				session		: name_t;
+				asport		: mach_port_t;
+				flags		: uint64_t
+);
+
+routine
+swap_complex(
+				j			: job_t;
+				inkey		: vproc_gsk_t;
+				outkey		: vproc_gsk_t;
+				inval		: pointer_t;
+out				outval		: pointer_t, dealloc
+);
+
+routine
+log_drain(
+				j			: job_t;
+sreplyport		rp			: mach_port_make_send_once_t;
+out				outval		: pointer_t, dealloc
+);
+
+routine
+log_forward(
+				j			: job_t;
+				inval		: pointer_t
+);
+
+routine
+kickstart(
+				j			: job_t;
+				label		: name_t;
+out				pid			: pid_t;
+				flags		: natural_t
+);
+
+skip; /* Formerly embedded_wait. */
+
+routine
+lookup_children(
+				j			: job_t;
+out 			childports	: mach_port_move_send_array_t, dealloc;
+out				childnames	: name_array_t, dealloc;
+out				childprops	: bootstrap_property_array_t, dealloc
+);
+
+routine
+switch_to_session(
+				j			: job_t;
+				reqport		: mach_port_t;
+				session		: name_t;
+				asport		: mach_port_t;
+out				newbsport	: mach_port_make_send_t
+);
+
+skip; /* Formerly transaction_count_for_pid. */
+
+routine
+pid_is_managed(
+				j			: job_t;
+				pid			: pid_t;
+out				managed		: boolean_t
+);
+
+routine
+port_for_label(
+				j			: job_t;
+				label		: name_t;
+out				jport		: mach_port_make_send_t
+);
+
+routine
+init_session(
+				j			: job_t;
+				session		: name_t;
+				asport		: mach_port_t
+);
+
+routine
+set_security_session(
+				j			: job_t;
+				uuid		: uuid_t;
+				asport		: mach_port_t
+);
+
+skip; /* Formerly wait2. */
+
+skip; /* Formerly event_source_check_in. */
+
+skip; /* Formerly event_set_state. */
+
+routine
+spawn2(
+				j			: job_t;
+sreplyport		rp			: mach_port_make_send_once_t;
+				job			: pointer_t;
+				asport		: mach_port_t;
+out				outpid		: pid_t;
+out				obsrvport	: mach_port_move_receive_t
+);
+
+routine
+get_root_bootstrap(
+				j			: job_t;
+out				rootbs		: mach_port_move_send_t
+);
+
+routine
+legacy_ipc_request(
+				j			: job_t;
+				request		: pointer_t;
+				request_fds	: mach_port_move_send_array_t;
+out				reply		: pointer_t, dealloc;
+out				reply_fds	: mach_port_move_send_array_t, dealloc;
+				asport		: mach_port_t
+);
+
+routine
+get_listener_port_rights(
+				j			: job_t;
+out				sports		: mach_port_make_send_array_t, dealloc
+);
+
+routine
+register_gui_session(
+				j			: job_t;
+				asport		: mach_port_t
+);

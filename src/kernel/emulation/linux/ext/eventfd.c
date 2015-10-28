@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int __linux_eventfd (int __count, int __flags)
 {
 	int rv;

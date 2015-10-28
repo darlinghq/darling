@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling build
 /*
  * Copyright (c) 2003-2011 Apple Inc. All rights reserved.
  *
@@ -27,6 +28,10 @@
 #include <sys/types.h>
 #include <os/assumes.h>
 #include "table.h"
+
+#ifndef os_assumes
+#	define os_assumes(x) (x)
+#endif
 
 #define KEY_UNKNOWN    0
 #define KEY_INT        1

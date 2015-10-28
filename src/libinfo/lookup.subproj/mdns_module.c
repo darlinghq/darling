@@ -96,7 +96,7 @@
 #include <netinet/in.h>
 #include <ctype.h>
 #include <dns_sd.h>
-#include <dnsinfo.h>
+//#include <dnsinfo.h>
 #include <errno.h>
 #include <nameser.h>
 #include <notify.h>

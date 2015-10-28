@@ -5,6 +5,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int inotify_rm_watch (int __fd, int __wd)
 {
 	int rv;
