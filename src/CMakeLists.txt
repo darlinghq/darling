@@ -67,6 +67,8 @@ add_subdirectory(libstdcxx)
 add_subdirectory(external/libobjc2)
 add_subdirectory(external/libkqueue)
 add_subdirectory(external/libdispatch)
+add_subdirectory(external/zlib)
+add_subdirectory(external/bzip2)
 
 ######################
 # libc++ & libc++abi #
