@@ -1,0 +1,575 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		FDBC26E41741B09300CA4B2B /* osx */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = FDBC26E71741B09300CA4B2B /* Build configuration list for PBXAggregateTarget "osx" */;
+			buildPhases = (
+			);
+			dependencies = (
+				FDBC27001741B1B300CA4B2B /* PBXTargetDependency */,
+			);
+			name = osx;
+			productName = OSX;
+		};
+		FDBC26E81741B09D00CA4B2B /* ios */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = FDBC26E91741B09D00CA4B2B /* Build configuration list for PBXAggregateTarget "ios" */;
+			buildPhases = (
+			);
+			dependencies = (
+				FDBC27021741B1B500CA4B2B /* PBXTargetDependency */,
+				FDBC27041741B1B700CA4B2B /* PBXTargetDependency */,
+			);
+			name = ios;
+			productName = ios;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		BA79F9CB13BB7207006A292D /* ExtentManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BA79F9A313BB70FF006A292D /* ExtentManager.cpp */; };
+		BA79F9CC13BB7207006A292D /* getmntopts.c in Sources */ = {isa = PBXBuildFile; fileRef = BA79F9A613BB70FF006A292D /* getmntopts.c */; };
+		BA79F9CD13BB7207006A292D /* humanize_number.c in Sources */ = {isa = PBXBuildFile; fileRef = BA79F9A813BB70FF006A292D /* humanize_number.c */; };
+		BA79F9CE13BB7207006A292D /* pidfile.c in Sources */ = {isa = PBXBuildFile; fileRef = BA79F9B013BB70FF006A292D /* pidfile.c */; };
+		BA79F9D013BB7207006A292D /* realhostname.c in Sources */ = {isa = PBXBuildFile; fileRef = BA79F9B513BB70FF006A292D /* realhostname.c */; };
+		BA79F9D113BB7207006A292D /* reexec_to_match_kernel.c in Sources */ = {isa = PBXBuildFile; fileRef = BA79F9B713BB70FF006A292D /* reexec_to_match_kernel.c */; };
+		BA79F9D213BB7207006A292D /* trimdomain.c in Sources */ = {isa = PBXBuildFile; fileRef = BA79F9B913BB70FF006A292D /* trimdomain.c */; };
+		BA79F9D413BB7207006A292D /* wipefs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BA79F9BD13BB70FF006A292D /* wipefs.cpp */; };
+		BA79F9D513BB7235006A292D /* libutil.h in Headers */ = {isa = PBXBuildFile; fileRef = BA79F9AA13BB70FF006A292D /* libutil.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		BA79F9D613BB7235006A292D /* mntopts.h in Headers */ = {isa = PBXBuildFile; fileRef = BA79F9AE13BB70FF006A292D /* mntopts.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		BA79F9D713BB7235006A292D /* wipefs.h in Headers */ = {isa = PBXBuildFile; fileRef = BA79F9BE13BB70FF006A292D /* wipefs.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		BA79F9D813BB7243006A292D /* ExtentManager.h in Headers */ = {isa = PBXBuildFile; fileRef = BA79F9A413BB70FF006A292D /* ExtentManager.h */; };
+		BA79F9DD13BB76B0006A292D /* getmntopts.3 in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9A513BB70FF006A292D /* getmntopts.3 */; };
+		BA79F9DE13BB76B0006A292D /* humanize_number.3 in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9A713BB70FF006A292D /* humanize_number.3 */; };
+		BA79F9DF13BB76B0006A292D /* pidfile.3 in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9AF13BB70FF006A292D /* pidfile.3 */; };
+		BA79F9E113BB76B0006A292D /* realhostname_sa.3 in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9B313BB70FF006A292D /* realhostname_sa.3 */; };
+		BA79F9E213BB76B0006A292D /* realhostname.3 in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9B413BB70FF006A292D /* realhostname.3 */; };
+		BA79F9E313BB76B0006A292D /* reexec_to_match_kernel.3 in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9B613BB70FF006A292D /* reexec_to_match_kernel.3 */; };
+		BA79F9E413BB76B0006A292D /* trimdomain.3 in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9B813BB70FF006A292D /* trimdomain.3 */; };
+		BA79F9E613BB76B0006A292D /* wipefs.3 in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9BC13BB70FF006A292D /* wipefs.3 */; };
+		BA79F9E913BB77FA006A292D /* libutil.plist in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9AB13BB70FF006A292D /* libutil.plist */; };
+		BA79F9EA13BB77FF006A292D /* libutil.txt in CopyFiles */ = {isa = PBXBuildFile; fileRef = BA79F9AC13BB70FF006A292D /* libutil.txt */; };
+		FDBC27051741B1C300CA4B2B /* com.apple.tzlinkd.plist in CopyFiles */ = {isa = PBXBuildFile; fileRef = FDBC26FA1741B19000CA4B2B /* com.apple.tzlinkd.plist */; };
+		FDBC27061741B1CF00CA4B2B /* tzlinkd.c in Sources */ = {isa = PBXBuildFile; fileRef = FDBC26FE1741B19000CA4B2B /* tzlinkd.c */; };
+		FDBC27071741B1D600CA4B2B /* tzlink.c in Sources */ = {isa = PBXBuildFile; fileRef = FDBC26F91741B18500CA4B2B /* tzlink.c */; };
+		FDBC270B1741B55400CA4B2B /* tzlink.h in Headers */ = {isa = PBXBuildFile; fileRef = FDBC27091741B47200CA4B2B /* tzlink.h */; settings = {ATTRIBUTES = (Private, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		FDBC26FF1741B1B300CA4B2B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BA79F99713BB70D7006A292D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BA79F9C413BB718B006A292D;
+			remoteInfo = util;
+		};
+		FDBC27011741B1B500CA4B2B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BA79F99713BB70D7006A292D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BA79F9C413BB718B006A292D;
+			remoteInfo = util;
+		};
+		FDBC27031741B1B700CA4B2B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BA79F99713BB70D7006A292D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FDBC26EF1741B13400CA4B2B;
+			remoteInfo = tzlinkd;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BA79F9DB13BB7698006A292D /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = "$(INSTALL_PATH_PREFIX)/usr/local/share/man/man3";
+			dstSubfolderSpec = 0;
+			files = (
+				BA79F9DD13BB76B0006A292D /* getmntopts.3 in CopyFiles */,
+				BA79F9DE13BB76B0006A292D /* humanize_number.3 in CopyFiles */,
+				BA79F9DF13BB76B0006A292D /* pidfile.3 in CopyFiles */,
+				BA79F9E113BB76B0006A292D /* realhostname_sa.3 in CopyFiles */,
+				BA79F9E213BB76B0006A292D /* realhostname.3 in CopyFiles */,
+				BA79F9E313BB76B0006A292D /* reexec_to_match_kernel.3 in CopyFiles */,
+				BA79F9E413BB76B0006A292D /* trimdomain.3 in CopyFiles */,
+				BA79F9E613BB76B0006A292D /* wipefs.3 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		BA79F9E713BB77BB006A292D /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = "$(INSTALL_PATH_PREFIX)/usr/local/OpenSourceVersions";
+			dstSubfolderSpec = 0;
+			files = (
+				BA79F9E913BB77FA006A292D /* libutil.plist in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		BA79F9E813BB77D6006A292D /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = "$(INSTALL_PATH_PREFIX)/usr/local/OpenSourceLicenses";
+			dstSubfolderSpec = 0;
+			files = (
+				BA79F9EA13BB77FF006A292D /* libutil.txt in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		FDBC26EE1741B13400CA4B2B /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(INSTALL_PATH_PREFIX)/System/Library/LaunchDaemons";
+			dstSubfolderSpec = 0;
+			files = (
+				FDBC27051741B1C300CA4B2B /* com.apple.tzlinkd.plist in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		3F09C378186D1F73007AF93C /* base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = base.xcconfig; path = xcconfigs/base.xcconfig; sourceTree = "<group>"; };
+		BA79F9A313BB70FF006A292D /* ExtentManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtentManager.cpp; sourceTree = "<group>"; };
+		BA79F9A413BB70FF006A292D /* ExtentManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExtentManager.h; sourceTree = "<group>"; };
+		BA79F9A513BB70FF006A292D /* getmntopts.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = getmntopts.3; sourceTree = "<group>"; };
+		BA79F9A613BB70FF006A292D /* getmntopts.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = getmntopts.c; sourceTree = "<group>"; };
+		BA79F9A713BB70FF006A292D /* humanize_number.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = humanize_number.3; sourceTree = "<group>"; };
+		BA79F9A813BB70FF006A292D /* humanize_number.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = humanize_number.c; sourceTree = "<group>"; };
+		BA79F9A913BB70FF006A292D /* libutil.exports */ = {isa = PBXFileReference; lastKnownFileType = text; path = libutil.exports; sourceTree = "<group>"; };
+		BA79F9AA13BB70FF006A292D /* libutil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libutil.h; sourceTree = "<group>"; };
+		BA79F9AB13BB70FF006A292D /* libutil.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = libutil.plist; sourceTree = "<group>"; };
+		BA79F9AC13BB70FF006A292D /* libutil.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = libutil.txt; sourceTree = "<group>"; };
+		BA79F9AE13BB70FF006A292D /* mntopts.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mntopts.h; sourceTree = "<group>"; };
+		BA79F9AF13BB70FF006A292D /* pidfile.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = pidfile.3; sourceTree = "<group>"; };
+		BA79F9B013BB70FF006A292D /* pidfile.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = pidfile.c; sourceTree = "<group>"; };
+		BA79F9B313BB70FF006A292D /* realhostname_sa.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = realhostname_sa.3; sourceTree = "<group>"; };
+		BA79F9B413BB70FF006A292D /* realhostname.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = realhostname.3; sourceTree = "<group>"; };
+		BA79F9B513BB70FF006A292D /* realhostname.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = realhostname.c; sourceTree = "<group>"; };
+		BA79F9B613BB70FF006A292D /* reexec_to_match_kernel.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = reexec_to_match_kernel.3; sourceTree = "<group>"; };
+		BA79F9B713BB70FF006A292D /* reexec_to_match_kernel.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = reexec_to_match_kernel.c; sourceTree = "<group>"; };
+		BA79F9B813BB70FF006A292D /* trimdomain.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = trimdomain.3; sourceTree = "<group>"; };
+		BA79F9B913BB70FF006A292D /* trimdomain.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = trimdomain.c; sourceTree = "<group>"; };
+		BA79F9BC13BB70FF006A292D /* wipefs.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = wipefs.3; sourceTree = "<group>"; };
+		BA79F9BD13BB70FF006A292D /* wipefs.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = wipefs.cpp; sourceTree = "<group>"; };
+		BA79F9BE13BB70FF006A292D /* wipefs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = wipefs.h; sourceTree = "<group>"; };
+		BA79F9C513BB718B006A292D /* libutil.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libutil.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		FDBC26F01741B13400CA4B2B /* tzlinkd */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = tzlinkd; sourceTree = BUILT_PRODUCTS_DIR; };
+		FDBC26F91741B18500CA4B2B /* tzlink.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tzlink.c; sourceTree = "<group>"; };
+		FDBC26FA1741B19000CA4B2B /* com.apple.tzlinkd.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.apple.tzlinkd.plist; sourceTree = "<group>"; };
+		FDBC26FB1741B19000CA4B2B /* com.apple.tzlinkd.sb */ = {isa = PBXFileReference; lastKnownFileType = text; path = com.apple.tzlinkd.sb; sourceTree = "<group>"; };
+		FDBC26FE1741B19000CA4B2B /* tzlinkd.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tzlinkd.c; sourceTree = "<group>"; };
+		FDBC27081741B47200CA4B2B /* tzlink_internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tzlink_internal.h; sourceTree = "<group>"; };
+		FDBC27091741B47200CA4B2B /* tzlink.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tzlink.h; sourceTree = "<group>"; };
+		FDBC270D1741B66500CA4B2B /* tzlinkd.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = tzlinkd.xcconfig; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BA79F9C213BB718B006A292D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FDBC26ED1741B13400CA4B2B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		BA79F99513BB70D7006A292D = {
+			isa = PBXGroup;
+			children = (
+				3F09C378186D1F73007AF93C /* base.xcconfig */,
+				BA79F9A313BB70FF006A292D /* ExtentManager.cpp */,
+				BA79F9A413BB70FF006A292D /* ExtentManager.h */,
+				BA79F9A513BB70FF006A292D /* getmntopts.3 */,
+				BA79F9A613BB70FF006A292D /* getmntopts.c */,
+				BA79F9A713BB70FF006A292D /* humanize_number.3 */,
+				BA79F9A813BB70FF006A292D /* humanize_number.c */,
+				BA79F9A913BB70FF006A292D /* libutil.exports */,
+				BA79F9AA13BB70FF006A292D /* libutil.h */,
+				BA79F9AB13BB70FF006A292D /* libutil.plist */,
+				BA79F9AC13BB70FF006A292D /* libutil.txt */,
+				BA79F9AE13BB70FF006A292D /* mntopts.h */,
+				BA79F9AF13BB70FF006A292D /* pidfile.3 */,
+				BA79F9B013BB70FF006A292D /* pidfile.c */,
+				BA79F9B313BB70FF006A292D /* realhostname_sa.3 */,
+				BA79F9B413BB70FF006A292D /* realhostname.3 */,
+				BA79F9B513BB70FF006A292D /* realhostname.c */,
+				BA79F9B613BB70FF006A292D /* reexec_to_match_kernel.3 */,
+				BA79F9B713BB70FF006A292D /* reexec_to_match_kernel.c */,
+				BA79F9B813BB70FF006A292D /* trimdomain.3 */,
+				BA79F9B913BB70FF006A292D /* trimdomain.c */,
+				FDBC26F91741B18500CA4B2B /* tzlink.c */,
+				FDBC27091741B47200CA4B2B /* tzlink.h */,
+				FDBC27081741B47200CA4B2B /* tzlink_internal.h */,
+				FDBC26F11741B13400CA4B2B /* tzlinkd */,
+				BA79F9BC13BB70FF006A292D /* wipefs.3 */,
+				BA79F9BD13BB70FF006A292D /* wipefs.cpp */,
+				BA79F9BE13BB70FF006A292D /* wipefs.h */,
+				FDBC270C1741B66500CA4B2B /* xcconfigs */,
+				BA79F9C613BB718B006A292D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BA79F9C613BB718B006A292D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BA79F9C513BB718B006A292D /* libutil.dylib */,
+				FDBC26F01741B13400CA4B2B /* tzlinkd */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FDBC26F11741B13400CA4B2B /* tzlinkd */ = {
+			isa = PBXGroup;
+			children = (
+				FDBC26FA1741B19000CA4B2B /* com.apple.tzlinkd.plist */,
+				FDBC26FB1741B19000CA4B2B /* com.apple.tzlinkd.sb */,
+				FDBC26FE1741B19000CA4B2B /* tzlinkd.c */,
+			);
+			path = tzlinkd;
+			sourceTree = "<group>";
+		};
+		FDBC270C1741B66500CA4B2B /* xcconfigs */ = {
+			isa = PBXGroup;
+			children = (
+				FDBC270D1741B66500CA4B2B /* tzlinkd.xcconfig */,
+			);
+			path = xcconfigs;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		BA79F9C313BB718B006A292D /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA79F9D513BB7235006A292D /* libutil.h in Headers */,
+				BA79F9D613BB7235006A292D /* mntopts.h in Headers */,
+				FDBC270B1741B55400CA4B2B /* tzlink.h in Headers */,
+				BA79F9D713BB7235006A292D /* wipefs.h in Headers */,
+				BA79F9D813BB7243006A292D /* ExtentManager.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		BA79F9C413BB718B006A292D /* util */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA79F9C713BB718B006A292D /* Build configuration list for PBXNativeTarget "util" */;
+			buildPhases = (
+				BA79F9C113BB718B006A292D /* Sources */,
+				BA79F9C213BB718B006A292D /* Frameworks */,
+				BA79F9C313BB718B006A292D /* Headers */,
+				BA79F9DA13BB750E006A292D /* ShellScript */,
+				BA79F9EB13BB7864006A292D /* ShellScript */,
+				BA79F9DB13BB7698006A292D /* CopyFiles */,
+				BA79F9E713BB77BB006A292D /* CopyFiles */,
+				BA79F9E813BB77D6006A292D /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = util;
+			productName = util;
+			productReference = BA79F9C513BB718B006A292D /* libutil.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		FDBC26EF1741B13400CA4B2B /* tzlinkd */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FDBC26F81741B13400CA4B2B /* Build configuration list for PBXNativeTarget "tzlinkd" */;
+			buildPhases = (
+				FDBC26EC1741B13400CA4B2B /* Sources */,
+				FDBC26ED1741B13400CA4B2B /* Frameworks */,
+				FDBC26EE1741B13400CA4B2B /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = tzlinkd;
+			productName = tzlinkd;
+			productReference = FDBC26F01741B13400CA4B2B /* tzlinkd */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BA79F99713BB70D7006A292D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0420;
+			};
+			buildConfigurationList = BA79F99A13BB70D7006A292D /* Build configuration list for PBXProject "libutil" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = BA79F99513BB70D7006A292D;
+			productRefGroup = BA79F9C613BB718B006A292D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FDBC26E81741B09D00CA4B2B /* ios */,
+				FDBC26E41741B09300CA4B2B /* osx */,
+				BA79F9C413BB718B006A292D /* util */,
+				FDBC26EF1741B13400CA4B2B /* tzlinkd */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		BA79F9DA13BB750E006A292D /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/libutil1.0.dylib",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nset -x\n\nln -sf ${EXECUTABLE_NAME} \"${BUILT_PRODUCTS_DIR}/libutil1.0.dylib\"\n";
+		};
+		BA79F9EB13BB7864006A292D /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 8;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+				"$(DSTROOT)/$(INSTALL_PATH)/libutil1.0.dylib",
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nset -x\n\nln -sf ${EXECUTABLE_NAME} \"${DSTROOT}/${INSTALL_PATH}/libutil1.0.dylib\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BA79F9C113BB718B006A292D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA79F9CB13BB7207006A292D /* ExtentManager.cpp in Sources */,
+				BA79F9CC13BB7207006A292D /* getmntopts.c in Sources */,
+				BA79F9CD13BB7207006A292D /* humanize_number.c in Sources */,
+				BA79F9CE13BB7207006A292D /* pidfile.c in Sources */,
+				BA79F9D013BB7207006A292D /* realhostname.c in Sources */,
+				BA79F9D113BB7207006A292D /* reexec_to_match_kernel.c in Sources */,
+				BA79F9D213BB7207006A292D /* trimdomain.c in Sources */,
+				FDBC27071741B1D600CA4B2B /* tzlink.c in Sources */,
+				BA79F9D413BB7207006A292D /* wipefs.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FDBC26EC1741B13400CA4B2B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FDBC27061741B1CF00CA4B2B /* tzlinkd.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FDBC27001741B1B300CA4B2B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BA79F9C413BB718B006A292D /* util */;
+			targetProxy = FDBC26FF1741B1B300CA4B2B /* PBXContainerItemProxy */;
+		};
+		FDBC27021741B1B500CA4B2B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BA79F9C413BB718B006A292D /* util */;
+			targetProxy = FDBC27011741B1B500CA4B2B /* PBXContainerItemProxy */;
+		};
+		FDBC27041741B1B700CA4B2B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FDBC26EF1741B13400CA4B2B /* tzlinkd */;
+			targetProxy = FDBC27031741B1B700CA4B2B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		BA79F99C13BB70D7006A292D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F09C378186D1F73007AF93C /* base.xcconfig */;
+			buildSettings = {
+				APPLY_RULES_IN_COPY_FILES = YES;
+				"PLIST_FILE_OUTPUT_FORMAT[sdk=iphoneos*]" = binary;
+				"PLIST_FILE_OUTPUT_FORMAT[sdk=macosx*]" = XML;
+				USE_HEADERMAP = NO;
+			};
+			name = Debug;
+		};
+		BA79F99D13BB70D7006A292D /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F09C378186D1F73007AF93C /* base.xcconfig */;
+			buildSettings = {
+				APPLY_RULES_IN_COPY_FILES = YES;
+				"PLIST_FILE_OUTPUT_FORMAT[sdk=iphoneos*]" = binary;
+				"PLIST_FILE_OUTPUT_FORMAT[sdk=macosx*]" = XML;
+				USE_HEADERMAP = NO;
+			};
+			name = Release;
+		};
+		BA79F9C813BB718B006A292D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				DYLIB_COMPATIBILITY_VERSION = 1.0;
+				DYLIB_CURRENT_VERSION = 1.0;
+				EXECUTABLE_PREFIX = lib;
+				EXPORTED_SYMBOLS_FILE = libutil.exports;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INSTALL_PATH_ACTUAL = /usr/lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = "-Wall";
+			};
+			name = Debug;
+		};
+		BA79F9C913BB718B006A292D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				DYLIB_COMPATIBILITY_VERSION = 1.0;
+				DYLIB_CURRENT_VERSION = 1.0;
+				EXECUTABLE_PREFIX = lib;
+				EXPORTED_SYMBOLS_FILE = libutil.exports;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INSTALL_PATH_ACTUAL = /usr/lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = "-Wall";
+			};
+			name = Release;
+		};
+		FDBC26E51741B09300CA4B2B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		FDBC26E61741B09300CA4B2B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		FDBC26EA1741B09D00CA4B2B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		FDBC26EB1741B09D00CA4B2B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		FDBC26F61741B13400CA4B2B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = FDBC270D1741B66500CA4B2B /* tzlinkd.xcconfig */;
+			buildSettings = {
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+			};
+			name = Debug;
+		};
+		FDBC26F71741B13400CA4B2B /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = FDBC270D1741B66500CA4B2B /* tzlinkd.xcconfig */;
+			buildSettings = {
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BA79F99A13BB70D7006A292D /* Build configuration list for PBXProject "libutil" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BA79F99C13BB70D7006A292D /* Debug */,
+				BA79F99D13BB70D7006A292D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BA79F9C713BB718B006A292D /* Build configuration list for PBXNativeTarget "util" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BA79F9C813BB718B006A292D /* Debug */,
+				BA79F9C913BB718B006A292D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FDBC26E71741B09300CA4B2B /* Build configuration list for PBXAggregateTarget "osx" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FDBC26E51741B09300CA4B2B /* Debug */,
+				FDBC26E61741B09300CA4B2B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FDBC26E91741B09D00CA4B2B /* Build configuration list for PBXAggregateTarget "ios" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FDBC26EA1741B09D00CA4B2B /* Debug */,
+				FDBC26EB1741B09D00CA4B2B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FDBC26F81741B13400CA4B2B /* Build configuration list for PBXNativeTarget "tzlinkd" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FDBC26F61741B13400CA4B2B /* Debug */,
+				FDBC26F71741B13400CA4B2B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BA79F99713BB70D7006A292D /* Project object */;
+}

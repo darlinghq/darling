@@ -43,7 +43,7 @@ mbtowc_l(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 	NORMALIZE_LOCALE(loc);
 	if (s == NULL) {
 		/* No support for state dependent encodings. */
-		loc->__mbs_mbtowc = initial;
+		// loc->__mbs_mbtowc = initial;
 		return (0);
 	}
 	rval = loc->__lc_ctype->__mbrtowc(pwc, s, n, &loc->__mbs_mbtowc, loc);

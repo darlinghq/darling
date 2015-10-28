@@ -23,7 +23,7 @@ set(mach-o_SRCS
 add_library(mach-o SHARED ${mach-o_SRCS})
 set_target_properties(mach-o PROPERTIES VERSION 1.0.0 SOVERSION 1.0)
 set_target_properties(mach-o PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
-target_link_libraries(mach-o -ldl -lpthread util)
+target_link_libraries(mach-o -ldl -lpthread darling-util)
 
 install(TARGETS mach-o DESTINATION "lib${SUFFIX}/darling")
 

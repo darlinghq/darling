@@ -57,7 +57,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(dyld SHARED ${dyld_SRCS})
-target_link_libraries(dyld -ldl -lpthread mach-o util)
+target_link_libraries(dyld -ldl -lpthread mach-o darling-util)
 
 install(TARGETS dyld DESTINATION lib${SUFFIX}/darling)
 

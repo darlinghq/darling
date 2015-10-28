@@ -1,0 +1,11 @@
+(version 1)
+
+(deny default)
+
+(import "system.sb")
+
+(allow file-write-create file-write-unlink
+    (literal "/private/var/db/timezone/localtime"))
+
+(allow file-read*
+    (literal "/private/var/db/timezone/zoneinfo"))

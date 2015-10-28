@@ -16,6 +16,6 @@ set(util-SRCS
 	leb.cpp
 )
 
-add_library(util ${util-SRCS})
-set_target_properties(util PROPERTIES COMPILE_FLAGS "-fPIC")
+add_library(darling-util ${util-SRCS})
+set_target_properties(darling-util PROPERTIES COMPILE_FLAGS "-fPIC")
 

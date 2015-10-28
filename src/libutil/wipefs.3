@@ -1,0 +1,162 @@
+.\"
+.\" Copyright (c) 2008,2011 Apple Inc. All rights reserved.
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\" 
+.\" This file contains Original Code and/or Modifications of Original Code
+.\" as defined in and that are subject to the Apple Public Source License
+.\" Version 2.0 (the 'License'). You may not use this file except in
+.\" compliance with the License. Please obtain a copy of the License at
+.\" http://www.opensource.apple.com/apsl/ and read it before using this
+.\" file.
+.\" 
+.\" The Original Code and all software distributed under the License are
+.\" distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+.\" Please see the License for the specific language governing rights and
+.\" limitations under the License.
+.\" 
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.Dd 6/30/11               \" DATE 
+.Dt libutil 3      \" Program name and manual section number 
+.Os Mac OS X
+.Sh NAME                 \" Section Header - required - don't modify 
+.\" The following lines are read in generating the apropos(man -k) database. Use only key
+.\" words here as the database is built based on the words here and in the .ND line. 
+.Nm wipefs_alloc ,
+.Nm wipefs_except_blocks ,
+.Nm wipefs_wipe ,
+.Nm wipefs_free
+.\" Use .Nm macro to designate other names for the documented program.
+.Nd wipes existing file systems on a volume
+.Sh LIBRARY             \" Section Header - required - don't modify
+.Lb libutil
+.Sh SYNOPSIS
+.In wipefs.h
+.Ft int
+.Fo wipefs_alloc
+.Fa "int fd"
+.Fa "size_t block_size"
+.Fa "wipefs_ctx *handle"
+.Fc
+.Ft int
+.Fo wipefs_include_blocks
+.Fa "wipefs_ctx handle"
+.Fa "off_t block_offset"
+.Fa "off_t nblocks"
+.Fc
+.Ft int
+.Fo wipefs_except_blocks
+.Fa "wipefs_ctx handle"
+.Fa "off_t block_offset"
+.Fa "off_t nblocks"
+.Fc
+.Ft int
+.Fo wipefs_wipe
+.Fa "wipefs_ctx handle"
+.Fc
+.Ft void
+.Fo wipefs_free
+.Fa "wipefs_ctx *handle"
+.Fc
+.Sh DESCRIPTION          \" Section Header - required - don't modify
+The wipefs family of functions wipe existing file systems on a volume.  A
+.Li DKIOCUNMAP
+ioctl is sent to the device to invalidate all of its content.
+Then zeroes are written to various locations that are used by various file systems to recognize their content and mount their volumes.
+This is usually used by the newfs_* utilities before they create new file systems on the volume, so that the existing file system will not be mounted accidentally after the new file system is created.
+.Pp
+.Sy NOTE:
+These routines do not overwrite all volume structures.
+These routines do not securely erase the previous content.
+They only overwrite enough to make sure that the normal utilities will no longer recognize any file system content.
+It is possible that previous file system content could be recovered by other means.
+.Pp
+The
+.Fn wipefs_alloc
+function initializes a
+.Fa wipefs_ctx
+object (which is an opaque data type).
+.Fa file_desc
+is the file handle of the volume to be wiped, which can be a block device node, a character device node, or a file.
+.Fa file_desc
+must be opened with write access.  If
+.Fa block_size
+is 0, this function calls
+.Xr ioctl 2
+to get the block size.  A valid
+.Fa block_size 
+must be supplied if 
+.Fa file_desc
+is a regular file.  This function does not write any data to the volume.
+.Pp
+The
+.Fn wipefs_include_blocks
+function tells wipefs to write zeroes in the block range provided, in addition to any other ranges
+it would normally write.  This may be more efficient than if the caller were to write this range
+separately, especially if the block range overlaps or is contiguous with other ranges that wipefs
+will write.  This function does not write any data to the volume.  If this function is called
+multiple times, the union of all the ranges provided will be written by
+.Fn wipefs_wipe .
+.Pp
+The
+.Fn wipefs_except_blocks
+function tells wipefs not to write anything in the block range provided.  This function is used for performance
+optimizations if the caller will write to these blocks.  It is the caller's responsibility to write to these blocks.
+Otherwise, some file systems may still be recognized on the volume.  This function does not write any data to the
+volume.  If this function is called multiple times, the union of all the ranges provided will be excluded from being
+written by
+.Fn wipefs_wipe .
+.Pp
+The
+.Fn wipefs_wipe
+function sends a
+.Li DKIOCUNMAP
+ioctl and then writes data to the volume to wipe out existing file systems on it.
+.Sy CAUTION:
+this function destroys any file system or partition scheme on the volume represented by
+.Fa file_desc .
+If
+.Fa file_desc
+represents the entire disk (e.g. /dev/diskX), the partition map of the disk will be destroyed.  If
+.Fa file_desc
+represents a partition (e.g., /dev/diskXsY), only the file system in that partition is destroyed.  Although the partition scheme or file system on
+.Fa file_desc
+may be beyond repair after 
+.Fn wipefs_wipe ,
+this function is not designed as a means to safely delete all data.  It is possible that some user data (or intact file systems in some partitions) may still be recovered.
+.Pp
+The
+.Fn wipefs_free
+function frees the allocated 
+.Fa wipefs_ctx
+handle and set
+.Fa *handlep
+to NULL.
+.Sh RETURN VALUES
+The
+.Fn wipefs_alloc ,
+.Fn wipefs_include_blocks ,
+.Fn wipefs_except_blocks
+and
+.Fn wipefs_wipe
+functions return 0 on success, or will fail and return an error code.
+Each function may return
+.Fa ENOMEM
+if insufficient memory is available.  In addition, if
+.Fa block_size
+is not provided,
+.Fn wipefs_alloc
+may return any error
+.Xr ioctl 2
+returns;
+.Fn wipefs_wipe
+may return any error
+.Xr pwrite 2
+returns.
+.\" .Sh BUGS              \" Document known, unremedied bugs 
+.\".Sh HISTORY           \" Document history if command behaves in a unique manner 
+.\"The wipefs family of functions first appeared in Mac OS X Leopard (10.5.3).
