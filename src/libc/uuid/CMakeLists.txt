@@ -12,6 +12,7 @@ set(uuid_sources
 	uuidsrc/gen_uuid.c
 	uuidsrc/pack.c
 	uuidsrc/parse.c
+	uuidsrc/isnull.c
 	uuidsrc/unpack.c
 	uuidsrc/unparse.c)
 
