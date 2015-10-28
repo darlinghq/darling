@@ -17,6 +17,10 @@ set(secure_sources
 	stpncpy_chk.c
 	strcat_chk.c
 	strcpy_chk.c
+	strlcpy_chk.c
+	memccpy_chk.c
+	secure.c
+	strlcat_chk.c
 	strncat_chk.c
 	strncpy_chk.c
 	vsnprintf_chk.c
