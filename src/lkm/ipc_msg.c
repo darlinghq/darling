@@ -580,17 +580,27 @@ bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc,
 			
 			debug_msg("copyin right %d\n", port_desc->name);
 
-			right = ipc_space_lookup(args->space, port_desc->name);
-			if (right == NULL)
+			if (port_desc->name != 0)
 			{
-				args->ret = MACH_SEND_INVALID_DEST;
-				return false;
+				right = ipc_space_lookup(args->space, port_desc->name);
+				if (right == NULL)
+				{
+					args->ret = MACH_SEND_INVALID_DEST;
+					return false;
+				}
+				args->ret = ipc_process_right(args->space, port_desc->disposition,
+						right,
+						&args->kmsg->complex_items[index].port);
+				
+				ipc_port_unlock(right->port);
 			}
-			args->ret = ipc_process_right(args->space, port_desc->disposition,
-					right,
-					&args->kmsg->complex_items[index].port);
+			else
+			{
+				// NULL port right
+				args->ret = KERN_SUCCESS;
+				args->kmsg->complex_items[index].port = NULL;
+			}
 
-			ipc_port_unlock(right->port);
 			if (args->ret != KERN_SUCCESS)
 				return false;
 
@@ -648,14 +658,22 @@ bool __ipc_msg_copyin_complex_finish(mach_msg_type_descriptor_t* desc,
 			darling_mach_port_t* port;
 			
 			port_desc = (mach_msg_port_descriptor_t*) desc;
+			
+			// Skip NULL port rights
+			if (args->kmsg->complex_items[index].port == NULL)
+				break;
+			
 			port = args->kmsg->complex_items[index].port->port;
 			
-			ipc_process_right_end(args->space,
-					port_desc->disposition,
-					port_desc->name,
-					NULL);
-			
-			ipc_port_unlock(port);
+			if (port != NULL)
+			{
+				ipc_process_right_end(args->space,
+						port_desc->disposition,
+						port_desc->name,
+						NULL);
+
+				ipc_port_unlock(port);
+			}
 			
 			break;
 		}
@@ -735,9 +753,17 @@ bool __ipc_msg_copyout_complex(mach_msg_type_descriptor_t* desc,
 			port_desc->disposition =
 					ipc_right_copyin_type(port_desc->disposition);
 			
-			ret = ipc_space_right_insert(args->space,
-					args->kmsg->complex_items[index].port,
-					&port_desc->name);
+			if (args->kmsg->complex_items[index].port != NULL)
+			{
+				ret = ipc_space_right_insert(args->space,
+						args->kmsg->complex_items[index].port,
+						&port_desc->name);
+			}
+			else
+			{
+				ret = KERN_SUCCESS;
+				port_desc->name = 0;
+			}
 			if (ret != KERN_SUCCESS)
 				args->ret = ret;
 			break;

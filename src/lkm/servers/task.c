@@ -135,6 +135,11 @@ kern_return_t task_get_special_port
 	mach_port_t *special_port
 )
 {
+	if (which_port == TASK_BOOTSTRAP_PORT)
+	{
+		*special_port = 0;
+		return KERN_SUCCESS;
+	}
 	UNIMPL_MIG_CALL();
 	return KERN_NOT_SUPPORTED;
 }
