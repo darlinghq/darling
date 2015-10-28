@@ -40,7 +40,7 @@
 #include <sys/syscall.h>
 #include <sys/event.h>
 #include <System/sys/fileport.h>
-#include <os/assumes.h>
+//#include <os/assumes.h>
 
 #if HAVE_QUARANTINE
 #include <quarantine.h>
@@ -57,6 +57,10 @@
 #include "helperServer.h"
 
 #include "reboot2.h"
+
+#ifndef os_assumes_zero
+#	define os_assumes_zero(x) (x)
+#endif
 
 #define likely(x) __builtin_expect((bool)(x), true)
 #define unlikely(x) __builtin_expect((bool)(x), false)

@@ -24,7 +24,7 @@
 #include "runtime.h"
 #include "bootstrap.h"
 #include "launch.h"
-#include <xpc/private.h>
+// #include <xpc/private.h>
 
 typedef struct job_s *job_t;
 typedef struct jobmgr_s *jobmgr_t;
