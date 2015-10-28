@@ -13,3 +13,9 @@
 [submodule "src/external/libkqueue"]
 	path = src/external/libkqueue
 	url = https://github.com/darlinghq/darling-libkqueue.git
+[submodule "src/external/zlib"]
+	path = src/external/zlib
+	url = https://github.com/darlinghq/darling-zlib.git
+[submodule "src/external/bzip2"]
+	path = src/external/bzip2
+	url = https://github.com/darlinghq/darling-bzip2.git
