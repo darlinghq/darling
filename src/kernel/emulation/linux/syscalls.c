@@ -47,6 +47,8 @@
 #include "stat/stat.h"
 #include "stat/lstat.h"
 #include "stat/statfs.h"
+#include "stat/mkdir.h"
+#include "stat/rmdir.h"
 #include "stat/getfsstat.h"
 #include "time/gettimeofday.h"
 #include "wqueue/bsdthread_register.h"
@@ -84,6 +86,8 @@ void* __bsd_syscall_table[512] = {
 	[121] = sys_writev,
 	[123] = sys_fchown,
 	[124] = sys_fchmod,
+	[136] = sys_mkdir,
+	[137] = sys_rmdir,
 	[147] = sys_setsid,
 	[153] = sys_pread,
 	[154] = sys_pwrite,
@@ -114,6 +118,7 @@ void* __bsd_syscall_table[512] = {
 	[397] = sys_write_nocancel,
 	[398] = sys_open_nocancel,
 	[399] = sys_close_nocancel,
+	[406] = sys_fcntl_nocancel,
 	[408] = sys_fsync_nocancel,
 	[411] = sys_readv_nocancel,
 	[412] = sys_writev_nocancel,

@@ -698,6 +698,7 @@ long bsd_ioctl_trap(mach_task_t* task, struct bsd_ioctl_args* in_args)
 	struct file* f;
 	char name[60];
 	long retval = 0;
+	int handled;
 	
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return -EFAULT;
@@ -720,13 +721,16 @@ long bsd_ioctl_trap(mach_task_t* task, struct bsd_ioctl_args* in_args)
 	
 	// Perform ioctl translation based on name
 	if (strncmp(name, "socket:", 7) == 0)
-		bsd_ioctl_xlate_socket(&args);
+		handled = bsd_ioctl_xlate_socket(f, &args, &retval);
 	else if (strncmp(name, "/dev/tty", 8) == 0)
-		bsd_ioctl_xlate_tty(&args);
+		handled = bsd_ioctl_xlate_tty(f, &args, &retval);
 	else if (strncmp(name, "/dev/pts", 8) == 0)
-		bsd_ioctl_xlate_pts(&args);
+		handled = bsd_ioctl_xlate_pts(f, &args, &retval);
+	else
+		handled = bsd_ioctl_xlate_generic(f, &args, &retval);
 	
-	retval = f->f_op->unlocked_ioctl(f, args.request, args.arg);
+	if (!handled)
+		retval = f->f_op->unlocked_ioctl(f, args.request, args.arg);
 	
 	fput(f);
 	

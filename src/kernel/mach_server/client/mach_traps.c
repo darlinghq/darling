@@ -1,3 +1,4 @@
+#define ioctl __real_ioctl
 #define PRIVATE
 #include <mach/mach_traps.h>
 #include <mach/kern_return.h>
@@ -5,33 +6,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "../../lkm/api.h"
+#include "lkm.h"
 
 #define UNIMPLEMENTED_TRAP() { char msg[] = "Called unimplemented Mach trap: "; write(2, msg, sizeof(msg)-1); write(2, __FUNCTION__, sizeof(__FUNCTION__)-1); write(2, "\n", 1); }
-
-static int driver_fd = -1;
-
-void mach_driver_init(void)
-{
-	if (driver_fd != -1)
-		close(driver_fd);
-
-	driver_fd = open("/dev/mach", O_RDWR);
-	if (driver_fd == -1)
-	{
-		const char* msg = "Cannot open /dev/mach. Aborting.\nMake sure you have loaded the darling-mach kernel module.\n";
-
-		write(2, msg, strlen(msg));
-		abort();
-	}
-
-	if (ioctl(driver_fd, NR_get_api_version, 0) != DARLING_MACH_API_VERSION)
-	{
-		const char* msg = "Darling Mach kernel module reports different API level. Aborting.\n";
-
-		write(2, msg, strlen(msg));
-		abort();
-	}
-}
 
 mach_port_name_t mach_reply_port(void)
 {

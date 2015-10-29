@@ -26,6 +26,11 @@ long sys_readlink(const char* path, char* buf, unsigned long bsize);
 
 long sys_fcntl(int fd, int cmd, long arg)
 {
+	return sys_fcntl_nocancel(fd, cmd, arg);
+}
+
+long sys_fcntl_nocancel(int fd, int cmd, long arg)
+{
 	int ret, linux_cmd;
 
 	switch (cmd)

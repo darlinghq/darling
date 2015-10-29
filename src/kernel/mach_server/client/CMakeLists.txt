@@ -8,6 +8,7 @@ include_directories("${DARLING_TOP_DIRECTORY}/src/kernel/emulation/linux/ext")
 set(mach_server_client_sources
 	mach_traps.c
 	mach_time.c
+	lkm.c
 )
 
 add_library(mach_server_client OBJECT ${mach_server_client_sources})
