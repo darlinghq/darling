@@ -32,6 +32,7 @@ void Darling::dl_setLastError(const std::string& str)
 	g_lastErrorRead = false;
 }
 
+__asm__(".symver __darwin_dlopen, dlopen@DARWIN");
 void* __darwin_dlopen(const char* filename, int flag)
 {
 	std::string resolved;
@@ -99,6 +100,7 @@ void* __darwin_dlopen(const char* filename, int flag)
 	return obj;
 }
 
+__asm__(".symver __darwin_dlclose, dlclose@DARWIN");
 int __darwin_dlclose(void* handle)
 {
 	if (!handle)
@@ -110,6 +112,7 @@ int __darwin_dlclose(void* handle)
 	return 0;
 }
 
+__asm__(".symver __darwin_dlerror, dlerror@DARWIN");
 const char* __darwin_dlerror(void)
 {
 	if (g_lastErrorRead || !g_lastError[0])
@@ -141,6 +144,7 @@ static void removeSuffix(std::string& str, const char* suf)
 		str.resize(pos);
 }
 
+__asm__(".symver __darwin_dlsym, dlsym@DARWIN");
 void* __darwin_dlsym(void* handle, const char* symbol)
 {
 	std::string name = symbol;
@@ -199,6 +203,7 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 	return addr;
 }
 
+__asm__(".symver __darwin_dladdr, dladdr@DARWIN");
 int __darwin_dladdr(void *addr, Dl_info *info)
 {
 	MachOObject* obj;

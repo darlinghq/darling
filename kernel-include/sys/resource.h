@@ -68,25 +68,25 @@
 #include <sys/cdefs.h>
 #include <sys/_types.h>
 
-#ifndef KERNEL 
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+#include <stdint.h>
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
+
+#ifndef KERNEL
 #include <Availability.h>
 #endif
 
 /* [XSI] The timeval structure shall be defined as described in
  * <sys/time.h>
  */
-#define __need_struct_timeval
+#include <sys/_types/_timeval.h>
 #ifdef KERNEL
-#define __need_struct_user32_timeval
-#define __need_struct_user64_timeval
+#include <sys/_types/_user32_timeval.h>
+#include <sys/_types/_user64_timeval.h>
 #endif
-#include <sys/_structs.h>
 
 /* The id_t type shall be defined as described in <sys/types.h> */
-#ifndef _ID_T
-#define _ID_T
-typedef __darwin_id_t	id_t;		/* can hold pid_t, gid_t, or uid_t */
-#endif
+#include <sys/_types/_id_t.h>
 
 
 /*
@@ -107,9 +107,25 @@ typedef __uint64_t	rlim_t;
 #define	PRIO_PGRP	1		/* Second argument is a GID */
 #define	PRIO_USER	2		/* Second argument is a UID */
 
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
 #define	PRIO_DARWIN_THREAD	3		/* Second argument is always 0 (current thread) */
 #define	PRIO_DARWIN_PROCESS	4		/* Second argument is a PID */
+
+#ifdef PRIVATE
+
+#define PRIO_DARWIN_GPU		5		/* Second argument is a PID */
+
+#define PRIO_DARWIN_GPU_ALLOW   0x1
+#define PRIO_DARWIN_GPU_DENY    0x2
+
+#define PRIO_DARWIN_ROLE        6               /* Second argument is a PID */
+
+#define PRIO_DARWIN_ROLE_DEFAULT        0x0     /* Default state */
+#define PRIO_DARWIN_ROLE_UI_FOCAL       0x1     /* On  screen,     focal UI */
+#define PRIO_DARWIN_ROLE_UI             0x2     /* On  screen, non-focal UI */
+#define PRIO_DARWIN_ROLE_NON_UI         0x3     /* Off screen, non-focal UI */
+
+#endif /* PRIVATE */
 
 /*
  * Range limitations for the value of the third parameter to setpriority().
@@ -126,11 +142,11 @@ typedef __uint64_t	rlim_t;
 
 /*
  * use PRIO_DARWIN_NONUI to restrict a process's ability to make calls to
- * the GPU.
+ * the GPU. (deprecated)
  */
 #define PRIO_DARWIN_NONUI 0x1001
 
-#endif	/* (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
+#endif	/* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
 
 
@@ -157,9 +173,9 @@ typedef __uint64_t	rlim_t;
 struct	rusage {
 	struct timeval ru_utime;	/* user time used (PL) */
 	struct timeval ru_stime;	/* system time used (PL) */
-#if defined(_POSIX_C_SOURCE) && !defined(_DARWIN_C_SOURCE)
+#if __DARWIN_C_LEVEL < __DARWIN_C_FULL
 	long	ru_opaque[14];		/* implementation defined */
-#else	/* (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
+#else
 	/*
 	 * Informational aliases for source compatibility with programs
 	 * that need more information than that provided by standards,
@@ -181,11 +197,127 @@ struct	rusage {
 	long	ru_nvcsw;		/* voluntary context switches (atomic) */
 	long	ru_nivcsw;		/* involuntary " */
 #define	ru_last		ru_nivcsw	/* internal: ruadd() range end */
-#endif	/* (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
+#endif	/* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 };
 
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+/*
+ * Flavors for proc_pid_rusage().
+ */
+#define RUSAGE_INFO_V0	0
+#define RUSAGE_INFO_V1	1
+#define RUSAGE_INFO_V2	2
+#define RUSAGE_INFO_V3	3
+#define	RUSAGE_INFO_CURRENT RUSAGE_INFO_V3
+
+typedef void *rusage_info_t;
+
+struct rusage_info_v0 {
+	uint8_t  ri_uuid[16];
+	uint64_t ri_user_time;
+	uint64_t ri_system_time;
+	uint64_t ri_pkg_idle_wkups;
+	uint64_t ri_interrupt_wkups;
+	uint64_t ri_pageins;
+	uint64_t ri_wired_size;
+	uint64_t ri_resident_size;	
+	uint64_t ri_phys_footprint;
+	uint64_t ri_proc_start_abstime;
+	uint64_t ri_proc_exit_abstime;
+};
+
+struct rusage_info_v1 {
+	uint8_t  ri_uuid[16];
+	uint64_t ri_user_time;
+	uint64_t ri_system_time;
+	uint64_t ri_pkg_idle_wkups;
+	uint64_t ri_interrupt_wkups;
+	uint64_t ri_pageins;
+	uint64_t ri_wired_size;
+	uint64_t ri_resident_size;	
+	uint64_t ri_phys_footprint;
+	uint64_t ri_proc_start_abstime;
+	uint64_t ri_proc_exit_abstime;
+	uint64_t ri_child_user_time;
+	uint64_t ri_child_system_time;
+	uint64_t ri_child_pkg_idle_wkups;
+	uint64_t ri_child_interrupt_wkups;
+	uint64_t ri_child_pageins;
+	uint64_t ri_child_elapsed_abstime;
+};
+
+struct rusage_info_v2 {
+	uint8_t  ri_uuid[16];
+	uint64_t ri_user_time;
+	uint64_t ri_system_time;
+	uint64_t ri_pkg_idle_wkups;
+	uint64_t ri_interrupt_wkups;
+	uint64_t ri_pageins;
+	uint64_t ri_wired_size;
+	uint64_t ri_resident_size;	
+	uint64_t ri_phys_footprint;
+	uint64_t ri_proc_start_abstime;
+	uint64_t ri_proc_exit_abstime;
+	uint64_t ri_child_user_time;
+	uint64_t ri_child_system_time;
+	uint64_t ri_child_pkg_idle_wkups;
+	uint64_t ri_child_interrupt_wkups;
+	uint64_t ri_child_pageins;
+	uint64_t ri_child_elapsed_abstime;
+	uint64_t ri_diskio_bytesread;
+	uint64_t ri_diskio_byteswritten;
+};
+
+struct rusage_info_v3 {
+	uint8_t  ri_uuid[16];
+	uint64_t ri_user_time;
+	uint64_t ri_system_time;
+	uint64_t ri_pkg_idle_wkups;
+	uint64_t ri_interrupt_wkups;
+	uint64_t ri_pageins;
+	uint64_t ri_wired_size;
+	uint64_t ri_resident_size;	
+	uint64_t ri_phys_footprint;
+	uint64_t ri_proc_start_abstime;
+	uint64_t ri_proc_exit_abstime;
+	uint64_t ri_child_user_time;
+	uint64_t ri_child_system_time;
+	uint64_t ri_child_pkg_idle_wkups;
+	uint64_t ri_child_interrupt_wkups;
+	uint64_t ri_child_pageins;
+	uint64_t ri_child_elapsed_abstime;
+	uint64_t ri_diskio_bytesread;
+	uint64_t ri_diskio_byteswritten;
+	uint64_t ri_cpu_time_qos_default;
+	uint64_t ri_cpu_time_qos_maintenance;
+	uint64_t ri_cpu_time_qos_background;
+	uint64_t ri_cpu_time_qos_utility;
+	uint64_t ri_cpu_time_qos_legacy;
+	uint64_t ri_cpu_time_qos_user_initiated;
+	uint64_t ri_cpu_time_qos_user_interactive;
+	uint64_t ri_billed_system_time;
+	uint64_t ri_serviced_system_time;
+};
+
+typedef struct rusage_info_v3 rusage_info_current;
+
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
 #ifdef KERNEL
+
+struct rusage_superset {
+	struct rusage 			ru;
+	rusage_info_current 	ri;
+};
+
+struct rusage_info_child {
+	uint64_t ri_child_user_time;
+	uint64_t ri_child_system_time;
+	uint64_t ri_child_pkg_idle_wkups;
+	uint64_t ri_child_interrupt_wkups;
+	uint64_t ri_child_pageins;
+	uint64_t ri_child_elapsed_abstime;
+};
 
 struct	user64_rusage {
 	struct user64_timeval ru_utime;	/* user time used */
@@ -251,15 +383,15 @@ struct	user32_rusage {
 #define	RLIMIT_STACK	3		/* stack size */
 #define	RLIMIT_CORE	4		/* core file size */
 #define	RLIMIT_AS	5		/* address space (resident set size) */
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
 #define	RLIMIT_RSS	RLIMIT_AS	/* source compatibility alias */
 #define	RLIMIT_MEMLOCK	6		/* locked-in-memory address space */
 #define	RLIMIT_NPROC	7		/* number of processes */
-#endif	/* (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
+#endif	/* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 #define	RLIMIT_NOFILE	8		/* number of open files */
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
 #define	RLIM_NLIMITS	9		/* total number of resource limits */
-#endif	/* (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
+#endif	/* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 #define _RLIMIT_POSIX_FLAG	0x1000	/* Set bit for strict POSIX */
 
 /*
@@ -271,25 +403,66 @@ struct rlimit {
 	rlim_t	rlim_max;		/* maximum value for rlim_cur */
 };
 
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+/*
+ * proc_rlimit_control()
+ *
+ * Resource limit flavors
+ */
+#define RLIMIT_WAKEUPS_MONITOR		0x1 /* Configure the wakeups monitor. */
+#define	RLIMIT_CPU_USAGE_MONITOR	0x2 /* Configure the CPU usage monitor. */
+#define	RLIMIT_THREAD_CPULIMITS		0x3 /* Configure a blocking, per-thread, CPU limits. */
+
+/*
+ * Flags for wakeups monitor control.
+ */
+#define WAKEMON_ENABLE			0x01
+#define WAKEMON_DISABLE			0x02
+#define WAKEMON_GET_PARAMS		0x04
+#define WAKEMON_SET_DEFAULTS		0x08
+#define	WAKEMON_MAKE_FATAL		0x10 /* Configure the task so that violations are fatal. */
+/*
+ * Flags for CPU usage monitor control.
+ */
+#define	CPUMON_MAKE_FATAL		0x1000
+
+struct proc_rlimit_control_wakeupmon {
+	uint32_t wm_flags;
+	int32_t wm_rate;
+};
+
 /* I/O type */
 #define IOPOL_TYPE_DISK	0
+#if PRIVATE
+#define IOPOL_TYPE_VFS_HFS_CASE_SENSITIVITY 1
+#endif
 
 /* scope */
 #define IOPOL_SCOPE_PROCESS   0
 #define IOPOL_SCOPE_THREAD    1
+#define IOPOL_SCOPE_DARWIN_BG 2
 
 /* I/O Priority */
-#define IOPOL_DEFAULT	0
-#define IOPOL_NORMAL	1
-#define IOPOL_PASSIVE	2
-#define IOPOL_THROTTLE	3
-#define IOPOL_UTILITY	4
+#define IOPOL_DEFAULT		0
+#define IOPOL_IMPORTANT		1
+#define IOPOL_PASSIVE		2
+#define IOPOL_THROTTLE		3
+#define IOPOL_UTILITY		4
+#define IOPOL_STANDARD		5
+
+/* compatibility with older names */
+#define IOPOL_APPLICATION       IOPOL_STANDARD
+#define IOPOL_NORMAL            IOPOL_IMPORTANT
+
+#if PRIVATE
+#define IOPOL_VFS_HFS_CASE_SENSITIVITY_DEFAULT	0
+#define IOPOL_VFS_HFS_CASE_SENSITIVITY_FORCE_CASE_SENSITIVE	1
+#endif
 
 #ifdef PRIVATE
 /*
- * Structures for use in communicating via iopolicysys() between Lic and the
- * kernel.  Not to be used by uesr programs directly.
+ * Structures for use in communicating via iopolicysys() between Libc and the
+ * kernel.  Not to be used by user programs directly.
  */
 
 /*
@@ -308,21 +481,21 @@ struct _iopol_param_t {
 };
 
 #endif	/* PRIVATE */
-#endif /* !_POSIX_C_SOURCE || _DARWIN_C_SOURCE */
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
 #ifndef KERNEL
 
 __BEGIN_DECLS
 int	getpriority(int, id_t);
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
 int	getiopolicy_np(int, int) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
-#endif /* !_POSIX_C_SOURCE || _DARWIN_C_SOURCE */
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 int	getrlimit(int, struct rlimit *) __DARWIN_ALIAS(getrlimit);
 int	getrusage(int, struct rusage *);
 int	setpriority(int, id_t, int);
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
 int	setiopolicy_np(int, int, int) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
-#endif /* !_POSIX_C_SOURCE || _DARWIN_C_SOURCE */
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 int	setrlimit(int, const struct rlimit *) __DARWIN_ALIAS(setrlimit);
 __END_DECLS
 

@@ -38,6 +38,7 @@
 #include <crt_externs.h>
 
 extern size_t malloc_good_size(size_t size);
+__asm__(".symver errno, errno@DARWIN");
 extern int errno;
 
 pthread_once_t re_init_c = PTHREAD_ONCE_INIT;

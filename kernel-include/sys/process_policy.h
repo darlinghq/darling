@@ -34,6 +34,10 @@
 #include <sys/types.h>
 #include <stdint.h>
 
+#ifndef XNU_KERNEL_PRIVATE
+#include <TargetConditionals.h>
+#endif
+
 __BEGIN_DECLS
 
 /* defns of scope */
@@ -52,6 +56,8 @@ __BEGIN_DECLS
 #define PROC_POLICY_ACTION_GET		11	/* get the policy attributes */
 #define PROC_POLICY_ACTION_ADD		12	/* add a policy attribute */
 #define PROC_POLICY_ACTION_REMOVE	13	/* remove a policy attribute */
+#define PROC_POLICY_ACTION_HOLD         14      /* hold an importance boost assertion */
+#define PROC_POLICY_ACTION_DROP         15      /* drop an importance boost assertion */
 
 /* policies */
 #define PROC_POLICY NONE		0
@@ -59,12 +65,9 @@ __BEGIN_DECLS
 #define PROC_POLICY_HARDWARE_ACCESS	2	/* access to various hardware */
 #define PROC_POLICY_RESOURCE_STARVATION	3	/* behavior on resource starvation */
 #define PROC_POLICY_RESOURCE_USAGE	4	/* behavior on resource consumption */
-#if CONFIG_EMBEDDED
-#define PROC_POLICY_APP_LIFECYCLE	5	/* app life cycle management */
-#else /* CONFIG_EMBEDDED */
 #define PROC_POLICY_RESERVED		5	/* behavior on resource consumption */
-#endif /* CONFIG_EMBEDDED */
 #define PROC_POLICY_APPTYPE		6	/* behavior on resource consumption */
+#define PROC_POLICY_BOOST               7       /* importance boost/drop */
 
 /* sub policies for background policy */
 #define PROC_POLICY_BG_NONE		0	/* none */
@@ -72,11 +75,7 @@ __BEGIN_DECLS
 #define PROC_POLICY_BG_DISKTHROTTLE 	2	/* disk accesses throttled */
 #define PROC_POLICY_BG_NETTHROTTLE 	4	/* network accesses throttled */
 #define PROC_POLICY_BG_GPUDENY	 	8	/* no access to GPU */
-#if CONFIG_EMBEDDED
-#define PROC_POLICY_BG_ALL            0x0F
-#else /* CONFIG_EMBEDDED */
 #define PROC_POLICY_BG_ALL            0x07
-#endif /* CONFIG_EMBEDDED */
 #define PROC_POLICY_BG_DEFAULT	 	PROC_POLICY_BG_ALL
 
 /* sub policies for hardware */
@@ -137,15 +136,13 @@ __BEGIN_DECLS
 #define PROC_POLICY_RSRCACT_NOTIFY_KQ	4	/* send kqueue notification */
 #define PROC_POLICY_RSRCACT_NOTIFY_EXC	5	/* send exception */
 
+#define	PROC_POLICY_CPUMON_DISABLE	0xFF	/* Disable CPU usage monitor */
+#define	PROC_POLICY_CPUMON_DEFAULTS	0xFE	/* Set default CPU usage monitor params */
 
-/* type of resource for kqueue notifiction */
-#define PROC_POLICY_RSRTYPE_CPU		1
-#define PROC_POLICY_RSRTYPE_WIREDMEM	2
-#define PROC_POLICY_RSRTYPE_VIRTUALMEM	4
-#define PROC_POLICY_RSRTYPE_DISK	8
-#define PROC_POLICY_RSRTYPE_NETWORK	0x010
-#define PROC_POLICY_RSRTYPE_POWER	0x20
-
+/* sub policies for importance boost/drop */
+#define PROC_POLICY_IMP_IMPORTANT       1       /* Important-level boost */
+#define PROC_POLICY_IMP_STANDARD        2       /* Standard-level boost */
+#define PROC_POLICY_IMP_DONATION        3       /* Mark a task as an importance source */
 
 typedef struct proc_policy_attribute {
 	uint32_t	ppattr_attribute;  /* the policy attribute to be modified or returned */
@@ -164,33 +161,18 @@ typedef struct proc_policy_cpuusage_attr {
 	uint64_t	ppattr_cpu_attr_deadline;     /* 64bit deadline in nsecs */
 } proc_policy_cpuusage_attr_t;
 
-#if CONFIG_EMBEDDED
-/* sub policies for app lifecycle management */
-#define	PROC_POLICY_APPLIFE_NONE	0	/* does nothing.. */
-#define	PROC_POLICY_APPLIFE_STATE	1	/* sets the app to various lifecycle states */
-#define	PROC_POLICY_APPLIFE_DEVSTATUS	2	/* notes the device in inactive or short/long term */
-#define	PROC_POLICY_APPLIFE_PIDBIND	3	/* a thread is to be bound to another processes app state */
-#endif /* CONFIG_EMBEDDED */
 
 /* sub policies for PROC_POLICY_APPTYPE */
 #define	PROC_POLICY_APPTYPE_NONE	0	/* does nothing.. */
 #define	PROC_POLICY_APPTYPE_MODIFY	1	/* sets the app to various lifecycle states */
-#if CONFIG_EMBEDDED
-#define	PROC_POLICY_APPTYPE_THREADTHR	2	/* notes the device in inactive or short/long term */
-#endif /* CONFIG_EMBEDDED */
 
+/* exported apptypes for PROC_POLICY_APPTYPE */
+#define PROC_POLICY_OSX_APPTYPE_TAL             1       /* TAL-launched app */
 
-#define PROC_POLICY_OSX_APPTYPE_NONE            0
-#if CONFIG_EMBEDDED
-#define PROC_POLICY_IOS_RESV1_APPTYPE           1	/* TAL based launched */
-#define PROC_POLICY_IOS_APPLE_DAEMON	        2	/* for user of IOS apple daemons  */
-#define PROC_POLICY_IOS_APPTYPE                 3	/* ios specific handling */
-#define PROC_POLICY_IOS_NONUITYPE               4	/* ios non graphics type */
-#else
-#define PROC_POLICY_OSX_APPTYPE_TAL             1	/* TAL based launched */
-#define PROC_POLICY_OSX_APPTYPE_WIDGET          2	/* for dashboard client */
-#define PROC_POLICY_OSX_APPTYPE_DASHCLIENT      2	/* rename to move away from widget */
-#endif
+#define PROC_POLICY_OSX_APPTYPE_DASHCLIENT      2       /* Dashboard client (deprecated) */
+#define PROC_POLICY_IOS_DONATEIMP               6       /* donates priority imp (deprecated) */
+#define PROC_POLICY_IOS_HOLDIMP                 7       /* hold importance assertion (deprecated) */
+#define PROC_POLICY_IOS_DROPIMP                 8       /* drop importance assertion (deprecated) */
 
 #ifndef KERNEL
 int process_policy(int scope, int action, int policy, int policy_subtype, proc_policy_attribute_t * attrp, pid_t target_pid, uint64_t target_threadid);

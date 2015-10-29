@@ -26,6 +26,7 @@
 #include <TargetConditionals.h>
 
 #include <sys/cdefs.h>
+#include <sys/resource.h>
 #include <libproc.h>
 
 __BEGIN_DECLS

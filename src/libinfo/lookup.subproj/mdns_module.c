@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling build
 /*
  * Copyright (c) 2008-2011 Apple Inc. All rights reserved.
  *
@@ -217,7 +218,9 @@ _mdns_debug_message(const char *str, ...)
 
 	if (_mdns_debug & MDNS_DEBUG_STDOUT) fprintf(stdout, "%s", out);
 	if (_mdns_debug & MDNS_DEBUG_STDERR) fprintf(stderr, "%s", out);
+#ifndef DARLING // No ASL in Darling yet
 	if (_mdns_debug & MDNS_DEBUG_ASL) asl_log_message(ASL_LEVEL_NOTICE, "%s", out);
+#endif
 	free(out);
 
 	va_end(v);

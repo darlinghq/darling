@@ -29,6 +29,8 @@
 #include <pthread_internals.h>
 
 #undef errno
+
+__asm__(".symver errno, errno@DARWIN");
 extern int errno;
 int *__error(void) {
     pthread_t self = pthread_self();

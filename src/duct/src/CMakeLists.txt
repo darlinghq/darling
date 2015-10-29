@@ -22,6 +22,8 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_library(system_duct SHARED commpage.c libnotify.c numcpus.c CRGetCrashLogMessage.c acl.c bootstrap.c dyld.c dirhelper.c)
+add_library(system_duct SHARED commpage.c libnotify.c numcpus.c
+	CRGetCrashLogMessage.c acl.c bootstrap.c dyld.c dirhelper.c dns_sd.c
+	sa_dst_compare.c)
 
 install(TARGETS system_duct DESTINATION lib${SUFFIX}/darling)

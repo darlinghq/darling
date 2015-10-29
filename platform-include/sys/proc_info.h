@@ -96,6 +96,35 @@ struct proc_bsdshortinfo {
 };
 
 
+#ifdef  PRIVATE
+struct proc_uniqidentifierinfo {
+	uint8_t                 p_uuid[16];		/* UUID of the main executable */
+	uint64_t                p_uniqueid;		/* 64 bit unique identifier for process */
+	uint64_t                p_puniqueid;		/* unique identifier for process's parent */
+	uint64_t                p_reserve2;		/* reserved for future use */
+	uint64_t                p_reserve3;		/* reserved for future use */
+	uint64_t                p_reserve4;		/* reserved for future use */
+};
+
+
+struct proc_bsdinfowithuniqid {
+	struct proc_bsdinfo             pbsd;
+	struct proc_uniqidentifierinfo  p_uniqidentifier;
+};
+
+struct proc_archinfo {
+	cpu_type_t		p_cputype;	
+	cpu_subtype_t		p_cpusubtype;
+};
+
+struct proc_pidcoalitioninfo {
+	uint64_t coalition_id;
+	uint64_t reserved1;
+	uint64_t reserved2;
+	uint64_t reserved3;
+};
+
+#endif
 
 
 /* pbi_flags values */
@@ -118,6 +147,19 @@ struct proc_bsdshortinfo {
 #define PROC_FLAG_PA_SUSP	0x1000	/* The process is currently suspended due to resource starvation */
 #define PROC_FLAG_PSUGID        0x2000	 /* process has set privileges since last exec */
 #define PROC_FLAG_EXEC		0x4000	 /* process has called exec  */
+#ifdef  PRIVATE
+#define PROC_FLAG_DARWINBG	0x8000	/* process in darwin background */
+#define PROC_FLAG_EXT_DARWINBG	0x10000	/* process in darwin background - external enforcement */
+#define PROC_FLAG_IOS_APPLEDAEMON 0x20000	/* Process is apple daemon  */
+#define PROC_FLAG_DELAYIDLESLEEP 0x40000	/* Process is marked to delay idle sleep on disk IO */
+#define PROC_FLAG_IOS_IMPPROMOTION 0x80000	/* Process is daemon which receives importane donation  */
+#define PROC_FLAG_ADAPTIVE              0x100000         /* Process is adaptive */
+#define PROC_FLAG_ADAPTIVE_IMPORTANT    0x200000         /* Process is adaptive, and is currently important */
+#define PROC_FLAG_IMPORTANCE_DONOR   0x400000 /* Process is marked as an importance donor */
+#define PROC_FLAG_SUPPRESSED         0x800000 /* Process is suppressed */
+#define PROC_FLAG_APPLICATION 0x1000000	/* Process is an application */
+#define PROC_FLAG_IOS_APPLICATION PROC_FLAG_APPLICATION	/* Process is an application */
+#endif
 
 
 struct proc_taskinfo {
@@ -653,6 +695,32 @@ struct proc_fileportinfo {
 #define PROC_PID_RUSAGE			16
 #define PROC_PID_RUSAGE_SIZE		0
 
+#ifdef  PRIVATE
+#define PROC_PIDUNIQIDENTIFIERINFO	17
+#define PROC_PIDUNIQIDENTIFIERINFO_SIZE \
+                                  	(sizeof(struct proc_uniqidentifierinfo))
+
+#define PROC_PIDT_BSDINFOWITHUNIQID	18
+#define PROC_PIDT_BSDINFOWITHUNIQID_SIZE \
+                                 	(sizeof(struct proc_bsdinfowithuniqid))
+
+#define PROC_PIDARCHINFO		19
+#define PROC_PIDARCHINFO_SIZE		\
+					(sizeof(struct proc_archinfo))
+
+#define PROC_PIDCOALITIONINFO		20
+#define PROC_PIDCOALITIONINFO_SIZE	(sizeof(struct proc_pidcoalitioninfo))
+
+#define PROC_PIDNOTEEXIT		21
+#define PROC_PIDNOTEEXIT_SIZE		(sizeof(uint32_t))
+
+#define PROC_PIDREGIONPATHINFO2		22
+#define PROC_PIDREGIONPATHINFO2_SIZE	(sizeof(struct proc_regionwithpathinfo))
+
+#define PROC_PIDREGIONPATHINFO3		23
+#define PROC_PIDREGIONPATHINFO3_SIZE	(sizeof(struct proc_regionwithpathinfo))
+
+#endif
 
 /* Flavors for proc_pidfdinfo */
 
@@ -723,7 +791,49 @@ struct proc_fileportinfo {
 #define PROC_DIRTY_IS_DIRTY             0x4
 #define PROC_DIRTY_LAUNCH_IS_IN_PROGRESS   0x8
 
+#ifdef PRIVATE
 
+/* Flavors for proc_pidoriginatorinfo */
+#define PROC_PIDORIGINATOR_UUID		0x1
+#define PROC_PIDORIGINATOR_UUID_SIZE	(sizeof(uuid_t))
+
+#define PROC_PIDORIGINATOR_BGSTATE	0x2
+#define PROC_PIDORIGINATOR_BGSTATE_SIZE (sizeof(uint32_t))
+
+/* __proc_info() call numbers */
+#define PROC_INFO_CALL_LISTPIDS         0x1
+#define PROC_INFO_CALL_PIDINFO          0x2
+#define PROC_INFO_CALL_PIDFDINFO        0x3
+#define PROC_INFO_CALL_KERNMSGBUF       0x4
+#define PROC_INFO_CALL_SETCONTROL       0x5
+#define PROC_INFO_CALL_PIDFILEPORTINFO  0x6
+#define PROC_INFO_CALL_TERMINATE        0x7
+#define PROC_INFO_CALL_DIRTYCONTROL     0x8
+#define PROC_INFO_CALL_PIDRUSAGE        0x9
+#define PROC_INFO_CALL_PIDORIGINATORINFO 0xa
+
+#endif /* PRIVATE */
+
+#ifdef XNU_KERNEL_PRIVATE
+#ifndef pshmnode
+struct pshmnode;
+#endif
+
+#ifndef psemnode
+struct psemnode ;
+#endif
+
+#ifndef pipe
+struct pipe;
+#endif
+
+extern int fill_socketinfo(socket_t so, struct socket_info *si);
+extern int fill_pshminfo(struct pshmnode * pshm, struct pshm_info * pinfo);
+extern int fill_pseminfo(struct psemnode * psem, struct psem_info * pinfo);
+extern int fill_pipeinfo(struct pipe * cpipe, struct pipe_info * pinfo);
+extern int fill_kqueueinfo(struct kqueue * kq, struct kqueue_info * kinfo);
+extern int fill_procworkqueue(proc_t, struct proc_workqueueinfo *);
+#endif /* XNU_KERNEL_PRIVATE */
 
 __END_DECLS
 

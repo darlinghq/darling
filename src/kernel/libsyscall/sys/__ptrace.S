@@ -32,7 +32,7 @@
 
 #ifdef DARLING
 #	define ___ptrace __ptrace
-#	define _errno errno
+#	define _errno darwin_errno
 #endif
 
 #if defined(__i386__)

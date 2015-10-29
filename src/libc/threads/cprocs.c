@@ -135,6 +135,7 @@ _cproc_fork_child()
  */
 
 #undef errno
+__asm__(".symver errno, errno@DARWIN");
 extern int errno;
 extern int *__error(void);
 extern int __pthread_canceled(int);

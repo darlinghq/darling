@@ -46,7 +46,13 @@ typedef uint64_t cerror_return_t;
 extern void _pthread_exit_if_canceled(int error);
 
 #undef errno
-int errno;
+
+
+//  __attribute__((visibility("hidden")))
+int darwin_errno;
+__asm__(".symver darwin_errno, errno@DARWIN");
+
+#define errno darwin_errno
 
 int *
 __error(void)

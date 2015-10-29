@@ -732,6 +732,7 @@ disable_stack_logging(void)
  */
 static ssize_t
 robust_write(int fd, const void *buf, size_t nbyte) {
+	__asm__(".symver errno, errno@DARWIN");
 	extern int errno;
 	ssize_t written = write(fd, buf, nbyte);
 	if (written == -1 && errno == EBADF) {

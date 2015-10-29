@@ -12,6 +12,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/os")
 include_directories("${DARLING_TOP_DIRECTORY}/platform-include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/wrappers/libproc")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DPRIVATE -D__DARWIN_C_LEVEL=20150101)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
@@ -37,6 +38,9 @@ mig(mach/thread_act.defs)
 mig(mach/vm_map.defs)
 
 set(syscall_sources
+	wrappers/libproc/libproc.c
+	wrappers/libproc/proc_listpidspath.c
+
 	#wrappers/coalition.c
 	# wrappers/__commpage_gettimeofday.c
 	#wrappers/csr.c
@@ -555,5 +559,7 @@ mig(mach/processor.defs)
 mig(mach/task.defs)
 mig(mach/thread_act.defs)
 mig(mach/vm_map.defs)
+
+set_source_files_properties(custom/errno.c PROPERTIES COMPILE_FLAGS "-no-integrated-as")
 
 add_library(libsyscall OBJECT ${syscall_sources})

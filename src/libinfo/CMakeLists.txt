@@ -23,7 +23,9 @@ add_subdirectory(gen.subproj)
 add_subdirectory(util.subproj)
 add_subdirectory(dns.subproj)
 add_subdirectory(nis.subproj)
+add_subdirectory(rpc.subproj)
 add_subdirectory(lookup.subproj)
+add_subdirectory(membership.subproj)
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
@@ -33,7 +35,9 @@ add_library(system_info SHARED $<TARGET_OBJECTS:info-util>
 	$<TARGET_OBJECTS:info-dns>
 	$<TARGET_OBJECTS:info-gen>
 	$<TARGET_OBJECTS:info-nis>
+	$<TARGET_OBJECTS:info-rpc>
 	$<TARGET_OBJECTS:info-lookup>
+	$<TARGET_OBJECTS:info-membership>
 )
 target_link_libraries(system_info system_c resolv)
 
