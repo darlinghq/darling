@@ -31,6 +31,7 @@ set(emulation_sources
 	unistd/fchdir.c
 	unistd/fchown.c
 	unistd/fchmod.c
+	unistd/getegid.c
 	unistd/setgid.c
 	unistd/setuid.c
 	unistd/setegid.c

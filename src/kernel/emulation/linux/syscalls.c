@@ -30,6 +30,7 @@
 #include "unistd/readlink.h"
 #include "unistd/readv.h"
 #include "unistd/writev.h"
+#include "unistd/getegid.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -71,6 +72,7 @@ void* __bsd_syscall_table[512] = {
 	[36] = sys_sync,
 	[37] = sys_kill,
 	[41] = sys_dup,
+	[43] = sys_getegid,
 	[46] = sys_sigaction,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,
