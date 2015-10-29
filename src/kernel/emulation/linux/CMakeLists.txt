@@ -18,6 +18,8 @@ set(emulation_sources
 	unistd/read.c
 	unistd/pread.c
 	unistd/pwrite.c
+	unistd/readv.c
+	unistd/writev.c
 	mman.c
 	unistd/fsync.c
 	unistd/sync.c

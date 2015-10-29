@@ -28,6 +28,8 @@
 #include "unistd/lseek.h"
 #include "unistd/ftruncate.h"
 #include "unistd/readlink.h"
+#include "unistd/readv.h"
+#include "unistd/writev.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -74,6 +76,8 @@ void* __bsd_syscall_table[512] = {
 	[97] = sys_socket,
 	[98] = sys_connect,
 	[116] = sys_gettimeofday,
+	[120] = sys_readv,
+	[121] = sys_writev,
 	[123] = sys_fchown,
 	[124] = sys_fchmod,
 	[147] = sys_setsid,
@@ -102,6 +106,8 @@ void* __bsd_syscall_table[512] = {
 	[398] = sys_open_nocancel,
 	[399] = sys_close_nocancel,
 	[408] = sys_fsync_nocancel,
+	[411] = sys_readv_nocancel,
+	[412] = sys_writev_nocancel,
 	[414] = sys_pread_nocancel,
 	[415] = sys_pwrite_nocancel,
 };
