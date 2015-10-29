@@ -131,6 +131,8 @@ int signum_bsd_to_linux(int signum)
 			return LINUX_SIGUSR1;
 		case SIGUSR2:
 			return LINUX_SIGUSR2;
+		case SIGINFO:
+			return LINUX_SIGPWR;
 		default:
 			return 0;
 	}
