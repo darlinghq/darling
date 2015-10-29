@@ -51,6 +51,8 @@
 #include "stat/rmdir.h"
 #include "stat/getfsstat.h"
 #include "time/gettimeofday.h"
+#include "time/utimes.h"
+#include "time/futimes.h"
 #include "wqueue/bsdthread_register.h"
 
 void* __bsd_syscall_table[512] = {
@@ -88,6 +90,8 @@ void* __bsd_syscall_table[512] = {
 	[124] = sys_fchmod,
 	[136] = sys_mkdir,
 	[137] = sys_rmdir,
+	[138] = sys_utimes,
+	[139] = sys_futimes,
 	[147] = sys_setsid,
 	[153] = sys_pread,
 	[154] = sys_pwrite,
