@@ -60,6 +60,7 @@ set(emulation_sources
 	stat/lstat.c
 	stat/stat.c
 	stat/getfsstat.c
+	stat/statfs.c
 	stat/common.c
 	dirent/getdirentries.c
 	time/gettimeofday.c

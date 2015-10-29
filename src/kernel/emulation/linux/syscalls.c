@@ -46,6 +46,7 @@
 #include "stat/fstat.h"
 #include "stat/stat.h"
 #include "stat/lstat.h"
+#include "stat/statfs.h"
 #include "stat/getfsstat.h"
 #include "time/gettimeofday.h"
 #include "wqueue/bsdthread_register.h"
@@ -86,6 +87,7 @@ void* __bsd_syscall_table[512] = {
 	[147] = sys_setsid,
 	[153] = sys_pread,
 	[154] = sys_pwrite,
+	[157] = sys_statfs,
 	[181] = sys_setgid,
 	[182] = sys_setegid,
 	[183] = sys_seteuid,
@@ -104,6 +106,7 @@ void* __bsd_syscall_table[512] = {
 	[339] = sys_fstat64,
 	[340] = sys_lstat64,
 	[344] = sys_getdirentries64,
+	[345] = sys_statfs64,
 	[347] = sys_getfsstat64,
 	[366] = sys_bsdthread_register,
 	[372] = sys_thread_selfid,

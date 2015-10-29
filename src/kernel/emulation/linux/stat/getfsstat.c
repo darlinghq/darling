@@ -31,7 +31,7 @@ long sys_getfsstat64(struct bsd_statfs64* buf, int bufsize, int flags)
 
 	fd = sys_open("/proc/self/mounts", O_RDONLY, 0);
 	if (fd < 0)
-		return fd;
+		return error_linux_to_bsd(fd);
 	
 	__simple_readline_init(&rbuf);
 
