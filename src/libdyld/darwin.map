@@ -1,5 +1,7 @@
 DARWIN {
 	global:
+		NXArgc;
+		NXArgv;
 		NSLookupAndBindSymbol;
 		NSLookupSymbolInModule;
 		NSNameOfSymbol;

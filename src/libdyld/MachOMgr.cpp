@@ -11,12 +11,15 @@ namespace Darling {
 
 bool MachOMgr::m_bTerminated = false;
 
+extern "C" char** __darwin_environ;
+
 MachOMgr::MachOMgr()
 : m_mainModule(nullptr), m_bindAtLaunch(false), m_printInitializers(false),
   m_printLibraries(false), m_printSegments(false), m_printBindings(false),
   m_printRpathExpansion(false), m_loadAny(false),
   m_addedDefaultLoader(false), m_destroying(false)
 {
+	__darwin_environ = environ;
 }
 
 MachOMgr::~MachOMgr()

@@ -18,7 +18,6 @@
 #include "arch.h"
 #include "TLS.h"
 
-// FIXME: this needs to go away
 extern "C" int g_argc asm("NXArgc") = 0;
 extern "C" char** g_argv asm("NXArgv") = nullptr;
 

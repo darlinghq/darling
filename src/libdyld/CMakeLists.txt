@@ -35,6 +35,7 @@ set(dyld_SRCS
 	NativeObject.cpp
 	MachOMgr.cpp
 	DylibSearch.cpp
+	environ.c
 )
 
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
@@ -56,6 +57,8 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 #SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+set_source_files_properties(environ.c COMPILE_FLAGS "-no-integrated-as")
 
 add_library(dyld SHARED ${dyld_SRCS})
 target_link_libraries(dyld -ldl -lpthread mach-o darling-util)
