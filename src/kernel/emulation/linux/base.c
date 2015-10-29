@@ -1,7 +1,7 @@
 #define BUILDING_BASE_C
 #include "base.h"
 #include <asm/unistd.h>
-#include "debug.h"
+#include "simple.h"
 #include "duct_errno.h"
 #include "syscalls.h"
 

@@ -10,7 +10,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 set(emulation_sources
 	base.c
 	syscalls.c
-	debug.c
+	simple.c
 	errno.c
 	path.c
 	tls.c
@@ -58,6 +58,7 @@ set(emulation_sources
 	network/connect.c
 	stat/fstat.c
 	stat/stat.c
+	stat/getfsstat.c
 	stat/common.c
 	dirent/getdirentries.c
 	time/gettimeofday.c

@@ -1,7 +1,7 @@
 #include "sysctl.h"
 #include "../base.h"
 #include "../errno.h"
-#include "../debug.h"
+#include "../simple.h"
 #include <asm/unistd.h>
 #include <mach/host_info.h>
 #include <mach/machine.h>

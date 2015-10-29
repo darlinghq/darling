@@ -41,3 +41,29 @@ void stat_linux_to_bsd64(const struct linux_stat* lstat, struct stat64* stat)
 	stat->st_ctimespec.tv_nsec = lstat->st_ctime_nsec;
 }
 
+void statfs_linux_to_bsd(const struct linux_statfs64* lstat, struct bsd_statfs* stat)
+{
+	stat->f_type = lstat->f_type;
+	stat->f_bsize = lstat->f_bsize;
+	stat->f_blocks = lstat->f_blocks;
+	stat->f_bfree = lstat->f_bfree;
+	stat->f_bavail = lstat->f_bavail;
+	stat->f_files = lstat->f_files;
+	stat->f_ffree = lstat->f_ffree;
+	stat->f_fsid = lstat->f_fsid;
+	stat->f_flags = lstat->f_flags; /* FIXME: convert flags */
+}
+
+void statfs_linux_to_bsd64(const struct linux_statfs64* lstat, struct bsd_statfs64* stat)
+{
+	stat->f_type = lstat->f_type;
+	stat->f_bsize = lstat->f_bsize;
+	stat->f_blocks = lstat->f_blocks;
+	stat->f_bfree = lstat->f_bfree;
+	stat->f_bavail = lstat->f_bavail;
+	stat->f_files = lstat->f_files;
+	stat->f_ffree = lstat->f_ffree;
+	stat->f_fsid = lstat->f_fsid;
+	stat->f_flags = lstat->f_flags; /* FIXME: convert flags */
+}
+

@@ -45,6 +45,7 @@
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
 #include "stat/stat.h"
+#include "stat/getfsstat.h"
 #include "time/gettimeofday.h"
 #include "wqueue/bsdthread_register.h"
 
@@ -55,6 +56,7 @@ void* __bsd_syscall_table[512] = {
 	[5] = sys_open,
 	[6] = sys_close,
 	[13] = sys_fchdir,
+	[18] = sys_getfsstat,
 	[20] = sys_getpid,
 	[23] = sys_setuid,
 	[24] = sys_getuid,
@@ -99,6 +101,7 @@ void* __bsd_syscall_table[512] = {
 	[338] = sys_stat64,
 	[339] = sys_fstat64,
 	[344] = sys_getdirentries64,
+	[347] = sys_getfsstat64,
 	[366] = sys_bsdthread_register,
 	[372] = sys_thread_selfid,
 	[396] = sys_read_nocancel,

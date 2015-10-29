@@ -72,11 +72,75 @@ struct linux_stat {
 
 #endif
 
+struct bsd_statfs
+{
+	short f_otype;
+	short f_oflags;
+	long f_bsize;
+	long f_iosize;
+	long f_blocks;
+	long f_bfree;
+	long f_bavail;
+	long f_files;
+	long f_ffree;
+	unsigned long long f_fsid;
+	unsigned int f_owner;
+	short f_reserved1;
+	short f_type;
+	long f_flags;
+	long f_reserved2[2];
+	char f_fstypename[16];
+	char f_mntonname[1024];
+	char f_mntfromname[1024];
+	char f_reserved3;
+	long f_reserved4[4];
+};
+
+struct bsd_statfs64
+{
+	//short f_otype;
+	//short f_oflags;
+	unsigned int f_bsize;
+	int f_iosize;
+	long long f_blocks;
+	long long f_bfree;
+	long long f_bavail;
+	long long f_files;
+	long long f_ffree;
+	unsigned long long f_fsid;
+	unsigned int f_owner;
+	unsigned int f_type;
+	unsigned int f_flags;
+	unsigned int f_fssubtype;
+	char f_fstypename[16];
+	char f_mntonname[1024];
+	char f_mntfromname[1024];
+	long long f_reserved4[4];
+};
+
+struct linux_statfs64
+{
+	long f_type;
+	long f_bsize;
+	unsigned long long f_blocks;
+	unsigned long long f_bfree;
+	unsigned long long f_bavail;
+	unsigned long long f_files;
+	unsigned long long f_ffree;
+	unsigned long long f_fsid;
+	long f_namelen;
+	long f_frsize;
+	long f_flags;
+	long f_spare[4];
+};
+
 struct stat;
 struct stat64;
 
 void stat_linux_to_bsd(const struct linux_stat* lstat, struct stat* stat);
 void stat_linux_to_bsd64(const struct linux_stat* lstat, struct stat64* stat);
+void statfs_linux_to_bsd(const struct linux_statfs64* lstat, struct bsd_statfs* stat);
+void statfs_linux_to_bsd64(const struct linux_statfs64* lstat, struct bsd_statfs64* stat);
 
 #endif
 
