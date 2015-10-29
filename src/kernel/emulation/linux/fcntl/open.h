@@ -20,5 +20,22 @@ long sys_open_nocancel(const char* filename, int flags, unsigned int mode);
 #define LINUX_O_NOFOLLOW 0400000
 #define LINUX_O_DIRECTORY 0200000
 
+#define BSD_O_RDONLY 0
+#define BSD_O_WRONLY 1
+#define BSD_O_RDWR 2
+#define BSD_O_NONBLOCK 4
+#define BSD_O_APPEND 8
+#define BSD_O_SHLOCK 0x10
+#define BSD_O_EXLOCK 0x20
+#define BSD_O_ASYNC 0x40
+#define BSD_O_NOFOLLOW 0x100
+#define BSD_O_CREAT 0x200
+#define BSD_O_TRUNC 0x400
+#define BSD_O_EXCL 0x800
+#define BSD_O_NOCTTY 0x20000
+#define BSD_O_DIRECTORY 0x100000
+#define BSD_O_SYMLINK 0x200000
+#define BSD_O_CLOEXEC 0x1000000
+
 #endif
 

@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2004 Apple Computer, Inc. All rights reserved.
  *
@@ -22,6 +23,10 @@
  */
 
 #if defined(__LP64__) || defined(__arm__)
+
+#ifdef DARLING
+#	define ioctl __real_ioctl
+#endif
 
 #include <sys/ioctl.h>
 #include <stdarg.h>

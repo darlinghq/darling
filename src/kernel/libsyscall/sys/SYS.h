@@ -147,6 +147,7 @@ LEAF(name, 0)								;\
 	cmpq	$-4095, %rax			;\
 	jb		2f							;\
 	movq	%rax, %rdi							;\
+	negq	%rdi	;\
 	BRANCH_EXTERN(cerror)							;\
 2:
 
@@ -157,6 +158,7 @@ LEAF(name, 0)								;\
 	cmpq	$-4095, %rax				;\
 	jb		2f							;\
 	movq	%rax, %rdi							;\
+	negq	%rdi	;\
 	BRANCH_EXTERN(cerror)						;\
 2:
 
