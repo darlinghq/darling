@@ -9,6 +9,11 @@ extern void *memcpy(void *dest, const void *src, unsigned long n);
 
 long sys_connect(int fd, const void* name, int socklen)
 {
+	return sys_connect_nocancel(fd, name, socklen);
+}
+
+long sys_connect_nocancel(int fd, const void* name, int socklen)
+{
 	int ret;
 	int linux_domain;
 	struct sockaddr_fixup* fixed;

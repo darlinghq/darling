@@ -124,6 +124,7 @@ void* __bsd_syscall_table[512] = {
 	[399] = sys_close_nocancel,
 	[406] = sys_fcntl_nocancel,
 	[408] = sys_fsync_nocancel,
+	[409] = sys_connect_nocancel,
 	[411] = sys_readv_nocancel,
 	[412] = sys_writev_nocancel,
 	[414] = sys_pread_nocancel,
