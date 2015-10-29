@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>OpenSourceImportDate</key>
+	<string>2004-09-22</string>
+	<key>OpenSourceLicense</key>
+	<string>MIT</string>
+	<key>OpenSourceLicenseFile</key>
+	<string>removefile.txt</string>
+	<key>OpenSourceProject</key>
+	<string>srm</string>
+	<key>OpenSourceSHA1</key>
+	<string>8b7aafc95b3ef67e2c737030567222bf50082188</string>
+	<key>OpenSourceURL</key>
+	<string>http://prdownloads.sourceforge.net/srm/srm-1.2.8.tar.gz?download</string>
+	<key>OpenSourceVersion</key>
+	<string>1.2.8</string>
+	<key>OpenSourceWebsiteURL</key>
+	<string>http://sourceforge.net/projects/srm/</string>
+</dict>
+</plist>

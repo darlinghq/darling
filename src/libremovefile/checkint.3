@@ -1,0 +1,204 @@
+.Dd April 20, 2007
+.Dt CHECK_INT32_ADD 3
+.Os
+.Sh NAME
+.Nm check_int32_add ,
+.Nm check_uint32_add ,
+.Nm check_int64_add ,
+.Nm check_uint64_add ,
+.Nm check_int32_sub ,
+.Nm check_uint32_sub ,
+.Nm check_int64_sub ,
+.Nm check_uint64_sub ,
+.Nm check_int32_mul ,
+.Nm check_uint32_mul ,
+.Nm check_int64_mul ,
+.Nm check_uint64_mul ,
+.Nm check_int32_div ,
+.Nm check_uint32_div ,
+.Nm check_int64_div ,
+.Nm check_uint64_div ,
+.Nd detect overflow in arithmetic
+.Sh SYNOPSIS
+.In checkint.h
+.Ft int32_t
+.Fo check_int32_add
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft uint32_t
+.Fo check_uint32_add
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft int64_t
+.Fo check_int64_add
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft uint64_t
+.Fo check_uint64_add
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft int32_t
+.Fo check_int32_sub
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft uint32_t
+.Fo check_uint32_sub
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft int64_t
+.Fo check_int64_sub
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft uint64_t
+.Fo check_uint64_sub
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft int32_t
+.Fo check_int32_mul
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft uint32_t
+.Fo check_uint32_mul
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft int64_t
+.Fo check_int64_mul
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft uint64_t
+.Fo check_uint64_mul
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft int32_t
+.Fo check_int32_div
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft uint32_t
+.Fo check_uint32_div
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft int64_t
+.Fo check_int64_div
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Ft uint64_t
+.Fo check_uint64_div
+.Fa "int x"
+.Fa "int y"
+.Fa "int *err" 
+.Fc
+.Sh DESCRIPTION
+The
+.Fn check_<type>_<operation> "x" "y" "err" 
+family of functions perform the specified arithmetic operation (addition, subtraction, 
+multiplication, or division) with the left operand of
+.Fa x
+and right operand of
+.Fa y 
+and return the arithmetic result with the specified type.   
+.Pp
+Either operand 
+.Fa x
+or 
+.Fa y
+(or both) can be of any type that is compatible to signed or unsigned
+8-bit, 16-bit, 32-bit, or 64-bit integers.
+.Pp
+The
+.Fa err
+argument is 
+.Em or Ns 'ed
+by flags in the function to indicate if an overflow has occurred. 
+The possible flag values are:
+.Pp
+.Bd -literal -offset indent -compact
+CHECKINT_NO_ERROR		no overflow has occurred
+CHECKINT_OVERFLOW_ERROR		overflow has occurred
+CHECKINT_TYPE_ERROR		operand is of an incompatible type
+.Ed
+.Pp
+The
+.Fa err
+argument is not cleared in calls to the 
+.Fn check_<type>_<operation> "x" "y" "err" 
+functions.  Detected overflow persists in the 
+.Fa err
+argument until
+.Fa err
+is reset to CHECKINT_NO_ERROR.
+.Sh RETURN VALUES
+If successful, the
+.Fn check_<type>_<operation> 
+functions will return the arithmetic result of performing the operation with left operand
+.Fa x
+and right operand
+.Fa y 
+(even when overflow error occurs). 
+.Pp
+If any other error occurs, the return value is -1
+and the argument
+.Fa err
+will be set to indicate the error.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+/* Create a variable to store overflow flag */
+int32_t err = CHECKINT_NO_ERROR;
+/* Use checkint API to perform an arithmetic operation and
+ * store result in variable. */
+int32_t arithmetic_result = check_int32_add(UINT_MAX, 1, &err);
+/* Check status of overflow flag */
+if (err & CHECKINT_OVERFLOW_ERROR) {
+    /* Perform overflow resolution code */
+    fprintf(stderr, "Overflow detected!\\n");
+}
+/* Check for type error */
+else if (err & CHECKINT_TYPE_ERROR) {
+    /* Deal with incompatible types error */
+    fprintf(stderr, "Incompatible types!\\n");
+}
+/* Reset overflow flag for next operation */
+err = CHECKINT_NO_ERROR;
+ 
+.Ed
+.Sh ERRORS
+The 
+.Fn check_<type>_<operation> 
+functions may fail if:
+.Pp
+.Bd -literal -offset indent -compact
+[CHECKINT_TYPE_ERROR]		operand is of an incompatible type
+.Ed
+.Sh HISTORY
+The
+.Fn checkint
+API was introduced in Mac OS X 10.5.

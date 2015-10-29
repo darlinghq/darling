@@ -1,0 +1,16 @@
+#include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
+#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
+
+// Set INSTALL_PATH_ACTUAL to whatever INSTALL_PATH would normally be
+INSTALL_PATH_ACTUAL = /usr/lib/system
+
+// Set INSTALL_PATH[sdk=macosx*] when SimulatorSupport.xcconfig is unavailable
+INSTALL_PATH[sdk=macosx*] = $(INSTALL_PATH_ACTUAL)
+
+// Use $(INSTALL_PATH_PREFIX) instead of $(SDKROOT) as an unconditional prefix
+PUBLIC_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/include
+PRIVATE_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/local/include
+
+BUILD_VARIANTS = normal debug
+
+PRODUCT_NAME = removefile
