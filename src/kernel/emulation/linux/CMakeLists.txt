@@ -57,6 +57,7 @@ set(emulation_sources
 	network/socket.c
 	network/connect.c
 	stat/fstat.c
+	stat/lstat.c
 	stat/stat.c
 	stat/getfsstat.c
 	stat/common.c

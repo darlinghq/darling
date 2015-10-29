@@ -45,6 +45,7 @@
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
 #include "stat/stat.h"
+#include "stat/lstat.h"
 #include "stat/getfsstat.h"
 #include "time/gettimeofday.h"
 #include "wqueue/bsdthread_register.h"
@@ -92,6 +93,7 @@ void* __bsd_syscall_table[512] = {
 	[187] = sys_fdatasync,
 	[188] = sys_stat,
 	[189] = sys_fstat,
+	[190] = sys_lstat,
 	[194] = sys_getrlimit,
 	[196] = sys_getdirentries,
 	[197] = sys_mmap,
@@ -100,6 +102,7 @@ void* __bsd_syscall_table[512] = {
 	[202] = sys_sysctl,
 	[338] = sys_stat64,
 	[339] = sys_fstat64,
+	[340] = sys_lstat64,
 	[344] = sys_getdirentries64,
 	[347] = sys_getfsstat64,
 	[366] = sys_bsdthread_register,
