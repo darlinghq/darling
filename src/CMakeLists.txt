@@ -44,6 +44,7 @@ add_subdirectory(util)
 add_subdirectory(libmach-o)
 add_subdirectory(libdyld)
 add_subdirectory(dyld)
+add_subdirectory(motool)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libm/Source")
