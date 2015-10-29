@@ -75,3 +75,6 @@ set(locale_sources ${locale_sources}
 )
 
 add_library(libc-locale OBJECT ${locale_sources})
+
+install(DIRECTORY locale DESTINATION share/darling)
+

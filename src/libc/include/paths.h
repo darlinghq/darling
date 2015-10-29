@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
  *
@@ -60,6 +61,9 @@
 
 #ifndef _PATHS_H_
 #define	_PATHS_H_
+#ifdef DARLING
+#	include <darling-config.h>
+#endif
 
 /* Default search path. */
 #define	_PATH_DEFPATH	"/usr/bin:/bin"
@@ -76,7 +80,11 @@
 #define	_PATH_FSIRAND	"/sbin/fsirand"
 #define	_PATH_KMEM	"/dev/kmem"
 #define	_PATH_KVMDB	"/var/db/kvm.db"
-#define	_PATH_LOCALE	"/usr/share/locale"
+#ifndef DARLING
+#	define	_PATH_LOCALE	"/usr/share/locale"
+#else
+#	define _PATH_LOCALE		SHARE_PATH "/locale"
+#endif
 #define	_PATH_MAILDIR	"/var/mail"
 #define	_PATH_MAN	"/usr/share/man"
 #define	_PATH_MEM	"/dev/mem"
