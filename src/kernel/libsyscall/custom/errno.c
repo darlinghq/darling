@@ -47,10 +47,7 @@ extern void _pthread_exit_if_canceled(int error);
 
 #undef errno
 
-
-//  __attribute__((visibility("hidden")))
-int darwin_errno;
-__asm__(".symver darwin_errno, errno@DARWIN");
+extern int darwin_errno;
 
 #define errno darwin_errno
 

@@ -107,6 +107,7 @@ set(syscall_sources
 	#wrappers/legacy/socketpair.c
 
 	custom/errno.c
+	custom/var_errno.c
 	
 	# MIG generated files
 	${CMAKE_CURRENT_BINARY_DIR}/mach/excUser.c
