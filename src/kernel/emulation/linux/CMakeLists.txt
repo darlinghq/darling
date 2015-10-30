@@ -45,6 +45,7 @@ set(emulation_sources
 	unistd/access.c
 	unistd/readlink.c
 	unistd/symlink.c
+	unistd/umask.c
 	signal/duct_signals.c
 	signal/kill.c
 	signal/sigaltstack.c
