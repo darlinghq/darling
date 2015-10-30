@@ -1,0 +1,7 @@
+DARWIN {
+	global:
+		*;
+	local:
+		__darwin_h_errno;
+};
+
