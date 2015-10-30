@@ -1,7 +1,6 @@
 #ifdef __x86_64__
 __asm__(".section .bss\n"
 		".global __darwin_environ\n"
-		".hidden __darwin_environ\n"
 		".symver __darwin_environ, environ@DARWIN\n"
 		"//.comm __darwin_environ, 8\n"
 		"__darwin_environ:\n"
@@ -9,7 +8,6 @@ __asm__(".section .bss\n"
 #else
 __asm__(".section .bss\n"
 		".global __darwin_environ\n"
-		".hidden __darwin_environ\n"
 		".symver __darwin_environ, environ@DARWIN\n"
 		"//.comm __darwin_environ, 4\n"
 		"__darwin_environ:\n"

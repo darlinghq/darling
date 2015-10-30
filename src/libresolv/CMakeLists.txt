@@ -9,6 +9,7 @@ include_directories(${DARLING_TOP_DIRECTORY}/src/libinfo/lookup.subproj/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/dnsinfo)
 
+add_definitions(-Dh_errno=__darwin_h_errno)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
