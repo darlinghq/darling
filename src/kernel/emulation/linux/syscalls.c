@@ -51,6 +51,7 @@
 #include "stat/mkdir.h"
 #include "stat/rmdir.h"
 #include "stat/getfsstat.h"
+#include "stat/fstatfs.h"
 #include "time/gettimeofday.h"
 #include "time/utimes.h"
 #include "time/futimes.h"
@@ -98,6 +99,7 @@ void* __bsd_syscall_table[512] = {
 	[153] = sys_pread,
 	[154] = sys_pwrite,
 	[157] = sys_statfs,
+	[158] = sys_fstatfs,
 	[181] = sys_setgid,
 	[182] = sys_setegid,
 	[183] = sys_seteuid,
@@ -117,6 +119,7 @@ void* __bsd_syscall_table[512] = {
 	[340] = sys_lstat64,
 	[344] = sys_getdirentries64,
 	[345] = sys_statfs64,
+	[346] = sys_fstatfs64,
 	[347] = sys_getfsstat64,
 	[366] = sys_bsdthread_register,
 	[372] = sys_thread_selfid,

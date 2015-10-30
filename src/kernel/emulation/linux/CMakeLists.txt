@@ -62,6 +62,7 @@ set(emulation_sources
 	stat/stat.c
 	stat/getfsstat.c
 	stat/statfs.c
+	stat/fstatfs.c
 	stat/mkdir.c
 	stat/rmdir.c
 	stat/common.c
