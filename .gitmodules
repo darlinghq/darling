@@ -19,3 +19,6 @@
 [submodule "src/external/bzip2"]
 	path = src/external/bzip2
 	url = https://github.com/darlinghq/darling-bzip2.git
+[submodule "src/external/libxml2"]
+	path = src/external/libxml2
+	url = https://github.com/darlinghq/darling-libxml2.git
