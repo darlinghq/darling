@@ -15,9 +15,10 @@ add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 add_definitions(-Ddlopen=__darwin_dlopen -Ddlsym=__darwin_dlsym -Ddlclose=__darwin_dlclose)
+add_definitions(-Dh_errno=__darwin_h_errno)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w -ggdb")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--unresolved-symbols=ignore-all -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--unresolved-symbols=ignore-all -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/darwin.map")
 
 add_subdirectory(gen.subproj)
 add_subdirectory(util.subproj)
