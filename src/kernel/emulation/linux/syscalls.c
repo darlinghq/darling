@@ -31,6 +31,7 @@
 #include "unistd/readv.h"
 #include "unistd/writev.h"
 #include "unistd/getegid.h"
+#include "unistd/symlink.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -77,6 +78,7 @@ void* __bsd_syscall_table[512] = {
 	[46] = sys_sigaction,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,
+	[57] = sys_symlink,
 	[58] = sys_readlink,
 	[73] = sys_munmap,
 	[74] = sys_mprotect,

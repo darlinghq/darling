@@ -44,6 +44,7 @@ set(emulation_sources
 	unistd/ftruncate.c
 	unistd/access.c
 	unistd/readlink.c
+	unistd/symlink.c
 	signal/duct_signals.c
 	signal/kill.c
 	signal/sigaltstack.c
