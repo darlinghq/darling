@@ -33,10 +33,12 @@
 #include "unistd/getegid.h"
 #include "unistd/symlink.h"
 #include "unistd/umask.h"
+#include "unistd/chroot.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
 #include "signal/sigreturn.h"
+#include "process/vfork.h"
 #include "misc/ioctl.h"
 #include "misc/getrlimit.h"
 #include "misc/thread_selfid.h"
@@ -57,6 +59,7 @@
 #include "time/gettimeofday.h"
 #include "time/utimes.h"
 #include "time/futimes.h"
+#include "process/vfork.h"
 #include "wqueue/bsdthread_register.h"
 
 void* __bsd_syscall_table[512] = {
@@ -82,6 +85,8 @@ void* __bsd_syscall_table[512] = {
 	[57] = sys_symlink,
 	[58] = sys_readlink,
 	[60] = sys_umask,
+	[61] = sys_chroot,
+	[66] = sys_vfork,
 	[73] = sys_munmap,
 	[74] = sys_mprotect,
 	[78] = sys_mincore,
