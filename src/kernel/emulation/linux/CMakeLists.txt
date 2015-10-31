@@ -48,6 +48,7 @@ set(emulation_sources
 	unistd/umask.c
 	unistd/chroot.c
 	process/vfork.c
+	process/fork.c
 	signal/duct_signals.c
 	signal/kill.c
 	signal/sigaltstack.c

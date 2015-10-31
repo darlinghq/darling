@@ -60,10 +60,12 @@
 #include "time/utimes.h"
 #include "time/futimes.h"
 #include "process/vfork.h"
+#include "process/fork.h"
 #include "wqueue/bsdthread_register.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
+	[2] = sys_fork,
 	[3] = sys_read,
 	[4] = sys_write,
 	[5] = sys_open,
