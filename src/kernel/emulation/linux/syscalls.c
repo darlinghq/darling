@@ -56,6 +56,7 @@
 #include "network/recvmsg.h"
 #include "network/sendmsg.h"
 #include "network/recvfrom.h"
+#include "network/accept.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
 #include "stat/stat.h"
@@ -94,6 +95,7 @@ void* __bsd_syscall_table[512] = {
 	[27] = sys_recvmsg,
 	[28] = sys_sendmsg,
 	[29] = sys_recvfrom,
+	[30] = sys_accept,
 	[33] = sys_access,
 	[36] = sys_sync,
 	[37] = sys_kill,
@@ -159,6 +161,7 @@ void* __bsd_syscall_table[512] = {
 	[401] = sys_recvmsg_nocancel,
 	[402] = sys_sendmsg_nocancel,
 	[403] = sys_recvfrom_nocancel,
+	[404] = sys_accept_nocancel,
 	[406] = sys_fcntl_nocancel,
 	[408] = sys_fsync_nocancel,
 	[409] = sys_connect_nocancel,

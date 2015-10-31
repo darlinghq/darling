@@ -72,6 +72,7 @@ set(emulation_sources
 	network/sendmsg.c
 	network/duct.c
 	network/recvfrom.c
+	network/accept.c
 	stat/fstat.c
 	stat/lstat.c
 	stat/stat.c
