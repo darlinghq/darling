@@ -42,6 +42,7 @@ struct linux_cmsghdr
 };
 
 long sys_recvmsg(int socket, struct bsd_msghdr* msg, int flags);
+long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags);
 int msgflags_bsd_to_linux(int flags);
 int msgflags_linux_to_bsd(int flags);
 

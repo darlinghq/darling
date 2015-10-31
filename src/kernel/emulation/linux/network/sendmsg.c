@@ -10,6 +10,11 @@ extern void* memcpy(void* dest, const void* src, unsigned long len);
 
 long sys_sendmsg(int socket, const struct bsd_msghdr* msg, int flags)
 {
+	return sys_sendmsg_nocancel(socket, msg, flags);
+}
+
+long sys_sendmsg_nocancel(int socket, const struct bsd_msghdr* msg, int flags)
+{
 	int ret, linux_flags;
 	struct linux_msghdr lmsg;
 	struct linux_cmsghdr* lchdr = NULL;
