@@ -45,6 +45,7 @@ set(emulation_sources
 	unistd/access.c
 	unistd/readlink.c
 	unistd/symlink.c
+	unistd/link.c
 	unistd/umask.c
 	unistd/chroot.c
 	process/vfork.c
