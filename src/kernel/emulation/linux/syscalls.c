@@ -38,6 +38,7 @@
 #include "unistd/unlink.h"
 #include "unistd/chdir.h"
 #include "unistd/mknod.h"
+#include "unistd/chmod.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -79,6 +80,7 @@ void* __bsd_syscall_table[512] = {
 	[12] = sys_chdir,
 	[13] = sys_fchdir,
 	[14] = sys_mknod,
+	[15] = sys_chmod,
 	[18] = sys_getfsstat,
 	[20] = sys_getpid,
 	[23] = sys_setuid,
