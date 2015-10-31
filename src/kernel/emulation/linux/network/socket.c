@@ -4,6 +4,7 @@
 #include <asm/unistd.h>
 #include "../../../../../platform-include/sys/socket.h"
 #include "../../../../../platform-include/sys/errno.h"
+#include "duct.h"
 
 long sys_socket(int domain, int type, int protocol)
 {

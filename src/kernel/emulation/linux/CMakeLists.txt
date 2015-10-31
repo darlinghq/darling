@@ -70,6 +70,8 @@ set(emulation_sources
 	network/connect.c
 	network/recvmsg.c
 	network/sendmsg.c
+	network/duct.c
+	network/recvfrom.c
 	stat/fstat.c
 	stat/lstat.c
 	stat/stat.c
@@ -110,6 +112,8 @@ set_source_files_properties(mman.c PROPERTIES COMPILE_FLAGS
 set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/src/libc/include -nostdinc")
 set_source_files_properties(network/socket.c PROPERTIES COMPILE_FLAGS
+	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
+set_source_files_properties(network/duct.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
 set_source_files_properties(network/connect.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")

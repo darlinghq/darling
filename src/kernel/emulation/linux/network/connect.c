@@ -4,6 +4,7 @@
 #include <asm/unistd.h>
 #include "../../../../../platform-include/sys/socket.h"
 #include "../../../../../platform-include/sys/errno.h"
+#include "duct.h"
 
 extern void *memcpy(void *dest, const void *src, unsigned long n);
 
@@ -24,7 +25,7 @@ long sys_connect_nocancel(int fd, const void* name, int socklen)
 	fixed = __builtin_alloca(socklen);
 	memcpy(fixed, name, socklen);
 
-	fixed->linux_family = fixed->bsd_family;
+	fixed->linux_family = sfamily_bsd_to_linux(fixed->bsd_family);
 
 #ifdef __NR_socketcall
 	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_CONNECT, fd, fixed, socklen);

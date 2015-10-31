@@ -3,12 +3,10 @@
 
 long sys_socket(int domain, int type, int protocol);
 
-#define LINUX_SYS_SOCKET	1
+int sfamily_linux_to_bsd(int family);
+int sfamily_bsd_to_linux(int family);
 
-#define LINUX_PF_LOCAL	1
-#define LINUX_PF_INET	2
-#define LINUX_PF_IPX	4
-#define LINUX_PF_INET6	10
+#define LINUX_SYS_SOCKET	1
 
 #endif
 

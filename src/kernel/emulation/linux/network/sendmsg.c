@@ -3,6 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 #include <stddef.h>
+#include "duct.h"
 
 extern void *malloc(unsigned long size);
 extern void free(void* ptr);

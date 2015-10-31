@@ -3,6 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 #include <stddef.h>
+#include "duct.h"
 
 extern void *malloc(unsigned long size);
 extern void free(void* ptr);
@@ -72,51 +73,4 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 	return ret;
 }
 
-int msgflags_bsd_to_linux(int flags)
-{
-	int oflags = 0;
-
-	if (flags & BSD_MSG_OOB)
-		oflags |= LINUX_MSG_OOB;
-	if (flags & BSD_MSG_PEEK)
-		oflags |= LINUX_MSG_PEEK;
-	if (flags & BSD_MSG_DONTROUTE)
-		oflags |= LINUX_MSG_DONTROUTE;
-	if (flags & BSD_MSG_EOR)
-		oflags |= LINUX_MSG_EOR;
-	if (flags & BSD_MSG_TRUNC)
-		oflags |= LINUX_MSG_TRUNC;
-	if (flags & BSD_MSG_CTRUNC)
-		oflags |= LINUX_MSG_CTRUNC;
-	if (flags & BSD_MSG_WAITALL)
-		oflags |= LINUX_MSG_WAITALL;
-	if (flags & BSD_MSG_DONTWAIT)
-		oflags |= LINUX_MSG_DONTWAIT;
-
-	return oflags;
-}
-
-int msgflags_linux_to_bsd(int flags)
-{
-	int oflags = 0;
-
-	if (flags & LINUX_MSG_OOB)
-		oflags |= BSD_MSG_OOB;
-	if (flags & LINUX_MSG_PEEK)
-		oflags |= BSD_MSG_PEEK;
-	if (flags & LINUX_MSG_DONTROUTE)
-		oflags |= BSD_MSG_DONTROUTE;
-	if (flags & LINUX_MSG_EOR)
-		oflags |= BSD_MSG_EOR;
-	if (flags & LINUX_MSG_TRUNC)
-		oflags |= BSD_MSG_TRUNC;
-	if (flags & LINUX_MSG_CTRUNC)
-		oflags |= BSD_MSG_CTRUNC;
-	if (flags & LINUX_MSG_WAITALL)
-		oflags |= BSD_MSG_WAITALL;
-	if (flags & LINUX_MSG_DONTWAIT)
-		oflags |= BSD_MSG_DONTWAIT;
-
-	return oflags;
-}
 
