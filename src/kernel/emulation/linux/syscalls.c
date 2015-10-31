@@ -35,6 +35,7 @@
 #include "unistd/umask.h"
 #include "unistd/chroot.h"
 #include "unistd/link.h"
+#include "unistd/unlink.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -72,6 +73,7 @@ void* __bsd_syscall_table[512] = {
 	[5] = sys_open,
 	[6] = sys_close,
 	[9] = sys_link,
+	[10] = sys_unlink,
 	[13] = sys_fchdir,
 	[18] = sys_getfsstat,
 	[20] = sys_getpid,
