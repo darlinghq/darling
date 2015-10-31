@@ -73,6 +73,7 @@ set(emulation_sources
 	network/duct.c
 	network/recvfrom.c
 	network/accept.c
+	network/getpeername.c
 	stat/fstat.c
 	stat/lstat.c
 	stat/stat.c
