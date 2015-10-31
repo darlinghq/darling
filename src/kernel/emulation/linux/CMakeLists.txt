@@ -68,6 +68,7 @@ set(emulation_sources
 	fcntl/fcntl.c
 	network/socket.c
 	network/connect.c
+	network/recvmsg.c
 	stat/fstat.c
 	stat/lstat.c
 	stat/stat.c
