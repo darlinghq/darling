@@ -54,6 +54,7 @@
 #include "network/socket.h"
 #include "network/connect.h"
 #include "network/recvmsg.h"
+#include "network/sendmsg.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
 #include "stat/stat.h"
@@ -90,6 +91,7 @@ void* __bsd_syscall_table[512] = {
 	[24] = sys_getuid,
 	[25] = sys_geteuid,
 	[27] = sys_recvmsg,
+	[28] = sys_sendmsg,
 	[33] = sys_access,
 	[36] = sys_sync,
 	[37] = sys_kill,
