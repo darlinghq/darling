@@ -64,6 +64,7 @@ set(emulation_sources
 	misc/thread_selfid.c
 	misc/sysctl.c
 	misc/getrlimit.c
+	misc/gethostuuid.c
 	fcntl/open.c
 	fcntl/fcntl.c
 	network/socket.c

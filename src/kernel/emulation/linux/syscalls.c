@@ -49,6 +49,7 @@
 #include "misc/getrlimit.h"
 #include "misc/thread_selfid.h"
 #include "misc/sysctl.h"
+#include "misc/gethostuuid.h"
 #include "fcntl/open.h"
 #include "fcntl/fcntl.h"
 #include "network/socket.h"
@@ -130,6 +131,7 @@ void* __bsd_syscall_table[512] = {
 	[137] = sys_rmdir,
 	[138] = sys_utimes,
 	[139] = sys_futimes,
+	[142] = sys_gethostuuid,
 	[147] = sys_setsid,
 	[153] = sys_pread,
 	[154] = sys_pwrite,
