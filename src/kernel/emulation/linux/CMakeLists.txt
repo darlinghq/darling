@@ -50,6 +50,7 @@ set(emulation_sources
 	unistd/chdir.c
 	unistd/mknod.c
 	unistd/chmod.c
+	unistd/chown.c
 	unistd/umask.c
 	unistd/chroot.c
 	process/vfork.c
