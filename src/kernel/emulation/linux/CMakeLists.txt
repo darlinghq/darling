@@ -48,6 +48,7 @@ set(emulation_sources
 	unistd/link.c
 	unistd/unlink.c
 	unistd/chdir.c
+	unistd/mknod.c
 	unistd/umask.c
 	unistd/chroot.c
 	process/vfork.c
