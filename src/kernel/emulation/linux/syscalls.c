@@ -57,6 +57,7 @@
 #include "network/sendmsg.h"
 #include "network/recvfrom.h"
 #include "network/getpeername.h"
+#include "network/getsockname.h"
 #include "network/accept.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
@@ -98,6 +99,7 @@ void* __bsd_syscall_table[512] = {
 	[29] = sys_recvfrom,
 	[30] = sys_accept,
 	[31] = sys_getpeername,
+	[32] = sys_getsockname,
 	[33] = sys_access,
 	[36] = sys_sync,
 	[37] = sys_kill,

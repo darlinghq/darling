@@ -74,6 +74,7 @@ set(emulation_sources
 	network/recvfrom.c
 	network/accept.c
 	network/getpeername.c
+	network/getsockname.c
 	stat/fstat.c
 	stat/lstat.c
 	stat/stat.c
