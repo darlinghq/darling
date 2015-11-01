@@ -45,6 +45,7 @@
 #include "signal/sigaction.h"
 #include "signal/sigreturn.h"
 #include "process/vfork.h"
+#include "process/wait4.h"
 #include "misc/ioctl.h"
 #include "misc/getrlimit.h"
 #include "misc/thread_selfid.h"
@@ -83,6 +84,7 @@ void* __bsd_syscall_table[512] = {
 	[4] = sys_write,
 	[5] = sys_open,
 	[6] = sys_close,
+	[7] = sys_wait4,
 	[9] = sys_link,
 	[10] = sys_unlink,
 	[12] = sys_chdir,
