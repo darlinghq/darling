@@ -46,6 +46,7 @@
 #include "signal/sigreturn.h"
 #include "process/vfork.h"
 #include "process/wait4.h"
+#include "process/waitid.h"
 #include "misc/ioctl.h"
 #include "misc/getrlimit.h"
 #include "misc/thread_selfid.h"
@@ -139,6 +140,7 @@ void* __bsd_syscall_table[512] = {
 	[154] = sys_pwrite,
 	[157] = sys_statfs,
 	[158] = sys_fstatfs,
+	[173] = sys_waitid,
 	[181] = sys_setgid,
 	[182] = sys_setegid,
 	[183] = sys_seteuid,
