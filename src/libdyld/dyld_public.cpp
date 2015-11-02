@@ -191,3 +191,9 @@ bool __dyld_bind_fully_image_containing_address(const void* address)
 	return true;
 }
 
+void _dyld_fork_child(void)
+{
+	// The questions is whether we should somehow notify
+	// glibc that we have forked.
+}
+

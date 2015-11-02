@@ -39,6 +39,8 @@ struct dyld_unwind_sections
 	uintptr_t compact_unwind_section_length;
 };
 
+void _dyld_fork_child(void);
+
 uint32_t _dyld_image_count(void);
 const struct mach_header* _dyld_get_image_header(uint32_t image_index);
 intptr_t _dyld_get_image_vmaddr_slide(uint32_t image_index);

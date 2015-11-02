@@ -31,5 +31,6 @@ DARWIN {
 		__dyld_mod_term_funcs;
 		dyld_image_path_containing_address;
 		_dyld_find_unwind_sections;
+		_dyld_fork_child;
 };
 
