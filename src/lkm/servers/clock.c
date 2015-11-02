@@ -17,11 +17,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include "../mach_includes.h"
 #include "../mig_includes_pre.h"
+#include <mach/mach_types.h>
+#include "../mach_includes.h"
+#include <linux/sched.h>
 //#include "../mig/clockServer.h"
 #include "../ipc_port.h"
-#include <mach/mach_types.h>
 #include "clock.h"
 
 kern_return_t clock_get_time
@@ -30,7 +31,14 @@ kern_return_t clock_get_time
 	mach_timespec_t *cur_time
 )
 {
-	return KERN_NOT_SUPPORTED;
+	u64 tm;
+	
+	tm = get_jiffies_64();
+	
+	cur_time->tv_sec = tm / HZ;
+	cur_time->tv_nsec = (tm % HZ) * (NSEC_PER_SEC / HZ);
+	
+	return KERN_SUCCESS;
 }
 
 kern_return_t clock_get_attributes

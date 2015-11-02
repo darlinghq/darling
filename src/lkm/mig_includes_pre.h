@@ -25,7 +25,9 @@
 #undef NSEC_PER_MSEC
 #undef NSEC_PER_SEC
 #undef USEC_PER_SEC
-#define __unused
+#ifndef __unused
+#	define __unused
+#endif
 #define weak_import weak
 
 #endif
