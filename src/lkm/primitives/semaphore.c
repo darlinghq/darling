@@ -24,6 +24,7 @@
 #include <linux/semaphore.h>
 #include <linux/slab.h>
 #include <linux/atomic.h>
+#include <linux/version.h>
 
 static atomic_t sem_count = ATOMIC_INIT(0);
 
@@ -173,7 +174,12 @@ mach_semaphore_timedwait(darling_mach_port_t* port, unsigned int sec,
 	
 	ret = KERN_SUCCESS;
 	
-	jiffies = nsecs_to_jiffies(((u64) sec) * 1000000000ull + nsec);
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0)
+	jiffies = sec * HZ;
+	jiffies += nsec / (NSEC_PER_SEC / HZ);
+	#else
+	jiffies = nsecs_to_jiffies(((u64) sec) * NSEC_PER_SEC + nsec);
+	#endif
 	
 	err = down_timeout(&ms->sem, jiffies);
 	if (err == -ETIME)
