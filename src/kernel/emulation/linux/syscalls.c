@@ -76,6 +76,9 @@
 #include "stat/rmdir.h"
 #include "stat/getfsstat.h"
 #include "stat/fstatfs.h"
+#include "stat/stat64_extended.h"
+#include "stat/lstat64_extended.h"
+#include "stat/fstat64_extended.h"
 #include "time/gettimeofday.h"
 #include "time/utimes.h"
 #include "time/futimes.h"
@@ -183,6 +186,9 @@ void* __bsd_syscall_table[512] = {
 	[338] = sys_stat64,
 	[339] = sys_fstat64,
 	[340] = sys_lstat64,
+	[341] = sys_stat64_extended,
+	[342] = sys_lstat64_extended,
+	[343] = sys_fstat64_extended,
 	[344] = sys_getdirentries64,
 	[345] = sys_statfs64,
 	[346] = sys_fstatfs64,

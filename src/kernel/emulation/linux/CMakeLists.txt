@@ -85,6 +85,9 @@ set(emulation_sources
 	stat/fstat.c
 	stat/lstat.c
 	stat/stat.c
+	stat/stat64_extended.c
+	stat/lstat64_extended.c
+	stat/fstat64_extended.c
 	stat/getfsstat.c
 	stat/statfs.c
 	stat/fstatfs.c
