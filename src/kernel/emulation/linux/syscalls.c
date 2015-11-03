@@ -78,6 +78,7 @@
 #include "process/vfork.h"
 #include "process/fork.h"
 #include "wqueue/bsdthread_register.h"
+#include "hfs/stub.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -156,6 +157,19 @@ void* __bsd_syscall_table[512] = {
 	[199] = sys_lseek,
 	[201] = sys_ftruncate,
 	[202] = sys_sysctl,
+	[216] = sys_mkcomplex,
+	[217] = sys_statv,
+	[218] = sys_lstatv,
+	[219] = sys_fstatv,
+	[220] = sys_getattrlist,
+	[221] = sys_setattrlist,
+	[222] = sys_getdirentriesattr,
+	[223] = sys_exchangedata,
+	[225] = sys_searchfs,
+	[226] = sys_delete,
+	[227] = sys_copyfile,
+	[228] = sys_fgetattrlist,
+	[229] = sys_fsetattrlist,
 	[334] = sys_semwait_signal,
 	[338] = sys_stat64,
 	[339] = sys_fstat64,

@@ -88,6 +88,7 @@ set(emulation_sources
 	stat/rmdir.c
 	stat/common.c
 	synch/semwait_signal.c
+	hfs/stub.c
 	dirent/getdirentries.c
 	time/gettimeofday.c
 	time/utimes.c
