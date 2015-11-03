@@ -50,11 +50,11 @@ long sys_fstatfs64(int fd, struct bsd_statfs64* buf)
 	ret = sys_readlink(line, path, sizeof(path));
 
 	if (ret < 0)
-		return errno_linux_to_bsd(ret);
+		return ret;
 
 	fd_m = sys_open("/proc/self/mounts", O_RDONLY, 0);
 	if (fd_m < 0)
-		return errno_linux_to_bsd(fd_m);
+		return fd_m;
 	
 	__simple_readline_init(&rbuf);
 
