@@ -20,7 +20,8 @@ set(emulation_sources
 	unistd/pwrite.c
 	unistd/readv.c
 	unistd/writev.c
-	mman.c
+	mman/mman.c
+	mman/madvise.c
 	unistd/fsync.c
 	unistd/sync.c
 	unistd/fdatasync.c
@@ -117,7 +118,7 @@ set(emulation_sources
 	syscalls-amd64.asm
 )
 
-set_source_files_properties(mman.c PROPERTIES COMPILE_FLAGS
+set_source_files_properties(mman/mman.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include")
 set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/src/libc/include -nostdinc")

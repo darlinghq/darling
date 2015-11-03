@@ -2,8 +2,8 @@
 
 #include "unistd/write.h"
 #include "unistd/read.h"
-#include "mman.h"
-
+#include "mman/mman.h"
+#include "mman/madvise.h"
 #include "unistd/sync.h"
 #include "unistd/fsync.h"
 #include "unistd/fdatasync.h"
@@ -125,6 +125,7 @@ void* __bsd_syscall_table[512] = {
 	[66] = sys_vfork,
 	[73] = sys_munmap,
 	[74] = sys_mprotect,
+	[75] = sys_madvise,
 	[78] = sys_mincore,
 	[90] = sys_dup2,
 	[92] = sys_fcntl,

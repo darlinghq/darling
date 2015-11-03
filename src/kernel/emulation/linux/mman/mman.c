@@ -1,7 +1,7 @@
 #include "mman.h"
 #include "duct_mman.h"
-#include "errno.h"
-#include "base.h"
+#include "../errno.h"
+#include "../base.h"
 #include <asm/unistd.h>
 
 static int prot_bsd_to_linux(int prot)
