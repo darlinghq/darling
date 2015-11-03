@@ -21,6 +21,7 @@
 #include "semaphore.h"
 #include "../ipc_server.h"
 #include "../ipc_port.h"
+#include "../debug.h"
 #include <linux/semaphore.h>
 #include <linux/slab.h>
 #include <linux/atomic.h>

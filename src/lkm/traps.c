@@ -69,8 +69,8 @@ static const trap_handler mach_traps[20] = {
 	[sc(NR_semaphore_signal_all_trap)] = (trap_handler) semaphore_signal_all_trap,
 	[sc(NR_semaphore_wait_trap)] = (trap_handler) semaphore_wait_trap,
 	[sc(NR_semaphore_wait_signal_trap)] = (trap_handler) semaphore_wait_signal_trap,
-	[sc(NR_semaphore_timedwait_signal_trap)] = (trap_handler) semaphore_timedwait_trap,
-	[sc(NR_semaphore_timedwait_trap)] = (trap_handler) semaphore_timedwait_signal_trap,
+	[sc(NR_semaphore_timedwait_signal_trap)] = (trap_handler) semaphore_timedwait_signal_trap,
+	[sc(NR_semaphore_timedwait_trap)] = (trap_handler) semaphore_timedwait_trap,
 	[sc(NR_bsd_ioctl_trap)] = (trap_handler) bsd_ioctl_trap,
 	[sc(NR_thread_self_trap)] = (trap_handler) mach_thread_self_trap,
 };
@@ -667,6 +667,9 @@ kern_return_t semaphore_timedwait_signal_trap(mach_task_t* task,
 	
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return KERN_INVALID_ADDRESS;
+	
+	// debug_msg("semaphore_timedwait_signal_trap: sec=%d, nsec=%d\n", args.sec,
+	// 		args.nsec);
 	
 	ipc_space_lock(&task->namespace);
 	
