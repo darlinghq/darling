@@ -67,9 +67,15 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 		case F_GETPATH:
 		{
 			char buf[100];
+			int len;
 
 			sprintf(buf, "/proc/self/fd/%d", fd);
-			return sys_readlink(buf, (char*) arg, MAXPATHLEN);
+			len = sys_readlink(buf, (char*) arg, MAXPATHLEN);
+
+			if (len >= 0)
+				((char*) arg)[len] = '\0';
+
+			return len;
 		}
 		// TODO: implement remaining commands
 		default:
