@@ -28,7 +28,7 @@
 #	define ioctl __real_ioctl
 #endif
 
-#include <sys/ioctl.h>
+//#include <sys/ioctl.h>
 #include <stdarg.h>
 
 int __ioctl(int, unsigned long, void *);
@@ -38,14 +38,8 @@ int __ioctl(int, unsigned long, void *);
  * This is for LP64 only.
  */
 int
-ioctl(int d, unsigned long request, ...)
+ioctl(int d, unsigned long request, void* arg)
 {
-	va_list	ap;
-	void *arg;
-
-	va_start(ap, request);
-	arg = va_arg(ap, void *);
-	va_end(ap);
 	return (__ioctl(d, request, arg));
 }
 

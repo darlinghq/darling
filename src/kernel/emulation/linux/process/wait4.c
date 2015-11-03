@@ -10,7 +10,7 @@ long sys_wait4(int pid, int* status, int options, void* rusage)
 
 	linux_options = waitopts_bsd_to_linux(options);
 
-	ret = LINUX_SYSCALL(__NR_wait4, status, linux_options, rusage);
+	ret = LINUX_SYSCALL(__NR_wait4, pid, status, linux_options, rusage);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

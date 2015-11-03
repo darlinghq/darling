@@ -1,3 +1,4 @@
+// Modofied by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2010 Apple Inc. All rights reserved.
  *
@@ -88,4 +89,11 @@ mig_dealloc_reply_port(mach_port_t migport)
 void
 mig_put_reply_port(mach_port_t reply_port __unused)
 {
+}
+
+__attribute__((visibility("default")))
+void
+_mig_fork_child(void)
+{
+	_mig_set_reply_port(MACH_PORT_NULL);
 }

@@ -112,9 +112,16 @@ LEAF(___vfork, 0)
 	cmpxchgl	%ecx, (%rdx)
 	jne		0b
 	popq		%rdi			// return address in %rdi
+#ifndef DARLING
 	movq		$ SYSCALL_CONSTRUCT_UNIX(SYS_vfork), %rax	// code for vfork -> rax
 	UNIX_SYSCALL_TRAP			// do the system call
 	jnb		L1			// jump if CF==0
+#else
+	movl	$ SYS_vfork, %eax
+	call    __darling_bsd_syscall@PLT	
+	cmpq    $0, %rax 
+	jnb L1
+#endif
 	pushq		%rdi			// put return address back on stack for cerror
 	movq		__current_pid@GOTPCREL(%rip), %rcx
 	lock
@@ -123,7 +130,11 @@ LEAF(___vfork, 0)
 	BRANCH_EXTERN(_cerror)
 
 L1:
+#ifndef DARLING
 	testl		%edx, %edx		// CF=OF=0,  ZF set if zero result
+#else
+	testl		%eax, %eax
+#endif
 	jz		L2			// parent, since r1 == 0 in parent, 1 in child
 	xorq		%rax, %rax		// zero rax
 	jmp		*%rdi

@@ -57,6 +57,7 @@ extern void _cthread_fork_parent(void);
 extern void _cthread_fork_child(void);
 extern void _cthread_fork_child_postinit(void);
 
+extern void _mig_fork_child(void);
 extern void _mach_fork_child(void);
 extern void _cproc_fork_child(void);
 extern void _libc_fork_child(void);
@@ -161,6 +162,10 @@ void libSystem_atfork_parent(void)
 
 void libSystem_atfork_child(void)
 {
+	// Mach ports are not inherited across fork except for the Bootstrap.
+	// So why is the following line not needed on OS X?
+	_mig_fork_child();
+
 	_dyld_fork_child();
 	_cthread_fork_child();
 	
