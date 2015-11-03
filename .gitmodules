@@ -22,3 +22,6 @@
 [submodule "src/external/libxml2"]
 	path = src/external/libxml2
 	url = https://github.com/darlinghq/darling-libxml2.git
+[submodule "src/external/compiler-rt"]
+	path = src/external/compiler-rt
+	url = https://github.com/darlinghq/darling-compiler-rt.git
