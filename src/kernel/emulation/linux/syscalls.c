@@ -52,6 +52,7 @@
 #include "misc/thread_selfid.h"
 #include "misc/sysctl.h"
 #include "misc/gethostuuid.h"
+#include "synch/semwait_signal.h"
 #include "fcntl/open.h"
 #include "fcntl/fcntl.h"
 #include "network/socket.h"
@@ -155,6 +156,7 @@ void* __bsd_syscall_table[512] = {
 	[199] = sys_lseek,
 	[201] = sys_ftruncate,
 	[202] = sys_sysctl,
+	[334] = sys_semwait_signal,
 	[338] = sys_stat64,
 	[339] = sys_fstat64,
 	[340] = sys_lstat64,
