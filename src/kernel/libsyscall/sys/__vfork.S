@@ -132,10 +132,11 @@ LEAF(___vfork, 0)
 L1:
 #ifndef DARLING
 	testl		%edx, %edx		// CF=OF=0,  ZF set if zero result
+	jz		L2			// parent, since r1 == 0 in parent, 1 in child
 #else
 	testl		%eax, %eax
+	jnz		L2
 #endif
-	jz		L2			// parent, since r1 == 0 in parent, 1 in child
 	xorq		%rax, %rax		// zero rax
 	jmp		*%rdi
 
