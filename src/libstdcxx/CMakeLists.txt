@@ -87,6 +87,7 @@ set(libstdcxx_sources
 	src/valarray-inst.cc
 	src/wlocale-inst.cc
 	src/wstring-inst.cc
+	src/dso_handle.c
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
