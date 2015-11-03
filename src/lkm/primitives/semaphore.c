@@ -26,6 +26,8 @@
 #include <linux/slab.h>
 #include <linux/atomic.h>
 #include <linux/version.h>
+#include <linux/sched.h>
+#include <linux/list.h>
 
 static atomic_t sem_count = ATOMIC_INIT(0);
 
@@ -153,6 +155,53 @@ mach_semaphore_wait(darling_mach_port_t* port)
 	return ret;
 }
 
+// Copied from kernel/locking/semaphore.c (explanation below)
+// This MUST MATCH the private definition in kernel!
+struct semaphore_waiter {
+	struct list_head list;
+	struct task_struct *task;
+	bool up;
+};
+
+// Copied from kernel/locking/semaphore.c because down_timeout_interruptible()
+// doesn't exist.
+// Otherwise, Darwin sleep() would not be interruptible by signals.
+static inline int __down_common(struct semaphore *sem, long state,
+                                                       long timeout) {
+	struct task_struct *task = current;
+	struct semaphore_waiter waiter;
+ 
+	list_add_tail(&waiter.list, &sem->wait_list);
+	waiter.task = task;
+	waiter.up = false;
+
+	for (;;) {
+		if (signal_pending_state(state, task))
+			goto interrupted;
+		if (unlikely(timeout <= 0))
+			goto timed_out;
+		__set_task_state(task, state);
+		raw_spin_unlock_irq(&sem->lock);
+		timeout = schedule_timeout(timeout);
+		raw_spin_lock_irq(&sem->lock);
+		if (waiter.up)
+			return 0;
+	}
+ 
+ timed_out:
+	list_del(&waiter.list);
+	return -ETIME;
+ 
+interrupted:
+	list_del(&waiter.list);
+	return -EINTR;
+}
+
+static int down_timeout_interruptible(struct semaphore *sem, long timeout)
+{
+	return __down_common(sem, TASK_INTERRUPTIBLE, timeout);
+}
+
 kern_return_t
 mach_semaphore_timedwait(darling_mach_port_t* port, unsigned int sec,
 		unsigned int nsec)
@@ -182,7 +231,7 @@ mach_semaphore_timedwait(darling_mach_port_t* port, unsigned int sec,
 	jiffies = nsecs_to_jiffies(((u64) sec) * NSEC_PER_SEC + nsec);
 	#endif
 	
-	err = down_timeout(&ms->sem, jiffies);
+	err = down_timeout_interruptible(&ms->sem, jiffies);
 	if (err == -ETIME)
 		ret = KERN_OPERATION_TIMED_OUT;
 	else if (err == -EINTR)
