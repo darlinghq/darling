@@ -63,6 +63,7 @@ set(emulation_sources
 	signal/sigaltstack.c
 	signal/sigaction.c
 	signal/sigreturn.c
+	signal/sigprocmask.c
 	misc/ioctl.c
 	misc/thread_selfid.c
 	misc/sysctl.c

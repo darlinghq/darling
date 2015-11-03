@@ -44,6 +44,7 @@
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
 #include "signal/sigreturn.h"
+#include "signal/sigprocmask.h"
 #include "process/vfork.h"
 #include "process/wait4.h"
 #include "process/waitid.h"
@@ -113,6 +114,7 @@ void* __bsd_syscall_table[512] = {
 	[41] = sys_dup,
 	[43] = sys_getegid,
 	[46] = sys_sigaction,
+	[48] = sys_sigprocmask,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,
 	[57] = sys_symlink,
