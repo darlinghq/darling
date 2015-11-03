@@ -8,6 +8,7 @@
 static void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ctxt);
 static int sigflags_bsd_to_linux(int flags);
 static int sigflags_linux_to_bsd(int flags);
+static void sig_restorer(void);
 
 extern void* memcpy(void* dest, const void* src, unsigned long len);
 
@@ -29,8 +30,8 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 		sa_tramp = nsa->sa_tramp;
 		sa.sa_sigaction = &handler_linux_to_bsd;
 		sigset_bsd_to_linux(&nsa->sa_mask, &sa.sa_mask);
-		sa.sa_flags = sigflags_bsd_to_linux(nsa->sa_flags);
-		sa.sa_restorer = NULL;
+		sa.sa_flags = sigflags_bsd_to_linux(nsa->sa_flags) | LINUX_SA_RESTORER;
+		sa.sa_restorer = sig_restorer;
 	}
 
 	ret = LINUX_SYSCALL(__NR_rt_sigaction, linux_signum,
@@ -63,6 +64,13 @@ static void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, v
 	binfo.si_signo = signum_linux_to_bsd(binfo.si_signo);
 
 	sig_handlers[linux_signum](bsd_signum, &binfo, ctxt);
+}
+
+static void sig_restorer(void)
+{
+	LINUX_SYSCALL(__NR_rt_sigreturn);
+	//__asm__("movl $137, %eax\n"
+	//	"syscall");
 }
 
 static int sigflags_bsd_to_linux(int flags)
