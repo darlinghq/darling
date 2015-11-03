@@ -47,6 +47,7 @@
 #include "process/vfork.h"
 #include "process/wait4.h"
 #include "process/waitid.h"
+#include "process/execve.h"
 #include "misc/ioctl.h"
 #include "misc/getrlimit.h"
 #include "misc/thread_selfid.h"
@@ -116,6 +117,7 @@ void* __bsd_syscall_table[512] = {
 	[54] = sys_ioctl,
 	[57] = sys_symlink,
 	[58] = sys_readlink,
+	[59] = sys_execve,
 	[60] = sys_umask,
 	[61] = sys_chroot,
 	[66] = sys_vfork,

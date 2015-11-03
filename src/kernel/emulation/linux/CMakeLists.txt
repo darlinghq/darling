@@ -57,6 +57,7 @@ set(emulation_sources
 	process/fork.c
 	process/wait4.c
 	process/waitid.c
+	process/execve.c
 	signal/duct_signals.c
 	signal/kill.c
 	signal/sigaltstack.c
