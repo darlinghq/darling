@@ -65,6 +65,7 @@
 #include "network/getpeername.h"
 #include "network/getsockname.h"
 #include "network/accept.h"
+#include "network/shutdown.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
 #include "stat/stat.h"
@@ -137,6 +138,7 @@ void* __bsd_syscall_table[512] = {
 	[121] = sys_writev,
 	[123] = sys_fchown,
 	[124] = sys_fchmod,
+	[134] = sys_shutdown,
 	[136] = sys_mkdir,
 	[137] = sys_rmdir,
 	[138] = sys_utimes,
