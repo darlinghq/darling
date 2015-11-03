@@ -72,6 +72,7 @@
 #include "stat/lstat.h"
 #include "stat/statfs.h"
 #include "stat/mkdir.h"
+#include "stat/mkfifo.h"
 #include "stat/rmdir.h"
 #include "stat/getfsstat.h"
 #include "stat/fstatfs.h"
@@ -138,6 +139,7 @@ void* __bsd_syscall_table[512] = {
 	[121] = sys_writev,
 	[123] = sys_fchown,
 	[124] = sys_fchmod,
+	[132] = sys_mkfifo,
 	[134] = sys_shutdown,
 	[136] = sys_mkdir,
 	[137] = sys_rmdir,

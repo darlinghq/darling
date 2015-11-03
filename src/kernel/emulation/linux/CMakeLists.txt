@@ -89,6 +89,7 @@ set(emulation_sources
 	stat/statfs.c
 	stat/fstatfs.c
 	stat/mkdir.c
+	stat/mkfifo.c
 	stat/rmdir.c
 	stat/common.c
 	synch/semwait_signal.c
