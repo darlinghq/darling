@@ -56,6 +56,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/duct/include")
 
 add_subdirectory(libc)
 add_subdirectory(libm)
+add_subdirectory(libgcc)
 add_subdirectory(libinfo)
 add_subdirectory(libmalloc)
 add_subdirectory(libunwind)
