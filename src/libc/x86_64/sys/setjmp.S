@@ -52,6 +52,7 @@
 #	define _sigaltstack sigaltstack
 #	define __sigunaltstack _sigunaltstack
 #	define _sigprocmask sigprocmask
+#	define _sigsetjmp sigsetjmp
 #else
 #	define x__setjmp __setjmp
 #	define x__longjmp __longjmp
