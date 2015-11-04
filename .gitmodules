@@ -1,33 +1,33 @@
 [submodule "src/external/libdispatch"]
 	path = src/external/libdispatch
-	url = https://github.com/darlinghq/darling-libdispatch.git
+	url = ../darling-libdispatch.git
 [submodule "src/external/libobjc2"]
 	path = src/external/libobjc2
-	url = https://github.com/darlinghq/darling-libobjc2.git
+	url = ../darling-libobjc2.git
 [submodule "src/external/libcxx"]
 	path = src/external/libcxx
-	url = https://github.com/darlinghq/darling-libcxx.git
+	url = ../darling-libcxx.git
 [submodule "src/external/libcxxabi"]
 	path = src/external/libcxxabi
-	url = https://github.com/darlinghq/darling-libcxxabi.git
+	url = ../darling-libcxxabi.git
 [submodule "src/external/libkqueue"]
 	path = src/external/libkqueue
-	url = https://github.com/darlinghq/darling-libkqueue.git
+	url = ../darling-libkqueue.git
 [submodule "src/external/zlib"]
 	path = src/external/zlib
-	url = https://github.com/darlinghq/darling-zlib.git
+	url = ../darling-zlib.git
 [submodule "src/external/bzip2"]
 	path = src/external/bzip2
-	url = https://github.com/darlinghq/darling-bzip2.git
+	url = ../darling-bzip2.git
 [submodule "src/external/libxml2"]
 	path = src/external/libxml2
-	url = https://github.com/darlinghq/darling-libxml2.git
+	url = ../darling-libxml2.git
 [submodule "src/external/compiler-rt"]
 	path = src/external/compiler-rt
-	url = https://github.com/darlinghq/darling-compiler-rt.git
+	url = ../darling-compiler-rt.git
 [submodule "src/external/foundation"]
 	path = src/external/foundation
-	url = https://github.com/darlinghq/darling-foundation.git
+	url = ../darling-foundation.git
 [submodule "src/external/corefoundation"]
 	path = src/external/corefoundation
-	url = https://github.com/darlinghq/darling-corefoundation.git
+	url = ../darling-corefoundation.git
