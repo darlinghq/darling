@@ -41,6 +41,7 @@
 #include "unistd/chmod.h"
 #include "unistd/chown.h"
 #include "unistd/getgid.h"
+#include "unistd/getppid.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -125,6 +126,7 @@ void* __bsd_syscall_table[512] = {
 	[33] = sys_access,
 	[36] = sys_sync,
 	[37] = sys_kill,
+	[39] = sys_getppid,
 	[41] = sys_dup,
 	[43] = sys_getegid,
 	[46] = sys_sigaction,
