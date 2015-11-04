@@ -1,0 +1,117 @@
+# $Id: Makefile.in,v 1.102 2008/09/07 13:58:29 tom Exp $
+##############################################################################
+# Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.                #
+#                                                                            #
+# Permission is hereby granted, free of charge, to any person obtaining a    #
+# copy of this software and associated documentation files (the "Software"), #
+# to deal in the Software without restriction, including without limitation  #
+# the rights to use, copy, modify, merge, publish, distribute, distribute    #
+# with modifications, sublicense, and/or sell copies of the Software, and to #
+# permit persons to whom the Software is furnished to do so, subject to the  #
+# following conditions:                                                      #
+#                                                                            #
+# The above copyright notice and this permission notice shall be included in #
+# all copies or substantial portions of the Software.                        #
+#                                                                            #
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR #
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,   #
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL    #
+# THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER      #
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING    #
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER        #
+# DEALINGS IN THE SOFTWARE.                                                  #
+#                                                                            #
+# Except as contained in this notice, the name(s) of the above copyright     #
+# holders shall not be used in advertising or otherwise to promote the sale, #
+# use or other dealings in this Software without prior written               #
+# authorization.                                                             #
+##############################################################################
+#
+# Author: Thomas E. Dickey 1996-on
+#
+# Makefile for ncurses tests.
+
+# turn off _all_ suffix rules; we'll generate our own
+.SUFFIXES:
+
+SHELL		= /bin/sh
+
+@SET_MAKE@
+
+destdir		=
+x		= @EXEEXT@
+o		= .@OBJEXT@
+
+MODEL		= ../@DFT_OBJ_SUBDIR@
+srcdir		= @srcdir@
+prefix		= @prefix@
+exec_prefix	= @exec_prefix@
+libdir		= @libdir@
+includedir	= @includedir@
+
+LIBTOOL		= @LIBTOOL@
+LIBTOOL_CLEAN	= @LIB_CLEAN@
+LIBTOOL_COMPILE	= @LIB_COMPILE@
+LIBTOOL_LINK	= @LIB_LINK@
+
+CC		= @CC@
+CPP		= @CPP@
+
+CFLAGS		= @CFLAGS@ @EXTRA_CFLAGS@
+CPPFLAGS	=  -I../test -I$(srcdir) -DHAVE_CONFIG_H @CPPFLAGS@
+
+CCFLAGS		= $(CPPFLAGS) $(CFLAGS)
+
+CFLAGS_LIBTOOL	= $(CCFLAGS)
+CFLAGS_NORMAL	= $(CCFLAGS)
+CFLAGS_DEBUG	= $(CCFLAGS) @CC_G_OPT@ -DTRACE
+CFLAGS_PROFILE	= $(CCFLAGS) -pg
+CFLAGS_SHARED	= $(CCFLAGS) @CC_SHARED_OPTS@
+
+CFLAGS_DEFAULT	= $(CFLAGS_@DFT_UPR_MODEL@)
+
+REL_VERSION	= @cf_cv_rel_version@
+ABI_VERSION	= @cf_cv_abi_version@
+LOCAL_LIBDIR	= @top_builddir@/lib
+LOCAL_LIBS	= @TEST_DEPS@
+MATH_LIB	= @MATH_LIB@
+TEST_LIBS	= @TEST_LIBS@
+
+LD		= @LD@
+LINK		= @LINK_TESTS@ $(LIBTOOL_LINK) $(CFLAGS)
+
+LDFLAGS		= @LD_MODEL@ @LOCAL_LDFLAGS@ @LDFLAGS@
+
+LDFLAGS_LIBTOOL	= $(LDFLAGS) $(CFLAGS_LIBTOOL)
+LDFLAGS_NORMAL	= $(LDFLAGS) $(CFLAGS_NORMAL)
+LDFLAGS_DEBUG	= $(LDFLAGS) $(CFLAGS_DEBUG)
+LDFLAGS_PROFILE	= $(LDFLAGS) $(CFLAGS_PROFILE)
+LDFLAGS_SHARED	= $(LDFLAGS) $(CFLAGS_SHARED) @LD_SHARED_OPTS@
+
+TEST_ARGS	= @LDFLAGS_STATIC@ @TEST_ARGS@ @LDFLAGS_SHARED@ 
+
+# use these for linking with all of the libraries
+LIBS_DEFAULT	= $(TEST_ARGS) @LIBS@ $(TEST_LIBS) $(MATH_LIB)
+LDFLAGS_DEFAULT	= $(LDFLAGS_@DFT_UPR_MODEL@) $(LIBS_DEFAULT)
+
+# use these for linking with the (n)curses library and possibly pthreads
+LIBS_THREADS	= `echo "$(TEST_ARGS) @LIBS@" | sed -e 's/-lform.*-lpanel[^ ]*//'` $(TEST_LIBS) $(MATH_LIB) @PTHREAD@
+LDFLAGS_THREADS	= $(LDFLAGS_@DFT_UPR_MODEL@) $(LIBS_THREADS)
+
+# use these for linking with the (n)curses library
+LIBS_CURSES	= `echo "$(TEST_ARGS) @LIBS@" | sed -e 's/-lform.*-lpanel[^ ]*//'` $(TEST_LIBS) $(MATH_LIB)
+LDFLAGS_CURSES	= $(LDFLAGS_@DFT_UPR_MODEL@) $(LIBS_CURSES)
+
+# use these for linking with the tinfo library if we have it, or curses library if not
+LIBS_TINFO	= @LDFLAGS_STATIC@ @TINFO_ARGS@ @LDFLAGS_SHARED@ @LIBS@ $(TEST_LIBS) $(MATH_LIB)
+LDFLAGS_TINFO	= $(LDFLAGS_@DFT_UPR_MODEL@) $(LIBS_TINFO)
+
+LINT		= @LINT@
+LINT_OPTS	= @LINT_OPTS@
+LINT_LIBS	= -lform -lmenu -lpanel -lncurses @LIBS@
+
+HEADER_DEPS	= \
+	../include/curses.h \
+	../include/term.h
+
+# The rest is generated from the "programs" and "modules" files...

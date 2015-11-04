@@ -1,0 +1,99 @@
+.\"***************************************************************************
+.\" Copyright (c) 1998-2005,2006 Free Software Foundation, Inc.              *
+.\"                                                                          *
+.\" Permission is hereby granted, free of charge, to any person obtaining a  *
+.\" copy of this software and associated documentation files (the            *
+.\" "Software"), to deal in the Software without restriction, including      *
+.\" without limitation the rights to use, copy, modify, merge, publish,      *
+.\" distribute, distribute with modifications, sublicense, and/or sell       *
+.\" copies of the Software, and to permit persons to whom the Software is    *
+.\" furnished to do so, subject to the following conditions:                 *
+.\"                                                                          *
+.\" The above copyright notice and this permission notice shall be included  *
+.\" in all copies or substantial portions of the Software.                   *
+.\"                                                                          *
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS  *
+.\" OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF               *
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.   *
+.\" IN NO EVENT SHALL THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,   *
+.\" DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR    *
+.\" OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR    *
+.\" THE USE OR OTHER DEALINGS IN THE SOFTWARE.                               *
+.\"                                                                          *
+.\" Except as contained in this notice, the name(s) of the above copyright   *
+.\" holders shall not be used in advertising or otherwise to promote the     *
+.\" sale, use or other dealings in this Software without prior written       *
+.\" authorization.                                                           *
+.\"***************************************************************************
+.\"
+.\" $Id: curs_addchstr.3x,v 1.12 2006/12/02 17:02:45 tom Exp $
+.TH curs_addchstr 3X ""
+.na
+.hy 0
+.SH NAME
+\fBaddchstr\fR,
+\fBaddchnstr\fR,
+\fBwaddchstr\fR,
+\fBwaddchnstr\fR,
+\fBmvaddchstr\fR,
+\fBmvaddchnstr\fR,
+\fBmvwaddchstr\fR,
+\fBmvwaddchnstr\fR - add a string of characters (and attributes) to a \fBcurses\fR window
+.ad
+.hy
+.SH SYNOPSIS
+\fB#include <curses.h>\fR
+.PP
+\fBint addchstr(const chtype *chstr);\fR
+.br
+\fBint addchnstr(const chtype *chstr, int n);\fR
+.br
+\fBint waddchstr(WINDOW *win, const chtype *chstr);\fR
+.br
+\fBint waddchnstr(WINDOW *win, const chtype *chstr, int n);\fR
+.br
+\fBint mvaddchstr(int y, int x, const chtype *chstr);\fR
+.br
+\fBint mvaddchnstr(int y, int x, const chtype *chstr, int n);\fR
+.br
+\fBint mvwaddchstr(WINDOW *win, int y, int x, const chtype *chstr);\fR
+.br
+\fBint mvwaddchnstr(WINDOW *win, int y, int x, const chtype *chstr, int n);\fR
+.SH DESCRIPTION
+These routines copy \fIchstr\fR into the window image structure at and after
+the current cursor position.  The four routines with \fIn\fR as the last
+argument copy at most \fIn\fR elements, but no more than will fit on the line.
+If \fBn\fR=\fB-1\fR then the whole string is copied, to the maximum number of
+characters that will fit on the line.
+.PP
+The window cursor is \fInot\fR advanced, and these routines work faster than
+\fBwaddnstr\fR.  On the other hand, they do not perform any kind of checking
+(such as for the newline, backspace, or carriage return characters), they do not
+advance the current cursor position, they do not expand other control characters
+to ^-escapes, and they truncate the string if it crosses the right margin,
+rather than wrapping it around to the new line.
+.SH RETURN VALUES
+All routines return the integer \fBERR\fR upon failure and \fBOK\fR on success
+(the SVr4 manuals specify only "an integer value other than \fBERR\fR") upon
+successful completion, unless otherwise noted in the preceding routine
+descriptions.
+.PP
+X/Open does not define any error conditions.
+This implementation returns an error
+if the window pointer is null.
+.SH NOTES
+Note that all routines except \fBwaddchnstr\fR may be macros.
+.SH PORTABILITY
+These entry points are described in the XSI Curses standard, Issue 4.
+.SH SEE ALSO
+\fBcurses\fR(3X).
+.PP
+Comparable functions in the wide-character (ncursesw) library are
+described in
+\fBcurs_add_wchstr\fR(3X).
+.\"#
+.\"# The following sets edit modes for GNU EMACS
+.\"# Local Variables:
+.\"# mode:nroff
+.\"# fill-column:79
+.\"# End:

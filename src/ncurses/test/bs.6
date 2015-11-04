@@ -1,0 +1,71 @@
+.\"***************************************************************************
+.\" Copyright (c) 1998,2006 Free Software Foundation, Inc.                   *
+.\"                                                                          *
+.\" Permission is hereby granted, free of charge, to any person obtaining a  *
+.\" copy of this software and associated documentation files (the            *
+.\" "Software"), to deal in the Software without restriction, including      *
+.\" without limitation the rights to use, copy, modify, merge, publish,      *
+.\" distribute, distribute with modifications, sublicense, and/or sell       *
+.\" copies of the Software, and to permit persons to whom the Software is    *
+.\" furnished to do so, subject to the following conditions:                 *
+.\"                                                                          *
+.\" The above copyright notice and this permission notice shall be included  *
+.\" in all copies or substantial portions of the Software.                   *
+.\"                                                                          *
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS  *
+.\" OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF               *
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.   *
+.\" IN NO EVENT SHALL THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,   *
+.\" DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR    *
+.\" OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR    *
+.\" THE USE OR OTHER DEALINGS IN THE SOFTWARE.                               *
+.\"                                                                          *
+.\" Except as contained in this notice, the name(s) of the above copyright   *
+.\" holders shall not be used in advertising or otherwise to promote the     *
+.\" sale, use or other dealings in this Software without prior written       *
+.\" authorization.                                                           *
+.\"***************************************************************************
+.\"
+.\" $Id: bs.6,v 1.2 2006/04/22 22:42:44 tom Exp $
+.TH BATTLESHIPS 6 "Aug 23, 1989"
+.SH NAME
+bs \- battleships game
+.SH SYNOPSIS
+battle [ -b | -s ] [ -c ]
+.SH DESCRIPTION
+This program allows you to play the familiar Battleships game against the
+computer on a 10x10 board. The interface is visual and largely
+self-explanatory; you place your ships and pick your shots by moving the
+cursor around the `sea' with the rogue/hack motion keys hjklyubn.
+.PP
+Note that when selecting a ship to place, you must type the capital letter
+(these are, after all, capital ships). During ship placement, the `r' command
+may be used to ignore the current position and randomly place your currently
+selected ship. The `R' command will place all remaining ships randomly. The ^L
+command (form feed, ASCII 12) will force a screen redraw).
+.PP
+The command-line arguments control game modes. 
+
+.nf
+	-b selects a `blitz' variant
+	-s selects a `salvo' variant
+	-c permits ships to be placed adjacently
+.fi
+
+The `blitz' variant allows a side to shoot for as long as it continues to
+score hits.
+.PP
+The `salvo' game allows a player one shot per turn for each of his/her ships
+still afloat.  This puts a premium scoring hits early and knocking out some
+ships and also makes much harder the situation where you face a superior force
+with only your PT-boat.
+.PP
+Normally, ships must be separated by at least one square of open water. The
+-c option disables this check and allows them to close-pack.
+.PP
+The algorithm the computer uses once it has found a ship to sink is provably
+optimal. The dispersion criterion for the random-fire algorithm may not be.
+.SH AUTHORS
+Originally written by one Bruce Holloway in 1986. Salvo mode added by Chuck A.
+DeGaul (cbosgd!cad). Visual user interface, `closepack' option, code rewrite
+and manual page by Eric S. Raymond <esr@snark.thyrsus.com> August 1989.

@@ -1,0 +1,89 @@
+# $Id: modules,v 1.36 2007/08/18 17:57:08 tom Exp $
+##############################################################################
+# Copyright (c) 1998-2006,2007 Free Software Foundation, Inc.                #
+#                                                                            #
+# Permission is hereby granted, free of charge, to any person obtaining a    #
+# copy of this software and associated documentation files (the "Software"), #
+# to deal in the Software without restriction, including without limitation  #
+# the rights to use, copy, modify, merge, publish, distribute, distribute    #
+# with modifications, sublicense, and/or sell copies of the Software, and to #
+# permit persons to whom the Software is furnished to do so, subject to the  #
+# following conditions:                                                      #
+#                                                                            #
+# The above copyright notice and this permission notice shall be included in #
+# all copies or substantial portions of the Software.                        #
+#                                                                            #
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR #
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,   #
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL    #
+# THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER      #
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING    #
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER        #
+# DEALINGS IN THE SOFTWARE.                                                  #
+#                                                                            #
+# Except as contained in this notice, the name(s) of the above copyright     #
+# holders shall not be used in advertising or otherwise to promote the sale, #
+# use or other dealings in this Software without prior written               #
+# authorization.                                                             #
+##############################################################################
+#
+# Author: Thomas E. Dickey	1997-on
+#
+# Test-Program modules
+
+@ base
+background	progs		$(srcdir)	$(HEADER_DEPS)
+blue		progs		$(srcdir)	$(HEADER_DEPS)
+bs		progs		$(srcdir)	$(HEADER_DEPS)
+cardfile	progs		$(srcdir)	$(HEADER_DEPS)	../include/panel.h ../include/form.h
+chgat		progs		$(srcdir)	$(HEADER_DEPS)
+color_set	progs		$(srcdir)	$(HEADER_DEPS)
+demo_altkeys	progs		$(srcdir)	$(HEADER_DEPS)
+demo_defkey	progs		$(srcdir)	$(HEADER_DEPS)
+demo_forms	progs		$(srcdir)	$(HEADER_DEPS)	../include/form.h $(srcdir)/edit_field.h
+demo_keyok	progs		$(srcdir)	$(HEADER_DEPS)
+demo_menus	progs		$(srcdir)	$(HEADER_DEPS)	../include/menu.h
+demo_panels	progs		$(srcdir)	$(HEADER_DEPS)	../include/panel.h
+demo_termcap	progs		$(srcdir)	$(HEADER_DEPS)
+ditto		progs		$(srcdir)	$(HEADER_DEPS)
+dots		progs		$(srcdir)	$(HEADER_DEPS)
+dots_mvcur	progs		$(srcdir)	$(HEADER_DEPS)
+echochar	progs		$(srcdir)	$(HEADER_DEPS)
+edit_field	progs		$(srcdir)	$(HEADER_DEPS)	$(srcdir)/edit_field.h
+filter		progs		$(srcdir)	$(HEADER_DEPS)	../include/form.h
+firework	progs		$(srcdir)	$(HEADER_DEPS)
+firstlast	progs		$(srcdir)	$(HEADER_DEPS)
+foldkeys	progs		$(srcdir)	$(HEADER_DEPS)
+gdc		progs		$(srcdir)	$(HEADER_DEPS)
+hanoi		progs		$(srcdir)	$(HEADER_DEPS)
+hashtest	progs		$(srcdir)	$(HEADER_DEPS)
+inch_wide	progs		$(srcdir)	$(HEADER_DEPS)
+inchs		progs		$(srcdir)	$(HEADER_DEPS)
+ins_wide	progs		$(srcdir)	$(HEADER_DEPS)
+inserts		progs		$(srcdir)	$(HEADER_DEPS)
+key_names	progs		$(srcdir)	$(HEADER_DEPS)
+keynames	progs		$(srcdir)	$(HEADER_DEPS)
+knight		progs		$(srcdir)	$(HEADER_DEPS)
+lrtest		progs		$(srcdir)	$(HEADER_DEPS)
+movewindow	progs		$(srcdir)	$(HEADER_DEPS)
+ncurses		progs		$(srcdir)	$(HEADER_DEPS)	../include/panel.h ../include/menu.h ../include/form.h
+newdemo		progs		$(srcdir)	$(HEADER_DEPS)
+railroad	progs		$(srcdir)	$(HEADER_DEPS)
+rain		progs		$(srcdir)	$(HEADER_DEPS)
+redraw		progs		$(srcdir)	$(HEADER_DEPS)
+savescreen	progs		$(srcdir)	$(HEADER_DEPS)
+tclock		progs		$(srcdir)	$(HEADER_DEPS)
+test_arrays	progs		$(srcdir)	$(HEADER_DEPS)
+test_get_wstr	progs		$(srcdir)	$(HEADER_DEPS)
+test_getstr	progs		$(srcdir)	$(HEADER_DEPS)
+test_instr	progs		$(srcdir)	$(HEADER_DEPS)
+test_inwstr	progs		$(srcdir)	$(HEADER_DEPS)
+test_opaque	progs		$(srcdir)	$(HEADER_DEPS)
+testaddch	progs		$(srcdir)	$(HEADER_DEPS)
+testcurs	progs		$(srcdir)	$(HEADER_DEPS)
+testscanw	progs		$(srcdir)	$(HEADER_DEPS)
+view		progs		$(srcdir)	$(HEADER_DEPS)
+worm		progs		$(srcdir)	$(HEADER_DEPS)
+xmas		progs		$(srcdir)	$(HEADER_DEPS)
+
+# vile:makemode
