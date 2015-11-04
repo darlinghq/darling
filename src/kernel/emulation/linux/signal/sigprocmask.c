@@ -13,9 +13,12 @@ long sys_sigprocmask(int how, const sigset_t* set, sigset_t* oldset)
 	linux_sigset_t in, out;
 
 	linux_how = spchow_bsd_to_linux(how);
-	sigset_bsd_to_linux(set, &in);
 
-	ret = LINUX_SYSCALL(__NR_rt_sigprocmask, linux_how, &in, &out);
+	if (set != NULL)
+		sigset_bsd_to_linux(set, &in);
+
+	ret = LINUX_SYSCALL(__NR_rt_sigprocmask, linux_how,
+			(set != NULL) ? &in : NULL, &out);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
 	else if (oldset != NULL)
