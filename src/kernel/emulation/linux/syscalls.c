@@ -97,6 +97,7 @@
 #include "xattr/fgetxattr.h"
 #include "xattr/setxattr.h"
 #include "xattr/fsetxattr.h"
+#include "select/select.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -147,6 +148,7 @@ void* __bsd_syscall_table[512] = {
 	[78] = sys_mincore,
 	[90] = sys_dup2,
 	[92] = sys_fcntl,
+	[93] = sys_select,
 	[95] = sys_fsync,
 	[97] = sys_socket,
 	[98] = sys_connect,
@@ -226,6 +228,7 @@ void* __bsd_syscall_table[512] = {
 	[403] = sys_recvfrom_nocancel,
 	[404] = sys_accept_nocancel,
 	[406] = sys_fcntl_nocancel,
+	[407] = sys_select_nocancel,
 	[408] = sys_fsync_nocancel,
 	[409] = sys_connect_nocancel,
 	[411] = sys_readv_nocancel,
