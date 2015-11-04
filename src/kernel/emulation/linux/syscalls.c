@@ -40,6 +40,7 @@
 #include "unistd/mknod.h"
 #include "unistd/chmod.h"
 #include "unistd/chown.h"
+#include "unistd/getgid.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -127,6 +128,7 @@ void* __bsd_syscall_table[512] = {
 	[41] = sys_dup,
 	[43] = sys_getegid,
 	[46] = sys_sigaction,
+	[47] = sys_getgid,
 	[48] = sys_sigprocmask,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,

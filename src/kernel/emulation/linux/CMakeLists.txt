@@ -54,6 +54,7 @@ set(emulation_sources
 	unistd/chown.c
 	unistd/umask.c
 	unistd/chroot.c
+	unistd/getgid.c
 	process/vfork.c
 	process/fork.c
 	process/wait4.c
