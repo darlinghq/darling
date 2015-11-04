@@ -25,3 +25,9 @@
 [submodule "src/external/compiler-rt"]
 	path = src/external/compiler-rt
 	url = https://github.com/darlinghq/darling-compiler-rt.git
+[submodule "src/external/foundation"]
+	path = src/external/foundation
+	url = https://github.com/darlinghq/darling-foundation.git
+[submodule "src/external/corefoundation"]
+	path = src/external/corefoundation
+	url = https://github.com/darlinghq/darling-corefoundation.git
