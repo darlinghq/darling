@@ -95,6 +95,14 @@ set(emulation_sources
 	stat/mkfifo.c
 	stat/rmdir.c
 	stat/common.c
+	xattr/listxattr.c
+	xattr/flistxattr.c
+	xattr/removexattr.c
+	xattr/fremovexattr.c
+	xattr/getxattr.c
+	xattr/fgetxattr.c
+	xattr/setxattr.c
+	xattr/fsetxattr.c
 	synch/semwait_signal.c
 	hfs/stub.c
 	dirent/getdirentries.c

@@ -86,6 +86,14 @@
 #include "process/fork.h"
 #include "wqueue/bsdthread_register.h"
 #include "hfs/stub.h"
+#include "xattr/listxattr.h"
+#include "xattr/flistxattr.h"
+#include "xattr/removexattr.h"
+#include "xattr/fremovexattr.h"
+#include "xattr/getxattr.h"
+#include "xattr/fgetxattr.h"
+#include "xattr/setxattr.h"
+#include "xattr/fsetxattr.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -182,6 +190,14 @@ void* __bsd_syscall_table[512] = {
 	[227] = sys_copyfile,
 	[228] = sys_fgetattrlist,
 	[229] = sys_fsetattrlist,
+	[234] = sys_getxattr,
+	[235] = sys_fgetxattr,
+	[236] = sys_setxattr,
+	[237] = sys_fsetxattr,
+	[238] = sys_removexattr,
+	[239] = sys_fremovexattr,
+	[240] = sys_listxattr,
+	[241] = sys_flistxattr,
 	[334] = sys_semwait_signal,
 	[338] = sys_stat64,
 	[339] = sys_fstat64,
