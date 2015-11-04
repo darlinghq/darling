@@ -42,6 +42,7 @@
 #include "unistd/chown.h"
 #include "unistd/getgid.h"
 #include "unistd/getppid.h"
+#include "unistd/rename.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -154,6 +155,7 @@ void* __bsd_syscall_table[512] = {
 	[121] = sys_writev,
 	[123] = sys_fchown,
 	[124] = sys_fchmod,
+	[128] = sys_rename,
 	[132] = sys_mkfifo,
 	[134] = sys_shutdown,
 	[136] = sys_mkdir,
