@@ -132,6 +132,7 @@ set(emulation_sources
 	ext/clock_nanosleep.c
 	ext/clock_gettime.c
 	wqueue/bsdthread_register.c
+	ext/sched_yield.c
 	syscalls-amd64.asm
 )
 

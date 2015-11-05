@@ -478,15 +478,16 @@ kern_return_t macx_backing_store_recovery(
 	return KERN_FAILURE;
 }
 
+extern void __linux_sched_yield();
 boolean_t swtch_pri(int pri)
 {
-	UNIMPLEMENTED_TRAP();
+	__linux_sched_yield();
 	return 0;
 }
 
 boolean_t swtch(void)
 {
-	UNIMPLEMENTED_TRAP();
+	__linux_sched_yield();
 	return 0;
 }
 
