@@ -6,6 +6,7 @@
 
 extern long cerror(int __err);
 
+VISIBLE
 int signalfd (int __fd, const sigset_t *__mask, int __flags)
 {
 	int rv;
