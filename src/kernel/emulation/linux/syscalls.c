@@ -87,7 +87,9 @@
 #include "time/futimes.h"
 #include "process/vfork.h"
 #include "process/fork.h"
-#include "wqueue/bsdthread_register.h"
+#include "bsdthread/bsdthread_register.h"
+#include "bsdthread/bsdthread_create.h"
+#include "bsdthread/bsdthread_terminate.h"
 #include "hfs/stub.h"
 #include "xattr/listxattr.h"
 #include "xattr/flistxattr.h"
@@ -217,6 +219,8 @@ void* __bsd_syscall_table[512] = {
 	[345] = sys_statfs64,
 	[346] = sys_fstatfs64,
 	[347] = sys_getfsstat64,
+	[360] = sys_bsdthread_create,
+	[361] = sys_bsdthread_terminate,
 	[366] = sys_bsdthread_register,
 	[372] = sys_thread_selfid,
 	[396] = sys_read_nocancel,

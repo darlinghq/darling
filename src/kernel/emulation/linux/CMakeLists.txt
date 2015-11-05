@@ -131,12 +131,16 @@ set(emulation_sources
 	ext/timerfd_gettime.c
 	ext/clock_nanosleep.c
 	ext/clock_gettime.c
-	wqueue/bsdthread_register.c
 	ext/sched_yield.c
+	bsdthread/bsdthread_register.c
+	bsdthread/bsdthread_create.c
+	bsdthread/bsdthread_terminate.c
 	syscalls-amd64.asm
 )
 
 set_source_files_properties(mman/mman.c PROPERTIES COMPILE_FLAGS
+	"-I${DARLING_TOP_DIRECTORY}/platform-include")
+set_source_files_properties(bsdthread/bsdthread_create.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include")
 set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/src/libc/include -nostdinc")
