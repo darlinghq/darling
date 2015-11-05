@@ -7,6 +7,8 @@
 #define SFD_CLOEXEC O_CLOEXEC
 #define SFD_NONBLOCK O_NONBLOCK
 
+#define signalfd __linux_signalfd
+
 struct signalfd_siginfo
 {
 	uint32_t ssi_signo;
