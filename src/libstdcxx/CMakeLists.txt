@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.4.0)
 enable_language(C ASM)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2 -msse3 -w -nostdinc -nostdinc++")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__DARWIN_UNIX03 -fPIC -w")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -include ${CMAKE_CURRENT_SOURCE_DIR}/build.h")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1)
@@ -18,8 +18,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../external/libcxxabi/include)
 
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 add_definitions(-DBUILDING_LIBSTDCXX -D_LIBCPPABI_VERSION=1)
-add_definitions('-D__private_extern__=extern')
-add_definitions('-D_GLIBCXX_NOTHROW=throw()')
 
 set(libstdcxx_sources
 	src/allocator-inst.cc
