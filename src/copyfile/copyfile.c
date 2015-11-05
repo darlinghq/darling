@@ -75,6 +75,10 @@ static void *qtn_file_clone(void *x) { return NULL; }
 #include "copyfile_private.h"
 #include "xattr_flags.h"
 
+#ifdef DARLING
+#	define xattr_preserve_for_intent(x,y) (0)
+#endif
+
 enum cfInternalFlags {
 	cfDelayAce = 1 << 0,
 	cfMakeFileInvisible = 1 << 1,
