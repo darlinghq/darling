@@ -1,6 +1,6 @@
 project(libc-x86_64)
 
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.0.2)
 enable_language(C ASM)
 
 add_definitions(-D_getcontext=getcontext)
