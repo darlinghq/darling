@@ -535,3 +535,20 @@ kern_return_t pid_for_task(
 	return KERN_FAILURE;
 }
 
+kern_return_t bsdthread_terminate_trap(
+				uintptr_t stackaddr,
+				unsigned long freesize,
+				mach_port_name_t thread,
+				mach_port_name_t sem)
+{
+	struct bsdthread_terminate_args args = {
+		.stackaddr = stackaddr,
+		.freesize = freesize,
+		.thread_right_name = thread,
+		.signal = sem
+	};
+
+	return ioctl(driver_fd, NR_bsdthread_terminate_trap, &args);
+}
+
+

@@ -30,15 +30,4 @@ void mach_driver_init(void)
 	}
 }
 
-// Emulated ioctl implementation
-int ioctl(int fd, int cmd, void* arg)
-{
-	struct bsd_ioctl_args args = {
-		.fd = fd,
-		.request = cmd,
-		.arg = arg
-	};
-
-	return __real_ioctl(driver_fd, NR_bsd_ioctl_trap, &args);
-}
 

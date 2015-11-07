@@ -57,6 +57,9 @@ kern_return_t semaphore_timedwait_signal_trap(mach_task_t* task,
 		struct semaphore_timedwait_signal_args* args);
 long bsd_ioctl_trap(mach_task_t* task, struct bsd_ioctl_args* fd);
 
+kern_return_t bsdthread_terminate_trap(mach_task_t* task,
+		struct bsdthread_terminate_args* args);
+
 // Internal
 kern_return_t _kernelrpc_mach_port_destroy(mach_task_t* task,
 		mach_port_name_t task_name, mach_port_name_t right_name);

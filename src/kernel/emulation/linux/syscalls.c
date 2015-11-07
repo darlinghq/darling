@@ -90,6 +90,7 @@
 #include "bsdthread/bsdthread_register.h"
 #include "bsdthread/bsdthread_create.h"
 #include "bsdthread/bsdthread_terminate.h"
+#include "bsdthread/disable_threadsignal.h"
 #include "hfs/stub.h"
 #include "xattr/listxattr.h"
 #include "xattr/flistxattr.h"
@@ -208,6 +209,7 @@ void* __bsd_syscall_table[512] = {
 	[239] = sys_fremovexattr,
 	[240] = sys_listxattr,
 	[241] = sys_flistxattr,
+	[331] = sys_disable_threadsignal,
 	[334] = sys_semwait_signal,
 	[338] = sys_stat64,
 	[339] = sys_fstat64,

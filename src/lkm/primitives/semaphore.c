@@ -84,6 +84,7 @@ mach_semaphore_signal(darling_mach_port_t* port)
 {
 	struct mach_semaphore* ms;
 	
+	debug_msg("mach_semaphore_signal(%p)\n", port);
 	if (port->server_port.port_type != PORT_TYPE_SEMAPHORE)
 	{
 		ipc_port_unlock(port);
@@ -106,6 +107,7 @@ mach_semaphore_signal_all(darling_mach_port_t* port)
 {
 	struct mach_semaphore* ms;
 	
+	debug_msg("mach_semaphore_signal_all(%p)\n", port);
 	if (port->server_port.port_type != PORT_TYPE_SEMAPHORE)
 	{
 		ipc_port_unlock(port);
@@ -130,6 +132,7 @@ mach_semaphore_wait(darling_mach_port_t* port)
 	struct mach_semaphore* ms;
 	kern_return_t ret;
 	
+	debug_msg("mach_semaphore_wait(%p)\n", port);
 	if (port->server_port.port_type != PORT_TYPE_SEMAPHORE)
 	{
 		ipc_port_unlock(port);
@@ -143,7 +146,7 @@ mach_semaphore_wait(darling_mach_port_t* port)
 	
 	ret = KERN_SUCCESS;
 	
-	if (down_killable(&ms->sem) == -EINTR)
+	if (down_interruptible(&ms->sem) == -EINTR)
 	{
 		ret = KERN_ABORTED;
 	}
@@ -197,10 +200,26 @@ interrupted:
 	return -EINTR;
 }
 
-static int down_timeout_interruptible(struct semaphore *sem, long timeout)
+static int __down_timeout_interruptible(struct semaphore *sem, long timeout)
 {
 	return __down_common(sem, TASK_INTERRUPTIBLE, timeout);
 }
+
+int down_timeout_interruptible(struct semaphore *sem, long timeout)
+{
+    unsigned long flags;
+    int result = 0;
+
+    raw_spin_lock_irqsave(&sem->lock, flags);
+    if (likely(sem->count > 0))
+        sem->count--;
+    else
+        result = __down_timeout_interruptible(sem, timeout);
+    raw_spin_unlock_irqrestore(&sem->lock, flags);
+
+    return result;
+}
+
 
 kern_return_t
 mach_semaphore_timedwait(darling_mach_port_t* port, unsigned int sec,
@@ -211,6 +230,7 @@ mach_semaphore_timedwait(darling_mach_port_t* port, unsigned int sec,
 	int err;
 	unsigned long jiffies;
 	
+	debug_msg("mach_semaphore_timedwait(%p)\n", port);
 	if (port->server_port.port_type != PORT_TYPE_SEMAPHORE)
 	{
 		ipc_port_unlock(port);
@@ -231,6 +251,7 @@ mach_semaphore_timedwait(darling_mach_port_t* port, unsigned int sec,
 	jiffies = nsecs_to_jiffies(((u64) sec) * NSEC_PER_SEC + nsec);
 	#endif
 	
+	debug_msg("down_timeout(jiffies=%d, pid=%d)\n", jiffies, current->pid);
 	err = down_timeout_interruptible(&ms->sem, jiffies);
 	if (err == -ETIME)
 		ret = KERN_OPERATION_TIMED_OUT;

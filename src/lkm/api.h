@@ -19,6 +19,7 @@
 
 #ifndef LKM_API_H
 #define LKM_API_H
+#include <stdint.h>
 
 #define DARLING_MACH_API_VERSION		1
 #define DARLING_MACH_API_VERSION_STR	"1"
@@ -41,7 +42,8 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_semaphore_timedwait_signal_trap,
 	NR_semaphore_timedwait_trap,
 	NR_bsd_ioctl_trap,
-	NR_thread_self_trap
+	NR_thread_self_trap,
+	NR_bsdthread_terminate_trap,
 };
 
 struct mach_port_mod_refs_args
@@ -61,14 +63,14 @@ struct mach_port_allocate_args
 
 struct mach_msg_overwrite_args
 {
-	union { void* msg; long long pad; };
+	union { void* msg; uint64_t pad; };
 	unsigned int option;
 	unsigned int send_size;
 	unsigned int recv_size;
 	unsigned int rcv_name;
 	unsigned int timeout;
 	unsigned int notify;
-	union { void* rcv_msg; long long pad2; };
+	union { void* rcv_msg; uint64_t pad2; };
 	unsigned int rcv_limit;
 };
 
@@ -123,8 +125,16 @@ struct semaphore_timedwait_args
 struct bsd_ioctl_args
 {
 	int fd;
-	unsigned long long request;
-	unsigned long long arg;
+	uint64_t request;
+	uint64_t arg;
+};
+
+struct bsdthread_terminate_args
+{
+	uint64_t stackaddr;
+	uint32_t freesize;
+	unsigned int thread_right_name;
+	unsigned int signal;
 };
 
 #endif

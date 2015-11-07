@@ -28,6 +28,7 @@
 #include <linux/file.h>
 #include <linux/dcache.h>
 #include <linux/kernel.h>
+#include <linux/mm.h>
 #include "darling_task.h"
 #include "traps.h"
 #include "ipc_space.h"
@@ -74,6 +75,7 @@ static const trap_handler mach_traps[20] = {
 	[sc(NR_semaphore_timedwait_trap)] = (trap_handler) semaphore_timedwait_trap,
 	[sc(NR_bsd_ioctl_trap)] = (trap_handler) bsd_ioctl_trap,
 	[sc(NR_thread_self_trap)] = (trap_handler) mach_thread_self_trap,
+	[sc(NR_bsdthread_terminate_trap)] = (trap_handler) bsdthread_terminate_trap,
 };
 #undef sc
 
@@ -294,11 +296,19 @@ mach_port_name_t mach_thread_self_trap(mach_task_t* task)
 	ipc_port_lock(task->task_self);
 	
 	thread_port = darling_task_lookup_thread(task, current->pid);
+	if (thread_port == NULL)
+	{
+		if (ipc_port_new(&thread_port) != KERN_SUCCESS)
+		{
+			ipc_port_unlock(task->task_self);
+			return KERN_RESOURCE_SHORTAGE;
+		}
+		
+		ipc_port_make_thread(thread_port);
+		darling_task_register_thread(task, thread_port);
+	}
 	
-	if (thread_port != NULL)
-		ret = ipc_space_make_send(&task->namespace, thread_port, false, &name);
-	else
-		ret = KERN_FAILURE;
+	ret = ipc_space_make_send(&task->namespace, thread_port, false, &name);
 	
 	ipc_port_unlock(task->task_self);
 	
@@ -745,6 +755,43 @@ long bsd_ioctl_trap(mach_task_t* task, struct bsd_ioctl_args* in_args)
 	fput(f);
 	
 	return retval;
+}
+
+kern_return_t bsdthread_terminate_trap(mach_task_t* task,
+		struct bsdthread_terminate_args* in_args)
+{
+	struct bsdthread_terminate_args args;
+	darling_mach_port_right_t* sem;
+	darling_mach_port_t* thread_self;
+
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	debug_msg("bsdthread_terminate_trap(), pid=%d\n",
+		current->pid);
+	ipc_space_lock(&task->namespace);
+	
+	sem = ipc_space_lookup(&task->namespace, args.signal);
+	
+	ipc_space_unlock(&task->namespace);
+	
+	// Signal threads calling pthread_join()
+	if (PORT_IS_VALID(sem->port))
+		mach_semaphore_signal(sem->port);
+	else
+		debug_msg("Invalid semaphore %d!\n", args.signal);
+
+	// Deallocate stack
+	debug_msg("unmap %p, 0x%x bytes\n", args.stackaddr, args.freesize);
+	vm_munmap(args.stackaddr, args.freesize);
+
+	// Deregister thread
+	// Here we assume that args.thread_right_name refers
+	// to the current thread.
+	thread_self = darling_task_lookup_thread(task, current->pid);
+	darling_task_deregister_thread(task, thread_self);
+
+	do_exit(0);
 }
 
 module_init(mach_init);

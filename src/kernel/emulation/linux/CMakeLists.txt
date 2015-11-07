@@ -113,6 +113,8 @@ set(emulation_sources
 	time/gettimeofday.c
 	time/utimes.c
 	time/futimes.c
+	ioctl/ioctl.c
+	# ioctl/termios.c
 	ext/uname.c
 	ext/epoll_create.c
 	ext/epoll_create1.c
@@ -135,6 +137,7 @@ set(emulation_sources
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_terminate.c
+	bsdthread/disable_threadsignal.c
 	syscalls-amd64.asm
 )
 

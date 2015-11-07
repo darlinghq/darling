@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "../../../../../platform-include/sys/mman.h"
 #include "../mman/mman.h"
+#include "../simple.h"
 
 extern void *memset(void *s, int c, size_t n);
 
@@ -35,17 +36,20 @@ long sys_bsdthread_create(void* thread_start, void* arg, void** stack,
 		stacksize = (unsigned long) stack;
 
 		// The pthread object is placed above stack area
-		allocsize = stacksize + pthread_obj_size;
+		allocsize = stacksize + pthread_obj_size + STACK_GUARD_SIZE;
 		allocsize = (allocsize + 4095) & ~4095; // round up to page size
 
 		stack = (void**) sys_mmap(NULL, allocsize, PROT_READ | PROT_WRITE,
 				MAP_ANON | MAP_PRIVATE, -1, 0);
 
+		// Protect the stack guard
+		sys_mprotect(stack, STACK_GUARD_SIZE, PROT_NONE);
+		
 		if (((intptr_t)stack) < 0 && ((intptr_t)stack) >= -4095)
 			ret = errno_linux_to_bsd((int) stack);
 
-		pthread = (void*) (((uintptr_t)stack) + stacksize);
-		stack = (void**) (((uintptr_t)stack) + stacksize);
+		pthread = (void*) (((uintptr_t)stack) + stacksize + STACK_GUARD_SIZE);
+		stack = (void**) (((uintptr_t)stack) + stacksize + STACK_GUARD_SIZE);
 	}
 
 #if defined(__x86_64__)
@@ -66,16 +70,14 @@ long sys_bsdthread_create(void* thread_start, void* arg, void** stack,
 			"movl %%eax, %%esi\n" // thread_self is 2nd arg to pthread_entry_point
 			"movq %%rsp, %%rdi\n" // pthread_self as 1st arg
 			"movq -24(%%rsp), %%rdx\n" // thread_start as 3rd arg
-			"movq -8(%%rsp), %%rcx\n" // stack_size as 4th arg
-			"movq -32(%%rsp), %%r8\n" // thread arg as 5th arg
+			"movq -8(%%rsp), %%r8\n" // stack_size as 5th arg
+			"movq -32(%%rsp), %%rcx\n" // thread arg as 4th arg
 			"movq -16(%%rsp), %%r9\n" // flags as 6th arg
 			"movq -40(%%rsp), %%rbx\n"
-			"addq $-0x10, %%rsp\n" // align the stack
-			"call *%%rbx\n"
-			"int3\n"
+			"jmp *%%rbx\n"
 			"1:\n"
 			: "=a"(ret)
-			: "0" (__NR_clone), "r"(pthread_entry_point),
+			: "0" (__NR_clone),
 			"D"(LINUX_CLONE_THREAD | LINUX_CLONE_VM | LINUX_CLONE_SIGHAND 
 	            | LINUX_CLONE_FILES | LINUX_CLONE_FS | LINUX_CLONE_SYSVSEM),
 			"S"(stack));

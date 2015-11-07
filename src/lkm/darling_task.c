@@ -216,22 +216,15 @@ void darling_task_deregister_thread(mach_task_t* task,
 
 void darling_task_free_threads(mach_task_t* task)
 {
-	struct rb_node *node, *next;
-	struct thread_entry* entry;
+	struct thread_entry *entry, *n;
 	
+	debug_msg("darling_task_free_threads(%p)\n", task);
 	write_lock(&task->threads_lock);
 	
-	node = rb_first(&task->threads);
-	while (node != NULL)
+	rbtree_postorder_for_each_entry_safe(entry, n, &task->threads, node)
 	{
-		entry = container_of(node, struct thread_entry, node);
-		
 		ipc_port_put(entry->thread_port);
-		
-		next = rb_next(node);
-		
 		kfree(entry);
-		node = next;
 	}
 	
 	task->threads.rb_node = NULL;
