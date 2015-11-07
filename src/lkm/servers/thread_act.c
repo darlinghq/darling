@@ -20,6 +20,7 @@
 #include <mach/mach_types.h>
 #include "../mach_includes.h"
 #include "../ipc_server.h"
+#include "../darling_task.h"
 #include "stub.h"
 #include <linux/sched.h>
 #include "thread_act.h"
@@ -64,8 +65,37 @@ kern_return_t thread_terminate
 	thread_act_t target_act
 )
 {
-	UNIMPL_MIG_CALL();
-	return KERN_NOT_SUPPORTED;
+	kern_return_t ret = KERN_SUCCESS;
+	mach_task_t* task;
+	darling_mach_port_right_t* right = NULL;
+
+	task = darling_task_get_current();
+	ipc_space_lock(&task->namespace);
+
+	right = ipc_space_lookup(&task->namespace, target_act);
+	if (right == NULL)
+	{
+		ret = KERN_INVALID_RIGHT;
+		goto err;
+	}
+	if (!PORT_IS_VALID(right->port)
+			|| right->port != darling_task_lookup_thread(task, current->pid))
+	{
+		ret = KERN_INVALID_RIGHT;
+		goto err;
+	}
+
+	darling_task_deregister_thread(task, right->port);
+	ipc_port_put(right->port);
+
+	ipc_space_right_put(&task->namespace, target_act);
+	right = NULL;
+   
+err:
+	if (right != NULL)
+		ipc_port_unlock(right->port);
+	ipc_space_unlock(&task->namespace);
+	return ret;
 }
 
 kern_return_t act_get_state

@@ -27,6 +27,7 @@
 #include <linux/uaccess.h>
 #include <linux/file.h>
 #include <linux/dcache.h>
+#include <linux/kernel.h>
 #include "darling_task.h"
 #include "traps.h"
 #include "ipc_space.h"
@@ -520,6 +521,12 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 		ret = ipc_msg_recv(task, args.rcv_name, args.rcv_msg, args.recv_size,
 				(args.option & MACH_RCV_TIMEOUT) ? args.timeout : MACH_MSG_TIMEOUT_NONE,
 				args.option);
+	}
+
+	if (darling_task_lookup_thread(task, current->pid) == NULL)
+	{
+		// thread_terminate() was called
+		do_exit(0);
 	}
 	return ret;
 }
