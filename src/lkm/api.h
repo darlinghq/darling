@@ -44,6 +44,8 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_bsd_ioctl_trap,
 	NR_thread_self_trap,
 	NR_bsdthread_terminate_trap,
+	NR_psynch_mutexwait_trap,
+	NR_psynch_mutexdrop_trap,
 };
 
 struct mach_port_mod_refs_args
@@ -135,6 +137,24 @@ struct bsdthread_terminate_args
 	uint32_t freesize;
 	unsigned int thread_right_name;
 	unsigned int signal;
+};
+
+struct psynch_mutexwait_args
+{
+	uint64_t mutex;
+	uint32_t mgen;
+	uint32_t ugen;
+	uint64_t tid;
+	uint32_t flags;
+};
+
+struct psynch_mutexdrop_args
+{
+	uint64_t mutex;
+	uint32_t mgen;
+	uint32_t ugen;
+	uint64_t tid;
+	uint32_t flags;
 };
 
 #endif

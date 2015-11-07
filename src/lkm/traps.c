@@ -42,6 +42,7 @@
 #include "servers/mach_host.h"
 #include "servers/thread_act.h"
 #include "primitives/semaphore.h"
+#include "psynch/psynch_mutex.h"
 
 MODULE_LICENSE("GPL");
 
@@ -57,7 +58,7 @@ static struct file_operations mach_chardev_ops = {
 
 #define sc(n) n-DARLING_MACH_API_BASE
 
-static const trap_handler mach_traps[20] = {
+static const trap_handler mach_traps[30] = {
 	[sc(NR_get_api_version)] = (trap_handler) mach_get_api_version,
 	[sc(NR_mach_reply_port)] = (trap_handler) mach_reply_port_trap,
 	[sc(NR__kernelrpc_mach_port_mod_refs)] = (trap_handler) _kernelrpc_mach_port_mod_refs_trap,
@@ -76,6 +77,8 @@ static const trap_handler mach_traps[20] = {
 	[sc(NR_bsd_ioctl_trap)] = (trap_handler) bsd_ioctl_trap,
 	[sc(NR_thread_self_trap)] = (trap_handler) mach_thread_self_trap,
 	[sc(NR_bsdthread_terminate_trap)] = (trap_handler) bsdthread_terminate_trap,
+    [sc(NR_psynch_mutexwait_trap)] = (trap_handler) psynch_mutexwait_trap,
+    [sc(NR_psynch_mutexdrop_trap)] = (trap_handler) psynch_mutexdrop_trap,
 };
 #undef sc
 

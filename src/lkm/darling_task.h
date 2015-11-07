@@ -25,7 +25,9 @@
 #include <linux/thread_info.h>
 #include <linux/rbtree.h>
 #include <linux/spinlock.h>
+#include <linux/hashtable.h>
 
+// Initialized in ipc_server.c
 struct mach_task
 {
 	pid_t pid;
@@ -36,6 +38,9 @@ struct mach_task
 	
 	rwlock_t threads_lock;
 	struct rb_root threads;
+	
+	spinlock_t mutex_wq_lock;
+	DECLARE_HASHTABLE(mutex_wq, 8);
 };
 
 typedef struct mach_task mach_task_t;

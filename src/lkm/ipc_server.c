@@ -50,6 +50,9 @@ mach_task_t* ipc_port_make_task(darling_mach_port_t* port, pid_t pid)
 	task->threads.rb_node = NULL;
 	
 	rwlock_init(&task->threads_lock);
+    
+    hash_init(task->mutex_wq);
+    spin_lock_init(&task->mutex_wq_lock);
 	
 	ipc_space_init(&task->namespace);
 	
