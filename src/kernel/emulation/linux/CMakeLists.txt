@@ -58,6 +58,7 @@ set(emulation_sources
 	unistd/getppid.c
 	unistd/rename.c
 	select/select.c
+	select/poll.c
 	process/vfork.c
 	process/fork.c
 	process/wait4.c

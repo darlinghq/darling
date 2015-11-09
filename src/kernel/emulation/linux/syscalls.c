@@ -101,6 +101,7 @@
 #include "xattr/setxattr.h"
 #include "xattr/fsetxattr.h"
 #include "select/select.h"
+#include "select/poll.h"
 #include "psynch/psynch_mutexwait.h"
 #include "psynch/psynch_mutexdrop.h"
 
@@ -203,6 +204,7 @@ void* __bsd_syscall_table[512] = {
 	[227] = sys_copyfile,
 	[228] = sys_fgetattrlist,
 	[229] = sys_fsetattrlist,
+	[230] = sys_poll,
 	[234] = sys_getxattr,
 	[235] = sys_fgetxattr,
 	[236] = sys_setxattr,
@@ -245,5 +247,6 @@ void* __bsd_syscall_table[512] = {
 	[412] = sys_writev_nocancel,
 	[414] = sys_pread_nocancel,
 	[415] = sys_pwrite_nocancel,
+	[417] = sys_poll_nocancel,
 };
 
