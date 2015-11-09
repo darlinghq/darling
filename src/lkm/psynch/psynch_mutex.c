@@ -19,6 +19,7 @@
 
 #include "psynch_mutex.h"
 #include "../darling_task.h"
+#include "../debug.h"
 #include <linux/sched.h>
 #include <linux/wait.h>
 #include <linux/list.h>
@@ -56,15 +57,22 @@ int psynch_mutexwait_trap(mach_task_t* task,
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return -EFAULT;
     
+	debug_msg("psynch_mutexwait_trap(%d): mutex=0x%llx, mgen=0x%x\n",
+			current->pid, args.mutex, args.mgen);
 	spin_lock(&task->mutex_wq_lock);
     
 	mutex = mutex_get(task, args.mutex);
     
-	if (mutex->mgen == 0)
+	if (mutex->mgen != 0)
 	{
 		spin_unlock(&task->mutex_wq_lock);
 		
-		retval = 0;
+		// Put the mutex twice, because the waker did not put the mutex
+		// in order to keep the information around
+		mutex_put(task, mutex);
+		mutex_put(task, mutex);
+
+		retval = mutex->mgen;
 		goto out;
 	}
 	
@@ -79,7 +87,11 @@ int psynch_mutexwait_trap(mach_task_t* task,
 	list_del(&waiter.entry);
 	
 	if (waiter.wakeup)
+	{
 		retval = mutex->mgen;
+		mutex->mgen = 0;
+	}
+	debug_msg("(%d)--> retval: 0x%x\n", current->pid, retval);
 	
 	mutex_put(task, mutex);
 	spin_unlock(&task->mutex_wq_lock);
@@ -97,6 +109,8 @@ int psynch_mutexdrop_trap(mach_task_t* task,
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return -EFAULT;
 
+	debug_msg("psynch_mutexdrop_trap(%d): mutex=0x%llx, mgen=0x%x\n",
+			current->pid, args.mutex, args.mgen);
 	spin_lock(&task->mutex_wq_lock);
     
 	mutex = mutex_get(task, args.mutex);
@@ -112,9 +126,9 @@ int psynch_mutexdrop_trap(mach_task_t* task,
 		waiter->wakeup = 1;
 
 		wake_up_interruptible(&mutex->wq);
+		mutex_put(task, mutex);
 	}
 
-	mutex_put(task, mutex);
 	spin_unlock(&task->mutex_wq_lock);
 
     return 0;
