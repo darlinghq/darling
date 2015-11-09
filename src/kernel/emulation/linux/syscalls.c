@@ -101,6 +101,8 @@
 #include "xattr/setxattr.h"
 #include "xattr/fsetxattr.h"
 #include "select/select.h"
+#include "psynch/psynch_mutexwait.h"
+#include "psynch/psynch_mutexdrop.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -209,6 +211,8 @@ void* __bsd_syscall_table[512] = {
 	[239] = sys_fremovexattr,
 	[240] = sys_listxattr,
 	[241] = sys_flistxattr,
+	[301] = sys_psynch_mutexwait,
+	[302] = sys_psynch_mutexdrop,
 	[331] = sys_disable_threadsignal,
 	[334] = sys_semwait_signal,
 	[338] = sys_stat64,

@@ -30,36 +30,67 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 					*buf++ = '%';
 					break;
 				case 's':
+				{
+					const char* str = va_arg(vl, const char*);
+					while (*str)
 					{
-						const char* str = va_arg(vl, const char*);
-						while (*str)
-						{
-							*buf++ = *str;
-							str++;
-						}
-						break;
+						*buf++ = *str;
+						str++;
 					}
+					break;
+				}
 				case 'd':
+				{
+					int num = va_arg(vl, int);
+					char temp[16];
+					int count = 0;
+
+					if (num < 0)
+						*buf++ = '-';
+
+					do
 					{
-						int num = va_arg(vl, int);
-						char temp[16];
-						int count = 0;
-
-						if (num < 0)
-							*buf++ = '-';
-
-						do
-						{
-							temp[count++] = '0' + (num % 10);
-							num /= 10;
-						}
-						while (num > 0);
-						
-						while (count--)
-							*buf++ = temp[count];
-
-						break;
+						temp[count++] = '0' + (num % 10);
+						num /= 10;
 					}
+					while (num > 0);
+					
+					while (count--)
+						*buf++ = temp[count];
+
+					break;
+				}
+				case 'p':
+				case 'x':
+				{
+					unsigned long num = va_arg(vl, unsigned long);
+					char temp[40];
+					int count = 0;
+
+					if (*format == 'p')
+					{
+						*buf++ = '0';
+						*buf++ = 'x';
+					}
+
+					do
+					{
+						int c = (num % 16);
+
+						if (c < 10)
+							temp[count++] = '0' + c;
+						else
+							temp[count++] = 'A' + (c - 10);
+						num /= 16;
+					}
+					while (num > 0);
+					
+					while (count--)
+						*buf++ = temp[count];
+
+					break;
+
+				}
 			}
 
 			format++;

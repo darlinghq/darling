@@ -138,6 +138,8 @@ set(emulation_sources
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_terminate.c
 	bsdthread/disable_threadsignal.c
+	psynch/psynch_mutexwait.c
+	psynch/psynch_mutexdrop.c
 	syscalls-amd64.asm
 )
 
