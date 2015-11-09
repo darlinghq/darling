@@ -69,7 +69,7 @@ int psynch_mutexwait_trap(mach_task_t* task,
 	}
 	
 	waiter.wakeup = 0;
-	list_add(&waiter.entry, &mutex->waiting);
+	list_add_tail(&waiter.entry, &mutex->waiting);
 	
 	spin_unlock(&task->mutex_wq_lock);
 	
@@ -89,8 +89,34 @@ out:
 }
 
 int psynch_mutexdrop_trap(mach_task_t* task,
-		struct psynch_mutexdrop_args* args)
+		struct psynch_mutexdrop_args* in_args)
 {
+	pthread_mutex_t* mutex;
+	struct psynch_mutexdrop_args args;
+
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return -EFAULT;
+
+	spin_lock(&task->mutex_wq_lock);
+    
+	mutex = mutex_get(task, args.mutex);
+	mutex->mgen = args.mgen;
+
+	if (!list_empty(&mutex->waiting))
+	{
+		struct pthread_waiter* waiter;
+
+		waiter = list_first_entry(&mutex->waiting, struct pthread_waiter,
+				entry);
+
+		waiter->wakeup = 1;
+
+		wake_up_interruptible(&mutex->wq);
+	}
+
+	mutex_put(task, mutex);
+	spin_unlock(&task->mutex_wq_lock);
+
     return 0;
 }
 
