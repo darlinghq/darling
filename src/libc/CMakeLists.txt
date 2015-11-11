@@ -25,7 +25,7 @@ add_definitions(-DBUILDING_LIBC)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0") # development flags
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map -Bsymbolic-functions")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/pthreads")

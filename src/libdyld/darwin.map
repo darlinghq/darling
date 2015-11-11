@@ -32,5 +32,7 @@ DARWIN {
 		dyld_image_path_containing_address;
 		_dyld_find_unwind_sections;
 		_dyld_fork_child;
+		_tlv_bootstrap;
+		_tlv_atexit;
 };
 

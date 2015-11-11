@@ -26,22 +26,24 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "trace.h"
 #include "mutex.h"
 
+extern "C" {
+int __darwin_pthread_key_create(pthread_key_t *key, void (*destructor)(void*));
+int __darwin_pthread_key_delete(pthread_key_t key);
+int __darwin_pthread_setspecific(pthread_key_t key, const void *value);
+}
+
 static void TLSRunDestructors(void* p);
 
 static std::map<void*, Darling::ImageData*> m_images;
 static std::map<pthread_key_t, Darling::ImageData*> m_imagesKey;
 static Darling::Mutex m_imagesMutex;
 
-// Maybe not a nice solution, we could implement TLS completely on our own via the fs/gs register
-static __thread Darling::ThreadData m_tlsData[1024]; // 1024 = PTHREAD_KEYS_MAX
-
 // Used for a thread-local list of destructor-object pairs (DestructorLinkedListElement)
 static pthread_key_t m_keyDestructors;
 
-__attribute__((constructor))
-	static void TLSSetupDestructors()
+static void TLSSetupDestructors()
 {
-	pthread_key_create(&m_keyDestructors, TLSRunDestructors);
+	__darwin_pthread_key_create(&m_keyDestructors, TLSRunDestructors);
 }
 
 static void TLSRunDestructors(void* p)
@@ -64,21 +66,19 @@ static void TLSRunDestructors(void* p)
 	while (dlist != nullptr);
 }
 
-void* Darling::TLSGetNative()
-{
-	return m_tlsData;
-}
-
 void Darling::TLSSetup(void* imageKey, std::vector<tlv_descriptor*>& descriptors, std::vector<void*>& initializers, void* start, uintptr_t length)
 {
 	Darling::MutexLock _l(&m_imagesMutex);
 	pthread_key_t key;
 	ImageData* id;
+	pthread_once_t once;
+
+	pthread_once(&once, TLSSetupDestructors);
 
 	auto it = m_images.find(imageKey);
 	assert (it == m_images.end());
 
-	pthread_key_create(&key, (void (*)(void *)) Darling::TLSTeardownThread);
+	__darwin_pthread_key_create(&key, (void (*)(void *)) Darling::TLSTeardownThread);
 	
 	m_images[imageKey] = id = new ImageData{ key, start, length, initializers };
 	m_imagesKey[key] = id;
@@ -106,7 +106,7 @@ void Darling::TLSTeardown(void* imageKey)
 	// TODO: What to do with live objects with C++11 destructors? Does Apple's dyld handle this?
 
 	m_imagesKey.erase(key);
-	pthread_key_delete(key);
+	__darwin_pthread_key_delete(key);
 	
 	delete it->second;
 	m_images.erase(it);
@@ -127,10 +127,8 @@ void* Darling::TLSAllocate(pthread_key_t key)
 	Darling::ImageData* id = m_imagesKey[key];
 	char* data;
 	
-	assert(!m_tlsData[key]);
-
 	// Allocate a new block for TLS variables
-	m_tlsData[key] = data = new char[id->length];
+	data = new char[id->length];
 	
 	// Copy the initial variable values into the new block
 	memcpy(data, id->start, id->length);
@@ -144,10 +142,9 @@ void* Darling::TLSAllocate(pthread_key_t key)
 	}
 
 	// Delete the data upon thread exit
-	pthread_setspecific(key, data);
+	__darwin_pthread_setspecific(key, data);
 	
 	LOG << "TLS data allocated at " << (void*)data << std::endl;
-	LOG << "Pointer written at " << &m_tlsData[key] << std::endl;
 
 	return data;
 }
@@ -173,7 +170,7 @@ void Darling::TLSAtExit(void (*destructor)(void*), void* object)
 		d->first = d;
 	}
 	
-	pthread_setspecific(m_keyDestructors, d);
+	__darwin_pthread_setspecific(m_keyDestructors, d);
 }
 
 void* Darling::TLSBootstrap(tlv_descriptor* desc)

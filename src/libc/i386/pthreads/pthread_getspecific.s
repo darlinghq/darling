@@ -28,5 +28,5 @@
 .globl _pthread_getspecific
 _pthread_getspecific:
 	movl	4(%esp),%eax
-	movl	%gs:(,%eax,4),%eax
+	movl	%fs:(,%eax,4),%eax
 	ret

@@ -27,5 +27,5 @@
 .align 2, 0x90
 .globl _pthread_self
 _pthread_self:
-	movl	%gs:0,%eax
+	movl	%fs:0,%eax
 	ret
