@@ -1,0 +1,162 @@
+.Dd July 20, 2007
+.Dt ffi_prep_closure 3
+.Os Darwin
+.Sh NAME
+.Nm ffi_prep_closure
+.Nd Prepare a
+.Nm ffi_closure
+for execution.
+.Sh SYNOPSIS
+.In ffi/ffi.h
+.Ft ffi_status
+.Fo ffi_prep_closure
+.Fa "ffi_closure *closure"
+.Fa "ffi_cif *cif"
+.Fa "void (*fun)(ffi_cif*,void*,void**,void*)"
+.Fa "void *user_data"
+.Fc
+.Sh DESCRIPTION
+.Fa closure
+is prepared to execute
+.Fa fun .
+.Fa cif
+contains information describing the data types, sizes and alignments of the
+arguments to and return value from the function that will be called from
+.Fa fun ,
+and must be initialized with
+.Nm ffi_prep_cif
+before it is used with
+.Nm ffi_prep_closure .
+.Fa user_data
+may point to additional data to be used in
+.Fa fun .
+If no additional data is needed,
+.Fa user_data
+may be
+.Nm NULL .
+When
+.Fa closure
+is invoked,
+.Fa fun
+is called with
+.Fa cif ,
+an array of pointers to arguments, a pointer to a return value, and
+.Fa user_data .
+.Pp
+Some architectures do not allow the execution of data by default. In such cases,
+it is necessary to manually alter the permissions of the page that contains
+.Fa closure
+prior to its execution.
+.Sh RETURN VALUES
+Upon successful completion,
+.Nm ffi_prep_closure
+returns
+.Nm FFI_OK .
+If the ABI specified in
+.Fa cif
+does not refer to a valid ABI,
+.Nm FFI_BAD_ABI
+will be returned. Available ABIs are
+defined in
+.Nm <ffi/ppc-ffitarget.h>
+and
+.Nm <ffi/x86-ffitarget.h> .
+.Sh EXAMPLES
+.Bd -literal
+#define MACOSX  // for fficonfig.h on Darwin
+
+#include <ffi/ffi.h>
+#include <sys/mman.h>   // for mmap()
+
+unsigned char
+foo(unsigned int, float);
+
+static void
+foo_closure(ffi_cif*, void*, void**, void*);
+
+int
+main(int argc, const char **argv)
+{
+    ffi_cif cif;
+    ffi_closure *closure;
+    ffi_type *arg_types[2];
+    ffi_arg result;
+    ffi_status status;
+
+    // Specify the data type of each argument. Available types are defined
+    // in <ffi/ffi.h>.
+    arg_types[0] = &ffi_type_uint;
+    arg_types[1] = &ffi_type_float;
+
+    // Allocate a page to hold the closure with read and write permissions.
+    if ((closure = mmap(NULL, sizeof(ffi_closure), PROT_READ | PROT_WRITE,
+        MAP_ANON | MAP_PRIVATE, -1, 0)) == (void*)-1)
+    {
+        // Check errno and handle the error.
+    }
+
+    // Prepare the ffi_cif structure.
+    if ((status = ffi_prep_cif(&cif, FFI_DEFAULT_ABI,
+        2, &ffi_type_uint8, arg_types)) != FFI_OK)
+    {
+        // Handle the ffi_status error.
+    }
+
+    // Prepare the ffi_closure structure.
+    if ((status = ffi_prep_closure(closure, &cif, foo_closure, NULL)) != FFI_OK)
+    {
+        // Handle the ffi_status error.
+    }
+
+    // Ensure that the closure will execute on all architectures.
+    if (mprotect(closure, sizeof(closure), PROT_READ | PROT_EXEC) == -1)
+    {
+        // Check errno and handle the error.
+    }
+
+    // The closure is now ready to be executed, and can be saved for later
+    // execution if desired.
+
+    // Invoke the closure.
+    result = ((unsigned char(*)(float, unsigned int))closure)(42, 5.1);
+
+    // Free the memory associated with the closure.
+    if (munmap(closure, sizeof(closure)) == -1)
+    {
+        // Check errno and handle the error.
+    }
+
+    return 0;
+}
+
+// Invoking the closure transfers control to this function.
+static void
+foo_closure(ffi_cif* cif, void* result, void** args, void* userdata)
+{
+    // Access the arguments to be sent to foo().
+    float arg1 = *(float*)args[0];
+    unsigned int arg2 = *(unsigned int*)args[1];
+
+    // Call foo() and save its return value.
+    unsigned char ret_val = foo(arg1, arg2);
+
+    // Copy the returned value into result. Because the return value of foo()
+    // is smaller than sizeof(long), typecast it to ffi_arg. Use ffi_sarg
+    // instead for signed types.
+    *(ffi_arg*)result = (ffi_arg)ret_val;
+}
+
+// The closed-over function.
+unsigned char
+foo(unsigned int x, float y)
+{
+    unsigned char result = x - y;
+    return result;
+}
+.Ed
+.Sh SEE ALSO
+.Xr ffi 3 ,
+.Xr ffi_prep_cif 3 ,
+.Xr mmap 2 ,
+.Xr munmap 2 ,
+.Xr mprotect 2
