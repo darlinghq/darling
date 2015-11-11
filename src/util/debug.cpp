@@ -103,7 +103,7 @@ template<> void Darling::logPrint<std::string>(std::string value)
 template<> void Darling::logPrint<const char*>(const char* value)
 {
 	//if (g_loggingEnabled)
-		std::cerr << '\"' << value << '\"';
+		std::cerr << value;
 }
 template<> void Darling::logPrint<Darling::ArgName>(Darling::ArgName value)
 {
