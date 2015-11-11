@@ -165,12 +165,13 @@ const char* DylibSearch::resolveAlias(const std::string& library)
 			return it->second.c_str();
 	}
 
-	if (m_reFrameworkPath.matches(library))
+	std::smatch match;
+	if (std::regex_match(library, match, m_reFrameworkPath))
 	{
 		std::string name, version;
 		
-		name = m_reFrameworkPath.group(1);
-		version = m_reFrameworkPath.group(2);
+		name = match[1];
+		version = match[2];
 			
 		if (m_config->hasSection(name))
 		{
@@ -182,11 +183,11 @@ const char* DylibSearch::resolveAlias(const std::string& library)
 		}
 	}
 	
-	if (m_reDefaultFrameworkPath.matches(library))
+	if (std::regex_match(library, match, m_reDefaultFrameworkPath))
 	{
 		std::string name;
 		
-		name = m_reDefaultFrameworkPath.group(1);
+		name = match[1];
 		
 		if (m_config->hasSection(name))
 		{

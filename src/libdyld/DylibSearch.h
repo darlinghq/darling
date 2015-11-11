@@ -1,7 +1,7 @@
 #ifndef DYLIBSEARCH_H
 #define DYLIBSEARCH_H
 #include <util/IniConfig.h>
-#include <util/Regexp.h>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -34,7 +34,7 @@ private:
 	std::string checkPresence(const std::string& path);
 private:
 	IniConfig* m_config;
-	Regexp m_reFrameworkPath, m_reDefaultFrameworkPath;
+	std::regex m_reFrameworkPath, m_reDefaultFrameworkPath;
 	std::vector<std::string> m_extraPaths, m_suffixes;
 };
 

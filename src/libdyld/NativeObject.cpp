@@ -6,8 +6,12 @@
 #include <iostream>
 #include <cstdlib>
 #include <link.h>
+#include <regex>
 
 namespace Darling {
+
+static std::regex g_reObjcSymbol("(OBJC_[^\\$]+)\\$_(.+)");
+static std::regex g_reObjcEhSymbol("OBJC_EHTYPE_.+");
 
 NativeObject::NativeObject(const std::string& path)
 : m_path(path), m_name(path)
@@ -86,11 +90,23 @@ void NativeObject::updateName()
 void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const
 {
 	void* addr;
+	std::string name;
+	std::smatch match;
 	
 	if (symbolName == "main")
 		return nullptr; // Don't return main() from Darling itself
 
-	return ::dlvsym(m_nativeRef, symbolName.c_str(), "DARWIN");
+	name = symbolName;
+
+	if (std::regex_match(name, match, g_reObjcSymbol))
+		name = match.format("_$1$2");
+	else if (std::regex_match(name, match, g_reObjcEhSymbol))
+	{
+		static long dummy = 0;
+		return &dummy;
+	}
+
+	return ::dlvsym(m_nativeRef, name.c_str(), "DARWIN");
 }
 
 bool NativeObject::findSymbolInfo(const void* addr, Dl_info* p) const
