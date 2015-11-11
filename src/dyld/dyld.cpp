@@ -7,8 +7,8 @@
 #include <string>
 #include <sstream>
 #include <util/stlutils.h>
-#include <util/Regexp.h>
 #include <libdyld/arch.h>
+#include <regex>
 #include "dirstructure.h"
 
 static void printHelp(const char* argv0);
@@ -76,8 +76,7 @@ int main(int argc, char** argv, char** envp)
 static void printHelp(const char* argv0)
 {
 	std::cerr << "This is Darling dyld for " ARCH_NAME ", a dynamic loader for Mach-O executables.\n\n";
-	std::cerr << "Copyright (C) 2012-2014 Lubos Dolezel\n"
-		<< "Originally based on maloader by Shinichiro Hamaji.\n\n";
+	std::cerr << "Copyright (C) 2012-2015 Lubos Dolezel\n\n";
 
 	std::cerr << "Usage: " << argv0 << " program-path [arguments...]\n\n";
 
@@ -98,11 +97,12 @@ static void printHelp(const char* argv0)
 
 static std::string locateBundleExecutable(std::string bundlePath)
 {
-	Regexp re(".*/([^\\.]+)\\.app/?$", true);
+	std::regex re(".*/([^\\.]+)\\.app/?$", std::regex::icase);
+	std::smatch match;
 	
 	std::string myBundlePath = "./" + bundlePath; // TODO: fix the regexp to work without this
 	
-	if (re.matches(myBundlePath))
+	if (std::regex_match(myBundlePath, match, re))
 	{
 		std::stringstream ss;
 		ss << bundlePath;
@@ -111,7 +111,7 @@ static std::string locateBundleExecutable(std::string bundlePath)
 			ss << '/';
 
 		ss << "Contents/MacOS/";
-		ss << re.group(1);
+		ss << match[1];
 
 		return ss.str();
 	}
