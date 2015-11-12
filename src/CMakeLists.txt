@@ -78,6 +78,9 @@ add_subdirectory(external/libkqueue)
 add_subdirectory(external/libdispatch)
 add_subdirectory(external/zlib)
 add_subdirectory(external/bzip2)
+add_subdirectory(external/libxml2)
+add_subdirectory(external/icu/icuSources)
+#add_subdirectory(external/corefoundation)
 
 ######################
 # libc++ & libc++abi #

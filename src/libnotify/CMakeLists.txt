@@ -19,7 +19,7 @@ set(notify_sources
 	libnotify.c
 	notify_client.c
 	table.c
-	notify_ipcUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/notify_ipcUser.c
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
