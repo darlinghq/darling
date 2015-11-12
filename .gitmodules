@@ -31,3 +31,7 @@
 [submodule "src/external/corefoundation"]
 	path = src/external/corefoundation
 	url = ../darling-corefoundation.git
+[submodule "src/external/icu"]
+	path = src/external/icu
+	url = ../darling-icu.git
+	branch = darling
