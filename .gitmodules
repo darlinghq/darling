@@ -35,3 +35,6 @@
 	path = src/external/icu
 	url = ../darling-icu.git
 	branch = darling
+[submodule "src/external/libxslt"]
+	path = src/external/libxslt
+	url = ../darling-libxslt.git
