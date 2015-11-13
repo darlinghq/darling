@@ -38,3 +38,6 @@
 [submodule "src/external/libxslt"]
 	path = src/external/libxslt
 	url = ../darling-libxslt.git
+[submodule "src/external/openssl"]
+	path = src/external/openssl
+	url = ../darling-openssl.git
