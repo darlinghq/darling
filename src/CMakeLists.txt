@@ -82,6 +82,7 @@ add_subdirectory(external/libxml2)
 add_subdirectory(external/libxslt)
 add_subdirectory(external/icu/icuSources)
 add_subdirectory(external/corefoundation)
+add_subdirectory(external/openssl/src)
 
 ######################
 # libc++ & libc++abi #
