@@ -29,6 +29,11 @@
 #include <fficonfig.h>
 #include <ffi.h>
 
+#ifdef DARLING
+#	define _ffi_call_unix64 ffi_call_unix64
+#	define _ffi_closure_unix64 ffi_closure_unix64
+#endif
+
  .file "darwin64.S"
 .text
 

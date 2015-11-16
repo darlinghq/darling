@@ -29,6 +29,13 @@
  * assembly programming in 8 years.
  */
 
+#ifdef DARLING
+#	define _ffi_prep_args ffi_prep_args
+#	define _ffi_call_SYSV ffi_call_SYSV
+#	define _ffi_closure_SYSV ffi_closure_SYSV
+#	define _ffi_closure_raw_SYSV ffi_closure_raw_SYSV
+#endif
+
 #ifndef __x86_64__
 
 #define LIBFFI_ASM	
