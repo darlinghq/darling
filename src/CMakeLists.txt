@@ -73,6 +73,7 @@ add_subdirectory(duct/src)
 add_subdirectory(libresolv)
 add_subdirectory(libstdcxx)
 add_subdirectory(libffi)
+add_subdirectory(CFF)
 add_subdirectory(external/libobjc2)
 add_subdirectory(external/libkqueue)
 add_subdirectory(external/libdispatch)
@@ -83,6 +84,7 @@ add_subdirectory(external/libxslt)
 add_subdirectory(external/icu/icuSources)
 add_subdirectory(external/corefoundation)
 add_subdirectory(external/openssl/src)
+add_subdirectory(external/foundation)
 
 ######################
 # libc++ & libc++abi #
