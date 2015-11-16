@@ -1,4 +1,5 @@
 #include "ioctl.h"
+#include "../base.h"
 #include "../unistd/readlink.h"
 #include "../../../../../platform-include/sys/errno.h"
 #include <stddef.h>
@@ -15,6 +16,7 @@
 static int handle_filio(int fd, int cmd, void* arg, int* retval);
 
 // Emulated ioctl implementation
+VISIBLE
 long ioctl(int fd, int cmd, void* arg)
 {
 	IOCTL_STEP(handle_filio(fd, cmd, arg, &retval));
