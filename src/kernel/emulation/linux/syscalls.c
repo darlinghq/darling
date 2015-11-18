@@ -245,6 +245,7 @@ void* __bsd_syscall_table[512] = {
 	[397] = sys_write_nocancel,
 	[398] = sys_open_nocancel,
 	[399] = sys_close_nocancel,
+	[400] = sys_wait4,
 	[401] = sys_recvmsg_nocancel,
 	[402] = sys_sendmsg_nocancel,
 	[403] = sys_recvfrom_nocancel,
