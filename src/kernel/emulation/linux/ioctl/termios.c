@@ -41,8 +41,18 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 			oflag_linux_to_bsd(in.c_oflag, &out->c_oflag);
 			cflag_linux_to_bsd(in.c_cflag, &out->c_cflag);
 			lflag_linux_to_bsd(in.c_lflag, &out->c_lflag);
-			speed_linux_to_bsd(in.c_ispeed, &out->c_ispeed);
-			speed_linux_to_bsd(in.c_ospeed, &out->c_ospeed);
+
+			if (!(in.c_cflag & (LINUX_CBAUD|LINUX_CBAUDEX)))
+			{
+				speed_linux_to_bsd(in.c_ispeed, &out->c_ispeed);
+				speed_linux_to_bsd(in.c_ospeed, &out->c_ospeed);
+			}
+			else
+			{
+				speed_linux_to_bsd(in.c_cflag & (LINUX_CBAUD|LINUX_CBAUDEX),
+						&out->c_ispeed);
+				out->c_ospeed = out->c_ispeed;
+			}
 
 			return IOCTL_HANDLED;
 		}

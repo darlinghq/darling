@@ -31,10 +31,23 @@ struct linux_termios
 	unsigned int c_ospeed;
 };
 
+struct linux_kernel_termios
+{
+	unsigned int c_iflag;
+	unsigned int c_oflag;
+	unsigned int c_cflag;
+	unsigned int c_lflag;
+	unsigned char c_cc[19];
+	unsigned char c_line;
+	unsigned int c_ispeed;
+	unsigned int c_ospeed;
+};
+
+
 // c_cc indices
 enum {
 	BSD_VEOF, BSD_VEOL, BSD_VEOL2, BSD_VERASE, BSD_VWERASE, BSD_VKILL,
-	BSD_VREPRINT, BSD_VINTR, BSD_VQUIT, BSD_VSUSP, BSD_VDSUSP, BSD_VSTART,
+	BSD_VREPRINT, __BSD_SPARE, BSD_VINTR, BSD_VQUIT, BSD_VSUSP, BSD_VDSUSP, BSD_VSTART,
 	BSD_VSTOP, BSD_VLNEXT, BSD_VDISCARD, BSD_VMIN, BSD_VTIME, BSD_VSTATUS,
 };
 enum {
