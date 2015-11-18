@@ -10,6 +10,8 @@
 #include <unicode/unistr.h>
 #include "UniChar.h"
 
+extern char** __darwin_environ;
+
 namespace
 {
     const std::string g_scXdgOpenPath = "/usr/bin/xdg-open";
@@ -45,6 +47,8 @@ namespace
             exit(20);
         }
         else if( newPid > 0 ) {
+			int status;
+
             close(pipes[1]);
             if (!async) {
                 char cBuffer[1024];
@@ -53,7 +57,7 @@ namespace
                     buffer += cBuffer;
                 }
                 buffer +='\0';
-                wait();
+                wait(&status);
             }
         }
         for(std::size_t i = 0;i< args.size()+1;++i){
@@ -90,6 +94,21 @@ OSStatus LSInit(LSInitializeFlags flags)
 OSStatus LSTerm(void)
 {
 	return noErr;
+}
+
+static
+int execvpe(const char* name, char** argv, char** envp)
+{
+	char** orig_env;
+	int ret;
+
+	orig_env = __darwin_environ;
+	__darwin_environ = envp;
+
+	ret = execvp(name, argv);
+
+	__darwin_environ = orig_env;
+	return ret;
 }
 
 OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSerialNumber *outPSN)

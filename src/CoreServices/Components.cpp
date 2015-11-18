@@ -1,4 +1,4 @@
-#include "config.h"
+#include "darling-config.h"
 #include "Components.h"
 #include "ComponentsInternal.h"
 #include "frameworks.h"

@@ -1,12 +1,12 @@
 #ifndef UNICHAR_H
 #define UNICHAR_H
 #include "MacTypes.h"
-#include <endian.h>
+#include <TargetConditionals.h>
 
 // UniChar uses platform endianness, whereas ICU expects BE by default
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if TARGET_RT_BIG_ENDIAN
 #	define UNICHAR_ENCODING "UTF-16BE"
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
+#elif TARGET_RT_LITTLE_ENDIAN
 #	define UNICHAR_ENCODING "UTF-16LE"
 #else
 #	error Cannot determine endianness!

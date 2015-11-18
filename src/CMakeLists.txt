@@ -85,6 +85,7 @@ add_subdirectory(external/corefoundation)
 add_subdirectory(external/openssl/src)
 add_subdirectory(external/foundation)
 add_subdirectory(CFF)
+add_subdirectory(CoreServices)
 
 ######################
 # libc++ & libc++abi #

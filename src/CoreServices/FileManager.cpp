@@ -38,8 +38,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "DateTimeUtils.h"
 #include <util/stlutils.h>
 #include <util/debug.h>
-#include <libSystem/libc/errno.h>
-#include <libSystem/common/path.h>
+#include <errno.h>
 
 // Doesn't resolve the last symlink
 // Mallocates a new buffer
@@ -196,7 +195,7 @@ bool FSRefParamMakePath(const FSRefParam* param, std::string& out)
 	if (!FSRefMakePath(param->ref, dir))
 		return false;
 	
-	out = translatePathCI(dir.c_str());
+	out = dir;
 	if (out.back() != '/')
 		out += '/';
 	
@@ -495,7 +494,7 @@ OSErr PBCreateDirectoryUnicodeSync(FSRefParam* paramBlock)
 	if (!FSRefParamMakePath(paramBlock, path))
 		return fnfErr;
 	if (mkdir(path.c_str(), 0777) == -1)
-		return makeOSStatus(errnoLinuxToDarwin(errno));
+		return makeOSStatus(errno);
 	
 	if (paramBlock->newRef)
 		FSPathMakeRef((uint8_t*) path.c_str(), paramBlock->newRef, nullptr);
@@ -510,7 +509,7 @@ OSErr PBCreateFileUnicodeSync(FSRefParam* paramBlock)
 	if (!FSRefParamMakePath(paramBlock, path))
 		return fnfErr;
 	if (open(path.c_str(), O_CREAT|O_EXCL, 0666) == -1)
-		return makeOSStatus(errnoLinuxToDarwin(errno));
+		return makeOSStatus(errno);
 	
 	if (paramBlock->newRef)
 		FSPathMakeRef((uint8_t*) path.c_str(), paramBlock->newRef, nullptr);

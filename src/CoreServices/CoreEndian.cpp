@@ -18,9 +18,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "CoreEndian.h"
-#include <endian.h>
 #include <stdint.h>
 #include <map>
+#include <TargetConditionals.h>
 #include "MacErrors.h"
 #include <mutex>
 
@@ -64,7 +64,7 @@ template <> int64_t bswap(int64_t value)
 
 template <typename T> T LtoN(T value)
 {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if TARGET_RT_LITTLE_ENDIAN
 	return value;
 #else
 	return bswap(value);
@@ -73,7 +73,7 @@ template <typename T> T LtoN(T value)
 
 template <typename T> T BtoN(T value)
 {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if TARGET_RT_BIG_ENDIAN
 	return value;
 #else
 	return bswap(value);

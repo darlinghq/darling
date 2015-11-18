@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <cstring>
 #include <util/debug.h>
-#include <libSystem/kernel-bsd/proc.h>
 #include <CoreFoundation/CFNumber.h>
 
 CFStringRef kCFBundleExecutableKey = CFSTR("kCFBundleExecutableKey");
@@ -16,17 +16,25 @@ CFStringRef kCFBundleIdentifierKey = CFSTR("kCFBundleIdentifierKey");
 OSStatus CopyProcessName(const ProcessSerialNumber* psn, CFStringRef* name)
 {
 	char buf[1024];
-	
-	if (!proc_name(psn->lowLongOfPSN, buf, sizeof(buf)))
+	char path[100];
+	int fd, len;
+
+	sprintf(path, "/proc/%lu/comm", psn->lowLongOfPSN);
+
+	fd = ::open(path, O_RDONLY);
+	if (fd == -1)
 	{
 		*name = nullptr;
 		return procNotFound;
 	}
-	else
-	{
-		*name = CFStringCreateWithCString(NULL, buf, kCFStringEncodingUTF8);
-		return noErr;
-	}
+
+	len = ::read(fd, buf, sizeof(buf)-1);
+	buf[len] = '\0';
+
+	::close(fd);
+	
+	*name = CFStringCreateWithCString(NULL, buf, kCFStringEncodingUTF8);
+	return noErr;
 }
 
 void ExitToShell()
@@ -138,13 +146,19 @@ CFDictionaryRef ProcessInformationCopyDictionary(const ProcessSerialNumber *PSN,
 	CFMutableDictionaryRef dict;
 	OSStatus status;
 	CFNumberRef pid;
-	char procpath[PATH_MAX];
+	char procpath[PATH_MAX], lpath[100];
+	int len;
 	
 	status = CopyProcessName(PSN, &name);
 	if (status != noErr)
 		return nullptr;
-	if (!proc_pidpath(getpid(), procpath, sizeof(procpath)))
+
+	sprintf(lpath, "/proc/%lu/exe", PSN->lowLongOfPSN);
+	len = ::readlink(lpath, procpath, sizeof(procpath)-1);
+	if (len < 0)
 		return nullptr;
+
+	procpath[len] = '\0';
 	
 	dict = CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	pid = CFNumberCreate(nullptr, kCFNumberLongType, &PSN->lowLongOfPSN);

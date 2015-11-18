@@ -18,9 +18,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "MacErrors.h"
-#include "../libSystem/libc/sysctl.h"
 #include <cstring>
 #include <cstdio>
+#include <sys/sysctl.h>
 #include "Gestalt.h"
 
 OSStatus Gestalt(uint32_t type, int* value)
@@ -38,7 +38,7 @@ OSStatus Gestalt(uint32_t type, int* value)
 		size_t version_len = sizeof(version) - 1;
 		int maj, min, patch;
 		
-		__darwin_sysctl(name, 2, version, &version_len, nullptr, 0);
+		sysctl(name, 2, version, &version_len, nullptr, 0);
 		sscanf(version, "%d.%d.%d", &maj, &min, &patch);
 		
 		if (type == gestaltSystemVersion)
