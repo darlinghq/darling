@@ -129,6 +129,14 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 					arg);
 			return IOCTL_HANDLED;
 		}
+		case BSD_TIOCGETD:
+		case BSD_TIOCSETD:
+		{
+			*retval = __real_ioctl(fd,
+					cmd == BSD_TIOCGETD ? LINUX_TIOCGETD : LINUX_TIOCSETD,
+					arg);
+			return IOCTL_HANDLED;
+		}
 		default:
 			return IOCTL_PASS;
 	}
