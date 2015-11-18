@@ -39,3 +39,11 @@ SET_SOURCE_FILES_PROPERTIES(shmctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} 
 SET_SOURCE_FILES_PROPERTIES(sigtramp.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE")
 
 add_library(libc-sys OBJECT ${sys_sources})
+
+# ***
+# No-INODE64 variants
+# ***
+set(sys-noinode64_sources statx_np.c)
+add_library(libc-sys_noinode64 OBJECT ${sys-noinode64_sources})
+SET_TARGET_PROPERTIES(libc-sys_noinode64 PROPERTIES COMPILE_FLAGS "-U__DARWIN_UNIX03 -U__DARWIN_64_BIT_INO_T -DVARIANT_INODE32 -DBUILDING_VARIANT -D_DARWIN_NO_64_BIT_INODE")
+

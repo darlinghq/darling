@@ -43,6 +43,11 @@
 #include "unistd/getgid.h"
 #include "unistd/getppid.h"
 #include "unistd/rename.h"
+#include "unistd/getpgrp.h"
+#include "unistd/getdtablesize.h"
+#include "unistd/setpgid.h"
+#include "unistd/getgroups.h"
+#include "unistd/setgroups.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -152,6 +157,11 @@ void* __bsd_syscall_table[512] = {
 	[74] = sys_mprotect,
 	[75] = sys_madvise,
 	[78] = sys_mincore,
+	[79] = sys_getgroups,
+	[80] = sys_setgroups,
+	[81] = sys_getpgrp,
+	[82] = sys_setpgid,
+	[89] = sys_getdtablesize,
 	[90] = sys_dup2,
 	[92] = sys_fcntl,
 	[93] = sys_select,

@@ -111,7 +111,7 @@ LEAF(___vfork, 0)
 	lock
 	cmpxchgl	%ecx, (%rdx)
 	jne		0b
-	popq		%rdi			// return address in %rdi
+	//popq		%rdi			// return address in %rdi
 #ifndef DARLING
 	movq		$ SYSCALL_CONSTRUCT_UNIX(SYS_vfork), %rax	// code for vfork -> rax
 	UNIX_SYSCALL_TRAP			// do the system call
@@ -122,7 +122,7 @@ LEAF(___vfork, 0)
 	cmpq    $0, %rax 
 	jnb L1
 #endif
-	pushq		%rdi			// put return address back on stack for cerror
+	//pushq		%rdi			// put return address back on stack for cerror
 	movq		__current_pid@GOTPCREL(%rip), %rcx
 	lock
 	addq		$1, (%rcx)
@@ -138,13 +138,15 @@ L1:
 	jnz		L2
 #endif
 	xorq		%rax, %rax		// zero rax
-	jmp		*%rdi
+	//jmp		*%rdi
+	ret
 
 L2:
 	movq		__current_pid@GOTPCREL(%rip), %rdx
 	lock
 	addq		$1, (%rdx)
-	jmp		*%rdi
+	//jmp		*%rdi
+	ret
 
 #else
 #error Unsupported architecture

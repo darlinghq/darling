@@ -33,7 +33,7 @@ static bool get_fd_path(int fd, char* buf, size_t len)
 	char proc[32];
 	int ret;
 
-	sprintf(proc, "/proc/self/%d", fd);
+	sprintf(proc, "/proc/self/fd/%d", fd);
 	ret = sys_readlink(proc, buf, len-1);
 
 	if (ret <= 0)
@@ -50,6 +50,13 @@ static int handle_filio(int fd, int cmd, void* arg, int* retval)
 		case BSD_FIODTYPE:
 		{
 			char orig_path[256];
+			int* iarg = (int*) arg;
+
+			if (iarg == NULL)
+			{
+				*retval = -EFAULT;
+				return IOCTL_HANDLED;
+			}
 
 			if (!get_fd_path(fd, orig_path, sizeof(orig_path)))
 			{
@@ -57,19 +64,20 @@ static int handle_filio(int fd, int cmd, void* arg, int* retval)
 				return IOCTL_HANDLED;
 			}
 
+			*retval = 0;
 			if (strncmp(orig_path, "/dev/pts", 8) == 0
 					|| strncmp(orig_path, "/dev/tty", 8) == 0)
 			{
-				*retval = D_TTY;
+				*iarg = D_TTY;
 			}
 			else if (strncmp(orig_path, "/dev/st", 7) == 0
 					|| strncmp(orig_path, "/dev/nst", 8) == 0)
 			{
-				*retval = D_TAPE;
+				*iarg = D_TAPE;
 			}
 			else
 			{
-				*retval = D_DISK;
+				*iarg = D_DISK;
 			}
 			return IOCTL_HANDLED;
 		}

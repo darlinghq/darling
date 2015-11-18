@@ -84,12 +84,14 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-gdtoa>
 	$<TARGET_OBJECTS:libc-gen>
 	$<TARGET_OBJECTS:libc-gen_cancelable>
+	$<TARGET_OBJECTS:libc-gen_noinode64>
 	$<TARGET_OBJECTS:libc-gmon>
 	$<TARGET_OBJECTS:libc-uuid>
 	$<TARGET_OBJECTS:libc-util>
 	$<TARGET_OBJECTS:libc-string>
 	$<TARGET_OBJECTS:libc-stdtime>
 	$<TARGET_OBJECTS:libc-sys>
+	$<TARGET_OBJECTS:libc-sys_noinode64>
 	$<TARGET_OBJECTS:libc-stdlib>
 	$<TARGET_OBJECTS:libc-stdlib_cancelable>
 	$<TARGET_OBJECTS:libc-stdio>

@@ -57,6 +57,11 @@ set(emulation_sources
 	unistd/getgid.c
 	unistd/getppid.c
 	unistd/rename.c
+	unistd/getpgrp.c
+	unistd/getdtablesize.c
+	unistd/setpgid.c
+	unistd/setgroups.c
+	unistd/getgroups.c
 	select/select.c
 	select/poll.c
 	process/vfork.c
@@ -70,6 +75,7 @@ set(emulation_sources
 	signal/sigaction.c
 	signal/sigreturn.c
 	signal/sigprocmask.c
+	signal/sig_restorer.S
 	misc/ioctl.c
 	misc/thread_selfid.c
 	misc/sysctl.c
@@ -115,7 +121,7 @@ set(emulation_sources
 	time/utimes.c
 	time/futimes.c
 	ioctl/ioctl.c
-	# ioctl/termios.c
+	ioctl/termios.c
 	ext/uname.c
 	ext/epoll_create.c
 	ext/epoll_create1.c

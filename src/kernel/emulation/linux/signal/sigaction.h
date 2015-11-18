@@ -52,6 +52,12 @@ struct linux_siginfo
 };
 
 typedef void (bsd_sig_handler)(int, struct bsd_siginfo*, void*);
+typedef void (linux_sig_handler)(int, struct linux_siginfo*, void*);
+
+#define SIG_DFL (bsd_sig_handler*)0
+#define SIG_IGN (bsd_sig_handler*)1
+#define SIG_ERR ((bsd_sig_handler*)-1l)
+
 struct bsd_sigaction
 {
 	bsd_sig_handler* sa_sigaction;
@@ -69,7 +75,7 @@ struct bsd___sigaction
 
 struct linux_sigaction
 {
-	void (*sa_sigaction)(int, struct linux_siginfo*, void*);
+	linux_sig_handler* sa_sigaction;
 	int sa_flags;
 	void (*sa_restorer)(void);
 	linux_sigset_t sa_mask;

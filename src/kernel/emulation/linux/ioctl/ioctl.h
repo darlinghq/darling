@@ -39,6 +39,36 @@ enum {
 #define BSD_FIOGETOWN       BSD_IOR('f', 123, int)
 #define BSD_FIODTYPE        BSD_IOR('f', 122, int)
 
+#define LINUX_IOC_NONE      0U
+#define LINUX_IOC_WRITE     1U
+#define LINUX_IOC_READ      2U
+#define LINUX_IOC_NRBITS	8
+#define LINUX_IOC_TYPEBITS	8
+#define LINUX_IOC_SIZEBITS	14
+#define LINUX_IOC_DIRBITS	2
+
+#define LINUX_IOC_NRSHIFT    0
+#define LINUX_IOC_TYPESHIFT  (LINUX_IOC_NRSHIFT+LINUX_IOC_NRBITS)
+#define LINUX_IOC_SIZESHIFT  (LINUX_IOC_TYPESHIFT+LINUX_IOC_TYPEBITS)
+#define LINUX_IOC_DIRSHIFT   (LINUX_IOC_SIZESHIFT+LINUX_IOC_SIZEBITS)
+
+#define LINUX_IOC(dir,type,nr,size) \
+        (((dir)  << LINUX_IOC_DIRSHIFT) | \
+         ((type) << LINUX_IOC_TYPESHIFT) | \
+         ((nr)   << LINUX_IOC_NRSHIFT) | \
+         ((size) << LINUX_IOC_SIZESHIFT))
+
+#define LINUX_IOC_TYPECHECK(t) (sizeof(t))
+
+/* used to create numbers */
+#define LINUX_IO(type,nr)            LINUX_IOC(LINUX_IOC_NONE,(type),(nr),0)
+#define LINUX_IOR(type,nr,size)      LINUX_IOC(LINUX_IOC_READ,(type),(nr),(LINUX_IOC_TYPECHECK(size)))
+#define LINUX_IOW(type,nr,size)      LINUX_IOC(LINUX_IOC_WRITE,(type),(nr),(LINUX_IOC_TYPECHECK(size)))
+#define LINUX_IOWR(type,nr,size)     LINUX_IOC(LINUX_IOC_READ|LINUX_IOC_WRITE,(type),(nr),(LINUX_IOC_TYPECHECK(size)))
+#define LINUX_IOR_BAD(type,nr,size)  _IOC(LINUX_IOC_READ,(type),(nr),sizeof(size))
+#define LINUX_IOW_BAD(type,nr,size)  _IOC(LINUX_IOC_WRITE,(type),(nr),sizeof(size))
+#define LINUX_IOWR_BAD(type,nr,size) _IOC(LINUX_IOC_READ|LINUX_IOC_WRITE,(type),(nr),sizeof(size))
+
 
 #endif
 

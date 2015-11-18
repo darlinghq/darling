@@ -147,7 +147,11 @@ void sigset_linux_to_bsd(const linux_sigset_t* linux, sigset_t* bsd)
 	for (i = 0; i < 64; i++)
 	{
 		if (*linux & (1ull << i))
-			*bsd |= signum_linux_to_bsd(i+1);
+		{
+			int num = signum_linux_to_bsd(i+1);
+			if (num)
+				*bsd |= 1 << (num-1);
+		}
 	}
 }
 
@@ -159,7 +163,11 @@ void sigset_bsd_to_linux(const sigset_t* bsd, linux_sigset_t* linux)
 	for (i = 0; i < 64; i++)
 	{
 		if (*bsd & (1ull << i))
-			*linux |= signum_bsd_to_linux(i+1);
+		{
+			int num = signum_bsd_to_linux(i+1);
+			if (num)
+				*linux |= 1 << (num-1);
+		}
 	}
 }
 

@@ -25,4 +25,5 @@ set(pthreads-cancelable_sources
 
 add_library(libc-pthreads_cancelable OBJECT ${pthreads-cancelable_sources})
 SET_TARGET_PROPERTIES(libc-pthreads_cancelable PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_CANCELABLE")
+SET_TARGET_PROPERTIES(libc-pthreads_cancelable PROPERTIES COMPILE_FLAGS "-U__DARWIN_NON_CANCELABLE")
 

@@ -2,7 +2,7 @@
 #define EMU_TERMIOS_H
 #include "ioctl.h"
 
-int handle_termios(int fd, int cmd, void* arg, int* retval);
+int handle_termios(int fd, unsigned int cmd, void* arg, int* retval);
 
 struct bsd_winsize
 {
@@ -25,6 +25,7 @@ struct linux_termios
 	unsigned int c_oflag;
 	unsigned int c_cflag;
 	unsigned int c_lflag;
+	unsigned char c_line;
 	unsigned char c_cc[32];
 	unsigned int c_ispeed;
 	unsigned int c_ospeed;
@@ -176,6 +177,73 @@ enum {
 #define BSD_PENDIN          0x20000000
 #define BSD_NOFLSH          0x80000000
 
+#define BSD_B0      0
+#define BSD_B50     50
+#define BSD_B75     75
+#define BSD_B110    110
+#define BSD_B134    134
+#define BSD_B150    150
+#define BSD_B200    200
+#define BSD_B300    300
+#define BSD_B600    600
+#define BSD_B1200   1200
+#define BSD_B1800   1800
+#define BSD_B2400   2400
+#define BSD_B4800   4800
+#define BSD_B9600   9600
+#define BSD_B19200  19200
+#define BSD_B38400  38400
+#define BSD_B7200   7200
+#define BSD_B14400  14400
+#define BSD_B28800  28800
+#define BSD_B57600  57600
+#define BSD_B76800  76800
+#define BSD_B115200 115200
+#define BSD_B230400 230400
+
+#define LINUX_TCGETS          0x5401
+#define LINUX_TCSETS          0x5402
+#define LINUX_TCSETSW         0x5403
+#define LINUX_TCSETSF         0x5404
+#define LINUX_TCGETA          0x5405
+#define LINUX_TCSETA          0x5406
+#define LINUX_TCSETAW         0x5407
+#define LINUX_TCSETAF         0x5408
+#define LINUX_TCSBRK          0x5409
+#define LINUX_TCXONC          0x540A
+#define LINUX_TCFLSH          0x540B
+#define LINUX_TIOCEXCL        0x540C
+#define LINUX_TIOCNXCL        0x540D
+#define LINUX_TIOCSCTTY       0x540E
+#define LINUX_TIOCGPGRP       0x540F
+#define LINUX_TIOCSPGRP       0x5410
+#define LINUX_TIOCOUTQ        0x5411
+#define LINUX_TIOCSTI         0x5412
+#define LINUX_TIOCGWINSZ      0x5413
+#define LINUX_TIOCSWINSZ      0x5414
+#define LINUX_TIOCMGET        0x5415
+#define LINUX_TIOCMBIS        0x5416
+#define LINUX_TIOCMBIC        0x5417
+#define LINUX_TIOCMSET        0x5418
+#define LINUX_TIOCGSOFTCAR    0x5419
+#define LINUX_TIOCSSOFTCAR    0x541A
+#define LINUX_FIONREAD        0x541B
+#define LINUX_TIOCINQ         LINUX_FIONREAD
+#define LINUX_TIOCLINUX       0x541C
+#define LINUX_TIOCCONS        0x541D
+#define LINUX_TIOCGSERIAL     0x541E
+#define LINUX_TIOCSSERIAL     0x541F
+#define LINUX_TIOCPKT         0x5420
+#define LINUX_FIONBIO         0x5421
+#define LINUX_TIOCNOTTY       0x5422
+#define LINUX_TIOCSETD        0x5423
+#define LINUX_TIOCGETD        0x5424
+#define LINUX_TIOCSBRK        0x5425
+#define LINUX_TIOCCBRK        0x5426
+
+#define LINUX_TIOCSTOP    LINUX_IO('t', 111)
+#define LINUX_TIOCSTART   LINUX_IO('t', 110)
+
 /* c_cc characters */
 #define LINUX_VINTR 0
 #define LINUX_VQUIT 1
@@ -260,6 +328,32 @@ enum {
 #define LINUX_IEXTEN  0100000
 #define LINUX_EXTPROC 0200000
 
+/* Linux speed */
+#define LINUX_CBAUD  0010017
+#define LINUX_B0     0000000
+#define LINUX_B50    0000001
+#define LINUX_B75    0000002
+#define LINUX_B110   0000003
+#define LINUX_B134   0000004
+#define LINUX_B150   0000005
+#define LINUX_B200   0000006
+#define LINUX_B300   0000007
+#define LINUX_B600   0000010
+#define LINUX_B1200  0000011
+#define LINUX_B1800  0000012
+#define LINUX_B2400  0000013
+#define LINUX_B4800  0000014
+#define LINUX_B9600  0000015
+#define LINUX_B19200 0000016
+#define LINUX_B38400 0000017
+
+#define LINUX_CBAUDEX 0010000
+#define LINUX_B57600   0010001
+#define LINUX_B115200  0010002
+#define LINUX_B230400  0010003
+
+#define LINUX_POSIX_VDISABLE ((unsigned char)'\0')
+#define BSD_POSIX_VDISABLE ((unsigned char)'\377')
 
 #endif
 
