@@ -65,7 +65,7 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 		host_info(hself, HOST_BASIC_INFO, &hinfo, &hcount);
 		mach_port_deallocate(mach_task_self(), hself);
 
-		if (nlen != 2)
+		if (nlen < 2)
 			return -ENOTDIR;
 
 		// String values
@@ -160,6 +160,25 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 					return 0;
 				}
 				break;
+			}
+			case KERN_PROC:
+			{
+				// Returns array of struct kinfo_proc
+				if (nlen < 4)
+					return -ENOTDIR;
+				switch (name[2])
+				{
+					case KERN_PROC_ALL:
+					case KERN_PROC_PID:
+					case KERN_PROC_TTY:
+					case KERN_PROC_UID:
+					case KERN_PROC_PGRP:
+					case KERN_PROC_SESSION:
+					case KERN_PROC_RUID:
+					case KERN_PROC_LCID:
+					default:
+						return -ENOTDIR;
+				}
 			}
 		}
 

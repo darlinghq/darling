@@ -22,6 +22,9 @@ long sys_proc_info(uint32_t callnum, int32_t pid, uint32_t flavor,
 
 			return ret;
 		}
+		case 1: // proc_listpids
+		case 2: // proc_pidinfo
+		case 3: // proc_pidfdinfo
 		default:
 			__simple_printf("sys_proc_info(): Unsupported callnum: %d\n",
 					callnum);

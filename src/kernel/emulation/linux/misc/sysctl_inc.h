@@ -116,5 +116,14 @@
 #define KERN_THREADNAME         71
 #define KERN_MAXID              72
 
+#define KERN_PROC_ALL           0
+#define KERN_PROC_PID           1
+#define KERN_PROC_PGRP          2
+#define KERN_PROC_SESSION       3
+#define KERN_PROC_TTY           4
+#define KERN_PROC_UID           5
+#define KERN_PROC_RUID          6
+#define KERN_PROC_LCID          7
+
 #endif
 
