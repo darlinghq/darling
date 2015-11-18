@@ -31,7 +31,7 @@
 static char sccsid[] = "@(#)opendir.c	8.8 (Berkeley) 5/1/95";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/gen/opendir.c,v 1.24 2008/04/16 18:40:52 delphij Exp $");
+__FBSDID("$FreeBSD$");
 
 #include "namespace.h"
 #include <sys/param.h>
@@ -48,6 +48,9 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/opendir.c,v 1.24 2008/04/16 18:40:52 delphi
 #include "un-namespace.h"
 
 #include "telldir.h"
+
+static DIR * __opendir_common(int, const char *, int);
+
 /*
  * Open a directory.
  */
@@ -58,25 +61,59 @@ opendir(const char *name)
 	return (__opendir2(name, DTF_HIDEW|DTF_NODUP));
 }
 
+/*
+ * Open a directory with existing file descriptor.
+ */
+DIR *
+fdopendir(int fd)
+{
+	struct stat statb;
+
+	/* Check that fd is associated with a directory. */
+	if (_fstat(fd, &statb) != 0)
+		return (NULL);
+	if (!S_ISDIR(statb.st_mode)) {
+		errno = ENOTDIR;
+		return (NULL);
+	}
+	if (_fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
+		return (NULL);
+	return (__opendir_common(fd, NULL, DTF_HIDEW|DTF_NODUP));
+}
+
 DIR *
 __opendir2(const char *name, int flags)
 {
-	DIR *dirp;
 	int fd;
+
+	if ((fd = _open(name,
+	    O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC)) == -1)
+		return (NULL);
+
+	return __opendir_common(fd, name, flags);
+}
+
+static int
+opendir_compar(const void *p1, const void *p2)
+{
+
+	return (strcmp((*(const struct dirent **)p1)->d_name,
+	    (*(const struct dirent **)p2)->d_name));
+}
+
+/*
+ * Common routine for opendir(3), __opendir2(3) and fdopendir(3).
+ */
+static DIR *
+__opendir_common(int fd, const char *name, int flags)
+{
+	DIR *dirp;
 	int incr;
 	int saved_errno;
 	int unionstack;
 
-	/*
-	 * Use O_DIRECTORY to only open directories (because opening of
-	 * special files may be harmful).  errno is set to ENOTDIR if
-	 * not a directory.
-	 */
-	if ((fd = _open(name, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC)) == -1)
+	if ((dirp = malloc(sizeof(DIR) + sizeof(struct _telldir))) == NULL)
 		return (NULL);
-	dirp = malloc(sizeof(DIR) + sizeof(struct _telldir));
-	if (dirp == NULL)
-		goto fail;
 
 	dirp->dd_td = (struct _telldir *)((char *)dirp + sizeof(DIR));
 	LIST_INIT(&dirp->dd_td->td_locq);
@@ -99,7 +136,8 @@ __opendir2(const char *name, int flags)
 
 		if (_fstatfs(fd, &sfb) < 0)
 			goto fail;
-		unionstack = (sfb.f_flags & MNT_UNION);
+		unionstack = !strcmp(sfb.f_fstypename, "unionfs")
+		    || (sfb.f_flags & MNT_UNION);
 	} else {
 		unionstack = 0;
 	}
@@ -135,7 +173,7 @@ __opendir2(const char *name, int flags)
 			}
 
 #if __DARWIN_64_BIT_INO_T
-			n = __getdirentries64(fd, ddptr, space, &dirp->dd_td->seekoff);
+			n = (int)__getdirentries64(fd, ddptr, space, &dirp->dd_td->seekoff);
 #else /* !__DARWIN_64_BIT_INO_T */
 			n = _getdirentries(fd, ddptr, space, &dirp->dd_seek);
 #endif /* __DARWIN_64_BIT_INO_T */
@@ -157,7 +195,7 @@ __opendir2(const char *name, int flags)
 		 */
 		if (flags & DTF_REWIND) {
 			(void)_close(fd);
-			if ((fd = _open(name, O_RDONLY)) == -1) {
+			if ((fd = _open(name, O_RDONLY | O_DIRECTORY)) == -1) {
 				saved_errno = errno;
 				free(buf);
 				free(dirp);
@@ -205,7 +243,8 @@ __opendir2(const char *name, int flags)
 				/*
 				 * This sort must be stable.
 				 */
-				mergesort(dpv, n, sizeof(*dpv), alphasort);
+				mergesort(dpv, n, sizeof(*dpv),
+				    opendir_compar);
 
 				dpv[n] = NULL;
 				xp = NULL;

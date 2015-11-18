@@ -162,6 +162,17 @@ __END_DECLS
 #if __DARWIN_C_LEVEL >= 200809L
 __BEGIN_DECLS
 
+//Begin-Libc
+#ifndef LIBC_ALIAS_OPENDIR
+//End-Libc
+__OSX_AVAILABLE_STARTING(__MAC_10_10, __IPHONE_8_0)
+DIR *fdopendir(int) __DARWIN_ALIAS_I(fdopendir);
+//Begin-Libc
+#else /* LIBC_ALIAS_OPENDIR */
+DIR *fdopendir(int) LIBC_ALIAS_I(fdopendir);
+#endif /* !LIBC_ALIAS_OPENDIR */
+//End-Libc
+
 int alphasort(const struct dirent **, const struct dirent **) __DARWIN_INODE64(alphasort);
 
 #if (defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_8) || (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_6_0)
