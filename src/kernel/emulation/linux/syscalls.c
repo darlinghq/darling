@@ -61,6 +61,7 @@
 #include "misc/getrlimit.h"
 #include "misc/thread_selfid.h"
 #include "misc/sysctl.h"
+#include "misc/proc_info.h"
 #include "misc/gethostuuid.h"
 #include "synch/semwait_signal.h"
 #include "fcntl/open.h"
@@ -227,6 +228,7 @@ void* __bsd_syscall_table[512] = {
 	[302] = sys_psynch_mutexdrop,
 	[331] = sys_disable_threadsignal,
 	[334] = sys_semwait_signal,
+	[336] = sys_proc_info,
 	[338] = sys_stat64,
 	[339] = sys_fstat64,
 	[340] = sys_lstat64,

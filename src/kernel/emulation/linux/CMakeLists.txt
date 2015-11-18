@@ -78,6 +78,7 @@ set(emulation_sources
 	signal/sig_restorer.S
 	misc/ioctl.c
 	misc/thread_selfid.c
+	misc/proc_info.c
 	misc/sysctl.c
 	misc/getrlimit.c
 	misc/gethostuuid.c
@@ -141,6 +142,7 @@ set(emulation_sources
 	ext/clock_nanosleep.c
 	ext/clock_gettime.c
 	ext/sched_yield.c
+	ext/syslog.c
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_terminate.c

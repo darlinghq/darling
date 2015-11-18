@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <limits.h>
 #include "../ext/sys/utsname.h"
+#include "../ext/syslog.h"
 
 static long sysctl_name_to_oid(const char* name, int* oid_name,
 		unsigned long* oid_len);
@@ -30,6 +31,9 @@ enum {
 	_HW_CPUTYPE,
 	_HW_CPUSUBTYPE,
 	_HW_CPUTHREADTYPE
+};
+enum {
+	_KERN_MSGBUF = 1000,
 };
 
 static struct linux_utsname lu;
@@ -130,6 +134,35 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 	}
 	else if (name[0] == CTL_KERN)
 	{
+		switch (name[1])
+		{
+			case _KERN_MSGBUF:
+			{
+				if (*oldlen <= 8)
+				{
+					// Caller is asking for buffer size
+					if (*oldlen < sizeof(int))
+						return -EINVAL;
+
+					*((int*) old) = __linux_syslog(SYSLOG_ACTION_SIZE_BUFFER, NULL, 0);
+					return 0;
+				}
+				else
+				{
+					// Caller is asking for buffer contents
+					int ret;
+
+					ret = __linux_syslog(SYSLOG_ACTION_READ_ALL, (char*) old, *oldlen);
+					if (ret < 0)
+						return errno_linux_to_bsd(ret);
+
+					*oldlen = ret;
+					return 0;
+				}
+				break;
+			}
+		}
+
 		need_uname();
 
 		// String values
@@ -220,6 +253,18 @@ static long sysctl_name_to_oid(const char* name, int* oid_name,
 		else
 			return -ENOTDIR;
 		
+		return 0;
+	}
+	else if (strncmp(name, "kern", cat_len) == 0)
+	{
+		oid_name[0] = CTL_KERN;
+		*oid_len = 2 * sizeof(int);
+
+		if (strcmp(dot+1, "msgbuf") == 0)
+			oid_name[1] = _KERN_MSGBUF;
+		else
+			return -ENOTDIR;
+
 		return 0;
 	}
 
