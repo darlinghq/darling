@@ -59,7 +59,10 @@ int main(int argc, char** argv, char** envp)
 		
 		obj = new MachOObject(argv[1]);
 		if (!obj->isMainModule())
-			throw std::runtime_error("Not an MH_EXECUTE file");
+		{
+			throw std::runtime_error("This is not a Mach-O executable; dynamic libraries, "
+			"kernel extensions and other Mach-O files cannot be executed with dyld");
+		}
 		
 		obj->setCommandLine(argc-1, &argv[1], envp);
 
