@@ -7,10 +7,16 @@ endif(COMMAND cmake_policy)
 
 #configure_file(config.h.in config.h)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fblocks")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+
+add_definitions(-DOBJC2RUNTIME -U__APPLE__)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
+include_directories(${DARLING_TOP_DIRECTORY}/src/external/corefoundation/Headers)
+include_directories(${CMAKE_BINARY_DIR}/src/external/corefoundation/Headers)
+include_directories(${DARLING_TOP_DIRECTORY}/src/external/foundation/Headers)
 
 set(AudioToolbox_SRCS
 	AudioConverter.cpp
@@ -24,7 +30,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(AudioToolbox SHARED ${AudioToolbox_SRCS})
-target_link_libraries(AudioToolbox util -lavcodec -lavresample -lavformat CoreFoundation)
+target_link_libraries(AudioToolbox util -lavcodec -lavresample -lavformat CFF)
 
 install(TARGETS AudioToolbox DESTINATION "lib${SUFFIX}/darling")
 

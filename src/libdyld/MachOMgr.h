@@ -74,6 +74,10 @@ public:
 	inline void setLibraryPath(const std::string& paths) { m_libraryPath = paths; }
 	inline const std::string& libraryPath() const { return m_libraryPath; }
 
+	// DYLD_FORCE_FLAT_NAMESPACE
+	inline void setForceFlatNamespace(bool forceFlat) { m_forceFlatNamespace = forceFlat; }
+	inline bool forceFlatNamespace() const { return m_forceFlatNamespace; }
+
 	// Only call this method if you're loading a Mach-O library into a native process!
 	void addDefaultLoader();
 
@@ -152,7 +156,7 @@ private:
 	mutable Darling::RWMutex m_lock;
 	MachOObject* m_mainModule;
 	bool m_bindAtLaunch, m_printInitializers, m_printLibraries;
-	bool m_printSegments, m_printBindings, m_printRpathExpansion, m_loadAny;
+	bool m_printSegments, m_printBindings, m_printRpathExpansion, m_loadAny, m_forceFlatNamespace;
 	std::string m_libraryPath, m_sysroot;
 
 #ifdef HAS_DEBUG_HELPERS

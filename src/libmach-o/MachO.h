@@ -65,9 +65,11 @@ public:
 			uint64_t value;
 		};
 		uint8_t type;
-		uint8_t ordinal;
+		int ordinal;
 		bool is_weak, is_lazy, is_classic, is_local;
 		uintptr_t offset; // Needed to find the right bind when doing lazy binding
+
+		enum { OrdinalSpecialSelf = 0, OrdinalSpecialExecutable = -1, OrdinalSpecialFlatLookup = -2 };
 	};
 
 	struct Export
@@ -96,6 +98,7 @@ public:
 		uint64_t addr;
 		std::string name; // symbol name
 		bool pcrel; // i386
+		int ordinal;
 	};
 
 	struct TLVSection

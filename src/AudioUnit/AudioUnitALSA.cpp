@@ -1,4 +1,4 @@
-#include "config.h"
+#include "darling-config.h"
 #include "AudioUnitALSA.h"
 #include "AudioUnitProperties.h"
 #include <CoreServices/MacErrors.h>
@@ -118,15 +118,15 @@ void AudioUnitALSA::initOutput()
 		m_config[kOutputBus].second = m_config[kOutputBus].first;
 		
 		err = snd_pcm_open(&m_pcmOutput, m_cardName, SND_PCM_STREAM_PLAYBACK, 0);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to initialize playback PCM", err);
 		
 		err = snd_pcm_hw_params_malloc(&hw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to alloc hw params", err);
 		
 		err = snd_pcm_hw_params_any(m_pcmOutput, hw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to init hw params", err);
 		
 		if (isOutputPlanar())
@@ -134,51 +134,51 @@ void AudioUnitALSA::initOutput()
 		else
 			err = snd_pcm_hw_params_set_access(m_pcmOutput, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED);
 		
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set interleaved access", err);
 		
 		err = snd_pcm_hw_params_set_format(m_pcmOutput, hw_params, alsaFormatForASBD(alsaConfig));
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set format", err);
 		
 		err = snd_pcm_hw_params_set_rate_near(m_pcmOutput, hw_params, &rate, 0);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set sample rate", err);
 		
-		LOG << "Channel count: " << alsaConfig.mChannelsPerFrame << std::endl;
+		LOG << "Channel count: " << int(alsaConfig.mChannelsPerFrame) << std::endl;
 		err = snd_pcm_hw_params_set_channels(m_pcmOutput, hw_params, alsaConfig.mChannelsPerFrame);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set channel count", err);
 		
 		err = snd_pcm_hw_params(m_pcmOutput, hw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set HW parameters", err);
 		
 		snd_pcm_hw_params_free(hw_params);
 		hw_params = nullptr;
 		
 		err = snd_pcm_sw_params_malloc(&sw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to alloc sw params", err);
 		
 		err = snd_pcm_sw_params_current(m_pcmOutput, sw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to init sw params", err);
 		
 		err = snd_pcm_sw_params_set_avail_min(m_pcmOutput, sw_params, SAMPLE_PERIOD);
-		if (err)
+		if (err < 0)
 			throwAlsaError("snd_pcm_sw_params_set_avail_min() failed", err);
 		
 		err = snd_pcm_sw_params_set_start_threshold(m_pcmOutput, sw_params, 0U);
-		if (err)
+		if (err < 0)
 			throwAlsaError("snd_pcm_sw_params_set_start_threshold() failed", err);
 		
 		err = snd_pcm_sw_params_set_tstamp_mode(m_pcmOutput, sw_params, SND_PCM_TSTAMP_ENABLE);
-		if (err)
+		if (err < 0)
 			throwAlsaError("snd_pcm_sw_params_set_tstamp_mode() failed", err);
 		
 		err = snd_pcm_sw_params(m_pcmOutput, sw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set SW parameters", err);
 		
 		snd_pcm_sw_params_free(sw_params);
@@ -270,7 +270,7 @@ void AudioUnitALSA::processAudioEvent(struct pollfd origPoll, int event)
 	pfd.revents = event;
 
 	err = snd_pcm_poll_descriptors_revents(m_pcmOutput, &pfd, 1, &revents);
-	if (err != 0)
+	if (err < 0)
 		ERROR() << "snd_pcm_poll_descriptors_revents() failed: " << snd_strerror(err);
 	
 	if (revents & POLLIN)
@@ -681,6 +681,7 @@ void AudioUnitALSA::startDescriptors(const struct pollfd* pollfds, int count)
 		dispatch_source_t source;
 		const struct pollfd& cur = pollfds[i];
 		
+		// FIXME: This is wrong: must use snd_pcm_poll_descriptors_revents()!
 		if (cur.events & POLLIN)
 		{
 			source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, cur.fd, 0, g_audioQueue);

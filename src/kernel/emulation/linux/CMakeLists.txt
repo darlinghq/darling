@@ -7,6 +7,8 @@ enable_language(C ASM)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fvisibility=hidden -fPIC -ggdb -Wno-int-conversion")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
+add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD)
+
 set(emulation_sources
 	base.c
 	syscalls.c
@@ -147,6 +149,8 @@ set(emulation_sources
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_terminate.c
 	bsdthread/disable_threadsignal.c
+	bsdthread/workq_kernreturn.c
+	bsdthread/workq_open.c
 	psynch/psynch_mutexwait.c
 	psynch/psynch_mutexdrop.c
 	syscalls-amd64.asm

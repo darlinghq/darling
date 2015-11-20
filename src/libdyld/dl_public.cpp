@@ -190,6 +190,7 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 		else
 			module = static_cast<LoadableObject*>(handle);
 
+		LOG << "Looking in " << module->name() << std::endl;
 		if (!translated.empty())
 			addr = module->getExportedSymbol(translated.c_str(), false);
 

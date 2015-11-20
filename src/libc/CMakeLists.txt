@@ -108,7 +108,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-threads>
 	$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:libc-darwin>)
-target_link_libraries(system_c system_kernel)
+target_link_libraries(system_c system_kernel system_m)
 
 install(TARGETS system_c DESTINATION lib${SUFFIX}/darling)
 

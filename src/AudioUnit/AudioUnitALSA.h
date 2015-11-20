@@ -2,7 +2,7 @@
 #define AUCOMPONENTINTERNAL_H
 #include "AudioUnit.h"
 #include <CoreServices/ComponentsInternal.h>
-#include <alsa/asoundlib.h>
+#include <asoundlib.h>
 #include <dispatch/dispatch.h>
 #include <vector>
 #include "AudioOutputUnitComponent.h"

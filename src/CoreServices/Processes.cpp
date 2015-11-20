@@ -8,10 +8,11 @@
 #include <cstring>
 #include <util/debug.h>
 #include <CoreFoundation/CFNumber.h>
+#include <CoreFoundation/CFBundle.h>
 
-CFStringRef kCFBundleExecutableKey = CFSTR("kCFBundleExecutableKey");
-CFStringRef kCFBundleNameKey = CFSTR("kCFBundleNameKey");
-CFStringRef kCFBundleIdentifierKey = CFSTR("kCFBundleIdentifierKey");
+// CFStringRef kCFBundleExecutableKey = CFSTR("kCFBundleExecutableKey");
+// CFStringRef kCFBundleNameKey = CFSTR("kCFBundleNameKey");
+// CFStringRef kCFBundleIdentifierKey = CFSTR("kCFBundleIdentifierKey");
 
 OSStatus CopyProcessName(const ProcessSerialNumber* psn, CFStringRef* name)
 {

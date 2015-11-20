@@ -49,6 +49,7 @@ int main(int argc, char** argv, char** envp)
 		mgr->setPrintSegments(getenv("DYLD_PRINT_SEGMENTS") != nullptr);
 		mgr->setPrintBindings(getenv("DYLD_PRINT_BINDINGS") != nullptr);
 		mgr->setPrintRpathExpansion(getenv("DYLD_PRINT_RPATHS") != nullptr);
+		mgr->setForceFlatNamespace(getenv("DYLD_FORCE_FLAT_NAMESPACE") != nullptr);
 
 		if (const char* path = getenv("DYLD_LIBRARY_PATH"))
 			mgr->setLibraryPath(path);

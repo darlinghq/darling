@@ -46,6 +46,11 @@ add_subdirectory(libdyld)
 add_subdirectory(dyld)
 add_subdirectory(motool)
 
+if (FRAMEWORK_COREAUDIO)
+	add_subdirectory(AudioToolbox)
+	add_subdirectory(AudioUnit)
+endif (FRAMEWORK_COREAUDIO)
+
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libm/Source")
 include_directories("${DARLING_TOP_DIRECTORY}/platform-include")
@@ -86,6 +91,7 @@ add_subdirectory(external/openssl/src)
 add_subdirectory(external/foundation)
 add_subdirectory(CFF)
 add_subdirectory(CoreServices)
+
 
 ######################
 # libc++ & libc++abi #

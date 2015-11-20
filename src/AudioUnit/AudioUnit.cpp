@@ -1,4 +1,4 @@
-#include "config.h"
+#include "darling-config.h"
 #include "AudioUnit.h"
 #include "AudioOutputUnitComponent.h"
 #include "AudioUnitALSA.h"

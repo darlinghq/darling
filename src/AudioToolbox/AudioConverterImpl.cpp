@@ -113,7 +113,7 @@ void AudioConverter::initEncoder()
 
 void AudioConverter::allocateBuffers()
 {
-	m_audioFrame = avcodec_alloc_frame();
+	m_audioFrame = av_frame_alloc();
 	
 	m_audioFrame->nb_samples = 4096;
 	m_audioFrame->format = m_encoder->sample_fmt;
@@ -288,8 +288,8 @@ OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc
 {
 	AVFrame* srcaudio;
 
-	srcaudio = avcodec_alloc_frame();
-	avcodec_get_frame_defaults(srcaudio);
+	srcaudio = av_frame_alloc();
+	av_frame_unref(srcaudio);
 	
 	try
 	{
@@ -383,17 +383,17 @@ OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc
 		}
 end:
 		
-		avcodec_free_frame(&srcaudio);
+		av_frame_free(&srcaudio);
 	}
 	catch (const std::exception& e)
 	{
 		ERROR() << "Exception: " << e.what();
-		avcodec_free_frame(&srcaudio);
+		av_frame_free(&srcaudio);
 	}
 	catch (OSStatus err)
 	{
 		ERROR() << "OSStatus error: " << err;
-		avcodec_free_frame(&srcaudio);
+		av_frame_free(&srcaudio);
 		return err;
 	}
 	

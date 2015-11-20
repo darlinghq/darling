@@ -169,7 +169,7 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 				*newConfig = m_config[elem].second;
 			else if (scope == kAudioUnitScope_Input)
 				*newConfig = m_config[elem].first;
-			if (scope == kAudioUnitScope_Global)
+			else if (scope == kAudioUnitScope_Global)
 				*newConfig = m_config[0].second;
 			else
 				return kAudioUnitErr_InvalidScope;

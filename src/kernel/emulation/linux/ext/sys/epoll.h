@@ -46,7 +46,7 @@ struct epoll_event
 {
 	uint32_t events;
 	epoll_data_t data;
-};
+} __attribute__((packed));
 
 extern int epoll_create (int __size) __THROW;
 

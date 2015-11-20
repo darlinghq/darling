@@ -63,7 +63,7 @@ void MachOImpl::readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* 
 		bind->vmaddr = ptrTo64(sec.addr + i * m_ptrsize);
 		bind->value = ptrTo64(sym->n_value);
 		bind->type = BIND_TYPE_POINTER;
-		bind->ordinal = 1;
+		bind->ordinal = (int)(int8_t) GET_LIBRARY_ORDINAL(sym->n_desc);
 		bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
 		bind->is_classic = true;
 		bind->is_local = (sym->n_type & N_TYPE) == N_SECT;
@@ -100,7 +100,7 @@ void MachOImpl::readStubBind(const section& sec,  uint32_t* dysyms, uint32_t* sy
 		bind->vmaddr = ptrTo64(sec.addr + i * element_size);
 		bind->value = ptrTo64(sym->n_value);
 		bind->type = BIND_TYPE_STUB;
-		bind->ordinal = 1;
+		bind->ordinal = (int)(int8_t) GET_LIBRARY_ORDINAL(sym->n_desc);
 		bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
 		bind->is_classic = true;
 
@@ -854,6 +854,7 @@ void MachOImpl::readExternalRelocation(const struct relocation_info* reloc, uint
 			relocation->addr = reloc->r_address + relocBase;
 			relocation->name = symstrtab + sym->n_strx;
 			relocation->pcrel = reloc->r_pcrel != 0;
+			relocation->ordinal = (int)(int8_t) GET_LIBRARY_ORDINAL(sym->n_desc);
 			
 			LOG << "External relocation: 0x" << std::hex << relocation->addr << std::dec
 				<< "; name: " << relocation->name << "; pcrel: " << relocation->pcrel << std::endl;

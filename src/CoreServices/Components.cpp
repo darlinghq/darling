@@ -1,7 +1,7 @@
 #include "darling-config.h"
 #include "Components.h"
 #include "ComponentsInternal.h"
-#include "frameworks.h"
+#include "darling-config.h"
 #include <AudioUnit/AUComponent.h>
 #include <AudioUnit/AudioUnitBase.h>
 #include <CoreServices/MacErrors.h>

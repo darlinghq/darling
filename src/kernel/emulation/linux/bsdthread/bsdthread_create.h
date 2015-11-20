@@ -5,6 +5,10 @@
 long sys_bsdthread_create(void* thread_start, void* arg, void** stack,
 		void* pthread, uint32_t flags);
 
+int darling_thread_create(void** stack, void* entry_point, uintptr_t arg3,
+		uintptr_t arg4, uintptr_t arg5, uintptr_t arg6);
+
+void* thread_stack_allocate(unsigned long stacksize);
 
 #define LINUX_CLONE_VM      0x00000100
 #define LINUX_CLONE_FS      0x00000200

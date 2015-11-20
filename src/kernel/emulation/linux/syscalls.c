@@ -110,6 +110,8 @@
 #include "select/poll.h"
 #include "psynch/psynch_mutexwait.h"
 #include "psynch/psynch_mutexdrop.h"
+#include "bsdthread/workq_kernreturn.h"
+#include "bsdthread/workq_open.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -242,6 +244,8 @@ void* __bsd_syscall_table[512] = {
 	[360] = sys_bsdthread_create,
 	[361] = sys_bsdthread_terminate,
 	[366] = sys_bsdthread_register,
+	[367] = sys_workq_open,
+	[368] = sys_workq_kernreturn,
 	[372] = sys_thread_selfid,
 	[396] = sys_read_nocancel,
 	[397] = sys_write_nocancel,

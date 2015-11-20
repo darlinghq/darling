@@ -30,6 +30,9 @@ void NativeObject::load()
 	flags |= globalExports() ? RTLD_GLOBAL : RTLD_LOCAL;
 	//flags |= bindAllAtLoad() ? RTLD_NOW : RTLD_LAZY;
 	flags |= RTLD_LAZY;
+	
+	if (MachOMgr::instance()->printLibraries())
+		std::cerr << "dyld: Loading " << m_path << std::endl;
 
 	m_nativeRef = ::dlopen(m_path.c_str(), flags);
 	if (!m_nativeRef)

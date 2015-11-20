@@ -91,13 +91,17 @@ std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
 	// If absolute, search in sysroot
 	if (dylib[0] == '/' && !MachOMgr::instance()->sysRoot().empty())
 	{
-		std::string path = MachOMgr::instance()->sysRoot();
-		path += '/';
-		path += dylib;
+		std::vector<std::string> roots = string_explode(MachOMgr::instance()->sysRoot(), ':');
 		
-		epath = checkPresence(path);
-		if (!epath.empty())
-			return epath;
+		for (std::string path : roots)
+		{
+			path += '/';
+			path += dylib;
+			
+			epath = checkPresence(path);
+			if (!epath.empty())
+				return epath;
+		}
 	}
 
 	return std::string();

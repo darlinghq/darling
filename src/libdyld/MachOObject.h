@@ -132,7 +132,7 @@ private:
 	void* performBind(MachO::Bind* bind);
 	
 	void detectAbsolutePath();
-	void* resolveSymbol(const std::string& name);
+	void* resolveSymbol(const std::string& name, int libraryOrdinal);
 	
 	void jumpToStart() __attribute__((noreturn));
 	
@@ -153,6 +153,8 @@ private:
 	static bool lookupDyldFunction(const char* name, void** addr);
 
 	uintptr_t getTotalMappingSize();
+
+	inline bool usesTwoLevelNamespace() const { return m_header.flags & MH_TWOLEVEL; }
 private:
 	MachO* m_file;
 	int m_refs = 1;

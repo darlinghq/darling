@@ -465,13 +465,24 @@ void MachOObject::writeBind(int type, void** ptr, void* newAddr, const std::stri
 
 void MachOObject::loadDependencies()
 {
-	for (std::string dylib : m_file->dylibs())
+	std::vector<const char*> dylibs = m_file->dylibs();
+	std::string path;
+
+	// libSystem MUST always be loaded first
+	// This is essentially a hack, but it should be safe.
+	LoadableObject* libSystem;
+
+	path = DylibSearch::instance()->resolve("/usr/lib/libSystem.B.dylib", this);
+	libSystem = LoadableObject::instantiateForPath(path, this);
+	libSystem->load();
+
+	for (std::string dylib : dylibs)
 	{
 		LoadableObject* dep;
 		
 		if (dylib.empty())
 		{
-			ERROR() << "Empty dylib dependency in " << path();
+			ERROR() << "Empty dylib dependency in " << this->path();
 			continue;
 		}
 		
@@ -497,6 +508,8 @@ void MachOObject::loadDependencies()
 			m_dependencies.push_back(dep);
 		}
 	}
+
+	libSystem->delRef();
 }
 
 void MachOObject::readSymbols()
@@ -700,8 +713,11 @@ void MachOObject::performRelocations()
 		uintptr_t* ptr = (uintptr_t*) (uintptr_t(rel->addr) + m_slide);
 		uintptr_t symbol;
 		uintptr_t value = *ptr;
+		int libraryOrdinal;
 
-		symbol = (uintptr_t) resolveSymbol(rel->name);
+		libraryOrdinal = usesTwoLevelNamespace() ? rel->ordinal : MachO::Bind::OrdinalSpecialFlatLookup;
+
+		symbol = (uintptr_t) resolveSymbol(rel->name, libraryOrdinal);
 
 		value += symbol;
 
@@ -743,7 +759,10 @@ void* MachOObject::performBind(MachO::Bind* bind)
 		if (bind->is_classic && bind->is_local)
 			addr = (void*) bind->value;
 		else
-			addr = resolveSymbol(bind->name);
+		{
+			int ordinal = usesTwoLevelNamespace() ? bind->ordinal : MachO::Bind::OrdinalSpecialFlatLookup;
+			addr = resolveSymbol(bind->name, ordinal);
+		}
 		
 		if (!addr && !bind->is_weak)
 		{
@@ -788,9 +807,10 @@ void* MachOObject::performBind(MachO::Bind* bind)
 	}
 }
 
-void* MachOObject::resolveSymbol(const std::string& name)
+void* MachOObject::resolveSymbol(const std::string& name, int libraryOrdinal)
 {
 	void* addr;
+	void* module;
 	
 	if (name.empty())
 		return nullptr;
@@ -803,8 +823,31 @@ void* MachOObject::resolveSymbol(const std::string& name)
 		lookupDyldFunction(name.c_str(), &addr);
 		return addr;
 	}
+
+	if (MachOMgr::instance()->forceFlatNamespace())
+		libraryOrdinal = MachO::Bind::OrdinalSpecialFlatLookup;
 	
-	return __darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str() + 1);
+	switch (libraryOrdinal)
+	{
+		case MachO::Bind::OrdinalSpecialSelf:
+			module = this;
+			break;
+		case MachO::Bind::OrdinalSpecialExecutable:
+			module = DARWIN_RTLD_MAIN_ONLY;
+			break;
+		case MachO::Bind::OrdinalSpecialFlatLookup:
+			module = DARWIN_RTLD_DEFAULT;
+			break;
+		default:
+		{
+			if (libraryOrdinal > 0 && libraryOrdinal <= m_dependencies.size())
+				module = m_dependencies[libraryOrdinal-1];
+			else
+				return nullptr;
+		}
+	}
+
+	return __darwin_dlsym(module, name.c_str() + 1);
 }
 
 void MachOObject::runInitializers()
