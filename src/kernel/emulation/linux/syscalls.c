@@ -63,6 +63,7 @@
 #include "misc/sysctl.h"
 #include "misc/proc_info.h"
 #include "misc/gethostuuid.h"
+#include "misc/getrusage.h"
 #include "synch/semwait_signal.h"
 #include "fcntl/open.h"
 #include "fcntl/fcntl.h"
@@ -172,6 +173,7 @@ void* __bsd_syscall_table[512] = {
 	[97] = sys_socket,
 	[98] = sys_connect,
 	[116] = sys_gettimeofday,
+	[117] = sys_getrusage,
 	[120] = sys_readv,
 	[121] = sys_writev,
 	[123] = sys_fchown,

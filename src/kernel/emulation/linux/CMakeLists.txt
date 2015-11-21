@@ -84,6 +84,7 @@ set(emulation_sources
 	misc/sysctl.c
 	misc/getrlimit.c
 	misc/gethostuuid.c
+	misc/getrusage.c
 	fcntl/open.c
 	fcntl/fcntl.c
 	network/socket.c
