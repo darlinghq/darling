@@ -16,9 +16,8 @@ add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w -fconstant-string-class=NSConstantString -fobjc-nonfragile-abi -ggdb -O0")
 
-# Because clueless CMake compiles .m files with CXX compiler and set_source_files_properties(... LANGUAGE) doesn't work with OBJECT libraries.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w -fconstant-string-class=NSConstantString -fobjc-nonfragile-abi -ggdb -O0")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map  -Wl,--defsym=__CFConstantStringClassReference=_OBJC_CLASS_AppleCFString")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostdinc -nostdinc++ -D__DARWIN_UNIX03 -fPIC -w -fconstant-string-class=NSConstantString -fobjc-nonfragile-abi -ggdb -O0")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
@@ -28,6 +27,8 @@ include_directories(${DARLING_TOP_DIRECTORY}/src/external/corefoundation/Headers
 include_directories(${CMAKE_BINARY_DIR}/src/external/corefoundation/Headers)
 include_directories(${DARLING_TOP_DIRECTORY}/src/external/foundation/Headers)
 include_directories(${DARLING_TOP_DIRECTORY}/src/external/libobjc2)
+include_directories(${DARLING_TOP_DIRECTORY}/src/external/libcxx/include)
+include_directories(${DARLING_TOP_DIRECTORY}/src/libc/include/FreeBSD)
 
 add_definitions(-DOBJC2RUNTIME=1)
 
@@ -38,8 +39,20 @@ set(cff_SRCS
 	#AppleCFString.m
 )
 
+set(cffextra_SRCS
+	CFUtilities.cpp
+	CFPreferences.mm
+	../util/debug.cpp
+	../util/stlutils.cpp
+	../external/libcxx/src/dso_handle.c
+)
+
 add_library(CFF SHARED ${cff_SRCS})
 set_source_files_properties(${cff_SRCS} LANGUAGE C)
-target_link_libraries(CFF system icucore z ffi xml2 xslt)
+target_link_libraries(CFF PRIVATE system icucore z ffi xml2 xslt "-Wl,--defsym=__CFConstantStringClassReference=_OBJC_CLASS_AppleCFString")
 
-install(TARGETS CFF DESTINATION lib${SUFFIX}/darling)
+add_library(CFFExtra SHARED ${cffextra_SRCS})
+target_link_libraries(CFFExtra CFF cxx)
+
+
+install(TARGETS CFF CFFExtra DESTINATION lib${SUFFIX}/darling)

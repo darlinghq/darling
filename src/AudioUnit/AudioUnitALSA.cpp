@@ -681,7 +681,6 @@ void AudioUnitALSA::startDescriptors(const struct pollfd* pollfds, int count)
 		dispatch_source_t source;
 		const struct pollfd& cur = pollfds[i];
 		
-		// FIXME: This is wrong: must use snd_pcm_poll_descriptors_revents()!
 		if (cur.events & POLLIN)
 		{
 			source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, cur.fd, 0, g_audioQueue);

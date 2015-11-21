@@ -1,6 +1,7 @@
 
 #include "CFUtilities.h"
 #include <CoreFoundation/CFString.h>
+#include <stddef.h>
 
 Boolean _CFExecutableLinkedOnOrAfter(CFSystemVersion version)
 {
