@@ -179,9 +179,12 @@ set(ncurses_sources
 	widechar/lib_vline_set.c
 	widechar/lib_wacs.c
 	widechar/lib_wunctrl.c
-	
+
+	lib_keyname.c
+	lib_gen.c
 	names.c
 	base/codes.c
+	base/unctrl.c
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
