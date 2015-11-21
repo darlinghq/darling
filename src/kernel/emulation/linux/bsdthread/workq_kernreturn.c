@@ -4,6 +4,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../../../../../platform-include/sys/errno.h"
+#include "../../../../libdyld/threads.h"
 #include <asm/unistd.h>
 #include <stddef.h>
 
@@ -23,6 +24,8 @@
 #define WQ_FLAG_THREAD_OVERCOMMIT       0x00010000
 #define WQ_FLAG_THREAD_REUSE            0x00020000
 #define WQ_FLAG_THREAD_NEWSPI           0x00040000
+
+extern int thread_self_trap(void);
 
 long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 {
@@ -49,10 +52,12 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 
 			for (i = 0; i < affinity; i++)
 			{
-				void* stack;
+				//void* stack;
 
-				stack = thread_stack_allocate(512*1024);
-				ret = darling_thread_create(stack, wqueue_entry_point, stack, NULL, flags, 0);
+				//stack = thread_stack_allocate(512*1024);
+				//ret = darling_thread_create(stack, wqueue_entry_point, stack, NULL, flags, 0);
+				ret = __darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point, 0, NULL, flags, 0,
+						thread_self_trap);
 
 				if (ret < 0)
 					return ret;

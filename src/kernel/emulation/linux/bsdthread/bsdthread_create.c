@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "../../../../../platform-include/sys/mman.h"
+#include "../../../../libdyld/threads.h"
 #include "../mman/mman.h"
 #include "../simple.h"
 
@@ -28,6 +29,7 @@ long sys_bsdthread_create(void* thread_start, void* arg,
 	int ret;
 	unsigned long stacksize = 0;
 
+#ifndef BSDTHREAD_WRAP_LINUX_PTHREAD
 	if (!(flags & PTHREAD_START_CUSTOM))
 	{
 		// We have to allocate stack ourselves
@@ -36,6 +38,14 @@ long sys_bsdthread_create(void* thread_start, void* arg,
 
 	ret = darling_thread_create((void**) stack, pthread_entry_point, thread_start,
 			arg, stacksize, flags);
+#else
+	// Implemented in libdyld
+	extern int thread_self_trap(void);
+
+	return __darling_thread_create(((uintptr_t)stack), pthread_obj_size,
+			pthread_entry_point, thread_start, arg, (uintptr_t) stack, flags,
+			thread_self_trap);
+#endif
 
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
@@ -67,16 +77,6 @@ void* thread_stack_allocate(unsigned long stacksize)
 int darling_thread_create(void** stack, void* entry_point, uintptr_t arg3,
 		uintptr_t arg4, uintptr_t arg5, uintptr_t arg6)
 {
-#ifdef BSDTHREAD_WRAP_LINUX_PTHREAD
-	// Implemented in libdyld
-	extern int __darling_thread_create(void** stack, void* entry_point,
-			uintptr_t arg3, uintptr_t arg4, uintptr_t arg5, uintptr_t arg6,
-			int (*trap)(void));
-	extern int thread_self_trap(void);
-
-	return __darling_thread_create(stack, entry_point, arg3, arg4, arg5, arg6,
-			thread_self_trap);
-#else
 	int ret;
 
 #if defined(__x86_64__)
@@ -114,7 +114,6 @@ int darling_thread_create(void** stack, void* entry_point, uintptr_t arg3,
 #	warning Missing clone call assembly!
 #endif
 	return ret;
-#endif
 }
 
 
