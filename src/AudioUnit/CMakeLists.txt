@@ -37,6 +37,11 @@ set(AudioUnit_SRCS
 	AudioUnitBase.cpp
 	AudioUnitALSA.cpp
 	AudioUnitRenderer.cpp
+        # AudioUnitPA.cpp
+
+        AudioQueue.cpp
+        AudioQueueBase.cpp
+        AudioQueueOutput.cpp
 	../util/debug.cpp
 	../util/stlutils.cpp
 )
