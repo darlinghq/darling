@@ -26,6 +26,8 @@ AudioUnitComponent::AudioUnitComponent(std::initializer_list<CFStringRef> elemen
 
 AudioUnitComponent::~AudioUnitComponent()
 {
+	if (m_contextName != nullptr)
+		CFRelease(m_contextName);
 	CloseComponent(m_inputUnit.sourceAudioUnit);
 }
 
@@ -64,6 +66,10 @@ OSStatus AudioUnitComponent::getPropertyInfo(AudioUnitPropertyID prop, AudioUnit
 		case kAudioUnitProperty_ElementName:
 			*dataSize = sizeof(CFStringRef);
 			*writable = false;
+			break;
+		case kAudioUnitProperty_ContextName:
+			*dataSize = sizeof(CFStringRef);
+			*writable = true;
 			break;
 		default:
 			return kAudioUnitErr_InvalidProperty;
@@ -144,6 +150,26 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 			m_shouldAllocateBuffer = *b != 0;
 			return noErr;
 		}
+		case kAudioUnitProperty_ContextName:
+		{
+			if (dataSize < sizeof(CFStringRef))
+				return kAudioUnitErr_InvalidParameter;
+			
+			if (data == nullptr)
+			{
+				if (m_contextName != nullptr)
+				{
+					CFRelease(m_contextName);
+					m_contextName = nullptr;
+				}
+			}
+			else
+			{
+				m_contextName = (CFStringRef) data;
+				CFRetain(m_contextName);
+			}
+			return noErr;
+		}
 		default:
 			return kAudioUnitErr_InvalidProperty;
 	}
@@ -205,6 +231,15 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 				return kAudioUnitErr_InvalidElement;
 			
 			*out = m_elementNames[elem];
+			return noErr;
+		}
+		case kAudioUnitProperty_ContextName:
+		{
+			CFStringRef* out = (CFStringRef*) data;
+			if (*dataSize != sizeof(CFStringRef))
+				return kAudioUnitErr_InvalidParameter;
+			
+			*out = m_contextName;
 			return noErr;
 		}
 		default:

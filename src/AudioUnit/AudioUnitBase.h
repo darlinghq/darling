@@ -31,6 +31,7 @@ protected:
 	AudioUnitConnection m_inputUnit;
 	bool m_shouldAllocateBuffer = true;
 	OSStatus m_lastRenderError = 0;
+	CFStringRef m_contextName = nullptr;
 };
 
 #endif

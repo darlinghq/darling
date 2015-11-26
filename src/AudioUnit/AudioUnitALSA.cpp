@@ -81,7 +81,7 @@ AudioUnitComponent* AudioUnitALSA::create(int cardIndex)
 	}
 	else
 	{
-		name = strdup("default");
+		name = strdup("default" /*"plughw:0"*/);
 	}
 	
 	return new AudioUnitALSA(cardIndex, name);
@@ -206,6 +206,8 @@ void AudioUnitALSA::initInput()
 		
 		// Let ALSA do the conversion on its own
 		m_config[kInputBus].first = m_config[kInputBus].second;
+		
+		// TODO: support recording
 	}
 	catch (...)
 	{
@@ -495,6 +497,7 @@ do_write:
 		{
 			if (wr == -EINTR || wr == -EPIPE)
 			{
+				LOG << "Recovering PCM\n";
 				snd_pcm_recover(m_pcmOutput, wr, false);
 				goto do_write;
 			}
@@ -544,6 +547,7 @@ do_write:
 	{
 		if (wr == -EINTR || wr == -EPIPE)
 		{
+			LOG << "Recovering PCM\n";
 			snd_pcm_recover(m_pcmOutput, wr, false);
 			goto do_write;
 		}
