@@ -146,6 +146,7 @@ set(emulation_sources
 	ext/clock_gettime.c
 	ext/sched_yield.c
 	ext/syslog.c
+	ext/futex.c
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_terminate.c
