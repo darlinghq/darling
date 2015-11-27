@@ -392,7 +392,7 @@ void AudioUnitALSA::requestDataForPlayback()
 		}
 	}
 	
-	m_lastRenderError = render(&flags, &ts, kOutputBus, SAMPLE_PERIOD, bufs);
+	m_lastRenderError = AudioUnitRender(this, &flags, &ts, kOutputBus, SAMPLE_PERIOD, bufs);
 	
 	operator delete(bufs);
 }
@@ -484,12 +484,17 @@ OSStatus AudioUnitALSA::renderInterleavedOutput(AudioUnitRenderActionFlags *ioAc
 {
 	int wr, sampleCount;
 	const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
+	UInt32 framesSoFar = 0;
 	
 	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
 	{
 		LOG << "Writing " << ioData->mBuffers[i].mDataByteSize << " bytes into sound card\n";
 		
-		sampleCount = ioData->mBuffers[i].mDataByteSize / config.mBytesPerFrame;
+		sampleCount = std::min<UInt32>(ioData->mBuffers[i].mDataByteSize / config.mBytesPerFrame, inNumberFrames - framesSoFar);
+		framesSoFar += sampleCount;
+		
+		if (!sampleCount)
+			break;
 
 do_write:
 		wr = snd_pcm_writei(m_pcmOutput, ioData->mBuffers[i].mData, sampleCount);

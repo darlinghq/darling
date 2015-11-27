@@ -6,7 +6,9 @@
 #include <stdexcept>
 #include <sstream>
 #include <memory>
+#include <cstring>
 #include <util/debug.h>
+#include <objc/runtime.h>
 
 extern "C" char*** _NSGetArgv(void);
 
@@ -20,6 +22,7 @@ AudioUnitPA::AudioUnitPA()
 
 AudioUnitPA::~AudioUnitPA()
 {
+	deinit();
 }
 
 static std::string CFStringToStdString(CFStringRef str)
@@ -76,22 +79,238 @@ OSStatus AudioUnitPA::initOutput()
 	pa_stream_set_state_callback(m_stream, paStreamStateCB, this);
 	pa_stream_set_write_callback(m_stream, paStreamWriteCB, this);
 	
-	pa_stream_connect_playback(m_stream, nullptr, nullptr, PA_STREAM_START_CORKED,
+	pa_stream_connect_playback(m_stream, nullptr, nullptr, PA_STREAM_START_CORKED /*(pa_stream_flags_t) 0*/,
 			nullptr, nullptr);
 	
 	return noErr;
 }
 
+int AudioUnitPA::cardIndex() const
+{
+	return 0;
+}
+
 void AudioUnitPA::paStreamStateCB(pa_stream* s, void*)
 {
+	int state = pa_stream_get_state(s);
+	TRACE() << "state=" << state;
 	
-}
+	switch (state)
+	{
+		case PA_STREAM_FAILED:
+			ERROR() << "PA stream error: " << pa_strerror(pa_context_errno(pa_stream_get_context(s)));
+			break;
+		case PA_STREAM_READY:
+			LOG << "PA stream is ready\n";
+			break;
+	}
+} 
 
 void AudioUnitPA::paStreamWriteCB(pa_stream* s, size_t length, void* self)
 {
 	AudioUnitPA* This = static_cast<AudioUnitPA*>(self);
+	This->requestDataForPlayback(length);
+}
+
+void AudioUnitPA::requestDataForPlayback(size_t length)
+{
+	AudioUnitRenderActionFlags flags;
+	AudioTimeStamp ts;
+	AudioBufferList* bufs;
+	OSStatus err;
+	std::unique_ptr<uint8_t[]> data;
+	const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
+	const UInt32 cc = config.mChannelsPerFrame;
 	
+	TRACE() << "m_started=" << m_started;
 	
+	if (!m_started)
+	{
+		std::unique_ptr<char[]> empty;
+		size_t len;
+		int ret;
+		
+		len = config.mBytesPerFrame * (config.mSampleRate / 10);
+		empty.reset(new char[len]);
+		
+		memset(empty.get(), 0, len);
+		
+		ret = pa_stream_write(m_stream, empty.get(), len,
+				nullptr, 0, PA_SEEK_RELATIVE);
+		
+		// pa_stream_cork(m_stream, true, [](pa_stream*, int, void*) {}, nullptr);
+		return;
+	}
+	
+	memset(&ts, 0, sizeof(ts));
+	
+	if (isOutputPlanar())
+	{
+		bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList) + (cc-1)*sizeof(AudioBuffer));
+		bufs->mNumberBuffers = cc;
+	}
+	else
+	{
+		bufs = (AudioBufferList*) operator new(sizeof(AudioBufferList));
+		bufs->mNumberBuffers = 1;
+	}
+	
+	if (m_shouldAllocateBuffer)
+	{
+		if (isOutputPlanar())
+		{
+			UInt32 bytesPerChannel = length / cc;
+			
+			data.reset(new uint8_t[cc*bytesPerChannel]);
+			
+			for (UInt32 i = 0; i < cc; i++)
+			{
+				bufs->mBuffers[i].mNumberChannels = 1;
+				bufs->mBuffers[i].mDataByteSize = bytesPerChannel;
+				bufs->mBuffers[i].mData = data.get() + i*bytesPerChannel;
+			}
+		}
+		else
+		{
+			bufs->mBuffers[0].mNumberChannels = cc;
+			bufs->mBuffers[0].mDataByteSize = length;
+		
+			data.reset(new uint8_t[bufs->mBuffers[0].mDataByteSize]);
+			bufs->mBuffers[0].mData = data.get();
+		}
+	}
+	else
+	{
+		if (isOutputPlanar())
+		{
+			for (UInt32 i = 0; i < cc; i++)
+			{
+				bufs->mBuffers[i].mDataByteSize = 0;
+				bufs->mBuffers[i].mData = nullptr;
+			}
+		}
+		else
+		{
+			bufs->mBuffers[0].mDataByteSize = 0;
+			bufs->mBuffers[0].mData = nullptr;
+		}
+	}
+	
+	// snd_pcm_htimestamp(m_pcmOutput, &availFrames, &alsaTimestamp);
+	
+	// TODO: fill in AudioTimeStamp based on some PA timestamp
+	
+	err = AudioUnitRender(m_inputUnit.sourceAudioUnit, &flags, &ts, kOutputBus, length / config.mBytesPerFrame, bufs);
+	
+	if (err != noErr || bufs->mBuffers[0].mDataByteSize == 0)
+	{
+		ERROR() << "Render callback failed with error " << err;
+		
+		// Fill with silence, the error may be temporary
+		UInt32 bytes = length;
+		
+		if (!m_shouldAllocateBuffer)
+		{
+			if (isOutputPlanar())
+			{
+				data.reset(new uint8_t[bytes*cc]);
+				memset(data.get(), 0, bytes*cc);
+			}
+			else
+			{
+				data.reset(new uint8_t[bytes]);
+				memset(data.get(), 0, bytes);
+			}
+		}
+		
+		if (isOutputPlanar())
+		{
+			for (UInt32 i = 0; i < cc; i++)
+			{
+				bufs->mBuffers[i].mData = data.get() + bytes*i;
+				bufs->mBuffers[i].mDataByteSize = bytes;
+			}
+		}
+		else
+		{
+			bufs->mBuffers[0].mData = data.get();
+			bufs->mBuffers[0].mDataByteSize = bytes;
+		}
+	}
+	
+	LOG << "Rendering...\n";
+	m_lastRenderError = AudioUnitRender(this, &flags, &ts, kOutputBus, length / config.mBytesPerFrame, bufs);
+	
+	operator delete(bufs);
+}
+
+OSStatus AudioUnitPA::render(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData)
+{
+	if (inBusNumber == kOutputBus)
+		return renderOutput(ioActionFlags, inTimeStamp, inNumberFrames, ioData);
+	else if (inBusNumber == kInputBus)
+		return renderInput(ioActionFlags, inTimeStamp, inNumberFrames, ioData);
+	else
+		return paramErr;
+}
+
+OSStatus AudioUnitPA::renderOutput(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
+{
+	if (!isOutputPlanar())
+		return renderInterleavedOutput(ioActionFlags, inTimeStamp, inNumberFrames, ioData);
+	else
+		return renderPlanarOutput(ioActionFlags, inTimeStamp, inNumberFrames, ioData);
+}
+
+OSStatus AudioUnitPA::renderInterleavedOutput(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
+{
+	const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
+	UInt32 framesSoFar = 0;
+	
+	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
+	{
+		size_t bytes = std::min<size_t>((inNumberFrames - framesSoFar) * config.mBytesPerFrame, ioData->mBuffers[i].mDataByteSize);
+		
+		if (!bytes)
+			break;
+		
+		LOG << "AudioUnitPA::renderInterleavedOutput(): data=" << ioData->mBuffers[i].mData << ", bytes=" << bytes << std::endl;
+		pa_stream_write(m_stream, ((char*) ioData->mBuffers[i].mData) + framesSoFar * config.mBytesPerFrame, bytes,
+				nullptr, 0, PA_SEEK_RELATIVE);
+		
+		framesSoFar += ioData->mBuffers[i].mDataByteSize / config.mBytesPerFrame;
+	}
+	
+	return noErr;
+}
+
+OSStatus AudioUnitPA::renderPlanarOutput(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
+{
+	// PulseAudio doesn't support planar audio, we have to perform conversion
+	return unimpErr;
+}
+
+OSStatus AudioUnitPA::renderInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
+{
+	if (!m_outputCallback.inputProc)
+		return noErr; // We don't push, we should be polled
+	
+	if (!isInputPlanar())
+		return renderInterleavedInput(ioActionFlags, inTimeStamp, inNumberFrames, ioData);
+	else
+		return renderPlanarInput(ioActionFlags, inTimeStamp, inNumberFrames, ioData);
+}
+
+OSStatus AudioUnitPA::renderInterleavedInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSStatus AudioUnitPA::renderPlanarInput(AudioUnitRenderActionFlags *ioActionFlags,const AudioTimeStamp *inTimeStamp, UInt32 inNumberFrames, AudioBufferList *ioData)
+{
+	STUB();
+	return unimpErr;
 }
 
 pa_sample_spec AudioUnitPA::paSampleSpecForASBD(const AudioStreamBasicDescription& asbd)
@@ -144,8 +363,15 @@ pa_sample_spec AudioUnitPA::paSampleSpecForASBD(const AudioStreamBasicDescriptio
 	return spec;
 }
 
+OSStatus AudioUnitPA::reset(AudioUnitScope inScope, AudioUnitElement inElement)
+{
+	STUB();
+	return unimpErr;
+}
+
 OSStatus AudioUnitPA::deinit()
 {
+	TRACE();
 	if (!m_stream)
 		return kAudioUnitErr_Uninitialized;
 	
@@ -158,23 +384,32 @@ OSStatus AudioUnitPA::deinit()
 
 OSStatus AudioUnitPA::start()
 {
+	TRACE();
 	if (!m_stream)
 		return kAudioUnitErr_Uninitialized;
 	
 	if (pa_stream_is_corked(m_stream))
-		pa_stream_cork(m_stream, false, [](pa_stream*, int, void*) {}, nullptr);
+	{
+		m_started = true;
 		
+		// const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
+		pa_stream_cork(m_stream, 0, [](pa_stream*, int, void*) {}, nullptr);
+		// requestDataForPlayback(config.mSampleRate / 10 * config.mBytesPerFrame);
+	}
+	
 	return noErr;
 }
 
 OSStatus AudioUnitPA::stop()
 {
+	TRACE();
 	if (!m_stream)
 		return kAudioUnitErr_Uninitialized;
 	
 	if (pa_stream_is_corked(m_stream))
-		pa_stream_cork(m_stream, true, [](pa_stream*, int, void*) {}, nullptr);
+		pa_stream_cork(m_stream, 1, [](pa_stream*, int, void*) {}, nullptr);
 	
+	m_started = false;
 	return noErr;
 }
 
@@ -231,6 +466,28 @@ void AudioUnitPA::initializePA()
 	}
 }
 
+std::string AudioUnitPA::getAppName()
+{
+	Class classBundle;
+	std::string name;
+	size_t pos;
+	
+	classBundle = (Class) objc_getClass("NSBundle");
+	
+	if (classBundle != nullptr)
+	{
+		// TODO: get a nice app name
+	}
+	
+	name = (*_NSGetArgv())[0];
+	pos = name.rfind('/');
+	
+	if (pos != std::string::npos)
+		name = name.substr(pos+1);
+	
+	return name;
+}
+
 void AudioUnitPA::deinitializePA()
 {
 	if (m_context != nullptr)
@@ -256,6 +513,7 @@ void AudioUnitPA::paContextStateCB(pa_context* c, void* priv)
 {
 	Completion* comp = static_cast<Completion*>(priv);
 	
+	TRACE() << pa_context_get_state(c);
 	switch (pa_context_get_state(c))
 	{
 		case PA_CONTEXT_READY:

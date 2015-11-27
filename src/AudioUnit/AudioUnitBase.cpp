@@ -246,3 +246,37 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 			return kAudioUnitErr_InvalidProperty;
 	}
 }
+
+OSStatus AudioUnitComponent::addRenderNotify(AURenderCallback inProc, void* opaque)
+{
+	std::lock_guard<std::mutex> guard(m_listenersMutex);
+	
+	if (!inProc)
+		return paramErr;
+	m_listeners.insert(std::pair<AURenderCallback,void*>(inProc, opaque));
+	
+	return noErr;
+}
+
+OSStatus AudioUnitComponent::removeRenderNotify(AURenderCallback inProc, void* opaque)
+{
+	std::lock_guard<std::mutex> guard(m_listenersMutex);
+	m_listeners.erase(std::pair<AURenderCallback,void*>(inProc, opaque));
+	return noErr;
+}
+
+OSStatus AudioUnitComponent::notifyListeners(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp,
+		UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData)
+{
+	std::lock_guard<std::mutex> guard(m_listenersMutex);
+	OSStatus status = noErr;
+	
+	for (auto p : m_listeners)
+	{
+		status = p.first(p.second, ioActionFlags, inTimeStamp, inBusNumber, inNumberFrames, ioData);
+		if (status != noErr)
+			break;
+	}
+	
+	return status;
+}

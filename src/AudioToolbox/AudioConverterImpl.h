@@ -36,12 +36,16 @@ private:
 	
 	void allocateBuffers();
 	void initEncoder();
+	
+	void feedDecoder(AudioConverterComplexInputDataProc dataProc, void* opaque, AVFrame* srcaudio);
+	void feedEncoder();
 private:
 	AudioStreamBasicDescription m_sourceFormat, m_destinationFormat;
 	UInt32 m_inputChannelLayout, m_outputChannelLayout;
 	AVCodecContext* m_decoder;
 	AVCodecContext* m_encoder;
-	AVPacket m_avpkt;
+	AVPacket m_avpkt, m_avpktOut;
+	UInt32 m_avpktOutUsed = 0;
 	AVFrame* m_audioFrame;
 	AVAudioResampleContext* m_resampler = nullptr;
 	UInt32 m_outBitRate = 128000;
