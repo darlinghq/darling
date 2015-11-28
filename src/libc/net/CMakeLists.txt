@@ -30,3 +30,11 @@ set(net_sources
 )
 
 add_library(libc-net OBJECT ${net_sources})
+
+# ***
+# Cancelable variants
+# ***
+set(net-cancelable_sources FreeBSD/send.c FreeBSD/recv.c)
+add_library(libc-net_cancelable OBJECT ${net-cancelable_sources})
+SET_TARGET_PROPERTIES(libc-net_cancelable PROPERTIES COMPILE_FLAGS "-U__DARWIN_UNIX03 -DBUILDING_VARIANT -DVARIANT_CANCELABLE -U__DARWIN_NON_CANCELABLE=1")
+
