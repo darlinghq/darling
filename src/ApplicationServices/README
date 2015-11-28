@@ -1,0 +1,14 @@
+ApplicationServices is an umbrella framework that should include the following frameworks:
+
+* CoreServices,
+* ATS,
+* ColorSync,
+* CoreGraphics,
+* CoreText,
+* HIServices,
+* ImageIO,
+* LangAnalysis,
+* PrintCore,
+* QD,
+* SpeechSynthesis.
+
