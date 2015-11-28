@@ -1,0 +1,58 @@
+.\"
+.\"     @(#)scselect.8
+.\"
+.Dd November 4, 2003
+.Dt SCSELECT 8
+.Os "Mac OS X"
+.Sh NAME
+.Nm scselect
+.Nd Select system configuration
+.Qq location
+.Sh SYNOPSIS
+.Nm
+.Op Fl n
+.Op Ar new-location-name
+.Sh DESCRIPTION
+.Nm
+provides access to the system configuration sets, commonly referred to as
+.Qq locations .
+When invoked with no arguments,
+.Nm
+displays the names and associated identifiers for each defined
+.Qq location
+and indicates which is currently active.
+.Nm
+also allows the user to select or change the active
+.Qq location
+by specifying its name or identifier.
+Changing the
+.Qq location
+causes an immediate system re-configuration, unless the
+.Fl n
+option is supplied.
+.Pp
+At present, the majority of preferences associated with a
+.Qq location
+relate to the system's network configuration.
+.Pp
+The command line options are as follows:
+.Bl -tag -width xx
+.It Fl n
+Delay changing the system's
+.Qq location
+until the next system boot (or the next time that the system configuration
+preferences are changed).
+.It Ar new-location-name
+If not specified, a list of the available
+.Qq location
+names and associated identifiers will be reported on standard output.
+If specified, this argument is matched with the
+.Qq location
+names and identifiers and the matching set is activated.
+.El
+.Sh SEE ALSO
+.Xr configd 8
+.Sh HISTORY
+The
+.Nm
+command appeared in Mac OS X Public Beta.

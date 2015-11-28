@@ -1,0 +1,1400 @@
+
+=================> RouteList Build 'test1' <=================
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9604 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9604 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9602 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9602 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 1. Net fe80::/64 Ifp fw0 [kern]
+ 2. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9603 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9603 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9605 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9605 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+}
+Routes are <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9605 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9605 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9603 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9603 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 1. Net fe80::/64 Ifp fw0 [kern]
+ 2. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9602 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9602 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9604 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9604 [kern]
+}
+Routes are <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+routes1 and routes2 are the same
+=================> RouteList Build 'test1': PASSED <=================
+
+=================> RouteList Build 'test2' <=================
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9604 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9604 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 1. Net fe80::/64 Ifp fw0 [kern]
+ 2. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9603 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9603 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9605 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9605 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+}
+Routes are <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9605 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9605 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9603 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9603 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 1. Net fe80::/64 Ifp fw0 [kern]
+ 2. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9604 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9604 [kern]
+}
+Routes are <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+routes1 and routes2 are the same
+=================> RouteList Build 'test2': PASSED <=================
+
+=================> RouteList Build 'test3' <=================
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+}
+Adding <IPv6RouteList[4]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 !Ifp en1
+}
+Routes are <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+Adding <IPv6RouteList[4]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 !Ifp en1
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+}
+Routes are <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+routes1 and routes2 are the same
+=================> RouteList Build 'test3': PASSED <=================
+
+=================> RouteList Build 'test4' <=================
+Adding <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+}
+Routes are <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+}
+Adding <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+}
+Routes are <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+routes1 and routes2 are the same
+=================> RouteList Build 'test4': PASSED <=================
+
+=================> RouteList Build 'test5' <=================
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+}
+Adding <IPv6RouteList[8]> = {
+ 0. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+ 1. Net fe80::/64 Ifp utun0 [kern]
+ 2. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+ 3. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 4. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 5. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2020:299:a:e02:825:1ed:fecc:abab/128 !Ifp utun0
+}
+Adding <IPv6RouteList[2]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa fe80::cabc:c8ff:fe96:96af [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+}
+Routes are <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 1. Net fe80::/64 Ifp en1 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+}
+Adding <IPv6RouteList[2]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa fe80::cabc:c8ff:fe96:96af [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+}
+Adding <IPv6RouteList[8]> = {
+ 0. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+ 1. Net fe80::/64 Ifp utun0 [kern]
+ 2. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+ 3. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 4. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 5. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2020:299:a:e02:825:1ed:fecc:abab/128 !Ifp utun0
+}
+Adding <IPv6RouteList[3]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net fe80::/64 Ifp en0 [kern]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+}
+Routes are <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+routes1 and routes2 are the same
+=================> RouteList Build 'test5': PASSED <=================
+
+=================> Apply 'test1', 'test2' Begin <=================
+Old routes ('test1') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[6]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[7]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+New Routes ('test2') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+=================> Apply 'test1', 'test2' End <=================
+
+=================> Apply 'test2', 'test1' Begin <=================
+Old routes ('test2') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[6]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[7]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+New Routes ('test1') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+=================> Apply 'test2', 'test1' End <=================
+
+=================> Apply 'test1', 'test3' Begin <=================
+Old routes ('test1') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[6]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[7]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+New Routes ('test3') = <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Remove old[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Remove old[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Remove old[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Remove old[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Remove old[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+!Remove old[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Add new[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+=================> Apply 'test1', 'test3' End <=================
+
+=================> Apply 'test3', 'test1' Begin <=================
+Old routes ('test3') = <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Add new[4]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[5]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Add new[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+New Routes ('test1') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Remove old[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Remove old[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Remove old[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+=================> Apply 'test3', 'test1' End <=================
+
+=================> Apply 'test1', 'test4' Begin <=================
+Old routes ('test1') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[6]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[7]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+New Routes ('test4') = <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Remove old[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Remove old[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+!Remove old[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+IPMonitor RouteProcess: routing loop detected, not adding: Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+=================> Apply 'test1', 'test4' End <=================
+
+=================> Apply 'test4', 'test1' Begin <=================
+Old routes ('test4') = <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Add new[15]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[16]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+IPMonitor RouteProcess: routing loop detected, not adding: Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+New Routes ('test1') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+=================> Apply 'test4', 'test1' End <=================
+
+=================> Apply 'test1', 'test5' Begin <=================
+Old routes ('test1') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[6]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[7]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+New Routes ('test5') = <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+!Remove old[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Remove old[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+!Remove old[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+Add new[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Add new[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+=================> Apply 'test1', 'test5' End <=================
+
+=================> Apply 'test5', 'test1' Begin <=================
+Old routes ('test5') = <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+!Add new[11]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[12]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+Add new[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Add new[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+New Routes ('test1') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Remove old[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+Remove old[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Remove old[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+!Remove old[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+=================> Apply 'test5', 'test1' End <=================
+
+=================> Apply 'test2', 'test3' Begin <=================
+Old routes ('test2') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[6]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[7]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+New Routes ('test3') = <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Remove old[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Remove old[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Remove old[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Remove old[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Remove old[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+!Remove old[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Add new[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+=================> Apply 'test2', 'test3' End <=================
+
+=================> Apply 'test3', 'test2' Begin <=================
+Old routes ('test3') = <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Add new[4]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[5]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Add new[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+New Routes ('test2') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Remove old[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Remove old[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Remove old[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+=================> Apply 'test3', 'test2' End <=================
+
+=================> Apply 'test2', 'test4' Begin <=================
+Old routes ('test2') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[6]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[7]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+New Routes ('test4') = <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Remove old[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Remove old[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+!Remove old[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+IPMonitor RouteProcess: routing loop detected, not adding: Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+=================> Apply 'test2', 'test4' End <=================
+
+=================> Apply 'test4', 'test2' Begin <=================
+Old routes ('test4') = <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Add new[15]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[16]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+IPMonitor RouteProcess: routing loop detected, not adding: Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+New Routes ('test2') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+=================> Apply 'test4', 'test2' End <=================
+
+=================> Apply 'test2', 'test5' Begin <=================
+Old routes ('test2') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Add new[6]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[7]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+New Routes ('test5') = <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+!Remove old[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Remove old[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+!Remove old[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+Add new[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Add new[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+=================> Apply 'test2', 'test5' End <=================
+
+=================> Apply 'test5', 'test2' Begin <=================
+Old routes ('test5') = <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+!Add new[11]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[12]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+Add new[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Add new[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+New Routes ('test2') = <IPv6RouteList[9]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+ 6. Net fe80::/64 Ifp en0 [kern]
+ 7. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+ 8. Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+}
+!Remove old[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+Remove old[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Remove old[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+!Remove old[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[8]: Net fe80::/64 Ifp fw0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern] [SCOPED]
+!Add new[5]: Net 2011:470:1f05:3cb::/64 Ifp fw0 Ifa 2011:470:1f05:3cb:cabc:c8ff:fe96:ab01 [kern]
+=================> Apply 'test5', 'test2' End <=================
+
+=================> Apply 'test3', 'test4' Begin <=================
+Old routes ('test3') = <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Add new[4]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[5]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Add new[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+New Routes ('test4') = <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Remove old[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Remove old[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Remove old[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+IPMonitor RouteProcess: routing loop detected, not adding: Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+=================> Apply 'test3', 'test4' End <=================
+
+=================> Apply 'test4', 'test3' Begin <=================
+Old routes ('test4') = <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Add new[15]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[16]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+IPMonitor RouteProcess: routing loop detected, not adding: Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+New Routes ('test3') = <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Remove old[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Remove old[2]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Remove old[3]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Add new[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+=================> Apply 'test4', 'test3' End <=================
+
+=================> Apply 'test3', 'test5' Begin <=================
+Old routes ('test3') = <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Add new[4]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[5]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Add new[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+New Routes ('test5') = <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+!Remove old[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Remove old[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Remove old[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+Add new[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Add new[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+=================> Apply 'test3', 'test5' End <=================
+
+=================> Apply 'test5', 'test3' Begin <=================
+Old routes ('test5') = <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+!Add new[11]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[12]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+Add new[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Add new[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+New Routes ('test3') = <IPv6RouteList[6]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+ 3. Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+ 4. Net fe80::/64 Ifp en0 [kern]
+ 5. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Remove old[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Remove old[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+!Remove old[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Remove old[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+Remove old[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Remove old[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+!Remove old[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern]
+!Add new[3]: Net 2020:299:abcd:ef12::/64 Ifp en0 Ifa 2020:299:abcd:ef12:1:2:3:4 [kern]
+=================> Apply 'test5', 'test3' End <=================
+
+=================> Apply 'test4', 'test5' Begin <=================
+Old routes ('test4') = <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Add new[15]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[16]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[2]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+IPMonitor RouteProcess: routing loop detected, not adding: Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+New Routes ('test5') = <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+!Add new[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+Add new[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Add new[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+=================> Apply 'test4', 'test5' End <=================
+
+=================> Apply 'test5', 'test4' Begin <=================
+Old routes ('test5') = <IPv6RouteList[14]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 4. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 5. Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 6. Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 7. Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 8. Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+ 9. Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+10. Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+11. Net fe80::/64 Ifp en0 [kern]
+12. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+13. Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+}
+!Add new[11]: Net fe80::/64 Ifp en0 [kern]
+!Add new[0]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[12]: Net fe80::/64 Ifp en1 [kern] [SCOPED]
+!Add new[1]: Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+!Add new[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+!Add new[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+!Add new[3]: Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+!Add new[4]: Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+Add new[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Add new[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Add new[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+New Routes ('test4') = <IPv6RouteList[17]> = {
+ 0. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 1. Net ::/0 Gate fe80::21f:f3ff:fe43:1abf Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 2. Net 2001:470:1f05:3cb::/64 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601 [kern]
+ 3. Net 2001:470:1f05:3cb::/64 Ifp en1 Ifa 2001:470:1f05:3cb:cabc:c8ff:fed9:125a [kern] [SCOPED]
+ 4. Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 5. Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 6. Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 7. Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 8. Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+ 9. Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+10. Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+11. Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+12. Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+13. Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+14. Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+15. Net fe80::/64 Ifp en0 [kern]
+16. Net fe80::/64 Ifp en1 [kern] [SCOPED]
+}
+!Remove old[2]: Net ::/0 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern] [SCOPED]
+Remove old[5]: Net 2010:222:3fa5:acb::/48 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[6]: Net 2010:222:3fa5:1234::/40 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[7]: Net 2010:222:3fa5:5678::/40 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[8]: Net 2010:470:1f05:3cb::/64 Gate fe80::2d0:bcff:fe3d:8c00 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa
+Remove old[9]: Host 2020:299:a:e02:825:1ed:fecc:abab Gate fe80::21f:f3ff:fe43:1abf Ifp en0 !Ifp utun0
+!Remove old[10]: Net 2620:149:4:f01::/64 Ifp utun0 Ifa 2620:149:4:f01:225:ff:fecc:89aa [kern]
+!Remove old[13]: Net fe80::/64 Ifp utun0 [kern] [SCOPED]
+IPMonitor RouteProcess: routing loop detected, not adding: Host 2620:149:4:f01:225:ff:fecc:89ab Gate 2620:149:4:f01:225:ff:fecc:89a1 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89aa Gate 2620:149:4:f01:225:ff:fecc:89ab Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a9 Gate 2620:149:4:f01:225:ff:fecc:89aa Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a8 Gate 2620:149:4:f01:225:ff:fecc:89a9 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a7 Gate 2620:149:4:f01:225:ff:fecc:89a8 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a6 Gate 2620:149:4:f01:225:ff:fecc:89a7 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a5 Gate 2620:149:4:f01:225:ff:fecc:89a6 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a4 Gate 2620:149:4:f01:225:ff:fecc:89a5 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a3 Gate 2620:149:4:f01:225:ff:fecc:89a4 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a2 Gate 2620:149:4:f01:225:ff:fecc:89a3 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+IPMonitor RouteProcess: failed to add: Host 2620:149:4:f01:225:ff:fecc:89a1 Gate 2620:149:4:f01:225:ff:fecc:89a2 Ifp en0 Ifa 2001:470:1f05:3cb:cabc:c8ff:fe96:9601
+=================> Apply 'test5', 'test4' End <=================
+
+Checking for leaks
+Process:         test_ipv6_routelist [XXXX]
+Path: XXXX
+Load Address:    0xXXXX
+Identifier:      test_ipv6_routelist
+Version:         0
+Code Type:       X86-64
+Parent Process:  sh [XXXX]
+
+Date/Time:       XXXX
+OS Version: XXXX
+Report Version:  7
+
+leaks Report Version:  2.0
+Process XXXX 0 leaks for 0 total leaked bytes.

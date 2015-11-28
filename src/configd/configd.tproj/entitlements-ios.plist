@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>apple</string>
+		<string>com.apple.certificates</string>
+		<string>com.apple.identities</string>
+	</array>
+	<key>com.apple.coretelephony.Identity.get</key>
+	<true/>
+	<key>com.apple.multitasking.unlimitedassertions</key>
+	<true/>
+	<key>com.apple.private.SCNetworkConnection-proxy-user</key>
+	<true/>
+	<key>com.apple.private.mobileinstall.allowedSPI</key>
+	<array>
+		<string>Uninstall</string>
+		<string>Lookup</string>
+	</array>
+	<key>com.apple.private.necp.match</key>
+	<true/>
+	<key>com.apple.private.snhelper</key>
+	<true/>
+	<key>com.apple.springboard.launchapplications</key>
+	<true/>
+	<key>com.apple.wifi.manager-access</key>
+	<true/>
+	<key>com.apple.wlan.authentication</key>
+	<true/>
+</dict>
+</plist>

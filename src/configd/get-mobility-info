@@ -1,0 +1,932 @@
+#!/bin/sh
+# Copyright (c) 2004-2015 Apple Inc.
+#
+# get-mobility-info
+#
+# Collect system & network configuration information.
+#
+
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+
+#
+# Disclaimer
+#
+cat <<_END_OF_DISCLAIMER
+
+This diagnostic tool generates files that allow Apple to investigate issues
+with your computer and help Apple to improve its products. The generated files
+may contain some of your personal information, which may include, but not be
+limited to, the serial number or similar unique number for your device, your
+user name, or your computer name. The information is used by Apple in
+accordance with its privacy policy (www.apple.com/privacy) and is not shared
+with any third party. By enabling this diagnostic tool and sending a copy of
+the generated files to Apple, you are consenting to Apple's use of the content
+of such files.
+
+_END_OF_DISCLAIMER
+
+/bin/echo "Press 'Enter' to continue."
+read reply
+
+#
+# Setup
+#
+PRIV=""
+if [ ${EUID} -ne 0 ]; then
+	PRIV="sudo"
+fi
+
+if [ -x /usr/bin/tail ]; then
+	TAIL_2000="/usr/bin/tail -n 2000"
+	TAIL_25000="/usr/bin/tail -n 25000"
+else
+	TAIL_2000="/bin/cat"
+	TAIL_25000="/bin/cat"
+fi
+
+OUT="mobility-info-`date +'%m.%d.%Y.%H%M%S'`"
+OUTDIR="/var/tmp"
+if [ -d ~/Desktop ]; then
+	OUTDIR=~/Desktop
+elif [ "`readlink /tmp`" = "private/var/tmp" ]; then
+	OUTDIR=/Library/Logs/CrashReporter
+	mkdir -p ${OUTDIR}
+fi
+
+umask 077
+
+WORKDIR=`mktemp -d -q "/tmp/${OUT}"`
+if [ $? -ne 0 ]; then
+	echo "Could not create snapshot directory"
+	exit 1
+fi
+
+GZ_EXT=""
+GZ_OPT=""
+if [ -x /usr/bin/gzip ]; then
+	GZ_EXT=".gz"
+	GZ_OPT="-z"
+fi
+
+ARCHIVE=`mktemp -q "${OUTDIR}/${OUT}.tar${GZ_EXT}"`
+if [ $? -ne 0 ]; then
+	echo "Could not create snapshot archive"
+	rm -rf "${WORKDIR}"
+	exit 1
+fi
+
+cd "${WORKDIR}"
+
+echo ""
+echo "Please wait, collecting information and statistics"
+echo ""
+
+#
+# Execute network reachability/DNS commands early
+#
+echo "#"						>  reachability-info
+echo '# scutil -d -v -r www.apple.com "" no-server'	>> reachability-info
+echo "#"						>> reachability-info
+scutil -d -v -r www.apple.com "" no-server		>> reachability-info	2>&1
+
+echo "#"						>> reachability-info
+echo '# scutil -d -v -r 0.0.0.0 no-server'		>> reachability-info
+echo "#"						>> reachability-info
+scutil -d -v -r 0.0.0.0          no-server		>> reachability-info	2>&1
+
+if [ -x /usr/bin/dig -a -f /etc/resolv.conf ]; then
+	/usr/bin/dig -t any -c any www.apple.com	> dig-results		2>/dev/null
+fi
+
+#
+# Signal "networkd" and "mDNSResponder" early to log their "state" info. This
+# logging will continue while we execute a few other commands and should be
+# complete by the time we collect the log content.
+#
+if [ -x /usr/bin/killall ]; then
+	#
+	# request networkd state
+	#
+	${PRIV} /usr/bin/killall -INFO networkd					2>/dev/null
+
+	#
+	# request mDNSResponder state
+	#
+	${PRIV} /usr/bin/killall -INFO mDNSResponder				2>/dev/null
+
+	sleep 1
+fi
+
+#
+# processes
+#
+if [ -x /bin/ps ]; then
+	/bin/ps axlww					> ps			2>&1
+fi
+
+#
+# network interface configuration
+#
+if [ -x /sbin/ifconfig ]; then
+	/sbin/ifconfig -a -L -b -m -r -v -v		> ifconfig		2>&1
+	if [ $? -ne 0 ]; then
+		/sbin/ifconfig -a			> ifconfig		2>&1
+	fi
+fi
+
+#
+# network route configuration
+#
+if [ -x /usr/sbin/netstat ]; then
+	/usr/sbin/netstat -n -r -a -l			> netstat		2>&1
+fi
+
+#
+# DHCP configuration
+#
+if [ -x /sbin/ifconfig ]; then
+	for if in `/sbin/ifconfig -l`
+	do
+		case ${if} in
+		lo* )	;;
+		en* )	ipconfig getpacket ${if}	> ipconfig-${if}	2>&1
+			;;
+		esac
+	done
+fi
+
+#
+# AirPort info
+#
+if [ -x /System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport ]; then
+	/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport --getinfo	\
+							> airport		2>&1
+fi
+
+#
+# collect wifi dump
+#
+if [ -x /usr/bin/wdutil -a -x /bin/ls ]; then
+	${PRIV} /usr/bin/wdutil dump
+	mkdir -p "wifi_dump"
+	/bin/ls -1 /private/tmp/wifi-*						2>/dev/null	\
+	| while read log
+	do
+		if [ -f "${log}" ]; then
+			b="`basename ${log}`"
+			${PRIV} cat "${log}"		> "wifi_dump/${b}"	2>&1
+		fi
+	done
+fi
+
+#
+# OS info
+#
+if [ -e /System/Library/CoreServices/SystemVersion.plist ]; then
+	cat /System/Library/CoreServices/SystemVersion.plist	\
+							> SystemVersion.plist	2>&1
+fi
+
+#
+# IOKit info
+#
+if [ -x /usr/sbin/ioreg ]; then
+	/usr/sbin/ioreg -i -l -w 0			>  ioreg		2>&1
+	/usr/sbin/ioreg -i -l -p IODeviceTree -w 0	>> ioreg		2>&1
+fi
+
+#
+# Power Management info
+#
+if [ -x /usr/bin/pmset ]; then
+	echo "#"							>  pmset
+	echo "# pmset -g everything"					>> pmset
+	echo "#"							>> pmset
+	/usr/bin/pmset -g everything 2>/dev/null  | ${TAIL_25000}	>> pmset
+fi
+
+#
+# Host name
+#
+if [ -x /bin/hostname ]; then
+	/bin/hostname					> hostname		2>&1
+fi
+
+#
+# Host configuration
+#
+if [ -x /usr/bin/hostinfo ]; then
+	/usr/bin/hostinfo				> hostinfo		2>&1
+fi
+if [ -e /etc/hostconfig ]; then
+	cat /etc/hostconfig				> etc.hostconfig	2>&1
+fi
+
+#
+# DNS configuration
+#
+scutil --dns						> dns-configuration	2>&1
+if [ -e /etc/resolv.conf ]; then
+	cat /etc/resolv.conf				> etc.resolv.conf	2>&1
+fi
+if [ -e /var/run/resolv.conf ]; then
+	cat /var/run/resolv.conf			> var.run.resolv.conf	2>&1
+fi
+if [ -e /etc/resolver ]; then
+	tar -c -H /etc/resolver				> etc.resolver.tar	2>/dev/null
+fi
+
+#
+# Proxy configuration
+#
+scutil -d -v --proxy					> proxy-configuration	2>&1
+
+#
+# Network information
+#
+if [ -x /sbin/ifconfig ]; then
+	echo "#"					>  network-information
+	echo "# scutil --nwi"				>> network-information
+	echo "#"					>> network-information
+	scutil --nwi					>> network-information	2>&1
+	for if in `/sbin/ifconfig -l`
+	do
+		echo ""					>> network-information
+		echo "#"				>> network-information
+		echo "# scutil --nwi ${if}"		>> network-information
+		echo "#"				>> network-information
+		scutil --nwi ${if}			>> network-information	2>&1
+	done
+fi
+
+#
+# System / network preferences
+#
+for f in										\
+	/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist		\
+	/Library/Preferences/SystemConfiguration/com.apple.PowerManagement.plist	\
+	/Library/Preferences/SystemConfiguration/com.apple.airport.preferences.plist	\
+	/Library/Preferences/SystemConfiguration/com.apple.nat.plist			\
+	/Library/Preferences/SystemConfiguration/com.apple.smb.server.plist		\
+	/Library/Preferences/SystemConfiguration/com.apple.wifi.plist			\
+	/Library/Preferences/SystemConfiguration/preferences.plist			\
+	/Library/Preferences/com.apple.alf.plist					\
+	/Library/Preferences/com.apple.sharing.firewall.plist				\
+	/Library/Preferences/com.apple.networkextension.plist				\
+	/Library/Preferences/com.apple.networkextension.control.plist			\
+	/Library/Preferences/com.apple.networkextension.necp.plist			\
+	/Library/Preferences/com.apple.wwand.plist					\
+
+do
+	if [ -e "${f}" ]; then
+		b="`basename ${f}`"
+		cat "${f}"				> "${b}"		2>&1
+	fi
+done
+
+#
+# System / network preferences (from other volumes)
+#
+/bin/ls /Volumes 2>/dev/null								\
+| while read volume
+do
+	V_PATH="/Volumes/${volume}"
+	if [ -h "${V_PATH}" ]; then
+		# if the path is a symlink
+		continue
+	fi
+	for f in									\
+		/Library/Preferences/SystemConfiguration/Networkinterfaces.plist	\
+		/Library/Preferences/SystemConfiguration/preferences.plist		\
+
+	do
+		if [ -f "${V_PATH}/${f}" ]; then
+			mkdir -p "OtherPreferences/${volume}"
+			b="`basename ${f}`"
+			cat "${V_PATH}/${f}"		> "OtherPreferences/${volume}/${b}"	2>&1
+		fi
+	done
+done
+
+#
+# InternetSharing
+#
+if   [ -e /etc/bootpd.plist ]; then
+	cat /etc/bootpd.plist							> bootpd.plist			2>&1
+	cat /etc/com.apple.named.proxy.conf					> com.apple.named.proxy.conf	2>/dev/null
+elif [ -e /Library/Preferences/SystemConfiguration/bootpd.plist ]; then
+	cat /Library/Preferences/SystemConfiguration/bootpd.plist		> bootpd.plist			2>&1
+	cat /Library/Preferences/SystemConfiguration/com.apple.named.proxy.conf	> com.apple.named.proxy.conf	2>/dev/null
+fi
+
+#
+# configd's cache
+#
+${PRIV} scutil -p --snapshot
+if [ -f /var/tmp/configd-store.plist ]; then
+	cat /var/tmp/configd-store.plist		> configd-store.plist	2>&1
+fi
+if [ -f /var/tmp/configd-pattern.plist ]; then
+	cat /var/tmp/configd-pattern.plist		> configd-pattern.plist	2>&1
+fi
+if [ -f /var/tmp/configd-session.plist ]; then
+	cat /var/tmp/configd-session.plist		> configd-session.plist	2>&1
+fi
+if [ -f /var/tmp/configd-state ]; then
+	cat /var/tmp/configd-state			> configd-state		2>&1
+fi
+if [ -f /var/tmp/configd-reachability ]; then
+	cat /var/tmp/configd-reachability		> configd-reachability	2>&1
+fi
+
+#
+# mounted filesystems
+#
+mount							> mounted-filesystems	2>&1
+
+${PRIV} cat /etc/hosts 					> etc.hosts		2>/dev/null
+
+#
+# kernel extensions statistic
+#
+if   [ -x /usr/sbin/kextstat ]; then
+	/usr/sbin/kextstat				> kextstat		2>&1
+fi
+
+#
+# network statistics
+#
+/bin/echo -n ""							>  network-statistics
+
+if   [ -x /usr/sbin/arp ]; then
+	echo "#"						>> network-statistics
+	echo "# arp -n -a"					>> network-statistics
+	echo "#"						>> network-statistics
+	/usr/sbin/arp -n -a					>> network-statistics	2>&1
+fi
+
+if [ -x /usr/sbin/netstat ]; then
+	echo "#"						>> network-statistics
+	echo "# netstat -A -a -l -n"				>> network-statistics
+	echo "#"						>> network-statistics
+	/usr/sbin/netstat -A -a -l -n				>> network-statistics	2>&1
+
+	echo "#"						>> network-statistics
+	echo "# netstat -s"					>> network-statistics
+	echo "#"						>> network-statistics
+	/usr/sbin/netstat -s					>> network-statistics	2>&1
+
+	echo "#"						>> network-statistics
+	echo "# netstat -mmm"					>> network-statistics
+	echo "#"						>> network-statistics
+	/usr/sbin/netstat -mmm					>> network-statistics	2>&1
+
+	echo "#"						>> network-statistics
+	echo "# netstat -i -n -d"				>> network-statistics
+	echo "#"						>> network-statistics
+	/usr/sbin/netstat -i -n -d				>> network-statistics	2>&1
+
+	echo "#"						>> network-statistics
+	echo "# netstat -g -n -s"				>> network-statistics
+	echo "#"						>> network-statistics
+	/usr/sbin/netstat -g -n -s				>> network-statistics	2>&1
+
+	echo "#"						>> network-statistics
+	echo "# netstat -i -x R"				>> network-statistics
+	echo "#"						>> network-statistics
+	/usr/sbin/netstat -i -x R				>> network-statistics	2>&1
+	echo "#"						>> network-statistics
+
+	echo "# netstat -a -n -p mptcp"				>> network-statistics
+	echo "#"						>> network-statistics
+	/usr/sbin/netstat -a -n -p mptcp			>> network-statistics	2>/dev/null
+
+	echo "#"						>> network-statistics
+	echo "# netstat -s -p mptcp"				>> network-statistics
+	echo "#"						>> network-statistics
+	/usr/sbin/netstat -s -p mptcp				>> network-statistics	2>/dev/null
+
+	if [ -x /sbin/ifconfig ]; then
+		for if in `/sbin/ifconfig -l`
+		do
+			`/sbin/ifconfig -v ${if} | grep -q TXSTART`
+			if [ $? -eq 0 ]; then
+				echo "#"			>> network-statistics
+				echo "# netstat -qq -I ${if}"	>> network-statistics
+				echo "#"			>> network-statistics
+				/usr/sbin/netstat -qq -I ${if}	>> network-statistics	2>&1
+			fi
+			`/sbin/ifconfig -v ${if} | grep -q RXPOLL`
+			if [ $? -eq 0 ]; then
+				echo "#"			>> network-statistics
+				echo "# netstat -Q -I ${if}"	>> network-statistics
+				echo "#" 			>> network-statistics
+				/usr/sbin/netstat -Q -I ${if}	>> network-statistics   2>&1
+			fi
+		done
+	fi
+fi
+
+if [ -x /usr/sbin/ndp ]; then
+	echo "#"					>> network-statistics
+	echo "# ndp -n -a"				>> network-statistics
+	echo "#"					>> network-statistics
+	/usr/sbin/ndp -n -a				>> network-statistics	2>&1
+
+	echo "#"					>> network-statistics
+	echo "# ndp -n -p"				>> network-statistics
+	echo "#"					>> network-statistics
+	/usr/sbin/ndp -n -p				>> network-statistics	2>&1
+
+	echo "#"					>> network-statistics
+	echo "# ndp -n -r"				>> network-statistics
+	echo "#"					>> network-statistics
+	/usr/sbin/ndp -n -r				>> network-statistics	2>&1
+
+	if [ -x /sbin/ifconfig ]; then
+		for if in `/sbin/ifconfig -l`
+		do
+			echo "#"			>> network-statistics
+			echo "# ndp -i ${if}"		>> network-statistics
+			echo "#"			>> network-statistics
+			/usr/sbin/ndp -i ${if}		>> network-statistics	2>&1
+		done
+	fi
+fi
+
+if [ -x /sbin/pfctl ]; then
+	echo "#"					>  pf
+	echo "# pfctl -s all"				>> pf
+	echo "#"					>> pf
+	${PRIV} /sbin/pfctl -s all			>> pf			2>&1
+	echo "=============================="		>> pf
+	echo "#"					>> pf
+	echo "# pfctl -s References"			>> pf
+	echo "#"					>> pf
+	${PRIV} /sbin/pfctl -s References		>> pf			2>&1
+	for ANCHOR in `${PRIV} pfctl -s Anchors -v 2>/dev/null`
+	do
+		echo "=============================="	>> pf
+		echo "#"				>> pf
+		echo "# pfctl -a ${ANCHOR} -s all"	>> pf
+		echo "#"				>> pf
+		${PRIV} /sbin/pfctl -a ${ANCHOR} -s all	>> pf			2>&1
+	done
+fi
+
+#
+# mach port info
+#
+if [ -x /usr/local/bin/lsmp ]; then
+	${PRIV} /usr/local/bin/lsmp -a -v		> lsmp			2>&1
+fi
+
+#
+# open files
+#
+if [ -x /usr/sbin/lsof ]; then
+	${PRIV} /usr/sbin/lsof -n -P -T q		> lsof			2>&1
+fi
+
+#
+# [lib]dispatch info
+#
+if [ -x /usr/local/bin/ddt ]; then
+    /bin/echo -n ""					>  dispatch-info
+    for BIN in		\
+	configd		\
+	mDNSResponder	\
+
+    do
+	echo "#"					>> dispatch-info
+	echo "# ddt -vkp ${BIN}"			>> dispatch-info
+	echo "#"					>> dispatch-info
+	${PRIV} /usr/local/bin/ddt -vkp ${BIN}		>> dispatch-info	2>&1
+    done
+fi
+
+#
+# OpenDirectory info
+#
+if [ -x /usr/bin/odutil ]; then
+	echo "#"					>  od-info
+	echo "# odutil show all"			>> od-info
+	echo "#"					>> od-info
+	${PRIV} /usr/bin/odutil show all		>> od-info		2>&1
+fi
+
+#
+# IPsec configuration
+#
+if [ -x /usr/sbin/setkey -a -x /usr/bin/perl ]; then
+	echo "#"						>  ipsec
+	echo "# setkey -D"					>> ipsec
+	echo "#"						>> ipsec
+	${PRIV} /usr/sbin/setkey -D				\
+	| /usr/bin/perl -M'Digest::MD5 qw(md5_hex)' -l -n -e '
+		if (/^(\s+[AE]:\s+\S+\s+)"?(.*)"?\s*$/) {
+			printf "%s[MD5:%s]%s\n", $1, md5_hex($2 . "\n"), $3;
+		} else {
+			printf "%s\n", $_;
+		}
+	'							>> ipsec
+
+	echo ""							>> ipsec
+	echo "#"						>> ipsec
+	echo "# setkey -Pp -D"					>> ipsec
+	echo "#"						>> ipsec
+	${PRIV} /usr/sbin/setkey -Pp -D				>> ipsec
+
+	for CF in /var/run/racoon/*.conf
+	do
+		if [ ! -r "${CF}" ]; then
+			continue
+		fi
+
+		echo ""						>> ipsec
+		echo "#"					>> ipsec
+		echo "# ${CF}"					>> ipsec
+		echo "#"					>> ipsec
+		${PRIV} cat ${CF}				\
+		| /usr/bin/perl -M'Digest::MD5 qw(md5_hex)' -l -n -e '
+			if (/^(\s+shared_secret\s+use\s+)"?([^\s;"]+)"?(.*)/) {
+				printf "%s[MD5:%s]%s\n", $1, md5_hex($2 . "\n"), $3;
+			} else {
+				printf "%s\n", $_;
+			}
+		'						>> ipsec
+	done
+fi
+
+#
+# Kerberos configuration
+#
+if [ -x /usr/bin/klist ]; then
+	echo "#"					>  kerberos
+	echo "# klist --verbose --all-content"		>> kerberos
+	echo "#"					>> kerberos
+	klist --verbose --all-content			>> kerberos	2>&1
+
+	echo "#"					>> kerberos
+	echo "# ktutil list"				>> kerberos
+	echo "#"					>> kerberos
+	${PRIV} /usr/sbin/ktutil --verbose list		>> kerberos	2>&1
+
+	echo "#"					>> kerberos
+	echo "# gsstool list --verbose"			>> kerberos
+	echo "#"					>> kerberos
+	/System/Library/PrivateFrameworks/Heimdal.framework/Helpers/gsstool list --verbose >> kerberos	2>&1
+fi
+
+#
+# system profiler
+#
+if [ -x /usr/sbin/system_profiler ]; then
+	system_profiler -xml 	SPEthernetDataType 	\
+				SPFibreChannelDataType	\
+				SPFireWireDataType 	\
+				SPFirewallDataType 	\
+				SPModemDataType		\
+				SPNetworkDataType 	\
+				SPThunderboltDataType 	\
+				SPWWANDataType 		\
+				SPAirPortDataType 	> system_profiler.spx	2>/dev/null
+fi
+
+#
+# system usage statistics
+#
+/bin/echo -n ""						> system-statistics
+
+if [ -x /usr/bin/uptime ]; then
+	echo "#"					>> system-statistics
+	echo "# uptime"					>> system-statistics
+	echo "#"					>> system-statistics
+	/usr/bin/uptime					>> system-statistics	2>&1
+fi
+
+if [ -x /usr/sbin/sysctl ]; then
+	echo "#"					>> system-statistics
+	echo "# sysctl kern hw net debug"		>> system-statistics
+	echo "#"					>> system-statistics
+	/usr/sbin/sysctl kern hw net debug		>> system-statistics	2>&1
+fi
+
+if [ -x /usr/bin/zprint ]; then
+	echo "#"					>> system-statistics
+	echo "# zprint"					>> system-statistics
+	echo "#"					>> system-statistics
+	${PRIV} /usr/bin/zprint				>> system-statistics	2>&1
+fi
+
+if [ -x /usr/sbin/lsof -a -x /bin/ls ]; then
+	N=0
+	/bin/ls -1	/Library/Preferences/SystemConfiguration/*-lock		\
+			2>/dev/null						\
+	| while read lock
+	do
+		if [ ${N} -eq 0 ]; then
+			echo "#"					>> system-statistics
+			echo "# lsof [SCPreferences lock files]"	>> system-statistics
+		fi
+		N=`expr ${N} + 1`
+
+		echo "#"						>> system-statistics
+		${PRIV} /usr/sbin/lsof -- ${lock}			>> system-statistics	2>&1
+	done
+fi
+
+#
+# collect executable and plugin info
+#
+report_binary_info()
+{
+    if [ ! -f "${1}" ]; then
+	return
+    fi
+
+    VERSION=`what "${1}"`
+    echo "${VERSION}"					>> versions	2>&1
+
+    SUM=`sum "${1}"`
+    echo "\tsum: ${SUM}"				>> versions	2>&1
+
+    LSINFO=`ls -lu "${1}"`
+    echo "\tadditional info: ${LSINFO}"			>> versions	2>&1
+
+    echo ""						>> versions	2>&1
+}
+
+get_binary_info()
+{
+    for BIN in										\
+	/usr/libexec/InternetSharing							\
+	/usr/libexec/bootpd								\
+	/usr/libexec/configd								\
+	/usr/libexec/misd								\
+	/usr/sbin/awacsd								\
+	/usr/sbin/mDNSResponder								\
+	/usr/sbin/pppd									\
+	/usr/sbin/racoon								\
+	/System/Library/Frameworks/SystemConfiguration.framework/SystemConfiguration	\
+
+    do
+	report_binary_info "${BIN}"
+    done
+
+    if [ -x /usr/bin/xcode-select -a -x /usr/bin/xcodebuild -a -x /usr/bin/xcrun ]; then
+	SDKPATH="`xcode-select --print-path 2>/dev/null`"
+	if [ $? -eq 0 -a -n "${SDKPATH}" ]; then
+	    /usr/bin/xcodebuild -showsdks 2>/dev/null	\
+	    | grep iphone				\
+	    | awk '{ print $NF }'			\
+	    | while read SDK
+	    do
+		SDKPATH="`xcrun --sdk $SDK --show-sdk-path`"
+		for BIN in										\
+		    /usr/libexec/configd_sim								\
+		    /System/Library/Frameworks/SystemConfiguration.framework/SystemConfiguration	\
+
+		do
+		    report_binary_info "${SDKPATH}${BIN}"
+		done
+	    done
+	else
+	    echo "*** NO SDKs ***"	>> versions
+	    echo ""			>> versions
+	fi
+    fi
+}
+
+get_plugins_info()
+{
+    num=0
+    cd /System/Library/SystemConfiguration
+    for PLUGIN in *.bundle
+    do
+	plugins[$num]="${PLUGIN}"
+	num=$(( $num + 1 ))
+    done
+
+    cd "${WORKDIR}"
+
+    for PLUGIN in "${plugins[@]}"
+    do
+	PLUGIN_DIR="/System/Library/SystemConfiguration/${PLUGIN}"
+	PLUGIN_INF="${PLUGIN_DIR}/Contents/Info.plist"
+	if [ ! -f "${PLUGIN_INF}" ]; then
+	    PLUGIN_INF="${PLUGIN_DIR}/Info.plist"
+	    if [ ! -f "${PLUGIN_INF}" ]; then
+		echo "${PLUGIN_INF}: No Info.plist"		>> versions		2>&1
+	    fi
+	fi
+
+	echo "${PLUGIN}"					>> versions		2>&1
+
+	ENABLED="Enabled"
+	BOOL=`scutil --get "${PLUGIN_INF}" / Enabled					2>/dev/null`
+	if [ $? -eq 0 ]; then
+	    if [ ${BOOL} = "TRUE" ]; then
+		ENABLED="Enabled*"
+	    else
+		ENABLED="Disabled"
+	    fi
+	fi
+	echo "\t${ENABLED}"					>> versions		2>&1
+
+	VERBOSE=""
+	BOOL=`scutil --get "${PLUGIN_INF}" / Verbose					2>/dev/null`
+	if [ $? -eq 0 ]; then
+	    if [ ${BOOL} = "TRUE" ]; then
+		VERBOSE="Verbose"
+	    fi
+	fi
+	if [ -n "${VERBOSE}" ]; then
+		echo "\t${VERBOSE}"				>> versions		2>&1
+	fi
+
+	VERSION=`scutil --get "${PLUGIN_INF}" / CFBundleVersion				2>/dev/null`
+	if [ $? -eq 1 ]; then
+		VERSION=`scutil --get "${PLUGIN_INF}" / CFBundleShortVersionString	2>/dev/null`
+	fi
+	echo "\tVersion: ${VERSION}"				>> versions		2>&1
+
+	if [ -f "${PLUGIN_DIR}/Contents/MacOS/${PLUGIN%.*}" ]; then
+	    SUM=`sum "${PLUGIN_DIR}/Contents/MacOS/${PLUGIN%.*}"`
+	    echo "\tsum: ${SUM}"				>> versions		2>&1
+
+	    LSINFO=`ls -lu "${PLUGIN_DIR}/Contents/MacOS/${PLUGIN%.*}"`
+	    echo "\tadditional info: ${LSINFO}"			>> versions		2>&1
+	elif [ -f "${PLUGIN_DIR}/${PLUGIN%.*}" ]; then
+	    SUM=`sum "${PLUGIN_DIR}/${PLUGIN%.*}"`
+	    echo "\tsum: ${SUM}"				>> versions		2>&1
+
+	    LSINFO=`ls -lu "${PLUGIN_DIR}/${PLUGIN%.*}"`
+	    echo "\tadditional info: ${LSINFO}"			>> versions		2>&1
+	fi
+
+	echo ""							>> versions		2>&1
+    done
+}
+
+if [ -x /usr/bin/what -a -x /usr/bin/sum -a -x /bin/ls ]; then
+	get_binary_info
+	get_plugins_info
+fi
+
+#
+# to give a chance for "networkd" and "mDNSResponder" to finish dumping their
+# state, the last thing we do is collect the logs
+#
+
+#
+# system log, kernel.log, early boot log messages
+#
+if [ -x /usr/bin/syslog ]; then
+	#
+	# save the recent activity
+	#
+	${PRIV} /usr/bin/syslog -T local.3					\
+		| ${TAIL_25000}							> syslog
+
+	#
+	# save just the "kernel" activity (in case some of the
+	# interesting/relevant message are before the messages
+	# captured above.
+	#
+	${PRIV} /usr/bin/syslog -T local.3 -k Facility kern			\
+		| ${TAIL_25000}							> kernel
+
+	if [ -d /var/log/DiagnosticMessages ]; then
+		# save any MessageTracer activity
+		${PRIV} /usr/bin/syslog	-d /var/log/DiagnosticMessages		\
+					-F raw					\
+					-T local.3				\
+			| ${TAIL_25000}						> DiagnosticMessages
+	fi
+else
+	if [ -f /var/log/system.log ]; then
+		${PRIV} ${TAIL_25000} /var/log/system.log			> system.log
+	fi
+	if [ -f /var/log/kernel.log ]; then
+		${PRIV} ${TAIL_25000} /var/log/kernel.log			> kernel.log
+	fi
+fi
+if [ -x /sbin/dmesg ]; then
+	${PRIV} /sbin/dmesg							> dmesg
+fi
+
+#
+# IPConfiguration log
+#
+if [ -f /var/log/com.apple.IPConfiguration.bootp ]; then
+	${PRIV} ${TAIL_2000} /var/log/com.apple.IPConfiguration.bootp	\
+							> com.apple.IPConfiguration.bootp
+fi
+
+#
+# ppp log file(s)
+#
+scutil <<_END_OF_INPUT				\
+| awk -F' *: *'					\
+    '						\
+     /Logfile : / {				\
+       if (index($2, "/") == 1) { print $2 }	\
+       else { print "/var/log/ppp/" $2 }	\
+     }						\
+     END {					\
+       print "/tmp/pppotcp.log"			\
+     }						\
+    '						\
+| sort -u					\
+| while read logFile
+open
+show Setup:/Network/Service/[^/]+/PPP pattern
+quit
+_END_OF_INPUT
+do
+	if [ -f "${logFile}" ]; then
+		b="`basename ${logFile}`"
+		cat "${logFile}"			> "${b}"		2>&1
+	fi
+done
+
+#
+# application firewall log
+#
+if [ -f /var/log/appfirewall.log ]; then
+	${PRIV} ${TAIL_2000} /var/log/appfirewall.log	> appfirewall.log
+fi
+
+if [ -x /bin/ls ]; then
+	#
+	# collect crash reports
+	#
+	for daemon in				\
+			InternetSharing		\
+			SCHelper		\
+			SCMonitor		\
+			awacsd			\
+			bootpd			\
+			configd			\
+			eapolclient		\
+			mDNSResponder		\
+			mDNSResponderHelper	\
+			pppd			\
+			racoon			\
+			socketfilterfw		\
+
+	do
+		/bin/ls -1	/Library/Logs/DiagnosticReports/${daemon}_*.crash	\
+				/Library/Logs/DiagnosticReports/${daemon}_*.ips		\
+				/Library/Logs/CrashReporter/${daemon}_*.crash		\
+				/Library/Logs/CrashReporter/${daemon}_*.ips		\
+				/Library/Logs/CrashReporter/${daemon}_*.plist		\
+				2>/dev/null						\
+		| while read log
+		do
+			if [ -f "${log}" ]; then
+				b="`basename ${log}`"
+				${PRIV} cat "${log}"		> "${b}"		2>&1
+			fi
+		done
+	done
+
+	#
+	# collect any verbose logging output
+	#
+	/bin/ls -1	/Library/Logs/CrashReporter/com.apple.networking.*.log*		\
+			2>/dev/null							\
+	| while read log
+	do
+		if [ -f "${log}" ]; then
+			b="`basename ${log}`"
+			${PRIV} cat "${log}"			> "${b}"		2>&1
+		fi
+	done
+fi
+
+#
+# stackshot
+#
+if [ -x /usr/local/bin/crstackshot ]; then
+	/usr/local/bin/crstackshot				2>/dev/null
+fi
+
+#
+# collect everything into a single archive
+#
+cd "${WORKDIR}/.."
+tar -c ${GZ_OPT} -f "${ARCHIVE}" "${OUT}"
+rm -rf "${WORKDIR}"
+
+if [ ${UID} -eq 0 ]; then
+	if [ -n "${SUDO_UID}" -a -n "${SUDO_GID}" ]; then
+		if [ ${UID} -ne ${SUDO_UID} ]; then
+			chown ${SUDO_UID}:${SUDO_GID} "${ARCHIVE}"
+		fi
+	fi
+fi
+
+echo "Network data collected to \"${ARCHIVE}\""
+

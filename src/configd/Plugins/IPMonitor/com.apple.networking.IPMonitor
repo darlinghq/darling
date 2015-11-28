@@ -1,0 +1,1 @@
+? [= LoggerID com.apple.networking.IPMonitor] file /Library/Logs/CrashReporter/com.apple.networking.IPMonitor.log crashlog rotate=local file_max=1M compress format=$((Time)(local.6))\ $Host\ $(Sender)[$(PID)]\ <$((Level)(str))>:\ $(Message)

@@ -1,0 +1,199 @@
+/*
+ * Copyright (c) 2000, 2001, 2003-2005, 2011, 2012 Apple Inc. All rights reserved.
+ *
+ * @APPLE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_LICENSE_HEADER_END@
+ */
+
+/*
+ * Modification History
+ *
+ * June 1, 2001			Allan Nathanson <ajn@apple.com>
+ * - public API conversion
+ *
+ * March 24, 2000		Allan Nathanson <ajn@apple.com>
+ * - initial revision
+ */
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+subsystem config 20000;
+serverprefix _;
+
+import "config_types.h";
+
+/*
+ * serialized XML or UTF8 data (client->server)
+ */
+type xmlData    = ^ array [] of MACH_MSG_TYPE_BYTE
+	ctype : xmlData_t;
+
+/*
+ * serialized XML or UTF8 data (server->client)
+ */
+type xmlDataOut = ^ array [] of MACH_MSG_TYPE_BYTE
+	ctype : xmlDataOut_t;
+
+/*
+ * additional types
+ */
+/*
+type task_move_send_t = MACH_MSG_TYPE_MOVE_SEND
+	ctype: mach_port_t;
+*/
+
+
+/*
+ * Connection management API's
+ */
+
+routine configopen	(	server		: mach_port_t;
+				name		: xmlData;
+				options		: xmlData;
+			 out	session		: mach_port_move_send_t;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
+
+	skip;	/* was configclose */
+	skip;	/* was configlock */
+	skip;	/* was configunlock */
+
+	skip;	/* reserved for future use */
+	skip;	/* reserved for future use */
+	skip;	/* reserved for future use */
+	skip;	/* reserved for future use */
+
+/*
+ * Dynamic store access API's
+ */
+
+routine configlist	(	server		: mach_port_t;
+				xmlData		: xmlData;
+				isRegex		: int;
+			 out	list		: xmlDataOut, dealloc;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
+
+routine configadd	(	server		: mach_port_t;
+				key		: xmlData;
+				data		: xmlData;
+			 out	newInstance	: int;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
+
+routine configget	(	server		: mach_port_t;
+				key		: xmlData;
+			 out	data		: xmlDataOut, dealloc;
+			 out	newInstance	: int;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
+
+routine configset	(	server		: mach_port_t;
+				key		: xmlData;
+				data		: xmlData;
+				instance	: int;
+			 out	newInstance	: int;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
+
+routine configremove	(	server		: mach_port_t;
+				key		: xmlData;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
+
+	skip;	/* was configtouch */
+
+routine configadd_s	(	server		: mach_port_t;
+				key		: xmlData;
+				data		: xmlData;
+			 out	newInstance	: int;
+			 out	status		: int);
+
+routine confignotify	(	server		: mach_port_t;
+				key		: xmlData;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
+
+routine configget_m	(	server		: mach_port_t;
+				keys		: xmlData;
+				patterns	: xmlData;
+			 out	data		: xmlDataOut, dealloc;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
+
+routine configset_m	(	server		: mach_port_t;
+				data		: xmlData;
+				remove		: xmlData;
+				notify		: xmlData;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
+
+/*
+ * Notification API's
+ */
+
+routine notifyadd	(	server		: mach_port_t;
+				key		: xmlData;
+				isRegex		: int;
+			 out	status		: int);
+
+routine notifyremove	(	server		: mach_port_t;
+				key		: xmlData;
+				isRegex		: int;
+			 out	status		: int);
+
+routine notifychanges	(	server		: mach_port_t;
+			 out	list		: xmlDataOut, dealloc;
+			 out	status		: int);
+
+routine notifyviaport	(	server		: mach_port_t;
+				port		: mach_port_move_send_t;
+				msgid           : mach_msg_id_t;
+			 out	status		: int);
+
+routine notifyviafd	(	server		: mach_port_t;
+				path		: xmlData;
+				identifier	: int;
+			 out	status		: int);
+
+routine notifyviasignal	(	server		: mach_port_t;
+				task		: task_t /*task_move_send_t*/;
+				sig		: int;
+			 out	status		: int);
+
+routine notifycancel	(	server		: mach_port_t;
+			 out	status		: int);
+
+routine notifyset	(	server		: mach_port_t;
+				keys		: xmlData;
+				patterns	: xmlData;
+			 out	status		: int);
+
+	skip;	/* reserved for future use */
+	skip;	/* reserved for future use */
+	skip;	/* reserved for future use */
+
+/*
+ * Miscellaneous API's
+ */
+
+routine snapshot	(	server		: mach_port_t;
+			 out	status		: int;
+	    ServerAuditToken	audit_token	: audit_token_t);
