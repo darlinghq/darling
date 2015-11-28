@@ -17,6 +17,7 @@ struct arg_struct
 		int port;
 	};
 	unsigned long pth_obj_size;
+	void* pth;
 };
 
 static void* darling_thread_entry(void* p);
@@ -25,24 +26,31 @@ static void* darling_thread_entry(void* p);
 #	define PTHREAD_STACK_MIN 16384
 #endif
 
-int __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_size,
+void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_size,
 				void* entry_point, uintptr_t arg3,
 				uintptr_t arg4, uintptr_t arg5, uintptr_t arg6,
 				int (*thread_self_trap)())
 {
 
 	arg_struct* args = new arg_struct { (thread_ep) entry_point, arg3,
-		arg4, arg5, arg6, thread_self_trap, pth_obj_size };
+		arg4, arg5, arg6, thread_self_trap, pth_obj_size, nullptr };
 	pthread_attr_t attr;
 	pthread_t nativeLibcThread;
+	void* pth;
 
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setstacksize(&attr, stack_size + pth_obj_size);
 
 	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, args);
+	
+	while (args->pth == nullptr)
+		sched_yield();
+	pth = args->pth;
+	
+	delete args;
 
-	return 0;
+	return pth;
 }
 
 static void* darling_thread_entry(void* p)
@@ -67,6 +75,7 @@ static void* darling_thread_entry(void* p)
 	"movq 16(%0), %%rcx\n"
 	"movq 24(%0), %%r8\n"
 	"movq 32(%0), %%r9\n"
+	"movq %%rdi, 56(%0)\n"
 	"movq (%0), %%rax\n"
 	"andq $-0x10, %%rsp\n"
 	"pushq $0\n"
