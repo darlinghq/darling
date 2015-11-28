@@ -92,6 +92,7 @@ add_subdirectory(external/foundation)
 add_subdirectory(CFF)
 add_subdirectory(CoreServices)
 add_subdirectory(VideoDecodeAcceleration)
+add_subdirectory(xar)
 
 ######################
 # libc++ & libc++abi #

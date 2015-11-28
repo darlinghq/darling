@@ -18,6 +18,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w -fconst
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostdinc -nostdinc++ -D__DARWIN_UNIX03 -fPIC -w -fconstant-string-class=NSConstantString -fobjc-nonfragile-abi -ggdb -O0")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 

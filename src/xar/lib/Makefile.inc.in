@@ -1,0 +1,205 @@
+#
+# File lists.
+#
+
+# Internal headers.
+LIBXAR_IINCS := asprintf.h
+
+LIBXAR_IINCS := $(patsubst %, @srcroot@include/%, $(LIBXAR_IINCS))
+LIBXAR_IINCS += @objroot@include/config.h
+
+# Headers.
+LIBXAR_INCS :=
+
+LIBXAR_INCS := $(patsubst %, @srcroot@include/%, $(LIBXAR_INCS))
+LIBXAR_INCS += @objroot@include/xar.h
+
+# Sources.
+LIBXAR_SRCS := archive.c arcmod.c b64.c bzxar.c darwinattr.c data.c ea.c err.c
+LIBXAR_SRCS += ext2.c fbsdattr.c filetree.c io.c lzmaxar.c linuxattr.c hash.c
+LIBXAR_SRCS += signature.c stat.c subdoc.c util.c zxar.c script.c macho.c
+
+LIBXAR_SRCS := $(patsubst %, @srcroot@lib/%, $(LIBXAR_SRCS))
+
+# Libraries.  librxar is created such that it's possible to run xar without
+# first installing libxar.
+
+LIBXAR_LANAME := libxar.la
+LIBXAR_ANAME := libxar.a
+ifeq (elf, @abi@)
+LIBRXAR_SNAME := librxar.so.@LIB_REV@
+LIBRXAR_LNAME := librxar.so
+LIBRXAR_L := @objroot@lib/$(LIBRXAR_LNAME)
+LIBXAR_SNAME := libxar.so.@LIB_REV@
+LIBXAR_LNAME := libxar.so
+LIBXAR_L := @objroot@lib/$(LIBXAR_LNAME)
+endif
+ifeq (macho, @abi@)
+LIBRXAR_SNAME := librxar.@LIB_REV@.dylib
+LIBRXAR_LNAME := librxar.dylib
+LIBRXAR_L := @objroot@lib/$(LIBRXAR_LNAME)
+LIBXAR_SNAME := libxar.@LIB_REV@.dylib
+LIBXAR_LNAME := libxar.dylib
+LIBXAR_L := @objroot@lib/$(LIBXAR_LNAME)
+endif
+ifeq (aout, @abi@)
+LIBRXAR_SNAME := librxar.so.@LIB_REV@.0
+LIBRXAR_LNAME :=
+LIBRXAR_L :=
+LIBXAR_SNAME := libxar.so.@LIB_REV@.0
+LIBXAR_LNAME :=
+LIBXAR_L :=
+endif
+LIBXAR_LA := @objroot@lib/$(LIBXAR_LANAME)
+LIBXAR_A := @objroot@lib/$(LIBXAR_ANAME)
+LIBRXAR_S := @objroot@lib/$(LIBRXAR_SNAME)
+LIBXAR_S := @objroot@lib/$(LIBXAR_SNAME)
+
+#
+# Include generated dependency files.
+#
+-include $(LIBXAR_SRCS:@srcroot@%.c=@objroot@%.d)
+
+LDFLAGS := -L@objroot@lib $(LDFLAGS)
+
+#
+# User make'ables.
+#
+
+lib_all : lib_shared lib_static $(LIBXAR_LA)
+ifeq (yes, @shared@)
+lib_shared : $(LIBRXAR_S) $(LIBXAR_S)
+else
+lib_shared :
+endif
+ifeq (yes, @static@)
+lib_static : $(LIBXAR_A)
+else
+lib_static :
+endif
+
+lib_install : lib_shared lib_static
+	@INSTALL@ -d $(DESTDIR)$(INCLUDEDIR)/xar
+	@INSTALL@ -m 0644 $(LIBXAR_INCS) $(DESTDIR)$(INCLUDEDIR)/xar
+	@INSTALL@ -d $(DESTDIR)$(LIBDIR)
+ifeq (yes, @shared@)
+	@INSTALL@ -m 0755 $(LIBXAR_S) $(DESTDIR)$(LIBDIR)
+ifneq ($(words "" $(LIBXAR_LNAME)), 1)
+	rm -f $(DESTDIR)$(LIBDIR)/$(LIBXAR_LNAME)
+	ln -s $(LIBXAR_SNAME) $(DESTDIR)$(LIBDIR)/$(LIBXAR_LNAME)
+endif
+endif
+ifeq (yes, @static@)
+	@INSTALL@ -m 0644 $(LIBXAR_A) $(DESTDIR)$(LIBDIR)
+endif
+	@INSTALL@ -m 0644 $(LIBXAR_LA) $(DESTDIR)$(LIBDIR)
+
+lib_uninstall :
+	rm -rf $(DESTDIR)$(INCLUDEDIR)/xar
+ifeq (yes, @shared@)
+	rm -f $(DESTDIR)$(LIBDIR)/$(LIBXAR_SNAME)
+ifneq ($(words "" $(LIBXAR_LNAME)), 1)
+	rm -f $(DESTDIR)$(LIBDIR)/$(LIBXAR_LNAME)
+endif
+endif
+ifeq (yes, @static@)
+	rm -f $(DESTDIR)$(LIBDIR)/$(LIBXAR_ANAME)
+endif
+	rm -f $(DESTDIR)$(LIBDIR)/$(LIBXAR_LANAME)
+
+lib_clean :
+	rm -f $(LIBRXAR_S) $(LIBRXAR_L)
+	rm -f $(LIBXAR_S) $(LIBXAR_L)
+	rm -f $(LIBXAR_A) $(LIBXAR_LA)
+	@rm -f @objroot@lib/.libs/$(LIBXAR_LNAME)
+	@rm -f @objroot@lib/.libs/$(LIBXAR_ANAME)
+	@-rmdir @objroot@lib/.libs
+	rm -f $(LIBXAR_SRCS:@srcroot@%.c=@objroot@%.o)
+	rm -f $(LIBXAR_SRCS:@srcroot@%.c=@objroot@%.d)
+	rm -f $(LIBXAR_SRCS:@srcroot@%.c=@objroot@%.static.o)
+	rm -f $(LIBXAR_SRCS:@srcroot@%.c=@objroot@%.static.d)
+
+lib_distclean :
+
+#
+# Various flags.
+#
+
+CPPFLAGS := -I@objroot@include $(CPPFLAGS)
+CPPFLAGS := -I@srcroot@include $(CPPFLAGS)
+
+#
+# Build rules.
+#
+
+# librxar is a version of the xar library that is usable without first
+# installing libxar.
+$(LIBRXAR_S) : $(LIBXAR_SRCS:@srcroot@%.c=@objroot@%.o)
+	@mkdir -p $(@D)
+ifeq (elf, @abi@)
+	$(CC) -shared -Wl,-soname,$(LIBXAR_SNAME) -o $@ $+ $(LDFLAGS) @LIBS@
+endif
+ifeq (macho, @abi@)
+	$(CC) -dynamiclib -compatibility_version @LIB_REV@ -current_version @LIB_REV@ -install_name @abs_objroot@$(LIBRXAR_S) -o $@ $+ $(LDFLAGS) @LIBS@
+endif
+ifeq (aout, @abi@)
+	$(CC) -shared -o $@ $+
+endif
+ifneq ($(words "" $(LIBRXAR_L)), 1)
+	rm -f $(LIBRXAR_L)
+	ln -s $(LIBRXAR_SNAME) $(LIBRXAR_L)
+endif
+
+$(LIBXAR_S) : $(LIBXAR_SRCS:@srcroot@%.c=@objroot@%.o)
+	@mkdir -p $(@D)
+ifeq (elf, @abi@)
+	$(CC) -shared -Wl,-soname,$(LIBXAR_SNAME) -o $@ $+ $(LDFLAGS) @LIBS@
+endif
+ifeq (macho, @abi@)
+	$(CC) -dynamiclib -compatibility_version @LIB_REV@ -current_version @LIB_REV@ -install_name $(LIBDIR)/$(LIBXAR_SNAME) -o $@ $+ $(LDFLAGS) @LIBS@
+endif
+ifeq (aout, @abi@)
+	$(CC) -shared -o $@ $+
+endif
+ifneq ($(words "" $(LIBXAR_L)), 1)
+	rm -f $(LIBXAR_L)
+	ln -s $(LIBXAR_SNAME) $(LIBXAR_L)
+endif
+
+ifeq (yes, @shared@)
+LT_LIBXAR_SNAME := $(LIBXAR_SNAME)
+LT_LIBXAR_LNAME := $(LIBXAR_LNAME)
+else
+LT_LIBXAR_SNAME :=
+LT_LIBXAR_LNAME :=
+endif
+ifeq (yes, @static@)
+LT_LIBXAR_ANAME := $(LIBXAR_ANAME)
+else
+LT_LIBXAR_ANAME :=
+endif
+
+$(LIBXAR_LA) : $(LIBXAR_LA).in
+	@mkdir -p @objroot@lib/.libs
+ifeq (yes, @shared@)
+	@ln -sf ../$(LIBXAR_LNAME) @objroot@lib/.libs/$(LIBXAR_LNAME)
+endif
+ifeq (yes, @static@)
+	@ln -sf ../$(LIBXAR_ANAME) @objroot@lib/.libs/$(LIBXAR_ANAME)
+endif
+	sed -e s/@LIBXAR_SNAME@/$(LT_LIBXAR_SNAME)/ -e s/@LIBXAR_LNAME@/$(LT_LIBXAR_LNAME)/ -e s/@LIBXAR_ANAME@/$(LT_LIBXAR_ANAME)/ < $< > $@
+
+$(LIBXAR_A) : $(LIBXAR_SRCS:@srcroot@%.c=@objroot@%.static.o)
+	@mkdir -p $(@D)
+	$(AR) cvr $@ $+
+	$(RANLIB) $@ 
+
+@objroot@lib/%.o : @srcroot@lib/%.c
+	@mkdir -p $(@D)
+	$(CC) $(S_CFLAGS) $(CPPFLAGS) -c $< -o $@
+	@$(SHELL) -ec "$(CC) -MM $(CPPFLAGS) $< | sed \"s/\($(subst /,\/,$(notdir $(basename $@)))\)\.o\([ :]*\)/$(subst /,\/,$(strip $(dir $@)))\1.o \2/g\" > $(@:%.o=%.d)"
+
+@objroot@lib/%.static.o : @srcroot@lib/%.c
+	@mkdir -p $(@D)
+	$(CC) $(A_CFLAGS) $(CPPFLAGS) -c $< -o $@
+	@$(SHELL) -ec "$(CC) -MM $(CPPFLAGS) $< | sed \"s/\($(subst /,\/,$(notdir $(basename $@)))\)\.o\([ :]*\)/$(subst /,\/,$(strip $(dir $@)))\1.o \2/g\" > $(@:%.o=%.d)"
