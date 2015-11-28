@@ -40,6 +40,6 @@ add_library(system_info SHARED $<TARGET_OBJECTS:info-util>
 	$<TARGET_OBJECTS:info-lookup>
 	$<TARGET_OBJECTS:info-membership>
 )
-target_link_libraries(system_info system_c resolv)
+target_link_libraries(system_info system_c resolv-darwin)
 
 install(TARGETS system_info DESTINATION lib${SUFFIX}/darling)
