@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  *
@@ -50,6 +51,11 @@
 #if defined(__i386__)
 
 #include <architecture/i386/asm_help.h>
+
+#ifdef DARLING
+#	define __ctx_start _ctx_start
+#	define __ctx_done _ctx_done
+#endif
 
 /*
  * _ctx_start((void *func)(int arg1, ..., argn),

@@ -26,6 +26,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0") # development flags
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map -Bsymbolic-functions")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--defsym=__darwin_pthread_self=pthread_self")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/pthreads")
@@ -103,6 +104,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-posix1e>
 	$<TARGET_OBJECTS:libc-nls>
 	$<TARGET_OBJECTS:libc-net>
+	$<TARGET_OBJECTS:libc-net_cancelable>
 	$<TARGET_OBJECTS:libc-locale>
 	$<TARGET_OBJECTS:libc-hwplat>
 	$<TARGET_OBJECTS:libc-threads>

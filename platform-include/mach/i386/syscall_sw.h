@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
  *
@@ -74,10 +75,26 @@
 /*
  * Syscall entry macros for use in libc:
  */
+#ifndef DARLING
+
 #define UNIX_SYSCALL_TRAP	\
 	int $(UNIX_INT)
 #define MACHDEP_SYSCALL_TRAP	\
 	int $(MACHDEP_INT)
+
+#else // DARLING
+
+#define UNIX_SYSCALL_TRAP	\
+	calll 1f ;\
+	1: ;\
+	popl %ebx ;\
+	2: ;\
+	addl    $_GLOBAL_OFFSET_TABLE_+(2b-1b), %ebx ;\
+	call __darling_bsd_syscall@PLT
+#define MACHDEP_SYSCALL_TRAP	\
+	ud2
+
+#endif
 
 /*
  * Macro to generate Mach call stubs in libc:

@@ -115,6 +115,8 @@ wakeup:
 					:: "D" (stack), "S" (thread_self), "a" (wqueue_entry_point),
 					"b" (me.prio | WQ_FLAG_THREAD_REUSE | WQ_FLAG_THREAD_NEWSPI)
 			);
+#elif defined(__i386__)
+#	warning Missing assembly for i386!
 #else
 #	error Missing assembly!
 #endif

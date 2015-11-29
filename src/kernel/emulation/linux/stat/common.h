@@ -2,6 +2,13 @@
 #define LINUX_STAT_COMMON_H
 
 #ifdef __i386__
+
+#ifdef st_atime
+#	undef st_atime
+#	undef st_mtime
+#	undef st_ctime
+#endif
+
 struct linux_stat {
 	unsigned long long      st_dev;
 	unsigned char   __pad0[4];

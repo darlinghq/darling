@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  *
@@ -23,6 +24,7 @@
 
 #include <machine/cpu_capabilities.h>
 #include <platfunc.h>
+#include <stddef.h>
 
 PLATFUNC_DESCRIPTOR_PROTOTYPE(bzero, sse42)
 PLATFUNC_DESCRIPTOR_PROTOTYPE(bzero, sse2)
@@ -35,8 +37,10 @@ static const platfunc_descriptor *bzero_platfunc_descriptors[] = {
 	0
 };
 
-void *bzero_chooser() __asm__("_bzero");
-void *bzero_chooser() {
-	__asm__(".desc _bzero, 0x100");
-	return find_platform_function((const platfunc_descriptor **) bzero_platfunc_descriptors);
+void *bzero_chooser(void *, size_t) __asm__("bzero");
+void *bzero_chooser(void *s, size_t n) {
+	//__asm__(".desc _bzero, 0x100");
+	void *(*impl)(void *, size_t);
+	impl = find_platform_function((const platfunc_descriptor **) bzero_platfunc_descriptors);
+	return impl(s, n);
 }

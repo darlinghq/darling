@@ -155,7 +155,7 @@ set(emulation_sources
 	bsdthread/workq_open.c
 	psynch/psynch_mutexwait.c
 	psynch/psynch_mutexdrop.c
-	syscalls-amd64.asm
+	syscalls-table.S
 )
 
 set_source_files_properties(mman/mman.c PROPERTIES COMPILE_FLAGS

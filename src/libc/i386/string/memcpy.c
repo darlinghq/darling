@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  *
@@ -23,6 +24,7 @@
 
 #include <machine/cpu_capabilities.h>
 #include <platfunc.h>
+#include <stddef.h>
 
 PLATFUNC_DESCRIPTOR_PROTOTYPE(memcpy, sse42)
 PLATFUNC_DESCRIPTOR_PROTOTYPE(memcpy, sse3x)
@@ -37,8 +39,10 @@ static const platfunc_descriptor *memcpy_platfunc_descriptors[] = {
 	0
 };
 
-void *memcpy_chooser() __asm__("_memcpy");
-void *memcpy_chooser() {
-	__asm__(".desc _memcpy, 0x100");
-	return find_platform_function((const platfunc_descriptor **) memcpy_platfunc_descriptors);
+void *memcpy_chooser(void *dest, const void *src, size_t n) __asm__("memcpy");
+void *memcpy_chooser(void *dest, const void *src, size_t n) {
+	//__asm__(".desc _memcpy, 0x100");
+	void *(*impl)(void *, const void *, size_t);
+	impl = find_platform_function((const platfunc_descriptor **) memcpy_platfunc_descriptors);
+	return impl(dest, src, n);
 }

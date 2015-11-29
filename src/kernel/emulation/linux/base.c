@@ -14,6 +14,14 @@ long linux_syscall(long a1, long a2, long a3, long a4, long a5, long a6, int nr)
 			"syscall\n"
 			"ret");
 }
+#elif defined(__i386__)
+long linux_syscall(long a1, long a2, long a3, long a4, long a5, long a6, int nr)
+{
+	__asm__("sysenter\n"
+			"ret\n"
+			:: "a"(nr), "b" (a1), "c"(a2), "d"(a3),
+				"S"(a4), "D"(a5), "ebp"(a6));
+}
 #else
 #	error Unsupported platform!
 #endif

@@ -65,7 +65,7 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set_source_files_properties(environ.c COMPILE_FLAGS "-no-integrated-as")
 
 add_library(dyld SHARED ${dyld_SRCS})
-target_link_libraries(dyld -ldl -lpthread mach-o darling-util)
+target_link_libraries(dyld PRIVATE -ldl -lpthread mach-o darling-util)
 
 install(TARGETS dyld DESTINATION lib${SUFFIX}/darling)
 

@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  *
@@ -24,6 +25,11 @@
 #if defined(__i386__)
 
 #include <architecture/i386/asm_help.h>
+
+#ifdef DARLING
+#	define _getcontext getcontext
+#	define _getmcontext getmcontext
+#endif
 
 TEXT
 LABEL(_getcontext)

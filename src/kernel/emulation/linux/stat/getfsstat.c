@@ -65,7 +65,7 @@ long sys_getfsstat64(struct bsd_statfs64* buf, int bufsize, int flags)
 			strlcpy(buf[count].f_fstypename, p, sizeof(buf[count].f_fstypename));
 
 #ifdef __NR_statfs64
-			if (LINUX_SYSCALL2(__NR_statfs64, (char*buf[count].f_mntonname, &lbuf) < 0)
+			if (LINUX_SYSCALL2(__NR_statfs64, (char*)buf[count].f_mntonname, &lbuf) < 0)
 #else
 			if (LINUX_SYSCALL2(__NR_statfs, (char*)buf[count].f_mntonname, &lbuf) < 0)
 #endif

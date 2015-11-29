@@ -304,11 +304,22 @@ name:
 
 #if defined(__DYNAMIC__)
 #if defined(__i386__)
+#ifndef DARLING
 #define PICIFY(var)					\
 	call	1f					; \
 1:							; \
 	popl	%edx					; \
 	movl	L ## var ## __non_lazy_ptr-1b(%edx),%edx
+#else // DARLING
+
+#define PICIFY(var)					\
+	call	1f					; \
+1:							; \
+	popl	%edx					; \
+2:							; \
+	addl	$_GLOBAL_OFFSET_TABLE_+(2b-1b),%edx
+
+#endif // DARLING
 #elif defined(__x86_64__)
 #define PICIFY(var)					\
 	movq	var@GOTPCREL(%rip),%r11
@@ -324,12 +335,16 @@ name:
 #endif
 
 #if defined(__i386__)
+#ifndef DARLING
 #define NON_LAZY_STUB(var)	\
 .section __IMPORT,__pointers,non_lazy_symbol_pointers	; \
 L ## var ## __non_lazy_ptr:	; \
 .indirect_symbol var		; \
 .long 0				; \
 .text
+#else
+#define NON_LAZY_STUB(var)
+#endif // DARLING
 #elif defined(__x86_64__)
 #define NON_LAZY_STUB(var)	
 #endif

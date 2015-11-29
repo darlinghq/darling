@@ -55,7 +55,7 @@ L_returnFromYHiIsZero:
 //  Special case handling ----------------------------------------------
 
 L_xHiIsZero:
-    cmp         $0,       4(%esp)   // is the low word of x zero?
+    cmpl        $0,       4(%esp)   // is the low word of x zero?
     jnz     L_returnFromXHiIsZero   // if not, jump back to mainline
 L_returnAbsY:
     and         %ecx,    16(%esp)
@@ -63,7 +63,7 @@ L_returnAbsY:
     ret
 
 L_yHiIsZero:
-    cmp         $0,      12(%esp)   // is the low word of y zero?
+    cmpl        $0,      12(%esp)   // is the low word of y zero?
     jnz     L_returnFromYHiIsZero   // if not, jump back to mainline
 L_returnAbsX:
     and         %ecx,     8(%esp)
@@ -73,7 +73,7 @@ L_returnAbsX:
 L_xIsSpecial:
     cmp         INFHI,      %edx    // check if y is infinity
     jnz         L_returnAbsX
-    cmp         $0,      12(%esp)
+    cmpl        $0,      12(%esp)
     jz          L_returnAbsY
     jmp         L_returnAbsX
     
