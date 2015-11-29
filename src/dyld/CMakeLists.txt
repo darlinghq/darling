@@ -20,6 +20,7 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # Needed because libdyld references pthread funcs in libsystem_c.so
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--unresolved-symbols=ignore-in-shared-libs")
 
+add_definitions(-D_GNU_SOURCE)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libmach-o)
 
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
