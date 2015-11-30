@@ -271,9 +271,9 @@ void MachOObject::loadSegments()
 			flags |= MAP_FIXED;
 			mappingAddr = rv;
 		}
-
+ 
 		rv = ::mmap(mappingAddr, mappingSize, maxprot, flags, m_file->fd(), m_file->offset() + seg->fileoff);
-		if (rv == MAP_FAILED)
+		if (rv == MAP_FAILED && mappingSize != 0)
 		{
 			std::stringstream ss;
 			
