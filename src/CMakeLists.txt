@@ -94,6 +94,7 @@ add_subdirectory(CFF)
 add_subdirectory(CoreServices)
 add_subdirectory(ApplicationServices)
 add_subdirectory(VideoDecodeAcceleration)
+add_subdirectory(DiskArbitration)
 add_subdirectory(xar)
 
 ######################

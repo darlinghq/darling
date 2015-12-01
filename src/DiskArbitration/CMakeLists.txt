@@ -1,4 +1,4 @@
-project(VideoDecodeAcceleration)
+project(DiskArbitration)
 
 cmake_minimum_required(VERSION 2.4.0)
 
@@ -28,11 +28,13 @@ include_directories(${DARLING_TOP_DIRECTORY}/src/libc/include/FreeBSD)
 
 add_definitions(-DOBJC2RUNTIME=1)
 
-set(vda_SRCS
-	dummy.c
+set(da_SRCS
+	DADisk.c
+	DADissenter.c
+	DASession.c
 )
 
-add_library(VideoDecodeAcceleration SHARED ${vda_SRCS})
-target_link_libraries(VideoDecodeAcceleration PRIVATE system CFF)
+add_library(DiskArbitration SHARED ${da_SRCS})
+target_link_libraries(DiskArbitration PRIVATE system CFF)
 
-install(TARGETS VideoDecodeAcceleration DESTINATION lib${SUFFIX}/darling)
+install(TARGETS DiskArbitration DESTINATION lib${SUFFIX}/darling)
