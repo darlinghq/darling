@@ -226,7 +226,7 @@ void MachOObject::loadSegments()
 		void* rv;
 		int flags = MAP_PRIVATE;
 		
-		if (strcmp(seg->segname, SEG_PAGEZERO) == 0 || seg->mappingSize == 0)
+		if (strcmp(seg->segname, SEG_PAGEZERO) == 0 || seg->fileSize == 0)
 			continue;
 		
 		assert(seg->vmsize >= seg->filesize);
