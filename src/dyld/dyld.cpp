@@ -8,6 +8,7 @@
 #include <sstream>
 #include <util/stlutils.h>
 #include <util/Regexp.h>
+#include <exception>
 #include <libdyld/arch.h>
 #include "dirstructure.h"
 
@@ -15,6 +16,24 @@ static void printHelp(const char* argv0);
 static std::string locateBundleExecutable(std::string bundlePath);
 
 using namespace Darling;
+extern const char *__progname;
+
+void terminateHandler() {
+	std::exception_ptr exptr = std::current_exception();
+	try {
+	    std::rethrow_exception(exptr);
+	}
+	catch (std::exception &ex) {
+	    std::fprintf(stderr, "%s: %s\n", __progname, ex.what());
+	}
+	catch (const char* s) {
+	    std::fprintf(stderr, "%s: %s\n", __progname, s);
+	}
+	catch (...) {
+	    std::fprintf(stderr, "%s: unhandled exception\n", __progname);
+	}
+	exit(ENOSYS);
+}
 
 int main(int argc, char** argv, char** envp)
 {
@@ -26,6 +45,8 @@ int main(int argc, char** argv, char** envp)
 	
 	if (!HasUserDirectoryStructure())
 		SetupUserDirectoryStructure();
+
+	std::set_terminate(terminateHandler);
 
 	try
 	{
