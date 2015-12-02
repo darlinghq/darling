@@ -10,6 +10,7 @@
 #include <util/Regexp.h>
 #include <exception>
 #include <libdyld/arch.h>
+#include <signal.h>
 #include "dirstructure.h"
 
 static void printHelp(const char* argv0);
@@ -47,6 +48,11 @@ int main(int argc, char** argv, char** envp)
 		SetupUserDirectoryStructure();
 
 	std::set_terminate(terminateHandler);
+
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGHUP);
+	sigprocmask(SIG_BLOCK, &set, NULL);
 
 	try
 	{
@@ -139,4 +145,3 @@ static std::string locateBundleExecutable(std::string bundlePath)
 	else
 		return bundlePath;
 }
-
