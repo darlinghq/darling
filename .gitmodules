@@ -41,3 +41,7 @@
 [submodule "src/external/openssl"]
 	path = src/external/openssl
 	url = ../darling-openssl.git
+[submodule "src/external/curl"]
+	path = src/external/curl
+	url = ../darling-curl.git
+	branch = darling
