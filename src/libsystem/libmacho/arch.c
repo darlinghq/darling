@@ -56,7 +56,7 @@
 /* The array of all currently know architecture flags (terminated with an entry
  * with all zeros).  Pointer to this returned with NXGetAllArchInfos().
  */
-static const NXArchInfo ArchInfoTable[] = {
+static /* const */ NXArchInfo ArchInfoTable[] = {
     /* architecture families */
     {"hppa",   CPU_TYPE_HPPA,	 CPU_SUBTYPE_HPPA_ALL,	   NX_BigEndian,
 	 "HP-PA"},
