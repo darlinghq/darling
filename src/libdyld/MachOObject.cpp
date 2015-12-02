@@ -794,7 +794,7 @@ void* MachOObject::performBind(MachO::Bind* bind)
 		}
 #endif
 		
-		//if (addr != nullptr)
+		if (addr != nullptr)
 			writeBind(bind->type, (void**)(bind->vmaddr + m_slide), addr, bind->name);
 		
 		return addr;
