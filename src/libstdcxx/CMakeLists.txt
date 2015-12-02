@@ -5,7 +5,7 @@ enable_language(C ASM)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2 -msse3 -w -nostdinc -nostdinc++")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -include ${CMAKE_CURRENT_SOURCE_DIR}/build.h")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map -Wl,-Bsymbolic-functions")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1/backward)
