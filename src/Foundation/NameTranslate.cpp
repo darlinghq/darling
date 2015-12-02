@@ -9,10 +9,8 @@ namespace Darling
 	void deregisterDlsymHook(DlsymHookFunc func);
 };
 
-static const std::map<std::string, std::string> g_mapping {
-	std::make_pair<std::string,std::string>("OBJC_CLASS_$_NSBundle", "_OBJC_CLASS_NSDarwinBundle"),
-	std::make_pair<std::string,std::string>("OBJC_METACLASS_$_NSBundle", "_OBJC_METACLASS_NSDarwinBundle"),
-};
+const char* const g_mapping[] = { "OBJC_CLASS_$_NSBundle", "OBJC_METACLASS_$_NSBundle", "_OBJC_CLASS_NSDarwinBundle", "_OBJC_METACLASS_NSDarwinBundle" };
+
 
 static bool NameTranslator(char* symName);
 
@@ -30,13 +28,14 @@ __attribute__((destructor))
 
 static bool NameTranslator(char* name)
 {
-	auto it = g_mapping.find(name);
-	if (it != g_mapping.end())
+	for(size_t i = 0; i < (sizeof(g_mapping)/sizeof(const char* const)) >> 1; i++)
 	{
-		strcpy(name, it->second.c_str());
-		return true;
+		if(strcmp(name, g_mapping[i]) == 0)
+		{
+			strcpy(name, g_mapping[i + ((sizeof(g_mapping)/sizeof(const char* const)) >> 1)]);
+			return true;
+		}
 	}
 
 	return false;
 }
-
