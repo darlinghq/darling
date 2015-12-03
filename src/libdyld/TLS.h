@@ -31,7 +31,7 @@ namespace Darling
 
 	struct ImageData
 	{
-		pthread_key_t key;
+		long key;
 
 		// Location of initial variable values
 		void* start;

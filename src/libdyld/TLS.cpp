@@ -27,9 +27,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "mutex.h"
 
 extern "C" {
-int __darwin_pthread_key_create(pthread_key_t *key, void (*destructor)(void*));
-int __darwin_pthread_key_delete(pthread_key_t key);
-int __darwin_pthread_setspecific(pthread_key_t key, const void *value);
+int __darwin_pthread_key_create(long *key, void (*destructor)(void*));
+int __darwin_pthread_key_delete(long key);
+int __darwin_pthread_setspecific(long key, const void *value);
 }
 
 static void TLSRunDestructors(void* p);
@@ -39,7 +39,7 @@ static std::map<pthread_key_t, Darling::ImageData*> m_imagesKey;
 static Darling::Mutex m_imagesMutex;
 
 // Used for a thread-local list of destructor-object pairs (DestructorLinkedListElement)
-static pthread_key_t m_keyDestructors;
+static long m_keyDestructors;
 
 static void TLSSetupDestructors()
 {
@@ -69,7 +69,7 @@ static void TLSRunDestructors(void* p)
 void Darling::TLSSetup(void* imageKey, std::vector<tlv_descriptor*>& descriptors, std::vector<void*>& initializers, void* start, uintptr_t length)
 {
 	Darling::MutexLock _l(&m_imagesMutex);
-	pthread_key_t key;
+	long key;
 	ImageData* id;
 	pthread_once_t once;
 
@@ -96,7 +96,7 @@ void Darling::TLSTeardown(void* imageKey)
 	
 	Darling::MutexLock _l(&m_imagesMutex);
 	auto it = m_images.find(imageKey);
-	pthread_key_t key;
+	long key;
 
 	if (it == m_images.end())
 		return;

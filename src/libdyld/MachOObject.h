@@ -95,6 +95,7 @@ public:
 	inline bool noRecursion() const { return m_noRecursion; }
 	
 	std::vector<const char*> declaredDependencies() const { return m_file->dylibs(); }
+	inline MachO* getMachOFile() const { return m_file; }
 	
 protected:
 	friend class DylibSearch;
