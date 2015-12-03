@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999, 2012 Apple Inc. All rights reserved.
  *
@@ -44,6 +45,7 @@ extern int h_errno;
 #endif
 char _res[RES_9_STATE_SIZE] = {0};
 
+#ifndef DARLING
 int
 res_init(void)
 {
@@ -128,3 +130,4 @@ res_search(const char *name, int class, int type, u_char *answer, int anslen)
 {
 	return _mdns_query(SI_CALL_DNS_SEARCH, name, class, type, answer, anslen);
 }
+#endif
