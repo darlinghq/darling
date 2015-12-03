@@ -64,4 +64,5 @@ add_library(CoreServices SHARED ${CoreServices_SRCS})
 target_link_libraries(CoreServices icucore system ${EXTRA_LIBS} CFF cxx iconv)
 
 install(TARGETS CoreServices DESTINATION "lib${SUFFIX}/darling")
+install(FILES SystemVersion.plist DESTINATION "share/darling")
 

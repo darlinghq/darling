@@ -41,7 +41,7 @@ set(cff_SRCS
 )
 
 set(cffextra_SRCS
-	CFUtilities.cpp
+	CFUtilities.c
 	CFPreferences.mm
 	../util/debug.cpp
 	../util/stlutils.cpp

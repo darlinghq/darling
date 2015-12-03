@@ -4,8 +4,7 @@
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFDictionary.h>
 
-typedef enum {
-} CFSystemVersion;
+typedef int CFSystemVersion;
 
 CF_EXPORT Boolean _CFExecutableLinkedOnOrAfter(CFSystemVersion version);
 
