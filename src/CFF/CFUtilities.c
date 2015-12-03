@@ -29,8 +29,6 @@ __attribute__((constructor))
 	GSRuntimeConstantInit(_kCFSystemVersionProductUserVisibleVersionKey, type);
 	GSRuntimeConstantInit(_kCFSystemVersionProductVersionStringKey, type);
 	GSRuntimeConstantInit(_kCFSystemVersionBuildStringKey, type);
-
-	CFHash(_kCFSystemVersionBuildStringKey);
 }
 
 Boolean _CFExecutableLinkedOnOrAfter(CFSystemVersion version)

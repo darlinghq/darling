@@ -11,6 +11,16 @@ CONST_STRING_DECL(kVDADecoderConfiguration_avcCData, "kVDADecoderConfiguration_a
 
 #define kVDADecoderHardwareNotSupportedErr -12470
 
+__attribute__((constructor))
+	static void initConstants()
+{
+	CFTypeID type = CFStringGetTypeID();
+	GSRuntimeConstantInit(kVDADecoderConfiguration_Height, type);
+	GSRuntimeConstantInit(kVDADecoderConfiguration_Width, type);
+	GSRuntimeConstantInit(kVDADecoderConfiguration_SourceFormat, type);
+	GSRuntimeConstantInit(kVDADecoderConfiguration_avcCData, type);
+}
+
 OSStatus VDADecoderCreate()
 {
 	return kVDADecoderHardwareNotSupportedErr;
