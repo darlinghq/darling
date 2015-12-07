@@ -97,6 +97,7 @@ add_subdirectory(ApplicationServices)
 add_subdirectory(VideoDecodeAcceleration)
 add_subdirectory(DiskArbitration)
 add_subdirectory(xar)
+add_subdirectory(libedit)
 
 ######################
 # libc++ & libc++abi #

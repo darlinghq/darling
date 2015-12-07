@@ -1,0 +1,71 @@
+1) Unpack the original tarball in a separate directory.  Create a diff of the
+original and the current src directory.
+
+2) Unpack the new update in a separate directory.  Overwrite the files in src
+with the files from the update.  Note that some filenames have been renamed:
+
+key.c     -> keymacro.c
+key.h     -> keymacro.h
+term.c    -> terminal.c
+el_term.h -> terminal.h
+
+Then manually apply the changes from the diff in 1) to the new files.
+
+3) The patch-configure.ac file only deals with libtool-style versioning.
+We had altered the version numbers so that the version number in the name
+of the dylib matched the libedit version number, but this was the wrong
+thing to do, and now we are stuck.  For instance, original libtool-style
+version number for a past version was 0:27:0.  It was changed to 1:11:0 so
+that libedit.2.11.dylib was created (1 is added to the major number, because
+the libtool major number can be zero, but not the Mac OS X major number).
+
+libedit 3.0 has a libtool version number of 0:35:0, meaning it is binary-
+compatible with the 2.11 version.  Since we now build with Xcode, we don't
+care about the libtool versioning, *except* that it tells use the 3.0
+version is binary compatible with libedit.2.dylib.  So we can create a
+libedit.3.dylib, plus the usual symlinks libedit.dylib, and libedit.3.0.dylib,
+and also create a libedit.2.dylib symlink, *if* we remember to set the
+compatibility version of libedit.3.dylib to 2.0.
+
+4) Unpack the original tarball, make a darwin subdirectory at the top level,
+and cd there.  Then run:
+
+% ../configure --help
+
+Do the same for the new tarball.  In this case, there are no new options.
+
+5) Run in each of the darwin subdirectories:
+
+% ../configure --disable-dependency-tracking --enable-shared --disable-static --enable-widec
+% make
+
+This will create config.h at the top level, and the nine auto-generated files:
+
+common.h	fcns.c		help.c		historyn.c	vi.h
+emacs.h		fcns.h		help.h		tokenizern.c
+
+in the src directory.
+
+6) For the original files, copy the nine auto-generated files to a temp
+directory, like /tmp/local:
+
+% diff -r /tmp/local $libedit/local >/tmp/DIFF
+
+(where $libedit is the path the the current version of the libedit project).
+This create a diff of what has changed in those auto-generated files.
+
+7) Overwrite the nine auto-generated files in $libedit/local from the new darwin/src directory.
+Now manually apply the patches from /tmp/DIFF.
+
+8) Diff the original config.h with the one in $libedit (in this case, no
+differences).
+
+9) Diff the original config.h with the new config.h to see what has changed.
+Then overwrite the original config.h with the new config.h.
+
+10) Global replace in libedit.xcodeproj/project.pbxproj, the filenames that
+have changed with their new name.
+
+11) Update the man pages in the doc directory,
+
+12) Update the libedit.plist.

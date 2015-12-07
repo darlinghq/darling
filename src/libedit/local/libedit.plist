@@ -1,0 +1,26 @@
+<plist version="1.0">
+<array>
+<dict>
+        <key>OpenSourceProject</key>
+        <string>libedit</string>
+        <key>OpenSourceVersion</key>
+        <string>3.0</string>
+        <key>OpenSourceWebsiteURL</key>
+        <string>http://www.thrysoee.dk/editline/</string>
+        <key>OpenSourceURL</key>
+        <string>http://www.thrysoee.dk/editline/libedit-20121213-3.0.tar.gz</string>
+        <key>OpenSourceSHA1</key>
+        <string>2f20bc835c1282b6815c4c8e2f852d6fe4318f7a</string>
+        <key>OpenSourceImportDate</key>
+        <string>2012-01-15</string>
+        <key>OpenSourceLicense</key>
+        <string>BSD</string>
+        <key>OpenSourceLicenseFile</key>
+        <string>libedit.txt</string>
+	<key>OpenSourceModifications</key>
+	<array>
+                <string>Additional malloc fixes (7866382)</string>
+	</array>	
+</dict>
+</array>
+</plist>

@@ -1,0 +1,134 @@
+0) Unpack the new update.
+
+1) Examine each patchfile to determine if all or some patches may no longer be
+needed, or needs to be applied differently (see 2 below for special-case
+patch-configure.ac).  Once patched are applied, update the patch files in
+the applied-patched directory.
+
+2) The patch-configure.ac file only deals with libtool-style versioning.
+We had altered the version numbers so that the version number in the name
+of the dylib matched the libedit version number, but this was the wrong
+thing to do, and now we are stuck.  For instance, original libtool-style
+version number for a past version was 0:27:0.  It was changed to 1:11:0 so
+that libedit.2.11.dylib was created (1 is added to the major number, because
+the libtool major number can be zero, but not the Mac OS X major number).
+
+libedit 3.0 has a libtool version number of 0:35:0, meaning it is binary-
+compatible with the 2.11 version.  Since we now build with Xcode, we don't
+care about the libtool versioning, *except* that it tells use the 3.0
+version is binary compatible with libedit.2.dylib.  So we can create a
+libedit.3.dylib, plus the usual symlinks libedit.dylib, and libedit.3.0.dylib,
+and also create a libedit.2.dylib symlink, *if* we remember to set the
+compatibility version of libedit.3.dylib to 2.0.
+
+3) We need to create config.h, which means we need to run configure.  New
+in libedit 3.0 is utf-8 support, which is enabled with the --enable-widec
+option.  To determine what what this option changes, we create two copies
+of the patched directories, and run configure in both, one with the new
+option, and one without.
+
+3a) We compare the config.h from the two directories.  In this case, a new
+new #define is set (WIDECHAR).
+
+3b) We compare the corresponding Makefiles, ignoring path differences due
+to having two different directory names.  Again, in this case, we see that
+previously commented-out files are now enabled (this also tells us that if
+we didn't enable the utf-8 support, those files would be unused, and probably
+would have waste space if we blindly added those files to Xcode).  There are
+3 new .c files in this case:
+
+    eln.c historyn.c tokenizern.c
+
+4) Compare the files in the src directory, between the old libedit and the
+new.  There are 3 new .c files and 1 new .h file:
+
+    chartype.c chartype.h eln.c wcsdup.c
+
+So 1 of these new .c files (eln.c) is accounted for in 3b).
+
+5) src/Makefile creates some of these new source files.  These files (along
+with others) are stored in the "local" directory in the libedit project, so we
+will need to recreate them again:
+
+    cd src
+    echo 'my_local: $(BUILT_SOURCES)' >> Makefile
+    # the "am__configure_deps=" prevents trying to autoreconf
+    make my_local am__configure_deps=
+
+In this case, the files:
+
+    vi.h emacs.h common.h fcns.h help.h fcns.c help.c tokenizern.c historyn.c
+
+are created.
+
+Two of these .c files were found in 3b) (tokenizern.c historyn.c).
+
+6) From 4) and 5), the files from 3b) are accounted for.  That leaves 2 .c
+files found in 4) (chartype.c wcsdup.c) that are new and build by default
+(which the Makefile confirms).
+
+7) Copy the (unmodified) src directory to the src directory of the SVN copy.
+Add the new files found in 4):
+
+    svn add chartype.c chartype.h eln.c wcsdup.c
+
+8) Copy the files created in 5) to the local directory of the SVN copy, and
+add the new files:
+
+    svn add tokenizern.c historyn.c
+
+9) For completeness, copy libedit.pc (after running configure), to the local
+directory.
+
+10) Go into Xcode and add the files from 4) to the libedit and libedit-static
+targets.  When these files appear under the libedit group, move them into the
+Source folder (sorting alphabetically to be nice).
+
+11) Add the new files from 5) to the libedit and libedit-static targets.  When
+these files appear under the libedit group, move them into the local folder
+(sorting alphabetically to be nice).
+
+12) Modify the "make lists" script to add the two new file creations (for
+historyn.c tokenizern.c).  We also remove the "make list" build phase from each
+of the libedit and libedit-static targets, since we should not be modifying
+files (at build time) in SRCROOT.  Besides, this would hide the fact that
+the files in the local directory are out of date from what actually gets
+built.
+
+13) For the libedit target, change the "Current Library Version" from 2.11
+to 3.0.  Leave the "Compatibility Version" at 2.  Change the "Product Name"
+from "edit.2" to "edit.3".
+
+14) Under the all target, modify the "install misc" script.  Replace:
+
+foreach l (libedit.2.11.dylib libedit.dylib libreadline.dylib) do
+    ln -s libedit.2.dylib $DSTROOT/usr/lib/$l
+done
+
+with:
+
+foreach l (libedit.2.dylib libedit.3.0.dylib libedit.dylib libreadline.dylib) do
+    ln -s libedit.3.dylib $DSTROOT/usr/lib/$l
+done
+
+14) In the doc directory of the unpacked-and-configured copy, run:
+
+    touch ../config.status
+    echo 'my_man: $(EL_MANS)' >> Makefile
+    make my_man am__configure_deps=
+
+Copy the two man pages (editline.3 editrc.5) to the doc subdirectory of the SVN
+copy.
+
+15) Update the libedit.plist file (in the local directory), with the current
+information.
+
+16) Add the tarball to SVN, so we have a copy of the original sources.
+
+17) Because tokenizern.c and historyn.c are located in the local directory,
+and because they expect to include the tokenizer.c and history.c files,
+respectively, a new include directory needed to be added to Xcode (the "src"
+directory).  The -fpascal-strings option was removed as extraneous.
+
+18) Build libedit and if testing finds bugs, fix the code, and update/create
+the corresponding patch file.
