@@ -32,6 +32,7 @@ public:
 	
 	int addRef();
 	int delRef();
+	inline int refCount() const { return m_refs; }
 
 	// Whether exports of this object should be available for symbol resolution of subsequently loaded libraries (RTLD_GLOBAL)
 	inline void setGlobalExports(bool global) { m_globalExports = global; }

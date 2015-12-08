@@ -509,7 +509,14 @@ void MachOObject::loadDependencies()
 		}
 	}
 
-	libSystem->delRef();
+	if (libSystem->refCount() > 1)
+		libSystem->delRef();
+	else
+	{
+		std::cerr << "Beware! This executable does not link against libSystem. "
+			"It is very likely a copy-protected executable which makes direct system calls.\n"
+			"Darling currently cannot support that.\n";
+	}
 }
 
 void MachOObject::readSymbols()
