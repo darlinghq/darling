@@ -550,6 +550,7 @@ set (syscall_sources ${syscall_sources}
 	sys_x86-64/writev.S
 )
 elseif(BITS EQUAL 32)
+
 set (syscall_sources ${syscall_sources}
 	sys_i386/__accept_nocancel.S
 	sys_i386/__accept.S

@@ -35,6 +35,8 @@
 #ifdef DARLING
 #	define _OSAtomicFifoEnqueue OSAtomicFifoEnqueue
 #	define _OSAtomicFifoDequeue OSAtomicFifoDequeue
+#	define _preempt preempt
+#	define _commpage_pfz_base commpage_pfz_base
 #endif
 
 #ifndef DARLING

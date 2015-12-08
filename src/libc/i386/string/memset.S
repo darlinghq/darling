@@ -51,6 +51,7 @@
 #	define _memset_pattern4 memset_pattern4
 #	define _memset_pattern8 memset_pattern8
 #	define _memset_pattern16 memset_pattern16
+#	define _bzero bzero
 #endif
  
 	.text

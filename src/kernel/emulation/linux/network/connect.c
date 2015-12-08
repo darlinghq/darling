@@ -28,7 +28,7 @@ long sys_connect_nocancel(int fd, const void* name, int socklen)
 	fixed->linux_family = sfamily_bsd_to_linux(fixed->bsd_family);
 
 #ifdef __NR_socketcall
-	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_CONNECT, fd, fixed, socklen);
+	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_CONNECT, ((long[6]) { fd, fixed, socklen }));
 #else
 	ret = LINUX_SYSCALL(__NR_connect, fd, fixed, socklen);
 #endif

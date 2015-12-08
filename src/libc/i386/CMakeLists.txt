@@ -9,15 +9,15 @@ add_definitions(-DPRIVATE)
 
 set(i386_sources
 	gen/getmcontext.c
-	#gen/makecontext.c
-	#gen/setcontext.c
+	gen/makecontext.c
+	gen/setcontext.c
 	gen/setjmperr.c
-	#gen/swapcontext.c
+	gen/swapcontext.c
 	gen/cpu_number.S
 	gen/icacheinval.S
 	gen/mcount.S
 	gen/_ctx_start.S
-	#gen/getcontext.S
+	gen/getcontext.S
 	gen/_setcontext.S
 
 	# sys/i386_gettimeofday_asm.S
@@ -55,11 +55,11 @@ set(i386_sources
 	string/memcpy.c
 	string/memmove.c
 
-	# pthreads/preempt.S
+	pthreads/preempt.S
 	pthreads/pthread_getspecific.S
 	pthreads/pthread_mutex_lock.S
 	pthreads/pthread_self.S
-	pthreads/pthread_set_self.S
+	#pthreads/pthread_set_self.S
 	pthreads/start_wqthread.S
 	pthreads/thread_start.S
 	pthreads/init_cpu_capabilities.c

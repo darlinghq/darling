@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
+#include <sys/_types/_timeval32.h>
 
 #ifdef UTMP_COMPAT
 #define UTMP_COMPAT_UTMP0	0x01

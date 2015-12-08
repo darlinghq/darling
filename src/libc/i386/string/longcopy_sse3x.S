@@ -64,6 +64,7 @@
 #ifndef DARLING
         .private_extern _longcopy
 #else
+		.globl _longcopy
 		.hidden _longcopy
 #endif
 

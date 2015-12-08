@@ -26,7 +26,8 @@ long sys_socket(int domain, int type, int protocol)
 	}
 
 #ifdef __NR_socketcall
-	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_SOCKET, linux_domain, type, protocol);
+	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_SOCKET,
+			((long[6]) { linux_domain, type, protocol }));
 #else
 	ret = LINUX_SYSCALL(__NR_socket, linux_domain, type, protocol);
 #endif

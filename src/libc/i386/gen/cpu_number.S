@@ -50,6 +50,7 @@
 	.align	4
 #ifdef DARLING
 	.hidden _cpu_number
+	.globl _cpu_number
 #else
 	.private_extern _cpu_number
 #endif

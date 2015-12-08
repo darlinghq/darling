@@ -49,26 +49,26 @@
 #define GET_CURRENT_PID	PICIFY(__current_pid)
 
         NON_LAZY_STUB(__current_pid)
-#define __current_pid	(%edx)
+#define __current_pid_var	(%edx)
 #else
 #define GET_CURRENT_PID
 #endif
 
 /*
- * If __current_pid >= 0, we want to put a -1 in there
+ * If __current_pid_var >= 0, we want to put a -1 in there
  * otherwise we just decrement it
  */
 
 LEAF(___vfork, 0)
 	GET_CURRENT_PID
-	movl		__current_pid, %eax
+	movl		__current_pid_var, %eax
 0:
 	xorl		%ecx, %ecx
 	testl		%eax, %eax
 	cmovs		%eax, %ecx
 	decl		%ecx
 	lock
-	cmpxchgl	%ecx, __current_pid
+	cmpxchgl	%ecx, __current_pid_var
 	jne		0b
 	popl		%ecx
 	movl		$(SYS_vfork), %eax	// code for vfork -> eax
@@ -76,7 +76,7 @@ LEAF(___vfork, 0)
 	jnb		L1                     	// jump if CF==0
 	GET_CURRENT_PID
 	lock
-	incl		__current_pid
+	incl		__current_pid_var
 	pushl		%ecx
 	BRANCH_EXTERN(tramp_cerror)
 
@@ -89,25 +89,25 @@ L1:
 L2:
 	GET_CURRENT_PID
 	lock
-	incl		__current_pid
+	incl		__current_pid_var
 	jmp		*%ecx
 
 #elif defined(__x86_64__)
 
 /*
- * If __current_pid >= 0, we want to put a -1 in there
+ * If __current_pid_var >= 0, we want to put a -1 in there
  * otherwise we just decrement it
  */
 
 LEAF(___vfork, 0)
-	movq		__current_pid@GOTPCREL(%rip), %rax
+	movq		__current_pid_var@GOTPCREL(%rip), %rax
 	movl		(%rax), %eax
 0:
 	xorl		%ecx, %ecx
 	testl		%eax, %eax
 	cmovs		%eax, %ecx
 	subl		$1, %ecx
-	movq		__current_pid@GOTPCREL(%rip), %rdx
+	movq		__current_pid_var@GOTPCREL(%rip), %rdx
 	lock
 	cmpxchgl	%ecx, (%rdx)
 	jne		0b
@@ -116,7 +116,7 @@ LEAF(___vfork, 0)
 	UNIX_SYSCALL_TRAP			// do the system call
 	jnb		L1			// jump if CF==0
 	pushq		%rdi			// put return address back on stack for cerror
-	movq		__current_pid@GOTPCREL(%rip), %rcx
+	movq		__current_pid_var@GOTPCREL(%rip), %rcx
 	lock
 	addq		$1, (%rcx)
 	movq		%rax, %rdi
@@ -129,7 +129,7 @@ L1:
 	jmp		*%rdi
 
 L2:
-	movq		__current_pid@GOTPCREL(%rip), %rdx
+	movq		__current_pid_var@GOTPCREL(%rip), %rdx
 	lock
 	addq		$1, (%rdx)
 	jmp		*%rdi

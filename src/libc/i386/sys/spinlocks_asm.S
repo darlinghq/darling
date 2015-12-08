@@ -127,8 +127,8 @@ PLATFUNC_DESCRIPTOR(_spin_lock,mp,0,kUP)
 
 	.align	2, 0x90
 	.globl	_OSSpinLockUnlock
-	.globl	_spin_unlock
-	.globl	__spin_unlock
+	.globl	x_spin_unlock
+	.globl	x__spin_unlock
 _OSSpinLockUnlock:
 x_spin_unlock:
 x__spin_unlock:

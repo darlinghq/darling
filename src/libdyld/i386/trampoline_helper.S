@@ -37,7 +37,7 @@ reg_saveall: // 24 bytes on stack
 	pushl %edx
 	pushl %esi
 	pushl %edi
-	subl 8, %esp
+	subl $8, %esp
 	fstpl (%esp)
 
 	jmpl *%eax

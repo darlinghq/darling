@@ -82,7 +82,11 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 			return -EINVAL;
 	}
 
+#ifdef __NR_fcntl64
+	ret = LINUX_SYSCALL(__NR_fcntl64, fd, linux_cmd, arg);
+#else
 	ret = LINUX_SYSCALL(__NR_fcntl, fd, linux_cmd, arg);
+#endif
 	if (ret < 0)
 	{
 		ret = errno_linux_to_bsd(ret);

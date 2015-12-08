@@ -33,6 +33,7 @@
 #	define _ffi_prep_args ffi_prep_args
 #	define _ffi_call_SYSV ffi_call_SYSV
 #	define _ffi_closure_SYSV ffi_closure_SYSV
+#	define _ffi_closure_SYSV_inner ffi_closure_SYSV_inner
 #	define _ffi_closure_raw_SYSV ffi_closure_raw_SYSV
 #endif
 
@@ -307,14 +308,19 @@ Lrcls_retllong:
 	jmp	Lrcls_epilogue
 LFE3:
 #endif
-
+#ifndef DARLING
 .section __IMPORT,__jump_table,symbol_stubs,self_modifying_code+pure_instructions,5
 L_ffi_closure_SYSV_inner$stub:
 	.indirect_symbol _ffi_closure_SYSV_inner
 	hlt ; hlt ; hlt ; hlt ; hlt
+#else
+L_ffi_closure_SYSV_inner$stub:
+	jmp _ffi_closure_SYSV_inner
+#endif
 
-
+#ifndef DARLING
 .section __TEXT,__eh_frame,coalesced,no_toc+strip_static_syms+live_support
+#endif
 EH_frame1:
 	.set	L$set$0,LECIE1-LSCIE1
 	.long	L$set$0

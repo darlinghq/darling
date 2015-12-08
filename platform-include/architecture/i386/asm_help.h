@@ -317,7 +317,8 @@ name:
 1:							; \
 	popl	%edx					; \
 2:							; \
-	addl	$_GLOBAL_OFFSET_TABLE_+(2b-1b),%edx
+	addl	$_GLOBAL_OFFSET_TABLE_+(2b-1b),%edx ; \
+	movl	var@GOT(%edx), %edx
 
 #endif // DARLING
 #elif defined(__x86_64__)
@@ -383,12 +384,24 @@ L ## var ## __non_lazy_ptr:	; \
 #endif
 
 #if defined(__i386__)
+#ifndef DARLING
 #define EXTERN_TO_REG(var, reg)				\
 	call	1f					; \
 1:							; \
 	popl	%edx					; \
 	movl	L ## var ##__non_lazy_ptr-1b(%edx),reg	; \
 	NON_LAZY_STUB(var)
+#else // DARLING
+#define EXTERN_TO_REG(var, reg)				\
+	call	1f					; \
+1:							; \
+	popl	%edx					; \
+2:							; \
+	addl	$_GLOBAL_OFFSET_TABLE_+(2b-1b),%edx	; \
+	movl	var@GOT(%edx), %edx; \
+	movl	(%edx), reg
+#endif
+
 #elif defined(__x86_64__)
 #define EXTERN_TO_REG(var, reg)				\
 	PICIFY(var)		; \

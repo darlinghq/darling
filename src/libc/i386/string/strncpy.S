@@ -27,6 +27,7 @@
 
 #ifdef DARLING
 #define _strncpy strncpy
+#define _bzero bzero
 #endif
 
 // *****************

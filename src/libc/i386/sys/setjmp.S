@@ -39,7 +39,7 @@
 #	define _siglongjmp siglongjmp
 #	define x_longjmp longjmp
 #	define x__longjmp _longjmp
-#	define __sigunalstack _sigunaltstack
+#	define __sigunaltstack _sigunaltstack
 #else
 #	define x_longjmp _longjmp
 #	define x__longjmp __longjmp

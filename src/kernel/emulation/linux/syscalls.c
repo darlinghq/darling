@@ -26,6 +26,7 @@
 #include "unistd/getpid.h"
 #include "unistd/access.h"
 #include "unistd/lseek.h"
+#include "unistd/truncate.h"
 #include "unistd/ftruncate.h"
 #include "unistd/readlink.h"
 #include "unistd/readv.h"
@@ -40,6 +41,7 @@
 #include "unistd/mknod.h"
 #include "unistd/chmod.h"
 #include "unistd/chown.h"
+#include "unistd/lchown.h"
 #include "unistd/getgid.h"
 #include "unistd/getppid.h"
 #include "unistd/rename.h"
@@ -204,6 +206,7 @@ void* __bsd_syscall_table[512] = {
 	[196] = sys_getdirentries,
 	[197] = sys_mmap,
 	[199] = sys_lseek,
+	[200] = sys_truncate,
 	[201] = sys_ftruncate,
 	[202] = sys_sysctl,
 	[216] = sys_mkcomplex,
@@ -245,6 +248,7 @@ void* __bsd_syscall_table[512] = {
 	[347] = sys_getfsstat64,
 	[360] = sys_bsdthread_create,
 	[361] = sys_bsdthread_terminate,
+	[364] = sys_lchown,
 	[366] = sys_bsdthread_register,
 	[367] = sys_workq_open,
 	[368] = sys_workq_kernreturn,

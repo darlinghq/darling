@@ -26,11 +26,11 @@
 
 #ifdef DARLING
 #	define _thread_start thread_start
-#	definie __pthread_start _pthread_start@PLT
+#	define __pthread_start _pthread_start
 #endif
 
 .text
-.align 2, 0x90
+.align (1<<2), 0x90
 .globl _thread_start
 _thread_start:
 // This routine is never called directly by user code, jumped from kernel

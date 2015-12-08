@@ -42,7 +42,8 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 	linux_flags = msgflags_bsd_to_linux(flags);
 
 #ifdef __NR_socketcall
-	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_RECVMSG, socket, &lmsg, linux_flags);
+	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_RECVMSG,
+			((long[6]) { socket, &lmsg, linux_flags }));
 #else
 	ret = LINUX_SYSCALL(__NR_recvmsg, socket, &lmsg, linux_flags);
 #endif

@@ -65,14 +65,24 @@ struct mach_port_allocate_args
 
 struct mach_msg_overwrite_args
 {
-	union { void* msg; uint64_t pad; };
+#ifdef __i386__
+	void* msg;
+	uint32_t pad1;
+#else
+	void* msg;
+#endif
 	unsigned int option;
 	unsigned int send_size;
 	unsigned int recv_size;
 	unsigned int rcv_name;
 	unsigned int timeout;
 	unsigned int notify;
-	union { void* rcv_msg; uint64_t pad2; };
+#ifdef __i386__
+	void* rcv_msg;
+	uint32_t pad2;
+#else
+	void* rcv_msg;
+#endif
 	unsigned int rcv_limit;
 };
 

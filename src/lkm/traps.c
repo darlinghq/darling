@@ -491,7 +491,11 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 	debug_msg("mach_msg_overwrite_trap()");
 	
 	if (copy_from_user(&args, in_args, sizeof(args)))
+	{
+		debug_msg("!!! Cannot copy %d bytes from %p\n",
+				sizeof(args), in_args);
 		return KERN_INVALID_ADDRESS;
+	}
 	
 	if (args.option & MACH_SEND_MSG)
 	{
@@ -514,6 +518,8 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 		
 		if (copy_from_user(msg, args.msg, args.send_size))
 		{
+			debug_msg("!!! Cannot copy %d bytes from %p\n",
+				args.send_size, args.msg);
 			kfree(msg);
 			return KERN_INVALID_ADDRESS;
 		}
@@ -782,10 +788,9 @@ kern_return_t bsdthread_terminate_trap(mach_task_t* task,
 	if (PORT_IS_VALID(sem->port))
 		mach_semaphore_signal(sem->port);
 	else
-		debug_msg("Invalid semaphore %d!\n", args.signal);
+		debug_msg("Invalid semaphore %d in bsdthread_terminate_trap()!\n", args.signal);
 
 	// Deallocate stack
-	debug_msg("unmap %p, 0x%x bytes\n", args.stackaddr, args.freesize);
 	vm_munmap(args.stackaddr, args.freesize);
 
 	// Deregister thread

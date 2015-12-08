@@ -45,6 +45,7 @@ set(emulation_sources
 	unistd/getpid.c
 	unistd/lseek.c
 	unistd/ftruncate.c
+	unistd/truncate.c
 	unistd/access.c
 	unistd/readlink.c
 	unistd/symlink.c
@@ -54,6 +55,7 @@ set(emulation_sources
 	unistd/mknod.c
 	unistd/chmod.c
 	unistd/chown.c
+	unistd/lchown.c
 	unistd/umask.c
 	unistd/chroot.c
 	unistd/getgid.c

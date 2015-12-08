@@ -16,7 +16,7 @@ long sys_accept_nocancel(int fd, void* from, int* socklen)
 	struct sockaddr_fixup* fixed;
 
 #ifdef __NR_socketcall
-	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_ACCEPT, fd, from, socklen);
+	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_ACCEPT, ((long[6]) { fd, from, socklen }));
 #else
 	ret = LINUX_SYSCALL(__NR_accept, fd, from, socklen);
 #endif

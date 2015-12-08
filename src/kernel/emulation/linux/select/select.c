@@ -20,8 +20,13 @@ long sys_select_nocancel(int nfds, void* rfds, void* wfds, void* efds, struct bs
 		ltv.tv_usec = timeout->tv_usec;
 	}
 
+#ifdef __NR__newselect
+	ret = LINUX_SYSCALL(__NR__newselect, nfds, rfds, wfds, efds,
+			(timeout != NULL) ? &ltv : NULL);
+#else
 	ret = LINUX_SYSCALL(__NR_select, nfds, rfds, wfds, efds,
 			(timeout != NULL) ? &ltv : NULL);
+#endif
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
 

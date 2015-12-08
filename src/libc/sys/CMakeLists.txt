@@ -30,9 +30,9 @@ set(sys_sources chmodx_np.c
 	OpenBSD/stack_protector.c
 )
 
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
-	set(sys_sources ${sys_sources} context-stubs.c)
-endif()
+#if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
+#	set(sys_sources ${sys_sources} context-stubs.c)
+#endif()
 
 SET_SOURCE_FILES_PROPERTIES(semctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SEMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
 SET_SOURCE_FILES_PROPERTIES(shmctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SEMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")

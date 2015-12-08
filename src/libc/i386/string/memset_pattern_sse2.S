@@ -64,6 +64,7 @@
 #ifndef DARLING
 	.private_extern _memset_pattern
 #else
+	.globl _memset_pattern
 	.hidden _memset_pattern
 #endif
 _memset_pattern:

@@ -72,7 +72,7 @@
 #ifndef DARLING
 #define UNIX_SYSCALL_SYSENTER		call __sysenter_trap
 #else
-#define UNIX_SYSCALL_SYSENTER		call __darling_bsd_syscall@PLT
+#define UNIX_SYSCALL_SYSENTER		call __darling_bsd_syscall
 #endif
 
 #define UNIX_SYSCALL(name, nargs)			\
@@ -80,42 +80,47 @@
 LEAF(_##name, 0)					;\
 	movl	$ SYS_##name, %eax			;\
 	UNIX_SYSCALL_SYSENTER				;\
-	jnb	2f					;\
+	cmpl    $-4095, %eax				;\
+	jb	3f					;\
 	BRANCH_EXTERN(tramp_cerror)  			;\
-2:
+3:
 
 #define UNIX_SYSCALL_INT(name, nargs)			\
 	.globl	tramp_cerror				;\
 LEAF(_##name, 0)					;\
 	movl	$ SYS_##name, %eax			;\
 	UNIX_SYSCALL_TRAP				;\
-	jnb	2f					;\
+	cmpl    $-4095, %eax				;\
+	jb	3f					;\
 	BRANCH_EXTERN(tramp_cerror)  			;\
-2:
+3:
 
 #if defined(__SYSCALL_32BIT_ARG_BYTES) && ((__SYSCALL_32BIT_ARG_BYTES >= 4) && (__SYSCALL_32BIT_ARG_BYTES <= 20))
 #define UNIX_SYSCALL_NONAME(name, nargs, cerror)			\
 	movl	$(SYS_##name | (__SYSCALL_32BIT_ARG_BYTES << I386_SYSCALL_ARG_BYTES_SHIFT)), %eax		;\
 	UNIX_SYSCALL_SYSENTER					;\
-	jnb	2f						;\
+	cmpl    $-4095, %eax				;\
+	jb	3f						;\
 	BRANCH_EXTERN(tramp_##cerror)				;\
-2:
+3:
 #else /* __SYSCALL_32BIT_ARG_BYTES < 4 || > 20 */
 #define UNIX_SYSCALL_NONAME(name, nargs, cerror)	\
 	movl	$ SYS_##name, %eax			;\
 	UNIX_SYSCALL_SYSENTER				;\
-	jnb	2f					;\
+	cmpl    $-4095, %eax				;\
+	jb	3f					;\
 	BRANCH_EXTERN(tramp_##cerror)			;\
-2:
+3:
 #endif
 
 #define UNIX_SYSCALL_INT_NONAME(name, nargs)		\
 	.globl	tramp_cerror_nocancel			;\
 	movl	$ SYS_##name, %eax			;\
 	UNIX_SYSCALL_TRAP				;\
-	jnb	2f					;\
+	cmpl    $-4095, %eax				;\
+	jb	3f					;\
 	BRANCH_EXTERN(tramp_cerror_nocancel) 		;\
-2:
+3:
 
 #define PSEUDO(pseudo, name, nargs, cerror)	\
 LEAF(pseudo, 0)					;\
@@ -149,19 +154,21 @@ LEAF(pseudo, 0)					;\
 LEAF(name, 0)								;\
 	movl	$ SYS_##name, %eax			;\
 	call __darling_bsd_syscall@PLT							;\
-	jnb		2f							;\
+	cmpl    $-4095, %eax				;\
+	jb		3f							;\
 	movq	%rax, %rdi							;\
 	BRANCH_EXTERN(cerror)							;\
-2:
+3:
 
 #define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
 	.globl	cerror								;\
 	movl	$ SYS_##name, %eax			;\
 	call __darling_bsd_syscall@PLT							;\
-	jnb		2f							;\
+	cmpl    $-4095, %eax				;\
+	jb		3f							;\
 	movq	%rax, %rdi							;\
 	BRANCH_EXTERN(cerror)						;\
-2:
+3:
 
 
 #else

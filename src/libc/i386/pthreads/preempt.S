@@ -38,7 +38,12 @@
  * Destroys %eax, %ecx, and %edx.
  */
 	.align	4
+#ifndef DARLING
 	.private_extern _preempt
+#else
+	.globl _preempt
+	.hidden _preempt
+#endif
 _preempt:
 	popl	%edx		// get return address
 	movl	%esp,%ecx	// save stack ptr here
@@ -56,7 +61,12 @@ _preempt:
  */
 
 	.align 	4
+#ifndef DARLING
 	.private_extern _backoff
+#else
+	.globl _backoff
+	.hidden _backoff
+#endif
 _backoff:
 	testl	%ebx,%ebx	// does kernel want to preempt us?
 	jz	1f		// no

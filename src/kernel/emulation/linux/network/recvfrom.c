@@ -22,8 +22,8 @@ long sys_recvfrom_nocancel(int fd, void* buf, unsigned long len,
 	linux_flags = msgflags_bsd_to_linux(flags);
 
 #ifdef __NR_socketcall
-	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_RECVFROM, fd, buf, len,
-			flags, from, socklen);
+	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_RECVFROM, ((long[6]) { fd, buf, len,
+			flags, from, socklen }));
 #else
 	ret = LINUX_SYSCALL(__NR_connect, fd, buf, len, flags, from, socklen);
 #endif

@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
  *
@@ -24,8 +25,13 @@
 #include <machine/cpu_capabilities.h>
 #include <architecture/i386/asm_help.h>
 
+#ifdef DARLING
+#	define _preempt preempt
+#	define _commpage_pfz_base commpage_pfz_base
+#endif
+
 	.text
-	.align	2
+	.align	(1<<2)
 	.globl	__commpage_pthread_mutex_lock
 __commpage_pthread_mutex_lock:
 	pushl	%ebp			    // set up frame for backtrace

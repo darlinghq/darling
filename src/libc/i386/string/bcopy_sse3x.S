@@ -1,3 +1,4 @@
+// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
  *
@@ -28,6 +29,10 @@
 
 #include <machine/cpu_capabilities.h>
 #include <platfunc.h>
+
+#ifdef DARLING
+#	define _longcopy longcopy
+#endif
 
 /*
  * The bcopy/memcpy loops, tuned for Pentium-M class processors with
