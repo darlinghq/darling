@@ -244,8 +244,10 @@ __inline__ static void *
 _pthread_getspecific_direct(unsigned long slot)
 {
 	void *ret;
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 	__asm__("mov %%gs:%1, %0" : "=r" (ret) : "m" (*(void **)(slot * sizeof(void *))));
+#elif defined(__i386__)
+	__asm__("mov %%fs:%1, %0" : "=r" (ret) : "m" (*(void **)(slot * sizeof(void *))));
 #elif (defined(__arm__) && (defined(_ARM_ARCH_6) || defined(_ARM_ARCH_5))) 
 	void **__pthread_tsd;
 #if defined(__arm__) && defined(_ARM_ARCH_6)
@@ -269,9 +271,9 @@ _pthread_setspecific_direct(unsigned long slot, void * val)
 {
 #if defined(__i386__)
 #if defined(__PIC__)
-	__asm__("movl %1,%%gs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "rn" (val));
+	__asm__("movl %1,%%fs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "rn" (val));
 #else
-	__asm__("movl %1,%%gs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "ri" (val));
+	__asm__("movl %1,%%fs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "ri" (val));
 #endif
 #elif defined(__x86_64__)
 	/* PIC is free and cannot be disabled, even with: gcc -mdynamic-no-pic ... */

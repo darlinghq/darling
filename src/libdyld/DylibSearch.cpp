@@ -78,7 +78,7 @@ std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
 			p = LIB_PATH;
 			p += '/';
 			p += aliasTarget;
-			std::cout << p << std::endl;
+			// std::cout << p << std::endl;
 		}
 		
 		return p;
