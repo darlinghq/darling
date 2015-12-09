@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 #include <string>
 #include <atomic>
+#include "dyld_priv.h"
 
 namespace Darling {
 
@@ -27,6 +28,9 @@ public:
 	// Absolute path to this object
 	virtual const std::string& path() const = 0;
 
+	// Minimum address loaded by this object
+	virtual void* baseAddress() const = 0;
+
 	// Stuf to do when libsystem's exit() is called
 	virtual void atExit() {};
 	
@@ -47,11 +51,15 @@ public:
 	inline bool noDelete() const { return m_noDelete; }
 	
 	static LoadableObject* instantiateForPath(const std::string& path, MachOObject* requester, int flag = 0);
-	
+
+	inline dyld_image_states state() const { return m_state; }
+protected:
+	void transitionState(dyld_image_states newState);
 protected:
 	std::atomic<int> m_refs;
 	bool m_globalExports = true;
 	bool m_bindAllAtLoad = false, m_noDelete = false;
+	dyld_image_states m_state;
 };
 
 } // namespace Darling

@@ -143,9 +143,11 @@ void MachOObject::load()
 	}
 	
 	loadSegments();
+	transitionState(dyld_image_state_mapped);
 	
 	if (m_slide > 0)
 		rebase();
+	transitionState(dyld_image_state_rebased);
 	
 	readSymbols();
 	readExports();
@@ -156,6 +158,8 @@ void MachOObject::load()
 	
 	performRelocations();
 	performBinds();
+	transitionState(dyld_image_state_bound);
+	transitionState(dyld_image_state_dependents_initialized);
 	
 	registerEHSection();
 	
@@ -168,6 +172,8 @@ void MachOObject::load()
 	
 	MachOMgr::instance()->notifyAdd(this);
 	runInitializers();
+
+	transitionState(dyld_image_state_initialized);
 	
 	m_file->closeFd();
 	
@@ -195,6 +201,7 @@ void MachOObject::unload()
 		dep->delRef();
 	
 	m_dependencies.clear();
+	transitionState(dyld_image_state_terminated);
 }
 
 bool MachOObject::isLoaded() const

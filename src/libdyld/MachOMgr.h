@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <algorithm>
 #include <util/rwmutex.h>
 #if defined(__i386__) || defined(__x86_64__)
 #	include "UndefinedFunction.h"
@@ -119,6 +120,7 @@ public:
 	
 	inline size_t objectCount() const { return m_objectsInOrder.size(); }
 	MachOObject* objectByIndex(size_t index);
+	template<typename Func> void iterateObjects(Func f) { std::for_each(m_objectsInOrder.begin(), m_objectsInOrder.end(), f); }
 	MachOObject* objectByHeader(struct mach_header* hdr);
 
 	NativeObject* objectByNativeRef(void* nativeRef);

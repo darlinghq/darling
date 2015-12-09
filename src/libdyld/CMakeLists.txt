@@ -27,6 +27,7 @@ set(dyld_SRCS
 	eh/BufReader.cpp
 	eh/EHSection.cpp
 	dyld_public.cpp
+	dyld_priv.cpp
 	dl_public.cpp
 	binfmt_misc.cpp
 	

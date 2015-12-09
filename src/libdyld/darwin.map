@@ -21,6 +21,9 @@ DARWIN {
 		_dyld_get_image_slide;
 		_dyld_get_image_name;
 		getsectdata;
+		getsectiondata;
+		getsegmentdata;
+		dyld_register_image_state_change_handler;
 		_dyld_register_func_for_add_image;
 		_dyld_register_func_for_remove_image;
 		_dyld_deregister_func_for_add_image;

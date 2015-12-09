@@ -70,7 +70,19 @@ std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
 	
 	// Search in configuration
 	if (const char* aliasTarget = resolveAlias(dylib))
-		return aliasTarget;
+	{
+		std::string p;
+		
+		if (!strchr(aliasTarget, '/'))
+		{
+			p = LIB_PATH;
+			p += '/';
+			p += aliasTarget;
+			std::cout << p << std::endl;
+		}
+		
+		return p;
+	}
 	
 	// Search in extra paths
 	std::string epath;

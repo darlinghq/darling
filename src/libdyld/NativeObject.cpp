@@ -26,6 +26,7 @@ NativeObject::NativeObject(void* nativeRef, const std::string& name)
 void NativeObject::load()
 {
 	int flags = 0;
+	struct link_map* lm;
 
 	flags |= globalExports() ? RTLD_GLOBAL : RTLD_LOCAL;
 	//flags |= bindAllAtLoad() ? RTLD_NOW : RTLD_LAZY;
@@ -53,6 +54,16 @@ void NativeObject::load()
 		
 		MachOMgr::instance()->add(this);
 	}
+
+	if (::dlinfo(m_nativeRef, RTLD_DI_LINKMAP, &lm) == 0)
+		m_baseAddress = (void*) lm->l_addr;
+
+	transitionState(dyld_image_state_mapped);
+	transitionState(dyld_image_state_dependents_mapped);
+	transitionState(dyld_image_state_rebased);
+	transitionState(dyld_image_state_bound);
+	transitionState(dyld_image_state_dependents_initialized);
+	transitionState(dyld_image_state_initialized);
 }
 
 void NativeObject::unload()
@@ -64,6 +75,8 @@ void NativeObject::unload()
 		if (m_path.find('/') != std::string::npos)
 			::dlclose(m_nativeRef);
 	}
+
+	transitionState(dyld_image_state_terminated);
 }
 
 void NativeObject::updateName()
@@ -101,15 +114,20 @@ void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWea
 
 	name = symbolName;
 
-	if (std::regex_match(name, match, g_reObjcSymbol))
+/*	if (std::regex_match(name, match, g_reObjcSymbol))
 		name = match.format("_$1$2");
 	else if (std::regex_match(name, match, g_reObjcEhSymbol))
 	{
 		static long dummy = 0;
 		return &dummy;
-	}
+	}*/
 
-	return ::dlvsym(m_nativeRef, name.c_str(), "DARWIN");
+	addr = ::dlvsym(m_nativeRef, name.c_str(), "DARWIN");
+	
+	// if (!addr)
+	// 	std::cerr << "Cannot find " << name << " in " << path() << std::endl;
+	
+	return addr;
 }
 
 bool NativeObject::findSymbolInfo(const void* addr, Dl_info* p) const
@@ -125,6 +143,22 @@ const char* NativeObject::name() const
 const std::string& NativeObject::path() const
 {
 	return m_path;
+}
+
+void* NativeObject::baseAddress() const
+{
+	return m_baseAddress;
+}
+
+// static int dl_cb(struct dl_phdr_info *info, void* data)
+// {
+// 	return 0;
+// }
+
+void* NativeObject::getSection(const std::string& segmentName, const std::string& sectionName, uintptr_t* sectionSize)
+{
+	// dl_iterate_phdr(dl_cb, nullptr);
+	return nullptr;
 }
 
 } // namespace Darling

@@ -41,7 +41,7 @@ public:
 	void* maxAddress() const;
 	
 	// minimum address mapped by this object
-	void* baseAddress() const { return m_base; }
+	virtual void* baseAddress() const override { return m_base; }
 	
 	// The difference between addresses in the MachO file and actually mapped addresses.
 	// For libraries, slide() == baseAddress()
@@ -88,7 +88,7 @@ public:
 	void* getSection(const std::string& segmentName, const std::string& sectionName, uintptr_t* sectionSize = nullptr);
 	
 	// Returns the header of the Mach-O object
-	inline struct ::mach_header* getMachHeader() { return &m_header; }
+	inline struct ::mach_header* getMachHeader() { return (struct ::mach_header*) baseAddress(); }
 
 	// For RTLD_FIRST implementation, not useful outside of dl_public
 	inline void setNoRecursion(bool noRecursion) { m_noRecursion = noRecursion; }

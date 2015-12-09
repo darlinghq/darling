@@ -45,4 +45,9 @@ LoadableObject* LoadableObject::instantiateForPath(const std::string& path, Mach
 	}
 }
 
+void LoadableObject::transitionState(dyld_image_states newState)
+{
+	m_state = newState;
+}
+
 } // namespace Darling

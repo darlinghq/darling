@@ -48,7 +48,9 @@ intptr_t _dyld_get_image_slide(const struct mach_header* mh);
 const char* _dyld_get_image_name(uint32_t image_index);
 void* dyld_stub_binder_fixup(Darling::MachOObject** obj, uintptr_t lazyOffset);
 
-char* getsectdata(const struct mach_header* header, const char* segname, const char* sectname, unsigned long* size);
+char* getsectdata(const char* segname, const char* sectname, unsigned long* size);
+uint8_t *getsectiondata(const struct mach_header *mhp, const char *segname, const char *sectname, unsigned long *size);
+uint8_t *getsegmentdata(const struct mach_header *mhp, const char *segname, unsigned long *size);
 
 void _dyld_register_func_for_add_image(Darling::MachOMgr::LoaderHookFunc* func);
 void _dyld_register_func_for_remove_image(Darling::MachOMgr::LoaderHookFunc* func);

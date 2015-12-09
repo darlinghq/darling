@@ -20,11 +20,14 @@ public:
 	virtual const std::string& path() const override;
 
 	inline void* nativeRef() { return m_nativeRef; }
+	virtual void* baseAddress() const override;
+	void* getSection(const std::string& segmentName, const std::string& sectionName, uintptr_t* sectionSize = nullptr);
 private:
 	void updateName();
 private:
 	mutable void* m_nativeRef;
 	std::string m_name, m_path;
+	void* m_baseAddress = nullptr;
 };
 
 } // namespace Darling

@@ -28,6 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <link.h>
 #include <stddef.h>
+#include <sys/mman.h>
 #include "../util/log.h"
 #include "../util/leb.h"
 
@@ -61,11 +62,60 @@ const char* _dyld_get_image_name(uint32_t image_index)
 	return MachOMgr::instance()->objectByIndex(image_index)->path().c_str();
 }
 
-char* getsectdata(const struct mach_header* header, const char* segname, const char* sectname, unsigned long* size)
+#if 0
+struct sectdata
+{
+	char* data;
+	unsigned long* size;
+	void* addr;
+	const char* segname;
+	const char* sectname;
+};
+
+static int gsd_cb(struct dl_phdr_info *info, size_t size, void* data)
+{
+	ElfW(Ehdr)* ehdr;
+	ElfW(Shdr)* shdr;
+	ElfW(Shdr)* shdr_strtab;
+	sectdata* d = (sectdata*) data;
+	const char* sh_strtab;
+	std::string fullname;
+
+	ehdr = (ElfW(Ehdr)*) info->dlpi_addr;
+	if (d->addr != ehdr || d->data)
+		return 0;
+
+	shdr = (ElfW(Shdr) *)(info->dlpi_addr + ehdr->e_shoff);
+	
+	::mprotect((void*) (uintptr_t(shdr) & ~(4095)), 4096*2, PROT_READ);
+
+	sh_strtab = (const char*) &shdr[ehdr->e_shstrndx];
+
+	fullname = d->segname;
+	fullname += ' ';
+	fullname += d->sectname;
+
+	for (int i = 0; i < ehdr->e_shnum; i++)
+	{
+		const char* sectname;
+		sectname = sh_strtab + shdr[i].sh_name;
+
+		if (fullname == sectname)
+		{
+			*d->size = shdr[i].sh_size;
+			d->data = (char*) (shdr[i].sh_addr + info->dlpi_addr);
+			break;
+		}
+	}
+	return 0;
+}
+#endif
+
+uint8_t* getsectiondata(const struct mach_header* header, const char* segname, const char* sectname, unsigned long* size)
 {
 	MachOObject* obj = MachOMgr::instance()->objectByHeader((mach_header*) header);
 
-	if (!obj || !sectname)
+	if (!sectname)
 	{
 		if (size)
 			*size = 0;
@@ -74,7 +124,35 @@ char* getsectdata(const struct mach_header* header, const char* segname, const c
 	if (!segname)
 		segname = "";
 
-	return (char*) obj->getSection(segname, sectname, (uintptr_t*) size);
+	if (!obj)
+	{
+#if 0
+		sectdata d;
+
+		d.data = nullptr;
+		d.size = size;
+		d.addr = (void*) header;
+		d.segname = segname;
+		d.sectname = sectname;
+
+		dl_iterate_phdr(gsd_cb, &d);
+		return (uint8_t*) d.data;
+#endif
+		return nullptr;
+	}
+
+	return (uint8_t*) obj->getSection(segname, sectname, (uintptr_t*) size);
+}
+
+char* getsectdata(const char* segname, const char* sectname, unsigned long* size)
+{
+	return (char*) getsectiondata((mach_header*) MachOMgr::instance()->mainModule()->baseAddress(),
+			segname, sectname, size);
+}
+
+uint8_t *getsegmentdata(const struct mach_header *mhp, const char *segname, unsigned long *size)
+{
+	return nullptr;
 }
 
 void _dyld_register_func_for_add_image(MachOMgr::LoaderHookFunc* func)

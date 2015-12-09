@@ -186,7 +186,9 @@ void MachOMgr::remove(MachOObject* obj)
 void MachOMgr::add(NativeObject* obj)
 {
 	LOG << "MachOMgr::add: "  << obj << " - " << obj->name() << std::endl;
+	m_objectNames[obj->path()] = obj;
 	m_loadablesInOrder.push_back(obj);
+	// m_objectHeaders[(struct mach_header*) obj->baseAddress()] = obj;
 	m_nativeRefToObject[obj->nativeRef()] = obj;
 }
 
@@ -196,6 +198,10 @@ void MachOMgr::remove(NativeObject* obj)
 	auto it = std::find(m_loadablesInOrder.begin(), m_loadablesInOrder.end(), obj);
 	if (it != m_loadablesInOrder.end())
 		m_loadablesInOrder.erase(it);
+	//auto it2 = m_objectHeaders.find(obj->baseAddress());
+	//if (it2 != m_objectHeaders.end())
+	//	m_objectHeaders.erase(it2);
+	m_objectNames.erase(obj->path());
 	m_nativeRefToObject.erase(obj->nativeRef());
 }
 
