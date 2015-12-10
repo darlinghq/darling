@@ -102,10 +102,14 @@ std::string MachOObject::expandLoaderPath(std::string path, MachOObject* loader)
 {
 	char* p;
 	path.replace(0, 12, loader->directory());
+
 	p = realpath(path.c_str(), nullptr);
-			
-	path = p;
-	free(p);
+	
+	if (p != nullptr)
+	{
+		path = p;
+		free(p);
+	}
 
 	return path;
 }
