@@ -66,6 +66,7 @@ set(emulation_sources
 	unistd/setpgid.c
 	unistd/setgroups.c
 	unistd/getgroups.c
+	unistd/pipe.c
 	select/select.c
 	select/poll.c
 	process/vfork.c
@@ -73,6 +74,7 @@ set(emulation_sources
 	process/wait4.c
 	process/waitid.c
 	process/execve.c
+	process/posix_spawn.c
 	signal/duct_signals.c
 	signal/kill.c
 	signal/sigaltstack.c

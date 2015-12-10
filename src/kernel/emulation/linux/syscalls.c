@@ -50,6 +50,7 @@
 #include "unistd/setpgid.h"
 #include "unistd/getgroups.h"
 #include "unistd/setgroups.h"
+#include "unistd/pipe.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -96,6 +97,7 @@
 #include "time/futimes.h"
 #include "process/vfork.h"
 #include "process/fork.h"
+#include "process/posix_spawn.h"
 #include "bsdthread/bsdthread_register.h"
 #include "bsdthread/bsdthread_create.h"
 #include "bsdthread/bsdthread_terminate.h"
@@ -147,6 +149,7 @@ void* __bsd_syscall_table[512] = {
 	[37] = sys_kill,
 	[39] = sys_getppid,
 	[41] = sys_dup,
+	[42] = sys_pipe,
 	[43] = sys_getegid,
 	[46] = sys_sigaction,
 	[47] = sys_getgid,
@@ -231,8 +234,10 @@ void* __bsd_syscall_table[512] = {
 	[239] = sys_fremovexattr,
 	[240] = sys_listxattr,
 	[241] = sys_flistxattr,
+	[244] = sys_posix_spawn,
 	[301] = sys_psynch_mutexwait,
 	[302] = sys_psynch_mutexdrop,
+	[329] = sys_sigprocmask, // __pthread_sigmask
 	[331] = sys_disable_threadsignal,
 	[334] = sys_semwait_signal,
 	[336] = sys_proc_info,
