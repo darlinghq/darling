@@ -19,7 +19,13 @@ set(regex_sources
 	TRE/lib/tre-stack.c
 )
 
-#SET_SOURCE_FILES_PROPERTIES(FreeBSD/snprintf.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS}")
+SET_SOURCE_FILES_PROPERTIES(TRE/lib/regcomp.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_REGCOMP")
 
 add_library(libc-regex OBJECT ${regex_sources})
 
+# Legacy variant
+set(regex-legacy_sources
+	TRE/lib/regcomp.c)
+add_library(libc-regex_legacy OBJECT ${regex-legacy_sources})
+SET_TARGET_PROPERTIES(libc-regex_legacy PROPERTIES COMPILE_FLAGS
+	"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")

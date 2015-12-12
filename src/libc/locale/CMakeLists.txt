@@ -73,8 +73,16 @@ set(locale_sources ${locale_sources}
 	FreeBSD/wctype.c
 	FreeBSD/wcwidth.c
 )
+SET_SOURCE_FILES_PROPERTIES(FreeBSD/wcsftime.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_WCSFTIME -DLIBC_ALIAS_WCSFTIME_L")
 
 add_library(libc-locale OBJECT ${locale_sources})
+
+# Legacy variant
+set(locale-legacy_sources
+	FreeBSD/wcsftime.c)
+add_library(libc-locale_legacy OBJECT ${locale-legacy_sources})
+SET_TARGET_PROPERTIES(libc-locale_legacy PROPERTIES COMPILE_FLAGS
+	"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
 
 install(DIRECTORY locale DESTINATION share/darling)
 

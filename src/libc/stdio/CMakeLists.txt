@@ -107,17 +107,35 @@ set(stdio_sources
 	FreeBSD/wsetup.c
 )
 
-# SET_SOURCE_FILES_PROPERTIES(FreeBSD/fopen.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DVARIANT_DARWINEXTSN")
+set_source_files_properties(FreeBSD/fopen.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_FOPEN")
+set_source_files_properties(FreeBSD/fdopen.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_FDOPEN")
+set_source_files_properties(FreeBSD/fputs.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_FPUTS")
+set_source_files_properties(FreeBSD/freopen.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_FREOPEN")
+set_source_files_properties(FreeBSD/fwrite.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_FWRITE")
+set_source_files_properties(FreeBSD/tempnam.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_TEMPNAM")
 
 add_library(libc-stdio OBJECT ${stdio_sources})
-SET_TARGET_PROPERTIES(libc-stdio PROPERTIES COMPILE_DEFINITIONS "VARIANT_DARWINEXTSN")
+#SET_TARGET_PROPERTIES(libc-stdio PROPERTIES COMPILE_DEFINITIONS "VARIANT_DARWINEXTSN")
 
 # ***
 # Legacy variants
 # ***
 
-set(stdio-legacy_sources FreeBSD/fopen.c FreeBSD/fdopen.c)
+set(stdio-legacy_sources
+	 FreeBSD/fopen.c FreeBSD/fdopen.c
+	FreeBSD/fputs.c FreeBSD/tempnam.c
+	FreeBSD/freopen.c FreeBSD/fwrite.c)
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE")
 add_library(libc-stdio_legacy OBJECT ${stdio-legacy_sources})
 SET_TARGET_PROPERTIES(libc-stdio_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+
+# ***
+# DARWIN_EXTSN variants
+# ***
+
+set(stdio-extsn_sources FreeBSD/fopen.c FreeBSD/fdopen.c)
+add_library(libc-stdio_extsn OBJECT ${stdio-extsn_sources})
+SET_TARGET_PROPERTIES(libc-stdio_extsn PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_DARWINEXTSN")
+
 

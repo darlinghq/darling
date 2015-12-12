@@ -22,7 +22,7 @@ add_definitions("'-D__warn_references(name,warning)='")
 add_definitions(-Ddladdr=__darwin_dladdr)
 add_definitions(-DBUILDING_LIBC)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w ")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0") # development flags
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map -Bsymbolic-functions")
@@ -65,6 +65,17 @@ add_subdirectory(threads)
 # The following generate libc-hwplat
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
 	add_subdirectory(i386)
+	set(extra_objs
+		$<TARGET_OBJECTS:libc-stdio_legacy>
+		$<TARGET_OBJECTS:libc-gen_legacy>
+		$<TARGET_OBJECTS:libc-compat_legacy>
+		$<TARGET_OBJECTS:libc-stdlib_legacy>
+		$<TARGET_OBJECTS:libc-stdtime_legacy>
+		$<TARGET_OBJECTS:libc-string_legacy>
+		$<TARGET_OBJECTS:libc-gdtoa_legacy>
+		$<TARGET_OBJECTS:libc-regex_legacy>
+		$<TARGET_OBJECTS:libc-locale_legacy>
+	)
 endif()
 
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
@@ -86,6 +97,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-gen>
 	$<TARGET_OBJECTS:libc-gen_cancelable>
 	$<TARGET_OBJECTS:libc-gen_noinode64>
+	$<TARGET_OBJECTS:libc-gen_extsn>
 	$<TARGET_OBJECTS:libc-gmon>
 	$<TARGET_OBJECTS:libc-uuid>
 	$<TARGET_OBJECTS:libc-util>
@@ -96,7 +108,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-stdlib>
 	$<TARGET_OBJECTS:libc-stdlib_cancelable>
 	$<TARGET_OBJECTS:libc-stdio>
-	$<TARGET_OBJECTS:libc-stdio_legacy>
+	$<TARGET_OBJECTS:libc-stdio_extsn>
 	$<TARGET_OBJECTS:libc-secure>
 	$<TARGET_OBJECTS:libc-regex>
 	$<TARGET_OBJECTS:libc-pthreads>
@@ -109,7 +121,8 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-hwplat>
 	$<TARGET_OBJECTS:libc-threads>
 	$<TARGET_OBJECTS:kqueue>
-	$<TARGET_OBJECTS:libc-darwin>)
+	$<TARGET_OBJECTS:libc-darwin>
+	${extra_objs})
 target_link_libraries(system_c system_kernel system_m)
 
 install(TARGETS system_c DESTINATION lib${SUFFIX}/darling)

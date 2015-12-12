@@ -85,4 +85,13 @@ set(string_sources ${string_sources}
 	FreeBSD/wmemset.c
 )
 
+SET_SOURCE_FILES_PROPERTIES(FreeBSD/strerror.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRERROR")
+
 add_library(libc-string OBJECT ${string_sources})
+
+# Legacy variant
+set(string-legacy_sources
+	FreeBSD/strerror.c)
+add_library(libc-string_legacy OBJECT ${string-legacy_sources})
+SET_TARGET_PROPERTIES(libc-string_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+

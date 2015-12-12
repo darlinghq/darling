@@ -18,4 +18,17 @@ set(stdtime_sources ${stdtime_sources}
 	FreeBSD/timelocal.c
 )
 
+SET_SOURCE_FILES_PROPERTIES(FreeBSD/localtime.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_MKTIME")
+SET_SOURCE_FILES_PROPERTIES(FreeBSD/strftime.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRFTIME -DLIBC_ALIAS_STRFTIME_L")
+SET_SOURCE_FILES_PROPERTIES(FreeBSD/strptime.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRPTIME -DLIBC_ALIAS_STRPTIME_L")
+
 add_library(libc-stdtime OBJECT ${stdtime_sources})
+
+# Legacy variant
+set(stdtime-legacy_sources
+	FreeBSD/localtime.c
+	FreeBSD/strftime.c
+	FreeBSD/strptime.c)
+add_library(libc-stdtime_legacy OBJECT ${stdtime-legacy_sources})
+SET_TARGET_PROPERTIES(libc-stdtime_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+

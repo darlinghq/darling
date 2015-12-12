@@ -34,4 +34,17 @@ set(gdtoa_sources ${gdtoa_sources}
 	#FreeBSD/machdep_ldisQ.c
 	FreeBSD/machdep_ldisx.c)
 
+#SET_SOURCE_FILES_PROPERTIES(FreeBSD/gdtoa-strtod.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRTOD -DLIBC_ALIAS_STRTOD_L")
+#SET_SOURCE_FILES_PROPERTIES(FreeBSD/gdtoa-strtof.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRTOF -DLIBC_ALIAS_STRTOF_L")
+
 add_library(libc-gdtoa OBJECT ${gdtoa_sources})
+
+# Legacy variant
+set(gdtoa-legacy_sources
+	FreeBSD/gdtoa-strtod.c
+	FreeBSD/gdtoa-strtodg.c
+	FreeBSD/gdtoa-strtof.c)
+add_library(libc-gdtoa_legacy OBJECT ${gdtoa-legacy_sources})
+SET_TARGET_PROPERTIES(libc-gdtoa_legacy PROPERTIES COMPILE_FLAGS
+	"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
+
