@@ -18,6 +18,10 @@ add_definitions(-DPRIVATE -D__DARWIN_C_LEVEL=20150101)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
 #add_definitions(-DKERNEL)
 
+if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
+	add_definitions(-DNO_SYSCALL_LEGACY)
+endif (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
+
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
 set(MIG_USER_HEADER_SUFFIX "_internal.h")
@@ -36,6 +40,32 @@ mig(mach/processor.defs)
 mig(mach/task.defs)
 mig(mach/thread_act.defs)
 mig(mach/vm_map.defs)
+
+set(syscall_legacy_sources
+	wrappers/legacy/accept.c
+	wrappers/legacy/bind.c
+	wrappers/legacy/connect.c
+	wrappers/legacy/getattrlist.c
+	wrappers/legacy/getaudit.c
+	wrappers/legacy/getpeername.c
+	wrappers/legacy/getsockname.c
+	wrappers/legacy/kill.c
+	wrappers/legacy/lchown.c
+	wrappers/legacy/listen.c
+	wrappers/legacy/mprotect.c
+	wrappers/legacy/msync.c
+	wrappers/legacy/munmap.c
+	wrappers/legacy/open.c
+	wrappers/legacy/recvfrom.c
+	wrappers/legacy/recvmsg.c
+	#wrappers/legacy/select.c
+	#wrappers/legacy/select-pre1050.c
+	wrappers/legacy/sendmsg.c
+	wrappers/legacy/sendto.c
+	wrappers/legacy/setattrlist.c
+	wrappers/legacy/sigsuspend.c
+	wrappers/legacy/socketpair.c
+	)
 
 set(syscall_sources
 	wrappers/libproc/libproc.c
@@ -85,29 +115,7 @@ set(syscall_sources
 	wrappers/unix03/munmap.c
 	wrappers/unix03/setrlimit.c
 	
-	#wrappers/legacy/accept.c
-	#wrappers/legacy/bind.c
-	#wrappers/legacy/connect.c
-	#wrappers/legacy/getattrlist.c
-	#wrappers/legacy/getaudit.c
-	#wrappers/legacy/getpeername.c
-	#wrappers/legacy/getsockname.c
-	#wrappers/legacy/kill.c
-	#wrappers/legacy/lchown.c
-	#wrappers/legacy/listen.c
-	#wrappers/legacy/mprotect.c
-	#wrappers/legacy/msync.c
-	#wrappers/legacy/munmap.c
-	#wrappers/legacy/open.c
-	#wrappers/legacy/recvfrom.c
-	#wrappers/legacy/recvmsg.c
-	#wrappers/legacy/select.c
-	#wrappers/legacy/select-pre1050.c
-	#wrappers/legacy/sendmsg.c
-	#wrappers/legacy/sendto.c
-	#wrappers/legacy/setattrlist.c
-	#wrappers/legacy/sigsuspend.c
-	#wrappers/legacy/socketpair.c
+	${syscall_legacy_sources}
 
 	custom/errno.c
 	custom/var_errno.c
@@ -965,4 +973,16 @@ set_source_files_properties(wrappers/legacy/select.c PROPERTIES COMPILE_FLAGS "-
 #set_source_files_properties(wrappers/cancelable/select-cancel.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
 set_source_files_properties(wrappers/cancelable/select.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
 
+foreach (file IN ITEMS ${syscall_legacy_sources})
+	set_source_files_properties(${file} PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE -U__DARWIN_UNIX03")
+endforeach(file)
+
 add_library(libsyscall OBJECT ${syscall_sources})
+
+# For i386
+add_library(libsyscall_legacy_extra OBJECT wrappers/legacy/select.c)
+set_target_properties(libsyscall_legacy_extra PROPERTIES COMPILE_FLAGS
+	"${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE -U__DARWIN_UNIX03")
+
+
+

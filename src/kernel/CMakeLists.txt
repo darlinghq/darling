@@ -34,10 +34,15 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
+	set (extra_objs $<TARGET_OBJECTS:libsyscall_legacy_extra>)
+endif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
+
 add_library(system_kernel SHARED
 	$<TARGET_OBJECTS:libsyscall>
 	#$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:emulation>
+	${extra_objs}
 	$<TARGET_OBJECTS:mach_server_client>)
 target_link_libraries(system_kernel system_duct)
 
