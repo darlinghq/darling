@@ -65,6 +65,8 @@ add_subdirectory(threads)
 # The following generate libc-hwplat
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
 	add_subdirectory(i386)
+
+	# Pre-UNIX2003 variants
 	set(extra_objs
 		$<TARGET_OBJECTS:libc-stdio_legacy>
 		$<TARGET_OBJECTS:libc-gen_legacy>
@@ -75,6 +77,7 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
 		$<TARGET_OBJECTS:libc-gdtoa_legacy>
 		$<TARGET_OBJECTS:libc-regex_legacy>
 		$<TARGET_OBJECTS:libc-locale_legacy>
+		$<TARGET_OBJECTS:libc-pthreads_legacy>
 	)
 endif()
 
