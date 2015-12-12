@@ -12,6 +12,8 @@
 #include <limits.h>
 #include "../ext/sys/utsname.h"
 #include "../ext/syslog.h"
+#include "darling-config.h"
+#include <util/IniConfig.h>
 
 static long sysctl_name_to_oid(const char* name, int* oid_name,
 		unsigned long* oid_len);
@@ -37,6 +39,8 @@ enum {
 };
 
 static struct linux_utsname lu;
+static iniconfig_t version_conf = NULL;
+static inivalmap_t version_conf_sect = NULL;
 static void copyout_string(const char* str, char* out, unsigned long* out_len);
 static void need_uname(void);
 
@@ -188,17 +192,41 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 		switch (name[1])
 		{
 			case KERN_OSTYPE:
-				copyout_string(lu.sysname, (char*) old, oldlen);
+			{
+				const char* s = NULL;
+				if (version_conf_sect != NULL)
+					s = iniconfig_valmap_get(version_conf_sect, "sysname");
+				if (s == NULL)
+					s = lu.sysname;
+
+				copyout_string(s, (char*) old, oldlen);
 				return 0;
+			}
 			case KERN_HOSTNAME:
 				copyout_string(lu.nodename, (char*) old, oldlen);
 				return 0;
 			case KERN_OSRELEASE:
-				copyout_string(lu.release, (char*) old, oldlen);
+			{
+				const char* s = NULL;
+				if (version_conf_sect != NULL)
+					s = iniconfig_valmap_get(version_conf_sect, "release");
+				if (s == NULL)
+					s = lu.release;
+
+				copyout_string(s, (char*) old, oldlen);
 				return 0;
+			}
 			case KERN_VERSION:
-				copyout_string(lu.version, (char*) old, oldlen);
+			{
+				const char* s = NULL;
+				if (version_conf_sect != NULL)
+					s = iniconfig_valmap_get(version_conf_sect, "version");
+				if (s == NULL)
+					s = lu.version;
+
+				copyout_string(s, (char*) old, oldlen);
 				return 0;
+			}
 			case KERN_DOMAINNAME:
 				copyout_string(lu.domainname, (char*) old, oldlen);
 				return 0;
@@ -214,6 +242,9 @@ static void need_uname(void)
 	if (!lu.sysname[0])
 	{
 		__linux_uname(&lu);
+		version_conf = iniconfig_load(ETC_DARLING_PATH "/version.conf");
+		if (version_conf != NULL)
+			version_conf_sect = iniconfig_getsection(version_conf, "uname");
 	}
 }
 

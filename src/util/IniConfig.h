@@ -1,5 +1,8 @@
 #ifndef UTIL_INICONFIG_H
 #define UTIL_INICONFIG_H
+
+#ifdef __cplusplus
+
 #include <map>
 #include <string>
 #include <vector>
@@ -25,6 +28,25 @@ protected:
 private:
 	SectionMap m_sections;
 };
+
+typedef IniConfig* iniconfig_t;
+typedef const IniConfig::ValueMap* inivalmap_t;
+extern "C" {
+#else
+
+typedef struct __iniconfig* iniconfig_t;
+typedef struct __inivalmap* inivalmap_t;
+
+#endif
+
+iniconfig_t iniconfig_load(const char* path);
+void iniconfig_free(iniconfig_t config);
+inivalmap_t iniconfig_getsection(iniconfig_t config, const char* section);
+const char* iniconfig_valmap_get(inivalmap_t map, const char* key);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
