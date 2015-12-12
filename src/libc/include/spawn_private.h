@@ -32,15 +32,25 @@
 int     posix_spawnattr_getpcontrol_np(const posix_spawnattr_t * __restrict, int * __restrict) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 int     posix_spawnattr_setpcontrol_np(posix_spawnattr_t *, const int) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 
-int     posix_spawnattr_getapptype_np(const posix_spawnattr_t * __restrict, int * __restrict) __OSX_AVAILABLE_STARTING(__MAC_10_8, __IPHONE_6_0);
-int     posix_spawnattr_setapptype_np(posix_spawnattr_t *, const int) __OSX_AVAILABLE_STARTING(__MAC_10_8, __IPHONE_6_0);
+int     posix_spawnattr_getprocesstype_np(const posix_spawnattr_t * __restrict, int * __restrict) __OSX_AVAILABLE_STARTING(__MAC_10_8, __IPHONE_6_0);
+int     posix_spawnattr_setprocesstype_np(posix_spawnattr_t *, const int) __OSX_AVAILABLE_STARTING(__MAC_10_8, __IPHONE_6_0);
 
 int	posix_spawnattr_setcpumonitor(posix_spawnattr_t * __restrict, uint64_t, uint64_t) __OSX_AVAILABLE_STARTING(__MAC_10_8, __IPHONE_6_0);
 int	posix_spawnattr_getcpumonitor(posix_spawnattr_t * __restrict, uint64_t *, uint64_t *) __OSX_AVAILABLE_STARTING(__MAC_10_8, __IPHONE_6_0);
+int	posix_spawnattr_setcpumonitor_default(posix_spawnattr_t * __restrict) __OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_6_0);
 
-#if TARGET_OS_EMBEDDED
-int     posix_spawnattr_setjetsam(posix_spawnattr_t * __restrict attr,
-    		short flags, int priority, int high_water_mark) __OSX_AVAILABLE_STARTING(__MAC_NA, __IPHONE_5_0);
-#endif
+
+#define POSIX_SPAWN_IMPORTANCE_PORT_COUNT 32
+int	posix_spawnattr_set_importancewatch_port_np(posix_spawnattr_t * __restrict attr,
+                 int count, mach_port_t portarray[])  __OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_6_0);
+
+#define POSIX_SPAWN_MACPOLICYINFO_WITHSIZE 1
+int	posix_spawnattr_getmacpolicyinfo_np(const posix_spawnattr_t * __restrict, const char *, void **, size_t *) __OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_7_0);
+int	posix_spawnattr_setmacpolicyinfo_np(posix_spawnattr_t * __restrict, const char *, void *, size_t) __OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_7_0);
+
+int	posix_spawnattr_setcoalition_np(const posix_spawnattr_t * __restrict, uint64_t) __OSX_AVAILABLE_STARTING(__MAC_10_10, __IPHONE_8_0);
+
+int     posix_spawnattr_set_qos_clamp_np(const posix_spawnattr_t * __restrict, uint64_t) __OSX_AVAILABLE_STARTING(__MAC_10_10, __IPHONE_8_0);
+int     posix_spawnattr_get_qos_clamp_np(const posix_spawnattr_t * __restrict, uint64_t * __restrict) __OSX_AVAILABLE_STARTING(__MAC_10_10, __IPHONE_8_0);
 
 #endif /* !defined _SPAWN_PRIVATE_H_*/

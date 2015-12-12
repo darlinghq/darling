@@ -54,6 +54,8 @@
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/kern_memorystatus.h>
+#include <sys/spawn_internal.h>
+#include <sys/proc_info.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -76,8 +78,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <glob.h>
-#include <System/sys/spawn.h>
-#include <System/sys/spawn_internal.h>
 #include <spawn.h>
 #include <spawn_private.h>
 #include <time.h>

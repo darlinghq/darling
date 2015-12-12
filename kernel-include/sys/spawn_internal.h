@@ -54,6 +54,7 @@ typedef enum {
 	PSPA_SPECIAL = 0,
 	PSPA_EXCEPTION = 1,
 	PSPA_AU_SESSION = 2,
+	PSPA_IMP_WATCHPORTS = 3,
 } pspa_t;
 
 /*
@@ -88,6 +89,36 @@ typedef struct _posix_spawn_port_actions {
 #define NBINPREFS	4
 
 /*
+ * Mapping of opaque data pointer to a MAC policy (specified by name).
+ */
+typedef struct _ps_mac_policy_extension {
+	char			policyname[128];
+	union {
+		uint64_t	data;
+		void 		*datap;		/* pointer in kernel memory */
+	};
+	uint64_t		datalen;
+} _ps_mac_policy_extension_t;
+
+/*
+ * A collection of extra data passed to MAC policies for the newly spawned process.
+ */
+typedef struct _posix_spawn_mac_policy_extensions {
+	int			psmx_alloc;
+	int			psmx_count;
+	_ps_mac_policy_extension_t psmx_extensions[];
+} *_posix_spawn_mac_policy_extensions_t;
+
+/*
+ * Returns size in bytes of a _posix_spawn_mac_policy_extensions holding x elements.
+ */
+#define PS_MAC_EXTENSIONS_SIZE(x)     \
+        __offsetof(struct _posix_spawn_mac_policy_extensions, psmx_extensions[(x)])
+
+#define PS_MAC_EXTENSIONS_INIT_COUNT	2
+
+
+/*
  * A posix_spawnattr structure contains all of the attribute elements that
  * can be set, as well as any metadata whose validity is signalled by the
  * presence of a bit in the flags field.  All fields are initialized to the
@@ -95,6 +126,7 @@ typedef struct _posix_spawn_port_actions {
  */
 typedef struct _posix_spawnattr {
 	short		psa_flags;		/* spawn attribute flags */
+	short 		flags_padding; 	/* get the flags to be int aligned */
 	sigset_t	psa_sigdefault;		/* signal set to default */
 	sigset_t	psa_sigmask;		/* signal set to mask */
 	pid_t		psa_pgroup;		/* pgroup to spawn into */
@@ -103,51 +135,78 @@ typedef struct _posix_spawnattr {
 	int		psa_apptype;		/* app type and process spec behav */
 	uint64_t 	psa_cpumonitor_percent; /* CPU usage monitor percentage */
 	uint64_t 	psa_cpumonitor_interval; /* CPU usage monitor interval, in seconds */
-	_posix_spawn_port_actions_t	psa_ports; /* special/exception ports */
-	/* XXX - k64/u32 unaligned below here */
-#if CONFIG_MEMORYSTATUS || CONFIG_EMBEDDED || TARGET_OS_EMBEDDED
-	/* Jetsam related */
-	short       psa_jetsam_flags; /* flags */
-	int         psa_priority;   /* relative importance */
-	int         psa_high_water_mark; /* resident page count limit */
-#endif
+	/* 
+	 * TODO: cleanup - see <rdar://problem/12858307>. psa_ports is a pointer,
+	 * meaning that the fields following differ in alignment between 32 and 
+	 * 64-bit architectures. All pointers (existing and new) should therefore
+	 * be placed at the end; changing this now, however, would currently break 
+	 * some legacy dependencies. The radar will be used to track resolution when
+	 * appropriate.
+	 */
+
+	short       psa_jetsam_flags; /* jetsam flags */
+	short		short_padding;  /* Padding for alignment issues */
+	int         psa_priority;   /* jetsam relative importance */
+	int         psa_high_water_mark; /* jetsam resident page count limit */
+	int 		int_padding;	/* Padding for alignment issues */
+	/* MAC policy-specific extensions. */
+	 _posix_spawn_port_actions_t	psa_ports; /* special/exception ports */
+	_posix_spawn_mac_policy_extensions_t psa_mac_extensions;
 } *_posix_spawnattr_t;
 
 /*
  * Jetsam flags
  */
-#if CONFIG_MEMORYSTATUS || CONFIG_EMBEDDED || TARGET_OS_EMBEDDED
-#define	POSIX_SPAWN_JETSAM_USE_EFFECTIVE_PRIORITY	0x1
-#endif
+#define	POSIX_SPAWN_JETSAM_SET                      0x8000
+
+#define	POSIX_SPAWN_JETSAM_USE_EFFECTIVE_PRIORITY   0x1
+#define	POSIX_SPAWN_JETSAM_HIWATER_BACKGROUND       0x2
 
 /*
- * DEPRECATED: maintained for transition purposes only
- * posix_spawn apptype settings.
+ * Deprecated posix_spawn psa_flags values
+ * 
+ * POSIX_SPAWN_OSX_TALAPP_START         0x0400
+ * POSIX_SPAWN_IOS_RESV1_APP_START      0x0400
+ * POSIX_SPAWN_IOS_APPLE_DAEMON_START   0x0800
+ * POSIX_SPAWN_IOS_APP_START            0x1000
+ * POSIX_SPAWN_OSX_WIDGET_START         0x0800
+ * POSIX_SPAWN_OSX_DBCLIENT_START       0x0800
+ * POSIX_SPAWN_OSX_RESVAPP_START        0x1000
  */
-#if TARGET_OS_EMBEDDED || CONFIG_EMBEDDED
-/* for compat sake */
-#define POSIX_SPAWN_OSX_TALAPP_START    0x0400
-#define POSIX_SPAWN_IOS_RESV1_APP_START 0x0400
-#define POSIX_SPAWN_IOS_APPLE_DAEMON_START      0x0800          /* not a bug, same as widget just rename */
-#define POSIX_SPAWN_IOS_APP_START       0x1000
-#else /* TARGET_OS_EMBEDDED */
-#define POSIX_SPAWN_OSX_TALAPP_START    0x0400
-#define POSIX_SPAWN_OSX_WIDGET_START    0x0800
-#define POSIX_SPAWN_OSX_DBCLIENT_START  0x0800          /* not a bug, same as widget just rename */
-#define POSIX_SPAWN_OSX_RESVAPP_START   0x1000          /* reserved for app start usages */
-#endif /* TARGET_OS_EMBEDDED */
-
 
 /*
- * posix_spawn apptype and process attribute settings.
+ * Deprecated posix_spawn psa_apptype values
+ *
+ * POSIX_SPAWN_PROCESS_TYPE_APPLEDAEMON             0x00000001
+ * POSIX_SPAWN_PROCESS_TYPE_UIAPP                   0x00000002
+ * POSIX_SPAWN_PROCESS_TYPE_ADAPTIVE                0x00000004
+ * POSIX_SPAWN_PROCESS_TYPE_TAL                     0x00000001
+ * POSIX_SPAWN_PROCESS_TYPE_WIDGET                  0x00000002
+ * POSIX_SPAWN_PROCESS_TYPE_DELAYIDLESLEEP          0x10000000
+ *
+ * POSIX_SPAWN_PROCESS_FLAG_IMPORTANCE_DONOR        0x00000010
+ * POSIX_SPAWN_PROCESS_FLAG_ADAPTIVE                0x00000020
+ * POSIX_SPAWN_PROCESS_FLAG_START_BACKGROUND        0x00000040
+ * POSIX_SPAWN_PROCESS_FLAG_START_LIGHT_THROTTLE    0x00000080
  */
-#if TARGET_OS_EMBEDDED || CONFIG_EMBEDDED
-#define POSIX_SPAWN_APPTYPE_IOS_APPLEDAEMON    0x0001          /* it is an iOS apple daemon  */
-#else /* TARGET_OS_EMBEDDED */
-#define POSIX_SPAWN_APPTYPE_OSX_TAL	0x0001		/* it is a TAL app */
-#define POSIX_SPAWN_APPTYPE_OSX_WIDGET	0x0002		/* it is a widget */
-#define POSIX_SPAWN_APPTYPE_DELAYIDLESLEEP   0x10000000	/* Process is marked to delay idle sleep on disk IO */
-#endif /* TARGET_OS_EMBEDDED */
+
+/*
+ * posix_spawn psa_apptype process type settings.
+ * when POSIX_SPAWN_PROC_TYPE is set, old psa_apptype bits are ignored
+ */
+
+#define POSIX_SPAWN_PROCESS_TYPE_NORMAL             0x00000000
+#define POSIX_SPAWN_PROCESS_TYPE_DEFAULT            POSIX_SPAWN_PROCESS_TYPE_NORMAL
+
+#define POSIX_SPAWN_PROC_TYPE_MASK                  0x00000F00
+
+#define POSIX_SPAWN_PROC_TYPE_APP_DEFAULT           0x00000100
+#define POSIX_SPAWN_PROC_TYPE_APP_TAL               0x00000200
+
+#define POSIX_SPAWN_PROC_TYPE_DAEMON_STANDARD       0x00000300
+#define POSIX_SPAWN_PROC_TYPE_DAEMON_INTERACTIVE    0x00000400
+#define POSIX_SPAWN_PROC_TYPE_DAEMON_BACKGROUND     0x00000500
+#define POSIX_SPAWN_PROC_TYPE_DAEMON_ADAPTIVE       0x00000600
 
 /*
  * Allowable posix_spawn() file actions
@@ -238,6 +297,11 @@ struct _posix_spawn_args_desc {
 	__darwin_size_t	port_actions_size; 	/* size of port actions block */
 	_posix_spawn_port_actions_t
 				port_actions; 	/* pointer to port block */
+	__darwin_size_t mac_extensions_size;
+	_posix_spawn_mac_policy_extensions_t
+				mac_extensions;	/* pointer to policy-specific
+						 * attributes */
+
 };
 
 #ifdef KERNEL
@@ -255,6 +319,8 @@ struct user32__posix_spawn_args_desc {
 	uint32_t		file_actions;	/* pointer to block */
 	uint32_t	port_actions_size;	/* size of port actions block */
 	uint32_t		port_actions;	/* pointer to block */
+	uint32_t	mac_extensions_size;
+	uint32_t	mac_extensions;
 };
 
 struct user__posix_spawn_args_desc {
@@ -264,6 +330,8 @@ struct user__posix_spawn_args_desc {
 	user_addr_t		file_actions;	/* pointer to block */
 	user_size_t	port_actions_size;	/* size of port actions block */
 	user_addr_t		port_actions;	/* pointer to block */
+	user_size_t	mac_extensions_size;	/* size of MAC-specific attrs. */
+	user_addr_t	mac_extensions;		/* pointer to block */
 };
 
 

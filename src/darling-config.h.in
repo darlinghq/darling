@@ -13,6 +13,8 @@
 #cmakedefine FRAMEWORK_COREAUDIO
 #cmakedefine FRAMEWORK_APPKIT
 
+#ifndef __APPLE__
+
 /*
  * Credit: 
  *
@@ -34,5 +36,6 @@
 #define __uint64_t uint64_t
 /* #define __darwin_natural_t long */
 
+#endif
 
 #endif
