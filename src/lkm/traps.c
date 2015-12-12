@@ -43,6 +43,7 @@
 #include "servers/thread_act.h"
 #include "primitives/semaphore.h"
 #include "psynch/psynch_mutex.h"
+#include "psynch/pthread_kill.h"
 
 MODULE_LICENSE("GPL");
 
@@ -79,6 +80,7 @@ static const trap_handler mach_traps[30] = {
 	[sc(NR_bsdthread_terminate_trap)] = (trap_handler) bsdthread_terminate_trap,
     [sc(NR_psynch_mutexwait_trap)] = (trap_handler) psynch_mutexwait_trap,
     [sc(NR_psynch_mutexdrop_trap)] = (trap_handler) psynch_mutexdrop_trap,
+	[sc(NR_pthread_kill_trap)] = (trap_handler) pthread_kill_trap,
 };
 #undef sc
 

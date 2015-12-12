@@ -117,6 +117,7 @@
 #include "psynch/psynch_mutexdrop.h"
 #include "bsdthread/workq_kernreturn.h"
 #include "bsdthread/workq_open.h"
+#include "bsdthread/pthread_kill.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -237,6 +238,7 @@ void* __bsd_syscall_table[512] = {
 	[244] = sys_posix_spawn,
 	[301] = sys_psynch_mutexwait,
 	[302] = sys_psynch_mutexdrop,
+	[328] = sys_pthread_kill,
 	[329] = sys_sigprocmask, // __pthread_sigmask
 	[331] = sys_disable_threadsignal,
 	[334] = sys_semwait_signal,

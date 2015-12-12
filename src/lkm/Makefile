@@ -22,7 +22,7 @@ ifneq ($(KERNELRELEASE),)
 	    mig/taskServer.o mig/thread_actServer.o \
 	    servers/thread_act.o \
 	    mig/duct.o proc_entry.o bsd_ioctl.o \
-	    psynch/psynch_mutex.o
+	    psynch/psynch_mutex.o psynch/pthread_kill.o
 
 # Otherwise we were called directly from the command
 # line; invoke the kernel build system.

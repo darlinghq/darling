@@ -56,6 +56,9 @@ pid_t get_thread_pid(darling_mach_port_t* port)
 {
 	struct thread_private* priv;
 	
+	if (port->server_port.subsystem != (mig_subsystem_t) &thread_act_subsystem)
+		return 0;
+	
 	priv = (struct thread_private*) port->server_port.private_data;
 	return priv->thread_id;
 }

@@ -157,6 +157,7 @@ set(emulation_sources
 	bsdthread/disable_threadsignal.c
 	bsdthread/workq_kernreturn.c
 	bsdthread/workq_open.c
+	bsdthread/pthread_kill.c
 	psynch/psynch_mutexwait.c
 	psynch/psynch_mutexdrop.c
 	syscalls-table.S

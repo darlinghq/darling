@@ -46,6 +46,7 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_bsdthread_terminate_trap,
 	NR_psynch_mutexwait_trap,
 	NR_psynch_mutexdrop_trap,
+	NR_pthread_kill_trap,
 };
 
 struct mach_port_mod_refs_args
@@ -165,6 +166,12 @@ struct psynch_mutexdrop_args
 	uint32_t ugen;
 	uint64_t tid;
 	uint32_t flags;
+};
+
+struct pthread_kill_args
+{
+	int thread_port;
+	int sig;
 };
 
 #endif
