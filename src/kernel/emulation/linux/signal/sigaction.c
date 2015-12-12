@@ -56,7 +56,10 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 
 	if (osa != NULL)
 	{
-		osa->sa_sigaction = sig_handlers[linux_signum];
+		if (olsa.sa_sigaction == handler_linux_to_bsd)
+			osa->sa_sigaction = sig_handlers[linux_signum];
+		else // values such as SIG_DFL
+			osa->sa_sigaction = (bsd_sig_handler*) olsa.sa_sigaction;
 		sigset_linux_to_bsd(&olsa.sa_mask, &osa->sa_mask);
 		osa->sa_flags = sigflags_linux_to_bsd(olsa.sa_flags);
 	}
