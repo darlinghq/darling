@@ -18,7 +18,6 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(gcc_s SHARED ${libgcc_sources})
-target_link_libraries(gcc_s unwind)
-# TODO: link against libcompiler_rt
+target_link_libraries(gcc_s compiler_rt)
 
 install(TARGETS gcc_s DESTINATION lib${SUFFIX}/darling)

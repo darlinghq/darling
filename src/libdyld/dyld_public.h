@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "MachOMgr.h"
 
 namespace Darling {
+	class LoadableObject;
 	class MachOObject;
 }
 
@@ -74,5 +75,7 @@ int _NSGetExecutablePath(char* buf, uint32_t* bufsize);
 #ifdef __cplusplus
 }
 #endif
+
+void _dyld_free_eh_data(Darling::LoadableObject* obj);
 
 #endif

@@ -31,8 +31,18 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/mman.h>
 #include "../util/log.h"
 #include "../util/leb.h"
+#include "eh/EHSection.h"
+#include "NativeObject.h"
 
 using namespace Darling;
+
+struct eh_data
+{
+	void* data;
+	uintptr_t length;
+};
+
+static std::map<std::string, eh_data> m_ehData;
 
 uint32_t _dyld_image_count(void)
 {
@@ -321,9 +331,11 @@ static uintptr_t readEncodedPointer(const eh_frame_hdr* hdr)
 static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 {
 	CBData* cbdata = static_cast<CBData*>(data);
+	const ElfW(Ehdr)* hdr = nullptr;
 	bool addrMatch = false;
-	void* maxAddr = 0;
-	const eh_frame_hdr* ehdr = 0;
+	void* maxAddr = nullptr;
+	void* ehData = nullptr;
+	uintptr_t length = 0;
 
 	if (cbdata->info->dwarf_section) // we already have a match
 		return 0;
@@ -346,27 +358,94 @@ static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 				addrMatch = true;
 			if (to > maxAddr)
 				maxAddr = to; // TODO: could this be improved? libunwind does the same
+
+			if (!hdr)
+				hdr = static_cast<ElfW(Ehdr)*>(from);
 		}
 		else if (phdr->p_type == PT_GNU_EH_FRAME)
 		{
+			const eh_frame_hdr* ehdr;
+			//const ElfW(Shdr)* shdr;
+
 			//std::cout << "Found .eh_frame_hdr in " << info->dlpi_name << std::endl;
 			ehdr = reinterpret_cast<eh_frame_hdr*>(uintptr_t(info->dlpi_addr) + phdr->p_vaddr);
-			// cbdata->info->dwarf_section_length = phdr->p_memsz;
+
+			if (ehdr->version != 1)
+				return 0;
+
+			ehData = reinterpret_cast<void*>(readEncodedPointer(ehdr));
+
+			//shdr = reinterpret_cast<ElfW(Shdr)*>(uintptr_t(hdr) + uintptr_t(hdr->e_shoff));
+
+			//for (int j = 0; j < hdr->e_shnum; j++)
+			//{
+			//	if (shdr->sh_addr == uintptr_t(ehData) - uintptr_t(info->dlpi_addr))
+			//	{
+			//		length = shdr->sh_size;
+			//		break;
+			//	}
+			//	shdr++;
+			//}
 		}
 	}
 
-	if (addrMatch && ehdr)
+	if (addrMatch && ehData)
 	{
+		length = uintptr_t(maxAddr) - uintptr_t(ehData);
+#ifndef __i386
+		cbdata->info->dwarf_section = ehData;
+		cbdata->info->dwarf_section_length = length;
+#else
 		//std::cout << "*** Match found! " << info->dlpi_name << std::endl;
-		
-		// Now we find .eh_frame from .eh_frame_hdr
-		if (ehdr->version != 1)
-			return 0;
-		cbdata->info->dwarf_section = reinterpret_cast<void*>(readEncodedPointer(ehdr));
-		cbdata->info->dwarf_section_length = uintptr_t(maxAddr) - uintptr_t(cbdata->info->dwarf_section);
+		auto it = m_ehData.find(info->dlpi_name);
+
+		cbdata->info->mh = (struct mach_header*) info->dlpi_addr;
+
+		if (it != m_ehData.end())
+		{
+			cbdata->info->dwarf_section = it->second.data;
+			cbdata->info->dwarf_section_length = it->second.length;
+		}
+		else
+		{
+			EHSection eh;
+			eh_data ehd;
+
+			static const std::map<int, int> regSwap = {
+				std::make_pair<int, int>(4, 5),
+				std::make_pair<int, int>(5, 4)
+			};
+
+			eh.load(ehData, length);
+			eh.swapRegisterNumbers(regSwap);
+			eh.store(&ehd.data, &ehd.length);
+
+			m_ehData[info->dlpi_name] = ehd;
+
+			cbdata->info->dwarf_section = ehd.data;
+			cbdata->info->dwarf_section_length = ehd.length;
+		}
+#endif
 	}
 
 	return 0;
+}
+
+void _dyld_free_eh_data(LoadableObject* obj)
+{
+#ifdef __i386__
+	NativeObject* no = dynamic_cast<NativeObject*>(obj);
+
+	if (!no)
+		return;
+
+	auto it = m_ehData.find(no->path());
+	if (it != m_ehData.end())
+	{
+		EHSection::free(it->second.data);
+		m_ehData.erase(it);
+	}
+#endif
 }
 
 bool _dyld_find_unwind_sections(void* addr, struct dyld_unwind_sections* info)

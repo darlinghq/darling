@@ -165,7 +165,7 @@ void MachOObject::load()
 	transitionState(dyld_image_state_bound);
 	transitionState(dyld_image_state_dependents_initialized);
 	
-	registerEHSection();
+	// registerEHSection();
 	
 	if (isMainModule())
 		fillInProgramVars();
@@ -198,7 +198,7 @@ void MachOObject::unload()
 	if (!MachOMgr::instance()->isDestroying())
 	{
 		unloadSegments();
-		unregisterEHSection();
+		// unregisterEHSection();
 	}
 	
 	for (LoadableObject* dep : m_dependencies)
@@ -606,10 +606,10 @@ void MachOObject::fillInProgramVars()
 	if (vars != nullptr)
 	{
 		vars->mh = &m_header;
-		*vars->NXArgcPtr = g_argc;
-		*vars->NXArgvPtr = (const char**) g_argv;
-		*vars->environPtr = (const char**) environ;
-		*vars->__prognamePtr = g_argv[0];
+		vars->NXArgcPtr = &g_argc;
+		vars->NXArgvPtr = (const char***) &g_argv;
+		vars->environPtr = (const char***) &environ;
+		vars->__prognamePtr = (const char**) &g_argv[0];
 	}
 	else
 	{
@@ -668,11 +668,14 @@ ProgramVars* MachOObject::getProgramVars()
 }
 
 // These are libgcc functions
-extern "C" void __register_frame(void*);
-extern "C" void __deregister_frame(void*);
+extern "C" void __register_frame(void*) __attribute__((weak));
+extern "C" void __deregister_frame(void*) __attribute__((weak));
 
 void MachOObject::registerEHSection()
 {
+	if (!__register_frame)
+		return;
+
 	auto eh_frame = m_file->get_eh_frame();
 	if (!eh_frame.first)
 		return;
@@ -773,7 +776,7 @@ void* MachOObject::performBind(MachO::Bind* bind)
 	if (bind->type == BIND_TYPE_POINTER || bind->type == BIND_TYPE_STUB)
 	{
 		void* addr = nullptr;
-		
+
 		if (bind->is_classic && bind->is_local)
 			addr = (void*) bind->value;
 		else

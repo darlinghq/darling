@@ -1,6 +1,8 @@
 project(darling-src)
 
 cmake_minimum_required(VERSION 2.4.0)
+cmake_policy(SET CMP0005 NEW)
+
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
 
@@ -25,6 +27,8 @@ message(STATUS "Building for ${CMAKE_SYSTEM_PROCESSOR}, ${CMAKE_C_FLAGS}")
 if (CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 	set(CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -m32")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+	# We need to add -mlong-double-128 to support long double properly.
+	# With GCC, we could use -mlong-double-128, but Clang doesn't support that
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
 	set(CMAKE_ASM_FLAGS "-m32")
 	SET(CMAKE_C_SIZEOF_DATA_PTR 4)
@@ -35,6 +39,7 @@ if (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 endif (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
+
 configure_file(darling-config.h.in darling-config.h)
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
@@ -99,6 +104,7 @@ add_subdirectory(DiskArbitration)
 add_subdirectory(xar)
 add_subdirectory(libedit)
 #add_subdirectory(launchd/src)
+add_subdirectory(external/compiler-rt/lib/builtins)
 
 ######################
 # libc++ & libc++abi #

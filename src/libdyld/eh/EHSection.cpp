@@ -70,7 +70,7 @@ void EHSection::load(const void* start, uintptr_t length)
 		
 		if (length == 0xffffffff)
 			length = reader.read64();
-		else if (!length)
+		else if (!length || length+m_originalStart > m_originalEnd)
 			break; // terminating entry
 		
 		endPos = reader.pos() + length;

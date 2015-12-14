@@ -6,6 +6,7 @@
 #include "LoadableObject.h"
 #include "MachOMgr.h"
 #include "MachOObject.h"
+#include "dyld_public.h"
 
 static std::map<dyld_image_state_change_handler, dyld_image_states> m_handlers;
 
@@ -83,5 +84,8 @@ void _dyld_run_handler_for_state(LoadableObject* obj)
 				throw std::runtime_error(error);
 		}
 	}
+
+	if (state == dyld_image_state_terminated)
+		_dyld_free_eh_data(obj);
 }
 
