@@ -39,7 +39,7 @@ set(gen_sources #asl.c
 	nanosleep.c
 	nftw.c
 	nlist.c
-	NSSystemDirectories.c
+	# NSSystemDirectories.c # moved into system_coreservices
 	oldsyslog.c
 	platfunc.c
 	#scalable_malloc.c

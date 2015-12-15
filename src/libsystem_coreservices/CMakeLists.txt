@@ -1,4 +1,4 @@
-project(duct)
+project(system_coreservices)
 
 cmake_minimum_required(VERSION 2.4.0)
 
@@ -11,7 +11,6 @@ else(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 endif(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 
 add_definitions(-DTARGET_OS_MAC=1)
-add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 
@@ -22,8 +21,7 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_library(system_duct SHARED commpage.c libnotify.c numcpus.c
-	CRGetCrashLogMessage.c acl.c bootstrap.c dyld.c dns_sd.c
-	sa_dst_compare.c)
+add_library(system_coreservices SHARED dirhelper.c NSSystemDirectories.c)
+target_link_libraries(system_coreservices PRIVATE system_c)
 
-install(TARGETS system_duct DESTINATION lib${SUFFIX}/darling)
+install(TARGETS system_coreservices DESTINATION lib${SUFFIX}/darling)
