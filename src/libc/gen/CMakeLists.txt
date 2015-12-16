@@ -138,6 +138,7 @@ set(gen_sources ${gen_sources}
 	FreeBSD/waitpid.c)
 
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/clock.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_CLOCK")
+SET_SOURCE_FILES_PROPERTIES(FreeBSD/daemon.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_DAEMON")
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/closedir.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_CLOSEDIR -include __dirent.h")
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/glob.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_GLOB")
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/fnmatch.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_FNMATCH")
@@ -199,6 +200,7 @@ set(gen-legacy_sources FreeBSD/clock.c FreeBSD/closedir.c FreeBSD/fnmatch.c
 	FreeBSD/ttyname.c FreeBSD/usleep.c FreeBSD/wait.c FreeBSD/waitpid.c
 	FreeBSD/timezone.c FreeBSD/termios.c FreeBSD/nice.c FreeBSD/pselect.c
 	confstr.c crypt.c nftw.c FreeBSD/opendir.c)
+
 add_library(libc-gen_legacy OBJECT ${gen-legacy_sources})
 SET_TARGET_PROPERTIES(libc-gen_legacy PROPERTIES COMPILE_FLAGS
 	"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_64_BIT_INO_T -D_DARWIN_NO_64_BIT_INODE")
@@ -209,3 +211,25 @@ SET_TARGET_PROPERTIES(libc-gen_legacy PROPERTIES COMPILE_FLAGS
 set(gen-extsn_sources FreeBSD/popen.c FreeBSD/pselect.c)
 add_library(libc-gen_extsn OBJECT ${gen-extsn_sources})
 SET_TARGET_PROPERTIES(libc-gen_extsn PROPERTIES COMPILE_DEFINITIONS "_DARWIN_UNLIMITED_STREAMS;_DARWIN_UNLIMITED_SELECT;BUILDING_VARIANT")
+
+# ***
+# DARWIN_EXTSN cancelable variants
+#
+set(gen-extsn_canc_sources FreeBSD/pselect.c)
+add_library(libc-gen_extsn_canc OBJECT ${gen-extsn_canc_sources})
+SET_TARGET_PROPERTIES(libc-gen_extsn_canc PROPERTIES COMPILE_DEFINITIONS "_DARWIN_UNLIMITED_STREAMS;_DARWIN_UNLIMITED_SELECT;BUILDING_VARIANT;VARIANT_CANCELABLE")
+
+# ***
+# PRE1050 variants
+# ***
+
+set(gen-pre1050_sources FreeBSD/daemon.c)
+
+# Because on i386 the default there is no "post-1050" version
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+	set(gen-pre1050_sources ${gen-pre1050_sources} FreeBSD/pselect.c)
+endif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+
+add_library(libc-gen_pre1050 OBJECT ${gen-pre1050_sources})
+SET_TARGET_PROPERTIES(libc-gen_pre1050 PROPERTIES COMPILE_FLAGS "-DBUILDING_VARIANT -DVARIANT_PRE1050 -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
+

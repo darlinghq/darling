@@ -94,3 +94,8 @@ set(stdlib-legacy_sources FreeBSD/getopt.c FreeBSD/realpath.c
 	FreeBSD/setenv.c FreeBSD/putenv.c)
 add_library(libc-stdlib_legacy OBJECT ${stdlib-legacy_sources})
 SET_TARGET_PROPERTIES(libc-stdlib_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+
+# DARWIN_EXTSN variant
+set(stdlib-extsn_sources FreeBSD/realpath.c)
+add_library(libc-stdlib_extsn OBJECT ${stdlib-extsn_sources})
+SET_TARGET_PROPERTIES(libc-stdlib_extsn PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_DARWINEXTSN")

@@ -69,10 +69,10 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
 	# Pre-UNIX2003 variants
 	set(extra_objs
 		$<TARGET_OBJECTS:libc-stdio_legacy>
-		$<TARGET_OBJECTS:libc-gen_legacy>
 		$<TARGET_OBJECTS:libc-compat_legacy>
 		$<TARGET_OBJECTS:libc-stdlib_legacy>
 		$<TARGET_OBJECTS:libc-stdtime_legacy>
+	$<TARGET_OBJECTS:libc-gen_legacy>
 		$<TARGET_OBJECTS:libc-string_legacy>
 		$<TARGET_OBJECTS:libc-gdtoa_legacy>
 		$<TARGET_OBJECTS:libc-regex_legacy>
@@ -98,9 +98,11 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-emulated>
 	$<TARGET_OBJECTS:libc-gdtoa>
 	$<TARGET_OBJECTS:libc-gen>
+	$<TARGET_OBJECTS:libc-gen_pre1050>
 	$<TARGET_OBJECTS:libc-gen_cancelable>
 	$<TARGET_OBJECTS:libc-gen_noinode64>
 	$<TARGET_OBJECTS:libc-gen_extsn>
+	$<TARGET_OBJECTS:libc-gen_extsn_canc>
 	$<TARGET_OBJECTS:libc-gmon>
 	$<TARGET_OBJECTS:libc-uuid>
 	$<TARGET_OBJECTS:libc-util>
@@ -109,6 +111,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-sys>
 	$<TARGET_OBJECTS:libc-sys_noinode64>
 	$<TARGET_OBJECTS:libc-stdlib>
+	$<TARGET_OBJECTS:libc-stdlib_extsn>
 	$<TARGET_OBJECTS:libc-stdlib_cancelable>
 	$<TARGET_OBJECTS:libc-stdio>
 	$<TARGET_OBJECTS:libc-stdio_extsn>
