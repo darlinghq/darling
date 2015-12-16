@@ -104,7 +104,7 @@ set(syscall_sources
 	wrappers/cancelable/fcntl.c
 	wrappers/cancelable/fcntl-cancel.c
 	wrappers/cancelable/select.c # defined in sys_x86-64/
-	#wrappers/cancelable/select-cancel.c
+	wrappers/cancelable/select-cancel.c
 	wrappers/cancelable/sigsuspend.c
 	wrappers/cancelable/sigsuspend-cancel.c
 	
@@ -968,9 +968,9 @@ mig(mach/thread_act.defs)
 mig(mach/vm_map.defs)
 
 set_source_files_properties(custom/errno.c PROPERTIES COMPILE_FLAGS "-no-integrated-as")
+set_source_files_properties(${syscall_legacy_sources} PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
 set_source_files_properties(wrappers/legacy/select-pre1050.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE -DSYSCALL_PRE1050")
-set_source_files_properties(wrappers/legacy/select.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
-#set_source_files_properties(wrappers/cancelable/select-cancel.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
+set_source_files_properties(wrappers/cancelable/select-cancel.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
 set_source_files_properties(wrappers/cancelable/select.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
 
 foreach (file IN ITEMS ${syscall_legacy_sources})

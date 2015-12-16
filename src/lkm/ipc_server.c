@@ -54,6 +54,9 @@ mach_task_t* ipc_port_make_task(darling_mach_port_t* port, pid_t pid)
     hash_init(task->mutex_wq);
     spin_lock_init(&task->mutex_wq_lock);
 	
+	hash_init(task->cv_wq);
+    spin_lock_init(&task->cv_wq_lock);
+	
 	ipc_space_init(&task->namespace);
 	
 	port->is_server_port = true;

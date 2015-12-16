@@ -44,6 +44,7 @@
 #include "primitives/semaphore.h"
 #include "psynch/psynch_mutex.h"
 #include "psynch/pthread_kill.h"
+#include "psynch/psynch_cv.h"
 
 MODULE_LICENSE("GPL");
 
@@ -57,32 +58,35 @@ static struct file_operations mach_chardev_ops = {
 	.owner          = THIS_MODULE
 };
 
-#define sc(n) n-DARLING_MACH_API_BASE
+#define TRAP(num, impl) [num - DARLING_MACH_API_BASE] = (trap_handler) impl
 
 static const trap_handler mach_traps[30] = {
-	[sc(NR_get_api_version)] = (trap_handler) mach_get_api_version,
-	[sc(NR_mach_reply_port)] = (trap_handler) mach_reply_port_trap,
-	[sc(NR__kernelrpc_mach_port_mod_refs)] = (trap_handler) _kernelrpc_mach_port_mod_refs_trap,
-	[sc(NR_task_self_trap)] = (trap_handler) mach_task_self_trap,
-	[sc(NR__kernelrpc_mach_port_allocate)] = (trap_handler) _kernelrpc_mach_port_allocate_trap,
-	[sc(NR_mach_msg_overwrite_trap)] = (trap_handler) mach_msg_overwrite_trap,
-	[sc(NR_host_self_trap)] = (trap_handler) mach_host_self_trap,
-	[sc(NR__kernelrpc_mach_port_deallocate)] = (trap_handler) _kernelrpc_mach_port_deallocate_trap,
-	[sc(NR__kernelrpc_mach_port_destroy)] = (trap_handler) _kernelrpc_mach_port_destroy_trap,
-	[sc(NR_semaphore_signal_trap)] = (trap_handler) semaphore_signal_trap,
-	[sc(NR_semaphore_signal_all_trap)] = (trap_handler) semaphore_signal_all_trap,
-	[sc(NR_semaphore_wait_trap)] = (trap_handler) semaphore_wait_trap,
-	[sc(NR_semaphore_wait_signal_trap)] = (trap_handler) semaphore_wait_signal_trap,
-	[sc(NR_semaphore_timedwait_signal_trap)] = (trap_handler) semaphore_timedwait_signal_trap,
-	[sc(NR_semaphore_timedwait_trap)] = (trap_handler) semaphore_timedwait_trap,
-	[sc(NR_bsd_ioctl_trap)] = (trap_handler) bsd_ioctl_trap,
-	[sc(NR_thread_self_trap)] = (trap_handler) mach_thread_self_trap,
-	[sc(NR_bsdthread_terminate_trap)] = (trap_handler) bsdthread_terminate_trap,
-    [sc(NR_psynch_mutexwait_trap)] = (trap_handler) psynch_mutexwait_trap,
-    [sc(NR_psynch_mutexdrop_trap)] = (trap_handler) psynch_mutexdrop_trap,
-	[sc(NR_pthread_kill_trap)] = (trap_handler) pthread_kill_trap,
+	TRAP(NR_get_api_version, mach_get_api_version),
+	TRAP(NR_mach_reply_port, mach_reply_port_trap),
+	TRAP(NR__kernelrpc_mach_port_mod_refs, _kernelrpc_mach_port_mod_refs_trap),
+	TRAP(NR_task_self_trap, mach_task_self_trap),
+	TRAP(NR__kernelrpc_mach_port_allocate, _kernelrpc_mach_port_allocate_trap),
+	TRAP(NR_mach_msg_overwrite_trap, mach_msg_overwrite_trap),
+	TRAP(NR_host_self_trap, mach_host_self_trap),
+	TRAP(NR__kernelrpc_mach_port_deallocate, _kernelrpc_mach_port_deallocate_trap),
+	TRAP(NR__kernelrpc_mach_port_destroy, _kernelrpc_mach_port_destroy_trap),
+	TRAP(NR_semaphore_signal_trap, semaphore_signal_trap),
+	TRAP(NR_semaphore_signal_all_trap, semaphore_signal_all_trap),
+	TRAP(NR_semaphore_wait_trap, semaphore_wait_trap),
+	TRAP(NR_semaphore_wait_signal_trap, semaphore_wait_signal_trap),
+	TRAP(NR_semaphore_timedwait_signal_trap, semaphore_timedwait_signal_trap),
+	TRAP(NR_semaphore_timedwait_trap, semaphore_timedwait_trap),
+	TRAP(NR_bsd_ioctl_trap, bsd_ioctl_trap),
+	TRAP(NR_thread_self_trap, mach_thread_self_trap),
+	TRAP(NR_bsdthread_terminate_trap, bsdthread_terminate_trap),
+    TRAP(NR_psynch_mutexwait_trap, psynch_mutexwait_trap),
+    TRAP(NR_psynch_mutexdrop_trap, psynch_mutexdrop_trap),
+	TRAP(NR_pthread_kill_trap, pthread_kill_trap),
+	TRAP(NR_psynch_cvwait_trap, psynch_cvwait_trap),
+	TRAP(NR_psynch_cvsignal_trap, psynch_cvsignal_trap),
+	TRAP(NR_psynch_cvbroad_trap, psynch_cvbroad_trap),
 };
-#undef sc
+#undef TRAP
 
 static struct miscdevice mach_dev = {
 	MISC_DYNAMIC_MINOR,

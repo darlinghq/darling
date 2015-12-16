@@ -65,14 +65,15 @@ int psynch_mutexwait_trap(mach_task_t* task,
     
 	if (mutex->mgen != 0)
 	{
-		spin_unlock(&task->mutex_wq_lock);
+		retval = mutex->mgen;
 		
 		// Put the mutex twice, because the waker did not put the mutex
 		// in order to keep the information around
 		mutex_put(task, mutex);
 		mutex_put(task, mutex);
+		
+		spin_unlock(&task->mutex_wq_lock);
 
-		retval = mutex->mgen;
 		goto out;
 	}
 	
@@ -103,18 +104,25 @@ out:
 int psynch_mutexdrop_trap(mach_task_t* task,
 		struct psynch_mutexdrop_args* in_args)
 {
-	pthread_mutex_t* mutex;
 	struct psynch_mutexdrop_args args;
 
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return -EFAULT;
 
-	debug_msg("psynch_mutexdrop_trap(%d): mutex=0x%llx, mgen=0x%x\n",
-			current->pid, args.mutex, args.mgen);
+	return psynch_mutexdrop(task, args.mutex, args.mgen, args.ugen);
+}
+
+int psynch_mutexdrop(mach_task_t* task, uint64_t in_mutex, uint32_t mgen,
+		uint32_t ugen)
+{
+	pthread_mutex_t* mutex;
+	
+	debug_msg("psynch_mutexdrop(%d): mutex=0x%llx, mgen=0x%x\n",
+			current->pid, in_mutex, mgen);
 	spin_lock(&task->mutex_wq_lock);
     
-	mutex = mutex_get(task, args.mutex);
-	mutex->mgen = args.mgen;
+	mutex = mutex_get(task, in_mutex);
+	mutex->mgen = mgen;
 
 	if (!list_empty(&mutex->waiting))
 	{

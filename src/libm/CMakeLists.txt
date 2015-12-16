@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.4.0)
 enable_language(C ASM)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w") # -DBUILDING_FOR_CARBONCORE_LEGACY")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -DBUILDING_FOR_CARBONCORE_LEGACY") # -DBUILDING_FOR_CARBONCORE_LEGACY")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
@@ -145,7 +145,10 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_library(system_m SHARED ${libm_sources})
+add_library(system_m_extra OBJECT Source/Intel/xmm_misc.c)
+set_target_properties(system_m_extra PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY")
+
+add_library(system_m SHARED ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
 
 install(TARGETS system_m DESTINATION lib${SUFFIX}/darling)
 

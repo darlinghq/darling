@@ -41,6 +41,9 @@ struct mach_task
 	
 	spinlock_t mutex_wq_lock;
 	DECLARE_HASHTABLE(mutex_wq, 8);
+	
+	spinlock_t cv_wq_lock;
+	DECLARE_HASHTABLE(cv_wq, 8);
 };
 
 typedef struct mach_task mach_task_t;

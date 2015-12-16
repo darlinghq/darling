@@ -7,8 +7,10 @@ __darling_bsd_syscall:
 	movq	(%r10,%rax,8), %r10
 	test	%r10, %r10
 	jz		.no_sys
-	call	*%r10
-	ret
+	jmp		*%r10
+// Breaks 6+ arg syscalls
+//	call	*%r10
+//	ret
 .no_sys:
 	movq	%rax, %rdi
 	call	__unknown_syscall@PLT

@@ -17,17 +17,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef PSYNCH_MUTEX_H
-#define	PSYNCH_MUTEX_H
+#ifndef PSYNCH_CV_H
+#define PSYNCH_CV_H
 #include "../api.h"
 #include "../ipc_types.h"
 
-int psynch_mutexwait_trap(mach_task_t* task,
-		struct psynch_mutexwait_args* args);
-int psynch_mutexdrop_trap(mach_task_t* task,
-		struct psynch_mutexdrop_args* args);
-int psynch_mutexdrop(mach_task_t* task, uint64_t mutex, uint32_t mgen,
-		uint32_t ugen);
+int psynch_cvwait_trap(mach_task_t* task,
+		struct psynch_cvwait_args* args);
+int psynch_cvbroad_trap(mach_task_t* task,
+		struct psynch_cvbroad_args* args);
+int psynch_cvsignal_trap(mach_task_t* task,
+		struct psynch_cvsignal_args* args);
 
-#endif	/* PSYNCH_MUTEX_H */
+#endif /* PSYNCH_CV_H */
 

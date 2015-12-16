@@ -115,6 +115,9 @@
 #include "select/poll.h"
 #include "psynch/psynch_mutexwait.h"
 #include "psynch/psynch_mutexdrop.h"
+#include "psynch/psynch_cvwait.h"
+#include "psynch/psynch_cvsignal.h"
+#include "psynch/psynch_cvbroad.h"
 #include "bsdthread/workq_kernreturn.h"
 #include "bsdthread/workq_open.h"
 #include "bsdthread/pthread_kill.h"
@@ -238,6 +241,9 @@ void* __bsd_syscall_table[512] = {
 	[244] = sys_posix_spawn,
 	[301] = sys_psynch_mutexwait,
 	[302] = sys_psynch_mutexdrop,
+	[303] = sys_psynch_cvbroad,
+	[304] = sys_psynch_cvsignal,
+	[305] = sys_psynch_cvwait,
 	[328] = sys_pthread_kill,
 	[329] = sys_sigprocmask, // __pthread_sigmask
 	[331] = sys_disable_threadsignal,

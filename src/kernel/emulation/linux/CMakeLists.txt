@@ -160,6 +160,9 @@ set(emulation_sources
 	bsdthread/pthread_kill.c
 	psynch/psynch_mutexwait.c
 	psynch/psynch_mutexdrop.c
+	psynch/psynch_cvwait.c
+	psynch/psynch_cvbroad.c
+	psynch/psynch_cvsignal.c
 	syscalls-table.S
 )
 

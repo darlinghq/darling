@@ -26,6 +26,8 @@
 
 #define DARLING_MACH_API_BASE		0x1000
 
+#pragma pack (push, 1)
+
 enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_mach_reply_port,
 	NR__kernelrpc_mach_port_mod_refs,
@@ -44,9 +46,12 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_bsd_ioctl_trap,
 	NR_thread_self_trap,
 	NR_bsdthread_terminate_trap,
-	NR_psynch_mutexwait_trap,
+	NR_psynch_mutexwait_trap, // 0x12
 	NR_psynch_mutexdrop_trap,
 	NR_pthread_kill_trap,
+	NR_psynch_cvwait_trap, // 0x15
+	NR_psynch_cvsignal_trap,
+	NR_psynch_cvbroad_trap,
 };
 
 struct mach_port_mod_refs_args
@@ -173,5 +178,44 @@ struct pthread_kill_args
 	int thread_port;
 	int sig;
 };
+
+struct psynch_cvwait_args
+{
+	uint64_t cv;
+	uint32_t cvgen;
+	uint32_t cvugen;
+	uint64_t mutex;
+	uint32_t mgen;
+	uint32_t ugen;
+	uint64_t sec;
+	/* Called usec, but seems to contain nsec */
+	uint64_t usec;
+};
+
+struct psynch_cvsignal_args
+{
+	uint64_t cv;
+	uint32_t cvgen;
+	uint32_t cvugen;
+	uint64_t mutex;
+	uint32_t mgen;
+	uint32_t ugen;
+	int thread_port;
+	uint32_t flags;
+};
+
+struct psynch_cvbroad_args
+{
+	uint64_t cv;
+	uint32_t cvgen;
+	uint32_t diffgen;
+	uint64_t mutex;
+	uint32_t mgen;
+	uint32_t ugen;
+	uint64_t tid;
+	uint32_t flags;
+};
+
+#pragma pack (pop)
 
 #endif
