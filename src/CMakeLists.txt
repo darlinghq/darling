@@ -106,6 +106,7 @@ add_subdirectory(xar)
 add_subdirectory(libedit)
 #add_subdirectory(launchd/src)
 add_subdirectory(external/compiler-rt/lib/builtins)
+add_subdirectory(CommonCrypto)
 
 ######################
 # libc++ & libc++abi #
