@@ -82,6 +82,7 @@ LEAF(_##name, 0)					;\
 	UNIX_SYSCALL_SYSENTER				;\
 	cmpl    $-4095, %eax				;\
 	jb	3f					;\
+	negl	%eax ;\
 	BRANCH_EXTERN(tramp_cerror)  			;\
 3:
 
@@ -92,6 +93,7 @@ LEAF(_##name, 0)					;\
 	UNIX_SYSCALL_TRAP				;\
 	cmpl    $-4095, %eax				;\
 	jb	3f					;\
+	negl	%eax ;\
 	BRANCH_EXTERN(tramp_cerror)  			;\
 3:
 
@@ -101,6 +103,7 @@ LEAF(_##name, 0)					;\
 	UNIX_SYSCALL_SYSENTER					;\
 	cmpl    $-4095, %eax				;\
 	jb	3f						;\
+	negl	%eax ;\
 	BRANCH_EXTERN(tramp_##cerror)				;\
 3:
 #else /* __SYSCALL_32BIT_ARG_BYTES < 4 || > 20 */
@@ -109,6 +112,7 @@ LEAF(_##name, 0)					;\
 	UNIX_SYSCALL_SYSENTER				;\
 	cmpl    $-4095, %eax				;\
 	jb	3f					;\
+	negl	%eax ;\
 	BRANCH_EXTERN(tramp_##cerror)			;\
 3:
 #endif
@@ -119,6 +123,7 @@ LEAF(_##name, 0)					;\
 	UNIX_SYSCALL_TRAP				;\
 	cmpl    $-4095, %eax				;\
 	jb	3f					;\
+	negl	%eax ;\
 	BRANCH_EXTERN(tramp_cerror_nocancel) 		;\
 3:
 

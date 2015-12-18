@@ -58,7 +58,7 @@ set(syscall_legacy_sources
 	wrappers/legacy/open.c
 	wrappers/legacy/recvfrom.c
 	wrappers/legacy/recvmsg.c
-	#wrappers/legacy/select.c
+	wrappers/legacy/select.c
 	#wrappers/legacy/select-pre1050.c
 	wrappers/legacy/sendmsg.c
 	wrappers/legacy/sendto.c
@@ -98,7 +98,7 @@ set(syscall_sources
 	wrappers/unlink.c
 	wrappers/kill.c
 	
-	wrappers/legacy/select.c
+	#wrappers/legacy/select.c
 	wrappers/legacy/select-pre1050.c
 	
 	wrappers/cancelable/fcntl.c
@@ -968,21 +968,21 @@ mig(mach/thread_act.defs)
 mig(mach/vm_map.defs)
 
 set_source_files_properties(custom/errno.c PROPERTIES COMPILE_FLAGS "-no-integrated-as")
-set_source_files_properties(${syscall_legacy_sources} PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
+set_source_files_properties(${syscall_legacy_sources} PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_C_LEVEL")
 set_source_files_properties(wrappers/legacy/select-pre1050.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE -DSYSCALL_PRE1050")
 set_source_files_properties(wrappers/cancelable/select-cancel.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
 set_source_files_properties(wrappers/cancelable/select.c PROPERTIES COMPILE_FLAGS "-U_DARWIN_C_SOURCE")
 
 foreach (file IN ITEMS ${syscall_legacy_sources})
-	set_source_files_properties(${file} PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE -U__DARWIN_UNIX03")
+	set_source_files_properties(${file} PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0  -U__DARWIN_C_LEVEL")
 endforeach(file)
 
 add_library(libsyscall OBJECT ${syscall_sources})
 
 # For i386
-add_library(libsyscall_legacy_extra OBJECT wrappers/legacy/select.c)
-set_target_properties(libsyscall_legacy_extra PROPERTIES COMPILE_FLAGS
-	"${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE -U__DARWIN_UNIX03")
+#add_library(libsyscall_legacy_extra OBJECT wrappers/legacy/select.c)
+#set_target_properties(libsyscall_legacy_extra PROPERTIES COMPILE_FLAGS
+#	"${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_C_LEVEL")
 
 
 
