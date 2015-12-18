@@ -478,12 +478,13 @@ void MachOObject::loadDependencies()
 {
 	std::vector<const char*> dylibs = m_file->dylibs();
 	std::string path;
+	const char* libsystem_dylib = "/usr/lib/libSystem.B.dylib";
 
 	// libSystem MUST always be loaded first
 	// This is essentially a hack, but it should be safe.
 	LoadableObject* libSystem;
 
-	path = DylibSearch::instance()->resolve("/usr/lib/libSystem.B.dylib", this);
+	path = DylibSearch::instance()->resolve(libsystem_dylib, this);
 	libSystem = LoadableObject::instantiateForPath(path, this);
 	libSystem->load();
 
@@ -497,7 +498,7 @@ void MachOObject::loadDependencies()
 			continue;
 		}
 		
-		std::string path = DylibSearch::instance()->resolve(dylib, this);
+		path = DylibSearch::instance()->resolve(dylib, this);
 		if (path.empty())
 		{
 			std::stringstream ss;
@@ -505,7 +506,11 @@ void MachOObject::loadDependencies()
 			throw std::runtime_error(ss.str());
 		}
 		
-		dep = MachOMgr::instance()->lookup(path);
+		if (path == libSystem->path())
+			dep = libSystem;
+		else
+			dep = MachOMgr::instance()->lookup(path);
+
 		if (dep != nullptr)
 		{
 			dep->addRef();
