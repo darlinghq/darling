@@ -39,6 +39,9 @@ target_link_libraries(dyld-bin dyld darling-util mach-o)
 	add_executable(dyldd dyldd.cpp)
 	target_link_libraries(dyldd dyld darling-util mach-o)
 	install(TARGETS dyldd DESTINATION bin)
+        install(PROGRAMS darling DESTINATION bin
+                PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ
+                GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 	#endif (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 
 install(TARGETS dyld-bin DESTINATION bin)

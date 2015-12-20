@@ -8,8 +8,6 @@ long sys_fgetxattr(int fd, const char* name, char* value,
 		unsigned long size, unsigned int pos, int options)
 {
 	int ret;
-
-	// TODO: handle case conversion
 	
 	if (pos != 0)
 		return -ERANGE;

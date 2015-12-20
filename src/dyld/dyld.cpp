@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2015 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <libdyld/MachOMgr.h>
 #include <libdyld/MachOObject.h>
 #include <iostream>
@@ -10,6 +29,7 @@
 #include <libdyld/arch.h>
 #include <regex>
 #include "dirstructure.h"
+#include <libdyld/VirtualPrefix.h>
 
 static void printHelp(const char* argv0);
 static std::string locateBundleExecutable(std::string bundlePath);
@@ -57,8 +77,10 @@ int main(int argc, char** argv, char** envp)
 			mgr->setSysRoot(path);
 		if (const char* path = getenv("DYLD_TRAMPOLINE"))
 			mgr->setUseTrampolines(true, path);
+		if (const char* path = getenv("DPREFIX"))
+			__prefix_set(path);
 		
-		obj = new MachOObject(argv[1]);
+		obj = new MachOObject(__prefix_translate_path(argv[1]));
 		if (!obj->isMainModule())
 		{
 			throw std::runtime_error("This is not a Mach-O executable; dynamic libraries, "

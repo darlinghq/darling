@@ -4,6 +4,7 @@
 #include <asm/unistd.h>
 //#include "../../../../platform-include/sys/fcntl.h"
 #include "../../../../libc/include/fcntl.h"
+#include <libdyld/VirtualPrefix.h>
 
 #ifndef O_NOFOLLOW
 #	define O_NOFOLLOW 0x0100
@@ -35,13 +36,12 @@ long sys_open_nocancel(const char* filename, int flags, unsigned int mode)
 		linux_flags |= LINUX_O_LARGEFILE;
 	}
 
-	// TODO: Check filename, handle wrong case
-
 	// XNU /dev/random behaves like Linux /dev/urandom
 	if (strcmp(filename, "/dev/random") == 0)
 		filename = "/dev/urandom";
 
-	ret = LINUX_SYSCALL(__NR_open, filename, linux_flags, mode);
+	ret = LINUX_SYSCALL(__NR_open, __prefix_translate_path(filename),
+			linux_flags, mode);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
 

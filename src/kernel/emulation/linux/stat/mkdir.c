@@ -3,14 +3,13 @@
 #include "../base.h"
 #include "../errno.h"
 #include <asm/unistd.h>
+#include <libdyld/VirtualPrefix.h>
 
 long sys_mkdir(const char* path, unsigned int mode)
 {
 	int ret;
 
-	// TODO: handle case conversion
-
-	ret = LINUX_SYSCALL(__NR_mkdir, path, mode);
+	ret = LINUX_SYSCALL(__NR_mkdir, __prefix_translate_path(path), mode);
 
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);

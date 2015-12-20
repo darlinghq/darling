@@ -7,8 +7,6 @@ long sys_fremovexattr(int fd, const char* name, int options)
 {
 	int ret;
 
-	// TODO: handle case conversion
-
 	ret = LINUX_SYSCALL(__NR_fremovexattr, fd, name);
 
 	if (ret < 0)

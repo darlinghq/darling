@@ -38,6 +38,7 @@ set(dyld_SRCS
 	DylibSearch.cpp
 	environ.c
 	threads.cpp
+        VirtualPrefix.cpp
 )
 
 #if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")

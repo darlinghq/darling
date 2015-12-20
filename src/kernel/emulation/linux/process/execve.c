@@ -7,6 +7,7 @@
 #include "../unistd/close.h"
 #include "../unistd/readlink.h"
 #include <stdint.h>
+#include <libdyld/VirtualPrefix.h>
 
 #define MH_MAGIC    0xfeedface
 #define MH_CIGAM    0xcefaedfe
@@ -43,11 +44,9 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		int len, i;
 		char** modargvp;
 		
-		len = sys_readlink("/proc/self/exe", dyld_path, sizeof(dyld_path)-1);
+		len = __prefix_get_dyld_path(dyld_path, sizeof(dyld_path)-1);
 		if (len < 0)
 			goto no_macho;
-
-		dyld_path[len] = '\0';
 
 		// Remove 64 or 32 suffix if present
 		if (strcmp(&dyld_path[len - 2], "32") == 0
@@ -65,7 +64,7 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		// Allocate a new argvp, execute dyld_path
 		modargvp = (char**) __builtin_alloca(sizeof(void*) * (len+1));
 		modargvp[0] = dyld_path;
-		modargvp[1] = fname;
+		modargvp[1] = __prefix_translate_path(fname);
 
 		for (i = 2; i < len+1; i++)
 			modargvp[i] = argvp[i-1];

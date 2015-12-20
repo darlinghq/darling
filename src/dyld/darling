@@ -1,0 +1,90 @@
+#!/bin/sh
+# 
+# This file is part of Darling.
+# 
+# Copyright (C) 2015 Lubos Dolezel
+# 
+# Darling is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# Darling is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+# 
+
+SYSTEM_ROOT_NAME="system-root"
+BIND_DIRECTORIES="dev etc home tmp"
+MAKE_DIRECTORIES="Applications Volumes"
+
+if [ $# -eq 0 ]; then
+    >&2 echo "This is Darling, a runtime environment for OS X applications."
+    >&2 echo
+    >&2 echo "Copyright (C) 2012-2015 Lubos Dolezel"
+    >&2 echo "Includes software components which are Copyright (C) Apple Computer, Inc. and many others."
+    >&2 echo
+    >&2 echo -e "Usage:\tdarling PROGRAM [ARGUMENTS...]\tRun the specified program" 
+    >&2 echo -e "\tdarling shell\t\t\tStart bash shell in prefix"
+    >&2 echo -e "\tdarling hdiutil\t\t\tMount DMG disk images"
+    >&2 echo -e "\tdarling pkgutil\t\t\tInstall PKG packages"
+    >&2 echo
+    >&2 echo "The prefix is specified by the DPREFIX environment variable."
+    >&2 echo "The default DPREFIX is \$HOME/.darling"
+    exit 1
+fi
+
+set -e
+
+if [ -z "$DPREFIX" ]; then
+    export DPREFIX="$HOME/.darling"
+fi
+
+if [ ! -d "$DPREFIX" ]; then
+    >&2 echo "Setting up prefix at $DPREFIX"
+
+    mkdir -p "${DPREFIX}"
+    pushd "${DPREFIX}" >/dev/null
+
+    ln -s / "${SYSTEM_ROOT_NAME}"
+    for dir in ${BIND_DIRECTORIES}; do
+        ln -s "${SYSTEM_ROOT_NAME}/${dir}" "${dir}"
+    done
+
+    for dir in ${MAKE_DIRECTORIES}; do
+        mkdir "${dir}"
+    done
+
+    ln -s home Users
+
+    # TODO: install bash and coreutils
+
+    popd >/dev/null
+fi
+
+dyld_path="${0%darling}dyld"
+
+case "$1" in
+"shell")
+    if [ $# -gt 2 ]; then
+        exec "${dyld_path}" /usr/local/bin/bash -c "${*:2}"
+    else
+        exec "${dyld_path}" /usr/local/bin/bash
+    fi
+    ;;
+"hdiutil")
+    >2& echo "Not implemented yet"
+    exit 1
+    ;;
+"pkgutil")
+    >2& echo "Not implemented yet"
+    exit 1
+    ;;
+*)
+    exec "${dyld_path}" "$1" "${@:2}"
+    ;;
+esac

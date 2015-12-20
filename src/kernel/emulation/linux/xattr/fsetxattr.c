@@ -9,8 +9,6 @@ long sys_fsetxattr(int fd, const char* name, const void* value,
 {
 	int ret;
 
-	// TODO: handle case conversion
-	
 	if (pos != 0)
 		return -ERANGE;
 
