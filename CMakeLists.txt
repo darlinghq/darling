@@ -1,4 +1,5 @@
 project(darling)
+enable_language(ASM)
 
 cmake_minimum_required(VERSION 2.4.0)
 
