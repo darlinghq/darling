@@ -84,6 +84,22 @@ case "$1" in
     >2& echo "Not implemented yet"
     exit 1
     ;;
+"load")
+    if [ "$(id -u)" != 0 ]; then
+        2>&1 "You need to be root for this command."
+        exit 1
+    fi
+
+    darling_load
+    ;;
+"unload")
+    if [ "$(id -u)" != 0 ]; then
+        2>&1 "You need to be root for this command."
+        exit 1
+    fi
+
+    darling_unload
+    ;;
 *)
     exec "${dyld_path}" "$1" "${@:2}"
     ;;

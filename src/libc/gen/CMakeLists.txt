@@ -53,7 +53,7 @@ set(gen_sources #asl.c
 	#syslog.c 
 	thread_stack_pcs.c 
 	uname.c
-	#utmpx-darwin.c 
+	utmpx-darwin.c 
 	wordexp.c)
 
 set(gen_sources ${gen_sources}
@@ -169,7 +169,7 @@ SET_SOURCE_FILES_PROPERTIES(FreeBSD/wait.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_F
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/waitpid.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_WAITPID")
 
 set(gen_sources ${gen_sources}
-	#NetBSD/utmpx.c
+	NetBSD/utmpx.c
 )
 
 add_library(libc-gen OBJECT ${gen_sources})

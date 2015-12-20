@@ -5,6 +5,7 @@ struct rlimit
 {
 	unsigned long long rlim_cur;
 	unsigned long long rlim_max;
+	long _dummy[20];
 };
 
 enum {

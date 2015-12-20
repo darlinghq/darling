@@ -146,6 +146,7 @@ LEAF(pseudo, 0)					;\
 
 #define UNIX_SYSCALL(name, nargs)						 \
 	.globl	cerror								;\
+	.type name, @function						;\
 LEAF(name, 0)								;\
 	movl	$ SYS_##name, %eax			;\
 	call	__darling_bsd_syscall@PLT							;\
@@ -158,6 +159,7 @@ LEAF(name, 0)								;\
 
 #define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
 	.globl	cerror								;\
+	.type name, @function						;\
 	movl	$ SYS_##name, %eax			;\
 	call	__darling_bsd_syscall@PLT							;\
 	cmpq	$-4095, %rax				;\

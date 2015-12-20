@@ -37,6 +37,7 @@
 
 #ifdef DARLING
 #	define _strncmp strncmp
+.type strncmp, @function
 #endif
 
 #define	kShort	20			// too short for vectors (must be >16)

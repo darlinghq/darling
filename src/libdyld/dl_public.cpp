@@ -314,14 +314,15 @@ struct ProgramVars
 	const char*** environPtr;
 	const char** __prognamePtr;
 };
+extern "C" char** __darwin_environ;
 void __darling_get_args(int** argc, char**** argv, char**** env, struct ::ProgramVars* vars)
 {
 	*argc = &g_argc;
 	*argv = &g_argv;
-	*env = &environ;
+	*env = &__darwin_environ;
 	vars->NXArgcPtr = &g_argc;
 	vars->NXArgvPtr = (const char***) &g_argv;
-	vars->environPtr = (const char***) &environ;
+	vars->environPtr = (const char***) &__darwin_environ;
 	vars->__prognamePtr = (const char**) &g_argv[0];
 
 }

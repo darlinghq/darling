@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <mach/message.h>
 #include <Availability.h>
+#include <stdbool.h>
 #ifdef __BLOCKS__
 #include <dispatch/dispatch.h>
 #endif /* __BLOCKS__ */

@@ -49,6 +49,7 @@
 
 #ifdef DARLING
 #	define _strlcat strlcat
+.type strlcat, @function
 #endif
 
         .text

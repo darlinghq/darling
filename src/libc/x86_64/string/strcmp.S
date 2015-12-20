@@ -37,6 +37,7 @@
 
 #ifdef DARLING
 #	define _strcmp strcmp
+.type strcmp, @function
 #endif
 
         .text

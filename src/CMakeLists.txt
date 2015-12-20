@@ -107,6 +107,8 @@ add_subdirectory(libedit)
 #add_subdirectory(launchd/src)
 add_subdirectory(external/compiler-rt/lib/builtins)
 add_subdirectory(CommonCrypto)
+add_subdirectory(csu)
+add_subdirectory(external/shell_cmds)
 
 ######################
 # libc++ & libc++abi #

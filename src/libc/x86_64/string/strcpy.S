@@ -39,6 +39,7 @@
 
 #ifdef DARLING
 #	define _strcpy strcpy
+.type strcpy, @function
 #endif
 
         .text

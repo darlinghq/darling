@@ -46,6 +46,7 @@
 #ifdef DARLING
 #	define _strncpy strncpy
 #	define _bzero bzero@PLT
+.type strncpy, @function
 #endif
 
 #define	kShort	31			// too short to bother with vector loop

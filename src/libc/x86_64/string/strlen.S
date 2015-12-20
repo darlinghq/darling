@@ -34,6 +34,7 @@
 
 #ifdef DARLING
 #	define _strlen strlen
+.type strlen, @function
 #endif
 
         .text

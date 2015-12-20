@@ -152,6 +152,7 @@ L2:
 #error Unsupported architecture
 #endif
 #if defined(__x86_64__)
+	.type vfork, @function
 	.globl	vfork
 		vfork = __vfork
 #endif

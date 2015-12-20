@@ -46,6 +46,7 @@
 
 #ifdef DARLING
 #	define _strlcpy strlcpy
+.type strlcpy,@function
 #endif
 
         .text

@@ -60,6 +60,7 @@
 #include "process/wait4.h"
 #include "process/waitid.h"
 #include "process/execve.h"
+#include "misc/getlogin.h"
 #include "misc/ioctl.h"
 #include "misc/getrlimit.h"
 #include "misc/thread_selfid.h"
@@ -158,6 +159,7 @@ void* __bsd_syscall_table[512] = {
 	[46] = sys_sigaction,
 	[47] = sys_getgid,
 	[48] = sys_sigprocmask,
+	[49] = sys_getlogin,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,
 	[57] = sys_symlink,

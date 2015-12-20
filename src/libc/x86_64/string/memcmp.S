@@ -44,6 +44,8 @@
 #ifdef DARLING
 #	define _memcmp memcmp
 #	define _bcmp bcmp
+.type memcmp, @function
+.type bcmp, @function
 #endif
 
         .text

@@ -49,6 +49,7 @@
 #	define _memset_pattern8 memset_pattern8
 #	define _memset_pattern16 memset_pattern16
 #	define _bzero bzero@PLT
+.type memset, @function
 #endif
 
 #define kShort	255			// for nonzero memset(), too short for commpage

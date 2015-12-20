@@ -52,7 +52,7 @@
 #include <mach/mach_types.h>
 #include <servers/bootstrap.h>
 #include <pthread.h>
-#include <asl_ipc.h>
+//#include <asl_ipc.h>
 
 #ifdef UTMP_COMPAT
 #include <ttyent.h>

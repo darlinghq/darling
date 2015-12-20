@@ -12,6 +12,7 @@
 #include <limits.h>
 #include "../ext/sys/utsname.h"
 #include "../ext/syslog.h"
+#include "getrlimit.h"
 #include "darling-config.h"
 #include <util/IniConfig.h>
 
@@ -183,6 +184,19 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 					default:
 						return -ENOTDIR;
 				}
+			}
+			case KERN_ARGMAX:
+			{
+				struct rlimit lim;
+				int r;
+				int* ovalue = (int*) old;
+
+				r = sys_getrlimit(BSD_RLIMIT_STACK, &lim);
+				if (r < 0)
+					return r;
+
+				*ovalue = lim.rlim_cur / 4;
+				return 0;
 			}
 		}
 

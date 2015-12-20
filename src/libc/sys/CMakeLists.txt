@@ -3,6 +3,7 @@ project(libc-sys)
 cmake_minimum_required(VERSION 2.4.0)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+include_directories(${DARLING_TOP_DIRECTORY}/src/libnotify)
 
 set(sys_sources chmodx_np.c
 	crt_externs.c
@@ -19,7 +20,7 @@ set(sys_sources chmodx_np.c
 	#OSThermalNotification.c
 	posix_spawn.c
 	semctl.c
-	#settimeofday.c
+	settimeofday.c
 	shmctl.c
 	sigaction.c
 	sigcatch.c
