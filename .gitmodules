@@ -49,3 +49,7 @@
 	path = src/external/shell_cmds
 	url = ../darling-shell_cmds.git
 	branch = darling
+[submodule "src/external/file_cmds"]
+	path = src/external/file_cmds
+	url = ../darling-file_cmds.git
+	branch = darling
