@@ -185,6 +185,8 @@ set(ncurses_sources
 	names.c
 	base/codes.c
 	base/unctrl.c
+	base/comp_captab.c
+	base/fallback.c
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
