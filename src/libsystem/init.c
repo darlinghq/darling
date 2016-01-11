@@ -128,6 +128,8 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[] /*, 
 		vars.environPtr = x_envp;
 		vars.__prognamePtr = &(*x_argv)[0];
 		vars.mh = NULL;
+		
+		__darling_set_environ(envp); // Initialize glibc's environ
 	}
 	__darling_set_libc_vars(x_argc, x_argv, x_envp);
 	

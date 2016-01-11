@@ -6,6 +6,8 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+enable_language(C ASM)
+
 set(dyld_SRCS
 	dyld.cpp
 	dirstructure.cpp
@@ -51,4 +53,6 @@ if (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 	set_target_properties(dyld-multilib PROPERTIES OUTPUT_NAME dyld)
 	install(TARGETS dyld-multilib DESTINATION bin)
 endif (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
+
+add_library(dexe_startup STATIC darling-so-start.S)
 

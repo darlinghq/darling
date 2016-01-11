@@ -326,4 +326,8 @@ void __darling_get_args(int** argc, char**** argv, char**** env, struct ::Progra
 	vars->__prognamePtr = (const char**) &g_argv[0];
 
 }
-
+extern "C"
+void __darling_set_environ(char** _environ)
+{
+	environ = _environ;
+}

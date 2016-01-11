@@ -110,6 +110,7 @@ add_subdirectory(CommonCrypto)
 add_subdirectory(csu)
 add_subdirectory(external/shell_cmds)
 add_subdirectory(external/file_cmds)
+add_subdirectory(external/bash)
 
 ######################
 # libc++ & libc++abi #

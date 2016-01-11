@@ -19,6 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <libdyld/MachOMgr.h>
 #include <libdyld/MachOObject.h>
+#include <libdyld/NativeObject.h>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -28,10 +29,12 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <util/stlutils.h>
 #include <libdyld/arch.h>
 #include <regex>
+#include <fstream>
 #include "dirstructure.h"
 #include <libdyld/VirtualPrefix.h>
 
 static void printHelp(const char* argv0);
+static bool isELF(const char* path);
 static std::string locateBundleExecutable(std::string bundlePath);
 
 using namespace Darling;
@@ -49,7 +52,6 @@ int main(int argc, char** argv, char** envp)
 
 	try
 	{
-		MachOObject* obj;
 		MachOMgr* mgr = MachOMgr::instance();
 		std::string executable;
 
@@ -79,18 +81,39 @@ int main(int argc, char** argv, char** envp)
 			mgr->setUseTrampolines(true, path);
 		if (const char* path = getenv("DPREFIX"))
 			__prefix_set(path);
-		
-		obj = new MachOObject(__prefix_translate_path(argv[1]));
-		if (!obj->isMainModule())
-		{
-			throw std::runtime_error("This is not a Mach-O executable; dynamic libraries, "
-			"kernel extensions and other Mach-O files cannot be executed with dyld");
-		}
-		
-		obj->setCommandLine(argc-1, &argv[1], envp);
 
-		obj->load();
-		obj->run();
+		if (isELF(argv[1]))
+		{
+			NativeObject* obj;
+			typedef int (mainPtr)(int argc, char** argv, char** envp);
+			mainPtr* main;
+
+			obj = new NativeObject(__prefix_translate_path(argv[1]));
+			obj->load();
+
+			main = (mainPtr*) obj->getExportedSymbol("main", false);
+
+			if (!main)
+				throw std::runtime_error("No entry point found");
+
+			exit(main(argc-1, &argv[1], envp));
+		}
+		else
+		{
+			MachOObject* obj;
+
+			obj = new MachOObject(__prefix_translate_path(argv[1]));
+			if (!obj->isMainModule())
+			{
+				throw std::runtime_error("This is not a Mach-O executable; dynamic libraries, "
+				"kernel extensions and other Mach-O files cannot be executed with dyld");
+			}
+		
+			obj->setCommandLine(argc-1, &argv[1], envp);
+
+			obj->load();
+			obj->run();
+		}
 	}
 	catch (const std::exception& e)
 	{
@@ -143,5 +166,19 @@ static std::string locateBundleExecutable(std::string bundlePath)
 	}
 	else
 		return bundlePath;
+}
+
+static bool isELF(const char* path)
+{
+	std::ifstream file(path, std::ios_base::in | std::ios_base::binary);
+	uint32_t signature;
+
+	if (!file.is_open())
+		return false;
+
+	file.read((char*) &signature, sizeof(signature));
+	file.close();
+
+	return signature == *((const uint32_t*) "\177ELF");
 }
 

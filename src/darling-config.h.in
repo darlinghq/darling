@@ -6,6 +6,7 @@
 #define LIB_DIR_NAME "lib@SUFFIX@"
 #define INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"
 #define SHARE_PATH "${CMAKE_INSTALL_PREFIX}/share/darling"
+#define DYLD_PATH "${CMAKE_INSTALL_PREFIX}/bin/dyld"
 
 #define ETC_DARLING_PATH "/etc/darling"
 

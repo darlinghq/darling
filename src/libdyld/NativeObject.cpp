@@ -128,8 +128,8 @@ void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWea
 	std::string name;
 	std::smatch match;
 	
-	if (symbolName == "main")
-		return nullptr; // Don't return main() from Darling itself
+	//if (symbolName == "main")
+	//	return nullptr; // Don't return main() from Darling itself
 
 	name = symbolName;
 

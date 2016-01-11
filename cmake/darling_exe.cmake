@@ -14,7 +14,7 @@ FUNCTION(add_darling_executable exe)
 	SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 	add_executable(${exe} ${files})
-	target_link_libraries(${exe} system -lpthread csu dyld)
-	set_target_properties(${exe} PROPERTIES COMPILE_FLAGS "-Denviron=__darwin_environ -Ddlopen=__darwin_dlopen -Ddlclose=__darwin_dlclose -Ddlsym=__darwin_dlsym -Ddladdr=__darwin_dladdr")
+	target_link_libraries(${exe} system_c system_kernel system dyld "-Wl,--whole-archive" dexe_startup "-Wl,--no-whole-archive" "-shared")
+	set_target_properties(${exe} PROPERTIES COMPILE_FLAGS "-Denviron=__darwin_environ -Ddlopen=__darwin_dlopen -Ddlclose=__darwin_dlclose -Ddlsym=__darwin_dlsym -Ddladdr=__darwin_dladdr -Ddlerror=__darwin_dlerror")
 ENDFUNCTION(add_darling_executable)
 
