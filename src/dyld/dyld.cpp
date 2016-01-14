@@ -88,13 +88,13 @@ int main(int argc, char** argv, char** envp)
 			typedef int (mainPtr)(int argc, char** argv, char** envp);
 			mainPtr* main;
 
-			obj = new NativeObject(__prefix_translate_path(argv[1]));
+			obj = new NativeObject(argv[1]);
 			obj->load();
 
 			main = (mainPtr*) obj->getExportedSymbol("main", false);
 
 			if (!main)
-				throw std::runtime_error("No entry point found");
+				throw std::runtime_error("No entry point found in Darling-native executable");
 
 			exit(main(argc-1, &argv[1], envp));
 		}
@@ -102,7 +102,7 @@ int main(int argc, char** argv, char** envp)
 		{
 			MachOObject* obj;
 
-			obj = new MachOObject(__prefix_translate_path(argv[1]));
+			obj = new MachOObject(argv[1]);
 			if (!obj->isMainModule())
 			{
 				throw std::runtime_error("This is not a Mach-O executable; dynamic libraries, "

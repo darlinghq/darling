@@ -26,21 +26,42 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <iostream>
 #include <cstdio>
+#include <dirent.h>
 
 static std::string g_prefix;
+static std::list<std::string> g_prefixComponents;
 static std::string g_cwd;
 static pthread_rwlock_t g_cwdLock = PTHREAD_RWLOCK_INITIALIZER;
 static const char SYSTEM_ROOT[] = __SYSTEM_ROOT;
 
-static std::string canonicalize_path(const std::string& in_path);
+static std::list<std::string> explode_path(const std::string& path);
+static std::string join_path(const std::list<std::string>& path_components);
+
+static std::list<std::string>& canonicalize_path(std::list<std::string>& path_components);
+static std::string resolve_path(std::list<std::string>& path_components);
 
 void __prefix_set(const char* path)
 {
 	char cwd[256];
+	size_t pos = 0, last_pos;
 	
 	getcwd(cwd, sizeof(cwd));
 	
+	assert(path[0] == '/');
+	
 	g_prefix = path;
+	g_prefixComponents.clear();
+	
+	while (pos != std::string::npos)
+	{
+		size_t len;
+		last_pos = pos + 1;
+		
+		pos = g_prefix.find('/', last_pos);
+		len = (pos == std::string::npos) ? pos : (pos - last_pos);
+		g_prefixComponents.push_back(g_prefix.substr(last_pos, len));
+	}
+	
 	if (g_prefix[g_prefix.length()-1] != '/')
 		g_prefix += '/';
 	
@@ -70,6 +91,8 @@ const char* __prefix_translate_path(const char* path)
 {
 	static thread_local char resolved_path[1024];
 	std::string str;
+	std::list<std::string> path_components;
+	std::list<std::string>::iterator root;
 	
 	if (g_prefix.empty())
 		return path;
@@ -82,30 +105,13 @@ const char* __prefix_translate_path(const char* path)
 	}
 	str += path;
 	
-	// Resolve . and ..
-	str = canonicalize_path(str);
-	
-	// std::cout << "CWD: " << g_cwd << std::endl;
-	// std::cout << "Can1: " << path << " -> " << str << std::endl;
-	if (str.compare(0, sizeof(SYSTEM_ROOT)-1, SYSTEM_ROOT) == 0)
-	{
-		// Leave virtual prefix
-		str = str.substr(sizeof(SYSTEM_ROOT)-1);
-		if (str.empty())
-			str = "/";
-	}
-	else if (str.compare(0, 5, "/proc") != 0)
-	{
-		// Apply virtual prefix
-		str = g_prefix + str;
-	}
-	
-	// std::cout << "Can2: " << path << " -> " << str << std::endl;
-	
-	// TODO: make case insensitive
+	path_components = explode_path(str);
+	str = resolve_path(path_components);
 	
 	strncpy(resolved_path, str.c_str(), sizeof(resolved_path)-1);
 	resolved_path[sizeof(resolved_path)-1] = '\0';
+	
+	// std::cout << "*** In: " << path << "; out: " << resolved_path << std::endl;
 	
 	return resolved_path;
 }
@@ -158,6 +164,7 @@ void __prefix_cwd(const char* in_path)
 		return;
 
 	std::string path;
+	std::list<std::string> path_components;
 	
 	// std::cout << "CWD to " << in_path << std::endl;
 	
@@ -170,7 +177,8 @@ void __prefix_cwd(const char* in_path)
 	else
 		path = in_path;
 	
-	g_cwd = canonicalize_path(path);
+	path_components = explode_path(path);
+	g_cwd = join_path(canonicalize_path(path_components));
 	
 	if (g_cwd[g_cwd.length()-1] != '/')
 		g_cwd += '/';
@@ -213,24 +221,46 @@ int __prefix_get_dyld_path(char* buf, unsigned long size)
 	return len;
 }
 
-std::string canonicalize_path(const std::string& in_path)
+std::list<std::string> explode_path(const std::string& path)
 {
 	std::list<std::string> path_components;
 	size_t pos = 0, last_pos;
-	std::string path;
 	
-	assert(in_path[0] == '/');
+	if (path.empty())
+		return path_components;
 	
 	while (pos != std::string::npos)
 	{
 		size_t len;
-		last_pos = pos + 1;
 		
-		pos = in_path.find('/', last_pos);
+		if (pos != 0 || path[0] == '/')
+			last_pos = pos + 1; // skip first slash
+		else
+			last_pos = pos;
+		
+		pos = path.find('/', last_pos);
 		len = (pos == std::string::npos) ? pos : (pos - last_pos);
-		path_components.push_back(in_path.substr(last_pos, len));
+		path_components.push_back(path.substr(last_pos, len));
 	}
 	
+	return path_components;
+}
+
+std::string join_path(const std::list<std::string>& path_components)
+{
+	std::string path;
+	
+	for (const std::string& comp : path_components)
+	{
+		path += '/';
+		path += comp;
+	}
+	
+	return path;
+}
+
+std::list<std::string>& canonicalize_path(std::list<std::string>& path_components)
+{
 	for (std::list<std::string>::iterator it = path_components.begin();
 			it != path_components.end(); )
 	{
@@ -251,13 +281,170 @@ std::string canonicalize_path(const std::string& in_path)
 			it++;
 	}
 	
-	path.reserve(in_path.size());
+	return path_components;
+}
+
+std::string resolve_path(std::list<std::string>& path_components)
+{
+	std::string path, real_path;
+	bool had_failure = false;
 	
-	for (const std::string& comp : path_components)
+	real_path = g_prefix;
+	
+	// The resolution process is restarted when a symlink is encountered
+restart_process:
+			
+	canonicalize_path(path_components);
+	path.clear();
+	
+	for (std::list<std::string>::iterator it = path_components.begin();
+			it != path_components.end(); it++)
 	{
+		std::string& comp = *it;
+		
 		path += '/';
+		
+		real_path.replace(g_prefix.size(), std::string::npos, path);
+		
+		if (!had_failure) // check if there is any sense in using opendir again
+		{
+			DIR* dir;
+			struct dirent* ent;
+			
+			// std::cout << "*** opendir: " << real_path << std::endl;
+			dir = opendir(real_path.c_str());
+
+			if (dir != nullptr)
+			{
+				std::string best_match;
+				unsigned char best_match_type;
+				
+				while ((ent = readdir(dir)) != nullptr)
+				{
+					if (comp == ent->d_name)
+						break;
+					else if (strcasecmp(comp.c_str(), ent->d_name) == 0)
+					{
+						best_match = ent->d_name;
+						best_match_type = ent->d_type;
+					}
+				}
+
+				if (ent != nullptr || !best_match.empty())
+				{
+					bool is_system_root;
+					if (ent == nullptr)
+					{
+						// correct the case
+						comp = best_match;
+					}
+					else
+						best_match_type = ent->d_type;
+					
+					// Perform symlink resolution
+					// 
+					// Do NOT perform symlink resolution on /system-root,
+					// because that should look like a bind mount rather than
+					// a symlink from inside the DPREFIX
+					is_system_root = (it == path_components.begin())
+								&& (comp == (SYSTEM_ROOT+1));
+					
+					if (best_match_type == DT_LNK && !is_system_root)
+					{
+						char link[256];
+						int len;
+						
+						real_path += comp;
+						
+						// std::cout << "*** readlink: " << real_path << std::endl;
+						len = readlink(real_path.c_str(), link, sizeof(link)-1);
+						
+						if (len > 0)
+						{
+							std::list<std::string> link_components;
+							
+							link[len] = '\0';
+							
+							link_components = explode_path(link);
+							
+							if (link[0] == '/')
+							{
+								it++;
+								it = path_components.erase(path_components.begin(), it);
+							}
+							else
+							{
+								it = path_components.erase(it);
+							}
+							
+							path_components.insert(it,
+										link_components.begin(),
+										link_components.end());
+							
+							closedir(dir);
+							goto restart_process;
+						}
+					}
+				}
+				else
+					had_failure = true;
+
+				closedir(dir);
+			}
+			else
+				had_failure = true;
+		}
+		
 		path += comp;
 	}
 	
-	return path;
+	if (!path_components.empty())
+	{
+		if (*path_components.begin() == "proc")
+		{
+			return path;
+		}
+		else if (*path_components.begin() == (SYSTEM_ROOT+1))
+		{
+			// Exit virtual prefix
+			return path.substr(sizeof(SYSTEM_ROOT)-1);
+		}
+	}
+	
+	// Apply virtual prefix
+	real_path.replace(g_prefix.size(), std::string::npos, path);
+	return real_path;
 }
+
+/*
+void path_to_string(const std::list<std::string>& path, char* outPath,
+		size_t maxLen)
+{
+	size_t lenSoFar = 1;
+	
+	if (maxLen < 2)
+		return;
+	
+	outPath[0] = '\0';
+	
+	for (const std::string& comp : path)
+	{
+		if (lenSoFar+1 > maxLen)
+			break;
+		
+		strcat(outPath, "/");
+		lenSoFar++;
+		
+		if (lenSoFar + comp.length() > maxLen)
+		{
+			strncat(outPath, comp.c_str(), maxLen - lenSoFar);
+			break;
+		}
+		else
+		{
+			strcat(outPath, comp.c_str());
+			lenSoFar += comp.length();
+		}
+	}
+}
+*/

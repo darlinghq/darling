@@ -7,6 +7,7 @@
 #include "../unistd/close.h"
 #include "../unistd/readlink.h"
 #include <stdint.h>
+#include <stddef.h>
 #include <libdyld/VirtualPrefix.h>
 
 #define MH_MAGIC    0xfeedface
@@ -17,12 +18,23 @@
 #define FAT_CIGAM   0xbebafeca
 
 extern int strcmp(const char *s1, const char *s2);
+extern void* memchr(const void* s, int c, __SIZE_TYPE__ n);
+extern char* strchr(const char* s, int c);
+
+static inline bool isspace(char c)
+{
+	return c <= ' ' && c > '\0';
+}
 
 long sys_execve(char* fname, char** argvp, char** envp)
 {
 	int ret, fd;
-	uint32_t magic;
 	char dyld_path[256];
+	union
+	{
+		uint32_t magic;
+		char magic_array[256];
+	} m;
 
 	// Ideally, if everybody used binfmt_misc to allow direct
 	// execution of Mach-O binaries under Darling, this wouldn't
@@ -32,13 +44,13 @@ long sys_execve(char* fname, char** argvp, char** envp)
 	if (fd < 0)
 		return fd;
 
-	ret = sys_read(fd, &magic, sizeof(magic));
-	if (ret != 4)
+	ret = sys_read(fd, m.magic_array, sizeof(m.magic_array));
+	if (ret < 4)
 		goto no_macho;
 
-	if (magic == MH_MAGIC || magic == MH_CIGAM
-			|| magic == MH_MAGIC_64 || magic == MH_CIGAM_64
-			|| magic == FAT_MAGIC || magic == FAT_CIGAM)
+	if (m.magic == MH_MAGIC || m.magic == MH_CIGAM
+			|| m.magic == MH_MAGIC_64 || m.magic == MH_CIGAM_64
+			|| m.magic == FAT_MAGIC || m.magic == FAT_CIGAM)
 	{
 		// It is a Mach-O file
 		int len, i;
@@ -64,13 +76,71 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		// Allocate a new argvp, execute dyld_path
 		modargvp = (char**) __builtin_alloca(sizeof(void*) * (len+1));
 		modargvp[0] = dyld_path;
-		modargvp[1] = __prefix_translate_path(fname);
+		modargvp[1] = (char*) __prefix_translate_path(fname);
 
 		for (i = 2; i < len+1; i++)
 			modargvp[i] = argvp[i-1];
 
 		argvp = modargvp;
 		fname = dyld_path;
+	}
+	else if (__prefix_get() != NULL)
+	{
+		// shebang handling...
+		if (m.magic_array[0] == '#' && m.magic_array[1] == '!')
+		{
+			char *nl, *interp, *arg;
+			char** modargvp;
+			int i, j, len;
+			
+			nl = memchr(m.magic_array, '\n', sizeof(m.magic_array));
+			if (nl == NULL)
+				goto no_macho;
+			
+			*nl = '\0';
+			
+			for (i = 2; isspace(m.magic_array[i]); i++);
+			
+			interp = &m.magic_array[i];
+			
+			for (i = 0; !isspace(interp[i]) && interp[i]; i++);
+			
+			if (interp[i] == '\0')
+				arg = NULL;
+			else
+				arg = &interp[i];
+			
+			if (arg != NULL)
+			{
+				*arg = '\0'; // terminate interp
+				while (isspace(*arg))
+					arg++;
+				if (*arg == '\0')
+					arg = NULL; // no argument, just whitespace
+			}
+			
+			// Count original arguments
+			while (argvp[len++]);
+			
+			// Allocate a new argvp
+			modargvp = (char**) __builtin_alloca(sizeof(void*) * (len+2));
+			
+			i = 0;
+			modargvp[i++] = interp;
+			if (arg != NULL)
+				modargvp[i++] = arg;
+			
+			// Append original arguments
+			for (j = 0; j < len+1; j++)
+				modargvp[i+j] = argvp[j];
+			
+			argvp = modargvp;
+			fname = modargvp[0];
+		}
+		else
+		{
+			fname = (char*) __prefix_translate_path(fname);
+		}
 	}
 
 no_macho:

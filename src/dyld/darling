@@ -18,9 +18,36 @@
 # along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 # 
 
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
+
 SYSTEM_ROOT_NAME="system-root"
 BIND_DIRECTORIES="dev etc home tmp"
 MAKE_DIRECTORIES="Applications Volumes"
+
+setup_prefix() {
+    >&2 echo "Setting up prefix at $1"
+
+    mkdir -p "$1"
+    pushd "$1" >/dev/null
+
+    ln -s / "${SYSTEM_ROOT_NAME}"
+    for dir in ${BIND_DIRECTORIES}; do
+        ln -s "${SYSTEM_ROOT_NAME}/${dir}" "${dir}"
+    done
+
+    for dir in ${MAKE_DIRECTORIES}; do
+        mkdir "${dir}"
+    done
+
+    ln -s home Users
+
+    # TODO: install bash and coreutils
+    ln -s "${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/libexec/darling/bin" "bin"
+
+    popd >/dev/null
+}
 
 if [ $# -eq 0 ]; then
     >&2 echo "This is Darling, a runtime environment for OS X applications."
@@ -45,35 +72,18 @@ if [ -z "$DPREFIX" ]; then
 fi
 
 if [ ! -d "$DPREFIX" ]; then
-    >&2 echo "Setting up prefix at $DPREFIX"
-
-    mkdir -p "${DPREFIX}"
-    pushd "${DPREFIX}" >/dev/null
-
-    ln -s / "${SYSTEM_ROOT_NAME}"
-    for dir in ${BIND_DIRECTORIES}; do
-        ln -s "${SYSTEM_ROOT_NAME}/${dir}" "${dir}"
-    done
-
-    for dir in ${MAKE_DIRECTORIES}; do
-        mkdir "${dir}"
-    done
-
-    ln -s home Users
-
-    # TODO: install bash and coreutils
-
-    popd >/dev/null
+    setup_prefix "$DPREFIX"
 fi
 
-dyld_path="${0%darling}dyld"
+#dyld_path="${0%darling}dyld"
+dyld_path="${DARLING_PREFIX}/bin/dyld"
 
 case "$1" in
 "shell")
     if [ $# -gt 2 ]; then
-        exec "${dyld_path}" /usr/local/bin/bash -c "${*:2}"
+        exec "${dyld_path}" "${DPREFIX}/bin/bash" -c "${*:2}"
     else
-        exec "${dyld_path}" /usr/local/bin/bash
+        exec "${dyld_path}" "${DPREFIX}/bin/bash"
     fi
     ;;
 "hdiutil")
