@@ -24,6 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <list>
 #include <cassert>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <iostream>
 #include <cstdio>
 #include <dirent.h>
@@ -304,95 +305,117 @@ restart_process:
 		
 		path += '/';
 		
-		real_path.replace(g_prefix.size(), std::string::npos, path);
-		
-		if (!had_failure) // check if there is any sense in using opendir again
+		if (!had_failure) // check if there is any sense in using opendir() or lstat() again
 		{
 			DIR* dir;
 			struct dirent* ent;
+			struct stat st;
+			bool isLink = false;
+			bool is_system_root;
 			
-			// std::cout << "*** opendir: " << real_path << std::endl;
-			dir = opendir(real_path.c_str());
-
-			if (dir != nullptr)
+			real_path.replace(g_prefix.size(), std::string::npos, path);
+			real_path += comp;
+			
+			// Do NOT perform symlink resolution on /system-root,
+			// because that should look like a bind mount rather than
+			// a symlink from inside the DPREFIX
+			is_system_root = (it == path_components.begin())
+						&& (comp == (SYSTEM_ROOT+1));
+			
+			// We try an lstat() first as an optimization,
+			// because the opendir() path below is VERY slow on NFS mounts.
+			if (lstat(real_path.c_str(), &st) == 0)
 			{
-				std::string best_match;
-				unsigned char best_match_type;
+				isLink = S_ISLNK(st.st_mode);
+			}
+			else
+			{
+				// std::cout << "*** opendir: " << real_path << std::endl;
+				real_path.resize(real_path.length() - comp.length());
 				
-				while ((ent = readdir(dir)) != nullptr)
-				{
-					if (comp == ent->d_name)
-						break;
-					else if (strcasecmp(comp.c_str(), ent->d_name) == 0)
-					{
-						best_match = ent->d_name;
-						best_match_type = ent->d_type;
-					}
-				}
+				dir = opendir(real_path.c_str());
 
-				if (ent != nullptr || !best_match.empty())
+				if (dir != nullptr)
 				{
-					bool is_system_root;
-					if (ent == nullptr)
+					std::string best_match;
+					unsigned char best_match_type;
+
+					while ((ent = readdir(dir)) != nullptr)
 					{
-						// correct the case
-						comp = best_match;
-					}
-					else
-						best_match_type = ent->d_type;
-					
-					// Perform symlink resolution
-					// 
-					// Do NOT perform symlink resolution on /system-root,
-					// because that should look like a bind mount rather than
-					// a symlink from inside the DPREFIX
-					is_system_root = (it == path_components.begin())
-								&& (comp == (SYSTEM_ROOT+1));
-					
-					if (best_match_type == DT_LNK && !is_system_root)
-					{
-						char link[256];
-						int len;
-						
-						real_path += comp;
-						
-						// std::cout << "*** readlink: " << real_path << std::endl;
-						len = readlink(real_path.c_str(), link, sizeof(link)-1);
-						
-						if (len > 0)
+						// Commented out: replaced with lstat() above
+						/* if (comp == ent->d_name)
+							break;
+						else*/ if (strcasecmp(comp.c_str(), ent->d_name) == 0)
 						{
-							std::list<std::string> link_components;
-							
-							link[len] = '\0';
-							
-							link_components = explode_path(link);
-							
-							if (link[0] == '/')
-							{
-								it++;
-								it = path_components.erase(path_components.begin(), it);
-							}
-							else
-							{
-								it = path_components.erase(it);
-							}
-							
-							path_components.insert(it,
-										link_components.begin(),
-										link_components.end());
-							
-							closedir(dir);
-							goto restart_process;
+							best_match = ent->d_name;
+							best_match_type = ent->d_type;
 						}
 					}
+
+					if (ent != nullptr || !best_match.empty())
+					{
+						if (ent == nullptr)
+						{
+							// correct the case
+							comp = best_match;
+						}
+						else
+							best_match_type = ent->d_type;
+
+						if (best_match_type == DT_LNK && !is_system_root)
+						{
+							isLink = true;
+							real_path += comp;
+						}
+					}
+					else
+						had_failure = true;
+
+					closedir(dir);
 				}
 				else
 					had_failure = true;
-
-				closedir(dir);
 			}
-			else
-				had_failure = true;
+			
+			// Perform symlink resolution
+			if (isLink && !is_system_root)
+			{
+				char link[256];
+				int len;
+
+				// std::cout << "*** readlink: " << real_path << std::endl;
+				len = readlink(real_path.c_str(), link, sizeof(link)-1);
+
+				if (len > 0)
+				{
+					std::list<std::string> link_components;
+
+					link[len] = '\0';
+
+					link_components = explode_path(link);
+
+					if (link[0] == '/')
+					{
+						// absolute symlink
+						it++;
+						it = path_components.erase(path_components.begin(), it);
+					}
+					else
+					{
+						// relative symlink
+						it = path_components.erase(it);
+					}
+
+					path_components.insert(it,
+								link_components.begin(),
+								link_components.end());
+
+					// We always restart the process
+					// 1) For absolute symlinks, because we're moving to a completely different path
+					// 2) For relative symlinks, because they may contain '..'
+					goto restart_process;
+				}
+			}
 		}
 		
 		path += comp;
