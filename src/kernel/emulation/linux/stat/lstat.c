@@ -11,9 +11,9 @@ long sys_lstat(const char* path, struct stat* stat)
 	struct linux_stat lstat;
 
 #ifdef __NR_lstat64
-	ret = LINUX_SYSCALL(__NR_lstat64, __prefix_translate_path(path), &lstat);
+	ret = LINUX_SYSCALL(__NR_lstat64, __prefix_translate_path_link(path), &lstat);
 #else
-	ret = LINUX_SYSCALL(__NR_lstat, __prefix_translate_path(path), &lstat);
+	ret = LINUX_SYSCALL(__NR_lstat, __prefix_translate_path_link(path), &lstat);
 #endif
 
 	if (ret < 0)
@@ -32,9 +32,9 @@ long sys_lstat64(const char* path, struct stat64* stat)
 	struct linux_stat lstat;
 
 #ifdef __NR_lstat64
-	ret = LINUX_SYSCALL(__NR_lstat64, __prefix_translate_path(path), &lstat);
+	ret = LINUX_SYSCALL(__NR_lstat64, __prefix_translate_path_link(path), &lstat);
 #else
-	ret = LINUX_SYSCALL(__NR_lstat, __prefix_translate_path(path), &lstat);
+	ret = LINUX_SYSCALL(__NR_lstat, __prefix_translate_path_link(path), &lstat);
 #endif
 
 	if (ret < 0)

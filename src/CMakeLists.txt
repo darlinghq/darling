@@ -111,6 +111,7 @@ add_subdirectory(csu)
 add_subdirectory(external/shell_cmds)
 add_subdirectory(external/file_cmds)
 add_subdirectory(external/bash)
+add_subdirectory(external/gnumake)
 
 ######################
 # libc++ & libc++abi #

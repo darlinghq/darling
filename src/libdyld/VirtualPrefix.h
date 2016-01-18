@@ -38,6 +38,10 @@ const char* __prefix_get(void);
 // Translate from path in prefix to physical path.
 const char* __prefix_translate_path(const char* path);
 
+// Translate from path in prefix to physical path, treat the leaf node
+// as a symlink.
+const char* __prefix_translate_path_link(const char* path);
+
 // Translate from physical path to path in prefix.
 // The path is expected to be canonical.
 const char* __prefix_untranslate_path(const char* path, unsigned long count);

@@ -10,7 +10,7 @@ long sys_readlink(const char* path, char* buf, int count)
 {
 	int ret;
 
-	ret = LINUX_SYSCALL(__NR_readlink, __prefix_translate_path(path),
+	ret = LINUX_SYSCALL(__NR_readlink, __prefix_translate_path_link(path),
 			buf, count);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);

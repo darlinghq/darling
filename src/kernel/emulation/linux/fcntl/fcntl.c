@@ -75,7 +75,7 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 			if (len >= 0)
 				((char*) arg)[len] = '\0';
 
-			return len;
+			return 0;
 		}
 		// TODO: implement remaining commands
 		default:

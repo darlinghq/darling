@@ -24,7 +24,7 @@ DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
 
 SYSTEM_ROOT_NAME="system-root"
 BIND_DIRECTORIES="dev etc home tmp"
-MAKE_DIRECTORIES="Applications Volumes"
+MAKE_DIRECTORIES="Applications Volumes usr"
 
 setup_prefix() {
     >&2 echo "Setting up prefix at $1"
@@ -45,6 +45,7 @@ setup_prefix() {
 
     # TODO: install bash and coreutils
     ln -s "${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/libexec/darling/bin" "bin"
+    ln -s "../${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/libexec/darling/usr/bin" "usr/bin"
 
     popd >/dev/null
 }

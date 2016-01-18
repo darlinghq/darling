@@ -39,7 +39,8 @@ static std::list<std::string> explode_path(const std::string& path);
 static std::string join_path(const std::list<std::string>& path_components);
 
 static std::list<std::string>& canonicalize_path(std::list<std::string>& path_components);
-static std::string resolve_path(std::list<std::string>& path_components);
+static std::string resolve_path(std::list<std::string>& path_components, bool symlink);
+static const char* translate_path_common(const char* path, bool symlink);
 
 void __prefix_set(const char* path)
 {
@@ -49,6 +50,7 @@ void __prefix_set(const char* path)
 	getcwd(cwd, sizeof(cwd));
 	
 	assert(path[0] == '/');
+	assert(g_prefix.empty());
 	
 	g_prefix = path;
 	g_prefixComponents.clear();
@@ -68,9 +70,9 @@ void __prefix_set(const char* path)
 	
 	if (strncmp(cwd, path, strlen(path)) == 0)
 	{
-		g_cwd = path + strlen(path);
-		if (g_cwd.empty())
-			g_cwd = "/";
+		g_cwd = cwd + strlen(path);
+		if (g_cwd.empty() || g_cwd[g_cwd.length()-1] != '/')
+			g_cwd += "/";
 	}
 	else
 	{
@@ -78,6 +80,8 @@ void __prefix_set(const char* path)
 		g_cwd += cwd;
 		g_cwd += '/';
 	}
+	
+	// std::cout << "### Prefix initialized with cwd " << g_cwd << " from " << cwd << std::endl;
 }
 
 const char* __prefix_get(void)
@@ -88,15 +92,16 @@ const char* __prefix_get(void)
 		return g_prefix.c_str();
 }
 
-const char* __prefix_translate_path(const char* path)
+const char* translate_path_common(const char* path, bool symlink)
 {
 	static thread_local char resolved_path[1024];
 	std::string str;
 	std::list<std::string> path_components;
-	std::list<std::string>::iterator root;
 	
 	if (g_prefix.empty())
 		return path;
+	
+	// std::cout << "\tCWD is " << g_cwd << std::endl;
 	
 	if (path[0] != '/')
 	{
@@ -105,9 +110,10 @@ const char* __prefix_translate_path(const char* path)
 		pthread_rwlock_unlock(&g_cwdLock);
 	}
 	str += path;
+	// std::cout << "*** Before explode: " << str << std::endl;
 	
 	path_components = explode_path(str);
-	str = resolve_path(path_components);
+	str = resolve_path(path_components, symlink);
 	
 	strncpy(resolved_path, str.c_str(), sizeof(resolved_path)-1);
 	resolved_path[sizeof(resolved_path)-1] = '\0';
@@ -115,6 +121,16 @@ const char* __prefix_translate_path(const char* path)
 	// std::cout << "*** In: " << path << "; out: " << resolved_path << std::endl;
 	
 	return resolved_path;
+}
+
+const char* __prefix_translate_path(const char* path)
+{
+	return translate_path_common(path, false);
+}
+
+const char* __prefix_translate_path_link(const char* path)
+{
+	return translate_path_common(path, true);
 }
 
 const char* __prefix_untranslate_path(const char* path, unsigned long count)
@@ -156,6 +172,8 @@ const char* __prefix_untranslate_path(const char* path, unsigned long count)
 		resolved_path[len + sizeof(SYSTEM_ROOT)-1] = '\0';
 	}
 	
+	// std::cout << "*** UNTRANSLATE: " << path << " -> " << resolved_path << std::endl;
+	
 	return resolved_path;
 }
 
@@ -183,6 +201,8 @@ void __prefix_cwd(const char* in_path)
 	
 	if (g_cwd[g_cwd.length()-1] != '/')
 		g_cwd += '/';
+	
+	// std::cout << "\t+++ CWD In: " << in_path << "; out: " << g_cwd << std::endl;
 	
 	pthread_rwlock_unlock(&g_cwdLock);
 }
@@ -285,7 +305,7 @@ std::list<std::string>& canonicalize_path(std::list<std::string>& path_component
 	return path_components;
 }
 
-std::string resolve_path(std::list<std::string>& path_components)
+std::string resolve_path(std::list<std::string>& path_components, bool symlink)
 {
 	std::string path, real_path;
 	bool had_failure = false;
@@ -376,6 +396,9 @@ restart_process:
 				else
 					had_failure = true;
 			}
+			
+			if (symlink && it == --path_components.end())
+				isLink = false;
 			
 			// Perform symlink resolution
 			if (isLink && !is_system_root)
