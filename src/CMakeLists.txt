@@ -51,6 +51,7 @@ add_subdirectory(libmach-o)
 add_subdirectory(libdyld)
 add_subdirectory(dyld)
 add_subdirectory(motool)
+add_subdirectory(external/darling-dmg)
 
 if (FRAMEWORK_COREAUDIO)
 	add_subdirectory(AudioToolbox)
@@ -111,7 +112,9 @@ add_subdirectory(csu)
 add_subdirectory(external/shell_cmds)
 add_subdirectory(external/file_cmds)
 add_subdirectory(external/bash)
-add_subdirectory(external/gnumake)
+add_subdirectory(tools)
+#add_subdirectory(external/gnumake)
+#add_subdirectory(external/ld64)
 
 ######################
 # libc++ & libc++abi #

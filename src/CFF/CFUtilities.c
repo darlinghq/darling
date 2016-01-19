@@ -1,5 +1,5 @@
 
-#include "CFUtilities.h"
+#include "CoreFoundation/CFPriv.h"
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFData.h>
 #include <CoreFoundation/CFPropertyList.h>

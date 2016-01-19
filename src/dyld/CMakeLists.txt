@@ -37,16 +37,16 @@ add_executable(dyld-bin ${dyld_SRCS})
 set_target_properties(dyld-bin PROPERTIES OUTPUT_NAME dyld${SUFFIX})
 target_link_libraries(dyld-bin dyld darling-util mach-o)
 
-#if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
+if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 	add_executable(dyldd dyldd.cpp)
 	target_link_libraries(dyldd dyld darling-util mach-o)
 	install(TARGETS dyldd DESTINATION bin)
-        install(PROGRAMS darling DESTINATION bin
+    install(PROGRAMS darling DESTINATION bin
                 PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ
                 GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-	#endif (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
+endif (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
 
-install(TARGETS dyld-bin DESTINATION bin)
+	install(TARGETS dyld-bin DESTINATION bin)
 
 if (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 	add_executable(dyld-multilib dyld-multilib.c)

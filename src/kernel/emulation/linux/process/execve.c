@@ -129,13 +129,14 @@ long sys_execve(char* fname, char** argvp, char** envp)
 			modargvp[i++] = interp;
 			if (arg != NULL)
 				modargvp[i++] = arg;
+			modargvp[i] = fname;
 			
 			// Append original arguments
-			for (j = 0; j < len+1; j++)
+			for (j = 1; j < len+1; j++)
 				modargvp[i+j] = argvp[j];
 			
 			argvp = modargvp;
-			fname = modargvp[0];
+			fname = (char*) __prefix_translate_path(modargvp[0]);
 		}
 		else
 		{

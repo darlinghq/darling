@@ -2,10 +2,16 @@
 #include "../base.h"
 #include "../errno.h"
 #include <asm/unistd.h>
+#include <stddef.h>
+
+extern char* getenv(const char* p);
 
 long sys_geteuid(void)
 {
 	int ret;
+	
+	if (getenv("__FAKE_SETUID_ROOT") != NULL)
+		return 0;
 
 #ifdef __NR_geteuid32
 	ret = LINUX_SYSCALL0(__NR_geteuid32);

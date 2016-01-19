@@ -57,7 +57,9 @@
 	path = src/external/bash
 	url = ../darling-bash.git
 	branch = darling
-[submodule "src/external/gnumake"]
-	path = src/external/gnumake
-	url = ../darling-gnumake.git
-	branch = darling
+[submodule "src/external/darling-dmg"]
+	path = src/external/darling-dmg
+	url = ../darling-dmg.git
+[submodule "src/external/installer"]
+	path = src/external/installer
+	url = ../darling-installer.git

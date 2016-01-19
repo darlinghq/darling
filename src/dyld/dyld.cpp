@@ -53,7 +53,7 @@ int main(int argc, char** argv, char** envp)
 	try
 	{
 		MachOMgr* mgr = MachOMgr::instance();
-		std::string executable;
+		std::string executable, unprefixed_argv0;
 
 		executable = locateBundleExecutable(argv[1]);
 		argv[1] = const_cast<char*>(executable.c_str());
@@ -80,7 +80,10 @@ int main(int argc, char** argv, char** envp)
 		if (const char* path = getenv("DYLD_TRAMPOLINE"))
 			mgr->setUseTrampolines(true, path);
 		if (const char* path = getenv("DPREFIX"))
+		{
 			__prefix_set(path);
+			unprefixed_argv0 = __prefix_untranslate_path(argv[1], strlen(argv[1]));
+		}
 
 		if (isELF(argv[1]))
 		{
@@ -96,6 +99,8 @@ int main(int argc, char** argv, char** envp)
 			if (!main)
 				throw std::runtime_error("No entry point found in Darling-native executable");
 
+			if (!unprefixed_argv0.empty())
+				argv[1] = (char*) unprefixed_argv0.c_str();
 			exit(main(argc-1, &argv[1], envp));
 		}
 		else
@@ -109,6 +114,9 @@ int main(int argc, char** argv, char** envp)
 				"kernel extensions and other Mach-O files cannot be executed with dyld");
 			}
 		
+			if (!unprefixed_argv0.empty())
+				argv[1] = (char*) unprefixed_argv0.c_str();
+			
 			obj->setCommandLine(argc-1, &argv[1], envp);
 
 			obj->load();

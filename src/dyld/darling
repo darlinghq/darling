@@ -22,11 +22,11 @@ SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
 
-SYSTEM_ROOT_NAME="system-root"
-BIND_DIRECTORIES="dev etc home tmp"
-MAKE_DIRECTORIES="Applications Volumes usr"
-
 setup_prefix() {
+    SYSTEM_ROOT_NAME="system-root"
+    BIND_DIRECTORIES="dev etc home tmp"
+    MAKE_DIRECTORIES="Applications Volumes usr usr/share"
+
     >&2 echo "Setting up prefix at $1"
 
     mkdir -p "$1"
@@ -43,9 +43,9 @@ setup_prefix() {
 
     ln -s home Users
 
-    # TODO: install bash and coreutils
     ln -s "${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/libexec/darling/bin" "bin"
     ln -s "../${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/libexec/darling/usr/bin" "usr/bin"
+    ln -s "/${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/share/darling" "usr/share/darling"
 
     popd >/dev/null
 }
@@ -58,8 +58,8 @@ if [ $# -eq 0 ]; then
     >&2 echo
     >&2 echo -e "Usage:\tdarling PROGRAM [ARGUMENTS...]\tRun the specified program" 
     >&2 echo -e "\tdarling shell\t\t\tStart bash shell in prefix"
-    >&2 echo -e "\tdarling hdiutil\t\t\tMount DMG disk images"
-    >&2 echo -e "\tdarling pkgutil\t\t\tInstall PKG packages"
+    #>&2 echo -e "\tdarling hdiutil\t\t\tMount DMG disk images"
+    #>&2 echo -e "\tdarling pkgutil\t\t\tInstall PKG packages"
     >&2 echo
     >&2 echo "The prefix is specified by the DPREFIX environment variable."
     >&2 echo "The default DPREFIX is \$HOME/.darling"
@@ -87,14 +87,14 @@ case "$1" in
         exec "${dyld_path}" "${DPREFIX}/bin/bash"
     fi
     ;;
-"hdiutil")
-    >2& echo "Not implemented yet"
-    exit 1
-    ;;
-"pkgutil")
-    >2& echo "Not implemented yet"
-    exit 1
-    ;;
+#"hdiutil")
+#    exec "${DPREFIX}/usr/bin/hdiutil" "${@:2}"
+#    exit $?
+#    ;;
+#"pkgutil")
+#    >2& echo "Not implemented yet"
+#    exit 1
+#    ;;
 "load")
     if [ "$(id -u)" != 0 ]; then
         2>&1 "You need to be root for this command."
