@@ -25,26 +25,27 @@ SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--unresolved-symbols=ignore-in-shared-libs")
 add_definitions(-D_GNU_SOURCE)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libmach-o)
 
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
+# if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
 
     add_definitions(-DHAS_DEBUG_HELPERS)
     add_definitions(-DHAS_TLS_SUPPORT)
 
-endif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
+# endif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
 
 
 add_executable(dyld-bin ${dyld_SRCS})
 set_target_properties(dyld-bin PROPERTIES OUTPUT_NAME dyld${SUFFIX})
 target_link_libraries(dyld-bin dyld darling-util mach-o)
 
-if (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
+if (NOT DARLING_NO_EXECUTABLES)
 	add_executable(dyldd dyldd.cpp)
 	target_link_libraries(dyldd dyld darling-util mach-o)
 	install(TARGETS dyldd DESTINATION bin)
     install(PROGRAMS darling DESTINATION bin
                 PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ
                 GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-endif (NOT DEFINED SUFFIX OR SUFFIX STREQUAL "64")
+	add_library(dexe_startup STATIC darling-so-start.S)
+endif (NOT DARLING_NO_EXECUTABLES)
 
 	install(TARGETS dyld-bin DESTINATION bin)
 
@@ -54,5 +55,4 @@ if (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 	install(TARGETS dyld-multilib DESTINATION bin)
 endif (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
 
-add_library(dexe_startup STATIC darling-so-start.S)
 

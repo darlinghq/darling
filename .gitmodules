@@ -63,3 +63,7 @@
 [submodule "src/external/installer"]
 	path = src/external/installer
 	url = ../darling-installer.git
+[submodule "src/external/liblzma"]
+	path = src/external/liblzma
+	url = ../darling-liblzma.git
+	branch = darling
