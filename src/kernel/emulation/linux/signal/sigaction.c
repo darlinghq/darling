@@ -48,12 +48,6 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	if (nsa != NULL)
-	{
-		//  __simple_printf("Saving handler for signal %d: %d\n", linux_signum, nsa->sa_sigaction);
-		sig_handlers[linux_signum] = nsa->sa_sigaction;
-	}
-
 	if (osa != NULL)
 	{
 		if (olsa.sa_sigaction == handler_linux_to_bsd)
@@ -62,6 +56,12 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 			osa->sa_sigaction = (bsd_sig_handler*) olsa.sa_sigaction;
 		sigset_linux_to_bsd(&olsa.sa_mask, &osa->sa_mask);
 		osa->sa_flags = sigflags_linux_to_bsd(olsa.sa_flags);
+	}
+	
+	if (nsa != NULL)
+	{
+		//  __simple_printf("Saving handler for signal %d: %d\n", linux_signum, nsa->sa_sigaction);
+		sig_handlers[linux_signum] = nsa->sa_sigaction;
 	}
 
 	return 0;
