@@ -8,7 +8,7 @@ long sys_unlink(const char* path)
 {
 	int ret;
 
-	ret = LINUX_SYSCALL(__NR_unlink, __prefix_translate_path(path));
+	ret = LINUX_SYSCALL(__NR_unlink, __prefix_translate_path_link(path));
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
 

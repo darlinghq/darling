@@ -17,7 +17,7 @@ failure_msg_end:
 _start:
         // Get path to self
         leaq    proc_self_exe(%rip), %rdi
-        leaq    -256(%rsp), %rsi    // buffer
+        leaq    -512(%rsp), %rsi    // buffer
         movl    $255, %edx          // buffer size
         movl    $__NR_readlink, %eax
         syscall
@@ -26,7 +26,25 @@ _start:
         jl      fail
 
         movb    $0, (%rsi, %rax, 1) // null terminate
+        movq    8(%rsp), %rbx       // argv[0] to rbx
+
+        // Append '!' to /proc/self/exe name
+        // and then append original argv[0]
+        xorl    %ecx, %ecx
+        movb    $'!', (%rsi, %rax, 1)
+        incl    %eax
+
+strcat_start:
+        movb    (%rbx, %rcx, 1), %dl
+        movb    %dl, (%rsi, %rax, 1)
         movq    %rsi, 8(%rsp)       // orig argv[0]
+        testb   %dl, %dl
+        jz      strcat_end
+        incl    %ecx
+        incl    %eax
+        jmp     strcat_start
+strcat_end:
+        movq    %rsi, 8(%rsp)
 
         // Execute self through dyld
 	leaq	dyld_path(%rip), %rdi	// exec path

@@ -36,6 +36,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 static void printHelp(const char* argv0);
 static bool isELF(const char* path);
 static std::string locateBundleExecutable(std::string bundlePath);
+static const char* findFakeArgv0(char* a0);
 
 using namespace Darling;
 
@@ -54,6 +55,9 @@ int main(int argc, char** argv, char** envp)
 	{
 		MachOMgr* mgr = MachOMgr::instance();
 		std::string executable, unprefixed_argv0;
+		const char* pretendArgv0;
+		
+		pretendArgv0 = findFakeArgv0(argv[1]);
 
 		executable = locateBundleExecutable(argv[1]);
 		argv[1] = const_cast<char*>(executable.c_str());
@@ -99,7 +103,9 @@ int main(int argc, char** argv, char** envp)
 			if (!main)
 				throw std::runtime_error("No entry point found in Darling-native executable");
 
-			if (!unprefixed_argv0.empty())
+			if (pretendArgv0 != nullptr)
+				argv[1] = (char*) pretendArgv0;
+			else if (!unprefixed_argv0.empty())
 				argv[1] = (char*) unprefixed_argv0.c_str();
 			exit(main(argc-1, &argv[1], envp));
 		}
@@ -190,3 +196,17 @@ static bool isELF(const char* path)
 	return signature == *((const uint32_t*) "\177ELF");
 }
 
+// Original argv0 is passed inside argv[1] by darling-so-start.S
+static const char* findFakeArgv0(char* a0)
+{
+	char* excl;
+	
+	excl = strchr(a0, '!');
+	if (excl == nullptr)
+		return nullptr;
+	else
+	{
+		*excl = '\0';
+		return excl+1;
+	}
+}
