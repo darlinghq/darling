@@ -2,6 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <asm/unistd.h>
+#include <stddef.h>
 #include "socket.h"
 #include "duct.h"
 
@@ -25,12 +26,12 @@ long sys_recvfrom_nocancel(int fd, void* buf, unsigned long len,
 	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_RECVFROM, ((long[6]) { fd, buf, len,
 			flags, from, socklen }));
 #else
-	ret = LINUX_SYSCALL(__NR_connect, fd, buf, len, flags, from, socklen);
+	ret = LINUX_SYSCALL(__NR_recvfrom, fd, buf, len, flags, from, socklen);
 #endif
 
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
-	else
+	else if (from != NULL)
 	{
 		fixed = (struct sockaddr_fixup*) from;
 		fixed->bsd_family = sfamily_linux_to_bsd(fixed->linux_family);
