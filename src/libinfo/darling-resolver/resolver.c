@@ -20,6 +20,7 @@
 #include <dispatch/dispatch.h>
 #include <resolv.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 static int
 dr_is_valid(si_mod_t *si, si_item_t *item)
@@ -35,7 +36,7 @@ dr_close(si_mod_t *si)
 static si_item_t *
 dr_hostbyname(si_mod_t *si, const char *name, int af, const char *interface, uint32_t *err)
 {
-	int type, l, i, elem_length;
+	int type, l, i, j, elem_length;
 	unsigned char buf[4096];
 	ns_msg msg;
 	ns_rr rr;
@@ -67,7 +68,7 @@ dr_hostbyname(si_mod_t *si, const char *name, int af, const char *interface, uin
 	addr_ptrs = (void**) __builtin_alloca((l+1) * sizeof(void*));
 	addr_ptrs[l] = NULL;
 
-	for (i = 0; i < l; i++)
+	for (i = 0, j = 0; i < l; i++)
 	{
 		const unsigned char* data;
 		int type;
@@ -79,10 +80,12 @@ dr_hostbyname(si_mod_t *si, const char *name, int af, const char *interface, uin
 		if ((af == AF_INET && type == ns_t_a)
 				|| (af == AF_INET6 && type == ns_t_aaaa))
 		{
-			memcpy(addr_buf + (i*elem_length), data, elem_length);
-			addr_ptrs[i] = addr_buf + (i*elem_length);
+			memcpy(addr_buf + (j*elem_length), data, elem_length);
+			addr_ptrs[j] = addr_buf + (j*elem_length);
+			j++;
 		}
 	}
+	addr_ptrs[j] = NULL;
 
 	ttl_end = time(NULL) + rr.ttl;
 	if (af == AF_INET)
@@ -171,7 +174,158 @@ dr_hostbyaddr(si_mod_t *si, const void *addr, int af, const char *interface, uin
 static si_list_t *
 dr_addrinfo(si_mod_t *si, const void *node, const void *serv, uint32_t family, uint32_t socktype, uint32_t proto, uint32_t flags, const char *interface, uint32_t *err)
 {
-	return NULL;
+	bool resolveV4, resolveV6;
+	int servPort = 0;
+	
+	if (err != NULL) *err = SI_STATUS_NO_ERROR;
+	
+	switch (family)
+	{
+		case AF_INET6:
+			resolveV4 = (flags & AI_V4MAPPED) != 0;
+			resolveV6 = true;
+			break;
+		case AF_INET:
+			resolveV4 = true;
+			resolveV6 = false;
+			break;
+		case AF_UNSPEC:
+			resolveV4 = true;
+			resolveV6 = true;
+			break;
+		default:
+			return NULL;
+	}
+	
+	if (flags & AI_NUMERICSERV)
+		servPort = *(uint16_t *)serv;
+	else
+	{
+		if (_gai_serv_to_port(serv, proto, &servPort) != 0)
+		{
+			if (err)
+				*err = SI_STATUS_EAI_NONAME;
+			return NULL;
+		}
+	}
+	
+	if (flags & AI_NUMERICHOST)
+	{
+		char* cname = NULL;
+		struct in_addr addr4;
+		struct in6_addr addr6;
+		
+		if (family == AF_INET) {
+			memcpy(&addr4, node, sizeof(addr4));
+		} else if (family == AF_INET6) {
+			memcpy(&addr6, node, sizeof(addr6));
+		}
+		
+		return si_addrinfo_list(si, flags, socktype, proto,
+				(family == AF_INET) ? &addr4 : NULL,
+				(family == AF_INET6) ? &addr6 : NULL,
+				servPort, 0, cname, cname);
+	}
+	else
+	{
+		int i, l;
+		ns_msg msg;
+		ns_rr rr;
+		unsigned char buf[4096];
+		si_list_t *out = NULL;
+		si_list_t *list;
+		
+		if (resolveV6)
+		{
+			l = res_query((const char*) node, ns_c_any, ns_t_aaaa, buf, sizeof(buf));
+			if (l < 0)
+				goto after_v6;
+
+			ns_initparse(buf, l, &msg);
+			l = ns_msg_count(msg, ns_s_an);
+
+			for (i = 0; i < l; i++)
+			{
+				const unsigned char* data;
+				int type;
+
+				ns_parserr(&msg, ns_s_an, i, &rr);
+				data = ns_rr_rdata(rr);
+				type = ns_rr_type(rr);
+
+				if (type == ns_t_aaaa)
+				{
+					list = si_addrinfo_list(si, flags, socktype, proto, NULL,
+							(struct in6_addr*) data, servPort, 0, NULL,
+							(const char*) node);
+
+					out = si_list_concat(out, list);
+					si_list_release(list);
+				}
+			}
+		}
+		
+		// If AI_V4MAPPED is used, return IPv4 mapped addresses only if there
+		// are no IPv6 addresses or AI_ALL was also specified.
+		if (resolveV4 && family == AF_INET6 && !(flags & AI_ALL))
+		{
+			if (out != NULL)
+				resolveV4 = false;
+		}
+		
+after_v6:
+		if (resolveV4)
+		{
+			l = res_query((const char*) node, ns_c_any, ns_t_a, buf, sizeof(buf));
+			if (l < 0)
+				goto after_v4;
+
+			ns_initparse(buf, l, &msg);
+			l = ns_msg_count(msg, ns_s_an);
+			
+			for (i = 0; i < l; i++)
+			{
+				const unsigned char* data;
+				int type;
+
+				ns_parserr(&msg, ns_s_an, i, &rr);
+				data = ns_rr_rdata(rr);
+				type = ns_rr_type(rr);
+
+				if (type == ns_t_a)
+				{
+					if (family == AF_INET6)
+					{
+						// Convert to a mapped address
+						struct in6_addr mapped;
+
+						memcpy(&mapped.__u6_addr, "\0\0\0\0\0\0\0\0\0\0\xff\xff", 12);
+						mapped.__u6_addr.__u6_addr32[3] = *(uint32_t*) data;
+
+						list = si_addrinfo_list(si, flags, socktype, proto, NULL,
+							(struct in6_addr*) &mapped, servPort, 0, NULL,
+							(const char*) node);
+
+						out = si_list_concat(out, list);
+						si_list_release(list);
+					}
+					else
+					{
+						list = si_addrinfo_list(si, flags, socktype, proto,
+								(struct in_addr*) data, NULL, servPort, 0,
+								(const char*) node, NULL);
+
+						out = si_list_concat(out, list);
+						si_list_release(list);
+					}
+				}
+			}
+		}
+		
+after_v4:
+		
+		return out;
+	}
 }
 
 static si_item_t *
