@@ -3,6 +3,7 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 #include "../../../../../platform-include/sys/errno.h"
+#include <libdyld/VirtualPrefix.h>
 
 extern char* strcpy(char* dst, const char* src);
 

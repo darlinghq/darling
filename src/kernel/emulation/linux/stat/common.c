@@ -19,6 +19,7 @@ void stat_linux_to_bsd(const struct linux_stat* lstat, struct stat* stat)
 	stat->st_mtimespec.tv_nsec = lstat->st_mtime_nsec;
 	stat->st_ctimespec.tv_sec = lstat->st_ctime;
 	stat->st_ctimespec.tv_nsec = lstat->st_ctime_nsec;
+	stat->st_flags = 0;
 }
 
 void stat_linux_to_bsd64(const struct linux_stat* lstat, struct stat64* stat)
@@ -39,6 +40,7 @@ void stat_linux_to_bsd64(const struct linux_stat* lstat, struct stat64* stat)
 	stat->st_mtimespec.tv_nsec = lstat->st_mtime_nsec;
 	stat->st_ctimespec.tv_sec = lstat->st_ctime;
 	stat->st_ctimespec.tv_nsec = lstat->st_ctime_nsec;
+	stat->st_flags = 0;
 }
 
 void statfs_linux_to_bsd(const struct linux_statfs64* lstat, struct bsd_statfs* stat)

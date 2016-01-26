@@ -51,6 +51,10 @@
 #include "unistd/getgroups.h"
 #include "unistd/setgroups.h"
 #include "unistd/pipe.h"
+#include "unistd/chmod_extended.h"
+#include "unistd/fchmod_extended.h"
+#include "unistd/fchflags.h"
+#include "unistd/chflags.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -63,6 +67,7 @@
 #include "misc/getlogin.h"
 #include "misc/ioctl.h"
 #include "misc/getrlimit.h"
+#include "misc/setrlimit.h"
 #include "misc/thread_selfid.h"
 #include "misc/sysctl.h"
 #include "misc/proc_info.h"
@@ -122,6 +127,8 @@
 #include "bsdthread/workq_kernreturn.h"
 #include "bsdthread/workq_open.h"
 #include "bsdthread/pthread_kill.h"
+#include "conf/pathconf.h"
+#include "conf/fpathconf.h"
 
 void* __bsd_syscall_table[512] = {
 	[1] = sys_exit,
@@ -150,6 +157,8 @@ void* __bsd_syscall_table[512] = {
 	[31] = sys_getpeername,
 	[32] = sys_getsockname,
 	[33] = sys_access,
+	[34] = sys_chflags,
+	[35] = sys_fchflags,
 	[36] = sys_sync,
 	[37] = sys_kill,
 	[39] = sys_getppid,
@@ -211,7 +220,10 @@ void* __bsd_syscall_table[512] = {
 	[188] = sys_stat,
 	[189] = sys_fstat,
 	[190] = sys_lstat,
+	[191] = sys_pathconf,
+	[192] = sys_fpathconf,
 	[194] = sys_getrlimit,
+	[195] = sys_setrlimit,
 	[196] = sys_getdirentries,
 	[197] = sys_mmap,
 	[199] = sys_lseek,
@@ -241,6 +253,8 @@ void* __bsd_syscall_table[512] = {
 	[240] = sys_listxattr,
 	[241] = sys_flistxattr,
 	[244] = sys_posix_spawn,
+	[282] = sys_chmod_extended,
+	[283] = sys_fchmod_extended,
 	[301] = sys_psynch_mutexwait,
 	[302] = sys_psynch_mutexdrop,
 	[303] = sys_psynch_cvbroad,

@@ -18,17 +18,6 @@ long linux_syscall(long a1, long a2, long a3, long a4, long a5, long a6, int nr)
 __attribute__((naked))
 long linux_syscall(long a1, long a2, long a3, long a4, long a5, long a6, int nr)
 {
-	/*
-	__asm__("push %%ecx\n"
-			"push %%edx\n"
-			"push %%ebp\n"
-			"movl %%esp, %%ebp\n"
-			"sysenter\n"
-			"ret\n"
-			:: "a"(nr), "b" (a1), "c"(a2), "d"(a3),
-				"S"(a4), "D"(a5), "ebp"(a6));
-	__builtin_unreachable();
-	*/
 	__asm__("push %ebp\n"
 			"push %ebx\n"
 			"push %esi\n"
