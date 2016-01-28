@@ -30,7 +30,7 @@ setup_prefix() {
     >&2 echo "Setting up prefix at $1"
 
     mkdir -p "$1"
-    pushd "$1" >/dev/null
+    origpwd="$PWD"; cd "$1"
 
     ln -s / "${SYSTEM_ROOT_NAME}"
     for dir in ${BIND_DIRECTORIES}; do
@@ -47,7 +47,7 @@ setup_prefix() {
     ln -s "../${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/libexec/darling/usr/bin" "usr/bin"
     ln -s "/${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/share/darling" "usr/share/darling"
 
-    popd >/dev/null
+    cd "$PWD"
 }
 
 if [ $# -eq 0 ]; then
@@ -84,7 +84,7 @@ case "$1" in
     if [ $# -gt 2 ]; then
         exec "${dyld_path}" "${DPREFIX}/bin/bash" -c "${*:2}"
     else
-        exec "${dyld_path}" "${DPREFIX}/bin/bash"
+        exec "${dyld_path}" "${DPREFIX}/bin/bash" --norc
     fi
     ;;
 #"hdiutil")
