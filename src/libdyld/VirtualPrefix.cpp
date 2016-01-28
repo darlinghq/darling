@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "darling-config.h"
 #include "VirtualPrefix.h"
 #include <string>
 #include <cstring>
@@ -455,6 +456,10 @@ restart_process:
 			// Exit virtual prefix
 			return path.substr(sizeof(SYSTEM_ROOT)-1);
 		}
+	}
+	if (path.compare(0, sizeof(SHARE_PATH "/")-1, SHARE_PATH "/") == 0)
+	{
+		return path;
 	}
 	
 	// Apply virtual prefix
