@@ -11,5 +11,6 @@ option(FRAMEWORK_COREAUDIO "Enable audio-related functionality" OFF)
 
 add_subdirectory(src)
 
-install(FILES etc/dylib.conf DESTINATION /etc/darling)
+install(FILES etc/dylib.conf etc/version.conf
+	DESTINATION /etc/darling)
 
