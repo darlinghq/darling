@@ -1,3 +1,4 @@
+.text
 .globl __darling_bsd_syscall
 
 #if defined(__x86_64__)

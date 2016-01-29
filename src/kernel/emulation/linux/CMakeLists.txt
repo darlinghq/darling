@@ -67,10 +67,10 @@ set(emulation_sources
 	unistd/setgroups.c
 	unistd/getgroups.c
 	unistd/pipe.c
-        unistd/chmod_extended.c
-        unistd/fchmod_extended.c
-        unistd/fchflags.c
-        unistd/chflags.c
+	unistd/chmod_extended.c
+	unistd/fchmod_extended.c
+	unistd/fchflags.c
+	unistd/chflags.c
 	select/select.c
 	select/poll.c
 	process/vfork.c
@@ -91,7 +91,7 @@ set(emulation_sources
 	misc/proc_info.c
 	misc/sysctl.c
 	misc/getrlimit.c
-        misc/setrlimit.c
+	misc/setrlimit.c
 	misc/gethostuuid.c
 	misc/getrusage.c
 	misc/getlogin.c
@@ -169,9 +169,10 @@ set(emulation_sources
 	psynch/psynch_cvwait.c
 	psynch/psynch_cvbroad.c
 	psynch/psynch_cvsignal.c
-        conf/pathconf.c
-        conf/fpathconf.c
+	conf/pathconf.c
+	conf/fpathconf.c
 	syscalls-table.S
+	linux-syscall.S
 )
 
 set_source_files_properties(mman/mman.c PROPERTIES COMPILE_FLAGS
