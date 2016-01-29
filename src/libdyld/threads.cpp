@@ -101,6 +101,23 @@ static void* darling_thread_entry(void* p)
 	"pushq $0\n"
 	"jmpq *%%rax\n"
 	:: "a" (args), "di" (pth_obj));
+#elif defined(__i386__) // TODO: args in eax, ebx, ecx, edx, edi, esi
+	__asm__ __volatile__ (
+	"movl (%0), %%eax\n"
+	"pushl %%eax\n" // address to be jumped to
+	"movl %1, 28(%0)\n"
+	"movl %1, %%eax\n" // 1st arg
+	"movl 20(%0), %%ebx\n" // 2nd arg
+	"movl 8(%0), %%edx\n" // 4th arg
+	"movl 12(%0), %%edi\n" // 5th arg
+	"movl 16(%0), %%esi\n" // 6th arg
+	"movl 4(%0), %%ecx\n" // 3rd arg
+	"testl %%ecx, %%ecx\n" // FIXME: clobbered ecx!
+	"jnz 1f\n"
+	"movl %%esp, %%ecx\n"
+	"1:\n"
+	"ret\n" // Jump to the address pushed at the beginning
+	:: "c" (args), "d" (pth_obj));
 #endif
 	//args->entry_point(args->stack, args->port, args->arg3,
 	//		args->arg4, args->arg5, args->arg6);

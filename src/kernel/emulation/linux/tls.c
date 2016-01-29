@@ -22,6 +22,7 @@ void __pthread_set_self(void* ptr)
 	};
 
 	struct user_desc desc;
+	static int entry_number = -1;
 
 	desc.base_addr = (unsigned long) ptr;
 	desc.limit = 4096;
@@ -31,10 +32,11 @@ void __pthread_set_self(void* ptr)
 	desc.limit_in_pages = 1;
 	desc.seg_not_present = 0;
 	desc.useable = 1;
-	desc.entry_number = -1;
+	desc.entry_number = entry_number;
 
 	LINUX_SYSCALL(__NR_set_thread_area, &desc);
 
+	entry_number = desc.entry_number;
 	__asm__ ("movl %0, %%fs" :: "r" (desc.entry_number*8 + 3));
 #endif
 }
