@@ -70,3 +70,6 @@
 [submodule "src/external/cfnetwork"]
 	path = src/external/cfnetwork
 	url = ../darling-cfnetwork.git
+[submodule "src/external/text_cmds"]
+	path = src/external/text_cmds
+	url = ../darling-text_cmds.git
