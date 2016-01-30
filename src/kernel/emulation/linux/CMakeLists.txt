@@ -14,7 +14,6 @@ set(emulation_sources
 	syscalls.c
 	simple.c
 	errno.c
-	path.c
 	tls.c
 	unistd/write.c
 	unistd/read.c
