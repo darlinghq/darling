@@ -11,7 +11,7 @@ static int sigflags_bsd_to_linux(int flags);
 static int sigflags_linux_to_bsd(int flags);
 extern void sig_restorer(void);
 
-extern void* memcpy(void* dest, const void* src, unsigned long len);
+extern void* memcpy(void* dest, const void* src, __SIZE_TYPE__ len);
 
 // Libc uses only one trampoline
 void (*sa_tramp)(void*, int, int, struct bsd_siginfo*, void*) = 0;

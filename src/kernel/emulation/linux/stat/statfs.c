@@ -10,9 +10,9 @@
 #include <stddef.h>
 
 extern char *strtok_r(char *str, const char *delim, char **saveptr);
-extern unsigned long strlcpy(char* dst, const char* src, unsigned long size);
-extern unsigned long strlen(const char* str);
-extern int strncmp(const char* s1, const char* s2, unsigned long len);
+extern __SIZE_TYPE__ strlcpy(char* dst, const char* src, __SIZE_TYPE__ size);
+extern __SIZE_TYPE__ strlen(const char* str);
+extern int strncmp(const char* s1, const char* s2, __SIZE_TYPE__ len);
 
 long sys_statfs(const char* path, struct bsd_statfs* buf)
 {

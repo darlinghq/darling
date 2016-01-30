@@ -117,10 +117,10 @@ void __simple_printf(const char* format, ...)
 	LINUX_SYSCALL3(__NR_write, 1, buffer, __simple_strlen(buffer));
 }
 
-extern void *memmove(void *dest, const void *src, unsigned long n);
-extern void *memcpy(void *dest, const void *src, unsigned long n);
-extern void *memchr(const void *s, int c, unsigned long n);
-extern long sys_read(int fd, void* buf, unsigned long n);
+extern void *memmove(void *dest, const void *src, __SIZE_TYPE__ n);
+extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
+extern void *memchr(const void *s, int c, __SIZE_TYPE__ n);
+extern long sys_read(int fd, void* buf, __SIZE_TYPE__ n);
 
 #ifndef min
 #	define min(a,b) ((a) < (b) ? (a) : (b))

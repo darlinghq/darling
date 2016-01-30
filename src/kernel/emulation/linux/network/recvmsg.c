@@ -5,9 +5,9 @@
 #include <stddef.h>
 #include "duct.h"
 
-extern void *malloc(unsigned long size);
+extern void *malloc(__SIZE_TYPE__ size);
 extern void free(void* ptr);
-extern void* memcpy(void* dest, const void* src, unsigned long len);
+extern void* memcpy(void* dest, const void* src, __SIZE_TYPE__ len);
 
 long sys_recvmsg(int socket, struct bsd_msghdr* msg, int flags)
 {

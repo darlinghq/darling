@@ -27,7 +27,7 @@ run_ioctl:
 }
 
 extern int sprintf(char* buf, const char* fmt, ...);
-extern int strncmp(const char *, const char *, unsigned long);
+extern int strncmp(const char *, const char *, __SIZE_TYPE__);
 static bool get_fd_path(int fd, char* buf, size_t len)
 {
 	char proc[32];

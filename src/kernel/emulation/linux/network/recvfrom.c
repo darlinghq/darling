@@ -6,7 +6,7 @@
 #include "socket.h"
 #include "duct.h"
 
-extern void *memcpy(void *dest, const void *src, unsigned long n);
+extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 
 long sys_recvfrom(int fd, void* buf, unsigned long len,
 		int flags, const void* from, int* socklen)

@@ -20,7 +20,7 @@ static long sysctl_name_to_oid(const char* name, int* oid_name,
 		unsigned long* oid_len);
 
 extern char *strchr(const char *s, int c);
-extern int strncmp(const char *s1, const char *s2, unsigned long n);
+extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
 extern int strcmp(const char *s1, const char *s2);
 extern kern_return_t mach_port_deallocate(ipc_space_t task, mach_port_name_t name);
 extern kern_return_t host_info(mach_port_name_t host, int itype, void* hinfo, mach_msg_type_number_t* count);

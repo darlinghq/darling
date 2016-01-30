@@ -6,7 +6,7 @@
 #include "../../../../../platform-include/sys/errno.h"
 #include "duct.h"
 
-extern void *memcpy(void *dest, const void *src, unsigned long n);
+extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 
 long sys_connect(int fd, const void* name, int socklen)
 {

@@ -74,6 +74,7 @@ void* thread_stack_allocate(unsigned long stacksize)
 	return (void*) (((uintptr_t)stack) + stacksize + STACK_GUARD_SIZE);
 }
 
+#if 0
 int darling_thread_create(void** stack, void* entry_point, uintptr_t arg3,
 		uintptr_t arg4, uintptr_t arg5, uintptr_t arg6)
 {
@@ -115,5 +116,6 @@ int darling_thread_create(void** stack, void* entry_point, uintptr_t arg3,
 #endif
 	return ret;
 }
+#endif
 
 
