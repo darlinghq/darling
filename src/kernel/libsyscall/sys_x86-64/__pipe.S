@@ -36,20 +36,11 @@
 
 #if defined(__i386__)
 
-PSEUDO_INT(___pipe, pipe, 0)
-	movl	4(%esp),%ecx
-	movl	%eax,(%ecx)
-	movl	%edx,4(%ecx)
-	xorl	%eax,%eax
-	ret
+__SYSCALL2(___pipe, pipe, 1, cerror)
 
 #elif defined(__x86_64__)
 
-PSEUDO(___pipe, pipe, 0, cerror_nocancel)
-	movl	%eax, (%rdi)
-	movl	%edx, 4(%rdi)
-	xorl	%eax, %eax
-	ret
+__SYSCALL2(___pipe, pipe, 1, cerror)
 
 #else
 #error Unsupported architecture
