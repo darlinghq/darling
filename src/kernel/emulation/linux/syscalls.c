@@ -85,6 +85,8 @@
 #include "network/getsockname.h"
 #include "network/accept.h"
 #include "network/shutdown.h"
+#include "network/getsockopt.h"
+#include "network/setsockopt.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
 #include "stat/stat.h"
@@ -192,8 +194,10 @@ void* __bsd_syscall_table[512] = {
 	[95] = sys_fsync,
 	[97] = sys_socket,
 	[98] = sys_connect,
+	[105] = sys_setsockopt,
 	[116] = sys_gettimeofday,
 	[117] = sys_getrusage,
+	[118] = sys_getsockopt,
 	[120] = sys_readv,
 	[121] = sys_writev,
 	[123] = sys_fchown,

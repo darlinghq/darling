@@ -106,6 +106,8 @@ set(emulation_sources
 	network/getpeername.c
 	network/getsockname.c
 	network/shutdown.c
+	network/getsockopt.c
+	network/setsockopt.c
 	stat/fstat.c
 	stat/lstat.c
 	stat/stat.c
