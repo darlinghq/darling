@@ -67,3 +67,6 @@
 	path = src/external/liblzma
 	url = ../darling-liblzma.git
 	branch = darling
+[submodule "src/external/cfnetwork"]
+	path = src/external/cfnetwork
+	url = ../darling-cfnetwork.git
