@@ -454,7 +454,12 @@ restart_process:
 		else if (*path_components.begin() == (SYSTEM_ROOT+1))
 		{
 			// Exit virtual prefix
-			return path.substr(sizeof(SYSTEM_ROOT)-1);
+			path = path.substr(sizeof(SYSTEM_ROOT)-1);
+			
+			if (path.empty())
+				return "/";
+			else
+				return path;
 		}
 	}
 	if (path.compare(0, sizeof(SHARE_PATH "/")-1, SHARE_PATH "/") == 0)
