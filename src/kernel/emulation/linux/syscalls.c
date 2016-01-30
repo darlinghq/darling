@@ -55,6 +55,7 @@
 #include "unistd/fchmod_extended.h"
 #include "unistd/fchflags.h"
 #include "unistd/chflags.h"
+#include "unistd/issetugid.h"
 #include "signal/kill.h"
 #include "signal/sigaltstack.h"
 #include "signal/sigaction.h"
@@ -87,6 +88,7 @@
 #include "network/shutdown.h"
 #include "network/getsockopt.h"
 #include "network/setsockopt.h"
+#include "network/sendto.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
 #include "stat/stat.h"
@@ -204,6 +206,7 @@ void* __bsd_syscall_table[512] = {
 	[124] = sys_fchmod,
 	[128] = sys_rename,
 	[132] = sys_mkfifo,
+	[133] = sys_sendto,
 	[134] = sys_shutdown,
 	[136] = sys_mkdir,
 	[137] = sys_rmdir,
@@ -264,6 +267,7 @@ void* __bsd_syscall_table[512] = {
 	[303] = sys_psynch_cvbroad,
 	[304] = sys_psynch_cvsignal,
 	[305] = sys_psynch_cvwait,
+	[327] = sys_issetugid,
 	[328] = sys_pthread_kill,
 	[329] = sys_sigprocmask, // __pthread_sigmask
 	[331] = sys_disable_threadsignal,
@@ -301,6 +305,7 @@ void* __bsd_syscall_table[512] = {
 	[409] = sys_connect_nocancel,
 	[411] = sys_readv_nocancel,
 	[412] = sys_writev_nocancel,
+	[413] = sys_sendto_nocancel,
 	[414] = sys_pread_nocancel,
 	[415] = sys_pwrite_nocancel,
 	[417] = sys_poll_nocancel,

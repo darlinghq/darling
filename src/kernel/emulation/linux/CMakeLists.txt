@@ -70,6 +70,7 @@ set(emulation_sources
 	unistd/fchmod_extended.c
 	unistd/fchflags.c
 	unistd/chflags.c
+	unistd/issetugid.c
 	select/select.c
 	select/poll.c
 	process/vfork.c
@@ -108,6 +109,7 @@ set(emulation_sources
 	network/shutdown.c
 	network/getsockopt.c
 	network/setsockopt.c
+	network/sendto.c
 	stat/fstat.c
 	stat/lstat.c
 	stat/stat.c
