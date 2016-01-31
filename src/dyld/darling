@@ -21,33 +21,38 @@
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
+MINIMUM_PREFIX_VERSION="1"
 
 setup_prefix() {
-    SYSTEM_ROOT_NAME="system-root"
-    BIND_DIRECTORIES="dev etc home tmp"
-    MAKE_DIRECTORIES="Applications Volumes usr usr/share"
+    prefix_pkg="/tmp/prefix.$$.pkg"
 
     >&2 echo "Setting up prefix at $1"
+    >&2 echo 
 
     mkdir -p "$1"
-    origpwd="$PWD"; cd "$1"
+    install_pkg "org.darlinghq.pkg.PrefixHierarchy"
+    rm -f "$1/darling-prefix"
+    ln -s "/${SYSTEM_ROOT_NAME}${DARLING_PREFIX}" "$1/darling-prefix"
 
-    ln -s / "${SYSTEM_ROOT_NAME}"
-    for dir in ${BIND_DIRECTORIES}; do
-        ln -s "${SYSTEM_ROOT_NAME}/${dir}" "${dir}"
-    done
+    install_pkg "org.darlinghq.pkg.OpenSSLCertificates"
 
-    for dir in ${MAKE_DIRECTORIES}; do
-        mkdir "${dir}"
-    done
+    >&2 echo "Prefix is ready."
+}
 
-    ln -s home Users
+install_pkg() {
+    temp="/tmp/pkgs.$$"
+    mkdir "$temp" || true
 
-    ln -s "${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/libexec/darling/bin" "bin"
-    ln -s "../${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/libexec/darling/usr/bin" "usr/bin"
-    ln -s "/${SYSTEM_ROOT_NAME}${DARLING_PREFIX}/share/darling" "usr/share/darling"
+    >&2 echo "Getting latest version of $1..."
+    version=$(wget "http://packages.darlinghq.org/${1}/latest.txt" -O- 2>/dev/null)
+    pkgpath="$temp/${1}-${version}.pkg"
 
-    cd "$PWD"
+    >&2 echo "Downloading $1 (version $version)..."
+    wget "http://packages.darlinghq.org/${1}/${1}-${version}.pkg" -O "$pkgpath" 2>/dev/null
+
+    "${DARLING_PREFIX}/libexec/darling/usr/bin/installer" -pkg "/system-root${pkgpath}" -target /
+
+    rm -rf "$temp"
 }
 
 if [ $# -eq 0 ]; then
@@ -72,7 +77,11 @@ if [ -z "$DPREFIX" ]; then
     export DPREFIX="$HOME/.darling"
 fi
 
-if [ ! -d "$DPREFIX" ]; then
+if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.prefix-version" ]; then
+    setup_prefix "$DPREFIX"
+fi
+
+if [ "$(cat $DPREFIX/.prefix-version)" -lt $MINIMUM_PREFIX_VERSION ]; then
     setup_prefix "$DPREFIX"
 fi
 

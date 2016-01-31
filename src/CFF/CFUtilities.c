@@ -67,13 +67,13 @@ static CFDictionaryRef _CFCopyVersionDictionary(CFStringRef path)
 
 CFDictionaryRef _CFCopySystemVersionDictionary(void)
 {
-  CFStringRef str = CFSTR(SHARE_PATH "/SystemVersion.plist");
+  CFStringRef str = CFSTR("/System/Library/CoreServices/SystemVersion.plist");
   return _CFCopyVersionDictionary(str);
 }
 
 CFDictionaryRef _CFCopyServerVersionDictionary(void)
 {
-  CFStringRef str = CFSTR(SHARE_PATH "/SystemVersion.plist");
+  CFStringRef str = CFSTR("/System/Library/CoreServices/SystemVersion.plist");
   return _CFCopyVersionDictionary(str);
 }
 

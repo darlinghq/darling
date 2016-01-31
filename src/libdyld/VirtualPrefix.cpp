@@ -404,7 +404,7 @@ restart_process:
 			// Perform symlink resolution
 			if (isLink && !is_system_root)
 			{
-				char link[256];
+				char link[4096];
 				int len;
 
 				// std::cout << "*** readlink: " << real_path << std::endl;
@@ -416,6 +416,17 @@ restart_process:
 
 					link[len] = '\0';
 
+					/*
+					if (strncmp(link, "@darling_prefix@", 16) == 0)
+					{
+						std::string copy;
+						
+						copy = link;
+						copy.replace(0, 16, INSTALL_PREFIX);
+						
+						strcpy(link, copy.c_str());
+					}
+					*/
 					link_components = explode_path(link);
 
 					if (link[0] == '/')
@@ -447,19 +458,22 @@ restart_process:
 	
 	if (!path_components.empty())
 	{
-		if (*path_components.begin() == "proc")
+		if (*path_components.begin() == "proc" || path == "/dev/mach")
 		{
 			return path;
 		}
 		else if (*path_components.begin() == (SYSTEM_ROOT+1))
 		{
-			// Exit virtual prefix
-			path = path.substr(sizeof(SYSTEM_ROOT)-1);
-			
-			if (path.empty())
-				return "/";
-			else
-				return path;
+			if (!symlink || path_components.size() > 1)
+			{
+				// Exit virtual prefix
+				path = path.substr(sizeof(SYSTEM_ROOT)-1);
+
+				if (path.empty())
+					return "/";
+				else
+					return path;
+			}
 		}
 	}
 	if (path.compare(0, sizeof(SHARE_PATH "/")-1, SHARE_PATH "/") == 0)
