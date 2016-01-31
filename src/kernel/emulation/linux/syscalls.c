@@ -105,6 +105,8 @@
 #include "time/gettimeofday.h"
 #include "time/utimes.h"
 #include "time/futimes.h"
+#include "time/setitimer.h"
+#include "time/getitimer.h"
 #include "process/vfork.h"
 #include "process/fork.h"
 #include "process/posix_spawn.h"
@@ -189,6 +191,8 @@ void* __bsd_syscall_table[512] = {
 	[80] = sys_setgroups,
 	[81] = sys_getpgrp,
 	[82] = sys_setpgid,
+	[83] = sys_setitimer,
+	[86] = sys_getitimer,
 	[89] = sys_getdtablesize,
 	[90] = sys_dup2,
 	[92] = sys_fcntl,

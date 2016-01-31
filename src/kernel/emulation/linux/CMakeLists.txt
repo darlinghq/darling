@@ -137,6 +137,8 @@ set(emulation_sources
 	time/gettimeofday.c
 	time/utimes.c
 	time/futimes.c
+	time/setitimer.c
+	time/getitimer.c
 	ioctl/ioctl.c
 	ioctl/termios.c
 	ext/uname.c
