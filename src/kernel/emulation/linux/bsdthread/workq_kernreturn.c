@@ -105,18 +105,26 @@ wakeup:
 
 #ifdef __x86_64__
 			__asm__ __volatile__ (
-					"movq %%rbx, %%r8\n"
+					"movq %%rbx, %%r8\n" // 5th argument
 					"movq %0, %%rsp\n"
-					"movq %%rsp, %%rdx\n"
-					"xorq %%rcx, %%rcx\n"
-					//"movq $0x70000, %%r8\n" // (WQ_FLAG_THREAD_REUSE | WQ_FLAG_THREAD_NEWSPI)
+					"movq %%rsp, %%rdx\n" // 3rd argument
+					"xorq %%rcx, %%rcx\n" // 4th argument
 					"subq $32, %%rsp\n"
 					"jmpq *%2\n"
 					:: "D" (stack), "S" (thread_self), "a" (wqueue_entry_point),
 					"b" (me.prio | WQ_FLAG_THREAD_REUSE | WQ_FLAG_THREAD_NEWSPI)
 			);
 #elif defined(__i386__)
-#	warning Missing assembly for i386!
+			// Arguments are in eax, ebx, ecx, edx, edi
+			__asm__ __volatile__ (
+					"movl %0, %%esp\n"
+					"movl %0, %%ecx\n"
+					"xorl %%edx, %%edx\n"
+					"subl $32, %%esp\n"
+					"jmpl *%2\n"
+					:: "a" (stack), "b" (thread_self), "S" (wqueue_entry_point),
+					"D" (me.prio | WQ_FLAG_THREAD_REUSE | WQ_FLAG_THREAD_NEWSPI)
+			);
 #else
 #	error Missing assembly!
 #endif
