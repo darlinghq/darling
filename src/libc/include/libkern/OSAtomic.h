@@ -105,9 +105,7 @@ int32_t	OSAtomicAdd32Barrier( int32_t __theAmount, volatile int32_t *__theValue 
 
 /*! @abstract Atomically increments a 32-bit value.
  */
-__inline static
-int32_t	OSAtomicIncrement32( volatile int32_t *__theValue )
-            { return OSAtomicAdd32(  1, __theValue); }
+int32_t	OSAtomicIncrement32( volatile int32_t *__theValue );
 
 
 /*! @abstract Atomically increments a 32-bit value with a barrier.
@@ -116,14 +114,10 @@ int32_t	OSAtomicIncrement32( volatile int32_t *__theValue )
 	except that it also introduces a barrier.
     @result Returns the new value.
  */
-__inline static
-int32_t	OSAtomicIncrement32Barrier( volatile int32_t *__theValue )
-            { return OSAtomicAdd32Barrier(  1, __theValue); }
+int32_t	OSAtomicIncrement32Barrier( volatile int32_t *__theValue );
 
 /*! @abstract Atomically decrements a 32-bit value. */
-__inline static
-int32_t	OSAtomicDecrement32( volatile int32_t *__theValue )
-            { return OSAtomicAdd32( -1, __theValue); }
+int32_t	OSAtomicDecrement32( volatile int32_t *__theValue );
 
 /*! @abstract Atomically increments a 32-bit value with a barrier.
     @discussion
@@ -131,9 +125,7 @@ int32_t	OSAtomicDecrement32( volatile int32_t *__theValue )
 	except that it also introduces a barrier.
     @result Returns the new value.
  */
-__inline static
-int32_t	OSAtomicDecrement32Barrier( volatile int32_t *__theValue )
-            { return OSAtomicAdd32Barrier( -1, __theValue); }
+int32_t	OSAtomicDecrement32Barrier( volatile int32_t *__theValue );
 
 
 /*! @abstract Atomically adds two 64-bit values.
@@ -160,8 +152,7 @@ int64_t	OSAtomicAdd64Barrier( int64_t __theAmount, volatile int64_t *__theValue 
 
 /*! @abstract Atomically increments a 64-bit value. */
 __inline static
-int64_t	OSAtomicIncrement64( volatile int64_t *__theValue )
-            { return OSAtomicAdd64(  1, __theValue); }
+int64_t	OSAtomicIncrement64( volatile int64_t *__theValue );
 
 /*! @abstract Atomically increments a 64-bit value with a barrier.
     @discussion
@@ -170,8 +161,7 @@ int64_t	OSAtomicIncrement64( volatile int64_t *__theValue )
     @result Returns the new value.
  */
 __inline static
-int64_t	OSAtomicIncrement64Barrier( volatile int64_t *__theValue )
-            { return OSAtomicAdd64Barrier(  1, __theValue); }
+int64_t	OSAtomicIncrement64Barrier( volatile int64_t *__theValue );
 
 
 /*! @abstract Atomically decrements a 64-bit value.
@@ -181,8 +171,7 @@ int64_t	OSAtomicIncrement64Barrier( volatile int64_t *__theValue )
     @result Returns the new value.
  */
 __inline static
-int64_t	OSAtomicDecrement64( volatile int64_t *__theValue )
-            { return OSAtomicAdd64( -1, __theValue); }
+int64_t	OSAtomicDecrement64( volatile int64_t *__theValue );
 
 
 /*! @abstract Atomically decrements a 64-bit value with a barrier.
@@ -192,8 +181,7 @@ int64_t	OSAtomicDecrement64( volatile int64_t *__theValue )
     @result Returns the new value.
  */
 __inline static
-int64_t	OSAtomicDecrement64Barrier( volatile int64_t *__theValue )
-            { return OSAtomicAdd64Barrier( -1, __theValue); }
+int64_t	OSAtomicDecrement64Barrier( volatile int64_t *__theValue );
 
 
 /*! @group Boolean functions (AND, OR, XOR)

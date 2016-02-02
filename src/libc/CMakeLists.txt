@@ -61,6 +61,7 @@ add_subdirectory(nls)
 add_subdirectory(net)
 add_subdirectory(locale)
 add_subdirectory(threads)
+add_subdirectory(platform)
 
 # The following generate libc-hwplat
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
