@@ -73,12 +73,13 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
 		$<TARGET_OBJECTS:libc-compat_legacy>
 		$<TARGET_OBJECTS:libc-stdlib_legacy>
 		$<TARGET_OBJECTS:libc-stdtime_legacy>
-	$<TARGET_OBJECTS:libc-gen_legacy>
+		$<TARGET_OBJECTS:libc-gen_legacy>
 		$<TARGET_OBJECTS:libc-string_legacy>
 		$<TARGET_OBJECTS:libc-gdtoa_legacy>
 		$<TARGET_OBJECTS:libc-regex_legacy>
 		$<TARGET_OBJECTS:libc-locale_legacy>
 		$<TARGET_OBJECTS:libc-pthreads_legacy>
+		$<TARGET_OBJECTS:libc-net_legacy>
 	)
 endif()
 
@@ -129,6 +130,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-threads>
 	$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:libc-darwin>
+	$<TARGET_OBJECTS:libc-platform>
 	${extra_objs})
 target_link_libraries(system_c system_kernel system_m)
 
