@@ -66,7 +66,7 @@ void MachOImpl::readClassicBind(const section& sec, uint32_t* dysyms, uint32_t* 
 		bind->ordinal = (int)(int8_t) GET_LIBRARY_ORDINAL(sym->n_desc);
 		bind->is_weak = ((sym->n_desc & N_WEAK_DEF) != 0);
 		bind->is_classic = true;
-		bind->is_local = (sym->n_type & N_TYPE) == N_SECT;
+		bind->is_local = ((sym->n_type & N_TYPE) == N_SECT);
 
 		LOG << "add classic bind: " << bind->name << '(' << index << ") type=" << int(sym->n_type) << " sect=" << int(sym->n_sect)
 			<< " desc=" << sym->n_desc << " value=" << sym->n_value << " vmaddr=" << (void*)(bind->vmaddr)
@@ -94,6 +94,9 @@ void MachOImpl::readStubBind(const section& sec,  uint32_t* dysyms, uint32_t* sy
 		uint32_t dysym = dysyms[indirect_offset + i];
 		uint32_t index = dysym & 0x3fffffff;
 		nlist* sym = (nlist*)(symtab + index * 3);
+		
+		if ((dysym & INDIRECT_SYMBOL_LOCAL) || (dysym & INDIRECT_SYMBOL_ABS))
+			continue;
 
 		MachO::Bind* bind = new MachO::Bind();
 		bind->name = symstrtab + sym->n_strx;
@@ -106,7 +109,7 @@ void MachOImpl::readStubBind(const section& sec,  uint32_t* dysyms, uint32_t* sy
 
 		m_binds.push_back(bind);
 
-		LOG << "add stub bind: " << bind->name.c_str() << " vmaddr=" << (void*) bind->vmaddr << std::endl;
+		LOG << "add stub bind: " << bind->name.c_str() << " vmaddr=" << (void*) bind->vmaddr << " index=" << dysym << std::endl;
 	}
 }
 
