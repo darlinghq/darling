@@ -8,6 +8,7 @@
 #include "../unistd/readlink.h"
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <libdyld/VirtualPrefix.h>
 
 #define MH_MAGIC    0xfeedface
@@ -18,8 +19,12 @@
 #define FAT_CIGAM   0xbebafeca
 
 extern int strcmp(const char *s1, const char *s2);
+extern char *strcat(char *dest, const char *src);
+extern char *strcpy(char *dest, const char *src);
 extern void* memchr(const void* s, int c, __SIZE_TYPE__ n);
 extern char* strchr(const char* s, int c);
+extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
+extern __SIZE_TYPE__ strlen(const char *s);
 
 static inline bool isspace(char c)
 {
@@ -47,6 +52,41 @@ long sys_execve(char* fname, char** argvp, char** envp)
 	ret = sys_read(fd, m.magic_array, sizeof(m.magic_array));
 	if (ret < 4)
 		goto no_macho;
+	
+	if (__prefix_get() != NULL)
+	{
+		// Inject DPREFIX if DPREFIX is missing
+		int i;
+		bool has_dprefix = false;
+		char** new_envp;
+		
+		for (i = 0; envp[i] != NULL; i++)
+		{
+			if (strncmp(envp[i], "DPREFIX=", 8) == 0)
+			{
+				has_dprefix = true;
+				break;
+			}
+		}
+		
+		if (!has_dprefix)
+		{
+			char* dprefix;
+			
+			new_envp = (char**) __builtin_alloca(sizeof(char*) * (i+1));
+			dprefix = (char*) __builtin_alloca(strlen(__prefix_get()) + 9);
+			
+			for (i = 0; envp[i] != NULL; i++)
+				new_envp[i] = envp[i];
+			
+			strcpy(dprefix, "DPREFIX=");
+			strcat(dprefix, __prefix_get());
+			new_envp[i++] = dprefix;
+			new_envp[i] = NULL;
+			
+			envp = new_envp;
+		}
+	}
 
 	if (m.magic == MH_MAGIC || m.magic == MH_CIGAM
 			|| m.magic == MH_MAGIC_64 || m.magic == MH_CIGAM_64
