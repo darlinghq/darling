@@ -65,6 +65,7 @@ if (FRAMEWORK_COREAUDIO)
 	add_subdirectory(AudioToolbox)
 	add_subdirectory(AudioUnit)
 endif (FRAMEWORK_COREAUDIO)
+add_subdirectory(IOKit)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libm/Source")
