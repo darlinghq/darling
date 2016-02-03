@@ -89,6 +89,9 @@
 #include "network/getsockopt.h"
 #include "network/setsockopt.h"
 #include "network/sendto.h"
+#include "network/bind.h"
+#include "network/listen.h"
+#include "network/socketpair.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
 #include "stat/stat.h"
@@ -200,7 +203,9 @@ void* __bsd_syscall_table[512] = {
 	[95] = sys_fsync,
 	[97] = sys_socket,
 	[98] = sys_connect,
+	[104] = sys_bind,
 	[105] = sys_setsockopt,
+	[106] = sys_listen,
 	[116] = sys_gettimeofday,
 	[117] = sys_getrusage,
 	[118] = sys_getsockopt,
@@ -212,6 +217,7 @@ void* __bsd_syscall_table[512] = {
 	[132] = sys_mkfifo,
 	[133] = sys_sendto,
 	[134] = sys_shutdown,
+	[135] = sys_socketpair,
 	[136] = sys_mkdir,
 	[137] = sys_rmdir,
 	[138] = sys_utimes,

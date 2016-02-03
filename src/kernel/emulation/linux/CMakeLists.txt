@@ -98,6 +98,7 @@ set(emulation_sources
 	fcntl/open.c
 	fcntl/fcntl.c
 	network/socket.c
+	network/socketpair.c
 	network/connect.c
 	network/recvmsg.c
 	network/sendmsg.c
@@ -110,6 +111,8 @@ set(emulation_sources
 	network/getsockopt.c
 	network/setsockopt.c
 	network/sendto.c
+	network/bind.c
+	network/listen.c
 	stat/fstat.c
 	stat/lstat.c
 	stat/stat.c
@@ -187,6 +190,8 @@ set_source_files_properties(bsdthread/bsdthread_create.c PROPERTIES COMPILE_FLAG
 set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/src/libc/include -nostdinc")
 set_source_files_properties(network/socket.c PROPERTIES COMPILE_FLAGS
+	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
+set_source_files_properties(network/socketpair.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
 set_source_files_properties(network/duct.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
