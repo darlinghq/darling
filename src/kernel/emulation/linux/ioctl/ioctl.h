@@ -23,7 +23,7 @@ enum {
 #define BSD_IOC_DIRMASK     (uint32_t)0xe0000000
 
 #define BSD_IOC(inout,group,num,len) \
-        (inout | ((len & BSD_IOCPARM_MASK) << 16) | ((group) << 8) | (num))
+        (int)(inout | ((len & BSD_IOCPARM_MASK) << 16) | ((group) << 8) | (num))
 #define BSD_IO(g,n)        BSD_IOC(BSD_IOC_VOID,  (g), (n), 0)
 #define BSD_IOR(g,n,t)     BSD_IOC(BSD_IOC_OUT,   (g), (n), sizeof(t))
 #define BSD_IOW(g,n,t)     BSD_IOC(BSD_IOC_IN,    (g), (n), sizeof(t))

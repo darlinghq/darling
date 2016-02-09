@@ -144,6 +144,7 @@ set(emulation_sources
 	time/getitimer.c
 	ioctl/ioctl.c
 	ioctl/termios.c
+        ioctl/filio.c
 	ext/uname.c
 	ext/epoll_create.c
 	ext/epoll_create1.c
