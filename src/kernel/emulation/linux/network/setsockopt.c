@@ -20,7 +20,7 @@ long sys_setsockopt(int fd, int level, int optname, const void* optval, int optl
 	ret = sockopt_bsd_to_linux(&linux_level, &linux_optname,
 			(void**) &optval, buf);
 	
-	if (ret != 0)
+	if (ret != 0 || !linux_optname)
 		return ret;
 
 #ifdef __NR_socketcall
