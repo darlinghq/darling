@@ -73,3 +73,23 @@
 [submodule "src/external/text_cmds"]
 	path = src/external/text_cmds
 	url = ../darling-text_cmds.git
+[submodule "src/external/less"]
+	path = src/external/less
+	url = ../darling-less.git
+	branch = darling
+[submodule "src/external/grep"]
+	path = src/external/grep
+	url = ../darling-grep.git
+	branch = darling
+[submodule "src/external/pcre"]
+	path = src/external/pcre
+	url = ../darling-pcre.git
+	branch = darling
+[submodule "src/external/awk"]
+	path = src/external/awk
+	url = ../darling-awk.git
+	branch = darling
+[submodule "src/external/adv_cmds"]
+	path = src/external/adv_cmds
+	url = ../darling-adv_cmds.git
+	branch = darling
