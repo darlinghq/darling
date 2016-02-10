@@ -1,0 +1,52 @@
+.Dd Oct 31, 2005
+.Dt LCHFLAGS 3
+.Os
+.Sh NAME
+.Nm lchflags
+.Nd set file flags
+.Sh SYNOPSIS
+.In sys/stat.h
+.In unistd.h
+.Ft int
+.Fn lchflags "const char *path" "u_int flags"
+.Sh DESCRIPTION
+The file whose name is given by
+.Fa path
+has its flags changed to
+.Fa flags .
+See
+.Xr chflags 2
+for the values of the
+.Fa flags .
+.Pp
+The
+.Fn lchflags
+call is like
+.Fn chflags
+except when the named file is a symbolic link,
+in which case
+.Fn lchflags
+will change the flags of the link itself,
+rather than the file it points to.
+.Sh NOTE
+Instead of being a system call,
+.Fn lchflags
+is emulated using
+.Xr setattrlist 2 .
+Not all file systems support
+.Xr setattrlist 2 .
+.Sh RETURN VALUES
+Upon successful completion, a value of 0 is returned.
+Otherwise, -1 is returned and the global variable
+.Va errno
+is set to indicate the error.
+.Sh ERRORS
+The
+.Fn lchflags
+call may return the same errors as
+.Xr chflags 2
+and
+.Xr setattrlist 2 .
+.Sh SEE ALSO
+.Xr chflags 2 ,
+.Xr setattrlist 2

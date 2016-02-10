@@ -1,0 +1,115 @@
+.\" Copyright (c) 1985, 1991 Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     from: @(#)exp.3	6.12 (Berkeley) 7/31/91
+.\"	$Id: exp.3,v 1.4 2004/12/20 21:35:45 scp Exp $
+.\"
+.Dd December 11, 2006
+.Dt EXP 3
+.Os BSD 4
+.Sh NAME
+.Nm exp ,
+.Nm exp2 ,
+.Nm expm1
+.Nd exponential functions
+.Sh SYNOPSIS
+.Fd #include <math.h>
+.Ft double
+.Fn exp "double x"
+.Ft long double
+.Fn expl "long double x"
+.Ft float
+.Fn expf "float x"
+.Ft double
+.Fn exp2 "double x"
+.Ft long double
+.Fn exp2l "long double x"
+.Ft float
+.Fn exp2f "float x"
+.Ft double
+.Fn expm1 "double x"
+.Ft long double
+.Fn expm1l "long double x"
+.Ft float
+.Fn expm1f "float x"
+.Sh DESCRIPTION
+The
+.Fn exp
+function computes e**x, the base-e exponential of
+.Fa x .
+.Pp
+The
+.Fn exp2
+function computes 2**x, the base-2 exponential of
+.Fa x .
+.Pp
+The
+.Fn expm1
+function computes the base-e exponential of
+.Fa x
+, minus 1 accurately even for very small values of
+.Fa x .
+.Sh SPECIAL VALUES
+.Fn exp "±0"
+and
+.Fn exp2 "±0"
+return 1.
+.Pp
+.Fn exp "-infinity"
+and
+.Fn exp2 "-infinity"
+return +0.
+.Pp
+.Fn exp "+infinity"
+and
+.Fn exp2 "+infinity"
+return +infinity.
+.Pp
+.Fn expm1 "±0"
+returns ±0.
+.Pp
+.Fn expm1 "-infinity"
+returns -1.
+.Pp
+.Fn expm1 "+infinity"
+returns +infinity.
+.Pp
+For all these functions, a range error occurs if the magnitude of x is too large.
+.Sh SEE ALSO
+.Xr math 3
+.Sh STANDARDS
+The
+.Fn exp
+,
+.Fn exp2
+, and
+.Fn expm1
+functions conform to ISO/IEC 9899:1999(E).

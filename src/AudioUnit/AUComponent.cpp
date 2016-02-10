@@ -1,6 +1,7 @@
-#include "config.h"
+#include "darling-config.h"
 #include "AUComponent.h"
 #include "AudioUnitALSA.h"
+#include "AudioUnitPA.h"
 #include <util/debug.h>
 #include <alsa/asoundlib.h>
 #include <CoreServices/MacErrors.h>
@@ -62,7 +63,14 @@ OSStatus AudioComponentInstanceNew(AudioComponent inComponent, AudioComponentIns
 {
 	TRACE1(inComponent);
 
+#if defined(ENABLE_PULSEAUDIO)
+	*outInstance = new AudioUnitPA;
+#elif defined(ENABLE_ALSA)
 	*outInstance = AudioUnitALSA::create(GetComponentIndex(inComponent));
+#else
+	*outInstance = nullptr;
+	return unimpErr;
+#endif
 	return *outInstance ? noErr : paramErr;
 }
 

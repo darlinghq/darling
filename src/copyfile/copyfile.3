@@ -1,0 +1,588 @@
+.\"
+.\" Copyright (c) 2002 Apple Computer, Inc.  All rights reserved.
+.\"
+.Dd April 27, 2006
+.Dt COPYFILE 3
+.Os
+.Sh NAME
+.Nm copyfile , fcopyfile ,
+.Nm copyfile_state_alloc , copyfile_state_free ,
+.Nm copyfile_state_get , copyfile_state_set
+.Nd copy a file
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In copyfile.h
+.Ft int
+.Fn copyfile "const char *from" "const char *to" "copyfile_state_t state" "copyfile_flags_t flags"
+.Ft int
+.Fn fcopyfile "int from" "int to" "copyfile_state_t state" "copyfile_flags_t flags"
+.Ft copyfile_state_t
+.Fn copyfile_state_alloc "void"
+.Ft int
+.Fn copyfile_state_free "copyfile_state_t state"
+.Ft int
+.Fn copyfile_state_get "copyfile_state_t state" "uint32_t flag" "void * dst"
+.Ft int
+.Fn copyfile_state_set "copyfile_state_t state" "uint32_t flag" "const void * src"
+.Ft typedef int
+.Fn (*copyfile_callback_t) "int what" "int stage" "copyfile_state_t state" "const char * src" "const char * dst" "void * ctx"
+.Sh DESCRIPTION
+These functions are used to copy a file's data and/or metadata.  (Metadata
+consists of permissions, extended attributes, access control lists, and so
+forth.)
+.Pp
+The
+.Fn copyfile_state_alloc
+function initializes a
+.Vt copyfile_state_t
+object (which is an opaque data type).
+This object can be passed to
+.Fn copyfile
+and
+.Fn fcopyfile ;
+.Fn copyfile_state_get
+and
+.Fn copyfile_state_set
+can be used to manipulate the state (see below).
+The
+.Fn copyfile_state_free
+function is used to deallocate the object and its contents.
+.Pp
+The
+.Fn copyfile
+function can copy the named
+.Va from
+file to the named
+.Va to
+file; the
+.Fn fcopyfile
+function does the same, but using the file descriptors of already-opened
+files.
+If the
+.Va state
+parameter is the return value from
+.Fn copyfile_state_alloc ,
+then
+.Fn copyfile
+and
+.Fn fcopyfile
+will use the information from the state object; if it is
+.Dv NULL ,
+then both functions will work normally, but less control will be available to the caller.
+The
+.Va flags
+parameter controls which contents are copied:
+.Bl -tag -width COPYFILE_XATTR
+.It Dv COPYFILE_ACL
+Copy the source file's access control lists.
+.It Dv COPYFILE_STAT
+Copy the source file's POSIX information (mode, modification time, etc.).
+.It Dv COPYFILE_XATTR
+Copy the source file's extended attributes.
+.It Dv COPYFILE_DATA
+Copy the source file's data.
+.El
+.Pp
+These values may be or'd together; several convenience macros are provided:
+.Bl -tag -width COPYFILE_SECURITY
+.It Dv COPYFILE_SECURITY
+Copy the source file's POSIX and ACL information; equivalent to
+.Dv (COPYFILE_STAT|COPYFILE_ACL) .
+.It Dv COPYFILE_METADATA
+Copy the metadata; equivalent to
+.Dv (COPYFILE_SECURITY|COPYFILE_XATTR) .
+.It Dv COPYFILE_ALL
+Copy the entire file; equivalent to
+.Dv (COPYFILE_METADATA|COPYFILE_DATA) .
+.El
+.Pp
+The
+.Fn copyfile
+and
+.Fn fcopyfile
+functions can also have their behavior modified by the following flags:
+.Bl -tag -width COPYFILE_NOFOLLOW_SRC
+.It Dv COPYFILE_RECURSIVE
+Causes
+.Fn copyfile
+to recursively copy a hierarchy.
+This flag is not used by
+.Fn fcopyfile ;
+see below for more information.
+.It Dv COPYFILE_CHECK
+Return a bitmask (corresponding to the
+.Va flags
+argument) indicating which contents would be copied; no data are actually
+copied.  (E.g., if
+.Va flags
+was set to
+.Dv COPYFILE_CHECK|COPYFILE_METADATA ,
+and the
+.Va from
+file had extended attributes but no ACLs, the return value would be
+.Dv COPYFILE_XATTR .)
+.It Dv COPYFILE_PACK
+Serialize the
+.Va from
+file.  The
+.Va to
+file is an AppleDouble-format file.
+.It Dv COPYFILE_UNPACK
+Unserialize the
+.Va from
+file.  The
+.Va from
+file is an AppleDouble-format file; the
+.Va to
+file will have the extended attributes, ACLs, resource fork, and
+FinderInfo data from the
+.Va to
+file, regardless of the
+.Va flags
+argument passed in.
+.It Dv COPYFILE_EXCL
+Fail if the
+.Va to
+file already exists.  (This is only applicable for the
+.Fn copyfile
+function.)
+.It Dv COPYFILE_NOFOLLOW_SRC
+Do not follow the
+.Va from
+file, if it is a symbolic link.  (This is only applicable for the
+.Fn copyfile
+function.)
+.It Dv COPYFILE_NOFOLLOW_DST
+Do not follow the
+.Va to
+file, if it is a symbolic link.  (This is only applicable for the
+.Fn copyfile
+function.)
+.It Dv COPYFILE_MOVE
+Unlink (using 
+.Xr remove 3 )
+the
+.Fa from
+file.  (This is only applicable for the
+.Fn copyfile
+function.)  No error is returned if
+.Xr remove 3
+fails.  Note that
+.Xr remove 3
+removes a symbolic link itself, not the
+target of the link.
+.It Dv COPYFILE_UNLINK
+Unlink the
+.Va to
+file before starting.  (This is only applicable for the
+.Fn copyfile
+function.)
+.It Dv COPYFILE_NOFOLLOW
+This is a convenience macro, equivalent to
+.Dv (COPYFILE_NOFOLLOW_DST|COPYFILE_NOFOLLOW_SRC) .
+.El
+.Pp
+The
+.Fn copyfile_state_get
+and
+.Fn copyfile_state_set
+functions can be used to manipulate the
+.Ft copyfile_state_t
+object returned by
+.Fn copyfile_state_alloc .
+In both functions, the
+.Va dst
+parameter's type depends on the
+.Va flag
+parameter that is passed in.
+.Bl -tag -width COPYFILE_STATE_DST_FILENAME
+.It Dv COPYFILE_STATE_SRC_FD
+.It Dv COPYFILE_STATE_DST_FD
+Get or set the file descriptor associated with the source (or destination)
+file.
+If this has not been initialized yet, the value will be -2.
+The
+.Va dst
+(for
+.Fn copyfile_state_get )
+and
+.Va src
+(for
+.Fn copyfile_state_set )
+parameters are pointers to
+.Vt int .
+.It Dv COPYFILE_STATE_SRC_FILENAME
+.It Dv COPYFILE_STATE_DST_FILENAME
+Get or set the filename associated with the source (or destination)
+file.  If it has not been initialized yet, the value will be
+.Dv NULL .
+For
+.Fn copyfile_state_set ,
+the
+.Va src
+parameter is a pointer to a C string
+(i.e.,
+.Vt char* );
+.Fn copyfile_state_set
+makes a private copy of this string.
+For
+.Fn copyfile_state_get
+function, the
+.Va dst
+parameter is a pointer to a pointer to a C string
+(i.e.,
+.Vt char** );
+the returned value is a pointer to the
+.Va state 's
+copy, and must not be modified or released.
+.It Dv COPYFILE_STATE_STATUS_CB
+Get or set the callback status function (currently
+only used for recursive copies; see below for details).
+The
+.Va src
+parameter is a pointer to a function of type
+.Vt copyfile_callback_t
+(see above).
+.It Dv COPYFILE_STATE_STATUS_CTX
+Get or set the context parameter for the status
+call-back function (see below for details).
+The
+.Va src
+parameter is a
+.Vt void\ * .
+.It Dv COPYFILE_STATE_QUARANTINE
+Get or set the quarantine information with the source file.
+The
+.Va src
+parameter is a pointer to an opaque
+object (type
+.Vt void\ *
+).
+.It Dv COPYFILE_STATE_COPIED
+Get the number of data bytes copied so far.
+(Only valid for
+.Fn copyfile_state_get ;
+see below for more details about callbacks.)
+The
+.Va dst
+parameter is a pointer to
+.Vt off_t
+(type
+.Vt off_t\ * ).
+.It Dv COPYFILE_STATE_XATTRNAME
+Get the name of the extended attribute during a callback
+for
+.Dv COPYFILE_COPY_XATTR
+(see below for details).  This field cannot be set,
+and may be
+.Dv NULL .
+.El
+.Sh Recursive Copies
+When given the
+.Dv COPYFILE_RECURSIVE
+flag,
+.Fn copyfile
+(but not
+.Fn fcopyfile )
+will use the 
+.Xr fts 3
+functions to recursively descend into the source file-system object.
+It then calls
+.Fn copyfile
+on each of the entries it finds that way.
+If a call-back function is given (using
+.Fn copyfile_state_set
+and
+.Dv COPYFILE_STATE_STATUS_CB ),
+the call-back function will be called four times for each directory
+object, and twice for all other objects.  (Each directory will
+be examined twice, once on entry -- before copying each of the
+objects contained in the directory -- and once on exit -- after
+copying each object contained in the directory, in order to perform
+some final cleanup.)
+.Pp
+The call-back function will have one of the following values
+as the first argument, indicating what is being copied:
+.Bl -tag -width COPYFILE_RECURSE_DIR_CLEANUP
+.It Dv COPYFILE_RECURSE_FILE
+The object being copied is a file (or, rather,
+something other than a directory).
+.It Dv COPYFILE_RECURSE_DIR
+The object being copied is a directory, and is being
+entered.  (That is, none of the filesystem objects contained
+within the directory have been copied yet.)
+.It Dv COPYFILE_RECURSE_DIR_CLEANUP
+The object being copied is a directory, and all of the
+objects contained have been copied.  At this stage, the destination directory
+being copied will have any extra permissions that were added to
+allow the copying will be removed.
+.It Dv COPYFILE_RECURSE_ERROR
+There was an error in processing an element of the source hierarchy;
+this happens when
+.Xr fts 3
+returns an error or unknown file type.
+(Currently, the second argument to the call-back function will always
+be
+.Dv COPYFILE_ERR
+in this case.)
+.El
+.Pp
+The second argument to the call-back function will indicate
+the stage of the copy, and will be one of the following values:
+.Bl -tag -width COPYFILE_FINISH
+.It Dv COPYFILE_START
+Before copying has begun.  The third
+parameter will be a newly-created
+.Vt copyfile_state_t
+object with the call-back function and context pre-loaded.
+.It Dv COPYFILE_FINISH
+After copying has successfully finished.
+.It Dv COPYFILE_ERR
+Indicates an error has happened at some stage.  If the
+first argument to the call-back function is 
+.Dv COPYFILE_RECURSE_ERROR ,
+then an error occurred while processing the source hierarchy;
+otherwise, it will indicate what type of object was being copied,
+and
+.Dv errno
+will be set to indicate the error.
+.El
+.Pp
+The fourth and fifth
+parameters are the source and destination paths that
+are to be copied (or have been copied, or failed to copy, depending on
+the second argument).
+.Pp
+The last argument to the call-back function will be the value
+set by
+.Dv COPYFILE_STATE_STATUS_CTX ,
+if any.
+.Pp
+The call-back function is required to return one of the following
+values:
+.Bl -tag -width COPYFILE_CONTINUE
+.It Dv COPYFILE_CONTINUE
+The copy will continue as expected.
+.It Dv COPYFILE_SKIP
+This object will be skipped, and the next object will
+be processed.  (Note that, when entering a directory.
+returning
+.Dv COPYFILE_SKIP
+from the call-back function will prevent the contents
+of the directory from being copied.)
+.It Dv COPYFILE_QUIT
+The entire copy is aborted at this stage.  Any filesystem
+objects created up to this point will remain.
+.Fn copyfile
+will return -1, but
+.Dv errno
+will be unmodified.
+.El
+.Pp
+The call-back function must always return one of the values listed
+above; if not, the results are undefined.
+.Pp
+The call-back function will be called twice for each object
+(and an additional two times for directory cleanup); the first
+call will have a
+.Ar stage
+parameter of
+.Dv COPYFILE_START ;
+the second time, that value will be either
+.Dv COPYFILE_FINISH
+or
+.Dv COPYFILE_ERR
+to indicate a successful completion, or an error during
+processing.
+In the event of an error, the
+.Dv errno
+value will be set appropriately.
+.Pp
+The
+.Dv COPYFILE_PACK ,
+.Dv COPYFILE_UNPACK ,
+.Dv COPYFILE_MOVE ,
+and
+.Dv COPYFILE_UNLINK
+flags are not used during a recursive copy, and will result
+in an error being returned.
+.Sh Progress Callback
+In addition to the recursive callbacks described above,
+.Fn copyfile
+and
+.Fn fcopyfile
+will also use a callback to report data (e.g.,
+.Dv COPYFILE_DATA )
+progress.  If given, the callback will be invoked on each
+.Xr write 2
+call.  The first argument to the callback function will be
+.Dv COPYFILE_COPY_DATA .
+The second argument will either be
+.Dv COPYFILE_PROGRESS
+(indicating that the write was successful), or
+.Dv COPYFILE_ERR
+(indicating that there was an error of some sort).
+.Pp
+The amount of data bytes copied so far can be retrieved using
+.Fn copyfile_state_get ,
+with the
+.Dv COPYFILE_STATE_COPIED
+requestor (the argument type is a pointer to
+.Vt off_t ).
+.Pp
+When copying extended attributes, the first argument to the
+callback function will be
+.Dv COPYFILE_COPY_XATTR .
+The other arguments will be as described for
+.Dv COPYFILE_COPY_DATA ;
+the name of the extended attribute being copied may be
+retrieved using
+.Fn copyfile_state_get
+and the parameter
+.Dv COPYFILE_STATE_XATTRNAME .
+When using
+.Dv COPYFILE_PACK ,
+the callback may be called with
+.Dv COPYFILE_START
+for each of the extended attributes first, followed by
+.Dv COPYFILE_PROGRESS
+before getting and packing the data for each
+individual attribute, and then
+.Dv COPYFILE_FINISH
+when finished with each individual attribute.
+(That is,
+.Dv COPYFILE_START
+may be called for all of the extended attributes, before
+the first callback with
+.Dv COPYFILE_PROGRESS
+is invoked.)  Any attribute skipped by returning
+.Dv COPYFILE_SKIP
+from the
+.Dv COPYFILE_START
+callback will not be placed into the packed output file.
+.Pp
+The return value for the data callback must be one of
+.Bl -tag -width COPYFILE_CONTINUE
+.It Dv COPYFILE_CONTINUE
+The copy will continue as expected.
+(In the case of error, it will attempt to write the data again.)
+.It Dv COPYFILE_SKIP
+The data copy will be aborted, but without error.
+.It Dv COPYFILE_QUIT
+The data copy will be aborted; in the case of
+.Dv COPYFILE_PROGRESS ,
+.Dv errno
+will be set to
+.Dv ECANCELED .
+.El
+.Pp
+While the
+.Va src
+and
+.Va dst
+parameters will be passed in, they may be
+.Dv NULL
+in the case of
+.Fn fcopyfile .
+.Sh RETURN VALUES
+Except when given the
+.Dv COPYFILE_CHECK
+flag,
+.Fn copyfile
+and
+.Fn fcopyfile
+return less than 0 on error, and 0 on success.
+All of the other functions return 0 on success, and less than 0
+on error.
+.Sh WARNING
+Both
+.Fn copyfile
+and
+.Fn fcopyfile
+can copy symbolic links; there is a gap between when the source
+link is examined and the actual copy is started, and this can
+be a potential security risk, especially if the process has
+elevated privileges.
+.Pp
+When performing a recursive copy, if the source hierarchy
+changes while the copy is occurring, the results are undefined.
+.Pp
+.Fn fcopyfile
+does not reset the seek position for either source or destination.
+This can result in the destination file being a different size
+than the source file.
+.Sh ERRORS
+.Fn copyfile
+and
+.Fn fcopyfile
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+An invalid flag was passed in with
+.Dv COPYFILE_RECURSIVE .
+.It Bq Er EINVAL
+The
+.Va from
+or
+.Va to
+parameter to
+.Fn copyfile
+was a
+.Dv NULL
+pointer.
+.It Bq Er EINVAL
+The
+.Va from
+or
+.Va to
+parameter to
+.Fn copyfile
+was a negative number.
+.It Bq Er ENOMEM
+A memory allocation failed.
+.It Bq Er ENOTSUP
+The source file was not a directory, symbolic link, or regular file.
+.It Bq Er ECANCELED
+The copy was cancelled by callback.
+.El
+In addition, both functions may set
+.Dv errno
+via an underlying library or system call.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+/* Initialize a state variable */
+copyfile_state_t s;
+s = copyfile_state_alloc();
+/* Copy the data and extended attributes of one file to another */
+copyfile("/tmp/f1", "/tmp/f2", s, COPYFILE_DATA | COPYFILE_XATTR);
+/* Convert a file to an AppleDouble file for serialization */
+copyfile("/tmp/f2", "/tmp/tmpfile", NULL, COPYFILE_ALL | COPYFILE_PACK);
+/* Release the state variable */
+copyfile_state_free(s);
+/* A more complex way to call copyfile() */
+s = copyfile_state_alloc();
+copyfile_state_set(s, COPYFILE_STATE_SRC_FILENAME, "/tmp/foo");
+/* One of src or dst must be set... rest can come from the state */
+copyfile(NULL, "/tmp/bar", s, COPYFILE_ALL);
+/* Now copy the same source file to another destination file */
+copyfile(NULL, "/tmp/car", s, COPYFILE_ALL);
+copyfile_state_free(s);
+/* Remove extended attributes from a file */
+copyfile("/dev/null", "/tmp/bar", NULL, COPYFILE_XATTR);
+.Ed
+.Sh SEE ALSO
+.Xr listxattr 2 ,
+.Xr getxattr 2 ,
+.Xr setxattr 2 ,
+.Xr acl 3
+.Sh BUGS
+Both
+.Fn copyfile
+functions lack a way to set the input or output block size.
+.Pp
+Recursive copies do not honor hard links.
+.Sh HISTORY
+The
+.Fn copyfile
+API was introduced in Mac OS X 10.5.

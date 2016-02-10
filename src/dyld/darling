@@ -1,0 +1,126 @@
+#!/bin/sh
+# 
+# This file is part of Darling.
+# 
+# Copyright (C) 2015 Lubos Dolezel
+# 
+# Darling is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# Darling is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+# 
+
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
+MINIMUM_PREFIX_VERSION="1"
+
+setup_prefix() {
+    prefix_pkg="/tmp/prefix.$$.pkg"
+
+    >&2 echo "Setting up prefix at $1"
+    >&2 echo 
+
+    mkdir -p "$1"
+    install_pkg "org.darlinghq.pkg.PrefixHierarchy"
+    rm -f "$1/darling-prefix"
+    ln -s "/${SYSTEM_ROOT_NAME}${DARLING_PREFIX}" "$1/darling-prefix"
+
+    install_pkg "org.darlinghq.pkg.OpenSSLCertificates"
+
+    >&2 echo "Prefix is ready."
+}
+
+install_pkg() {
+    temp="/tmp/pkgs.$$"
+    mkdir "$temp" || true
+
+    >&2 echo "Getting latest version of $1..."
+    version=$(wget "http://packages.darlinghq.org/${1}/latest.txt" -O- 2>/dev/null)
+    pkgpath="$temp/${1}-${version}.pkg"
+
+    >&2 echo "Downloading $1 (version $version)..."
+    wget "http://packages.darlinghq.org/${1}/${1}-${version}.pkg" -O "$pkgpath" 2>/dev/null
+
+    "${DARLING_PREFIX}/libexec/darling/usr/bin/installer" -pkg "/system-root${pkgpath}" -target /
+
+    rm -rf "$temp"
+}
+
+if [ $# -eq 0 ]; then
+    >&2 echo "This is Darling, a runtime environment for OS X applications."
+    >&2 echo
+    >&2 echo "Copyright (C) 2012-2015 Lubos Dolezel"
+    >&2 echo "Includes software components which are Copyright (C) Apple Computer, Inc. and many others."
+    >&2 echo
+    >&2 echo -e "Usage:\tdarling PROGRAM [ARGUMENTS...]\tRun the specified program" 
+    >&2 echo -e "\tdarling shell\t\t\tStart bash shell in prefix"
+    #>&2 echo -e "\tdarling hdiutil\t\t\tMount DMG disk images"
+    #>&2 echo -e "\tdarling pkgutil\t\t\tInstall PKG packages"
+    >&2 echo
+    >&2 echo "The prefix is specified by the DPREFIX environment variable."
+    >&2 echo "The default DPREFIX is \$HOME/.darling"
+    exit 1
+fi
+
+set -e
+
+if [ -z "$DPREFIX" ]; then
+    export DPREFIX="$HOME/.darling"
+fi
+
+if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.prefix-version" ]; then
+    setup_prefix "$DPREFIX"
+fi
+
+if [ "$(cat $DPREFIX/.prefix-version)" -lt $MINIMUM_PREFIX_VERSION ]; then
+    setup_prefix "$DPREFIX"
+fi
+
+#dyld_path="${0%darling}dyld"
+dyld_path="${DARLING_PREFIX}/bin/dyld"
+
+case "$1" in
+"shell")
+    if [ $# -gt 2 ]; then
+        exec "${dyld_path}" "${DPREFIX}/bin/bash" -c "${*:2}"
+    else
+        exec "${dyld_path}" "${DPREFIX}/bin/bash" --norc
+    fi
+    ;;
+#"hdiutil")
+#    exec "${DPREFIX}/usr/bin/hdiutil" "${@:2}"
+#    exit $?
+#    ;;
+#"pkgutil")
+#    >2& echo "Not implemented yet"
+#    exit 1
+#    ;;
+"load")
+    if [ "$(id -u)" != 0 ]; then
+        2>&1 "You need to be root for this command."
+        exit 1
+    fi
+
+    darling_load
+    ;;
+"unload")
+    if [ "$(id -u)" != 0 ]; then
+        2>&1 "You need to be root for this command."
+        exit 1
+    fi
+
+    darling_unload
+    ;;
+*)
+    exec "${dyld_path}" "$1" "${@:2}"
+    ;;
+esac

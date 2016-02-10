@@ -21,6 +21,7 @@ AudioConverter::AudioConverter(const AudioStreamBasicDescription* inSourceFormat
     : m_sourceFormat(*inSourceFormat), m_destinationFormat(*inDestinationFormat), m_decoder(nullptr), m_encoder(nullptr)
 {
 	memset(&m_avpkt, 0, sizeof(m_avpkt));
+	memset(&m_avpktOut, 0, sizeof(m_avpktOut));
 }
 
 void AudioConverter::flush()
@@ -113,7 +114,7 @@ void AudioConverter::initEncoder()
 
 void AudioConverter::allocateBuffers()
 {
-	m_audioFrame = avcodec_alloc_frame();
+	m_audioFrame = av_frame_alloc();
 	
 	m_audioFrame->nb_samples = 4096;
 	m_audioFrame->format = m_encoder->sample_fmt;
@@ -288,8 +289,8 @@ OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc
 {
 	AVFrame* srcaudio;
 
-	srcaudio = avcodec_alloc_frame();
-	avcodec_get_frame_defaults(srcaudio);
+	srcaudio = av_frame_alloc();
+	av_frame_unref(srcaudio);
 	
 	try
 	{
@@ -302,102 +303,139 @@ OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc
 			
 			while (newSize < origSize)
 			{
-				int gotFrame = 0, err;
-				uint8_t* resampledData;
-				int outSamples;
-				
-				// Read input
-				if (!m_avpkt.size)
+				if (m_avpktOutUsed < m_avpktOut.size)
 				{
-					UInt32 numDataPackets = 0;
-					OSStatus err = feedInput(dataProc, opaque, numDataPackets);
+					LOG << "case 1 (used " << m_avpktOutUsed << " from " << m_avpktOut.size << ")\n";
+					// Feed output from previous conversion
+					while (m_avpktOutUsed < m_avpktOut.size && newSize < origSize)
+					{
+						// Output data
+						int tocopy = std::min<int>(m_avpktOut.size - m_avpktOutUsed, origSize - newSize);
+						memcpy(((char*) outOutputData->mBuffers[i].mData) + newSize, m_avpktOut.data + m_avpktOutUsed, tocopy);
+						newSize += tocopy;
+						m_avpktOutUsed += tocopy;
+					}
 					
-					if (err != noErr)
-						throw err;
-					
-					if (!m_avpkt.size) // numDataPackets cannot be trusted
+					if (m_avpktOutUsed >= m_avpktOut.size)
+					{
+						m_avpktOutUsed = 0;
+						av_free_packet(&m_avpktOut);
+					}
+				}
+				else if (!m_resampler || avresample_available(m_resampler) == 0)
+				{
+					LOG << "case 2\n";
+					feedDecoder(dataProc, opaque, srcaudio);
+					if (avresample_available(m_resampler) == 0)
 						goto end;
 				}
-				
-				err = avcodec_decode_audio4(m_decoder, srcaudio, &gotFrame, &m_avpkt);
-				if (err < 0)
-					throw std::runtime_error("avcodec_decode_audio4() failed");
-				
-				m_avpkt.size -= err;
-				m_avpkt.data += err;
-				
-				if (!gotFrame)
-					continue;
-				if (!m_resampler)
-					setupResampler(srcaudio);
-					
-				// Resample PCM
-				err = avresample_convert(m_resampler, nullptr, 0, 0, srcaudio->data, 0, srcaudio->nb_samples);
-				if (err < 0)
-					throw std::runtime_error("avresample_convert() failed");
-				
-				while (avresample_available(m_resampler) > 0 && newSize < origSize)
+				else
 				{
-					AVPacket pkt;
-					uint8_t *output;
-					int out_linesize;
-					int avail = avresample_available(m_resampler);
-					
-					if (!m_encoderInitialized)
-						initEncoder();
-					
-					av_samples_alloc(&output, &out_linesize, m_destinationFormat.mChannelsPerFrame, avail, m_encoder->sample_fmt, 0);
-					
-					if (avresample_read(m_resampler, &output, avail) != avail)
-						throw std::runtime_error("avresample_read() failed");
-					
-					av_init_packet(&pkt);
-					pkt.data = 0;
-					pkt.size = 0;
-					m_audioFrame->nb_samples = avail;
-					
-					LOG << "Got " << avail << " samples\n";
-					err = avcodec_fill_audio_frame(m_audioFrame, m_encoder->channels, m_encoder->sample_fmt, output, out_linesize, 0);
-					if (err < 0)
-						throw std::runtime_error("avcodec_fill_audio_frame() failed");
-					
-					// Encode PCM data
-					err = avcodec_encode_audio2(m_encoder, &pkt, m_audioFrame, &gotFrame);
-					if (err < 0)
-						throw std::runtime_error("avcodec_encode_audio2() failed");
-					
-					if (!gotFrame)
-						continue;
-					
-					// Output data
-					int tocopy = std::min<int>(pkt.size, origSize - newSize);
-					memcpy(((char*) outOutputData->mBuffers[i].mData) + newSize, pkt.data, tocopy);
-					newSize += tocopy;
-					
-					LOG << "Filled buffer " << i << " with " << tocopy << " bytes\n";
-					
-					av_free_packet(&pkt);
-					av_freep(&output);
+					LOG << "case 3\n";
+					feedEncoder();
 				}
 			}
 		}
 end:
 		
-		avcodec_free_frame(&srcaudio);
+		av_frame_free(&srcaudio);
 	}
 	catch (const std::exception& e)
 	{
 		ERROR() << "Exception: " << e.what();
-		avcodec_free_frame(&srcaudio);
+		av_frame_free(&srcaudio);
 	}
 	catch (OSStatus err)
 	{
 		ERROR() << "OSStatus error: " << err;
-		avcodec_free_frame(&srcaudio);
+		av_frame_free(&srcaudio);
 		return err;
 	}
 	
 	return noErr;
+}
+
+void AudioConverter::feedDecoder(AudioConverterComplexInputDataProc dataProc, void* opaque, AVFrame* srcaudio)
+{
+	int gotFrame, err;
+	
+	do
+	{
+		// Read input
+		if (!m_avpkt.size)
+		{
+			UInt32 numDataPackets = 0;
+			OSStatus err = feedInput(dataProc, opaque, numDataPackets);
+
+			if (err != noErr)
+				throw err;
+
+			if (!m_avpkt.size) // numDataPackets cannot be trusted
+				break;
+		}
+
+		err = avcodec_decode_audio4(m_decoder, srcaudio, &gotFrame, &m_avpkt);
+		if (err < 0)
+			throw std::runtime_error("avcodec_decode_audio4() failed");
+
+		m_avpkt.size -= err;
+		m_avpkt.data += err;
+
+		if (gotFrame)
+		{
+			if (!m_resampler)
+				setupResampler(srcaudio);
+			
+			// Resample PCM
+			err = avresample_convert(m_resampler, nullptr, 0, 0, srcaudio->data, 0, srcaudio->nb_samples);
+			if (err < 0)
+				throw std::runtime_error("avresample_convert() failed");
+		}
+	}
+	while (!gotFrame);
+}
+
+void AudioConverter::feedEncoder()
+{
+	int gotFrame = 0, err;
+	uint8_t *output;
+	int out_linesize;
+	int avail;
+
+	if (!m_encoderInitialized)
+		initEncoder();
+	
+	assert(m_avpktOutUsed == m_avpktOut.size);
+
+	do
+	{
+		avail = avresample_available(m_resampler);
+		av_samples_alloc(&output, &out_linesize, m_destinationFormat.mChannelsPerFrame, avail, m_encoder->sample_fmt, 0);
+
+		if (avresample_read(m_resampler, &output, avail) != avail)
+			throw std::runtime_error("avresample_read() failed");
+	
+		av_init_packet(&m_avpktOut);
+		m_avpktOut.data = 0;
+		m_avpktOut.size = 0;
+		m_avpktOutUsed = 0;
+
+		LOG << "Got " << avail << " samples\n";
+		err = avcodec_fill_audio_frame(m_audioFrame, m_encoder->channels,
+				m_encoder->sample_fmt, output, avail * m_destinationFormat.mChannelsPerFrame * (m_destinationFormat.mBitsPerChannel / 8),
+				m_destinationFormat.mChannelsPerFrame * (m_destinationFormat.mBitsPerChannel / 8));
+		
+		if (err < 0)
+			throw std::runtime_error("avcodec_fill_audio_frame() failed");
+
+		// Encode PCM data
+		err = avcodec_encode_audio2(m_encoder, &m_avpktOut, m_audioFrame, &gotFrame);
+		av_freep(&output);
+		
+		if (err < 0)
+			throw std::runtime_error("avcodec_encode_audio2() failed");
+	}
+	while(!gotFrame);
 }
 
 uint32_t AudioConverter::CAChannelCountToLayout(UInt32 numChannels)

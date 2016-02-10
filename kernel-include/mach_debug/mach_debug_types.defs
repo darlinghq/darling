@@ -1,0 +1,112 @@
+/*
+ * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989,1988 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+/*
+ *	Mach kernel debugging interface type declarations
+ */
+
+#ifndef	_MACH_DEBUG_MACH_DEBUG_TYPES_DEFS_
+#define _MACH_DEBUG_MACH_DEBUG_TYPES_DEFS_
+
+#include <mach/std_types.defs>
+
+type zone_name_t = struct[80] of char;			/* deprecated */
+type zone_name_array_t = array[] of zone_name_t;	/* deprecated */
+
+type zone_info_t = struct[9] of integer_t;		/* deprecated */
+type zone_info_array_t = array[] of zone_info_t; 	/* deprecated */
+
+type mach_zone_name_t = struct[80] of char;
+type mach_zone_name_array_t = array[] of mach_zone_name_t;
+
+type mach_zone_info_t = struct[8] of uint64_t;
+type mach_zone_info_array_t = array[] of mach_zone_info_t;
+
+type task_zone_info_t = struct[11] of uint64_t;
+type task_zone_info_array_t = array[] of task_zone_info_t;
+
+type hash_info_bucket_t = struct[1] of natural_t;
+type hash_info_bucket_array_t = array[] of hash_info_bucket_t;
+
+type ipc_info_space_t = struct[6] of natural_t;
+type ipc_info_space_basic_t = struct[6] of natural_t;
+
+type ipc_info_name_t = struct[7] of natural_t;
+type ipc_info_name_array_t = array[] of ipc_info_name_t;
+
+type ipc_info_tree_name_t = struct[9] of natural_t;
+type ipc_info_tree_name_array_t = array[] of ipc_info_tree_name_t;
+
+type vm_info_region_t = struct[10] of natural_t;
+type vm_info_region_64_t = struct[11] of natural_t;
+type mach_vm_info_region_t = struct[14] of natural_t;
+
+type vm_info_object_t = struct[21] of natural_t;
+type vm_info_object_array_t = ^array[] of vm_info_object_t;
+
+type page_address_array_t = ^array[] of integer_t;
+
+type symtab_name_t = c_string[*:32];
+
+type lockgroup_info_t = struct[63] of integer_t;
+type lockgroup_info_array_t = array[] of lockgroup_info_t;
+
+import <mach_debug/mach_debug_types.h>;
+
+#endif	/* _MACH_DEBUG_MACH_DEBUG_TYPES_DEFS_ */
+
+/* vim: set ft=c : */

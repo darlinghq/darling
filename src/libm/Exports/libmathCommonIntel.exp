@@ -1,0 +1,36 @@
+___inf
+_exp2
+_fdim
+_feclearexcept
+_fegetenv
+_fegetexcept
+_fegetround
+_feholdexcept
+_feraiseexcept
+_fesetenv
+_fesetexcept
+_fesetround
+_fetestexcept
+_feupdateenv
+_fmax
+_fmin
+_log2
+_modff
+_nan
+_nanf
+_nextafterd
+_nextafterf
+_remquo
+__FE_DFL_ENV
+
+#i386 specific
+__FE_DFL_DISABLE_SSE_DENORMS_ENV
+
+#STDC FENV_ACCESS off entrypoints
+_exp2$fenv_access_off
+_fdim$fenv_access_off
+_fmax$fenv_access_off
+_fmin$fenv_access_off
+_log2$fenv_access_off
+_modff$fenv_access_off
+_remquo$fenv_access_off

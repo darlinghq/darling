@@ -6,6 +6,7 @@
 *.exe
 *.o
 *.so
+*.ko
 *.pyc
 
 # Logs and databases #
@@ -25,7 +26,8 @@ Makefile
 CMakeFiles
 cmake_install.cmake
 CMakeCache.txt
-config.h
+*.cmd
+Module.symvers
 
 # Directories where too much temp stuff may lay around
 tests

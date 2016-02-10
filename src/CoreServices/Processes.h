@@ -49,9 +49,9 @@ OSErr ShowHideProcess(const ProcessSerialNumber* psn, Boolean visible);
 OSStatus TransformProcessType(const ProcessSerialNumber* psn, UInt32 type);
 OSErr WakeUpProcess(const ProcessSerialNumber* psn);
 
-extern CFStringRef kCFBundleExecutableKey;
-extern CFStringRef kCFBundleNameKey;
-extern CFStringRef kCFBundleIdentifierKey;
+// extern CFStringRef kCFBundleExecutableKey;
+// extern CFStringRef kCFBundleNameKey;
+// extern CFStringRef kCFBundleIdentifierKey;
 
 }
 

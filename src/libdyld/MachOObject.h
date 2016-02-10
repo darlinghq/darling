@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2015 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef MACHOOBJECT_H
 #define MACHOOBJECT_H
 #include <libmach-o/MachO.h>
@@ -41,7 +60,7 @@ public:
 	void* maxAddress() const;
 	
 	// minimum address mapped by this object
-	void* baseAddress() const { return m_base; }
+	virtual void* baseAddress() const override { return m_base; }
 	
 	// The difference between addresses in the MachO file and actually mapped addresses.
 	// For libraries, slide() == baseAddress()
@@ -59,6 +78,8 @@ public:
 	virtual bool isLoaded() const override;
 
 	virtual void* getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const override;
+
+	virtual void atExit() override;
 
 	void* getExportedSymbolRecursive(const std::string& symbolName) const;
 
@@ -86,13 +107,14 @@ public:
 	void* getSection(const std::string& segmentName, const std::string& sectionName, uintptr_t* sectionSize = nullptr);
 	
 	// Returns the header of the Mach-O object
-	inline struct ::mach_header* getMachHeader() { return &m_header; }
+	inline struct ::mach_header* getMachHeader() { return (struct ::mach_header*) baseAddress(); }
 
 	// For RTLD_FIRST implementation, not useful outside of dl_public
 	inline void setNoRecursion(bool noRecursion) { m_noRecursion = noRecursion; }
 	inline bool noRecursion() const { return m_noRecursion; }
 	
 	std::vector<const char*> declaredDependencies() const { return m_file->dylibs(); }
+	inline MachO* getMachOFile() const { return m_file; }
 	
 protected:
 	friend class DylibSearch;
@@ -130,7 +152,7 @@ private:
 	void* performBind(MachO::Bind* bind);
 	
 	void detectAbsolutePath();
-	void* resolveSymbol(const std::string& name);
+	void* resolveSymbol(const std::string& name, int libraryOrdinal);
 	
 	void jumpToStart() __attribute__((noreturn));
 	
@@ -151,6 +173,8 @@ private:
 	static bool lookupDyldFunction(const char* name, void** addr);
 
 	uintptr_t getTotalMappingSize();
+
+	inline bool usesTwoLevelNamespace() const { return m_header.flags & MH_TWOLEVEL; }
 private:
 	MachO* m_file;
 	int m_refs = 1;

@@ -343,5 +343,23 @@ enum {
 	kAudioConverterErr_UnspecifiedError = 'what',
 };
 
+typedef UInt32 AudioChannelLabel;
+typedef UInt32 AudioChannelLayoutTag;
+
+struct AudioChannelDescription
+{
+	AudioChannelLabel mChannelLabel;
+	UInt32 mChannelFlags;
+	Float32 mCoordinates[3];
+};
+
+struct AudioChannelLayout
+{
+	AudioChannelLayoutTag mChannelLayoutTag;
+	UInt32 mChannelBitmap;
+	UInt32 mNumberChannelDescriptions;
+	AudioChannelDescription mChannelDescriptions[1];
+};
+
 #endif
 

@@ -1,0 +1,123 @@
+.\"
+.\" Copyright (c) 2013 Apple Computer, Inc.  All rights reserved.
+.\"
+.Dd October 7, 2013
+.Dt XATTR_NAME_WITH_FLAGS 3
+.Os
+.Sh NAME
+.Nm xattr_preserve_for_intent , xattr_name_with_flags , xattr_name_without_flags ,
+.Nm xattr_flags_from_name , xattr_intent_with_flags
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In xattr_properties.h
+.Ft int
+.Fn xattr_preserve_for_intent "const char *" "xattr_operation_intent_t"
+.Ft char *
+.Fn xattr_name_with_flags "const char *" "xattr_flags_t"
+.Ft char *
+.Fn xattr_name_without_flags "const char *"
+.Ft xattr_flags_t
+.Fn xattr_flags_from_name "const char *"
+.Ft int
+.Fn xattr_intent_with_flags "xattr_operation_intent_t" "xattr_flags_t"
+.Sh DESCRIPTION
+These functions are used in conjunction with copying extended attributes from
+one file to another.  Various types of copying (an "intent") check flags to
+determine which is allowed or not.
+.Pp
+The
+.Fn xattr_name_with_flags
+function returns an extended attribute name with the appropriate flags encoded
+as a string; the
+.Fn xattr_name_without_flags
+undoes this, giving the name of the extended attribute without the flags
+encoding.  The slight inverse of that is
+.Fn xattr_flags_from_name ,
+which will return the flags encoded in a name.
+.Pp
+The values returned by
+.Fn xattr_name_with_flags
+and
+.Fn xattr_name_without_flags
+are allocated using
+.Xr malloc 3 ,
+and should be released by the caller, using
+.Xr free 3 .
+.Pp
+These functions also have an internal table of pre-defined names, maintained
+by the operating system.
+.Pp
+The function
+.Fn xattr_intent_with_flags
+will return 0 if the
+.Ar flags
+argument indicates it should not be preserved for the given
+intent, or 1 if it should.
+.Pp
+The function
+.Fn xattr_presere_for_intent
+combines the functions above, and will return zero if the
+named extended attribute should be preserved during a copy for
+the given intent.
+.Sh INTENT
+The type
+.Dt xattr_operation_intent_t
+is an integral type, which is used to indicate what the intent for the operation
+is.  The following intent values are defined:
+.Bl -tag -width XATTR_OPERATION_INTENT_SHARE
+.It Dv XATTR_OPERATION_INTENT_COPY
+Indicates that the intent is to simply copy from the source to the destination.
+E.g., with cp.  Most extended attributes should generally be preserved in this
+case.
+.It Dv XATTR_OPERATION_INTENT_SAVE
+Indicates that intent is to perform a save (perhaps as in a "safe save").
+This differs from a copy in that the content may be changing; the destination
+may be over-writing or replacing the source, and som extended attributes should
+not be preserved during this process.
+.It Dv XATTR_OPERATION_INTENT_SHARE
+Indicates that the intent is to share, or export, the object.  For example,
+saving as an attachment in an email message, or placing in a public folder.
+Sensitive information should probably not be preserved in this case.
+.It Dv XATTR_OPERATION_INTENT_SYNC
+Indicates that the intent is to sync the object to a service like iCloud.
+.El
+.Sh FLAGS
+Various flags are defined by the type
+.Dt xattr_flags_t ;
+the currently-defined values for this are
+.Bl -tag -width XATTR_FLAG_CONTENT_DEPENDENT
+.It Dv XATTR_FLAG_NO_EXPORT
+This indicates that the extended attribute should not be exported, or shared.
+This is used with
+.Dv XATTR_OPERATION_INTENT_SHARE .
+.It Dv XATTR_FLAG_CONTENT_DEPENDENT
+This indicates that the extended attribute is tied to the contents of the
+file (or vice versa), such that it should be re-created when the contents
+are changed.  A checksum, for example, should not be copied, and would thus
+be marked with this flag.
+.It Dv XATTR_FLAG_NEVER_PRESERVE
+This indicates that the extended attribute should never be copied from a
+source object to a destination, no matter what the given intent is.
+.It Dv XATTR_FLAG_SYNCABLE
+This indicates that the extended attribute should be copied when the file
+is synced on services like iCloud. Sync services tends to want the metadata
+synced to be kept to a bare minimum, and may enforce additional restrictions
+on the acceptable size and number of extended attributes.
+.El
+.Sh EXAMPLE
+The following example is a simple function that, given an extended attribute
+name and an operation intent, will return whether or not the extended attribute
+should be copied.  (This essentially does what
+.Fn xattr_preserve_for_intent
+does.)
+.Bd -literal -offset indent
+int
+ShouldCopyEA(const char *eaName, xattr_operation_intent_t intent)
+{
+	xattr_flags_t flags = xattr_flags_from_name(eaName);
+	return xattr_intent_with_flags(intent, flags);
+}
+.Ed
+.Sh HISTORY
+These functions first appeared in Mac OS in 2013.

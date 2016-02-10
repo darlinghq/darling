@@ -1,0 +1,160 @@
+Version 0.8.2 r195
+released 7/16/2011
+---
+
+ * Use LDADD instead of LDFLAGS (fixes Debian bug #631674)
+ * Make the "idle" test optional as it does not work on 32-bit Linux
+ * Use time_t for PWQ_SPIN_USEC to fix a build problem on 32-bit Linux
+
+Version 0.8.1 r?
+released 7/16/2011
+---
+
+ * Uploaded to Debian, but not generally released.
+
+Version 0.8 r190
+released 7/08/2011
+---
+
+ * Remove the 'struct worker' datatype and related housekeeping chores.
+
+ * Fix incorrect usage of pthread_cond_timedwait() for overcommit threads. 
+
+ * Various improvements and bug fixes for the Windows port.
+
+ * Prevent a race condition that could cause a use-after-free if a witem
+   were freed before manager_workqueue_additem() returned.
+
+ * Prevent races involving the scoreboard variables.
+
+ * Fix a lost wakeup bug when calling worker_stop().
+
+ * Finally fixed the long standing TODO and removed the global lock for pwq enqueue/dequeue.
+
+ * Only signal wakeups for the pool if there are idle threads available to process data. 
+
+ * Use atomics for updating the mask with pending workqueues as the global lock was removed.
+
+ * Added optional idle thread spinning by using the PWQ_SPIN_USEC and PWQ_SPIN_THREADS environment variables. The accrued changes decrease latency from 7-8 microseconds to ~1 +- 0.5 microsecond depending on spin configuration. By default, no spinning will be done.
+
+ * Renamed USE_RT_THREADS to PWQ_RT_THREADS for consistency. 
+
+ * Allow specification of number of CPU:s by using the environment variable PWQ_ACTIVE_CPU - this is useful when using e.g. processor sets (fewer CPU:s are truly available to the process than is physically available in the machine). Proper auto-detection of this would be even nicer in the future, but investigation for the various platforms is required - this environment variable allows for a simple workaround in the meantime.
+
+Version 0.7.1 r157
+released 7/02/2011
+---
+
+ * Fix a memory leak in worker_overcommit_main() when reaping idle threads.
+
+Version 0.7 r150
+released 6/13/2011
+---
+
+ * Replace pthread emulation macros with winpthreads.h from 
+   http://locklessinc.com/articles/pthreads_on_windows/
+ 
+ * Fix witem_cache test to link on solaris also
+
+ * Avoid possible overrun of priority level
+
+ * Fixed possible deadlock.
+
+ * Cleaned up witem cache interface and usage for easier reading of code.
+
+ * Link with libumem on Solaris
+
+ * Add -Wextra to CFLAGS and fix the related warnings
+
+ * Implement the workqueue overcommit attribute.
+   Make wqlist an array instead of an array of lists.
+   Change wqlist_scan() to be more efficient.
+
+Version 0.6 r134
+released 5/16/2011
+---
+
+ * Add a pthread_atfork() handler to reinitialize the library after fork().
+
+ * Defer the manager thread creation until pthread_workqueue_create_np().
+
+Version 0.5.1 r125
+released 5/7/2011
+---
+
+ * Fix the testing/latency Makefile to work on 32-bit Linux.
+ * Remove unused variables from testing/latency.c
+
+Version 0.5 r120
+released 5/6/2011
+---
+
+ * Add CMakeLists.txt for building under CMake.
+
+ * Support building on Windows under MinGW and MSVC.
+
+ * Fixed a deadlock during startup. We could actually raise and get a lost wakeup of the pthread_cond_wait  in manager_init() as the manager already managed to signal before we went to sleep. (happened around 1/1000 of startups on a large multicore).
+
+ * Finetune ramp-up logic when system is under heavy load - allow up to worker_idle_threshold threads regardless of system load, otherwise limit thread creation when system is under NCPU:s load rather than 2*NCPU:s (it is way too late to limit it on a larger multicore machine...).
+
+ * Create a witem_cache_init() function so that the TLS key can be made private to witem_cache.o
+
+ * Fix compilation on 32-bit Linux (Credit: Marius Zwicker)
+
+ * Don't reset the signal mask, it should be blocked for the manager thread (and any subsequently started threads) as well
+
+ * Enabled experimental support for real-time threads scheduling class on Solaris, specify PWQ_RT_THREADS to enable it. Be careful when using, may take all available resources unless used in combination with processor sets, thus effectivively hanging the machine
+
+ * Add option for static library build activated by defining MAKE_STATIC
+
+ * Enable debugging on windows by an environment variable as well
+
+Version 0.4.1 r99
+released 3/13/2011
+---
+
+ * Add -lpthread to LDFLAGS
+
+Version 0.4 r97
+released 3/12/2011
+---
+
+ * Improved printf debugging; to use it, define the environment variable "PWQ_DEBUG=yes"
+
+ * New function threads_runnable() determines how many LWPs are on the run queue and uses
+   this information to improve the thread pool management heuristic.
+
+ * All ELF symbols are now hidden by default, and only the public API symbols are visible.
+
+ * Improved workqueue ramp-up and ramp-down behavior.
+
+Version 0.3 r81
+released 3/6/2011
+---
+
+ * Fix DESTDIR support in the 'make install' target.
+
+Version 0.2 r77
+released 3/6/2011
+---
+
+ * Add support for FreeBSD, Solaris, and Microsoft Windows
+
+ * Fix a race condition that would cause deadlock in rare cases when either:
+     1) pthread_cond_signal() was called while no other threads were 
+        blocked a call to pthread_cond_wait(), or
+     2) pthread_cond_signal() was called multiple times before the any thread
+        blocking in a call to pthread_cond_wait() was awoken by the scheduler.
+
+   The fix is to ensure that the call to pthread_cond_signal() occurs while
+   the calling thread holds the same mutex used by the threads that call
+   pthread_cond_wait().
+
+   Credit to Joakim Johansson for finding the bug and providing a patch.
+
+Version 0.1 r?
+released 6/13/2010   
+---
+
+  * Initial release for Debian as a patch applied to libdispatch. There 
+    was no tarball released for this version.

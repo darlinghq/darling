@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+<dict>
+	<key>OpenSourceSCM</key>
+	<string>cvs -d freebsdanoncvs@anoncvs.FreeBSD.org:/home/ncvs co libutil</string>
+	<key>OpenSourceImportDate</key>
+	<string>2006-05-20</string>
+	<key>OpenSourceLicense</key>
+	<string>BSD</string>
+	<key>OpenSourceLicenseFile</key>
+	<string>libutil.txt</string>
+	<key>OpenSourceProject</key>
+	<string>libutil</string>
+	<key>OpenSourceVersion</key>
+	<string>2005-02-13</string>
+</dict>
+<dict>
+	<key>OpenSourceImportDate</key>
+	<string>2006-05-20</string>
+	<key>OpenSourceLicense</key>
+	<string>BSD</string>
+	<key>OpenSourceLicenseFile</key>
+	<string>libutil.txt</string>
+	<key>OpenSourceProject</key>
+	<string>libutil</string>
+	<key>OpenSourceVersion</key>
+	<string>1.3</string>
+	<key>OpenSourceURL</key>
+	<string>http://cvsweb.netbsd.org/bsdweb.cgi/~checkout~/src/lib/libutil/getmntopts.c?rev=1.3</string>
+</dict>
+</array>
+</plist>

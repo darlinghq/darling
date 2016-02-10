@@ -5,17 +5,18 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-#if (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
-#	message(FATAL_ERROR "Clang is the only supported compiler.")
-#endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
-
-#configure_file(config.h.in config.h)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC -fconstant-string-class=NSConstantString -fobjc-nonfragile-abi -ggdb")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
+include_directories(${DARLING_TOP_DIRECTORY}/src/external/libobjc2)
+include_directories(${DARLING_TOP_DIRECTORY}/src/external/corefoundation/Headers)
+include_directories(${CMAKE_BINARY_DIR}/src/external/corefoundation/Headers)
+include_directories(${DARLING_TOP_DIRECTORY}/src/external/foundation/Headers)
+
+add_definitions(-DOBJC2RUNTIME)
 
 set(IOKit_SRCS
 	bsd.cpp
@@ -27,10 +28,15 @@ set(IOKit_SRCS
 	io_device.cpp
 	io_device_usb.cpp
 	io_device_net.cpp
+	../util/debug.cpp
 )
 
-add_library(IOKit SHARED ${IOKit_SRCS})
-target_link_libraries(IOKit -lgnustep-corebase util -ludev)
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-install(TARGETS IOKit DESTINATION "lib${SUFFIX}/darling")
+add_library(IOKit SHARED ${IOKit_SRCS})
+target_link_libraries(IOKit -ludev -lstdc++ CFF)
+
+install(TARGETS IOKit DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

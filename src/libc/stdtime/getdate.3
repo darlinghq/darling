@@ -1,0 +1,401 @@
+'\" t
+.Dd January 3, 2004
+.Dt GETDATE 3
+.Os
+.Sh NAME
+.Nm getdate
+.Nd convert user format date and time
+.Sh SYNOPSIS
+.In time.h
+.Vt extern int getdate_err ;
+.Ft struct tm *
+.Fn getdate "const char *string"
+.Sh DESCRIPTION
+The
+.Fn getdate
+function converts user-definable date and/or
+time specifications pointed to by
+.Fa string
+to a
+.Vt tm
+structure.
+The
+.Vt tm
+structure is defined in the
+.Aq Pa time.h
+header.
+.Pp
+User-supplied templates are used to parse and interpret the
+input string.
+The templates are text files created by the
+user and identified via the environment variable
+.Ev DATEMSK .
+Each line in the template represents an acceptable date
+and/or time specification using conversion specifications
+similar to those used by
+.Xr strftime 3
+and
+.Xr strptime 3 .
+Dates before 1902 and after 2037 are illegal.
+The first line
+in the template that matches the input specification is used
+for interpretation and conversion into the internal time
+format.
+.Pp
+.Ss "Conversion Specifications"
+The following conversion specifications are supported:
+.Bl -tag -width "xxxx"
+.It Cm \&%%
+Same as %.
+.It Cm \&%a
+Locale's abbreviated weekday name.
+.It Cm \&%A
+Locale's full weekday name.
+.It Cm \&%b
+Locale's abbreviated month name.
+.It Cm \&%B
+Locale's full month name.
+.It Cm \&%c
+Locale's appropriate date and time representation.
+.It Cm \&%C
+Century number (the year divided by 100 and truncated
+to an integer as a decimal number [1,99]); single
+digits are preceded by 0.
+If used
+without the %y specifier, this format specifier will
+assume the current year offset in whichever century is
+specified. The only valid years are between 1902-2037.
+.It Cm \&%d
+day of month [01,31]; leading zero is permitted but
+not required.
+.It Cm \&%D
+Date as %m/%d/%y.
+.It Cm \&%e
+Same as %d.
+.It Cm \&%h
+Locale's abbreviated month name.
+.It Cm \&%H
+Hour (24-hour clock) [0,23]; leading zero is permitted
+but not required.
+.It Cm \&%I
+Hour (12-hour clock) [1,12]; leading zero is permitted
+but not required.
+.It Cm \&%j
+Day number of the year [1,366]; leading zeros are permitted but not required.
+.It Cm \&%m
+Month number [1,12]; leading zero is permitted but not
+required.
+.It Cm \&%M
+Minute [0,59]; leading zero is permitted but not
+required.
+.It Cm \&%n
+Any white space.
+.It Cm \&%p
+Locale's equivalent of either a.m. or p.m.
+.It Cm \&%r
+Appropriate time representation in the 12-hour clock
+format with %p.
+.It Cm \&%R
+Time as %H:%M.
+.It Cm \&%S
+Seconds [0,61]; leading zero is permitted but not
+required. The range of values is [00,61] rather than
+[00,59] to allow for the occasional leap second and
+even more occasional double leap second.
+.It Cm \&%t
+Any white space.
+.It Cm \&%T
+Time as %H:%M:%S.
+.It Cm \&%U
+Week number of the year as a decimal number [0,53],
+with Sunday as the first day of the week; leading zero
+is permitted but not required.
+.It Cm \&%w
+Weekday as a decimal number [0,6], with 0 representing
+Sunday.
+.It Cm \&%W
+Week number of the year as a decimal number [0,53],
+with Monday as the first day of the week; leading zero
+is permitted but not required.
+.It Cm \&%x
+Locale's appropriate date representation.
+.It Cm \&%X
+Locale's appropriate time representation.
+.It Cm \&%y
+Year within century. When a century is not otherwise
+specified, values in the range 69-99 refer to years in
+the twentieth century (1969 to 1999 inclusive); values
+in the range 00-68 refer to years in the twenty-first
+century (2000 to 2068 inclusive).
+.It Cm \&%Y
+Year, including the century (for example, 1993).
+.It Cm \&%Z
+Time zone name or no characters if no time zone
+exists.
+.El
+.Ss "Modified Conversion Specifications"
+Some conversion specifications can be modified by the E and
+O modifier characters to indicate that an alternative format
+or specification should be used rather than the one normally
+used by the unmodified specification.
+If the alternative
+format or specification does not exist in the current
+locale, the behavior be as if the unmodified conversion
+specification were used.
+.Bl -tag -width "xxxx"
+.It Cm \&%Ec
+Locale's alternative appropriate date and time
+representation.
+.It Cm \&%EC
+Name of the base year (period) in the locale's alternative representation.
+.It Cm \&%Ex
+Locale's alternative date representation.
+.It Cm \&%EX
+Locale's alternative time representation.
+.It Cm \&%Ey
+Offset from %EC (year only) in the locale's alternative representation.
+.It Cm \&%EY
+Full alternative year representation.
+.It Cm \&%Od
+Day of the month using the locale's alternative
+numeric symbols; leading zeros are permitted but not
+required.
+.It Cm \&%Oe
+Same as %Od.
+.It Cm \&%OH
+Hour (24-hour clock) using the locale's alternative
+numeric symbols.
+.It Cm \&%OI
+Hour (12-hour clock) using the locale's alternative
+numeric symbols.
+.It Cm \&%Om
+Month using the locale's alternative numeric symbols.
+.It Cm \&%OM
+Minutes using the locale's alternative numeric symbols.
+.It Cm \&%OS
+Seconds using the locale's alternative numeric symbols.
+.It Cm \&%OU
+Week number of the year (Sunday as the first day of
+the week) using the locale's alternative numeric symbols.
+.It Cm \&%Ow
+Number of the weekday (Sunday=0) using the locale's
+alternative numeric symbols.
+.It Cm \&%OW
+Week number of the year (Monday as the first day of
+the week) using the locale's alternative numeric symbols.
+.It Cm \&%Oy
+Year (offset from %C) in the locale's alternative
+representation and using the locale's alternative
+numeric symbols.
+.El
+.Ss "Internal Format Conversion"
+The following rules are applied for converting the input
+specification into the internal format:
+.Bl -bullet -offset indent
+.It
+If only the weekday is given, today is assumed if the
+given day is equal to the current day and next week if
+it is less.
+.It
+If only the month is given, the current month is
+assumed if the given month is equal to the current
+month and next year if it is less and no year is
+given.
+(The first day of month is assumed if no day is
+given.)
+.It
+If only the year is given, the values of the tm_mon,
+tm_mday, tm_yday, tm_wday, and tm_isdst members of the
+returned tm structure are not specified.
+.It
+If the century is given, but the year within the century is not given,
+the current year within the century
+is assumed.
+.It
+If no hour, minute, and second are given, the current
+hour, minute, and second are assumed.
+.It
+If no date is given, today is assumed if the given
+hour is greater than the current hour and tomorrow is
+assumed if it is less.
+.El
+.Ss "General Specifications"
+A conversion specification that is an ordinary character is
+executed by scanning the next character from the buffer.
+If the character scanned from the buffer differs from the one
+comprising the conversion specification, the specification
+fails, and the differing and subsequent characters remain
+unscanned.
+.Pp
+A series of conversion specifications composed of
+.Ql %n ,
+.Ql %t ,
+white space characters, or any combination is executed by
+scanning up to the first character that is not white space
+(which remains unscanned), or until no more characters can
+be scanned.
+.Pp
+Any other conversion specification is executed by scanning
+characters until a character matching the next conversion
+specification is scanned, or until no more characters can be
+scanned.
+These characters, except the one matching the next
+conversion specification, are then compared to the locale
+values associated with the conversion specifier.
+If a match is found, values for the appropriate
+.Vt tm
+structure members
+are set to values corresponding to the locale information.
+If no match is found,
+.Fn getdate
+fails and no more characters are scanned.
+.Pp
+The month names, weekday names, era names, and alternative
+numeric symbols can consist of any combination of upper and
+lower case letters.
+The user can request that the input
+date or time specification be in a specific language by setting the
+.Ev LC_TIME
+category using
+.Xr setlocale 3 .
+.Sh RETURN VALUES
+If successful,
+.Fn getdate
+returns a pointer to a
+.Vt tm
+structure; otherwise, it returns
+.Dv NULL
+and sets the global variable
+.Va getdate_err
+to indicate the error.
+Subsequent calls to
+.Fn getdate
+alter the contents of
+.Va getdate_err .
+.Pp
+The following is a complete list of the
+.Va getdate_err
+settings and their meanings:
+.Bl -tag -width "xxx"
+.It 1
+The DATEMSK environment variable is null or undefined.
+.It 2
+The template file cannot be opened for reading.
+.It 3
+Failed to get file status information.
+.It 4
+The template file is not a regular file.
+.It 5
+An error is encountered while reading the template
+file.
+.It 6
+The
+.Xr malloc 3
+function failed (not enough memory is
+available).
+.It 7
+There is no line in the template that matches the
+input.
+.It 8
+The input specification is invalid (for example,
+February 31).
+.El
+.Sh USAGE
+The
+.Fn getdate
+function makes explicit use of macros
+described on the
+.Xr ctype 3
+manual page.
+.Sh EXAMPLES
+Example 1: Examples of the
+.Fn getdate
+function.
+.Pp
+The following example shows the possible contents of a template:
+.Bd -literal
+%m
+%A %B %d %Y, %H:%M:%S
+%A
+%B
+%m/%d/%y %I %p
+%d,%m,%Y %H:%M
+at %A the %dst of %B in %Y
+run job at %I %p,%B %dnd
+%A den %d. %B %Y %H.%M Uhr
+.Ed
+.Pp
+The following are examples of valid input specifications for
+the above template:
+.Bd -literal
+getdate("10/1/87 4 PM")
+getdate("Friday")
+getdate("Friday September 19 1987, 10:30:30")
+getdate("24,9,1986 10:30")
+getdate("at monday the 1st of december in 1986")
+getdate("run job at 3 PM, december 2nd")
+.Pp
+.Ed
+If the
+.Ev LANG
+environment variable is set to de (German), the
+following is valid:
+.Bd -literal
+getdate("freitag den 10. oktober 1986 10.30 Uhr")
+.Ed
+.Pp
+Local time and date specification are also supported.
+The following examples show how local date and time specification
+can be defined in the template.
+.Pp
+.Bf -literal
+.TS
+box;
+c | c
+l | l .
+Invocation	Line in Template
+getdate("11/27/86")	%m/%d/%y
+getdate("27.11.86")	%d.%m.%y
+getdate("86-11-27")	%y-%m-%d
+getdate("Friday 12:00:00")	%A %H:%M:%S
+.TE
+.Ef
+.Pp
+The following examples illustrate the Internal Format
+Conversion rules.
+Assume that the current date is
+.Li Mon Sep 22 12:19:47 EDT 1986
+and the
+.Ev LANG
+environment variable is not set.
+.Pp
+.Bf -literal
+.TS
+box;
+c | c | c
+l | l | l .
+Input	Template Line	Date 
+Mon	%a	Mon Sep 22 12:19:48 EDT 1986
+Sun	%a	Sun Sep 28 12:19:49 EDT 1986
+Fri	%a	Fri Sep 26 12:19:49 EDT 1986
+September	%B	Mon Sep 1 12:19:49 EDT 1986
+January	%B	Thu Jan 1 12:19:49 EST 1987
+December	%B	Mon Dec 1 12:19:49 EDT 1986
+Sep Mon	%b %a	Mon Sep 1 12:19:50 EDT 1986
+Jan Fri	%b %a	Fri Jan 2 12:19:50 EST 1987
+Dec Mon	%b %a	Mon Dec 1 12:19:50 EST 1986
+Jan Wed 1989	%b %a %Y	Wed Jan 4 12:19:51 EST 1989
+Fri 9	%a %H	Fri Sep 26 09:00:00 EDT 1986
+Feb 10:30	%b %H:%S	Sun Feb 1 10:00:30 EST 1987
+10:30	%H:%M	Tue Sep 23 10:30:00 EDT 1986
+13:30	%H:%M	Mon Sep 22 13:30:00 EDT 1986
+.TE
+.Ef
+.Pp
+.Sh "SEE ALSO"
+.Xr ctype 3 ,
+.Xr mktime 3 ,
+.Xr setlocale 3 ,
+.Xr strftime 3 ,
+.Xr strptime 3 ,
+.Xr environ 5

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>KeepAlive</key>
+	<dict>
+		<key>PathState</key>
+		<dict>
+			<key>/etc/rc.local</key>
+			<true/>
+			<key>/etc/rc.shutdown.local</key>
+			<true/>
+		</dict>
+	</dict>
+	<key>Label</key>
+	<string>com.apple.SystemStarter</string>
+	<key>Program</key>
+	<string>/sbin/SystemStarter</string>
+	<key>QueueDirectories</key>
+	<array>
+		<string>/Library/StartupItems</string>
+		<string>/System/Library/StartupItems</string>
+	</array>
+</dict>
+</plist>

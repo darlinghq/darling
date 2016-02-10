@@ -142,4 +142,36 @@ int main(int argc, char** argv)
 
 #endif
 
+// C API
+
+iniconfig_t iniconfig_load(const char* path)
+{
+	try
+	{
+		return new IniConfig(path);
+	}
+	catch (...)
+	{
+		return nullptr;
+	}
+}
+
+void iniconfig_free(iniconfig_t config)
+{
+	delete config;
+}
+
+inivalmap_t iniconfig_getsection(iniconfig_t config, const char* section)
+{
+	return config->getSection(section);
+}
+
+const char* iniconfig_valmap_get(inivalmap_t map, const char* key)
+{
+	auto it = map->find(key);
+	if (it == map->end())
+		return nullptr;
+	else
+		return it->second.c_str();
+}
 

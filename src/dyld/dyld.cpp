@@ -1,5 +1,25 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2015 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <libdyld/MachOMgr.h>
 #include <libdyld/MachOObject.h>
+#include <libdyld/NativeObject.h>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -7,12 +27,16 @@
 #include <string>
 #include <sstream>
 #include <util/stlutils.h>
-#include <util/Regexp.h>
 #include <libdyld/arch.h>
+#include <regex>
+#include <fstream>
 #include "dirstructure.h"
+#include <libdyld/VirtualPrefix.h>
 
 static void printHelp(const char* argv0);
+static bool isELF(const char* path);
 static std::string locateBundleExecutable(std::string bundlePath);
+static const char* findFakeArgv0(char* a0);
 
 using namespace Darling;
 
@@ -29,9 +53,11 @@ int main(int argc, char** argv, char** envp)
 
 	try
 	{
-		MachOObject* obj;
 		MachOMgr* mgr = MachOMgr::instance();
-		std::string executable;
+		std::string executable, unprefixed_argv0;
+		const char* pretendArgv0;
+		
+		pretendArgv0 = findFakeArgv0(argv[1]);
 
 		executable = locateBundleExecutable(argv[1]);
 		argv[1] = const_cast<char*>(executable.c_str());
@@ -49,6 +75,7 @@ int main(int argc, char** argv, char** envp)
 		mgr->setPrintSegments(getenv("DYLD_PRINT_SEGMENTS") != nullptr);
 		mgr->setPrintBindings(getenv("DYLD_PRINT_BINDINGS") != nullptr);
 		mgr->setPrintRpathExpansion(getenv("DYLD_PRINT_RPATHS") != nullptr);
+		mgr->setForceFlatNamespace(getenv("DYLD_FORCE_FLAT_NAMESPACE") != nullptr);
 
 		if (const char* path = getenv("DYLD_LIBRARY_PATH"))
 			mgr->setLibraryPath(path);
@@ -56,15 +83,51 @@ int main(int argc, char** argv, char** envp)
 			mgr->setSysRoot(path);
 		if (const char* path = getenv("DYLD_TRAMPOLINE"))
 			mgr->setUseTrampolines(true, path);
-		
-		obj = new MachOObject(argv[1]);
-		if (!obj->isMainModule())
-			throw std::runtime_error("Not an MH_EXECUTE file");
-		
-		obj->setCommandLine(argc-1, &argv[1], envp);
+		if (const char* path = getenv("DPREFIX"))
+		{
+			__prefix_set(path);
+			unprefixed_argv0 = __prefix_untranslate_path(argv[1], strlen(argv[1]));
+		}
 
-		obj->load();
-		obj->run();
+		if (isELF(argv[1]))
+		{
+			NativeObject* obj;
+			typedef int (mainPtr)(int argc, char** argv, char** envp);
+			mainPtr* main;
+
+			obj = new NativeObject(argv[1]);
+			obj->load();
+
+			main = (mainPtr*) obj->getExportedSymbol("main", false);
+
+			if (!main)
+				throw std::runtime_error("No entry point found in Darling-native executable");
+
+			if (pretendArgv0 != nullptr)
+				argv[1] = (char*) pretendArgv0;
+			else if (!unprefixed_argv0.empty())
+				argv[1] = (char*) unprefixed_argv0.c_str();
+			exit(main(argc-1, &argv[1], envp));
+		}
+		else
+		{
+			MachOObject* obj;
+
+			obj = new MachOObject(argv[1]);
+			if (!obj->isMainModule())
+			{
+				throw std::runtime_error("This is not a Mach-O executable; dynamic libraries, "
+				"kernel extensions and other Mach-O files cannot be executed with dyld");
+			}
+		
+			if (!unprefixed_argv0.empty())
+				argv[1] = (char*) unprefixed_argv0.c_str();
+			
+			obj->setCommandLine(argc-1, &argv[1], envp);
+
+			obj->load();
+			obj->run();
+		}
 	}
 	catch (const std::exception& e)
 	{
@@ -76,8 +139,7 @@ int main(int argc, char** argv, char** envp)
 static void printHelp(const char* argv0)
 {
 	std::cerr << "This is Darling dyld for " ARCH_NAME ", a dynamic loader for Mach-O executables.\n\n";
-	std::cerr << "Copyright (C) 2012-2014 Lubos Dolezel\n"
-		<< "Originally based on maloader by Shinichiro Hamaji.\n\n";
+	std::cerr << "Copyright (C) 2012-2015 Lubos Dolezel\n\n";
 
 	std::cerr << "Usage: " << argv0 << " program-path [arguments...]\n\n";
 
@@ -98,11 +160,12 @@ static void printHelp(const char* argv0)
 
 static std::string locateBundleExecutable(std::string bundlePath)
 {
-	Regexp re(".*/([^\\.]+)\\.app/?$", true);
+	std::regex re(".*/([^\\.]+)\\.app/?$", std::regex::icase);
+	std::smatch match;
 	
 	std::string myBundlePath = "./" + bundlePath; // TODO: fix the regexp to work without this
 	
-	if (re.matches(myBundlePath))
+	if (std::regex_match(myBundlePath, match, re))
 	{
 		std::stringstream ss;
 		ss << bundlePath;
@@ -111,7 +174,7 @@ static std::string locateBundleExecutable(std::string bundlePath)
 			ss << '/';
 
 		ss << "Contents/MacOS/";
-		ss << re.group(1);
+		ss << match[1];
 
 		return ss.str();
 	}
@@ -119,3 +182,31 @@ static std::string locateBundleExecutable(std::string bundlePath)
 		return bundlePath;
 }
 
+static bool isELF(const char* path)
+{
+	std::ifstream file(path, std::ios_base::in | std::ios_base::binary);
+	uint32_t signature;
+
+	if (!file.is_open())
+		return false;
+
+	file.read((char*) &signature, sizeof(signature));
+	file.close();
+
+	return signature == *((const uint32_t*) "\177ELF");
+}
+
+// Original argv0 is passed inside argv[1] by darling-so-start.S
+static const char* findFakeArgv0(char* a0)
+{
+	char* excl;
+	
+	excl = strchr(a0, '!');
+	if (excl == nullptr)
+		return nullptr;
+	else
+	{
+		*excl = '\0';
+		return excl+1;
+	}
+}

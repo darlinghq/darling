@@ -1,0 +1,143 @@
+#!/bin/sh
+
+CONFIGD_LAUNCHD_PLIST=${INSTALL_DIR}/../../System/Library/LaunchDaemons/${1}
+CONFIGD_PLUGINS=/tmp/plugins.$$
+EMBEDDED_PROJECTS=/tmp/projects.$$
+PLUGIN_MACHSERVICES=/tmp/plugin.$$
+
+HAVE_CONFIGD_PLUGINS="MISSING"
+HAVE_IPCONFIGURATION="MISSING"
+
+cp /dev/null ${CONFIGD_PLUGINS}
+if [ -d ${INSTALL_DIR}/../../System/Library/SystemConfiguration ]; then
+	(cd ${INSTALL_DIR}/../../System/Library/SystemConfiguration ; ls -1d *.bundle >> ${CONFIGD_PLUGINS} 2>/dev/null )
+fi
+
+cp /dev/null ${EMBEDDED_PROJECTS}
+if [ -n "${RC_EMBEDDEDPROJECT_DIR}" -a -d "${RC_EMBEDDEDPROJECT_DIR}" ]; then
+	( cd ${RC_EMBEDDEDPROJECT_DIR}					\
+	; ls -1d */System/Library/SystemConfiguration 2>/dev/null	\
+	| sed -e 's:/System/Library/SystemConfiguration::'		\
+	>> ${EMBEDDED_PROJECTS} )
+
+	if [ -s ${EMBEDDED_PROJECTS} ]; then
+		for PROJECT in `cat ${EMBEDDED_PROJECTS}`
+		do
+			( cd ${RC_EMBEDDEDPROJECT_DIR}/${PROJECT}/System/Library/SystemConfiguration ; ls -1d *.bundle >> ${CONFIGD_PLUGINS} 2>/dev/null )
+		done
+	fi
+fi
+
+if [ -d ${SDKROOT}/System/Library/SystemConfiguration ]; then
+	( cd ${SDKROOT}/System/Library/SystemConfiguration ; ls -1d *.bundle >> ${CONFIGD_PLUGINS} 2>/dev/null )
+fi
+
+if [ -n "${EXTRA_SYSTEMCONFIGURATION_PLUGIN_DIR}" -a -d "${EXTRA_SYSTEMCONFIGURATION_PLUGIN_DIR}" ]; then
+	( cd ${EXTRA_SYSTEMCONFIGURATION_PLUGIN_DIR} ; ls -1d *.bundle >> ${CONFIGD_PLUGINS} 2>/dev/null )
+fi
+
+for PLUGIN in `sort -u ${CONFIGD_PLUGINS}`
+do
+	PLUGIN_PLIST=""
+
+#	if [ -z "${PLUGIN_PLIST}" ]; then
+		PLUGIN_INF=${INSTALL_DIR}/../../System/Library/SystemConfiguration/${PLUGIN}/Contents/Info.plist
+		if [ -f ${PLUGIN_INF} ]; then
+			PLUGIN_PLIST=${PLUGIN_INF}
+		fi
+#	fi
+
+	if [ -z "${PLUGIN_PLIST}" ]; then
+		PLUGIN_INF=${INSTALL_DIR}/../../System/Library/SystemConfiguration/${PLUGIN}/Info.plist
+		if [ -f ${PLUGIN_INF} ]; then
+			PLUGIN_PLIST=${PLUGIN_INF}
+		fi
+	fi
+
+	if [ -z "${PLUGIN_PLIST}" -a -s ${EMBEDDED_PROJECTS} ]; then
+		for PROJECT in `cat ${EMBEDDED_PROJECTS}`
+		do
+			PROJECT_INF=${RC_EMBEDDEDPROJECT_DIR}/${PROJECT}/System/Library/SystemConfiguration/${PLUGIN}/Contents/Info.plist
+			if [ -f ${PROJECT_INF} ]; then
+				PLUGIN_PLIST=${PROJECT_INF}
+				break
+			fi
+
+			PROJECT_INF=${RC_EMBEDDEDPROJECT_DIR}/${PROJECT}/System/Library/SystemConfiguration/${PLUGIN}/Info.plist
+			if [ -f ${PROJECT_INF} ]; then
+				PLUGIN_PLIST=${PROJECT_INF}
+				break
+			fi
+		done
+	fi
+
+	if [ -z "${PLUGIN_PLIST}" ]; then
+		PLUGIN_INF=${SDKROOT}/System/Library/SystemConfiguration/${PLUGIN}/Contents/Info.plist
+		if [ -f ${PLUGIN_INF} ]; then
+			PLUGIN_PLIST=${PLUGIN_INF}
+		fi
+	fi
+
+	if [ -z "${PLUGIN_PLIST}" ]; then
+		PLUGIN_INF=${SDKROOT}/System/Library/SystemConfiguration/${PLUGIN}/Info.plist
+		if [ -f ${PLUGIN_INF} ]; then
+			PLUGIN_PLIST=${PLUGIN_INF}
+		fi
+	fi
+
+	if [ -n "${EXTRA_SYSTEMCONFIGURATION_PLUGIN_DIR}" ]; then
+		if [ -z "${PLUGIN_PLIST}" ]; then
+			PLUGIN_INF=${EXTRA_SYSTEMCONFIGURATION_PLUGIN_DIR}/${PLUGIN}/Contents/Info.plist
+			if [ -f ${PLUGIN_INF} ]; then
+				PLUGIN_PLIST=${PLUGIN_INF}
+			fi
+		fi
+
+		if [ -z "${PLUGIN_PLIST}" ]; then
+			PLUGIN_INF=${EXTRA_SYSTEMCONFIGURATION_PLUGIN_DIR}/${PLUGIN}/Info.plist
+			if [ -f ${PLUGIN_INF} ]; then
+				PLUGIN_PLIST=${PLUGIN_INF}
+			fi
+		fi
+	fi
+
+	if [ -z "${PLUGIN_PLIST}" ]; then
+		continue
+	fi
+
+	/usr/libexec/PlistBuddy -c "Print :MachServices" -x ${PLUGIN_PLIST} > ${PLUGIN_MACHSERVICES} 2>/dev/null
+	if [ $? -eq 0 ]; then
+		echo "Merging \"MachServices\" from: ${PLUGIN_INF}"
+		/usr/libexec/PlistBuddy -c "Merge ${PLUGIN_MACHSERVICES} :MachServices" ${CONFIGD_LAUNCHD_PLIST} 2>/dev/null
+		if [ -n "${IPHONEOS_DEPLOYMENT_TARGET}" ]; then
+			/usr/bin/plutil -convert binary1 ${CONFIGD_LAUNCHD_PLIST}
+		else
+			/usr/bin/plutil -convert xml1 ${CONFIGD_LAUNCHD_PLIST}
+		fi
+	fi
+
+	case "${PLUGIN}" in
+		"IPMonitor.bundle" )
+			HAVE_CONFIGD_PLUGINS="OK"
+			;;
+		"IPConfiguration.bundle" )
+			HAVE_IPCONFIGURATION="OK"
+			;;
+	esac
+done
+
+rm -f ${PLUGIN_MACHSERVICES} ${CONFIGD_PLUGINS} ${EMBEDDED_PROJECTS}
+
+if [ "${HAVE_CONFIGD_PLUGINS}" != "OK" ]; then
+	echo ""
+	echo "**************************************************************************************"
+	echo "* THE BUILD ENVIRONMENT IS MISSING THE ROOT FOR AN ESSENTIAL PROJECT (configd_plugins)"
+	echo "**************************************************************************************"
+	exit 1
+elif [ "${HAVE_IPCONFIGURATION}" != "OK" -a "${PLATFORM_NAME}" != "iphonesimulator" ] ; then
+	echo ""
+	echo "****************************************************************************"
+	echo "* THE BUILD ENVIRONMENT IS MISSING THE ROOT FOR AN ESSENTIAL PROJECT (bootp)"
+	echo "****************************************************************************"
+	exit 1
+fi

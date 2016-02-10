@@ -1,0 +1,72 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CTANH 3
+.Os BSD 4
+.Sh NAME
+.Nm ctanh
+.Nd complex hyperbolic tangent function
+.Sh SYNOPSIS
+.Ft double complex
+.Fn ctanh "double complex z"
+.Ft long double complex
+.Fn ctanhl "long double complex z"
+.Ft float complex
+.Fn ctanhf "float complex z"
+.Sh DESCRIPTION
+.Fn ctanh "z"
+computes the hyperbolic tangent of the complex floating-point number
+.Fa z .
+.Pp
+For all complex floating point numbers z,
+.Bd -literal -offset indent
+ctanh(conj(z)) = conj(ctanh(z)),
+.br
+ctanh(-z) = -ctanh(z).
+.Ed
+.Sh SPECIAL VALUES
+The symmetries of ctanh() are used to abbreviate the specification of special values.
+.Pp
+.Fn ctanh "0 + 0i"
+returns 0 + 0i.
+.Pp
+.Fn ctanh "0 + inf i"
+returns NaN + NaN i, and raises the invalid flag.
+.Pp
+.Fn ctanh "0 + NaN i"
+returns NaN + NaN i.
+.Pp
+.Fn ctanh "x + inf i"
+returns NaN + NaN i, and raises the invalid flag, for finite nonzero x.
+.Pp
+.Fn ctanh "x + NaN i"
+returns NaN + NaN i, for finite nonzero x.
+.Pp
+.Fn ctanh "inf + 0i"
+returns 1 + 0i.
+.Pp
+.Fn ctanh "inf + yi"
+returns 1 ± 0i, for finite positive y, with the sign chosen to match the sign of sin(2y).
+.Pp
+.Fn ctanh "inf + inf i"
+returns 1 + 0i.
+.Pp
+.Fn ctanh "inf + NaN i"
+returns 1 + 0i.
+.Pp
+.Fn ctanh "NaN + 0i"
+returns NaN + 0i.
+.Pp
+.Fn ctanh "NaN + yi"
+returns NaN + NaN i, for nonzero numbers y.
+.Pp
+.Fn ctanh "NaN + NaN i"
+returns NaN + NaN i.
+.Sh NOTES
+.Sh SEE ALSO
+.Xr ctan 3
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn ctanh
+function conforms to ISO/IEC 9899:1999(E).

@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2015 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef MACHOMGR_H
 #define MACHOMGR_H
 #include <stdint.h>
@@ -5,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <algorithm>
 #include <util/rwmutex.h>
 #if defined(__i386__) || defined(__x86_64__)
 #	include "UndefinedFunction.h"
@@ -74,6 +94,10 @@ public:
 	inline void setLibraryPath(const std::string& paths) { m_libraryPath = paths; }
 	inline const std::string& libraryPath() const { return m_libraryPath; }
 
+	// DYLD_FORCE_FLAT_NAMESPACE
+	inline void setForceFlatNamespace(bool forceFlat) { m_forceFlatNamespace = forceFlat; }
+	inline bool forceFlatNamespace() const { return m_forceFlatNamespace; }
+
 	// Only call this method if you're loading a Mach-O library into a native process!
 	void addDefaultLoader();
 
@@ -109,12 +133,13 @@ public:
 	inline bool loadAnyArchitecture() const { return m_loadAny; }
 	
 	bool detectSysRootFromPath(std::string path);
-	inline void setSysRoot(const std::string& sysroot) { m_sysroot = sysroot; }
+	inline void setSysRoot(std::string sysroot) { m_sysroot = sysroot; }
 	inline const std::string& sysRoot() const { return m_sysroot; }
 	inline bool hasSysRoot() const { return !m_sysroot.empty(); }
 	
 	inline size_t objectCount() const { return m_objectsInOrder.size(); }
 	MachOObject* objectByIndex(size_t index);
+	template<typename Func> void iterateObjects(Func f) { std::for_each(m_objectsInOrder.begin(), m_objectsInOrder.end(), f); }
 	MachOObject* objectByHeader(struct mach_header* hdr);
 
 	NativeObject* objectByNativeRef(void* nativeRef);
@@ -125,6 +150,8 @@ public:
 	
 	bool isDestroying() const { return m_destroying; }
 	static bool isTerminated() { return m_bTerminated; }
+
+	void atexit();
 protected:
 	friend class MachOObject;
 
@@ -150,7 +177,7 @@ private:
 	mutable Darling::RWMutex m_lock;
 	MachOObject* m_mainModule;
 	bool m_bindAtLaunch, m_printInitializers, m_printLibraries;
-	bool m_printSegments, m_printBindings, m_printRpathExpansion, m_loadAny;
+	bool m_printSegments, m_printBindings, m_printRpathExpansion, m_loadAny, m_forceFlatNamespace;
 	std::string m_libraryPath, m_sysroot;
 
 #ifdef HAS_DEBUG_HELPERS

@@ -1,0 +1,174 @@
+.\" Copyright (c) 2001 Mike Barcroft <mike@FreeBSD.org>
+.\" Copyright (c) 1990, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek and the American National Standards Committee X3,
+.\" on Information Processing Systems.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)strstr.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/string/strstr.3,v 1.15 2009/04/07 13:42:53 trasz Exp $
+.\"
+.Dd October 11, 2001
+.Dt STRSTR 3
+.Os
+.Sh NAME
+.Nm strcasestr ,
+.Nm strcasestr_l ,
+.Nm strnstr ,
+.Nm strstr
+.Nd locate a substring in a string
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In string.h
+.Ft char *
+.Fo strcasestr
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fc
+.Ft char *
+.Fo strnstr
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fa "size_t n"
+.Fc
+.Ft char *
+.Fo strstr
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fc
+.In string.h
+.In xlocale.h
+.Ft char *
+.Fo strcasestr_l
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fa "locale_t loc"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn strstr
+function
+locates the first occurrence of the null-terminated string
+.Fa s2
+in the null-terminated string
+.Fa s1 .
+.Pp
+The
+.Fn strcasestr
+function is similar to
+.Fn strstr ,
+but ignores the case of both strings.
+.Pp
+The
+.Fn strnstr
+function
+locates the first occurrence of the null-terminated string
+.Fa s2
+in the string
+.Fa s1 ,
+where not more than
+.Fa n
+characters are searched.
+Characters that appear after a
+.Ql \e0
+character are not searched.
+Since the
+.Fn strnstr
+function is a
+.Fx
+specific API, it should only be used when portability is not a concern.
+.Pp
+While the
+.Fn strcasestr
+function uses the current locale, the
+.Fn strcasestr_l
+function may be passed a locale directly. See
+.Xr xlocale 3
+for more information.
+.Sh RETURN VALUES
+If
+.Fa s2
+is an empty string,
+.Fa s1
+is returned;
+if
+.Fa s2
+occurs nowhere in
+.Fa s1 ,
+.Dv NULL
+is returned;
+otherwise a pointer to the first character of the first occurrence of
+.Fa s2
+is returned.
+.Sh EXAMPLES
+The following sets the pointer
+.Va ptr
+to the
+.Qq Li Bar Baz
+portion of
+.Va largestring :
+.Bd -literal -offset indent
+const char *largestring = "Foo Bar Baz";
+const char *smallstring = "Bar";
+char *ptr;
+
+ptr = strstr(largestring, smallstring);
+.Ed
+.Pp
+The following sets the pointer
+.Va ptr
+to
+.Dv NULL ,
+because only the first 4 characters of
+.Va largestring
+are searched:
+.Bd -literal -offset indent
+const char *largestring = "Foo Bar Baz";
+const char *smallstring = "Bar";
+char *ptr;
+
+ptr = strnstr(largestring, smallstring, 4);
+.Ed
+.Sh SEE ALSO
+.Xr memchr 3 ,
+.Xr strchr 3 ,
+.Xr strcspn 3 ,
+.Xr strpbrk 3 ,
+.Xr strrchr 3 ,
+.Xr strsep 3 ,
+.Xr strspn 3 ,
+.Xr strtok 3 ,
+.Xr wcsstr 3 ,
+.Xr xlocale 3
+.Sh STANDARDS
+The
+.Fn strstr
+function
+conforms to
+.St -isoC .

@@ -1,0 +1,36 @@
+.Dd March 11, 2005
+.Dt DUPLOCALE 3
+.Os
+.Sh NAME
+.Nm duplocale
+.Nd Duplicate existing locale
+.Sh SYNOPSIS
+.In xlocale.h
+.Ft locale_t
+.Fn duplocale "locale_t loc"
+.Sh DESCRIPTION
+Duplicates an existing
+.Vt locale_t .
+Sub-structures are shared between the two
+.Vt locale_t
+structures.
+Passing
+.Dv NULL
+will duplicate the current locale.
+Passing
+.Dv LC_GLOBAL_LOCALE
+will duplicate the global locale.
+.Sh RETURN VALUES
+Returns a duplicated
+.Vt locale_t ,
+or
+.Dv NULL
+on error.
+Duplicated locales should be freed with
+.Xr freelocale 3 .
+.Sh SEE ALSO
+.Xr freelocale 3 ,
+.Xr newlocale 3 ,
+.Xr querylocale 3 ,
+.Xr uselocale 3 ,
+.Xr xlocale 3

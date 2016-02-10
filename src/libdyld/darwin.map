@@ -1,0 +1,41 @@
+DARWIN {
+	global:
+		NXArgc;
+		NXArgv;
+		NSLookupAndBindSymbol;
+		NSLookupSymbolInModule;
+		NSNameOfSymbol;
+		NSAddressOfSymbol;
+		NSIsSymbolNameDefined;
+		NSModuleForSymbol;
+		NSIsSymbolNameDefinedInImage;
+		NSNameOfModule;
+		NSLibraryNameForModule;
+		NSVersionOfRunTimeLibrary;
+		NSVersionOfLinkTimeLibrary;
+		_NSGetExecutablePath;
+		
+		_dyld_image_count;
+		_dyld_get_image_header;
+		_dyld_get_image_vmaddr_slide;
+		_dyld_get_image_slide;
+		_dyld_get_image_name;
+		getsectdata;
+		getsectiondata;
+		getsegmentdata;
+		dyld_register_image_state_change_handler;
+		_dyld_register_func_for_add_image;
+		_dyld_register_func_for_remove_image;
+		_dyld_deregister_func_for_add_image;
+		_dyld_deregister_func_for_remove_image;
+		_dyld_bind_fully_image_containing_address;
+		__dyld_bind_fully_image_containing_address;
+		__dyld_make_delayed_module_initializer_calls;
+		__dyld_mod_term_funcs;
+		dyld_image_path_containing_address;
+		_dyld_find_unwind_sections;
+		_dyld_fork_child;
+		_tlv_bootstrap;
+		_tlv_atexit;
+};
+

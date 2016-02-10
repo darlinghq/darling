@@ -1,0 +1,88 @@
+.TH MIG 1 "Nov 20, 2009" "Apple Computer, Inc."
+.SH NAME
+mig \- Mach Interface Generator
+.SH SYNOPSIS
+.B mig
+[ 
+.I "option \&..."
+] 
+.I "file"
+ 
+.SH DESCRIPTION
+The
+.I mig
+command invokes the Mach Interface Generator to generate Remote Procedure Call (RPC)
+code for client-server style Mach IPC from specification files.
+.SH OPTIONS
+.TP
+.B \-q/-Q
+Omit /
+.I emit
+warning messages.
+.TP
+.B \-v/-V
+Verbose mode ( on /
+.I off
+) will summarize types and routines as they are processed.
+.TP
+.B \-l/-L
+Controls (
+.I off
+/ on ) whether or not generated code logs RPC events to system logs.
+.TP
+.B \-k/-K
+Controls (
+.I on
+/ off ) whether generated code complies with ANSI C standards.
+.TP
+.B \-s/-S
+Controls ( on /
+.I off
+) whether generated server-side code includes a generated symbol table.
+.TP
+.BI \-i " prefix"
+Specify User file prefix.
+.TP
+.BI \-user " path"
+Specify name of user-side RPC generated source file.
+.TP
+.BI \-server " path"
+Specify name of server-side RPC generated source file.
+.TP
+.BI \-header " path"
+Specify name of user-side generated header file.
+.TP
+.BI \-sheader " path"
+Specify name of server-side generated header file.
+.TP
+.BI \-iheader " path"
+Specify internal header file name.
+.TP
+.BI \-dheader " path"
+Specify defines generated header file.
+.TP
+.BI \-maxonstack " value"
+Specify maximum size of message on stack.
+.TP
+.B \-split
+Use split headers.
+.TP
+.BI \-arch " arch"
+Specify machine architecture for target code.
+.TP
+.B \-MD
+Option is passed to the C compiler for dependency generation.
+.TP
+.B \-cpp
+This option is ignored.
+.TP
+.BI \-cc " path"
+Specify pathname to specific C compiler to use as the preprocessor.
+.TP
+.BI \-migcom " path"
+Specify pathname to specific migcom compiler to use for source code generation.
+.TP
+.BI \-isysroot " path"
+Specify SDK root directory.
+.TP
+Additional options provided are passed along to the C compiler unchanged.

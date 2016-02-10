@@ -1,0 +1,223 @@
+.\" Copyright (c) 1990, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek.
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)string.3	8.2 (Berkeley) 12/11/93
+.\" $FreeBSD: src/lib/libc/string/string.3,v 1.14 2007/01/09 00:28:12 imp Exp $
+.\"
+.Dd December 11, 1993
+.Dt STRING 3
+.Os
+.Sh NAME
+.Nm index ,
+.Nm rindex ,
+.Nm stpcpy ,
+.Nm strcasecmp ,
+.Nm strcat ,
+.Nm strchr ,
+.Nm strcmp ,
+.Nm strcpy ,
+.Nm strcspn ,
+.Nm strerror ,
+.Nm strlen ,
+.Nm strncasecmp ,
+.Nm strncat ,
+.Nm strncmp ,
+.Nm strncpy ,
+.Nm strpbrk ,
+.Nm strrchr ,
+.Nm strsep ,
+.Nm strspn ,
+.Nm strstr ,
+.Nm strtok
+.Nd string specific functions
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In strings.h
+.Ft char *
+.Fo index
+.Fa "const char *s"
+.Fa "int c"
+.Fc
+.Ft char *
+.Fo rindex
+.Fa "const char *s"
+.Fa "int c"
+.Fc
+.Ft int
+.Fo strcasecmp
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fc
+.Ft int
+.Fo strncasecmp
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fa "size_t n"
+.Fc
+.In string.h
+.Ft char *
+.Fo stpcpy
+.Fa "char *dst"
+.Fa "const char *src"
+.Fc
+.Ft char *
+.Fo strcat
+.Fa "char *restrict s1"
+.Fa "const char *restrict s2"
+.Fc
+.Ft char *
+.Fo strchr
+.Fa "const char *s"
+.Fa "int c"
+.Fc
+.Ft int
+.Fo strcmp
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fc
+.Ft char *
+.Fo strcpy
+.Fa "char *restrict s1"
+.Fa "const char *restrict s2"
+.Fc
+.Ft size_t
+.Fo strcspn
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fc
+.Ft char *
+.Fo strerror
+.Fa "int errnum"
+.Fc
+.Ft size_t
+.Fo strlen
+.Fa "const char *s"
+.Fc
+.Ft char *
+.Fo strncat
+.Fa "char *restrict s1"
+.Fa "const char *restrict s2"
+.Fa "size_t n"
+.Fc
+.Ft int
+.Fo strncmp
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fa "size_t n"
+.Fc
+.Ft char *
+.Fo strncpy
+.Fa "char *restrict s1"
+.Fa "const char *restrict s2"
+.Fa "size_t n"
+.Fc
+.Ft char *
+.Fo strpbrk
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fc
+.Ft char *
+.Fo strrchr
+.Fa "const char *s"
+.Fa "int c"
+.Fc
+.Ft char *
+.Fo strsep
+.Fa "char **stringp"
+.Fa "const char *delim"
+.Fc
+.Ft size_t
+.Fo strspn
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fc
+.Ft char *
+.Fo strstr
+.Fa "const char *s1"
+.Fa "const char *s2"
+.Fc
+.Ft char *
+.Fo strtok
+.Fa "char *restrict s1"
+.Fa "const char *restrict s2"
+.Fc
+.Sh DESCRIPTION
+The string
+functions manipulate strings that are terminated by a
+null byte.
+.Pp
+See the specific manual pages for more information.
+For manipulating variable length generic objects as byte
+strings (without the null byte check), see
+.Xr bstring 3 .
+.Pp
+Except as noted in their specific manual pages,
+the string functions do not test the destination
+for size limitations.
+.Sh SEE ALSO
+.Xr bstring 3 ,
+.Xr index 3 ,
+.Xr rindex 3 ,
+.Xr stpcpy 3 ,
+.Xr strcasecmp 3 ,
+.Xr strcat 3 ,
+.Xr strchr 3 ,
+.Xr strcmp 3 ,
+.Xr strcpy 3 ,
+.Xr strcspn 3 ,
+.Xr strerror 3 ,
+.Xr strlen 3 ,
+.Xr strpbrk 3 ,
+.Xr strrchr 3 ,
+.Xr strsep 3 ,
+.Xr strspn 3 ,
+.Xr strstr 3 ,
+.Xr strtok 3
+.Sh STANDARDS
+The
+.Fn strcat ,
+.Fn strncat ,
+.Fn strchr ,
+.Fn strrchr ,
+.Fn strcmp ,
+.Fn strncmp ,
+.Fn strcpy ,
+.Fn strncpy ,
+.Fn strerror ,
+.Fn strlen ,
+.Fn strpbrk ,
+.Fn strspn ,
+.Fn strcspn ,
+.Fn strstr ,
+and
+.Fn strtok
+functions
+conform to
+.St -isoC .

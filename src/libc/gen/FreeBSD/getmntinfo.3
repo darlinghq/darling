@@ -1,0 +1,135 @@
+.\" Copyright (c) 1989, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)getmntinfo.3	8.1 (Berkeley) 6/9/93
+.\" $FreeBSD: src/lib/libc/gen/getmntinfo.3,v 1.13 2007/01/09 00:27:54 imp Exp $
+.\"
+.Dd May 4, 2010
+.Dt GETMNTINFO 3
+.Os
+.Sh NAME
+.Nm getmntinfo
+.Nm getmntinfo64
+.Nd get information about mounted file systems
+.Sh SYNOPSIS
+.In sys/param.h
+.In sys/ucred.h
+.In sys/mount.h
+.Ft int
+.Fn getmntinfo "struct statfs **mntbufp" "int flags"
+.Sh TRANSITIIONAL SYNOPSIS (NOW DEPRECATED)
+.Ft int
+.br
+.Fn getmntinfo64 "struct statfs64 **mntbufp" "int flags" ;
+.Sh DESCRIPTION
+The
+.Fn getmntinfo
+function
+returns an array of
+.Ft statfs
+structures describing each currently mounted file system (see
+.Xr statfs 2 ) .
+As
+.Xr statfs 2
+indicates, the structure is defined differently depending on
+whether the macro _DARWIN_FEATURE_64_BIT_INODE is defined (see
+.Xr stat 2
+for more information on this macro).
+.Pp
+The
+.Fn getmntinfo
+function
+passes its
+.Fa flags
+argument transparently to
+.Xr getfsstat 2 .
+.Sh RETURN VALUES
+On successful completion,
+.Fn getmntinfo
+returns a count of the number of elements in the array.
+The pointer to the array is stored into
+.Fa mntbufp .
+.Pp
+If an error occurs, zero is returned and the external variable
+.Va errno
+is set to indicate the error.
+Although the pointer
+.Fa mntbufp
+will be unmodified, any information previously returned by
+.Fn getmntinfo
+will be lost.
+.Sh ERRORS
+The
+.Fn getmntinfo
+function
+may fail and set errno for any of the errors specified for the library
+routines
+.Xr getfsstat 2
+or
+.Xr malloc 3 .
+.Sh TRANSITIONAL DESCRIPTION (NOW DEPRECATED)
+The
+.Fn getmntinfo64
+routine is equivalent to its corresponding non-64-suffixed routine,
+when 64-bit inodes are in effect.
+It was added before there was support for the symbol variants, and so is
+now deprecated.
+Instead of using it, set the
+.Dv _DARWIN_USE_64_BIT_INODE
+macro before including header files to force 64-bit inode support.
+.Pp
+The
+.Ft statfs64
+structure used by this deprecated routine is the same as the
+.Ft statfs
+structure when 64-bit inodes are in effect.
+.Sh SEE ALSO
+.Xr getfsstat 2 ,
+.Xr mount 2 ,
+.Xr stat 2 ,
+.Xr statfs 2 ,
+.Xr mount 8
+.Sh HISTORY
+The
+.Fn getmntinfo
+function first appeared in
+.Bx 4.4 .
+.Sh BUGS
+The
+.Fn getmntinfo
+function writes the array of structures to an internal static object
+and returns
+a pointer to that object.
+Subsequent calls to
+.Fn getmntinfo
+will modify the same object.
+.Pp
+The memory allocated by
+.Fn getmntinfo
+cannot be
+.Xr free 3 Ns 'd
+by the application.

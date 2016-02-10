@@ -1,0 +1,234 @@
+.\"
+.\"     @(#)scutil.8
+.\"
+.Dd January 23, 2008
+.Dt SCUTIL 8
+.Os "Mac OS X"
+.Sh NAME
+.Nm scutil
+.Nd Manage system configuration parameters
+.Sh SYNOPSIS
+.Nm
+.Br
+.Nm
+.Fl -prefs Op preference-file
+.Br
+.Nm
+.Fl r
+.Op Fl W
+.Bro "" Ar nodename | Ar address | Ar local-address remote-address "" Brc
+.Br
+.Nm
+.Fl w Ar dynamic-store-key Op Fl t Ar timeout
+.Br
+.Nm
+.Fl -get Ar pref
+.Br
+.Nm
+.Fl -set Ar pref Op Ar newval
+.Br
+.Nm
+.Fl -dns
+.Br
+.Nm
+.Fl -proxy
+.Br
+.Nm
+.Fl -nc Ar nc-arguments
+.\".Br
+.\".Nm
+.\".Fl -net
+.Sh DESCRIPTION
+Invoked with no options,
+.Nm
+provides a command line interface to the
+.Qq dynamic store
+data maintained by
+.Xr configd 8 .
+Interaction with this data (using the SystemConfiguration.framework
+SCDynamicStore APIs) is handled with a set of commands read from
+standard input.
+A list of the available commands is available by entering the
+.Ar help
+directive.
+.Pp
+The
+.Fl -prefs
+option provides a command line interface to the [raw] stored
+preference data.
+Interaction with this data (using the SystemConfiguration.framework
+SCPreferences APIs) is handled with a set of commands read from
+standard input.
+A list of the available commands is availble by entering the
+.Ar help
+directive.
+.Pp
+The
+.Fl r
+option provides a means of checking the network reachability of a host, an IP
+address, or a pair of local and remote IP addresses.
+Network
+.Qq reachability
+is a term that indicates whether network communication is possible between
+the current host and the specified host.
+.Pp
+The
+.Fl w
+option provides a means of checking for (and optionally waiting for the
+creation of or posting of a notification to) a dynamic store key.
+.Pp
+The
+.Fl -get
+and
+.Fl -set
+options provide a means of reporting and updating a select group of
+persistent system preferences.
+.Pp
+The
+.Fl -dns
+option reports the current DNS configuration.
+The first listed
+.Xr resolver 5
+configuration is considered to be the
+.Qq default
+configuration.
+Additional
+.Qq supplemental
+configurations follow.  Those containing a
+.Qq domain
+name will be used for queries matching the specified domain.
+Those without will be used as a
+.Qq default
+configuration in addition to the first listed.
+.Pp
+The
+.Fl -proxy
+option reports the current system proxy configuration.
+.Pp
+The
+.Fl -nc
+option provides a set of commands for monitoring and interacting with VPN connections.
+Use
+.Fl -nc
+.Ar help
+for a full list of commands.
+.\".Pp
+.\"Lastly, the
+.\".Fl -net
+.\"option provides a means of managing the system's network configuration.
+.Sh OPTIONS
+.Bl -tag -width xx
+.It Fl r Oo Fl W Oc Bro "" Ar nodename | Ar address | Ar local-address remote-address "" Brc
+Check the network reachability of the specified host name, IP address, or a
+pair of local and remote IP addresses.
+One or more of the following strings will be reported to standard output.
+.Pp
+.Bl -tag -width "Transient Connection"
+.It Not Reachable
+The specified nodename/address cannot be reached using the current network
+configuration.
+.It Reachable
+The specified nodename/address can be reached using the current network
+configuration.
+.It Transient Connection
+The specified nodename/address can be reached via a transient (e.g. PPP)
+connection.
+.It Connection Required
+The specified nodename/address can be reached using the current network
+configuration but a connection must first be established.
+As an example, this status would be returned for a dialup connection
+that was not currently active but could handle network traffic for the
+target system.
+.It Connection Automatic
+The specified nodename/address can be reached using the current network
+configuration but a connection must first be established.
+Any traffic directed to the specified name/address will initiate the
+connection.
+.It Local Address
+The specified nodename/address is one associated with a network interface
+on the system.
+.It Directly Reachable Addresss
+Network traffic to the specified nodename/address will not go through a
+gateway but is routed directly to one of the interfaces on the system.
+.El
+.Pp
+The reachability can also be monitored by specifying the
+.Fl W
+(watch) option.
+This will result in the current status being reported as well as the
+status when/if the network configuration changes.
+.Pp
+A zero exit status will be returned when the reachability status is reported correctly.
+A non-zero exit status will be returned if errors are detected with an error reported to standard error.
+.It Fl w Ar dynamic-store-key Op Fl t Ar timeout
+Check if the specified key exists in the
+.Qq dynamic store
+data maintained by
+.Xr configd 8 .
+If present,
+.Nm
+will return with a zero exit status.
+If not present,
+.Nm
+will wait for the specified time for data to be associated with or a notification
+to be posted using the key.
+A non-zero exit status will be returned if the key was not created/posted
+within the specified time.
+.Pp
+.Nm
+will wait indefinitely if a timeout of 0 seconds is specified.
+The default timeout is 15 seconds.
+.It Fl -get Ar pref
+Retrieves the specified preference.  The current value will be reported on standard output.
+.Pp
+Supported preferences include:
+.Bl -tag -width "LocalHostName" -offset indent
+.It ComputerName
+The user-friendly name for the system.
+.It LocalHostName
+The local (Bonjour) host name.
+.It HostName
+The name associated with
+.Xr hostname 1
+and
+.Xr gethostname 3 .
+.El
+.It Fl -set Ar pref Op Ar newval
+Updates the specified preference with the new value.
+If the new value is not specified on the command line then it will be read from standard input.
+.Pp
+Supported preferences include:
+ComputerName
+LocalHostName
+HostName
+.Pp
+The
+.Fl -set
+option requires super-user access.
+.It Fl -dns
+Reports the current DNS configuration.
+.It Fl -proxy
+Reports the current proxy configuration.
+.It Fl -nc Ar nc-arguments
+Provides a set of commands for monitoring and interacting with VPN connections. Use
+.Fl -nc
+.Ar help
+for a full list of commands.
+.\".It Fl -net
+.\"Provides a command line interface to the
+.\".Qq network configuration .
+.\"Interaction with this data (using the SystemConfiguration.framework
+.\"SCNetworkConfiguration APIs) is handled with a set of commands read
+.\"from standard input.  A list of the available commands is available
+.\"by entering the help directive.
+.\".Pp
+.\"The
+.\".Fl -net
+.\"option requires super-user access.
+.El
+.Sh SEE ALSO
+.Xr configd 8
+.Sh HISTORY
+The
+.Nm
+command appeared in Mac OS X Public Beta.

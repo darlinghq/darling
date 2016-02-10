@@ -1,0 +1,32 @@
+#include "common.xcconfig"
+
+// Xcode-defined flags.
+ARCHS = $(ARCHS_STANDARD_32_64_BIT)
+SUPPORTED_PLATFORMS = macosx iphoneos
+ONLY_ACTIVE_ARCH = NO
+BUILD_VARIANTS = normal debug
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+GCC_TREAT_WARNINGS_AS_ERRORS = YES
+DYLIB_CURRENT_VERSION = $(RC_ProjectSourceVersion)
+DYLIB_COMPATIBILITY_VERSION = 1
+DEPLOYMENT_LOCATION = YES
+INSTALL_PATH = /usr/lib/system
+ORDER_FILE[sdk=macosx*] = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/liblaunch.order
+ORDER_FILE[sdk=iphonesimulator*] = 
+LINK_WITH_STANDARD_LIBRARIES = NO
+OTHER_LDFLAGS = -umbrella System -L/usr/lib/system -ldyld -lcompiler_rt -lsystem_kernel -lsystem_platform -lsystem_pthread -lsystem_malloc -lsystem_c -lquarantine -ldispatch $(CRASHREPORTER_LINKER_FLAGS)
+OTHER_LDFLAGS[sdk=iphone*] = -umbrella System -L/usr/lib/system -ldyld -lcompiler_rt -lsystem_kernel -lsystem_platform -lsystem_pthread -lsystem_malloc -lsystem_c -ldispatch $(CRASHREPORTER_LINKER_FLAGS)
+LD_DYLIB_INSTALL_NAME = $(DYLIB_INSTALL_NAME_BASE:standardizepath)/$(EXECUTABLE_PATH)
+MACH_O_TYPE = mh_dylib
+EXECUTABLE_PREFIX = lib
+PRODUCT_NAME = launch
+PUBLIC_HEADERS_FOLDER_PATH = /usr/include
+PRIVATE_HEADERS_FOLDER_PATH = /usr/local/include
+ALWAYS_SEARCH_USER_PATHS = NO
+GCC_ENABLE_BUILTIN_FUNCTIONS = YES
+GCC_PREPROCESSOR_DEFINITIONS_normal = __MigTypeCheck=1 mig_external=__private_extern__
+GCC_PREPROCESSOR_DEFINITIONS_debug = $(GCC_PREPROCESSOR_DEFINITIONS_normal)
+OTHER_CFLAGS_normal = -DXPC_BUILDING_LAUNCHD=1 -D__DARWIN_NON_CANCELABLE=1 -D_DARWIN_USE_64_BIT_INODE=1
+OTHER_CFLAGS_debug = $(OTHER_CFLAGS_normal) -D__LAUNCH_DEBUG__=1 -O0
+VERSION_INFO_PREFIX = _
+USE_HEADERMAP = NO

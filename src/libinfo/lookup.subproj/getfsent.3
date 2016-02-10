@@ -1,0 +1,176 @@
+.\" Copyright (c) 1983, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)getfsent.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/gen/getfsent.3,v 1.17 2007/01/09 00:27:53 imp Exp $
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\"
+.\" Portions Copyright (c) 2003-2013 Apple Inc.  All Rights Reserved.
+.\"
+.\" This file contains Original Code and/or Modifications of Original Code
+.\" as defined in and that are subject to the Apple Public Source License
+.\" Version 2.0 (the 'License'). You may not use this file except in
+.\" compliance with the License. Please obtain a copy of the License at
+.\" http://www.opensource.apple.com/apsl/ and read it before using this
+.\" file.
+.\"
+.\" The Original Code and all software distributed under the License are
+.\" distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+.\" Please see the License for the specific language governing rights and
+.\" limitations under the License.
+.\"
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.Dd April 7, 2003
+.Dt GETFSENT 3
+.Os
+.Sh NAME
+.Nm getfsent ,
+.Nm getfsspec ,
+.Nm getfsfile ,
+.Nm setfsent ,
+.Nm endfsent
+.Nd get file system descriptor file entry
+.Sh LIBRARY
+Standard system libraries.
+.Sh SYNOPSIS
+.In fstab.h
+.Ft "struct fstab *"
+.Fn getfsent void
+.Ft "struct fstab *"
+.Fn getfsspec "const char *spec"
+.Ft "struct fstab *"
+.Fn getfsfile "const char *file"
+.Ft int
+.Fn setfsent void
+.Ft void
+.Fn endfsent void
+.\".Ft void
+.\".Fn setfstab "const char *file"
+.\".Ft "const char *"
+.\".Fn getfstab void
+.Sh DESCRIPTION
+The
+.Fn getfsent ,
+.Fn getfsspec ,
+and
+.Fn getfsfile
+functions
+each return a pointer to an object with the following structure
+containing file system descriptions from the directory systems
+consulted by the
+.Nm opendirectoryd
+daemon.
+This will include records from the local /etc/fstab file.
+.Bd -literal -offset indent
+struct fstab {
+	char	*fs_spec;	/* block special device name */
+	char	*fs_file;	/* file system path prefix */
+	char	*fs_vfstype;	/* File system type, ufs, nfs */
+	char	*fs_mntops;	/* Mount options ala -o */
+	char	*fs_type;	/* FSTAB_* from fs_mntops */
+	int	fs_freq;	/* dump frequency, in days */
+	int	fs_passno;	/* pass number on parallel fsck */
+};
+.Ed
+.Pp
+The fields have meanings described in
+.Xr fstab 5 .
+.Pp
+The
+.Fn getfsspec
+and
+.Fn getfsfile
+functions
+search in available directory services for a matching special
+file name or file system file name.
+.Pp
+For programs wishing to read the entire database,
+.Fn getfsent
+searches all available directory services on it's first invocation.
+It caches the returned entries in a list
+and returns fstab entries one at a time.
+.Pp
+The
+.Fn setfsent
+and
+.Fn endfsent
+functions clear the cached results from a previous
+.Fn getfsent 
+call.
+.Pp
+Entries in the /etc/fstab file with a type field equivalent to
+.Dv FSTAB_XX
+are ignored.
+.Sh RETURN VALUES
+The
+.Fn getfsent ,
+.Fn getfsspec ,
+and
+.Fn getfsfile
+functions
+return a
+.Dv NULL
+pointer on
+.Dv EOF
+or error.
+The
+.Fn setfsent
+function
+returns 0 on failure, 1 on success.
+The
+.Fn endfsent
+function
+returns nothing.
+.Sh FILES
+.Bl -tag -width /etc/fstab -compact
+.It Pa /etc/fstab
+.El
+.Sh SEE ALSO
+.Xr opendirectoryd 8 ,
+.Xr fstab 5 .
+.Sh HISTORY
+The
+.Fn getfsent
+function appeared in
+.Bx 4.0 ;
+the
+.Fn endfsent ,
+.Fn getfsfile ,
+.Fn getfsspec ,
+and
+.Fn setfsent
+functions appeared in
+.Bx 4.3 .
+.Sh BUGS
+The data space used by
+these functions is thread-specific; if future use requires the data, it should be
+copied before any subsequent calls to these functions overwrite it.

@@ -31,7 +31,7 @@ namespace Darling
 
 	struct ImageData
 	{
-		pthread_key_t key;
+		long key;
 
 		// Location of initial variable values
 		void* start;
@@ -56,9 +56,6 @@ namespace Darling
 	// Called by pthread upon thread destruction
 	void TLSTeardownThread(ThreadData data);
 	
-	// Fast-path helper for darling_tls_get_addr()
-	void* TLSGetNative() asm("darling_tls_get_native");
-
 	// Called by darling_tls_get_addr() when the variable is accessed for the first time - slow path
 	void* TLSAllocate(pthread_key_t key) asm("darling_tls_allocate");
 	

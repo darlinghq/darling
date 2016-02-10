@@ -1,0 +1,109 @@
+.\"-
+.\" Copyright (c) 2001 Chris D. Faulhaber
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR THE VOICES IN HIS HEAD BE
+.\" LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/lib/libc/posix1e/acl_create_entry.3,v 1.5 2002/12/18 12:45:09 ru Exp $
+.\"
+.Dd March 16, 2001
+.Dt ACL_CREATE_ENTRY 3
+.Os
+.Sh NAME
+.Nm acl_create_entry ,
+.Nm acl_create_entry_np
+.Nd create a new ACL entry
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/acl.h
+.Ft int
+.Fn acl_create_entry "acl_t *acl_p" "acl_entry_t *entry_p"
+.Ft int
+.Fn acl_create_entry_np "acl_t *acl_p" "acl_entry_t *entry_p" "int entry_index"
+.Sh DESCRIPTION
+The
+.Fn acl_create_entry
+function
+is a POSIX.1e call that creates a new ACL entry in the ACL
+pointed to by
+.Fa acl_p .
+The function will return in
+.Fa entry_p
+a descriptor for this ACL entry.
+.Pp
+The
+.Fn acl_create_entry_np
+function is a non-portable extension which allows the caller to specify the
+position of the created entry within the ACL.  If
+.Fa entry_index
+is
+.Dv ACL_FIRST_ENTRY
+the entry will be created at the head of the ACL.  If
+.Fa entry_index
+is
+.Dv ACL_LAST_ENTRY
+the entry will be created at the end of the ACL.  After inserting an ACL entry with an
+.Fa entry_index
+other than
+.Dv ACL_LAST_ENTRY
+the behaviour of any acl_entry_t's previously obtained from the ACL
+by
+.Fn acl_create_entry
+or
+.Fn acl_get_entry
+is undefined.
+.Sh RETURN VALUES
+.Rv -std acl_create_entry
+.Sh ERRORS
+The
+.Fn acl_create_entry
+and
+.Fn acl_create_entry_np
+functions fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Argument
+.Fa acl_p
+does not point to a pointer to a valid ACL.
+.It Bq Er ENOMEM
+The ACL working storage requires more memory than is
+allowed by the hardware or system-imposed memory
+management constraints.
+.It Bq Er ERANGE
+The
+.Fa entry_index
+argument to
+.Fn acl_create_entry_np
+is greater than the number of entries in the ACL.
+.El
+.Sh SEE ALSO
+.Xr acl 3 ,
+.Xr acl_delete_entry 3 ,
+.Xr acl_get_entry 3 ,
+.Xr posix1e 3
+.Sh STANDARDS
+POSIX.1e is described in IEEE POSIX.1e draft 17.
+.Sh AUTHORS
+.An Michael Smith
+.An Chris D Fulhaber

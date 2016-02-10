@@ -1,0 +1,232 @@
+.\"
+.\" Copyright 1996 Massachusetts Institute of Technology
+.\"
+.\" Permission to use, copy, modify, and distribute this software and
+.\" its documentation for any purpose and without fee is hereby
+.\" granted, provided that both the above copyright notice and this
+.\" permission notice appear in all copies, that both the above
+.\" copyright notice and this permission notice appear in all
+.\" supporting documentation, and that the name of M.I.T. not be used
+.\" in advertising or publicity pertaining to distribution of the
+.\" software without specific, written prior permission.  M.I.T. makes
+.\" no representations about the suitability of this software for any
+.\" purpose.  It is provided "as is" without express or implied
+.\" warranty.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY M.I.T. ``AS IS''.  M.I.T. DISCLAIMS
+.\" ALL EXPRESS OR IMPLIED WARRANTIES WITH REGARD TO THIS SOFTWARE,
+.\" INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT
+.\" SHALL M.I.T. BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+.\" SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+.\" LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+.\" USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+.\" ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"	$ANA: addr2ascii.3,v 1.1 1996/06/13 18:41:46 wollman Exp $
+.\" $FreeBSD: src/lib/libc/net/addr2ascii.3,v 1.17 2004/10/09 17:13:58 maxim Exp $
+.\"
+.Dd June 13, 1996
+.Dt ADDR2ASCII 3
+.Os
+.Sh NAME
+.Nm addr2ascii ,
+.Nm ascii2addr
+.Nd Generic address formatting routines
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In arpa/inet.h
+.Ft "char *"
+.Fn addr2ascii "int af" "const void *addrp" "int len" "char *buf"
+.Ft int
+.Fn ascii2addr "int af" "const char *ascii" "void *result"
+.Sh DESCRIPTION
+The routines
+.Fn addr2ascii
+and
+.Fn ascii2addr
+are used to convert network addresses between binary form and a
+printable form appropriate to the address family.
+Both functions take
+an
+.Fa af
+argument, specifying the address family to be used in the conversion
+process.
+(Currently, only the
+.Dv AF_INET
+and
+.Dv AF_LINK
+address families are supported.)
+.Pp
+The
+.Fn addr2ascii
+function
+is used to convert binary, network-format addresses into printable
+form.
+In addition to
+.Fa af ,
+there are three other arguments.
+The
+.Fa addrp
+argument is a pointer to the network address to be converted.
+The
+.Fa len
+argument is the length of the address.
+The
+.Fa buf
+argument is an optional pointer to a caller-allocated buffer to hold
+the result; if a null pointer is passed,
+.Fn addr2ascii
+uses a statically-allocated buffer.
+.Pp
+The
+.Fn ascii2addr
+function performs the inverse operation to
+.Fn addr2ascii .
+In addition to
+.Fa af ,
+it takes two arguments,
+.Fa ascii
+and
+.Fa result .
+The
+.Fa ascii
+argument is a pointer to the string which is to be converted into
+binary.
+The
+.Fa result
+argument is a pointer to an appropriate network address structure for
+the specified family.
+.Pp
+The following gives the appropriate structure to use for binary
+addresses in the specified family:
+.Pp
+.Bl -tag -width AF_INETxxxx -compact
+.It Dv AF_INET
+.Li struct in_addr
+(in
+.In arpa/inet.h )
+.It Dv AF_LINK
+.Li struct sockaddr_dl
+(in
+.In net/if_dl.h )
+.\" .It Dv AF_INET6
+.\" .Li struct in6_addr
+.\" (in
+.\" .In netinet6/in6.h )
+.El
+.Pp
+.Dv AF_INET and AF_LINK constants are defined in
+.In sys/socket.h
+.Sh RETURN VALUES
+The
+.Fn addr2ascii
+function returns the address of the buffer it was passed, or a static
+buffer if the a null pointer was passed; on failure, it returns a null
+pointer.
+The
+.Fn ascii2addr
+function returns the length of the binary address in bytes, or -1 on
+failure.
+.Sh EXAMPLES
+The
+.Xr inet 3
+functions
+.Fn inet_ntoa
+and
+.Fn inet_aton
+could be implemented thusly:
+.Bd -literal -offset indent
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
+char *
+inet_ntoa(struct in_addr addr)
+{
+	return addr2ascii(AF_INET, &addr, sizeof addr, 0);
+}
+
+int
+inet_aton(const char *ascii, struct in_addr *addr)
+{
+	return (ascii2addr(AF_INET, ascii, addr)
+	    == sizeof(*addr));
+}
+.Ed
+.Pp
+In actuality, this cannot be done because
+.Fn addr2ascii
+and
+.Fn ascii2addr
+are implemented in terms of the
+.Xr inet 3
+functions, rather than the other way around.
+.Sh ERRORS
+When a failure is returned,
+.Li errno
+is set to one of the following values:
+.Bl -tag -width Er
+.It Bq Er ENAMETOOLONG
+The
+.Fn addr2ascii
+routine was passed a
+.Fa len
+argument which was inappropriate for the address family given by
+.Fa af .
+.It Bq Er EPROTONOSUPPORT
+Either routine was passed an
+.Fa af
+argument other than
+.Dv AF_INET
+or
+.Dv AF_LINK .
+.It Bq Er EINVAL
+The string passed to
+.Fn ascii2addr
+was improperly formatted for address family
+.Fa af .
+.El
+.Sh SEE ALSO
+.Xr inet 3 ,
+.Xr linkaddr 3 ,
+.Xr inet 4
+.Sh HISTORY
+An interface close to this one was originally suggested by Craig
+Partridge.
+This particular interface originally appeared in the
+.Tn INRIA
+.Tn IPv6
+implementation.
+.Sh AUTHORS
+Code and documentation by
+.An Garrett A. Wollman ,
+MIT Laboratory for Computer Science.
+.Sh BUGS
+The original implementations supported IPv6.
+This support should
+eventually be resurrected.
+The
+.Tn NRL
+implementation also included support for the
+.Dv AF_ISO
+and
+.Dv AF_NS
+address families.
+.Pp
+The genericity of this interface is somewhat questionable.
+A truly
+generic interface would provide a means for determining the length of
+the buffer to be used so that it could be dynamically allocated, and
+would always require a
+.Dq Li "struct sockaddr"
+to hold the binary address.
+Unfortunately, this is incompatible with existing
+practice.
+This limitation means that a routine for printing network
+addresses from arbitrary address families must still have internal
+knowledge of the maximum buffer length needed and the appropriate part
+of the address to use as the binary address.

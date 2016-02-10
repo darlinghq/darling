@@ -1,0 +1,93 @@
+.Dd August 24, 2010
+.Os Darwin
+.Dt ACL_PERMSET_MASK 3
+.Sh NAME
+.Nm acl_permset_mask
+.Nd Manipulate ACL permissions using bitmasks
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/acl.h
+.Ft int
+.Fn acl_maximal_permset_mask_np "acl_permset_mask_t * mask_p"
+.Ft int
+.Fn acl_get_permset_mask_np "acl_entry_t entry_d" "acl_permset_mask_t * mask_p"
+.Ft int
+.Fn acl_set_permset_mask_np "acl_entry_t entry_d" "acl_permset_mask_t mask"
+.Sh DESCRIPTION
+The
+.Fa acl_permset_mask_t
+functions are a Darwin extension to the POSIX.1e ACL standard which allow
+manipulation of permissions in an
+.Fa acl_entry_t
+using a bitmask of type
+.Fa acl_permset_mask_t
+rather than a constructed acl_permset_t (as done by
+.Xr acl_get_permset 3
+and
+.Xr acl_set_permset 3 ) .
+.Pp
+.Fa acl_permset_mask_t
+values may be constructed using bitwise operations over
+.Fa acl_perm_t
+values.
+.Pp
+.Fn acl_maximal_permset_mask_np
+sets the value pointed to by
+.Fa mask_p
+to a bitmask of all valid
+.Fa acl_perm_t
+values.
+.Pp
+.Fn acl_get_permset_mask_np
+returns via 
+.Fa mask_p
+a bitmask of permissions set on the ACL entry
+.Fa entry_d .
+.Pp
+.Fn acl_set_permset_mask_np
+sets the permissions of ACL entry
+.Fa entry_d
+to match the permission bitmask provided by
+.Fa mask .
+.Sh RETURN VALUES
+.Rv -std acl_maximal_permset_mask_np
+.Pp
+.Rv -std acl_get_permset_mask_np
+.Pp
+.Rv -std acl_set_permset_mask_np
+.Sh ERRORS
+The
+.Fn acl_get_permset_mask_np
+function fails if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Argument
+.Fa entry_d
+is not a valid descriptor for an ACL entry.
+.El
+.Pp
+The
+.Fn acl_set_permset_mask_np
+function fails if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Argument
+.Fa entry_d
+is not a valid descriptor for an ACL entry.
+.It Bq Er EINVAL
+Argument
+.Fa mask
+is not a valid bitmask of ACL permissions.
+.El
+.Sh SEE ALSO
+.Xr acl 3 ,
+.Xr acl_add_perm 3 ,
+.Xr acl_clear_perms 3 ,
+.Xr acl_delete_perm 3 ,
+.Xr acl_get_permset 3 ,
+.Xr acl_set_permset 3 ,
+.Xr posix1e 3
+.Sh AUTHORS
+.An Jeremy Huddleston

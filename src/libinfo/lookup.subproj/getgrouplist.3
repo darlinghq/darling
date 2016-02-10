@@ -1,0 +1,109 @@
+.\" Copyright (c) 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)getgrouplist.3	8.1 (Berkeley) 6/9/93
+.\" $FreeBSD: src/lib/libc/gen/getgrouplist.3,v 1.9 2007/01/09 00:27:53 imp Exp $
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\"
+.\" Portions Copyright (c) 2003-2013 Apple Inc.  All Rights Reserved.
+.\"
+.\" This file contains Original Code and/or Modifications of Original Code
+.\" as defined in and that are subject to the Apple Public Source License
+.\" Version 2.0 (the 'License'). You may not use this file except in
+.\" compliance with the License. Please obtain a copy of the License at
+.\" http://www.opensource.apple.com/apsl/ and read it before using this
+.\" file.
+.\"
+.\" The Original Code and all software distributed under the License are
+.\" distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+.\" Please see the License for the specific language governing rights and
+.\" limitations under the License.
+.\"
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.Dd June 9, 1993
+.Dt GETGROUPLIST 3
+.Os
+.Sh NAME
+.Nm getgrouplist
+.Nd calculate partial group access list
+.Sh LIBRARY
+Standard system libraries.
+.Sh SYNOPSIS
+.In unistd.h
+.Ft int
+.Fn getgrouplist "const char *name" "int basegid" "int *groups" "int *ngroups"
+.\".Fn getgrouplist "const char *name" "gid_t basegid" "gid_t *groups" "int *ngroups"
+.Sh DESCRIPTION
+The
+.Fn getgrouplist
+function obtains information from
+.Xr opendirectoryd 8
+to construct the group access list for the user specified in
+.Fa name .
+The
+.Fa basegid
+is automatically included in the groups list.
+Typically this value is given as
+the default group number from the user's account record.
+.Pp
+The resulting group list is returned in the array pointed to by
+.Fa groups .
+The caller specifies the size of the
+.Fa groups
+array in the integer pointed to by
+.Fa ngroups ;
+the actual number of groups found is returned in
+.Fa ngroups .
+.Sh RETURN VALUES
+The
+.Fn getgrouplist
+function
+returns 0 on success.
+If the size of the group list is too small to
+hold all the user's groups,
+.Fn getgrouplist
+returns \-1 to indicate failure.
+In this case, the group array will be filled with as many groups as will fit.
+.Sh FILES
+.Bl -tag -width /etc/group -compact
+.It Pa /etc/group
+group membership list
+.El
+.Sh SEE ALSO
+.Xr setgroups 2 ,
+.Xr initgroups 3 ,
+.Xr opendirectoryd 8 .
+.Sh HISTORY
+The
+.Fn getgrouplist
+function first appeared in
+.Bx 4.4 .

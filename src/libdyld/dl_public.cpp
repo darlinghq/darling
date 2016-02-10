@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2015 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "dl_public.h"
 #include "MachOMgr.h"
 #include "MachOObject.h"
@@ -32,6 +51,7 @@ void Darling::dl_setLastError(const std::string& str)
 	g_lastErrorRead = false;
 }
 
+__asm__(".symver __darwin_dlopen, dlopen@DARWIN");
 void* __darwin_dlopen(const char* filename, int flag)
 {
 	std::string resolved;
@@ -99,6 +119,7 @@ void* __darwin_dlopen(const char* filename, int flag)
 	return obj;
 }
 
+__asm__(".symver __darwin_dlclose, dlclose@DARWIN");
 int __darwin_dlclose(void* handle)
 {
 	if (!handle)
@@ -110,6 +131,7 @@ int __darwin_dlclose(void* handle)
 	return 0;
 }
 
+__asm__(".symver __darwin_dlerror, dlerror@DARWIN");
 const char* __darwin_dlerror(void)
 {
 	if (g_lastErrorRead || !g_lastError[0])
@@ -141,6 +163,7 @@ static void removeSuffix(std::string& str, const char* suf)
 		str.resize(pos);
 }
 
+__asm__(".symver __darwin_dlsym, dlsym@DARWIN");
 void* __darwin_dlsym(void* handle, const char* symbol)
 {
 	std::string name = symbol;
@@ -149,10 +172,6 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 	
 	LOG << "__darwin_dlsym(): " << symbol << std::endl;
 
-	removeSuffix(name, "$UNIX2003");
-	removeSuffix(name, "$DARWIN_EXTSN");
-	removeSuffix(name, "$NOCANCEL");
-	
 	translated = processSymbolViaHooks(name);
 
 	if (handle == DARWIN_RTLD_DEFAULT)
@@ -190,6 +209,7 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 		else
 			module = static_cast<LoadableObject*>(handle);
 
+		LOG << "Looking in " << module->name() << std::endl;
 		if (!translated.empty())
 			addr = module->getExportedSymbol(translated.c_str(), false);
 
@@ -203,6 +223,7 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 	return addr;
 }
 
+__asm__(".symver __darwin_dladdr, dladdr@DARWIN");
 int __darwin_dladdr(void *addr, Dl_info *info)
 {
 	MachOObject* obj;
@@ -293,15 +314,20 @@ struct ProgramVars
 	const char*** environPtr;
 	const char** __prognamePtr;
 };
+extern "C" char** __darwin_environ;
 void __darling_get_args(int** argc, char**** argv, char**** env, struct ::ProgramVars* vars)
 {
 	*argc = &g_argc;
 	*argv = &g_argv;
-	*env = &environ;
+	*env = &__darwin_environ;
 	vars->NXArgcPtr = &g_argc;
 	vars->NXArgvPtr = (const char***) &g_argv;
-	vars->environPtr = (const char***) &environ;
+	vars->environPtr = (const char***) &__darwin_environ;
 	vars->__prognamePtr = (const char**) &g_argv[0];
 
 }
-
+extern "C"
+void __darling_set_environ(char** _environ)
+{
+	environ = _environ;
+}

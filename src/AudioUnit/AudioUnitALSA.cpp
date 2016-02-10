@@ -1,4 +1,4 @@
-#include "config.h"
+#include "darling-config.h"
 #include "AudioUnitALSA.h"
 #include "AudioUnitProperties.h"
 #include <CoreServices/MacErrors.h>
@@ -81,7 +81,7 @@ AudioUnitComponent* AudioUnitALSA::create(int cardIndex)
 	}
 	else
 	{
-		name = strdup("default");
+		name = strdup("default" /*"plughw:0"*/);
 	}
 	
 	return new AudioUnitALSA(cardIndex, name);
@@ -118,15 +118,15 @@ void AudioUnitALSA::initOutput()
 		m_config[kOutputBus].second = m_config[kOutputBus].first;
 		
 		err = snd_pcm_open(&m_pcmOutput, m_cardName, SND_PCM_STREAM_PLAYBACK, 0);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to initialize playback PCM", err);
 		
 		err = snd_pcm_hw_params_malloc(&hw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to alloc hw params", err);
 		
 		err = snd_pcm_hw_params_any(m_pcmOutput, hw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to init hw params", err);
 		
 		if (isOutputPlanar())
@@ -134,51 +134,51 @@ void AudioUnitALSA::initOutput()
 		else
 			err = snd_pcm_hw_params_set_access(m_pcmOutput, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED);
 		
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set interleaved access", err);
 		
 		err = snd_pcm_hw_params_set_format(m_pcmOutput, hw_params, alsaFormatForASBD(alsaConfig));
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set format", err);
 		
 		err = snd_pcm_hw_params_set_rate_near(m_pcmOutput, hw_params, &rate, 0);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set sample rate", err);
 		
-		LOG << "Channel count: " << alsaConfig.mChannelsPerFrame << std::endl;
+		LOG << "Channel count: " << int(alsaConfig.mChannelsPerFrame) << std::endl;
 		err = snd_pcm_hw_params_set_channels(m_pcmOutput, hw_params, alsaConfig.mChannelsPerFrame);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set channel count", err);
 		
 		err = snd_pcm_hw_params(m_pcmOutput, hw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set HW parameters", err);
 		
 		snd_pcm_hw_params_free(hw_params);
 		hw_params = nullptr;
 		
 		err = snd_pcm_sw_params_malloc(&sw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to alloc sw params", err);
 		
 		err = snd_pcm_sw_params_current(m_pcmOutput, sw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to init sw params", err);
 		
 		err = snd_pcm_sw_params_set_avail_min(m_pcmOutput, sw_params, SAMPLE_PERIOD);
-		if (err)
+		if (err < 0)
 			throwAlsaError("snd_pcm_sw_params_set_avail_min() failed", err);
 		
 		err = snd_pcm_sw_params_set_start_threshold(m_pcmOutput, sw_params, 0U);
-		if (err)
+		if (err < 0)
 			throwAlsaError("snd_pcm_sw_params_set_start_threshold() failed", err);
 		
 		err = snd_pcm_sw_params_set_tstamp_mode(m_pcmOutput, sw_params, SND_PCM_TSTAMP_ENABLE);
-		if (err)
+		if (err < 0)
 			throwAlsaError("snd_pcm_sw_params_set_tstamp_mode() failed", err);
 		
 		err = snd_pcm_sw_params(m_pcmOutput, sw_params);
-		if (err)
+		if (err < 0)
 			throwAlsaError("Failed to set SW parameters", err);
 		
 		snd_pcm_sw_params_free(sw_params);
@@ -206,6 +206,8 @@ void AudioUnitALSA::initInput()
 		
 		// Let ALSA do the conversion on its own
 		m_config[kInputBus].first = m_config[kInputBus].second;
+		
+		// TODO: support recording
 	}
 	catch (...)
 	{
@@ -270,7 +272,7 @@ void AudioUnitALSA::processAudioEvent(struct pollfd origPoll, int event)
 	pfd.revents = event;
 
 	err = snd_pcm_poll_descriptors_revents(m_pcmOutput, &pfd, 1, &revents);
-	if (err != 0)
+	if (err < 0)
 		ERROR() << "snd_pcm_poll_descriptors_revents() failed: " << snd_strerror(err);
 	
 	if (revents & POLLIN)
@@ -390,7 +392,7 @@ void AudioUnitALSA::requestDataForPlayback()
 		}
 	}
 	
-	m_lastRenderError = render(&flags, &ts, kOutputBus, SAMPLE_PERIOD, bufs);
+	m_lastRenderError = AudioUnitRender(this, &flags, &ts, kOutputBus, SAMPLE_PERIOD, bufs);
 	
 	operator delete(bufs);
 }
@@ -482,12 +484,17 @@ OSStatus AudioUnitALSA::renderInterleavedOutput(AudioUnitRenderActionFlags *ioAc
 {
 	int wr, sampleCount;
 	const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
+	UInt32 framesSoFar = 0;
 	
 	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
 	{
 		LOG << "Writing " << ioData->mBuffers[i].mDataByteSize << " bytes into sound card\n";
 		
-		sampleCount = ioData->mBuffers[i].mDataByteSize / config.mBytesPerFrame;
+		sampleCount = std::min<UInt32>(ioData->mBuffers[i].mDataByteSize / config.mBytesPerFrame, inNumberFrames - framesSoFar);
+		framesSoFar += sampleCount;
+		
+		if (!sampleCount)
+			break;
 
 do_write:
 		wr = snd_pcm_writei(m_pcmOutput, ioData->mBuffers[i].mData, sampleCount);
@@ -495,6 +502,7 @@ do_write:
 		{
 			if (wr == -EINTR || wr == -EPIPE)
 			{
+				LOG << "Recovering PCM\n";
 				snd_pcm_recover(m_pcmOutput, wr, false);
 				goto do_write;
 			}
@@ -544,6 +552,7 @@ do_write:
 	{
 		if (wr == -EINTR || wr == -EPIPE)
 		{
+			LOG << "Recovering PCM\n";
 			snd_pcm_recover(m_pcmOutput, wr, false);
 			goto do_write;
 		}

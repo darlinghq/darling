@@ -1,0 +1,77 @@
+.\" Copyright (c) 2002 Apple Computer, Inc.  All rights reserved.
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\"
+.\" The contents of this file constitute Original Code as defined in and
+.\" are subject to the Apple Public Source License Version 1.1 (the
+.\" "License").  You may not use this file except in compliance with the
+.\" License.  Please obtain a copy of the License at
+.\" http://www.apple.com/publicsource and read it before using this file.
+.\"
+.\" This Original Code and all software distributed under the License are
+.\" distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
+.\" License for the specific language governing rights and limitations
+.\" under the License.
+.\"
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.Dd December 20, 2003
+.Dt tcgetsid 3
+.Os
+.Sh NAME
+.Nm tcgetsid
+.Nd get the process group ID for the session leader for the controlling terminal
+.Sh SYNOPSIS
+.In termios.h
+.Ft pid_t
+.Fo tcgetsid
+.Fa "int fildes"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn tcgetsid
+function obtains the process group ID of the session for which the terminal
+specified by
+.Fa fildes
+is the controlling terminal.
+.Sh RETURN VALUES
+Upon successful completion,
+.Fn tcgetsid
+returns the process group ID associated with the terminal.
+Otherwise, a value of
+.Po Vt pid_t Pc Ns -1
+is returned and
+.Va errno
+is set to indicate the error.
+.Sh ERRORS
+The
+.Fn tcgetsid
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er EACCES
+The
+.Vt fildes
+argument is not associated with a controlling terminal.
+.It Bq Er EBADF
+The
+.Vt fildes
+argument is not a valid file descriptor.
+.It Bq Er ENOTTY
+The file associated with
+.Vt fildes
+is not a terminal.
+.El
+.Sh SEE ALSO
+.Xr getsid 2 ,
+.Xr setpgid 2 ,
+.Xr setsid 2 ,
+.Xr tcgetpgrp 3 ,
+.Xr termios 4
+.Sh STANDARDS
+The
+.Fn tcgetsid
+function conforms to
+.St -p1003.1-2001 .

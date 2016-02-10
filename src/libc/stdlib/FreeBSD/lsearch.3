@@ -1,0 +1,105 @@
+.\"
+.\" Initial implementation:
+.\" Copyright (c) 2002 Robert Drehmel
+.\" All rights reserved.
+.\"
+.\" As long as the above copyright statement and this notice remain
+.\" unchanged, you can do what ever you want with this file.
+.\"
+.\" $FreeBSD: src/lib/libc/stdlib/lsearch.3,v 1.5 2005/01/20 09:17:04 ru Exp $
+.\"
+.Dd October 11, 2002
+.Dt LSEARCH 3
+.Os
+.Sh NAME
+.Nm lfind ,
+.Nm lsearch
+.Nd linear search and append
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In search.h
+.Ft "void *"
+.Fo lfind
+.Fa "const void *key" "const void *base" "size_t *nelp" "size_t width"
+.Fa "int \*[lp]*compar\*[rp]\*[lp]const void *, const void *\*[rp]"
+.Fc
+.Ft "void *"
+.Fo lsearch
+.Fa "const void *key" "void *base" "size_t *nelp" "size_t width"
+.Fa "int \*[lp]*compar\*[rp]\*[lp]const void *, const void *\*[rp]"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn lsearch
+and
+.Fn lfind
+functions walk linearly through an array, comparing each element with
+the one to be sought, by means of a supplied comparison function.
+.Pp
+The
+.Fa key
+argument
+points to an element that matches the one that is searched.
+The array's address in memory is denoted by the
+.Fa base
+argument.
+The width of one element (i.e., the size as returned by
+.Fn sizeof )
+is passed as the
+.Fa width
+argument.
+The number of valid elements contained in the array (not the number of
+elements the array has space reserved for) is given in the integer pointed
+to by
+.Fa nelp .
+The
+.Fa compar
+argument points to a function which compares its two arguments and returns
+zero if they are matching, and non-zero otherwise.
+.Pp
+If no matching element was found in the array,
+.Fn lsearch
+copies
+.Fa key
+into the position after the last element and increments the
+integer pointed to by
+.Fa nelp .
+.Sh RETURN VALUES
+The
+.Fn lsearch
+and
+.Fn lfind
+functions
+return a pointer to the first element found.
+If no element was found,
+.Fn lsearch
+returns a pointer to the newly added element, whereas
+.Fn lfind
+returns
+.Dv NULL .
+Both functions return
+.Dv NULL
+if an error occurs.
+.Sh SEE ALSO
+.Xr bsearch 3 ,
+.Xr hsearch 3 ,
+.Xr tsearch 3
+.Sh STANDARDS
+The
+.Fn lsearch
+and
+.Fn lfind
+functions conform to
+.St -p1003.1-2001 .
+.Sh HISTORY
+The
+.Fn lsearch
+and
+.Fn lfind
+functions appeared in
+.Bx 4.2 .
+In
+.Fx 5.0 ,
+they reappeared conforming to
+.St -p1003.1-2001 .

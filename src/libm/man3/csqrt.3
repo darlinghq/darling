@@ -1,0 +1,70 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CSQRT 3
+.Os BSD 4
+.Sh NAME
+.Nm csqrt
+.Nd complex square root function
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double complex
+.Fn csqrt "double complex z"
+.Ft long double complex
+.Fn csqrtl "long double complex z"
+.Ft float complex
+.Fn csqrtf "float complex z"
+.Sh DESCRIPTION
+.Fn csqrt "z"
+computes the square root of the complex floating-point number
+.Fa z ,
+with a branch cut on the negative real axis.  The result is in
+the right half-plane, including the imaginary axis.  For all complex
+.Fa z ,
+csqrt(conj(z)) = conj(csqrt(z)).
+.Sh SPECIAL VALUES
+The conjugate symmetry of csqrt() is used to abbreviate the specification of special values.
+.Pp
+.Fn csqrt "±0 + 0i"
+returns +0 + 0i.
+.Pp
+.Fn csqrt "x + inf i"
+returns inf + inf i for all x (including NaN).
+.Pp
+.Fn csqrt "x + NaN i"
+returns NaN + NaN i.
+.Pp
+.Fn csqrt "-inf + yi"
+returns 0 + inf i for any positively-signed finite y.
+.Pp
+.Fn csqrt "inf + yi"
+returns inf + 0i for any positively-signed finite y.
+.Pp
+.Fn csqrt "-inf + NaN i"
+returns NaN + inf i.
+.Pp
+.Fn csqrt "inf + NaN i"
+returns inf + NaN i.
+.Pp
+.Fn csqrt "NaN + yi"
+returns NaN + NaN i.
+.Pp
+.Fn csqrt "NaN + NaN i"
+returns NaN + NaN i.
+.Sh NOTES
+If
+.Fa z
+is in the upper half-plane, then
+.Fn csqrt "z"
+is in the upper-right quadrant of the complex plane.
+If
+.Fa z
+is in the lower half-plane, then
+.Fn csqrt "z"
+is in the lower-right quadrant of the complex plane.
+.Sh SEE ALSO
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn csqrt
+function conforms to ISO/IEC 9899:1999(E).

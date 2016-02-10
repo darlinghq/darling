@@ -1,0 +1,237 @@
+.\" $OpenBSD: crypt.3,v 1.5 1996/12/10 09:06:09 deraadt Exp $
+.\"
+.\" FreeSec: libcrypt
+.\"
+.\" Copyright (c) 1994 David Burren
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the author nor the names of other contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" Manual page, using -mandoc macros
+.\"
+.Dd March 9, 1994
+.Dt CRYPT 3
+.Os "FreeSec 1.0"
+.Sh NAME
+.Nm crypt ,
+.Nm encrypt ,
+.Nm setkey
+.Nd DES encryption
+.Sh SYNOPSIS
+.Fd #include <unistd.h>
+.Ft char *
+.Fo crypt
+.Fa "const char *key"
+.Fa "const char *salt"
+.Fc
+.Ft void
+.Fo encrypt
+.Fa "char *block"
+.Fa "int edflag"
+.Fc
+.Fd #include <stdlib.h>
+.Ft void
+.Fo setkey
+.Fa "const char *key"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn crypt
+function performs password encryption, based on the
+.Tn NBS
+Data Encryption Standard (DES).
+Additional code has been added to deter key search attempts.
+The first argument to
+.Fn crypt
+is a
+.Dv null Ns -terminated
+string, typically a user's typed password.
+The second is in one of two forms:
+if it begins with an underscore (``_''), an extended format is used
+in interpreting both the key and the salt value, as outlined below.
+.Ss Extended crypt:
+.Pp
+The
+.Ar key
+is divided into groups of 8 characters (the last group is null-padded)
+and the low-order 7 bits of each each character (56 bits per group) are
+used to form the DES key as follows:
+the first group of 56 bits becomes the initial DES key.
+For each additional group, the XOR of the encryption of the current DES
+key with itself and the group bits becomes the next DES key.
+.Pp
+The
+.Ar salt
+is a 9-character array consisting of an underscore, followed
+by 4 bytes of iteration count and 4 bytes of salt.
+These are encoded as printable characters, 6 bits per character,
+least significant character first.
+The values 0 to 63 are encoded as ``./0-9A-Za-z''.
+This allows 24 bits for both
+.Fa count
+and
+.Fa salt .
+.Ss "Traditional" crypt:
+.Pp
+The first 8 bytes of the key are null-padded, and the low-order 7 bits of
+each character is used to form the 56-bit
+.Tn DES
+key.
+.Pp
+The
+.Fa salt
+is a 2-character array of the ASCII-encoded salt.
+Thus, only 12 bits of salt are used.
+.Fa count
+is set to 25.
+.Ss Algorithm:
+.Pp
+The
+.Fa salt
+introduces disorder in the
+.Tn DES
+algorithm in one of 16777216 or 4096 possible ways
+(ie. with 24 or 12 bits: if bit
+.Em i
+of the
+.Ar salt
+is set, then bits
+.Em i
+and
+.Em i+24
+are swapped in the
+.Tn DES
+E-box output).
+.Pp
+The DES key is used to encrypt a 64-bit constant, using
+.Ar count
+iterations of
+.Tn DES .
+The value returned is a
+.Dv null Ns -terminated
+string, 20 or 13 bytes (plus null) in length, consisting of the
+.Ar salt ,
+followed by the encoded 64-bit encryption.
+.Pp
+The functions,
+.Fn encrypt
+and
+.Fn setkey
+provide access to the
+.Tn DES
+algorithm itself.
+.Fn setkey
+is passed a 64-byte array of binary values (numeric 0 or 1).
+A 56-bit key is extracted from this array by dividing the
+array into groups of 8 and ignoring the last bit in each group.
+That bit is reserved for a byte parity check by DES, but is ignored
+by these functions.
+.Pp
+The
+.Fa block
+argument to
+.Fn encrypt
+is also a 64-byte array of binary values.
+If the value of
+.Fa edflag
+is 0,
+.Fa block
+is encrypted; otherwise, it is decrypted.
+The result is returned in the original array
+.Fa block ,
+after using the key specified by
+.Fn setkey
+to process it.
+.Pp
+The function
+.Fn crypt
+returns a pointer to the encrypted value on success, and NULL on failure.
+.Pp
+The
+.Fn crypt
+and
+.Fn setkey
+functions all manipulate the same key space.
+.Sh SEE ALSO
+.Xr login 1 ,
+.Xr passwd 1 ,
+.Xr getpass 3 ,
+.Xr compat 5 ,
+.Xr passwd 5
+.Sh LEGACY SYNOPSIS
+.Fd #include <unistd.h>
+.Pp
+.Ft int
+.br
+.Fo encrypt
+.Fa "char *block"
+.Fa "int edflag"
+.Fc ;
+.Pp
+The function
+.Fn encrypt
+returns 0 on success and 1 on failure.
+.Pp
+.Ft void
+.br
+.Fo setkey
+.Fa "const char *key"
+.Fc ;
+.Pp
+The include file
+.In unistd.h
+is necessary and sufficient for the
+.Fn setkey
+function.
+.Sh BUGS
+The
+.Fn crypt
+function returns a pointer to static data, and subsequent calls to
+.Fn crypt
+will modify the same object.
+.Sh HISTORY
+A rotor-based
+.Fn crypt
+function appeared in
+.At v6 .
+The current style
+.Fn crypt
+first appeared in
+.At v7 .
+.Pp
+This library (FreeSec 1.0) was developed outside the United States of America
+as an unencumbered replacement for the U.S.-only libcrypt encryption
+library.
+Programs linked against the 
+.Fn crypt
+interface may be exported from the U.S.A. only if they use 
+.Fn crypt
+solely for authentication purposes and avoid use of
+the other programmer interfaces listed above. Special care has been taken
+in the library so that programs which only use the 
+.Fn crypt
+interface do not pull in the other components.
+.Sh AUTHOR
+David Burren <davidb@werj.com.au>

@@ -1,0 +1,73 @@
+.\" Copyright (c) 2004-2007 Apple Inc. All rights reserved.
+.Dd December 31, 2007
+.Dt PTHREAD_ATTR 3
+.Os
+.Sh NAME
+.Nm pthread_attr_getschedpolicy ,
+.Nm pthread_attr_setschedpolicy 
+.Nd thread attribute operations
+.Sh SYNOPSIS
+.Fd #include <pthread.h>
+.Ft int
+.Fo pthread_attr_getschedpolicy
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "int *restrict policy"
+.Fc
+.Ft int
+.Fo pthread_attr_setschedpolicy
+.Fa "pthread_attr_t *attr"
+.Fa "int policy"
+.Fc
+.Sh DESCRIPTION
+Thread attributes are used to specify parameters to
+.Fn pthread_create .
+One attribute object can be used in multiple calls to
+.Fn pthread_create ,
+with or without modifications between calls.
+.Pp
+The functions 
+.Fn pthread_attr_setschedpolicy
+and 
+.Fn pthread_attr_getschedpolicy , 
+set and get the attribute in the 
+.Fa attr 
+argument related to the scheduling policy.
+The value for the aforementioned attribute can be SCHED_FIFO, SCHED_RR and SCHED_OTHER.
+.Sh RETURN VALUES
+If successful, these functions return 0.
+Otherwise, an error number is returned to indicate the error.
+.Fn pthread_attr_getschedpolicy ,
+on success, will copy the value of the thread's scheduling policy attribute
+to the location pointed to by the second function parameter.
+.Sh ERRORS
+.Pp
+.Fn pthread_attr_getschedpolicy
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Pp
+.Fn pthread_attr_setschedpolicy
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.It Bq Er ENOTSUP
+Invalid or unsupported value for
+.Fa policy .
+.El
+.Sh SEE ALSO
+.Xr pthread_create 3 ,
+.Xr pthread_attr_init 3 ,
+.Xr pthread_attr_setschedparam 3 ,
+.Xr pthread_attr_setinheritsched 3
+.Sh STANDARDS
+.Fn pthread_attr_setschedpolicy ,
+.Fn pthread_attr_getschedpolicy 
+conform to
+.St -susv2

@@ -1,9 +1,29 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2015 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "DylibSearch.h"
-#include "config.h"
+#include "darling-config.h"
 #include <stdexcept>
 #include <iostream>
 #include "MachOObject.h"
 #include "MachOMgr.h"
+#include "VirtualPrefix.h"
 #include <regex.h>
 #include <unistd.h>
 #include <util/stlutils.h>
@@ -70,7 +90,19 @@ std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
 	
 	// Search in configuration
 	if (const char* aliasTarget = resolveAlias(dylib))
-		return aliasTarget;
+	{
+		std::string p;
+		
+		if (!strchr(aliasTarget, '/'))
+		{
+			p = LIB_PATH;
+			p += '/';
+			p += aliasTarget;
+			// std::cout << p << std::endl;
+		}
+		
+		return p;
+	}
 	
 	// Search in extra paths
 	std::string epath;
@@ -89,15 +121,39 @@ std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
 		return epath;
 
 	// If absolute, search in sysroot
-	if (dylib[0] == '/' && !MachOMgr::instance()->sysRoot().empty())
+	if (dylib[0] == '/')
 	{
-		std::string path = MachOMgr::instance()->sysRoot();
-		path += '/';
-		path += dylib;
+		const char* prefix = __prefix_get();
 		
-		epath = checkPresence(path);
-		if (!epath.empty())
-			return epath;
+		if (!MachOMgr::instance()->sysRoot().empty())
+		{
+			std::vector<std::string> roots = string_explode(MachOMgr::instance()->sysRoot(), ':');
+
+			for (const std::string& in_path : roots)
+			{
+				std::string path;
+				
+				if (prefix != nullptr)
+					path = prefix;
+				
+				path += in_path;
+				path += '/';
+				path += dylib;
+
+				epath = checkPresence(path);
+				if (!epath.empty())
+					return epath;
+			}
+		}
+		if (prefix != nullptr)
+		{
+			std::string path = prefix;
+			path += dylib;
+			
+			epath = checkPresence(path);
+			if (!epath.empty())
+				return epath;
+		}
 	}
 
 	return std::string();
@@ -141,9 +197,15 @@ std::string DylibSearch::resolveInLdPath(std::string name)
 
 std::string DylibSearch::resolveInPathList(std::string name, const std::vector<std::string>& paths)
 {
+	const char* prefix = __prefix_get();
 	for (const std::string& e : paths)
 	{
-		std::string path = e + "/" + name;
+		std::string path;
+		
+		if (prefix)
+			path = prefix;
+		
+		path += e + "/" + name;
 
 		if (::access(path.c_str(), F_OK) == 0)
 			return path;
@@ -165,12 +227,13 @@ const char* DylibSearch::resolveAlias(const std::string& library)
 			return it->second.c_str();
 	}
 
-	if (m_reFrameworkPath.matches(library))
+	std::smatch match;
+	if (std::regex_match(library, match, m_reFrameworkPath))
 	{
 		std::string name, version;
 		
-		name = m_reFrameworkPath.group(1);
-		version = m_reFrameworkPath.group(2);
+		name = match[1];
+		version = match[2];
 			
 		if (m_config->hasSection(name))
 		{
@@ -182,11 +245,11 @@ const char* DylibSearch::resolveAlias(const std::string& library)
 		}
 	}
 	
-	if (m_reDefaultFrameworkPath.matches(library))
+	if (std::regex_match(library, match, m_reDefaultFrameworkPath))
 	{
 		std::string name;
 		
-		name = m_reDefaultFrameworkPath.group(1);
+		name = match[1];
 		
 		if (m_config->hasSection(name))
 		{

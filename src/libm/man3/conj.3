@@ -1,0 +1,34 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CONJ 3
+.Os BSD 4
+.Sh NAME
+.Nm conj
+.Nd complex conjugation function
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double complex
+.Fn conj "double complex z"
+.Ft long double complex
+.Fn conjl "long double complex z"
+.Ft float complex
+.Fn conjf "float complex z"
+.Sh DESCRIPTION
+.Fn conj "z"
+computes the complex conjugate of a complex floating-point number
+.Fa z .
+.Pp
+If
+.Fa z
+= x+iy, then
+.Fn conj "z"
+= x-iy.
+.Sh NOTES
+If y is NaN, conj(x+yi) = x-yi; the sign bit of the NaN has been changed.
+.Sh SEE ALSO
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn conj
+function conforms to ISO/IEC 9899:1999(E).

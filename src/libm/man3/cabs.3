@@ -1,0 +1,139 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CABS 3
+.Os BSD 4
+.Sh NAME
+.Nm cabs
+.Nd complex norm (absolute value) function
+.br
+.Nm carg
+.Nd complex argument function
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double
+.Fn cabs "double complex z"
+.Ft long double
+.Fn cabsl "long double complex z"
+.Ft float
+.Fn cabsf "float complex z"
+.Ft double
+.Fn carg "double complex z"
+.Ft long double
+.Fn cargl "long double complex z"
+.Ft float
+.Fn cargf "float complex z"
+.Sh DESCRIPTION
+.Fn cabs "z"
+computes the norm (absolute value) of the complex floating-point number
+.Fa z .
+.Pp
+.Fn carg "z"
+computes the argument (also called phase angle) of the complex floating-point number
+.Fa z ,
+with a branch cut on the negative real axis.  The result is in
+the range
+.Bq -\*(Pi , \*(Pi ,
+and has the same sign as the imaginary part of
+.Fa z .
+.Sh EXAMPLES
+The function foo defined in the example below applies a non-linear rotation to the
+complex plane, such that points near the origin are not much affected, and points
+far from the origin are rotated by about pi/2.
+.Pp
+This is accomplished by using cabs and carg to convert to polar coordinates, then
+computing the transformation in that coordinate system, and finally converting back
+to the usual rectangular coordinate system.
+.Bd -literal -offset indent
+#include <complex.h>
+#include <math.h>
+
+double complex foo(double complex z) {
+  // get the polar coordinates of z
+  double r = cabs(z);
+  double theta = carg(z);
+
+  // add a value dependent on r to theta
+  theta += atan(r);
+
+  // now change back to rectangular coordinates and
+  // return the new complex number
+  return r*cos(theta) + r*sin(theta)*I;
+}
+.Ed
+.Sh SPECIAL VALUES
+.Fn cabs "x + yi" ,
+.Fn cabs "y + xi" ,
+and
+.Fn cabs "x - yi"
+are equivalent.  This is used to abbreviate the specification of special values.
+.Pp
+.Fn cabs "x ± 0i"
+is equivalent to
+.Fn fabs "x" .
+.Pp
+.Fn cabs "±inf + yi"
+returns inf even if y is a NaN.
+.Pp
+.Fn cabs "x + NaN i"
+returns NaN, for finite x.
+.Pp
+.Fn cabs "NaN + NaN i"
+returns NaN.
+.Pp
+.Fn carg "-0 ± 0i"
+returns ±pi.
+.Pp
+.Fn carg "+0 ± 0i"
+returns ±0.
+.Pp
+.Fn carg "x ± 0i"
+returns ±pi for x < 0.
+.Pp
+.Fn carg "x ± 0i"
+returns ±0 for x > 0.
+.Pp
+.Fn carg "±0 + yi"
+returns -pi/2 for y < 0.
+.Pp
+.Fn carg "±0 + yi"
+returns +pi/2 for y > 0.
+.Pp
+.Fn carg "-inf ± yi"
+returns ±pi for finite y > 0.
+.Pp
+.Fn carg "+inf ± yi"
+returns ±0 for finite y > 0.
+.Pp
+.Fn carg "x ± inf i"
+returns ±pi/2 for finite x.
+.Pp
+.Fn carg "-inf ± inf i"
+returns ±3*pi/4.
+.Pp
+.Fn carg "+inf ± inf i"
+returns ±pi/4.
+.Pp
+.Fn carg "x + yi"
+returns NaN if either of x or y is NaN.
+.Sh NOTES
+.Fn cabs
+and
+.Fn carg
+are fully specified in terms of real functions:
+.Bd -literal -offset indent
+cabs(x + iy) = hypot(x,y)
+.br
+carg(x + iy) = atan2(y,x).
+.Ed
+.Sh SEE ALSO
+.Xr hypot 3 ,
+.Xr atan2 3 ,
+.Xr fabs 3 ,
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn cabs
+and
+.Fn carg
+functions conform to ISO/IEC 9899:1999(E).

@@ -1,0 +1,130 @@
+.\" Copyright (c) 1980, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)intro.3	8.1 (Berkeley) 6/5/93
+.\" $FreeBSD: src/share/man/man3/intro.3,v 1.14 2001/08/07 15:48:38 ru Exp $
+.\"
+.Dd Aug 17, 2006
+.Dt INTRO 3
+.Os
+.Sh NAME
+.Nm intro
+.Nd introduction to the C libraries
+.Sh DESCRIPTION
+This section provides an overview of the C
+library functions, their error returns and other
+common definitions and concepts.
+Most of these functions are available from the System library,
+.Em libSystem .
+Other libraries
+must be indicated at compile time with the
+.Fl l
+option of the compiler.
+.Pp
+The various libraries (followed by the loader flag):
+.Bl -tag -width "libSystem (-lSystem)"
+.It Xr libSystem Pq Fl l Ns Ar System
+Standard C library functions.
+When using the C compiler
+.Xr cc 1 ,
+it is not necessary
+to supply the loader flag
+.Fl l Ns Ar System
+for these functions.
+There are several `libraries' or groups of functions included inside of
+.Xr libSystem :
+the standard
+.Tn I/O
+routines,
+database routines,
+bit operators,
+string operators,
+character tests and character operators,
+des encryption routines,
+storage allocation, time functions, signal handling and more.
+.Pp
+For compatibility with other systems, which provide these capabilities in
+separate libraries (such as
+.Xr libc ) ,
+symbolic links are provided for
+.Fl l Ns Ar c ,
+.Fl l Ns Ar dbm ,
+.Fl l Ns Ar dl ,
+.Fl l Ns Ar info ,
+.Fl l Ns Ar m ,
+.Fl l Ns Ar poll ,
+.Fl l Ns Ar pthread
+and
+.Fl l Ns Ar rpcsvc ;
+they all point to
+.Xr libSystem .
+.It Xr libcurses Pq Fl l Ns Ar curses Fl l Ns Ar termcap
+Terminal independent screen management routines
+for two dimensional non-bitmap display terminals.
+(See
+.Xr ncurses 3 . )
+.It Xr libl Pq Fl l Ns Ar l
+The library for
+.Xr lex 1 .
+.It Xr libtermcap Pq Fl l Ns Ar termcap
+The terminal independent operation library package.
+(See
+.Xr termcap 3 . )
+.\" .It libvt0.a
+.It Xr liby Pq Fl l Ns Ar y
+The library for
+.Xr yacc 1 .
+.El
+.Sh FILES
+.Bl -tag -width /usr/lib/libSystem_profile.dylib -compact
+.It Pa /usr/lib/libSystem.dylib
+the main System library
+.It Pa /usr/lib/libSystem_debug.dylib
+the main System library compiled with debug support
+.It Pa /usr/lib/libSystem_profile.dylib
+the main System library compiled for profiling
+.El
+.Sh SEE ALSO
+.\" .Xr libc 3 ,
+.Xr cc 1 ,
+.Xr ld 1 ,
+.Xr nm 1 ,
+.Xr intro 2 ,
+.Xr stdio 3
+.\" .Sh LIST OF FUNCTIONS
+.\" .Bl -column "strncasecmpxxx" "system"
+.\" .Sy Name	Description
+.\" .El
+.Sh HISTORY
+An
+.Nm
+manual appeared in
+.At v7 .

@@ -1,0 +1,13 @@
+title 1
+	Some text for title1
+	and some more text
+title 2
+	The quicker brown fox ran all over the lazy dog.
+put a card before the first two
+	This is an example of a simple cardfile.
+show a fourth card
+	The fourth card
+	has a large amount of data,
+	more than the other cards.
+	At least, that is what I thought it should do, since I want to see how well
+	the forms package handles justification.

@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2015 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "dl_public.h"
 #include "MachOObject.h"
 #include <limits>
@@ -18,7 +37,6 @@
 #include "arch.h"
 #include "TLS.h"
 
-// FIXME: this needs to go away
 extern "C" int g_argc asm("NXArgc") = 0;
 extern "C" char** g_argv asm("NXArgv") = nullptr;
 
@@ -103,10 +121,14 @@ std::string MachOObject::expandLoaderPath(std::string path, MachOObject* loader)
 {
 	char* p;
 	path.replace(0, 12, loader->directory());
+
 	p = realpath(path.c_str(), nullptr);
-			
-	path = p;
-	free(p);
+	
+	if (p != nullptr)
+	{
+		path = p;
+		free(p);
+	}
 
 	return path;
 }
@@ -144,9 +166,11 @@ void MachOObject::load()
 	}
 	
 	loadSegments();
+	transitionState(dyld_image_state_mapped);
 	
 	if (m_slide > 0)
 		rebase();
+	transitionState(dyld_image_state_rebased);
 	
 	readSymbols();
 	readExports();
@@ -157,8 +181,10 @@ void MachOObject::load()
 	
 	performRelocations();
 	performBinds();
+	transitionState(dyld_image_state_bound);
+	transitionState(dyld_image_state_dependents_initialized);
 	
-	registerEHSection();
+	// registerEHSection();
 	
 	if (isMainModule())
 		fillInProgramVars();
@@ -169,6 +195,8 @@ void MachOObject::load()
 	
 	MachOMgr::instance()->notifyAdd(this);
 	runInitializers();
+
+	transitionState(dyld_image_state_initialized);
 	
 	m_file->closeFd();
 	
@@ -189,13 +217,14 @@ void MachOObject::unload()
 	if (!MachOMgr::instance()->isDestroying())
 	{
 		unloadSegments();
-		unregisterEHSection();
+		// unregisterEHSection();
 	}
 	
 	for (LoadableObject* dep : m_dependencies)
 		dep->delRef();
 	
 	m_dependencies.clear();
+	transitionState(dyld_image_state_terminated);
 }
 
 bool MachOObject::isLoaded() const
@@ -227,7 +256,7 @@ void MachOObject::loadSegments()
 		void* rv;
 		int flags = MAP_PRIVATE;
 		
-		if (strcmp(seg->segname, SEG_PAGEZERO) == 0)
+		if (strcmp(seg->segname, SEG_PAGEZERO) == 0 || seg->vmsize == 0)
 			continue;
 		
 		assert(seg->vmsize >= seg->filesize);
@@ -466,17 +495,29 @@ void MachOObject::writeBind(int type, void** ptr, void* newAddr, const std::stri
 
 void MachOObject::loadDependencies()
 {
-	for (std::string dylib : m_file->dylibs())
+	std::vector<const char*> dylibs = m_file->dylibs();
+	std::string path;
+	const char* libsystem_dylib = "/usr/lib/libSystem.B.dylib";
+
+	// libSystem MUST always be loaded first
+	// This is essentially a hack, but it should be safe.
+	LoadableObject* libSystem;
+
+	path = DylibSearch::instance()->resolve(libsystem_dylib, this);
+	libSystem = LoadableObject::instantiateForPath(path, this);
+	libSystem->load();
+
+	for (std::string dylib : dylibs)
 	{
 		LoadableObject* dep;
 		
 		if (dylib.empty())
 		{
-			ERROR() << "Empty dylib dependency in " << path();
+			ERROR() << "Empty dylib dependency in " << this->path();
 			continue;
 		}
 		
-		std::string path = DylibSearch::instance()->resolve(dylib, this);
+		path = DylibSearch::instance()->resolve(dylib, this);
 		if (path.empty())
 		{
 			std::stringstream ss;
@@ -484,7 +525,11 @@ void MachOObject::loadDependencies()
 			throw std::runtime_error(ss.str());
 		}
 		
-		dep = MachOMgr::instance()->lookup(path);
+		if (path == libSystem->path())
+			dep = libSystem;
+		else
+			dep = MachOMgr::instance()->lookup(path);
+
 		if (dep != nullptr)
 		{
 			dep->addRef();
@@ -497,6 +542,15 @@ void MachOObject::loadDependencies()
 			
 			m_dependencies.push_back(dep);
 		}
+	}
+
+	if (libSystem->refCount() > 1)
+		libSystem->delRef();
+	else
+	{
+		std::cerr << "Beware! This executable does not link against libSystem. "
+			"It is very likely a copy-protected executable which makes direct system calls.\n"
+			"Darling currently cannot support that.\n";
 	}
 }
 
@@ -576,10 +630,10 @@ void MachOObject::fillInProgramVars()
 	if (vars != nullptr)
 	{
 		vars->mh = &m_header;
-		*vars->NXArgcPtr = g_argc;
-		*vars->NXArgvPtr = (const char**) g_argv;
-		*vars->environPtr = (const char**) environ;
-		*vars->__prognamePtr = g_argv[0];
+		vars->NXArgcPtr = &g_argc;
+		vars->NXArgvPtr = (const char***) &g_argv;
+		vars->environPtr = (const char***) &environ;
+		vars->__prognamePtr = (const char**) &g_argv[0];
 	}
 	else
 	{
@@ -638,11 +692,14 @@ ProgramVars* MachOObject::getProgramVars()
 }
 
 // These are libgcc functions
-extern "C" void __register_frame(void*);
-extern "C" void __deregister_frame(void*);
+extern "C" void __register_frame(void*) __attribute__((weak));
+extern "C" void __deregister_frame(void*) __attribute__((weak));
 
 void MachOObject::registerEHSection()
 {
+	if (!__register_frame)
+		return;
+
 	auto eh_frame = m_file->get_eh_frame();
 	if (!eh_frame.first)
 		return;
@@ -701,8 +758,11 @@ void MachOObject::performRelocations()
 		uintptr_t* ptr = (uintptr_t*) (uintptr_t(rel->addr) + m_slide);
 		uintptr_t symbol;
 		uintptr_t value = *ptr;
+		int libraryOrdinal;
 
-		symbol = (uintptr_t) resolveSymbol(rel->name);
+		libraryOrdinal = usesTwoLevelNamespace() ? rel->ordinal : MachO::Bind::OrdinalSpecialFlatLookup;
+
+		symbol = (uintptr_t) resolveSymbol(rel->name, libraryOrdinal);
 
 		value += symbol;
 
@@ -740,11 +800,14 @@ void* MachOObject::performBind(MachO::Bind* bind)
 	if (bind->type == BIND_TYPE_POINTER || bind->type == BIND_TYPE_STUB)
 	{
 		void* addr = nullptr;
-		
+
 		if (bind->is_classic && bind->is_local)
 			addr = (void*) bind->value;
 		else
-			addr = resolveSymbol(bind->name);
+		{
+			int ordinal = usesTwoLevelNamespace() ? bind->ordinal : MachO::Bind::OrdinalSpecialFlatLookup;
+			addr = resolveSymbol(bind->name, ordinal);
+		}
 		
 		if (!addr && !bind->is_weak)
 		{
@@ -776,7 +839,7 @@ void* MachOObject::performBind(MachO::Bind* bind)
 		}
 #endif
 		
-		//if (addr != nullptr)
+		if (addr != nullptr)
 			writeBind(bind->type, (void**)(bind->vmaddr + m_slide), addr, bind->name);
 		
 		return addr;
@@ -789,9 +852,10 @@ void* MachOObject::performBind(MachO::Bind* bind)
 	}
 }
 
-void* MachOObject::resolveSymbol(const std::string& name)
+void* MachOObject::resolveSymbol(const std::string& name, int libraryOrdinal)
 {
 	void* addr;
+	void* module;
 	
 	if (name.empty())
 		return nullptr;
@@ -804,8 +868,31 @@ void* MachOObject::resolveSymbol(const std::string& name)
 		lookupDyldFunction(name.c_str(), &addr);
 		return addr;
 	}
+
+	if (MachOMgr::instance()->forceFlatNamespace())
+		libraryOrdinal = MachO::Bind::OrdinalSpecialFlatLookup;
 	
-	return __darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str() + 1);
+	switch (libraryOrdinal)
+	{
+		case MachO::Bind::OrdinalSpecialSelf:
+			module = this;
+			break;
+		case MachO::Bind::OrdinalSpecialExecutable:
+			module = DARWIN_RTLD_MAIN_ONLY;
+			break;
+		case MachO::Bind::OrdinalSpecialFlatLookup:
+			module = DARWIN_RTLD_DEFAULT;
+			break;
+		default:
+		{
+			if (libraryOrdinal > 0 && libraryOrdinal <= m_dependencies.size())
+				module = m_dependencies[libraryOrdinal-1];
+			else
+				return nullptr;
+		}
+	}
+
+	return __darwin_dlsym(module, name.c_str() + 1);
 }
 
 void MachOObject::runInitializers()
@@ -902,6 +989,16 @@ void MachOObject::run()
 		throw std::runtime_error("Tried to run a file that is not the main module");
 	
 	char* apple[2] = { const_cast<char*>(m_absolutePath.c_str()), nullptr };
+	void (*pAtExit)(void(*)());
+
+	pAtExit = reinterpret_cast<void(*)(void(*)())>(MachOMgr::instance()->getExportedSymbol("atexit"));
+
+	if (pAtExit != nullptr)
+	{
+		pAtExit([]() {
+				MachOMgr::instance()->atexit();
+		});
+	}
 
 #ifdef HAS_DEBUG_HELPERS
 	if (MachOMgr::instance()->useTrampolines())
@@ -919,9 +1016,18 @@ void MachOObject::run()
 		LOG << "Running main at " << (void*) m_file->main() << "...\n";
 		
 		int (*pMain)(int, char**, char**, char**) = reinterpret_cast<int (*)(int, char**, char**, char**)>(m_file->main() + m_slide);
+		void (*pExit)(int);
+
+		pExit = reinterpret_cast<void(*)(int)>(MachOMgr::instance()->getExportedSymbol("exit"));
 		
 		int rv = pMain(m_argc, m_argv, m_envp, apple);
-		exit(rv);
+
+		if (pExit != nullptr)
+			pExit(rv);
+		else
+			abort();
+
+		__builtin_unreachable();
 	}
 	else
 		throw std::runtime_error("No entry point found");
@@ -1110,5 +1216,9 @@ void* MachOObject::dyld_stub_binder_fixup(MachOObject** obj, uintptr_t lazyOffse
 	return (*obj)->doLazyBind(lazyOffset);
 }
 
+void MachOObject::atExit()
+{
+	runFinalizers();
+}
 
 } // namespace Darling

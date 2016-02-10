@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>kCSCheckFixVersion</key>
+	<string>1</string>
+	<key>kCSCheckFixUniversal</key>
+	<dict>
+		<key>7408115</key>
+		<dict>
+			<key>com.mackiev.3dweatherglobe</key>
+			<array>
+				<string>231</string>
+				<string>232</string>
+			</array>
+		</dict>
+		<key>9022571</key>
+		<dict>
+			<key>com.mackiev.3dweatherglobe</key>
+			<array>
+				<string>256</string>
+			</array>
+		</dict>
+	</dict>
+</dict>
+</plist>

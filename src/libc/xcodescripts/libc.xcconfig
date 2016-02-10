@@ -1,0 +1,107 @@
+#include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
+
+// Standard settings
+SUPPORTED_PLATFORMS = macosx iphoneos iphonesimulator
+SRCROOT_SEARCH_PATHS = $(SRCROOT)/include $(SRCROOT)/gen $(SRCROOT)/locale $(SRCROOT)/locale/FreeBSD $(SRCROOT)/pthreads $(SRCROOT)/stdtime/FreeBSD
+SYSTEM_FRAMEWORK_HEADERS = $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+HEADER_SEARCH_PATHS = $($(TARGET_NAME)_SEARCH_PATHS) $(DERIVED_FILES_DIR)/dtrace $(DERIVED_FILES_DIR)/$(CURRENT_ARCH) $(SRCROOT_SEARCH_PATHS) $(SYSTEM_FRAMEWORK_HEADERS) $(SDKROOT)/usr/local/include $(inherited)
+ALWAYS_SEARCH_USER_PATHS = YES
+USE_HEADERMAP = NO
+BUILD_VARIANTS = normal
+GCC_OPTIMIZATION_LEVEL = s
+GCC_C_LANGUAGE_STANDARD = gnu99
+GCC_ENABLE_OBJC_EXCEPTIONS = YES
+GCC_SYMBOLS_PRIVATE_EXTERN = NO
+GCC_DYNAMIC_NO_PIC = NO
+GCC_THUMB_SUPPORT = YES
+COPY_PHASE_STRIP = NO
+SKIP_INSTALL = YES
+INSTALLHDRS_SCRIPT_PHASE = YES
+VERSIONING_SYSTEM =
+COPY_PHASE_STRIP = NO
+STRIP_INSTALLED_PRODUCT = NO
+LD_DYLIB_INSTALL_NAME = /usr/lib/system/$(EXECUTABLE_NAME)
+
+BUILD_VARIANTS = normal debug
+
+GCC_VERSION = com.apple.compilers.llvm.clang.1_0
+GCC_VERSION[arch=armv6] = com.apple.compilers.llvmgcc42
+
+EXECUTABLE_PREFIX = libsystem_
+INSTALL_PATH = /usr/lib/system
+PUBLIC_HEADERS_FOLDER_PATH = /usr/include
+PRIVATE_HEADERS_FOLDER_PATH = /usr/local/include
+
+// Simulator
+EXECUTABLE_PREFIX[sdk=iphonesimulator*] = libsystem_sim_
+PUBLIC_HEADERS_FOLDER_PATH[sdk=iphonesimulator*] = $(SDKROOT)/usr/include
+PRIVATE_HEADERS_FOLDER_PATH[sdk=iphonesimulator*] = $(SDKROOT)/usr/local/include
+INSTALL_PATH[sdk=iphonesimulator*] = $(SDKROOT)/usr/lib/system
+
+BASE_PREPROCESSOR_MACROS = __LIBC__ __DARWIN_UNIX03=1 __DARWIN_64_BIT_INO_T=1 __DARWIN_NON_CANCELABLE=1 __DARWIN_VERS_1050=1 _FORTIFY_SOURCE=0
+OTHER_CFLAGS = -fdollars-in-identifiers $($(TARGET_NAME)_CFLAGS) $(VARIANT_PREPROCESSOR_MACROS)
+OTHER_CFLAGS_debug = -fstack-protector -fno-inline -O0 -DDEBUG=1
+
+GCC_PREPROCESSOR_DEFINITIONS = $(BASE_PREPROCESSOR_MACROS)
+GCC_PREPROCESSOR_DEFINITIONS[sdk=iphoneos*] = $(BASE_PREPROCESSOR_MACROS) LIBC_NO_LIBCRASHREPORTERCLIENT=1
+GCC_PREPROCESSOR_DEFINITIONS[sdk=iphonesimulator*] = $(BASE_PREPROCESSOR_MACROS) LIBC_NO_LIBCRASHREPORTERCLIENT=1
+
+// libsystem_c.dylib linking
+CR_LDFLAGS[sdk=macosx*] = -lCrashReporterClient
+LIBCOMPILER_RT_LDFLAGS = -lcompiler_rt
+LIBSYSTEM_C_LDFLAGS = -all_load -nostdlib -L/usr/lib/system -Wl,-interposable_list,$(DERIVED_FILES_DIR)/interposable.list -umbrella System $(CR_LDFLAGS) -lSystem -lsystem_kernel $(LIBCOMPILER_RT_LDFLAGS) @$(BUILT_PRODUCTS_DIR)/$(CURRENT_VARIANT).linklist
+LIBSYSTEM_C_LDFLAGS[sdk=iphonesimulator*] =
+
+// libPlatform.a architectures
+ARCH_FAMILY = $(ARCH_FAMILY_$(CURRENT_ARCH))
+ARCH_FAMILY_x86_64 = x86_64
+ARCH_FAMILY_i386 = i386
+ARCH_FAMILY_armv6 = arm
+ARCH_FAMILY_armv7 = arm
+ARCH_FAMILY_armv7f = arm
+ARCH_FAMILY_armv7k = arm
+
+// FreeBSD target
+FreeBSD_CFLAGS = -include $(SRCROOT)/fbsdcompat/_fbsd_compat_.h
+FreeBSD_SEARCH_PATHS = $(SRCROOT)/fbsdcompat $(SRCROOT)/gdtoa $(SRCROOT)/gdtoa/FreeBSD
+FreeBSD_EXCLUDED_SOURCE_GDTOA = gdtoa/FreeBSD/machdep* gdtoa-strtopx.c
+// Include the correct parts of gdtoa per-arch
+FreeBSD_INCLUDED_SOURCE_FILE_NAMES_x86_64 = gdtoa-strtopx.c machdep_ldisx.c
+FreeBSD_INCLUDED_SOURCE_FILE_NAMES_i386 = $(FreeBSD_INCLUDED_SOURCE_FILE_NAMES_x86_64)
+FreeBSD_INCLUDED_SOURCE_FILE_NAMES_armv7 = machdep_ldisd.c
+FreeBSD_INCLUDED_SOURCE_FILE_NAMES_armv7k = $(FreeBSD_INCLUDED_SOURCE_FILE_NAMES_armv7)
+FreeBSD_INCLUDED_SOURCE_FILE_NAMES_armv7f = $(FreeBSD_INCLUDED_SOURCE_FILE_NAMES_armv7)
+FreeBSD_INCLUDED_SOURCE_FILE_NAMES_armv6 = $(FreeBSD_INCLUDED_SOURCE_FILE_NAMES_armv7)
+
+// FreeBSD_gcc target
+FreeBSD_gcc_CFLAGS = -include $(SRCROOT)/fbsdcompat/_fbsd_compat_.h
+FreeBSD_gcc_SEARCH_PATHS = $(SRCROOT)/fbsdcompat $(SRCROOT)/gdtoa $(SRCROOT)/gdtoa/FreeBSD
+
+// NetBSD target
+NetBSD_CFLAGS = -include $(SRCROOT)/nbsdcompat/_nbsd_compat_.h
+NetBSD_SEARCH_PATHS = $(SRCROOT)/nbsdcompat
+
+// TRE target
+TRE_CFLAGS = -DHAVE_CONFIG_H
+TRE_SEARCH_PATHS = $(SRCROOT)/regex/TRE $(SRCROOT)/regex/FreeBSD
+
+// Files per architecture to exclude from the non-platform builds (because optimised versions exist in Platform)
+BASE_EXCLUDED_SOURCE_FILE_NAMES = $(BASE_EXCLUDED_SOURCE_FILE_NAMES_$(CURRENT_ARCH)) $(BASE_EXCLUDED_SOURCE_FILE_NAMES_$(PLATFORM_NAME))
+BASE_EXCLUDED_SOURCE_FILE_NAMES_x86_64 = MKGetTimeBaseInfo.c bcmp.c context-stubs.c kvm.c memcmp.c memset.c memset_pattern.c nlist.c strcpy.c strlcat.c strlcpy.c strlen.c strncmp.c strncpy.c
+BASE_EXCLUDED_SOURCE_FILE_NAMES_i386 = bcmp.c context-stubs.c memcmp.c memset.c memset_pattern.c strcpy.c strlcat.c strlcpy.c strlen.c strncmp.c strncpy.c
+BASE_EXCLUDED_SOURCE_FILE_NAMES_armv7 = bcmp.c memcmp.c memset.c memset_pattern.c strchr.c strlen.c strncmp.c strnlen.c strstr.c
+BASE_EXCLUDED_SOURCE_FILE_NAMES_armv7k = $(BASE_EXCLUDED_SOURCE_FILE_NAMES_armv7)
+BASE_EXCLUDED_SOURCE_FILE_NAMES_armv7f = $(BASE_EXCLUDED_SOURCE_FILE_NAMES_armv7)
+BASE_EXCLUDED_SOURCE_FILE_NAMES_armv6 = $(BASE_EXCLUDED_SOURCE_FILE_NAMES_armv7)
+
+// Rune support isn't included on iOS but there's no better way to exclude their complication
+BASE_EXCLUDED_SOURCE_FILE_NAMES_macosx = OSMemoryNotification.c OSThermalNotification.c
+BASE_EXCLUDED_SOURCE_FILE_NAMES_iphoneos = frune.c login.c logout.c mbrune.c runedepreciated.c setinvalidrune.c getmntinfo64.c
+BASE_EXCLUDED_SOURCE_FILE_NAMES_iphonesimulator = $(BASE_EXCLUDED_SOURCE_FILE_NAMES_iphoneos)
+
+// <rdar://problem/9513665> - collate.c crashes llvm-gcc on armv6 with -Os + -gdwarf-2
+COLLATE_C_CFLAGS_macosx_armv6 = -O1
+
+// ARMv6 thumb doesn't support all the instructions needed for OSAtomics
+OSATOMIC_C_CFLAGS_macosx_armv6 = -mno-thumb
+OSATOMIC_C_CFLAGS_iphoneos_armv6 = -mno-thumb

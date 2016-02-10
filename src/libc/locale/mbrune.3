@@ -1,0 +1,176 @@
+.\" Copyright (c) 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Paul Borman at Krystal Technologies.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"	@(#)mbrune.3	8.2 (Berkeley) 4/19/94
+.\" $FreeBSD: src/lib/libc/locale/mbrune.3,v 1.15 2003/02/06 11:04:46 charnier Exp $
+.\"
+.Dd April 19, 1994
+.Dt MBRUNE 3
+.Os
+.Sh NAME
+.Nm mbrune ,
+.Nm mbrrune ,
+.Nm mbmb
+.Nd multibyte rune support for C
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In rune.h
+.Ft char *
+.Fn mbrune "const char *string" "rune_t rune"
+.Ft char *
+.Fn mbrrune "const char *string" "rune_t rune"
+.Ft char *
+.Fn mbmb "const char *string" "char *pattern"
+.Sh DESCRIPTION
+.Bf Em
+The
+.Bx 4.4
+.Dq rune
+functions have been deprecated in favour of the
+.Tn ISO
+C99 extended multibyte and wide character facilities
+and should not be used in new applications.
+.Ef
+Consider working with wide characters instead, and using
+.Xr wcschr 3 ,
+.Xr wcsrchr 3 ,
+and
+.Xr wcsstr 3
+instead of these functions.
+.Pp
+These routines provide the corresponding functionality of
+.Fn strchr ,
+.Fn strrchr
+and
+.Fn strstr
+for multibyte strings.
+.Pp
+The
+.Fn mbrune
+function locates the first occurrence of
+.Fn rune
+in the string pointed to by
+.Fa string .
+The terminating
+.Dv NUL
+character is considered part of the string.
+If
+.Fa rune
+is
+.Ql \e0 ,
+.Fn mbrune
+locates the terminating
+.Ql \e0 .
+.Pp
+The
+.Fn mbrrune
+function
+locates the last occurrence of
+.Fa rune
+in the string
+.Fa string .
+If
+.Fa rune
+is
+.Ql \e0 ,
+.Fn mbrune
+locates the terminating
+.Ql \e0 .
+.Pp
+The
+.Fn mbmb
+function locates the first occurrence of the null-terminated string
+.Fa pattern
+in the null-terminated string
+.Fa string .
+If
+.Fa pattern
+is the empty string,
+.Fn mbmb
+returns
+.Fa string ;
+if
+.Fa pattern
+occurs nowhere in
+.Fa string ,
+.Fn mbmb
+returns
+.Dv NULL ;
+otherwise
+.Fn mbmb
+returns a pointer to the first character of the first occurrence of
+.Fa pattern .
+.Sh RETURN VALUES
+The function
+.Fn mbrune
+returns a pointer to the located character, or
+.Dv NULL
+if the character does not appear in the string.
+.Pp
+The
+.Fn mbrrune
+function
+returns a pointer to the character, or
+.Dv NULL
+if the character does not appear in the string.
+.Pp
+The
+.Fn mbmb
+function
+returns a pointer to the
+.Fa pattern ,
+or
+.Dv NULL
+if the
+.Fa pattern
+does not appear in the string.
+.Sh SEE ALSO
+.Xr rune 3 ,
+.Xr setlocale 3 ,
+.Xr euc 4 ,
+.Xr utf2 4 ,
+.Xr utf8 5
+.Sh HISTORY
+The
+.Fn mbrune ,
+.Fn mbrrune ,
+and
+.Fn mbmb
+functions
+first appeared in Plan 9 from Bell Labs as
+.Fn utfrune ,
+.Fn utfrrune ,
+and
+.Fn utfutf .

@@ -7,9 +7,19 @@ extern "C" bool g_loggingEnabled = false; // "debug" channel
 static bool m_traceEnabled = false;
 static bool m_errorEnabled = true;
 
-__attribute__((constructor)) static void initLogging()
+static void initLogging(int argc, const char* argv[], const char* envp[])
 {
-	const char* v = getenv("DYLD_DEBUG");
+	const char* v = nullptr;
+	
+	for (int i = 0; envp[i]; i++)
+	{
+		if (strncmp(envp[i], "DYLD_DEBUG=", 11) == 0)
+		{
+			v = envp[i] + 11;
+			break;
+		}
+	}
+
 	if (v != nullptr)
 	{
 		std::vector<std::string> specs = string_explode(v, ',', false);
@@ -36,6 +46,13 @@ __attribute__((constructor)) static void initLogging()
 		}
 	}
 }
+
+
+void (*const init_array []) (void)
+		__attribute__ ((section (".init_array"), aligned (sizeof (void *)))) =
+	{
+		(void (*)()) &initLogging
+	};
 
 bool Darling::debugChannelEnabled(DebugChannel channel)
 {
@@ -103,7 +120,7 @@ template<> void Darling::logPrint<std::string>(std::string value)
 template<> void Darling::logPrint<const char*>(const char* value)
 {
 	//if (g_loggingEnabled)
-		std::cerr << '\"' << value << '\"';
+		std::cerr << value;
 }
 template<> void Darling::logPrint<Darling::ArgName>(Darling::ArgName value)
 {

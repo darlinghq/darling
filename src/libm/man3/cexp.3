@@ -1,0 +1,78 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CEXP 3
+.Os BSD 4
+.Sh NAME
+.Nm cexp
+.Nd complex exponential function
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double complex
+.Fn cexp "double complex z"
+.Ft long double complex
+.Fn cexpl "long double complex z"
+.Ft float complex
+.Fn cexpf "float complex z"
+.Sh DESCRIPTION
+.Fn cexp "z"
+returns the complex exponential of
+.Fa z .
+.Pp
+cexp(conj(z)) = conj(cexp(z)), for all complex floating-point numbers z.
+.Sh SPECIAL VALUES
+The conjugate symmetry of cexp() is used to abbreviate the specification of special values.
+.Pp
+.Fn cexp "±0 + 0i"
+returns 1 + 0i.
+.Pp
+.Fn cexp "x + inf i"
+returns NaN + NaN i, and raises the invalid flag, for finite
+.Fa x .
+.Pp
+.Fn cexp "x + NaN i"
+returns NaN + NaN i, for finite
+.Fa x .
+.Pp
+.Fn cexp "inf + 0i"
+returns inf + 0i.
+.Pp
+For the following two cases, cis(y) denotes cos(y) + I*sin(y).
+.Pp
+.Fn cexp "-inf + yi"
+returns 0*cis(y), for finite
+.Fa y .
+.Pp
+.Fn cexp "inf + yi"
+returns inf*cis(y), for finite nonzero
+.Fa y .
+.Pp
+.Fn cexp "-inf + inf i"
+returns -0 + 0i.
+.Pp
+.Fn cexp "inf + inf i"
+returns -inf + NaN i, and raises the invalid flag.
+.Pp
+.Fn cexp "-inf + NaN i"
+returns -0 + 0i.
+.Pp
+.Fn cexp "inf + NaN i"
+returns -inf + NaN i.
+.Pp
+.Fn cexp "NaN + 0i"
+returns NaN + 0i.
+.Pp
+.Fn cexp "NaN + yi"
+returns NaN + NaN i for all nonzero numbers y.
+.Pp
+.Fn cexp "NaN + NaN i"
+returns NaN + NaN i.
+.Pp
+.Sh SEE ALSO
+.Xr exp 3
+.Xr clog 3
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn cexp
+function conforms to ISO/IEC 9899:1999(E).

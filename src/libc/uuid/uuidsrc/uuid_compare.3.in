@@ -1,0 +1,66 @@
+.\" Copyright 1999 Andreas Dilger (adilger@enel.ucalgary.ca)
+.\"
+.\" %Begin-Header%
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, and the entire permission notice in its entirety,
+.\"    including the disclaimer of warranties.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. The name of the author may not be used to endorse or promote
+.\"    products derived from this software without specific prior
+.\"    written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, ALL OF
+.\" WHICH ARE HEREBY DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE
+.\" LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+.\" OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+.\" BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+.\" LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+.\" USE OF THIS SOFTWARE, EVEN IF NOT ADVISED OF THE POSSIBILITY OF SUCH
+.\" DAMAGE.
+.\" %End-Header%
+.\" 
+.\" Created  Wed Mar 10 17:42:12 1999, Andreas Dilger
+.TH UUID_COMPARE 3 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS_VERSION@"
+.SH NAME
+uuid_compare \- compare whether two UUIDs are the same
+.SH SYNOPSIS
+.nf
+.B #include <uuid/uuid.h>
+.sp
+.BI "int uuid_compare(uuid_t " uu1 ", uuid_t " uu2)
+.fi
+.SH DESCRIPTION
+The
+.B uuid_compare
+function compares the two supplied uuid variables
+.IR uu1 " and " uu2
+to each other.
+.SH RETURN VALUE
+Returns an integer less than, equal to, or greater than zero if 
+.I uu1
+is found,  respectively, to be lexigraphically less than, equal, or 
+greater than 
+.IR uu2 .
+.SH AUTHOR
+Theodore Y. Ts'o
+.SH AVAILABILITY
+.UR http://e2fsprogs.sourceforge.net/
+http://e2fsprogs.sourceforge.net/
+.UE
+.SH "SEE ALSO"
+.BR uuid (3),
+.BR uuid_clear (3),
+.BR uuid_copy (3),
+.BR uuid_generate (3),
+.BR uuid_is_null (3),
+.BR uuid_parse (3),
+.BR uuid_unparse (3)

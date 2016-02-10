@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.apple.SCHelper</string>
+	<key>Program</key>
+	<string>/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/Helpers/SCHelper</string>
+	<key>MachServices</key>
+	<dict>
+		<key>com.apple.SystemConfiguration.helper</key>
+		<true/>
+	</dict>
+	<key>POSIXSpawnType</key>
+	<string>Adaptive</string>
+</dict>
+</plist>

@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2015 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "MachOMgr.h"
 #include <cassert>
 #include <algorithm>
@@ -11,12 +30,15 @@ namespace Darling {
 
 bool MachOMgr::m_bTerminated = false;
 
+extern "C" char** __darwin_environ;
+
 MachOMgr::MachOMgr()
 : m_mainModule(nullptr), m_bindAtLaunch(false), m_printInitializers(false),
   m_printLibraries(false), m_printSegments(false), m_printBindings(false),
-  m_printRpathExpansion(false), m_loadAny(false),
+  m_printRpathExpansion(false), m_loadAny(false), m_forceFlatNamespace(false),
   m_addedDefaultLoader(false), m_destroying(false)
 {
+	__darwin_environ = environ;
 }
 
 MachOMgr::~MachOMgr()
@@ -37,6 +59,14 @@ MachOMgr::~MachOMgr()
 	}
 	
 	m_bTerminated = true;
+}
+
+void MachOMgr::atexit()
+{
+	for (LoadableObject* obj : m_loadablesInOrder)
+	{
+		obj->atExit();
+	}
 }
 
 MachOMgr* MachOMgr::instance()
@@ -114,11 +144,11 @@ void MachOMgr::deregisterUnloadHook(LoaderHookFunc* func)
 
 void MachOMgr::addDefaultLoader()
 {
-	if (!m_addedDefaultLoader)
-	{
-		add(new NativeObject(RTLD_DEFAULT, "<default>"));
-		m_addedDefaultLoader = true;
-	}
+//	if (!m_addedDefaultLoader)
+//	{
+//		add(new NativeObject(RTLD_DEFAULT, "<default>"));
+//		m_addedDefaultLoader = true;
+//	}
 }
 
 void MachOMgr::add(MachOObject* obj, bool mainModule)
@@ -175,7 +205,9 @@ void MachOMgr::remove(MachOObject* obj)
 void MachOMgr::add(NativeObject* obj)
 {
 	LOG << "MachOMgr::add: "  << obj << " - " << obj->name() << std::endl;
+	m_objectNames[obj->path()] = obj;
 	m_loadablesInOrder.push_back(obj);
+	// m_objectHeaders[(struct mach_header*) obj->baseAddress()] = obj;
 	m_nativeRefToObject[obj->nativeRef()] = obj;
 }
 
@@ -185,6 +217,10 @@ void MachOMgr::remove(NativeObject* obj)
 	auto it = std::find(m_loadablesInOrder.begin(), m_loadablesInOrder.end(), obj);
 	if (it != m_loadablesInOrder.end())
 		m_loadablesInOrder.erase(it);
+	//auto it2 = m_objectHeaders.find(obj->baseAddress());
+	//if (it2 != m_objectHeaders.end())
+	//	m_objectHeaders.erase(it2);
+	m_objectNames.erase(obj->path());
 	m_nativeRefToObject.erase(obj->nativeRef());
 }
 

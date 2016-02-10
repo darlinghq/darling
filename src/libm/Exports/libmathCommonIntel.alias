@@ -1,0 +1,7 @@
+_exp2	_exp2$fenv_access_off
+_fdim	_fdim$fenv_access_off
+_fmax	_fmax$fenv_access_off
+_fmin	_fmin$fenv_access_off
+_log2	_log2$fenv_access_off
+_modff	_modff$fenv_access_off
+_remquo	_remquo$fenv_access_off

@@ -1,0 +1,195 @@
+/*
+ * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989,1988,1987 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+/*
+ * File:	mach/memory_object_control.defs
+ *
+ * Abstract:
+ *	Basic Mach external memory management interface declaration.
+ */
+
+subsystem
+#if	KERNEL_USER
+	  KernelUser
+#endif	/* KERNEL_USER */
+#if	KERNEL_SERVER
+	  KernelServer
+#endif	/* KERNEL_SERVER */
+		     memory_object_control 2000;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+/*
+ *      Retrieves the attributes currently associated with
+ *      a memory object.
+ */
+routine memory_object_get_attributes(
+                memory_control	: memory_object_control_t;
+		flavor		: memory_object_flavor_t;
+	out	attributes	: memory_object_info_t, CountInOut);
+
+
+routine memory_object_change_attributes(
+                memory_control	: memory_object_control_t;
+                flavor          : memory_object_flavor_t;
+        	attributes      : memory_object_info_t
+		);
+
+routine memory_object_synchronize_completed (
+		memory_control	: memory_object_control_t;
+		offset		: memory_object_offset_t;
+		length		: memory_object_size_t);
+
+/*
+ *	Control use of the data associated with the given
+ *	memory object.  For each page in the given range,
+ *	perform the following operations, in order:
+ *		1)  restrict access to the page (disallow
+ *		    forms specified by "prot");
+ *		2)  write back modifications (if "should_return"
+ *		    is RETURN_DIRTY and the page is dirty, or
+ *		    "should_return" is RETURN_ALL and the page
+ * 		    is either dirty or precious); and,
+ *		3)  flush the cached copy (if "should_flush"
+ *		    is asserted).
+ *	The set of pages is defined by a starting offset
+ *	("offset") and size ("size").  Only pages with the
+ *	same page alignment as the starting offset are
+ *	considered.
+ */
+routine memory_object_lock_request(
+		memory_control	: memory_object_control_t;
+		offset		: memory_object_offset_t;
+		size		: memory_object_size_t;
+	out	resid_offset	: memory_object_offset_t;
+	out	io_errno	: integer_t;
+		should_return	: memory_object_return_t;
+		flags		: integer_t;
+		lock_value	: vm_prot_t
+		);
+
+
+/*
+ */
+routine memory_object_destroy(
+		memory_control	: memory_object_control_t;
+		reason		: kern_return_t);
+
+/*
+ *	The pager gets memory_object_data_request and memory_object_data_return
+ *	calls to inform it that data within the memory object needs to be
+ *	manipulated.  Those requests simply identify the range in the memory
+ *	object that needs servicing, but not the data itself.  The pager
+ *	turns around and requests one (or several) Universal Page Lists (UPLs)
+ *	from the VM cache object associated with the memory object via one
+ *	of the following calls.  These UPLs are then committed (or aborted)
+ *	in whole (or in ranges) as the processing completes.
+ */
+
+routine memory_object_upl_request(
+		memory_control	: memory_object_control_t;
+	in	offset		: memory_object_offset_t;
+	in	size		: upl_size_t;
+	out	upl		: upl_t;
+	out	page_list	: upl_page_info_array_t, CountInOut;
+	in	cntrl_flags	: integer_t);
+
+routine memory_object_super_upl_request(
+		memory_control		: memory_object_control_t;
+	in	offset		: memory_object_offset_t;
+	in	size		: upl_size_t;
+	in	super_size	: upl_size_t;
+	out	upl		: upl_t;
+	out	page_list	: upl_page_info_array_t, CountInOut;
+	in	cntrl_flags	: integer_t);
+
+
+routine memory_object_cluster_size(
+		control		: memory_object_control_t;
+	out	start		: memory_object_offset_t;
+	out	length		: vm_size_t;
+	out	io_streaming	: uint32_t;
+	in	fault_info	: memory_object_fault_info_t);
+
+/*
+ * This functions allows a single page to be manipulated with less overhead
+ * than creating a UPL.
+ */
+routine memory_object_page_op(
+		memory_control	: memory_object_control_t;
+	in	offset		: memory_object_offset_t;
+	in	ops		: integer_t;
+	out	phys_entry	: uint32_t;
+	out	flags		: integer_t);
+
+routine memory_object_recover_named(
+		memory_control	: memory_object_control_t;
+	in	wait_on_terminating : boolean_t);
+
+routine memory_object_release_name(
+		memory_control	: memory_object_control_t;
+		flags		: integer_t);
+
+routine memory_object_range_op(
+		memory_control	: memory_object_control_t;
+	in	offset_beg	: memory_object_offset_t;
+	in	offset_end	: memory_object_offset_t;
+	in      ops             : integer_t;
+	out     range		: integer_t);
+
+/* vim: set ft=c : */

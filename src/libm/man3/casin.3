@@ -1,0 +1,59 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CASIN 3
+.Os BSD 4
+.Sh NAME
+.Nm casin
+.Nd complex inverse sine function
+.br
+.Nm catan
+.Nd complex inverse tangent function
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double complex
+.Fn casin "double complex z"
+.Ft long double complex
+.Fn casinl "long double complex z"
+.Ft float complex
+.Fn casinf "float complex z"
+.Ft double complex
+.Fn catan "double complex z"
+.Ft long double complex
+.Fn catanl "long double complex z"
+.Ft float complex
+.Fn catanf "float complex z"
+.Sh DESCRIPTION
+.Fn casin "z"
+computes the inverse sine of the complex floating-point number
+.Fa z ,
+with branch cuts outside the interval
+.Bq -1, 1
+on the real axis.
+.Pp
+.Fn ctan "z"
+computes the inverse tangent of the complex floating-point number
+.Fa z ,
+with branch cuts outside the interval
+.Bq -i, i
+on the imaginary axis.
+.Pp
+Both functions return values in a strip of the complex plane with unbounded imaginary part, and real part in the interval
+.Bq -Pi/2, Pi/2 .
+.Sh NOTES
+casin and catan are defined in terms of the complex inverse hyperbolic functions as follows:
+.Bd -literal -offset indent
+casin(z) = -i * casinh(i*z),
+.br
+catan(z) = -i * catanh(i*z).
+.Ed
+.Sh SEE ALSO
+.Xr casinh 3
+.Xr catanh 3
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn casin
+and
+.Fn catan
+functions conform to ISO/IEC 9899:1999(E).

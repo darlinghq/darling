@@ -1,0 +1,71 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CACOSH 3
+.Os BSD 4
+.Sh NAME
+.Nm cacosh
+.Nd complex inverse hyperbolic cosine function
+.Sh SYNOPSIS
+.Ft double complex
+.Fn cacosh "double complex z"
+.Ft long double complex
+.Fn cacoshl "long double complex z"
+.Ft float complex
+.Fn cacoshf "float complex z"
+.Sh DESCRIPTION
+.Fn cacosh "z"
+computes the inverse hyperbolic cosine of the complex floating-point number
+.Fa z ,
+with a branch cut on the interval
+.Bq -inf, 1
+along the real axis.
+.Pp
+.Fn cacosh
+returns values in a half-strip of the complex plane with positive real part and imaginary part in the interval
+.Bq -Pi , Pi .
+.Pp
+For all complex floating point numbers z, cacosh(conj(z)) = conj(cacosh(z)).
+.Sh SPECIAL VALUES
+The conjugate symmetry of cacosh() is used to abbreviate the specification of special values.
+.Pp
+.Fn cacosh "±0 + 0i"
+returns 0 + Pi/2 i.
+.Pp
+.Fn cacosh "x + inf i"
+returns inf + Pi/2 i, for finite x.
+.Pp
+.Fn cacosh "x + NaN i"
+returns NaN + NaN i, for finite nonzero x.
+.Pp
+.Fn cacosh "-inf + yi"
+returns inf + Pi i, for finite positive-signed y.
+.Pp
+.Fn cacosh "inf + yi"
+returns inf + 0i, for finite positive-signed y.
+.Pp
+.Fn cacosh "-inf + inf i"
+returns inf + 3Pi/4 i.
+.Pp
+.Fn cacosh "inf + inf i"
+returns inf + Pi/4 i.
+.Pp
+.Fn cacosh "±inf + NaN i"
+returns inf + NaN i.
+.Pp
+.Fn cacosh "NaN + yi"
+returns NaN + NaN i, for finite y.
+.Pp
+.Fn cacosh "NaN + inf i"
+returns inf + NaN i.
+.Pp
+.Fn cacosh "NaN + NaN i"
+returns NaN + NaN i.
+.Sh NOTES
+.Sh SEE ALSO
+.Xr ccosh 3
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn cacosh
+function conforms to ISO/IEC 9899:1999(E).

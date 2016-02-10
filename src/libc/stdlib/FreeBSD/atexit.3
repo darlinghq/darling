@@ -1,0 +1,111 @@
+.\" Copyright (c) 1990, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek and the American National Standards Committee X3,
+.\" on Information Processing Systems.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)atexit.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/stdlib/atexit.3,v 1.11 2007/01/09 00:28:09 imp Exp $
+.\"
+.Dd May 20, 2008
+.Dt ATEXIT 3
+.Os
+.Sh NAME
+.Nm atexit
+.Nd register a function to be called on exit
+.Sh SYNOPSIS
+.In stdlib.h
+.Ft int
+.Fn atexit "void (*func)(void)"
+#ifdef UNIFDEF_BLOCKS
+.Ft int
+.Fn atexit_b "void (^block)(void)"
+#endif
+.Sh DESCRIPTION
+The
+.Fn atexit
+function
+registers the function
+.Fa func
+to be called at program exit, whether via
+.Xr exit 3
+or via return from the program's
+.Fn main .
+Functions so registered are called in reverse order;
+no arguments are passed.
+#ifdef UNIFDEF_BLOCKS
+.Pp
+The
+.Fn atexit_b
+function is like
+.Fn atexit
+except the callback is a block pointer instead of a function pointer.
+.Bd -ragged -offset indent
+Note: The
+.Fn Block_copy
+function (defined in
+.In Blocks.h )
+is used by
+.Fn atexit_b
+to make a copy of the block, especially for the case when a stack-based
+block might go out of scope when the subroutine returns.
+.Ed
+#endif
+.Pp
+These callbacks must not call
+.Fn exit ;
+if it should be necessary to terminate the process while in such a
+function, the
+.Xr _exit 2
+function should be used.
+(Alternatively, the callbacks may cause abnormal
+process termination, for example by calling
+.Xr abort 3 . )
+.Pp
+At least 32 callbacks can always be registered;
+more are allowed as long as sufficient memory can be allocated.
+.\" XXX {ATEXIT_MAX} is not implemented yet
+.Sh RETURN VALUES
+#ifdef UNIFDEF_BLOCKS
+.ds ATEXIT_B atexit_b
+#endif
+.Rv -std atexit \*[ATEXIT_B]
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+No memory was available to add the function to the list.
+The existing list of functions is unmodified.
+.El
+.Sh SEE ALSO
+.Xr exit 3
+.Sh STANDARDS
+The
+.Fn atexit
+function
+conforms to
+.St -isoC .

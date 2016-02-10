@@ -1,0 +1,69 @@
+module MachO [system] {
+  export *
+  
+  module arch {
+    header "arch.h"
+    export *
+  }
+
+  module compact_unwind_encoding {
+    header "compact_unwind_encoding.h"
+    export *
+  }
+  
+  module dyld {
+    header "dyld.h"
+    export *
+  }
+
+  module dyld_images {
+    header "dyld_images.h"
+    export *
+  }
+
+  module fat {
+    header "fat.h"
+    export *
+  }
+
+  module getsect {
+    header "getsect.h"
+    export *
+  }
+
+  module ldsyms {
+    header "ldsyms.h"
+    export *
+  }
+
+  module loader {
+    header "loader.h"
+    export *
+  }
+
+  module nlist {
+    header "nlist.h"
+    export *
+  }
+
+  module ranlib {
+    header "ranlib.h"
+    export *
+  }
+
+  module reloc {
+    header "reloc.h"
+    export *
+  }
+
+  module stab {
+    header "stab.h"
+    export *
+  }
+
+  module swap {
+    header "swap.h"
+    export *
+  }
+}
+

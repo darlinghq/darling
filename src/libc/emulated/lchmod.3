@@ -1,0 +1,54 @@
+.Dd Oct 31, 2005
+.Dt LCHMOD 3
+.Os
+.Sh NAME
+.Nm lchmod
+.Nd change mode of file
+.Sh SYNOPSIS
+.In sys/stat.h
+.In unistd.h
+.Ft int
+.Fn lchmod "const char *path" "mode_t flags"
+.Sh DESCRIPTION
+The function
+.Fn lchmod
+sets the file permission bits of the file specified by the pathname
+.Fa path
+to
+.Fa mode .
+See
+.Xr chmod 2
+for the values of the
+.Fa flags .
+.Pp
+The
+.Fn lchmod
+call is like
+.Fn chmod
+except when the named file is a symbolic link,
+in which case
+.Fn lchmod
+will change the flags of the link itself,
+rather than the file it points to.
+.Sh NOTE
+Instead of being a system call,
+.Fn lchmod
+is emulated using
+.Xr setattrlist 2 .
+Not all file systems support
+.Xr setattrlist 2 .
+.Sh RETURN VALUES
+Upon successful completion, a value of 0 is returned.
+Otherwise, -1 is returned and the global variable
+.Va errno
+is set to indicate the error.
+.Sh ERRORS
+The
+.Fn lchmod
+call may return the same errors as
+.Xr chmod 2
+and
+.Xr setattrlist 2 .
+.Sh SEE ALSO
+.Xr chmod 2 ,
+.Xr setattrlist 2

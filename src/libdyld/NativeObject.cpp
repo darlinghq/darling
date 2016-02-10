@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2015 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "NativeObject.h"
 #include <dlfcn.h>
 #include <sstream>
@@ -6,8 +25,12 @@
 #include <iostream>
 #include <cstdlib>
 #include <link.h>
+#include <regex>
 
 namespace Darling {
+
+static std::regex g_reObjcSymbol("(OBJC_[^\\$]+)\\$_(.+)");
+static std::regex g_reObjcEhSymbol("OBJC_EHTYPE_.+");
 
 NativeObject::NativeObject(const std::string& path)
 : m_path(path), m_name(path)
@@ -22,9 +45,14 @@ NativeObject::NativeObject(void* nativeRef, const std::string& name)
 void NativeObject::load()
 {
 	int flags = 0;
+	struct link_map* lm;
 
 	flags |= globalExports() ? RTLD_GLOBAL : RTLD_LOCAL;
-	flags |= bindAllAtLoad() ? RTLD_NOW : RTLD_LAZY;
+	//flags |= bindAllAtLoad() ? RTLD_NOW : RTLD_LAZY;
+	flags |= RTLD_LAZY;
+	
+	if (MachOMgr::instance()->printLibraries())
+		std::cerr << "dyld: Loading " << m_path << std::endl;
 
 	m_nativeRef = ::dlopen(m_path.c_str(), flags);
 	if (!m_nativeRef)
@@ -45,6 +73,16 @@ void NativeObject::load()
 		
 		MachOMgr::instance()->add(this);
 	}
+
+	if (::dlinfo(m_nativeRef, RTLD_DI_LINKMAP, &lm) == 0)
+		m_baseAddress = (void*) lm->l_addr;
+
+	transitionState(dyld_image_state_mapped);
+	transitionState(dyld_image_state_dependents_mapped);
+	transitionState(dyld_image_state_rebased);
+	transitionState(dyld_image_state_bound);
+	transitionState(dyld_image_state_dependents_initialized);
+	transitionState(dyld_image_state_initialized);
 }
 
 void NativeObject::unload()
@@ -56,6 +94,8 @@ void NativeObject::unload()
 		if (m_path.find('/') != std::string::npos)
 			::dlclose(m_nativeRef);
 	}
+
+	transitionState(dyld_image_state_terminated);
 }
 
 void NativeObject::updateName()
@@ -85,19 +125,27 @@ void NativeObject::updateName()
 void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWeakOnly) const
 {
 	void* addr;
-	std::string prefixed = "__darwin_" + symbolName;
+	std::string name;
+	std::smatch match;
 	
-	if (symbolName == "main")
-		return nullptr; // Don't return main() from Darling itself
+	//if (symbolName == "main")
+	//	return nullptr; // Don't return main() from Darling itself
 
-	addr = ::dlsym(m_nativeRef, prefixed.c_str());
+	name = symbolName;
+
+/*	if (std::regex_match(name, match, g_reObjcSymbol))
+		name = match.format("_$1$2");
+	else if (std::regex_match(name, match, g_reObjcEhSymbol))
+	{
+		static long dummy = 0;
+		return &dummy;
+	}*/
+
+	addr = ::dlvsym(m_nativeRef, name.c_str(), "DARWIN");
 	
-	if (!addr)
-		addr = ::dlvsym(m_nativeRef, symbolName.c_str(), "DARLING");
-
-	if (!addr)
-		addr = ::dlsym(m_nativeRef, symbolName.c_str());
-
+	// if (!addr)
+	// 	std::cerr << "Cannot find " << name << " in " << path() << std::endl;
+	
 	return addr;
 }
 
@@ -114,6 +162,22 @@ const char* NativeObject::name() const
 const std::string& NativeObject::path() const
 {
 	return m_path;
+}
+
+void* NativeObject::baseAddress() const
+{
+	return m_baseAddress;
+}
+
+// static int dl_cb(struct dl_phdr_info *info, void* data)
+// {
+// 	return 0;
+// }
+
+void* NativeObject::getSection(const std::string& segmentName, const std::string& sectionName, uintptr_t* sectionSize)
+{
+	// dl_iterate_phdr(dl_cb, nullptr);
+	return nullptr;
 }
 
 } // namespace Darling

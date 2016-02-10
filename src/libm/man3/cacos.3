@@ -1,0 +1,73 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CACOS 3
+.Os BSD 4
+.Sh NAME
+.Nm cacos
+.Nd complex inverse cosine function
+.Sh SYNOPSIS
+.Ft double complex
+.Fn cacos "double complex z"
+.Ft long double complex
+.Fn cacosl "long double complex z"
+.Ft float complex
+.Fn cacosf "float complex z"
+.Sh DESCRIPTION
+.Fn cacos "z"
+computes the inverse cosine of the complex floating-point number
+.Fa z ,
+with branch cuts outside the interval
+.Bq -1,1
+along the real axis.
+.Pp
+.Fn cacos
+returns values in a strip of the complex plane with unbounded imaginary part, and real part in the interval
+.Bq 0, Pi .
+.Pp
+For all complex floating point numbers z, cacos(conj(z)) = conj(cacos(z)).
+.Sh SPECIAL VALUES
+The conjugate symmetry of cacos() is used to abbreviate the specification of special values.
+.Pp
+.Fn cacos "±0 + 0i"
+returns Pi/2 - 0i.
+.Pp
+.Fn cacos "±0 + NaN i"
+returns Pi/2 + NaN i.
+.Pp
+.Fn cacos "x + inf i"
+returns Pi/2 - inf i, for finite x.
+.Pp
+.Fn cacos "x + NaN i"
+returns NaN + NaN i, for finite nonzero x.
+.Pp
+.Fn cacos "-inf + yi"
+returns Pi - inf i, for finite positive-signed y.
+.Pp
+.Fn cacos "inf + yi"
+returns 0 - inf i, for finite positive-signed y.
+.Pp
+.Fn cacos "-inf + inf i"
+returns 3Pi/4 - inf i.
+.Pp
+.Fn cacos "inf + inf i"
+returns Pi/4 - inf i.
+.Pp
+.Fn cacos "±inf + NaN i"
+returns NaN + inf i.
+.Pp
+.Fn cacos "NaN + yi"
+returns NaN + NaN i, for finite y.
+.Pp
+.Fn cacos "NaN + inf i"
+returns NaN - inf i.
+.Pp
+.Fn cacos "NaN + NaN i"
+returns NaN + NaN i.
+.Sh NOTES
+.Sh SEE ALSO
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn cacos
+function conforms to ISO/IEC 9899:1999(E).

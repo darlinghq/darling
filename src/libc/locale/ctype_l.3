@@ -1,0 +1,186 @@
+.\" Copyright (c) 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)ctype.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/locale/ctype.3,v 1.15 2004/06/30 20:09:08 ru Exp $
+.\"
+.Dd March 11, 2005
+.Dt CTYPE_L 3
+.Os
+.Sh NAME
+.Nm digittoint_l ,
+.Nm isalnum_l ,
+.Nm isalpha_l ,
+.Nm isascii_l ,
+.Nm isblank_l ,
+.Nm iscntrl_l ,
+.Nm isdigit_l ,
+.Nm isgraph_l ,
+.Nm ishexnumber_l ,
+.Nm isideogram_l ,
+.Nm islower_l ,
+.Nm isnumber_l ,
+.Nm isphonogram_l ,
+.Nm isprint_l ,
+.Nm ispunct_l ,
+.Nm isrune_l ,
+.Nm isspace_l ,
+.Nm isspecial_l ,
+.Nm isupper_l ,
+.Nm isxdigit_l ,
+.Nm toascii_l ,
+.Nm tolower_l ,
+.Nm toupper_l
+.Nd character classification macros
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In ctype.h
+.In xlocale.h
+.Ft int
+.Fo digittoint_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isalnum_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isalpha_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isascii_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo iscntrl_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isdigit_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isgraph_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo ishexnumber_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isideogram_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo islower_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isnumber_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isphonogram_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isprint_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo ispunct_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isrune_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isspace_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isspecial_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isupper_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo isxdigit_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo toascii_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo tolower_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Ft int
+.Fo toupper_l
+.Fa "int c"
+.Fa "locale_t loc"
+.Fc
+.Sh DESCRIPTION
+These
+functions are extended locale versions of the corresponding functions in
+.Xr ctype 3 .
+Also, see
+.Xr xlocale 3 for more information about extended locales.
+.Sh SEE ALSO
+.Xr ctype 3 ,
+.Xr xlocale 3

@@ -1,0 +1,167 @@
+project(darling-src)
+
+cmake_minimum_required(VERSION 2.4.0)
+cmake_policy(SET CMP0005 NEW)
+
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include(mig)
+
+add_definitions(-D_DARWIN_C_SOURCE -D_POSIX_C_SOURCE -DDARLING)
+set(DARLING TRUE)
+set(DARLING_NO_EXECUTABLES OFF)
+enable_language(ASM)
+
+if (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
+	message(FATAL_ERROR "This software can only be built on x86-64 systems")
+endif (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
+
+if (NOT BITS)
+	message(FATAL_ERROR "BITS is not specified (32/64)")
+endif (NOT BITS)
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m${BITS}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m${BITS}")
+SET(CMAKE_ASM_FLAGS "-m${BITS}")
+SET(CMAKE_ASM-ATT_FLAGS "-m${BITS}")
+
+if (BITS EQUAL 32)
+	# Prevent building Darling executables (e.g. Bash)
+	set(DARLING_NO_EXECUTABLES ON)
+
+	SET(SUFFIX "32")
+	add_definitions(-DTARGET_CPU_X86=1 -D__LITTLE_ENDIAN__)
+	set(DARLING_NO_EXECUTABLES ON)
+
+else()
+
+	set(SUFFIX "64")
+	add_definitions(-DTARGET_CPU_X86_64=1 -D__LITTLE_ENDIAN__)
+
+endif()
+
+message(STATUS "Building for ${CMAKE_SYSTEM_PROCESSOR}, CFLAGS: ${CMAKE_C_FLAGS}, libdir: ${CMAKE_INSTALL_LIBDIR}")
+
+add_definitions(-D__APPLE__ -D__DYNAMIC__)
+
+configure_file(darling-config.h.in darling-config.h)
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+
+add_subdirectory(bootstrap_cmds)
+add_subdirectory(kernel)
+add_subdirectory(util)
+add_subdirectory(libmach-o)
+add_subdirectory(libdyld)
+add_subdirectory(dyld)
+
+if (NOT DARLING_NO_EXECUTABLES)
+	add_subdirectory(motool)
+	add_subdirectory(external/darling-dmg)
+endif (NOT DARLING_NO_EXECUTABLES)
+
+if (FRAMEWORK_COREAUDIO)
+	add_subdirectory(AudioToolbox)
+	add_subdirectory(AudioUnit)
+endif (FRAMEWORK_COREAUDIO)
+add_subdirectory(IOKit)
+
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libm/Source")
+include_directories("${DARLING_TOP_DIRECTORY}/platform-include")
+include_directories("${DARLING_TOP_DIRECTORY}/platform-include/pthread")
+include_directories("${DARLING_TOP_DIRECTORY}/kernel-include")
+include_directories("${DARLING_TOP_DIRECTORY}/compiler-include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/duct/include")
+
+add_subdirectory(libc)
+add_subdirectory(libm)
+add_subdirectory(libgcc)
+add_subdirectory(copyfile)
+add_subdirectory(libinfo)
+add_subdirectory(libmalloc)
+add_subdirectory(libunwind)
+add_subdirectory(libsystem)
+add_subdirectory(libsystem_coreservices)
+add_subdirectory(libutil)
+add_subdirectory(libnotify)
+add_subdirectory(libremovefile)
+add_subdirectory(launchd/liblaunch)
+add_subdirectory(keymgr)
+add_subdirectory(ncurses)
+add_subdirectory(libiconv)
+add_subdirectory(duct/src)
+add_subdirectory(libresolv)
+add_subdirectory(libstdcxx)
+add_subdirectory(libffi)
+add_subdirectory(external/libobjc2)
+add_subdirectory(external/libkqueue)
+add_subdirectory(external/libdispatch)
+add_subdirectory(external/zlib)
+add_subdirectory(external/bzip2)
+add_subdirectory(external/libxml2)
+add_subdirectory(external/libxslt)
+add_subdirectory(external/icu/icuSources)
+add_subdirectory(external/corefoundation)
+add_subdirectory(external/openssl/src)
+add_subdirectory(external/foundation)
+add_subdirectory(external/curl)
+add_subdirectory(external/liblzma)
+add_subdirectory(external/cfnetwork)
+add_subdirectory(external/pcre)
+add_subdirectory(CFF)
+add_subdirectory(CoreServices)
+add_subdirectory(ApplicationServices)
+add_subdirectory(VideoDecodeAcceleration)
+add_subdirectory(DiskArbitration)
+add_subdirectory(xar)
+add_subdirectory(libedit)
+add_subdirectory(external/compiler-rt/lib/builtins)
+add_subdirectory(CommonCrypto)
+add_subdirectory(csu)
+
+if (NOT DARLING_NO_EXECUTABLES)
+	add_subdirectory(external/shell_cmds)
+	add_subdirectory(external/file_cmds)
+	add_subdirectory(external/text_cmds)
+	add_subdirectory(external/adv_cmds)
+	add_subdirectory(external/bash)
+	add_subdirectory(external/less)
+	add_subdirectory(external/grep)
+	add_subdirectory(external/awk)
+	add_subdirectory(tools)
+	add_subdirectory(external/installer)
+	#add_subdirectory(launchd/src)
+endif (NOT DARLING_NO_EXECUTABLES)
+
+######################
+# libc++ & libc++abi #
+######################
+set(CMAKE_CXX_FLAGS_SAVED ${CMAKE_CXX_FLAGS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostdinc -nostdinc++")
+set(CMAKE_SHARED_LINKER_FLAGS "-nostdlib")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/locale)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/locale/FreeBSD)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/stdtime/FreeBSD)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/pthreads)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/include/FreeBSD)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/libcxxabi/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include)
+set(LIBCXXABI_LIBCXX_PATH "{CMAKE_CURRENT_SOURCE_DIR}/external/libcxx")
+set(LIBCXXABI_LIBCXX_INCLUDES "-I${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include")
+
+add_subdirectory(external/libcxxabi)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_SAVED} -std=c++11 -msse -msse2 -msse3 -nostdinc -nostdinc++ -include ${CMAKE_CURRENT_SOURCE_DIR}/libc/include/xlocale.h")
+set(LIBCXX_HAS_STDCXX11_FLAG TRUE)
+add_definitions(-D_USE_EXTENDED_LOCALES_)
+add_subdirectory(external/libcxx)
+
+#######################
+# Linux kernel module #
+#######################
+
+add_custom_target(lkm
+	COMMAND gmake
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/lkm")
+

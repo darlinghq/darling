@@ -1,0 +1,7 @@
+# manpage tables
+# <source> <dest> [<link> <link> ...]
+
+# man3
+malloc.3 malloc.3 calloc.3 free.3 realloc.3 reallocf.3 valloc.3
+malloc_size.3 malloc_size.3 malloc_good_size.3
+malloc_zone_malloc.3 malloc_zone_malloc.3 malloc_create_zone.3 malloc_destroy_zone.3 malloc_default_zone.3 malloc_zone_from_ptr.3 malloc_zone_calloc.3 malloc_zone_valloc.3 malloc_zone_realloc.3 malloc_zone_memalign.3 malloc_zone_free.3

@@ -26,6 +26,8 @@ AudioUnitComponent::AudioUnitComponent(std::initializer_list<CFStringRef> elemen
 
 AudioUnitComponent::~AudioUnitComponent()
 {
+	if (m_contextName != nullptr)
+		CFRelease(m_contextName);
 	CloseComponent(m_inputUnit.sourceAudioUnit);
 }
 
@@ -64,6 +66,10 @@ OSStatus AudioUnitComponent::getPropertyInfo(AudioUnitPropertyID prop, AudioUnit
 		case kAudioUnitProperty_ElementName:
 			*dataSize = sizeof(CFStringRef);
 			*writable = false;
+			break;
+		case kAudioUnitProperty_ContextName:
+			*dataSize = sizeof(CFStringRef);
+			*writable = true;
 			break;
 		default:
 			return kAudioUnitErr_InvalidProperty;
@@ -144,6 +150,26 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 			m_shouldAllocateBuffer = *b != 0;
 			return noErr;
 		}
+		case kAudioUnitProperty_ContextName:
+		{
+			if (dataSize < sizeof(CFStringRef))
+				return kAudioUnitErr_InvalidParameter;
+			
+			if (data == nullptr)
+			{
+				if (m_contextName != nullptr)
+				{
+					CFRelease(m_contextName);
+					m_contextName = nullptr;
+				}
+			}
+			else
+			{
+				m_contextName = (CFStringRef) data;
+				CFRetain(m_contextName);
+			}
+			return noErr;
+		}
 		default:
 			return kAudioUnitErr_InvalidProperty;
 	}
@@ -169,7 +195,7 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 				*newConfig = m_config[elem].second;
 			else if (scope == kAudioUnitScope_Input)
 				*newConfig = m_config[elem].first;
-			if (scope == kAudioUnitScope_Global)
+			else if (scope == kAudioUnitScope_Global)
 				*newConfig = m_config[0].second;
 			else
 				return kAudioUnitErr_InvalidScope;
@@ -207,7 +233,50 @@ OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScop
 			*out = m_elementNames[elem];
 			return noErr;
 		}
+		case kAudioUnitProperty_ContextName:
+		{
+			CFStringRef* out = (CFStringRef*) data;
+			if (*dataSize != sizeof(CFStringRef))
+				return kAudioUnitErr_InvalidParameter;
+			
+			*out = m_contextName;
+			return noErr;
+		}
 		default:
 			return kAudioUnitErr_InvalidProperty;
 	}
+}
+
+OSStatus AudioUnitComponent::addRenderNotify(AURenderCallback inProc, void* opaque)
+{
+	std::lock_guard<std::mutex> guard(m_listenersMutex);
+	
+	if (!inProc)
+		return paramErr;
+	m_listeners.insert(std::pair<AURenderCallback,void*>(inProc, opaque));
+	
+	return noErr;
+}
+
+OSStatus AudioUnitComponent::removeRenderNotify(AURenderCallback inProc, void* opaque)
+{
+	std::lock_guard<std::mutex> guard(m_listenersMutex);
+	m_listeners.erase(std::pair<AURenderCallback,void*>(inProc, opaque));
+	return noErr;
+}
+
+OSStatus AudioUnitComponent::notifyListeners(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp,
+		UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData)
+{
+	std::lock_guard<std::mutex> guard(m_listenersMutex);
+	OSStatus status = noErr;
+	
+	for (auto p : m_listeners)
+	{
+		status = p.first(p.second, ioActionFlags, inTimeStamp, inBusNumber, inNumberFrames, ioData);
+		if (status != noErr)
+			break;
+	}
+	
+	return status;
 }

@@ -1,0 +1,217 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt COMPLEX 3
+.Os
+.Sh NAME
+.Nm complex
+.Nd complex floating-point functions
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Sh DESCRIPTION
+The header file complex.h provides function prototypes and macros for working with C99 complex
+floating-point values.  The functions conform to the ISO/IEC 9899:1999(E) standard.  In particular,
+arguments with infinite real or imaginary parts are regarded as infinities, even if the other
+part is a NaN.
+.Pp
+complex.h defines the macro
+.Fa complex
+for use as a type specifier, and the macro 
+.Fa I
+to be the imaginary unit, which can be used to construct complex
+floating-point numbers from two real floating-point numbers.  For example:
+.Bd -literal -offset indent
+#include <complex.h>
+double complex z = 1.0 + 1.0 * I;  // z = 1 + i
+.Ed
+.Pp
+Each of the functions that use complex floating-point values are provided in single, double,
+and extended precision; the double precision prototypes are listed here.  The man pages for the
+individual functions provide more details on their use, special cases, and prototypes for their
+single and extended precision versions.
+.Pp
+The double-precision functions defined in complex.h are:
+.Pp 
+.Ft double
+.Fn creal "double complex z"
+.Pp
+.Ft double
+.Fn cimag "double complex z"
+.Pp
+.Fn creal
+and
+.Fn cimag
+take a complex floating-point number and return its real and imaginary part,
+respectively, as real floating-point numbers.
+.Pp
+.Ft double
+.Fn cabs "double complex z"
+.Pp
+.Ft double
+.Fn carg "double complex z"
+.Pp
+.Fn cabs
+and
+.Fn carg
+take a complex floating-point number and return its norm and argument (phase angle),
+respectively, as real floating-point numbers.  They are used to convert between
+rectangular and polar coordinates, and are fully specified in terms of real functions:
+.Bd -literal -offset indent
+cabs(x + iy) = hypot(x,y)
+.br
+carg(x + iy) = atan2(y,x)
+.Ed
+.Pp
+.Ft double complex
+.Fn conj "double complex z"
+.Pp
+.Fn conj
+takes a complex floating-point number and returns its complex conjugate.
+.Pp
+.Ft double complex
+.Fn cproj "double complex z"
+.Pp
+.Fn cproj
+takes a complex floating-point number and returns its projection onto the
+Riemann sphere, as defined in C99.  For non-infinite inputs, the return value is
+equal to the input value.
+.Pp
+.Ft double complex
+.Fn csqrt "double complex z"
+.Pp
+.Fn csqrt
+takes a complex floating-point number and returns its square root, with a branch cut on
+the negative real axis.
+.Pp
+.Ft double complex
+.Fn cexp "double complex z"
+.Pp
+.Ft double complex
+.Fn clog "double complex z"
+.Pp
+.Fn cexp
+and
+.Fn clog
+take a complex floating-point number and return its base-e exponential and logarithm,
+respectively.
+.Fn clog
+has a branch cut on the negative real axis.
+.Pp
+.Ft double complex
+.Fn cpow "double complex z" "double complex w"
+.Pp
+.Fn cpow
+takes two complex floating-point numbers, and returns the first raised to the power of the second,
+with a branch cut for the first parameter along the negative real axis.
+.Pp
+.Ft double complex
+.Fn csin "double complex z"
+.Pp
+.Ft double complex
+.Fn ccos "double complex z"
+.Pp
+.Ft double complex
+.Fn ctan "double complex z"
+.Pp
+.Fn csin ,
+.Fn ccos ,
+and
+.Fn ctan
+take a complex floating-point number and return its sine, cosine, and tangent, respectively.
+.Pp
+.Ft double complex
+.Fn casin "double complex z"
+.Pp
+.Ft double complex
+.Fn cacos "double complex z"
+.Pp
+.Ft double complex
+.Fn catan "double complex z"
+.Pp
+.Fn casin ,
+.Fn cacos ,
+and
+.Fn catan
+take a complex floating-point number and return its inverse sine, cosine, and tangent, respectively.
+.Pp
+.Fn casin
+and
+.Fn cacos
+have branch cuts outside the interval
+.Bq -1, 1
+on the real axis,
+and
+.Fn catan
+has a branch cut outside the interval
+.Bq -i, i
+on the imaginary axis.
+.Pp
+.Ft double complex
+.Fn csinh "double complex z"
+.Pp
+.Ft double complex
+.Fn ccosh "double complex z"
+.Pp
+.Ft double complex
+.Fn ctanh "double complex z"
+.Pp
+.Fn csinh ,
+.Fn ccosh ,
+and
+.Fn ctanh
+take a complex floating-point number and return its hyperbolic sine, cosine, and tangent, respectively.
+.Pp
+.Ft double complex
+.Fn casinh "double complex z"
+.Pp
+.Ft double complex
+.Fn cacosh "double complex z"
+.Pp
+.Ft double complex
+.Fn catanh "double complex z"
+.Pp
+.Fn casinh ,
+.Fn cacosh ,
+and
+.Fn catanh
+take a complex floating-point number and return its inverse hyperbolic sine, cosine, and tangent, respectively.
+.Pp
+.Fn casinh
+has a branch cut outside the interval
+.Bq -i, i
+on the imaginary axis.
+.Fn cacosh
+has a branch cut at values less than 1 on the real axis.
+.Fn catanh
+has a branch cut outside the interval
+.Bq -1, 1
+on the real axis.
+.Sh NOTE
+Note that the complex math functions are not, in general, equivalent to their real counterparts for inputs on the
+real axis.  For example, csqrt(-1 + 0i) is 0 + i, whereas sqrt(-1) is NaN.
+.Sh SEE ALSO
+.Xr cabs 3 ,
+.Xr cacos 3 ,
+.Xr cacosh 3 ,
+.Xr carg 3 ,
+.Xr casin 3 ,
+.Xr casinh 3 ,
+.Xr catan 3 ,
+.Xr catanh 3 ,
+.Xr ccos 3 ,
+.Xr ccosh 3 ,
+.Xr cexp 3 ,
+.Xr cimag 3 ,
+.Xr clog 3 ,
+.Xr conj 3 ,
+.Xr cpow 3 ,
+.Xr cproj 3 ,
+.Xr creal 3 ,
+.Xr csin 3 ,
+.Xr csinh 3 ,
+.Xr csqrt 3 ,
+.Xr ctan 3 ,
+.Xr ctanh 3 ,
+.Xr math 3
+.Sh STANDARDS
+The <complex.h> functions conform to ISO/IEC 9899:1999(E).

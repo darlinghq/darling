@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2012-2013 Lubos Dolezel
+Copyright (C) 2012-2015 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "MachOMgr.h"
 
 namespace Darling {
+	class LoadableObject;
 	class MachOObject;
 }
 
@@ -39,6 +40,8 @@ struct dyld_unwind_sections
 	uintptr_t compact_unwind_section_length;
 };
 
+void _dyld_fork_child(void);
+
 uint32_t _dyld_image_count(void);
 const struct mach_header* _dyld_get_image_header(uint32_t image_index);
 intptr_t _dyld_get_image_vmaddr_slide(uint32_t image_index);
@@ -46,7 +49,9 @@ intptr_t _dyld_get_image_slide(const struct mach_header* mh);
 const char* _dyld_get_image_name(uint32_t image_index);
 void* dyld_stub_binder_fixup(Darling::MachOObject** obj, uintptr_t lazyOffset);
 
-char* getsectdata(const struct mach_header* header, const char* segname, const char* sectname, unsigned long* size);
+char* getsectdata(const char* segname, const char* sectname, unsigned long* size);
+uint8_t *getsectiondata(const struct mach_header *mhp, const char *segname, const char *sectname, unsigned long *size);
+uint8_t *getsegmentdata(const struct mach_header *mhp, const char *segname, unsigned long *size);
 
 void _dyld_register_func_for_add_image(Darling::MachOMgr::LoaderHookFunc* func);
 void _dyld_register_func_for_remove_image(Darling::MachOMgr::LoaderHookFunc* func);
@@ -70,5 +75,7 @@ int _NSGetExecutablePath(char* buf, uint32_t* bufsize);
 #ifdef __cplusplus
 }
 #endif
+
+void _dyld_free_eh_data(Darling::LoadableObject* obj);
 
 #endif

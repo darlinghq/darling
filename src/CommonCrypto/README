@@ -1,0 +1,11 @@
+This is Apple's CommonCrypto-55010 (OS X 10.7.5).
+We cannot use newer versions, because these depend on corecrypto which is not free software.
+
+Quote:
+> The corecrypto license gives users a "90-day limited, non-exclusive,
+> non-sublicensable license under Apple's copyrights in the Apple Software
+> to make a reasonable number of copies of, compile, and run the Apple
+> software internally within your organisation only on devices that you own or
+> control".
+
+

@@ -1,0 +1,16 @@
+__sandbox_me	__mac_execve
+__sandbox_mm	__mac_mount
+__sandbox_ms	__mac_syscall
+__sandbox_msp	__mac_set_proc
+_exit	__exit
+accessx_np	__access_extended
+getsgroups_np	__getsgroups
+getwgroups_np	__getwgroups
+# initgroups wrapper is defined in Libinfo
+initgroups
+posix_madvise	__madvise
+pthread_getugid_np	__gettid
+pthread_setugid_np	__settid
+setsgroups_np	__setsgroups
+setwgroups_np	__setwgroups
+wait4	__wait4_nocancel

@@ -39,7 +39,7 @@ struct BindState
 	void addBind(uintptr_t offset);
 
 	MachOImpl* mach;
-	uint8_t ordinal;
+	int ordinal;
 	const char* sym_name;
 	uint8_t type;
 	int64_t addend;

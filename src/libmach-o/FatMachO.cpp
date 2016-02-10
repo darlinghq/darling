@@ -26,6 +26,7 @@
 // SUCH DAMAGE.
 
 #include "FatMachO.h"
+#include "cpu_types.h"
 
 #ifndef _LARGEFILE64_SOURCE
 #	define _LARGEFILE64_SOURCE

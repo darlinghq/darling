@@ -1,0 +1,119 @@
+.\" Copyright (c) 2002 Apple Computer, Inc.  All rights reserved.
+.\"
+.\" @APPLE_LICENSE_HEADER_START@
+.\"
+.\" The contents of this file constitute Original Code as defined in and
+.\" are subject to the Apple Public Source License Version 1.1 (the
+.\" "License").  You may not use this file except in compliance with the
+.\" License.  Please obtain a copy of the License at
+.\" http://www.apple.com/publicsource and read it before using this file.
+.\"
+.\" This Original Code and all software distributed under the License are
+.\" distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\" EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\" INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
+.\" License for the specific language governing rights and limitations
+.\" under the License.
+.\"
+.\" @APPLE_LICENSE_HEADER_END@
+.\"
+.Dd December 20, 2003
+.Dt BSD_SIGNAL 3
+.Os
+.Sh NAME
+.Nm bsd_signal
+.Nd simplified signal facilities
+.Sh SYNOPSIS
+.In signal.h
+.\" The following is Quite Ugly, but syntactically correct.  Don't try to
+.\" fix it.
+.Ft void \*(lp*
+.Fn bsd_signal "int sig" "void \*(lp*func\*(rp\*(lpint\*(rp\*(rp\*(rp\*(lpint"
+.Pp
+or in an equivalent but easier to read typedef'd version:
+.Ft typedef "void \*(lp*sig_t\*(rp \*(lpint\*(rp" ;
+.Ft sig_t
+.Fn bsd_signal "int sig" "sig_t func"
+.Sh DESCRIPTION
+The
+.Fn bsd_signal
+function provides a partially compatible interface for programs written
+to historical system interfaces (see USAGE below).
+.Pp
+The function call
+.Fn bsd_signal sig func
+has the effect as if implemented as:
+.Bd -literal -offset indent
+void (*bsd_signal(int sig, void (*func)(int)))(int)
+{
+    struct sigaction act, oact;
+
+    act.sa_handler = func;
+    act.sa_flags = SA_RESTART;
+    sigemptyset(&act.sa_mask);
+    sigaddset(&act.sa_mask, sig);
+    if (sigaction(sig, &act, &oact) == -1)
+	return(SIG_ERR);
+    return(oact.sa_handler);
+}
+.Ed
+.Pp
+The handler function should be declared:
+.Pp
+.D1 Fn "void func" "int sig"
+.Pp
+where
+.Fa sig
+is the signal number.
+The behavior is undefined if
+.Fn func
+is a function that takes more than one argument, or an argument of a
+different type.
+.Sh RETURN VALUES
+Upon successful completion,
+.Fn bsd_signal
+returns the previous action for
+.Fa sig .
+Otherwise,
+.Er SIG_ERR
+is returned and
+.Va errno
+is set to indicate the error.
+.Sh ERRORS
+Refer to
+.Xr sigaction 2 .
+.Sh USAGE
+This function is a direct replacement for the
+.Bx
+.Xr signal(3)
+function for simple applications that are installing a single-argument signal
+handler function.
+If a
+.Bx
+signal handler function is being installed that expects more than one
+argument, the application has to be modified to use
+.Xr sigaction 2 .
+The
+.Fn bsd_signal
+function differs from
+.Xr signal 3
+in that the
+.Dv SA_RESTART
+flag is set and the
+.Dv SA_RESETHAND
+will be clear when
+.Fn bsd_signal
+is used.
+The state of these flags is not specified for
+.Xr signal 3 .
+.Sh SEE ALSO
+.Xr sigaction 2 ,
+.Xr sigaddset 3 ,
+.Xr sigemptyset 3 ,
+.Xr signal 3
+.Sh STANDARDS
+The
+.Fn bsd_signal
+function conforms to
+.St -p1003.1-2001 .

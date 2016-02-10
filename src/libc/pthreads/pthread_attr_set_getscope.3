@@ -1,0 +1,75 @@
+.\" Copyright (c) 2004-2007 Apple Inc. All rights reserved.
+.Dd December 31, 2007
+.Dt PTHREAD_ATTR 3
+.Os
+.Sh NAME
+.Nm pthread_attr_getscope ,
+.Nm pthread_attr_setscope 
+.Nd thread attribute operations
+.Sh SYNOPSIS
+.Fd #include <pthread.h>
+.Ft int
+.Fo pthread_attr_getscope
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "int *restrict contentionscope"
+.Fc
+.Ft int
+.Fo pthread_attr_setscope
+.Fa "pthread_attr_t *attr"
+.Fa "int contentionscope"
+.Fc
+.Sh DESCRIPTION
+Thread attributes are used to specify parameters to
+.Fn pthread_create .
+One attribute object can be used in multiple calls to
+.Fn pthread_create ,
+with or without modifications between calls.
+.Pp
+The 
+.Fn pthread_attr_setscope
+and 
+.Fn pthread_attr_getscope
+functions, respectively, set and get the attribute within
+.Fa attr
+argument that controls the contention scope of the thread.
+The acceptable values are PTHREAD_SCOPE_SYSTEM, indicating a scheduling contention scope that
+is system-wide, and PTHREAD_SCOPE_PROCESS, which indicates a process scheduling contention scope.
+Currently on Mac OS X we only support PTHREAD_SCOPE_SYSTEM.
+.Sh RETURN VALUES
+If successful, these functions return 0.
+Otherwise, an error number is returned to indicate the error.
+.Sh ERRORS
+.Pp
+.Fn pthread_attr_getscope
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.\" ========
+.El
+.Pp
+.Fn pthread_attr_setscope
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.\" ========
+.It Bq Er ENOTSUP
+Invalid or unsupported value for
+.Fa contentionscope .
+.El
+.Sh SEE ALSO
+.Xr pthread_create 3 ,
+.Xr pthread_attr_init 3 ,
+.Xr pthread_attr_setinheritsched 3 ,
+.Xr pthread_attr_setschedpolicy 3 ,
+.Xr pthread_attr_setschedparam 3 
+.Sh STANDARDS
+.Fn pthread_attr_setscope ,
+.Fn pthread_attr_getscope
+conform to
+.St -susv2

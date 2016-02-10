@@ -1,0 +1,4 @@
+A new library libsystem_platform, cotains all OSAtomic, setjmp/longjmp, ffs, swapcontext and other functions.
+
+They should all be moved here and built as a separate library.
+

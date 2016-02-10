@@ -1,0 +1,94 @@
+.\" Copyright (c) 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Paul Borman at Krystal Technologies.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"	@(#)utf2.4	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/locale/utf2.4,v 1.10 2002/10/10 22:56:18 tjr Exp $
+.\"
+.Dd October 11, 2002
+.Dt UTF2 5
+.Os
+.Sh NAME
+.Nm utf2
+.Nd "Universal character set Transformation Format encoding of runes
+.Sh SYNOPSIS
+.Nm ENCODING
+.Qq UTF2
+.Sh DESCRIPTION
+.Bf Em
+The UTF2 encoding has been deprecated in favour of UTF-8.
+.Ef
+New applications should not use UTF2.
+.Pp
+The
+.Nm UTF2
+encoding is based on a proposed X-Open multibyte
+\s-1FSS-UCS-TF\s+1 (File System Safe Universal Character Set Transformation Format) encoding as used in
+.Sy "Plan 9 from Bell Labs" .
+Although it is capable of representing more than 16 bits,
+the current implementation is limited to 16 bits as defined by the
+Unicode Standard.
+.Pp
+.Nm UTF2
+representation is backwards compatible with ASCII, so 0x00-0x7f refer to the
+ASCII character set.  The multibyte encoding of runes between 0x0080 and 0xffff
+consist entirely of bytes whose high order bit is set.  The actual
+encoding is represented by the following table:
+.Bd -literal
+[0x0000 - 0x007f] [00000000.0bbbbbbb] -> 0bbbbbbb
+[0x0080 - 0x07ff] [00000bbb.bbbbbbbb] -> 110bbbbb, 10bbbbbb
+[0x0800 - 0xffff] [bbbbbbbb.bbbbbbbb] -> 1110bbbb, 10bbbbbb, 10bbbbbb
+.Ed
+.Pp
+If more than a single representation of a value exists (for example,
+0x00; 0xC0 0x80; 0xE0 0x80 0x80) the shortest representation is always
+used (but the longer ones will be correctly decoded).
+.Pp
+The final three encodings provided by X-Open:
+.Bd -literal
+[00000000.000bbbbb.bbbbbbbb.bbbbbbbb] ->
+	11110bbb, 10bbbbbb, 10bbbbbb, 10bbbbbb
+
+[000000bb.bbbbbbbb.bbbbbbbb.bbbbbbbb] ->
+	111110bb, 10bbbbbb, 10bbbbbb, 10bbbbbb, 10bbbbbb
+
+[0bbbbbbb.bbbbbbbb.bbbbbbbb.bbbbbbbb] ->
+	1111110b, 10bbbbbb, 10bbbbbb, 10bbbbbb, 10bbbbbb, 10bbbbbb
+.Ed
+.Pp
+which provides for the entire proposed ISO-10646 31 bit standard are currently
+not implemented.
+.Sh "SEE ALSO"
+.Xr mklocale 1 ,
+.Xr setlocale 3 ,
+.Xr utf8 5

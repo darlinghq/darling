@@ -1,0 +1,132 @@
+#!/bin/sh
+#****************************************************************************
+#* Copyright (c) 2001-2006,2008 Thomas E. Dickey                            *
+#*                                                                          *
+#* Permission is hereby granted, free of charge, to any person obtaining a  *
+#* copy of this software and associated documentation files (the            *
+#* "Software"), to deal in the Software without restriction, including      *
+#* without limitation the rights to use, copy, modify, merge, publish,      *
+#* distribute, distribute with modifications, sublicense, and/or sell       *
+#* copies of the Software, and to permit persons to whom the Software is    *
+#* furnished to do so, subject to the following conditions:                 *
+#*                                                                          *
+#* The above copyright notice and this permission notice shall be included  *
+#* in all copies or substantial portions of the Software.                   *
+#*                                                                          *
+#* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS  *
+#* OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF               *
+#* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.   *
+#* IN NO EVENT SHALL THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,   *
+#* DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR    *
+#* OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR    *
+#* THE USE OR OTHER DEALINGS IN THE SOFTWARE.                               *
+#*                                                                          *
+#* Except as contained in this notice, the name(s) of the above copyright   *
+#* holders shall not be used in advertising or otherwise to promote the     *
+#* sale, use or other dealings in this Software without prior written       *
+#* authorization.                                                           *
+#****************************************************************************/
+# $Id: ncu-indent,v 1.17 2008/08/03 15:46:44 tom Exp $
+NOOP=no
+OPTS='
+--blank-lines-after-procedures
+--braces-on-if-line
+--continuation-indentation0
+--continue-at-parentheses
+--cuddle-else
+--indent-level4
+--leave-preprocessor-space
+--no-blank-lines-after-commas
+--no-blank-lines-after-declarations
+--no-space-after-function-call-names
+--procnames-start-lines
+--space-special-semicolon
+--swallow-optional-blank-lines
+--tab-size8
+
+-T NCURSES_EXPORT_VAR
+-T NCURSES_INLINE
+-T SCREEN
+-T TERMTYPE
+-T attr_t
+-T cchar_t
+-T chtype
+-T inline
+-T wchar_t
+-T wint_t
+
+-T BUFFER
+-T CHARTYPE
+-T FILE
+-T GCC_NORETURN
+-T LINE
+-T MARK
+-T RETSIGTYPE 
+-T TBUFF
+-T WINDOW
+-T size_t
+-T va_list
+
+-T Cardinal
+-T Widget
+-T XtPointer
+'
+for name in $*
+do
+	case $name in
+	-v|-n)
+		NOOP=yes
+		OPTS="$OPTS -v"
+		;;
+	-*)
+		OPTS="$OPTS $name"
+		;;
+	*.[ch]|*.cc|*.cpp)
+		save="${name}".a$$
+		test="${name}".b$$
+		rm -f "$save" "$test"
+		mv "$name" "$save"
+		sed \
+			-e '/EMPTY_MODULE(/s/)$/);/' \
+			-e '/MODULE_ID(/s/)$/);/' \
+			-e 's,\<GCC_NORETURN;,;//GCC_NORETURN;,' \
+			-e 's,\<GCC_PRINTFLIKE(,;//GCC_PRINTFLIKE(,' \
+			-e 's,\<GCC_SCANFLIKE(,;//GCC_SCANFLIKE(,' \
+			-e 's,\(\<NCURSES_EXPORT_VAR\>\),//\1,' \
+			"$save" >"$test"
+		cp "$test" "$name"
+		chmod u+w "$name"
+		# ${INDENT_PROG-indent} --version
+		${INDENT_PROG-indent} -npro $OPTS "$name"
+		sed \
+			-e '/EMPTY_MODULE(/s/);$/)/' \
+			-e '/MODULE_ID(/s/);$/)/' \
+			-e 's,;[ 	]*//GCC_NORETURN;, GCC_NORETURN;,' \
+			-e 's,;[ 	]*//GCC_PRINTFLIKE(, GCC_PRINTFLIKE(,' \
+			-e 's,;[ 	]*//GCC_SCANFLIKE(, GCC_SCANFLIKE(,' \
+			-e 's,//\(\<NCURSES_EXPORT_VAR\>\),\1,' \
+			"$name" >"$test"
+		mv "$test" "$name"
+		rm -f "${name}~"
+		if test $NOOP = yes ; then
+			if (cmp -s "$name" "$save" ) then
+				echo "** no change: $name"
+			else
+				diff -u "$save" "$name"
+			fi
+			rm -f "$name"
+			mv "$save" "$name"
+		elif ( cmp -s "$name" "$save" ) ; then
+			echo "** unchanged $name"
+			rm -f "${name}"
+			mv "$save" "$name"
+		else
+			echo "** updated $name"
+			rm -f "$save"
+		fi
+		;;
+	*)
+		echo "** ignored:   $name"
+		;;
+	esac
+done

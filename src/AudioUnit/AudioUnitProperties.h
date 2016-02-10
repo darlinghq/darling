@@ -42,6 +42,7 @@ enum
         kAudioUnitProperty_LastRenderError                              = 22,
         kAudioUnitProperty_SetRenderCallback                    = 23,
         kAudioUnitProperty_FactoryPresets                               = 24,
+		kAudioUnitProperty_ContextName                          = 25,
         kAudioUnitProperty_RenderQuality                                = 26,
         kAudioUnitProperty_InPlaceProcessing                    = 29,
         kAudioUnitProperty_ElementName                                  = 30,

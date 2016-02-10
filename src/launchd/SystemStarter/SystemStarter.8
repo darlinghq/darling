@@ -1,0 +1,117 @@
+.Dd April 12, 2002
+.Dt SystemStarter 8 
+.Os Darwin
+.Sh NAME
+.Nm SystemStarter
+.\" The following lines are read in generating the apropos(man -k) database. Use only key
+.\" words here as the database is built based on the words here and in the .ND line. 
+.\" Use .Nm macro to designate other names for the documented program.
+.Nd Start, stop, and restart system services
+.Sh SYNOPSIS
+.Nm
+.Op Fl gvxdDqn
+.Op Ar action Op Ar service
+.Sh DESCRIPTION
+The
+.Nm
+utility is deprecated.  System services should instead be described by a
+.Xr launchd.plist 5 .
+See
+.Xr launchd 8
+for more details.
+The
+.Nm launchd
+utility is available on Mac OS X 10.4 and later.
+.Pp
+In earlier versions of Mac OS X, the 
+.Nm 
+utility is used to start, stop, and restart the system services which
+are described in the
+.Pa /Library/StartupItems/
+and
+.Pa /System/Library/StartupItems/
+paths.
+.Pp
+The optional
+.Ar action
+argument specifies which action 
+.Nm
+performs on the startup items.  The optional
+.Ar service
+argument specifies which startup items to perform the action on.  If no
+.Ar service
+is specified, all startup items will be acted on; otherwise, only the item providing the 
+.Ar service ,
+any items it requires, or any items that depend on it will be acted on.
+.Pp
+During boot 
+.Nm
+is invoked by
+.Xr launchd 8
+and is responsible for
+starting all startup items in an order that satisfies each item's 
+requirements.
+.Sh ACTIONS
+.Bl -tag -width -indent
+.It Nm start
+start all items, or start the item that provides the specified
+.Ar service
+and all items providing services it requires.
+.It Nm stop
+stop all items, or stop the item that provides the specified
+.Ar service
+and all items that depend on it.
+.It Nm restart
+restart all items, or restart the item providing the specified
+.Ar service .
+.El
+.Sh OPTIONS
+.Bl -tag -width -indent
+.It Fl g
+(ignored)
+.It Fl v
+verbose (text mode) startup
+.It Fl x
+(ignored)
+.It Fl r
+(ignored)
+.It Fl d
+print debugging output
+.It Fl D
+print debugging output and dependencies
+.It Fl q
+be quiet (disable debugging output)
+.It Fl n
+don't actually perform action on items (no-run mode)
+.El
+.Sh NOTES
+Unless an explicit call to
+.Nm ConsoleMessage
+is made,
+.Nm
+examines the exit status of the startup item scripts to determine the success or failure of the services provided by that script.
+.Pp
+.Sh FILES
+.Bl -tag -width -/System/Library/StartupItems -compact
+.It Pa /Library/StartupItems/
+User-installed startup items.
+.It Pa /System/Library/StartupItems/
+System-provided startup items.
+.El
+.Sh SEE ALSO 
+.\" List links in ascending order by section, alphabetically within a section.
+.\" Please do not reference files that do not exist without filing a bug report
+.Xr ConsoleMessage 8 ,
+.Xr launchd 8 ,
+.Xr launchd.plist 5 ,
+.Xr rc 8
+.\" .Sh BUGS              \" Document known, unremedied bugs 
+.Sh HISTORY
+The
+.Nm
+utility appeared in Darwin 1.0 and
+was extended in Darwin 6.0 to support partial startup and interprocess communication.
+.Nm
+was deprecated by
+.Xr launchd 8
+in Darwin 8.0.

@@ -1,0 +1,191 @@
+.\"	$OpenBSD: readpassphrase.3,v 1.7 2001/12/15 15:37:51 millert Exp $
+.\"
+.\" Copyright (c) 2000 Todd C. Miller <Todd.Miller@courtesan.com>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. The name of the author may not be used to endorse or promote products
+.\"    derived from this software without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+.\" INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+.\" AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
+.\" THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+.\" EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+.\" PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+.\" OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+.\" WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+.\" OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+.\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/lib/libc/gen/readpassphrase.3,v 1.7 2005/01/20 09:17:02 ru Exp $
+.\"
+.Dd December 7, 2001
+.Dt READPASSPHRASE 3
+.Os
+.Sh NAME
+.Nm readpassphrase
+.Nd get a passphrase from the user
+.Sh SYNOPSIS
+.In readpassphrase.h
+.Ft "char *"
+.Fn readpassphrase "const char *prompt" "char *buf" "size_t bufsiz" "int flags"
+.Sh DESCRIPTION
+The
+.Fn readpassphrase
+function displays a prompt to, and reads in a passphrase from,
+.Pa /dev/tty .
+If this file is inaccessible
+and the
+.Dv RPP_REQUIRE_TTY
+flag is not set,
+.Fn readpassphrase
+displays the prompt on the standard error output and reads from the standard
+input.
+In this case it is generally not possible to turn off echo.
+.Pp
+Up to
+.Fa bufsiz
+\- 1 characters (one is for the
+.Dv NUL )
+are read into the provided buffer
+.Fa buf .
+Any additional
+characters and the terminating newline (or return) character are discarded.
+.Pp
+The
+.Fn readpassphrase
+function
+takes the following optional
+.Fa flags :
+.Pp
+.Bl -tag -width ".Dv RPP_REQUIRE_TTY" -compact
+.It Dv RPP_ECHO_OFF
+turn off echo (default behavior)
+.It Dv RPP_ECHO_ON
+leave echo on
+.It Dv RPP_REQUIRE_TTY
+fail if there is no tty
+.It Dv RPP_FORCELOWER
+force input to lower case
+.It Dv RPP_FORCEUPPER
+force input to upper case
+.It Dv RPP_SEVENBIT
+strip the high bit from input
+.El
+.Pp
+The calling process should zero the passphrase as soon as possible to
+avoid leaving the cleartext passphrase visible in the process's address
+space.
+.Sh RETURN VALUES
+Upon successful completion,
+.Fn readpassphrase
+returns a pointer to the null-terminated passphrase.
+If an error is encountered, the terminal state is restored and
+a
+.Dv NULL
+pointer is returned.
+.Sh FILES
+.Bl -tag -width ".Pa /dev/tty" -compact
+.It Pa /dev/tty
+.El
+.Sh EXAMPLES
+The following code fragment will read a passphrase from
+.Pa /dev/tty
+into the buffer
+.Fa passbuf .
+.Bd -literal -offset indent
+char passbuf[1024];
+
+\&...
+
+if (readpassphrase("Response: ", passbuf, sizeof(passbuf),
+    RPP_REQUIRE_TTY) == NULL)
+	errx(1, "unable to read passphrase");
+
+if (compare(transform(passbuf), epass) != 0)
+	errx(1, "bad passphrase");
+
+\&...
+
+memset(passbuf, 0, sizeof(passbuf));
+.Ed
+.Sh SIGNALS
+The
+.Fn readpassphrase
+function
+will catch the following signals:
+.Pp
+.Bl -tag -compact
+.It Dv SIGINT
+.It Dv SIGHUP
+.It Dv SIGQUIT
+.It Dv SIGTERM
+.It Dv SIGTSTP
+.It Dv SIGTTIN
+.It Dv SIGTTOU
+.El
+.Pp
+When one of the above signals is intercepted, terminal echo will
+be restored if it had previously been turned off.
+If a signal handler was installed for the signal when
+.Fn readpassphrase
+was called that handler is then executed.
+If no handler was previously installed for the signal then the
+default action is taken as per
+.Xr sigaction 2 .
+.Pp
+The
+.Dv SIGTSTP , SIGTTIN ,
+and
+.Dv SIGTTOU
+signals (stop signal generated from keyboard or due to terminal I/O
+from a background process) are treated specially.
+When the process is resumed after it has been stopped,
+.Fn readpassphrase
+will reprint the prompt and the user may then enter a passphrase.
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er EINTR
+The
+.Fn readpassphrase
+function was interrupted by a signal.
+.It Bq Er EINVAL
+The
+.Fa bufsiz
+argument was zero.
+.It Bq Er EIO
+The process is a member of a background process attempting to read
+from its controlling terminal, the process is ignoring or blocking
+the
+.Dv SIGTTIN
+signal or the process group is orphaned.
+.It Bq Er EMFILE
+The process has already reached its limit for open file descriptors.
+.It Bq Er ENFILE
+The system file table is full.
+.It Bq Er ENOTTY
+There is no controlling terminal and the
+.Dv RPP_REQUIRE_TTY
+flag was specified.
+.El
+.Sh SEE ALSO
+.Xr sigaction 2 ,
+.Xr getpass 3
+.Sh STANDARDS
+The
+.Fn readpassphrase
+function is an
+extension and should not be used if portability is desired.
+.Sh HISTORY
+The
+.Fn readpassphrase
+function first appeared in
+.Ox 2.9 .

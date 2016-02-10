@@ -4,6 +4,8 @@
 #include "AudioUnit.h"
 #include "AudioUnitProperties.h"
 #include <vector>
+#include <set>
+#include <mutex>
 #include <CoreFoundation/CFString.h>
 #include <CoreServices/ComponentsInternal.h>
 
@@ -24,6 +26,10 @@ public:
 	virtual OSStatus setProperty(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, const void* data, UInt32 dataSize);
 	virtual OSStatus getProperty(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, void* data, UInt32* dataSize);
 	virtual OSStatus getPropertyInfo(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, UInt32* dataSize, Boolean* writable);
+	
+	OSStatus addRenderNotify(AURenderCallback inProc, void* opaque);
+	OSStatus removeRenderNotify(AURenderCallback inProc, void* opaque);
+	OSStatus notifyListeners(AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData);
 protected:
 	std::vector<CFStringRef> m_elementNames;
 	std::vector<std::pair<AudioStreamBasicDescription, AudioStreamBasicDescription>> m_config;
@@ -31,6 +37,9 @@ protected:
 	AudioUnitConnection m_inputUnit;
 	bool m_shouldAllocateBuffer = true;
 	OSStatus m_lastRenderError = 0;
+	CFStringRef m_contextName = nullptr;
+	std::mutex m_listenersMutex;
+	std::set<std::pair<AURenderCallback, void*>> m_listeners;
 };
 
 #endif

@@ -1,0 +1,119 @@
+/*
+ * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_APACHE_LICENSE_HEADER_START@
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ * @APPLE_APACHE_LICENSE_HEADER_END@
+ */
+
+subsystem job_reply 500;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include "job_types.defs"
+import "bootstrap.h";
+import "vproc.h";
+import "vproc_internal.h";
+
+skip; /* create_server */
+
+skip; /* reboot2 */
+
+skip; /* check_in2 */
+
+skip; /* register2 */
+
+skip; /* look_up2 */
+
+simpleroutine
+job_mig_send_signal_reply(
+		rp		: mach_port_move_send_once_t;
+		kr		: kern_return_t, RetCode
+);
+
+skip; /* parent */
+
+skip; /* post_fork_ping */
+
+skip; /* info */
+
+skip; /* subset */
+
+skip; /* setup_shmem */
+
+skip; /* take_subset */
+
+skip; /* getsocket */
+
+skip; /* spawn */
+
+skip; /* wait */
+
+skip; /* uncork_fork */
+
+skip; /* swap_integer */
+
+skip; /* log */
+
+skip; /* lookup_per_user_context */
+
+skip; /* move_subset */
+
+skip; /* swap_complex */
+
+simpleroutine 
+job_mig_log_drain_reply(
+		rp		: mach_port_move_send_once_t;
+		kr		: kern_return_t, RetCode;
+		outval	: pointer_t
+);
+
+skip; /* log_forward */
+
+skip; /* kickstart */
+
+skip; /* embedded_wait */
+
+skip; /* lookup_children */
+
+skip; /* switch_to_session */
+
+skip; /* transaction_count_for_pid */
+
+skip; /* pid_is_managed */
+
+skip; /* port_for_label */
+
+skip; /* init_session */
+
+skip; /* set_security_session */
+
+skip; /* wait2 */
+
+skip; /* event_source_check_in */
+
+skip; /* event_set_state */
+
+simpleroutine
+job_mig_spawn2_reply(
+		rp		: mach_port_move_send_once_t;
+		kr		: kern_return_t, RetCode;
+		pid		: pid_t;
+		obsrvp	: mach_port_move_receive_t
+);
+
+skip; /* get_root_bootstrap */
+
+skip; /* legacy_ipc_request */

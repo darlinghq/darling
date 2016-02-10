@@ -1,0 +1,80 @@
+.\"-
+.\" Copyright (c) 2001 Chris D. Faulhaber
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR THE VOICES IN HIS HEAD BE
+.\" LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/lib/libc/posix1e/acl_add_perm.3,v 1.6 2002/12/18 12:45:09 ru Exp $
+.\"
+.Dd March 10, 2001
+.Dt ACL_ADD_PERM 3
+.Os
+.Sh NAME
+.Nm acl_add_perm
+.Nd add permissions to a permission set
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/acl.h
+.Ft int
+.Fn acl_add_perm "acl_permset_t permset_d" "acl_perm_t perm"
+.Sh DESCRIPTION
+The
+.Fn acl_add_perm
+function
+is a POSIX.1e call that adds the permission contained in
+.Fa perm
+to the permission set
+.Fa permset_d .
+.Pp
+Note: it is not considered an error to attempt to add permissions
+that already exist in the permission set.
+.Sh RETURN VALUES
+.Rv -std acl_add_perm
+.Sh ERRORS
+The
+.Fn acl_add_perm
+function fails if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Argument
+.Fa permset_d
+is not a valid descriptor for a permission set within an ACL entry.
+Argument
+.Fa perm
+does not contain a valid
+.Vt acl_perm_t
+value.
+.El
+.Sh SEE ALSO
+.Xr acl 3 ,
+.Xr acl_clear_perms 3 ,
+.Xr acl_delete_perm 3 ,
+.Xr acl_get_permset 3 ,
+.Xr acl_set_permset 3 ,
+.Xr posix1e 3
+.Sh STANDARDS
+POSIX.1e is described in IEEE POSIX.1e draft 17.
+.Sh AUTHORS
+.An Michael Smith
+.An Chris D Fulhaber

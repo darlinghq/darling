@@ -1,0 +1,43 @@
+.Dd October 14, 2005
+.Dt MEMSET_PATTERN 3
+.Os Darwin
+.Sh NAME
+.Nm memset_pattern4 ,
+.Nm memset_pattern8 ,
+.Nm memset_pattern16
+.Nd memset of a multi-byte pattern
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In string.h
+.Ft void
+.Fn memset_pattern4 "void *b" "const void *pattern4" "size_t len"
+.Ft void
+.Fn memset_pattern8 "void *b" "const void *pattern8" "size_t len"
+.Ft void
+.Fn memset_pattern16 "void *b" "const void *pattern16" "size_t len"
+.Sh DESCRIPTION
+These are analogous to 
+.Fn memset ,
+except that they
+fill memory with a replicated pattern either 4, 8, or 16 bytes long.
+.Fa b
+points to a buffer of size
+.Fa len
+bytes which is to be filled.  The second parameter points to the pattern.
+If the buffer length is not an even multiple
+of the pattern length, the last instance of the pattern will be truncated.
+Neither the buffer nor the pattern pointer need be aligned.
+.Sh EXAMPLES
+The following example:
+.Bd -literal -offset indent
+char buf[10];
+
+memset_pattern4( buf, "1234", sizeof(buf) );
+.Ed
+.Pp
+will set the buffer to the value "1234123412".
+.Sh SEE ALSO
+.Xr memset 3
+.Sh HISTORY
+These functions first appeared in Mac OS 10.5.

@@ -1,0 +1,72 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CASINH 3
+.Os BSD 4
+.Sh NAME
+.Nm casinh
+.Nd complex inverse hyperbolic sine function
+.Sh SYNOPSIS
+.Ft double complex
+.Fn casinh "double complex z"
+.Ft long double complex
+.Fn casinhl "long double complex z"
+.Ft float complex
+.Fn casinhf "float complex z"
+.Sh DESCRIPTION
+.Fn casinh "z"
+computes the inverse hyperbolic sine of the complex floating-point number
+.Fa z ,
+with branch cuts outside the interval
+.Bq -i, i
+along the imaginary axis.
+.Pp
+.Fn casinh
+returns values in a strip of the complex plane with imaginary part in the interval
+.Bq -Pi/2 , Pi/2 .
+.Pp
+For all complex floating point numbers z,
+.Bd -literal -offset indent
+casinh(conj(z)) = conj(casinh(z)).
+casinh(-z) = -casinh(z)
+.Ed
+.Sh SPECIAL VALUES
+The symmetries of casinh() are used to abbreviate the specification of special values.
+.Pp
+.Fn casinh "0 + 0i"
+returns 0 + 0 i.
+.Pp
+.Fn casinh "x + inf i"
+returns inf + Pi/2 i, for finite positive-signed x.
+.Pp
+.Fn casinh "x + NaN i"
+returns NaN + NaN i, for finite x.
+.Pp
+.Fn casinh "inf + yi"
+returns inf + 0i, for finite positive-signed y.
+.Pp
+.Fn casinh "inf + inf i"
+returns inf + Pi/4 i.
+.Pp
+.Fn casinh "inf + NaN i"
+returns inf + NaN i.
+.Pp
+.Fn casinh "NaN + 0i"
+returns NaN + 0i.
+.Pp
+.Fn casinh "NaN + yi"
+returns NaN + NaN i, for finite y.
+.Pp
+.Fn casinh "NaN + inf i"
+returns inf + NaN i.
+.Pp
+.Fn casinh "NaN + NaN i"
+returns NaN + NaN i.
+.Sh NOTES
+.Sh SEE ALSO
+.Xr csinh 3
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn casinh
+function conforms to ISO/IEC 9899:1999(E).

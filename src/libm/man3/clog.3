@@ -1,0 +1,70 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CLOG 3
+.Os BSD 4
+.Sh NAME
+.Nm clog
+.Nd complex logarithm function
+.Sh SYNOPSIS
+.Fd #include <complex.h>
+.Ft double complex
+.Fn clog "double complex z"
+.Ft long double complex
+.Fn clogl "long double complex z"
+.Ft float complex
+.Fn clogf "float complex z"
+.Sh DESCRIPTION
+.Fn clog "z"
+returns the complex logarithm of
+.Fa z .
+.Pp
+clog(conj(z)) = conj(clog(z)), for all complex floating-point numbers z.
+.Sh SPECIAL VALUES
+The conjugate symmetry of clog() is used to abbreviate the specification of special values.
+.Pp
+.Fn clog "-0 + 0i"
+returns -inf + Pi i and raises the divide-by-zero flag.
+.Pp
+.Fn clog "0 + 0i"
+returns -inf + 0i and raises the divide-by-zero flag.
+.Pp
+.Fn clog "x + inf i"
+returns inf + Pi/2 i, for finite x.
+.Pp
+.Fn clog "x + NaN i"
+returns NaN + NaN i.
+.Pp
+.Fn clog "-inf + yi"
+returns inf + Pi i, for finite positive y.
+.Pp
+.Fn clog "inf + yi"
+returns inf + 0i, for finite positive y.
+.Pp
+.Fn clog "-inf + inf i"
+returns inf + 3Pi/4 i.
+.Pp
+.Fn clog "inf + inf i"
+returns inf + Pi/4 i.
+.Pp
+.Fn clog "±inf + NaN i"
+returns inf + NaN i.
+.Pp
+.Fn clog "NaN + yi"
+returns NaN + NaN i, for finite y.
+.Pp
+.Fn clog "NaN + inf i"
+returns inf + NaN i.
+.Pp
+.Fn clog "NaN + NaN i"
+returns NaN + NaN i.
+.Pp
+.Sh NOTES
+.Sh SEE ALSO
+.Xr cexp 3
+.Xr log 3
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn clog
+function conforms to ISO/IEC 9899:1999(E).

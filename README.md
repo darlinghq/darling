@@ -1,88 +1,128 @@
-This is a userspace compatibility layer for running Darwin/OS X binaries on Linux.                                                                                                                                                                                             
+# Darling
 
-# General information
+Darling is a runtime environment for OS X applications.
 
-For more information visit http://www.darlinghq.org
+Please note that no GUI applications are supported at the moment.
 
-**Build instructions** are avaiable here: http://www.darlinghq.org/build-instructions
+## Download
 
-# Hacking tutorial
+Darling uses many Git submodules, so a plain clone will not do.
 
-Want to help? Visit the developer zone at http://www.darlinghq.org/developer-zone
+````
+git clone https://github.com/darlinghq/darling.git
+cd darling
+git submodule init
+git submodule update
+````
 
-## Directory tree
+Updating sources:
 
-<dl>
+````
+git pull
+git submodule init
+git submodule update
+````
 
-<dt>benchmarks/</dt>
-<dd>No serious stuff in here, used only once for a simple ObjC msg sending benchmark.</dd>
-<dt>etc/</dt>
-<dd>Contains dylib.conf which is used to map OS X library (framework) paths to Linux/Darling ones. `/dev/null` = load nothing.</dd>
-<dt>include/</dt>
-<dd>Header files taken from Darwin/OS X (APSL license). The plan is to get rid of these eventually.</dd>
-<dt>misc/</dt>
-<dd>Random files, nothing that really matters.</dd>
-<dt>src/</dt>
-<dd>Source code, see below.</dd>
-<dt>tests/</dt>
-<dd>Test runner. It is specifically designed to work on my testing setup. See below.</dd>
-<dt>tests/src/</dt>
-<dd>The source code for tests.</dd>
-<dt>tools/</dt>
-<dd>Various utilities used during the development.</dd>
+## Build Instructions
 
-</dl>
+For x86-64 OS X binaries:
+````
+cd darling
+mkdir -p build/x86-64
+cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86_64.cmake
+make
+make install
 
-### Source tree
+# Now we go into src/lkm to build the kernel module
+cd ../../src/lkm
+make
+make install
+````
 
-The structure under `src/`.
+Required dependencies on Debian (stable): cmake clang bison flex linux-headers-amd64 xz-utils libfuse-dev libxml2-dev libicu-dev libssl-dev libbz2-dev zlib1g-dev libudev-dev
 
-<dl>
-<dt>src/libSystem/</dt>
-<dd>Wrappers or implementation of libc funcions, BSD system calls and Mach system calls.</dd>
+For i386 OS X binaries:
+````
+cd darling
+mkdir -p build/i386
+cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86.cmake
+make
+make install
+````
 
-<dt>src/libobjcdarwin/</dt>
-<dd>Loader of ObjC classes/protocols in Mach-O ObjC applications. Contains code for selector fixups and other techniques needed to "make it work" with GNUstep's libobjc2.</dd>
+Required additional dependencies on Debian (stable): libc6-dev-i386 libudev-dev:i386 lib32stdc++-4.9-dev
 
-<dt>src/util/</dt>
-<dd>Various utility functions/classes common to all parts of Darling.</dd>
+Loading the kernel module:
+````
+modprobe darling-mach
 
-<dt>src/libmach-o/</dt>
-<dd>Mach-O parsing/loading library.</dd>
+# ATTENTION: The kernel module is likely unstable,
+# full of vulnerabilities, etc.
+# You SHOULD restrict access to /dev/mach to trusted
+# users only and be prepared to the eventuality of
+# kernel hangups (and related data loss).
 
-<dt>src/dyld/</dt>
-<dd>The dynamic loader.</dd>
+chmod a+rw /dev/mach
+````
 
-<dt>src/motool/</dt>
-<dd>A very simple tool for Mach-O file examination. (An allusion to "otool" available on OS X.)</dd>
+### Optional Features
 
-<dt>src/crash/</dt>
-<dd>A crash ("force quit") dialog app for Cocoa apps. Not really complete yet.</dd>
+Optionally, you can enable audio support with the ````-DFRAMEWORK_COREAUDIO=On````. This is still under development, so it probably only makes sense if you want to contribute.
+This switch enables both ALSA and PulseAudio support by default, you can disable either of them with ````-DENABLE_ALSA=OFF```` or ````-DENABLE_PULSEAUDIO=OFF```` respectively.
 
-<dt>...</dt>
-<dd>The rest is code or wrappers in various stages of completion.</dd>
+Required dependencies on Debian (stable):
 
-</dl>
+* x86-64: libpulse-dev libasound2-dev libavresample-dev libavformat-dev libavcodec-dev
+* i386: libpulse-dev:i386 libasound2-dev:i386 libavresample-dev:i386 libavformat-dev:i386 libavcodec-dev:i386
 
-### Tests tree
+Note that most of the above -dev packages conflict between x86-64 and i386, so if you build for both platforms, you have to reinstall the right -dev variants before every build. There should be no issues at runtime.
 
-The testing procedure implemented in `src/tests/runtest.cpp` is as follows:
+## Using Darling
 
-1. It copies the source file to the OS X machine.
-2. It remotely builds the source file. If the current binary name is `runtest32`, then `-m32` is added and `dyld32` is used later on. A similar `runtest64` symlink is needed if your 64-bit dyld is called `dyld64`. If the first line in the source file is `// CFLAGS:`, then the rest is used as CFLAGS.
-3. It remotely runs the program and keeps its stdout.
-4. It copies the binary over to the local machine.
-5. It runs the binary via dyld/dyld32/dyld64.
-6. It compares the stdout contents of dyld with that of the remotely run binary.
-7. Should the stdout contents differ or should the process exit with a non-zero code on either of the systems, the test has failed.
+Darling uses DPREFIXes, which are in essence similar to WINEPREFIXes. The are virtual chroot environment with an OS X-like filesystem hierarchy, where you can safely install and run software. Unless you set DPREFIX to your location, the default ````~/.darling```` is used.
 
-## Debugging
+The real root filesystem is available through ````/system-root```` and the ````/home```` directory is automatically symlinked, so you should feel at home right away.
 
-Find out how Darling can help you with debugging at http://www.darlinghq.org/for-developers/debugging-in-darling
+At first use, initial prefix contents are downloaded from the Internet.
 
-## What NOT to do
+### Hello world
 
-To avoid mistakes:
+Let's start with a Hello world:
 
-* DO NOT use opencflite and similar Apple CFLite forks, unless you know what you're doing. They lack bridging support with gnustep-base. Bridging between gnustep-corebase and -base is at least work in progress. Should CFLite forks ever fix a bug for you, please help fix the problem in gnustep-corebase.
+````
+$ darling shell echo Hello world
+Hello world
+````
+
+Congratulations, you have printed Hello world through Darling's OS X system call emulation and runtime libraries.
+
+### Installing software
+
+You can install ````.pkg```` packages with the installer tool available inside shell. It is a somewhat limited cousin of OS X's installer:
+
+````
+$ darling shell
+Darling [~]$ installer -pkg mc-4.8.7-0.pkg -target /
+````
+
+If you have previously downloaded the Midnight Commander package from [Rudix](http://rudix.org), you can now run ````mc```` to start MC for OS X. Note that not all Rudix packages may work under Darling, namely the Rudix Package Manager doesn't work, as Darling doesn't yet build its own Python runtime.
+
+You can uninstall and list packages with the ````uninstaller```` command.
+
+### Working with DMG images
+
+DMG images can be attached and deattached from inside ````darling shell```` with ````hdiutil````. This is how you can install Xcode along with its toolchain and SDKs (note that Xcode itself doesn't run yet):
+
+````
+Darling [~]$ hdiutil attach Xcode_7.2.dmg
+/Volumes/Xcode_7.2
+Darling [~]$ cp -r /Volumes/Xcode_7.2/Xcode.app /Applications
+Darling [~]$ export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
+Darling [~]$ echo 'void main() { puts("Hello world"); }' > helloworld.c
+Darling [~]$ /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang helloworld.c -o helloworld
+Darling [~]$ ./helloworld
+Hello world
+````
+
+Congratulations, you have just compiled and run your own Hello world application with Apple's toolchain.
 

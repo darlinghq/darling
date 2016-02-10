@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleExecutable</key>
+	<string>IPMonitor</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.apple.SystemConfiguration.IPMonitor</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>com.apple.SystemConfiguration.IPMonitor</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.14.4</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>1.13</string>
+	<key>Requires</key>
+	<array>
+		<string>com.apple.SystemConfiguration.IPConfiguration</string>
+		<string>com.apple.SystemConfiguration.PreferencesMonitor</string>
+		<string>com.apple.SystemConfiguration.SCNetworkReachability</string>
+	</array>
+	<key>Builtin</key>
+	<true/>
+	<key>mdns_timeout</key>
+	<integer>5</integer>
+	<key>pdns_timeout</key>
+	<integer>5</integer>
+	<key>AppendStateArrayToSetupArray</key>
+	<false/>
+	<key>SupplementalProxiesFollowSupplementalDNS</key>
+	<false/>
+	<key>MachServices</key>
+	<dict>
+		<key>com.apple.SystemConfiguration.DNSConfiguration_sim</key>
+		<true/>
+		<key>com.apple.SystemConfiguration.NetworkInformation_sim</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

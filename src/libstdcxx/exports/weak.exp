@@ -1,0 +1,11 @@
+__ZTISt9exception
+__ZTISt13bad_exception
+__ZTISt12domain_error
+__ZTISt12length_error
+__ZTISt11range_error
+__ZTISt14overflow_error
+__ZTISt15underflow_error
+__ZTISt11logic_error
+__ZTISt13runtime_error
+__ZTISt12out_of_range
+__ZTISt11range_error

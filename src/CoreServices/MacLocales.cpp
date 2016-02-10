@@ -19,8 +19,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "MacLocales.h"
 #include "MacErrors.h"
-#include "libSystem/libc/darwin_errno_codes.h"
-#include "libSystem/libc/errno.h"
 #include <unicode/locid.h>
 #include <unicode/coll.h>
 #include <cstring>
@@ -89,7 +87,7 @@ OSStatus LocaleRefFromLangOrRegionCode(LangCode langCode, RegionCode regionCode,
 	if (loc.isBogus())
 	{
 		*refOut = 0;
-		return makeOSStatus(DARWIN_ENOENT);
+		return makeOSStatus(ENOENT);
 	}
 	else
 	{
@@ -104,7 +102,7 @@ OSStatus LocaleRefFromLocaleString(const char* str, LocaleRef* refOut)
 	if (loc.isBogus())
 	{
 		*refOut = 0;
-		return makeOSStatus(DARWIN_EINVAL);
+		return makeOSStatus(EINVAL);
 	}
 	else
 	{
@@ -122,7 +120,7 @@ OSStatus LocaleRefGetPartString(LocaleRef ref, uint32_t partMask, unsigned long 
 	{
 		if (maxStringLen)
 			*stringOut = 0;
-		return makeOSStatus(DARWIN_EINVAL);
+		return makeOSStatus(EINVAL);
 	}
 
 	if (partMask & (kLocaleLanguageMask|kLocaleLanguageVariantMask))
@@ -150,7 +148,7 @@ OSStatus LocaleStringToLangAndRegionCodes(const char* name, LangCode* langCode, 
 	{
 		*langCode = kTextLanguageDontCare;
 		*regionCode = kTextRegionDontCare;
-		return makeOSStatus(DARWIN_ENOENT);
+		return makeOSStatus(ENOENT);
 	}
 
 	const char* lang = loc.getLanguage();

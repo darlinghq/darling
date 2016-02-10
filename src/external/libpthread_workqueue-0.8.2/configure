@@ -1,0 +1,351 @@
+#!/bin/sh
+#
+# Copyright (c) 2009-2011 Mark Heily <mark@heily.com>
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+makeconf_version="$Revision: 10 $"
+
+c_exports="program version target api cflags"
+
+make_exports="program version target api distfile basedir \
+              prefix bindir sbindir libdir includedir mandir \
+              cflags ldflags ldadd libdepends \
+              sources objs deps mans headers extra_dist subdirs \
+              abi_major abi_minor abi_version \
+              cc cpp ld ln ar install diff"
+
+required_headers=
+optional_headers=
+
+pre_configure_hook() {
+    return
+}
+
+post_configure_hook() {
+    return
+}
+
+export_to_make() {
+  for id in $*
+  do
+    uc_id=`echo $id | $tr '[:lower:]' '[:upper:]'`;
+    eval "echo \"$uc_id=\"\$$id\"\" >> config.mk"
+  done
+}
+
+export_to_c() {
+  for id in $*
+  do
+    uc_id=`echo $id | $tr '[:lower:]' '[:upper:]'`;
+    eval "echo \"#define $uc_id \\\"\$$id\\\"\" >> config.h"
+  done
+}
+
+finalize() {
+  uc_id=`echo \"$1\" | $tr '[:lower:]' '[:upper:]'`;
+  eval "if [ \"\$$1\" = \"\" ] ; then $1=\"$2\" ; fi"
+}
+
+process_argv() {
+    for arg in $*
+    do
+        if [ "$arg" = "--makeconf-version" ] ; then
+            echo $makeconf_version | sed 's/[^0-9.]//g'
+            exit 0
+        fi
+        id=`echo "$arg" | sed 's/=.*//; s/^--//;'`
+        val=`echo "$arg" | sed 's/^.*=//'`
+        if [ "$val" = "" ] ; then val=1 ; fi
+        eval "$id=\"$val\"" 
+    done
+}
+
+process_env() {
+    test -n "$CC" && cc="$CC"
+    test -n "$CPP" && cpp="$CPP"
+    test -n "$CPPFLAGS" && cppflags="$CPPFLAGS"
+    test -n "$CFLAGS" && cflags="$CFLAGS"
+    test -n "$LD" && ld="$LD"
+    test -n "$LN" && ld="$LN"
+    test -n "$LDFLAGS" && ldflags="$LDFLAGS"
+    test -n "$AR" && ar="$AR"
+    basedir=`pwd`
+}
+ 
+check_header() {	 
+   sym=`echo "have_$1" | sed 's,[./],_,g'`	 
+   uc_sym=`echo "$sym" | $tr '[:lower:]' '[:upper:]'`;
+   path=$1
+
+   printf "checking for $path.. "
+   if [ -f "/usr/include/$path" ] ; then
+     echo "yes"
+     echo "#define $uc_sym 1" >> config.h
+     eval "$sym=yes"
+     return 0
+   else  
+     echo "no"
+     echo "#undef $uc_sym" >> config.h
+     eval "$sym=no"
+     return 1
+   fi
+}
+
+# Determine the path to an executable binary
+check_binary() {
+   id=$1
+   shift
+
+   for path in $*
+   do
+       test -f $path
+       if [ $? = 0 ] ; then
+           eval "$id=\"$path\""
+           return
+       fi
+   done
+
+   echo "not found"
+   return
+}
+
+check_headers() {	 
+   for header in $*
+   do
+       check_header "$header"
+   done
+}
+
+check_symbol() {
+    header=$1
+    symbol=$2
+
+    uc_symbol=`echo "HAVE_$symbol" | $tr '[:lower:]' '[:upper:]' | sed 's,[./],_,g'`
+    lc_symbol=`echo "have_$symbol" | $tr '[:upper:]' '[:lower:]' | sed 's,[./],_,g'`
+
+    if [ -f "$header" ] ; then
+        path="$header"
+    elif [ -f "/usr/include/$header" ] ; then
+        path="/usr/include/$header"
+    else
+        echo "*** ERROR: Cannot find <$header>"
+        exit 1
+    fi
+     
+    printf "checking $header for $symbol.. "    
+    if [ "`grep $symbol $path`" != "" ] ; then
+     eval "$lc_symbol=yes"
+     echo "#define $uc_symbol 1" >> config.h
+     echo "yes"
+     return 0
+    else
+     eval "$lc_symbol=no"
+     echo "no"
+     echo "#undef $uc_symbol" >> config.h
+     return 1
+    fi
+}
+
+check_install() {
+    printf "checking for a BSD-compatible install.. "
+    if [ "`uname -s`" = "SunOS" ] ; then
+        default_install=/usr/ucb/install
+    else
+        default_install=/usr/bin/install
+    fi
+    finalize install "$default_install"
+    echo "$install"
+}
+
+check_target() {
+    printf "checking operating system type.. "
+    default_target=`uname -s | $tr '[:upper:]' '[:lower:]'`
+    default_api="posix"
+    case "$default_target" in
+    sunos)
+            default_target="solaris"
+            ;;
+    "gnu/kfreebsd")
+            default_target="freebsd"
+            ;;
+    mingw*)
+            default_target="windows"
+            default_api="windows"
+            ;;
+    esac
+    finalize target "$default_target"
+    finalize api "$default_api"
+    echo "$api"
+}
+
+check_compiler() {
+    printf "checking for a C compiler.. "
+    check_binary default_cc "$cc" "`which $cc 2>/dev/null`" "/usr/bin/cc" "/usr/bin/gcc" "/usr/sfw/bin/gcc" "`which gcc 2>/dev/null`"
+    finalize cc "$default_cc"
+#    test -x "$cc" || err "Unable to locate a C compiler"
+    echo "$cc"
+}
+
+check_linker() {
+    printf "checking for a suitable linker.. "
+
+    # Workaround for "hidden symbol <foo> is referenced by DSO" linker error
+    # seen when compiling libdispatch.
+    # Appears to be a problem with GCC 4.0 and binutils
+    #
+    default_ld="$cc"
+    ldflags="-o $program.so.$abi_major.$abi_minor $ldflags"
+
+    # FIXME: port to solaris
+    if [ "$target" = "linux" ] ; then
+    ldflags="$ldflags -Wl,-export-dynamic -Wl,-soname,$program.so.$abi_major"
+    fi 
+
+    if [ "$target" = "solaris" ] ; then
+    ldflags="$ldflags"
+    fi
+
+    finalize ld "$default_ld"
+    echo "$ld"
+}
+
+check_archiver() {
+    printf "checking for a suitable archiver.. "
+    if [ "`uname -s`" = "SunOS" -a "`uname -v | grep Nexenta`" = "" ] ; then
+       default_ar="/usr/sfw/bin/gar"
+    else
+       default_ar="/usr/bin/ar"
+    fi
+    finalize ar "$default_ar"
+    echo "$ar"
+}
+
+err() {
+    echo "*** ERROR *** $*"
+    rm -f config.mk $program.pc config.h
+    exit 1
+}
+
+check_diff() {
+    # TODO: Support non-GNU diff syntax
+    # TODO: Search for the command
+    printf "checking for a suitable diff(1) command.. "
+    finalize diff "diff -ruN -dEbwBp -x .svn -x .o -x config.h -x config.mk"
+    echo "found"
+}
+
+subst_vars() {
+  outfile=$1
+
+  if [ ! -f "${outfile}.in" ] ; then
+      return
+  fi
+
+  echo "Creating $outfile"
+  rm -f $outfile
+  sed -e "
+       s,@@CWD@@,`pwd`,g;
+       s,@@PROGRAM@@,$program,g;
+       s,@@VERSION@@,$version,g;
+       s,@@PREFIX@@,$prefix,g;
+       s,@@LIBDIR@@,$libdir,g;
+       s,@@INCLUDEDIR@@,$includedir,g;
+       s,@@MANDIR@@,$mandir,g;
+       s,@@LIBDEPENDS@@,$libdepends,g;
+       s,@@PKG_SUMMARY@@,$pkg_summary,g;
+       s,@@RPM_DATE@@,`date +'%a %b %d %Y'`,g;
+       s,@@PKG_DESCRIPTION@@,$pkg_description,g;
+       s,@@LICENSE@@,$license,g;
+       s,@@AUTHOR@@,$author,g;
+       " < ${outfile}.in > $outfile
+  chmod 400 $outfile
+}
+
+#######################################################################
+#
+#                           MAIN()
+#
+#######################################################################
+
+# Workaround for Solaris "Bad string" issue when LOCALE is undefined
+tr="/usr/bin/tr"
+test -f /usr/xpg4/bin/tr && tr="/usr/xpg4/bin/tr"
+
+. ./config.inc
+
+# Initialize the output files
+#
+for output_file in config.mk
+do
+   rm -f $output_file
+   echo "# AUTOMATICALLY GENERATED -- DO NOT EDIT" > $output_file
+done
+if [ "$sources" != "" ] ; then
+   rm -f config.h
+   echo "/* AUTOMATICALLY GENERATED -- DO NOT EDIT */" > config.h
+fi
+
+process_argv "$*"
+process_env
+
+check_target
+check_compiler
+check_linker
+check_archiver
+check_install
+check_diff
+
+finalize program    "$program"
+finalize version    "$version"
+finalize abi_major  "$abi_major"
+finalize abi_minor  "$abi_minor"
+finalize abi_version "$abi_major.$abi_minor"
+finalize prefix     "/usr/local"
+finalize bindir     "\\\$(PREFIX)/bin"
+finalize sbindir    "\\\$(PREFIX)/sbin"
+finalize libdir     "\\\$(PREFIX)/lib"
+finalize includedir "\\\$(PREFIX)/include"
+finalize mandir     "\\\$(PREFIX)/share/man"
+finalize cflags     "$cflags"
+finalize libdepends "$libdepends"
+finalize ldadd      ""
+finalize ldflags    ""
+finalize deps       ""
+finalize ln         "`which ln`"
+finalize distfile   "$program-$version.tar.gz" 
+
+pre_configure_hook
+
+for header in $required_headers
+do
+  check_header "$header" || err "$header is required, but cannot be found."
+done
+check_headers $optional_headers
+
+post_configure_hook
+
+objs="`echo \"$sources\" | sed 's/\.c/\.o/g'`"
+
+subst_vars "$program.pc"
+subst_vars "$program.la"
+subst_vars "rpm.spec"
+
+if [ "$sources" != "" ] ; then
+    echo "Creating config.h"
+    export_to_c $c_exports
+fi
+
+echo "Creating config.mk"
+export_to_make "$make_exports"

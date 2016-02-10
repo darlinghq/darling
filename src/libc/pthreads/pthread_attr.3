@@ -1,0 +1,277 @@
+.\" Copyright (C) 2000 Jason Evans <jasone@FreeBSD.org>.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice(s), this list of conditions and the following disclaimer as
+.\"    the first lines of this file unmodified other than the possible
+.\"    addition of one or more copyright notices.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice(s), this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER(S) ``AS IS'' AND ANY
+.\" EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) BE
+.\" LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+.\" BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+.\" WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+.\" OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+.\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/lib/libc_r/man/pthread_attr.3,v 1.4.2.5 2001/08/17 15:42:51 ru Exp $
+.Dd April 28, 2000
+.Dt PTHREAD_ATTR 3
+.Os
+.Sh NAME
+.Nm pthread_attr_destroy ,
+.Nm pthread_attr_getdetachstate ,
+.Nm pthread_attr_getinheritsched ,
+.Nm pthread_attr_getschedparam ,
+.Nm pthread_attr_getschedpolicy ,
+.Nm pthread_attr_getscope ,
+.Nm pthread_attr_getstackaddr ,
+.Nm pthread_attr_getstacksize ,
+.Nm pthread_attr_init ,
+.Nm pthread_attr_setdetachstate ,
+.Nm pthread_attr_setinheritsched ,
+.Nm pthread_attr_setschedparam ,
+.Nm pthread_attr_setschedpolicy ,
+.Nm pthread_attr_setscope ,
+.Nm pthread_attr_setstackaddr ,
+.Nm pthread_attr_setstacksize
+.Nd thread attribute operations
+.Sh SYNOPSIS
+.Fd #include <pthread.h>
+.Ft int
+.Fo pthread_attr_destroy
+.Fa "pthread_attr_t *attr"
+.Fc
+.Ft int
+.Fo pthread_attr_getdetachstate
+.Fa "const pthread_attr_t *attr"
+.Fa "int *detachstate"
+.Fc
+.Ft int
+.Fo pthread_attr_getinheritsched
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "int *restrict inheritsched"
+.Fc
+.Ft int
+.Fo pthread_attr_getschedparam
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "struct sched_param *restrict param"
+.Fc
+.Ft int
+.Fo pthread_attr_getschedpolicy
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "int *restrict policy"
+.Fc
+.Ft int
+.Fo pthread_attr_getscope
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "int *restrict contentionscope"
+.Fc
+.Ft int
+.Fo pthread_attr_getstackaddr
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "void **restrict stackaddr"
+.Fc
+.Ft int
+.Fo pthread_attr_getstacksize
+.Fa "const pthread_attr_t *restrict attr"
+.Fa "size_t *restrict stacksize"
+.Fc
+.Ft int
+.Fo pthread_attr_init
+.Fa "pthread_attr_t *attr"
+.Fc
+.Ft int
+.Fo pthread_attr_setdetachstate
+.Fa "pthread_attr_t *attr"
+.Fa "int detachstate"
+.Fc
+.Ft int
+.Fo pthread_attr_setinheritsched
+.Fa "pthread_attr_t *attr"
+.Fa "int inheritsched"
+.Fc
+.Ft int
+.Fo pthread_attr_setschedparam
+.Fa "pthread_attr_t *restrict attr"
+.Fa "const struct sched_param *restrict param"
+.Fc
+.Ft int
+.Fo pthread_attr_setschedpolicy
+.Fa "pthread_attr_t *attr"
+.Fa "int policy"
+.Fc
+.Ft int
+.Fo pthread_attr_setscope
+.Fa "pthread_attr_t *attr"
+.Fa "int contentionscope"
+.Fc
+.Ft int
+.Fo pthread_attr_setstackaddr
+.Fa "pthread_attr_t *attr"
+.Fa "void *stackaddr"
+.Fc
+.Ft int
+.Fo pthread_attr_setstacksize
+.Fa "pthread_attr_t *attr"
+.Fa "size_t stacksize"
+.Fc
+.Sh DESCRIPTION
+Thread attributes are used to specify parameters to
+.Fn pthread_create .
+One attribute object can be used in multiple calls to
+.Fn pthread_create ,
+with or without modifications between calls.
+.Pp
+The
+.Fn pthread_attr_init
+function initializes
+.Fa attr
+with all the default thread attributes.
+.Pp
+The
+.Fn pthread_attr_destroy
+function destroys
+.Fa attr .
+.Pp
+The
+.Fn pthread_attr_set*
+functions set the attribute that corresponds to each function name.
+.Pp
+The
+.Fn pthread_attr_get*
+functions copy the value of the attribute that corresponds to each function name
+to the location pointed to by the second function parameter.
+.Sh RETURN VALUES
+If successful, these functions return 0.
+Otherwise, an error number is returned to indicate the error.
+.Sh ERRORS
+.Fn pthread_attr_init
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er ENOMEM
+Out of memory.
+.El
+.Pp
+.Fn pthread_attr_destroy
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Pp
+.Fn pthread_attr_setstacksize
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.\" ========
+.It Bq Er EINVAL
+.Fa stacksize
+is less than
+.Dv PTHREAD_STACK_MIN .
+.\" ========
+.It Bq Er EINVAL
+.Fa stacksize
+is not a multiple of the system page size.
+.El
+.Pp
+.Fn pthread_attr_setdetachstate
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr
+or
+.Fa detachstate .
+.El
+.Pp
+.Fn pthread_attr_setinheritsched
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.El
+.Pp
+.Fn pthread_attr_setschedparam
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.\" ========
+.It Bq Er ENOTSUP
+Invalid value for
+.Fa param .
+.El
+.Pp
+.Fn pthread_attr_setschedpolicy
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.It Bq Er ENOTSUP
+Invalid or unsupported value for
+.Fa policy .
+.El
+.Pp
+.Fn pthread_attr_setscope
+will fail if:
+.Bl -tag -width Er
+.\" ========
+.It Bq Er EINVAL
+Invalid value for
+.Fa attr .
+.\" ========
+.It Bq Er ENOTSUP
+Invalid or unsupported value for
+.Fa contentionscope .
+.El
+.Sh SEE ALSO
+.Xr pthread_create 3
+.Sh STANDARDS
+.Fn pthread_attr_init ,
+.Fn pthread_attr_destroy ,
+.Fn pthread_attr_setstacksize ,
+.Fn pthread_attr_getstacksize ,
+.Fn pthread_attr_setstackaddr ,
+.Fn pthread_attr_getstackaddr ,
+.Fn pthread_attr_setdetachstate ,
+and
+.Fn pthread_attr_getdetachstate
+conform to
+.St -p1003.1-96
+.Pp
+.Fn pthread_attr_setinheritsched ,
+.Fn pthread_attr_getinheritsched ,
+.Fn pthread_attr_setschedparam ,
+.Fn pthread_attr_getschedparam ,
+.Fn pthread_attr_setschedpolicy ,
+.Fn pthread_attr_getschedpolicy ,
+.Fn pthread_attr_setscope ,
+and
+.Fn pthread_attr_getscope
+conform to
+.St -susv2

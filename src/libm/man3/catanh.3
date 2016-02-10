@@ -1,0 +1,75 @@
+.\" Copyright (c) 2006 Apple Computer
+.\"
+.Dd December 11, 2006
+.Dt CATANH 3
+.Os BSD 4
+.Sh NAME
+.Nm catanh
+.Nd complex inverse hyperbolic tangent function
+.Sh SYNOPSIS
+.Ft double complex
+.Fn catanh "double complex z"
+.Ft long double complex
+.Fn catanhl "long double complex z"
+.Ft float complex
+.Fn catanhf "float complex z"
+.Sh DESCRIPTION
+.Fn catanh "z"
+computes the inverse hyperbolic tangent of the complex floating-point number
+.Fa z ,
+with branch cuts outside the interval
+.Bq -1, 1
+along the real axis.
+.Pp
+.Fn catanh
+returns values in a strip of the complex plane with imaginary part in the interval
+.Bq -Pi/2 , Pi/2 .
+.Pp
+For all complex floating point numbers z,
+.Bd -literal -offset indent
+catanh(conj(z)) = conj(catanh(z)).
+catanh(-z) = -catanh(z)
+.Ed
+.Sh SPECIAL VALUES
+The symmetries of catanh() are used to abbreviate the specification of special values.
+.Pp
+.Fn catanh "0 + 0i"
+returns 0 + 0 i.
+.Pp
+.Fn catanh "0 + NaN i"
+returns 0 + NaN i.
+.Pp
+.Fn catanh "1 + 0i"
+returns inf + 0i and raises the divide-by-zero flag.
+.Pp
+.Fn catanh "x + inf i"
+returns 0 + Pi/2 i, for finite positive-signed x.
+.Pp
+.Fn catanh "x + NaN i"
+returns NaN + NaN i, for non-zero finite x.
+.Pp
+.Fn catanh "inf + yi"
+returns 0 + Pi/2 i, for finite positive-signed y.
+.Pp
+.Fn catanh "inf + inf i"
+returns 0 + Pi/2 i.
+.Pp
+.Fn catanh "inf + NaN i"
+returns 0 + NaN i.
+.Pp
+.Fn catanh "NaN + yi"
+returns NaN + NaN i, for finite y.
+.Pp
+.Fn catanh "NaN + inf i"
+returns 0 + Pi/2 i.
+.Pp
+.Fn catanh "NaN + NaN i"
+returns NaN + NaN i.
+.Sh NOTES
+.Sh SEE ALSO
+.Xr ctanh 3
+.Xr complex 3
+.Sh STANDARDS
+The
+.Fn catanh
+function conforms to ISO/IEC 9899:1999(E).

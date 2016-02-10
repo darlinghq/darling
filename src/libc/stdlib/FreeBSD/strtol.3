@@ -1,0 +1,257 @@
+.\" Copyright (c) 1990, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek and the American National Standards Committee X3,
+.\" on Information Processing Systems.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)strtol.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/stdlib/strtol.3,v 1.23 2007/04/10 11:17:00 ru Exp $
+.\"
+.Dd November 28, 2001
+.Dt STRTOL 3
+.Os
+.Sh NAME
+.Nm strtoimax ,
+.Nm strtol ,
+.Nm strtoll ,
+.Nm strtoq
+.Nd "convert a string value to a"
+.Vt long , "long long" , intmax_t
+or
+.Vt quad_t
+integer
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In inttypes.h
+.Ft intmax_t
+.Fo strtoimax
+.Fa "const char *restrict str"
+.Fa "char **restrict endptr"
+.Fa "int base"
+.Fc
+.In stdlib.h
+.Ft long
+.Fo strtol
+.Fa "const char *restrict str"
+.Fa "char **restrict endptr"
+.Fa "int base"
+.Fc
+.Ft long long
+.Fo strtoll
+.Fa "const char *restrict str"
+.Fa "char **restrict endptr"
+.Fa "int base"
+.Fc
+.In sys/types.h
+.In stdlib.h
+.In limits.h
+.Ft quad_t
+.Fo strtoq
+.Fa "const char *str"
+.Fa "char **endptr"
+.Fa "int base"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn strtol
+function
+converts the string in
+.Fa str
+to a
+.Vt long
+value.
+The
+.Fn strtoll
+function
+converts the string in
+.Fa str
+to a
+.Vt "long long"
+value.
+The
+.Fn strtoimax
+function
+converts the string in
+.Fa str
+to an
+.Vt intmax_t
+value.
+The
+.Fn strtoq
+function
+converts the string in
+.Fa str
+to a
+.Vt quad_t
+value.
+The conversion is done according to the given
+.Fa base ,
+which must be between 2 and 36 inclusive,
+or be the special value 0.
+.Pp
+The string may begin with an arbitrary amount of white space
+(as determined by
+.Xr isspace 3 )
+followed by a single optional
+.Ql +
+or
+.Ql -
+sign.
+If
+.Fa base
+is zero or 16,
+the string may then include a
+.Dq Li 0x
+prefix,
+and the number will be read in base 16; otherwise, a zero
+.Fa base
+is taken as 10 (decimal) unless the next character is
+.Ql 0 ,
+in which case it is taken as 8 (octal).
+.Pp
+The remainder of the string is converted to a
+.Vt long , "long long" , intmax_t
+or
+.Vt quad_t
+value in the obvious manner,
+stopping at the first character which is not a valid digit
+in the given base.
+(In bases above 10, the letter
+.Ql A
+in either upper or lower case
+represents 10,
+.Ql B
+represents 11, and so forth, with
+.Ql Z
+representing 35.)
+.Pp
+If
+.Fa endptr
+is not
+.Dv NULL ,
+.Fn strtol
+stores the address of the first invalid character in
+.Fa *endptr .
+If there were no digits at all, however,
+.Fn strtol
+stores the original value of
+.Fa str
+in
+.Fa *endptr .
+(Thus, if
+.Fa *str
+is not
+.Ql \e0
+but
+.Fa **endptr
+is
+.Ql \e0
+on return, the entire string was valid.)
+.Pp
+Extended locale versions of these functions are documented in
+.Xr strtol_l 3 .
+See
+.Xr xlocale 3
+for more information.
+.Sh RETURN VALUES
+The
+.Fn strtol ,
+.Fn strtoll ,
+.Fn strtoimax ,
+and
+.Fn strtoq
+functions
+return the result of the conversion,
+unless the value would underflow or overflow.
+If no conversion could be performed, 0 is returned and
+the global variable
+.Va errno
+is set to
+.Er EINVAL
+(the last feature is not portable across all platforms).
+If an overflow or underflow occurs,
+.Va errno
+is set to
+.Er ERANGE
+and the function return value is clamped according
+to the following table.
+.Bl -column -offset indent ".Fn strtoimax" ".Dv INTMAX_MIN" ".Dv INTMAX_MAX"
+.It Sy Function Ta Sy underflow Ta Sy overflow
+.It Fn strtol Ta Dv LONG_MIN Ta Dv LONG_MAX
+.It Fn strtoll Ta Dv LLONG_MIN Ta Dv LLONG_MAX
+.It Fn strtoimax Ta Dv INTMAX_MIN Ta Dv INTMAX_MAX
+.It Fn strtoq Ta Dv LLONG_MIN Ta Dv LLONG_MAX
+.El
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The value of
+.Fa base
+is not supported or
+no conversion could be performed
+(the last feature is not portable across all platforms).
+.It Bq Er ERANGE
+The given string was out of range; the value converted has been clamped.
+.El
+.Sh LEGACY SYNOPSIS
+.Fd #include <stdlib.h>
+.Fd #include <limits.h>
+.Pp
+.In limits.h
+is necessary for the
+.Fn strtol
+and
+.Fn strtoll
+functions.
+.Sh SEE ALSO
+.Xr atof 3 ,
+.Xr atoi 3 ,
+.Xr atol 3 ,
+.Xr strtod 3 ,
+.Xr strtol_l 3 ,
+.Xr strtoul 3 ,
+.Xr wcstol 3 ,
+.Xr compat 5
+.Sh STANDARDS
+The
+.Fn strtol
+function
+conforms to
+.St -isoC .
+The
+.Fn strtoll
+and
+.Fn strtoimax
+functions
+conform to
+.St -isoC-99 .
+The
+.Bx
+.Fn strtoq
+function is deprecated.

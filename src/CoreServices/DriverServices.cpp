@@ -19,13 +19,22 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "DriverServices.h"
 #include "time.h"
-#include <sys/sysinfo.h>
+#include <sys/sysctl.h>
+#include <sys/time.h>
 
 AbsoluteTime UpTime()
 {
-	struct sysinfo si;
-	sysinfo(&si);
-	return si.uptime * 1000000000ll;
+	struct timeval boottime, now;
+	size_t len = sizeof(boottime);
+	int mib[2] = { CTL_KERN, KERN_BOOTTIME };
+
+	if (sysctl(mib, 2, &boottime, &len, NULL, 0) < 0)
+		return 0;
+
+	gettimeofday(&now, NULL);
+
+	return (now.tv_sec-boottime.tv_sec) * 1000000000ll
+		+ (now.tv_usec-boottime.tv_usec) * 1000ll;
 }
 
 Nanoseconds AbsoluteToNanoseconds(AbsoluteTime absTime)

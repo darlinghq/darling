@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadDescription</key>
+			<string>Enables IPMonitor verbose logging.</string>
+			<key>PayloadDisplayName</key>
+			<string>IPMonitor Logging</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.defaults.managed.IPMonitor.control</string>
+			<key>PayloadOrganization</key>
+			<string>Apple, Inc</string>
+			<key>PayloadType</key>
+			<string>com.apple.defaults.managed</string>
+			<key>PayloadUUID</key>
+			<string>CA2DD325-2123-487C-BF89-170AF64FD8C0</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadContent</key>
+			<array>
+				<dict>
+					<key>DefaultsDomainName</key>
+					<string>com.apple.IPMonitor.control</string>
+					<key>DefaultsData</key>
+					<dict>
+						<key>Verbose</key>
+						<true/>
+					</dict>
+				</dict>
+			</array>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Enables IPMonitor verbose logging.</string>
+	<key>PayloadDisplayName</key>
+	<string>IPMonitor Logging</string>
+	<key>PayloadIdentifier</key>
+	<string>com.apple.IPMonitor.control</string>
+	<key>PayloadOrganization</key>
+	<string>Apple, Inc</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>CA2DD325-2123-487C-BF89-170AF64FD8C0</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

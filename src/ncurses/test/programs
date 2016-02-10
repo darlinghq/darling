@@ -1,0 +1,86 @@
+# $Id: programs,v 1.14 2008/08/16 21:47:39 tom Exp $
+##############################################################################
+# Copyright (c) 2006-2007,2008 Free Software Foundation, Inc.                #
+#                                                                            #
+# Permission is hereby granted, free of charge, to any person obtaining a    #
+# copy of this software and associated documentation files (the "Software"), #
+# to deal in the Software without restriction, including without limitation  #
+# the rights to use, copy, modify, merge, publish, distribute, distribute    #
+# with modifications, sublicense, and/or sell copies of the Software, and to #
+# permit persons to whom the Software is furnished to do so, subject to the  #
+# following conditions:                                                      #
+#                                                                            #
+# The above copyright notice and this permission notice shall be included in #
+# all copies or substantial portions of the Software.                        #
+#                                                                            #
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR #
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,   #
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL    #
+# THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER      #
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING    #
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER        #
+# DEALINGS IN THE SOFTWARE.                                                  #
+#                                                                            #
+# Except as contained in this notice, the name(s) of the above copyright     #
+# holders shall not be used in advertising or otherwise to promote the sale, #
+# use or other dealings in this Software without prior written               #
+# authorization.                                                             #
+##############################################################################
+#
+# Author: Thomas E. Dickey
+#
+# programs used for ncurses tests
+background	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	background
+blue		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	blue
+bs		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	bs
+cardfile	$(LDFLAGS_DEFAULT)	$(LOCAL_LIBS)	cardfile
+chgat		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	chgat
+color_set	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	color_set
+demo_altkeys	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	demo_altkeys
+demo_defkey	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	demo_defkey
+demo_forms	$(LDFLAGS_DEFAULT)	$(LOCAL_LIBS)	demo_forms edit_field
+demo_keyok	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	demo_keyok
+demo_menus	$(LDFLAGS_DEFAULT)	$(LOCAL_LIBS)	demo_menus
+demo_panels	$(LDFLAGS_DEFAULT)	$(LOCAL_LIBS)	demo_panels
+demo_termcap	$(LDFLAGS_TINFO)	$(LOCAL_LIBS)	demo_termcap
+ditto		$(LDFLAGS_THREADS)	$(LOCAL_LIBS)	ditto
+dots		$(LDFLAGS_TINFO)	$(LOCAL_LIBS)	dots
+dots_mvcur	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	dots_mvcur
+echochar	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	echochar
+filter		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	filter
+firework	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	firework
+firstlast	$(LDFLAGS_DEFAULT)	$(LOCAL_LIBS)	firstlast
+foldkeys	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	foldkeys
+gdc		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	gdc
+hanoi		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	hanoi
+hashtest	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	hashtest
+inch_wide	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	inch_wide
+inchs		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	inchs
+ins_wide	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	ins_wide
+inserts		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	inserts
+key_names	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	key_names
+keynames	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	keynames
+knight		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	knight
+lrtest		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	lrtest
+movewindow	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	movewindow
+ncurses		$(LDFLAGS_DEFAULT)	$(LOCAL_LIBS)	ncurses
+newdemo		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	newdemo
+railroad	$(LDFLAGS_TINFO)	$(LOCAL_LIBS)	railroad
+rain		$(LDFLAGS_THREADS)	$(LOCAL_LIBS)	rain
+redraw		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	redraw
+savescreen	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	savescreen
+tclock		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	tclock
+test_arrays	$(LDFLAGS_TINFO)	$(LOCAL_LIBS)	test_arrays
+test_get_wstr	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_get_wstr
+test_getstr	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_getstr
+test_instr	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_instr
+test_inwstr	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_inwstr
+test_opaque	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_opaque
+testaddch	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	testaddch
+testcurs	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	testcurs
+testscanw	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	testscanw
+view		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	view
+worm		$(LDFLAGS_THREADS)	$(LOCAL_LIBS)	worm
+xmas		$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	xmas
+
+# vile:makemode

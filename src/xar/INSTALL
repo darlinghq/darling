@@ -1,0 +1,160 @@
+################################################################################
+#
+# Building and installation instructions for the Xar source distribution.
+#
+################################################################################
+
+Required: Xar's build system uses GNU make.
+
+Required: Xar depends on libxml2's XML functionality.  For more information
+	  about libxml2, see:
+
+		http://www.xmlsoft.org/
+
+Required: Xar depends on OpenSSL (libcrypto in particular) for MD5 and SHA1
+	  functionality.  For more information about OpenSSL, see:
+
+		http://www.openssl.org/
+
+Required: Xar depends on zlib (libz) for data compression.  For more information
+	  about zlib, see:
+
+		http://www.zlib.net/
+
+Optional: Xar can optionally use libbzip2 for data compression.  For more
+	  information about libbzip2, see:
+
+		http://www.bzip.org/
+
+Optional: Xar can optionally use liblzma for data compression.  For more
+	  information about liblzma, see:
+
+		http://tukaani.org/lzma/
+
+Optional: Regenerating the configure script requires GNU autoconf.  Doing so is
+	  only necessary when making changes to the configuration system.
+
+################################################################################
+
+Building Xar is in many cases as simple as typing the following commands while
+in the root directory of the source tree:
+
+	./configure
+	make
+
+To install, do the above, then type:
+
+	make install
+
+Additional build targets of finer granularity include:
+
+	src_all
+	lib_all
+
+Additional install targets of finer granularity include:
+
+	src_install
+	lib_install
+
+Uninstall targets include:
+
+	uninstall
+	src_uninstall
+	lib_uninstall
+
+Cleanup targets include:
+
+	clean
+	distclean
+	relclean
+
+Note that if you are using a development version of xar, configure is
+not checked into the repository.  You may replace the ./configure step
+above with ./autogen.sh.
+
+################################################################################
+
+The build system is capable of building in a different directory than the
+source, so that no files are written to the source tree.  In order to use this
+feature, run 'configure' and 'make' while in the directory that you want to
+build the software in.
+
+Optionally, pass any of the following arguments to 'configure' (run 'configure'
+with the --help option for a full list):
+
+--prefix=<install-root-dir>
+	Set the base directory in which to install.  For example:
+
+		./configure --prefix=/usr/local
+
+	will cause files to be installed into /usr/local/bin, /usr/local/man,
+	/usr/local/include, /usr/local/lib, and /usr/local/share.
+
+--enable-autogen
+	Include dependency rules in the build system to automatically regenerate
+	files created by configure when their sources are newer.  This is
+	only of interest when making modifications to the source code.
+
+--with-xml2-config=<path>
+	If specified, use <path> as the full path (including filename) to the
+	xml2-config program.  This is useful when there is more than one copy of
+	xml2-config in your shell's path, or when you want to use a copy of
+	xml2-config that is not in your shell's path at all.
+
+Optionally, define environment variables when invoking configure, including (not
+exclusively):
+
+CFLAGS="?"
+	Pass these flags to the compiler.
+
+CPPFLAGS="?"
+	Pass these flags to the C preprocessor.  Note that CFLAGS is not passed
+	to 'cpp' when 'configure' is looking for include files, so you must use
+	CPPFLAGS instead if you need to help 'configure' find header files.
+
+LD_LIBRARY_PATH="?"
+	'ld' uses this colon-separated list to find libraries.
+
+LDFLAGS="?"
+	Pass these flags when linking.
+
+PATH="?"
+	'configure' uses this to find programs.
+
+################################################################################
+
+Optionally, define make variables when invoking make, including (not
+exclusively):
+
+PREFIX="?"
+	Use this as the installation prefix.
+
+BINDIR="?"
+	Use this as the installation prefix for programs.
+
+DATADIR="?"
+	Use this as the installation prefix for modules and documentation.
+
+LIBDIR="?"
+	Use this as the installation prefix for libraries.
+
+INCLUDEDIR="?"
+	Use this as the installation prefix for header files.
+
+MANDIR="?"
+	Use this as the installation prefix for man pages.
+
+CC="?"
+	Use this to specify the C compiler.
+
+CFLAGS="?"
+	Pass these flags to the compiler.
+
+CPPFLAGS="?"
+	Pass these flags to the C preprocessor.
+
+LDFLAGS="?"
+	Pass these flags when linking.
+
+PATH="?"
+	Use this to search for programs used during configuration and building.
