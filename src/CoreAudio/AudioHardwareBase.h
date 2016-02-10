@@ -20,6 +20,50 @@ struct AudioObjectPropertyAddress
 	AudioObjectPropertyElement mElement;
 };
 
+enum
+{
+	kAudioHardwareNoError                   = 0,
+	kAudioHardwareNotRunningError           = 'stop',
+	kAudioHardwareUnspecifiedError          = 'what',
+	kAudioHardwareUnknownPropertyError      = 'who?',
+	kAudioHardwareBadPropertySizeError      = '!siz',
+	kAudioHardwareIllegalOperationError     = 'nope',
+	kAudioHardwareBadObjectError            = '!obj',
+	kAudioHardwareBadDeviceError            = '!dev',
+	kAudioHardwareBadStreamError            = '!str',
+	kAudioHardwareUnsupportedOperationError = 'unop',
+	kAudioDeviceUnsupportedFormatError      = '!dat',
+	kAudioDevicePermissionsError            = '!hog',
+};
+
+enum
+{
+	kAudioObjectPropertyScopeGlobal         = 'glob',
+	kAudioObjectPropertyScopeInput          = 'inpt',
+	kAudioObjectPropertyScopeOutput         = 'outp',
+	kAudioObjectPropertyScopePlayThrough    = 'ptru',
+	kAudioObjectPropertyElementMaster       = 0,
+};
+
+enum
+{
+	kAudioObjectPropertyBaseClass           = 'bcls',
+	kAudioObjectPropertyClass               = 'clas',
+	kAudioObjectPropertyOwner               = 'stdv',
+	kAudioObjectPropertyName                = 'lnam',
+	kAudioObjectPropertyModelName           = 'lmod',
+	kAudioObjectPropertyManufacturer        = 'lmak',
+	kAudioObjectPropertyElementName         = 'lchn',
+	kAudioObjectPropertyElementCategoryName = 'lccn',
+	kAudioObjectPropertyElementNumberName   = 'lcnn',
+	kAudioObjectPropertyOwnedObjects        = 'ownd',
+	kAudioObjectPropertyIdentify            = 'iden',
+	kAudioObjectPropertySerialNumber        = 'snum',
+	kAudioObjectPropertyFirmwareVersion     = 'fwvn',
+};
+
+// TODO: A lot more is missing
+
 #ifdef __cplusplus
 }
 #endif
