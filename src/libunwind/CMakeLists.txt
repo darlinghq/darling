@@ -32,7 +32,7 @@ set(libunwind_sources
 	src/Unwind-sjlj.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -40,4 +40,4 @@ add_library(unwind SHARED ${libunwind_sources})
 target_link_libraries(unwind system_c)
 set_target_properties(unwind PROPERTIES LINKER_LANGUAGE C)
 
-install(TARGETS unwind DESTINATION lib${SUFFIX}/darling)
+install(TARGETS unwind DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

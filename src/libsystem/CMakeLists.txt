@@ -32,7 +32,7 @@ set(libsystem_sources
 	libmacho/arch.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -42,5 +42,5 @@ target_link_libraries(system PUBLIC system_malloc system_c system_kernel keymgr
 	system_m system_info system_notify libdispatch_shared objc launch
 	removefile system_copyfile unwind system_coreservices CommonCrypto)
 
-install(TARGETS system DESTINATION lib${SUFFIX}/darling)
+install(TARGETS system DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 

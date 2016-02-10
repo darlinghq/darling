@@ -59,11 +59,11 @@ set(cc_SRCS
 	#Source/API/CommonSymmetricKeywrap.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(CommonCrypto SHARED ${cc_SRCS})
 target_link_libraries(CommonCrypto system_c system_kernel)
 
-install(TARGETS CommonCrypto DESTINATION lib${SUFFIX}/darling)
+install(TARGETS CommonCrypto DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

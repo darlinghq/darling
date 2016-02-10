@@ -55,7 +55,7 @@ if (WITH_COREAUDIO)
 	set(EXTRA_LIBS AudioUnit)
 endif (WITH_COREAUDIO)
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 #SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -63,6 +63,6 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_library(CoreServices SHARED ${CoreServices_SRCS})
 target_link_libraries(CoreServices icucore system ${EXTRA_LIBS} CFF cxx iconv)
 
-install(TARGETS CoreServices DESTINATION "lib${SUFFIX}/darling")
+install(TARGETS CoreServices DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 install(FILES SystemVersion.plist DESTINATION "share/darling")
 

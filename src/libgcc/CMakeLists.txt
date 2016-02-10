@@ -13,11 +13,11 @@ set(libgcc_sources
 	dummy.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(gcc_s SHARED ${libgcc_sources})
 target_link_libraries(gcc_s compiler_rt)
 
-install(TARGETS gcc_s DESTINATION lib${SUFFIX}/darling)
+install(TARGETS gcc_s DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

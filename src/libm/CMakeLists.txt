@@ -141,7 +141,7 @@ set(libm_sources
 
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -150,5 +150,5 @@ set_target_properties(system_m_extra PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CA
 
 add_library(system_m SHARED ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
 
-install(TARGETS system_m DESTINATION lib${SUFFIX}/darling)
+install(TARGETS system_m DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 

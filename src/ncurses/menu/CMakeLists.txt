@@ -37,11 +37,11 @@ set(menu_sources
 	m_win.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(menu SHARED ${menu_sources})
 target_link_libraries(menu system)
 
-install(TARGETS menu DESTINATION lib${SUFFIX}/darling)
+install(TARGETS menu DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

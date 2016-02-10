@@ -11,39 +11,35 @@ set(DARLING TRUE)
 set(DARLING_NO_EXECUTABLES OFF)
 enable_language(ASM)
 
-if ((${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64") AND (${CMAKE_C_FLAGS} MATCHES ".*-m32.*"))
-	set(CMAKE_SYSTEM_PROCESSOR "i686")
-	
+if (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
+	message(FATAL_ERROR "This software can only be built on x86-64 systems")
+endif (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
+
+if (NOT BITS)
+	message(FATAL_ERROR "BITS is not specified (32/64)")
+endif (NOT BITS)
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m${BITS}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m${BITS}")
+SET(CMAKE_ASM_FLAGS "-m${BITS}")
+SET(CMAKE_ASM-ATT_FLAGS "-m${BITS}")
+
+if (BITS EQUAL 32)
 	# Prevent building Darling executables (e.g. Bash)
 	set(DARLING_NO_EXECUTABLES ON)
+
+	SET(SUFFIX "32")
+	add_definitions(-DTARGET_CPU_X86=1 -D__LITTLE_ENDIAN__)
+	set(DARLING_NO_EXECUTABLES ON)
+
+else()
+
+	set(SUFFIX "64")
+	add_definitions(-DTARGET_CPU_X86_64=1 -D__LITTLE_ENDIAN__)
+
 endif()
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
-	set(BITS 32)
-	add_definitions(-DTARGET_CPU_X86=1 -D__LITTLE_ENDIAN__)
-	set(CMAKE_SYSTEM_PROCESSOR "i686")
-	set(DARLING_NO_EXECUTABLES ON)
-else(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
-	set(BITS 64)
-	add_definitions(-DTARGET_CPU_X86_64=1 -D__LITTLE_ENDIAN__)
-endif(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
-
-message(STATUS "Building for ${CMAKE_SYSTEM_PROCESSOR}, ${CMAKE_C_FLAGS}")
-
-if (CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
-	set(CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -m32")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
-	# We need to add -mlong-double-128 to support long double properly.
-	# With GCC, we could use -mlong-double-128, but Clang doesn't support that
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
-	set(CMAKE_ASM-ATT_FLAGS "-m32")
-	set(CMAKE_ASM_FLAGS "-m32")
-	SET(CMAKE_C_SIZEOF_DATA_PTR 4)
-	SET(SUFFIX "32")
-endif(CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
-if (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
-	set(SUFFIX "64")
-endif (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
+message(STATUS "Building for ${CMAKE_SYSTEM_PROCESSOR}, CFLAGS: ${CMAKE_C_FLAGS}, libdir: ${CMAKE_INSTALL_LIBDIR}")
 
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 

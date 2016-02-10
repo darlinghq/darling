@@ -46,11 +46,11 @@ set(xar_SRCS
 	lib/zxar.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(xar SHARED ${xar_SRCS})
 target_link_libraries(xar system z bz2 xml2 ssl098 crypto098)
 
-install(TARGETS xar DESTINATION lib${SUFFIX}/darling)
+install(TARGETS xar DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

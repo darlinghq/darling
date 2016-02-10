@@ -29,7 +29,7 @@ add_subdirectory(lookup.subproj)
 add_subdirectory(membership.subproj)
 add_subdirectory(darling-resolver)
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -44,4 +44,4 @@ add_library(system_info SHARED $<TARGET_OBJECTS:info-util>
 )
 target_link_libraries(system_info system_c resolv-darwin)
 
-install(TARGETS system_info DESTINATION lib${SUFFIX}/darling)
+install(TARGETS system_info DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

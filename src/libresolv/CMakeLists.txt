@@ -44,12 +44,12 @@ set(resolv_sources
 	dnsinfo/dnsinfo.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${SUFFIX}/darling")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(resolv-darwin SHARED ${resolv_sources})
 target_link_libraries(resolv-darwin system_c system_kernel)
 
-install(TARGETS resolv-darwin DESTINATION lib${SUFFIX}/darling)
+install(TARGETS resolv-darwin DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 
