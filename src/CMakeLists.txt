@@ -35,7 +35,7 @@ if (CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 	# We need to add -mlong-double-128 to support long double properly.
 	# With GCC, we could use -mlong-double-128, but Clang doesn't support that
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
-	set(CMAKE_ASM_FLAGS "-m32")
+	set(CMAKE_ASM-ATT_FLAGS "-m32")
 	SET(CMAKE_C_SIZEOF_DATA_PTR 4)
 	SET(SUFFIX "32")
 endif(CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
