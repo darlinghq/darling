@@ -1,10 +1,10 @@
-= Darling =
+# Darling
 
 Darling is a runtime environment for OS X applications.
 
 Please note that no GUI applications are supported at the moment.
 
-== Download ==
+## Download
 
 Darling uses many Git submodules, so a plain clone will not do.
 
@@ -23,7 +23,7 @@ git submodule init
 git submodule update
 ````
 
-== Build instructions ==
+## Build Instructions
 
 For x86-64 OS X binaries:
 ````
@@ -65,7 +65,7 @@ modprobe darling-mach
 chmod a+rw /dev/mach
 ````
 
-=== Optional features ===
+### Optional Features
 
 Optionally, you can enable audio support with the ````-DFRAMEWORK_COREAUDIO=On````. This is still under development, so it probably only makes sense if you want to contribute.
 This switch enables both ALSA and PulseAudio support by default, you can disable either of them with ````-DENABLE_ALSA=OFF```` or ````-DENABLE_PULSEAUDIO=OFF```` respectively.
@@ -77,7 +77,7 @@ Required dependencies on Debian (stable):
 
 Note that most of the above -dev packages conflict between x86-64 and i386, so if you build for both platforms, you have to reinstall the right -dev variants before every build. There should be no issues at runtime.
 
-== Using Darling ==
+## Using Darling
 
 Darling uses DPREFIXes, which are in essence similar to WINEPREFIXes. The are virtual chroot environment with an OS X-like filesystem hierarchy, where you can safely install and run software. Unless you set DPREFIX to your location, the default ````~/.darling```` is used.
 
@@ -85,7 +85,7 @@ The real root filesystem is available through ````/system-root```` and the ````/
 
 At first use, initial prefix contents are downloaded from the Internet.
 
-=== Hello world ===
+### Hello world
 
 Let's start with a Hello world:
 
@@ -96,7 +96,7 @@ Hello world
 
 Congratulations, you have printed Hello world through Darling's OS X system call emulation and runtime libraries.
 
-=== Installing software ===
+### Installing software
 
 You can install ````.pkg```` packages with the installer tool available inside shell. It is a somewhat limited cousin of OS X's installer:
 
@@ -109,7 +109,7 @@ If you have previously downloaded the Midnight Commander package from [Rudix](ht
 
 You can uninstall and list packages with the ````uninstaller```` command.
 
-=== Working with DMG images ===
+### Working with DMG images
 
 DMG images can be attached and deattached from inside ````darling shell```` with ````hdiutil````. This is how you can install Xcode along with its toolchain and SDKs (note that Xcode itself doesn't run yet):
 
