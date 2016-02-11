@@ -25,7 +25,12 @@ git submodule update
 
 ## Build Instructions
 
-For x86-64 OS X binaries:
+### For running x86-64 OS X binaries
+
+<a href="http://teamcity.dolezel.info/viewType.html?buildTypeId=Darling_DebianStableX8664&guest=1">
+<img src="http://teamcity.dolezel.info/app/rest/builds/buildType:(id:Darling_DebianStableX8664)/statusIcon"/>
+</a>
+
 ````
 cd darling
 mkdir -p build/x86-64
@@ -41,7 +46,12 @@ make install
 
 Required dependencies on Debian (stable): cmake clang bison flex linux-headers-amd64 xz-utils libfuse-dev libxml2-dev libicu-dev libssl-dev libbz2-dev zlib1g-dev libudev-dev
 
-For i386 OS X binaries:
+### For running i386 OS X binaries
+
+<a href="http://teamcity.dolezel.info/viewType.html?buildTypeId=Darling_DebianStableX8664&guest=1">
+<img src="http://teamcity.dolezel.info/app/rest/builds/buildType:(id:Darling_DebianStableX8664)/statusIcon"/>
+</a>
+
 ````
 cd darling
 mkdir -p build/i386
