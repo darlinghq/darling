@@ -90,7 +90,7 @@ dyld_path="${DARLING_PREFIX}/bin/dyld"
 
 case "$1" in
 "shell")
-    if [ $# -gt 2 ]; then
+    if [ $# -gt 1 ]; then
         exec "${dyld_path}" "${DPREFIX}/bin/bash" -c "${*:2}"
     else
         exec "${dyld_path}" "${DPREFIX}/bin/bash" --norc
