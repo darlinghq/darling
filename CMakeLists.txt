@@ -8,6 +8,7 @@ set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
 enable_language(ASM-ATT)
 
 option(FRAMEWORK_COREAUDIO "Enable audio-related functionality" OFF)
+option(FRAMEWORK_APPKIT "Enable AppKit development code" OFF)
 
 add_subdirectory(src)
 

@@ -93,3 +93,6 @@
 	path = src/external/adv_cmds
 	url = ../darling-adv_cmds.git
 	branch = darling
+[submodule "src/external/AppKit"]
+	path = src/external/AppKit
+	url = ../darling-appkit.git
