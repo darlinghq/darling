@@ -49,10 +49,10 @@ endif (NOT DARLING_NO_EXECUTABLES)
 
 	install(TARGETS dyld-bin DESTINATION bin)
 
-if (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
+if (BITS EQUAL 64)
 	add_executable(dyld-multilib dyld-multilib.c)
 	set_target_properties(dyld-multilib PROPERTIES OUTPUT_NAME dyld)
 	install(TARGETS dyld-multilib DESTINATION bin)
-endif (CMAKE_INSTALL_LIBDIR STREQUAL "lib64")
+endif (BITS EQUAL 64)
 
 
