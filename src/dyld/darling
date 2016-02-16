@@ -31,7 +31,7 @@ setup_prefix() {
 
     mkdir -p "$1"
     rm -f "$1/darling-prefix"
-    ln -s "/system-root${DARLING_PREFIX}" "$1/darling-prefix"
+    ln -s "system-root${DARLING_PREFIX}" "$1/darling-prefix"
 
     install_pkg "org.darlinghq.pkg.PrefixHierarchy"
     install_pkg "org.darlinghq.pkg.OpenSSLCertificates"
