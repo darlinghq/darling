@@ -157,9 +157,9 @@ void printBinInfo(const char* path, const char* arch, const char* opt)
 		case ModeDylibs:
 		{
 			std::cout << "Dylibs:\n";
-			for (const char* name : macho->dylibs())
+			for (const MachO::Dylib& dylib : macho->dylibs())
 			{
-				std::cout << "\t" << name << std::endl;
+				std::cout << "\t" << dylib.name << std::endl;
 			}
 			break;
 		}

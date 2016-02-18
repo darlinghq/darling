@@ -204,7 +204,14 @@ int32_t NSVersionOfRunTimeLibrary(const char* libraryName)
 
 int32_t NSVersionOfLinkTimeLibrary(const char* libraryName)
 {
-	return -1;
+	std::vector<MachO::Dylib> deps = MachOMgr::instance()->mainModule()->declaredDependencies();
+	
+	for (const MachO::Dylib& d : deps)
+	{
+		if (strstr(d.name, libraryName) != NULL)
+			return d.currentVersion;
+	}
+	return 0;
 }
 
 int _NSGetExecutablePath(char* buf, unsigned int* size)

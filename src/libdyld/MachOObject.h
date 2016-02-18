@@ -113,7 +113,7 @@ public:
 	inline void setNoRecursion(bool noRecursion) { m_noRecursion = noRecursion; }
 	inline bool noRecursion() const { return m_noRecursion; }
 	
-	std::vector<const char*> declaredDependencies() const { return m_file->dylibs(); }
+	std::vector<MachO::Dylib> declaredDependencies() const { return m_file->dylibs(); }
 	inline MachO* getMachOFile() const { return m_file; }
 	
 protected:

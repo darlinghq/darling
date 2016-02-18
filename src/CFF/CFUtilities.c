@@ -33,8 +33,24 @@ __attribute__((constructor))
 
 Boolean _CFExecutableLinkedOnOrAfter(CFSystemVersion version)
 {
-	// TODO: For now just say yep, we are newer
-	return true;
+	// Like original CF, we always use the last version
+	const uint16_t libSystemVersions[] = {
+		50,
+		55,
+		56,
+		67,
+		73,
+		89,
+		125, // 10.6
+		159, // 10.7
+		169, // 10.8
+		1197, // 10.9
+		1213, // 10.10
+		1226, // 10.11 (up until now)
+	};
+	if (version >= CFSystemVersionMax)
+		return false;
+	return (NSVersionOfLinkTimeLibrary("System") >> 16) >= libSystemVersions[version];
 }
 
 static CFDictionaryRef _CFCopyVersionDictionary(CFStringRef path)

@@ -495,7 +495,7 @@ void MachOObject::writeBind(int type, void** ptr, void* newAddr, const std::stri
 
 void MachOObject::loadDependencies()
 {
-	std::vector<const char*> dylibs = m_file->dylibs();
+	std::vector<MachO::Dylib> dylibs = m_file->dylibs();
 	std::string path;
 	const char* libsystem_dylib = "/usr/lib/libSystem.B.dylib";
 
@@ -507,9 +507,10 @@ void MachOObject::loadDependencies()
 	libSystem = LoadableObject::instantiateForPath(path, this);
 	libSystem->load();
 
-	for (std::string dylib : dylibs)
+	for (const MachO::Dylib& d : dylibs)
 	{
 		LoadableObject* dep;
+		std::string dylib = d.name;
 		
 		if (dylib.empty())
 		{

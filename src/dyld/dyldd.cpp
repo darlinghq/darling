@@ -81,9 +81,10 @@ int main(int argc, char** argv, char** envp)
 
 void resolve(MachOObject* obj, std::set<std::string>& deps)
 {
-	for (std::string dylib : obj->declaredDependencies())
+	for (const MachO::Dylib& d : obj->declaredDependencies())
 	{
 		LoadableObject* dep;
+		std::string dylib = d.name;
 		
 		if (dylib.empty())
 			continue;

@@ -106,12 +106,18 @@ public:
 		uintptr_t firstDescriptor;
 		unsigned long count;
 	};
+	
+	struct Dylib
+	{
+		const char* name;
+		uint32_t currentVersion, compatibilityVersion;
+	};
 
 	const std::vector<segment_command_64*>& segments64() const { return m_segments64; }
 
 	const std::vector<segment_command*>& segments() const { return m_segments; }
 
-	const std::vector<const char*>& dylibs() const { return m_dylibs; }
+	const std::vector<Dylib>& dylibs() const { return m_dylibs; }
 
 	const std::vector<const char*>& rpaths() const { return m_rpaths; }
 
@@ -160,7 +166,7 @@ public:
 	std::string m_filename;
 	std::vector<segment_command_64*> m_segments64;
 	std::vector<segment_command*> m_segments;
-	std::vector<const char*> m_dylibs;
+	std::vector<Dylib> m_dylibs;
 	std::vector<const char*> m_rpaths;
 	std::vector<Rebase*> m_rebases;
 	std::vector<Bind*> m_binds;

@@ -631,8 +631,8 @@ void MachOImpl::processLoaderCommands(const mach_header* header)
 		{
 			dylib* lib = &reinterpret_cast<dylib_command*>(cmds_ptr)->dylib;
 			const char* name = (char*)cmds_ptr + lib->name.offset;
-			LOG << "dylib: '" << name << "'\n";
-			m_dylibs.push_back(name);
+			LOG << "dylib: '" << name << "', link ver " << lib->current_version << "\n";
+			m_dylibs.push_back(Dylib { name, lib->current_version, lib->compatibility_version });
 			break;
 		}
 
