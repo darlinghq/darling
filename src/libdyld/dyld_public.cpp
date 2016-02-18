@@ -204,7 +204,13 @@ int32_t NSVersionOfRunTimeLibrary(const char* libraryName)
 
 int32_t NSVersionOfLinkTimeLibrary(const char* libraryName)
 {
-	std::vector<MachO::Dylib> deps = MachOMgr::instance()->mainModule()->declaredDependencies();
+	MachOObject* main = MachOMgr::instance()->mainModule();
+	std::vector<MachO::Dylib> deps;
+	
+	if (!main)
+		return 0;
+	
+	deps = main->declaredDependencies();
 	
 	for (const MachO::Dylib& d : deps)
 	{
