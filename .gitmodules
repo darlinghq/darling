@@ -96,3 +96,7 @@
 [submodule "src/external/AppKit"]
 	path = src/external/AppKit
 	url = ../darling-appkit.git
+[submodule "src/external/nano"]
+	path = src/external/nano
+	url = ../darling-nano.git
+	branch = darling
