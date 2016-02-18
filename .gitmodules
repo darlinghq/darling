@@ -100,3 +100,7 @@
 	path = src/external/nano
 	url = ../darling-nano.git
 	branch = darling
+[submodule "src/external/zip"]
+	path = src/external/zip
+	url = ../darling-zip.git
+	branch = darling
