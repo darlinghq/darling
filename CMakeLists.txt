@@ -5,6 +5,9 @@ set(DARLING_TOP_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "")
 set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
 
+# --as-needed breaks Darling
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
+
 enable_language(ASM-ATT)
 
 option(FRAMEWORK_COREAUDIO "Enable audio-related functionality" OFF)
