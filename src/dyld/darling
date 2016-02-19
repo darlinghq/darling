@@ -21,7 +21,7 @@
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
-MINIMUM_PREFIX_VERSION="1"
+MINIMUM_PREFIX_VERSION="2"
 
 setup_prefix() {
     prefix_pkg="/tmp/prefix.$$.pkg"

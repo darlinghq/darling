@@ -20,8 +20,9 @@ macro(InstallSymlink _filepath _sympath)
     if (BINARY_PACKAGING_MODE)
         execute_process(COMMAND "${CMAKE_COMMAND}" -E create_symlink
                         ${_filepath}
-                        ${CMAKE_CURRENT_BINARY_DIR}/${_symname})
-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${_symname}
+                        ${CMAKE_CURRENT_BINARY_DIR}/symlinks/${_symname})
+        file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/symlinks)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/symlinks/${_symname}
                 DESTINATION ${_installdir})
     else ()
         # scripting the symlink installation at install time should work

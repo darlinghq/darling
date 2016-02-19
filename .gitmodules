@@ -104,3 +104,15 @@
 	path = src/external/zip
 	url = ../darling-zip.git
 	branch = darling
+[submodule "src/external/python"]
+	path = src/external/python
+	url = ../darling-python.git
+	branch = darling
+[submodule "src/external/expat"]
+	path = src/external/expat
+	url = ../darling-expat.git
+	branch = darling
+[submodule "src/external/sqlite"]
+	path = src/external/sqlite
+	url = ../darling-sqlite.git
+	branch = darling
