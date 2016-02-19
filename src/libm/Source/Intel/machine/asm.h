@@ -20,15 +20,20 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
 #define	ENTRY(name)							      \
   .globl name;				      			      \
   .align (2<<4);							      	      \
   name##:								      
 
+#ifndef NO_FENV
 #define	PRIVATE_ENTRY(name)							      \
   .globl name; .hidden name;				      			      \
   .align (2<<4);							      	      \
   name##:								      
+#else
+#define PRIVATE_ENTRY(name)
+#endif
 
 #undef	END
 #define END(name)	/* NOTHING */

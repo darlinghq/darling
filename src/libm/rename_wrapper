@@ -1,0 +1,26 @@
+#!/bin/sh
+set -e
+
+#redefines="$1"
+#shift
+#ar_prog="$1"
+#shift
+redefines="$(dirname $0)/Exports/darlingIntel.alias"
+ar_prog="ar"
+ar_op="$1"
+shift
+ar_target="$1"
+shift
+
+for obj_in in "$@"; do
+	out=$(mktemp --suffix=.o)
+	objcopy "--redefine-syms=${redefines}" "$obj_in" "$out"
+	files="${files} $out"
+done
+
+"$ar_prog" "$ar_op" "$ar_target" $files
+
+for file in $files; do
+	rm -f $file
+done
+

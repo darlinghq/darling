@@ -1,0 +1,270 @@
+exp2 exp2$fenv_access_off
+fdim fdim$fenv_access_off
+fmax fmax$fenv_access_off
+fmin fmin$fenv_access_off
+log2 log2$fenv_access_off
+modff modff$fenv_access_off
+remquo remquo$fenv_access_off"#.o names are from the ppc build, and probably don't map properly to other archs"	
+#libm.a(complex.o):	
+cabsf cabsf$fenv_access_off
+cacos cacos$fenv_access_off
+cacosf cacosf$fenv_access_off
+cacosh cacosh$fenv_access_off
+cacoshf cacoshf$fenv_access_off
+carg carg$fenv_access_off
+cargf cargf$fenv_access_off
+casin casin$fenv_access_off
+casinf casinf$fenv_access_off
+casinh casinh$fenv_access_off
+casinhf casinhf$fenv_access_off
+catan catan$fenv_access_off
+catanf catanf$fenv_access_off
+catanh catanh$fenv_access_off
+catanhf catanhf$fenv_access_off
+ccos ccos$fenv_access_off
+ccosf ccosf$fenv_access_off
+ccosh ccosh$fenv_access_off
+ccoshf ccoshf$fenv_access_off
+cexp cexp$fenv_access_off
+cexpf cexpf$fenv_access_off
+cimag cimag$fenv_access_off
+cimagf cimagf$fenv_access_off
+clog clog$fenv_access_off
+clogf clogf$fenv_access_off
+conj conj$fenv_access_off
+conjf conjf$fenv_access_off
+cpow cpow$fenv_access_off
+cpowf cpowf$fenv_access_off
+cproj cproj$fenv_access_off
+cprojf cprojf$fenv_access_off
+creal creal$fenv_access_off
+crealf crealf$fenv_access_off
+csin csin$fenv_access_off
+csinf csinf$fenv_access_off
+csinh csinh$fenv_access_off
+csinhf csinhf$fenv_access_off
+csqrt csqrt$fenv_access_off
+csqrtf csqrtf$fenv_access_off
+ctan ctan$fenv_access_off
+ctanf ctanf$fenv_access_off
+ctanh ctanh$fenv_access_off
+ctanhf ctanhf$fenv_access_off
+#libm.a(complexld64.o):	
+cabsl cabsl$fenv_access_off
+cacoshl cacoshl$fenv_access_off
+cacosl cacosl$fenv_access_off
+cargl cargl$fenv_access_off
+casinhl casinhl$fenv_access_off
+casinl casinl$fenv_access_off
+catanhl catanhl$fenv_access_off
+catanl catanl$fenv_access_off
+ccoshl ccoshl$fenv_access_off
+ccosl ccosl$fenv_access_off
+cexpl cexpl$fenv_access_off
+cimagl cimagl$fenv_access_off
+clogl clogl$fenv_access_off
+conjl conjl$fenv_access_off
+cpowl cpowl$fenv_access_off
+cprojl cprojl$fenv_access_off
+creall creall$fenv_access_off
+csinhl csinhl$fenv_access_off
+csinl csinl$fenv_access_off
+csqrtl csqrtl$fenv_access_off
+ctanhl ctanhl$fenv_access_off
+ctanl ctanl$fenv_access_off
+#libm.a(floating.o):	#libm.a(floating.o):$fenv_access_off
+acosf acosf$fenv_access_off
+acoshf acoshf$fenv_access_off
+asinf asinf$fenv_access_off
+asinhf asinhf$fenv_access_off
+atan2f atan2f$fenv_access_off
+atanf atanf$fenv_access_off
+atanhf atanhf$fenv_access_off
+cbrtf cbrtf$fenv_access_off
+cosf cosf$fenv_access_off
+coshf coshf$fenv_access_off
+erfcf erfcf$fenv_access_off
+erff erff$fenv_access_off
+#_exp2f exp2f$fenv_access_off
+#_expf expf$fenv_access_off
+expm1f expm1f$fenv_access_off
+hypotf hypotf$fenv_access_off
+lgammaf lgammaf$fenv_access_off
+log10f log10f$fenv_access_off
+log1pf log1pf$fenv_access_off
+log2f log2f$fenv_access_off
+logf logf$fenv_access_off
+powf powf$fenv_access_off
+sinf sinf$fenv_access_off
+sinhf sinhf$fenv_access_off
+sqrtf sqrtf$fenv_access_off
+tanf tanf$fenv_access_off
+tanhf tanhf$fenv_access_off
+tgammaf tgammaf$fenv_access_off
+#libm.a(FastSinCos.o):
+cos cos$fenv_access_off
+sin sin$fenv_access_off
+#libm.a(arctg.o):	
+atan atan$fenv_access_off
+#libm.a(ashachath.o):
+acosh acosh$fenv_access_off
+asinh asinh$fenv_access_off
+atanh atanh$fenv_access_off
+#libm.a(asinacos.o):	
+acos acos$fenv_access_off
+asin asin$fenv_access_off
+#libm.a(atan2.o):	
+atan2 atan2$fenv_access_off
+#libm.a(ceilfloor.o):	
+ceil ceil$fenv_access_off
+ceilf ceilf$fenv_access_off
+floor floor$fenv_access_off
+floorf floorf$fenv_access_off
+#libm.a(copysign.o):	
+copysign copysign$fenv_access_off
+copysignf copysignf$fenv_access_off
+#libm.a(erfcerf.o):	
+erf erf$fenv_access_off
+erfc erfc$fenv_access_off
+#libm.a(fabs.o):	
+fabs fabs$fenv_access_off
+fabsf fabsf$fenv_access_off
+#libm.a(frexpldexp.o):
+frexp frexp$fenv_access_off
+frexpf frexpf$fenv_access_off
+ldexp ldexp$fenv_access_off
+ldexpf ldexpf$fenv_access_off
+#libm.a(gamma.o):
+tgamma tgamma$fenv_access_off
+#libm.a(hypot.o):
+hypot hypot$fenv_access_off
+#libm.a(lgamma.o):
+lgamma lgamma$fenv_access_off
+lgamma_r lgamma_r$fenv_access_off
+lgammaf_r lgammaf_r$fenv_access_off
+lgammal_r lgammal_r$fenv_access_off
+#libm.a(logb.o):
+ilogb ilogb$fenv_access_off
+ilogbf ilogbf$fenv_access_off
+logb logb$fenv_access_off
+logbf logbf$fenv_access_off
+#libm.a(minmaxdim.o):	
+fdimf fdimf$fenv_access_off
+fma fma$fenv_access_off
+fmaf fmaf$fenv_access_off
+fmaxf fmaxf$fenv_access_off
+fminf fminf$fenv_access_off
+#libm.a(nextafter.o):
+nextafter nextafter$fenv_access_off
+#libm.a(power.o):
+pow pow$fenv_access_off
+#libm.a(remmod.o):	#libm.a(remmod.o):$fenv_access_off
+fmod fmod$fenv_access_off
+fmodf fmodf$fenv_access_off
+remainder remainder$fenv_access_off
+remainderf remainderf$fenv_access_off
+remquof remquof$fenv_access_off
+#libm.a(rndint.o):
+llrint llrint$fenv_access_off
+llrintf llrintf$fenv_access_off
+llround llround$fenv_access_off
+llroundf llroundf$fenv_access_off
+lrint lrint$fenv_access_off
+lrintf lrintf$fenv_access_off
+lround lround$fenv_access_off
+lroundf lroundf$fenv_access_off
+modf modf$fenv_access_off
+nearbyint nearbyint$fenv_access_off
+nearbyintf nearbyintf$fenv_access_off
+rint rint$fenv_access_off
+rintf rintf$fenv_access_off
+round round$fenv_access_off
+roundf roundf$fenv_access_off
+trunc trunc$fenv_access_off
+truncf truncf$fenv_access_off
+#libm.a(scalb.o):
+scalbln scalbln$fenv_access_off
+scalblnf scalblnf$fenv_access_off
+scalbn scalbn$fenv_access_off
+scalbnf scalbnf$fenv_access_off
+#libm.a(shchth.o):
+cosh cosh$fenv_access_off
+sinh sinh$fenv_access_off
+tanh tanh$fenv_access_off
+#libm.a(sqrt.o):
+sqrt sqrt$fenv_access_off
+#libm.a(tableExpD.o):
+exp exp$fenv_access_off
+expm1 expm1$fenv_access_off
+#libm.a(tableLogD.o):
+log log$fenv_access_off
+log10 log10$fenv_access_off
+log1p log1p$fenv_access_off
+#libm.a(tg.o):
+tan tan$fenv_access_off
+#libm.a(gamma9.o):
+gamma gamma$fenv_access_off
+#libm.a(matherr.o):	
+#libm.a(w_cabs.o):
+cabs cabs$fenv_access_off
+#libm.a(ld64.o):
+acoshl acoshl$fenv_access_off
+acosl acosl$fenv_access_off
+asinhl asinhl$fenv_access_off
+asinl asinl$fenv_access_off
+atan2l atan2l$fenv_access_off
+atanhl atanhl$fenv_access_off
+atanl atanl$fenv_access_off
+cbrtl cbrtl$fenv_access_off
+ceill ceill$fenv_access_off
+copysignl copysignl$fenv_access_off
+coshl coshl$fenv_access_off
+cosl cosl$fenv_access_off
+erfcl erfcl$fenv_access_off
+erfl erfl$fenv_access_off
+exp2l exp2l$fenv_access_off
+#_expl expl$fenv_access_off
+expm1l expm1l$fenv_access_off
+fabsl fabsl$fenv_access_off
+fdiml fdiml$fenv_access_off
+floorl floorl$fenv_access_off
+fmal fmal$fenv_access_off
+fmaxl fmaxl$fenv_access_off
+fminl fminl$fenv_access_off
+fmodl fmodl$fenv_access_off
+frexpl frexpl$fenv_access_off
+hypotl hypotl$fenv_access_off
+ilogbl ilogbl$fenv_access_off
+ldexpl ldexpl$fenv_access_off
+lgammal lgammal$fenv_access_off
+llrintl llrintl$fenv_access_off
+llroundl llroundl$fenv_access_off
+log10l log10l$fenv_access_off
+log1pl log1pl$fenv_access_off
+log2l log2l$fenv_access_off
+logbl logbl$fenv_access_off
+logl logl$fenv_access_off
+lrintl lrintl$fenv_access_off
+lroundl lroundl$fenv_access_off
+modfl modfl$fenv_access_off
+nearbyintl nearbyintl$fenv_access_off
+nextafterl nextafterl$fenv_access_off
+nexttoward nexttoward$fenv_access_off
+nexttowardf nexttowardf$fenv_access_off
+nexttowardl nexttowardl$fenv_access_off
+powl powl$fenv_access_off
+remainderl remainderl$fenv_access_off
+remquol remquol$fenv_access_off
+rintl rintl$fenv_access_off
+roundl roundl$fenv_access_off
+scalblnl scalblnl$fenv_access_off
+scalbnl scalbnl$fenv_access_off
+sinhl sinhl$fenv_access_off
+sinl sinl$fenv_access_off
+sqrtl sqrtl$fenv_access_off
+tanhl tanhl$fenv_access_off
+tanl tanl$fenv_access_off
+tgammal tgammal$fenv_access_off
+truncl truncl$fenv_access_off
+#libm.a(s_cbrt.o):	#libm.a(s_cbrt.o):$fenv_access_off
+cbrt cbrt$fenv_access_off
