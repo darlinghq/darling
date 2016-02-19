@@ -14,6 +14,11 @@ DARWIN {
 		NSVersionOfRunTimeLibrary;
 		NSVersionOfLinkTimeLibrary;
 		_NSGetExecutablePath;
+                NSCreateObjectFileImageFromFile;
+                NSLinkModule;
+                NSDestroyObjectFileImage;
+                NSUnLinkModule;
+                NSLinkEditError;
 		
 		_dyld_image_count;
 		_dyld_get_image_header;

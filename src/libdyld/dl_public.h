@@ -35,6 +35,33 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define DARWIN_RTLD_SELF		((void*)-3)
 #define DARWIN_RTLD_MAIN_ONLY	((void*)-5)
 
+#define NSLINKMODULE_OPTION_NONE		0x0
+#define NSLINKMODULE_OPTION_BINDNOW		0x1
+#define NSLINKMODULE_OPTION_PRIVATE		0x2
+#define NSLINKMODULE_OPTION_RETURN_ON_ERROR	0x4
+#define NSLINKMODULE_OPTION_DONT_CALL_MOD_INIT_ROUTINES 0x8
+#define NSLINKMODULE_OPTION_TRAILING_PHYS_NAME	0x10
+
+typedef enum {
+    NSLinkEditFileAccessError,
+    NSLinkEditFileFormatError,
+    NSLinkEditMachResourceError,
+    NSLinkEditUnixResourceError,
+    NSLinkEditOtherError,
+    NSLinkEditWarningError,
+    NSLinkEditMultiplyDefinedError,
+    NSLinkEditUndefinedError
+} NSLinkEditErrors;
+
+typedef enum {
+    NSObjectFileImageFailure,
+    NSObjectFileImageSuccess,
+    NSObjectFileImageInappropriateFile,
+    NSObjectFileImageArch,
+    NSObjectFileImageFormat,
+    NSObjectFileImageAccess
+} NSObjectFileImageReturnCode;
+
 namespace Darling
 {
 	class LoadableObject;
@@ -48,6 +75,7 @@ namespace Darling
 
 typedef void* NSSymbol;
 typedef Darling::LoadableObject* NSModule;
+typedef void* NSObjectFileImage;
 
 extern "C"
 {
@@ -70,6 +98,22 @@ NSModule NSModuleForSymbol(NSSymbol symbol);
 int NSIsSymbolNameDefinedInImage(const struct mach_header *image, const char *symbolName);
 const char* NSNameOfModule(NSModule m); 
 const char* NSLibraryNameForModule(NSModule m);
+
+NSObjectFileImageReturnCode NSCreateObjectFileImageFromFile(const char* pathName, NSObjectFileImage * objectFileImage);
+NSModule NSLinkModule( NSObjectFileImage objectFileImage, const char* moduleName, uint32_t options);
+bool NSDestroyObjectFileImage( NSObjectFileImage objectFileImage);
+bool NSUnLinkModule( NSModule module, uint32_t options);
+void NSLinkEditError(NSLinkEditErrors *c, int *errorNumber, const char** fileName, const char** errorString);
+
+typedef struct {
+     void     (*undefined)(const char* symbolName);
+     NSModule (*multiple)(NSSymbol s, NSModule oldModule, NSModule newModule); 
+     void     (*linkEdit)(NSLinkEditErrors errorClass, int errorNumber,
+                          const char* fileName, const char* errorString);
+} NSLinkEditErrorHandlers;
+
+void NSInstallLinkEditErrorHandlers(const NSLinkEditErrorHandlers *handlers);
+
 // TODO: rest of these NS* calls if used anywhere
 
 }

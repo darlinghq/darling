@@ -331,3 +331,75 @@ void __darling_set_environ(char** _environ)
 {
 	environ = _environ;
 }
+
+static NSLinkEditErrorHandlers g_linkEditErrorHandlers;
+
+NSObjectFileImageReturnCode NSCreateObjectFileImageFromFile(const char* pathName, NSObjectFileImage * objectFileImage)
+{
+	// TODO: this works here, but would not work for loading images from memory
+	*objectFileImage = strdup(pathName);
+	return NSObjectFileImageSuccess;
+}
+
+NSModule NSLinkModule( NSObjectFileImage objectFileImage, const char* moduleName, uint32_t options)
+{
+	int opts = 0;
+	void* module;
+	
+	if (options & NSLINKMODULE_OPTION_BINDNOW)
+		opts |= DARWIN_RTLD_NOW;
+	if (options & NSLINKMODULE_OPTION_PRIVATE)
+		opts |= DARWIN_RTLD_LOCAL;
+	else
+		opts |= DARWIN_RTLD_GLOBAL;
+	
+	module = __darwin_dlopen((char*) objectFileImage, opts);
+	if (!module && !(options & NSLINKMODULE_OPTION_RETURN_ON_ERROR))
+	{
+		// invoke callback
+		if (g_linkEditErrorHandlers.linkEdit)
+		{
+			g_linkEditErrorHandlers.linkEdit(NSLinkEditOtherError, -1,
+					(char*) objectFileImage, __darwin_dlerror());
+		}
+	}
+	
+	return NSModule(module);
+}
+
+bool NSDestroyObjectFileImage( NSObjectFileImage objectFileImage)
+{
+	free(objectFileImage);
+	return true;
+}
+
+bool NSUnLinkModule( NSModule module, uint32_t options)
+{
+	return __darwin_dlclose(module) == 0;
+}
+
+void NSLinkEditError(NSLinkEditErrors *c, int *errorNumber, const char** fileName, const char** errorString)
+{
+	const char* error;
+	
+	error = __darwin_dlerror();
+	if (error && *error)
+	{
+		*c = NSLinkEditOtherError;
+		*errorNumber = -1;
+		*fileName = "<TODO>";
+		*errorString = error;
+	}
+	else
+	{
+		*c = NSLinkEditUndefinedError;
+		*errorNumber = 0;
+		*fileName = NULL;
+		*errorString = NULL;
+	}
+}
+
+void NSInstallLinkEditErrorHandlers(const NSLinkEditErrorHandlers *handlers)
+{
+	g_linkEditErrorHandlers = *handlers;
+}
