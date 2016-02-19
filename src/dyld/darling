@@ -55,6 +55,40 @@ install_pkg() {
     rm -rf "$temp"
 }
 
+darling_check() {
+    # Returning values:
+    # 0: module is loaded, file permissions are good
+    # 1: module is loaded, file permissions are wrong
+    # 2: module is not loaded
+    grep -q darling_mach "/proc/modules"
+    if [ $? -eq 0 ]; then
+        [ -r "/dev/mach" -a -w "/dev/mach" ] && return 0 || return 1
+    else
+        return 2
+    fi
+}
+
+darling_load() {
+    if $(darling_check); then
+        >&2 echo "Module is already loaded."
+    else
+        >&2 echo -n "Loading module... "
+        modprobe darling-mach && >&2 echo "Done." || >&2 echo "Fail."
+        sleep 1 # Wait for module loading
+        chmod a+rw "/dev/mach"
+    fi
+
+}
+
+darling_unload() {
+    if $(darling_check); then
+        >&2 echo -n "Unloading module... "
+        modprobe -r darling-mach && >&2 echo "Done." || >&2 echo "Fail."
+    else
+        >&2 echo "Module is not loaded, so it can't be unloaded."
+    fi
+}
+
 if [ $# -eq 0 ]; then
     >&2 echo "This is Darling, a runtime environment for OS X applications."
     >&2 echo
@@ -65,6 +99,8 @@ if [ $# -eq 0 ]; then
     >&2 echo -e "\tdarling shell\t\t\tStart bash shell in prefix"
     #>&2 echo -e "\tdarling hdiutil\t\t\tMount DMG disk images"
     #>&2 echo -e "\tdarling pkgutil\t\t\tInstall PKG packages"
+    >&2 echo -e "\tdarling load\t\t\tLoad kernel module"
+    >&2 echo -e "\tdarling unload\t\t\tUnload kernel module"
     >&2 echo
     >&2 echo "The prefix is specified by the DPREFIX environment variable."
     >&2 echo "The default DPREFIX is \$HOME/.darling"
@@ -106,7 +142,7 @@ case "$1" in
 #    ;;
 "load")
     if [ "$(id -u)" != 0 ]; then
-        2>&1 "You need to be root for this command."
+        2>&1 echo "You need to be root for this command."
         exit 1
     fi
 
@@ -114,7 +150,7 @@ case "$1" in
     ;;
 "unload")
     if [ "$(id -u)" != 0 ]; then
-        2>&1 "You need to be root for this command."
+        2>&1 echo "You need to be root for this command."
         exit 1
     fi
 
