@@ -131,7 +131,7 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		{
 			char *nl, *interp, *arg;
 			char** modargvp;
-			int i, j, len;
+			int i, j, len = 0;
 			
 			nl = memchr(m.magic_array, '\n', sizeof(m.magic_array));
 			if (nl == NULL)
