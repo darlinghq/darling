@@ -23,6 +23,16 @@ SCRIPTPATH=$(dirname "$SCRIPT")
 DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
 MINIMUM_PREFIX_VERSION="1"
 
+check_prefix() {
+    if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.prefix-version" ]; then
+        setup_prefix "$DPREFIX"
+    fi
+
+    if [ "$(cat $DPREFIX/.prefix-version)" -lt $MINIMUM_PREFIX_VERSION ]; then
+        setup_prefix "$DPREFIX"
+    fi
+}
+
 setup_prefix() {
     prefix_pkg="/tmp/prefix.$$.pkg"
 
@@ -113,12 +123,9 @@ if [ -z "$DPREFIX" ]; then
     export DPREFIX="$HOME/.darling"
 fi
 
-if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.prefix-version" ]; then
-    setup_prefix "$DPREFIX"
-fi
-
-if [ "$(cat $DPREFIX/.prefix-version)" -lt $MINIMUM_PREFIX_VERSION ]; then
-    setup_prefix "$DPREFIX"
+if ! $(darling_check) && [ "$1" != "load" ]; then
+    2>&1 echo "Cannot open /dev/mach. Try to run 'darling load' before."
+    exit 1
 fi
 
 #dyld_path="${0%darling}dyld"
@@ -126,6 +133,8 @@ dyld_path="${DARLING_PREFIX}/bin/dyld"
 
 case "$1" in
 "shell")
+    check_prefix
+
     if [ $# -gt 1 ]; then
         exec "${dyld_path}" "${DPREFIX}/bin/bash" -c "${*:2}"
     else
@@ -157,6 +166,7 @@ case "$1" in
     darling_unload
     ;;
 *)
+    check_prefix
     exec "${dyld_path}" "$1" "${@:2}"
     ;;
 esac
