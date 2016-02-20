@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2012-2013 Lubos Dolezel
+Copyright (C) 2012-2016 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "DateTimeUtils.h"
 #include <climits>
+#include <ctime>
 
 UTCDateTime Darling::time_tToUTC(time_t t)
 {
@@ -97,3 +98,10 @@ OSErr UCConvertCFAbsoluteTimeToLongDateTime(CFAbsoluteTime in, int64_t* out)
 	}
 }
 
+void GetDateTime(unsigned long* secs)
+{
+	time_t t;
+	time(&t);
+	
+	*secs = t + 2082844800l;
+}

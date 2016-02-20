@@ -40,7 +40,7 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		uint32_t magic;
 		char magic_array[256];
 	} m;
-
+	
 	// Ideally, if everybody used binfmt_misc to allow direct
 	// execution of Mach-O binaries under Darling, this wouldn't
 	// be necessary. But we cannot rely on that.
@@ -95,6 +95,7 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		// It is a Mach-O file
 		int len, i;
 		char** modargvp;
+		char *translated, *buf;
 		
 		len = __prefix_get_dyld_path(dyld_path, sizeof(dyld_path)-1);
 		if (len < 0)
@@ -116,7 +117,14 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		// Allocate a new argvp, execute dyld_path
 		modargvp = (char**) __builtin_alloca(sizeof(void*) * (len+1));
 		modargvp[0] = dyld_path;
-		modargvp[1] = (char*) __prefix_translate_path_link(fname);
+		
+		translated = (char*) __prefix_translate_path_link(fname);
+		buf = __builtin_alloca(strlen(translated) + 2 + strlen(argvp[0]));
+		
+		strcpy(buf, translated);
+		strcat(buf, "!");
+		strcat(buf, argvp[0]);
+		modargvp[1] = buf;
 
 		for (i = 2; i < len+1; i++)
 			modargvp[i] = argvp[i-1];

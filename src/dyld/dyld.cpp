@@ -120,7 +120,9 @@ int main(int argc, char** argv, char** envp)
 				"kernel extensions and other Mach-O files cannot be executed with dyld");
 			}
 		
-			if (!unprefixed_argv0.empty())
+			if (pretendArgv0 != nullptr)
+				argv[1] = (char*) pretendArgv0;
+			else if (!unprefixed_argv0.empty())
 				argv[1] = (char*) unprefixed_argv0.c_str();
 			
 			obj->setCommandLine(argc-1, &argv[1], envp);

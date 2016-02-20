@@ -52,6 +52,9 @@ OSErr UCConvertCFAbsoluteTimeToUTCDateTime(CFAbsoluteTime in, UTCDateTime* out);
 OSErr UCConvertCFAbsoluteTimeToSeconds(CFAbsoluteTime in, uint32_t* out);
 OSErr UCConvertCFAbsoluteTimeToLongDateTime(CFAbsoluteTime in, int64_t* out);
 
+// Seconds since 1.1.1904
+void GetDateTime(unsigned long* secs);
+
 }
 
 namespace Darling

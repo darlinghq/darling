@@ -50,12 +50,19 @@ int main(int argc, char** argv)
 	int fd = -1;
 	const char* target = "64";
 	bool reg;
+	char *progfile, *pos;
 	
 	if (argc == 2 && (reg = !strcmp(argv[1], "--register") || !strcmp(argv[1], "--deregister")))
 		return registerDeregister(argv[0], reg);
 
+	progfile = argv[1];
+	if ((pos = strchr(progfile, '!')) != NULL)
+	{
+		progfile = strdup(argv[1]);
+		progfile[pos - argv[1]] = '\0';
+	}
 	if (argc > 1)
-		fd = open(argv[1], O_RDONLY | O_CLOEXEC);
+		fd = open(progfile, O_RDONLY | O_CLOEXEC);
 
 	// We let real dyld output all serious error messages
 	// not to duplicate the functionality.
