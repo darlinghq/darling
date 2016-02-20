@@ -58,6 +58,8 @@ setup_prefix() {
     ln -sf "../system-root/etc/passwd" "$1/etc/passwd"
     ln -sf "../system-root/etc/group" "$1/etc/group"
 
+    mkdir -p "$1/Volumes" "$1/Applications" || true
+
     # Clean up old cruft (symlinks)
     rm -f "$1/bin" "$1/usr/bin" "$1/etc" "$1/System/Library/Frameworks" 2>/dev/null || true
     cp -rf "${DARLING_PREFIX}/libexec/darling/"* "$1"
