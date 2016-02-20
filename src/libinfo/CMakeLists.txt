@@ -45,3 +45,5 @@ add_library(system_info SHARED $<TARGET_OBJECTS:info-util>
 target_link_libraries(system_info system_c resolv-darwin)
 
 install(TARGETS system_info DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(FILES master.passwd libexec/darling/etc)
+

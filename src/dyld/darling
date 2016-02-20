@@ -57,8 +57,9 @@ setup_prefix() {
     ln -sf "../system-root/etc/resolv.conf" "$1/etc/resolv.conf"
     ln -sf "../system-root/etc/passwd" "$1/etc/passwd"
     ln -sf "../system-root/etc/group" "$1/etc/group"
+    ln -sf "../system-root/etc/hosts" "$1/etc/hosts"
 
-    mkdir -p "$1/Volumes" "$1/Applications" || true
+    mkdir -p "$1/Volumes" "$1/Applications" "$1/var/root" || true
 
     # Clean up old cruft (symlinks)
     rm -f "$1/bin" "$1/usr/bin" "$1/etc" "$1/System/Library/Frameworks" 2>/dev/null || true
