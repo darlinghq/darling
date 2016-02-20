@@ -21,7 +21,8 @@
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
-MINIMUM_PREFIX_VERSION="2"
+
+selfmtime=$(stat -c %Y "$DARLING_PREFIX/bin/darling")
 
 setup_prefix() {
     prefix_pkg="/tmp/prefix.$$.pkg"
@@ -31,9 +32,37 @@ setup_prefix() {
 
     mkdir -p "$1"
     rm -f "$1/darling-prefix"
+
+    rm -f "$1/system-root"
+    ln -s / "$1/system-root"
+
+    rm -f "$1/darling-prefix"
     ln -s "system-root${DARLING_PREFIX}" "$1/darling-prefix"
 
-    install_pkg "org.darlinghq.pkg.PrefixHierarchy"
+    rm -f "$1/dev"
+    ln -sf "system-root/dev" "$1/dev"
+
+    rm -f "$1/home"
+    ln -sf "system-root/home" "$1/home"
+
+    rm -f "$1/Users"
+    ln -sf "home" "$1/Users"
+
+    rm -f "$1/tmp"
+    ln -sf "system-root/tmp" "$1/tmp"
+
+    rm -f "$1/etc" 2>/dev/null || true
+    mkdir -p "$1/etc"
+    ln -sf "../system-root/etc/timezone" "$1/etc/timezone"
+    ln -sf "../system-root/etc/resolv.conf" "$1/etc/resolv.conf"
+    ln -sf "../system-root/etc/passwd" "$1/etc/passwd"
+    ln -sf "../system-root/etc/group" "$1/etc/group"
+
+    # Clean up old cruft (symlinks)
+    rm -f "$1/bin" "$1/usr/bin" "$1/etc" "$1/System/Library/Frameworks" 2>/dev/null || true
+    cp -rf "${DARLING_PREFIX}/libexec/darling/"* "$1"
+    echo -n "$selfmtime" > "$1/.update-timestamp"
+
     install_pkg "org.darlinghq.pkg.OpenSSLCertificates"
 
     >&2 echo "Prefix is ready."
@@ -53,6 +82,14 @@ install_pkg() {
     "${DARLING_PREFIX}/libexec/darling/usr/bin/installer" -pkg "/system-root${pkgpath}" -target /
 
     rm -rf "$temp"
+}
+
+darling_load() {
+    modprobe darling-mach
+}
+
+darling_unload() {
+    rmmod darling-mach
 }
 
 if [ $# -eq 0 ]; then
@@ -77,12 +114,15 @@ if [ -z "$DPREFIX" ]; then
     export DPREFIX="$HOME/.darling"
 fi
 
-if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.prefix-version" ]; then
+if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.update-timestamp" ]; then
     setup_prefix "$DPREFIX"
-fi
+else
 
-if [ "$(cat $DPREFIX/.prefix-version)" -lt $MINIMUM_PREFIX_VERSION ]; then
-    setup_prefix "$DPREFIX"
+    updatets=$(cat $DPREFIX/.update-timestamp)
+    if [ "$updatets" != "disable" -a "$updatets" -lt $selfmtime ]; then
+        setup_prefix "$DPREFIX"
+    fi
+
 fi
 
 #dyld_path="${0%darling}dyld"
@@ -93,7 +133,7 @@ case "$1" in
     if [ $# -gt 1 ]; then
         exec "${dyld_path}" "${DPREFIX}/bin/bash" -c "${*:2}"
     else
-        exec "${dyld_path}" "${DPREFIX}/bin/bash" --norc
+        exec "${dyld_path}" "${DPREFIX}/bin/bash"
     fi
     ;;
 #"hdiutil")

@@ -16,5 +16,5 @@ option(FRAMEWORK_APPKIT "Enable AppKit development code" OFF)
 add_subdirectory(src)
 
 install(FILES etc/dylib.conf etc/version.conf
-	DESTINATION /etc/darling)
+	DESTINATION libexec/darling/etc/darling)
 

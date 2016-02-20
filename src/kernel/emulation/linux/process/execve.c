@@ -180,7 +180,7 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		}
 		else
 		{
-			fname = (char*) __prefix_translate_path_link(fname);
+			fname = (char*) __prefix_translate_path(fname);
 		}
 	}
 

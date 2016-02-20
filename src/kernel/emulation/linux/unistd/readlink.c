@@ -14,7 +14,7 @@ long sys_readlink(const char* path, char* buf, int count)
 			buf, count);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
-	else
+	/*else
 	{
 		const char* xl;
 		__SIZE_TYPE__ newlen;
@@ -24,7 +24,7 @@ long sys_readlink(const char* path, char* buf, int count)
 		
 		memcpy(buf, xl, (newlen < count) ? newlen : count);
 		ret = newlen;
-	}
+	}*/
 
 	return ret;
 }
