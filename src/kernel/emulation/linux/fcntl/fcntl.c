@@ -8,8 +8,8 @@
 #ifndef O_NOFOLLOW
 #   define O_NOFOLLOW 0x0100
 #endif
-#ifndef O_CLOEXEC
-#   define O_CLOEXEC 0x1000000
+#ifndef FD_CLOEXEC
+#   define FD_CLOEXEC 1
 #endif
 #ifndef O_DIRECTORY
 #   define O_DIRECTORY 0x100000
@@ -44,12 +44,8 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 		case F_SETFD:
 			linux_cmd = LINUX_F_SETFD;
 
-			if (arg & ~O_CLOEXEC)
+			if (arg & ~FD_CLOEXEC)
 				return -EINVAL;
-			if (arg & O_CLOEXEC)
-				arg = LINUX_O_CLOEXEC;
-			else
-				arg = 0;
 			break;
 		case F_GETFL:
 			linux_cmd = LINUX_F_GETFL;
@@ -95,13 +91,6 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 
 	switch (cmd)
 	{
-		case F_GETFD:
-			if (ret & LINUX_O_CLOEXEC)
-				ret = O_CLOEXEC;
-			else
-				ret = 0;
-			break;
-
 		case F_GETFL:
 			ret = oflags_linux_to_bsd(ret);
 			break;
