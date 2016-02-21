@@ -51,7 +51,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 				int (*thread_self_trap)())
 {
 
-	arg_struct* args = new arg_struct { (thread_ep) entry_point, arg3,
+	arg_struct args = { (thread_ep) entry_point, arg3,
 		arg4, arg5, arg6, thread_self_trap, pth_obj_size, nullptr };
 	pthread_attr_t attr;
 	pthread_t nativeLibcThread;
@@ -59,28 +59,29 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	pthread_attr_setstacksize(&attr, stack_size + pth_obj_size);
+	pthread_attr_setstacksize(&attr, stack_size);
+	
+	pth = ::mmap(nullptr, stack_size + pth_obj_size + 0x1000, PROT_READ | PROT_WRITE,
+		MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
-	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, args);
+	args.pth = pth;
+	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
 	
-	while (args->pth == nullptr)
+	while (args.pth != nullptr)
 		sched_yield();
-	pth = args->pth;
-	
-	delete args;
 
 	return pth;
 }
 
 static void* darling_thread_entry(void* p)
 {
-	arg_struct* args = static_cast<arg_struct*>(p);
-	// void** stack = args->stack;
-	void* pth_obj = __builtin_alloca(args->pth_obj_size);
+	arg_struct* in_args = static_cast<arg_struct*>(p);
+	arg_struct args;
 	
-	memset(pth_obj, 0, args->pth_obj_size);
+	memcpy(&args, in_args, sizeof(args));
 
-	args->port = args->thread_self_trap();
+	args.port = args.thread_self_trap();
+	in_args->pth = nullptr;
 
 #ifdef __x86_64__
 	__asm__ __volatile__ (
@@ -100,7 +101,7 @@ static void* darling_thread_entry(void* p)
 	"pushq $0\n"
 	"pushq $0\n"
 	"jmpq *%%rax\n"
-	:: "a" (args), "di" (pth_obj));
+	:: "a" (&args), "di" (args.pth));
 #elif defined(__i386__) // TODO: args in eax, ebx, ecx, edx, edi, esi
 	__asm__ __volatile__ (
 	"movl (%0), %%eax\n"
@@ -117,7 +118,7 @@ static void* darling_thread_entry(void* p)
 	"movl %%esp, %%ecx\n"
 	"1:\n"
 	"ret\n" // Jump to the address pushed at the beginning
-	:: "c" (args), "d" (pth_obj));
+	:: "c" (args), "d" (args->pth));
 #endif
 	//args->entry_point(args->stack, args->port, args->arg3,
 	//		args->arg4, args->arg5, args->arg6);
@@ -184,7 +185,6 @@ int __darling_thread_terminate(void* stackaddr,
 #endif
 #endif
 
-	munmap(stackaddr, freesize);
 	pthread_exit(nullptr);
 
 	__builtin_unreachable();
