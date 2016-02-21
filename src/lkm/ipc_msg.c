@@ -239,6 +239,7 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 	// Perform operation specified in type on target right
 	ret = ipc_process_right(space, type,
 			in_remote_right, &kmsg->target);
+	debug_msg("ipc_process_right() done");
 	
 	if (ret != MACH_MSG_SUCCESS)
 	{

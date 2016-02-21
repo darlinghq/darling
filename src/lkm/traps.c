@@ -317,9 +317,9 @@ mach_port_name_t mach_thread_self_trap(mach_task_t* task)
 		darling_task_register_thread(task, thread_port);
 	}
 	
-	ret = ipc_space_make_send(&task->namespace, thread_port, false, &name);
-	
 	ipc_port_unlock(task->task_self);
+	
+	ret = ipc_space_make_send(&task->namespace, thread_port, false, &name);
 	
 	if (ret == KERN_SUCCESS)
 		return name;
