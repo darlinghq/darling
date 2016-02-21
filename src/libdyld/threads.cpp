@@ -118,7 +118,7 @@ static void* darling_thread_entry(void* p)
 	"movl %%esp, %%ecx\n"
 	"1:\n"
 	"ret\n" // Jump to the address pushed at the beginning
-	:: "c" (args), "d" (args->pth));
+	:: "c" (&args), "d" (args.pth));
 #endif
 	//args->entry_point(args->stack, args->port, args->arg3,
 	//		args->arg4, args->arg5, args->arg6);
