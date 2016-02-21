@@ -30,7 +30,9 @@ set(cc_SRCS
 	Source/Digest/md4_dgst.c
 	Source/Digest/md5_dgst.c
 	# TODO - Too much work :-/
-	#Source/Digest/sha1.c
+	Source/Digest/sha1.c
+	Source/Digest/sha1-586.S
+	Source/Digest/sha1-x86_64.S
 	#Source/Digest/sha2.c
 	#Source/Digest/sha256.S
 	#Source/Digest/sha1edpBigEndian.S
