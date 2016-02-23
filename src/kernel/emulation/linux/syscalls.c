@@ -40,6 +40,8 @@
 #include "unistd/chdir.h"
 #include "unistd/mknod.h"
 #include "unistd/chmod.h"
+#include "unistd/getpgid.h"
+#include "unistd/setpgid.h"
 #include "unistd/chown.h"
 #include "unistd/lchown.h"
 #include "unistd/getgid.h"
@@ -224,6 +226,7 @@ void* __bsd_syscall_table[512] = {
 	[139] = sys_futimes,
 	[142] = sys_gethostuuid,
 	[147] = sys_setsid,
+	[151] = sys_getpgid,
 	[153] = sys_pread,
 	[154] = sys_pwrite,
 	[157] = sys_statfs,

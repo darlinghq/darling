@@ -65,6 +65,7 @@ set(emulation_sources
 	unistd/setpgid.c
 	unistd/setgroups.c
 	unistd/getgroups.c
+	unistd/getpgid.c
 	unistd/pipe.c
 	unistd/chmod_extended.c
 	unistd/fchmod_extended.c
