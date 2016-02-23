@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2015 Lubos Dolezel
+Copyright (C) 2015-2016 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef DYLD_PRIV_H
 #define DYLD_PRIV_H
 #include <stdint.h>
+#include <stddef.h>
 
 namespace Darling {
 class LoadableObject;
@@ -51,6 +52,29 @@ extern void
 dyld_register_image_state_change_handler(enum dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
 
 void _dyld_run_handler_for_state(Darling::LoadableObject* obj);
+
+enum dyld_tlv_states {
+    dyld_tlv_state_allocated = 10,
+    dyld_tlv_state_deallocated = 20
+};
+
+typedef struct {
+    size_t info_size;
+    void * tlv_addr;
+    size_t tlv_size;
+} dyld_tlv_info;
+
+#if __BLOCKS__
+typedef void (^dyld_tlv_state_change_handler)(enum dyld_tlv_states state, const dyld_tlv_info *info);
+
+extern void 
+dyld_register_tlv_state_change_handler(enum dyld_tlv_states state, dyld_tlv_state_change_handler handler);
+
+extern void 
+dyld_enumerate_tlv_storage(dyld_tlv_state_change_handler handler);
+
+#endif
+
 
 }
 

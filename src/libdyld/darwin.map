@@ -14,11 +14,11 @@ DARWIN {
 		NSVersionOfRunTimeLibrary;
 		NSVersionOfLinkTimeLibrary;
 		_NSGetExecutablePath;
-                NSCreateObjectFileImageFromFile;
-                NSLinkModule;
-                NSDestroyObjectFileImage;
-                NSUnLinkModule;
-                NSLinkEditError;
+		NSCreateObjectFileImageFromFile;
+		NSLinkModule;
+		NSDestroyObjectFileImage;
+		NSUnLinkModule;
+		NSLinkEditError;
 		
 		_dyld_image_count;
 		_dyld_get_image_header;
@@ -42,5 +42,7 @@ DARWIN {
 		_dyld_fork_child;
 		_tlv_bootstrap;
 		_tlv_atexit;
+		dyld_register_tlv_state_change_handler;
+		dyld_enumerate_tlv_storage;
 };
 

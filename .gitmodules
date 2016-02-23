@@ -116,3 +116,7 @@
 	path = src/external/sqlite
 	url = ../darling-sqlite.git
 	branch = darling
+[submodule "src/external/libauto"]
+	path = src/external/libauto
+	url = ../darling-libauto.git
+	branch = darling

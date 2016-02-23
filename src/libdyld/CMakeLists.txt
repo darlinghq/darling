@@ -9,7 +9,7 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ggdb -O0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ggdb -O0 -fblocks")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/darwin.map -Wl,-Bsymbolic-functions")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -18,6 +18,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libmach-o)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include/xnu/bsd)
+include_directories(${DARLING_TOP_DIRECTORY}/src/external/libobjc2)
 
 set(dyld_SRCS
 	eh/BufReWriter.cpp

@@ -522,7 +522,7 @@ void MachOObject::loadDependencies()
 		if (path.empty())
 		{
 			std::stringstream ss;
-			ss << "dyld: Library not loaded: " << dylib;
+			ss << "dyld: Library not loaded: " << dylib << " as a dependency of " << this->path();
 			throw std::runtime_error(ss.str());
 		}
 		

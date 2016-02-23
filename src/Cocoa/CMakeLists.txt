@@ -10,8 +10,13 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_library(Cocoa SHARED zero.c)
-target_link_libraries(Cocoa -lgnustep-gui CoreFoundation)
+add_library(Cocoa SHARED empty.c)
+
+if (FRAMEWORK_APPKIT)
+	set(AppKit "AppKit")
+endif (FRAMEWORK_APPKIT)
+
+target_link_libraries(Cocoa CFFExtra ${AppKit})
 
 install(TARGETS Cocoa DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

@@ -124,6 +124,8 @@ add_subdirectory(CommonCrypto)
 add_subdirectory(csu)
 add_subdirectory(external/python/2.6/Python-2.6.9)
 add_subdirectory(external/expat)
+add_subdirectory(external/libauto)
+add_subdirectory(Cocoa)
 
 if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(external/shell_cmds)

@@ -22,9 +22,12 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <cassert>
 #include <cstring>
+#include <objc/blocks_runtime.h>
+#include <vector>
 #include "log.h"
 #include "trace.h"
 #include "mutex.h"
+#include "dyld_priv.h"
 
 extern "C" {
 int __darwin_pthread_key_create(long *key, void (*destructor)(void*));
@@ -37,9 +40,20 @@ static void TLSRunDestructors(void* p);
 static std::map<void*, Darling::ImageData*> m_images;
 static std::map<pthread_key_t, Darling::ImageData*> m_imagesKey;
 static Darling::Mutex m_imagesMutex;
+struct tlv_listener
+{
+	enum dyld_tlv_states state;
+	dyld_tlv_state_change_handler handler;
+};
+
+static std::vector<tlv_listener> g_tlvListeners;
+static void notifyTLSListeners(enum dyld_tlv_states state, void* mem, size_t size);
 
 // Used for a thread-local list of destructor-object pairs (DestructorLinkedListElement)
 static long m_keyDestructors;
+static std::map<void*,size_t> g_allocatedTLS;
+
+__attribute__((weak)) void *_Block_copy(void *);
 
 static void TLSSetupDestructors()
 {
@@ -114,7 +128,16 @@ void Darling::TLSTeardown(void* imageKey)
 
 void Darling::TLSTeardownThread(Darling::ThreadData data)
 {
+	Darling::MutexLock _l(&m_imagesMutex);
 	TRACE1((void*) data);
+
+	auto it = g_allocatedTLS.find(data);
+	if (it != g_allocatedTLS.end())
+	{
+		notifyTLSListeners(dyld_tlv_state_deallocated, it->first, it->second);
+		g_allocatedTLS.erase(it);
+	}
+
 	delete [] data;
 }
 
@@ -143,6 +166,8 @@ void* Darling::TLSAllocate(pthread_key_t key)
 
 	// Delete the data upon thread exit
 	__darwin_pthread_setspecific(key, data);
+	g_allocatedTLS[data] = id->length;
+	notifyTLSListeners(dyld_tlv_state_allocated, data, id->length);
 	
 	LOG << "TLS data allocated at " << (void*)data << std::endl;
 
@@ -177,5 +202,30 @@ void* Darling::TLSBootstrap(tlv_descriptor* desc)
 {
 	LOG << "Darling::TLSBootstrap() called, this should never happen\n";
 	abort();
+}
+
+void dyld_register_tlv_state_change_handler(enum dyld_tlv_states state, dyld_tlv_state_change_handler handler)
+{
+	g_tlvListeners.push_back(tlv_listener { state, Block_copy(handler) });
+}
+
+void dyld_enumerate_tlv_storage(dyld_tlv_state_change_handler handler)
+{
+	Darling::MutexLock _l(&m_imagesMutex);
+	for (auto it = g_allocatedTLS.begin(); it != g_allocatedTLS.end(); it++)
+	{
+		const dyld_tlv_info info = { sizeof(dyld_tlv_info), it->first, it->second };
+		handler(dyld_tlv_state_allocated, &info);
+	}
+}
+
+static void notifyTLSListeners(enum dyld_tlv_states state, void* mem, size_t size)
+{
+	const dyld_tlv_info info = { sizeof(dyld_tlv_info), mem, size };
+	for (auto it = g_tlvListeners.begin(); it != g_tlvListeners.end(); it++)
+	{
+		if (it->state == state)
+			it->handler(state, &info);
+	}
 }
 
