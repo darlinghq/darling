@@ -34,6 +34,7 @@ struct pthread_mutex
 	wait_queue_head_t wq;
     struct list_head waiting;
     unsigned int refcount;
+	bool underlock; // unlocked when no one was waiting
 };
 typedef struct pthread_mutex pthread_mutex_t;
 
@@ -63,7 +64,8 @@ int psynch_mutexwait_trap(mach_task_t* task,
     
 	mutex = mutex_get(task, args.mutex);
     
-	if (mutex->mgen != 0)
+	// TODO: what if this destroys the mutex whilst someone else is waiting?
+	if (mutex->mgen != 0 && mutex->underlock)
 	{
 		retval = mutex->mgen;
 		
@@ -135,7 +137,8 @@ int psynch_mutexdrop(mach_task_t* task, uint64_t in_mutex, uint32_t mgen,
 
 		wake_up_interruptible(&mutex->wq);
 		mutex_put(task, mutex);
-	}
+	} else
+		mutex->underlock = true;
 
 	spin_unlock(&task->mutex_wq_lock);
 
@@ -158,6 +161,7 @@ pthread_mutex_t* mutex_get(mach_task_t* task, uint64_t address)
 	node->refcount = 1;
 	node->mgen = 0;
 	node->pointer = address;
+	node->underlock = false;
 
 	init_waitqueue_head(&node->wq);
 	INIT_LIST_HEAD(&node->waiting);
@@ -172,7 +176,13 @@ void mutex_put(mach_task_t* task, pthread_mutex_t* mutex)
 
 	if (mutex->refcount == 0)
 	{
+		debug_msg("Destroying mutex %p", mutex);
 		hash_del(&mutex->node);
 		kfree(mutex);
+	}
+	
+	if (mutex->refcount < 0)
+	{
+		debug_msg("!!!!!!! refcount is %d", mutex->refcount);
 	}
 }
