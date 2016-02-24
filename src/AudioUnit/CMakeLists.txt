@@ -42,6 +42,7 @@ include_directories(${DARLING_TOP_DIRECTORY}/src/external/libobjc2)
 include_directories(${CMAKE_BINARY_DIR}/src/external/corefoundation/Headers)
 include_directories(${DARLING_TOP_DIRECTORY}/src/external/foundation/Headers)
 include_directories(${ALSA_INCLUDE_DIR} ${PA_INCLUDE_DIR})
+include_directories(${DARLING_TOP_DIRECTORY}/basic-headers)
 #include_directories(${DARLING_TOP_DIRECTORY}/platform-include)
 
 set(AudioUnit_SRCS
