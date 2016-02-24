@@ -8,9 +8,9 @@ void Microseconds(UnsignedWide* tickCount)
 
 	time = mach_absolute_time();
 
-	*tickCount = time / 1000000000ll;
-	time -= *tickCount * 1000000000ll;
+	*reinterpret_cast<uint64_t*>(tickCount) = time / 1000000000ll;
+	time -= *reinterpret_cast<uint64_t*>(tickCount) * 1000000000ll;
 
-	*tickCount += time / 1000;
+	*reinterpret_cast<uint64_t*>(tickCount) += time / 1000;
 }
 

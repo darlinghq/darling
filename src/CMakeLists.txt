@@ -19,8 +19,8 @@ if (NOT BITS)
 	message(FATAL_ERROR "BITS is not specified (32/64)")
 endif (NOT BITS)
 
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m${BITS}")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m${BITS}")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m${BITS} -D__APPLE_CC__")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m${BITS} -D__APPLE_CPP__")
 SET(CMAKE_ASM_FLAGS "-m${BITS}")
 SET(CMAKE_ASM-ATT_FLAGS "-m${BITS}")
 
@@ -125,6 +125,8 @@ add_subdirectory(csu)
 add_subdirectory(external/python/2.6/Python-2.6.9)
 add_subdirectory(external/expat)
 add_subdirectory(external/libauto)
+#add_subdirectory(external/security) # work in progress
+add_subdirectory(sandbox)
 add_subdirectory(Cocoa)
 
 if (NOT DARLING_NO_EXECUTABLES)

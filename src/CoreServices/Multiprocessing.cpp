@@ -11,7 +11,7 @@ Boolean _MPIsFullyInitialized()
 
 OSStatus MPDelayUntil(AbsoluteTime* time)
 {
-	struct timespec ts = { time_t(*time / 1000000000ll), long(*time % 1000000000ll) };
+	struct timespec ts = { time_t(*reinterpret_cast<uint64_t*>(time) / 1000000000ll), long(*reinterpret_cast<uint64_t*>(time) % 1000000000ll) };
 	nanosleep(&ts, nullptr);
 	return noErr;
 }

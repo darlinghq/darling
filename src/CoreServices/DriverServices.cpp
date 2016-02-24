@@ -27,83 +27,116 @@ AbsoluteTime UpTime()
 	struct timeval boottime, now;
 	size_t len = sizeof(boottime);
 	int mib[2] = { CTL_KERN, KERN_BOOTTIME };
+	uint64_t value;
 
 	if (sysctl(mib, 2, &boottime, &len, NULL, 0) < 0)
-		return 0;
+		return { 0, 0};
 
 	gettimeofday(&now, NULL);
 
-	return (now.tv_sec-boottime.tv_sec) * 1000000000ll
+	value = (now.tv_sec-boottime.tv_sec) * 1000000000ll
 		+ (now.tv_usec-boottime.tv_usec) * 1000ll;
+	return *reinterpret_cast<AbsoluteTime*>(&value);
 }
 
 Nanoseconds AbsoluteToNanoseconds(AbsoluteTime absTime)
 {
-	return absTime;
+	return *reinterpret_cast<Nanoseconds*>(&absTime);
 }
 
 Duration AbsoluteToDuration(AbsoluteTime absTime)
 {
-	return Duration(absTime / 1000000ll);
+	return Duration(*reinterpret_cast<int64_t*>(&absTime) / 1000000ll);
 }
 
 AbsoluteTime NanosecondsToAbsolute(Nanoseconds ns)
 {
-	return ns;
+	uint64_t value = *reinterpret_cast<uint64_t*>(&ns);
+	return *reinterpret_cast<AbsoluteTime*>(&value);
 }
 
 AbsoluteTime DurationToAbsolute(Duration duration)
 {
-	return duration * 1000000ll;
+	int64_t value = duration * 1000000ll;
+	return *reinterpret_cast<AbsoluteTime*>(&value);
 }
 
 AbsoluteTime AddAbsoluteToAbsolute(AbsoluteTime time1, AbsoluteTime time2)
 {
-	return time1+time2;
+	int64_t value;
+	value = *reinterpret_cast<int64_t*>(&time1);
+	value += *reinterpret_cast<int64_t*>(&time2);
+	return *reinterpret_cast<AbsoluteTime*>(&value);
 }
 
 AbsoluteTime SubAbsoluteFromAbsolute(AbsoluteTime time1, AbsoluteTime time2)
 {
-	return time1-time2;
+	int64_t value;
+	value = *reinterpret_cast<int64_t*>(&time1);
+	value -= *reinterpret_cast<int64_t*>(&time2);
+	return *reinterpret_cast<AbsoluteTime*>(&value);
 }
 
 AbsoluteTime AddNanosecondsToAbsolute(Nanoseconds ns, AbsoluteTime absTime)
 {
-	return absTime + NanosecondsToAbsolute(ns);
+	int64_t value;
+	value = *reinterpret_cast<int64_t*>(&absTime);
+	value += *reinterpret_cast<uint64_t*>(&ns);
+	return *reinterpret_cast<AbsoluteTime*>(&value);
 }
 
 AbsoluteTime AddDurationToAbsolute(Duration duration, AbsoluteTime absTime)
 {
-	return absTime + DurationToAbsolute(duration);
+	int64_t value;
+	AbsoluteTime at2 = DurationToAbsolute(duration);
+
+	value = *reinterpret_cast<int64_t*>(&absTime);
+	value += *reinterpret_cast<int64_t*>(&at2);
+
+	return *reinterpret_cast<AbsoluteTime*>(&value);
 }
 
 AbsoluteTime SubNanosecondsFromAbsolute(Nanoseconds ns, AbsoluteTime absTime)
 {
-	return absTime - NanosecondsToAbsolute(ns);
+	int64_t value;
+	value = *reinterpret_cast<int64_t*>(&absTime);
+	value -= *reinterpret_cast<uint64_t*>(&ns);
+	return *reinterpret_cast<AbsoluteTime*>(&value);
 }
 
 AbsoluteTime SubDurationFromAbsolute(Duration duration, AbsoluteTime absTime)
 {
-	return absTime - DurationToAbsolute(duration);
+	int64_t value;
+	AbsoluteTime at2 = DurationToAbsolute(duration);
+
+	value = *reinterpret_cast<int64_t*>(&absTime);
+	value -= *reinterpret_cast<int64_t*>(&at2);
+
+	return *reinterpret_cast<AbsoluteTime*>(&value);
 }
 
 Nanoseconds AbsoluteDeltaToNanoseconds(AbsoluteTime time1, AbsoluteTime time2)
 {
-	return AbsoluteToNanoseconds(time1 - time2);
+	int64_t value = *reinterpret_cast<int64_t*>(&time1)
+		            - *reinterpret_cast<int64_t*>(&time2);
+
+	return AbsoluteToNanoseconds(*reinterpret_cast<AbsoluteTime*>(&value));
 }
 
 Duration AbsoluteDeltaToDuration(AbsoluteTime time1, AbsoluteTime time2)
 {
-	return AbsoluteToDuration(time1 - time2);
+	return AbsoluteToDuration(SubAbsoluteFromAbsolute(time1, time2));
 }
 
 Nanoseconds DurationToNanoseconds(Duration duration)
 {
-	return duration * 1000000ll;
+	uint64_t value = duration * 1000000ll;
+	return *reinterpret_cast<Nanoseconds*>(&value);
 }
 
 Duration NanosecondsToDuration(Nanoseconds ns)
 {
-	return Duration(ns / 1000000ll);
+	uint64_t value = *reinterpret_cast<uint64_t*>(&ns);
+	return Duration(value / 1000000ll);
 }
 

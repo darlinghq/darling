@@ -27,9 +27,9 @@ typedef uint32_t		UnsignedFixed; // 16u/16
 typedef UnsignedFixed*	UnsignedFixedPtr;
 typedef short			ShortFixed;
 typedef ShortFixed *	ShortFixedPtr; // 8/8
-typedef int64_t			wide;
-typedef uint64_t		UnsignedWide;
-typedef uint64_t		AbsoluteTime;
+//typedef int64_t			wide;
+//typedef uint64_t		UnsignedWide;
+//typedef uint64_t		AbsoluteTime;
 typedef int32_t			Duration; // milliseconds
 typedef uint8_t			Boolean;
 

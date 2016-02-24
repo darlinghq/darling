@@ -120,3 +120,15 @@
 	path = src/external/libauto
 	url = ../darling-libauto.git
 	branch = darling
+[submodule "src/external/coretls"]
+	path = src/external/coretls
+	url = ../darling-coretls.git
+	branch = darling
+[submodule "src/external/security"]
+	path = src/external/security
+	url = ../darling-security.git
+	branch = darling
+[submodule "src/external/libxpc"]
+	path = src/external/libxpc
+	url = ../darling-libxpc.git
+	branch = darling

@@ -135,9 +135,9 @@ Fract X2Frac(double d)
 
 short WideCompare(const wide* a, const wide* b)
 {
-	if (*a > *b)
+	if (*reinterpret_cast<const int64_t*>(a) > *reinterpret_cast<const int64_t*>(b))
 		return 1;
-	else if (*a < *b)
+	else if (*reinterpret_cast<const int64_t*>(a) < *reinterpret_cast<const int64_t*>(b))
 		return -1;
 	else
 		return 0;
@@ -145,70 +145,70 @@ short WideCompare(const wide* a, const wide* b)
 
 wide* WideAdd(wide* dst, const wide* val)
 {
-	*dst += *val;
+	*reinterpret_cast<int64_t*>(dst) += *reinterpret_cast<const int64_t*>(val);
 	return dst;
 }
 
 wide* WideSubtract(wide* dst, const wide* val)
 {
-	*dst -= *val;
+	*reinterpret_cast<int64_t*>(dst) -= *reinterpret_cast<const int64_t*>(val);
 	return dst;
 }
 
 wide* WideNegate(wide* val)
 {
-	*val = -*val;
+	*reinterpret_cast<int64_t*>(val) = -*reinterpret_cast<int64_t*>(val);
 	return val;
 }
 
 wide* WideShift(wide* dst, int32_t shift) // rounds upwards
 {
-	wide result, mask;
+	int64_t result, mask;
 	bool round;
 
 	if (shift >= 0)
 	{
-		result = *dst >> shift;
+		result = *(reinterpret_cast<int64_t*>(dst)) >> shift;
 		mask = result << shift;
 	}
 	else
 	{
-		result = *dst << (-shift);
+		result = *(reinterpret_cast<int64_t*>(dst)) << (-shift);
 		mask = result >> (-shift);
 	}
 	
-	round = ((*dst) & ~mask) != 0;
+	round = ((*reinterpret_cast<int64_t*>(dst)) & ~mask) != 0;
 
 	if (round)
 		result++;
-	*dst = result;
+	*reinterpret_cast<int64_t*>(dst) = result;
 
 	return dst;
 }
 
 uint32_t WideSquareRoot(const wide* val)
 {
-	return (uint32_t) sqrt(*val);
+	return (uint32_t) sqrt(*reinterpret_cast<const int64_t*>(val));
 }
 
 wide* WideMultiply(int32_t a, int32_t b, wide* dst)
 {
-	*dst = int64_t(a) * int64_t(b);
+	*reinterpret_cast<int64_t*>(dst) = int64_t(a) * int64_t(b);
 	return dst;
 }
 
 int32_t WideDivide(const wide* divd, int32_t divs, int32_t* remainder)
 {
 	if (remainder)
-		*remainder = *divd % divs;
-	return int32_t(*divd / divs);
+		*remainder = *reinterpret_cast<const int64_t*>(divd) % divs;
+	return int32_t(*reinterpret_cast<const int64_t*>(divd) / divs);
 }
 
 wide* WideWideDivide(wide* divd, int32_t divs, int32_t* remainder)
 {
 	if (remainder)
-		*remainder = *divd % divs;
-	*divd /= divs;
+		*remainder = *reinterpret_cast<int64_t*>(divd) % divs;
+	*reinterpret_cast<int64_t*>(divd) /= divs;
 	return divd;
 }
 
@@ -218,9 +218,9 @@ wide* WideBitShift(wide* dst, int32_t shift)
 	// negative -> left
 	
 	if (shift >= 0)
-		*dst >>= shift;
+		*reinterpret_cast<int64_t*>(dst) >>= shift;
 	else
-		*dst <<= (-shift);
+		*reinterpret_cast<int64_t*>(dst) <<= (-shift);
 
 	return dst;
 }

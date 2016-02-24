@@ -6,13 +6,6 @@
 #include <CoreFoundation/CFDictionary.h>
 #include <sys/types.h>
 
-struct ProcessSerialNumber
-{
-	unsigned long highLongOfPSN;
-	unsigned long lowLongOfPSN;
-};
-typedef ProcessSerialNumber* ProcessSerialNumberPtr;
-
 struct ProcessInfoRec
 {
 	unsigned long processInfoLength;
