@@ -9,7 +9,7 @@ endif(COMMAND cmake_policy)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fblocks -ggdb -O0")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
-add_definitions(-DOBJC2RUNTIME -U__APPLE__)
+add_definitions(-DOBJC2RUNTIME -U__APPLE__ -DDISPATCH_NO_INCLUDE_MACH_HEADERS=1)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
