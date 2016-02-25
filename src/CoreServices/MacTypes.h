@@ -17,20 +17,14 @@ typedef float Float32;
 typedef double Float64;
 #endif
 
-typedef uint32_t OptionBits;
-
-typedef int32_t			Fixed; // 16/16
 typedef Fixed*			FixedPtr;
-typedef int32_t			Fract; // 2/30
 typedef Fract*			FractPtr;
-typedef uint32_t		UnsignedFixed; // 16u/16
 typedef UnsignedFixed*	UnsignedFixedPtr;
 typedef short			ShortFixed;
 typedef ShortFixed *	ShortFixedPtr; // 8/8
 //typedef int64_t			wide;
 //typedef uint64_t		UnsignedWide;
 //typedef uint64_t		AbsoluteTime;
-typedef int32_t			Duration; // milliseconds
 typedef uint8_t			Boolean;
 
 // Pascal strings
@@ -47,8 +41,6 @@ typedef char* Ptr;
 typedef char** Handle;
 
 typedef int16_t OSErr;
-typedef int32_t OSStatus;
-typedef uint32_t OSType;
 
 enum {
 	kDurationImmediate = 0,
