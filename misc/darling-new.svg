@@ -14,11 +14,11 @@
    height="150.13608"
    id="svg4249"
    version="1.1"
-   inkscape:version="0.48.4 r9939"
-   sodipodi:docname="darling.svg"
-   inkscape:export-filename="/home/noway/Pictures/darling/mydarling/darling270.png"
-   inkscape:export-xdpi="270"
-   inkscape:export-ydpi="270">
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="darling-new.svg"
+   inkscape:export-filename="/tmp/darling270.png"
+   inkscape:export-xdpi="170.62"
+   inkscape:export-ydpi="170.62">
   <defs
      id="defs4251">
     <linearGradient
@@ -380,9 +380,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.64"
-     inkscape:cx="-105.588"
-     inkscape:cy="391.78951"
+     inkscape:zoom="3.6203867"
+     inkscape:cx="79.637602"
+     inkscape:cy="84.704796"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -390,11 +390,11 @@
      fit-margin-left="5"
      fit-margin-right="5"
      fit-margin-bottom="5"
-     inkscape:window-width="1280"
-     inkscape:window-height="977"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="1"
+     inkscape:window-width="1524"
+     inkscape:window-height="1281"
+     inkscape:window-x="1993"
+     inkscape:window-y="150"
+     inkscape:window-maximized="0"
      showguides="true">
     <inkscape:grid
        empspacing="5"
@@ -414,7 +414,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -467,7 +467,7 @@
        sodipodi:cy="-356.54465"
        sodipodi:rx="14.460939"
        sodipodi:ry="17.731192"
-       d="m 103.84104,-356.54465 c 0,9.79267 -6.47438,17.73119 -14.460936,17.73119 -7.986556,0 -14.460939,-7.93852 -14.460939,-17.73119 0,-9.79266 6.474383,-17.73119 14.460939,-17.73119 7.986556,0 14.460936,7.93853 14.460936,17.73119 z"
+       d="m 103.84104,-356.54465 a 14.460939,17.731192 0 0 1 -14.460936,17.73119 14.460939,17.731192 0 0 1 -14.460939,-17.73119 14.460939,17.731192 0 0 1 14.460939,-17.73119 14.460939,17.731192 0 0 1 14.460936,17.73119 z"
        transform="translate(218.11416,711.60607)" />
     <path
        style="fill:url(#linearGradient5944-5);fill-opacity:1;stroke:#959595;stroke-width:1.5;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
@@ -514,7 +514,7 @@
     <flowRoot
        xml:space="preserve"
        id="flowRoot4019-8-1-5-8"
-       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:TlwgMono;-inkscape-font-specification:TlwgMono Medium"
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;line-height:125%;font-family:TlwgMono;-inkscape-font-specification:'TlwgMono Medium';text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
        transform="translate(482.22388,538.05132)"><flowRegion
          id="flowRegion4021-2-2-2-8"><rect
            id="rect4023-3-4-9-8"
@@ -522,11 +522,11 @@
            height="71.278641"
            x="-198.89223"
            y="-167.19565"
-           style="font-size:16px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:center;text-anchor:middle;font-family:TlwgMono;-inkscape-font-specification:TlwgMono Medium" /></flowRegion><flowPara
-         style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1;font-family:TlwgMono;-inkscape-font-specification:TlwgMono Bold"
+           style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:TlwgMono;-inkscape-font-specification:'TlwgMono Medium';text-align:center;text-anchor:middle" /></flowRegion><flowPara
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16px;font-family:'Nimbus Mono L';-inkscape-font-specification:'Nimbus Mono L Bold';text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1"
          id="flowPara4037-6-8-8-2">$ dar</flowPara><flowPara
-         style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1;font-family:TlwgMono;-inkscape-font-specification:TlwgMono Bold"
-         id="flowPara4482">  ling </flowPara></flowRoot>    <path
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16px;font-family:'Nimbus Mono L';-inkscape-font-specification:'Nimbus Mono L Bold';text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1"
+         id="flowPara4482">  ling</flowPara></flowRoot>    <path
        style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 265.88829,391.09989 c -2.07292,0.50409 -2.61736,3.62172 -2.81956,5.74545 -0.20468,2.14984 -0.33025,5.52923 1.70541,6.2502 3.39889,1.20379 8.75604,-2.71165 8.78097,-6.31733 0.022,-3.18013 -4.57667,-6.42978 -7.66682,-5.67832 z"
        id="path4432-8-1-9"
