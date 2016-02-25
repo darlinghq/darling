@@ -34,6 +34,7 @@ git submodule update
 ````
 cd darling
 mkdir -p build/x86-64
+cd build/x86-64
 cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86_64.cmake
 make
 make install
@@ -55,6 +56,7 @@ Required dependencies on Debian (stable): cmake clang bison flex linux-headers-a
 ````
 cd darling
 mkdir -p build/i386
+cd build/i386
 cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86.cmake
 make
 make install
