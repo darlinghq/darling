@@ -83,7 +83,7 @@ OSStatus AudioConverterConvertComplexBuffer(AudioConverterRef inAudioConverter, 
 	typedef OSStatus (^CallbackBlock)(AudioConverterRef audioConverter, UInt32* numberDataPackets, AudioBufferList* data, AudioStreamPacketDescription** dataPacketDescription);
 	
 	CallbackBlock callbackBlock =
-		^(AudioConverterRef audioConverter, UInt32* numberDataPackets, AudioBufferList* data, AudioStreamPacketDescription** dataPacketDescription)
+		^ OSStatus (AudioConverterRef audioConverter, UInt32* numberDataPackets, AudioBufferList* data, AudioStreamPacketDescription** dataPacketDescription)
 	{
 		const AudioBufferList *inInputData = (AudioBufferList*) inInputData;
 
