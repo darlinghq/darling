@@ -3,7 +3,8 @@
  *
  * Steve Canon, March 2009.
  */
- 
+
+.type ceilf, @function 
 #if defined __i386__
 
 #include <System/i386/cpu_capabilities.h>

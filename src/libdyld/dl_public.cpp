@@ -238,11 +238,15 @@ int __darwin_dladdr(void *addr, Dl_info *info)
 
 NSSymbol NSLookupAndBindSymbol(const char* symbolName)
 {
+	if (*symbolName == '_')
+		symbolName++;
 	return __darwin_dlsym(DARWIN_RTLD_DEFAULT, symbolName);
 }
 
 NSSymbol NSLookupSymbolInModule(NSModule module, const char* symbolName)
 {
+	if (*symbolName == '_')
+		symbolName++;
 	return __darwin_dlsym(module, symbolName);
 }
 

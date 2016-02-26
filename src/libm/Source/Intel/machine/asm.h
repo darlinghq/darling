@@ -22,6 +22,7 @@
  */
 
 #define	ENTRY(name)							      \
+  .type name, @function; \
   .globl name;				      			      \
   .align (2<<4);							      	      \
   name##:								      

@@ -12,6 +12,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
+.type cosh, @function
+
 //.const
 .align (1<<4)
 			// Polynomial coefficients, offset from exp2table

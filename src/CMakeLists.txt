@@ -123,6 +123,7 @@ add_subdirectory(external/compiler-rt/lib/builtins)
 add_subdirectory(CommonCrypto)
 add_subdirectory(csu)
 add_subdirectory(external/python/2.6/Python-2.6.9)
+add_subdirectory(external/python/2.7/Python-2.7.10)
 add_subdirectory(external/expat)
 add_subdirectory(external/libauto)
 #add_subdirectory(external/security) # work in progress

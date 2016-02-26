@@ -11,6 +11,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
+.type tanhf, @function
+
 // This is identical to sinhf with some indices permuted to compute tanh instead.
 // Read the detailed comments in that file for more information.
 

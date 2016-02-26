@@ -3,7 +3,7 @@ project(darling-libsystem_m)
 cmake_minimum_required(VERSION 2.4.0)
 enable_language(C ASM)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -ggdb -O0")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -DBUILDING_FOR_CARBONCORE_LEGACY -funroll-loops -msse3") # -DBUILDING_FOR_CARBONCORE_LEGACY")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
@@ -257,7 +257,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(system_m_extra OBJECT Source/Intel/xmm_misc.c Source/Intel/xmm_log.c)
-set_target_properties(system_m_extra PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY")
+set_target_properties(system_m_extra PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY -O0 -ggdb")
 
 #add_library(system_m_extra_no_fenv OBJECT Source/Intel/xmm_log.c)
 #set_target_properties(system_m_extra_no_fenv PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY -ftrapping-math -fPIC -DNO_FENV")

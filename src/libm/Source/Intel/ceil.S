@@ -7,9 +7,11 @@
  * Copyright 2009, Apple Inc.
  */
 
+.type ceil, @function
 #ifdef __i386__
 
 #ifdef __SSE3__
+
 
 .text
 .align (1<<4)
