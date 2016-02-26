@@ -133,9 +133,9 @@ darling_load() {
         >&2 echo "Module is already loaded."
     else
         >&2 echo -n "Loading module... "
-        modprobe darling-mach && >&2 echo "Done." || >&2 echo "Fail."
+        launch_with_su modprobe darling-mach && >&2 echo "Done." || >&2 echo "Fail."
         sleep 1 # Wait for module loading
-        chmod a+rw "/dev/mach"
+        launch_with_su chmod a+rw "/dev/mach"
     fi
 
 }
@@ -143,7 +143,7 @@ darling_load() {
 darling_unload() {
     if $(darling_check); then
         >&2 echo -n "Unloading module... "
-        rmmod darling-mach && >&2 echo "Done." || >&2 echo "Fail."
+        launch_with_su rmmod darling-mach && >&2 echo "Done." || >&2 echo "Fail."
     else
         >&2 echo "Module is not loaded, so it can't be unloaded."
     fi
@@ -173,9 +173,9 @@ if [ -z "$DPREFIX" ]; then
     export DPREFIX="$HOME/.darling"
 fi
 
-if ! $(darling_check) && [ "$1" != "load" ]; then
-    2>&1 echo "Cannot open /dev/mach. Try to run 'darling load' before."
-    exit 1
+if ! $(darling_check) && [ "$1" != "load" ] && [ "$1" != "unload" ]; then
+    2>&1 echo "Cannot open /dev/mach, running 'darling load'."
+    darling_load
 fi
 
 #dyld_path="${0%darling}dyld"
@@ -200,19 +200,9 @@ case "$1" in
 #    exit 1
 #    ;;
 "load")
-    if [ "$(id -u)" != 0 ]; then
-        2>&1 echo "You need to be root for this command."
-        exit 1
-    fi
-
     darling_load
     ;;
 "unload")
-    if [ "$(id -u)" != 0 ]; then
-        2>&1 echo "You need to be root for this command."
-        exit 1
-    fi
-
     darling_unload
     ;;
 *)
