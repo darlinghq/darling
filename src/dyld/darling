@@ -25,12 +25,15 @@ DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
 selfmtime=$(stat -c %Y "$DARLING_PREFIX/bin/darling")
 
 check_prefix() {
-    if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.prefix-version" ]; then
-        setup_prefix "$DPREFIX"
-    fi
 
-    if [ "$(cat $DPREFIX/.prefix-version)" -lt $MINIMUM_PREFIX_VERSION ]; then
+    if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.update-timestamp" ]; then
         setup_prefix "$DPREFIX"
+    else
+
+        updatets=$(cat $DPREFIX/.update-timestamp)
+        if [ "$updatets" != "disable" -a "$updatets" -lt $selfmtime ]; then
+            setup_prefix "$DPREFIX"
+        fi
     fi
 }
 
