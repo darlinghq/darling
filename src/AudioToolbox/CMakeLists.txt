@@ -20,6 +20,14 @@ include_directories(${DARLING_TOP_DIRECTORY}/src/external/foundation/Headers)
 include_directories(${DARLING_TOP_DIRECTORY}/src/external/libobjc2)
 include_directories(${DARLING_TOP_DIRECTORY}/basic-headers)
 
+include(CheckSymbolExists)
+
+set(CMAKE_REQUIRED_LIBRARIES -lavutil)
+check_symbol_exists(av_frame_alloc "libavutil/frame.h" HAVE_AV_FRAME_ALLOC)
+if (HAVE_AV_FRAME_ALLOC)
+	add_definitions(-DHAVE_AV_FRAME_ALLOC)
+endif(HAVE_AV_FRAME_ALLOC)
+
 set(AudioToolbox_SRCS
 	AudioConverter.cpp
 	AudioConverterImpl.cpp
