@@ -1,6 +1,6 @@
 project(darling)
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 2.8)
 set(DARLING_TOP_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "")
 set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
