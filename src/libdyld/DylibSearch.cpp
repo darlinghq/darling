@@ -28,6 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <util/stlutils.h>
 #include <cassert>
+#include <cstring>
 
 namespace Darling {
 
