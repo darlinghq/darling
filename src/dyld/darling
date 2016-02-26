@@ -97,6 +97,24 @@ install_pkg() {
     rm -rf "$temp"
 }
 
+is_sudo_allowed() {
+    if type -p sudo &> /dev/null; then
+        sudo -nl "$@" &> /dev/null && return 0
+    fi
+    return 1
+}
+
+launch_with_su() {
+    if [ "$(id -u)" == 0 ]; then
+        "$@"
+    elif is_sudo_allowed; then
+        sudo "$@"
+    else
+        local cmd=$(printf '%q ' "$@")
+        su --shell=$BASH --command "$cmd"
+    fi
+}
+
 darling_check() {
     # Returning values:
     # 0: module is loaded, file permissions are good
