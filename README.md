@@ -9,10 +9,7 @@ Please note that no GUI applications are supported at the moment.
 Darling uses many Git submodules, so a plain clone will not do.
 
 ````
-git clone https://github.com/darlinghq/darling.git
-cd darling
-git submodule init
-git submodule update
+git clone -r https://github.com/darlinghq/darling.git
 ````
 
 Updating sources:
@@ -24,6 +21,8 @@ git submodule update
 ````
 
 ## Build Instructions
+
+For complete instructions, visit [DarlingHQ.org](http://www.darlinghq.org/build-instructions).
 
 #### For running x86-64 OS X binaries
 
@@ -45,8 +44,6 @@ make
 make install
 ````
 
-Required dependencies on Debian (stable): cmake clang bison flex linux-headers-amd64 xz-utils libfuse-dev libxml2-dev libicu-dev libssl-dev libbz2-dev zlib1g-dev libudev-dev
-
 #### For running i386 OS X binaries
 
 <a href="http://teamcity.dolezel.info/viewType.html?buildTypeId=Darling_DebianStableX8664&guest=1">
@@ -62,8 +59,6 @@ make
 make install
 ````
 
-Required additional dependencies on Debian (stable): libc6-dev-i386 libudev-dev:i386 lib32stdc++-4.9-dev
-
 Loading the kernel module:
 ````
 modprobe darling-mach
@@ -76,26 +71,6 @@ modprobe darling-mach
 
 chmod a+rw /dev/mach
 ````
-
-### Optional Features
-
-Optionally, you can enable audio support with the ````-DFRAMEWORK_COREAUDIO=On````. This is still under development, so it probably only makes sense if you want to contribute.
-This switch enables both ALSA and PulseAudio support by default, you can disable either of them with ````-DENABLE_ALSA=OFF```` or ````-DENABLE_PULSEAUDIO=OFF```` respectively.
-
-Required dependencies on Debian (stable):
-
-* x86-64: libpulse-dev libasound2-dev libavresample-dev libavformat-dev libavcodec-dev
-* i386: libpulse-dev:i386 libasound2-dev:i386 libavresample-dev:i386 libavformat-dev:i386 libavcodec-dev:i386
-
-Note that most of the above -dev packages conflict between x86-64 and i386, so if you build for both platforms, you have to reinstall the right -dev variants before every build. There should be no issues at runtime.
-
-## Using Darling
-
-Darling uses DPREFIXes, which are in essence similar to WINEPREFIXes. The are virtual chroot environment with an OS X-like filesystem hierarchy, where you can safely install and run software. Unless you set DPREFIX to your location, the default ````~/.darling```` is used.
-
-The real root filesystem is available through ````/system-root```` and the ````/home```` directory is automatically symlinked, so you should feel at home right away.
-
-At first use, initial prefix contents are downloaded from the Internet.
 
 ### Hello world
 
@@ -110,20 +85,20 @@ Congratulations, you have printed Hello world through Darling's OS X system call
 
 ### Installing software
 
-You can install ````.pkg```` packages with the installer tool available inside shell. It is a somewhat limited cousin of OS X's installer:
+You can install `.pkg` packages with the installer tool available inside shell. It is a somewhat limited cousin of OS X's installer:
 
 ````
 $ darling shell
 Darling [~]$ installer -pkg mc-4.8.7-0.pkg -target /
 ````
 
-If you have previously downloaded the Midnight Commander package from [Rudix](http://rudix.org), you can now run ````mc```` to start MC for OS X. Note that not all Rudix packages may work under Darling, namely the Rudix Package Manager doesn't work, as Darling doesn't yet build its own Python runtime.
+If you have previously downloaded the Midnight Commander package from [Rudix](http://rudix.org), you can now run `mc` to start MC for OS X. For easier installation, install the Rudix Package Manager. Note that not all Rudix packages may work under Darling.
 
-You can uninstall and list packages with the ````uninstaller```` command.
+You can uninstall and list packages with the `uninstaller` command.
 
 ### Working with DMG images
 
-DMG images can be attached and deattached from inside ````darling shell```` with ````hdiutil````. This is how you can install Xcode along with its toolchain and SDKs (note that Xcode itself doesn't run yet):
+DMG images can be attached and deattached from inside `darling shell` with `hdiutil`. This is how you can install Xcode along with its toolchain and SDKs (note that Xcode itself doesn't run yet):
 
 ````
 Darling [~]$ hdiutil attach Xcode_7.2.dmg
