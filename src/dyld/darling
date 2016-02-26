@@ -24,6 +24,16 @@ DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
 
 selfmtime=$(stat -c %Y "$DARLING_PREFIX/bin/darling")
 
+check_prefix() {
+    if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.prefix-version" ]; then
+        setup_prefix "$DPREFIX"
+    fi
+
+    if [ "$(cat $DPREFIX/.prefix-version)" -lt $MINIMUM_PREFIX_VERSION ]; then
+        setup_prefix "$DPREFIX"
+    fi
+}
+
 setup_prefix() {
     prefix_pkg="/tmp/prefix.$$.pkg"
 
@@ -87,12 +97,38 @@ install_pkg() {
     rm -rf "$temp"
 }
 
+darling_check() {
+    # Returning values:
+    # 0: module is loaded, file permissions are good
+    # 1: module is loaded, file permissions are wrong
+    # 2: module is not loaded
+    grep -q darling_mach "/proc/modules"
+    if [ $? -eq 0 ]; then
+        [ -r "/dev/mach" -a -w "/dev/mach" ] && return 0 || return 1
+    else
+        return 2
+    fi
+}
+
 darling_load() {
-    modprobe darling-mach
+    if $(darling_check); then
+        >&2 echo "Module is already loaded."
+    else
+        >&2 echo -n "Loading module... "
+        modprobe darling-mach && >&2 echo "Done." || >&2 echo "Fail."
+        sleep 1 # Wait for module loading
+        chmod a+rw "/dev/mach"
+    fi
+
 }
 
 darling_unload() {
-    rmmod darling-mach
+    if $(darling_check); then
+        >&2 echo -n "Unloading module... "
+        rmmod darling-mach && >&2 echo "Done." || >&2 echo "Fail."
+    else
+        >&2 echo "Module is not loaded, so it can't be unloaded."
+    fi
 }
 
 if [ $# -eq 0 ]; then
@@ -105,6 +141,8 @@ if [ $# -eq 0 ]; then
     >&2 echo -e "\tdarling shell\t\t\tStart bash shell in prefix"
     #>&2 echo -e "\tdarling hdiutil\t\t\tMount DMG disk images"
     #>&2 echo -e "\tdarling pkgutil\t\t\tInstall PKG packages"
+    >&2 echo -e "\tdarling load\t\t\tLoad kernel module"
+    >&2 echo -e "\tdarling unload\t\t\tUnload kernel module"
     >&2 echo
     >&2 echo "The prefix is specified by the DPREFIX environment variable."
     >&2 echo "The default DPREFIX is \$HOME/.darling"
@@ -117,15 +155,9 @@ if [ -z "$DPREFIX" ]; then
     export DPREFIX="$HOME/.darling"
 fi
 
-if [ ! -d "$DPREFIX" -o ! -f "$DPREFIX/.update-timestamp" ]; then
-    setup_prefix "$DPREFIX"
-else
-
-    updatets=$(cat $DPREFIX/.update-timestamp)
-    if [ "$updatets" != "disable" -a "$updatets" -lt $selfmtime ]; then
-        setup_prefix "$DPREFIX"
-    fi
-
+if ! $(darling_check) && [ "$1" != "load" ]; then
+    2>&1 echo "Cannot open /dev/mach. Try to run 'darling load' before."
+    exit 1
 fi
 
 #dyld_path="${0%darling}dyld"
@@ -133,6 +165,8 @@ dyld_path="${DARLING_PREFIX}/bin/dyld"
 
 case "$1" in
 "shell")
+    check_prefix
+
     if [ $# -gt 1 ]; then
         exec "${dyld_path}" "${DPREFIX}/bin/bash" -c "${*:2}"
     else
@@ -149,7 +183,7 @@ case "$1" in
 #    ;;
 "load")
     if [ "$(id -u)" != 0 ]; then
-        2>&1 "You need to be root for this command."
+        2>&1 echo "You need to be root for this command."
         exit 1
     fi
 
@@ -157,13 +191,14 @@ case "$1" in
     ;;
 "unload")
     if [ "$(id -u)" != 0 ]; then
-        2>&1 "You need to be root for this command."
+        2>&1 echo "You need to be root for this command."
         exit 1
     fi
 
     darling_unload
     ;;
 *)
+    check_prefix
     exec "${dyld_path}" "$1" "${@:2}"
     ;;
 esac
