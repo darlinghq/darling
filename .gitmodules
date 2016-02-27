@@ -136,3 +136,7 @@
 	path = src/external/gnutar
 	url = ../darling-gnutar.git
 	branch = darling
+[submodule "src/external/gpatch"]
+	path = src/external/gpatch
+	url = ../darling-gpatch.git
+	branch = darling
