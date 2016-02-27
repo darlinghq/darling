@@ -18,6 +18,8 @@
 # along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 # 
 
+export PATH="/bin:/usr/bin"
+
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 DARLING_PREFIX=$(realpath "$SCRIPTPATH/..")
