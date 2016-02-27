@@ -132,3 +132,7 @@
 	path = src/external/libxpc
 	url = ../darling-libxpc.git
 	branch = darling
+[submodule "src/external/gnutar"]
+	path = src/external/gnutar
+	url = ../darling-gnutar.git
+	branch = darling
