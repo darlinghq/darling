@@ -8,38 +8,6 @@ include(mig)
 
 add_definitions(-D_DARWIN_C_SOURCE -D_POSIX_C_SOURCE -DDARLING)
 set(DARLING TRUE)
-set(DARLING_NO_EXECUTABLES OFF)
-enable_language(ASM)
-
-if (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
-	message(FATAL_ERROR "This software can only be built on x86-64 systems")
-endif (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
-
-if (NOT BITS)
-	message(FATAL_ERROR "BITS is not specified (32/64)")
-endif (NOT BITS)
-
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m${BITS} -D__APPLE_CC__")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m${BITS} -D__APPLE_CPP__")
-SET(CMAKE_ASM_FLAGS "-m${BITS}")
-SET(CMAKE_ASM-ATT_FLAGS "-m${BITS}")
-
-if (BITS EQUAL 32)
-	# Prevent building Darling executables (e.g. Bash)
-	set(DARLING_NO_EXECUTABLES ON)
-
-	SET(SUFFIX "32")
-	add_definitions(-DTARGET_CPU_X86=1 -D__LITTLE_ENDIAN__)
-	set(DARLING_NO_EXECUTABLES ON)
-
-else()
-
-	set(SUFFIX "64")
-	add_definitions(-DTARGET_CPU_X86_64=1 -D__LITTLE_ENDIAN__)
-
-endif()
-
-message(STATUS "Building for ${CMAKE_SYSTEM_PROCESSOR}, CFLAGS: ${CMAKE_C_FLAGS}, libdir: ${CMAKE_INSTALL_LIBDIR}")
 
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
