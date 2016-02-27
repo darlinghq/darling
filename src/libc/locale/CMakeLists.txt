@@ -84,5 +84,8 @@ add_library(libc-locale_legacy OBJECT ${locale-legacy_sources})
 SET_TARGET_PROPERTIES(libc-locale_legacy PROPERTIES COMPILE_FLAGS
 	"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
 
-install(DIRECTORY locale DESTINATION libexec/darling/usr/share)
+if (NOT DARLING_NO_EXECUTABLES)
+	install(DIRECTORY locale DESTINATION libexec/darling/usr/share)
+endif (NOT DARLING_NO_EXECUTABLES)
+
 
