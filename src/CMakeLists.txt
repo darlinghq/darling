@@ -114,6 +114,7 @@ if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(external/installer)
 	add_subdirectory(external/gnutar/gnutar)
 	add_subdirectory(external/gpatch)
+	add_subdirectory(external/gnudiff)
 	#add_subdirectory(launchd/src)
 endif (NOT DARLING_NO_EXECUTABLES)
 

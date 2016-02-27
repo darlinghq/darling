@@ -140,3 +140,7 @@
 	path = src/external/gpatch
 	url = ../darling-gpatch.git
 	branch = darling
+[submodule "src/external/gnudiff"]
+	path = src/external/gnudiff
+	url = ../darling-gnudiff.git
+	branch = darling
