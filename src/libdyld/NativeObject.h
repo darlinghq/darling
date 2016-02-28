@@ -44,7 +44,7 @@ public:
 private:
 	void updateName();
 private:
-	mutable void* m_nativeRef;
+	mutable void* m_nativeRef = nullptr;
 	std::string m_name, m_path;
 	void* m_baseAddress = nullptr;
 };

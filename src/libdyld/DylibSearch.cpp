@@ -38,7 +38,10 @@ DylibSearch::DylibSearch()
 {
 	try
 	{
-		m_config = new IniConfig(__prefix_translate_path(ETC_DARLING_PATH "/dylib.conf"));
+		if (__prefix_get() != nullptr)
+			m_config = new IniConfig(__prefix_translate_path(ETC_DARLING_PATH "/dylib.conf"));
+		else
+			m_config = new IniConfig(LIBEXEC_PATH ETC_DARLING_PATH "/dylib.conf");
 	}
 	catch (const std::exception& e)
 	{
