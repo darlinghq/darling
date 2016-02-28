@@ -144,3 +144,7 @@
 	path = src/external/gnudiff
 	url = ../darling-gnudiff.git
 	branch = darling
+[submodule "src/external/apr"]
+	path = src/external/apr
+	url = ../darling-apr.git
+	branch = darling

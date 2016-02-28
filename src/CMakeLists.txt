@@ -94,6 +94,7 @@ add_subdirectory(external/python/2.6/Python-2.6.9)
 add_subdirectory(external/python/2.7/Python-2.7.10)
 add_subdirectory(external/expat)
 add_subdirectory(external/libauto)
+add_subdirectory(external/apr)
 #add_subdirectory(external/security) # work in progress
 add_subdirectory(sandbox)
 add_subdirectory(Cocoa)
