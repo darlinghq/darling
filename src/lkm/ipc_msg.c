@@ -326,14 +326,16 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	if (kmsg->reply->type != MACH_PORT_RIGHT_SEND_ONCE)
 	{
 		debug_msg("MIG call, but reply is not send once?\n");
-		return KERN_NOT_SUPPORTED;
+		ret = KERN_NOT_SUPPORTED;
+		goto err;
 	}
 
 	if (subsystem == MIG_SUBSYSTEM_NULL)
 	{
 		debug_msg("ipc_msg_invoke_server(): target port is server,"
 				" but no subsystem is assigned\n");
-		return KERN_NOT_SUPPORTED;
+		ret = KERN_NOT_SUPPORTED;
+		goto err;
 	}
 
 	routine = subsystem->server(kmsg->msg);
@@ -341,7 +343,8 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	{
 		debug_msg("ipc_msg_invoke_server(): invalid routine ID (0x%x)\n",
 				kmsg->msg->msgh_id);
-		return KERN_INVALID_ARGUMENT;
+		ret = KERN_INVALID_ARGUMENT;
+		goto err;
 	}
 
 	reply_msg = (mach_msg_header_t*) kzalloc(sizeof(mach_msg_header_t)
@@ -387,6 +390,10 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 		ipc_space_right_put(&kernel_namespace, reply_msg->msgh_remote_port);
 	}
 	
+	return ret;
+err:
+	ipc_port_unlock(kmsg->target->port);
+	ipc_right_put(kmsg->target);
 	return ret;
 }
 
