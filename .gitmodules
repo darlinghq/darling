@@ -148,3 +148,11 @@
 	path = src/external/apr
 	url = ../darling-apr.git
 	branch = darling
+[submodule "src/external/libarchive"]
+	path = src/external/libarchive
+	url = ../darling-libarchive.git
+	branch = darling
+[submodule "src/external/file"]
+	path = src/external/file
+	url = ../darling-file.git
+	branch = darling
