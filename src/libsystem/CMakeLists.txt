@@ -37,7 +37,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(system SHARED ${libsystem_sources})
-#target_link_libraries(system PRIVATE dyld)
+target_link_libraries(system PRIVATE dyld)
 target_link_libraries(system PUBLIC system_malloc system_c system_kernel keymgr
 	system_m system_info system_notify libdispatch_shared objc launch
 	removefile system_copyfile unwind system_coreservices CommonCrypto)
