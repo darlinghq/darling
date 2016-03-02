@@ -101,7 +101,8 @@ wakeup:
 
 			// reset stack and call entry point again with WQ_FLAG_THREAD_REUSE
 			thread_self = thread_self_trap();
-			stack = pthread_get_stackaddr_np(__darwin_pthread_self());
+			//stack = pthread_get_stackaddr_np(__darwin_pthread_self());
+			stack = __darling_thread_get_stack();
 
 #ifdef __x86_64__
 			__asm__ __volatile__ (
