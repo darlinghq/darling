@@ -29,6 +29,6 @@ long sys_setxattr(const char* path, const char* name, const void* value,
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	return 0;
+	return ret;
 }
 

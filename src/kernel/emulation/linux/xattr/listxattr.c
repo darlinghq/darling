@@ -20,6 +20,6 @@ long sys_listxattr(const char* path, char* namebuf, unsigned long size, int opti
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	return 0;
+	return ret;
 }
 

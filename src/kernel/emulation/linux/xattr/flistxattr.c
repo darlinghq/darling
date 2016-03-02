@@ -12,6 +12,6 @@ long sys_flistxattr(int fd, char* namebuf, unsigned long size, int options)
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	return 0;
+	return ret;
 }
 

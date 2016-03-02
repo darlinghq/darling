@@ -17,6 +17,6 @@ long sys_fgetxattr(int fd, const char* name, char* value,
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	return 0;
+	return ret;
 }
 
