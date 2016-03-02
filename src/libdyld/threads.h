@@ -31,6 +31,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pthobj_siz
 				int (*thread_self_trap)());
 int __darling_thread_terminate(void* stackaddr,
 				unsigned long freesize, unsigned long pthobj_size);
+void* __darling_thread_get_stack(void);
 
 #ifdef __cplusplus
 }

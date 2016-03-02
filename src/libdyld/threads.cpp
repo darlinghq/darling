@@ -20,7 +20,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "threads.h"
 #include <pthread.h>
 #include <sys/mman.h>
+#include <semaphore.h>
 #include <cstring>
+#include <queue>
+#include <iostream>
 
 typedef void (*thread_ep)(void**, int, ...);
 struct arg_struct
@@ -38,8 +41,19 @@ struct arg_struct
 	unsigned long pth_obj_size;
 	void* pth;
 };
+struct reaper_item
+{
+	pthread_t thread;
+	void* stack;
+	size_t stacksize;
+};
 
 static void* darling_thread_entry(void* p);
+static void start_reaper();
+
+static sem_t reaper_sem;
+static pthread_mutex_t reaper_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::queue<reaper_item> reaper_items;
 
 #ifndef PTHREAD_STACK_MIN
 #	define PTHREAD_STACK_MIN 16384
@@ -50,6 +64,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 				uintptr_t arg4, uintptr_t arg5, uintptr_t arg6,
 				int (*thread_self_trap)())
 {
+	static pthread_once_t reaper_once = PTHREAD_ONCE_INIT;
 
 	arg_struct args = { (thread_ep) entry_point, arg3,
 		arg4, arg5, arg6, thread_self_trap, pth_obj_size, nullptr };
@@ -57,15 +72,22 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	pthread_t nativeLibcThread;
 	void* pth;
 
+	pthread_once(&reaper_once, start_reaper);
+
 	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	pthread_attr_setstacksize(&attr, stack_size);
+	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	// pthread_attr_setstacksize(&attr, stack_size);
 	
 	pth = ::mmap(nullptr, stack_size + pth_obj_size + 0x1000, PROT_READ | PROT_WRITE,
 		MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	pthread_attr_setstack(&attr, ((char*)pth) + pth_obj_size, stack_size - pth_obj_size - 0x1000);
+
+	// std::cout << "Allocated stack at " << pth << ", size " << stack_size << std::endl;
+	pth = static_cast<char*>(pth) + stack_size + 0x1000;
 
 	args.pth = pth;
 	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
+	pthread_attr_destroy(&attr);
 	
 	while (args.pth != nullptr)
 		sched_yield();
@@ -185,8 +207,62 @@ int __darling_thread_terminate(void* stackaddr,
 #endif
 #endif
 
+	pthread_mutex_lock(&reaper_mutex);
+	reaper_items.push(reaper_item { pthread_self(), stackaddr, freesize });
+	pthread_mutex_unlock(&reaper_mutex);
+
+	sem_post(&reaper_sem);
+
 	pthread_exit(nullptr);
 
 	__builtin_unreachable();
+}
+
+void* __darling_thread_get_stack(void)
+{
+	pthread_attr_t attr;
+	void* stackaddr;
+	size_t stacksize;
+
+	pthread_getattr_np(pthread_self(), &attr);
+	pthread_attr_getstack(&attr, &stackaddr, &stacksize);
+
+	return ((char*)stackaddr) + stacksize - 0x2000;
+}
+
+static void* reaper_entry(void*)
+{
+	while (true)
+	{
+		reaper_item item;
+
+		sem_wait(&reaper_sem);
+
+		pthread_mutex_lock(&reaper_mutex);
+		item = reaper_items.front();
+		reaper_items.pop();
+		pthread_mutex_unlock(&reaper_mutex);
+		
+		std::cout << "Reaping thread " << (void*)item.thread << "; Free stack at " << item.stack << ", " << item.stacksize << " bytes\n";
+
+		// Wait for thread to terminate
+		pthread_join(item.thread, nullptr);
+
+		// Free its stack in the extended requested by Darwin's libc
+		munmap(item.stack, item.stacksize);
+	}
+}
+
+static void start_reaper()
+{
+	pthread_attr_t attr;
+	pthread_t thread;
+
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+	sem_init(&reaper_sem, 0, 0);
+	pthread_create(&thread, &attr, reaper_entry, nullptr);
+	pthread_attr_destroy(&attr);
 }
 
