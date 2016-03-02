@@ -1,6 +1,7 @@
 #define ioctl __real_ioctl
 #define PRIVATE
 #include <mach/mach_traps.h>
+#include <mach/vm_statistics.h>
 #include <mach/kern_return.h>
 #include <sys/mman.h>
 #include <fcntl.h>
@@ -245,8 +246,11 @@ kern_return_t _kernelrpc_mach_vm_map_trap(
 
 	if (!(flags & VM_FLAGS_ANYWHERE))
 		posix_flags |= MAP_FIXED;
-
-	addr = mmap(*address, size, prot, posix_flags, -1, 0);
+	if ((flags >> 24) == VM_MEMORY_REALLOC)
+		addr = mremap(((char*)*address) - 0x1000, 0x1000, 0x1000 + size, 0);
+	else
+		addr = mmap(*address, size, prot, posix_flags, -1, 0);
+	
 	if (addr == MAP_FAILED)
 	{
 		return KERN_FAILURE;
