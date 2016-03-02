@@ -121,6 +121,12 @@ void AudioUnitPA::requestDataForPlayback(size_t length)
 	std::unique_ptr<uint8_t[]> data;
 	const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
 	const UInt32 cc = config.mChannelsPerFrame;
+
+	if (!m_stream)
+	{
+		std::cerr << "No stream?!\n";
+		return;
+	}
 	
 	TRACE() << "m_started=" << m_started;
 	
