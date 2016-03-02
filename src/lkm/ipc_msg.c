@@ -810,12 +810,13 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 {
 	mach_msg_return_t ret = MACH_MSG_SUCCESS;
 	struct mach_port_right* right = NULL;
-	bool locked;
+	bool locked = false;
 	
 	debug_msg("ipc_msg_recv() on port %d\n",
 			port_name);
 	
 	ipc_space_lock(&task->namespace);
+	
 	
 	right = ipc_space_lookup(&task->namespace, port_name);
 	if (right == NULL || right->type != MACH_PORT_RIGHT_RECEIVE)
@@ -846,34 +847,55 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 		if (list_empty(&right->port->messages))
 		{
 			int err;
+			
+			BUG_ON(right->port->queue_size != 0);
+			
 			ipc_port_unlock(right->port);
 			locked = false;
 			
-			debug_msg("\t-> going to wait\n");
+			debug_msg("\t-> going to wait with timeout %d\n", timeout);
+				
 			
 			// wait for ipc_msg_deliver() to be called somewhere
-waiting:
 			if (timeout)
-			{
-				err = wait_event_interruptible_timeout(right->port->queue_recv,
-						(right->port->queue_size != 0 || !PORT_IS_VALID(right->port)),
-						msecs_to_jiffies(timeout));
-			}
-			else
-			{
-				err = wait_event_interruptible(right->port->queue_send,
-						(right->port->queue_size != 0 || !PORT_IS_VALID(right->port)));
-			}
-			
-			if (ret)
 			{
 				if (options & MACH_RCV_INTERRUPT)
 				{
-					ret = MACH_RCV_INTERRUPTED;
-					goto err;
+					err = wait_event_interruptible_timeout(right->port->queue_recv,
+							(right->port->queue_size != 0 || !PORT_IS_VALID(right->port)),
+							msecs_to_jiffies(timeout));
 				}
 				else
-					goto waiting;
+				{
+					err = wait_event_timeout(right->port->queue_recv,
+							(right->port->queue_size != 0 || !PORT_IS_VALID(right->port)),
+							msecs_to_jiffies(timeout));
+				}
+			}
+			else
+			{
+				if (options & MACH_RCV_INTERRUPT)
+				{
+					err = wait_event_interruptible(right->port->queue_send,
+							(right->port->queue_size != 0 || !PORT_IS_VALID(right->port)));
+				}
+				else
+				{
+					wait_event(right->port->queue_send,
+							(right->port->queue_size != 0 || !PORT_IS_VALID(right->port)));
+					err = 1;
+				}
+			}
+			
+			if (err == -ERESTARTSYS)
+			{
+				ret = MACH_RCV_INTERRUPTED;
+				goto err;
+			}
+			else if (err == 0)
+			{
+				ret = MACH_RCV_TIMED_OUT;
+				goto err;
 			}
 			
 			ipc_port_lock(right->port);
