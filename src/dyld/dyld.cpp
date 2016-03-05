@@ -72,7 +72,7 @@ int main(int argc, char** argv, char** envp)
 		mgr->setBindAtLaunch(getenv("DYLD_BIND_AT_LAUNCH") != nullptr);
 #endif
 		mgr->setIgnoreMissingSymbols(getenv("DYLD_IGN_MISSING_SYMS") != nullptr);
-		mgr->setIgnoreMissingDependencies(getenv("DYLD_IGN_MISSING_DEPS") != nullptr);
+		// mgr->setIgnoreMissingDependencies(getenv("DYLD_IGN_MISSING_DEPS") != nullptr);
 		mgr->setPrintSegments(getenv("DYLD_PRINT_SEGMENTS") != nullptr);
 		mgr->setPrintBindings(getenv("DYLD_PRINT_BINDINGS") != nullptr);
 		mgr->setPrintRpathExpansion(getenv("DYLD_PRINT_RPATHS") != nullptr);

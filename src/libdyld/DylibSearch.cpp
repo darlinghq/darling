@@ -24,7 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "MachOObject.h"
 #include "MachOMgr.h"
 #include "VirtualPrefix.h"
-#include "DummyObject.h"
+//#include "DummyObject.h"
 #include <regex.h>
 #include <unistd.h>
 #include <util/stlutils.h>
