@@ -24,6 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "MachOObject.h"
 #include "MachOMgr.h"
 #include "VirtualPrefix.h"
+#include "DummyObject.h"
 #include <regex.h>
 #include <unistd.h>
 #include <util/stlutils.h>
@@ -51,8 +52,16 @@ DylibSearch::DylibSearch()
 
 DylibSearch* DylibSearch::instance()
 {
-	static DylibSearch singleton;
-	return &singleton;
+	try
+	{
+		static DylibSearch singleton;
+		return &singleton;
+	}
+	catch (const std::regex_error& e)
+	{
+		std::cerr << "This version of Darling has been compiled against broken version of libstdc++.\n";
+		abort();
+	}
 }
 
 void DylibSearch::setAdditionalPaths(const std::string& paths)
@@ -159,6 +168,11 @@ std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
 				return epath;
 		}
 	}
+	
+	/*if (MachOMgr::instance()->ignoreMissingDependencies())
+	{
+		
+	}*/
 
 	return std::string();
 }

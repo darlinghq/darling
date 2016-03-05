@@ -72,6 +72,7 @@ int main(int argc, char** argv, char** envp)
 		mgr->setBindAtLaunch(getenv("DYLD_BIND_AT_LAUNCH") != nullptr);
 #endif
 		mgr->setIgnoreMissingSymbols(getenv("DYLD_IGN_MISSING_SYMS") != nullptr);
+		mgr->setIgnoreMissingDependencies(getenv("DYLD_IGN_MISSING_DEPS") != nullptr);
 		mgr->setPrintSegments(getenv("DYLD_PRINT_SEGMENTS") != nullptr);
 		mgr->setPrintBindings(getenv("DYLD_PRINT_BINDINGS") != nullptr);
 		mgr->setPrintRpathExpansion(getenv("DYLD_PRINT_RPATHS") != nullptr);
@@ -162,26 +163,34 @@ static void printHelp(const char* argv0)
 
 static std::string locateBundleExecutable(std::string bundlePath)
 {
-	std::regex re(".*/([^\\.]+)\\.app/?$", std::regex::icase);
-	std::smatch match;
-	
-	std::string myBundlePath = "./" + bundlePath; // TODO: fix the regexp to work without this
-	
-	if (std::regex_match(myBundlePath, match, re))
+	try
 	{
-		std::stringstream ss;
-		ss << bundlePath;
+		std::regex re(".*/([^\\.]+)\\.app/?$", std::regex::icase);
+		std::smatch match;
+		
+		std::string myBundlePath = "./" + bundlePath; // TODO: fix the regexp to work without this
+		
+		if (std::regex_match(myBundlePath, match, re))
+		{
+			std::stringstream ss;
+			ss << bundlePath;
 
-		if (bundlePath.back() != '/')
-			ss << '/';
+			if (bundlePath.back() != '/')
+				ss << '/';
 
-		ss << "Contents/MacOS/";
-		ss << match[1];
+			ss << "Contents/MacOS/";
+			ss << match[1];
 
-		return ss.str();
+			return ss.str();
+		}
+		else
+			return bundlePath;
 	}
-	else
-		return bundlePath;
+	catch (const std::regex_error& e)
+	{
+		std::cerr << "This version of Darling has been compiled against a broken version of libstdc++\n";
+		abort();
+	}
 }
 
 static bool isELF(const char* path)
