@@ -33,9 +33,18 @@ check_prefix() {
     else
 
         updatets=$(cat $DPREFIX/.update-timestamp)
-        if [ "$updatets" != "disable" -a "$updatets" != "disabled" ]; then
-            [ $updatets -lt $selfmtime ] && setup_prefix "$DPREFIX"
-        fi
+		case $updatets in
+			disable*)
+				;;
+			''|*[!0-9]*)
+				setup_prefix "$DPREFIX"
+				;;
+			*)
+				[ $updatets -lt $selfmtime ] && setup_prefix "$DPREFIX"
+				;;
+		esac
+
+		return 0
     fi
 }
 
