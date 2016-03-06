@@ -82,6 +82,9 @@ setup_prefix() {
     ln -sf "../system-root/etc/passwd" "$1/etc/passwd"
     ln -sf "../system-root/etc/group" "$1/etc/group"
     ln -sf "../system-root/etc/hosts" "$1/etc/hosts"
+    
+    mkdir -p "$1/usr/share"
+    ln -sf "../../system-root/usr/share/zoneinfo" "$1/usr/share/zoneinfo"
 
     mkdir -p "$1/Volumes" "$1/Applications" "$1/var/root" || true
 
