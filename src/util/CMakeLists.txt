@@ -2,7 +2,7 @@ project(util)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -U__APPLE__ -std=c++11 -stdlib=libc++")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
