@@ -1,5 +1,6 @@
 
 #include "CoreFoundation/CFPriv.h"
+#include "CoreFoundation/CFLogUtilities.h"
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFData.h>
 #include <CoreFoundation/CFPropertyList.h>
@@ -91,5 +92,9 @@ CFDictionaryRef _CFCopyServerVersionDictionary(void)
 {
   CFStringRef str = CFSTR("/System/Library/CoreServices/SystemVersion.plist");
   return _CFCopyVersionDictionary(str);
+}
+
+void CFLog(int32_t level, CFStringRef format, ...)
+{
 }
 

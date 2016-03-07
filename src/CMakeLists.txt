@@ -120,6 +120,7 @@ if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(external/gpatch)
 	add_subdirectory(external/gnudiff)
 	add_subdirectory(launchd/src)
+	add_subdirectory(launchd/support)
 endif (NOT DARLING_NO_EXECUTABLES)
 
 ######################
