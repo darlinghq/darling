@@ -46,6 +46,7 @@ add_subdirectory(emulated) # produces libc-emulated
 add_subdirectory(gdtoa) # produces libc-gdtoa
 add_subdirectory(gen)
 add_subdirectory(gmon)
+add_subdirectory(os)
 add_subdirectory(uuid)
 add_subdirectory(util)
 add_subdirectory(string)
@@ -106,6 +107,7 @@ add_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-gen_extsn>
 	$<TARGET_OBJECTS:libc-gen_extsn_canc>
 	$<TARGET_OBJECTS:libc-gmon>
+	$<TARGET_OBJECTS:libc-os>
 	$<TARGET_OBJECTS:libc-uuid>
 	$<TARGET_OBJECTS:libc-util>
 	$<TARGET_OBJECTS:libc-string>

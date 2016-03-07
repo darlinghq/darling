@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007-2014 by Apple Inc.. All rights reserved.
+ * Copyright (c) 2007-2015 by Apple Inc.. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -127,6 +127,10 @@
 #define __MAC_10_8            1080
 #define __MAC_10_9            1090
 #define __MAC_10_10         101000
+#define __MAC_10_10_2       101002
+#define __MAC_10_10_3       101003
+#define __MAC_10_11         101100
+#define __MAC_10_11_2       101102
 /* __MAC_NA is not defined to a value but is uses as a token by macros to indicate that the API is unavailable */
 
 #define __IPHONE_2_0     20000
@@ -146,7 +150,20 @@
 #define __IPHONE_7_0     70000
 #define __IPHONE_7_1     70100
 #define __IPHONE_8_0     80000
+#define __IPHONE_8_1     80100
+#define __IPHONE_8_2     80200
+#define __IPHONE_8_3     80300
+#define __IPHONE_8_4     80400
+#define __IPHONE_9_0     90000
+#define __IPHONE_9_1     90100
+#define __IPHONE_9_2     90200
 /* __IPHONE_NA is not defined to a value but is uses as a token by macros to indicate that the API is unavailable */
+
+#define __TVOS_9_0       90000
+#define __TVOS_9_1       90100
+
+#define __WATCHOS_1_0    10000
+#define __WATCHOS_2_0    20000
 
 #include <AvailabilityInternal.h>
 
@@ -201,6 +218,109 @@
 
 #define __OS_EXTENSION_UNAVAILABLE(_msg)  __OSX_EXTENSION_UNAVAILABLE(_msg) __IOS_EXTENSION_UNAVAILABLE(_msg)
 
+
+
+/* for use marking APIs available info for Mac OSX */
+#if defined(__has_feature)
+  #if __has_attribute(availability)
+    #define __OSX_UNAVAILABLE                    __OS_AVAILABILITY(macosx,unavailable)
+    #define __OSX_AVAILABLE(_vers)               __OS_AVAILABILITY(macosx,introduced=_vers)
+    #define __OSX_DEPRECATED(_start, _dep, _msg) __OSX_AVAILABLE(_start) __OS_AVAILABILITY_MSG(macosx,deprecated=_dep,_msg)
+  #endif
+#endif
+
+#ifndef __OSX_UNAVAILABLE
+  #define __OSX_UNAVAILABLE
+#endif
+
+#ifndef __OSX_AVAILABLE
+  #define __OSX_AVAILABLE(_vers)
+#endif
+
+#ifndef __OSX_DEPRECATED
+  #define __OSX_DEPRECATED(_start, _dep, _msg)
+#endif
+
+
+/* for use marking APIs available info for iOS */
+#if defined(__has_feature)
+  #if __has_attribute(availability)
+    #define __IOS_UNAVAILABLE                    __OS_AVAILABILITY(ios,unavailable)
+    #define __IOS_PROHIBITED                     __OS_AVAILABILITY(ios,unavailable)
+    #define __IOS_AVAILABLE(_vers)               __OS_AVAILABILITY(ios,introduced=_vers)
+    #define __IOS_DEPRECATED(_start, _dep, _msg) __IOS_AVAILABLE(_start) __OS_AVAILABILITY_MSG(ios,deprecated=_dep,_msg)
+  #endif
+#endif
+
+#ifndef __IOS_UNAVAILABLE
+  #define __IOS_UNAVAILABLE
+#endif
+
+#ifndef __IOS_PROHIBITED
+  #define __IOS_PROHIBITED
+#endif
+
+#ifndef __IOS_AVAILABLE
+  #define __IOS_AVAILABLE(_vers)
+#endif
+
+#ifndef __IOS_DEPRECATED
+  #define __IOS_DEPRECATED(_start, _dep, _msg)
+#endif
+
+
+/* for use marking APIs available info for tvOS */
+#if defined(__has_feature)
+  #if __has_feature(attribute_availability_tvos)
+    #define __TVOS_UNAVAILABLE                    __OS_AVAILABILITY(tvos,unavailable)
+    #define __TVOS_PROHIBITED                     __OS_AVAILABILITY(tvos,unavailable)
+    #define __TVOS_AVAILABLE(_vers)               __OS_AVAILABILITY(tvos,introduced=_vers)
+    #define __TVOS_DEPRECATED(_start, _dep, _msg) __TVOS_AVAILABLE(_start) __OS_AVAILABILITY_MSG(tvos,deprecated=_dep,_msg)
+  #endif
+#endif
+
+#ifndef __TVOS_UNAVAILABLE
+  #define __TVOS_UNAVAILABLE
+#endif
+
+#ifndef __TVOS_PROHIBITED
+  #define __TVOS_PROHIBITED
+#endif
+
+#ifndef __TVOS_AVAILABLE
+  #define __TVOS_AVAILABLE(_vers)
+#endif
+
+#ifndef __TVOS_DEPRECATED
+  #define __TVOS_DEPRECATED(_start, _dep, _msg)
+#endif
+
+
+/* for use marking APIs available info for Watch OS */
+#if defined(__has_feature)
+  #if __has_feature(attribute_availability_watchos)
+    #define __WATCHOS_UNAVAILABLE                    __OS_AVAILABILITY(watchos,unavailable)
+    #define __WATCHOS_PROHIBITED                     __OS_AVAILABILITY(watchos,unavailable)
+    #define __WATCHOS_AVAILABLE(_vers)               __OS_AVAILABILITY(watchos,introduced=_vers)
+    #define __WATCHOS_DEPRECATED(_start, _dep, _msg) __WATCHOS_AVAILABLE(_start) __OS_AVAILABILITY_MSG(watchos,deprecated=_dep,_msg)
+  #endif
+#endif
+
+#ifndef __WATCHOS_UNAVAILABLE
+  #define __WATCHOS_UNAVAILABLE
+#endif
+
+#ifndef __WATCHOS_PROHIBITED
+  #define __WATCHOS_PROHIBITED
+#endif
+
+#ifndef __WATCHOS_AVAILABLE
+  #define __WATCHOS_AVAILABLE(_vers)
+#endif
+
+#ifndef __WATCHOS_DEPRECATED
+  #define __WATCHOS_DEPRECATED(_start, _dep, _msg)
+#endif
 
 
 #endif /* __AVAILABILITY__ */
