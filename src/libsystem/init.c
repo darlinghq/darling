@@ -117,12 +117,19 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[] /*, 
 
 	if (!*x_argc)
 	{
+		char* excl;
+
 		// Darling libdyld is not being used
 		// to execute a Mach-O binary.
 		// Use what the ELF loader gave us.
-		*x_argc = argc;
-		*x_argv = argv;
+		*x_argc = argc - 1;
+		*x_argv = argv + 1;
 		*x_envp = envp;
+
+		excl = strchr(argv[1], '!');
+		if (excl != NULL)
+			argv[1] = excl+1;
+
 		vars.NXArgcPtr = x_argc;
 		vars.NXArgvPtr = x_argv;
 		vars.environPtr = x_envp;

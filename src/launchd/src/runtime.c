@@ -165,8 +165,10 @@ union internal_max_sz {
 };
 
 union xpc_domain_max_sz {
+#ifndef DARLING
 	union __RequestUnion__xpc_domain_xpc_domain_subsystem req;
 	union __ReplyUnion__xpc_domain_xpc_domain_subsystem rep;
+#endif
 };
 
 union mach_exc_max_sz {

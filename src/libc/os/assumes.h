@@ -255,6 +255,9 @@ typedef bool (*os_log_callout_t)(_SIMPLE_STRING asl_message, void *ctx, const ch
 	} \
 })
 
+#define os_slowpath(x) (x)
+#define os_fastpath(x) (x)
+
 __OSX_AVAILABLE_STARTING(__MAC_10_11, __IPHONE_9_0)
 extern void
 _os_crash(const char *);

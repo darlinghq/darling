@@ -100,6 +100,7 @@ add_subdirectory(external/apr)
 add_subdirectory(sandbox)
 add_subdirectory(Cocoa)
 add_subdirectory(external/file/file)
+add_subdirectory(external/libxpc)
 
 if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(external/shell_cmds)
@@ -118,7 +119,7 @@ if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(external/gnutar/gnutar)
 	add_subdirectory(external/gpatch)
 	add_subdirectory(external/gnudiff)
-	#add_subdirectory(launchd/src)
+	add_subdirectory(launchd/src)
 endif (NOT DARLING_NO_EXECUTABLES)
 
 ######################
