@@ -98,6 +98,7 @@ int main(int argc, char** argv, char** envp)
 
 			obj = new NativeObject(argv[1]);
 			obj->load();
+			NativeObject::setMainObject(obj);
 
 			main = (mainPtr*) obj->getExportedSymbol("main", false);
 

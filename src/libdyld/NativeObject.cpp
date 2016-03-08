@@ -32,6 +32,17 @@ namespace Darling {
 static std::regex g_reObjcSymbol("(OBJC_[^\\$]+)\\$_(.+)");
 static std::regex g_reObjcEhSymbol("OBJC_EHTYPE_.+");
 
+static NativeObject* g_mainObject = nullptr;
+void NativeObject::setMainObject(NativeObject* obj)
+{
+	g_mainObject = obj;
+}
+
+NativeObject* NativeObject::mainObject()
+{
+	return g_mainObject;
+}
+
 NativeObject::NativeObject(const std::string& path)
 : m_path(path), m_name(path)
 {
@@ -133,13 +144,15 @@ void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWea
 
 	name = symbolName;
 
-/*	if (std::regex_match(name, match, g_reObjcSymbol))
+	if (std::regex_match(name, match, g_reObjcSymbol))
+	{
 		name = match.format("_$1$2");
+	}
 	else if (std::regex_match(name, match, g_reObjcEhSymbol))
 	{
 		static long dummy = 0;
 		return &dummy;
-	}*/
+	}
 
 	addr = ::dlvsym(m_nativeRef, name.c_str(), "DARWIN");
 	

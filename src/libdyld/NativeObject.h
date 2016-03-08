@@ -41,6 +41,10 @@ public:
 	inline void* nativeRef() { return m_nativeRef; }
 	virtual void* baseAddress() const override;
 	void* getSection(const std::string& segmentName, const std::string& sectionName, uintptr_t* sectionSize = nullptr);
+
+	// For Darling/ELF executables only
+	static void setMainObject(NativeObject* obj);
+	static NativeObject* mainObject();
 private:
 	void updateName();
 private:

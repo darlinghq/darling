@@ -200,7 +200,11 @@ void* __darwin_dlsym(void* handle, const char* symbol)
 		LoadableObject* module;
 
 		if (handle == DARWIN_RTLD_MAIN_ONLY)
+		{
 			module = MachOMgr::instance()->mainModule();
+			if (module == nullptr)
+				module = NativeObject::mainObject();
+		}
 		else if (handle == DARWIN_RTLD_SELF)
 		{
 			void* callerLocation = __builtin_return_address(0);
