@@ -21,12 +21,14 @@
 #define IPC_RIGHT_H
 #include "mach_includes.h"
 #include <linux/list.h>
+#include <linux/spinlock.h>
 #include "ipc_types.h"
 #include "ipc_port.h"
 #include "ipc_space.h"
 
 struct mach_port_right
 {
+	spinlock_t port_lock;
 	darling_mach_port_t* port;
 	mach_port_right_t type;
 	int num_refs;
@@ -45,10 +47,16 @@ struct mach_port_right* ipc_right_new(darling_mach_port_t* port, mach_port_right
 kern_return_t ipc_right_mod_refs(struct mach_port_right* right, mach_port_right_t type, int refchange);
 
 /**
+ * Try to lock the port (referred to by this right) safely. No-op if the port is dead (or dies in the process).
+ */
+void ipc_right_lock_port(struct mach_port_right* right);
+
+/**
  * right->port should be locked
  * @param right
  */
 void ipc_right_put(struct mach_port_right* right);
+void ipc_right_put_unlock(struct mach_port_right* right);
 
 void ipc_right_put_cloned_receive(struct mach_port_right* right);
 

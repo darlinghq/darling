@@ -183,8 +183,17 @@ struct mach_port_right* ipc_space_lookup(ipc_namespace_t* space, mach_port_name_
 	
 	right = (struct mach_port_right*) idr_find(&space->names, name);
 	
-	if (right != NULL && PORT_IS_VALID(right->port))
-		mutex_lock(&right->port->mutex);
+	if (right != NULL)
+		ipc_right_lock_port(right);
+	
+	return right;
+}
+
+struct mach_port_right* ipc_space_lookup_unlocked(ipc_namespace_t* space, mach_port_name_t name)
+{
+	struct mach_port_right* right;
+	
+	right = (struct mach_port_right*) idr_find(&space->names, name);
 	
 	return right;
 }

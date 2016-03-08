@@ -23,6 +23,8 @@
 #include "ipc_space.h"
 #include "debug.h"
 #include <linux/slab.h>
+#include <linux/mutex.h>
+#include <linux/sched.h>
 
 struct mach_port_right* ipc_right_new(darling_mach_port_t* port, mach_port_right_t type)
 {
@@ -35,6 +37,7 @@ struct mach_port_right* ipc_right_new(darling_mach_port_t* port, mach_port_right
 	right->port = port;
 	right->type = type;
 	right->num_refs = 1;
+	spin_lock_init(&right->port_lock);
 	
 	if (PORT_IS_VALID(port))
 	{
@@ -103,6 +106,15 @@ void ipc_right_put(struct mach_port_right* right)
 	kfree(right);
 	
 	debug_msg("Deallocated right %p\n", right);
+}
+
+void ipc_right_put_unlock(struct mach_port_right* right)
+{
+	darling_mach_port_t* port;
+
+	port = right->port;
+	ipc_right_put(right);
+	ipc_port_unlock(port);
 }
 
 void ipc_right_put_cloned_receive(struct mach_port_right* right)
@@ -183,3 +195,26 @@ mach_msg_type_name_t ipc_right_copyin_type(mach_msg_type_name_t type)
 			return MACH_MSG_TYPE_PORT_NONE;
 	}
 }
+
+void ipc_right_lock_port(struct mach_port_right* right)
+{
+	while (1)
+	{
+		spin_lock(&right->port_lock);
+
+		if (!PORT_IS_VALID(right->port))
+		{
+			spin_unlock(&right->port_lock);
+			break;
+		}
+		if (mutex_trylock(&right->port->mutex) != 0)
+		{
+			spin_unlock(&right->port_lock);
+			break;
+		}
+
+		spin_unlock(&right->port_lock);
+		schedule();
+	}
+}
+

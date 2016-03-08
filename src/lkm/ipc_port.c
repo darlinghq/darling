@@ -77,8 +77,11 @@ mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 		ref = list_entry(p, struct mach_port_right, reflist);
 		
 		debug_msg("Marking right %p as PORT_DEAD\n", ref);
+
+		spin_lock(&ref->port_lock);
 		ref->port = PORT_DEAD;
 		ref->type = MACH_PORT_RIGHT_DEAD_NAME;
+		spin_unlock(&ref->port_lock);
 	}
 	debug_msg("All refs to port %p are now dead\n", port);
 	

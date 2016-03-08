@@ -63,7 +63,10 @@ mach_msg_return_t ipc_process_right(ipc_namespace_t* space,
 				goto err;
 			}
 			
+			ipc_right_lock_port(in_right);
 			*out_right = ipc_right_new(in_right->port, MACH_PORT_RIGHT_SEND);
+			ipc_port_unlock(in_right->port);
+
 			if (!*out_right)
 			{
 				ret = KERN_RESOURCE_SHORTAGE;
@@ -83,8 +86,10 @@ mach_msg_return_t ipc_process_right(ipc_namespace_t* space,
 				goto err;
 			}
 			
+			ipc_right_lock_port(in_right);
 			*out_right = ipc_right_new(in_right->port,
 					(type == MACH_MSG_TYPE_MAKE_SEND) ? MACH_PORT_RIGHT_SEND : MACH_PORT_RIGHT_SEND_ONCE);
+			ipc_port_unlock(in_right->port);
 			
 			break;
 		case MACH_MSG_TYPE_MOVE_SEND_ONCE:
@@ -97,7 +102,9 @@ mach_msg_return_t ipc_process_right(ipc_namespace_t* space,
 				goto err;
 			}
 			
+			ipc_right_lock_port(in_right);
 			*out_right = ipc_right_new(in_right->port, MACH_PORT_RIGHT_SEND_ONCE);
+			ipc_port_unlock(in_right->port);
 			
 			break;
 		case MACH_MSG_TYPE_MOVE_RECEIVE:
@@ -112,8 +119,6 @@ mach_msg_return_t ipc_process_right(ipc_namespace_t* space,
 	return MACH_MSG_SUCCESS;
 	
 err:
-	if (*out_right != NULL)
-		ipc_right_put(*out_right);
 	return ret;
 }
 
@@ -126,7 +131,10 @@ mach_msg_return_t ipc_process_right_abort(ipc_namespace_t* space,
 	{
 		default:
 			if (out_right != NULL)
+			{
+				ipc_right_lock_port(out_right);
 				ipc_right_put(out_right);
+			}
 	}
 	
 	return MACH_MSG_SUCCESS;
@@ -214,7 +222,7 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 	ipc_space_lock(space);
 	
 	// Find the target right/port
-	in_remote_right = ipc_space_lookup(space, msg->msgh_remote_port);
+	in_remote_right = ipc_space_lookup_unlocked(space, msg->msgh_remote_port);
 	
 	if (in_remote_right == NULL)
 	{
@@ -226,7 +234,7 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 	// Find the reply right/port
 	if (msg->msgh_local_port != 0)
 	{
-		in_local_right = ipc_space_lookup(space, msg->msgh_local_port);
+		in_local_right = ipc_space_lookup_unlocked(space, msg->msgh_local_port);
 
 		if (in_local_right == NULL)
 		{
@@ -254,14 +262,6 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 			goto err;
 	}
 	
-	// Cannot send messages to dead ports
-	if (!PORT_IS_VALID(kmsg->target->port))
-	{
-		debug_msg("ipc_msg_send(): target port is dead\n");
-		ret = MACH_SEND_INVALID_DEST;
-		goto err;
-	}
-	
 	// Perform operation specified in type on reply right
 	if (in_local_right != NULL)
 	{
@@ -272,8 +272,6 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 			debug_msg("ipc_msg_send(): reply right op failed (%d)\n", ret);
 			goto err;
 		}
-		
-		ipc_port_unlock(in_local_right->port);
 	}
 	
 	// Finish operation specified in type on target right
@@ -287,6 +285,14 @@ mach_msg_return_t ipc_msg_send(ipc_namespace_t* space,
 	}
 	
 	ipc_space_unlock(space);
+
+	// Cannot send messages to dead ports
+	ipc_right_lock_port(kmsg->target);
+	if (!PORT_IS_VALID(kmsg->target->port))
+	{
+		ret = MACH_SEND_INVALID_DEST;
+		goto err;
+	}
 	
 	ret = ipc_msg_deliver(kmsg, timeout, options);
 	
@@ -301,12 +307,6 @@ err:
 	ipc_process_right_abort(space, resp_type, kmsg->reply);
 	
 	kfree(msg);
-	
-	if (in_remote_right != NULL)
-		ipc_port_unlock(in_remote_right->port);
-	if (in_local_right != NULL)
-		ipc_port_unlock(in_local_right->port);
-
 	kfree(kmsg);
 	ipc_space_unlock(space);
 	return ret;
@@ -350,6 +350,18 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	reply_msg = (mach_msg_header_t*) kzalloc(sizeof(mach_msg_header_t)
 			+ subsystem->maxsize, GFP_KERNEL);
 	
+	/*
+	if (kmsg->reply != NULL)
+	{
+		debug_msg("->lock reply port\n");
+		ipc_right_lock_port(kmsg->reply);
+		if (!PORT_IS_VALID(kmsg->reply->port))
+		{
+			ipc_right_put(kmsg->reply);
+			kmsg->reply = NULL;
+		}
+	}
+	*/
 	// Insert reply port from kmsg into kernel_namespace
 	// and put the right name into reply_msg
 	if (kmsg->reply != NULL)
@@ -376,10 +388,9 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	debug_msg("ipc_msg_deliver(): reply size: %d, ret = 0x%x\n",
 			reply_msg->msgh_size,
 			((mig_reply_error_t*)reply_msg)->RetCode);
-	ipc_port_unlock(kmsg->target->port);
 	
 	// The right used to call us is now consumed.
-	ipc_right_put(kmsg->target);
+	ipc_right_put_unlock(kmsg->target);
 	
 	// TODO: prevent circular loops
 	ret = ipc_msg_send(&kernel_namespace, reply_msg, timeout, options);
@@ -392,8 +403,7 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	
 	return ret;
 err:
-	ipc_port_unlock(kmsg->target->port);
-	ipc_right_put(kmsg->target);
+	ipc_right_put_unlock(kmsg->target);
 	return ret;
 }
 
@@ -415,6 +425,7 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 	// MIG call handling
 	if (kmsg->target->port->is_server_port)
 	{
+		debug_msg("--> invoke_server\n");
 		return ipc_msg_invoke_server(kmsg, timeout, options);
 	}
 	
@@ -461,7 +472,7 @@ waiting:
 			if (options & MACH_SEND_INTERRUPT)
 				ret = MACH_SEND_INTERRUPTED;
 			else
-				goto waiting;
+				goto waiting; // FIXME: this is wrong!!!
 		}
 
 		debug_msg("\t-> kfree(delivery) #1\n");
@@ -475,8 +486,9 @@ waiting:
 	
 	if (ret != MACH_MSG_SUCCESS)
 	{
+		debug_msg("msg not delivered, cleanup...\n");
 		// Clean up the queue
-		ipc_port_lock(port);
+		ipc_right_lock_port(kmsg->target);
 		
 		// Port may have died
 		if (PORT_IS_VALID(kmsg->target->port) && delivery != NULL)
@@ -486,13 +498,19 @@ waiting:
 				list_del(&delivery->list);
 				port->queue_size--;
 			}
+			ipc_port_unlock(port);
 		}
-		
-		ipc_port_unlock(port);
 	}
 	else
 	{
+		darling_mach_port_t* port;
+
+		ipc_right_lock_port(kmsg->target);
+
+		port = kmsg->target->port;
 		ipc_right_put(kmsg->target);
+
+		ipc_port_unlock(port);
 	}
 	
 	if (delivery != NULL)
@@ -590,7 +608,7 @@ bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc,
 
 			if (port_desc->name != 0)
 			{
-				right = ipc_space_lookup(args->space, port_desc->name);
+				right = ipc_space_lookup_unlocked(args->space, port_desc->name);
 				if (right == NULL)
 				{
 					args->ret = MACH_SEND_INVALID_DEST;
@@ -599,8 +617,6 @@ bool __ipc_msg_copyin_complex(mach_msg_type_descriptor_t* desc,
 				args->ret = ipc_process_right(args->space, port_desc->disposition,
 						right,
 						&args->kmsg->complex_items[index].port);
-				
-				ipc_port_unlock(right->port);
 			}
 			else
 			{
@@ -641,8 +657,6 @@ bool __ipc_msg_copyin_complex_abort(mach_msg_type_descriptor_t* desc,
 			ipc_process_right_abort(args->space,
 					port_desc->disposition,
 					args->kmsg->complex_items[index].port);
-			
-			ipc_port_unlock(port);
 			
 			break;
 		}
@@ -943,6 +957,7 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 					if (ipc_space_right_insert(&task->namespace, kmsg->reply,
 							&kmsg->msg->msgh_remote_port) != KERN_SUCCESS)
 					{
+						ipc_right_lock_port(kmsg->reply);
 						ipc_right_put(kmsg->reply);
 					}
 					else
