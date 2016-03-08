@@ -44,6 +44,7 @@ struct mach_port_right* ipc_right_new(darling_mach_port_t* port, mach_port_right
 		switch (type)
 		{
 			case MACH_PORT_RIGHT_RECEIVE:
+			case MACH_PORT_RIGHT_PORT_SET:
 				break;
 			case MACH_PORT_RIGHT_SEND:
 				port->num_srights++;
@@ -74,7 +75,7 @@ void ipc_right_put(struct mach_port_right* right)
 	
 	port = right->port;
 	
-	if (right->type == MACH_PORT_RIGHT_RECEIVE)
+	if (right->type == MACH_PORT_RIGHT_RECEIVE || right->type == MACH_PORT_RIGHT_PORT_SET)
 	{
 		debug_msg("\tCalling ipc_port_put()\n");
 		ipc_port_put(port);

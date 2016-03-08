@@ -48,7 +48,8 @@ struct darling_mach_port
 	int num_sorights;
 	
 	/* Whether this port is associated with a Mach server */
-	bool is_server_port;
+	bool is_server_port : 1;
+	bool is_port_set : 1;
 	
 	union
 	{
@@ -61,6 +62,14 @@ struct darling_mach_port
 			struct list_head messages;
 			unsigned int queue_size;
 			wait_queue_head_t queue_send, queue_recv;
+			darling_mach_port_t* set;
+			struct list_head set_head;
+		};
+		
+		/* Port set vars */
+		struct
+		{
+			struct list_head members; // refers via set_head
 		};
 	};
 };
@@ -79,6 +88,7 @@ struct ipc_delivered_msg
 };
 
 mach_msg_return_t ipc_port_new(darling_mach_port_t** port);
+mach_msg_return_t ipc_port_set_new(darling_mach_port_t** port);
 
 /**
  * Deallocates the port. Marks all refering rights as PORT_DEAD.

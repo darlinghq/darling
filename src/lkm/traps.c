@@ -383,6 +383,14 @@ kern_return_t _kernelrpc_mach_port_allocate_trap(mach_task_t* task,
 			break;
 		}
 		// TODO: missing MACH_PORT_RIGHT_PORT_SET
+		case MACH_PORT_RIGHT_PORT_SET:
+		{
+			ret = ipc_port_set_new(&port);
+			if (ret != KERN_SUCCESS)
+				return ret;
+			
+			break;
+		}
 		default:
 		{
 			return KERN_INVALID_VALUE;

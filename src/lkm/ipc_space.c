@@ -63,7 +63,10 @@ mach_msg_return_t ipc_space_make_receive(ipc_namespace_t* space,
 	
 	mutex_lock(&space->mutex);
 	
-	right = ipc_right_new(port, MACH_PORT_RIGHT_RECEIVE);
+	if (port->is_port_set)
+		right = ipc_right_new(port, MACH_PORT_RIGHT_PORT_SET);
+	else
+		right = ipc_right_new(port, MACH_PORT_RIGHT_RECEIVE);
 	
 	id = idr_alloc(&space->names, right, 1, -1, GFP_KERNEL);
 	if (id < 0)

@@ -455,26 +455,38 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 		
 		ipc_port_unlock(port);
 		
-waiting:
 		if (timeout)
 		{
-			err = wait_event_interruptible_timeout(port->queue_send,
-					delivery->delivered, msecs_to_jiffies(timeout));
+			if (options & MACH_SEND_INTERRUPT)
+			{
+				err = wait_event_interruptible_timeout(port->queue_send,
+						delivery->delivered, msecs_to_jiffies(timeout));
+			}
+			else
+			{
+				err = wait_event_timeout(port->queue_send,
+						delivery->delivered, msecs_to_jiffies(timeout));
+			}
 		}
 		else
 		{
-			err = wait_event_interruptible(port->queue_send,
-					delivery->delivered);
-		}
-		
-		if (err) // interruption
-		{
 			if (options & MACH_SEND_INTERRUPT)
-				ret = MACH_SEND_INTERRUPTED;
+			{
+				err = wait_event_interruptible(port->queue_send,
+						delivery->delivered);
+			}
 			else
-				goto waiting; // FIXME: this is wrong!!!
+			{
+				err = wait_event_killable(port->queue_send, delivery->delivered);
+				if (err == 0)
+					err = 1;
+			}
 		}
-
+		if (err == -ERESTARTSYS)
+			ret = MACH_SEND_INTERRUPTED;
+		else if (err == 0)
+			ret = MACH_RCV_TIMED_OUT;
+		
 		debug_msg("\t-> kfree(delivery) #1\n");
 		kfree(delivery);
 	}
@@ -833,7 +845,8 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 	
 	
 	right = ipc_space_lookup(&task->namespace, port_name);
-	if (right == NULL || right->type != MACH_PORT_RIGHT_RECEIVE)
+	if (right == NULL || (right->type != MACH_PORT_RIGHT_RECEIVE
+				&& right->type != MACH_PORT_RIGHT_PORT_SET))
 	{
 		debug_msg("\t-> MACH_RCV_INVALID_NAME\n");
 		
@@ -841,9 +854,23 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 		ipc_space_unlock(&task->namespace);
 		goto err;
 	}
+	if (!PORT_IS_VALID(right->port))
+	{
+		debug_msg("\t-> MACH_RCV_PORT_DIED\n");
+		ret = MACH_RCV_PORT_DIED;
+		ipc_space_unlock(&task->namespace);
+		goto err;
+	}
+	if (right->type == MACH_PORT_RIGHT_RECEIVE && right->port->set != NULL)
+	{
+		ret = MACH_RCV_IN_SET;
+		ipc_space_unlock(&task->namespace);
+		ipc_port_unlock(right->port);
+		goto err;
+	}
 	
 	// Clone the right
-	right = ipc_right_new(right->port, MACH_PORT_RIGHT_RECEIVE);
+	right = ipc_right_new(right->port, right->type);
 	locked = true;
 	
 	ipc_space_unlock(&task->namespace);
@@ -895,9 +922,10 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 				}
 				else
 				{
-					wait_event(right->port->queue_send,
+					err = wait_event_killable(right->port->queue_send,
 							(right->port->queue_size != 0 || !PORT_IS_VALID(right->port)));
-					err = 1;
+					if (err == 0)
+						err = 1;
 				}
 			}
 			
@@ -958,7 +986,7 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 							&kmsg->msg->msgh_remote_port) != KERN_SUCCESS)
 					{
 						ipc_right_lock_port(kmsg->reply);
-						ipc_right_put(kmsg->reply);
+						ipc_right_put_unlock(kmsg->reply);
 					}
 					else
 					{
@@ -1015,6 +1043,7 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 	}
 	
 err:
+	debug_msg("ipc_msg_recv end (code=%d)\n", ret);
 	if (right != NULL)
 	{
 		if (locked)
