@@ -9,7 +9,7 @@ Please note that no GUI applications are supported at the moment.
 Darling uses many Git submodules, so a plain clone will not do.
 
 ````
-git clone -r https://github.com/darlinghq/darling.git
+git clone --recurse-submodules https://github.com/darlinghq/darling.git
 ````
 
 Updating sources:
