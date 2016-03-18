@@ -72,7 +72,8 @@
 #include <dns_sd.h>
 #include <paths.h>
 #include <utmpx.h>
-#include <bootfiles.h>
+#include <signal.h>
+#include <ctype.h>
 #include <sysexits.h>
 #include <util.h>
 #include <spawn.h>
