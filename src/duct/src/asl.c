@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 int asl_close()
 {
 	return 0;
@@ -63,3 +65,7 @@ int asl_store_close()
 	return 0;
 }
 
+void* _simple_asl_msg_new()
+{
+	return NULL;
+}
