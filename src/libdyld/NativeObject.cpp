@@ -146,7 +146,7 @@ void* NativeObject::getExportedSymbol(const std::string& symbolName, bool nonWea
 
 	if (std::regex_match(name, match, g_reObjcSymbol))
 	{
-		name = match.format("_$1$2");
+		match.format(std::back_inserter(name), std::string("_$1$2"));
 	}
 	else if (std::regex_match(name, match, g_reObjcEhSymbol))
 	{
