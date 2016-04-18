@@ -59,7 +59,13 @@ void* __darwin_dlopen(const char* filename, int flag)
 	void* callerLocation = __builtin_return_address(0);
 
 	if (!filename)
+	{
+		void* obj = NativeObject::mainObject();
+		if (obj != nullptr)
+			return obj;
+
 		return MachOMgr::instance()->mainModule();
+	}
 
 	callerModule = MachOMgr::instance()->objectForAddress(callerLocation);
 	if (!callerModule)
