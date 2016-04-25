@@ -7,6 +7,7 @@
 #include <mach/machine.h>
 #include <mach/mach_init.h>
 #include "../../../../../platform-include/sys/errno.h"
+#include "../../../../libdyld/VirtualPrefix.h"
 #include "sysctl_inc.h"
 #include <stddef.h>
 #include <limits.h>
@@ -256,7 +257,7 @@ static void need_uname(void)
 	if (!lu.sysname[0])
 	{
 		__linux_uname(&lu);
-		version_conf = iniconfig_load(ETC_DARLING_PATH "/version.conf");
+		version_conf = iniconfig_load(__prefix_translate_path(ETC_DARLING_PATH "/version.conf"));
 		if (version_conf != NULL)
 			version_conf_sect = iniconfig_getsection(version_conf, "uname");
 	}
