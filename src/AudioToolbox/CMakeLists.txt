@@ -40,7 +40,7 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(AudioToolbox SHARED ${AudioToolbox_SRCS})
-target_link_libraries(AudioToolbox util -lstdc++ -lavcodec -lavresample -lavformat CFF)
+target_link_libraries(AudioToolbox darling-util -lstdc++ -lavcodec -lavresample -lavformat CFF)
 
 install(TARGETS AudioToolbox DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

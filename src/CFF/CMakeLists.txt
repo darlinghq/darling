@@ -53,7 +53,7 @@ set_source_files_properties(${cff_SRCS} LANGUAGE C)
 target_link_libraries(CFF PRIVATE system icucore z ffi xml2 xslt aprutil "-Wl,--defsym=__CFConstantStringClassReference=_OBJC_CLASS_AppleCFString")
 
 add_library(CFFExtra SHARED ${cffextra_SRCS})
-target_link_libraries(CFFExtra CFF cxx)
+target_link_libraries(CFFExtra PRIVATE CFF cxx)
 
 
 install(TARGETS CFF CFFExtra DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
