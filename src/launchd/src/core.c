@@ -8093,7 +8093,7 @@ job_mig_log_forward(job_t j, vm_offset_t inval, mach_msg_type_number_t invalCnt)
 		return BOOTSTRAP_NO_MEMORY;
 	}
 
-	if (!job_assumes(j, j->per_user)) {
+	if (!job_assumes(j, j->per_user != 0)) {
 		return BOOTSTRAP_NOT_PRIVILEGED;
 	}
 
@@ -8555,7 +8555,7 @@ job_mig_get_listener_port_rights(job_t j, mach_port_array_t *sports, mach_msg_ty
 	size_t cnt = 0;
 	struct machservice *msi = NULL;
 	SLIST_FOREACH(msi, &j->machservices, sle) {
-		if (msi->upfront && job_assumes(j, msi->recv)) {
+		if (msi->upfront && job_assumes(j, msi->recv != 0)) {
 			cnt++;
 		}
 	}
