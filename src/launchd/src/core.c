@@ -8396,7 +8396,7 @@ job_mig_swap_integer(job_t j, vproc_gsk_t inkey, vproc_gsk_t outkey, int64_t inv
 		/* No-op. */
 		break;
 	case VPROC_GSK_WEIRD_BOOTSTRAP:
-		if (job_assumes(j, j->weird_bootstrap)) {
+		if (job_assumes(j, j->weird_bootstrap != 0)) {
 			job_log(j, LOG_DEBUG, "Unsetting weird bootstrap.");
 
 			mach_msg_size_t mxmsgsz = (typeof(mxmsgsz)) sizeof(union __RequestUnion__job_mig_job_subsystem);
