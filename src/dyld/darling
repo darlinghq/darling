@@ -18,7 +18,7 @@
 # along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 # 
 
-export PATH="/bin:/usr/bin:/usr/local/bin"
+export PATH="/bin:/sbin:/usr/bin:/usr/local/bin"
 
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
@@ -123,7 +123,7 @@ is_sudo_allowed() {
 }
 
 launch_with_su() {
-    if [ "$(id -u)" == 0 ]; then
+    if [ "$(id -u)" = 0 ]; then
         "$@"
     elif is_sudo_allowed; then
         sudo "$@"
