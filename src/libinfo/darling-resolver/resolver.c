@@ -57,7 +57,7 @@ dr_hostbyname(si_mod_t *si, const char *name, int af, const char *interface, uin
 	else
 		return NULL;
 
-	l = res_query(name, ns_c_any, type, buf, sizeof(buf));
+	l = res_query(name, ns_c_in, type, buf, sizeof(buf));
 	if (l < 0)
 		return NULL;
 
@@ -143,7 +143,7 @@ dr_hostbyaddr(si_mod_t *si, const void *addr, int af, const char *interface, uin
 	else
 		return NULL;
 
-	l = res_query(ptr, ns_c_any, ns_t_ptr, buf, sizeof(buf));
+	l = res_query(ptr, ns_c_in, ns_t_ptr, buf, sizeof(buf));
 	if (l < 0)
 		return NULL;
 
@@ -237,7 +237,7 @@ dr_addrinfo(si_mod_t *si, const void *node, const void *serv, uint32_t family, u
 		
 		if (resolveV6)
 		{
-			l = res_query((const char*) node, ns_c_any, ns_t_aaaa, buf, sizeof(buf));
+			l = res_query((const char*) node, ns_c_in, ns_t_aaaa, buf, sizeof(buf));
 			if (l < 0)
 				goto after_v6;
 
@@ -276,7 +276,7 @@ dr_addrinfo(si_mod_t *si, const void *node, const void *serv, uint32_t family, u
 after_v6:
 		if (resolveV4)
 		{
-			l = res_query((const char*) node, ns_c_any, ns_t_a, buf, sizeof(buf));
+			l = res_query((const char*) node, ns_c_in, ns_t_a, buf, sizeof(buf));
 			if (l < 0)
 				goto after_v4;
 
