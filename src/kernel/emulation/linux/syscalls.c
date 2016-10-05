@@ -63,6 +63,7 @@
 #include "signal/sigaction.h"
 #include "signal/sigreturn.h"
 #include "signal/sigprocmask.h"
+#include "signal/sigsuspend.h"
 #include "process/vfork.h"
 #include "process/wait4.h"
 #include "process/waitid.h"
@@ -208,6 +209,7 @@ void* __bsd_syscall_table[512] = {
 	[104] = sys_bind,
 	[105] = sys_setsockopt,
 	[106] = sys_listen,
+	[111] = sys_sigsuspend,
 	[116] = sys_gettimeofday,
 	[117] = sys_getrusage,
 	[118] = sys_getsockopt,
@@ -316,6 +318,7 @@ void* __bsd_syscall_table[512] = {
 	[407] = sys_select_nocancel,
 	[408] = sys_fsync_nocancel,
 	[409] = sys_connect_nocancel,
+	[410] = sys_sigsuspend_nocancel,
 	[411] = sys_readv_nocancel,
 	[412] = sys_writev_nocancel,
 	[413] = sys_sendto_nocancel,
