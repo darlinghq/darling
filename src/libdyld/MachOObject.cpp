@@ -39,6 +39,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 extern "C" int g_argc asm("NXArgc") = 0;
 extern "C" char** g_argv asm("NXArgv") = nullptr;
+extern "C" char** __darwin_environ;
 
 namespace Darling {
 
@@ -630,11 +631,22 @@ void MachOObject::fillInProgramVars()
 	
 	if (vars != nullptr)
 	{
-		vars->mh = &m_header;
-		vars->NXArgcPtr = &g_argc;
-		vars->NXArgvPtr = (const char***) &g_argv;
-		vars->environPtr = (const char***) &environ;
-		vars->__prognamePtr = (const char**) &g_argv[0];
+		if (!vars->mh)
+		{
+			vars->mh = &m_header;
+			vars->NXArgcPtr = &g_argc;
+			vars->NXArgvPtr = (const char***) &g_argv;
+			vars->environPtr = (const char***) &environ;
+			vars->__prognamePtr = (const char**) &g_argv[0];
+		}
+		else
+		{
+			*((void**) vars->mh) = getMachHeader();
+			*vars->NXArgcPtr = g_argc;
+			*vars->NXArgvPtr = (const char**) g_argv;
+			*vars->environPtr = (const char**) __darwin_environ;
+			*vars->__prognamePtr = g_argv[0];
+		}
 	}
 	else
 	{
@@ -648,7 +660,7 @@ void MachOObject::fillInProgramVars()
 		
 		it = m_exports.find("_environ");
 		if (it != m_exports.end())
-			*((char***)it->second.addr) = environ;
+			*((char***)it->second.addr) = __darwin_environ;
 		
 		it = m_exports.find("___progname");
 		if (it != m_exports.end())
