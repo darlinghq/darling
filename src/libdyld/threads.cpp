@@ -243,7 +243,7 @@ static void* reaper_entry(void*)
 		reaper_items.pop();
 		pthread_mutex_unlock(&reaper_mutex);
 		
-		std::cout << "Reaping thread " << (void*)item.thread << "; Free stack at " << item.stack << ", " << item.stacksize << " bytes\n";
+		// std::cout << "Reaping thread " << (void*)item.thread << "; Free stack at " << item.stack << ", " << item.stacksize << " bytes\n";
 
 		// Wait for thread to terminate
 		pthread_join(item.thread, nullptr);
