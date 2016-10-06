@@ -5,9 +5,6 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-#if (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
-#	message(FATAL_ERROR "Clang is the only supported compiler.")
-#endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 
 #configure_file(config.h.in config.h)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -15,7 +12,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
+include_directories(${DARLING_TOP_DIRECTORY}/src/external/corefoundation/Headers)
+include_directories(${CMAKE_BINARY_DIR}/src/external/corefoundation/Headers)
+include_directories(${DARLING_TOP_DIRECTORY}/src/external/foundation/Headers)
+include_directories(${DARLING_TOP_DIRECTORY}/basic-headers)
 
 set(SystemConfiguration_SRCS
 	SCDynamicStoreCopySpecific.cpp
@@ -23,7 +23,7 @@ set(SystemConfiguration_SRCS
 )
 
 add_library(SystemConfiguration SHARED ${SystemConfiguration_SRCS})
-target_link_libraries(SystemConfiguration -lgnustep-corebase)
+target_link_libraries(SystemConfiguration CFF)
 
 install(TARGETS SystemConfiguration DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

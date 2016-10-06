@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <pwd.h>
 #include <sys/utsname.h>
-#include "log.h"
+//#include "log.h"
 
 #include <CoreFoundation/CFString.h>
 #include <SystemConfiguration/SCDynamicStoreCopySpecific.h>
@@ -11,7 +11,7 @@
 #define MAX_PASSENTRY_LENGTH 4096
 
 CFStringRef SCDynamicStoreCopyComputerName (SCDynamicStoreRef store, CFStringEncoding *nameEncoding){
-	LOG << "fixme: SCDynamicStoreCopyComputerName() - stub" << std::endl;
+	//LOG << "fixme: SCDynamicStoreCopyComputerName() - stub" << std::endl;
 	return NULL;
 }
 
@@ -43,12 +43,12 @@ CFStringRef SCDynamicStoreCopyLocalHostName (SCDynamicStoreRef store){
 }
 
 CFStringRef SCDynamicStoreCopyLocation (SCDynamicStoreRef store){
-	LOG << "fixme: SCDynamicStoreCopyLocation() - stub" << std::endl;
+	//LOG << "fixme: SCDynamicStoreCopyLocation() - stub" << std::endl;
 	return NULL;
 }
 
 CFDictionaryRef SCDynamicStoreCopyProxies (SCDynamicStoreRef store){
-	LOG << "fixme: SCDynamicStoreCopyComputerName() - stub" << std::endl;
+	//LOG << "fixme: SCDynamicStoreCopyComputerName() - stub" << std::endl;
 	/* No Proxy support yet */
 	return NULL;
 }
