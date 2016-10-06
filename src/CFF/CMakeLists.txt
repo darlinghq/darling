@@ -42,7 +42,7 @@ set(cff_SRCS
 
 set(cffextra_SRCS
 	CFUtilities.c
-	CFPreferences.mm
+	#CFPreferences.mm
 	../util/debug.cpp
 	../util/stlutils.cpp
 	../external/libcxx/src/dso_handle.c
