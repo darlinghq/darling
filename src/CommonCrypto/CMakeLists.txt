@@ -59,6 +59,8 @@ set(cc_SRCS
 	#Source/API/CommonKeyDerivation.c
 	#Source/API/CommonRandom.c
 	#Source/API/CommonSymmetricKeywrap.c
+	Source/libtomcrypt/src/misc/base64/base64_decode.c
+	Source/libtomcrypt/src/misc/base64/base64_encode.c
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
