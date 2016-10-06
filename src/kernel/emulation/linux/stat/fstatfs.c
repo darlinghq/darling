@@ -61,6 +61,7 @@ long sys_fstatfs64(int fd, struct bsd_statfs64* buf)
 	buf->f_mntonname[0] = 0;
 	buf->f_fstypename[0] = 0;
 	buf->f_mntfromname[0] = 0;
+	buf->f_iosize = 512;
 
 	while (__simple_readline(fd_m, &rbuf, line, sizeof(line)))
 	{

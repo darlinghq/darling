@@ -16,6 +16,11 @@ extern kern_return_t semaphore_wait_trap(int cond_sem);
 
 long sys_semwait_signal(int cond_sem, int mutex_sem, int timeout, int relative, int64_t tv_sec, int32_t tv_nsec)
 {
+	return sys_semwait_signal_nocancel(cond_sem, mutex_sem, timeout, relative, tv_sec, tv_nsec);
+}
+
+long sys_semwait_signal_nocancel(int cond_sem, int mutex_sem, int timeout, int relative, int64_t tv_sec, int32_t tv_nsec)
+{
 	kern_return_t kr;
 
 	if (timeout)

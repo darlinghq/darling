@@ -325,5 +325,6 @@ void* __bsd_syscall_table[512] = {
 	[414] = sys_pread_nocancel,
 	[415] = sys_pwrite_nocancel,
 	[417] = sys_poll_nocancel,
+	[423] = sys_semwait_signal_nocancel,
 };
 
