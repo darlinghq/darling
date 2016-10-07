@@ -156,3 +156,6 @@
 	path = src/external/file
 	url = ../darling-file.git
 	branch = darling
+[submodule "src/external/corecrypto"]
+	path = src/external/corecrypto
+	url = ../darling-corecrypto.git
