@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # 
 # This file is part of Darling.
 # 
@@ -199,17 +199,17 @@ if ! $(darling_check) && [ "$1" != "load" ] && [ "$1" != "unload" ]; then
     darling_load
 fi
 
-#dyld_path="${0%darling}dyld"
-dyld_path="${DARLING_PREFIX}/bin/dyld"
+dexec_path="${0%darling}dyld"
+#dexec_path="${DARLING_PREFIX}/bin/darling-exec"
 
 case "$1" in
 "shell")
     check_prefix
 
     if [ $# -gt 1 ]; then
-        exec "${dyld_path}" "${DPREFIX}/bin/bash" -c "${*:2}"
+        exec "${dexec_path}" "${DPREFIX}/bin/bash" -c "${*:2}"
     else
-        exec "${dyld_path}" "${DPREFIX}/bin/bash"
+        exec "${dexec_path}" "${DPREFIX}/bin/bash"
     fi
     ;;
 #"hdiutil")
@@ -228,6 +228,6 @@ case "$1" in
     ;;
 *)
     check_prefix
-    exec "${dyld_path}" "$1" "${@:2}"
+    exec "${dexec_path}" "$1" "${@:2}"
     ;;
 esac
