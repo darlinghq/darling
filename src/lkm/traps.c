@@ -505,7 +505,7 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 	
 	if (copy_from_user(&args, in_args, sizeof(args)))
 	{
-		debug_msg("!!! Cannot copy %d bytes from %p\n",
+		debug_msg("!!! Cannot copy %lu bytes from %p\n",
 				sizeof(args), in_args);
 		return KERN_INVALID_ADDRESS;
 	}
