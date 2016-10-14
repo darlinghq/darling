@@ -99,6 +99,15 @@ struct ipc_delivered_msg
 mach_msg_return_t ipc_port_new(darling_mach_port_t** port);
 mach_msg_return_t ipc_port_set_new(darling_mach_port_t** port);
 
+// in/out: pset and port are locked
+kern_return_t ipc_portset_insert(darling_mach_port_t* pset, darling_mach_port_t* port);
+
+// in/out: pset and port are locked
+kern_return_t ipc_portset_extract(darling_mach_port_t* pset, darling_mach_port_t* port);
+
+// in/out: pset and port are locked, pset may be null
+kern_return_t ipc_portset_move(darling_mach_port_t* pset, darling_mach_port_t* port);
+
 /**
  * Deallocates the port. Marks all refering rights as PORT_DEAD.
  * @param port

@@ -85,6 +85,9 @@ static const trap_handler mach_traps[30] = {
 	TRAP(NR_psynch_cvwait_trap, psynch_cvwait_trap),
 	TRAP(NR_psynch_cvsignal_trap, psynch_cvsignal_trap),
 	TRAP(NR_psynch_cvbroad_trap, psynch_cvbroad_trap),
+	TRAP(NR__kernelrpc_mach_port_move_member_trap, _kernelrpc_mach_port_move_member_trap),
+	TRAP(NR__kernelrpc_mach_port_insert_member_trap, _kernelrpc_mach_port_insert_member_trap),
+	TRAP(NR__kernelrpc_mach_port_extract_member_trap, _kernelrpc_mach_port_extract_member_trap),
 };
 #undef TRAP
 
@@ -415,6 +418,171 @@ err:
 	return ret;
 }
 
+kern_return_t _kernelrpc_mach_port_insert_member_trap(mach_task_t* task,
+		struct mach_port_insert_member_args* in_args)
+{
+	struct mach_port_insert_member_args args;
+	struct mach_port_right *right_port = NULL;
+	struct mach_port_right *right_pset = NULL;
+	kern_return_t ret = KERN_SUCCESS;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	if (args.pset_right_name == args.port_right_name)
+		return KERN_INVALID_RIGHT;
+	
+	ipc_space_lock(&task->namespace);
+	
+	if (port_name_to_task(task, args.task_right_name) != task)
+	{
+		debug_msg("_kernelrpc_mach_port_insert_member_trap() -> MACH_SEND_INVALID_DEST\n");
+		
+		ret = MACH_SEND_INVALID_DEST;
+		goto err;
+	}
+	
+	right_port = ipc_space_lookup(&task->namespace, args.port_right_name);
+	if (right_port == NULL || right_port->type != MACH_PORT_RIGHT_RECEIVE)
+	{
+		debug_msg("_kernelrpc_mach_port_insert_member_trap() -> KERN_INVALID_RIGHT\n");
+		
+		ret = KERN_INVALID_RIGHT;
+		goto err;
+	}
+	
+	right_pset = ipc_space_lookup(&task->namespace, args.pset_right_name);
+	if (right_pset == NULL || right_pset->type != MACH_PORT_RIGHT_RECEIVE)
+	{
+		debug_msg("_kernelrpc_mach_port_insert_member_trap() -> KERN_INVALID_RIGHT\n");
+		
+		ret = KERN_INVALID_RIGHT;
+		goto err;
+	}
+	
+	ret = ipc_portset_insert(right_pset->port, right_port->port);
+	
+err:
+	if (right_port != NULL)
+		ipc_port_unlock(right_port->port);
+	if (right_pset != NULL)
+		ipc_port_unlock(right_pset->port);
+
+	ipc_space_unlock(&task->namespace);
+	return ret;
+}
+
+kern_return_t _kernelrpc_mach_port_move_member_trap(mach_task_t* task,
+		struct mach_port_move_member_args* in_args)
+{
+	struct mach_port_move_member_args args;
+	struct mach_port_right *right_port = NULL;
+	struct mach_port_right *right_pset = NULL;
+	kern_return_t ret = KERN_SUCCESS;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	if (args.pset_right_name == args.port_right_name)
+		return KERN_INVALID_RIGHT;
+	
+	ipc_space_lock(&task->namespace);
+	
+	if (port_name_to_task(task, args.task_right_name) != task)
+	{
+		debug_msg("_kernelrpc_mach_port_move_member_trap() -> MACH_SEND_INVALID_DEST\n");
+		
+		ret = MACH_SEND_INVALID_DEST;
+		goto err;
+	}
+	
+	right_port = ipc_space_lookup(&task->namespace, args.port_right_name);
+	if (right_port == NULL || right_port->type != MACH_PORT_RIGHT_RECEIVE)
+	{
+		debug_msg("_kernelrpc_mach_port_move_member_trap() -> KERN_INVALID_RIGHT\n");
+		
+		ret = KERN_INVALID_RIGHT;
+		goto err;
+	}
+	
+	right_pset = ipc_space_lookup(&task->namespace, args.pset_right_name);
+	if (right_pset == NULL || right_pset->type != MACH_PORT_RIGHT_RECEIVE)
+	{
+		debug_msg("_kernelrpc_mach_port_move_member_trap() -> KERN_INVALID_RIGHT\n");
+		
+		ret = KERN_INVALID_RIGHT;
+		goto err;
+	}
+	
+	ret = ipc_portset_move(right_pset->port, right_port->port);
+	
+err:
+	if (right_port != NULL)
+		ipc_port_unlock(right_port->port);
+	if (right_pset != NULL)
+		ipc_port_unlock(right_pset->port);
+
+	ipc_space_unlock(&task->namespace);
+	return ret;
+}
+
+kern_return_t _kernelrpc_mach_port_extract_member_trap(mach_task_t* task,
+		struct mach_port_extract_member_args* in_args)
+{
+	struct mach_port_extract_member_args args;
+	struct mach_port_right *right_port = NULL;
+	struct mach_port_right *right_pset = NULL;
+	kern_return_t ret = KERN_SUCCESS;
+	
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+	
+	if (args.pset_right_name == args.port_right_name)
+		return KERN_INVALID_RIGHT;
+	
+	ipc_space_lock(&task->namespace);
+	
+	if (port_name_to_task(task, args.task_right_name) != task)
+	{
+		debug_msg("_kernelrpc_mach_port_move_member_trap() -> MACH_SEND_INVALID_DEST\n");
+		
+		ret = MACH_SEND_INVALID_DEST;
+		goto err;
+	}
+	
+	right_port = ipc_space_lookup(&task->namespace, args.port_right_name);
+	if (right_port == NULL || right_port->type != MACH_PORT_RIGHT_RECEIVE)
+	{
+		debug_msg("_kernelrpc_mach_port_move_member_trap() -> KERN_INVALID_RIGHT\n");
+		
+		ret = KERN_INVALID_RIGHT;
+		goto err;
+	}
+	
+	if (args.pset_right_name != 0)
+	{
+		right_pset = ipc_space_lookup(&task->namespace, args.pset_right_name);
+		if (right_pset == NULL || right_pset->type != MACH_PORT_RIGHT_RECEIVE)
+		{
+			debug_msg("_kernelrpc_mach_port_move_member_trap() -> KERN_INVALID_RIGHT\n");
+
+			ret = KERN_INVALID_RIGHT;
+			goto err;
+		}
+	}
+	
+	ret = ipc_portset_extract(right_pset ? right_pset->port : NULL, right_port->port);
+	
+err:
+	if (right_port != NULL)
+		ipc_port_unlock(right_port->port);
+	if (right_pset != NULL)
+		ipc_port_unlock(right_pset->port);
+
+	ipc_space_unlock(&task->namespace);
+	return ret;
+}
+
 kern_return_t _kernelrpc_mach_port_deallocate_trap(mach_task_t* task,
 		struct mach_port_deallocate_args* in_args)
 {
@@ -436,7 +604,7 @@ kern_return_t _kernelrpc_mach_port_deallocate_trap(mach_task_t* task,
 	}
 	
 	right = ipc_space_lookup(&task->namespace, args.port_right_name);
-	if (right == NULL || right->type == MACH_PORT_RIGHT_RECEIVE)
+	if (right == NULL || right->type != MACH_PORT_RIGHT_RECEIVE)
 	{
 		debug_msg("_kernelrpc_mach_port_deallocate_trap() -> KERN_INVALID_RIGHT\n");
 		

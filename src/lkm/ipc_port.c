@@ -85,6 +85,34 @@ mach_msg_return_t ipc_port_set_new(darling_mach_port_t** port_out)
 	return KERN_SUCCESS;
 }
 
+static void ipc_portset_delete_member(darling_mach_port_t* pset, darling_mach_port_t* member)
+{
+	struct hlist_node *tmp2;
+	struct darling_mach_port_le* ref2;
+
+	hash_for_each_possible_safe(pset->members, ref2, tmp2, node, (long)member)
+	{
+		if (ref2->port != member)
+			continue;
+		hash_del(&ref2->node);
+		kfree(ref2);
+	}
+}
+
+static void ipc_port_delete_set(darling_mach_port_t* pset, darling_mach_port_t* member)
+{
+	struct hlist_node *tmp2;
+	struct darling_mach_port_le* ref2;
+
+	hash_for_each_possible_safe(member->sets, ref2, tmp2, node, (long)pset)
+	{
+		if (ref2->port != pset)
+			continue;
+		hash_del(&ref2->node);
+		kfree(ref2);
+	}
+}
+
 mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 {
 	struct list_head* p;
@@ -104,19 +132,11 @@ mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 		// Iterate referenced ports
 		hash_for_each_safe(port->members, bkt, tmp, ref, node)
 		{
-			struct hlist_node *tmp2;
-			struct darling_mach_port_le* ref2;
-			
 			ipc_port_lock(ref->port);
 
 			// Find ref to self in port's list of sets
-			hash_for_each_possible_safe(ref->port->sets, ref2, tmp2, node, (long)port)
-			{
-				if (ref2->port != port)
-					continue;
-				hash_del(&ref2->node);
-				kfree(ref2);
-			}
+			ipc_port_delete_set(port, ref->port);
+			
 			ipc_port_unlock(ref->port);
 			
 			kfree(ref);
@@ -127,30 +147,26 @@ mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 		int bkt;
 		struct hlist_node *tmp;
 		struct darling_mach_port_le* ref;
+		struct ipc_delivered_msg* msg;
 		
 		// Remove itself from all port sets we're in
 		hash_for_each_safe(port->sets, bkt, tmp, ref, node)
 		{
 			ipc_port_lock(ref->port);
+			
 			// Find ref to self in port sets's list of ports
-			{
-				struct hlist_node *tmp2;
-				struct darling_mach_port_le* ref2;
-				
-				hash_for_each_possible_safe(ref->port->members, ref2, tmp2, node, (long)port)
-				{
-					if (ref2->port != port)
-						continue;
-					hash_del(&ref2->node);
-					kfree(ref2);
-				}
-			}
+			ipc_portset_delete_member(ref->port, port);
+			
 			ipc_port_unlock(ref->port);
 			
 			kfree(ref);
 		}
 		
-		// TODO: set recipient_died to true for all pending msgs
+		// set recipient_died to true for all pending msgs
+		list_for_each_entry(msg, &port->messages, list)
+		{
+			msg->recipient_died = true;
+		}
 		wake_up_all(&port->queue_send);
 		wake_up_all(&port->queue_recv);
 	}
@@ -173,6 +189,73 @@ mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 	
 	atomic_dec(&port_count);
 	kfree(port);
+	return KERN_SUCCESS;
+}
+
+kern_return_t ipc_portset_insert(darling_mach_port_t* pset, darling_mach_port_t* port)
+{
+	struct darling_mach_port_le *pset_member, *port_member;
+	
+	if (!pset->is_port_set || port->is_port_set)
+		return KERN_INVALID_RIGHT;
+	
+	pset_member = (struct darling_mach_port_le*) kmalloc(sizeof(*pset_member), GFP_KERNEL);
+	if (pset_member == NULL)
+		return KERN_RESOURCE_SHORTAGE;
+	
+	port_member = (struct darling_mach_port_le*) kmalloc(sizeof(*pset_member), GFP_KERNEL);
+	if (port_member == NULL)
+	{
+		kfree(pset_member);
+		return KERN_RESOURCE_SHORTAGE;
+	}
+	
+	pset_member->port = port;
+	port_member->port = pset;
+	
+	hash_add(pset->members, &pset_member->node, (long)port);
+	hash_add(port->sets, &port_member->node, (long)pset);
+	
+	return KERN_SUCCESS;
+}
+
+kern_return_t ipc_portset_move(darling_mach_port_t* pset, darling_mach_port_t* port)
+{
+	int bkt;
+	struct hlist_node *tmp;
+	struct darling_mach_port_le* ref;
+	
+	if (port->is_port_set)
+		return KERN_INVALID_RIGHT;
+	if (pset != NULL && !pset->is_port_set)
+		return KERN_INVALID_RIGHT;
+
+	// Remove port from all port sets it is in
+	hash_for_each_safe(port->sets, bkt, tmp, ref, node)
+	{
+		// Delete ref on the pset side
+		ipc_portset_delete_member(pset, port);
+		
+		kfree(ref);
+	}
+	
+	// Kill all entries
+	hash_init(port->sets);
+	
+	if (pset != NULL)
+		return ipc_portset_insert(pset, port);
+	
+	return KERN_SUCCESS;
+}
+
+kern_return_t ipc_portset_extract(darling_mach_port_t* pset, darling_mach_port_t* port)
+{
+	if (!pset->is_port_set || port->is_port_set)
+		return KERN_INVALID_RIGHT;
+	
+	ipc_port_delete_set(pset, port);
+	ipc_portset_delete_member(pset, port);
+	
 	return KERN_SUCCESS;
 }
 

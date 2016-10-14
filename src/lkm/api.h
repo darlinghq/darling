@@ -52,6 +52,9 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_psynch_cvwait_trap, // 0x15
 	NR_psynch_cvsignal_trap,
 	NR_psynch_cvbroad_trap,
+	NR__kernelrpc_mach_port_move_member_trap,
+	NR__kernelrpc_mach_port_insert_member_trap,
+	NR__kernelrpc_mach_port_extract_member_trap,
 };
 
 struct mach_port_mod_refs_args
@@ -102,6 +105,27 @@ struct mach_port_destroy_args
 {
 	unsigned int task_right_name;
 	unsigned int port_right_name;
+};
+
+struct mach_port_move_member_args
+{
+	unsigned int task_right_name;
+	unsigned int port_right_name;
+	unsigned int pset_right_name;
+};
+
+struct mach_port_insert_member_args
+{
+	unsigned int task_right_name;
+	unsigned int port_right_name;
+	unsigned int pset_right_name;
+};
+
+struct mach_port_extract_member_args
+{
+	unsigned int task_right_name;
+	unsigned int port_right_name;
+	unsigned int pset_right_name;
 };
 
 struct semaphore_signal_args
