@@ -419,6 +419,7 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 	mach_msg_return_t ret = MACH_MSG_SUCCESS;
 	struct ipc_delivered_msg* delivery = NULL;
 	darling_mach_port_t* port;
+	bool was_in_set;
 	
 	debug_msg("ipc_msg_deliver()\n");
 	
@@ -438,13 +439,26 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 	INIT_LIST_HEAD(&delivery->list);
 	memcpy(&delivery->kmsg, kmsg, sizeof(*kmsg));
 	delivery->delivered = false;
+	delivery->recipient_died = false;
 	delivery->recipient_freed = kmsg->target->type == MACH_PORT_RIGHT_SEND_ONCE;
 	
 	list_add(&delivery->list, &port->messages);
 	port->queue_size++;
 	
 	// Wake up waiting receivers
-	wake_up_interruptible(&port->queue_recv);
+	was_in_set = !hash_empty(port->sets);
+	if (was_in_set)
+	{
+		struct darling_mach_port_le* item;
+		int bkt;
+		
+		hash_for_each(port->sets, bkt, item, node)
+		{
+			wake_up_interruptible(&item->port->queue_recv);
+		}
+	}
+	else
+		wake_up_interruptible(&port->queue_recv);
 	
 	// Wait (unless target is send once)
 	if (kmsg->target->type != MACH_PORT_RIGHT_SEND_ONCE)
@@ -455,17 +469,20 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 		
 		ipc_port_unlock(port);
 		
+		// TODO: handle cases when port has died
 		if (timeout)
 		{
 			if (options & MACH_SEND_INTERRUPT)
 			{
 				err = wait_event_interruptible_timeout(port->queue_send,
-						delivery->delivered, msecs_to_jiffies(timeout));
+						delivery->delivered || delivery->recipient_died,
+						msecs_to_jiffies(timeout));
 			}
 			else
 			{
 				err = wait_event_timeout(port->queue_send,
-						delivery->delivered, msecs_to_jiffies(timeout));
+						delivery->delivered || delivery->recipient_died,
+						msecs_to_jiffies(timeout));
 			}
 		}
 		else
@@ -473,11 +490,12 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 			if (options & MACH_SEND_INTERRUPT)
 			{
 				err = wait_event_interruptible(port->queue_send,
-						delivery->delivered);
+						delivery->delivered || delivery->recipient_died);
 			}
 			else
 			{
-				err = wait_event_killable(port->queue_send, delivery->delivered);
+				err = wait_event_killable(port->queue_send,
+						delivery->delivered || delivery->recipient_died);
 				if (err == 0)
 					err = 1;
 			}
@@ -486,9 +504,8 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 			ret = MACH_SEND_INTERRUPTED;
 		else if (err == 0)
 			ret = MACH_RCV_TIMED_OUT;
-		
-		debug_msg("\t-> kfree(delivery) #1\n");
-		kfree(delivery);
+		else if (delivery->recipient_died)
+			ret = MACH_SEND_INVALID_DEST;
 	}
 	else
 	{
@@ -503,7 +520,7 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 		ipc_right_lock_port(kmsg->target);
 		
 		// Port may have died
-		if (PORT_IS_VALID(kmsg->target->port) && delivery != NULL)
+		if (PORT_IS_VALID(kmsg->target->port))
 		{
 			if (!delivery->delivered)
 			{
@@ -518,7 +535,7 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 		darling_mach_port_t* port;
 
 		ipc_right_lock_port(kmsg->target);
-
+		
 		port = kmsg->target->port;
 		ipc_right_put(kmsg->target);
 
@@ -861,7 +878,7 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 		ipc_space_unlock(&task->namespace);
 		goto err;
 	}
-	if (right->type == MACH_PORT_RIGHT_RECEIVE && right->port->set != NULL)
+	if (right->type == MACH_PORT_RIGHT_RECEIVE && !hash_empty(right->port->sets))
 	{
 		ret = MACH_RCV_IN_SET;
 		ipc_space_unlock(&task->namespace);

@@ -24,6 +24,7 @@
 #include <linux/mutex.h>
 #include <linux/atomic.h>
 #include <linux/wait.h>
+#include <linux/hashtable.h>
 #include "ipc_msg.h"
 
 typedef struct server_port server_port_t;
@@ -62,16 +63,22 @@ struct darling_mach_port
 			struct list_head messages;
 			unsigned int queue_size;
 			wait_queue_head_t queue_send, queue_recv;
-			darling_mach_port_t* set;
-			struct list_head set_head;
+			DECLARE_HASHTABLE(sets, 8);
 		};
-		
-		/* Port set vars */
+		// Port sets
 		struct
 		{
-			struct list_head members; // refers via set_head
+			DECLARE_HASHTABLE(members, 8);
 		};
 	};
+};
+
+// Special type for darling_mach_port list entries
+// because ports may be in multiple port sets
+struct darling_mach_port_le
+{
+	struct hlist_node node;
+	struct darling_mach_port* port;
 };
 
 struct mach_port_right;
@@ -85,6 +92,8 @@ struct ipc_delivered_msg
 	unsigned char delivered : 1;
 	// Set to 1 if this struct is to be deleted by recipient
 	unsigned char recipient_freed : 1;
+	// When set to 1, the receiving port has died and says goodbye
+	unsigned char recipient_died : 1;
 };
 
 mach_msg_return_t ipc_port_new(darling_mach_port_t** port);
