@@ -43,7 +43,6 @@ struct pthread_waiter
 {
 	struct list_head entry;
 	int wakeup;
-	uint32_t 
 };
 
 static pthread_cv_t* cv_get(mach_task_t* task, uint64_t address,
@@ -62,7 +61,7 @@ int psynch_cvwait_trap(mach_task_t* task,
 		return -EFAULT;
 	
 	debug_msg("psynch_cvwait(): cv=%p, mutex=%p\n",
-		args.cv, args.mutex);
+		(void*)args.cv, (void*)args.mutex);
 	if (args.mutex != 0)
 		psynch_mutexdrop(task, args.mutex, args.mgen, args.ugen);
 	
@@ -107,7 +106,7 @@ int psynch_cvbroad_trap(mach_task_t* task,
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return -EFAULT;
 	
-	debug_msg("psynch_cvbroad_trap(): cv=%p\n", args.cv);
+	debug_msg("psynch_cvbroad_trap(): cv=%p\n", (void*) args.cv);
 	spin_lock(&task->cv_wq_lock);
     
 	cv = cv_get(task, args.cv, true);
@@ -146,7 +145,7 @@ int psynch_cvsignal_trap(mach_task_t* task,
 	if (copy_from_user(&args, in_args, sizeof(args)))
 		return -EFAULT;
 	
-	debug_msg("psynch_cvsignal_trap(): cv=%p\n", args.cv);
+	debug_msg("psynch_cvsignal_trap(): cv=%p\n", (void*)args.cv);
 	
 	spin_lock(&task->cv_wq_lock);
 	
