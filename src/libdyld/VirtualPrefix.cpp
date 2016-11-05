@@ -98,6 +98,9 @@ const char* translate_path_common(const char* path, bool symlink)
 	static thread_local char resolved_path[1024];
 	std::string str;
 	std::list<std::string> path_components;
+
+	if (!path)
+		return nullptr;
 	
 	if (g_prefix.empty())
 		return path;
