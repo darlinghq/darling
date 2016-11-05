@@ -364,10 +364,10 @@ kern_return_t _kernelrpc_mach_port_move_member_trap(
 {
 	struct mach_port_move_member_args args = {
 		.task_right_name = target,
-		.port_right_name = name,
-		.pset_right_name = pset
+		.port_right_name = member,
+		.pset_right_name = after
 	};
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_move_member, &args);
+	return ioctl(driver_fd, NR__kernelrpc_mach_port_move_member_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_insert_right_trap(
@@ -392,7 +392,7 @@ kern_return_t _kernelrpc_mach_port_insert_member_trap(
 		.port_right_name = name,
 		.pset_right_name = pset
 	};
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_insert_member, &args);
+	return ioctl(driver_fd, NR__kernelrpc_mach_port_insert_member_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_extract_member_trap(
@@ -406,7 +406,7 @@ kern_return_t _kernelrpc_mach_port_extract_member_trap(
 		.port_right_name = name,
 		.pset_right_name = pset
 	};
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_extract_member, &args);
+	return ioctl(driver_fd, NR__kernelrpc_mach_port_extract_member_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_construct_trap(
