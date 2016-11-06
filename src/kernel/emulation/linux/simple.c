@@ -117,6 +117,15 @@ void __simple_printf(const char* format, ...)
 	LINUX_SYSCALL3(__NR_write, 1, buffer, __simple_strlen(buffer));
 }
 
+void __simple_sprintf(char *buffer, const char* format, ...)
+{
+	va_list vl;
+
+	va_start(vl, format);
+	__simple_vsprintf(buffer, format, vl);
+	va_end(vl);
+}
+
 extern void *memmove(void *dest, const void *src, __SIZE_TYPE__ n);
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 extern void *memchr(const void *s, int c, __SIZE_TYPE__ n);
