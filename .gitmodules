@@ -159,3 +159,6 @@
 [submodule "src/external/corecrypto"]
 	path = src/external/corecrypto
 	url = ../darling-corecrypto.git
+[submodule "src/external/ruby"]
+	path = src/external/ruby
+	url = ../darling-ruby.git
