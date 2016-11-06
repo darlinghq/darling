@@ -21,7 +21,7 @@
  *
  * @APPLE_LICENSE_HEADER_END@
  */
- 
+
 
 
 #ifndef INTERNAL_MACROS_H
@@ -45,15 +45,12 @@ extern "C" {
 struct v128 { unsigned int vec[4]; };
 
 
-#define EXPORT __attribute__((visibility("default"))) 
+#define EXPORT __attribute__((visibility("default")))
 
-#define COMPILE_TIME_ASSERT( expr )    \
-		extern int compile_time_assert_failed[ ( expr ) ? 1 : -1 ] __attribute__( ( unused ) );
-
-#define ABORT(msg) __assert_rtn(__func__, __FILE__, __LINE__, msg) 
+#define ABORT(msg) __assert_rtn(__func__, __FILE__, __LINE__, msg)
 
 #if NDEBUG
-	#define DEBUG_MESSAGE(msg, ...)  
+	#define DEBUG_MESSAGE(msg, ...)
 	#define DEBUG_PRINT_API(msg, ...)
 	#define DEBUG_PRINT_UNWINDING_TEST 0
 	#define DEBUG_PRINT_UNWINDING(msg, ...)
@@ -93,7 +90,7 @@ struct v128 { unsigned int vec[4]; };
 
 #define NOT_HERE_BEFORE_10_6(sym) \
 	extern const char sym##_tmp4 __asm("$ld$hide$os10.4$_" #sym ); __attribute__((visibility("default"))) const char sym##_tmp4 = 0; \
-	extern const char sym##_tmp5 __asm("$ld$hide$os10.5$_" #sym ); __attribute__((visibility("default"))) const char sym##_tmp5 = 0; 
+	extern const char sym##_tmp5 __asm("$ld$hide$os10.5$_" #sym ); __attribute__((visibility("default"))) const char sym##_tmp5 = 0;
 #define NEVER_HERE(sym) \
 	extern const char sym##_tmp4 __asm("$ld$hide$os10.4$_" #sym ); __attribute__((visibility("default"))) const char sym##_tmp4 = 0; \
 	extern const char sym##_tmp5 __asm("$ld$hide$os10.5$_" #sym ); __attribute__((visibility("default"))) const char sym##_tmp5 = 0; \

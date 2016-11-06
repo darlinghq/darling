@@ -29,6 +29,7 @@
 #ifndef __DWARF_INSTRUCTIONS_HPP__
 #define __DWARF_INSTRUCTIONS_HPP__
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -917,7 +918,8 @@ typename A::pint_t DwarfInstructions<A,R>::evaluateExpression(pint_t expression,
 template <typename A, typename R>
 int DwarfInstructions<A,R>::lastRestoreReg(const Registers_x86_64&) 
 {
-	COMPILE_TIME_ASSERT( (int)CFI_Parser<A>::kMaxRegisterNumber > (int)DW_X86_64_RET_ADDR );
+	static_assert( (int)CFI_Parser<A>::kMaxRegisterNumber > (int)DW_X86_64_RET_ADDR,
+	 "(int)CFI_Parser<A>::kMaxRegisterNumber MUST be > (int)DW_X86_64_RET_ADDR" );
 	return DW_X86_64_RET_ADDR; 
 }
 
@@ -1312,7 +1314,8 @@ compact_unwind_encoding_t DwarfInstructions<A,R>::createCompactEncodingFromProlo
 template <typename A, typename R>
 int DwarfInstructions<A,R>::lastRestoreReg(const Registers_x86&) 
 {
-	COMPILE_TIME_ASSERT( (int)CFI_Parser<A>::kMaxRegisterNumber > (int)DW_X86_RET_ADDR );
+	static_assert( (int)CFI_Parser<A>::kMaxRegisterNumber > (int)DW_X86_RET_ADDR,
+	"(int)CFI_Parser<A>::kMaxRegisterNumber MUST be > (int)DW_X86_RET_ADDR" );
 	return DW_X86_RET_ADDR; 
 }
 
@@ -1688,7 +1691,8 @@ compact_unwind_encoding_t DwarfInstructions<A,R>::createCompactEncodingFromProlo
 template <typename A, typename R>
 int DwarfInstructions<A,R>::lastRestoreReg(const Registers_ppc&) 
 {
-	COMPILE_TIME_ASSERT( (int)CFI_Parser<A>::kMaxRegisterNumber > (int)UNW_PPC_SPEFSCR );
+	static_assert( (int)CFI_Parser<A>::kMaxRegisterNumber > (int)UNW_PPC_SPEFSCR,
+	"(int)CFI_Parser<A>::kMaxRegisterNumber MUST be > (int)UNW_PPC_SPEFSCR" );
 	return UNW_PPC_SPEFSCR; 
 }
 
