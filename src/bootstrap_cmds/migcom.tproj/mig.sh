@@ -87,7 +87,7 @@ M=${MIGCOM-${migcomPath}}
 cppflags="-D__MACH30__"
 
 files=
-arch=`/usr/bin/arch`
+arch=`/usr/bin/uname -m`
 
 WORKTMP=`mktemp -d "${TMPDIR:-/tmp}/mig.XXXXXX"`
 if [ $? -ne 0 ]; then
