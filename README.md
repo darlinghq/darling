@@ -30,6 +30,26 @@ For complete instructions, visit [DarlingHQ.org](http://www.darlinghq.org/build-
 <img src="http://teamcity.dolezel.info/app/rest/builds/buildType:(id:Darling_DebianStableX8664)/statusIcon" title="Debian stable build for x86-64"/>
 </a>
 
+Required dependencies
+
+Debian (stable):
+
+```
+$ sudo apt-get install cmake clang bison flex xz-utils libfuse-dev libxml2-dev libicu-dev libssl-dev libbz2-dev zlib1g-dev libudev-dev linux-headers-amd64
+```
+
+Ubuntu (16.04):
+
+```
+$ sudo apt-get install cmake clang bison flex xz-utils libfuse-dev libxml2-dev libicu-dev libssl-dev libbz2-dev zlib1g-dev libudev-dev linux-headers-generic
+```
+
+Arch Linux (4.8):
+
+```
+$ sudo pacman -S cmake clang flex icu fuse
+```
+
 ````
 cd darling
 mkdir -p build/x86-64
@@ -49,6 +69,20 @@ make install
 <a href="http://teamcity.dolezel.info/viewType.html?buildTypeId=Darling_DebianStableX8664&guest=1">
 <img src="http://teamcity.dolezel.info/app/rest/builds/buildType:(id:Darling_DebianStableX8664)/statusIcon" title="Debian stable build for i386"/>
 </a>
+
+Required additional dependencies (on top of x86_64 dependencies)
+
+Debian (stable) / Ubuntu (15.10):
+
+```
+$ sudo apt-get install libc6-dev-i386 libudev-dev:i386 lib32stdc++-4.9-dev
+```
+
+Arch Linux (4.8):
+
+```
+$ sudo pacman -S lib32-libstdc++5 lib32-clang
+```
 
 ````
 cd darling
