@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <libdyld/MachOMgr.h>
 #include <libdyld/MachOObject.h>
 #include <libdyld/NativeObject.h>
+#include <libdyld/gdbjit.h>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -89,6 +90,9 @@ int main(int argc, char** argv, char** envp)
 			__prefix_set(path);
 			unprefixed_argv0 = __prefix_untranslate_path(argv[1], strlen(argv[1]));
 		}
+		
+		if (getenv("DYLD_GDBJIT") != nullptr)
+			Darling::SetupGDBJIT();
 
 		if (isELF(argv[1]))
 		{

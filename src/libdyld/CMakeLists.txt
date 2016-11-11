@@ -40,6 +40,7 @@ set(dyld_SRCS
 	environ.c
 	threads.cpp
         VirtualPrefix.cpp
+        gdbjit.cpp
 )
 
 #if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")

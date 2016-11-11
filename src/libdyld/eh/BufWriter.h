@@ -28,7 +28,7 @@ class BufWriter
 public:
 	BufWriter(void* mem, uintptr_t length);
 	
-	template<typename T> void writeType(T t) { writeBlock(&t, sizeof(T)); }
+	template<typename T> void writeType(const T& t) { writeBlock(&t, sizeof(T)); }
 	
 	void writePtr(uintptr_t v) { return writeType<uintptr_t>(v); }
 	void writePtrS(intptr_t v) { return writeType<intptr_t>(v); }
