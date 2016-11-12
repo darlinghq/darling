@@ -93,7 +93,7 @@ setup_prefix() {
     ln -sf "../../system-root/dev/log" "$1/var/run/syslog" || true
 
     # Clean up old cruft (symlinks)
-    rm -f "$1/bin" "$1/usr/bin" "$1/etc" "$1/System/Library/Frameworks" 2>/dev/null || true
+    rm -f "$1/bin" "$1/usr/bin" "$1/etc" "$1/System/Library/Frameworks" "$1/System/Library/PrivateFrameworks" 2>/dev/null || true
     cp -rf "${DARLING_PREFIX}/libexec/darling/"* "$1"
     echo -n "$selfmtime" > "$1/.update-timestamp"
 
