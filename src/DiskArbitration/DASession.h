@@ -8,7 +8,7 @@ extern "C" {
 
 typedef struct _DASession * DASessionRef;
 
-typedef void* dispatch_queue_t; // hack
+//typedef void* dispatch_queue_t; // hack
 
 CFTypeID DASessionGetTypeID(void);
 DASessionRef DASessionCreate(CFAllocatorRef allocator);

@@ -100,7 +100,7 @@ add_subdirectory(external/libauto)
 add_subdirectory(external/libarchive/libarchive)
 add_subdirectory(external/apr)
 add_subdirectory(external/corecrypto)
-#add_subdirectory(external/security) # work in progress
+add_subdirectory(external/security) # work in progress
 add_subdirectory(sandbox)
 add_subdirectory(Cocoa)
 add_subdirectory(external/file/file)
