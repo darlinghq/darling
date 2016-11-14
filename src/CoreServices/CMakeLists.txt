@@ -48,6 +48,7 @@ set(CoreServices_SRCS
 	LaunchServices.cpp
 	OpenTransport.cpp
 	Timer.cpp
+	CoreServicesPriv.cpp
 	../external/libcxx/src/dso_handle.c
 )
 
