@@ -3,12 +3,13 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 long sys_getgroups(unsigned int size, int* gidset)
 {
 	int ret;
 	
-	if (getenv("__FAKE_SETUID_ROOT") != NULL)
+	if (getenv("__FAKE_SETUID_ROOT"))
 	{
 		if (size >= 1)
 		{
