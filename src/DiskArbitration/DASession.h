@@ -1,6 +1,7 @@
 #ifndef DASESSION_H
 #define DASESSION_H
 #include <CoreFoundation/CoreFoundation.h>
+#include "GSDispatch.h"
 
 #ifdef __cplusplus
 extern "C" {
