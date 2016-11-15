@@ -16,6 +16,9 @@ BISON_TARGET(MyParser migcom.tproj/parser.y ${CMAKE_CURRENT_BINARY_DIR}/parser.c
 FLEX_TARGET(MyScanner migcom.tproj/lexxer.l ${CMAKE_CURRENT_BINARY_DIR}/lexer.c)
 ADD_FLEX_BISON_DEPENDENCY(MyScanner MyParser)
 
+# Hide some unimportant warnings
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-dangling-else -Wno-implicit-function-declaration")
+
 set(mig_sources
 	migcom.tproj/error.c
 	migcom.tproj/global.c
