@@ -165,3 +165,6 @@
 [submodule "src/external/commoncrypto"]
 	path = src/external/commoncrypto
 	url = ../darling-commoncrypto.git
+[submodule "src/external/man"]
+	path = src/external/man
+	url = ../darling-man.git
