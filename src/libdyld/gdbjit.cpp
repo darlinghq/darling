@@ -100,24 +100,21 @@ void OnMachOLoaded(const struct ::mach_header* mh, intptr_t vmaddr_slide)
 		producer.addSymbol(sym.name.c_str(), (void*)(sym.addr + vmaddr_slide), true, false);
 	}
 	
-	if (mo->is64())
+#ifdef __x86_64__
+	const std::vector<segment_command_64*>& segs = mo->segments64();
+	for (const segment_command_64* seg : segs)
 	{
-		const std::vector<segment_command_64*>& segs = mo->segments64();
-		for (const segment_command_64* seg : segs)
-		{
-			producer.addSegment(Darling::ELFProducer::Segment { seg->segname, seg->fileoff, (void*)(seg->vmaddr + vmaddr_slide),
-				seg->vmsize, seg->filesize, MachO2ElfFlags(seg->initprot) });
-		}
+		producer.addSegment(Darling::ELFProducer::Segment { seg->segname, seg->fileoff, (void*)(seg->vmaddr + vmaddr_slide),
+			seg->vmsize, seg->filesize, MachO2ElfFlags(seg->initprot) });
 	}
-	else
+#else
+	const std::vector<segment_command*>& segs = mo->segments();
+	for (const segment_command* seg : segs)
 	{
-		const std::vector<segment_command*>& segs = mo->segments();
-		for (const segment_command* seg : segs)
-		{
-			producer.addSegment(Darling::ELFProducer::Segment { seg->segname, seg->fileoff, (void*)(seg->vmaddr + vmaddr_slide),
-				seg->vmsize, seg->filesize, MachO2ElfFlags(seg->initprot) });
-		}
+		producer.addSegment(Darling::ELFProducer::Segment { seg->segname, seg->fileoff, (void*)(seg->vmaddr + vmaddr_slide),
+			seg->vmsize, seg->filesize, MachO2ElfFlags(seg->initprot) });
 	}
+#endif
 	
 	producer.setEHSection(mo->get_eh_frame().first, mo->get_eh_frame().second);
 	
