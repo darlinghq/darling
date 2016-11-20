@@ -168,3 +168,6 @@
 [submodule "src/external/man"]
 	path = src/external/man
 	url = ../darling-man.git
+[submodule "src/external/groff"]
+	path = src/external/groff
+	url = ../darling-groff.git
