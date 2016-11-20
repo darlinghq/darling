@@ -309,7 +309,7 @@ void MachOObject::loadSegments()
 			
 			if (errno == EPERM && uintptr_t(mappingAddr) < getMinMappingAddr())
 			{
-				ss << "This executable is not position independent and your vm.mmap_min_addr is too low to load it. ";
+				ss << "This executable is not position independent and your vm.mmap_min_addr is not low enough to load it. ";
 				ss << "As low as " << uintptr_t(mappingAddr) << " is needed.";
 			}
 			else
