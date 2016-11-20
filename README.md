@@ -57,11 +57,6 @@ cd build/x86-64
 cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86_64.cmake
 make
 make install
-
-# Now we go into src/lkm to build the kernel module
-cd ../../src/lkm
-make
-make install
 ````
 
 #### For running i386 OS X binaries
@@ -91,6 +86,23 @@ cd build/i386
 cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86.cmake
 make
 make install
+````
+
+#### Building and loading the kernel module (x86-64 and i386)
+
+````
+# Go into src/lkm to build the kernel module
+cd ../../src/lkm
+make
+make install
+````
+
+If this does not work (e.g. on newer Ubuntu versions), try the DKMS build:
+
+````
+# Go into src/lkm to build the kernel module
+cd ../../src/lkm
+sudo ./dkms.sh
 ````
 
 Loading the kernel module:
