@@ -551,8 +551,8 @@ void MachOObject::loadDependencies()
 	else
 	{
 		std::cerr << "Beware! This executable does not link against libSystem. "
-			"It is very likely a copy-protected executable which makes direct system calls.\n"
-			"Darling currently cannot support that.\n";
+			"It is very likely a Go binary or an otherwise non-standard executable that makes direct system calls.\n"
+			"Darling currently doesn't support that (#193).\n";
 	}
 }
 
