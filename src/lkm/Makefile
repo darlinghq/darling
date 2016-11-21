@@ -1,6 +1,8 @@
-ccflags-y := -I$(src)/../../kernel-include \
-		-I$(src)/../../platform-include \
-		-I$(src)/../libc/include \
+DARLING_SRC ?= $(src)
+
+ccflags-y := -I$(DARLING_SRC)/../../kernel-include \
+		-I$(DARLING_SRC)/../../platform-include \
+		-I$(DARLING_SRC)/../libc/include \
 		-DMACH_KERNEL_PRIVATE \
 		-DDARLING_DEBUG \
 		-D__LITTLE_ENDIAN__ \
@@ -32,7 +34,11 @@ else
 	PWD := $(shell pwd)
 default:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+
 endif
+
+all:
+	$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
 clean:
 	rm -f *.o *.ko
