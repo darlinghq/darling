@@ -60,3 +60,4 @@ add_library(edit SHARED ${edit_SRCS})
 target_link_libraries(edit PRIVATE system ncurses)
 
 install(TARGETS edit DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(FILES inputrc DESTINATION libexec/darling/etc)
