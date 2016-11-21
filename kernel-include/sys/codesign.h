@@ -50,6 +50,13 @@
 #define CS_OPS_PIDOFFSET	6	/* get offset of active Mach-o slice */
 #define CS_OPS_ENTITLEMENTS_BLOB 7	/* get entitlements blob */
 #define CS_OPS_MARKRESTRICT	8	/* set RESTRICT flag (sticky) */
+#define CS_OPS_SET_STATUS	9
+#define CS_OPS_BLOB			10
+#define CS_OPS_IDENTITY		11
+
+#define CS_OPS_SIGPUP_INSTALL	20
+#define CS_OPS_SIGPUP_DROP		21
+#define CS_OPS_SIGPUP_VALIDATE	22
 
 #ifndef KERNEL
 
