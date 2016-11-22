@@ -52,7 +52,7 @@ setup_prefix() {
     prefix_pkg="/tmp/prefix.$$.pkg"
 
     >&2 echo "Setting up prefix at $1"
-    >&2 echo 
+    >&2 echo
 
     mkdir -p "$1"
     rm -f "$1/darling-prefix"
@@ -83,7 +83,7 @@ setup_prefix() {
     ln -sf "../system-root/etc/group" "$1/etc/group"
     ln -sf "../system-root/etc/hosts" "$1/etc/hosts"
     ln -sf "../system-root/etc/localtime" "$1/etc/localtime" || true
-    
+
     mkdir -p "$1/usr/share"
 	rm -f "$1/usr/share/zoneinfo" 2>/dev/null || true
     ln -sf "../../system-root/usr/share/zoneinfo" "$1/usr/share/zoneinfo"
@@ -98,6 +98,9 @@ setup_prefix() {
     echo -n "$selfmtime" > "$1/.update-timestamp"
 
     install_pkg "org.darlinghq.pkg.OpenSSLCertificates"
+
+    >&2 echo "Building manpage database..."
+    "${dexec_path}" "${DPREFIX}/bin/bash" -c "/usr/libexec/makewhatis"
 
     >&2 echo "Prefix is ready."
 }
