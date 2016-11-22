@@ -99,6 +99,9 @@ setup_prefix() {
 
     install_pkg "org.darlinghq.pkg.OpenSSLCertificates"
 
+    >&2 echo "Building manpage database..."
+    exec "${dexec_path}" "${DPREFIX}/bin/bash" -c "/usr/libexec/makewhatis"
+
     >&2 echo "Prefix is ready."
 }
 
