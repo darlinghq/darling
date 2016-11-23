@@ -23,7 +23,14 @@ add_definitions(-Ddladdr=__darwin_dladdr)
 add_definitions(-DBUILDING_LIBC)
 
 # Hide warnings that get spammed
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-gnu-include-next -Wno-undef -Wno-conversion -Wno-unused-parameter -Wno-sign-conversion -Wno-macro-redefined ")
+add_definitions(
+	-Wno-gnu-include-next
+	-Wno-undef
+	-Wno-conversion
+	-Wno-unused-parameter
+	-Wno-sign-conversion
+	-Wno-macro-redefined
+)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
