@@ -174,3 +174,6 @@
 [submodule "src/external/openssh"]
 	path = src/external/openssh
 	url = ../darling-openssh.git
+[submodule "src/external/network_cmds"]
+	path = src/external/network_cmds
+	url = ../darling-network_cmds.git
