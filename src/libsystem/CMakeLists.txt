@@ -26,6 +26,13 @@ add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-Ddlsym=__darwin_dlsym)
 
+# Hide warnings
+add_definitions(
+	-Wno-implicit-function-declaration
+	-Wno-incompatible-pointer-types-discards-qualifiers
+	-Wno-incompatible-pointer-types
+)
+
 set(libsystem_sources
 	init.c
 	dummy.c
