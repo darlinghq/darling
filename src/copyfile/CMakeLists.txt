@@ -14,13 +14,19 @@ add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
+# Hide warnings
+add_definitions(
+	-Wno-parentheses
+	-Wno-int-conversion
+)
+
 set(copyfile_sources
 	copyfile.c
 	# xattr_flags.c # Doesn't build yet (XPC)
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(system_copyfile SHARED ${copyfile_sources})

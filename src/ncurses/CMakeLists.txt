@@ -14,6 +14,11 @@ add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-D _XOPEN_SOURCE_EXTENDED=1)
 add_definitions(-DTRACE)
 
+# Hide warnings
+add_definitions(
+	-Wno-format-security
+)
+
 add_subdirectory(ncurses)
 add_subdirectory(menu)
 add_subdirectory(panel)

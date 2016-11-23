@@ -13,6 +13,13 @@ add_definitions(-Dh_errno=__darwin_h_errno)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
+# Hide warnings
+add_definitions(
+	-Wno-tautological-pointer-compare
+	-Wno-absolute-value
+	-Wno-private-extern
+)
+
 set(resolv_sources
 	base64.c
 	dns_async.c
