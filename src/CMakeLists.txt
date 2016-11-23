@@ -128,6 +128,7 @@ if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(external/gnudiff)
 	add_subdirectory(launchd/src)
 	add_subdirectory(launchd/support)
+	add_subdirectory(external/openssh)
 endif (NOT DARLING_NO_EXECUTABLES)
 
 ######################

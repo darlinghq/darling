@@ -171,3 +171,6 @@
 [submodule "src/external/groff"]
 	path = src/external/groff
 	url = ../darling-groff.git
+[submodule "src/external/openssh"]
+	path = src/external/openssh
+	url = ../darling-openssh.git
