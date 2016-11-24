@@ -1,6 +1,7 @@
 #ifndef LINUX_SIGACTION_H
 #define LINUX_SIGACTION_H
 #include "duct_signals.h"
+#include "sigaltstack.h"
 
 #define BSD_SA_ONSTACK      0x0001
 #define BSD_SA_RESTART      0x0002
@@ -44,6 +45,8 @@ struct linux_siginfo
 	int si_signo;
 	int si_errno;
 	int si_code;
+	int si_pid;
+	int si_uid;
 
 	union
 	{
@@ -82,6 +85,108 @@ struct linux_sigaction
 };
 
 long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sigaction* osa);
+
+#ifdef __x86_64__
+typedef struct _fpstate {
+        unsigned short cwd, swd, ftw, fop;
+        unsigned long long rip, rdp;
+        unsigned mxcsr, mxcr_mask;
+        struct {
+                unsigned short significand[4], exponent, padding[3];
+        } _st[8];
+        struct {
+                unsigned element[4];
+        } _xmm[16];
+        unsigned padding[24];
+} *linux_fpregset_t;
+
+struct linux_gregset
+{
+	long long r8, r9, r10, r11, r12, r13, r14, r15, rdi, rsi, rbp, rbx;
+	long long rdx, rax, rcx, rsp, rip, efl;
+	short cs, gs, fs, __pad0;
+	long long err, trapno, oldmask, cr2;
+};
+
+#else // now the i386 version
+
+typedef struct _fpstate {
+        unsigned long cw, sw, tag, ipoff, cssel, dataoff, datasel;
+        struct {
+                unsigned short significand[4], exponent;
+        } _st[8];
+        unsigned long status;
+} *linux_fpregset_t;
+
+struct linux_gregset
+{
+	int gs, fs, es, ds, edi, esi, ebp, esp, ebx, edx, ecx, eax;
+	int trapno, err, eip, cs, efl, uesp;
+};
+#endif
+
+struct linux_mcontext
+{
+	struct linux_gregset gregs;
+	linux_fpregset_t fpregs;
+#ifdef __x86_64__
+	unsigned long long __reserved[8];
+#else
+	unsigned long oldmask, cr2;
+#endif
+	// +reserved
+};
+
+struct linux_ucontext
+{
+	unsigned long uc_flags;
+	struct linux_ucontext* uc_link;
+	struct linux_stack uc_stack;
+	struct linux_mcontext uc_mcontext;
+	linux_sigset_t uc_sigmask;
+	// linux_libc_fpstate fpregs_mem;
+};
+
+struct bsd_exception_state
+{
+	unsigned short trapno;
+	unsigned short cpu;
+	unsigned int err;
+	unsigned long faultvaddr;
+};
+
+struct bsd_thread_state
+{
+#ifdef __x86_64__
+	long long rax, rbx, rcx, rdx, rdi, rsi, rbp, rsp, r8, r9, r10;
+	long long r11, r12, r13, r14, r15, rip, rflags, cs, fs, gs;
+#else
+	int eax, ebx, ecx, edx, edi, esi, ebp, esp, ss, eflags;
+	int eip, cs, ds, es, fs, gs;
+#endif
+};
+
+struct bsd_float_state
+{
+	// TODO
+};
+
+struct bsd_mcontext
+{
+	struct bsd_exception_state es;
+	struct bsd_thread_state ss;
+	struct bsd_float_state fs;
+};
+
+struct bsd_ucontext
+{
+	int uc_onstack;
+	sigset_t uc_sigmask;
+	struct bsd_stack uc_stack;
+	struct bsd_ucontext* uc_link;
+	unsigned long uc_mcsize;
+	struct bsd_mcontext* uc_mcontext;
+};
 
 #endif
 
