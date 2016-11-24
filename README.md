@@ -159,3 +159,13 @@ Hello world
 
 Congratulations, you have just compiled and run your own Hello world application with Apple's toolchain.
 
+
+### AppKit
+
+AppKit is still highly expiramental and incomplete, but to work on it you need to configure CMake with `-DFRAMEWORK_APPKIT=1` and install some additional packages. 
+
+Ubuntu 16.04:
+```
+sudo apt install qt5-default qtquick1-5-dev qtscript5-dev qtdeclarative5-dev
+
+```
