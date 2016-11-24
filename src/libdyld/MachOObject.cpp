@@ -247,6 +247,19 @@ static const std::vector<Segment*>& getSegments(const MachO& mach) { return mach
 #	error Unknown __WORDSIZE value!
 #endif
 
+static std::string pathToSelf()
+{
+	char buf[4096];
+	int rd;
+	
+	rd = readlink("/proc/self/exe", buf, sizeof(buf)-1);
+	if (rd <= 0)
+		return std::string();
+	buf[rd] = 0;
+	
+	return std::string(buf);
+}
+
 void MachOObject::loadSegments()
 {
 	for (Segment* seg : getSegments(*m_file))
@@ -310,7 +323,8 @@ void MachOObject::loadSegments()
 			if (errno == EPERM && uintptr_t(mappingAddr) < getMinMappingAddr())
 			{
 				ss << "This executable is not position independent and your vm.mmap_min_addr is not low enough to load it. ";
-				ss << "As low as " << uintptr_t(mappingAddr) << " is needed.";
+				ss << "As low as " << uintptr_t(mappingAddr) << " is needed.\n";
+				ss << "This problem can be fixed by running 'setcap cap_sys_rawio=ep " << pathToSelf() << "' as root.\n";
 			}
 			else
 				ss << "Failed to mmap '" << m_file->filename() << "': " << strerror(errno);

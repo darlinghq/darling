@@ -33,11 +33,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <fstream>
 #include "dirstructure.h"
 #include <libdyld/VirtualPrefix.h>
+#include <sys/personality.h>
+#include <sys/mman.h>
+#include <errno.h>
 
 static void printHelp(const char* argv0);
 static bool isELF(const char* path);
 static std::string locateBundleExecutable(std::string bundlePath);
 static const char* findFakeArgv0(char* a0);
+static std::string pathToSelf();
 
 using namespace Darling;
 
@@ -118,6 +122,15 @@ int main(int argc, char** argv, char** envp)
 		else
 		{
 			MachOObject* obj;
+			
+			if (::mmap(0, 4096, PROT_READ|PROT_EXEC, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) != 0)
+			{
+				if (errno == EPERM)
+				{
+					std::cerr << "Cannot map page zero, some macOS apps may require this.\n";
+					std::cerr << "This problem can be fixed by running 'setcap cap_sys_rawio=ep " << pathToSelf() << "' as root.\n";
+				}
+			}
 
 			obj = new MachOObject(argv[1]);
 			if (!obj->isMainModule())
@@ -144,10 +157,23 @@ int main(int argc, char** argv, char** envp)
 	}
 }
 
+static std::string pathToSelf()
+{
+	char buf[4096];
+	int rd;
+	
+	rd = readlink("/proc/self/exe", buf, sizeof(buf)-1);
+	if (rd <= 0)
+		return std::string();
+	buf[rd] = 0;
+	
+	return std::string(buf);
+}
+
 static void printHelp(const char* argv0)
 {
 	std::cerr << "This is Darling dyld for " ARCH_NAME ", a dynamic loader for Mach-O executables.\n\n";
-	std::cerr << "Copyright (C) 2012-2015 Lubos Dolezel\n\n";
+	std::cerr << "Copyright (C) 2012-2016 Lubos Dolezel\n\n";
 
 	std::cerr << "Usage: " << argv0 << " program-path [arguments...]\n\n";
 
