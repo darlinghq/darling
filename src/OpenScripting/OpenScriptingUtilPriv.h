@@ -2,9 +2,9 @@
 #define OPENSCRIPTINGUTILPRIV_H_
 #include <CoreFoundation/CFURL.h>
 
-static inline BOOL OSAIsRecognizedExecutableURL(CFURLRef url, SInt32* error)
+static inline int OSAIsRecognizedExecutableURL(CFURLRef url, SInt32* error)
 {
-	return NO;
+	return 0;
 }
 
 #endif
