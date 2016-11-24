@@ -177,3 +177,6 @@
 [submodule "src/external/network_cmds"]
 	path = src/external/network_cmds
 	url = ../darling-network_cmds.git
+[submodule "src/external/bc"]
+	path = src/external/bc
+	url = ../darling-bc.git
