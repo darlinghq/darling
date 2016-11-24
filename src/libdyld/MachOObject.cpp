@@ -836,6 +836,16 @@ void* MachOObject::performBind(MachO::Bind* bind)
 			{
 				std::stringstream ss;
 				ss << "Symbol not found: " << bind->name;
+				
+				if (usesTwoLevelNamespace())
+				{
+					if (bind->ordinal > 0 && bind->ordinal <= m_dependencies.size())
+					{
+						LoadableObject* obj = m_dependencies[bind->ordinal-1];
+						ss << " (expected in " << obj->name() << ")";
+					}
+				}
+				
 				throw std::runtime_error(ss.str());
 			}
 		}
