@@ -9,7 +9,7 @@ __darling_bsd_syscall:
 	test	%r10, %r10
 	jz		.no_sys
 	# Re-push possible 7th and 8th arg
-	movq	8(%rsp), %r11
+	movq	24(%rsp), %r11
 	pushq	%r11
 	movq	24(%rsp), %r11
 	pushq	%r11
