@@ -100,9 +100,10 @@ static void ucontext_linux_to_bsd(const struct linux_ucontext* lc, struct bsd_uc
 	bm->ss.rflags = lc->uc_mcontext.gregs.efl;
 #else
 	copyreg(eax); copyreg(ebx); copyreg(ecx); copyreg(edx); copyreg(edi); copyreg(esi);
-	copyreg(ebp); copyreg(esp); copyreg(ss);
+	copyreg(ebp); copyreg(esp);
 	copyreg(eip); copyreg(cs); copyreg(ds); copyreg(es); copyreg(fs); copyreg(gs);
-	bm->ss.rflags = lc->uc_mcontext.gregs.efl;
+	bm->ss.eflags = lc->uc_mcontext.gregs.efl;
+	bm->ss.ss = 0;
 #endif
 	
 #undef copyreg
