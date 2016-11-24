@@ -1,5 +1,7 @@
 # Darling
 
+![Darling logo](http://darlinghq.org/img/darling250.png)
+
 Darling is a runtime environment for OS X applications.
 
 Please note that no GUI applications are supported at the moment.
