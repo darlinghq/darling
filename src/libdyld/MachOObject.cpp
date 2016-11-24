@@ -887,7 +887,7 @@ void* MachOObject::resolveSymbol(const std::string& name, int libraryOrdinal)
 	
 	if (name[0] != '_')
 	{
-		void* addr = nullptr;
+		addr = nullptr;
 		lookupDyldFunction(name.c_str(), &addr);
 		return addr;
 	}
@@ -915,7 +915,27 @@ void* MachOObject::resolveSymbol(const std::string& name, int libraryOrdinal)
 		}
 	}
 
-	return __darwin_dlsym(module, name.c_str() + 1);
+	addr = __darwin_dlsym(module, name.c_str() + 1);
+	
+	// ELF doesn't really support symbol re-exporting,
+	// and Apple likes to move symbols around. If we're using a two-level
+	// namespace, the symbol is not found, but a re-export is indicated,
+	// we try to find the symbol using RTLD_DEFAULT.
+	if (!addr && libraryOrdinal > 0)
+	{
+		std::string reexport;
+		
+		reexport = name.substr(1);
+		reexport += "$$reexport";
+		
+		if (__darwin_dlsym(module, reexport.c_str()) != nullptr)
+		{
+			std::cout << "Reexport confirmed\n";
+			addr = __darwin_dlsym(DARWIN_RTLD_DEFAULT, name.c_str() + 1);
+		}
+	}
+	
+	return addr;
 }
 
 void MachOObject::runInitializers()
