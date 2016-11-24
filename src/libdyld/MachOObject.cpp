@@ -548,9 +548,9 @@ void MachOObject::loadDependencies()
 
 	if (libSystem->refCount() > 1)
 		libSystem->delRef();
-	else
+	else if (isMainModule())
 	{
-		std::cerr << "Beware! This executable does not link against libSystem. "
+		std::cerr << "Beware! This executable (" << this->name() << ") does not link against libSystem. "
 			"It is very likely a Go binary or an otherwise non-standard executable that makes direct system calls.\n"
 			"Darling currently doesn't support that (#193).\n";
 	}
@@ -845,6 +845,8 @@ void* MachOObject::performBind(MachO::Bind* bind)
 						ss << " (expected in " << obj->name() << ")";
 					}
 				}
+				
+				ss << " when loading " << name();
 				
 				throw std::runtime_error(ss.str());
 			}
