@@ -23,6 +23,7 @@
 #include "../darling_task.h"
 #include "stub.h"
 #include <linux/sched.h>
+#include <linux/uaccess.h>
 #include "thread_act.h"
 
 struct thread_private
@@ -224,8 +225,56 @@ kern_return_t thread_info
 	mach_msg_type_number_t *thread_info_outCnt
 )
 {
-	UNIMPL_MIG_CALL();
-	return KERN_NOT_SUPPORTED;
+	mach_task_t* task;
+	darling_mach_port_right_t* right = NULL;
+	struct task_struct* ltask = NULL;
+	pid_t pid;
+	kern_return_t ret = KERN_SUCCESS;
+
+	task = darling_task_get_current();
+	ipc_space_lock(&task->namespace);
+
+	right = ipc_space_lookup_unlocked(&task->namespace, target_act);
+	if (right == NULL)
+	{
+		debug_msg("thread_info: right %d not found", target_act);
+		ret = KERN_INVALID_RIGHT;
+		goto err;
+	}
+	
+	pid = get_thread_pid(right->port);
+	ltask = pid_task(find_pid_ns(pid, &init_pid_ns), PIDTYPE_PID);
+	
+	if (ltask == NULL)
+	{
+		ret = KERN_FAILURE;
+		goto err;
+	}
+   
+	if (flavor == THREAD_IDENTIFIER_INFO)
+	{
+		thread_identifier_info_data_t data;
+		
+		data.thread_handle = ltask->pid;
+		data.dispatch_qaddr = 0;
+		
+		data.thread_id = data.thread_handle;
+		data.thread_id |= (ltask->start_time & 0xffffffff) << 32;
+		
+		memcpy(thread_info_out, &data, sizeof(data));
+		*thread_info_outCnt = THREAD_IDENTIFIER_INFO_COUNT;
+	}
+	else
+	{
+		debug_msg("Unsupported thread_info flavor: %d", flavor);
+		UNIMPL_MIG_CALL();
+		ret = KERN_NOT_SUPPORTED;
+	}
+	
+err:
+	ipc_space_unlock(&task->namespace);
+	
+	return ret;
 }
 
 kern_return_t thread_set_exception_ports

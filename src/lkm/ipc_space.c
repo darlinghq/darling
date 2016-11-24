@@ -68,6 +68,9 @@ mach_msg_return_t ipc_space_make_receive(ipc_namespace_t* space,
 	else
 		right = ipc_right_new(port, MACH_PORT_RIGHT_RECEIVE);
 	
+	// Replace with anon_inode_getfd(name, ops, priv, O_CLOEXEC)
+	// (..., fdget, fdput)
+	// for pollable fds (needed for kevent())
 	id = idr_alloc(&space->names, right, 1, -1, GFP_KERNEL);
 	if (id < 0)
 	{

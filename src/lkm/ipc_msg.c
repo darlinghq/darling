@@ -320,6 +320,7 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	mig_routine_t routine;
 	mach_msg_header_t* reply_msg;
 	mach_msg_return_t ret;
+	mach_port_t tmp;
 
 	subsystem = kmsg->target->port->server_port.subsystem;
 
@@ -382,8 +383,17 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 			kmsg->msg->msgh_id, kmsg->msg->msgh_size);
 
 	reply_msg->msgh_size = sizeof(mig_reply_error_t);
+	
+	// MIG generated code expects local and remote ports to be swapped
+	tmp = kmsg->msg->msgh_local_port;
+	kmsg->msg->msgh_local_port = kmsg->msg->msgh_remote_port;
+	kmsg->msg->msgh_remote_port = tmp;
 
 	routine(kmsg->msg, reply_msg);
+	
+	// Swap port numbers back, just to be consistent
+	kmsg->msg->msgh_remote_port = kmsg->msg->msgh_local_port;
+	kmsg->msg->msgh_local_port = tmp;
 
 	debug_msg("ipc_msg_deliver(): reply size: %d, ret = 0x%x\n",
 			reply_msg->msgh_size,
