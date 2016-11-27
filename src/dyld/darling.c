@@ -31,6 +31,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/mount.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
+#include <sys/utsname.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
 #include "darling.h"
 #include "darling-config.h"
 
@@ -48,6 +51,9 @@ int main(int argc, const char** argv)
 		return 1;
 	}
 	
+	if (loadKernelModule())
+		return 1;
+
 	/*if (geteuid() != 0)
 	{
 		missingSetuidRoot();
@@ -349,4 +355,60 @@ void checkPrefixOwner(const char* prefix)
 		fprintf(stderr, "You do not own the prefix directory.\n");
 		exit(1);
 	}
+}
+
+int isModuleLoaded()
+{
+	size_t len   = 0;
+	ssize_t read = 0;
+	char * line  = NULL;
+	FILE *fp     = NULL;
+
+	if ((fp = fopen("/proc/modules", "r")) == NULL)
+	{
+		fprintf(stderr, "Failure opening /proc/modules: %s\n", strerror(errno));
+		return 0;
+	}
+
+	while (!feof(fp))
+	{
+		read = getline(&line, &len, fp);
+		if (read > 0 && strstr(line, "darling_mach") != NULL)
+			return 1;
+	}
+
+	return 0;
+}
+
+int loadKernelModule()
+{
+	int fd;
+	char path[128];
+	struct utsname name;
+
+	if (isModuleLoaded())
+		return 0;
+
+	uname(&name);
+	sprintf(path, "/lib/modules/%s/kernel/misc/darling-mach.ko", name.release);
+	if (access(path, F_OK))
+	{
+		fprintf(stderr, "Cannot find kernel module at %s: %s\n", path, strerror(errno));
+		return 1;
+	}
+
+	fd = open(path, O_RDONLY|O_CLOEXEC);
+	if (fd < 0)
+	{
+		fprintf(stderr, "Cannot open kernel module\n");
+		return 1;
+	}
+
+	if (syscall(SYS_finit_module, fd, "", 0))
+	{
+		fprintf(stderr, "Cannot load kernel module: %s\n", strerror(errno));
+		return 1;
+	}
+
+	return 0;
 }

@@ -42,6 +42,8 @@ int darlingPreInit(void* arg);
 
 void checkPrefixOwner(const char* prefix);
 
+int isModuleLoaded(void);
+
+int loadKernelModule(void);
+
 #endif
-
-
