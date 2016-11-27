@@ -106,6 +106,7 @@ add_subdirectory(sandbox)
 add_subdirectory(Cocoa)
 add_subdirectory(external/file/file)
 add_subdirectory(external/libxpc)
+add_subdirectory(external/openssl_certificates)
 
 if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(external/shell_cmds)
