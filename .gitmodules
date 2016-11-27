@@ -180,3 +180,6 @@
 [submodule "src/external/bc"]
 	path = src/external/bc
 	url = ../darling-bc.git
+[submodule "src/external/openssl_certificates"]
+	path = src/external/openssl_certificates
+	url = ../darling-openssl_certificates.git
