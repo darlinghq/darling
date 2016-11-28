@@ -183,3 +183,9 @@
 [submodule "src/external/openssl_certificates"]
 	path = src/external/openssl_certificates
 	url = ../darling-openssl_certificates.git
+[submodule "src/external/IOKitUser"]
+	path = src/external/IOKitUser
+	url = ../darling-iokituser.git
+[submodule "src/external/IOStorageFamily"]
+	path = src/external/IOStorageFamily
+	url = ../darling-iostoragefamily.git
