@@ -46,4 +46,6 @@ int isModuleLoaded(void);
 
 int loadKernelModule(void);
 
+int unloadKernelModule(void);
+
 #endif

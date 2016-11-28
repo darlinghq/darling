@@ -51,15 +51,15 @@ int main(int argc, const char** argv)
 		return 1;
 	}
 	
-	if (loadKernelModule())
-		return 1;
-
 	/*if (geteuid() != 0)
 	{
 		missingSetuidRoot();
 		return 1;
 	}*/
 	
+	if (loadKernelModule())
+		return 1;
+
 	// Temporarily drop root privileges
 	g_originalUid = getuid();
 	seteuid(getuid());
@@ -116,6 +116,7 @@ int main(int argc, const char** argv)
 	}
 	
 	// TODO: Spawn the executable in the namespace, wait for it and return its exit code
+	unloadKernelModule();
 	return 0;
 }
 
@@ -407,6 +408,17 @@ int loadKernelModule()
 	if (syscall(SYS_finit_module, fd, "", 0))
 	{
 		fprintf(stderr, "Cannot load kernel module: %s\n", strerror(errno));
+		return 1;
+	}
+
+	return 0;
+}
+
+int unloadKernelModule()
+{
+	if(syscall(SYS_delete_module, "darling_mach", 0))
+	{
+		fprintf(stderr, "Cannot unload kernel module: %s\n", strerror(errno));
 		return 1;
 	}
 
