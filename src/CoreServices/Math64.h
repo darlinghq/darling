@@ -22,7 +22,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "MacTypes.h"
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 int64_t S64Max();
 int64_t S64Min();
@@ -78,7 +80,9 @@ uint64_t LongDoubleToUInt64(long double v);
 int64_t UInt64ToSInt64(uint64_t v);
 uint64_t SInt64ToUInt64(int64_t v);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

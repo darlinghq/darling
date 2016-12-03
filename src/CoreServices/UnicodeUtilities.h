@@ -23,11 +23,12 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "MacLocales.h"
 #include <stdint.h>
 
-extern "C"
-{
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef void* CollatorRef;
-enum : uint32_t
+enum //: uint32_t
 {
 	kUCCollateComposeInsensitiveMask = 0x2,
 	kUCCollateWidthInsensitiveMask = 0x4,
@@ -53,6 +54,8 @@ OSStatus UCCompareTextDefault(uint32_t options, const UniChar* text1, unsigned l
 
 OSStatus UCCompareTextNoLocale(uint32_t options, const UniChar* text1, unsigned long text1len, const UniChar* text2, unsigned long text2len, Boolean* equiv, int32_t* order);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif

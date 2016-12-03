@@ -20,7 +20,9 @@ struct LaunchParamBlockRec
 enum { kNoProcess = 0, kSystemProcess = 1, kCurrentProcess = 2 };
 enum { procNotFound = -600 };
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 OSStatus CopyProcessName(const ProcessSerialNumber* psn, CFStringRef* name);
 void ExitToShell();
@@ -29,11 +31,11 @@ OSErr GetFrontProcess(ProcessSerialNumber* psn);
 OSErr GetNextProcess(ProcessSerialNumber* psn);
 OSStatus GetProcessBundleLocation(const ProcessSerialNumber* psn, FSRef* location);
 OSStatus GetProcessForPID(pid_t pid, ProcessSerialNumber* psn);
-OSErr GetProcessInformation(const ProcessSerialNumber* psn, ProcessInfoRec* pi);
+OSErr GetProcessInformation(const ProcessSerialNumber* psn, struct ProcessInfoRec* pi);
 OSStatus GetProcessPID(const ProcessSerialNumber* psn, pid_t* pid);
 Boolean IsProcessVisible(const ProcessSerialNumber* psn);
 OSErr KillProcess(const ProcessSerialNumber* psn);
-OSErr LaunchApplication(LaunchParamBlockRec* launch);
+OSErr LaunchApplication(struct LaunchParamBlockRec* launch);
 CFDictionaryRef ProcessInformationCopyDictionary(const ProcessSerialNumber *PSN, UInt32 infoToReturn);
 OSErr SameProcess(const ProcessSerialNumber* psn1, const ProcessSerialNumber* psn2, Boolean* result);
 OSErr SetFrontProcess(const ProcessSerialNumber* psn);
@@ -46,6 +48,8 @@ OSErr WakeUpProcess(const ProcessSerialNumber* psn);
 // extern CFStringRef kCFBundleNameKey;
 // extern CFStringRef kCFBundleIdentifierKey;
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif

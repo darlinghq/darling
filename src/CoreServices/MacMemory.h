@@ -3,8 +3,9 @@
 #include <stddef.h>
 #include "MacTypes.h"
 
-extern "C"
-{
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void BlockMove(const void* src, void* dst, size_t count);
 void BlockMoveData(const void* src, void* dst, size_t count);
@@ -19,6 +20,8 @@ void DiposePtr(Ptr p);
 void DisposeHandle(Handle handle);
 // and other crap with relocatable memory blocks etc.
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif

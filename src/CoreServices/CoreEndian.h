@@ -21,8 +21,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define COREENDIAN_H
 #include "MacTypes.h"
 
-extern "C"
-{
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 UInt16 Endian16_Swap(UInt16 value);
 UInt32 Endian32_Swap(UInt32 value);
@@ -76,6 +77,8 @@ OSStatus CoreEndianFlipData(uint32_t dataDomain, uint32_t dataType, int16_t id, 
 OSStatus CoreEndianInstallFlipper(uint32_t dataDomain, uint32_t dataType, CEFlipper flipper, void* opaque);
 OSStatus CoreEndianGetFlipper(uint32_t dataDomain, uint32_t dataType, CEFlipper* flipper, void** opaque);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif

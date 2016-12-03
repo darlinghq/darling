@@ -3,7 +3,10 @@
 #include <stdint.h>
 #include <CoreFoundation/CFBase.h>
 
+#ifdef __cplusplus
 class _StringHandle;
+#endif
+
 #if 0 // declared in CFBase.h
 typedef int8_t SInt8;
 typedef uint8_t UInt8;

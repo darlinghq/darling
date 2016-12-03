@@ -2,8 +2,9 @@
 #define TEXTUTILS_H
 #include "MacTypes.h"
 
-extern "C"
-{
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // There are many functions missing, but will be added as-needed.
 // There is no point in spending time implementing all this ancient stuff.
@@ -23,6 +24,8 @@ StringPtr C2PStr(Ptr str);
 char* p2cstr(StringPtr str);
 Ptr P2CStr(StringPtr str);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif

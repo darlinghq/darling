@@ -21,6 +21,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define FIXMATH_H
 #include "MacTypes.h"
 #include <stdint.h>
+
+#ifdef __cplusplus
 #include <limits>
 
 namespace Darling
@@ -44,6 +46,7 @@ namespace Darling
 }
 
 extern "C" {
+#endif
 
 float FixedToFloat(Fixed f);
 Fixed FloatToFixed(float f);
@@ -85,7 +88,9 @@ wide* WideBitShift(wide* dst, int32_t shift);
 
 UnsignedFixed UnsignedFixedMulDiv(UnsignedFixed a, UnsignedFixed mul, UnsignedFixed div);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

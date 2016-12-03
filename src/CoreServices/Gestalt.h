@@ -29,7 +29,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define gestaltPowerPC 2
 #define gestaltIntel 10
 
-extern "C" OSStatus Gestalt(uint32_t type, int* value);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+OSStatus Gestalt(uint32_t type, int* value);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

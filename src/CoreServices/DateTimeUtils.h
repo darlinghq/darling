@@ -21,7 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef UTCUTILS_H
 #define UTCUTILS_H
 #include <stdint.h>
-#include <ctime>
+#include <time.h>
 #include <CoreFoundation/CFDate.h>
 #include "MacErrors.h"
 
@@ -37,30 +37,35 @@ struct UTCDateTime
 };
 #pragma pack()
 
-typedef UTCDateTime LocalDateTime;
-typedef UTCDateTime* UTCDateTimePtr;
-typedef UTCDateTime** UTCDateTimeHandle;
+typedef struct UTCDateTime LocalDateTime;
+typedef struct UTCDateTime* UTCDateTimePtr;
+typedef struct UTCDateTime** UTCDateTimeHandle;
 typedef LocalDateTime* LocalDateTimePtr;
 typedef LocalDateTime** LocalDateTimeHandle;
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
-OSErr UCConvertUTCDateTimeToCFAbsoluteTime(const UTCDateTime* in, CFAbsoluteTime* out);
+OSErr UCConvertUTCDateTimeToCFAbsoluteTime(const UTCDateTimePtr in, CFAbsoluteTime* out);
 OSErr UCConvertSecondsToCFAbsoluteTime(uint32_t seconds, CFAbsoluteTime* out);
 OSErr UCConvertLongDateTimeToCFAbsoluteTime(int64_t seconds, CFAbsoluteTime* out);
-OSErr UCConvertCFAbsoluteTimeToUTCDateTime(CFAbsoluteTime in, UTCDateTime* out);
+OSErr UCConvertCFAbsoluteTimeToUTCDateTime(CFAbsoluteTime in, UTCDateTimePtr out);
 OSErr UCConvertCFAbsoluteTimeToSeconds(CFAbsoluteTime in, uint32_t* out);
 OSErr UCConvertCFAbsoluteTimeToLongDateTime(CFAbsoluteTime in, int64_t* out);
 
 // Seconds since 1.1.1904
 void GetDateTime(unsigned long* secs);
 
+#ifdef __cplusplus
 }
 
 namespace Darling
 {
 	UTCDateTime time_tToUTC(time_t t);
 }
+
+#endif
 
 #endif
 

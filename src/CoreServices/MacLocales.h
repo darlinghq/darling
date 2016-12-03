@@ -52,15 +52,16 @@ struct LocaleAndVariant
 #define kTextScriptDontCare -128
 #define kTextRegionDontCare -128
 
-extern "C"
-{
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 OSStatus LocaleRefFromLangOrRegionCode(LangCode langCode, RegionCode regionCode, LocaleRef* refOut);
 OSStatus LocaleRefFromLocaleString(const char* str, LocaleRef* refOut);
 OSStatus LocaleRefGetPartString(LocaleRef ref, uint32_t partMask, unsigned long maxStringLen, char* stringOut);
 OSStatus LocaleStringToLangAndRegionCodes(const char* name, LangCode* langCode, RegionCode* regionCode);
 OSStatus LocaleOperationCountLocales(LocaleOperationClass cls, unsigned long* count);
-OSStatus LocaleOperationGetLocales(LocaleOperationClass cls, unsigned long max, unsigned long* countOut, LocaleAndVariant* out);
+OSStatus LocaleOperationGetLocales(LocaleOperationClass cls, unsigned long max, unsigned long* countOut, struct LocaleAndVariant* out);
 OSStatus LocaleGetName(LocaleRef ref, LocaleOperationVariant variant, uint32_t nameMask, LocaleRef refDisplay, unsigned long maxLen, unsigned long* lenOut, Utf16Char* displayName);
 OSStatus LocaleCountNames(LocaleRef ref, LocaleOperationVariant variant, uint32_t nameMask, unsigned long* countOut);
 OSStatus LocaleGetIndName(LocaleRef ref, LocaleOperationVariant variant, uint32_t nameMask, unsigned long index, unsigned long maxLen, unsigned long* lenOut, Utf16Char* displayName, LocaleRef* displayLocale);
@@ -69,7 +70,9 @@ OSStatus LocaleOperationGetName(LocaleOperationClass cls, LocaleRef ref, unsigne
 OSStatus LocaleOperationCountNames(LocaleOperationClass cls, unsigned long* count);
 OSStatus LocaleOperationGetIndName(LocaleOperationClass cls, unsigned long index, unsigned long maxLen, unsigned long* lenOut, Utf16Char* displayName, LocaleRef* displayLocale);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

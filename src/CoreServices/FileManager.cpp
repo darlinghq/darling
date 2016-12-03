@@ -354,42 +354,6 @@ bool hasgid(gid_t gid)
 	return std::find(gids, gids+count, gid) != (gids+count);
 }
 
-
-Boolean CFURLGetFSRef(CFURLRef urlref, FSRef* fsref)
-{
-	std::unique_ptr<char[]> buf;
-	CFIndex len;
-	CFStringRef sref = CFURLCopyFileSystemPath(urlref, kCFURLPOSIXPathStyle);
-
-	if (!sref)
-		return false;
-
-	len = CFStringGetMaximumSizeForEncoding(CFStringGetLength(sref), kCFStringEncodingUTF8);
-	buf.reset(new char[len]);
-
-	if (!CFStringGetCString(sref, buf.get(), len, kCFStringEncodingUTF8))
-		return false;
-
-	CFRelease(sref);
-
-	return FSPathMakeRef((uint8_t*) buf.get(), fsref, nullptr) == noErr;
-}
-
-CFURLRef CFURLCreateFromFSRef(CFAllocatorRef alloc, FSRef* location)
-{
-	std::string path;
-	struct stat st;
-	Boolean isDir = false;
-	
-	if (!FSRefMakePath(location, path))
-		return nullptr;
-	
-	if (::stat(path.c_str(), &st))
-		isDir = S_ISDIR(st.st_mode);
-	
-	return CFURLCreateFromFileSystemRepresentation(alloc, (const UInt8*) path.c_str(), path.size(), isDir);
-}
-
 static std::string getUserDirsConfigPath()
 {
 	std::stringstream ss;

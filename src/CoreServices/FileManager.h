@@ -27,9 +27,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "MacTypes.h"
 #include <CoreFoundation/CFURL.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
-constexpr size_t FSRef_MAX_DEPTH = 80 / sizeof(ino_t);
+#define FSRef_MAX_DEPTH (80 / sizeof(ino_t))
 
 struct FSRef
 {
@@ -45,7 +47,7 @@ struct FSRef
 		ino_t inodes[FSRef_MAX_DEPTH];
 	};
 };
-typedef FSRef* FSRefPtr;
+typedef struct FSRef* FSRefPtr;
 
 struct HFSUniStr255
 {
@@ -54,7 +56,7 @@ struct HFSUniStr255
 };
 struct FSSpec;
 
-typedef FSSpec* FSSpecPtr;
+typedef struct FSSpec* FSSpecPtr;
 
 struct FSPermissionInfo
 {
@@ -75,16 +77,16 @@ struct FSCatalogInfo
 	uint8_t userPrivileges;
 	uint8_t reserved1;
 	uint8_t reserved2;
-	UTCDateTime createDate;
-	UTCDateTime contentModDate;
-	UTCDateTime attributeModDate;
-	UTCDateTime accessDate;
-	UTCDateTime backupDate;
+	struct UTCDateTime createDate;
+	struct UTCDateTime contentModDate;
+	struct UTCDateTime attributeModDate;
+	struct UTCDateTime accessDate;
+	struct UTCDateTime backupDate;
 
 	union
 	{
 		uint32_t permissions[4];
-		FSPermissionInfo fsPermissionInfo;
+		struct FSPermissionInfo fsPermissionInfo;
 	};
 
 	uint8_t finderInfo[16];
@@ -117,17 +119,17 @@ struct FSRefParam
 	SInt16 reserved1;
 	UInt8 reserved2;
 	UInt8 reserved3;
-	const FSRef* ref;
+	const FSRefPtr ref;
 	FSCatalogInfoBitmap whichInfo;
-	FSCatalogInfo* catInfo;
+	struct FSCatalogInfo* catInfo;
 	UniCharCount nameLength;
 	const UniChar* name;
 	long ioDirID;
-	FSSpec* spec;
-	FSRef* parentRef;
-	FSRef* newRef;
+	FSSpecPtr spec;
+	FSRefPtr parentRef;
+	FSRefPtr newRef;
 	TextEncoding textEncodingHint;
-	HFSUniStr255* outName;
+	struct HFSUniStr255* outName;
 };
 
 struct CatPositionRec
@@ -149,7 +151,7 @@ struct FSForkIOParam
 	SInt16 forkRefNum;
 	UInt8 reserved3;
 	SInt8 permissions;
-	const FSRef * ref;
+	const FSRefPtr ref;
 	Ptr buffer;
 	UInt32 requestCount;
 	UInt32 actualCount;
@@ -159,8 +161,8 @@ struct FSForkIOParam
 	UInt64 allocationAmount;
 	UniCharCount forkNameLength;
 	const UniChar * forkName;
-	CatPositionRec forkIterator;
-	HFSUniStr255 * outForkName;
+	struct CatPositionRec forkIterator;
+	struct HFSUniStr255* outForkName;
 };
 
 enum
@@ -215,26 +217,28 @@ enum
 	kTemporaryFolderType = 'temp'
 };
 
-OSStatus FSPathMakeRef(const uint8_t* path, FSRef* fsref, Boolean* isDirectory);
-OSStatus FSPathMakeRefWithOptions(const uint8_t* path, long options, FSRef* fsref, Boolean* isDirectory);
-OSStatus FSRefMakePath(const FSRef* fsref, uint8_t* path, uint32_t maxSize);
-Boolean CFURLGetFSRef(CFURLRef urlref, FSRef* fsref);
-CFURLRef CFURLCreateFromFSRef(CFAllocatorRef alloc, FSRef* location);
-OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSRef* location);
+OSStatus FSPathMakeRef(const uint8_t* path, struct FSRef* fsref, Boolean* isDirectory);
+OSStatus FSPathMakeRefWithOptions(const uint8_t* path, long options, struct FSRef* fsref, Boolean* isDirectory);
+OSStatus FSRefMakePath(const struct FSRef* fsref, uint8_t* path, uint32_t maxSize);
+Boolean CFURLGetFSRef(CFURLRef urlref, struct FSRef* fsref); // in CF
+CFURLRef CFURLCreateFromFSRef(CFAllocatorRef alloc, struct FSRef* location); // --> in CF
+OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, struct FSRef* location);
 
-OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* infoOut, HFSUniStr255* nameOut, FSSpecPtr fsspec, FSRef* parentDir);
+OSStatus FSGetCatalogInfo(const FSRefPtr ref, uint32_t infoBits, struct FSCatalogInfo* infoOut, struct HFSUniStr255* nameOut, FSSpecPtr fsspec, FSRefPtr parentDir);
 
-OSErr PBCreateDirectoryUnicodeSync(FSRefParam* paramBlock);
-OSErr PBCreateFileUnicodeSync(FSRefParam* paramBlock);
-OSErr PBGetCatalogInfoSync(FSRefParam *paramBlock);
-OSErr PBMakeFSRefUnicodeSync(FSRefParam *paramBlock);
-OSErr PBOpenForkSync(FSForkIOParam *paramBlock);
-OSErr PBReadForkSync(FSForkIOParam *paramBlock);
-OSErr PBWriteForkSync(FSForkIOParam *paramBlock);
-OSErr PBIterateForksSync(FSForkIOParam *paramBlock);
-OSErr PBCloseForkSync(FSForkIOParam *paramBlock);
+OSErr PBCreateDirectoryUnicodeSync(struct FSRefParam* paramBlock);
+OSErr PBCreateFileUnicodeSync(struct FSRefParam* paramBlock);
+OSErr PBGetCatalogInfoSync(struct FSRefParam *paramBlock);
+OSErr PBMakeFSRefUnicodeSync(struct FSRefParam *paramBlock);
+OSErr PBOpenForkSync(struct FSForkIOParam *paramBlock);
+OSErr PBReadForkSync(struct FSForkIOParam *paramBlock);
+OSErr PBWriteForkSync(struct FSForkIOParam *paramBlock);
+OSErr PBIterateForksSync(struct FSForkIOParam *paramBlock);
+OSErr PBCloseForkSync(struct FSForkIOParam *paramBlock);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

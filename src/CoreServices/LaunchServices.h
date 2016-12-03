@@ -7,7 +7,9 @@
 #include <CoreFoundation/CFArray.h>
 #include <CoreFoundation/CFURL.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 typedef OptionBits LSInitializeFlags;
 typedef OptionBits LSLaunchFlags;
@@ -59,7 +61,9 @@ OSStatus LSSetExtensionHiddenForURL(CFURLRef inURL, Boolean hide);
 
 // TODO: many other functions
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 
