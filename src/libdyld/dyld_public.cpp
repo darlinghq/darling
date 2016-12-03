@@ -353,7 +353,7 @@ static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 	if (cbdata->info->dwarf_section) // we already have a match
 		return 0;
 
-	//std::cout << "Looking into " << info->dlpi_name << std::endl;
+	// std::cout << "Looking into " << info->dlpi_name << std::endl;
 
 	if (size < offsetof(struct dl_phdr_info, dlpi_phnum))
 		return 0;
@@ -366,6 +366,15 @@ static int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
 		{
 			void* from = reinterpret_cast<void*>(uintptr_t(info->dlpi_addr) + uintptr_t(phdr->p_vaddr));
 			void* to = reinterpret_cast<char*>(from) + phdr->p_memsz;
+			
+			// If _dyld_find_unwind_sections() has been called with an address that belongs
+			// to this library (libdyld.so), then it means no handler was found inside the application
+			// that is being executed.
+			// In this case, we must not allow the exception to descend into libdyld.so.
+			// It wouldn't be correct and it would crash anyway (due to the personality function for
+			// libdyld.so calling _Unwind functions from a different unwinding library).
+			if (from < reinterpret_cast<void*>(dlCallback) && to > reinterpret_cast<void*>(dlCallback))
+				return 0;
 
 			if (cbdata->addr >= from && cbdata->addr < to)
 				addrMatch = true;
