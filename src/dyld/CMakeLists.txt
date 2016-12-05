@@ -16,7 +16,7 @@ set(dyld_SRCS
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ggdb -O0")
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 #SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # Needed because libdyld references pthread funcs in libsystem_c.so
@@ -37,13 +37,21 @@ add_executable(dyld-bin ${dyld_SRCS})
 set_target_properties(dyld-bin PROPERTIES OUTPUT_NAME dyld${SUFFIX})
 target_link_libraries(dyld-bin dyld darling-util mach-o)
 
+if (NEW_DARLING)
+	add_executable(darling darling.c)
+endif (NEW_DARLING)
+
 if (NOT DARLING_NO_EXECUTABLES)
 	add_executable(dyldd dyldd.cpp)
 	target_link_libraries(dyldd dyld darling-util mach-o)
 	install(TARGETS dyldd DESTINATION bin)
-    install(PROGRAMS darling DESTINATION bin
-                PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ
-                GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+	if (NEW_DARLING)
+		install(TARGETS darling DESTINATION bin)
+	else (NEW_DARLING)
+    		install(PROGRAMS darling DESTINATION bin
+                	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ
+                	GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+	endif(NEW_DARLING)
 	add_library(dexe_startup STATIC darling-so-start.S)
 endif (NOT DARLING_NO_EXECUTABLES)
 
