@@ -6,6 +6,17 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+add_definitions(
+	-Wno-macro-redefined
+	-Wno-shift-negative-value
+	-Wno-int-conversion
+	-Wno-format
+	-Wno-tautological-compare
+	-Wno-deprecated-declarations
+	-Wextra-tokens
+	-Wpointer-bool-conversion
+	-Wno-implicit-function-declaration
+)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/libdispatch/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/libdispatch/private)
