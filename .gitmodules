@@ -189,3 +189,6 @@
 [submodule "src/external/IOStorageFamily"]
 	path = src/external/IOStorageFamily
 	url = ../darling-iostoragefamily.git
+[submodule "src/external/openpam"]
+	path = src/external/openpam
+	url = ../darling-openpam.git
