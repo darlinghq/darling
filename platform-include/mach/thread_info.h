@@ -69,6 +69,8 @@
 #ifndef	_MACH_THREAD_INFO_H_
 #define _MACH_THREAD_INFO_H_
 
+#define TH_FLAGS_GLOBAL_FORCED_IDLE 0x4
+
 #include <mach/boolean.h>
 #include <mach/policy.h>
 #include <mach/time_value.h>

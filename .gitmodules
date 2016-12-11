@@ -192,3 +192,6 @@
 [submodule "src/external/openpam"]
 	path = src/external/openpam
 	url = ../darling-openpam.git
+[submodule "src/external/top"]
+	path = src/external/top
+	url = ../darling-top.git
