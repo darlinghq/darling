@@ -24,6 +24,9 @@
 
 #define QTN_NOT_QUARANTINED (-1)
 
+#define QTN_FLAG_SANDBOX 1
+#define QTN_FLAG_HARD 2
+
 typedef struct _qtn_file_s *qtn_file_t;
 
 extern qtn_file_t _qtn_file_alloc();
