@@ -49,6 +49,10 @@ extern const char *_qtn_error(int err);
 
 extern const char *_qtn_xattr_name;
 
+extern int __esp_enabled();
+extern int __esp_check_ns(const char *a, void *b);
+extern int __esp_notify_ns(const char *a, void *b);
+
 #define QTN_SERIALIZED_DATA_MAX 4096
 
 #define qtn_file_alloc _qtn_file_alloc

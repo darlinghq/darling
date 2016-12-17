@@ -101,3 +101,17 @@ uint32_t _qtn_file_get_flags(qtn_file_t file)
 	return 0;
 }
 
+int __esp_enabled()
+{
+        return QTN_NOT_QUARANTINED;
+}
+
+int __esp_check_ns(const char *a, void *b)
+{
+        return QTN_NOT_QUARANTINED;
+}
+
+int __esp_notify_ns(const char *a, void *b)
+{
+        return QTN_NOT_QUARANTINED;
+}
