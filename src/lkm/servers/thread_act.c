@@ -24,6 +24,7 @@
 #include "stub.h"
 #include <linux/sched.h>
 #include <linux/uaccess.h>
+#include <linux/version.h>
 #include "thread_act.h"
 
 struct thread_private
@@ -259,8 +260,11 @@ kern_return_t thread_info
 		data.dispatch_qaddr = 0;
 		
 		data.thread_id = data.thread_handle;
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,16,0)
 		data.thread_id |= (ltask->start_time & 0xffffffff) << 32;
-		
+#else
+	        data.thread_id |= (ltask->start_time.tv_sec & 0xffffffff) << 32;
+#endif
 		memcpy(thread_info_out, &data, sizeof(data));
 		*thread_info_outCnt = THREAD_IDENTIFIER_INFO_COUNT;
 	}
