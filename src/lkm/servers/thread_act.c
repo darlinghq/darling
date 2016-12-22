@@ -260,7 +260,7 @@ kern_return_t thread_info
 		data.dispatch_qaddr = 0;
 		
 		data.thread_id = data.thread_handle;
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,16,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
 		data.thread_id |= (ltask->start_time & 0xffffffff) << 32;
 #else
 	        data.thread_id |= (ltask->start_time.tv_sec & 0xffffffff) << 32;
