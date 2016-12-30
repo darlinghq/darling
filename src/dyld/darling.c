@@ -229,6 +229,8 @@ void setupChild(const char *curPath)
 	char buffer1[4096];
 	char buffer2[4096];
 
+	setenv("DPREFIX", "/", 1);
+
 	setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin", 1);
 
 	sscanf(getenv("HOME"), "/home/%4096s", buffer1);
