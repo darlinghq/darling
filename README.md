@@ -61,6 +61,15 @@ make
 make install
 ````
 
+To build the new, experimental `darling` executable:
+
+````
+cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86_64.cmake -DNEW_DARLING=TRUE
+make
+make install
+chmod +s $(which darling)
+````
+
 #### For running i386 OS X binaries
 
 <a href="http://teamcity.dolezel.info/viewType.html?buildTypeId=Darling_DebianStableX8664&guest=1">
