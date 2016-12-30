@@ -158,7 +158,7 @@ pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
 		exit(1);
 	}
 
-	// Calling setns() with a PID namespace doesn't move our process  into it,
+	// Calling setns() with a PID namespace doesn't move our process into it,
 	// but our child process will be spawned inside the namespace
 	if (setns(fdNS, CLONE_NEWPID) != 0)
 	{
@@ -728,10 +728,10 @@ void checkPrefixOwner()
 
 int isModuleLoaded()
 {
-	size_t len   = 0;
+	size_t len = 0;
 	ssize_t read = 0;
-	char * line  = NULL;
-	FILE *fp     = NULL;
+	char * line = NULL;
+	FILE *fp = NULL;
 
 	if ((fp = fopen("/proc/modules", "r")) == NULL)
 	{
