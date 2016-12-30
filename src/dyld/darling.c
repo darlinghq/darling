@@ -590,7 +590,7 @@ void setupPrefix()
 	createDir(path);
 
 	snprintf(path, sizeof(path), "%s/var/run/syslog", prefix);
-	if (symlink("system-root/dev/log", path) != 0)
+	if (symlink("../../system-root/dev/log", path) != 0)
 	{
 		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
 		exit(1);
