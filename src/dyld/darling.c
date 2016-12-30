@@ -195,7 +195,7 @@ pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
 		}
 		close(fdNS);
 
-		snprintf(pathNS, sizeof(pathNS), "/proc/%d/ns/user", pidInit);
+		snprintf(pathNS, sizeof(pathNS), SYSTEM_ROOT "/proc/%d/ns/user", pidInit);
 		fdNS = open(pathNS, O_RDONLY);
 		if (fdNS < 0)
 		{
@@ -317,6 +317,7 @@ pid_t spawnInitProcess(void)
 		// The child
 
 		char *opts;
+		char putOld[4096];
 
 		// Since overlay cannot be mounted inside user namespaces, we have to setup a new mount namespace
 		// and do the mount while we can be root
@@ -334,7 +335,7 @@ pid_t spawnInitProcess(void)
 			exit(1);
 		}
 
-		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 50);
+		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 100);
 		sprintf(opts, "lowerdir=%s,upperdir=%s,workdir=%s.workdir", LIBEXEC_PATH, prefix, prefix);
 
 		// Mount overlay onto our prefix
@@ -345,6 +346,14 @@ pid_t spawnInitProcess(void)
 		}
 
 		free(opts);
+
+		snprintf(putOld, sizeof(putOld), "%s" SYSTEM_ROOT, prefix);
+
+		if (syscall(SYS_pivot_root, prefix, putOld) != 0)
+		{
+			fprintf(stderr, "Cannot pivot_root: %s\n", strerror(errno));
+			exit(1);
+		}
 
 		// Drop the privileges
 		setresuid(g_originalUid, g_originalUid, g_originalUid);
@@ -553,11 +562,7 @@ void setupPrefix()
 	createDir(prefix);
 
 	snprintf(path, sizeof(path), "%s" SYSTEM_ROOT, prefix);
-	if (symlink("/", path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
+	createDir(path);
 
 	snprintf(path, sizeof(path), "%s/dev", prefix);
 	if (symlink(SYSTEM_ROOT "/dev" + 1, path) != 0)
