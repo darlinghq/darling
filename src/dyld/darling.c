@@ -37,6 +37,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling.h"
 #include "darling-config.h"
 
+// Path where the system root gets "mounted" inside the prefix
+#define SYSTEM_ROOT "/system-root"
+
 const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
 uid_t g_originalUid, g_originalGid;
@@ -95,7 +98,7 @@ int main(int argc, const char** argv)
 			argv_child[i] = argv[i];
 		argv_child[argc] = NULL;
 
-		pidChild = spawnChild(pidInit, "/usr/local/bin/dyld", argv_child);
+		pidChild = spawnChild(pidInit, DYLD_PATH, argv_child);
 	}
 	else
 	{
@@ -115,11 +118,11 @@ int main(int argc, const char** argv)
 			// Overwrite the last whitespace
 			*(to - 1) = '\0';
 
-			pidChild = spawnChild(pidInit, "/usr/local/bin/dyld",
+			pidChild = spawnChild(pidInit, DYLD_PATH,
 				(const char *[5]) {"dyld", path, "-c", buffer, NULL});
 		}
 		else
-			pidChild = spawnChild(pidInit, "/usr/local/bin/dyld",
+			pidChild = spawnChild(pidInit, DYLD_PATH,
 				(const char *[3]) {"dyld", path, NULL});
 	}
 
@@ -245,10 +248,10 @@ void setupChild(const char *curPath)
 	}
 	else
 	{
-		snprintf(buffer2, sizeof(buffer2), "/system-root%s", curPath);
+		snprintf(buffer2, sizeof(buffer2), SYSTEM_ROOT "%s", curPath);
 		setenv("PWD", buffer2, 1);
 
-		snprintf(buffer2, sizeof(buffer2), "%s/system-root%s", prefix, curPath);
+		snprintf(buffer2, sizeof(buffer2), "%s" SYSTEM_ROOT "%s", prefix, curPath);
 		chdir(buffer2);
 	}
 }
@@ -549,7 +552,7 @@ void setupPrefix()
 
 	createDir(prefix);
 
-	snprintf(path, sizeof(path), "%s/system-root", prefix);
+	snprintf(path, sizeof(path), "%s" SYSTEM_ROOT, prefix);
 	if (symlink("/", path) != 0)
 	{
 		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
@@ -557,21 +560,21 @@ void setupPrefix()
 	}
 
 	snprintf(path, sizeof(path), "%s/dev", prefix);
-	if (symlink("system-root/dev", path) != 0)
+	if (symlink(SYSTEM_ROOT "/dev" + 1, path) != 0)
 	{
 		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
 		exit(1);
 	}
 
 	snprintf(path, sizeof(path), "%s/tmp", prefix);
-	if (symlink("system-root/tmp", path) != 0)
+	if (symlink(SYSTEM_ROOT "/tmp" + 1, path) != 0)
 	{
 		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
 		exit(1);
 	}
 
 	snprintf(path, sizeof(path), "%s/Users", prefix);
-	if (symlink("system-root/home", path) != 0)
+	if (symlink(SYSTEM_ROOT "/home" + 1, path) != 0)
 	{
 		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
 		exit(1);
@@ -590,7 +593,7 @@ void setupPrefix()
 	createDir(path);
 
 	snprintf(path, sizeof(path), "%s/var/run/syslog", prefix);
-	if (symlink("../../system-root/dev/log", path) != 0)
+	if (symlink("../.." SYSTEM_ROOT "/dev/log", path) != 0)
 	{
 		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
 		exit(1);
