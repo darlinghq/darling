@@ -355,6 +355,13 @@ pid_t spawnInitProcess(void)
 			exit(1);
 		}
 
+		// mount procfs for our new PID namespace
+		if (mount("proc", "/proc", "proc", 0, "") != 0)
+		{
+			fprintf(stderr, "Cannot mount procfs: %s\n", strerror(errno));
+			exit(1);
+		}
+
 		// Drop the privileges
 		setresuid(g_originalUid, g_originalUid, g_originalUid);
 		setresgid(g_originalGid, g_originalGid, g_originalGid);
@@ -591,6 +598,8 @@ void setupPrefix()
 	createDir(path);
 
 	snprintf(path, sizeof(path), "%s/var", prefix);
+	createDir(path);
+	snprintf(path, sizeof(path), "%s/proc", prefix);
 	createDir(path);
 	snprintf(path, sizeof(path), "%s/var/root", prefix);
 	createDir(path);
