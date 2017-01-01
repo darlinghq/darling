@@ -37,21 +37,13 @@ add_executable(dyld-bin ${dyld_SRCS})
 set_target_properties(dyld-bin PROPERTIES OUTPUT_NAME dyld${SUFFIX})
 target_link_libraries(dyld-bin dyld darling-util mach-o)
 
-if (NEW_DARLING)
-	add_executable(darling darling.c)
-endif (NEW_DARLING)
+add_executable(darling darling.c)
 
 if (NOT DARLING_NO_EXECUTABLES)
 	add_executable(dyldd dyldd.cpp)
 	target_link_libraries(dyldd dyld darling-util mach-o)
 	install(TARGETS dyldd DESTINATION bin)
-	if (NEW_DARLING)
-		install(TARGETS darling DESTINATION bin)
-	else (NEW_DARLING)
-    		install(PROGRAMS darling DESTINATION bin
-                	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ
-                	GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-	endif(NEW_DARLING)
+	install(TARGETS darling DESTINATION bin)
 	add_library(dexe_startup STATIC darling-so-start.S)
 endif (NOT DARLING_NO_EXECUTABLES)
 
@@ -62,5 +54,3 @@ if (BITS EQUAL 64)
 	set_target_properties(dyld-multilib PROPERTIES OUTPUT_NAME dyld)
 	install(TARGETS dyld-multilib DESTINATION bin)
 endif (BITS EQUAL 64)
-
-
