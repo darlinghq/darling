@@ -267,16 +267,12 @@ void setupChild(const char *curPath)
 		// We're currently inside our home directory
 		snprintf(buffer2, sizeof(buffer2), "/Users/%s", buffer1);
 		setenv("PWD", buffer2, 1);
-
-		snprintf(buffer2, sizeof(buffer2), "%s/Users/%s", prefix, buffer1);
 		chdir(buffer2);
 	}
 	else
 	{
 		snprintf(buffer2, sizeof(buffer2), SYSTEM_ROOT "%s", curPath);
 		setenv("PWD", buffer2, 1);
-
-		snprintf(buffer2, sizeof(buffer2), "%s" SYSTEM_ROOT "%s", prefix, curPath);
 		chdir(buffer2);
 	}
 }
