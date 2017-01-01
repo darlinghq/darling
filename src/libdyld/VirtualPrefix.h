@@ -24,36 +24,30 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef __cplusplus
 extern "C" {
 #endif
-	
+
 #define __SYSTEM_ROOT "/system-root"
 
-// Set prefix path. Should be run only once at startup.
-// If this is never called, then __prefix_translate_path()
-// is a no-op.
+// No-op
 void __prefix_set(const char* path);
 
-// Returns the current prefix or NULL;
+// Returns NULL;
 const char* __prefix_get(void);
 
-// Translate from path in prefix to physical path.
+// Return path unmodified
 const char* __prefix_translate_path(const char* path);
 
-// Translate from path in prefix to physical path, treat the leaf node
-// as a symlink.
+// Return path unmodified
 const char* __prefix_translate_path_link(const char* path);
 
-// Translate from physical path to path in prefix.
-// The path is expected to be canonical.
+// Return path unmodified
 const char* __prefix_untranslate_path(const char* path, unsigned long count);
 
-// Called whenever current working directory changes.
-// This is used to resolve relative paths passed to
-// __prefix_translate_path().
+// No-op
 void __prefix_cwd(const char* path);
 
 void __prefix_cwd_fd(int fd);
 
-// Is the given path equivalent to __SYSTEM_ROOT?
+// Is the given path equivalent to /?
 bool __prefix_is_system_root(const char* path);
 
 int __prefix_get_dyld_path(char* buf, unsigned long size);
@@ -63,4 +57,3 @@ int __prefix_get_dyld_path(char* buf, unsigned long size);
 #endif
 
 #endif /* VIRTUALPREFIX_H */
-
