@@ -58,5 +58,8 @@ add_subdirectory(src)
 if (NOT DARLING_NO_EXECUTABLES)
 	install(FILES etc/dylib.conf etc/version.conf
 		DESTINATION libexec/darling/etc/darling)
-endif (NOT DARLING_NO_EXECUTABLES)
 
+	install(DIRECTORY DESTINATION libexec/darling/etc/ld.so.conf.d)
+	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+	
+endif (NOT DARLING_NO_EXECUTABLES)
