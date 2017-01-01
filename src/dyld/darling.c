@@ -613,6 +613,20 @@ void setupPrefix()
 		exit(1);
 	}
 
+	snprintf(path, sizeof(path), "%s/lib", prefix);
+	if (symlink(SYSTEM_ROOT "/lib" + 1, path) != 0)
+	{
+		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
+		exit(1);
+	}
+
+	snprintf(path, sizeof(path), "%s/lib64", prefix);
+	if (symlink(SYSTEM_ROOT "/lib64" + 1, path) != 0)
+	{
+		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
+		exit(1);
+	}
+
 	snprintf(path, sizeof(path), "%s/Volumes", prefix);
 	createDir(path);
 	snprintf(path, sizeof(path), "%s/Applications", prefix);
