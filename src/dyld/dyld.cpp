@@ -175,6 +175,9 @@ static void printHelp(const char* argv0)
 	std::cerr << "This is Darling dyld for " ARCH_NAME ", a dynamic loader for Mach-O executables.\n\n";
 	std::cerr << "Copyright (C) 2012-2016 Lubos Dolezel\n\n";
 
+	std::cerr << "NOTE: This program shouldn't be normally invoked directly."
+		" Use \"darling\" command instead.\n\n";
+
 	std::cerr << "Usage: " << argv0 << " program-path [arguments...]\n\n";
 
 	std::cerr << "Environment variables:\n"

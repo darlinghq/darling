@@ -181,6 +181,9 @@ void printHelp(const char* argv0)
 	fprintf(stderr, "This is Darling dyld, a dynamic loader for Mach-O executables.\n\n");
 	fprintf(stderr, "Copyright (C) 2012-2016 Lubos Dolezel\n\n");
 
+	fprintf(stderr, "NOTE: This program shouldn't be normally invoked directly."
+		" Use \"darling\" command instead.\n\n");
+
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr, "\t%s program-path [arguments...]\n", argv0);
 	fprintf(stderr, "\t%s --register\n", argv0);
