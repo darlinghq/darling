@@ -33,12 +33,11 @@ static std::string GetUserLibrary()
 	std::stringstream ss;
 	std::string path;
 
-	prefix = getenv("DPREFIX");
 	home = getenv("HOME");
-	if (!prefix || !home)
+	if (!home)
 		return std::string(); // give up on this user
 
-	ss << prefix << home << '/' << "Library" << '/';
+	ss << home << '/' << "Library" << '/';
 	return ss.str();
 }
 
