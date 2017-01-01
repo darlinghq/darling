@@ -45,7 +45,6 @@ uid_t g_originalUid, g_originalGid;
 int main(int argc, const char** argv)
 {
 	pid_t pidInit, pidChild;
-	char path[4096];
 	int wstatus;
 
 	if (argc <= 1)
@@ -89,19 +88,35 @@ int main(int argc, const char** argv)
 
 	if (strcmp(argv[1], "shell") != 0)
 	{
+		char *path = realpath(argv[1], NULL);
+		char *fullPath;
+
+		if (path == NULL)
+		{
+			fprintf(stderr, "Cannot resolve path: %s\n", strerror(errno));
+			exit(1);
+		}
+
 		const char *argv_child[argc + 1];
 
-		argv_child[0] = "dyld";
-		for (int i = 1; i < argc; i++)
+		argv_child[0] = SYSTEM_ROOT DYLD_PATH;
+
+		fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
+		strcpy(fullPath, SYSTEM_ROOT);
+		strcat(fullPath, path);
+		argv_child[1] = fullPath;
+
+		for (int i = 2; i < argc; i++)
 			argv_child[i] = argv[i];
 		argv_child[argc] = NULL;
 
-		pidChild = spawnChild(pidInit, DYLD_PATH, argv_child);
+		pidChild = spawnChild(pidInit, SYSTEM_ROOT DYLD_PATH, argv_child);
+		free(path);
+		free(fullPath);
 	}
 	else
 	{
 		// Spawn the shell
-		snprintf(path, sizeof(path), "%s/bin/bash", prefix);
 		if (argc > 2)
 		{
 			size_t total_len = 0;
@@ -116,12 +131,12 @@ int main(int argc, const char** argv)
 			// Overwrite the last whitespace
 			*(to - 1) = '\0';
 
-			pidChild = spawnChild(pidInit, DYLD_PATH,
-				(const char *[5]) {"dyld", path, "-c", buffer, NULL});
+			pidChild = spawnChild(pidInit, SYSTEM_ROOT DYLD_PATH,
+				(const char *[5]) {SYSTEM_ROOT DYLD_PATH, "/bin/bash", "-c", buffer, NULL});
 		}
 		else
-			pidChild = spawnChild(pidInit, DYLD_PATH,
-				(const char *[3]) {"dyld", path, NULL});
+			pidChild = spawnChild(pidInit, SYSTEM_ROOT DYLD_PATH,
+				(const char *[3]) {SYSTEM_ROOT DYLD_PATH, "/bin/bash", NULL});
 	}
 
 	// Drop the privileges so that we can be killed, etc by the user
