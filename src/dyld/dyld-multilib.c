@@ -43,6 +43,7 @@ void junction(const char* target, int argc, char** argv);
 const char* decideFat(int fd, bool swapEndian);
 int registerDeregister(const char* argv0, bool reg);
 int registerDeregisterRun(const char* argv0, const char* bits, bool reg);
+void printHelp(const char* argv0);
 
 int main(int argc, char** argv)
 {
@@ -51,7 +52,13 @@ int main(int argc, char** argv)
 	const char* target = "64";
 	bool reg;
 	char *progfile, *pos;
-	
+
+	if (argc < 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
+	{
+		printHelp(argv[0]);
+		return 1;
+	}
+
 	if (argc == 2 && (reg = !strcmp(argv[1], "--register") || !strcmp(argv[1], "--deregister")))
 		return registerDeregister(argv[0], reg);
 
@@ -169,4 +176,27 @@ int registerDeregisterRun(const char* argv0, const char* bits, bool reg)
 	}
 }
 
+void printHelp(const char* argv0)
+{
+	fprintf(stderr, "This is Darling dyld, a dynamic loader for Mach-O executables.\n\n");
+	fprintf(stderr, "Copyright (C) 2012-2016 Lubos Dolezel\n\n");
 
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "\t%s program-path [arguments...]\n", argv0);
+	fprintf(stderr, "\t%s --register\n", argv0);
+	fprintf(stderr, "\t%s --deregister\n\n", argv0);
+
+	fprintf(stderr, "Environment variables:\n"
+		"\tDYLD_DEBUG=expr - enable(+) or disable(-) debugging channels (debug, trace, error), e.g. +debug,-error\n"
+#ifdef HAS_DEBUG_HELPERS
+		"\tDYLD_TRAMPOLINE=file - enable debugging trampolines, with argument info in file\n"
+		"\tDYLD_IGN_MISSING_SYMS - replace missing symbols with a stub function\n\n"
+#endif
+		"\tDYLD_ROOT_PATH=<path> - set the base for library path resolution (overrides autodetection)\n"
+		"\tDYLD_BIND_AT_LAUNCH - force dyld to bind all lazy references on startup\n"
+		"\tDYLD_PRINT_INITIALIZERS - print initializers when they are invoked\n"
+		"\tDYLD_PRINT_LIBRARIES - print libraries when they are loaded\n"
+		"\tDYLD_PRINT_SEGMENTS - print segments when they are mapped into memory\n"
+		"\tDYLD_PRINT_BINDINGS - print out when binds/ext. relocs are being resolved\n"
+		"\tDYLD_PRINT_RPATHS - print @rpath resolution attempts\n\n");
+}
