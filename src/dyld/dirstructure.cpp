@@ -29,25 +29,26 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 static std::string GetUserLibrary()
 {
-	const char* home;
+	const char *home, *prefix;
 	std::stringstream ss;
 	std::string path;
-	
+
+	prefix = getenv("DPREFIX");
 	home = getenv("HOME");
-	if (!home)
+	if (!prefix || !home)
 		return std::string(); // give up on this user
-	
-	ss << home << '/' << "Library" << '/';
+
+	ss << prefix << home << '/' << "Library" << '/';
 	return ss.str();
 }
 
 bool HasUserDirectoryStructure()
 {
 	std::string path = GetUserLibrary();
-	
+
 	if (path.empty())
 		return true; // give up on this user
-	
+
 	if (::access(path.c_str(), F_OK) == -1)
 		return false;
 	else
@@ -90,25 +91,24 @@ void SetupUserDirectoryStructure()
 		"Spelling",
 		"Voices",
 	};
-	
+
 	std::string path = GetUserLibrary();
-	
+
 	if (path.empty())
 		return;
-	
+
 	std::cerr << "Darling: Creating Library structure at " << path << std::endl;
-	
+
 	if (::mkdir(path.c_str(), 0777) == -1)
 		std::cerr << "Darling: Cannot mkdir(" << path << "): " << strerror(errno) << std::endl;
-	
+
 	for (const char* dir : dirs)
 	{
 		std::string s = path;
-		
+
 		s += dir;
-		
+
 		if (::mkdir(s.c_str(), 0777) == -1)
 			std::cerr << "Darling: Cannot mkdir(" << s << "): " << strerror(errno) << std::endl;
 	}
 }
-

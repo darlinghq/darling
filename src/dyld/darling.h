@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <sys/types.h>
+
 #ifndef _DARLING_H_
 #define _DARLING_H_
 
@@ -27,20 +29,37 @@ void missingSetuidRoot(void);
 
 // Returns ~/.darling with ~ expanded
 char* defaultPrefixPath(void);
-void setupWorkdir(const char* prefix);
+
+void setupWorkdir(void);
+
+void setupPrefix(void);
+
+int checkPrefixDir(void);
 
 // Creates the given directory, exit()ing if not possible
 void createDir(const char* path);
 
-// Return the PID of the init process in prefix (in our namespace)
+// Spawn the specified proceess inside the namespaces that PID 1 is in
+// Returns the PID of the child
+// exit()s on error
+pid_t spawnChild(int pidInit, const char *path, const char *const argv[]);
+
+// Set up some environment variables
+// As well as the working directory
+// Called in the child process
+void setupChild(const char *curPath);
+
+// Returns the PID of the init process in prefix (in our namespace)
 // Returns 0 if no init is running
-int getInitProcess(const char* prefix);
+pid_t getInitProcess(void);
 
-int spawnInitProcess(const char* prefix);
+pid_t spawnInitProcess(void);
 
-int darlingPreInit(void* arg);
+void putInitPid(pid_t pidInit);
 
-void checkPrefixOwner(const char* prefix);
+void darlingPreInit(void);
+
+void checkPrefixOwner(void);
 
 int isModuleLoaded(void);
 

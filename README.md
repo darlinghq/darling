@@ -61,6 +61,15 @@ make
 make install
 ````
 
+To build the new, experimental `darling` executable:
+
+````
+cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86_64.cmake -DNEW_DARLING=TRUE
+make
+make install
+chmod +s $(which darling)
+````
+
 #### For running i386 OS X binaries
 
 <a href="http://teamcity.dolezel.info/viewType.html?buildTypeId=Darling_DebianStableX8664&guest=1">
@@ -164,7 +173,7 @@ Congratulations, you have just compiled and run your own Hello world application
 
 ### AppKit
 
-AppKit is still highly expiramental and incomplete, but to work on it you need to configure CMake with `-DFRAMEWORK_APPKIT=1` and install some additional packages. 
+AppKit is still highly experimental and incomplete, but to work on it you need to configure CMake with `-DFRAMEWORK_APPKIT=1` and install some additional packages.
 
 Ubuntu 16.04:
 ```
