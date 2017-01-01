@@ -28,7 +28,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <cstdlib>
 #include <cstring>
-#include <libdyld/VirtualPrefix.h>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -49,27 +48,25 @@ int main(int argc, char** argv, char** envp)
 {
 	if (argc != 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
 		showHelp(argv[0]);
-	
+
 	try
 	{
 		MachOObject* obj;
 		std::set<std::string> deps;
 		MachOMgr* mgr = MachOMgr::instance();
-		
+
 		mgr->detectSysRootFromPath(argv[1]);
-		if (const char* path = getenv("DPREFIX"))
-			__prefix_set(path);
-		
+
 		mgr->setLoadAnyArchitecture(true);
-		
-		obj = new MachOObject(__prefix_translate_path(argv[1]));
-		
+
+		obj = new MachOObject(argv[1]);
+
 		mgr->add(obj, true);
-		
+
 		std::cout << c(ANSI_COLOR_GRAY) << "Resolving dependencies of " << obj->path() << "\n\n" << c(ANSI_COLOR_RESET);
-		
+
 		resolve(obj, deps);
-		
+
 		mgr->remove(obj);
 	}
 	catch (const std::exception& e)
@@ -85,37 +82,37 @@ void resolve(MachOObject* obj, std::set<std::string>& deps)
 	{
 		LoadableObject* dep;
 		std::string dylib = d.name;
-		
+
 		if (dylib.empty())
 			continue;
-		
+
 		std::string path = DylibSearch::instance()->resolve(dylib, obj);
 		if (path.empty())
 		{
 			if (deps.find(dylib) == deps.end())
 			{
 				deps.insert(dylib);
-				
+
 				std::cout << dylib << " => " << c(ANSI_COLOR_RED) << "not found" << c(ANSI_COLOR_RESET) << std::endl;
 			}
-			
+
 			continue;
 		}
 
 		dep = LoadableObject::instantiateForPath(path, obj);
-		
+
 		if (deps.find(dep->path()) != deps.end())
 		{
 			dep->delRef();
 			continue;
 		}
-		
+
 		deps.insert(dep->path());
-		
+
 		if (MachOObject* mach = dynamic_cast<MachOObject*>(dep))
 		{
 			std::cout << dylib << " => " << c(ANSI_COLOR_BLUE) << dep->path() << c(ANSI_COLOR_RESET) << std::endl;
-			
+
 			resolve(mach, deps);
 		}
 		else
@@ -135,7 +132,7 @@ void showHelp(const char* argv0)
 	std::cerr << "Copyright (C) 2012-2014 Lubos Dolezel\n\n";
 	std::cerr << "Usage: " << argv0 << " executable\n\n";
 	std::cerr << "If your terminal supports colors, then native dependencies are " << c(ANSI_COLOR_GREEN) << "green" << c(ANSI_COLOR_RESET)
-		<< " and Mach-O dependencies are " << c(ANSI_COLOR_BLUE) << "blue" << c(ANSI_COLOR_RESET) << ".\n";	
-	
+		<< " and Mach-O dependencies are " << c(ANSI_COLOR_BLUE) << "blue" << c(ANSI_COLOR_RESET) << ".\n";
+
 	exit(1);
 }
