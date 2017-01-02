@@ -59,8 +59,9 @@ if (NOT DARLING_NO_EXECUTABLES)
 	install(FILES etc/dylib.conf etc/version.conf
 		DESTINATION libexec/darling/etc/darling)
 
-	install(DIRECTORY DESTINATION libexec/darling/system-root)
 	install(DIRECTORY DESTINATION libexec/darling/Volumes)
+	install(DIRECTORY DESTINATION libexec/darling/Volumes/SystemRoot)
+	InstallSymlink(/ /usr/local/libexec/darling/Volumes/DarlingEmulatedDrive)
 
 	install(DIRECTORY DESTINATION libexec/darling/proc)
 
@@ -72,14 +73,14 @@ if (NOT DARLING_NO_EXECUTABLES)
 	install(DIRECTORY DESTINATION libexec/darling/usr)
 	install(DIRECTORY DESTINATION libexec/darling/usr/local)
 	install(DIRECTORY DESTINATION libexec/darling/usr/local/share)
-	InstallSymlink(/system-root/usr/local/share/darling /usr/local/libexec/darling/usr/local/share/darling)
+	InstallSymlink(/Volumes/SystemRoot/usr/local/share/darling /usr/local/libexec/darling/usr/local/share/darling)
 
-	InstallSymlink(/system-root/dev /usr/local/libexec/darling/dev)
-	InstallSymlink(/system-root/tmp /usr/local/libexec/darling/tmp)
-	InstallSymlink(/system-root/home /usr/local/libexec/darling/Users)
+	InstallSymlink(/Volumes/SystemRoot/dev /usr/local/libexec/darling/dev)
+	InstallSymlink(/Volumes/SystemRoot/tmp /usr/local/libexec/darling/tmp)
+	InstallSymlink(/Volumes/SystemRoot/home /usr/local/libexec/darling/Users)
 
 	install(DIRECTORY DESTINATION libexec/darling/etc/ld.so.conf.d)
 	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
-	InstallSymlink(/system-root/lib /usr/local/libexec/darling/lib)
-	InstallSymlink(/system-root/lib64 /usr/local/libexec/darling/lib64)
+	InstallSymlink(/Volumes/SystemRoot/lib /usr/local/libexec/darling/lib)
+	InstallSymlink(/Volumes/SystemRoot/lib64 /usr/local/libexec/darling/lib64)
 endif (NOT DARLING_NO_EXECUTABLES)

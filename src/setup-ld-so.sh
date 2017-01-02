@@ -5,8 +5,8 @@
 
 for file in /etc/ld.so.conf $(find /etc/ld.so.conf.d/ -type f); do
     # Copy lines from e.g. /etc/ld.so.conf into ./etc/ld.so.conf,
-    # prepending "/system-root" to each line that starts with a slash
-    awk '/^\// { print "/system-root" $0 }; /^[^/]/' $file > .$file
+    # prepending "/Volumes/SystemRoot" to each line that starts with a slash
+    awk '/^\// { print "/Volumes/SystemRoot" $0 }; /^[^/]/' $file > .$file
 done
 
-unshare --mount bash -c "mount --rbind / system-root && ldconfig -r . -X"
+unshare --mount bash -c "mount --rbind / Volumes/SystemRoot && ldconfig -r . -X"

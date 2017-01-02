@@ -62,7 +62,7 @@ strcat_end:
 	movl	$__NR_execve, %eax
 	syscall
 
-        // If we failed to find dyld under /system-root,
+        // If we failed to find dyld under the system root,
         // try again without it
 	leaq	dyld_host_path(%rip), %rdi	// exec path
 	movq	%rsp, %rsi				// argv
