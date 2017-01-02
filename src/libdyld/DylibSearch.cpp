@@ -34,7 +34,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 namespace Darling {
 
 DylibSearch::DylibSearch()
-	: m_reFrameworkPath("/System/Library/Frameworks/([a-zA-Z0-9\\.]+)/Versions/([a-zA-Z0-9\\.]+)/.*"),
+	: m_reFrameworkPath("/System/Library/Frameworks/([a-zA-Z0-9\\.]+)/Versions/([a-zA-Z0-9\\.]+)/([a-zA-Z0-9\\.]+)"),
 	m_reDefaultFrameworkPath("/System/Library/Frameworks/([a-zA-Z0-9\\.]+)/([a-zA-Z0-9\\.]+)")
 {
 	try
