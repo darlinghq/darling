@@ -304,7 +304,7 @@ name:
 
 #if defined(__DYNAMIC__)
 #if defined(__i386__)
-#ifndef DARLING
+#ifndef DARLING__DISABLED
 #define PICIFY(var)					\
 	call	1f					; \
 1:							; \
@@ -332,11 +332,11 @@ name:
 	call	*%edx
 #elif defined(__x86_64__)
 #define CALL_EXTERN_AGAIN(func)	\
-	call	func@PLT
+	call	func
 #endif
 
 #if defined(__i386__)
-#ifndef DARLING
+#ifndef DARLING__DISABLED
 #define NON_LAZY_STUB(var)	\
 .section __IMPORT,__pointers,non_lazy_symbol_pointers	; \
 L ## var ## __non_lazy_ptr:	; \
@@ -361,7 +361,7 @@ L ## var ## __non_lazy_ptr:	; \
 	NON_LAZY_STUB(func)
 #elif defined(__x86_64__)
 #define BRANCH_EXTERN(func)	\
-	jmp	func@PLT
+	jmp	func
 #endif
 
 #if defined(__i386__)
@@ -384,7 +384,7 @@ L ## var ## __non_lazy_ptr:	; \
 #endif
 
 #if defined(__i386__)
-#ifndef DARLING
+#ifndef DARLING__DISABLED
 #define EXTERN_TO_REG(var, reg)				\
 	call	1f					; \
 1:							; \
@@ -409,7 +409,7 @@ L ## var ## __non_lazy_ptr:	; \
 #endif
 
 #else
-#define BRANCH_EXTERN(func)	jmp	func@PLT
+#define BRANCH_EXTERN(func)	jmp	func
 #define PUSH_EXTERN(var)	push	var@GOTPCREL
 #define CALL_EXTERN(func)	call	func@PLT
 #define CALL_EXTERN_AGAIN(func)	call	func@PLT

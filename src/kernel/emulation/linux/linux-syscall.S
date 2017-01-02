@@ -1,7 +1,7 @@
 .text
-.globl linux_syscall
+.globl _linux_syscall
 
-linux_syscall:
+_linux_syscall:
 
 #if defined(__x86_64__)
 

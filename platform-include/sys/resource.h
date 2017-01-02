@@ -72,12 +72,18 @@
 #include <stdint.h>
 #endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
+#ifndef KERNEL
 #include <Availability.h>
+#endif
 
 /* [XSI] The timeval structure shall be defined as described in
  * <sys/time.h>
  */
 #include <sys/_types/_timeval.h>
+#ifdef KERNEL
+#include <sys/_types/_user32_timeval.h>
+#include <sys/_types/_user64_timeval.h>
+#endif
 
 /* The id_t type shall be defined as described in <sys/types.h> */
 #include <sys/_types/_id_t.h>
@@ -105,6 +111,21 @@ typedef __uint64_t	rlim_t;
 #define	PRIO_DARWIN_THREAD	3		/* Second argument is always 0 (current thread) */
 #define	PRIO_DARWIN_PROCESS	4		/* Second argument is a PID */
 
+#ifdef PRIVATE
+
+#define PRIO_DARWIN_GPU		5		/* Second argument is a PID */
+
+#define PRIO_DARWIN_GPU_ALLOW   0x1
+#define PRIO_DARWIN_GPU_DENY    0x2
+
+#define PRIO_DARWIN_ROLE        6               /* Second argument is a PID */
+
+#define PRIO_DARWIN_ROLE_DEFAULT        0x0     /* Default state */
+#define PRIO_DARWIN_ROLE_UI_FOCAL       0x1     /* On  screen,     focal UI */
+#define PRIO_DARWIN_ROLE_UI             0x2     /* On  screen, non-focal UI */
+#define PRIO_DARWIN_ROLE_NON_UI         0x3     /* Off screen, non-focal UI */
+
+#endif /* PRIVATE */
 
 /*
  * Range limitations for the value of the third parameter to setpriority().
@@ -282,6 +303,61 @@ typedef struct rusage_info_v3 rusage_info_current;
 
 #endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
+#ifdef KERNEL
+
+struct rusage_superset {
+	struct rusage 			ru;
+	rusage_info_current 	ri;
+};
+
+struct rusage_info_child {
+	uint64_t ri_child_user_time;
+	uint64_t ri_child_system_time;
+	uint64_t ri_child_pkg_idle_wkups;
+	uint64_t ri_child_interrupt_wkups;
+	uint64_t ri_child_pageins;
+	uint64_t ri_child_elapsed_abstime;
+};
+
+struct	user64_rusage {
+	struct user64_timeval ru_utime;	/* user time used */
+	struct user64_timeval ru_stime;	/* system time used */
+	user64_long_t	ru_maxrss;		/* max resident set size */
+	user64_long_t	ru_ixrss;		/* integral shared memory size */
+	user64_long_t	ru_idrss;		/* integral unshared data " */
+	user64_long_t	ru_isrss;		/* integral unshared stack " */
+	user64_long_t	ru_minflt;		/* page reclaims */
+	user64_long_t	ru_majflt;		/* page faults */
+	user64_long_t	ru_nswap;		/* swaps */
+	user64_long_t	ru_inblock;		/* block input operations */
+	user64_long_t	ru_oublock;		/* block output operations */
+	user64_long_t	ru_msgsnd;		/* messages sent */
+	user64_long_t	ru_msgrcv;		/* messages received */
+	user64_long_t	ru_nsignals;	/* signals received */
+	user64_long_t	ru_nvcsw;		/* voluntary context switches */
+	user64_long_t	ru_nivcsw;		/* involuntary " */
+};
+
+struct	user32_rusage {
+	struct user32_timeval ru_utime;	/* user time used */
+	struct user32_timeval ru_stime;	/* system time used */
+	user32_long_t	ru_maxrss;		/* max resident set size */
+	user32_long_t	ru_ixrss;		/* integral shared memory size */
+	user32_long_t	ru_idrss;		/* integral unshared data " */
+	user32_long_t	ru_isrss;		/* integral unshared stack " */
+	user32_long_t	ru_minflt;		/* page reclaims */
+	user32_long_t	ru_majflt;		/* page faults */
+	user32_long_t	ru_nswap;		/* swaps */
+	user32_long_t	ru_inblock;		/* block input operations */
+	user32_long_t	ru_oublock;		/* block output operations */
+	user32_long_t	ru_msgsnd;		/* messages sent */
+	user32_long_t	ru_msgrcv;		/* messages received */
+	user32_long_t	ru_nsignals;	/* signals received */
+	user32_long_t	ru_nvcsw;		/* voluntary context switches */
+	user32_long_t	ru_nivcsw;		/* involuntary " */
+};
+
+#endif /* KERNEL */
 
 
 /*****
@@ -357,6 +433,9 @@ struct proc_rlimit_control_wakeupmon {
 
 /* I/O type */
 #define IOPOL_TYPE_DISK	0
+#if PRIVATE
+#define IOPOL_TYPE_VFS_HFS_CASE_SENSITIVITY 1
+#endif
 
 /* scope */
 #define IOPOL_SCOPE_PROCESS   0
@@ -375,9 +454,36 @@ struct proc_rlimit_control_wakeupmon {
 #define IOPOL_APPLICATION       IOPOL_STANDARD
 #define IOPOL_NORMAL            IOPOL_IMPORTANT
 
+#if PRIVATE
+#define IOPOL_VFS_HFS_CASE_SENSITIVITY_DEFAULT	0
+#define IOPOL_VFS_HFS_CASE_SENSITIVITY_FORCE_CASE_SENSITIVE	1
+#endif
 
+#ifdef PRIVATE
+/*
+ * Structures for use in communicating via iopolicysys() between Libc and the
+ * kernel.  Not to be used by user programs directly.
+ */
+
+/*
+ * the command to iopolicysys()
+ */
+#define	IOPOL_CMD_GET		0x00000001	/* Get I/O policy */
+#define	IOPOL_CMD_SET		0x00000002	/* Set I/O policy */
+
+/*
+ * Second parameter to iopolicysys()
+ */
+struct _iopol_param_t {
+	int iop_scope;	/* current process or a thread */
+	int iop_iotype;
+	int iop_policy;
+};
+
+#endif	/* PRIVATE */
 #endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
+#ifndef KERNEL
 
 __BEGIN_DECLS
 int	getpriority(int, id_t);
@@ -393,4 +499,5 @@ int	setiopolicy_np(int, int, int) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_
 int	setrlimit(int, const struct rlimit *) __DARWIN_ALIAS(setrlimit);
 __END_DECLS
 
+#endif	/* !KERNEL */
 #endif	/* !_SYS_RESOURCE_H_ */

@@ -72,7 +72,7 @@
 #ifndef DARLING
 #define UNIX_SYSCALL_SYSENTER		call __sysenter_trap
 #else
-#define UNIX_SYSCALL_SYSENTER		call __darling_bsd_syscall@PLT
+#define UNIX_SYSCALL_SYSENTER		call __darling_bsd_syscall
 #endif
 
 #define UNIX_SYSCALL(name, nargs)			\
@@ -146,27 +146,21 @@ LEAF(pseudo, 0)					;\
 
 #define UNIX_SYSCALL(name, nargs)						 \
 	.globl	cerror								;\
-	.type name, @function						;\
-LEAF(name, 0)								;\
+LEAF(_#name, 0)								;\
 	movl	$ SYS_##name, %eax			;\
-	call	__darling_bsd_syscall@PLT							;\
-	cmpq	$-4095, %rax			;\
-	jb		2f							;\
+	call __darling_bsd_syscall							;\
+	jnb		2f							;\
 	movq	%rax, %rdi							;\
-	negq	%rdi	;\
-	BRANCH_EXTERN(cerror)							;\
+	BRANCH_EXTERN(_cerror)							;\
 2:
 
 #define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
 	.globl	cerror								;\
-	.type name, @function						;\
 	movl	$ SYS_##name, %eax			;\
-	call	__darling_bsd_syscall@PLT							;\
-	cmpq	$-4095, %rax				;\
-	jb		2f							;\
+	call __darling_bsd_syscall							;\
+	jnb		2f							;\
 	movq	%rax, %rdi							;\
-	negq	%rdi	;\
-	BRANCH_EXTERN(cerror)						;\
+	BRANCH_EXTERN(_##cerror)						;\
 2:
 
 

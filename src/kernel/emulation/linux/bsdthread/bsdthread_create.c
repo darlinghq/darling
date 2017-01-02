@@ -93,7 +93,7 @@ int darling_thread_create(void** stack, void* entry_point, uintptr_t arg3,
 			"testl %0, %0\n" // if in parent thread, jump away
 			"jne 1f\n"
 			"subq $40, %%rsp\n" // protect what we have stored on stack
-			"call thread_self_trap@PLT\n" // get thread_self Mach port
+			"call _thread_self_trap\n" // get thread_self Mach port
 			"addq $40, %%rsp\n"
 			"movl %%eax, %%esi\n" // thread_self is 2nd arg to pthread_entry_point
 			"movq %%rsp, %%rdi\n" // pthread_self as 1st arg

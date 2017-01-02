@@ -43,13 +43,9 @@ typedef unsigned __int128 cerror_return_t;
 typedef uint64_t cerror_return_t;
 #endif
 
-extern void _pthread_exit_if_canceled(int error);
-
 #undef errno
-
-extern int darwin_errno;
-
-#define errno darwin_errno
+int errno;
+extern void _pthread_exit_if_canceled(int error);
 
 int *
 __error(void)

@@ -4,7 +4,7 @@
 #if defined(__x86_64__)
 
 __darling_bsd_syscall:
-	movq    __bsd_syscall_table@GOTPCREL(%rip), %r10
+	movq    ___bsd_syscall_table@GOTPCREL(%rip), %r10
 	movq	(%r10,%rax,8), %r10
 	test	%r10, %r10
 	jz		.no_sys
@@ -18,7 +18,7 @@ __darling_bsd_syscall:
 	ret
 .no_sys:
 	movq	%rax, %rdi
-	call	__unknown_syscall@PLT
+	call	___unknown_syscall
 	ret
 
 #elif defined(__i386__)
@@ -33,7 +33,7 @@ __darling_bsd_syscall:
 	popl	%ecx
 .Ltmp0:
 	addl	$_GLOBAL_OFFSET_TABLE_+(.Ltmp0-.L0$pb), %ecx
-	movl	__bsd_syscall_table@GOT(%ecx), %ecx
+	movl	___bsd_syscall_table@GOT(%ecx), %ecx
 	andl	$0xffff, %eax // Because there is some extra stuff in upper bytes we don't need
 	movl	(%ecx,%eax,4), %eax
 	test	%eax, %eax
@@ -51,7 +51,7 @@ __darling_bsd_syscall:
 	ret
 .no_sys:
 	pushl	%ecx
-	call	__unknown_syscall@PLT
+	call	__unknown_syscall
 	addl	$4, %esp
 	ret
 

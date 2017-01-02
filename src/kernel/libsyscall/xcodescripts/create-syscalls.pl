@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# Modified by Lubos Dolezel for Darling (remove 1 underscore from symbols)
 #
 # Copyright (c) 2006-2014 Apple Inc. All rights reserved.
 #
@@ -62,9 +61,9 @@ my $OutDir;
 # size in bytes of known types (only used for i386)
 my %TypeBytes = (
     'au_asid_t'		=> 4,
-    'associd_t'		=> 4,
+    'sae_associd_t'	=> 4,
     'caddr_t'		=> 4,
-    'connid_t'		=> 4,
+    'sae_connid_t'	=> 4,
     'gid_t'		=> 4,
     'id_t'		=> 4,
     'idtype_t'		=> 4,
@@ -101,7 +100,7 @@ my %Symbols = (
     "quota" => {
         c_sym => "quota",
         syscall => "quota",
-        asm_sym => "quota",
+        asm_sym => "_quota",
         is_private => undef,
         is_custom => undef,
         nargs => 4,
@@ -111,7 +110,7 @@ my %Symbols = (
     "setquota" => {
         c_sym => "setquota",
         syscall => "setquota",
-        asm_sym => "setquota",
+        asm_sym => "_setquota",
         is_private => undef,
         is_custom => undef,
         nargs => 2,
@@ -121,7 +120,7 @@ my %Symbols = (
     "syscall" => {
         c_sym => "syscall",
         syscall => "syscall",
-        asm_sym => "syscall",
+        asm_sym => "_syscall",
         is_private => undef,
         is_custom => undef,
         nargs => 0,
@@ -218,7 +217,7 @@ sub readMaster {
         $Symbols{$name} = {
             c_sym => $name,
             syscall => $name,
-            asm_sym => $no_syscall_stub ? "__$name" : "$name",
+            asm_sym => $no_syscall_stub ? "___$name" : "_$name",
             is_private => $no_syscall_stub,
             is_custom => undef,
             nargs => $nargs,
@@ -331,7 +330,6 @@ sub writeStubForSymbol {
     
     print $f "#define __SYSCALL_32BIT_ARG_BYTES $$symbol{bytes}\n";
     print $f "#include \"SYS.h\"\n\n";
-    
     if (scalar(@conditions)) {
         printf $f "#ifndef SYS_%s\n", $$symbol{syscall};
         printf $f "#error \"SYS_%s not defined. The header files libsyscall is building against do not match syscalls.master.\"\n", $$symbol{syscall};
@@ -364,7 +362,7 @@ sub writeAliasesForSymbol {
             my $sym = (grep { $_ eq $arch } @{$$symbol{except}}) ? "__".$$symbol{asm_sym} : $$symbol{asm_sym};
 					
 						printf $f "\t.globl\t$alias_sym\n";
-						printf $f "\t\t$alias_sym = $sym\n";
+						printf $f "\t.set\t$alias_sym, $sym\n";
         }
 				printf $f "#endif\n\n";
     }

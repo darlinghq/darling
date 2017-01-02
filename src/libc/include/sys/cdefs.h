@@ -89,7 +89,7 @@
 /*
  * symbol versioning macros
  */
-#ifndef DARLING
+#ifndef DARLING__DISABLED
 #define LIBC_ALIAS(sym)		__asm("_" __STRING(sym) LIBC_SUF_UNIX03)
 #define LIBC_ALIAS_C(sym)	__asm("_" __STRING(sym) LIBC_SUF_NON_CANCELABLE LIBC_SUF_UNIX03)
 #define LIBC_ALIAS_I(sym)	__asm("_" __STRING(sym) LIBC_SUF_64_BIT_INO_T LIBC_SUF_UNIX03)

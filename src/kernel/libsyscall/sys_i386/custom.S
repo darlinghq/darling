@@ -69,7 +69,7 @@ _i386_get_ldt:
 	movl    $6,%eax
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
-	jmp		tramp_cerror@PLT
+	jmp		tramp_cerror
 2:	ret
 
 
@@ -79,7 +79,7 @@ _i386_set_ldt:
 	movl    $5,%eax
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
-	jmp		tramp_cerror@PLT
+	jmp		tramp_cerror
 2:	ret
 
 #elif defined(__x86_64__)
@@ -91,7 +91,7 @@ _i386_get_ldt:
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
 	movq	%rax, %rdi
-	jmp		cerror@PLT
+	jmp		cerror
 2:	ret
 
 
@@ -102,7 +102,7 @@ _i386_set_ldt:
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
 	movq	%rax, %rdi
-	jmp		cerror@PLT
+	jmp		cerror
 2:	ret
 
 #endif

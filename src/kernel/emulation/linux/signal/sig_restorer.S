@@ -1,6 +1,6 @@
 .text
 .globl sig_restorer
-.hidden sig_restorer
+.private_extern sig_restorer
 
 #ifdef __x86_64__
 sig_restorer:
