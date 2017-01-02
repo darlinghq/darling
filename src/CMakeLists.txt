@@ -16,6 +16,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_subdirectory(bootstrap_cmds)
+add_subdirectory(external/cctools-port/cctools/ld64/src)
 add_subdirectory(kernel)
 add_subdirectory(util)
 add_subdirectory(libmach-o)

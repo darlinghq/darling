@@ -172,3 +172,6 @@
 [submodule "src/external/perl"]
 	path = src/external/perl
 	url = ../darling-perl.git
+[submodule "src/external/cctools-port"]
+	path = src/external/cctools-port
+	url = ../cctools-port.git
