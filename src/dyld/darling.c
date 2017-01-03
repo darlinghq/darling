@@ -587,77 +587,20 @@ void setupPrefix()
 
 	createDir(prefix);
 
-	snprintf(path, sizeof(path), "%s" SYSTEM_ROOT, prefix);
-	createDir(path);
-
-	snprintf(path, sizeof(path), "%s/dev", prefix);
-	if (symlink(SYSTEM_ROOT "/dev" + 1, path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
-	snprintf(path, sizeof(path), "%s/tmp", prefix);
-	if (symlink(SYSTEM_ROOT "/tmp" + 1, path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
-	snprintf(path, sizeof(path), "%s/Users", prefix);
-	if (symlink(SYSTEM_ROOT "/home" + 1, path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
-	snprintf(path, sizeof(path), "%s/lib", prefix);
-	if (symlink(SYSTEM_ROOT "/lib" + 1, path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
-	snprintf(path, sizeof(path), "%s/lib64", prefix);
-	if (symlink(SYSTEM_ROOT "/lib64" + 1, path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
+	// The user needs to be able to create mountpoints,
 	snprintf(path, sizeof(path), "%s/Volumes", prefix);
 	createDir(path);
+	// ... to install applications,
 	snprintf(path, sizeof(path), "%s/Applications", prefix);
 	createDir(path);
 
-	snprintf(path, sizeof(path), "%s/var", prefix);
-	createDir(path);
-	snprintf(path, sizeof(path), "%s/proc", prefix);
-	createDir(path);
-	snprintf(path, sizeof(path), "%s/var/root", prefix);
-	createDir(path);
-	snprintf(path, sizeof(path), "%s/var/run", prefix);
-	createDir(path);
-
-	snprintf(path, sizeof(path), "%s/var/run/syslog", prefix);
-	if (symlink("../.." SYSTEM_ROOT "/dev/log", path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
+	// ... and to put stuff in /usr/local
 	snprintf(path, sizeof(path), "%s/usr", prefix);
 	createDir(path);
 	snprintf(path, sizeof(path), "%s/usr/local", prefix);
 	createDir(path);
 	snprintf(path, sizeof(path), "%s/usr/local/share", prefix);
 	createDir(path);
-	snprintf(path, sizeof(path), "%s/usr/local/share/darling", prefix);
-	if (symlink(SYSTEM_ROOT "/usr/local/share/darling", path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
 
 	seteuid(0);
 	setegid(0);
