@@ -43,7 +43,8 @@ if (NOT DARLING_NO_EXECUTABLES)
 	add_executable(dyldd dyldd.cpp)
 	target_link_libraries(dyldd dyld darling-util mach-o)
 	install(TARGETS dyldd DESTINATION bin)
-	install(TARGETS darling DESTINATION bin)
+	install(TARGETS darling DESTINATION bin
+		PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID)
 	add_library(dexe_startup STATIC darling-so-start.S)
 endif (NOT DARLING_NO_EXECUTABLES)
 
