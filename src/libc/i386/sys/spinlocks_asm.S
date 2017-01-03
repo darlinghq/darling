@@ -32,14 +32,6 @@
 #include <platfunc.h>
 #include <mach/i386/syscall_sw.h>
 
-#ifdef DARLING
-#	define _OSSpinLockUnlock OSSpinLockUnlock
-#	define x__spin_unlock _spin_unlock
-#	define x_spin_unlock spin_unlock
-#else
-#	define x__spin_unlock __spin_unlock
-#	define x_spin_unlock _spin_unlock
-#endif
 
 PLATFUNC_FUNCTION_START(OSSpinLockTry, up, 32, 4)
 PLATFUNC_FUNCTION_START(_spin_lock_try, up, 32, 4)
@@ -127,11 +119,11 @@ PLATFUNC_DESCRIPTOR(_spin_lock,mp,0,kUP)
 
 	.align	2, 0x90
 	.globl	_OSSpinLockUnlock
-	.globl	x_spin_unlock
-	.globl	x__spin_unlock
+	.globl	_spin_unlock
+	.globl	__spin_unlock
 _OSSpinLockUnlock:
-x_spin_unlock:
-x__spin_unlock:
+_spin_unlock:
+__spin_unlock:
 	movl	4(%esp), %eax
 	movl	$0, (%eax)
 	ret

@@ -35,7 +35,7 @@ add_definitions(
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0") # development flags
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/pthreads")

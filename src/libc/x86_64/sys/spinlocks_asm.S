@@ -121,12 +121,12 @@ PLATFUNC_DESCRIPTOR(spin_lock,mp,0,kUP)
 
 // void OSSpinLockUnlock( OSSpinLock *lock );
 	.align	2, 0x90
-	.globl	OSSpinLockUnlock
-	.globl	spin_unlock
+	.globl	_OSSpinLockUnlock
 	.globl	_spin_unlock
-OSSpinLockUnlock:
-spin_unlock:
+	.globl	__spin_unlock
+_OSSpinLockUnlock:
 _spin_unlock:
+__spin_unlock:
 	movl	$0, (%rdi)
 	ret
 
