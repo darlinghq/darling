@@ -21,9 +21,9 @@
 #endif
     
 .text
-.align (1<<4)
-.globl rintl
-rintl:
+.align 4
+.globl _rintl
+_rintl:
     movswl      exponent,       %eax
     fldt        input
     mov         %eax,           %edx

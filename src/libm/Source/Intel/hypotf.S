@@ -13,25 +13,25 @@
 #define INFINITY $0x7f800000
 
 .text
-.globl cabsf
-.globl hypotf
+.globl _cabsf
+.globl _hypotf
 
 //  Entry points -------------------------------------------------------
 
 #if defined __i386__
-.align (1<<4)
-cabsf:                             // on i386, we can use the same code for
-hypotf:                            // hypotf and cabsf, because the arguments
+.align 4
+_cabsf:                             // on i386, we can use the same code for
+_hypotf:                            // hypotf and cabsf, because the arguments
     mov       4(%esp),      %eax    // come in at the same stack offsets
     mov       8(%esp),      %edx    //
     movss     4(%esp),      %xmm0   // real at esp + 4
     movss     8(%esp),      %xmm1   // imag at esp + 8
 #else
-.align (1<<4)                            // however, on x86_64, the registers used
-cabsf:                             // are different.  cabsf's arguments come
+.align 4                            // however, on x86_64, the registers used
+_cabsf:                             // are different.  cabsf's arguments come
     pshufd  $0xfd,  %xmm0,  %xmm1   // in packed in xmm0.
-.align (1<<4)
-hypotf:                            //
+.align 4
+_hypotf:                            //
     movd        %xmm0,      %eax    // hypotf, on the other hand, gets x in
     movd        %xmm1,      %edx    // xmm0 and y in xmm1.
 #endif

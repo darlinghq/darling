@@ -24,10 +24,6 @@
 #include <machine/cpu_capabilities.h>
 #include <architecture/i386/asm_help.h>
 
-#ifdef DARLING
-#	define __commpage_pthread_mutex_lock _commpage_pthread_mutex_lock
-#endif
-
 #define	PTHRW_LVAL    0
 #define	PTHRW_UVAL    4
 

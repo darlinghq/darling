@@ -3,17 +3,16 @@
  *
  * Steve Canon, March 2009.
  */
-
-.type ceilf, @function 
+ 
 #if defined __i386__
 
 #include <System/i386/cpu_capabilities.h>
 .set cpubits, _COMM_PAGE_CPU_CAPABILITIES
 
 .text
-.align (1<<4)
-.globl ceilf
-ceilf:
+.align 4
+.globl _ceilf
+_ceilf:
 	movss	  4(%esp),			%xmm0	// load argument
 	testl	  $(kHasSSE4_1),	cpubits
 	jz			0f
@@ -24,7 +23,7 @@ ceilf:
 	flds	  4(%esp)
 	ret
 
-.align (1<<4)
+.align 4
 0:	// no SSE 4.1	
 	mov		  4(%esp),			%eax
 	mov			$23,			%cl
@@ -48,29 +47,29 @@ ceilf:
 	cvttps2dq	%xmm0,			%xmm0	// set inexact
 1:	flds	  4(%esp)
 	ret
-.align (1<<4)
+.align 4
 2:	cvttps2dq	%xmm0,			%xmm0	// set inexact
 	cmp			$1,				%edx	// if x > 0, goto 3
 	jge			3f
 	andl		$0x80000000,  4(%esp)	// copysign(0.0, x)
 	flds	  4(%esp)
 	ret
-.align (1<<4)
+.align 4
 3:	movl		$0x3f800000,  4(%esp)	// return 1.0
 	flds	  4(%esp)
 	ret
 
 #elif defined __x86_64__
 
-//.const
-.align (1<<4)
+.const
+.align 4
 one:	.long	0x3f800000
 absmask:.long	0x7fffffff
 
 .text
-.align (1<<4)
-.globl ceilf
-ceilf:
+.align 4
+.globl _ceilf
+_ceilf:
 	movd		%xmm0,			%eax
 	andl		absmask(%rip),	%eax
 	movd		absmask(%rip),	%xmm1

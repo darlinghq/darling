@@ -11,14 +11,14 @@
 #include "abi.h"
 
 #if defined( __x86_64__ )
-.align (1<<3)
+.align 3
 .literal8
 signBit:        .quad   0x8000000000000000
 nonSignBit:     .quad   0x7fffffffffffffff
 #endif
 
-.align (1<<4)
-//.const
+.align 4
+.const
 
 tiny:   .quad   0x8000000000000000, 0x1         //0x1.0p-16382
 big:    .quad   0x8000000000000000, 0x7ffe      //0x1.0p16383

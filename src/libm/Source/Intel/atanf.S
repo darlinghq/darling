@@ -21,8 +21,8 @@ pHalfPi:	.double	+1.5707963267948966192313217
 C2:			.double	 0.0029352921857004596570518
 
 
-	//.const
-	.align	(1<<4)
+	.const
+	.align	4
 
 /*	Define some coefficients for center polynomial (used for x in [-1, +1]).
 	These are stored in pairs at aligned addresses for use in SIMD
@@ -155,11 +155,11 @@ T10:	.double	 0.1730466268612773143731748,  0.1408679409162453515360961
 		Exhaustive testing proved this routine returns faithfully rounded
 		results.
 */
-	.align	(1<<5)
+	.align	5
 #if !defined DevelopmentInstrumentation
 	// This is the regular name used in the deployed implementation.
-		.globl atanf
-	atanf:
+		.globl _atanf
+	_atanf:
 #else
 	// This is the name used for a special test version of the routine.
 		.globl _atanfInstrumented

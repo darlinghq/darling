@@ -10,9 +10,9 @@
 .set cpubits, _COMM_PAGE_CPU_CAPABILITIES
 
 .text
-.align (1<<4)
-.globl floorf
-floorf:
+.align 4
+.globl _floorf
+_floorf:
 	movss	  4(%esp),			%xmm0	// load argument
 	testl	  $(kHasSSE4_1),	cpubits
 	jz			0f
@@ -23,7 +23,7 @@ floorf:
 	flds	  4(%esp)
 	ret
 
-.align (1<<4)
+.align 4
 0:	// no SSE 4.1
 	mov		  4(%esp),			%eax
 	mov			$23,			%cl
@@ -48,29 +48,29 @@ floorf:
 	cvttps2dq	%xmm0,			%xmm0	// set inexact
 1:	flds	  4(%esp)
 	ret
-.align (1<<4)
+.align 4
 2:	cvttps2dq	%xmm0,			%xmm0	// set inexact
 	cmp			$0xffffffff,	%edx	// if x < 0.0, goto 3
 	jl			3f
 	andl		$0x80000000,  4(%esp)	// copysign(0.0, x)
 	flds	  4(%esp)
 	ret
-.align (1<<4)
+.align 4
 3:	movl		$0xbf800000,  4(%esp)	// return 1.0
 	flds	  4(%esp)
 	ret
 
 #elif defined __x86_64__
 
-//.const
-.align (1<<4)
+.const
+.align 4
 mone:	.long	0xbf800000
 absmask:.long	0x7fffffff
 
 .text
-.align (1<<4)
-.globl floorf
-floorf:
+.align 4
+.globl _floorf
+_floorf:
     movd		%xmm0,			%ecx
     andl		$0x7fffffff,	%ecx	// |x|
     subl		$1,				%ecx	// subtract 1. This forces |+-0| to -0

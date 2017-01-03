@@ -11,10 +11,10 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-//.const
+.const
 
 //minimax polynomial for exp2(x)-1
-.align (1<<4)
+.align 4
 // 8th order minimax fit of exp2 on [-1.0,1.0].  |error| < 0.402865722354948566583852e-9:
 expm1f_c:       .quad 0x40bc03f30399c376,   0x3dbea2a63403aaa8          // c4/c8 = 0.961813690023115610862381719985771e-2 / 0.134107709538786543922336536865157e-5, c0 = 0.278626872016317130037181614004e-10
                 .quad 0x408f10e7f73e6d8f,   0x3fe62e42fd0933ee	        // c5/c8 = 0.133318252930790403741964203236548e-2 / 0.134107709538786543922336536865157e-5, c1 = .693147176943623740308984004029708   
@@ -172,7 +172,7 @@ two6:           .quad   0x4050000000000000                          // 0x1.0p6
 	#define RELATIVE_ADDR_B( _a)							(_a)-expm1f_no_fenv_body( CX_P )
 
 //a short routine to get the local address
-.align (1<<4)
+.align 4
 expm1f_pic:      movl    (%esp),     %ecx                    //copy address of local_addr to %ecx
                 ret
 #else

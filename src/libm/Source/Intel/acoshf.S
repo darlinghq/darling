@@ -11,9 +11,9 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-////.const
+.const
 
-.align (1<<4)
+.align 4
 				.quad 0x3e607933f5c9e7de, 0xbfb348d7f4d2c2c1 // c0, d
 				.quad 0xbec93b87a2f58777, 0x0000000000000000 // c1, 0
 				.quad 0x3ffb9a832f4eb8b5, 0x3ffec80a0deff17f // a0, b0
@@ -286,7 +286,7 @@ acoshf_polys:	 .quad 0x40582c7cd80ad8f9, 0x4045c4c4d92795e2 // p01 q01
 
 
 .literal8
-.align (1<<3)
+.align 3
 one:			.quad 0x3ff0000000000000
 onehalf:        .quad 0x3fe0000000000000
 onethird:       .quad 0x3fd5555555555555
@@ -297,7 +297,7 @@ onef:			.long 0x3f800000
 
 
 .text
-.align (1<<4)
+.align 4
 #if defined( __x86_64__ )
 	#define RELATIVE_ADDR( _a )		(_a)( %rip )
 #else

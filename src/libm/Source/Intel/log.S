@@ -18,8 +18,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-//.const
-.align (1<<5)
+.const
+.align 5
 xone:			.quad	0x3ff0000000000000, 0
 frexp_exp_mask: 	.quad	0x7ff0000000000000, 0
 frexp_mant_mask:	.quad	0x800fffffffffffff, 0
@@ -28,7 +28,7 @@ frexp_head_mask:	.quad	0x000ff00000000000, 0
 //log10_key_mask: 	.quad	0x07e0000000000000, 0
 log1p_not_ulp_mask:	.quad	0xfffffffffffffffe, 0
 
-.align (1<<5)	
+.align 5	
 lgel:		.quad	0xB8AA3B295C17F0BC, 0x3fff
 ln2l:		.quad	0xB17217F7D1CF79AC, 0x3ffe	//ln(2) rounded up to long double 
 
@@ -37,13 +37,13 @@ log102l:	.quad	0x9A209A84FBCFF799, 0x3ffd	//log10(2) rounded up (almost 1/2 ulp)
 
 c0:		.quad	0xFFFFFFFFFFFFFFD7, 0xbffd	//c0 = -.4999999999999999988974167423L
 	
-.align (1<<5)	
+.align 5	
 a01:		.double .827742667285236703751556405085096, -2.00038644890076831031534988283768	//a0,a1
 b01:		.double 1.51843353412997067893915870795354, 1.54454569915832086827096843200102	//b0,b1
 
 // The lookup table is in a funny format since it has 2 long double and a single.
 	// {10-byte va ; 2-byte pad ; 4-byte single a ; 10-byte lg1pa ; 6-byte pad}
-.align (1<<5)
+.align 5
 LOOKUP:
 // This is the table for a, ap1, va, lg1pa: a = (float)k*scale, ap1 = a + 1, va = (long double)1./(1.+a), lg1pa = (long double)log2(1.+a)
 // In C this would be 
@@ -375,7 +375,7 @@ isPowerOf10: // {10^n, log10(10^n)} for n < 64
 .quad	0x3ff0000000000000, 0x0000000000000000	//{0x1p+0, 0x0p+0}, k=63
 	
 .literal8
-.align (1<<3)
+.align 3
 one:            .double 	1.0
 mone:            .double 	-1.0
 

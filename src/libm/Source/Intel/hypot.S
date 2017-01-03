@@ -10,8 +10,8 @@
 #endif
 
 .text
-.globl hypot
-.globl cabs
+.globl _hypot
+.globl _cabs
 
 #if defined __i386__
 
@@ -20,9 +20,9 @@
 
 //  Entry point --------------------------------------------------------
 
-.align (1<<4)
-cabs:
-hypot:
+.align 4
+_cabs:
+_hypot:
     mov       8(%esp),      %eax
     mov      16(%esp),      %edx
     mov         ABSHI,      %ecx
@@ -55,7 +55,7 @@ L_returnFromYHiIsZero:
 //  Special case handling ----------------------------------------------
 
 L_xHiIsZero:
-    cmpl        $0,       4(%esp)   // is the low word of x zero?
+    cmp         $0,       4(%esp)   // is the low word of x zero?
     jnz     L_returnFromXHiIsZero   // if not, jump back to mainline
 L_returnAbsY:
     and         %ecx,    16(%esp)
@@ -63,7 +63,7 @@ L_returnAbsY:
     ret
 
 L_yHiIsZero:
-    cmpl        $0,      12(%esp)   // is the low word of y zero?
+    cmp         $0,      12(%esp)   // is the low word of y zero?
     jnz     L_returnFromYHiIsZero   // if not, jump back to mainline
 L_returnAbsX:
     and         %ecx,     8(%esp)
@@ -73,7 +73,7 @@ L_returnAbsX:
 L_xIsSpecial:
     cmp         INFHI,      %edx    // check if y is infinity
     jnz         L_returnAbsX
-    cmpl        $0,      12(%esp)
+    cmp         $0,      12(%esp)
     jz          L_returnAbsY
     jmp         L_returnAbsX
     
@@ -84,9 +84,9 @@ L_xIsSpecial:
 
 //  Entry point --------------------------------------------------------
 
-.align (1<<4)
-cabs:
-hypot:
+.align 4
+_cabs:
+_hypot:
     movd        %xmm0,      %rax
     movd        %xmm1,      %rdx
     mov         ABSMASK,    %rcx

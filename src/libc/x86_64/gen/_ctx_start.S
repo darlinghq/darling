@@ -50,11 +50,6 @@
 
 #if defined(__x86_64__)
 
-#ifdef DARLING
-#	define __ctx_start _ctx_start
-#	define __ctx_done _ctx_done
-#endif
-
 #include <architecture/i386/asm_help.h>
 
 /*

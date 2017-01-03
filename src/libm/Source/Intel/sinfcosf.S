@@ -9,14 +9,14 @@
 
 	.literal8
 
-	.align (1<<3)
+	.align	3
 
 Half:	.double	.5
 
 
-	//.const
+	.const
 
-	.align (1<<4)
+	.align	4
 
 /*	Coefficients to calculate x*(x**4+c0*x**2+c1) * c4*(x**4+c2*x**2+c3).
 
@@ -154,9 +154,9 @@ C4:		.double		0.076492480587904088
 		Exhaustive testing proved this routine returns faithfully rounded
 		results.
 */
-	.align (1<<5)
-	.globl sinf
-sinf:
+	.align	5
+	.globl _sinf
+_sinf:
 
 	// Put x into an integer register.
 	#if defined __i386__
@@ -361,9 +361,9 @@ HandleNaN:
 		Exhaustive testing proved this routine returns faithfully rounded
 		results.
 */
-	.align (1<<5)
-	.globl cosf
-cosf:
+	.align	5
+	.globl _cosf
+_cosf:
 	// This code is identical to _sinf except for the addition of Half.
 
 	// Put x into an integer register.

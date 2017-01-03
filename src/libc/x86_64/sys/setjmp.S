@@ -43,7 +43,7 @@
  *
  */
 
-#ifdef DARLING
+#ifdef DARLING__DISABLED
 #	define x__setjmp _setjmp
 #	define x_setjmp setjmp
 #	define x_longjmp longjmp

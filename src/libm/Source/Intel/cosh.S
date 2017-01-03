@@ -12,10 +12,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-.type cosh, @function
-
-//.const
-.align (1<<4)
+.const
+.align 4
 			// Polynomial coefficients, offset from exp2table
 			.quad 0x3f55e52272e0eaec, 0x3f55e52272e0eaec	// c4
 			.quad 0x401cc9eea1e24220, 0x401cc9eea1e24220	// c3/c4
@@ -163,7 +161,7 @@ small_poly: .quad 0x3fe0000000000000
 			.double 0.20918130318061568990950557203211923657510680e-8
 
 .literal8
-.align (1<<3)
+.align 3
 one_n7:		.quad 0x3f80000000000000
 lge_p7:		.quad 0x40671547652b82fe
 lge_hi:		.quad 0x3ff7154760000000
@@ -181,7 +179,7 @@ poly_mask:	.quad 0xfffffe0000000000
 #else
 	#define RELATIVE_ADDR(_a)	(_a)-cosh_body(%ecx)
 	
-.align (1<<4)
+.align 4
 cosh_pic:
 	movl		(%esp),			%ecx
 	ret

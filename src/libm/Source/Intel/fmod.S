@@ -6,9 +6,9 @@
  */
 
 .text
-.align (1<<4)
-.globl fmodf
-fmodf:
+.align 4
+.globl _fmodf
+_fmodf:
 #if defined __x86_64__
     #define xf        -4(%rsp)
     #define yf        -8(%rsp)
@@ -34,9 +34,9 @@ fmodf:
     ret
     
 .text
-.align (1<<4)
-.globl fmod
-fmod:
+.align 4
+.globl _fmod
+_fmod:
 #if defined __x86_64__
     #define x         -8(%rsp)
     #define y        -16(%rsp)
@@ -62,9 +62,9 @@ fmod:
     ret
     
 .text
-.align (1<<4)
-.globl fmodl
-fmodl:
+.align 4
+.globl _fmodl
+_fmodl:
 #if defined __x86_64__
     #define xl         8(%rsp)
     #define yl        24(%rsp)

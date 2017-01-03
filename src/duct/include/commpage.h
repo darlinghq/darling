@@ -7,9 +7,19 @@
 extern uint8_t __commpage[];
 #endif
 
-#define _COMM_PAGE_BASE_ADDRESS (__commpage)
+//#ifndef __ASSEMBLER__
+//#define _COMM_PAGE_BASE_ADDRESS (__commpage)
+//#else
+//#define _COMM_PAGE_BASE_ADDRESS ___commpage@GOTPCREL(%rip)
+//#endif
 #define _COMM_PAGE_AREA_LENGTH        ( 1 * 4096 )                            /* reserved length of entire comm area */
-//#define _COMM_PAGE_BASE_ADDRESS       ( 0xffff0000 )                          /* base address of allocated memory */
+
+#ifdef __x86_64__
+#define _COMM_PAGE_BASE_ADDRESS       ( 0x7fffffe00000 )                          /* base address of allocated memory */
+#else
+#define _COMM_PAGE_BASE_ADDRESS       ( 0xaaaa0000 )                          /* base address of allocated memory */
+#endif
+
 #define _COMM_PAGE_START_ADDRESS      ( _COMM_PAGE_BASE_ADDRESS )   /* address traditional commpage code starts on */
 #define _COMM_PAGE_AREA_USED          ( 1 * 4096 )                            /* this is the amt actually allocated */
 #define _COMM_PAGE_SIGS_OFFSET        0x8000                                      /* offset to routine signatures */

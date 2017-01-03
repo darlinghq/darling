@@ -7,9 +7,9 @@
 #if defined __i386__
 
 .text
-.align (1<<4)
-.globl roundf
-roundf:
+.align 4
+.globl _roundf
+_roundf:
     mov		  4(%esp),			%eax	// load the input, x
 	movss	  4(%esp),			%xmm0
     and			$0x7f800000,    %eax	// |x|
@@ -31,13 +31,13 @@ roundf:
 	cvttps2dq	%xmm0,			%xmm0	// raise inexact
 1:	flds	  4(%esp)
 	ret
-.align (1<<4)
+.align 4
 2:	je			3f						// if |x| >= 0.5f, goto 3
 	andl		$0x80000000,  4(%esp)	// copysign(0.0, x)
 	cvttps2dq	%xmm0,			%xmm0	// raise inexact
 	flds	  4(%esp)
 	ret
-.align (1<<4)
+.align 4
 3:	addl		$0x00800000,  4(%esp)
 	andl		$0xff800000,  4(%esp)	// copysign(1.0, x)
 	cvttps2dq	%xmm0,			%xmm0	// raise inexact
@@ -46,18 +46,18 @@ roundf:
 	
 #elif defined __x86_64__
 
-//.const
-.align (1<<4)
+.const
+.align 4
 mzero:	.long	0x80000000
-.align (1<<4)
+.align 4
 expbit: .long	0x00800000
-.align (1<<4)
+.align 4
 expmask:.long	0xff800000
 
 .text
-.align (1<<4)
-.globl roundf
-roundf:
+.align 4
+.globl _roundf
+_roundf:
 	movd		%xmm0,			%eax
     and			$0x7f800000,    %eax	// |x|
 	mov			$23,			%ecx
@@ -79,12 +79,12 @@ roundf:
 	paddd		%xmm2,			%xmm0	// add 0.5 (ish -- non-integral bits are garbage)
 	pand		%xmm3,			%xmm0	// truncate
 1:	ret
-.align (1<<4)
+.align 4
 2:	je			3f						// if |x| >= 0.5f, goto 3
 	cvttps2dq	%xmm0,			%xmm1	// raise inexact
 	andps		mzero(%rip),	%xmm0	// copysign(0.0, x)
 	ret
-.align (1<<4)
+.align 4
 3:	cvttps2dq	%xmm0,			%xmm1	// raise inexact
 	paddd		expbit(%rip),	%xmm0
 	pand		expmask(%rip),	%xmm0	// copysign(1.0, x)

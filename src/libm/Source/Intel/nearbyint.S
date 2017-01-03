@@ -5,12 +5,12 @@
 //
 //  -- Stephen Canon, January 2010
 
-#include <i386/cpu_capabilities.h>
+#include <System/i386/cpu_capabilities.h>
 
 .text
-.align (1<<4)
-.globl nearbyint
-nearbyint:
+.align 4
+.globl _nearbyint
+_nearbyint:
 
 // Fast path if SSE4.1 is available ------------------------------------------
 

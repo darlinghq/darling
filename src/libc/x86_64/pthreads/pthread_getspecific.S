@@ -24,10 +24,6 @@
 
 #include "pthread_machdep.h"
 
-#ifdef DARLING
-#	define _pthread_getspecific pthread_getspecific
-#endif
-
 .text
 .align (2<<2), 0x90
 .globl _pthread_getspecific

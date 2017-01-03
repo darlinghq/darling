@@ -12,9 +12,9 @@
 #ifdef __SSE3__
 
 .text
-.align (1<<4)
-.globl floor
-floor:
+.align 4
+.globl _floor
+_floor:
 	mov		  8(%esp),			%ecx
  	fldl      4(%esp)
 	cmp			$0x43300000,	%ecx	// if x is negative or x > 0x1.0p53
@@ -48,9 +48,9 @@ floor:
 #else // i386, no SSE3
 
 .text
-.align (1<<4)
-.globl floor
-floor:
+.align 4
+.globl _floor
+_floor:
 	mov		  8(%esp),			%ecx
 	and			$0x7fffffff,	%ecx	// high word of |x|
  	fldl      4(%esp)
@@ -78,16 +78,16 @@ floor:
 	
 #else // x86_64
 
-//.const
-.align (1<<4)
+.const
+.align 4
 mone:	.quad	0xbff0000000000000
 absmask:.quad   0x7fffffffffffffff
 thresh: .quad	0x432fffffffffffff
 
 .text
-.align (1<<4)
-.globl floor
-floor:
+.align 4
+.globl _floor
+_floor:
 	movd		%xmm0,			%rcx
 	andq		absmask(%rip),	%rcx	// |x|
 	subq		$1,				%rcx

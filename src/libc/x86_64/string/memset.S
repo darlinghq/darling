@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
  *
@@ -42,15 +41,6 @@
  * NB: we avoid "stos" family of instructions (stosl, stosb), as they are very slow
  * on P4s and probably other processors.
  */
-
-#ifdef DARLING
-#	define _memset memset
-#	define _memset_pattern4 memset_pattern4
-#	define _memset_pattern8 memset_pattern8
-#	define _memset_pattern16 memset_pattern16
-#	define _bzero bzero@PLT
-.type memset, @function
-#endif
 
 #define kShort	255			// for nonzero memset(), too short for commpage
 

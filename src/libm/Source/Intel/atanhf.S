@@ -12,8 +12,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-//.const
-.align (1<<4)
+.const
+.align 4
 // Polynomial coefficients used for the 7/8 < |x| < 1 case.  These are addressed by offset from big_table,
 // so take care if you move things around.
 
@@ -554,7 +554,7 @@ small_table:	.quad 0x0000000000000000, 0x3ff0000000000000	// a = 0
 																// a = 7/8
 
 .literal8
-.align (1<<3)
+.align 3
 one_256th:		.quad 0x3f70000000000000 // 1/256
 one:			.quad 0x3ff0000000000000
 one_plus_eps:	.quad 0x3ff0000000000001 // 1 + ulp
@@ -567,7 +567,7 @@ exp_mask:		.quad 0x7ff0000000000000ULL // exponent bits / +Inf
 neglog2_2:		.quad 0xbfd62e42fefa39ef // -ln(2)/2
 
 .literal4
-.align (1<<2)
+.align 2
 f256:           .long 0x43800000         // 256.0f
 
 .text
@@ -577,7 +577,7 @@ f256:           .long 0x43800000         // 256.0f
 #elif defined( __i386__ )
 	#define RELATIVE_ADDR( _a)			(_a)-atanhf_body( CX_P )
 	#define INDEX						%edi
-.align (1<<4)
+.align 4
 atanhf_pic:
 	movl		(%esp),					%ecx	// copy address of local_addr to %ecx
 	ret

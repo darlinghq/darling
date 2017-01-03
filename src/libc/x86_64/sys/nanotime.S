@@ -29,10 +29,6 @@
 #include <sys/appleapiopts.h>
 #include <machine/cpu_capabilities.h>
 
-#ifdef DARLING
-#	define _mach_absolute_time mach_absolute_time
-#endif
-
 /*
  * 64-bit version _mach_absolute_time.  We return the 64-bit nanotime in %rax,
  */

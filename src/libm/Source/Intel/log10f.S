@@ -9,8 +9,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-//.const
-.align (1<<4)
+.const
+.align 4
 
 //  256 entry of Lookup table of values used for log10 calculation, generated as:
 //
@@ -300,7 +300,7 @@ log10_m_table:      .quad                  0x0,	0x3ff0000000000000	// log10(1.00
 
 
 .literal8
-.align (1<<3)
+.align 3
 one:            .double     1.0
 onehalf:        .double     0.5
 onethird:       .quad       0x3fd5555555555555      // 1/3
@@ -321,7 +321,7 @@ log10_of_2:     .quad       0x3fd34413509f79ff      // log10(2)
 	#define RELATIVE_ADDR2( _a, _i, _step)                  (_a)-rel_addr( CX_P, _i, _step )
 
 //a short routine to get the local address
-.align (1<<4)
+.align 4
 log10f_pic:     movl    (%esp),     %ecx                    //copy address of local_addr to %ecx
                 ret
 #else

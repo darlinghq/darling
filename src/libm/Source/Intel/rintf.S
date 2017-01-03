@@ -7,9 +7,9 @@
 //  -- Stephen Canon, January 2010
 
 .text
-.align (1<<4)
-.globl rintf
-rintf:
+.align 4
+.globl _rintf
+_rintf:
 #if defined __i386__
     movl        4(%esp),        %ecx
     movss       4(%esp),        %xmm0

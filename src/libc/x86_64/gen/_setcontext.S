@@ -24,10 +24,6 @@
 
 #if defined(__x86_64__)
 
-#ifdef DARLING
-#	define __setcontext _setcontext
-#endif
-
 #include <architecture/i386/asm_help.h>
 
 #define MCONTEXT_SS_RAX     16

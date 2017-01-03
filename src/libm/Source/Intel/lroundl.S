@@ -11,20 +11,20 @@
 #include "abi.h"
 #include <machine/asm.h>
 
-.align (1<<2)
+.align 2
 .literal4
 two63:          .long           0x5f000000
 mtwo63:         .long           0xdf000000
 one:            .long           1
 inf:            .long           0x7f800000
 
-.align (1<<3)
+.align 3
 .literal8
 cutoff32:        .double     2147483647.5            // 2**31-0.5
 mcutoff32:       .double    -2147483648.5            // 2**31-0.5
 
 
-.align (1<<4)
+.align 4
 .literal16
 cutoff:         .quad           0xffffffffffffffff, 0x403d 
 sign:           .quad           0x0, 0xffffffffffffffff

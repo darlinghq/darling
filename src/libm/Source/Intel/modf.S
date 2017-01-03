@@ -25,9 +25,9 @@
 #if defined __i386__
 
 .text
-.align (1<<4)
-.globl modf
-modf:
+.align 4
+.globl _modf
+_modf:
 	movl	   8(%esp),		%eax	// high word of x
 	andl	   $0x7fffffff,	%eax	// high word of |x|
 	subl	   $0x3ff00000,	%eax	// subtract off exponent bias
@@ -78,17 +78,17 @@ modf:
 	
 #else // __x86_64__
 
-//.const
-.align (1<<4)
+.const
+.align 4
 absmask:
 	.quad	0x7fffffffffffffff
 one:
 	.quad	0x3ff0000000000000
 
 .text
-.align (1<<4)
-.globl modf
-modf:
+.align 4
+.globl _modf
+_modf:
 	movsd	absmask(%rip),	%xmm1
 	andpd		%xmm0,		%xmm1	// |x|
 	movd		%xmm1,		%rax

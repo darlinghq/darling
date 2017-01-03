@@ -9,8 +9,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-//.const
-.align (1<<4)
+.const
+.align 4
 
 //  256 entry of Lookup table of values used for log2 calculation, generated as:
 //
@@ -300,7 +300,7 @@ log2f_table:    .quad	               0x0,	0x3ff0000000000000	//log2(1.00000), 1/
                 .quad	0x3fefe8e4f15bd1a0,	0x3fe0080402010080	//log2(1.99609), 1/1.99609
 
 .literal8
-.align (1<<3)
+.align 3
 one:            .double     1.0
 onehalf:        .double     0.5
 onethird:       .quad       0x3fd5555555555555      // 1/3
@@ -321,7 +321,7 @@ recip_log2:     .quad       0x3ff71547652b82fe      // 1.0 / ln(2)
 	#define RELATIVE_ADDR2( _a, _i, _step)                  (_a)-rel_addr( CX_P, _i, _step )
 
 //a short routine to get the local address
-.align (1<<4)
+.align 4
 log2f_pic:      movl    (%esp),     %ecx                    //copy address of local_addr to %ecx
                 ret
 #else

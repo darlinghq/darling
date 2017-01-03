@@ -14,8 +14,8 @@
 inf:         .long   0x7f800000
 minf:        .long   0xff800000
 
-//.const
-.align (1<<4)
+.const
+.align 4
 maxldbl:     .quad   0xffffffffffffffff, 0x7ffe
 minldbl:     .quad   0x8000000000000000, 0x0001
 ln2_hi:      .quad   0xB17217F7D1D00000, 0x3ffe

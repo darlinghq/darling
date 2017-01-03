@@ -25,9 +25,9 @@
 #endif
 
 .text
-.align (1<<4)
-.globl round
-round:
+.align 4
+.globl _round
+_round:
 	movl	  8(%esp),			%ecx
 	cmpl		$0x43300000,	%ecx
 	fldl	  4(%esp)
@@ -67,17 +67,17 @@ round:
 
 #else //x86_64
 
-//.const
-.align (1<<4)
+.const
+.align 4
 one:	.quad	0x3ff0000000000000
 absmask:.quad   0x7fffffffffffffff
 half:	.quad	0x3fe0000000000000
 thresh: .quad	0x4330000000000000
 
 .text
-.align (1<<4)
-.globl round
-round:
+.align 4
+.globl _round
+_round:
 	movd		%xmm0,			%rcx
 	andq		absmask(%rip),	%rcx
 	movsd		absmask(%rip),	%xmm2

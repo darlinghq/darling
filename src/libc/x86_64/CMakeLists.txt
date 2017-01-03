@@ -3,15 +3,15 @@ project(libc-x86_64)
 cmake_minimum_required(VERSION 2.8.0)
 enable_language(C ASM)
 
-add_definitions(-D_getcontext=getcontext)
-add_definitions(-D_moncount=moncount)
-add_definitions(-D__setcontext=_setcontext)
-add_definitions(-D_getmcontext=getmcontext)
-add_definitions(-D__ctx_done=_ctx_done)
-add_definitions(-D__ctx_start=_ctx_start)
-add_definitions(-D_cpu_number=cpu_number)
-add_definitions(-D_sys_icache_invalidate=sys_icache_invalidate)
-add_definitions(-D_sys_dcache_flush=sys_dcache_flush)
+#add_definitions(-D_getcontext=getcontext)
+#add_definitions(-D_moncount=moncount)
+#add_definitions(-D__setcontext=_setcontext)
+#add_definitions(-D_getmcontext=getmcontext)
+#add_definitions(-D__ctx_done=_ctx_done)
+#add_definitions(-D__ctx_start=_ctx_start)
+#add_definitions(-D_cpu_number=cpu_number)
+#add_definitions(-D_sys_icache_invalidate=sys_icache_invalidate)
+#add_definitions(-D_sys_dcache_flush=sys_dcache_flush)
 add_definitions(-DPRIVATE)
 
 #set(CMAKE_C_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include/commpage.h -include ${DARLING_TOP_DIRECTORY}/platform-include/sys/time.h")
@@ -31,16 +31,16 @@ set(x86_64_sources
 	../i386/pthreads/init_cpu_capabilities.c
 )
 
-add_definitions(-D_preempt=preempt)
-add_definitions(-D_backoff=backoff)
-add_definitions(-D_pthread_getspecific=pthread_getspecific)
-add_definitions(-D__commpage_pthread_mutex_lock=_commpage_pthread_mutex_lock)
-add_definitions(-D_pthread_self=pthread_self)
-add_definitions(-D___pthread_set_self=__pthread_set_self)
-add_definitions(-D_start_wqthread=start_wqthread)
-add_definitions(-D_thread_start=thread_start)
-add_definitions(-D__pthread_start=_pthread_start)
-add_definitions(-D__pthread_wqthread=_pthread_wqthread)
+#add_definitions(-D_preempt=preempt)
+#add_definitions(-D_backoff=backoff)
+#add_definitions(-D_pthread_getspecific=pthread_getspecific)
+#add_definitions(-D__commpage_pthread_mutex_lock=_commpage_pthread_mutex_lock)
+#add_definitions(-D_pthread_self=pthread_self)
+#add_definitions(-D___pthread_set_self=__pthread_set_self)
+#add_definitions(-D_start_wqthread=start_wqthread)
+#add_definitions(-D_thread_start=thread_start)
+#add_definitions(-D__pthread_start=_pthread_start)
+#add_definitions(-D__pthread_wqthread=_pthread_wqthread)
 
 set(x86_64_sources ${x86_64_sources}
 	pthreads/preempt.S
@@ -85,7 +85,7 @@ set(x86_64_sources ${x86_64_sources}
 	sys/setjmp.S
 	sys/_sigtramp.S
 	sys/spinlocks_asm.S
-	#sys/spinlocks.c # aliases in other complation units don't work, work done in spinlocks_asm.S
+	sys/spinlocks.c # aliases in other complation units don't work, work done in spinlocks_asm.S
 )
 
 

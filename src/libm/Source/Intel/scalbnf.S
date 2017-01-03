@@ -8,17 +8,17 @@
 
 
 .text
-.globl scalblnf
-.globl scalbnf
-.globl ldexpf
+.globl _scalblnf
+.globl _scalbnf
+.globl _ldexpf
 
 #if defined __x86_64__
 
     #define     n           %edi
     #define     ln          %rdi
     
-.align (1<<4)
-scalblnf:
+.align 4
+_scalblnf:
     cvtss2sd    %xmm0,      %xmm0       // (double)x
     mov         $300,       %rdx
     cmp         %rdx,       ln          // if n > 300
@@ -28,9 +28,9 @@ scalblnf:
     cmovl       %rdx,       ln          //    n == -300
     jmp         L_common
     
-.align (1<<4)
-scalbnf:
-ldexpf:
+.align 4
+_scalbnf:
+_ldexpf:
     cvtss2sd    %xmm0,      %xmm0       // (double)x
     mov         $300,       %edx
     cmp         %edx,       n           // if n > 300
@@ -50,10 +50,10 @@ L_common:
 
     #define     n           %eax
     
-.align (1<<4)
-scalblnf:
-scalbnf:
-ldexpf:
+.align 4
+_scalblnf:
+_scalbnf:
+_ldexpf:
     cvtss2sd    4(%esp),    %xmm0       // (double)x
     mov         8(%esp),    n
     mov         $300,       %edx

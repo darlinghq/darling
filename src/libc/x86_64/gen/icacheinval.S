@@ -26,13 +26,8 @@
  
  #include <machine/cpu_capabilities.h>
  
-#ifdef DARLING
-#	define _sys_icache_invalidate sys_icache_invalidate
-#	define _sys_dcache_flush sys_dcache_flush
-#endif
-
     .text
-    .align (2<<4), 0x00
+    .align 4, 0x00
 
 /* void sys_icache_invalidate(addr_t start, int length) */
 

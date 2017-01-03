@@ -16,7 +16,7 @@
 #include "machine/asm.h"
 #include "abi.h"
 
-//.const
+.const
 gMaskShift:    .byte    0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,    \
                         0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,    \
                         0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,    \
@@ -34,7 +34,7 @@ gMaskShift:    .byte    0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,    \
                        31,31,31,31, 31,31,31,31,31,31,31,31,31,31,31,31,    \
                        31,31,31,31, 31,31,31,31,31,31,31,31,31,31,31,31
 
-.align (1<<4)
+.align 4
 // 8th order minimax fit of exp2 on [-1.0,1.0].  |error| < 0.402865722354948566583852e-9:
 powf_exp_c:     .quad 0x40bc03f30399c376,   0x3ff000000001ea2a          // c4/c8 = 0.961813690023115610862381719985771e-2 / 0.134107709538786543922336536865157e-5, c0 = 1.0 + 0.278626872016317130037181614004e-10
                 .quad 0x408f10e7f73e6d8f,   0x3fe62e42fd0933ee            // c5/c8 = 0.133318252930790403741964203236548e-2 / 0.134107709538786543922336536865157e-5, c1 = .693147176943623740308984004029708   
@@ -98,7 +98,7 @@ powf_exp_c:     .quad 0x40bc03f30399c376,   0x3ff000000001ea2a          // c4/c8
 //    exact powers of two. (These are 1.0 + 1 ulp and 1.0 - 1ulp.)  The other values will land somewhere in the
 //  range [ 1.0 - 2**-8,  1.0 + 2**-7 ]. (Experimentally verified for all floats 1.0 <= x < 2.0.)
 //
-.align (1<<3)
+.align 3
 powf_log2_c:    .quad 0x3ff0000000000000,    0x8000000000000000    // 1, -log2l(1)
                 .quad 0x3fefc00000000000,    0x3f872c7ba20f7327    // 0.992188, -log2l(0.992188)
                 .quad 0x3fef80fe03f80fe0,    0x3f9715662c7f3dbc    // 0.984496, -log2l(0.984496)
@@ -659,7 +659,7 @@ ENTRY( powf )
     jmp      9f
     
 
-.align (1<<4)
+.align 4
     // return value in %xmm0
 9:
     pop        DI_P
@@ -697,7 +697,7 @@ ___ipowf:
     movapd      %xmm0,                     %xmm2        //        r = x
     jmp         3f
 
-.align (1<<4)
+.align 4
 // do{
 2:  mulsd       %xmm0,                     %xmm0        //    x *= x
     test        $1,                        %edx

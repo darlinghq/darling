@@ -42,12 +42,6 @@
 #define MCONTEXT_SS_R8		80
 #define MCONTEXT_SS_RIP		144
 
-#ifdef DARLING
-#	define __sigtramp _sigtramp
-#	define ___sigreturn __sigreturn@PLT
-#	define ___in_sigtramp __in_sigtramp@GOTPCREL
-#endif
-
 /* register use:
 	%rbx	uctx
 	
@@ -61,13 +55,9 @@ _sigtramp(
 )
 */
 
-#ifdef DARLING
-#	define __sigtramp _sigtramp
-#endif
-
 	.globl __sigtramp
 	.text
-	.align 1<<4
+	.align 4
 __sigtramp:
 Lstart:
 	/* Although this routine does not need any stack frame, various parts
@@ -162,12 +152,8 @@ Lend:
 	 DW_OP_breg(3), UCONTEXT_UC_MCONTEXT, DW_OP_deref,		\
 	 DW_OP_plus_uconst, MCONTEXT_SS_R8+(8*(regno-8)), 1
 
-#ifndef DARLING
 	/* Unwind tables.  */
 	.section __TEXT,__eh_frame,coalesced,no_toc+strip_static_syms+live_support
-#else
-	.text
-#endif
 
 EH_frame1:
 	.set L$set$0,LECIE1-LSCIE1
@@ -264,10 +250,8 @@ Lcfa_start:
 	.byte  DW_OP_plus_uconst, MCONTEXT_SS_RSP, DW_OP_deref
 Lcfa_end:
 
-	.align 1<<3
+	.align 3
 LEFDE1:
 
-#ifndef DARLING
 	.subsections_via_symbols
-#endif
 

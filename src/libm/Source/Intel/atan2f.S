@@ -29,8 +29,8 @@ AlmostpPi:	.double	+3.1415924
 C2:			.double	 0.0029352921857004596570518
 
 
-	//.const
-	.align	(1<<4)
+	.const
+	.align	4
 
 /*	Define some coefficients for center polynomial (used for x in [-1, +1]).
 	These are stored in pairs at aligned addresses for use in SIMD
@@ -42,7 +42,7 @@ C11:		.double	-2.9466967515109826289085300, -4.9721072376211623038916292
 C10:		.double	 5.4728447324456990092824269,  6.7197076223592378022736307
 
 // This needs to be 16-byte aligned because it is used in an orpd instruction.
-	.align	(1<<4)
+	.align	4
 pPi:		.double	+3.141592653589793238462643	// pi.
 
 
@@ -209,9 +209,9 @@ pPi:		.double	+3.141592653589793238462643	// pi.
 		(x1, y1) are in the same quadrant, then y0/x0 <= y1/x1 implies
 		atan2f(y0, x0) <= atan2f(y1, x1).)
 */
-	.align	(1<<5)
-	.globl atan2f
-atan2f:
+	.align	5
+	.globl _atan2f
+_atan2f:
 
 	cvtss2sd	Argy, y					// Convert to double precision.
 	cvtss2sd	Argx, x

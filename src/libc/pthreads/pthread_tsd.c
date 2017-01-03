@@ -253,12 +253,4 @@ _pthread_keys_init()
 
 }
 
-#ifdef DARLING
-
-// Needed for Darling libdyld
-
-int __darwin_pthread_key_create(pthread_key_t *key, void (*destructor)(void*)) __attribute__((weak, alias("pthread_key_create")));
-int __darwin_pthread_key_delete(pthread_key_t key)  __attribute__((weak, alias("pthread_key_delete")));
-int __darwin_pthread_setspecific(pthread_key_t key, const void *value)  __attribute__((weak, alias("pthread_setspecific")));
-#endif
 

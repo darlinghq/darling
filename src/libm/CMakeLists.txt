@@ -5,11 +5,12 @@ enable_language(C ASM)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -ggdb -O0")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -DBUILDING_FOR_CARBONCORE_LEGACY -funroll-loops -msse3") # -DBUILDING_FOR_CARBONCORE_LEGACY")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include)
-add_definitions(-Dliteral8=text -Dliteral4=text -Dliteral16=text -Dmovsxw=movswl -DPRIVATE)
+add_definitions(-Dmovsxw=movswl -DPRIVATE)
 
 set(libm_sources
 	Source/abs.c
@@ -262,11 +263,11 @@ set_target_properties(system_m_extra PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CA
 #add_library(system_m_extra_no_fenv OBJECT Source/Intel/xmm_log.c)
 #set_target_properties(system_m_extra_no_fenv PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY -ftrapping-math -fPIC -DNO_FENV")
 
-add_library(system_m_no_fenv STATIC ${libm_nofenv_sources}) # $<TARGET_OBJECTS:system_m_extra_no_fenv>)
-set_target_properties(system_m_no_fenv PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY -ftrapping-math -fPIC -DNO_FENV")
+#add_library(system_m_no_fenv OBJECT ${libm_nofenv_sources}) # $<TARGET_OBJECTS:system_m_extra_no_fenv>)
+#set_target_properties(system_m_no_fenv PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY -ftrapping-math -fPIC -DNO_FENV")
 
-add_library(system_m SHARED ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
-target_link_libraries(system_m PRIVATE "-Wl,--whole-archive" system_m_no_fenv)
+add_darling_library(system_m SHARED ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
+#target_link_libraries(system_m)
 
 install(TARGETS system_m DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 

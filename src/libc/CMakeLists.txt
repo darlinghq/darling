@@ -19,7 +19,7 @@ add_definitions(-D__LIBC__ -D__DARWIN_UNIX03=1 -D__DARWIN_64_BIT_INO_T=1 -D__DAR
 #add_definitions("'-D__weak_reference(sym,alias)=__asm__(\".weak \" \\\#alias );__asm__(\".equ \" \\\#alias \", \" \\\#sym)'")
 #add_definitions("'-D__weak_reference(sym,alias)='")
 add_definitions("'-D__warn_references(name,warning)='")
-add_definitions(-Ddladdr=__darwin_dladdr)
+#add_definitions(-Ddladdr=__darwin_dladdr)
 add_definitions(-DBUILDING_LIBC)
 
 # Hide warnings that get spammed
@@ -35,8 +35,7 @@ add_definitions(
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0") # development flags
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map -Bsymbolic-functions")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--defsym=__darwin_pthread_self=pthread_self")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/pthreads")

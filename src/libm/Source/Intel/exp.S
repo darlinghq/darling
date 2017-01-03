@@ -20,8 +20,8 @@
 	Tables and Constants
 
 ****************************************************************************/
-//.const
-.align (1<<4)
+.const
+.align 4
 
 
 			// Coefficients for the 4th order minimax polynomial
@@ -175,7 +175,7 @@ small_poly: .quad 0x3ff0000000000000
 			.quad 0x3f8111116e99ac77
 			
 .literal8
-.align (1<<3)
+.align 3
 lge_p7:		.quad 0x40671547652b82fe
 lge:		.quad 0x3ff71547652b82fe
 lge_hi:		.quad 0x3ff7154760000000

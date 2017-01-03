@@ -37,10 +37,6 @@
  * osfmk/i386/mp_desc.c.
  */
  
-#ifdef DARLING
-#	define _cpu_number cpu_number
-#endif
-
 /* return logical cpu number in %rax */
 
 	.globl _cpu_number

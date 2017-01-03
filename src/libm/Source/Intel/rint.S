@@ -6,13 +6,13 @@
 //
 //  -- Stephen Canon, January 2010
 
-.globl rint
+.globl _rint
 
 #if defined __i386__
 
 .text
-.align (1<<4)
-rint:
+.align 4
+_rint:
     fldl        4(%esp)
     frndint
     ret
@@ -24,8 +24,8 @@ absmask:    .quad 0x7fffffffffffffff
 twop52:     .quad 0x4330000000000000
 
 .text
-.align (1<<4)
-rint:
+.align 4
+_rint:
     movd        %xmm0,          %rcx
     mov         %rcx,           %rdx
     and         absmask(%rip),  %rcx    // |x|

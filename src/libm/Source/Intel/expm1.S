@@ -20,8 +20,8 @@
 	Tables and Constants
 
 ****************************************************************************/
-//.const
-.align (1<<4)
+.const
+.align 4
 			
 			// Coefficients for the 4th order minimax polynomial
 			// approximation of exp2( ) on the interval [-0x1p-27, 0x1p-7]
@@ -176,7 +176,7 @@ small_poly:	.quad 0x402861b02f2c3241, 0x401552de659eae97
 			// Other useful constants
 
 .literal8
-.align (1<<3)
+.align 3
 lge_p7:		.quad 0x40671547652b82fe
 lge:		.quad 0x3ff71547652b82fe
 lge_hi:		.quad 0x3ff7154760000000

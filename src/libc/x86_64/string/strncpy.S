@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
  *
@@ -42,12 +41,6 @@
 // Recall that strncpy() zero fills the remainder of the dest buffer,
 // and does not terminate the string if its length is greater than or
 // equal to n.
-
-#ifdef DARLING
-#	define _strncpy strncpy
-#	define _bzero bzero@PLT
-.type strncpy, @function
-#endif
 
 #define	kShort	31			// too short to bother with vector loop
 

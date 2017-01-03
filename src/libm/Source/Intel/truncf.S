@@ -12,9 +12,9 @@
 #if defined __i386__
 
 .text
-.align (1<<4)
-.globl truncf
-truncf:
+.align 4
+.globl _truncf
+_truncf:
 	movss	  4(%esp),			%xmm0	// load argument
 	testl	  $(kHasSSE4_1),	cpubits
 	jz			0f
@@ -24,7 +24,7 @@ truncf:
 	flds	  4(%esp)					//
 	ret
 
-.align (1<<4)
+.align 4
 0:  mov		  4(%esp),			%eax	// load the input, x
     and			$0x7f800000,    %eax	// |x|
 	mov			$23,			%ecx
@@ -40,7 +40,7 @@ truncf:
 1:	flds	  4(%esp)
 	ret
 	
-.align (1<<4)
+.align 4
 2:	// Handle |x| < 1.0 here.
 	andl		$0x80000000,  4(%esp)	// copysign(0.0, x)
 	cvttps2dq	%xmm0,			%xmm0	// raise inexact
@@ -49,14 +49,14 @@ truncf:
 
 #elif defined __x86_64__
 
-//.const
-.align (1<<4)
+.const
+.align 4
 mzero:	.long	0x80000000
 
 .text
-.align (1<<4)
-.globl truncf
-truncf:
+.align 4
+.globl _truncf
+_truncf:
 	movd		%xmm0,			%eax
     and			$0x7f800000,    %eax	// |x|
 	mov			$23,			%ecx
@@ -71,7 +71,7 @@ truncf:
 	cvttps2dq	%xmm0,			%xmm1	// raise inexact
 	andps		%xmm2,			%xmm0	// mask off non-integral bits
 1:	ret
-.align (1<<4)
+.align 4
 2:	cvttps2dq	%xmm0,			%xmm1	// raise inexact
 	andps		mzero(%rip),	%xmm0	// copysign(0.0, x)
 	ret

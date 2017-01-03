@@ -52,8 +52,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-//.const
-.align (1<<4)
+.const
+.align 4
 
 // Minimax polynomial coefficents (addressed by offset from cbrt_table)
 			.quad 0x4000204182c17486, 0xbff8b5b876f0d973 // b1lo b1hi
@@ -261,7 +261,7 @@ exponent_bias:	.quad 0x3ff0000000000000, 0x3d50000000000000
 denormal_bias:	.quad 0x3ff0000000000000, 0x3ab0000000000000
 
 .text
-.align (1<<4)
+.align 4
 
 #if defined( __x86_64__ )
 	#define RELATIVE_ADDR( _a )		(_a)( %rip )

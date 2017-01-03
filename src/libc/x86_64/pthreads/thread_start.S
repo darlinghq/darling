@@ -25,11 +25,6 @@
 #include "pthread_machdep.h"
 #include <architecture/i386/asm_help.h>
 
-#ifdef DARLING
-#	define _thread_start thread_start
-#	define __pthread_start _pthread_start
-#endif
-
 .text
 .align (2<<2), 0x90
 .globl _thread_start

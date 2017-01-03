@@ -55,7 +55,7 @@
 //
 //
 
-.align (1<<4)
+.align 4
 // 8th order minimax fit of exp2 on [-1.0,1.0].  |error| < 0.402865722354948566583852e-9:
 exp2f_c:        .quad 0x40bc03f30399c376,   0x3ff000000001ea2a          // c4/c8 = 0.961813690023115610862381719985771e-2 / 0.134107709538786543922336536865157e-5, c0 = 1.0 + 0.278626872016317130037181614004e-10
                 .quad 0x408f10e7f73e6d8f,   0x3fe62e42fd0933ee	        // c5/c8 = 0.133318252930790403741964203236548e-2 / 0.134107709538786543922336536865157e-5, c1 = .693147176943623740308984004029708   
@@ -64,7 +64,7 @@ exp2f_c:        .quad 0x40bc03f30399c376,   0x3ff000000001ea2a          // c4/c8
                 .quad 0x3eb67fe1dc3105ba                                // c8 = 0.134107709538786543922336536865157e-5
 
 
-.align (1<<3)
+.align 3
 exp2f_nofenv_c: .quad   0x3ff0000000058fca                          // 1.0 + -8.09329727503262700660348520172e-11
                 .double 0.693147206709644041218074094717934
                 .double 0.240226515050550309232521176082490
@@ -85,7 +85,7 @@ exp2f_nofenv_c: .quad   0x3ff0000000058fca                          // 1.0 + -8.
 	#define RELATIVE_ADDR_B( _a)							(_a)-exp2f_no_fenv_body( CX_P )
 
 //a short routine to get the local address
-.align (1<<4)
+.align 4
 exp2f_pic:      movl    (%esp),     %ecx                    //copy address of local_addr to %ecx
                 ret
 #else

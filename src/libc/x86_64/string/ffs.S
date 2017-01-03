@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005-2006 Apple Computer, Inc. All rights reserved.
  *
@@ -22,16 +21,9 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#ifdef DARLING
-#	define _ffs ffs
-#	define _ffsl ffsl
-#	define _fls fls
-#	define _flsl flsl
-#endif
-
 	.text
 
-	.align	(2<<2)
+	.align	2
 	.globl	_ffs
 _ffs:
 	movl	$(-1), %edx
@@ -41,7 +33,7 @@ _ffs:
 	ret
 
 
-	.align	(2<<2)
+	.align	2
 	.globl	_ffsl
 _ffsl:
 	movl	$(-1), %edx
@@ -51,7 +43,7 @@ _ffsl:
 	ret
 
 
-	.align	(2<<2)
+	.align	2
 	.globl _fls
 _fls:
 	movl	$(-1), %edx
@@ -61,7 +53,7 @@ _fls:
 	ret
 
 
-	.align	(2<<2)
+	.align	2
 	.globl	_flsl
 _flsl:
 	movl	$(-1), %edx

@@ -11,13 +11,11 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-.type coshf, @function
-
 // This is identical to sinhf with some indices permuted to compute cosh instead.
 // Read the detailed comments in that file for more information.
 
-//.const
-.align (1<<4)
+.const
+.align	4
 				.quad	0x3f811111111110fe,	0x3fa555f78359bc34 // c5, c4 = 0.0083333..., 0.0416715
 				.quad	0x4034000000000018,	0x4027ff4991a5ebc5 // c3/c5 = 0.1666666.../c5, c2/c4 = 0.5/c4
 coshf_table:	.quad	0x0000000000000000, 0x3ff0000000000000 // sinh(0/16), cosh(0/16)
@@ -220,7 +218,7 @@ sixteen:		.quad		0x4030000000000000	// 16
 	#define RELATIVE_ADDR(_a)	(_a)-coshf_body( %ecx )
 	#define RELATIVE_ADDR_B(_a)	(_a)-coshf_body_eleven( %ecx )
  
-.align (1<<4)
+.align 4
 coshf_pic:
 	movl		(%esp),			%ecx		// Copy address of this instruction to %ecx
 	ret

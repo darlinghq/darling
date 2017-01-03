@@ -1,12 +1,16 @@
 #include <commpage.h>
+#include <sys/mman.h>
 
-uint8_t __commpage[_COMM_PAGE_AREA_LENGTH];
+//uint8_t __commpage[_COMM_PAGE_AREA_LENGTH];
 
 __attribute__((constructor))
 void _darling_initialize_commpage(void)
 {
-	*(_COMM_PAGE_NCPUS) = 1;
-	*(_COMM_PAGE_VERSION) = 12;
+	mmap(_COMM_PAGE_BASE_ADDRESS, _COMM_PAGE_AREA_LENGTH, PROT_READ|PROT_WRITE,
+		MAP_ANON | MAP_PRIVATE, -1, 0);
+
+	*((uint8_t*)_COMM_PAGE_NCPUS) = 1;
+	*((uint8_t*)_COMM_PAGE_VERSION) = 12;
 	*((uint64_t*) _COMM_PAGE_MEMORY_SIZE) = 1024LL*1024LL*1024LL;
 }
 

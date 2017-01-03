@@ -8,10 +8,10 @@
 //  
 //  -- Stephen Canon, January 2010
 
-.globl scalbn
-.globl ldexp
-.globl scalb
-.globl scalbln
+.globl _scalbn
+.globl _ldexp
+.globl _scalb
+.globl _scalbln
 
 #if defined __x86_64__
 
@@ -26,8 +26,8 @@ mthreek: .quad 0xc0a7700000000000
     #define     clamplo     mthreek(%rip)
   
 .text
-.align (1<<4)
-scalb:
+.align 4
+_scalb:
     movsd       %xmm0,      floatval
     pcmpeqd     %xmm0,      %xmm0
     fldl        floatval                // load x on x87
@@ -45,8 +45,8 @@ L_nIsNaN:
     movapd      %xmm1,      %xmm0       // since n is a NaN, we just return n
     ret
 
-.align (1<<4)
-scalbln:
+.align 4
+_scalbln:
     movsd       %xmm0,      floatval
     pcmpeqd     %xmm0,      %xmm0
     fldl        floatval                // load x on x87
@@ -59,9 +59,9 @@ scalbln:
     cmovl       %rdx,       ln          //    n == -3000
     jmp         L_common
 
-.align (1<<4)
-scalbn:
-ldexp:
+.align 4
+_scalbn:
+_ldexp:
     movsd       %xmm0,      floatval
     fldl        floatval                // load x on x87
     pcmpeqd     %xmm0,      %xmm0
@@ -97,8 +97,8 @@ mthreek: .quad 0xc0a7700000000000
     #define     clamplo     (mthreek-0b)(%ecx)
 
 .text
-.align (1<<4)
-scalb:
+.align 4
+_scalb:
     call        0f    
 0:  pop         %ecx                    // conjure pic info
     movsd       12(%esp),   %xmm1       // load n
@@ -118,10 +118,10 @@ L_nIsNaN:
     fldl        12(%esp)                // n is nan, return n
     ret
 
-.align (1<<4)
-scalbln:
-scalbn:
-ldexp:
+.align 4
+_scalbln:
+_scalbn:
+_ldexp:
     mov         12(%esp),   n           // load n
     fldl        floatval                // load x on x87
     fld1

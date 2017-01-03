@@ -1,5 +1,3 @@
-// Modified by Lubos Dolezel for Darling
-
 /*
  * Copyright (c) 2003-2010 Apple Inc. All rights reserved.
  *
@@ -40,7 +38,7 @@
 // This is a shared macro which calls PLATFUNC_VARIANT_NAME which has different
 // implementations in __ASSEMBLER__ and !__ASSEMBLER__
 #define PLATFUNC_DESCRIPTOR_NAME(name, variant) \
-	PLATFUNC_VARIANT_NAME(name, variant)
+	PLATFUNC_VARIANT_NAME(platfunc_##name,variant)
 
 #ifdef	__ASSEMBLER__
 
@@ -54,24 +52,16 @@
  */
 #define	MP_SPIN_TRIES	1000
 
-#ifndef DARLING
-
-#define PLATFUNC_VARIANT_NAME(name, variant) _ ## name ## $VARIANT$ ## variant
-
-#else
-
-#define PLATFUNC_VARIANT_NAME(name, variant) name ##$VARIANT$ ## variant
-
-#endif
+#define PLATFUNC_VARIANT_NAME(name, variant) _##name##$VARIANT$##variant
 
 #if defined (__i386__)
 #define PLATFUNC_DESCRIPTOR_FIELD_POINTER .long
-#define PLATFUNC_DESCRIPTOR_REFERENCE(name, variant) \
-	.long PLATFUNC_DESCRIPTOR_NAME(name, variant)
+#define PLATFUNC_DESCRIPTOR_REFERENCE(name,variant) \
+	.long PLATFUNC_DESCRIPTOR_NAME(name,variant)
 #elif defined (__x86_64__)
 #define PLATFUNC_DESCRIPTOR_FIELD_POINTER .quad
 #define PLATFUNC_DESCRIPTOR_REFERENCE(name, variant) \
-	.quad PLATFUNC_DESCRIPTOR_NAME(name, variant)
+	.quad PLATFUNC_DESCRIPTOR_NAME(name,variant)
 #else
 #error unsupported architecture
 #endif
@@ -79,27 +69,11 @@
 #ifdef VARIANT_DYLD
 
 #define PLATFUNC_FUNCTION_START_GENERIC(name, variant, codetype, alignment) \
-	PLATFUNC_FUNCTION_START(name, variant, codetype, alignment) \
+	PLATFUNC_FUNCTION_START(name,variant, codetype, alignment) \
 	.globl _ ## name ;\
 	_ ## name ## :
 
 #define	PLATFUNC_DESCRIPTOR(name, variant, must, cant)
-
-#elif defined(DARLING)
-
-#undef PLATFUNC_DESCRIPTOR_NAME
-#define PLATFUNC_DESCRIPTOR_NAME(name, variant) name##$VARIANT_DESC$##variant
-
-#define PLATFUNC_FUNCTION_START_GENERIC(name, variant, codetype, alignment) \
-	PLATFUNC_FUNCTION_START(name, variant, codetype, alignment)
-
-#define	PLATFUNC_DESCRIPTOR(name, variant, must, cant) \
-	.globl PLATFUNC_DESCRIPTOR_NAME(name,variant) ;\
-	.hidden PLATFUNC_DESCRIPTOR_NAME(name,variant) ;\
-	PLATFUNC_DESCRIPTOR_NAME(name,variant) ## : ;\
-	PLATFUNC_DESCRIPTOR_FIELD_POINTER PLATFUNC_VARIANT_NAME(name,variant) ;\
-	.long must ;\
-	.long cant ;\
 
 #else /* VARIANT_DYLD */
 
@@ -107,49 +81,31 @@
 
 #define	PLATFUNC_DESCRIPTOR(name, variant, must, cant) \
 	.const_data ;\
-	.private_extern PLATFUNC_DESCRIPTOR_NAME(name, variant) ;\
-	PLATFUNC_DESCRIPTOR_NAME(name, variant) ## : ;\
-	PLATFUNC_DESCRIPTOR_FIELD_POINTER PLATFUNC_VARIANT_NAME(name, variant) ;\
+	.private_extern PLATFUNC_DESCRIPTOR_NAME(name,variant) ;\
+	PLATFUNC_DESCRIPTOR_NAME(name,variant) ## : ;\
+	PLATFUNC_DESCRIPTOR_FIELD_POINTER PLATFUNC_VARIANT_NAME(name,variant) ;\
 	.long must ;\
 	.long cant ;\
 	.text
 
 #endif /* VARIANT_DYLD */
 
-#ifdef DARLING
-
-#define PLATFUNC_FUNCTION_START(name, variant, codetype, alignment) \
-	.text ;\
-	.align (2<<alignment), 0x90 ;\
-	.globl PLATFUNC_VARIANT_NAME(name,variant) ## ;\
-	PLATFUNC_VARIANT_NAME(name,variant) ##:
-
-#else
-
 #define PLATFUNC_FUNCTION_START(name, variant, codetype, alignment) \
 	.text ;\
 	.align alignment, 0x90 ;\
-	.private_extern PLATFUNC_VARIANT_NAME(name, variant) ;\
-	PLATFUNC_VARIANT_NAME(name, variant) ## :
-
-#endif
+	.private_extern PLATFUNC_VARIANT_NAME(name,variant) ;\
+	PLATFUNC_VARIANT_NAME(name,variant) ## :
 
 #else /* __ASSEMBLER__ */
 
-#ifdef DARLING
-#undef PLATFUNC_DESCRIPTOR_NAME
-#define PLATFUNC_DESCRIPTOR_NAME(name, variant) name ## $VARIANT_DESC$ ## variant
-#endif
-
-#define PLATFUNC_VARIANT_NAME(name, variant) name ## $VARIANT$ ## variant
-
-#define PLATFUNC_DESCRIPTOR_PROTOTYPE(name, variant) extern const platfunc_descriptor PLATFUNC_DESCRIPTOR_NAME(name, variant);
-#define PLATFUNC_DESCRIPTOR_REFERENCE(name, variant) &PLATFUNC_DESCRIPTOR_NAME(name, variant)
+#define PLATFUNC_VARIANT_NAME(name, variant) name##$VARIANT$##variant
+#define PLATFUNC_DESCRIPTOR_PROTOTYPE(name, variant) extern const platfunc_descriptor PLATFUNC_DESCRIPTOR_NAME(name,variant);
+#define PLATFUNC_DESCRIPTOR_REFERENCE(name, variant) &PLATFUNC_DESCRIPTOR_NAME(name,variant)
 
 #define PLATFUNC_DESCRIPTOR(name, variant, must, cant) \
-	extern void PLATFUNC_VARIANT_NAME(name, variant) (void); \
-	const platfunc_descriptor PLATFUNC_DESCRIPTOR_NAME(name, variant) = { \
-		.address = PLATFUNC_VARIANT_NAME(name, variant), \
+	extern void PLATFUNC_VARIANT_NAME(name,variant) (void); \
+	const platfunc_descriptor PLATFUNC_DESCRIPTOR_NAME(name,variant) = { \
+		.address = PLATFUNC_VARIANT_NAME(name,variant), \
 		.musthave = must, \
 		.canthave = cant \
 	}

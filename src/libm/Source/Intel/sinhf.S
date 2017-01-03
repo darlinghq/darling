@@ -47,9 +47,9 @@
 //  For the "uninteresting range", the code is taken directly from expf.  Read the
 //  comments in that file for more information.
 
-//.const
+.const
 
-.align (1<<4)
+.align	4
 				.quad	0x3f811111111110fe,	0x3fa555f78359bc34 // c5, c4 = 0.0083333..., 0.0416715
 				.quad	0x4034000000000018,	0x4027ff4991a5ebc5 // c3/c5 = 0.1666666.../c5, c2/c4 = 0.5/c4
 				.quad	0x0000000000000000,	0x3ff0000000000000 // 0, 1
@@ -252,7 +252,7 @@ sixteen:		.quad		0x4030000000000000	// 16
 	#define RELATIVE_ADDR(_a)	(_a)-sinhf_body( %ecx )
 	#define RELATIVE_ADDR_B(_a)	(_a)-sinhf_body_eleven( %ecx )
  
-.align (1<<4)
+.align 4
 sinhf_pic:
 	movl		(%esp),			%ecx		// Copy address of this instruction to %ecx
 	ret

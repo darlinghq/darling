@@ -8,9 +8,9 @@
  */
 
 #define	ENTRY(name)							      \
-  .globl name;				      			      \
-  .align (1<<4);							      	      \
-  name##:								      
+  .globl _##name;				      			      \
+  .align 4;							      	      \
+  _##name##:								      
 
 #if defined( __LP64__ )
 	#define LOCAL_STACK_SIZE	20
@@ -20,15 +20,15 @@
 
 #include "abi.h"
 
-//.const
-.align (1<<4)
+.const
+.align 4
 onethird:       .long           0xaaaaaaab, 0xaaaaaaaa, 0x00003ffd, 0x00000000                  //(long double) 1.0L/3.0L
 
-.align (1<<3)
+.align 3
 correction:     .double         0.62996052494743658238361, 0.79370052598409973737585, 1.0, 1.2599210498948731647672, 1.5874010519681994747517
 coeffs:         .double         1.7830491344381518, -1.5730724799776633, 1.2536000054780357, -0.60460822457398278, 0.15834924310704463, -0.017322841453552703
 
-.align (1<<2)
+.align 2
 infinity:       .single         +Infinity
 
 // Stack:

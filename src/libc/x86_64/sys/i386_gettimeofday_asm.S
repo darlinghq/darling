@@ -31,19 +31,11 @@
 #include <machine/cpu_capabilities.h>
 #include "platfunc.h"
 
-#ifdef DARLING
-#	define _mach_absolute_time mach_absolute_time@PLT
-#endif
-
 #define NSEC_PER_SEC	1000*1000*1000
 #define NSEC_PER_USEC	1000
 
-#ifndef DARLING
 	.private_extern ___commpage_gettimeofday
-#else
-#	define ___commpage_gettimeofday __commpage_gettimeofday
-#endif
-	.align 1<<4
+	.align 4
 ___commpage_gettimeofday:
 // %rdi = ptr to timeval
 	pushq	%rbp			// set up a frame for backtraces

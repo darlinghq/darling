@@ -17,8 +17,8 @@
 	Tables and Constants
 
 ****************************************************************************/
-//.const
-.align (1<<4)
+.const
+.align 4
 abs_mask:		.quad 0x7fffffffffffffff, 0x0000000000000000
 four_exp:		.quad 0x0020000000000000, 0x0000000000000000
 one:			.quad 0x3ff0000000000000, 0x0000000000000000
@@ -324,7 +324,7 @@ small_poly:
 				.quad 0xbf29111400a41fbf, 0x0000000000000000	// c
 					
 .literal8
-.align (1<<3)
+.align 3
 m2_lge_p7:		.quad 0xc0771547652b82fe
 m2_lge:			.quad 0xc0071547652b82fe
 m2_lge_hi:		.quad 0xc007154760000000

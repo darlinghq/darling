@@ -12,8 +12,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-//.const
-.align (1<<4)
+.const
+.align 4
 			// Polynomial coefficients, offset from exp2table
 			.quad 0x3f55e52272e0eaec, 0x3f55e52272e0eaec	// c4
 			.quad 0x401cc9eea1e24220, 0x401cc9eea1e24220	// c3/c4
@@ -161,7 +161,7 @@ small_poly: .quad 0x3fc5555555555555
 			.quad 0x3de61bfa2e91919a
 
 .literal8
-.align (1<<3)
+.align 3
 one_n7:		.quad 0x3f80000000000000
 lge_p7:		.quad 0x40671547652b82fe
 lge_hi:		.quad 0x3ff7154760000000
@@ -178,7 +178,7 @@ huge_val:	.quad 0x7fefffffffffffff
 #else
 	#define RELATIVE_ADDR(_a)	(_a)-sinh_body(%ecx)
 	
-.align (1<<4)
+.align 4
 sinh_pic:
 	movl		(%esp),			%ecx
 	ret

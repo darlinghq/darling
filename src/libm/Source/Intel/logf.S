@@ -15,8 +15,8 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-//.const
-.align (1<<4)
+.const
+.align 4
 
 //  511 entry of Lookup table of values used for log and log1p calculation, generated as:
 //  
@@ -436,7 +436,7 @@ log_m_table:        .quad	0x0000000000000000,	0x3ff0000000000000	// log1p(0.0000
 
 
 .literal8
-.align (1<<3)
+.align 3
 one:            .double     1.0
 onehalf:        .double     0.5
 onethird:       .quad       0x3fd5555555555555      // 1/3
@@ -448,7 +448,7 @@ almost1:        .quad       0x3fefffffffffffffULL   // 1.0 - DBL_EPSILON/2
 log2:           .quad       0x3fe62e42fefa39efULL   // ln(2)
 
 .literal4
-.align (1<<2)
+.align 2
 f256:           .long       0x43800000              //256.0f
 r256:           .long       0x3b800000              //1.0f/256.0f
 
@@ -465,7 +465,7 @@ r256:           .long       0x3b800000              //1.0f/256.0f
 	#define RELATIVE_ADDR2( _a, _i, _step)                  (_a)-rel_addr( CX_P, _i, _step )
 
 //a short routine to get the local address
-.align (1<<4)
+.align 4
 logf_pic:       movl    (%esp),     %ecx                    //copy address of local_addr to %ecx
                 ret
 #else

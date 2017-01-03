@@ -26,11 +26,11 @@
 //  Entry point ---------------------------------------------------------------
 
 .text
-.globl hypotl
-.globl cabsl
-.align (1<<4)
-hypotl:
-cabsl:
+.globl _hypotl
+.globl _cabsl
+.align 4
+_hypotl:
+_cabsl:
     
 //  Check argument scaling ----------------------------------------------------
 //    
@@ -262,7 +262,7 @@ L_scaledHypot:
 //  Useful constants ----------------------------------------------------------
 
 .literal16
-.align (1<<4)
+.align 4
 L_infinity:
 .quad 0x8000000000000000, 0x0000000000007fff
 L_tiny:

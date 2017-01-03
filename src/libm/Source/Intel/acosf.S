@@ -28,8 +28,8 @@ S0:		.double	 4.999999720603234088021257968
 S1:		.double	-3.333333463718495862077843807
 
 
-	////.const
-	.align	(1<<4)
+	.const
+	.align	4
 
 /*	Define some coefficients for center polynomial (used for x in [-.62,
 	+.62]).  These are stored in pairs at aligned addresses for use in SIMD
@@ -158,12 +158,11 @@ T1:		.double	 +2.7185038560132749878882294,  -8.6073428141752546318770571
 		showing that a valid result will be obtained regardless of which
 		value rsqrtss provides.
 */
-#define _acosf acosf
-	.align	(1<<5)
+	.align	5
 #if !defined DevelopmentInstrumentation
 	// This is the regular name used in the deployed implementation.
-		.globl acosf
-	acosf:
+		.globl _acosf
+	_acosf:
 #else
 	// This is the name used for a special test version of the routine.
 		.globl _acosfInstrumented

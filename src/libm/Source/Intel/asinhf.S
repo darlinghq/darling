@@ -52,7 +52,7 @@
 #include <machine/asm.h>
 #include "abi.h"
 
-////.const
+.const
 
 // Coefficients for 7th order polynomial approximation on [0, 1/4]
 // The polynomail is computed in packed factored form as follows:
@@ -61,7 +61,7 @@
 //     lo double:  (cx * (x + alo)) * (x(x + b1lo) + b0lo)
 //
 // The high and low parts are then unpacked and multiplied.
-.align (1<<4)
+.align 4
 asinhf_low: .quad 0x4008183efcaf7119, 0x4007eba0a6c21cf1 // b0hi, b0lo
 						.quad 0x3ffe9547f4507ace, 0xbffd2c173c2ad586 // ahi, alo
 						.quad 0x40021aa6afb79159, 0xc0015e2ed556dde5 // b1hi, b1lo
@@ -69,7 +69,7 @@ asinhf_low: .quad 0x4008183efcaf7119, 0x4007eba0a6c21cf1 // b0hi, b0lo
 
 // Coefficients for rational approximation on [1/4, 4]
 // p(x) and q(x) are computed side-by-side in packed arithmetic, then unpacked and divided.
-.align (1<<4)
+.align 4
 asinhf_mid:	.quad 0x3e4328ccef61bd30,	0x3f80f6f9cf323b3c	// p[0], q[0]
 						.quad 0x3f80f6e561f06785,	0x3f85b29a3e277523	// p[1], q[1]
 						.quad 0x3f85b32a2f11b40a, 0x3f8e26416e925090	// p[2], q[2]
@@ -79,7 +79,7 @@ asinhf_mid:	.quad 0x3e4328ccef61bd30,	0x3f80f6f9cf323b3c	// p[0], q[0]
 						.quad 0x3f26c17c7b263d18,	0x3f001e11059bddca	// p[6], q[6]
 						
 
-.align (1<<4)
+.align 4
 // Polynomial coefficients for the correction to log(2x) for the "large" case.
 // The polynomial is computed in factored form as follows:
 //
@@ -348,7 +348,7 @@ asinhf_hi_table: .quad	0x0000000000000000,	0x3ff0000000000000	// log(1.00000), 1
                  .quad	0x3fe61e3efda46467,	0x3fe0080402010080	// log(1.99609), 1/1.99609
 
 .literal8
-.align (1<<3)
+.align 3
 one:            .quad				0x3ff0000000000000
 onehalf:        .quad				0x3fe0000000000000
 onethird:       .quad       0x3fd5555555555555
@@ -360,7 +360,7 @@ log2:           .quad       0x3fe62e42fefa39ef   // ln(2)
 #else
 	#define RELATIVE_ADDR( _a )			(_a)-asinhf_body( %ecx )
 
-.align (1<<4)
+.align 4
 asinhf_pic:
 	movl			(%esp),								%ecx				// Copy address of this instruction to %ecx
 	ret

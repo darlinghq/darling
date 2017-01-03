@@ -8,9 +8,9 @@
 
 
 .text
-.globl scalblnl
-.globl scalbnl
-.globl ldexpl
+.globl _scalblnl
+.globl _scalbnl
+.globl _ldexpl
 
 #if defined __x86_64__
 
@@ -20,8 +20,8 @@
     #define     ln          %rdi
     #define     nw          %di
 
-.align (1<<4)
-scalblnl:
+.align 4
+_scalblnl:
     fldt        8(%rsp)                 // load x
     fld1
     fstpt       floatval                // conjure 1.0L
@@ -32,9 +32,9 @@ scalblnl:
     jl          L_bigNegativeN          // carefully.
     jmp         L_scaleX
     
-.align (1<<4)
-scalbnl:
-ldexpl:  
+.align 4
+_scalbnl:
+_ldexpl:  
     fldt        8(%rsp)                 // load x
     
 #elif defined __i386__
@@ -44,10 +44,10 @@ ldexpl:
     #define     n           %eax
     #define     nw          %ax
     
-.align (1<<4)
-scalblnl:
-scalbnl:
-ldexpl:
+.align 4
+_scalblnl:
+_scalbnl:
+_ldexpl:
     mov       20(%esp),     n           // load n
     fldt        floatval                // load x
     

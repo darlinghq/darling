@@ -25,7 +25,7 @@
 #include <machine/cpu_capabilities.h>
 #include "platfunc.h"
 
-#ifndef DARLING
+#ifndef DARLING__DISABLED
 #define	RESOLVER_UP_MP(symbol)	\
 	PLATFUNC_DESCRIPTOR(symbol, up, kUP, 0); \
 	PLATFUNC_DESCRIPTOR(symbol, mp, 0, kUP); \

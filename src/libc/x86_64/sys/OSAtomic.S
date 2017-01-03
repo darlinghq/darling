@@ -28,7 +28,7 @@
 #include <architecture/i386/asm_help.h>
 
 #define DECLARE(x)   \
-	.align 1<<2      ; \
+	.align 2      ; \
 	.globl x            ; \
 	.globl x ## Barrier ; \
 x:                  ; \
@@ -41,7 +41,7 @@ x ## Barrier:
 #define ATOMIC_RET_ORIG	0
 #define ATOMIC_RET_NEW	1
 
-#ifndef DARLING
+#ifndef DARLING__DISABLED
 // compare and exchange 32-bit
 // xchg32 <new> <dst> <mp>
 .macro xchg32

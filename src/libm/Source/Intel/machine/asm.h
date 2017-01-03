@@ -22,16 +22,15 @@
  */
 
 #define	ENTRY(name)							      \
-  .type name, @function; \
-  .globl name;				      			      \
-  .align (2<<4);							      	      \
-  name##:								      
+  .globl _##name;				      			      \
+  .align 4;							      	      \
+  _##name##:								      
 
 #ifndef NO_FENV
 #define	PRIVATE_ENTRY(name)							      \
-  .globl name; .hidden name;				      			      \
-  .align (2<<4);							      	      \
-  name##:								      
+  .globl _##name; .private_extern _##name;				      			      \
+  .align 4;							      	      \
+  _##name##:								      
 #else
 #define PRIVATE_ENTRY(name)
 #endif

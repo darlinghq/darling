@@ -9,15 +9,15 @@
 
 	.literal8
 
-	.align (1<<3)
+	.align	3
 
 NegativeOne:
 	.double	-1
 
 
-	//.const
+	.const
 
-	.align (1<<4)
+	.align	4
 
 /*	Coefficients to calculate:
 
@@ -167,9 +167,9 @@ c20:	.double	+0.58807104225499649417, +3.82127246397188494330
 		Exhaustive testing proved this routine returns faithfully rounded
 		results.
 */
-	.align (1<<5)
-	.globl tanf
-tanf:
+	.align	5
+	.globl _tanf
+_tanf:
 
 	// Put x into an integer register.
 	#if defined __i386__

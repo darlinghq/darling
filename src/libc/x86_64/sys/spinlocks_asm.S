@@ -43,12 +43,6 @@ PLATFUNC_FUNCTION_START(_spin_lock_try, up, 64, 4)
 PLATFUNC_DESCRIPTOR(OSSpinLockTry,up,kUP,0)
 PLATFUNC_DESCRIPTOR(_spin_lock_try,up,kUP,0)
 
-#ifdef DARLING
-.globl OSSpinLockTry
-.globl _spin_lock_try
-OSSpinLockTry:
-_spin_lock_try:
-#endif
 PLATFUNC_FUNCTION_START_GENERIC(OSSpinLockTry, mp, 64, 4)
 PLATFUNC_FUNCTION_START_GENERIC(_spin_lock_try, mp, 64, 4)
 	xorl		%eax, %eax
@@ -90,15 +84,6 @@ PLATFUNC_DESCRIPTOR(_spin_lock,up,kUP,0)
 PLATFUNC_DESCRIPTOR(spin_lock,up,kUP,0)
 	
 	
-#ifdef DARLING
-.globl OSSpinLockLock
-.globl _spin_lock
-.globl spin_lock
-
-OSSpinLockLock:
-_spin_lock:
-spin_lock:
-#endif
 PLATFUNC_FUNCTION_START_GENERIC(OSSpinLockLock, mp, 64, 4)
 PLATFUNC_FUNCTION_START_GENERIC(_spin_lock, mp, 64, 4)
 PLATFUNC_FUNCTION_START_GENERIC(spin_lock, mp, 64, 4)

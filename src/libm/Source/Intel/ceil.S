@@ -7,16 +7,14 @@
  * Copyright 2009, Apple Inc.
  */
 
-.type ceil, @function
 #ifdef __i386__
 
 #ifdef __SSE3__
 
-
 .text
-.align (1<<4)
-.globl ceil
-ceil:
+.align 4
+.globl _ceil
+_ceil:
 	mov		  8(%esp),			%ecx
  	fldl      4(%esp)
 	cmp			$0x43300000,	%ecx	// if x is negative or x > 0x1.0p53
@@ -48,9 +46,9 @@ ceil:
 #else // i386, no SSE3
 
 .text
-.align (1<<4)
-.globl ceil
-ceil:
+.align 4
+.globl _ceil
+_ceil:
 	mov		  8(%esp),			%ecx
  	fldl      4(%esp)
 	cmp			$0x43300000,	%ecx	// if x is negative or x > 0x1.0p53
@@ -93,16 +91,16 @@ ceil:
 
 #else // x86_64
 
-//.const
-.align (1<<4)
+.const
+.align 4
 one:	.quad	0x3ff0000000000000
 absmask:.quad   0x7fffffffffffffff
 thresh: .quad	0x4330000000000000
 
 .text
-.align (1<<4)
-.globl ceil
-ceil:
+.align 4
+.globl _ceil
+_ceil:
 	movd		%xmm0,			%rcx
 	andq		absmask(%rip),	%rcx	// |x|
 	cmpq		thresh(%rip),	%rcx	// if |x| >= 0x1.0p52 or isnan(x)
