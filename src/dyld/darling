@@ -66,8 +66,19 @@ setup_prefix() {
     rm -f "$1/dev"
     ln -sf "system-root/dev" "$1/dev"
 
+    rm -rf "$1/sandboxed-home"
+
     rm -f "$1/home"
-    ln -sf "system-root/home" "$1/home"
+    if [ "${DARLING_SANDBOXED_HOME}" != "1" ]; then
+        >&2 echo "Setting sandboxed home"
+        mkdir "$1/sandboxed-home"
+        ln -sf "sandboxed-home" "$1/home"
+        for USERDIR in $(ls "$1/system-root/home/"); do
+            mkdir "$1/sandboxed-home/$USERDIR"
+        done
+    else
+        ln -sf "system-root/home" "$1/home"
+    fi
 
     rm -f "$1/Users"
     ln -sf "home" "$1/Users"
@@ -173,6 +184,12 @@ darling_unload() {
     fi
 }
 
+darling_clean_home() {
+    if $(darling_check); then
+        rm "$DPREFIX/.update-timestamp" 2>&1 > /dev/null || true
+    fi
+}
+
 if [ $# -eq 0 ]; then
     >&2 echo "This is Darling, a runtime environment for OS X applications."
     >&2 echo
@@ -185,6 +202,9 @@ if [ $# -eq 0 ]; then
     #>&2 echo -e "\tdarling pkgutil\t\t\tInstall PKG packages"
     >&2 echo -e "\tdarling load\t\t\tLoad kernel module"
     >&2 echo -e "\tdarling unload\t\t\tUnload kernel module"
+    >&2 echo -e "\tdarling clean-home\t\t\tMarks darling home directory to rebuilt"
+    >&2 echo
+    >&2 echo "Export DARLING_SANDBOXED_HOME=1 to have sandboxed /home in Darling root"
     >&2 echo
     >&2 echo "The prefix is specified by the DPREFIX environment variable."
     >&2 echo "The default DPREFIX is \$HOME/.darling"
@@ -228,6 +248,9 @@ case "$1" in
     ;;
 "unload")
     darling_unload
+    ;;
+"clean-home")
+    darling_clean_home
     ;;
 *)
     check_prefix
