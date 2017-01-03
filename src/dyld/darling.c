@@ -646,6 +646,19 @@ void setupPrefix()
 		exit(1);
 	}
 
+	snprintf(path, sizeof(path), "%s/usr", prefix);
+	createDir(path);
+	snprintf(path, sizeof(path), "%s/usr/local", prefix);
+	createDir(path);
+	snprintf(path, sizeof(path), "%s/usr/local/share", prefix);
+	createDir(path);
+	snprintf(path, sizeof(path), "%s/usr/local/share/darling", prefix);
+	if (symlink(SYSTEM_ROOT "/usr/local/share/darling", path) != 0)
+	{
+		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
+		exit(1);
+	}
+
 	seteuid(0);
 	setegid(0);
 }
