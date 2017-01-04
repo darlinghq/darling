@@ -78,6 +78,21 @@ int main(int argc, const char** argv)
 
 	pidInit = getInitProcess();
 
+	if (strcmp(argv[1], "shutdown") == 0)
+	{
+		if (pidInit == 0)
+		{
+			fprintf(stderr, "Darling container is not running\n");
+			return 1;
+		}
+
+		// TODO: when we have a working launchd,
+		// this is where we ask it to shut down nicely
+
+		kill(pidInit, SIGKILL);
+		return 0;
+	}
+
 	// If prefix's init is not running, start it up
 	if (pidInit == 0)
 	{
