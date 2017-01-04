@@ -225,6 +225,7 @@ pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
 		}
 		close(fdNS);
 
+		/*
 		snprintf(pathNS, sizeof(pathNS), SYSTEM_ROOT "/proc/%d/ns/user", pidInit);
 		fdNS = open(pathNS, O_RDONLY);
 		if (fdNS < 0)
@@ -232,16 +233,19 @@ pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
 			fprintf(stderr, "Cannot open user namespace file: %s\n", strerror(errno));
 			exit(1);
 		}
+		*/
 
 		setresuid(g_originalUid, g_originalUid, g_originalUid);
 		setresgid(g_originalGid, g_originalGid, g_originalGid);
 
+		/*
 		if (setns(fdNS, CLONE_NEWUSER) != 0)
 		{
 			fprintf(stderr, "Cannot join user namespace: %s\n", strerror(errno));
 			exit(1);
 		}
 		close(fdNS);
+		*/
 
 		setupChild(curPath);
 
@@ -322,7 +326,7 @@ pid_t spawnInitProcess(void)
 {
 	pid_t pid;
 	int pipefd[2];
-	char idmap[100];
+	// char idmap[100];
 	char buffer[1];
 	FILE *file;
 
@@ -403,13 +407,15 @@ pid_t spawnInitProcess(void)
 
 		prctl(PR_SET_NAME, DARLING_INIT_COMM, 0, 0);
 
+		/*
 		if (unshare(CLONE_NEWUSER) != 0)
 		{
 			fprintf(stderr, "Cannot unshare user namespace: %s\n", strerror(errno));
 			exit(1);
 		}
+		*/
 
-		// Tell the parent we're ready for it to set up UID/GID mappings
+		// Tell the parent we're ready
 		write(pipefd[1], buffer, 1);
 		close(pipefd[1]);
 		// And wait for it to do it
@@ -424,6 +430,7 @@ pid_t spawnInitProcess(void)
 	read(pipefd[0], buffer, 1);
 	close(pipefd[0]);
 
+	/*
 	snprintf(idmap, sizeof(idmap), "/proc/%d/uid_map", pid);
 
 	file = fopen(idmap, "w");
@@ -449,6 +456,7 @@ pid_t spawnInitProcess(void)
 	{
 		fprintf(stderr, "Cannot set gid_map for the init process: %s\n", strerror(errno));
 	}
+	*/
 
 	// Resume the child
 	write(pipefd[1], buffer, 1);
