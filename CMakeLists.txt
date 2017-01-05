@@ -58,5 +58,35 @@ add_subdirectory(src)
 if (NOT DARLING_NO_EXECUTABLES)
 	install(FILES etc/dylib.conf etc/version.conf
 		DESTINATION libexec/darling/etc/darling)
-endif (NOT DARLING_NO_EXECUTABLES)
+	install(FILES etc/resolv.conf
+		DESTINATION libexec/darling/etc)
 
+	install(DIRECTORY DESTINATION libexec/darling/Volumes)
+	install(DIRECTORY DESTINATION libexec/darling/Volumes/SystemRoot)
+	InstallSymlink(/ ${CMAKE_INSTALL_PREFIX}/libexec/darling/Volumes/DarlingEmulatedDrive)
+
+	install(DIRECTORY DESTINATION libexec/darling/proc)
+
+	install(DIRECTORY DESTINATION libexec/darling/var)
+	install(DIRECTORY DESTINATION libexec/darling/var/root)
+	install(DIRECTORY DESTINATION libexec/darling/var/run)
+	InstallSymlink(/dev/log ${CMAKE_INSTALL_PREFIX}/libexec/darling/var/run/syslog)
+
+	install(DIRECTORY DESTINATION libexec/darling/usr)
+	install(DIRECTORY DESTINATION libexec/darling/usr/local)
+	install(DIRECTORY DESTINATION libexec/darling/usr/local/share)
+	InstallSymlink(/Volumes/SystemRoot${CMAKE_INSTALL_PREFIX}/share/darling ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/local/share/darling)
+
+	InstallSymlink(/Volumes/SystemRoot/dev ${CMAKE_INSTALL_PREFIX}/libexec/darling/dev)
+	InstallSymlink(/Volumes/SystemRoot/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
+	InstallSymlink(/Volumes/SystemRoot/home ${CMAKE_INSTALL_PREFIX}/libexec/darling/Users)
+
+	InstallSymlink(/proc/self/mounts ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/mtab)
+	InstallSymlink(/Volumes/SystemRoot/etc/passwd ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/passwd)
+	InstallSymlink(/Volumes/SystemRoot/etc/group ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/group)
+
+	install(DIRECTORY DESTINATION libexec/darling/etc/ld.so.conf.d)
+	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+	InstallSymlink(/Volumes/SystemRoot/lib ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib)
+	InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib64)
+endif (NOT DARLING_NO_EXECUTABLES)

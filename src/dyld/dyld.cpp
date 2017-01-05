@@ -32,7 +32,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <regex>
 #include <fstream>
 #include "dirstructure.h"
-#include <libdyld/VirtualPrefix.h>
 #include <sys/personality.h>
 #include <sys/mman.h>
 #include <errno.h>
@@ -52,16 +51,16 @@ int main(int argc, char** argv, char** envp)
 		printHelp(argv[0]);
 		return 1;
 	}
-	
+
 	if (!HasUserDirectoryStructure())
 		SetupUserDirectoryStructure();
 
 	try
 	{
 		MachOMgr* mgr = MachOMgr::instance();
-		std::string executable, unprefixed_argv0;
+		std::string executable;
 		const char* pretendArgv0;
-		
+
 		pretendArgv0 = findFakeArgv0(argv[1]);
 
 		executable = locateBundleExecutable(argv[1]);
@@ -89,12 +88,7 @@ int main(int argc, char** argv, char** envp)
 			mgr->setSysRoot(path);
 		if (const char* path = getenv("DYLD_TRAMPOLINE"))
 			mgr->setUseTrampolines(true, path);
-		if (const char* path = getenv("DPREFIX"))
-		{
-			__prefix_set(path);
-			unprefixed_argv0 = __prefix_untranslate_path(argv[1], strlen(argv[1]));
-		}
-		
+
 		if (getenv("DYLD_GDBJIT") != nullptr)
 			Darling::SetupGDBJIT();
 
@@ -115,14 +109,12 @@ int main(int argc, char** argv, char** envp)
 
 			if (pretendArgv0 != nullptr)
 				argv[1] = (char*) pretendArgv0;
-			else if (!unprefixed_argv0.empty())
-				argv[1] = (char*) unprefixed_argv0.c_str();
 			exit(main(argc-1, &argv[1], envp));
 		}
 		else
 		{
 			MachOObject* obj;
-			
+
 			if (::mmap(0, 4096, PROT_READ|PROT_EXEC, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) != 0)
 			{
 				if (errno == EPERM)
@@ -138,12 +130,10 @@ int main(int argc, char** argv, char** envp)
 				throw std::runtime_error("This is not a Mach-O executable; dynamic libraries, "
 				"kernel extensions and other Mach-O files cannot be executed with dyld");
 			}
-		
+
 			if (pretendArgv0 != nullptr)
 				argv[1] = (char*) pretendArgv0;
-			else if (!unprefixed_argv0.empty())
-				argv[1] = (char*) unprefixed_argv0.c_str();
-			
+
 			obj->setCommandLine(argc-1, &argv[1], envp);
 
 			obj->load();
@@ -161,12 +151,12 @@ static std::string pathToSelf()
 {
 	char buf[4096];
 	int rd;
-	
+
 	rd = readlink("/proc/self/exe", buf, sizeof(buf)-1);
 	if (rd <= 0)
 		return std::string();
 	buf[rd] = 0;
-	
+
 	return std::string(buf);
 }
 
@@ -201,9 +191,9 @@ static std::string locateBundleExecutable(std::string bundlePath)
 	{
 		std::regex re(".*/([^\\.]+)\\.app/?$", std::regex::icase);
 		std::smatch match;
-		
+
 		std::string myBundlePath = "./" + bundlePath; // TODO: fix the regexp to work without this
-		
+
 		if (std::regex_match(myBundlePath, match, re))
 		{
 			std::stringstream ss;
@@ -245,7 +235,7 @@ static bool isELF(const char* path)
 static const char* findFakeArgv0(char* a0)
 {
 	char* excl;
-	
+
 	excl = strchr(a0, '!');
 	if (excl == nullptr)
 		return nullptr;

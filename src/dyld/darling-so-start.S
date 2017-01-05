@@ -3,7 +3,13 @@
 
 .text
 
+// For running executables from inside the prefix
 dyld_path:
+.ascii SYSTEM_ROOT
+.string DYLD_PATH
+
+// Additionally, we support running them from the host system
+dyld_host_path:
 .string DYLD_PATH
 
 proc_self_exe:
@@ -56,6 +62,17 @@ strcat_end:
 	movl	$__NR_execve, %eax
 	syscall
 
+        // If we failed to find dyld under the system root,
+        // try again without it
+	leaq	dyld_host_path(%rip), %rdi	// exec path
+	movq	%rsp, %rsi				// argv
+	movl	0(%rsp), %ecx			// argc
+	leaq	16(%rsp, %rcx, 8), %rdx	// envp
+	movq	%rdi, (%rsi)			// overwrite argc with dyld_path
+
+	movl	$__NR_execve, %eax
+	syscall
+
 fail:
         movl    $2, %edi
         leaq    failure_msg(%rip), %rsi
@@ -64,4 +81,3 @@ fail:
         syscall
 
 	ud2
-

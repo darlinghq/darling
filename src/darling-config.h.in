@@ -9,6 +9,8 @@
 #define DYLD_PATH "${CMAKE_INSTALL_PREFIX}/bin/dyld"
 
 #define ETC_DARLING_PATH "/etc/darling"
+// Path where the system root gets "mounted" inside the prefix
+#define SYSTEM_ROOT "/Volumes/SystemRoot"
 
 #cmakedefine MULTILIB
 #cmakedefine FRAMEWORK_COREAUDIO
@@ -17,7 +19,7 @@
 #ifndef __APPLE__
 
 /*
- * Credit: 
+ * Credit:
  *
  *    David Chisnall
  *       http://comments.gmane.org/gmane.comp.desktop.etoile.devel/1556

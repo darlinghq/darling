@@ -31,7 +31,7 @@ set(dyld_SRCS
 	dyld_priv.cpp
 	dl_public.cpp
 	binfmt_misc.cpp
-	
+
 	MachOObject.cpp
 	LoadableObject.cpp
 	NativeObject.cpp
@@ -39,7 +39,6 @@ set(dyld_SRCS
 	DylibSearch.cpp
 	environ.c
 	threads.cpp
-        VirtualPrefix.cpp
         gdbjit.cpp
 )
 
@@ -63,7 +62,7 @@ set(dyld_SRCS
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
 #SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set_source_files_properties(environ.c COMPILE_FLAGS "-no-integrated-as")
@@ -72,5 +71,3 @@ add_library(dyld SHARED ${dyld_SRCS})
 target_link_libraries(dyld PRIVATE -ldl -lpthread mach-o darling-util)
 
 install(TARGETS dyld DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
-
-

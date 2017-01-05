@@ -7,7 +7,6 @@
 #include <mach/machine.h>
 #include <mach/mach_init.h>
 #include "../../../../../platform-include/sys/errno.h"
-#include "../../../../libdyld/VirtualPrefix.h"
 #include "sysctl_inc.h"
 #include <stddef.h>
 #include <limits.h>
@@ -58,7 +57,7 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 	{
 		return sysctl_name_to_oid((const char*) _new, (int*) old, oldlen);
 	}
-	
+
 	if (name[0] == CTL_HW)
 	{
 		int* ovalue = (int*) old;
@@ -89,7 +88,7 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 		if (*oldlen < sizeof(int))
 			return -EINVAL;
 		*oldlen = sizeof(int);
-		
+
 		switch (name[1])
 		{
 		case HW_AVAILCPU:
@@ -257,7 +256,7 @@ static void need_uname(void)
 	if (!lu.sysname[0])
 	{
 		__linux_uname(&lu);
-		version_conf = iniconfig_load(__prefix_translate_path(ETC_DARLING_PATH "/version.conf"));
+		version_conf = iniconfig_load(ETC_DARLING_PATH "/version.conf");
 		if (version_conf != NULL)
 			version_conf_sect = iniconfig_getsection(version_conf, "uname");
 	}
@@ -278,7 +277,7 @@ static long sysctl_name_to_oid(const char* name, int* oid_name,
 {
 	const char* dot;
 	unsigned long cat_len;
-	
+
 	if (*oid_len < 2)
 		return -EINVAL;
 
@@ -292,7 +291,7 @@ static long sysctl_name_to_oid(const char* name, int* oid_name,
 	{
 		oid_name[0] = CTL_HW;
 		*oid_len = 2 * sizeof(int);
-		
+
 		if (strcmp(dot+1, "activecpu") == 0)
 			oid_name[1] = HW_AVAILCPU;
 		else if (strcmp(dot+1, "ncpu") == 0)
@@ -317,7 +316,7 @@ static long sysctl_name_to_oid(const char* name, int* oid_name,
 			oid_name[1] = _HW_CPUTHREADTYPE;
 		else
 			return -ENOTDIR;
-		
+
 		return 0;
 	}
 	else if (strncmp(name, "kern", cat_len) == 0)
@@ -336,4 +335,3 @@ static long sysctl_name_to_oid(const char* name, int* oid_name,
 	__simple_printf("Unknown sysctl: %s\n", name);
 	return -ENOTDIR;
 }
-

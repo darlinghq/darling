@@ -37,8 +37,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling.h"
 #include "darling-config.h"
 
-// Path where the system root gets "mounted" inside the prefix
-#define SYSTEM_ROOT "/system-root"
 
 const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
@@ -47,7 +45,6 @@ uid_t g_originalUid, g_originalGid;
 int main(int argc, const char** argv)
 {
 	pid_t pidInit, pidChild;
-	char path[4096];
 	int wstatus;
 
 	if (argc <= 1)
@@ -73,13 +70,28 @@ int main(int argc, const char** argv)
 		prefix = defaultPrefixPath();
 	if (!prefix)
 		return 1;
-	setenv("DPREFIX", prefix, 0);
+	unsetenv("DPREFIX");
 
 	if (!checkPrefixDir())
 		setupPrefix();
 	checkPrefixOwner();
 
 	pidInit = getInitProcess();
+
+	if (strcmp(argv[1], "shutdown") == 0)
+	{
+		if (pidInit == 0)
+		{
+			fprintf(stderr, "Darling container is not running\n");
+			return 1;
+		}
+
+		// TODO: when we have a working launchd,
+		// this is where we ask it to shut down nicely
+
+		kill(pidInit, SIGKILL);
+		return 0;
+	}
 
 	// If prefix's init is not running, start it up
 	if (pidInit == 0)
@@ -91,19 +103,35 @@ int main(int argc, const char** argv)
 
 	if (strcmp(argv[1], "shell") != 0)
 	{
+		char *path = realpath(argv[1], NULL);
+		char *fullPath;
+
+		if (path == NULL)
+		{
+			fprintf(stderr, "Cannot resolve path: %s\n", strerror(errno));
+			exit(1);
+		}
+
 		const char *argv_child[argc + 1];
 
-		argv_child[0] = "dyld";
-		for (int i = 1; i < argc; i++)
+		argv_child[0] = SYSTEM_ROOT DYLD_PATH;
+
+		fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
+		strcpy(fullPath, SYSTEM_ROOT);
+		strcat(fullPath, path);
+		argv_child[1] = fullPath;
+
+		for (int i = 2; i < argc; i++)
 			argv_child[i] = argv[i];
 		argv_child[argc] = NULL;
 
-		pidChild = spawnChild(pidInit, DYLD_PATH, argv_child);
+		pidChild = spawnChild(pidInit, SYSTEM_ROOT DYLD_PATH, argv_child);
+		free(path);
+		free(fullPath);
 	}
 	else
 	{
 		// Spawn the shell
-		snprintf(path, sizeof(path), "%s/bin/bash", prefix);
 		if (argc > 2)
 		{
 			size_t total_len = 0;
@@ -118,12 +146,12 @@ int main(int argc, const char** argv)
 			// Overwrite the last whitespace
 			*(to - 1) = '\0';
 
-			pidChild = spawnChild(pidInit, DYLD_PATH,
-				(const char *[5]) {"dyld", path, "-c", buffer, NULL});
+			pidChild = spawnChild(pidInit, SYSTEM_ROOT DYLD_PATH,
+				(const char *[5]) {SYSTEM_ROOT DYLD_PATH, "/bin/bash", "-c", buffer, NULL});
 		}
 		else
-			pidChild = spawnChild(pidInit, DYLD_PATH,
-				(const char *[3]) {"dyld", path, NULL});
+			pidChild = spawnChild(pidInit, SYSTEM_ROOT DYLD_PATH,
+				(const char *[3]) {SYSTEM_ROOT DYLD_PATH, "/bin/bash", NULL});
 	}
 
 	// Drop the privileges so that we can be killed, etc by the user
@@ -197,23 +225,27 @@ pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
 		}
 		close(fdNS);
 
-		snprintf(pathNS, sizeof(pathNS), "/proc/%d/ns/user", pidInit);
+		/*
+		snprintf(pathNS, sizeof(pathNS), SYSTEM_ROOT "/proc/%d/ns/user", pidInit);
 		fdNS = open(pathNS, O_RDONLY);
 		if (fdNS < 0)
 		{
 			fprintf(stderr, "Cannot open user namespace file: %s\n", strerror(errno));
 			exit(1);
 		}
+		*/
 
 		setresuid(g_originalUid, g_originalUid, g_originalUid);
 		setresgid(g_originalGid, g_originalGid, g_originalGid);
 
+		/*
 		if (setns(fdNS, CLONE_NEWUSER) != 0)
 		{
 			fprintf(stderr, "Cannot join user namespace: %s\n", strerror(errno));
 			exit(1);
 		}
 		close(fdNS);
+		*/
 
 		setupChild(curPath);
 
@@ -231,7 +263,17 @@ void setupChild(const char *curPath)
 	char buffer1[4096];
 	char buffer2[4096];
 
-	setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin", 1);
+	setenv("PATH",
+		"/usr/bin:"
+		"/bin:"
+		"/usr/sbin:"
+		"/sbin:"
+		"/usr/local/bin",
+		1);
+
+	setenv("LD_LIBRARY_PATH",
+		SYSTEM_ROOT LIB_PATH,
+		1);
 
 	sscanf(getenv("HOME"), "/home/%4096s", buffer1);
 	snprintf(buffer2, sizeof(buffer2), "/Users/%s", buffer1);
@@ -242,16 +284,12 @@ void setupChild(const char *curPath)
 		// We're currently inside our home directory
 		snprintf(buffer2, sizeof(buffer2), "/Users/%s", buffer1);
 		setenv("PWD", buffer2, 1);
-
-		snprintf(buffer2, sizeof(buffer2), "%s/Users/%s", prefix, buffer1);
 		chdir(buffer2);
 	}
 	else
 	{
 		snprintf(buffer2, sizeof(buffer2), SYSTEM_ROOT "%s", curPath);
 		setenv("PWD", buffer2, 1);
-
-		snprintf(buffer2, sizeof(buffer2), "%s" SYSTEM_ROOT "%s", prefix, curPath);
 		chdir(buffer2);
 	}
 }
@@ -288,7 +326,7 @@ pid_t spawnInitProcess(void)
 {
 	pid_t pid;
 	int pipefd[2];
-	char idmap[100];
+	// char idmap[100];
 	char buffer[1];
 	FILE *file;
 
@@ -317,6 +355,7 @@ pid_t spawnInitProcess(void)
 		// The child
 
 		char *opts;
+		char putOld[4096];
 
 		// Since overlay cannot be mounted inside user namespaces, we have to setup a new mount namespace
 		// and do the mount while we can be root
@@ -334,7 +373,7 @@ pid_t spawnInitProcess(void)
 			exit(1);
 		}
 
-		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 50);
+		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 100);
 		sprintf(opts, "lowerdir=%s,upperdir=%s,workdir=%s.workdir", LIBEXEC_PATH, prefix, prefix);
 
 		// Mount overlay onto our prefix
@@ -346,6 +385,21 @@ pid_t spawnInitProcess(void)
 
 		free(opts);
 
+		snprintf(putOld, sizeof(putOld), "%s" SYSTEM_ROOT, prefix);
+
+		if (syscall(SYS_pivot_root, prefix, putOld) != 0)
+		{
+			fprintf(stderr, "Cannot pivot_root: %s\n", strerror(errno));
+			exit(1);
+		}
+
+		// mount procfs for our new PID namespace
+		if (mount("proc", "/proc", "proc", 0, "") != 0)
+		{
+			fprintf(stderr, "Cannot mount procfs: %s\n", strerror(errno));
+			exit(1);
+		}
+
 		// Drop the privileges
 		setresuid(g_originalUid, g_originalUid, g_originalUid);
 		setresgid(g_originalGid, g_originalGid, g_originalGid);
@@ -353,13 +407,15 @@ pid_t spawnInitProcess(void)
 
 		prctl(PR_SET_NAME, DARLING_INIT_COMM, 0, 0);
 
+		/*
 		if (unshare(CLONE_NEWUSER) != 0)
 		{
 			fprintf(stderr, "Cannot unshare user namespace: %s\n", strerror(errno));
 			exit(1);
 		}
+		*/
 
-		// Tell the parent we're ready for it to set up UID/GID mappings
+		// Tell the parent we're ready
 		write(pipefd[1], buffer, 1);
 		close(pipefd[1]);
 		// And wait for it to do it
@@ -374,6 +430,7 @@ pid_t spawnInitProcess(void)
 	read(pipefd[0], buffer, 1);
 	close(pipefd[0]);
 
+	/*
 	snprintf(idmap, sizeof(idmap), "/proc/%d/uid_map", pid);
 
 	file = fopen(idmap, "w");
@@ -399,6 +456,7 @@ pid_t spawnInitProcess(void)
 	{
 		fprintf(stderr, "Cannot set gid_map for the init process: %s\n", strerror(errno));
 	}
+	*/
 
 	// Resume the child
 	write(pipefd[1], buffer, 1);
@@ -552,52 +610,20 @@ void setupPrefix()
 
 	createDir(prefix);
 
-	snprintf(path, sizeof(path), "%s" SYSTEM_ROOT, prefix);
-	if (symlink("/", path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
-	snprintf(path, sizeof(path), "%s/dev", prefix);
-	if (symlink(SYSTEM_ROOT "/dev" + 1, path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
-	snprintf(path, sizeof(path), "%s/tmp", prefix);
-	if (symlink(SYSTEM_ROOT "/tmp" + 1, path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
-	snprintf(path, sizeof(path), "%s/Users", prefix);
-	if (symlink(SYSTEM_ROOT "/home" + 1, path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
-
+	// The user needs to be able to create mountpoints,
 	snprintf(path, sizeof(path), "%s/Volumes", prefix);
 	createDir(path);
+	// ... to install applications,
 	snprintf(path, sizeof(path), "%s/Applications", prefix);
 	createDir(path);
 
-	snprintf(path, sizeof(path), "%s/var", prefix);
+	// ... and to put stuff in /usr/local
+	snprintf(path, sizeof(path), "%s/usr", prefix);
 	createDir(path);
-	snprintf(path, sizeof(path), "%s/var/root", prefix);
+	snprintf(path, sizeof(path), "%s/usr/local", prefix);
 	createDir(path);
-	snprintf(path, sizeof(path), "%s/var/run", prefix);
+	snprintf(path, sizeof(path), "%s/usr/local/share", prefix);
 	createDir(path);
-
-	snprintf(path, sizeof(path), "%s/var/run/syslog", prefix);
-	if (symlink("../.." SYSTEM_ROOT "/dev/log", path) != 0)
-	{
-		fprintf(stderr, "Cannot symlink %s: %s\n", path, strerror(errno));
-		exit(1);
-	}
 
 	seteuid(0);
 	setegid(0);

@@ -3,7 +3,6 @@
 #include "../errno.h"
 #include <asm/unistd.h>
 #include <sys/dirent.h>
-#include <libdyld/VirtualPrefix.h>
 
 extern __SIZE_TYPE__ strlen(const char* s);
 extern char* strcpy(char* dest, const char* src);
@@ -51,10 +50,7 @@ long sys_getdirentries(int fd, char* ibuf, unsigned int len, long* basep)
 		bsd->d_ino = l64->d_ino;
 		bsd->d_type = l64->d_type;
 		strcpy(bsd->d_name, l64->d_name);
-		
-		if (strcmp(l64->d_name, __SYSTEM_ROOT+1) == 0)
-			bsd->d_type = DT_DIR;
-		
+
 		bsd->d_reclen = sizeof(struct bsd_dirent) + slen + 1;
 		bsd->d_namlen = slen;
 
@@ -97,10 +93,7 @@ long sys_getdirentries64(int fd, char* ibuf, unsigned int len, long* basep)
 		bsd->d_ino = l64->d_ino;
 		bsd->d_type = l64->d_type;
 		strcpy(bsd->d_name, l64->d_name);
-		
-		if (strcmp(l64->d_name, __SYSTEM_ROOT+1) == 0)
-			bsd->d_type = DT_DIR;
-		
+
 		bsd->d_reclen = sizeof(struct bsd_dirent64) + slen + 1;
 		bsd->d_namlen = slen;
 		bsd->d_seekoff = 0;
