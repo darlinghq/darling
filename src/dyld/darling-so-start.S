@@ -64,4 +64,3 @@ fail:
         syscall
 
 	ud2
-
