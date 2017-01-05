@@ -104,7 +104,7 @@ std::string DylibSearch::resolve(std::string dylib, MachOObject* requester)
 
 		if (!strchr(aliasTarget, '/'))
 		{
-			p = LIB_PATH;
+			p = SYSTEM_ROOT LIB_PATH;
 			p += '/';
 			p += aliasTarget;
 			// std::cout << p << std::endl;
