@@ -357,6 +357,8 @@ pid_t spawnInitProcess(void)
 		char *opts;
 		char putOld[4096];
 
+		close(pipefd[0]);
+
 		// Since overlay cannot be mounted inside user namespaces, we have to setup a new mount namespace
 		// and do the mount while we can be root
 		if (unshare(CLONE_NEWNS) != 0)
@@ -418,15 +420,16 @@ pid_t spawnInitProcess(void)
 		// Tell the parent we're ready
 		write(pipefd[1], buffer, 1);
 		close(pipefd[1]);
-		// And wait for it to do it
-		read(pipefd[0], buffer, 1);
-		close(pipefd[0]);
+
+		// Here's where we wait for the parent to set up UID/GID mapping
+		// if we enable user namespaces
 
 		darlingPreInit();
 		// Never returns
 	}
 
 	// Wait for the child to drop UID/GIDs and unshare stuff
+	close(pipefd[1]);
 	read(pipefd[0], buffer, 1);
 	close(pipefd[0]);
 
@@ -458,9 +461,8 @@ pid_t spawnInitProcess(void)
 	}
 	*/
 
-	// Resume the child
-	write(pipefd[1], buffer, 1);
-	close(pipefd[1]);
+	// Here's where we resume the child
+	// if we enable user namespaces
 
 	return pid;
 }
