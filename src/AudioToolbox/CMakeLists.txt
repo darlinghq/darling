@@ -18,6 +18,7 @@ include_directories(${DARLING_TOP_DIRECTORY}/src/external/corefoundation/Headers
 include_directories(${CMAKE_BINARY_DIR}/src/external/corefoundation/Headers)
 include_directories(${DARLING_TOP_DIRECTORY}/src/external/foundation/Headers)
 include_directories(${DARLING_TOP_DIRECTORY}/src/external/libobjc2)
+include_directories(${DARLING_TOP_DIRECTORY}/src/libc)
 include_directories(${DARLING_TOP_DIRECTORY}/basic-headers)
 
 include(CheckSymbolExists)
