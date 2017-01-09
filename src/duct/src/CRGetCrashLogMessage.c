@@ -1,6 +1,6 @@
-int CRGetCrashLogMessage()
+const char* CRGetCrashLogMessage(void)
 {
-	return 1;
+	return 0;
 }
 
 void CRSetCrashLogMessage(const char* msg)

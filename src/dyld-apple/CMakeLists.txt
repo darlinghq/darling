@@ -9,7 +9,7 @@ endif(COMMAND cmake_policy)
 include (darling_exe)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -std=c++11 -include ${CMAKE_SOURCE_DIR}/src/duct/include/CrashReporterClient.h")
 set(CMAKE_SHARED_LINKER_FLAGS_SAVED "${CMAKE_SHARED_LINKER_FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
 
@@ -65,6 +65,6 @@ add_darling_executable(system_loader
 #use_ld64(system_loader)
 set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
 set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -dylinker")
-target_link_libraries(system_loader crt1.10.6.o)
+target_link_libraries(system_loader crt1.10.6.o libc_static)
 
 install(TARGETS system_dyld DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

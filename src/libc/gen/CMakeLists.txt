@@ -59,7 +59,7 @@ set(gen_sources #asl.c
 set(gen_sources ${gen_sources}
 	FreeBSD/alarm.c  
 	FreeBSD/arc4random.c   
-	FreeBSD/assert.c   
+	FreeBSD/assert.c
 	FreeBSD/basename.c 
 	FreeBSD/clock.c
 	FreeBSD/closedir.c 
@@ -232,4 +232,12 @@ endif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
 
 add_library(libc-gen_pre1050 OBJECT ${gen-pre1050_sources})
 SET_TARGET_PROPERTIES(libc-gen_pre1050 PROPERTIES COMPILE_FLAGS "-DBUILDING_VARIANT -DVARIANT_PRE1050 -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
+
+# ***
+# DYLD variants
+# ***
+
+add_library(libc-gen_dyld OBJECT _simple.c FreeBSD/arc4random.c FreeBSD/closedir.c dirfd.c FreeBSD/getcwd.c FreeBSD/getpagesize.c nanosleep.c FreeBSD/opendir.c FreeBSD/readdir.c FreeBSD/scandir.c FreeBSD/sysctl.c FreeBSD/sysctlbyname.c FreeBSD/telldir.c FreeBSD/usleep.c)
+
+SET_TARGET_PROPERTIES(libc-gen_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")
 

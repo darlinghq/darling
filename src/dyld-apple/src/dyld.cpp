@@ -1209,7 +1209,7 @@ static void setRunInitialzersOldWay()
 
 static bool sandboxBlocked(const char* path, const char* kind)
 {
-#if TARGET_IPHONE_SIMULATOR
+#if TARGET_IPHONE_SIMULATOR || DARLING
 	// sandbox calls not yet supported in simulator runtime
 	return false;
 #else

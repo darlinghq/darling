@@ -11,3 +11,7 @@ set(threads_sources
 )
 
 add_library(libc-threads OBJECT ${threads_sources})
+
+add_library(libc-threads_dyld OBJECT mig_support.c)
+SET_TARGET_PROPERTIES(libc-threads_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")
+

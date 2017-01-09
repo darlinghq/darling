@@ -41,3 +41,7 @@ set(pthreads-legacy_sources
 add_library(libc-pthreads_legacy OBJECT ${pthreads-legacy_sources})
 SET_TARGET_PROPERTIES(libc-pthreads_legacy PROPERTIES COMPILE_FLAGS "-DBUILDING_VARIANT -DVARIANT_LEGACY -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
 
+# DYLD variant
+
+add_library(libc-pthreads_dyld OBJECT pthread.c pthread_mutex.c pthread_tsd.c)
+SET_TARGET_PROPERTIES(libc-pthreads_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")

@@ -20,7 +20,7 @@ add_definitions(-D__LIBC__ -D__DARWIN_UNIX03=1 -D__DARWIN_64_BIT_INO_T=1 -D__DAR
 #add_definitions("'-D__weak_reference(sym,alias)='")
 add_definitions("'-D__warn_references(name,warning)='")
 #add_definitions(-Ddladdr=__darwin_dladdr)
-add_definitions(-DBUILDING_LIBC)
+add_definitions(-DBUILDING_LIBC -DPRIVATE)
 
 # Hide warnings that get spammed
 add_definitions(
@@ -143,6 +143,17 @@ add_darling_library(system_c SHARED
 target_link_libraries(system_c system_kernel system_m)
 
 install(TARGETS system_c DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+
+set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
+set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
+add_library(libc_static STATIC
+	$<TARGET_OBJECTS:libc-gen_dyld>
+	$<TARGET_OBJECTS:libc-pthreads_dyld>
+	$<TARGET_OBJECTS:libc-stdlib_dyld>
+	$<TARGET_OBJECTS:libc-string_dyld>
+	$<TARGET_OBJECTS:libc-sys_dyld>
+	$<TARGET_OBJECTS:libc-threads_dyld>
+	$<TARGET_OBJECTS:libc-hwplat_dyld>)
 
 # TODO: see ./xcodescripts/variants.xcconfig
 
