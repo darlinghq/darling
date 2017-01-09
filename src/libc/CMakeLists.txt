@@ -99,10 +99,7 @@ endif()
 
 add_subdirectory(darwin)
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
+set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_c.dylib")
 add_darling_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-db>
 	$<TARGET_OBJECTS:libc-compat>

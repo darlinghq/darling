@@ -11,7 +11,7 @@ include_directories(${DARLING_TOP_DIRECTORY}/src/libc/darwin)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc -include ${DARLING_TOP_DIRECTORY}/kernel-include/sys/fileport.h -ggdb")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
 
 mig(job.defs)
 mig(helper.defs)
@@ -24,12 +24,9 @@ set(launch_sources
 	${CMAKE_CURRENT_BINARY_DIR}/helperServer.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-add_library(launch SHARED ${launch_sources})
-target_link_libraries(launch system_c system_kernel)
+set(DYLIB_INSTALL_NAME "/usr/lib/system/liblaunch.dylib")
+add_darling_library(launch SHARED ${launch_sources})
+target_link_libraries(launch PRIVATE system_c system_kernel)
 
 install(TARGETS launch DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 

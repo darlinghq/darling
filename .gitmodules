@@ -34,6 +34,7 @@
 [submodule "src/external/icu"]
 	path = src/external/icu
 	url = ../darling-icu.git
+	branch = darling
 [submodule "src/external/libxslt"]
 	path = src/external/libxslt
 	url = ../darling-libxslt.git
@@ -43,15 +44,19 @@
 [submodule "src/external/curl"]
 	path = src/external/curl
 	url = ../darling-curl.git
+	branch = darling
 [submodule "src/external/shell_cmds"]
 	path = src/external/shell_cmds
 	url = ../darling-shell_cmds.git
+	branch = darling
 [submodule "src/external/file_cmds"]
 	path = src/external/file_cmds
 	url = ../darling-file_cmds.git
+	branch = darling
 [submodule "src/external/bash"]
 	path = src/external/bash
 	url = ../darling-bash.git
+	branch = darling
 [submodule "src/external/darling-dmg"]
 	path = src/external/darling-dmg
 	url = ../darling-dmg.git
@@ -61,6 +66,7 @@
 [submodule "src/external/liblzma"]
 	path = src/external/liblzma
 	url = ../darling-liblzma.git
+	branch = darling
 [submodule "src/external/cfnetwork"]
 	path = src/external/cfnetwork
 	url = ../darling-cfnetwork.git
@@ -70,66 +76,86 @@
 [submodule "src/external/less"]
 	path = src/external/less
 	url = ../darling-less.git
+	branch = darling
 [submodule "src/external/grep"]
 	path = src/external/grep
 	url = ../darling-grep.git
+	branch = darling
 [submodule "src/external/pcre"]
 	path = src/external/pcre
 	url = ../darling-pcre.git
+	branch = darling
 [submodule "src/external/awk"]
 	path = src/external/awk
 	url = ../darling-awk.git
+	branch = darling
 [submodule "src/external/adv_cmds"]
 	path = src/external/adv_cmds
 	url = ../darling-adv_cmds.git
+	branch = darling
 [submodule "src/external/AppKit"]
 	path = src/external/AppKit
 	url = ../darling-appkit.git
 [submodule "src/external/nano"]
 	path = src/external/nano
 	url = ../darling-nano.git
+	branch = darling
 [submodule "src/external/zip"]
 	path = src/external/zip
 	url = ../darling-zip.git
+	branch = darling
 [submodule "src/external/python"]
 	path = src/external/python
 	url = ../darling-python.git
+	branch = darling
 [submodule "src/external/expat"]
 	path = src/external/expat
 	url = ../darling-expat.git
+	branch = darling
 [submodule "src/external/sqlite"]
 	path = src/external/sqlite
 	url = ../darling-sqlite.git
+	branch = darling
 [submodule "src/external/libauto"]
 	path = src/external/libauto
 	url = ../darling-libauto.git
+	branch = darling
 [submodule "src/external/coretls"]
 	path = src/external/coretls
 	url = ../darling-coretls.git
+	branch = darling
 [submodule "src/external/security"]
 	path = src/external/security
 	url = ../darling-security.git
+	branch = darling
 [submodule "src/external/libxpc"]
 	path = src/external/libxpc
 	url = ../darling-libxpc.git
+	branch = darling
 [submodule "src/external/gnutar"]
 	path = src/external/gnutar
 	url = ../darling-gnutar.git
+	branch = darling
 [submodule "src/external/gpatch"]
 	path = src/external/gpatch
 	url = ../darling-gpatch.git
+	branch = darling
 [submodule "src/external/gnudiff"]
 	path = src/external/gnudiff
 	url = ../darling-gnudiff.git
+	branch = darling
 [submodule "src/external/apr"]
 	path = src/external/apr
 	url = ../darling-apr.git
+	branch = darling
 [submodule "src/external/libarchive"]
 	path = src/external/libarchive
 	url = ../darling-libarchive.git
+	branch = darling
 [submodule "src/external/file"]
 	path = src/external/file
 	url = ../darling-file.git
+	branch = darling
 [submodule "src/external/corecrypto"]
 	path = src/external/corecrypto
 	url = ../darling-corecrypto.git

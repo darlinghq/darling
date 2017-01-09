@@ -25,11 +25,6 @@
 
 #include <Availability.h>
 
-#ifdef DARLING
-#	define start _start
-#	define _main main
-#endif
-
 #if __ppc__ && __DYNAMIC__
 //
 // Force stub section next to __text section to minimize chance that
@@ -187,7 +182,7 @@ Lapple2:cmpq	$0,(%rcx)	    # look for NULL ending env[] array
 	add	$8,%rcx		    # once found, next pointer is "apple" parameter now in %rcx
 	call	_main
 	movl	%eax,%edi	    # pass result from main() to exit() 
-	call	_exit@PLT		    # need to use call to keep stack aligned
+	call	_exit		    # need to use call to keep stack aligned
 	hlt
 #endif
 #endif // __x86_64__ 

@@ -37,11 +37,8 @@ set(menu_sources
 	m_win.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-add_library(menu SHARED ${menu_sources})
-target_link_libraries(menu system)
+set(DYLIB_INSTALL_NAME "/usr/lib/libmenu.5.4.dylib")
+add_darling_library(menu SHARED ${menu_sources})
+target_link_libraries(menu system ncurses)
 
 install(TARGETS menu DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

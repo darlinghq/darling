@@ -1,0 +1,52 @@
+#!/bin/sh 
+
+# cd into test-cases directory
+TEST_CASE_DIR=`echo "$0" | sed 's/build-iPhoneOS-unit-tests/test-cases/'`
+cd ${TEST_CASE_DIR}
+TEST_CASE_DIR=`pwd`
+
+# make clean
+../bin/make-recursive.pl clean > /dev/null
+
+# clean staging area
+rm -rf /var/root/testing
+mkdir /var/root/testing
+
+# create scripts to run test cases on device
+echo "#!/bin/sh" > /var/root/testing/run-all-tests
+chmod +x /var/root/testing/run-all-tests
+
+# do every combination of OS version and architectures
+for os in "8.0" 
+do
+	for arch in armv7 arm64
+	do
+		# make copy of tests
+		cp -r ${TEST_CASE_DIR}/../../unit-tests  /var/root/testing/unit-tests-${arch}-${os}
+		# build but don't run test cases
+		echo " * * * Building all unit tests for ${arch} iPhoneOS ${os} * * *"
+		cd /var/root/testing/unit-tests-${arch}-${os}/test-cases
+		../bin/make-recursive.pl ARCH=${arch} OS_VERSION=${os} OS_NAME=iPhoneOS all | ../bin/build-results-filter.pl
+		# update script
+		echo "cd /var/root/testing/unit-tests-${arch}-${os}"                           >> /var/root/testing/run-all-tests
+		echo "echo \" * * * Running all unit tests for ${arch} iPhoneOS ${os} * * *\"" >> /var/root/testing/run-all-tests
+		echo "bin/make-recursive.pl OS_NAME=iPhoneOS check | bin/result-filter.pl"     >> /var/root/testing/run-all-tests
+	done
+done
+
+# tar up all test cases
+echo " * * * Making archive * * *"
+cd /var/root
+ditto -c -z testing /tmp/dyld-testing.cpgz
+
+# create script to unpack on device
+echo "#!/bin/sh" > /tmp/unpack-and-run-all-tests
+echo "echo \" * * * Unpacking test cases * * *\""                          >> /tmp/unpack-and-run-all-tests
+echo "/sbin/mount -u /private/var"                                         >> /tmp/unpack-and-run-all-tests
+echo "chmod +x /var/root"                                                  >> /tmp/unpack-and-run-all-tests
+echo "cd /var/root"                                                        >> /tmp/unpack-and-run-all-tests
+echo "rm -rf /var/root/testing"                                            >> /tmp/unpack-and-run-all-tests
+echo "ditto -x /tmp/dyld-testing.cpgz testing"                             >> /tmp/unpack-and-run-all-tests
+echo "/var/root/testing/run-all-tests"                                     >> /tmp/unpack-and-run-all-tests
+chmod +x /tmp/unpack-and-run-all-tests
+

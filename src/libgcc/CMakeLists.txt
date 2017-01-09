@@ -7,17 +7,13 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 set(libgcc_sources
 	dummy.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-add_library(gcc_s SHARED ${libgcc_sources})
-target_link_libraries(gcc_s compiler_rt)
+add_darling_library(gcc_s SHARED ${libgcc_sources})
+target_link_libraries(gcc_s PRIVATE compiler_rt -sub_library libcompiler_rt)
 
 install(TARGETS gcc_s DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

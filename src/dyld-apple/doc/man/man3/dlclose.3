@@ -1,0 +1,43 @@
+.Dd Nov 6, 2006
+.Dt DLCLOSE 3
+.Sh NAME
+.Nm dlclose
+.Nd close a dynamic library or bundle
+.Sh SYNOPSIS
+.In dlfcn.h
+.Ft int
+.Fn dlclose "void* handle"
+.Sh DESCRIPTION
+.Fn dlclose
+releases a reference to the dynamic library or bundle referenced by
+.Fa handle .
+If the reference count drops to 0, the bundle is removed from the
+address space, and
+.Fa handle
+is rendered invalid.
+Just before removing a dynamic library or bundle in this way, any 
+termination routines in it are called.  
+.Fa handle
+is the value returned by a previous call to dlopen.
+.Pp
+Prior to Mac OS X 10.5, only bundles could be unloaded.  Starting in Mac OS X 10.5, 
+dynamic libraries may also be unloaded.  There are a couple of cases in which a
+dynamic library will never be unloaded: 1) the main executable links against it, 
+2) An API that does not supoort unloading (e.g. NSAddImage()) was used to load
+it or some other dynnamic library that depends on it, 3) the dynamic library
+is in dyld's shared cache.
+.Sh RETURN VALUES
+If
+.Fn dlclose
+is successful, it returns a value of 0.
+Otherwise it returns -1, and sets an error string that can be
+retrived with
+.Fn dlerror .
+.Pp
+.Sh SEE ALSO
+.Xr dlopen 3
+.Xr dlsym 3
+.Xr dlerror 3
+.Xr dyld 3
+.Xr ld 1
+.Xr cc 1

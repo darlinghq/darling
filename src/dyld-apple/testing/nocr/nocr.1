@@ -1,0 +1,26 @@
+.Dd Dec 15, 2015
+.Dt nocr 1
+.Os Darwin
+.Sh NAME
+.Nm nocr
+.Nd "runs a command with crash reporter disabled"
+.Sh SYNOPSIS
+.HP 5n
+\fBnocr\fR
+\fIcommand\fR
+.br
+.Sh DESCRIPTION
+\fBnocr\fR
+executes
+\fIcommand\fR
+in a way that blocks crash reporter should the command process crash.
+This is useful when running test suites
+.Pp
+.Sh "EXIT VALUE"
+Upon successful execution of a program, the exit status from
+\fInocr\fR
+will simply be the exit status of the program that was executed.
+.Pp
+If the program
+\fIcommand\fR
+crashed, the exit value will be 1

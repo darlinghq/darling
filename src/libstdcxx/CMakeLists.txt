@@ -5,11 +5,7 @@ enable_language(C ASM)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2 -msse3 -w -nostdinc -nostdinc++")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -include ${CMAKE_CURRENT_SOURCE_DIR}/build.h")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map -Wl,-Bsymbolic-functions")
-
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
-	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,${CMAKE_CURRENT_SOURCE_DIR}/i386-aliases")
-endif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1/backward)
@@ -92,12 +88,10 @@ set(libstdcxx_sources
 	src/dso_handle.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-add_library(stdcxx SHARED ${libstdcxx_sources})
-target_link_libraries(stdcxx cxxabi_shared)
+set(DYLIB_INSTALL_NAME "/usr/lib/libstdc++.6.dylib")
+add_darling_library(stdcxx SHARED ${libstdcxx_sources})
+target_link_libraries(stdcxx PRIVATE system cxxabi_shared)
+set_target_properties(stdcxx PROPERTIES OUTPUT_NAME "stdc++.6")
 
 install(TARGETS stdcxx DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 

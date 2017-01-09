@@ -1,0 +1,33 @@
+.Dd April 17, 2006
+.Os
+.Dt DLOPEN_PREFLIGHT 3
+.Sh NAME
+.Nm dlopen_preflight
+.Nd preflight the load of a dynamic library or bundle
+.Sh SYNOPSIS
+.In dlfcn.h
+.Ft bool
+.Fn dlopen_preflight "const char* path"
+.Sh DESCRIPTION
+.Fn dlopen_preflight
+examines the mach-o file specified by 
+.Fa path .
+It checks if the file and libraries it depends on are all compatible with the current process. 
+That is, they contain the correct architecture and are not otherwise ABI incompatible. 
+.Pp
+.Fn dlopen_preflight
+was first available in Mac OS X 10.5.
+.Sh SEARCHING
+.Fn dlopen_preflight
+uses the same steps as 
+.Fn dlopen
+to find a compatible mach-o file.
+.Sh RETURN VALUES
+.Fn dlopen_preflight
+returns true on if the mach-o file is compatible.  If the file is not compatible, it returns false 
+and sets an error string that can be examined with
+.Fn dlerror .
+.Pp
+.Sh SEE ALSO
+.Xr dlopen 3
+.Xr dlerror 3

@@ -13,12 +13,11 @@ add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 
-include_directories(${DARLING_TOP_DIRECTORY}/src/libc/include/FreeBSD)
+#include_directories(${DARLING_TOP_DIRECTORY}/src/libc/include/FreeBSD)
 
 set(csu_SRCS
-	crt.c
-	start.S
+	crt1.10.6.S
 )
 
-add_library(csu STATIC ${csu_SRCS})
+add_darling_library(csu STATIC ${csu_SRCS})
 

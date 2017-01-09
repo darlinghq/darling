@@ -1,0 +1,18 @@
+
+//:configuration = Release
+LOCAL_YES = local
+
+//:configuration = Release
+LOCAL = $(LOCAL_$(RC_PURPLE))
+
+//:configuration = Release
+INSTALL_PATH = $(INSTALL_LOCATION)/usr/$(LOCAL)/bin
+
+// don't iOS tool
+MY_RELEASE_CODE_SIGN_IDENTITY_YES =
+MY_RELEASE_CODE_SIGN_IDENTITY_ = -
+CODE_SIGN_IDENTITY = $(MY_RELEASE_CODE_SIGN_IDENTITY_$(RC_PURPLE))
+
+
+CODE_SIGN_ENTITLEMENTS = launch-cache/update_dyld_shared_cache_entitlements.plist
+

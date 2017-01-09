@@ -1,0 +1,126 @@
+.Dd November 29, 2010
+.Dt dyld 3
+.Sh NAME
+.Nm _dyld_image_count,
+.Nm _dyld_get_image_header,
+.Nm _dyld_get_image_vmaddr_slide,
+.Nm _dyld_get_image_name,
+.Nm _dyld_register_func_for_add_image,
+.Nm _dyld_register_func_for_remove_image,
+.Nm NSVersionOfRunTimeLibrary,
+.Nm NSVersionOfLinkTimeLibrary
+.Nm _NSGetExecutablePath
+.Sh SYNOPSIS
+.In mach-o/dyld.h
+.Ft uint32_t
+.Fo _dyld_image_count
+.Fa "void"
+.Fc
+.Ft const struct mach_header*
+.Fo _dyld_get_image_header
+.Fa "uint32_t image_index"
+.Fc
+.Ft intptr_t
+.Fo _dyld_get_image_vmaddr_slide
+.Fa "uint32_t image_index"
+.Fc
+.Ft const char*
+.Fo _dyld_get_image_name
+.Fa "uint32_t image_index"
+.Fc
+.Ft void
+.Fo _dyld_register_func_for_add_image
+.Fa "void \*[lp]*func\*[rp]\*[lp]const struct mach_header* mh, intptr_t vmaddr_slide\*[rp]"
+.Fc
+.Ft void
+.Fo _dyld_register_func_for_remove_image
+.Fa "void \*[lp]*func\*[rp]\*[lp]const struct mach_header* mh, intptr_t vmaddr_slide\*[rp]"
+.Fc
+.Ft int32_t
+.Fo NSVersionOfRunTimeLibrary
+.Fa "const char* libraryName"
+.Fc
+.Ft int32_t
+.Fo NSVersionOfLinkTimeLibrary
+.Fa "const char* libraryName"
+.Fc
+.Ft int
+.Fo _NSGetExecutablePath
+.Fa "char* buf"
+.Fa "uint32_t* bufsize"
+.Fc
+.Sh DESCRIPTION
+These routines provide additional introspection of dyld beyond that provided by
+.Fn dlopen
+and
+.Fn dladdr
+.
+.Pp
+.Fn _dyld_image_count
+returns the current number of images mapped in by dyld. Note that using this
+count to iterate all images is not thread safe, because another thread
+may be adding or removing images during the iteration.
+.Pp
+.Fn _dyld_get_image_header
+returns a pointer to the mach header of the image indexed by image_index.  If 
+.Fa image_index
+is out of range, NULL is returned.
+.Pp
+.Fn _dyld_get_image_vmaddr_slide
+returns the virtural memory address slide amount of the image indexed by
+.Fa image_index.
+If
+.Fa image_index
+is out of range zero is returned.
+.Pp
+.Fn _dyld_get_image_name
+returns the name of the image indexed by
+.Fa image_index.
+The C-string continues to be owned by dyld and should not deleted.
+If 
+.Fa image_index
+is out of range NULL is returned.
+.Pp
+.Fn _dyld_register_func_for_add_image
+registers the specified function to be called when a new image is added
+(a bundle or a dynamic shared library) to the program.  When this function is
+first registered it is called for once for each image that is currently part of
+the process.
+.Pp
+.Fn _dyld_register_func_for_remove_image
+registers the specified function to be called when an image is removed
+(a bundle or a dynamic shared library) from the process.
+.Pp
+.Fn NSVersionOfRunTimeLibrary
+returns the current_version number of the currently loaded dylib 
+specifed by the libraryName.  The libraryName parameter would be "bar" for /path/libbar.3.dylib and
+"Foo" for /path/Foo.framework/Versions/A/Foo.  This function returns -1 if no such library is loaded.
+.Pp
+.Fn NSVersionOfLinkTimeLibrary
+returns the current_version number that the main executable was linked
+against at build time.  The libraryName parameter would be "bar" for /path/libbar.3.dylib and
+"Foo" for /path/Foo.framework/Versions/A/Foo.  This function returns -1 if the main executable did not link
+against the specified library.
+.Pp
+.Fn _NSGetExecutablePath
+copies the path of the main executable into the buffer
+.Fa buf .
+The 
+.Fa bufsize
+parameter should initially be the size of the buffer.  This function returns 0 if the path was successfully copied,
+and  *
+.Fa bufsize
+is left unchanged. 
+It returns -1 if the buffer is not large enough, and *
+.Fa bufsize
+is set to the size required. 
+Note that 
+.Fn _NSGetExecutablePath 
+will return "a path" to the executable not a "real path" to the executable. 
+That is, the path may be a symbolic link and not the real file. With deep directories the total bufsize 
+needed could be more than MAXPATHLEN.
+.Sh SEE ALSO
+.Xr dlopen 3
+.Xr dladdr 3
+.Xr dyld 1
+http://developer.apple.com/documentation/DeveloperTools/Conceptual/MachOTopics/index.html

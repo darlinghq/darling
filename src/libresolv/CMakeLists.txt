@@ -9,9 +9,8 @@ include_directories(${DARLING_TOP_DIRECTORY}/src/libinfo/lookup.subproj/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/dnsinfo)
 
-add_definitions(-Dh_errno=__darwin_h_errno)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc -DUSE__RES_9")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
 
 # Hide warnings
 add_definitions(
@@ -55,8 +54,10 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_library(resolv-darwin SHARED ${resolv_sources})
-target_link_libraries(resolv-darwin system_c system_kernel)
+set(DYLIB_INSTALL_NAME "/usr/lib/libresolv.9.dylib")
+add_darling_library(resolv-darwin SHARED ${resolv_sources})
+set_target_properties(resolv-darwin PROPERTIES OUTPUT_NAME "resolv.9")
+#target_link_libraries(resolv-darwin PRIVATE system)
 
 install(TARGETS resolv-darwin DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 

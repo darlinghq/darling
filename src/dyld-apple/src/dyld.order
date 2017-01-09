@@ -1,0 +1,108 @@
+#
+#  Copyright (c) 2010 Apple  Inc. All rights reserved.
+# 
+#  @APPLE_LICENSE_HEADER_START@
+#  
+#  This file contains Original Code and/or Modifications of Original Code
+#  as defined in and that are subject to the Apple Public Source License
+#  Version 2.0 (the 'License'). You may not use this file except in
+#  compliance with the License. Please obtain a copy of the License at
+#  http://www.opensource.apple.com/apsl/ and read it before using this
+#  file.
+#  
+#  The Original Code and all software distributed under the License are
+#  distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+#  EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+#  INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+#  FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+#  Please see the License for the specific language governing rights and
+#  limitations under the License.
+#  
+#  @APPLE_LICENSE_HEADER_END@
+#
+
+#
+#  Cluster these __DATA symbols in dyld to reduce pages dirtied
+#
+_mach_init.mach_init_inited
+__task_reply_port
+_mach_task_self_
+_mach_host_self_
+_vm_page_size
+_vm_page_mask
+_vm_page_shift
+_vm_kernel_page_size
+_vm_kernel_page_mask
+_vm_kernel_page_shift
+_exitf
+___pthread_head
+___stack_chk_guard
+__ZN4dyldL23sFrameworkFallbackPathsE
+__ZN4dyldL21sLibraryFallbackPathsE
+__ZL11initialPool
+__ZN4dyld12gLinkContextE
+__ZN4dyld17gLibSystemHelpersE
+_sThreadChainKey
+_sStaticThreadChain
+__ZN4dyldL17sSharedCacheSlideE
+_dyld_shared_cache_ranges
+__ZN4dyldL20sAllCacheImagesProxyE
+__ZN11ImageLoader27fgImagesUsedFromSharedCacheE
+__ZN11ImageLoader19fgInterposingTuplesE
+__ZN11ImageLoader24fgTotalLoadLibrariesTimeE
+__ZN11ImageLoader24fgTotalLoadLibrariesTimeE
+__ZN11ImageLoader17fgTotalRebaseTimeE
+__ZN11ImageLoader15fgTotalBindTimeE
+__ZN11ImageLoader19fgTotalWeakBindTimeE
+__ZN11ImageLoader10fgTotalDOFE
+__ZN11ImageLoader15fgTotalInitTimeE
+__ZN11ImageLoader22fgTotalBytesPreFetchedE
+__ZN11ImageLoader18fgTotalBytesMappedE
+__ZN11ImageLoader21fgTotalSegmentsMappedE
+__ZN11ImageLoader19fgTotalRebaseFixupsE
+__ZN11ImageLoader17fgTotalBindFixupsE
+__ZN11ImageLoader26fgTotalBindSymbolsResolvedE
+__ZN11ImageLoader24fgTotalBindImageSearchesE
+__ZN11ImageLoader29fgTotalPossibleLazyBindFixupsE
+__ZN11ImageLoader21fgTotalLazyBindFixupsE
+__ZN11ImageLoader27fgImagesRequiringCoalescingE
+__ZN11ImageLoader21fgNextPIEDylibAddressE
+__ZN11ImageLoader26fgImagesWithUsedPrebindingE
+__ZN11ImageLoader26fgImagesHasWeakDefinitionsE
+__ZN16ImageLoaderMachO26fgSymbolTableBinarySearchsE
+__ZN11ImageLoader19fgSymbolTrieSearchsE
+__ZN11ImageLoader13fgLoadOrdinalE
+__ZN4dyldL9sExecPathE
+__ZN4dyldL25sMainExecutableMachHeaderE
+__ZN4dyldL12sSharedCacheE
+__ZN4dyldL17sUndefinedHandlerE
+__ZN4dyldL10sAllImagesE
+__ZN4dyldL18sAddImageCallbacksE
+__ZN4dyldL11sImageRootsE
+__ZN4dyldL29sImageFilesNeedingTerminationE
+__ZN4dyldL35sImageFilesNeedingDOFUnregistrationE
+__ZN4dyldL35sImageFilesNeedingDOFUnregistrationE
+__ZN4dyldL21sRemoveImageCallbacksE
+__ZN4dyldL15sSingleHandlersE
+__ZN4dyldL14sBatchHandlersE
+__ZN4dyldL15sMainExecutableE
+__ZN4dyldL4sEnvE
+__ZL11sImageInfos
+__ZL11sImageUUIDs
+__ZN4dyldL19sInsertedDylibCountE
+__ZN4dyldL20sProcessIsRestrictedE
+__ZL17sObjectFileImages
+__ZN11ImageLoader23fgDynamicImageReExportsE
+__ZN4dyldL15sDylibOverridesE
+__ZN4dyldL19sInsertedDylibCountE
+__ZN4dyldL20sProcessIsRestrictedE
+__ZN4dyldL18sMappedRangesStartE
+__ZN4dyldL14sExecShortNameE
+__ZN4dyld12gProcessInfoE
+___cxa_terminate_handler
+___cxa_unexpected_handler
+__ZL11currentPool
+__ZN4dyldL8sHostCPUE
+__ZN4dyldL15sHostCPUsubtypeE
+
+__thread

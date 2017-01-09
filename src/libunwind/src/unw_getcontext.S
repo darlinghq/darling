@@ -1,8 +1,4 @@
 
-#ifdef DARLING
-#	define _unw_getcontext unw_getcontext
-#endif
-
 #if __i386__ || __x86_64__ || __ppc__
 
 	.text

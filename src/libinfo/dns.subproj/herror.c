@@ -73,16 +73,7 @@ const char * const h_errlist[] = {
 };
 const int h_nerr = { sizeof h_errlist / sizeof h_errlist[0] };
 
-#ifndef DARLING
 int h_errno;
-#else
-__asm__(".section .bss\n"
-		".global __darwin_h_errno\n"
-		".symver __darwin_h_errno, h_errno@DARWIN\n"
-		".comm __darwin_h_errno, 4\n"
-		"__darwin_h_errno:\n"
-			".word 0\n");
-#endif
 
 /*
  * herror --

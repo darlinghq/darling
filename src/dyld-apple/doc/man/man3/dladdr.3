@@ -1,0 +1,73 @@
+.Dd September 24, 2004
+.Os
+.Dt DLADDR 3
+.Sh NAME
+.Nm dladdr
+.Nd find the image containing a given address
+.Sh SYNOPSIS
+.In dlfcn.h
+.Ft int
+.Fn dladdr "const void* addr" "Dl_info* info"
+.Sh DESCRIPTION
+The
+.Fn dladdr
+function
+queries dyld (the dynamic linker) for information about the image
+containing the address
+.Fa addr .
+The information is returned in the structure specified by
+.Fa info .
+The structure contains at least the following members:
+.Bl -tag -width "XXXconst char *dli_fname"
+.It Li "const char* dli_fname"
+The pathname of the shared object containing the address.
+.It Li "void* dli_fbase"
+The base address (mach_header) at which the image is mapped into the
+address space of the calling process.
+.It Li "const char* dli_sname"
+The name of the nearest run-time symbol with a value less than or
+equal to
+.Fa addr .
+.It Li "void* dli_saddr"
+The value of the symbol returned in
+.Li dli_sname .
+.El
+.Pp
+The
+.Fn dladdr
+function
+is available only in dynamically linked programs.
+.Sh ERRORS
+If an image containing
+.Fa addr
+cannot be found,
+.Fn dladdr
+returns 0.
+On success, a non-zero value is returned.
+.Pp
+If the image containing 
+.Fa addr
+is found, but no nearest symbol was found,
+the dli_sname and dli_saddr fields are set to NULL.
+.Sh SEE ALSO
+.Xr dyld 3 ,
+.Xr dlopen 3
+.Sh HISTORY
+The
+.Fn dladdr
+function first appeared in the Solaris operating system.
+.Sh AUTHORS
+Mac OS X 10.3 incorporated the dlcompat package written by Jorge Acereda <jacereda@users.sourceforge.net>
+and Peter O'Gorman <ogorman@users.sourceforge.net>.
+.Pp
+In Mac OS X 10.4, dlopen was rewritten to be a native part of dyld.
+.Pp
+This man page was borrowed from FreeBSD and modified.
+.Sh BUGS
+This implementation is almost bug-compatible with the Solaris
+implementation.  The following bugs are present:
+.Bl -bullet
+.It
+Returning 0 as an indication of failure goes against long-standing
+Unix tradition.
+.El

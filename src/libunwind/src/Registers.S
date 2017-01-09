@@ -1,17 +1,9 @@
 
-#ifdef DARLING
-#	define __ZN9libunwind13Registers_x866jumptoEv _ZN9libunwind13Registers_x866jumptoEv
-#	define __ZN9libunwind16Registers_x86_646jumptoEv _ZN9libunwind16Registers_x86_646jumptoEv
-#endif
 
 #if __i386__
 	.text
 	.globl __ZN9libunwind13Registers_x866jumptoEv
-#ifdef DARLING
-	.hidden __ZN9libunwind13Registers_x866jumptoEv
-#else
 	.private_extern __ZN9libunwind13Registers_x866jumptoEv
-	#endif
 __ZN9libunwind13Registers_x866jumptoEv:
 #
 # void libunwind::Registers_x86::jumpto()
@@ -56,11 +48,7 @@ __ZN9libunwind13Registers_x866jumptoEv:
 
 	.text	
 	.globl __ZN9libunwind16Registers_x86_646jumptoEv
-#ifdef DARLING
-	.hidden __ZN9libunwind16Registers_x86_646jumptoEv
-#else
 	.private_extern __ZN9libunwind16Registers_x86_646jumptoEv
-#endif
 __ZN9libunwind16Registers_x86_646jumptoEv:
 #
 # void libunwind::Registers_x86_64::jumpto()

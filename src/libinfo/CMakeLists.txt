@@ -14,11 +14,9 @@ add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
-add_definitions(-Ddlopen=__darwin_dlopen -Ddlsym=__darwin_dlsym -Ddlclose=__darwin_dlclose)
-add_definitions(-Dh_errno=__darwin_h_errno)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w -ggdb")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--unresolved-symbols=ignore-all -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 add_subdirectory(gen.subproj)
 add_subdirectory(util.subproj)
@@ -29,11 +27,8 @@ add_subdirectory(lookup.subproj)
 add_subdirectory(membership.subproj)
 add_subdirectory(darling-resolver)
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-add_library(system_info SHARED $<TARGET_OBJECTS:info-util>
+set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_info.dylib")
+add_darling_library(system_info SHARED $<TARGET_OBJECTS:info-util>
 	$<TARGET_OBJECTS:info-dns>
 	$<TARGET_OBJECTS:info-gen>
 	$<TARGET_OBJECTS:info-nis>
@@ -42,7 +37,7 @@ add_library(system_info SHARED $<TARGET_OBJECTS:info-util>
 	$<TARGET_OBJECTS:info-membership>
 	$<TARGET_OBJECTS:darling-resolver>
 )
-target_link_libraries(system_info system_c resolv-darwin)
+target_link_libraries(system_info PRIVATE system_c resolv-darwin system_dyld system_blocks libdispatch_shared system_notify)
 
 install(TARGETS system_info DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 install(FILES master.passwd DESTINATION libexec/darling/etc)

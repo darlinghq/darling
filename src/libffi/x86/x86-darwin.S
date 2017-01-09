@@ -29,14 +29,6 @@
  * assembly programming in 8 years.
  */
 
-#ifdef DARLING
-#	define _ffi_prep_args ffi_prep_args
-#	define _ffi_call_SYSV ffi_call_SYSV
-#	define _ffi_closure_SYSV ffi_closure_SYSV
-#	define _ffi_closure_SYSV_inner ffi_closure_SYSV_inner
-#	define _ffi_closure_raw_SYSV ffi_closure_raw_SYSV
-#endif
-
 #ifndef __x86_64__
 
 #define LIBFFI_ASM	
@@ -54,7 +46,7 @@
 
 .globl _ffi_prep_args
 
-	.align 16
+	.align 4
 .globl _ffi_call_SYSV
 
 _ffi_call_SYSV:
@@ -174,7 +166,7 @@ Lepilogue:
 LFE1:
 .ffi_call_SYSV_end:
 
-	.align	16
+	.align	4
 FFI_HIDDEN (ffi_closure_SYSV)
 .globl _ffi_closure_SYSV
 
@@ -252,7 +244,7 @@ LFE2:
 #define RAW_CLOSURE_USER_DATA_OFFSET (RAW_CLOSURE_FUN_OFFSET + 4)
 #define CIF_FLAGS_OFFSET 20
 
-	.align	16
+	.align	4
 FFI_HIDDEN (ffi_closure_raw_SYSV)
 .globl _ffi_closure_raw_SYSV
 
@@ -308,19 +300,14 @@ Lrcls_retllong:
 	jmp	Lrcls_epilogue
 LFE3:
 #endif
-#ifndef DARLING
+
 .section __IMPORT,__jump_table,symbol_stubs,self_modifying_code+pure_instructions,5
 L_ffi_closure_SYSV_inner$stub:
 	.indirect_symbol _ffi_closure_SYSV_inner
 	hlt ; hlt ; hlt ; hlt ; hlt
-#else
-L_ffi_closure_SYSV_inner$stub:
-	jmp _ffi_closure_SYSV_inner
-#endif
 
-#ifndef DARLING
+
 .section __TEXT,__eh_frame,coalesced,no_toc+strip_static_syms+live_support
-#endif
 EH_frame1:
 	.set	L$set$0,LECIE1-LSCIE1
 	.long	L$set$0
@@ -338,7 +325,7 @@ LSCIE1:
 	.byte	0x4
 	.byte	0x88
 	.byte	0x1
-	.align 4
+	.align 2
 LECIE1:
 .globl _ffi_call_SYSV.eh
 _ffi_call_SYSV.eh:
@@ -363,7 +350,7 @@ LASFDE1:
 	.long L$set$4
 	.byte	0xd
 	.byte	0x4
-	.align 4
+	.align 2
 LEFDE1:
 .globl _ffi_closure_SYSV.eh
 _ffi_closure_SYSV.eh:
@@ -388,7 +375,7 @@ LASFDE2:
 	.long L$set$8
 	.byte	0xd
 	.byte	0x4
-	.align 4
+	.align 2
 LEFDE2:
 
 #if !FFI_NO_RAW_API
@@ -421,7 +408,7 @@ LASFDE3:
 	.long L$set$14
 	.byte	0x85
 	.byte	0x3
-	.align 4
+	.align 2
 LEFDE3:
 
 #endif

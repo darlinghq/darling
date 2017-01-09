@@ -113,7 +113,7 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[] /*, 
 	struct ProgramVars vars;
 
 	/* Early initialization - original Apple code assumes pthread_init() doesn't print errors */
-	__darling_get_args(&x_argc, &x_argv, &x_envp, &vars);
+	/*__darling_get_args(&x_argc, &x_argv, &x_envp, &vars);
 
 	if (!*x_argc)
 	{
@@ -138,7 +138,7 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[] /*, 
 		
 		__darling_set_environ(envp); // Initialize glibc's environ
 	}
-	__darling_set_libc_vars(x_argc, x_argv, x_envp);
+	__darling_set_libc_vars(x_argc, x_argv, x_envp);*/
 	
 	/* cerror() calls require working pthread_self() */
 	char dummy_self[4096];
@@ -165,14 +165,8 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[] /*, 
 	 * to zero by any library function."
 	 */
 	errno = 0;
-	__objc_initialize();
+	// __objc_initialize(); // TODO: temporarily commented out
 }
-
-void (*const init_array []) (void)
-		__attribute__ ((section (".init_array"), aligned (sizeof (void *)))) =
-	{
-		&libSystem_initializer
-	};
 
 /*
  * libSystem_atfork_{prepare,parent,child}() are called by libc when we fork, then we deal with running fork handlers

@@ -1,0 +1,5 @@
+_dyld_get_sdk_version
+_dyld_get_program_sdk_version
+_dyld_get_min_os_version
+_dyld_get_program_min_os_version
+

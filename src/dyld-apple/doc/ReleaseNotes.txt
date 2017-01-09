@@ -1,0 +1,1771 @@
+
+dyld-208
+<rdar://problem/10879179> Correct @path to still work with symlinks
+
+dyld-207
+<rdar://problem/10825175> dyld should give a better error message if you try to use a newer binary on older OS
+<rdar://problem/10753356> backtraces of LC_MAIN binaries end in tlv_get_addr+136, instead libdyld should export "_start" symbol
+<rdar://problem/10733082> Fix up @rpath based paths during introspection
+<rdar://problem/10657737> Interposition tuples are not respected when binding with resolvers
+
+dyld-206
+<rdar://problem/10442813> Give some warning that DYLD_ env vars are disabled
+
+dyld-205
+<rdar://problem/10583252> Add dyld to uuidArray to enable symbolication of stackshots
+
+dyld-204.1
+<rdar://problem/10643239> fix initializer ordering of upwardly linked dylibs
+
+dyld-204
+<rdar://problem/10613880> dyld misreads very large addends
+<rdar://problem/10568559> Perform method list sort even if __DATA,__objc_opt_rw is absent
+<rdar://problem/10568179> Remove category attaching from dyld shared cache
+<rdar://problem/10582497> Shared cache method list sorting breaks protocol extended type encodings
+
+dyld-203.1
+<rdar://problem/10491874> initializer not run in only upwardly linked dylib
+
+dyld-203
+<rdar://problem/10419267> update_dyld_shared_cache does not build with libc++
+<rdar://problem/10435247> dyld does not build with libc++
+<rdar://problem/10409027> Add functions to get min OS and sdk versions program was linked with
+<rdar://problem/10399676> DYLD_FRAMEWORK_PATH not mentioned in dlopen() man page
+<rdar://problem/10371927> dsc_extractor not updating LC_FUNCTION_STARTS
+
+dyld-202
+<rdar://problem/8818423> Get rid of crt1.o and jump straight into main() from dyld
+<rdar://problem/10332417> image denied loading by gc_enforcer is left in dyld_all_images_info array
+
+dyld-201
+<rdar://problem/8867781> Use spin lock to guard sAllImageInfos
+
+dyld-200.3
+<rdar://problem/9855733> genCaches fails: "header size miscalculation 0x00006000"
+
+dyld-200.2
+<rdar://problem/9818687> ARCH_NAME for armv7k is defined as "armv7s"
+<rdar://problem/9784634> dsc_iterator.cpp needs cases for v7 variants
+
+dyld-200
+<rdar://problem/9673497> dyld fails to build for armv7s
+<rdar://problem/8942979> update_dyld_shared_cache should accept an 'overlay' along with a 'root' directory option
+Remove PowerPC support
+
+--------------
+dyld-199.5 (iOS 5)
+<rdar://problem/9955829> Update initial image list size
+
+dyld-199.4
+<rdar://problem/9855733> genCaches fails: header size miscalculation
+
+dyld-199.3 
+<rdar://problem/7338034> Repair ivar offsets in dyld shared cache
+
+dyld-199.2
+<rdar://problem/8981046> improve Xcode upload of iOS dylibs
+
+dyld-199.1
+<rdar://problem/9510382> correctly adjust ARM movw when in dyld shared cache
+
+dyld-199
+<rdar://problem/9439764> update_dyld_shared_cache requires weak-linked frameworks to be present at shared cache generation time
+<rdar://problem/9447838> Remove armv7 variants from dyld
+
+dyld-198.1
+<rdar://problem/8312145> back out previous change DYLD_XXX restrict check
+
+dyld-198
+<rdar://problem/9035759> corrupt load commands can pass sniff test if 32-bit wraps around
+<rdar://problem/8312145> dyld should restrict DYLD_XXX debugging facilities
+<rdar://problem/7942521> dyld should not allow loading of dylibs without valid signatures
+enable DYLD_PRINT_REBASINGS
+
+dyld-197
+<rdar://problem/7945496> dyld should range check the fixup location of all bindings
+<rdar://problem/8963406> range check initializers and terminators to be within image
+
+dyld-196.2
+<rdar://problem/8987681> dyld should support new armv7 variants
+
+dyld-196.1
+<rdar://problem/9107912> support re-exported symbols from re-exported libraries
+
+dyld-196
+<rdar://problem/9078764> movw/movt don't work in dyld shared cache
+
+
+---------------------
+dyld-195.3 (Mac OS X 10.7.0)
+<rdar://problem/9279770> update_dyld_shared_cache missed libstdc++?
+<rdar://problem/9361288> i386 dyld shared cache overflows after adding libclh.dylib
+
+dyld-195.2
+<rdar://problem/9161945> spurious warning about embedded framework not being put in dyld shared cache
+
+dyld-195
+<rdar://problem/8360915> C++ 0x thread_local destructor support
+<rdar://problem/8960832> update_dyld_shared_cache -verify finds differences
+<rdar://problem/8971061> more verbose messages when vm_protect() fails 
+
+dyld-194.1
+Fix uses of libc++abi-static.a
+
+dyld-194
+<rdar://problem/8919005> make interposing available to open source
+<rdar://problem/8874282> __thread implementation doesn't preserve enough registers (ABI issue)
+<rdar://problem/8873628> clang built update_dyld_shared_cache fails at runtime
+
+dyld-193
+<rdar://problem/8735709> dyld should honor CS_RESTRICT in _main like hasRestrictedSegment
+<rdar://problem/8164591> update_dyld_shared_cache -overlay optimizations
+
+dyld-192.1
+<rdar://problem/8812589> dyld has NULL paths in image info array
+
+dyld-192
+<rdar://problem/8750829> dyld's map+slide should be an all or nothing operation 
+
+dyld-191.3
+<rdar://problem/8890875> overriding shared cache dylibs with resolvers fails
+ 
+dyld-191.2
+<rdar://problem/8844174> dyld_stub_binder called repeatedly for $VARIANT$ functions
+<rdar://problem/8845480> update_dyld_shared_cache crash when fat dylib truncated
+
+dyld-191.1
+<rdar://problem/8770940> update_dyld_shared_cache is failing
+
+dyld-191
+<rdar://problem/8736495> ASLR/PIE: dyld's "random padding" algorithm is deterministic
+<rdar://problem/8663923> race condition with flat-namespace lazy binding
+<rdar://problem/8755380> libdyld fails to build with clang-127
+
+dyld-190.1
+remove libdyld.a target
+
+dyld-190
+<rdar://problem/8706192> _NSGetExecutablePath documentation is ambiguous about bufsize
+<rdar://problem/8686676> 11A315: LC_DYLD_ENVIRONMENT does not expand @executable_path
+<rdar://problem/8718137> dyld should avoid arc4random for dylib randomization
+<rdar://problem/8691207> tune trie traversal code for 10.7 compiler
+<rdar://problem/8576479> breaking libSystem into dylibs slows down dyld binding, shared cache should compensate
+<rdar://problem/8686427> update_dyld_shared_cache should not be built no-pie
+
+dyld-189
+<rdar://problem/8274426> dyld(1) man page feedback
+<rdar://problem/8564762> LC_DYLD_ENVIRONMENT should still be honored with __RESTRICT,__restrict section present
+<rdar://problem/8630416> 11A307: DYLD_SHARED_REGION=private crashes
+<rdar://problem/8611968> don't slide shared cache if ASLR disabled (main executable didn't slide)
+
+dyld-188
+<rdar://problem/4472406> Dynamic linking memory usage seems unusually high for trivial programs
+
+dyld-187
+<rdar://problem/8597637> madvise MADV_FREE calls for LINKEDIT are failing in dyld during launch in iOS
+<rdar://problem/8602453> dyld allImageInfos messed up with duplicate IOKit
+
+dyld-186
+<rdar://problem/8109857> dyld: Pick up changes from libsystem_kernel reorganisation in dyld's build.
+<rdar://problem/5847052> Shared Region Base Should Slide at Boot Time 
+<rdar://problem/6650578> Multiple /dev/urandom accesses on every process exec
+
+dyld-185
+<rdar://problem/8345025> text relocs don't work if only S_ATTR_EXT_RELOC is used
+<rdar://problem/8400815> DYLD_FORCE_FLAT_NAMESPACE=YES causes process to spin in DYLD-STUB$$bzero
+
+dyld-184
+<rdar://problem/8554137> Add cache slide value to dyld_all_image_infos
+
+dyld-183.1
+<rdar://problem/8521882> dyld proper does not need dyld_stub_binder.o
+
+dyld-183
+<rdar://problem/8274192> dyld needs to call new kernel interface to register metadata
+<rdar://problem/8448281> ASLR side build causes 15-30% regression in most launch times
+<rdar://problem/8440902> Support version-checked framework/library override paths
+<rdar://problem/8440934> Support LC_DYLD_ENVIRONMENT load command
+<rdar://problem/8454987> function starts info should be copied into dyld shared cache
+
+dyld-182
+<rdar://problem/8432001> Merge Jasper dyld changes to trunk
+
+dyld-181.1
+<rdar://problem/8455429> 11A270: FNPLicensingService crashes
+
+dyld-181
+<rdar://problem/8403002> 11A238a: AutoDesk AutoCAD beta 4 crashes on launch (dyld)
+<rdar://problem/8345799> update_dyld_shared_cache-173 project fails to build with LLVM compiler 2.0.
+
+dyld-180
+<rdar://problem/8352892> 8F63: dyld-179.4 fails on missing /usr/local/lib/system/libc.a
+<rdar://problem/8344449> 11A238a: AutoDesk AutoCAD beta 4 crashes on launch
+<rdar://problem/8313034> 11A244: overlapping files in libdyld & update_dyld_shared_cache
+
+
+dyld-179.7 (iOS 4.2)
+<rdar://problem/8543820> range check initializers
+
+dyld-179.6 
+<rdar://problem/8515776> dyld_shared_cache_extract_dylibs shouldn't return '-1' when arch already exists
+
+dyld-179.5 
+<rdar://problem/8425790> Need a version of dyld_shared_cache_extract_dylbs that lipo's results
+<rdar://problem/8365622> Need a version of dyld_shared_cache_extract_dylbs that reports progress
+<rdar://problem/8320866> back out work around for 8151909
+
+dyld-179.4
+<rdar://problem/8305479> images in shared cache are bound against different IOKit than found at runtime
+
+dyld-179.3.1
+<rdar://problem/8327834> 11A245: Photoshop CS4 fails in SmokeTest because of crash in FNPLicensingService (dyld)
+
+dyld-179.3
+<rdar://problem/8305049> 11A238a: All Adobe CS4 applications crash on launch
+
+dyld-179.2
+<rdar://problem/8290793> 11A239: leaks throws an exception, doesn't work
+
+dyld-179.1
+<rdar://problem/8284123> libdsc.a in Jasper SDK needs to be arm version (is x86 version)
+
+dyld-179
+<rdar://problem/8284944> update_dyld_shared_cache does not work with individual symbol re-exports
+
+dyld-178
+<rdar://problem/8284044> Support __thread variables exported from dylibs
+<rdar://problem/7356532> update dyld_all_image_infos more often, for better crash logs
+
+dyld-177
+<rdar://problem/8214567> We need an extractor able to pull the shared symbols cache apart
+<rdar://problem/8263666> Don't put slide info in dyld shared cache in Jasper
+<rdar://problem/8268602> dyld does not prevent loading of unsigned dylib
+
+dyld-176
+<rdar://problem/8253549> split seg info wrong for x86_64 stub helpers
+
+dyld-175
+<rdar://problem/8235734> ObjC optimized shared cache does not slide
+
+dyld-174
+<rdar://problem/8198287> Need to merge Apex ObjC method list optimizations in dyld shared cache to TOT dyld
+<rdar://problem/8115131> implement ASLR for dyld shared cache for iOS
+
+dyld-173
+<rdar://problem/8144421> fix permissions on rebased binary not slid
+
+dyld-172.2
+<rdar://problem/8191063> dyld should not include SystemIntegrity headers on embedded platform
+Have DYLD_PRINT_BINDINGS print out when resolver functions are called
+
+dyld-172.1
+<rdar://problem/8166086> fix visibility of dyld_func_lookup depending if libdyld is .a or .dylib
+
+dyld-172
+Add hack to work around 8151909
+Alter project to build for both kinds of libSystems
+
+dyld-171
+Add support for individual symbol re-exports
+Add support for building for iOS
+
+dyld-170
+<rdar://problem/7508424> ER: more metadata for dyld errors
+
+dyld-169
+<rdar://problem/7995213> update_dyld_shared_cache needs to support resolver functions
+Implement some cxa stuff to work with next c++abi.a
+
+dyld-168
+<rdar://problem/7901042> dyld should move shared cache file into /var/run instead of open-unlinking
+<rdar://problem/7940222> private shared cache calls mmap twice for each range
+<rdar://problem/7886402> Loading MH_DYLIB_STUB causing coalescable miscount
+<rdar://problem/7935000> 11A168: update_dyld_shared_cache problems during install
+<rdar://problem/7918210> use of C++ thread local initializer causes infinite recursion
+<rdar://problem/7932725> (from iPhoneOS) dyld should stub out mach_error_string for 8KB RAM savings per process
+<rdar://problem/7937695> (from iPhoneOS) verify that replacement is in this image
+
+dyld-167.2
+<rdar://problem/7956031> dyld: Use libsystem_mach.a from /usr/local/lib/dyld to build dyld
+
+dyld-167.1
+<rdar://problem/7901042> dyld should move shared cache file into /tmp instead of open-unlinking
+
+dyld-167
+<rdar://problem/7859049> dyld support for function specialization
+<rdar://problem/7740779> dyld should directly call __cxa_finalize(), part 2
+<rdar://problem/7796738> dyld support for thread local variables
+
+
+dyld-166
+<rdar://problem/7739489> ER: facility to detect which images were loaded at runtime
+<rdar://problem/7818451> update_dyld_shared_cache -verify fails
+
+
+dyld-165
+<rdar://problem/7770139> update_dyld_shared_cache should suppress warnings for embedded frameworks
+<rdar://problem/7744084> Sort method lists in dyld shared cache
+
+
+dyld-164
+<rdar://problem/7733433> Move libdyldapis over to a dylib target for Libsystem
+<rdar://problem/7675254> pruneEnvironmentVariables does not update gLinkContext.apple
+
+
+dyld-163
+<rdar://problem/7740033> Warning message is misleading
+<rdar://problem/7740658> update_dyld_shared_cache should not run past end of splitseginfo if zero terminator is missing
+<rdar://problem/6666832> dyld should directly call __cxa_finalize(), part 1
+
+
+dyld-162
+<rdar://problem/7662176> crash in update_dyld_shared_cache when checking if current cache is out of date
+<rdar://problem/7444994> ER: Support upward dylib dependencies
+
+
+dyld-161
+<rdar://problem/7628929> __builtin_return_address broke for PPC
+<rdar://problem/7658265> SWBDC error: 'ld: duplicate symbol' while building 'dyld-160~48' in '11A108a-llvmgcc-2324.3'
+
+
+dyld-160
+<rdar://problem/7234280> Environment variable to cause dyld to dump rpaths used during loading
+<rdar://problem/7595563> update_dyld_shared_cache failed: internal error, new trie allocated to far from fLinkeditBase
+<rdar://problem/7589167> dyld still slides executables when PIE is disabled by the kernel
+
+
+dyld-159
+<rdar://problem/7343139> update_dyld_shared_cache fails to find roots when targetting NFS
+<rdar://problem/7484408> dyld does not call initializers from all S_MOD_INIT_FUNC_POINTERS sections
+<rdar://problem/7544082> move _dyld_func_lookup prototype to dyld_priv.h
+
+
+dyld-158
+<rdar://problem/7486405> dyld attempts to load libraries via rpath when already loaded
+<rdar://problem/5274722> dyld shared cache can be more random
+
+
+dyld-157
+<rdar://problem/7481480> switch to use libc++abi-static.a instead of libstdc++-static.a
+
+
+dyld-156
+<rdar://problem/7408768> remove DYLD_NO_PIE from man page
+<rdar://problem/7445102> support multiple dylibs with non-intersected weak symbols in shared cache
+<rdar://problem/7466900> dyld sends bogus library unload notice to CoreSymbolication during dlopen_preflight()
+<rdar://problem/7455017> spelling: "was build against" -> "was built against"
+
+
+dyld-155
+<rdar://problem/7451030> sjlj based exception support needs to be conditionalized for arm - not iPhoneOS
+
+
+dyld-154
+<rdar://problem/7272661> Need to enable CoreSymbolication load/unload notices on iPhoneOS
+
+
+dyld-153
+<rdar://problem/7327864> add field to dyld_all_image_infos pointing to dyld_all_image_infos
+
+
+dyld-152
+<rdar://problem/7302432> Minimize system calls and mach messages during dyld startup
+<rdar://problem/7302383> Why is checkSharedRegionDisable() !__LP64__
+
+
+dyld-151
+<rdar://problem/7223037> dyld support for sliding PIE binaries in the kernel
+<rdar://problem/7165731> libdyld does not install multiple headers at installhdrs time
+<rdar://problem/6937560> dlopen() crash when executable contains LC_RPATH and executable file is deleted while running
+<rdar://problem/6916014> leak in dyld during dlopen when using DYLD_ variables
+
+
+----------------------------------
+
+dyld-150  ( iPhoneOS 3.1 )
+<rdar://problem/7043575> flat_namespace linkage error in update_dyld_shared_cache should be a warning not an error
+<rdar://problem/7084861> Have dyld save load addr + UUID for executable images
+<rdar://problem/7101832> Libsystem fails to link with latest gcc: dyld missing _dyld_func_lookup
+
+
+dyld-149
+<rdar://problem/7017050> dlopen() not working with non-canonical paths
+<rdar://problem/7033445> update_dyld_shared_cache fails creating shared cache
+
+
+dyld-148
+<rdar://problem/7022281> shared cache file offsets are inconsistent
+
+
+dyld-147
+<rdar://problem/6995143> move install location for update_dyld_shared_cache and man page to local
+<rdar://problem/7014995> imageFileModDate in dyld_all_image_infos is sometimes bogus for the first image therein
+<rdar://problem/7014397> dyld_shared_cache_util should optionally print VM load addresses for each dylib
+<rdar://problem/7014783> uuid_t not defined in dyld_priv.h
+
+
+dyld-146
+<rdar://problem/7008875> Save load information (load addr + UUID) to dyld_all_image_infos for images from outside the shared cache
+<rdar://problem/7007923> update_dyld_shared_cache should improve warning above deployment target
+
+
+dyld-145
+<rdar://problem/7000405> optimize stubs in dyld shared cache to be no-PIC
+<rdar://problem/6995143> dyld_shared_cache_util built by dyld target should go in platform directory
+<rdar://problem/7001159> dyld_shared_cache_util should list LC_REEXPORT_DYLIB libraries as dependents
+
+
+dyld-144
+<rdar://problem/6995143> dyld_shared_cache_util built by dyld target should go in platform directory
+<rdar://problem/6775261> API: Detect shared cache overrides
+
+
+dyld-143
+<rdar://problem/6956867> ER: Tool to list the contents of a dyld shared cache image
+<rdar://problem/6959334> ARM support for dsc_iterator
+
+
+dyld-142
+<rdar://problem/6965455> text relocs fail in large segments
+<rdar://problem/6945944> Variable whose data is overwritten needs to be marked `volatile'
+<rdar://problem/6921370> dyld option to print time for each initializer, Apple's or the app's
+
+
+dyld-141
+<rdar://problem/6927281> update_dyld_shared_cache assumes -root path contains no symlinks
+sync with SnowLeopard dyld-132.13
+
+
+dyld-140
+<rdar://problem/6153040> load code signature from file, and before mapping the file
+
+
+dyld-139.1
+<rdar://problem/6868811> Northstar7C62: dyld-139 fails to build
+
+
+dyld-139
+<rdar://problem/6780449> dyld on iPhoneOS uses libgcc_eh.a which uses pthread_key_create which does not work
+<rdar://problem/6780192> dyld can leak when an internal exception in thrown
+<rdar://problem/6331300> support compressed LINKEDIT on iPhone
+sync with SnowLeopard dyld-132.11
+
+
+dyld-138.1
+<rdar://problem/6790993> New mechanism to instruct dyld whether to check for libs outside the shared cache
+
+
+dyld-138
+<rdar://problem/6814596> need to handle symlinks when dylib is in cache but file is intentionally missing
+<rdar://problem/6825135> dyld should avoid stat()ing libraries present in the shared cache unless magic override file is present
+
+
+dyld-137 
+<rdar://problem/6792383> dyld reports image not found if it is in the shared cache but no binary is present on disk
+sync with SnowLeopard dyld-132.10
+
+
+dyld-136
+<rdar://problem/6776343> dyld reports bogus fat offset when registering shared cache signature
+
+
+dyld-135
+<rdar://problem/6268421> iPhone: Need objc optimizations in iPhone OS shared cache
+
+
+dyld-134
+<rdar://problem/4759373> build armv6 dyld with Thumb
+sync with SnowLeopard
+
+
+
+dyld-133.1
+fix for all arm architectures
+
+
+dyld-133
+<rdar://problem/6268380> make dyld that uses shared cache on iPhone OS
+
+
+----------------------------------
+
+dyld-132.13 ( Mac OS X 10.6 )
+<rdar://problem/6898370> classic images not unmapped when unloaded
+
+
+dyld-132.12 
+<rdar://problem/6882159> dyld's dtrace notification should be done after rebasing
+
+
+dyld-132.11 
+<rdar://problem/6803496> Remove dyld workaround for McAfee VirusScan
+<rdar://problem/6849505> Add gating mechanism to dyld support system order file generation process
+
+
+dyld-132.10
+<rdar://problem/6785160> dyld's abort_report_np() doesn't abort
+<rdar://problem/6794063> 10A331: CUPS crashes when calling sandbox_init
+
+
+dyld-132.9 
+<rdar://problem/5910137> dlopen_preflight() on image in shared cache leaves it loaded but not objc initialized
+<rdar://problem/6739742> Exception Backtrace being obscured by _mh_execute_header
+<rdar://problem/6766057> Silverlight Preferences.app crashes
+
+
+dyld-132.8 
+<rdar://problem/6735870> dlopen() leaks send right obtained from mach_thread_self()
+<rdar://problem/6732715> dyld's calloc() allocates too few bytes
+<rdar://problem/6678640> dyld lazy binding is not thread safe
+
+
+dyld-132.7
+<rdar://problem/6651342> need a way other than setgid to have dyld launch a process securely, ignoring DYLD_ env vars etc
+<rdar://problem/6721803> Need mapping of files to their offsets into the dyld_shared_cache files on disk
+
+
+dyld-132.6
+<rdar://problem/6618466> update_dyld_shared_cache -overlay should check root dyld caches
+<rdar://problem/6619554> NSCreateObjectFileImageFromMemory() call vm_deallocate even if application used malloc()
+
+
+dyld-132.5
+<rdar://problem/6655235> dyld is missing some binding optimizations
+<rdar://problem/6647316> symbol lookups in the new trie structure should be faster
+<rdar://problem/6570879> weak binding done too early with inserted libraries
+
+
+dyld-132.4
+<rdar://problem/6629428> improve statistics output
+<rdar://problem/6628413> better error message if LC_RPATH is used in dylib destined for shared cache
+<rdar://problem/6622898> dladdr() broke when image has debug symbols
+<rdar://problem/6555720> 10A264: Google Earth 5.0 crashes on quit 
+<rdar://problem/6591933> man page should better explain update_dyld_shared_cache -root option
+
+
+dyld-132.3
+<rdar://problem/6527653> remove setjmp/longjmp from _simple_printf in dyld
+<rdar://problem/6580333> Typo in dyld(3) man page
+<rdar://problem/6510301> race condition in pre-10.6 style lazy pointer binding
+<rdar://problem/6573344> make cheaper dladdr() that just returns image path
+<rdar://problem/6563887> 10A266 - Adobe InDesign CS4 crashes on launch
+<rdar://problem/6570113> dyld is not setting imageFileModDate in dyld_image_info
+<rdar://problem/6493245> Logic Pro crashes after creating a new document on SnowLeopard
+
+
+dyld-132.2
+<rdar://problem/6293143> adopt new CoresSymbolication notification mechanism
+<rdar://problem/6536810> Alter libdyld.a to not need libsystem to link with dylib1.o
+<rdar://problem/6530593> 10A256a: update_dyld_shared_cache -verify crashes (probably due to lack of a shared cache)
+
+
+dyld-132.1
+<rdar://problem/6552051> update_dyld_shared_cache failed: no writable segment in Cocoa framework
+
+
+dyld-132
+<rdar://problem/6490500> CrashTracer: [USER] 1 crash in Neverwinter Nights 2 
+
+
+dyld-131
+<rdar://problem/6501078> libgmalloc broken on 10A10246 and 10A251 (libgmalloc not inserted early enough)
+
+
+dyld-130
+<rdar://problem/6497528> Rosetta circular dependency spew
+<rdar://problem/6347414> @rpath and @loader_path Should be Documented in man page
+Prune unneeded load commands from shared cache images
+
+
+dyld-129
+<rdar://problem/6479007> dyld-128 no longer builds for armv6
+<rdar://problem/6481443> 10A244: iTunes crashes trying to load MobileDevice.framework
+
+
+dyld-128
+<rdar://problem/6474295> ImageLoader objects can be made smaller
+<rdar://problem/6198151> dyld spin in SecurityAgent
+<rdar://problem/6285470> ImageLoaderMachO::makeImportSegmentWritable() doesn't do it
+
+
+dyld-127
+<rdar://problem/6464419> Add all_image_infos for CrashReporter
+some fixes for compressed LINKEDIT 
+
+
+dyld-126
+<rdar://problem/6459812> x86_64 export trie nodes may have large negative address
+<rdar://problem/6442327> update_dyld_shared_cache man page should be updated to reflect new SL behavior
+
+
+dyld-125
+<rdar://problem/6347414> @rpath and @loader_path should be documented in man page
+<rdar://problem/6421511> Add NOP after trap instruction in _dyld_fatal_error
+
+
+dyld-124
+<rdar://problem/6273311> update_dyld_shared_cache should not automatically run by default
+Add support for arm shared caches
+Add support for __program_vars section
+Add more -verify sanity checks
+
+
+dyld-123
+<rdar://problem/6117580> Add -verify option to update_dyld_shared_cache
+<rdar://problem/6408758> [dyld] Errors reported by the upcoming compiler flags verifier
+<rdar://problem/6408518> 10A224: update_dyld_shared_cache warns about a condition in B&I-built frameworks
+<rdar://problem/4697610> stop shadowing old data structures
+<rdar://problem/6409800> dyld implicit-libSystem breaks valgrind
+
+
+dyld-122
+<rdar://problem/6361143> Need a way to determine if a gdb call to dlopen() would block
+<rdar://problem/6328003> Drop Rosetta shared cache generation by default / at install
+<rdar://problem/6400750> "terminaton function" misspelled
+<rdar://problem/6399150> Make it easier to use shared caches from foreign systems
+<rdar://problem/6369189> SnowLeopard10A210: MATLAB 7.6 crashes on launch
+
+
+dyld-121.1
+<rdar://problem/6364434> CrashTracer: crash in iTunes at com.apple.QuickTimeComponents.component 
+
+
+dyld-121
+<rdar://problem/6373929> libdyld.a is missing dyld_stub_binder
+
+
+dyld-120
+<rdar://problem/6315338> 10A197 - After Effects 8.0.2 fails to launch after installation 
+
+
+dyld-119
+<rdar://problem/6364540> 10A212: update_dyld_shared_cache failed: string buffer exhausted
+<rdar://problem/6357561> Oracle client crashes
+
+
+dyld-118.1
+<rdar://problem/6350500> Cope with duplicate protocol references in shared cache construction
+
+
+dyld-118
+<rdar://problem/6336723> 10A197 vs 10A190: Applications warm launch time slowdown due to dyld
+
+
+dyld-117
+<rdar://problem/6318449> 10A198 - Final Cut Pro 6.0.4 crashes on launch [INTRODUCED BY dyld-115 IN 10A197]
+
+
+dyld-116
+<rdar://problem/6004942> Pandora Desktop (Adobe AIR Framework) crashes on launch [INTRODUCED BY dyld-101 IN 10A14]
+<rdar://problem/6250902> dyld should use libunwind
+<rdar://problem/5408556> Possible leak originating in speech at LoadEngine
+<rdar://problem/6315314> update_dyld_shared_cache manpage typos 'parition', 'assignes', 'choosen'
+
+
+dyld-115
+<rdar://problem/6061574> LINKEDIT content could be greatly compressed
+
+
+dyld-114
+<rdar://problem/6231688> update_dyld_shared_cache needs to provide progress that the Installer can display
+<rdar://problem/6231686> update_dyld_shared_cache needs to be able to look at an Installation sandbox
+<rdar://problem/6293143> dyld isn't calling csdlc_notify on library unload
+<rdar://problem/6277916> warning, could not bind Mail.app because realpath() failed on /AppleInternal/.../XILog.framework
+
+
+dyld-113
+<rdar://problem/6252320> NSAddressOfSymbol(NULL) should return NULL and not crash
+<rdar://problem/6255192> dlopen() should fail to load (non-pie) executables
+
+
+dyld-112
+<rdar://problem/6188100> _replacement misspelled as _replacement in dyld-interposing.h
+<rdar://problem/6176037> make _dyld_find_unwind_sections() faster
+
+
+dyld-111
+<rdar://problem/6161821> improve bad relocation error message
+<rdar://problem/6190458> Need load/unload notification sent to com.apple.vmudl service when requested
+<rdar://problem/6188100> _replacement misspelled as _replacement in dyld-interposing.h
+
+
+dyld-110
+<rdar://problem/5703616> check libSystem is correct in shared cache file before loading it
+<rdar://problem/5557882> function names returned by dladdr do not match reality
+<rdar://problem/5780431> update_dyld_shared_cache .map files should be written atomically
+<rdar://problem/6145451> dlopen(RTLD_NOLOAD) does not need to throw an internal exception
+<rdar://problem/4090265> Explanation for the RTLD_NEXT flag in dlsym(3) needs clarification
+<rdar://problem/5951327> DYLD_FALLBACK_LIBRARY_PATH should not apply to dlopen() of a partial path
+<rdar://problem/6182301> No shared cache present on first boot
+
+
+dyld-109
+<rdar://problem/5925940> Safe Boot should disable dyld shared cache
+<rdar://problem/5706594> CrashTracer: crash in preFetch() reading off end of LINKEDIT
+<rdar://problem/6109435> DYLD_NO_PIE env variable should be documented in dyld manpage
+<rdar://problem/6127437> put all dylibs in shared cache - not just ones used by more than one app
+<rdar://problem/6169686> Leaked fSegmentsArray and image segments during failed dlopen_preflight
+
+
+dyld-108.1
+<rdar://problem/6156702> armv7/armv5 specific settings needed for dyld
+<rdar://problem/6156653> dyld shouldn't set VALID_ARCHS
+
+
+dyld-108
+<rdar://problem/6120723> ER: dyld based Objective-C selector uniquing
+
+
+dyld-107
+<rdar://problem/5274720> update_dyld_shared_cache should require all source dylibs be owned by root
+<rdar://problem/6073702> Limit what might go in the dyld shared cache
+<rdar://problem/5869973> DYLD_ROOT_PATH should apply to LC_RPATH rpaths
+<rdar://problem/5505043> Grow initial dyld pool if needed
+<rdar://problem/5807857> there should be some way to temporarily turn off -pie
+<rdar://problem/6050482> If pie, ignore preferred load address
+<rdar://problem/6053800> Put all_image_infos in its own section to it is easy to find
+
+
+dyld-106
+allow update_dyld_shared_cache to be build 64-bit
+<rdar://problem/5280258> dyld error handling fails in low memory, _simple_salloc() result not checked
+<rdar://problem/4047718> dyld should provide executing program name in incompatible cpu-subtype error message
+
+
+dyld-105
+<rdar://problem/5957134> It should work to set DYLD_FALLBACK_LIBRARY_PATH to empty
+<rdar://problem/5366292> Remove the exceptions made in 4804594 for filemaker
+<rdar://problem/5922117> Remove Tiger-era hacks in dyld for old app compatibility
+<rdar://problem/5901958> Make RTLD_MAIN_ONLY public
+<rdar://problem/5819435> die more gracefully when load commands are malformed
+<rdar://problem/5953438> SWB: dyld build failure when built with -fstack-protector
+<rdar://problem/5950134> dyld man page mis-spelling
+<rdar://problem/5943045> update_dyld_shared_cache does not work when run manually
+
+
+dyld-104
+<rdar://problem/5901583> The optimization to reuse install names as fPath was lost
+<rdar://problem/5888343> Add JIT field to dyld_all_image_infos
+Add _dyld_find_unwind_sections()
+
+
+dyld-103
+<rdar://problem/5805956> NSLinkModule() can crash
+<rdar://problem/5620189> dyld: obsoleted deprecated APIs
+work around for <rdar://problem/5736393>
+add test cases for lazy dylib loading
+
+
+dyld-102
+<rdar://problem/5394977> Man page typo for update_dyld_shared_cache
+<rdar://problem/5490738> Add "malloc is initialized" to the dyld_all_image_infos struct
+<rdar://problem/4045952> better handling of open() errors
+<rdar://problem/5377739> remove <mach-o/dyld_debug.h>
+<rdar://problem/5629960> Use <mach/shared_region.h> instead of <mach/shared_memory_server.h>
+<rdar://problem/5775824> dyld and libdyld should not force building with gcc 4.0
+
+
+dyld-101
+<rdar://problem/5725845> make it easier to find dyld_all_image_infos
+<rdar://problem/5363402> Need _dyld_get_image_slide(const struct mach_header* mh)
+<rdar://problem/5708213> dyld: push code signatures for libs to kernel
+
+
+dyld-100
+<rdar://problem/4737476> dyld falls over when asked to map a split seg library not in the shared region
+<rdar://problem/5595695> dyld: interposing does not work when replacee is thumb
+<rdar://problem/5596017> dyld: all PIE programs crash on launch
+<rdar://problem/5575446> BigBear: not loading libraries at their preferred addresses
+<rdar://problem/5490089> dyld support for arm subtypes
+<rdar://problem/5539483> dyld's prefetching should be turned off for prebound images (and perhaps entirely?)
+<rdar://problem/5602284> dyld-95.3 doesn't build with gcc 4.2
+merge in arm support
+<rdar://problem/5504633> ADOBE: Premiere Pro crashes on quit
+
+----------------------------------
+
+dyld-96.2 (Mac OS X 10.5.2)
+<rdar://problem/5694507> 10.5.2 Regression: 9C18 MeetingMaker crash on launch
+
+dyld-96.1
+<rdar://problem/5537155> update_dyld_shared_cache can crash if dylibs modified out from under it
+<rdar://problem/5562562> crash when dyld interposes on system with partially invalid cache
+<rdar://problem/5563394> com.apple.dyld message spew
+<rdar://problem/5565230> CFSTRs cause crashes in Leopard
+<rdar://problem/5566103> if system shuts down during update_dyld_shared_cache, tmp file is never cleaned up
+<rdar://problem/5623353> dlopen() and dlopen_preflight() can leak on failure
+
+
+
+dyld-95.3 (Mac OS X 10.5)
+<rdar://problem/5503905> Increase initial dyld pool size for 64-bit programs
+
+
+dyld-95.2
+<rdar://problem/5495438> make ppc dyld cache a different file for rosetta
+
+
+dyld-95.1
+<rdar://problem/5388895> McAfee VirusScan fails to launch on Leopard9A513
+
+
+dyld-95
+<rdar://problem/5392427> 9A516 - Keep getting disk full errors
+
+
+dyld-94
+<rdar://problem/5366233> Leopard (9a499): dyld crash with recursive calls to dlclose()
+
+
+dyld-93
+<rdar://problem/4804594> FileMaker Server 8.0v4 helper tools broken by @executable_path security change
+<rdar://problem/5364239> Use msync(MS_SYNC) when building dyld cache
+
+
+dyld-92
+<rdar://problem/5322907> Skype Crashes during launch
+
+
+dyld-91.2
+<rdar://problem/5313172> dlopen() looks too far up stack, can cause crash
+
+
+dyld-91.1
+<rdar://problem/5288790> dyld warning about dtracehelper is too noisy?
+<rdar://problem/5311611> Lots of task_self_trap() system calls in ImageLoader::recursiveInitialization()
+
+
+dyld-91
+<rdar://problem/5249477> use of @loader_path based RPATH can cause dyld to leak
+<rdar://problem/4910107> Dyld_stubs should not be writable on x86
+
+
+dyld-90.2
+<rdar://problem/4860414> generating dyld shared cache generation on first boot makes time to MacBuddy very slow
+
+
+dyld-90.1
+<rdar://problem/5274718> truncated dyld cache file after panic causes hang at boot
+
+
+dyld-90
+<rdar://problem/4892216> stop special casing main executables initializers
+<rdar://problem/4170040> DYLD_INSERT_LIBRARIES doesn't work correctly with initializer functions
+
+
+dyld-89
+<rdar://problem/5097116> dyld could asynchronously request pages it will need
+<rdar://problem/5272001> handle when argv[0] is NULL.
+<rdar://problem/5186317> Foundation built on 9A436 doesn't launch 64 bit apps
+partial fix for: <rdar://problem/4910107> Dyld_stubs should not be writable on x86
+
+
+dyld-88
+<rdar://problem/5233126> update_dyld_shared_cache keeps spewing messages to console
+<rdar://problem/4795421> optimize LINKEDIT region of dyld shared cache
+<rdar://problem/5244184> Support extended __dyld section with NXArgc, etc addresses
+remove call to __xlocale_init()
+Update __OPEN_SOURCE__ conditionals
+
+
+dyld-87
+<rdar://problem/5203587> CFM games use private _dyld_fork_* routines - add back
+<rdar://problem/5231152> better handling of NOLOAD with symlinked dylibs
+
+
+dyld-86.1
+Fix DYLD_SHARED_REGION=private
+update man page
+
+
+dyld-86
+<rdar://problem/4960876> update_dyld_shared_cache fails on @executable_path framework
+<rdar://problem/5213017> [Leopard]: 9A441/442: unable to log in after switching to arabic
+<rdar://problem/5221505> dlopen via CFBundleLoad keeps searching after finding a loadable object
+
+
+dyld-85.2
+<rdar://problem/5202525> MatLab 2007a (7.4) doesn't launch on Leopard9A441
+Never optimize ppc shared cache on intel
+Fix LINKEDIT size in shared cache .map files
+Fix how PIEs are moved to work with NX
+Call pthread_init_keys to work with latest Libc
+
+
+dyld-85.1
+<rdar://problem/5215536> Leopard9A447: Meeting Maker and Microsoft apps will not launch on Intel.
+
+
+dyld-85
+<rdar://problem/5193485> 9A436: Adobe: Photoshop CS3 crashed on pressing Command-C after Command-A
+<rdar://problem/4892382> Use _dyld_initializer
+
+
+dyld-84
+<rdar://problem/5194274> 9A438 dlopen_preflight() corrupts all_image_info list causing Symbolication crashes
+<rdar://problem/5195384> B&I needs an ENV variable to turn off "dyld: ioctl to register dtrace DOF section failed" warnings
+<rdar://problem/4819036> remove support for __image_notify sections
+remove all update_prebinding code
+
+
+dyld-83
+<rdar://problem/4819047> use _simple_dprintf() instead of fprintf()
+remove -progress option from update_dyld_shared_cache
+update_dyld_shared_cache no longer tells rosetta to flush its caches
+<rdar://problem/5110291> update_dyld_shared_cache error message gives an errno value rather than an error string
+<rdar://problem/3968392> dyld interposing doesn't work with dlsym() lookup
+<rdar://problem/5163803> dlopen_preflight() of MH_BUNDLE leaks
+<rdar://problem/5067898&5184629> integrate ImageLoader changes into leopard dyld
+<rdar://problem/5179640> translated (ppc) dyld should not attempt to register DOF sections
+<rdar://problem/5135363> Some dyld library paths are not canonicalized, causing tools using those paths to defenestrate themselves
+
+
+dyld-82.5
+<rdar://problem/5147450> REGR: Leopard9A419: Firefox hangs on launch
+
+
+dyld-82.4
+<rdar://problem/5150283> Leopard9A420: interposing of libMallocDebug or libgmalloc broken
+Fix so problems like <rdar://problem/5149971> are warnings instead of errors
+
+
+dyld-82.3
+<rdar://problem/5148533> 9A420: dyld: ioctl to register dtrace DOF section failed
+
+
+dyld-82.2
+<rdar://problem/5135896> dyld frees string returned by dyld_image_state_change_handler
+<rdar://problem/5133621> better handling than "corrupt binary, library ordinal too big"
+
+
+dyld-82.1
+<rdar://problem/5125295> dyld changes needed to support read-only DOF
+
+
+
+dyld-82
+<rdar://problem/5115360> don't need to hold dyld global lock while running initializers
+<rdar://problem/5094847> dyld leaks when dlopen fails
+<rdar://problem/5128758> dyld leaks two blocks after bundle unload
+
+
+dyld-81
+<rdar://problem/5016782> auto update dyld shared caches if missing or out of date
+
+
+dyld-80.1
+<rdar://problem/5090212> Erronious "unsafe use of @rpath" dyld error
+<rdar://problem/5066570> 9A384: update_dyld_shared_cache fails after ditto'ing matador root with debug info
+<rdar://problem/5093704> Uninitialized ImageLoader->fRegisteredDOF field
+
+
+dyld-80 (Leopard9A400)
+<rdar://problem/4971149> Use new shared region syscalls
+<rdar://problem/5073851> @rpath does not work with -rpath @executable_path/...
+<rdar://problem/5067376> Firefox causes segfault during update_dyld_shared_cache
+
+
+dyld-79.3
+<rdar://problem/4971149> Use new shared region syscalls
+
+dyld-79.2
+<rdar://problem/5073851> @rpath does not work with -rpath @executable_path/...
+
+dyld-79.1 (Leopard9A396)
+fix use of LC_REEXPORTED_DYLIB
+
+
+dyld-79 (Leopard9A392)
+<rdar://problem/5039911> Support Apple PIE (address space randomization)
+<rdar://problem/5055814> update_dyld_shared_cache should warning and not quit if a specified root is missing
+<rdar://problem/5058918> DOF registration needs to switch from /dev/helper to /dev/dtracehelper
+<rdar://problem/5042252> don't error out when a cache line crossing i386 stub cannot be bound
+
+
+dyld-78.2 (Leopard9A387)
+<rdar://problem/5050338> 9A385: Mail (anything using Message.framework) takes a ridiculous amount of time to launch
+
+
+dyld-78.1 (Leopard9A385)
+Fix override of _malloc_lock to be data instead of code
+
+
+dyld-78
+<rdar://problem/5040417> when loading a bundle, dyld is not making a copy of name
+<rdar://problem/5001598> 9A343 KidPix 3 : SpellChecker bundle is not loaded
+<rdar://problem/5028176> dyld cache does not recognize dynamic load of library via symbolic link
+
+
+dyld-77.1
+Back out 4892382 until B&I build fleet has fixed kernel
+
+
+dyld-77
+<rdar://problem/4892382> Use _dyld_initializer
+<rdar://problem/4838967> Look at reduction/elimination of per-framework cost (don't touch __dyld section)
+<rdar://problem/4920999> libdyldapis.a: make initialization as lean as possible
+<rdar://problem/3896792> dyld should malloc never-to-be-freed blocks from its own pool
+<rdar://problem/4980326> Libraries feeding into Libsystem should contain version numbers (libdyldapis)
+Install update_prebinding symlink
+Addend warnings to end of shared cache .map files
+Conditionalize away update_prebinding support
+dladdr() should not remove 's' from "start"
+
+
+dyld-76.2
+<rdar://problem/4987676> hang at boot, Libc changes
+
+dyld-76.1
+<rdar://problem/4979617> x86_64: dyld share cache does not work for AppKit
+
+
+dyld-76
+<rdar://problem/4958744> Rosetta apps crash after update_dyld_shared_cache
+<rdar://problem/4953905> Long-standing typo for "file to short" error from dlopen() / dlerror()
+
+
+dyld-75.1
+Enable ppc shared cache generation on intel machines
+
+
+dyld-75
+<rdar://problem/4931772> 64-byte crossing fast stubs should be bound early to avoid threading issues
+<rdar://problem/4217374> support new intel stub segment that is marked not-writable
+
+
+dyld-74
+<rdar://problem/4893418> register dtrace DOF sections with kernel
+<rdar://problem/4898960> 10.4.9 Regression: Math Kernel crash with TiNovi 8P114
+
+
+dyld-73.2
+<rdar://problem/4889617> Leopard 9A921: Dyld error "lazy pointer not found" loading/running java
+
+
+dyld-73.1 (Leopard9A328)
+<rdar://problem/4883565> 9A326: update_prebinding crashes at end of install
+
+
+dyld-73 (Leopard9A326)
+<rdar://problem/4876600> REGR: 9A322 All Java apps crashing at dyld's misaligned_stack_error
+
+
+dyld-72 (Leopard9A322)
+<rdar://problem/4853532> Maya 8 crashes on launch on Leopard9A309
+<rdar://problem/4791766> ProTools 7.1.1cs1 for Intel hangs on launch on Leopard9A309
+<rdar://problem/4388957> x86 crashes in the binding helper do not have proper backtrace
+
+
+dyld-71  (Leopard9A320)
+<rdar://problem/4824553> inform rosetta of each library in the dyld shared cache
+<rdar://problem/4853825> 9A316: Dreamweaver MX 2004 crashes on launch in dyld's addImage
+
+
+dyld-70 (Leopard9A315)
+support split-seg dylibs built with LC_SEGMENT_SPLIT_INFO
+support --progress option in update_dyld_shared_cache so that installer can run it
+
+
+dyld-69.1 (Leopard9A309)
+<rdar://problem/4826097> 9A305: Firefox 2.0 crashes on launch
+<rdar://problem/4827641> httpd is dying in dyld after libobjc.dylib is unloaded
+
+
+dyld-69 (Leopard9A305)
+<rdar://problem/3532018> ER: dlclose() should be able to unload dylibs
+<rdar://problem/3584130> runtime support for RPATH
+
+
+dyld-68 (Leopard9A296)
+<rdar://problem/4797707> rosetta doesn't work when shared cache is present
+<rdar://problem/4800592> shared cache for 64-bit archs does not work when some dylibs are invalid
+
+
+dyld-67.1 (Leopard9A292)
+<rdar://problem/4754048> support 64-bit programs built with new 10.5 subtype
+
+
+dyld-67
+<rdar://problem/4764143> CrashReporter needs a new way to distinguish fatal dyld errors
+<rdar://problem/4610810> support dlopen(NULL, RTLD_FIRST)
+Move base address of ppc64 dyld to match new memory layout
+Move base address of 64-bit shared caches to match new memory layout
+Move location of shared cache file to /var/db/dyld
+Add support for LC_REEXPORT_DYLIB
+Use shared cache if it exists
+Requires ld64-63.1 or later built dylibs for shared cache generation
+
+
+dyld-66.3 (Leopard9A276)
+<rdar://problem/4742808> dyld fails to build with Libc changes in 4632326
+<rdar://problem/4754048> support 64-bit programs built with new 10.5 subtype
+
+
+dyld-66.2 (Leopard9A260)
+<rdar://problem/4718046> Leopard9A259: Backtraces in crash reports are not getting symbolicated
+<rdar://problem/4714894> dyld should get rosetta process name from standard location
+
+
+dyld-66.1 (Leopard9A259)
+Fix for build breakage with Libc-436
+
+
+dyld-66 
+Preliminary shared cache support
+<rdar://problem/4109087> <mach-o/dyld_gdb.h> is in Darwin but not Dev Tools package
+<rdar://problem/4710378> export shared range regions for gdb
+<rdar://problem/4697552> __pthread_tsd_first appears to be initialized too late in dyld
+<rdar://problem/4589305> don't use @executable_path or fallback searching in setuid programs
+
+
+dyld-65.1 (Leopard9A252)
+fix B&I build failure with Libc-435
+
+
+dyld-65 (Leopard9A247)
+<rdar://problem/4653725> jump table entry at end of segment can crash
+<rdar://problem/4644563> Mathematica 5.2 (64-bit MathKernel) always crashes on 9A229
+<rdar://problem/4088447> dlsym man page needs to be more specific about RTLD_DEFAULT
+<rdar://problem/4092461> Change wording in SEARCHING section in dlopen man page
+<rdar://problem/4560992> Man page for dyld has misspelling: cheep
+<rdar://problem/4579459> dyld(3) man page should point to Mach-O Programming Topics URL
+
+
+dyld-64 (Leopard9A224)
+<rdar://problem/4620487> No man page for dlopen_preflight(3)
+<rdar://problem/4363960> dyld lazy binding of fast stubs is not completely thread safe
+<rdar://problem/4628677> remove use of load_shared_file()
+
+
+dyld-63 (Leopard9A215)
+<rdar://problem/4530861> Would like way to quiet dynamic loader
+<rdar://problem/4513256> deprecated old APIs for Leopard
+<rdar://problem/4590713> NSCreateObjectFileImageFromMemory crashes when image is a MH_EXECUTABLE
+
+
+dyld-62.1 (Leopard9A206)
+<rdar://problem/4598215> prebound old stubs failure prevents uTest from running on i386
+
+
+dyld-62 (Leopard9A202)
+<rdar://problem/4589041> an image with an open non-zero base address does not load more efficiently
+<rdar://problem/4590567> Leopard9A190: NSAddImage() crashes when called from x86_64 process
+<rdar://problem/4578484> /usr/lib/libAPSimple.dylib: mmap error
+<rdar://problem/4557971> need to force interposing for rosetta processes
+
+
+dyld-61 (Leopard9A179)
+<rdar://problem/4528739> dyld calls close(-1)
+<rdar://problem/4506173> _stub_binding_helper_interface isn't using movdqa
+<rdar://problem/4548652> dyld tries to mmap 0 size segments and fails with conforming mmap
+<rdar://problem/4536652> Load dyld above 4GB for x86-64
+Move apple parameters on stack when DYLD_ variables are removed
+
+
+dyld-60 (Leopard9A160)
+<rdar://problem/4379896> Suresec #203: dyld environment with suid binaries
+<rdar://problem/4148690> SureSec si#187 linker: environment variables
+<rdar://problem/3915210> print warning message if DYLD_INSERT_LIBRARIES is set (then ignored) for a setuid/setgid program
+<rdar://problem/4359815> dyld's disableIfBadUser() routine can fail for constant strings
+
+
+dyld-59 (Leopard9A156)
+<rdar://problem/4452274> ER: dlopen_preflight()
+
+
+dyld-58 (Leopard9A154)
+<rdar://problem/3827070> implement RTLD_SELF
+<rdar://problem/4045952> better handling of open() errors
+<rdar://problem/4198200> would like dlopen(RTLD_FIRST) so that dlsym variant that does not search dependent libraries
+<rdar://problem/4508801> dyld needs to adopt to Unix conformance changes
+<rdar://problem/4507650> Crash on Leopard9A146 when GC rejects loading a library on Intel
+
+
+dyld-57 (Leopard9A144)
+<rdar://problem/4423668> pthread tsd entries doubly owned by DYLD and Libsystem... (Leopard)
+<rdar://problem/4492351> dyld should automatically stop using the shared region if unavailable
+<rdar://problem/4494723> If instantiateFromLoadedImage fails, dyld crashes
+<rdar://problem/4494725> isCompatibleMachO needs to know about x86-64
+
+
+dyld-56 (Leopard9A140)
+<rdar://problem/3908479> 64-bit dyld should load at around the last 4G - not in the first 4G
+<rdar://problem/4486559> 64 bit: app crashes immediately if -pagezero_size >= 0x0ffffffff
+<rdar://problem/4486804> dyld needs to build for x86-64
+<rdar://problem/4149233> dyld_debug API shim has leak
+<rdar://problem/4490848> dyld does not slide properly on Intel
+
+
+dyld-55 (Leopard9A138)
+<rdar://problem/4430145> dlopen() should fail if bundle has objc code incompatible with runtime environment
+<rdar://problem/4340954> libdyld: make non-POSIX header definitions visible when _POSIX_C_SOURCE is defined
+<rdar://problem/4393607> A flat_namespace image with a reference to an internal private_extern should resolve immediately
+<rdar://problem/4401777> dlopen() man page is missing RTLD_NOLOAD and RTLD_NODELETE
+<rdar://problem/4427324> _CFExecutableLinkedOnOrAfter() fails on 64 bit
+<rdar://problem/4442283> dyld needs to support x86-64
+
+
+dyld-54 (Leopard9A80)
+<rdar://problem/4030730> remove ppc64 workarounds for fixed bugs
+<rdar://problem/4051922> Memory error in removePathWithPrefix()
+<rdar://problem/4258921> dyld does not properly swap CPU subtype from fat file header
+<rdar://problem/4361806> dyld does not compile for open source
+<rdar://problem/4363188> ADOBE XCODE 2.2: ZeroLink can cause wrong typeinfos to be used
+Sync with Chardonnay (except for 4313830 and 4215516)
+
+
+dyld-53 (Leopard9A42)
+<rdar://problem/4254657> Add -fno-exceptions to Release target of libdyld
+<rdar://problem/4326451> Wrong number of seconds reported by DYLD_PRINT_STATISTICS on Intel
+
+
+dyld-52 (Leopard9Axxx)
+<rdar://problem/4172797> dyld changes for new libstdc++ project
+
+
+dyld-51 (Clueless)
+<rdar://problem/3866740> STD:VSX: dlclose() should return non-zero value on failure.
+<rdar://problem/3944469> STD:BUILD: dyld references non-conforming member name for PPC64
+<rdar://problem/4116234> The gdb list of images should be updated before dyld bases and binds each image
+<rdar://problem/3916854> interposing does not handle stacking/nesting of interposing functions
+<rdar://problem/4090063> use of DYLD_INTERPOSE() causes compiler warnings with -std=c99 -pedantic
+<rdar://problem/3992272> SWB: dyld-32 fails to link using 4.0 compiler (gcc-4042) on Tiger8A371
+
+dyld-50 (Leopard9Axxx)
+Convert to build with gcc-4.0
+<rdar://problem/3992272> SWB: dyld-32 fails to link using 4.0 compiler (gcc-4042) on Tiger8A371
+
+----------------------------------
+
+
+
+dyld-46.16 (Mac OS X 10.4.11) 
+<rdar://problem/5146059&5334400> raise bail out limit in update_prebinding to 100 errors
+
+dyld-46.15
+<rdar://problem/5334280> [SUIncaSoho] update_prebinding can only handle 2MB of ppc unprebound dylibs on intel
+<rdar://problem/5146059&5334400> update_prebinding fails if a prebound dylib depends on a non-prebound dylib
+
+dyld-46.14
+<rdar://problem/4814545&5260830> prebinding zeroes out files if an error occurs (such as no vm space left)
+<rdar://problem/4948045&5257758> Rare & unknown root cause: Corruption of Kerberos framework during SU
+
+dyld-46.13
+<rdar://problem/4975286> dyld crashes starting threaded program
+<rdar://problem/5050570> 10.4.9 Regression: SuTiNovi8P132: update_prebinding never reaches steady state
+<rdar://problem/5116499> 10.4.9 Regression: SuTiNovi8P132: update_prebinding never reaches steady state
+<rdar://problem/5160205> [SUTiSoHo] update_prebinding crashes when a weak linked dylib is missing
+<rdar://problem/5165777> [SUIncaSoHo] update_prebinding crashes when a weak linked dylib is missing
+
+dyld-46.12
+<rdar://problem/4898960> 10.4.9 Regression: Math Kernel crash with TiNovi 8P114
+
+dyld-46.11
+<rdar://problem/4642940> dyld's x86_64 support should be open source
+<rdar://problem/4604221> 10.4.x: an image with an open non-zero base address does not load more efficiently
+<rdar://problem/4864380> [SUTiNovi] A flat_namespace image with a reference to an internal private_extern should resolve immediately
+<rdar://problem/4870982> [SUTiNovi] 10.4.8 regression: ppc X program segmentation fault in 10.4.8, worked in 10.4.7
+<rdar://problem/4765099> [SUIncaNovi] 10.4.8 regression: ppc X program segmentation fault in 10.4.8, worked in 10.4.7
+<rdar://problem/4864373> [SUIncaNovi] A flat_namespace image with a reference to an internal private_extern should resolve immediately
+
+dyld-46.10
+<rdar://problem/4787033> dyld-46.9 fails to build in Nicoya
+
+dyld-46.9 (Inca8K...)
+<rdar://problem/4653725> jump table entry at end of segment can crash
+
+dyld-46.8 (Inca8K1073)
+<rdar://problem/4645490> Mathematica 5.2 (64-bit MathKernel) always crashes on Inca
+
+dyld-46.7 (Inca8K1072)
+<rdar://problem/4622201> dyld lazy binding of fast stubs is not completely thread safe
+
+dyld-46.6 (Inca8K1061)
+<rdar://problem/4607261> Inca: don't write warning to stderr for setuid binaries
+
+dyld-46.5 (Inca8K1059)
+<rdar://problem/4598215> prebound old stubs failure prevents uTest from running on i386
+
+dyld-46.4 (Inca8K1057)
+<rdar://problem/4590567> NSAddImage() crashes when called from x86_64 process
+<rdar://problem/4589041> an image with an open non-zero base address does not load more efficiently
+
+dyld-46.3 (Inca8K1054)
+<rdar://problem/4557971> need to force interposing for rosetta processes
+re-enable setuid security fixes for 4525062 and 4525053
+
+dyld-46.2 (Inca8K1046)
+<rdar://problem/4551683> Adobe CS2 no longer launches
+<rdar://problem/4536652> Load dyld above 4GB for x86-64
+
+dyld-46.1 (Inca8K1040)
+rdar://problem/4538177 dyld does not slide on x86_64
+
+dyld-46 (Inca...)
+re-enable x86_64
+
+
+dyld-45.3 (SUSecurity )
+<rdar://problem/4607244> *SecUpd: Chardonnay* don't write warning to stderr for setuid binaries
+<rdar://problem/4607243> *SecUpd: Tiger* don't write warning to stderr for setuid binaries
+
+dyld-45.2 (SUSecurity )
+<rdar://problem/4525062> *SecUpd: Chardonnay* SureSec si#187 remove all DYLD_ env vars for setuid binaries
+<rdar://problem/4148690> *SecUpd: Tiger* SureSec si#187 remove all DYLD_ env vars for setuid binaries
+<rdar://problem/4525053> *SecUpd: Chardonnay* Suresec #203: don't use $HOME with suid binaries
+<rdar://problem/4379896> *SecUpd: Tiger* Suresec #203: don't use $HOME with suid binaries
+
+
+dyld-45.1 (SUTiLondon...)
+back out <rdar://problem/4379896> Suresec #203: dyld environment with suid binaries [SUTi]
+
+
+dyld-45 (SUTiLondon...)
+<rdar://problem/4522929> sync all 10.4.x dyld trains
+<rdar://problem/4320078> dyld fix for gcc-3.3 C++ needs to get in SU
+<rdar://problem/4501854> 64-bit dlopen crashes when opening fat bundle
+<rdar://problem/4148690> SureSec si#187 linker: environment variables [SUTi]
+<rdar://problem/4379896> Suresec #203: dyld environment with suid binaries [SUTi]
+<rdar://problem/4525062> SureSec si#187 linker: environment variables [SUChard]
+<rdar://problem/4525053> Suresec #203: dyld environment with suid binaries [SUChard]
+
+dyld-44.23 (Inca8...)
+<rdar://problem/4498577> Crash using Core Image under Rosetta running InDesign CS2 w/ Magma Effects
+
+dyld-44.22 (Inca8K1030)
+<rdar://problem/4498515> Stub binding helper changes for FP args for x86-64
+
+dyld-44.21 (Inca8K1030)
+<rdar://problem/4497724> printf doesn't work for x86-64
+
+dyld-44.20 (Inca8K1029)
+<rdar://problem/4494725> isCompatibleMachO needs to know about x86-64
+
+dyld-44.19 (Inca8J1028)
+two small x86_64 fixes
+
+dyld-44.18 (Inca8J1027)
+<rdar://problem/4442283> dyld needs to support x86-64
+
+dyld-44.17 (Chardonnay8G1152)
+<rdar://problem/4381131> prebound fast stubs not ignored for flat_namespace dylibs
+
+dyld-44.16 (Chardonnay8G1141)
+<rdar://problem/4360528> Sherlock often crashes in dyld::bindLazySymbol on launch
+
+dyld-44.15 (Chardonnay8G1137)
+<rdar://problem/4356145> no apps can launch with /usr/lib/libMallocDebug.A.dylib on 8G1133
+
+dyld-44.14 (Chardonnay8F1110)
+<rdar://problem/4321820> System Integrity: changes needed for dyld
+
+dyld-44.13 (Chardonnay8F1108)
+<rdar://problem/4313830> pthread tsd entries doubly owned by DYLD and Libsystem... (Chardonnay)
+
+dyld-44.12 (Chardonnay8F1108)
+<rdar://problem/4318081> never pass shared_region_map_file_np() a zero-length region
+
+dyld-44.11 (Chardonnay8F1104)
+<rdar://problem/4303000> dyld launch code should special case if there is only one prebound image with weak exports
+
+dyld-44.10 (Chardonnay8F1100)
+<rdar://problem/4296378> dyld fails to link with Libc-391.1.13
+
+dyld-44.9 (Chardonnay8F1093)
+<rdar://problem/4212667> XCode2.1 + gcc 3.3 + C++ exception + Bundle Bug
+<rdar://problem/4278103> low disk space code path executed with 44GB free
+
+dyld-44.8 (Chardonnay8F1079)
+<rdar://problem/4215516> dyld lazy binding code should use movdqa
+
+dyld-44.7 (Chardonnay8B1072)
+<rdar://problem/4247155> fix for rosetta crashes
+
+dyld-44.6 (Chardonnay8B1072)
+<rdar://problem/4179957> Optimizing system should only progress once
+
+dyld-44.5 (Chardonnay8B1052)
+<rdar://problem/4164559> New intel stub support
+
+dyld-44.4 (Chardonnay8B1051)
+<rdar://problem/4178195> Leopard 9A14: Finder crashes burning a CD
+<rdar://problem/4186248> dyld lazy binding code needs to save/restore all possible register parameters
+<rdar://problem/4172797> use new libstdc++-static
+
+dyld-44.3 (Chardonnay8B1051)
+<rdar://problem/4189498> dyld should recognize byte-swapped Mach-O files
+<rdar://problem/4194105> dyld should only update prebound external relocations if they change
+
+dyld-44.2 (SUTiDenver8F10) [Mac OS X 10.4.3]
+<rdar://problem/4189935> Tiger breaks NSCreateObjectFileImageFromMemory with fat Mach-O
+<rdar://problem/4139432> dyld does not load libraries correctly if matching install_name in /usr/lib
+<rdar://problem/4153431> CrashTracer: ..269 crashes at com.adobe.Acrobat.framework: RunAcrobat + 424
+
+dyld-44.1 (Chardonnay)
+<rdar://problem/4132378> __attribute__ ((regparm (3), stdcall)) doesn't work for inter-image calls
+<rdar://problem/4111112> dyld should automatically set DYLD_SHARED_REGION to avoid
+
+dyld-44 (Chardonnay)
+<rdar://problem/4170213> merge SUTiCambridge dyld and Karma dyld into Chardonnay
+
+
+dyld-43.1 (SUTiCambridge8C20)  [Mac OS X 10.4.2]
+Update open source APSL headers
+<rdar://problem/4120834> update_prebinding should gracefully handle low disk space
+<rdar://problem/4108674> prebinding should not change n_value of .obj_class_name symbols
+<rdar://problem/4057081> dyld gets into infinite loop with dlsym if dylib dependencies contain loops
+<rdar://problem/4072295> FilesBuster crashed in dyld
+<rdar://problem/4104022> DYLD_ROOT_PATH crashes program if any component does not start with /
+<rdar://problem/4104027> dyld writes past end of buffer when checking environment variables
+<rdar://problem/4106921> dyld_image_removing notification never sent
+<rdar://problem/4121907> ANN: DR020
+
+
+dyld-43 (Tiger8A428)  [Mac OS X 10.4.0]
+rdar://problem/4067311 PACE protected Mach-O apps crash under Tiger 8a420
+
+
+dyld-42 (Tiger8A420)
+rdar://problem/4058724 FileMaker JDBC extension does not work in Tiger
+
+
+dyld-41 (Tiger8A417)
+rdar://problem/4047633 Adobe Photoshop CS2: Scripting Save for Web runs out of memory unexpectedly when compared to 10.3.8.
+
+
+dyld-40 (Tiger8A413)
+rdar://problem/4047391 dyld no longer follow dependent libraries using dlopen
+
+
+dyld-39 (Tiger8A406)
+rdar://problem/4034570 DT P1: MATLAB R14sp2 does not run on Tiger
+rdar://problem/4028274 DT P1: GLSLShowpieces crashes when built and run
+
+
+dyld-38 (Tiger8A402)
+rdar://problem/3820219	Tiger + MOTU Digital Performer + hit play = Digital Performer crashes
+rdar://problem/3978682	If an excutable & a framework with the same base name are in the same folder, you get a dyld error if you use full path
+rdar://problem/3987135	MATLAB unresolved symbol __XEditResPutWidgetInfo on Tiger
+rdar://problem/4027813	dlsym man page documents unsupported RTDL_SELF
+
+
+dyld-37 (Tiger8A399)
+rdar://problem/4001668	Safari hang inside CFBundleDYLDGetSymbolByNameWithSearch in Flash plug-in upon opening www.espn.com
+rdar://problem/3853454	dyld needs to call sys_icache_invalidate() after instruction fix-ups
+rdar://problem/3984074	Soldier of Fortune II crashes at start of gameplay on Tiger8A36
+rdar://problem/4008399	Malicious user can set Tiger dyld fallback paths in setuid process
+rdar://problem/4021002	Aliens vs Predator II with latest update does not run
+
+
+dyld-36 (Tiger8A393)
+rdar://problem/3970385	[Tiger] 8A323: Aliens VS Predator 2 Freezes On Launch
+rdar://problem/3839120	_dyld_get_image_header_containing_address returning NULL when it shouldn't
+rdar://problem/3925105	update_prebinding crashes on /usr/lib/libnetsnmptrapd.5.dylib
+
+
+dyld-35 (Tiger8A384)
+rdar://problem/3984074	Soldier of Fortune II crashes at start of gameplay on Tiger8A367
+rdar://problem/4003637	Typo blocks support of -init for 64-bits
+rdar://problem/4003891	improve mmap() failure error msg
+
+
+dyld-34 (Tiger8A381)
+rdar://problem/3976215	dlopen() should look for a library with matching name and architecture	
+rdar://problem/3978682  executable and dylibs can be confused
+rdar://problem/3819111	dlopen() ignores LD_LIBRARY_PATH	
+rdar://problem/3956709	Insufficient documentation for dlopen	
+
+
+dyld-33 (Tiger8A379)
+rdar://problem/3941826	8A340: Tron 2.0 does not launch	
+rdar://problem/3848965	James Bond 007 Nightfire fails to launch	
+rdar://problem/3947513	No One Lives Forever 2 crashes on Quit on Tiger8A347
+rdar://problem/3779999	Spyhunter crashes upon launch on Tiger8A244	
+
+
+dyld-32 (Tiger8A367)
+rdar://problem/3974486	PowerMail launch fails: weak linking of library but not symbols	
+rdar://problem/3974797	can update_prebinding only complain about stuff I actually have installed?
+rdar://problem/3979715	synchronizing attribute name with section name	
+
+
+dyld-31 (Tiger8A362)
+rdar://problem/3958479	Third party "crash reporter" app backtraces have no symbols for our libraries/APIs
+rdar://problem/3966025	add DYLD_INTERPOSE macro to an apple internal header
+rdar://problem/3968283	For interposing support section-by-type and section-by-name	
+
+
+dyld-30 (Tiger8A357)
+rdar://problem/3947090  objc runtime / two-level namespace crash when using new interposing libMallocDebug or libgmalloc
+
+
+dyld-29 (Tiger8A356)
+rdar://problem/3960729  update_prebinding needs to fflush() every output line
+rdar://problem/3960657  Why are my crashreporter logs all useless?
+
+
+dyld-28 (Tiger8A354)
+rdar://problem/3510780	_dyld_get_image_header_containing_address man page is wrong
+rdar://problem/3798074	STD: dlclose() does not unload bundles	
+rdar://problem/3882857	dyld no longer finds framework file if not in Framework hierarchy
+rdar://problem/3898206	dlopen() does not support library searching as linkage at launch does
+rdar://problem/3921479	dyld(1) should not document unimplemented env vars	
+rdar://problem/3935714	Support RTLD_NODELETE	
+rdar://problem/3942919	can't use _debug libSystem	
+
+
+dyld-27 (Tiger8A350)
+rdar://problem/3902088  update_prebinding needs to provide progress information
+
+
+dyld-26 (Tiger8A348)
+rdar://problem/3943033  hang upon boot, permissions and startup thrash
+
+
+dyld-25 (Tiger8A347)
+rdar://problem/3916220  Main executable unmapped 
+rdar://problem/3812732  Microsoft Error Reporting crashes on Tiger  
+rdar://problem/3943349  dyld project should install mach-o/dyld_debug.h
+rdar://problem/3943546  mach-o/dyld_debug.h should be deprecated
+rdar://problem/3933738  use getsectdatafromheader_64
+
+
+dyld-24 (Tiger8A345)
+rdar://problem/3941688  update_prebinding needs a --dry-run option
+
+
+dyld-23
+rdar://problem/3799069  Need coalescing across dylibs
+rdar://problem/3859973  problem with weaklink using darwine
+rdar://problem/3938167  dyld does not work with XLF generated binaries and provided libraries
+rdar://problem/3935377  STD: dyld needs to include sys/time.h and sys/types.h
+rdar://problem/3930361  STD: dyld must create a stub for ___fegetfltrounds
+rdar://problem/3934712	STD:VSX: more dlfcn.h namespace issues
+
+
+dyld-22.5 (Tiger8A340)
+rdar://problem/3788633	MatLab 7.0 fails to launch on Tiger8A246	
+rdar://problem/3919674	prebound flat-namespace libraries are bound wrong
+
+
+dyld-22.4
+rdar://problem/3915914  make update_prebinding more robust
+
+
+dyld-22.3 (Tiger8A333)
+rdar://problem/3920720  dyld missing symbols because Xcode not add -fvisibility=hidden
+
+
+dyld-22.2 (Tiger8A330)
+rdar://problem/3909873  Transmit.app crashes with symbol not found
+
+
+dyld-22.1
+rdar://problem/3908248  Crash in apps when launched from MallocDebug (BlockMove symbol not found if DYLD_FORCE_FLAT_NAMESPACE is set)
+
+
+dyld-22 (Tiger8A325)
+rdar://problem/3903866  reduce LINKEDIT page usage by better use of two-level hints
+rdar://problem/3884004	Libraries can be half-baked if an error occurs during their first use	
+rdar://problem/3899047	interposing doesn't work on 8A317 with dyld-21	
+rdar://problem/3514720	Adobe bundle kernel panics system	
+
+
+dyld-21 (Tiger8A322)
+rdar://problem/3745562	Support two-level interposing with insert libraries (malloc-debug)
+rdar://problem/3892061	8A316: Selecting any application in Finder in the column view crashes finder
+rdar://problem/3894540	DYLD_PRINT_SEGMENTS no longer works on 8A317	
+
+
+dyld-20 (Tiger8A317)
+rdar://problem/32957877	Support @loader_path in dylib commands
+rdar://problem/33837173	need SPI to set fallback symbol lookup
+rdar://problem/33891778	dyld (__DATA,__dyld) function pointers should drift as little as possible
+Fix issue with new prebinding overwriting symlinks
+
+
+dyld-19 (Tiger8A315)
+rdar://problem/3823664 dyld reports corrupt executable
+rdar://problem/3847571 dyld submission number should be embedded in dyld
+rdar://problem/3865141 dyld_all_image_infos should contain bit that says if process is using the shared region
+rdar://problem/3884103 dyld needs to use -msoft-float for ppc64
+rdar://problem/3886337 PPC_RELOC_PB_LA_PTR not recognized by ppc64 
+Clean up/document dyld-gdb interface
+
+
+dyld-18.3 (prebinding sideworld build)
+prebinding enhancements
+
+dyld-18.2 (Tiger8A306)
+rdar://problem/3782982 Fix for Macromedia apps (Flash 7.2)
+
+dyld-18.1
+rdar://problem/3864644 DVD player crash (loading memory based bundle)
+
+dyld-18 (Tiger8A303)
+rdar://problem/3866877 STD:VSX dlsym() faults when passed a bad handle.
+rdar://problem/3862043 typo in dyld function name
+rdar://problem/3857000 dyld should limit its exported symbols
+rdar://problem/3835208 want better error message for incompatible libraries
+dyld now built with dead-code-stripping
+better launch performance when hundreds of libraries are used
+more bug fixes in update_prebinding in dyld
+
+
+dyld-17.1 (Tiger8A301)
+rdar://problem/3672757 initial implementation of update_prebinding in dyld
+rdar://problem/3847376 dyld does not slide itself properly (partial fix)
+rdar://problem/3843028 STD: make dlfcn.h posix compliant
+rdar://problem/3856182 STD: add includes
+rdar://problem/3782982 infrastructure work on compatibility for Macromedia apps
+Other 64-bit tweaks
+
+
+dyld-16.1 (Tiger8A296)
+rdar://problem/3768530 dyld should adopt shared_region_map_file_np() 
+
+
+dyld-15 (Gordian 64-bit side world build only)
+rdar://problem/3834744 64-bit dyld needs to handle mh->cputype != host_info cputype
+Other 64-bit clean ups
+
+
+dyld-14 (Tiger8A280)
+rdar://problem/3811777 Deadlock in dyld code, seen in Merlin and Mail
+rdar://problem/3793075 Update to fix: DVD Player crashes at launch with disc in drive
+rdar://problem/3830560 Don't let gcc-3.5 optimize away send_event
+rdar://problem/3826169 Update dlfcn.h header to Apple header and acknowledge Peter and Jorge
+rdar://problem/3793861 Update dlopen(3) man page to reflect new implementation
+rdar://problem/3559013 libdyld.a needs to build for ppc64	
+Added DYLD_PRINT_OPTS
+Added DYLD_PRINT_ENV
+Deprecated 10 APIs
+
+
+dyld-13 (Gordian 64-bit side world build only)
+rdar://problem/3560664 Add ppc64 support
+rdar://problem/3819144 Opening PDF in Safari crashes 
+rdar://problem/3793861 Update dlopen man pages
+rdar://problem/3765271 Build with gcc-3.5 
+rdar://problem/3762685 Make own prototype for task_self_trap() 
+rdar://problem/3799467 Mozilla tries to open a dylib using a bundle API
+rdar://problem/3812263 Add dyld SPI so Shark can interpose lazy pointer lookup
+Added emacs major-mode and tab-width directives
+
+
+dyld-12.4 (Tiger8A271)
+tweak so dyld can use libc.a built with long double support
+
+
+dyld-12.3 (no-build)
+rdar://problem/3765271 switch dyld to build with gcc-3.5
+
+
+dyld-12.2 (Tiger8A265)
+rdar://problem/3793075 DVD Player crashes at launch with disc in drive
+
+
+dyld-12.1 (Tiger8A255)
+rdar://problem/3749360 a flat lookup needs to search everywhere and not short-circuit to own image 
+
+
+dyld-12 (Tiger8A231)
+rdar://problem/3751226 make dyld thread safe (libdyld.a should come from new dyld project)
+rdar://problem/3654650 integrate dlopen() and friends into dyld
+
+
+dyld-11.3 (Tiger8A225)
+rdar://problem/3751226 NSAddImage() with leaf name doesn't use fallback path
+
+
+dyld-11.1 (Tiger8A223)
+rdar://problem/3749251 NSADDIMAGE_OPTION_RETURN_ONLY_IF_LOADED implies NSADDIMAGE_OPTION_RETURN_ON_ERROR" 
+
+
+dyld-11 (Tiger8A220)
+rdar://problem/3684168 prevent DYLD_LIBRARY_PATH from causing circular reference when two dylib have same leaf name 
+rdar://problem/3698212 implement _dyld_launched_prebound()
+rdar://problem/3696924 suppport frameworks without symlink to current version
+rdar://problem/3692136 Support DYLD_PRINT_LIBRARIES_POST_LAUNCH
+rdar://problem/3685517 make find-image-for-address faster via caching
+rdar://problem/3661976 -force_flat_namespace should disable prebinding
+rdar://problem/3702311 make dyld's __TEXT read-only
+rdar://problem/3669059 do cpu sub-type checking on thin files
+rdar://problem/3696002 Support C++ vague linkage that resolves internally
+rdar://problem/3725847 run initializers in inserted libraries
+rdar://problem/3731063 pass arc/argv to initializers
+rdar://problem/3731100 don't write on __dyld section unless necessary
+rdar://problem/3731633 use mmap() instead of map_fd()
+rdar://problem/3676934 don't double read first page of images, use pread()
+rdar://problem/3725372 ignore environment variables for setuid binaries
+
+
+dyld-10.2 (Tiger8A157)
+rdar://problem/3668765 Macromedia apps don't launch
+
+
+dyld-10.1 (Tiger8A156)
+rdar://problem/3691952 Fix-n-continue broke in Objective-C
+
+
+dyld-10 (Tiger8A148)
+rdar://problem/3686995 implement dyld_call_module_initializers_for_dylib and do parameter sanity checking of module parameters
+rdar://problem/3674139 Make @executable_path work when main executable is a symlink
+rdar://problem/3688719 Support CW built binaries built with -data_before
+
+
+dyld-9
+rdar://problem/3682744 GoLive crash (NSIsSymbolDefinedWithHint should try harder)
+rdar://problem/3660691 iTunes crash with partial plugin
+rdar://problem/3684167 DYLD_IMAGE_SUFFIX broke
+rdar://problem/3672670 Fix uninitialized variable in objc hook
+
+
+dyld-8 (Tiger8A144)
+rdar://problem/3680627 handle weaklib when prebound
+rdar://problem/3672670 new hook for objc 
+
+
+dyld-7 (Tiger8A141)
+rdar://problem/3669059 Support cpu-sub-type selection
+rdar://problem/3675131 allow text relocations
+rdar://problem/3675614 fix lazy pointer usage in termination routines
+rdar://problem/3673658 Allow NSUnLinkModule to be called with NULL
+
+
+dyld-6 (Tiger8A139)
+rdar://problem/3649313 clean up <mach-o/dyld.h>
+rdar://problem/3661976 support MH_FORCE_FLAT
+rdar://problem/3659666 DYLD_FORCE_FLAT_NAMESPACE should disable prebinding
+Better error reporting
+Faster flat namespace lookups
+Better implementation of NSLinkEditError
+
+
+dyld-5 (Tiger8A135)
+rdar://problem/3665738 fix binding of private_extern within multi-module libs
+rdar://problem/3667763 use hints supplied in APIs
+Set error_string for CrashReporter
+Better error message when library can't be found
+Properly use ZeroLink bundle notifier
+
+
+dyld-4 (Tiger8A133)
+rdar://problem/3663433 allmemory shows 8000 pages are missing
+
+
+dyld-3 
+rdar://problem/3659408 Proper searching in umbrellas
+rdar://problem/3657040 Better error messages when symbols not found
+rdar://problem/3657197 Add ~/Library/Frameworks to fallback path
+Properly use DYLD_IMAG_SUFFIX
+Initial CrashReporter support
+
+
+dyld-2 (Tiger8A132)
+Support: NSNameOfSymbol, NSModuleForSymbol, NSLibraryNameForModule, and NSMakePrivateModulePublic
+Add more functionality to DYLD_IGNORE_PREBINDING environment variable
+
+
+dyld-1
+Initial submission of dyld rewrite.

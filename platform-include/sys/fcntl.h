@@ -1,6 +1,5 @@
-// Modified by Lubos Dolezel for Darling
 /*
- * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -83,25 +82,10 @@
 #endif
 
 /* We should not be exporting size_t here.  Temporary for gcc bootstrapping. */
-#ifndef _SIZE_T
-#define _SIZE_T
-typedef __darwin_size_t	size_t;
-#endif
-
-#ifndef	_MODE_T
-typedef	__darwin_mode_t	mode_t;
-#define _MODE_T
-#endif
-
-#ifndef _OFF_T
-typedef __darwin_off_t	off_t;
-#define _OFF_T
-#endif
-
-#ifndef _PID_T
-typedef __darwin_pid_t	pid_t;
-#define _PID_T
-#endif
+#include <sys/_types/_size_t.h>
+#include <sys/_types/_mode_t.h>
+#include <sys/_types/_off_t.h>
+#include <sys/_types/_pid_t.h>
 
 /*
  * File status flags: these are used by open(2), fcntl(2).
@@ -130,9 +114,9 @@ typedef __darwin_pid_t	pid_t;
 #endif
 #define	O_NONBLOCK	0x0004		/* no delay */
 #define	O_APPEND	0x0008		/* set append mode */
-#ifndef O_SYNC		/* allow simultaneous inclusion of <aio.h> */
-#define	O_SYNC		0x0080		/* synch I/O file integrity */
-#endif
+
+#include <sys/_types/_o_sync.h>
+
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 #define	O_SHLOCK	0x0010		/* open with shared file lock */
 #define	O_EXLOCK	0x0020		/* open with exclusive file lock */
@@ -148,6 +132,22 @@ typedef __darwin_pid_t	pid_t;
 #define	FDEFER		0x2000		/* defer for next gc pass */
 #define	FHASLOCK	0x4000		/* descriptor holds advisory lock */
 #endif
+
+#if __DARWIN_C_LEVEL >= 200809L 
+/*
+ * Descriptor value for the current working directory
+ */
+#define AT_FDCWD	-2
+
+/*
+ * Flags for the at functions
+ */
+#define AT_EACCESS		0x0010	/* Use effective ids in access check */
+#define AT_SYMLINK_NOFOLLOW	0x0020	/* Act on the symlink itself not the target */
+#define AT_SYMLINK_FOLLOW	0x0040	/* Act on target of symlink */
+#define AT_REMOVEDIR		0x0080	/* Path refers to directory */
+#endif
+
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 #define	O_EVTONLY	0x8000		/* descriptor requested for event notifications only */
 #endif
@@ -168,9 +168,7 @@ typedef __darwin_pid_t	pid_t;
 #define O_SYMLINK	0x200000	/* allow open of a symlink */
 #endif
 
-#ifndef O_DSYNC		/* allow simultaneous inclusion of <aio.h> */
-#define		O_DSYNC	0x400000	/* synch I/O data integrity */
-#endif
+#include <sys/_types/_o_dsync.h>
 
 #ifdef KERNEL
 #define FNODIRECT	0x800000	/* fcntl(F_NODIRECT, 1) */
@@ -188,9 +186,18 @@ typedef __darwin_pid_t	pid_t;
 #define FSINGLE_WRITER	0x4000000       /* fcntl(F_SINGLE_WRITER, 1) */
 #endif
 
+#ifdef KERNEL
+#define O_CLOFORK	0x8000000	/* implicitly set FD_CLOFORK */
+#endif
+
+#ifdef KERNEL
+#define FUNENCRYPTED	0x10000000
+#endif
+
 /* Data Protection Flags */
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 #define O_DP_GETRAWENCRYPTED	0x0001
+#define O_DP_GETRAWUNENCRYPTED	0x0002
 #endif
 
 
@@ -225,8 +232,8 @@ typedef __darwin_pid_t	pid_t;
  */
 
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
-#define CPF_OVERWRITE 1
-#define CPF_IGNORE_MODE 2
+#define CPF_OVERWRITE    0x0001
+#define CPF_IGNORE_MODE  0x0002
 #define CPF_MASK (CPF_OVERWRITE|CPF_IGNORE_MODE)
 #endif
 
@@ -245,7 +252,9 @@ typedef __darwin_pid_t	pid_t;
 #define	F_GETLK		7		/* get record locking information */
 #define	F_SETLK		8		/* set record locking information */
 #define	F_SETLKW	9		/* F_SETLK; wait if blocked */
-#define F_SETLKWTIMEOUT	10
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+#define F_SETLKWTIMEOUT 10		/* F_SETLK; wait if blocked, return on timeout */
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 #define F_FLUSH_DATA    40
 #define F_CHKCLEAN      41              /* Used for regression test */
@@ -253,8 +262,9 @@ typedef __darwin_pid_t	pid_t;
 #define F_SETSIZE       43		/* Truncate a file without zeroing space */	
 #define F_RDADVISE      44              /* Issue an advisory read async with no copy to user */
 #define F_RDAHEAD       45              /* turn read ahead off/on for this fd */
-#define F_READBOOTSTRAP 46              /* Read bootstrap from disk */
-#define F_WRITEBOOTSTRAP 47             /* Write bootstrap on disk */
+/*
+ * 46,47 used to be F_READBOOTSTRAP and F_WRITEBOOTSTRAP 
+ */
 #define F_NOCACHE       48              /* turn data caching off/on for this fd */
 #define F_LOG2PHYS	49		/* file offset to device offset */
 #define F_GETPATH       50              /* return the full path of the fd */
@@ -272,7 +282,10 @@ typedef __darwin_pid_t	pid_t;
 
 #define F_ADDSIGS	59		/* add detached signatures */
 
+#ifdef PRIVATE
+/* Deprecated/Removed in 10.9 */
 #define F_MARKDEPENDENCY 60             /* this process hosts the device supporting the fs backing this fd */
+#endif
 
 #define F_ADDFILESIGS	61		/* add signature from same file (used by dyld for shared libs) */
 
@@ -299,8 +312,7 @@ typedef __darwin_pid_t	pid_t;
 #define F_SETBACKINGSTORE	70	/* Mark the file as being the backing store for another filesystem */
 #define F_GETPATH_MTMINFO	71 	/* return the full path of the FD, but error in specific mtmd circumstances */
 
-#define F_GETCODEDIR		72
-/* 72 is free.  It used to be F_GETENCRYPTEDDATA, which is now removed. */
+#define F_GETCODEDIR		72	/* Returns the code directory, with associated hashes, to the caller */
 
 #define F_SETNOSIGPIPE		73	/* No SIGPIPE generated on EPIPE */
 #define F_GETNOSIGPIPE		74	/* Status of SIGPIPE for this fd */
@@ -312,7 +324,46 @@ typedef __darwin_pid_t	pid_t;
 
 #define F_GETPROTECTIONLEVEL	77	/* Get the protection version number for this filesystem */
 
-#define F_FINDSIGS			78
+#define F_FINDSIGS		78	/* Add detached code signatures (used by dyld for shared libs) */
+
+#ifdef PRIVATE
+#define F_GETDEFAULTPROTLEVEL	79 /* Get the default protection level for the filesystem */
+#define F_MAKECOMPRESSED		80 /* Make the file compressed; truncate & toggle BSD bits */
+#define F_SET_GREEDY_MODE		81	/* 
+					* indicate to the filesystem/storage driver that the content to be
+					* written should be written in greedy mode for additional speed at
+					* the cost of storage efficiency. A nonzero value enables it, 0 disables it.
+					*/
+
+#define F_SETIOTYPE		82  /* 
+							 * Use parameters to describe content being written to the FD. See
+							 * flag definitions below for argument bits.
+							 */
+#endif
+
+#define F_ADDFILESIGS_FOR_DYLD_SIM 83	/* Add signature from same file, only if it is signed by Apple (used by dyld for simulator) */
+
+#ifdef PRIVATE
+#define F_RECYCLE			84	/* Recycle vnode; debug/development builds only */
+#endif
+
+#define F_BARRIERFSYNC		85	/* fsync + issue barrier to drive */
+
+#ifdef PRIVATE
+#define F_OFD_SETLK		90	/* Acquire or release open file description lock */
+#define F_OFD_SETLKW		91	/* (as F_OFD_SETLK but blocking if conflicting lock) */
+#define F_OFD_GETLK		92	/* Examine OFD lock */
+
+#define F_OFD_SETLKWTIMEOUT	93	/* (as F_OFD_SETLKW but return if timeout) */
+#define F_OFD_GETLKPID		94	/* get record locking information */
+
+#define F_SETCONFINED		95	/* "confine" OFD to process */
+#define F_GETCONFINED		96	/* is-fd-confined? */
+#endif
+
+#define F_ADDFILESIGS_RETURN	97	/* Add signature from same file, return end offset in structure on sucess */
+#define F_CHECK_LV		98	/* Check if Library Validation allows this Mach-O file to be mapped into the calling process */
+
 
 // FS-specific fcntl()'s numbers begin at 0x00010000 and go up
 #define FCNTL_FS_SPECIFIC_BASE  0x00010000
@@ -325,6 +376,9 @@ typedef __darwin_pid_t	pid_t;
 
 /* file descriptor flags (F_GETFD, F_SETFD) */
 #define	FD_CLOEXEC	1		/* close-on-exec flag */
+#if PRIVATE
+#define	FD_CLOFORK	2		/* close-on-fork flag */
+#endif
 
 /* record locking flags (F_GETLK, F_SETLK, F_SETLKW) */
 #define	F_RDLCK		1		/* shared or read lock */
@@ -337,64 +391,28 @@ typedef __darwin_pid_t	pid_t;
 #define	F_PROV		0x080		/* Non-coalesced provisional lock */
 #define F_WAKE1_SAFE    0x100           /* its safe to only wake one waiter */
 #define	F_ABORT		0x200		/* lock attempt aborted (force umount) */
+#define	F_OFD_LOCK	0x400		/* Use "OFD" semantics for lock */
+#endif
+
+#if PRIVATE
+/* 
+ * ISOCHRONOUS attempts to sustain a minimum platform-dependent throughput 
+ * for the duration of the I/O delivered to the driver.
+ */
+#define F_IOTYPE_ISOCHRONOUS 0x0001 
 #endif
 
 /*
  * [XSI] The values used for l_whence shall be defined as described
  * in <unistd.h>
  */
-#ifndef SEEK_SET
-#define	SEEK_SET	0	/* set file offset to offset */
-#define	SEEK_CUR	1	/* set file offset to current plus offset */
-#define	SEEK_END	2	/* set file offset to EOF plus offset */
-#endif	/* !SEEK_SET */
+#include <sys/_types/_seek_set.h>
 
 /*
  * [XSI] The symbolic names for file modes for use as values of mode_t
  * shall be defined as described in <sys/stat.h>
  */
-#ifndef S_IFMT
-/* File type */
-#define	S_IFMT		0170000		/* [XSI] type of file mask */
-#define	S_IFIFO		0010000		/* [XSI] named pipe (fifo) */
-#define	S_IFCHR		0020000		/* [XSI] character special */
-#define	S_IFDIR		0040000		/* [XSI] directory */
-#define	S_IFBLK		0060000		/* [XSI] block special */
-#define	S_IFREG		0100000		/* [XSI] regular */
-#define	S_IFLNK		0120000		/* [XSI] symbolic link */
-#define	S_IFSOCK	0140000		/* [XSI] socket */
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
-#define	S_IFWHT		0160000		/* OBSOLETE: whiteout */
-#endif
-
-/* File mode */
-/* Read, write, execute/search by owner */
-#define	S_IRWXU		0000700		/* [XSI] RWX mask for owner */
-#define	S_IRUSR		0000400		/* [XSI] R for owner */
-#define	S_IWUSR		0000200		/* [XSI] W for owner */
-#define	S_IXUSR		0000100		/* [XSI] X for owner */
-/* Read, write, execute/search by group */
-#define	S_IRWXG		0000070		/* [XSI] RWX mask for group */
-#define	S_IRGRP		0000040		/* [XSI] R for group */
-#define	S_IWGRP		0000020		/* [XSI] W for group */
-#define	S_IXGRP		0000010		/* [XSI] X for group */
-/* Read, write, execute/search by others */
-#define	S_IRWXO		0000007		/* [XSI] RWX mask for other */
-#define	S_IROTH		0000004		/* [XSI] R for other */
-#define	S_IWOTH		0000002		/* [XSI] W for other */
-#define	S_IXOTH		0000001		/* [XSI] X for other */
-
-#define	S_ISUID		0004000		/* [XSI] set user id on execution */
-#define	S_ISGID		0002000		/* [XSI] set group id on execution */
-#define	S_ISVTX		0001000		/* [XSI] directory restrcted delete */
-
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
-#define	S_ISTXT		S_ISVTX		/* sticky bit: not supported */
-#define	S_IREAD		S_IRUSR		/* backward compatability */
-#define	S_IWRITE	S_IWUSR		/* backward compatability */
-#define	S_IEXEC		S_IXUSR		/* backward compatability */
-#endif
-#endif	/* !S_IFMT */
+#include <sys/_types/_s_ifmt.h>
 
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 /* allocate flags (F_PREALLOCATE) */
@@ -421,6 +439,19 @@ struct flock {
 	short	l_whence;	/* type of l_start */
 };
 
+#include <sys/_types/_timespec.h>
+
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+/*
+ * Advisory file segment locking with time out -
+ * Information passed to system by user for F_SETLKWTIMEOUT
+ */
+struct flocktimeout {
+	struct flock    fl;             /* flock passed for file locking */
+	struct timespec timeout;        /* timespec struct for timeout */
+};
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
+
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 /*
  * advisory file read data type -
@@ -440,6 +471,51 @@ struct radvisory {
 #pragma pack()
 #endif /* KERNEL */
 
+#ifndef	KERNEL
+/** Information the user passes in to get the codeblobs out of the kernel */
+typedef struct fcodeblobs {
+	void 		*f_cd_hash;
+	size_t		f_hash_size;
+	void		*f_cd_buffer;
+	size_t		f_cd_size;
+	unsigned int	*f_out_size;
+	int		f_arch;
+	int		__padding;
+} fcodeblobs_t;
+#endif /* KERNEL */
+
+#ifdef KERNEL
+typedef struct user32_fcodeblobs {
+	user32_addr_t	f_cd_hash;
+	user32_size_t	f_hash_size;
+	user32_addr_t	f_cd_buffer;
+	user32_size_t	f_cd_size;
+	user32_addr_t	f_out_size;
+	int		f_arch;
+} user32_fcodeblobs_t;
+
+/* LP64 version of fcodeblobs */
+typedef struct user64_fcodeblobs {
+	user64_addr_t	f_cd_hash;
+	user64_size_t	f_hash_size;
+	user64_addr_t	f_cd_buffer;
+	user64_size_t	f_cd_size;
+	user64_addr_t	f_out_size;
+	int		f_arch;
+	int		__padding;
+} user64_fcodeblobs_t;
+
+/* kernel version of fcodeblobs */
+typedef struct user_fcodeblobs {
+	user_addr_t	f_cd_hash;
+	user_size_t	f_hash_size;
+	user_addr_t	f_cd_buffer;
+	user_size_t	f_cd_size;
+	user_addr_t	f_out_size;
+	int		f_arch;
+} user_fcodeblobs_t;
+#endif /* KERNEL */
+
 /*
  * detached code signatures data type -
  * information passed by user to system used by F_ADDSIGS and F_ADDFILESIGS.
@@ -452,7 +528,7 @@ typedef struct fsignatures {
 	size_t		fs_blob_size;
 } fsignatures_t;
 #ifdef KERNEL
-/* LP64 version of fsignatures.  all pointers 
+/* LP64 version of fsignatures.  all pointers
  * grow when we're dealing with a 64-bit process.
  * WARNING - keep in sync with fsignatures
  */
@@ -471,6 +547,43 @@ typedef struct user_fsignatures {
 	user_size_t	fs_blob_size;	/* size of signature blob             */
 } user_fsignatures_t;
 #endif /* KERNEL */
+
+/*
+ * DYLD needs to check if the object is allowed to be combined
+ * into the main binary. This is done between the code signature
+ * is loaded and dyld is doing all the work to process the LOAD commands.
+ *
+ * While this could be done in F_ADDFILESIGS.* family the hook into
+ * the MAC module doesn't say no when LV isn't enabled and then that
+ * is cached on the vnode, and the MAC module never gets change once
+ * a process that library validation enabled.
+ */
+typedef struct fchecklv {
+	off_t		lv_file_start;
+	size_t		lv_error_message_size;
+	void		*lv_error_message;
+} fchecklv_t;
+
+#ifdef KERNEL
+/* LP64 version of fchecklv.  all pointers
+ * grow when we're dealing with a 64-bit process.
+ * WARNING - keep in sync with fsignatures
+ */
+
+typedef struct user32_fchecklv {
+	user32_off_t	lv_file_start;
+	user32_size_t	lv_error_message_size;
+	user32_addr_t	lv_error_message;
+} user32_fchecklv_t;
+
+typedef struct user_fchecklv {
+	off_t		lv_file_start;
+	user_size_t	lv_error_message_size;
+	user_addr_t	lv_error_message;
+} user_fchecklv_t;
+
+#endif /* KERNEL */
+
 
 /* lock operations for flock(2) */
 #define	LOCK_SH		0x01		/* shared file lock */
@@ -497,7 +610,7 @@ typedef struct fbootstraptransfer {
 } fbootstraptransfer_t;
 
 #ifdef KERNEL
-/* LP64 version of fbootstraptransfer.  all pointers 
+/* LP64 version of fbootstraptransfer.  all pointers
  * grow when we're dealing with a 64-bit process.
  * WARNING - keep in sync with fbootstraptransfer
  */
@@ -591,11 +704,9 @@ struct user_fopenfrom {
 #ifndef KERNEL
 
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
-#ifndef _FILESEC_T
-struct _filesec;
-typedef struct _filesec	*filesec_t;
-#define _FILESEC_T
-#endif
+
+#include <sys/_types/_filesec_t.h>
+
 typedef enum {
 	FILESEC_OWNER = 1,
 	FILESEC_GROUP = 2,
@@ -615,6 +726,9 @@ typedef enum {
 
 __BEGIN_DECLS
 int	open(const char *, int, ...) __DARWIN_ALIAS_C(open);
+#if __DARWIN_C_LEVEL >= 200809L
+int	openat(int, const char *, int, ...) __DARWIN_NOCANCEL(openat) __OSX_AVAILABLE_STARTING(__MAC_10_10, __IPHONE_8_0);
+#endif
 int	creat(const char *, mode_t) __DARWIN_ALIAS_C(creat);
 int	fcntl(int, int, ...) __DARWIN_ALIAS_C(fcntl);
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
@@ -637,7 +751,10 @@ int     fileport_makeport(int, fileport_t*);
 int     fileport_makefd(fileport_t);
 #endif /* PRIVATE */
 int	openx_np(const char *, int, filesec_t);
-/* data-protected non-portable open(2) */
+/* 
+ * data-protected non-portable open(2) :
+ int open_dprotected_np(user_addr_t path, int flags, int class, int dpflags, int mode)
+ */ 
 int open_dprotected_np ( const char *, int, int, int, ...);
 int	flock(int, int);
 filesec_t filesec_init(void);

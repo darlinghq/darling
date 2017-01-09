@@ -3,7 +3,7 @@ project(copyfile)
 cmake_minimum_required(VERSION 2.4.0)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -fblocks")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${DARLING_TOP_DIRECTORY}/platform-include)
 include_directories(${DARLING_TOP_DIRECTORY}/src/libinfo/membership.subproj/)
@@ -25,11 +25,9 @@ set(copyfile_sources
 	# xattr_flags.c # Doesn't build yet (XPC)
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-add_library(system_copyfile SHARED ${copyfile_sources})
-target_link_libraries(system_copyfile system_kernel system_c)
+set(DYLIB_INSTALL_NAME "/usr/lib/system/libcopyfile.dylib")
+add_darling_library(system_copyfile SHARED ${copyfile_sources})
+set_target_properties(system_copyfile PROPERTIES OUTPUT_NAME "copyfile")
+target_link_libraries(system_copyfile PRIVATE system_kernel system_c system_blocks system_info system_dyld)
 
 install(TARGETS system_copyfile DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

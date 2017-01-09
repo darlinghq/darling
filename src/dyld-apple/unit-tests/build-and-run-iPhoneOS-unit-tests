@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# need to be root to build test suite
+sudo ./build-iPhoneOS-unit-tests
+
+# transfer to device
+echo " * * * Transfering to device * * *"
+rsync -a /tmp/unpack-and-run-all-tests /tmp/dyld-testing.cpgz rsync://root@localhost:10873/root/tmp
+
+
+# running on device
+echo " * * * Running on device * * *"
+/Developer/Platforms/iPhoneOS.platform/usr/local/bin/PurpleExec /tmp/unpack-and-run-all-tests
+

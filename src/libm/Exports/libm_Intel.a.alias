@@ -1,4 +1,4 @@
-"#.o names are from the ppc build, and probably don't map properly to other archs"	
+#.o names are from the ppc build, and probably don't map properly to other archs"	
 
 #libm.a(complex.o):	
 _cabsf	_cabsf$fenv_access_off

@@ -1,0 +1,13 @@
+Language:        Cpp
+BasedOnStyle:  WebKit
+
+AlignConsecutiveDeclarations: true
+AlignOperands:  false
+AlignTrailingComments: true
+IndentWidth:     4
+
+Standard:        Cpp11
+
+UseTab:          Never
+
+SortIncludes: false

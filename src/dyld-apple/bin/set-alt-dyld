@@ -1,0 +1,30 @@
+#!/usr/bin/perl -w
+
+use strict;
+undef $/;
+
+if(@ARGV == 0)
+{
+    print "Usage: $0 <macho-executable> [<macho-executable> ...]\n";
+    exit 1;
+}
+
+my $arg;
+foreach $arg (@ARGV)
+{
+    open IN, "<$arg" or die $!;
+    my $in = <IN>;
+    close IN or die $!;
+
+    if($in =~ s{/usr/lib/dyld}{/usr/local/dy})
+    {
+	open OUT, ">$arg" or die $!;
+	print OUT $in;
+	close OUT or die $!;
+    }
+    else
+    {
+	print STDERR "ERROR: $arg\n";
+	exit 1;
+    }
+}

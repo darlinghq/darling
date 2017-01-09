@@ -1,0 +1,6 @@
+main_init
+main
+foo_init
+foo
+foo_term
+main_term

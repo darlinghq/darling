@@ -10,7 +10,7 @@ set(CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES "")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -nostdinc++ -ggdb -O0")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -nostdinc -funwind-tables -ggdb -O0")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../external/libcxx/include)
@@ -21,8 +21,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/stdtime/FreeBSD)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/pthreads)
 include_directories(${DARLING_TOP_DIRECTORY}/platform-include)
 
-add_definitions(-Ddladdr=__darwin_dladdr)
-
 set(libunwind_sources
 	src/libuwind.cxx
 	src/Registers.S
@@ -32,12 +30,9 @@ set(libunwind_sources
 	src/Unwind-sjlj.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-add_library(unwind SHARED ${libunwind_sources})
-target_link_libraries(unwind system_c)
+set(DYLIB_INSTALL_NAME "/usr/lib/system/libunwind.dylib")
+add_darling_library(unwind SHARED ${libunwind_sources})
+target_link_libraries(unwind PRIVATE system_c keymgr)
 set_target_properties(unwind PROPERTIES LINKER_LANGUAGE C)
 
 install(TARGETS unwind DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

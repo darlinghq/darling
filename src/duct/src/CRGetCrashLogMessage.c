@@ -7,3 +7,6 @@ void CRSetCrashLogMessage(const char* msg)
 {
 }
 
+void CRSetCrashLogMessage2(const char* path)
+{
+}

@@ -22,10 +22,7 @@ add_definitions(-D__APPLE__ -D__DYNAMIC__ -DPRIVATE)
 add_subdirectory(libsyscall)
 add_subdirectory(mach_server/client)
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
+set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_kernel.dylib")
 add_darling_library(system_kernel SHARED
 	$<TARGET_OBJECTS:libsyscall>
 	#$<TARGET_OBJECTS:kqueue>

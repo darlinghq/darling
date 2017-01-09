@@ -1,0 +1,15 @@
+ALIGNMENT[arch=armv7s]     = -Wl,-segalign,0x4000
+
+ENTRY[sdk=*simulator*]     = -Wl,-e,_start_sim
+ENTRY[sdk=iphoneos*]       = -Wl,-e,__dyld_start
+ENTRY[sdk=macosx*]         = -Wl,-e,__dyld_start
+
+EXPORTED_SYMBOLS_FILE[sdk=*simulator*]   = $(SRCROOT)/src/dyld_sim.exp
+EXPORTED_SYMBOLS_FILE[sdk=iphoneos*]     = $(SRCROOT)/src/dyld.exp
+EXPORTED_SYMBOLS_FILE[sdk=macosx*]       = $(SRCROOT)/src/dyld.exp
+
+PRODUCT_NAME[sdk=*simulator*] = dyld_sim
+PRODUCT_NAME[sdk=iphoneos*]   = dyld
+PRODUCT_NAME[sdk=macosx*]     = dyld
+
+INSTALL_PATH   = /usr/lib

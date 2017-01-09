@@ -1,0 +1,187 @@
+.Dd Aug 7, 2012
+.Os
+.Dt DLOPEN 3
+.Sh NAME
+.Nm dlopen 
+.Nd load and link a dynamic library or bundle
+.Sh SYNOPSIS
+.In dlfcn.h
+.Ft void*
+.Fn dlopen "const char* path" "int mode"
+.Sh DESCRIPTION
+.Fn dlopen
+examines the mach-o file specified by 
+.Fa path .
+If the file is compatible with the current process and has not already been 
+loaded into the current process, it is loaded and linked.  After being linked,
+if it contains any initializer functions, they are called, before
+.Fn dlopen
+returns.  
+.Fn dlopen
+can load dynamic libraries and bundles.  It returns a handle that can
+be used with 
+.Fn dlsym
+and
+.Fn dlclose .
+A second call to 
+.Fn dlopen
+with the same path will return the same handle, but the internal reference
+count for the handle will be incremented.  Therefore all 
+.Fn dlopen
+calls should be balanced with a 
+.Fn dlclose
+call.
+.Pp
+If a null pointer is passed in 
+.Fa path ,
+.Fn dlopen
+returns a handle equivalent to RTLD_DEFAULT.
+.Pp
+.Fa mode
+contains options to 
+.Fn dlopen .
+It must contain one or more of the following values, possibly ORed together:
+.Pp
+.Bl -tag -width RTLD_LAZYX
+.It Dv RTLD_LAZY
+Each external function reference is bound the first time the function is called.
+.It Dv RTLD_NOW
+All external function references are bound immediately during the call to
+.Fn dlopen .
+.El
+.Pp
+.Dv RTLD_LAZY
+is normally preferred, for reasons of efficiency.
+However,
+.Dv RTLD_NOW
+is useful to ensure that any undefined symbols are discovered during the
+call to
+.Fn dlopen .
+If neither 
+RTLD_LAZY nor RTLD_NOW is specified, the default is RTLD_LAZY.
+.Pp
+One of the following flags may be ORed into the
+.Fa mode
+argument:
+.Bl -tag -width RTLD_LOCALX
+.It Dv RTLD_GLOBAL
+Symbols exported from this image (dynamic library or bundle) will be available to any 
+images build with -flat_namespace option to  
+.Xr ld 1
+or to calls to
+.Fn dlsym
+when using a special handle.
+.It Dv RTLD_LOCAL
+Symbols exported from this image (dynamic library or bundle) are generally hidden
+and only availble to
+.Fn dlsym
+when directly using the handle returned by this call to 
+.Fn dlopen .
+.Pp
+.El
+If neither 
+RTLD_GLOBAL nor RTLD_LOCAL is specified, the default is RTLD_GLOBAL.
+.Pp
+One of the following may be ORed into the
+.Fa mode
+argument:
+.Bl -tag -width RTLD_NODELETEX
+.It Dv RTLD_NOLOAD
+The specified image is not loaded.  However, a valid  
+.Fa handle
+is returned if the image already exists in the process. This provides a way
+to query if an image is already loaded.  The 
+.Fa handle
+returned is ref-counted, so you eventually need a corresponding call to  
+.Fn dlclose
+.It Dv RTLD_NODELETE
+The specified image is tagged so that will never be removed from the address space,
+even after all clients have released it via 
+.Fn dlclose
+.El
+.Pp
+Additionally, the following may be ORed into the
+.Fa mode
+argument:
+.Bl -tag -width RTLD_FIRSTX
+.It Dv RTLD_FIRST
+The retuned    
+.Fa handle
+is tagged so that any 
+.Fn dlsym
+calls on the 
+.Fa handle
+will only search the image specified, and not subsequent images.  If 
+.Fa path
+is NULL and the option RTLD_FIRST is used, the 
+.Fa handle 
+returned will only search the main executable.
+.El
+.Sh SEARCHING
+.Fn dlopen
+searches for a compatible Mach-O file in the directories specified by a set of environment variables and 
+the process's current working directory.
+When set, the environment variables contain a colon-separated list of directory paths, 
+which can be absolute or relative to the current working directory. 
+.Pp
+When 
+.Fa path
+does not contain a slash character (i.e. it is just a leaf name), 
+.Fn dlopen
+searches the following until it finds a compatible Mach-O file: $LD_LIBRARY_PATH, 
+$DYLD_LIBRARY_PATH, current working directory, $DYLD_FALLBACK_LIBRARY_PATH.
+.Pp
+When 
+.Fa path 
+looks like a framework path (e.g. /stuff/foo.framework/foo), 
+.Fn dlopen
+searches the following until it finds a compatible Mach-O file: 
+$DYLD_FRAMEWORK_PATH (with framework partial path from 
+.Fa path
+), then the supplied 
+.Fa path 
+(using current working directory for relative paths), then 
+$DYLD_FALLBACK_FRAMEWORK_PATH (with framework partial path from 
+.Fa path
+).
+.Pp
+When 
+.Fa path 
+contains a slash but is not a framework path (i.e. a full path or a partial path to a dylib), 
+.Fn dlopen
+searches the following until it finds a compatible Mach-O file: 
+$DYLD_LIBRARY_PATH (with leaf name from 
+.Fa path 
+), then the supplied 
+.Fa path 
+(using current working directory for relative paths), then 
+$DYLD_FALLBACK_LIBRARY_PATH (with leaf name from  
+.Fa path 
+).
+.Pp
+Note: If DYLD_FALLBACK_LIBRARY_PATH is not set, dlopen operates as if 
+DYLD_FALLBACK_LIBRARY_PATH was set to $HOME/lib:/usr/local/lib:/usr/lib.
+.Pp
+Note: If DYLD_FALLBACK_FRAMEWORK_PATH is not set, dlopen operates as if 
+DYLD_FALLBACK_FRAMEWORK_PATH was set to $HOME/Library/Frameworks:/Library/Frameworks:/Network/Library/Frameworks:/System/Library/Frameworks. 
+.Pp
+Note: There are no configuration files to control dlopen searching.  
+.Pp
+Note: If the main executable is a set[ug]id binary or codesigned with entitlements, 
+then all environment variables are ignored, and only a full path can be used. 
+.Pp
+Note: Mac OS X uses "universal" files to combine 32-bit and 64-bit libraries.  This means there are no separate 32-bit and 64-bit search paths.
+.Pp
+.Sh RETURN VALUES
+If 
+.Fn dlopen
+fails, it returns a null pointer, and sets an error condition which may be interrogated with 
+.Fn dlerror .
+.Pp
+.Sh SEE ALSO
+.Xr dlopen_preflight 3
+.Xr dlclose 3
+.Xr dlsym 3
+.Xr dlerror 3
+.Xr dyld 1
+.Xr ld 1

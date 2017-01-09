@@ -1,0 +1,94 @@
+.Dd August 28, 2008
+.Dt DLSYM 3
+.Sh NAME
+.Nm dlsym
+.Nd get address of a symbol
+.Sh SYNOPSIS
+.In dlfcn.h
+.Ft void*
+.Fn dlsym "void* handle" "const char* symbol"
+.Sh DESCRIPTION
+.Fn dlsym
+returns the address of the code or data location 
+specified by the null-terminated character string
+.Fa symbol .
+Which libraries and bundles are searched depends on the  
+.Fa handle 
+parameter. 
+.Pp
+If
+.Fn dlsym
+is called with a
+.Fa handle ,
+returned by
+.Fn dlopen
+then only that image and any libraries it depends on are searched for
+.Fa symbol .
+.Pp
+If
+.Fn dlsym
+is called with the special
+.Fa handle
+.Dv RTLD_DEFAULT ,
+then all mach-o images in the process (except those loaded with dlopen(xxx, RTLD_LOCAL))
+are searched in the order they were loaded.
+This can be a costly search and should be avoided.  
+.Pp
+If
+.Fn dlsym
+is called with the special
+.Fa handle
+.Dv RTLD_NEXT ,
+then dyld searches for the symbol in the dylibs the calling image 
+linked against when built. It is usually used when
+you intentionally have multiply defined symbol across images
+and want to find the "next" definition.  It searches other images 
+for the definition that the caller would be using if it did not
+have a definition.  The exact search algorithm depends on whether
+the caller's image was linked -flat_namespace or -twolevel_namespace.
+For flat linked images, the search starts in the load ordered list
+of all images, in the image right after the caller's image.  
+For two-level images, the search simulates how the static linker
+would have searched for the symbol when linking the caller's
+image.  
+.Pp
+If
+.Fn dlsym
+is called with the special
+.Fa handle
+.Dv RTLD_SELF ,
+then the search for the symbol starts with the image that called
+.Fn dlsym .
+If it is not found, the search continues as if RTLD_NEXT was used.
+.Pp
+If
+.Fn dlsym
+is called with the special
+.Fa handle
+.Dv RTLD_MAIN_ONLY ,
+then it only searches for 
+.Fa symbol
+in the main executable.
+.Pp
+.Sh RETURN VALUES
+The
+.Fn dlsym
+function
+returns a null pointer if the symbol cannot be found, and sets an error
+condition which may be queried with
+.Fn dlerror .
+.Pp
+.Sh NOTES
+The symbol name passed to
+.Fn dlsym
+is the name used in C source code.  For example to find the address
+of function foo(), you would pass "foo" as the symbol name.  This
+is unlike the older dyld APIs which required a leading underscore.
+If you looking up a C++ symbol, you need to use the mangled C++ symbol
+name.  
+.Sh SEE ALSO
+.Xr dlopen 3
+.Xr dlerror 3
+.Xr dyld 3
+.Xr ld 1
+.Xr cc 1
