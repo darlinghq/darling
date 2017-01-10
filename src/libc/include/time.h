@@ -204,44 +204,6 @@ int nanosleep(const struct timespec *, struct timespec *) __DARWIN_ALIAS_C(nanos
 #else /* LIBC_ALIAS_NANOSLEEP */
 int nanosleep(const struct timespec *, struct timespec *) LIBC_ALIAS_C(nanosleep);
 #endif /* !LIBC_ALIAS_NANOSLEEP */
-
-
-#if !defined(_DARWIN_FEATURE_CLOCK_GETTIME) || _DARWIN_FEATURE_CLOCK_GETTIME != 0
-
-typedef enum {
-_CLOCK_REALTIME = 0,
-#define CLOCK_REALTIME _CLOCK_REALTIME
-_CLOCK_MONOTONIC = 6,
-#define CLOCK_MONOTONIC _CLOCK_MONOTONIC
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
-_CLOCK_MONOTONIC_RAW = 4,
-#define CLOCK_MONOTONIC_RAW _CLOCK_MONOTONIC_RAW
-_CLOCK_MONOTONIC_RAW_APPROX = 5,
-#define CLOCK_MONOTONIC_RAW_APPROX _CLOCK_MONOTONIC_RAW_APPROX
-_CLOCK_UPTIME_RAW = 8,
-#define CLOCK_UPTIME_RAW _CLOCK_UPTIME_RAW
-_CLOCK_UPTIME_RAW_APPROX = 9,
-#define CLOCK_UPTIME_RAW_APPROX _CLOCK_UPTIME_RAW_APPROX
-#endif
-_CLOCK_PROCESS_CPUTIME_ID = 12,
-#define CLOCK_PROCESS_CPUTIME_ID _CLOCK_PROCESS_CPUTIME_ID
-_CLOCK_THREAD_CPUTIME_ID = 16
-#define CLOCK_THREAD_CPUTIME_ID _CLOCK_THREAD_CPUTIME_ID
-} clockid_t;
-
-int clock_getres(clockid_t __clock_id, struct timespec *__res);
-
-int clock_gettime(clockid_t __clock_id, struct timespec *__tp);
-
-#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
-__uint64_t clock_gettime_nsec_np(clockid_t __clock_id);
-#endif
-
-int clock_settime(clockid_t __clock_id, const struct timespec *__tp);
-
-#endif /* _DARWIN_FEATURE_CLOCK_GETTIME */
-
-
 //End-Libc
 #endif
 __END_DECLS
