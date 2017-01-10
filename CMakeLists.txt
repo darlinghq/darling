@@ -56,6 +56,13 @@ option(FRAMEWORK_APPKIT "Enable AppKit development code" OFF)
 add_subdirectory(src)
 
 if (NOT DARLING_NO_EXECUTABLES)
+	install(DIRECTORY DESTINATION libexec/darling/private)
+	install(DIRECTORY DESTINATION libexec/darling/private/etc)
+	install(DIRECTORY DESTINATION libexec/darling/private/var)
+	InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
+	InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
+	InstallSymlink(private/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
+
 	install(FILES etc/dylib.conf etc/version.conf
 		DESTINATION libexec/darling/etc/darling)
 	install(FILES etc/resolv.conf
@@ -67,7 +74,6 @@ if (NOT DARLING_NO_EXECUTABLES)
 
 	install(DIRECTORY DESTINATION libexec/darling/proc)
 
-	install(DIRECTORY DESTINATION libexec/darling/var)
 	install(DIRECTORY DESTINATION libexec/darling/var/root)
 	install(DIRECTORY DESTINATION libexec/darling/var/run)
 	InstallSymlink(/dev/log ${CMAKE_INSTALL_PREFIX}/libexec/darling/var/run/syslog)
@@ -78,7 +84,7 @@ if (NOT DARLING_NO_EXECUTABLES)
 	InstallSymlink(/Volumes/SystemRoot${CMAKE_INSTALL_PREFIX}/share/darling ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/local/share/darling)
 
 	InstallSymlink(/Volumes/SystemRoot/dev ${CMAKE_INSTALL_PREFIX}/libexec/darling/dev)
-	InstallSymlink(/Volumes/SystemRoot/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
+	InstallSymlink(/Volumes/SystemRoot/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/tmp)
 	InstallSymlink(/Volumes/SystemRoot/home ${CMAKE_INSTALL_PREFIX}/libexec/darling/Users)
 
 	InstallSymlink(/proc/self/mounts ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/mtab)
