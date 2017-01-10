@@ -101,6 +101,6 @@ add_library(libc-stdlib_extsn OBJECT ${stdlib-extsn_sources})
 SET_TARGET_PROPERTIES(libc-stdlib_extsn PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_DARWINEXTSN")
 
 # DYLD variant
-add_library(libc-stdlib_dyld OBJECT FreeBSD/atexit.c FreeBSD/exit.c FreeBSD/heapsort.c FreeBSD/merge.c FreeBSD/qsort.c FreeBSD/reallocf.c FreeBSD/realpath.c)
+add_library(libc-stdlib_dyld OBJECT FreeBSD/atexit.c FreeBSD/exit.c FreeBSD/heapsort.c FreeBSD/merge.c FreeBSD/qsort.c FreeBSD/reallocf.c FreeBSD/realpath.c FreeBSD/strtoul.c)
 SET_TARGET_PROPERTIES(libc-stdlib_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")
 

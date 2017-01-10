@@ -50,8 +50,8 @@ add_darling_executable(system_loader
 	src/dyld_gdb.cpp
 	src/dyldInitialization.cpp
 	src/dyldNew.cpp
-	src/dyld_process_info.cpp
-	src/dyld_process_info_notify.cpp
+	#src/dyld_process_info.cpp
+	#src/dyld_process_info_notify.cpp
 	src/ImageLoader.cpp
 	src/ImageLoaderMachOClassic.cpp
 	src/ImageLoaderMachOCompressed.cpp
@@ -65,6 +65,6 @@ add_darling_executable(system_loader
 #use_ld64(system_loader)
 set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
 set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -dylinker")
-target_link_libraries(system_loader crt1.10.6.o libc_static)
+target_link_libraries(system_loader crt1.10.6.o libc_static system_blocks_static unwind_static system_kernel_static)
 
 install(TARGETS system_dyld DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

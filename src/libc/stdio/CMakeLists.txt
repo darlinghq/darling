@@ -139,3 +139,8 @@ add_library(libc-stdio_extsn OBJECT ${stdio-extsn_sources})
 SET_TARGET_PROPERTIES(libc-stdio_extsn PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_DARWINEXTSN")
 
 
+# ***
+# DYLD variants
+# ***
+#add_library(libc-stdio_dyld OBJECT FreeBSD/sprintf.c FreeBSD/printf.c)
+#SET_TARGET_PROPERTIES(libc-stdio_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")

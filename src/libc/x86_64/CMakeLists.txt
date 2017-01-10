@@ -91,5 +91,24 @@ set(x86_64_sources ${x86_64_sources}
 
 add_library(libc-hwplat OBJECT ${x86_64_sources})
 
-add_library(libc-hwplat_dyld OBJECT pthreads/pthread_set_self.S pthreads/pthread_self.S pthreads/pthread_getspecific.S pthreads/preempt.S string/__bzero.S string/bcopy_sse3x.S string/bzero_sse2.S string/ffs.S string/longcopy_sse3x.S string/strcmp.S string/strlen.S string/strncpy.S sys/OSAtomic.S sys/i386_gettimeofday_asm.S sys/spinlocks_asm.S)
+add_library(libc-hwplat_dyld OBJECT
+	pthreads/pthread_set_self.S
+	pthreads/pthread_self.S
+	pthreads/pthread_getspecific.S
+	pthreads/preempt.S
+	string/__bzero.S
+	string/bcopy_sse3x.S
+	string/bcopy_sse42.S
+	string/bzero_sse2.S
+	string/ffs.S
+	string/longcopy_sse3x.S
+	string/strcmp.S
+	string/strlen.S
+	string/strncpy.S
+	string/memmove.c
+	sys/OSAtomic.S
+	sys/atomic.c
+	sys/spinlocks.c
+	sys/i386_gettimeofday_asm.S
+	sys/spinlocks_asm.S)
 

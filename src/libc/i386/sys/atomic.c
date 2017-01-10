@@ -25,7 +25,7 @@
 #include <machine/cpu_capabilities.h>
 #include <platfunc.h>
 
-#ifndef DARLING
+#ifndef DARLING__DISABLED
 #define	RESOLVER_UP_MP(symbol)	\
 	PLATFUNC_DESCRIPTOR(symbol, up, kUP, 0); \
 	PLATFUNC_DESCRIPTOR(symbol, mp, 0, kUP); \
@@ -76,7 +76,7 @@ RESOLVER_UP_MP(OSAtomicTestAndClearBarrier)
 RESOLVER_UP_MP(OSAtomicEnqueue)
 RESOLVER_UP_MP(OSAtomicDequeue)
 
-#ifndef DARLING
+#ifndef DARLING__DISABLED
 PLATFUNC_DESCRIPTOR_PROTOTYPE(OSMemoryBarrier, all)
 PLATFUNC_DESCRIPTOR_PROTOTYPE(OSMemoryBarrier, sse2)
 

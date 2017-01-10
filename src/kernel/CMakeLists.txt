@@ -31,6 +31,13 @@ add_darling_library(system_kernel SHARED
 	$<TARGET_OBJECTS:mach_server_client>)
 target_link_libraries(system_kernel system_duct)
 
+add_library(system_kernel_static STATIC
+	$<TARGET_OBJECTS:libsyscall>
+	#$<TARGET_OBJECTS:kqueue>
+	$<TARGET_OBJECTS:emulation>
+	${extra_objs}
+	$<TARGET_OBJECTS:mach_server_client>)
+
 install(TARGETS system_kernel DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 
 add_dependencies(system_kernel migcom)

@@ -24,6 +24,9 @@ add_subdirectory(util)
 #add_subdirectory(libdyld)
 #add_subdirectory(dyld)
 
+set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
+set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
+
 if (NOT DARLING_NO_EXECUTABLES)
 	#	add_subdirectory(motool)
 	add_subdirectory(external/darling-dmg)
