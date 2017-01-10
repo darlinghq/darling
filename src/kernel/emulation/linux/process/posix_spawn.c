@@ -93,7 +93,7 @@ no_fork:
 						break;
 					case PSFA_DUP2:
 						ret = sys_dup2(act->psfaa_filedes, act->psfaa_openargs.psfao_oflag);
-						if (ret != 0)
+						if (ret < 0)
 							goto fail;
 						break;
 					case PSFA_OPEN:
@@ -162,4 +162,3 @@ fail:
 out:
 	return ret;
 }
-
