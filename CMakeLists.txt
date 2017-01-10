@@ -3,6 +3,9 @@ project(darling)
 cmake_minimum_required(VERSION 2.8)
 enable_language(ASM)
 
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include(InstallSymlink)
+
 set(DARLING_TOP_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 set(DARLING_NO_EXECUTABLES OFF)
 set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "")
