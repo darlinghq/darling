@@ -619,12 +619,20 @@ void setupPrefix()
 	snprintf(path, sizeof(path), "%s/Applications", prefix);
 	createDir(path);
 
-	// ... and to put stuff in /usr/local
+	// ... to put stuff in /usr/local,
 	snprintf(path, sizeof(path), "%s/usr", prefix);
 	createDir(path);
 	snprintf(path, sizeof(path), "%s/usr/local", prefix);
 	createDir(path);
 	snprintf(path, sizeof(path), "%s/usr/local/share", prefix);
+	createDir(path);
+
+	// ... and to install plists to /var/db
+	snprintf(path, sizeof(path), "%s/private", prefix);
+	createDir(path);
+	snprintf(path, sizeof(path), "%s/private/var", prefix);
+	createDir(path);
+	snprintf(path, sizeof(path), "%s/private/var/db", prefix);
 	createDir(path);
 
 	seteuid(0);
