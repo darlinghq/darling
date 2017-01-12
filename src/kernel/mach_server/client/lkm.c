@@ -3,36 +3,23 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define LINUX_O_CLOEXEC 02000000
-
 int driver_fd = -1;
 
 extern int __real_ioctl(int fd, int cmd, void* arg);
 
 void mach_driver_init(void)
 {
-	int new_driver_fd;
-
 	if (driver_fd != -1)
 		close(driver_fd);
 
-	new_driver_fd = open("/dev/mach", O_RDWR | O_CLOEXEC);
-	if (new_driver_fd == -1)
+	driver_fd = open("/dev/mach", O_RDWR | O_CLOEXEC);
+	if (driver_fd == -1)
 	{
 		const char* msg = "Cannot open /dev/mach. Aborting.\nMake sure you have loaded the darling-mach kernel module.\n";
 
 		write(2, msg, strlen(msg));
 		abort();
 	}
-
-	// Ensure we get the same fd number, even if lower ones are available
-	if (driver_fd != -1 && driver_fd != new_driver_fd)
-	{
-		dup3(new_driver_fd, driver_fd, LINUX_O_CLOEXEC); // native Linux syscall
-		close(new_driver_fd);
-	}
-	else
-		driver_fd = new_driver_fd;
 
 	if (__real_ioctl(driver_fd, NR_get_api_version, 0) != DARLING_MACH_API_VERSION)
 	{
