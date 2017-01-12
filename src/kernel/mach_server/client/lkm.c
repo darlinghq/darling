@@ -3,6 +3,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#define LINUX_O_CLOEXEC 02000000
+
 int driver_fd = -1;
 
 extern int __real_ioctl(int fd, int cmd, void* arg);
@@ -26,7 +28,7 @@ void mach_driver_init(void)
 	// Ensure we get the same fd number, even if lower ones are available
 	if (driver_fd != -1 && driver_fd != new_driver_fd)
 	{
-		dup3(new_driver_fd, driver_fd, O_CLOEXEC);
+		dup3(new_driver_fd, driver_fd, LINUX_O_CLOEXEC); // native Linux syscall
 		close(new_driver_fd);
 	}
 	else
