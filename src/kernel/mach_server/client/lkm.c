@@ -12,7 +12,7 @@ void mach_driver_init(void)
 	if (driver_fd != -1)
 		close(driver_fd);
 
-	driver_fd = open("/dev/mach", O_RDWR);
+	driver_fd = open("/dev/mach", O_RDWR | O_CLOEXEC);
 	if (driver_fd == -1)
 	{
 		const char* msg = "Cannot open /dev/mach. Aborting.\nMake sure you have loaded the darling-mach kernel module.\n";
@@ -34,4 +34,3 @@ int lkm_call(int call_nr, void* arg)
 {
 	return __real_ioctl(driver_fd, call_nr, arg);
 }
-
