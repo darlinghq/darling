@@ -26,7 +26,7 @@ void mach_driver_init(void)
 	// Ensure we get the same fd number, even if lower ones are available
 	if (driver_fd != -1 && driver_fd != new_driver_fd)
 	{
-		dup2(new_driver_fd, driver_fd);
+		dup3(new_driver_fd, driver_fd, O_CLOEXEC);
 		close(new_driver_fd);
 	}
 	else
