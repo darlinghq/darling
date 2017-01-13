@@ -28,7 +28,7 @@ set(emulation_sources
 	unistd/fdatasync.c
 	unistd/dup.c
 	unistd/dup2.c
-	unistd/exit.c
+	unistd/_exit.c
 	unistd/close.c
 	unistd/fchdir.c
 	unistd/fchown.c
@@ -168,6 +168,7 @@ set(emulation_sources
 	ext/sched_yield.c
 	ext/syslog.c
 	ext/futex.c
+	ext/mremap.c
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_terminate.c
@@ -214,3 +215,6 @@ set_source_files_properties(misc/sysctl.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
 
 add_library(emulation OBJECT ${emulation_sources})
+add_library(emulation_dyld OBJECT ${emulation_sources})
+set_target_properties(emulation_dyld PROPERTIES COMPILE_FLAGS "-ffunction-sections -DVARIANT_DYLD")
+

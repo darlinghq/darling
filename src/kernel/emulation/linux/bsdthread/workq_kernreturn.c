@@ -49,6 +49,7 @@ static void list_remove(struct parked_thread* head, struct parked_thread* item);
 
 long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 {
+#ifndef VARIANT_DYLD
 	// item is only used with WQOPS_QUEUE_ADD
 	switch (options)
 	{
@@ -189,6 +190,9 @@ wakeup:
 		default:
 			return -ENOTSUP;
 	}
+#else
+	return -ENOSYS;
+#endif
 }
 
 static int sem_down(int* sem, int timeout)

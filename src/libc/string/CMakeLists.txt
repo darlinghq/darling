@@ -96,6 +96,7 @@ add_library(libc-string_legacy OBJECT ${string-legacy_sources})
 SET_TARGET_PROPERTIES(libc-string_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
 
 # DYLD variant
-add_library(libc-string_dyld OBJECT strcat.c FreeBSD/strchr.c strcpy.c FreeBSD/strdup.c strlcat.c strlcpy.c FreeBSD/strncmp.c FreeBSD/strnlen.c FreeBSD/strrchr.c FreeBSD/strstr.c FreeBSD/strtok.c)
+add_library(libc-string_dyld OBJECT strcat.c FreeBSD/strchr.c strcpy.c FreeBSD/strdup.c strlcat.c strlcpy.c FreeBSD/strncmp.c FreeBSD/strnlen.c FreeBSD/strrchr.c FreeBSD/strstr.c FreeBSD/strtok.c
+	FreeBSD/memchr.c FreeBSD/memcmp.c FreeBSD/memcpy.c FreeBSD/wcscpy.c FreeBSD/wcslen.c FreeBSD/wcsncmp.c FreeBSD/wcsncpy.c FreeBSD/strerror.c)
 SET_TARGET_PROPERTIES(libc-string_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")
 

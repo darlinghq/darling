@@ -7,4 +7,5 @@
 
 #include "spinlock.h"
 
+__attribute__ ((visibility ("visible")))
 spinlock_t __gdtoa_locks[2];

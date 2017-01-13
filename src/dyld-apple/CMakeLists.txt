@@ -60,11 +60,13 @@ add_darling_executable(system_loader
 	src/dyldExceptions.c
 	src/glue.c
 	src/dyldStartup.S
+	src/stub_binding_helper.S
+	src/start_glue.S
 )
 
 #use_ld64(system_loader)
 set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
-set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -dylinker")
-target_link_libraries(system_loader crt1.10.6.o libc_static system_blocks_static unwind_static system_kernel_static)
+set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -nostdlib -Wl,-e,__dyld_start")
+target_link_libraries(system_loader libc_static system_blocks_static unwind_static system_kernel_static system_m_static cxxabi_static keymgr_static compiler_rt_static system_duct_static)
 
 install(TARGETS system_dyld DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

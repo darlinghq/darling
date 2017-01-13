@@ -154,11 +154,17 @@ add_library(libc_static STATIC
 	$<TARGET_OBJECTS:libc-sys_dyld>
 	$<TARGET_OBJECTS:libc-threads_dyld>
 	$<TARGET_OBJECTS:libc-hwplat_dyld>
+	$<TARGET_OBJECTS:libc-locale>
 	$<TARGET_OBJECTS:libc-stdio>
+	$<TARGET_OBJECTS:libc-stdtime>
+	$<TARGET_OBJECTS:libc-gdtoa>
+	$<TARGET_OBJECTS:libc-secure>
+	$<TARGET_OBJECTS:libc-os>
 	$<TARGET_OBJECTS:libc-stdio_extsn>
 	$<TARGET_OBJECTS:libc-pthreads>
 	platform/OSAtomic.c)
 add_dependencies(libc_static ranlib x86_64-apple-darwin11-ar)
+set_target_properties(libc_static PROPERTIES COMPILE_FLAGS "-ffunction-sections")
 
 # TODO: see ./xcodescripts/variants.xcconfig
 

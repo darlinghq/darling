@@ -258,9 +258,15 @@ void pthread_workqueue_atfork_prepare(void);
 void pthread_workqueue_atfork_parent(void);
 void pthread_workqueue_atfork_child(void);
 
+#ifndef VARIANT_DYLD
 extern void dispatch_atfork_prepare(void);
 extern void dispatch_atfork_parent(void);
 extern void dispatch_atfork_child(void);
+#else
+#define dispatch_atfork_prepare()
+#define dispatch_atfork_parent()
+#define dispatch_atfork_child()
+#endif
 
 /* workq_kernreturn commands */
 #define WQOPS_QUEUE_ADD 1

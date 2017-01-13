@@ -34,7 +34,7 @@ target_link_libraries(system_kernel system_duct)
 add_library(system_kernel_static STATIC
 	$<TARGET_OBJECTS:libsyscall>
 	#$<TARGET_OBJECTS:kqueue>
-	$<TARGET_OBJECTS:emulation>
+	$<TARGET_OBJECTS:emulation_dyld>
 	${extra_objs}
 	$<TARGET_OBJECTS:mach_server_client>)
 

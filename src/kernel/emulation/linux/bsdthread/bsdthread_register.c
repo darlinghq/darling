@@ -1,6 +1,7 @@
 #include "bsdthread_register.h"
 #include "../base.h"
 #include "../errno.h"
+#include "../../../../../platform-include/sys/errno.h"
 #include <asm/unistd.h>
 
 int pthread_obj_size;

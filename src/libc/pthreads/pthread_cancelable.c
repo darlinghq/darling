@@ -79,7 +79,7 @@ extern int __sigwait(const sigset_t *set, int *sig);
 #ifdef VARIANT_CANCELABLE
 extern int __semwait_signal(int cond_sem, int mutex_sem, int timeout, int relative, __int64_t tv_sec, __int32_t tv_nsec);
 #else
-extern int __semwait_signal(int cond_sem, int mutex_sem, int timeout, int relative, __int64_t tv_sec, __int32_t tv_nsec)  __asm__("__semwait_signal_nocancel");
+extern int __semwait_signal(int cond_sem, int mutex_sem, int timeout, int relative, __int64_t tv_sec, __int32_t tv_nsec)  __asm__("___semwait_signal_nocancel");
 #endif
 
 /*

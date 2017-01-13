@@ -246,7 +246,7 @@ kern_return_t _kernelrpc_mach_vm_map_trap(
 	if (!(flags & VM_FLAGS_ANYWHERE))
 		posix_flags |= MAP_FIXED;
 	if ((flags >> 24) == VM_MEMORY_REALLOC)
-		addr = mremap(((char*)*address) - 0x1000, 0x1000, 0x1000 + size, 0);
+		addr = __linux_mremap(((char*)*address) - 0x1000, 0x1000, 0x1000 + size, 0);
 	else
 		addr = mmap(*address, size, prot, posix_flags, -1, 0);
 	

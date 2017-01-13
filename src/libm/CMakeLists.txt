@@ -160,3 +160,7 @@ set_property(TARGET system_m APPEND_STRING PROPERTY LINK_FLAGS
 
 install(TARGETS system_m DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 
+set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
+set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
+add_library(system_m_static STATIC ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
+add_dependencies(system_m_static ranlib x86_64-apple-darwin11-ar)

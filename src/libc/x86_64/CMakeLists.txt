@@ -96,16 +96,22 @@ add_library(libc-hwplat_dyld OBJECT
 	pthreads/pthread_self.S
 	pthreads/pthread_getspecific.S
 	pthreads/preempt.S
+	pthreads/thread_start.S
+	pthreads/start_wqthread.S
 	string/__bzero.S
 	string/bcopy_sse3x.S
 	string/bcopy_sse42.S
+	string/bcopy.c
 	string/bzero_sse2.S
+	string/bzero_sse42.S
+	string/bzero.c
 	string/ffs.S
 	string/longcopy_sse3x.S
 	string/strcmp.S
 	string/strlen.S
 	string/strncpy.S
 	string/memmove.c
+	string/memcpy.c
 	sys/OSAtomic.S
 	sys/atomic.c
 	sys/spinlocks.c

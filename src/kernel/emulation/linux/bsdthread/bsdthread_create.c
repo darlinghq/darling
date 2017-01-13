@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "../../../../../platform-include/sys/mman.h"
 #include "../../../../libdyld/threads.h"
+#include "../../../../../platform-include/sys/errno.h"
 #include "../mman/mman.h"
 #include "../simple.h"
 
@@ -26,6 +27,7 @@ extern void *memset(void *s, int c, size_t n);
 long sys_bsdthread_create(void* thread_start, void* arg,
 		void** stack, void* pthread, uint32_t flags)
 {
+#ifndef VARIANT_DYLD // dyld doesn't create threads
 	int ret;
 	unsigned long stacksize = 0;
 
@@ -51,6 +53,9 @@ long sys_bsdthread_create(void* thread_start, void* arg,
 		return errno_linux_to_bsd(ret);
 
 	return pthread;
+#else
+	return -ENOSYS;
+#endif
 }
 
 void* thread_stack_allocate(unsigned long stacksize)

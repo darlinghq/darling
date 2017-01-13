@@ -43,5 +43,5 @@ SET_TARGET_PROPERTIES(libc-pthreads_legacy PROPERTIES COMPILE_FLAGS "-DBUILDING_
 
 # DYLD variant
 
-add_library(libc-pthreads_dyld OBJECT pthread.c pthread_mutex.c pthread_tsd.c)
+add_library(libc-pthreads_dyld OBJECT pthread.c pthread_mutex.c pthread_tsd.c pthread_cond.c pthread_cancelable.c)
 SET_TARGET_PROPERTIES(libc-pthreads_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")

@@ -30,10 +30,6 @@
 
 #include "SYS.h"
 
-#ifdef DARLING
-#	define ___gettimeofday __gettimeofday
-#endif
-
 #if defined(__i386__)
 
 /*

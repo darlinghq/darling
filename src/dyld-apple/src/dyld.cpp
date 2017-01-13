@@ -5329,7 +5329,7 @@ static void loadInsertedDylib(const char* path)
 static void configureProcessRestrictions(const macho_header* mainExecutableMH)
 {
     uint32_t flags;
-#if TARGET_IPHONE_SIMULATOR
+#if TARGET_IPHONE_SIMULATOR || defined(DARLING)
 	sEnvMode = envAll;
 	gLinkContext.requireCodeSignature = true;
 #elif __IPHONE_OS_VERSION_MIN_REQUIRED

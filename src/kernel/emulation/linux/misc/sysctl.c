@@ -208,8 +208,10 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 			case KERN_OSTYPE:
 			{
 				const char* s = NULL;
+#ifndef VARIANT_DYLD
 				if (version_conf_sect != NULL)
 					s = iniconfig_valmap_get(version_conf_sect, "sysname");
+#endif
 				if (s == NULL)
 					s = lu.sysname;
 
@@ -222,8 +224,10 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 			case KERN_OSRELEASE:
 			{
 				const char* s = NULL;
+#ifndef VARIANT_DYLD
 				if (version_conf_sect != NULL)
 					s = iniconfig_valmap_get(version_conf_sect, "release");
+#endif
 				if (s == NULL)
 					s = lu.release;
 
@@ -233,8 +237,10 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 			case KERN_VERSION:
 			{
 				const char* s = NULL;
+#ifndef VARIANT_DYLD
 				if (version_conf_sect != NULL)
 					s = iniconfig_valmap_get(version_conf_sect, "version");
+#endif
 				if (s == NULL)
 					s = lu.version;
 
@@ -252,6 +258,7 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 
 static void need_uname(void)
 {
+#ifndef VARIANT_DYLD
 	// Cache __linux_uname results
 	if (!lu.sysname[0])
 	{
@@ -260,6 +267,7 @@ static void need_uname(void)
 		if (version_conf != NULL)
 			version_conf_sect = iniconfig_getsection(version_conf, "uname");
 	}
+#endif
 }
 
 extern unsigned long strlcpy(char* dst, const char* src, unsigned long size);

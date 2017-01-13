@@ -237,7 +237,9 @@ SET_TARGET_PROPERTIES(libc-gen_pre1050 PROPERTIES COMPILE_FLAGS "-DBUILDING_VARI
 # DYLD variants
 # ***
 
-add_library(libc-gen_dyld OBJECT _simple.c FreeBSD/arc4random.c FreeBSD/closedir.c dirfd.c FreeBSD/getcwd.c FreeBSD/getpagesize.c nanosleep.c FreeBSD/opendir.c FreeBSD/readdir.c FreeBSD/scandir.c FreeBSD/sysctl.c FreeBSD/sysctlbyname.c FreeBSD/telldir.c FreeBSD/usleep.c)
+add_library(libc-gen_dyld OBJECT _simple.c FreeBSD/arc4random.c FreeBSD/closedir.c dirfd.c FreeBSD/getcwd.c FreeBSD/getpagesize.c nanosleep.c FreeBSD/opendir.c
+	FreeBSD/readdir.c FreeBSD/scandir.c FreeBSD/sysctl.c FreeBSD/sysctlbyname.c FreeBSD/telldir.c FreeBSD/usleep.c FreeBSD/sysconf.c
+	FreeBSD/isatty.c FreeBSD/termios.c FreeBSD/getprogname.c errlst.c platfunc.c)
 
 SET_TARGET_PROPERTIES(libc-gen_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")
 
