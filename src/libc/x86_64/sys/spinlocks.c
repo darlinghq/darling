@@ -25,7 +25,7 @@
 #include <machine/cpu_capabilities.h>
 #include "platfunc.h"
 
-#ifndef DARLING__DISABLED
+#ifndef VARIANT_DYLD
 #define	RESOLVER_UP_MP(symbol)	\
 	PLATFUNC_DESCRIPTOR_PROTOTYPE(symbol, up); \
 	PLATFUNC_DESCRIPTOR_PROTOTYPE(symbol, mp); \
@@ -42,7 +42,7 @@
 
 #else
 
-#define RESOLVER_UP_MP(symbol) __asm__(".globl " #symbol); __asm__(#symbol " = " #symbol "$VARIANT$mp"); //  __weak_reference(symbol ## $VARIANT$mp, symbol);
+#define RESOLVER_UP_MP(symbol) __asm__(".globl _" #symbol); __asm__("_"#symbol ": jmp _" #symbol "$VARIANT$mp"); //  __weak_reference(symbol ## $VARIANT$mp, symbol);
 
 #endif
 

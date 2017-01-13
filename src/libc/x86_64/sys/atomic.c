@@ -25,7 +25,7 @@
 #include <machine/cpu_capabilities.h>
 #include "platfunc.h"
 
-#ifndef DARLING__DISABLED
+#ifndef VARIANT_DYLD
 #define	RESOLVER_UP_MP(symbol)	\
 	PLATFUNC_DESCRIPTOR(symbol, up, kUP, 0); \
 	PLATFUNC_DESCRIPTOR(symbol, mp, 0, kUP); \
@@ -40,8 +40,8 @@
 		return find_platform_function((const platfunc_descriptor**) symbol ## _platfunc_descriptors); \
 	}
 
-#else // ELF doesn't support symbol resolvers
-#define RESOLVER_UP_MP(symbol) __asm__(".globl " #symbol); __asm__(#symbol ": jmp " #symbol "$VARIANT$mp@PLT");
+#else
+#define RESOLVER_UP_MP(symbol) __asm__(".globl _" #symbol); __asm__("_"#symbol ": jmp _" #symbol "$VARIANT$mp");
 #endif
 
 RESOLVER_UP_MP(OSAtomicAnd32)

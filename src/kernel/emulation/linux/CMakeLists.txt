@@ -28,7 +28,7 @@ set(emulation_sources
 	unistd/fdatasync.c
 	unistd/dup.c
 	unistd/dup2.c
-	unistd/_exit.c
+	unistd/exit.c
 	unistd/close.c
 	unistd/fchdir.c
 	unistd/fchown.c

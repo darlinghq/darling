@@ -62,6 +62,7 @@ add_darling_executable(system_loader
 	src/dyldStartup.S
 	src/stub_binding_helper.S
 	src/start_glue.S
+	hell.c
 )
 
 #use_ld64(system_loader)

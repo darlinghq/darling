@@ -118,3 +118,5 @@ add_library(libc-hwplat_dyld OBJECT
 	sys/i386_gettimeofday_asm.S
 	sys/spinlocks_asm.S)
 
+set_target_properties(libc-hwplat_dyld PROPERTIES COMPILE_FLAGS "-DVARIANT_DYLD")
+
