@@ -4,54 +4,21 @@ cmake_minimum_required(VERSION 2.4.0)
 
 if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
+	cmake_policy(SET CMP0005 NEW)
 endif(COMMAND cmake_policy)
 
 enable_language(C ASM)
 
-set(dyld_SRCS
-	dyld.cpp
-	dirstructure.cpp
-)
-
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ggdb -O0")
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-#SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-# Needed because libdyld references pthread funcs in libsystem_c.so
-SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--unresolved-symbols=ignore-in-shared-libs")
-
-add_definitions(-D_GNU_SOURCE)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libmach-o)
-
-# if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
-
-    add_definitions(-DHAS_DEBUG_HELPERS)
-    add_definitions(-DHAS_TLS_SUPPORT)
-
-# endif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
-
-
-add_executable(dyld-bin ${dyld_SRCS})
-set_target_properties(dyld-bin PROPERTIES OUTPUT_NAME dyld${SUFFIX})
-target_link_libraries(dyld-bin dyld darling-util mach-o)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
+add_definitions(-DINSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}" -D_GNU_SOURCE)
 
 add_executable(darling darling.c)
 
-if (NOT DARLING_NO_EXECUTABLES)
-	add_executable(dyldd dyldd.cpp)
-	target_link_libraries(dyldd dyld darling-util mach-o)
-	install(TARGETS dyldd DESTINATION bin)
-	install(TARGETS darling DESTINATION bin
-		PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID)
-	add_library(dexe_startup STATIC darling-so-start.S)
-endif (NOT DARLING_NO_EXECUTABLES)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-	install(TARGETS dyld-bin DESTINATION bin)
+set(mldr_sources
+	mldr.c
+)
+add_executable(mldr ${mldr_sources})
+target_link_libraries(mldr -lpthread -ldl)
 
-if (BITS EQUAL 64)
-	add_executable(dyld-multilib dyld-multilib.c)
-	set_target_properties(dyld-multilib PROPERTIES OUTPUT_NAME dyld)
-	install(TARGETS dyld-multilib DESTINATION bin)
-endif (BITS EQUAL 64)
