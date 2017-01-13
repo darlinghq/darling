@@ -1,5 +1,4 @@
 #define ioctl __real_ioctl
-#define PRIVATE
 #include <mach/mach_traps.h>
 #include <mach/vm_statistics.h>
 #include <mach/kern_return.h>

@@ -14,7 +14,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/wrappers/libproc")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-add_definitions(-DPRIVATE -D__DARWIN_C_LEVEL=20150101)
+add_definitions(-DPRIVATE=1 -D__DARWIN_C_LEVEL=20150101)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
 #add_definitions(-DKERNEL)
 
