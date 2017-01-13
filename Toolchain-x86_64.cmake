@@ -6,8 +6,7 @@ SET(CMAKE_CXX_COMPILER clang++)
 SET(BITS 64)
 
 if (EXISTS "/etc/debian_version")
-	SET (CMAKE_INSTALL_LIBDIR "lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+	SET (CMAKE_INSTALL_LIBDIR "lib/x86_64-linux-gnu")
 else (EXISTS "/etc/debian_version")
 	SET (CMAKE_INSTALL_LIBDIR "lib64")
 endif (EXISTS "/etc/debian_version")
-
