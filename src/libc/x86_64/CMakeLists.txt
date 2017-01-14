@@ -92,7 +92,7 @@ set(x86_64_sources ${x86_64_sources}
 add_library(libc-hwplat OBJECT ${x86_64_sources})
 
 add_library(libc-hwplat_dyld OBJECT
-	pthreads/pthread_set_self.S
+	#pthreads/pthread_set_self.S # in system_kernel
 	pthreads/pthread_self.S
 	pthreads/pthread_getspecific.S
 	pthreads/preempt.S

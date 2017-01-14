@@ -67,6 +67,10 @@ set(syscall_legacy_sources
 	wrappers/legacy/socketpair.c
 	)
 
+set(syscall_dynamic_sources
+	wrappers/_libc_funcptr.c
+	wrappers/_libkernel_init.c)
+
 set(syscall_sources
 	wrappers/libproc/libproc.c
 	wrappers/libproc/proc_listpidspath.c
@@ -80,8 +84,6 @@ set(syscall_sources
 	#wrappers/guarded_open_np.c
 	wrappers/init_cpu_capabilities.c
 	wrappers/ioctl.c
-	wrappers/_libc_funcptr.c
-	wrappers/_libkernel_init.c
 	wrappers/mach_approximate_time.c
 	wrappers/open_dprotected_np.c
 	wrappers/posix_sem_obsolete.c
@@ -985,6 +987,10 @@ foreach (file IN ITEMS ${syscall_legacy_sources})
 endforeach(file)
 
 add_library(libsyscall OBJECT ${syscall_sources})
+add_library(libsyscall_dynamic OBJECT ${syscall_dynamic_sources})
+
+add_library(libsyscall_static OBJECT wrappers/_libc_funcptr.c)
+set_target_properties(libsyscall_static PROPERTIES COMPILE_FLAGS "-DVARIANT_DYLD")
 
 # For i386
 #add_library(libsyscall_legacy_extra OBJECT wrappers/legacy/select.c)

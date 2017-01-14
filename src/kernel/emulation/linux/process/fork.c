@@ -16,8 +16,8 @@ long sys_fork(void)
 #endif
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
-	else if (ret == 0)
-		mach_driver_init(); // re-open /dev/mach
+	//else if (ret == 0)
+	//	mach_driver_init(); // re-open /dev/mach
 
 	return ret;
 }

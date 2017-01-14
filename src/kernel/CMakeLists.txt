@@ -25,6 +25,7 @@ add_subdirectory(mach_server/client)
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_kernel.dylib")
 add_darling_library(system_kernel SHARED
 	$<TARGET_OBJECTS:libsyscall>
+	$<TARGET_OBJECTS:libsyscall_dynamic>
 	#$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:emulation>
 	${extra_objs}
@@ -33,6 +34,7 @@ target_link_libraries(system_kernel system_duct)
 
 add_library(system_kernel_static STATIC
 	$<TARGET_OBJECTS:libsyscall>
+	$<TARGET_OBJECTS:libsyscall_static>
 	#$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:emulation_dyld>
 	${extra_objs}

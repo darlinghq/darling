@@ -118,6 +118,8 @@ _mach_fork_child(void)
 void
 mach_init_doit(void)
 {
+	mach_driver_init();
+
 	// Initialize cached mach ports defined in mach_init.h
 	mach_task_self_ = task_self_trap();
 	_task_reply_port = mach_reply_port();

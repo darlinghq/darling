@@ -48,6 +48,6 @@ __libkernel_init(_libkernel_functions_t fns,
 	if (fns->dlsym) {
 		_dlsym = fns->dlsym;
 	}
-	mach_driver_init();
+	
 	mach_init();
 }
