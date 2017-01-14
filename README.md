@@ -52,6 +52,12 @@ Arch Linux (4.8):
 $ sudo pacman -S cmake clang flex icu fuse
 ```
 
+Fedora (25):
+
+```
+$ sudo dnf install cmake clang bison flex fuse-devel systemd-devel kernel-devel libxml2-devel libicu-devel openssl-devel bzip2-devel
+```
+
 ````
 cd darling
 mkdir -p build/x86-64
