@@ -49,7 +49,7 @@ $ sudo apt-get install cmake clang bison flex xz-utils libfuse-dev libxml2-dev l
 Arch Linux (4.8):
 
 ```
-$ sudo pacman -S cmake clang flex icu fuse
+$ sudo pacman -S make cmake clang flex bison icu fuse linux-headers
 ```
 
 Fedora (25):
