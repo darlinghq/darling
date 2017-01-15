@@ -32,6 +32,9 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 				case 's':
 				{
 					const char* str = va_arg(vl, const char*);
+					if (!str)
+						str = "(null)";
+
 					while (*str)
 					{
 						*buf++ = *str;
@@ -124,6 +127,64 @@ void __simple_sprintf(char *buffer, const char* format, ...)
 	va_start(vl, format);
 	__simple_vsprintf(buffer, format, vl);
 	va_end(vl);
+}
+
+#ifdef isdigit
+#undef isdigit
+#endif
+
+static int isdigit(char c)
+{
+	return c >= '0' && c <= '9';
+}
+static int isdigit16(char c)
+{
+	if (isdigit(c))
+		return 1;
+	if (c >= 'a' && c <= 'f')
+		return 1;
+	if (c >= 'A' && c <= 'F')
+		return 1;
+	return 0;
+}
+
+unsigned long long __simple_atoi(const char* str, const char** endp)
+{
+	unsigned long long value = 0;
+
+	while (isdigit(*str))
+	{
+		value *= 10;
+		value += *str - '0';
+		str++;
+	}
+	if (endp)
+		*endp = str;
+
+	return value;
+}
+
+unsigned long long __simple_atoi16(const char* str, const char** endp)
+{
+	unsigned long long value = 0;
+
+	while (isdigit16(*str))
+	{
+		value *= 16;
+
+		if (*str >= '0' && *str <= '9')
+			value += *str - '0';
+		else if (*str >= 'a' && *str <= 'f')
+			value += 10 + (*str - 'a');
+		else if (*str >= 'A' && *str < 'F')
+			value += 10 + (*str - 'A');
+
+		str++;
+	}
+	if (endp)
+		*endp = str;
+
+	return value;
 }
 
 extern void *memmove(void *dest, const void *src, __SIZE_TYPE__ n);

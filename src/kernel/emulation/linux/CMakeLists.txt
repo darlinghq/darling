@@ -15,6 +15,7 @@ set(emulation_sources
 	simple.c
 	errno.c
 	tls.c
+	readline.c
 	unistd/write.c
 	unistd/read.c
 	unistd/pread.c
@@ -89,6 +90,7 @@ set(emulation_sources
 	signal/sig_restorer.S
 	signal/sigsuspend.c
 	misc/syscall.c
+	misc/shared_region_check_np.c
 	misc/ioctl.c
 	misc/thread_selfid.c
 	misc/proc_info.c

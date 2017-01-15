@@ -69,6 +69,7 @@
 #include "process/waitid.h"
 #include "process/execve.h"
 #include "misc/getlogin.h"
+#include "misc/shared_region_check_np.h"
 #include "misc/ioctl.h"
 #include "misc/getrlimit.h"
 #include "misc/setrlimit.h"
@@ -279,6 +280,7 @@ void* __bsd_syscall_table[600] = {
 	[244] = sys_posix_spawn,
 	[282] = sys_chmod_extended,
 	[283] = sys_fchmod_extended,
+	[294] = sys_shared_region_check_np,
 	[301] = sys_psynch_mutexwait,
 	[302] = sys_psynch_mutexdrop,
 	[303] = sys_psynch_cvbroad,
