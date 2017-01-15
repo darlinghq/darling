@@ -77,6 +77,7 @@
 #include "misc/proc_info.h"
 #include "misc/gethostuuid.h"
 #include "misc/getrusage.h"
+#include "misc/syscall.h"
 #include "synch/semwait_signal.h"
 #include "fcntl/open.h"
 #include "fcntl/fcntl.h"
@@ -142,7 +143,8 @@
 #include "conf/pathconf.h"
 #include "conf/fpathconf.h"
 
-void* __bsd_syscall_table[512] = {
+void* __bsd_syscall_table[600] = {
+	[0] = sys_syscall,
 	[1] = sys_exit,
 	[2] = sys_fork,
 	[3] = sys_read,

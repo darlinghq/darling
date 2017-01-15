@@ -36,5 +36,6 @@ target_link_libraries(unwind PRIVATE system_c keymgr)
 set_target_properties(unwind PROPERTIES LINKER_LANGUAGE C)
 
 add_library(unwind_static STATIC ${libunwind_sources})
+set_target_properties(unwind_static PROPERTIES COMPILE_FLAGS "-DNDEBUG=1")
 
 install(TARGETS unwind DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)

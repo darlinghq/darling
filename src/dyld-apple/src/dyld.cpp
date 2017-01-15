@@ -56,6 +56,7 @@
 #include <_simple.h>
 //#include <os/lock_private.h>
 #include <System/machine/cpu_capabilities.h>
+#include <signal.h>
 //#include <System/sys/reason.h>
 //#include <kern/kcdata.h>
 #include <sandbox.h>
@@ -4494,7 +4495,7 @@ void halt(const char* message)
 	strlcpy(truncMessage, message, EXIT_REASON_USER_DESC_MAX_LEN);
 	abort_with_payload(OS_REASON_DYLD, dyld::gProcessInfo->errorKind ? dyld::gProcessInfo->errorKind : DYLD_EXIT_REASON_OTHER, payloadBuffer, payloadSize, truncMessage, 0);
 #endif
-	abort();
+	kill(0, SIGABRT);
 }
 
 static void setErrorStrings(unsigned errorCode, const char* errorClientOfDylibPath,

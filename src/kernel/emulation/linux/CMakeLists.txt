@@ -88,6 +88,7 @@ set(emulation_sources
 	signal/sigprocmask.c
 	signal/sig_restorer.S
 	signal/sigsuspend.c
+	misc/syscall.c
 	misc/ioctl.c
 	misc/thread_selfid.c
 	misc/proc_info.c

@@ -34,6 +34,7 @@ int __linux_syscall(int nr, ...);
 #endif
 
 long __darling_bsd_syscall(int nr, ...);
+long __unknown_syscall(int nr, ...);
 
 #endif
 
