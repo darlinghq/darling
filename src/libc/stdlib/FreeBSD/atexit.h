@@ -33,4 +33,12 @@
 /* must be at least 32 to guarantee ANSI conformance */
 #define	ATEXIT_SIZE	32
 
+struct __cxa_range_t {
+	const void* addr;
+	size_t length;
+};
+
 void __cxa_finalize(const void *dso);
+
+void __cxa_finalize_ranges(const struct __cxa_range_t ranges[],
+						   unsigned int count);

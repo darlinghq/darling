@@ -37,9 +37,11 @@ static char sccsid[] = "@(#)atexit.c	8.2 (Berkeley) 7/3/94";
 __FBSDID("$FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.8 2007/01/09 00:28:09 imp Exp $");
 
 #include "namespace.h"
+#include <errno.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <assert.h>
 #include <pthread.h>
 #if defined(__DYNAMIC__) || defined (__BLOCKS__)
 #include <dlfcn.h>
@@ -49,8 +51,12 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.8 2007/01/09 00:28:09 imp E
 
 #ifdef __BLOCKS__
 #include <Block.h>
+#include <Block_private.h>
 #endif /* __BLOCKS__ */
 #include "libc_private.h"
+#include <os/alloc_once_private.h>
+
+#include <TargetConditionals.h>
 
 #define	ATEXIT_FN_EMPTY	0
 #define	ATEXIT_FN_STD	1
@@ -82,7 +88,15 @@ struct atexit {
 };
 
 static struct atexit *__atexit;		/* points to head of LIFO stack */
-static int new_registration;
+static int __atexit_new_registration;
+
+__attribute__ ((visibility ("hidden")))
+void
+__atexit_init(void)
+{
+	__atexit = os_alloc_once(OS_ALLOC_ONCE_KEY_LIBSYSTEM_C,
+			sizeof(struct atexit), NULL);
+}
 
 /*
  * Register the function described by 'fptr' to be called at application
@@ -92,13 +106,10 @@ static int new_registration;
 static int
 atexit_register(struct atexit_fn *fptr)
 {
-	static struct atexit __atexit0;	/* one guaranteed table */
-	struct atexit *p;
-
+	struct atexit *p = __atexit;
+	assert(p);
 	_MUTEX_LOCK(&atexit_mutex);
-	if ((p = __atexit) == NULL)
-		__atexit = p = &__atexit0;
-	else while (p->ind >= ATEXIT_SIZE) {
+	while (p->ind >= ATEXIT_SIZE) {
 		struct atexit *old__atexit;
 		old__atexit = __atexit;
 	        _MUTEX_UNLOCK(&atexit_mutex);
@@ -118,7 +129,7 @@ atexit_register(struct atexit_fn *fptr)
 		__atexit = p;
 	}
 	p->fns[p->ind++] = *fptr;
-	new_registration = 1;
+	__atexit_new_registration = 1;
 	_MUTEX_UNLOCK(&atexit_mutex);
 	return 0;
 }
@@ -130,20 +141,20 @@ int
 atexit(void (*func)(void))
 {
 	struct atexit_fn fn;
-	struct dl_info info;
 	int error;
 
 	fn.fn_type = ATEXIT_FN_STD;
 	fn.fn_ptr.std_func = func;
 	fn.fn_arg = NULL;
-#if defined(__DYNAMIC__)
-	if ( dladdr(func, &info) )
-		fn.fn_dso = info.dli_fbase;
-	else 
-		fn.fn_dso = NULL;
-#else /* ! defined(__DYNAMIC__) */
 	fn.fn_dso = NULL;
-#endif /* defined(__DYNAMIC__) */
+
+#if defined(__DYNAMIC__) && !TARGET_OS_IPHONE
+	// <rdar://problem/14596032&15173956>
+	struct dl_info info;
+	if (dladdr(func, &info)) {
+		fn.fn_dso = info.dli_fbase;
+	}
+#endif
 
  	error = atexit_register(&fn);	
 	return (error);
@@ -154,20 +165,12 @@ int
 atexit_b(void (^block)(void))
 {
 	struct atexit_fn fn;
-	struct dl_info info;
 	int error;
 
 	fn.fn_type = ATEXIT_FN_BLK;
 	fn.fn_ptr.block = Block_copy(block);
 	fn.fn_arg = NULL;
-#if defined(__DYNAMIC__)
-	if ( dladdr(block, &info) )
-		fn.fn_dso = info.dli_fbase;
-	else 
-		fn.fn_dso = NULL;
-#else /* ! defined(__DYNAMIC__) */
 	fn.fn_dso = NULL;
-#endif /* defined(__DYNAMIC__) */
 
  	error = atexit_register(&fn);	
 	return (error);
@@ -193,6 +196,101 @@ __cxa_atexit(void (*func)(void *), void *arg, void *dso)
 	return (error);
 }
 
+static bool
+__cxa_in_range(const struct __cxa_range_t ranges[],
+			   unsigned int count,
+			   const void* fn)
+{
+	uintptr_t addr = (uintptr_t)fn;
+
+	unsigned int i;
+	for (i = 0; i < count; ++i) {
+		const struct __cxa_range_t *r = &ranges[i];
+		if (addr < (uintptr_t)r->addr) {
+			continue;
+		}
+		if (addr < ((uintptr_t)r->addr + r->length)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/*
+ * Call handlers registered via __cxa_atexit/atexit that are in a
+ * a range specified.
+ * Note: rangeCount==0, means call all handlers.
+ */
+void
+__cxa_finalize_ranges(const struct __cxa_range_t ranges[], unsigned int count)
+{
+	struct atexit *p;
+	struct atexit_fn *fn;
+	int n;
+	_MUTEX_LOCK(&atexit_mutex);
+
+restart:
+	for (p = __atexit; p; p = p->next) {
+		for (n = p->ind; --n >= 0;) {
+			fn = &p->fns[n];
+
+			if (fn->fn_type == ATEXIT_FN_EMPTY) {
+				continue; // already been called
+			}
+
+			// Verify that the entry is within the range being unloaded.
+			if (count > 0) {
+				if (fn->fn_type == ATEXIT_FN_CXA) {
+					// for __cxa_atexit(), call if *dso* is in range be unloaded
+					if (!__cxa_in_range(ranges, count, fn->fn_dso)) {
+						continue; // not being unloaded yet
+					}
+				} else if (fn->fn_type == ATEXIT_FN_STD) {
+					// for atexit, call if *function* is in range be unloaded
+					if (!__cxa_in_range(ranges, count,  fn->fn_ptr.std_func)) {
+						continue; // not being unloaded yet
+					}
+#ifdef __BLOCKS__
+				} else if (fn->fn_type == ATEXIT_FN_BLK) {
+					// for atexit_b, call if block code is in range be unloaded
+					void *a = ((struct Block_layout *)fn->fn_ptr.block)->invoke;
+					if (!__cxa_in_range(ranges, count, a)) {
+						continue; // not being unloaded yet
+					}
+#endif // __BLOCKS__
+				}
+			}
+
+			// Clear the entry to indicate that this handler has been called.
+			int fn_type = fn->fn_type;
+			fn->fn_type = ATEXIT_FN_EMPTY;
+
+			// Detect recursive registrations.
+			__atexit_new_registration = 0;
+			_MUTEX_UNLOCK(&atexit_mutex);
+
+			// Call the handler.
+			if (fn_type == ATEXIT_FN_CXA) {
+				fn->fn_ptr.cxa_func(fn->fn_arg);
+			} else if (fn_type == ATEXIT_FN_STD) {
+				fn->fn_ptr.std_func();
+#ifdef __BLOCKS__
+			} else if (fn_type == ATEXIT_FN_BLK) {
+				fn->fn_ptr.block();
+#endif // __BLOCKS__
+			}
+
+			// Call any recursively registered handlers.
+			_MUTEX_LOCK(&atexit_mutex);
+			if (__atexit_new_registration) {
+			    goto restart;
+			}
+		}
+	}
+	_MUTEX_UNLOCK(&atexit_mutex);
+}
+
+
 /*
  * Call all handlers registered with __cxa_atexit for the shared
  * object owning 'dso'.  Note: if 'dso' is NULL, then all remaining
@@ -201,40 +299,28 @@ __cxa_atexit(void (*func)(void *), void *arg, void *dso)
 void
 __cxa_finalize(const void *dso)
 {
-	struct atexit *p;
-	struct atexit_fn fn;
-	int n;
-
-	_MUTEX_LOCK(&atexit_mutex);
-restart:
-	for (p = __atexit; p; p = p->next) {
-		for (n = p->ind; --n >= 0;) {
-			if (p->fns[n].fn_type == ATEXIT_FN_EMPTY)
-				continue; /* already been called */
-			if (dso != NULL && dso != p->fns[n].fn_dso)
-				continue; /* wrong DSO */
-			fn = p->fns[n];
-			/*
-			  Mark entry to indicate that this particular handler
-			  has already been called.
-			*/
-			p->fns[n].fn_type = ATEXIT_FN_EMPTY;
-			new_registration = 0;
-		        _MUTEX_UNLOCK(&atexit_mutex);
-		
-			/* Call the function of correct type. */
-			if (fn.fn_type == ATEXIT_FN_CXA)
-				fn.fn_ptr.cxa_func(fn.fn_arg);
-			else if (fn.fn_type == ATEXIT_FN_STD)
-				fn.fn_ptr.std_func();
-#ifdef __BLOCKS__
-			else if (fn.fn_type == ATEXIT_FN_BLK)
-				fn.fn_ptr.block();
-#endif /* __BLOCKS__ */
-			_MUTEX_LOCK(&atexit_mutex);
-			if (new_registration)
-			    goto restart;
-		}
+	if (dso != NULL) {
+		// Note: this should not happen as only dyld should be calling
+		// this and dyld has switched to call __cxa_finalize_ranges directly.
+		struct __cxa_range_t range;
+		range.addr = dso;
+		range.length = 1;
+		__cxa_finalize_ranges(&range, 1);
+	} else {
+		__cxa_finalize_ranges(NULL, 0);
 	}
-	_MUTEX_UNLOCK(&atexit_mutex);
 }
+
+#if !TARGET_IPHONE_SIMULATOR && (__i386__ || __x86_64__)
+/*
+ * Support for thread_local in C++, using existing _tlv_atexit() in libdyld
+ */
+
+void _tlv_atexit(void(*f)(void*), void* arg); /* in libdyld */
+
+void
+__cxa_thread_atexit(void(*f)(void*), void* arg)
+{
+    _tlv_atexit(f, arg);
+}
+#endif

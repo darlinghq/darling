@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 2.4.0)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D__DYNAMIC__ -D__BLOCKS__ -fblocks -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
 
+include_directories(${CMAKE_SOURCE_DIR}/src/external/compiler-rt/lib/BlocksRuntime)
+
 set(stdlib_sources a64l.c grantpt.c l64a.c qsort_b-fbsd.c)
 
 set(stdlib_sources ${stdlib_sources}
