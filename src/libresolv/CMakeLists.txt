@@ -59,5 +59,5 @@ add_darling_library(resolv-darwin SHARED ${resolv_sources})
 set_target_properties(resolv-darwin PROPERTIES OUTPUT_NAME "resolv.9")
 #target_link_libraries(resolv-darwin PRIVATE system)
 
-install(TARGETS resolv-darwin DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS resolv-darwin DESTINATION libexec/darling/usr/lib)
 

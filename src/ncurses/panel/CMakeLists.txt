@@ -27,4 +27,4 @@ set(DYLIB_INSTALL_NAME "/usr/lib/libpanel.5.4.dylib")
 add_darling_library(panel SHARED ${panel_sources})
 target_link_libraries(panel system ncurses)
 
-install(TARGETS panel DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS panel DESTINATION libexec/darling/usr/lib)

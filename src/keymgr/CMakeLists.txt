@@ -25,4 +25,4 @@ set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ran
 add_library(keymgr_static STATIC ${keymgr_sources})
 add_dependencies(keymgr_static ranlib x86_64-apple-darwin11-ar)
 
-install(TARGETS keymgr DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS keymgr DESTINATION libexec/darling/usr/lib/system)

@@ -36,5 +36,5 @@ set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_malloc.dylib")
 add_darling_library(system_malloc SHARED ${libmalloc_sources})
 target_link_libraries(system_malloc PRIVATE system_c system_kernel system_dyld)
 
-install(TARGETS system_malloc DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_malloc DESTINATION libexec/darling/usr/lib/system)
 

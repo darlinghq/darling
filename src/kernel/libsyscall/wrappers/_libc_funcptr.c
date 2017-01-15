@@ -67,7 +67,9 @@ __attribute__((visibility("hidden")))
 void
 _pthread_exit_if_canceled(int error)
 {
-	return _libkernel_functions->_pthread_exit_if_canceled(error);
+#ifndef VARIANT_DYLD
+	_libkernel_functions->_pthread_exit_if_canceled(error);
+#endif
 }
 
 #ifndef VARIANT_DYLD

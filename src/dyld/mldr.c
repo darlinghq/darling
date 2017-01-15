@@ -29,6 +29,7 @@ static const char* dyld_path = INSTALL_PREFIX "/libexec/usr/lib/dyld";
 static void load64(int fd, uint64_t* entryPoint_out, uint64_t* mh_out);
 static void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out);
 static int native_prot(int prot);
+static void apply_root_path(char* path);
 
 int main(int argc, const char** argv)
 {
@@ -238,7 +239,7 @@ void load64(int fd, uint64_t* entryPoint_out, uint64_t* mh_out)
 			case LC_LOAD_DYLINKER:
 			{
 				struct dylinker_command* dy = (struct dylinker_command*) lc;
-				char path[256];
+				char path[4096];
 				size_t length = dy->cmdsize - dy->name.offset;
 
 				if (length > sizeof(path)-1)
@@ -249,6 +250,8 @@ void load64(int fd, uint64_t* entryPoint_out, uint64_t* mh_out)
 
 				memcpy(path, ((char*) dy) + dy->name.offset, length);
 				path[length] = '\0';
+
+				apply_root_path(path);
 
 				load(path, &entryPointDylinker, NULL);
 
@@ -267,7 +270,7 @@ void load64(int fd, uint64_t* entryPoint_out, uint64_t* mh_out)
 		*mh_out = (uint64_t) mappedHeader;
 }
 
-static int native_prot(int prot)
+int native_prot(int prot)
 {
 	int protOut = 0;
 
@@ -279,5 +282,45 @@ static int native_prot(int prot)
 		protOut |= PROT_EXEC;
 
 	return protOut;
+}
+
+// Enable the use of DYLD_ROOT_PATH also for dyld itself.
+// This is mainly used for testing.
+void apply_root_path(char* path)
+{
+	const char* roots = getenv("DYLD_ROOT_PATH");
+	char my_path[4096];
+	const char *p, *next;
+
+	if (!roots)
+		return;
+
+	p = roots;
+
+	do
+	{
+		next = strchr(p, ':');
+
+		if (next != NULL)
+		{
+			strncpy(my_path, p, next-p);
+			my_path[next-p] = '\0';
+			next++;
+		}
+		else
+		{
+			strcpy(my_path, p);
+		}
+
+		strcat(my_path, path);
+
+		if (access(my_path, R_OK) == 0)
+		{
+			// We've found the desired path in one of the roots, switch to it
+			strcpy(path, my_path);
+			break;
+		}
+	}
+	while (next != NULL);
 }
 

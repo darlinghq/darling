@@ -23,4 +23,4 @@ set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ran
 add_library(system_duct_static STATIC ${duct_sources})
 add_dependencies(system_duct_static ranlib x86_64-apple-darwin11-ar)
 
-install(TARGETS system_duct DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_duct DESTINATION libexec/darling/usr/lib/system)

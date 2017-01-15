@@ -9,9 +9,11 @@ extern char* getenv(const char* p);
 long sys_geteuid(void)
 {
 	int ret;
-	
+
+#ifndef VARIANT_DYLD
 	if (getenv("__FAKE_SETUID_ROOT") != NULL)
 		return 0;
+#endif
 
 #ifdef __NR_geteuid32
 	ret = LINUX_SYSCALL0(__NR_geteuid32);

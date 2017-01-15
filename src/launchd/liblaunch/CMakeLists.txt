@@ -28,5 +28,5 @@ set(DYLIB_INSTALL_NAME "/usr/lib/system/liblaunch.dylib")
 add_darling_library(launch SHARED ${launch_sources})
 target_link_libraries(launch PRIVATE system_c system_kernel)
 
-install(TARGETS launch DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS launch DESTINATION libexec/darling/usr/lib/system)
 

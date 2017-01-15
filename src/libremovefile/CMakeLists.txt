@@ -21,5 +21,5 @@ set(DYLIB_INSTALL_NAME "/usr/lib/system/libremovefile.dylib")
 add_darling_library(removefile SHARED ${removefile_sources})
 target_link_libraries(removefile system_c system_kernel system_dyld)
 
-install(TARGETS removefile DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS removefile DESTINATION libexec/darling/usr/lib/system)
 

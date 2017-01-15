@@ -70,4 +70,5 @@ set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
 set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -nostdlib -Wl,-e,__dyld_start")
 target_link_libraries(system_loader libc_static system_blocks_static unwind_static system_kernel_static system_m_static cxxabi_static keymgr_static compiler_rt_static system_duct_static)
 
-install(TARGETS system_dyld DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_dyld DESTINATION libexec/darling/usr/lib/system)
+install(TARGETS system_loader DESTINATION libexec/darling/usr/lib)

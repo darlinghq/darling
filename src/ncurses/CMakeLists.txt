@@ -23,4 +23,4 @@ add_subdirectory(ncurses)
 add_subdirectory(menu)
 add_subdirectory(panel)
 
-install(DIRECTORY terminfo DESTINATION share/darling)
+install(DIRECTORY terminfo DESTINATION libexec/darling/usr/share)

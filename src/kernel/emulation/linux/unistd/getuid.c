@@ -10,8 +10,10 @@ long sys_getuid(void)
 {
 	int ret;
 	
+#ifndef VARIANT_DYLD // dyld cannot call getenv
 	if (getenv("__FAKE_SETUID_ROOT") != NULL)
 		return 0;
+#endif
 
 #ifdef __NR_getuid32
 	ret = LINUX_SYSCALL0(__NR_getuid32);

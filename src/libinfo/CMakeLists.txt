@@ -39,6 +39,6 @@ add_darling_library(system_info SHARED $<TARGET_OBJECTS:info-util>
 )
 target_link_libraries(system_info PRIVATE system_c resolv-darwin system_dyld system_blocks libdispatch_shared system_notify)
 
-install(TARGETS system_info DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_info DESTINATION libexec/darling/usr/lib/system)
 install(FILES master.passwd DESTINATION libexec/darling/etc)
 

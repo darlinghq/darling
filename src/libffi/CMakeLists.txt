@@ -32,4 +32,4 @@ set(DYLIB_INSTALL_NAME "/usr/lib/libffi.dylib")
 add_darling_library(ffi SHARED ${ffi_SRCS})
 target_link_libraries(ffi system)
 
-install(TARGETS ffi DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS ffi DESTINATION libexec/darling/usr/lib)

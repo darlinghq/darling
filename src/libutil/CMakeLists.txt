@@ -29,5 +29,6 @@ set(util_SRCS
 set(DYLIB_INSTALL_NAME "/usr/lib/libutil1.0.dylib")
 add_darling_library(util SHARED ${util_SRCS})
 target_link_libraries(util PRIVATE system cxx)
+set_target_properties(util PROPERTIES OUTPUT_NAME "util1.0")
 
-install(TARGETS util DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS util DESTINATION libexec/darling/usr/lib)

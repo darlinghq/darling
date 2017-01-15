@@ -148,9 +148,11 @@ LEAF(pseudo, 0)					;\
 	.globl	cerror								;\
 LEAF(_#name, 0)								;\
 	movl	$ SYS_##name, %eax			;\
-	call __darling_bsd_syscall							;\
-	jnb		2f							;\
+	call	__darling_bsd_syscall							;\
+	cmpq	$-4095, %rax	;\
+	jb		2f							;\
 	movq	%rax, %rdi							;\
+	negq	%rdi	;\
 	BRANCH_EXTERN(_cerror)							;\
 2:
 
@@ -158,8 +160,10 @@ LEAF(_#name, 0)								;\
 	.globl	cerror								;\
 	movl	$ SYS_##name, %eax			;\
 	call __darling_bsd_syscall							;\
-	jnb		2f							;\
+	cmpq	$-4095, %rax	;\
+	jb		2f							;\
 	movq	%rax, %rdi							;\
+	negq	%rdi	;\
 	BRANCH_EXTERN(_##cerror)						;\
 2:
 

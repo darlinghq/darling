@@ -54,6 +54,7 @@ set(iconv_SRCS
 set(DYLIB_INSTALL_NAME "/usr/lib/libiconv.2.dylib")
 add_darling_library(iconv SHARED ${iconv_SRCS})
 target_link_libraries(iconv system)
+set_target_properties(iconv PROPERTIES OUTPUT_NAME "iconv.2")
 
-install(TARGETS iconv DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
-install(FILES charset.alias DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS iconv DESTINATION libexec/darling/usr/lib)
+install(FILES charset.alias DESTINATION libexec/darling/usr/lib)

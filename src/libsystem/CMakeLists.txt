@@ -56,7 +56,8 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libunwind \
 	-sub_library libdyld \
 	-sub_library libcompiler_rt \
-	-sub_library libsystem_coreservices")
+	-sub_library libsystem_coreservices \
+	-Wl,-dylib_compatibility_version,1.0.0")
 
-install(TARGETS system DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system DESTINATION libexec/darling/usr/lib)
 

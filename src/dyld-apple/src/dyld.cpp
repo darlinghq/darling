@@ -5330,7 +5330,7 @@ static void loadInsertedDylib(const char* path)
 static void configureProcessRestrictions(const macho_header* mainExecutableMH)
 {
     uint32_t flags;
-#if TARGET_IPHONE_SIMULATOR || defined(DARLING)
+#if TARGET_IPHONE_SIMULATOR
 	sEnvMode = envAll;
 	gLinkContext.requireCodeSignature = true;
 #elif __IPHONE_OS_VERSION_MIN_REQUIRED
@@ -5369,6 +5369,7 @@ static void configureProcessRestrictions(const macho_header* mainExecutableMH)
     if ( issetugid() || hasRestrictedSegment(mainExecutableMH) ) {
 		gLinkContext.processIsRestricted = true;
 	}
+#ifndef DARLING
 	if ( csops(0, CS_OPS_STATUS, &flags, sizeof(flags)) != -1 ) {
 		// On OS X CS_RESTRICT means the program was signed with entitlements
 		if ( ((flags & CS_RESTRICT) == CS_RESTRICT) && (csr_check(CSR_ALLOW_TASK_FOR_PID) != 0) ) {
@@ -5381,6 +5382,7 @@ static void configureProcessRestrictions(const macho_header* mainExecutableMH)
 			gLinkContext.processUsingLibraryValidation = true;
 		}
 	}
+#endif
 #endif
 }
 

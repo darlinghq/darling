@@ -142,7 +142,7 @@ add_darling_library(system_c SHARED
 	${extra_objs})
 target_link_libraries(system_c system_kernel system_m)
 
-install(TARGETS system_c DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_c DESTINATION libexec/darling/usr/lib/system)
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")

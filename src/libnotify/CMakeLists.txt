@@ -26,5 +26,5 @@ set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_notify.dylib")
 add_darling_library(system_notify SHARED ${notify_sources})
 target_link_libraries(system_notify system_c system_kernel system_blocks libdispatch_shared launch system_dyld)
 
-install(TARGETS system_notify DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_notify DESTINATION libexec/darling/usr/lib/system)
 

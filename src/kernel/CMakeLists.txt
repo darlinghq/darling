@@ -40,6 +40,6 @@ add_library(system_kernel_static STATIC
 	${extra_objs}
 	$<TARGET_OBJECTS:mach_server_client>)
 
-install(TARGETS system_kernel DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_kernel DESTINATION libexec/darling/usr/lib/system)
 
 add_dependencies(system_kernel migcom)

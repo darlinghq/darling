@@ -30,4 +30,4 @@ add_darling_library(system_copyfile SHARED ${copyfile_sources})
 set_target_properties(system_copyfile PROPERTIES OUTPUT_NAME "copyfile")
 target_link_libraries(system_copyfile PRIVATE system_kernel system_c system_blocks system_info system_dyld)
 
-install(TARGETS system_copyfile DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_copyfile DESTINATION libexec/darling/usr/lib/system)

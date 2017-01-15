@@ -41,4 +41,4 @@ set(DYLIB_INSTALL_NAME "/usr/lib/libmenu.5.4.dylib")
 add_darling_library(menu SHARED ${menu_sources})
 target_link_libraries(menu system ncurses)
 
-install(TARGETS menu DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS menu DESTINATION libexec/darling/usr/lib)

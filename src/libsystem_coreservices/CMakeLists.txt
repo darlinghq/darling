@@ -21,4 +21,4 @@ set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_coreservices.dylib")
 add_darling_library(system_coreservices SHARED dirhelper.c NSSystemDirectories.c)
 target_link_libraries(system_coreservices PRIVATE system_c system_dyld)
 
-install(TARGETS system_coreservices DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_coreservices DESTINATION libexec/darling/usr/lib/system)

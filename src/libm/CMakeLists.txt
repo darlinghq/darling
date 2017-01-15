@@ -158,7 +158,7 @@ set_property(TARGET system_m APPEND_STRING PROPERTY LINK_FLAGS
 	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
 #target_link_libraries(system_m)
 
-install(TARGETS system_m DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS system_m DESTINATION libexec/darling/usr/lib/system)
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")

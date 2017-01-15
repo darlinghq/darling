@@ -21,4 +21,4 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_library(sandbox SHARED sandbox.c)
 target_link_libraries(sandbox PRIVATE system)
 
-install(TARGETS sandbox DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS sandbox DESTINATION libexec/darling/usr/lib/system)

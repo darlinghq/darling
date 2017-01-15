@@ -93,5 +93,5 @@ add_darling_library(stdcxx SHARED ${libstdcxx_sources})
 target_link_libraries(stdcxx PRIVATE system cxxabi_shared)
 set_target_properties(stdcxx PROPERTIES OUTPUT_NAME "stdc++.6")
 
-install(TARGETS stdcxx DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS stdcxx DESTINATION libexec/darling/usr/lib)
 
