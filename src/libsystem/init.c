@@ -95,7 +95,7 @@ struct ProgramVars
 /*
  * libsyscall_initializer() initializes all of libSystem.dylib <rdar://problem/4892197>
  */
-//static
+static __attribute__((constructor))
 void libSystem_initializer(int argc, const char* argv[], const char* envp[] /*, const char* apple[], const struct ProgramVars* vars*/)
 {
     static const struct _libkernel_functions libkernel_funcs = {

@@ -12,7 +12,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_
 
 SET(duct_sources
 	commpage.c libnotify.c numcpus.c
-	CRGetCrashLogMessage.c acl.c bootstrap.c dyld.c dns_sd.c
+	CRGetCrashLogMessage.c acl.c bootstrap.c dns_sd.c
 	sa_dst_compare.c asl.c)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_duct.dylib")

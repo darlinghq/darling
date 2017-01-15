@@ -2379,6 +2379,9 @@ uintptr_t ImageLoaderMachO::reserveAnAddressRange(size_t length, const ImageLoad
 {
 	vm_address_t addr = 0;
 	vm_size_t size = length;
+	// In Darling, we're not the only ones doing memory mapping.
+	// Therefore, we cannot dictate addresses, because we could (would!) conflict with the ELF loader.
+#ifndef DARLING
 	// in PIE programs, load initial dylibs after main executable so they don't have fixed addresses either
 	if ( fgNextPIEDylibAddress != 0 ) {
 		 // add small (0-3 pages) random padding between dylibs
@@ -2391,6 +2394,7 @@ uintptr_t ImageLoaderMachO::reserveAnAddressRange(size_t length, const ImageLoad
 		}
 		fgNextPIEDylibAddress = 0;
 	}
+#endif
 	kern_return_t r = vm_alloc(&addr, size, VM_FLAGS_ANYWHERE | VM_MAKE_TAG(VM_MEMORY_DYLIB));
 	if ( r != KERN_SUCCESS ) 
 		throw "out of address space";
