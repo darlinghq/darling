@@ -134,6 +134,7 @@ if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(launchd/support)
 	add_subdirectory(external/openssh)
 	add_subdirectory(external/top)
+	add_subdirectory(external/perl)
 endif (NOT DARLING_NO_EXECUTABLES)
 
 ######################

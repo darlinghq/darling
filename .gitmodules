@@ -169,3 +169,6 @@
 [submodule "src/external/top"]
 	path = src/external/top
 	url = ../darling-top.git
+[submodule "src/external/perl"]
+	path = src/external/perl
+	url = ../darling-perl.git
