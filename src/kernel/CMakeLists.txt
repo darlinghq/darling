@@ -9,7 +9,14 @@ endif(COMMAND cmake_policy)
 add_subdirectory(emulation/linux)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -fblocks -ggdb")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -nostdinc -Wl,-undefined,suppress -Wl,-flat_namespace")
+
+# Why -bind_at_load is necessary:
+# I couldn't find something like -Bsymbolic in Apple's ld
+# -> internal functions are being resolved by dyld
+# -> dyld places stubs -> stubs go into dyld_stub_binder at first use
+# -> there is a temporary loss of 16-byte stack alignment in __darling_bsd_syscall
+# -> dyld_stub_binder checks for this and bails out with a SIGSEGV
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -nostdinc -Wl,-bind_at_load -Wl,-undefined,suppress -Wl,-flat_namespace")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${DARLING_TOP_DIRECTORY}/kernel-include)

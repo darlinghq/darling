@@ -96,7 +96,7 @@ struct ProgramVars
  * libsyscall_initializer() initializes all of libSystem.dylib <rdar://problem/4892197>
  */
 static __attribute__((constructor))
-void libSystem_initializer(int argc, const char* argv[], const char* envp[] /*, const char* apple[], const struct ProgramVars* vars*/)
+void libSystem_initializer(int argc, const char* argv[], const char* envp[] , const char* apple[], const struct ProgramVars* vars)
 {
     static const struct _libkernel_functions libkernel_funcs = {
 		.version = 1,
@@ -106,48 +106,8 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[] /*, 
 		.realloc = realloc,
 		._pthread_exit_if_canceled = _pthread_exit_if_canceled,
 	};
-
-	_darling_initialize_commpage();
-
-	int* x_argc;
-	char*** x_argv;
-	char*** x_envp;
-	char** apple = { NULL };
-	struct ProgramVars vars;
-
-	/* Early initialization - original Apple code assumes pthread_init() doesn't print errors */
-	/*__darling_get_args(&x_argc, &x_argv, &x_envp, &vars);
-
-	if (!*x_argc)
-	{
-		char* excl;
-
-		// Darling libdyld is not being used
-		// to execute a Mach-O binary.
-		// Use what the ELF loader gave us.
-		*x_argc = argc - 1;
-		*x_argv = argv + 1;
-		*x_envp = envp;
-
-		excl = strchr(argv[1], '!');
-		if (excl != NULL)
-			argv[1] = excl+1;
-
-		vars.NXArgcPtr = x_argc;
-		vars.NXArgvPtr = x_argv;
-		vars.environPtr = x_envp;
-		vars.__prognamePtr = &(*x_argv)[0];
-		vars.mh = NULL;
-		
-		__darling_set_environ(envp); // Initialize glibc's environ
-	}
-	__darling_set_libc_vars(x_argc, x_argv, x_envp);*/
 	
-	/* cerror() calls require working pthread_self() */
-	char dummy_self[4096];
-	memset(dummy_self, 0, sizeof(dummy_self));
-	__pthread_set_self(dummy_self);
-
+	_darling_initialize_commpage();
 	__libkernel_init(&libkernel_funcs, *envp, apple, &vars);
 
 	bootstrap_init();
