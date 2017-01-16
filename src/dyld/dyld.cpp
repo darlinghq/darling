@@ -97,19 +97,24 @@ int main(int argc, char** argv, char** envp)
 			NativeObject* obj;
 			typedef int (mainPtr)(int argc, char** argv, char** envp);
 			mainPtr* main;
+			typedef void (exitPtr)(int status);
+			exitPtr* target_exit;
 
 			obj = new NativeObject(argv[1]);
 			obj->load();
 			NativeObject::setMainObject(obj);
 
 			main = (mainPtr*) obj->getExportedSymbol("main", false);
+			target_exit = (exitPtr*) obj->getExportedSymbol("exit", false);
 
 			if (!main)
 				throw std::runtime_error("No entry point found in Darling-native executable");
+			if (!target_exit)
+				target_exit = exit;
 
 			if (pretendArgv0 != nullptr)
 				argv[1] = (char*) pretendArgv0;
-			exit(main(argc-1, &argv[1], envp));
+			target_exit(main(argc-1, &argv[1], envp));
 		}
 		else
 		{
