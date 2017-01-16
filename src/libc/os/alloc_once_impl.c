@@ -21,7 +21,9 @@ void* os_alloc_once(int key, size_t size, void(*ctor)(void*))
 		if (blocks[key] == NULL)
 		{
 			blocks[key] = malloc(size);
-			ctor(blocks[key]);
+			memset(blocks[key], 0, size);
+			if (ctor != NULL)
+				ctor(blocks[key]);
 		}
 
 		pthread_mutex_unlock(&mutexes[key]);
