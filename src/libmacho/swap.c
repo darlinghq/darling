@@ -26,6 +26,10 @@
 #include <mach-o/swap.h>
 #include <string.h>
 
+#ifndef FALSE
+#define FALSE 0
+#endif
+
 void
 swap_fat_header(
 struct fat_header *fat_header,

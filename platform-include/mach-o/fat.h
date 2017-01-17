@@ -42,8 +42,9 @@
  * and contains the constants for the possible values of these types.
  */
 #include <stdint.h>
-#include <mach/machine.h>
-#include <architecture/byte_order.h>
+
+typedef int cpu_type_t;
+typedef int cpu_subtype_t;
 
 #define FAT_MAGIC	0xcafebabe
 #define FAT_CIGAM	0xbebafeca	/* NXSwapLong(FAT_MAGIC) */

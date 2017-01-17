@@ -27,7 +27,7 @@ add_definitions(
 set(libsystem_sources
 	init.c
 	dummy.c
-	libmacho/arch.c
+	CompatibilityHacks.c
 )
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
