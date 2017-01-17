@@ -8,7 +8,7 @@ endif(COMMAND cmake_policy)
 
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -ggdb")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load")
 
 include_directories(${DARLING_TOP_DIRECTORY}/src/libc/fbsdcompat)
 include_directories(${DARLING_TOP_DIRECTORY}/src/kernel/libsyscall/wrappers)
@@ -38,7 +38,7 @@ set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
 add_darling_library(system SHARED ${libsystem_sources})
 target_link_libraries(system PRIVATE system_malloc system_c system_kernel keymgr
 	system_m system_info system_notify system_quarantine libdispatch_shared launch compiler_rt
-	removefile system_copyfile unwind system_coreservices system_dyld) # objc CommonCrypto
+	removefile system_copyfile unwind system_coreservices system_dyld macho) # objc CommonCrypto
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
 set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	" -sub_library libsystem_malloc \
@@ -56,8 +56,9 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libunwind \
 	-sub_library libdyld \
 	-sub_library libcompiler_rt \
+	-sub_library libmacho \
 	-sub_library libsystem_coreservices \
-	-Wl,-dylib_compatibility_version,1.0.0")
+	-Wl,-dylib_compatibility_version,1238.0.0")
 
 install(TARGETS system DESTINATION libexec/darling/usr/lib)
 

@@ -11,6 +11,9 @@
 #include <stdbool.h>
 #include <mach-o/loader.h>
 #include <mach-o/fat.h>
+#include <dlfcn.h>
+#include "elfcalls.h"
+#include "threads.h"
 
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
@@ -30,13 +33,14 @@ static void load64(int fd, uint64_t* entryPoint_out, uint64_t* mh_out);
 static void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out);
 static int native_prot(int prot);
 static void apply_root_path(char* path);
+static char* elfcalls_make(void);
 
 int main(int argc, const char** argv)
 {
 	uint64_t entryPoint, mh;
 	void** sp;
 	int pushCount = 0;
-	const char* apple[2];
+	const char* apple[3];
 
 	if (argc <= 1)
 	{
@@ -60,7 +64,8 @@ int main(int argc, const char** argv)
 #endif
 
 	apple[0] = argv[1];
-	apple[1] = NULL;
+	apple[1] = elfcalls_make();
+	apple[2] = NULL;
 
 	GETSP(sp);
 	sp--;
@@ -322,5 +327,27 @@ void apply_root_path(char* path)
 		}
 	}
 	while (next != NULL);
+}
+
+static void* dlopen_simple(const char* name)
+{
+	return dlopen(name, RTLD_LAZY);
+}
+
+static char* elfcalls_make(void)
+{
+	static char param[32];
+	static struct elf_calls calls;
+
+	calls.dlopen = dlopen_simple;
+	calls.dlclose = dlclose;
+	calls.dlsym = dlsym;
+	calls.dlerror = dlerror;
+	calls.darling_thread_create = __darling_thread_create;
+	calls.darling_thread_terminate = __darling_thread_terminate;
+	calls.darling_thread_get_stack = __darling_thread_get_stack;
+
+	sprintf(param, "elf_calls=%p", &calls);
+	return param;
 }
 

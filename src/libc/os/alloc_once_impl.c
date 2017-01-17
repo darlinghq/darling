@@ -1,5 +1,6 @@
 #include "alloc_once_impl.h"
 #include <pthread.h>
+#include <sys/mman.h>
 
 static pthread_mutex_t mutexes[OS_ALLOC_ONCE_KEY_MAX];
 static pthread_once_t mutexes_once = PTHREAD_ONCE_INIT;
@@ -20,8 +21,8 @@ void* os_alloc_once(int key, size_t size, void(*ctor)(void*))
 
 		if (blocks[key] == NULL)
 		{
-			blocks[key] = malloc(size);
-			memset(blocks[key], 0, size);
+			int npages = (size+4095)/4096;
+			blocks[key] = mmap(NULL, npages*4096, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
 			if (ctor != NULL)
 				ctor(blocks[key]);
 		}

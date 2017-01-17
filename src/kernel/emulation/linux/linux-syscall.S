@@ -1,5 +1,6 @@
 .text
 .globl _linux_syscall
+.private_extern _linux_syscall
 
 _linux_syscall:
 

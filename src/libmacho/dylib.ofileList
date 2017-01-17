@@ -1,0 +1,9 @@
+arch.o
+getsecbyname.o
+getsegbyname.o
+get_end.o
+swap.o
+i386_swap.o
+m68k_swap.o
+sparc_swap.o
+ppc_swap.o

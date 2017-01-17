@@ -68,7 +68,7 @@ static volatile struct __DATA__dyld  myDyldSection __attribute__ ((section ("__D
 // dylib1.o is used, it overrides this, otherwise this implementation is used.
 __attribute__((weak))
 #endif
-__attribute__((visibility("hidden")))
+//__attribute__((visibility("hidden")))
 int _dyld_func_lookup(const char* dyld_func_name, void **address)
 {
 	return (*myDyldSection.lookup)(dyld_func_name, address);

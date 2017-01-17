@@ -18,6 +18,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(mldr_sources
 	mldr.c
+	threads.c
 )
 add_executable(mldr ${mldr_sources})
 target_link_libraries(mldr -lpthread -ldl)

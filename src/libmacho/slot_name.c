@@ -1,6 +1,5 @@
-// Modified by Lubos Dolezel for Darling
 /*
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -26,44 +25,42 @@
  * 
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
+/*
+ *	File:	slot_name.c
+ *	Author:	Avadis Tevanian, Jr.
+ *
+ *	Copyright (C) 1987, Avadis Tevanian, Jr.
+ *
+ *	Convert machine slot values to human readable strings.
+ *
+ * HISTORY
+ * 26-Jan-88  Mary Thompson (mrt) at Carnegie Mellon
+ *	added case for CUP_SUBTYPE_RT_APC
+ *
+ * 28-Feb-87  Avadis Tevanian (avie) at Carnegie-Mellon University
+ *	Created.
+ *
+ */
 
-#include "_libkernel_init.h"
-#include <elfcalls.h>
+#include <mach-o/arch.h>
+#include <stddef.h>
 
-extern int mach_init(void);
-extern void mach_driver_init(void);
-
-/* dlsym() funcptr is for legacy support in exc_catcher */
-void* (*_dlsym)(void*, const char*) __attribute__((visibility("hidden")));
-extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
-extern unsigned long long __simple_atoi16(const char* str, const char** endp);
-
-__attribute__((visibility("hidden")))
-_libkernel_functions_t _libkernel_functions;
-
-__attribute__((visibility("hidden")))
-struct elf_calls* _elfcalls;
-
-void
-__libkernel_init(_libkernel_functions_t fns,
-		const char *envp[] __attribute__((unused)),
-		const char *apple[],
-		const struct ProgramVars *vars __attribute__((unused)))
+/*
+ *     Convert the specified cpu_type/cpu_subtype pair to their
+ *     human readable form.
+ */
+void slot_name(cpu_type, cpu_subtype, cpu_name, cpu_subname)
+        cpu_type_t     cpu_type;
+        cpu_subtype_t  cpu_subtype;
+        char           **cpu_name, **cpu_subname;
 {
-	int i;
-	_libkernel_functions = fns;
-	if (fns->dlsym) {
-		_dlsym = fns->dlsym;
-	}
-
-	for (i = 0; apple[i] != NULL; i++)
-	{
-		if (strncmp(apple[i], "elf_calls=", 10) == 0)
-		{
-			uintptr_t table = (uintptr_t) __simple_atoi16(apple[i] + 10, NULL);
-			_elfcalls = (struct elf_calls*) table;
-		}
-	}
-	
-	mach_init();
+        register char  *name = "Unknown CPU";
+        register char  *subname = "";
+        const NXArchInfo *ai = NXGetArchInfoFromCpuType(cpu_type, cpu_subtype);
+        if (ai != NULL) {
+            name = (char *)ai->name;
+            subname = (char *)ai->description;
+        }
+        *cpu_name = name;
+        *cpu_subname = subname;
 }

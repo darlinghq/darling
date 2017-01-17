@@ -108,6 +108,7 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 	*buf = 0;
 }
 
+__attribute__ ((visibility ("default")))
 void __simple_printf(const char* format, ...)
 {
 	char buffer[512];

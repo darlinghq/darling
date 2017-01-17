@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2016 Apple, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -49,9 +49,9 @@
 
 /*
  * Structure of the __.SYMDEF table of contents for an archive.
- * __.SYMDEF begins with a long giving the size in bytes of the ranlib
+ * __.SYMDEF begins with a uint32_t giving the size in bytes of the ranlib
  * structures which immediately follow, and then continues with a string
- * table consisting of a long giving the number of bytes of strings which
+ * table consisting of a uint32_t giving the number of bytes of strings which
  * follow and then the strings themselves.  The ran_strx fields index the
  * string table whose first byte is numbered 0.
  */
@@ -63,5 +63,28 @@ struct	ranlib {
 #endif
     } ran_un;
     uint32_t		ran_off;	/* library member at this offset */
+};
+
+#define SYMDEF_64		"__.SYMDEF_64"
+#define SYMDEF_64_SORTED	"__.SYMDEF_64 SORTED"
+
+/*
+ * The support for the 64-bit table of contents described here is a work in
+ * progress and not yet fully supported in all the Apple Developer Tools.
+ *
+ * When an archive offset to a library member is more than 32-bits then this is
+ * the structure of the __.SYMDEF_64 table of contents for an archive.
+ * __.SYMDEF_64 begins with a uint64_t giving the size in bytes of the ranlib
+ * structures which immediately follow, and then continues with a string
+ * table consisting of a uint64_t giving the number of bytes of strings which
+ * follow and then the strings themselves.  The ran_strx fields index the
+ * string table whose first byte is numbered 0.
+ */
+
+struct	ranlib_64 {
+    union {
+	uint64_t	ran_strx;	/* string table index of */
+    } ran_un;
+    uint64_t		ran_off;	/* library member at this offset */
 };
 #endif /* _MACH_O_RANLIB_H_ */

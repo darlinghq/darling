@@ -39,6 +39,7 @@ extern void __xlocale_init(void);
 extern void __pthread_pfz_setup(const char *apple[]);
 extern void __guard_setup(const char *apple[]);
 extern void __malloc_entropy_setup(const char *apple[]);
+extern void __atexit_init(void);
 extern int usenew_impl;
 
 __private_extern__ uintptr_t commpage_pfz_base;
@@ -58,6 +59,7 @@ __libc_init(const struct ProgramVars *vars, void (*atfork_prepare)(void), void (
 	_program_vars_init(vars);
 	_libc_fork_init(atfork_prepare, atfork_parent, atfork_child);
 	LOCK_INIT(_malloc_lock);
+	__atexit_init();
 	_init_clock_port();
 	__xlocale_init();
 	__guard_setup(apple);

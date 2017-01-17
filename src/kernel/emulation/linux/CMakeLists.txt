@@ -2,14 +2,21 @@ project(emulation)
 
 cmake_minimum_required(VERSION 2.4.0)
 
+cmake_policy(SET CMP0005 NEW)
 enable_language(ASM)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fvisibility=hidden -fPIC -ggdb -Wno-int-conversion")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
-add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD)
+add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD
+	-DEMULATED_SYSNAME="Darwin"
+	-DEMULATED_RELEASE="12.0.0"
+	-DEMULATED_VERSION="Darwin Kernel Version 12.0.0")
+
+include_directories(${CMAKE_SOURCE_DIR}/src/dyld)
 
 set(emulation_sources
+	elfcalls_wrapper.c
 	base.c
 	syscalls.c
 	simple.c

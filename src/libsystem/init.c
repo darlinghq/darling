@@ -80,6 +80,8 @@ void _mig_set_reply_port(mach_port_t);
 void cthread_set_errno_self(int);
 void* pthread_self(void);
 
+extern void _dyld_func_lookup(const char* name, void** p);
+
 static void _pthread_exit_if_canceled(int err) { if (pthread_self()) _pthread_testcancel(pthread_self(), 1);  }
 
 struct ProgramVars
@@ -105,15 +107,16 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[] , co
 		.free = free,
 		.realloc = realloc,
 		._pthread_exit_if_canceled = _pthread_exit_if_canceled,
+		.dyld_func_lookup = _dyld_func_lookup,
 	};
-	
+
 	_darling_initialize_commpage();
 	__libkernel_init(&libkernel_funcs, *envp, apple, &vars);
 
-	bootstrap_init();
+	// bootstrap_init(); // currently aborts
 	mach_init();
 	pthread_init();
-	__libc_init(&vars, libSystem_atfork_prepare, libSystem_atfork_parent, libSystem_atfork_child, apple);
+	__libc_init(vars, libSystem_atfork_prepare, libSystem_atfork_parent, libSystem_atfork_child, apple);
 	__malloc_init(apple);
 	__keymgr_initializer();
 	_dyld_initializer();

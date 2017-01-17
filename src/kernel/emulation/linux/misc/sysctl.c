@@ -14,7 +14,6 @@
 #include "../ext/syslog.h"
 #include "getrlimit.h"
 #include "darling-config.h"
-#include <util/IniConfig.h>
 
 static long sysctl_name_to_oid(const char* name, int* oid_name,
 		unsigned long* oid_len);
@@ -40,8 +39,6 @@ enum {
 };
 
 static struct linux_utsname lu;
-static iniconfig_t version_conf = NULL;
-static inivalmap_t version_conf_sect = NULL;
 static void copyout_string(const char* str, char* out, unsigned long* out_len);
 static void need_uname(void);
 
@@ -207,13 +204,7 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 		{
 			case KERN_OSTYPE:
 			{
-				const char* s = NULL;
-#ifndef VARIANT_DYLD
-				if (version_conf_sect != NULL)
-					s = iniconfig_valmap_get(version_conf_sect, "sysname");
-#endif
-				if (s == NULL)
-					s = lu.sysname;
+				const char* s = EMULATED_SYSNAME;
 
 				copyout_string(s, (char*) old, oldlen);
 				return 0;
@@ -223,26 +214,14 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 				return 0;
 			case KERN_OSRELEASE:
 			{
-				const char* s = NULL;
-#ifndef VARIANT_DYLD
-				if (version_conf_sect != NULL)
-					s = iniconfig_valmap_get(version_conf_sect, "release");
-#endif
-				if (s == NULL)
-					s = lu.release;
+				const char* s = EMULATED_RELEASE;
 
 				copyout_string(s, (char*) old, oldlen);
 				return 0;
 			}
 			case KERN_VERSION:
 			{
-				const char* s = NULL;
-#ifndef VARIANT_DYLD
-				if (version_conf_sect != NULL)
-					s = iniconfig_valmap_get(version_conf_sect, "version");
-#endif
-				if (s == NULL)
-					s = lu.version;
+				const char* s = EMULATED_VERSION;
 
 				copyout_string(s, (char*) old, oldlen);
 				return 0;
@@ -263,9 +242,6 @@ static void need_uname(void)
 	if (!lu.sysname[0])
 	{
 		__linux_uname(&lu);
-		version_conf = iniconfig_load(ETC_DARLING_PATH "/version.conf");
-		if (version_conf != NULL)
-			version_conf_sect = iniconfig_getsection(version_conf, "uname");
 	}
 #endif
 }

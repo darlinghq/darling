@@ -45,7 +45,7 @@ add_library(system_kernel_static STATIC
 	#$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:emulation_dyld>
 	${extra_objs}
-	$<TARGET_OBJECTS:mach_server_client>)
+	$<TARGET_OBJECTS:mach_server_client_dyld>)
 
 install(TARGETS system_kernel DESTINATION libexec/darling/usr/lib/system)
 
