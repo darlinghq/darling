@@ -8,7 +8,7 @@ endif(COMMAND cmake_policy)
 
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -fblocks -w") 
-add_definitions(-D_APPLE_COMMON_CRYPTO_)
+add_definitions(-D_APPLE_COMMON_CRYPTO_ -DLTC_SHA224 -DLTC_SHA384)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/API)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/libtomcrypt/src/headers)
@@ -53,7 +53,7 @@ set(cc_SRCS
 
 	#Source/API/CommonCMAC.c
 	#Source/API/CommonCryptor.c
-	#Source/API/CommonDigest.c
+	Source/API/CommonDigest.c
 	#Source/API/CommonHMAC.c
 	#Source/API/CommonKeyDerivation.c
 	#Source/API/CommonRandom.c
@@ -61,6 +61,25 @@ set(cc_SRCS
 	Source/libtomcrypt/src/misc/base64/base64_decode.c
 	Source/libtomcrypt/src/misc/base64/base64_encode.c
 	Source/libtomcrypt/src/misc/crypt/crypt_argchk.c
+	Source/libtomcrypt/src/misc/crypt/crypt_hash_descriptor.c
+	Source/libtomcrypt/src/misc/crypt/crypt_register_hash.c
+	Source/libtomcrypt/src/misc/zeromem.c
+	Source/libtomcrypt/src/hashes/md2.c
+	Source/libtomcrypt/src/hashes/md4.c
+	Source/libtomcrypt/src/hashes/md5.c
+	Source/libtomcrypt/src/hashes/rmd128.c
+	Source/libtomcrypt/src/hashes/rmd160.c
+	Source/libtomcrypt/src/hashes/rmd256.c
+	Source/libtomcrypt/src/hashes/rmd320.c
+	Source/libtomcrypt/src/hashes/sha1.c
+	Source/libtomcrypt/src/hashes/skein_ltc.c
+	Source/libtomcrypt/src/hashes/skein/Optimized_64bit/SHA3api_ref.c
+	Source/libtomcrypt/src/hashes/skein/Optimized_64bit/skein_block.c
+	Source/libtomcrypt/src/hashes/skein/Optimized_64bit/skein.c
+	Source/libtomcrypt/src/hashes/skein/Optimized_64bit/skein_debug.c
+	Source/libtomcrypt/src/hashes/skein/Optimized_64bit/skein_dropin.c
+	Source/libtomcrypt/src/hashes/sha2/sha256.c
+	Source/libtomcrypt/src/hashes/sha2/sha512.c
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libcommonCrypto.dylib")
