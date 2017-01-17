@@ -263,6 +263,11 @@ void setupChild(const char *curPath)
 	char buffer1[4096];
 	char buffer2[4096];
 
+
+	unsetenv("LESSOPEN");
+	unsetenv("LESSCLOSE");
+	unsetenv("LESSECHO");
+
 	setenv("PATH",
 		"/usr/bin:"
 		"/bin:"
