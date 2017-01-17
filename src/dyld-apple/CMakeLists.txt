@@ -44,7 +44,7 @@ target_link_libraries(system_dyld PRIVATE system_c system_kernel compiler_rt lau
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_SAVED} -nostdlib")
 
-add_darling_executable(system_loader
+add_executable(system_loader
 	src/dyldAPIs.cpp
 	src/dyld.cpp
 	src/dyld_gdb.cpp
@@ -65,7 +65,7 @@ add_darling_executable(system_loader
 	hell.c
 )
 
-#use_ld64(system_loader)
+use_ld64(system_loader)
 set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
 set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -nostdlib -Wl,-e,__dyld_start")
 target_link_libraries(system_loader libc_static system_blocks_static unwind_static system_kernel_static system_m_static cxxabi_static keymgr_static compiler_rt_static system_duct_static)

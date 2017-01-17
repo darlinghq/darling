@@ -80,7 +80,7 @@ int main(int argc, const char** argv)
 	for (int i = argc; i >= 1; i--)
 		*(sp-(pushCount++)) = (void*) argv[i];
 
-	*(sp-(pushCount++)) = (void*) (uintptr_t)(argc);
+	*(sp-(pushCount++)) = (void*) (uintptr_t)(argc-1);
 	*(sp-(pushCount++)) = (void*) mh;
 	JUMPX(pushCount, entryPoint);
 

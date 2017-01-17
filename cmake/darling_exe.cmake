@@ -12,7 +12,7 @@ FUNCTION(add_darling_executable exe)
 
 	add_executable(${exe} ${files})
 	set_property(TARGET ${exe} APPEND_STRING PROPERTY
-		LINK_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -L${CMAKE_BINARY_DIR}/src/csu/CMakeFiles/csu.dir ")
+		LINK_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -nostdlib ${CMAKE_BINARY_DIR}/src/csu/CMakeFiles/csu.dir/crt1.10.6.o ")
 	use_ld64(${exe})
 	add_dependencies(${exe} csu)
 ENDFUNCTION(add_darling_executable)
