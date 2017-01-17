@@ -124,7 +124,7 @@ add_subdirectory(external/openssl_certificates)
 
 if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(external/shell_cmds)
-#	add_subdirectory(external/file_cmds)
+	add_subdirectory(external/file_cmds)
 #	add_subdirectory(external/text_cmds)
 #	add_subdirectory(external/adv_cmds)
 #	add_subdirectory(external/network_cmds)
