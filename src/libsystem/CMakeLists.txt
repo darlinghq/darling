@@ -61,4 +61,5 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-Wl,-dylib_compatibility_version,1238.0.0")
 
 install(TARGETS system DESTINATION libexec/darling/usr/lib)
+InstallSymlink("libSystem.B.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libSystem.dylib")
 

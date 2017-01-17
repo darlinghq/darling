@@ -12,11 +12,7 @@ add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
-
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/local)
@@ -56,8 +52,13 @@ set(edit_SRCS
 	local/tokenizern.c
 )
 
-add_library(edit SHARED ${edit_SRCS})
+set(DYLIB_INSTALL_NAME "/usr/lib/libedit.3.dylib")
+add_darling_library(edit SHARED ${edit_SRCS})
+set_target_properties(edit PROPERTIES OUTPUT_NAME "edit.3")
 target_link_libraries(edit PRIVATE system ncurses)
 
-install(TARGETS edit DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+InstallSymlink("libedit.3.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libedit.2.dylib")
+InstallSymlink("libedit.3.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libedit.dylib")
+
+install(TARGETS edit DESTINATION libexec/darling/usr/lib)
 install(FILES inputrc DESTINATION libexec/darling/etc)
