@@ -2,10 +2,9 @@
 #ifdef __x86_64__
 
 .text
-.globl	sha1_block_asm_data_order
-.type	sha1_block_asm_data_order,@function
-.align	16
-sha1_block_asm_data_order:
+.globl	_sha1_block_asm_data_order
+.align	4
+_sha1_block_asm_data_order:
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -1281,11 +1280,9 @@ sha1_block_asm_data_order:
 	popq	%rbp
 	popq	%rbx
 	.byte	0xf3,0xc3
-.size	sha1_block_asm_data_order,.-sha1_block_asm_data_order
-.globl	sha1_block_asm_host_order
-.type	sha1_block_asm_host_order,@function
-.align	16
-sha1_block_asm_host_order:
+.globl	_sha1_block_asm_host_order
+.align	4
+_sha1_block_asm_host_order:
 	pushq	%rbx
 	pushq	%rbp
 	pushq	%r12
@@ -1501,6 +1498,5 @@ sha1_block_asm_host_order:
 	roll	$30,%r12d
 	addl	%ebx,%ebp
 	jmp	.Lshortcut
-.size	sha1_block_asm_host_order,.-sha1_block_asm_host_order
 
 #endif

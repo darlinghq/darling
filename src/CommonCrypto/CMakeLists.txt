@@ -8,7 +8,6 @@ endif(COMMAND cmake_policy)
 
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -fblocks -w") 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 add_definitions(-D_APPLE_COMMON_CRYPTO_)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/API)
@@ -33,8 +32,8 @@ set(cc_SRCS
 	Source/Digest/sha1.c
 	Source/Digest/sha1-586.S
 	Source/Digest/sha1-x86_64.S
-	#Source/Digest/sha2.c
-	#Source/Digest/sha256.S
+	Source/Digest/sha2.c
+	Source/Digest/sha256.S
 	#Source/Digest/sha1edpBigEndian.S
 
 	#Source/RC2/ccRC2.c
@@ -61,13 +60,12 @@ set(cc_SRCS
 	#Source/API/CommonSymmetricKeywrap.c
 	Source/libtomcrypt/src/misc/base64/base64_decode.c
 	Source/libtomcrypt/src/misc/base64/base64_encode.c
+	Source/libtomcrypt/src/misc/crypt/crypt_argchk.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(DYLIB_INSTALL_NAME "/usr/lib/libcommonCrypto.dylib")
+add_darling_library(CommonCrypto SHARED ${cc_SRCS})
+target_link_libraries(CommonCrypto system_c system_m system_dyld)
+set_target_properties(CommonCrypto PROPERTIES OUTPUT_NAME "commonCrypto")
 
-add_library(CommonCrypto SHARED ${cc_SRCS})
-target_link_libraries(CommonCrypto system_c system_kernel)
-
-install(TARGETS CommonCrypto DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS CommonCrypto DESTINATION libexec/darling/usr/lib)
