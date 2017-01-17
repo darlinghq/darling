@@ -122,8 +122,8 @@ add_subdirectory(external/file/file)
 #add_subdirectory(external/libxpc)
 add_subdirectory(external/openssl_certificates)
 
-#if (NOT DARLING_NO_EXECUTABLES)
-#	add_subdirectory(external/shell_cmds)
+if (NOT DARLING_NO_EXECUTABLES)
+	add_subdirectory(external/shell_cmds)
 #	add_subdirectory(external/file_cmds)
 #	add_subdirectory(external/text_cmds)
 #	add_subdirectory(external/adv_cmds)
@@ -148,7 +148,7 @@ add_subdirectory(external/openssl_certificates)
 #	add_subdirectory(external/openssh)
 #	add_subdirectory(external/top)
 #	add_subdirectory(external/perl)
-#endif (NOT DARLING_NO_EXECUTABLES)
+endif (NOT DARLING_NO_EXECUTABLES)
 
 ######################
 # libc++ & libc++abi #

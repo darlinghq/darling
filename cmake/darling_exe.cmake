@@ -14,6 +14,7 @@ FUNCTION(add_darling_executable exe)
 	set_property(TARGET ${exe} APPEND_STRING PROPERTY
 		LINK_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -nostdlib ${CMAKE_BINARY_DIR}/src/csu/CMakeFiles/csu.dir/crt1.10.6.o ")
 	use_ld64(${exe})
+	target_link_libraries(${exe} system)
 	add_dependencies(${exe} csu)
 ENDFUNCTION(add_darling_executable)
 
