@@ -49,6 +49,8 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libsystem_info \
 	-sub_library libsystem_notify \
 	-sub_library libsystem_quarantine \
+	-sub_library libsystem_blocks \
+	-sub_library libsystem_duct \
 	-sub_library libdispatch \
 	-sub_library liblaunch \
 	-sub_library libremovefile \
