@@ -36,7 +36,7 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
 add_darling_library(system SHARED ${libsystem_sources})
-target_link_libraries(system PRIVATE system_malloc system_c system_kernel keymgr
+target_link_libraries(system PRIVATE system_malloc system_c system_kernel keymgr sandbox
 	system_m system_info system_notify system_quarantine libdispatch_shared launch compiler_rt
 	removefile system_copyfile unwind system_coreservices system_dyld macho) # objc CommonCrypto
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
@@ -57,6 +57,7 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libdyld \
 	-sub_library libcompiler_rt \
 	-sub_library libmacho \
+	-sub_library libsystem_sandbox \
 	-sub_library libsystem_coreservices \
 	-Wl,-dylib_compatibility_version,1238.0.0")
 

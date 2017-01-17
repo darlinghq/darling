@@ -19,7 +19,7 @@ FUNCTION(add_darling_library name)
 		NO_SONAME TRUE)
 
 	set_property(TARGET ${name} APPEND_STRING PROPERTY
-		LINK_FLAGS " ${CMAKE_SHARED_LINKER_FLAGS}")
+		LINK_FLAGS " ${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 	if (DYLIB_INSTALL_NAME)
 		set_property(TARGET ${name} APPEND_STRING PROPERTY

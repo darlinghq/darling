@@ -10,7 +10,7 @@ endif(COMMAND cmake_policy)
 # Reason for -U__APPLE__:
 # We need CommonCrypro/corecrypto for some of the extra stuff
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w -U__APPLE__") 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--unresolved-symbols=ignore-all -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${DARLING_TOP_DIRECTORY}/platform-include)
 #include_directories(${DARLING_TOP_DIRECTORY}/src/libc/include)
@@ -46,11 +46,10 @@ set(xar_SRCS
 	lib/zxar.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-add_library(xar SHARED ${xar_SRCS})
+set(DYLIB_INSTALL_NAME "/usr/lib/libxar.1.dylib")
+add_darling_library(xar SHARED ${xar_SRCS})
+set_target_properties(xar PROPERTIES OUTPUT_NAME "xar.1")
 target_link_libraries(xar system z bz2 xml2 ssl098 crypto098)
 
-install(TARGETS xar DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
+install(TARGETS xar DESTINATION libexec/darling/usr/lib)
+InstallSymlink("libxar.1.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libxar.dylib")

@@ -192,5 +192,8 @@ set(ncurses_sources
 set(DYLIB_INSTALL_NAME "/usr/lib/libncurses.5.4.dylib")
 add_darling_library(ncurses SHARED ${ncurses_sources})
 target_link_libraries(ncurses system)
+set_target_properties(ncurses PROPERTIES OUTPUT_NAME "ncurses.5.4")
+
+InstallSymlink("libncurses.5.4.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libncurses.dylib")
 
 install(TARGETS ncurses DESTINATION libexec/darling/usr/lib)
