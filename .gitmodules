@@ -175,3 +175,6 @@
 [submodule "src/external/cctools-port"]
 	path = src/external/cctools-port
 	url = ../cctools-port.git
+[submodule "src/external/objc4"]
+	path = src/external/objc4
+	url = ../darling-objc4.git

@@ -140,7 +140,7 @@ add_darling_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-darwin>
 	$<TARGET_OBJECTS:libc-platform>
 	${extra_objs})
-target_link_libraries(system_c system_kernel system_m macho)
+target_link_libraries(system_c system_kernel system_m macho system_malloc)
 
 install(TARGETS system_c DESTINATION libexec/darling/usr/lib/system)
 

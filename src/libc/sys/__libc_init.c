@@ -34,7 +34,7 @@ struct ProgramVars; /* forward reference */
 extern void _program_vars_init(const struct ProgramVars *vars);
 extern void _libc_fork_init(void (*prepare)(void), void (*parent)(void), void (*child)(void));
 extern void _init_clock_port();
-extern pthread_lock_t _malloc_lock;
+//extern pthread_lock_t _malloc_lock;
 extern void __xlocale_init(void);
 extern void __pthread_pfz_setup(const char *apple[]);
 extern void __guard_setup(const char *apple[]);
@@ -58,7 +58,7 @@ __libc_init(const struct ProgramVars *vars, void (*atfork_prepare)(void), void (
 {
 	_program_vars_init(vars);
 	_libc_fork_init(atfork_prepare, atfork_parent, atfork_child);
-	LOCK_INIT(_malloc_lock);
+//	LOCK_INIT(_malloc_lock);
 	__atexit_init();
 	_init_clock_port();
 	__xlocale_init();

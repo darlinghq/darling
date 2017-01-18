@@ -84,7 +84,7 @@ set(cc_SRCS
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libcommonCrypto.dylib")
 add_darling_library(CommonCrypto SHARED ${cc_SRCS})
-target_link_libraries(CommonCrypto system_c system_m system_dyld)
+target_link_libraries(CommonCrypto system_c system_m system_dyld system_malloc)
 set_target_properties(CommonCrypto PROPERTIES OUTPUT_NAME "commonCrypto")
 
 install(TARGETS CommonCrypto DESTINATION libexec/darling/usr/lib)

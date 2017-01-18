@@ -71,7 +71,7 @@ void dyld_notification_wrapper(enum dyld_image_mode mode, uint32_t infoCount, co
 	memcpy(&_dyld_all_image_infos, orig_dyld_all_image_infos, sizeof(_dyld_all_image_infos));
 	_dyld_all_image_infos.notification = &gdb_notifier;
 
-	printf("Got notification from dyld\n");
+	// printf("Got notification from dyld\n");
 	gdb_notifier(mode, infoCount, info);
 }
 

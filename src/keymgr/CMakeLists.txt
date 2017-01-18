@@ -18,7 +18,7 @@ set(keymgr_sources
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libkeymgr.dylib")
 add_darling_library(keymgr SHARED ${keymgr_sources})
-target_link_libraries(keymgr PRIVATE system_c system_dyld)
+target_link_libraries(keymgr PRIVATE system_c system_dyld system_malloc)
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")

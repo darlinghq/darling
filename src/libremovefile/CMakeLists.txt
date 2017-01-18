@@ -19,7 +19,7 @@ set(removefile_sources
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libremovefile.dylib")
 add_darling_library(removefile SHARED ${removefile_sources})
-target_link_libraries(removefile system_c system_kernel system_dyld)
+target_link_libraries(removefile system_c system_kernel system_dyld system_malloc)
 
 install(TARGETS removefile DESTINATION libexec/darling/usr/lib/system)
 

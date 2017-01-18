@@ -34,8 +34,8 @@ set(gen_sources #asl.c
 	getvfsbyname.c
 	isinf.c
 	isnan.c
-	magazine_malloc.c # magazine or scalable
-	malloc.c
+	#magazine_malloc.c # magazine or scalable
+	#malloc.c
 	nanosleep.c
 	nftw.c
 	nlist.c

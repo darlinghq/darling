@@ -28,6 +28,6 @@ set(copyfile_sources
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libcopyfile.dylib")
 add_darling_library(system_copyfile SHARED ${copyfile_sources})
 set_target_properties(system_copyfile PROPERTIES OUTPUT_NAME "copyfile")
-target_link_libraries(system_copyfile PRIVATE system_kernel system_c system_blocks system_info system_dyld)
+target_link_libraries(system_copyfile PRIVATE system_kernel system_c system_blocks system_info system_dyld system_malloc)
 
 install(TARGETS system_copyfile DESTINATION libexec/darling/usr/lib/system)

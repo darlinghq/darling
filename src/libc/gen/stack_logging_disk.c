@@ -48,6 +48,8 @@
 #define _malloc_printf fprintf
 #undef ASL_LEVEL_INFO
 #define ASL_LEVEL_INFO stderr
+#else
+#define _malloc_printf malloc_printf
 #endif
 
 #define STACK_LOGGING_MAX_STACK_SIZE 512
