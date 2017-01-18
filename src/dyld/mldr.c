@@ -14,6 +14,7 @@
 #include <dlfcn.h>
 #include "elfcalls.h"
 #include "threads.h"
+#include "gdb.h"
 
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
@@ -232,6 +233,23 @@ void load64(int fd, uint64_t* entryPoint_out, uint64_t* mh_out)
 				
 					if (seg->fileoff == 0)
 						mappedHeader = (struct mach_header_64*) (seg->vmaddr + slide);
+				}
+
+				if (strcmp(SEG_DATA, seg->segname) == 0)
+				{
+					// Look for section named __all_image_info for GDB integration
+					struct section_64* sect = (struct section_64*) (seg+1);
+					struct section_64* end = (struct section_64*) (&cmds[p + lc->cmdsize]);
+
+					while (sect < end)
+					{
+						if (strncmp(sect->sectname, "__all_image_info", 16) == 0)
+						{
+							setup_gdb_notifications(slide, sect->addr);
+							break;
+						}
+						sect++;
+					}
 				}
 				break;
 			}

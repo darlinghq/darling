@@ -25,7 +25,11 @@
 
 #include <stdbool.h>
 #include <unistd.h>
+#ifndef MLDR_BUILD
 #include <mach/mach.h>
+#else
+#include <stdint.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,10 +77,12 @@ struct dyld_image_info {
 													/* then file has been modified since dyld loaded it */
 };
 
+#ifndef MLDR_BUILD
 struct dyld_uuid_info {
 	const struct mach_header*	imageLoadAddress;	/* base address image is mapped into */
 	uuid_t						imageUUID;			/* UUID of image */
 };
+#endif
 
 typedef void (*dyld_image_notifier)(enum dyld_image_mode mode, uint32_t infoCount, const struct dyld_image_info info[]);
 
