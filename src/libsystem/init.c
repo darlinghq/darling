@@ -152,6 +152,7 @@ void libSystem_atfork_parent(void)
 
 void libSystem_atfork_child(void)
 {
+	_mach_fork_child();
 	// Mach ports are not inherited across fork except for the Bootstrap.
 	// So why is the following line not needed on OS X?
 	_mig_fork_child();
@@ -159,8 +160,7 @@ void libSystem_atfork_child(void)
 	_dyld_fork_child();
 	_cthread_fork_child();
 	
-	bootstrap_init();
-	_mach_fork_child();
+	// bootstrap_init(); // currently aborts (needs launchd's bootstrap port)
 	_cproc_fork_child();
 	_libc_fork_child();
 	_notify_fork_child();
