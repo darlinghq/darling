@@ -81,16 +81,14 @@ long sys_execve(char* fname, char** argvp, char** envp)
 
 		// Allocate a new argvp, execute dyld_path
 		modargvp = (char**) __builtin_alloca(sizeof(void*) * (len+1));
-		modargvp[0] = dyld_path;
+		buf = __builtin_alloca(strlen(dyld_path) + 2 + strlen(argvp[0]));
 
-		buf = __builtin_alloca(strlen(fname) + 2 + strlen(argvp[0]));
-
-		strcpy(buf, fname);
+		strcpy(buf, dyld_path);
 		strcat(buf, "!");
 		strcat(buf, argvp[0]);
-		modargvp[1] = buf;
+		modargvp[0] = buf;
 
-		for (i = 2; i < len+1; i++)
+		for (i = 1; i < len+1; i++)
 			modargvp[i] = argvp[i-1];
 
 		argvp = modargvp;

@@ -55,12 +55,14 @@ static int native_prot(int prot);
 static void apply_root_path(char* path);
 static char* elfcalls_make(void);
 
-int main(int argc, const char** argv)
+int main(int argc, char** argv)
 {
 	uint64_t entryPoint, mh;
 	void** sp;
 	int pushCount = 0;
 	const char* apple[3];
+	char* excl;
+	const char* filename;
 
 	if (argc <= 1)
 	{
@@ -68,7 +70,17 @@ int main(int argc, const char** argv)
 		return 1;
 	}
 
-	load(argv[1], &entryPoint, &mh);
+	// sys_execve() passes the original argv[0] appended to the mldr path in argv[0].
+	excl = strchr(argv[0], '!');
+	if (excl != NULL)
+	{
+		filename = argv[1];
+		argv[1] = excl+1;
+	}
+	else
+		filename = argv[1];
+
+	load(filename, &entryPoint, &mh);
 
 #ifdef __x86_64__
 #       define GETSP(ptr) __asm__ volatile("movq %%rsp, %0" : "=r"(ptr) ::)
