@@ -1,7 +1,7 @@
 #include "writev.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_writev(int fd, struct iovec* iovp, unsigned int len)
 {

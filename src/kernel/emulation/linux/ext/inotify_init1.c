@@ -1,7 +1,7 @@
 #include "./sys/inotify.h"
 #include "../errno.h"
 #include "../base.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 extern long cerror(int __err);
 

@@ -6,7 +6,7 @@
 #include "../../../../libc/include/fcntl.h"
 #include "../fcntl/open.h"
 #include "../unistd/close.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include <stddef.h>
 
 extern char *strtok_r(char *str, const char *delim, char **saveptr);

@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../../../../../platform-include/sys/errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 #define XATTR_NOFOLLOW	1
 

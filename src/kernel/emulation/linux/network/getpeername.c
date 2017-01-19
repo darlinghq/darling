@@ -1,7 +1,7 @@
 #include "getpeername.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "duct.h"
 
 long sys_getpeername(int fd, void* asa, int* socklen)

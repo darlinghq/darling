@@ -2,7 +2,7 @@
 #include "../errno.h"
 #include "../base.h"
 #include "../signal/duct_signals.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 extern long cerror(int __err);
 

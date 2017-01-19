@@ -4,7 +4,7 @@
 #include "../signal/duct_signals.h"
 #include "../signal/sigprocmask.h"
 #include "../../../../../platform-include/sys/errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include <stddef.h>
 
 #ifndef SIG_BLOCK

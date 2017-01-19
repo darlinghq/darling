@@ -1,7 +1,7 @@
 #include "psynch_mutexdrop.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "../../../mach_server/client/lkm.h"
 #include "../../../../lkm/api.h"
 #include "../simple.h"

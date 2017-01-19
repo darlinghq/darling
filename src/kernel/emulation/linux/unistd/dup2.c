@@ -1,7 +1,7 @@
 #include "dup2.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_dup2(int fd_from, int fd_to)
 {

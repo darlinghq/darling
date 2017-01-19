@@ -1,7 +1,7 @@
 #include "sigaltstack.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include <stddef.h>
 
 long sys_sigaltstack(const struct bsd_stack* ss, struct bsd_stack* oss)

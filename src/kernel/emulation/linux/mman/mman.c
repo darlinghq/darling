@@ -2,7 +2,7 @@
 #include "duct_mman.h"
 #include "../errno.h"
 #include "../base.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 static int prot_bsd_to_linux(int prot)
 {

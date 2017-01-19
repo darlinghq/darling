@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <stddef.h>
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_poll(struct pollfd* fds, unsigned int nfds, int timeout)
 {

@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include "duct_signals.h"
 #include <stddef.h>
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_sigsuspend(sigset_t set)
 {

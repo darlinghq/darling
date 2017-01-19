@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../../../../../platform-include/sys/errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include <stddef.h>
 
 long sys_getitimer(int which, struct bsd_itimerval* oitv)

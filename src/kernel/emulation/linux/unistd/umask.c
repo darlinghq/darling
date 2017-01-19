@@ -1,7 +1,7 @@
 #include "umask.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_umask(unsigned int newmask)
 {

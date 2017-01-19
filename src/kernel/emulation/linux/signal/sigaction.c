@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../simple.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include "../../../../../platform-include/sys/errno.h"
 

@@ -14,6 +14,7 @@ add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD
 	-DEMULATED_VERSION="Darwin Kernel Version 12.0.0")
 
 include_directories(${CMAKE_SOURCE_DIR}/src/dyld)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(emulation_sources
 	elfcalls_wrapper.c

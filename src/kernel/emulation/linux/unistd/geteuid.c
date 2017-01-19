@@ -1,7 +1,7 @@
 #include "geteuid.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include <stddef.h>
 
 extern char* getenv(const char* p);

@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../../../../../platform-include/sys/errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_fgetxattr(int fd, const char* name, char* value,
 		unsigned long size, unsigned int pos, int options)

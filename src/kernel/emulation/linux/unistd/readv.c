@@ -1,7 +1,7 @@
 #include "readv.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_readv(int fd, struct iovec* iovp, unsigned int len)
 {

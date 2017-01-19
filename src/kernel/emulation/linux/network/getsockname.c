@@ -1,7 +1,7 @@
 #include "getsockname.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "duct.h"
 
 long sys_getsockname(int fd, void* asa, int* socklen)

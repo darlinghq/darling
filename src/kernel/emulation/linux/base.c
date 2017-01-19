@@ -1,6 +1,6 @@
 #define BUILDING_BASE_C
 #include "base.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "simple.h"
 #include "duct_errno.h"
 #include "syscalls.h"

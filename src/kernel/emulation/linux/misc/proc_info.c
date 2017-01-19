@@ -1,7 +1,7 @@
 #include "proc_info.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 #include "../../../../../platform-include/sys/proc_info.h"
 #include "../../../../../platform-include/mach/vm_prot.h"

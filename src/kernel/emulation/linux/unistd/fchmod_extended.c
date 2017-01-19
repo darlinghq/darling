@@ -1,7 +1,7 @@
 #include "fchmod_extended.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_fchmod_extended(int fd, int uid, int gid, int mode, void* xsec)
 {

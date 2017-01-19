@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include "../../../../../platform-include/sys/errno.h"
 #include "duct_signals.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_kill(int pid, int signum, int posix)
 {

@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <stddef.h>
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_select(int nfds, void* rfds, void* wfds, void* efds, struct bsd_timeval* timeout)
 {

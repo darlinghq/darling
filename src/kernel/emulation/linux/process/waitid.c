@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include "../signal/duct_signals.h"
 #include "wait4.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include <stddef.h>
 
 long sys_waitid(int idtype, int id, struct simple_siginfo* si, int options)

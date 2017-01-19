@@ -2,7 +2,7 @@
 #include "open.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 
 #ifndef O_NOFOLLOW

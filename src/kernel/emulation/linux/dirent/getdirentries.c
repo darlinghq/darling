@@ -1,7 +1,7 @@
 #include "getdirentries.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include <sys/dirent.h>
 
 extern __SIZE_TYPE__ strlen(const char* s);

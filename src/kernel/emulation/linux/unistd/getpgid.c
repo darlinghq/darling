@@ -1,7 +1,7 @@
 #include "getpgid.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_getpgid(int pid)
 {

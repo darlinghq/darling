@@ -1,7 +1,7 @@
 #include "getrusage.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_getrusage(int who, void* rusage)
 {

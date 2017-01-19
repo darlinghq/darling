@@ -3,7 +3,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <limits.h>
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 #define min(a,b) ((a) < (b)) ? (a) : (b)
 

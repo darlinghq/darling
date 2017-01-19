@@ -1,5 +1,5 @@
 #include "../base.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 void __linux_sched_yield(void)
 {

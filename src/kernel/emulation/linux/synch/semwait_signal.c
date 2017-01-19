@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../../../../../platform-include/sys/errno.h"
 #include "../time/gettimeofday.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include <stddef.h>
 
 typedef int kern_return_t;

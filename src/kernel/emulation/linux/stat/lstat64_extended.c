@@ -3,7 +3,7 @@
 #include "common.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_lstat64_extended(const char* path, struct stat64* stat, void* xsec, unsigned long* xsec_size)
 {

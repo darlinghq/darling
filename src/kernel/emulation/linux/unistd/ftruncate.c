@@ -1,7 +1,7 @@
 #include "ftruncate.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_ftruncate(int fd, long long length)
 {

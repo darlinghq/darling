@@ -2,7 +2,7 @@
 #include "simple.h"
 #include <stdarg.h>
 #include <stddef.h>
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 void __simple_vsprintf(char* buf, const char* format, va_list vl);
 

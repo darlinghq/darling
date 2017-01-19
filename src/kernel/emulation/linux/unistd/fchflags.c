@@ -1,7 +1,7 @@
 #include "fchflags.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 
 long sys_fchflags(int fd, int flags)

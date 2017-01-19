@@ -1,7 +1,7 @@
 #include "utimes.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_utimes(const char* path, struct bsd_timeval* tv)
 {

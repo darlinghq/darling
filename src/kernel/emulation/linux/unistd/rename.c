@@ -1,7 +1,7 @@
 #include "rename.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 
 extern char* strcpy(char* dst, const char* src);

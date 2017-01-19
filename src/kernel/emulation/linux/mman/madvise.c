@@ -2,7 +2,7 @@
 #include "../errno.h"
 #include "../base.h"
 #include "../../../../../platform-include/sys/errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_madvise(void* addr, unsigned long len, int advice)
 {

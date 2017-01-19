@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include "../signal/duct_signals.h"
 #include "../../../mach_server/client/lkm.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_fork(void)
 {

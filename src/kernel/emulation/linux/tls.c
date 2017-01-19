@@ -1,4 +1,4 @@
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "tls.h"
 
 #define ARCH_SET_GS	0x1001

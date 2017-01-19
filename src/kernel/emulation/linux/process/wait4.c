@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../signal/duct_signals.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 
 long sys_wait4(int pid, int* status, int options, void* rusage)
 {

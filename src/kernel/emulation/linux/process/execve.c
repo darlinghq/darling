@@ -1,7 +1,7 @@
 #include "execve.h"
 #include "../base.h"
 #include "../errno.h"
-#include <asm/unistd.h>
+#include <linux-syscalls/linux.h>
 #include "../fcntl/open.h"
 #include "../unistd/read.h"
 #include "../unistd/close.h"
