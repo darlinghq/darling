@@ -55,14 +55,13 @@ static int native_prot(int prot);
 static void apply_root_path(char* path);
 static char* elfcalls_make(void);
 
-int main(int argc, char** argv)
+int main(int argc, char** argv, char** envp)
 {
 	uint64_t entryPoint, mh;
 	void** sp;
 	int pushCount = 0;
 	const char* apple[3];
-	char* excl;
-	const char* filename;
+	char *filename, *p;
 
 	if (argc <= 1)
 	{
@@ -70,15 +69,26 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	filename = (char*) __builtin_alloca(strlen(argv[1])+1);
+	strcpy(filename, argv[0]);
+
 	// sys_execve() passes the original argv[0] appended to the mldr path in argv[0].
-	excl = strchr(argv[0], '!');
-	if (excl != NULL)
+	p = strchr(argv[0], '!');
+	if (p != NULL)
+		argv[1] = p+1;
+
+	p = argv[0];
+	// Update process name in ps output
+	for (int i = 1; i < argc; i++)
 	{
-		filename = argv[1];
-		argv[1] = excl+1;
+		size_t len = strlen(argv[i]);
+		strcpy(p, argv[i]);
+
+		argv[i-1] = p;
+		p += len+1;
 	}
-	else
-		filename = argv[1];
+	memset(p, 0, envp[0]-p);
+	argv[--argc] = NULL;
 
 	load(filename, &entryPoint, &mh);
 
@@ -95,7 +105,7 @@ int main(int argc, char** argv)
 #       error Unsupported platform!
 #endif
 
-	apple[0] = argv[1];
+	apple[0] = filename;
 	apple[1] = elfcalls_make();
 	apple[2] = NULL;
 
@@ -109,10 +119,10 @@ int main(int argc, char** argv)
 	for (int i = 0; environ[i] != NULL; i++)
 		*(sp-(pushCount++)) = environ[i];
 
-	for (int i = argc; i >= 1; i--)
+	for (int i = argc-1; i >= 0; i--)
 		*(sp-(pushCount++)) = (void*) argv[i];
 
-	*(sp-(pushCount++)) = (void*) (uintptr_t)(argc-1);
+	*(sp-(pushCount++)) = (void*) (uintptr_t)(argc);
 	*(sp-(pushCount++)) = (void*) mh;
 	JUMPX(pushCount, entryPoint);
 
