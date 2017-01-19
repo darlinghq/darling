@@ -70,7 +70,7 @@ int main(int argc, char** argv, char** envp)
 	}
 
 	filename = (char*) __builtin_alloca(strlen(argv[1])+1);
-	strcpy(filename, argv[0]);
+	strcpy(filename, argv[1]);
 
 	// sys_execve() passes the original argv[0] appended to the mldr path in argv[0].
 	p = strchr(argv[0], '!');
