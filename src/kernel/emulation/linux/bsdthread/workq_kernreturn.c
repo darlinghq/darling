@@ -4,7 +4,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../../../../../platform-include/sys/errno.h"
-#include "../../../../libdyld/threads.h"
+#include "../../../../dyld/threads.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include "../ext/futex.h"

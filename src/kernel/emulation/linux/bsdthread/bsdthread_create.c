@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "../../../../../platform-include/sys/mman.h"
-#include "../../../../libdyld/threads.h"
+#include "../../../../dyld/threads.h"
 #include "../../../../../platform-include/sys/errno.h"
 #include "../mman/mman.h"
 #include "../simple.h"
