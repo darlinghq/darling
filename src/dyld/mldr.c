@@ -119,6 +119,7 @@ int main(int argc, char** argv, char** envp)
 	for (int i = 0; environ[i] != NULL; i++)
 		*(sp-(pushCount++)) = environ[i];
 
+	*(sp-(pushCount++)) = NULL;
 	for (int i = argc-1; i >= 0; i--)
 		*(sp-(pushCount++)) = (void*) argv[i];
 
