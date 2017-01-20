@@ -76,7 +76,7 @@ int main(int argc, char** argv, char** envp)
 	if (p != NULL)
 		strcpy(filename, p + 1);
 	else
-	    strcpy(filename, argv[1]);
+		strcpy(filename, argv[1]);
 
 	p = argv[0];
 	// Update process name in ps output
