@@ -33,7 +33,7 @@ static inline bool isspace(char c)
 long sys_execve(char* fname, char** argvp, char** envp)
 {
 	int ret, fd;
-	char dyld_path[256];
+	char mldr_path[256];
 	union
 	{
 		uint32_t magic;
@@ -61,29 +61,22 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		char** modargvp;
 		char *buf;
 
-		len = LINUX_SYSCALL(__NR_readlink, "/proc/self/exe", dyld_path, sizeof(dyld_path)-1);
+		len = LINUX_SYSCALL(__NR_readlink, "/proc/self/exe", mldr_path, sizeof(mldr_path)-1);
 		if (len < 0)
 			goto no_macho;
-		dyld_path[len] = '\0';
+		mldr_path[len] = '\0';
 
-		// Remove 64 or 32 suffix if present
-		if (strcmp(&dyld_path[len - 2], "32") == 0
-				|| strcmp(&dyld_path[len - 2], "64") == 0)
-		{
-			dyld_path[len-2] = '\0';
-		}
-
-		// Prepend dyld path
+		// Prepend mldr path
 		len = 0;
 
 		// Count arguments
 		while (argvp[len++]);
 
-		// Allocate a new argvp, execute dyld_path
+		// Allocate a new argvp, execute mldr_path
 		modargvp = (char**) __builtin_alloca(sizeof(void*) * (len+1));
-		buf = __builtin_alloca(strlen(dyld_path) + 2 + strlen(fname));
+		buf = __builtin_alloca(strlen(mldr_path) + 2 + strlen(fname));
 
-		strcpy(buf, dyld_path);
+		strcpy(buf, mldr_path);
 		strcat(buf, "!");
 		strcat(buf, fname);
 		modargvp[0] = buf;
@@ -92,7 +85,7 @@ long sys_execve(char* fname, char** argvp, char** envp)
 			modargvp[i] = argvp[i-1];
 
 		argvp = modargvp;
-		fname = dyld_path;
+		fname = mldr_path;
 	}
 
 no_macho:
