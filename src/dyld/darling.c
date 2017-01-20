@@ -37,6 +37,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling.h"
 #include "darling-config.h"
 
+#define MLDR_PATH "/bin/mldr"
 
 const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
@@ -114,7 +115,7 @@ int main(int argc, const char** argv)
 
 		const char *argv_child[argc + 1];
 
-		argv_child[0] = SYSTEM_ROOT DYLD_PATH;
+		argv_child[0] = MLDR_PATH;
 
 		fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
 		strcpy(fullPath, SYSTEM_ROOT);
@@ -125,7 +126,7 @@ int main(int argc, const char** argv)
 			argv_child[i] = argv[i];
 		argv_child[argc] = NULL;
 
-		pidChild = spawnChild(pidInit, SYSTEM_ROOT DYLD_PATH, argv_child);
+		pidChild = spawnChild(pidInit, MLDR_PATH, argv_child);
 		free(path);
 		free(fullPath);
 	}
@@ -146,12 +147,12 @@ int main(int argc, const char** argv)
 			// Overwrite the last whitespace
 			*(to - 1) = '\0';
 
-			pidChild = spawnChild(pidInit, SYSTEM_ROOT DYLD_PATH,
-				(const char *[5]) {SYSTEM_ROOT DYLD_PATH, "/bin/bash", "-c", buffer, NULL});
+			pidChild = spawnChild(pidInit, MLDR_PATH,
+				(const char *[5]) {MLDR_PATH, "/bin/bash", "-c", buffer, NULL});
 		}
 		else
-			pidChild = spawnChild(pidInit, SYSTEM_ROOT DYLD_PATH,
-				(const char *[3]) {SYSTEM_ROOT DYLD_PATH, "/bin/bash", NULL});
+			pidChild = spawnChild(pidInit, MLDR_PATH,
+				(const char *[3]) {MLDR_PATH, "/bin/bash", NULL});
 	}
 
 	// Drop the privileges so that we can be killed, etc by the user
@@ -269,10 +270,6 @@ void setupChild(const char *curPath)
 		"/usr/sbin:"
 		"/sbin:"
 		"/usr/local/bin",
-		1);
-
-	setenv("LD_LIBRARY_PATH",
-		SYSTEM_ROOT LIB_PATH ":" SYSTEM_ROOT INSTALL_PREFIX "/lib/i386-linux-gnu/darling:/lib",
 		1);
 
 	sscanf(getenv("HOME"), "/home/%4096s", buffer1);
