@@ -25,4 +25,4 @@ add_executable(mldr ${mldr_sources})
 target_link_libraries(mldr -lpthread -ldl)
 
 install(TARGETS darling DESTINATION bin)
-install(TARGETS mldr DESTINATION libexec)
+install(TARGETS mldr DESTINATION libexec/darling/bin)
