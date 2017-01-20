@@ -7,12 +7,16 @@
 int driver_fd = -1;
 
 extern int __real_ioctl(int fd, int cmd, void* arg);
+extern int sys_open(const char*, int, int);
+extern int sys_close(int);
+extern int sys_write(int, const void*, int);
+extern int sys_kill(int, int);
 extern _libkernel_functions_t _libkernel_functions;
 
 void mach_driver_init(void)
 {
 	if (driver_fd != -1)
-		close(driver_fd);
+		sys_close(driver_fd);
 #ifndef VARIANT_DYLD
 	else
 	{
@@ -27,21 +31,21 @@ void mach_driver_init(void)
 	}
 #endif
 
-	driver_fd = open("/dev/mach", O_RDWR | O_CLOEXEC);
-	if (driver_fd == -1)
+	driver_fd = sys_open("/dev/mach", O_RDWR | O_CLOEXEC, 0);
+	if (driver_fd < 0)
 	{
 		const char* msg = "Cannot open /dev/mach. Aborting.\nMake sure you have loaded the darling-mach kernel module.\n";
 
-		write(2, msg, strlen(msg));
-		abort();
+		sys_write(2, msg, strlen(msg));
+		sys_kill(0, 6);
 	}
 
 	if (__real_ioctl(driver_fd, NR_get_api_version, 0) != DARLING_MACH_API_VERSION)
 	{
 		const char* msg = "Darling Mach kernel module reports different API level. Aborting.\n";
 
-		write(2, msg, strlen(msg));
-		abort();
+		sys_write(2, msg, strlen(msg));
+		sys_kill(0, 6);
 	}
 }
 
