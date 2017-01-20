@@ -69,13 +69,14 @@ int main(int argc, char** argv, char** envp)
 		return 1;
 	}
 
-	filename = (char*) __builtin_alloca(strlen(argv[1])+1);
-	strcpy(filename, argv[1]);
+	// sys_execve() passes the original file path appended to the mldr path in argv[0].
+	filename = (char*) __builtin_alloca(strlen(argv[0])+1);
 
-	// sys_execve() passes the original argv[0] appended to the mldr path in argv[0].
 	p = strchr(argv[0], '!');
 	if (p != NULL)
-		argv[1] = p+1;
+		strcpy(filename, p + 1);
+	else
+	    strcpy(filename, argv[1]);
 
 	p = argv[0];
 	// Update process name in ps output
