@@ -69,7 +69,7 @@
  * /etc/shells.
  */
 
-static char *okshells[] = { _PATH_BSHELL, _PATH_CSHELL, NULL };
+static const char * const okshells[] = { _PATH_BSHELL, _PATH_CSHELL, NULL };
 static char **curshell, **shells, *strings;
 static char **initshells(void);
 
@@ -77,7 +77,7 @@ static char **initshells(void);
  * Get a list of shells from _PATH_SHELLS, if it exists.
  */
 char *
-getusershell()
+getusershell(void)
 {
 	char *ret;
 
@@ -90,9 +90,8 @@ getusershell()
 }
 
 void
-endusershell()
+endusershell(void)
 {
-	
 	if (shells != NULL)
 		free(shells);
 	shells = NULL;
@@ -103,14 +102,13 @@ endusershell()
 }
 
 void
-setusershell()
+setusershell(void)
 {
-
 	curshell = initshells();
 }
 
 static char **
-initshells()
+initshells(void)
 {
 	register char **sp, *cp;
 	register FILE *fp;
@@ -124,21 +122,21 @@ initshells()
 		free(strings);
 	strings = NULL;
 	if ((fp = fopen(_PATH_SHELLS, "r")) == NULL)
-		return (okshells);
+		return ((char **)okshells);
 	if (fstat(fileno(fp), &statb) == -1) {
 		(void)fclose(fp);
-		return (okshells);
+		return ((char **)okshells);
 	}
 	if ((strings = malloc((u_int)statb.st_size)) == NULL) {
 		(void)fclose(fp);
-		return (okshells);
+		return ((char **)okshells);
 	}
 	shells = calloc((unsigned)statb.st_size / 3, sizeof (char *));
 	if (shells == NULL) {
 		(void)fclose(fp);
 		free(strings);
 		strings = NULL;
-		return (okshells);
+		return ((char **)okshells);
 	}
 	sp = shells;
 	cp = strings;

@@ -7,8 +7,13 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsd
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa/FreeBSD")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/FreeBSD")
 
 set(stdio_sources
+	xprintf_all_in_one.c
+	xprintf_comp.c
+	xprintf_domain.c
+	xprintf_exec.c
 	FreeBSD/asprintf.c
 	FreeBSD/clrerr.c
 	FreeBSD/dprintf.c

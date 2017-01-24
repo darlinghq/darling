@@ -30,7 +30,7 @@
  *
  * Contains everything required by wctype.h except:
  *
- *	typedef __darwin_wctrans_t wctrans_t;
+ *	#include <_types/_wctrans_t.h>
  *	int iswblank(wint_t);
  *	wint_t towctrans(wint_t, wctrans_t);
  *	wctrans_t wctrans(const char *);
@@ -42,22 +42,16 @@
 #include <sys/cdefs.h>
 #include <_types.h>
 
-#ifndef _WINT_T
-#define _WINT_T
-typedef __darwin_wint_t		wint_t;
-#endif
-
-#ifndef _WCTYPE_T
-#define _WCTYPE_T
-typedef __darwin_wctype_t	wctype_t;
-#endif
+#include <sys/_types/_wint_t.h>
+#include <sys/_types/_wint_t.h>
+#include <_types/_wctype_t.h>
 
 #ifndef WEOF
 #define WEOF			__DARWIN_WEOF
 #endif
 
-#ifndef __DARWIN_WCTYPE_TOP_static_inline
-#define __DARWIN_WCTYPE_TOP_static_inline static __inline
+#ifndef __DARWIN_WCTYPE_TOP_inline
+#define __DARWIN_WCTYPE_TOP_inline __header_inline
 #endif
 
 #include <ctype.h>
@@ -68,85 +62,85 @@ typedef __darwin_wctype_t	wctype_t;
 #if !defined(_DONT_USE_CTYPE_INLINE_) && \
     (defined(_USE_CTYPE_INLINE_) || defined(__GNUC__) || defined(__cplusplus))
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswalnum(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_A|_CTYPE_D));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswalpha(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_A));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswcntrl(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_C));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswctype(wint_t _wc, wctype_t _charclass)
 {
 	return (__istype(_wc, _charclass));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswdigit(wint_t _wc)
 {
 	return (__isctype(_wc, _CTYPE_D));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswgraph(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_G));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswlower(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_L));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswprint(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_R));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswpunct(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_P));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswspace(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_S));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswupper(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_U));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswxdigit(wint_t _wc)
 {
 	return (__isctype(_wc, _CTYPE_X));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline wint_t
+__DARWIN_WCTYPE_TOP_inline wint_t
 towlower(wint_t _wc)
 {
         return (__tolower(_wc));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline wint_t
+__DARWIN_WCTYPE_TOP_inline wint_t
 towupper(wint_t _wc)
 {
         return (__toupper(_wc));

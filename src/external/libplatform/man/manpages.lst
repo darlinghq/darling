@@ -1,0 +1,13 @@
+# manpage tables
+# <source> <dest> [<link> <link> ...]
+
+# man3
+atomic.3 atomic.3 OSAtomicDequeue.3 OSAtomicEnqueue.3
+atomic_deprecated.3 atomic_deprecated.3 OSAtomicAdd32.3 OSAtomicAdd32Barrier.3 OSAtomicAdd64.3 OSAtomicAdd64Barrier.3 OSAtomicAnd32.3 OSAtomicAnd32Barrier.3 OSAtomicAnd32Orig.3 OSAtomicAnd32OrigBarrier.3 OSAtomicCompareAndSwap32.3 OSAtomicCompareAndSwap32Barrier.3 OSAtomicCompareAndSwap64.3 OSAtomicCompareAndSwap64Barrier.3 OSAtomicCompareAndSwapInt.3 OSAtomicCompareAndSwapIntBarrier.3 OSAtomicCompareAndSwapLong.3 OSAtomicCompareAndSwapLongBarrier.3 OSAtomicCompareAndSwapPtr.3 OSAtomicCompareAndSwapPtrBarrier.3 OSAtomicDecrement32.3 OSAtomicDecrement32Barrier.3 OSAtomicDecrement64.3 OSAtomicDecrement64Barrier.3 OSAtomicIncrement32.3 OSAtomicIncrement32Barrier.3 OSAtomicIncrement64.3 OSAtomicIncrement64Barrier.3 OSAtomicOr32.3 OSAtomicOr32Barrier.3 OSAtomicOr32Orig.3 OSAtomicOr32OrigBarrier.3 OSAtomicTestAndClear.3 OSAtomicTestAndClearBarrier.3 OSAtomicTestAndSet.3 OSAtomicTestAndSetBarrier.3 OSAtomicXor32.3 OSAtomicXor32Barrier.3 OSAtomicXor32Orig.3 OSAtomicXor32OrigBarrier.3 OSMemoryBarrier.3
+cache.3 cache.3 sys_cache_control.3 sys_icache_invalidate.3 sys_dcache_flush.3
+ffs.3 ffs.3 ffsl.3 ffsll.3 fls.3 flsl.3 flsll.3
+getcontext.3 getcontext.3 setcontext.3
+makecontext.3 makecontext.3 swapcontext.3
+setjmp.3 setjmp.3 _longjmp.3 _setjmp.3 longjmp.3 longjmperr.3 longjmperror.3 siglongjmp.3 sigsetjmp.3
+spinlock_deprecated.3 spinlock_deprecated.3 OSSpinLockLock.3 OSSpinLockTry.3 OSSpinLockUnlock.3
+ucontext.3 ucontext.3

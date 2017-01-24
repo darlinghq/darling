@@ -36,8 +36,6 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/termios.c,v 1.16 2009/05/07 13:49:48 ed Exp
 #if __DARWIN_UNIX03
 #ifdef VARIANT_CANCELABLE
 #include <pthread.h>
-
-extern void _pthread_testcancel(pthread_t thread, int isconforming);
 #endif /* VARIANT_CANCELABLE */
 #endif /* __DARWIN_UNIX03 */
 
@@ -227,7 +225,7 @@ __tcdrain(fd)
 {
 #if __DARWIN_UNIX03
 #ifdef VARIANT_CANCELABLE
-	_pthread_testcancel(pthread_self(), 1);
+	pthread_testcancel();
 #endif /* VARIANT_CANCELABLE */
 #endif /* __DARWIN_UNIX03 */
 	return (_ioctl(fd, TIOCDRAIN, 0));
@@ -264,9 +262,6 @@ int
 tcflow(fd, action)
 	int fd, action;
 {
-	struct termios term;
-	u_char c;
-
 	switch (action) {
 	case TCOOFF:
 		return (_ioctl(fd, TIOCSTOP, 0));

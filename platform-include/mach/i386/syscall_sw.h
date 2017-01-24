@@ -85,12 +85,7 @@
 #else // DARLING
 
 #define UNIX_SYSCALL_TRAP	\
-	calll 1f ;\
-	1: ;\
-	popl %ebx ;\
-	2: ;\
-	addl    $_GLOBAL_OFFSET_TABLE_+(2b-1b), %ebx ;\
-	call __darling_bsd_syscall@PLT
+	call __darling_bsd_syscall
 #define MACHDEP_SYSCALL_TRAP	\
 	ud2
 

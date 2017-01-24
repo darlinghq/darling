@@ -29,3 +29,10 @@ FUNCTION(add_darling_library name)
 	use_ld64(${name})
 ENDFUNCTION(add_darling_library)
 
+FUNCTION(make_fat)
+	set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+		LINK_FLAGS " -arch i386 -arch x86_64")
+	set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+		COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch i386 -arch x86_64")
+ENDFUNCTION(make_fat)
+

@@ -55,7 +55,7 @@ struct attrs {
 };
 
 #ifndef BUILDING_VARIANT
-__private_extern__ struct attrlist _rp_alist = {
+__private_extern__ const struct attrlist _rp_alist = {
 	ATTR_BIT_MAP_COUNT,
 	0,
 	ATTR_CMN_NAME | ATTR_CMN_DEVID | ATTR_CMN_OBJTYPE | ATTR_CMN_OBJID,
@@ -65,7 +65,7 @@ __private_extern__ struct attrlist _rp_alist = {
 	0,
 };
 #else /* BUILDING_VARIANT */
-__private_extern__ struct attrlist _rp_alist;
+__private_extern__ const struct attrlist _rp_alist;
 #endif /* BUILDING_VARIANT */
 
 extern char * __private_getcwd(char *, size_t, int);
@@ -224,7 +224,7 @@ error_return:
 			errno = ENAMETOOLONG;
 			goto error_return;
 		}
-		if (getattrlist(resolved, &_rp_alist, &attrs, sizeof(attrs), FSOPT_NOFOLLOW) == 0) {
+		if (getattrlist(resolved, (void *)&_rp_alist, &attrs, sizeof(attrs), FSOPT_NOFOLLOW) == 0) {
 			useattrs = 1;
 			islink = (attrs.type == VLNK);
 			dev = attrs.dev;
@@ -327,7 +327,7 @@ error_return:
 					symlink[slen] = '/';
 					symlink[slen + 1] = 0;
 				}
-				left_len = strlcat(symlink, left, sizeof(left));
+				left_len = strlcat(symlink, left, sizeof(symlink));
 				if (left_len >= sizeof(left)) {
 					errno = ENAMETOOLONG;
 					goto error_return;

@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)memset.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/memset.3,v 1.9 2009/04/07 13:42:53 trasz Exp $
+.\" $FreeBSD: src/lib/libc/string/memset.3,v 1.10 2010/02/04 11:23:28 ru Exp $
 .\"
 .Dd June 4, 1993
 .Dt MEMSET 3
@@ -52,7 +52,9 @@ writes
 .Fa len
 bytes of value
 .Fa c
-(converted to an unsigned char) to the byte string
+(converted to an
+.Vt "unsigned char" )
+to the string
 .Fa b .
 .Sh RETURN VALUES
 The
@@ -61,6 +63,7 @@ function returns its first argument.
 .Sh SEE ALSO
 .Xr bzero 3 ,
 .Xr memset_pattern 3 ,
+.Xr memset_s.3 ,
 .Xr swab 3 ,
 .Xr wmemset 3
 .Sh STANDARDS

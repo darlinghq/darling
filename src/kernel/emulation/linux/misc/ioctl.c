@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 
-long sys_ioctl(int fd, int req, void* arg)
+long __real_ioctl(int fd, int req, void* arg)
 {
 	int ret;
 

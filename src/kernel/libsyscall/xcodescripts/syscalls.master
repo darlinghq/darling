@@ -31,9 +31,6 @@
 ; N.B.: makesyscalls.sh and createsyscalls.pl must be updated to account
 ; for any new argument types.
 
-; If you add a new syscall number to the end of this file, you need to
-; increment the value of NUM_SYSENT in bsd/sys/sysent.h.
-
 #include <sys/appleapiopts.h>
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -113,7 +110,7 @@
 60	AUE_UMASK	ALL	{ int umask(int newmask); } 
 61	AUE_CHROOT	ALL	{ int chroot(user_addr_t path); } 
 62	AUE_NULL	ALL	{ int nosys(void); }   { old fstat }
-63	AUE_NULL	ALL	{ int nosys(void); }   { used internally, reserved }
+63	AUE_NULL	ALL	{ int nosys(void); }   { used internally and reserved }
 64	AUE_NULL	ALL	{ int nosys(void); }   { old getpagesize }
 65	AUE_MSYNC	ALL	{ int msync(caddr_t addr, size_t len, int flags) NO_SYSCALL_STUB; } 
 66	AUE_VFORK	ALL	{ int vfork(void); } 
@@ -182,7 +179,7 @@
 114	AUE_NULL	ALL	{ int nosys(void); }
 #endif /* SOCKETS */
 115	AUE_NULL	ALL	{ int nosys(void); }   { old vtrace }
-116	AUE_GETTIMEOFDAY	ALL	{ int gettimeofday(struct timeval *tp, struct timezone *tzp) NO_SYSCALL_STUB; } 
+116	AUE_GETTIMEOFDAY	ALL	{ int gettimeofday(struct timeval *tp, struct timezone *tzp, uint64_t *mach_absolute_time) NO_SYSCALL_STUB; }
 117	AUE_GETRUSAGE	ALL	{ int getrusage(int who, struct rusage *rusage); } 
 #if SOCKETS
 118	AUE_GETSOCKOPT	ALL	{ int getsockopt(int s, int level, int name, caddr_t val, socklen_t *avalsize); } 
@@ -265,7 +262,7 @@
 174	AUE_NULL	ALL	{ int nosys(void); }   { old getdents }
 175	AUE_NULL	ALL	{ int nosys(void); }   { old gc_control }
 176	AUE_NULL	ALL	{ int nosys(void); }   { old add_profil }
-177	AUE_NULL	ALL	{ int nosys(void); } 
+177	AUE_KDEBUGTRACE	ALL	{ int kdebug_typefilter(void** addr, size_t* size) NO_SYSCALL_STUB; } 
 178	AUE_KDEBUGTRACE	ALL 	{ uint64_t kdebug_trace_string(uint32_t debugid, uint64_t str_id, const char *str) NO_SYSCALL_STUB; }
 179	AUE_KDEBUGTRACE	ALL 	{ int kdebug_trace64(uint32_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4) NO_SYSCALL_STUB; } 
 180	AUE_KDEBUGTRACE	ALL 	{ int kdebug_trace(uint32_t code, u_long arg1, u_long arg2, u_long arg3, u_long arg4) NO_SYSCALL_STUB; } 
@@ -273,7 +270,7 @@
 182	AUE_SETEGID	ALL	{ int setegid(gid_t egid); } 
 183	AUE_SETEUID	ALL	{ int seteuid(uid_t euid); } 
 184	AUE_SIGRETURN	ALL	{ int sigreturn(struct ucontext *uctx, int infostyle) NO_SYSCALL_STUB; } 
-185	AUE_CHUD	ALL 	{ int chud(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5) NO_SYSCALL_STUB; } 
+185	AUE_NULL	ALL 	{ int enosys(void); } { old chud }
 186	AUE_NULL	ALL	{ int nosys(void); } 
 187	AUE_FDATASYNC	ALL	{ int fdatasync(int fd); } 
 188	AUE_STAT	ALL	{ int stat(user_addr_t path, user_addr_t ub); } 
@@ -281,12 +278,12 @@
 190	AUE_LSTAT	ALL	{ int lstat(user_addr_t path, user_addr_t ub); } 
 191	AUE_PATHCONF	ALL	{ int pathconf(char *path, int name); } 
 192	AUE_FPATHCONF	ALL	{ int fpathconf(int fd, int name); } 
-193	AUE_NULL	ALL	{ int nosys(void); } 
+193	AUE_NULL	ALL	{ int nosys(void); }	{ old getfsstat } 
 194	AUE_GETRLIMIT	ALL	{ int getrlimit(u_int which, struct rlimit *rlp) NO_SYSCALL_STUB; } 
 195	AUE_SETRLIMIT	ALL	{ int setrlimit(u_int which, struct rlimit *rlp) NO_SYSCALL_STUB; } 
 196	AUE_GETDIRENTRIES	ALL	{ int getdirentries(int fd, char *buf, u_int count, long *basep); } 
 197	AUE_MMAP	ALL	{ user_addr_t mmap(caddr_t addr, size_t len, int prot, int flags, int fd, off_t pos) NO_SYSCALL_STUB; } 
-198	AUE_NULL	ALL	{ int nosys(void); } 	{ __syscall }
+198	AUE_NULL	ALL	{ int nosys(void); } 	{ old __syscall }
 199	AUE_LSEEK	ALL	{ off_t lseek(int fd, off_t offset, int whence); } 
 200	AUE_TRUNCATE	ALL	{ int truncate(char *path, off_t length); } 
 201	AUE_FTRUNCATE	ALL	{ int ftruncate(int fd, off_t length); } 
@@ -317,14 +314,14 @@
 
 ; 216-> 219 used to be mkcomplex and {f,l}statv variants. They are gone now.
 216	AUE_NULL	ALL	{ int open_dprotected_np(user_addr_t path, int flags, int class, int dpflags, int mode) NO_SYSCALL_STUB; }
-217	AUE_NULL	ALL	{ int nosys(void); }
-218	AUE_NULL	ALL	{ int nosys(void); }
-219	AUE_NULL	ALL	{ int nosys(void); }
+217	AUE_NULL	ALL	{ int nosys(void); }	{ old statv }
+218	AUE_NULL	ALL	{ int nosys(void); }	{ old lstatv }
+219	AUE_NULL	ALL	{ int nosys(void); }	{ old fstatv }
 220	AUE_GETATTRLIST	ALL	{ int getattrlist(const char *path, struct attrlist *alist, void *attributeBuffer, size_t bufferSize, u_long options) NO_SYSCALL_STUB; } 
 221	AUE_SETATTRLIST	ALL	{ int setattrlist(const char *path, struct attrlist *alist, void *attributeBuffer, size_t bufferSize, u_long options) NO_SYSCALL_STUB; } 
 222	AUE_GETDIRENTRIESATTR	ALL	{ int getdirentriesattr(int fd, struct attrlist *alist, void *buffer, size_t buffersize, u_long *count, u_long *basep, u_long *newstate, u_long options); } 
 223	AUE_EXCHANGEDATA	ALL	{ int exchangedata(const char *path1, const char *path2, u_long options); } 
-224	AUE_NULL		ALL { int nosys(void); } { old checkuseraccess / fsgetpath (which moved to 427) }
+224	AUE_NULL		ALL { int nosys(void); } { old checkuseraccess or fsgetpath }
 225	AUE_SEARCHFS	ALL	{ int searchfs(const char *path, struct fssearchblock *searchblock, uint32_t *nummatches, uint32_t scriptcode, uint32_t options, struct searchstate *state); } 
 226	AUE_DELETE	ALL	{ int delete(user_addr_t path) NO_SYSCALL_STUB; }       { private delete (Carbon semantics) }
 227	AUE_COPYFILE	ALL	{ int copyfile(char *from, char *to, int mode, int flags) NO_SYSCALL_STUB; } 
@@ -380,7 +377,7 @@
 254	AUE_SEMCTL	ALL	{ int semctl(int semid, int semnum, int cmd, semun_t arg) NO_SYSCALL_STUB; } 
 255	AUE_SEMGET	ALL	{ int semget(key_t key, int	nsems, int semflg); } 
 256	AUE_SEMOP	ALL	{ int semop(int semid, struct sembuf *sops, int nsops); } 
-257	AUE_NULL	ALL	{ int nosys(void); } 
+257	AUE_NULL	ALL	{ int nosys(void); }	{ old semconfig } 
 #else
 254	AUE_NULL	ALL	{ int nosys(void); } 
 255	AUE_NULL	ALL	{ int nosys(void); } 
@@ -547,7 +544,7 @@
 362	AUE_KQUEUE	ALL	{ int kqueue(void); } 
 363	AUE_NULL	ALL	{ int kevent(int fd, const struct kevent *changelist, int nchanges, struct kevent *eventlist, int nevents, const struct timespec *timeout); } 
 364	AUE_LCHOWN	ALL	{ int lchown(user_addr_t path, uid_t owner, gid_t group) NO_SYSCALL_STUB; }
-365	AUE_STACKSNAPSHOT	ALL	{ int stack_snapshot(pid_t pid, user_addr_t tracebuf, uint32_t tracebuf_size, uint32_t flags, uint32_t dispatch_offset) NO_SYSCALL_STUB; }
+365	AUE_NULL	ALL	{ int nosys(void); }	{ old stack_snapshot }
 #if CONFIG_WORKQUEUE
 366	AUE_NULL	ALL	{ int bsdthread_register(user_addr_t threadstart, user_addr_t wqthread, uint32_t flags, user_addr_t stack_addr_hint, user_addr_t targetconc_ptr, uint32_t dispatchqueue_offset, uint32_t tsd_offset) NO_SYSCALL_STUB; } 
 367	AUE_WORKQOPEN	ALL	{ int workq_open(void) NO_SYSCALL_STUB; }
@@ -661,7 +658,7 @@
 425     AUE_MAC_GET_MOUNT       ALL     { int nosys(void); }
 #endif
 426	AUE_MAC_GETFSSTAT	ALL	{ int __mac_getfsstat(user_addr_t buf, int bufsize, user_addr_t mac, int macsize, int flags); } 
-427	AUE_FSGETPATH	ALL	{ user_ssize_t fsgetpath(user_addr_t buf, size_t bufsize, user_addr_t fsid, uint64_t objid) NO_SYSCALL_STUB; } { private fsgetpath (File Manager SPI) }
+427	AUE_FSGETPATH	ALL	{ user_ssize_t fsgetpath(user_addr_t buf, size_t bufsize, user_addr_t fsid, uint64_t objid); } { private fsgetpath (File Manager SPI) }
 428	AUE_NULL	ALL	{ mach_port_name_t audit_session_self(void); }
 429	AUE_NULL	ALL	{ int audit_session_join(mach_port_name_t port); }
 430	AUE_NULL	ALL	{ int fileport_makeport(int fd, user_addr_t portnamep); }
@@ -719,12 +716,12 @@
 459	AUE_NULL	ALL	{ int enosys(void); }
 #endif /* COALITIONS */
 #if NECP
-460 AUE_NULL	ALL { int necp_match_policy(uint8_t *parameters, size_t parameters_size, struct necp_aggregate_result *returned_result); }
+460 AUE_NECP	ALL { int necp_match_policy(uint8_t *parameters, size_t parameters_size, struct necp_aggregate_result *returned_result); }
 #else
 460	AUE_NULL	ALL	{ int nosys(void); }
 #endif /* NECP */
 461	AUE_GETATTRLISTBULK	ALL	{ int getattrlistbulk(int dirfd, struct attrlist *alist, void *attributeBuffer, size_t bufferSize, uint64_t options); }
-462	AUE_NULL	ALL { int enosys(void); } /* PLACEHOLDER for CLONEFILE */
+462	AUE_CLONEFILEAT	ALL     { int clonefileat(int src_dirfd, user_addr_t src, int dst_dirfd, user_addr_t dst, uint32_t flags); }
 463	AUE_OPENAT_RWTC	ALL	{ int openat(int fd, user_addr_t path, int flags, int mode) NO_SYSCALL_STUB; }
 464	AUE_OPENAT_RWTC	ALL	{ int openat_nocancel(int fd, user_addr_t path, int flags, int mode) NO_SYSCALL_STUB; }
 465	AUE_RENAMEAT	ALL	{ int renameat(int fromfd, char *from, int tofd, char *to) NO_SYSCALL_STUB; }
@@ -759,18 +756,14 @@
 485	AUE_NULL	ALL	{ user_ssize_t guarded_write_np(int fd, const guardid_t *guard, user_addr_t cbuf, user_size_t nbyte); }
 486	AUE_PWRITE	ALL	{ user_ssize_t guarded_pwrite_np(int fd, const guardid_t *guard, user_addr_t buf, user_size_t nbyte, off_t offset); }
 487	AUE_WRITEV	ALL	{ user_ssize_t guarded_writev_np(int fd, const guardid_t *guard, struct iovec *iovp, int iovcnt); }
-#if CONFIG_SECLUDED_RENAME
-488	AUE_RENAME	ALL	{ int rename_ext(char *from, char *to, u_int flags) NO_SYSCALL_STUB; }
-#else
-488	AUE_NULL	ALL	{ int enosys(void); }
-#endif
+488	AUE_RENAMEAT	ALL	{ int renameatx_np(int fromfd, char *from, int tofd, char *to, u_int flags) NO_SYSCALL_STUB; }
 #if CONFIG_CODE_DECRYPTION
 489	AUE_MPROTECT	ALL	{ int mremap_encrypted(caddr_t addr, size_t len, uint32_t cryptid, uint32_t cputype, uint32_t cpusubtype); } 
 #else
 489	AUE_NULL	ALL	{ int enosys(void); }
 #endif
 #if NETWORKING
-490	AUE_NULL	ALL	{ int netagent_trigger(uuid_t agent_uuid, size_t agent_uuidlen); }
+490	AUE_NETAGENT	ALL	{ int netagent_trigger(uuid_t agent_uuid, size_t agent_uuidlen); }
 #else
 490	AUE_NULL	ALL	{ int nosys(void); }
 #endif /* NETWORKING */
@@ -788,6 +781,33 @@
 #endif
 495	AUE_NULL	ALL	{ int enosys(void); }
 496	AUE_NULL	ALL	{ int enosys(void); }
-497 	AUE_NULL	ALL	{ int enosys(void); }
+497 AUE_NULL	ALL	{ int enosys(void); }
 498	AUE_NULL	ALL	{ int enosys(void); }
 499	AUE_NULL	ALL	{ int work_interval_ctl(uint32_t operation, uint64_t work_interval_id, void *arg, size_t len) NO_SYSCALL_STUB; }
+500	AUE_NULL	ALL	{ int getentropy(void *buffer, size_t size); }
+#if NECP
+501	AUE_NECP	ALL	{ int necp_open(int flags); } }
+502	AUE_NECP	ALL	{ int necp_client_action(int necp_fd, uint32_t action, uuid_t client_id, size_t client_id_len, uint8_t *buffer, size_t buffer_size); }
+#else
+501	AUE_NULL	ALL	{ int enosys(void); }
+502	AUE_NULL	ALL	{ int enosys(void); }
+#endif /* NECP */
+503	AUE_NULL	ALL	{ int enosys(void); }
+504	AUE_NULL	ALL	{ int enosys(void); }
+505	AUE_NULL	ALL	{ int enosys(void); }
+506	AUE_NULL	ALL	{ int enosys(void); }
+507	AUE_NULL	ALL	{ int enosys(void); }
+508	AUE_NULL	ALL	{ int enosys(void); }
+509	AUE_NULL	ALL	{ int enosys(void); }
+510	AUE_NULL	ALL	{ int enosys(void); }
+511	AUE_NULL	ALL	{ int enosys(void); }
+512	AUE_NULL	ALL	{ int enosys(void); }
+513	AUE_NULL	ALL	{ int enosys(void); }
+514	AUE_NULL	ALL	{ int enosys(void); }
+515	AUE_NULL	ALL	{ int ulock_wait(uint32_t operation, void *addr, uint64_t value, uint32_t timeout) NO_SYSCALL_STUB; }
+516	AUE_NULL	ALL	{ int ulock_wake(uint32_t operation, void *addr, uint64_t wake_value) NO_SYSCALL_STUB; }
+517	AUE_FCLONEFILEAT	ALL     { int fclonefileat(int src_fd, int dst_dirfd, user_addr_t dst, uint32_t flags); }
+518	AUE_NULL	ALL     { int fs_snapshot(uint32_t op, int dirfd, user_addr_t name1, user_addr_t name2, user_addr_t data, uint32_t flags) NO_SYSCALL_STUB; }
+519	AUE_NULL	ALL	{ int enosys(void); }
+520	AUE_KILL	ALL	{ int terminate_with_payload(int pid, uint32_t reason_namespace, uint64_t reason_code, void *payload, uint32_t payload_size, const char *reason_string, uint64_t reason_flags) NO_SYSCALL_STUB; }
+521	AUE_EXIT	ALL	{ void abort_with_payload(uint32_t reason_namespace, uint64_t reason_code, void *payload, uint32_t payload_size, const char *reason_string, uint64_t reason_flags) NO_SYSCALL_STUB; }

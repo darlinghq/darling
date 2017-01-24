@@ -1,0 +1,12 @@
+#include "libplatform.xcconfig"
+#include "perarch.xcconfig"
+
+// Make sure that OSAtomic isn't build unoptimised, otherwise the inlines
+// don't do what they are designed to do.
+COMPILER_CFLAGS = -momit-leaf-frame-pointer
+OTHER_CFLAGS_debug =
+
+OSATOMIC_PREPROCESSOR_DEFINITIONS = OSATOMIC_USE_INLINED=0 OSATOMIC_DEPRECATED=0
+
+PUBLIC_HEADERS_FOLDER_PATH = /usr/include/libkern
+PRIVATE_HEADERS_FOLDER_PATH = /usr/local/include/libkern

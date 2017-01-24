@@ -352,7 +352,7 @@ __private_extern__ int __crypt_des_setkey_called;
 /* =====  (mostly) Standard DES Tables ==================== */
 
 #ifndef BUILDING_VARIANT
-static unsigned char IP[] = {		/* initial permutation */
+static const unsigned char IP[] = {		/* initial permutation */
 	58, 50, 42, 34, 26, 18, 10,  2,
 	60, 52, 44, 36, 28, 20, 12,  4,
 	62, 54, 46, 38, 30, 22, 14,  6,
@@ -365,7 +365,7 @@ static unsigned char IP[] = {		/* initial permutation */
 
 /* The final permutation is the inverse of IP - no table is necessary */
 
-static unsigned char ExpandTr[] = {	/* expansion operation */
+static const unsigned char ExpandTr[] = {	/* expansion operation */
 	32,  1,  2,  3,  4,  5,
 	 4,  5,  6,  7,  8,  9,
 	 8,  9, 10, 11, 12, 13,
@@ -376,7 +376,7 @@ static unsigned char ExpandTr[] = {	/* expansion operation */
 	28, 29, 30, 31, 32,  1,
 };
 
-static unsigned char PC1[] = {		/* permuted choice table 1 */
+static const unsigned char PC1[] = {		/* permuted choice table 1 */
 	57, 49, 41, 33, 25, 17,  9,
 	 1, 58, 50, 42, 34, 26, 18,
 	10,  2, 59, 51, 43, 35, 27,
@@ -388,12 +388,12 @@ static unsigned char PC1[] = {		/* permuted choice table 1 */
 	21, 13,  5, 28, 20, 12,  4,
 };
 
-static unsigned char Rotates[] = {	/* PC1 rotation schedule */
+static const unsigned char Rotates[] = {	/* PC1 rotation schedule */
 	1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1,
 };
 
 /* note: each "row" of PC2 is left-padded with bits that make it invertible */
-static unsigned char PC2[] = {		/* permuted choice table 2 */
+static const unsigned char PC2[] = {		/* permuted choice table 2 */
 	 9, 18,    14, 17, 11, 24,  1,  5,
 	22, 25,     3, 28, 15,  6, 21, 10,
 	35, 38,    23, 19, 12,  4, 26,  8,
@@ -456,7 +456,7 @@ static const unsigned char S[8][64] = {	/* 48->32 bit substitution tables */
 	},
 };
 
-static unsigned char P32Tr[] = {	/* 32-bit permutation function */
+static const unsigned char P32Tr[] = {	/* 32-bit permutation function */
 	16,  7, 20, 21,
 	29, 12, 28, 17,
 	 1, 15, 23, 26,
@@ -467,7 +467,7 @@ static unsigned char P32Tr[] = {	/* 32-bit permutation function */
 	22, 11,  4, 25,
 };
 
-static unsigned char CIFP[] = {		/* compressed/interleaved permutation */
+static const unsigned char CIFP[] = {		/* compressed/interleaved permutation */
 	 1,  2,  3,  4,   17, 18, 19, 20,
 	 5,  6,  7,  8,   21, 22, 23, 24,
 	 9, 10, 11, 12,   25, 26, 27, 28,
@@ -479,14 +479,24 @@ static unsigned char CIFP[] = {		/* compressed/interleaved permutation */
 	45, 46, 47, 48,   61, 62, 63, 64,
 };
 
-static unsigned char itoa64[] =		/* 0..63 => ascii-64 */
+static const unsigned char itoa64[] =		/* 0..63 => ascii-64 */
 	"./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 
 /* =====  Tables that are initialized at run time  ==================== */
 
 
-static unsigned char a64toi[128];	/* ascii-64 => 0..63 */
+/* ascii-64 => 0..63 */
+static const unsigned char a64toi[128] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+	2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 0, 0, 0, 0, 0,
+	0, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+	27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 0, 0, 0, 0, 0,
+	0, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52,
+	53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 0, 0, 0, 0, 0,
+};
 
 /* Initial key schedule permutation */
 // static C_block	PC1ROT[64/CHUNKBITS][1<<CHUNKBITS];
@@ -783,19 +793,11 @@ STATIC void init_des()
 	register int i, j;
 	register long k;
 	register int tableno;
-	static unsigned char perm[64], tmp32[32];	/* "static" for speed */
-
-	/*
-	 * table that converts chars "./0-9A-Za-z"to integers 0-63.
-	 */
-	for (i = 0; i < 64; i++)
-		a64toi[itoa64[i]] = i;
+	unsigned char perm[64] = {0};
 
 	/*
 	 * PC1ROT - bit reverse, then PC1, then Rotate, then PC2.
 	 */
-	for (i = 0; i < 64; i++)
-		perm[i] = 0;
 	for (i = 0; i < 64; i++) {
 		if ((k = PC2[i]) == 0)
 			continue;
@@ -892,6 +894,7 @@ STATIC void init_des()
 		perm[i] = P32Tr[ExpandTr[i]-1];
 	for (tableno = 0; tableno < 8; tableno++) {
 		for (j = 0; j < 64; j++)  {
+			unsigned char tmp32[32] = { 0 };
 			k = (((j >> 0) &01) << 5)|
 			    (((j >> 1) &01) << 3)|
 			    (((j >> 2) &01) << 2)|
@@ -903,8 +906,6 @@ STATIC void init_des()
 			    (((k >> 2)&01) << 1)|
 			    (((k >> 1)&01) << 2)|
 			    (((k >> 0)&01) << 3);
-			for (i = 0; i < 32; i++)
-				tmp32[i] = 0;
 			for (i = 0; i < 4; i++)
 				tmp32[4 * tableno + i] = (k >> i) & 01;
 			k = 0;

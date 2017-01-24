@@ -56,8 +56,6 @@
 #if __DARWIN_UNIX03
 #ifdef VARIANT_CANCELABLE
 #include <pthread.h>
-
-extern void _pthread_testcancel(pthread_t thread, int isconforming);
 #endif /* VARIANT_CANCELABLE */
 extern int __unix_conforming;
 #endif /* __DARWIN_UNIX03 */
@@ -69,13 +67,14 @@ extern int __unix_conforming;
 #ifndef BUILDING_VARIANT
 #if defined(__DYNAMIC__)
 extern int _sigaction_nobind (int sig, const struct sigaction *nsv, struct sigaction *osv);
+extern int _sigvec_nobind (int, struct sigvec *, struct sigvec *);
 #endif
 
 static int
-sigvec__(signo, sv, osv, bind)
-	int signo;
-	struct sigvec *sv, *osv;
-	int bind;
+sigvec__(int signo,
+	 struct sigvec *sv,
+	 struct sigvec *osv,
+	 int bind)
 {
 	int ret;
 
@@ -96,26 +95,25 @@ sigvec__(signo, sv, osv, bind)
 }
 
 int
-sigvec(signo, sv, osv)
-        int signo;
-        struct sigvec *sv, *osv;
+sigvec(int signo,
+       struct sigvec *sv,
+       struct sigvec *osv)
 {
     return sigvec__(signo, sv, osv, 1);
 }
 
 #if defined(__DYNAMIC__)
 int
-_sigvec_nobind(signo, sv, osv)
-        int signo;
-        struct sigvec *sv, *osv;
+_sigvec_nobind(int signo,
+	       struct sigvec *sv,
+	       struct sigvec *osv)
 {
     return sigvec__(signo, sv, osv, 0);
 }
 #endif
 
 int
-sigsetmask(mask)
-	int mask;
+sigsetmask(int mask)
 {
 	int omask, n;
 
@@ -126,8 +124,7 @@ sigsetmask(mask)
 }
 
 int
-sigblock(mask)
-	int mask;
+sigblock(int mask)
 {
 	int omask, n;
 
@@ -140,15 +137,14 @@ sigblock(mask)
 
 #if __DARWIN_UNIX03
 int
-sigpause(sig)
-	int sig;
+sigpause(int sig)
 {
 	sigset_t mask;
 
 	if (__unix_conforming == 0)
 		__unix_conforming = 1;
 #ifdef VARIANT_CANCELABLE
-	_pthread_testcancel(pthread_self(), 1);
+	pthread_testcancel();
 #endif /* VARIANT_CANCELABLE */
 
 	if ((sig <= 0) || (sig >= NSIG)) {
@@ -163,8 +159,7 @@ sigpause(sig)
 }
 #else
 int
-sigpause(mask)
-	int mask;
+sigpause(int mask)
 {
 	return (sigsuspend((sigset_t *)&mask));
 }
@@ -172,8 +167,7 @@ sigpause(mask)
 
 #ifndef BUILDING_VARIANT
 int
-sighold(sig)
-	int sig;
+sighold(int sig)
 {
 	sigset_t mask;
 
@@ -187,8 +181,7 @@ sighold(sig)
 }
 
 int
-sigrelse(sig)
-	int sig;
+sigrelse(int sig)
 {
 	sigset_t mask;
 
@@ -203,8 +196,7 @@ sigrelse(sig)
 
 
 int
-sigignore(sig)
-	int sig;
+sigignore(int sig)
 {
 	return (signal(sig, SIG_IGN) == SIG_ERR ? -1 : 0);
 }

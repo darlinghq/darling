@@ -1,0 +1,9 @@
+#include "libplatform.xcconfig"
+
+// pick <BLAH>_static in libplatform.xcconfig
+BUILD_VARIANTS = static
+
+EXECUTABLE_PREFIX = lib
+PRODUCT_NAME = platform
+INSTALL_PATH = /usr/local/lib/system
+SKIP_INSTALL = NO

@@ -35,7 +35,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include "CrashReporterClient.h"
+#include <CrashReporterClient.h>
 #include "libproc.h"
 #include "_simple.h"
 
@@ -88,8 +88,10 @@ __guard_setup(const char *apple[])
 	for (p = apple; p && *p; p++) {
 		if (strstr(*p, "stack_guard") == *p) {
 			__guard_from_kernel(*p);
-			if (__stack_chk_guard[0] != 0)
+			bzero((void*)*p, strlen(*p));
+			if (__stack_chk_guard[0] != 0) {
 				return;
+			}
 		}
 	}
 

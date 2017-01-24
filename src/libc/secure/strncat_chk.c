@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 Apple Inc. All rights reserved.
+ * Copyright (c) 2007-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -23,36 +23,24 @@
 
 #include <stdlib.h>
 #include <string.h>
-
-extern void __chk_fail (void) __attribute__((__noreturn__));
+#include "secure.h"
 
 char *
-__strncat_chk (char *restrict dest, const char *restrict src,
-	      size_t len, size_t dstlen)
+__strncat_chk (char *restrict dest, const char *restrict append,
+               size_t len, size_t dstlen)
 {
-  char *s1 = dest;
-  const char *s2 = src;
+  size_t len1 = strlen(dest);
+  size_t len2 = strnlen(append, len);
 
-  /* Advance to the end. */
-  while (*s1 != 0)
-    {
-      if (__builtin_expect (dstlen-- == 0, 0))
-	__chk_fail ();
-      s1++;
-    }
+  if (__builtin_expect (dstlen < len1 + len2 + 1, 0))
+    __chk_fail_overflow ();
 
-  /* Append the string. */
-  while (len > 0)
-    {
-      if (__builtin_expect (dstlen-- == 0, 0))
-	__chk_fail ();
-      if ((*s1 = *s2++) == 0)
-	break;
-      s1++;
-      len--;
-    }
-    *s1 = 0;
+  if (__builtin_expect (__chk_assert_no_overlap != 0, 1))
+    __chk_overlap(dest, len1 + len2 + 1, append, len2 + 1);
+
+  /* memmove() all but the NUL, since it might not actually be NUL */
+  memcpy(dest + len1, append, len2);
+  dest[len1 + len2] = '\0';
 
   return dest;
-
 }

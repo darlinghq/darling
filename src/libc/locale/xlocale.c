@@ -42,8 +42,8 @@
 static char C[] = "C";
 static struct _xlocale __c_locale = C_LOCALE_INITIALIZER;
 const locale_t _c_locale = (const locale_t)&__c_locale;
-__private_extern__ struct _xlocale __global_locale = C_LOCALE_INITIALIZER;
-__private_extern__ pthread_key_t __locale_key = (pthread_key_t)-1;
+struct _xlocale __global_locale = C_LOCALE_INITIALIZER;
+pthread_key_t __locale_key = (pthread_key_t)-1;
 
 extern int __collate_load_tables(const char *, locale_t);
 extern int __detect_path_locale(void);
@@ -391,10 +391,7 @@ querylocale(int mask, locale_t loc)
 		errno = EINVAL;
 		return NULL;
 	}
-	if (loc == NULL)
-		loc = __current_locale();
-	else if (loc == LC_GLOBAL_LOCALE)
-		loc = &__global_locale;
+	DEFAULT_CURRENT_LOCALE(loc);
 	m = ffs(mask);
 	if (m == 0 || m > _LC_NUM_MASK) {
 		errno = EINVAL;
@@ -483,18 +480,13 @@ ___mb_cur_max_l(locale_t loc)
 static void
 __xlocale_release(void *loc)
 {
-	XL_RELEASE((locale_t)loc);
+	locale_t l = loc;
+	XL_RELEASE(l);
 }
 
 /*
  * Called from the Libc initializer to setup the thread-specific key.
  */
-/*
- * Partition _pthread_keys in a lower part that dyld can use, and an upper
- * part for libSystem.  The libSystem part starts at __pthread_tsd_first = 10.
- * dyld will set this value to 1.
- */
-
 __private_extern__ void
 __xlocale_init(void)
 {

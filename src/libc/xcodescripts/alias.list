@@ -1,0 +1,14 @@
+__platform_bzero _bzero
+__platform_memccpy _memccpy
+__platform_memchr _memchr
+__platform_memcmp _memcmp
+__platform_memcmp _bcmp
+__platform_memmove _memmove
+__platform_memmove _memcpy
+__platform_memset _memset
+__platform_memset_pattern16 _memset_pattern16
+__platform_memset_pattern4 _memset_pattern4
+__platform_memset_pattern8 _memset_pattern8
+__platform_strchr _strchr
+__platform_strcmp _strcmp
+__platform_strncmp _strncmp

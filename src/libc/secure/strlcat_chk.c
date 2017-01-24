@@ -26,14 +26,15 @@
 #include "secure.h"
 
 size_t
-__strlcat_chk (char *restrict dest, char *restrict src,
-	       size_t len, size_t dstlen)
+__strlcat_chk(char *restrict dest, char *restrict src,
+    size_t len, size_t dstlen)
 {
   size_t initial_srclen;
   size_t initial_dstlen;
 
-  if (__builtin_expect (dstlen < len, 0))
+  if (__builtin_expect (dstlen < len, 0)) {
     __chk_fail_overflow ();
+  }
 
   initial_srclen = strlen(src);
   initial_dstlen = strnlen(dest, len);
@@ -45,7 +46,7 @@ __strlcat_chk (char *restrict dest, char *restrict src,
     __chk_overlap(dest, initial_srclen + initial_dstlen + 1, src, initial_srclen + 1);
     memcpy(dest+initial_dstlen, src, initial_srclen + 1);
   } else {
-    __chk_overlap(dest, initial_srclen + initial_dstlen + 1, src, len - initial_dstlen - 1);
+    __chk_overlap(dest, len, src, len - initial_dstlen - 1);
     memcpy(dest+initial_dstlen, src, len - initial_dstlen - 1);
     dest[len-1] = '\0';
   }

@@ -34,7 +34,11 @@ static char	tzfilehid[] = "@(#)tzfile.h	7.14";
 */
 
 #ifndef TZDIR
+#ifdef UNIFDEF_TZDIR_SYMLINK
+#define TZDIR	"/var/db/timezone/zoneinfo" /* Time zone object file directory */
+#else /* !UNIFDEF_TZDIR_SYMLINK */
 #define TZDIR	"/usr/share/zoneinfo" /* Time zone object file directory */
+#endif /* UNIFDEF_TZDIR_SYMLINK */
 #endif /* !defined TZDIR */
 
 #ifndef TZDEFAULT

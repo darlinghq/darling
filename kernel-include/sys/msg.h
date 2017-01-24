@@ -74,25 +74,10 @@
  * NOTE:	The definition of the key_t type is implicit from the
  *		inclusion of <sys/ipc.h>
  */
-#ifndef _PID_T
-typedef __darwin_pid_t		pid_t;
-#define _PID_T
-#endif
-
-#ifndef	_TIME_T
-#define	_TIME_T
-typedef	__darwin_time_t		time_t;
-#endif
-
-#ifndef _SIZE_T
-#define _SIZE_T
-typedef __darwin_size_t		size_t;
-#endif
-
-#ifndef	_SSIZE_T
-#define	_SSIZE_T
-typedef	__darwin_ssize_t	ssize_t;
-#endif
+#include <sys/_types/_pid_t.h>
+#include <sys/_types/_time_t.h>
+#include <sys/_types/_size_t.h>
+#include <sys/_types/_ssize_t.h>
 
 /* [XSI] Used for the number of messages in the message queue */
 typedef unsigned long		msgqnum_t;

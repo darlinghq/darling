@@ -39,11 +39,16 @@ __END_DECLS
 
 //Begin-Libc
 #ifdef __LIBC__
-__DARWIN_CTYPE_static_inline int     
+__DARWIN_CTYPE_inline int
 __maskrune_l(__darwin_ct_rune_t _c, unsigned long _f, locale_t _l)
 {
-	return ((_c < 0 || _c >= _CACHED_RUNES) ? ___runetype_l(_c, _l) :
-		__locale_ptr(_l)->__lc_ctype->_CurrentRuneLocale.__runetype[_c]) & _f;
+	/* _CurrentRuneLocale.__runetype is __uint32_t
+	 * _f is unsigned long
+	 * ___runetype_l(_c, _l) is unsigned long
+	 * retval is int
+	 */
+	return (int)((_c < 0 || _c >= _CACHED_RUNES) ? (__uint32_t)___runetype_l(_c, _l) :
+		__locale_ptr(_l)->__lc_ctype->_CurrentRuneLocale.__runetype[_c]) & (__uint32_t)_f;
 }
 #else /* !__LIBC__ */
 //End-Libc
@@ -54,28 +59,28 @@ __END_DECLS
 #endif /* __LIBC__ */
 //End-Libc
 
-__DARWIN_CTYPE_static_inline int
+__DARWIN_CTYPE_inline int
 __istype_l(__darwin_ct_rune_t _c, unsigned long _f, locale_t _l)
 {
 	return !!(isascii(_c) ? (_DefaultRuneLocale.__runetype[_c] & _f)
 		: __maskrune_l(_c, _f, _l));
 }
 
-__DARWIN_CTYPE_static_inline __darwin_ct_rune_t
+__DARWIN_CTYPE_inline __darwin_ct_rune_t
 __toupper_l(__darwin_ct_rune_t _c, locale_t _l)
 {
 	return isascii(_c) ? _DefaultRuneLocale.__mapupper[_c]
 		: ___toupper_l(_c, _l);
 }
 
-__DARWIN_CTYPE_static_inline __darwin_ct_rune_t
+__DARWIN_CTYPE_inline __darwin_ct_rune_t
 __tolower_l(__darwin_ct_rune_t _c, locale_t _l)
 {
 	return isascii(_c) ? _DefaultRuneLocale.__maplower[_c]
 		: ___tolower_l(_c, _l);
 }
 
-__DARWIN_CTYPE_static_inline int
+__DARWIN_CTYPE_inline int
 __wcwidth_l(__darwin_ct_rune_t _c, locale_t _l)
 {
 	unsigned int _x;
@@ -90,127 +95,127 @@ __wcwidth_l(__darwin_ct_rune_t _c, locale_t _l)
 
 #ifndef _EXTERNALIZE_CTYPE_INLINES_
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 digittoint_l(int c, locale_t l)
 {
 	return (__maskrune_l(c, 0x0F, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isalnum_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_A|_CTYPE_D, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isalpha_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_A, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isblank_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_B, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 iscntrl_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_C, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isdigit_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_D, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isgraph_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_G, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 ishexnumber_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_X, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isideogram_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_I, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 islower_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_L, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isnumber_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_D, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isphonogram_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_Q, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isprint_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_R, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 ispunct_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_P, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isrune_l(int c, locale_t l)
 {
 	return (__istype_l(c, 0xFFFFFFF0L, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isspace_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_S, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isspecial_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_T, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isupper_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_U, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isxdigit_l(int c, locale_t l)
 {
 	return (__istype_l(c, _CTYPE_X, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 tolower_l(int c, locale_t l)
 {
         return (__tolower_l(c, l));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 toupper_l(int c, locale_t l)
 {
         return (__toupper_l(c, l));

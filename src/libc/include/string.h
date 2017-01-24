@@ -59,54 +59,44 @@
 #define	_STRING_H_
 
 #include <_types.h>
-
 #include <sys/cdefs.h>
 #include <Availability.h>
-
-#ifndef	_SIZE_T
-#define	_SIZE_T
-typedef	__darwin_size_t		size_t;
-#endif
-
-#ifndef NULL
-#define NULL __DARWIN_NULL
-#endif /* ! NULL */
-
-
+#include <sys/_types/_size_t.h>
+#include <sys/_types/_null.h>
 
 /* ANSI-C */
 
 __BEGIN_DECLS
-void	*memchr(const void *, int, size_t);
-int	 memcmp(const void *, const void *, size_t);
-void	*memcpy(void *, const void *, size_t);
-void	*memmove(void *, const void *, size_t);
-void	*memset(void *, int, size_t);
-char	*strcat(char *, const char *);
-char	*strchr(const char *, int);
-int	 strcmp(const char *, const char *);
-int	 strcoll(const char *, const char *);
-char	*strcpy(char *, const char *);
-size_t	 strcspn(const char *, const char *);
+void	*memchr(const void *__s, int __c, size_t __n);
+int	 memcmp(const void *__s1, const void *__s2, size_t __n);
+void	*memcpy(void *__dst, const void *__src, size_t __n);
+void	*memmove(void *__dst, const void *__src, size_t __len);
+void	*memset(void *__b, int __c, size_t __len);
+char	*strcat(char *__s1, const char *__s2);
+char	*strchr(const char *__s, int __c);
+int	 strcmp(const char *__s1, const char *__s2);
+int	 strcoll(const char *__s1, const char *__s2);
+char	*strcpy(char *__dst, const char *__src);
+size_t	 strcspn(const char *__s, const char *__charset);
 //Begin-Libc
 #ifndef LIBC_ALIAS_STRERROR
 //End-Libc
-char	*strerror(int) __DARWIN_ALIAS(strerror);
+char	*strerror(int __errnum) __DARWIN_ALIAS(strerror);
 //Begin-Libc
 #else /* LIBC_ALIAS_STRERROR */
-char	*strerror(int) LIBC_ALIAS(strerror);
+char	*strerror(int __errnum) LIBC_ALIAS(strerror);
 #endif /* !LIBC_ALIAS_STRERROR */
 //End-Libc
-size_t	 strlen(const char *);
-char	*strncat(char *, const char *, size_t);
-int	 strncmp(const char *, const char *, size_t);
-char	*strncpy(char *, const char *, size_t);
-char	*strpbrk(const char *, const char *);
-char	*strrchr(const char *, int);
-size_t	 strspn(const char *, const char *);
-char	*strstr(const char *, const char *);
-char	*strtok(char *, const char *);
-size_t	 strxfrm(char *, const char *, size_t);
+size_t	 strlen(const char *__s);
+char	*strncat(char *__s1, const char *__s2, size_t __n);
+int	 strncmp(const char *__s1, const char *__s2, size_t __n);
+char	*strncpy(char *__dst, const char *__src, size_t __n);
+char	*strpbrk(const char *__s, const char *__charset);
+char	*strrchr(const char *__s, int __c);
+size_t	 strspn(const char *__s, const char *__charset);
+char	*strstr(const char *__big, const char *__little);
+char	*strtok(char *__str, const char *__sep);
+size_t	 strxfrm(char *__s1, const char *__s2, size_t __n);
 __END_DECLS
 
 
@@ -119,7 +109,7 @@ __END_DECLS
 
 #if __DARWIN_C_LEVEL >= 199506L
 __BEGIN_DECLS
-char	*strtok_r(char *, const char *, char **);
+char	*strtok_r(char *__str, const char *__sep, char **__lasts);
 __END_DECLS
 #endif /* __DARWIN_C_LEVEL >= 199506L */
 
@@ -131,9 +121,9 @@ __END_DECLS
 
 #if __DARWIN_C_LEVEL >= 200112L
 __BEGIN_DECLS
-int	 strerror_r(int, char *, size_t);
-char	*strdup(const char *);
-void	*memccpy(void *, const void *, int, size_t);
+int	 strerror_r(int __errnum, char *__strerrbuf, size_t __buflen);
+char	*strdup(const char *__s1);
+void	*memccpy(void *__dst, const void *__src, int __c, size_t __n);
 __END_DECLS
 #endif /* __DARWIN_C_LEVEL >= 200112L */
 
@@ -145,39 +135,51 @@ __END_DECLS
 
 #if __DARWIN_C_LEVEL >= 200809L
 __BEGIN_DECLS
-char	*stpcpy(char *, const char *);
-char    *stpncpy(char *, const char *, size_t) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
-char	*strndup(const char *, size_t) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
-size_t   strnlen(const char *, size_t) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
-char	*strsignal(int sig);
+char	*stpcpy(char *__dst, const char *__src);
+char    *stpncpy(char *__dst, const char *__src, size_t __n) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
+char	*strndup(const char *__s1, size_t __n) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
+size_t   strnlen(const char *__s1, size_t __n) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
+char	*strsignal(int __sig);
 __END_DECLS
 #endif /* __DARWIN_C_LEVEL >= 200809L */
 
+/* C11 Annex K */
 
+#if defined(__STDC_WANT_LIB_EXT1__) && __STDC_WANT_LIB_EXT1__ >= 1
+#include <sys/_types/_rsize_t.h>
+#include <sys/_types/_errno_t.h>
+
+__BEGIN_DECLS
+errno_t	memset_s(void *__s, rsize_t __smax, int __c, rsize_t __n) __OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_7_0);
+__END_DECLS
+#endif
 
 /* Darwin extensions */
 
 #if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
-#ifndef _SSIZE_T
-#define _SSIZE_T
-typedef __darwin_ssize_t	ssize_t;
-#endif
+#include <sys/_types/_ssize_t.h>
 
 __BEGIN_DECLS
-void	*memmem(const void *, size_t, const void *, size_t) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
-void     memset_pattern4(void *, const void *, size_t) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_3_0);
-void     memset_pattern8(void *, const void *, size_t) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_3_0);
-void     memset_pattern16(void *, const void *, size_t) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_3_0);
+void	*memmem(const void *__big, size_t __big_len, const void *__little, size_t __little_len) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
+void     memset_pattern4(void *__b, const void *__pattern4, size_t __len) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_3_0);
+void     memset_pattern8(void *__b, const void *__pattern8, size_t __len) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_3_0);
+void     memset_pattern16(void *__b, const void *__pattern16, size_t __len) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_3_0);
 
-char	*strcasestr(const char *, const char *);
-char	*strnstr(const char *, const char *, size_t);
-size_t	 strlcat(char *, const char *, size_t);
-size_t	 strlcpy(char *, const char *, size_t);
-void	 strmode(int, char *);
-char	*strsep(char **, const char *);
+char	*strcasestr(const char *__big, const char *__little);
+char	*strnstr(const char *__big, const char *__little, size_t __len);
+size_t	 strlcat(char *__dst, const char *__source, size_t __size);
+size_t	 strlcpy(char *__dst, const char *__source, size_t __size);
+void	 strmode(int __mode, char *__bp);
+char	*strsep(char **__stringp, const char *__delim);
 
 /* SUS places swab() in unistd.h.  It is listed here for source compatibility */
 void	 swab(const void * __restrict, void * __restrict, ssize_t);
+
+#ifndef __CUDACC__
+__OSX_AVAILABLE(10.12.1) __IOS_AVAILABLE(10.1)
+__TVOS_AVAILABLE(10.0.1) __WATCHOS_AVAILABLE(3.1)
+#endif
+int	timingsafe_bcmp(const void *__b1, const void *__b2, size_t __len);
 __END_DECLS
 
 /* Some functions historically defined in string.h were placed in strings.h

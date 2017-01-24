@@ -23,8 +23,8 @@
 #import <architecture/i386/asm_help.h>
 
 .text
-	.globl _mcount
-_mcount:
+	.globl mcount
+mcount:
 	pushq	%rbp             // setup mcount's frame
 	movq	%rsp,    %rbp
 	subq	$64,     %rsp    // allocate space for storage and alignment

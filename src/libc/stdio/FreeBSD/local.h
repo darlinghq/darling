@@ -35,6 +35,7 @@
 
 #include <sys/cdefs.h>
 #include "xlocale_private.h"
+#include "xprintf_private.h"
 #include <sys/types.h>	/* for off_t */
 #include <pthread.h>
 #include <limits.h>
@@ -51,6 +52,15 @@ extern int	_swrite(FILE *, char const *, int);
 extern fpos_t	_sseek(FILE *, fpos_t, int);
 extern int	_ftello(FILE *, fpos_t *);
 extern int	_fseeko(FILE *, off_t, int, int);
+extern int	_vasprintf(printf_comp_t __restrict, printf_domain_t __restrict,
+		char ** __restrict, locale_t __restrict,
+		const char * __restrict, __va_list);
+extern int	_vdprintf(printf_comp_t __restrict, printf_domain_t __restrict,
+		int, locale_t __restrict, const char * __restrict, va_list);
+extern int	_vsnprintf(printf_comp_t __restrict, printf_domain_t __restrict,
+		char * __restrict, size_t n, locale_t __restrict,
+		const char * __restrict, __va_list);
+
 extern int	__fflush(FILE *fp);
 extern void	__fcloseall(void);
 extern wint_t	__fgetwc(FILE *, locale_t);
@@ -84,15 +94,13 @@ extern int	__vfwscanf(FILE * __restrict, locale_t, const wchar_t * __restrict,
 		    __va_list);
 extern size_t	__fread(void * __restrict buf, size_t size, size_t count,
 		FILE * __restrict fp);
-extern int	__sdidinit;
+extern pthread_once_t	__sdidinit;
 
 
 /* hold a buncha junk that would grow the ABI */
 struct __sFILEX {
 	unsigned char	*up;	/* saved _p when _p is doing ungetc data */
 	pthread_mutex_t	fl_mutex;	/* used for MT-safety */
-	pthread_t	fl_owner;	/* current owner */
-	int		fl_count;	/* recursive lock count */
 	int		orientation:2;	/* orientation for fwide() */
 	int		counted:1;	/* stream counted against STREAM_MAX */
 	mbstate_t	mbstate;	/* multibyte conversion state */
@@ -100,17 +108,15 @@ struct __sFILEX {
 
 #define _up 		_extra->up
 #define _fl_mutex	_extra->fl_mutex
-#define _fl_owner	_extra->fl_owner
-#define _fl_count	_extra->fl_count
 #define _orientation	_extra->orientation
 #define _mbstate	_extra->mbstate
 #define _counted	_extra->counted
 
+
+
 #define	INITEXTRA(fp) do { \
 	(fp)->_extra->up = NULL; \
-	(fp)->_extra->fl_mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER; \
-	(fp)->_extra->fl_owner = NULL; \
-	(fp)->_extra->fl_count = 0; \
+	(fp)->_extra->fl_mutex = (pthread_mutex_t)PTHREAD_RECURSIVE_MUTEX_INITIALIZER; \
 	(fp)->_extra->orientation = 0; \
 	memset(&(fp)->_extra->mbstate, 0, sizeof(mbstate_t)); \
 	(fp)->_extra->counted = 0; \

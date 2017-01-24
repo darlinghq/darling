@@ -1,0 +1,147 @@
+.\"
+.\" Copyright (c) 2012 The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The NetBSD Foundation
+.\" by Alan Barrett
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\"	$NetBSD$
+.\"
+.Dd February 21, 2012
+.Dt MEMSET_S 3
+.Os
+.Sh NAME
+.Nm memset_s
+.Nd copy a value to all bytes of a memory buffer
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.Fd "#define __STDC_WANT_LIB_EXT1__ 1
+.In string.h
+.Ft errno_t
+.Fn memset_s "void *s" "rsize_t smax" "int c" "rsize_t n"
+.Sh DESCRIPTION
+The
+.Fn memset_s
+function copies the value
+.Fa c
+(converted to an unsigned char)
+into each of the first
+.Fa n
+bytes of the memory buffer whose starting address is given by
+.Fa s .
+.Pp
+It is a runtime-consrtaints violation if
+.Fa s
+is a null pointer,
+or if either of
+.Fa smax
+or
+.Fa n
+is larger than
+.Dv RSIZE_MAX ,
+or if
+.Fa smax
+is smaller than
+.Fa n .
+If there is a runtime-constraints violation, and if
+.Fa s
+is not a null pointer,
+and if
+.Fa smax
+is not larger than
+.Dv RSIZE_MAX ,
+then, before reporting the runtime-constraints violation,
+.Fn memset_s
+copies
+.Fa smax
+bytes to the destination.
+.Pp
+In contrast to the
+.Xr memset 3
+function,
+calls to
+.Fn memset_s
+will never be
+.Dq optimised away
+by a compiler.
+This property is required by the following sentences in
+section K.3.7.4.1 of
+.St -isoC-2011 :
+.Bd -filled -offset indent
+Unlike
+.Fn memset ,
+any call to the
+.Fn memset_s
+function shall be evaluated strictly according to the rules of
+the abstract machine as described in (5.1.2.3).
+That is, any call to the
+.Fn memset_s
+function shall assume that the memory indicated by
+.Fa s
+and
+.Fa n
+may be accessible in the future and thus must contain
+the values indicated by
+.Fa c .
+.Ed
+.Sh RETURN VALUES
+The
+.Fn memset_s
+function returns zero for success, or a non-zero error code
+if there was a runtime-constraints violation.
+.Sh ERRORS
+.Fn memset_s
+returns the following error codes.
+It does not store the error code in the global
+.Va errno
+variable:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The
+.Fa s
+argument was a null pointer.
+.It Bq Er E2BIG
+One or both of
+.Fa smax
+or
+.Fa n
+was larger than
+.Dv RSIZE_MAX .
+.It Bq Er EOVERFLOW
+.Fa n
+was larger than
+.Fa smax .
+.El
+.
+.Sh SEE ALSO
+.Xr memset 3 .
+.Sh STANDARDS
+The
+.Fn memset_s
+function conforms to
+.St -isoC-2011 ,
+except that the
+.Fn set_constraint_handler_s
+interface is not supported.

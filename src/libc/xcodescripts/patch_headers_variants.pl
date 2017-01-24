@@ -55,6 +55,11 @@ sub process {
 		}
 	}
 
+	my($fname, $dirs, $suffix) = File::Basename::fileparse($file, ".h");
+	if ($suffix ne ".h") {
+		return;
+	}
+
     my $p = IO::File->new($path, 'r');
     die "$MyName: Can't open $path: $!\n" unless defined($p);
     my $f = IO::File->new($file, 'w');

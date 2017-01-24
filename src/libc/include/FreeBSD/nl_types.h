@@ -91,10 +91,7 @@ typedef struct __nl_cat_d {
 	int	__size;
 } *nl_catd;
 
-#ifndef _NL_ITEM
-typedef __darwin_nl_item        nl_item;
-#define _NL_ITEM
-#endif
+#include <_types/_nl_item.h>
 
 __BEGIN_DECLS
 nl_catd  catopen(const char *, int);

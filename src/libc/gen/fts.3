@@ -32,7 +32,7 @@
 .\"     @(#)fts.3	8.5 (Berkeley) 4/16/94
 .\" $FreeBSD: src/lib/libc/gen/fts.3,v 1.13 2001/09/20 12:32:45 ru Exp $
 .\"
-.Dd May 20, 2008
+.Dd Sept 24, 2012
 .Dt FTS 3
 .Os
 .Sh NAME
@@ -372,7 +372,7 @@ must be specified.
 The options are selected by
 .Em or Ns 'ing
 the following values:
-.Bl -tag -width "FTS_PHYSICAL"
+.Bl -tag -width "FTS_NOSTAT_TYPE"
 .It Dv FTS_COMFOLLOW
 This option causes any symbolic link specified as a root path to be
 followed immediately whether or not
@@ -421,15 +421,41 @@ structures reference file characteristic information (the
 .Fa statp
 field) for each file visited.
 This option relaxes that requirement as a performance optimization,
-allowing the
+not calling
+.Xr stat 2
+whenever possible.
+If
+.Xr stat 2
+doesn't need to be called, the
 .Nm
-functions to set the
+functions will set the
 .Fa fts_info
 field to
-.Dv FTS_NSOK
-and leave the contents of the
+.Dv FTS_NSOK ;
+otherwise
+.Fa fts_info
+will be set to the correct file information value corresponding to the
+.Xr stat 2
+information.
+In any case, the
 .Fa statp
-field undefined.
+field will always be undefined.
+Note that because
+.Nm
+detects directory cycles and dangling symbolic links,
+.Xr stat 2
+is always called for directories and is called for symbolic links when
+.Dv FTS_LOGICAL
+is set.
+.It Dv FTS_NOSTAT_TYPE
+Like
+.Dv FTS_NOSTAT
+but if the file type is returned by
+.Xr readdir 3 ,
+the corresponding file information value is returned in
+.Fa fts_info
+instead of
+.Dv FTS_NSOK .
 .It Dv FTS_PHYSICAL
 This option causes the
 .Nm

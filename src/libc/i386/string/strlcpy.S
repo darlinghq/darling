@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  *
@@ -22,9 +21,6 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#ifdef DARLING
-#	define _strlcpy strlcpy
-#endif
 
 // *****************
 // * S T R L C P Y *
@@ -55,7 +51,7 @@
         .text
         .globl _strlcpy
 
-        .align 	(1<<4)
+        .align 	4
 _strlcpy:				// size_t *strlcpy(char *dst, const char *src, size_t size);
 	pushl	%edi
 	pushl	%esi

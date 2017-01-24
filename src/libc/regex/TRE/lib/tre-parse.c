@@ -107,7 +107,7 @@ tre_expand_macro(const tre_char_t *regex, const tre_char_t *regex_end,
 }
 
 static reg_errcode_t
-tre_new_item(tre_mem_t mem, int type, int val, int *max_i,
+tre_new_item(tre_mem_t __unused mem, int type, int val, int *max_i,
 	 tre_bracket_match_list_t **items)
 {
   reg_errcode_t status = REG_OK;
@@ -717,7 +717,7 @@ static const char *bracket_match_type_str[] = {
 static reg_errcode_t
 tre_parse_bracket(tre_parse_ctx_t *ctx, tre_ast_node_t **result)
 {
-  tre_ast_node_t *node;
+  tre_ast_node_t *node = NULL;
   reg_errcode_t status = REG_OK;
   tre_bracket_match_list_t *items;
   int max_i = 32;
@@ -2016,6 +2016,8 @@ tre_parse(tre_parse_ctx_t *ctx)
 			ctx->re++;
 			while (ctx->re_end - ctx->re >= 0)
 			  {
+			    if (i == sizeof(tmp))
+				return REG_EBRACE;
 			    if (ctx->re[0] == CHAR_RBRACE)
 			      break;
 			    if (tre_isxdigit_l(ctx->re[0], ctx->loc))

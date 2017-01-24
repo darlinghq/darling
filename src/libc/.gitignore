@@ -1,0 +1,11 @@
+*~
+build/
+.DS_Store
+*.xcodeproj/*.mode*
+*.xcodeproj/*.pbxuser
+*.xcodeproj/*.perspectivev3
+
+# /Libc.xcodeproj/
+/Libc.xcodeproj/project.xcworkspace
+/Libc.xcodeproj/xcuserdata
+/Libc.xcodeproj/xcshareddata

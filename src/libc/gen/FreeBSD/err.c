@@ -82,7 +82,7 @@ __private_extern__ struct _e_err_exit _e_err_exit = {ERR_EXIT_UNDEF};
  * otherwise use \x (x is value)
  * (NUL isn't used)
  */
-static unsigned char escape[256] = {
+static const unsigned char escape[256] = {
      /* NUL */
 	 0, /* Unused: strings can't contain nulls */
      /*      SOH  STX  ETX  EOT  ENQ  ACK  BEL */
@@ -159,7 +159,7 @@ err_set_file(void *fp)
 void
 err_set_exit(void (*ef)(int))
 {
-	_e_err_exit.type = ERR_EXIT_FUNC;
+	_e_err_exit.type = ef ? ERR_EXIT_FUNC : ERR_EXIT_UNDEF;
 	_e_err_exit.func = ef;
 }
 
@@ -167,7 +167,7 @@ err_set_exit(void (*ef)(int))
 void
 err_set_exit_b(void (^ef)(int))
 {
-	_e_err_exit.type = ERR_EXIT_BLOCK;
+	_e_err_exit.type = ef ? ERR_EXIT_BLOCK : ERR_EXIT_UNDEF;
 	_e_err_exit.block = Block_copy(ef);
 }
 #endif /* __BLOCKS__ */
@@ -213,13 +213,17 @@ verrc(int eval, int code, const char *fmt, va_list ap)
 		fprintf(_e_err_file, ": ");
 	}
 	fprintf(_e_err_file, "%s\n", strerror(code));
-	if (_e_err_exit.type)
+	if (_e_err_exit.type) {
 #ifdef __BLOCKS__
-		if (_e_err_exit.type == ERR_EXIT_BLOCK)
+		if (_e_err_exit.type == ERR_EXIT_BLOCK) {
 			_e_err_exit.block(eval);
-		else
-#endif /* __BLOCKS__ */
+		} else {
 			_e_err_exit.func(eval);
+		}
+#else
+		_e_err_exit.func(eval);
+#endif /* __BLOCKS__ */
+	}
 	exit(eval);
 }
 
@@ -241,13 +245,17 @@ verrx(int eval, const char *fmt, va_list ap)
 	if (fmt != NULL)
 		_e_visprintf(_e_err_file, fmt, ap);
 	fprintf(_e_err_file, "\n");
-	if (_e_err_exit.type)
+	if (_e_err_exit.type) {
 #ifdef __BLOCKS__
-		if (_e_err_exit.type == ERR_EXIT_BLOCK)
+		if (_e_err_exit.type == ERR_EXIT_BLOCK) {
 			_e_err_exit.block(eval);
-		else
-#endif /* __BLOCKS__ */
+		} else {
 			_e_err_exit.func(eval);
+		}
+#else
+		_e_err_exit.func(eval);
+#endif /* __BLOCKS__ */
+	}
 	exit(eval);
 }
 

@@ -26,14 +26,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)getbsize.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/gen/getbsize.3,v 1.11 2007/01/09 00:27:53 imp Exp $
+.\" $FreeBSD$
 .\"
-.Dd June 4, 1993
+.Dd November 16, 2012
 .Dt GETBSIZE 3
 .Os
 .Sh NAME
 .Nm getbsize
-.Nd get user block size
+.Nd get preferred block size
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -43,11 +43,31 @@
 .Sh DESCRIPTION
 The
 .Fn getbsize
-function determines the user's preferred block size based on the value of the
-.Dq BLOCKSIZE
-environment variable; see
-.Xr environ 7
-for details on its use and format.
+function returns a preferred block size for reporting by system utilities
+.Xr df 1 ,
+.Xr du 1 ,
+.Xr ls 1
+and
+.Xr systat 1 ,
+based on the value of the
+.Ev BLOCKSIZE
+environment variable.
+.Ev BLOCKSIZE
+may be specified directly in bytes, or in multiples of a kilobyte by
+specifying a number followed by ``K'' or ``k'', in multiples of a
+megabyte by specifying a number followed by ``M'' or ``m'' or in
+multiples of a gigabyte by specifying a number followed by ``G'' or
+``g''.
+Multiples must be integers.
+.Pp
+Valid values of
+.Ev BLOCKSIZE
+are 512 bytes to 1 gigabyte.
+Sizes less than 512 bytes are rounded up to 512 bytes, and sizes
+greater than 1 GB are rounded down to 1 GB.
+In each case
+.Fn getbsize
+produces a warning message.
 .Pp
 The
 .Fn getbsize
@@ -61,10 +81,6 @@ terminating null).
 The memory referenced by
 .Fa blocksizep
 is filled in with block size, in bytes.
-.Pp
-If the user's block size is unreasonable, a warning message is
-written to standard error and the returned information reflects
-a block size of 512 bytes.
 .Sh SEE ALSO
 .Xr df 1 ,
 .Xr du 1 ,

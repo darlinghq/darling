@@ -44,6 +44,13 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/fwrite.c,v 1.13 2009/07/12 13:09:43 ed Ex
 #include "libc_private.h"
 
 /*
+ * The maximum amount to write to avoid integer overflow (especially for
+ * uio_resid in struct __suio).  INT_MAX is odd, so it make sense to make it
+ * even.  We subtract (BUFSIZ - 1) to get a whole number of BUFSIZ chunks.
+ */
+#define MAXWRITE	(INT_MAX - (BUFSIZ - 1))
+
+/*
  * Write `count' objects (each size `size') from memory to the given file.
  * Return the number of whole objects written.
  */
@@ -53,9 +60,10 @@ fwrite(buf, size, count, fp)
 	size_t size, count;
 	FILE * __restrict fp;
 {
-	size_t n;
+	size_t n, resid;
 	struct __suio uio;
 	struct __siov iov;
+	int s;
 
 	/*
 	 * ANSI and SUSv2 require a return value of 0 if size or count are 0.
@@ -65,20 +73,27 @@ fwrite(buf, size, count, fp)
 	if (n == 0)
 		return (0);
 #endif
-	iov.iov_base = (void *)buf;
-	uio.uio_resid = iov.iov_len = n;
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
 
 	FLOCKFILE(fp);
 	ORIENT(fp, -1);
-	/*
-	 * The usual case is success (__sfvwrite returns 0);
-	 * skip the divide if this happens, since divides are
-	 * generally slow and since this occurs whenever size==0.
-	 */
-	if (__sfvwrite(fp, &uio) != 0)
-	    count = (n - uio.uio_resid) / size;
+
+	for (resid = n; resid > 0; buf += s, resid -= s) {
+		s = resid > INT_MAX ? MAXWRITE : (int)resid;
+		iov.iov_base = (void *)buf;
+		uio.uio_resid = iov.iov_len = s;
+
+		/*
+		 * The usual case is success (__sfvwrite returns 0);
+		 * skip the divide if this happens, since divides are
+		 * generally slow and since this occurs whenever size==0.
+		 */
+		if (__sfvwrite(fp, &uio) != 0) {
+			count = (n - resid + s - uio.uio_resid) / size;
+			break;
+		}
+	}
 	FUNLOCKFILE(fp);
 	return (count);
 }

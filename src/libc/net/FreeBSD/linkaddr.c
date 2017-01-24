@@ -50,9 +50,7 @@ __FBSDID("$FreeBSD: src/lib/libc/net/linkaddr.c,v 1.4 2007/01/09 00:28:02 imp Ex
 #define LETTER	(4*3)
 
 void
-link_addr(addr, sdl)
-	const char *addr;
-	struct sockaddr_dl *sdl;
+link_addr(const char *addr, struct sockaddr_dl *sdl)
 {
 	char *cp = sdl->sdl_data;
 	char *cplim = sdl->sdl_len + (char *)sdl;
@@ -118,11 +116,10 @@ link_addr(addr, sdl)
 	return;
 }
 
-static char hexlist[] = "0123456789abcdef";
+static const char hexlist[] = "0123456789abcdef";
 
 char *
-link_ntoa(sdl)
-	const struct sockaddr_dl *sdl;
+link_ntoa(const struct sockaddr_dl *sdl)
 {
 	static char obuf[64];
 	char *out = obuf;
@@ -130,6 +127,18 @@ link_ntoa(sdl)
 	u_char *in = (u_char *)LLADDR(sdl);
 	u_char *inlim = in + sdl->sdl_alen;
 	int firsttime = 1;
+
+	/*
+	 * the length of the output string is length of network name (eg "le0")
+	 * plus 3 * each byte (eg. "XX.") assuming the print representation is
+	 * two bytes plus the period
+	 *
+	 * The ":" is accounted for as the last byte doesn't have a "." at the
+	 * end
+	 */
+	if (sdl->sdl_nlen + 3*sdl->sdl_alen >= sizeof(obuf)) {
+		goto exit;
+	}
 
 	if (sdl->sdl_nlen) {
 		bcopy(sdl->sdl_data, obuf, sdl->sdl_nlen);
@@ -148,9 +157,12 @@ link_ntoa(sdl)
 			i >>= 4;
 			out[0] = hexlist[i];
 			out += 2;
-		} else
+		} else {
 			*out++ = hexlist[i];
+		}
 	}
+
+exit:
 	*out = 0;
 	return (obuf);
 }

@@ -13,11 +13,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -34,9 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)getenv.3	8.2 (Berkeley) 12/11/93
-.\" $FreeBSD: src/lib/libc/stdlib/getenv.3,v 1.16 2004/07/07 19:57:13 ru Exp $
+.\" $FreeBSD$
 .\"
-.Dd December 11, 1993
+.Dd June 20, 2007
 .Dt GETENV 3
 .Os
 .Sh NAME
@@ -50,41 +46,26 @@
 .Sh SYNOPSIS
 .In stdlib.h
 .Ft char *
-.Fo getenv
-.Fa "const char *name"
-.Fc
+.Fn getenv "const char *name"
 .Ft int
-.Fo putenv
-.Fa "char *string"
-.Fc
+.Fn setenv "const char *name" "const char *value" "int overwrite"
 .Ft int
-.Fo setenv
-.Fa "const char *name"
-.Fa "const char *value"
-.Fa "int overwrite"
-.Fc
+.Fn putenv "char *string"
 .Ft int
-.Fo unsetenv
-.Fa "const char *name"
-.Fc
+.Fn unsetenv "const char *name"
 .Sh DESCRIPTION
 These functions set, unset and fetch environment variables from the
 host
 .Em environment list .
-For compatibility with differing environment conventions,
-the given arguments
-.Fa name
-and
-.Fa value
-may be appended and prepended,
-respectively,
-with an equal sign
-.Dq Li \&= .
 .Pp
 The
 .Fn getenv
 function obtains the current value of the environment variable,
 .Fa name .
+The application should not modify the string pointed
+to by the
+.Fn getenv
+function.
 .Pp
 The
 .Fn setenv
@@ -100,8 +81,7 @@ If the variable does exist, the argument
 .Fa overwrite
 is tested; if
 .Fa overwrite
-is
-zero, the
+is zero, the
 variable is not reset, otherwise it is reset
 to the given
 .Fa value .
@@ -151,13 +131,33 @@ is returned.
 .Bl -tag -width Er
 .It Bq Er EINVAL
 The function
+.Fn getenv ,
+.Fn setenv
+or
 .Fn unsetenv
-failed because
+failed because the
 .Fa name
-was not found in the environment list.
+is a
+.Dv NULL
+pointer, points to an empty string, or points to a string containing an
+.Dq Li \&=
+character.
+.Pp
+The function
+.Fn putenv
+failed because
+.Fa string
+is a
+.Dv NULL
+pointer or
+.Fa string
+is without an
+.Dq Li \&=
+character.
 .It Bq Er ENOMEM
 The function
-.Fn setenv
+.Fn setenv ,
+.Fn unsetenv
 or
 .Fn putenv
 failed because it was unable to allocate memory for the environment.
@@ -206,25 +206,13 @@ The
 .Fn getenv
 function conforms to
 .St -isoC .
-.Sh BUGS
-Successive calls to
-.Fn setenv
-or
-.Fn putenv
-assigning a differently sized
-.Fa value
-to the same
-.Fa name
-will result in a memory leak.
 The
-.Fx
-semantics for these functions
-(namely, that the contents of
-.Fa value
-are copied and that old values remain accessible indefinitely) make this
-bug unavoidable.
-Future versions may eliminate one or both of these
-semantic guarantees in order to fix the bug.
+.Fn setenv ,
+.Fn putenv
+and
+.Fn unsetenv
+functions conforms to
+.St -p1003.1-2001 .
 .Sh HISTORY
 The functions
 .Fn setenv
@@ -236,3 +224,20 @@ The
 .Fn putenv
 function appeared in
 .Bx 4.3 Reno .
+.Sh BUGS
+Successive calls to
+.Fn setenv
+that assign a larger-sized
+.Fa value
+than any previous value to the same
+.Fa name
+will result in a memory leak.
+The
+.Fx
+semantics for this function
+(namely, that the contents of
+.Fa value
+are copied and that old values remain accessible indefinitely) make this
+bug unavoidable.
+Future versions may eliminate one or both of these
+semantic guarantees in order to fix the bug.

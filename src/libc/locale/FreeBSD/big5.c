@@ -61,7 +61,7 @@ typedef struct {
 	wchar_t	ch;
 } _BIG5State;
 
-__private_extern__ int
+int
 _BIG5_init(struct __xlocale_st_runelocale *xrl)
 {
 

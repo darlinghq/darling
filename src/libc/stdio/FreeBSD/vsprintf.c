@@ -51,14 +51,13 @@ vsprintf_l(char * __restrict str, locale_t loc, const char * __restrict fmt, __v
 	f._extra = &ext;
 	INITEXTRA(&f);
 
-	NORMALIZE_LOCALE(loc);
 	f._file = -1;
 	f._flags = __SWR | __SSTR;
 	f._bf._base = f._p = (unsigned char *)str;
 	f._bf._size = f._w = INT_MAX;
 	f._orientation = 0;
 	memset(&f._mbstate, 0, sizeof(mbstate_t));
-	ret = __vfprintf(&f, loc, fmt, ap);
+	ret = __v2printf(XPRINTF_PLAIN, NULL, &f, loc, fmt, ap);
 	*f._p = 0;
 	return (ret);
 }

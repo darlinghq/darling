@@ -281,7 +281,7 @@ mpool_sync(MPOOL *mp)
 
 	/* Walk the lru chain, flushing any dirty pages to disk. */
 	TAILQ_FOREACH(bp, &mp->lqh, q) {
-		if (bp->flags & MPOOL_DIRTY)
+		if (bp->flags & MPOOL_DIRTY) {
 			if (mpool_write(mp, bp) == RET_ERROR) {
 				return (RET_ERROR);
 			} else {
@@ -289,6 +289,7 @@ mpool_sync(MPOOL *mp)
 				if (mp->pgin != NULL)
 					(mp->pgin)(mp->pgcookie, bp->pgno, bp->page);
 			}
+		}
 	}
 
 	/* Sync the file descriptor. */

@@ -68,31 +68,16 @@
 #endif /* (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
 #endif /* !_ANSI_SOURCE */
 
-#ifndef	_SIZE_T
-#define	_SIZE_T
 /* DO NOT REMOVE THIS COMMENT: fixincludes needs to see:
  * _GCC_SIZE_T */
-typedef	__darwin_size_t		size_t;
-#endif
+#include <sys/_types/_size_t.h>
 
 #if !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
-#ifndef _CT_RUNE_T
-#define _CT_RUNE_T
-typedef	__darwin_ct_rune_t	ct_rune_t;
-#endif
-
-#ifndef _RUNE_T
-#define _RUNE_T
-typedef __darwin_rune_t   	rune_t;
-#endif
+#include <sys/_types/_ct_rune_t.h>
+#include <sys/_types/_rune_t.h>
 #endif	/* !_ANSI_SOURCE && (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
 
-#ifndef	__cplusplus
-#ifndef	_WCHAR_T
-#define	_WCHAR_T
-typedef	__darwin_wchar_t	wchar_t;
-#endif	/* _WCHAR_T */
-#endif	/* __cplusplus */
+#include <sys/_types/_wchar_t.h>
 
 typedef struct {
 	int quot;		/* quotient */
@@ -111,9 +96,7 @@ typedef struct {
 } lldiv_t;
 #endif /* !__DARWIN_NO_LONG_LONG */
 
-#ifndef NULL
-#define NULL __DARWIN_NULL
-#endif /* ! NULL */
+#include <sys/_types/_null.h>
 
 #define	EXIT_FAILURE	1
 #define	EXIT_SUCCESS	0
@@ -141,18 +124,15 @@ extern int __mb_cur_max;
 #define	MB_CUR_MAX_L(x)	(___mb_cur_max_l(x))
 #endif
 //Begin-Libc
+#include "libc_private.h"
 /* f must be a literal string */
 #define LIBC_ABORT(f,...)	abort_report_np("%s:%s:%u: " f, __FILE__, __func__, __LINE__, ## __VA_ARGS__)
 //End-Libc
 
 __BEGIN_DECLS
 void	 abort(void) __dead2;
-//Begin-Libc
-__private_extern__
-void	 abort_report_np(const char *, ...) __dead2 __printflike(1, 2);
-//End-Libc
 int	 abs(int) __pure2;
-int	 atexit(void (*)(void));
+int	 atexit(void (* _Nonnull)(void));
 double	 atof(const char *);
 int	 atoi(const char *);
 long	 atol(const char *);
@@ -160,9 +140,9 @@ long	 atol(const char *);
 long long
 	 atoll(const char *);
 #endif /* !__DARWIN_NO_LONG_LONG */
-void	*bsearch(const void *, const void *, size_t,
-	    size_t, int (*)(const void *, const void *));
-void	*calloc(size_t, size_t);
+void	*bsearch(const void *__key, const void *__base, size_t __nel,
+	    size_t __width, int (* _Nonnull __compar)(const void *, const void *));
+void	*calloc(size_t __count, size_t __size) __result_use_check;
 div_t	 div(int, int) __pure2;
 void	 exit(int) __dead2;
 void	 free(void *);
@@ -174,40 +154,53 @@ long long
 	 llabs(long long);
 lldiv_t	 lldiv(long long, long long);
 #endif /* !__DARWIN_NO_LONG_LONG */
-void	*malloc(size_t);
-int	 mblen(const char *, size_t);
+void	*malloc(size_t __size) __result_use_check;
+int	 mblen(const char *__s, size_t __n);
 size_t	 mbstowcs(wchar_t * __restrict , const char * __restrict, size_t);
 int	 mbtowc(wchar_t * __restrict, const char * __restrict, size_t);
-int 	 posix_memalign(void **, size_t, size_t) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0);
-void	 qsort(void *, size_t, size_t,
-	    int (*)(const void *, const void *));
-int	 rand(void);
-void	*realloc(void *, size_t);
-void	 srand(unsigned);
+int 	 posix_memalign(void **__memptr, size_t __alignment, size_t __size) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0);
+void	 qsort(void *__base, size_t __nel, size_t __width,
+	    int (* _Nonnull __compar)(const void *, const void *));
+int	 rand(void) __swift_unavailable("Use arc4random instead.");
+void	*realloc(void *__ptr, size_t __size) __result_use_check;
+void	 srand(unsigned) __swift_unavailable("Use arc4random instead.");
 double	 strtod(const char *, char **) __DARWIN_ALIAS(strtod);
 float	 strtof(const char *, char **) __DARWIN_ALIAS(strtof);
-long	 strtol(const char *, char **, int);
+long	 strtol(const char *__str, char **__endptr, int __base);
 long double
 	 strtold(const char *, char **);
 #if !__DARWIN_NO_LONG_LONG
 long long 
-	 strtoll(const char *, char **, int);
+	 strtoll(const char *__str, char **__endptr, int __base);
 #endif /* !__DARWIN_NO_LONG_LONG */
 unsigned long
-	 strtoul(const char *, char **, int);
+	 strtoul(const char *__str, char **__endptr, int __base);
 #if !__DARWIN_NO_LONG_LONG
 unsigned long long
-	 strtoull(const char *, char **, int);
+	 strtoull(const char *__str, char **__endptr, int __base);
 #endif /* !__DARWIN_NO_LONG_LONG */
 //Begin-Libc
 #ifndef LIBC_ALIAS_SYSTEM
 //End-Libc
+
+#if TARGET_OS_EMBEDDED
+#define __swift_unavailable_on(osx_msg, ios_msg) __swift_unavailable(ios_msg)
+#else
+#define __swift_unavailable_on(osx_msg, ios_msg) __swift_unavailable(osx_msg)
+#endif
+
+__swift_unavailable_on("Use posix_spawn APIs or NSTask instead.", "Process spawning is unavailable")
+__OSX_AVAILABLE_BUT_DEPRECATED_MSG(__MAC_10_0,__MAC_NA,__IPHONE_2_0,__IPHONE_8_0, "Use posix_spawn APIs instead.")
+__WATCHOS_PROHIBITED __TVOS_PROHIBITED
 int	 system(const char *) __DARWIN_ALIAS_C(system);
 //Begin-Libc
 #else /* LIBC_ALIAS_SYSTEM */
 int	 system(const char *) LIBC_ALIAS_C(system);
 #endif /* !LIBC_ALIAS_SYSTEM */
 //End-Libc
+
+#undef __swift_unavailable_on
+
 size_t	 wcstombs(char * __restrict, const wchar_t * __restrict, size_t);
 int	 wctomb(char *, wchar_t);
 
@@ -216,7 +209,7 @@ void	_Exit(int) __dead2;
 long	 a64l(const char *);
 double	 drand48(void);
 char	*ecvt(double, int, int *__restrict, int *__restrict); /* LEGACY */
-double	 erand48(unsigned short[3]); 
+double	 erand48(unsigned short[3]);
 char	*fcvt(double, int, int *__restrict, int *__restrict); /* LEGACY */
 char	*gcvt(double, int, char *); /* LEGACY */
 int	 getsubopt(char **, char * const *, char **);
@@ -226,14 +219,14 @@ char	*initstate(unsigned, char *, size_t); /* no  __DARWIN_ALIAS needed */
 #else /* !__DARWIN_UNIX03 */
 char	*initstate(unsigned long, char *, long);
 #endif /* __DARWIN_UNIX03 */
-long	 jrand48(unsigned short[3]);
+long	 jrand48(unsigned short[3]) __swift_unavailable("Use arc4random instead.");
 char	*l64a(long);
 void	 lcong48(unsigned short[7]);
-long	 lrand48(void);
+long	 lrand48(void) __swift_unavailable("Use arc4random instead.");
 char	*mktemp(char *);
 int	 mkstemp(char *);
-long	 mrand48(void); 
-long	 nrand48(unsigned short[3]);
+long	 mrand48(void) __swift_unavailable("Use arc4random instead.");
+long	 nrand48(unsigned short[3]) __swift_unavailable("Use arc4random instead.");
 int	 posix_openpt(int);
 char	*ptsname(int);
 //Begin-Libc
@@ -245,8 +238,8 @@ int	 putenv(char *) __DARWIN_ALIAS(putenv);
 int	 putenv(char *) LIBC_ALIAS(putenv);
 #endif /* !LIBC_ALIAS_PUTENV */
 //End-Libc
-long	 random(void);
-int	 rand_r(unsigned *);
+long	 random(void) __swift_unavailable("Use arc4random instead.");
+int	 rand_r(unsigned *) __swift_unavailable("Use arc4random instead.");
 //Begin-Libc
 #ifdef __LIBC__
 #ifndef LIBC_ALIAS_REALPATH
@@ -273,10 +266,10 @@ unsigned short
 //Begin-Libc
 #ifndef LIBC_ALIAS_SETENV
 //End-Libc
-int	 setenv(const char *, const char *, int) __DARWIN_ALIAS(setenv);
+int	 setenv(const char * __name, const char * __value, int __overwrite) __DARWIN_ALIAS(setenv);
 //Begin-Libc
 #else /* LIBC_ALIAS_SETENV */
-int	 setenv(const char *, const char *, int) LIBC_ALIAS(setenv);
+int	 setenv(const char * __name, const char * __value, int __overwrite) LIBC_ALIAS(setenv);
 #endif /* !LIBC_ALIAS_SETENV */
 //End-Libc
 #if __DARWIN_UNIX03
@@ -318,27 +311,24 @@ void	 unsetenv(const char *);
 #if !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
 #include <machine/types.h>
 
-#ifndef _DEV_T
-typedef	__darwin_dev_t	dev_t;
-#define _DEV_T
-#endif
+#include <sys/_types/_dev_t.h>
+#include <sys/_types/_mode_t.h>
+#include <_types/_uint32_t.h>
 
-#ifndef	_MODE_T
-typedef	__darwin_mode_t	mode_t;
-#define _MODE_T
-#endif
-
-u_int32_t
-	 arc4random(void);
-void	 arc4random_addrandom(unsigned char * /*dat*/, int /*datlen*/);
-void	 arc4random_buf(void * /*buf*/, size_t /*nbytes*/) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
+uint32_t arc4random(void);
+void	 arc4random_addrandom(unsigned char * /*dat*/, int /*datlen*/)
+    __OSX_DEPRECATED(10.0, 10.12, "use arc4random_stir")
+    __IOS_DEPRECATED(2.0, 10.0, "use arc4random_stir")
+    __TVOS_DEPRECATED(2.0, 10.0, "use arc4random_stir")
+    __WATCHOS_DEPRECATED(1.0, 3.0, "use arc4random_stir");
+void	 arc4random_buf(void * __buf, size_t __nbytes) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 void	 arc4random_stir(void);
-u_int32_t
-	 arc4random_uniform(u_int32_t /*upper_bound*/) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
+uint32_t
+	 arc4random_uniform(uint32_t __upper_bound) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 #ifdef __BLOCKS__
-int	 atexit_b(void (^)(void)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
-void	*bsearch_b(const void *, const void *, size_t,
-	    size_t, int (^)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+int	 atexit_b(void (^ _Nonnull)(void)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+void	*bsearch_b(const void *__key, const void *__base, size_t __nel,
+	    size_t __width, int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
 
 	 /* getcap(3) functions */
@@ -353,7 +343,7 @@ int	 cgetset(const char *);
 int	 cgetstr(char *, const char *, char **);
 int	 cgetustr(char *, const char *, char **);
 
-int	 daemon(int, int) __DARWIN_1050(daemon) __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_0, __MAC_10_5, __IPHONE_2_0, __IPHONE_2_0);
+int	 daemon(int, int) __DARWIN_1050(daemon) __OSX_AVAILABLE_BUT_DEPRECATED_MSG(__MAC_10_0, __MAC_10_5, __IPHONE_2_0, __IPHONE_2_0, "Use posix_spawn APIs instead.") __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 char	*devname(dev_t, mode_t);
 char	*devname_r(dev_t, mode_t, char *buf, int len);
 char	*getbsize(int *, long *);
@@ -361,45 +351,45 @@ int	 getloadavg(double [], int);
 const char
 	*getprogname(void);
 
-int	 heapsort(void *, size_t, size_t,
-	    int (*)(const void *, const void *));
+int	 heapsort(void *__base, size_t __nel, size_t __width,
+	    int (* _Nonnull __compar)(const void *, const void *));
 #ifdef __BLOCKS__
-int	 heapsort_b(void *, size_t, size_t,
-	    int (^)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+int	 heapsort_b(void *__base, size_t __nel, size_t __width,
+	    int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
-int	 mergesort(void *, size_t, size_t,
-	    int (*)(const void *, const void *));
+int	 mergesort(void *__base, size_t __nel, size_t __width,
+	    int (* _Nonnull __compar)(const void *, const void *));
 #ifdef __BLOCKS__
-int	 mergesort_b(void *, size_t, size_t,
-	    int (^)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+int	 mergesort_b(void *__base, size_t __nel, size_t __width,
+	    int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
-void	 psort(void *, size_t, size_t,
-	    int (*)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+void	 psort(void *__base, size_t __nel, size_t __width,
+	    int (* _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #ifdef __BLOCKS__
-void	 psort_b(void *, size_t, size_t,
-	    int (^)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+void	 psort_b(void *__base, size_t __nel, size_t __width,
+	    int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
-void	 psort_r(void *, size_t, size_t, void *,
-	    int (*)(void *, const void *, const void *))  __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+void	 psort_r(void *__base, size_t __nel, size_t __width, void *,
+	    int (* _Nonnull __compar)(void *, const void *, const void *))  __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #ifdef __BLOCKS__
-void	 qsort_b(void *, size_t, size_t,
-	    int (^)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+void	 qsort_b(void *__base, size_t __nel, size_t __width,
+	    int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
-void	 qsort_r(void *, size_t, size_t, void *,
-	    int (*)(void *, const void *, const void *));
-int	 radixsort(const unsigned char **, int, const unsigned char *,
-	    unsigned);
+void	 qsort_r(void *__base, size_t __nel, size_t __width, void *,
+	    int (* _Nonnull __compar)(void *, const void *, const void *));
+int	 radixsort(const unsigned char **__base, int __nel, const unsigned char *__table,
+	    unsigned __endbyte);
 void	 setprogname(const char *);
-int	 sradixsort(const unsigned char **, int, const unsigned char *,
-	    unsigned);
+int	 sradixsort(const unsigned char **__base, int __nel, const unsigned char *__table,
+	    unsigned __endbyte);
 void	 sranddev(void);
 void	 srandomdev(void);
-void	*reallocf(void *, size_t);
+void	*reallocf(void *__ptr, size_t __size);
 #if !__DARWIN_NO_LONG_LONG
 long long
-	 strtoq(const char *, char **, int);
+	 strtoq(const char *__str, char **__endptr, int __base);
 unsigned long long
-	 strtouq(const char *, char **, int);
+	 strtouq(const char *__str, char **__endptr, int __base);
 #endif /* !__DARWIN_NO_LONG_LONG */
 extern char *suboptarg;		/* getsubopt(3) external variable */
 void	*valloc(size_t);

@@ -48,11 +48,8 @@ WITH THE ACCESS, USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <sys/cdefs.h>
 #include <_types.h>
-
-#ifndef	_SIZE_T
-#define	_SIZE_T
-typedef	__darwin_size_t		size_t;
-#endif
+#include <sys/_types/_size_t.h>
+#include <Availability.h>
 
 typedef struct {
 	size_t we_wordc;
@@ -75,14 +72,14 @@ typedef struct {
 #define WRDE_BADCHAR	1
 #define WRDE_BADVAL	2
 #define WRDE_CMDSUB	3
-#define WRDE_NOSPACE	4 
-#define WRDE_NOSYS	5 
+#define WRDE_NOSPACE	4
+#define WRDE_NOSYS	5
 #define WRDE_SYNTAX	6
 
 
 __BEGIN_DECLS
-int wordexp(const char * __restrict, wordexp_t * __restrict, int);
-void wordfree(wordexp_t *);
+int wordexp(const char * __restrict, wordexp_t * __restrict, int) __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_NA);
+void wordfree(wordexp_t *) __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_NA);
 __END_DECLS
 
 #endif  /* _WORDEXP_H */

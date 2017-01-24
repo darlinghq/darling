@@ -1,0 +1,57 @@
+.Dd Aug 19, 2012
+.Dt XPRINTF_EXEC 3
+.Os Darwin
+.Sh NAME
+.Nm asxprintf_exec , dxprintf_exec , fxprintf_exec , sxprintf_exec ,
+.Nm xprintf_exec , vasxprintf_exec , vdxprintf_exec , vfxprintf_exec ,
+.Nm vsxprintf_exec , vxprintf_exec
+.Nd execute-only extensible printf execution
+.Sh SYNOPSIS
+.In printf.h
+.Ft int
+.Fn asxprintf_exec "char ** restrict ret" "printf_comp_t restrict pc" ...
+.Ft int
+.Fn dxprintf_exec "int fd" "printf_comp_t restrict pc" ...
+.Ft int
+.Fn fxprintf_exec "FILE * restrict stream" "printf_comp_t restrict pc" ...
+.Ft int
+.Fn sxprintf_exec "char * restrict str" "size_t size" "printf_comp_t restrict pc" ...
+.Ft int
+.Fn xprintf_exec "printf_comp_t restrict pc" ...
+.In stdarg.h
+.Ft int
+.Fn vasxprintf_exec "char ** restrict ret" "printf_comp_t restrict pc" "va_list ap"
+.Ft int
+.Fn vdxprintf_exec "int fd" "printf_comp_t restrict pc" "va_list ap"
+.Ft int
+.Fn vfxprintf_exec "FILE * restrict stream" "printf_comp_t restrict pc" "va_list ap"
+.Ft int
+.Fn vsxprintf_exec "char * restrict str" "size_t size" "printf_comp_t restrict pc" "va_list ap"
+.Ft int
+.Fn vxprintf_exec "printf_comp_t restrict pc" "va_list ap"
+.Sh DESCRIPTION
+These functions are execute-only, extensible printf (see
+.Xr xprintf 5 )
+variants, taking a
+.Ft printf_comp_t
+structure created by the format string compilation routine
+.Xr new_printf_comp 3 .
+All these variants behave like their normal printf counterparts (see
+.Xr printf 3 )
+without
+.Sq Li x
+and
+.Dq Li _exec
+in the name (except
+.Fn sxprintf_exec
+and
+.Fn vsxprintf_exec
+behave like
+.Fn snprintf
+and
+.Fn vsnprintf ,
+respectively).
+.Sh SEE ALSO
+.Xr printf 3 ,
+.Xr xprintf_comp 3 ,
+.Xr xprintf 5

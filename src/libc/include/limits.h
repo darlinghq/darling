@@ -100,6 +100,8 @@
 #define _POSIX_SEM_VALUE_MAX 			32767
 #define _POSIX_SIGQUEUE_MAX 			32
 #define _POSIX_TIMER_MAX 			32
+
+#define _POSIX_CLOCKRES_MIN 20000000
 #endif /* __DARWIN_C_LEVEL >= 199309L */
 
 #if __DARWIN_C_LEVEL >= 199506L
@@ -109,7 +111,11 @@
 
 #define PTHREAD_DESTRUCTOR_ITERATIONS 	4
 #define PTHREAD_KEYS_MAX 		512
+#if defined(__arm__) 
+#define PTHREAD_STACK_MIN 		16384
+#else
 #define PTHREAD_STACK_MIN 		8192
+#endif
 #endif /* __DARWIN_C_LEVEL >= 199506L */
 
 #if __DARWIN_C_LEVEL >= 200112

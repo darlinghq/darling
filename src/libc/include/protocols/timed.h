@@ -66,8 +66,8 @@
 #define ANYADDR 	NULL
 
 #ifdef __LP64__
-#define __need_struct_timeval32
-#include <sys/_structs.h>
+#include <sys/_types.h>
+#include <sys/_types/_timeval32.h>
 #endif /* __LP64__ */
 
 struct tsp {

@@ -55,9 +55,9 @@ L_shift(ULong *x, ULong *x1, int i)
  int
 #ifdef KR_headers
 hexnan(sp, fpi, x0)
-	CONST char **sp; FPI *fpi; ULong *x0;
+	CONST char **sp; CONST FPI *fpi; ULong *x0;
 #else
-hexnan( CONST char **sp, FPI *fpi, ULong *x0)
+hexnan( CONST char **sp, CONST FPI *fpi, ULong *x0)
 #endif
 {
 #ifdef __APPLE__

@@ -41,6 +41,7 @@
 #include <mach/mach.h>		/* for vm_allocate, vm_offset_t */
 #include <mach/vm_statistics.h>
 #include <errno.h>
+#include <unistd.h>
 
 static int sbrk_needs_init = TRUE;
 static vm_size_t sbrk_region_size = 4*1024*1024; /* Well, what should it be? */
@@ -74,7 +75,7 @@ void *sbrk(int size)
 	return((void *)(sbrk_curbrk - size));
 }
 
-void *brk(void *x)
+void *brk(const void *x)
 {
 	errno = ENOMEM;
 	return((void *)-1);

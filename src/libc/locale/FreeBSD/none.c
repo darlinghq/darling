@@ -1,10 +1,17 @@
 /*-
+ * Copyright 2013 Garrett D'Amore <garrett@damore.org>
+ * Copyright 2010 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2002-2004 Tim J. Robbins. All rights reserved.
  * Copyright (c) 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * Paul Borman at Krystal Technologies.
+ *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,7 +42,7 @@
 static char sccsid[] = "@(#)none.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/locale/none.c,v 1.15 2007/10/13 16:28:22 ache Exp $");
+__FBSDID("$FreeBSD$");
 
 #include "xlocale_private.h"
 
@@ -54,7 +61,7 @@ __FBSDID("$FreeBSD: src/lib/libc/locale/none.c,v 1.15 2007/10/13 16:28:22 ache E
 int __mb_cur_max = 1;
 int __mb_sb_limit = 256; /* Expected to be <= _CACHED_RUNES */
 
-__private_extern__ int
+int
 _none_init(struct __xlocale_st_runelocale *xrl)
 {
 
@@ -68,7 +75,7 @@ _none_init(struct __xlocale_st_runelocale *xrl)
 	return(0);
 }
 
-__private_extern__ int
+int
 _none_mbsinit(const mbstate_t *ps __unused, locale_t loc __unused)
 {
 
@@ -79,7 +86,7 @@ _none_mbsinit(const mbstate_t *ps __unused, locale_t loc __unused)
 	return (1);
 }
 
-__private_extern__ size_t
+size_t
 _none_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
     mbstate_t * __restrict ps __unused, locale_t loc __unused)
 {
@@ -95,7 +102,7 @@ _none_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 	return (*s == '\0' ? 0 : 1);
 }
 
-__private_extern__ size_t
+size_t
 _none_wcrtomb(char * __restrict s, wchar_t wc,
     mbstate_t * __restrict ps __unused, locale_t loc __unused)
 {
@@ -111,7 +118,7 @@ _none_wcrtomb(char * __restrict s, wchar_t wc,
 	return (1);
 }
 
-__private_extern__ size_t
+size_t
 _none_mbsnrtowcs(wchar_t * __restrict dst, const char ** __restrict src,
     size_t nms, size_t len, mbstate_t * __restrict ps __unused, locale_t loc __unused)
 {
@@ -136,7 +143,7 @@ _none_mbsnrtowcs(wchar_t * __restrict dst, const char ** __restrict src,
 	return (nchr);
 }
 
-__private_extern__ size_t
+size_t
 _none_wcsnrtombs(char * __restrict dst, const wchar_t ** __restrict src,
     size_t nwc, size_t len, mbstate_t * __restrict ps __unused, locale_t loc __unused)
 {
@@ -157,6 +164,7 @@ _none_wcsnrtombs(char * __restrict dst, const wchar_t ** __restrict src,
 	nchr = 0;
 	while (len-- > 0 && nwc-- > 0) {
 		if (*s < 0 || *s > UCHAR_MAX) {
+			*src = s;
 			errno = EILSEQ;
 			return ((size_t)-1);
 		}

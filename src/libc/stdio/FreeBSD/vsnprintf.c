@@ -42,9 +42,8 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/vsnprintf.c,v 1.24 2008/04/17 22:17:54 jh
 #include <stdio.h>
 #include "local.h"
 
-int
-vsnprintf_l(char * __restrict str, size_t n, locale_t loc, const char * __restrict fmt,
-    __va_list ap)
+__private_extern__ int
+_vsnprintf(printf_comp_t __restrict pc, printf_domain_t __restrict domain, char * __restrict str, size_t n, locale_t __restrict loc, const char * __restrict fmt, __va_list ap)
 {
 	size_t on;
 	int ret;
@@ -54,12 +53,18 @@ vsnprintf_l(char * __restrict str, size_t n, locale_t loc, const char * __restri
 	f._extra = &ext;
 	INITEXTRA(&f);
 
-	NORMALIZE_LOCALE(loc);
 	on = n;
 	if (n != 0)
 		n--;
+#if defined(__i386__)
+	/* <rdar://problem/16329527> don't corrupt the output buffer at all if the size underflowed */
+	if (n > INT_MAX)
+		on = n = 0;
+#else
 	if (n > INT_MAX)
 		n = INT_MAX;
+#endif
+
 	/* Stdio internals do not deal correctly with zero length buffer */
 	if (n == 0) {
 		if (on > 0)
@@ -73,15 +78,21 @@ vsnprintf_l(char * __restrict str, size_t n, locale_t loc, const char * __restri
 	f._bf._size = f._w = n;
 	f._orientation = 0;
 	memset(&f._mbstate, 0, sizeof(mbstate_t));
-	ret = __vfprintf(&f, loc, fmt, ap);
+	ret = __v2printf(pc, domain, &f, loc, fmt, ap);
 	if (on > 0)
 		*f._p = '\0';
 	return (ret);
+}
+int
+vsnprintf_l(char * __restrict str, size_t n, locale_t __restrict loc, const char * __restrict fmt,
+    __va_list ap)
+{
+	return _vsnprintf(XPRINTF_PLAIN, NULL, str, n, loc, fmt, ap);
 }
 
 int
 vsnprintf(char * __restrict str, size_t n, const char * __restrict fmt,
     __va_list ap)
 {
-	return vsnprintf_l(str, n, __current_locale(), fmt, ap);
+	return _vsnprintf(XPRINTF_PLAIN, NULL, str, n, __current_locale(), fmt, ap);
 }

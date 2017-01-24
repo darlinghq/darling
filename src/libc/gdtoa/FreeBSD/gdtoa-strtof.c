@@ -40,7 +40,7 @@ strtof_l(s, sp, loc) CONST char *s; char **sp; locale_t loc;
 strtof_l(CONST char *s, char **sp, locale_t loc)
 #endif
 {
-	static FPI fpi0 = { 24, 1-127-24+1,  254-127-24+1, 1, SI };
+	static CONST FPI fpi0 = { 24, 1-127-24+1,  254-127-24+1, 1, SI };
 	ULong bits[1];
 	Long exp;
 	int k;

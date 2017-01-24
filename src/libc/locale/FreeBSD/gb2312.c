@@ -49,7 +49,7 @@ typedef struct {
 	u_char	bytes[2];
 } _GB2312State;
 
-__private_extern__ int
+int
 _GB2312_init(struct __xlocale_st_runelocale *xrl)
 {
 
@@ -114,7 +114,7 @@ _GB2312_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 	}
 
 	ncopy = MIN(MIN(n, GB2312_MB_CUR_MAX), sizeof(gs->bytes) - gs->count);
-	memcpy(gs->bytes + gs->count, s, ncopy);
+	strncpy(gs->bytes + gs->count, s, ncopy);
 	ocount = gs->count;
 	gs->count += ncopy;
 	s = (char *)gs->bytes;

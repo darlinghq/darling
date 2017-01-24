@@ -29,15 +29,10 @@ int __csrctl(csr_op_t op, void *buffer, size_t size);
 
 int csr_check(csr_config_t mask)
 {
-	return __csrctl(CSR_OP_CHECK, &mask, sizeof(csr_config_t));
+	return __csrctl(CSR_SYSCALL_CHECK, &mask, sizeof(csr_config_t));
 }
 
 int csr_get_active_config(csr_config_t *config)
 {
-	return __csrctl(CSR_OP_GET_ACTIVE_CONFIG, config, sizeof(csr_config_t));
-}
-
-int csr_get_pending_config(csr_config_t *config)
-{
-	return __csrctl(CSR_OP_GET_PENDING_CONFIG, config, sizeof(csr_config_t));
+	return __csrctl(CSR_SYSCALL_GET_ACTIVE_CONFIG, config, sizeof(csr_config_t));
 }

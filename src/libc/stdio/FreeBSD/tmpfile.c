@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -48,7 +48,7 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/tmpfile.c,v 1.10 2007/01/09 00:28:07 imp 
 #include "un-namespace.h"
 
 FILE *
-tmpfile()
+tmpfile(void)
 {
 	sigset_t set, oset;
 	FILE *fp;
@@ -62,6 +62,9 @@ tmpfile()
 		tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = _PATH_TMP;
+
+	if (*tmpdir == '\0')
+		return (NULL);
 
 	(void)asprintf(&buf, "%s%s%s", tmpdir,
 	    (tmpdir[strlen(tmpdir) - 1] == '/') ? "" : "/", TRAILER);

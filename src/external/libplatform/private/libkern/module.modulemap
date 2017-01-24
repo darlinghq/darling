@@ -1,0 +1,6 @@
+module libkernPrivate [system] [extern_c] {
+	module OSAtomic {
+		header "OSAtomic.h"
+		export Darwin.libkern.OSAtomic
+	}
+}

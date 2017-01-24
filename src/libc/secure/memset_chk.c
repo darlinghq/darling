@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 Apple Inc. All rights reserved.
+ * Copyright (c) 2007-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -23,14 +23,13 @@
 
 #include <stdlib.h>
 #include <string.h>
-
-extern void __chk_fail (void) __attribute__((__noreturn__));
+#include "secure.h"
 
 void *
 __memset_chk (void *dest, int val, size_t len, size_t dstlen)
 {
   if (__builtin_expect (dstlen < len, 0))
-    __chk_fail ();
+    __chk_fail_overflow ();
 
   return memset (dest, val, len);
 }

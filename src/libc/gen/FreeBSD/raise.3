@@ -30,14 +30,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)raise.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/gen/raise.3,v 1.8 2007/01/09 00:27:55 imp Exp $
+.\" $FreeBSD$
 .\"
-.Dd June 4, 1993
+.Dd September 21, 2016
 .Dt RAISE 3
 .Os
 .Sh NAME
 .Nm raise
-.Nd send a signal to the current process
+.Nd send a signal to the current thread
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -49,7 +49,7 @@ The
 .Fn raise
 function sends the signal
 .Fa sig
-to the current process.
+to the current thread.
 .Sh RETURN VALUES
 .Rv -std raise
 .Sh ERRORS
@@ -62,9 +62,10 @@ for any of the errors specified for the
 library functions
 .Xr getpid 2
 and
-.Xr kill 2 .
+.Xr pthread_kill 2 .
 .Sh SEE ALSO
-.Xr kill 2
+.Xr kill 2 ,
+.Xr pthread_kill 2
 .Sh STANDARDS
 The
 .Fn raise

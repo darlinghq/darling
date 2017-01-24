@@ -58,19 +58,7 @@ __weak_reference(_funlockfile, funlockfile);
 void
 _flockfile(FILE *fp)
 {
-	pthread_t curthread = _pthread_self();
-
-	if (fp->_fl_owner == curthread)
-		fp->_fl_count++;
-	else {
-		/*
-		 * Make sure this mutex is treated as a private
-		 * internal mutex:
-		 */
-		_pthread_mutex_lock(&fp->_fl_mutex);
-		fp->_fl_owner = curthread;
-		fp->_fl_count = 1;
-	}
+	_pthread_mutex_lock(&fp->_fl_mutex);
 }
 
 /*
@@ -85,52 +73,16 @@ _flockfile_debug_stub(FILE *fp, char *fname, int lineno)
 int
 _ftrylockfile(FILE *fp)
 {
-	pthread_t curthread = _pthread_self();
 	int	ret = 0;
 
-	if (fp->_fl_owner == curthread)
-		fp->_fl_count++;
-	/*
-	 * Make sure this mutex is treated as a private
-	 * internal mutex:
-	 */
-	else if (_pthread_mutex_trylock(&fp->_fl_mutex) == 0) {
-		fp->_fl_owner = curthread;
-		fp->_fl_count = 1;
-	}
-	else
+	if (_pthread_mutex_trylock(&fp->_fl_mutex) != 0)
 		ret = -1;
+	
 	return (ret);
 }
 
 void 
 _funlockfile(FILE *fp)
 {
-	pthread_t	curthread = _pthread_self();
-
-	/*
-	 * Check if this file is owned by the current thread:
-	 */
-	if (fp->_fl_owner == curthread) {
-		/*
-		 * Check if this thread has locked the FILE
-		 * more than once:
-		 */
-		if (fp->_fl_count > 1)
-			/*
-			 * Decrement the count of the number of
-			 * times the running thread has locked this
-			 * file:
-			 */
-			fp->_fl_count--;
-		else {
-			/*
-			 * The running thread will release the
-			 * lock now:
-			 */
-			fp->_fl_count = 0;
-			fp->_fl_owner = NULL;
-			_pthread_mutex_unlock(&fp->_fl_mutex);
-		}
-	}
+	_pthread_mutex_unlock(&fp->_fl_mutex);
 }

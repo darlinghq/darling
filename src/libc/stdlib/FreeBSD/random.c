@@ -31,16 +31,17 @@
 static char sccsid[] = "@(#)random.c	8.2 (Berkeley) 5/19/95";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/stdlib/random.c,v 1.25 2007/01/09 00:28:10 imp Exp $");
+__FBSDID("$FreeBSD$");
 
-/*
- * We always compile with __DARWIN_UNIX03 set to one, relying on the fact that
- * (for non-LP64) sizeof(int) == sizeof(long) == sizeof(size_t), so that we
- * don't have to have two different versions of the prototypes.  For LP64,
- * we only support the POSIX-compatible prototypes.
- */
+#ifdef __APPLE__
+// Always compile with __DARWIN_UNIX03=1 prototypes.
+// Applications using legacy interfaces (i386 only) use types of the same size:
+//   sizeof(int) == sizeof(long) == sizeof(size_t)
 #undef 	__DARWIN_UNIX03
 #define	__DARWIN_UNIX03	1
+#endif // __APPLE__
+
+#include "namespace.h"
 #include "namespace.h"
 #include <sys/time.h>          /* for srandomdev() */
 #include <fcntl.h>             /* for srandomdev() */
@@ -224,10 +225,8 @@ static int rand_deg = DEG_3;
 static int rand_sep = SEP_3;
 static uint32_t *end_ptr = &randtbl[DEG_3 + 1];
 
-static inline uint32_t good_rand(int32_t) __attribute__((always_inline));
-
-static inline uint32_t good_rand (x)
-	int32_t x;
+static inline uint32_t
+good_rand(int32_t x)
 {
 #ifdef  USE_WEAK_SEEDING
 /*
@@ -272,8 +271,11 @@ static inline uint32_t good_rand (x)
  * for default usage relies on values produced by this routine.
  */
 void
-srandom(x)
-	unsigned x;
+#ifdef __APPLE__
+srandom(unsigned int x)
+#else
+srandom(unsigned long x)
+#endif
 {
 	int i, lim;
 
@@ -303,7 +305,7 @@ srandom(x)
  * a fixed seed.
  */
 void
-srandomdev()
+srandomdev(void)
 {
 	int fd, done;
 	size_t len;
@@ -314,7 +316,7 @@ srandomdev()
 		len = rand_deg * sizeof state[0];
 
 	done = 0;
-	fd = _open("/dev/random", O_RDONLY, 0);
+	fd = _open("/dev/random", O_RDONLY | O_CLOEXEC, 0);
 	if (fd >= 0) {
 		if (_read(fd, (void *) state, len) == (ssize_t) len)
 			done = 1;
@@ -323,10 +325,9 @@ srandomdev()
 
 	if (!done) {
 		struct timeval tv;
-		unsigned long junk;
 
 		gettimeofday(&tv, NULL);
-		srandom((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec ^ junk);
+		srandom((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec);
 		return;
 	}
 
@@ -360,10 +361,11 @@ srandomdev()
  * complain about mis-alignment, but you should disregard these messages.
  */
 char *
-initstate(seed, arg_state, n)
-	unsigned seed;		/* seed for R.N.G. */
-	char *arg_state;		/* pointer to state array */
-	size_t n;				/* # bytes of state info */
+#ifdef __APPLE__
+initstate(unsigned int seed, char *arg_state, size_t n)
+#else
+initstate(unsigned long seed, char *arg_state, long n)
+#endif
 {
 	char *ostate = (char *)(&state[-1]);
 	uint32_t *int_arg_state = (uint32_t *)arg_state;
@@ -375,7 +377,7 @@ initstate(seed, arg_state, n)
 	if (n < BREAK_0) {
 		(void)fprintf(stderr,
 		    "random: not enough state (%ld bytes); ignored.\n", n);
-		return(0);
+		return (0);
 	}
 	if (n < BREAK_1) {
 		rand_type = TYPE_0;
@@ -405,7 +407,7 @@ initstate(seed, arg_state, n)
 		int_arg_state[0] = rand_type;
 	else
 		int_arg_state[0] = MAX_TYPES * (rptr - state) + rand_type;
-	return(ostate);
+	return (ostate);
 }
 
 /*
@@ -428,8 +430,7 @@ initstate(seed, arg_state, n)
  * complain about mis-alignment, but you should disregard these messages.
  */
 char *
-setstate(arg_state)
-	const char *arg_state;		/* pointer to state array */
+setstate(const char *arg_state)
 {
 	uint32_t *new_state = (uint32_t *)arg_state;
 	uint32_t type = new_state[0] % MAX_TYPES;
@@ -460,7 +461,7 @@ setstate(arg_state)
 		fptr = &state[(rear + rand_sep) % rand_deg];
 	}
 	end_ptr = &state[rand_deg];		/* set end_ptr too */
-	return(ostate);
+	return (ostate);
 }
 
 /*
@@ -481,7 +482,7 @@ setstate(arg_state)
  * Returns a 31-bit random number.
  */
 long
-random()
+random(void)
 {
 	uint32_t i;
 	uint32_t *f, *r;
@@ -506,5 +507,5 @@ random()
 
 		fptr = f; rptr = r;
 	}
-	return((long)i);
+	return ((long)i);
 }

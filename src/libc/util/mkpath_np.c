@@ -26,21 +26,12 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
-/* This extended version of mkpath_np is provided to help NSFileManager
- * maintain  binary compatibility.  If firstdir is not NULL, *firstdir will be
- * set to the path of the first created directory, and it is the caller's
- * responsibility to free the returned string.  This SPI is subject to removal
- * once NSFileManager no longer has a need for it, and use in new code is
- * highly discouraged.
- *
- * See: <rdar://problem/9888987>
- */
-
-int
-_mkpath_np(const char *path, mode_t omode, const char ** firstdir)
+static int
+_mkpath(int dfd, const char *path, mode_t omode, const char ** firstdir)
 {
-	char *apath = NULL;
+	char *apath = NULL, *opath = NULL, *s, *sn, *sl;
 	unsigned int depth = 0;
 	mode_t chmod_mode = 0;
 	int retval = 0;
@@ -48,7 +39,7 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 	struct stat sbuf;
 
 	/* Try the trivial case first. */
-	if (0 == mkdir(path, omode)) {
+	if (0 == mkdirat(dfd, path, omode)) {
 		if (firstdir) {
 			*firstdir = strdup(path);
 		}
@@ -63,9 +54,14 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 		case ENOENT:
 			break;
 		case EEXIST:
-			if (stat(path, &sbuf) == 0 &&
-			    !S_ISDIR(sbuf.st_mode)) {
-				retval = ENOTDIR;
+			if (fstatat(dfd, path, &sbuf, 0) == 0) {
+			    if (S_ISDIR(sbuf.st_mode)) {
+					retval = EEXIST;
+				} else {
+					retval = ENOTDIR;
+				}
+			} else {
+				retval = EIO;
 			}
 			goto mkpath_exit;
 		case EISDIR: /* <rdar://problem/10288022> */
@@ -82,9 +78,36 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 		goto mkpath_exit;
 	}
 
+	sl = s = apath + strlen(apath) - 1;
+	do {
+		sn = s;
+		/* Strip off trailing /., see <rdar://problem/14351794> */
+		if (s - 1 > apath && *s == '.' && *(s - 1) == '/')
+			s -= 2;
+		/* Strip off trailing /, see <rdar://problem/11592386> */
+		if (s > apath && *s == '/')
+			s--;
+	} while (s < sn);
+	if (s < sl) {
+		s[1] = '\0';
+		path = opath = strdup(apath);
+		if (opath == NULL) {
+			retval = ENOMEM;
+			goto mkpath_exit;
+		}
+	}
+
+	/* Retry the trivial case after having stripped of trailing /. <rdar://problem/14351794> */
+	if (0 == mkdirat(dfd, path, omode)) {
+		if (firstdir) {
+			*firstdir = strdup(path);
+		}
+		goto mkpath_exit;
+	}
+
 	while (1) {
 		/* Increase our depth and try making that directory */
-		char *s = strrchr(apath, '/');
+		s = strrchr(apath, '/');
 		if (!s) {
 			/* We should never hit this under normal circumstances,
 			 * but it can occur due to really unfortunate timing
@@ -95,7 +118,7 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 		*s = '\0';
 		depth++;
 
-		if (0 == mkdir(apath, S_IRWXU | S_IRWXG | S_IRWXO)) {
+		if (0 == mkdirat(dfd, apath, S_IRWXU | S_IRWXG | S_IRWXO)) {
 			/* Found our starting point */
 
 			/* POSIX 1003.2:
@@ -108,7 +131,7 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 			 */
 
 			struct stat dirstat;
-			if (-1 == stat(apath, &dirstat)) {
+			if (-1 == fstatat(dfd, apath, &dirstat, 0)) {
 				/* Really unfortunate timing ... */
 				retval = ENOENT;
 				goto mkpath_exit;
@@ -116,7 +139,7 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 
 			if ((dirstat.st_mode & (S_IWUSR | S_IXUSR)) != (S_IWUSR | S_IXUSR)) {
 			        chmod_mode = dirstat.st_mode | S_IWUSR | S_IXUSR;
-				if (-1 == chmod(apath, chmod_mode)) {
+				if (-1 == fchmodat(dfd, apath, chmod_mode, 0)) {
 					/* Really unfortunate timing ... */
 					retval = ENOENT;
 					goto mkpath_exit;
@@ -132,7 +155,7 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 			 * before we did.  We will use this as our starting point.
 			 * See: <rdar://problem/10279893>
 			 */
-			if (stat(apath, &sbuf) == 0 &&
+			if (fstatat(dfd, apath, &sbuf, 0) == 0 &&
 			    S_ISDIR(sbuf.st_mode)) {
 
 				if (firstdir) {
@@ -151,11 +174,11 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 
 	while (depth > 1) {
 		/* Decrease our depth and make that directory */
-		char *s = strrchr(apath, '\0');
+		s = strrchr(apath, '\0');
 		*s = '/';
 		depth--;
 
-		if (-1 == mkdir(apath, S_IRWXU | S_IRWXG | S_IRWXO)) {
+		if (-1 == mkdirat(dfd, apath, S_IRWXU | S_IRWXG | S_IRWXO)) {
 			/* This handles "." and ".." added to the new section of path */
 			if (errno == EEXIST)
 				continue;
@@ -164,7 +187,7 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 		}
 
 		if (chmod_mode) {
-			if (-1 == chmod(apath, chmod_mode)) {
+			if (-1 == fchmodat(dfd, apath, chmod_mode, 0)) {
 				/* Really unfortunate timing ... */
 				retval = ENOENT;
 				goto mkpath_exit;
@@ -172,10 +195,10 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 		}
 	}
 
-	if (-1 == mkdir(path, omode)) {
+	if (-1 == mkdirat(dfd, path, omode)) {
 		retval = errno;
 		if (errno == EEXIST &&
-		    stat(path, &sbuf) == 0 &&
+		    fstatat(dfd, path, &sbuf, 0) == 0 &&
 		    !S_ISDIR(sbuf.st_mode)) {
 			retval = ENOTDIR;
 		}
@@ -183,11 +206,31 @@ _mkpath_np(const char *path, mode_t omode, const char ** firstdir)
 
 mkpath_exit:
 	free(apath);
+	free(opath);
 
 	errno = old_errno;
 	return retval;
 }
 
+/* This extended version of mkpath_np is provided to help NSFileManager
+ * maintain  binary compatibility.  If firstdir is not NULL, *firstdir will be
+ * set to the path of the first created directory, and it is the caller's
+ * responsibility to free the returned string.  This SPI is subject to removal
+ * once NSFileManager no longer has a need for it, and use in new code is
+ * highly discouraged.
+ *
+ * See: <rdar://problem/9888987>
+ */
+
+int
+_mkpath_np(const char *path, mode_t omode, const char ** firstdir) {
+	return _mkpath(AT_FDCWD, path, omode, firstdir);
+}
+
 int mkpath_np(const char *path, mode_t omode) {
-	return _mkpath_np(path, omode, NULL);
+	return _mkpath(AT_FDCWD, path, omode, NULL);
+}
+
+int mkpathat_np(int dfd, const char *path, mode_t omode) {
+	return _mkpath(dfd, path, omode, NULL);
 }

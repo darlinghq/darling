@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2007 Apple Inc. All rights reserved.
  *
@@ -22,9 +21,6 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#ifdef DARLING
-#	define _strlcat strlcat
-#endif
 
 // *****************
 // * S T R L C A T *
@@ -57,7 +53,7 @@
         .text
         .globl _strlcat
 
-        .align 	(1<<4)
+        .align 	4
 _strlcat:				// size_t *strlcat(char *dst, const char *src, size_t size);
 	pushl	%edi
 	pushl	%esi

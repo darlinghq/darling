@@ -92,8 +92,8 @@ ungetc(int c, FILE *fp)
 {
 	int ret;
 
-	if (!__sdidinit)
-		__sinit();
+	pthread_once(&__sdidinit, __sinit);
+
 	FLOCKFILE(fp);
 	ORIENT(fp, -1);
 	ret = __ungetc(c, fp);

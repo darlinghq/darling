@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2000-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -58,73 +58,33 @@
  *	@(#)stddef.h	5.5 (Berkeley) 4/3/91
  */
 
-#if !defined(__STDDEF_H__)
-
-#if !defined(__need_wchar_t) && !defined(__need_size_t) \
-    && !defined(__need_ptrdiff_t) && !defined(__need_NULL) \
-    && !defined(__need_wint_t)
+#ifndef __STDDEF_H__
 #define __STDDEF_H__
-#endif /* none of __need_* defined */
 
 #include <_types.h>
 
-#if defined(__STDDEF_H__) || defined(__need_ptrdiff_t)
-#ifndef _PTRDIFF_T
-#define _PTRDIFF_T
-typedef	__darwin_ptrdiff_t	ptrdiff_t;
-#endif /* _PTRDIFF_T */
-#endif /* __STDDEF_H__ || __need_ptrdiff_t */
+#include <sys/_types.h>
+#include <sys/_types/_null.h>
+#include <sys/_types/_offsetof.h>
+#include <sys/_types/_ptrdiff_t.h>
 
-#if defined(__STDDEF_H__) || defined(__need_size_t)
-#ifndef	_SIZE_T
-#define	_SIZE_T
+#if defined(__STDC_WANT_LIB_EXT1__) && __STDC_WANT_LIB_EXT1__ >= 1
+#include <sys/_types/_rsize_t.h>
+#endif /* __STDC_WANT_LIB_EXT1__ >= 1 */
+
 /* DO NOT REMOVE THIS COMMENT: fixincludes needs to see:
  * _GCC_SIZE_T */
-typedef	__darwin_size_t		size_t;
-#endif /* _SIZE_T */
-#endif /* __STDDEF_H__ || __need_size_t */
+#include <sys/_types/_size_t.h>
 
-#if defined(__STDDEF_H__) || defined(__need_wchar_t)
-#ifndef	__cplusplus
-#ifndef	_WCHAR_T
-#define	_WCHAR_T
-typedef	__darwin_wchar_t	wchar_t;
-#endif	/* _WCHAR_T */
-#endif	/* __cplusplus */
-#endif /* __STDDEF_H__ || __need_wchar_t */
+#include <sys/_types/_wchar_t.h>
 
-#if (defined(__STDDEF_H__) && !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))) \
-    || defined(__need_wint_t)
-#ifndef	_WINT_T
-#define	_WINT_T
-typedef	__darwin_wint_t		wint_t;
-#endif	/* _WINT_T */
-#endif /* __STDDEF_H__ && !_ANSI_SOURCE && (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) || __need_wchar_t */
+#if !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
+#include <sys/_types/_wint_t.h>
+#endif /* !_ANSI_SOURCE && (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
 
-#if defined(__STDDEF_H__) || defined(__need_NULL)
-#ifndef NULL
-#define NULL __DARWIN_NULL
-#endif /* ! NULL */
-#endif /* __STDDEF_H__ || __need_NULL */
-
-#ifdef __STDDEF_H__
-#if defined(__GNUC__) && (__GNUC__ == 3 && __GNUC_MINOR__ >= 5 || __GNUC__ > 3)
-#ifndef __offsetof	/* Deprecated: for source compatibility only */
-#define __offsetof(type, field) __builtin_offsetof(type, field)
+#if (defined (__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) \
+    || (defined(__cplusplus) && __cplusplus >= 201103L)
+typedef long double max_align_t;
 #endif
-#define offsetof(type, field) __builtin_offsetof(type, field)
-#else /* ! (gcc >= 3.5) */
-#ifndef __offsetof	/* Deprecated: for source compatibility only */
-#define __offsetof(type, field) ((size_t)(&((type *)0)->field))
-#endif
-#define offsetof(type, field) ((size_t)(&((type *)0)->field))
-#endif /* (gcc >= 3.5) */
-#endif /* __STDDEF_H__ */
 
 #endif /* __STDDEF_H__ */
-
-#undef __need_ptrdiff_t
-#undef __need_size_t
-#undef __need_wchar_t
-#undef __need_wint_t
-#undef __need_NULL

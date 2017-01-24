@@ -45,7 +45,6 @@ wcscoll_l(const wchar_t *ws1, const wchar_t *ws2, locale_t loc)
 	const wchar_t *t, *t2;
 	wchar_t *tt = NULL, *tt2 = NULL;
 	wchar_t *tr = NULL, *tr2 = NULL;
-	wchar_t w, w2;
 	struct __collate_st_info *info;
 
 	NORMALIZE_LOCALE(loc);

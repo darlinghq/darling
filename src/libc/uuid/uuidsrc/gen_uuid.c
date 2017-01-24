@@ -146,7 +146,11 @@ static int get_node_id(unsigned char *node_id)
 #endif /* AF_LINK */
 #endif /* SIOCGENADDR */
 #endif /* SIOCGIFHWADDR */
-		if (!a[0] && !a[1] && !a[2] && !a[3] && !a[4] && !a[5])
+		/*
+		 * Skip interfaces that return either 00:00:00:00:00:00 or
+		 * 02:00:00:00:00:00.
+		 */
+		if ((!a[0] || a[0] == 0x02) && !a[1] && !a[2] && !a[3] && !a[4] && !a[5])
 			continue;
 		if (node_id) {
 			memcpy(node_id, a, 6);

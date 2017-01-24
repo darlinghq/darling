@@ -300,7 +300,9 @@ struct tnfa {
   tre_tnfa_transition_t *initial;
   tre_tnfa_transition_t *final;
   tre_submatch_data_t *submatch_data;
+#ifdef USE_FIRSTPOS_CHARS /* not defined */
   char *firstpos_chars;
+#endif /* USE_FIRSTPOS_CHARS */
   tre_tag_direction_t *tag_directions;
   int *minimal_tags;
   tre_last_matched_branch_t *last_matched_branch;

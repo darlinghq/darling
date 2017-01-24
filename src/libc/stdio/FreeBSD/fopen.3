@@ -140,15 +140,11 @@ Any created files will have mode
 as modified by the process'
 umask value (see
 .Xr umask 2 ) .
+.\" C11 §7.21.5.3p7
 .Pp
-Reads and writes may be intermixed on read/write streams in any order,
-and do not require an intermediate seek as in previous versions of
-.Em stdio .
-This is not portable to other systems, however;
-.Tn ANSI C
-requires that
-a file positioning function intervene between output and input, unless
-an input operation encounters end-of-file.
+Reads and writes may be intermixed on read/write streams in any order; however, 
+a file positioning function must be called when switching between output and
+input, unless an input operation encounters end-of-file.
 .Pp
 The
 .Fn fdopen

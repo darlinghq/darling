@@ -84,7 +84,7 @@ static int _backtrace_snprintf(char* buf, size_t size, int frame, const void* ad
 			image,
 			(uintptr_t)addr,
 			symbol,
-			symbol_offset) + 1;
+			symbol_offset);
 }
 
 char** backtrace_symbols(void* const* buffer, int size) {
@@ -110,9 +110,9 @@ char** backtrace_symbols(void* const* buffer, int size) {
 		if (info[i].dli_sname) {
 			total_bytes += strlen(info[i].dli_sname);
 		} else if(info[i].dli_fname) {
-			const char *tmp = strrchr(info->dli_fname, '/');
+			const char *tmp = strrchr(info[i].dli_fname, '/');
 			if(tmp == NULL)
-				total_bytes += strlen(info->dli_fname);
+				total_bytes += strlen(info[i].dli_fname);
 	                else
 				total_bytes += strlen(tmp + 1);
 		} else {
@@ -142,7 +142,7 @@ char** backtrace_symbols(void* const* buffer, int size) {
 		}
 
 		ptrs[i] = (char*)strs;
-		strs += chk;
+		strs += chk + 1; // Step over the '\0'
 	}
 	
 	free(info);

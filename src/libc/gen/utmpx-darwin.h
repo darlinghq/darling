@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
-#include <sys/_types/_timeval32.h>
 
 #ifdef UTMP_COMPAT
 #define UTMP_COMPAT_UTMP0	0x01
@@ -38,8 +37,8 @@
 #define LASTLOG_FACILITY	"com.apple.system.lastlog"
 #define UTMPX_FACILITY		"com.apple.system.utmpx"
 
-#define	UTMPX_LOCK(x)	if (__is_threaded) pthread_mutex_lock(&(x)->utmpx_mutex)
-#define	UTMPX_UNLOCK(x)	if (__is_threaded) pthread_mutex_unlock(&(x)->utmpx_mutex)
+#define	UTMPX_LOCK(x)	pthread_mutex_lock(&(x)->utmpx_mutex)
+#define	UTMPX_UNLOCK(x)	pthread_mutex_unlock(&(x)->utmpx_mutex)
 #define UTMPX_MAGIC	8
 #define __UTX_MAGIC__	{ 'u', 't', 'x', 0, 'v', 1, 0, 0 }
 
@@ -50,8 +49,6 @@
 						LIBC_ABORT("%s: magic mismatch", (x)); \
 				}
 
-extern int __is_threaded;
-
 struct _utmpx {
 	char magic[UTMPX_MAGIC];
 	struct utmpx ut;
@@ -61,12 +58,11 @@ struct _utmpx {
 	unsigned int utfile_system :1; /* are we using _PATH_UTMPX? */
 	unsigned int readonly      :1;
 };
-extern struct _utmpx __utx__; /* the default struct _utmpx */
 extern const char __utx_magic__[]; /* size of UTMPX_MAGIC */
 
 #ifdef __LP64__
-#define __need_struct_timeval32
-#include <_structs.h>
+#include <sys/_types.h>
+#include <sys/_types/_timeval32.h>
 
 /*
  * these structures assume natural alignment so they are the same size
@@ -98,6 +94,8 @@ struct utmpx32 {
 	__uint32_t ut_pad[16];		/* reserved for future use */
 };
 #endif /* __LP64__ */
+
+struct _utmpx *__default_utx(void);
 
 void __endutxent(struct _utmpx *);
 struct utmpx *__getutxent(struct _utmpx *);

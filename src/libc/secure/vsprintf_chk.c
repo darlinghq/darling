@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 Apple Inc. All rights reserved.
+ * Copyright (c) 2007-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -25,24 +25,21 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <limits.h>
-
-extern void __chk_fail (void) __attribute__((__noreturn__));
-extern int __vsprintf_chk (char * __restrict, int, size_t,
-                           const char * __restrict, va_list arg);
+#include "secure.h"
 
 int
-__vsprintf_chk (char *s, int flags, size_t len, const char *format,
+__vsprintf_chk (char *dest, int flags, size_t dstlen, const char *format,
 		va_list arg)
 {
   int done;
 
-  if (len > (size_t) INT_MAX)
-    done = vsprintf (s, format, arg);
+  if (__builtin_expect (dstlen > (size_t) INT_MAX, 0))
+    done = vsprintf (dest, format, arg);
   else
     {
-      done = vsnprintf (s, len, format, arg);
-      if (done >= 0 && (size_t) done >= len)
-	__chk_fail ();
+      done = vsnprintf (dest, dstlen, format, arg);
+      if (__builtin_expect (done >= 0 && (size_t) done >= dstlen, 0))
+        __chk_fail_overflow ();
     }
 
   return done;

@@ -84,6 +84,11 @@ the Epoch (00:00:00
 .Tn UTC ,
 January 1, 1970; see
 .Xr time 3 ) .
+When encountering an error, these functions return
+.Dv NULL
+and set
+.Dv errno
+to an appropriate value.
 .Pp
 The function
 .Fn localtime

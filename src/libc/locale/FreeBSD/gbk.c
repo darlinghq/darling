@@ -54,7 +54,7 @@ typedef struct {
 	wchar_t	ch;
 } _GBKState;
 
-__private_extern__ int
+int
 _GBK_init(struct __xlocale_st_runelocale *xrl)
 {
 

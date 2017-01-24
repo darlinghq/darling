@@ -1,75 +1,105 @@
 /*
- * Copyright (c) 2005-2007 Apple Inc. All rights reserved.
+ * Copyright (c) 2005-2012 Apple Computer, Inc. All rights reserved.
  *
- * @APPLE_LICENSE_HEADER_START@
- *
- * The contents of this file constitute Original Code as defined in and
- * are subject to the Apple Public Source License Version 1.1 (the
- * "License").  You may not use this file except in compliance with the
- * License.  Please obtain a copy of the License at
- * http://www.apple.com/publicsource and read it before using this file.
- *
- * This Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  *
- * @APPLE_LICENSE_HEADER_END@
+ * This file implements strlen( ) for the x86_64 architecture.
  */
 
-/*
- * Strlen, for processors with SSE3.
- *
- * Note that all memory references must be aligned, in order to avoid spurious
- * page faults.  Thus we have to load the aligned 16-byte chunk containing the
- * first byte of the operand, then mask out false 0s that may occur before the
- * first byte.
- *
- * We favor the fall-through (ie, short operand) path.
- */
+.globl _strlen
 
-        .text
-        .globl  _strlen
-        .align  4, 0x90
-_strlen:				// size_t strlen(char *b);
-	pxor	%xmm0,%xmm0		// zero %xmm0
-	movl	%edi,%ecx		// copy low half of ptr
-	movq	%rdi,%rdx		// make another full copy
-	andq	$(-16),%rdi		// 16-byte align ptr
-	orl	$(-1),%eax
-	pcmpeqb	(%rdi),%xmm0		// check whole qw for 0s
-	andl	$15,%ecx		// get #bytes in aligned dq before operand
-	shl	%cl,%eax		// create mask for the bytes of aligned dq in operand
-	pmovmskb %xmm0,%ecx		// collect mask of 0-bytes
-	andl	%eax,%ecx		// mask out any 0s that occur before 1st byte
-	jz	LEnterLoop		// no 0-bytes (ie, 1-bits), so enter by-16 loop
-	
-// We've found a 0-byte.
-//	%rdi = aligned address of 16-byte block containing the terminating 0-byte
-//	%ecx = compare bit vector
+/*****************************************************************************
+ *  Macros                                                                   *
+ *****************************************************************************/
 
-LFoundIt:
-	bsf	%ecx,%eax		// find first 1-bit (ie, first 0-byte)
-	subq	%rdx,%rdi		// get length to start of 16-byte block while we wait
-	addq	%rdi,%rax		// add bytes in 16-byte block
+.macro EstablishFrame
+	push      %rbp
+	mov       %rsp,      %rbp
+.endm
+
+.macro ClearFrameAndReturn
+	pop       %rbp
 	ret
-	
-// Loop over aligned 16-byte blocks:
-//	%rdi = address of previous block
+.endm
 
-LEnterLoop:
-	pxor	%xmm0,%xmm0		// get some 0-bytes
-	addq	$16,%rdi		// advance ptr
-LLoop:
-	movdqa	(%rdi),%xmm1		// get next chunk
-	addq	$16,%rdi
-	pcmpeqb	%xmm0,%xmm1		// check for 0s
-	pmovmskb %xmm1,%ecx		// collect mask of 0-bytes
-	test	%ecx,%ecx		// any 0-bytes?
-	jz	LLoop			// no 0-bytes, so get next dq
+/*****************************************************************************
+ *  Entrypoint                                                               *
+ *****************************************************************************/
 
-	subq	$16,%rdi		// back up ptr
-	jmp	LFoundIt
+.text
+.align 5
+_strlen:
+//	size_t strlen(const char *s);
+//
+//	returns the length of the string s (i.e. the distance in bytes from
+//	s to the first NUL byte following s).  We look for NUL bytes using
+//	pcmpeqb on 16-byte aligned blocks.  Although this may read past the
+//	end of the string, because all access is aligned, it will never
+//	read past the end of the string across a page boundary, or even
+//	accross a cacheline.
+	EstablishFrame
+	mov       %rdi,	     %rcx
+	mov       %rdi,      %rdx
+
+//	Load the 16-byte block containing the first byte of the string, and
+//	compare each byte to zero.  If any NUL bytes are present in this
+//	block, the corresponding *bit* in esi will be set to 1.
+	and       $-16,      %rdi
+	pxor      %xmm0,     %xmm0
+	pcmpeqb  (%rdi),     %xmm0
+	pmovmskb  %xmm0,     %esi
+
+//	The 16 bytes that we checked for NUL included some bytes preceeding
+//	the start of the string, if s is not 16-byte aligned.  We create a
+//	mask based on the alignment of s which covers only those bits
+//	corresponding to bytes that do not preceed s, and check for NULs
+//	only in those bits.  If we do not find one, we jump to our main
+//	search loop.
+	and       $0xf,      %rcx
+	or        $-1,       %rax
+	shl       %cl,       %rax
+	and       %eax,      %esi
+	jz        L_loop
+
+L_foundNUL:
+//	The last 16-byte block that we searched contained at least one NUL.
+//	We use bsf to identify the first NUL, and compute the distance from
+//	that byte to the start of the string.
+	bsf       %esi,      %eax
+	sub       %rdx,      %rdi
+	add       %rdi,      %rax
+	ClearFrameAndReturn
+
+.align 4
+L_loop:
+//	Main search loop: check for NUL in a 16-byte block, continuing
+//	loop until one is found.
+	add       $16,       %rdi
+	pxor      %xmm0,     %xmm0
+	pcmpeqb  (%rdi),     %xmm0
+	pmovmskb  %xmm0,     %esi
+	test      %esi,      %esi
+	jz        L_loop
+	jmp       L_foundNUL

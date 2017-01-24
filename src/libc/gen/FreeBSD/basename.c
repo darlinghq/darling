@@ -39,38 +39,29 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/basename.c,v 1.7 2002/12/30 01:41:14 marcel
 #include <string.h>
 #include <sys/param.h>
 
-#if __DARWIN_UNIX03
-#define const /**/
-#endif
-
 char *
-basename(path)
-	const char *path;
+basename_r(const char *path, char *bname)
 {
-	static char *bname = NULL;
 	const char *endp, *startp;
-
- 	if (bname == NULL) {
-		bname = (char *)malloc(MAXPATHLEN);
-		if (bname == NULL)
-			return(NULL);
-	}
+	size_t len;
 
 	/* Empty or NULL string gets treated as "." */
 	if (path == NULL || *path == '\0') {
-		(void)strcpy(bname, ".");
-		return(bname);
+		bname[0] = '.';
+		bname[1] = '\0';
+		return (bname);
 	}
 
-	/* Strip trailing slashes */
+	/* Strip any trailing slashes */
 	endp = path + strlen(path) - 1;
 	while (endp > path && *endp == '/')
 		endp--;
 
 	/* All slashes becomes "/" */
 	if (endp == path && *endp == '/') {
-		(void)strcpy(bname, "/");
-		return(bname);
+		bname[0] = '/';
+		bname[1] = '\0';
+		return (bname);
 	}
 
 	/* Find the start of the base */
@@ -78,11 +69,29 @@ basename(path)
 	while (startp > path && *(startp - 1) != '/')
 		startp--;
 
-	if (endp - startp + 2 > MAXPATHLEN) {
+	len = endp - startp + 1;
+	if (len >= MAXPATHLEN) {
 		errno = ENAMETOOLONG;
-		return(NULL);
+		return (NULL);
 	}
-	(void)strncpy(bname, startp, endp - startp + 1);
-	bname[endp - startp + 1] = '\0';
-	return(bname);
+	memcpy(bname, startp, len);
+	bname[len] = '\0';
+	return (bname);
+}
+
+#if __DARWIN_UNIX03
+#define const /**/
+#endif
+
+char *
+basename(const char *path)
+{
+	static char *bname = NULL;
+
+	if (bname == NULL) {
+		bname = (char *)malloc(MAXPATHLEN);
+		if (bname == NULL)
+			return (NULL);
+	}
+	return (basename_r(path, bname));
 }

@@ -38,5 +38,6 @@ extern char *_PathLocale;
 
 int	__detect_path_locale(void);
 int	__wrap_setrunelocale(const char *, locale_t);
+int	__open_path_locale(const char *);
 
 #endif /* !_SETLOCALE_H_ */

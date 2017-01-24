@@ -30,7 +30,6 @@
 extern _libkernel_functions_t _libkernel_functions;
 extern void mig_os_release(void* ptr);
 
-#ifndef VARIANT_DYLD
 __attribute__((visibility("hidden")))
 void *
 malloc(size_t size)
@@ -61,22 +60,17 @@ reallocf(void *ptr, size_t size)
 		free(ptr);
 	return (nptr);
 }
-#endif
 
 __attribute__((visibility("hidden")))
 void
 _pthread_exit_if_canceled(int error)
 {
-#ifndef VARIANT_DYLD
-	_libkernel_functions->_pthread_exit_if_canceled(error);
-#endif
+	return _libkernel_functions->_pthread_exit_if_canceled(error);
 }
 
-#ifndef VARIANT_DYLD
 __attribute__((visibility("hidden")))
 void
 _pthread_set_self(void *ptr __attribute__((__unused__))) {}
-#endif
 
 __attribute__((visibility("hidden")))
 void

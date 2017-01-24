@@ -46,7 +46,7 @@
  */
 
 /*
- * Extension SPIs.
+ * Extension SPIs; installed to /usr/include.
  */
 
 #ifndef _PTHREAD_SPIS_H
@@ -55,6 +55,9 @@
 
 #include <pthread/pthread.h>
 
+#if __has_feature(assume_nonnull)
+_Pragma("clang assume_nonnull begin")
+#endif
 __BEGIN_DECLS
 
 #if (!defined(_POSIX_C_SOURCE) && !defined(_XOPEN_SOURCE)) || defined(_DARWIN_C_SOURCE)
@@ -73,6 +76,34 @@ int pthread_mutexattr_setpolicy_np(pthread_mutexattr_t *, int );
 
 #endif /* (!_POSIX_C_SOURCE && !_XOPEN_SOURCE) || _DARWIN_C_SOURCE */
 
+__OSX_AVAILABLE_STARTING(__MAC_10_11, __IPHONE_NA)
+void _pthread_mutex_enable_legacy_mode(void);
+
+/*
+ * A version of pthread_create that is safely callable from an injected mach thread.
+ *
+ * The _create introspection hook will not fire for threads created from this function.
+ *
+ * It is not safe to call this function concurrently.
+ */
+__OSX_AVAILABLE(10.12) __IOS_AVAILABLE(10.0)
+__TVOS_AVAILABLE(10.0) __WATCHOS_AVAILABLE(3.0)
+#if !_PTHREAD_SWIFT_IMPORTER_NULLABILITY_COMPAT
+int pthread_create_from_mach_thread(
+		pthread_t _Nullable * _Nonnull __restrict,
+		const pthread_attr_t * _Nullable __restrict,
+		void * _Nullable (* _Nonnull)(void * _Nullable),
+		void * _Nullable __restrict);
+#else
+int pthread_create_from_mach_thread(pthread_t * __restrict,
+		const pthread_attr_t * _Nullable __restrict,
+		void *(* _Nonnull)(void *), void * _Nullable __restrict);
+#endif
+
+
 __END_DECLS
+#if __has_feature(assume_nonnull)
+_Pragma("clang assume_nonnull end")
+#endif
 
 #endif /* _PTHREAD_SPIS_H */

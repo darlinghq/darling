@@ -94,10 +94,8 @@ struct shared {
     size_t es;
     size_t turnoff;
     dispatch_queue_t queue;
-    pthread_cond_t cond;
-    pthread_mutex_t mutex;
+    dispatch_group_t group;
     OSSpinLock sharedlock;
-    int count;
 };
 
 static union args *
@@ -321,8 +319,8 @@ nevermind:
 			args->a = a;
 			args->n = r;
 			args->depth_limit = depth_limit;
-			OSAtomicIncrement32(&shared->count);
-			dispatch_async_f(shared->queue, args, _psort_parallel);
+			dispatch_group_async_f(shared->group, shared->queue, args,
+					_psort_parallel);
 		} else {
 #ifdef I_AM_PSORT_R
 			_psort(a, r, es, thunk, cmp, depth_limit, NULL);
@@ -352,11 +350,6 @@ _psort_parallel(void *x)
 #endif
 		shared->cmp, args->depth_limit, shared);
 	returnargs(shared, args);
-	if(OSAtomicDecrement32(&shared->count) <= 0) {
-		pthread_mutex_lock(&shared->mutex);
-		pthread_cond_signal(&shared->cond);
-		pthread_mutex_unlock(&shared->mutex);
-	}
 }
 
 /* fast, approximate integer square root */
@@ -395,8 +388,7 @@ psort(void *a, size_t n, size_t es, cmp_t *cmp)
 			shared.cmp = cmp;
 			shared.es = es;
 			shared.queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-			shared.cond = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
-			shared.mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+			shared.group = dispatch_group_create();
 			args->a = a;
 			args->n = n;
 			args->depth_limit = DEPTH(n);
@@ -415,17 +407,11 @@ psort(void *a, size_t n, size_t es, cmp_t *cmp)
 			 * this purpose.
 			 */
 			shared.turnoff = isqrt(n);
-			OSAtomicIncrement32(&shared.count);
 			_psort_parallel(args);
 
 			/* wait for queue to drain */
-			pthread_mutex_lock(&shared.mutex);
-			while(shared.count > 0)
-				pthread_cond_wait(&shared.cond, &shared.mutex);
-
-			pthread_mutex_unlock(&shared.mutex);
-			pthread_mutex_destroy(&shared.mutex);
-			pthread_cond_destroy(&shared.cond);
+			dispatch_group_wait(shared.group, DISPATCH_TIME_FOREVER);
+			dispatch_release(shared.group);
 			for(p = shared.pagelist; p; p = pp) {
 				pp = p->next;
 				munmap(p, PAGESIZE);

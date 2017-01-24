@@ -38,6 +38,7 @@
 
 static acl_t	acl_get_file1(const char *path, acl_type_t acl_type, int follow);
 
+int acl_delete_fd_np(int filedes, acl_type_t type);
 int
 acl_delete_fd_np(int filedes, acl_type_t type)
 {
@@ -45,6 +46,7 @@ acl_delete_fd_np(int filedes, acl_type_t type)
 	return(-1);
 }
 
+int acl_delete_file_np(const char *path, acl_type_t type);
 int
 acl_delete_file_np(const char *path, acl_type_t type)
 {
@@ -52,6 +54,7 @@ acl_delete_file_np(const char *path, acl_type_t type)
 	return(-1);
 }
 
+int acl_delete_link_np(const char *path, acl_type_t type);
 int
 acl_delete_link_np(const char *path, acl_type_t type)
 {

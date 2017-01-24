@@ -143,7 +143,7 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 #endif /* TRE_DEBUG */
   tre_tag_t *tmp_tags = NULL;
   tre_tag_t *tmp_iptr;
-  int tbytes;
+  size_t tbytes;
   int touch = 1;
 
 #ifdef TRE_MBSTATE
@@ -162,7 +162,7 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
      everything in a single large block from the stack frame using alloca()
      or with malloc() if alloca is unavailable. */
   {
-    int rbytes, pbytes, total_bytes;
+    size_t rbytes, pbytes, total_bytes;
     char *tmp_buf;
     /* Compute the length of the block we need. */
     tbytes = sizeof(*tmp_tags) * num_tags;
@@ -177,11 +177,11 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 #ifdef TRE_USE_ALLOCA
     buf = alloca(total_bytes);
 #else /* !TRE_USE_ALLOCA */
-    buf = xmalloc((unsigned)total_bytes);
+    buf = xmalloc(total_bytes);
 #endif /* !TRE_USE_ALLOCA */
     if (buf == NULL)
       return REG_ESPACE;
-    memset(buf, 0, (size_t)total_bytes);
+    memset(buf, 0, total_bytes);
 
     /* Get the various pointers within tmp_buf (properly aligned). */
     tmp_tags = (void *)buf;
@@ -209,15 +209,103 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
     reach_pos[i].pos = -1;
 
   /* If only one character can start a match, find it first. */
-  if (tnfa->first_char >= 0 && type == STR_BYTE && str_byte)
+  if (tnfa->first_char >= 0 && str_byte)
     {
       const char *orig_str = str_byte;
       int first = tnfa->first_char;
+      int found_high_bit = 0;
 
-      if (len >= 0)
-	str_byte = memchr(orig_str, first, (size_t)len);
-      else
-	str_byte = strchr(orig_str, first);
+
+      if (type == STR_BYTE)
+	{
+	  if (len >= 0)
+	    str_byte = memchr(orig_str, first, (size_t)len);
+	  else
+	    str_byte = strchr(orig_str, first);
+	}
+      else if (type == STR_MBS)
+	{
+	  /*
+	   * If the match character is ASCII, try to match the character
+	   * directly, but if a high bit character is found, we stop there.
+	   */
+	  if (first < 0x80)
+	    {
+	      if (len >= 0)
+		{
+		  int i;
+		  for (i = 0; ; str_byte++, i++)
+		    {
+		      if (i >= len)
+			{
+			  str_byte = NULL;
+			  break;
+			}
+		      if (*str_byte == first)
+			break;
+		      if (*str_byte & 0x80)
+			{
+			  found_high_bit = 1;
+			  break;
+			}
+		    }
+		}
+	      else
+		{
+		  for (; ; str_byte++)
+		    {
+		      if (!*str_byte)
+			{
+			  str_byte = NULL;
+			  break;
+			}
+		      if (*str_byte == first)
+			break;
+		      if (*str_byte & 0x80)
+			{
+			  found_high_bit = 1;
+			  break;
+			}
+		    }
+		}
+	    }
+	  else
+	    {
+	      if (len >= 0)
+		{
+		  int i;
+		  for (i = 0; ; str_byte++, i++)
+		    {
+		      if (i >= len)
+			{
+			  str_byte = NULL;
+			  break;
+			}
+		      if (*str_byte & 0x80)
+			{
+			  found_high_bit = 1;
+			  break;
+			}
+		    }
+		}
+	      else
+		{
+		  for (; ; str_byte++)
+		    {
+		      if (!*str_byte)
+			{
+			  str_byte = NULL;
+			  break;
+			}
+		      if (*str_byte & 0x80)
+			{
+			  found_high_bit = 1;
+			  break;
+			}
+		    }
+		}
+	    }
+	}
       if (str_byte == NULL)
 	{
 #ifndef TRE_USE_ALLOCA
@@ -227,20 +315,37 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 	  return REG_NOMATCH;
 	}
       DPRINT(("skipped %lu chars\n", (unsigned long)(str_byte - orig_str)));
-      if (str_byte >= orig_str + 1)
-	prev_c = (unsigned char)*(str_byte - 1);
-      next_c = (unsigned char)*str_byte;
-      pos = str_byte - orig_str;
-      if (len < 0 || pos < len)
-	str_byte++;
+      if (!found_high_bit)
+	{
+	  if (str_byte >= orig_str + 1)
+	    prev_c = (unsigned char)*(str_byte - 1);
+	  next_c = (unsigned char)*str_byte;
+	  pos = str_byte - orig_str;
+	  if (len < 0 || pos < len)
+	    str_byte++;
+	}
+      else
+	{
+	  if (str_byte == orig_str)
+	    goto no_first_optimization;
+	  /*
+	   * Back up one character, fix up the position, then call
+	   * GET_NEXT_WCHAR() to process the multibyte character.
+	   */
+	  /* no need to set prev_c, since GET_NEXT_WCHAR will overwrite */
+	  next_c = (unsigned char)*(str_byte - 1);
+	  pos = (str_byte - 1) - orig_str;
+	  GET_NEXT_WCHAR();
+	}
     }
   else
     {
+no_first_optimization:
       GET_NEXT_WCHAR();
       pos = 0;
     }
 
-#if 0
+#ifdef USE_FIRSTPOS_CHARS /* not defined */
   /* Skip over characters that cannot possibly be the first character
      of a match. */
   if (tnfa->firstpos_chars != NULL)
@@ -271,7 +376,7 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 	    }
 	}
     }
-#endif
+#endif /* USE_FIRSTPOS_CHARS */
 
   DPRINT(("length: %d\n", len));
   DPRINT(("pos:chr/code | states and tags\n"));

@@ -31,8 +31,8 @@ strlcat(char * restrict dst, const char * restrict src, size_t maxlen) {
     if (srclen < maxlen-dstlen) {
         memcpy(dst+dstlen, src, srclen+1);
     } else {
-        memcpy(dst+dstlen, src, maxlen-1);
-        dst[dstlen+maxlen-1] = '\0';
+        memcpy(dst+dstlen, src, maxlen-dstlen-1);
+        dst[maxlen-1] = '\0';
     }
     return dstlen + srclen;
 }

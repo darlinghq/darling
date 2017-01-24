@@ -28,133 +28,117 @@
 #ifndef _SECURE__STRING_H_
 #define _SECURE__STRING_H_
 
+#include <Availability.h>
 #include <sys/cdefs.h>
 #include <secure/_common.h>
 
 #if _USE_FORTIFY_LEVEL > 0
 
-/* memcpy, mempcpy, memmove, memset, strcpy, stpcpy, strncpy, stpncpy,
-   strcat, and strncat */
+#ifndef __has_builtin
+#define _undef__has_builtin
+#define __has_builtin(x) 0
+#endif
 
+/* <rdar://problem/12622659> */
+#if defined(__clang__) && \
+    ((defined(__apple_build_version__) && __apple_build_version__ >= 4260006) || \
+     (!defined(__apple_build_version__) && (__clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 3))))
+#define __HAS_FIXED_CHK_PROTOTYPES 1
+#else
+#define __HAS_FIXED_CHK_PROTOTYPES 0
+#endif
+
+/* memccpy, memcpy, mempcpy, memmove, memset, strcpy, strlcpy, stpcpy,
+   strncpy, stpncpy, strcat, strlcat, and strncat */
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000 || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if __has_builtin(__builtin___memccpy_chk) && __HAS_FIXED_CHK_PROTOTYPES
+#undef memccpy
+#define memccpy(dest, src, c, len)                                  \
+  __builtin___memccpy_chk (dest, src, c, len, __darwin_obsz0 (dest))
+#endif
+#endif
+
+#if __has_builtin(__builtin___memcpy_chk) || defined(__GNUC__)
 #undef memcpy
-#undef memmove
-#undef memset
-#undef strcpy
-#if __DARWIN_C_LEVEL >= 200809L
-#undef stpcpy
-#undef stpncpy
-#endif
-#undef strncpy
-#undef strcat
-#if ! (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED < 32000)
-#undef strncat
-#endif
-
 #define memcpy(dest, src, len)					\
-  ((__darwin_obsz0 (dest) != (size_t) -1)				\
-   ? __builtin___memcpy_chk (dest, src, len, __darwin_obsz0 (dest))	\
-   : __inline_memcpy_chk (dest, src, len))
+  __builtin___memcpy_chk (dest, src, len, __darwin_obsz0 (dest))
+#endif
 
-static __inline void *
-__inline_memcpy_chk (void *__dest, const void *__src, size_t __len)
-{
-  return __builtin___memcpy_chk (__dest, __src, __len, __darwin_obsz0(__dest));
-}
-
+#if __has_builtin(__builtin___memmove_chk) || defined(__GNUC__)
+#undef memmove
 #define memmove(dest, src, len)					\
-  ((__darwin_obsz0 (dest) != (size_t) -1)				\
-   ? __builtin___memmove_chk (dest, src, len, __darwin_obsz0 (dest))	\
-   : __inline_memmove_chk (dest, src, len))
+  __builtin___memmove_chk (dest, src, len, __darwin_obsz0 (dest))
+#endif
 
-static __inline void *
-__inline_memmove_chk (void *__dest, const void *__src, size_t __len)
-{
-  return __builtin___memmove_chk (__dest, __src, __len, __darwin_obsz0(__dest));
-}
-
+#if __has_builtin(__builtin___memset_chk) || defined(__GNUC__)
+#undef memset
 #define memset(dest, val, len)					\
-  ((__darwin_obsz0 (dest) != (size_t) -1)				\
-   ? __builtin___memset_chk (dest, val, len, __darwin_obsz0 (dest))	\
-   : __inline_memset_chk (dest, val, len))
+  __builtin___memset_chk (dest, val, len, __darwin_obsz0 (dest))
+#endif
 
-static __inline void *
-__inline_memset_chk (void *__dest, int __val, size_t __len)
-{
-  return __builtin___memset_chk (__dest, __val, __len, __darwin_obsz0(__dest));
-}
-
+#if __has_builtin(__builtin___strcpy_chk) || defined(__GNUC__)
+#undef strcpy
 #define strcpy(dest, src)					\
-  ((__darwin_obsz0 (dest) != (size_t) -1)				\
-   ? __builtin___strcpy_chk (dest, src, __darwin_obsz (dest))		\
-   : __inline_strcpy_chk (dest, src))
-
-static __inline char *
-__inline_strcpy_chk (char *__restrict __dest, const char *__restrict __src)
-{
-  return __builtin___strcpy_chk (__dest, __src, __darwin_obsz(__dest));
-}
+  __builtin___strcpy_chk (dest, src, __darwin_obsz (dest))
+#endif
 
 #if __DARWIN_C_LEVEL >= 200809L
+#if __has_builtin(__builtin___stpcpy_chk) || defined(__GNUC__)
+#undef stpcpy
 #define stpcpy(dest, src)					\
-  ((__darwin_obsz0 (dest) != (size_t) -1)				\
-   ? __builtin___stpcpy_chk (dest, src, __darwin_obsz (dest))		\
-   : __inline_stpcpy_chk (dest, src))
-
-static __inline char *
-__inline_stpcpy_chk (char *__dest, const char *__src)
-{
-  return __builtin___stpcpy_chk (__dest, __src, __darwin_obsz(__dest));
-}
-
-#define stpncpy(dest, src, len)					\
-  ((__darwin_obsz0 (dest) != (size_t) -1)				\
-   ? __builtin___stpncpy_chk (dest, src, len, __darwin_obsz (dest))	\
-   : __inline_stpncpy_chk (dest, src, len))
-
-static __inline char *
-__inline_stpncpy_chk (char *__restrict __dest, const char *__restrict __src,
-		      size_t __len)
-{
-  return __builtin___stpncpy_chk (__dest, __src, __len, __darwin_obsz(__dest));
-}
+  __builtin___stpcpy_chk (dest, src, __darwin_obsz (dest))
 #endif
 
+#if __has_builtin(__builtin___stpncpy_chk) || __APPLE_CC__ >= 5666 || __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+#undef stpncpy
+#define stpncpy(dest, src, len)					\
+  __builtin___stpncpy_chk (dest, src, len, __darwin_obsz (dest))
+#endif
+#endif /* _DARWIN_C_LEVEL >= 200809L */
+
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000 || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if __has_builtin(__builtin___strlcpy_chk) && __HAS_FIXED_CHK_PROTOTYPES
+#undef strlcpy
+#define strlcpy(dest, src, len)                                 \
+  __builtin___strlcpy_chk (dest, src, len, __darwin_obsz (dest))
+#endif
+
+#if __has_builtin(__builtin___strlcat_chk) && __HAS_FIXED_CHK_PROTOTYPES
+#undef strlcat
+#define strlcat(dest, src, len)                                 \
+  __builtin___strlcat_chk (dest, src, len, __darwin_obsz (dest))
+#endif
+#endif /* __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000 || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090 */
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
+
+#if __has_builtin(__builtin___strncpy_chk) || defined(__GNUC__)
+#undef strncpy
 #define strncpy(dest, src, len)					\
-  ((__darwin_obsz0 (dest) != (size_t) -1)				\
-   ? __builtin___strncpy_chk (dest, src, len, __darwin_obsz (dest))	\
-   : __inline_strncpy_chk (dest, src, len))
+  __builtin___strncpy_chk (dest, src, len, __darwin_obsz (dest))
+#endif
 
-static __inline char *
-__inline_strncpy_chk (char *__restrict __dest, const char *__restrict __src,
-		      size_t __len)
-{
-  return __builtin___strncpy_chk (__dest, __src, __len, __darwin_obsz(__dest));
-}
-
+#if __has_builtin(__builtin___strcat_chk) || defined(__GNUC__)
+#undef strcat
 #define strcat(dest, src)					\
-  ((__darwin_obsz0 (dest) != (size_t) -1)				\
-   ? __builtin___strcat_chk (dest, src, __darwin_obsz (dest))		\
-   : __inline_strcat_chk (dest, src))
-
-static __inline char *
-__inline_strcat_chk (char *__restrict __dest, const char *__restrict __src)
-{
-  return __builtin___strcat_chk (__dest, __src, __darwin_obsz(__dest));
-}
+  __builtin___strcat_chk (dest, src, __darwin_obsz (dest))
+#endif
 
 #if ! (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED < 32000)
+#if __has_builtin(__builtin___strncat_chk) || defined(__GNUC__)
+#undef strncat
 #define strncat(dest, src, len)					\
-  ((__darwin_obsz0 (dest) != (size_t) -1)				\
-   ? __builtin___strncat_chk (dest, src, len, __darwin_obsz (dest))	\
-   : __inline_strncat_chk (dest, src, len))
-
-static __inline char *
-__inline_strncat_chk (char *__restrict __dest, const char *__restrict __src,
-		      size_t __len)
-{
-  return __builtin___strncat_chk (__dest, __src, __len, __darwin_obsz(__dest));
-}
+  __builtin___strncat_chk (dest, src, len, __darwin_obsz (dest))
+#endif
 #endif
 
+#ifdef _undef__has_builtin
+#undef _undef__has_builtin
+#undef __has_builtin
 #endif
-#endif
+
+#undef __HAS_FIXED_CHK_PROTOTYPES
+
+#endif /* _USE_FORTIFY_LEVEL > 0 */
+#endif /* _SECURE__STRING_H_ */

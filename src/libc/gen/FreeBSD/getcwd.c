@@ -143,7 +143,7 @@ __private_getcwd(pt, size, usegetpath)
 	ino_t root_ino;
 	size_t ptsize, upsize;
 	int save_errno;
-	char *ept, *eup, *up, c;
+	char *ept, *eup, *up;
 
 	/*
 	 * If no buffer specified by the user, allocate one as necessary.

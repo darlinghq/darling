@@ -1,0 +1,64 @@
+.Dd Aug 19, 2012
+.Dt XPRINTF 3
+.Os Darwin
+.Sh NAME
+.Nm asxprintf , dxprintf , fxprintf , sxprintf , xprintf ,
+.Nm vasxprintf , vdxprintf , vfxprintf , vsxprintf , vxprintf
+.Nd extensible printf
+.Sh SYNOPSIS
+.In printf.h
+.Ft int
+.Fn asxprintf "char ** restrict ret" "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" ...
+.Ft int
+.Fn dxprintf "int fd" "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" ...
+.Ft int
+.Fn fxprintf "FILE * restrict stream" "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" ...
+.Ft int
+.Fn sxprintf "char * restrict str" "size_t size" "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" ...
+.Ft int
+.Fn xprintf "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" ...
+.In stdarg.h
+.Ft int
+.Fn vasxprintf "char ** restrict ret" "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" "va_list ap"
+.Ft int
+.Fn vdxprintf "int fd" "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" "va_list ap"
+.Ft int
+.Fn vfxprintf "FILE * restrict stream" "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" "va_list ap"
+.Ft int
+.Fn vsxprintf "char * restrict str" "size_t size" "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" "va_list ap"
+.Ft int
+.Fn vxprintf "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict format" "va_list ap"
+.Sh DESCRIPTION
+These extensible printf (see
+.Xr xprintf 5 )
+variants behave like their normal printf counterparts
+(see
+.Xr printf 3 )
+without
+.Sq Li x
+in the name (except
+.Fn sxprintf
+and
+.Fn vsxprintf
+behave like
+.Fn snprintf
+and
+.Fn vsnprintf ,
+respectively).
+.Pp
+The
+.Va domain
+argument must be a pointer to a printf domain structure, as returned by one of
+the functions described in
+.Xr xprintf_domain 3 .
+The
+.Va loc
+argument should be an extended locale (see
+.Xr xlocale 3 )
+or NULL, which means to use the current locale in effect (either the per-thread
+locale if set, or the global locale by default).
+.Sh SEE ALSO
+.Xr printf 3 ,
+.Xr xlocale 3 ,
+.Xr xprintf_domain 3 ,
+.Xr xprintf 5

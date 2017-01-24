@@ -68,6 +68,7 @@ static const char rcsid[] =
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static struct {
 	char *name;
@@ -82,6 +83,9 @@ static struct {
 	{ "noschg",		SF_IMMUTABLE,	0 },
 	{ "noschange",		SF_IMMUTABLE,	0 },
 	{ "nosimmutable",	SF_IMMUTABLE,	0 },
+	{ "norestricted",	SF_RESTRICTED,	0 },
+	{ "nosunlnk",		SF_NOUNLINK,	0 },
+	{ "nosunlink",		SF_NOUNLINK,	0 },
 	{ "nouappnd",		UF_APPEND,	0 },
 	{ "nouappend",		UF_APPEND,	0 },
 	{ "nouchg",		UF_IMMUTABLE,	0 },

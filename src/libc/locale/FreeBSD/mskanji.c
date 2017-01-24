@@ -59,7 +59,7 @@ typedef struct {
 	wchar_t	ch;
 } _MSKanjiState;
 
-__private_extern__ int
+int
 _MSKanji_init(struct __xlocale_st_runelocale *xrl)
 {
 

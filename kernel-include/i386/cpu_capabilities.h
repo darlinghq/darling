@@ -57,28 +57,39 @@
 #define	kSlow				0x00004000	/* tsc < nanosecond */
 #define	kUP				0x00008000	/* set if (kNumCPUs == 1) */
 #define	kNumCPUs			0x00FF0000	/* number of CPUs (see _NumCPUs() below) */
+#define	kNumCPUsShift			16
 #define	kHasAVX1_0			0x01000000
 #define	kHasRDRAND			0x02000000
 #define	kHasF16C			0x04000000
 #define	kHasENFSTRG			0x08000000
-#define	kNumCPUsShift			16		/* see _NumCPUs() below */
+#define	kHasFMA				0x10000000
+#define	kHasAVX2_0			0x20000000
+#define	kHasBMI1			0x40000000
+#define	kHasBMI2			0x80000000
+/* Extending into 64-bits from here: */ 
+#define	kHasRTM			0x0000000100000000ULL
+#define	kHasHLE			0x0000000200000000ULL
+#define	kHasRDSEED		0x0000000800000000ULL
+#define	kHasADX			0x0000000400000000ULL
+#define	kHasMPX			0x0000001000000000ULL
+#define	kHasSGX			0x0000002000000000ULL
+
 
 #ifndef	__ASSEMBLER__
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-extern int  _get_cpu_capabilities( void );
+extern uint64_t  _get_cpu_capabilities( void );
 __END_DECLS
 
-inline static
+__inline static
 int _NumCPUs( void )
 {
-	return (_get_cpu_capabilities() & kNumCPUs) >> kNumCPUsShift;
+	return (int) (_get_cpu_capabilities() & kNumCPUs) >> kNumCPUsShift;
 }
 
 #endif /* __ASSEMBLER__ */
 
-#ifndef DARLING
 /* The following macro is used to generate the 64-bit commpage address for a given
  * routine, based on its 32-bit address.  This is used in the kernel to compile
  * the 64-bit commpage.  Since the kernel can be a 32-bit object, cpu_capabilities.h
@@ -152,13 +163,16 @@ int _NumCPUs( void )
 
 /* data in the comm page */
  
-#define _COMM_PAGE_SIGNATURE		(_COMM_PAGE_START_ADDRESS+0x000)	/* first few bytes are a signature */
+#define _COMM_PAGE_SIGNATURE		(_COMM_PAGE_START_ADDRESS+0x000)	/* first 16 bytes are a signature */
+#define _COMM_PAGE_SIGNATURELEN		(0x10)
+#define _COMM_PAGE_CPU_CAPABILITIES64	(_COMM_PAGE_START_ADDRESS+0x010)	/* uint64_t _cpu_capabilities */
+#define _COMM_PAGE_UNUSED		(_COMM_PAGE_START_ADDRESS+0x018)	/* 6 unused bytes */
 #define _COMM_PAGE_VERSION		(_COMM_PAGE_START_ADDRESS+0x01E)	/* 16-bit version# */
-#define _COMM_PAGE_THIS_VERSION		12					/* version of the commarea format */
+#define _COMM_PAGE_THIS_VERSION		13					/* in ver 13, _COMM_PAGE_NT_SHIFT defaults to 0 (was 32) */
   
-#define _COMM_PAGE_CPU_CAPABILITIES	(_COMM_PAGE_START_ADDRESS+0x020)	/* uint32_t _cpu_capabilities */
+#define _COMM_PAGE_CPU_CAPABILITIES	(_COMM_PAGE_START_ADDRESS+0x020)	/* uint32_t _cpu_capabilities (retained for compatibility) */
 #define _COMM_PAGE_NCPUS		(_COMM_PAGE_START_ADDRESS+0x022)	/* uint8_t number of configured CPUs (hw.logicalcpu at boot time) */
-#define _COMM_PAGE_UNUSED0			(_COMM_PAGE_START_ADDRESS+0x024)	/* 2 unused bytes, reserved for future expansion of cpu_capabilities */
+#define _COMM_PAGE_UNUSED0		(_COMM_PAGE_START_ADDRESS+0x024)	/* 2 unused bytes, previouly reserved for expansion of cpu_capabilities */
 #define _COMM_PAGE_CACHE_LINESIZE	(_COMM_PAGE_START_ADDRESS+0x026)	/* uint16_t cache line size */
 
 #define _COMM_PAGE_SCHED_GEN		(_COMM_PAGE_START_ADDRESS+0x028)	/* uint32_t scheduler generation number (count of pre-emptions) */
@@ -172,7 +186,10 @@ int _NumCPUs( void )
 #define _COMM_PAGE_MEMORY_SIZE		(_COMM_PAGE_START_ADDRESS+0x038)	/* uint64_t max memory size */
 
 #define _COMM_PAGE_CPUFAMILY		(_COMM_PAGE_START_ADDRESS+0x040)	/* uint32_t hw.cpufamily, x86*/
-#define _COMM_PAGE_UNUSED2		(_COMM_PAGE_START_ADDRESS+0x044)	/* [0x44,0x50) unused */
+#define _COMM_PAGE_KDEBUG_ENABLE	(_COMM_PAGE_START_ADDRESS+0x044)	/* uint32_t export "kdebug_enable" to userspace */
+#define	_COMM_PAGE_ATM_DIAGNOSTIC_CONFIG	(_COMM_PAGE_START_ADDRESS+0x48) /* uint32_t export "atm_diagnostic_config" to userspace */
+
+#define _COMM_PAGE_UNUSED2		(_COMM_PAGE_START_ADDRESS+0x04C)	/* [0x4C,0x50) unused */
 
 #define	_COMM_PAGE_TIME_DATA_START	(_COMM_PAGE_START_ADDRESS+0x050)	/* base of offsets below (_NT_SCALE etc) */
 #define _COMM_PAGE_NT_TSC_BASE		(_COMM_PAGE_START_ADDRESS+0x050)	/* used by nanotime() */
@@ -183,6 +200,14 @@ int _NumCPUs( void )
 #define _COMM_PAGE_GTOD_GENERATION	(_COMM_PAGE_START_ADDRESS+0x06c)	/* used by gettimeofday() */
 #define _COMM_PAGE_GTOD_NS_BASE		(_COMM_PAGE_START_ADDRESS+0x070)	/* used by gettimeofday() */
 #define _COMM_PAGE_GTOD_SEC_BASE	(_COMM_PAGE_START_ADDRESS+0x078)	/* used by gettimeofday() */
+ 
+/* NOTE: APPROX_TIME must be aligned to 64-byte cache line size: */
+#define _COMM_PAGE_APPROX_TIME		(_COMM_PAGE_START_ADDRESS+0x080)	/* used by mach_approximate_time() */
+#define _COMM_PAGE_APPROX_TIME_SUPPORTED (_COMM_PAGE_START_ADDRESS+0x088)	/* used by mach_approximate_time() */
+
+/* Align following entries to next cache line */
+#define _COMM_PAGE_CONT_TIMEBASE	(_COMM_PAGE_START_ADDRESS+0x0C0)	/* used by mach_continuous_time() */
+#define _COMM_PAGE_BOOTTIME_USEC	(_COMM_PAGE_START_ADDRESS+0x0C8)	/* uint64_t boottime */
 
 #define _COMM_PAGE_END			(_COMM_PAGE_START_ADDRESS+0xfff)	/* end of common page */
 
@@ -219,7 +244,6 @@ int _NumCPUs( void )
 #define _COMM_TEXT_PFZ_START_OFFSET		(0xc00)	/* offset for Preemption Free Zone */
 #define _COMM_TEXT_PFZ_ENQUEUE_OFFSET		(0xc00)	/* internal FIFO enqueue */
 #define _COMM_TEXT_PFZ_DEQUEUE_OFFSET		(0xc80)	/* internal FIFO dequeue */
-#define _COMM_TEXT_PFZ_MUTEX_LOCK_OFFSET	(0xd00)	/* internal pthread_mutex_lock() */
 #define _COMM_TEXT_UNUSED_OFFSET		(0xd80)	/* end of routines in text page */
 #define _COMM_TEXT_PFZ_END_OFFSET		(0xfff)	/* offset for end of PFZ */
 
@@ -231,7 +255,6 @@ int _NumCPUs( void )
 
 #define _COMM_PAGE_PFZ_ENQUEUE		(_COMM_PAGE_TEXT_START+_COMM_TEXT_PFZ_ENQUEUE_OFFSET)
 #define _COMM_PAGE_PFZ_DEQUEUE		(_COMM_PAGE_TEXT_START+_COMM_TEXT_PFZ_DEQUEUE_OFFSET)
-#define	_COMM_PAGE_PFZ_MUTEX_LOCK	(_COMM_PAGE_TEXT_START+_COMM_TEXT_PFZ_MUTEX_LOCK_OFFSET)
 
 #define	_COMM_PAGE_UNUSED6		(_COMM_PAGE_TEXT_START+_COMM_TEXT_UNUSED_OFFSET)	
 #define _COMM_PAGE_PFZ_END		(_COMM_PAGE_TEXT_START+_COMM_TEXT_PFZ_END_OFFSET)
@@ -256,7 +279,6 @@ symbol_name: nop
 	CREATE_COMM_PAGE_SYMBOL(___backoff, _COMM_PAGE_BACKOFF)
 	CREATE_COMM_PAGE_SYMBOL(___pfz_enqueue, _COMM_PAGE_PFZ_ENQUEUE)
 	CREATE_COMM_PAGE_SYMBOL(___pfz_dequeue, _COMM_PAGE_PFZ_DEQUEUE)
-	CREATE_COMM_PAGE_SYMBOL(___pfz_mutex_lock, _COMM_PAGE_PFZ_MUTEX_LOCK)
 	CREATE_COMM_PAGE_SYMBOL(___end_comm_page, _COMM_PAGE_END)
 
 	.data		/* Required to make a well behaved symbol file */
@@ -264,10 +286,6 @@ symbol_name: nop
 
 #endif /* __COMM_PAGE_SYMBOLS */
 #endif /* __ASSEMBLER__ */
-
-#else
-#	include <commpage.h>
-#endif /* DARLING */
 
 #endif /* _I386_CPU_CAPABILITIES_H */
 #endif /* PRIVATE */

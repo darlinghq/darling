@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 Apple Inc. All rights reserved.
+ * Copyright (c) 2007-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -23,16 +23,19 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "secure.h"
 
-extern void __chk_fail (void) __attribute__((__noreturn__));
-
-void *
+char *
 __stpcpy_chk (char *dest, const char *src, size_t dstlen)
 {
-  size_t len = strlen (src);
+  char *retval = stpcpy(dest, src); // Returns a pointer to the \0
+  size_t len = retval - dest + 1;
 
   if (__builtin_expect (dstlen < len, 0))
-    __chk_fail ();
+    __chk_fail_overflow ();
 
-  return memcpy (dest, src, len + 1) + len;
+  if (__builtin_expect (__chk_assert_no_overlap != 0, 1))
+    __chk_overlap(dest, len, src, len);
+
+  return retval;
 }

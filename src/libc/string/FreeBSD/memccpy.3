@@ -40,8 +40,8 @@
 .In string.h
 .Ft void *
 .Fo memccpy
-.Fa "void *restrict s1"
-.Fa "const void *restrict s2"
+.Fa "void *restrict dst"
+.Fa "const void *restrict src"
 .Fa "int c"
 .Fa "size_t n"
 .Fc
@@ -50,17 +50,17 @@ The
 .Fn memccpy
 function
 copies bytes from string
-.Fa s2
+.Fa src
 to string
-.Fa s1 .
+.Fa dst .
 If the character
 .Fa c
 (as converted to an unsigned char) occurs in the string
-.Fa s2 ,
+.Fa src ,
 the copy stops and a pointer to the byte after the copy of
 .Fa c
 in the string
-.Fa s1
+.Fa dst
 is returned.
 Otherwise,
 .Fa n

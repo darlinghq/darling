@@ -98,20 +98,20 @@ struct seq {
 	char fmt[NAME_MAX + 17];
 };
 
-static char brapat[] = "\\[(.*)]";
+static const char *brapat = "\\[(.*)]";
 static regex_t brapreg;
-static char decpat[] = "^([0-9]+)-([0-9]+)$";
+static const char *decpat = "^([0-9]+)-([0-9]+)$";
 static regex_t decpreg;
-static char hexpat[] = "^0x([0-9a-f]+)-0x([0-9a-f]+)$";
+static const char *hexpat = "^0x([0-9a-f]+)-0x([0-9a-f]+)$";
 static regex_t hexpreg;
 static struct seq *seq = NULL;
 static int slot;
 
 struct ttyent *
-getttyent()
+getttyent(void)
 {
 	static struct ttyent tty;
-	static struct ttyent nonexistent = {
+	static const struct ttyent nonexistent = {
 		"\01",	/* this shouldn't match anything */
 		NULL,
 		NULL,
@@ -145,7 +145,7 @@ restart:
 		 * entries until we catch up.
 		 */
 		slot++;
-		return &nonexistent;
+		return (struct ttyent *)&nonexistent;
 	}
 
 	if (seq->count > 0) {

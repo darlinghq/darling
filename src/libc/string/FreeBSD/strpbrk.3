@@ -13,7 +13,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strpbrk.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/strpbrk.3,v 1.9 2009/04/07 13:42:53 trasz Exp $
+.\" $FreeBSD$
 .\"
 .Dd June 4, 1993
 .Dt STRPBRK 3
@@ -43,23 +43,20 @@
 .Sh SYNOPSIS
 .In string.h
 .Ft char *
-.Fo strpbrk
-.Fa "const char *s1"
-.Fa "const char *s2"
-.Fc
+.Fn strpbrk "const char *s" "const char *charset"
 .Sh DESCRIPTION
 The
 .Fn strpbrk
 function
 locates in the null-terminated string
-.Fa s1
+.Fa s
 the first occurrence of any character in the string
-.Fa s2 ,
-returning a pointer to this character.
+.Fa charset
+and returns a pointer to this character.
 If no characters from
-.Fa s2
+.Fa charset
 occur anywhere in
-.Fa s1 ,
+.Fa s
 .Fn strpbrk
 returns NULL.
 .Sh SEE ALSO

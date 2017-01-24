@@ -174,7 +174,9 @@ LFound0:
 
 LZeroBuffer:
 	movq	%rdx,%rsi		// remaining buffer size (2nd argument)
+	subq	$8,%rsp			// align stack to 16B before call
 	call	_bzero
+	addq	$8,%rsp			// restore stack
 
 LDone:
 	movq	%r8,%rax		// original dest ptr is return value

@@ -17,6 +17,7 @@
 /* Wide character and multibyte support. */
 
 #ifdef TRE_STR_USER
+#error TRE_STR_USER defined
 #define GET_NEXT_WCHAR()						      \
   do {									      \
     prev_c = next_c;							      \
@@ -82,30 +83,43 @@
       }									      \
   } while(/*CONSTCOND*/0)
 #else /* !TRE_STR_USER */
+/*
+ * Because all multibyte encodings are exclusively single-shift encoding,
+ * with the shift codes having the high bit set, we can make an optimization
+ * for STR_MBS that only calls tre_mbrtowc_l() when a high-bit character
+ * is detected, and just do a direct copy for ASCII characters.
+ */
 #define GET_NEXT_WCHAR()						      \
   do {									      \
     prev_c = next_c;							      \
-    if (type == STR_BYTE)						      \
+    switch (type)							      \
       {									      \
+      case STR_BYTE:							      \
 	pos++;								      \
 	if (len >= 0 && pos >= len)					      \
 	  next_c = '\0';						      \
 	else								      \
 	  next_c = (unsigned char)(*str_byte++);			      \
-      }									      \
-    else if (type == STR_WIDE)						      \
-      {									      \
+	break;								      \
+      case STR_WIDE:							      \
 	pos++;								      \
 	if (len >= 0 && pos >= len)					      \
 	  next_c = L'\0';						      \
 	else								      \
 	  next_c = *str_wide++;						      \
-      }									      \
-    else if (type == STR_MBS)						      \
-      {									      \
-        pos += pos_add_next;					      	      \
-	if (str_byte == NULL)						      \
-	  next_c = L'\0';						      \
+	break;								      \
+      case STR_MBS:							      \
+	pos += pos_add_next;					      	      \
+	if (__builtin_expect(len >= 0 && pos >= len, 0))		      \
+	  {								      \
+	    next_c = L'\0';						      \
+	    pos_add_next = 1;						      \
+	  }								      \
+	else if (__builtin_expect(!(*str_byte & 0x80), 1))		      \
+	  {								      \
+	    next_c = (unsigned char)(*str_byte++);			      \
+	    pos_add_next = 1;						      \
+	  }								      \
 	else								      \
 	  {								      \
 	    size_t w;							      \
@@ -114,30 +128,23 @@
 	      max = len - pos;						      \
 	    else							      \
 	      max = 32;							      \
-	    if (max <= 0)						      \
+	    w = tre_mbrtowc_l(&next_c, str_byte, (size_t)max, &mbstate,	      \
+			      tnfa->loc);				      \
+	    if (w == (size_t)-1 || w == (size_t)-2)			      \
+	      return REG_ILLSEQ;					      \
+	    if (w == 0 && len >= 0)					      \
 	      {								      \
-		next_c = L'\0';						      \
 		pos_add_next = 1;					      \
+		next_c = 0;						      \
+		str_byte++;						      \
 	      }								      \
 	    else							      \
 	      {								      \
-		w = tre_mbrtowc_l(&next_c, str_byte, (size_t)max, &mbstate,   \
-				  tnfa->loc);                                 \
-		if (w == (size_t)-1 || w == (size_t)-2)			      \
-		  return REG_ILLSEQ;					      \
-		if (w == 0 && len >= 0)					      \
-		  {							      \
-		    pos_add_next = 1;					      \
-		    next_c = 0;						      \
-		    str_byte++;						      \
-		  }							      \
-		else							      \
-		  {							      \
-		    pos_add_next = w;					      \
-		    str_byte += w;					      \
-		  }							      \
+		pos_add_next = w;					      \
+		str_byte += w;						      \
 	      }								      \
 	  }								      \
+	break;								      \
       }									      \
   } while(/*CONSTCOND*/0)
 #endif /* !TRE_STR_USER */
@@ -145,6 +152,7 @@
 #else /* !TRE_MULTIBYTE */
 
 /* Wide character support, no multibyte support. */
+#error TRE_MULTIBYTE undefined
 
 #ifdef TRE_STR_USER
 #define GET_NEXT_WCHAR()						      \
@@ -201,6 +209,7 @@
 #else /* !TRE_WCHAR */
 
 /* No wide character or multibyte support. */
+#error TRE_WCHAR undefined
 
 #ifdef TRE_STR_USER
 #define GET_NEXT_WCHAR()						      \
@@ -614,7 +623,9 @@ tre_bracket_match(tre_bracket_match_list_t * __restrict list, tre_cint_t wc,
 	  break;
     }
 error:
-  if (list->flags & TRE_BRACKET_MATCH_FLAG_NEGATE)
+  if (list->flags & TRE_BRACKET_MATCH_FLAG_NEGATE) {
+    if ((tnfa->cflags & REG_NEWLINE) && wc == '\n') return 0;
     match = !match;
+  }
   return match;
 }

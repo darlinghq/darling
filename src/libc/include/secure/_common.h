@@ -36,6 +36,6 @@
 #endif
 
 #define __darwin_obsz0(object) __builtin_object_size (object, 0)
-#define __darwin_obsz(object) __builtin_object_size (object, _USE_FORTIFY_LEVEL > 1)
+#define __darwin_obsz(object) __builtin_object_size (object, _USE_FORTIFY_LEVEL > 1 ? 1 : 0)
 
 #endif

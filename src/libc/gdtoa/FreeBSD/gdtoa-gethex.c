@@ -42,9 +42,9 @@ THIS SOFTWARE.
  int
 #ifdef KR_headers
 gethex(sp, fpi, exp, bp, sign, loc)
-	CONST char **sp; FPI *fpi; Long *exp; Bigint **bp; int sign; locale_t loc;
+	CONST char **sp; CONST FPI *fpi; Long *exp; Bigint **bp; int sign; locale_t loc;
 #else
-gethex( CONST char **sp, FPI *fpi, Long *exp, Bigint **bp, int sign, locale_t loc)
+gethex( CONST char **sp, CONST FPI *fpi, Long *exp, Bigint **bp, int sign, locale_t loc)
 #endif
 {
 	Bigint *b;

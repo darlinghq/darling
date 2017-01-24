@@ -274,7 +274,7 @@ tre_tnfa_run_backtrack(const tre_tnfa_t *tnfa, const void *string,
 
   int num_tags = tnfa->num_tags;
   int touch = 1;
-  char *buf;
+  char *buf = NULL;
   int tbytes;
 
 #ifdef TRE_MBSTATE

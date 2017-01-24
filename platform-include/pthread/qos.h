@@ -33,6 +33,9 @@
 
 #ifndef KERNEL
 
+#if __has_feature(assume_nonnull)
+_Pragma("clang assume_nonnull begin")
+#endif
 __BEGIN_DECLS
 
 /*!
@@ -107,8 +110,8 @@ pthread_attr_set_qos_class_np(pthread_attr_t *__attr,
 __OSX_AVAILABLE_STARTING(__MAC_10_10, __IPHONE_8_0)
 int
 pthread_attr_get_qos_class_np(pthread_attr_t * __restrict __attr,
-		qos_class_t * __restrict __qos_class,
-		int * __restrict __relative_priority);
+		qos_class_t * _Nullable __restrict __qos_class,
+		int * _Nullable __restrict __relative_priority);
 
 /*!
  * @function pthread_set_qos_class_self_np
@@ -179,8 +182,8 @@ pthread_set_qos_class_self_np(qos_class_t __qos_class,
 __OSX_AVAILABLE_STARTING(__MAC_10_10, __IPHONE_8_0)
 int
 pthread_get_qos_class_np(pthread_t __pthread,
-		qos_class_t * __restrict __qos_class,
-		int * __restrict __relative_priority);
+		qos_class_t * _Nullable __restrict __qos_class,
+		int * _Nullable __restrict __relative_priority);
 
 /*!
  * @typedef pthread_override_t
@@ -288,6 +291,9 @@ int
 pthread_override_qos_class_end_np(pthread_override_t __override);
 
 __END_DECLS
+#if __has_feature(assume_nonnull)
+_Pragma("clang assume_nonnull end")
+#endif
 
 #endif // KERNEL
 

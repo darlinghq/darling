@@ -31,6 +31,9 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/sysctlnametomib.c,v 1.4 2003/01/04 00:11:11
 #include <sys/sysctl.h>
 #include <string.h>
 
+extern int __sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
+					void *newp, size_t newlen);
+
 /*
  * This function uses a presently undocumented interface to the kernel
  * to walk the tree and get the type so it can print the value.
@@ -49,7 +52,7 @@ sysctlnametomib(const char *name, int *mibp, size_t *sizep)
 	oid[1] = 3;
 
 	*sizep *= sizeof (int);
-	error = sysctl(oid, 2, mibp, sizep, (void *)name, strlen(name));
+	error = __sysctl(oid, 2, mibp, sizep, (void *)name, strlen(name));
 	*sizep /= sizeof (int);
 	return (error);
 }

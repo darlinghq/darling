@@ -52,7 +52,7 @@ typedef struct _malloc_zone_t {
 
     struct malloc_introspection_t	*introspect;
     unsigned	version;
-    
+    	
     /* aligned memory allocation. The callback may be NULL. Present in version >= 5. */
     void *(*memalign)(struct _malloc_zone_t *zone, size_t alignment, size_t size);
     
@@ -199,6 +199,7 @@ typedef struct malloc_introspection_t {
 #else
     void	*enumerate_unavailable_without_blocks;   
 #endif /* __BLOCKS__ */
+    void	(*reinit_lock)(malloc_zone_t *zone); /* Reinitialize zone locks, called only from atfork_child handler. Present in version >= 9. */
 } malloc_introspection_t;
 
 extern void malloc_printf(const char *format, ...);

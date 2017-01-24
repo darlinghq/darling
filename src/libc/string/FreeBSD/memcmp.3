@@ -13,7 +13,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)memcmp.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/memcmp.3,v 1.10 2009/04/07 13:42:53 trasz Exp $
+.\" $FreeBSD$
 .\"
 .Dd June 4, 1993
 .Dt MEMCMP 3
@@ -65,12 +65,16 @@ The
 function
 returns zero if the two strings are identical,
 otherwise returns the difference between the first two differing bytes
-(treated as unsigned char values, so that
+(treated as
+.Vt "unsigned char"
+values, so that
 .Sq Li \e200
 is greater than
 .Sq Li \&\e0 ,
 for example).
 Zero-length strings are always identical.
+This behavior is not required by C and portable code should only depend on the
+sign of the returned value.
 .Sh SEE ALSO
 .Xr bcmp 3 ,
 .Xr strcasecmp 3 ,

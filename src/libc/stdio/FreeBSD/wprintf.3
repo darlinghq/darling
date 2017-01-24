@@ -31,18 +31,14 @@
 .\"
 .\"     @(#)printf.3	8.1 (Berkeley) 6/4/93
 .\" FreeBSD: src/lib/libc/stdio/printf.3,v 1.47 2002/09/06 11:23:55 tjr Exp
-.\" $FreeBSD: src/lib/libc/stdio/wprintf.3,v 1.6 2007/01/09 00:28:08 imp Exp $
+.\" $FreeBSD$
 .\"
 .Dd July 5, 2003
 .Dt WPRINTF 3
 .Os
 .Sh NAME
-.Nm fwprintf ,
-.Nm swprintf ,
-.Nm vfwprintf ,
-.Nm vswprintf ,
-.Nm vwprintf ,
-.Nm wprintf
+.Nm wprintf , fwprintf , swprintf ,
+.Nm vwprintf , vfwprintf , vswprintf
 .Nd formatted wide character output conversion
 .Sh LIBRARY
 .Lb libc
@@ -50,49 +46,23 @@
 .In stdio.h
 .In wchar.h
 .Ft int
-.Fo fwprintf
-.Fa "FILE *restrict stream"
-.Fa "const wchar_t *restrict format"
-.Fa ...
-.Fc
+.Fn fwprintf "FILE * restrict stream" "const wchar_t * restrict format" ...
 .Ft int
-.Fo swprintf
-.Fa "wchar_t *restrict ws"
-.Fa "size_t n"
-.Fa "const wchar_t *restrict format"
-.Fa ...
-.Fc
+.Fn swprintf "wchar_t * restrict ws" "size_t n" "const wchar_t * restrict format" ...
 .Ft int
-.Fo wprintf
-.Fa "const wchar_t *restrict format"
-.Fa ...
-.Fc
+.Fn wprintf "const wchar_t * restrict format" ...
 .In stdarg.h
-.In stdio.h
-.In wchar.h
 .Ft int
-.Fo vfwprintf
-.Fa "FILE *restrict stream"
-.Fa "const wchar_t *restrict format"
-.Fa "va_list arg"
-.Fc
+.Fn vfwprintf "FILE * restrict stream" "const wchar_t * restrict" "va_list ap"
 .Ft int
-.Fo vswprintf
-.Fa "wchar_t *restrict ws"
-.Fa "size_t n"
-.Fa "const wchar_t *restrict format"
-.Fa "va_list arg"
-.Fc
+.Fn vswprintf "wchar_t * restrict ws" "size_t n" "const wchar_t *restrict format" "va_list ap"
 .Ft int
-.Fo vwprintf
-.Fa "const wchar_t *restrict format"
-.Fa "va_list arg"
-.Fc
+.Fn vwprintf "const wchar_t * restrict format" "va_list ap"
 .Sh DESCRIPTION
 The
 .Fn wprintf
 family of functions produces output according to a
-.Fa format ,
+.Fa format
 as described below.
 The
 .Fn wprintf
@@ -135,9 +105,18 @@ The
 .Fn swprintf
 and
 .Fn vswprintf
-functions will fail if
+functions return the number of characters written (not including the terminating
+null wide character).
+These functions will fail (returning a negative value and setting
+.Va errno
+appropriately) if
 .Fa n
-or more wide characters were requested to be written,
+or more wide characters were requested to be written.
+.Pp
+The other functions return the number of wide characters printed on success, or
+a negative value on faiure, setting
+.Va errno
+to indicate the error.
 .Pp
 The format string is composed of zero or more directives:
 ordinary
@@ -412,7 +391,7 @@ The
 .Vt double
 argument is rounded and converted in the style
 .Sm off
-.Oo \- Oc Ar d Li \&. Ar ddd Li e \\*[Pm] Ar dd
+.Oo \- Oc Ar d Li \&. Ar ddd Li e \(+- Ar dd
 .Sm on
 where there is one digit before the
 decimal-point character
@@ -488,7 +467,7 @@ The
 .Vt double
 argument is converted to hexadecimal notation in the style
 .Sm off
-.Oo \- Oc Li 0x Ar h Li \&. Ar hhhp Oo \\*[Pm] Oc Ar d ,
+.Oo \- Oc Li 0x Ar h Li \&. Ar hhhp Oo \(+- Oc Ar d ,
 .Sm on
 where the number of digits after the hexadecimal-point character
 is equal to the precision specification.
@@ -627,6 +606,9 @@ field is expanded to contain the conversion result.
 .Sh SECURITY CONSIDERATIONS
 Refer to
 .Xr printf 3 .
+.Sh ERRORS
+Refer to
+.Xr printf 3 .
 .Sh SEE ALSO
 .Xr btowc 3 ,
 .Xr fputws 3 ,
@@ -647,7 +629,7 @@ the
 .Fn fwprintf ,
 .Fn swprintf ,
 .Fn vwprintf ,
-.Fn vfwprintf ,
+.Fn vfwprintf
 and
 .Fn vswprintf
 functions

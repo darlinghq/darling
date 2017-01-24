@@ -69,8 +69,7 @@ __srefill0(FILE *fp)
 {
 
 	/* make sure stdio is set up */
-	if (!__sdidinit)
-		__sinit();
+	pthread_once(&__sdidinit, __sinit);
 
 	ORIENT(fp, -1);
 

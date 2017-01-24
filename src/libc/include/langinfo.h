@@ -30,11 +30,7 @@
 #define	_LANGINFO_H_
 
 #include <_types.h>
-
-#ifndef _NL_ITEM
-typedef	__darwin_nl_item	nl_item;
-#define	_NL_ITEM
-#endif
+#include <_types/_nl_item.h>
 
 #define	CODESET		0	/* codeset name */
 #define	D_T_FMT		1	/* string for formatting date and time */

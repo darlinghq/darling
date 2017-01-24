@@ -115,8 +115,6 @@ __setonlyClocaleconv(int val)
 struct lconv *
 localeconv_l(locale_t loc)
 {
-    struct lconv *lc;
-
     NORMALIZE_LOCALE(loc);
 
     if (loc->__mlocale_changed) {

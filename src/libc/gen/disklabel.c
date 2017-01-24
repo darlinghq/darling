@@ -76,12 +76,10 @@ static int	error(int);
 static int	gettype(char *, char **);
 
 struct disklabel *
-getdiskbyname(name)
-	const char *name;
+getdiskbyname(const char *name)
 {
-	static struct	disklabel disk;
-	register struct	disklabel *dp = &disk;
-	register struct partition *pp;
+	static struct disklabel *dp = NULL;
+	struct partition *pp;
 	char	*buf;
 	char  	*db_array[2] = { _PATH_DISKTAB, 0 };
 	char	*cp, *cq;	/* can't be register */
@@ -92,7 +90,14 @@ getdiskbyname(name)
 	if (cgetent(&buf, db_array, (char *) name) < 0)
 		return NULL;
 
-	bzero((char *)&disk, sizeof(disk));
+	if (dp == NULL) {
+		dp = malloc(sizeof(struct disklabel));
+		if (dp == NULL) {
+			return NULL;
+		}
+	}
+	memset(dp, 0, sizeof(struct disklabel));
+
 	/*
 	 * typename
 	 */

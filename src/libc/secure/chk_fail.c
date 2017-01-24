@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2007-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -25,16 +25,6 @@
 #include <sys/sysctl.h>
 #include <sys/param.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <TargetConditionals.h>
 
-extern void __abort(void) __dead2;
-
-void
-__attribute__ ((noreturn))
-__chk_fail (void)
-{
-  const char message[] = "[%d] detected buffer overflow";
-
-  syslog(LOG_CRIT, message, getpid());
-
-  __abort();
-}

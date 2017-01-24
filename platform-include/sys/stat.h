@@ -339,7 +339,7 @@ struct stat64 __DARWIN_STRUCT_STAT64;
  * The following two bits are reserved for FreeBSD.  They are not
  * implemented in Mac OS X.
  */
-/* #define SF_NOUNLINK	0x00100000 */	/* file may not be removed or renamed */
+#define SF_NOUNLINK	0x00100000 	/* file may not be removed or renamed */
 /* #define SF_SNAPSHOT	0x00200000 */	/* snapshot inode */
 /* NOTE: There is no SF_HIDDEN bit. */
 

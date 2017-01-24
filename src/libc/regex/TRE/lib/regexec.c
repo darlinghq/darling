@@ -10,6 +10,10 @@
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+/* Unset TRE_USE_ALLOCA to avoid using the stack to hold all the state
+   info while running */
+#undef TRE_USE_ALLOCA
+
 #ifdef TRE_USE_ALLOCA
 /* AIX requires this to be the first thing in the file.	 */
 #ifndef __GNUC__
@@ -201,7 +205,7 @@ tre_fill_pmatch(size_t nmatch, regmatch_t pmatch[], int cflags,
 	  i++;
 	}
 #ifndef TRE_USE_ALLOCA
-	if (tags != intags) xfree(tags);
+	if (tags != intags) xfree((void*)tags);
 #endif /* !TRE_USE_ALLOCA */
     }
 
@@ -247,16 +251,6 @@ tre_match(const tre_tnfa_t *tnfa, const void *string, size_t len,
   tre_tag_t *tags = NULL;
   int eo;
   size_t offset = 0, count = 0;
-  if (tnfa->num_tags > 0 && nmatch > 0)
-    {
-#ifdef TRE_USE_ALLOCA
-      tags = alloca(sizeof(*tags) * tnfa->num_tags);
-#else /* !TRE_USE_ALLOCA */
-      tags = xmalloc(sizeof(*tags) * tnfa->num_tags);
-#endif /* !TRE_USE_ALLOCA */
-      if (tags == NULL)
-	return REG_ESPACE;
-    }
 
   if (
 #ifdef TRE_STR_USER
@@ -276,6 +270,17 @@ tre_match(const tre_tnfa_t *tnfa, const void *string, size_t len,
       if (type == STR_WIDE) offset *= sizeof(wchar_t);
     }
 
+	if (tnfa->num_tags > 0 && nmatch > 0)
+	{
+#ifdef TRE_USE_ALLOCA
+		tags = alloca(sizeof(*tags) * tnfa->num_tags);
+#else /* !TRE_USE_ALLOCA */
+		tags = xmalloc(sizeof(*tags) * tnfa->num_tags);
+#endif /* !TRE_USE_ALLOCA */
+		if (tags == NULL)
+			return REG_ESPACE;
+	}
+
   /* Dispatch to the appropriate matcher. */
   if (tnfa->have_backrefs || eflags & REG_BACKTRACKING_MATCHER)
     {
@@ -287,8 +292,8 @@ tre_match(const tre_tnfa_t *tnfa, const void *string, size_t len,
 	  if (source->rewind == NULL || source->compare == NULL)
 	    /* The backtracking matcher requires rewind and compare
 	       capabilities from the input stream. */
-	    return REG_BADPAT;
-	}
+	    status = REG_BADPAT;
+	} else
 #endif /* TRE_STR_USER */
       status = tre_tnfa_run_backtrack(tnfa, string + offset, (int)len, type,
 				      tags, eflags, &eo);

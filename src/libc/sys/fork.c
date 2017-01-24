@@ -23,21 +23,22 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <TargetConditionals.h>
+
+#include "libc_private.h"
 
 extern pid_t __fork(void);
-extern void _cthread_fork_prepare();
-extern void _cthread_fork_parent();
-extern void _cthread_fork_child();
 
 static void (*_libSystem_atfork_prepare)(void) = 0;
 static void (*_libSystem_atfork_parent)(void) = 0;
 static void (*_libSystem_atfork_child)(void) = 0;
 
-__private_extern__ void _libc_fork_init(void (*prepare)(void), void (*parent)(void), void (*child)(void))
+__private_extern__
+void _libc_fork_init(const struct _libc_functions *funcs)
 {
-	_libSystem_atfork_prepare = prepare;
-	_libSystem_atfork_parent = parent;
-	_libSystem_atfork_child = child;
+	_libSystem_atfork_prepare = funcs->atfork_prepare;
+	_libSystem_atfork_parent = funcs->atfork_parent;
+	_libSystem_atfork_child = funcs->atfork_child;
 }
 
 /*

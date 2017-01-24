@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)printf.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdio/printf.3,v 1.64 2009/12/02 07:51:25 brueffer Exp $
+.\" $FreeBSD$
 .\"
 .Dd December 2, 2009
 .Dt PRINTF 3
@@ -97,7 +97,7 @@ write output to the given file descriptor;
 and
 .Fn vsnprintf
 write to the character string
-.Fa s ;
+.Fa str ;
 and
 .Fn asprintf
 and
@@ -117,20 +117,6 @@ string that specifies how subsequent arguments
 (or arguments accessed via the variable-length argument facilities of
 .Xr stdarg 3 )
 are converted for output.
-.Pp
-These functions return the number of characters printed
-(not including the trailing
-.Ql \e0
-used to end output to strings) or a negative value if an output error occurs,
-except for
-.Fn snprintf
-and
-.Fn vsnprintf ,
-which return the number of characters that would have been printed if the
-.Fa n
-were unlimited
-(again, not including the final
-.Ql \e0 ) .
 .Pp
 The
 .Fn asprintf
@@ -159,25 +145,29 @@ and
 .Fn vsnprintf
 functions
 will write at most
-.Fa n Ns \-1
+.Fa size Ns \-1
 of the characters printed into the output string
 (the
-.Fa n Ns \'th
+.Fa size Ns 'th
 character then gets the terminating
 .Ql \e0 ) ;
 if the return value is greater than or equal to the
-.Fa n
+.Fa size
 argument, the string was too short
 and some of the printed characters were discarded.
-The output is always null-terminated.
+The output is always null-terminated, unless
+.Fa size
+is 0.
 .Pp
 The
 .Fn sprintf
 and
 .Fn vsprintf
 functions
-effectively assume an infinite
-.Fa n .
+effectively assume a
+.Fa size
+of
+.Dv INT_MAX + 1.
 .Pp
 For those routines that write to a user-provided character string,
 that string and the format strings should not overlap, as the
@@ -286,7 +276,7 @@ number produced by a signed conversion.
 A
 .Cm +
 overrides a space if both are used.
-.It Sq Cm '
+.It So "'" Sc (apostrophe)
 Decimal conversions
 .Cm ( d , u ,
 or
@@ -500,7 +490,7 @@ The
 .Vt double
 argument is rounded and converted in the style
 .Sm off
-.Oo \- Oc Ar d Li \&. Ar ddd Li e \\*[Pm] Ar dd
+.Oo \- Oc Ar d Li \&. Ar ddd Li e \(+- Ar dd
 .Sm on
 where there is one digit before the
 decimal-point character
@@ -576,7 +566,7 @@ The
 .Vt double
 argument is rounded and converted to hexadecimal notation in the style
 .Sm off
-.Oo \- Oc Li 0x Ar h Li \&. Ar hhhp Oo \\*[Pm] Oc Ar d ,
+.Oo \- Oc Li 0x Ar h Li \&. Ar hhhp Oo \(+- Oc Ar d ,
 .Sm on
 where the number of digits after the hexadecimal-point character
 is equal to the precision specification.
@@ -720,6 +710,21 @@ In no case does a non-existent or small field width cause truncation of
 a numeric field; if the result of a conversion is wider than the field
 width, the
 field is expanded to contain the conversion result.
+.Sh RETURN VALUES
+These functions return the number of characters printed
+(not including the trailing
+.Ql \e0
+used to end output to strings),
+except for
+.Fn snprintf
+and
+.Fn vsnprintf ,
+which return the number of characters that would have been printed if the
+.Fa size
+were unlimited
+(again, not including the final
+.Ql \e0 ) .
+These functions return a negative value if an error occurs.
 .Sh EXAMPLES
 To print a date and time in the form
 .Dq Li "Sunday, July 3, 10:02" ,
@@ -759,82 +764,11 @@ char *newfmt(const char *fmt, ...)
 	return (p);
 }
 .Ed
-.Sh SECURITY CONSIDERATIONS
-The
-.Fn sprintf
-and
-.Fn vsprintf
-functions are easily misused in a manner which enables malicious users
-to arbitrarily change a running program's functionality through
-a buffer overflow attack.
-Because
-.Fn sprintf
-and
-.Fn vsprintf
-assume an infinitely long string,
-callers must be careful not to overflow the actual space;
-this is often hard to assure.
-For safety, programmers should use the
-.Fn snprintf
-interface instead.
-For example:
-.Bd -literal
-void
-foo(const char *arbitrary_string, const char *and_another)
-{
-	char onstack[8];
-
-#ifdef BAD
-	/*
-	 * This first sprintf is bad behavior.  Do not use sprintf!
-	 */
-	sprintf(onstack, "%s, %s", arbitrary_string, and_another);
-#else
-	/*
-	 * The following two lines demonstrate better use of
-	 * snprintf().
-	 */
-	snprintf(onstack, sizeof(onstack), "%s, %s", arbitrary_string,
-	    and_another);
-#endif
-}
-.Ed
-.Pp
-The
-.Fn printf
-and
-.Fn sprintf
-family of functions are also easily misused in a manner
-allowing malicious users to arbitrarily change a running program's
-functionality by either causing the program
-to print potentially sensitive data
-.Dq "left on the stack" ,
-or causing it to generate a memory fault or bus error
-by dereferencing an invalid pointer.
-.Pp
-.Cm %n
-can be used to write arbitrary data to potentially carefully-selected
-addresses.
-Programmers are therefore strongly advised to never pass untrusted strings
-as the
-.Fa format
-argument, as an attacker can put format specifiers in the string
-to mangle your stack,
-leading to a possible security hole.
-This holds true even if the string was built using a function like
-.Fn snprintf ,
-as the resulting string may still contain user-supplied conversion specifiers
-for later interpolation by
-.Fn printf .
-.Pp
-Always use the proper secure idiom:
-.Pp
-.Dl "snprintf(buffer, sizeof(buffer), \*q%s\*q, string);"
 .Sh COMPATIBILITY
 The conversion formats
 .Cm \&%D , \&%O ,
 and
-.Cm %U
+.Cm \&%U
 are not standard and
 are provided only for backward compatibility.
 The effect of padding the
@@ -910,14 +844,14 @@ first appeared in the
 .Tn GNU C
 library.
 These were implemented by
-.An Peter Wemm Aq peter@FreeBSD.org
+.An Peter Wemm Aq Mt peter@FreeBSD.org
 in
 .Fx 2.2 ,
 but were later replaced with a different implementation
 from
-.An Todd C. Miller Aq Todd.Miller@courtesan.com
-for
-.Ox 2.3 .
+.Ox 2.3
+by
+.An Todd C. Miller Aq Mt Todd.Miller@courtesan.com .
 The
 .Fn dprintf
 and
@@ -930,3 +864,74 @@ The
 family of functions do not correctly handle multibyte characters in the
 .Fa format
 argument.
+.Sh SECURITY CONSIDERATIONS
+The
+.Fn sprintf
+and
+.Fn vsprintf
+functions are easily misused in a manner which enables malicious users
+to arbitrarily change a running program's functionality through
+a buffer overflow attack.
+Because
+.Fn sprintf
+and
+.Fn vsprintf
+assume an infinitely long string,
+callers must be careful not to overflow the actual space;
+this is often hard to assure.
+For safety, programmers should use the
+.Fn snprintf
+interface instead.
+For example:
+.Bd -literal
+void
+foo(const char *arbitrary_string, const char *and_another)
+{
+	char onstack[8];
+
+#ifdef BAD
+	/*
+	 * This first sprintf is bad behavior.  Do not use sprintf!
+	 */
+	sprintf(onstack, "%s, %s", arbitrary_string, and_another);
+#else
+	/*
+	 * The following two lines demonstrate better use of
+	 * snprintf().
+	 */
+	snprintf(onstack, sizeof(onstack), "%s, %s", arbitrary_string,
+	    and_another);
+#endif
+}
+.Ed
+.Pp
+The
+.Fn printf
+and
+.Fn sprintf
+family of functions are also easily misused in a manner
+allowing malicious users to arbitrarily change a running program's
+functionality by either causing the program
+to print potentially sensitive data
+.Dq "left on the stack" ,
+or causing it to generate a memory fault or bus error
+by dereferencing an invalid pointer.
+.Pp
+.Cm %n
+can be used to write arbitrary data to potentially carefully-selected
+addresses.
+Programmers are therefore strongly advised to never pass untrusted strings
+as the
+.Fa format
+argument, as an attacker can put format specifiers in the string
+to mangle your stack,
+leading to a possible security hole.
+This holds true even if the string was built using a function like
+.Fn snprintf ,
+as the resulting string may still contain user-supplied conversion specifiers
+for later interpolation by
+.Fn printf .
+.Pp
+Always use the proper secure idiom:
+.Pp
+.Dl "snprintf(buffer, sizeof(buffer), \*q%s\*q, string);"

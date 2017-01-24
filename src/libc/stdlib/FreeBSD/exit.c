@@ -41,16 +41,23 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/exit.c,v 1.9 2007/01/09 00:28:09 imp Exp
 #include "atexit.h"
 #include "libc_private.h"
 
+#include <TargetConditionals.h>
+
 void (*__cleanup)(void);
-extern void __exit(int);
+extern void __exit(int) __attribute__((noreturn));
+#if !TARGET_IPHONE_SIMULATOR && (__i386__ || __x86_64__)
+extern void _tlv_exit();
+#endif
 
 /*
  * Exit, flushing stdio buffers if necessary.
  */
 void
-exit(status)
-	int status;
+exit(int status)
 {
+#if !TARGET_IPHONE_SIMULATOR && (__i386__ || __x86_64__)
+	_tlv_exit(); // C++11 requires thread_local objects to be destroyed before global objects
+#endif
 	__cxa_finalize(NULL);
 	if (__cleanup)
 		(*__cleanup)();

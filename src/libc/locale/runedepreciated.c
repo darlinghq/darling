@@ -76,7 +76,7 @@ __sputrune(rune_t rune, char *string, size_t n, char **result)
 	char buf[MB_CUR_MAX];
 	size_t converted = wcrtomb(buf, rune, NULL);
 
-	if (converted < 0) {
+	if (converted == (size_t)-1) {
 		if (result)
 			*result = string;
 	} else if (n >= converted) {
@@ -86,7 +86,7 @@ __sputrune(rune_t rune, char *string, size_t n, char **result)
 			*result = string + converted;
 	} else if (result)
 		*result = NULL;
-	return (converted < 0 ? 0 : converted);
+	return (converted == (size_t)-1 ? 0 : converted);
 }
 
 __private_extern__ rune_t

@@ -483,7 +483,7 @@ __calc_left_pad(int flags, char *cur_symb, struct lconv *lc) {
 }
 
 static int
-get_groups(int size, char *grouping) {
+get_groups(int size, const char *grouping) {
 
 	int	chars = 0;
 
@@ -522,7 +522,7 @@ __format_grouped_double(double value, int *flags,
 
 	int		padded;
 
-	char		*grouping;
+	const char	*grouping;
 	char		decimal_point;
 	char		thousands_sep;
 

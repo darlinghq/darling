@@ -31,19 +31,34 @@
 #define __MONITOR_HEADER__
 
 #include <sys/cdefs.h>
+#include <Availability.h>
 
 __BEGIN_DECLS
+
+__OSX_AVAILABLE_BUT_DEPRECATED_MSG(__MAC_10_0,__MAC_10_11,__IPHONE_2_0,__IPHONE_9_0, "Monitor is no longer supported.")
+__WATCHOS_PROHIBITED
 extern void monstartup (char *lowpc, char *highpc);
 
+__OSX_AVAILABLE_BUT_DEPRECATED_MSG(__MAC_10_0,__MAC_10_11,__IPHONE_2_0,__IPHONE_9_0, "Monitor is no longer supported.")
+__WATCHOS_PROHIBITED
 extern void monitor (char *lowpc, char *highpc, char *buf, int bufsiz, int cntsiz);
 
+__OSX_AVAILABLE_BUT_DEPRECATED_MSG(__MAC_10_0,__MAC_10_11,__IPHONE_2_0,__IPHONE_9_0, "Monitor is no longer supported.")
+__WATCHOS_PROHIBITED
 extern void moncontrol (int mode);
 
+__OSX_AVAILABLE_BUT_DEPRECATED_MSG(__MAC_10_0,__MAC_10_11,__IPHONE_2_0,__IPHONE_9_0, "Monitor is no longer supported.")
+__WATCHOS_PROHIBITED
 extern void monoutput (const char *filename);
 
+__OSX_AVAILABLE_BUT_DEPRECATED_MSG(__MAC_10_0,__MAC_10_11,__IPHONE_2_0,__IPHONE_9_0, "Monitor is no longer supported.")
+__WATCHOS_PROHIBITED
 extern void moninit (void);
 
+__OSX_AVAILABLE_BUT_DEPRECATED_MSG(__MAC_10_0,__MAC_10_11,__IPHONE_2_0,__IPHONE_9_0, "Monitor is no longer supported.")
+__WATCHOS_PROHIBITED
 extern void monreset (void);
+
 __END_DECLS
 
 #endif	/* __MONITOR_HEADER__ */

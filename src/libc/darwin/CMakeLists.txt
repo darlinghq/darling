@@ -3,10 +3,10 @@ project(libc-darwin)
 cmake_minimum_required(VERSION 2.4.0)
 
 set(darwin_sources
-	#_dirhelper.c # Doesn't build, not needed now
-	kvm.c
-	libproc.c
-	MKGetTimeBaseInfo.c
-	proc_listpidspath.c)
+	atexit_receipt.c
+	compatibility_hacks.c
+	forceLibcToBuild.c
+	init_cpu_capabilities.c
+	kvm.c)
 
 add_library(libc-darwin OBJECT ${darwin_sources})

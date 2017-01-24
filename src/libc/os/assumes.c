@@ -40,7 +40,6 @@
 #include <pthread.h>
 #include <string.h>
 #include "os/assumes.h"
-#include "gen/assumes.h"
 #include <os/debug_private.h>
 
 #define OSX_ASSUMES_LOG_REDIRECT_SECT_NAME "__osx_log_func"
@@ -382,35 +381,4 @@ void
 _os_avoid_tail_call(void)
 {
 	// no-op
-}
-
-#pragma mark Legacy
-void
-_osx_assumes_log(uint64_t code)
-{
-	_os_assumes_log(code);
-}
-
-char *
-_osx_assert_log(uint64_t code)
-{
-	return _os_assert_log_impl(code);
-}
-
-void
-_osx_assumes_log_ctx(osx_log_callout_t callout, void *ctx, uint64_t code)
-{
-	_os_assumes_log_ctx_impl(callout, ctx, code);
-}
-
-char *
-_osx_assert_log_ctx(osx_log_callout_t callout, void *ctx, uint64_t code)
-{
-	return _os_assert_log_ctx_impl(callout, ctx, code);
-}
-
-void
-_osx_avoid_tail_call(void)
-{
-	_os_avoid_tail_call();
 }

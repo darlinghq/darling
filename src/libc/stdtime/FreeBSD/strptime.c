@@ -1,26 +1,12 @@
-/*
- * Powerdog Industries kindly requests feedback from anyone modifying
- * this function:
- *
- * Date: Thu, 05 Jun 1997 23:17:17 -0400  
- * From: Kevin Ruddy <kevin.ruddy@powerdog.com>
- * To: James FitzGibbon <james@nexis.net>
- * Subject: Re: Use of your strptime(3) code (fwd)
- * 
- * The reason for the "no mod" clause was so that modifications would
- * come back and we could integrate them and reissue so that a wider 
- * audience could use it (thereby spreading the wealth).  This has   
- * made it possible to get strptime to work on many operating systems.
- * I'm not sure why that's "plain unacceptable" to the FreeBSD team.
- * 
- * Anyway, you can change it to "with or without modification" as
- * you see fit.  Enjoy.                                          
- * 
- * Kevin Ruddy
- * Powerdog Industries, Inc.
- */
-/*
+/*-
+ * Copyright (c) 2014 Gary Mills
+ * Copyright 2011, Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 1994 Powerdog Industries.  All rights reserved.
+ *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,12 +17,6 @@
  *    notice, this list of conditions and the following disclaimer
  *    in the documentation and/or other materials provided with the
  *    distribution.
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgement:
- *      This product includes software developed by Powerdog Industries.
- * 4. The name of Powerdog Industries may not be used to endorse or
- *    promote products derived from this software without specific prior
- *    written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY POWERDOG INDUSTRIES ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -49,6 +29,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * official policies, either expressed or implied, of Powerdog Industries.
  */
 
 #include <sys/cdefs.h>
@@ -59,7 +43,7 @@ static char copyright[] __unused =
 static char sccsid[] __unused = "@(#)strptime.c	0.1 (Powerdog) 94/03/27";
 #endif /* !defined NOID */
 #endif /* not lint */
-__FBSDID("$FreeBSD: src/lib/libc/stdtime/strptime.c,v 1.37 2009/09/02 04:56:30 ache Exp $");
+__FBSDID("$FreeBSD$");
 
 #include "xlocale_private.h"
 
@@ -71,48 +55,69 @@ __FBSDID("$FreeBSD: src/lib/libc/stdtime/strptime.c,v 1.37 2009/09/02 04:56:30 a
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <stdint.h>
-#include <limits.h>
 #include "un-namespace.h"
 #include "libc_private.h"
 #include "timelocal.h"
+#include "tzfile.h"
 
 time_t _mktime(struct tm *, const char *);
 
-#define asizeof(a)	(sizeof (a) / sizeof ((a)[0]))
+#define	asizeof(a)	(sizeof(a) / sizeof((a)[0]))
 
 enum {CONVERT_NONE, CONVERT_GMT, CONVERT_ZONE};
+enum week_kind { WEEK_U = 'U', WEEK_V = 'V', WEEK_W = 'W'};
 
-#define _strptime(b,f,t,c,l)	_strptime0(b,f,t,c,l,-1,0,-1)
+#define _strptime(b,f,t,c,l)	_strptime0(b,f,t,c,l,FLAG_NONE,0,WEEK_U)
+
+#define	FLAG_NONE	0x01
+#define	FLAG_YEAR	0x02
+#define	FLAG_MONTH	0x04
+#define	FLAG_YDAY	0x08
+#define	FLAG_MDAY	0x10
+#define	FLAG_WDAY	0x20
+#define FLAG_WEEK	0x40
+#define FLAG_CENTURY 0x100
+#define FLAG_YEAR_IN_CENTURY 0x200
+
+/*
+ * Calculate the week day of the first day of a year. Valid for
+ * the Gregorian calendar, which began Sept 14, 1752 in the UK
+ * and its colonies. Ref:
+ * http://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week
+ */
+
+static int
+first_wday_of(int year)
+{
+	return (((2 * (3 - (year / 100) % 4)) + (year % 100) +
+		((year % 100) / 4) + (isleap(year) ? 6 : 0) + 1) % 7);
+}
 
 static char *
-_strptime0(const char *buf, const char *fmt, struct tm *tm, int *convp, locale_t loc, int year, int yday, int wday)
+_strptime0(const char *buf, const char *fmt, struct tm *tm, int *convp, locale_t locale, int flags, int week_number, enum week_kind week_kind)
 {
 	char	c;
 	const char *ptr;
-	int	i,
-		len;
+	int wday_offset;
+	int	i, len;
 	int Ealternative, Oalternative;
-	struct lc_time_T *tptr = __get_current_time_locale(loc);
+	const struct lc_time_T *tptr = __get_current_time_locale(locale);
+	static int start_of_month[2][13] = {
+		{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365},
+		{0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}
+	};
 
 	ptr = fmt;
 	while (*ptr != 0) {
-		if (*buf == 0) {
-			fmt = ptr;
-			while (isspace_l((unsigned char)*ptr, loc)) {
-				ptr++;
-			}
-			return ((*ptr)==0) ? (char *)fmt : 0; /* trailing whitespace is ok */
-		}
-
 		c = *ptr++;
 
 		if (c != '%') {
-			if (isspace_l((unsigned char)c, loc))
-				while (*buf != 0 && isspace_l((unsigned char)*buf, loc))
+			if (isspace_l((unsigned char)c, locale))
+				while (*buf != 0 && 
+				       isspace_l((unsigned char)*buf, locale))
 					buf++;
 			else if (c != *buf++)
-				return 0;
+				return (NULL);
 			continue;
 		}
 
@@ -121,133 +126,145 @@ _strptime0(const char *buf, const char *fmt, struct tm *tm, int *convp, locale_t
 label:
 		c = *ptr++;
 		switch (c) {
-		case 0:
 		case '%':
 			if (*buf++ != '%')
-				return 0;
+				return (NULL);
 			break;
 
 		case '+':
-			buf = _strptime(buf, tptr->date_fmt, tm, convp, loc);
-			if (buf == 0)
-				return 0;
+			buf = _strptime(buf, tptr->date_fmt, tm, convp, locale);
+			if (buf == NULL)
+				return (NULL);
+			flags |= FLAG_WDAY | FLAG_MONTH | FLAG_MDAY | FLAG_YEAR;
 			break;
 
 		case 'C':
-			if (!isdigit_l((unsigned char)*buf, loc))
-				return 0;
+			if (!isdigit_l((unsigned char)*buf, locale))
+				return (NULL);
 
 			/* XXX This will break for 3-digit centuries. */
 			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit_l((unsigned char)*buf, loc); buf++) {
+			for (i = 0; len && *buf != 0 &&
+			     isdigit_l((unsigned char)*buf, locale); buf++) {
 				i *= 10;
 				i += *buf - '0';
 				len--;
 			}
 			if (i < 19)
-				return 0;
+				return (NULL);
 
-			if (year != -1)
-				tm->tm_year = (year % 100) + i * 100 - 1900;
-			else
-			tm->tm_year = i * 100 - 1900;
-			year = tm->tm_year;
+			if (flags & FLAG_YEAR_IN_CENTURY) {
+				tm->tm_year = i * 100 + (tm->tm_year % 100) - TM_YEAR_BASE;
+				flags &= ~FLAG_YEAR_IN_CENTURY;
+			} else {
+				tm->tm_year = i * 100 - TM_YEAR_BASE;
+				flags |= FLAG_YEAR;
+				flags |= FLAG_CENTURY;
+			}
+
 			break;
 
 		case 'c':
-			buf = _strptime(buf, tptr->c_fmt, tm, convp, loc);
-			if (buf == 0)
-				return 0;
+			buf = _strptime(buf, tptr->c_fmt, tm, convp, locale);
+			if (buf == NULL)
+				return (NULL);
+			flags |= FLAG_WDAY | FLAG_MONTH | FLAG_MDAY | FLAG_YEAR;
+			flags &= ~(FLAG_CENTURY | FLAG_YEAR_IN_CENTURY);
 			break;
 
 		case 'D':
-			buf = _strptime(buf, "%m/%d/%y", tm, convp, loc);
-			if (buf == 0)
-				return 0;
+			buf = _strptime(buf, "%m/%d/%y", tm, convp, locale);
+			if (buf == NULL)
+				return (NULL);
+			flags |= FLAG_MONTH | FLAG_MDAY | FLAG_YEAR;
+			flags &= ~(FLAG_CENTURY | FLAG_YEAR_IN_CENTURY);
 			break;
 
 		case 'E':
 			if (Ealternative || Oalternative)
 				break;
 			Ealternative++;
+			if (*ptr == '%') return (NULL);
 			goto label;
 
 		case 'O':
 			if (Ealternative || Oalternative)
 				break;
 			Oalternative++;
+			if (*ptr == '%') return (NULL);
 			goto label;
 
 		case 'F':
-			buf = _strptime(buf, "%Y-%m-%d", tm, convp, loc);
-			if (buf == 0)
-				return 0;
+			buf = _strptime(buf, "%Y-%m-%d", tm, convp, locale);
+			if (buf == NULL)
+				return (NULL);
+			flags |= FLAG_MONTH | FLAG_MDAY | FLAG_YEAR;
+			flags &= ~(FLAG_CENTURY | FLAG_YEAR_IN_CENTURY);
 			break;
 
 		case 'R':
-			buf = _strptime(buf, "%H:%M", tm, convp, loc);
-			if (buf == 0)
-				return 0;
+			buf = _strptime(buf, "%H:%M", tm, convp, locale);
+			if (buf == NULL)
+				return (NULL);
 			break;
 
 		case 'r':
-			buf = _strptime(buf, tptr->ampm_fmt, tm, convp, loc);
-			if (buf == 0)
-				return 0;
-			break;
-
-		case 'n':
-		case 't':
-			if (!isspace((unsigned char)*buf))
-				return 0;
-			while (isspace((unsigned char)*buf))
-				buf++;
+			buf = _strptime(buf, tptr->ampm_fmt, tm, convp, locale);
+			if (buf == NULL)
+				return (NULL);
 			break;
 
 		case 'T':
-			buf = _strptime(buf, "%H:%M:%S", tm, convp, loc);
-			if (buf == 0)
-				return 0;
+			buf = _strptime(buf, "%H:%M:%S", tm, convp, locale);
+			if (buf == NULL)
+				return (NULL);
 			break;
 
 		case 'X':
-			buf = _strptime(buf, tptr->X_fmt, tm, convp, loc);
-			if (buf == 0)
-				return 0;
+			buf = _strptime(buf, tptr->X_fmt, tm, convp, locale);
+			if (buf == NULL)
+				return (NULL);
 			break;
 
 		case 'x':
-			buf = _strptime(buf, tptr->x_fmt, tm, convp, loc);
-			if (buf == 0)
-				return 0;
+			buf = _strptime(buf, tptr->x_fmt, tm, convp, locale);
+			if (buf == NULL)
+				return (NULL);
+			flags |= FLAG_MONTH | FLAG_MDAY | FLAG_YEAR;
+			flags &= ~(FLAG_CENTURY | FLAG_YEAR_IN_CENTURY);
 			break;
 
 		case 'j':
-			if (!isdigit_l((unsigned char)*buf, loc))
-				return 0;
+			if (!isdigit_l((unsigned char)*buf, locale))
+				return (NULL);
 
 			len = 3;
-			for (i = 0; len && *buf != 0 && isdigit_l((unsigned char)*buf, loc); buf++) {
+			for (i = 0; len && *buf != 0 &&
+			     isdigit_l((unsigned char)*buf, locale); buf++){
 				i *= 10;
 				i += *buf - '0';
 				len--;
 			}
 			if (i < 1 || i > 366)
-				return 0;
+				return (NULL);
 
-			tm->tm_yday = yday = i - 1;
+			tm->tm_yday = i - 1;
+			flags |= FLAG_YDAY;
+
 			break;
 
 		case 'M':
 		case 'S':
-			if (*buf == 0 || isspace_l((unsigned char)*buf, loc))
+			if (*buf == 0 ||
+				isspace_l((unsigned char)*buf, locale))
 				break;
 
-			if (!isdigit_l((unsigned char)*buf, loc))
-				return 0;
+			if (!isdigit_l((unsigned char)*buf, locale))
+				return (NULL);
 
 			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit_l((unsigned char)*buf, loc); buf++) {
+			for (i = 0; len && *buf != 0 &&
+				isdigit_l((unsigned char)*buf, locale); buf++){
 				i *= 10;
 				i += *buf - '0';
 				len--;
@@ -255,17 +272,14 @@ label:
 
 			if (c == 'M') {
 				if (i > 59)
-					return 0;
+					return (NULL);
 				tm->tm_min = i;
 			} else {
 				if (i > 60)
-					return 0;
+					return (NULL);
 				tm->tm_sec = i;
 			}
 
-			if (*buf != 0 && isspace_l((unsigned char)*buf, loc))
-				while (*ptr != 0 && !isspace_l((unsigned char)*ptr, loc) && *ptr != '%')
-					ptr++;
 			break;
 
 		case 'H':
@@ -280,26 +294,24 @@ label:
 			 * XXX The %l specifier may gobble one too many
 			 * digits if used incorrectly.
 			 */
-			if (!isdigit_l((unsigned char)*buf, loc))
-				return 0;
+			if (!isdigit_l((unsigned char)*buf, locale))
+				return (NULL);
 
 			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit_l((unsigned char)*buf, loc); buf++) {
+			for (i = 0; len && *buf != 0 &&
+			     isdigit_l((unsigned char)*buf, locale); buf++) {
 				i *= 10;
 				i += *buf - '0';
 				len--;
 			}
 			if (c == 'H' || c == 'k') {
 				if (i > 23)
-					return 0;
+					return (NULL);
 			} else if (i > 12)
-				return 0;
+				return (NULL);
 
 			tm->tm_hour = i;
 
-			if (*buf != 0 && isspace_l((unsigned char)*buf, loc))
-				while (*ptr != 0 && !isspace_l((unsigned char)*ptr, loc) && *ptr != '%')
-					ptr++;
 			break;
 
 		case 'p':
@@ -308,9 +320,9 @@ label:
 			 * specifiers.
 			 */
 			len = strlen(tptr->am);
-			if (strncasecmp_l(buf, tptr->am, len, loc) == 0) {
+			if (strncasecmp_l(buf, tptr->am, len, locale) == 0) {
 				if (tm->tm_hour > 12)
-					return 0;
+					return (NULL);
 				if (tm->tm_hour == 12)
 					tm->tm_hour = 0;
 				buf += len;
@@ -318,98 +330,92 @@ label:
 			}
 
 			len = strlen(tptr->pm);
-			if (strncasecmp_l(buf, tptr->pm, len, loc) == 0) {
+			if (strncasecmp_l(buf, tptr->pm, len, locale) == 0) {
 				if (tm->tm_hour > 12)
-					return 0;
+					return (NULL);
 				if (tm->tm_hour != 12)
 					tm->tm_hour += 12;
 				buf += len;
 				break;
 			}
 
-			return 0;
+			return (NULL);
 
 		case 'A':
 		case 'a':
 			for (i = 0; i < asizeof(tptr->weekday); i++) {
 				len = strlen(tptr->weekday[i]);
 				if (strncasecmp_l(buf, tptr->weekday[i],
-						len, loc) == 0)
+						len, locale) == 0)
 					break;
 				len = strlen(tptr->wday[i]);
 				if (strncasecmp_l(buf, tptr->wday[i],
-						len, loc) == 0)
+						len, locale) == 0)
 					break;
 			}
 			if (i == asizeof(tptr->weekday))
-				return 0;
+				return (NULL);
 
-			tm->tm_wday = wday = i;
 			buf += len;
+			tm->tm_wday = i;
+			flags |= FLAG_WDAY;
 			break;
 
-		case 'U':	/* Sunday week */
-		case 'W':	/* Monday week */
-			if (!isdigit_l((unsigned char)*buf, loc))
-				return 0;
+		case 'U':       /* Sunday week */
+		case 'V':       /* ISO 8601 week */
+		case 'W':       /* Monday week */
+			if (!isdigit_l((unsigned char)*buf, locale))
+				return (NULL);
 
 			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit_l((unsigned char)*buf, loc); buf++) {
+			for (i = 0; len && *buf != 0 &&
+			     isdigit_l((unsigned char)*buf, locale); buf++) {
 				i *= 10;
 				i += *buf - '0';
 				len--;
 			}
 			if (i > 53)
-				return 0;
+				return (NULL);
+			if (c == WEEK_V && i < 1)
+				return (NULL);
 
-			/* Calculate yday if we have enough data */
-			if ((year != -1) && (wday != -1)) {
-				struct tm mktm;
-				mktm.tm_year = year;
-				mktm.tm_mon = 0;
-				mktm.tm_mday = 1;
-				mktm.tm_sec = 1;
-				mktm.tm_min = mktm.tm_hour = 0;
-				mktm.tm_isdst = 0;
-				mktm.tm_gmtoff = 0;
-				if (mktime(&mktm) != -1) {
-					/* yday0 == Jan 1 == mktm.tm_wday */
-					int delta = wday - mktm.tm_wday;
-					if (!wday && c =='W')
-						i++; /* Sunday is part of the following week */
-					yday = 7 * i + delta;
-					if (yday < 0)
-						yday += 7;
-					tm->tm_yday = yday;
-				}
-			}
-			if (*buf != 0 && isspace_l((unsigned char)*buf, loc))
-				while (*ptr != 0 && !isspace_l((unsigned char)*ptr, loc) && *ptr != '%')
-					ptr++;
+			week_number = i;
+			week_kind = c;
+			flags |= FLAG_WEEK;
+
 			break;
 
-		case 'u':	/* [1,7] */
-		case 'w':	/* [0,6] */
-			if (!isdigit_l((unsigned char)*buf, loc))
-				return 0;
+		case 'u':       /* [1,7] */
+		case 'w':       /* [0,6] */
+			if (!isdigit_l((unsigned char)*buf, locale))
+				return (NULL);
 
 			i = *buf - '0';
 			if (i > 6 + (c == 'u'))
-				return 0;
+				return (NULL);
 			if (i == 7)
 				i = 0;
-			tm->tm_wday = wday = i;
+
+			tm->tm_wday = i;
+			flags |= FLAG_WDAY;
 			buf++;
-			if (*buf != 0 && isspace_l((unsigned char)*buf, loc))
-				while (*ptr != 0 && !isspace_l((unsigned char)*ptr, loc) && *ptr != '%')
-					ptr++;
+
 			break;
 
-		case 'd':
 		case 'e':
 			/*
-			 * The %e specifier is explicitly documented as not
-			 * being zero-padded but there is no harm in allowing
+			 * With %e format, our strftime(3) adds a blank space
+			 * before single digits.
+			 */
+			if (*buf != 0 &&
+			    isspace_l((unsigned char)*buf, locale))
+			       buf++;
+			/* FALLTHROUGH */
+		case 'd':
+			/*
+			 * The %e specifier was once explicitly documented as
+			 * not being zero-padded but was later changed to
+			 * equivalent to %d.  There is no harm in allowing
 			 * such padding.
 			 *
 			 * XXX The %e specifier may gobble one too many
@@ -417,28 +423,27 @@ label:
 			 */
 			/* Leading space is ok if date is single digit */
 			len = 2;
-			if (isspace_l((unsigned char)buf[0], loc) &&
-			    isdigit_l((unsigned char)buf[1], loc) &&
-			    !isdigit_l((unsigned char)buf[2], loc)) {
+			if (isspace_l((unsigned char)buf[0], locale) &&
+				isdigit_l((unsigned char)buf[1], locale) &&
+				!isdigit_l((unsigned char)buf[2], locale)) {
 				len = 1;
 				buf++;
 			}
-			if (!isdigit_l((unsigned char)*buf, loc))
-				return 0;
+			if (!isdigit_l((unsigned char)*buf, locale))
+				return (NULL);
 
-			for (i = 0; len && *buf != 0 && isdigit_l((unsigned char)*buf, loc); buf++) {
+			for (i = 0; len && *buf != 0 &&
+			     isdigit_l((unsigned char)*buf, locale); buf++) {
 				i *= 10;
 				i += *buf - '0';
 				len--;
 			}
 			if (i > 31)
-				return 0;
+				return (NULL);
 
 			tm->tm_mday = i;
+			flags |= FLAG_MDAY;
 
-			if (*buf != 0 && isspace_l((unsigned char)*buf, loc))
-				while (*ptr != 0 && !isspace_l((unsigned char)*ptr, loc) && *ptr != '%')
-					ptr++;
 			break;
 
 		case 'B':
@@ -450,45 +455,54 @@ label:
 						len = strlen(tptr->alt_month[i]);
 						if (strncasecmp_l(buf,
 								tptr->alt_month[i],
-								len, loc) == 0)
+								len, locale) == 0)
 							break;
 					}
 				} else {
 					len = strlen(tptr->month[i]);
 					if (strncasecmp_l(buf, tptr->month[i],
-							len, loc) == 0)
+							len, locale) == 0)
 						break;
+				}
+			}
+			/*
+			 * Try the abbreviated month name if the full name
+			 * wasn't found and Oalternative was not requested.
+			 */
+			if (i == asizeof(tptr->month) && !Oalternative) {
+				for (i = 0; i < asizeof(tptr->month); i++) {
 					len = strlen(tptr->mon[i]);
 					if (strncasecmp_l(buf, tptr->mon[i],
-							len, loc) == 0)
+							len, locale) == 0)
 						break;
 				}
 			}
 			if (i == asizeof(tptr->month))
-				return 0;
+				return (NULL);
 
 			tm->tm_mon = i;
 			buf += len;
+			flags |= FLAG_MONTH;
+
 			break;
 
 		case 'm':
-			if (!isdigit_l((unsigned char)*buf, loc))
-				return 0;
+			if (!isdigit_l((unsigned char)*buf, locale))
+				return (NULL);
 
 			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit_l((unsigned char)*buf, loc); buf++) {
+			for (i = 0; len && *buf != 0 &&
+			     isdigit_l((unsigned char)*buf, locale); buf++) {
 				i *= 10;
 				i += *buf - '0';
 				len--;
 			}
 			if (i < 1 || i > 12)
-				return 0;
+				return (NULL);
 
 			tm->tm_mon = i - 1;
+			flags |= FLAG_MONTH;
 
-			if (*buf != 0 && isspace_l((unsigned char)*buf, loc))
-				while (*ptr != 0 && !isspace_l((unsigned char)*ptr, loc) && *ptr != '%')
-					ptr++;
 			break;
 
 		case 's':
@@ -500,25 +514,30 @@ label:
 
 			sverrno = errno;
 			errno = 0;
-			n = strtol_l(buf, &cp, 10, loc);
+			n = strtol_l(buf, &cp, 10, locale);
 			if (errno == ERANGE || (long)(t = n) != n) {
 				errno = sverrno;
-				return 0;
+				return (NULL);
 			}
 			errno = sverrno;
 			buf = cp;
-			gmtime_r(&t, tm);
+			if (gmtime_r(&t, tm) == NULL)
+				return (NULL);
 			*convp = CONVERT_GMT;
+			flags |= FLAG_YDAY | FLAG_WDAY | FLAG_MONTH |
+			    FLAG_MDAY | FLAG_YEAR;
+			flags &= ~(FLAG_CENTURY | FLAG_YEAR_IN_CENTURY);
 			}
 			break;
 
 		case 'Y':
 		case 'y':
-			if (*buf == 0 || isspace_l((unsigned char)*buf, loc))
+			if (*buf == 0 ||
+			    isspace_l((unsigned char)*buf, locale))
 				break;
 
-			if (!isdigit_l((unsigned char)*buf, loc))
-				return 0;
+			if (!isdigit_l((unsigned char)*buf, locale))
+				return (NULL);
 
 #if __DARWIN_UNIX03
 			if (c == 'Y') {
@@ -527,7 +546,7 @@ label:
 				int64_t i64 = 0;
 				int overflow = 0;
 
-				for (len = 0; *buf != 0 && isdigit_l((unsigned char)*buf, loc); buf++) {
+				for (len = 0; *buf != 0 && isdigit_l((unsigned char)*buf, locale); buf++) {
 					i64 *= 10;
 					i64 += *buf - '0';
 					if (++len <= 4) {
@@ -559,10 +578,10 @@ label:
 
 					tm->tm_year = i64 - 1900;
 
-					if (*buf != 0 && isspace_l((unsigned char)*buf, loc))
-						while (*ptr != 0 && !isspace_l((unsigned char)*ptr, loc) && *ptr != '%')
+					if (*buf != 0 && isspace_l((unsigned char)*buf, locale))
+						while (*ptr != 0 && !isspace_l((unsigned char)*ptr, locale) && *ptr != '%')
 							ptr++;
-					ret = _strptime0(buf, ptr, tm, convp, loc, tm->tm_year, yday, wday);
+					ret = _strptime0(buf, ptr, tm, convp, locale, flags, week_number, week_kind);
 					if (ret) return ret;
 					/* Failed, so try 4-digit year */
 					*tm = savetm;
@@ -574,94 +593,186 @@ label:
 			} else {
 				len = 2;
 #else /* !__DARWIN_UNIX03 */
-			len = (c == 'Y') ? 4 : 2;
+				len = (c == 'Y') ? 4 : 2;
 #endif /* __DARWIN_UNIX03 */
-			for (i = 0; len && *buf != 0 && isdigit_l((unsigned char)*buf, loc); buf++) {
-				i *= 10;
-				i += *buf - '0';
-				len--;
-			}
+			
+				for (i = 0; len && *buf != 0 &&
+					 isdigit_l((unsigned char)*buf, locale); buf++) {
+					i *= 10;
+					i += *buf - '0';
+					len--;
+				}
 #if __DARWIN_UNIX03
 			}
 #endif /* __DARWIN_UNIX03 */
-			if (c == 'Y')
-				i -= 1900;
-			if (c == 'y' && i < 69)
-				i += 100;
+
 			if (i < 0)
-				return 0;
+				return (NULL);
 
-			tm->tm_year = year = i;
+			if (c == 'Y'){
+				i -= TM_YEAR_BASE;
+			} else if (c == 'y' && flags & FLAG_CENTURY) {
+				i = tm->tm_year + (i % 100);
+				flags &= ~FLAG_CENTURY;
+			} else if (c == 'y'){
+				if (i < 69) i += 100;
+				flags |= FLAG_YEAR_IN_CENTURY;
+			}
 
-			if (*buf != 0 && isspace_l((unsigned char)*buf, loc))
-				while (*ptr != 0 && !isspace_l((unsigned char)*ptr, loc) && *ptr != '%')
-					ptr++;
+			tm->tm_year = i;
+			flags |= FLAG_YEAR;
+			if (c == 'Y'){
+				flags &= ~(FLAG_CENTURY | FLAG_YEAR_IN_CENTURY);
+			}
+
 			break;
 
 		case 'Z':
 			{
-			const char *cp;
-			size_t tzlen, len;
+				const char *cp;
+				size_t tzlen, len;
 
-			for (cp = buf; *cp && isupper((unsigned char)*cp); ++cp) {/*empty*/}
-			len = cp - buf;
-			if (len == 3 && strncmp(buf, "GMT", 3) == 0) {
-				*convp = CONVERT_GMT;
-				buf += len;
-				break;
-			}
-			tzset();
-			tzlen = strlen(tzname[0]);
-			if (len == tzlen && strncmp(buf, tzname[0], tzlen) == 0) {
-				tm->tm_isdst = 0;
-				buf += len;
-				break;
-			}
-			tzlen = strlen(tzname[1]);
-			if (len == tzlen && strncmp(buf, tzname[1], tzlen) == 0) {
-				tm->tm_isdst = 1;
-				buf += len;
-				break;
-			}
-			return 0;
+				for (cp = buf; *cp &&
+					 isupper_l((unsigned char)*cp, locale); ++cp) {
+					/*empty*/
+				}
+				len = cp - buf;
+				if (len == 3 && strncmp(buf, "GMT", 3) == 0) {
+					*convp = CONVERT_GMT;
+					buf += len;
+					break;
+				}
+
+				tzset();
+				tzlen = strlen(tzname[0]);
+				if (len == tzlen && strncmp(buf, tzname[0], tzlen) == 0) {
+					tm->tm_isdst = 0;
+					buf += len;
+					break;
+				}
+				tzlen = strlen(tzname[1]);
+				if (len == tzlen && strncmp(buf, tzname[1], tzlen) == 0) {
+					tm->tm_isdst = 1;
+					buf += len;
+					break;
+				}
+				return (NULL);
 			}
 
 		case 'z':
 			{
-			int sign = 1;
-
-			if (*buf != '+') {
-				if (*buf == '-')
-					sign = -1;
-				else
+				char sign;
+				int hr, min;
+				if ((buf[0] != '+' && buf[0] != '-')
+					|| !isdigit_l((unsigned char)buf[1], locale)
+					|| !isdigit_l((unsigned char)buf[2], locale)
+					|| !isdigit_l((unsigned char)buf[3], locale)
+					|| !isdigit_l((unsigned char)buf[4], locale))
 					return 0;
-			}
-
-			buf++;
-			i = 0;
-			for (len = 4; len > 0; len--) {
-				if (isdigit_l((unsigned char)*buf, loc)) {
-					i *= 10;
-					i += *buf - '0';
-					buf++;
-				} else
-					return 0;
-			}
-
-			tm->tm_hour -= sign * (i / 100);
-			tm->tm_min  -= sign * (i % 100);
-			*convp = CONVERT_GMT;
+				sscanf(buf, "%c%2d%2d", &sign, &hr, &min);
+				*convp = CONVERT_ZONE;
+				tm->tm_gmtoff = 60 * (60 * hr + min);
+				if (sign == '-')
+					tm->tm_gmtoff = -tm->tm_gmtoff;
+				buf += 5;
 			}
 			break;
+
+		case 'n':
+		case 't':
+			if (!isspace((unsigned char)*buf))
+				return 0;
+			while (isspace_l((unsigned char)*buf, locale))
+				buf++;
+			break;
+
+		default:
+			return (NULL);
 		}
 	}
-	return (char *)buf;
+
+	if (!(flags & FLAG_YDAY) && (flags & FLAG_YEAR)) {
+		if ((flags & (FLAG_MONTH | FLAG_MDAY)) ==
+		    (FLAG_MONTH | FLAG_MDAY)) {
+			tm->tm_yday = start_of_month[isleap(tm->tm_year +
+			    TM_YEAR_BASE)][tm->tm_mon] + (tm->tm_mday - 1);
+			flags |= FLAG_YDAY;
+		} else if (flags & FLAG_WEEK){
+			if (!(flags & FLAG_WDAY)) {
+				tm->tm_wday = week_kind == WEEK_U ? TM_SUNDAY : TM_MONDAY;
+				flags |= FLAG_WDAY;
+			}
+
+			struct tm t = {0};
+			t.tm_mday = week_kind == WEEK_V ? 4 : 1;
+			t.tm_hour = 12; /* avoid any DST effects */
+			t.tm_year = tm->tm_year;
+			if (timegm(&t) == (time_t)-1) return 0;
+
+			int off = t.tm_wday;
+			int wday = tm->tm_wday;
+
+			if (week_kind != WEEK_U) {
+				off = (off + 6) % 7;
+				wday = (wday + 6) % 7;
+			}
+
+			if (week_kind == WEEK_V) {
+				t.tm_mday = 7 * week_number + wday - off - 3;
+			} else {
+				if(off == 0) off = 7;
+				t.tm_mday = 7 * week_number + wday - off + 1;
+			}
+			if (timegm(&t) == (time_t)-1) return 0;
+
+			tm->tm_yday = t.tm_yday;
+
+			flags |= FLAG_YDAY;
+		}
+	}
+
+	if ((flags & (FLAG_YEAR | FLAG_YDAY)) == (FLAG_YEAR | FLAG_YDAY)) {
+		if (!(flags & FLAG_MONTH)) {
+			i = 0;
+			while (tm->tm_yday >=
+			    start_of_month[isleap(tm->tm_year +
+			    TM_YEAR_BASE)][i])
+				i++;
+			if (i > 12) {
+				i = 1;
+				tm->tm_yday -=
+				    start_of_month[isleap(tm->tm_year +
+				    TM_YEAR_BASE)][12];
+				tm->tm_year++;
+			}
+			tm->tm_mon = i - 1;
+			flags |= FLAG_MONTH;
+		}
+		if (!(flags & FLAG_MDAY)) {
+			tm->tm_mday = tm->tm_yday -
+			    start_of_month[isleap(tm->tm_year + TM_YEAR_BASE)]
+			    [tm->tm_mon] + 1;
+			flags |= FLAG_MDAY;
+		}
+		if (!(flags & FLAG_WDAY)) {
+			i = 0;
+			wday_offset = first_wday_of(tm->tm_year);
+			while (i++ <= tm->tm_yday) {
+				if (wday_offset++ >= 6)
+					wday_offset = 0;
+			}
+			tm->tm_wday = wday_offset;
+			flags |= FLAG_WDAY;
+		}
+	}
+
+	return ((char *)buf);
 }
 
 
 char *
 strptime(const char * __restrict buf, const char * __restrict fmt,
-    struct tm * __restrict tm)
+		 struct tm * __restrict tm)
 {
 	return strptime_l(buf, fmt, tm, __current_locale());
 }

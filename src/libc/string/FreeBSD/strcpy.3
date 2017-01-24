@@ -13,7 +13,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strcpy.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/strcpy.3,v 1.28 2009/04/07 13:42:53 trasz Exp $
+.\" $FreeBSD$
 .\"
 .Dd February 28, 2009
 .Dt STRCPY 3
@@ -43,27 +43,13 @@
 .Sh SYNOPSIS
 .In string.h
 .Ft char *
-.Fo stpcpy
-.Fa "char *s1"
-.Fa "const char *s2"
-.Fc
+.Fn stpcpy "char * dst" "const char * src"
 .Ft char *
-.Fo stpncpy
-.Fa "char *restrict s1"
-.Fa "const char *restrict s2"
-.Fa "size_t n"
-.Fc
+.Fn stpncpy "char * dst" "const char * src" "size_t len"
 .Ft char *
-.Fo strcpy
-.Fa "char *restrict s1"
-.Fa "const char *restrict s2"
-.Fc
+.Fn strcpy "char * dst" "const char * src"
 .Ft char *
-.Fo strncpy
-.Fa "char *restrict s1"
-.Fa "const char *restrict s2"
-.Fa "size_t n"
-.Fc
+.Fn strncpy "char * dst" "const char * src" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn stpcpy
@@ -71,35 +57,35 @@ and
 .Fn strcpy
 functions
 copy the string
-.Fa s2
+.Fa src
 to
-.Fa s1
+.Fa dst
 (including the terminating
 .Ql \e0
-character).
+character.)
 .Pp
 The
 .Fn stpncpy
 and
 .Fn strncpy
 functions copy at most
-.Fa n
+.Fa len
 characters from
-.Fa s2
+.Fa src
 into
-.Fa s1 .
+.Fa dst .
 If
-.Fa s2
+.Fa src
 is less than
-.Fa n
+.Fa len
 characters long,
 the remainder of
-.Fa s1
+.Fa dst
 is filled with
 .Ql \e0
 characters.
 Otherwise,
-.Fa s1
+.Fa dst
 is
 .Em not
 terminated.
@@ -113,7 +99,7 @@ and
 .Fn strncpy
 functions
 return
-.Fa s1 .
+.Fa dst .
 The
 .Fn stpcpy
 and
@@ -121,15 +107,15 @@ and
 functions return a pointer to the terminating
 .Ql \e0
 character of
-.Fa s1 .
+.Fa dst .
 If
 .Fn stpncpy
 does not terminate
-.Fa s1
+.Fa dst
 with a
 .Dv NUL
 character, it instead returns a pointer to
-.Li s1[n]
+.Li dst[n]
 (which does not necessarily refer to a valid memory location.)
 .Sh EXAMPLES
 The following sets
@@ -156,7 +142,7 @@ Note that it does
 .Em not
 .Tn NUL
 terminate
-.Va chararray ,
+.Va chararray
 because the length of the source string is greater than or equal
 to the length argument.
 .Pp
@@ -186,26 +172,11 @@ This could be better achieved using
 as shown in the following example:
 .Pp
 .Dl "(void)strlcpy(buf, input, sizeof(buf));"
-.Sh SECURITY CONSIDERATIONS
-The
-.Fn strcpy ,
-.Fn strncpy ,
-.Fn stpcpy ,
-and
-.Fn stpncpy
-functions are easily misused in a manner which enables malicious users
-to arbitrarily change a running program's functionality through a
-buffer overflow attack.
-(See
-the FSA
-and
-.Sx EXAMPLES . )
 .Pp
-It is recommended that
+Note that because
 .Xr strlcpy 3
-be used instead as a way to avoid such problems.
-.Xr strlcpy 3
-is not defined in any standards, but it has been adopted by most major libc implementations.
+is not defined in any standards, it should
+only be used when portability is not a concern.
 .Sh SEE ALSO
 .Xr bcopy 3 ,
 .Xr memccpy 3 ,
@@ -236,3 +207,9 @@ and
 .Fn stpncpy
 was added in
 .Fx 8.0 .
+.Sh SECURITY CONSIDERATIONS
+The
+.Fn strcpy
+function is easily misused in a manner which enables malicious users
+to arbitrarily change a running program's functionality through a
+buffer overflow attack.

@@ -28,6 +28,7 @@
 __FBSDID("$FreeBSD: src/lib/libc/stdio/getdelim.c,v 1.3 2009/10/04 19:43:36 das Exp $");
 
 #include "namespace.h"
+#include <os/overflow.h>
 #include <sys/param.h>
 #include <errno.h>
 #include <limits.h>
@@ -96,9 +97,16 @@ static int
 sappend(char ** __restrict dstp, size_t * __restrict dstlenp,
 	size_t * __restrict dstcapp, char * __restrict src, size_t srclen)
 {
+	size_t tmp;
+
+	/* avoid overflowing the result length */
+	if (os_add3_overflow(srclen, *dstlenp, 1, &tmp)) {
+		errno = EOVERFLOW;
+		return (-1);
+	}
 
 	/* ensure room for srclen + dstlen + terminating NUL */
-	if (expandtofit(dstp, srclen + *dstlenp + 1, dstcapp))
+	if (expandtofit(dstp, tmp, dstcapp))
 		return (-1);
 	memcpy(*dstp + *dstlenp, src, srclen);
 	*dstlenp += srclen;

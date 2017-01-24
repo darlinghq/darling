@@ -1,0 +1,533 @@
+.Dd Aug 19, 2012
+.Dt XPRINTF 5
+.Os Darwin
+.Sh NAME
+.Nm xprintf
+.Nd extensible printf
+.Sh SYNOPSIS
+.In printf.h
+.Ft "typedef int"
+.Fn printf_arginfo_function "const struct printf_info *info" "size_t n" "int *argtypes"
+.Ft "typedef int"
+.Fn printf_function "FILE *stream" "const struct printf_info *info" "const void *const *args"
+.Sh DESCRIPTION
+The standard
+.Xr printf 3
+family of routines provides a convenient way to convert one or more arguments
+to various forms for output, under the control of a format string.
+The format string may contain any number of conversion specifications, which
+start with the
+.Sq Li %
+character and end with a conversion specifier character (like
+.Sq Li d
+or
+.Sq Li f ) ,
+with conversion flag characters in-between.
+.Pp
+Extensible printf is an enhancement that allows adding new (user-defined)
+conversion specifiers, or modifying/removing existing ones.
+The implementation of extensible printf in Mac OS X is derived from the
+FreeBSD version, which is based on the one in GNU libc (GLIBC).
+Documentation for the GLIBC version is available at:
+.Pp
+.Li http://www.gnu.org/software/libc/manual/html_node/Customizing-Printf.html
+.Pp
+The main problem with the usual forms of extensible printf is that
+changes to
+.Xr printf 3
+are program-wide.
+But this is unsafe, since frameworks,
+libraries or some other thread could change printf behavior in ways
+unexpected by the main program, or the latter could unexpectedly affect the
+former.
+.Pp
+So instead, the implementation used in Mac OS X makes
+changes to conversion specifiers within printf domains,
+which are independent structures containing the specifier definitions.
+These domains are created as described in
+.Xr xprintf_domain 3 ,
+and once set up, it can be passed to a
+.Xr xprintf 3
+variant along with the format string and arguments to generate output.
+The standard
+.Xr printf 3
+behavior is never affected.
+.Pp
+To define a new conversion specifier, two function typedefs are defined, and
+the user must provide two functions based on these typedefs.
+These functions will get called from extensible printf while processing
+the corresponding conversion specification.
+.Pp
+During the first of three phases of extensible printf processing, the format
+string is parsed, and for each conversion specification, a
+.Vt struct printf_info
+is created, containing the option flags specified in the
+conversion specification as well as other settings.
+Important fields in
+.Vt struct printf_info
+are:
+.Bl -tag -width ".Va is_long_double"
+.It Va alt
+Boolean value whether the
+.Sq Li #
+flag was specified.
+.It Va context
+A
+.Vt void *
+pointer to arbitrary data specified in the original call to
+.Xr register_printf_domain_function 3 .
+.It Va group
+Boolean value whether the
+.Sq Li '
+flag was specified.
+.It Va is_char
+Boolean value whether the
+.Sq Li hh
+flag was specified.
+.It Va is_intmax
+Boolean value whether the
+.Sq Li j
+flag was specified.
+.It Va is_long
+Boolean value whether the
+.Sq Li l
+flag was specified.
+.It Va is_long_double
+Boolean value whether the
+.Sq Li L
+or
+.Sq Li ll
+flags were specified.
+.It Va is_ptrdiff
+Boolean value whether the
+.Sq Li t
+flag was specified.
+.It Va is_quad
+Boolean value whether the
+.Sq Li q
+flag was specified.
+.It Va is_short
+Boolean value whether the
+.Sq Li h
+flag was specified.
+.It Va is_size
+Boolean value whether the
+.Sq Li z
+flag was specified.
+.It Va is_vec
+Boolean value whether the
+.Sq Li v
+flag was specified.
+.It Va left
+Boolean value whether the
+.Sq Li -
+flag was specified.
+.It Va loc
+The extended locale (see
+.Xr xlocale 3 )
+specified by the extensible printf caller (never
+.Dv NULL ) .
+.It Va pad
+The padding character; either
+.Sq Li 0
+or space.
+.It Va prec
+The value of the optional precision.
+-1 means the precision was unspecified.
+.It Va showsign
+Boolean value whether the
+.Sq Li +
+flag was specified.
+.It Va signchar
+The sign character, either
+.Sq Li + ,
+space or zero if none.
+.It Va space
+Boolean value whether the space flag was specified.
+.It Va spec
+The specifier character itself.
+.It Va vsep
+The separator character between vector items (using the
+.Sq Li v
+flag).
+Can be any one of the four characters
+.Dq Li ,:;_
+or
+.Sq Li X
+if no separator character was specified (meaning that a space is used as the
+separator, unless the specifier is
+.Sq Li c ,
+in which case no separator is used).
+.It Va width
+The value of the minimum field width (defaults to zero).
+.El
+.Pp
+All other structure fields are either unused or private (and shouldn't be
+used).
+.Pp
+This
+.Vt struct printf_info
+structure is then passed to the corresponding
+.Nm printf_arginfo_function
+callback function.
+The callback function should return the number of consecutive arguments the
+specifier handles, including zero (the maximum number of consecutive arguments
+a single specifier can handle is
+.Dv __PRINTFMAXARG ,
+which is currently set to 2, but could be increased in the future if there is
+need).
+.Pp
+The callback function is also passed an integer array and the length of that
+array; the length will typically be
+.Dv __PRINTFMAXARG .
+The function should fill out the array up to the number of arguments it expects,
+using the following values:
+.Bl -tag -width ".Dv PA_POINTER"
+.It Dv PA_CHAR
+The argument type is an
+.Vt int
+cast to a
+.Vt char .
+.It Dv PA_DOUBLE
+The argument type is a
+.Vt double .
+OR-ing
+.Dv PA_DOUBLE
+with
+.Dv PA_FLAG_LONG_DOUBLE
+specifies a
+.Vt "long double"
+type.
+.It Dv PA_FLOAT
+(Defined but unused; best to avoid, since
+.Vt float
+is automatically promoted to
+.Vt double
+anyways.)
+.It Dv PA_INT
+The argument type is
+.Vt int
+(either signed or unsigned).
+The size can be adjusted by OR-ing the following values to
+.Dv PA_INT :
+.Bl -tag -width ".Dv PA_FLAG_LONG_LONG"
+.It Dv PA_FLAG_INTMAX
+The integer is the size of a
+.Vt intmax_t .
+.It Dv PA_FLAG_LONG
+The integer is the size of a
+.Vt long .
+.It Dv PA_FLAG_LONG_LONG
+The integer is the size of a
+.Vt "long long" .
+.It Dv PA_FLAG_PTRDIFF
+The integer is the size of a
+.Vt ptrdiff_t .
+.It Dv PA_FLAG_QUAD
+The integer is the size of a
+.Vt quad_t
+(deprecated).
+.It Dv PA_FLAG_SHORT
+The integer is the size of a
+.Vt short .
+.It Dv PA_FLAG_SIZE
+The integer is the size of a
+.Vt size_t .
+.El
+.It Dv PA_POINTER
+The argument type is a pointer type, cast to a
+.Vt "void *" .
+.It Dv PA_STRING
+The argument type is a null-terminated character string
+.Vt ( "char *" ) .
+.It Dv PA_VECTOR
+The argument type is an AltiVec or SSE vector (16 bytes).
+.It Dv PA_WCHAR
+The argument type is a
+.Vt wchar_t .
+.It Dv PA_WSTRING
+The argument type is a null-terminated wide character string
+.Vt ( "wchar_t *" ) .
+.El
+.Pp
+After the
+.Nm printf_arginfo_function
+returns, phase 2 of extensible printf processing involves converting the
+argument according to the types specified by the returned type array.
+Note that positional arguments are dealt with here as well.
+.Pp
+Then in phase 3, output is generated, either from the text in-between the
+conversion specifications, or by calling the so-called rendering functions
+associated with each conversion specifier (with typedef
+.Nm printf_function ) .
+The rendering function is passed the same
+.Vt struct printf_info
+structure, as well as an array of pointers to each of the arguments converted
+in phase 2 that it is responsible for.
+The callback should write its output to the provided output
+stdio stream, and then return the number of characters written.
+.Sh EXAMPLE
+Here is an example that demonstrates many of the features of extensible printf:
+.Bd -literal
+#include <stdio.h>
+#include <stdlib.h>
+#include <printf.h>
+#include <locale.h>
+#include <xlocale.h>
+#include <err.h>
+
+/* The Coordinate type */
+typedef struct {
+    double x;
+    double y;
+} Coordinate;
+
+#define L	(1 << 0)
+#define P	(1 << 1)
+
+/* The renderer callback for Coordinate */
+static int
+print_coordinate (FILE *stream, const struct printf_info *info,
+    const void *const *args)
+{
+    const Coordinate *c;
+    int width, ret, which = 0;
+    char fmt[32];
+    char *bp, *cp, *ep;
+    /* The optional coordinate labels */
+    const char **labels = (const char **)info->context;
+
+    /* Get the argument pointer to a Coordinate */
+    c = *((const Coordinate **) (args[0]));
+
+    /* Set up the format string */
+    cp = fmt;
+    if(info->alt) *cp++ = '(';
+    bp = cp;
+    if(labels) {
+	which |= L;
+	*cp++ = '%';
+	*cp++ = 's';
+    }
+    *cp++ = '%';
+    if(info->group) *cp++ = '\e'';
+    *cp++ = '*';
+    if(info->prec >= 0) {
+	which |= P;
+	*cp++ = '.';
+	*cp++ = '*';
+    }
+    *cp++ = 'l';
+    *cp++ = 'f';
+    ep = cp;
+    if(info->alt) *cp++ = ',';
+    *cp++ = ' ';
+    while(bp < ep) *cp++ = *bp++;
+    if(info->alt) *cp++ = ')';
+    *cp = 0;
+
+    width = info->left ? -info->width : info->width;
+
+    /* Output to the given stream */
+    switch(which) {
+    case 0:
+	ret = fprintf_l(stream, info->loc, fmt, width, c->x, width, c->y);
+	break;
+    case L:
+	ret = fprintf_l(stream, info->loc, fmt, labels[0], width, c->x,
+			labels[1], width, c->y);
+	break;
+    case P:
+	ret = fprintf_l(stream, info->loc, fmt, width, info->prec, c->x,
+			width, info->prec, c->y);
+	break;
+    case (L | P):
+	ret = fprintf_l(stream, info->loc, fmt, labels[0], width,
+			info->prec, c->x, labels[1], width, info->prec,
+			c->y);
+	break;
+    }
+
+    return ret;
+}
+
+/* The arginfo callback for Coordinate */
+static int
+coordinate_arginfo (const struct printf_info *info, size_t n,
+		    int *argtypes)
+{
+  /* We always take exactly one argument and this is a pointer to the
+     structure.. */
+  if (n > 0)
+    argtypes[0] = PA_POINTER;
+  return 1;
+}
+
+int
+main (void)
+{
+    Coordinate mycoordinate = {12345.6789, 3.141593};
+    printf_domain_t domain;
+    locale_t loc;
+    const char *labels[] = {"x=", "y="};
+
+    /* Set up a domain to add support for Coordinate conversion */
+    domain = new_printf_domain();
+    if(!domain)
+	err(1, "new_printf_domain");
+    /* Set up an extended locale to test locale support */
+    loc = newlocale(LC_ALL_MASK, "uk_UA.UTF-8", NULL);
+    if(!loc)
+	err(1, "newlocale");
+
+    /* Register the callbacks for Coordinates in the domain */
+    register_printf_domain_function (domain, 'C', print_coordinate,
+				     coordinate_arginfo, NULL);
+
+    /* Print the coordinate using the current locale (C). */
+    xprintf(domain, NULL, "|%'C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'14C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'-14.2C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'#C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'#14C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'#-14.2C|\en", &mycoordinate);
+
+    printf("-------------\en");
+    /* Reregister the callbacks, specifying coordinate labels
+     * and setting the global locale (notice thousands separator) */
+    register_printf_domain_function (domain, 'C', print_coordinate,
+				     coordinate_arginfo, labels);
+    if(setlocale(LC_ALL, "en_US.UTF-8") == NULL)
+	errx(1, "setlocale");
+
+    /* Reprint with labels */
+    xprintf(domain, NULL, "|%'C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'14C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'-14.2C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'#C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'#14C|\en", &mycoordinate);
+    xprintf(domain, NULL, "|%'#-14.2C|\en", &mycoordinate);
+
+    printf("-------------\en");
+    /* Now print with the test locale (notice decimal point and
+     * thousands separator) */
+    xprintf(domain, loc, "|%'C|\en", &mycoordinate);
+    xprintf(domain, loc, "|%'14C|\en", &mycoordinate);
+    xprintf(domain, loc, "|%'-14.2C|\en", &mycoordinate);
+    xprintf(domain, loc, "|%'#C|\en", &mycoordinate);
+    xprintf(domain, loc, "|%'#14C|\en", &mycoordinate);
+    xprintf(domain, loc, "|%'#-14.2C|\en", &mycoordinate);
+
+    return 0;
+}
+.Ed
+.Pp
+This example defines a Coordinate type, that consists of a pair of doubles.
+We create a conversion specifier that displays a Coordinate type, either just
+as two floating point numbers, or with the
+.Sq Li #
+(alternate form) flag, as parenthesized numbers separated by a comma.
+Note the use of
+.Nm printf_l
+to do the actual output; this is using regular printf from within an extensible
+printf renderer callback.
+The use of
+.Nm printf_l
+also insures correct handling of extended locales.
+.Pp
+The output of the programs looks like:
+.Bd -literal
+|12345.678900 3.141593|
+|  12345.678900       3.141593|
+|12345.68       3.14          |
+|(12345.678900, 3.141593)|
+|(  12345.678900,       3.141593)|
+|(12345.68      , 3.14          )|
+-------------
+|x=12,345.678900 y=3.141593|
+|x= 12,345.678900 y=      3.141593|
+|x=12,345.68      y=3.14          |
+|(x=12,345.678900, y=3.141593)|
+|(x= 12,345.678900, y=      3.141593)|
+|(x=12,345.68     , y=3.14          )|
+-------------
+|x=12 345,678900 y=3,141593|
+|x= 12 345,678900 y=      3,141593|
+|x=12 345,68      y=3,14          |
+|(x=12 345,678900, y=3,141593)|
+|(x= 12 345,678900, y=      3,141593)|
+|(x=12 345,68     , y=3,14          )|
+.Ed
+.Pp
+Notice:
+.Bl -bullet
+.It
+Field width, precision and left adjustment are applied to each of the numbers.
+.It
+The alternate form, using parenthesized numbers separated by a comma.
+.It
+In the second group of six, the thousands separator corresponds to the
+global locale setting
+.Pq Li en_US.UTF-8 .
+.It
+The second and third group have a label for each number, provide through
+the user-defined context argument.
+.It
+The third group has the decimal point and thousands separator of the extended
+locale argument
+.Pq Li uk_UA.UTF-8 .
+.El
+.Sh PERFORMANCE
+Because of the three phase processing of extensible printf, as well as the
+use of two callbacks for each conversion specifier, performance is
+considerably slower than the one pass, highly optimized regular
+.Xr printf 3 .
+Recursive use of
+.Xr printf 3
+from within an extensible printf renderer callback
+(as in the
+.Sx EXAMPLE
+above) adds additional overhead.
+.Pp
+To ameliorate some of this slowness, the concept of separate compilation
+and execution phases has be added to extensible printf.
+The functions in
+.Xr xprintf_comp 3
+allow the creation of pre-compiled extensible printf structures (performing
+phase one of extensible printf processing).
+These pre-compiled structures can then be passed to the printf variants in
+.Xr xprintf_exec 3
+to produce the actual output (performing phases 2 and 3).
+The compilation phase need only be done once, while execution can be performed
+any number of times.
+.Pp
+A simple example of use is:
+.Bd -literal
+    printf_comp_t pc = new_printf_comp(domain, loc, "%d: %C\en");
+    for(i = 0; i = sizeof(coords) / sizeof(*coords); i++) {
+	xprintf_exec(pc, i, &coords[i]);
+    }
+    free_printf_comp(pc);
+.Ed
+.Pp
+Here,
+.Va coords
+is a array containing
+.Vt Coordinate
+structures that are to be printed and the
+.Va domain
+and
+.Va loc
+variables are as from
+.Sx EXAMPLE
+above.
+(Error checking on the return value from
+.Fn new_printf_comp
+is not shown).
+.Sh SEE ALSO
+.Xr printf 3 ,
+.Xr xlocale 3 ,
+.Xr xprintf 3 ,
+.Xr xprintf_comp 3 ,
+.Xr xprintf_domain 3 ,
+.Xr xprintf_exec 3

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2016 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -82,6 +82,26 @@
 #endif
 
 /*
+ * Compatibility with compilers and environments that don't support compiler
+ * feature checking function-like macros.
+ */
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+#ifndef __has_include
+#define __has_include(x) 0
+#endif
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+#ifndef __has_extension
+#define __has_extension(x) 0
+#endif
+
+/*
  * The __CONCAT macro is used to concatenate parts of symbol names, e.g.
  * with "#define OLD(foo) __CONCAT(old,foo)", OLD(foo) produces oldfoo.
  * The __CONCAT macro is a bit tricky -- make sure you don't put spaces
@@ -155,26 +175,17 @@
  */
 #define __deprecated	__attribute__((deprecated))
 
-#ifdef __has_extension
-    #if __has_extension(attribute_deprecated_with_message)
-        #define __deprecated_msg(_msg) __attribute__((deprecated(_msg)))
-    #else
-        #define __deprecated_msg(_msg) __attribute__((deprecated))
-    #endif
-#elif defined(__GNUC__) && ((__GNUC__ >= 5) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 5)))
-    #define __deprecated_msg(_msg) __attribute__((deprecated(_msg)))
+#if __has_extension(attribute_deprecated_with_message) || \
+		(defined(__GNUC__) && ((__GNUC__ >= 5) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 5))))
+	#define __deprecated_msg(_msg) __attribute__((deprecated(_msg)))
 #else
-    #define __deprecated_msg(_msg) __attribute__((deprecated))
+	#define __deprecated_msg(_msg) __attribute__((deprecated))
 #endif
 
-#ifdef __has_extension
-    #if __has_extension(enumerator_attributes)
-        #define __deprecated_enum_msg(_msg) __deprecated_msg(_msg)
-    #else
-        #define __deprecated_enum_msg(_msg)
-    #endif
+#if __has_extension(enumerator_attributes)
+	#define __deprecated_enum_msg(_msg) __deprecated_msg(_msg)
 #else
-    #define __deprecated_enum_msg(_msg)
+	#define __deprecated_enum_msg(_msg)
 #endif
 
 /* __unavailable causes the compiler to error out when encountering
@@ -196,6 +207,74 @@
 #define __restrict
 #else
 #define __restrict	restrict
+#endif
+
+/* Compatibility with compilers and environments that don't support the
+ * nullability feature.
+ */
+
+#if !__has_feature(nullability)
+#ifndef __nullable
+#define __nullable
+#endif
+#ifndef __nonnull
+#define __nonnull
+#endif
+#ifndef __null_unspecified
+#define __null_unspecified
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Null_unspecified
+#define _Null_unspecified
+#endif
+#endif
+
+/*
+ * __disable_tail_calls causes the compiler to not perform tail call
+ * optimization inside the marked function.
+ */
+#if __has_attribute(disable_tail_calls)
+#define __disable_tail_calls	__attribute__((__disable_tail_calls__))
+#else
+#define __disable_tail_calls
+#endif
+
+/*
+ * __not_tail_called causes the compiler to prevent tail call optimization
+ * on statically bound calls to the function.  It has no effect on indirect
+ * calls.  Virtual functions, objective-c methods, and functions marked as
+ * "always_inline" cannot be marked as __not_tail_called.
+ */
+#if __has_attribute(not_tail_called)
+#define __not_tail_called	__attribute__((__not_tail_called__))
+#else
+#define __not_tail_called
+#endif
+
+/*
+ * __result_use_check warns callers of a function that not using the function
+ * return value is a bug, i.e. dismissing malloc() return value results in a
+ * memory leak.
+ */
+#if __has_attribute(warn_unused_result)
+#define __result_use_check __attribute__((__warn_unused_result__))
+#else
+#define __result_use_check
+#endif
+
+/*
+ * __swift_unavailable causes the compiler to mark a symbol as specifically
+ * unavailable in Swift, regardless of any other availability in C.
+ */
+#if __has_feature(attribute_availability_swift)
+#define __swift_unavailable(_msg)	__attribute__((__availability__(swift, unavailable, message=_msg)))
+#else
+#define __swift_unavailable(_msg)
 #endif
 
 /* Declaring inline functions within headers is error-prone due to differences
@@ -270,6 +349,8 @@
  */
 #define __printflike(fmtarg, firstvararg) \
 		__attribute__((__format__ (__printf__, fmtarg, firstvararg)))
+#define __printf0like(fmtarg, firstvararg) \
+		__attribute__((__format__ (__printf0__, fmtarg, firstvararg)))
 #define __scanflike(fmtarg, firstvararg) \
 		__attribute__((__format__ (__scanf__, fmtarg, firstvararg)))
 
@@ -485,7 +566,6 @@
 /*
  * symbol versioning macros
  */
-#ifndef DARLING__DISABLED
 #define __DARWIN_ALIAS(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_UNIX03)
 #define __DARWIN_ALIAS_C(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_NON_CANCELABLE __DARWIN_SUF_UNIX03)
 #define __DARWIN_ALIAS_I(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_64_BIT_INO_T __DARWIN_SUF_UNIX03)
@@ -500,29 +580,6 @@
 
 #define __DARWIN_EXTSN(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_EXTSN)
 #define __DARWIN_EXTSN_C(sym)		__asm("_" __STRING(sym) __DARWIN_SUF_EXTSN __DARWIN_SUF_NON_CANCELABLE)
-#else // DARLING
-/*
- * Darling doesn't use underscore prefixing for symbols just like the rest of the Linux world.
- * Using prefixing causes symbol naming conflicts, i.e. the following declarations result in the same symbol name:
- * * pthread_testcancel() asm("_pthread_testcancel");
- * * _pthread_testcancel()
- * while on OS X, the latter would have symbol name __pthread_testcancel().
- */
-#define __DARWIN_ALIAS(sym)		__asm(__STRING(sym) __DARWIN_SUF_UNIX03)
-#define __DARWIN_ALIAS_C(sym)		__asm(__STRING(sym) __DARWIN_SUF_NON_CANCELABLE __DARWIN_SUF_UNIX03)
-#define __DARWIN_ALIAS_I(sym)		__asm(__STRING(sym) __DARWIN_SUF_64_BIT_INO_T __DARWIN_SUF_UNIX03)
-#define __DARWIN_NOCANCEL(sym)  	__asm(__STRING(sym) __DARWIN_SUF_NON_CANCELABLE)
-#define __DARWIN_INODE64(sym)		__asm(__STRING(sym) __DARWIN_SUF_64_BIT_INO_T)
-
-#define __DARWIN_1050(sym)		__asm(__STRING(sym) __DARWIN_SUF_1050)
-#define __DARWIN_1050ALIAS(sym)		__asm(__STRING(sym) __DARWIN_SUF_1050 __DARWIN_SUF_UNIX03)
-#define __DARWIN_1050ALIAS_C(sym)	__asm(__STRING(sym) __DARWIN_SUF_1050 __DARWIN_SUF_NON_CANCELABLE __DARWIN_SUF_UNIX03)
-#define __DARWIN_1050ALIAS_I(sym)	__asm(__STRING(sym) __DARWIN_SUF_1050 __DARWIN_SUF_64_BIT_INO_T __DARWIN_SUF_UNIX03)
-#define __DARWIN_1050INODE64(sym)	__asm(__STRING(sym) __DARWIN_SUF_1050 __DARWIN_SUF_64_BIT_INO_T)
-
-#define __DARWIN_EXTSN(sym)		__asm(__STRING(sym) __DARWIN_SUF_EXTSN)
-#define __DARWIN_EXTSN_C(sym)		__asm(__STRING(sym) __DARWIN_SUF_EXTSN __DARWIN_SUF_NON_CANCELABLE)
-#endif // DARLING
 
 /*
  * symbol release macros
@@ -534,7 +591,7 @@
 #elif defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__)
 #define __DARWIN_ALIAS_STARTING(_mac, _iphone, x)   __DARWIN_ALIAS_STARTING_MAC_##_mac(x)
 #else
-#define __DARWIN_ALIAS_STARTING(_mac, _iphone, x)
+#define __DARWIN_ALIAS_STARTING(_mac, _iphone, x)   x
 #endif
 
 
@@ -703,5 +760,6 @@
 #else
 #error Unsupported architecture
 #endif
+
 
 #endif /* !_CDEFS_H_ */

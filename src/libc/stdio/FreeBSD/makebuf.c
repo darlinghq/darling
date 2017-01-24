@@ -47,7 +47,12 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/makebuf.c,v 1.6 2007/01/09 00:28:07 imp E
 #include "libc_private.h"
 #include "local.h"
 
-#define MAXBUFSIZE	(1 << 16)
+#ifdef FEATURE_SMALL_STDIOBUF
+# define MAXBUFSIZE	(1 << 12)
+#else
+# define MAXBUFSIZE	(1 << 16)
+#endif
+
 #define TTYBUFSIZE	4096
 
 /*

@@ -7,7 +7,7 @@
 #	define NSEC_PER_SEC 1000000000ull
 #endif
 
-kern_return_t		mach_timebase_info(
+kern_return_t		mach_timebase_info_trap(
 						mach_timebase_info_t	info)
 {
 	info->numer = NSEC_PER_SEC;

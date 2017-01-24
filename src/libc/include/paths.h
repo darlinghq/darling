@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
  *

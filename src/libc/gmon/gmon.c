@@ -137,28 +137,6 @@ extern void monreset(
 extern void monoutput(
     const char *filename);
 
-static char profiling = -1;	/* tas (test and set) location for NeXT */
-static char init = 0;		/* set while moninit() is being serviced */
-
-static unsigned long order = 0;	/* call order */
-
-typedef struct {
-    /* the address range and size this mon struct refers to */
-    char		*lowpc;
-    char		*highpc;
-    unsigned long	textsize;
-    /* the data structures to support the arc's and their counts */
-    unsigned short	*froms; /* froms is unsigned shorts indexing into tos */
-    tostruct_t		*tos;
-    long		tolimit;
-    /* the pc-sample buffer, it's size and scale */
-    char		*sbuf;
-    long		ssiz;	/* includes the gmonhdr_t */
-    long		scale;
-} mon_t;
-static mon_t *mon = NULL;
-static unsigned long nmon = 0;
-
 void
 moninit(
 void)

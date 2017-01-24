@@ -70,10 +70,9 @@ freopen(file, mode, fp)
 		return (NULL);
 	}
 
+	pthread_once(&__sdidinit, __sinit);
+	
 	FLOCKFILE(fp);
-
-	if (!__sdidinit)
-		__sinit();
 
 	/*
 	 * If the filename is a NULL pointer, the caller is asking us to
@@ -195,8 +194,8 @@ finish:
 	memset(&fp->_mbstate, 0, sizeof(mbstate_t));
 
 	if (f < 0) {			/* did not get it after all */
-		__sfprelease(fp);	/* set it free */
 		FUNLOCKFILE(fp);
+		__sfprelease(fp);	/* set it free */
 		errno = sverrno;	/* restore in case _close clobbered */
 		return (NULL);
 	}
@@ -221,8 +220,8 @@ finish:
 	 * open.
 	 */
 	if (f > SHRT_MAX) {
-		__sfprelease(fp);	/* set it free */
 		FUNLOCKFILE(fp);
+		__sfprelease(fp);	/* set it free */
 		errno = EMFILE;
 		return (NULL);
 	}

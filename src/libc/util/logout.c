@@ -77,16 +77,18 @@ logout(char *line)
 	int which;
 #endif /* UTMP_COMPAT */
 
+	struct _utmpx *def_utx = __default_utx();
+
 	bzero(&utx, sizeof(utx));
 	strncpy(utx.ut_line, line, sizeof(utx.ut_line));
 	utx.ut_type = UTMPX_AUTOFILL_MASK | UTMPX_DEAD_IF_CORRESPONDING_MASK | DEAD_PROCESS;
 	(void)gettimeofday(&utx.ut_tv, NULL);
-	UTMPX_LOCK(&__utx__);
-	__setutxent(&__utx__);
-	ux = __pututxline(&__utx__, &utx);
-	__endutxent(&__utx__);
+	UTMPX_LOCK(def_utx);
+	__setutxent(def_utx);
+	ux = __pututxline(def_utx, &utx);
+	__endutxent(def_utx);
 	if (!ux) {
-		UTMPX_UNLOCK(&__utx__);
+		UTMPX_UNLOCK(def_utx);
 		return 0;
 	}
 #ifdef UTMP_COMPAT
@@ -98,6 +100,6 @@ logout(char *line)
 			_write_utmp(&u, 1);
 	}
 #endif /* UTMP_COMPAT */
-	UTMPX_UNLOCK(&__utx__);
+	UTMPX_UNLOCK(def_utx);
 	return 1;
 }

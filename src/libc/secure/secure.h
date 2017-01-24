@@ -34,6 +34,6 @@ extern void __chk_fail_overlap (void) __attribute__((__noreturn__));
 extern void __chk_overlap (const void *a, size_t an, const void *b, size_t bn);
 
 /* Do we avoid the overlap check for older APIs? */
-extern int __chk_assert_no_overlap;
+extern uint32_t __chk_assert_no_overlap;
 
 #endif

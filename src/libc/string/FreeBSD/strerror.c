@@ -41,6 +41,7 @@ __FBSDID("$FreeBSD: src/lib/libc/string/strerror.c,v 1.16 2007/01/09 00:28:12 im
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define	UPREFIX		"Unknown error"
 
@@ -115,20 +116,32 @@ strerror_r(int errnum, char *strerrbuf, size_t buflen)
 
 	return (retval);
 }
+
+__private_extern__ char *__strerror_ebuf = NULL;
 #else /* BUILDING_VARIANT */
 __private_extern__ void __errstr(int, char *, size_t);
+
+extern char *__strerror_ebuf;
 #endif /* !BUILDING_VARIANT */
 
 char *
 strerror(int num)
 {
-	static char ebuf[NL_TEXTMAX];
+	// Dynamically allocate a big buffer to receive the text then shrink it
+	// down to the actual size needed.
+	size_t ebufsiz = NL_TEXTMAX;
 
+	if (__strerror_ebuf == NULL) {
+		__strerror_ebuf = calloc(1, ebufsiz);
+		if (__strerror_ebuf == NULL) {
+			return NULL;
+		}
+	}
+	
+	if (strerror_r(num, __strerror_ebuf, ebufsiz) != 0) {
 #if !__DARWIN_UNIX03
-	if (strerror_r(num, ebuf, sizeof(ebuf)) != 0)
-	errno = EINVAL;
-#else
-	(void)strerror_r(num, ebuf, sizeof(ebuf));
+		errno = EINVAL;
 #endif
-	return (ebuf);
+	}
+	return __strerror_ebuf;
 }

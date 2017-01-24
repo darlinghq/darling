@@ -43,32 +43,11 @@
 
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 
-#ifndef	_SIZE_T
-#define _SIZE_T
-typedef	__darwin_size_t		size_t;
-#endif
-
-#ifndef	_CT_RUNE_T
-#define _CT_RUNE_T
-typedef	__darwin_ct_rune_t	ct_rune_t;
-#endif
-
-#ifndef	_RUNE_T
-#define _RUNE_T
-typedef	__darwin_rune_t		rune_t;
-#endif
-
-#ifndef	__cplusplus
-#ifndef	_WCHAR_T
-#define	_WCHAR_T
-typedef	__darwin_wchar_t	wchar_t;
-#endif	/* _WCHAR_T */
-#endif	/* __cplusplus */
-
-#ifndef	_WINT_T
-#define _WINT_T
-typedef	__darwin_wint_t		wint_t;
-#endif
+#include <sys/_types/_size_t.h>
+#include <sys/_types/_ct_rune_t.h>
+#include <sys/_types/_rune_t.h>
+#include <sys/_types/_wchar_t.h>
+#include <sys/_types/_wint_t.h>
 
 #endif /* (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
 

@@ -58,23 +58,22 @@ fread(void * __restrict buf, size_t size, size_t count, FILE * __restrict fp)
 	return (ret);
 }
 
-size_t
-__fread(void * __restrict buf, size_t size, size_t count, FILE * __restrict fp)
+/*
+ * The maximum amount to read to avoid integer overflow.  INT_MAX is odd,
+ * so it make sense to make it even.  We subtract (BUFSIZ - 1) to get a
+ * whole number of BUFSIZ chunks.
+ */
+#define MAXREAD	(INT_MAX - (BUFSIZ - 1))
+
+/* __fread0: int sized, with size = 1 */
+static inline int
+__fread0(void * __restrict buf, int count, FILE * __restrict fp)
 {
-	size_t resid;
+	int resid;
 	char *p;
 	int r, ret;
-	size_t total;
 
-	/*
-	 * ANSI and SUSv2 require a return value of 0 if size or count are 0.
-	 */
-	if ((resid = count * size) == 0)
-		return (0);
-	ORIENT(fp, -1);
-	if (fp->_r < 0)
-		fp->_r = 0;
-	total = resid;
+	resid = count;
 	p = buf;
 	/* first deal with anything left in buffer, plus any ungetc buffers */
 	while (resid > (r = fp->_r)) {
@@ -87,7 +86,7 @@ __fread(void * __restrict buf, size_t size, size_t count, FILE * __restrict fp)
 			break;
 		else if (ret) {
 			/* no more input: return partial result */
-			return ((total - resid) / size);
+			return (count - resid);
 		}
 	}
 	/*
@@ -101,7 +100,7 @@ __fread(void * __restrict buf, size_t size, size_t count, FILE * __restrict fp)
 		size_t n;
 
 		save = fp->_bf;
-		fp->_bf._base = p;
+		fp->_bf._base = (unsigned char *)p;
 		fp->_bf._size = resid;
 		while (fp->_bf._size > 0) {
 			if ((ret = __srefill1(fp)) != 0) {
@@ -110,7 +109,7 @@ __fread(void * __restrict buf, size_t size, size_t count, FILE * __restrict fp)
 				fp->_bf = save;
 				fp->_p = fp->_bf._base;
 				/* fp->_r = 0;  already set in __srefill1 */
-				return ((total - resid) / size);
+				return (count - resid);
 			}
 			fp->_bf._base += fp->_r;
 			fp->_bf._size -= fp->_r;
@@ -130,12 +129,38 @@ __fread(void * __restrict buf, size_t size, size_t count, FILE * __restrict fp)
 			resid -= r;
 			if (__srefill1(fp)) {
 				/* no more input: return partial result */
-				return ((total - resid) / size);
+				return (count - resid);
 			}
 		}
 		(void)memcpy((void *)p, (void *)fp->_p, resid);
 		fp->_r -= resid;
 		fp->_p += resid;
+	}
+	return (count);
+}
+
+size_t
+__fread(void * __restrict buf, size_t size, size_t count, FILE * __restrict fp)
+{
+	size_t resid;
+	int r, ret;
+	size_t total;
+
+	/*
+	 * ANSI and SUSv2 require a return value of 0 if size or count are 0.
+	 */
+	if ((resid = count * size) == 0)
+		return (0);
+	ORIENT(fp, -1);
+	if (fp->_r < 0)
+		fp->_r = 0;
+
+	for (total = resid; resid > 0; buf += r, resid -= r) {
+		r = resid > INT_MAX ? MAXREAD : (int)resid;
+		if ((ret = __fread0(buf, r, fp)) != r) {
+			count = (total - resid + ret) / size;
+			break;
+		}
 	}
 	return (count);
 }

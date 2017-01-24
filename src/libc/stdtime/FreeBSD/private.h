@@ -19,7 +19,7 @@
 #define HAVE_STRERROR	1
 #define	HAVE_UNISTD_H	1
 #define	LOCALE_HOME	_PATH_LOCALE
-#define TZDIR		"/usr/share/zoneinfo"
+/* #define TZDIR		"/usr/share/zoneinfo" */
 #endif /* ndef TM_GMTOFF */
 
 /*

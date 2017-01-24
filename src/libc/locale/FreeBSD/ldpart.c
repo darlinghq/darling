@@ -70,12 +70,10 @@ __part_load_locale(const char *name,
 	/* 'PathLocale' must be already set & checked. */
 
 	/* Range checking not needed, 'name' size is limited */
-	strcpy(filename, _PathLocale);
-	strcat(filename, "/");
-	strcat(filename, name);
+	strcpy(filename, name);
 	strcat(filename, "/");
 	strcat(filename, category_filename);
-	if ((fd = _open(filename, O_RDONLY)) < 0)
+	if ((fd = __open_path_locale(filename)) < 0)
 		return (_LDP_ERROR);
 	if (_fstat(fd, &st) != 0)
 		goto bad_locale;

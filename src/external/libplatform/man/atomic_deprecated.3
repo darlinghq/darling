@@ -1,0 +1,232 @@
+.Dd May 26, 2004
+.Dt ATOMIC_DEPRECATED 3
+.Os Darwin
+.Sh NAME
+.Nm OSAtomicAdd32 ,
+.Nm OSAtomicAdd32Barrier ,
+.Nm OSAtomicIncrement32 ,
+.Nm OSAtomicIncrement32Barrier ,
+.Nm OSAtomicDecrement32 ,
+.Nm OSAtomicDecrement32Barrier ,
+.Nm OSAtomicOr32 ,
+.Nm OSAtomicOr32Barrier ,
+.Nm OSAtomicOr32Orig ,
+.Nm OSAtomicOr32OrigBarrier ,
+.Nm OSAtomicAnd32 ,
+.Nm OSAtomicAnd32Barrier ,
+.Nm OSAtomicAnd32Orig ,
+.Nm OSAtomicAnd32OrigBarrier ,
+.Nm OSAtomicXor32 ,
+.Nm OSAtomicXor32Barrier ,
+.Nm OSAtomicXor32Orig ,
+.Nm OSAtomicXor32OrigBarrier ,
+.Nm OSAtomicAdd64 ,
+.Nm OSAtomicAdd64Barrier ,
+.Nm OSAtomicIncrement64 ,
+.Nm OSAtomicIncrement64Barrier ,
+.Nm OSAtomicDecrement64 ,
+.Nm OSAtomicDecrement64Barrier ,
+.Nm OSAtomicCompareAndSwapInt ,
+.Nm OSAtomicCompareAndSwapIntBarrier ,
+.Nm OSAtomicCompareAndSwapLong ,
+.Nm OSAtomicCompareAndSwapLongBarrier ,
+.Nm OSAtomicCompareAndSwapPtr ,
+.Nm OSAtomicCompareAndSwapPtrBarrier ,
+.Nm OSAtomicCompareAndSwap32 ,
+.Nm OSAtomicCompareAndSwap32Barrier ,
+.Nm OSAtomicCompareAndSwap64 ,
+.Nm OSAtomicCompareAndSwap64Barrier ,
+.Nm OSAtomicTestAndSet ,
+.Nm OSAtomicTestAndSetBarrier ,
+.Nm OSAtomicTestAndClear ,
+.Nm OSAtomicTestAndClearBarrier ,
+.Nm OSMemoryBarrier
+.Nd deprecated atomic add, increment, decrement, or, and, xor, compare and swap, test and set, test and clear, and memory barrier
+.Sh SYNOPSIS
+.In libkern/OSAtomic.h
+.Ft int32_t
+.Fn OSAtomicAdd32 "int32_t theAmount" "volatile int32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicAdd32Barrier "int32_t theAmount" "volatile int32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicIncrement32 "volatile int32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicIncrement32Barrier "volatile int32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicDecrement32 "volatile int32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicDecrement32Barrier "volatile int32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicOr32 "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicOr32Barrier "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicAnd32 "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicAnd32Barrier "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicXor32 "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicXor32Barrier "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicOr32Orig "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicOr32OrigBarrier "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicAnd32Orig "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicAnd32OrigBarrier "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicXor32Orig "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int32_t
+.Fn OSAtomicXor32OrigBarrier "uint32_t theMask" "volatile uint32_t *theValue"
+.Ft int64_t
+.Fn OSAtomicAdd64 "int64_t theAmount" "volatile OSAtomic_int64_aligned64_t *theValue"
+.Ft int64_t
+.Fn OSAtomicAdd64Barrier "int64_t theAmount" "volatile OSAtomic_int64_aligned64_t *theValue"
+.Ft int64_t
+.Fn OSAtomicIncrement64 "volatile OSAtomic_int64_aligned64_t *theValue"
+.Ft int64_t
+.Fn OSAtomicIncrement64Barrier "volatile OSAtomic_int64_aligned64_t *theValue"
+.Ft int64_t
+.Fn OSAtomicDecrement64 "volatile OSAtomic_int64_aligned64_t *theValue"
+.Ft int64_t
+.Fn OSAtomicDecrement64Barrier "volatile OSAtomic_int64_aligned64_t *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwapInt "int oldValue" "int newValue" "volatile int *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwapIntBarrier "int oldValue" "int newValue" "volatile int *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwapLong "long oldValue" "long newValue" "volatile long *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwapLongBarrier "long oldValue" "long newValue" "volatile long *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwapPtr "void* oldValue" "void* newValue" "void* volatile *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwapPtrBarrier "void* oldValue" "void* newValue" "void* volatile *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwap32 "int32_t oldValue" "int32_t newValue" "volatile int32_t *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwap32Barrier "int32_t oldValue" "int32_t newValue" "volatile int32_t *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwap64 "int64_t oldValue" "int64_t newValue" "volatile OSAtomic_int64_aligned64_t *theValue"
+.Ft bool
+.Fn OSAtomicCompareAndSwap64Barrier "int64_t oldValue" "int64_t newValue" "volatile OSAtomic_int64_aligned64_t *theValue"
+.Ft bool
+.Fn OSAtomicTestAndSet "uint32_t n" "volatile void *theAddress"
+.Ft bool
+.Fn OSAtomicTestAndSetBarrier "uint32_t n" "volatile void *theAddress"
+.Ft bool
+.Fn OSAtomicTestAndClear "uint32_t n" "volatile void *theAddress"
+.Ft bool
+.Fn OSAtomicTestAndClearBarrier "uint32_t n" "volatile void *theAddress"
+.Ft bool
+.Fn OSAtomicEnqueue "OSQueueHead *list" "void *new" "size_t offset"
+.Ft void*
+.Fn OSAtomicDequeue "OSQueueHead *list" "size_t offset"
+.Ft void
+.Fn OSMemoryBarrier "void"
+.Sh DESCRIPTION
+.Bf -symbolic
+These are deprecated interfaces for atomic and synchronization
+operations, provided for compatibility with legacy code. New code should use
+the C11
+.In stdatomic.h
+interfaces.
+.Ef
+.Pp
+These functions are thread and multiprocessor safe.  For each function, there
+is a version which incorporates a memory barrier and another version which does
+not.
+Barriers strictly order memory access on a weakly-ordered architecture such as
+ARM. All loads and stores executed in sequential program
+order before the barrier will complete before any load or store executed after
+the barrier.
+On some platforms, such as ARM, the barrier operation can be quite expensive.
+.Pp
+Most code will want to use the barrier functions to ensure that memory shared
+between threads is properly synchronized.  For example, if you want to
+initialize a shared data structure and then atomically increment a variable to
+indicate that the initialization is complete, then you must use
+.Fn OSAtomicIncrement32Barrier
+to ensure that the stores to your data structure complete before the atomic add.
+Likewise, the consumer of that data structure must use
+.Fn OSAtomicDecrement32Barrier ,
+in order to ensure that their loads of the structure are not executed before
+the atomic decrement.  On the other hand, if you are simply incrementing a
+global counter, then it is safe and potentially much faster to use
+.Fn OSAtomicIncrement32 .
+If you are unsure which version to use, prefer the barrier variants as they are
+safer.
+.Pp
+The logical (and, or, xor) and bit test operations are layered on top of the
+.Fn OSAtomicCompareAndSwap
+primitives.  There are four versions of each logical operation, depending on
+whether or not there is a barrier, and whether the return value is the result
+of the operation (eg,
+.Fn OSAtomicOr32
+) or the original value before the operation (eg,
+.Fn OSAtomicOr32Orig
+).
+.Pp
+The memory address
+.Fa theValue
+must be "naturally aligned", i.e. 32-bit aligned for 32-bit operations and
+64-bit aligned for 64-bit operations. Note that this is not the default alignment
+of the
+.Vt int64_t
+in the iOS ARMv7 ABI, the
+.Vt OSAtomic_int64_aligned64_t
+type can be used to declare variables with the required alignment.
+.Pp
+The
+.Fn OSAtomicCompareAndSwap
+operations compare
+.Fa oldValue
+to
+.Fa *theValue ,
+and set
+.Fa *theValue
+to
+.Fa newValue
+if the comparison is equal.  The comparison and assignment
+occur as one atomic operation.
+.Pp
+.Fn OSAtomicTestAndSet
+and
+.Fn OSAtomicTestAndClear
+operate on bit (0x80 >> (
+.Fa n
+& 7)) of byte ((char*)
+.Fa theAddress
++ (
+.Fa n
+>> 3)).  They set the named bit to either 1 or 0, respectively.
+.Fa theAddress
+need not be aligned.
+.Pp
+The
+.Fn OSMemoryBarrier
+function strictly orders memory accesses in a weakly ordered memory model such
+as with ARM, by creating a barrier.
+All loads and stores executed in sequential program order before the barrier
+will complete with respect to the memory coherence mechanism, before any load
+or store executed after the barrier. Used with an atomic operation, the barrier
+can be used to create custom synchronization protocols as an alternative to the
+spinlock or queue/dequeue operations. Note that this barrier does not order
+uncached loads and stores. On a uniprocessor, the barrier operation is
+typically optimized into a no-op.
+.Sh RETURN VALUES
+The arithmetic operations return the new value, after the operation has been
+performed. The boolean operations come in two styles, one of which returns the
+new value, and one of which (the "Orig" versions) returns the old.
+The compare-and-swap operations return true if the comparison was equal, ie if
+the swap occured. The bit test and set/clear operations return the original
+value of the bit.
+.Sh SEE ALSO
+.Xr atomic 3 ,
+.Xr spinlock_deprecated 3
+.Sh HISTORY
+Most of these functions first appeared in Mac OS 10.4 (Tiger).  The "Orig"
+forms of the boolean operations, the "int", "long" and "ptr" forms of
+compare-and-swap first appeared in Mac OS 10.5 (Leopard).

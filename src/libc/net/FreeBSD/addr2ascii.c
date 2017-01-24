@@ -42,6 +42,8 @@ __FBSDID("$FreeBSD: src/lib/libc/net/addr2ascii.c,v 1.2 2002/03/22 21:52:28 obri
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <stdlib.h>
+
 /*-
  * Convert a network address from binary to printable numeric format.
  * This API is copied from INRIA's IPv6 implementation, but it is a
@@ -59,16 +61,20 @@ __FBSDID("$FreeBSD: src/lib/libc/net/addr2ascii.c,v 1.2 2002/03/22 21:52:28 obri
  * naming and the poor choice of arguments.
  */
 char *
-addr2ascii(af, addrp, len, buf)
-	int af;
-	const void *addrp;
-	int len;		/* should be size_t XXX */
-	char *buf;		/* XXX should pass length of buffer */
+addr2ascii(int af, const void *addrp, int len, char *buf)
 {
-	static char staticbuf[64]; /* 64 for AF_LINK > 16 for AF_INET */
-
-	if (!buf)
+	if (buf == NULL) {
+		static char *staticbuf = NULL;
+		
+		if (staticbuf == NULL) {
+			staticbuf = malloc(64); // 64 for AF_LINK > 16 for AF_INET
+			if (staticbuf == NULL) {
+				return NULL;
+			}
+		}
+		
 		buf = staticbuf;
+	}
 
 	switch(af) {
 	case AF_INET:

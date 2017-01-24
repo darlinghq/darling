@@ -67,9 +67,7 @@ struct lconv {
 	char	int_n_sign_posn;
 };
 
-#ifndef NULL
-#define NULL	__DARWIN_NULL
-#endif /* ! NULL */
+#include <sys/_types/_null.h>
 
 __BEGIN_DECLS
 struct lconv	*localeconv(void);

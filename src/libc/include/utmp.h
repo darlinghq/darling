@@ -72,11 +72,7 @@
  */
 
 #include <_types.h>
-
-#ifndef _TIME_T
-#define _TIME_T
-typedef __darwin_time_t	time_t;
-#endif
+#include <sys/_types/_time_t.h>
 
 /* These files no longer exist in 10.5 and later */
 #define	_PATH_UTMP	"/var/run/utmp"

@@ -44,8 +44,8 @@
 .In string.h
 .Ft void *
 .Fo memcpy
-.Fa "void *restrict s1"
-.Fa "const void *restrict s2"
+.Fa "void *restrict dst"
+.Fa "const void *restrict src"
 .Fa "size_t n"
 .Fc
 .Sh DESCRIPTION
@@ -55,18 +55,18 @@ function
 copies
 .Fa n
 bytes from memory area
-.Fa s2
+.Fa src
 to memory area
-.Fa s1 .
+.Fa dst .
 If 
-.Fa s1
+.Fa dst
 and 
-.Fa s2
+.Fa src
 overlap, behavior is undefined.
 Applications in which
-.Fa s1
+.Fa dst
 and 
-.Fa s2 
+.Fa src 
 might overlap should use
 .Xr memmove 3
 instead.
@@ -75,7 +75,7 @@ The
 .Fn memcpy
 function
 returns the original value of
-.Fa s1 .
+.Fa dst .
 .Sh SEE ALSO
 .Xr bcopy 3 ,
 .Xr memccpy 3 ,

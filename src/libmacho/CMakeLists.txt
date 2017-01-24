@@ -10,6 +10,8 @@ add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load -Wl,-flat_namespace -Wl,-undefined,suppress")
 
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
+
 SET(libmacho_sources
 	arch.c
 	get_end.c
@@ -29,5 +31,6 @@ SET(libmacho_sources
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libmacho.dylib")
 add_darling_library(macho SHARED ${libmacho_sources})
 target_link_libraries(macho system_kernel)
+make_fat(macho)
 
 install(TARGETS macho DESTINATION libexec/darling/usr/lib/system)

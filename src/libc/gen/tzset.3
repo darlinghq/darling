@@ -298,27 +298,32 @@ may be used to separate the
 .Em rule
 from the rest of the specification.
 .Sh FILES
-.Bl -tag -width /usr/share/zoneinfo/posixrules -compact
+#ifdef UNIFDEF_TZDIR_SYMLINK
+.ds zi /var/db/timezone/zoneinfo
+#else /* !UNIFDEF_TZDIR_SYMLINK */
+.ds zi /usr/share/zoneinfo
+#endif /* UNIFDEF_TZDIR_SYMLINK */
+.Bl -tag -width \*(zi/posixrules -compact
 .It Pa /etc/localtime
 local time zone file
-.It Pa /usr/share/zoneinfo
+.It Pa \*(zi
 time zone directory
-.It Pa /usr/share/zoneinfo/posixrules
+.It Pa \*(zi/posixrules
 rules for
 .Tn POSIX Ns -style
 .Tn TZ Ns 's
-.It Pa /usr/share/zoneinfo/GMT
+.It Pa \*(zi/GMT
 for
 .Tn UTC
 leap seconds
 .El
 .Pp
 If the file
-.Pa /usr/share/zoneinfo/GMT
+.Pa \*(zi/GMT
 does not exist,
 .Tn UTC
 leap seconds are loaded from
-.Pa /usr/share/zoneinfo/posixrules .
+.Pa \*(zi/posixrules .
 .Sh SEE ALSO
 .Xr date 1 ,
 .Xr gettimeofday 2 ,

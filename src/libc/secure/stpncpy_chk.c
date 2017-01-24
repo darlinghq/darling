@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2010-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -23,15 +23,27 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "secure.h"
 
-extern void __chk_fail (void) __attribute__((__noreturn__));
-
-void *
+char *
 __stpncpy_chk (char *restrict dest, char *restrict src,
 	       size_t len, size_t dstlen)
 {
-  if (__builtin_expect (dstlen < len, 0))
-    __chk_fail ();
+  size_t n;
+  char *retval;
 
-  return stpncpy (dest, src, len);
+  if (__builtin_expect (dstlen < len, 0))
+    __chk_fail_overflow ();
+
+  retval = stpncpy (dest, src, len); // Normally returns a pointer to the \0
+  n = retval - dest + 1;
+
+  // Check if it's pointing to the location after the buffer after not writing \0
+  if (n == len + 1)
+    n--;
+
+  if (__builtin_expect (__chk_assert_no_overlap != 0, 1))
+    __chk_overlap(dest, n, src, n);
+
+  return retval;
 }

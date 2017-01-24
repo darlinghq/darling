@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)ctermid.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/gen/ctermid.3,v 1.12 2007/01/09 00:27:53 imp Exp $
+.\" $FreeBSD$
 .\"
-.Dd June 4, 1993
+.Dd October 1, 2011
 .Dt CTERMID 3
 .Os
 .Sh NAME
@@ -40,24 +40,24 @@
 .Sh SYNOPSIS
 .In stdio.h
 .Ft char *
-.Fn ctermid "char *s"
+.Fn ctermid "char *buf"
 .Ft char *
-.Fn ctermid_r "char *s"
+.Fn ctermid_r "char *buf"
 .Sh DESCRIPTION
 The
 .Fn ctermid
-function generates a string that, when used as a pathname, refers to
+function generates a string, that, when used as a pathname, refers to
 the current controlling terminal of the calling process.
 .Pp
 If
-.Fa s
+.Fa buf
 is the
 .Dv NULL
 pointer, a pointer to a static area is returned.
 Otherwise, the pathname is copied into the memory referenced by
-.Fa s .
+.Fa buf .
 The argument
-.Fa s
+.Fa buf
 is assumed to be at least
 .Dv L_ctermid
 (as defined in the include
@@ -69,9 +69,9 @@ The
 .Fn ctermid_r
 function
 provides the same functionality as
-.Fn ctermid ,
+.Fn ctermid
 except that if
-.Fa s
+.Fa buf
 is a
 .Dv NULL
 pointer,
@@ -81,14 +81,18 @@ is returned.
 The current implementation simply returns
 .Ql /dev/tty .
 .Sh RETURN VALUES
-Upon successful completion, a
-.Pf non- Dv NULL
-pointer is returned.
-Otherwise, a
-.Dv NULL
-pointer is returned and the global variable
-.Va errno
-is set to indicate the error.
+The
+.Fn ctermid
+function returns
+.Fa buf
+if it is
+.Pf non- Dv NULL ,
+otherwise it returns the address of a static buffer.
+The
+.Fn ctermid_r
+function always returns
+.Fa buf ,
+even if it is the NULL pointer.
 .Sh ERRORS
 The current implementation detects no error conditions.
 .Sh SEE ALSO

@@ -62,16 +62,8 @@
 #define	_NDBM_H_
 
 #include <_types.h>
-
-#ifndef _MODE_T
-typedef __darwin_mode_t	mode_t;
-#define _MODE_T
-#endif
-
-#ifndef _SIZE_T
-#define _SIZE_T
-typedef __darwin_size_t	size_t;
-#endif
+#include <sys/_types/_mode_t.h>
+#include <sys/_types/_size_t.h>
 
 #if !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
 /* Map dbm interface onto db(3). */

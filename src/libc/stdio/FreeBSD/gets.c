@@ -53,7 +53,7 @@ gets(buf)
 	int c;
 	char *s;
 	static int warned;
-	static char w[] =
+	static const char w[] =
 	    "warning: this program uses gets(), which is unsafe.\n";
 
 	FLOCKFILE(stdin);

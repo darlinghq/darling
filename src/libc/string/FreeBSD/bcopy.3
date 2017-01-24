@@ -42,20 +42,20 @@
 .Sh SYNOPSIS
 .In strings.h
 .Ft void
-.Fn bcopy "const void *s1" "void *s2" "size_t n"
+.Fn bcopy "const void *src" "void *dst" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn bcopy
 function
 copies
-.Fa n
+.Fa len
 bytes from string
-.Fa s1
+.Fa src
 to string
-.Fa s2 .
+.Fa dst .
 The two strings may overlap.
 If
-.Fa n
+.Fa len
 is zero, no bytes are copied.
 .Sh SEE ALSO
 .Xr memccpy 3 ,
@@ -75,3 +75,9 @@ before it was moved to
 for
 .St -p1003.1-2001
 compliance.
+.Pp
+.Fn bcopy
+was deprecated in
+.St -p1003.1-2001
+and removed in
+.St -p1003.1-2008 .

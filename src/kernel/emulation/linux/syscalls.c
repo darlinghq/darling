@@ -70,7 +70,7 @@
 #include "process/execve.h"
 #include "misc/getlogin.h"
 #include "misc/shared_region_check_np.h"
-#include "misc/ioctl.h"
+#include "ioctl/ioctl.h"
 #include "misc/getrlimit.h"
 #include "misc/setrlimit.h"
 #include "misc/thread_selfid.h"

@@ -1,9 +1,0 @@
-creat (obsoleted by open)
-killpg
-ptarce
-setregid
-setreuid
-sigblock (obsoleted by sigprocmask)
-sigpause (obsoleted by sigsuspend)
-sigsetmask (obsoleted by sigprocmask)
-sigvec (obsoleted by sigaction)

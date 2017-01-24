@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
@@ -22,10 +21,6 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 #import <architecture/i386/asm_help.h>
-
-#ifdef DARLING
-#	define _moncount moncount
-#endif
 
 .text
         .globl mcount

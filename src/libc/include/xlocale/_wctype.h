@@ -27,43 +27,43 @@
 #if !defined(_DONT_USE_CTYPE_INLINE_) && \
     (defined(_USE_CTYPE_INLINE_) || defined(__GNUC__) || defined(__cplusplus))
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswblank_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_B, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswhexnumber_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_X, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswideogram_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_I, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswnumber_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_D, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswphonogram_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_Q, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswrune_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, 0xFFFFFFF0L, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswspecial_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_T, _l));

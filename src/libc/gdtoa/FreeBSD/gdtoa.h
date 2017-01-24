@@ -110,7 +110,7 @@ extern char* gdtoa ANSI((FPI *fpi, int be, ULong *bits, int *kindp,
 extern void freedtoa ANSI((char*));
 extern float  strtof ANSI((CONST char *, char **));
 extern double strtod ANSI((CONST char *, char **));
-extern int strtodg ANSI((CONST char*, char**, FPI*, Long*, ULong*, locale_t)) __DARWIN_ALIAS(strtodg);
+extern int strtodg ANSI((CONST char*, char**, CONST FPI*, Long*, ULong*, locale_t)) __DARWIN_ALIAS(strtodg);
 
 extern char*	g_ddfmt  ANSI((char*, double*, int, size_t));
 extern char*	g_dfmt   ANSI((char*, double*, int, size_t));

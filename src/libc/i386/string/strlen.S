@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
  *
@@ -20,10 +19,6 @@
  *
  * @APPLE_LICENSE_HEADER_END@
  */
- 
-#ifdef DARLING
-#	define _strlen strlen
-#endif
 
 /*
  * Strlen, for processors with SSE3.
@@ -38,7 +33,7 @@
 
         .text
         .globl  _strlen
-        .align  (1<<4), 0x90
+        .align  4, 0x90
 _strlen:				// size_t strlen(char *b);
 	movl	4(%esp),%edx		// get ptr to string
 	pxor	%xmm0,%xmm0		// zero %xmm0

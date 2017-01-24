@@ -27,10 +27,9 @@
  * SUCH DAMAGE.
  */
 
-#ifdef VARIANT_CANCELABLE
-#undef __DARWIN_NON_CANCELABLE
-#define __DARWIN_NON_CANCELABLE 0
-#endif /* VARIANT_CANCELABLE */
+#if defined(VARIANT_CANCELABLE) && __DARWIN_NON_CANCELABLE != 0
+#error cancellable call vs. __DARWIN_NON_CANCELABLE mismatch
+#endif
 
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)usleep.c	8.1 (Berkeley) 6/4/93";

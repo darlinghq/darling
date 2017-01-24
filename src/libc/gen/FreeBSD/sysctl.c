@@ -47,11 +47,8 @@ extern int __sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
     void *newp, size_t newlen);
 
 int
-sysctl(name, namelen, oldp, oldlenp, newp, newlen)
-	int *name;
-	u_int namelen;
-	void *oldp, *newp;
-	size_t *oldlenp, newlen;
+sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen)
+__attribute__((disable_tail_calls))
 {
 	if (name[0] != CTL_USER) {
 		if (namelen == 2 && name[0] == CTL_KERN && name[1] == KERN_EXEC) {

@@ -1,0 +1,66 @@
+.Dd Aug 19, 2012
+.Dt XPRINTF_COMP 3
+.Os Darwin
+.Sh NAME
+.Nm free_printf_comp , new_printf_comp
+.Nd extensible printf compilation
+.Sh SYNOPSIS
+.In printf.h
+.Ft void
+.Fn free_printf_comp "printf_comp_t pc"
+.Ft printf_comp_t
+.Fn new_printf_comp "printf_domain_t restrict domain" "locale_t restrict loc" "const char * restrict fmt"
+.Sh DESCRIPTION
+To ameliorate some of the slowness caused by the extra overhead in
+extensible printf (see
+.Xr xprintf 5 ) ,
+a compile/execute mechanism has been created.
+The
+.Fn new_printf_comp
+function compiles the given format string, along with a printf domain
+(see
+.Xr xprintf_domain 3 )
+and an extended locale
+(see
+.Xr xlocale 3 ) ,
+and returns a
+.Ft printf_comp_t
+structure.
+The domain may not be
+.Dv NULL ,
+but the locale can be
+.Dv NULL ,
+which means to use the current locale, either the per-thread locale if it
+was set, or else the global locale.
+Because the
+.Ft printf_comp_t
+structure records the domain and locale, care should be taken if either
+of these are changed.
+.Pp
+Once a
+.Ft printf_comp_t
+structure is created, it can be passed to one of the extensible printf
+execution variants, described in
+.Xr xprintf_exec 3 ,
+along with the necessary arguments.
+Creating the
+.Ft printf_comp_t
+structure needs to be done only once, but it can be passed
+to extensible printf execution variants any number of times.
+.Pp
+When the
+.Ft printf_comp_t
+structure is no longer needed, it should be passed to
+.Fn free_printf_comp
+to release internal memory.
+.Sh RETURN VALUES
+The
+.Fn new_printf_comp
+function returns the new structure, or
+.Dv NULL
+on error (usually NULL domain or out of memory condition).
+.Sh SEE ALSO
+.Xr xlocale 3 ,
+.Xr xprintf_domain 3 ,
+.Xr xprintf_exec 3 ,
+.Xr xprintf 5

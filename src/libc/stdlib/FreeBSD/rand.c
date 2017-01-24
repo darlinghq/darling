@@ -33,7 +33,7 @@
 static char sccsid[] = "@(#)rand.c	8.1 (Berkeley) 6/14/93";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/stdlib/rand.c,v 1.17 2007/12/11 20:39:32 ache Exp $");
+__FBSDID("$FreeBSD$");
 
 #include "namespace.h"
 #include <sys/time.h>          /* for sranddev() */
@@ -116,12 +116,12 @@ u_int seed;
  * secure random(4) interface.
  */
 void
-sranddev()
+sranddev(void)
 {
 	int fd, done;
 
 	done = 0;
-	fd = _open("/dev/random", O_RDONLY, 0);
+	fd = _open("/dev/random", O_RDONLY | O_CLOEXEC, 0);
 	if (fd >= 0) {
 		if (_read(fd, (void *) &next, sizeof(next)) == sizeof(next))
 			done = 1;
@@ -130,10 +130,9 @@ sranddev()
 
 	if (!done) {
 		struct timeval tv;
-		unsigned long junk;
 
 		gettimeofday(&tv, NULL);
-		srand((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec ^ junk);
+		srand((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec);
 	}
 }
 

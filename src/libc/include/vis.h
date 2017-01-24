@@ -20,6 +20,9 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+/*	$NetBSD: vis.h,v 1.21 2013/02/20 17:01:15 christos Exp $	*/
+/*	$FreeBSD$	*/
+
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -32,11 +35,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -59,34 +58,35 @@
 #define	_VIS_H_
 
 #include <_types.h>
-
-#ifndef	_SIZE_T
-#define	_SIZE_T
-typedef	__darwin_size_t		size_t;
-#endif
+#include <sys/_types/_size_t.h>
 
 /*
  * to select alternate encoding format
  */
-#define	VIS_OCTAL	0x01	/* use octal \ddd format */
-#define	VIS_CSTYLE	0x02	/* use \[nrft0..] where appropriate */
+#define	VIS_OCTAL	0x0001	/* use octal \ddd format */
+#define	VIS_CSTYLE	0x0002	/* use \[nrft0..] where appropiate */
 
 /*
  * to alter set of characters encoded (default is to encode all
  * non-graphic except space, tab, and newline).
  */
-#define	VIS_SP		0x04	/* also encode space */
-#define	VIS_TAB		0x08	/* also encode tab */
-#define	VIS_NL		0x10	/* also encode newline */
+#define	VIS_SP		0x0004	/* also encode space */
+#define	VIS_TAB		0x0008	/* also encode tab */
+#define	VIS_NL		0x0010	/* also encode newline */
 #define	VIS_WHITE	(VIS_SP | VIS_TAB | VIS_NL)
-#define	VIS_SAFE	0x20	/* only encode "unsafe" characters */
+#define	VIS_SAFE	0x0020	/* only encode "unsafe" characters */
 
 /*
  * other
  */
-#define	VIS_NOSLASH	0x40	/* inhibit printing '\' */
-#define	VIS_HTTPSTYLE	0x80	/* http-style escape % HEX HEX */
-#define	VIS_GLOB	0x100	/* encode glob(3) magics */
+#define	VIS_NOSLASH	0x0040	/* inhibit printing '\' */
+#define	VIS_HTTP1808	0x0080	/* http-style escape % hex hex */
+#define	VIS_HTTPSTYLE	0x0080	/* http-style escape % hex hex */
+#define	VIS_GLOB	0x0100	/* encode glob(3) magic characters */
+#define	VIS_MIMESTYLE	0x0200	/* mime-style escape = HEX HEX */
+#define	VIS_HTTP1866	0x0400	/* http-style &#num; or &string; */
+#define	VIS_NOESCAPE	0x0800	/* don't decode `\' */
+#define	_VIS_END	0x1000	/* for unvis */
 
 /*
  * unvis return codes
@@ -100,16 +100,38 @@ typedef	__darwin_size_t		size_t;
 /*
  * unvis flags
  */
-#define	UNVIS_END	1	/* no more characters */
+#define	UNVIS_END	_VIS_END	/* no more characters */
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
 char	*vis(char *, int, int, int);
+char	*nvis(char *, size_t, int, int, int);
+
+char	*svis(char *, int, int, int, const char *);
+char	*snvis(char *, size_t, int, int, int, const char *);
+
 int	strvis(char *, const char *, int);
+int	strnvis(char *, size_t, const char *, int);
+
+int	strsvis(char *, const char *, int, const char *);
+int	strsnvis(char *, size_t, const char *, int, const char *);
+
 int	strvisx(char *, const char *, size_t, int);
+int	strnvisx(char *, size_t, const char *, size_t, int);
+int 	strenvisx(char *, size_t, const char *, size_t, int, int *);
+
+int	strsvisx(char *, const char *, size_t, int, const char *);
+int	strsnvisx(char *, size_t, const char *, size_t, int, const char *);
+int	strsenvisx(char *, size_t, const char *, size_t , int, const char *,
+    int *);
+
 int	strunvis(char *, const char *);
+int	strnunvis(char *, size_t, const char *);
+
 int	strunvisx(char *, const char *, int);
+int	strnunvisx(char *, size_t, const char *, int);
+
 int	unvis(char *, int, int *, int);
 __END_DECLS
 

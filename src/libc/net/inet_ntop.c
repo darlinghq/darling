@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2003,2005,2006,2011,2012 Apple, Inc. All rights reserved.
+ *
+ * @APPLE_LICENSE_HEADER_START@
+ *
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
+ *
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ *
+ * @APPLE_LICENSE_HEADER_END@
+ */
 
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -12,6 +34,19 @@
 #define MAX_V6_ADDR_LEN 64
 
 static const char *hexchars = "0123456789abcdef";
+
+const char * inet_ntop6(const struct in6_addr *addr, char *dst, socklen_t size);
+const char * inet_ntop4(const struct in_addr *addr, char *dst, socklen_t size);
+
+const char *
+inet_ntop(int af, const void *addr, char *buf, socklen_t len)
+{
+	if (af == AF_INET6) return inet_ntop6(addr, buf, len);
+	if (af == AF_INET) return inet_ntop4(addr, buf, len);
+
+	errno = EAFNOSUPPORT;
+	return NULL;
+}
 
 const char *
 inet_ntop6(const struct in6_addr *addr, char *dst, socklen_t size)
@@ -43,16 +78,26 @@ inet_ntop6(const struct in6_addr *addr, char *dst, socklen_t size)
 	j = IN6_IS_ADDR_V4COMPAT(addr);
 	if ((i != 0) || (j != 0))
 	{
+		const char *prefix;
+		socklen_t prefix_len;
+		if (i != 0) {
+			prefix = "::ffff:";
+			prefix_len = 7;
+		} else {
+			prefix = "::";
+			prefix_len = 2;
+		}
 		a4.s_addr = addr->__u6_addr.__u6_addr32[3];
-		sprintf(tmp, "::%s%s", (i != 0) ? "ffff:" : "", inet_ntoa(a4));
+		inet_ntop4(&a4, tmp, sizeof(tmp));
 		len = strlen(tmp) + 1;
-		if (len > size)
+		if (prefix_len + len > size)
 		{
 			errno = ENOSPC;
 			return NULL;
 		}
 
-		memcpy(dst, tmp, len);
+		memcpy(dst, prefix, prefix_len);
+		memcpy(dst + prefix_len, tmp, len);
 		return dst;
 	}
 
@@ -193,14 +238,4 @@ inet_ntop4(const struct in_addr *addr, char *dst, socklen_t size)
 
 	memcpy(dst, tmp, len);
 	return dst;
-}
-
-const char *
-inet_ntop(int af, const void *addr, char *buf, socklen_t len)
-{
-	if (af == AF_INET6) return inet_ntop6(addr, buf, len);
-	if (af == AF_INET) return inet_ntop4(addr, buf, len);
-
-	errno = EAFNOSUPPORT;
-	return NULL;
 }

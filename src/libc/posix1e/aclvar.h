@@ -105,7 +105,8 @@ struct _acl_permset {
 			ACL_WRITE_EXTATTRIBUTES |			\
 			ACL_READ_SECURITY |				\
 			ACL_WRITE_SECURITY |				\
-			ACL_CHANGE_OWNER)
+			ACL_CHANGE_OWNER |				\
+			ACL_SYNCHRONIZE)
 
 #define _ACL_VALID_PERM(_f)	(((_f) & ~_ACL_PERMS_MASK) == 0)
 

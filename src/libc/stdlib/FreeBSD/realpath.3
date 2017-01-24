@@ -99,6 +99,16 @@ If
 .Fa resolved_name
 was non-NULL, it will
 contains the pathname which caused the problem.
+.Sh VARIANTS
+Defining 
+.Dv _DARWIN_C_SOURCE
+or
+.Dv _DARWIN_BETTER_REALPATH
+before including stdio.h will cause the provided implementation of
+.Fn realpath
+to use F_GETPATH from
+.Xr fcntl 2
+to discover the path.
 .Sh ERRORS
 The function
 .Fn realpath

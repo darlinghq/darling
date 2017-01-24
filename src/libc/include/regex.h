@@ -91,25 +91,16 @@
 
 #include <_types.h>
 #include <Availability.h>
+#include <sys/_types/_size_t.h>
 
 /*********/
 /* types */
 /*********/
 #if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
-#ifndef	__cplusplus
-#ifndef	_WCHAR_T
-#define	_WCHAR_T
-typedef	__darwin_wchar_t	wchar_t;
-#endif	/* _WCHAR_T */
-#endif	/* __cplusplus */
+#include <sys/_types/_wchar_t.h>
 #endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
 typedef __darwin_off_t regoff_t;
-
-#ifndef _SIZE_T
-#define _SIZE_T
-typedef __darwin_size_t	size_t;
-#endif
 
 typedef struct {
 	int re_magic;

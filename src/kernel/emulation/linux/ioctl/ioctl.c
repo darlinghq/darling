@@ -10,8 +10,7 @@
 	if (state == IOCTL_HANDLED) return retval; }
 
 // Emulated ioctl implementation
-VISIBLE
-long ioctl(int fd, int cmd, void* arg)
+long sys_ioctl(int fd, int cmd, void* arg)
 {
 	IOCTL_STEP(handle_filio(fd, cmd, arg, &retval));
 	IOCTL_STEP(handle_termios(fd, cmd, arg, &retval));

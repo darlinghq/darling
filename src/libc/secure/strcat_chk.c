@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 Apple Inc. All rights reserved.
+ * Copyright (c) 2007-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -24,28 +24,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-extern void __chk_fail (void) __attribute__((__noreturn__));
+#include "secure.h"
 
 char *
-__strcat_chk (char *__restrict s, const char *__restrict append,
-	      size_t slen)
+__strcat_chk (char *__restrict dest, const char *__restrict append,
+	      size_t dstlen)
 {
-  char *save = s;
+  size_t len1 = strlen(dest);
+  size_t len2 = strlen(append);
 
-  /* Advance to the end. */
-  for (; *s; ++s)
-    if (__builtin_expect (slen-- == 0, 0))
-      __chk_fail ();
+  if (__builtin_expect (dstlen < len1 + len2 + 1, 0))
+    __chk_fail_overflow ();
 
-  do
-    {
-      /* Append the string.  Make sure we check before writing.  */
-      if (__builtin_expect (slen-- == 0, 0))
-	__chk_fail ();
+  if (__builtin_expect (__chk_assert_no_overlap != 0, 1))
+    __chk_overlap(dest, len1 + len2 + 1, append, len2 + 1);
 
-    } while (*s++ = *append++);
-
-  return save;
-
+  memcpy(dest + len1, append, len2 + 1);
+  return dest;
 }

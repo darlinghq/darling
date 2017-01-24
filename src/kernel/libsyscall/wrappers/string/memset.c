@@ -36,6 +36,8 @@
 #define	wsize	sizeof(u_int)
 #define	wmask	(wsize - 1)
 
+// n.b. this must be compiled with -fno-builtin or it might get optimized into
+// a recursive call to bzero.
 __attribute__((visibility("hidden")))
 void
 bzero(void *dst0, size_t length)

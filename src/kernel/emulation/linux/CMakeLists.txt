@@ -157,7 +157,7 @@ set(emulation_sources
 	time/getitimer.c
 	ioctl/ioctl.c
 	ioctl/termios.c
-        ioctl/filio.c
+	ioctl/filio.c
 	ext/uname.c
 	ext/epoll_create.c
 	ext/epoll_create1.c
@@ -228,4 +228,7 @@ set_source_files_properties(misc/sysctl.c PROPERTIES COMPILE_FLAGS
 add_library(emulation OBJECT ${emulation_sources})
 add_library(emulation_dyld OBJECT ${emulation_sources})
 set_target_properties(emulation_dyld PROPERTIES COMPILE_FLAGS "-ffunction-sections -DVARIANT_DYLD")
+
+make_fat(emulation)
+make_fat(emulation_dyld)
 

@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005, 2008 Apple Inc. All rights reserved.
  *
@@ -42,13 +41,12 @@
 #include "lmonetary.h"
 #include "lnumeric.h"
 #include "timelocal.h"
+#include <TargetConditionals.h>
 
 #undef MB_CUR_MAX
 #define MB_CUR_MAX	(__current_locale()->__lc_ctype->__mb_cur_max)
 #undef MB_CUR_MAX_L
 #define MB_CUR_MAX_L(x)	((x)->__lc_ctype->__mb_cur_max)
-
-extern int __is_threaded;
 
 typedef void (*__free_extra_t)(void *);
 
@@ -164,6 +162,13 @@ struct _xlocale {
 	struct lconv __lc_localeconv;
 };
 
+#define DEFAULT_CURRENT_LOCALE(x)	\
+				if ((x) == NULL) { \
+					(x) = __current_locale(); \
+				} else if ((x) == LC_GLOBAL_LOCALE) { \
+					(x) = &__global_locale; \
+				}
+
 #define NORMALIZE_LOCALE(x)	if ((x) == NULL) { \
 					(x) = _c_locale; \
 				} else if ((x) == LC_GLOBAL_LOCALE) { \
@@ -175,13 +180,19 @@ struct _xlocale {
 				if ((x)->__free_extra) \
 					(*(x)->__free_extra)((x)); \
 				free((x)); \
+				(x) = NULL; \
 			}
 #define	XL_RETAIN(x)	if ((x) && (x)->__free_extra != XPERMANENT) { OSAtomicIncrement32Barrier(&(x)->__refcount); }
 #define XL_UNLOCK(x)	UNLOCK((x)->__lock);
 
-__private_extern__ struct __xlocale_st_runelocale _DefaultRuneXLocale;
-__private_extern__ struct _xlocale	__global_locale;
-__private_extern__ pthread_key_t	__locale_key;
+__attribute__((visibility("hidden")))
+extern struct __xlocale_st_runelocale _DefaultRuneXLocale;
+
+__attribute__((visibility("hidden")))
+extern struct _xlocale	__global_locale;
+
+__attribute__((visibility("hidden")))
+extern pthread_key_t	__locale_key;
 
 __BEGIN_DECLS
 
@@ -192,7 +203,15 @@ void	__xlocale_init(void);
 static inline __attribute__((always_inline)) locale_t
 __current_locale(void)
 {
-	if (__locale_key == ~0) return &__global_locale;
+#if TARGET_IPHONE_SIMULATOR
+	/* <rdar://problem/14136256> Crash in _objc_inform for duplicate class name during simulator launch
+	 * TODO: Remove after the simulator's libSystem is initialized properly.
+	 */
+	if (__locale_key == (pthread_key_t)-1) {
+		return &__global_locale;
+	}
+#endif
+
 	locale_t __locale = (locale_t)pthread_getspecific(__locale_key);
 	return (__locale ? __locale : &__global_locale);
 }

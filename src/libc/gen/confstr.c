@@ -64,9 +64,47 @@
 #include <unistd.h>
 #include <stdio.h>	/* for P_tmpdir */
 
+#ifndef __has_include
 #include <dirhelper_priv.h>
+#else
+#if __has_include(<dirhelper_priv.h>)
+#include <dirhelper_priv.h>
+#else
+typedef enum {
+    DIRHELPER_USER_LOCAL = 0,
+    DIRHELPER_USER_LOCAL_TEMP,
+    DIRHELPER_USER_LOCAL_CACHE,
+    DIRHELPER_USER_LOCAL_LAST = DIRHELPER_USER_LOCAL_CACHE
+} dirhelper_which_t;
+#endif
+#endif
 
-extern char *_dirhelper(dirhelper_which_t which, char *path, size_t pathlen);
+#include "libc_private.h"
+
+#if __DARWIN_UNIX03
+static char *(*__dirhelper_func)(int, char *, size_t);
+
+__attribute__((__visibility__("hidden")))
+void
+__confstr_init(const struct _libc_functions *funcs)
+{
+	__dirhelper_func = funcs->dirhelper;
+}
+
+__attribute__((__visibility__("hidden")))
+char *
+__dirhelper(dirhelper_which_t which, char *path, size_t pathlen)
+{
+	if (__dirhelper_func) {
+		return __dirhelper_func(which, path, pathlen);
+	} else {
+		return NULL;
+	}
+}
+#else // !__DARWIN_UNIX03
+__attribute__((__visibility__("hidden")))
+char *__dirhelper(dirhelper_which_t which, char *path, size_t pathlen);
+#endif // !__DARWIN_UNIX03
 
 #if __DARWIN_UNIX03
 #define CONFSTR_ERR_RET	0
@@ -176,7 +214,7 @@ docopy:
 			errno = ENOMEM;
 			return (CONFSTR_ERR_RET);
 		}
-		if (_dirhelper(DIRHELPER_USER_LOCAL, p, PATH_MAX) == NULL) {
+		if (__dirhelper(DIRHELPER_USER_LOCAL, p, PATH_MAX) == NULL) {
 			if (errno != ENOMEM)
 				errno = EIO;
 			return (CONFSTR_ERR_RET);
@@ -188,10 +226,10 @@ docopy:
 			errno = ENOMEM;
 			return (CONFSTR_ERR_RET);
 		}
-		if (_dirhelper(DIRHELPER_USER_LOCAL_TEMP, p, PATH_MAX) == NULL) {
+		if (__dirhelper(DIRHELPER_USER_LOCAL_TEMP, p, PATH_MAX) == NULL) {
 			int dh_errno = errno;
 			/*
-			 * If _dirhelper() fails, try TMPDIR and P_tmpdir,
+			 * If __dirhelper() fails, try TMPDIR and P_tmpdir,
 			 * finally failing otherwise.
 			 */
 			if ((p = getenv("TMPDIR")) && access(p, W_OK) == 0)
@@ -211,7 +249,7 @@ docopy:
 			errno = ENOMEM;
 			return (CONFSTR_ERR_RET);
 		}
-		if (_dirhelper(DIRHELPER_USER_LOCAL_CACHE, p, PATH_MAX) == NULL) {
+		if (__dirhelper(DIRHELPER_USER_LOCAL_CACHE, p, PATH_MAX) == NULL) {
 			if (errno != ENOMEM)
 				errno = EIO;
 			return (CONFSTR_ERR_RET);

@@ -771,8 +771,7 @@ reswitch:	switch (ch) {
 				prec = dtoaend - dtoaresult;
 			if (expt == INT_MAX)
 				ox[1] = '\0';
-			if (convbuf != NULL)
-				free(convbuf);
+			free(convbuf);
 			ndig = dtoaend - dtoaresult;
 			cp = convbuf = __mbsconv(dtoaresult, -1, loc);
 			freedtoa(dtoaresult);
@@ -815,8 +814,7 @@ reswitch:	switch (ch) {
 fp_begin:
 			if (prec < 0)
 				prec = DEFPREC;
-			if (convbuf != NULL)
-				free(convbuf);
+			free(convbuf);
 			if (flags & LONGDBL) {
 				fparg.ldbl = GETARG(long double);
 				dtoaresult =
@@ -955,11 +953,11 @@ fp_common:
 			} else {
 				char *mbp;
 
-				if (convbuf != NULL)
-					free(convbuf);
-				if ((mbp = GETARG(char *)) == NULL)
+				free(convbuf);
+				if ((mbp = GETARG(char *)) == NULL) {
+					convbuf = NULL;
 					cp = L"(null)";
-				else {
+				} else {
 					convbuf = __mbsconv(mbp, prec, loc);
 					if (convbuf == NULL) {
 						fp->_flags |= __SERR;
@@ -1256,7 +1254,7 @@ number:			if ((dprec = prec) >= 0)
 		break;							\
 	}								\
 	ret += vlen;							\
-	PRINT(vstr, vlen);						\
+	PRINT((const CHAR *) vstr, vlen);				\
 	free(vstr);							\
 } while (0)
 #else /* !V64TYPE */
@@ -1285,7 +1283,7 @@ number:			if ((dprec = prec) >= 0)
 		break;							\
 	}								\
 	ret += vlen;							\
-	PRINT(vstr, vlen);						\
+	PRINT((const CHAR *) vstr, vlen);				\
 	free(vstr);							\
 } while (0)
 #endif /* V64TYPE */
@@ -1455,8 +1453,7 @@ done:
 	FLUSH();
 error:
 	va_end(orgap);
-	if (convbuf != NULL)
-		free(convbuf);
+	free(convbuf);
 	if (__sferror(fp))
 		ret = EOF;
 	if ((argtable != NULL) && (argtable != statargtable))

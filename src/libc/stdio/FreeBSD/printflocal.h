@@ -35,7 +35,13 @@
 /* 
  * Defining here VECTORS for all files that include this header (<rdar://problem/8466056>)
  */
-#define        VECTORS
+#ifndef VECTORS
+#define VECTORS
+typedef __attribute__ ((vector_size(16))) unsigned char VECTORTYPE;
+#ifdef __SSE2__
+#define V64TYPE
+#endif /* __SSE2__ */
+#endif /* VECTORS */
 
 /*
  * Flags used during conversion.
@@ -67,13 +73,6 @@
 
 /* Size of the static argument table. */
 #define STATIC_ARG_TBL_SIZE 8
-
-#ifdef VECTORS
-typedef __attribute__ ((vector_size(16))) unsigned char VECTORTYPE;
-#ifdef __SSE2__
-#define V64TYPE
-#endif /* __SSE2__ */
-#endif /* VECTORS */
 
 union arg {
 	int	intarg;

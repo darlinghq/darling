@@ -37,6 +37,7 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/getlogin.c,v 1.11 2009/12/05 19:04:21 ed Ex
 #include <errno.h>
 #include <pwd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "namespace.h"
@@ -45,28 +46,30 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/getlogin.c,v 1.11 2009/12/05 19:04:21 ed Ex
 
 #include "libc_private.h"
 
-#define	THREAD_LOCK()	if (__isthreaded) _pthread_mutex_lock(&logname_mutex)
-#define	THREAD_UNLOCK()	if (__isthreaded) _pthread_mutex_unlock(&logname_mutex)
+extern int __getlogin(char *, int);
 
-extern int		__getlogin(char *, int);
-
-int			_logname_valid;		/* known to setlogin() */
-static pthread_mutex_t	logname_mutex = PTHREAD_MUTEX_INITIALIZER;
+__private_extern__ pthread_mutex_t __logname_mutex = PTHREAD_MUTEX_INITIALIZER;
+__private_extern__ char *__logname = NULL;
 
 static char *
 getlogin_basic(int *status)
 {
-	static char logname[MAXLOGNAME];
+	if (__logname == NULL) {
+		__logname = calloc(1, MAXLOGNAME);
+		if (__logname == NULL) {
+			*status = ENOMEM;
+			return (NULL);
+		}
+	}
 
-	if (_logname_valid == 0) {
-		if (__getlogin(logname, sizeof(logname)) < 0) {
+	if (__logname[0] == 0) {
+		if (__getlogin(__logname, MAXLOGNAME) < 0) {
 			*status = errno;
 			return (NULL);
 		}
-		_logname_valid = 1;
 	}
 	*status = 0;
-	return (*logname ? logname : NULL);
+	return (*__logname ? __logname : NULL);
 }
 
 char *
@@ -75,9 +78,9 @@ getlogin(void)
 	char	*result;
 	int	status;
 
-	THREAD_LOCK();
+	pthread_mutex_lock(&__logname_mutex);
 	result = getlogin_basic(&status);
-	THREAD_UNLOCK();
+	pthread_mutex_unlock(&__logname_mutex);
 	return (result);
 }
 
@@ -87,15 +90,15 @@ getlogin_r(char *logname, size_t namelen)
 	char	*result;
 	int	len;
 	int	status;
-	
-	THREAD_LOCK();
+
+	pthread_mutex_lock(&__logname_mutex);
 	result = getlogin_basic(&status);
 	if (status == 0) {
-		if ((len = strlen(result) + 1) > namelen)
+		if (strlcpy(logname, __logname, namelen) > namelen) {
 			status = ERANGE;
-		else
-			strncpy(logname, result, len);
+		}
 	}
-	THREAD_UNLOCK();
+	pthread_mutex_unlock(&__logname_mutex);
+
 	return (status);
 }

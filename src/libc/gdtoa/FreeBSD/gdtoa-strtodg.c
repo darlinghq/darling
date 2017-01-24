@@ -47,7 +47,7 @@ THIS SOFTWARE.
 extern CONST int fivesbits[];
 int all_on(Bigint *b, int n);
 Bigint *set_ones(Bigint *b, int n);
-int rvOK(U *d, FPI *fpi, Long *exp, ULong *bits, int exact, int rd, int *irv);
+int rvOK(U *d, CONST FPI *fpi, Long *exp, ULong *bits, int exact, int rd, int *irv);
 int mantbits(U *d);
 #else /* !BUILDING_VARIANT */
 
@@ -188,9 +188,9 @@ set_ones(Bigint *b, int n)
 rvOK
 #ifdef KR_headers
  (d, fpi, exp, bits, exact, rd, irv)
- U *d; FPI *fpi; Long *exp; ULong *bits; int exact, rd, *irv;
+ U *d; CONST FPI *fpi; Long *exp; ULong *bits; int exact, rd, *irv;
 #else
- (U *d, FPI *fpi, Long *exp, ULong *bits, int exact, int rd, int *irv)
+ (U *d, CONST FPI *fpi, Long *exp, ULong *bits, int exact, int rd, int *irv)
 #endif
 {
 	Bigint *b;
@@ -334,9 +334,9 @@ mantbits(U *d)
 strtodg
 #ifdef KR_headers
 	(s00, se, fpi, exp, bits, loc)
-	CONST char *s00; char **se; FPI *fpi; Long *exp; ULong *bits; locale_t loc;
+	CONST char *s00; char **se; CONST FPI *fpi; Long *exp; ULong *bits; locale_t loc;
 #else
-	(CONST char *s00, char **se, FPI *fpi, Long *exp, ULong *bits, locale_t loc)
+	(CONST char *s00, char **se, CONST FPI *fpi, Long *exp, ULong *bits, locale_t loc)
 #endif
 {
 	int abe, abits, asub;

@@ -7,10 +7,4 @@
 
 #include "spinlock.h"
 
-__attribute__ ((visibility ("visible")))
 spinlock_t __gdtoa_locks[2];
-
-static void bug_workaround()
-{
-	__gdtoa_locks[0] = 0;
-}

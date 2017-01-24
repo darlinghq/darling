@@ -45,6 +45,11 @@ The
 .Fn daemon
 function is for programs wishing to detach themselves from the
 controlling terminal and run in the background as system daemons.
+The
+.Xr fork 2
+system call is used; see CAVEATS below about the environment after a
+.Fn fork
+(without a corresponding call to one of the exec routines).
 On Mac OS X, the use of this API is discouraged in favor of using
 .Xr launchd 8 .
 .Pp
@@ -74,6 +79,7 @@ and
 .Xr setsid 2 .
 .Sh SEE ALSO
 .Xr fork 2 ,
+.Xr launchd 8 ,
 .Xr setsid 2 ,
 .Xr sigaction 2
 .Sh HISTORY
@@ -82,6 +88,20 @@ The
 function first appeared in
 .Bx 4.4 .
 .Sh CAVEATS
+There are limits to what you can do in the child process.
+To be totally safe you should restrict yourself to only
+executing async-signal safe operations (see
+.Xr sigaction 2 )
+until such time
+as one of the exec functions is called.
+All APIs, including global data symbols, in any framework or library
+should be assumed to be unsafe after a 
+.Fn fork
+unless explicitly documented to be safe or async-signal safe.
+If you need to use these frameworks in the child 
+process, you must exec.
+In this situation it is reasonable to exec yourself.
+.Pp
 Unless the
 .Fa noclose
 argument is non-zero,

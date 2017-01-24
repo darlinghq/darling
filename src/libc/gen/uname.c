@@ -72,12 +72,13 @@ uname(name)
 		rval = -1;
 	else
 		for (p = name->version; len--; ++p)
-			if (*p == '\n' || *p == '\t')
-				if (len > 1)
+			if (*p == '\n' || *p == '\t') {
+				if (len > 1) {
 					*p = ' ';
-				else
+				} else {
 					*p = '\0';
-
+				}
+			}
 	mib[0] = CTL_HW;
 	mib[1] = HW_MACHINE;
 	len = sizeof(name->machine);

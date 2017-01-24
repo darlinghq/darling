@@ -45,7 +45,7 @@ static pthread_once_t threadsafe = PTHREAD_ONCE_INIT;
 
 static void check_env_var(void) {
 	char *mode = getenv("COMMAND_MODE");
-	
+
 	if (mode) {
 		if (!strcasecmp(mode, "legacy")) {
 			unix2003_mode = false;
@@ -108,7 +108,7 @@ compat_mode(const char *function, const char *mode) {
 
 	char *op = NULL;
 
-	if (op = strpbrk(mode, "!^&|")) {
+	if ((op = strpbrk(mode, "!^&|"))) {
 		if (*op == '!') {
 			if (op != mode) goto syn_error;
 			return !compat_mode(function, mode +1);
@@ -117,7 +117,7 @@ compat_mode(const char *function, const char *mode) {
 		/* XXX char tmp[] would be better for left_arg, but
 		  we are not sure what the max size should be...  is
 		  alloca(3) frowned on? */
-		int left_sz = 1 + (op - mode);
+		size_t left_sz = 1 + (op - mode);
 		char *left_arg = malloc(left_sz);
 		strlcpy(left_arg, mode, left_sz);
 		bool left = compat_mode(function, left_arg);

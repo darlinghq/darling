@@ -570,7 +570,7 @@ extern void memcpy_D2A ANSI((void*, const void*, size_t));
 
  extern char *dtoa_result;
  extern CONST double bigtens[], tens[], tinytens[];
- extern unsigned char hexdig[];
+ extern CONST unsigned char hexdig[];
 
  extern Bigint *Balloc ANSI((int));
  extern void Bfree ANSI((Bigint*));
@@ -590,9 +590,9 @@ extern void memcpy_D2A ANSI((void*, const void*, size_t));
  extern char *dtoa ANSI((double d, int mode, int ndigits,
 			int *decpt, int *sign, char **rve));
  extern char *g__fmt ANSI((char*, char*, char*, int, ULong, size_t));
- extern int gethex ANSI((CONST char**, FPI*, Long*, Bigint**, int, locale_t));
+ extern int gethex ANSI((CONST char**, CONST FPI*, Long*, Bigint**, int, locale_t));
  extern void hexdig_init_D2A(Void);
- extern int hexnan ANSI((CONST char**, FPI*, ULong*));
+ extern int hexnan ANSI((CONST char**, CONST FPI*, ULong*));
  extern int hi0bits_D2A ANSI((ULong));
  extern Bigint *i2b ANSI((int));
  extern Bigint *increment ANSI((Bigint*));

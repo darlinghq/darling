@@ -130,7 +130,7 @@ io_printandpad(struct io_state *iop, const CHAR *p, const CHAR *ep,
 {
 	int p_len;
 
-	p_len = ep - p;
+	p_len = (int)(ep - p);
 	if (p_len > len)
 		p_len = len;
 	if (p_len > 0) {
@@ -168,7 +168,7 @@ __ultoa(u_long val, CHAR *endp, int base, int octzero, const char *xdigs)
 	switch (base) {
 	case 10:
 		if (val < 10) {	/* many numbers are 1 digit */
-			*--cp = to_char(val);
+			*--cp = (CHAR)to_char(val);
 			return (cp);
 		}
 		/*
@@ -295,7 +295,7 @@ exponent(CHAR *p0, int exp, CHAR fmtch)
 			*p++ = '0';
 		*p++ = to_char(exp);
 	}
-	return (p - p0);
+	return (int)(p - p0);
 }
 
 #endif /* !NO_FLOATING_POINT */

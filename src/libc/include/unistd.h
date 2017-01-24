@@ -71,52 +71,17 @@
 #include <_types.h>
 #include <sys/unistd.h>
 #include <Availability.h>
-
-#ifndef _GID_T
-#define	_GID_T
-typedef __darwin_gid_t		gid_t;
-#endif
-
-#ifndef _INTPTR_T
-#define	_INTPTR_T
-typedef __darwin_intptr_t	intptr_t;
-#endif
-
-#ifndef _OFF_T
-#define	_OFF_T
-typedef __darwin_off_t		off_t;
-#endif
-
-#ifndef _PID_T
-#define	_PID_T
-typedef __darwin_pid_t		pid_t;
-#endif
-
-#ifndef _SIZE_T
-#define	_SIZE_T
+#include <sys/_types/_gid_t.h>
+#include <sys/_types/_intptr_t.h>
+#include <sys/_types/_off_t.h>
+#include <sys/_types/_pid_t.h>
 /* DO NOT REMOVE THIS COMMENT: fixincludes needs to see:
  * _GCC_SIZE_T */
-typedef __darwin_size_t		size_t;
-#endif
-
-#ifndef	_SSIZE_T
-#define	_SSIZE_T
-typedef	__darwin_ssize_t	ssize_t;
-#endif
-
-#ifndef _UID_T
-#define	_UID_T
-typedef __darwin_uid_t		uid_t;	/* user id 	*/
-#endif
-
-#ifndef _USECONDS_T
-#define	_USECONDS_T
-typedef __darwin_useconds_t	useconds_t;
-#endif
-
-#ifndef NULL
-#define	NULL __DARWIN_NULL
-#endif /* ! NULL */
+#include <sys/_types/_size_t.h>
+#include <sys/_types/_ssize_t.h>
+#include <sys/_types/_uid_t.h>
+#include <sys/_types/_useconds_t.h>
+#include <sys/_types/_null.h>
 
 #define	 STDIN_FILENO	0	/* standard input file descriptor */
 #define	STDOUT_FILENO	1	/* standard output file descriptor */
@@ -396,6 +361,11 @@ typedef __darwin_useconds_t	useconds_t;
 #define	_SC_PASS_MAX			131
 #endif
 
+/* 132-199 available for future use */
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+#define	_SC_PHYS_PAGES			200
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
+
 #if __DARWIN_C_LEVEL >= 199209L
 #ifndef _CS_PATH /* Defined in <sys/unistd.h> */
 #define	_CS_PATH				1
@@ -475,13 +445,13 @@ int	 close(int) LIBC_ALIAS_C(close);
 
 int	 dup(int);
 int	 dup2(int, int);
-int	 execl(const char *, const char *, ...);
-int	 execle(const char *, const char *, ...);
-int	 execlp(const char *, const char *, ...);
-int	 execv(const char *, char * const *);
-int	 execve(const char *, char * const *, char * const *);
-int	 execvp(const char *, char * const *);
-pid_t	 fork(void);
+int	 execl(const char * __path, const char * __arg0, ...) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+int	 execle(const char * __path, const char * __arg0, ...) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+int	 execlp(const char * __file, const char * __arg0, ...) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+int	 execv(const char * __path, char * const * __argv) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+int	 execve(const char * __file, char * const * __argv, char * const * __envp) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+int	 execvp(const char * __file, char * const * __argv) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+pid_t	 fork(void) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 long	 fpathconf(int, int);
 char	*getcwd(char *, size_t);
 gid_t	 getegid(void);
@@ -566,10 +536,10 @@ int	 unlink(const char *);
 //Begin-Libc
 #ifndef LIBC_ALIAS_WRITE
 //End-Libc
-ssize_t	 write(int, const void *, size_t) __DARWIN_ALIAS_C(write);
+ssize_t	 write(int __fd, const void * __buf, size_t __nbyte) __DARWIN_ALIAS_C(write);
 //Begin-Libc
 #else /* LIBC_ALIAS_WRITE */
-ssize_t	 write(int, const void *, size_t) LIBC_ALIAS_C(write);
+ssize_t	 write(int __fd, const void * __buf, size_t __nbyte) LIBC_ALIAS_C(write);
 #endif /* !LIBC_ALIAS_WRITE */
 //End-Libc
 __END_DECLS
@@ -627,6 +597,9 @@ __END_DECLS
 /* Begin XSI */
 /* Removed in Issue 6 */
 #if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200112L
+#if !defined(_POSIX_C_SOURCE)
+__deprecated __WATCHOS_PROHIBITED __TVOS_PROHIBITED
+#endif
 void	*brk(const void *);
 int	 chroot(const char *) __POSIX_C_DEPRECATED(199506L);
 #endif
@@ -700,20 +673,20 @@ int	 nice(int) LIBC_ALIAS(nice);
 //Begin-Libc
 #ifndef LIBC_ALIAS_PREAD
 //End-Libc
-ssize_t	 pread(int, void *, size_t, off_t) __DARWIN_ALIAS_C(pread);
+ssize_t	 pread(int __fd, void * __buf, size_t __nbyte, off_t __offset) __DARWIN_ALIAS_C(pread);
 //Begin-Libc
 #else /* LIBC_ALIAS_PREAD */
-ssize_t	 pread(int, void *, size_t, off_t) LIBC_ALIAS_C(pread);
+ssize_t	 pread(int __fd, void * __buf, size_t __nbyte, off_t __offset) LIBC_ALIAS_C(pread);
 #endif /* !LIBC_ALIAS_PREAD */
 //End-Libc
 
 //Begin-Libc
 #ifndef LIBC_ALIAS_PWRITE
 //End-Libc
-ssize_t	 pwrite(int, const void *, size_t, off_t) __DARWIN_ALIAS_C(pwrite);
+ssize_t	 pwrite(int __fd, const void * __buf, size_t __nbyte, off_t __offset) __DARWIN_ALIAS_C(pwrite);
 //Begin-Libc
 #else /* LIBC_ALIAS_PWRITE */
-ssize_t	 pwrite(int, const void *, size_t, off_t) LIBC_ALIAS_C(pwrite);
+ssize_t	 pwrite(int __fd, const void * __buf, size_t __nbyte, off_t __offset) LIBC_ALIAS_C(pwrite);
 #endif /* !LIBC_ALIAS_PWRITE */
 //End-Libc
 
@@ -721,6 +694,9 @@ ssize_t	 pwrite(int, const void *, size_t, off_t) LIBC_ALIAS_C(pwrite);
 #if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200112L
 /* Note that Issue 5 changed the argument as intprt_t,
  * but we keep it as int for binary compatability. */
+#if !defined(_POSIX_C_SOURCE)
+__deprecated __WATCHOS_PROHIBITED __TVOS_PROHIBITED
+#endif
 void	*sbrk(int);
 #endif
 
@@ -771,7 +747,7 @@ int	 usleep(useconds_t) __DARWIN_ALIAS_C(usleep);
 int	 usleep(useconds_t) LIBC_ALIAS_C(usleep);
 #endif /* !LIBC_ALIAS_USLEEP */
 //End-Libc
-pid_t	 vfork(void);
+pid_t	 vfork(void) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 /* End XSI */
 
 //Begin-Libc
@@ -814,59 +790,71 @@ __END_DECLS
 #if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
 #include <sys/select.h>
 
-#ifndef _DEV_T
-#define	_DEV_T
-typedef __darwin_dev_t		dev_t;
-#endif
-
-#ifndef _MODE_T
-#define	_MODE_T
-typedef __darwin_mode_t		mode_t;
-#endif
-
-#ifndef _UUID_T
-#define	_UUID_T
-typedef __darwin_uuid_t		uuid_t;
-#endif /* _UUID_T */
+#include <sys/_types/_dev_t.h>
+#include <sys/_types/_mode_t.h>
+#include <sys/_types/_uuid_t.h>
 
 __BEGIN_DECLS
 void	 _Exit(int) __dead2;
 int	 accessx_np(const struct accessx_descriptor *, size_t, int *, uid_t);
 int	 acct(const char *);
-int	 add_profil(char *, size_t, unsigned long, unsigned int);
+int	 add_profil(char *, size_t, unsigned long, unsigned int) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 void	 endusershell(void);
-int	 execvP(const char *, const char *, char * const *);
+int	 execvP(const char * __file, const char * __searchpath, char * const * __argv)  __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 char	*fflagstostr(unsigned long);
 int	 getdomainname(char *, int);
 int	 getgrouplist(const char *, int, int *, int *);
-int	 gethostuuid(uuid_t, const struct timespec *) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
+#if defined(__has_include)
+#if __has_include(<gethostuuid_private.h>)
+#include <gethostuuid_private.h>
+#else
+#include <gethostuuid.h>
+#endif
+#else
+#include <gethostuuid.h>
+#endif
 mode_t	 getmode(const void *, mode_t);
 int	 getpeereid(int, uid_t *, gid_t *);
 int	 getsgroups_np(int *, uuid_t);
 char	*getusershell(void);
 int	 getwgroups_np(int *, uuid_t);
 int	 initgroups(const char *, int);
-int	 iruserok(unsigned long, int, const char *, const char *);
-int	 iruserok_sa(const void *, int, int, const char *, const char *);
 int	 issetugid(void);
 char	*mkdtemp(char *);
 int	 mknod(const char *, mode_t, dev_t);
 int	 mkpath_np(const char *path, mode_t omode) __OSX_AVAILABLE_STARTING(__MAC_10_8, __IPHONE_5_0); /* returns errno */
+int	 mkpathat_np(int dfd, const char *path, mode_t omode) /* returns errno */
+		__OSX_AVAILABLE(10.12) __IOS_AVAILABLE(10.0)
+		__TVOS_AVAILABLE(10.0) __WATCHOS_AVAILABLE(3.0);
 int	 mkstemp(char *);
 int	 mkstemps(char *, int);
 char	*mktemp(char *);
+int	 mkostemp(char *path, int oflags)
+		__OSX_AVAILABLE(10.12) __IOS_AVAILABLE(10.0)
+		__TVOS_AVAILABLE(10.0) __WATCHOS_AVAILABLE(3.0);
+int	 mkostemps(char *path, int slen, int oflags)
+		__OSX_AVAILABLE(10.12) __IOS_AVAILABLE(10.0)
+		__TVOS_AVAILABLE(10.0) __WATCHOS_AVAILABLE(3.0);
+/* Non-portable mkstemp that uses open_dprotected_np */
+int	 mkstemp_dprotected_np(char *path, int dpclass, int dpflags)
+		__OSX_UNAVAILABLE __IOS_AVAILABLE(10.0)
+		__TVOS_AVAILABLE(10.0) __WATCHOS_AVAILABLE(3.0);
 int	 nfssvc(int, void *);
 int	 profil(char *, size_t, unsigned long, unsigned int);
 int	 pthread_setugid_np(uid_t, gid_t);
 int	 pthread_getugid_np( uid_t *, gid_t *);
-int	 rcmd(char **, int, const char *, const char *, const char *, int *);
-int	 rcmd_af(char **, int, const char *, const char *, const char *, int *,
-		int);
 int	 reboot(int);
 int	 revoke(const char *);
-int	 rresvport(int *);
-int	 rresvport_af(int *, int);
-int	 ruserok(const char *, int, const char *, const char *);
+
+__deprecated int	 rcmd(char **, int, const char *, const char *, const char *, int *);
+__deprecated int	 rcmd_af(char **, int, const char *, const char *, const char *, int *,
+		int);
+__deprecated int	 rresvport(int *);
+__deprecated int	 rresvport_af(int *, int);
+__deprecated int	 iruserok(unsigned long, int, const char *, const char *);
+__deprecated int	 iruserok_sa(const void *, int, int, const char *, const char *);
+__deprecated int	 ruserok(const char *, int, const char *, const char *);
+
 int	 setdomainname(const char *, int);
 int	 setgroups(int, const gid_t *);
 void	 sethostid(long);
@@ -901,11 +889,17 @@ void	 setusershell(void);
 int	 setwgroups_np(int, const uuid_t);
 int	 strtofflags(char **, unsigned long *, unsigned long *);
 int	 swapon(const char *);
-int	 syscall(int, ...);
 int	 ttyslot(void);
 int	 undelete(const char *);
 int	 unwhiteout(const char *);
 void	*valloc(size_t);			
+
+__WATCHOS_PROHIBITED __TVOS_PROHIBITED
+__OS_AVAILABILITY_MSG(ios,deprecated=10.0,"syscall(2) is unsupported; "
+    "please switch to a supported interface. For SYS_kdebug_trace use kdebug_signpost().")
+__OS_AVAILABILITY_MSG(macosx,deprecated=10.12,"syscall(2) is unsupported; "
+    "please switch to a supported interface. For SYS_kdebug_trace use kdebug_signpost().")
+int	 syscall(int, ...);
 
 extern char *suboptarg;			/* getsubopt(3) external variable */
 int	 getsubopt(char **, char * const *, char **);
@@ -932,8 +926,8 @@ int    setattrlist(const char*,void*,void*,size_t,unsigned int) __DARWIN_ALIAS(s
 int    setattrlist(const char*,void*,void*,size_t,unsigned int) LIBC_ALIAS(setattrlist);
 #endif /* !LIBC_ALIAS_SETATTRLIST */
 //End-Libc
-int exchangedata(const char*,const char*,unsigned int);
-int    getdirentriesattr(int,void*,void*,size_t,unsigned int*,unsigned int*,unsigned int*,unsigned int);
+int exchangedata(const char*,const char*,unsigned int) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+int    getdirentriesattr(int,void*,void*,size_t,unsigned int*,unsigned int*,unsigned int*,unsigned int) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 
 #else /* __LP64__ */
 int	fgetattrlist(int,void*,void*,size_t,unsigned long) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0);
@@ -956,15 +950,15 @@ int	setattrlist(const char*,void*,void*,size_t,unsigned long) __DARWIN_ALIAS(set
 int	setattrlist(const char*,void*,void*,size_t,unsigned long) LIBC_ALIAS(setattrlist);
 #endif /* !LIBC_ALIAS_SETATTRLIST */
 //End-Libc
-int exchangedata(const char*,const char*,unsigned long);
-int	getdirentriesattr(int,void*,void*,size_t,unsigned long*,unsigned long*,unsigned long*,unsigned long);
+int exchangedata(const char*,const char*,unsigned long) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+int	getdirentriesattr(int,void*,void*,size_t,unsigned long*,unsigned long*,unsigned long*,unsigned long) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 
 #endif /* __LP64__ */
 
 struct fssearchblock;
 struct searchstate;
 
-int	 searchfs(const char *, struct fssearchblock *, unsigned long *, unsigned int, unsigned int, struct searchstate *);
+int	 searchfs(const char *, struct fssearchblock *, unsigned long *, unsigned int, unsigned int, struct searchstate *) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 int	 fsctl(const char *,unsigned long,void*,unsigned int);
 int	 ffsctl(int,unsigned long,void*,unsigned int) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0);
 

@@ -9,7 +9,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -26,21 +26,30 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)mktemp.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdio/mktemp.3,v 1.22 2007/01/09 00:28:07 imp Exp $
 .\"
-.Dd February 11, 1998
+.Dd December 18, 2015
 .Dt MKTEMP 3
 .Os
 .Sh NAME
-.Nm mkdtemp ,
+.Nm mktemp ,
 .Nm mkstemp ,
+.Nm mkdtemp ,
 .Nm mkstemps ,
-.Nm mktemp
+.Nm mkostemp ,
+.Nm mkostemps
 .Nd make temporary file name (unique)
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In unistd.h
+.Ft char *
+.Fo mktemp
+.Fa "char *template"
+.Fc
+.Ft int
+.Fo mkstemp
+.Fa "char *template"
+.Fc
 .Ft char *
 .Fo mkdtemp
 .Fa "char *template"
@@ -50,14 +59,16 @@
 .Fa "char *template"
 .Fa "int suffixlen"
 .Fc
-.In stdlib.h
 .Ft int
-.Fo mkstemp
+.Fo mkostemp
 .Fa "char *template"
+.Fa "int oflags"
 .Fc
-.Ft char *
-.Fo mktemp
+.Ft int
+.Fo mkostemps
 .Fa "char *template"
+.Fa "int suffixlen"
+.Fa "int oflags"
 .Fc
 .Sh DESCRIPTION
 The
@@ -97,22 +108,45 @@ This avoids the race between testing for a file's existence and opening it
 for use.
 .Pp
 The
-.Fn mkstemps
-function acts the same as
-.Fn mkstemp ,
-except it permits a suffix to exist in the template.
-The template should be of the form
-.Pa /tmp/tmpXXXXXXsuffix .
-The
-.Fn mkstemps
-function
-is told the length of the suffix string.
-.Pp
-The
 .Fn mkdtemp
 function makes the same replacement to the template as in
 .Fn mktemp
 and creates the template directory, mode 0700.
+.Pp
+The
+.Fn mkostemp
+function
+is like
+.Fn mkstemp
+but allows specifying additional
+.Xr open 2
+flags (defined in
+.In fcntl.h ) .
+The permitted flags are
+.Dv O_APPEND ,
+.Dv O_SHLOCK ,
+.Dv O_EXLOCK
+and
+.Dv O_CLOEXEC .
+.Pp
+The
+.Fn mkstemps
+and
+.Fn mkostemps
+functions act the same as
+.Fn mkstemp
+and
+.Fn mkostemp
+respectively,
+except they permit a suffix to exist in the template.
+The template should be of the form
+.Pa /tmp/tmpXXXXXXsuffix .
+The
+.Fn mkstemps
+and
+.Fn mkostemps
+functions
+are told the length of the suffix string.
 .Sh RETURN VALUES
 The
 .Fn mktemp
@@ -122,9 +156,11 @@ functions return a pointer to the template on success and
 .Dv NULL
 on failure.
 The
-.Fn mkstemp
-and
+.Fn mkstemp ,
+.Fn mkostemp ,
 .Fn mkstemps
+and
+.Fn mkostemps
 functions
 return \-1 if no suitable file could be created.
 If either call fails an error code is placed in the global variable
@@ -132,7 +168,9 @@ If either call fails an error code is placed in the global variable
 .Sh ERRORS
 The
 .Fn mkstemp ,
-.Fn mkstemps
+.Fn mkostemp ,
+.Fn mkstemps ,
+.Fn mkostemps ,
 and
 .Fn mkdtemp
 functions
@@ -145,8 +183,25 @@ The pathname portion of the template is not an existing directory.
 .El
 .Pp
 The
+.Fn mkostemp
+and
+.Fn mkostemps
+functions
+may also set
+.Va errno
+to the following value:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The
+.Fa oflags
+argument is invalid.
+.El
+.Pp
+The
 .Fn mkstemp ,
+.Fn mkostemp ,
 .Fn mkstemps ,
+.Fn mkostemps 
 and
 .Fn mkdtemp
 functions
@@ -157,9 +212,11 @@ to any value specified by the
 function.
 .Pp
 The
-.Fn mkstemp
-and
+.Fn mkstemp ,
+.Fn mkostemp ,
 .Fn mkstemps
+and
+.Fn mkostemps 
 functions
 may also set
 .Va errno
@@ -180,7 +237,7 @@ A common problem that results in a core dump is that the programmer
 passes in a read-only string to
 .Fn mktemp ,
 .Fn mkstemp ,
-.Fn mkstemps ,
+.Fn mkstemps
 or
 .Fn mkdtemp .
 This is common with programs that were developed before
@@ -193,12 +250,6 @@ with an argument of
 will result in a core dump due to
 .Fn mkstemp
 attempting to modify the string constant that was given.
-If the program in question makes heavy use of that type
-of function call, you do have the option of compiling the program
-so that it will store string constants in a writable segment of memory.
-See
-.Xr gcc 1
-for more information.
 .Sh LEGACY SYNOPSIS
 .Fd #include <unistd.h>
 .Pp
@@ -212,6 +263,25 @@ is necessary and sufficient for all functions.
 .Xr open 2 ,
 .Xr stat 2 ,
 .Xr compat 5
+.Sh STANDARDS
+The
+.Fn mkstemp
+and
+.Fn mkdtemp
+functions are expected to conform to
+.St -p1003.1-2008 .
+The
+.Fn mktemp
+function is expected to conform to
+.St -p1003.1-2001
+and is not specified by
+.St -p1003.1-2008 .
+The
+.Fn mkostemp ,
+.Fn mkstemps
+and
+.Fn mkostemps
+functions do not conform to any standard.
 .Sh HISTORY
 A
 .Fn mktemp
@@ -233,6 +303,11 @@ function first appeared in
 .Ox 2.4 ,
 and later in
 .Fx 3.4 .
+The
+.Fn mkostemp
+and
+.Fn mkostemps
+functions appeared in OS X 10.12.
 .Sh BUGS
 This family of functions produces filenames which can be guessed,
 though the risk is minimized when large numbers of
@@ -249,6 +324,8 @@ and opening it for use
 particularly dangerous from a security perspective.
 Whenever it is possible,
 .Fn mkstemp
+or
+.Fn mkostemp
 should be used instead, since it does not have the race condition.
 If
 .Fn mkstemp

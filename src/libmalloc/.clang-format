@@ -1,0 +1,126 @@
+# Format of this file is YAML
+# Minimum clang-format version required: clang-format version 3.6.0
+# Detailed description of options available at http://clang.llvm.org/docs/ClangFormatStyleOptions.html
+
+AlignEscapedNewlinesLeft: true
+# Bad:
+# void foo() {
+#        someFunction();
+#  someOtherFunction();
+# }
+# Good:
+# void foo() {
+#    someFunction();
+#    someOtherFunction();
+# }
+
+AlignTrailingComments: true
+# align all comments to right based of //
+# == Avoid using // based comments altogether ==
+
+AlignAfterOpenBracket: false
+# don't align after a bracket, uses indentation rules to indent
+
+AllowAllParametersOfDeclarationOnNextLine: false
+# allow funtion definition as
+# someFunction(foo,
+#             bar,
+#             baz);
+
+AlignConsecutiveAssignments:  false
+# does not align consecutive assignments with '=' operator
+
+AllowShortBlocksOnASingleLine: true
+# single statement block can be merged on one line 
+# e.g if (a) { return; }
+
+AllowShortCaseLabelsOnASingleLine: false
+# Single statement case statements should be on their own lines
+
+AllowShortFunctionsOnASingleLine: None
+# Bad:
+# int foo() { return 123; }
+
+AllowShortIfStatementsOnASingleLine: false
+# Bad: 
+# if (someOtherVar) return; 
+# Good:
+# if (someOtherVar) 
+#     return;
+
+AllowShortLoopsOnASingleLine: false
+# Bad:
+# while(i>0) i--;
+# Good:
+# while(i>0) {
+#         i--;
+#     }
+
+AlwaysBreakAfterDefinitionReturnType: true
+# Ensures return type is one its own line
+# e.g. unsigned int
+# function(char param) { }
+
+AlwaysBreakBeforeMultilineStrings: true
+# multine strings should begin on new line
+
+BinPackArguments: true
+BinPackParameters: false
+# functions arguments should all be on one line or have a single line for each param
+
+BreakBeforeBinaryOperators: None
+# break for new line after binary operator in case of length is over ColumnLimit
+# e.g.
+# int foo = bar +
+#           baz;
+
+BreakBeforeBraces: Linux
+# Always attach braces to surrounding context except -
+# break before braces on function, namespace and class definitions
+
+ColumnLimit: 132
+# every body has wide screen now. 132 seems to be reasonable limit now.
+
+ContinuationIndentWidth: 8
+# indent continued lines by two tabs
+
+IndentCaseLabels: false
+# case labels have same indentation as switch statement.
+
+IndentWidth: 4
+# 4 spaces for indentation
+TabWidth: 4
+# tabwidth is 4 spaces
+
+UseTab: Always
+# always indent lines with tabs
+
+IndentWrappedFunctionNames: false
+KeepEmptyLinesAtTheStartOfBlocks: false
+# remove excess empty lines at start of blocks.
+
+PointerAlignment: Right
+# "void *foo" (vs. "void* foo" or "void * foo")
+
+SpaceAfterCStyleCast: false
+# No space after (cast). E.g
+# int blah = (int)((void *)foo + bar)
+
+SpaceBeforeAssignmentOperators: true
+# Assignment = should be seperated by spaces on both sides.
+
+SpaceBeforeParens: ControlStatements
+# for control statements a space is required before '{'
+# Bad: for(){ statement; }
+# Good: for() { statement; }
+
+SpaceInEmptyParentheses: false
+# No spaces required for empty ()
+
+SpacesInCStyleCastParentheses: false
+# No spaces required for (unsigned int) type cast
+
+SpacesInParentheses: false
+
+SpacesInSquareBrackets: false
+# No spaces in [count] style invocations of []

@@ -49,20 +49,23 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/system.c,v 1.11 2007/01/09 00:28:10 imp 
 #include <crt_externs.h>
 #define environ (*_NSGetEnviron())
 
+#include <TargetConditionals.h>
+
 #if __DARWIN_UNIX03
 #include <pthread.h>
 
 static pthread_mutex_t __systemfn_mutex = PTHREAD_MUTEX_INITIALIZER;
 extern int __unix_conforming;
-#ifdef VARIANT_CANCELABLE
-extern void _pthread_testcancel(pthread_t thread, int isconforming);
-#endif /* VARIANT_CANCELABLE */
 #endif /* __DARWIN_UNIX03 */
 
 int
 __system(command)
 	const char *command;
 {
+#if TARGET_OS_IPHONE && (TARGET_OS_SIMULATOR || !TARGET_OS_IOS)
+	// Don't abort() on iOS for now
+	LIBC_ABORT("system() is not supported on this platform.");
+#else
 	pid_t pid, savedpid;
 	int pstat, err;
 	struct sigaction ign, intact, quitact;
@@ -75,15 +78,19 @@ __system(command)
 	if (__unix_conforming == 0)
 		__unix_conforming = 1;
 #ifdef VARIANT_CANCELABLE
-	_pthread_testcancel(pthread_self(), 1);
+	pthread_testcancel();
 #endif /* VARIANT_CANCELABLE */
 #endif /* __DARWIN_UNIX03 */
 
 	if (!command) {		/* just checking... */
+#if TARGET_OS_IPHONE
+		return(0);
+#else
 		if (access(_PATH_BSHELL, F_OK) == -1)	/* if no sh or no access */
 			return(0);
 		else
 			return(1);
+#endif
 	}
 
 	if ((err = posix_spawnattr_init(&attr)) != 0) {
@@ -142,6 +149,7 @@ __system(command)
 	pthread_mutex_unlock(&__systemfn_mutex);
 #endif /* __DARWIN_UNIX03 */
 	return(pstat);
+#endif /* TARGET_OS_IPHONE && (TARGET_OS_SIMULATOR || !TARGET_OS_IOS) */
 }
 
 __weak_reference(__system, system);

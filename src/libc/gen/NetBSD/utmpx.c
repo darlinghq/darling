@@ -56,17 +56,26 @@ __RCSID("$NetBSD: utmpx.c,v 1.25 2008/04/28 20:22:59 martin Exp $");
 #include <vis.h>
 #include <notify.h>
 
-/* This is the default struct _utmpx shared by the POSIX APIs */
-__private_extern__
-struct _utmpx __utx__ = {
-	__UTX_MAGIC__,			/* magic */
-	{},				/* ut */
-	PTHREAD_MUTEX_INITIALIZER,	/* utmpx_mutex */
-	_PATH_UTMPX,			/* utfile */
-	NULL,				/* fp */
-	1,				/* utfile_system */
-	0,				/* readonly */
-};
+static struct _utmpx *__utx__ = NULL;
+
+static void
+__default_utx_init(void)
+{
+	__utx__ = calloc(1, sizeof(struct _utmpx));
+	const char magic[] = __UTX_MAGIC__;
+	memcpy(&__utx__->magic, magic, UTMPX_MAGIC);
+	pthread_mutex_init(&__utx__->utmpx_mutex, NULL);
+	__utx__->utfile = _PATH_UTMPX;
+	__utx__->utfile_system = 1;
+}
+
+struct _utmpx *
+__default_utx(void)
+{
+	static pthread_once_t once = PTHREAD_ONCE_INIT;
+	pthread_once(&once, &__default_utx_init);
+	return __utx__;
+}
 
 static struct utmpx *__getutxid(struct _utmpx *, const struct utmpx *);
 
@@ -98,9 +107,9 @@ _setutxent(struct _utmpx *U)
 
 
 void
-setutxent()
+setutxent(void)
 {
-	_setutxent(&__utx__);
+	_setutxent(__default_utx());
 }
 
 
@@ -129,9 +138,9 @@ _endutxent(struct _utmpx *U)
 
 
 void
-endutxent()
+endutxent(void)
 {
-	_endutxent(&__utx__);
+	_endutxent(__default_utx());
 }
 
 
@@ -232,9 +241,9 @@ _getutxent(struct _utmpx *U)
 
 
 struct utmpx *
-getutxent()
+getutxent(void)
 {
-	return _getutxent(&__utx__);
+	return _getutxent(__default_utx());
 }
 
 
@@ -266,7 +275,7 @@ _getutxid(struct _utmpx *U, const struct utmpx *utx)
 struct utmpx *
 getutxid(const struct utmpx *utx)
 {
-	return _getutxid(&__utx__, utx);
+	return _getutxid(__default_utx(), utx);
 }
 
 
@@ -349,7 +358,7 @@ _getutxline(struct _utmpx *U, const struct utmpx *utx)
 struct utmpx *
 getutxline(const struct utmpx *utx)
 {
-	return _getutxline(&__utx__, utx);
+	return _getutxline(__default_utx(), utx);
 }
 
 
@@ -365,7 +374,7 @@ _pututxline(struct _utmpx *U, const struct utmpx *utx)
 
 	TEST_UTMPX_T("_pututxline", U);
 	UTMPX_LOCK(U);
-	if ((ux = __pututxline(&__utx__, utx)) != NULL && __utx__.utfile_system) {
+	if ((ux = __pututxline(__default_utx(), utx)) != NULL && __default_utx()->utfile_system) {
 		_utmpx_asl(ux);	/* the equivalent of wtmpx and lastlogx */
 #ifdef UTMP_COMPAT
 		_write_utmp_compat(ux);
@@ -379,7 +388,7 @@ _pututxline(struct _utmpx *U, const struct utmpx *utx)
 struct utmpx *
 pututxline(const struct utmpx *utx)
 {
-	return _pututxline(&__utx__, utx);
+	return _pututxline(__default_utx(), utx);
 }
 
 __private_extern__ struct utmpx *
@@ -544,7 +553,7 @@ _utmpxname(struct _utmpx *U, const char *fname)
 int
 utmpxname(const char *fname)
 {
-	return _utmpxname(&__utx__, fname);
+	return _utmpxname(__default_utx(), fname);
 }
 
 #ifdef UNIFDEF_LEGACY_UTMP_APIS

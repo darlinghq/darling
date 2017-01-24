@@ -26,50 +26,50 @@
 
 __BEGIN_DECLS
 
-int	 fprintf_l(FILE * __restrict, locale_t, const char * __restrict, ...)
+int	 fprintf_l(FILE * __restrict, locale_t __restrict, const char * __restrict, ...)
         __printflike(3, 4);
-int	 fscanf_l(FILE * __restrict, locale_t, const char * __restrict, ...)
+int	 fscanf_l(FILE * __restrict, locale_t __restrict, const char * __restrict, ...)
         __scanflike(3, 4);
-int	 printf_l(locale_t, const char * __restrict, ...)
+int	 printf_l(locale_t __restrict, const char * __restrict, ...)
         __printflike(2, 3);
-int	 scanf_l(locale_t, const char * __restrict, ...)
+int	 scanf_l(locale_t __restrict, const char * __restrict, ...)
         __scanflike(2, 3);
-int	 sprintf_l(char * __restrict, locale_t, const char * __restrict, ...)
-        __printflike(3, 4);
-int	 sscanf_l(const char * __restrict, locale_t, const char * __restrict, ...) 
+int	 sprintf_l(char * __restrict, locale_t __restrict, const char * __restrict, ...)
+        __printflike(3, 4) __swift_unavailable("Use snprintf_l instead.");
+int	 sscanf_l(const char * __restrict, locale_t __restrict, const char * __restrict, ...) 
         __scanflike(3, 4);
-int	 vfprintf_l(FILE * __restrict, locale_t, const char * __restrict, va_list)
+int	 vfprintf_l(FILE * __restrict, locale_t __restrict, const char * __restrict, va_list)
         __printflike(3, 0);
-int	 vprintf_l(locale_t, const char * __restrict, va_list)
+int	 vprintf_l(locale_t __restrict, const char * __restrict, va_list)
         __printflike(2, 0);
-int	 vsprintf_l(char * __restrict, locale_t, const char * __restrict, va_list)
-        __printflike(3, 0);
+int	 vsprintf_l(char * __restrict, locale_t __restrict, const char * __restrict, va_list)
+        __printflike(3, 0) __swift_unavailable("Use vsnprintf_l instead.");
 
-#if __DARWIN_C_LEVEL >= 200112L
-int	 snprintf_l(char * __restrict, size_t, locale_t, const char * __restrict, ...)
+#if __DARWIN_C_LEVEL >= 200112L || defined(__cplusplus)
+int	 snprintf_l(char * __restrict, size_t, locale_t __restrict, const char * __restrict, ...)
         __printflike(4, 5);
-int	 vfscanf_l(FILE * __restrict, locale_t, const char * __restrict, va_list)
+int	 vfscanf_l(FILE * __restrict, locale_t __restrict, const char * __restrict, va_list)
         __scanflike(3, 0);
-int	 vscanf_l(locale_t, const char * __restrict, va_list)
+int	 vscanf_l(locale_t __restrict, const char * __restrict, va_list)
         __scanflike(2, 0);
-int	 vsnprintf_l(char * __restrict, size_t, locale_t, const char * __restrict, va_list)
+int	 vsnprintf_l(char * __restrict, size_t, locale_t __restrict, const char * __restrict, va_list)
         __printflike(4, 0);
-int	 vsscanf_l(const char * __restrict, locale_t, const char * __restrict, va_list)
+int	 vsscanf_l(const char * __restrict, locale_t __restrict, const char * __restrict, va_list)
         __scanflike(3, 0);
 #endif
 
-#if __DARWIN_C_LEVEL >= 200809L
-int	 dprintf_l(int, locale_t, const char * __restrict, ...)
+#if __DARWIN_C_LEVEL >= 200809L || defined(__cplusplus)
+int	 dprintf_l(int, locale_t __restrict, const char * __restrict, ...)
         __printflike(3, 4) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
-int	 vdprintf_l(int, locale_t, const char * __restrict, va_list)
+int	 vdprintf_l(int, locale_t __restrict, const char * __restrict, va_list)
         __printflike(3, 0) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 #endif
 
 
-#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
-int	 asprintf_l(char **, locale_t, const char *, ...)
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL || defined(__cplusplus)
+int	 asprintf_l(char ** __restrict, locale_t __restrict, const char * __restrict, ...)
         __printflike(3, 4);
-int	 vasprintf_l(char **, locale_t, const char *, va_list)
+int	 vasprintf_l(char ** __restrict, locale_t __restrict, const char * __restrict, va_list)
         __printflike(3, 0);
 #endif
 

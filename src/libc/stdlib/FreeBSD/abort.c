@@ -40,11 +40,12 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/abort.c,v 1.11 2007/01/09 00:28:09 imp E
 #include <stddef.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <pthread_workqueue.h>
 #include "un-namespace.h"
 
 #include "libc_private.h"
 
-#include "CrashReporterClient.h"
+#include <CrashReporterClient.h>
 #include "_simple.h"
 
 extern void (*__cleanup)();
@@ -77,21 +78,18 @@ abort()
 	/* <rdar://problem/7397932> abort() should call pthread_kill to deliver a signal to the aborting thread 
 	 * This helps gdb focus on the thread calling abort()
 	 */
-	if (__is_threaded) {
-	    /* Block all signals on all other threads */
-	    sigset_t fullmask;
-	    sigfillset(&fullmask);
-	    (void)_sigprocmask(SIG_SETMASK, &fullmask, NULL);
 
-	    /* <rdar://problem/8400096> Set the workqueue killable */
-	    __pthread_workqueue_setkill(1);
+	/* Block all signals on all other threads */
+	sigset_t fullmask;
+	sigfillset(&fullmask);
+	(void)_sigprocmask(SIG_SETMASK, &fullmask, NULL);
 
-	    (void)pthread_sigmask(SIG_SETMASK, &act.sa_mask, NULL);
-	    (void)pthread_kill(pthread_self(), SIGABRT);
-	} else {
-	    (void)_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
-	    (void)kill(getpid(), SIGABRT);
-	}
+	/* <rdar://problem/8400096> Set the workqueue killable */
+	__pthread_workqueue_setkill(1);
+
+	(void)pthread_sigmask(SIG_SETMASK, &act.sa_mask, NULL);
+	(void)pthread_kill(pthread_self(), SIGABRT);
+
 	usleep(TIMEOUT); /* give time for signal to happen */
 
 	/*
@@ -117,21 +115,18 @@ __abort()
 	/* <rdar://problem/7397932> abort() should call pthread_kill to deliver a signal to the aborting thread 
 	 * This helps gdb focus on the thread calling abort()
 	 */
-	if (__is_threaded) {
-	    /* Block all signals on all other threads */
-	    sigset_t fullmask;
-	    sigfillset(&fullmask);
-	    (void)_sigprocmask(SIG_SETMASK, &fullmask, NULL);
 
-	    /* <rdar://problem/8400096> Set the workqueue killable */
-	    __pthread_workqueue_setkill(1);
+	/* Block all signals on all other threads */
+	sigset_t fullmask;
+	sigfillset(&fullmask);
+	(void)_sigprocmask(SIG_SETMASK, &fullmask, NULL);
 
-	    (void)pthread_sigmask(SIG_SETMASK, &act.sa_mask, NULL);
-	    (void)pthread_kill(pthread_self(), SIGABRT);
-	} else {
-	    (void)_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
-	    (void)kill(getpid(), SIGABRT);
-	}
+	/* <rdar://problem/8400096> Set the workqueue killable */
+	__pthread_workqueue_setkill(1);
+
+	(void)pthread_sigmask(SIG_SETMASK, &act.sa_mask, NULL);
+	(void)pthread_kill(pthread_self(), SIGABRT);
+
 	usleep(TIMEOUT); /* give time for signal to happen */
 
 	/* If for some reason SIGABRT was not delivered, we exit using __builtin_trap
@@ -145,7 +140,7 @@ __abort()
 	__builtin_trap();
 }
 
-__private_extern__ void
+void
 abort_report_np(const char *fmt, ...)
 {
 	_SIMPLE_STRING s;

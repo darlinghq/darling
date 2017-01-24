@@ -83,8 +83,7 @@ The fields are as follows:
 .It Fa ty_name
 The name of the character-special file.
 .It Fa ty_getty
-The name of the command invoked by
-.Xr init 8
+The name of the command invoked 
 to initialize tty line characteristics.
 .It Fa ty_type
 The name of the default terminal type connected to this tty line.
@@ -94,11 +93,7 @@ tty line.
 The possible flags are as follows:
 .Bl -tag -width TTY_NETWORK
 .It Dv TTY_ON
-Enables logins (i.e.,
-.Xr init 8
-will start the command referenced by
-.Fa ty_getty
-on this entry).
+Enables logins
 .It Dv TTY_SECURE
 Allow users with a uid of 0 to login on this terminal.
 .It Dv TTY_DIALUP
@@ -175,7 +170,6 @@ return 0 on failure and 1 on success.
 .Xr termcap 5 ,
 .Xr ttys 5 ,
 .Xr getty 8 ,
-.Xr init 8
 .Sh HISTORY
 The
 .Fn getttyent ,

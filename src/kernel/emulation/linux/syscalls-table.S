@@ -33,8 +33,7 @@ __darling_bsd_syscall:
 .L0$pb:
 	popl	%ecx
 .Ltmp0:
-	addl	$_GLOBAL_OFFSET_TABLE_+(.Ltmp0-.L0$pb), %ecx
-	movl	___bsd_syscall_table@GOT(%ecx), %ecx
+	movl	L___bsd_syscall_table$non_lazy_ptr-.L0$pb(%ecx), %ecx
 	andl	$0xffff, %eax // Because there is some extra stuff in upper bytes we don't need
 	movl	(%ecx,%eax,4), %eax
 	test	%eax, %eax
@@ -52,9 +51,16 @@ __darling_bsd_syscall:
 	ret
 .no_sys:
 	pushl	%ecx
-	call	__unknown_syscall
+	call	___unknown_syscall
 	addl	$4, %esp
 	ret
+
+	.section        __IMPORT,__pointers,non_lazy_symbol_pointers
+L___bsd_syscall_table$non_lazy_ptr:
+	.indirect_symbol        ___bsd_syscall_table
+	.long   0
+
+.subsections_via_symbols
 
 #else
 #	error Missing assembly

@@ -49,8 +49,7 @@ rewind(FILE *fp)
 	int serrno = errno;
 
 	/* make sure stdio is set up */
-	if (!__sdidinit)
-		__sinit();
+	pthread_once(&__sdidinit, __sinit);
 
 	FLOCKFILE(fp);
 	if (_fseeko(fp, (off_t)0, SEEK_SET, 1) == 0) {

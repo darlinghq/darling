@@ -30,15 +30,8 @@
 #include <sys/_types.h>
 #include <sys/cdefs.h>
 
-#ifndef _FSBLKCNT_T
-#define _FSBLKCNT_T
-typedef __darwin_fsblkcnt_t	fsblkcnt_t;
-#endif
-
-#ifndef _FSFILCNT_T
-#define _FSFILCNT_T
-typedef __darwin_fsfilcnt_t	fsfilcnt_t;
-#endif
+#include <sys/_types/_fsblkcnt_t.h>
+#include <sys/_types/_fsfilcnt_t.h>
 
 /* Following structure is used as a statvfs/fstatvfs function parameter */
 struct statvfs {

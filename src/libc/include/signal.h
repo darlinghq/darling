@@ -62,10 +62,8 @@
 #include <_types.h>
 #include <sys/signal.h>
 
-#ifndef _PTHREAD_T
-typedef __darwin_pthread_t	pthread_t;
-#define _PTHREAD_T
-#endif
+#include <sys/_pthread/_pthread_types.h>
+#include <sys/_pthread/_pthread_t.h>
 
 #if !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
 extern __const char *__const sys_signame[NSIG];
@@ -78,7 +76,7 @@ __END_DECLS
 
 #ifndef	_ANSI_SOURCE
 __BEGIN_DECLS
-void	(*bsd_signal(int, void (*)(int)))(int);
+void	(* _Nullable bsd_signal(int, void (* _Nullable)(int)))(int);
 //Begin-Libc
 #ifndef LIBC_ALIAS_KILL
 //End-Libc
@@ -113,10 +111,10 @@ int	sigaddset(sigset_t *, int);
 //Begin-Libc
 #ifndef LIBC_ALIAS_SIGALTSTACK
 //End-Libc
-int	sigaltstack(const stack_t * __restrict, stack_t * __restrict)  __DARWIN_ALIAS(sigaltstack);
+int	sigaltstack(const stack_t * __restrict, stack_t * __restrict)  __DARWIN_ALIAS(sigaltstack) ;//__WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 //Begin-Libc
 #else /* LIBC_ALIAS_SIGALTSTACK */
-int	sigaltstack(const stack_t * __restrict, stack_t * __restrict)  LIBC_ALIAS(sigaltstack);
+int	sigaltstack(const stack_t * __restrict, stack_t * __restrict)  LIBC_ALIAS(sigaltstack) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 #endif /* !LIBC_ALIAS_SIGALTSTACK */
 //End-Libc
 int	sigdelset(sigset_t *, int);
@@ -138,7 +136,7 @@ int	sigpause(int) LIBC_ALIAS_C(sigpause);
 int	sigpending(sigset_t *);
 int	sigprocmask(int, const sigset_t * __restrict, sigset_t * __restrict);
 int	sigrelse(int);
-void    (*sigset(int, void (*)(int)))(int); 
+void    (* _Nullable sigset(int, void (* _Nullable)(int)))(int);
 //Begin-Libc
 #ifndef LIBC_ALIAS_SIGSUSPEND
 //End-Libc
@@ -168,7 +166,7 @@ __END_DECLS
 /* List definitions after function declarations, or Reiser cpp gets upset. */
 #if defined(__i386__) || defined(__x86_64__)
 /* The left shift operator on intel is modulo 32 */
-static __inline int
+__header_always_inline int
 __sigbits(int __signo)
 {
     return __signo > __DARWIN_NSIG ? 0 : (1 << (__signo - 1));

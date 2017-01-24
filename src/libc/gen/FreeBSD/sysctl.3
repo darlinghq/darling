@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
-.\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.63 2004/07/02 23:52:10 ru Exp $
+.\" $FreeBSD$
 .\"
-.Dd October 21, 2008
+.Dd May 17, 2013
 .Dt SYSCTL 3
 .Os
 .Sh NAME
@@ -155,48 +151,13 @@ repeatedly request the same variable (the
 function runs in about a third the time as the same request made via the
 .Fn sysctlbyname
 function).
-The
-.Fn sysctlnametomib
-function is also useful for fetching mib prefixes and then adding
-a final component.
-For example, to fetch process information
-for processes with pid's less than 100:
-.Pp
-.Bd -literal -offset indent -compact
-int i, mib[4];
-size_t len;
-struct kinfo_proc kp;
-
-/* Fill out the first three components of the mib */
-len = 4;
-sysctlnametomib("kern.proc.pid", mib, &len);
-
-/* Fetch and print entries for pid's < 100 */
-for (i = 0; i < 100; i++) {
-	mib[3] = i;
-	len = sizeof(kp);
-	if (sysctl(mib, 4, &kp, &len, NULL, 0) == -1)
-		perror("sysctl");
-	else if (len > 0)
-		printkproc(&kp);
-}
-.Ed
-.Pp
-Note:  Implementation of
-.Fn printkproc
--- to print whatever data deemed necessary from the large
-.Vt kinfo_proc
-structure (
-.In sys/sysctl.h
-) -- is left as an exercise for the reader.
 .Pp
 The top level names are defined with a CTL_ prefix in
 .In sys/sysctl.h ,
 and are as follows.
 The next and subsequent levels down are found in the include files
 listed here, and described in separate sections below.
-.Pp
-.Bl -column CTLXMACHDEP "Next level names" -offset indent
+.Bl -column CTLXMACHDEPXXX "Next level namesXXXXXX" -offset indent
 .It Sy "Name	Next level names	Description"
 .It "CTL_DEBUG	sys/sysctl.h	Debugging"
 .It "CTL_VFS	sys/mount.h	File system"
@@ -206,61 +167,25 @@ listed here, and described in separate sections below.
 .It "CTL_NET	sys/socket.h	Networking"
 .It "CTL_USER	sys/sysctl.h	User-level"
 .It "CTL_VM	sys/resources.h	Virtual memory (struct loadavg)"
-.It "CTL_VM	sys/vmmeter.h	Virtual memory (struct vmtotal)"
 .El
 .Pp
 For example, the following retrieves the maximum number of processes allowed
 in the system:
 .Pp
 .Bd -literal -offset indent -compact
-int mib[2], maxproc;
-size_t len;
-
-mib[0] = CTL_KERN;
-mib[1] = KERN_MAXPROC;
-len = sizeof(maxproc);
-sysctl(mib, 2, &maxproc, &len, NULL, 0);
+int maxproc;
+size_t len = sizeof(maxproc);
+sysctlbyname("kern.maxproc", &maxproc, &len, NULL, 0);
 .Ed
 .Pp
 To retrieve the standard search path for the system utilities:
 .Pp
 .Bd -literal -offset indent -compact
-int mib[2];
-size_t len;
 char *p;
-
-mib[0] = CTL_USER;
-mib[1] = USER_CS_PATH;
-sysctl(mib, 2, NULL, &len, NULL, 0);
+size_t len;
+sysctlbyname("user.cs_path", NULL, &len, NULL, 0);
 p = malloc(len);
-sysctl(mib, 2, p, &len, NULL, 0);
-.Ed
-.Ss CTL_DEBUG
-The debugging variables vary from system to system.
-A debugging variable may be added or deleted without need to recompile
-.Fn sysctl
-to know about it.
-Each time it runs,
-.Fn sysctl
-gets the list of debugging variables from the kernel and
-displays their current values.
-The system defines twenty
-.Pq Vt "struct ctldebug"
-variables named
-.Va debug0
-through
-.Va debug19 .
-They are declared as separate variables so that they can be
-individually initialized at the location of their associated variable.
-The loader prevents multiple use of the same variable by issuing errors
-if a variable is initialized in more than one place.
-For example, to export the variable
-.Va dospecialcheck
-as a debugging variable, the following declaration would be used:
-.Pp
-.Bd -literal -offset indent -compact
-int dospecialcheck = 1;
-struct ctldebug debug5 = { "dospecialcheck", &dospecialcheck };
+sysctlbyname("user.cs_path", p, &len, NULL, 0);
 .Ed
 .Ss CTL_VFS
 A distinguished second level name, VFS_GENERIC,
@@ -284,53 +209,60 @@ The string and integer information available for the CTL_HW level
 is detailed below.
 The changeable column shows whether a process with appropriate
 privilege may change the value.
-.Bl -column "Second level nameXXXXXX" integerXXX -offset indent
-.It Sy "Second level name	Type	Changeable"
-.It "HW_MACHINE	string	no"
-.It "HW_MODEL	string	no"
-.It "HW_NCPU	integer	no (DEPRECATED)"
-.It "HW_BYTEORDER	integer	no"
-.It "HW_PHYSMEM	integer	no"
-.It "HW_MEMSIZE	integer	no"
-.It "HW_USERMEM	integer	no"
-.It "HW_PAGESIZE	integer	no"
-.It "HW_FLOATINGPOINT	integer	no"
-.It "HW_MACHINE_ARCH	string	no"
-.\".It "HW_DISKNAMES	integer	no"
-.\".It "HW_DISKSTATS	integer	no"
+.Bl -column "xxxxxxxxxxxxxxxxxxxxxxxxx" "xxxxxxxxxx" -offset indent
+.It Sy "Name	Type	Changeable"
+.It "hw.activecpu	int32_t	no"
+.It "hw.byteorder	int32_t	no"
+.It "hw.cacheconfig	uint64_t[] 	no"
+.It "hw.cachelinesize	int64_t	no"
+.It "hw.cachesize	uint64_t[] 	no"
+.It "hw.cpu64bit_capable	int32_t	no"
+.It "hw.cpufamily	int32_t	no"
+.It "hw.cpufrequency	int64_t	no"
+.It "hw.cpufrequency_max	int64_t	no"
+.It "hw.cpufrequency_min	int64_t	no"
+.It "hw.cpusubtype	int32_t	no"
+.It "hw.cputhreadtype	int32_t	no"
+.It "hw.cputype	int32_t	no"
+.It "hw.l1dcachesize	int64_t	no"
+.It "hw.l1icachesize	int64_t	no"
+.It "hw.l2cachesize	int64_t	no"
+.It "hw.l3cachesize	int64_t	no"
+.It "hw.logicalcpu	int32_t	no"
+.It "hw.logicalcpu_max	int32_t	no"
+.It "hw.machine	char[]	no"
+.It "hw.memsize	int64_t	no"
+.It "hw.model	char[]	no"
+.It "hw.ncpu	int32_t	no"
+.It "hw.packages	int32_t	no"
+.It "hw.pagesize	int64_t	no"
+.It "hw.physicalcpu	int32_t	no"
+.It "hw.physicalcpu_max	int32_t	no"
+.It "hw.tbfrequency	int64_t	no"
 .El
-.Pp
 .Bl -tag -width 6n
-.It Li HW_MACHINE
-The machine class.
-.It Li HW_MODEL
-The machine model
-.It Li HW_NCPU (DEPRECATED)
-The number of cpus.  It is recommended that you use "hw.physicalcpu" "hw.physicalcpu_max" "hw.logicalcpu" or "hw.logicalcpu_max" instead.
-.It Li "hw.physicalcpu"
-The number of physical processors available in the current power management mode.
-.It Li "hw.physicalcpu_max"
-The maximum number of physical processors that could be available this boot.
+.It Li "hw.byteorder"
+The byte order (4321 or 1234).
+.It Li "hw.model"
+The machine model.
+.It Li "hw.ncpu"
+The number of cpus. This attribute is deprecated and it is recommended that
+.Va "hw.logicalcpu" ,
+.Va "hw.logicalcpu_max" ,
+.Va "hw.physicalcpu" ,
+or
+.Va "hw.physicalcpu_max"
+be used instead.
 .It Li "hw.logicalcpu"
 The number of logical processors available in the current power management mode.
 .It Li "hw.logicalcpu_max"
 The maximum number of logical processors that could be available this boot.
-.It Li HW_BYTEORDER
-The byteorder (4,321, or 1,234).
-.It Li HW_PHYSMEM
-The bytes of physical memory represented by a 32-bit integer (for backward compatibility). Use HW_MEMSIZE instead.
-.It Li HW_MEMSIZE
-The bytes of physical memory represented by a 64-bit integer.
-.It Li HW_USERMEM
-The bytes of non-kernel memory.
-.It Li HW_PAGESIZE
-The software page size.
-.It Li HW_FLOATINGPOINT
-Nonzero if the floating point support is in hardware.
-.It Li HW_MACHINE_ARCH
-The machine dependent architecture type.
-.\".It Fa HW_DISKNAMES
-.\".It Fa HW_DISKSTATS
+.It Li "hw.physicalcpu"
+The number of physical processors available in the current power management mode.
+.It Li "hw.physicalcpu_max"
+The maximum number of physical processors that could be available this boot.
+.It Li "hw.pagesize"
+The software page size in bytes.
 .El
 .Ss CTL_KERN
 The string and integer information available for the CTL_KERN level
@@ -341,203 +273,170 @@ The types of data currently available are process information,
 system vnodes, the open file entries, routing table entries,
 virtual memory statistics, load average history, and clock rate
 information.
-.Bl -column "KERNXMAXFILESPERPROCXXX" "struct clockrateXXX" -offset indent
-.It Sy "Second level name	Type	Changeable"
-.It "KERN_ARGMAX	integer	no"
-.It "KERN_BOOTFILE	string	yes"
-.It "KERN_BOOTTIME	struct timeval	no"
-.It "KERN_CLOCKRATE	struct clockinfo	no"
-.It "KERN_FILE	struct file	no"
-.It "KERN_HOSTID	integer	yes"
-.It "KERN_HOSTNAME	string	yes"
-.It "KERN_JOB_CONTROL	integer	no"
-.It "KERN_MAXFILES	integer	yes"
-.It "KERN_MAXFILESPERPROC	integer	yes"
-.It "KERN_MAXPROC	integer	no"
-.It "KERN_MAXPROCPERUID	integer	yes"
-.It "KERN_MAXVNODES	integer	yes"
-.It "KERN_NGROUPS	integer	no"
-.It "KERN_NISDOMAINNAME	string	yes"
-.It "KERN_OSRELDATE	integer	no"
-.It "KERN_OSRELEASE	string	no"
-.It "KERN_OSREV	integer	no"
-.It "KERN_OSTYPE	string	no"
-.It "KERN_POSIX1	integer	no"
-.It "KERN_PROC	struct kinfo_proc	no"
-.It "KERN_PROF	node	not applicable"
-.It "KERN_QUANTUM	integer	yes"
-.It "KERN_SAVED_IDS	integer	no"
-.It "KERN_SECURELVL	integer	raise only"
-.It "KERN_UPDATEINTERVAL	integer	no"
-.It "KERN_VERSION	string	no"
-.It "KERN_VNODE	struct vnode	no"
+.Bl -column "xxxxxxxxxxxxxxxxxxxxxxxxx" "xxxxxxxxxxxxxxxxxxxx" -offset indent
+.It Sy "Name	Type	Changeable"
+.It "kern.argmax	int32_t	no"
+.It "kern.bootargs	char[]	no"
+.It "kern.boottime	struct timeval	no"
+.It "kern.check_openevt	int32_t	yes"
+.It "kern.clockrate	struct clockinfo	no"
+.It "kern.coredump	int32_t	yes"
+.It "kern.corefile	char[]	yes"
+.It "kern.flush_cache_on_write	int32_t	yes"
+.It "kern.hostid	int32_t	yes"
+.It "kern.hostname	char[]	yes"
+.It "kern.job_control	int32_t	no"
+.It "kern.maxfiles	int32_t	yes"
+.It "kern.maxfilesperproc	int32_t	yes"
+.It "kern.maxnbuf	int32_t	yes"
+.It "kern.maxproc	int32_t	yes"
+.It "kern.maxprocperuid	int32_t	yes"
+.It "kern.maxvnodes	int32_t	yes"
+.It "kern.msgbuf	int32_t	yes"
+.It "kern.nbuf	int32_t	no"
+.It "kern.netboot	int32_t	no"
+.It "kern.ngroups	int32_t	no"
+.It "kern.nisdomainname	char[]	yes"
+.It "kern.num_files	int32_t	no"
+.It "kern.num_tasks	int32_t	no"
+.It "kern.num_taskthreads	int32_t	no"
+.It "kern.num_threads	int32_t	no"
+.It "kern.num_vnodes	int32_t	no"
+.It "kern.nx	int32_t	yes"
+.It "kern.osrelease	char[]	no"
+.It "kern.osrevision	int32_t	no"
+.It "kern.ostype	char[]	no"
+.It "kern.osversion	char[]	yes"
+.It "kern.posix1version	int32_t	no"
+.It "kern.procname	char[]	yes"
+.It "kern.safeboot	int32_t	no"
+.It "kern.saved_ids	int32_t	no"
+.It "kern.secure_kernel	int32_t	no"
+.It "kern.securelevel	int32_t	yes"
+.It "kern.singleuser	int32_t	no"
+.It "kern.sleeptime	struct timeval	no"
+.It "kern.slide	int32_t	no"
+.It "kern.stack_depth_max	int32_t	no"
+.It "kern.stack_size	int32_t	no"
+.It "kern.sugid_coredump	int32_t	yes"
+.It "kern.sugid_scripts	int32_t	yes"
+.It "kern.symfile	char[]	no"
+.It "kern.usrstack	int32_t	no"
+.It "kern.usrstack64	int64_t	no"
+.It "kern.uuid	char[]	no"
+.It "kern.version	char[]	no"
+.It "kern.waketime	struct timeval	no"
 .El
-.Pp
 .Bl -tag -width 6n
-.It Li KERN_ARGMAX
+.It Li "kern.argmax"
 The maximum bytes of argument to
 .Xr execve 2 .
-.It Li KERN_BOOTFILE
-The full pathname of the file from which the kernel was loaded.
-.It Li KERN_BOOTTIME
+.It Li "kern.boottime"
 A
 .Va struct timeval
 structure is returned.
 This structure contains the time that the system was booted.
-.It Li KERN_CLOCKRATE
+.It Li "kern.clockrate"
 A
 .Va struct clockinfo
 structure is returned.
 This structure contains the clock, statistics clock and profiling clock
 frequencies, the number of micro-seconds per hz tick and the skew rate.
-.It Li KERN_FILE
-Return the entire file table.
-The returned data consists of a single
-.Va struct filehead
-followed by an array of
-.Va struct file ,
-whose size depends on the current number of such objects in the system.
-.It Li KERN_HOSTID
+.It Li "kern.hostid"
 Get or set the host id.
-.It Li KERN_HOSTNAME
+.It Li "kern.hostname"
 Get or set the hostname.
-.It Li KERN_JOB_CONTROL
+.It Li "kern.job_control"
 Return 1 if job control is available on this system, otherwise 0.
-.It Li KERN_MAXFILES
+.It Li "kern.maxfiles"
 The maximum number of files that may be open in the system.
-.It Li KERN_MAXFILESPERPROC
+.It Li "kern.maxfilesperproc"
 The maximum number of files that may be open for a single process.
 This limit only applies to processes with an effective uid of nonzero
 at the time of the open request.
 Files that have already been opened are not affected if the limit
 or the effective uid is changed.
-.It Li KERN_MAXPROC
+.It Li "kern.maxproc"
 The maximum number of concurrent processes the system will allow.
-.It Li KERN_MAXPROCPERUID
+.It Li "kern.maxprocperuid"
 The maximum number of concurrent processes the system will allow
 for a single effective uid.
 This limit only applies to processes with an effective uid of nonzero
 at the time of a fork request.
 Processes that have already been started are not affected if the limit
 is changed.
-.It Li KERN_MAXVNODES
+.It Li "kern.maxvnodes"
 The maximum number of vnodes available on the system.
-.It Li KERN_NGROUPS
+.It Li "kern.ngroups"
 The maximum number of supplemental groups.
-.It Li KERN_NISDOMAINNAME
+.It Li "kern.nisdomainname"
 The name of the current YP/NIS domain.
-.It Li KERN_OSRELDATE
-The kernel release version in the format
-.Ar M Ns Ar mm Ns Ar R Ns Ar xx ,
-where
-.Ar M
-is the major version,
-.Ar mm
-is the two digit minor version,
-.Ar R
-is 0 if release branch, otherwise 1,
-and
-.Ar xx
-is updated when the available APIs change.
-.Pp
-The userland release version is available from
-.In osreldate.h ;
-parse this file if you need to get the release version of
-the currently installed userland.
-.It Li KERN_OSRELEASE
+.It Li "kern.osrelease"
 The system release string.
-.It Li KERN_OSREV
-The system revision string.
-.It Li KERN_OSTYPE
+.It Li "kern.osrevision"
+The system revision number.
+.It Li "kern.ostype"
 The system type string.
-.It Li KERN_POSIX1
+.It Li "kern.posix1version"
 The version of
 .St -p1003.1
 with which the system
 attempts to comply.
-.It Li KERN_PROC
-Return the entire process table, or a subset of it.
-An array of
-.Va struct kinfo_proc
-structures is returned,
-whose size depends on the current number of such objects in the system.
-The third and fourth level names are as follows:
-.Bl -column "Third level nameXXXXXX" "Fourth level is:XXXXXX" -offset indent
-.It "Third level name	Fourth level is:"
-.It "KERN_PROC_ALL	None"
-.It "KERN_PROC_PID	A process ID"
-.It "KERN_PROC_PGRP	A process group"
-.It "KERN_PROC_TTY	A tty device"
-.It "KERN_PROC_UID	A user ID"
-.It "KERN_PROC_RUID	A real user ID"
-.El
-.It Li KERN_PROF
-Return profiling information about the kernel.
-If the kernel is not compiled for profiling,
-attempts to retrieve any of the KERN_PROF values will
-fail with
-.Er ENOENT .
-The third level names for the string and integer profiling information
-is detailed below.
-The changeable column shows whether a process with appropriate
-privilege may change the value.
-.Bl -column "GPROFXGMONPARAMXXX" "struct gmonparamXXX" -offset indent
-.It Sy "Third level name	Type	Changeable"
-.It "GPROF_STATE	integer	yes"
-.It "GPROF_COUNT	u_short[\|]	yes"
-.It "GPROF_FROMS	u_short[\|]	yes"
-.It "GPROF_TOS	struct tostruct	yes"
-.It "GPROF_GMONPARAM	struct gmonparam	no"
-.El
-.Pp
-The variables are as follows:
-.Bl -tag -width 6n
-.It Li GPROF_STATE
-Returns GMON_PROF_ON or GMON_PROF_OFF to show that profiling
-is running or stopped.
-.It Li GPROF_COUNT
-Array of statistical program counter counts.
-.It Li GPROF_FROMS
-Array indexed by program counter of call-from points.
-.It Li GPROF_TOS
-Array of
-.Va struct tostruct
-describing destination of calls and their counts.
-.It Li GPROF_GMONPARAM
-Structure giving the sizes of the above arrays.
-.El
-.It Li KERN_QUANTUM
-The maximum period of time, in microseconds, for which a process is allowed
-to run without being preempted if other processes are in the run queue.
-.It Li KERN_SAVED_IDS
+.It Li "kern.saved_ids"
 Returns 1 if saved set-group and saved set-user ID is available.
-.It Li KERN_SECURELVL
+.It Li "kern.securelevel"
 The system security level.
 This level may be raised by processes with appropriate privilege.
 It may not be lowered.
-.It Li KERN_VERSION
+.It Li "kern.version"
 The system version string.
-.It Li KERN_VNODE
-Return the entire vnode table.
-Note, the vnode table is not necessarily a consistent snapshot of
-the system.
-The returned data consists of an array whose size depends on the
-current number of such objects in the system.
-Each element of the array contains the kernel address of a vnode
-.Va struct vnode *
-followed by the vnode itself
-.Va struct vnode .
 .El
 .Ss CTL_MACHDEP
 The set of variables defined is architecture dependent.
 The following variables are defined for the i386 architecture.
-.Bl -column "CONSOLE_DEVICEXXX" "struct bootinfoXXX" -offset indent
-.It Sy "Second level name	Type	Changeable"
-.It Li "CPU_CONSDEV	dev_t	no"
-.It Li "CPU_ADJKERNTZ	int	yes"
-.It Li "CPU_DISRTCSET	int	yes"
-.It Li "CPU_BOOTINFO	struct bootinfo	no"
-.It Li "CPU_WALLCLOCK	int	yes"
+.Bl -column "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "xxxxxxxxxx" -offset indent
+.It Sy "Name	Type	Changeable"
+.It "machdep.cpu.address_bits.physical	int32_t	no"
+.It "machdep.cpu.address_bits.virtual	int32_t	no"
+.It "machdep.cpu.brand	int32_t	no"
+.It "machdep.cpu.brand_string	char[]	no"
+.It "machdep.cpu.cache.L2_associativity	int32_t	no"
+.It "machdep.cpu.cache.linesize	int32_t	no"
+.It "machdep.cpu.cache.size	int32_t	no"
+.It "machdep.cpu.core_count	int32_t	no"
+.It "machdep.cpu.cores_per_package	int32_t	no"
+.It "machdep.cpu.extfamily	int32_t	no"
+.It "machdep.cpu.extfeature_bits	int64_t	no"
+.It "machdep.cpu.extfeatures	char[]	no"
+.It "machdep.cpu.extmodel	int32_t	no"
+.It "machdep.cpu.family	int32_t	no"
+.It "machdep.cpu.feature_bits	int64_t	no"
+.It "machdep.cpu.features	char[]	no"
+.It "machdep.cpu.leaf7_feature_bits	uint32_t	no"
+.It "machdep.cpu.leaf7_features	char[]	no"
+.It "machdep.cpu.logical_per_package	int32_t	no"
+.It "machdep.cpu.max_basic	uint32_t	no"
+.It "machdep.cpu.max_ext	uint32_t	no"
+.It "machdep.cpu.microcode_version	int32_t	no"
+.It "machdep.cpu.model	int32_t	no"
+.It "machdep.cpu.processor_flag	int32_t	no"
+.It "machdep.cpu.signature	int32_t	no"
+.It "machdep.cpu.stepping	int32_t	no"
+.It "machdep.cpu.thread_count	int32_t	no"
+.It "machdep.cpu.tlb.data.large	int32_t	no"
+.It "machdep.cpu.tlb.data.large_level1	int32_t	no"
+.It "machdep.cpu.tlb.data.small	int32_t	no"
+.It "machdep.cpu.tlb.data.small_level1	int32_t	no"
+.It "machdep.cpu.tlb.inst.large	int32_t	no"
+.It "machdep.cpu.tlb.inst.small	int32_t	no"
+.It "machdep.cpu.tlb.shared	int32_t	no"
+.It "machdep.cpu.ucupdate	int32_t	yes"
+.It "machdep.cpu.vendor	char[]	no"
+.It "machdep.cpu.xsave.extended_state	uint32_t	no"
+.It "machdep.tsc.deep_idle_rebase	uint32_t	yes"
+.It "machdep.tsc.frequency	int64_t	no"
+.It "machdep.tsc.nanotime.generation	uint32_t	no"
+.It "machdep.tsc.nanotime.shift	uint32_t	no"
 .El
 .Ss CTL_NET
 The string and integer information available for the CTL_NET level
@@ -550,7 +449,6 @@ privilege may change the value.
 .It "PF_INET	IPv4 values	yes"
 .It "PF_INET6	IPv6 values	yes"
 .El
-.Pp
 .Bl -tag -width 6n
 .It Li PF_ROUTE
 Return the entire routing table or a subset of it.
@@ -562,13 +460,14 @@ The length of each message is contained in the message header.
 The third level name is a protocol number, which is currently always 0.
 The fourth level name is an address family, which may be set to 0 to
 select all address families.
-The fifth and sixth level names are as follows:
-.Bl -column "Fifth level nameXXXXXX" "Sixth level is:XXX" -offset indent
-.It Sy "Fifth level name	Sixth level is:"
-.It "NET_RT_FLAGS	rtflags"
-.It "NET_RT_DUMP	None"
-.It "NET_RT_IFLIST	0 or if_index"
-.It "NET_RT_IFMALIST	0 or if_index"
+The fifth, sixth, and seventh level names are as follows:
+.Bl -column -offset indent "Fifth level      Sixth level" "Seventh level"
+.It Sy "Fifth level      Sixth level" Ta Sy "Seventh level"
+.It "NET_RT_FLAGS     rtflags" Ta "None"
+.It "NET_RT_DUMP      None" Ta "None or fib number"
+.It "NET_RT_IFLIST    0 or if_index" Ta None
+.It "NET_RT_IFMALIST  0 or if_index" Ta None
+.It "NET_RT_IFLISTL   0 or if_index" Ta None
 .El
 .Pp
 The
@@ -633,98 +532,98 @@ The string and integer information available for the CTL_USER level
 is detailed below.
 The changeable column shows whether a process with appropriate
 privilege may change the value.
-.Bl -column "USER_COLL_WEIGHTS_MAXXXX" "integerXXX" -offset indent
-.It Sy "Second level name	Type	Changeable"
-.It "USER_BC_BASE_MAX	integer	no"
-.It "USER_BC_DIM_MAX	integer	no"
-.It "USER_BC_SCALE_MAX	integer	no"
-.It "USER_BC_STRING_MAX	integer	no"
-.It "USER_COLL_WEIGHTS_MAX	integer	no"
-.It "USER_CS_PATH	string	no"
-.It "USER_EXPR_NEST_MAX	integer	no"
-.It "USER_LINE_MAX	integer	no"
-.It "USER_POSIX2_CHAR_TERM	integer	no"
-.It "USER_POSIX2_C_BIND	integer	no"
-.It "USER_POSIX2_C_DEV	integer	no"
-.It "USER_POSIX2_FORT_DEV	integer	no"
-.It "USER_POSIX2_FORT_RUN	integer	no"
-.It "USER_POSIX2_LOCALEDEF	integer	no"
-.It "USER_POSIX2_SW_DEV	integer	no"
-.It "USER_POSIX2_UPE	integer	no"
-.It "USER_POSIX2_VERSION	integer	no"
-.It "USER_RE_DUP_MAX	integer	no"
-.It "USER_STREAM_MAX	integer	no"
-.It "USER_TZNAME_MAX	integer	no"
+.Bl -column "xxxxxxxxxxxxxxxxxxxxxxxxx" "xxxxxxxxxx" -offset indent
+.It Sy "Name	Type	Changeable"
+.It "user.bc_base_max	int32_t	no"
+.It "user.bc_dim_max	int32_t	no"
+.It "user.bc_scale_max	int32_t	no"
+.It "user.bc_string_max	int32_t	no"
+.It "user.coll_weights_max	int32_t	no"
+.It "user.cs_path	char[]	no"
+.It "user.expr_nest_max	int32_t	no"
+.It "user.line_max	int32_t	no"
+.It "user.posix2_c_bind	int32_t	no"
+.It "user.posix2_c_dev	int32_t	no"
+.It "user.posix2_char_term	int32_t	no"
+.It "user.posix2_fort_dev	int32_t	no"
+.It "user.posix2_fort_run	int32_t	no"
+.It "user.posix2_localedef	int32_t	no"
+.It "user.posix2_sw_dev	int32_t	no"
+.It "user.posix2_upe	int32_t	no"
+.It "user.posix2_version	int32_t	no"
+.It "user.re_dup_max	int32_t	no"
+.It "user.stream_max	int32_t	no"
+.It "user.tzname_max	int32_t	no"
 .El
 .Bl -tag -width 6n
 .Pp
-.It Li USER_BC_BASE_MAX
+.It Li "user.bc_base_max"
 The maximum ibase/obase values in the
 .Xr bc 1
 utility.
-.It Li USER_BC_DIM_MAX
+.It Li "user.bc_dim_max"
 The maximum array size in the
 .Xr bc 1
 utility.
-.It Li USER_BC_SCALE_MAX
+.It Li "user.bc_scale_max"
 The maximum scale value in the
 .Xr bc 1
 utility.
-.It Li USER_BC_STRING_MAX
+.It Li "user.bc_string_max"
 The maximum string length in the
 .Xr bc 1
 utility.
-.It Li USER_COLL_WEIGHTS_MAX
+.It Li "user.coll_weights_max"
 The maximum number of weights that can be assigned to any entry of
 the LC_COLLATE order keyword in the locale definition file.
-.It Li USER_CS_PATH
+.It Li "user.cs_path"
 Return a value for the
 .Ev PATH
 environment variable that finds all the standard utilities.
-.It Li USER_EXPR_NEST_MAX
+.It Li "user.expr_nest_max"
 The maximum number of expressions that can be nested within
 parenthesis by the
 .Xr expr 1
 utility.
-.It Li USER_LINE_MAX
+.It Li "user.line_max"
 The maximum length in bytes of a text-processing utility's input
 line.
-.It Li USER_POSIX2_CHAR_TERM
+.It Li "user.posix2_c_bind"
+Return 1 if the system's C-language development facilities support the
+C-Language Bindings Option, otherwise 0.
+.It Li "user.posix2_c_dev"
+Return 1 if the system supports the C-Language Development Utilities Option,
+otherwise 0.
+.It Li "user.posix2_char_term"
 Return 1 if the system supports at least one terminal type capable of
 all operations described in
 .St -p1003.2 ,
 otherwise 0.
-.It Li USER_POSIX2_C_BIND
-Return 1 if the system's C-language development facilities support the
-C-Language Bindings Option, otherwise 0.
-.It Li USER_POSIX2_C_DEV
-Return 1 if the system supports the C-Language Development Utilities Option,
-otherwise 0.
-.It Li USER_POSIX2_FORT_DEV
+.It Li "user.posix2_fort_dev"
 Return 1 if the system supports the FORTRAN Development Utilities Option,
 otherwise 0.
-.It Li USER_POSIX2_FORT_RUN
+.It Li "user.posix2_fort_run"
 Return 1 if the system supports the FORTRAN Runtime Utilities Option,
 otherwise 0.
-.It Li USER_POSIX2_LOCALEDEF
+.It Li "user.posix2_localedef"
 Return 1 if the system supports the creation of locales, otherwise 0.
-.It Li USER_POSIX2_SW_DEV
+.It Li "user.posix2_sw_dev"
 Return 1 if the system supports the Software Development Utilities Option,
 otherwise 0.
-.It Li USER_POSIX2_UPE
+.It Li "user.posix2_upe"
 Return 1 if the system supports the User Portability Utilities Option,
 otherwise 0.
-.It Li USER_POSIX2_VERSION
+.It Li "user.posix2_version"
 The version of
 .St -p1003.2
 with which the system attempts to comply.
-.It Li USER_RE_DUP_MAX
+.It Li "user.re_dup_max"
 The maximum number of repeated occurrences of a regular expression
 permitted when using interval notation.
-.It Li USER_STREAM_MAX
+.It Li "user.stream_max"
 The minimum maximum number of streams that a process may have open
 at any one time.
-.It Li USER_TZNAME_MAX
+.It Li "user.tzname_max"
 The minimum maximum number of types supported for the name of a
 timezone.
 .El
@@ -733,59 +632,37 @@ The string and integer information available for the CTL_VM level
 is detailed below.
 The changeable column shows whether a process with appropriate
 privilege may change the value.
-.Bl -column "Second level nameXXXXXX" "struct loadavgXXX" -offset indent
-.It Sy "Second level name	Type	Changeable"
-.It "VM_LOADAVG	struct loadavg	no"
-.It "VM_PAGEOUT_ALGORITHM	integer	yes"
-.It "VM_SWAPPING_ENABLED	integer	maybe"
-.It "VM_V_CACHE_MAX	integer	yes"
-.It "VM_V_CACHE_MIN	integer	yes"
-.It "VM_V_FREE_MIN	integer	yes"
-.It "VM_V_FREE_RESERVED	integer	yes"
-.It "VM_V_FREE_TARGET	integer	yes"
-.It "VM_V_INACTIVE_TARGET	integer	yes"
-.It "VM_V_PAGEOUT_FREE_MIN	integer	yes"
+.Bl -column "xxxxxxxxxxxxxxxxxxxxxxxxx" "xxxxxxxxxx" -offset indent
+.It Sy "Name	Type	Changeable"
+.It "vm.loadavg	struct loadavg	no"
+.It "vm.swapusage	struct xsw_usage	no"
 .El
 .Pp
 .Bl -tag -width 6n
-.It Li VM_LOADAVG
+.It Li "vm.loadavg"
 Return the load average history.
 The returned data consists of a
 .Va struct loadavg .
-.It Li VM_PAGEOUT_ALGORITHM
-0 if the statistics-based page management algorithm is in use
-or 1 if the near-LRU algorithm is in use.
-.It Li VM_SWAPPING_ENABLED
-1 if process swapping is enabled or 0 if disabled.
-This variable is
-permanently set to 0 if the kernel was built with swapping disabled.
-.It Li VM_V_CACHE_MAX
-Maximum desired size of the cache queue.
-.It Li VM_V_CACHE_MIN
-Minimum desired size of the cache queue.
-If the cache queue size
-falls very far below this value, the pageout daemon is awakened.
-.It Li VM_V_FREE_MIN
-Minimum amount of memory (cache memory plus free memory)
-required to be available before a process waiting on memory will be
-awakened.
-.It Li VM_V_FREE_RESERVED
-Processes will awaken the pageout daemon and wait for memory if the
-number of free and cached pages drops below this value.
-.It Li VM_V_FREE_TARGET
-The total amount of free memory (including cache memory) that the
-pageout daemon tries to maintain.
-.It Li VM_V_INACTIVE_TARGET
-The desired number of inactive pages that the pageout daemon should
-achieve when it runs.
-Inactive pages can be quickly inserted into
-process address space when needed.
-.It Li VM_V_PAGEOUT_FREE_MIN
-If the amount of free and cache memory falls below this value, the
-pageout daemon will enter "memory conserving mode" to avoid deadlock.
 .El
 .Sh RETURN VALUES
 .Rv -std
+.Sh FILES
+.Bl -tag -width <netinet/icmpXvar.h> -compact
+.It In sys/sysctl.h
+definitions for top level identifiers, second level kernel and hardware
+identifiers, and user level identifiers
+.It In sys/socket.h
+definitions for second level network identifiers
+.It In netinet/in.h
+definitions for third level IPv4/IPv6 identifiers and
+fourth level IPv4/v6 identifiers
+.It In netinet/icmp_var.h
+definitions for fourth level ICMP identifiers
+.It In netinet/icmp6.h
+definitions for fourth level ICMPv6 identifiers
+.It In netinet/udp_var.h
+definitions for fourth level UDP identifiers
+.El
 .Sh ERRORS
 The following errors may be reported:
 .Bl -tag -width Er
@@ -839,28 +716,8 @@ An attempt is made to set a read-only value.
 .It Bq Er EPERM
 A process without appropriate privilege attempts to set a value.
 .El
-.Sh FILES
-.Bl -tag -width <netinet/icmpXvar.h> -compact
-.It In sys/sysctl.h
-definitions for top level identifiers, second level kernel and hardware
-identifiers, and user level identifiers
-.It In sys/socket.h
-definitions for second level network identifiers
-.It In sys/gmon.h
-definitions for third level profiling identifiers
-.It In mach/vm_param.h
-definitions for second level virtual memory identifiers
-.It In netinet/in.h
-definitions for third level IPv4/IPv6 identifiers and
-fourth level IPv4/v6 identifiers
-.It In netinet/icmp_var.h
-definitions for fourth level ICMP identifiers
-.It In netinet/icmp6.h
-definitions for fourth level ICMPv6 identifiers
-.It In netinet/udp_var.h
-definitions for fourth level UDP identifiers
-.El
 .Sh SEE ALSO
+.Xr confstr 3 ,
 .Xr sysconf 3 ,
 .Xr sysctl 8
 .Sh HISTORY

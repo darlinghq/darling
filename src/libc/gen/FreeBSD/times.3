@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)times.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/gen/times.3,v 1.10 2001/10/01 16:08:51 ru Exp $
+.\" $FreeBSD$
 .\"
-.Dd June 4, 1993
+.Dd December 1, 2008
 .Dt TIMES 3
 .Os
 .Sh NAME
@@ -43,9 +39,7 @@
 .Sh SYNOPSIS
 .In sys/times.h
 .Ft clock_t
-.Fo times
-.Fa "struct tms *buffer"
-.Fc
+.Fn times "struct tms *tp"
 .Sh DESCRIPTION
 .Bf -symbolic
 This interface is obsoleted by
@@ -63,7 +57,7 @@ of a second since
 Time.
 .Pp
 It also fills in the structure pointed to by
-.Fa buffer
+.Fa tp
 with time-accounting information.
 .Pp
 The
@@ -136,8 +130,7 @@ and
 .Xr time 1 ,
 .Xr getrusage 2 ,
 .Xr gettimeofday 2 ,
-.Xr wait 2 ,
-.Xr clocks 7
+.Xr wait 2
 .Sh STANDARDS
 The
 .Fn times

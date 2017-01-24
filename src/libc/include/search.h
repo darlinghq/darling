@@ -11,11 +11,7 @@
 
 #include <sys/cdefs.h>
 #include <_types.h>
-
-#ifndef _SIZE_T
-#define _SIZE_T
-typedef __darwin_size_t	size_t;
-#endif
+#include <sys/_types/_size_t.h>
 
 typedef	struct entry {
 	char	*key;

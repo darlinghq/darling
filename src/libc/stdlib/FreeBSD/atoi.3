@@ -79,14 +79,14 @@ and
 functions are thread-safe and async-cancel-safe.
 .Pp
 The
-.Fn atoi
-and
-.Fn atoi_l
-functions have been deprecated by
 .Fn strtol
 and
 .Fn strtol_l
-and should not be used in new code.
+functions are recommended instead of 
+.Fn atoi
+and
+.Fn atoi_l
+functions, especially in new code.
 .Sh ERRORS
 The function
 .Fn atoi

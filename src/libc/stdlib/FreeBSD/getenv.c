@@ -33,15 +33,18 @@ static char sccsid[] = "@(#)getenv.c	8.1 (Berkeley) 6/4/93";
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: src/lib/libc/stdlib/getenv.c,v 1.8 2007/05/01 16:02:41 ache Exp $");
 
+#include <os/lock_private.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 #include <crt_externs.h>
 
-__private_extern__ char *__findenv(const char *, int *, char **);
+__private_extern__ char *__findenv_locked(const char *, int *, char **);
+__private_extern__ void __environ_lock(void);
+__private_extern__ void __environ_unlock(void);
 
 /*
- * __findenv --
+ * __findenv_locked --
  *	Returns pointer to value associated with name, if any, else NULL.
  *	Sets offset to be the offset of the name/value combination in the
  *	environmental array, for use by setenv(3) and unsetenv(3).
@@ -50,7 +53,7 @@ __private_extern__ char *__findenv(const char *, int *, char **);
  *	This routine *should* be a static; don't use it.
  */
 __private_extern__ char *
-__findenv(name, offset, environ)
+__findenv_locked(name, offset, environ)
 	const char *name;
 	int *offset;
 	char **environ;
@@ -76,6 +79,32 @@ __findenv(name, offset, environ)
 	return (NULL);
 }
 
+static os_unfair_lock __environ_lock_obj = OS_UNFAIR_LOCK_INIT;
+__private_extern__ void
+__environ_lock(void)
+{
+#if TARGET_OS_IOS && !TARGET_OS_SIMULATOR
+	os_unfair_lock_lock_with_options_4Libc(
+			&__environ_lock_obj, OS_UNFAIR_LOCK_DATA_SYNCHRONIZATION);
+#else // TARGET_OS_IOS && !TARGET_OS_SIMULATOR
+	os_unfair_lock_lock(&__environ_lock_obj);
+#endif // TARGET_OS_IOS && !TARGET_OS_SIMULATOR
+}
+__private_extern__ void
+__environ_unlock(void)
+{
+#if TARGET_OS_IOS && !TARGET_OS_SIMULATOR
+	os_unfair_lock_unlock_4Libc(&__environ_lock_obj);
+#else // TARGET_OS_IOS && !TARGET_OS_SIMULATOR
+	os_unfair_lock_unlock(&__environ_lock_obj);
+#endif // TARGET_OS_IOS && !TARGET_OS_SIMULATOR
+}
+__private_extern__ void
+__environ_lock_fork_child(void)
+{
+	__environ_lock_obj = OS_UNFAIR_LOCK_INIT;
+}
+
 /*
  * _getenvp -- SPI using an arbitrary pointer to string array (the array must
  * have been created with malloc) and an env state, created by _allocenvstate().
@@ -84,9 +113,12 @@ __findenv(name, offset, environ)
 char *
 _getenvp(const char *name, char ***envp, void *state __unused)
 {
+	// envp is passed as an argument, so the lock is not protecting everything
 	int offset;
-
-	return (__findenv(name, &offset, *envp));
+	__environ_lock();
+	char *result = (__findenv_locked(name, &offset, *envp));
+	__environ_unlock();
+	return result;
 }
 
 /*
@@ -98,6 +130,8 @@ getenv(name)
 	const char *name;
 {
 	int offset;
-
-	return (__findenv(name, &offset, *_NSGetEnviron()));
+	__environ_lock();
+	char *result = __findenv_locked(name, &offset, *_NSGetEnviron());
+	__environ_unlock();
+	return result;
 }

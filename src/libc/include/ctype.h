@@ -64,13 +64,12 @@
  */
 
 //Begin-Libc
-#ifdef BUILDING_LIBC
 #include "xlocale_private.h"
-#endif
 //End-Libc
 #ifndef	_CTYPE_H_
 #define _CTYPE_H_
 
+#include <sys/cdefs.h>
 #include <runetype.h>
 
 #define	_CTYPE_A	0x00000100L		/* Alpha */
@@ -118,27 +117,35 @@
 #define	_SW3		_CTYPE_SW3		/* 3 width character */
 #endif /* _NONSTD_SOURCE */
 
+//Begin-Libc
 /*
  * _EXTERNALIZE_CTYPE_INLINES_ is defined in locale/nomacros.c to tell us
  * to generate code for extern versions of all intermediate inline functions.
  */
 #ifdef _EXTERNALIZE_CTYPE_INLINES_
 #define _USE_CTYPE_INLINE_
-#define __DARWIN_CTYPE_static_inline
+#define __DARWIN_CTYPE_inline
 #else /* !_EXTERNALIZE_CTYPE_INLINES_ */
-#define __DARWIN_CTYPE_static_inline		static __inline
+//End-Libc
+#define __DARWIN_CTYPE_inline		__header_inline
+//Begin-Libc
 #endif /* !_EXTERNALIZE_CTYPE_INLINES_ */
+//End-Libc
 
+//Begin-Libc
 /*
  * _EXTERNALIZE_CTYPE_INLINES_TOP_ is defined in locale/isctype.c to tell us
  * to generate code for extern versions of all top-level inline functions.
  */
 #ifdef _EXTERNALIZE_CTYPE_INLINES_TOP_
 #define _USE_CTYPE_INLINE_
-#define __DARWIN_CTYPE_TOP_static_inline
+#define __DARWIN_CTYPE_TOP_inline
 #else /* !_EXTERNALIZE_CTYPE_INLINES_TOP_ */
-#define __DARWIN_CTYPE_TOP_static_inline	static __inline
+//End-Libc
+#define __DARWIN_CTYPE_TOP_inline	__header_inline
+//Begin-Libc
 #endif /* _EXTERNALIZE_CTYPE_INLINES_TOP_ */
+//End-Libc
 
 /*
  * Use inline functions if we are allowed to and the compiler supports them.
@@ -153,34 +160,39 @@ __darwin_ct_rune_t	___tolower(__darwin_ct_rune_t);
 __darwin_ct_rune_t	___toupper(__darwin_ct_rune_t);
 __END_DECLS
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isascii(int _c)
 {
 	return ((_c & ~0x7F) == 0);
 }
 
 #ifdef USE_ASCII
-__DARWIN_CTYPE_static_inline int     
+__DARWIN_CTYPE_inline int
 __maskrune(__darwin_ct_rune_t _c, unsigned long _f)
 {
-	return _DefaultRuneLocale.__runetype[_c & 0xff] & _f;
+	return (int)_DefaultRuneLocale.__runetype[_c & 0xff] & (__uint32_t)_f;
 }
 //Begin-Libc
 #elif defined(__LIBC__)
-__DARWIN_CTYPE_static_inline int     
+__DARWIN_CTYPE_inline int
 __maskrune(__darwin_ct_rune_t _c, unsigned long _f)
 {
-	return ((_c < 0 || _c >= _CACHED_RUNES) ? ___runetype(_c) :
-		__current_locale()->__lc_ctype->_CurrentRuneLocale.__runetype[_c]) & _f;
+	/* _CurrentRuneLocale.__runetype[_c] is __uint32_t
+	 * _f is unsigned long
+	 * ___runetype(_c) is unsigned long
+	 * retval is int
+	 */
+	return (int)((_c < 0 || _c >= _CACHED_RUNES) ? (__uint32_t)___runetype(_c) :
+		__current_locale()->__lc_ctype->_CurrentRuneLocale.__runetype[_c]) & (__uint32_t)_f;
 }
 //End-Libc
 #else /* !USE_ASCII */
 __BEGIN_DECLS
-int             	__maskrune(__darwin_ct_rune_t, unsigned long);   
+int             	__maskrune(__darwin_ct_rune_t, unsigned long);
 __END_DECLS
 #endif /* USE_ASCII */
 
-__DARWIN_CTYPE_static_inline int
+__DARWIN_CTYPE_inline int
 __istype(__darwin_ct_rune_t _c, unsigned long _f)
 {
 #ifdef USE_ASCII
@@ -191,7 +203,7 @@ __istype(__darwin_ct_rune_t _c, unsigned long _f)
 #endif /* USE_ASCII */
 }
 
-__DARWIN_CTYPE_static_inline __darwin_ct_rune_t
+__DARWIN_CTYPE_inline __darwin_ct_rune_t
 __isctype(__darwin_ct_rune_t _c, unsigned long _f)
 {
 #ifdef USE_ASCII
@@ -203,13 +215,13 @@ __isctype(__darwin_ct_rune_t _c, unsigned long _f)
 }
 
 #ifdef USE_ASCII
-__DARWIN_CTYPE_static_inline __darwin_ct_rune_t
+__DARWIN_CTYPE_inline __darwin_ct_rune_t
 __toupper(__darwin_ct_rune_t _c)
 {
 	return _DefaultRuneLocale.__mapupper[_c & 0xff];
 }
 
-__DARWIN_CTYPE_static_inline __darwin_ct_rune_t
+__DARWIN_CTYPE_inline __darwin_ct_rune_t
 __tolower(__darwin_ct_rune_t _c)
 {
 	return _DefaultRuneLocale.__maplower[_c & 0xff];
@@ -222,14 +234,14 @@ __tolower(__darwin_ct_rune_t _c)
  * assume c >= _CACHED_RUNES.  So we are stuck making __toupper() a routine
  * to hide the extended locale details, outside of Libc.
  */
-__DARWIN_CTYPE_static_inline __darwin_ct_rune_t
+__DARWIN_CTYPE_inline __darwin_ct_rune_t
 __toupper(__darwin_ct_rune_t _c)
 {
 	return (_c < 0 || _c >= _CACHED_RUNES) ? ___toupper(_c) :
 		__current_locale()->__lc_ctype->_CurrentRuneLocale.__mapupper[_c];
 }
 
-__DARWIN_CTYPE_static_inline __darwin_ct_rune_t
+__DARWIN_CTYPE_inline __darwin_ct_rune_t
 __tolower(__darwin_ct_rune_t _c)
 {
 	return (_c < 0 || _c >= _CACHED_RUNES) ? ___tolower(_c) :
@@ -243,7 +255,7 @@ __darwin_ct_rune_t	__tolower(__darwin_ct_rune_t);
 __END_DECLS
 #endif /* USE_ASCII */
 
-__DARWIN_CTYPE_static_inline int
+__DARWIN_CTYPE_inline int
 __wcwidth(__darwin_ct_rune_t _c)
 {
 	unsigned int _x;
@@ -261,136 +273,136 @@ __wcwidth(__darwin_ct_rune_t _c)
 #define	_tolower(c)	__tolower(c)
 #define	_toupper(c)	__toupper(c)
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isalnum(int _c)
 {
 	return (__istype(_c, _CTYPE_A|_CTYPE_D));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isalpha(int _c)
 {
 	return (__istype(_c, _CTYPE_A));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isblank(int _c)
 {
 	return (__istype(_c, _CTYPE_B));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 iscntrl(int _c)
 {
 	return (__istype(_c, _CTYPE_C));
 }
 
 /* ANSI -- locale independent */
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isdigit(int _c)
 {
 	return (__isctype(_c, _CTYPE_D));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isgraph(int _c)
 {
 	return (__istype(_c, _CTYPE_G));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 islower(int _c)
 {
 	return (__istype(_c, _CTYPE_L));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isprint(int _c)
 {
 	return (__istype(_c, _CTYPE_R));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 ispunct(int _c)
 {
 	return (__istype(_c, _CTYPE_P));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isspace(int _c)
 {
 	return (__istype(_c, _CTYPE_S));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isupper(int _c)
 {
 	return (__istype(_c, _CTYPE_U));
 }
 
 /* ANSI -- locale independent */
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isxdigit(int _c)
 {
 	return (__isctype(_c, _CTYPE_X));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 toascii(int _c)
 {
 	return (_c & 0x7F);
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 tolower(int _c)
 {
         return (__tolower(_c));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 toupper(int _c)
 {
         return (__toupper(_c));
 }
 
 #if !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 digittoint(int _c)
 {
 	return (__maskrune(_c, 0x0F));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 ishexnumber(int _c)
 {
 	return (__istype(_c, _CTYPE_X));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isideogram(int _c)
 {
 	return (__istype(_c, _CTYPE_I));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isnumber(int _c)
 {
 	return (__istype(_c, _CTYPE_D));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isphonogram(int _c)
 {
 	return (__istype(_c, _CTYPE_Q));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isrune(int _c)
 {
 	return (__istype(_c, 0xFFFFFFF0L));
 }
 
-__DARWIN_CTYPE_TOP_static_inline int
+__DARWIN_CTYPE_TOP_inline int
 isspecial(int _c)
 {
 	return (__istype(_c, _CTYPE_T));

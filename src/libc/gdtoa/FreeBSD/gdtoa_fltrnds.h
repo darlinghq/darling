@@ -1,4 +1,5 @@
-	FPI *fpi, fpi1;
+	CONST FPI *fpi;
+	FPI fpi1;
 	int Rounding;
 #ifdef Trust_FLT_ROUNDS /*{{ only define this if FLT_ROUNDS really works! */
 	Rounding = Flt_Rounds;

@@ -29,9 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)getopt.3	8.5 (Berkeley) 4/27/95
-.\" $FreeBSD: src/lib/libc/stdlib/getopt_long.3,v 1.13 2005/01/20 09:17:04 ru Exp $
+.\" $FreeBSD$
 .\"
-.Dd April 1, 2000
+.Dd December 25, 2011
 .Dt GETOPT_LONG 3
 .Os
 .Sh NAME
@@ -130,11 +130,11 @@ field should be one of:
 .Pp
 .Bl -tag -width ".Dv optional_argument" -offset indent -compact
 .It Dv no_argument
-no argument to the option is expect
+no argument to the option is expected
 .It Dv required_argument
 an argument to the option is required
 .It Dv optional_argument
-an argument to the option may be presented.
+an argument to the option may be presented
 .El
 .Pp
 If
@@ -239,7 +239,7 @@ static struct option longopts[] = {
 };
 
 bflag = 0;
-while ((ch = getopt_long(argc, argv, "bf:", longopts, NULL)) != -1)
+while ((ch = getopt_long(argc, argv, "bf:", longopts, NULL)) != -1) {
 	switch (ch) {
 	case 'b':
 		bflag = 1;
@@ -256,6 +256,7 @@ while ((ch = getopt_long(argc, argv, "bf:", longopts, NULL)) != -1)
 		break;
 	default:
 		usage();
+	}
 }
 argc -= optind;
 argv += optind;
@@ -469,9 +470,9 @@ The
 .Fn getopt_long
 and
 .Fn getopt_long_only
-functions first appeared in
+functions first appeared in the
 .Tn GNU
-libiberty.
+libiberty library.
 The first
 .Bx
 implementation of

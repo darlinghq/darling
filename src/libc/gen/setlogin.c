@@ -55,12 +55,25 @@
 
 
 #include <unistd.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
 
 extern int __setlogin(const char* name);
 
-extern int _logname_valid;		/* shared with getlogin() */
+extern pthread_mutex_t __logname_mutex;
+extern char *__logname;
 
 int setlogin(const char* name)
 {
-	return (_logname_valid = __setlogin(name));
+	pthread_mutex_lock(&__logname_mutex);
+
+	int res = __setlogin(name);
+	if (res == 0 && __logname != NULL) {
+		__logname[0] = 0;
+	}
+
+	pthread_mutex_unlock(&__logname_mutex);
+
+	return res;
 }

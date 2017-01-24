@@ -85,6 +85,38 @@ The available values are as follows:
 .Pp
 .Bl -tag -width 6n
 .Pp
+.It Li _CS_DARWIN_USER_DIR
+Provides the path to a user's folder. The directory will be created if it
+does not already exist.
+.Pp
+This directory is created with access permissions of 0755 and restricted by
+the
+.Xr umask 2
+of the calling process and is not intended to be used for
+sensitive or temporary file storage, as all users can see files created here.
+If the user's umask allows it, files created here will be world readable,
+which could lead to information disclosure.
+.Pp
+.It Li _CS_DARWIN_USER_TEMP_DIR
+Provides the path to a user's temporary items directory. The directory will be
+created it if does not already exist. This directory is created with access
+permissions of 0700 and restricted by the
+.Xr umask 2
+of the calling process and is a good location for temporary files.
+.Pp
+By default, files in this location may be cleaned (removed) by the system if
+they are not accessed in 3 days.
+.Pp
+.It Li _CS_DARWIN_USER_CACHE_DIR
+Provides the path to the user's cache directory. The directory will be created
+if it does not already exist. This directory is created with access permissions
+of 0700 and restricted by the
+.Xr umask 2
+of the calling process and is a good location for user cache data as it will not
+be automatically cleaned by the system.
+.Pp
+Files in this location will be removed during safe boot.
+.Pp
 .It Li _CS_PATH
 Return a value for the
 .Ev PATH

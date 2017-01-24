@@ -126,6 +126,20 @@ int proc_clear_dirty(pid_t pid, uint32_t flags);
 
 int proc_terminate(pid_t pid, int *sig);
 
+#ifdef PRIVATE
+/*
+ * Enumerate potential userspace pointers embedded in kernel data structures.
+ * Currently inspects kqueues only.
+ *
+ * NOTE: returned "pointers" are opaque user-supplied values and thus not
+ * guaranteed to address valid objects or be pointers at all.
+ *
+ * Returns the number of pointers found (which may exceed buffersize), or -1 on
+ * failure and errno set appropriately.
+ */
+int proc_list_uptrs(pid_t pid, uint64_t *buffer, uint32_t buffersize);
+#endif /* PRIVATE */
+
 __END_DECLS
 
 #endif /*_LIBPROC_H_ */

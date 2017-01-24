@@ -89,7 +89,6 @@
 /*
  * symbol versioning macros
  */
-#ifndef DARLING__DISABLED
 #define LIBC_ALIAS(sym)		__asm("_" __STRING(sym) LIBC_SUF_UNIX03)
 #define LIBC_ALIAS_C(sym)	__asm("_" __STRING(sym) LIBC_SUF_NON_CANCELABLE LIBC_SUF_UNIX03)
 #define LIBC_ALIAS_I(sym)	__asm("_" __STRING(sym) LIBC_SUF_64_BIT_INO_T LIBC_SUF_UNIX03)
@@ -104,45 +103,25 @@
 #define LIBC_EXTSN(sym)		__asm("_" __STRING(sym) LIBC_SUF_EXTSN)
 #define LIBC_EXTSN_C(sym)	__asm("_" __STRING(sym) LIBC_SUF_EXTSN LIBC_SUF_NON_CANCELABLE)
 
-#else // DARLING
-
-#define LIBC_ALIAS(sym)		__asm(__STRING(sym) LIBC_SUF_UNIX03)
-#define LIBC_ALIAS_C(sym)	__asm(__STRING(sym) LIBC_SUF_NON_CANCELABLE LIBC_SUF_UNIX03)
-#define LIBC_ALIAS_I(sym)	__asm(__STRING(sym) LIBC_SUF_64_BIT_INO_T LIBC_SUF_UNIX03)
-#define LIBC_INODE64(sym)	__asm(__STRING(sym) LIBC_SUF_64_BIT_INO_T)
-
-#define LIBC_1050(sym)		__asm(__STRING(sym) LIBC_SUF_1050)
-#define LIBC_1050ALIAS(sym)	__asm(__STRING(sym) LIBC_SUF_1050 LIBC_SUF_UNIX03)
-#define LIBC_1050ALIAS_C(sym)	__asm(__STRING(sym) LIBC_SUF_1050 LIBC_SUF_NON_CANCELABLE LIBC_SUF_UNIX03)
-#define LIBC_1050ALIAS_I(sym)	__asm(__STRING(sym) LIBC_SUF_1050 LIBC_SUF_64_BIT_INO_T LIBC_SUF_UNIX03)
-#define LIBC_1050INODE64(sym)	__asm(__STRING(sym) LIBC_SUF_1050 LIBC_SUF_64_BIT_INO_T)
-
-#define LIBC_EXTSN(sym)		__asm(__STRING(sym) LIBC_SUF_EXTSN)
-#define LIBC_EXTSN_C(sym)	__asm(__STRING(sym) LIBC_SUF_EXTSN LIBC_SUF_NON_CANCELABLE)
-
-#endif // DARLING
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern int __pthread_tsd_first;
 extern int pthread_key_init_np(int, void (*)(void *));
 
-#ifdef __cplusplus
-}
+#include <TargetConditionals.h>
+#if TARGET_IPHONE_SIMULATOR
+/* Simulator keys are offset by 200 */
+#define	__LIBC_PTHREAD_KEY(x)		(210 + (x))
+#else
+#define	__LIBC_PTHREAD_KEY(x)		(10 + (x))
 #endif
-
-#define	__LIBC_PTHREAD_KEY(x)		(__pthread_tsd_first + (x))
 
 /*
  * Libc pthread key assignments
  */
 #define __LIBC_PTHREAD_KEY_XLOCALE	__LIBC_PTHREAD_KEY(0)
-#define __LIBC_PTHREAD_KEY_TTYNAME	__LIBC_PTHREAD_KEY(1)
+//#define __LIBC_PTHREAD_KEY_RESERVED_WIN64	__LIBC_PTHREAD_KEY(1)
 #define __LIBC_PTHREAD_KEY_LOCALTIME	__LIBC_PTHREAD_KEY(2)
 #define __LIBC_PTHREAD_KEY_GMTIME	__LIBC_PTHREAD_KEY(3)
 #define __LIBC_PTHREAD_KEY_GDTOA_BIGINT	__LIBC_PTHREAD_KEY(4)
 #define __LIBC_PTHREAD_KEY_PARSEFLOAT	__LIBC_PTHREAD_KEY(5)
+#define __LIBC_PTHREAD_KEY_TTYNAME	__LIBC_PTHREAD_KEY(6)
 
 #endif /* _LIBC_SYS_CDEFS_H_ */

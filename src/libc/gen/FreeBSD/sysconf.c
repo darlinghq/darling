@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -38,7 +34,7 @@
 static char sccsid[] = "@(#)sysconf.c	8.2 (Berkeley) 3/20/94";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/gen/sysconf.c,v 1.20 2002/11/17 08:54:29 dougb Exp $");
+__FBSDID("$FreeBSD: lib/libc/gen/sysconf.c r168718 $");
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -80,10 +76,9 @@ sysconf(name)
 	quad_t qdvalue;	/* for kern.sysv.shmmin */
 	size_t len;
 	int mib[3], sverrno, value;
-	long defaultresult;
+	long lvalue, defaultresult;
 	const char *path;
 
-	len = sizeof(value);
 	defaultresult = -1;
 
 	switch (name) {
@@ -173,11 +168,11 @@ sysconf(name)
 do_NAME_MAX:
 		sverrno = errno;
 		errno = 0;
-		value = pathconf(path, _PC_NAME_MAX);
-		if (value == -1 && errno != 0)
+		lvalue = pathconf(path, _PC_NAME_MAX);
+		if (lvalue == -1 && errno != 0)
 			return (-1);
 		errno = sverrno;
-		return (value);
+		return (lvalue);
 
 	case _SC_ASYNCHRONOUS_IO:
 #if _POSIX_ASYNCHRONOUS_IO == 0
@@ -257,11 +252,23 @@ do_NAME_MAX:
 		return (_POSIX_TIMERS);
 #endif
 	case _SC_AIO_LISTIO_MAX:
-	case _SC_AIO_MAX:
+#if defined(CTL_P1003_1B) && defined(CTL_P1003_1B_AIO_LISTIO_MAX)
+		mib[0] = CTL_P1003_1B;
+		mib[1] = CTL_P1003_1B_AIO_LISTIO_MAX;
+#else
 		mib[0] = CTL_KERN;;
 		mib[1] = KERN_AIOMAX;
+#endif
 		break;
-
+	case _SC_AIO_MAX:
+#if defined(CTL_P1003_1B) && defined(CTL_P1003_1B_AIO_MAX)
+		mib[0] = CTL_P1003_1B;
+		mib[1] = CTL_P1003_1B_AIO_MAX;
+#else
+		mib[0] = CTL_KERN;;
+		mib[1] = KERN_AIOMAX;
+#endif
+		break;
 	case _SC_AIO_PRIO_DELTA_MAX:
 #if defined(CTL_P1003_1B) && defined(CTL_P1003_1B_AIO_PRIO_DELTA_MAX)
 		mib[0] = CTL_P1003_1B;
@@ -304,7 +311,14 @@ do_NAME_MAX:
 		return (-1);
 #endif
 	case _SC_SEM_NSEMS_MAX:
+#if defined(CTL_P1003_1B) && defined(CTL_P1003_1B_RTSIG_MAX)
+		mib[0] = CTL_P1003_1B;
+		mib[1] = CTL_P1003_1B_SEM_NSEMS_MAX;
+		goto yesno;
+#else
+		len = sizeof(value);
 		return (sysctlbyname("kern.sysv.semmns", &value, &len, NULL, 0) == -1 ? -1 : value);
+#endif
 
 	case _SC_SEM_VALUE_MAX:
 #if SEM_VALUE_MAX == 0
@@ -330,18 +344,34 @@ do_NAME_MAX:
 		return (-1);
 #endif
 
-yesno:		if (sysctl(mib, 2, &value, &len, NULL, 0) == -1)
+yesno:
+		len = sizeof(value);
+		if (sysctl(mib, 2, &value, &len, NULL, 0) == -1)
 			return (-1);
 		if (value == 0)
 			return (defaultresult);
-		return (value);
+		return ((long)value);
+
 	case _SC_2_PBS:
 	case _SC_2_PBS_ACCOUNTING:
 	case _SC_2_PBS_CHECKPOINT:
 	case _SC_2_PBS_LOCATE:
 	case _SC_2_PBS_MESSAGE:
 	case _SC_2_PBS_TRACK:
-		return -1;
+#if _POSIX2_PBS == 0
+#error "don't know how to determine _SC_2_PBS"
+		/*
+		 * This probably requires digging through the filesystem
+		 * to see if the appropriate package has been installed.
+		 * Since we don't currently support this option at all,
+		 * it's not worth the effort to write the code now.
+		 * Figuring out which of the sub-options are supported
+		 * would be even more difficult, so it's probably easier
+		 * to always say ``no''.
+		 */
+#else
+		return (_POSIX2_PBS);
+#endif
 	case _SC_ADVISORY_INFO:
 #if _POSIX_ADVISORY_INFO == 0
 #error "_POSIX_ADVISORY_INFO"
@@ -619,9 +649,37 @@ yesno:		if (sysctl(mib, 2, &value, &len, NULL, 0) == -1)
 	case _SC_PASS_MAX:
 		return (PASS_MAX);
 
+#ifdef _SC_PHYS_PAGES
+	case _SC_PHYS_PAGES:
+#ifdef __APPLE__
+		{
+			long memsize;
+			long pagesize;
+
+			len = sizeof(memsize);
+			if (sysctlbyname("hw.memsize", &memsize, &len, NULL, 0) == -1)
+				return (-1);
+
+			len = sizeof(pagesize);
+			if (sysctlbyname("hw.pagesize", &pagesize, &len, NULL, 0) == -1)
+				return (-1);
+
+			return (memsize / pagesize);
+		}
+#else
+		len = sizeof(lvalue);
+		if (sysctlbyname("hw.availpages", &lvalue, &len, NULL, 0) == -1)
+			return (-1);
+		return (lvalue);
+#endif
+#endif
+
 	default:
 		errno = EINVAL;
 		return (-1);
 	}
-	return (sysctl(mib, 2, &value, &len, NULL, 0) == -1 ? -1 : value);
+	len = sizeof(value);
+	if (sysctl(mib, 2, &value, &len, NULL, 0) == -1)
+		value = -1;
+	return ((long)value);
 }

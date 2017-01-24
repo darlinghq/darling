@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2003-2005 Apple Computer, Inc. All rights reserved.
  *
@@ -53,11 +52,11 @@ int gettimeofday (struct timeval *tp, void *vtzp)
 	    tp = &atv;
 	}
 
-	//if (__commpage_gettimeofday(tp)) {		/* first try commpage */
+	if (__commpage_gettimeofday(tp)) {		/* first try commpage */
 		if (__gettimeofday(tp, NULL) < 0) {	/* if it fails, use syscall */
 			return (-1);
 		}
-	//}
+	}
 
 	if (tzp) {
 	    if (validtz == 0)  {

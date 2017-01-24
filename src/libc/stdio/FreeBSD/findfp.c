@@ -54,7 +54,7 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/findfp.c,v 1.34 2009/12/05 19:31:38 ed Ex
 #include "local.h"
 #include "glue.h"
 
-int	__sdidinit;
+pthread_once_t	__sdidinit;
 
 #if !TARGET_OS_EMBEDDED
 #define	NDYNAMIC 10		/* add ten more whenever necessary */
@@ -72,9 +72,8 @@ int	__sdidinit;
 	._write = __swrite,		\
 	._extra = __sFX + file,         \
 }
-#define __sFXInit       {.fl_mutex = PTHREAD_MUTEX_INITIALIZER}
   /* set counted */
-#define __sFXInit3      {.fl_mutex = PTHREAD_MUTEX_INITIALIZER, .counted = 1}
+#define __sFXInit3      {.fl_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER, .counted = 1}
 
 static int __scounted;		/* streams counted against STREAM_MAX */
 static int __stream_max;
@@ -115,24 +114,16 @@ static struct glue *lastglue = &__sglue;
 
 static struct glue *	moreglue(int);
 
-static spinlock_t thread_lock = _SPINLOCK_INITIALIZER;
-#define THREAD_LOCK()	if (__isthreaded) _SPINLOCK(&thread_lock)
-#define THREAD_UNLOCK()	if (__isthreaded) _SPINUNLOCK(&thread_lock)
-
-#if NOT_YET
-#define	SET_GLUE_PTR(ptr, val)	atomic_set_rel_ptr(&(ptr), (uintptr_t)(val))
-#else
-#define	SET_GLUE_PTR(ptr, val)	ptr = val
-#endif
+static pthread_mutex_t filelist_lock = PTHREAD_MUTEX_INITIALIZER;
+#define FILELIST_LOCK()	do { pthread_mutex_lock(&filelist_lock); } while(0)
+#define FILELIST_UNLOCK()	do { pthread_mutex_unlock(&filelist_lock); } while(0)
 
 static struct glue *
 moreglue(n)
 	int n;
 {
 	struct glue *g;
-	static FILE empty;
 	FILE *p;
-	static struct __sFILEX emptyx = __sFXInit;
 	struct __sFILEX *fx;
 
 	g = (struct glue *)malloc(sizeof(*g) + ALIGNBYTES + n * sizeof(FILE) +
@@ -146,9 +137,9 @@ moreglue(n)
 	g->iobs = p;
         
 	while (--n >= 0) {
-		*p = empty;
+		bzero(p, sizeof(*p));
 		p->_extra = fx;
-		*p->_extra = emptyx;
+		INITEXTRA(p);
 		p++, fx++;
 	}
 	return (g);
@@ -164,36 +155,38 @@ __sfp(int count)
 	int	n;
 	struct glue *g;
 
-	if (!__sdidinit)
-		__sinit();
+	pthread_once(&__sdidinit, __sinit);
 
 	if (count) {
 		if (__scounted >= __stream_max) {
-			THREAD_UNLOCK();
-			errno = EMFILE;
-			return NULL;
+			if (__scounted >= (__stream_max = sysconf(_SC_STREAM_MAX))){
+				errno = EMFILE;
+				return NULL;
+			}
 		}
 		OSAtomicIncrement32(&__scounted);
 	}
 	/*
 	 * The list must be locked because a FILE may be updated.
 	 */
-	THREAD_LOCK();
+	FILELIST_LOCK();
 	for (g = &__sglue; g != NULL; g = g->next) {
 		for (fp = g->iobs, n = g->niobs; --n >= 0; fp++)
 			if (fp->_flags == 0)
 				goto found;
 	}
-	THREAD_UNLOCK();	/* don't hold lock while malloc()ing. */
+	FILELIST_UNLOCK();	/* don't hold lock while malloc()ing. */
 	if ((g = moreglue(NDYNAMIC)) == NULL)
 		return (NULL);
-	THREAD_LOCK();		/* reacquire the lock */
-	SET_GLUE_PTR(lastglue->next, g); /* atomically append glue to list */
+	FILELIST_LOCK();		/* reacquire the lock */
+	lastglue->next = g; /* atomically append glue to list */
 	lastglue = g;		/* not atomic; only accessed when locked */
 	fp = g->iobs;
 found:
 	fp->_flags = 1;		/* reserve this slot; caller sets real flags */
-	THREAD_UNLOCK();
+	FILELIST_UNLOCK();
+	
+	/* _flags = 1 means the FILE* is in use, and this thread owns the object while it is being initialized */
 	fp->_p = NULL;		/* no current pointer */
 	fp->_w = 0;		/* nothing to read or write */
 	fp->_r = 0;
@@ -222,7 +215,13 @@ __sfprelease(FILE *fp)
 		OSAtomicDecrement32(&__scounted);
 		fp->_counted = 0;
 	}
+	
+	pthread_mutex_destroy(&fp->_extra->fl_mutex);
+	
+	/* Make sure nobody else is enumerating the list while we clear the "in use" _flags field. */
+	FILELIST_LOCK();
 	fp->_flags = 0;
+	FILELIST_UNLOCK();
 }
 
 /*
@@ -247,10 +246,10 @@ f_prealloc(void)
 	for (g = &__sglue; (n -= g->niobs) > 0 && g->next; g = g->next)
 		/* void */;
 	if ((n > 0) && ((g = moreglue(n)) != NULL)) {
-		THREAD_LOCK();
-		SET_GLUE_PTR(lastglue->next, g);
+		FILELIST_LOCK();
+		lastglue->next = g;
 		lastglue = g;
-		THREAD_UNLOCK();
+		FILELIST_UNLOCK();
 	}
 }
 
@@ -274,25 +273,20 @@ _cleanup()
 void
 __sinit()
 {
-	THREAD_LOCK();
-	if (__sdidinit == 0) {
 #if !TARGET_OS_EMBEDDED
-		int i;
-#endif
-		/* Make sure we clean up on exit. */
-		__cleanup = _cleanup;		/* conservative */
-		__stream_max = sysconf(_SC_STREAM_MAX);
-		__scounted = 3;			/* std{in,out,err} already exists */
-
-#if !TARGET_OS_EMBEDDED
-		/* Set _extra for the usual suspects. */
-		for (i = 0; i < FOPEN_MAX - 3; i++) {
-			usual[i]._extra = &usual_extra[i];
-			INITEXTRA(&usual[i]);
-		}
+	int i;
 #endif
 
-		__sdidinit = 1;
+	/* Make sure we clean up on exit. */
+	__cleanup = _cleanup;		/* conservative */
+	__stream_max = sysconf(_SC_STREAM_MAX);
+	__scounted = 3;			/* std{in,out,err} already exists */
+
+#if !TARGET_OS_EMBEDDED
+	/* Set _extra for the usual suspects. */
+	for (i = 0; i < FOPEN_MAX - 3; i++) {
+		usual[i]._extra = &usual_extra[i];
+		INITEXTRA(&usual[i]);
 	}
-	THREAD_UNLOCK();
+#endif
 }

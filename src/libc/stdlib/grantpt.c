@@ -62,11 +62,15 @@ grantpt(int fd)
 char *
 ptsname(int fd)
 {
-	static char ptsnamebuf[ 128];	/* ioctl knows length */
+	static char *ptsnamebuf = NULL;
 	int error;
 	char *retval = NULL;
 	struct stat sbuf;
 
+	if (ptsnamebuf == NULL) {
+		ptsnamebuf = malloc(128); // defined by TIOCPTYGNAME
+	}
+	
 	error = ioctl(fd, TIOCPTYGNAME, ptsnamebuf);
 	if (!error) {
 		/*
@@ -75,8 +79,9 @@ ptsname(int fd)
 		 * POSIX: Handle device rename test case, which is expected
 		 * to fail if the pty has been renamed.
 		 */
-		if (stat(ptsnamebuf, &sbuf) == 0)
+		if (stat(ptsnamebuf, &sbuf) == 0) {
 			retval = ptsnamebuf;
+		}
 	}
 
 	return (retval);

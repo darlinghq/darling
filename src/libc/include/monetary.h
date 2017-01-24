@@ -31,16 +31,8 @@
 
 #include <sys/cdefs.h>
 #include <_types.h>
-
-#ifndef _SIZE_T
-#define _SIZE_T
-typedef	__darwin_size_t		size_t;
-#endif
-
-#ifndef _SSIZE_T
-#define _SSIZE_T
-typedef	__darwin_ssize_t	ssize_t;
-#endif
+#include <sys/_types/_size_t.h>
+#include <sys/_types/_ssize_t.h>
 
 __BEGIN_DECLS
 ssize_t	strfmon(char *, size_t, const char *, ...);

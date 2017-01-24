@@ -64,17 +64,10 @@
 #include <sys/time.h>
 #include <sys/cdefs.h>
 #include <Availability.h>
-
-#ifndef _PID_T
-#define _PID_T
-typedef __darwin_pid_t     pid_t;
-#endif
+#include <sys/_types/_pid_t.h>
 
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
-#ifndef _UID_T
-#define _UID_T
-typedef __darwin_uid_t     uid_t;
-#endif
+#include <sys/_types/_uid_t.h>
 #endif /* !_POSIX_C_SOURCE || _DARWIN_C_SOURCE */
 
 #define	_PATH_UTMPX		"/var/run/utmpx"
@@ -153,8 +146,8 @@ struct lastlogx *
 	getlastlogxbyname(const char*, struct lastlogx *)__OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
 #ifdef UNIFDEF_LEGACY_UTMP_APIS
 struct utmp;	/* forward reference */
-void	getutmp(const struct utmpx *, struct utmp *) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
-void	getutmpx(const struct utmp *, struct utmpx *) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
+void	getutmp(const struct utmpx *, struct utmp *) __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_5, __MAC_10_9, __IPHONE_2_0, __IPHONE_7_0) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+void	getutmpx(const struct utmp *, struct utmpx *) __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_5, __MAC_10_9, __IPHONE_2_0, __IPHONE_7_0) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 #endif /* UNIFDEF_LEGACY_UTMP_APIS */
 #endif /* !_POSIX_C_SOURCE || _DARWIN_C_SOURCE */
 

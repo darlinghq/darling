@@ -1,0 +1,54 @@
+.Dd May 26, 2004
+.Dt SPINLOCK_DEPRECATED 3
+.Os Darwin
+.Sh NAME
+.Nm OSSpinLockTry ,
+.Nm OSSpinLockLock ,
+.Nm OSSpinLockUnlock
+.Nd deprecated atomic spin lock synchronization primitives
+.Sh SYNOPSIS
+.In libkern/OSAtomic.h
+.Ft bool
+.Fn OSSpinLockTry "OSSpinLock *lock"
+.Ft void
+.Fn OSSpinLockLock "OSSpinLock *lock"
+.Ft void
+.Fn OSSpinLockUnlock "OSSpinLock *lock"
+.Sh DESCRIPTION
+.Bf -symbolic
+These are deprecated interfaces for userspace spinlocks, provided for
+compatibility with legacy code. These interfaces should no longer be used,
+particularily in situations where threads of differing priorities may contend
+on the same spinlock.
+.Pp
+The interfaces in
+.In os/lock.h
+should be used instead in cases where a very low-level lock primitive is
+required. In general however, using higher level synchronization primitives
+such as those provided by the pthread or dispatch subsystems are preferred.
+.Ef
+.Pp
+The OSSpinLock operations use memory barriers to synchronize access to shared
+memory protected by the lock.  Preemption is possible while the lock is held.
+.Pp
+.Ft OSSpinLock
+is an integer type.  The convention is that unlocked is zero, and locked is nonzero.
+Locks must be naturally aligned and cannot be in cache-inhibited memory.
+.Pp
+.Fn OSSpinLockLock
+will spin if the lock is already held, but employs various strategies to back
+off. Because it can spin, it will generally be less cpu and power efficient than
+other synchronization primitives.
+.Pp
+.Fn OSSpinLockTry
+immediately returns false if the lock was held, true if it took the lock.
+It does not spin.
+.Pp
+.Fn OSSpinLockUnlock
+unconditionally unlocks the lock by zeroing it.
+.Sh RETURN VALUES
+.Fn OSSpinLockTry
+returns true if it took the lock, false if the lock was already held.
+.Sh SEE ALSO
+.Xr atomic 3 ,
+.Xr atomic_deprecated 3

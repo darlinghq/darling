@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)setlocale.3	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/lib/libc/locale/setlocale.3,v 1.35 2007/01/09 00:28:00 imp Exp $
+.\" $FreeBSD$
 .\"
 .Dd November 21, 2003
 .Dt SETLOCALE 3
@@ -60,7 +60,6 @@ The
 .Fn setlocale
 function recognizes several categories of routines.
 These are the categories and the sets of routines they select:
-.Pp
 .Bl -tag -width LC_MONETARY
 .It Dv LC_ALL
 Set the entire locale generically.
@@ -106,21 +105,25 @@ function.
 .Pp
 Only three locales are defined by default:
 the empty string
-.Li "\&""\|""
+.Li \&"\|"
 (which denotes the native environment) and the
-.Li "\&""C""
+.Li \&"C"
 and
-.Li "\&""POSIX""
-locales (which denote the C-language environment).
+.Li \&"POSIX"
+locales (which denote the C language environment).
 A
 .Fa locale
 argument of
 .Dv NULL
 causes
 .Fn setlocale
-to return the current locale.
+to return the current locale.  An argument of
+.Li \&"\|"
+will determine the name of the new locale taking into account the environment
+variables LANG and LC_*.  If these environment variables yield a locale that is
+invalid, NULL will be returned and the current locale will remain unchanged.
 By default, C programs start in the
-.Li "\&""C""
+.Li \&"C"
 locale.
 The only function in the library that sets the locale is
 .Fn setlocale ;
@@ -146,6 +149,11 @@ makes no sense.
 .Bl -tag -width /usr/share/locale/locale/category -compact
 .It Pa $PATH_LOCALE/ Ns Em locale/category
 .It Pa /usr/share/locale/ Ns Em locale/category
+locale file for the locale
+.Em locale
+and the category
+.Em category .
+.It Pa /usr/local/share/locale/ Ns Em locale/category
 locale file for the locale
 .Em locale
 and the category

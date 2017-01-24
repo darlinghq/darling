@@ -54,7 +54,7 @@ typedef struct {
 	u_char	bytes[4];
 } _GB18030State;
 
-__private_extern__ int
+int
 _GB18030_init(struct __xlocale_st_runelocale *xrl)
 {
 
@@ -97,7 +97,7 @@ _GB18030_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s,
 	}
 
 	ncopy = MIN(MIN(n, GB18030_MB_CUR_MAX), sizeof(gs->bytes) - gs->count);
-	memcpy(gs->bytes + gs->count, s, ncopy);
+	strncpy(gs->bytes + gs->count, s, ncopy);
 	ocount = gs->count;
 	gs->count += ncopy;
 	s = (char *)gs->bytes;

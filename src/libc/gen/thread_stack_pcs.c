@@ -27,6 +27,7 @@
 #include <mach/mach.h>
 #include <mach/vm_statistics.h>
 #include <stdlib.h>
+#include "stack_logging.h"
 
 #if defined(__i386__) || defined(__x86_64__) || defined(__arm__) 
 #define FP_LINK_OFFSET 1

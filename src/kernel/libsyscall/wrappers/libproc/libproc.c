@@ -26,10 +26,12 @@
 #include <errno.h>
 #include <string.h>
 #include <strings.h>
+#include <stdlib.h>
 #include <sys/errno.h>
 #include <sys/msgbuf.h>
 #include <sys/resource.h>
 #include <sys/process_policy.h>
+#include <sys/event.h>
 #include <mach/message.h>
 
 #include "libproc_internal.h"
@@ -111,6 +113,17 @@ proc_pidoriginatorinfo(int flavor, void *buffer, int buffersize)
 		return(0);
 		
 	return(retval);
+}
+
+int
+proc_listcoalitions(int flavor, int coaltype, void *buffer, int buffersize)
+{
+	int retval;
+
+	if ((retval = __proc_info(PROC_INFO_CALL_LISTCOALITIONS, flavor, coaltype, 0, buffer, buffersize)) == -1)
+		return 0;
+
+	return retval;
 }
 
 int
@@ -349,10 +362,20 @@ proc_terminate(pid_t pid, int *sig)
 	return 0;
 }
 
+/*
+ * XXX the _fatal() variant both checks for an existing monitor
+ * (with important policy effects on first party background apps)
+ * and validates inputs.
+ */
 int
 proc_set_cpumon_params(pid_t pid, int percentage, int interval)
 {
 	proc_policy_cpuusage_attr_t attr;
+
+	 /* no argument validation ...
+	  * task_set_cpuusage() ignores 0 values and squashes negative
+	  * values into uint32_t.
+	  */
 
 	attr.ppattr_cpu_attr = PROC_POLICY_RSRCACT_NOTIFY_EXC;
 	attr.ppattr_cpu_percentage = percentage;
@@ -398,6 +421,16 @@ proc_set_cpumon_defaults(pid_t pid)
 }
 
 int
+proc_resume_cpumon(pid_t pid)
+{
+	return __process_policy(PROC_POLICY_SCOPE_PROCESS,
+				PROC_POLICY_ACTION_ENABLE,
+				PROC_POLICY_RESOURCE_USAGE,
+				PROC_POLICY_RUSAGE_CPU,
+				NULL, pid, 0);
+}
+
+int
 proc_disable_cpumon(pid_t pid)
 {
 	proc_policy_cpuusage_attr_t attr;
@@ -436,6 +469,10 @@ proc_set_cpumon_params_fatal(pid_t pid, int percentage, int interval)
 	 * already active.  If either the percentage or the
 	 * interval is nonzero, then CPU monitoring is
 	 * already in use for this process.
+	 * 
+	 * XXX: need set...() and set..fatal() to behave similarly.
+	 * Currently, this check prevents 1st party apps (which get a
+	 * default non-fatal monitor) not to get a fatal monitor.
 	 */
 	(void)proc_get_cpumon_params(pid, &current_percentage, &current_interval);
 	if (current_percentage || current_interval)
@@ -517,6 +554,84 @@ proc_disable_wakemon(pid_t pid)
 	return (proc_rlimit_control(pid, RLIMIT_WAKEUPS_MONITOR, &params));
 }
 
+int
+proc_list_uptrs(int pid, uint64_t *buf, uint32_t bufsz)
+{
+	int i, j;
+	int nfds, nkns;
+	int count = 0;
+	int knote_max = 4096; /* arbitrary starting point */
+
+	/* if buffer is empty, this call simply counts the knotes */
+	if (bufsz > 0 && buf == NULL) {
+		errno = EFAULT;
+		return -1;
+	}
+
+	/* get the list of FDs for this process */
+	struct proc_fdinfo fdlist[OPEN_MAX+1];
+	nfds = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, &fdlist[1], OPEN_MAX*sizeof(struct proc_fdinfo));
+	if (nfds < 0 || nfds > OPEN_MAX) {
+		return -1;
+	}
+
+	/* Add FD -1, the implicit workq kqueue */
+	fdlist[0].proc_fd = -1;
+	fdlist[0].proc_fdtype = PROX_FDTYPE_KQUEUE;
+	nfds++;
+
+	struct kevent_extinfo *kqext = malloc(knote_max * sizeof(struct kevent_extinfo));
+	if (!kqext) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	for (i = 0; i < nfds; i++) {
+		if (fdlist[i].proc_fdtype != PROX_FDTYPE_KQUEUE) {
+			continue;
+		}
+
+ again:
+		nkns = __proc_info(PROC_INFO_CALL_PIDFDINFO, pid, PROC_PIDFDKQUEUE_EXTINFO,
+				(uint64_t)fdlist[i].proc_fd, kqext, knote_max * sizeof(struct kevent_extinfo));
+		if (nkns < 0) {
+			if (errno == EBADF) {
+				/* the FD table can change after enumerating the FDs */
+				errno = EAGAIN;
+			}
+			free(kqext);
+			return -1;
+		}
+
+		if (nkns > knote_max) {
+			/* there are more knotes than we requested - try again with a
+			 * larger buffer */
+			free(kqext);
+			knote_max = nkns + 32; /* small margin in case of extra knotes */
+			kqext = malloc(knote_max * sizeof(struct kevent_extinfo));
+			if (!kqext) {
+				errno = ENOMEM;
+				return -1;
+			}
+			goto again;
+		}
+
+		for (j = 0; j < nkns; j++) {
+			if (kqext[j].kqext_kev.udata == 0) {
+				continue;
+			}
+
+			if (bufsz >= sizeof(uint64_t)) {
+				*buf++ = kqext[j].kqext_kev.udata;
+				bufsz -= sizeof(uint64_t);
+			}
+			count++;
+		}
+	}
+
+	free(kqext);
+	return count;
+}
 
 
 

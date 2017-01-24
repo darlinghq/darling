@@ -145,7 +145,7 @@ strtod_l
 	if (*s == '0') {
 #ifndef NO_HEX_FP /*{*/
 		{
-		static FPI fpi = { 53, 1-1023-53+1, 2046-1023-53+1, 1, SI };
+		static CONST FPI fpi = { 53, 1-1023-53+1, 2046-1023-53+1, 1, SI };
 		Long exp;
 		ULong bits[2];
 		switch(s[1]) {
@@ -272,7 +272,7 @@ strtod_l
 #ifdef INFNAN_CHECK
 			/* Check for Nan and Infinity */
 			ULong bits[2];
-			static FPI fpinan =	/* only 52 explicit bits */
+			static CONST FPI fpinan =	/* only 52 explicit bits */
 				{ 52, 1-1023-53+1, 2046-1023-53+1, 1, SI };
 			if (!decpt)
 			 switch(c) {

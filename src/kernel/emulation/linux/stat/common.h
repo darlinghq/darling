@@ -74,7 +74,7 @@ struct linux_stat {
 	__kernel_ulong_t        st_mtime_nsec;
 	__kernel_ulong_t        st_ctime;
 	__kernel_ulong_t        st_ctime_nsec;
-	__kernel_long_t         __unused[3];
+	__kernel_long_t         __unused_var[3];
 };
 
 #endif

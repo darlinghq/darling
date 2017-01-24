@@ -342,7 +342,7 @@ __bt_first(BTREE *t, const DBT *key, EPG *erval, int *exactp)
 	 * page) and return it.
 	 */
 	if ((ep = __bt_search(t, key, exactp)) == NULL)
-		return (0);
+		return (RET_SPECIAL);
 	if (*exactp) {
 		if (F_ISSET(t, B_NODUPS)) {
 			*erval = *ep;

@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
  *
@@ -22,9 +21,6 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#ifdef DARLING
-#	define _strcpy strcpy
-#endif
 
 // ***************
 // * S T R C P Y *
@@ -43,7 +39,7 @@
         .text
         .globl _strcpy
 
-        .align 	(1<<4)
+        .align 	4
 _strcpy:				// char *strcpy(const char *dst, const char *src);
 	pushl	%edi
 	movl	8(%esp),%edi		// get dest ptr
@@ -76,7 +72,7 @@ LNextChunk:
 //	%edi = dest ptr
 //	%edx = byte count
 
-	.align	(1<<4),0x90			// align inner loops to optimize I-fetch
+	.align	4,0x90			// align inner loops to optimize I-fetch
 LLoopOverBytes:
 	movzb	(%ecx),%eax		// get source byte
 	inc	%ecx
@@ -95,7 +91,7 @@ LLoopOverBytes:
 //	%edi = dest ptr (aligned)
 //	%edx = chunk count
 
-	.align	(1<<4),0x90			// align inner loops to optimize I-fetch
+	.align	4,0x90			// align inner loops to optimize I-fetch
 LLoopOverChunks:
 	movdqu	(%ecx),%xmm1		// get source
 	pxor	%xmm0,%xmm0		// get some 0s

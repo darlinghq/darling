@@ -10,6 +10,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/darwin)
 add_definitions(-Dmovsxw=movswl -DPRIVATE)
 
 set(libm_sources

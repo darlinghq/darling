@@ -35,13 +35,15 @@ set(compat-cancelable_sources sigcompat.c FreeBSD/creat.c)
 add_library(libc-compat_cancelable OBJECT ${compat-cancelable_sources})
 SET_TARGET_PROPERTIES(libc-compat_cancelable PROPERTIES
 	COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_CANCELABLE"
-	COMPILE_FLAGS "-U__DARWIN_NON_CANCELABLE")
+	COMPILE_FLAGS "-U__DARWIN_NON_CANCELABLE -D__DARWIN_UNIX03=1")
 
 # ***
 # Legacy variants
 # ***
 
-set(compat-legacy_sources FreeBSD/creat.c FreeBSD/killpg.c FreeBSD/setpgrp.c)
+set(compat-legacy_sources FreeBSD/creat.c FreeBSD/killpg.c)
 add_library(libc-compat_legacy OBJECT ${compat-legacy_sources})
-SET_TARGET_PROPERTIES(libc-compat_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+SET_TARGET_PROPERTIES(libc-compat_legacy PROPERTIES
+	COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY;_NONSTD_SOURCE"
+	COMPILE_FLAGS "-U__DARWIN_NON_CANCELABLE -U__DARWIN_UNIX03 -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE")
 

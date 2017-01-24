@@ -7,8 +7,6 @@ creat.2 creat.2
 gethostuuid.2 gethostuuid.2
 killpg.2 killpg.2
 nanosleep.2 nanosleep.2
-pthread_kill.2 pthread_kill.2
-pthread_sigmask.2 pthread_sigmask.2
 sigblock.2 sigblock.2
 sigpause.2 sigpause.2
 sigsetmask.2 sigsetmask.2 sigmask.2
@@ -53,16 +51,13 @@ addr2ascii.3 addr2ascii.3 ascii2addr.3
 alarm.3 alarm.3
 alloca.3 alloca.3
 arc4random.3 arc4random.3 arc4random_addrandom.3 arc4random_buf.3 arc4random_stir.3 arc4random_uniform.3
-asl.3 asl.3 asl_add_log_file.3 asl_close.3 asl_free.3 asl_get.3 asl_key.3 asl_log.3 asl_new.3 asl_open.3 asl_remove_log_file.3 asl_search.3 asl_send.3 asl_set.3 asl_set_filter.3 asl_set_query.3 asl_unset.3 asl_vlog.3 aslresponse_free.3 aslresponse_next.3
 assert.3 assert.3
 atexit.3 atexit.3 atexit_b.3
 atof.3 atof.3 atof_l.3
 atoi.3 atoi.3 atoi_l.3
 atol.3 atol.3 atol_l.3 atoll.3 atoll_l.3
-atomic.3 atomic.3 OSAtomicAdd32.3 OSAtomicAdd32Barrier.3 OSAtomicAdd64.3 OSAtomicAdd64Barrier.3 OSAtomicAnd32.3 OSAtomicAnd32Barrier.3 OSAtomicAnd32Orig.3 OSAtomicAnd32OrigBarrier.3 OSAtomicCompareAndSwap32.3 OSAtomicCompareAndSwap32Barrier.3 OSAtomicCompareAndSwap64.3 OSAtomicCompareAndSwap64Barrier.3 OSAtomicCompareAndSwapInt.3 OSAtomicCompareAndSwapIntBarrier.3 OSAtomicCompareAndSwapLong.3 OSAtomicCompareAndSwapLongBarrier.3 OSAtomicCompareAndSwapPtr.3 OSAtomicCompareAndSwapPtrBarrier.3 OSAtomicDecrement32.3 OSAtomicDecrement32Barrier.3 OSAtomicDecrement64.3 OSAtomicDecrement64Barrier.3 OSAtomicDequeue.3 OSAtomicEnqueue.3 OSAtomicIncrement32.3 OSAtomicIncrement32Barrier.3 OSAtomicIncrement64.3 OSAtomicIncrement64Barrier.3 OSAtomicOr32.3 OSAtomicOr32Barrier.3 OSAtomicOr32Orig.3 OSAtomicOr32OrigBarrier.3 OSAtomicTestAndClear.3 OSAtomicTestAndClearBarrier.3 OSAtomicTestAndSet.3 OSAtomicTestAndSetBarrier.3 OSAtomicXor32.3 OSAtomicXor32Barrier.3 OSAtomicXor32Orig.3 OSAtomicXor32OrigBarrier.3
 backtrace.3 backtrace.3 backtrace_symbols.3 backtrace_symbols_fd.3
-barrier.3 barrier.3 OSMemoryBarrier.3
-basename.3 basename.3
+basename.3 basename.3 basename_r.3
 bcmp.3 bcmp.3
 bcopy.3 bcopy.3
 bitstring.3 bitstring.3 bit_alloc.3 bit_clear.3 bit_decl.3 bit_ffs.3 bit_nclear.3 bit_nset.3 bit_set.3 bit_test.3 bitstr_size.3
@@ -73,11 +68,11 @@ btowc.3 btowc.3 wctob.3 btowc_l.3 wctob_l.3
 btree.3 btree.3
 byteorder.3 byteorder.3 htonl.3 htons.3 ntohl.3 ntohs.3
 bzero.3 bzero.3
-cache.3 cache.3 sys_cache_control.3 sys_icache_invalidate.3 sys_dcache_flush.3
 catclose.3 catclose.3
 catgets.3 catgets.3
 catopen.3 catopen.3
 clock.3 clock.3
+clock_gettime.3 clock_gettime.3 clock_settime.3 clock_getres.3 clock_gettime_nsec_np.3
 confstr.3 confstr.3
 crypt.3 crypt.3 encrypt.3 setkey.3
 ctermid.3 ctermid.3 ctermid_r.3
@@ -89,8 +84,8 @@ dbm.3 dbm.3 dbm_clearerr.3 dbm_close.3 dbm_delete.3 dbm_dirfno.3 dbm_error.3 dbm
 dbopen.3 dbopen.3 db.3
 devname.3 devname.3 devname_r.3
 digittoint.3 digittoint.3 digittoint_l.3
-directory.3 directory.3 closedir.3 dirfd.3 opendir.3 readdir.3 readdir_r.3 rewinddir.3 seekdir.3 telldir.3
-dirname.3 dirname.3
+directory.3 directory.3 closedir.3 dirfd.3 fdopendir.3 opendir.3 readdir.3 readdir_r.3 rewinddir.3 seekdir.3 telldir.3
+dirname.3 dirname.3 dirname_r.3
 div.3 div.3
 duplocale.3 duplocale.3
 ecvt.3 ecvt.3 fcvt.3 gcvt.3
@@ -102,7 +97,6 @@ exit.3 exit.3 _Exit.3
 fclose.3 fclose.3
 ferror.3 ferror.3 clearerr.3 clearerr_unlocked.3 feof.3 feof_unlocked.3 ferror_unlocked.3 fileno.3 fileno_unlocked.3
 fflush.3 fflush.3 fpurge.3
-ffs.3 ffs.3 ffsl.3 fls.3 flsl.3
 fgetln.3 fgetln.3
 fgets.3 fgets.3 gets.3
 fgetwln.3 fgetwln.3 fgetwln_l.3
@@ -127,14 +121,12 @@ fwide.3 fwide.3
 getbsize.3 getbsize.3
 getc.3 getc.3 fgetc.3 getc_unlocked.3 getchar.3 getchar_unlocked.3 getw.3
 getcap.3 getcap.3 cgetcap.3 cgetclose.3 cgetent.3 cgetfirst.3 cgetmatch.3 cgetnext.3 cgetnum.3 cgetset.3 cgetstr.3 cgetustr.3
-getcontext.3 getcontext.3 setcontext.3
 getcwd.3 getcwd.3 getwd.3
 getdate.3 getdate.3
 getdomainname.3 getdomainname.3 setdomainname.3
 getenv.3 getenv.3 putenv.3 setenv.3 unsetenv.3
 gethostid.3 gethostid.3 sethostid.3
 gethostname.3 gethostname.3 sethostname.3
-getiopolicy_np.3 getiopolicy_np.3 setiopolicy_np.3
 getlastlogx.3 getlastlogx.3 getlastlogxbyname.3 getutmp.3 getutmpx.3 utmpxname.3
 getline.3 getline.3 getdelim.3
 getloadavg.3 getloadavg.3
@@ -194,10 +186,6 @@ lockf.3 lockf.3
 login.3 login.3 logwtmp.3 logout.3
 lsearch.3 lsearch.3 lfind.3
 lutimes.3 lutimes.3
-makecontext.3 makecontext.3 swapcontext.3
-malloc.3 malloc.3 calloc.3 free.3 realloc.3 reallocf.3 valloc.3
-malloc_size.3 malloc_size.3 malloc_good_size.3
-malloc_zone_malloc.3 malloc_zone_malloc.3 malloc_create_zone.3 malloc_destroy_zone.3 malloc_default_zone.3 malloc_zone_from_ptr.3 malloc_zone_calloc.3 malloc_zone_valloc.3 malloc_zone_realloc.3 malloc_zone_memalign.3 malloc_zone_free.3
 mblen.3 mblen.3 mblen_l.3
 mbrlen.3 mbrlen.3 mbrlen_l.3
 mbrtowc.3 mbrtowc.3 mbrtowc_l.3
@@ -214,10 +202,10 @@ memmem.3 memmem.3
 memmove.3 memmove.3
 memory.3 memory.3
 memset.3 memset.3
+memset_s.3 memset_s.3
 memset_pattern.3 memset_pattern.3 memset_pattern4.3 memset_pattern8.3 memset_pattern16.3
 mkpath_np.3 mkpath_np.3
 mktemp.3 mktemp.3 mkdtemp.3 mkstemp.3 mkstemps.3
-moncontrol.3 moncontrol.3 monstartup.3
 mpool.3 mpool.3 mpool_close.3 mpool_filter.3 mpool_get.3 mpool_new.3 mpool_open.3 mpool_put.3 mpool_sync.3
 multibyte.3 multibyte.3
 newlocale.3 newlocale.3
@@ -232,50 +220,8 @@ popen.3 popen.3 pclose.3
 posix_memalign.3 posix_memalign.3
 printf.3 printf.3 asprintf.3 dprintf.3 fprintf.3 snprintf.3 sprintf.3 vasprintf.3 vdprintf.3 vfprintf.3 vprintf.3 vsnprintf.3 vsprintf.3
 printf_l.3 printf_l.3 asprintf_l.3 fprintf_l.3 snprintf_l.3 sprintf_l.3 vasprintf_l.3 vfprintf_l.3 vprintf_l.3 vsnprintf_l.3 vsprintf_l.3
-pselect.3 pselect.3
 psignal.3 psignal.3 sys_siglist.3 sys_signame.3 strsignal.3 sys_siglist.3 sys_signame.3
 psort.3 psort.3 psort_b.3 psort_r.3
-pthread.3 pthread.3
-pthread_atfork.3 pthread_atfork.3
-pthread_attr.3 pthread_attr.3 pthread_attr_destroy.3 pthread_attr_getdetachstate.3 pthread_attr_getinheritsched.3 pthread_attr_getschedparam.3 pthread_attr_getschedpolicy.3 pthread_attr_getscope.3 pthread_attr_getstackaddr.3 pthread_attr_getstacksize.3 pthread_attr_init.3 pthread_attr_setdetachstate.3 pthread_attr_setinheritsched.3 pthread_attr_setschedparam.3 pthread_attr_setschedpolicy.3 pthread_attr_setscope.3 pthread_attr_setstackaddr.3 pthread_attr_setstacksize.3
-pthread_cancel.3 pthread_cancel.3
-pthread_cleanup_pop.3 pthread_cleanup_pop.3
-pthread_cleanup_push.3 pthread_cleanup_push.3
-pthread_cond_broadcast.3 pthread_cond_broadcast.3
-pthread_cond_destroy.3 pthread_cond_destroy.3
-pthread_cond_init.3 pthread_cond_init.3
-pthread_cond_signal.3 pthread_cond_signal.3
-pthread_cond_timedwait.3 pthread_cond_timedwait.3
-pthread_cond_wait.3 pthread_cond_wait.3
-pthread_condattr.3 pthread_condattr.3 pthread_condattr_destroy.3 pthread_condattr_init.3
-pthread_create.3 pthread_create.3
-pthread_detach.3 pthread_detach.3
-pthread_equal.3 pthread_equal.3
-pthread_exit.3 pthread_exit.3
-pthread_getschedparam.3 pthread_getschedparam.3 pthread_setschedparam.3
-pthread_getspecific.3 pthread_getspecific.3
-pthread_join.3 pthread_join.3
-pthread_key_create.3 pthread_key_create.3
-pthread_key_delete.3 pthread_key_delete.3
-pthread_mutex_destroy.3 pthread_mutex_destroy.3
-pthread_mutex_init.3 pthread_mutex_init.3
-pthread_mutex_lock.3 pthread_mutex_lock.3
-pthread_mutex_trylock.3 pthread_mutex_trylock.3
-pthread_mutex_unlock.3 pthread_mutex_unlock.3
-pthread_mutexattr.3 pthread_mutexattr.3 pthread_mutexattr_destroy.3 pthread_mutexattr_getprioceiling.3 pthread_mutexattr_getprotocol.3 pthread_mutexattr_gettype.3 pthread_mutexattr_init.3 pthread_mutexattr_setprioceiling.3 pthread_mutexattr_setprotocol.3 pthread_mutexattr_settype.3
-pthread_once.3 pthread_once.3
-pthread_rwlock_destroy.3 pthread_rwlock_destroy.3
-pthread_rwlock_init.3 pthread_rwlock_init.3
-pthread_rwlock_rdlock.3 pthread_rwlock_rdlock.3 pthread_rwlock_tryrdlock.3
-pthread_rwlock_unlock.3 pthread_rwlock_unlock.3
-pthread_rwlock_wrlock.3 pthread_rwlock_wrlock.3 pthread_rwlock_trywrlock.3
-pthread_rwlockattr_destroy.3 pthread_rwlockattr_destroy.3
-pthread_rwlockattr_getpshared.3 pthread_rwlockattr_getpshared.3
-pthread_rwlockattr_init.3 pthread_rwlockattr_init.3
-pthread_rwlockattr_setpshared.3 pthread_rwlockattr_setpshared.3
-pthread_self.3 pthread_self.3
-pthread_setcancelstate.3 pthread_setcancelstate.3 pthread_setcanceltype.3 pthread_testcancel.3
-pthread_setspecific.3 pthread_setspecific.3
 putc.3 putc.3 fputc.3 putc_unlocked.3 putchar.3 putchar_unlocked.3 putw.3
 putwc.3 putwc.3 fputwc.3 putwchar.3
 putwc_l.3 putwc_l.3 fputwc_l.3 putwchar_l.3
@@ -287,7 +233,7 @@ raise.3 raise.3
 rand.3 rand.3 rand_r.3 srand.3 sranddev.3
 rand48.3 rand48.3 _rand48.3 drand48.3 erand48.3 jrand48.3 lcong48.3 lrand48.3 mrand48.3 nrand48.3 seed48.3 srand48.3
 random.3 random.3 initstate.3 setstate.3 srandom.3 srandomdev.3
-rcmdsh.3 rcmdsh.3
+rbtree.3 rbtree.3
 readpassphrase.3 readpassphrase.3
 realpath.3 realpath.3
 recno.3 recno.3
@@ -299,7 +245,6 @@ scandir.3 scandir.3 alphasort.3 scandir_b.3
 scanf.3 scanf.3 fscanf.3 sscanf.3 vfscanf.3 vscanf.3 vsscanf.3
 scanf_l.3 scanf_l.3 fscanf_l.3 sscanf_l.3 vfscanf_l.3 vscanf_l.3 vsscanf_l.3
 setbuf.3 setbuf.3 setbuffer.3 setlinebuf.3 setvbuf.3
-setjmp.3 setjmp.3 _longjmp.3 _setjmp.3 longjmp.3 longjmperr.3 longjmperror.3 siglongjmp.3 sigsetjmp.3
 setlocale.3 setlocale.3
 setmode.3 setmode.3 getmode.3
 setruid.3 setruid.3 setrgid.3
@@ -310,7 +255,6 @@ sigsetops.3 sigsetops.3 sigaddset.3 sigdelset.3 sigemptyset.3 sigfillset.3 sigis
 sleep.3 sleep.3
 sockatmark.3 sockatmark.3
 sourcefilter.3 sourcefilter.3 getsourcefilter.3 getipv4sourcefilter.3 setsourcefilter.3 setipv4sourcefilter.3
-spinlock.3 spinlock.3 OSSpinLockLock.3 OSSpinLockTry.3 OSSpinLockUnlock.3
 statvfs.3 statvfs.3 fstatvfs.3
 stdarg.3 stdarg.3 va_arg.3 va_copy.3 va_end.3 va_start.3
 stdio.3 stdio.3
@@ -320,7 +264,6 @@ strchr.3 strchr.3 strrchr.3
 strcmp.3 strcmp.3 strncmp.3
 strcoll.3 strcoll.3 strcoll_l.3
 strcpy.3 strcpy.3 stpcpy.3 stpncpy.3 strncpy.3
-strcspn.3 strcspn.3
 strdup.3 strdup.3 strndup.3
 strerror.3 strerror.3 perror.3 strerror_r.3 sys_errlist.3 sys_nerr.3
 strfmon.3 strfmon.3 strfmon_l.3
@@ -333,7 +276,7 @@ strmode.3 strmode.3
 strpbrk.3 strpbrk.3
 strptime.3 strptime.3 strptime_l.3
 strsep.3 strsep.3
-strspn.3 strspn.3
+strspn.3 strspn.3 strcspn.3
 strstr.3 strstr.3 strcasestr.3 strcasestr_l.3 strnstr.3
 strtod.3 strtod.3 strtof.3 strtold.3
 strtod_l.3 strtod_l.3 strtof_l.3 strtold_l.3
@@ -348,7 +291,6 @@ sync_volume_np.3 sync_volume_np.3 fsync_volume_np.3
 sysconf.3 sysconf.3
 sysctl.3 sysctl.3 sysctlbyname.3 sysctlnametomib.3
 sysexits.3 sysexits.3
-syslog.3 syslog.3 closelog.3 openlog.3 setlogmask.3 vsyslog.3
 system.3 system.3
 tcgetpgrp.3 tcgetpgrp.3
 tcgetsid.3 tcgetsid.3
@@ -360,6 +302,7 @@ time2posix.3 time2posix.3 posix2time.3
 timegm.3 timegm.3 timelocal.3
 times.3 times.3
 timezone.3 timezone.3
+timingsafe_bcmp.3 timingsafe_bcmp.3
 tmpnam.3 tmpnam.3 tempnam.3 tmpfile.3
 toascii.3 toascii.3
 tolower.3 tolower.3 tolower_l.3
@@ -370,7 +313,6 @@ tsearch.3 tsearch.3 tdelete.3 tfind.3 twalk.3
 ttyname.3 ttyname.3 isatty.3 ttyslot.3
 tzset.3 tzset.3 tzsetwall.3
 ualarm.3 ualarm.3
-ucontext.3 ucontext.3
 ulimit.3 ulimit.3
 uname.3 uname.3
 ungetc.3 ungetc.3
@@ -379,7 +321,7 @@ unvis.3 unvis.3 strunvis.3 strunvisx.3
 uselocale.3 uselocale.3
 usleep.3 usleep.3
 utime.3 utime.3
-vis.3 vis.3 strvis.3 strvisx.3
+vis.3 vis.3 nvis.3 strvis.3 strnvis.3 strvisx.3 strnvisx.3 strenvisx.3 svis.3 snvis.3 strsvis.3 strsnvis.3 strsvisx.3 strsnvisx.3 strsenvisx.3
 wcrtomb.3 wcrtomb.3 wcrtomb_l.3
 wcscoll.3 wcscoll.3 wcscoll_l.3
 wcsftime.3 wcsftime.3 wcsftime_l.3
@@ -403,6 +345,10 @@ wprintf_l.3 wprintf_l.3 fwprintf_l.3 swprintf_l.3 vwprintf_l.3 vfwprintf_l.3 vsw
 wscanf.3 wscanf.3 fwscanf.3 swscanf.3 vfwscanf.3 vswscanf.3 vwscanf.3
 wscanf_l.3 wscanf_l.3 fwscanf_l.3 swscanf_l.3 vfwscanf_l.3 vswscanf_l.3 vwscanf_l.3
 xlocale.3 xlocale.3
+xprintf.3 xprintf.3 asxprintf.3 dxprintf.3 fxprintf.3 sxprintf.3 vasxprintf.3 vdxprintf.3 vfxprintf.3 vsxprintf.3 vxprintf.3
+xprintf_comp.3 xprintf_comp.3 free_printf_comp.3 new_printf_comp.3
+xprintf_domain.3 xprintf_domain.3 copy_printf_domain.3 free_printf_domain.3 new_printf_domain.3 register_printf_domain_function.3 register_printf_domain_render_std.3
+xprintf_exec.3 xprintf_exec.3 asxprintf_exec.3 dxprintf_exec.3 fxprintf_exec.3 sxprintf_exec.3 vasxprintf_exec.3 vdxprintf_exec.3 vfxprintf_exec.3 vsxprintf_exec.3 vxprintf_exec.3
 
 # man5
 big5.5 big5.5
@@ -417,6 +363,7 @@ utf2.5 utf2.5
 utf8.5 utf8.5
 utmp.5 utmp.5 lastlog.5 wtmp.5
 utmpx.5 utmpx.5
+xprintf.5 xprintf.5
 
 # man7
 environ.7 environ.7

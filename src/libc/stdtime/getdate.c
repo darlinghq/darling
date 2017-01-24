@@ -242,14 +242,17 @@ getdate(const char *str)
 			getdate_err = INVALID_DATE;
 			break;
 		}
-		if(wday_set != UNDEFINED) {
+		if(wday_set != UNDEFINED &&
+			(dateset != (TM_YEAR_SET | TM_MON_SET | TM_MDAY_SET))) {
+		    /*
+		     * We got back a week day, but not enough information to resolve it
+		     * to a specific day, so we need to push forward the time to the
+		     * correct wday.  <rdar://problem/27439823>
+		     */
 		    int delta = wday_set - tm.tm_wday;
-		    if(delta && (dateset & TM_MDAY_SET)) {
-			getdate_err = INVALID_DATE;
-			break;
-		    }
-		    if(delta < 0)
+		    if(delta < 0) {
 			delta += 7;
+		    }
 		    tm.tm_mday += delta;
 		    if(mktime(&tm) == (time_t)-1) {
 			getdate_err = INVALID_DATE;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2005, 2014 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,6 +21,8 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+// NOTE: This system call emulation should move to libsystem_kernel.dylib
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/attr.h>
@@ -30,14 +32,9 @@
 int
 lchmod(const char *path, mode_t mode)
 {
-	struct stat s;
 	struct attrlist a;
 	int m;
 
-	if(lstat(path, &s) < 0)
-		return -1;
-	if((s.st_mode & S_IFMT) != S_IFLNK)
-		return chmod(path, mode);
 	bzero(&a, sizeof(a));
 	a.bitmapcount = ATTR_BIT_MAP_COUNT;
 	a.commonattr = ATTR_CMN_ACCESSMASK;

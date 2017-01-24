@@ -25,9 +25,19 @@
 #include <libkern/OSThermalNotification.h>
 #include <notify.h>
 
+#include <TargetConditionals.h>
+
+#define OSThermalPressureLevelName		"com.apple.system.thermalpressurelevel"
+const char * const kOSThermalNotificationPressureLevelName = OSThermalPressureLevelName;
+
+#if TARGET_OS_IPHONE
+#define OSThermalAlert      "com.apple.system.thermalalert"
+#define OSThermalDecision   "com.apple.system.thermaldecision"
 #define OSThermalStatusName "com.apple.system.thermalstatus"
 
-const char * const kOSThermalNotificationName = OSThermalStatusName; 
+const char * const kOSThermalNotificationAlert    = OSThermalAlert;
+const char * const kOSThermalNotificationDecision = OSThermalDecision;
+const char * const kOSThermalNotificationName     = OSThermalStatusName;
 
 static const char * const kOSThermalMitigationNames[kOSThermalMitigationCount] = {
 	OSThermalStatusName,
@@ -108,3 +118,5 @@ OSThermalNotificationLevel OSThermalNotificationCurrentLevel(void)
 	// Not ready returns -1, which should not be equal or greater than any other thermal state. 
 	return OSThermalNotificationLevelAny;
 }
+
+#endif // TARGET_OS_IPHONE

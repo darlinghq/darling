@@ -248,7 +248,7 @@ _RuneLocale _DefaultRuneLocale __attribute__((section("__DATA,__constrw"))) = {
     },
 };
 
-__private_extern__ struct __xlocale_st_runelocale _DefaultRuneXLocale __attribute__((section("__DATA,__constrw"))) = {
+struct __xlocale_st_runelocale _DefaultRuneXLocale __attribute__((section("__DATA,__constrw"))) = {
     0,
     XPERMANENT,
     "C",

@@ -205,7 +205,7 @@ with the particular file descriptor.
 .Pp
 The
 .Fn cfmakeraw
-function sets the flags stored in the termios structure to a state disabling
+function modifies the flags stored in the termios structure to a state disabling
 all input and output processing, giving a
 .Dq raw I/O path .
 It should be noted that there is no function to reverse this effect.

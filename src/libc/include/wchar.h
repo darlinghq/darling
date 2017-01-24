@@ -71,36 +71,12 @@
 #include <sys/cdefs.h>
 #include <Availability.h>
 
-#ifndef NULL
-#define	NULL	__DARWIN_NULL
-#endif /* ! NULL */
-
-#ifndef	_SIZE_T
-#define	_SIZE_T
-typedef	__darwin_size_t		size_t;
-#endif
-
-#ifndef	_MBSTATE_T
-#define	_MBSTATE_T
-typedef	__darwin_mbstate_t	mbstate_t;
-#endif
-
-#ifndef	_CT_RUNE_T
-#define _CT_RUNE_T
-typedef	__darwin_ct_rune_t	ct_rune_t;
-#endif
-
-#ifndef	_RUNE_T
-#define _RUNE_T
-typedef	__darwin_rune_t		rune_t;
-#endif
-
-#ifndef	__cplusplus
-#ifndef	_WCHAR_T
-#define	_WCHAR_T
-typedef	__darwin_wchar_t	wchar_t;
-#endif	/* _WCHAR_T */
-#endif	/* __cplusplus */
+#include <sys/_types/_null.h>
+#include <sys/_types/_size_t.h>
+#include <sys/_types/_mbstate_t.h>
+#include <sys/_types/_ct_rune_t.h>
+#include <sys/_types/_rune_t.h>
+#include <sys/_types/_wchar_t.h>
 
 #ifndef WCHAR_MIN
 #define WCHAR_MIN	__DARWIN_WCHAR_MIN

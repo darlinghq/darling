@@ -102,6 +102,9 @@
 #include <sys/cdefs.h>
 #include <Availability.h>
 
+#if __has_feature(assume_nonnull)
+_Pragma("clang assume_nonnull begin")
+#endif
 __BEGIN_DECLS
 /*
  * Threads
@@ -150,7 +153,6 @@ __BEGIN_DECLS
 #define PTHREAD_SCOPE_SYSTEM         1
 #define PTHREAD_SCOPE_PROCESS        2
 
-/* We only support PTHREAD_PROCESS_PRIVATE */
 #define PTHREAD_PROCESS_SHARED         1
 #define PTHREAD_PROCESS_PRIVATE        2
 
@@ -187,6 +189,10 @@ __BEGIN_DECLS
 #	endif /* (!_POSIX_C_SOURCE && !_XOPEN_SOURCE) || _DARWIN_C_SOURCE */
 #endif
 
+/* <rdar://problem/25944576> */
+#define _PTHREAD_SWIFT_IMPORTER_NULLABILITY_COMPAT \
+	defined(SWIFT_CLASS_EXTRA) && (!defined(SWIFT_SDK_OVERLAY_PTHREAD_EPOCH) || (SWIFT_SDK_OVERLAY_PTHREAD_EPOCH < 1))
+
 /*
  * Condition variable attributes
  */
@@ -207,7 +213,8 @@ __BEGIN_DECLS
  * Prototypes for all PTHREAD interfaces
  */
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_atfork(void (*)(void), void (*)(void), void (*)(void));
+int pthread_atfork(void (* _Nullable)(void), void (* _Nullable)(void),
+		void (* _Nullable)(void));
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_attr_destroy(pthread_attr_t *);
@@ -232,11 +239,12 @@ __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_attr_getscope(const pthread_attr_t * __restrict, int * __restrict);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_attr_getstack(const pthread_attr_t * __restrict, void ** __restrict,
-		size_t * __restrict);
+int pthread_attr_getstack(const pthread_attr_t * __restrict,
+		void * _Nullable * _Nonnull __restrict, size_t * __restrict);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_attr_getstackaddr(const pthread_attr_t * __restrict, void ** __restrict);
+int pthread_attr_getstackaddr(const pthread_attr_t * __restrict,
+		void * _Nullable * _Nonnull __restrict);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_attr_getstacksize(const pthread_attr_t * __restrict, size_t * __restrict);
@@ -282,15 +290,19 @@ __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_cond_destroy(pthread_cond_t *);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_cond_init(pthread_cond_t * __restrict,
-		const pthread_condattr_t * __restrict) __DARWIN_ALIAS(pthread_cond_init);
+int pthread_cond_init(
+		pthread_cond_t * __restrict,
+		const pthread_condattr_t * _Nullable __restrict)
+		__DARWIN_ALIAS(pthread_cond_init);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_cond_signal(pthread_cond_t *);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_cond_timedwait(pthread_cond_t * __restrict, pthread_mutex_t * __restrict,
-		const struct timespec * __restrict) __DARWIN_ALIAS_C(pthread_cond_timedwait);
+int pthread_cond_timedwait(
+		pthread_cond_t * __restrict, pthread_mutex_t * __restrict,
+		const struct timespec * _Nullable __restrict)
+		__DARWIN_ALIAS_C(pthread_cond_timedwait);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_cond_wait(pthread_cond_t * __restrict,
@@ -310,33 +322,42 @@ __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_condattr_setpshared(pthread_condattr_t *, int);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_create(pthread_t * __restrict, const pthread_attr_t * __restrict,
-		void *(*)(void *), void * __restrict);
+#if !_PTHREAD_SWIFT_IMPORTER_NULLABILITY_COMPAT
+int pthread_create(pthread_t _Nullable * _Nonnull __restrict,
+		const pthread_attr_t * _Nullable __restrict,
+		void * _Nullable (* _Nonnull)(void * _Nullable),
+		void * _Nullable __restrict);
+#else
+int pthread_create(pthread_t * __restrict,
+		const pthread_attr_t * _Nullable __restrict,
+		void *(* _Nonnull)(void *), void * _Nullable __restrict);
+#endif // _PTHREAD_SWIFT_IMPORTER_NULLABILITY_COMPAT
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_detach(pthread_t);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_equal(pthread_t, pthread_t);
+int pthread_equal(pthread_t _Nullable, pthread_t _Nullable);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-void pthread_exit(void *) __dead2;
+void pthread_exit(void * _Nullable) __dead2;
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_getconcurrency(void);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_getschedparam(pthread_t , int * __restrict,
-		struct sched_param * __restrict);
+int pthread_getschedparam(pthread_t , int * _Nullable __restrict,
+		struct sched_param * _Nullable __restrict);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-void* pthread_getspecific(pthread_key_t);
+void* _Nullable pthread_getspecific(pthread_key_t);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_join(pthread_t , void **) __DARWIN_ALIAS_C(pthread_join);
+int pthread_join(pthread_t , void * _Nullable * _Nullable)
+		__DARWIN_ALIAS_C(pthread_join);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_key_create(pthread_key_t *, void (*)(void *));
+int pthread_key_create(pthread_key_t *, void (* _Nullable)(void *));
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_key_delete(pthread_key_t);
@@ -350,7 +371,7 @@ int pthread_mutex_getprioceiling(const pthread_mutex_t * __restrict,
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_mutex_init(pthread_mutex_t * __restrict,
-		const pthread_mutexattr_t * __restrict);
+		const pthread_mutexattr_t * _Nullable __restrict);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_mutex_lock(pthread_mutex_t *);
@@ -399,15 +420,17 @@ int pthread_mutexattr_setpshared(pthread_mutexattr_t *, int);
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_mutexattr_settype(pthread_mutexattr_t *, int);
 
+__SWIFT_UNAVAILABLE_MSG("Use lazily initialized globals instead")
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_once(pthread_once_t *, void (*)(void));
+int pthread_once(pthread_once_t *, void (* _Nonnull)(void));
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_rwlock_destroy(pthread_rwlock_t * ) __DARWIN_ALIAS(pthread_rwlock_destroy);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_rwlock_init(pthread_rwlock_t * __restrict,
-		const pthread_rwlockattr_t * __restrict) __DARWIN_ALIAS(pthread_rwlock_init);
+		const pthread_rwlockattr_t * _Nullable __restrict)
+		__DARWIN_ALIAS(pthread_rwlock_init);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_rwlock_rdlock(pthread_rwlock_t *) __DARWIN_ALIAS(pthread_rwlock_rdlock);
@@ -441,10 +464,12 @@ __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 pthread_t pthread_self(void);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_setcancelstate(int , int *) __DARWIN_ALIAS(pthread_setcancelstate);
+int pthread_setcancelstate(int , int * _Nullable)
+		__DARWIN_ALIAS(pthread_setcancelstate);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_setcanceltype(int , int *) __DARWIN_ALIAS(pthread_setcanceltype);
+int pthread_setcanceltype(int , int * _Nullable)
+		__DARWIN_ALIAS(pthread_setcanceltype);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_setconcurrency(int);
@@ -453,7 +478,7 @@ __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_setschedparam(pthread_t, int, const struct sched_param *);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_setspecific(pthread_key_t , const void *);
+int pthread_setspecific(pthread_key_t , const void * _Nullable);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 void pthread_testcancel(void) __DARWIN_ALIAS(pthread_testcancel);
@@ -465,7 +490,7 @@ __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_is_threaded_np(void);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2)
-int pthread_threadid_np(pthread_t,__uint64_t*);
+int pthread_threadid_np(pthread_t _Nullable,__uint64_t* _Nullable);
 
 /*SPI to set and get pthread name*/
 __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2)
@@ -490,30 +515,41 @@ void* pthread_get_stackaddr_np(pthread_t);
 
 /* Like pthread_cond_signal(), but only wake up the specified pthread */
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_cond_signal_thread_np(pthread_cond_t *, pthread_t);
+int pthread_cond_signal_thread_np(pthread_cond_t *, pthread_t _Nullable);
 
 /* Like pthread_cond_timedwait, but use a relative timeout */
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_cond_timedwait_relative_np(pthread_cond_t *, pthread_mutex_t *,
-		const struct timespec *);
+		const struct timespec * _Nullable);
 
 /* Like pthread_create(), but leaves the thread suspended */
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_create_suspended_np(pthread_t *, const pthread_attr_t *,
-		void *(*)(void *), void *);
+#if !_PTHREAD_SWIFT_IMPORTER_NULLABILITY_COMPAT
+int pthread_create_suspended_np(
+		pthread_t _Nullable * _Nonnull, const pthread_attr_t * _Nullable,
+		void * _Nullable (* _Nonnull)(void * _Nullable), void * _Nullable);
+#else
+int pthread_create_suspended_np(pthread_t *, const pthread_attr_t * _Nullable,
+		void *(* _Nonnull)(void *), void * _Nullable);
+#endif
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 int pthread_kill(pthread_t, int);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0)
-pthread_t pthread_from_mach_thread_np(mach_port_t);
+_Nullable pthread_t pthread_from_mach_thread_np(mach_port_t);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
-int pthread_sigmask(int, const sigset_t *, sigset_t *) __DARWIN_ALIAS(pthread_sigmask);
+int pthread_sigmask(int, const sigset_t * _Nullable, sigset_t * _Nullable)
+		__DARWIN_ALIAS(pthread_sigmask);
 
 __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
 void pthread_yield_np(void);
 
 #endif /* (!_POSIX_C_SOURCE && !_XOPEN_SOURCE) || _DARWIN_C_SOURCE */
 __END_DECLS
+#if __has_feature(assume_nonnull)
+_Pragma("clang assume_nonnull end")
+#endif
+
 #endif /* _PTHREAD_H */

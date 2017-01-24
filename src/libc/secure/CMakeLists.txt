@@ -19,7 +19,6 @@ set(secure_sources
 	strcpy_chk.c
 	strlcpy_chk.c
 	memccpy_chk.c
-	secure.c
 	strlcat_chk.c
 	strncat_chk.c
 	strncpy_chk.c

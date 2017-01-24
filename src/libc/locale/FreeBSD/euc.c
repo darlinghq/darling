@@ -76,7 +76,7 @@ _EUC_free_extra(struct __xlocale_st_runelocale *xrl)
 	free(xrl->_CurrentRuneLocale.__variable);
 }
 
-__private_extern__ int
+int
 _EUC_init(struct __xlocale_st_runelocale *xrl)
 {
 	_EucInfo *ei;

@@ -1,0 +1,11 @@
+#include "libmalloc.xcconfig"
+
+BUILD_VARIANTS = normal debug
+EXECUTABLE_PREFIX = lib
+GENERATE_MASTER_OBJECT_FILE = YES
+INSTALL_PATH = /usr/local/lib/system
+PRODUCT_NAME = malloc
+STRIP_INSTALLED_PRODUCT = NO
+VERSIONING_SYSTEM = apple-generic
+MACH_O_TYPE = staticlib
+OTHER_LDFLAGS =

@@ -3,29 +3,28 @@ project(libc-sys)
 cmake_minimum_required(VERSION 2.4.0)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-include_directories(${DARLING_TOP_DIRECTORY}/src/libnotify)
+include_directories(${CMAKE_SOURCE_DIR}/src/libnotify)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/spawn)
+include_directories(${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/libproc)
 
-set(sys_sources chmodx_np.c
+set(sys_sources
 	crt_externs.c
-	#errno.c # Moved by Apple into libsystem_kernel
 	fork.c
 	getgroups.c
-	#getiopolicy_np.c
 	gettimeofday.c
+	chmodx_np.c
 	_libc_fork_child.c
-	__libc_init.c
-	#msgctl.c
+	_libc_init.c
+	msgctl.c
 	openx_np.c
-	#OSMemoryNotification.c
-	#OSThermalNotification.c
+	OSMemoryNotification.c
+	OSThermalNotification.c
 	posix_spawn.c
 	semctl.c
 	settimeofday.c
 	shmctl.c
 	sigaction.c
-	sigcatch.c
-	sigtramp.c
-	slot_name.c
 	statx_np.c
 	umaskx_np.c
 	OpenBSD/stack_protector.c
@@ -35,6 +34,7 @@ set(sys_sources chmodx_np.c
 #	set(sys_sources ${sys_sources} context-stubs.c)
 #endif()
 
+SET_SOURCE_FILES_PROPERTIES(msgctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
 SET_SOURCE_FILES_PROPERTIES(semctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SEMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
 SET_SOURCE_FILES_PROPERTIES(shmctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SEMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
 SET_SOURCE_FILES_PROPERTIES(sigtramp.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE")

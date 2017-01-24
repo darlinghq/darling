@@ -46,8 +46,10 @@ extern struct owned_ptr *__env_owned;
 extern char **_saved_environ;
 #endif /* LEGACY_CRT1_ENVIRON */
 
-__private_extern__ int __init__env_owned(int);
-__private_extern__ int __setenv(const char *, const char *, int, int, char ***, struct owned_ptr *);
+__private_extern__ int __init__env_owned_locked(int);
+__private_extern__ int __setenv_locked(const char *, const char *, int, int, char ***, struct owned_ptr *);
+__private_extern__ void __environ_lock(void);
+__private_extern__ void __environ_unlock(void);
 
 #ifndef BUILDING_VARIANT
 /*
@@ -58,8 +60,15 @@ __private_extern__ int __setenv(const char *, const char *, int, int, char ***, 
 int
 _putenvp(char *str, char ***envp, void *state)
 {
-	if (__init__env_owned(1)) return (-1);
-	return (__setenv(str, NULL, 1, 0, envp, (state ? (struct owned_ptr *)state : __env_owned)));
+	__environ_lock();
+	if (__init__env_owned_locked(1)) {
+		__environ_unlock();
+		return (-1);
+	}
+	int ret = __setenv_locked(str, NULL, 1, 0, envp,
+			(state ? (struct owned_ptr *)state : __env_owned));
+	__environ_unlock();
+	return ret;
 }
 #endif /* BUILDING_VARIANT */
 
@@ -67,9 +76,8 @@ int
 putenv(str)
 	char *str;
 {
-#ifdef LEGACY_CRT1_ENVIRON
 	int ret;
-#endif /* LEGACY_CRT1_ENVIRON */
+	int copy;
 
 #if __DARWIN_UNIX03
 	if (str == NULL || *str == 0 || index(str, '=') == NULL) {
@@ -80,21 +88,22 @@ putenv(str)
 	if (index(str, '=') == NULL)
 		return (-1);
 #endif /* __DARWIN_UNIX03 */
-	if (__init__env_owned(1)) return (-1);
-#ifdef LEGACY_CRT1_ENVIRON
-	ret =
-#else /* !LEGACY_CRT1_ENVIRON */
-	return
-#endif /* !LEGACY_CRT1_ENVIRON */
-	    __setenv(str, NULL, 1,
+
 #if __DARWIN_UNIX03
-		0,
+	copy = 0;
 #else /* !__DARWIN_UNIX03 */
-		-1,
+	copy = -1;
 #endif /* __DARWIN_UNIX03 */
-		_NSGetEnviron(), __env_owned);
+
+	__environ_lock();
+	if (__init__env_owned_locked(1)) {
+		__environ_unlock();
+		return (-1);
+	}
+	ret = __setenv_locked(str, NULL, 1, copy, _NSGetEnviron(), __env_owned);
 #ifdef LEGACY_CRT1_ENVIRON
 	_saved_environ = *_NSGetEnviron();
-	return ret;
 #endif /* LEGACY_CRT1_ENVIRON */
+	__environ_unlock();
+	return ret;
 }

@@ -26,6 +26,9 @@
  *	@(#)sigaction.c	1.0
  */
 
+#include <CrashReporterClient.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/signal.h>
@@ -44,6 +47,7 @@ sigaction (int sig, const struct sigaction * __restrict nsv, struct sigaction * 
 	extern void _sigtramp();
 	struct __sigaction sa;
 	struct __sigaction *sap;
+	int ret;
 
 	if (sig <= 0 || sig >= NSIG || sig == SIGKILL || sig == SIGSTOP) {
 	        errno = EINVAL;
@@ -57,7 +61,17 @@ sigaction (int sig, const struct sigaction * __restrict nsv, struct sigaction * 
 		sa.sa_flags = nsv->sa_flags;	
 		sap = &sa;
 	}
-	return __sigaction(sig, sap, osv);
+	ret = __sigaction(sig, sap, osv);
+#ifdef FEATURE_SIGNAL_RESTRICTION
+	// Note: The "sig != 0" here is to force the compiler to maintain that "sig"
+	// is live, and in a register, after __sigaction so it is visible in the
+	// crashing register state.
+	if (ret == -1 && errno == ENOTSUP && sig != 0) {
+		CRSetCrashLogMessage("sigaction on fatal signals is not supported");
+		__builtin_trap();
+	}
+#endif
+	return ret;
 }
 
 // XXX

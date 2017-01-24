@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 extern long __real_ioctl(int fd, int cmd, void* arg);
+extern long sys_ioctl(int fd, int cmd, void* arg);
 
 enum {
 	IOCTL_PASS,			/** ioctl cmd not known */

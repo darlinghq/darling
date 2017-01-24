@@ -11,7 +11,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -28,9 +28,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)bcmp.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/bcmp.3,v 1.11 2007/01/09 00:28:11 imp Exp $
+.\" $FreeBSD$
 .\"
-.Dd June 4, 1993
+.Dd August 15, 2016
 .Dt BCMP 3
 .Os
 .Sh NAME
@@ -41,18 +41,18 @@
 .Sh SYNOPSIS
 .In strings.h
 .Ft int
-.Fn bcmp "const void *s1" "const void *s2" "size_t n"
+.Fn bcmp "const void *b1" "const void *b2" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn bcmp
 function
 compares byte string
-.Fa s1
+.Fa b1
 against byte string
-.Fa s2 ,
+.Fa b2 ,
 returning zero if they are identical, non-zero otherwise.
 Both strings are assumed to be
-.Fa n
+.Fa len
 bytes long.
 Zero-length strings are always identical.
 .Pp
@@ -62,7 +62,8 @@ The strings may overlap.
 .Xr strcasecmp 3 ,
 .Xr strcmp 3 ,
 .Xr strcoll 3 ,
-.Xr strxfrm 3
+.Xr strxfrm 3 ,
+.Xr timingsafe_bcmp 3
 .Sh HISTORY
 A
 .Fn bcmp

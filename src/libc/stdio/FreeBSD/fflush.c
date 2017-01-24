@@ -130,11 +130,13 @@ __sflush(FILE *fp)
 		if (t <= 0) {
 			/* 5340694: reset _p and _w on EAGAIN */
 			if (t < 0 && errno == EAGAIN) {
-				if (p > fp->_p) /* some was written */
+				if (p > fp->_p) {
+					/* some was written */
 					memmove(fp->_p, p, n);
-				fp->_p += n;
-				if (!(fp->_flags & (__SLBF|__SNBF)))
-					fp->_w -= n;
+					fp->_p += n;
+					if (!(fp->_flags & (__SLBF|__SNBF)))
+						fp->_w -= n;
+				}
 			}
 			fp->_flags |= __SERR;
 			return (EOF);

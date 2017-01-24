@@ -42,12 +42,15 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/setenv.c,v 1.14 2007/05/01 16:02:41 ache
 #include <fcntl.h>
 
 struct owned_ptr;
-__private_extern__ char *__findenv(const char *, int *, char **);
-__private_extern__ int __setenv(const char *, const char *, int, int, char ***, struct owned_ptr *);
-__private_extern__ void __unsetenv(const char *, char **, struct owned_ptr *);
+__private_extern__ char *__findenv_locked(const char *, int *, char **);
+__private_extern__ int __setenv_locked(const char *, const char *, int, int, char ***, struct owned_ptr *);
+__private_extern__ void __unsetenv_locked(const char *, char **, struct owned_ptr *);
+
+__private_extern__ void __environ_lock(void);
+__private_extern__ void __environ_unlock(void);
 
 __private_extern__ struct owned_ptr *__env_owned;
-__private_extern__ int __init__env_owned(int);
+__private_extern__ int __init__env_owned_locked(int);
 
 /*
  * _cthread_init_routine used to be called from crt1.o to initialize threads.
@@ -205,7 +208,7 @@ _owned_ptr_search(struct owned_ptr * __restrict owned, const void * __restrict p
  * Initialize the process's __env_owned structure
  */
 __private_extern__ int
-__init__env_owned(int should_set_errno)
+__init__env_owned_locked(int should_set_errno)
 {
 	int save;
 
@@ -229,7 +232,7 @@ __init__env_owned(int should_set_errno)
  * -1 - like 0, except we copy of the name=value string in name
  */
 __private_extern__ int
-__setenv(name, value, rewrite, copy, environp, owned)
+__setenv_locked(name, value, rewrite, copy, environp, owned)
 	const char *name;
 	const char *value;
 	int rewrite, copy;
@@ -240,7 +243,7 @@ __setenv(name, value, rewrite, copy, environp, owned)
 	int offset;
 	int oindex;
 
-	if ((c = __findenv(name, &offset, *environp))) { /* find if already exists */
+	if ((c = __findenv_locked(name, &offset, *environp))) { /* find if already exists */
 		char *e;
 		if (!rewrite)
 			return (0);
@@ -326,13 +329,13 @@ __setenv(name, value, rewrite, copy, environp, owned)
 }
 
 __private_extern__ void
-__unsetenv(const char *name, char **environ, struct owned_ptr *owned)
+__unsetenv_locked(const char *name, char **environ, struct owned_ptr *owned)
 {
 	char **p;
 	int offset;
 	int oindex;
 
-	while (__findenv(name, &offset, environ)) { /* if set multiple times */
+	while (__findenv_locked(name, &offset, environ)) { /* if set multiple times */
 		/* if we malloc-ed it, free it first */
 		if (_owned_ptr_search(owned, environ[offset], &oindex) == 0) {
 			_owned_ptr_delete(owned, oindex);
@@ -358,7 +361,7 @@ _allocenvstate(void)
  * _copyenv -- SPI that copies a NULL-tereminated char * array in a newly
  * allocated buffer, compatible with the other SPI env routines.  If env
  * is NULL, a char * array composed of a single NULL is returned.  NULL
- * is returned on error.  (This isn't needed anymore, as __setenv will
+ * is returned on error.  (This isn't needed anymore, as __setenv_locked will
  * automatically make a copy.)
  */
 char **
@@ -407,8 +410,15 @@ _deallocenvstate(void *state)
 int
 _setenvp(const char *name, const char *value, int rewrite, char ***envp, void *state)
 {
-	if (__init__env_owned(1)) return (-1);
-	return (__setenv(name, value, rewrite, 1, envp, (state ? (struct owned_ptr *)state : __env_owned)));
+	__environ_lock();
+	if (__init__env_owned_locked(1)) {
+		__environ_unlock();
+		return (-1);
+	}
+	int ret = __setenv_locked(name, value, rewrite, 1, envp,
+			(state ? (struct owned_ptr *)state : __env_owned));
+	__environ_unlock();
+	return ret;
 }
 
 /*
@@ -420,8 +430,13 @@ _setenvp(const char *name, const char *value, int rewrite, char ***envp, void *s
 int
 _unsetenvp(const char *name, char ***envp, void *state)
 {
-	if (__init__env_owned(1)) return (-1);
-	__unsetenv(name, *envp, (state ? (struct owned_ptr *)state : __env_owned));
+	__environ_lock();
+	if (__init__env_owned_locked(1)) {
+		__environ_unlock();
+		return (-1);
+	}
+	__unsetenv_locked(name, *envp, (state ? (struct owned_ptr *)state : __env_owned));
+	__environ_unlock();
 	return 0;
 }
 
@@ -438,9 +453,7 @@ setenv(name, value, rewrite)
 	const char *value;
 	int rewrite;
 {
-#ifdef LEGACY_CRT1_ENVIRON
 	int ret;
-#endif /* LEGACY_CRT1_ENVIRON */
 
 	/* no null ptr or empty str */
 	if(name == NULL || *name == 0) {
@@ -456,16 +469,31 @@ setenv(name, value, rewrite)
 	}
 #endif /* __DARWIN_UNIX03 */
 
-	if (*value == '=')			/* no `=' in value */
-		++value;
-	if (__init__env_owned(1)) return (-1);
+	__environ_lock();
+	if (__init__env_owned_locked(1)) {
+		__environ_unlock();
+		return (-1);
+	}
+	ret = __setenv_locked(name, value, rewrite, 1, _NSGetEnviron(), __env_owned);
 #ifdef LEGACY_CRT1_ENVIRON
-	ret = __setenv(name, value, rewrite, 1, _NSGetEnviron(), __env_owned);
 	_saved_environ = *_NSGetEnviron();
-	return ret;
-#else /* !LEGACY_CRT1_ENVIRON */
-	return (__setenv(name, value, rewrite, 1, _NSGetEnviron(), __env_owned));
 #endif /* !LEGACY_CRT1_ENVIRON */
+	__environ_unlock();
+
+	return ret;
+}
+
+static inline __attribute__((always_inline)) int
+_unsetenv(const char *name, int should_set_errno)
+{
+	__environ_lock();
+	if (__init__env_owned_locked(should_set_errno)) {
+		__environ_unlock();
+		return (-1);
+	}
+	__unsetenv_locked(name, *_NSGetEnviron(), __env_owned);
+	__environ_unlock();
+	return 0;
 }
 
 /*
@@ -474,13 +502,8 @@ setenv(name, value, rewrite)
  */
 #if __DARWIN_UNIX03
 int
-#else /* !__DARWIN_UNIX03 */
-void
-#endif /* __DARWIN_UNIX03 */
-unsetenv(name)
-	const char *name;
+unsetenv(const char *name)
 {
-#if __DARWIN_UNIX03
 	/* no null ptr or empty str */
 	if(name == NULL || *name == 0) {
 		errno = EINVAL;
@@ -492,15 +515,15 @@ unsetenv(name)
 		errno = EINVAL;
 		return (-1);
 	}
-	if (__init__env_owned(1)) return (-1);
+	return _unsetenv(name, 1);
+}
 #else /* !__DARWIN_UNIX03 */
+void
+unsetenv(const char *name)
+{
 	/* no null ptr or empty str */
 	if(name == NULL || *name == 0)
 		return;
-	if (__init__env_owned(0)) return;
-#endif /* __DARWIN_UNIX03 */
-	__unsetenv(name, *_NSGetEnviron(), __env_owned);
-#if __DARWIN_UNIX03
-	return 0;
-#endif /* __DARWIN_UNIX03 */
+	_unsetenv(name, 0);
 }
+#endif /* __DARWIN_UNIX03 */

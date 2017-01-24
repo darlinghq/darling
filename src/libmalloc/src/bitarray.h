@@ -20,16 +20,9 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-//
-//  bitarray.h
-//  bitarray
-//
-//  Created by Bertrand Serlet on 9/26/10.
-//  Copyright (c) 2010 Apple. All rights reserved.
-//
 
-#include <stdbool.h>
-#include <libc.h>
+#ifndef __BITARRAY_H
+#define __BITARRAY_H
 
 typedef uint64_t *bitarray_t; // array of bits, assumed to be mostly 0
 typedef uint32_t index_t; // we limit the number of bits to be a 32-bit quantity
@@ -62,3 +55,49 @@ extern unsigned bitarray_zap_first_set_multiple(bitarray_t bits, unsigned log_si
     // finds all the bits set, up to max, and zaps each and sets the index for each
     // returns number zapped
 
+static MALLOC_INLINE MALLOC_ALWAYS_INLINE void
+BITARRAY_SET(uint32_t *bits, msize_t index)
+{
+	// index >> 5 identifies the uint32_t to manipulate in the conceptually contiguous bits array
+	// (index >> 5) << 1 identifies the uint32_t allowing for the actual interleaving
+	bits[(index >> 5) << 1] |= (1 << (index & 31));
+}
+
+static MALLOC_INLINE MALLOC_ALWAYS_INLINE void
+BITARRAY_CLR(uint32_t *bits, msize_t index)
+{
+	bits[(index >> 5) << 1] &= ~(1 << (index & 31));
+}
+
+static MALLOC_INLINE MALLOC_ALWAYS_INLINE boolean_t
+BITARRAY_BIT(uint32_t *bits, msize_t index)
+{
+	return ((bits[(index >> 5) << 1]) >> (index & 31)) & 1;
+}
+
+/* Macros used to manipulate the uint32_t quantity mag_bitmap. */
+
+/* BITMAPV variants are used by tiny. */
+#if defined(__LP64__)
+// assert(NUM_SLOTS == 64) in which case (slot >> 5) is either 0 or 1
+#define BITMAPV_SET(bitmap, slot) (bitmap[(slot) >> 5] |= 1 << ((slot)&31))
+#define BITMAPV_CLR(bitmap, slot) (bitmap[(slot) >> 5] &= ~(1 << ((slot)&31)))
+#define BITMAPV_BIT(bitmap, slot) ((bitmap[(slot) >> 5] >> ((slot)&31)) & 1)
+#define BITMAPV_CTZ(bitmap) (__builtin_ctzl(bitmap))
+#else
+// assert(NUM_SLOTS == 32) in which case (slot >> 5) is always 0, so code it that way
+#define BITMAPV_SET(bitmap, slot) (bitmap[0] |= 1 << (slot))
+#define BITMAPV_CLR(bitmap, slot) (bitmap[0] &= ~(1 << (slot)))
+#define BITMAPV_BIT(bitmap, slot) ((bitmap[0] >> (slot)) & 1)
+#define BITMAPV_CTZ(bitmap) (__builtin_ctz(bitmap))
+#endif
+
+/* BITMAPN is used by small. (slot >> 5) takes on values from 0 to 7. */
+#define BITMAPN_SET(bitmap, slot) (bitmap[(slot) >> 5] |= 1 << ((slot)&31))
+#define BITMAPN_CLR(bitmap, slot) (bitmap[(slot) >> 5] &= ~(1 << ((slot)&31)))
+#define BITMAPN_BIT(bitmap, slot) ((bitmap[(slot) >> 5] >> ((slot)&31)) & 1)
+
+/* returns bit # of least-significant one bit, starting at 0 (undefined if !bitmap) */
+#define BITMAP32_CTZ(bitmap) (__builtin_ctz(bitmap[0]))
+
+#endif // __BITARRAY_H

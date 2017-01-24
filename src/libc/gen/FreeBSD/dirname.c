@@ -25,22 +25,11 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/dirname.c,v 1.8 2008/11/03 05:19:45 delphij
 #include <string.h>
 #include <sys/param.h>
 
-#if __DARWIN_UNIX03
-#define const /**/
-#endif
-
 char *
-dirname(const char *path)
+dirname_r(const char *path, char *dname)
 {
-	static char *dname = NULL;
-	size_t len;
 	const char *endp;
-
-	if (dname == NULL) {
-		dname = (char *)malloc(MAXPATHLEN);
-		if (dname == NULL)
-			return(NULL);
-	}
+	size_t len;
 
 	/* Empty or NULL string gets treated as "." */
 	if (path == NULL || *path == '\0') {
@@ -78,4 +67,21 @@ dirname(const char *path)
 	memcpy(dname, path, len);
 	dname[len] = '\0';
 	return (dname);
+}
+
+#if __DARWIN_UNIX03
+#define const /**/
+#endif
+
+char *
+dirname(const char *path)
+{
+	static char *dname = NULL;
+
+	if (dname == NULL) {
+		dname = (char *)malloc(MAXPATHLEN);
+		if (dname == NULL)
+			return (NULL);
+	}
+	return (dirname_r(path, dname));
 }

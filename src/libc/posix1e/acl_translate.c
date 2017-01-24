@@ -227,6 +227,7 @@ static struct {
 	{ACL_READ_SECURITY,	"readsecurity",	ACL_TYPE_FILE | ACL_TYPE_DIR},
 	{ACL_WRITE_SECURITY,	"writesecurity", ACL_TYPE_FILE | ACL_TYPE_DIR},
 	{ACL_CHANGE_OWNER,	"chown",	ACL_TYPE_FILE | ACL_TYPE_DIR},
+	{ACL_SYNCHRONIZE,	"synchronize",	ACL_TYPE_FILE | ACL_TYPE_DIR},
 	{0, NULL, 0}
 };
 
@@ -248,7 +249,6 @@ static struct {
 /*
  * reallocing snprintf with offset
  */
-
 static int
 raosnprintf(char **buf, size_t *size, ssize_t *offset, char *fmt, ...)
 {
@@ -698,8 +698,8 @@ acl_to_text(acl_t acl, ssize_t *len_p)
 		}
 	    }
 	}
-	buf[(*len_p)++] = '\n';
-	buf[(*len_p)] = 0;
+
+	if(!raosnprintf(&buf, &bufsize, len_p, "\n")) goto err_nomem;
 	return buf;
 
 err_nomem:

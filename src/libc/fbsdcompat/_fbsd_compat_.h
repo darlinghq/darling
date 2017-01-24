@@ -35,6 +35,17 @@
 #define	__ct_rune_t	ct_rune_t
 #define	__va_list	__darwin_va_list
 
+#define	__isthreaded	1
+
+#ifdef	_FLOCK_DEBUG
+#define _FLOCKFILE(x) _flockfile_debug(x, __FILE__, __LINE__)
+#else
+#define _FLOCKFILE(x) _flockfile(x)
+#endif
+
+#define	FLOCKFILE(fp) _FLOCKFILE(fp)
+#define	FUNLOCKFILE(fp) _funlockfile(fp)
+
 /*
  * Do the opposite of FreeBSD namespace.h; that is, map the "hidden" names
  * back to the real names.
@@ -111,6 +122,7 @@
 #define		_recvfrom			recvfrom
 #define		_recvmsg			recvmsg
 #define		_select				select
+#define		_pselect			pselect
 #define		_sendmsg			sendmsg
 #define		_sendto				sendto
 #define		_setsockopt			setsockopt
@@ -148,7 +160,6 @@
 #define		__makecontext			makecontext
 #define		__makecontext			makecontext
 #define		__pause				pause
-#define		__pselect			pselect
 #define		__raise				raise
 #define		__signalcontext			signalcontext
 #define		__sleep				sleep

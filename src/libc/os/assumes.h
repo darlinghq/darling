@@ -122,7 +122,7 @@ typedef bool (*os_log_callout_t)(_SIMPLE_STRING asl_message, void *ctx, const ch
 	__typeof__(e) _e = os_slowpath(e); \
 	if (_e) { \
 		if (os_constant(e)) { \
-			__OS_COMPILETIME_ASSERT__(!e); \
+			__OS_COMPILETIME_ASSERT__(!(e)); \
 		} \
 		_os_assumes_log((uint64_t)(uintptr_t)_e); \
 		_os_avoid_tail_call(); \
@@ -165,7 +165,7 @@ typedef bool (*os_log_callout_t)(_SIMPLE_STRING asl_message, void *ctx, const ch
 	__typeof__(e) _e = os_slowpath(e); \
 	if (_e) { \
 		if (os_constant(e)) { \
-			__OS_COMPILETIME_ASSERT__(!e); \
+			__OS_COMPILETIME_ASSERT__(!(e)); \
 		} \
 \
 		char *_fail_message = _os_assert_log((uint64_t)(uintptr_t)_e); \
@@ -203,7 +203,7 @@ typedef bool (*os_log_callout_t)(_SIMPLE_STRING asl_message, void *ctx, const ch
 	__typeof__(e) _e = os_slowpath(e); \
 	if (_e) { \
 		if (os_constant(e)) { \
-			__OS_COMPILETIME_ASSERT__(!e); \
+			__OS_COMPILETIME_ASSERT__(!(e)); \
 		} \
 		_os_assumes_log_ctx((f), (ctx), (uintptr_t)_e); \
 		_os_avoid_tail_call(); \
@@ -237,7 +237,7 @@ typedef bool (*os_log_callout_t)(_SIMPLE_STRING asl_message, void *ctx, const ch
 	__typeof__(e) _e = os_slowpath(e); \
 	if (_e) { \
 		if (os_constant(e)) { \
-			__OS_COMPILETIME_ASSERT__(!e); \
+			__OS_COMPILETIME_ASSERT__(!(e)); \
 		} \
 \
 		char *_fail_message = _os_assert_log_ctx((f), (ctx), (uint64_t)(uintptr_t)_e); \
@@ -254,9 +254,6 @@ typedef bool (*os_log_callout_t)(_SIMPLE_STRING asl_message, void *ctx, const ch
 		free(_fail_message); \
 	} \
 })
-
-#define os_slowpath(x) (x)
-#define os_fastpath(x) (x)
 
 __OSX_AVAILABLE_STARTING(__MAC_10_11, __IPHONE_9_0)
 extern void

@@ -1,0 +1,62 @@
+.Dd May 26, 2004
+.Dt ATOMIC 3
+.Os Darwin
+.Sh NAME
+.Nm OSAtomicEnqueue ,
+.Nm OSAtomicDequeue
+.Nd atomic lockless queues
+.Sh SYNOPSIS
+.In libkern/OSAtomic.h
+.Ft void
+.Fn OSAtomicEnqueue "OSQueueHead *list" "void *new" "size_t offset"
+.Ft void*
+.Fn OSAtomicDequeue "OSQueueHead *list" "size_t offset"
+.Sh DESCRIPTION
+The routines
+.Fn OSAtomicEnqueue
+and
+.Fn OSAtomicDequeue
+operate on singly linked LIFO queues.  Ie, a dequeue operation will return the
+most recently enqueued element, or NULL if the list is empty.  The operations
+are lockless, and barriers are used as necessary to permit thread-safe access to
+the queue element.
+.Fa offset
+is the offset in bytes to the link field in the queue element.
+.Pp
+.Bf -symbolic
+Important: the memory backing the link field of a queue element must not be
+unmapped after
+.Fn OSAtomicDequeue
+returns until all concurrent calls to
+.Fn OSAtomicDequeue
+for the same list on other threads have also returned, as they may still be
+accessing that memory location.
+.Ef
+.Sh EXAMPLES
+.Bd -literal -offset indent
+	typedef struct elem {
+		long	data1;
+		struct elem *link;
+		int	data2;
+	} elem_t;
+	
+	elem_t fred, mary, *p;
+	
+	OSQueueHead q = OS_ATOMIC_QUEUE_INIT;
+	
+	OSAtomicEnqueue( &q, &fred, offsetof(elem_t,link) );
+	OSAtomicEnqueue( &q, &mary, offsetof(elem_t,link) );
+	
+	p = OSAtomicDequeue( &q, offsetof(elem_t,link) );
+	
+.Ed
+In this example, the call of
+.Fn OSAtomicDequeue
+will return a ptr to mary.
+.Sh RETURN VALUES
+The dequeue operation returns the most recently enqueued element, or NULL if the list in empty.
+.Sh SEE ALSO
+.Xr atomic_deprecated 3 ,
+.Xr spinlock_deprecated 3
+.Sh HISTORY
+These functions first appeared in Mac OS 10.5 (Leopard).

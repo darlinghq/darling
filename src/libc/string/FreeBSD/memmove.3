@@ -43,28 +43,24 @@
 .Sh SYNOPSIS
 .In string.h
 .Ft void *
-.Fo memmove
-.Fa "void *s1"
-.Fa "const void *s2"
-.Fa "size_t n"
-.Fc
+.Fn memmove "void *dst" "const void *src" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn memmove
 function
 copies
-.Fa n
+.Fa len
 bytes from string
-.Fa s2
+.Fa src
 to string
-.Fa s1 .
+.Fa dst .
 The two strings may overlap;
 the copy is always done in a non-destructive manner.
 .Sh RETURN VALUES
 The
 .Fn memmove
 function returns the original value of
-.Fa s1 .
+.Fa dst .
 .Sh SEE ALSO
 .Xr bcopy 3 ,
 .Xr memccpy 3 ,

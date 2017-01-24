@@ -1,0 +1,219 @@
+.Dd Aug 19, 2012
+.Dt XPRINTF_DOMAIN 3
+.Os Darwin
+.Sh NAME
+.Nm copy_printf_domain , free_printf_domain , new_printf_domain ,
+.Nm register_printf_domain_function , register_printf_domain_render_std
+.Nd extensible printf domains
+.Sh SYNOPSIS
+.In printf.h
+.Ft printf_domain_t
+.Fn copy_printf_domain "printf_domain_t domain"
+.Ft void
+.Fn free_printf_domain "printf_domain_t domain"
+.Ft printf_domain_t
+.Fn new_printf_domain void
+.Ft int
+.Fn register_printf_domain_function "printf_domain_t domain" "int spec" "printf_function *render" "printf_arginfo_function *arginfo", "void *context"
+.Ft int
+.Fn register_printf_domain_render_std "printf_domain_t domain" "const char *specs"
+.Sh DESCRIPTION
+A printf domain is an extensible printf (see
+.Xr xprintf 5 )
+structure defining a set of conversion specifiers that
+will be used in calls to the routines discussed in
+.Xr xprintf 3
+and
+.Xr xprintf_comp 3 .
+Domains can be modified independently of one another, and do not affect the
+behavior of the normal printf calls in
+.Xr printf 3 .
+.Pp
+To create a new domain, call
+.Fn new_printf_domain ;
+the standard POSIX conversion specifiers are defined by default.
+To make a copy of an existing domain, use
+.Fn copy_printf_domain .
+When a domain is no longer needed, call
+.Fn free_printf_domain
+to release the associated memory.
+.Pp
+The
+.Fn register_printf_domain_function
+function is used to add, modify or remove conversion specifiers for a
+given domain.
+The
+.Fa spec
+argument is the specifier character, which can be any printable (non-control)
+ASCII character,
+except for those characters that are used as flag/option characters.
+The set of flag/option characters includes the space character, and the
+following:
+.Pp
+.Dl # $ ' * + \&, - \&. 0 1 2 3 4 5 6 7 8 9 \&: \&; L _ h j l q t v z
+.Pp
+Two user-defined callback function must also be given; see
+.Xr xprintf 5
+for a description of these callback functions and an example of use.
+Setting either or both callbacks to
+.Dv NULL
+deletes the given specifier from the domain.
+Note that while it is permissible to redefine the standard conversion
+specifiers, it is not usually recommended as it may cause confusion.
+.Pp
+The
+.Fn register_printf_domain_render_std
+function is used to add pre-defined conversion specifiers to the given domain.
+The
+.Fa specs
+argument is a null-terminated C string containing one or more of the following
+specifier characters:
+.Bl -tag -width ".Li H"
+.It Li H
+Hex dump.
+The
+.Sq Li H
+specifier takes two arguments; the first is a pointer to the data to
+dump, while the second argument is the length of the data, given as type
+.Vt unsigned .
+Normally, 16 characters are displayed per line, as pairs of hex characters
+separated by spaces.
+Specifying a field width less than 16 will display that number of characters
+per line.
+Setting the
+.Sq Li +
+(showsign) flag will prefix each line with the hex offset of the beginning
+character in that line.
+Setting the
+.Sq Li #
+(alternate form) flag will postfix an ASCII representation to each line, with
+.Sq Li \&.
+representing non-printable characters.
+.It Li M
+Errno.
+The
+.Sq Li M
+specifier displayed the text representation of the given
+.Vt int
+argument, expected to be a valid
+.Va errno
+value (as returned by
+.Xr strerror 3 ) .
+Invalid errno values are represent by the
+.Dq Li errno=
+string followed by the decimal and hex values of the argument.
+.It Li Q
+Quoted.
+The
+.Sq Li Q
+specifier displays a null-terminated string argument as a C string, with
+leading and trailing double quotes.
+Newlines, carriage-returns and tabs are represented by
+.Sq Li \en ,
+.Sq Li \er
+and
+.Sq Li \et ,
+respectively, while backslashes and double quotes are preceeded with a
+backslash.
+All other whitespace characters not including space itself (those in which
+.Xr isspace 3
+returns true) are displayed as octal escape sequences (a backslash followed by
+three octal digits).
+All other characters print as themselves.
+.It Li T
+time_t/timeval/timespec.
+The
+.Sq Li T
+specifier displays the three types of time values as a single decimal value.
+The argument should be a pointer to the time value to be converted.
+Setting the appropriate flags indicates which type is indicated:
+.Bl -tag -width ".Pq none"
+.It Li ll
+The
+.Sq Li ll
+(long long) flag indicates the argument points to a
+.Vt struct timespec
+structure.
+The default precision is 9.
+.It Li l
+The
+.Sq Li l
+(long) flag indicates the argument points to a
+.Vt struct timeval
+structure.
+The default precision is 6.
+.It Pq none
+By default, the argument points to a
+.Vt time_t
+value.
+The default precision is 0 (the fractional part is not displayed).
+.El
+.Pp
+If the
+.Sq Li #
+(alternate form) flag is specified, the value is displayed in years, days,
+hours, minutes and seconds, as in:
+.Dq Li 3y123d21h59m59s.987654
+(zero values are not displayed at all).
+Note that the years are 365 days (no leap days).
+.It Li V
+String vis.
+The
+.Sq Li V
+specifier uses
+.Xr strvisx 3
+to display the null-terminated C string argument.
+The precision value can be used to limit the amount of the string that is
+processed (defaults to the entire string).
+.Pp
+Flag values can be used to obtain different encodings:
+.Bl -tag -width "(none)"
+.It Li +
+The
+.Sq Li +
+(showsign) flag uses the
+.Dq Li VIS_WHITE | VIS_HTTPSTYLE
+flag value to
+.Xr strvisx 3 .
+.It Li 0
+The
+.Sq Li 0
+(leading zero) flag uses the
+.Dq Li VIS_WHITE | VIS_OCTAL
+flag value to
+.Xr strvisx 3 .
+.It Li #
+The
+.Sq Li #
+(alternate form) flag uses the
+.Dq Li VIS_WHITE
+flag value to
+.Xr strvisx 3 .
+.It Pq none
+The default flag value to
+.Xr strvisx 3
+is
+.Dq Li VIS_WHITE | VIS_CSTYLE | VIS_OCTAL .
+.El
+.El
+.Sh RETURN VALUES
+The
+.Fn new_printf_domain
+and
+.Fn copy_printf_domain
+functions return the new domain, or
+.Dv NULL
+on failure (usually out of memory condition).
+.Pp
+The
+.Fn register_printf_domain_function
+and
+.Fn register_printf_domain_render_std
+return zero on success and \-1 on failure (usually due to an improper specifier
+character or out of memory condition).
+.Sh SEE ALSO
+.Xr printf 3 ,
+.Xr strvisx 3 ,
+.Xr xprintf 3 ,
+.Xr xprintf_comp 3 ,
+.Xr xprintf 5

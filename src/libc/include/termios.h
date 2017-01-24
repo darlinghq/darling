@@ -26,11 +26,7 @@
 #include <sys/cdefs.h>
 #include <sys/termios.h>
 #include <_types.h>
-
-#ifndef _PID_T
-typedef __darwin_pid_t	pid_t;
-#define _PID_T
-#endif
+#include <sys/_types/_pid_t.h>
 
 __BEGIN_DECLS
 pid_t	tcgetsid(int);

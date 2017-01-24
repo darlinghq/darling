@@ -37,7 +37,44 @@ __FBSDID("$FreeBSD: src/lib/libc/locale/utf8.c,v 1.16 2007/10/15 09:51:30 ache E
 #include <wchar.h>
 #include "mblocal.h"
 
-#define UTF8_MB_CUR_MAX		6
+/*
+ * 10952550: detect ill-formed UTF-8
+ * Unicode 6.0, section D92, mandates specific byte sequences for well-
+ * formed UTF-8.  UTF-8 sequences are now limited to 4 bytes, while the
+ * FreeBSD code originally handled up to 6.  Illegal surrogate code point
+ * sequences are now detected.  And while "non-shortest forms" were detected,
+ * this only happened after completing the sequence.  Now, all ill-formed
+ * sequences are detected at the earliest point.
+ *
+ *          Table 3-7.  Well-Formed UTF-8 Byte Sequences
+ *
+ *      Code Points         1st      2nd      3rd      4th Byte
+ *    U+0000..U+007F       00..7F
+ *    U+0080..U+07FF       C2..DF   80..BF
+ *    U+0800..U+0FFF       E0       A0..BF   80..BF
+ *    U+1000..U+CFFF       E1..EC   80..BF   80..BF
+ *    U+D000..U+D7FF       ED       80..9F   80..BF
+ *    U+E000..U+FFFF       EE..EF   80..BF   80..BF
+ *    U+10000..U+3FFFF     F0       90..BF   80..BF   80..BF
+ *    U+40000..U+FFFFF     F1..F3   80..BF   80..BF   80..BF
+ *    U+100000..U+10FFFF   F4       80..8F   80..BF   80..BF
+ *
+ * Note that while any 3rd and 4th byte can be in the range 80..BF, the
+ * second byte is often limited to a smaller range.
+ */
+
+typedef struct {
+	unsigned char lowerbound;
+	unsigned char upperbound;
+} SecondByte;
+static SecondByte sb_00_00 = {0x00, 0x00};
+static SecondByte sb_80_8F = {0x80, 0x8F};
+static SecondByte sb_80_9F = {0x80, 0x9F};
+static SecondByte sb_80_BF = {0x80, 0xBF};
+static SecondByte sb_90_BF = {0x90, 0xBF};
+static SecondByte sb_A0_BF = {0xA0, 0xBF};
+
+#define UTF8_MB_CUR_MAX		4
 
 static size_t	_UTF8_mbrtowc(wchar_t * __restrict, const char * __restrict,
 		    size_t, mbstate_t * __restrict, locale_t);
@@ -53,10 +90,10 @@ static size_t	_UTF8_wcsnrtombs(char * __restrict, const wchar_t ** __restrict,
 typedef struct {
 	wchar_t	ch;
 	int	want;
-	wchar_t	lbound;
+	SecondByte sb;
 } _UTF8State;
 
-__private_extern__ int
+int
 _UTF8_init(struct __xlocale_st_runelocale *xrl)
 {
 
@@ -89,11 +126,12 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 {
 	_UTF8State *us;
 	int ch, i, mask, want;
-	wchar_t lbound, wch;
+	wchar_t wch;
+	SecondByte sb;
 
 	us = (_UTF8State *)ps;
 
-	if (us->want < 0 || us->want > 6) {
+	if (us->want < 0 || us->want > UTF8_MB_CUR_MAX) {
 		errno = EINVAL;
 		return ((size_t)-1);
 	}
@@ -122,38 +160,50 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 		 * interesting bits of the first octet. We already know
 		 * the character is at least two bytes long.
 		 *
-		 * We also specify a lower bound for the character code to
-		 * detect redundant, non-"shortest form" encodings. For
-		 * example, the sequence C0 80 is _not_ a legal representation
-		 * of the null character. This enforces a 1-to-1 mapping
-		 * between character codes and their multibyte representations.
+		 * We detect if the first byte is illegal, and set sb to
+		 * the legal range of the second byte.
 		 */
 		ch = (unsigned char)*s;
 		if ((ch & 0x80) == 0) {
 			mask = 0x7f;
 			want = 1;
-			lbound = 0;
+			sb = sb_00_00;
 		} else if ((ch & 0xe0) == 0xc0) {
+			if (ch < 0xc2) goto malformed;
 			mask = 0x1f;
 			want = 2;
-			lbound = 0x80;
+			sb = sb_80_BF;
 		} else if ((ch & 0xf0) == 0xe0) {
 			mask = 0x0f;
 			want = 3;
-			lbound = 0x800;
+			switch (ch) {
+			case 0xe0:
+				sb = sb_A0_BF;
+				break;
+			case 0xed:
+				sb = sb_80_9F;
+				break;
+			default:
+				sb = sb_80_BF;
+				break;
+			}
 		} else if ((ch & 0xf8) == 0xf0) {
+			if (ch > 0xf4) goto malformed;
 			mask = 0x07;
 			want = 4;
-			lbound = 0x10000;
-		} else if ((ch & 0xfc) == 0xf8) {
-			mask = 0x03;
-			want = 5;
-			lbound = 0x200000;
-		} else if ((ch & 0xfe) == 0xfc) {
-			mask = 0x01;
-			want = 6;
-			lbound = 0x4000000;
+			switch (ch) {
+			case 0xf0:
+				sb = sb_90_BF;
+				break;
+			case 0xf4:
+				sb = sb_80_8F;
+				break;
+			default:
+				sb = sb_80_BF;
+				break;
+			}
 		} else {
+malformed:
 			/*
 			 * Malformed input; input is not UTF-8.
 			 */
@@ -162,7 +212,7 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 		}
 	} else {
 		want = us->want;
-		lbound = us->lbound;
+		sb = us->sb;
 	}
 
 	/*
@@ -174,30 +224,20 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 	else
 		wch = us->ch;
 	for (i = (us->want == 0) ? 1 : 0; i < MIN(want, n); i++) {
-		if ((*s & 0xc0) != 0x80) {
-			/*
-			 * Malformed input; bad characters in the middle
-			 * of a character.
-			 */
-			errno = EILSEQ;
-			return ((size_t)-1);
-		}
+		if (sb.lowerbound) {
+			if ((unsigned char)*s < sb.lowerbound ||
+			   (unsigned char)*s > sb.upperbound) goto malformed;
+			sb = sb_00_00;
+		} else if ((*s & 0xc0) != 0x80) goto malformed;
 		wch <<= 6;
 		wch |= *s++ & 0x3f;
 	}
 	if (i < want) {
 		/* Incomplete multibyte sequence. */
 		us->want = want - i;
-		us->lbound = lbound;
+		us->sb = sb;
 		us->ch = wch;
 		return ((size_t)-2);
-	}
-	if (wch < lbound) {
-		/*
-		 * Malformed input; redundant encoding.
-		 */
-		errno = EILSEQ;
-		return ((size_t)-1);
 	}
 	if (pwc != NULL)
 		*pwc = wch;
@@ -324,18 +364,15 @@ _UTF8_wcrtomb(char * __restrict s, wchar_t wc, mbstate_t * __restrict ps, locale
 		lead = 0xc0;
 		len = 2;
 	} else if ((wc & ~0xffff) == 0) {
+		if (wc >= 0xd800 && wc <= 0xdfff) goto illegal;
 		lead = 0xe0;
 		len = 3;
 	} else if ((wc & ~0x1fffff) == 0) {
+		if (wc > 0x10ffff) goto illegal;
 		lead = 0xf0;
 		len = 4;
-	} else if ((wc & ~0x3ffffff) == 0) {
-		lead = 0xf8;
-		len = 5;
-	} else if ((wc & ~0x7fffffff) == 0) {
-		lead = 0xfc;
-		len = 6;
 	} else {
+illegal:
 		errno = EILSEQ;
 		return ((size_t)-1);
 	}

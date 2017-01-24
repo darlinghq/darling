@@ -1,33 +1,22 @@
+.\" $OpenBSD: basename.3,v 1.20 2007/05/31 19:19:28 jmc Exp $
 .\"
 .\" Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
-.\" All rights reserved.
 .\"
-.\" Redistribution and use in source and binary forms, with or without
-.\" modification, are permitted provided that the following conditions
-.\" are met:
-.\" 1. Redistributions of source code must retain the above copyright
-.\"    notice, this list of conditions and the following disclaimer.
-.\" 2. Redistributions in binary form must reproduce the above copyright
-.\"    notice, this list of conditions and the following disclaimer in the
-.\"    documentation and/or other materials provided with the distribution.
-.\" 3. The name of the author may not be used to endorse or promote products
-.\"    derived from this software without specific prior written permission.
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
 .\"
-.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
-.\" INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-.\" AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
-.\" THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-.\" EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-.\" PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-.\" OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-.\" WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-.\" OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-.\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\" $OpenBSD: basename.3,v 1.12 2000/04/18 03:01:25 aaron Exp $
-.\" $FreeBSD: src/lib/libc/gen/basename.3,v 1.7 2004/07/02 23:52:10 ru Exp $
+.\" $FreeBSD$
 .\"
-.Dd August 17, 1997
+.Dd March 31, 2010
 .Dt BASENAME 3
 .Os
 .Sh NAME
@@ -36,14 +25,13 @@
 .Sh SYNOPSIS
 .In libgen.h
 .Ft char *
-.Fo basename
-.Fa "char *path"
-.Fc
+.Fn basename "char *path"
+.Ft char *
+.Fn basename_r "const char *path" "char *bname"
 .Sh DESCRIPTION
 The
 .Fn basename
-function
-returns the last component from the pathname pointed to by
+function returns the last component from the pathname pointed to by
 .Fa path ,
 deleting any trailing
 .Sq \&/
@@ -60,15 +48,30 @@ If
 is a null pointer or the empty string, a pointer to the string
 .Qq \&.
 is returned.
+.Pp
+The
+.Fn basename_r
+variation accepts a buffer of at least
+.Dv MAXPATHLEN
+bytes in which to store the resulting component.
+.Sh IMPLEMENTATION NOTES
+The
+.Fn basename
+function
+returns a pointer to internal storage space allocated on the first call
+that will be overwritten
+by subsequent calls.
+.Fn basename_r
+is therefore preferred for threaded applications.
 .Sh RETURN VALUES
 On successful completion,
 .Fn basename
-returns a pointer to the last component of
+and
+.Fn basename_r
+return pointers to the last component of
 .Fa path .
 .Pp
-If
-.Fn basename
-fails, a null pointer is returned and the global variable
+If they fail, a null pointer is returned and the global variable
 .Va errno
 is set to indicate the error.
 .Sh ERRORS
@@ -79,31 +82,10 @@ The following error codes may be set in
 The path component to be returned was larger than
 .Dv MAXPATHLEN .
 .El
-.Sh WARNINGS
-The
-.Fn basename
-function
-returns a pointer to internal static storage space
-that will be overwritten by subsequent calls.
-The function may modify the string pointed to by
-.Fa path .
-.Sh LEGACY SYNOPSIS
-.Fd #include <libgen.h>
-.Pp
-.Ft char *
-.br
-.Fo basename
-.Fa "const char *path"
-.Fc ;
-.Pp
-In legacy mode,
-.Fa path
-will not be changed.
 .Sh SEE ALSO
 .Xr basename 1 ,
 .Xr dirname 1 ,
-.Xr dirname 3 ,
-.Xr compat 5
+.Xr dirname 3
 .Sh STANDARDS
 The
 .Fn basename
@@ -116,5 +98,19 @@ function first appeared in
 .Ox 2.2
 and
 .Fx 4.2 .
+The
+.Fn basename_r
+function first appeared in OS X 10.12.
 .Sh AUTHORS
-.An "Todd C. Miller" Aq Todd.Miller@courtesan.com
+.An Todd C. Miller
+.Sh CAVEATS
+.Fn basename
+returns a pointer to internal static storage space that will be overwritten
+by subsequent calls.
+.Pp
+Other vendor implementations of
+.Fn basename
+may modify the contents of the string passed to
+.Fn basename ;
+this should be taken into account when writing code which calls this function
+if portability is desired.

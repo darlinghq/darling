@@ -47,7 +47,7 @@ static const char
 		*sevinfo(int);
 static int	 validmsgverb(const char *);
 
-static const char *validlist[] = {
+static const char * const validlist[] = {
 	"label", "severity", "text", "action", "tag", NULL
 };
 

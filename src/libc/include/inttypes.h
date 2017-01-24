@@ -1,23 +1,23 @@
 /*
- * Copyright (c) 2000, 2001, 2002, 2003, 2004 Apple Computer, Inc.
- * All rights reserved.
+ * Copyright (c) 2000-2004, 2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- *
- * The contents of this file constitute Original Code as defined in and
- * are subject to the Apple Public Source License Version 1.1 (the
- * "License").  You may not use this file except in compliance with the
- * License.  Please obtain a copy of the License at
- * http://www.apple.com/publicsource and read it before using this file.
- *
- * This Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
- *
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -220,45 +220,56 @@
 #  define SCNuMAX       __SCN_MAX_LENGTH_MODIFIER__ "u"
 #  define SCNxMAX       __SCN_MAX_LENGTH_MODIFIER__ "x"
 
-#include <sys/cdefs.h>		/* For __BEGIN_DECLS and __END_DECLS */
-#include <_types.h>		/* For __darwin_wchar_t */
-#include <stdint.h>
+#include <sys/cdefs.h>
+#include <Availability.h>
 
-#if !defined(__STDC_VERSION__) || (__STDC_VERSION__ < 199901L)
-  /* Translator is not ISO/IEC 9899:1999-compliant. */
-#  if !defined(restrict)
-#    define restrict
-#    define __RESTRICT_KEYWORD_DEFINED__
-#  endif
-#endif
+#include <_types.h>
+#include <sys/_types/_wchar_t.h>
+
+#include <stdint.h>
 
 __BEGIN_DECLS
 
-  /* 7.8.2.1 */
-  extern intmax_t imaxabs(intmax_t j);
+/* 7.8.2.1 */
+__OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
+extern intmax_t
+imaxabs(intmax_t j);
 
-  /* 7.8.2.2 */
-  typedef struct {
-        intmax_t quot;
-        intmax_t rem;
-  } imaxdiv_t;
+/* 7.8.2.2 */
+typedef struct {
+	intmax_t quot;
+	intmax_t rem;
+} imaxdiv_t;
 
-  extern imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom);
+__OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
+extern imaxdiv_t
+imaxdiv(intmax_t __numer, intmax_t __denom);
 
-  /* 7.8.2.3 */
-  extern intmax_t strtoimax(const char * restrict nptr, char ** restrict endptr, int base);
-  extern uintmax_t strtoumax(const char * restrict nptr, char ** restrict endptr, int base);
+/* 7.8.2.3 */
+__OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
+extern intmax_t
+strtoimax(const char * __restrict __nptr,
+	  char ** __restrict __endptr,
+	  int __base);
 
-#ifndef __cplusplus /* wchar_t is a built-in type in C++ */
-#  ifndef	_WCHAR_T
-#    define	_WCHAR_T
-     typedef	__darwin_wchar_t	wchar_t;
-#  endif /* _WCHAR_T */
-#endif /* __cplusplus */
+__OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
+extern uintmax_t
+strtoumax(const char * __restrict __nptr,
+	  char ** __restrict __endptr,
+	  int __base);
 
-  /* 7.8.2.4 */
-  extern intmax_t wcstoimax(const wchar_t * restrict nptr, wchar_t ** restrict endptr, int base);
-  extern uintmax_t wcstoumax(const wchar_t * restrict nptr, wchar_t ** restrict endptr, int base);
+/* 7.8.2.4 */
+__OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
+extern intmax_t
+wcstoimax(const wchar_t * __restrict __nptr,
+	  wchar_t ** __restrict __endptr,
+	  int __base);
+
+__OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0)
+extern uintmax_t
+wcstoumax(const wchar_t * __restrict __nptr,
+	  wchar_t ** __restrict __endptr,
+	  int __base);
 
 /* Poison the following routines if -fshort-wchar is set */
 #if !defined(__cplusplus) && defined(__WCHAR_MAX__) && __WCHAR_MAX__ <= 0xffffU
@@ -282,10 +293,5 @@ __END_DECLS
    uses the cpp value of IDENT at the location where x is *expanded*,
    not where it is #defined.
 */
-
-#if defined(__RESTRICT_KEYWORD_DEFINED__)
-#  undef restrict
-#  undef __RESTRICT_KEYWORD_DEFINED__
-#endif
 
 #endif /* !_INTTYPES_H_ */

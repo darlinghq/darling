@@ -29,6 +29,10 @@
 
 /* This whole header file will disappear, so don't depend on it... */
 
+#if __has_feature(assume_nonnull)
+_Pragma("clang assume_nonnull begin")
+#endif
+
 #ifndef __POSIX_LIB__
 
 /*
@@ -54,5 +58,9 @@
 #define __SCHED_PARAM_SIZE__       4
 
 #endif /* __POSIX_LIB__ */
+
+#if __has_feature(assume_nonnull)
+_Pragma("clang assume_nonnull end")
+#endif
 
 #endif /* _PTHREAD_IMPL_H_ */

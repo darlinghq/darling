@@ -23,17 +23,20 @@
 /*
  * _libc_fork_child() is called from Libsystem's libSystem_atfork_child()
  */
+#include <TargetConditionals.h>
+#include <CrashReporterClient.h>
 
-extern void _asl_fork_child();
 extern void _arc4_fork_child();
-extern void _init_clock_port();
-extern void _dirhelper_fork_child();
+extern void _init_clock_port(void);
+extern void __environ_lock_fork_child();
 
+void _libc_fork_child(void); // todo: private_extern?
 void
 _libc_fork_child(void)
 {
-	_asl_fork_child();
+	CRSetCrashLogMessage("crashed on child side of fork pre-exec");
+
 	_arc4_fork_child();
 	_init_clock_port();
-	_dirhelper_fork_child();
+	__environ_lock_fork_child();
 }

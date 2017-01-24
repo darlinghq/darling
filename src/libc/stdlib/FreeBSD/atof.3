@@ -83,14 +83,14 @@ and
 functions are thread-safe and async-cancel-safe.
 .Pp
 The
+.Fn strtod 
+and 
+.Fn strtod_l
+functions are recommended instead of 
 .Fn atof
 and
 .Fn atof_l
-functions have been deprecated by
-.Fn strtod
-and
-.Fn strtod_l
-and should not be used in new code.
+functions, especially in new code.
 .Sh ERRORS
 The function
 .Fn atof

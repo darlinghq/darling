@@ -10,4 +10,4 @@ if [ "x$ACTION" == "xinstallhdrs" ]; then exit 0; fi
 
 DEPS_C="$BUILT_PRODUCTS_DIR/deps.c"
 
-[ -e $DEPS_C ] && rm -f $DEPS_C
+[ -e "$DEPS_C" ] && rm -f "$DEPS_C"

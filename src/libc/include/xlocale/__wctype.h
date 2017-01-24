@@ -27,85 +27,85 @@
 #if !defined(_DONT_USE_CTYPE_INLINE_) && \
     (defined(_USE_CTYPE_INLINE_) || defined(__GNUC__) || defined(__cplusplus))
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswalnum_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_A|_CTYPE_D, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswalpha_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_A, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswcntrl_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_C, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswctype_l(wint_t _wc, wctype_t _charclass, locale_t _l)
 {
 	return (__istype_l(_wc, _charclass, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswdigit_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_D, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswgraph_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_G, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswlower_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_L, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswprint_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_R, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswpunct_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_P, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswspace_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_S, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswupper_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_U, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswxdigit_l(wint_t _wc, locale_t _l)
 {
 	return (__istype_l(_wc, _CTYPE_X, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline wint_t
+__DARWIN_WCTYPE_TOP_inline wint_t
 towlower_l(wint_t _wc, locale_t _l)
 {
         return (__tolower_l(_wc, _l));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline wint_t
+__DARWIN_WCTYPE_TOP_inline wint_t
 towupper_l(wint_t _wc, locale_t _l)
 {
         return (__toupper_l(_wc, _l));

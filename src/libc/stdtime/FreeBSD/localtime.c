@@ -97,7 +97,7 @@ __FBSDID("$FreeBSD: src/lib/libc/stdtime/localtime.c,v 1.43 2008/04/01 06:56:11 
 #define WILDABBR	"   "
 #endif /* !defined WILDABBR */
 
-static char		wildabbr[] = "WILDABBR";
+static const char		wildabbr[] = "WILDABBR";
 
 /*
  * In June 2004 it was decided UTC was a more appropriate default time
@@ -167,7 +167,6 @@ struct rule {
 #ifdef NOTIFY_TZ
 typedef struct {
 	int token;
-	int notify_was_off;
 	int is_set;
 } notify_tz_t;
 
@@ -210,7 +209,11 @@ static const char *	getnum(const char * strp, int * nump, int min,
 static const char *	getsecs(const char * strp, long * secsp);
 static const char *	getoffset(const char * strp, long * offsetp);
 static const char *	getrule(const char * strp, struct rule * rulep);
+#ifdef NOTIFY_TZ
+static void		gmtload(struct state * sp, char *path);
+#else /* ! NOTIFY_TZ */
 static void		gmtload(struct state * sp);
+#endif /* NOTIFY_TZ */
 #ifdef __LP64__
 static struct tm *	gmtsub(const time_t * timep, long offset,
 				struct tm * tmp);
@@ -256,7 +259,11 @@ static int		tmcomp(const struct tm * atmp,
 				const struct tm * btmp);
 static time_t		transtime(time_t janfirst, int year,
 				const struct rule * rulep, long offset);
+#ifdef NOTIFY_TZ
+static int		tzload(const char * name, struct state * sp, char *path);
+#else /* ! NOTIFY_TZ */
 static int		tzload(const char * name, struct state * sp);
+#endif /* NOTIFY_TZ */
 static int		tzparse(const char * name, struct state * sp,
 				int lastditch);
 
@@ -288,8 +295,8 @@ __private_extern__ pthread_rwlock_t	lcl_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static pthread_mutex_t	gmt_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char *			tzname[2] = {
-	wildabbr,
-	wildabbr
+	(char *)wildabbr,
+	(char *)wildabbr
 };
 
 /*
@@ -339,23 +346,10 @@ __private_extern__ long		__darwin_altzone = 0;
 	} \
 }
 #endif /* NOTIFY_TZ_LOG */
-/*--------------------------------------------------------------------
- * __notify_78945668_info__ is a global variable (defined in Libnotify)
- * that can be used to disable the notify mechanism.  Set to a negative
- * value to disable.  It can then be set back to zero to re-enable.
- *-------------------------------------------------------------------- */
-extern int		__notify_78945668_info__;
 
-/*--------------------------------------------------------------------
- * fullname is used to pass the actual path of the timezone file to the
- * notify routines.  If it is a nil string, that means no timezone file
- * is being used.
- *-------------------------------------------------------------------- */
-static char *		fullname = NULL;
-
-static notify_tz_t	gmt_notify = {-1, 0, 0};
-static notify_tz_t	lcl_notify = {-1, 0, 0};
-static char		notify_tz_name[] = NOTIFY_TZ_NAME;
+static notify_tz_t	gmt_notify = {-1, 0};
+static notify_tz_t	lcl_notify = {-1, 0};
+static const char notify_tz_name[] = NOTIFY_TZ_NAME;
 #endif /* NOTIFY_TZ */
 
 static long
@@ -382,8 +376,8 @@ settzname(void)
 #define NEED_DAYLIGHT	4
 #define NEED_ALL	(NEED_STD | NEED_DST | NEED_DAYLIGHT)
 
-	tzname[0] = wildabbr;
-	tzname[1] = wildabbr;
+	tzname[0] = (char *)wildabbr;
+	tzname[1] = (char *)wildabbr;
 #ifdef USG_COMPAT
 	daylight = 0;
 	_st_set_timezone(0);
@@ -467,22 +461,6 @@ notify_check_tz(notify_tz_t *p)
 	unsigned int nstat;
 	int ncheck;
 
-	if (__notify_78945668_info__ < 0) {
-#ifdef NOTIFY_TZ_DEBUG
-		if(!p->notify_was_off) NOTIFY_TZ_PRINTF("notify_check_tz: setting %s_notify->notify_was_off\n", (p == &lcl_notify ? "lcl" : "gmt"));
-#endif /* NOTIFY_TZ_DEBUG */
-		p->notify_was_off = 1;
-		return;
-	}
-	/* force rereading the timezone file if notify was off */
-	if (p->notify_was_off) {
-#ifdef NOTIFY_TZ_DEBUG
-		NOTIFY_TZ_PRINTF("notify_check_tz: saw %s_notify->notify_was_off\n", (p == &lcl_notify ? "lcl" : "gmt"));
-#endif /* NOTIFY_TZ_DEBUG */
-		p->is_set = 0;
-		p->notify_was_off = 0;
-		return;
-	}
 	if (p->token < 0)
 		return;
 	nstat = notify_check(p->token, &ncheck);
@@ -506,8 +484,6 @@ notify_register_tz(char *file, notify_tz_t *p)
 	unsigned int nstat;
 	int ncheck;
 
-	if (__notify_78945668_info__ < 0)
-		return;
 	/*----------------------------------------------------------------
 	 * Since we don't record the last time zone filename, just cancel
 	 * (which should remove the file monitor) and setup from scratch
@@ -524,7 +500,7 @@ notify_register_tz(char *file, notify_tz_t *p)
 	 * Otherwise use com.apple.system.timezone.<fullpath>
 	 *----------------------------------------------------------------*/
 	if (TZDEFAULT && strcmp(file, TZDEFAULT) == 0)
-		name = notify_tz_name;
+		name = (char *)notify_tz_name;
 	else {
 		name = alloca(sizeof(notify_tz_name) + strlen(file) + 1);
 		if (name == NULL) {
@@ -574,9 +550,16 @@ notify_register_tz(char *file, notify_tz_t *p)
 #endif /* NOTIFY_TZ */
 
 static int
+#ifdef NOTIFY_TZ
+tzload(name, sp, path)
+#else /* ! NOTIFY_TZ */
 tzload(name, sp)
+#endif /* NOTIFY_TZ */
 const char *		name;
 struct state * const	sp;
+#ifdef NOTIFY_TZ
+char *			path; /* copy full path if non-NULL */
+#endif /* NOTIFY_TZ */
 {
 	const char *	p;
 	int		i;
@@ -590,6 +573,10 @@ struct state * const	sp;
 		if ((name[0] == ':' && name[1] == '/') || 
 		    name[0] == '/' || strchr(name, '.'))
 			name = NULL;
+#ifdef NOTIFY_TZ
+	if (path)
+		*path = 0; /* default to empty string on error */
+#endif /* NOTIFY_TZ */
 	if (name == NULL && (name = TZDEFAULT) == NULL)
 		return -1;
 	{
@@ -602,15 +589,7 @@ struct state * const	sp;
 		** to hold the longest file name string that the implementation
 		** guarantees can be opened."
 		*/
-#ifdef NOTIFY_TZ
-		if (!fullname) {
-			fullname = malloc(FILENAME_MAX + 1);
-			if (!fullname)
-				return -1;
-		}
-#else /* ! NOTIFY_TZ */
 		char		fullname[FILENAME_MAX + 1];
-#endif /* NOTIFY_TZ */
 
 		if (name[0] == ':')
 			++name;
@@ -618,11 +597,7 @@ struct state * const	sp;
 		if (!doaccess) {
 			if ((p = TZDIR) == NULL)
 				return -1;
-#ifdef NOTIFY_TZ
-			if ((strlen(p) + 1 + strlen(name) + 1) >= (FILENAME_MAX + 1))
-#else /* ! NOTIFY_TZ */
 			if ((strlen(p) + 1 + strlen(name) + 1) >= sizeof fullname)
-#endif /* NOTIFY_TZ */
 				return -1;
 			(void) strcpy(fullname, p);
 			(void) strcat(fullname, "/");
@@ -635,8 +610,11 @@ struct state * const	sp;
 			name = fullname;
 		}
 #ifdef NOTIFY_TZ
-		else
-			strcpy(fullname, name);
+		if (path) {
+			if (strlen(name) > FILENAME_MAX)
+				return -1;
+			strcpy(path, name);
+		}
 #endif /* NOTIFY_TZ */
 		if (doaccess && access(name, R_OK) != 0)
 		     	return -1;
@@ -1081,9 +1059,10 @@ const int			lastditch;
 				return -1;
 		}
 	}
-	load_result = tzload(TZDEFRULES, sp);
 #ifdef NOTIFY_TZ
-	*fullname = 0;				/* mark fullname as invalid */
+	load_result = tzload(TZDEFRULES, sp, NULL);
+#else /* !NOTIFY_TZ */
+	load_result = tzload(TZDEFRULES, sp);
 #endif /* NOTIFY_TZ */
 	if (load_result != 0)
 		sp->leapcnt = 0;		/* so, we're off a little */
@@ -1261,10 +1240,21 @@ const int			lastditch;
 }
 
 static void
+#ifdef NOTIFY_TZ
+gmtload(sp, path)
+#else /* ! NOTIFY_TZ */
 gmtload(sp)
+#endif /* NOTIFY_TZ */
 struct state * const	sp;
+#ifdef NOTIFY_TZ
+char *path;
+#endif /* NOTIFY_TZ */
 {
+#ifdef NOTIFY_TZ
+	if (tzload(gmt, sp, path) != 0)
+#else /* ! NOTIFY_TZ */
 	if (tzload(gmt, sp) != 0)
+#endif /* NOTIFY_TZ */
 		(void) tzparse(gmt, sp, TRUE);
 }
 
@@ -1319,10 +1309,20 @@ tzsetwall_basic(int rdlocked)
 		}
 	}
 #endif /* defined ALL_STATE */
+#ifdef NOTIFY_TZ
+	{
+		char		fullname[FILENAME_MAX + 1];
+		if (tzload((char *) NULL, lclptr, fullname) != 0)
+			/*
+			 * If fullname is empty (an error occurred) then
+			 * default to the UTC path
+			 */
+			gmtload(lclptr, *fullname ? NULL : fullname);
+		notify_register_tz(fullname, &lcl_notify);
+	}
+#else /* ! NOTIFY_TZ */
 	if (tzload((char *) NULL, lclptr) != 0)
 		gmtload(lclptr);
-#ifdef NOTIFY_TZ
-	notify_register_tz(fullname, &lcl_notify);
 #endif /* NOTIFY_TZ */
 	settzname();
 	_RWLOCK_UNLOCK(&lcl_rwlock);
@@ -1395,14 +1395,32 @@ tzset_basic(int rdlocked)
 		lclptr->ttis[0].tt_abbrind = 0;
 		(void) strcpy(lclptr->chars, gmt);
 #ifdef NOTIFY_TZ
-		if (fullname)
-			*fullname = 0;
+		notify_register_tz(NULL, &lcl_notify);
 #endif /* NOTIFY_TZ */
-	} else if (tzload(name, lclptr) != 0)
+	} else
+#ifdef NOTIFY_TZ
+	  {
+		char		fullname[FILENAME_MAX + 1];
+		/*
+		 * parsedOK indicates whether tzparse() was called and
+		 * succeeded.  This means that TZ is a time conversion
+		 * specification, so we don't need to register for
+		 * notifications.
+		 */
+		int		parsedOK = FALSE;
+		if (tzload(name, lclptr, fullname) != 0)
+			if (name[0] == ':' || !(parsedOK = tzparse(name, lclptr, FALSE) == 0))
+				/*
+				 * If fullname is empty (an error occurred) then
+				 * default to the UTC path
+				 */
+				(void) gmtload(lclptr, *fullname ? NULL : fullname);
+		notify_register_tz(parsedOK ? NULL : fullname, &lcl_notify);
+	  }
+#else /* ! NOTIFY_TZ */
+	  if (tzload(name, lclptr) != 0)
 		if (name[0] == ':' || tzparse(name, lclptr, FALSE) != 0)
 			(void) gmtload(lclptr);
-#ifdef NOTIFY_TZ
-	notify_register_tz(fullname, &lcl_notify);
 #endif /* NOTIFY_TZ */
 	settzname();
 	_RWLOCK_UNLOCK(&lcl_rwlock);
@@ -1589,16 +1607,15 @@ struct tm * const	tmp;
 #endif /* NOTIFY_TZ */
 				gmtptr = (struct state *) malloc(sizeof *gmtptr);
 			if (gmtptr != NULL)
+#endif /* defined ALL_STATE */
 #ifdef NOTIFY_TZ
 			{
-#endif /* NOTIFY_TZ */
-#endif /* defined ALL_STATE */
-				gmtload(gmtptr);
-#ifdef NOTIFY_TZ
+				char		fullname[FILENAME_MAX + 1];
+				gmtload(gmtptr, fullname);
 				notify_register_tz(fullname, &gmt_notify);
-#ifdef ALL_STATE
 			}
-#endif
+#else /* ! NOTIFY_TZ */
+				gmtload(gmtptr);
 #endif /* NOTIFY_TZ */
 			gmt_is_set = TRUE;
 		}

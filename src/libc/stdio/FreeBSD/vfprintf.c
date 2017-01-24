@@ -70,7 +70,9 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.90 2009/02/28 06:06:57 das
 #include "printflocal.h"
 
 static int	__sprint(FILE *, locale_t, struct __suio *);
+#if 0
 static int	__sbprintf(FILE *, locale_t, const char *, va_list) __printflike(3, 0);
+#endif
 static char	*__wcsconv(wchar_t *, int, locale_t);
 
 __private_extern__ const char *__fix_nogrouping(const char *);
@@ -166,6 +168,7 @@ __sprint(FILE *fp, locale_t loc __unused, struct __suio *uio)
 	return (err);
 }
 
+#if 0
 /*
  * Helper function for `fprintf to unbuffered unix file': creates a
  * temporary buffer.  We only work on write-only files; this avoids
@@ -206,6 +209,7 @@ __sbprintf(FILE *fp, locale_t loc, const char *fmt, va_list ap)
 		fp->_flags |= __SERR;
 	return (ret);
 }
+#endif
 
 /*
  * Convert a wide character string argument for the %ls format to a multibyte
@@ -275,14 +279,8 @@ vfprintf_l(FILE * __restrict fp, locale_t loc, const char * __restrict fmt0, va_
 {
 	int ret;
 
-	NORMALIZE_LOCALE(loc);
 	FLOCKFILE(fp);
-	/* optimise fprintf(stderr) (and other unbuffered Unix files) */
-	if ((fp->_flags & (__SNBF|__SWR|__SRW)) == (__SNBF|__SWR) &&
-	    fp->_file >= 0)
-		ret = __sbprintf(fp, loc, fmt0, ap);
-	else
-		ret = __vfprintf(fp, loc, fmt0, ap);
+	ret = __xvprintf(XPRINTF_PLAIN, NULL, fp, loc, fmt0, ap);
 	FUNLOCKFILE(fp);
 	return (ret);
 }
@@ -291,7 +289,12 @@ int
 vfprintf(FILE * __restrict fp, const char * __restrict fmt0, va_list ap)
 
 {
-	return vfprintf_l(fp, __current_locale(), fmt0, ap);
+	int ret;
+
+	FLOCKFILE(fp);
+	ret = __xvprintf(XPRINTF_PLAIN, NULL, fp, __current_locale(), fmt0, ap);
+	FUNLOCKFILE(fp);
+	return ret;
 }
 
 /*
@@ -458,19 +461,15 @@ __vfprintf(FILE *fp, locale_t loc, const char *fmt0, va_list ap)
 		val = GETARG (int); \
 	}
 
-#if 0 // xprintf pending API review
-	if (__use_xprintf == 0 && getenv("USE_XPRINTF"))
-		__use_xprintf = 1;
-	if (__use_xprintf > 0)
-		return (__xvprintf(fp, loc, fmt0, ap));
-#endif
-
+	/* The following has been moved to __v2printf() */
+#if 0
 	/* sorry, fprintf(read_only_file, "") returns EOF, not 0 */
 	if (prepwrite(fp) != 0) {
 		errno = EBADF;
 		return (EOF);
 	}
 	ORIENT(fp, -1);
+#endif
 
 	convbuf = NULL;
 	fmt = (char *)fmt0;
@@ -891,11 +890,11 @@ fp_common:
 			if (flags & LONGINT) {
 				wchar_t *wcp;
 
-				if (convbuf != NULL)
-					free(convbuf);
-				if ((wcp = GETARG(wchar_t *)) == NULL)
+				free(convbuf);
+				if ((wcp = GETARG(wchar_t *)) == NULL) {
+					convbuf = NULL;
 					cp = "(null)";
-				else {
+				} else {
 					convbuf = __wcsconv(wcp, prec, loc);
 					if (convbuf == NULL) {
 						fp->_flags |= __SERR;
@@ -1391,8 +1390,7 @@ error:
 	if (dtoaresult != NULL)
 		freedtoa(dtoaresult);
 #endif
-	if (convbuf != NULL)
-		free(convbuf);
+	free(convbuf);
 	if (__sferror(fp))
 		ret = EOF;
 	if ((argtable != NULL) && (argtable != statargtable))

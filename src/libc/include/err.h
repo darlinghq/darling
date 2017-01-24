@@ -83,9 +83,9 @@ void	vwarnc(int, const char *, __darwin_va_list) __printflike(2, 0);
 void	warnx(const char *, ...) __printflike(1, 2);
 void	vwarnx(const char *, __darwin_va_list) __printflike(1, 0);
 void	err_set_file(void *);
-void	err_set_exit(void (*)(int));
+void	err_set_exit(void (* _Nullable)(int));
 #ifdef __BLOCKS__
-void	err_set_exit_b(void (^)(int)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+void	err_set_exit_b(void (^ _Nullable)(int)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
 
 __END_DECLS

@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2010 Apple Inc. All rights reserved.
  *
@@ -31,23 +30,23 @@
 #include <elfcalls.h>
 
 extern int mach_init(void);
-extern void mach_driver_init(void);
-
-/* dlsym() funcptr is for legacy support in exc_catcher */
-void* (*_dlsym)(void*, const char*) __attribute__((visibility("hidden")));
-extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
-extern unsigned long long __simple_atoi16(const char* str, const char** endp);
-
-__attribute__((visibility("hidden")))
-_libkernel_functions_t _libkernel_functions;
 
 __attribute__((visibility("hidden")))
 struct elf_calls* _elfcalls;
 
+extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
+extern unsigned long long __simple_atoi16(const char* str, const char** endp);
+
+/* dlsym() funcptr is for legacy support in exc_catcher */
+void* (*_dlsym)(void*, const char*) __attribute__((visibility("hidden")));
+
+__attribute__((visibility("hidden")))
+_libkernel_functions_t _libkernel_functions;
+
 void
 __libkernel_init(_libkernel_functions_t fns,
 		const char *envp[] __attribute__((unused)),
-		const char *apple[],
+		const char *apple[] __attribute__((unused)),
 		const struct ProgramVars *vars __attribute__((unused)))
 {
 	int i;
@@ -64,6 +63,6 @@ __libkernel_init(_libkernel_functions_t fns,
 			_elfcalls = (struct elf_calls*) table;
 		}
 	}
-	
+
 	mach_init();
 }

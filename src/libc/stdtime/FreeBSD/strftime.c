@@ -72,7 +72,7 @@ __private_extern__ long _st_get_timezone(void);
 #define PAD_ZERO	3
 
 #ifndef BUILDING_VARIANT
-static const char* fmt_padding[][4] = {
+static const char * const fmt_padding[][4] = {
 	/* DEFAULT,	LESS,	SPACE,	ZERO */
 #define PAD_FMT_MONTHDAY	0
 #define PAD_FMT_HMS		0

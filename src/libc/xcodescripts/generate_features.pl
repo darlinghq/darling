@@ -1,9 +1,5 @@
 #!/usr/bin/perl
 
-if ($ENV{"ACTION"} eq "installhdrs") {
-	exit 0;
-}
-
 # Generates the libc-features.h files used to control #ifdef behaviour in Libc
 use warnings;
 use Data::Dumper;
@@ -23,9 +19,15 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 {
 	# set ENV{"CURRENT_ARCH"} so we can predicate on it
 	$ENV{"CURRENT_ARCH"} = $arch;
-	
+
+	# BridgeOS shares the same platform name than the watch so
+	# we need to fix it and pick the right configuration.
 	my $platformName = $ENV{"PLATFORM_NAME"};
-	$platformName = "iphoneos" if ($platformName eq "iphonesimulator");
+	if ($ENV{"RC_BRIDGE"} eq "YES") {
+		$platformName = "bridgeos";
+	}
+
+	$platformName =~ s/simulator/os/;
 
 	my $platformPath = $ENV{"SRCROOT"} . "/Platforms/" . $platformName . "/Makefile.inc";
 	my $featuresHeaderDir = $ENV{"DERIVED_FILES_DIR"}."/".$arch;
@@ -51,7 +53,7 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 			my $regex = $2;
 			
 			$nested++;
-			if ($ENV{$envvar} !~ /$regex/) {
+			if (!defined($ENV{$envvar}) || ($ENV{$envvar} !~ /$regex/)) {
 				$skip += 1;
 			}
 		}
@@ -78,12 +80,16 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 	}
 
 	elsif ($unifdef == 1) {
+		if ($platformName eq "macosx") {
+			$unifdefs{"__OSX_OPEN_SOURCE__"} = 1;
+		}
 		# assume FEATURE_BLOCKS was on by default
 		$unifdefs{"UNIFDEF_BLOCKS"} = 1;
 		$unifdefs{"UNIFDEF_LEGACY_64_APIS"} = defined($features{"FEATURE_LEGACY_64_APIS"});
 		$unifdefs{"UNIFDEF_LEGACY_RUNE_APIS"} = defined($features{"FEATURE_LEGACY_RUNE_APIS"});
 		$unifdefs{"UNIFDEF_LEGACY_UTMP_APIS"} = defined($features{"FEATURE_LEGACY_UTMP_APIS"});
 		$unifdefs{"UNIFDEF_MOVE_LOCALTIME"} = defined($features{"FEATURE_MOVE_LOCALTIME"});
+		$unifdefs{"UNIFDEF_TZDIR_SYMLINK"} = defined($features{"FEATURE_TZDIR_SYMLINK"});
 		
 		my $output = "";
 		for my $d (keys %unifdefs) {
@@ -100,7 +106,7 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 		my $platform_mtime = (stat($platformPath))[9];
 		my $header_mtime = (stat($featuresHeader))[9];
 
-		if ($header_mtime > $platform_mtime) {
+		if (defined($header_mtime) && defined($platform_mtime) && ($header_mtime > $platform_mtime)) {
 			exit 0;
 		}
 
@@ -122,6 +128,7 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 
 		my $shortarch = $arch;
 		$shortarch =~ s/armv\d+[a-z]?/arm/g;
+		$shortarch =~ s/arm64_32/arm64/g;
 
 		printf HEADER "#if !defined(__".$shortarch."__)\n";
 		printf HEADER "#error Mismatched libc-features.h architecture\n";
@@ -149,6 +156,12 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 			printf HEADER "#define UNIFDEF_MOVE_LOCALTIME 1\n";
 		} else {
 			printf HEADER "/* #undef UNIFDEF_MOVE_LOCALTIME */\n";
+		}
+
+		if (defined($features{"FEATURE_TZDIR_SYMLINK"})) {
+			printf HEADER "#define UNIFDEF_TZDIR_SYMLINK 1\n";
+		} else {
+			printf HEADER "/* #undef UNIFDEF_TZDIR_SYMLINK */\n";
 		}
 
 		if (defined($features{"FEATURE_ONLY_1050_VARIANTS"})) {
@@ -187,12 +200,6 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 			printf HEADER "/* #undef __APPLE_PR3417676_HACK__ */\n";
 		}
 
-		if (defined($features{"FEATURE_PATCH_5243343"})) {
-			printf HEADER "#define PR_5243343 1\n";
-		} else {
-			printf HEADER "/* #undef PR_5243343 */\n";
-		}
-
 		if (defined($features{"FEATURE_PLOCKSTAT"})) {
 			printf HEADER "#define PLOCKSTAT 1\n";
 		} else {
@@ -211,10 +218,22 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 			printf HEADER "/* #undef LIBC_NO_LIBCRASHREPORTERCLIENT */\n";
 		}
 
-		if (defined($features{"FEATURE_MEMORYSTATUS"})) {
-			printf HEADER "#define CONFIG_MEMORYSTATUS 1\n";
+		if (defined($features{"FEATURE_SMALL_STDIOBUF"})) {
+			printf HEADER "#define FEATURE_SMALL_STDIOBUF 1\n";
 		} else {
-			printf HEADER "/* #undef CONFIG_MEMORYSTATUS */\n";
+			printf HEADER "/* #undef FEATURE_SMALL_STDIOBUF */\n";
+		}
+
+		if (defined($features{"FEATURE_XPRINTF_PERF"})) {
+			printf HEADER "#define XPRINTF_PERF 1\n";
+		} else {
+			printf HEADER "/* #undef XPRINTF_PERF */\n";
+		}
+
+		if (defined($features{"FEATURE_SIGNAL_RESTRICTION"})) {
+			printf HEADER "#define FEATURE_SIGNAL_RESTRICTION 1\n";
+		} else {
+			printf HEADER "/* #undef FEATURE_SIGNAL_RESTRICTION */\n";
 		}
 
 		printf HEADER "#endif // _LIBC_FEATURES_H_\n";

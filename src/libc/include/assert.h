@@ -66,7 +66,7 @@ int  printf(const char * __restrict, ...);
 __END_DECLS
 
 #define assert(e)  \
-    ((void) ((e) ? 0 : __assert (#e, __FILE__, __LINE__)))
+    ((void) ((e) ? ((void)0) : __assert (#e, __FILE__, __LINE__)))
 #define __assert(e, file, line) \
     ((void)printf ("%s:%u: failed assertion `%s'\n", file, line, e), abort())
 
@@ -98,3 +98,14 @@ __END_DECLS
 
 #endif /* __GNUC__ */
 #endif /* NDEBUG */
+
+#ifndef _ASSERT_H_
+#define _ASSERT_H_
+
+#ifndef __cplusplus
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define static_assert _Static_assert
+#endif /* __STDC_VERSION__ */
+#endif /* !__cplusplus */
+
+#endif /* _ASSERT_H_ */

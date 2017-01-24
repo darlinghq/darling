@@ -109,12 +109,11 @@ __collate_load_tables(const char *encoding, locale_t loc)
 
 	/* 'PathLocale' must be already set & checked. */
 	/* Range checking not needed, encoding has fixed size */
-	(void)strcpy(buf, _PathLocale);
-	(void)strcat(buf, "/");
-	(void)strcat(buf, encoding);
+	(void)strcpy(buf, encoding);
 	(void)strcat(buf, "/LC_COLLATE");
-	if ((fp = fopen(buf, "r")) == NULL)
+	if ((fp = fdopen(__open_path_locale(buf), "r")) == NULL) {
 		return (_LDP_ERROR);
+	}
 
 	if (fread(strbuf, sizeof(strbuf), 1, fp) != 1) {
 		saverr = errno;

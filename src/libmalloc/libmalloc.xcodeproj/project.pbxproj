@@ -15,34 +15,107 @@
 				3FE9201D16A9143E00D1238A /* Sanitise Headers (rdar://problem/10241868) */,
 			);
 			dependencies = (
+				C0CE45501C52CCBD00C24048 /* PBXTargetDependency */,
 				3FE9201816A9111600D1238A /* PBXTargetDependency */,
 				3FE9201616A9111400D1238A /* PBXTargetDependency */,
 			);
 			name = libmalloc;
 			productName = libmalloc;
 		};
+		45039161198FFF73004EE2A3 /* libmalloc_test */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 45039162198FFF73004EE2A3 /* Build configuration list for PBXAggregateTarget "libmalloc_test" */;
+			buildPhases = (
+			);
+			dependencies = (
+				45039168198FFFA6004EE2A3 /* PBXTargetDependency */,
+				925383D91BD03D0000F745DB /* PBXTargetDependency */,
+			);
+			name = libmalloc_test;
+			productName = libmalloc_test;
+		};
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		3F5732E116A9478E00EC61B4 /* stack_logging.h in Headers */ = {isa = PBXBuildFile; fileRef = 3F5732E016A9478E00EC61B4 /* stack_logging.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		0D468DCF1C7BEF51006FACF5 /* magazine_lite.c in Sources */ = {isa = PBXBuildFile; fileRef = 0D468DCC1C7BEE56006FACF5 /* magazine_lite.c */; };
+		0D468DD01C7BEF71006FACF5 /* stack_logging_internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D468DCD1C7BEE65006FACF5 /* stack_logging_internal.h */; };
 		3FE91FED16A90B9200D1238A /* bitarray.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD116A90A8D00D1238A /* bitarray.c */; };
-		3FE91FEE16A90B9200D1238A /* bitarray.h in Headers */ = {isa = PBXBuildFile; fileRef = 3FE91FD216A90A8D00D1238A /* bitarray.h */; };
 		3FE91FF016A90B9200D1238A /* magazine_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD616A90A8D00D1238A /* magazine_malloc.c */; };
 		3FE91FF116A90B9200D1238A /* magmallocProvider.d in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD716A90A8D00D1238A /* magmallocProvider.d */; };
 		3FE91FF216A90B9200D1238A /* malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD816A90A8D00D1238A /* malloc.c */; };
-		3FE91FF316A90B9200D1238A /* malloc_printf.h in Headers */ = {isa = PBXBuildFile; fileRef = 3FE91FD916A90A8D00D1238A /* malloc_printf.h */; };
 		3FE91FF416A90B9200D1238A /* nano_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FDA16A90A8D00D1238A /* nano_malloc.c */; };
-		3FE91FF516A90B9200D1238A /* stack_logging.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FDB16A90A8D00D1238A /* stack_logging.c */; };
 		3FE91FF616A90B9200D1238A /* stack_logging_disk.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FDC16A90A8D00D1238A /* stack_logging_disk.c */; };
 		3FE91FFA16A90BEF00D1238A /* malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = 3FE91FF916A90BEF00D1238A /* malloc.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		3FE91FFC16A90E6C00D1238A /* scalable_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = 3FE91FFB16A90E6C00D1238A /* scalable_malloc.h */; };
 		3FE91FFF16A9109E00D1238A /* bitarray.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD116A90A8D00D1238A /* bitarray.c */; };
 		3FE9200116A9109E00D1238A /* magazine_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD616A90A8D00D1238A /* magazine_malloc.c */; };
 		3FE9200216A9109E00D1238A /* magmallocProvider.d in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD716A90A8D00D1238A /* magmallocProvider.d */; };
 		3FE9200316A9109E00D1238A /* malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD816A90A8D00D1238A /* malloc.c */; };
 		3FE9200416A9109E00D1238A /* nano_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FDA16A90A8D00D1238A /* nano_malloc.c */; };
-		3FE9200516A9109E00D1238A /* stack_logging.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FDB16A90A8D00D1238A /* stack_logging.c */; };
 		3FE9200616A9109E00D1238A /* stack_logging_disk.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FDC16A90A8D00D1238A /* stack_logging_disk.c */; };
+		925383DA1BD03D5100F745DB /* stress_test.c in Sources */ = {isa = PBXBuildFile; fileRef = 925383D11BD03B4A00F745DB /* stress_test.c */; };
+		C0352EC71C3F3C4400DB5126 /* malloc_private.h in Headers */ = {isa = PBXBuildFile; fileRef = C0352EC61C3F3C3600DB5126 /* malloc_private.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		C0CE45311C52C90500C24048 /* bitarray.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD116A90A8D00D1238A /* bitarray.c */; };
+		C0CE45321C52C90500C24048 /* purgeable_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = C957429E1BF681B00027269A /* purgeable_malloc.c */; };
+		C0CE45331C52C90500C24048 /* magazine_large.c in Sources */ = {isa = PBXBuildFile; fileRef = C957429B1BF672F80027269A /* magazine_large.c */; };
+		C0CE45341C52C90500C24048 /* magazine_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD616A90A8D00D1238A /* magazine_malloc.c */; };
+		C0CE45351C52C90500C24048 /* magazine_small.c in Sources */ = {isa = PBXBuildFile; fileRef = C95742981BF670D00027269A /* magazine_small.c */; };
+		C0CE45361C52C90500C24048 /* legacy_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = C95742AA1BF685CB0027269A /* legacy_malloc.c */; };
+		C0CE45371C52C90500C24048 /* magmallocProvider.d in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD716A90A8D00D1238A /* magmallocProvider.d */; };
+		C0CE45381C52C90500C24048 /* malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FD816A90A8D00D1238A /* malloc.c */; };
+		C0CE45391C52C90500C24048 /* frozen_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = C95742A41BF6842F0027269A /* frozen_malloc.c */; };
+		C0CE453A1C52C90500C24048 /* nano_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FDA16A90A8D00D1238A /* nano_malloc.c */; };
+		C0CE453C1C52C90500C24048 /* stack_logging_disk.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FE91FDC16A90A8D00D1238A /* stack_logging_disk.c */; };
+		C0CE453D1C52C90500C24048 /* magazine_tiny.c in Sources */ = {isa = PBXBuildFile; fileRef = C957428F1BF419DF0027269A /* magazine_tiny.c */; };
+		C0CE45401C52C90500C24048 /* magazine_inline.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742921BF41C970027269A /* magazine_inline.h */; };
+		C0CE45411C52C90500C24048 /* nano_zone.h in Headers */ = {isa = PBXBuildFile; fileRef = C957427E1BF33D130027269A /* nano_zone.h */; };
+		C0CE45421C52C90500C24048 /* thresholds.h in Headers */ = {isa = PBXBuildFile; fileRef = C957428C1BF411330027269A /* thresholds.h */; };
+		C0CE45431C52C90500C24048 /* debug.h in Headers */ = {isa = PBXBuildFile; fileRef = C957427B1BF2C8DE0027269A /* debug.h */; };
+		C0CE45441C52C90500C24048 /* frozen_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742A51BF6842F0027269A /* frozen_malloc.h */; };
+		C0CE45451C52C90500C24048 /* magazine_zone.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742861BF3F9550027269A /* magazine_zone.h */; };
+		C0CE45461C52C90500C24048 /* magazine_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742951BF41E480027269A /* magazine_malloc.h */; };
+		C0CE45471C52C90500C24048 /* purgeable_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C957429F1BF681B00027269A /* purgeable_malloc.h */; };
+		C0CE45481C52C90500C24048 /* base.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742891BF3FD290027269A /* base.h */; };
+		C0CE454E1C52C9E600C24048 /* libmalloc.a in CopyFiles */ = {isa = PBXBuildFile; fileRef = C0CE454C1C52C90500C24048 /* libmalloc.a */; };
+		C938BBD31C74F7A400522BBD /* trace.h in Headers */ = {isa = PBXBuildFile; fileRef = C938BBD21C74F7A400522BBD /* trace.h */; };
+		C9571C3A1C18AA1D00A67EE3 /* stack_logging.h in Headers */ = {isa = PBXBuildFile; fileRef = C9571C391C18AA1D00A67EE3 /* stack_logging.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		C95742721BF2C2880027269A /* bitarray.h in Headers */ = {isa = PBXBuildFile; fileRef = 3FE91FD216A90A8D00D1238A /* bitarray.h */; };
+		C95742731BF2C2880027269A /* internal.h in Headers */ = {isa = PBXBuildFile; fileRef = C957426D1BF2C0C80027269A /* internal.h */; };
+		C95742741BF2C2880027269A /* locking.h in Headers */ = {isa = PBXBuildFile; fileRef = C957426E1BF2C1480027269A /* locking.h */; };
+		C95742751BF2C2880027269A /* printf.h in Headers */ = {isa = PBXBuildFile; fileRef = 3FE91FD916A90A8D00D1238A /* printf.h */; };
+		C95742761BF2C2880027269A /* platform.h in Headers */ = {isa = PBXBuildFile; fileRef = C9F77BBA1BF2B84800812E13 /* platform.h */; };
+		C95742771BF2C2880027269A /* legacy_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = 3FE91FFB16A90E6C00D1238A /* legacy_malloc.h */; };
+		C957427A1BF2C67E0027269A /* nano_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742791BF2C5F40027269A /* nano_malloc.h */; };
+		C957427C1BF2C8DE0027269A /* debug.h in Headers */ = {isa = PBXBuildFile; fileRef = C957427B1BF2C8DE0027269A /* debug.h */; };
+		C957427D1BF2C8DE0027269A /* debug.h in Headers */ = {isa = PBXBuildFile; fileRef = C957427B1BF2C8DE0027269A /* debug.h */; };
+		C957427F1BF33D130027269A /* nano_zone.h in Headers */ = {isa = PBXBuildFile; fileRef = C957427E1BF33D130027269A /* nano_zone.h */; };
+		C95742801BF33D130027269A /* nano_zone.h in Headers */ = {isa = PBXBuildFile; fileRef = C957427E1BF33D130027269A /* nano_zone.h */; };
+		C95742871BF3F9550027269A /* magazine_zone.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742861BF3F9550027269A /* magazine_zone.h */; };
+		C95742881BF3F9550027269A /* magazine_zone.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742861BF3F9550027269A /* magazine_zone.h */; };
+		C957428A1BF3FD290027269A /* base.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742891BF3FD290027269A /* base.h */; };
+		C957428B1BF3FD290027269A /* base.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742891BF3FD290027269A /* base.h */; };
+		C957428D1BF411330027269A /* thresholds.h in Headers */ = {isa = PBXBuildFile; fileRef = C957428C1BF411330027269A /* thresholds.h */; };
+		C957428E1BF411330027269A /* thresholds.h in Headers */ = {isa = PBXBuildFile; fileRef = C957428C1BF411330027269A /* thresholds.h */; };
+		C95742901BF419DF0027269A /* magazine_tiny.c in Sources */ = {isa = PBXBuildFile; fileRef = C957428F1BF419DF0027269A /* magazine_tiny.c */; };
+		C95742911BF419DF0027269A /* magazine_tiny.c in Sources */ = {isa = PBXBuildFile; fileRef = C957428F1BF419DF0027269A /* magazine_tiny.c */; };
+		C95742931BF41C970027269A /* magazine_inline.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742921BF41C970027269A /* magazine_inline.h */; };
+		C95742941BF41C970027269A /* magazine_inline.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742921BF41C970027269A /* magazine_inline.h */; };
+		C95742961BF41E480027269A /* magazine_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742951BF41E480027269A /* magazine_malloc.h */; };
+		C95742971BF41E480027269A /* magazine_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742951BF41E480027269A /* magazine_malloc.h */; };
+		C95742991BF670D00027269A /* magazine_small.c in Sources */ = {isa = PBXBuildFile; fileRef = C95742981BF670D00027269A /* magazine_small.c */; };
+		C957429A1BF670D00027269A /* magazine_small.c in Sources */ = {isa = PBXBuildFile; fileRef = C95742981BF670D00027269A /* magazine_small.c */; };
+		C957429C1BF672F80027269A /* magazine_large.c in Sources */ = {isa = PBXBuildFile; fileRef = C957429B1BF672F80027269A /* magazine_large.c */; };
+		C957429D1BF672F80027269A /* magazine_large.c in Sources */ = {isa = PBXBuildFile; fileRef = C957429B1BF672F80027269A /* magazine_large.c */; };
+		C95742A01BF681B00027269A /* purgeable_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = C957429E1BF681B00027269A /* purgeable_malloc.c */; };
+		C95742A11BF681B00027269A /* purgeable_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = C957429E1BF681B00027269A /* purgeable_malloc.c */; };
+		C95742A21BF681B00027269A /* purgeable_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C957429F1BF681B00027269A /* purgeable_malloc.h */; };
+		C95742A31BF681B00027269A /* purgeable_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C957429F1BF681B00027269A /* purgeable_malloc.h */; };
+		C95742A61BF6842F0027269A /* frozen_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = C95742A41BF6842F0027269A /* frozen_malloc.c */; };
+		C95742A71BF6842F0027269A /* frozen_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = C95742A41BF6842F0027269A /* frozen_malloc.c */; };
+		C95742A81BF6842F0027269A /* frozen_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742A51BF6842F0027269A /* frozen_malloc.h */; };
+		C95742A91BF6842F0027269A /* frozen_malloc.h in Headers */ = {isa = PBXBuildFile; fileRef = C95742A51BF6842F0027269A /* frozen_malloc.h */; };
+		C95742AB1BF685CB0027269A /* legacy_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = C95742AA1BF685CB0027269A /* legacy_malloc.c */; };
+		C95742AC1BF685CB0027269A /* legacy_malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = C95742AA1BF685CB0027269A /* legacy_malloc.c */; };
+		C9ABCA051CB6FC6800ECB399 /* empty.s in Sources */ = {isa = PBXBuildFile; fileRef = C9ABCA041CB6FC6800ECB399 /* empty.s */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,31 +133,140 @@
 			remoteGlobalIDString = 3FE91FE716A90AEC00D1238A;
 			remoteInfo = libsystem_malloc;
 		};
+		45039167198FFFA6004EE2A3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FFC1BE516A908F800027192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 456E51C8197DF0D600A7E488;
+			remoteInfo = libmalloc_stress_test;
+		};
+		925383D81BD03D0000F745DB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FFC1BE516A908F800027192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 925383D41BD03C0500F745DB;
+			remoteInfo = darwintests;
+		};
+		C0CE454F1C52CCBD00C24048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FFC1BE516A908F800027192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C0CE452F1C52C90500C24048;
+			remoteInfo = libmalloc_static;
+		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		456E51C7197DF0D600A7E488 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		C0CE454D1C52C9D900C24048 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = /usr/local/lib/loaderd;
+			dstSubfolderSpec = 0;
+			files = (
+				C0CE454E1C52C9E600C24048 /* libmalloc.a in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
-		3F5732E016A9478E00EC61B4 /* stack_logging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stack_logging.h; sourceTree = "<group>"; };
+		0D468DCC1C7BEE56006FACF5 /* magazine_lite.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = magazine_lite.c; sourceTree = "<group>"; };
+		0D468DCD1C7BEE65006FACF5 /* stack_logging_internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stack_logging_internal.h; sourceTree = "<group>"; };
+		0D468DCE1C7BEE74006FACF5 /* stack_logging_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = stack_logging_test.c; sourceTree = "<group>"; };
 		3FC452FF18E4ABFE003D6A38 /* manpages.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = manpages.sh; sourceTree = "<group>"; };
 		3FE91FC916A90A8D00D1238A /* malloc.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = malloc.3; sourceTree = "<group>"; };
 		3FE91FCA16A90A8D00D1238A /* malloc_size.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = malloc_size.3; sourceTree = "<group>"; };
 		3FE91FCB16A90A8D00D1238A /* malloc_zone_malloc.3 */ = {isa = PBXFileReference; lastKnownFileType = text; path = malloc_zone_malloc.3; sourceTree = "<group>"; };
 		3FE91FD116A90A8D00D1238A /* bitarray.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bitarray.c; sourceTree = "<group>"; };
 		3FE91FD216A90A8D00D1238A /* bitarray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bitarray.h; sourceTree = "<group>"; };
-		3FE91FD616A90A8D00D1238A /* magazine_malloc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = magazine_malloc.c; sourceTree = "<group>"; tabWidth = 4; };
+		3FE91FD616A90A8D00D1238A /* magazine_malloc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = magazine_malloc.c; sourceTree = "<group>"; };
 		3FE91FD716A90A8D00D1238A /* magmallocProvider.d */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.dtrace; path = magmallocProvider.d; sourceTree = "<group>"; };
 		3FE91FD816A90A8D00D1238A /* malloc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = malloc.c; sourceTree = "<group>"; };
-		3FE91FD916A90A8D00D1238A /* malloc_printf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = malloc_printf.h; sourceTree = "<group>"; };
-		3FE91FDA16A90A8D00D1238A /* nano_malloc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = nano_malloc.c; sourceTree = "<group>"; tabWidth = 4; };
-		3FE91FDB16A90A8D00D1238A /* stack_logging.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = stack_logging.c; sourceTree = "<group>"; };
+		3FE91FD916A90A8D00D1238A /* printf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = printf.h; sourceTree = "<group>"; };
+		3FE91FDA16A90A8D00D1238A /* nano_malloc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = nano_malloc.c; sourceTree = "<group>"; };
 		3FE91FDC16A90A8D00D1238A /* stack_logging_disk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = stack_logging_disk.c; sourceTree = "<group>"; usesTabs = 1; };
 		3FE91FE016A90A8D00D1238A /* libmalloc.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = libmalloc.xcconfig; sourceTree = "<group>"; };
 		3FE91FE116A90A8D00D1238A /* libmalloc_eos.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = libmalloc_eos.xcconfig; sourceTree = "<group>"; };
 		3FE91FE316A90A8D00D1238A /* sanitise_headers.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = sanitise_headers.sh; sourceTree = "<group>"; };
 		3FE91FE816A90AEC00D1238A /* libsystem_malloc.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libsystem_malloc.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		3FE91FF916A90BEF00D1238A /* malloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = malloc.h; sourceTree = "<group>"; };
-		3FE91FFB16A90E6C00D1238A /* scalable_malloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = scalable_malloc.h; sourceTree = "<group>"; };
+		3FE91FFB16A90E6C00D1238A /* legacy_malloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = legacy_malloc.h; sourceTree = "<group>"; };
 		3FE9201016A9109E00D1238A /* libmalloc_eOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libmalloc_eOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		E47677CF17A899C9007D4A00 /* malloc_internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = malloc_internal.h; sourceTree = "<group>"; };
+		456E51C9197DF0D600A7E488 /* libmalloc_stress_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = libmalloc_stress_test; sourceTree = BUILT_PRODUCTS_DIR; };
+		925383D01BD03B4A00F745DB /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		925383D11BD03B4A00F745DB /* stress_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = stress_test.c; sourceTree = "<group>"; };
+		925383D31BD03B8F00F745DB /* manpages.lst */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = manpages.lst; sourceTree = "<group>"; };
+		C0352EC61C3F3C3600DB5126 /* malloc_private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = malloc_private.h; sourceTree = "<group>"; };
+		C0CE450E1C52B9E300C24048 /* libmalloc_static.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = libmalloc_static.xcconfig; sourceTree = "<group>"; };
+		C0CE454C1C52C90500C24048 /* libmalloc.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libmalloc.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		C92853A01C767F08001FEAF3 /* install-codes.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-codes.sh"; sourceTree = "<group>"; };
+		C931B58F1C81248100D0D230 /* madvise.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = madvise.c; sourceTree = "<group>"; };
+		C938BBD21C74F7A400522BBD /* trace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = trace.h; sourceTree = "<group>"; };
+		C9571C391C18AA1D00A67EE3 /* stack_logging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stack_logging.h; sourceTree = "<group>"; };
+		C9571C3C1C18AD5F00A67EE3 /* balloon.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = balloon.cpp; sourceTree = "<group>"; };
+		C9571C3D1C18AD5F00A67EE3 /* balloon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = balloon.h; sourceTree = "<group>"; };
+		C9571C3E1C18AD5F00A67EE3 /* Benchmark.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Benchmark.cpp; sourceTree = "<group>"; };
+		C9571C3F1C18AD5F00A67EE3 /* Benchmark.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Benchmark.h; sourceTree = "<group>"; };
+		C9571C401C18AD5F00A67EE3 /* big.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = big.cpp; sourceTree = "<group>"; };
+		C9571C411C18AD5F00A67EE3 /* big.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = big.h; sourceTree = "<group>"; };
+		C9571C421C18AD5F00A67EE3 /* churn.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = churn.cpp; sourceTree = "<group>"; };
+		C9571C431C18AD5F00A67EE3 /* churn.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = churn.h; sourceTree = "<group>"; };
+		C9571C441C18AD5F00A67EE3 /* CommandLine.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CommandLine.cpp; sourceTree = "<group>"; };
+		C9571C451C18AD5F00A67EE3 /* CommandLine.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CommandLine.h; sourceTree = "<group>"; };
+		C9571C461C18AD5F00A67EE3 /* CPUCount.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CPUCount.cpp; sourceTree = "<group>"; };
+		C9571C471C18AD5F00A67EE3 /* CPUCount.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CPUCount.h; sourceTree = "<group>"; };
+		C9571C4C1C18AD5F00A67EE3 /* fragment.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = fragment.cpp; sourceTree = "<group>"; };
+		C9571C4D1C18AD5F00A67EE3 /* fragment.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fragment.h; sourceTree = "<group>"; };
+		C9571C4E1C18AD5F00A67EE3 /* Interpreter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Interpreter.cpp; sourceTree = "<group>"; };
+		C9571C4F1C18AD5F00A67EE3 /* Interpreter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Interpreter.h; sourceTree = "<group>"; };
+		C9571C501C18AD5F00A67EE3 /* list.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = list.cpp; sourceTree = "<group>"; };
+		C9571C511C18AD5F00A67EE3 /* list.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = list.h; sourceTree = "<group>"; };
+		C9571C521C18AD5F00A67EE3 /* mbmalloc.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = mbmalloc.cpp; sourceTree = "<group>"; };
+		C9571C531C18AD5F00A67EE3 /* mbmalloc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mbmalloc.h; sourceTree = "<group>"; };
+		C9571C541C18AD5F00A67EE3 /* medium.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = medium.cpp; sourceTree = "<group>"; };
+		C9571C551C18AD5F00A67EE3 /* medium.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = medium.h; sourceTree = "<group>"; };
+		C9571C561C18AD5F00A67EE3 /* memalign.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = memalign.cpp; sourceTree = "<group>"; };
+		C9571C571C18AD5F00A67EE3 /* memalign.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = memalign.h; sourceTree = "<group>"; };
+		C9571C581C18AD5F00A67EE3 /* message.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = message.cpp; sourceTree = "<group>"; };
+		C9571C591C18AD5F00A67EE3 /* message.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = message.h; sourceTree = "<group>"; };
+		C9571C5A1C18AD5F00A67EE3 /* realloc.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = realloc.cpp; sourceTree = "<group>"; };
+		C9571C5B1C18AD5F00A67EE3 /* realloc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = realloc.h; sourceTree = "<group>"; };
+		C9571C5E1C18AD5F00A67EE3 /* stress_aligned.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = stress_aligned.cpp; sourceTree = "<group>"; };
+		C9571C5F1C18AD5F00A67EE3 /* stress_aligned.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stress_aligned.h; sourceTree = "<group>"; };
+		C9571C601C18AD5F00A67EE3 /* stress.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = stress.cpp; sourceTree = "<group>"; };
+		C9571C611C18AD5F00A67EE3 /* stress.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stress.h; sourceTree = "<group>"; };
+		C9571C641C18AD5F00A67EE3 /* tree.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = tree.cpp; sourceTree = "<group>"; };
+		C9571C651C18AD5F00A67EE3 /* tree.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tree.h; sourceTree = "<group>"; };
+		C9571C661C18AD6A00A67EE3 /* MallocBench.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MallocBench.cpp; sourceTree = "<group>"; };
+		C957426D1BF2C0C80027269A /* internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = internal.h; sourceTree = "<group>"; };
+		C957426E1BF2C1480027269A /* locking.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = locking.h; sourceTree = "<group>"; };
+		C95742791BF2C5F40027269A /* nano_malloc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nano_malloc.h; sourceTree = "<group>"; };
+		C957427B1BF2C8DE0027269A /* debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
+		C957427E1BF33D130027269A /* nano_zone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = nano_zone.h; sourceTree = "<group>"; };
+		C95742861BF3F9550027269A /* magazine_zone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = magazine_zone.h; sourceTree = "<group>"; };
+		C95742891BF3FD290027269A /* base.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = base.h; sourceTree = "<group>"; };
+		C957428C1BF411330027269A /* thresholds.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = thresholds.h; sourceTree = "<group>"; };
+		C957428F1BF419DF0027269A /* magazine_tiny.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = magazine_tiny.c; sourceTree = "<group>"; };
+		C95742921BF41C970027269A /* magazine_inline.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = magazine_inline.h; sourceTree = "<group>"; };
+		C95742951BF41E480027269A /* magazine_malloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = magazine_malloc.h; sourceTree = "<group>"; };
+		C95742981BF670D00027269A /* magazine_small.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = magazine_small.c; sourceTree = "<group>"; };
+		C957429B1BF672F80027269A /* magazine_large.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = magazine_large.c; sourceTree = "<group>"; };
+		C957429E1BF681B00027269A /* purgeable_malloc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = purgeable_malloc.c; sourceTree = "<group>"; };
+		C957429F1BF681B00027269A /* purgeable_malloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = purgeable_malloc.h; sourceTree = "<group>"; };
+		C95742A41BF6842F0027269A /* frozen_malloc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = frozen_malloc.c; sourceTree = "<group>"; };
+		C95742A51BF6842F0027269A /* frozen_malloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = frozen_malloc.h; sourceTree = "<group>"; };
+		C95742AA1BF685CB0027269A /* legacy_malloc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = legacy_malloc.c; sourceTree = "<group>"; };
+		C9ABCA041CB6FC6800ECB399 /* empty.s */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; path = empty.s; sourceTree = "<group>"; };
+		C9F77BBA1BF2B84800812E13 /* platform.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = platform.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,12 +284,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		456E51C6197DF0D600A7E488 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0CE453E1C52C90500C24048 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		3FE91FC816A90A8D00D1238A /* man */ = {
 			isa = PBXGroup;
 			children = (
+				925383D31BD03B8F00F745DB /* manpages.lst */,
 				3FE91FC916A90A8D00D1238A /* malloc.3 */,
 				3FE91FCA16A90A8D00D1238A /* malloc_size.3 */,
 				3FE91FCB16A90A8D00D1238A /* malloc_zone_malloc.3 */,
@@ -118,18 +315,38 @@
 		3FE91FCC16A90A8D00D1238A /* src */ = {
 			isa = PBXGroup;
 			children = (
+				C95742891BF3FD290027269A /* base.h */,
 				3FE91FD116A90A8D00D1238A /* bitarray.c */,
 				3FE91FD216A90A8D00D1238A /* bitarray.h */,
-				E47677CF17A899C9007D4A00 /* malloc_internal.h */,
+				C957427B1BF2C8DE0027269A /* debug.h */,
+				C95742A41BF6842F0027269A /* frozen_malloc.c */,
+				C95742A51BF6842F0027269A /* frozen_malloc.h */,
+				C957426D1BF2C0C80027269A /* internal.h */,
+				C95742AA1BF685CB0027269A /* legacy_malloc.c */,
+				3FE91FFB16A90E6C00D1238A /* legacy_malloc.h */,
+				C957426E1BF2C1480027269A /* locking.h */,
+				C95742921BF41C970027269A /* magazine_inline.h */,
+				C957429B1BF672F80027269A /* magazine_large.c */,
+				0D468DCC1C7BEE56006FACF5 /* magazine_lite.c */,
 				3FE91FD616A90A8D00D1238A /* magazine_malloc.c */,
+				C95742951BF41E480027269A /* magazine_malloc.h */,
+				C95742981BF670D00027269A /* magazine_small.c */,
+				C957428F1BF419DF0027269A /* magazine_tiny.c */,
+				C95742861BF3F9550027269A /* magazine_zone.h */,
 				3FE91FD716A90A8D00D1238A /* magmallocProvider.d */,
 				3FE91FD816A90A8D00D1238A /* malloc.c */,
-				3FE91FD916A90A8D00D1238A /* malloc_printf.h */,
 				3FE91FDA16A90A8D00D1238A /* nano_malloc.c */,
-				3FE91FFB16A90E6C00D1238A /* scalable_malloc.h */,
-				3FE91FDB16A90A8D00D1238A /* stack_logging.c */,
-				3F5732E016A9478E00EC61B4 /* stack_logging.h */,
+				C95742791BF2C5F40027269A /* nano_malloc.h */,
+				C957427E1BF33D130027269A /* nano_zone.h */,
+				C9F77BBA1BF2B84800812E13 /* platform.h */,
+				3FE91FD916A90A8D00D1238A /* printf.h */,
+				C957429E1BF681B00027269A /* purgeable_malloc.c */,
+				C957429F1BF681B00027269A /* purgeable_malloc.h */,
 				3FE91FDC16A90A8D00D1238A /* stack_logging_disk.c */,
+				0D468DCD1C7BEE65006FACF5 /* stack_logging_internal.h */,
+				C9ABCA041CB6FC6800ECB399 /* empty.s */,
+				C957428C1BF411330027269A /* thresholds.h */,
+				C938BBD21C74F7A400522BBD /* trace.h */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -139,6 +356,7 @@
 			children = (
 				3FE91FE016A90A8D00D1238A /* libmalloc.xcconfig */,
 				3FE91FE116A90A8D00D1238A /* libmalloc_eos.xcconfig */,
+				C0CE450E1C52B9E300C24048 /* libmalloc_static.xcconfig */,
 			);
 			path = xcodeconfig;
 			sourceTree = "<group>";
@@ -148,6 +366,7 @@
 			children = (
 				3FC452FF18E4ABFE003D6A38 /* manpages.sh */,
 				3FE91FE316A90A8D00D1238A /* sanitise_headers.sh */,
+				C92853A01C767F08001FEAF3 /* install-codes.sh */,
 			);
 			path = xcodescripts;
 			sourceTree = "<group>";
@@ -157,6 +376,8 @@
 			children = (
 				3FE91FE816A90AEC00D1238A /* libsystem_malloc.dylib */,
 				3FE9201016A9109E00D1238A /* libmalloc_eOS.a */,
+				456E51C9197DF0D600A7E488 /* libmalloc_stress_test */,
+				C0CE454C1C52C90500C24048 /* libmalloc.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -182,14 +403,79 @@
 			children = (
 				3FE91FF716A90BEF00D1238A /* include */,
 				3FE91FC816A90A8D00D1238A /* man */,
+				C9571C381C18AA0A00A67EE3 /* private */,
 				3FE91FCC16A90A8D00D1238A /* src */,
+				925383BD1BD03B4A00F745DB /* tests */,
 				3FE91FDF16A90A8D00D1238A /* xcodeconfig */,
 				3FE91FE216A90A8D00D1238A /* xcodescripts */,
 				3FE91FE916A90AEC00D1238A /* Products */,
 			);
 			sourceTree = "<group>";
-			tabWidth = 8;
+			tabWidth = 4;
 			usesTabs = 1;
+		};
+		925383BD1BD03B4A00F745DB /* tests */ = {
+			isa = PBXGroup;
+			children = (
+				0D468DCE1C7BEE74006FACF5 /* stack_logging_test.c */,
+				C931B58F1C81248100D0D230 /* madvise.c */,
+				C9571C3B1C18AD4F00A67EE3 /* MallocBench */,
+				925383D01BD03B4A00F745DB /* Makefile */,
+				C9571C661C18AD6A00A67EE3 /* MallocBench.cpp */,
+				925383D11BD03B4A00F745DB /* stress_test.c */,
+			);
+			path = tests;
+			sourceTree = "<group>";
+		};
+		C9571C381C18AA0A00A67EE3 /* private */ = {
+			isa = PBXGroup;
+			children = (
+				C9571C391C18AA1D00A67EE3 /* stack_logging.h */,
+				C0352EC61C3F3C3600DB5126 /* malloc_private.h */,
+			);
+			path = private;
+			sourceTree = "<group>";
+		};
+		C9571C3B1C18AD4F00A67EE3 /* MallocBench */ = {
+			isa = PBXGroup;
+			children = (
+				C9571C3C1C18AD5F00A67EE3 /* balloon.cpp */,
+				C9571C3D1C18AD5F00A67EE3 /* balloon.h */,
+				C9571C3E1C18AD5F00A67EE3 /* Benchmark.cpp */,
+				C9571C3F1C18AD5F00A67EE3 /* Benchmark.h */,
+				C9571C401C18AD5F00A67EE3 /* big.cpp */,
+				C9571C411C18AD5F00A67EE3 /* big.h */,
+				C9571C421C18AD5F00A67EE3 /* churn.cpp */,
+				C9571C431C18AD5F00A67EE3 /* churn.h */,
+				C9571C441C18AD5F00A67EE3 /* CommandLine.cpp */,
+				C9571C451C18AD5F00A67EE3 /* CommandLine.h */,
+				C9571C461C18AD5F00A67EE3 /* CPUCount.cpp */,
+				C9571C471C18AD5F00A67EE3 /* CPUCount.h */,
+				C9571C4C1C18AD5F00A67EE3 /* fragment.cpp */,
+				C9571C4D1C18AD5F00A67EE3 /* fragment.h */,
+				C9571C4E1C18AD5F00A67EE3 /* Interpreter.cpp */,
+				C9571C4F1C18AD5F00A67EE3 /* Interpreter.h */,
+				C9571C501C18AD5F00A67EE3 /* list.cpp */,
+				C9571C511C18AD5F00A67EE3 /* list.h */,
+				C9571C521C18AD5F00A67EE3 /* mbmalloc.cpp */,
+				C9571C531C18AD5F00A67EE3 /* mbmalloc.h */,
+				C9571C541C18AD5F00A67EE3 /* medium.cpp */,
+				C9571C551C18AD5F00A67EE3 /* medium.h */,
+				C9571C561C18AD5F00A67EE3 /* memalign.cpp */,
+				C9571C571C18AD5F00A67EE3 /* memalign.h */,
+				C9571C581C18AD5F00A67EE3 /* message.cpp */,
+				C9571C591C18AD5F00A67EE3 /* message.h */,
+				C9571C5A1C18AD5F00A67EE3 /* realloc.cpp */,
+				C9571C5B1C18AD5F00A67EE3 /* realloc.h */,
+				C9571C5E1C18AD5F00A67EE3 /* stress_aligned.cpp */,
+				C9571C5F1C18AD5F00A67EE3 /* stress_aligned.h */,
+				C9571C601C18AD5F00A67EE3 /* stress.cpp */,
+				C9571C611C18AD5F00A67EE3 /* stress.h */,
+				C9571C641C18AD5F00A67EE3 /* tree.cpp */,
+				C9571C651C18AD5F00A67EE3 /* tree.h */,
+			);
+			path = MallocBench;
+			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
@@ -198,11 +484,27 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C957428A1BF3FD290027269A /* base.h in Headers */,
+				C0352EC71C3F3C4400DB5126 /* malloc_private.h in Headers */,
+				0D468DD01C7BEF71006FACF5 /* stack_logging_internal.h in Headers */,
+				C95742731BF2C2880027269A /* internal.h in Headers */,
+				C95742721BF2C2880027269A /* bitarray.h in Headers */,
+				C938BBD31C74F7A400522BBD /* trace.h in Headers */,
+				C95742A81BF6842F0027269A /* frozen_malloc.h in Headers */,
+				C957428D1BF411330027269A /* thresholds.h in Headers */,
+				C95742741BF2C2880027269A /* locking.h in Headers */,
+				C95742931BF41C970027269A /* magazine_inline.h in Headers */,
+				C95742761BF2C2880027269A /* platform.h in Headers */,
+				C957427A1BF2C67E0027269A /* nano_malloc.h in Headers */,
+				C957427C1BF2C8DE0027269A /* debug.h in Headers */,
+				C95742961BF41E480027269A /* magazine_malloc.h in Headers */,
+				C9571C3A1C18AA1D00A67EE3 /* stack_logging.h in Headers */,
 				3FE91FFA16A90BEF00D1238A /* malloc.h in Headers */,
-				3F5732E116A9478E00EC61B4 /* stack_logging.h in Headers */,
-				3FE91FEE16A90B9200D1238A /* bitarray.h in Headers */,
-				3FE91FF316A90B9200D1238A /* malloc_printf.h in Headers */,
-				3FE91FFC16A90E6C00D1238A /* scalable_malloc.h in Headers */,
+				C95742871BF3F9550027269A /* magazine_zone.h in Headers */,
+				C95742771BF2C2880027269A /* legacy_malloc.h in Headers */,
+				C95742A21BF681B00027269A /* purgeable_malloc.h in Headers */,
+				C957427F1BF33D130027269A /* nano_zone.h in Headers */,
+				C95742751BF2C2880027269A /* printf.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -210,10 +512,52 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C95742941BF41C970027269A /* magazine_inline.h in Headers */,
+				C95742801BF33D130027269A /* nano_zone.h in Headers */,
+				C957428E1BF411330027269A /* thresholds.h in Headers */,
+				C957427D1BF2C8DE0027269A /* debug.h in Headers */,
+				C95742A91BF6842F0027269A /* frozen_malloc.h in Headers */,
+				C95742881BF3F9550027269A /* magazine_zone.h in Headers */,
+				C95742971BF41E480027269A /* magazine_malloc.h in Headers */,
+				C95742A31BF681B00027269A /* purgeable_malloc.h in Headers */,
+				C957428B1BF3FD290027269A /* base.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0CE453F1C52C90500C24048 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0CE45401C52C90500C24048 /* magazine_inline.h in Headers */,
+				C0CE45411C52C90500C24048 /* nano_zone.h in Headers */,
+				C0CE45421C52C90500C24048 /* thresholds.h in Headers */,
+				C0CE45431C52C90500C24048 /* debug.h in Headers */,
+				C0CE45441C52C90500C24048 /* frozen_malloc.h in Headers */,
+				C0CE45451C52C90500C24048 /* magazine_zone.h in Headers */,
+				C0CE45461C52C90500C24048 /* magazine_malloc.h in Headers */,
+				C0CE45471C52C90500C24048 /* purgeable_malloc.h in Headers */,
+				C0CE45481C52C90500C24048 /* base.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXHeadersBuildPhase section */
+
+/* Begin PBXLegacyTarget section */
+		925383D41BD03C0500F745DB /* darwintests */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "$(ACTION)";
+			buildConfigurationList = 925383D51BD03C0500F745DB /* Build configuration list for PBXLegacyTarget "darwintests" */;
+			buildPhases = (
+			);
+			buildToolPath = /usr/bin/make;
+			buildWorkingDirectory = tests;
+			dependencies = (
+			);
+			name = darwintests;
+			passBuildSettingsInEnvironment = 1;
+			productName = darwintests;
+		};
+/* End PBXLegacyTarget section */
 
 /* Begin PBXNativeTarget section */
 		3FE91FE716A90AEC00D1238A /* libsystem_malloc */ = {
@@ -223,6 +567,7 @@
 				3FE91FE416A90AEC00D1238A /* Sources */,
 				3FE91FE516A90AEC00D1238A /* Frameworks */,
 				3FE91FE616A90AEC00D1238A /* Headers */,
+				C92853A11C767F78001FEAF3 /* Install Codes File */,
 			);
 			buildRules = (
 			);
@@ -250,13 +595,60 @@
 			productReference = 3FE9201016A9109E00D1238A /* libmalloc_eOS.a */;
 			productType = "com.apple.product-type.library.static";
 		};
+		456E51C8197DF0D600A7E488 /* libmalloc_stress_test */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 456E51CF197DF0D600A7E488 /* Build configuration list for PBXNativeTarget "libmalloc_stress_test" */;
+			buildPhases = (
+				456E51C5197DF0D600A7E488 /* Sources */,
+				456E51C6197DF0D600A7E488 /* Frameworks */,
+				456E51C7197DF0D600A7E488 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = libmalloc_stress_test;
+			productName = libmalloc_stress_test;
+			productReference = 456E51C9197DF0D600A7E488 /* libmalloc_stress_test */;
+			productType = "com.apple.product-type.tool";
+		};
+		C0CE452F1C52C90500C24048 /* libmalloc_static */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0CE45491C52C90500C24048 /* Build configuration list for PBXNativeTarget "libmalloc_static" */;
+			buildPhases = (
+				C0CE45301C52C90500C24048 /* Sources */,
+				C0CE453E1C52C90500C24048 /* Frameworks */,
+				C0CE453F1C52C90500C24048 /* Headers */,
+				C0CE454D1C52C9D900C24048 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = libmalloc_static;
+			productName = libmalloc;
+			productReference = C0CE454C1C52C90500C24048 /* libmalloc.a */;
+			productType = "com.apple.product-type.library.static";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
 		3FFC1BE516A908F800027192 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0500;
+				LastSwiftUpdateCheck = 0700;
+				LastUpgradeCheck = 0710;
+				TargetAttributes = {
+					45039161198FFF73004EE2A3 = {
+						CreatedOnToolsVersion = 6.0;
+					};
+					456E51C8197DF0D600A7E488 = {
+						CreatedOnToolsVersion = 6.0;
+					};
+					925383D41BD03C0500F745DB = {
+						CreatedOnToolsVersion = 7.1;
+					};
+				};
 			};
 			buildConfigurationList = 3FFC1BE816A908F800027192 /* Build configuration list for PBXProject "libmalloc" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -271,8 +663,12 @@
 			projectRoot = "";
 			targets = (
 				3FE9201116A9111000D1238A /* libmalloc */,
+				45039161198FFF73004EE2A3 /* libmalloc_test */,
 				3FE91FE716A90AEC00D1238A /* libsystem_malloc */,
 				3FE91FFD16A9109E00D1238A /* libmalloc_eOS */,
+				C0CE452F1C52C90500C24048 /* libmalloc_static */,
+				456E51C8197DF0D600A7E488 /* libmalloc_stress_test */,
+				925383D41BD03C0500F745DB /* darwintests */,
 			);
 		};
 /* End PBXProject section */
@@ -308,6 +704,22 @@
 			shellPath = /bin/sh;
 			shellScript = ". \"${SCRIPT_INPUT_FILE_0}\"";
 		};
+		C92853A11C767F78001FEAF3 /* Install Codes File */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/src/trace.h",
+			);
+			name = "Install Codes File";
+			outputPaths = (
+				"$(DSTROOT)/usr/local/share/misc/libmalloc.codes",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = ". \"$PROJECT_DIR\"/xcodescripts/install-codes.sh";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -316,12 +728,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				3FE91FED16A90B9200D1238A /* bitarray.c in Sources */,
+				C95742A01BF681B00027269A /* purgeable_malloc.c in Sources */,
+				C957429C1BF672F80027269A /* magazine_large.c in Sources */,
 				3FE91FF016A90B9200D1238A /* magazine_malloc.c in Sources */,
+				C95742991BF670D00027269A /* magazine_small.c in Sources */,
+				C95742AB1BF685CB0027269A /* legacy_malloc.c in Sources */,
 				3FE91FF116A90B9200D1238A /* magmallocProvider.d in Sources */,
+				0D468DCF1C7BEF51006FACF5 /* magazine_lite.c in Sources */,
 				3FE91FF216A90B9200D1238A /* malloc.c in Sources */,
+				C95742A61BF6842F0027269A /* frozen_malloc.c in Sources */,
 				3FE91FF416A90B9200D1238A /* nano_malloc.c in Sources */,
-				3FE91FF516A90B9200D1238A /* stack_logging.c in Sources */,
 				3FE91FF616A90B9200D1238A /* stack_logging_disk.c in Sources */,
+				C95742901BF419DF0027269A /* magazine_tiny.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -330,12 +748,45 @@
 			buildActionMask = 2147483647;
 			files = (
 				3FE91FFF16A9109E00D1238A /* bitarray.c in Sources */,
+				C95742A11BF681B00027269A /* purgeable_malloc.c in Sources */,
+				C957429D1BF672F80027269A /* magazine_large.c in Sources */,
 				3FE9200116A9109E00D1238A /* magazine_malloc.c in Sources */,
+				C957429A1BF670D00027269A /* magazine_small.c in Sources */,
+				C95742AC1BF685CB0027269A /* legacy_malloc.c in Sources */,
 				3FE9200216A9109E00D1238A /* magmallocProvider.d in Sources */,
 				3FE9200316A9109E00D1238A /* malloc.c in Sources */,
+				C95742A71BF6842F0027269A /* frozen_malloc.c in Sources */,
 				3FE9200416A9109E00D1238A /* nano_malloc.c in Sources */,
-				3FE9200516A9109E00D1238A /* stack_logging.c in Sources */,
 				3FE9200616A9109E00D1238A /* stack_logging_disk.c in Sources */,
+				C95742911BF419DF0027269A /* magazine_tiny.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		456E51C5197DF0D600A7E488 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				925383DA1BD03D5100F745DB /* stress_test.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0CE45301C52C90500C24048 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0CE45311C52C90500C24048 /* bitarray.c in Sources */,
+				C0CE45321C52C90500C24048 /* purgeable_malloc.c in Sources */,
+				C0CE45331C52C90500C24048 /* magazine_large.c in Sources */,
+				C0CE45341C52C90500C24048 /* magazine_malloc.c in Sources */,
+				C9ABCA051CB6FC6800ECB399 /* empty.s in Sources */,
+				C0CE45351C52C90500C24048 /* magazine_small.c in Sources */,
+				C0CE45361C52C90500C24048 /* legacy_malloc.c in Sources */,
+				C0CE45371C52C90500C24048 /* magmallocProvider.d in Sources */,
+				C0CE45381C52C90500C24048 /* malloc.c in Sources */,
+				C0CE45391C52C90500C24048 /* frozen_malloc.c in Sources */,
+				C0CE453A1C52C90500C24048 /* nano_malloc.c in Sources */,
+				C0CE453C1C52C90500C24048 /* stack_logging_disk.c in Sources */,
+				C0CE453D1C52C90500C24048 /* magazine_tiny.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -351,6 +802,21 @@
 			isa = PBXTargetDependency;
 			target = 3FE91FE716A90AEC00D1238A /* libsystem_malloc */;
 			targetProxy = 3FE9201716A9111600D1238A /* PBXContainerItemProxy */;
+		};
+		45039168198FFFA6004EE2A3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 456E51C8197DF0D600A7E488 /* libmalloc_stress_test */;
+			targetProxy = 45039167198FFFA6004EE2A3 /* PBXContainerItemProxy */;
+		};
+		925383D91BD03D0000F745DB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 925383D41BD03C0500F745DB /* darwintests */;
+			targetProxy = 925383D81BD03D0000F745DB /* PBXContainerItemProxy */;
+		};
+		C0CE45501C52CCBD00C24048 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C0CE452F1C52C90500C24048 /* libmalloc_static */;
+			targetProxy = C0CE454F1C52CCBD00C24048 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -415,6 +881,138 @@
 			};
 			name = Release;
 		};
+		45039163198FFF73004EE2A3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		45039164198FFF73004EE2A3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		456E51CD197DF0D600A7E488 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				METAL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = "";
+				SKIP_INSTALL = NO;
+				SUPPORTED_PLATFORMS = "macosx iphoneos appletvos watchos";
+			};
+			name = Debug;
+		};
+		456E51CE197DF0D600A7E488 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				METAL_ENABLE_DEBUG_INFO = NO;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = "";
+				SKIP_INSTALL = NO;
+				"SKIP_INSTALL[sdk=iphonesimulator*]" = YES;
+				SUPPORTED_PLATFORMS = "macosx iphoneos appletvos watchos";
+			};
+			name = Release;
+		};
+		925383D61BD03C0500F745DB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx.internal;
+				SUPPORTED_PLATFORMS = "macosx iphoneos appletvos watchos";
+			};
+			name = Debug;
+		};
+		925383D71BD03C0500F745DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx.internal;
+				SUPPORTED_PLATFORMS = "macosx iphoneos appletvos watchos";
+			};
+			name = Release;
+		};
+		C0CE454A1C52C90500C24048 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C0CE450E1C52B9E300C24048 /* libmalloc_static.xcconfig */;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				PRODUCT_NAME = "$(PRODUCT_NAME)";
+			};
+			name = Debug;
+		};
+		C0CE454B1C52C90500C24048 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C0CE450E1C52B9E300C24048 /* libmalloc_static.xcconfig */;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				PRODUCT_NAME = "$(PRODUCT_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -450,6 +1048,42 @@
 			buildConfigurations = (
 				3FFC1BE916A908F800027192 /* Debug */,
 				3FFC1BEA16A908F800027192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		45039162198FFF73004EE2A3 /* Build configuration list for PBXAggregateTarget "libmalloc_test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				45039163198FFF73004EE2A3 /* Debug */,
+				45039164198FFF73004EE2A3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		456E51CF197DF0D600A7E488 /* Build configuration list for PBXNativeTarget "libmalloc_stress_test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				456E51CD197DF0D600A7E488 /* Debug */,
+				456E51CE197DF0D600A7E488 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		925383D51BD03C0500F745DB /* Build configuration list for PBXLegacyTarget "darwintests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				925383D61BD03C0500F745DB /* Debug */,
+				925383D71BD03C0500F745DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C0CE45491C52C90500C24048 /* Build configuration list for PBXNativeTarget "libmalloc_static" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0CE454A1C52C90500C24048 /* Debug */,
+				C0CE454B1C52C90500C24048 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

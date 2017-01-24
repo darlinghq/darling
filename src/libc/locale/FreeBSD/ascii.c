@@ -6,6 +6,11 @@
  * This code is derived from software contributed to Berkeley by
  * Paul Borman at Krystal Technologies.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -32,7 +37,7 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/locale/ascii.c,v 1.1 2008/01/21 23:48:12 ache Exp $");
+__FBSDID("$FreeBSD$");
 
 #include <errno.h>
 #include <limits.h>
@@ -55,7 +60,7 @@ static size_t	_ascii_wcrtomb(char * __restrict, wchar_t,
 static size_t	_ascii_wcsnrtombs(char * __restrict, const wchar_t ** __restrict,
 		    size_t, size_t, mbstate_t * __restrict, locale_t);
 
-__private_extern__ int
+int
 _ascii_init(struct __xlocale_st_runelocale *xrl)
 {
 
@@ -137,6 +142,7 @@ _ascii_mbsnrtowcs(wchar_t * __restrict dst, const char ** __restrict src,
 	nchr = 0;
 	while (len-- > 0 && nms-- > 0) {
 		if (*s & 0x80) {
+			*src = s;
 			errno = EILSEQ;
 			return ((size_t)-1);
 		}
@@ -171,6 +177,7 @@ _ascii_wcsnrtombs(char * __restrict dst, const wchar_t ** __restrict src,
 	nchr = 0;
 	while (len-- > 0 && nwc-- > 0) {
 		if (*s < 0 || *s > 127) {
+			*src = s;
 			errno = EILSEQ;
 			return ((size_t)-1);
 		}

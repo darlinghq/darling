@@ -319,6 +319,10 @@
 		/* The requested property cannot be changed at this time.
 		 */
 
+#define KERN_INSUFFICIENT_BUFFER_SIZE	52
+		/* The provided buffer is of insufficient size for the requested data.
+		 */
+
 #define	KERN_RETURN_MAX			0x100
 		/* Maximum return value allowable
 		 */

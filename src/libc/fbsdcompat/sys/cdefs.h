@@ -66,8 +66,6 @@
  * We define this here since <stddef.h>, <sys/queue.h>, and <sys/types.h>
  * require it.
  */
-#define	__offsetof(type, field)	((size_t)(&((type *)0)->field))
-
 #define	__strong_reference(sym,aliassym)	\
 	extern __typeof (sym) aliassym __attribute__ ((__alias__ (#sym)));
 #define	__weak_reference(sym,alias)

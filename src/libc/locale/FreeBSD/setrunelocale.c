@@ -107,12 +107,10 @@ __setrunelocale(const char *encoding, locale_t loc)
 	 */
 
 	/* Range checking not needed, encoding length already checked before */
-	(void) strcpy(name, _PathLocale);
-	(void) strcat(name, "/");
-	(void) strcat(name, encoding);
+	(void) strcpy(name, encoding);
 	(void) strcat(name, "/LC_CTYPE");
 
-	if ((fp = fopen(name, "r")) == NULL)
+	if ((fp = fdopen(__open_path_locale(name), "r")) == NULL)
 		return (errno == 0 ? ENOENT : errno);
 
 	if ((xrl = _Read_RuneMagi(fp)) == NULL) {

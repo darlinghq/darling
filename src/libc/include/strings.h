@@ -62,11 +62,7 @@
 
 #include <sys/cdefs.h>
 #include <Availability.h>
-
-#ifndef	_SIZE_T
-#define	_SIZE_T
-typedef	__darwin_size_t	size_t;
-#endif
+#include <sys/_types/_size_t.h>
 
 __BEGIN_DECLS
 /* Removed in Issue 7 */
@@ -87,8 +83,10 @@ __END_DECLS
 #if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
 __BEGIN_DECLS
 int	 ffsl(long) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
+int	 ffsll(long long) __OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_7_0);
 int	 fls(int) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
 int	 flsl(long) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
+int	 flsll(long long) __OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_7_0);
 __END_DECLS
 
 #include <string.h>

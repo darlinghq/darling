@@ -1,9 +1,10 @@
 #!/bin/bash -e
 
 if [ "$ACTION" = installhdrs ]; then exit 0; fi
-if [[ "$PLATFORM_NAME" =~ iphone ]]; then exit 0; fi
+if [[ "$PLATFORM_NAME" != "macosx" ]]; then exit 0; fi
 
-UNIFDEF_FLAGS="-D__OPEN_SOURCE__"
+UNIFDEF_FLAGS=""
+
 MANPAGES_LIST="${SRCROOT}/man/manpages.lst"
 FILES=$(find -E ${SRCROOT} -regex '.*/[^.]+\.[0-9]' -type f)
 

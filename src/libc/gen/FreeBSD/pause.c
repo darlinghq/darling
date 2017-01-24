@@ -27,15 +27,13 @@
  * SUCH DAMAGE.
  */
 
+#if defined(VARIANT_CANCELABLE) && __DARWIN_NON_CANCELABLE != 0
+#error cancellable call vs. __DARWIN_NON_CANCELABLE mismatch
+#endif
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)pause.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
-
-/* For the cancelable variant, we call the cancelable sigsuspend */
-#ifdef VARIANT_CANCELABLE
-#undef __DARWIN_NON_CANCELABLE
-#define __DARWIN_NON_CANCELABLE 0
-#endif /* VARIANT_CANCELABLE */
 
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: src/lib/libc/gen/pause.c,v 1.8 2009/12/05 19:31:38 ed Exp $");

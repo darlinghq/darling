@@ -1,8 +1,0 @@
-madvise		UNIX
-mincore		UNIX
-mlock		UNIX
-mprotect	UNIX
-msync		UNIX
-munlock		UNIX
-sigpending	POSIX
-sigstack	compat[sigaltstack]

@@ -286,7 +286,7 @@ rangematch(pattern, test, string, flags, newp, news, patmbs, strmbs, loc)
 			pattern++;
 		else if (*pattern == '[' && ((special = *(pattern + 1)) == '.' || special == '=' || special == ':')) {
 			cp = (pattern += 2);
-			while(cp = strchr(cp, special)) {
+			while((cp = strchr(cp, special))) {
 				if (*(cp + 1) == ']')
 					break;
 				cp++;
@@ -351,8 +351,9 @@ treat_like_collating_symbol:
 				    *(cp + 3) != ']')
 					return (RANGE_ERROR);
 				len = __collate_equiv_match(ec, NULL, 0, test, string, strlen(string), strmbs, &sclen, loc);
-				if (len < 0)
+				if (len == (size_t)-1) {
 					return (RANGE_ERROR);
+				}
 				if (len > 0) {
 					ok = 1;
 					string += sclen;
@@ -402,12 +403,12 @@ treat_like_collating_symbol:
 			if (c2 == EOS)
 				return (RANGE_ERROR);
 
-			if (c2 == '[' && (special = *pattern) == '.' || special == '=' || special == ':') {
+			if ((c2 == '[' && (special = *pattern) == '.') || special == '=' || special == ':') {
 				/* no equivalence classes or character classes as end of range */
 				if (special == '=' || special == ':')
 					return (RANGE_ERROR);
 				cp = ++pattern;
-				while(cp = strchr(cp, special)) {
+				while((cp = strchr(cp, special))) {
 					if (*(cp + 1) == ']')
 						break;
 					cp++;

@@ -172,7 +172,7 @@ _os_debug_log_init(void *globals)
 #define OS_ALLOC_ONCE_KEY_OS_DEBUG_LOG OS_ALLOC_ONCE_KEY_OS_TRACE
 #endif
 
-static inline /* OS_CONST */
+static inline OS_CONST
 struct os_debug_log_globals_s *
 os_debug_log_globals(void)
 {
@@ -254,7 +254,7 @@ static __attribute__((always_inline))
 void
 _os_debug_logv(int level, const char *msg, va_list ap)
 {
-	if (os_slowpath(os_debug_log_globals()->errors_only) && level > LOG_ERR) {
+	if (os_slowpath((bool)os_debug_log_globals()->errors_only) && level > LOG_ERR) {
 		// more important = lower integer
 		return;
 	}
@@ -274,7 +274,7 @@ _os_debug_logv(int level, const char *msg, va_list ap)
 	__OS_COMPILETIME_ASSERT__(pfxlen >= timelen);
 
 	if (os_fastpath(len > pfxlen)) {
-		if (os_slowpath(os_debug_log_globals()->prepend_timestamp)) {
+		if (os_slowpath((bool)os_debug_log_globals()->prepend_timestamp)) {
 			char tmp = buf[timelen];
 			snprintf(buf, timelen + 1, "%16llu", _os_debug_log_ticks_since_start());
 			buf[timelen] = tmp; // snprintf's null

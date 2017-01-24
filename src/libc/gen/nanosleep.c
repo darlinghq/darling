@@ -26,18 +26,23 @@
 #include <mach/mach_error.h>
 #include <mach/mach_time.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-
+#include <TargetConditionals.h>
 
 #if __DARWIN_UNIX03
-#include "pthread_internals.h"
 #include <mach/clock.h>
+#include <pthread.h>
+#include <mach/mach.h>
+#include <mach/mach_error.h>
 
-#ifndef BUILDING_VARIANT
+#if !defined(BUILDING_VARIANT)
 semaphore_t	clock_sem = MACH_PORT_NULL;
 mach_port_t	clock_port = MACH_PORT_NULL;
 
-void _init_clock_port() {
+void _init_clock_port(void);
+
+void _init_clock_port(void) {
 	kern_return_t kr;
 	mach_port_t host = mach_host_self();
 	
@@ -60,7 +65,6 @@ extern mach_port_t clock_port;
 
 extern int __unix_conforming;
 #ifdef VARIANT_CANCELABLE
-extern void _pthread_testcancel(pthread_t thread, int isconforming);
 extern int __semwait_signal(int cond_sem, int mutex_sem, int timeout, int relative, __int64_t tv_sec, __int32_t tv_nsec);
 #define	SEMWAIT_SIGNAL	__semwait_signal
 #else /* !VARIANT_CANCELABLE */
@@ -79,7 +83,7 @@ nanosleep(const struct timespec *requested_time, struct timespec *remaining_time
 		__unix_conforming = 1;
 
 #ifdef VARIANT_CANCELABLE
-    _pthread_testcancel(pthread_self(), 1);
+    pthread_testcancel();
 #endif /* VARIANT_CANCELABLE */
 
     if ((requested_time == NULL) || (requested_time->tv_sec < 0) || (requested_time->tv_nsec >= NSEC_PER_SEC)) {
@@ -227,7 +231,7 @@ muldiv128(uint64_t x, uint64_t y, uint64_t divisor, uint64_t *res)
 	 * answer from the lesser side.  So if our estimate is too large
 	 * we need to decrease it until it is smaller.
 	 */
-	while(backmul.high > temp.high || backmul.high == temp.high && backmul.low > temp.low) {
+	while(backmul.high > temp.high || (backmul.high == temp.high && backmul.low > temp.low)) {
 	    sub128_128(&backmul, &divisor128);
 	    uapprox--;
 	}

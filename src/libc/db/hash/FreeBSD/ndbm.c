@@ -59,10 +59,7 @@ typedef DB DBM;
  *	 NULL on failure
  */
 extern DBM *
-dbm_open(file, flags, mode)
-	const char *file;
-	int flags;
-	mode_t mode;
+dbm_open(const char *file, int flags, mode_t mode)
 {
 	HASHINFO info;
 	char path[MAXPATHLEN];

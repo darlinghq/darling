@@ -33,22 +33,22 @@
 
 #include <sys/cdefs.h>
 #include <_types.h>
+#include <_types/_wctrans_t.h>
 
-#ifndef _WCTRANS_T
-#define	_WCTRANS_T
-typedef	__darwin_wctrans_t	wctrans_t;
-#endif
-
+//Begin-Libc
 /*
  * _EXTERNALIZE_WCTYPE_INLINES_TOP_ is defined in locale/iswctype.c to tell us
  * to generate code for extern versions of all top-level inline functions.
  */
 #ifdef _EXTERNALIZE_WCTYPE_INLINES_TOP_
 #define _USE_CTYPE_INLINE_
-#define __DARWIN_WCTYPE_TOP_static_inline
+#define __DARWIN_WCTYPE_TOP_inline
 #else /* !_EXTERNALIZE_WCTYPE_INLINES_TOP_ */
-#define __DARWIN_WCTYPE_TOP_static_inline	static __inline
+//End-Libc
+#define __DARWIN_WCTYPE_TOP_inline	__header_inline
+//Begin-Libc
 #endif /* _EXTERNALIZE_WCTYPE_INLINES_TOP_ */
+//End-Libc
 
 #include <_wctype.h>
 #include <ctype.h>
@@ -59,50 +59,50 @@ typedef	__darwin_wctrans_t	wctrans_t;
 #if !defined(_DONT_USE_CTYPE_INLINE_) && \
     (defined(_USE_CTYPE_INLINE_) || defined(__GNUC__) || defined(__cplusplus))
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswblank(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_B));
 }
 
 #if !defined(_ANSI_SOURCE)
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswascii(wint_t _wc)
 {
 	return ((_wc & ~0x7F) == 0);
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswhexnumber(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_X));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswideogram(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_I));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswnumber(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_D));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswphonogram(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_Q));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswrune(wint_t _wc)
 {
 	return (__istype(_wc, 0xFFFFFFF0L));
 }
 
-__DARWIN_WCTYPE_TOP_static_inline int
+__DARWIN_WCTYPE_TOP_inline int
 iswspecial(wint_t _wc)
 {
 	return (__istype(_wc, _CTYPE_T));

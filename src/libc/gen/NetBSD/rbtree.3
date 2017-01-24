@@ -1,0 +1,261 @@
+.\"     $NetBSD: rbtree.3,v 1.7 2012/08/19 19:31:13 wiz Exp $
+.\"
+.\" Copyright (c) 2010 The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\"
+.\" Portions Copyright (c) 2012 Apple Inc. All rights reserved.
+.\"
+.\" This code is derived from software contributed to The NetBSD Foundation
+.\" by Matt Thomas, Niels Provos, and David Young.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd August 19, 2012
+.Dt RBTREE 3
+.Os
+.Sh NAME
+.Nm rbtree
+.Nd red-black tree
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/rbtree.h
+.Ft void
+.Fn rb_tree_init "rb_tree_t *rbt" "const rb_tree_ops_t *ops"
+.Ft void *
+.Fn rb_tree_insert_node "rb_tree_t *rbt" "void *rb"
+.Ft void
+.Fn rb_tree_remove_node "rb_tree_t *rbt" "void *rb"
+.Ft void *
+.Fn rb_tree_find_node "rb_tree_t *rbt" "const void *key"
+.Ft void *
+.Fn rb_tree_find_node_geq "rb_tree_t *rbt" "const void *key"
+.Ft void *
+.Fn rb_tree_find_node_leq "rb_tree_t *rbt" "const void *key"
+.Ft void *
+.Fn rb_tree_iterate "rb_tree_t *rbt" "void *rb" "const unsigned int direction"
+.Ft size_t
+.Fn rb_tree_count "rb_tree_t *rbt"
+.Sh DESCRIPTION
+.Nm
+provides red-black trees.
+A red-black tree is a binary search tree with the node color as an
+extra attribute.
+It fulfills a set of conditions:
+.Bl -enum -offset indent
+.It
+Every search path from the root to a leaf consists of the same number of
+black nodes.
+.It
+Each red node (except for the root) has a black parent.
+.It
+Each leaf node is black.
+.El
+.Pp
+Every operation on a red-black tree is bounded as O(lg n).
+The maximum height of a red-black tree is 2lg (n+1).
+.Sh TYPES
+.Bl -tag -width compact
+.It Vt rb_tree_t
+A red-black tree.
+.It Vt typedef signed int \
+(* rbto_compare_nodes_fn)(void *context, const void *node1, const void *node2);
+The node-comparison operator.
+Defines an ordering on nodes.
+Returns a negative value if the first node
+.Ar node1
+precedes the second node
+.Ar node2 .
+Returns a positive value if the first node
+.Ar node1
+follows the second node
+.Ar node2 .
+Returns 0 if the first node
+.Ar node1
+and the second node
+.Ar node2
+are identical according to the ordering.
+.It Vt typedef signed int \
+(* rbto_compare_key_fn)(void *context, const void *node, const void *key);
+The node-key comparison operator.
+Defines the order of nodes and keys.
+Returns a negative value if the node
+.Ar node
+precedes the key
+.Ar key .
+Returns a positive value if the node
+.Ar node
+follows the key
+.Ar key .
+Returns 0 if the node
+.Ar node
+is identical to the key
+.Ar key
+according to the ordering.
+.It Vt rb_tree_ops_t
+Defines the operator for comparing two nodes in the same tree,
+the operator for comparing a node in the tree with a key,
+the offset of member
+.Vt rb_node_t
+within a node,
+and the opaque context passed to the operators.
+Members of
+.Vt rb_tree_ops_t
+are
+.Bd -literal
+        rbto_compare_nodes_fn rbto_compare_nodes;
+        rbto_compare_key_fn rbto_compare_key;
+        size_t rbto_node_offset;
+        void *rbto_context;
+.Ed
+.It Vt rb_node_t
+A node in a red-black tree has this structure as a member.
+.El
+.Sh FUNCTIONS
+.Bl -tag -width compact
+.It Fn rb_tree_init "rbt" "ops"
+Initialize the red-black tree
+.Fa rbt .
+Let the comparison operators given by
+.Fa ops
+define the order of nodes in the tree for
+the purposes of insertion, search, and iteration.
+.Fn rb_tree_init
+always succeeds.
+.It Fn rb_tree_insert_node "rbt" "rb"
+Insert the node
+.Fa rb
+into the tree
+.Fa rbt .
+Return inserted node on success,
+already existing node on failure.
+.It Fn rb_tree_remove_node "rbt" "rb"
+Remove the node
+.Fa rb
+from the tree
+.Fa rbt .
+.It Fn rb_tree_find_node "rbt" "key"
+Search the tree
+.Fa rbt
+for a node exactly matching
+.Fa key .
+If no such node is in the tree, return
+.Dv NULL .
+Otherwise, return the matching node.
+.It Fn rb_tree_find_node_geq "rbt" "key"
+Search the tree
+.Fa rbt
+for a node that exactly matches
+.Fa key
+and return it.
+If no such node is present, return the first node following
+.Fa key
+or, if no such node is in the tree, return
+.Dv NULL .
+.It Fn rb_tree_find_node_leq "rbt" "key"
+Search the tree
+.Fa rbt
+for a node that exactly matches
+.Fa key
+and return it.
+If no such node is present, return the first node preceding
+.Fa key
+or, if no such node is in the tree, return
+.Dv NULL .
+.It Fn rb_tree_iterate "rbt" "rb" "direction"
+If
+.Fa direction
+is
+.Dv RB_DIR_LEFT ,
+return the node in the tree
+.Fa rbt
+immediately preceding the node
+.Fa rb
+or, if
+.Fa rb
+is
+.Dv NULL ,
+return the last node in
+.Fa rbt
+or, if the tree is empty, return
+.Dv NULL .
+.Pp
+If
+.Fa direction
+is
+.Dv RB_DIR_RIGHT ,
+return the node in the tree
+.Fa rbt
+immediately following the node
+.Fa rb
+or, if
+.Fa rb
+is
+.Dv NULL ,
+return the first node in
+.Fa rbt
+or, if the tree is empty, return
+.Dv NULL .
+.It Fn rb_tree_count "rbt"
+Return the number of nodes in the tree
+.Fa rbt .
+If 
+.Fa rbt
+is
+.Dv NULL ,
+0 is returned.
+.El
+.Sh IMPLEMENTATION DETAILS
+.Nx 6.0
+included a version of this API that returned the wrong result when using
+.Fn rb_tree_iterate
+to find the first or last node.
+This implementation does not have this bug.
+If you wish to maintain portability with
+.Nx 6.0 , 
+it is recomended that you use the 
+.Fn RB_TREE_MIN
+and 
+.Fn RB_TREE_MAX
+macros rather than using
+.Fn rb_tree_iterate
+directly.
+.Sh SEE ALSO
+.Xr queue 3
+.Sh HISTORY
+The
+.Nm
+interface first appeared in
+.Nx 6.0 .
+.Sh AUTHORS
+.An Matt Thomas Aq matt@NetBSD.org
+wrote
+.Nm .
+.Pp
+.An Niels Provos Aq provos@citi.umich.edu
+wrote the
+.Xr tree 3
+manual page.
+Portions of this page derive from that page.
+.\" .Sh CAVEATS
+.\" .Sh BUGS
+.\" .Sh SECURITY CONSIDERATIONS

@@ -28,6 +28,10 @@
 .Fo dirname
 .Fa "char *path"
 .Fc
+.Ft char *
+.Fo dirname_r
+.Fa "const char *path" "char *dname"
+.Fc
 .Sh DESCRIPTION
 The
 .Fn dirname
@@ -55,6 +59,8 @@ function
 returns a pointer to internal storage space allocated on the first call
 that will be overwritten
 by subsequent calls.
+.Fn dirname_r
+is therefore preferred for threaded applications.
 .Pp
 Other vendor implementations of
 .Fn dirname
@@ -92,6 +98,10 @@ The following error codes may be set in
 .It Bq Er ENAMETOOLONG
 The path component to be returned was larger than
 .Dv MAXPATHLEN .
+.It Bq Er ENOMEM
+The static buffer used for storing the path in
+.Fn dirname
+could not be allocated.
 .El
 .Sh SEE ALSO
 .Xr basename 1 ,
@@ -110,5 +120,8 @@ function first appeared in
 .Ox 2.2
 and
 .Fx 4.2 .
+The
+.Fn dirname_r
+function first appeared in OS X 10.12.
 .Sh AUTHORS
 .An "Todd C. Miller"

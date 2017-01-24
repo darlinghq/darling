@@ -58,7 +58,7 @@ typedef struct {
 	wchar_t	lbound;
 } _UTF2State;
 
-__private_extern__ int
+int
 _UTF2_init(struct __xlocale_st_runelocale *xrl)
 {
 

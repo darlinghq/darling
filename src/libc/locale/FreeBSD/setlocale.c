@@ -48,6 +48,7 @@ __FBSDID("$FreeBSD: src/lib/libc/locale/setlocale.c,v 1.51 2007/01/09 00:28:00 i
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "collate.h"
 #include "lmonetary.h"	/* for __monetary_load_locale() */
 #include "lnumeric.h"	/* for __numeric_load_locale() */
@@ -59,7 +60,7 @@ __FBSDID("$FreeBSD: src/lib/libc/locale/setlocale.c,v 1.51 2007/01/09 00:28:00 i
 /*
  * Category names for getenv()
  */
-static char *categories[_LC_LAST] = {
+static const char * const categories[_LC_LAST] = {
     "LC_ALL",
     "LC_COLLATE",
     "LC_CTYPE",
@@ -92,8 +93,6 @@ char	*_PathLocale;
  */
 static char new_categories[_LC_LAST][ENCODING_LEN + 1];
 static char saved_categories[_LC_LAST][ENCODING_LEN + 1];
-
-static char current_locale_string[_LC_LAST * (ENCODING_LEN + 1/*"/"*/ + 1)];
 
 static char	*currentlocale(void);
 static char	*loadlocale(int);
@@ -226,7 +225,17 @@ currentlocale()
 {
 	int i;
 
-	(void)strcpy(current_locale_string, current_categories[1]);
+	size_t bufsiz = _LC_LAST * (ENCODING_LEN + 1/*"/"*/ + 1);
+	static char *current_locale_string = NULL;
+	
+	if (current_locale_string == NULL) {
+		current_locale_string = malloc(bufsiz);
+		if (current_locale_string == NULL) {
+			return NULL;
+		}
+	}
+	
+	(void)strlcpy(current_locale_string, current_categories[1], bufsiz);
 
 	for (i = 2; i < _LC_LAST; ++i)
 		if (strcmp(current_categories[1], current_categories[i])) {
@@ -352,5 +361,33 @@ __detect_path_locale(void)
 			_PathLocale = _PATH_LOCALE;
 	}
 	return (0);
+}
+
+__private_extern__ int
+__open_path_locale(const char *subpath)
+{
+	char filename[PATH_MAX];
+	int fd;
+
+	strcpy(filename, _PathLocale);
+	strcat(filename, "/");
+	strcat(filename, subpath);
+	fd = _open(filename, O_RDONLY);
+	if (fd >= 0) {
+		return fd;
+	}
+
+	strcpy(filename, _PATH_LOCALE);
+	strcat(filename, "/");
+	strcat(filename, subpath);
+	fd = _open(filename, O_RDONLY);
+	if (fd >= 0) {
+		return fd;
+	}
+
+	strcpy(filename, "/usr/local/share/locale");
+	strcat(filename, "/");
+	strcat(filename, subpath);
+	return _open(filename, O_RDONLY);
 }
 

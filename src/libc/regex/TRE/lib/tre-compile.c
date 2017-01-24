@@ -931,7 +931,7 @@ do_addtags_recurse:
 
 		    u = tre_mem_calloc(mem, sizeof(tre_last_matched_pre_t) +
 				       sizeof(tre_last_matched_branch_pre_t)
-				       + bitstr_size(num_tags));
+				       + bitstr_size(tnfa->num_tags));
 		    if (!u)
 		      {
 			status = REG_ESPACE;
@@ -1234,7 +1234,7 @@ do_addtags_recurse:
 	    node = tre_stack_pop_voidptr(stack);
 	    start_tag = tre_stack_pop_int(stack);
 	    b = tre_mem_calloc(mem, sizeof(tre_last_matched_branch_pre_t)
-			       + bitstr_size(num_tags));
+			       + bitstr_size(tnfa->num_tags));
 	    if (!b)
 	      {
 		status = REG_ESPACE;
@@ -1379,7 +1379,7 @@ do_addtags_recurse:
 #endif /* TRE_DEBUG */
 
       DPRINT(("Reordering submatch_data\n"));
-      for (i = 0; i < tnfa->num_submatches; i++)
+      for (i = 0; i < (int)tnfa->num_submatches; i++)
 	{
 #if TRE_DEBUG
 	  int so = tnfa->submatch_data[i].so_tag;
@@ -1810,7 +1810,7 @@ typedef enum {
 static reg_errcode_t
 tre_expand_ast(tre_mem_t mem, tre_stack_t *stack, tre_ast_node_t *ast,
 	       int *position, tre_tag_direction_t *tag_directions,
-	       int *max_depth)
+	       int __unused *max_depth)
 {
   reg_errcode_t status = REG_OK;
   int bottom = tre_stack_num_objects(stack);
@@ -3050,7 +3050,7 @@ tre_compile(regex_t *preg, const tre_char_t *regex, size_t n, int cflags,
 		 sizeof(*tag_directions) * (tnfa->num_tags + 1));
 	}
       tnfa->minimal_tags = xcalloc((unsigned)tnfa->num_tags * 2 + 3,
-				   sizeof(tnfa->minimal_tags));
+				   sizeof(*tnfa->minimal_tags));
       if (tnfa->minimal_tags == NULL)
 	ERROR_EXIT(REG_ESPACE);
 
@@ -3144,6 +3144,7 @@ tre_compile(regex_t *preg, const tre_char_t *regex, size_t n, int cflags,
   if (errcode != REG_OK)
     ERROR_EXIT(errcode);
 
+#ifdef USE_FIRSTPOS_CHARS /* not defined */
   /* If in eight bit mode, compute a table of characters that can be the
      first character of a match. */
   tnfa->first_char = -1;
@@ -3189,7 +3190,38 @@ tre_compile(regex_t *preg, const tre_char_t *regex, size_t n, int cflags,
     }
   else
     tnfa->firstpos_chars = NULL;
+#else /* !USE_FIRSTPOS_CHARS */
 
+  /* Set first_char only if there is only one character that can be the
+     first character of a match */
+  tnfa->first_char = -1;
+  if (!tmp_ast_l->nullable)
+    {
+      int scanning = 1;
+      for (p = tree->firstpos; scanning && p->position >= 0; p++)
+	{
+	  tre_tnfa_transition_t *j = transitions + offs[p->position];
+	  while (j->state != NULL)
+	    {
+	      if (j->code_min <= j->code_max)
+		{
+		  if (j->code_max != j->code_min || j->code_min == -1 || tnfa->first_char != -1)
+		    {
+		      tnfa->first_char = -1;
+		      scanning = 0;
+		      break;
+		    }
+		  tnfa->first_char = j->code_min;
+		}
+	      j++;
+	    }
+	}
+#ifdef TRE_DEBUG
+      if (tnfa->first_char >= 0)
+	DPRINT(("first char must be %d\n", tnfa->first_char));
+#endif /* TRE_DEBUG */
+    }
+#endif /* !USE_FIRSTPOS_CHARS */
 
   p = tree->firstpos;
   i = 0;
@@ -3359,8 +3391,10 @@ tre_free(regex_t *preg)
 
   if (tnfa->tag_directions)
     xfree(tnfa->tag_directions);
+#ifdef USE_FIRSTPOS_CHARS /* not defined */
   if (tnfa->firstpos_chars)
     xfree(tnfa->firstpos_chars);
+#endif /* USE_FIRSTPOS_CHARS */
   if (tnfa->minimal_tags)
     xfree(tnfa->minimal_tags);
 

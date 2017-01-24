@@ -36,7 +36,7 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/assert.c,v 1.8 2007/01/09 00:27:53 imp Exp 
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "CrashReporterClient.h"
+#include <CrashReporterClient.h>
 #include "_simple.h"
 
 void
