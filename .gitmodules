@@ -181,3 +181,9 @@
 [submodule "src/external/libplatform"]
 	path = src/external/libplatform
 	url = ../darling-libplatform.git
+[submodule "src/external/libpthread"]
+	path = src/external/libpthread
+	url = ../darling-libpthread.git
+[submodule "src/external/syslog"]
+	path = src/external/syslog
+	url = ../darling-syslog.git
