@@ -44,3 +44,12 @@ uint64_t mach_absolute_time(void)
 	
 	return out;
 }
+
+int __gettimeofday_with_mach(struct timeval *tv, struct timezone *tz, uint64_t *absolute)
+{
+	sys_gettimeofday(tv, tz);
+	if (absolute)
+		*absolute = mach_absolute_time();
+
+	return 0;
+}

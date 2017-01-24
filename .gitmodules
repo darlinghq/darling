@@ -178,3 +178,6 @@
 [submodule "src/external/objc4"]
 	path = src/external/objc4
 	url = ../darling-objc4.git
+[submodule "src/external/libplatform"]
+	path = src/external/libplatform
+	url = ../darling-libplatform.git

@@ -85,7 +85,7 @@ ENTRY( modff )
     movl    4+FRAME_SIZE( STACKP),      RESULT_P
     flds    FRAME_SIZE( STACKP )                        // { x }
     fld     %st(0)
-    fstp    (RESULT_P)
+    fstpl   (RESULT_P)
 #else
     movss   %xmm0,                      (RESULT_P)
 #endif

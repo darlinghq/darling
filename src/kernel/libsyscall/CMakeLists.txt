@@ -77,6 +77,7 @@ set(syscall_sources
 	wrappers/libproc/libproc.c
 	wrappers/libproc/proc_listpidspath.c
 
+	wrappers/mach_approximate_time_i386.S
 	wrappers/carbon_delete.c
 	wrappers/clonefile.c
 	wrappers/coalition.c
@@ -451,7 +452,6 @@ set(syscall_sources
 	bsdsyscalls/___pwrite_nocancel.S
 	bsdsyscalls/_pwrite.S
 	bsdsyscalls/_quotactl.S
-	bsdsyscalls/_quota.S
 	bsdsyscalls/_readlinkat.S
 	bsdsyscalls/_readlink.S
 	bsdsyscalls/___read_nocancel.S
@@ -504,7 +504,6 @@ set(syscall_sources
 	bsdsyscalls/_setpgid.S
 	bsdsyscalls/___setpriority.S
 	bsdsyscalls/_setprivexec.S
-	bsdsyscalls/_setquota.S
 	bsdsyscalls/___setregid.S
 	bsdsyscalls/___setreuid.S
 	bsdsyscalls/___setrlimit.S

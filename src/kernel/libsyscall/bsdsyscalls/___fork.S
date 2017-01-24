@@ -47,11 +47,6 @@
 
 #include "SYS.h"
 
-#ifdef DARLING
-#	define ___fork __fork
-#	define _cerror cerror
-#endif
-
 #if defined(__i386__)
 
 LEAF(___fork, 0)

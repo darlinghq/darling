@@ -38,11 +38,6 @@
 
 #include "SYS.h"
 
-#ifdef DARLING
-#define ___vfork __vfork
-#define _cerror cerror
-#endif
-
 #if defined(__i386__)
 
 #if defined(__DYNAMIC__)

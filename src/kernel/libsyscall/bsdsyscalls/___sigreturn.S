@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
@@ -28,10 +27,6 @@
  */
 
 #include "SYS.h"
-
-#ifdef DARLING
-#	define ___sigreturn __sigreturn
-#endif
 
 #if defined(__x86_64__)
 

@@ -224,5 +224,5 @@ add_library(libc-gen_dyld OBJECT FreeBSD/arc4random.c FreeBSD/closedir.c dirfd.c
 	FreeBSD/readdir.c FreeBSD/scandir.c FreeBSD/sysctl.c FreeBSD/sysctlbyname.c FreeBSD/telldir.c FreeBSD/usleep.c FreeBSD/sysconf.c
 	FreeBSD/isatty.c FreeBSD/termios.c FreeBSD/getprogname.c errlst.c)
 
-SET_TARGET_PROPERTIES(libc-gen_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")
+SET_TARGET_PROPERTIES(libc-gen_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN -U__DARWIN_NON_CANCELABLE")
 

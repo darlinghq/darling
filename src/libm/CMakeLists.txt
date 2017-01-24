@@ -152,12 +152,14 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(system_m_extra OBJECT Source/Intel/xmm_misc.c Source/Intel/xmm_log.c Source/Intel/fmaxfminfdim.S Source/Intel/nextafter.S Source/Intel/xmm_remainder.c Source/Intel/e_remquol.S)
 set_target_properties(system_m_extra PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY -O0 -ggdb")
+make_fat(system_m_extra)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_m.dylib")
 add_darling_library(system_m SHARED ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
 set_property(TARGET system_m APPEND_STRING PROPERTY LINK_FLAGS
 	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
 #target_link_libraries(system_m)
+make_fat(system_m)
 
 install(TARGETS system_m DESTINATION libexec/darling/usr/lib/system)
 
@@ -165,3 +167,4 @@ set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-ap
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
 add_library(system_m_static STATIC ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
 add_dependencies(system_m_static ranlib x86_64-apple-darwin11-ar)
+make_fat(system_m_static)
