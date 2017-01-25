@@ -53,3 +53,8 @@ LEAF(___ptrace, 0)
 #else
 #error Unsupported architecture
 #endif
+
+#if defined(__x86_64__) || defined(__i386__)
+	.globl	_ptrace
+	.set	_ptrace, ___ptrace
+#endif

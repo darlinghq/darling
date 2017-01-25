@@ -296,11 +296,12 @@ L_last_block:
 	// 4 32-bit K256 words in xmm5
 #if defined	(__x86_64__)
 	movdqu	(K), %xmm5
+	addq	$$16, K				// K points to next K256 word for next iteration
 #else
 	mov		K, t
 	movdqu	(t), %xmm5 
+	addl	$$16, K				// K points to next K256 word for next iteration
 #endif	
-	add		$$16, K				// K points to next K256 word for next iteration
 	movdqa	$1, %xmm4 			// W7:W4
 	palignr	$$4, $0, %xmm4		// W4:W1
 	sigma0	%xmm4				// sigma0(W4:W1)
@@ -395,7 +396,7 @@ _sha256_compile:
 	add		$8, ctx				// now ctx = %rdi
 	lea		32(ctx), data		// data points to ctx->wbuf
 #else
-	add		$8, ctx_addr		// now ctx points to ctx->hashes
+	addl	$8, ctx_addr		// now ctx points to ctx->hashes
 	mov		ctx_addr, t
 	add		$32, t
 	mov		t, data_addr		// data points to ctx->wbuf
@@ -436,7 +437,7 @@ _sha256_compile:
 	movdqu	1*16(t), W1
 	movdqu	2*16(t), W2
 	movdqu	3*16(t), W3
-	add		$64, data_addr
+	addl	$64, data_addr
 #endif
 
 	// compute WK[0:15] and save in stack
@@ -445,14 +446,15 @@ _sha256_compile:
 	movdqu	1*16(K), %xmm5
 	movdqu	2*16(K), %xmm6	
 	movdqu	3*16(K), %xmm7
+	addq	$64, K
 #else
 	mov		K, t
 	movdqu	0*16(t), %xmm4	
 	movdqu	1*16(t), %xmm5
 	movdqu	2*16(t), %xmm6	
 	movdqu	3*16(t), %xmm7
+	addl	$64, K
 #endif
-	add		$64, K
 	paddd	%xmm0, %xmm4
 	paddd	%xmm1, %xmm5
 	paddd	%xmm2, %xmm6

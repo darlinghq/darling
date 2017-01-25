@@ -90,6 +90,7 @@ set(libstdcxx_sources
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libstdc++.6.dylib")
 add_darling_library(stdcxx SHARED ${libstdcxx_sources})
+make_fat(stdcxx)
 target_link_libraries(stdcxx PRIVATE system cxxabi_shared)
 set_target_properties(stdcxx PROPERTIES OUTPUT_NAME "stdc++.6")
 

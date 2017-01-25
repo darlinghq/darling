@@ -41,6 +41,7 @@ set(DYLIB_INSTALL_NAME "/usr/lib/libmenu.5.4.dylib")
 add_darling_library(menu SHARED ${menu_sources})
 target_link_libraries(menu system ncurses)
 set_target_properties(menu PROPERTIES OUTPUT_NAME "menu.5.4")
+make_fat(menu)
 
 InstallSymlink("libmenu.5.4.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libmenu.dylib")
 

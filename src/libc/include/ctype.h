@@ -63,9 +63,12 @@
  *	@(#)ctype.h	8.4 (Berkeley) 1/21/94
  */
 
+#ifdef BUILDING_LIBC
 //Begin-Libc
 #include "xlocale_private.h"
 //End-Libc
+#endif
+//
 #ifndef	_CTYPE_H_
 #define _CTYPE_H_
 
@@ -117,6 +120,7 @@
 #define	_SW3		_CTYPE_SW3		/* 3 width character */
 #endif /* _NONSTD_SOURCE */
 
+#ifdef BUILDING_LIBC
 //Begin-Libc
 /*
  * _EXTERNALIZE_CTYPE_INLINES_ is defined in locale/nomacros.c to tell us
@@ -132,6 +136,11 @@
 #endif /* !_EXTERNALIZE_CTYPE_INLINES_ */
 //End-Libc
 
+#else // BUILDING_LIBC
+#define __DARWIN_CTYPE_inline		__header_inline
+#endif
+
+#ifdef BUILDING_LIBC
 //Begin-Libc
 /*
  * _EXTERNALIZE_CTYPE_INLINES_TOP_ is defined in locale/isctype.c to tell us
@@ -146,6 +155,10 @@
 //Begin-Libc
 #endif /* _EXTERNALIZE_CTYPE_INLINES_TOP_ */
 //End-Libc
+
+#else // BUILDING_LIBC
+#define __DARWIN_CTYPE_TOP_inline   __header_inline
+#endif
 
 /*
  * Use inline functions if we are allowed to and the compiler supports them.

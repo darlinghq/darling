@@ -7,6 +7,10 @@ void _dirhelper_fork_child(void)
 {
 }
 
+void _libcoreservices_fork_child(void)
+{
+}
+
 enum {
 	DIRHELPER_USER_LOCAL = 0,
 	DIRHELPER_USER_LOCAL_TEMP,

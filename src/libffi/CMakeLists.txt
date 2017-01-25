@@ -31,5 +31,6 @@ set(ffi_SRCS
 set(DYLIB_INSTALL_NAME "/usr/lib/libffi.dylib")
 add_darling_library(ffi SHARED ${ffi_SRCS})
 target_link_libraries(ffi system)
+make_fat(ffi)
 
 install(TARGETS ffi DESTINATION libexec/darling/usr/lib)

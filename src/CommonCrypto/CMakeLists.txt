@@ -8,7 +8,7 @@ endif(COMMAND cmake_policy)
 
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -fblocks -w") 
-add_definitions(-D_APPLE_COMMON_CRYPTO_ -DLTC_SHA224 -DLTC_SHA384)
+add_definitions(-D_APPLE_COMMON_CRYPTO_ -DLTC_SHA224 -DLTC_SHA384 -DSHA256_USE_ASSEMBLY -DPRIVATE)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/API)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/libtomcrypt/src/headers)
@@ -39,6 +39,7 @@ set(cc_SRCS
 	Source/Digest/sha1-x86_64.S
 	Source/Digest/sha2.c
 	Source/Digest/sha256.S
+	Source/Digest/sha256_nossse3.S
 	#Source/Digest/sha1edpBigEndian.S
 
 	#Source/RC2/ccRC2.c
@@ -91,5 +92,6 @@ set(DYLIB_INSTALL_NAME "/usr/lib/libcommonCrypto.dylib")
 add_darling_library(CommonCrypto SHARED ${cc_SRCS})
 target_link_libraries(CommonCrypto system_c system_m system_dyld system_malloc)
 set_target_properties(CommonCrypto PROPERTIES OUTPUT_NAME "commonCrypto")
+make_fat(CommonCrypto)
 
 install(TARGETS CommonCrypto DESTINATION libexec/darling/usr/lib)

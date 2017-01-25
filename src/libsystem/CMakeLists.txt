@@ -10,12 +10,15 @@ endif(COMMAND cmake_policy)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load")
 
-include_directories(${DARLING_TOP_DIRECTORY}/src/libc/fbsdcompat)
-include_directories(${DARLING_TOP_DIRECTORY}/src/libc/darwin)
-include_directories(${DARLING_TOP_DIRECTORY}/src/kernel/libsyscall/wrappers)
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/fbsdcompat)
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
+include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread/private)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall)
+include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/dyld-apple/include)
 
 add_definitions(-DTARGET_OS_MAC=1)
-add_definitions(-DHAVE_STDINT_H=1)
+add_definitions(-DHAVE_STDINT_H=1 -DHAVE_SYSTEM_CORESERVICES)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
 # Hide warnings

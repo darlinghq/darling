@@ -24,6 +24,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale)
 include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale/FreeBSD)
 include_directories(${CMAKE_SOURCE_DIR}/src/libc/stdtime/FreeBSD)
 include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/include)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/libproc)
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/emulation/linux/misc)
 include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/sandbox)
 include_directories(${CMAKE_SOURCE_DIR}/src/external/libcxx/include)
@@ -73,7 +74,7 @@ add_executable(system_loader
 use_ld64(system_loader)
 set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
 set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -nostdlib -Wl,-e,__dyld_start")
-target_link_libraries(system_loader libc_static system_blocks_static unwind_static system_kernel_static system_m_static cxxabi_static keymgr_static compiler_rt_static system_duct_static)
+target_link_libraries(system_loader libc_static system_blocks_static unwind_static system_kernel_static system_m_static cxxabi_static keymgr_static compiler_rt_static32 compiler_rt_static64 system_duct_static)
 
 make_fat(system_dyld)
 

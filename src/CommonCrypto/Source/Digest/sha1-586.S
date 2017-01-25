@@ -6,10 +6,9 @@
 
 	.file	"sha1-586.s"
 .text
-.globl	sha1_block_asm_data_order
-.type	sha1_block_asm_data_order,@function
-.align	16
-sha1_block_asm_data_order:
+.globl	_sha1_block_asm_data_order
+.align	4
+_sha1_block_asm_data_order:
 	movl	12(%esp),	%ecx
 	pushl	%esi
 	sall	$6,		%ecx
@@ -1534,13 +1533,11 @@ sha1_block_asm_data_order:
 	popl	%esi
 	ret
 .L_sha1_block_asm_data_order_end:
-.size	sha1_block_asm_data_order,.L_sha1_block_asm_data_order_end-sha1_block_asm_data_order
 .ident	"sha1_block_asm_data_order"
 .text
-.globl	sha1_block_asm_host_order
-.type	sha1_block_asm_host_order,@function
-.align	16
-sha1_block_asm_host_order:
+.globl	_sha1_block_asm_host_order
+.align	4
+_sha1_block_asm_host_order:
 	movl	12(%esp),	%ecx
 	pushl	%esi
 	sall	$6,		%ecx
@@ -1590,7 +1587,6 @@ sha1_block_asm_host_order:
 	movl	%ecx,		60(%esp)
 	jmp	.L001shortcut
 .L_sha1_block_asm_host_order_end:
-.size	sha1_block_asm_host_order,.L_sha1_block_asm_host_order_end-sha1_block_asm_host_order
 .ident	"sha1_block_asm_host_order"
 
 #endif

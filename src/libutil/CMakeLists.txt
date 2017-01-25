@@ -12,7 +12,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -nostdinc++ -D__DARWIN_UNIX03 
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${DARLING_TOP_DIRECTORY}/src/libc/include)
+include_directories(${DARLING_TOP_DIRECTORY}/src/libc/darwin)
+include_directories(${DARLING_TOP_DIRECTORY}/src/libc/locale)
+include_directories(${DARLING_TOP_DIRECTORY}/src/libc/locale/FreeBSD)
+include_directories(${DARLING_TOP_DIRECTORY}/src/libc/stdtime/FreeBSD)
 include_directories(${DARLING_TOP_DIRECTORY}/src/external/libcxx/include)
+include_directories(${DARLING_TOP_DIRECTORY}/src/kernel/libsyscall/wrappers)
 
 set(util_SRCS
 	ExtentManager.cpp
@@ -28,6 +33,7 @@ set(util_SRCS
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libutil1.0.dylib")
 add_darling_library(util SHARED ${util_SRCS})
+make_fat(util)
 target_link_libraries(util PRIVATE system cxx)
 set_target_properties(util PROPERTIES OUTPUT_NAME "util1.0")
 

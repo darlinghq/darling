@@ -139,16 +139,16 @@ set(ncurses_sources
 	tinfo/use_screen.c
 	tinfo/write_entry.c
 
-	trace/lib_traceatr.c
-	trace/lib_tracebits.c
+	#trace/lib_traceatr.c
+	#trace/lib_tracebits.c
 	trace/lib_trace.c
-	trace/lib_tracechr.c
-	trace/lib_tracedmp.c
-	trace/lib_tracemse.c
-	trace/trace_buf.c
-	trace/trace_tries.c
-	trace/trace_xnames.c
-	trace/varargs.c
+	#trace/lib_tracechr.c
+	#trace/lib_tracedmp.c
+	#trace/lib_tracemse.c
+	#trace/trace_buf.c
+	#trace/trace_tries.c
+	#trace/trace_xnames.c
+	#trace/varargs.c
 	trace/visbuf.c
 
 	tty/hardscroll.c
@@ -193,6 +193,7 @@ set(DYLIB_INSTALL_NAME "/usr/lib/libncurses.5.4.dylib")
 add_darling_library(ncurses SHARED ${ncurses_sources})
 target_link_libraries(ncurses system)
 set_target_properties(ncurses PROPERTIES OUTPUT_NAME "ncurses.5.4")
+make_fat(ncurses)
 
 InstallSymlink("libncurses.5.4.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libncurses.dylib")
 

@@ -9,6 +9,7 @@
  * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
  */
 #include "tomcrypt.h"
+#include <i386/cpu_capabilities.h>
 
 /**
   @file sha256.c

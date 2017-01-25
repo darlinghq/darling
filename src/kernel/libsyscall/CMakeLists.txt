@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.4.0)
 
 enable_language(C ASM)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -nostdinc")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -nostdinc -include ${CMAKE_CURRENT_SOURCE_DIR}/nolegacy.h")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/wrappers")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/mach")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../iokit")
@@ -19,12 +19,6 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DPRIVATE=1 -D__DARWIN_C_LEVEL=20150101)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
 #add_definitions(-DKERNEL)
-
-if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
-	add_definitions(-DNO_SYSCALL_LEGACY)
-endif (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
-
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map")
 
 set(MIG_USER_HEADER_SUFFIX "_internal.h")
 mig(mach/exc.defs)

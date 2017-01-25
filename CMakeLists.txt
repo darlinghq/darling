@@ -19,7 +19,7 @@ endif (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
 #	message(FATAL_ERROR "BITS is not specified (32/64)")
 #endif (NOT BITS)
 
-SET(IGNORED_WARNINGS "-Wno-nullability-completeness")
+SET(IGNORED_WARNINGS "-Wno-nullability-completeness -Wno-deprecated-declarations")
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS "3.9")
 	SET(IGNORED_WARNINGS "${IGNORED_WARNINGS} -Wno-expansion-to-defined")

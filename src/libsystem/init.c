@@ -1,6 +1,5 @@
-// Modified by Lubos Dolezel to support older (10.8) libc and newer libsystem_kernel
 /*
- * Copyright (c) 2007, 2008, 2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2007, 2008, 2011-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -27,103 +26,166 @@
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
-#include <TargetConditionals.h>	// for TARGET_OS_EMBEDDED
+#include <TargetConditionals.h>	// for TARGET_OS_*
 
-#include <_libkernel_init.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <libc_private.h>
+#include <pthread.h>
+#include <pthread/private.h>
 #include <dlfcn.h>
 #include <errno.h>
-#include <stdlib.h>
+#include <_libkernel_init.h> // Must be after voucher_private.h
 
-struct ProgramVars; /* forward reference */
+#include <mach-o/dyld_priv.h>
 
 // system library initialisers
-extern void bootstrap_init(void);		// from liblaunch.dylib
-extern void mach_init(void);			// from libsystem_mach.dylib
-extern void pthread_init(void);			// from libc.a
-extern void __libc_init(const struct ProgramVars *vars, void (*atfork_prepare)(void), void (*atfork_parent)(void), void (*atfork_child)(void), const char *apple[]);	// from libc.a
-extern void __malloc_init(const char* apple[]); // from libmalloc
-extern void __keymgr_initializer(void);		// from libkeymgr.a
-extern void _dyld_initializer(void);		// from libdyld.a
-extern void libdispatch_init(void);		// from libdispatch.a
-extern void _libxpc_initializer(void);		// from libxpc
-extern void __objc_initialize(void);
-extern void _darling_initialize_commpage(void); // in duct, should go away
+extern void mach_init(void);			// from libsystem_kernel.dylib
+extern void __libplatform_init(void *future_use, const char *envp[], const char *apple[], const struct ProgramVars *vars);
+extern void __pthread_init(const struct _libpthread_functions *libpthread_funcs, const char *envp[], const char *apple[], const struct ProgramVars *vars);	// from libsystem_pthread.dylib
+extern void __malloc_init(const char *apple[]); // from libsystem_malloc.dylib
+extern void __keymgr_initializer(void);		// from libkeymgr.dylib
+extern void _dyld_initializer(void);		// from libdyld.dylib
+extern void libdispatch_init(void);		// from libdispatch.dylib
+extern void _libxpc_initializer(void);		// from libxpc.dylib
+extern void _libsecinit_initializer(void);        // from libsecinit.dylib
+extern void _libtrace_init(void);		// from libsystem_trace.dylib
+
 
 // signal malloc stack logging that initialisation has finished
 extern void __stack_logging_early_finished(void); // form libsystem_c.dylib
 
-// system library atfork handlers
-extern void _cthread_fork_prepare(void);
-extern void _cthread_fork_parent(void);
-extern void _cthread_fork_child(void);
-extern void _cthread_fork_child_postinit(void);
+// clear qos tsd (from pthread)
+extern void _pthread_clear_qos_tsd(mach_port_t) __attribute__((weak_import));
 
-extern void _mig_fork_child(void);
+// system library atfork handlers
+extern void _pthread_fork_prepare(void);
+extern void _pthread_fork_parent(void);
+extern void _pthread_fork_child(void);
+extern void _pthread_fork_child_postinit(void);
+extern void _pthread_exit_if_canceled(int);
+
+extern void dispatch_atfork_prepare(void);
+extern void dispatch_atfork_parent(void);
+extern void dispatch_atfork_child(void);
+
+extern void _libtrace_fork_child(void);
+
+extern void _malloc_fork_prepare(void);
+extern void _malloc_fork_parent(void);
+extern void _malloc_fork_child(void);
+
 extern void _mach_fork_child(void);
-extern void _cproc_fork_child(void);
-extern void _libc_fork_child(void);
 extern void _notify_fork_child(void);
 extern void _dyld_fork_child(void);
 extern void xpc_atfork_prepare(void);
 extern void xpc_atfork_parent(void);
 extern void xpc_atfork_child(void);
+extern void _libSC_info_fork_prepare(void);
+extern void _libSC_info_fork_parent(void);
+extern void _libSC_info_fork_child(void);
+extern void _asl_fork_child(void);
+
+#if defined(HAVE_SYSTEM_CORESERVICES)
+// libsystem_coreservices.dylib
+extern void _libcoreservices_fork_child(void);
+extern char *_dirhelper(int, char *, size_t);
+#endif
+
+#if TARGET_OS_EMBEDDED && !TARGET_OS_WATCH && !__LP64__
+extern void _vminterpose_init(void);
+#endif
 
 // advance decls for below;
 void libSystem_atfork_prepare(void);
 void libSystem_atfork_parent(void);
 void libSystem_atfork_child(void);
 
-// from mig_support.c in libc
-mach_port_t _mig_get_reply_port(void);
-void _mig_set_reply_port(mach_port_t);
-
-void cthread_set_errno_self(int);
-void* pthread_self(void);
-
-extern void _dyld_func_lookup(const char* name, void** p);
-
-static void _pthread_exit_if_canceled(int err) { if (pthread_self()) _pthread_testcancel(pthread_self(), 1);  }
-
-struct ProgramVars
+// libsyscall_initializer() initializes all of libSystem.dylib
+// <rdar://problem/4892197>
+__attribute__((constructor))
+static void
+libSystem_initializer(int argc,
+		      const char* argv[],
+		      const char* envp[],
+		      const char* apple[],
+		      const struct ProgramVars* vars)
 {
-        const void* mh;
-        int* NXArgcPtr;
-        const char*** NXArgvPtr;
-        const char*** environPtr;
-        const char** __prognamePtr;
-};
-
-
-/*
- * libsyscall_initializer() initializes all of libSystem.dylib <rdar://problem/4892197>
- */
-static __attribute__((constructor))
-void libSystem_initializer(int argc, const char* argv[], const char* envp[] , const char* apple[], const struct ProgramVars* vars)
-{
-    static const struct _libkernel_functions libkernel_funcs = {
-		.version = 1,
+	static const struct _libkernel_functions libkernel_funcs = {
+		.version = 3,
+		// V1 functions
 		.dlsym = dlsym,
 		.malloc = malloc,
 		.free = free,
 		.realloc = realloc,
 		._pthread_exit_if_canceled = _pthread_exit_if_canceled,
+		// V2 functions (removed)
+		// V3 functions
+		.pthread_clear_qos_tsd = _pthread_clear_qos_tsd,
 		.dyld_func_lookup = _dyld_func_lookup,
 	};
 
-	_darling_initialize_commpage();
-	__libkernel_init(&libkernel_funcs, *envp, apple, &vars);
+	static const struct _libpthread_functions libpthread_funcs = {
+		.version = 2,
+		.exit = exit,
+		.malloc = malloc,
+		.free = free,
+	};
+	
+	static const struct _libc_functions libc_funcs = {
+		.version = 1,
+		.atfork_prepare = libSystem_atfork_prepare,
+		.atfork_parent = libSystem_atfork_parent,
+		.atfork_child = libSystem_atfork_child,
+#if defined(HAVE_SYSTEM_CORESERVICES)
+		.dirhelper = _dirhelper,
+#endif
+	};
 
-	// bootstrap_init(); // currently aborts
-	mach_init();
-	pthread_init();
-	__libc_init(vars, libSystem_atfork_prepare, libSystem_atfork_parent, libSystem_atfork_child, apple);
+	__libkernel_init(&libkernel_funcs, envp, apple, vars);
+
+	__libplatform_init(NULL, envp, apple, vars);
+
+	__pthread_init(&libpthread_funcs, envp, apple, vars);
+
+	_libc_initializer(&libc_funcs, envp, apple, vars);
+
+	// TODO: Move __malloc_init before __libc_init after breaking malloc's upward link to Libc
 	__malloc_init(apple);
+
+#if !TARGET_OS_SIMULATOR && !TARGET_OS_TV && !TARGET_OS_WATCH
+	/* <rdar://problem/9664631> */
 	__keymgr_initializer();
+#endif
+
 	_dyld_initializer();
+
 	libdispatch_init();
-	_libxpc_initializer();
+	// _libxpc_initializer(); // Darling: not yet
+
+#if !(TARGET_OS_EMBEDDED || TARGET_OS_SIMULATOR)
+	// _libsecinit_initializer(); // Darling: not yet
+#endif
 
 	__stack_logging_early_finished();
+
+#if TARGET_OS_EMBEDDED && !TARGET_OS_WATCH && !__LP64__
+	// _vminterpose_init(); // Darling: not yet
+#endif
+
+	// _libtrace_init(); // must be initialized after dispatch // Darling: not yet
+
+#if !TARGET_OS_IPHONE
+    /* <rdar://problem/22139800> - Preserve the old behavior of apple[] for
+     * programs that haven't linked against newer SDK.
+	 */
+#define APPLE0_PREFIX "executable_path="
+	if (dyld_get_program_sdk_version() < DYLD_MACOSX_VERSION_10_11){
+		if (strncmp(apple[0], APPLE0_PREFIX, strlen(APPLE0_PREFIX)) == 0){
+			apple[0] = apple[0] + strlen(APPLE0_PREFIX);
+		}
+	}
+#endif
 
 	/* <rdar://problem/11588042>
 	 * C99 standard has the following in section 7.5(3):
@@ -131,42 +193,58 @@ void libSystem_initializer(int argc, const char* argv[], const char* envp[] , co
 	 * to zero by any library function."
 	 */
 	errno = 0;
-	// __objc_initialize(); // TODO: temporarily commented out
 }
 
 /*
- * libSystem_atfork_{prepare,parent,child}() are called by libc when we fork, then we deal with running fork handlers
- * for everyone else.
+ * libSystem_atfork_{prepare,parent,child}() are called by libc during fork(2).
+ * They call the corresponding atfork handlers for other libsystem components.
  */
-void libSystem_atfork_prepare(void)
+void
+libSystem_atfork_prepare(void)
 {
-	xpc_atfork_prepare();
-	_cthread_fork_prepare();
+	// _libSC_info_fork_prepare(); // Darling: not yet
+	// xpc_atfork_prepare(); // Darling: not yet
+	dispatch_atfork_prepare();
+	_pthread_fork_prepare();
+	_malloc_fork_prepare();
 }
 
-void libSystem_atfork_parent(void)
+void
+libSystem_atfork_parent(void)
 {
-	_cthread_fork_parent();
-	xpc_atfork_parent();
+	_malloc_fork_parent();
+	_pthread_fork_parent();
+	dispatch_atfork_parent();
+	// xpc_atfork_parent(); // Darling: not yet
+	// _libSC_info_fork_parent(); // Darling: not yet
 }
 
-void libSystem_atfork_child(void)
+void
+libSystem_atfork_child(void)
 {
+	// Darling: change
 	_mach_fork_child();
-	// Mach ports are not inherited across fork except for the Bootstrap.
-	// So why is the following line not needed on OS X?
 	_mig_fork_child();
 
 	_dyld_fork_child();
-	_cthread_fork_child();
+	_pthread_fork_child();
+	_malloc_fork_child();
+	dispatch_atfork_child();
 	
-	// bootstrap_init(); // currently aborts (needs launchd's bootstrap port)
-	_cproc_fork_child();
+	// _mach_fork_child();
 	_libc_fork_child();
-	_notify_fork_child();
-	xpc_atfork_child();
 
-	_cthread_fork_child_postinit();
+#if defined(HAVE_SYSTEM_CORESERVICES)
+	_libcoreservices_fork_child();
+#endif
+
+	_asl_fork_child();
+	_notify_fork_child();
+	// xpc_atfork_child(); // Darling: not yet
+	// _libSC_info_fork_child(); // Darling: not yet
+
+	_pthread_fork_child_postinit();
+	// _libtrace_fork_child(); // no prep work required for the fork
 }
 
 /*  
@@ -180,4 +258,4 @@ void (*mach_init_routine)(void) = &mach_init_old;
  *	This __crashreporter_info__ symbol is for all non-dylib parts of libSystem.
  */
 const char *__crashreporter_info__;
-//asm (".desc __crashreporter_info__, 0x10");
+asm (".desc __crashreporter_info__, 0x10");
