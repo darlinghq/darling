@@ -11,6 +11,9 @@ add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
@@ -22,5 +25,6 @@ set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_sandbox.dylib")
 add_darling_library(sandbox SHARED sandbox.c)
 target_link_libraries(sandbox PRIVATE system_c system_kernel system_dyld system_malloc)
 set_target_properties(sandbox PROPERTIES OUTPUT_NAME "system_sandbox")
+make_fat(sandbox)
 
 install(TARGETS sandbox DESTINATION libexec/darling/usr/lib/system)

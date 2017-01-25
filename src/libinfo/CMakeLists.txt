@@ -18,6 +18,11 @@ add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
+include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/include)
+include_directories(${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include)
+
 add_subdirectory(gen.subproj)
 add_subdirectory(util.subproj)
 add_subdirectory(dns.subproj)
@@ -26,6 +31,15 @@ add_subdirectory(rpc.subproj)
 add_subdirectory(lookup.subproj)
 add_subdirectory(membership.subproj)
 add_subdirectory(darling-resolver)
+
+make_fat(info-dns
+	info-gen
+	info-nis
+	info-rpc
+	info-lookup
+	info-membership
+	darling-resolver
+)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_info.dylib")
 add_darling_library(system_info SHARED $<TARGET_OBJECTS:info-util>
@@ -37,7 +51,8 @@ add_darling_library(system_info SHARED $<TARGET_OBJECTS:info-util>
 	$<TARGET_OBJECTS:info-membership>
 	$<TARGET_OBJECTS:darling-resolver>
 )
-target_link_libraries(system_info PRIVATE system_c resolv-darwin system_dyld system_blocks libdispatch_shared system_notify)
+target_link_libraries(system_info PRIVATE system_c resolv-darwin system_dyld system_blocks libdispatch_shared system_notify platform)
+make_fat(system_info)
 
 install(TARGETS system_info DESTINATION libexec/darling/usr/lib/system)
 install(FILES master.passwd DESTINATION libexec/darling/etc)

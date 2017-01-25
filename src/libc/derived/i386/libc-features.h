@@ -20,7 +20,7 @@
 #  error Feature mismatch: __DARWIN_ONLY_64_BIT_INO_T == 1
 #endif /* __DARWIN_ONLY_64_BIT_INO_T */
 #define __APPLE_PR3417676_HACK__ 1
-#define PLOCKSTAT 1
+/* #define PLOCKSTAT 0 */
 #define NOTIFY_TZ 1
 /* #undef LIBC_NO_LIBCRASHREPORTERCLIENT */
 /* #undef FEATURE_SMALL_STDIOBUF */

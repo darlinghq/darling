@@ -14,6 +14,7 @@ include_directories("${CMAKE_SOURCE_DIR}/src/dyld") # for elfcalls.h
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/wrappers/libproc")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/wrappers/spawn")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DPRIVATE=1 -D__DARWIN_C_LEVEL=20150101)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
@@ -132,6 +133,8 @@ set(syscall_sources
 	wrappers/unix03/mmap.c
 	wrappers/unix03/munmap.c
 	wrappers/unix03/setrlimit.c
+
+	wrappers/spawn/posix_spawn.c
 	
 	${syscall_legacy_sources}
 

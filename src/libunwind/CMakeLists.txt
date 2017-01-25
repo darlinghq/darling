@@ -19,7 +19,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/locale)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/locale/FreeBSD)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/stdtime/FreeBSD)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/pthreads)
-include_directories(${DARLING_TOP_DIRECTORY}/platform-include)
+include_directories(${CMAKE_SOURCE_DIR}/platform-include)
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
+include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread/private)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall)
 
 set(libunwind_sources
 	src/libuwind.cxx
@@ -34,8 +38,10 @@ set(DYLIB_INSTALL_NAME "/usr/lib/system/libunwind.dylib")
 add_darling_library(unwind SHARED ${libunwind_sources})
 target_link_libraries(unwind PRIVATE system_c keymgr)
 set_target_properties(unwind PROPERTIES LINKER_LANGUAGE C)
+make_fat(unwind)
 
 add_library(unwind_static STATIC ${libunwind_sources})
 set_target_properties(unwind_static PROPERTIES COMPILE_FLAGS "-DNDEBUG=1")
+make_fat(unwind_static)
 
 install(TARGETS unwind DESTINATION libexec/darling/usr/lib/system)

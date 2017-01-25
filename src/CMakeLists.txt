@@ -55,6 +55,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/duct/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include")
 
 add_subdirectory(external/libplatform)
+add_subdirectory(external/libpthread)
 add_subdirectory(kernel)
 add_subdirectory(libc)
 

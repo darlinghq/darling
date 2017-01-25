@@ -22,7 +22,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CommonCrypto)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/ccUtilities)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/CommonCryptoSPI)
-include_directories(${DARLING_TOP_DIRECTORY}/src/external/libdispatch)
+include_directories(${CMAKE_SOURCE_DIR}/src/external/libdispatch)
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale)
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale/FreeBSD)
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/stdtime/FreeBSD)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
 
 set(cc_SRCS
 	Source/Digest/md2_dgst.c

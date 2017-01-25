@@ -143,6 +143,7 @@ add_darling_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-uuid>
 	$<TARGET_OBJECTS:libc-util>
 	$<TARGET_OBJECTS:libc-string>
+	$<TARGET_OBJECTS:libc-string-x86_64>
 	$<TARGET_OBJECTS:libc-stdtime>
 	$<TARGET_OBJECTS:libc-sys>
 	$<TARGET_OBJECTS:libc-sys_noinode64>
@@ -173,8 +174,9 @@ add_darling_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-locale_legacy>
 	$<TARGET_OBJECTS:libc-net_legacy>
 )
-target_link_libraries(system_c system_kernel system_m macho system_malloc)
+target_link_libraries(system_c system_kernel system_m macho system_malloc platform)
 make_fat(system_c)
+set_property(TARGET system_c APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/xcodescripts/alias.list")
 
 install(TARGETS system_c DESTINATION libexec/darling/usr/lib/system)
 
@@ -185,8 +187,6 @@ add_library(libc_static STATIC
 	$<TARGET_OBJECTS:libc-stdlib_dyld>
 	$<TARGET_OBJECTS:libc-string_dyld>
 	$<TARGET_OBJECTS:libc-sys_dyld>
-	$<TARGET_OBJECTS:libc-x86_64>
-	$<TARGET_OBJECTS:libc-i386>
 	$<TARGET_OBJECTS:libc-locale>
 	$<TARGET_OBJECTS:libc-stdio>
 	$<TARGET_OBJECTS:libc-stdtime>

@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling; gs->fs
 /*
  * Copyright (c) 2012 Apple Inc. All rights reserved.
  *
@@ -50,6 +49,17 @@ _os_cpu_number(void)
 	return 0;
 }
 
+#if defined(__i386__) || defined(__x86_64__)
+
+#if defined(__has_attribute)
+#if __has_attribute(address_space)
+#define OS_GS_RELATIVE  __attribute__((address_space(256)))
+#endif
+#endif
+
+#ifdef OS_GS_RELATIVE
+#define _os_tsd_get_base() ((void * OS_GS_RELATIVE *)0)
+#else
 __attribute__((always_inline))
 static __inline__ void*
 _os_tsd_get_direct(unsigned long slot)
@@ -57,27 +67,48 @@ _os_tsd_get_direct(unsigned long slot)
 	void *ret;
 #if defined(__i386__)
 	__asm__("mov %%fs:%1, %0" : "=r" (ret) : "m" (*(void **)(slot * sizeof(void *))));
-#elif defined(__x86_64__)
+#else
 	__asm__("mov %%gs:%1, %0" : "=r" (ret) : "m" (*(void **)(slot * sizeof(void *))));
 #endif
-
-
 	return ret;
 }
 
 __attribute__((always_inline))
 static __inline__ int
-_os_tsd_set_direct(unsigned long slot, void* val)
+_os_tsd_set_direct(unsigned long slot, void *val)
 {
 #if defined(__i386__) && defined(__PIC__)
 	__asm__("movl %1, %%fs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "rn" (val));
 #elif defined(__i386__) && !defined(__PIC__)
-	__asm__("movl %1, %%fs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "ri" (val));
-#elif defined(__x86_64__)
+	__asm__("movl %1, %%gs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "ri" (val));
+#else
 	__asm__("movq %1, %%gs:%0" : "=m" (*(void **)(slot * sizeof(void *))) : "rn" (val));
 #endif
-
 	return 0;
 }
+#endif
+
+#else
+#error _os_tsd_get_base not implemented on this architecture
+#endif
+
+#ifdef _os_tsd_get_base
+__attribute__((always_inline))
+static __inline__ void*
+_os_tsd_get_direct(unsigned long slot)
+{
+	return _os_tsd_get_base()[slot];
+}
+
+__attribute__((always_inline))
+static __inline__ int
+_os_tsd_set_direct(unsigned long slot, void *val)
+{
+	_os_tsd_get_base()[slot] = val;
+	return 0;
+}
+#endif
+
+extern void _thread_set_tsd_base(void *tsd_base);
 
 #endif

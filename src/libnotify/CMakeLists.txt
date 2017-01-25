@@ -9,6 +9,8 @@ include_directories(${DARLING_TOP_DIRECTORY}/src/launchd/liblaunch)
 include_directories(${DARLING_TOP_DIRECTORY}/src/libc/gen)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
+include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc -include ${DARLING_TOP_DIRECTORY}/kernel-include/sys/fileport.h")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
@@ -24,7 +26,8 @@ set(notify_sources
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_notify.dylib")
 add_darling_library(system_notify SHARED ${notify_sources})
-target_link_libraries(system_notify system_c system_kernel system_blocks libdispatch_shared launch system_dyld system_malloc)
+target_link_libraries(system_notify system_c system_kernel system_blocks libdispatch_shared launch system_dyld system_malloc system_pthread)
+make_fat(system_notify)
 
 install(TARGETS system_notify DESTINATION libexec/darling/usr/lib/system)
 
