@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 
 void junction(const char* target, int argc, char** argv)
 {
-	char* targetPath = malloc(strlen(target) + 3);
+	char* targetPath = malloc(strlen(argv[0]) + 3);
 	
 	strcpy(targetPath, argv[0]);
 	strcat(targetPath, target);
