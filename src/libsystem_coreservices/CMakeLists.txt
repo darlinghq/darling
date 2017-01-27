@@ -22,7 +22,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_coreservices.dylib")
 add_darling_library(system_coreservices SHARED dirhelper.c NSSystemDirectories.c)
-target_link_libraries(system_coreservices PRIVATE system_c system_dyld platform system_pthread)
+target_link_libraries(system_coreservices PRIVATE system_c system_dyld platform system_pthread system_kernel)
 make_fat(system_coreservices)
 
 install(TARGETS system_coreservices DESTINATION libexec/darling/usr/lib/system)

@@ -54,6 +54,7 @@ set(edit_SRCS
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libedit.3.dylib")
 add_darling_library(edit SHARED ${edit_SRCS})
+make_fat(edit)
 set_target_properties(edit PROPERTIES OUTPUT_NAME "edit.3")
 target_link_libraries(edit PRIVATE system ncurses)
 

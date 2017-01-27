@@ -26,7 +26,7 @@ add_definitions(
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -fPIC -w ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_reference.h")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0") # development flags
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load -Wl,-flat_namespace -Wl,-undefined,suppress")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/darwin")
@@ -127,7 +127,7 @@ make_fat(
 #)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_c.dylib")
-add_darling_library(system_c SHARED
+add_circular(system_c FAT OBJECTS
 	$<TARGET_OBJECTS:libc-db>
 	$<TARGET_OBJECTS:libc-compat>
 	$<TARGET_OBJECTS:libc-compat_cancelable>
@@ -144,6 +144,7 @@ add_darling_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-util>
 	$<TARGET_OBJECTS:libc-string>
 	$<TARGET_OBJECTS:libc-string-x86_64>
+	$<TARGET_OBJECTS:libc-string-i386>
 	$<TARGET_OBJECTS:libc-stdtime>
 	$<TARGET_OBJECTS:libc-sys>
 	$<TARGET_OBJECTS:libc-sys_noinode64>
@@ -173,10 +174,30 @@ add_darling_library(system_c SHARED
 	$<TARGET_OBJECTS:libc-regex_legacy>
 	$<TARGET_OBJECTS:libc-locale_legacy>
 	$<TARGET_OBJECTS:libc-net_legacy>
+	STRONG_SIBLINGS
+		platform
+	SIBLINGS
+		system_kernel
+		compiler_rt
+		system_dyld
+		system_malloc
+		system_pthread
+		system_blocks
+		system_m
+		platform
+		launch
+		system_notify
+		libdispatch_shared
+		system_info
+		macho
+		system_duct
+		system_asl
+	LINK_FLAGS
+		"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/xcodescripts/alias.list"
 )
-target_link_libraries(system_c system_kernel system_m macho system_malloc platform)
-make_fat(system_c)
-set_property(TARGET system_c APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/xcodescripts/alias.list")
+#target_link_libraries(system_c system_kernel system_m macho system_malloc platform system_blocks system_pthread compiler_rt)
+#make_fat(system_c)
+#set_property(TARGET system_c APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/xcodescripts/alias.list -Wl,-sub_library,libsystem_platform")
 
 install(TARGETS system_c DESTINATION libexec/darling/usr/lib/system)
 
@@ -190,11 +211,17 @@ add_library(libc_static STATIC
 	$<TARGET_OBJECTS:libc-locale>
 	$<TARGET_OBJECTS:libc-stdio>
 	$<TARGET_OBJECTS:libc-stdtime>
-	$<TARGET_OBJECTS:libc-gdtoa>
+	$<TARGET_OBJECTS:libc-string>
+	$<TARGET_OBJECTS:libc-gdtoa_dyld>
 	$<TARGET_OBJECTS:libc-secure>
 	$<TARGET_OBJECTS:libc-os>
 	$<TARGET_OBJECTS:libc-stdio_extsn>
 	)
 add_dependencies(libc_static ranlib x86_64-apple-darwin11-ar)
 set_target_properties(libc_static PROPERTIES COMPILE_FLAGS "-ffunction-sections")
+
+add_library(libc_static64 STATIC $<TARGET_OBJECTS:libc-x86_64>)
+add_dependencies(libc_static64 ranlib x86_64-apple-darwin11-ar)
+add_library(libc_static32 STATIC $<TARGET_OBJECTS:libc-i386>)
+add_dependencies(libc_static32 ranlib x86_64-apple-darwin11-ar)
 

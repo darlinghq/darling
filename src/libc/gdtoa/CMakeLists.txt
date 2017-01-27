@@ -39,6 +39,9 @@ set(gdtoa_sources ${gdtoa_sources}
 #SET_SOURCE_FILES_PROPERTIES(FreeBSD/gdtoa-strtof.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRTOF -DLIBC_ALIAS_STRTOF_L")
 
 add_library(libc-gdtoa OBJECT ${gdtoa_sources})
+add_library(libc-gdtoa_dyld OBJECT ${gdtoa_sources})
+set_target_properties(libc-gdtoa_dyld PROPERTIES COMPILE_FLAGS "-DVARIANT_DYLD")
+make_fat(libc-gdtoa_dyld)
 
 # Legacy variant
 set(gdtoa-legacy_sources

@@ -187,7 +187,7 @@ set(gen-legacy_sources FreeBSD/clock.c FreeBSD/closedir.c FreeBSD/fnmatch.c
 	FreeBSD/seekdir.c FreeBSD/setmode.c FreeBSD/sleep.c FreeBSD/telldir.c
 	FreeBSD/ttyname.c FreeBSD/usleep.c FreeBSD/wait.c FreeBSD/waitpid.c
 	FreeBSD/timezone.c FreeBSD/termios.c FreeBSD/nice.c
-	confstr.c crypt.c nftw.c FreeBSD/opendir.c)
+	confstr.c crypt.c nftw.c FreeBSD/opendir.c nanosleep.c)
 
 add_library(libc-gen_legacy OBJECT ${gen-legacy_sources})
 SET_TARGET_PROPERTIES(libc-gen_legacy PROPERTIES COMPILE_FLAGS
@@ -222,7 +222,7 @@ SET_TARGET_PROPERTIES(libc-gen_pre1050 PROPERTIES COMPILE_FLAGS "-DBUILDING_VARI
 
 add_library(libc-gen_dyld OBJECT FreeBSD/arc4random.c FreeBSD/closedir.c dirfd.c FreeBSD/getcwd.c FreeBSD/getpagesize.c nanosleep.c FreeBSD/opendir.c
 	FreeBSD/readdir.c FreeBSD/scandir.c FreeBSD/sysctl.c FreeBSD/sysctlbyname.c FreeBSD/telldir.c FreeBSD/usleep.c FreeBSD/sysconf.c
-	FreeBSD/isatty.c FreeBSD/termios.c FreeBSD/getprogname.c errlst.c)
+	FreeBSD/isatty.c FreeBSD/termios.c FreeBSD/getprogname.c FreeBSD/vis.c FreeBSD/err.c FreeBSD/usleep.c errlst.c)
 
-SET_TARGET_PROPERTIES(libc-gen_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN -U__DARWIN_NON_CANCELABLE")
+SET_TARGET_PROPERTIES(libc-gen_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_DARWINEXTSN -D__DARWIN_NON_CANCELABLE=1 -D__DARWIN_UNIX03=1")
 

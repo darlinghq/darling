@@ -319,3 +319,17 @@ static long sysctl_name_to_oid(const char* name, int* oid_name,
 	__simple_printf("Unknown sysctl: %s\n", name);
 	return -ENOTDIR;
 }
+
+long sys_sysctlbyname(const char* name, unsigned long namelen, void* old, unsigned long* oldlen, void* _new, unsigned long newlen)
+{
+	long rv;
+	int oid[4];
+	unsigned long oid_len = 4;
+
+	rv = sysctl_name_to_oid(name, oid, &oid_len);
+	if (rv < 0)
+		return rv;
+
+	return sys_sysctl(oid, oid_len, old, oldlen, _new, newlen);
+}
+

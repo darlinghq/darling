@@ -21,9 +21,15 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -fblocks -ggdb")
 # -> dyld places stubs -> stubs go into dyld_stub_binder at first use
 # -> there is a temporary loss of 16-byte stack alignment in __darling_bsd_syscall
 # -> dyld_stub_binder checks for this and bails out with a SIGSEGV
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -nostdinc -Wl,-bind_at_load -Wl,-undefined,suppress -Wl,-flat_namespace")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -nostdinc -Wl,-bind_at_load")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
+#set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_c.dylib")
+#add_darling_library(fakelibc SHARED fakelibc.c)
+#make_fat(fakelibc)
+#set(DYLIB_INSTALL_NAME "/usr/lib/system/libdyld.dylib")
+#add_darling_library(fakedyld SHARED fakedyld.c)
+#make_fat(fakedyld)
 
 add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
@@ -33,22 +39,26 @@ add_subdirectory(libsyscall)
 add_subdirectory(mach_server/client)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_kernel.dylib")
-add_darling_library(system_kernel SHARED
-	$<TARGET_OBJECTS:libsyscall>
-	$<TARGET_OBJECTS:libsyscall_dynamic>
-	#$<TARGET_OBJECTS:kqueue>
-	$<TARGET_OBJECTS:emulation>
-	${extra_objs}
-	$<TARGET_OBJECTS:mach_server_client>)
-target_link_libraries(system_kernel system_duct)
+add_circular(system_kernel FAT
+	OBJECTS
+		$<TARGET_OBJECTS:libsyscall>
+		$<TARGET_OBJECTS:libsyscall_dynamic>
+		#$<TARGET_OBJECTS:kqueue>
+		$<TARGET_OBJECTS:emulation>
+		$<TARGET_OBJECTS:mach_server_client>
+	SIBLINGS
+		system_c
+		compiler_rt
+		system_dyld
+)
+#target_link_libraries(system_kernel system_duct platform_static32 platform_static64)
 make_fat(system_kernel)
 
 add_library(system_kernel_static STATIC
 	$<TARGET_OBJECTS:libsyscall>
-	$<TARGET_OBJECTS:libsyscall_static>
+	#$<TARGET_OBJECTS:libsyscall_static>
 	#$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:emulation_dyld>
-	${extra_objs}
 	$<TARGET_OBJECTS:mach_server_client_dyld>)
 
 install(TARGETS system_kernel DESTINATION libexec/darling/usr/lib/system)

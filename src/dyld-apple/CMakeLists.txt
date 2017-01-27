@@ -34,7 +34,8 @@ include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include
 	${CMAKE_CURRENT_SOURCE_DIR}/include/mach-o)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libdyld.dylib")
-add_darling_library(system_dyld SHARED
+add_circular(system_dyld FAT
+	SOURCES
 	src/dyldAPIsInLibSystem.cpp
 	src/dyld_stub_binder.S
 	src/dyldLibSystemGlue.c
@@ -42,11 +43,16 @@ add_darling_library(system_dyld SHARED
 	src/dyldLock.cpp
 	src/threadLocalVariables.c
 	src/start_glue.S
+	SIBLINGS
+		system_c system_kernel compiler_rt platform
+	DEPENDENCIES
+		launch
 )
 set_target_properties(system_dyld PROPERTIES
-	OUTPUT_NAME "dyld"
-	COMPILE_FLAGS "-fno-exceptions -fno-rtti")
-target_link_libraries(system_dyld PRIVATE system_c system_kernel compiler_rt launch)
+	OUTPUT_NAME "dyld")
+set_property(TARGET system_dyld_obj APPEND_STRING PROPERTY
+	COMPILE_FLAGS " -fno-exceptions -fno-rtti")
+#target_link_libraries(system_dyld PRIVATE platform_static32 platform_static64 system_c system_kernel compiler_rt launch)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_SAVED} -nostdlib")
 
@@ -74,9 +80,13 @@ add_executable(system_loader
 use_ld64(system_loader)
 set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
 set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -nostdlib -Wl,-e,__dyld_start")
-target_link_libraries(system_loader libc_static system_blocks_static unwind_static system_kernel_static system_m_static cxxabi_static keymgr_static compiler_rt_static32 compiler_rt_static64 system_duct_static)
+target_link_libraries(system_loader libc_static system_blocks_static
+	libc_static32 libc_static64
+	unwind_static system_kernel_static system_m_static cxxabi_static
+	keymgr_static compiler_rt_static32 compiler_rt_static64 system_duct_static
+	platform_static32 platform_static64 pthread_static)
 
-make_fat(system_dyld)
+#make_fat(system_dyld)
 
 install(TARGETS system_dyld DESTINATION libexec/darling/usr/lib/system)
 install(TARGETS system_loader DESTINATION libexec/darling/usr/lib)

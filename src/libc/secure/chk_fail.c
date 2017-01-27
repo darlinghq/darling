@@ -27,4 +27,42 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <TargetConditionals.h>
+#include <mach-o/dyld_priv.h>
+#include "secure.h"
 
+extern void __abort(void) __dead2;
+
+void
+__attribute__ ((noreturn))
+__chk_fail (void)
+{
+  //const char message[] = "[%d] detected buffer overflow";
+
+  //syslog(LOG_CRIT, message, getpid());
+
+  const char message[] = "detected buffer overflow";
+  write(2, message, sizeof(message)-1);
+
+  __abort();
+}
+
+static void __chk_assert_no_overlap_callback(const struct mach_header* mh, intptr_t vmaddr_slide)
+{
+	if (__chk_assert_no_overlap)
+	{
+		if (dyld_get_sdk_version(mh) < DYLD_MACOSX_VERSION_10_9)
+			__chk_assert_no_overlap = 0;
+	}
+}
+
+void
+__chk_init (void)
+{
+  if (dyld_get_program_sdk_version() >= DYLD_MACOSX_VERSION_10_9)
+  {
+    _dyld_register_func_for_add_image(&__chk_assert_no_overlap_callback);
+    __chk_assert_no_overlap = 1;
+  }
+  else
+    __chk_assert_no_overlap = 0;
+}

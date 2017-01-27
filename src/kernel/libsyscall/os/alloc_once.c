@@ -34,6 +34,7 @@ struct _os_alloc_once_s {
 	void *ptr;
 };
 
+// XXX: I had to add an initializer here. Without it, the symbol wasn't being exported
 __attribute__((visibility("default")))
 extern struct _os_alloc_once_s _os_alloc_once_table[];
-struct _os_alloc_once_s _os_alloc_once_table[OS_ALLOC_ONCE_KEY_MAX];
+struct _os_alloc_once_s _os_alloc_once_table[OS_ALLOC_ONCE_KEY_MAX] = { {0,0} };

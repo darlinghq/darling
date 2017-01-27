@@ -1,5 +1,5 @@
 // This function is called from _gai_addr_sort()
-// No implementation seems to be available.
+// On macOS, it resides in libsystem_network.dylib, which is not open source.
 
 int sa_dst_compare()
 {

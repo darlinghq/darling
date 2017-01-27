@@ -20,6 +20,7 @@ set(mldr_sources
 	mldr.c
 	threads.c
 	gdb.c
+	commpage.c
 )
 add_executable(mldr ${mldr_sources})
 target_link_libraries(mldr -lpthread -ldl)

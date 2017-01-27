@@ -42,17 +42,32 @@ make_fat(info-dns
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_info.dylib")
-add_darling_library(system_info SHARED $<TARGET_OBJECTS:info-util>
-	$<TARGET_OBJECTS:info-dns>
-	$<TARGET_OBJECTS:info-gen>
-	$<TARGET_OBJECTS:info-nis>
-	$<TARGET_OBJECTS:info-rpc>
-	$<TARGET_OBJECTS:info-lookup>
-	$<TARGET_OBJECTS:info-membership>
-	$<TARGET_OBJECTS:darling-resolver>
+add_circular(system_info FAT
+	OBJECTS
+		$<TARGET_OBJECTS:info-util>
+		$<TARGET_OBJECTS:info-dns>
+		$<TARGET_OBJECTS:info-gen>
+		$<TARGET_OBJECTS:info-nis>
+		$<TARGET_OBJECTS:info-rpc>
+		$<TARGET_OBJECTS:info-lookup>
+		$<TARGET_OBJECTS:info-membership>
+		$<TARGET_OBJECTS:darling-resolver>
+	SIBLINGS
+		system_c
+		system_dyld
+		system_blocks
+		system_kernel
+		system_malloc
+		system_duct
+		system_pthread
+		libdispatch_shared
+		system_notify
+		platform
+	DEPENDENCIES
+		resolv-darwin
 )
-target_link_libraries(system_info PRIVATE system_c resolv-darwin system_dyld system_blocks libdispatch_shared system_notify platform)
-make_fat(system_info)
+#target_link_libraries(system_info PRIVATE system_c resolv-darwin system_dyld system_blocks libdispatch_shared system_notify platform)
+#make_fat(system_info)
 
 install(TARGETS system_info DESTINATION libexec/darling/usr/lib/system)
 install(FILES master.passwd DESTINATION libexec/darling/etc)

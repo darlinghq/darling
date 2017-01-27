@@ -25,9 +25,23 @@ set(notify_sources
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_notify.dylib")
-add_darling_library(system_notify SHARED ${notify_sources})
-target_link_libraries(system_notify system_c system_kernel system_blocks libdispatch_shared launch system_dyld system_malloc system_pthread)
-make_fat(system_notify)
+add_circular(system_notify FAT
+	SOURCES
+		${notify_sources}
+	SIBLINGS
+		system_c
+		system_kernel
+		system_blocks
+		libdispatch_shared
+		launch
+		system_dyld
+		system_malloc
+		system_pthread
+		platform
+		system_asl
+)
+#target_link_libraries(system_notify system_c system_kernel system_blocks libdispatch_shared launch system_dyld system_malloc system_pthread)
+#make_fat(system_notify)
 
 install(TARGETS system_notify DESTINATION libexec/darling/usr/lib/system)
 

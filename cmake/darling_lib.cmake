@@ -71,8 +71,13 @@ FUNCTION(add_circular name)
 	endif (CIRCULAR_SOURCES)
 
 	# Then create a shared Darling library, while ignoring all dependencies and using flat namespace
-	add_darling_library("${name}_firstpass" SHARED ${all_objects})# $<TARGET_OBJECTS:${name}_obj> ${CIRCULAR_OBJECTS})
+	add_darling_library("${name}_firstpass" SHARED ${all_objects})
 	set_property(TARGET "${name}_firstpass" APPEND_STRING PROPERTY LINK_FLAGS " ${CIRCULAR_LINK_FLAGS} -Wl,-flat_namespace -Wl,-undefined,suppress")
+
+	#if (DYLIB_INSTALL_NAME)
+	#	set_property(TARGET "${name}_firstpass" PROPERTY FULL_PATH "${DYLIB_INSTALL_NAME}")
+	#endif (DYLIB_INSTALL_NAME)
+	#set_property(GLOBAL APPEND_STRING PROPERTY FIRSTPASS_MAP " -Wl,-dylib_file,${DYLIB_INSTALL_NAME}:$<TARGET_FILE:${name}_firstpass>")
 
 	foreach(dep ${CIRCULAR_STRONG_SIBLINGS})
 		target_link_libraries("${name}_firstpass" PRIVATE "${dep}_firstpass")
@@ -83,12 +88,18 @@ FUNCTION(add_circular name)
 	endif (CIRCULAR_FAT)
 
 	# Then build the final product while linking against firstpass libraries
-	add_darling_library(${name} SHARED ${all_objects}) #$<TARGET_OBJECTS:${name}_obj> ${CIRCULAR_OBJECTS})
-	set_property(TARGET "${name}" APPEND_STRING PROPERTY LINK_FLAGS " ${CIRCULAR_LINK_FLAGS}")
+	add_darling_library(${name} SHARED ${all_objects})
 
+	#set(dylib_files "")
 	foreach(dep ${CIRCULAR_SIBLINGS})
+		#get_property(full_path TARGET "${name}_firstpass" PROPERTY FULL_PATH)
+		#set(dylib_files "${dylib_files} -Wl,-dylib_file,${full_path}:$<TARGET_FILE:${name}_firstpass>")
 		target_link_libraries("${name}" PRIVATE "${dep}_firstpass")
 	endforeach(dep)
+	
+	get_property(dylib_files GLOBAL PROPERTY FIRSTPASS_MAP)
+	set_property(TARGET "${name}" APPEND_STRING PROPERTY LINK_FLAGS " ${CIRCULAR_LINK_FLAGS}")
+
 	target_link_libraries("${name}" PRIVATE ${CIRCULAR_DEPENDENCIES})
 
 	if (CIRCULAR_FAT)

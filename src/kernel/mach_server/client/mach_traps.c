@@ -554,4 +554,18 @@ kern_return_t bsdthread_terminate_trap(
 	return ioctl(driver_fd, NR_bsdthread_terminate_trap, &args);
 }
 
+typedef struct voucher_mach_msg_state_s *voucher_mach_msg_state_t;
+
+boolean_t voucher_mach_msg_set(mach_msg_header_t *msg)
+{
+	return 0;
+}
+
+void voucher_mach_msg_revert(voucher_mach_msg_state_t state)
+{
+}
+
+voucher_mach_msg_state_t voucher_mach_msg_adopt(mach_msg_header_t *msg)
+{
+}
 

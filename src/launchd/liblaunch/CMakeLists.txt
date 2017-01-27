@@ -31,9 +31,15 @@ set(launch_sources
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/liblaunch.dylib")
-add_darling_library(launch SHARED ${launch_sources})
-target_link_libraries(launch PRIVATE system_c system_kernel)
-make_fat(launch)
+add_circular(launch FAT
+	SOURCES
+		${launch_sources}
+	SIBLINGS
+		system_c
+		system_kernel
+)
+#target_link_libraries(launch PRIVATE system_c system_kernel)
+#make_fat(launch)
 
 install(TARGETS launch DESTINATION libexec/darling/usr/lib/system)
 

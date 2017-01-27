@@ -5,6 +5,7 @@
 #include <linux-syscalls/linux.h>
 
 void __simple_vsprintf(char* buf, const char* format, va_list vl);
+extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
 
 int __simple_strlen(const char* text)
 {
@@ -190,7 +191,6 @@ unsigned long long __simple_atoi16(const char* str, const char** endp)
 
 extern void *memmove(void *dest, const void *src, __SIZE_TYPE__ n);
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
-extern void *memchr(const void *s, int c, __SIZE_TYPE__ n);
 extern long sys_read(int fd, void* buf, __SIZE_TYPE__ n);
 
 #ifndef min

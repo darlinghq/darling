@@ -23,6 +23,10 @@ set(string_x86_64_sources
 	strlcpy.c
 )
 
+# i386 only, vice versa
+set(string_i386_sources
+	FreeBSD/strnlen.c)
+
 set(string_sources ${string_sources}
 	FreeBSD/index.c
 	FreeBSD/memmem.c
@@ -86,6 +90,9 @@ SET_SOURCE_FILES_PROPERTIES(FreeBSD/strerror.c PROPERTIES COMPILE_FLAGS "${CMAKE
 add_library(libc-string OBJECT ${string_sources})
 add_library(libc-string-x86_64 OBJECT ${string_x86_64_sources})
 set_target_properties(libc-string-x86_64 PROPERTIES COMPILE_FLAGS "-arch x86_64")
+
+add_library(libc-string-i386 OBJECT ${string_i386_sources})
+set_target_properties(libc-string-i386 PROPERTIES COMPILE_FLAGS "-arch i386")
 
 # Legacy variant
 set(string-legacy_sources

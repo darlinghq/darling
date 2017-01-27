@@ -20,7 +20,6 @@
 extern int strcmp(const char *s1, const char *s2);
 extern char *strcat(char *dest, const char *src);
 extern char *strcpy(char *dest, const char *src);
-extern void* memchr(const void* s, int c, __SIZE_TYPE__ n);
 extern char* strchr(const char* s, int c);
 extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
 extern __SIZE_TYPE__ strlen(const char *s);

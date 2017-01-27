@@ -6,7 +6,7 @@ enable_language(C ASM)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -ggdb -O0")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -DBUILDING_FOR_CARBONCORE_LEGACY -funroll-loops -msse3") # -DBUILDING_FOR_CARBONCORE_LEGACY")
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -DBUILDING_FOR_CARBONCORE_LEGACY")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include)
@@ -155,11 +155,21 @@ set_target_properties(system_m_extra PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CA
 make_fat(system_m_extra)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_m.dylib")
-add_darling_library(system_m SHARED ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
-set_property(TARGET system_m APPEND_STRING PROPERTY LINK_FLAGS
-	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
+add_circular(system_m FAT
+	SOURCES
+		${libm_sources}
+	OBJECTS
+		$<TARGET_OBJECTS:system_m_extra>
+	SIBLINGS
+		system_c
+		system_dyld
+	LINK_FLAGS
+		"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias"
+)
+#set_property(TARGET system_m APPEND_STRING PROPERTY LINK_FLAGS
+#	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
 #target_link_libraries(system_m)
-make_fat(system_m)
+#make_fat(system_m)
 
 install(TARGETS system_m DESTINATION libexec/darling/usr/lib/system)
 

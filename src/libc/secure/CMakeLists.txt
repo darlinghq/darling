@@ -6,6 +6,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_C99_SOURCE -D_FORTIFY_SOURCE=0 -
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa/FreeBSD")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa")
 
+include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/dyld-apple/include)
+
 set(secure_sources
 	chk_fail.c
 	memcpy_chk.c
@@ -24,6 +26,7 @@ set(secure_sources
 	strncpy_chk.c
 	vsnprintf_chk.c
 	vsprintf_chk.c
+	secure.c
 )
 
 #SET_SOURCE_FILES_PROPERTIES(FreeBSD/snprintf.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS}")

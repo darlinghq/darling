@@ -2,8 +2,8 @@
 #include <stddef.h>
 #include "unistd/read.h"
 
-extern void *memchr(const void *s, int c, __SIZE_TYPE__ n);
 extern void *memmove(void *dest, const void *src, __SIZE_TYPE__ n);
+extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
 
 const char* _readline(int fd, struct rdline_buffer* buf)
 {

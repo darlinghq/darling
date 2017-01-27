@@ -87,7 +87,7 @@
 #define UNIX_SYSCALL_TRAP	\
 	call __darling_bsd_syscall
 #define MACHDEP_SYSCALL_TRAP	\
-	ud2
+	call __darling_machdep_syscall
 
 #endif
 
@@ -110,9 +110,9 @@ END(_##trap_name)
 #ifndef KERNEL
 
 #define UNIX_SYSCALL_TRAP	\
-	syscall
+	call __darling_bsd_syscall
 #define MACHDEP_SYSCALL_TRAP	\
-	syscall
+	call __darling_machdep_syscall
 
 /*
  * Macro to generate Mach call stubs in Libc.

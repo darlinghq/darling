@@ -68,6 +68,7 @@
 #include "process/wait4.h"
 #include "process/waitid.h"
 #include "process/execve.h"
+#include "misc/getentropy.h"
 #include "misc/getlogin.h"
 #include "misc/shared_region_check_np.h"
 #include "ioctl/ioctl.h"
@@ -278,6 +279,7 @@ void* __bsd_syscall_table[600] = {
 	[240] = sys_listxattr,
 	[241] = sys_flistxattr,
 	[244] = sys_posix_spawn,
+	[274] = sys_sysctlbyname,
 	[282] = sys_chmod_extended,
 	[283] = sys_fchmod_extended,
 	[294] = sys_shared_region_check_np,
@@ -330,5 +332,6 @@ void* __bsd_syscall_table[600] = {
 	[415] = sys_pwrite_nocancel,
 	[417] = sys_poll_nocancel,
 	[423] = sys_semwait_signal_nocancel,
+	[500] = sys_getentropy,
 };
 

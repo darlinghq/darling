@@ -77,6 +77,8 @@ set(syscall_sources
 	wrappers/clonefile.c
 	wrappers/coalition.c
 	wrappers/__commpage_gettimeofday.c
+	wrappers/__commpage_gettimeofday_asm.S
+	wrappers/__get_cpu_capabilities.S
 	wrappers/csr.c
 	wrappers/fs_snapshot.c
 	wrappers/gethostuuid.c
@@ -617,9 +619,9 @@ add_library(libsyscall_dynamic OBJECT ${syscall_dynamic_sources})
 make_fat(libsyscall)
 make_fat(libsyscall_dynamic)
 
-add_library(libsyscall_static OBJECT wrappers/_libc_funcptr.c)
-set_target_properties(libsyscall_static PROPERTIES COMPILE_FLAGS "-DVARIANT_DYLD")
-make_fat(libsyscall_static)
+#add_library(libsyscall_static OBJECT wrappers/_libc_funcptr.c)
+#set_target_properties(libsyscall_static PROPERTIES COMPILE_FLAGS "-DVARIANT_DYLD")
+#make_fat(libsyscall_static)
 
 # For i386
 #add_library(libsyscall_legacy_extra OBJECT wrappers/legacy/select.c)

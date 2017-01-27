@@ -35,10 +35,16 @@ set(libunwind_sources
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libunwind.dylib")
-add_darling_library(unwind SHARED ${libunwind_sources})
-target_link_libraries(unwind PRIVATE system_c keymgr)
-set_target_properties(unwind PROPERTIES LINKER_LANGUAGE C)
-make_fat(unwind)
+add_circular(unwind FAT
+	SOURCES
+		${libunwind_sources}
+	SIBLINGS
+		system_c
+		keymgr
+)
+#target_link_libraries(unwind PRIVATE system_c keymgr)
+#set_target_properties(unwind PROPERTIES LINKER_LANGUAGE C)
+#make_fat(unwind)
 
 add_library(unwind_static STATIC ${libunwind_sources})
 set_target_properties(unwind_static PROPERTIES COMPILE_FLAGS "-DNDEBUG=1")

@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2016 Lubos Dolezel
+Copyright (C) 2017 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "elfcalls.h"
 #include "threads.h"
 #include "gdb.h"
+#include "commpage.h"
 
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
@@ -54,6 +55,7 @@ static void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out);
 static int native_prot(int prot);
 static void apply_root_path(char* path);
 static char* elfcalls_make(void);
+static char* apple0_make(const char* filepath);
 
 int main(int argc, char** argv, char** envp)
 {
@@ -106,7 +108,7 @@ int main(int argc, char** argv, char** envp)
 #       error Unsupported platform!
 #endif
 
-	apple[0] = filename;
+	apple[0] = apple0_make(filename);
 	apple[1] = elfcalls_make();
 	apple[2] = NULL;
 
@@ -157,11 +159,16 @@ void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out)
 
 	if (magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
 	{
+		if (mh_out)
+			commpage_setup(true);
+
 		lseek(fd, 0, SEEK_SET);
 		load64(fd, entryPoint_out, mh_out);
 	}
 	else if (magic == FAT_MAGIC || magic == FAT_CIGAM)
 	{
+		if (mh_out)
+			commpage_setup(false);
 	}
 	else
 	{
@@ -410,5 +417,17 @@ static char* elfcalls_make(void)
 
 	sprintf(param, "elf_calls=%p", &calls);
 	return param;
+}
+
+char* apple0_make(const char* filepath)
+{
+	const char prefix[] = "executable_path=";
+	char* apple0;
+
+	apple0 = (char*) malloc(strlen(filepath) + sizeof(prefix));
+	strcpy(apple0, prefix);
+	strcat(apple0, filepath);
+
+	return apple0;
 }
 

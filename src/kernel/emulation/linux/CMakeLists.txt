@@ -13,6 +13,7 @@ add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD
 	-DEMULATED_RELEASE="12.0.0"
 	-DEMULATED_VERSION="Darwin Kernel Version 12.0.0")
 
+
 include_directories(${CMAKE_SOURCE_DIR}/src/dyld)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -22,8 +23,10 @@ set(emulation_sources
 	syscalls.c
 	simple.c
 	errno.c
-	tls.c
 	readline.c
+	machdep/machdeps.c
+	machdep/machdep-table.S
+	machdep/tls.c
 	unistd/write.c
 	unistd/read.c
 	unistd/pread.c
@@ -97,6 +100,7 @@ set(emulation_sources
 	signal/sigprocmask.c
 	signal/sig_restorer.S
 	signal/sigsuspend.c
+	misc/getentropy.c
 	misc/syscall.c
 	misc/shared_region_check_np.c
 	misc/ioctl.c

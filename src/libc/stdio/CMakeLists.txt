@@ -8,6 +8,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsd
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa/FreeBSD")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../gdtoa")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/FreeBSD")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(stdio_sources
 	xprintf_all_in_one.c
@@ -54,8 +55,8 @@ set(stdio_sources
 	FreeBSD/fwrite.c
 	FreeBSD/fwscanf.c
 	FreeBSD/getc.c
-	FreeBSD/getchar.c
 	FreeBSD/getdelim.c
+	FreeBSD/getchar.c
 	FreeBSD/getline.c
 	FreeBSD/gets.c
 	FreeBSD/getw.c
@@ -110,6 +111,15 @@ set(stdio_sources
 	FreeBSD/wprintf.c
 	FreeBSD/wscanf.c
 	FreeBSD/wsetup.c
+	FreeBSD/xprintf.c
+	FreeBSD/xprintf_errno.c
+	FreeBSD/xprintf_float.c
+	FreeBSD/xprintf_hexdump.c
+	FreeBSD/xprintf_int.c
+	FreeBSD/xprintf_quote.c
+	FreeBSD/xprintf_str.c
+	FreeBSD/xprintf_time.c
+	FreeBSD/xprintf_vis.c
 )
 
 set_source_files_properties(FreeBSD/fopen.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_FOPEN")

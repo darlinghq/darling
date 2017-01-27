@@ -3,7 +3,7 @@
 
 #define ARCH_SET_GS	0x1001
 
-void __pthread_set_self(void* ptr)
+void sys_thread_set_tsd_base(void* ptr, int unk)
 {
 #ifdef __x86_64__
 	LINUX_SYSCALL(__NR_arch_prctl, ARCH_SET_GS, ptr);

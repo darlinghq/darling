@@ -11,6 +11,12 @@ long __unknown_syscall(int nr, ...)
 	return -ENOSYS;
 }
 
+long __unknown_syscall_machdep(int nr, ...)
+{
+	__simple_printf("Unimplemented machdep trap (%d)\n", nr);
+	return -ENOSYS;
+}
+
 int __linux_syscall(int nr, long a1, long a2, long a3, long a4, long a5, long a6)
 {
 	return linux_syscall(a1, a2, a3, a4, a5, a6, nr);
