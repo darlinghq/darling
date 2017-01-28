@@ -11,7 +11,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
-include_directories(${DARLING_TOP_DIRECTORY}/src/external/libobjc2)
+#include_directories(${DARLING_TOP_DIRECTORY}/src/external/libobjc2)
 include_directories(${DARLING_TOP_DIRECTORY}/src/external/corefoundation/Headers)
 include_directories(${CMAKE_BINARY_DIR}/src/external/corefoundation/Headers)
 include_directories(${DARLING_TOP_DIRECTORY}/src/external/foundation/Headers)

@@ -214,6 +214,7 @@ add_library(libc_static STATIC
 	$<TARGET_OBJECTS:libc-string>
 	$<TARGET_OBJECTS:libc-gdtoa_dyld>
 	$<TARGET_OBJECTS:libc-secure>
+	$<TARGET_OBJECTS:libc-uuid>
 	$<TARGET_OBJECTS:libc-os>
 	$<TARGET_OBJECTS:libc-stdio_extsn>
 	)

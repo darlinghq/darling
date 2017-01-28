@@ -558,14 +558,23 @@ typedef struct voucher_mach_msg_state_s *voucher_mach_msg_state_t;
 
 boolean_t voucher_mach_msg_set(mach_msg_header_t *msg)
 {
+	UNIMPLEMENTED_TRAP();
 	return 0;
 }
 
 void voucher_mach_msg_revert(voucher_mach_msg_state_t state)
 {
+	UNIMPLEMENTED_TRAP();
 }
 
 voucher_mach_msg_state_t voucher_mach_msg_adopt(mach_msg_header_t *msg)
 {
+	UNIMPLEMENTED_TRAP();
+	return NULL;
 }
 
+kern_return_t mach_generate_activity_id(mach_port_name_t task, int i, uint64_t* id)
+{
+	UNIMPLEMENTED_TRAP();
+	return KERN_FAILURE;
+}

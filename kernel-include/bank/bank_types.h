@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2005 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2012-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -26,46 +26,39 @@
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
-#ifndef	_MACH_MACH_TIME_H_
-#define	_MACH_MACH_TIME_H_
+#ifndef _BANK_BANK_TYPES_H_
+#define _BANK_BANK_TYPES_H_
 
+#include <stdint.h>
 #include <mach/mach_types.h>
 
-#include <sys/cdefs.h>
+#define MACH_VOUCHER_ATTR_BANK_NULL 		((mach_voucher_attr_recipe_command_t)601)
+#define MACH_VOUCHER_ATTR_BANK_CREATE 		((mach_voucher_attr_recipe_command_t)610)
 
-struct mach_timebase_info {
-	uint32_t	numer;
-	uint32_t	denom;
+#define MACH_VOUCHER_BANK_CONTENT_SIZE (500)
+
+typedef uint32_t bank_action_t;
+#define BANK_ORIGINATOR_PID     0x1
+#define BANK_PERSONA_TOKEN      0x2
+
+struct proc_persona_info {
+	uint64_t unique_pid;
+	int32_t  pid;
+	uint32_t flags;
+	uint32_t pidversion;
+	uint32_t persona_id;
+	uint32_t uid;
+	uint32_t gid;
+	uint8_t  macho_uuid[16];
 };
 
-typedef struct mach_timebase_info	*mach_timebase_info_t;
-typedef struct mach_timebase_info	mach_timebase_info_data_t;
+struct persona_token {
+	struct proc_persona_info originator;
+	struct proc_persona_info proximate;
+};
 
-__BEGIN_DECLS
+#ifdef PRIVATE
+#define ENTITLEMENT_PERSONA_PROPAGATE "com.apple.private.personas.propagate"
+#endif /* PRIVATE */
 
-kern_return_t		mach_timebase_info(
-						mach_timebase_info_t	info);
-
-kern_return_t		mach_wait_until(
-						uint64_t		deadline);
-
-
-uint64_t			mach_absolute_time(void);
-
-__OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_8_0)
-uint64_t			mach_approximate_time(void);
-
-/*
- * like mach_absolute_time, but advances during sleep
- */
-__OSX_AVAILABLE(10.12) __IOS_AVAILABLE(10.0) __TVOS_AVAILABLE(10.0) __WATCHOS_AVAILABLE(3.0)
-uint64_t			mach_continuous_time(void);
-
-/*
- * like mach_approximate_time, but advances during sleep
- */
-__OSX_AVAILABLE(10.12) __IOS_AVAILABLE(10.0) __TVOS_AVAILABLE(10.0) __WATCHOS_AVAILABLE(3.0)
-uint64_t			mach_continuous_approximate_time(void);
-__END_DECLS
-
-#endif /* _MACH_MACH_TIME_H_ */
+#endif /* _BANK_BANK_TYPES_H_ */

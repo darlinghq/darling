@@ -1,9 +1,6 @@
 [submodule "src/external/libdispatch"]
 	path = src/external/libdispatch
 	url = ../darling-libdispatch.git
-[submodule "src/external/libobjc2"]
-	path = src/external/libobjc2
-	url = ../darling-libobjc2.git
 [submodule "src/external/libcxx"]
 	path = src/external/libcxx
 	url = ../darling-libcxx.git
@@ -187,3 +184,6 @@
 [submodule "src/external/syslog"]
 	path = src/external/syslog
 	url = ../darling-syslog.git
+[submodule "src/external/libclosure"]
+	path = src/external/libclosure
+	url = ../darling-libclosure.git

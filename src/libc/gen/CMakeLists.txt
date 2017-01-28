@@ -7,6 +7,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsd
 
 include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/private)
+include_directories(${CMAKE_SOURCE_DIR}/src/external/libclosure)
 include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread/pthread)
 include_directories(${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include)
 
