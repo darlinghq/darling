@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2016 Lubos Dolezel
+Copyright (C) 2017 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,7 +22,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <mach-o/dyld_images.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void setup_gdb_notifications(uint64_t slide, uint64_t addr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

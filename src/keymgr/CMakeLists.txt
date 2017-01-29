@@ -35,6 +35,7 @@ add_circular(keymgr FAT
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
 add_library(keymgr_static STATIC ${keymgr_sources})
+make_fat(keymgr_static)
 add_dependencies(keymgr_static ranlib x86_64-apple-darwin11-ar)
 
 install(TARGETS keymgr DESTINATION libexec/darling/usr/lib/system)

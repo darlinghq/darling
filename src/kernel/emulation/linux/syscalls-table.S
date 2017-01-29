@@ -29,11 +29,11 @@ __darling_bsd_syscall:
 	movl	%ecx, -24+off(%esp)
 
 __darling_bsd_syscall:
-	calll	.L0$pb
-.L0$pb:
+	calll	1f
+1:
 	popl	%ecx
-.Ltmp0:
-	movl	L___bsd_syscall_table$non_lazy_ptr-.L0$pb(%ecx), %ecx
+2:
+	movl	L___bsd_syscall_table$non_lazy_ptr-1b(%ecx), %ecx
 	andl	$0xffff, %eax // Because there is some extra stuff in upper bytes we don't need
 	movl	(%ecx,%eax,4), %eax
 	test	%eax, %eax

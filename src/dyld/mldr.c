@@ -31,6 +31,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <mach-o/loader.h>
 #include <mach-o/fat.h>
 #include <dlfcn.h>
+#include <endian.h>
 #include "elfcalls.h"
 #include "threads.h"
 #include "gdb.h"
@@ -42,6 +43,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define PAGE_ALIGN(x) (x & ~(PAGE_SIZE-1))
 #define PAGE_ROUNDUP(x) (((((x)-1) / PAGE_SIZE)+1) * PAGE_SIZE)
 
+#define CPU_ARCH_ABI64	0x01000000
+#define CPU_TYPE_ANY		((cpu_type_t) -1)
+#define CPU_TYPE_X86		((cpu_type_t) 7)
+#define	CPU_TYPE_X86_64		(CPU_TYPE_X86 | CPU_ARCH_ABI64)
+
 static const char* dyld_path = INSTALL_PREFIX "/libexec/usr/lib/dyld";
 
 // The idea of mldr is to load dyld_path into memory and set up the stack
@@ -51,11 +57,16 @@ static const char* dyld_path = INSTALL_PREFIX "/libexec/usr/lib/dyld";
 // Additionally, mldr providers access to native platforms libdl.so APIs (ELF loader).
 
 static void load64(int fd, uint64_t* entryPoint_out, uint64_t* mh_out);
-static void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out);
+static void load32(int fd, uint64_t* entryPoint_out, uint64_t* mh_out);
+static void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type_t cpu);
 static int native_prot(int prot);
 static void apply_root_path(char* path);
 static char* elfcalls_make(void);
 static char* apple0_make(const char* filepath);
+static void* setup_stack32(void* stack, int argc, const char** argv, const char** envp, const char** apple, uint64_t mh);
+
+static bool mode_32in64 = false;
+static uint32_t stack_size = 0;
 
 int main(int argc, char** argv, char** envp)
 {
@@ -93,11 +104,27 @@ int main(int argc, char** argv, char** envp)
 	memset(p, 0, envp[0]-p);
 	argv[--argc] = NULL;
 
-	load(filename, &entryPoint, &mh);
+	load(filename, &entryPoint, &mh, CPU_TYPE_ANY);
 
 #ifdef __x86_64__
 #       define GETSP(ptr) __asm__ volatile("movq %%rsp, %0" : "=r"(ptr) ::)
 #       define JUMPX(pushCount, addr) __asm__ volatile("sub %1, %%rsp; jmpq *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
+
+	// Jump to a 32-bit address through segment number 0x23 (32-bit). The 64-bit segment is 0x33.
+	// Set DS to 0x2B.
+#       define JUMPSP(sp, addr) __asm__ volatile("movq %1, %%rsp;" \
+												"subq $12, %%rsp;" \
+												/*"movq %0, %%rax;"*/ \
+												"movl %0, 8(%%rsp);" \
+												"movl $0x23, 4(%%rsp);" \
+												"leaq 1f, %%rax;" \
+												"movl %%eax, (%%rsp);" \
+												"lret;" \
+												".code32;\n" \
+												"1: push $0x2b;" \
+												"pop %%ds;" \
+												"ret;" \
+												:: "r"((uint32_t)addr), "r"(sp) : "rax")
 #elif defined(__i386__)
 #       define GETSP(ptr) __asm__ volatile("movl %%esp, %0" : "=m"(ptr) ::)
 #       define JUMPX(pushCount, addr) __asm__ volatile("sub %1, %%esp; jmp *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
@@ -112,28 +139,111 @@ int main(int argc, char** argv, char** envp)
 	apple[1] = elfcalls_make();
 	apple[2] = NULL;
 
-	GETSP(sp);
-	sp--;
+	if (!mode_32in64)
+	{
+		GETSP(sp);
+		sp--;
 
-	for (int i = sizeof(apple)/sizeof(apple[0])-1; i >= 0; i--)
-		*(sp-(pushCount++)) = (void*) apple[i];
+		for (int i = sizeof(apple)/sizeof(apple[0])-1; i >= 0; i--)
+			*(sp-(pushCount++)) = (void*) apple[i];
 
-	*(sp-(pushCount++)) = NULL;
-	for (int i = 0; environ[i] != NULL; i++)
-		*(sp-(pushCount++)) = environ[i];
+		*(sp-(pushCount++)) = NULL;
+		for (int i = 0; environ[i] != NULL; i++)
+			*(sp-(pushCount++)) = environ[i];
 
-	*(sp-(pushCount++)) = NULL;
-	for (int i = argc-1; i >= 0; i--)
-		*(sp-(pushCount++)) = (void*) argv[i];
+		*(sp-(pushCount++)) = NULL;
+		for (int i = argc-1; i >= 0; i--)
+			*(sp-(pushCount++)) = (void*) argv[i];
 
-	*(sp-(pushCount++)) = (void*) (uintptr_t)(argc);
-	*(sp-(pushCount++)) = (void*) mh;
-	JUMPX(pushCount, entryPoint);
+		*(sp-(pushCount++)) = (void*) (uintptr_t)(argc);
+		*(sp-(pushCount++)) = (void*) mh;
+
+		JUMPX(pushCount, entryPoint);
+	}
+	else
+	{
+		uint32_t size = stack_size ? stack_size : 8*1024*1024;
+		size &= ~3u;
+
+		sp = mmap(NULL, size,
+				PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_32BIT | MAP_ANONYMOUS,
+				-1, 0);
+		// stack guard page
+		mprotect(sp, PAGE_SIZE, PROT_NONE);
+
+		// move to the top of the stack
+		sp += size/sizeof(void*) - 1;
+
+		JUMPSP(setup_stack32(sp, argc, (const char**) argv, (const char**) envp, apple, mh), entryPoint);
+	}
+
 
 	__builtin_unreachable();
 }
 
-void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out)
+static char* copystring(void* stack, const char* str)
+{
+	size_t len = strlen(str);
+	char* pos = (char*) stack;
+
+	pos -= len+1;
+	strcpy(pos, str);
+
+	return pos;
+}
+
+static size_t arraylen(const char** str)
+{
+	size_t len = 0;
+	while (str[len] != NULL)
+		len++;
+	return len;
+}
+
+void* setup_stack32(void* stack, int argc, const char** argv_in, const char** envp_in, const char** apple_in, uint64_t mh)
+{
+	char **argv_new, **envp_new, **apple_new;
+	size_t size, apple_size;
+	uint32_t* stack_pointers;
+
+	argv_new = (char**) __builtin_alloca((arraylen(argv_in) + 1) * sizeof(char*));
+	for (int i = argc-1; i >= 0; i--)
+		stack = argv_new[i] = copystring(stack, argv_in[i]);
+	argv_new[argc] = NULL;
+
+	size = arraylen(envp_in);
+	envp_new = (char**) __builtin_alloca((size + 1) * sizeof(char*));
+	for (int i = size-1; i >= 0; i--)
+		stack = envp_new[i] = copystring(stack, envp_in[i]);
+	envp_new[size] = NULL;
+
+	apple_size = arraylen(apple_in);
+	apple_new = (char**) __builtin_alloca((apple_size + 1) * sizeof(char*));
+	for (int i = apple_size-1; i >= 0; i--)
+		stack = apple_new[i] = copystring(stack, apple_in[i]);
+
+	stack_pointers = (uint32_t*) stack;
+	stack_pointers--;
+
+	*stack_pointers-- = 0;
+	for (int i = apple_size-1; i >= 0; i--)
+		*stack_pointers-- = (uint32_t) apple_new[i];
+
+	*stack_pointers-- = 0;
+	for (int i = 0; envp_new[i] != NULL; i++)
+		*stack_pointers-- = (uint32_t) envp_new[i];
+
+	*stack_pointers-- = 0;
+	for (int i = argc-1; i >= 0; i--)
+		*stack_pointers-- = (uint32_t) argv_new[i];
+
+	*stack_pointers-- = argc;
+	*stack_pointers = (uint32_t) mh;
+
+	return stack_pointers;
+}
+
+void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type_t cpu_desired)
 {
 	int fd;
 	uint32_t magic;
@@ -165,10 +275,97 @@ void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out)
 		lseek(fd, 0, SEEK_SET);
 		load64(fd, entryPoint_out, mh_out);
 	}
+	else if (magic == MH_MAGIC || magic == MH_CIGAM)
+	{
+		//if (mh_out)
+		//	commpage_setup(false);
+
+		mode_32in64 = true;
+		lseek(fd, 0, SEEK_SET);
+		load32(fd, entryPoint_out, mh_out);
+	}
 	else if (magic == FAT_MAGIC || magic == FAT_CIGAM)
 	{
+		struct fat_header fhdr;
+		struct fat_arch best_arch;
+		const bool swap = magic == FAT_CIGAM;
+
+		best_arch.cputype = CPU_TYPE_ANY;
+
+		if (read(fd, &fhdr.nfat_arch, sizeof(fhdr.nfat_arch)) != sizeof(fhdr.nfat_arch))
+		{
+			fprintf(stderr, "Cannot read the file header of %s.\n", path);
+			exit(1);
+		}
+
+#define SWAP32(x) x = __bswap_32(x)
+
+		if (swap)
+			SWAP32(fhdr.nfat_arch);
+
+		for (uint32_t i = 0; i < fhdr.nfat_arch; i++)
+		{
+			struct fat_arch arch;
+
+			if (read(fd, &arch, sizeof(arch)) != sizeof(arch))
+			{
+				fprintf(stderr, "Cannot read fat_arch header of %s.\n", path);
+				exit(1);
+			}
+
+			if (swap)
+			{
+				SWAP32(arch.cputype);
+				SWAP32(arch.cpusubtype);
+				SWAP32(arch.offset);
+				SWAP32(arch.size);
+				SWAP32(arch.align);
+			}
+
+			if (cpu_desired == CPU_TYPE_ANY)
+			{
+				// Find the best arch
+#ifdef __x86_64__
+				// Hope for x86-64, but also accept i386
+				// TODO: x86_64h (Haswell)
+				if (arch.cputype == CPU_TYPE_X86_64)
+				{
+					memcpy(&best_arch, &arch, sizeof(arch));
+					break;
+				}
+				else if (arch.cputype == CPU_TYPE_X86)
+					memcpy(&best_arch, &arch, sizeof(arch));
+#endif
+			}
+			else if (arch.cputype == cpu_desired)
+			{
+				memcpy(&best_arch, &arch, sizeof(arch));
+				break;
+			}
+		}
+
+		if (best_arch.cputype == CPU_TYPE_ANY)
+		{
+			fprintf(stderr, "No supported architecture found in fat %s.\n", path);
+			exit(1);
+		}
+		if (lseek(fd, best_arch.offset, SEEK_SET) == -1)
+		{
+			fprintf(stderr, "Cannot seek to selected arch in fat %s.\n", path);
+			exit(1);
+		}
+
+		
 		if (mh_out)
-			commpage_setup(false);
+			commpage_setup(best_arch.cputype & CPU_ARCH_ABI64);
+
+		if (best_arch.cputype & CPU_ARCH_ABI64)
+			load64(fd, entryPoint_out, mh_out);
+		else
+		{
+			mode_32in64 = true;
+			load32(fd, entryPoint_out, mh_out);
+		}
 	}
 	else
 	{
@@ -179,169 +376,13 @@ void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out)
 	close(fd);
 }
 
-void load64(int fd, uint64_t* entryPoint_out, uint64_t* mh_out)
-{
-	struct mach_header_64 header;
-	uint8_t* cmds;
-	uint64_t entryPoint = 0, entryPointDylinker = 0;
-	struct mach_header_64* mappedHeader = NULL;
-	uint64_t slide = 0;
-	uint64_t mmapSize = 0;
-	bool pie = false;
+#define GEN_64BIT
+#include "loader.c"
+#undef GEN_64BIT
 
-	if (read(fd, &header, sizeof(header)) != sizeof(header))
-	{
-		fprintf(stderr, "Cannot read the dyld header.\n");
-		exit(1);
-	}
-
-	cmds = (uint8_t*) malloc(header.sizeofcmds);
-	if (!cmds)
-	{
-		fprintf(stderr, "Cannot allocate %u bytes for loader commands.\n", header.sizeofcmds);
-		exit(1);
-	}
-
-	if (read(fd, cmds, header.sizeofcmds) != header.sizeofcmds)
-	{
-		fprintf(stderr, "Cannot read loader commands.\n");
-		exit(1);
-	}
-
-	if ((header.filetype == MH_EXECUTE && header.flags & MH_PIE) || header.filetype == MH_DYLINKER)
-	{
-		// Go through all LC_SEGMENT_64 commands to get the total continuous range required.
-		for (uint32_t i = 0, p = 0; i < header.ncmds; i++)
-		{
-			struct segment_command_64* seg = (struct segment_command_64*) &cmds[p];
-
-			// Load commands are always sorted, so this will get us the maximum address.
-			if (seg->cmd == LC_SEGMENT_64)
-				mmapSize = seg->vmaddr + seg->vmsize;
-
-			p += seg->cmdsize;
-		}
-
-		slide = (uint64_t) mmap(NULL, mmapSize, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-		if (slide == (uint64_t)MAP_FAILED)
-		{
-			fprintf(stderr, "Cannot mmap anonymous memory range: %s", strerror(errno));
-			exit(1);
-		}
-
-		pie = true;
-	}
-
-	for (uint32_t i = 0, p = 0; i < header.ncmds; i++)
-	{
-		struct load_command* lc;
-
-		lc = (struct load_command*) &cmds[p];
-
-		switch (lc->cmd)
-		{
-			case LC_SEGMENT_64:
-			{
-				struct segment_command_64* seg = (struct segment_command_64*) lc;
-				void* rv;
-
-				if (memcmp(SEG_PAGEZERO, seg->segname, sizeof(SEG_PAGEZERO)) == 0)
-				{
-					// Let's skip pagezero and map a single page at address 0 elsewhere.
-					p += lc->cmdsize;
-					continue;
-				}
-
-				if (seg->filesize < seg->vmsize)
-				{
-					if (slide != 0)
-					{
-						// Some segments' filesize != vmsize, thus this mprotect().
-						if (mprotect((void*) (seg->vmaddr + slide), seg->vmsize, native_prot(seg->maxprot)) != 0)
-						{
-							fprintf(stderr, "Cannot mprotect for segment %s: %s\n", seg->segname, strerror(errno));
-							exit(1);
-						}
-					}
-					else
-					{
-						size_t size = seg->vmsize - seg->filesize;
-						rv = mmap((void*) PAGE_ALIGN(seg->vmaddr + seg->vmsize - size), PAGE_ROUNDUP(size), native_prot(seg->maxprot),
-								MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
-					}
-				}
-
-				if (seg->filesize > 0)
-				{
-					rv = mmap((void*) (seg->vmaddr + slide), seg->filesize, native_prot(seg->maxprot),
-							MAP_FIXED | MAP_PRIVATE, fd, seg->fileoff);
-					if (rv == (void*)MAP_FAILED)
-					{
-						fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)seg->vmaddr, strerror(errno));
-						exit(1);
-					}
-				
-					if (seg->fileoff == 0)
-						mappedHeader = (struct mach_header_64*) (seg->vmaddr + slide);
-				}
-
-				if (strcmp(SEG_DATA, seg->segname) == 0)
-				{
-					// Look for section named __all_image_info for GDB integration
-					struct section_64* sect = (struct section_64*) (seg+1);
-					struct section_64* end = (struct section_64*) (&cmds[p + lc->cmdsize]);
-
-					while (sect < end)
-					{
-						if (strncmp(sect->sectname, "__all_image_info", 16) == 0)
-						{
-							setup_gdb_notifications(slide, sect->addr);
-							break;
-						}
-						sect++;
-					}
-				}
-				break;
-			}
-			case LC_UNIXTHREAD:
-			{
-				entryPoint = ((uint64_t*) lc)[18];
-				entryPoint += slide;
-				break;
-			}
-			case LC_LOAD_DYLINKER:
-			{
-				struct dylinker_command* dy = (struct dylinker_command*) lc;
-				char path[4096];
-				size_t length = dy->cmdsize - dy->name.offset;
-
-				if (length > sizeof(path)-1)
-				{
-					fprintf(stderr, "Dynamic linker name too long: %lu\n", length);
-					exit(1);
-				}
-
-				memcpy(path, ((char*) dy) + dy->name.offset, length);
-				path[length] = '\0';
-
-				apply_root_path(path);
-
-				load(path, &entryPointDylinker, NULL);
-
-				break;
-			}
-		}
-
-		p += lc->cmdsize;
-	}
-
-	free(cmds);
-
-	if (entryPoint_out != NULL)
-		*entryPoint_out = entryPointDylinker ? entryPointDylinker : entryPoint;
-	if (mh_out != NULL)
-		*mh_out = (uint64_t) mappedHeader;
-}
+#define GEN_32BIT
+#include "loader.c"
+#undef GEN_32BIT
 
 int native_prot(int prot)
 {
@@ -421,11 +462,8 @@ static char* elfcalls_make(void)
 
 char* apple0_make(const char* filepath)
 {
-	const char prefix[] = "executable_path=";
-	char* apple0;
+	static char apple0[4096] = "executable_path=";
 
-	apple0 = (char*) malloc(strlen(filepath) + sizeof(prefix));
-	strcpy(apple0, prefix);
 	strcat(apple0, filepath);
 
 	return apple0;

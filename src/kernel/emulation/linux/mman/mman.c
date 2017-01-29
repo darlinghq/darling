@@ -40,6 +40,9 @@ void* sys_mmap(void* start, unsigned long len, int prot, int flags, int fd, long
 	// 	linux_flags |= LINUX_MAP_STACK;
 
 #ifdef __NR_mmap2
+#ifdef __i386__
+	linux_flags |= LINUX_MAP_32BIT;
+#endif
 	ret = (void*) LINUX_SYSCALL6(__NR_mmap2, start, len, linux_prot, linux_flags, fd, pos / 4096);
 #else
 	ret = (void*) LINUX_SYSCALL6(__NR_mmap, start, len, linux_prot, linux_flags, fd, pos);

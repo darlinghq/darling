@@ -3,6 +3,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void commpage_setup(bool _64bit);
 
 union cpu_flags1 {
@@ -141,6 +145,10 @@ union cpu_flags5 {
   };
   uint32_t reg;
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

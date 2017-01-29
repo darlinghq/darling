@@ -80,14 +80,14 @@ add_executable(system_loader
 
 use_ld64(system_loader)
 set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
-set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -nostdlib -Wl,-e,__dyld_start")
+set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -nostdlib -Wl,-e,__dyld_start -Wl,-image_base,0x1fe00000")
 target_link_libraries(system_loader libc_static system_blocks_static
 	libc_static32 libc_static64
 	unwind_static system_kernel_static system_m_static cxxabi_static
 	keymgr_static compiler_rt_static32 compiler_rt_static64 system_duct_static
 	platform_static32 platform_static64 pthread_static macho_static)
 
-#make_fat(system_dyld)
+make_fat(system_loader)
 
 install(TARGETS system_dyld DESTINATION libexec/darling/usr/lib/system)
 install(TARGETS system_loader DESTINATION libexec/darling/usr/lib)

@@ -28,6 +28,7 @@ add_circular(system_duct FAT
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
 add_library(system_duct_static STATIC ${duct_sources})
+make_fat(system_duct_static)
 add_dependencies(system_duct_static ranlib x86_64-apple-darwin11-ar)
 
 install(TARGETS system_duct DESTINATION libexec/darling/usr/lib/system)

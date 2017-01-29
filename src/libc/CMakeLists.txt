@@ -121,6 +121,11 @@ make_fat(
 		libc-net
 		libc-net_cancelable
 		libc-locale
+		libc-gen_dyld
+		libc-stdlib_dyld
+		libc-string_dyld
+		libc-sys_dyld
+		libc-gdtoa_dyld
 )
 #	APPEND_STRING PROPERTY COMPILE_FLAGS
 #		" -arch x86_64 -arch i386"

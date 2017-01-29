@@ -13,6 +13,33 @@ _linux_syscall:
 
 #elif defined(__i386__)
 
+	// With 32in64, we cannot use sysenter, because our process doesn't have a 32-bit VDSO mapped
+	// and sysenter needs that for returning to user space.
+
+	// eax, ecx and edx are caller saved, the rest is calee saved
+	push	%ebx
+	push	%esi
+	push	%edi
+	push	%ebp
+
+	mov		20(%esp), %ebx
+	mov		24(%esp), %ecx
+	mov		28(%esp), %edx
+	mov		32(%esp), %esi
+	mov		36(%esp), %edi
+	mov		40(%esp), %ebp
+	mov		44(%esp), %eax
+
+	int		$0x80
+
+	pop		%ebp
+	pop		%edi
+	pop		%esi
+	pop		%ebx
+	ret
+
+#elif 0 //defined(__i386__)
+
 	push	%ebp
 	push	%ebx
 	push	%esi
