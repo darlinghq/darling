@@ -53,8 +53,12 @@ ENDFUNCTION(make_fat)
 #             and another sibling depends on this reexport's existence.
 # * DEPENDENCIES: Which standard libraries we should link against.
 # * LINK_FLAGS: Extra linker flags, e.g. an alias list
+# * UPWARD: Add an upward dependency. This affects initialization order. The specified dependency will only be
+#             loaded and initialized after the current library is fully loaded. This is needed to break
+#             certain dependency issues, esp. if a libSystem sublibrary depends on a library that depends on libSystem
+#             and has initializers. dyld bails out unless this dependency is upward.
 FUNCTION(add_circular name)
-	cmake_parse_arguments(CIRCULAR "FAT" "LINK_FLAGS" "SOURCES;OBJECTS;SIBLINGS;STRONG_SIBLINGS;DEPENDENCIES" ${ARGN})
+	cmake_parse_arguments(CIRCULAR "FAT" "LINK_FLAGS" "SOURCES;OBJECTS;SIBLINGS;STRONG_SIBLINGS;DEPENDENCIES;UPWARD" ${ARGN})
 	#message(STATUS "${name} sources: ${CIRCULAR_SOURCES}")
 	#message(STATUS "${name} siblings ${CIRCULAR_SIBLINGS}")
 	#message(STATUS "${name} deps: ${CIRCULAR_DEPENDENCIES}")
@@ -74,11 +78,6 @@ FUNCTION(add_circular name)
 	add_darling_library("${name}_firstpass" SHARED ${all_objects})
 	set_property(TARGET "${name}_firstpass" APPEND_STRING PROPERTY LINK_FLAGS " ${CIRCULAR_LINK_FLAGS} -Wl,-flat_namespace -Wl,-undefined,suppress")
 
-	#if (DYLIB_INSTALL_NAME)
-	#	set_property(TARGET "${name}_firstpass" PROPERTY FULL_PATH "${DYLIB_INSTALL_NAME}")
-	#endif (DYLIB_INSTALL_NAME)
-	#set_property(GLOBAL APPEND_STRING PROPERTY FIRSTPASS_MAP " -Wl,-dylib_file,${DYLIB_INSTALL_NAME}:$<TARGET_FILE:${name}_firstpass>")
-
 	foreach(dep ${CIRCULAR_STRONG_SIBLINGS})
 		target_link_libraries("${name}_firstpass" PRIVATE "${dep}_firstpass")
 	endforeach(dep)
@@ -90,11 +89,13 @@ FUNCTION(add_circular name)
 	# Then build the final product while linking against firstpass libraries
 	add_darling_library(${name} SHARED ${all_objects})
 
-	#set(dylib_files "")
 	foreach(dep ${CIRCULAR_SIBLINGS})
-		#get_property(full_path TARGET "${name}_firstpass" PROPERTY FULL_PATH)
-		#set(dylib_files "${dylib_files} -Wl,-dylib_file,${full_path}:$<TARGET_FILE:${name}_firstpass>")
 		target_link_libraries("${name}" PRIVATE "${dep}_firstpass")
+	endforeach(dep)
+	foreach(dep ${CIRCULAR_UPWARD})
+		#get_property(lib_location TARGET ${dep} PROPERTY LOCATION_${CMAKE_BUILD_TYPE})
+		#set_property(TARGET "${name}" APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-upward_library,${lib_location}")
+		target_link_libraries("${name}" PRIVATE -Wl,-upward_library,$<TARGET_FILE:${dep}>)
 	endforeach(dep)
 	
 	get_property(dylib_files GLOBAL PROPERTY FIRSTPASS_MAP)

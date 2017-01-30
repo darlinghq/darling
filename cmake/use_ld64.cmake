@@ -28,7 +28,8 @@ FUNCTION(use_ld64 target)
 			-Wl,-dylib_file,/usr/lib/libcommonCrypto.dylib:${CMAKE_BINARY_DIR}/src/CommonCrypto/libcommonCrypto.dylib \
 			-Wl,-dylib_file,/usr/lib/system/libsystem_asl.dylib:${CMAKE_BINARY_DIR}/src/external/syslog/libsystem_asl.tproj/libsystem_asl_firstpass.dylib \
 			-Wl,-dylib_file,/usr/lib/libresolv.9.dylib:${CMAKE_BINARY_DIR}/src/libresolv/libresolv.9.dylib \
-			-W;,-dylib_file,/usr/lib/system/libxpc.dylib:${CMAKE_BINARY_DIR}/src/external/libxpc/libxpc_firstpass.dylib \
+			-Wl,-dylib_file,/usr/lib/system/libxpc.dylib:${CMAKE_BINARY_DIR}/src/external/libxpc/libxpc_firstpass.dylib \
+			-Wl,-dylib_file,/usr/lib/libc++.1.dylib:${CMAKE_BINARY_DIR}/lib/libc++.1.dylib \
 			-Wl,-dylib_file,/usr/lib/system/libsystem_malloc.dylib:${CMAKE_BINARY_DIR}/src/libmalloc/libsystem_malloc_firstpass.dylib ")
 
 	add_dependencies(${target} x86_64-apple-darwin11-ld)

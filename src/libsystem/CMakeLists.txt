@@ -39,7 +39,10 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
-add_darling_library(system SHARED ${libsystem_sources})
+add_circular(system FAT
+	SOURCES
+		${libsystem_sources}
+)
 target_link_libraries(system PRIVATE system_malloc system_c system_kernel keymgr sandbox
 	system_m system_info system_notify system_quarantine libdispatch_shared launch compiler_rt
 	removefile system_copyfile unwind system_coreservices system_dyld macho CommonCrypto
@@ -70,9 +73,10 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libsystem_sandbox \
 	-sub_library libsystem_coreservices \
 	-sub_library libsystem_asl \
-	-Wl,-dylib_compatibility_version,1238.0.0")
+	-Wl,-compatibility_version,1.0.0 \
+	-Wl,-current_version,1238.0.0")
 
-make_fat(system)
+#make_fat(system)
 
 install(TARGETS system DESTINATION libexec/darling/usr/lib)
 InstallSymlink("libSystem.B.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libSystem.dylib")
