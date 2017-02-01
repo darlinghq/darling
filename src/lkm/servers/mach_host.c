@@ -420,7 +420,8 @@ kern_return_t host_create_mach_voucher
 )
 {
 	UNIMPL_MIG_CALL();
-	return KERN_NOT_SUPPORTED;
+	// Let libdispatch believe it got a valid voucher for now
+	return /*KERN_NOT_SUPPORTED*/ 0;
 }
 
 kern_return_t host_register_mach_voucher_attr_manager
