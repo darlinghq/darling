@@ -277,8 +277,8 @@ void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type
 	}
 	else if (magic == MH_MAGIC || magic == MH_CIGAM)
 	{
-		//if (mh_out)
-		//	commpage_setup(false);
+		if (mh_out)
+			commpage_setup(false);
 
 		mode_32in64 = true;
 		lseek(fd, 0, SEEK_SET);
