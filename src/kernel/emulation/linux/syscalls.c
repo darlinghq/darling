@@ -37,6 +37,7 @@
 #include "unistd/writev.h"
 #include "unistd/getegid.h"
 #include "unistd/symlink.h"
+#include "unistd/symlinkat.h"
 #include "unistd/umask.h"
 #include "unistd/chroot.h"
 #include "unistd/link.h"
@@ -354,6 +355,7 @@ void* __bsd_syscall_table[600] = {
 	[471] = sys_linkat,
 	[472] = sys_unlinkat,
 	[473] = sys_readlinkat,
+	[474] = sys_symlinkat,
 	[500] = sys_getentropy,
 };
 
