@@ -125,6 +125,7 @@
 #include "bsdthread/bsdthread_terminate.h"
 #include "bsdthread/disable_threadsignal.h"
 #include "hfs/stub.h"
+#include "xattr/getattrlistbulk.h"
 #include "xattr/listxattr.h"
 #include "xattr/flistxattr.h"
 #include "xattr/removexattr.h"
@@ -333,6 +334,7 @@ void* __bsd_syscall_table[600] = {
 	[415] = sys_pwrite_nocancel,
 	[417] = sys_poll_nocancel,
 	[423] = sys_semwait_signal_nocancel,
+	[461] = sys_getattrlistbulk,
 	[469] = sys_fstatat,
 	[470] = sys_fstatat64,
 	[500] = sys_getentropy,
