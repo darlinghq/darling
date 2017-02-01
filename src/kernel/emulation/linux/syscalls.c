@@ -32,6 +32,7 @@
 #include "unistd/truncate.h"
 #include "unistd/ftruncate.h"
 #include "unistd/readlink.h"
+#include "unistd/readlinkat.h"
 #include "unistd/readv.h"
 #include "unistd/writev.h"
 #include "unistd/getegid.h"
@@ -352,6 +353,7 @@ void* __bsd_syscall_table[600] = {
 	[470] = sys_fstatat64,
 	[471] = sys_linkat,
 	[472] = sys_unlinkat,
+	[473] = sys_readlinkat,
 	[500] = sys_getentropy,
 };
 
