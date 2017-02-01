@@ -114,6 +114,7 @@
 #include "stat/lstat.h"
 #include "stat/statfs.h"
 #include "stat/mkdir.h"
+#include "stat/mkdirat.h"
 #include "stat/mkfifo.h"
 #include "stat/rmdir.h"
 #include "stat/getfsstat.h"
@@ -356,6 +357,7 @@ void* __bsd_syscall_table[600] = {
 	[472] = sys_unlinkat,
 	[473] = sys_readlinkat,
 	[474] = sys_symlinkat,
+	[475] = sys_mkdirat,
 	[500] = sys_getentropy,
 };
 
