@@ -41,6 +41,7 @@
 #include "unistd/link.h"
 #include "unistd/linkat.h"
 #include "unistd/unlink.h"
+#include "unistd/unlinkat.h"
 #include "unistd/chdir.h"
 #include "unistd/mknod.h"
 #include "unistd/chmod.h"
@@ -350,6 +351,7 @@ void* __bsd_syscall_table[600] = {
 	[469] = sys_fstatat,
 	[470] = sys_fstatat64,
 	[471] = sys_linkat,
+	[472] = sys_unlinkat,
 	[500] = sys_getentropy,
 };
 
