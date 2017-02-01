@@ -73,6 +73,7 @@ set(emulation_sources
 	unistd/getgid.c
 	unistd/getppid.c
 	unistd/rename.c
+	unistd/renameat.c
 	unistd/getpgrp.c
 	unistd/getdtablesize.c
 	unistd/setpgid.c

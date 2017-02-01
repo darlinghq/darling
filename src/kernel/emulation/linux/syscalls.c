@@ -47,6 +47,7 @@
 #include "unistd/getgid.h"
 #include "unistd/getppid.h"
 #include "unistd/rename.h"
+#include "unistd/renameat.h"
 #include "unistd/getpgrp.h"
 #include "unistd/getdtablesize.h"
 #include "unistd/setpgid.h"
@@ -338,6 +339,7 @@ void* __bsd_syscall_table[600] = {
 	[461] = sys_getattrlistbulk,
 	[463] = sys_openat,
 	[464] = sys_openat_nocancel,
+	[465] = sys_renameat,
 	[469] = sys_fstatat,
 	[470] = sys_fstatat64,
 	[500] = sys_getentropy,
