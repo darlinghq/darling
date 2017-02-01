@@ -25,6 +25,7 @@
 #include "unistd/pwrite.h"
 #include "unistd/getpid.h"
 #include "unistd/access.h"
+#include "unistd/faccessat.h"
 #include "unistd/lseek.h"
 #include "unistd/truncate.h"
 #include "unistd/ftruncate.h"
@@ -340,6 +341,7 @@ void* __bsd_syscall_table[600] = {
 	[463] = sys_openat,
 	[464] = sys_openat_nocancel,
 	[465] = sys_renameat,
+	[466] = sys_faccessat,
 	[469] = sys_fstatat,
 	[470] = sys_fstatat64,
 	[500] = sys_getentropy,

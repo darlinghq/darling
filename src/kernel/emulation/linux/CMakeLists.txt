@@ -59,6 +59,7 @@ set(emulation_sources
 	unistd/ftruncate.c
 	unistd/truncate.c
 	unistd/access.c
+	unistd/faccessat.c
 	unistd/readlink.c
 	unistd/symlink.c
 	unistd/link.c
