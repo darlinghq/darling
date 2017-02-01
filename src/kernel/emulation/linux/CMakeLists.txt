@@ -156,6 +156,7 @@ set(emulation_sources
 	stat/rmdir.c
 	stat/common.c
 	xattr/getattrlistbulk.c
+	xattr/getattrlistat.c
 	xattr/listxattr.c
 	xattr/flistxattr.c
 	xattr/removexattr.c

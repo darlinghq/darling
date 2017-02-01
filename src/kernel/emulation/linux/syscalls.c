@@ -136,6 +136,7 @@
 #include "bsdthread/disable_threadsignal.h"
 #include "hfs/stub.h"
 #include "xattr/getattrlistbulk.h"
+#include "xattr/getattrlistat.h"
 #include "xattr/listxattr.h"
 #include "xattr/flistxattr.h"
 #include "xattr/removexattr.h"
@@ -358,6 +359,7 @@ void* __bsd_syscall_table[600] = {
 	[473] = sys_readlinkat,
 	[474] = sys_symlinkat,
 	[475] = sys_mkdirat,
+	[476] = sys_getattrlistat,
 	[500] = sys_getentropy,
 };
 
