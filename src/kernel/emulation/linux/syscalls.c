@@ -14,6 +14,7 @@
 #include "unistd/fchdir.h"
 #include "unistd/fchown.h"
 #include "unistd/fchmod.h"
+#include "unistd/fchmodat.h"
 #include "unistd/setgid.h"
 #include "unistd/setegid.h"
 #include "unistd/seteuid.h"
@@ -342,6 +343,7 @@ void* __bsd_syscall_table[600] = {
 	[464] = sys_openat_nocancel,
 	[465] = sys_renameat,
 	[466] = sys_faccessat,
+	[467] = sys_fchmodat,
 	[469] = sys_fstatat,
 	[470] = sys_fstatat64,
 	[500] = sys_getentropy,
