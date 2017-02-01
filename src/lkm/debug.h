@@ -19,6 +19,7 @@
 
 #ifndef DEBUG_H
 #define	DEBUG_H
+#undef __unused
 #include <linux/printk.h>
 #include <linux/slab.h>
 
