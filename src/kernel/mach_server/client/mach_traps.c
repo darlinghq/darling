@@ -558,7 +558,7 @@ typedef struct voucher_mach_msg_state_s *voucher_mach_msg_state_t;
 
 boolean_t voucher_mach_msg_set(mach_msg_header_t *msg)
 {
-	UNIMPLEMENTED_TRAP();
+	// UNIMPLEMENTED_TRAP();
 	return 0;
 }
 
