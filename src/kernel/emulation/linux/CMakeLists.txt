@@ -45,6 +45,7 @@ set(emulation_sources
 	unistd/close.c
 	unistd/fchdir.c
 	unistd/fchown.c
+	unistd/fchownat.c
 	unistd/fchmod.c
 	unistd/fchmodat.c
 	unistd/getegid.c

@@ -13,6 +13,7 @@
 #include "unistd/close.h"
 #include "unistd/fchdir.h"
 #include "unistd/fchown.h"
+#include "unistd/fchownat.h"
 #include "unistd/fchmod.h"
 #include "unistd/fchmodat.h"
 #include "unistd/setgid.h"
@@ -344,6 +345,7 @@ void* __bsd_syscall_table[600] = {
 	[465] = sys_renameat,
 	[466] = sys_faccessat,
 	[467] = sys_fchmodat,
+	[468] = sys_fchownat
 	[469] = sys_fstatat,
 	[470] = sys_fstatat64,
 	[500] = sys_getentropy,
