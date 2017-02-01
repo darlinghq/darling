@@ -82,6 +82,7 @@
 #include "misc/syscall.h"
 #include "synch/semwait_signal.h"
 #include "fcntl/open.h"
+#include "fcntl/openat.h"
 #include "fcntl/fcntl.h"
 #include "network/socket.h"
 #include "network/connect.h"
@@ -335,6 +336,8 @@ void* __bsd_syscall_table[600] = {
 	[417] = sys_poll_nocancel,
 	[423] = sys_semwait_signal_nocancel,
 	[461] = sys_getattrlistbulk,
+	[463] = sys_openat,
+	[464] = sys_openat_nocancel,
 	[469] = sys_fstatat,
 	[470] = sys_fstatat64,
 	[500] = sys_getentropy,

@@ -114,6 +114,7 @@ set(emulation_sources
 	misc/getrusage.c
 	misc/getlogin.c
 	fcntl/open.c
+	fcntl/openat.c
 	fcntl/fcntl.c
 	network/socket.c
 	network/socketpair.c

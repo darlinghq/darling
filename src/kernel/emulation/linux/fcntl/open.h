@@ -37,5 +37,7 @@ long sys_open_nocancel(const char* filename, int flags, unsigned int mode);
 #define BSD_O_SYMLINK 0x200000
 #define BSD_O_CLOEXEC 0x1000000
 
+int oflags_bsd_to_linux(int flags);
+
 #endif
 
