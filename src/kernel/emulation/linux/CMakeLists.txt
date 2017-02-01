@@ -24,6 +24,7 @@ set(emulation_sources
 	simple.c
 	errno.c
 	readline.c
+	common_at.c
 	machdep/machdeps.c
 	machdep/machdep-table.S
 	machdep/tls.c
@@ -131,6 +132,7 @@ set(emulation_sources
 	network/bind.c
 	network/listen.c
 	stat/fstat.c
+	stat/fstatat.c
 	stat/lstat.c
 	stat/stat.c
 	stat/stat64_extended.c

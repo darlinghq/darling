@@ -100,6 +100,7 @@
 #include "network/socketpair.h"
 #include "dirent/getdirentries.h"
 #include "stat/fstat.h"
+#include "stat/fstatat.h"
 #include "stat/stat.h"
 #include "stat/lstat.h"
 #include "stat/statfs.h"
@@ -332,6 +333,8 @@ void* __bsd_syscall_table[600] = {
 	[415] = sys_pwrite_nocancel,
 	[417] = sys_poll_nocancel,
 	[423] = sys_semwait_signal_nocancel,
+	[469] = sys_fstatat,
+	[470] = sys_fstatat64,
 	[500] = sys_getentropy,
 };
 
