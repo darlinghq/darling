@@ -65,6 +65,7 @@ set(emulation_sources
 	unistd/readlink.c
 	unistd/symlink.c
 	unistd/link.c
+	unistd/linkat.c
 	unistd/unlink.c
 	unistd/chdir.c
 	unistd/mknod.c

@@ -39,6 +39,7 @@
 #include "unistd/umask.h"
 #include "unistd/chroot.h"
 #include "unistd/link.h"
+#include "unistd/linkat.h"
 #include "unistd/unlink.h"
 #include "unistd/chdir.h"
 #include "unistd/mknod.h"
@@ -345,9 +346,10 @@ void* __bsd_syscall_table[600] = {
 	[465] = sys_renameat,
 	[466] = sys_faccessat,
 	[467] = sys_fchmodat,
-	[468] = sys_fchownat
+	[468] = sys_fchownat,
 	[469] = sys_fstatat,
 	[470] = sys_fstatat64,
+	[471] = sys_linkat,
 	[500] = sys_getentropy,
 };
 
