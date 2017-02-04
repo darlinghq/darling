@@ -51,7 +51,7 @@ set(cffextra_SRCS
 
 add_library(CFF SHARED ${cff_SRCS})
 set_source_files_properties(${cff_SRCS} LANGUAGE C)
-target_link_libraries(CFF PRIVATE system icucore z ffi xml2 xslt aprutil "-Wl,--defsym=__CFConstantStringClassReference=_OBJC_CLASS_AppleCFString")
+target_link_libraries(CFF PRIVATE system icucore z ffi xml2 xslt iconv aprutil "-Wl,--defsym=__CFConstantStringClassReference=_OBJC_CLASS_AppleCFString")
 
 add_library(CFFExtra SHARED ${cffextra_SRCS})
 target_link_libraries(CFFExtra PRIVATE CFF cxx)
