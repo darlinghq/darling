@@ -178,3 +178,6 @@
 [submodule "src/external/coregraphics"]
 	path = src/external/coregraphics
 	url = ../darling-coregraphics.git
+[submodule "src/external/coreanimation"]
+	path = src/external/coreanimation
+	url = ../darling-coreanimation.git
