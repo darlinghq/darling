@@ -10,8 +10,8 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_library(ApplicationServices SHARED dummy.c)
-target_link_libraries(ApplicationServices CoreServices)
+add_library(ApplicationServices SHARED $<TARGET_OBJECTS:coregraphics>)
+target_link_libraries(ApplicationServices system CoreServices lcms png12 gif tiff jpeg X11 Xext Xrender fontconfig cairo)
 
 install(TARGETS ApplicationServices DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 

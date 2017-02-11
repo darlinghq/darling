@@ -172,3 +172,9 @@
 [submodule "src/external/perl"]
 	path = src/external/perl
 	url = ../darling-perl.git
+[submodule "src/external/liblcms1"]
+	path = src/external/liblcms1
+	url = ../darling-liblcms1.git
+[submodule "src/external/coregraphics"]
+	path = src/external/coregraphics
+	url = ../darling-coregraphics.git
