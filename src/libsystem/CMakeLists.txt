@@ -47,7 +47,7 @@ add_library(system SHARED ${libsystem_sources})
 target_link_libraries(system PRIVATE dyld)
 target_link_libraries(system PUBLIC system_malloc system_c system_kernel keymgr
 	system_m system_info system_notify system_quarantine libdispatch_shared objc launch
-	removefile system_copyfile unwind system_coreservices CommonCrypto)
+	removefile system_copyfile unwind system_coreservices CommonCrypto xpc)
 
 install(TARGETS system DESTINATION ${CMAKE_INSTALL_LIBDIR}/darling)
 
