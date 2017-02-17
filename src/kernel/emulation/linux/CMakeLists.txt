@@ -210,6 +210,8 @@ set(emulation_sources
 	psynch/psynch_cvwait.c
 	psynch/psynch_cvbroad.c
 	psynch/psynch_cvsignal.c
+	psynch/ulock_wait.c
+	psynch/ulock_wake.c
 	conf/pathconf.c
 	conf/fpathconf.c
 	syscalls-table.S

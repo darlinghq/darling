@@ -61,6 +61,10 @@ __attribute__((noinline))
 cerror_return_t
 cerror_nocancel(int err)
 {
+	// hack for ulock with ULF_NO_ERRNO
+	if (err & 0x800)
+		return -(err & ~0x800);
+
 	errno = err;
 	int *tsderrno = (int*)_os_tsd_get_direct(__TSD_ERRNO);
 	if (tsderrno) {

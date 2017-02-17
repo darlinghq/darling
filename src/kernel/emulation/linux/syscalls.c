@@ -152,6 +152,8 @@
 #include "psynch/psynch_cvwait.h"
 #include "psynch/psynch_cvsignal.h"
 #include "psynch/psynch_cvbroad.h"
+#include "psynch/ulock_wait.h"
+#include "psynch/ulock_wake.h"
 #include "bsdthread/workq_kernreturn.h"
 #include "bsdthread/workq_open.h"
 #include "bsdthread/pthread_kill.h"
@@ -361,5 +363,7 @@ void* __bsd_syscall_table[600] = {
 	[475] = sys_mkdirat,
 	[476] = sys_getattrlistat,
 	[500] = sys_getentropy,
+	[515] = sys_ulock_wait,
+	[516] = sys_ulock_wake,
 };
 
