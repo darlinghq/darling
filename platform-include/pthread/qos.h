@@ -26,6 +26,7 @@
 
 #include <sys/cdefs.h>
 #include <Availability.h>
+#include <pthread.h>
 
 #if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
 

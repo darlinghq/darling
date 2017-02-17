@@ -32,11 +32,11 @@ FUNCTION(mig defFileName)
         get_filename_component(bareName "${relativeName}" NAME)
         get_filename_component(dirName "${relativeName}" DIRECTORY)
         
-        if ((NOT BITS) OR (BITS EQUAL 64))
+        #if ((NOT BITS) OR (BITS EQUAL 64))
         	set(MIG_ARCH "x86-64")
-        else ()
-        	set (MIG_ARCH "i386")
-        endif()
+        #else ()
+        #	set (MIG_ARCH "i386")
+        #endif()
 
 		# I hate myself for the following copy&paste,
 		# but I could not figure out a better way.
@@ -56,7 +56,6 @@ FUNCTION(mig defFileName)
 						-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
 						-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
 						-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
-						-m${BITS}
 						${MIG_FLAGS}
 						${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
 						DEPENDS
@@ -76,7 +75,6 @@ FUNCTION(mig defFileName)
 						-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
 						-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
 						-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
-						-m${BITS}
 						${MIG_FLAGS}
 						${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
 						DEPENDS

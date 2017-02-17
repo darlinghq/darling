@@ -73,6 +73,7 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libsystem_sandbox \
 	-sub_library libsystem_coreservices \
 	-sub_library libsystem_asl \
+	-sub_library libdispatch \
 	-Wl,-compatibility_version,1.0.0 \
 	-Wl,-current_version,1238.0.0")
 
