@@ -33,9 +33,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <dlfcn.h>
 #include <endian.h>
 #include "elfcalls.h"
-#include "threads.h"
 #include "gdb.h"
 #include "commpage.h"
+#include "32in64.h"
 
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
@@ -61,7 +61,7 @@ static void load32(int fd, uint64_t* entryPoint_out, uint64_t* mh_out);
 static void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type_t cpu);
 static int native_prot(int prot);
 static void apply_root_path(char* path);
-static char* elfcalls_make(void);
+char* elfcalls_make(void);
 static char* apple0_make(const char* filepath);
 static void* setup_stack32(void* stack, int argc, const char** argv, const char** envp, const char** apple, uint64_t mh);
 
@@ -109,22 +109,6 @@ int main(int argc, char** argv, char** envp)
 #ifdef __x86_64__
 #       define GETSP(ptr) __asm__ volatile("movq %%rsp, %0" : "=r"(ptr) ::)
 #       define JUMPX(pushCount, addr) __asm__ volatile("sub %1, %%rsp; jmpq *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
-
-	// Jump to a 32-bit address through segment number 0x23 (32-bit). The 64-bit segment is 0x33.
-	// Set DS to 0x2B.
-#       define JUMPSP(sp, addr) __asm__ volatile("movq %1, %%rsp;" \
-												"subq $12, %%rsp;" \
-												/*"movq %0, %%rax;"*/ \
-												"movl %0, 8(%%rsp);" \
-												"movl $0x23, 4(%%rsp);" \
-												"leaq 1f, %%rax;" \
-												"movl %%eax, (%%rsp);" \
-												"lret;" \
-												".code32;\n" \
-												"1: push $0x2b;" \
-												"pop %%ds;" \
-												"ret;" \
-												:: "r"((uint32_t)addr), "r"(sp) : "rax")
 #elif defined(__i386__)
 #       define GETSP(ptr) __asm__ volatile("movl %%esp, %0" : "=m"(ptr) ::)
 #       define JUMPX(pushCount, addr) __asm__ volatile("sub %1, %%esp; jmp *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
@@ -174,7 +158,7 @@ int main(int argc, char** argv, char** envp)
 		// move to the top of the stack
 		sp += size/sizeof(void*) - 1;
 
-		JUMPSP(setup_stack32(sp, argc, (const char**) argv, (const char**) envp, apple, mh), entryPoint);
+		_64TO32_WITH_STACK(setup_stack32(sp, argc, (const char**) argv, (const char**) envp, apple, mh), entryPoint);
 	}
 
 
@@ -436,28 +420,6 @@ void apply_root_path(char* path)
 		}
 	}
 	while (next != NULL);
-}
-
-static void* dlopen_simple(const char* name)
-{
-	return dlopen(name, RTLD_LAZY);
-}
-
-static char* elfcalls_make(void)
-{
-	static char param[32];
-	static struct elf_calls calls;
-
-	calls.dlopen = dlopen_simple;
-	calls.dlclose = dlclose;
-	calls.dlsym = dlsym;
-	calls.dlerror = dlerror;
-	calls.darling_thread_create = __darling_thread_create;
-	calls.darling_thread_terminate = __darling_thread_terminate;
-	calls.darling_thread_get_stack = __darling_thread_get_stack;
-
-	sprintf(param, "elf_calls=%p", &calls);
-	return param;
 }
 
 char* apple0_make(const char* filepath)

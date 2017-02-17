@@ -22,9 +22,13 @@ set(mldr_sources
 	threads.c
 	gdb.c
 	commpage.c
+	elfcalls.c
 )
 add_executable(mldr ${mldr_sources})
-target_link_libraries(mldr -lpthread -ldl)
+target_link_libraries(mldr pthread dl)
+
+add_executable(stubgen64 stubgen/stubgen64.c)
+target_link_libraries(stubgen64 dl)
 
 install(TARGETS mldr DESTINATION libexec/darling/bin)
 install(TARGETS darling DESTINATION bin

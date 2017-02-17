@@ -15,6 +15,10 @@ struct elf_calls
 	int (*darling_thread_terminate)(void* stackaddr,
 				unsigned long freesize, unsigned long pthobj_size);
 	void* (*darling_thread_get_stack)(void);
+	void* (*dlopen_fatal)(const char* name);
+	int (*dlclose_fatal)(void* lib);
+	void* (*dlsym_fatal)(void* lib, const char* name);
+
 };
 
 #endif
