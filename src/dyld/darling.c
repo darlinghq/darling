@@ -801,18 +801,32 @@ int isModuleLoaded()
 int loadKernelModule()
 {
 	int fd;
-	char path[128];
+	// We need to check two paths due to DKMS
+	// Ubuntu overrides our dkms.conf and forces the modules into the updates folder
+	char miscpath[128], updatespath[128];
+	char* path;
 	struct utsname name;
 
 	if (isModuleLoaded())
 		return 0;
 
 	uname(&name);
-	snprintf(path, sizeof(path), "/lib/modules/%s/kernel/misc/darling-mach.ko", name.release);
-	if (access(path, F_OK))
+	snprintf(miscpath, sizeof(miscpath), "/lib/modules/%s/kernel/misc/darling-mach.ko", name.release);
+	snprintf(updatespath, sizeof(updatespath), "/lib/modules/%s/updates/dkms/darling-mach.ko", name.release);
+
+	// Since miscpath is the normal location we check for it last
+	if(access(updatespath, F_OK) == 0)
+	{
+		path = updatespath;
+	}
+	else if (access(miscpath, F_OK))
 	{
 		fprintf(stderr, "Cannot find kernel module at %s: %s\n", path, strerror(errno));
 		return 1;
+	}
+	else
+	{
+		path = miscpath;
 	}
 
 	fd = open(path, O_RDONLY|O_CLOEXEC);
