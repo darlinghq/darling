@@ -64,6 +64,8 @@
 #ifndef _TIME_H_
 #define	_TIME_H_
 
+#include <Availability.h>
+
 #include <_types.h>
 
 #define __need_struct_timespec
@@ -206,6 +208,55 @@ int nanosleep(const struct timespec *, struct timespec *) LIBC_ALIAS_C(nanosleep
 #endif /* !LIBC_ALIAS_NANOSLEEP */
 //End-Libc
 #endif
+
+#if !defined(_DARWIN_FEATURE_CLOCK_GETTIME) || _DARWIN_FEATURE_CLOCK_GETTIME != 0
+#if __DARWIN_C_LEVEL >= 199309L
+#if __has_feature(enumerator_attributes)
+#define __CLOCK_AVAILABILITY __OSX_AVAILABLE(10.12) __IOS_AVAILABLE(10.0) __TVOS_AVAILABLE(10.0) __WATCHOS_AVAILABLE(3.0)
+#else
+#define __CLOCK_AVAILABILITY
+#endif
+
+typedef enum {
+_CLOCK_REALTIME __CLOCK_AVAILABILITY = 0,
+#define CLOCK_REALTIME _CLOCK_REALTIME
+_CLOCK_MONOTONIC __CLOCK_AVAILABILITY = 6,
+#define CLOCK_MONOTONIC _CLOCK_MONOTONIC
+#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+_CLOCK_MONOTONIC_RAW __CLOCK_AVAILABILITY = 4,
+#define CLOCK_MONOTONIC_RAW _CLOCK_MONOTONIC_RAW
+_CLOCK_MONOTONIC_RAW_APPROX __CLOCK_AVAILABILITY = 5,
+#define CLOCK_MONOTONIC_RAW_APPROX _CLOCK_MONOTONIC_RAW_APPROX
+_CLOCK_UPTIME_RAW __CLOCK_AVAILABILITY = 8,
+#define CLOCK_UPTIME_RAW _CLOCK_UPTIME_RAW
+_CLOCK_UPTIME_RAW_APPROX __CLOCK_AVAILABILITY = 9,
+#define CLOCK_UPTIME_RAW_APPROX _CLOCK_UPTIME_RAW_APPROX
+#endif
+_CLOCK_PROCESS_CPUTIME_ID __CLOCK_AVAILABILITY = 12,
+#define CLOCK_PROCESS_CPUTIME_ID _CLOCK_PROCESS_CPUTIME_ID
+_CLOCK_THREAD_CPUTIME_ID __CLOCK_AVAILABILITY = 16
+#define CLOCK_THREAD_CPUTIME_ID _CLOCK_THREAD_CPUTIME_ID
+} clockid_t;
+
+__CLOCK_AVAILABILITY
+int clock_getres(clockid_t __clock_id, struct timespec *__res);
+
+__CLOCK_AVAILABILITY
+int clock_gettime(clockid_t __clock_id, struct timespec *__tp);
+
+#if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+__CLOCK_AVAILABILITY
+__uint64_t clock_gettime_nsec_np(clockid_t __clock_id);
+#endif
+
+__OSX_AVAILABLE(10.12) __IOS_PROHIBITED
+__TVOS_PROHIBITED __WATCHOS_PROHIBITED
+int clock_settime(clockid_t __clock_id, const struct timespec *__tp);
+
+#undef __CLOCK_AVAILABILITY
+#endif /* __DARWIN_C_LEVEL */
+#endif /* _DARWIN_FEATURE_CLOCK_GETTIME */
+
 __END_DECLS
 
 #ifdef _USE_EXTENDED_LOCALES_
