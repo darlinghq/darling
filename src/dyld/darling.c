@@ -690,12 +690,16 @@ void setupPrefix()
 	snprintf(path, sizeof(path), "%s/usr/local/share", prefix);
 	createDir(path);
 
-	// ... and to install plists to /var/db
+	// ... to install plists to /var/db,
 	snprintf(path, sizeof(path), "%s/private", prefix);
 	createDir(path);
 	snprintf(path, sizeof(path), "%s/private/var", prefix);
 	createDir(path);
 	snprintf(path, sizeof(path), "%s/private/var/db", prefix);
+	createDir(path);
+
+	// ... and we need /var/tmp for GNUstep
+	snprintf(path, sizeof(path), "%s/private/var/tmp", prefix);
 	createDir(path);
 
 	seteuid(0);
