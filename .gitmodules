@@ -181,3 +181,6 @@
 [submodule "src/external/coreanimation"]
 	path = src/external/coreanimation
 	url = ../darling-coreanimation.git
+[submodule "src/external/rik-theme"]
+	path = src/external/rik-theme
+	url = ../darling-rik-theme.git

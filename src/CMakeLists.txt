@@ -121,6 +121,7 @@ add_subdirectory(external/libxpc)
 add_subdirectory(external/openssl_certificates)
 add_subdirectory(external/liblcms1)
 add_subdirectory(external/coregraphics)
+add_subdirectory(external/rik-theme)
 
 if (NOT DARLING_NO_EXECUTABLES)
 	add_subdirectory(external/shell_cmds)
