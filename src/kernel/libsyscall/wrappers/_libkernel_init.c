@@ -31,7 +31,7 @@
 
 extern int mach_init(void);
 
-__attribute__((visibility("hidden")))
+__attribute__((visibility("default")))
 struct elf_calls* _elfcalls;
 
 extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
@@ -59,7 +59,7 @@ __libkernel_init(_libkernel_functions_t fns,
 	{
 		if (strncmp(apple[i], "elf_calls=", 10) == 0)
 		{
-			uintptr_t table = (uintptr_t) __simple_atoi16(apple[i] + 10, NULL);
+			uintptr_t table = (uintptr_t) __simple_atoi16(apple[i] + 12, NULL);
 			_elfcalls = (struct elf_calls*) table;
 		}
 	}
