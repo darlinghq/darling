@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 #include <sstream>
 #include <stdexcept>
+#include <fstream>
 
 #ifndef PATH_MAX
 #	define PATH_MAX	4096
@@ -21,24 +22,29 @@
 // TODO: use wrapgen32 to generate 32-bit wrappers.
 
 void parse_elf(const char* elf, std::string& soname_out, std::set<std::string>& symbols_out);
-void generate_wrapper(const char* soname, const std::set<std::string>& symbols);
+void generate_wrapper(std::ofstream& output, const char* soname, const std::set<std::string>& symbols);
 
 int main(int argc, const char** argv)
 {
 	std::string elfLibrary;
 	std::set<std::string> symbols;
 	std::string soname;
+	std::ofstream output;
 
-	if (argc != 2)
+	if (argc != 3)
 	{
-		std::cerr << "Usage: " << argv[0] << " <library-name>\n";
+		std::cerr << "Usage: " << argv[0] << " <library-name> <output-file>\n";
 		return 1;
 	}
 
 	elfLibrary = argv[1];
+	output.open(argv[2]);
 
 	try
 	{
+		if (!output.is_open())
+			throw std::runtime_error("Cannot open output file");
+
 		if (access(elfLibrary.c_str(), R_OK) == -1)
 		{
 			// Try loading the library and then ask the loader where it found the library.
@@ -70,7 +76,7 @@ int main(int argc, const char** argv)
 		}
 
 		parse_elf(elfLibrary.c_str(), soname, symbols);
-		generate_wrapper(soname.c_str(), symbols);
+		generate_wrapper(output, soname.c_str(), symbols);
 	}
 	catch (const std::exception& e)
 	{
@@ -230,23 +236,23 @@ end_dyn:
 	munmap((void*) ehdr, length);
 }
 
-void generate_wrapper(const char* soname, const std::set<std::string>& symbols)
+void generate_wrapper(std::ofstream& output, const char* soname, const std::set<std::string>& symbols)
 {
-	std::cout << "#include <elfcalls.h>\n"
+	output << "#include <elfcalls.h>\n"
 		"extern struct elf_calls* _elfcalls;\n\n";
 
-	std::cout << "static void* lib_handle;\n"
+	output << "static void* lib_handle;\n"
 		"__attribute__((constructor)) static void initializer() {\n"
 		"\tlib_handle = _elfcalls->dlopen_fatal(\"" << soname << "\");\n"
 		"}\n\n";
 
-	std::cout << "__attribute__((destructor)) static void destructor() {\n"
+	output << "__attribute__((destructor)) static void destructor() {\n"
 		"\t_elfcalls->dlclose_fatal(lib_handle);\n"
 		"}\n\n";
 	
 	for (const std::string& sym : symbols)
 	{
-		std::cout << "void* " << sym << "() {\n"
+		output << "void* " << sym << "() {\n"
 			"\t__asm__(\".symbol_resolver _" << sym << "\");\n"
 			"\treturn _elfcalls->dlsym_fatal(lib_handle, \"" << sym << "\");\n"
 			"}\n\n";
