@@ -1,7 +1,0 @@
-DARWIN {
-	global:
-		*;
-	local:
-		darwin_errno;
-};
-
