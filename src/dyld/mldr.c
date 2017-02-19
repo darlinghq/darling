@@ -426,7 +426,14 @@ char* apple0_make(const char* filepath)
 {
 	static char apple0[4096] = "executable_path=";
 
-	strcat(apple0, filepath);
+	if (filepath[0] == '/')
+		strcat(apple0, filepath);
+	else
+	{
+		char* path = realpath(filepath, NULL);
+		strcat(apple0, path);
+		free(path);
+	}
 
 	return apple0;
 }
