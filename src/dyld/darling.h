@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define _DARLING_H_
 
 void showHelp(const char* argv0);
+void showVersion(const char* argv0);
 
 // Reports that this executable is not setuid root
 void missingSetuidRoot(void);

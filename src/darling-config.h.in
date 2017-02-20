@@ -12,6 +12,9 @@
 // Path where the system root gets "mounted" inside the prefix
 #define SYSTEM_ROOT "/Volumes/SystemRoot"
 
+#define GIT_BRANCH "@GIT_BRANCH@"
+#define GIT_COMMIT_HASH "@GIT_COMMIT_HASH@"
+
 #cmakedefine MULTILIB
 #cmakedefine FRAMEWORK_COREAUDIO
 #cmakedefine FRAMEWORK_APPKIT

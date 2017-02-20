@@ -34,6 +34,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/utsname.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <getopt.h>
 #include "darling.h"
 #include "darling-config.h"
 
@@ -42,7 +43,7 @@ const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
 uid_t g_originalUid, g_originalGid;
 
-int main(int argc, const char** argv)
+int main(int argc, char const ** argv)
 {
 	pid_t pidInit, pidChild;
 	int wstatus;
@@ -75,6 +76,45 @@ int main(int argc, const char** argv)
 	if (!checkPrefixDir())
 		setupPrefix();
 	checkPrefixOwner();
+
+	int c;
+	while (1)
+	{
+		static struct option long_options[] =
+		{
+			{"help", 	no_argument, 0, 0},
+			{"version", no_argument, 0, 0},
+			{0, 		0, 			 0, 0}
+		};
+		int option_index = 0;
+
+		c = getopt_long(argc, (char *const *)argv, "", long_options, &option_index);
+
+		if (c == -1)
+		{
+			break;
+		}
+
+		switch (c)
+		{
+			case 0:
+			if (strcmp(long_options[option_index].name, "help") == 0)
+			{
+				showHelp(argv[0]);
+				exit(EXIT_SUCCESS);
+			}
+			else if (strcmp(long_options[option_index].name, "version") == 0)
+			{
+				showVersion(argv[0]);
+				exit(EXIT_SUCCESS);
+			}
+			break;
+			case '?':
+			break;
+			default:
+			abort();
+		}
+	}
 
 	pidInit = getInitProcess();
 
@@ -302,7 +342,7 @@ void setupChild(const char *curPath)
 void showHelp(const char* argv0)
 {
 	fprintf(stderr, "This is Darling, translation layer for macOS software.\n\n");
-	fprintf(stderr, "Copyright (C) 2012-2016 Lubos Dolezel\n\n");
+	fprintf(stderr, "Copyright (C) 2012-2017 Lubos Dolezel\n\n");
 
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr, "\t%s program-path [arguments...]\n", argv0);
@@ -310,6 +350,11 @@ void showHelp(const char* argv0)
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Environment variables:\n"
 		"DPREFIX - specifies the location of Darling prefix, defaults to ~/.darling\n");
+}
+
+void showVersion(const char* argv0) {
+	fprintf(stderr, "%s " GIT_BRANCH " @ " GIT_COMMIT_HASH "\n", argv0);
+	fprintf(stderr, "Copyright (C) 2012-2017 Lubos Dolezel\n");
 }
 
 void missingSetuidRoot(void)
@@ -845,7 +890,7 @@ int loadKernelModule()
 	printf("Loaded kernel module: %s\n", path);
 
 	close(fd);
-	
+
 	return 0;
 }
 
