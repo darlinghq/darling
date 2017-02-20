@@ -829,7 +829,7 @@ int loadKernelModule()
 		path = miscpath;
 	}
 
-	fd = open(path, O_RDONLY|O_CLOEXEC);
+	fd = open(path, O_RDONLY);
 	if (fd < 0)
 	{
 		fprintf(stderr, "Cannot open kernel module\n");
@@ -842,6 +842,10 @@ int loadKernelModule()
 		return 1;
 	}
 
+	printf("Loaded kernel module: %s\n", path);
+
+	close(fd);
+	
 	return 0;
 }
 
