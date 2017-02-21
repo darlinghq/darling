@@ -1,6 +1,6 @@
 /*
  * Darling Mach Linux Kernel Module
- * Copyright (C) 2015 Lubos Dolezel
+ * Copyright (C) 2017 Lubos Dolezel
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,22 +17,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef IPC_SERVER_H
-#define IPC_SERVER_H
-#include "mach_includes.h"
-#include "ipc_port.h"
-#include "traps.h"
+#ifndef _PRIMITIVES_TIMER_H
+#define _PRIMITIVES_TIMER_H
+#include "../ipc_types.h"
 
-#define PORT_TYPE_SEMAPHORE		1
-#define PORT_TYPE_TIMER			2
+void
+mach_timer_init(void);
 
-/*
- * The following functions associate a port with the named kernel server.
- * The port will no longer queue messages, instead the respective "Mach server"
- * will be invoked.
- */
+void
+mach_timer_exit(void);
 
-mach_task_t* ipc_port_make_task(darling_mach_port_t* port, pid_t pid);
-mach_task_t* ipc_port_get_task(darling_mach_port_t* port);
+void
+mach_timer_setup(darling_mach_port_t* port);
+
+kern_return_t
+mach_timer_arm(darling_mach_port_t* port, uint64_t expire_time);
+
+kern_return_t
+mach_timer_cancel(darling_mach_port_t* port, uint64_t* expire_time);
 
 #endif
+

@@ -25,7 +25,7 @@ ifneq ($(KERNELRELEASE),)
 	    servers/thread_act.o \
 	    mig/duct.o proc_entry.o bsd_ioctl.o \
 	    psynch/psynch_mutex.o psynch/pthread_kill.o \
-	    psynch/psynch_cv.o
+	    psynch/psynch_cv.o primitives/timer.o
 
 # Otherwise we were called directly from the command
 # line; invoke the kernel build system.

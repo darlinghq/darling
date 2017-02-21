@@ -1,6 +1,6 @@
 /*
  * Darling Mach Linux Kernel Module
- * Copyright (C) 2015 Lubos Dolezel
+ * Copyright (C) 2015-2017 Lubos Dolezel
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -42,6 +42,7 @@
 #include "servers/mach_host.h"
 #include "servers/thread_act.h"
 #include "primitives/semaphore.h"
+#include "primitives/timer.h"
 #include "psynch/psynch_mutex.h"
 #include "psynch/pthread_kill.h"
 #include "psynch/psynch_cv.h"
@@ -60,7 +61,7 @@ static struct file_operations mach_chardev_ops = {
 
 #define TRAP(num, impl) [num - DARLING_MACH_API_BASE] = (trap_handler) impl
 
-static const trap_handler mach_traps[30] = {
+static const trap_handler mach_traps[40] = {
 	TRAP(NR_get_api_version, mach_get_api_version),
 	TRAP(NR_mach_reply_port, mach_reply_port_trap),
 	TRAP(NR__kernelrpc_mach_port_mod_refs, _kernelrpc_mach_port_mod_refs_trap),
@@ -85,6 +86,10 @@ static const trap_handler mach_traps[30] = {
 	TRAP(NR_psynch_cvwait_trap, psynch_cvwait_trap),
 	TRAP(NR_psynch_cvsignal_trap, psynch_cvsignal_trap),
 	TRAP(NR_psynch_cvbroad_trap, psynch_cvbroad_trap),
+	TRAP(NR_mk_timer_create_trap, mk_timer_create_trap),
+	TRAP(NR_mk_timer_arm_trap, mk_timer_arm_trap),
+	TRAP(NR_mk_timer_cancel_trap, mk_timer_cancel_trap),
+	TRAP(NR_mk_timer_destroy_trap, mk_timer_destroy_trap),
 };
 #undef TRAP
 
@@ -107,6 +112,7 @@ static int mach_init(void)
 		goto fail;
 	
 	darling_task_init();
+	mach_timer_init();
 	setup_proc_entry();
 	ipc_space_init(&kernel_namespace);
 
@@ -118,7 +124,7 @@ static int mach_init(void)
 	ipc_port_make_host(host_port);
 	// ipc_space_make_receive(&kernel_namespace, host_port, &name);
 
-	printk(KERN_INFO "Darling Mach kernel emulation loaded\n");
+	printk(KERN_INFO "Darling Mach kernel emulation loaded, API version " DARLING_MACH_API_VERSION_STR "\n");
 	return 0;
 
 fail:
@@ -127,6 +133,7 @@ fail:
 }
 static void mach_exit(void)
 {
+	mach_timer_exit();
 	ipc_port_put(host_port);
 	ipc_space_put(&kernel_namespace);
 	cleanup_proc_entry();
@@ -511,6 +518,9 @@ kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 		return KERN_INVALID_ADDRESS;
 	}
 	
+	// This call is always interruptible.
+	// Non-interruptibility is emulated by mach_msg() wrapper in userspace.
+	args.option |= MACH_SEND_INTERRUPT | MACH_RCV_INTERRUPT;
 	if (args.option & MACH_SEND_MSG)
 	{
 		mach_msg_header_t* msg;
@@ -814,6 +824,140 @@ kern_return_t bsdthread_terminate_trap(mach_task_t* task,
 	darling_task_deregister_thread(task, thread_self);
 
 	do_exit(0);
+}
+
+mach_port_name_t mk_timer_create_trap(mach_task_t* task)
+{
+	mach_msg_return_t ret;
+	mach_port_name_t name;
+	darling_mach_port_t* port;
+	
+	ret = ipc_port_new(&port);
+	if (ret != KERN_SUCCESS)
+		return 0;
+
+	mach_timer_setup(port);
+	
+	ret = ipc_space_make_receive(&task->namespace, port, &name);
+	if (ret != KERN_SUCCESS)
+	{
+		ipc_port_put(port);
+		return 0;
+	}
+	
+	return name;
+}
+
+kern_return_t mk_timer_arm_trap(mach_task_t* task,
+		struct mk_timer_arm_args* in_args)
+{
+	struct mk_timer_arm_args args;
+	kern_return_t ret = KERN_SUCCESS;
+	darling_mach_port_right_t* right;
+
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+
+	ipc_space_lock(&task->namespace);
+
+	right = ipc_space_lookup(&task->namespace, args.timer_port);
+	if (right == NULL || !PORT_IS_VALID(right->port))
+	{
+		ret = KERN_INVALID_ARGUMENT;
+		goto err;
+	}
+
+	if (!right->port->is_server_port || right->port->server_port.port_type != PORT_TYPE_TIMER)
+	{
+		ret = KERN_INVALID_ARGUMENT;
+		ipc_port_unlock(right->port);
+		goto err;
+	}
+
+	ret = mach_timer_arm(right->port, args.expire_time);
+
+	ipc_port_unlock(right->port);
+	
+err:
+	ipc_space_unlock(&task->namespace);
+
+	return ret;
+}
+
+kern_return_t mk_timer_cancel_trap(mach_task_t* task,
+		struct mk_timer_cancel_args* in_args)
+{
+	struct mk_timer_cancel_args args;
+	kern_return_t ret = KERN_SUCCESS;
+	darling_mach_port_right_t* right;
+	uint64_t expire_time;
+
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+
+	ipc_space_lock(&task->namespace);
+
+	right = ipc_space_lookup(&task->namespace, args.timer_port);
+	if (right == NULL || !PORT_IS_VALID(right->port))
+	{
+		ret = KERN_INVALID_ARGUMENT;
+		goto err;
+	}
+
+	if (!right->port->is_server_port || right->port->server_port.port_type != PORT_TYPE_TIMER)
+	{
+		ret = KERN_INVALID_ARGUMENT;
+		ipc_port_unlock(right->port);
+		goto err;
+	}
+
+	ret = mach_timer_cancel(right->port, &expire_time);
+	if (copy_to_user(&expire_time, args.result_time, sizeof(expire_time)))
+		ret = KERN_INVALID_ADDRESS;
+
+	ipc_port_unlock(right->port);
+	
+err:
+	ipc_space_unlock(&task->namespace);
+
+	return ret;
+}
+
+kern_return_t mk_timer_destroy_trap(mach_task_t* task,
+		struct mk_timer_destroy_args* in_args)
+{
+	struct mk_timer_destroy_args args;
+	kern_return_t ret = KERN_SUCCESS;
+	darling_mach_port_right_t* right;
+
+	if (copy_from_user(&args, in_args, sizeof(args)))
+		return KERN_INVALID_ADDRESS;
+
+	ipc_space_lock(&task->namespace);
+
+	right = ipc_space_lookup(&task->namespace, args.timer_port);
+	if (right == NULL || !PORT_IS_VALID(right->port))
+	{
+		ret = KERN_INVALID_ARGUMENT;
+		goto err;
+	}
+
+	if (!right->port->is_server_port || right->port->server_port.port_type != PORT_TYPE_TIMER)
+	{
+		ret = KERN_INVALID_ARGUMENT;
+		ipc_port_unlock(right->port);
+		goto err;
+	}
+
+	ipc_port_unlock(right->port);
+	
+	ipc_space_unlock(&task->namespace);
+	ret = ipc_space_right_put(&task->namespace, right);
+
+	return ret;
+err:
+	ipc_space_unlock(&task->namespace);
+	return ret;
 }
 
 module_init(mach_init);

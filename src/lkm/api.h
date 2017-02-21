@@ -1,6 +1,6 @@
 /*
  * Darling Mach Linux Kernel Module
- * Copyright (C) 2015 Lubos Dolezel
+ * Copyright (C) 2015-2017 Lubos Dolezel
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,8 +21,11 @@
 #define LKM_API_H
 #include <stdint.h>
 
-#define DARLING_MACH_API_VERSION		1
-#define DARLING_MACH_API_VERSION_STR	"1"
+#define darling_mach_xstr(a) darling_mach_str(a)
+#define darling_mach_str(a) #a
+
+#define DARLING_MACH_API_VERSION		2
+#define DARLING_MACH_API_VERSION_STR	darling_mach_xstr(DARLING_MACH_API_VERSION)
 
 #define DARLING_MACH_API_BASE		0x1000
 
@@ -52,6 +55,10 @@ enum { NR_get_api_version = DARLING_MACH_API_BASE,
 	NR_psynch_cvwait_trap, // 0x15
 	NR_psynch_cvsignal_trap,
 	NR_psynch_cvbroad_trap,
+	NR_mk_timer_create_trap,
+	NR_mk_timer_arm_trap,
+	NR_mk_timer_cancel_trap,
+	NR_mk_timer_destroy_trap,
 };
 
 struct mach_port_mod_refs_args
@@ -214,6 +221,27 @@ struct psynch_cvbroad_args
 	uint32_t ugen;
 	uint64_t tid;
 	uint32_t flags;
+};
+
+struct mk_timer_arm_args
+{
+	unsigned int timer_port;
+	/* This is mach_absolute_time() based time */
+	uint64_t expire_time;
+};
+
+struct mk_timer_cancel_args
+{
+	unsigned int timer_port;
+	uint64_t* result_time;
+#ifdef __i386__
+	uint32_t pad1;
+#endif
+};
+
+struct mk_timer_destroy_args
+{
+	unsigned int timer_port;
 };
 
 #pragma pack (pop)

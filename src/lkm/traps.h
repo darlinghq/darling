@@ -60,6 +60,17 @@ long bsd_ioctl_trap(mach_task_t* task, struct bsd_ioctl_args* fd);
 kern_return_t bsdthread_terminate_trap(mach_task_t* task,
 		struct bsdthread_terminate_args* args);
 
+mach_port_name_t mk_timer_create_trap(mach_task_t* task);
+
+kern_return_t mk_timer_arm_trap(mach_task_t* task,
+		struct mk_timer_arm_args* args);
+
+kern_return_t mk_timer_cancel_trap(mach_task_t* task,
+		struct mk_timer_cancel_args* args);
+
+kern_return_t mk_timer_destroy_trap(mach_task_t* task,
+		struct mk_timer_destroy_args* args);
+
 // Internal
 kern_return_t _kernelrpc_mach_port_destroy(mach_task_t* task,
 		mach_port_name_t task_name, mach_port_name_t right_name);

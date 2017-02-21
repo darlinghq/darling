@@ -433,7 +433,7 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 	debug_msg("ipc_msg_deliver()\n");
 	
 	// MIG call handling
-	if (kmsg->target->port->is_server_port)
+	if (kmsg->target->port->is_server_port && kmsg->target->port->server_port.subsystem != NULL)
 	{
 		debug_msg("--> invoke_server\n");
 		return ipc_msg_invoke_server(kmsg, timeout, options);
@@ -453,8 +453,10 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 	list_add(&delivery->list, &port->messages);
 	port->queue_size++;
 	
+	debug_msg("-> msg enqueued (%d b), waking up queue %p, queue size %d\n", kmsg->msg->msgh_size, &port->queue_recv, port->queue_size);
+
 	// Wake up waiting receivers
-	wake_up_interruptible(&port->queue_recv);
+	wake_up(&port->queue_recv);
 	
 	// Wait (unless target is send once)
 	if (kmsg->target->type != MACH_PORT_RIGHT_SEND_ONCE)
@@ -525,6 +527,7 @@ mach_msg_return_t ipc_msg_deliver(struct ipc_kmsg* kmsg,
 	}
 	else
 	{
+		debug_msg("msg delivered\n");
 		darling_mach_port_t* port;
 
 		ipc_right_lock_port(kmsg->target);
@@ -904,9 +907,8 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 			ipc_port_unlock(right->port);
 			locked = false;
 			
-			debug_msg("\t-> going to wait with timeout %d\n", timeout);
+			debug_msg("\t-> going to wait with timeout %d on queue %p (intr: %d)\n", timeout, &right->port->queue_recv, options & MACH_RCV_INTERRUPT);
 				
-			
 			// wait for ipc_msg_deliver() to be called somewhere
 			if (timeout)
 			{
@@ -927,17 +929,19 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 			{
 				if (options & MACH_RCV_INTERRUPT)
 				{
-					err = wait_event_interruptible(right->port->queue_send,
+					err = wait_event_interruptible(right->port->queue_recv,
 							(right->port->queue_size != 0 || !PORT_IS_VALID(right->port)));
 				}
 				else
 				{
-					err = wait_event_killable(right->port->queue_send,
+					err = wait_event_killable(right->port->queue_recv,
 							(right->port->queue_size != 0 || !PORT_IS_VALID(right->port)));
 					if (err == 0)
 						err = 1;
 				}
 			}
+
+			debug_msg("\t-> woken up from waiting, queue size: %d\n", right->port->queue_size);
 			
 			if (err == -ERESTARTSYS)
 			{
@@ -1045,7 +1049,7 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 			{
 				// Mark the message as delivered and wake up the sender.
 				delivery->delivered = true;
-				wake_up_interruptible(&right->port->queue_send);
+				wake_up(&right->port->queue_send);
 			}
 			
 			break;

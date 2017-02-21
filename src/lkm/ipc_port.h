@@ -50,12 +50,12 @@ struct darling_mach_port
 	/* Whether this port is associated with a Mach server */
 	bool is_server_port : 1;
 	bool is_port_set : 1;
+
+	/* If is_server_port is true */
+	server_port_t server_port;
 	
 	union
 	{
-		/* If is_server_port is true */
-		server_port_t server_port;
-		
 		/* Members for message exchange */
 		struct
 		{

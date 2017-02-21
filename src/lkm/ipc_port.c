@@ -95,7 +95,7 @@ mach_msg_return_t ipc_port_put(darling_mach_port_t* port)
 		if (port->server_port.cb_free != NULL)
 			port->server_port.cb_free(&port->server_port);
 	}
-	else if (port->is_port_set)
+	if (port->is_port_set)
 	{
 		// Iterate referenced ports
 		list_for_each(p, &port->members)
