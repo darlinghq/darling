@@ -251,7 +251,7 @@ mach_semaphore_timedwait(darling_mach_port_t* port, unsigned int sec,
 	jiffies = nsecs_to_jiffies(((u64) sec) * NSEC_PER_SEC + nsec);
 	#endif
 	
-	debug_msg("down_timeout(jiffies=%d, pid=%d)\n", jiffies, current->pid);
+	debug_msg("down_timeout(jiffies=%lu, pid=%d)\n", jiffies, current->pid);
 	err = down_timeout_interruptible(&ms->sem, jiffies);
 	if (err == -ETIME)
 		ret = KERN_OPERATION_TIMED_OUT;

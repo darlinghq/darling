@@ -42,6 +42,12 @@ kern_return_t _kernelrpc_mach_port_allocate_trap(mach_task_t* task,
 												 struct mach_port_allocate_args* args);
 kern_return_t mach_msg_overwrite_trap(mach_task_t* task,
 		struct mach_msg_overwrite_args* args);
+kern_return_t _kernelrpc_mach_port_move_member_trap(mach_task_t* task,
+		struct mach_port_move_member_args* in_args);
+kern_return_t _kernelrpc_mach_port_insert_member_trap(mach_task_t* task,
+		struct mach_port_insert_member_args* in_args);
+kern_return_t _kernelrpc_mach_port_extract_member_trap(mach_task_t* task,
+		struct mach_port_extract_member_args* in_args);
 
 kern_return_t semaphore_signal_trap(mach_task_t* task,
 		struct semaphore_signal_args* args);
