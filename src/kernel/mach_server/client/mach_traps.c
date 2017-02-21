@@ -578,3 +578,37 @@ kern_return_t mach_generate_activity_id(mach_port_name_t task, int i, uint64_t* 
 	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
+
+mach_port_name_t mk_timer_create(void)
+{
+	return ioctl(driver_fd, NR_mk_timer_create_trap, NULL);
+}
+
+kern_return_t mk_timer_destroy(mach_port_name_t name)
+{
+	struct mk_timer_destroy_args args = {
+		.timer_port = name
+	};
+
+	return ioctl(driver_fd, NR_mk_timer_destroy_trap, &args);
+}
+
+kern_return_t mk_timer_arm(mach_port_name_t name, uint64_t expire_time)
+{
+	struct mk_timer_arm_args args = {
+		.timer_port = name,
+		.expire_time = expire_time,
+	};
+
+	return ioctl(driver_fd, NR_mk_timer_arm_trap, &args);
+}
+
+kern_return_t mk_timer_cancel(mach_port_name_t name, uint64_t *result_time)
+{
+	struct mk_timer_cancel_args args = {
+		.timer_port = name,
+		.result_time = result_time,
+	};
+
+	return ioctl(driver_fd, NR_mk_timer_cancel_trap, &args);
+}
