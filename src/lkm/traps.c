@@ -952,7 +952,7 @@ kern_return_t mk_timer_destroy_trap(mach_task_t* task,
 	ipc_port_unlock(right->port);
 	
 	ipc_space_unlock(&task->namespace);
-	ret = ipc_space_right_put(&task->namespace, right);
+	ret = ipc_space_right_put(&task->namespace, args.timer_port);
 
 	return ret;
 err:
