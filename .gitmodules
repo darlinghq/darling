@@ -187,3 +187,6 @@
 [submodule "src/external/libclosure"]
 	path = src/external/libclosure
 	url = ../darling-libclosure.git
+[submodule "src/external/configd"]
+	path = src/external/configd
+	url = ../darling-configd.git

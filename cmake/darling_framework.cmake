@@ -4,8 +4,13 @@ include(InstallSymlink)
 
 function(add_framework name)
 	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT" "VERSION;LINK_FLAGS" "SOURCES;DEPENDENCIES" ${ARGN})
-	set(my_name "${name}_${FRAMEWORK_VERSION}")
+	if (FRAMEWORK_CURRENT_VERSION)
+		set(my_name "${name}")
+	else (FRAMEWORK_CURRENT_VERSION)
+		set(my_name "${name}_${FRAMEWORK_VERSION}")
+	endif (FRAMEWORK_CURRENT_VERSION)
 
+	set(DYLIB_INSTALL_NAME "/System/Library/Frameworks/${name}.framework/Versions/${FRAMEWORK_VERSION}/${name}")
 	add_darling_library(${my_name} SHARED ${FRAMEWORK_SOURCES})
 
 	set_target_properties(${my_name} PROPERTIES
