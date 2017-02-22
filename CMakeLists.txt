@@ -78,4 +78,8 @@ if (NOT DARLING_NO_EXECUTABLES)
 	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
 	InstallSymlink(/Volumes/SystemRoot/lib ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib)
 	InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib64)
+
+	# Our udev rules, so /dev/mach has 0666 permissions
+	install(DIRECTORY etc/udev DESTINATION /etc)
+
 endif (NOT DARLING_NO_EXECUTABLES)

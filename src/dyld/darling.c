@@ -34,6 +34,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/utsname.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <getopt.h>
 #include "darling.h"
 #include "darling-config.h"
 
@@ -43,7 +44,7 @@ const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
 uid_t g_originalUid, g_originalGid;
 
-int main(int argc, const char** argv)
+int main(int argc, char const ** argv)
 {
 	pid_t pidInit, pidChild;
 	int wstatus;
@@ -76,6 +77,45 @@ int main(int argc, const char** argv)
 	if (!checkPrefixDir())
 		setupPrefix();
 	checkPrefixOwner();
+
+	int c;
+	while (1)
+	{
+		static struct option long_options[] =
+		{
+			{"help", 	no_argument, 0, 0},
+			{"version", no_argument, 0, 0},
+			{0, 		0, 			 0, 0}
+		};
+		int option_index = 0;
+
+		c = getopt_long(argc, (char *const *)argv, "", long_options, &option_index);
+
+		if (c == -1)
+		{
+			break;
+		}
+
+		switch (c)
+		{
+			case 0:
+			if (strcmp(long_options[option_index].name, "help") == 0)
+			{
+				showHelp(argv[0]);
+				exit(EXIT_SUCCESS);
+			}
+			else if (strcmp(long_options[option_index].name, "version") == 0)
+			{
+				showVersion(argv[0]);
+				exit(EXIT_SUCCESS);
+			}
+			break;
+			case '?':
+			break;
+			default:
+			abort();
+		}
+	}
 
 	pidInit = getInitProcess();
 
@@ -264,6 +304,11 @@ void setupChild(const char *curPath)
 	char buffer1[4096];
 	char buffer2[4096];
 
+
+	unsetenv("LESSOPEN");
+	unsetenv("LESSCLOSE");
+	unsetenv("LESSECHO");
+
 	setenv("PATH",
 		"/usr/bin:"
 		"/bin:"
@@ -294,7 +339,7 @@ void setupChild(const char *curPath)
 void showHelp(const char* argv0)
 {
 	fprintf(stderr, "This is Darling, translation layer for macOS software.\n\n");
-	fprintf(stderr, "Copyright (C) 2012-2016 Lubos Dolezel\n\n");
+	fprintf(stderr, "Copyright (C) 2012-2017 Lubos Dolezel\n\n");
 
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr, "\t%s program-path [arguments...]\n", argv0);
@@ -302,6 +347,11 @@ void showHelp(const char* argv0)
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Environment variables:\n"
 		"DPREFIX - specifies the location of Darling prefix, defaults to ~/.darling\n");
+}
+
+void showVersion(const char* argv0) {
+	fprintf(stderr, "%s " GIT_BRANCH " @ " GIT_COMMIT_HASH "\n", argv0);
+	fprintf(stderr, "Copyright (C) 2012-2017 Lubos Dolezel\n");
 }
 
 void missingSetuidRoot(void)
@@ -793,21 +843,35 @@ int isModuleLoaded()
 int loadKernelModule()
 {
 	int fd;
-	char path[128];
+	// We need to check two paths due to DKMS
+	// Ubuntu overrides our dkms.conf and forces the modules into the updates folder
+	char miscpath[128], updatespath[128];
+	char* path;
 	struct utsname name;
 
 	if (isModuleLoaded())
 		return 0;
 
 	uname(&name);
-	snprintf(path, sizeof(path), "/lib/modules/%s/kernel/misc/darling-mach.ko", name.release);
-	if (access(path, F_OK))
+	snprintf(miscpath, sizeof(miscpath), "/lib/modules/%s/kernel/misc/darling-mach.ko", name.release);
+	snprintf(updatespath, sizeof(updatespath), "/lib/modules/%s/updates/dkms/darling-mach.ko", name.release);
+
+	// Since miscpath is the normal location we check for it last
+	if(access(updatespath, F_OK) == 0)
+	{
+		path = updatespath;
+	}
+	else if (access(miscpath, F_OK))
 	{
 		fprintf(stderr, "Cannot find kernel module at %s: %s\n", path, strerror(errno));
 		return 1;
 	}
+	else
+	{
+		path = miscpath;
+	}
 
-	fd = open(path, O_RDONLY|O_CLOEXEC);
+	fd = open(path, O_RDONLY);
 	if (fd < 0)
 	{
 		fprintf(stderr, "Cannot open kernel module\n");
@@ -819,6 +883,10 @@ int loadKernelModule()
 		fprintf(stderr, "Cannot load kernel module: %s\n", strerror(errno));
 		return 1;
 	}
+
+	printf("Loaded kernel module: %s\n", path);
+
+	close(fd);
 
 	return 0;
 }

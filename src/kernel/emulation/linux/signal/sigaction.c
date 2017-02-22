@@ -26,7 +26,18 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 
 	linux_signum = signum_bsd_to_linux(signum);
 	if (linux_signum == 0)
-		return -EINVAL;
+	{
+		// Some software (e.g. Node.js) tries to set up handlers for all signals by
+		// walking through all signal numbers incrementally. They end up hitting
+		// signals that don't exist on Linux and then bail out if they receive
+		// an error.
+		// Fake that everyting is all right.
+
+		if (osa != NULL)
+			memset(osa, 0, sizeof(*osa));
+		
+		return 0;
+	}
 
 	if (nsa != NULL)
 	{

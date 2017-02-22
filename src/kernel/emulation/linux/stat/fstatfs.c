@@ -36,7 +36,7 @@ long sys_fstatfs64(int fd, struct bsd_statfs64* buf)
 	int max_len = 0;
 
 #ifdef __NR_fstatfs64
-	ret = LINUX_SYSCALL2(__NR_fstatfs64, fd, &lbuf);
+	ret = LINUX_SYSCALL3(__NR_fstatfs64, fd, sizeof(lbuf), &lbuf);
 #else
 	ret = LINUX_SYSCALL2(__NR_fstatfs, fd, &lbuf);
 #endif

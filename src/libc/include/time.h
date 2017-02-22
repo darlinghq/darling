@@ -63,6 +63,8 @@
 #ifndef _TIME_H_
 #define	_TIME_H_
 
+#include <Availability.h>
+
 #include <_types.h>
 #include <Availability.h>
 #include <sys/_types/_clock_t.h>
