@@ -1,12 +1,13 @@
 #ifndef MACERRORS_H
 #define MACERRORS_H
 #include <CoreFoundation/CFBase.h>
+#include <MacTypes.h>
 
 inline OSStatus makeOSStatus(int errNo) { return 100000 + errNo; }
 
 #define memFullErr -108
 #define internalComponentErr -2070
-#define noErr		0
+//#define noErr		0
 #define unimpErr	-4
 #define fnfErr		-43 // file not found
 #define paramErr	-50

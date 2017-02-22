@@ -18,13 +18,13 @@ typedef int64_t SInt64;
 typedef uint64_t UInt64;
 typedef float Float32;
 typedef double Float64;
-#endif
 
 typedef Fixed*			FixedPtr;
 typedef Fract*			FractPtr;
 typedef UnsignedFixed*	UnsignedFixedPtr;
 typedef short			ShortFixed;
 typedef ShortFixed *	ShortFixedPtr; // 8/8
+#endif
 //typedef int64_t			wide;
 //typedef uint64_t		UnsignedWide;
 //typedef uint64_t		AbsoluteTime;

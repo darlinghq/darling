@@ -23,28 +23,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 
 #ifdef __cplusplus
-#include <limits>
-
-namespace Darling
-{
-	static const int32_t InfPlus = std::numeric_limits<int32_t>::max();
-	static const int32_t InfMinus = std::numeric_limits<int32_t>::min();
-	static const int32_t FixedRatio = 0x10000;
-	static const int32_t FractRatio = 0x40000000;
-
-	template <typename T> int32_t checkNumberBounds(T t)
-	{
-		if (t < -0x1p31f)
-			return InfMinus;
-		else if (t > 0x1p31f)
-			return InfPlus;
-		else
-			return int32_t(t);
-	}
-
-
-}
-
 extern "C" {
 #endif
 

@@ -19,8 +19,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef DRIVERSERVICES_H
 #define DRIVERSERVICES_H
-#include "MacTypes.h"
-#include <climits>
+#include <MacTypes.h>
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {
