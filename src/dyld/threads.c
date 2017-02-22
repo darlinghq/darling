@@ -86,10 +86,16 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	
 	pth = mmap(NULL, stack_size + pth_obj_size + 0x1000, PROT_READ | PROT_WRITE,
 		MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	pthread_attr_setstack(&attr, ((char*)pth) + pth_obj_size, stack_size - pth_obj_size - 0x1000);
+	
+	// pthread_attr_setstack is buggy. The documentation states we should provide the lowest
+	// address of the stack, yet some versions regard it as the highest address instead.
+	// Therefore it's better to just make the pthread stack as small as possible and then switch
+	// to our own stack instead.
+	//pthread_attr_setstack(&attr, ((char*)pth) + pth_obj_size, stack_size - pth_obj_size - 0x1000);
 
 	// std::cout << "Allocated stack at " << pth << ", size " << stack_size << std::endl;
 	pth = ((char*) pth) + stack_size + 0x1000;
+	pthread_attr_setstacksize(&attr, 4096);
 
 	args.pth = pth;
 	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
@@ -114,6 +120,7 @@ static void* darling_thread_entry(void* p)
 #ifdef __x86_64__
 	__asm__ __volatile__ (
 	"movq %1, %%rdi\n"
+	"movq %%rdi, %%rsp\n"
 	"movq 40(%0), %%rsi\n"
 	"movq 8(%0), %%rdx\n"
 	"testq %%rdx, %%rdx\n"
@@ -133,6 +140,7 @@ static void* darling_thread_entry(void* p)
 #elif defined(__i386__) // args in eax, ebx, ecx, edx, edi, esi
 	__asm__ __volatile__ (
 	"movl (%0), %%eax\n"
+	"movl (%1), %%esp\n"
 	"pushl %%eax\n" // address to be jumped to
 	"movl %1, 28(%0)\n"
 	"movl %1, %%eax\n" // 1st arg
