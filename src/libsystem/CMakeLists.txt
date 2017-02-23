@@ -42,6 +42,8 @@ set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
 add_circular(system FAT
 	SOURCES
 		${libsystem_sources}
+	OBJECTS
+		$<TARGET_OBJECTS:kqueue>
 )
 target_link_libraries(system PRIVATE system_malloc system_c system_kernel keymgr sandbox
 	system_m system_info system_notify system_quarantine libdispatch_shared launch compiler_rt
