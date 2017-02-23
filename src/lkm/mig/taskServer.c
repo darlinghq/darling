@@ -10,7 +10,6 @@
 #define	__MIG_check__Request__task_subsystem__ 1
 
 #include "taskServer.h"
-#include <linux/printk.h>
 
 #ifndef	mig_internal
 #define	mig_internal	static __inline__
@@ -2107,7 +2106,7 @@ mig_internal novalue _Xsemaphore_destroy
 #endif	/* defined(__MIG_check__Request__semaphore_destroy_t__defined) */
 
 	OutP->RetCode = semaphore_destroy(In0P->Head.msgh_request_port, In0P->semaphore.name);
-	printk(KERN_DEBUG "!!! sem des retcode 0x%x\n", OutP->RetCode);
+
 	OutP->NDR = NDR_record;
 
 
