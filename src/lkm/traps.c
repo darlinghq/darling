@@ -330,7 +330,7 @@ mach_port_name_t mach_thread_self_trap(mach_task_t* task)
 
 	ipc_port_unlock(task->task_self);
 
-	ret = ipc_space_make_send(&task->namespace, thread_port, false, &name);
+	ret = ipc_space_make_send_odd(&task->namespace, thread_port, false, &name, true);
 
 	if (ret == KERN_SUCCESS)
 		return name;

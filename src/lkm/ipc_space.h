@@ -62,8 +62,15 @@ mach_msg_return_t ipc_space_make_receive(ipc_namespace_t* space, darling_mach_po
 
 /*
  * Locks and unlocks the space. Expects the port to be locked.
+ *
+ * Some userspace code expects certain right numbers to be odd (e.g. thread ports).
  */
-mach_msg_return_t ipc_space_make_send(ipc_namespace_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out);
+mach_msg_return_t ipc_space_make_send_odd(ipc_namespace_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out, bool odd);
+
+inline static mach_msg_return_t ipc_space_make_send(ipc_namespace_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out)
+{
+	return ipc_space_make_send_odd(space, port, once, name_out, false);
+}
 
 /*
  * Inserts existing right into given namespace.

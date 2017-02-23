@@ -129,11 +129,11 @@ static int __ipc_right_find(int id, void* p, void* data)
 	return 0;
 }
 
-mach_msg_return_t ipc_space_make_send(ipc_namespace_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out)
+mach_msg_return_t ipc_space_make_send_odd(ipc_namespace_t* space, darling_mach_port_t* port, bool once, mach_port_name_t* name_out, bool odd)
 {
 	mach_msg_return_t ret;
 	struct mach_port_right* right = NULL;
-	int id;
+	int id, search_start = 1;
 	
 	mutex_lock(&space->mutex);
 	
@@ -163,12 +163,23 @@ mach_msg_return_t ipc_space_make_send(ipc_namespace_t* space, darling_mach_port_
 		goto err;
 	}
 	
-	id = idr_alloc(&space->names, right, 1, -1, GFP_KERNEL);
-	if (id < 0)
+	do
 	{
-		ret = KERN_RESOURCE_SHORTAGE;
-		goto err;
-	}
+		id = idr_alloc(&space->names, right, search_start, -1, GFP_KERNEL);
+		if (id < 0)
+		{
+			ret = KERN_RESOURCE_SHORTAGE;
+			goto err;
+		}
+
+		if (odd && !(id & 1))
+		{
+			idr_remove(&space->names, id);
+			search_start = id+1;
+		}
+		else
+			odd = false;
+	} while (odd);
 	
 	*name_out = id;
 	
