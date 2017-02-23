@@ -1,9 +1,12 @@
 #include "syscalls.h"
 
+#include "kqueue/kqueue.h"
+#include "kqueue/kevent.h"
 #include "unistd/write.h"
 #include "unistd/read.h"
 #include "mman/mman.h"
 #include "mman/madvise.h"
+#include "mman/msync.h"
 #include "unistd/sync.h"
 #include "unistd/fsync.h"
 #include "unistd/fdatasync.h"
@@ -207,6 +210,7 @@ void* __bsd_syscall_table[600] = {
 	[59] = sys_execve,
 	[60] = sys_umask,
 	[61] = sys_chroot,
+	[65] = sys_msync,
 	[66] = sys_vfork,
 	[73] = sys_munmap,
 	[74] = sys_mprotect,
@@ -321,6 +325,8 @@ void* __bsd_syscall_table[600] = {
 	[347] = sys_getfsstat64,
 	[360] = sys_bsdthread_create,
 	[361] = sys_bsdthread_terminate,
+	[362] = sys_kqueue,
+	[363] = sys_kevent,
 	[364] = sys_lchown,
 	[366] = sys_bsdthread_register,
 	[367] = sys_workq_open,
@@ -335,6 +341,7 @@ void* __bsd_syscall_table[600] = {
 	[402] = sys_sendmsg_nocancel,
 	[403] = sys_recvfrom_nocancel,
 	[404] = sys_accept_nocancel,
+	[405] = sys_msync_nocancel,
 	[406] = sys_fcntl_nocancel,
 	[407] = sys_select_nocancel,
 	[408] = sys_fsync_nocancel,

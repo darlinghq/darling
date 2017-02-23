@@ -36,6 +36,9 @@ set(emulation_sources
 	unistd/writev.c
 	mman/mman.c
 	mman/madvise.c
+	mman/msync.c
+	kqueue/kqueue.c
+	kqueue/kevent.c
 	unistd/fsync.c
 	unistd/sync.c
 	unistd/fdatasync.c
