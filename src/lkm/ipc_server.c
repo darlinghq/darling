@@ -32,7 +32,7 @@ static void task_free(server_port_t* kport)
 	
 	task = (mach_task_t*) kport->private_data;
 	
-	darling_task_free_threads(task);
+	darling_task_destruct(task);
 	
 	/* Deallocate the port right space. Deletes all references. */
 	ipc_space_put(&task->namespace);
@@ -63,6 +63,8 @@ mach_task_t* ipc_port_make_task(darling_mach_port_t* port, pid_t pid)
 	port->server_port.subsystem = &task_subsystem;
 	port->server_port.private_data = task;
 	port->server_port.cb_free = task_free;
+
+	INIT_LIST_HEAD(&task->semaphores);
 	
 	return task;
 }

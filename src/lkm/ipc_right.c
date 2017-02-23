@@ -85,11 +85,16 @@ void ipc_right_put(struct mach_port_right* right)
 	{
 		if (PORT_IS_VALID(port))
 		{
-			debug_msg("\tChanging num of rights\n");
 			if (right->type == MACH_PORT_RIGHT_SEND)
+			{
 				port->num_srights--;
+				debug_msg("\tChanging num of rights (s) -> %d\n", port->num_srights);
+			}
 			else if (right->type == MACH_PORT_RIGHT_SEND_ONCE)
+			{
 				port->num_sorights--;
+				debug_msg("\tChanging num of rights (so) -> %d\n", port->num_sorights);
+			}
 			
 			list_del(&right->reflist);
 			

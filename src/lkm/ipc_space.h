@@ -83,8 +83,15 @@ mach_msg_return_t ipc_space_right_insert(ipc_namespace_t* space, darling_mach_po
  * 
  * Automatically deallocates port on last reference
  * or marks port as dead if name refers to a receive right.
+ *
+ * Expects the space to be unlocked.
  */
 mach_msg_return_t ipc_space_right_put(ipc_namespace_t* space, mach_port_name_t name);
+
+/*
+ * Same as above, but caller has already locked the port
+ */
+mach_msg_return_t ipc_space_right_put_unlocked(ipc_namespace_t* space, mach_port_name_t name);
 
 /*
  * Deallocate a port name. Does not delete the associated right.

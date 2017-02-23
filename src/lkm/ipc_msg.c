@@ -26,6 +26,7 @@
 #include <linux/uaccess.h>
 #include <linux/jiffies.h>
 #include <linux/atomic.h>
+#include <linux/flex_array.h>
 #include "darling_task.h"
 
 extern ipc_namespace_t kernel_namespace;
@@ -34,6 +35,14 @@ static atomic_t msgs_sent = ATOMIC_INIT(0);
 static
 mach_msg_return_t ipc_msg_complex_copyin(ipc_namespace_t* space,
 							struct ipc_kmsg* kmsg);
+static
+mach_msg_return_t ipc_msg_copyout_complex(ipc_namespace_t* space,
+							struct ipc_kmsg* kmsg,
+							struct flex_array* ool_ports);
+static
+bool walk_complex_msg(mach_msg_base_t* base,
+		bool (*cb)(mach_msg_type_descriptor_t*,int,void*),
+		void* private);
 
 int ipc_msg_count(void)
 {
@@ -313,6 +322,18 @@ err:
 }
 
 static
+bool _copy_to_move(mach_msg_type_descriptor_t* desc, int index, void* priv)
+{
+	if (desc->type == MACH_MSG_PORT_DESCRIPTOR)
+	{
+		mach_msg_port_descriptor_t* pdesc = (mach_msg_port_descriptor_t*) desc;
+		if (pdesc->disposition == MACH_MSG_TYPE_COPY_SEND)
+			pdesc->disposition = MACH_MSG_TYPE_MOVE_SEND;
+	}
+	return true;
+}
+
+static
 mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 		int options, mach_msg_timeout_t timeout)
 {
@@ -321,6 +342,14 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	mach_msg_header_t* reply_msg;
 	mach_msg_return_t ret;
 	mach_port_t tmp;
+	struct flex_array* ool = NULL;
+
+	if (kmsg->msg->msgh_bits & MACH_MSGH_BITS_CIRCULAR)
+	{
+		debug_msg("Prevented a circular message delivery\n");
+		ret = KERN_FAILURE;
+		goto err;
+	}
 
 	subsystem = kmsg->target->port->server_port.subsystem;
 
@@ -365,6 +394,7 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	*/
 	// Insert reply port from kmsg into kernel_namespace
 	// and put the right name into reply_msg
+	ipc_space_lock(&kernel_namespace);
 	if (kmsg->reply != NULL)
 	{
 		ipc_space_right_insert(&kernel_namespace, kmsg->reply,
@@ -375,6 +405,14 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	{
 		reply_msg->msgh_remote_port = 0;
 	}
+
+	if (MACH_MSGH_BITS_IS_COMPLEX(kmsg->msg->msgh_bits))
+	{
+		// Handle OOL rights, memory regions etc.
+		ool = flex_array_alloc(sizeof(mach_port_t), 1024, GFP_KERNEL);
+		ipc_msg_copyout_complex(&kernel_namespace, kmsg, ool);
+	}
+	ipc_space_unlock(&kernel_namespace);
 
 	reply_msg->msgh_id = kmsg->msg->msgh_id + 100;
 	// reply_msg->msgh_voucher_port = kmsg->msg->msgh_voucher_port;
@@ -395,14 +433,39 @@ mach_msg_return_t ipc_msg_invoke_server(struct ipc_kmsg* kmsg,
 	kmsg->msg->msgh_remote_port = kmsg->msg->msgh_local_port;
 	kmsg->msg->msgh_local_port = tmp;
 
+	if (ool != NULL)
+	{
+		// Destroy all ports sent to us
+		int i = 0;
+		mach_port_t* pport;
+
+		while ((pport = (mach_port_t*) flex_array_get(ool, i++)) != NULL)
+		{
+			ipc_space_right_put(&kernel_namespace, *pport);
+		}
+		
+		flex_array_free(ool);
+	}
+
 	debug_msg("ipc_msg_deliver(): reply size: %d, ret = 0x%x\n",
 			reply_msg->msgh_size,
 			((mig_reply_error_t*)reply_msg)->RetCode);
 	
 	// The right used to call us is now consumed.
 	ipc_right_put_unlock(kmsg->target);
+
+	/*
+	if (MACH_MSGH_BITS_IS_COMPLEX(reply_msg->msgh_bits))
+	{
+		// MIG uses "copy_send" for output arguments,
+		// but we want to get rid of the copy in kernel namespace.
+		// Change the disposition to "move_send".
+		walk_complex_msg((mach_msg_base_t*) reply_msg, _copy_to_move, NULL);
+	}
+	*/
 	
-	// TODO: prevent circular loops
+	// prevent circular loops
+	reply_msg->msgh_bits |= MACH_MSGH_BITS_CIRCULAR;
 	ret = ipc_msg_send(&kernel_namespace, reply_msg, timeout, options);
 	
 	if (ret != MACH_MSG_SUCCESS)
@@ -799,6 +862,8 @@ struct ipc_msg_copyout_complex_args
 	ipc_namespace_t* space;
 	struct ipc_kmsg* kmsg;
 	mach_msg_return_t ret;
+	struct flex_array* ool_ports;
+	unsigned int ool_ports_count;
 };
 
 static
@@ -824,6 +889,12 @@ bool __ipc_msg_copyout_complex(mach_msg_type_descriptor_t* desc,
 				ret = ipc_space_right_insert(args->space,
 						args->kmsg->complex_items[index].port,
 						&port_desc->name);
+
+				if (ret == KERN_SUCCESS && args->ool_ports)
+				{
+					flex_array_put(args->ool_ports, args->ool_ports_count++,
+							&port_desc->name, GFP_KERNEL);
+				}
 			}
 			else
 			{
@@ -840,12 +911,14 @@ bool __ipc_msg_copyout_complex(mach_msg_type_descriptor_t* desc,
 
 static
 mach_msg_return_t ipc_msg_copyout_complex(ipc_namespace_t* space,
-							struct ipc_kmsg* kmsg)
+							struct ipc_kmsg* kmsg, struct flex_array* ool_ports)
 {
 	struct ipc_msg_copyout_complex_args args = {
 		.space = space,
 		.kmsg = kmsg,
-		.ret = KERN_SUCCESS
+		.ret = KERN_SUCCESS,
+		.ool_ports_count = 0,
+		.ool_ports = ool_ports,
 	};
 	if (kmsg->complex_items == NULL)
 		return KERN_SUCCESS;
@@ -1037,7 +1110,7 @@ mach_msg_return_t ipc_msg_recv(mach_task_t* task,
 				{
 					// Handle OOL rights, memory regions etc.
 					ipc_msg_copyout_complex(&task->namespace,
-							&delivery->kmsg);
+							&delivery->kmsg, NULL);
 				}
 				
 				// Copy over the message to recipient's buffer.

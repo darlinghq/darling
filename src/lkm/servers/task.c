@@ -25,6 +25,7 @@
 #include "../darling_task.h"
 #include "../ipc_port.h"
 #include "../ipc_space.h"
+#include "../ipc_server.h"
 #include "../primitives/semaphore.h"
 #include "task.h"
 #include "stub.h"
@@ -271,7 +272,7 @@ kern_return_t semaphore_create
 	if (ret != KERN_SUCCESS)
 		return ret;
 	
-	mach_semaphore_setup(port, value);
+	mach_semaphore_setup(task_self, port, value, *semaphore);
 	
 	return KERN_SUCCESS;
 }
@@ -282,8 +283,42 @@ kern_return_t semaphore_destroy
 	semaphore_t semaphore
 )
 {
-	return _kernelrpc_mach_port_destroy(darling_task_get_current(),
-			task, semaphore);
+	darling_mach_port_t* sema_port;
+	mach_task_t* task_self;
+	struct mach_semaphore* sema_obj;
+	darling_mach_port_right_t* right;
+	mach_port_t kernel_right;
+	
+	task_self = darling_task_get_current();
+	ipc_space_lock(&kernel_namespace);
+
+	right = ipc_space_lookup(&kernel_namespace, semaphore);
+
+	ipc_space_unlock(&kernel_namespace);
+
+	if (!PORT_IS_VALID(right->port))
+	{
+		return KERN_SUCCESS;
+	}
+
+	sema_port = right->port;
+	if (!sema_port || !sema_port->is_server_port
+		|| sema_port->server_port.port_type != PORT_TYPE_SEMAPHORE)
+	{
+		if (sema_port)
+			ipc_port_unlock(sema_port);
+		return KERN_FAILURE;
+	}
+
+	sema_obj = (struct mach_semaphore*) sema_port->server_port.private_data;
+	kernel_right = sema_obj->kernel_right;
+
+	ipc_port_put(sema_port);
+
+	// Kill the (now dead) right
+	ipc_space_right_put(&kernel_namespace, sema_obj->kernel_right);
+
+	return KERN_SUCCESS;
 }
 
 kern_return_t task_policy_set

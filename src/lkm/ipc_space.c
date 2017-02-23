@@ -228,6 +228,7 @@ mach_msg_return_t ipc_space_right_put(ipc_namespace_t* space, mach_port_name_t n
 	right = ipc_space_lookup(space, name);
 	if (right == NULL)
 	{
+		debug_msg("ipc_space_right_put(): righ %d not found\n", name);
 		mutex_unlock(&space->mutex);
 		return KERN_INVALID_NAME;
 	}
@@ -239,6 +240,33 @@ mach_msg_return_t ipc_space_right_put(ipc_namespace_t* space, mach_port_name_t n
 	
 	if (PORT_IS_VALID(port))
 		mutex_unlock(&port->mutex);
+	
+	mutex_unlock(&space->mutex);
+	return KERN_SUCCESS;
+}
+
+mach_msg_return_t ipc_space_right_put_unlocked(ipc_namespace_t* space, mach_port_name_t name)
+{
+	struct mach_port_right* right;
+	darling_mach_port_t* port;
+	
+	if (!name)
+		return KERN_SUCCESS;
+	
+	mutex_lock(&space->mutex);
+	
+	right = ipc_space_lookup_unlocked(space, name);
+	if (right == NULL)
+	{
+		debug_msg("ipc_space_right_put_unlocked(): righ %d not found\n", name);
+		mutex_unlock(&space->mutex);
+		return KERN_INVALID_NAME;
+	}
+	
+	port = right->port;
+	
+	ipc_space_name_put(space, name);
+	ipc_right_put(right);
 	
 	mutex_unlock(&space->mutex);
 	return KERN_SUCCESS;

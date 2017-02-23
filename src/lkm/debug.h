@@ -22,9 +22,11 @@
 #undef __unused
 #include <linux/printk.h>
 #include <linux/slab.h>
+#include <linux/sched.h>
+#include <linux/kernel.h>
 
 #ifdef DARLING_DEBUG
-#	define debug_msg(fmt, ...) printk(KERN_DEBUG "Darling Mach: " fmt, ##__VA_ARGS__)
+#	define debug_msg(fmt, ...) printk(KERN_DEBUG "Darling Mach: <%d> " fmt, current->pid, ##__VA_ARGS__)
 #else
 #	define debug_msg(fmt, ...)
 #endif

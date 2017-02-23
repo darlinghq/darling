@@ -295,11 +295,13 @@ mach_port_name_t mach_task_self_trap(mach_task_t* task)
 	mach_port_name_t name;
 	kern_return_t ret;
 
-	ipc_port_lock(task->task_self);
+	// No reason to lock task_self, this task is not going away
+	// while we are running. (Avoid an ABBA lock problem).
+	// ipc_port_lock(task->task_self);
 
 	ret = ipc_space_make_send(&task->namespace, task->task_self, false, &name);
 
-	ipc_port_unlock(task->task_self);
+	// ipc_port_unlock(task->task_self);
 
 	if (ret == KERN_SUCCESS)
 		return name;

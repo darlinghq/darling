@@ -22,27 +22,19 @@
 #include "../ipc_server.h"
 #include "../ipc_port.h"
 #include "../debug.h"
-#include <linux/semaphore.h>
+#include "../darling_task.h"
 #include <linux/slab.h>
 #include <linux/atomic.h>
 #include <linux/version.h>
 #include <linux/sched.h>
-#include <linux/list.h>
 
 static atomic_t sem_count = ATOMIC_INIT(0);
 
 static void
 mach_semaphore_destroy(server_port_t* port);
 
-struct mach_semaphore
-{
-	bool active;
-	struct semaphore sem;
-	rwlock_t rwlock;
-};
-
 void
-mach_semaphore_setup(darling_mach_port_t* port, int value)
+mach_semaphore_setup(mach_task_t* task, darling_mach_port_t* port, int value, mach_port_t kernel_right)
 {
 	struct mach_semaphore* ms;
 	
@@ -56,10 +48,14 @@ mach_semaphore_setup(darling_mach_port_t* port, int value)
 	port->server_port.private_data = ms;
 	
 	ms->active = true;
+	ms->kernel_right = kernel_right;
+
 	sema_init(&ms->sem, value);
 	rwlock_init(&ms->rwlock);
 	
 	atomic_inc(&sem_count);
+
+	list_add(&ms->head, &task->semaphores);
 }
 
 static void
@@ -69,6 +65,7 @@ mach_semaphore_destroy(server_port_t* port)
 	
 	ms = (struct mach_semaphore*) port->private_data;
 	ms->active = false;
+	list_del(&ms->head);
 	
 	while (!write_trylock(&ms->rwlock))
 		up(&ms->sem);

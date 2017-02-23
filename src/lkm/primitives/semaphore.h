@@ -20,9 +20,22 @@
 #ifndef PRIMITIVES_SEMAPHORE_H
 #define PRIMITIVES_SEMAPHORE_H
 #include "../ipc_types.h"
+#include <linux/semaphore.h>
+#include <linux/list.h>
+#include <linux/rwlock.h>
+
+struct mach_semaphore
+{
+	bool active;
+	struct semaphore sem;
+	rwlock_t rwlock;
+	mach_port_t kernel_right;
+	struct list_head head;
+};
+
 
 void
-mach_semaphore_setup(darling_mach_port_t* port, int value);
+mach_semaphore_setup(mach_task_t* task, darling_mach_port_t* port, int value, mach_port_t kernel_right);
 
 // All of the following unlock the port on their own
 

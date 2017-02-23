@@ -25,10 +25,13 @@
 #include <linux/printk.h>
 #include <linux/rwlock.h>
 #include "servers/thread_act.h"
+#include "primitives/semaphore.h"
 
 static rwlock_t my_lock;
 static struct rb_root all_tasks = RB_ROOT;
 static unsigned int task_count = 0;
+
+extern ipc_namespace_t kernel_namespace;
 
 struct task_entry
 {
@@ -214,17 +217,28 @@ void darling_task_deregister_thread(mach_task_t* task,
 	write_unlock(&task->threads_lock);
 }
 
-void darling_task_free_threads(mach_task_t* task)
+void darling_task_destruct(mach_task_t* task)
 {
 	struct thread_entry *entry, *n;
+	struct list_head *pos, *nn;
 	
-	debug_msg("darling_task_free_threads(%p)\n", task);
+	debug_msg("darling_task_destruct(%p)\n", task);
 	write_lock(&task->threads_lock);
 	
 	rbtree_postorder_for_each_entry_safe(entry, n, &task->threads, node)
 	{
 		ipc_port_put(entry->thread_port);
 		kfree(entry);
+	}
+
+	// Destroy all semaphores
+	list_for_each_safe(pos, nn, &task->semaphores)
+	{
+		struct mach_semaphore* sem = (struct mach_semaphore*) 
+			container_of(pos, struct mach_semaphore, head);
+
+		debug_msg("!!! destroy unreleased semaphore %d\n", sem->kernel_right);
+		ipc_space_right_put(&kernel_namespace, sem->kernel_right);
 	}
 	
 	task->threads.rb_node = NULL;

@@ -1,6 +1,6 @@
 /*
  * Darling Mach Linux Kernel Module
- * Copyright (C) 2015 Lubos Dolezel
+ * Copyright (C) 2015-2017 Lubos Dolezel
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -26,6 +26,7 @@
 #include <linux/rbtree.h>
 #include <linux/spinlock.h>
 #include <linux/hashtable.h>
+#include <linux/list.h>
 
 // Initialized in ipc_server.c
 struct mach_task
@@ -44,6 +45,8 @@ struct mach_task
 	
 	spinlock_t cv_wq_lock;
 	DECLARE_HASHTABLE(cv_wq, 8);
+
+	struct list_head semaphores;
 };
 
 typedef struct mach_task mach_task_t;
@@ -68,7 +71,7 @@ void darling_task_deregister_thread(mach_task_t* task,
 darling_mach_port_t* darling_task_lookup_thread(mach_task_t* task,
 		pid_t thread);
 
-void darling_task_free_threads(mach_task_t* task);
+void darling_task_destruct(mach_task_t* task);
 
 static inline bool
 task_is_64bit(void)
