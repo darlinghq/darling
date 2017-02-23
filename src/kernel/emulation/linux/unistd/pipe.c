@@ -9,8 +9,13 @@ long sys_pipe(int fd[2])
 
 	ret = LINUX_SYSCALL(__NR_pipe, fd);
 	if (ret < 0)
-		ret = errno_linux_to_bsd(ret);
+		return errno_linux_to_bsd(ret);
 
-	return ret;
+#if defined(__i386__) || defined(__x86_64__)
+	__asm__ __volatile__("movl %0, %%edx" :: "m"(fd[1]) : "edx");
+#else
+#	warning Missing assembly!
+#endif
+	return fd[0];
 }
 
