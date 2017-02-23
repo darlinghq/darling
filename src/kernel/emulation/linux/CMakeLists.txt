@@ -97,6 +97,7 @@ set(emulation_sources
 	unistd/chflags.c
 	unistd/issetugid.c
 	select/select.c
+	select/pselect.c
 	select/poll.c
 	process/vfork.c
 	process/fork.c

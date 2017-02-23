@@ -149,6 +149,7 @@
 #include "xattr/setxattr.h"
 #include "xattr/fsetxattr.h"
 #include "select/select.h"
+#include "select/pselect.h"
 #include "select/poll.h"
 #include "psynch/psynch_mutexwait.h"
 #include "psynch/psynch_mutexdrop.h"
@@ -332,6 +333,8 @@ void* __bsd_syscall_table[600] = {
 	[367] = sys_workq_open,
 	[368] = sys_workq_kernreturn,
 	[372] = sys_thread_selfid,
+	[394] = sys_pselect,
+	[395] = sys_pselect_nocancel,
 	[396] = sys_read_nocancel,
 	[397] = sys_write_nocancel,
 	[398] = sys_open_nocancel,
