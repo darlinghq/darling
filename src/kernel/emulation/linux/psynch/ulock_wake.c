@@ -13,7 +13,7 @@ long sys_ulock_wake(uint32_t operation, void* addr, uint64_t wake_value)
 	bool no_errno = operation & ULF_NO_ERRNO;
 
 	op = operation & UL_OPCODE_MASK;
-	if (op == UL_COMPARE_AND_WAIT)
+	if (op == UL_COMPARE_AND_WAIT || op == UL_UNFAIR_LOCK)
 	{
 		int value;
 
@@ -26,10 +26,6 @@ long sys_ulock_wake(uint32_t operation, void* addr, uint64_t wake_value)
 
 		ret = LINUX_SYSCALL(__NR_futex, addr, FUTEX_WAKE | FUTEX_PRIVATE_FLAG,
 			value);
-	}
-	else if (op == UL_UNFAIR_LOCK)
-	{
-		ret = LINUX_SYSCALL(__NR_futex, addr, FUTEX_UNLOCK_PI | FUTEX_PRIVATE_FLAG);
 	}
 	else
 		return no_errno ? -(EINVAL | 0x800) : -EINVAL;

@@ -1,6 +1,7 @@
 #include "ulock_wait.h"
 #include "../base.h"
 #include "../errno.h"
+#include "../duct_errno.h"
 #include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 #include <stdbool.h>
@@ -26,16 +27,19 @@ long sys_ulock_wait(uint32_t operation, void* addr, uint64_t value, uint32_t tim
 	}
 
 	op = operation & UL_OPCODE_MASK;
-	if (op == UL_COMPARE_AND_WAIT)
+	if (op == UL_COMPARE_AND_WAIT || op == UL_UNFAIR_LOCK)
 	{
 		ret = LINUX_SYSCALL(__NR_futex, addr, FUTEX_WAIT | FUTEX_PRIVATE_FLAG,
 			value, (timeout != 0) ? & ts : NULL);
-	}
-	else if (op == UL_UNFAIR_LOCK)
-	{
-		// FIXME: This is not correct. Linux sets addr to TID, while libplatform expects Mach thread port
-		ret = LINUX_SYSCALL(__NR_futex, addr, FUTEX_LOCK_PI | FUTEX_PRIVATE_FLAG,
-			value, (timeout != 0) ? & ts : NULL);
+
+		// unlike ulock_wait(), futex(FUTEX_WAIT) does not return how many
+		// other threads are now (still) waiting for the lock.
+		//
+		// This hack makes userspace believe that there are other pending threads
+		// and always take the slow path, which is the safe thing to do if
+		// we are unsure.
+		if (ret == 0 || ret == -LINUX_EAGAIN)
+			ret = 1;
 	}
 	else
 		return no_errno ? -(EINVAL | 0x800) : -EINVAL;
