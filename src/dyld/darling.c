@@ -850,6 +850,7 @@ int loadKernelModule()
 	// Ubuntu overrides our dkms.conf and forces the modules into the updates folder
 	char miscpath[128], updatespath[128];
 	char* path;
+	int errno_updatespath;
 	struct utsname name;
 
 	if (isModuleLoaded())
@@ -864,30 +865,31 @@ int loadKernelModule()
 	{
 		path = updatespath;
 	}
-	else if (access(miscpath, F_OK))
+	else if (errno_updatespath = errno, access(miscpath, F_OK) == 0)
 	{
-		fprintf(stderr, "Cannot find kernel module at %s: %s\n", path, strerror(errno));
-		return 1;
+		path = miscpath;
 	}
 	else
 	{
-		path = miscpath;
+		fprintf(stderr, "Cannot find the darling-mach kernel module at %s: %s\n", updatespath, strerror(errno_updatespath));
+		fprintf(stderr, "Cannot find the darling-mach kernel module at %s: %s\n", miscpath, strerror(errno));
+		return 1;
 	}
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 	{
-		fprintf(stderr, "Cannot open kernel module\n");
+		fprintf(stderr, "Cannot open the darling-mach kernel module at %s: %s\n", path, strerror(errno));
 		return 1;
 	}
 
 	if (syscall(SYS_finit_module, fd, "", 0))
 	{
-		fprintf(stderr, "Cannot load kernel module: %s\n", strerror(errno));
+		fprintf(stderr, "Cannot load the darling-mach kernel module: %s\n", strerror(errno));
 		return 1;
 	}
 
-	printf("Loaded kernel module: %s\n", path);
+	fprintf(stderr, "Loaded the darling-mach kernel module: %s\n", path);
 
 	close(fd);
 
