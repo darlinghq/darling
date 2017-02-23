@@ -106,6 +106,11 @@ int main(int argc, char** argv, char** envp)
 
 	load(filename, &entryPoint, &mh, CPU_TYPE_ANY);
 
+#if defined(__i386__) || defined(__x86_64__)
+	if (getenv("BREAK_AFTER_LOAD") != NULL)
+		__asm__("int3");
+#endif
+
 #ifdef __x86_64__
 #       define GETSP(ptr) __asm__ volatile("movq %%rsp, %0" : "=r"(ptr) ::)
 #       define JUMPX(pushCount, addr) __asm__ volatile("sub %1, %%rsp; jmpq *%0" :: "m"(addr), "r"(pushCount * sizeof(void*)) :)
