@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 2.4.0)
 cmake_policy(SET CMP0005 NEW)
 enable_language(ASM)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fvisibility=hidden -fPIC -ggdb -Wno-int-conversion")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fvisibility=hidden -fPIC -fno-builtin -ggdb -Wno-int-conversion")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD
@@ -120,6 +120,7 @@ set(emulation_sources
 	misc/thread_selfid.c
 	misc/proc_info.c
 	misc/sysctl.c
+	misc/sysctl_proc.c
 	misc/getrlimit.c
 	misc/setrlimit.c
 	misc/gethostuuid.c

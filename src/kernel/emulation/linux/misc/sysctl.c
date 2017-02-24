@@ -24,6 +24,10 @@ extern int strcmp(const char *s1, const char *s2);
 extern kern_return_t mach_port_deallocate(ipc_space_t task, mach_port_name_t name);
 extern kern_return_t host_info(mach_port_name_t host, int itype, void* hinfo, mach_msg_type_number_t* count);
 
+struct kinfo_proc;
+extern int _sysctl_proc(int what, int flag, struct kinfo_proc* out, unsigned long* buflen);
+extern int _sysctl_procargs(int pid, char* buf, unsigned long* buflen);
+
 /* Darling specific */
 enum {
 	_HW_PHYSICAL_CPU = 1000,
@@ -165,22 +169,17 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 			}
 			case KERN_PROC:
 			{
-				// Returns array of struct kinfo_proc
 				if (nlen < 4)
 					return -ENOTDIR;
-				switch (name[2])
-				{
-					case KERN_PROC_ALL:
-					case KERN_PROC_PID:
-					case KERN_PROC_TTY:
-					case KERN_PROC_UID:
-					case KERN_PROC_PGRP:
-					case KERN_PROC_SESSION:
-					case KERN_PROC_RUID:
-					case KERN_PROC_LCID:
-					default:
-						return -ENOTDIR;
-				}
+				// Returns array of struct kinfo_proc
+				return _sysctl_proc(name[2], name[3], (struct kinfo_proc*) old, oldlen);
+
+			}
+			case KERN_PROCARGS2:
+			{
+				if (nlen < 3)
+					return -ENOTDIR;
+				return _sysctl_procargs(name[2], (char*) old, oldlen);
 			}
 			case KERN_ARGMAX:
 			{

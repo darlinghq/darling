@@ -15,6 +15,11 @@ int __simple_strlen(const char* text)
 	return len;
 }
 
+static inline int abs(int n)
+{
+	return (n < 0) ? -n : n;
+}
+
 void __simple_vsprintf(char* buf, const char* format, va_list vl)
 {
 	while (*format)
@@ -54,7 +59,7 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 
 					do
 					{
-						temp[count++] = '0' + (num % 10);
+						temp[count++] = '0' + abs(num % 10);
 						num /= 10;
 					}
 					while (num > 0);
