@@ -64,8 +64,6 @@ void checkPrefixOwner(void);
 
 int isModuleLoaded(void);
 
-int loadKernelModule(void);
-
-int unloadKernelModule(void);
+void loadKernelModule(void);
 
 #endif
