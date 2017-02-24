@@ -845,56 +845,30 @@ int isModuleLoaded()
 
 int loadKernelModule()
 {
-	int fd;
-	// We need to check two paths due to DKMS
-	// Ubuntu overrides our dkms.conf and forces the modules into the updates folder
-	char miscpath[128], updatespath[128];
-	char* path;
-	int errno_updatespath;
-	struct utsname name;
+	FILE* fp;
+	char output[1024];
 
-	if (isModuleLoaded())
-		return 0;
-
-	uname(&name);
-	snprintf(miscpath, sizeof(miscpath), "/lib/modules/%s/kernel/misc/darling-mach.ko", name.release);
-	snprintf(updatespath, sizeof(updatespath), "/lib/modules/%s/updates/dkms/darling-mach.ko", name.release);
-
-	// Since miscpath is the normal location we check for it last
-	if(access(updatespath, F_OK) == 0)
+	if ((fp = popen("/sbin/modprobe darling-mach", "r")) == NULL)
 	{
-		path = updatespath;
+		fprintf(stderr, "Failed to run modprobe\n");
+		return 1;
 	}
-	else if (errno_updatespath = errno, access(miscpath, F_OK) == 0)
+
+	while (fgets(output, sizeof(output), fp) != NULL)
 	{
-		path = miscpath;
+		printf("%s", output);
+	}
+
+	if (WEXITSTATUS(pclose(fp)) == 0)
+	{
+		fprintf(stderr, "Loaded kernel module successfully\n");
+		return 0;
 	}
 	else
 	{
-		fprintf(stderr, "Cannot find the darling-mach kernel module at %s: %s\n", updatespath, strerror(errno_updatespath));
-		fprintf(stderr, "Cannot find the darling-mach kernel module at %s: %s\n", miscpath, strerror(errno));
+		fprintf(stderr, "Failed to load the kernel module\n");
 		return 1;
 	}
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0)
-	{
-		fprintf(stderr, "Cannot open the darling-mach kernel module at %s: %s\n", path, strerror(errno));
-		return 1;
-	}
-
-	if (syscall(SYS_finit_module, fd, "", 0))
-	{
-		fprintf(stderr, "Cannot load the darling-mach kernel module: %s\n", strerror(errno));
-		return 1;
-	}
-
-	fprintf(stderr, "Loaded kernel module: %s\n", path);
-
-
-	close(fd);
-
-	return 0;
 }
 
 int unloadKernelModule()
