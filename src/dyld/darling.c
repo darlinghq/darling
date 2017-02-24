@@ -887,7 +887,7 @@ int loadKernelModule()
 		return 1;
 	}
 
-	printf("Loaded kernel module: %s\n", path);
+	fprintf(stderr, "Loaded kernel module: %s\n", path);
 
 	close(fd);
 
