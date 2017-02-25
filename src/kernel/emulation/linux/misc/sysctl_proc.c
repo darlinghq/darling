@@ -1,5 +1,6 @@
 #include <sys/sysctl.h>
 #include <sys/errno.h>
+#include <stdbool.h>
 #include "../dirent/getdirentries.h"
 #include "../unistd/close.h"
 #include "../unistd/read.h"
@@ -116,13 +117,13 @@ int _sysctl_proc(int what, int flag, struct kinfo_proc* out, unsigned long* bufl
 	return ret;
 }
 
-static int read_string(const char* path, char* dst, int maxlen)
+static bool read_string(const char* path, char* dst, int maxlen)
 {
 	int fd, rd;
 
 	fd = sys_open(path, BSD_O_RDONLY, 0);
 	if (fd < 0)
-		return fd;
+		return false;
 
 	rd = sys_read(fd, dst, maxlen-1);
 	if (rd >= 0)
@@ -130,17 +131,6 @@ static int read_string(const char* path, char* dst, int maxlen)
 
 	sys_close(fd);
 	return rd >= 0;
-}
-
-static int read_int(const char* path, int* dst)
-{
-	char buf[24];
-
-	if (read_string(path, buf, sizeof(buf)) < 0)
-		return 0;
-
-	*dst = __simple_atoi(buf, NULL);
-	return 1;
 }
 
 static const char* next_stat_elem(char** buf)
@@ -386,6 +376,7 @@ int _sysctl_procargs(int pid, char* buf, unsigned long* buflen)
 		buf[sizeof(argc)+arg0len+2] = 0;
 		memcpy(buf+sizeof(argc)+arg0len+2, cmdline, argslen+1);
 	}
-	return 0;
+
+	return ret;
 }
 
