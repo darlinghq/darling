@@ -28,6 +28,10 @@
 #include <firehose/tracepoint_private.h>
 #include <sys/queue.h>
 
+#ifndef OS_LOG_NOTAILCALL
+#define OS_LOG_NOTAILCALL
+#endif
+
 __BEGIN_DECLS
 
 /*!

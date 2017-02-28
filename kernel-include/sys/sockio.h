@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2013 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -197,21 +197,20 @@
 #define	SIOCSIFDEVMTU	 SIOCSIFALTMTU			/* deprecated */
 #endif /* KERNEL_PRIVATE */
 
-#ifdef PRIVATE
-#ifdef KERNEL
+#if !defined(KERNEL) || defined(KERNEL_PRIVATE)
 #define	SIOCIFGCLONERS	_IOWR('i', 129, struct if_clonereq) /* get cloners */
+#endif /* !KERNEL || KERNEL_PRIVATE */
+#ifdef KERNEL_PRIVATE
 #define	SIOCIFGCLONERS32 _IOWR('i', 129, struct if_clonereq32) /* get cloners */
 #define	SIOCIFGCLONERS64 _IOWR('i', 129, struct if_clonereq64) /* get cloners */
-#endif /* KERNEL */
-
-#endif /* PRIVATE */
+#endif /* KERNEL_PRIVATE */
 
 #define	SIOCGIFASYNCMAP _IOWR('i', 124, struct ifreq)	/* get ppp asyncmap */
 #define	SIOCSIFASYNCMAP _IOW('i', 125, struct ifreq)	/* set ppp asyncmap */
 
 
 #ifdef PRIVATE
-#define SIOCSETOT     _IOW('s', 128, int)             /* set socket for LibOT */
+#define SIOCSETOT     _IOW('s', 128, int)             /* deprecated */
 #endif /* PRIVATE */
 
 #define SIOCGIFMAC	_IOWR('i', 130, struct ifreq)	/* get IF MAC label */
@@ -237,4 +236,27 @@
 #define	SIOCGIFTHROTTLE	_IOWR('i', 149, struct if_throttlereq)
 #endif /* PRIVATE */
 
+#ifdef PRIVATE
+#define	SIOCGASSOCIDS	_IOWR('s', 150, struct so_aidreq) /* get associds */
+#define	SIOCGCONNIDS	_IOWR('s', 151, struct so_cidreq) /* get connids */
+#define	SIOCGCONNINFO	_IOWR('s', 152, struct so_cinforeq) /* get conninfo */
+#ifdef BSD_KERNEL_PRIVATE
+#define	SIOCGASSOCIDS32	_IOWR('s', 150, struct so_aidreq32)
+#define	SIOCGASSOCIDS64	_IOWR('s', 150, struct so_aidreq64)
+#define	SIOCGCONNIDS32	_IOWR('s', 151, struct so_cidreq32)
+#define	SIOCGCONNIDS64	_IOWR('s', 151, struct so_cidreq64)
+#define	SIOCGCONNINFO32	_IOWR('s', 152, struct so_cinforeq32)
+#define	SIOCGCONNINFO64	_IOWR('s', 152, struct so_cinforeq64)
+#endif /* BSD_KERNEL_PRIVATE */
+#define	SIOCSCONNORDER	_IOWR('s', 153, struct so_cordreq) /* set conn order */
+#define	SIOCGCONNORDER	_IOWR('s', 154, struct so_cordreq) /* get conn order */
+#endif /* PRIVATE */
+
+#ifdef PRIVATE
+#define	SIOCSIFLOG	_IOWR('i', 155, struct ifreq)
+#define	SIOCGIFLOG	_IOWR('i', 156, struct ifreq)
+#define	SIOCGIFDELEGATE	_IOWR('i', 157, struct ifreq)
+#define	SIOCGIFLLADDR	_IOWR('i', 158, struct ifreq) /* get link level addr */
+#define	SIOCGIFTYPE	_IOWR('i', 159, struct ifreq) /* get interface type */
+#endif /* PRIVATE */
 #endif /* !_SYS_SOCKIO_H_ */

@@ -116,8 +116,10 @@ firehose_precise_timestamps_enabled(void)
 {
 #if KERNEL
 	return (atm_get_diagnostic_config() & 0x80) == 0;
-#else
+#elif defined(_COMM_PAGE_ATM_DIAGNOSTIC_CONFIG)
 	return (*((volatile uint32_t *)_COMM_PAGE_ATM_DIAGNOSTIC_CONFIG) & 0x80) == 0;
+#else
+	return false;
 #endif
 }
 
