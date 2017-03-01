@@ -52,5 +52,11 @@ set_target_properties(xar PROPERTIES OUTPUT_NAME "xar.1")
 target_link_libraries(xar system z bz2 xml2 ssl098 crypto098)
 make_fat(xar)
 
+add_darling_executable(xarexe src/xar.c)
+set_target_properties(xarexe PROPERTIES OUTPUT_NAME "xar")
+target_link_libraries(xarexe system xar)
+
 install(TARGETS xar DESTINATION libexec/darling/usr/lib)
+install(TARGETS xarexe DESTINATION libexec/darling/usr/bin)
+install(FILES src/xar.1 DESTINATION libexec/darling/usr/share/man/man1)
 InstallSymlink("libxar.1.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libxar.dylib")
