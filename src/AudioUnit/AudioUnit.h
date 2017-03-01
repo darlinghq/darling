@@ -1,6 +1,6 @@
 #ifndef AUDIOUNIT_H
 #define AUDIOUNIT_H
-#include <CoreServices/MacTypes.h>
+#include <MacTypes.h>
 #include <CoreAudio/CoreAudioTypes.h>
 #include "AUComponent.h"
 

@@ -35,10 +35,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <regex.h>
 #include <fcntl.h>
+#include <vector>
 #include "DateTimeUtils.h"
-#include <util/stlutils.h>
-#include <util/debug.h>
 #include <errno.h>
+
+#define STUB() // TODO
 
 // Doesn't resolve the last symlink
 // Mallocates a new buffer
@@ -47,6 +48,36 @@ static char* realpath_ns(const char* path);
 static bool FSRefParamMakePath(const FSRefParam* param, std::string& out);
 // Is the current user member of the specified group?
 static bool hasgid(gid_t gid);
+
+static bool string_endsWith(const std::string& str, const std::string& what)
+{
+	if (str.size() < what.size())
+		return false;
+	else
+		return str.compare(str.size()-what.size(), what.size(), what) == 0;
+}
+
+static std::vector<std::string> string_explode(const std::string& str, char delim, bool keepEmpty)
+{
+	std::vector<std::string> rv;
+	size_t start = 0, end;
+
+	do
+	{
+		std::string substr;
+
+		end = str.find(delim, start);
+		substr = str.substr(start, (end != std::string::npos) ? end-start : std::string::npos);
+
+		if (keepEmpty || !substr.empty())
+			rv.push_back(substr);
+		
+		start = end+1;
+	}
+	while (end != std::string::npos);
+
+	return rv;
+}
 
 OSStatus FSPathMakeRef(const uint8_t* path, FSRef* fsref, Boolean* isDirectory)
 {

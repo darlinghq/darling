@@ -1,6 +1,6 @@
 #ifndef COMPONENTS_H
 #define COMPONENTS_H
-#include <CoreServices/MacTypes.h>
+#include <MacTypes.h>
 
 #ifdef __cplusplus
 class CarbonComponent;

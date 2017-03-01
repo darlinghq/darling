@@ -6,9 +6,15 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <cstring>
-#include <util/debug.h>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFBundle.h>
+#include <stdio.h>
+#include <ctype.h>
+
+#define STUB() // TODO
+#ifndef PATH_MAX
+#	define PATH_MAX	4096
+#endif
 
 // CFStringRef kCFBundleExecutableKey = CFSTR("kCFBundleExecutableKey");
 // CFStringRef kCFBundleNameKey = CFSTR("kCFBundleNameKey");

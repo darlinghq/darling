@@ -1,6 +1,6 @@
 #ifndef COREAUDIOTYPES_H
 #define COREAUDIOTYPES_H
-#include <CoreServices/MacTypes.h>
+#include <MacTypes.h>
 
 struct AudioStreamBasicDescription
 {

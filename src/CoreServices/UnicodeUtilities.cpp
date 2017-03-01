@@ -25,7 +25,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 #include "UniChar.h"
 #include "MacErrors.h"
-#include "util/log.h"
 
 namespace Darling
 {

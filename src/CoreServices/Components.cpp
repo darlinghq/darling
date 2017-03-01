@@ -5,7 +5,9 @@
 #include <AudioUnit/AUComponent.h>
 #include <AudioUnit/AudioUnitBase.h>
 #include <CoreServices/MacErrors.h>
-#include <util/debug.h>
+
+#define TRACE1(x)
+#define TRACE2(x,y)
 
 Component FindNextComponent(Component prev, ComponentDescription* desc)
 {
@@ -59,7 +61,7 @@ OSErr OpenAComponent(Component comp, ComponentInstance* out)
 
 ComponentInstance OpenComponent(Component comp)
 {
-	TRACE1(comp);
+	// TRACE1(comp);
 
 	ComponentInstance inst;
 	OpenAComponent(comp, &inst);
@@ -68,7 +70,7 @@ ComponentInstance OpenComponent(Component comp)
 
 OSErr CloseComponent(ComponentInstance inst)
 {
-	TRACE1(inst);
+	// TRACE1(inst);
 
 	delete inst;
 	return noErr;

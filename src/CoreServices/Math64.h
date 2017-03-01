@@ -20,7 +20,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef MATH64_H
 #define MATH64_H
 
-#include "MacTypes.h"
+#include <MacTypes.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

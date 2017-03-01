@@ -10,7 +10,7 @@
 #include <unicode/unistr.h>
 #include "UniChar.h"
 
-extern char** __darwin_environ;
+extern char** environ;
 
 namespace
 {
@@ -102,12 +102,12 @@ int execvpe(const char* name, char** argv, char** envp)
 	char** orig_env;
 	int ret;
 
-	orig_env = __darwin_environ;
-	__darwin_environ = envp;
+	orig_env = environ;
+	environ = envp;
 
 	ret = execvp(name, argv);
 
-	__darwin_environ = orig_env;
+	environ = orig_env;
 	return ret;
 }
 

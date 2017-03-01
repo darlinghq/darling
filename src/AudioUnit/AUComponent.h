@@ -1,6 +1,6 @@
 #ifndef AUCOMPONENT_H
 #define AUCOMPONENT_H
-#include <CoreServices/MacTypes.h>
+#include <MacTypes.h>
 #include <CoreServices/Components.h>
 #include <CoreFoundation/CFString.h>
 

@@ -51,6 +51,8 @@ set(iconv_SRCS
 	#libcharset/src/relocatable.c
 )
 
+set(DYLIB_COMPAT_VERSION "7.0.0")
+set(DYLIB_CURRENT_VERSION "7.0.0")
 set(DYLIB_INSTALL_NAME "/usr/lib/libiconv.2.dylib")
 add_darling_library(iconv SHARED ${iconv_SRCS})
 make_fat(iconv)

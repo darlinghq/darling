@@ -23,6 +23,9 @@ add_definitions(
 	-Wno-format-security
 )
 
+set(DYLIB_COMPAT_VERSION "5.4.0")
+set(DYLIB_CURRENT_VERSION "5.4.0")
+
 add_subdirectory(ncurses)
 add_subdirectory(menu)
 add_subdirectory(panel)

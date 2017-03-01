@@ -1,6 +1,7 @@
 #ifndef OPENTRANSPORT_H
 #define OPENTRANSPORT_H
-#include "MacTypes.h"
+#include <MacTypes.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

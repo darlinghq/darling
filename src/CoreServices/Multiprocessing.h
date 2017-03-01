@@ -6,6 +6,13 @@
 extern "C" {
 #endif
 
+enum {
+	kDurationImmediate = 0,
+	kDurationForever = 0x7FFFFFFF,
+	kDurationMillisecond = 1,
+	kDurationMicrosecond = -1
+};
+
 typedef void* MPCriticalRegionID;
 
 Boolean _MPIsFullyInitialized();

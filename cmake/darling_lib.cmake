@@ -26,6 +26,14 @@ FUNCTION(add_darling_library name)
 		set_property(TARGET ${name} APPEND_STRING PROPERTY
 			LINK_FLAGS " -Wl,-dylib_install_name,${DYLIB_INSTALL_NAME} ")
 	endif (DYLIB_INSTALL_NAME)
+	if (DYLIB_COMPAT_VERSION)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY
+			LINK_FLAGS " -Wl,-compatibility_version,${DYLIB_COMPAT_VERSION} ")
+	endif (DYLIB_COMPAT_VERSION)
+	if (DYLIB_CURRENT_VERSION)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY
+			LINK_FLAGS " -Wl,-current_version,${DYLIB_CURRENT_VERSION} ")
+	endif (DYLIB_CURRENT_VERSION)
 
 	use_ld64(${name})
 ENDFUNCTION(add_darling_library)

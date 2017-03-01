@@ -19,7 +19,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef COREENDIAN_H
 #define COREENDIAN_H
-#include "MacTypes.h"
+#include <MacTypes.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

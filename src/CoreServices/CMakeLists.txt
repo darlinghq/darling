@@ -5,28 +5,19 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-#if (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
-#	message(FATAL_ERROR "Clang is the only supported compiler.")
-#endif (NOT "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions -nostdinc -nostdinc++")
 
-#configure_file(config.h.in config.h)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions -nostdinc -nostdinc++ -ggdb -O0")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script=${DARLING_TOP_DIRECTORY}/darwin.map -nostdlib -Bsymbolic")
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
-include_directories(${DARLING_TOP_DIRECTORY}/platform-include)
-include_directories(${DARLING_TOP_DIRECTORY}/src/external/libcxx/include)
-include_directories(${DARLING_TOP_DIRECTORY}/src/libc/include/FreeBSD)
-include_directories(${DARLING_TOP_DIRECTORY}/src/libiconv/include)
-include_directories(${DARLING_TOP_DIRECTORY}/src/external/icu/icuSources/common)
-include_directories(${DARLING_TOP_DIRECTORY}/src/external/icu/icuSources/i18n)
-include_directories(${DARLING_TOP_DIRECTORY}/src/external/corefoundation/Headers)
-include_directories(${DARLING_TOP_DIRECTORY}/src/external/foundation/Headers)
-include_directories(${CMAKE_BINARY_DIR}/src/external/corefoundation/Headers)
-include_directories(${CMAKE_BINARY_DIR})
-# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../util)
+include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_SOURCE_DIR}/src/external/libcxx/include
+	${CMAKE_SOURCE_DIR}/src/libc/include/FreeBSD
+	${CMAKE_SOURCE_DIR}/src/libiconv/include
+	${CMAKE_SOURCE_DIR}/src/external/icu/icuSources/common
+	${CMAKE_SOURCE_DIR}/src/external/icu/icuSources/i18n
+	${CMAKE_SOURCE_DIR}/src/external/corefoundation
+	${CMAKE_SOURCE_DIR}/src/external/foundation/include
+	${CMAKE_SOURCE_DIR}/src/external/libclosure
+)
 
 set(CoreServices_SRCS
 	CoreEndian.cpp
@@ -49,21 +40,29 @@ set(CoreServices_SRCS
 	OpenTransport.cpp
 	Timer.cpp
 	CoreServicesPriv.cpp
-	../external/libcxx/src/dso_handle.c
+	#../external/libcxx/src/dso_handle.c
 )
 
 if (WITH_COREAUDIO)
 	set(EXTRA_LIBS AudioUnit)
 endif (WITH_COREAUDIO)
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-#SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-new-dtags")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(DYLIB_COMPAT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "1.0.0")
+add_framework(CoreServices
+	FAT
+	CURRENT_VERSION
+	VERSION "A"
+	SOURCES
+		${CoreServices_SRCS}
+	DEPENDENCIES
+		icucore
+		system
+		CoreFoundation
+		cxx
+		iconv
+		${EXTRA_LIBS}
+)
 
-add_library(CoreServices SHARED ${CoreServices_SRCS})
-target_link_libraries(CoreServices icucore system ${EXTRA_LIBS} CFF cxx iconv)
-
-install(TARGETS CoreServices DESTINATION "${CMAKE_INSTALL_LIBDIR}/darling")
 install(FILES SystemVersion.plist DESTINATION "libexec/darling/System/Library/CoreServices")
 

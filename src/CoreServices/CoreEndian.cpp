@@ -62,6 +62,18 @@ template <> int64_t bswap(int64_t value)
 	return __builtin_bswap64(value);
 }
 
+#ifdef __i386__
+template <> long bswap(long value)
+{
+	return __builtin_bswap32(value);
+}
+
+template <> unsigned long bswap(unsigned long value)
+{
+	return __builtin_bswap32(value);
+}
+#endif
+
 template <typename T> T LtoN(T value)
 {
 #if TARGET_RT_LITTLE_ENDIAN

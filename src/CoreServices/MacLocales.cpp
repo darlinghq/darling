@@ -27,11 +27,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <cassert>
 #include <string>
 #include <map>
-#include "../util/mutex.h"
+#include <pthread.h>
 
 static std::map<std::string,int> g_mapLocaleString;
 static std::map<int,std::string> g_mapLocaleStringRev;
-static Darling::Mutex g_mapLocaleStringMutex;
+static pthread_mutex_t g_mapLocaleStringMutex = PTHREAD_MUTEX_INITIALIZER;
 
 namespace Darling
 {
@@ -43,12 +43,12 @@ int getLocaleUID(const std::string& str)
 		return it->second;
 	else
 	{
-		g_mapLocaleStringMutex.lock();
+		pthread_mutex_lock(&g_mapLocaleStringMutex);
 		size_t id = g_mapLocaleString.size()+1;
 		
 		g_mapLocaleString[str] = id;
 		g_mapLocaleStringRev[id] = str;
-		g_mapLocaleStringMutex.unlock();
+		pthread_mutex_unlock(&g_mapLocaleStringMutex);
 		
 		return id;
 	}
