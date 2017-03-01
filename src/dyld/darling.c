@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2016 Lubos Dolezel
+Copyright (C) 2016-2017 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -141,6 +141,7 @@ int main(int argc, char ** argv, char ** envp)
 		return 0;
 	}
 
+start_init:
 	// If prefix's init is not running, start it up
 	if (pidInit == 0)
 	{
@@ -201,6 +202,11 @@ int main(int argc, char ** argv, char ** envp)
 			pidChild = spawnChild(pidInit, MLDR_PATH,
 				(const char *[3]) {MLDR_PATH, "/bin/bash", NULL});
 	}
+	if (pidChild == -ENOMEM)
+	{
+		pidInit = 0;
+		goto start_init;
+	}
 
 	// Drop the privileges so that we can be killed, etc by the user
 	seteuid(g_originalUid);
@@ -248,6 +254,12 @@ pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
 	pidChild = fork();
 	if (pidChild < 0)
 	{
+		if (errno == ENOMEM)
+		{
+			// This condition happens specifically when the init process is a zombie.
+			// We should simply start a new init process.
+			return -ENOMEM;
+		}
 		fprintf(stderr, "Cannot spawn a child process: %s\n", strerror(errno));
 		exit(1);
 	}
