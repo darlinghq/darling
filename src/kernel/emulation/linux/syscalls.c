@@ -7,6 +7,7 @@
 #include "mman/mman.h"
 #include "mman/madvise.h"
 #include "mman/msync.h"
+#include "unistd/flock.h"
 #include "unistd/sync.h"
 #include "unistd/fsync.h"
 #include "unistd/fdatasync.h"
@@ -242,6 +243,7 @@ void* __bsd_syscall_table[600] = {
 	[123] = sys_fchown,
 	[124] = sys_fchmod,
 	[128] = sys_rename,
+	[131] = sys_flock,
 	[132] = sys_mkfifo,
 	[133] = sys_sendto,
 	[134] = sys_shutdown,
