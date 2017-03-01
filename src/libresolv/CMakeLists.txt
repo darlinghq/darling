@@ -55,10 +55,8 @@ set(resolv_sources
 	dnsinfo/dnsinfo.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
+set(DYLIB_COMPAT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "1.0.0")
 set(DYLIB_INSTALL_NAME "/usr/lib/libresolv.9.dylib")
 add_darling_library(resolv-darwin SHARED ${resolv_sources})
 set_target_properties(resolv-darwin PROPERTIES OUTPUT_NAME "resolv.9")
