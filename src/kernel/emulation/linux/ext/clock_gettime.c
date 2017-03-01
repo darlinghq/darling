@@ -13,7 +13,7 @@ int clock_gettime (int __clockid, struct timespec* __res)
 	rv = LINUX_SYSCALL(__NR_clock_gettime, __clockid, __res);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

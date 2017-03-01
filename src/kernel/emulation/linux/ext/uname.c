@@ -12,7 +12,7 @@ int __linux_uname(struct linux_utsname* p)
 	rv = LINUX_SYSCALL(__NR_uname, p);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

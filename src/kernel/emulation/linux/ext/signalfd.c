@@ -35,7 +35,7 @@ int signalfd (int __fd, const sigset_t *__mask, int __flags)
 #endif
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

@@ -13,7 +13,7 @@ int timerfd_create (int __clock_id, int __flags)
 	rv = LINUX_SYSCALL(__NR_timerfd_create, __clock_id, __flags);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

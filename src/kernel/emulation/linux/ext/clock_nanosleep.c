@@ -16,7 +16,7 @@ int clock_nanosleep (int __clockid, int __flags,
 			__req, __rem);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

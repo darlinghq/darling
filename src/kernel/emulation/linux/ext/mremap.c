@@ -13,7 +13,7 @@ int __linux_mremap(void* old_addr, unsigned long old_size, unsigned long new_siz
 	rv = LINUX_SYSCALL(__NR_mremap, old_addr, old_size, new_size, flags, new_address);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

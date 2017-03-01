@@ -13,7 +13,7 @@ int epoll_create (int __size)
 	rv = LINUX_SYSCALL(__NR_epoll_create, __size);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

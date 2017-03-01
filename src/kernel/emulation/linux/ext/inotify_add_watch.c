@@ -13,7 +13,7 @@ int inotify_add_watch (int __fd, const char *__name, uint32_t __mask)
 	rv = LINUX_SYSCALL(__NR_inotify_add_watch, __fd, __name, __mask);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

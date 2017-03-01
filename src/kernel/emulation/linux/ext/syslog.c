@@ -13,7 +13,7 @@ int __linux_syslog (int type, char* bufp, int len)
 	rv = LINUX_SYSCALL(__NR_syslog, type, bufp, len);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

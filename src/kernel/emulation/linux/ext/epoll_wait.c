@@ -15,7 +15,7 @@ int epoll_wait (int __epfd, struct epoll_event *__events,
 			__timeout);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 

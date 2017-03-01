@@ -15,7 +15,7 @@ int timerfd_settime (int __fd, int __flags,
 	rv = LINUX_SYSCALL(__NR_timerfd_settime, __fd, __flags, __utmr, __otmr);
 	if (rv < 0)
 	{
-		cerror(errno_linux_to_bsd(rv));
+		cerror(errno_linux_to_bsd(-rv));
 		return -1;
 	}
 
