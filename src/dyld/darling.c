@@ -43,8 +43,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
 uid_t g_originalUid, g_originalGid;
+char **g_argv, **g_envp;
 
-int main(int argc, char const ** argv)
+int main(int argc, char ** argv, char ** envp)
 {
 	pid_t pidInit, pidChild;
 	int wstatus;
@@ -55,17 +56,23 @@ int main(int argc, char const ** argv)
 		return 1;
 	}
 
+	g_argv = argv;
+	g_envp = envp;
+
 	if (geteuid() != 0)
 	{
 		missingSetuidRoot();
 		return 1;
 	}
 
-	if (loadKernelModule())
-		return 1;
-
 	g_originalUid = getuid();
 	g_originalGid = getgid();
+
+	setuid(0);
+	setgid(0);
+
+	if (!isModuleLoaded())
+		loadKernelModule();
 
 	prefix = getenv("DPREFIX");
 	if (!prefix)
@@ -89,7 +96,7 @@ int main(int argc, char const ** argv)
 		};
 		int option_index = 0;
 
-		c = getopt_long(argc, (char *const *)argv, "", long_options, &option_index);
+		c = getopt_long(argc, argv, "", long_options, &option_index);
 
 		if (c == -1)
 		{
@@ -200,7 +207,6 @@ int main(int argc, char const ** argv)
 
 	waitpid(pidChild, &wstatus, 0);
 
-	// Should we unloadKernelModule() here? Others may be still using it
 	if (WIFEXITED(wstatus))
 		return WEXITSTATUS(wstatus);
 	if (WIFSIGNALED(wstatus))
@@ -275,9 +281,11 @@ pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
 			exit(1);
 		}
 		*/
-
-		setresuid(g_originalUid, g_originalUid, g_originalUid);
+		
+		// Drop the privileges. It's important to drop GID first, because
+		// non-root users can't change their GID.
 		setresgid(g_originalGid, g_originalGid, g_originalGid);
+		setresuid(g_originalUid, g_originalUid, g_originalUid);
 
 		/*
 		if (setns(fdNS, CLONE_NEWUSER) != 0)
@@ -403,6 +411,7 @@ pid_t spawnInitProcess(void)
 
 		char *opts;
 		char putOld[4096];
+		char *p;
 
 		close(pipefd[0]);
 
@@ -449,12 +458,16 @@ pid_t spawnInitProcess(void)
 			exit(1);
 		}
 
-		// Drop the privileges
-		setresuid(g_originalUid, g_originalUid, g_originalUid);
+		// Drop the privileges. It's important to drop GID first, because
+		// non-root users can't change their GID.
 		setresgid(g_originalGid, g_originalGid, g_originalGid);
+		setresuid(g_originalUid, g_originalUid, g_originalUid);
 		prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
 
+		// Set name to darling-init
 		prctl(PR_SET_NAME, DARLING_INIT_COMM, 0, 0);
+		p = stpcpy(g_argv[0], DARLING_INIT_COMM);
+		memset(p, 0, g_envp[0] - p);
 
 		/*
 		if (unshare(CLONE_NEWUSER) != 0)
@@ -840,64 +853,26 @@ int isModuleLoaded()
 	return 0;
 }
 
-int loadKernelModule()
+void loadKernelModule()
 {
-	int fd;
-	// We need to check two paths due to DKMS
-	// Ubuntu overrides our dkms.conf and forces the modules into the updates folder
-	char miscpath[128], updatespath[128];
-	char* path;
-	struct utsname name;
+	int status;
+	FILE *fp = popen("/sbin/modprobe darling-mach", "w");
 
-	if (isModuleLoaded())
-		return 0;
-
-	uname(&name);
-	snprintf(miscpath, sizeof(miscpath), "/lib/modules/%s/kernel/misc/darling-mach.ko", name.release);
-	snprintf(updatespath, sizeof(updatespath), "/lib/modules/%s/updates/dkms/darling-mach.ko", name.release);
-
-	// Since miscpath is the normal location we check for it last
-	if(access(updatespath, F_OK) == 0)
+	if (fp == NULL)
 	{
-		path = updatespath;
+		fprintf(stderr, "Failed to run modprobe: %s\n", strerror(errno));
+		exit(1);
 	}
-	else if (access(miscpath, F_OK))
+
+	status = pclose(fp);
+	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 	{
-		fprintf(stderr, "Cannot find kernel module at %s: %s\n", path, strerror(errno));
-		return 1;
+		fprintf(stderr, "Loaded the kernel module\n");
+		return;
 	}
 	else
 	{
-		path = miscpath;
+		fprintf(stderr, "Failed to load the kernel module\n");
+		exit(1);
 	}
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0)
-	{
-		fprintf(stderr, "Cannot open kernel module\n");
-		return 1;
-	}
-
-	if (syscall(SYS_finit_module, fd, "", 0))
-	{
-		fprintf(stderr, "Cannot load kernel module: %s\n", strerror(errno));
-		return 1;
-	}
-
-	printf("Loaded kernel module: %s\n", path);
-
-	close(fd);
-
-	return 0;
-}
-
-int unloadKernelModule()
-{
-	if(syscall(SYS_delete_module, "darling_mach", 0))
-	{
-		fprintf(stderr, "Cannot unload kernel module: %s\n", strerror(errno));
-		return 1;
-	}
-
-	return 0;
 }

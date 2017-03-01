@@ -196,3 +196,9 @@
 [submodule "src/external/IONetworkingFamily"]
 	path = src/external/IONetworkingFamily
 	url = ../darling-IONetworkingFamily.git
+[submodule "src/external/tcsh"]
+	path = src/external/tcsh
+	url = ../darling-tcsh.git
+[submodule "src/external/system_cmds"]
+	path = src/external/system_cmds
+	url = ../darling-system_cmds.git
