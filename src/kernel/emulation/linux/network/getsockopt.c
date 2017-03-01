@@ -56,7 +56,7 @@ int sockopt_bsd_to_linux(int* level, int* optname, void** optval, void* optbuf)
 			case BSD_SO_DEBUG:
 				*optname = LINUX_SO_DEBUG; break;
 			case BSD_SO_ACCEPTCONN:
-				return -ENOTSUP;
+				*optname = LINUX_SO_ACCEPTCONN; break;
 			case BSD_SO_REUSEADDR:
 				*optname = LINUX_SO_REUSEADDR; break;
 			case BSD_SO_KEEPALIVE:
