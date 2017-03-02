@@ -30,7 +30,7 @@ long sys_sendmsg_nocancel(int socket, const struct bsd_msghdr* msg, int flags)
 		lmsg.msg_control = msg->msg_control;
 		lmsg.msg_controllen = msg->msg_controllen;
 	}
-	else if (msg->msg_control != NULL)
+	else if (msg->msg_control != NULL && msg->msg_controllen > 0)
 	{
 		struct bsd_cmsghdr* bchdr;
 
@@ -45,7 +45,12 @@ long sys_sendmsg_nocancel(int socket, const struct bsd_msghdr* msg, int flags)
 		lchdr->cmsg_type = bchdr->cmsg_type;
 
 		memcpy(lchdr->cmsg_data, bchdr->cmsg_data,
-				lchdr->cmsg_len - offsetof(struct bsd_cmsghdr, cmsg_data));
+				lchdr->cmsg_len - sizeof(struct bsd_cmsghdr));
+	}
+	else
+	{
+		lmsg.msg_control = NULL;
+		lmsg.msg_controllen = 0;
 	}
 
 	lmsg.msg_flags = 0; // ignored
@@ -56,7 +61,7 @@ long sys_sendmsg_nocancel(int socket, const struct bsd_msghdr* msg, int flags)
 	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_SENDMSG,
 			((long[6]) { socket, &lmsg, linux_flags }));
 #else
-	ret = LINUX_SYSCALL(__NR_recvmsg, socket, &lmsg, linux_flags);
+	ret = LINUX_SYSCALL(__NR_sendmsg, socket, &lmsg, linux_flags);
 #endif
 
 	if (ret < 0)

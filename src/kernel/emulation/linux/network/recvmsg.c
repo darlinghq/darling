@@ -30,11 +30,17 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 		lmsg.msg_control = msg->msg_control;
 		lmsg.msg_controllen = msg->msg_controllen;
 	}
-	else if (msg->msg_control != NULL)
+	else if (msg->msg_control != NULL && msg->msg_controllen > 0)
 	{
+		// __simple_printf("controllen=%d\n", msg->msg_controllen);
 		lchdr = (struct linux_cmsghdr*) malloc(msg->msg_controllen + 4);
 		lmsg.msg_control = lchdr;
 		lmsg.msg_controllen = msg->msg_controllen + 4;
+	}
+	else
+	{
+		lmsg.msg_control = NULL;
+		lmsg.msg_controllen = 0;
 	}
 
 	lmsg.msg_flags = 0; // set on return
@@ -59,18 +65,35 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 
 		if (bchdr != NULL)
 		{
-			bchdr->cmsg_len = lchdr->cmsg_len;
-			bchdr->cmsg_level = lchdr->cmsg_level;
-			bchdr->cmsg_type = lchdr->cmsg_type;
+			if (sizeof(unsigned long) != 4)
+			{
+				if (lmsg.msg_controllen > 0)
+				{
+					bchdr->cmsg_len = lchdr->cmsg_len;
+					bchdr->cmsg_level = lchdr->cmsg_level;
+					bchdr->cmsg_type = lchdr->cmsg_type;
 
-			memcpy(bchdr->cmsg_data, lchdr->cmsg_data,
-					lchdr->cmsg_len - offsetof(struct linux_cmsghdr, cmsg_data));
+					// __simple_printf("Copy %p to %p, %d bytes (of %d)\n", lchdr->cmsg_data, bchdr->cmsg_data, lchdr->cmsg_len - sizeof(struct linux_cmsghdr), lchdr->cmsg_len);
+					// __simple_printf("Hdr says controllen=%d\n", lmsg.msg_controllen);
+
+					memcpy(bchdr->cmsg_data, lchdr->cmsg_data,
+							lchdr->cmsg_len - sizeof(struct linux_cmsghdr));
+					msg->msg_controllen = lmsg.msg_controllen - 4;
+				}
+				else
+					msg->msg_controllen = 0;
+			}
+			else
+			{
+				msg->msg_controllen = lmsg.msg_controllen;
+			}
 		}
 	}
 
 	if (lchdr != NULL)
 		free(lchdr);
 
+	// __simple_printf("Returning %d\n", ret);
 	return ret;
 }
 
