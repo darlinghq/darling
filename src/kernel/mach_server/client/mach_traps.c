@@ -7,25 +7,26 @@
 #include <unistd.h>
 #include "../../lkm/api.h"
 #include "lkm.h"
+#include "mach_traps.h"
 
 #define UNIMPLEMENTED_TRAP() { char msg[] = "Called unimplemented Mach trap: "; write(2, msg, sizeof(msg)-1); write(2, __FUNCTION__, sizeof(__FUNCTION__)-1); write(2, "\n", 1); }
 
-mach_port_name_t mach_reply_port(void)
+mach_port_name_t mach_reply_port_impl(void)
 {
 	return ioctl(driver_fd, NR_mach_reply_port, 0);
 }
 
-mach_port_name_t thread_self_trap(void)
+mach_port_name_t thread_self_trap_impl(void)
 {
 	return ioctl(driver_fd, NR_thread_self_trap, 0);
 }
 
-mach_port_name_t host_self_trap(void)
+mach_port_name_t host_self_trap_impl(void)
 {
 	return ioctl(driver_fd, NR_host_self_trap, 0);
 }
 
-mach_msg_return_t mach_msg_trap(
+mach_msg_return_t mach_msg_trap_impl(
 				mach_msg_header_t *msg,
 				mach_msg_option_t option,
 				mach_msg_size_t send_size,
@@ -34,13 +35,13 @@ mach_msg_return_t mach_msg_trap(
 				mach_msg_timeout_t timeout,
 				mach_port_name_t notify)
 {
-	return mach_msg_overwrite_trap(msg,
+	return mach_msg_overwrite_trap_impl(msg,
 			option, send_size, rcv_size,
 			rcv_name, timeout, notify,
 			msg, 0);
 }
 
-mach_msg_return_t mach_msg_overwrite_trap(
+mach_msg_return_t mach_msg_overwrite_trap_impl(
 				mach_msg_header_t *msg,
 				mach_msg_option_t option,
 				mach_msg_size_t send_size,
@@ -67,7 +68,7 @@ mach_msg_return_t mach_msg_overwrite_trap(
 			&args);
 }
 
-kern_return_t semaphore_signal_trap(
+kern_return_t semaphore_signal_trap_impl(
 				mach_port_name_t signal_name)
 {
 	struct semaphore_signal_args args = {
@@ -77,7 +78,7 @@ kern_return_t semaphore_signal_trap(
 	return ioctl(driver_fd, NR_semaphore_signal_trap, &args);
 }
 					      
-kern_return_t semaphore_signal_all_trap(
+kern_return_t semaphore_signal_all_trap_impl(
 				mach_port_name_t signal_name)
 {
 	struct semaphore_signal_all_args args = {
@@ -88,7 +89,7 @@ kern_return_t semaphore_signal_all_trap(
 			&args);
 }
 
-kern_return_t semaphore_signal_thread_trap(
+kern_return_t semaphore_signal_thread_trap_impl(
 				mach_port_name_t signal_name,
 				mach_port_name_t thread_name)
 {
@@ -96,7 +97,7 @@ kern_return_t semaphore_signal_thread_trap(
 	return KERN_FAILURE;
 }
 
-kern_return_t semaphore_wait_trap(
+kern_return_t semaphore_wait_trap_impl(
 				mach_port_name_t wait_name)
 {
 	struct semaphore_wait_args args = {
@@ -106,7 +107,7 @@ kern_return_t semaphore_wait_trap(
 	return ioctl(driver_fd, NR_semaphore_wait_trap, &args);
 }
 
-kern_return_t semaphore_wait_signal_trap(
+kern_return_t semaphore_wait_signal_trap_impl(
 				mach_port_name_t wait_name,
 				mach_port_name_t signal_name)
 {
@@ -119,7 +120,7 @@ kern_return_t semaphore_wait_signal_trap(
 			&args);
 }
 
-kern_return_t semaphore_timedwait_trap(
+kern_return_t semaphore_timedwait_trap_impl(
 				mach_port_name_t wait_name,
 				unsigned int sec,
 				clock_res_t nsec)
@@ -134,7 +135,7 @@ kern_return_t semaphore_timedwait_trap(
 			&args);
 }
 
-kern_return_t semaphore_timedwait_signal_trap(
+kern_return_t semaphore_timedwait_signal_trap_impl(
 				mach_port_name_t wait_name,
 				mach_port_name_t signal_name,
 				unsigned int sec,
@@ -151,7 +152,7 @@ kern_return_t semaphore_timedwait_signal_trap(
 			&args);
 }
 
-kern_return_t clock_sleep_trap(
+kern_return_t clock_sleep_trap_impl(
 				mach_port_name_t clock_name,
 				sleep_type_t sleep_type,
 				int sleep_sec,
@@ -162,17 +163,17 @@ kern_return_t clock_sleep_trap(
 	return KERN_FAILURE;
 }
 
-kern_return_t _kernelrpc_mach_vm_allocate_trap(
+kern_return_t _kernelrpc_mach_vm_allocate_trap_impl(
 				mach_port_name_t target,
 				mach_vm_offset_t *addr,
 				mach_vm_size_t size,
 				int flags)
 {
-	return _kernelrpc_mach_vm_map_trap(target, addr,
+	return _kernelrpc_mach_vm_map_trap_impl(target, addr,
 			size, 0, flags, VM_PROT_READ | VM_PROT_WRITE);
 }
 
-kern_return_t _kernelrpc_mach_vm_deallocate_trap(
+kern_return_t _kernelrpc_mach_vm_deallocate_trap_impl(
 				mach_port_name_t target,
 				mach_vm_address_t address,
 				mach_vm_size_t size
@@ -191,7 +192,7 @@ kern_return_t _kernelrpc_mach_vm_deallocate_trap(
 	return KERN_SUCCESS;
 }
 
-kern_return_t _kernelrpc_mach_vm_protect_trap(
+kern_return_t _kernelrpc_mach_vm_protect_trap_impl(
 				mach_port_name_t target,
 				mach_vm_address_t address,
 				mach_vm_size_t size,
@@ -219,7 +220,7 @@ kern_return_t _kernelrpc_mach_vm_protect_trap(
 	return KERN_SUCCESS;
 }
 
-kern_return_t _kernelrpc_mach_vm_map_trap(
+kern_return_t _kernelrpc_mach_vm_map_trap_impl(
 				mach_port_name_t target,
 				mach_vm_offset_t *address,
 				mach_vm_size_t size,
@@ -284,7 +285,7 @@ kern_return_t _kernelrpc_mach_vm_map_trap(
 	return KERN_SUCCESS;
 }
 
-kern_return_t _kernelrpc_mach_port_allocate_trap(
+kern_return_t _kernelrpc_mach_port_allocate_trap_impl(
 				mach_port_name_t target,
 				mach_port_right_t right,
 				mach_port_name_t *name
@@ -310,7 +311,7 @@ kern_return_t _kernelrpc_mach_port_allocate_trap(
 }
 
 
-kern_return_t _kernelrpc_mach_port_destroy_trap(
+kern_return_t _kernelrpc_mach_port_destroy_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t name
 )
@@ -324,7 +325,7 @@ kern_return_t _kernelrpc_mach_port_destroy_trap(
 			&args);
 }
 
-kern_return_t _kernelrpc_mach_port_deallocate_trap(
+kern_return_t _kernelrpc_mach_port_deallocate_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t name
 )
@@ -338,7 +339,7 @@ kern_return_t _kernelrpc_mach_port_deallocate_trap(
 			&args);
 }
 
-kern_return_t _kernelrpc_mach_port_mod_refs_trap(
+kern_return_t _kernelrpc_mach_port_mod_refs_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t name,
 				mach_port_right_t right,
@@ -355,7 +356,7 @@ kern_return_t _kernelrpc_mach_port_mod_refs_trap(
 	return ioctl(driver_fd, NR__kernelrpc_mach_port_mod_refs, &args);
 }
 
-kern_return_t _kernelrpc_mach_port_move_member_trap(
+kern_return_t _kernelrpc_mach_port_move_member_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t member,
 				mach_port_name_t after
@@ -369,7 +370,7 @@ kern_return_t _kernelrpc_mach_port_move_member_trap(
 	return ioctl(driver_fd, NR__kernelrpc_mach_port_move_member_trap, &args);
 }
 
-kern_return_t _kernelrpc_mach_port_insert_right_trap(
+kern_return_t _kernelrpc_mach_port_insert_right_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t name,
 				mach_port_name_t poly,
@@ -380,7 +381,7 @@ kern_return_t _kernelrpc_mach_port_insert_right_trap(
 	return KERN_FAILURE;
 }
 
-kern_return_t _kernelrpc_mach_port_insert_member_trap(
+kern_return_t _kernelrpc_mach_port_insert_member_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t name,
 				mach_port_name_t pset
@@ -394,7 +395,7 @@ kern_return_t _kernelrpc_mach_port_insert_member_trap(
 	return ioctl(driver_fd, NR__kernelrpc_mach_port_insert_member_trap, &args);
 }
 
-kern_return_t _kernelrpc_mach_port_extract_member_trap(
+kern_return_t _kernelrpc_mach_port_extract_member_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t name,
 				mach_port_name_t pset
@@ -408,7 +409,7 @@ kern_return_t _kernelrpc_mach_port_extract_member_trap(
 	return ioctl(driver_fd, NR__kernelrpc_mach_port_extract_member_trap, &args);
 }
 
-kern_return_t _kernelrpc_mach_port_construct_trap(
+kern_return_t _kernelrpc_mach_port_construct_trap_impl(
 				mach_port_name_t target,
 				mach_port_options_t *options,
 				uint64_t context,
@@ -419,7 +420,7 @@ kern_return_t _kernelrpc_mach_port_construct_trap(
 	return KERN_FAILURE;
 }
 
-kern_return_t _kernelrpc_mach_port_destruct_trap(
+kern_return_t _kernelrpc_mach_port_destruct_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t name,
 				mach_port_delta_t srdelta,
@@ -430,7 +431,7 @@ kern_return_t _kernelrpc_mach_port_destruct_trap(
 	return KERN_FAILURE;
 }
 
-kern_return_t _kernelrpc_mach_port_guard_trap(
+kern_return_t _kernelrpc_mach_port_guard_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t name,
 				uint64_t guard,
@@ -441,7 +442,7 @@ kern_return_t _kernelrpc_mach_port_guard_trap(
 	return KERN_FAILURE;
 }
 
-kern_return_t _kernelrpc_mach_port_unguard_trap(
+kern_return_t _kernelrpc_mach_port_unguard_trap_impl(
 				mach_port_name_t target,
 				mach_port_name_t name,
 				uint64_t guard
@@ -451,7 +452,7 @@ kern_return_t _kernelrpc_mach_port_unguard_trap(
 	return KERN_FAILURE;
 }
 
-kern_return_t macx_swapon(
+kern_return_t macx_swapon_impl(
 				uint64_t filename,
 				int flags,
 				int size,
@@ -461,7 +462,7 @@ kern_return_t macx_swapon(
 	return KERN_FAILURE;
 }
 
-kern_return_t macx_swapoff(
+kern_return_t macx_swapoff_impl(
 				uint64_t filename,
 				int flags)
 {
@@ -469,7 +470,7 @@ kern_return_t macx_swapoff(
 	return KERN_FAILURE;
 }
 
-kern_return_t macx_triggers(
+kern_return_t macx_triggers_impl(
 				int hi_water,
 				int low_water,
 				int flags,
@@ -479,14 +480,14 @@ kern_return_t macx_triggers(
 	return KERN_FAILURE;
 }
 
-kern_return_t macx_backing_store_suspend(
+kern_return_t macx_backing_store_suspend_impl(
 				boolean_t suspend)
 {
 	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
-kern_return_t macx_backing_store_recovery(
+kern_return_t macx_backing_store_recovery_impl(
 				int pid)
 {
 	UNIMPLEMENTED_TRAP();
@@ -494,19 +495,19 @@ kern_return_t macx_backing_store_recovery(
 }
 
 extern void __linux_sched_yield();
-boolean_t swtch_pri(int pri)
+boolean_t swtch_pri_impl(int pri)
 {
 	__linux_sched_yield();
 	return 0;
 }
 
-boolean_t swtch(void)
+boolean_t swtch_impl(void)
 {
 	__linux_sched_yield();
 	return 0;
 }
 
-kern_return_t syscall_thread_switch(
+kern_return_t syscall_thread_switch_impl(
 				mach_port_name_t thread_name,
 				int option,
 				mach_msg_timeout_t option_time)
@@ -515,7 +516,7 @@ kern_return_t syscall_thread_switch(
 	return KERN_FAILURE;
 }
 
-mach_port_name_t task_self_trap(void)
+mach_port_name_t task_self_trap_impl(void)
 {
 	return ioctl(driver_fd, NR_task_self_trap, 0);
 }
@@ -524,7 +525,7 @@ mach_port_name_t task_self_trap(void)
  *	Obsolete interfaces.
  */
 
-kern_return_t task_for_pid(
+kern_return_t task_for_pid_impl(
 				mach_port_name_t target_tport,
 				int pid,
 				mach_port_name_t *t)
@@ -533,7 +534,7 @@ kern_return_t task_for_pid(
 	return KERN_FAILURE;
 }
 
-kern_return_t task_name_for_pid(
+kern_return_t task_name_for_pid_impl(
 				mach_port_name_t target_tport,
 				int pid,
 				mach_port_name_t *tn)
@@ -542,7 +543,7 @@ kern_return_t task_name_for_pid(
 	return KERN_FAILURE;
 }
 
-kern_return_t pid_for_task(
+kern_return_t pid_for_task_impl(
 				mach_port_name_t t,
 				int *x)
 {
@@ -550,7 +551,7 @@ kern_return_t pid_for_task(
 	return KERN_FAILURE;
 }
 
-kern_return_t bsdthread_terminate_trap(
+kern_return_t bsdthread_terminate_trap_impl(
 				uintptr_t stackaddr,
 				unsigned long freesize,
 				mach_port_name_t thread,
@@ -566,7 +567,6 @@ kern_return_t bsdthread_terminate_trap(
 	return ioctl(driver_fd, NR_bsdthread_terminate_trap, &args);
 }
 
-typedef struct voucher_mach_msg_state_s *voucher_mach_msg_state_t;
 
 boolean_t voucher_mach_msg_set(mach_msg_header_t *msg)
 {
@@ -585,18 +585,18 @@ voucher_mach_msg_state_t voucher_mach_msg_adopt(mach_msg_header_t *msg)
 	return NULL;
 }
 
-kern_return_t mach_generate_activity_id(mach_port_name_t task, int i, uint64_t* id)
+kern_return_t mach_generate_activity_id_impl(mach_port_name_t task, int i, uint64_t* id)
 {
 	UNIMPLEMENTED_TRAP();
 	return KERN_FAILURE;
 }
 
-mach_port_name_t mk_timer_create(void)
+mach_port_name_t mk_timer_create_impl(void)
 {
 	return ioctl(driver_fd, NR_mk_timer_create_trap, NULL);
 }
 
-kern_return_t mk_timer_destroy(mach_port_name_t name)
+kern_return_t mk_timer_destroy_impl(mach_port_name_t name)
 {
 	struct mk_timer_destroy_args args = {
 		.timer_port = name
@@ -605,7 +605,7 @@ kern_return_t mk_timer_destroy(mach_port_name_t name)
 	return ioctl(driver_fd, NR_mk_timer_destroy_trap, &args);
 }
 
-kern_return_t mk_timer_arm(mach_port_name_t name, uint64_t expire_time)
+kern_return_t mk_timer_arm_impl(mach_port_name_t name, uint64_t expire_time)
 {
 	struct mk_timer_arm_args args = {
 		.timer_port = name,
@@ -615,7 +615,7 @@ kern_return_t mk_timer_arm(mach_port_name_t name, uint64_t expire_time)
 	return ioctl(driver_fd, NR_mk_timer_arm_trap, &args);
 }
 
-kern_return_t mk_timer_cancel(mach_port_name_t name, uint64_t *result_time)
+kern_return_t mk_timer_cancel_impl(mach_port_name_t name, uint64_t *result_time)
 {
 	struct mk_timer_cancel_args args = {
 		.timer_port = name,
@@ -624,3 +624,4 @@ kern_return_t mk_timer_cancel(mach_port_name_t name, uint64_t *result_time)
 
 	return ioctl(driver_fd, NR_mk_timer_cancel_trap, &args);
 }
+

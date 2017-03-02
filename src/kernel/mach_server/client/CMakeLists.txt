@@ -10,6 +10,8 @@ set(mach_server_client_sources
 	mach_traps.c
 	mach_time.c
 	lkm.c
+	darling_mach_syscall.S
+	mach_table.c
 )
 
 add_library(mach_server_client OBJECT ${mach_server_client_sources})

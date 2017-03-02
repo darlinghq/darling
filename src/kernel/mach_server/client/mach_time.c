@@ -7,7 +7,7 @@
 #	define NSEC_PER_SEC 1000000000ull
 #endif
 
-kern_return_t		mach_timebase_info_trap(
+kern_return_t		mach_timebase_info_trap_impl(
 						mach_timebase_info_t	info)
 {
 	info->numer = NSEC_PER_SEC;
@@ -15,7 +15,7 @@ kern_return_t		mach_timebase_info_trap(
 	return KERN_SUCCESS;
 }
 
-kern_return_t		mach_wait_until(
+kern_return_t		mach_wait_until_impl(
 						uint64_t		deadline)
 {
 	struct timespec ts = { deadline / NSEC_PER_SEC, deadline % NSEC_PER_SEC };
