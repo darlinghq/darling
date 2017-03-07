@@ -12,7 +12,7 @@ FUNCTION(add_darling_library name)
 	endforeach(f)
 
 	set(CMAKE_SKIP_RPATH TRUE)
-	add_library(${name} ${files})
+	add_library(${name} SHARED ${files})
 
 	# Link using Apple's ld64
 	set_target_properties(${name} PROPERTIES

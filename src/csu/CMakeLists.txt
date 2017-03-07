@@ -20,4 +20,5 @@ set(csu_SRCS
 )
 
 add_darling_library(csu STATIC ${csu_SRCS})
+make_fat(csu)
 
