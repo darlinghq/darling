@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/darlinghq/darling.png?label=ready&title=Ready)](https://waffle.io/darlinghq/darling)
 # Darling
 
 ![Darling logo](http://darlinghq.org/img/darling250.png)
