@@ -34,10 +34,6 @@ set(libsystem_sources
 	CompatibilityHacks.c
 )
 
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling")
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
 add_circular(system FAT
 	SOURCES

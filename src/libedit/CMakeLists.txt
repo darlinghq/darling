@@ -53,6 +53,9 @@ set(edit_SRCS
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libedit.3.dylib")
+set(DYLIB_COMPAT_VERSION "2.0.0")
+set(DYLIB_CURRENT_VERSION "3.0.0")
+
 add_darling_library(edit SHARED ${edit_SRCS})
 make_fat(edit)
 set_target_properties(edit PROPERTIES OUTPUT_NAME "edit.3")

@@ -29,6 +29,9 @@ set(ffi_SRCS
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libffi.dylib")
+set(DYLIB_COMPAT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "1.0.0")
+
 add_darling_library(ffi SHARED ${ffi_SRCS})
 target_link_libraries(ffi system)
 make_fat(ffi)
