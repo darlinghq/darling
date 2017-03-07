@@ -13,6 +13,10 @@ function(add_framework name)
 	set(DYLIB_INSTALL_NAME "/System/Library/Frameworks/${name}.framework/Versions/${FRAMEWORK_VERSION}/${name}")
 	add_darling_library(${my_name} SHARED ${FRAMEWORK_SOURCES})
 
+	if (FRAMEWORK_CURRENT_VERSION)
+		add_library("${name}_${FRAMEWORK_VERSION}" ALIAS "${name}")
+	endif (FRAMEWORK_CURRENT_VERSION)
+
 	set_target_properties(${my_name} PROPERTIES
 				OUTPUT_NAME "${name}"
 		        SUFFIX ""
