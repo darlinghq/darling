@@ -9,6 +9,8 @@ __darling_mach_syscall:
 	jnl		Lpositive
 	negl	%eax
 Lpositive:
+Lentry_hook:
+	.space 13, 0x90
 	movq    ___mach_syscall_table@GOTPCREL(%rip), %r10
 	movq	(%r10,%rax,8), %r10
 	test	%r10, %r10
@@ -20,11 +22,22 @@ Lpositive:
 	pushq	%r11
 	call	*%r10
 	addq	$16, %rsp
+.std_ret:
+Lexit_hook:
+	.space 13, 0x90
 	ret
 .no_sys:
 	movq	%rax, %rdi
 	call	___unknown_mach_syscall
-	ret
+	jmp .std_ret
+
+.section        __DATA,__data
+.globl __darling_mach_syscall_entry
+.globl __darling_mach_syscall_exit
+__darling_mach_syscall_entry:
+	.quad Lentry_hook
+__darling_mach_syscall_exit:
+	.quad Lexit_hook
 
 #elif defined(__i386__)
 
@@ -37,6 +50,8 @@ __darling_mach_syscall:
 	jnl		Lpositive
 	negl	%eax
 Lpositive:
+Lentry_hook:
+	.space 6, 0x90
 	calll	1f
 1:
 	popl	%ecx
@@ -56,17 +71,29 @@ Lpositive:
 	subl	$24, %esp
 	call	*%eax
 	addl	$24, %esp
+.std_ret:
+Lexit_hook:
+	.space 6, 0x90
 	ret
 .no_sys:
 	pushl	%ecx
 	call	___unknown_mach_syscall
 	addl	$4, %esp
-	ret
+	jmp .std_ret
 
 	.section        __IMPORT,__pointers,non_lazy_symbol_pointers
 L___mach_syscall_table$non_lazy_ptr:
 	.indirect_symbol        ___mach_syscall_table
 	.long   0
+
+.section        __DATA,__data
+.globl __darling_mach_syscall_entry
+.globl __darling_mach_syscall_exit
+__darling_mach_syscall_entry:
+	.long Lentry_hook
+__darling_mach_syscall_exit:
+	.long Lexit_hook
+
 
 .subsections_via_symbols
 

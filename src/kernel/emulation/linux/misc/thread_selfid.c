@@ -3,6 +3,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 
+VISIBLE // made visible for xtrace
 long sys_thread_selfid(void)
 {
 	int ret;

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+export DYLD_INSERT_LIBRARIES="/usr/lib/darling/libxtrace.dylib"
+exec "$@"
+

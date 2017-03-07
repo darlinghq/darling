@@ -95,11 +95,20 @@
  * Macro to generate Mach call stubs in libc:
  */
 
+#ifndef DARLING
 #define kernel_trap(trap_name,trap_number,number_args) \
 LEAF(_##trap_name,0) ;\
 	movl	$##trap_number, %eax	;\
 	call	__sysenter_trap		;\
 END(_##trap_name)
+#else
+#define kernel_trap(trap_name,trap_number,number_args) \
+LEAF(_##trap_name,0) ;\
+	movl	$##trap_number, %eax	;\
+	call	__darling_mach_syscall		;\
+END(_##trap_name)
+
+#endif /* DARLING */
 
 #endif /* !KERNEL */
 
@@ -121,12 +130,21 @@ END(_##trap_name)
  * macro above, we negate those numbers here for the 64-bit
  * code path.
  */
+#ifndef DARLING
 #define kernel_trap(trap_name,trap_number,number_args) \
 LEAF(_##trap_name,0) ;\
 	movq	%rcx, %r10	;\
 	movl	$ SYSCALL_CONSTRUCT_MACH(-##trap_number), %eax	;\
 	syscall		;\
 END(_##trap_name)
+#else
+#define kernel_trap(trap_name,trap_number,number_args) \
+LEAF(_##trap_name,0) ;\
+	movl	$##trap_number, %eax	;\
+	call	__darling_mach_syscall;\
+END(_##trap_name)
+
+#endif
 
 #endif /* !KERNEL */
 
