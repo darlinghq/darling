@@ -147,7 +147,13 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 					arg);
 			return IOCTL_HANDLED;
 		}
+		case BSD_TIOCOUTQ:
+		{
+			*retval = __real_ioctl(fd, 0x00005411, arg);
+			return IOCTL_HANDLED;
+		}
 		default:
+			__simple_printf("Passing thru unhandled ioctl 0x%x on fd %d\n", cmd, fd);
 			return IOCTL_PASS;
 	}
 }
