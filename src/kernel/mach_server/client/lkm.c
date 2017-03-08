@@ -64,7 +64,7 @@ void mach_driver_init(void)
 		sys_close(driver_fd);
 		
 		driver_fd = d;
-		sys_fcntl(driver_fd, F_SETFD, O_CLOEXEC);
+		sys_fcntl(driver_fd, F_SETFD, FD_CLOEXEC);
 	}
 }
 

@@ -79,13 +79,15 @@ L1:
 	testl		%edx, %edx		// CF=OF=0,  ZF set if zero result
 	jz		L2			// parent, since r1 == 0 in parent, 1 in child
 	xorl		%eax, %eax		// zero eax
-	jmp		*%ecx
+	//jmp		*%ecx
+	ret
 
 L2:
 	GET_CURRENT_PID
 	lock
 	incl		__current_pid
-	jmp		*%ecx
+	//jmp		*%ecx
+	ret
 
 #elif defined(__x86_64__)
 
@@ -133,7 +135,8 @@ L1:
 	jnz		L2
 #endif
 	xorq		%rax, %rax		// zero rax
-	jmp		*%rdi
+	//jmp		*%rdi
+	ret
 
 L2:
 	movq		__current_pid@GOTPCREL(%rip), %rdx
