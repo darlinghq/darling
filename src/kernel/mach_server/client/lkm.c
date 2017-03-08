@@ -2,6 +2,7 @@
 #include "../../lkm/api.h"
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/resource.h>
 #include "../../libsyscall/wrappers/_libkernel_init.h"
 
 int driver_fd = -1;
@@ -11,10 +12,15 @@ extern int sys_open(const char*, int, int);
 extern int sys_close(int);
 extern int sys_write(int, const void*, int);
 extern int sys_kill(int, int);
+extern int sys_getrlimit(int, struct rlimit*);
+extern int sys_dup2(int, int);
+extern int sys_fcntl(int, int, int);
 extern _libkernel_functions_t _libkernel_functions;
 
 void mach_driver_init(void)
 {
+	struct rlimit lim;
+
 	if (driver_fd != -1)
 		sys_close(driver_fd);
 #ifndef VARIANT_DYLD
@@ -46,6 +52,19 @@ void mach_driver_init(void)
 
 		sys_write(2, msg, strlen(msg));
 		sys_kill(0, 6);
+	}
+
+	if (sys_getrlimit(RLIMIT_NOFILE, &lim) == 0)
+	{
+		// sys_getrlimit intentionally reports a limit lower by 1
+		// so that our fd remains "hidden" to applications.
+		// It also means rlim_cur is not above the limit
+		// in the following statement.
+		int d = sys_dup2(driver_fd, lim.rlim_cur);
+		sys_close(driver_fd);
+		
+		driver_fd = d;
+		sys_fcntl(driver_fd, F_SETFD, O_CLOEXEC);
 	}
 }
 

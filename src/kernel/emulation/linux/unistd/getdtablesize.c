@@ -16,6 +16,6 @@ long sys_getdtablesize(void)
 	if (ret < 0)
 		return ret;
 
-	return min(lim.rlim_max, INT_MAX);
+	return min(lim.rlim_cur, INT_MAX);
 }
 
