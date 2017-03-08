@@ -40,6 +40,7 @@ set(emulation_sources
 	mman/msync.c
 	kqueue/kqueue.c
 	kqueue/kevent.c
+	unistd/getsid.c
 	unistd/fsync.c
 	unistd/sync.c
 	unistd/fdatasync.c

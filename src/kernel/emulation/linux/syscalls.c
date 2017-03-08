@@ -7,6 +7,7 @@
 #include "mman/mman.h"
 #include "mman/madvise.h"
 #include "mman/msync.h"
+#include "unistd/getsid.h"
 #include "unistd/flock.h"
 #include "unistd/sync.h"
 #include "unistd/fsync.h"
@@ -310,6 +311,7 @@ void* __bsd_syscall_table[600] = {
 	[303] = sys_psynch_cvbroad,
 	[304] = sys_psynch_cvsignal,
 	[305] = sys_psynch_cvwait,
+	[310] = sys_getsid,
 	[327] = sys_issetugid,
 	[328] = sys_pthread_kill,
 	[329] = sys_sigprocmask, // __pthread_sigmask
