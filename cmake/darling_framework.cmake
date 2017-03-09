@@ -37,8 +37,8 @@ function(add_framework name)
 	install(TARGETS ${my_name} DESTINATION "libexec/darling/System/Library/Frameworks/${name}.framework/Versions/${FRAMEWORK_VERSION}/")
 
 	if (FRAMEWORK_CURRENT_VERSION)
-		InstallSymlink(${FRAMEWORK_VERSION} "libexec/darling/System/Library/Frameworks/${name}.framework/Versions/Current")
-		InstallSymlink("Versions/Current/${name}" "libexec/darling/System/Library/Frameworks/${name}.framework/${name}")
+		InstallSymlink(${FRAMEWORK_VERSION} "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Frameworks/${name}.framework/Versions/Current")
+		InstallSymlink("Versions/Current/${name}" "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Frameworks/${name}.framework/${name}")
 	endif (FRAMEWORK_CURRENT_VERSION)
 endfunction(add_framework)
 
