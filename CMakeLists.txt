@@ -79,6 +79,8 @@ if (NOT DARLING_NO_EXECUTABLES)
 	InstallSymlink(/Volumes/SystemRoot/lib ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib)
 	InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib64)
 
+	InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
+
 	# Our udev rules, so /dev/mach has 0666 permissions
 	install(DIRECTORY etc/udev DESTINATION /etc)
 
