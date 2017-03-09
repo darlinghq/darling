@@ -378,5 +378,8 @@ enum {
 #define LINUX_TCOFLUSH	1
 #define LINUX_TCIOFLUSH	2
 
+#define BSD_FREAD	1
+#define BSD_FWRITE	2
+
 #endif
 

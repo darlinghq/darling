@@ -189,14 +189,14 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 		}
 		case BSD_TIOCFLUSH:
 		{
-			int queue = (int) arg;
-			switch (queue)
+			int queue;
+			switch (*((int*) arg))
 			{
-				case BSD_TCIFLUSH:
+				case BSD_FREAD:
 					queue = LINUX_TCIFLUSH; break;
-				case BSD_TCOFLUSH:
+				case BSD_FWRITE:
 					queue = LINUX_TCOFLUSH; break;
-				case BSD_TCIOFLUSH:
+				case (BSD_FREAD | BSD_FWRITE):
 					queue = LINUX_TCIOFLUSH; break;
 				default:
 					*retval = -EINVAL;
