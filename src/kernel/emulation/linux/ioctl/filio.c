@@ -15,6 +15,9 @@
 
 extern int sprintf(char* buf, const char* fmt, ...);
 extern int strncmp(const char *, const char *, __SIZE_TYPE__);
+extern __SIZE_TYPE__ strlen(const char*);
+extern void* memmove(void*, void*, __SIZE_TYPE__);
+
 static bool get_fd_path(int fd, char* buf, size_t len)
 {
 	char proc[32];
@@ -27,6 +30,11 @@ static bool get_fd_path(int fd, char* buf, size_t len)
 		return false;
 
 	buf[ret] = 0;
+	if (strncmp(buf, "/Volumes/SystemRoot/dev/", 24) == 0)
+	{
+		// Remove /Volumes/SystemRoot from the start
+		memmove(buf, buf + 19, strlen(buf + 19) + 1);
+	}
 	return true;
 }
 

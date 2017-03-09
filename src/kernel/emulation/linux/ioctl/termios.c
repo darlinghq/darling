@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "../simple.h"
 
 // Speeds are stored in cflags
 // http://osxr.org/glibc/source/sysdeps/unix/sysv/linux/speed.c?v=glibc-2.13
@@ -152,8 +153,62 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 			*retval = __real_ioctl(fd, 0x00005411, arg);
 			return IOCTL_HANDLED;
 		}
+		case BSD_TIOCPTYUNLK:
+		{
+			int unlock = 0;
+			*retval = __real_ioctl(fd, LINUX_TIOCSPTLCK, &unlock);
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCPTYGNAME:
+		{
+			char* buf = (char*) arg; // 128-byte long buffer
+			int ptyno;
+
+			*retval = __real_ioctl(fd, LINUX_TIOCGPTN, &ptyno);
+			if (*retval == 0)
+			{
+				__simple_sprintf(buf, "/dev/pts/%d", ptyno);
+			}
+
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCPTYGRANT:
+		{
+			*retval = 0;
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCSCTTY:
+		{
+			*retval = __real_ioctl(fd, LINUX_TIOCSCTTY, arg);
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCCONS:
+		{
+			*retval = __real_ioctl(fd, LINUX_TIOCCONS, 0);
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCFLUSH:
+		{
+			int queue = (int) arg;
+			switch (queue)
+			{
+				case BSD_TCIFLUSH:
+					queue = LINUX_TCIFLUSH; break;
+				case BSD_TCOFLUSH:
+					queue = LINUX_TCOFLUSH; break;
+				case BSD_TCIOFLUSH:
+					queue = LINUX_TCIOFLUSH; break;
+				default:
+					*retval = -EINVAL;
+					return IOCTL_HANDLED;
+			}
+
+			*retval = __real_ioctl(fd, LINUX_TCFLSH, queue);
+			return IOCTL_HANDLED;
+		}
 		default:
 			__simple_printf("Passing thru unhandled ioctl 0x%x on fd %d\n", cmd, fd);
+			__builtin_trap();
 			return IOCTL_PASS;
 	}
 }

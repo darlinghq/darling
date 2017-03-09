@@ -129,7 +129,7 @@ enum {
 #define BSD_TIOCSDRAINWAIT  BSD_IOW('t', 87, int)
 #define BSD_TIOCGDRAINWAIT  BSD_IOR('t', 86, int)
 #define BSD_TIOCPTYGRANT    BSD_IO('t', 84)
-#define BSD_TIOCPTYGNAME    BSD_IOC(IOC_OUT, 't', 83, 128)
+#define BSD_TIOCPTYGNAME    BSD_IOC(BSD_IOC_OUT, 't', 83, 128)
 #define BSD_TIOCPTYUNLK     BSD_IO('t', 82)
 
 #define BSD_IGNBRK          0x00000001
@@ -367,6 +367,16 @@ enum {
 
 #define LINUX_POSIX_VDISABLE ((unsigned char)'\0')
 #define BSD_POSIX_VDISABLE ((unsigned char)'\377')
+
+#define LINUX_TIOCSPTLCK      LINUX_IOW('T', 0x31, int)
+#define LINUX_TIOCGPTN        LINUX_IOR('T', 0x30, unsigned int)
+
+#define BSD_TCIFLUSH	1
+#define BSD_TCOFLUSH	2
+#define BSD_TCIOFLUSH	3
+#define LINUX_TCIFLUSH	0
+#define LINUX_TCOFLUSH	1
+#define LINUX_TCIOFLUSH	2
 
 #endif
 
