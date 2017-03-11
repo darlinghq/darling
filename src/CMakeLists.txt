@@ -41,10 +41,6 @@ add_subdirectory(dyld)
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
 
-if (NOT DARLING_NO_EXECUTABLES)
-	#	add_subdirectory(motool)
-	add_subdirectory(external/darling-dmg)
-endif (NOT DARLING_NO_EXECUTABLES)
 
 #if (FRAMEWORK_COREAUDIO)
 #	add_subdirectory(AudioToolbox)
@@ -78,6 +74,7 @@ add_subdirectory(kernel)
 add_subdirectory(libc)
 
 add_definitions(-D_LIBC_NO_FEATURE_VERIFICATION)
+add_subdirectory(external/darling-dmg)
 add_subdirectory(libm)
 add_subdirectory(libmacho)
 add_subdirectory(libgcc)
