@@ -89,10 +89,17 @@ set(libstdcxx_sources
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libstdc++.6.dylib")
+set(DYLIB_COMPAT_VERSION "7.0.0")
+set(DYLIB_CURRENT_VERSION "104.1.0")
+
 add_darling_library(stdcxx SHARED ${libstdcxx_sources})
 make_fat(stdcxx)
 target_link_libraries(stdcxx PRIVATE system cxxabi_shared)
-set_target_properties(stdcxx PROPERTIES OUTPUT_NAME "stdc++.6")
+set_target_properties(stdcxx PROPERTIES
+	OUTPUT_NAME "stdc++.6"
+)
+set_property(TARGET stdcxx APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/external/libcxxabi/src/libc++abi.dylib ")
+add_dependencies(stdcxx cxxabi)
 
 install(TARGETS stdcxx DESTINATION libexec/darling/usr/lib)
 
