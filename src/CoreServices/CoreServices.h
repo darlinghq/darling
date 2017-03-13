@@ -12,7 +12,7 @@
 #include <CoreServices/LaunchServices.h>
 #include <CoreServices/MacErrors.h>
 #include <CoreServices/MacMemory.h>
-#include <CoreServices/MacTypes.h>
+#include <MacTypes.h>
 #include <CoreServices/Math64.h>
 #include <CoreServices/Multiprocessing.h>
 #include <CoreServices/OpenTransport.h>
