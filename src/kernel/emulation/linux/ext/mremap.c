@@ -6,12 +6,12 @@
 extern long cerror(int __err);
 
 VISIBLE
-int __linux_mremap(void* old_addr, unsigned long old_size, unsigned long new_size, int flags, void* new_address)
+long __linux_mremap(void* old_addr, unsigned long old_size, unsigned long new_size, int flags, void* new_address)
 {
-	int rv;
+	long rv;
 
 	rv = LINUX_SYSCALL(__NR_mremap, old_addr, old_size, new_size, flags, new_address);
-	if (rv < 0)
+	if (rv < 0 && rv >= -4095)
 	{
 		cerror(errno_linux_to_bsd(-rv));
 		return -1;
