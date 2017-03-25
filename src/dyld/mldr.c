@@ -96,7 +96,7 @@ int main(int argc, char** argv, char** envp)
 	for (int i = 1; i < argc; i++)
 	{
 		size_t len = strlen(argv[i]);
-		strcpy(p, argv[i]);
+		memmove(p, argv[i], len+1);
 
 		argv[i-1] = p;
 		p += len+1;
