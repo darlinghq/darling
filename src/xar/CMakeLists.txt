@@ -47,6 +47,8 @@ set(xar_SRCS
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libxar.1.dylib")
+set(DYLIB_COMPAT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "1.0.0")
 add_darling_library(xar SHARED ${xar_SRCS})
 set_target_properties(xar PROPERTIES OUTPUT_NAME "xar.1")
 target_link_libraries(xar system z bz2 xml2 ssl098 crypto098)
