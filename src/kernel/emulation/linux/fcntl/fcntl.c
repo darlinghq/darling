@@ -65,7 +65,7 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 			char buf[100];
 			int len;
 
-			sprintf(buf, "/proc/self/fd/%d", fd);
+			__simple_sprintf(buf, "/proc/self/fd/%d", fd);
 			len = sys_readlink(buf, (char*) arg, MAXPATHLEN);
 
 			if (len >= 0)
