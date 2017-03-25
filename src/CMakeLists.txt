@@ -171,6 +171,7 @@ add_subdirectory(external/gnudiff)
 add_subdirectory(external/openssh)
 #add_subdirectory(external/top)
 add_subdirectory(external/perl)
+add_subdirectory(unxip)
 
 ######################
 # libc++ & libc++abi #
