@@ -27,8 +27,8 @@
 /* If we're hosted, fall back to the system's stdatomic.h. FreeBSD, for
  * example, already has a Clang-compatible stdatomic.h header.
  */
-#ifdef __STDC_NO_ATOMICS__
-
+#if __STDC_HOSTED__ && __has_include_next(<stdatomic.h>)
+# include_next <stdatomic.h>
 #else
 
 #include <stddef.h>
