@@ -26,7 +26,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <dlfcn.h>
 #include <stdio.h>
-#include "libxcselect.h"
+#include "xcselect.h"
 
 static char path_buffer[1024];
 
@@ -92,50 +92,50 @@ static bool valid_dev_path(const char* path)
 	return false;
 }
 
-const char* xcselect_find_developer_contents_from_path(const char* p, bool* is_cmd_line)
+bool xcselect_find_developer_contents_from_path(const char* p, char* dst, bool* is_cmd_line, size_t dst_size)
 {
 	size_t length;
 
 	if (*p != '/')
 	{
-		getcwd(path_buffer, sizeof(path_buffer));
-		strcat(path_buffer, "/");
-		strcat(path_buffer, p);
+		getcwd(dst, dst_size);
+		strcat(dst, "/");
+		strcat(dst, p);
 	}
 	else
-		strcpy(path_buffer, p);
+		strlcpy(dst, p, dst_size);
 
-	length = strlen(path_buffer);
-	if (valid_dev_path(path_buffer))
-		return path_buffer;
+	length = strlen(dst);
+	if (valid_dev_path(dst))
+		return true;
 
-	path_buffer[length++] = '/';
-	path_buffer[length] = 0;
+	dst[length++] = '/';
+	dst[length] = 0;
 
-	strcat(path_buffer, "Library/Developer/CommandLineTools");
-	if (valid_dev_path(path_buffer))
+	strcat(dst, "Library/Developer/CommandLineTools");
+	if (valid_dev_path(dst))
 	{
 		*is_cmd_line = true;
-		return path_buffer;
+		return true;
 	}
 
-	path_buffer[length] = 0;
-	strcat(path_buffer, "CommandLineTools");
-	if (valid_dev_path(path_buffer))
+	dst[length] = 0;
+	strcat(dst, "CommandLineTools");
+	if (valid_dev_path(dst))
 	{
 		*is_cmd_line = true;
-		return path_buffer;
+		return true;
 	}
 
-	path_buffer[length] = 0;
-	strcat(path_buffer, "Contents/Developer");
-	if (valid_dev_path(path_buffer))
-		return path_buffer;
+	dst[length] = 0;
+	strcat(dst, "Contents/Developer");
+	if (valid_dev_path(dst))
+		return true;
 
-	return NULL;
+	return false;
 }
 
-const char* xcselect_get_developer_dir_path(bool* is_cmd_line)
+bool xcselect_get_developer_dir_path(char* path, size_t path_len, bool* is_cmd_line)
 {
 	const char* p;
 	char* slash;
@@ -145,9 +145,11 @@ const char* xcselect_get_developer_dir_path(bool* is_cmd_line)
 	p = getenv("DEVELOPER_DIR");
 	if (p)
 	{
-		p = xcselect_find_developer_contents_from_path(p, is_cmd_line);
-		if (p)
+		if (xcselect_find_developer_contents_from_path(p, path_buffer, is_cmd_line, sizeof(path_buffer)))
+		{
+			p = path_buffer;
 			goto have_path;
+		}
 	}
 
 	p = get_developer_dir_from_symlink("/var/db/xcode_select_link");
@@ -173,7 +175,7 @@ const char* xcselect_get_developer_dir_path(bool* is_cmd_line)
 		goto have_path;
 	}
 
-	return NULL;
+	return false;
 
 have_path:
 	slash = strrchr(p, '/');
@@ -183,18 +185,18 @@ have_path:
 			*is_cmd_line = true;
 	}
 
-	return p;
+	strlcpy(path, p, path_len);
+	strlcat(path, "/", path_len);
+	return true;
 }
 
 
 int xcselect_invoke_xcrun(const char* tool, int argc, char* argv[], int flags)
 {
-	const char* dev_dir;
+	char dev_dir[1024];
 	bool is_cmdline;
 
-	dev_dir = xcselect_get_developer_dir_path(&is_cmdline);
-
-	if (dev_dir != NULL)
+	if (xcselect_get_developer_dir_path(dev_dir, sizeof(dev_dir), &is_cmdline))
 	{
 		char* buf = (char*) malloc(2048);
 		size_t length;
@@ -264,5 +266,96 @@ int xcselect_invoke_xcrun(const char* tool, int argc, char* argv[], int flags)
 	}
 
 	exit(1);
+}
+
+struct __xcselect_manpaths
+{
+	unsigned int count;
+	char** paths;
+};
+
+void xcselect_manpaths_append(xcselect_manpaths* paths, const char* path)
+{
+	paths->count++;
+	paths->paths = realloc(paths->paths, sizeof(char*) * paths->count);
+	paths->paths[paths->count - 1] = strdup(path);
+}
+
+xcselect_manpaths* xcselect_get_manpaths(const char* sdkname)
+{
+	char path[1024];
+	bool unused;
+	size_t len;
+	xcselect_manpaths* rv;
+
+	if (!xcselect_get_developer_dir_path(path, sizeof(path), &unused))
+		return NULL;
+
+	len = strlen(path);
+	strcat(path, "usr/lib/libxcrun.dylib");
+
+	rv = (xcselect_manpaths*) malloc(sizeof(*rv));
+	memset(rv, 0, sizeof(*rv));
+
+	if (access(path, F_OK) == 0)
+	{
+		void* module = dlopen(path, RTLD_LAZY);
+		void (*fn)(const char* devpath, const char* sdkname, void (^)(const char*));
+
+		if (!module)
+		{
+			free(rv);
+			fprintf(stderr, "%s: error: cannot load libxcrun (%s)\n", getprogname(), dlerror());
+			return NULL;
+		}
+
+		*((void**)&fn) = dlsym(module, "xcrun_iter_manpaths");
+
+		if (fn != NULL)
+		{
+			path[len] = 0;
+			fn(path, sdkname, ^(const char* path) {
+				xcselect_manpaths_append(rv, path);
+			});
+		}
+
+		dlclose(module);
+	}
+
+	// Add standard paths
+	path[len] = 0;
+	strcat(path, "usr/share/man");
+	xcselect_manpaths_append(rv, path);
+
+	path[len] = 0;
+	strcat(path, "usr/llvm-gcc-4,2/share/man");
+	xcselect_manpaths_append(rv, path);
+
+	path[len] = 0;
+	strcat(path, "Toolchains/XcodeDefault.xctoolchain/usr/share/man");
+	xcselect_manpaths_append(rv, path);
+
+	return rv;
+}
+
+unsigned int xcselect_manpaths_get_num_paths(xcselect_manpaths* p)
+{
+	return p->count;
+}
+
+const char* xcselect_manpaths_get_path(xcselect_manpaths* p, unsigned int idx)
+{
+	if (idx < xcselect_manpaths_get_num_paths(p))
+		return p->paths[idx];
+	else
+		return NULL;
+}
+
+void xcselect_manpaths_free(xcselect_manpaths* p)
+{
+	for (unsigned int i = 0; i < p->count; i++)
+		free(p->paths[i]);
+	free(p->paths);
+	free(p);
 }
 
