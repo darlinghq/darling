@@ -13,7 +13,11 @@ set(libgcc_sources
 	dummy.c
 )
 
+set(DYLIB_COMPAT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "1.0.0")
+set(DYLIB_INSTALL_NAME "/usr/lib/libgcc_s.1.dylib")
 add_darling_library(gcc_s SHARED ${libgcc_sources})
+make_fat(gcc_s)
 target_link_libraries(gcc_s PRIVATE compiler_rt)
 set_target_properties(gcc_s PROPERTIES OUTPUT_NAME "gcc_s.1")
 
