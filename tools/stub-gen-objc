@@ -2,7 +2,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2016 Lubos Dolezel
+Copyright (C) 2017 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ let copyright = "/*\n" +
     "This file is part of Darling.\n" +
     "\n" +
     
-    "Copyright (C) 2016 Lubos Dolezel\n" +
+    "Copyright (C) 2017 Lubos Dolezel\n" +
     "\n" +
     
     "Darling is free software: you can redistribute it and/or modify\n" +
