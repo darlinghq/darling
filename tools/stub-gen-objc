@@ -1,0 +1,152 @@
+#!/usr/bin/env swift
+/*
+This file is part of Darling.
+
+Copyright (C) 2016 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+ 
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+ 
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+import Foundation
+
+guard CommandLine.arguments.count == 3 else {
+    fatalError("Usage: \(CommandLine.arguments[0]) <Objective-C binary> <output directory>")
+}
+
+let copyright = "/*\n" +
+    "This file is part of Darling.\n" +
+    "\n" +
+    
+    "Copyright (C) 2016 Lubos Dolezel\n" +
+    "\n" +
+    
+    "Darling is free software: you can redistribute it and/or modify\n" +
+    "it under the terms of the GNU General Public License as published by\n" +
+    "the Free Software Foundation, either version 3 of the License, or\n" +
+    "(at your option) any later version.\n" +
+    "\n" +
+    
+    "Darling is distributed in the hope that it will be useful,\n" +
+    "but WITHOUT ANY WARRANTY; without even the implied warranty of\n" +
+    "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n" +
+    "GNU General Public License for more details.\n" +
+    "\n" +
+    
+    "You should have received a copy of the GNU General Public License\n" +
+    "along with Darling.  If not, see <http://www.gnu.org/licenses/>.\n" +
+    "*/\n\n"
+
+let name = CommandLine.arguments[1]
+let outputDirectory = CommandLine.arguments[2]
+
+// So we can generate a "master header"
+var moduleName = (name as NSString).pathComponents.last! as String
+
+// Set up the environment for class-dump
+let pipe = Pipe()
+
+let classDump = Process()
+classDump.launchPath = "/bin/bash"
+classDump.arguments = ["-c","class-dump \(name)"]
+classDump.standardOutput = pipe
+
+// Redirect the output
+let outHandle = pipe.fileHandleForReading
+
+var output = ""
+
+// Put the output in the string output
+outHandle.readabilityHandler = { pipe in
+    if let line = String(data: pipe.availableData, encoding: String.Encoding.utf8) {
+        output.append(line)
+    } else {
+        print("Error decoding data: \(pipe.availableData)")
+    }
+}
+
+// Run it and wait for it to finish
+classDump.launch()
+classDump.waitUntilExit()
+
+var classes: [(class: String, superclass: String)] = []
+
+// Begin ugly string parsing code
+while output.contains("@interface") {
+    let interfaceRange = output.range(of: "@interface")!
+    output.removeSubrange(output.startIndex ... interfaceRange.upperBound)
+    if let space = output.range(of: " : ") {
+        let className = output[output.startIndex ..< space.lowerBound]
+        
+        output.removeSubrange(output.startIndex ..< space.upperBound)
+        
+        var endOfSuperclass: String.CharacterView.Index!
+        let nextNewline = output.range(of: "\n")
+        let nextProtocolConformance = output.range(of: " <")
+        if nextNewline != nil && nextProtocolConformance != nil {
+            endOfSuperclass = nextNewline!.lowerBound < nextProtocolConformance!.lowerBound ? nextNewline!.lowerBound : nextProtocolConformance!.lowerBound
+        } else if nextNewline != nil {
+            endOfSuperclass = nextNewline!.lowerBound
+        } else if nextProtocolConformance != nil {
+            endOfSuperclass = nextProtocolConformance!.lowerBound
+        } else {
+            fatalError("Failed to detect superclass: \(className)")
+        }
+        let superclass = output[output.startIndex ..< endOfSuperclass]
+        
+        classes.append((class: className, superclass: superclass))
+    }
+}
+// End ugly string parsing code
+
+// Create destination folders if they don't exist
+try FileManager.default.createDirectory(atPath: outputDirectory, withIntermediateDirectories: true)
+try FileManager.default.createDirectory(atPath: outputDirectory + "/Headers", withIntermediateDirectories: true)
+try FileManager.default.createDirectory(atPath: outputDirectory + "/Sources", withIntermediateDirectories: true)
+
+// Emit master header
+var mh = copyright
+mh += "#import <Foundation/Foundation.h>\n"
+
+// Generate headers and sources for each class
+for var classEntry in classes {
+    
+    mh += "#import <\(moduleName)/\(classEntry.class).h>\n"
+    
+    var header = copyright
+    
+    header += "@interface \(classEntry.class) : \(classEntry.superclass)\n\n"
+    
+    header += "@end\n"
+    
+    var implementation = copyright
+    
+    implementation += "#import <\(moduleName)/\(moduleName).h>\n\n"
+    
+    implementation += "@implementation \(classEntry.class)\n\n"
+    
+    implementation += "- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {\n"
+    implementation += "    return [NSMethodSignature signatureWithObjCTypes: \"v@:\"];\n"
+    implementation += "}\n\n"
+    
+    implementation += "- (void)forwardInvocation:(NSInvocation *)anInvocation {\n"
+    implementation += "    NSLog(@\"Stub called: %@ in %@\", NSStringFromSelector([anInvocation selector]), [self class]);\n"
+    implementation += "}\n\n"
+    
+    implementation += "@end\n"
+    
+    try header.write(toFile: outputDirectory + "/Headers/" + classEntry.class + ".h", atomically: false, encoding: String.Encoding.utf8)
+    try implementation.write(toFile: outputDirectory + "/Sources/" + classEntry.class + ".m", atomically: false, encoding: String.Encoding.utf8)
+}
+
+try mh.write(toFile: outputDirectory + "/Headers/" + moduleName + ".h", atomically: false, encoding: String.Encoding.utf8)
