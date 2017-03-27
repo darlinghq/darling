@@ -31,52 +31,50 @@ option(FRAMEWORK_APPKIT "Enable AppKit development code" OFF)
 
 add_subdirectory(src)
 
-if (NOT DARLING_NO_EXECUTABLES)
-	install(DIRECTORY DESTINATION libexec/darling/private)
-	install(DIRECTORY DESTINATION libexec/darling/private/etc)
-	install(DIRECTORY DESTINATION libexec/darling/private/var)
-	InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
-	InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
-	InstallSymlink(private/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
+install(DIRECTORY DESTINATION libexec/darling/private)
+install(DIRECTORY DESTINATION libexec/darling/private/etc)
+install(DIRECTORY DESTINATION libexec/darling/private/var)
+InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
+InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
+InstallSymlink(private/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
 
-	install(FILES etc/dylib.conf etc/version.conf
-		DESTINATION libexec/darling/etc/darling)
-	install(FILES etc/resolv.conf
-		DESTINATION libexec/darling/etc)
+install(FILES etc/dylib.conf etc/version.conf
+	DESTINATION libexec/darling/etc/darling)
+install(FILES etc/resolv.conf
+	DESTINATION libexec/darling/etc)
 
-	install(DIRECTORY DESTINATION libexec/darling/Volumes)
-	install(DIRECTORY DESTINATION libexec/darling/Volumes/SystemRoot)
-	InstallSymlink(/ ${CMAKE_INSTALL_PREFIX}/libexec/darling/Volumes/DarlingEmulatedDrive)
+install(DIRECTORY DESTINATION libexec/darling/Volumes)
+install(DIRECTORY DESTINATION libexec/darling/Volumes/SystemRoot)
+InstallSymlink(/ ${CMAKE_INSTALL_PREFIX}/libexec/darling/Volumes/DarlingEmulatedDrive)
 
-	install(DIRECTORY DESTINATION libexec/darling/proc)
+install(DIRECTORY DESTINATION libexec/darling/proc)
 
-	install(DIRECTORY DESTINATION libexec/darling/var/root)
-	install(DIRECTORY DESTINATION libexec/darling/var/run)
-	InstallSymlink(/dev/log ${CMAKE_INSTALL_PREFIX}/libexec/darling/var/run/syslog)
+install(DIRECTORY DESTINATION libexec/darling/var/root)
+install(DIRECTORY DESTINATION libexec/darling/var/run)
+InstallSymlink(/dev/log ${CMAKE_INSTALL_PREFIX}/libexec/darling/var/run/syslog)
 
-	install(DIRECTORY DESTINATION libexec/darling/usr)
-	install(DIRECTORY DESTINATION libexec/darling/usr/local)
-	install(DIRECTORY DESTINATION libexec/darling/usr/local/share)
-	InstallSymlink(/Volumes/SystemRoot${CMAKE_INSTALL_PREFIX}/share/darling ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/local/share/darling)
+install(DIRECTORY DESTINATION libexec/darling/usr)
+install(DIRECTORY DESTINATION libexec/darling/usr/local)
+install(DIRECTORY DESTINATION libexec/darling/usr/local/share)
+InstallSymlink(/Volumes/SystemRoot${CMAKE_INSTALL_PREFIX}/share/darling ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/local/share/darling)
 
-	InstallSymlink(/Volumes/SystemRoot/dev ${CMAKE_INSTALL_PREFIX}/libexec/darling/dev)
-	InstallSymlink(/Volumes/SystemRoot/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/tmp)
-	InstallSymlink(/Volumes/SystemRoot/home ${CMAKE_INSTALL_PREFIX}/libexec/darling/Users)
-	InstallSymlink(Users ${CMAKE_INSTALL_PREFIX}/libexec/darling/home)
+InstallSymlink(/Volumes/SystemRoot/dev ${CMAKE_INSTALL_PREFIX}/libexec/darling/dev)
+InstallSymlink(/Volumes/SystemRoot/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/tmp)
+InstallSymlink(/Volumes/SystemRoot/home ${CMAKE_INSTALL_PREFIX}/libexec/darling/Users)
+InstallSymlink(Users ${CMAKE_INSTALL_PREFIX}/libexec/darling/home)
 
-	InstallSymlink(/proc/self/mounts ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/mtab)
-	InstallSymlink(/Volumes/SystemRoot/etc/passwd ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/passwd)
-	InstallSymlink(/Volumes/SystemRoot/etc/group ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/group)
-	InstallSymlink(/Volumes/SystemRoot/etc/localtime ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/localtime)
+InstallSymlink(/proc/self/mounts ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/mtab)
+InstallSymlink(/Volumes/SystemRoot/etc/passwd ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/passwd)
+InstallSymlink(/Volumes/SystemRoot/etc/group ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/group)
+InstallSymlink(/Volumes/SystemRoot/etc/localtime ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/localtime)
 
-	install(DIRECTORY DESTINATION libexec/darling/etc/ld.so.conf.d)
-	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
-	InstallSymlink(/Volumes/SystemRoot/lib ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib)
-	InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib64)
+install(DIRECTORY DESTINATION libexec/darling/etc/ld.so.conf.d)
+install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+InstallSymlink(/Volumes/SystemRoot/lib ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib)
+InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib64)
 
-	InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
+InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
 
-	# Our udev rules, so /dev/mach has 0666 permissions
-	install(DIRECTORY etc/udev DESTINATION /etc)
+# Our udev rules, so /dev/mach has 0666 permissions
+install(DIRECTORY etc/udev DESTINATION /etc)
 
-endif (NOT DARLING_NO_EXECUTABLES)

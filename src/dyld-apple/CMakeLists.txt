@@ -27,7 +27,8 @@ include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/libproc)
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/emulation/linux/misc)
 include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/sandbox)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libcxx/include)
+include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/external/libcxx/include)
+include_directories(${CMAKE_SOURCE_DIR}/src/libc/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/external/libclosure)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/launch-cache)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -84,7 +85,7 @@ use_ld64(system_loader)
 set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
 set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -nostdlib -Wl,-e,__dyld_start -Wl,-image_base,0x1fe00000")
 target_link_libraries(system_loader libc_static system_blocks_static
-	libc_static32 libc_static64
+	libc_static32 libc_static64 cxx_static
 	unwind_static system_kernel_static system_m_static cxxabi_static
 	keymgr_static compiler_rt_static32 compiler_rt_static64 system_duct_static
 	platform_static32 platform_static64 pthread_static macho_static)

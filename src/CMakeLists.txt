@@ -28,6 +28,11 @@ configure_file(darling-config.h.in darling-config.h)
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
+include(compiler_include)
+GetCompilerInclude(COMPILER_INC_PATH)
+message(STATUS "Compiler include path detected as ${COMPILER_INC_PATH}")
+include_directories(${COMPILER_INC_PATH})
+
 add_subdirectory(bootstrap_cmds)
 add_subdirectory(external/cctools-port/cctools/ld64/src)
 add_subdirectory(external/cctools-port/cctools/ar)
@@ -57,10 +62,9 @@ include(darling_lib)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libm/Source")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/kernel/libsyscall/wrappers")
-include_directories("${DARLING_TOP_DIRECTORY}/platform-include")
-include_directories("${DARLING_TOP_DIRECTORY}/platform-include/pthread")
-include_directories("${DARLING_TOP_DIRECTORY}/kernel-include")
-include_directories("${DARLING_TOP_DIRECTORY}/compiler-include")
+include_directories("${CMAKE_SOURCE_DIR}/platform-include")
+include_directories("${CMAKE_SOURCE_DIR}/platform-include/pthread")
+include_directories("${CMAKE_SOURCE_DIR}/kernel-include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/duct/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include")
 
@@ -173,29 +177,7 @@ add_subdirectory(external/openssh)
 #add_subdirectory(external/top)
 add_subdirectory(external/perl)
 add_subdirectory(unxip)
-
-######################
-# libc++ & libc++abi #
-######################
-set(CMAKE_CXX_FLAGS_SAVED ${CMAKE_CXX_FLAGS})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostdinc -nostdinc++")
-set(CMAKE_SHARED_LINKER_FLAGS "-nostdlib")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include")
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/locale)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/locale/FreeBSD)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/stdtime/FreeBSD)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/pthreads)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libc/include/FreeBSD)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/libcxxabi/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include)
-set(LIBCXXABI_LIBCXX_PATH "{CMAKE_CURRENT_SOURCE_DIR}/external/libcxx")
-set(LIBCXXABI_LIBCXX_INCLUDES "-I${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include")
-
 add_subdirectory(external/libcxxabi)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_SAVED} -std=c++11 -msse -msse2 -msse3 -nostdinc -nostdinc++ -include ${CMAKE_CURRENT_SOURCE_DIR}/libc/include/xlocale.h")
-set(LIBCXX_HAS_STDCXX11_FLAG TRUE)
-add_definitions(-D_USE_EXTENDED_LOCALES_)
 add_subdirectory(external/libcxx)
 
 #######################

@@ -7,9 +7,9 @@ endif(COMMAND cmake_policy)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions -nostdinc -nostdinc++")
 
+include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/external/libcxx/include)
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}
-	${CMAKE_SOURCE_DIR}/src/external/libcxx/include
 	${CMAKE_SOURCE_DIR}/src/libc/include/FreeBSD
 	${CMAKE_SOURCE_DIR}/src/libiconv/include
 	${CMAKE_SOURCE_DIR}/src/external/icu/icuSources/common
