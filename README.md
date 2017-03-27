@@ -25,76 +25,7 @@ git submodule update
 
 ## Build Instructions
 
-For complete instructions, visit [DarlingHQ.org](http://www.darlinghq.org/build-instructions).
-
-<a href="http://teamcity.dolezel.info/viewType.html?buildTypeId=Darling_DebianStableX8664&guest=1">
-<img src="http://teamcity.dolezel.info/app/rest/builds/buildType:(id:Darling_DebianStableX8664)/statusIcon" title="Debian stable build for x86-64"/>
-</a>
-
-Required dependencies
-
-Debian (stable):
-
-```
-$ sudo apt-get install cmake clang bison flex xz-utils libfuse-dev libxml2-dev libicu-dev libssl-dev libbz2-dev zlib1g-dev libudev-dev linux-headers-amd64
-```
-
-Ubuntu (16.04):
-
-```
-$ sudo apt-get install cmake clang bison flex xz-utils libfuse-dev libxml2-dev libicu-dev libssl-dev libbz2-dev zlib1g-dev libudev-dev linux-headers-generic
-```
-
-Arch Linux (4.8):
-
-```
-$ sudo pacman -S make cmake clang flex bison icu fuse linux-headers
-```
-
-Fedora (25):
-
-```
-$ sudo dnf install cmake clang bison flex fuse-devel systemd-devel kernel-devel libxml2-devel libicu-devel openssl-devel bzip2-devel
-```
-
-````
-cd darling
-mkdir build
-cd build
-cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain.cmake
-make
-make install
-````
-
-#### Building and loading the kernel module
-
-````
-# Go into src/lkm to build the kernel module
-cd ../src/lkm
-make
-make install
-````
-
-If this does not work (e.g. on newer Ubuntu versions), try the DKMS build:
-
-````
-# Go into src/lkm to build the kernel module
-cd ../src/lkm
-sudo ./dkms.sh
-````
-
-Loading the kernel module:
-````
-modprobe darling-mach
-
-# ATTENTION: The kernel module is likely unstable,
-# full of vulnerabilities, etc.
-# You SHOULD restrict access to /dev/mach to trusted
-# users only and be prepared to the eventuality of
-# kernel hangups (and related data loss).
-
-chmod a+rw /dev/mach
-````
+For complete instructions, visit [DarlingHQ Wiki](https://wiki.darlinghq.org/build_instructions).
 
 ### Prefixes
 
