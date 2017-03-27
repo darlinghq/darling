@@ -27,8 +27,6 @@ git submodule update
 
 For complete instructions, visit [DarlingHQ.org](http://www.darlinghq.org/build-instructions).
 
-#### For running x86-64 OS X binaries
-
 <a href="http://teamcity.dolezel.info/viewType.html?buildTypeId=Darling_DebianStableX8664&guest=1">
 <img src="http://teamcity.dolezel.info/app/rest/builds/buildType:(id:Darling_DebianStableX8664)/statusIcon" title="Debian stable build for x86-64"/>
 </a>
@@ -61,47 +59,18 @@ $ sudo dnf install cmake clang bison flex fuse-devel systemd-devel kernel-devel 
 
 ````
 cd darling
-mkdir -p build/x86-64
-cd build/x86-64
-cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86_64.cmake
+mkdir build
+cd build
+cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain.cmake
 make
 make install
 ````
 
-#### For running i386 OS X binaries
-
-<a href="http://teamcity.dolezel.info/viewType.html?buildTypeId=Darling_DebianStableX8664&guest=1">
-<img src="http://teamcity.dolezel.info/app/rest/builds/buildType:(id:Darling_DebianStableX8664)/statusIcon" title="Debian stable build for i386"/>
-</a>
-
-Required additional dependencies (on top of x86_64 dependencies)
-
-Debian (stable) / Ubuntu (15.10):
-
-```
-$ sudo apt-get install libc6-dev-i386 libudev-dev:i386 lib32stdc++-4.9-dev
-```
-
-Arch Linux (4.8):
-
-```
-$ sudo pacman -S lib32-libstdc++5 lib32-clang
-```
-
-````
-cd darling
-mkdir -p build/i386
-cd build/i386
-cmake ../.. -DCMAKE_TOOLCHAIN_FILE=../../Toolchain-x86.cmake
-make
-make install
-````
-
-#### Building and loading the kernel module (x86-64 and i386)
+#### Building and loading the kernel module
 
 ````
 # Go into src/lkm to build the kernel module
-cd ../../src/lkm
+cd ../src/lkm
 make
 make install
 ````
@@ -110,7 +79,7 @@ If this does not work (e.g. on newer Ubuntu versions), try the DKMS build:
 
 ````
 # Go into src/lkm to build the kernel module
-cd ../../src/lkm
+cd ../src/lkm
 sudo ./dkms.sh
 ````
 
@@ -174,13 +143,3 @@ Hello world
 
 Congratulations, you have just compiled and run your own Hello world application with Apple's toolchain.
 
-
-### AppKit
-
-AppKit is still highly experimental and incomplete, but to work on it you need to configure CMake with `-DFRAMEWORK_APPKIT=1` and install some additional packages.
-
-Ubuntu 16.04:
-```
-sudo apt install qt5-default qtquick1-5-dev qtscript5-dev qtdeclarative5-dev
-
-```
