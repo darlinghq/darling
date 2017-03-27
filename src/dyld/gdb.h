@@ -26,7 +26,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-void setup_gdb_notifications(uint64_t slide, uint64_t addr);
+void setup_gdb_notifications(uintptr_t slide, uintptr_t addr);
 
 #ifdef __cplusplus
 }

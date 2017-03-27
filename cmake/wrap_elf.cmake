@@ -17,6 +17,7 @@ function(wrap_elf name elfname)
 	include_directories(${CMAKE_SOURCE_DIR}/src/dyld)
 	add_darling_library(${name} SHARED ${CMAKE_CURRENT_BINARY_DIR}/${name}.c)
 	target_link_libraries(${name} PRIVATE system)
+	make_fat(${name})
 	install(TARGETS ${name} DESTINATION libexec/darling/usr/lib/native)
 endfunction(wrap_elf)
 

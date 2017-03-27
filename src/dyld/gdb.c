@@ -42,24 +42,34 @@ void gdb_notifier(enum dyld_image_mode mode, uint32_t infoCount, const struct dy
 
 struct jump
 {
+#ifdef __x86_64__
 	uint16_t mov;
 	void* addr;
 	uint16_t jump;
+#elif __i386__
+	uint8_t mov;
+	void* addr;
+	uint16_t jump;
+#endif
 } __attribute__ ((packed));
 
-void setup_gdb_notifications(uint64_t slide, uint64_t addr)
+void setup_gdb_notifications(uintptr_t slide, uintptr_t addr)
 {
 	orig_dyld_all_image_infos = (struct dyld_all_image_infos*)(addr + slide);
 
 	// dyld will later rebase the address in notification,
 	// but at this point we must add slide manually.
-	struct jump* jump = (struct jump*)(((uint64_t)orig_dyld_all_image_infos->notification) + slide);
+	struct jump* jump = (struct jump*)(((uintptr_t)orig_dyld_all_image_infos->notification) + slide);
 
 	// Rewrite instructions in the notification function to redirect the call to us.
 #ifdef __x86_64__
 	jump->mov = 0xb948; // movabs imm,%rcx
 	jump->addr = (void*) &dyld_notification_wrapper; // immediate for preceding movabs
-	jump->jump = 0xe1ff; // jmpq *%ecx
+	jump->jump = 0xe1ff; // jmpq *%rcx
+#elif __i386__
+	jump->mov = 0xb9; // mov imm,%ecx
+	jump->addr = (void*) &dyld_notification_wrapper; // immediate for preceding mov
+	jump->jump = 0xe1ff; // jmpl *%ecx
 #else
 #	error TODO: Unsupported platform
 #endif

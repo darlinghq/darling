@@ -37,6 +37,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "commpage.h"
 #include "32in64.h"
 
+#define USE_32IN64	0
+
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
 #endif
@@ -56,21 +58,28 @@ static const char* dyld_path = INSTALL_PREFIX "/libexec/usr/lib/dyld";
 //
 // Additionally, mldr providers access to native platforms libdl.so APIs (ELF loader).
 
-static void load64(int fd, uint64_t* entryPoint_out, uint64_t* mh_out);
-static void load32(int fd, uint64_t* entryPoint_out, uint64_t* mh_out);
-static void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type_t cpu);
+#ifdef __x86_64__
+static void load64(int fd, uintptr_t* entryPoint_out, uintptr_t* mh_out);
+static void reexec32(char** argv);
+#endif
+static void load32(int fd, uintptr_t* entryPoint_out, uintptr_t* mh_out);
+static void load(const char* path, uintptr_t* entryPoint_out, uintptr_t* mh_out, cpu_type_t cpu, char** argv);
 static int native_prot(int prot);
 static void apply_root_path(char* path);
 char* elfcalls_make(void);
 static char* apple0_make(const char* filepath);
+
+#if USE_32IN64
 static void* setup_stack32(void* stack, int argc, const char** argv, const char** envp, const char** apple, uint64_t mh);
 
 static bool mode_32in64 = false;
+#endif
+
 static uint32_t stack_size = 0;
 
 int main(int argc, char** argv, char** envp)
 {
-	uint64_t entryPoint, mh;
+	uintptr_t entryPoint, mh;
 	void** sp;
 	int pushCount = 0;
 	const char* apple[3];
@@ -91,6 +100,12 @@ int main(int argc, char** argv, char** envp)
 	else
 		strcpy(filename, argv[1]);
 
+#ifdef __i386__
+	load(filename, &entryPoint, &mh, CPU_TYPE_X86, argv); // accept i386 only
+#else
+	load(filename, &entryPoint, &mh, CPU_TYPE_ANY, argv);
+#endif
+
 	p = argv[0];
 	// Update process name in ps output
 	for (int i = 1; i < argc; i++)
@@ -104,9 +119,7 @@ int main(int argc, char** argv, char** envp)
 	memset(p, 0, envp[0]-p);
 	argv[--argc] = NULL;
 
-	load(filename, &entryPoint, &mh, CPU_TYPE_ANY);
-
-#if defined(__i386__) || defined(__x86_64__)
+#if __i386__ || __x86_64__
 	if (getenv("BREAK_AFTER_LOAD") != NULL)
 		__asm__("int3");
 #endif
@@ -128,7 +141,9 @@ int main(int argc, char** argv, char** envp)
 	apple[1] = elfcalls_make();
 	apple[2] = NULL;
 
+#if USE_32IN64
 	if (!mode_32in64)
+#endif
 	{
 		GETSP(sp);
 		sp--;
@@ -149,6 +164,7 @@ int main(int argc, char** argv, char** envp)
 
 		JUMPX(pushCount, entryPoint);
 	}
+#if USE_32IN64
 	else
 	{
 		uint32_t size = stack_size ? stack_size : 8*1024*1024;
@@ -165,7 +181,7 @@ int main(int argc, char** argv, char** envp)
 
 		_64TO32_WITH_STACK(setup_stack32(sp, argc, (const char**) argv, (const char**) envp, apple, mh), entryPoint);
 	}
-
+#endif
 
 	__builtin_unreachable();
 }
@@ -189,7 +205,8 @@ static size_t arraylen(const char** str)
 	return len;
 }
 
-void* setup_stack32(void* stack, int argc, const char** argv_in, const char** envp_in, const char** apple_in, uint64_t mh)
+#if USE_32IN64
+void* setup_stack32(void* stack, int argc, const char** argv_in, const char** envp_in, const char** apple_in, uintptr_t mh)
 {
 	char **argv_new, **envp_new, **apple_new;
 	size_t size, apple_size;
@@ -231,8 +248,9 @@ void* setup_stack32(void* stack, int argc, const char** argv_in, const char** en
 
 	return stack_pointers;
 }
+#endif
 
-void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type_t cpu_desired)
+void load(const char* path, uintptr_t* entryPoint_out, uintptr_t* mh_out, cpu_type_t cpu_desired, char** argv)
 {
 	int fd;
 	uint32_t magic;
@@ -244,7 +262,7 @@ void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type
 		exit(1);
 	}
 
-	// TODO: We need to read argv[1] and detect whether it's a 32 or 64-bit application.
+	// We need to read argv[1] and detect whether it's a 32 or 64-bit application.
 	// Then load the appropriate version of dyld from the fat file.
 	// In case the to-be-executed executable contains both, we prefer the 64-bit version,
 	// unless a special property has been passed to sys_posix_spawn() to force the 32-bit
@@ -258,20 +276,30 @@ void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type
 
 	if (magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
 	{
+#ifndef __i386__
 		if (mh_out)
 			commpage_setup(true);
 
 		lseek(fd, 0, SEEK_SET);
 		load64(fd, entryPoint_out, mh_out);
+#else
+		abort();
+#endif
 	}
 	else if (magic == MH_MAGIC || magic == MH_CIGAM)
 	{
+#if !__x86_64__ || USE_32IN64
 		if (mh_out)
 			commpage_setup(false);
-
+#if __x86_64__
 		mode_32in64 = true;
+#endif
 		lseek(fd, 0, SEEK_SET);
 		load32(fd, entryPoint_out, mh_out);
+#else
+		// Re-run self as mldr32
+		reexec32(argv);
+#endif
 	}
 	else if (magic == FAT_MAGIC || magic == FAT_CIGAM)
 	{
@@ -349,11 +377,24 @@ void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type
 			commpage_setup(best_arch.cputype & CPU_ARCH_ABI64);
 
 		if (best_arch.cputype & CPU_ARCH_ABI64)
+		{
+#if !__i386__
 			load64(fd, entryPoint_out, mh_out);
+#else
+			abort();
+#endif
+		}
 		else
 		{
+#if USE_32IN64 && __x86_64__
 			mode_32in64 = true;
+#endif
+#if !USE_32IN64 && __x86_64__
+			// Re-execute self as mldr32
+			reexec32(argv);
+#else
 			load32(fd, entryPoint_out, mh_out);
+#endif
 		}
 	}
 	else
@@ -365,9 +406,11 @@ void load(const char* path, uint64_t* entryPoint_out, uint64_t* mh_out, cpu_type
 	close(fd);
 }
 
+#ifdef __x86_64__
 #define GEN_64BIT
 #include "loader.c"
 #undef GEN_64BIT
+#endif
 
 #define GEN_32BIT
 #include "loader.c"
@@ -442,4 +485,27 @@ char* apple0_make(const char* filepath)
 
 	return apple0;
 }
+
+#ifdef __x86_64__
+static void reexec32(char** argv)
+{
+	char selfpath[1024];
+	ssize_t len;
+
+	len = readlink("/proc/self/exe", selfpath, sizeof(selfpath)-3);
+	if (len == -1)
+	{
+		perror("Cannot readlink /proc/self/exe");
+		abort();
+	}
+
+	selfpath[len] = '\0';
+	strcat(selfpath, "32");
+
+	execv(selfpath, argv);
+
+	perror("Cannot re-execute as 32-bit process");
+	abort();
+}
+#endif
 

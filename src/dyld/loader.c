@@ -24,14 +24,14 @@
 #   error See above
 #endif
 
-void FUNCTION_NAME(int fd, uint64_t* entryPoint_out, uint64_t* mh_out)
+void FUNCTION_NAME(int fd, uintptr_t* entryPoint_out, uintptr_t* mh_out)
 {
 	struct MACH_HEADER_STRUCT header;
 	uint8_t* cmds;
-	uint64_t entryPoint = 0, entryPointDylinker = 0;
+	uintptr_t entryPoint = 0, entryPointDylinker = 0;
 	struct MACH_HEADER_STRUCT* mappedHeader = NULL;
-	uint64_t slide = 0;
-	uint64_t mmapSize = 0;
+	uintptr_t slide = 0;
+	uintptr_t mmapSize = 0;
 	bool pie = false;
 	uint32_t fat_offset;
 
@@ -58,7 +58,7 @@ void FUNCTION_NAME(int fd, uint64_t* entryPoint_out, uint64_t* mh_out)
 
 	if ((header.filetype == MH_EXECUTE && header.flags & MH_PIE) || header.filetype == MH_DYLINKER)
 	{
-		uint64_t base = -1;
+		uintptr_t base = -1;
 
 		// Go through all SEGMENT_COMMAND commands to get the total continuous range required.
 		for (uint32_t i = 0, p = 0; i < header.ncmds; i++)
@@ -80,8 +80,8 @@ void FUNCTION_NAME(int fd, uint64_t* entryPoint_out, uint64_t* mh_out)
 			p += seg->cmdsize;
 		}
 
-		slide = (uint64_t) mmap((void*) base, mmapSize, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA, -1, 0);
-		if (slide == (uint64_t)MAP_FAILED)
+		slide = (uintptr_t) mmap((void*) base, mmapSize, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA, -1, 0);
+		if (slide == (uintptr_t)MAP_FAILED)
 		{
 			fprintf(stderr, "Cannot mmap anonymous memory range: %s", strerror(errno));
 			exit(1);
@@ -183,7 +183,7 @@ no_slide:
 
 				if (length > sizeof(path)-1)
 				{
-					fprintf(stderr, "Dynamic linker name too long: %lu\n", length);
+					fprintf(stderr, "Dynamic linker name too long: %zu\n", length);
 					exit(1);
 				}
 
@@ -193,10 +193,10 @@ no_slide:
 				apply_root_path(path);
 
 #ifdef GEN_64BIT
-				load(path, &entryPointDylinker, NULL, CPU_TYPE_X86_64);
+				load(path, &entryPointDylinker, NULL, CPU_TYPE_X86_64, NULL);
 #endif
 #ifdef GEN_32BIT
-				load(path, &entryPointDylinker, NULL, CPU_TYPE_X86);
+				load(path, &entryPointDylinker, NULL, CPU_TYPE_X86, NULL);
 #endif
 
 				break;
@@ -218,7 +218,7 @@ no_slide:
 	if (entryPoint_out != NULL)
 		*entryPoint_out = entryPointDylinker ? entryPointDylinker : entryPoint;
 	if (mh_out != NULL)
-		*mh_out = (uint64_t) mappedHeader;
+		*mh_out = (uintptr_t) mappedHeader;
 }
 
 
