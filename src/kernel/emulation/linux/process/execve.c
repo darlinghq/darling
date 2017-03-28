@@ -117,6 +117,8 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		if (arg != NULL)
 		{
 			*arg = '\0'; // terminate interp
+			arg++;
+
 			while (isspace(*arg))
 				arg++;
 			if (*arg == '\0')
