@@ -40,7 +40,7 @@ InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
 InstallSymlink(private/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
 
 file(MAKE_DIRECTORY ${LD_SO_CONF_DIRECTORY})
-execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh ${CMAKE_BINARY_DIR})
 
 install(FILES etc/dylib.conf etc/version.conf
 	DESTINATION libexec/darling/etc/darling)
