@@ -183,6 +183,7 @@ set(emulation_sources
 	ioctl/ioctl.c
 	ioctl/termios.c
 	ioctl/filio.c
+	ext/sysinfo.c
 	ext/uname.c
 	ext/epoll_create.c
 	ext/epoll_create1.c

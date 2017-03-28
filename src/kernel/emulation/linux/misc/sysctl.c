@@ -11,12 +11,19 @@
 #include <stddef.h>
 #include <limits.h>
 #include "../ext/sys/utsname.h"
+#include "../ext/sysinfo.h"
 #include "../ext/syslog.h"
+#include "../time/gettimeofday.h"
 #include "getrlimit.h"
 #include "darling-config.h"
 
+// TODO: This file needs a rework to eliminate all the switch()es
+// and replace them with lookup tables.
+
 static long sysctl_name_to_oid(const char* name, int* oid_name,
 		unsigned long* oid_len);
+static long sysctl_get_type(const int* oid, int nlen, int* out, unsigned long* outlen);
+static long sysctl_oid_to_name(const int* oid, int nlen, char* name, unsigned long* outlen);
 
 extern char *strchr(const char *s, int c);
 extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
@@ -27,6 +34,9 @@ extern kern_return_t host_info(mach_port_name_t host, int itype, void* hinfo, ma
 struct kinfo_proc;
 extern int _sysctl_proc(int what, int flag, struct kinfo_proc* out, unsigned long* buflen);
 extern int _sysctl_procargs(int pid, char* buf, unsigned long* buflen);
+static void get_cpu_brand(char* brand);
+
+extern int cerror(int err);
 
 /* Darling specific */
 enum {
@@ -38,8 +48,21 @@ enum {
 	_HW_CPUSUBTYPE,
 	_HW_CPUTHREADTYPE
 };
+
+enum {
+	_CPU_BRAND_STRING = 1000,
+};
 enum {
 	_KERN_MSGBUF = 1000,
+};
+
+enum {
+	CTLTYPE_NODE = 1,
+	CTLTYPE_INT,
+	CTLTYPE_STRING,
+	CTLTYPE_QUAD,
+	CTLTYPE_OPAQUE,
+	CTLTYPE_STRUCT = CTLTYPE_OPAQUE,
 };
 
 static struct linux_utsname lu;
@@ -54,12 +77,20 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 	if (nlen < 2)
 		return -EINVAL;
 
-	if (name[0] == 0 && name[1] == 3)
+	// __simple_printf("sysctl %d,%d\n", name[0], name[1]);
+	if (name[0] == CTL_UNSPEC)
 	{
-		return sysctl_name_to_oid((const char*) _new, (int*) old, oldlen);
+		switch (name[1])
+		{
+			case 1: // oid to name
+				return sysctl_oid_to_name(name + 2, nlen - 2, (char*) old, oldlen);
+			case 3: // name to oid
+				return sysctl_name_to_oid((const char*) _new, (int*) old, oldlen);
+			case 4: // get data type
+				return sysctl_get_type(name + 2, nlen - 2, (int*) old, oldlen);
+		}
 	}
-
-	if (name[0] == CTL_HW)
+	else if (name[0] == CTL_HW)
 	{
 		int* ovalue = (int*) old;
 		struct host_basic_info hinfo;
@@ -191,7 +222,31 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 				if (r < 0)
 					return r;
 
-				*ovalue = lim.rlim_cur / 4;
+				if (ovalue != NULL)
+					*ovalue = lim.rlim_cur / 4;
+				*oldlen = sizeof(int);
+				return 0;
+			}
+			case KERN_BOOTTIME:
+			{
+				// Fill in struct timeval { tv_sec, tv_usec }
+				struct sysinfo info;
+				struct bsd_timeval* tv;
+
+				if (__linux_sysinfo(&info) == -1)
+					return -errno;
+
+				tv = (struct bsd_timeval*) old;
+				if (tv != NULL)
+				{
+					if (*oldlen < sizeof(*tv))
+						return -EINVAL;
+					sys_gettimeofday(tv, NULL);
+
+					tv->tv_sec -= info.uptime;
+				}
+				*oldlen = sizeof(*tv);
+				
 				return 0;
 			}
 		}
@@ -230,6 +285,19 @@ long sys_sysctl(int* name, unsigned int nlen, void* old,
 				return 0;
 		}
 	}
+	else if (name[0] == CTL_MACHDEP)
+	{
+		switch (name[1])
+		{
+			case _CPU_BRAND_STRING:
+			{
+				char brand[13];
+				get_cpu_brand(brand);
+				copyout_string(brand, (char*) old, oldlen);
+				return 0;
+			}
+		}
+	}
 
 	return -ENOTDIR;
 }
@@ -249,10 +317,12 @@ extern unsigned long strlcpy(char* dst, const char* src, unsigned long size);
 static void copyout_string(const char* str, char* out, unsigned long* out_len)
 {
 	unsigned long len;
-	len = strlcpy(out, str, *out_len);
+	if (out != NULL)
+		len = strlcpy(out, str, *out_len);
+	else
+		len = strlen(str);
 
-	if (len < *out_len)
-		*out_len = len;
+	*out_len = len;
 }
 
 static long sysctl_name_to_oid(const char* name, int* oid_name,
@@ -309,9 +379,22 @@ static long sysctl_name_to_oid(const char* name, int* oid_name,
 
 		if (strcmp(dot+1, "msgbuf") == 0)
 			oid_name[1] = _KERN_MSGBUF;
+		else if (strcmp(dot+1, "boottime") == 0)
+			oid_name[1] = KERN_BOOTTIME;
 		else
 			return -ENOTDIR;
 
+		return 0;
+	}
+	else if (strncmp(name, "machdep", cat_len) == 0)
+	{
+		oid_name[0] = CTL_MACHDEP;
+		*oid_len = 2 * sizeof(int);
+
+		if (strcmp(dot+1, "cpu.brand_string") == 0)
+			oid_name[1] = _CPU_BRAND_STRING;
+		else
+			return -ENOTDIR;
 		return 0;
 	}
 
@@ -330,5 +413,221 @@ long sys_sysctlbyname(const char* name, unsigned long namelen, void* old, unsign
 		return rv;
 
 	return sys_sysctl(oid, oid_len, old, oldlen, _new, newlen);
+}
+
+#define settype(first, str) \
+	if (*outlen < sizeof(int) + sizeof(str)) \
+			return -EINVAL; \
+	out[0] = first; \
+	strcpy((char*) &out[1], str); \
+	*outlen = sizeof(int) + sizeof(str);
+
+static long sysctl_get_type(const int* oid, int nlen, int* out, unsigned long* outlen)
+{
+	switch (oid[0])
+	{
+		case CTL_HW:
+			if (nlen < 2)
+			{
+				settype(CTLTYPE_NODE, "");
+				return 0;
+			}
+
+			switch (oid[1])
+			{
+				case HW_AVAILCPU:
+				case HW_NCPU:
+				case _HW_PHYSICAL_CPU:
+				case _HW_PHYSICAL_CPU_MAX:
+				case _HW_LOGICAL_CPU:
+				case _HW_LOGICAL_CPU_MAX:
+				case HW_PAGESIZE:
+				case _HW_CPUTYPE:
+				case _HW_CPUSUBTYPE:
+				case _HW_CPUTHREADTYPE:
+					settype(CTLTYPE_INT, "I");
+					return 0;
+				case HW_MEMSIZE:
+				case HW_PHYSMEM:
+				case HW_USERMEM:
+					settype(CTLTYPE_QUAD, "QU");
+					return 0;
+			}
+			break;
+		case CTL_KERN:
+			if (nlen < 2)
+			{
+				settype(CTLTYPE_NODE, "");
+				return 0;
+			}
+
+			switch (oid[1])
+			{
+				case _KERN_MSGBUF:
+				case KERN_PROCARGS2:
+				case KERN_OSTYPE:
+				case KERN_HOSTNAME:
+				case KERN_OSRELEASE:
+				case KERN_VERSION:
+				case KERN_DOMAINNAME:
+					settype(CTLTYPE_STRING, "");
+					return 0;
+				case KERN_PROC:
+					settype(CTLTYPE_STRUCT, "");
+					return 0;
+				case KERN_BOOTTIME:
+				{
+					settype(CTLTYPE_STRUCT, "S,timeval");
+					return 0;
+				}
+				case KERN_ARGMAX:
+					settype(CTLTYPE_INT, "L");
+					return 0;
+			}
+			break;
+		case CTL_MACHDEP:
+			if (nlen < 2)
+			{
+				settype(CTLTYPE_NODE, "");
+				return 0;
+			}
+
+			switch (oid[1])
+			{
+				case _CPU_BRAND_STRING:
+					settype(CTLTYPE_STRING, "");
+					return 0;
+			}
+	}
+	return -ENOENT;
+}
+
+#define outstring(str) \
+	strncpy(name, str, *outlen - 1); \
+	name[*outlen - 1] = '\0'; \
+	if (*outlen > sizeof(str)-1) \
+		*outlen = sizeof(str)-1;
+
+static long sysctl_oid_to_name(const int* oid, int nlen, char* name, unsigned long* outlen)
+{
+	if (nlen == 1)
+	{
+		switch (oid[0])
+		{
+			case CTL_HW:
+				outstring("hw");
+				return 0;
+			case CTL_KERN:
+				outstring("kern");
+				return 0;
+		}
+	}
+	else if (nlen == 2)
+	{
+		switch (oid[0])
+		{
+			case CTL_HW:
+				switch (oid[1])
+				{
+					case HW_AVAILCPU:
+						outstring("hw.activecpu");
+						return 0;
+					case HW_NCPU:
+						outstring("hw.ncpu");
+						return 0;
+					case _HW_PHYSICAL_CPU:
+						outstring("hw.physicalcpu");
+						return 0;
+					case _HW_PHYSICAL_CPU_MAX:
+						outstring("hw.physicalcpu_max");
+						return 0;
+					case _HW_LOGICAL_CPU:
+						outstring("hw.logicalcpu");
+						return 0;
+					case _HW_LOGICAL_CPU_MAX:
+						outstring("hw.logicalcpu_max");
+						return 0;
+					case HW_MEMSIZE:
+						outstring("hw.memsize");
+						return 0;
+					case HW_PAGESIZE:
+						outstring("hw.pagesize");
+						return 0;
+					case _HW_CPUTYPE:
+						outstring("hw.cputype");
+						return 0;
+					case _HW_CPUSUBTYPE:
+						outstring("hw.cpusubtype");
+						return 0;
+					case _HW_CPUTHREADTYPE:
+						outstring("hw.cputhreadtype");
+						return 0;
+				}
+				break;
+			case CTL_KERN:
+				switch (oid[1])
+				{
+					case _KERN_MSGBUF:
+						outstring("kern.msgbuf");
+						return 0;
+					case KERN_BOOTTIME:
+						outstring("kern.boottime");
+						return 0;
+					case KERN_OSTYPE:
+						outstring("kern.ostype");
+						return 0;
+					case KERN_VERSION:
+						outstring("kern.version");
+						return 0;
+					case KERN_OSRELEASE:
+						outstring("kern.osrelease");
+						return 0;
+					case KERN_HOSTNAME:
+						outstring("kern.hostname");
+						return 0;
+					case KERN_DOMAINNAME:
+						outstring("kern.domainname");
+						return 0;
+				}
+				break;
+			case CTL_MACHDEP:
+				switch (oid[1])
+				{
+					case _CPU_BRAND_STRING:
+						outstring("machdep.cpu.brand_string");
+						return 0;
+				}
+		}
+	}
+
+	return -ENOENT;
+}
+
+#ifndef __cpuid
+#define __cpuid(level, a, b, c, d)			\
+  __asm__ ("cpuid\n\t"					\
+	   : "=a" (a), "=b" (b), "=c" (c), "=d" (d)	\
+	   : "0" (level))
+#endif
+
+void get_cpu_brand(char* brand)
+{
+	unsigned int level = 0;
+    unsigned int eax = 0;
+	union
+	{
+		struct
+		{
+	    	unsigned int ebx;
+		    unsigned int edx;
+	    	unsigned int ecx;
+		};
+		char name[12];
+	} v;
+
+    __cpuid(level, eax, v.ebx, v.ecx, v.edx);
+
+	strncpy(brand, v.name, 12);
+	brand[12] = 0;
 }
 
