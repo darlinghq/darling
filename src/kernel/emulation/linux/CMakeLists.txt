@@ -123,6 +123,10 @@ set(emulation_sources
 	misc/proc_info.c
 	misc/sysctl.c
 	misc/sysctl_proc.c
+	misc/sysctl_hw.c
+	misc/sysctl_kern.c
+	misc/sysctl_unspec.c
+	misc/sysctl_machdep.c
 	misc/getrlimit.c
 	misc/setrlimit.c
 	misc/gethostuuid.c

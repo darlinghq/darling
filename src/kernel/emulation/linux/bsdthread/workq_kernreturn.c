@@ -47,6 +47,12 @@ static void sem_up(int* sem);
 static void list_add(struct parked_thread* head, struct parked_thread* item);
 static void list_remove(struct parked_thread* head, struct parked_thread* item);
 
+struct timespec
+{
+	long tv_sec;
+	long tv_nsec;
+};
+
 long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 {
 #ifndef VARIANT_DYLD
