@@ -10,8 +10,8 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD
 	-DEMULATED_SYSNAME="Darwin"
-	-DEMULATED_RELEASE="12.0.0"
-	-DEMULATED_VERSION="Darwin Kernel Version 12.0.0")
+	-DEMULATED_RELEASE="16.0.0"
+	-DEMULATED_VERSION="Darwin Kernel Version 16.0.0")
 
 
 include_directories(${CMAKE_SOURCE_DIR}/src/dyld)
