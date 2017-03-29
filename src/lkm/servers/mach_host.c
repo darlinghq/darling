@@ -144,7 +144,7 @@ kern_return_t host_info
 				int pos, last_phys_id = -1;
 				
 				*host_info_outCnt = HOST_BASIC_INFO_COUNT;
-				hinfo->max_mem = i.totalram;
+				hinfo->max_mem = i.totalram * PAGE_SIZE;
 				hinfo->logical_cpu = 0;
 				hinfo->physical_cpu = 0;
 				
