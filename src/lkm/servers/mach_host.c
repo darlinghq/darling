@@ -116,7 +116,7 @@ kern_return_t host_info
 			memset(host_info_out, 0, *host_info_outCnt * sizeof(int));
 
 			si_meminfo(&i);
-			hinfo->memory_size = i.totalram;
+			hinfo->memory_size = i.totalram * PAGE_SIZE;
 			hinfo->max_cpus = num_possible_cpus();
 			hinfo->avail_cpus = num_online_cpus();
 #if defined(__i386__)
