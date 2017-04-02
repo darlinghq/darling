@@ -205,3 +205,6 @@
 [submodule "src/external/mail_cmds"]
 	path = src/external/mail_cmds
 	url = ../darling-mail_cmds.git
+[submodule "src/external/screen"]
+	path = src/external/screen
+	url = ../darling-screen.git
