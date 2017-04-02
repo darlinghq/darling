@@ -44,7 +44,9 @@ mig(notify.defs)
 #mig(job_types.defs)
 #mig(protocol_jobmgr.defs)
 
-add_definitions(-DPRIVATE)
+# The xpc_domain_server definition seems to be wrong,
+# but it's hard to determine the right solution.
+add_definitions(-DPRIVATE -Dxpc_domain_server=job_server)
 
 set(launchd_sources
 	core.c
@@ -54,6 +56,7 @@ set(launchd_sources
 	launchd.c
 	log.c
 	runtime.c
+	../stub.c
 	${CMAKE_CURRENT_BINARY_DIR}/jobServer.c
 	${CMAKE_CURRENT_BINARY_DIR}/helperUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/internalServer.c
