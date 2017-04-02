@@ -56,7 +56,6 @@ set(launchd_sources
 	launchd.c
 	log.c
 	runtime.c
-	../stub.c
 	${CMAKE_CURRENT_BINARY_DIR}/jobServer.c
 	${CMAKE_CURRENT_BINARY_DIR}/helperUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/internalServer.c
