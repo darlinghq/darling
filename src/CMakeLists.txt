@@ -185,6 +185,7 @@ add_subdirectory(external/mail_cmds)
 add_subdirectory(external/screen)
 add_subdirectory(unxip)
 add_subdirectory(external/zsh)
+add_subdirectory(external/doc_cmds)
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
 
