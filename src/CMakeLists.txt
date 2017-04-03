@@ -69,6 +69,13 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/duct/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/derived")
+
+include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ncurses/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/NetBSD
+)
+
 add_subdirectory(external/libkqueue)
 
 
@@ -177,6 +184,7 @@ add_subdirectory(external/openssh)
 #add_subdirectory(external/top)
 add_subdirectory(external/perl)
 add_subdirectory(unxip)
+add_subdirectory(external/zsh)
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
 
