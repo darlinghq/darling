@@ -25,8 +25,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <alloca.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <sched.h>
 #include <sys/mount.h>
 #include <sys/wait.h>
@@ -43,6 +45,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
 uid_t g_originalUid, g_originalGid;
+bool g_fixPermissions = false;
 char **g_argv, **g_envp;
 
 int main(int argc, char ** argv, char ** envp)
@@ -82,7 +85,10 @@ int main(int argc, char ** argv, char ** envp)
 	unsetenv("DPREFIX");
 
 	if (!checkPrefixDir())
+	{
 		setupPrefix();
+		g_fixPermissions = true;
+	}
 	checkPrefixOwner();
 
 	int c;
@@ -389,6 +395,39 @@ void missingSetuidRoot(void)
 	fprintf(stderr, "Darling needs this in order to create mount and PID namespaces and to perform mounts.\n");
 }
 
+void fixDirectoryPermissions(const char* path)
+{
+	DIR* dir;
+	struct dirent* ent;
+
+	dir = opendir(path);
+	if (!dir)
+		return;
+
+	while ((ent = readdir(dir)) != NULL)
+	{
+		if (ent->d_type == DT_DIR)
+		{
+			char* subdir;
+
+			if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+				continue;
+
+			subdir = (char*) malloc(strlen(path) + 2 + strlen(ent->d_name));
+			sprintf(subdir, "%s/%s", path, ent->d_name);
+
+			fixDirectoryPermissions(subdir);
+
+			if (chown(subdir, g_originalUid, g_originalGid) == -1)
+				fprintf(stderr, "Cannot chown %s: %s\n", subdir, strerror(errno));
+
+			free(subdir);
+		}
+	}
+
+	closedir(dir);
+}
+
 pid_t spawnInitProcess(void)
 {
 	pid_t pid;
@@ -454,6 +493,10 @@ pid_t spawnInitProcess(void)
 		}
 
 		free(opts);
+
+		// This is executed once at prefix creation
+		if (g_fixPermissions)
+			fixDirectoryPermissions(prefix);
 
 		snprintf(putOld, sizeof(putOld), "%s" SYSTEM_ROOT, prefix);
 
