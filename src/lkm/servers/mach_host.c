@@ -125,7 +125,7 @@ kern_return_t host_info
 #elif defined(__x86_64__)
 			if (!test_thread_flag(TIF_IA32))
 			{
-				hinfo->cpu_type = CPU_TYPE_X86_64;
+				hinfo->cpu_type = CPU_TYPE_I386;
 				hinfo->cpu_subtype = CPU_SUBTYPE_X86_64_ALL;
 			}
 			else
