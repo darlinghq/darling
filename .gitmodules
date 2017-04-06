@@ -215,3 +215,6 @@
 [submodule "src/external/doc_cmds"]
 	path = src/external/doc_cmds
 	url = ../darling-doc_cmds.git
+[submodule "src/external/basic_cmds"]
+	path = src/external/basic_cmds
+	url = ../darling-basic_cmds.git
