@@ -14,7 +14,7 @@ function(wrap_elf name elfname)
 	)
 
 	set(DYLIB_INSTALL_NAME "/usr/lib/native/lib${name}.dylib")
-	include_directories(${CMAKE_SOURCE_DIR}/src/dyld)
+	include_directories(${CMAKE_SOURCE_DIR}/src/startup)
 	add_darling_library(${name} SHARED ${CMAKE_CURRENT_BINARY_DIR}/${name}.c)
 	target_link_libraries(${name} PRIVATE system)
 	make_fat(${name})
