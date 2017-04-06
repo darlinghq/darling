@@ -1,4 +1,0 @@
-# Files/folders created when building the kernel
-.tmp_versions/
-darling-mach.mod.c
-modules.order
