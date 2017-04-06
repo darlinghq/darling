@@ -377,8 +377,13 @@ kern_return_t _kernelrpc_mach_port_insert_right_trap_impl(
 				mach_msg_type_name_t polyPoly
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_insert_right_args args = {
+		.task_right_name = target,
+		.port_name = name,
+		.right_name = poly,
+		.right_type = polyPoly
+	};
+	return ioctl(driver_fd, NR__kernelrpc_mach_port_insert_right_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_insert_member_trap_impl(
