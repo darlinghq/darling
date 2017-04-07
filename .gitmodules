@@ -221,3 +221,6 @@
 [submodule "src/external/misc_cmds"]
 	path = src/external/misc_cmds
 	url = ../darling-misc_cmds.git
+[submodule "src/external/patch_cmds"]
+	path = src/external/patch_cmds
+	url = ../darling-patch_cmds.git
