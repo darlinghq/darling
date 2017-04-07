@@ -188,11 +188,6 @@ add_subdirectory(external/zsh)
 add_subdirectory(external/doc_cmds)
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
+add_subdirectory(lkm)
 
-#######################
-# Linux kernel module #
-#######################
 
-add_custom_target(lkm
-	COMMAND gmake
-	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/lkm")

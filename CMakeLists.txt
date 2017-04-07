@@ -5,6 +5,9 @@ enable_language(ASM)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(InstallSymlink)
+include(MacroEnsureOutOfSourceBuild)
+
+MACRO_ENSURE_OUT_OF_SOURCE_BUILD()
 
 set(DARLING_TOP_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 set(DARLING_NO_EXECUTABLES OFF)
