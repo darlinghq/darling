@@ -296,17 +296,11 @@ kern_return_t _kernelrpc_mach_port_allocate_trap_impl(
 	struct mach_port_allocate_args args = {
 		.task_right_name = target,
 		.right_type = right,
-		.out_right_name = 0
+		.out_right_name = name
 	};
 
 	ret = ioctl(driver_fd, NR__kernelrpc_mach_port_allocate,
 			&args);
-
-	if (ret == KERN_SUCCESS)
-		*name = args.out_right_name;
-	else
-		*name = 0;
-
 	return ret;
 }
 
