@@ -10,6 +10,7 @@ set(xtrace_sources
 	simple.c
 	trampoline.S
 	mach_trace.cpp
+	bsd_trace.cpp
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/darling/libxtrace.dylib")

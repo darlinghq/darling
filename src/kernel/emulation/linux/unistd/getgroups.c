@@ -8,8 +8,8 @@
 long sys_getgroups(unsigned int size, int* gidset)
 {
 	int ret;
-	
-	if (getenv("__FAKE_SETUID_ROOT"))
+
+	if (getenv("__FAKE_SETGID_ROOT"))
 	{
 		if (size >= 1)
 		{

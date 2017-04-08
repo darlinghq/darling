@@ -15,8 +15,12 @@ add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w -ggdb")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
+
+add_compile_options(
+	-Wno-macro-redefined
+)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
@@ -64,6 +68,8 @@ add_circular(system_info FAT
 		libdispatch_shared
 		system_notify
 		platform
+		xpc
+		compiler_rt
 	DEPENDENCIES
 		resolv-darwin
 )

@@ -218,3 +218,18 @@
 [submodule "src/lkm"]
 	path = src/lkm
 	url = ../darling-newlkm.git
+[submodule "src/external/basic_cmds"]
+	path = src/external/basic_cmds
+	url = ../darling-basic_cmds.git
+[submodule "src/external/misc_cmds"]
+	path = src/external/misc_cmds
+	url = ../darling-misc_cmds.git
+[submodule "src/external/patch_cmds"]
+	path = src/external/patch_cmds
+	url = ../darling-patch_cmds.git
+[submodule "src/external/DSTools"]
+	path = src/external/DSTools
+	url = ../darling-DSTools.git
+[submodule "src/external/DirectoryService"]
+	path = src/external/DirectoryService
+	url = ../darling-DirectoryService.git

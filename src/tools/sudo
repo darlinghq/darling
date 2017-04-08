@@ -27,4 +27,10 @@ if [ $# -lt 1 ]; then
 fi
 
 export __FAKE_SETUID_ROOT=1
+export __FAKE_SETGID_ROOT=1
+
+if [ $1 == "-k" ]; then
+    shift
+fi
+
 exec "${@:1}"
