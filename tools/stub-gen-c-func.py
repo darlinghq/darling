@@ -18,7 +18,7 @@
 import sys, subprocess
 
 def usage():
-    print "Usage: %s <Mach-O> <output directory>" % sys.argv[0]
+    print("Usage: %s <Mach-O> <output directory>" % sys.argv[0])
 
 if len(sys.argv) != 3:
     usage()
@@ -29,14 +29,12 @@ dest = sys.argv[2]
 out = subprocess.check_output(["nm", "-Ug", macho])
 
 functions = []
-for line in out.split("\n"):
+for line in out.splitlines():
     if line == "":
         continue
-    components = line.split(" ")
-    id = components[1]
-    name = components[2]
+    address, id, name = line.split(" ")
     # Remove the underscore
-    name = name[1 : len(name)]
+    name = name[1 : ]
 
     if id == "T":
         functions.append(name)
@@ -71,6 +69,3 @@ source.write(copyright)
 for funcname in functions:
     header.write("void %s(void);\n" % funcname)
     source.write("void %s(void) { }\n" % funcname)
-
-header.close()
-source.close()
