@@ -96,24 +96,24 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		char *nl, *interp, *arg;
 		char** modargvp;
 		int i, j;
-		
+
 		nl = memchr(m.magic_array, '\n', sizeof(m.magic_array));
 		if (nl == NULL)
 			return -ENOEXEC;
-		
+
 		*nl = '\0';
-		
+
 		for (i = 2; isspace(m.magic_array[i]); i++);
-		
+
 		interp = &m.magic_array[i];
-		
+
 		for (i = 0; !isspace(interp[i]) && interp[i]; i++);
-		
+
 		if (interp[i] == '\0')
 			arg = NULL;
 		else
 			arg = &interp[i];
-		
+
 		if (arg != NULL)
 		{
 			*arg = '\0'; // terminate interp
@@ -124,13 +124,13 @@ long sys_execve(char* fname, char** argvp, char** envp)
 			if (*arg == '\0')
 				arg = NULL; // no argument, just whitespace
 		}
-		
+
 		// Count original arguments
 		while (argvp[len++]);
-		
+
 		// Allocate a new argvp
 		modargvp = (char**) __builtin_alloca(sizeof(void*) * (len+3));
-		
+
 		i = 0;
 
 		modargvp[i++] = mldr_path;
@@ -138,18 +138,16 @@ long sys_execve(char* fname, char** argvp, char** envp)
 		if (arg != NULL)
 			modargvp[i++] = arg;
 		modargvp[i] = fname;
-		
+
 		// Append original arguments
 		for (j = 1; j < len+1; j++)
 			modargvp[i+j] = argvp[j];
-		
+
 		argvp = modargvp;
 		fname = mldr_path;
 	}
-	else
-	{
-		return -ENOEXEC;
-	}
+
+	// otherwise, it's a native Linux executable (ELF)
 
 	ret = LINUX_SYSCALL(__NR_execve, fname, argvp, envp);
 	if (ret < 0)
