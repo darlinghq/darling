@@ -15,7 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys, subprocess
+import sys
+import subprocess
 
 def usage():
     print("Usage: %s <Mach-O> <output directory>" % sys.argv[0])
