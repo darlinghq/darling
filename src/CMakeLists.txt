@@ -191,6 +191,7 @@ add_subdirectory(external/misc_cmds)
 add_subdirectory(external/patch_cmds)
 add_subdirectory(external/DSTools)
 add_subdirectory(external/DirectoryService)
+add_subdirectory(ImageIO)
 
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
