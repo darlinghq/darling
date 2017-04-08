@@ -10,6 +10,10 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/libdispatch/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../lookup.subproj)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+add_definitions(
+	-DDS_AVAILABLE
+)
+
 set(info-membership_sources
 	membership.c
 )
