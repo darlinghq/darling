@@ -1,4 +1,4 @@
-project(DebugSymbols)
+project(login)
 
 add_compile_options(
 	-nostdinc
@@ -8,7 +8,7 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_framework(DebugSymbols
+add_framework(login
 	FAT
 	CURRENT_VERSION
 	PRIVATE
