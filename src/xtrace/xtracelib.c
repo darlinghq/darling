@@ -9,6 +9,8 @@
 // Defined in assembly
 extern void darling_mach_syscall_entry_trampoline(void);
 extern void darling_mach_syscall_exit_trampoline(void);
+extern void darling_bsd_syscall_entry_trampoline(void);
+extern void darling_bsd_syscall_exit_trampoline(void);
 extern int sys_thread_selfid(void);
 
 #ifdef __x86_64__
@@ -24,9 +26,31 @@ __attribute__((packed));
 // Defined in libsystem_kernel
 extern struct hook* _darling_mach_syscall_entry;
 extern struct hook* _darling_mach_syscall_exit;
+extern struct hook* _darling_bsd_syscall_entry;
+extern struct hook* _darling_bsd_syscall_exit;
+
+static void xtrace_setup_mach(void);
+static void xtrace_setup_bsd(void);
+static void setup_hook(struct hook* hook, void* fnptr);
 
 __attribute__((constructor))
 void xtrace_setup()
+{
+	xtrace_setup_mach();
+	xtrace_setup_bsd();
+}
+
+static void setup_hook(struct hook* hook, void* fnptr)
+{
+	hook->movabs[0] = 0x49;
+	hook->movabs[1] = 0xbc;
+	hook->call[0] = 0x41;
+	hook->call[1] = 0xff;
+	hook->call[2] = 0xd4;
+	hook->addr = (uintptr_t)fnptr;
+}
+
+static void xtrace_setup_mach(void)
 {
 	uintptr_t area = (uintptr_t)_darling_mach_syscall_entry;
 
@@ -35,20 +59,23 @@ void xtrace_setup()
 
 	mprotect((void*) area, 4096, PROT_READ | PROT_WRITE | PROT_EXEC);
 
-	_darling_mach_syscall_entry->movabs[0] = 0x49;
-	_darling_mach_syscall_entry->movabs[1] = 0xbc;
-	_darling_mach_syscall_entry->call[0] = 0x41;
-	_darling_mach_syscall_entry->call[1] = 0xff;
-	_darling_mach_syscall_entry->call[2] = 0xd4;
+	setup_hook(_darling_mach_syscall_entry, darling_mach_syscall_entry_trampoline);
+	setup_hook(_darling_mach_syscall_exit, darling_mach_syscall_exit_trampoline);
 
-	_darling_mach_syscall_exit->movabs[0] = 0x49;
-	_darling_mach_syscall_exit->movabs[1] = 0xbc;
-	_darling_mach_syscall_exit->call[0] = 0x41;
-	_darling_mach_syscall_exit->call[1] = 0xff;
-	_darling_mach_syscall_exit->call[2] = 0xd4;
+	mprotect((void*) area, 4096, PROT_READ | PROT_EXEC);
+}
 
-	_darling_mach_syscall_entry->addr = (uint64_t)darling_mach_syscall_entry_trampoline;
-	_darling_mach_syscall_exit->addr = (uint64_t)darling_mach_syscall_exit_trampoline;
+static void xtrace_setup_bsd(void)
+{
+	uintptr_t area = (uintptr_t)_darling_bsd_syscall_entry;
+
+	// __asm__("int3");
+	area &= ~(4096-1);
+
+	mprotect((void*) area, 4096, PROT_READ | PROT_WRITE | PROT_EXEC);
+
+	setup_hook(_darling_bsd_syscall_entry, darling_bsd_syscall_entry_trampoline);
+	setup_hook(_darling_bsd_syscall_exit, darling_bsd_syscall_exit_trampoline);
 
 	mprotect((void*) area, 4096, PROT_READ | PROT_EXEC);
 }

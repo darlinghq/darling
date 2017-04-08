@@ -5,6 +5,8 @@
 #if defined(__x86_64__)
 
 __darling_bsd_syscall:
+Lentry_hook:
+	.space 13, 0x90
 	movq    ___bsd_syscall_table@GOTPCREL(%rip), %r10
 	movq	(%r10,%rax,8), %r10
 	test	%r10, %r10
@@ -16,11 +18,22 @@ __darling_bsd_syscall:
 	pushq	%r11
 	call	*%r10
 	addq	$16, %rsp
+.std_ret:
+Lexit_hook:
+	.space 13, 0x90
 	ret
 .no_sys:
 	movq	%rax, %rdi
 	call	___unknown_syscall
-	ret
+	jmp		.std_ret
+
+.section        __DATA,__data
+.globl __darling_bsd_syscall_entry
+.globl __darling_bsd_syscall_exit
+__darling_bsd_syscall_entry:
+	.quad Lentry_hook
+__darling_bsd_syscall_exit:
+	.quad Lexit_hook
 
 #elif defined(__i386__)
 
@@ -29,6 +42,8 @@ __darling_bsd_syscall:
 	movl	%ecx, -24+off(%esp)
 
 __darling_bsd_syscall:
+Lentry_hook:
+	.space 6, 0x90
 	calll	1f
 1:
 	popl	%ecx
@@ -48,17 +63,28 @@ __darling_bsd_syscall:
 	subl	$24, %esp
 	call	*%eax
 	addl	$24, %esp
+.std_ret:
+Lexit_hook:
+	.space 6, 0x90
 	ret
 .no_sys:
 	pushl	%ecx
 	call	___unknown_syscall
 	addl	$4, %esp
-	ret
+	jmp .std_ret
 
 	.section        __IMPORT,__pointers,non_lazy_symbol_pointers
 L___bsd_syscall_table$non_lazy_ptr:
 	.indirect_symbol        ___bsd_syscall_table
 	.long   0
+
+.section        __DATA,__data
+.globl __darling_bsd_syscall_entry
+.globl __darling_bsd_syscall_exit
+__darling_bsd_syscall_entry:
+	.long Lentry_hook
+__darling_bsd_syscall_exit:
+	.long Lexit_hook
 
 .subsections_via_symbols
 

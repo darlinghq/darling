@@ -8,6 +8,13 @@ long sys_write(int fd, const void* mem, int len)
 	return sys_write_nocancel(fd, mem, len);
 }
 
+__attribute__((visibility("default")))
+long __write_for_xtrace(int fd, const void* mem, int len)
+{
+	return sys_write_nocancel(fd, mem, len);
+}
+
+
 long sys_write_nocancel(int fd, const void* mem, int len)
 {
 	int ret;

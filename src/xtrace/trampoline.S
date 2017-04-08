@@ -34,4 +34,17 @@ _darling_mach_syscall_exit_trampoline:
 	trampoline_leave
 	ret
 
+.private_extern _darling_bsd_syscall_entry_trampoline
+_darling_bsd_syscall_entry_trampoline:
+	trampoline_enter
+	call _darling_bsd_syscall_entry_print
+	trampoline_leave
+	ret
+
+.private_extern _darling_bsd_syscall_exit_trampoline
+_darling_bsd_syscall_exit_trampoline:
+	trampoline_enter
+	call _darling_bsd_syscall_exit_print
+	trampoline_leave
+	ret
 

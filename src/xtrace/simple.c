@@ -1,10 +1,12 @@
 #include "simple.h"
 #include <stdarg.h>
 #include <stddef.h>
-#include <unistd.h>
 
 void __simple_vsprintf(char* buf, const char* format, va_list vl);
 extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
+
+// We cannot call standard write(), because it would loop back to xtrace
+extern int __write_for_xtrace(int fd, const void* mem, __SIZE_TYPE__ count);
 
 int __simple_strlen(const char* text)
 {
@@ -123,7 +125,7 @@ void __simple_printf(const char* format, ...)
 	__simple_vsprintf(buffer, format, vl);
 	va_end(vl);
 
-	write(2, buffer, __simple_strlen(buffer));
+	__write_for_xtrace(2, buffer, __simple_strlen(buffer));
 }
 
 void __simple_sprintf(char *buffer, const char* format, ...)
