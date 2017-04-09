@@ -25,6 +25,9 @@ set(emulation_sources
 	errno.c
 	readline.c
 	common_at.c
+	guarded/guarded_open_np.c
+	guarded/guarded_close_np.c
+	guarded/guarded_kqueue_np.c
 	machdep/machdeps.c
 	machdep/machdep-table.S
 	machdep/tls.c

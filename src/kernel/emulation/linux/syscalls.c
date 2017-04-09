@@ -4,6 +4,9 @@
 #include "kqueue/kevent.h"
 #include "unistd/write.h"
 #include "unistd/read.h"
+#include "guarded/guarded_open_np.h"
+#include "guarded/guarded_close_np.h"
+#include "guarded/guarded_kqueue_np.h"
 #include "mman/mman.h"
 #include "mman/madvise.h"
 #include "mman/msync.h"
@@ -361,6 +364,9 @@ void* __bsd_syscall_table[600] = {
 	[415] = sys_pwrite_nocancel,
 	[417] = sys_poll_nocancel,
 	[423] = sys_semwait_signal_nocancel,
+	[441] = sys_guarded_open_np,
+	[442] = sys_guarded_close_np,
+	[443] = sys_guarded_kqueue_np,
 	[461] = sys_getattrlistbulk,
 	[463] = sys_openat,
 	[464] = sys_openat_nocancel,
