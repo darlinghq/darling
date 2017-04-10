@@ -44,6 +44,7 @@ set(emulation_sources
 	kqueue/kqueue.c
 	kqueue/kevent.c
 	kqueue/kevent64.c
+	kqueue/kevent_qos.c
 	unistd/getsid.c
 	unistd/fsync.c
 	unistd/sync.c

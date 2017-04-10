@@ -16,8 +16,11 @@
 #define WQOPS_QUEUE_REMOVE 2
 #define WQOPS_THREAD_RETURN 4
 #define WQOPS_THREAD_SETCONC  8
+#define WQOPS_THREAD_KEVENT_RETURN 0x40
 #define WQOPS_QUEUE_NEWSPISUPP  0x10
 #define WQOPS_QUEUE_REQTHREADS  0x20
+#define WQOPS_QUEUE_REQTHREADS2    0x30
+
 
 // Flags for the newly spawned thread:
 // WQ_FLAG_THREAD_NEWSPI
@@ -28,6 +31,7 @@
 #define WQ_FLAG_THREAD_OVERCOMMIT       0x00010000
 #define WQ_FLAG_THREAD_REUSE            0x00020000
 #define WQ_FLAG_THREAD_NEWSPI           0x00040000
+#define WQ_FLAG_THREAD_KEVENT           0x00080000 /* thread is response to kevent req */
 
 static int workq_sem = WQ_MAX_THREADS; // max 64 threads in use
 static int workq_parked_lock = 1;
@@ -39,11 +43,9 @@ struct parked_thread workq_parked_head = { NULL, NULL };
 
 extern int thread_self_trap(void);
 
-extern void* __darwin_pthread_self(void);
 extern void* pthread_get_stackaddr_np(void* pth);
+extern void* memmove(void* dest, const void* src, __SIZE_TYPE__ n);
 
-static int sem_down(int* sem, int timeout);
-static void sem_up(int* sem);
 static void list_add(struct parked_thread* head, struct parked_thread* item);
 static void list_remove(struct parked_thread* head, struct parked_thread* item);
 
@@ -53,12 +55,35 @@ struct timespec
 	long tv_nsec;
 };
 
+#define __PTK_DARLING_WQ_KEVENT_KEY 150
+
+void* __attribute__((weak)) __attribute__((visibility("default"))) pthread_getspecific(unsigned long key) { return NULL; }
+int __attribute__((weak)) __attribute__((visibility("default"))) pthread_setspecific(unsigned long key, const void* value) { return 1; }
+
 long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 {
 #ifndef VARIANT_DYLD
+	struct wq_kevent_data* wq_event = NULL;
+
 	// item is only used with WQOPS_QUEUE_ADD
 	switch (options)
 	{
+		case WQOPS_THREAD_KEVENT_RETURN:
+		{
+			struct kevent_qos_s* keventlist = item;
+			int nkevents = affinity;
+			
+			wq_event = (struct wq_kevent_data*) pthread_getspecific(__PTK_DARLING_WQ_KEVENT_KEY);
+
+			if (wq_event != NULL)
+			{
+				pthread_setspecific(__PTK_DARLING_WQ_KEVENT_KEY, NULL);
+				memmove(wq_event->events, keventlist, nkevents * sizeof(struct kevent_qos_s));
+				wq_event->nevents = nkevents;
+
+				sem_up(&wq_event->sem);
+			}
+		}
 		case WQOPS_THREAD_RETURN:
 		{
 			// Signalizes that the thread has completed its job
@@ -108,7 +133,6 @@ wakeup:
 
 			// reset stack and call entry point again with WQ_FLAG_THREAD_REUSE
 			thread_self = thread_self_trap();
-			//stack = pthread_get_stackaddr_np(__darwin_pthread_self());
 			stack = __darling_thread_get_stack();
 
 #ifdef __x86_64__
@@ -142,6 +166,12 @@ wakeup:
 		}
 		case WQOPS_QUEUE_NEWSPISUPP:
 			return 0;
+		case WQOPS_QUEUE_REQTHREAD_FOR_KEVENT:
+		{
+			wq_event = (struct wq_kevent_data*) item;
+			pthread_setspecific(__PTK_DARLING_WQ_KEVENT_KEY, wq_event);
+		}
+		case WQOPS_QUEUE_REQTHREADS2: // with prop bucket
 		case WQOPS_QUEUE_REQTHREADS:
 		{
 			// affinity contains thread count
@@ -150,6 +180,9 @@ wakeup:
 
 			flags = WQ_FLAG_THREAD_NEWSPI;
 			flags |= prio;
+
+			if (wq_event != NULL)
+				flags |= WQ_FLAG_THREAD_KEVENT;
 			
 			// __simple_printf("Thread requested\n");
 
@@ -185,7 +218,9 @@ wakeup:
 				sem_up(&workq_parked_lock);
 
 				// __simple_printf("Spawning a new thread\n");
-				ret = __darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point, 0, NULL, flags, 0,
+				ret = __darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point, 0,
+						(wq_event != NULL) ? wq_event->events : NULL, flags,
+						(wq_event != NULL) ? wq_event->nevents : 0,
 						thread_self_trap);
 
 				if (ret < 0)
@@ -201,7 +236,7 @@ wakeup:
 #endif
 }
 
-static int sem_down(int* sem, int timeout)
+int sem_down(int* sem, int timeout)
 {
 	int result;
 	struct timespec ts = { timeout, 0 };
@@ -222,7 +257,7 @@ try_again:
 	return 1;
 }
 
-static void sem_up(int* sem)
+void sem_up(int* sem)
 {
 	int result;
 	result = __sync_add_and_fetch(sem, 1);

@@ -3,6 +3,7 @@
 #include "kqueue/kqueue.h"
 #include "kqueue/kevent.h"
 #include "kqueue/kevent64.h"
+#include "kqueue/kevent_qos.h"
 #include "unistd/write.h"
 #include "unistd/read.h"
 #include "guarded/guarded_open_np.h"
@@ -342,6 +343,7 @@ void* __bsd_syscall_table[600] = {
 	[368] = sys_workq_kernreturn,
 	[369] = sys_kevent64,
 	[372] = sys_thread_selfid,
+	[374] = sys_kevent_qos,
 	[394] = sys_pselect,
 	[395] = sys_pselect_nocancel,
 	[396] = sys_read_nocancel,
