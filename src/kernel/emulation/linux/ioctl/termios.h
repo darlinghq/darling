@@ -84,6 +84,7 @@ enum {
 #define BSD_TIOCSETD        BSD_IOW('t', 27, int)
 #define BSD_TIOCIXON         BSD_IO('t', 129)
 #define BSD_TIOCIXOFF        BSD_IO('t', 128)
+#define BSD_TIOCISATTY      0x2000745E
 
 #define BSD_TIOCSBRK         BSD_IO('t', 123)
 #define BSD_TIOCCBRK         BSD_IO('t', 122)
