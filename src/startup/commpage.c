@@ -28,6 +28,7 @@ void commpage_setup(bool _64bit)
 	char* signature;
 	uint64_t my_caps;
 	uint8_t *ncpus, *nactivecpus;
+	uint8_t *physcpus, *logcpus;
 	struct sysinfo si;
 
 	commpage = (uint8_t*) mmap((void*)(_64bit ? _COMM_PAGE64_BASE_ADDRESS : _COMM_PAGE32_BASE_ADDRESS),
@@ -51,6 +52,11 @@ void commpage_setup(bool _64bit)
 
 	nactivecpus = (uint8_t*)CGET(_COMM_PAGE_ACTIVE_CPUS);
 	*nactivecpus = sysconf(_SC_NPROCESSORS_ONLN);
+
+	// Better imprecise information than no information
+	physcpus = (uint8_t*)CGET(_COMM_PAGE_PHYSICAL_CPUS);
+	logcpus = (uint8_t*)CGET(_COMM_PAGE_LOGICAL_CPUS);
+	*physcpus = *logcpus = *ncpus;
 
 	my_caps = get_cpu_caps();
 	if (*ncpus == 1)
