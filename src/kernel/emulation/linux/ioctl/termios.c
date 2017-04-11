@@ -206,6 +206,13 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 			*retval = __real_ioctl(fd, LINUX_TCFLSH, queue);
 			return IOCTL_HANDLED;
 		}
+		case BSD_TIOCISATTY:
+		{
+			struct linux_termios in;
+
+			*retval = __real_ioctl(fd, LINUX_TCGETS, &in) == 0;
+			return IOCTL_HANDLED;
+		}
 		default:
 			__simple_printf("Passing thru unhandled ioctl 0x%x on fd %d\n", cmd, fd);
 			__builtin_trap();
