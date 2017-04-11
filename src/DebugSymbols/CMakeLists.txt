@@ -5,8 +5,11 @@ add_compile_options(
 )
 
 include_directories(
-	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+set(DYLIB_COMPAT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "137.0.0")
 
 add_framework(DebugSymbols
 	FAT
@@ -16,6 +19,7 @@ add_framework(DebugSymbols
 
 	SOURCES
 		functions.c
+		copy.c
 
 	DEPENDENCIES
 		system

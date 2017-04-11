@@ -233,3 +233,6 @@
 [submodule "src/external/DirectoryService"]
 	path = src/external/DirectoryService
 	url = ../darling-DirectoryService.git
+[submodule "src/external/TextEdit"]
+	path = src/external/TextEdit
+	url = ../darling-TextEdit.git
