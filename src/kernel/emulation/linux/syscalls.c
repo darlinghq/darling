@@ -139,6 +139,7 @@
 #include "bsdthread/bsdthread_create.h"
 #include "bsdthread/bsdthread_terminate.h"
 #include "bsdthread/disable_threadsignal.h"
+#include "bsdthread/__pthread_canceled.h"
 #include "hfs/stub.h"
 #include "xattr/getattrlistbulk.h"
 #include "xattr/getattrlistat.h"
@@ -316,6 +317,7 @@ void* __bsd_syscall_table[600] = {
 	[328] = sys_pthread_kill,
 	[329] = sys_sigprocmask, // __pthread_sigmask
 	[331] = sys_disable_threadsignal,
+	[333] = sys_pthread_canceled,
 	[334] = sys_semwait_signal,
 	[336] = sys_proc_info,
 	[338] = sys_stat64,

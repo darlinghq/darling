@@ -217,6 +217,7 @@ set(emulation_sources
 	bsdthread/workq_kernreturn.c
 	bsdthread/workq_open.c
 	bsdthread/pthread_kill.c
+	bsdthread/__pthread_canceled.c
 	psynch/psynch_mutexwait.c
 	psynch/psynch_mutexdrop.c
 	psynch/psynch_cvwait.c
