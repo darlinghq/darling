@@ -55,10 +55,11 @@ struct timespec
 	long tv_nsec;
 };
 
-#define __PTK_DARLING_WQ_KEVENT_KEY 150
-
 void* __attribute__((weak)) __attribute__((visibility("default"))) pthread_getspecific(unsigned long key) { return NULL; }
 int __attribute__((weak)) __attribute__((visibility("default"))) pthread_setspecific(unsigned long key, const void* value) { return 1; }
+
+// This is horrible, but it may work
+static struct wq_kevent_data* wq_event_pending = NULL;
 
 long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 {
@@ -73,16 +74,21 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 			struct kevent_qos_s* keventlist = item;
 			int nkevents = affinity;
 			
-			wq_event = (struct wq_kevent_data*) pthread_getspecific(__PTK_DARLING_WQ_KEVENT_KEY);
+			// __simple_printf("kevent return, obj=%p, nkevents=%d\n", wq_event, nkevents);
 
-			if (wq_event != NULL)
+			if (wq_event_pending != NULL)
 			{
-				pthread_setspecific(__PTK_DARLING_WQ_KEVENT_KEY, NULL);
-				memmove(wq_event->events, keventlist, nkevents * sizeof(struct kevent_qos_s));
-				wq_event->nevents = nkevents;
+				int* sem;
+				if (nkevents > 0)
+					memmove(wq_event_pending->events, keventlist, nkevents * sizeof(struct kevent_qos_s));
+				wq_event_pending->nevents = nkevents;
 
-				sem_up(&wq_event->sem);
+				sem = &wq_event_pending->sem;
+				wq_event_pending = NULL;
+				sem_up(sem);
 			}
+			else
+				__simple_printf("wq_event is NULL, something is going to get stuck forever\n");
 		}
 		case WQOPS_THREAD_RETURN:
 		{
@@ -129,25 +135,29 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 			}
 wakeup:
 			
-			// __simple_printf("Thread %d woken up\n", my_id);
-
 			// reset stack and call entry point again with WQ_FLAG_THREAD_REUSE
 			thread_self = thread_self_trap();
 			stack = __darling_thread_get_stack();
 
+			// __simple_printf("Thread %d woken up\n", thread_self);
+
+			if (me.event)
+				wq_event_pending = me.event;
 #ifdef __x86_64__
 			__asm__ __volatile__ (
 					"movq %%rbx, %%r8\n" // 5th argument
+					"movl %5, %%r9d\n" // 6th argument
 					"movq %0, %%rsp\n"
 					"movq %%rsp, %%rdx\n" // 3rd argument
 					"xorq %%rcx, %%rcx\n" // 4th argument
 					"subq $32, %%rsp\n"
 					"jmpq *%2\n"
 					:: "D" (stack), "S" (thread_self), "a" (wqueue_entry_point),
-					"b" (me.prio | WQ_FLAG_THREAD_REUSE | WQ_FLAG_THREAD_NEWSPI)
+					"b" (me.flags | WQ_FLAG_THREAD_REUSE), "c" (me.event ? me.event->events : NULL),
+					"r" (me.event ? me.event->nevents : 0)
 			);
 #elif defined(__i386__)
-			// Arguments are in eax, ebx, ecx, edx, edi
+			// Arguments are in eax, ebx, ecx, edx, edi, esi
 			__asm__ __volatile__ (
 					"movl %0, %%esp\n"
 					"movl %0, %%ecx\n"
@@ -155,7 +165,8 @@ wakeup:
 					"subl $32, %%esp\n"
 					"jmpl *%2\n"
 					:: "a" (stack), "b" (thread_self), "S" (wqueue_entry_point),
-					"D" (me.prio | WQ_FLAG_THREAD_REUSE | WQ_FLAG_THREAD_NEWSPI)
+					"D" (me.flags | WQ_FLAG_THREAD_REUSE), "d" (me.event ? me.event->events : NULL),
+					"S" (me.event ? me.event->nevents : 0)
 			);
 #else
 #	error Missing assembly!
@@ -169,7 +180,7 @@ wakeup:
 		case WQOPS_QUEUE_REQTHREAD_FOR_KEVENT:
 		{
 			wq_event = (struct wq_kevent_data*) item;
-			pthread_setspecific(__PTK_DARLING_WQ_KEVENT_KEY, wq_event);
+			affinity = 1;
 		}
 		case WQOPS_QUEUE_REQTHREADS2: // with prop bucket
 		case WQOPS_QUEUE_REQTHREADS:
@@ -201,9 +212,11 @@ wakeup:
 
 					// Resume an existing thread
 					// __simple_printf("Resuming thread %d\n", id);
-					
-					thread->prio = prio & WQ_FLAG_THREAD_PRIOMASK;
-					thread->prio |= prio & WQ_FLAG_THREAD_OVERCOMMIT;
+
+					//thread->prio = prio & WQ_FLAG_THREAD_PRIOMASK;
+					//thread->prio |= prio & WQ_FLAG_THREAD_OVERCOMMIT;
+					thread->flags = flags;
+					thread->event = wq_event;
 
 					// Dequeue
 					list_remove(&workq_parked_head, thread);
@@ -217,7 +230,9 @@ wakeup:
 
 				sem_up(&workq_parked_lock);
 
-				// __simple_printf("Spawning a new thread\n");
+				// __simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
+				wq_event_pending = wq_event;
+
 				ret = __darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point, 0,
 						(wq_event != NULL) ? wq_event->events : NULL, flags,
 						(wq_event != NULL) ? wq_event->nevents : 0,

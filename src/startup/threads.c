@@ -24,6 +24,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 // The point of this file is build macOS threads on top of native libc's threads,
 // otherwise it would not be possible to make native calls from these threads.
@@ -162,6 +165,18 @@ static void* darling_thread_entry(void* p)
 int __darling_thread_terminate(void* stackaddr,
 				unsigned long freesize, unsigned long pthobj_size)
 {
+	if (getpid() == syscall(SYS_gettid))
+	{
+		// dispatch_main() calls pthread_exit(NULL) on the main thread,
+		// which turns the our process into a zombie.
+		// Let's just hang around forever.
+		sigset_t mask;
+		memset(&mask, 0, sizeof(mask));
+		
+		while (1)
+			sigsuspend(&mask);
+	}
+	
 	struct reaper_item* item = (struct reaper_item*) malloc(sizeof(struct reaper_item));
 	item->thread = pthread_self();
 	item->stack = stackaddr;

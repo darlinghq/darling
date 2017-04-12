@@ -6,19 +6,20 @@
 // Darling specific
 #define WQOPS_QUEUE_REQTHREAD_FOR_KEVENT  0x100020
 
-struct parked_thread
-{
-	struct parked_thread *prev, *next;
-	int sem, prio;
-};
-struct timespec;
-
 struct wq_kevent_data
 {
 	struct kevent_qos_s* events;
 	int nevents;
 	int sem;
 };
+
+struct parked_thread
+{
+	struct parked_thread *prev, *next;
+	int sem, flags;
+	struct wq_kevent_data* event;
+};
+struct timespec;
 
 long sys_workq_kernreturn(int options, void* item, int affinity, int prio);
 

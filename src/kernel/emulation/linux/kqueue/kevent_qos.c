@@ -29,12 +29,6 @@ long sys_kevent_qos(int	kq, const struct kevent_qos_s *changelist, int nchanges,
 	if ((kq == -1) != !!(flags & KEVENT_FLAG_WORKQ))
 		return -EINVAL;
 
-	if (kq != -1)
-	{
-		__simple_printf("Dunno how to handle kevent_qos with a valid kq number\n");
-		return -ENOTSUP;
-	}
-
 	if (default_kq == -1)
 	{
 		default_kq = sys_kqueue();
@@ -51,6 +45,12 @@ long sys_kevent_qos(int	kq, const struct kevent_qos_s *changelist, int nchanges,
 	}
 	if (eventlist != NULL && nevents > 0)
 		eventlist64 = (struct kevent64_s*) __builtin_alloca(nevents * sizeof(struct kevent64_s));
+	if (nevents == 0 && (flags & KEVENT_FLAG_WORKQ))
+	{
+		eventlist = (struct kevent_qos_s*) __builtin_alloca(nevents * sizeof(struct kevent_qos_s));
+		nevents = 1;
+		eventlist64 = (struct kevent64_s*) __builtin_alloca(nevents * sizeof(struct kevent64_s));
+	}
 
 	rv = kevent64(default_kq, changelist64, nchanges, eventlist64, nevents, flags, NULL);
 
@@ -62,16 +62,22 @@ long sys_kevent_qos(int	kq, const struct kevent_qos_s *changelist, int nchanges,
 			kevent_64_to_qos(&eventlist64[i], &eventlist[i]);
 	}
 
-	// Pass to workqueue and wait
-	wq_kevent.sem = 0;
-	wq_kevent.events = eventlist;
-	wq_kevent.nevents = rv;
+	if (flags & KEVENT_FLAG_WORKQ)
+	{
+		// Pass to workqueue and wait
+		wq_kevent.sem = 0;
+		wq_kevent.events = eventlist;
+		wq_kevent.nevents = rv;
 
-	sys_workq_kernreturn(WQOPS_QUEUE_REQTHREAD_FOR_KEVENT, &wq_kevent, 1, 0);
-	sem_down(&wq_kevent.sem, -1);
+		sys_workq_kernreturn(WQOPS_QUEUE_REQTHREAD_FOR_KEVENT, &wq_kevent, 1, 0);
+		
+		// __simple_printf("waiting for workq processing\n");
+		sem_down(&wq_kevent.sem, -1);
 
-	rv = wq_kevent.nevents;
-	memmove(eventlist, wq_kevent.events, rv * sizeof(struct kevent_qos_s));
+		rv = wq_kevent.nevents;
+		memmove(eventlist, wq_kevent.events, rv * sizeof(struct kevent_qos_s));
+		// __simple_printf("workq done processing, returning %d to caller\n", rv);
+	}
 	
 	return rv;
 }
