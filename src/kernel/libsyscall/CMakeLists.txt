@@ -20,6 +20,7 @@ add_definitions(-DPRIVATE=1 -D__DARWIN_C_LEVEL=20150101)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
 #add_definitions(-DKERNEL)
 
+include_directories(${CMAKE_SOURCE_DIR}/src/lkm/osfmk)
 set(MIG_USER_HEADER_SUFFIX "_internal.h")
 mig(mach/exc.defs)
 mig(mach/host_priv.defs)

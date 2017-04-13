@@ -19,6 +19,7 @@ long sys_ulock_wait(uint32_t operation, void* addr, uint64_t value, uint32_t tim
 	int ret, op;
 	struct timespec ts;
 	bool no_errno = operation & ULF_NO_ERRNO;
+	__simple_printf("sys_ulock_wait()\n");
 
 	if (timeout > 0)
 	{

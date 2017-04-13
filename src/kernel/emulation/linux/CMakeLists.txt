@@ -1,6 +1,6 @@
 project(emulation)
 
-cmake_minimum_required(VERSION 2.4.0)
+add_subdirectory(mach)
 
 cmake_policy(SET CMP0005 NEW)
 enable_language(ASM)

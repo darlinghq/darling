@@ -36,7 +36,6 @@ add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__ -DPRIVATE=1)
 
 add_subdirectory(libsyscall)
-add_subdirectory(mach_server/client)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_kernel.dylib")
 add_circular(system_kernel FAT

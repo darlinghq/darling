@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../mach_server/client/lkm.h"
+#include "../mach/lkm.h"
 #include "../../../../lkm/api.h"
 #include "../simple.h"
 

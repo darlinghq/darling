@@ -1,1 +1,1 @@
-../../kernel/mach/mach_exc.defs
+../../lkm/osfmk/mach/mach_exc.defs

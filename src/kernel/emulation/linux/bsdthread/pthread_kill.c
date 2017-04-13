@@ -4,7 +4,7 @@
 #include "../signal/duct_signals.h"
 #include "../../../../../platform-include/sys/errno.h"
 #include <stddef.h>
-#include "../../../mach_server/client/lkm.h"
+#include "../mach/lkm.h"
 #include "../../../../lkm/api.h"
 #include "../simple.h"
 

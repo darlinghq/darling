@@ -1,1 +1,1 @@
-../../kernel/mach/notify.defs
+../../lkm/osfmk/mach/notify.defs

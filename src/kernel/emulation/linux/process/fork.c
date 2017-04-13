@@ -2,7 +2,6 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../signal/duct_signals.h"
-#include "../../../mach_server/client/lkm.h"
 #include <linux-syscalls/linux.h>
 
 long sys_fork(void)
@@ -16,8 +15,6 @@ long sys_fork(void)
 #endif
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
-	//else if (ret == 0)
-	//	mach_driver_init(); // re-open /dev/mach
 
 	return ret;
 }
