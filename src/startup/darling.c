@@ -893,7 +893,6 @@ int isModuleLoaded()
 	if ((fp = fopen("/proc/modules", "r")) == NULL)
 	{
 		fprintf(stderr, "Failure opening /proc/modules: %s\n", strerror(errno));
-		fclose(fp);
 		return 0;
 	}
 
