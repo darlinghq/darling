@@ -38,15 +38,22 @@ set(mldr_sources
 add_executable(mldr ${mldr_sources})
 target_link_libraries(mldr Threads::Threads dl)
 
-add_executable(mldr32 ${mldr_sources})
-target_link_libraries(mldr32 Threads::Threads dl)
-set_target_properties(mldr32
-	PROPERTIES
-		COMPILE_FLAGS "-m32"
-		LINK_FLAGS "-m32"
-)
+if(NOT BUILD_ANDROID)
+	# With Android NDK, -m32 does not work with -ldl as there's
+	# lib64/libdl.so but no lib/libdl.so
+	add_executable(mldr32 ${mldr_sources})
+	target_link_libraries(mldr32 Threads::Threads dl)
+	set_target_properties(mldr32
+		PROPERTIES
+			COMPILE_FLAGS "-m32"
+			LINK_FLAGS "-m32"
+	)
+endif(NOT BUILD_ANDROID)
 
-install(TARGETS mldr mldr32 DESTINATION libexec/darling/bin)
+install(TARGETS mldr DESTINATION libexec/darling/bin)
+if(NOT BUILD_ANDROID)
+	install(TARGETS mldr32 DESTINATION libexec/darling/bin)
+endif(NOT BUILD_ANDROID)
 install(TARGETS darling DESTINATION bin
     PERMISSIONS
     OWNER_READ OWNER_WRITE OWNER_EXECUTE
