@@ -6,7 +6,7 @@ function(wrap_elf name elfname)
 		OUTPUT
 			${CMAKE_CURRENT_BINARY_DIR}/${name}.c
 		COMMAND
-			${CMAKE_BINARY_DIR}/src/startup/wrapgen
+			${CMAKE_BINARY_DIR}/src/wrapgen/wrapgen
 				${elfname} 
 				${CMAKE_CURRENT_BINARY_DIR}/${name}.c
 		DEPENDS

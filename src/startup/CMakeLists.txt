@@ -36,9 +36,6 @@ set_target_properties(mldr32
 		LINK_FLAGS "-m32"
 )
 
-add_executable(wrapgen wrapgen/wrapgen.cpp)
-target_link_libraries(wrapgen dl)
-
 install(TARGETS mldr mldr32 DESTINATION libexec/darling/bin)
 install(TARGETS darling DESTINATION bin
     PERMISSIONS

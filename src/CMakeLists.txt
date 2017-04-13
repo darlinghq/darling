@@ -42,6 +42,7 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(libmach-o)
 #add_subdirectory(libdyld)
 add_subdirectory(startup)
+add_subdirectory(wrapgen)
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
