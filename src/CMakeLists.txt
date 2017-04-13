@@ -28,11 +28,6 @@ configure_file(darling-config.h.in darling-config.h)
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
-include(compiler_include)
-GetCompilerInclude(COMPILER_INC_PATH)
-message(STATUS "Compiler include path detected as ${COMPILER_INC_PATH}")
-include_directories(${COMPILER_INC_PATH})
-
 add_subdirectory(bootstrap_cmds)
 add_subdirectory(external/cctools-port/cctools/ld64/src)
 add_subdirectory(external/cctools-port/cctools/ar)
@@ -43,6 +38,11 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(libdyld)
 add_subdirectory(startup)
 add_subdirectory(wrapgen)
+
+include(compiler_include)
+GetCompilerInclude(COMPILER_INC_PATH)
+message(STATUS "Compiler include path detected as ${COMPILER_INC_PATH}")
+include_directories(${COMPILER_INC_PATH})
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
