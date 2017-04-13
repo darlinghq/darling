@@ -29,6 +29,9 @@ FUNCTION(add_darling_library name)
 	if (DYLIB_COMPAT_VERSION)
 		set_property(TARGET ${name} APPEND_STRING PROPERTY
 			LINK_FLAGS " -Wl,-compatibility_version,${DYLIB_COMPAT_VERSION} ")
+	else (DYLIB_COMPAT_VERSION)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY
+			LINK_FLAGS " -Wl,-compatibility_version,1.0.0 ")
 	endif (DYLIB_COMPAT_VERSION)
 	if (DYLIB_CURRENT_VERSION)
 		set_property(TARGET ${name} APPEND_STRING PROPERTY
