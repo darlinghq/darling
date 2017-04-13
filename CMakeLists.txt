@@ -31,6 +31,7 @@ enable_language(ASM-ATT)
 
 option(FRAMEWORK_COREAUDIO "Enable audio-related functionality" OFF)
 option(FRAMEWORK_APPKIT "Enable AppKit development code" OFF)
+option(BUILD_ANDROID "Target Android platforms" OFF)
 
 add_subdirectory(src)
 
@@ -78,6 +79,8 @@ InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling
 
 InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
 
-# Our udev rules, so /dev/mach has 0666 permissions
-install(DIRECTORY etc/udev DESTINATION /etc)
+if(NOT BUILD_ANDROID)
+    # Our udev rules, so /dev/mach has 0666 permissions
+    install(DIRECTORY etc/udev DESTINATION /etc)
+endif(NOT BUILD_ANDROID)
 

@@ -9,6 +9,11 @@ endif(COMMAND cmake_policy)
 
 enable_language(C ASM)
 
+if(BUILD_ANDROID)
+    list(APPEND CMAKE_MODULE_PATH "$ENV{ANDROID_NDK}/build/cmake")
+    include(android.toolchain)
+endif(BUILD_ANDROID)
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Ttext-segment,0x400000 -Wl,-Tbss,0x410000 -Wl,-Tdata,0x420000")

@@ -86,7 +86,10 @@ add_subdirectory(kernel)
 add_subdirectory(libc)
 
 add_definitions(-D_LIBC_NO_FEATURE_VERIFICATION)
-add_subdirectory(external/darling-dmg)
+if(NOT BUILD_ANDROID)
+    # Android is lack of libfuse
+    add_subdirectory(external/darling-dmg)
+endif(NOT BUILD_ANDROID)
 add_subdirectory(libm)
 add_subdirectory(libmacho)
 add_subdirectory(libgcc)
