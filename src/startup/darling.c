@@ -74,8 +74,11 @@ int main(int argc, char ** argv, char ** envp)
 	setuid(0);
 	setgid(0);
 
+	/* On Android we handle kernel modules manually */
+#ifndef __ANDROID_API__
 	if (!isModuleLoaded())
 		loadKernelModule();
+#endif
 
 	prefix = getenv("DPREFIX");
 	if (!prefix)
