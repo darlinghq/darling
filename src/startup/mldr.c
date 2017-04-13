@@ -32,6 +32,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <mach-o/fat.h>
 #include <dlfcn.h>
 #include <endian.h>
+#include <byteswap.h>
 #include "elfcalls.h"
 #include "gdb.h"
 #include "commpage.h"
@@ -320,7 +321,7 @@ void load(const char* path, uintptr_t* entryPoint_out, uintptr_t* mh_out, cpu_ty
 			exit(1);
 		}
 
-#define SWAP32(x) x = __bswap_32(x)
+#define SWAP32(x) x = bswap_32(x)
 
 		if (swap)
 			SWAP32(fhdr.nfat_arch);
