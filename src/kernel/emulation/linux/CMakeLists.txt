@@ -113,6 +113,7 @@ set(emulation_sources
 	process/execve.c
 	process/posix_spawn.c
 	process/getpriority.c
+	process/setpriority.c
 	signal/duct_signals.c
 	signal/kill.c
 	signal/sigaltstack.c
