@@ -86,6 +86,7 @@
 #include "process/wait4.h"
 #include "process/waitid.h"
 #include "process/execve.h"
+#include "process/getpriority.h"
 #include "misc/getentropy.h"
 #include "misc/getlogin.h"
 #include "misc/shared_region_check_np.h"
@@ -238,6 +239,7 @@ void* __bsd_syscall_table[600] = {
 	[95] = sys_fsync,
 	[97] = sys_socket,
 	[98] = sys_connect,
+	[100] = sys_getpriority,
 	[104] = sys_bind,
 	[105] = sys_setsockopt,
 	[106] = sys_listen,
