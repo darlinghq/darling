@@ -20,7 +20,7 @@
 #define WQOPS_QUEUE_NEWSPISUPP  0x10
 #define WQOPS_QUEUE_REQTHREADS  0x20
 #define WQOPS_QUEUE_REQTHREADS2    0x30
-
+#define WQOPS_SET_EVENT_MANAGER_PRIORITY 0x80
 
 // Flags for the newly spawned thread:
 // WQ_FLAG_THREAD_NEWSPI
@@ -58,6 +58,8 @@ struct timespec
 void* __attribute__((weak)) __attribute__((visibility("default"))) pthread_getspecific(unsigned long key) { return NULL; }
 int __attribute__((weak)) __attribute__((visibility("default"))) pthread_setspecific(unsigned long key, const void* value) { return 1; }
 
+static int priority_to_class(int prio);
+
 // This is horrible, but it may work
 static struct wq_kevent_data* wq_event_pending = NULL;
 
@@ -65,6 +67,8 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 {
 #ifndef VARIANT_DYLD
 	struct wq_kevent_data* wq_event = NULL;
+	
+	__simple_printf("workq_kernreturn: 0x%x, %p, 0x%x, 0x%x\n", options, item, affinity, prio);
 
 	// item is only used with WQOPS_QUEUE_ADD
 	switch (options)
@@ -139,12 +143,13 @@ wakeup:
 			thread_self = thread_self_trap();
 			stack = __darling_thread_get_stack();
 
-			// __simple_printf("Thread %d woken up\n", thread_self);
+			__simple_printf("Thread %d woken up, prio=%d\n", thread_self, me.flags & WQ_FLAG_THREAD_PRIOMASK);
 
 			if (me.event)
 				wq_event_pending = me.event;
 #ifdef __x86_64__
 			__asm__ __volatile__ (
+					// "int3\n"
 					"movq %%rbx, %%r8\n" // 5th argument
 					"movl %5, %%r9d\n" // 6th argument
 					"movq %0, %%rsp\n"
@@ -175,6 +180,7 @@ wakeup:
 
 			return 0;
 		}
+		case WQOPS_SET_EVENT_MANAGER_PRIORITY:
 		case WQOPS_QUEUE_NEWSPISUPP:
 			return 0;
 		case WQOPS_QUEUE_REQTHREAD_FOR_KEVENT:
@@ -187,15 +193,15 @@ wakeup:
 		{
 			// affinity contains thread count
 
-			int i, flags, ret;
+			int i, flags;
 
 			flags = WQ_FLAG_THREAD_NEWSPI;
-			flags |= prio;
+			flags |= prio & (WQ_FLAG_THREAD_PRIOMASK | WQ_FLAG_THREAD_OVERCOMMIT); //priority_to_class(prio);
 
 			if (wq_event != NULL)
 				flags |= WQ_FLAG_THREAD_KEVENT;
 			
-			// __simple_printf("Thread requested\n");
+			__simple_printf("Thread requested with prio %d\n", prio & WQ_FLAG_THREAD_PRIOMASK);
 
 			for (i = 0; i < affinity; i++)
 			{
@@ -213,8 +219,6 @@ wakeup:
 					// Resume an existing thread
 					// __simple_printf("Resuming thread %d\n", id);
 
-					//thread->prio = prio & WQ_FLAG_THREAD_PRIOMASK;
-					//thread->prio |= prio & WQ_FLAG_THREAD_OVERCOMMIT;
 					thread->flags = flags;
 					thread->event = wq_event;
 
@@ -230,16 +234,19 @@ wakeup:
 
 				sem_up(&workq_parked_lock);
 
-				// __simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
+				__simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
 				wq_event_pending = wq_event;
 
-				ret = __darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point, 0,
+				__darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point, 0,
 						(wq_event != NULL) ? wq_event->events : NULL, flags,
 						(wq_event != NULL) ? wq_event->nevents : 0,
 						thread_self_trap);
 
-				if (ret < 0)
+				/*if (ret < 0)
+				{
+					__simple_printf("Failed to spawn a new thread, err %d\n", -ret);
 					return ret;
+				}*/
 			}
 			return 0;
 		}
@@ -312,5 +319,43 @@ static void list_remove(struct parked_thread* head, struct parked_thread* item)
 		head->next = item->next;
 	if (head->prev == item)
 		head->prev = item->prev;
+}
+
+#define __PTHREAD_PRIORITY_CBIT_USER_INTERACTIVE 0x20
+#define __PTHREAD_PRIORITY_CBIT_USER_INITIATED 0x10
+#define __PTHREAD_PRIORITY_CBIT_DEFAULT 0x8
+#define __PTHREAD_PRIORITY_CBIT_UTILITY 0x4
+#define __PTHREAD_PRIORITY_CBIT_BACKGROUND 0x2
+#define __PTHREAD_PRIORITY_CBIT_MAINTENANCE 0x1
+#define __PTHREAD_PRIORITY_CBIT_UNSPECIFIED 0x0
+
+#define QOS_CLASS_USER_INTERACTIVE 0x21
+#define QOS_CLASS_USER_INITIATED 0x19
+#define QOS_CLASS_DEFAULT 0x15
+#define QOS_CLASS_UTILITY 0x11
+#define QOS_CLASS_BACKGROUND 0x09
+#define QOS_CLASS_MAINTENANCE 0x05
+#define QOS_CLASS_UNSPECIFIED 0x0
+
+static int priority_to_class(int prio)
+{
+	int dec_prio = (prio & 0xff00) >> 8;
+	switch (dec_prio)
+	{
+		case __PTHREAD_PRIORITY_CBIT_USER_INTERACTIVE:
+			return __PTHREAD_PRIORITY_CBIT_MAINTENANCE;
+		case __PTHREAD_PRIORITY_CBIT_USER_INITIATED:
+			return QOS_CLASS_USER_INITIATED;
+		case __PTHREAD_PRIORITY_CBIT_DEFAULT:
+			return QOS_CLASS_DEFAULT;
+		case __PTHREAD_PRIORITY_CBIT_UTILITY:
+			return QOS_CLASS_UTILITY;
+		case __PTHREAD_PRIORITY_CBIT_BACKGROUND:
+			return QOS_CLASS_BACKGROUND;
+		case __PTHREAD_PRIORITY_CBIT_MAINTENANCE:
+			return QOS_CLASS_MAINTENANCE;
+		default:
+			return QOS_CLASS_UNSPECIFIED;
+	}
 }
 
