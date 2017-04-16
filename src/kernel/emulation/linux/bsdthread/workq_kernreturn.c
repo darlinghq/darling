@@ -68,7 +68,7 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 #ifndef VARIANT_DYLD
 	struct wq_kevent_data* wq_event = NULL;
 	
-	__simple_printf("workq_kernreturn: 0x%x, %p, 0x%x, 0x%x\n", options, item, affinity, prio);
+	// __simple_printf("workq_kernreturn: 0x%x, %p, 0x%x, 0x%x\n", options, item, affinity, prio);
 
 	// item is only used with WQOPS_QUEUE_ADD
 	switch (options)
@@ -143,7 +143,7 @@ wakeup:
 			thread_self = thread_self_trap();
 			stack = __darling_thread_get_stack();
 
-			__simple_printf("Thread %d woken up, prio=%d\n", thread_self, me.flags & WQ_FLAG_THREAD_PRIOMASK);
+			// __simple_printf("Thread %d woken up, prio=%d\n", thread_self, me.flags & WQ_FLAG_THREAD_PRIOMASK);
 
 			if (me.event)
 				wq_event_pending = me.event;
@@ -201,7 +201,7 @@ wakeup:
 			if (wq_event != NULL)
 				flags |= WQ_FLAG_THREAD_KEVENT;
 			
-			__simple_printf("Thread requested with prio %d\n", prio & WQ_FLAG_THREAD_PRIOMASK);
+			// __simple_printf("Thread requested with prio %d\n", prio & WQ_FLAG_THREAD_PRIOMASK);
 
 			for (i = 0; i < affinity; i++)
 			{
@@ -234,7 +234,7 @@ wakeup:
 
 				sem_up(&workq_parked_lock);
 
-				__simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
+				// __simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
 				wq_event_pending = wq_event;
 
 				__darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point, 0,
