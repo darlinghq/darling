@@ -5,7 +5,8 @@
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFURL.h>
 #include <CoreFoundation/CFDictionary.h>
-#include "../CFF/CFStringConst.h"
+
+#define CONST_STRING_DECL(name, value) const CFStringRef name = CFSTR(value);
 
 CONST_STRING_DECL(kDADiskDescriptionVolumeKindKey, "kDADiskDescriptionVolumeKindKey");
 CONST_STRING_DECL(kDADiskDescriptionVolumeMountableKey, "kDADiskDescriptionVolumeMountableKey");
