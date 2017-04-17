@@ -45,14 +45,13 @@
  */
 #ifndef NC_CONFIG_H
 #define NC_CONFIG_H
-#include <darling-config.h>
 
 #define SYSTEM_NAME "darwin12.0"
 #define CC_HAS_PROTOS 1
 #define HAVE_LONG_FILE_NAMES 1
 #define USE_DATABASE 1
-#define TERMINFO_DIRS SHARE_PATH "/terminfo"
-#define TERMINFO SHARE_PATH "/terminfo"
+#define TERMINFO_DIRS "/usr/share/terminfo"
+#define TERMINFO "/usr/share/terminfo"
 #define HAVE_BIG_CORE 1
 #define USE_TERMCAP 1
 #define TERMPATH "/etc/termcap:/usr/share/misc/termcap"
