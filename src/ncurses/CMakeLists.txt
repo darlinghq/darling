@@ -51,6 +51,10 @@ target_link_libraries(tput ncurses)
 add_darling_executable(tset progs/tset.c)
 target_link_libraries(tset ncurses)
 
+InstallSymlink(tset ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/bin/reset)
+InstallSymlink(captoinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/bin/tic)
+InstallSymlink(infotocap ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/bin/tic)
+
 install(TARGETS clear infocmp tic toe tput tset DESTINATION libexec/darling/usr/bin)
 
 install(DIRECTORY terminfo DESTINATION libexec/darling/usr/share)
