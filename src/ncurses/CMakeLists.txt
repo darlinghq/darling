@@ -30,4 +30,27 @@ add_subdirectory(ncurses)
 add_subdirectory(menu)
 add_subdirectory(panel)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/progs)
+add_darling_executable(clear progs/clear.c)
+target_link_libraries(clear ncurses)
+
+add_library(nc_dump_entry OBJECT progs/dump_entry.c)
+
+add_darling_executable(infocmp progs/infocmp.c $<TARGET_OBJECTS:nc_dump_entry>)
+target_link_libraries(infocmp ncurses)
+
+add_darling_executable(tic progs/tic.c $<TARGET_OBJECTS:nc_dump_entry>)
+target_link_libraries(tic ncurses)
+
+add_darling_executable(toe progs/toe.c)
+target_link_libraries(toe ncurses)
+
+add_darling_executable(tput progs/tput.c)
+target_link_libraries(tput ncurses)
+
+add_darling_executable(tset progs/tset.c)
+target_link_libraries(tset ncurses)
+
+install(TARGETS clear infocmp tic toe tput tset DESTINATION libexec/darling/usr/bin)
+
 install(DIRECTORY terminfo DESTINATION libexec/darling/usr/share)
