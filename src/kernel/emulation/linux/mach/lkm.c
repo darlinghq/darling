@@ -68,6 +68,7 @@ void mach_driver_init(void)
 	}
 }
 
+__attribute__((visibility("default")))
 int lkm_call(int call_nr, void* arg)
 {
 	return __real_ioctl(driver_fd, call_nr, arg);

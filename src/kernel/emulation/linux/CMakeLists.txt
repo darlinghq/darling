@@ -139,6 +139,9 @@ set(emulation_sources
 	misc/gethostuuid.c
 	misc/getrusage.c
 	misc/getlogin.c
+	misc/setlogin.c
+	misc/reboot.c
+	misc/iopolicysys.c
 	fcntl/open.c
 	fcntl/openat.c
 	fcntl/fcntl.c

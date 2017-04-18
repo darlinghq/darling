@@ -35,5 +35,9 @@ include(darling_exe)
 add_darling_executable(launchctl launchctl.c)
 target_link_libraries(launchctl xpc CoreFoundation edit)
 
+add_darling_executable(launchproxy launchproxy.c)
+target_link_libraries(launchproxy xpc)
+
 install(TARGETS launchctl DESTINATION libexec/darling/bin)
+install(TARGETS launchproxy DESTINATION libexec/darling/usr/libexec)
 

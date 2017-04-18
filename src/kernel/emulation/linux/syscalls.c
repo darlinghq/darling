@@ -90,6 +90,9 @@
 #include "process/setpriority.h"
 #include "misc/getentropy.h"
 #include "misc/getlogin.h"
+#include "misc/setlogin.h"
+#include "misc/reboot.h"
+#include "misc/iopolicysys.h"
 #include "misc/shared_region_check_np.h"
 #include "ioctl/ioctl.h"
 #include "misc/getrlimit.h"
@@ -214,8 +217,10 @@ void* __bsd_syscall_table[600] = {
 	[47] = sys_getgid,
 	[48] = sys_sigprocmask,
 	[49] = sys_getlogin,
+	[50] = sys_setlogin,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,
+	[55] = sys_reboot,
 	[57] = sys_symlink,
 	[58] = sys_readlink,
 	[59] = sys_execve,
@@ -322,6 +327,7 @@ void* __bsd_syscall_table[600] = {
 	[304] = sys_psynch_cvsignal,
 	[305] = sys_psynch_cvwait,
 	[310] = sys_getsid,
+	[322] = sys_iopolicysys,
 	[327] = sys_issetugid,
 	[328] = sys_pthread_kill,
 	[329] = sys_sigprocmask, // __pthread_sigmask

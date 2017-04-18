@@ -49,6 +49,8 @@ long sys_proc_info(uint32_t callnum, int32_t pid, uint32_t flavor,
 
 			return ret;
 		}
+		case 8: // dirtycontrol
+			return 0;
 		case 2: // proc_pidinfo
 			return _proc_pidinfo(pid, flavor, arg, buffer, bufsize);
 		case 3: // proc_pidfdinfo
@@ -121,6 +123,10 @@ long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int
 
 			memcpy(buffer, &my_rpi, sizeof(my_rpi));
 			return foundRegion ? 0 : -ESRCH;
+		}
+		case PROC_PIDT_SHORTBSDINFO:
+		{
+			return 0;
 		}
 		default:
 		{

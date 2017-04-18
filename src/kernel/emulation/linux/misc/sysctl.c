@@ -92,6 +92,10 @@ long sys_sysctlbyname(const char* name, unsigned long namelen, void* old, unsign
 	char* saveptr;
 	const char* token;
 
+	// Used by launchd, assumed to succeed
+	if (strcmp(name, "vfs.generic.noremotehang") == 0)
+		return 0;
+	
 	token = strtok_r((char*) _new, ".", &saveptr);
 
 	while (token != NULL)
