@@ -77,6 +77,7 @@ extern void _malloc_fork_parent(void);
 extern void _malloc_fork_child(void);
 
 extern void _mach_fork_child(void);
+extern void _mach_fork_parent(void);
 extern void _notify_fork_child(void);
 extern void _dyld_fork_child(void);
 extern void xpc_atfork_prepare(void);
@@ -204,7 +205,7 @@ void
 libSystem_atfork_prepare(void)
 {
 	// _libSC_info_fork_prepare(); // Darling: not yet
-	// xpc_atfork_prepare(); // Darling: not yet
+	xpc_atfork_prepare();
 	dispatch_atfork_prepare();
 	_pthread_fork_prepare();
 	_malloc_fork_prepare();
@@ -216,7 +217,8 @@ libSystem_atfork_parent(void)
 	_malloc_fork_parent();
 	_pthread_fork_parent();
 	dispatch_atfork_parent();
-	// xpc_atfork_parent(); // Darling: not yet
+	xpc_atfork_parent();
+	_mach_fork_parent();
 	// _libSC_info_fork_parent(); // Darling: not yet
 }
 
