@@ -194,6 +194,7 @@ add_subdirectory(external/DirectoryService)
 add_subdirectory(ImageIO)
 add_subdirectory(login)
 add_subdirectory(DebugSymbols)
+add_subdirectory(external/bsm)
 
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)

@@ -236,3 +236,6 @@
 [submodule "src/external/TextEdit"]
 	path = src/external/TextEdit
 	url = ../darling-TextEdit.git
+[submodule "src/external/bsm"]
+	path = src/external/bsm
+	url = ../darling-bsm.git
