@@ -61,6 +61,7 @@
 #include <machine/cpu_capabilities.h>
 #include <stdbool.h>
 #include "externs.h"
+#include <lkm/api.h>
 
 mach_port_t bootstrap_port = MACH_PORT_NULL;
 mach_port_t mach_task_self_ = MACH_PORT_NULL;
@@ -84,6 +85,7 @@ static void mach_init_doit(void);
 
 extern void _pthread_set_self(void *);
 extern void _init_cpu_capabilities(void);
+extern void lkm_call(int nr, void* arg);
 
 kern_return_t
 host_page_size(__unused host_t host, vm_size_t *out_page_size)
@@ -113,6 +115,11 @@ _mach_fork_child(void)
 {
 	mach_init_doit();
 	return 0;
+}
+
+void _mach_fork_parent(void)
+{
+	lkm_call(NR_fork_wait_for_child, NULL);
 }
 
 void
