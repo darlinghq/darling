@@ -40,6 +40,7 @@
 #include <mach-o/dyld_priv.h>
 
 // system library initialisers
+extern void bootstrap_init(void);		// from liblaunch.dylib
 extern void mach_init(void);			// from libsystem_kernel.dylib
 extern void __libplatform_init(void *future_use, const char *envp[], const char *apple[], const struct ProgramVars *vars);
 extern void __pthread_init(const struct _libpthread_functions *libpthread_funcs, const char *envp[], const char *apple[], const struct ProgramVars *vars);	// from libsystem_pthread.dylib
@@ -161,7 +162,7 @@ libSystem_initializer(int argc,
 	_dyld_initializer();
 
 	libdispatch_init();
-	// _libxpc_initializer(); // Darling: not yet
+	_libxpc_initializer();
 
 #if !(TARGET_OS_EMBEDDED || TARGET_OS_SIMULATOR)
 	// _libsecinit_initializer(); // Darling: not yet
@@ -240,7 +241,7 @@ libSystem_atfork_child(void)
 
 	_asl_fork_child();
 	_notify_fork_child();
-	// xpc_atfork_child(); // Darling: not yet
+	xpc_atfork_child();
 	// _libSC_info_fork_child(); // Darling: not yet
 
 	_pthread_fork_child_postinit();
