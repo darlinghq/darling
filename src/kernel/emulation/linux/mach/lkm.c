@@ -21,7 +21,7 @@ void mach_driver_init(void)
 {
 	struct rlimit lim;
 
-	if (driver_fd != -1)
+	if (driver_fd != -1) // fork case, typically
 		sys_close(driver_fd);
 #ifndef VARIANT_DYLD
 	else
@@ -37,7 +37,7 @@ void mach_driver_init(void)
 	}
 #endif
 
-	driver_fd = sys_open("/dev/mach", O_RDWR | O_CLOEXEC, 0);
+	driver_fd = sys_open("/dev/mach", O_RDWR, 0);
 	if (driver_fd < 0)
 	{
 		const char* msg = "Cannot open /dev/mach. Aborting.\nMake sure you have loaded the darling-mach kernel module.\n";
@@ -64,7 +64,6 @@ void mach_driver_init(void)
 		sys_close(driver_fd);
 		
 		driver_fd = d;
-		sys_fcntl(driver_fd, F_SETFD, FD_CLOEXEC);
 	}
 }
 
