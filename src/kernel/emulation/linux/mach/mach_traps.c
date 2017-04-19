@@ -575,12 +575,12 @@ boolean_t voucher_mach_msg_set(mach_msg_header_t *msg)
 
 void voucher_mach_msg_revert(voucher_mach_msg_state_t state)
 {
-	UNIMPLEMENTED_TRAP();
+	// UNIMPLEMENTED_TRAP();
 }
 
 voucher_mach_msg_state_t voucher_mach_msg_adopt(mach_msg_header_t *msg)
 {
-	UNIMPLEMENTED_TRAP();
+	// UNIMPLEMENTED_TRAP();
 	return NULL;
 }
 
