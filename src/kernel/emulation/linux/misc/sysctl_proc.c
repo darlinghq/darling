@@ -8,6 +8,7 @@
 #include "../unistd/getgid.h"
 #include "../fcntl/open.h"
 #include "../simple.h"
+#include "sysctl_proc.h"
 
 #ifndef isdigit
 #	define isdigit(c) (c >= '0' && c <= '9')
@@ -117,7 +118,7 @@ int _sysctl_proc(int what, int flag, struct kinfo_proc* out, unsigned long* bufl
 	return ret;
 }
 
-static bool read_string(const char* path, char* dst, int maxlen)
+bool read_string(const char* path, char* dst, int maxlen)
 {
 	int fd, rd;
 
@@ -133,7 +134,7 @@ static bool read_string(const char* path, char* dst, int maxlen)
 	return rd >= 0;
 }
 
-static const char* next_stat_elem(char** buf)
+const char* next_stat_elem(char** buf)
 {
 	char* start;
 
@@ -168,7 +169,7 @@ static const char* next_stat_elem(char** buf)
 	return start;
 }
 
-static void skip_stat_elems(char** buf, int count)
+void skip_stat_elems(char** buf, int count)
 {
 	int i;
 	for (i = 0; i < count; i++)
