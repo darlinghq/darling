@@ -14,6 +14,7 @@
 #include "../unistd/getgid.h"
 #include "../simple.h"
 #include "../readline.h"
+#include "../elfcalls_wrapper.h"
 #include <stdbool.h>
 #include <sys/proc.h>
 #include "sysctl_proc.h"
@@ -105,13 +106,70 @@ long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int
 
 static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize)
 {
+#ifndef VARIANT_DYLD
+	char path[64], stat[1024];
+	char *statptr;
+	const char* elem;
+	unsigned long long starttime;
+	int32_t ppid;
+
 	struct proc_uniqidentifierinfo* info = (struct proc_uniqidentifierinfo*) buffer;
+
 	if (bufsize < sizeof(*info))
 		return -ENOSPC;
 
 	memset(buffer, 0, bufsize);
 
-	return -ENOTSUP;
+	memcpy(info->p_uuid, get_exe_uuid, sizeof(info->p_uuid));
+
+	//////////////////////////
+	// Read info for pid    //
+	//////////////////////////
+
+	__simple_sprintf(path, "/proc/%d/stat", pid);
+	if (!read_string(path, stat, sizeof(stat)))
+		return -ESRCH;
+
+	statptr = stat;
+	skip_stat_elems(&statptr, 3); // skip until ppid
+
+	elem = next_stat_elem(&statptr);
+	if (!elem)
+		return -EINVAL;
+
+	ppid = __simple_atoi(elem, NULL);
+
+	skip_stat_elems(&statptr, 17); // skip until starttime
+	elem = next_stat_elem(&statptr);
+
+	if (!elem)
+		return -EINVAL;
+
+	starttime = __simple_atoi(elem, NULL);
+	info->p_uniqueid = starttime << 16;
+	info->p_uniqueid |= (pid & 0xffff);
+
+	//////////////////////////
+	// Read info for ppid   //
+	//////////////////////////
+
+	__simple_sprintf(path, "/proc/%d/stat", ppid);
+	if (!read_string(path, stat, sizeof(stat)))
+		return -ESRCH;
+
+	statptr = stat;
+	skip_stat_elems(&statptr, 21); // skip until starttime
+	elem = next_stat_elem(&statptr);
+
+	if (!elem)
+		return -EINVAL;
+
+	starttime = __simple_atoi(elem, NULL);
+	info->p_puniqueid = starttime << 16;
+	info->p_puniqueid |= (ppid & 0xffff);
+
+#endif
+	return 0;
 }
 
 static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsize)

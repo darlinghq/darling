@@ -43,3 +43,8 @@ int native_dlclose(void* module)
 	return _elfcalls->dlclose(module);
 }
 
+const uint8_t* get_exe_uuid(void)
+{
+	return _elfcalls->exe_uuid();
+}
+

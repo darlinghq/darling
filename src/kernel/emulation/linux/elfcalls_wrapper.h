@@ -23,6 +23,8 @@ int __darling_thread_terminate(void* stackaddr,
 
 void* __darling_thread_get_stack(void);
 
+const uint8_t* get_exe_uuid(void);
+
 #ifdef __cplusplus
 }
 #endif
