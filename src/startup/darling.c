@@ -226,11 +226,35 @@ start_init:
 	return 0;
 }
 
-pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
+static void joinNamespace(pid_t pid, int type, const char* typeName)
 {
 	int fdNS;
+	char pathNS[4096];
+	
+	snprintf(pathNS, sizeof(pathNS), "/proc/%d/ns/%s", pid, typeName);
+
+	fdNS = open(pathNS, O_RDONLY);
+
+	if (fdNS < 0)
+	{
+		fprintf(stderr, "Cannot open %s namespace file: %s\n", typeName, strerror(errno));
+		exit(1);
+	}
+
+	// Calling setns() with a PID namespace doesn't move our process into it,
+	// but our child process will be spawned inside the namespace
+	if (setns(fdNS, type) != 0)
+	{
+		fprintf(stderr, "Cannot join %s namespace: %s\n", typeName, strerror(errno));
+		exit(1);
+	}
+	close(fdNS);
+}
+
+pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
+{
 	pid_t pidChild;
-	char pathNS[4096], curPath[4096];
+	char curPath[4096];
 
 	if (getcwd(curPath, sizeof(curPath)) == NULL)
 	{
@@ -238,24 +262,8 @@ pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
 		exit(1);
 	}
 
-	snprintf(pathNS, sizeof(pathNS), "/proc/%d/ns/pid", pidInit);
-
-	fdNS = open(pathNS, O_RDONLY);
-
-	if (fdNS < 0)
-	{
-		fprintf(stderr, "Cannot open PID namespace file: %s\n", strerror(errno));
-		exit(1);
-	}
-
-	// Calling setns() with a PID namespace doesn't move our process into it,
-	// but our child process will be spawned inside the namespace
-	if (setns(fdNS, CLONE_NEWPID) != 0)
-	{
-		fprintf(stderr, "Cannot join PID namespace: %s\n", strerror(errno));
-		exit(1);
-	}
-	close(fdNS);
+	joinNamespace(pidInit, CLONE_NEWPID, "pid");
+	joinNamespace(pidInit, CLONE_NEWUTS, "uts");
 
 	pidChild = fork();
 	if (pidChild < 0)
@@ -275,20 +283,7 @@ pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
 		// This is the child process
 
 		// We still have the outside PIDs in /proc
-		snprintf(pathNS, sizeof(pathNS), "/proc/%d/ns/mnt", pidInit);
-		fdNS = open(pathNS, O_RDONLY);
-		if (fdNS < 0)
-		{
-			fprintf(stderr, "Cannot open mount namespace file: %s\n", strerror(errno));
-			exit(1);
-		}
-
-		if (setns(fdNS, CLONE_NEWNS) != 0)
-		{
-			fprintf(stderr, "Cannot join mount namespace: %s\n", strerror(errno));
-			exit(1);
-		}
-		close(fdNS);
+		joinNamespace(pidInit, CLONE_NEWNS, "mnt");
 
 		/*
 		snprintf(pathNS, sizeof(pathNS), SYSTEM_ROOT "/proc/%d/ns/user", pidInit);
