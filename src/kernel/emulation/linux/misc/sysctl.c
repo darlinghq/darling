@@ -38,7 +38,8 @@ void copyout_string(const char* str, char* out, unsigned long* out_len)
 	else
 		len = strlen(str);
 
-	*out_len = len;
+	if (out_len != NULL)
+		*out_len = len;
 }
 
 long sys_sysctl(int* name, unsigned int nlen, void* old,
@@ -91,6 +92,7 @@ long sys_sysctlbyname(const char* name, unsigned long namelen, void* old, unsign
 	const struct known_sysctl* current = &sysctls_root;
 	char* saveptr;
 	const char* token;
+	// __simple_printf("sysctlbyname: %s\n", name);
 
 	// Used by launchd, assumed to succeed
 	if (strcmp(name, "vfs.generic.noremotehang") == 0)

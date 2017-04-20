@@ -4,6 +4,7 @@
 #include "../ext/syslog.h"
 #include "../ext/sys/utsname.h"
 #include <linux-syscalls/linux.h>
+#include "../base.h"
 #include "../time/gettimeofday.h"
 #include "darling-config.h"
 #include "../errno.h"
@@ -159,15 +160,35 @@ struct linux_utsname* need_uname(void)
 
 sysctl_handler(handle_hostname)
 {
+	int rv = 0;
+	
 	need_uname();
 	copyout_string(lu.nodename, (char*) old, oldlen);
-	return 0;
+	
+	if (_new && newlen > 0)
+	{
+		rv = LINUX_SYSCALL(__NR_sethostname, _new, newlen);
+		if (rv < 0)
+			rv = errno_linux_to_bsd(rv);
+	}
+	
+	return rv;
 }
 
 sysctl_handler(handle_domainname)
 {
+	int rv = 0;
+	
 	need_uname();
 	copyout_string(lu.domainname, (char*) old, oldlen);
-	return 0;
+	
+	if (_new && newlen > 0)
+	{
+		rv = LINUX_SYSCALL(__NR_setdomainname, _new, newlen);
+		if (rv < 0)
+			rv = errno_linux_to_bsd(rv);
+	}
+	
+	return rv;
 }
 

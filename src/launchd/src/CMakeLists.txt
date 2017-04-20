@@ -69,7 +69,7 @@ set(launchd_sources
 
 include(darling_exe)
 add_darling_executable(launchd ${launchd_sources})
-target_link_libraries(launchd xpc)
+target_link_libraries(launchd bsm.0)
 
 install(TARGETS launchd DESTINATION libexec/darling/sbin)
 

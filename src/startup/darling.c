@@ -442,9 +442,9 @@ pid_t spawnInitProcess(void)
 		exit(1);
 	}
 
-	if (unshare(CLONE_NEWPID) != 0)
+	if (unshare(CLONE_NEWPID | CLONE_NEWUTS) != 0)
 	{
-		fprintf(stderr, "Cannot unshare pid namespace to create darling-init: %s\n", strerror(errno));
+		fprintf(stderr, "Cannot unshare PID and UTS namespaces to create darling-init: %s\n", strerror(errno));
 		exit(1);
 	}
 
