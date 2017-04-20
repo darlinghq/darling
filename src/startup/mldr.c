@@ -69,6 +69,9 @@ static void apply_root_path(char* path);
 char* elfcalls_make(void);
 static char* apple0_make(const char* filepath);
 
+// UUID of the main executable
+uint8_t exe_uuid[16];
+
 #if USE_32IN64
 static void* setup_stack32(void* stack, int argc, const char** argv, const char** envp, const char** apple, uint64_t mh);
 

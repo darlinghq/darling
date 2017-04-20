@@ -4,6 +4,8 @@
 #include "elfcalls.h"
 #include "threads.h"
 
+extern uint8_t exe_uuid[16];
+
 static void* dlopen_simple(const char* name)
 {
 	return dlopen(name, RTLD_LAZY);
@@ -41,6 +43,11 @@ static int dlclose_fatal(void* handle)
 	return 0;
 }
 
+static const uint8_t* get_exe_uuid(void)
+{
+	return exe_uuid;
+}
+
 char* elfcalls_make(void)
 {
 	static char param[32];
@@ -58,6 +65,8 @@ char* elfcalls_make(void)
 	calls.darling_thread_create = __darling_thread_create;
 	calls.darling_thread_terminate = __darling_thread_terminate;
 	calls.darling_thread_get_stack = __darling_thread_get_stack;
+
+	calls.exe_uuid = get_exe_uuid;
 
 	sprintf(param, "elf_calls=%p", &calls);
 	return param;

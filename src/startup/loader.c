@@ -208,6 +208,15 @@ no_slide:
 					stack_size = ee->stacksize;
 				break;
 			}
+			case LC_UUID:
+			{
+				if (header.filetype == MH_EXECUTE)
+				{
+					struct uuid_command* ue = (struct uuid_command*) lc;
+					memcpy(exe_uuid, ue->uuid, sizeof(exe_uuid));
+				}
+				break;
+			}
 		}
 
 		p += lc->cmdsize;
