@@ -239,3 +239,6 @@
 [submodule "src/external/bsm"]
 	path = src/external/bsm
 	url = ../darling-bsm.git
+[submodule "src/external/Heimdal"]
+	path = src/external/Heimdal
+	url = ../darling-Heimdal.git
