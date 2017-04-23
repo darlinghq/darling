@@ -575,6 +575,13 @@ pid_t spawnInitProcess(void)
 		fprintf(stderr, "Cannot set gid_map for the init process: %s\n", strerror(errno));
 	}
 	*/
+	
+	// This is for development only!
+	if (getenv("TRY_LAUNCHD") != NULL)
+	{
+		int status = 0;
+		waitpid(pid, &status, 0);
+	}
 
 	// Here's where we resume the child
 	// if we enable user namespaces
@@ -612,7 +619,17 @@ void putInitPid(pid_t pidInit)
 void darlingPreInit(void)
 {
 	// TODO: Run /usr/libexec/makewhatis
-
+	
+	// This is for development only!
+	if (getenv("TRY_LAUNCHD") != NULL)
+	{
+		// putenv("KQUEUE_DEBUG=1");
+		execl("/bin/mldr", "mldr!/sbin/launchd", "launchd", NULL);
+	
+		fprintf(stderr, "Failed to exec launchd: %s\n", strerror(errno));
+		abort();
+	}
+	
 	// TODO: this is where we will exec() launchd in future.
 	// Instead, we just reap zombies.
 	while (1)
