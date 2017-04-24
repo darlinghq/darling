@@ -79,9 +79,6 @@
 [submodule "src/external/adv_cmds"]
 	path = src/external/adv_cmds
 	url = ../darling-adv_cmds.git
-[submodule "src/external/AppKit"]
-	path = src/external/AppKit
-	url = ../darling-appkit.git
 [submodule "src/external/nano"]
 	path = src/external/nano
 	url = ../darling-nano.git
@@ -190,9 +187,6 @@
 [submodule "src/external/configd"]
 	path = src/external/configd
 	url = ../darling-configd.git
-[submodule "src/external/coregraphics"]
-	path = src/external/coregraphics
-	url = ../darling-coregraphics.git
 [submodule "src/external/IONetworkingFamily"]
 	path = src/external/IONetworkingFamily
 	url = ../darling-IONetworkingFamily.git
@@ -242,3 +236,6 @@
 [submodule "src/external/Heimdal"]
 	path = src/external/Heimdal
 	url = ../darling-Heimdal.git
+[submodule "src/external/cocotron"]
+	path = src/external/cocotron
+	url = ../darling-cocotron.git
