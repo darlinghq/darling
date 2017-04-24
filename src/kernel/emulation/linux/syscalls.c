@@ -6,6 +6,7 @@
 #include "kqueue/kevent_qos.h"
 #include "unistd/write.h"
 #include "unistd/read.h"
+#include "mount/unmount.h"
 #include "guarded/guarded_open_np.h"
 #include "guarded/guarded_close_np.h"
 #include "guarded/guarded_kqueue_np.h"
@@ -275,6 +276,7 @@ void* __bsd_syscall_table[600] = {
 	[154] = sys_pwrite,
 	[157] = sys_statfs,
 	[158] = sys_fstatfs,
+	[159] = sys_unmount,
 	[173] = sys_waitid,
 	[181] = sys_setgid,
 	[182] = sys_setegid,
