@@ -37,7 +37,7 @@ enum
 	kLSLaunchHasUntrustedContents = 0x00400000
 };
 
-struct LSApplicationParameters
+typedef struct LSApplicationParameters
 {
 	CFIndex version;
 	LSLaunchFlags flags;
@@ -46,7 +46,7 @@ struct LSApplicationParameters
 	CFDictionaryRef environment;
 	CFArrayRef argv;
 	AppleEvent * initialEvent;
-};
+} LSApplicationParameters;
 
 OSStatus LSInit(LSInitializeFlags flags);
 OSStatus LSTerm(void);
