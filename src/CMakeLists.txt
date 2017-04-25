@@ -153,6 +153,8 @@ add_subdirectory(sandbox)
 add_subdirectory(xcselect)
 #add_subdirectory(Cocoa)
 
+add_subdirectory(native)
+
 add_subdirectory(external/file/file)
 add_subdirectory(external/libxpc)
 add_subdirectory(external/openssl_certificates)
