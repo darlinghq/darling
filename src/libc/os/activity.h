@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <mach-o/loader.h>
+#include <MacTypes.h>
 
 __BEGIN_DECLS
 

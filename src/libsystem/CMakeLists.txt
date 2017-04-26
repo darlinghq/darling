@@ -44,7 +44,7 @@ add_circular(system FAT
 target_link_libraries(system PRIVATE system_malloc system_c system_kernel keymgr sandbox
 	system_m system_info system_notify system_quarantine libdispatch_shared launch compiler_rt
 	removefile system_copyfile unwind system_coreservices system_dyld macho CommonCrypto
-	system_pthread platform system_asl system_duct system_blocks xpc) # objc
+	system_pthread platform system_asl system_duct system_blocks xpc corecrypto) # objc
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
 set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	" -sub_library libsystem_malloc \
@@ -73,6 +73,7 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libsystem_asl \
 	-sub_library libdispatch \
 	-sub_library libxpc \
+	-sub_library libcorecrypto \
 	-Wl,-compatibility_version,1.0.0 \
 	-Wl,-current_version,1238.0.0")
 

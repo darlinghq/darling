@@ -74,6 +74,9 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ncurses/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/NetBSD
+	${CMAKE_CURRENT_SOURCE_DIR}/external/corefoundation/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/foundation/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/syslog/libsystem_asl.tproj/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -132,8 +135,6 @@ add_subdirectory(CoreServices)
 #add_subdirectory(ApplicationServices)
 #add_subdirectory(VideoDecodeAcceleration)
 add_subdirectory(DiskArbitration)
-#add_subdirectory(DebugSymbols)
-add_subdirectory(external/Heimdal)
 add_subdirectory(xar)
 add_subdirectory(libedit)
 add_subdirectory(external/libclosure)
@@ -147,8 +148,8 @@ add_subdirectory(external/expat)
 #add_subdirectory(external/libauto)
 add_subdirectory(external/libarchive/libarchive)
 add_subdirectory(external/apr)
-#add_subdirectory(external/corecrypto)
-#add_subdirectory(external/security) # work in progress
+add_subdirectory(external/corecrypto)
+add_subdirectory(external/security)
 add_subdirectory(sandbox)
 add_subdirectory(xcselect)
 #add_subdirectory(Cocoa)
@@ -196,6 +197,7 @@ add_subdirectory(ImageIO)
 add_subdirectory(login)
 add_subdirectory(DebugSymbols)
 add_subdirectory(external/bsm)
+add_subdirectory(external/Heimdal)
 
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)

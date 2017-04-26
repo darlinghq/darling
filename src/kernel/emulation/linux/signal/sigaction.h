@@ -57,9 +57,15 @@ struct linux_siginfo
 typedef void (bsd_sig_handler)(int, struct bsd_siginfo*, void*);
 typedef void (linux_sig_handler)(int, struct linux_siginfo*, void*);
 
+#ifndef SIG_DFL
 #define SIG_DFL (bsd_sig_handler*)0
+#endif
+#ifndef SIG_IGN
 #define SIG_IGN (bsd_sig_handler*)1
+#endif
+#ifndef SIG_ERR
 #define SIG_ERR ((bsd_sig_handler*)-1l)
+#endif
 
 struct bsd_sigaction
 {
