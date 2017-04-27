@@ -127,6 +127,19 @@ void __simple_printf(const char* format, ...)
 	LINUX_SYSCALL3(__NR_write, 1, buffer, __simple_strlen(buffer));
 }
 
+void __simple_fprintf(int fd, const char* format, ...)
+{
+	char buffer[512];
+	va_list vl;
+
+	va_start(vl, format);
+	__simple_vsprintf(buffer, format, vl);
+	va_end(vl);
+
+	LINUX_SYSCALL3(__NR_write, fd, buffer, __simple_strlen(buffer));
+}
+
+
 void __simple_sprintf(char *buffer, const char* format, ...)
 {
 	va_list vl;

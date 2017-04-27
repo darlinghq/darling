@@ -38,6 +38,7 @@ set(emulation_sources
 	unistd/readv.c
 	unistd/writev.c
 	unistd/flock.c
+	mount/unmount.c
 	mman/mman.c
 	mman/madvise.c
 	mman/msync.c
@@ -197,6 +198,7 @@ set(emulation_sources
 	ioctl/ioctl.c
 	ioctl/termios.c
 	ioctl/filio.c
+	ioctl/socket.c
 	ext/sysinfo.c
 	ext/uname.c
 	ext/epoll_create.c

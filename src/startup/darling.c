@@ -82,6 +82,11 @@ int main(int argc, char ** argv, char ** envp)
 		prefix = defaultPrefixPath();
 	if (!prefix)
 		return 1;
+	if (strlen(prefix) > 255)
+	{
+		fprintf(stderr, "Prefix path too long\n");
+		return 1;
+	}
 	unsetenv("DPREFIX");
 
 	if (!checkPrefixDir())
@@ -570,6 +575,13 @@ pid_t spawnInitProcess(void)
 		fprintf(stderr, "Cannot set gid_map for the init process: %s\n", strerror(errno));
 	}
 	*/
+	
+	// This is for development only!
+	if (getenv("TRY_LAUNCHD") != NULL)
+	{
+		int status = 0;
+		waitpid(pid, &status, 0);
+	}
 
 	// Here's where we resume the child
 	// if we enable user namespaces
@@ -607,7 +619,17 @@ void putInitPid(pid_t pidInit)
 void darlingPreInit(void)
 {
 	// TODO: Run /usr/libexec/makewhatis
-
+	
+	// This is for development only!
+	if (getenv("TRY_LAUNCHD") != NULL)
+	{
+		// putenv("KQUEUE_DEBUG=1");
+		execl("/bin/mldr", "mldr!/sbin/launchd", "launchd", NULL);
+	
+		fprintf(stderr, "Failed to exec launchd: %s\n", strerror(errno));
+		abort();
+	}
+	
 	// TODO: this is where we will exec() launchd in future.
 	// Instead, we just reap zombies.
 	while (1)
@@ -714,6 +736,21 @@ int checkPrefixDir()
 void setupPrefix()
 {
 	char path[4096];
+	size_t plen;
+	
+	const char* dirs[] = {
+		"/Volumes",
+		"/Applications",
+		"/usr",
+		"/usr/local",
+		"/usr/local/share",
+		"/private",
+		"/private/var",
+		"/private/var/db",
+		"/var",
+		"/var/run",
+		"/var/tmp"
+	};
 
 	fprintf(stderr, "Setting up a new Darling prefix at %s\n", prefix);
 
@@ -721,30 +758,17 @@ void setupPrefix()
 	setegid(g_originalGid);
 
 	createDir(prefix);
+	strcpy(path, prefix);
+	strcat(path, "/");
+	plen = strlen(path);
 
-	// The user needs to be able to create mountpoints,
-	snprintf(path, sizeof(path), "%s/Volumes", prefix);
-	createDir(path);
-	// ... to install applications,
-	snprintf(path, sizeof(path), "%s/Applications", prefix);
-	createDir(path);
-
-	// ... to put stuff in /usr/local,
-	snprintf(path, sizeof(path), "%s/usr", prefix);
-	createDir(path);
-	snprintf(path, sizeof(path), "%s/usr/local", prefix);
-	createDir(path);
-	snprintf(path, sizeof(path), "%s/usr/local/share", prefix);
-	createDir(path);
-
-	// ... and to install plists to /var/db
-	snprintf(path, sizeof(path), "%s/private", prefix);
-	createDir(path);
-	snprintf(path, sizeof(path), "%s/private/var", prefix);
-	createDir(path);
-	snprintf(path, sizeof(path), "%s/private/var/db", prefix);
-	createDir(path);
-
+	for (size_t i = 0; i < sizeof(dirs)/sizeof(dirs[0]); i++)
+	{
+		path[plen] = '\0';
+		strcat(path, dirs[i]);
+		createDir(path);
+	}
+	
 	seteuid(0);
 	setegid(0);
 }

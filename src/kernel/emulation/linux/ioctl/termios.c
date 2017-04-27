@@ -214,9 +214,10 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 			return IOCTL_HANDLED;
 		}
 		default:
+		{
 			__simple_printf("Passing thru unhandled ioctl 0x%x on fd %d\n", cmd, fd);
-			__builtin_trap();
 			return IOCTL_PASS;
+		}
 	}
 }
 

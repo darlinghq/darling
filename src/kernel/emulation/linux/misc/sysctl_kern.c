@@ -8,6 +8,10 @@
 #include "../time/gettimeofday.h"
 #include "darling-config.h"
 #include "../errno.h"
+#include "../simple.h"
+#include "../fcntl/open.h"
+#include "../unistd/read.h"
+#include "../unistd/close.h"
 #include <sys/errno.h>
 
 enum {
@@ -24,6 +28,9 @@ static sysctl_handler(handle_hostname);
 static sysctl_handler(handle_domainname);
 static sysctl_handler(handle_osrelease);
 static sysctl_handler(handle_version);
+static sysctl_handler(handle_maxproc);
+static sysctl_handler(handle_netboot);
+static sysctl_handler(handle_safeboot);
 
 extern int _sysctl_proc(int what, int flag, struct kinfo_proc* out, unsigned long* buflen);
 extern int _sysctl_procargs(int pid, char* buf, unsigned long* buflen);
@@ -35,6 +42,9 @@ const struct known_sysctl sysctls_kern[] = {
 	{ .oid = KERN_PROC, .type = CTLTYPE_STRUCT, .exttype = "", .name = "proc", .handler = handle_proc },
 	{ .oid = KERN_PROCARGS2, .type = CTLTYPE_STRUCT, .exttype = "", .name = "procargs2", .handler = handle_procargs32 },
 	{ .oid = KERN_ARGMAX, .type = CTLTYPE_INT, .exttype = "I", .name = "argmax", .handler = handle_argmax },
+	{ .oid = KERN_MAXPROC, .type = CTLTYPE_INT, .exttype = "I", .name = "maxproc", .handler = handle_maxproc },
+	{ .oid = KERN_NETBOOT, .type = CTLTYPE_INT, .exttype = "I", .name = "netboot", .handler = handle_netboot },
+	{ .oid = KERN_SAFEBOOT, .type = CTLTYPE_INT, .exttype = "I", .name = "safeboot", .handler = handle_safeboot },
 	{ .oid = KERN_BOOTTIME, .type = CTLTYPE_STRUCT, .exttype = "S,timeval", .name = "boottime", .handler = handle_boottime },
 	{ .oid = KERN_OSTYPE, .type = CTLTYPE_STRING, .exttype = "S", .name = "ostype", .handler = handle_ostype },
 	{ .oid = KERN_HOSTNAME, .type = CTLTYPE_STRING, .exttype = "S", .name = "hostname", .handler = handle_hostname },
@@ -191,4 +201,56 @@ sysctl_handler(handle_domainname)
 	
 	return rv;
 }
+
+sysctl_handler(handle_maxproc)
+{
+	char buf[16];
+	int fd = sys_open("/proc/sys/kernel/pid_max", BSD_O_RDONLY, 0);
+	int value = 1024;
+	int* ovalue = (int*) old;
+	
+	if (!oldlen || *oldlen < sizeof(int))
+		return -EINVAL;
+	
+	if (fd >= 0)
+	{
+		int rd = sys_read(fd, buf, sizeof(buf) - 1);
+		sys_close(fd);
+		
+		if (rd > 0)
+		{
+			buf[rd] = '\0';
+			value = __simple_atoi(buf, NULL);
+		}
+	}
+	
+	if (ovalue != NULL)
+		*ovalue = value;
+	*oldlen = sizeof(int);
+	
+	return 0;
+}
+
+sysctl_handler(handle_netboot)
+{
+	int* ovalue = (int*) old;
+
+	if (!oldlen || *oldlen < sizeof(int))
+		return -EINVAL;
+	*ovalue = 0;
+
+	return 0;
+}
+
+sysctl_handler(handle_safeboot)
+{
+	int* ovalue = (int*) old;
+
+	if (!oldlen || *oldlen < sizeof(int))
+		return -EINVAL;
+	*ovalue = 0;
+
+	return 0;
+}
+
 
