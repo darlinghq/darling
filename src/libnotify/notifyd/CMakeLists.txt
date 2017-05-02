@@ -5,6 +5,7 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/src/libc/stdtime/FreeBSD
 )
 
+mig(../notify_ipc.defs)
 set(notifyd_sources
 	notifyd.c
 	notify_proc.c
