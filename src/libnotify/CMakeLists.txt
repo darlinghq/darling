@@ -43,5 +43,10 @@ add_circular(system_notify FAT
 #target_link_libraries(system_notify system_c system_kernel system_blocks libdispatch_shared launch system_dyld system_malloc system_pthread)
 #make_fat(system_notify)
 
-install(TARGETS system_notify DESTINATION libexec/darling/usr/lib/system)
+add_darling_executable(notifyutil notifyutil/notifyutil.c)
 
+install(TARGETS system_notify DESTINATION libexec/darling/usr/lib/system)
+install(TARGETS notifyutil DESTINATION libexec/darling/usr/bin)
+install(FILES notifyutil.1 DESTINATION libexec/darling/usr/share/man/man1)
+
+add_subdirectory(notifyd)
