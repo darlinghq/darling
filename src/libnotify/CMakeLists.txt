@@ -47,6 +47,6 @@ add_darling_executable(notifyutil notifyutil/notifyutil.c)
 
 install(TARGETS system_notify DESTINATION libexec/darling/usr/lib/system)
 install(TARGETS notifyutil DESTINATION libexec/darling/usr/bin)
-install(FILES notifyutil.1 DESTINATION libexec/darling/usr/share/man/man1)
+install(FILES notifyutil/notifyutil.1 DESTINATION libexec/darling/usr/share/man/man1)
 
 add_subdirectory(notifyd)
