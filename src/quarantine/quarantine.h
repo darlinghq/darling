@@ -53,6 +53,13 @@ extern int __esp_enabled();
 extern int __esp_check_ns(const char *a, void *b);
 extern int __esp_notify_ns(const char *a, void *b);
 
+typedef struct _qtn_proc_t* qtn_proc_t;
+qtn_proc_t qtn_proc_alloc(void);
+void qtn_proc_set_identifier(qtn_proc_t proc, const char* ident);
+void qtn_proc_set_flags(qtn_proc_t proc, unsigned int flags);
+void qtn_proc_apply_to_self(qtn_proc_t proc);
+void qtn_proc_free(qtn_proc_t proc);
+
 #define QTN_SERIALIZED_DATA_MAX 4096
 
 #define qtn_file_alloc _qtn_file_alloc

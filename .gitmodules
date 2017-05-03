@@ -242,3 +242,9 @@
 [submodule "src/external/Heimdal"]
 	path = src/external/Heimdal
 	url = ../darling-Heimdal.git
+[submodule "src/external/libtelnet"]
+	path = src/external/libtelnet
+	url = ../darling-libtelnet.git
+[submodule "src/external/remote_cmds"]
+	path = src/external/remote_cmds
+	url = ../darling-remote_cmds.git

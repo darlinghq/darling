@@ -4,6 +4,7 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include "duct.h"
+#include "getsockopt.h"
 
 extern void *malloc(__SIZE_TYPE__ size);
 extern void free(void* ptr);
@@ -70,7 +71,7 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 				if (lmsg.msg_controllen > 0)
 				{
 					bchdr->cmsg_len = lchdr->cmsg_len;
-					bchdr->cmsg_level = lchdr->cmsg_level;
+					bchdr->cmsg_level = socket_level_linux_to_bsd(lchdr->cmsg_level);
 					bchdr->cmsg_type = lchdr->cmsg_type;
 
 					// __simple_printf("Copy %p to %p, %d bytes (of %d)\n", lchdr->cmsg_data, bchdr->cmsg_data, lchdr->cmsg_len - sizeof(struct linux_cmsghdr), lchdr->cmsg_len);
@@ -97,4 +98,26 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 	return ret;
 }
 
+
+int socket_level_bsd_to_linux(int level)
+{
+	switch (level)
+	{
+		case BSD_SOL_SOCKET:
+			return LINUX_SOL_SOCKET;
+		default:
+			return level;
+	}
+}
+
+int socket_level_linux_to_bsd(int level)
+{
+	switch (level)
+	{
+		case LINUX_SOL_SOCKET:
+			return BSD_SOL_SOCKET;
+		default:
+			return level;
+	}
+}
 
