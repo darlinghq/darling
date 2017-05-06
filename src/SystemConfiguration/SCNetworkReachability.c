@@ -1,4 +1,4 @@
-#include "SCNetworkReachability.h"
+#include <SystemConfiguration/SCNetworkReachability.h>
 
 CFTypeID SCNetworkReachabilityGetTypeID(void)
 {
