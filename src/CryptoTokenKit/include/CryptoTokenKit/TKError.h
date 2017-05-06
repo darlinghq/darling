@@ -1,3 +1,4 @@
+#ifdef __OBJC__
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -15,12 +16,12 @@ typedef NS_ENUM(NSInteger, TKErrorCode) {
     TKErrorCodeBadParameter          = -8,
     TKErrorCodeAuthenticationNeeded  = -9,
 
-    TKErrorAuthenticationFailed NS_ENUM_DEPRECATED(10_10, 10_11, 9_0, 9_0, "Use TKErrorCodeAuthenticationFailed")
-      = TKErrorCodeAuthenticationFailed,
-    TKErrorObjectNotFound NS_ENUM_DEPRECATED(10_10, 10_11, 9_0, 9_0, "Use TKErrorCodeObjectNotFound")
-      = TKErrorCodeObjectNotFound,
-    TKErrorTokenNotFound NS_ENUM_DEPRECATED(10_10, 10_11, 9_0, 9_0, "Use TKErrorCodeTokenNotFound")
-      = TKErrorCodeTokenNotFound,
+    TKErrorAuthenticationFailed      = TKErrorCodeAuthenticationFailed,
+    TKErrorObjectNotFound            = TKErrorCodeObjectNotFound,
+    TKErrorTokenNotFound             = TKErrorCodeTokenNotFound,
 };
 
 NS_ASSUME_NONNULL_END
+
+#endif
+
