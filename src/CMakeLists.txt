@@ -71,6 +71,9 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/derived")
 
 include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}/DebugSymbols/include
+	${CMAKE_CURRENT_SOURCE_DIR}/AppleSystemInfo/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SystemConfiguration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ncurses/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/NetBSD
@@ -139,6 +142,7 @@ add_subdirectory(CoreServices)
 #add_subdirectory(ApplicationServices)
 #add_subdirectory(VideoDecodeAcceleration)
 add_subdirectory(DiskArbitration)
+add_subdirectory(AppleSystemInfo)
 add_subdirectory(xar)
 add_subdirectory(libedit)
 add_subdirectory(external/libclosure)
