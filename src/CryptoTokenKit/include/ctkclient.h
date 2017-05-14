@@ -3,6 +3,9 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 
+#include <ACMAclDefs.h>
+#include <ACMDefs.h>
+
 CF_IMPLICIT_BRIDGING_ENABLED
 CF_EXTERN_C_BEGIN
 
