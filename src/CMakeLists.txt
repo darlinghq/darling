@@ -71,7 +71,19 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/derived")
 
 include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
+	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
+	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
+	${CMAKE_SOURCE_DIR}/src/libmalloc/include
+	${CMAKE_SOURCE_DIR}/src/libinfo/include
+	${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include
+	${CMAKE_SOURCE_DIR}/src/external/openssl/src/include
+	${CMAKE_SOURCE_DIR}/kernel-include/iokit
+	${CMAKE_SOURCE_DIR}/src/external/IOKitUser
+	${CMAKE_CURRENT_SOURCE_DIR}/external/openpam/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DebugSymbols/include
+	${CMAKE_SOURCE_DIR}/src/CryptoTokenKit/include
+	${CMAKE_SOURCE_DIR}/src/LocalAuthentication/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AppleSystemInfo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SystemConfiguration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
@@ -144,6 +156,8 @@ add_subdirectory(CoreServices)
 #add_subdirectory(VideoDecodeAcceleration)
 add_subdirectory(DiskArbitration)
 add_subdirectory(AppleSystemInfo)
+add_subdirectory(CryptoTokenKit)
+add_subdirectory(LocalAuthentication)
 add_subdirectory(xar)
 add_subdirectory(libedit)
 add_subdirectory(external/libclosure)

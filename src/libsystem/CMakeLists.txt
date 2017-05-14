@@ -44,8 +44,8 @@ add_circular(system FAT
 	SIBLINGS
 
 	system_malloc
-
 )
+
 target_link_libraries(system PRIVATE
 	sandbox
 	system_quarantine
