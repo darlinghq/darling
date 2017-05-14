@@ -248,3 +248,6 @@
 [submodule "src/external/remote_cmds"]
 	path = src/external/remote_cmds
 	url = ../darling-remote_cmds.git
+[submodule "src/external/SmartCardServices"]
+	path = src/external/SmartCardServices
+	url = ../darling-SmartCardServices.git

@@ -59,18 +59,23 @@ set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ran
 add_definitions(-target x86_64-apple-darwin11)
 include(darling_lib)
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libm/Source")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/kernel/libsyscall/wrappers")
-include_directories("${CMAKE_SOURCE_DIR}/platform-include")
-include_directories("${CMAKE_SOURCE_DIR}/platform-include/pthread")
-include_directories("${CMAKE_SOURCE_DIR}/kernel-include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/duct/include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include")
-
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libc/derived")
-
 include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}/libc/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include
+	${CMAKE_SOURCE_DIR}/platform-include
+	${CMAKE_SOURCE_DIR}/platform-include/pthread
+	${CMAKE_CURRENT_SOURCE_DIR}/libc/derived
+	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/NetBSD
+	${CMAKE_CURRENT_SOURCE_DIR}/kernel/libsyscall/wrappers
+	${CMAKE_SOURCE_DIR}/kernel-include
+	${CMAKE_CURRENT_SOURCE_DIR}/duct/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libm/Source
+	${CMAKE_CURRENT_SOURCE_DIR}/libc/second-include
+)
+
+include_directories(AFTER
+	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
 	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
 	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
@@ -88,7 +93,6 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/SystemConfiguration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ncurses/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/NetBSD
 	${CMAKE_CURRENT_SOURCE_DIR}/external/corefoundation/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/foundation/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/syslog/libsystem_asl.tproj/include
@@ -158,6 +162,7 @@ add_subdirectory(DiskArbitration)
 add_subdirectory(AppleSystemInfo)
 add_subdirectory(CryptoTokenKit)
 add_subdirectory(LocalAuthentication)
+add_subdirectory(external/SmartCardServices)
 add_subdirectory(xar)
 add_subdirectory(libedit)
 add_subdirectory(external/libclosure)
