@@ -153,6 +153,9 @@ add_subdirectory(external/apr)
 #add_subdirectory(external/security) # work in progress
 add_subdirectory(sandbox)
 add_subdirectory(xcselect)
+add_subdirectory(ConfigurationProfiles)
+add_subdirectory(AppleSystemInfo)
+add_subdirectory(DiskImages)
 #add_subdirectory(Cocoa)
 
 add_subdirectory(external/file/file)
