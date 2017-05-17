@@ -157,6 +157,7 @@ add_subdirectory(xcselect)
 add_subdirectory(ConfigurationProfiles)
 add_subdirectory(AppleSystemInfo)
 add_subdirectory(DiskImages)
+add_subdirectory(PackageKit)
 #add_subdirectory(Cocoa)
 
 add_subdirectory(external/file/file)
