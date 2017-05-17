@@ -66,12 +66,11 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/platform-include/pthread
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/derived
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/NetBSD
+	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/FreeBSD
 	${CMAKE_CURRENT_SOURCE_DIR}/kernel/libsyscall/wrappers
 	${CMAKE_SOURCE_DIR}/kernel-include
 	${CMAKE_CURRENT_SOURCE_DIR}/duct/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libm/Source
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/second-include
+	${CMAKE_CURRENT_SOURCE_DIR}/libm/include
 )
 
 include_directories(AFTER
@@ -79,6 +78,8 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
 	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
 	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/coretls/include
 	${CMAKE_SOURCE_DIR}/src/libmalloc/include
 	${CMAKE_SOURCE_DIR}/src/libinfo/include
 	${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include
@@ -86,7 +87,9 @@ include_directories(AFTER
 	${CMAKE_SOURCE_DIR}/kernel-include/iokit
 	${CMAKE_SOURCE_DIR}/src/external/IOKitUser
 	${CMAKE_CURRENT_SOURCE_DIR}/external/openpam/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/sqlite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DebugSymbols/include
+	${CMAKE_CURRENT_SOURCE_DIR}/OpenScripting/include
 	${CMAKE_SOURCE_DIR}/src/CryptoTokenKit/include
 	${CMAKE_SOURCE_DIR}/src/LocalAuthentication/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AppleSystemInfo/include
@@ -129,7 +132,6 @@ add_subdirectory(duct/src)
 add_subdirectory(libresolv)
 add_subdirectory(external/corecrypto)
 add_subdirectory(external/coretls)
-add_subdirectory(libstdcxx)
 add_subdirectory(libffi)
 add_subdirectory(xtrace)
 add_subdirectory(dyld)
@@ -160,9 +162,8 @@ add_subdirectory(CoreServices)
 #add_subdirectory(VideoDecodeAcceleration)
 add_subdirectory(DiskArbitration)
 add_subdirectory(AppleSystemInfo)
-add_subdirectory(CryptoTokenKit)
 add_subdirectory(LocalAuthentication)
-add_subdirectory(external/SmartCardServices)
+add_subdirectory(CryptoTokenKit)
 add_subdirectory(xar)
 add_subdirectory(libedit)
 add_subdirectory(external/libclosure)
@@ -175,7 +176,6 @@ add_subdirectory(external/expat)
 #add_subdirectory(external/libauto)
 add_subdirectory(external/libarchive/libarchive)
 add_subdirectory(external/apr)
-add_subdirectory(external/security)
 add_subdirectory(sandbox)
 add_subdirectory(xcselect)
 #add_subdirectory(Cocoa)
@@ -223,10 +223,26 @@ add_subdirectory(ImageIO)
 add_subdirectory(login)
 add_subdirectory(DebugSymbols)
 add_subdirectory(external/bsm)
-add_subdirectory(external/Heimdal)
+# Requires a newer version of Security to build
+#add_subdirectory(external/Heimdal)
+
+# Subprojects after this line need C++ headers
+
+include_directories(BEFORE
+	${CMAKE_CURRENT_SOURCE_DIR}/external/libcxxabi/include
+)
+
+# libstdc++ doesn't use the headers included below
+add_subdirectory(libstdcxx)
+
+include_directories(BEFORE
+	${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include
+)
 
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
+# Requires a newer Security version
+#add_subdirectory(external/SmartCardServices)
+add_subdirectory(external/security)
+
 add_subdirectory(lkm)
-
-
