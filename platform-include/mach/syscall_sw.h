@@ -174,6 +174,7 @@ kernel_trap(mk_timer_cancel,-94,2)
  * N.B: Trap #-100 is in use by IOTrap.s in the IOKit Framework
  * (iokit_user_client_trap)
  */
+kernel_trap(iokit_user_client_trap,-100,8)
 #endif	/* _MACH_SYSCALL_SW_H_ */
 
 #endif	/* PRIVATE */

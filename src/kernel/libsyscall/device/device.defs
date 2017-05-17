@@ -1,0 +1,813 @@
+/*
+ * Copyright (c) 1998-2014 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ * File:	device/device.defs
+ * Author:	Douglas Orr
+ *		Feb 10, 1988
+ * Abstract:
+ *	Mach device support.  Mach devices are accessed through
+ *	block and character device interfaces to the kernel.
+ */
+
+subsystem
+#if	KERNEL_SERVER
+	  KernelServer
+#endif	/* KERNEL_SERVER */
+		       iokit 2800;
+
+#if IOKITSIMD || KERNEL_SERVER
+#define IOKIT_ALL_IPC 1
+#endif
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include <mach/clock_types.defs>
+#include <mach/clock_types.defs>
+
+#if !__LP64__
+#    define __ILP32__ 1
+#endif
+
+import <device/device_types.h>;
+
+serverprefix	is_;
+
+type reply_port_t = MACH_MSG_TYPE_MAKE_SEND_ONCE | polymorphic
+	ctype: mach_port_t;
+
+#if	IOKIT
+
+type io_name_t            = c_string[*:128];
+type io_string_t          = c_string[*:512];
+type io_string_inband_t   = c_string[*:4096];
+type io_struct_inband_t   = array[*:4096] of char;
+type io_buf_ptr_t	  = ^array[] of MACH_MSG_TYPE_INTEGER_8;
+type NDR_record_t         = struct[8] of char;
+
+#if KERNEL
+type io_user_scalar_t     = uint64_t;
+type io_user_reference_t  = uint64_t;
+type io_scalar_inband_t   = array[*:16] of int;
+// must be the same type as OSAsyncReference
+type io_async_ref_t 	  = array[*:8]  of natural_t;
+type io_scalar_inband64_t = array[*:16] of io_user_scalar_t;
+type io_async_ref64_t 	  = array[*:8]  of io_user_reference_t;
+#elif __LP64__
+type io_user_scalar_t     = uint64_t;
+type io_user_reference_t  = uint64_t;
+type io_scalar_inband_t   = array[*:16] of io_user_scalar_t;
+type io_async_ref_t 	  = array[*:8]  of io_user_reference_t;
+type io_scalar_inband64_t = array[*:16] of io_user_scalar_t;
+type io_async_ref64_t 	  = array[*:8]  of io_user_reference_t;
+#else
+type io_user_scalar_t     = int;
+type io_user_reference_t  = natural_t;
+type io_scalar_inband_t   = array[*:16] of io_user_scalar_t;
+type io_async_ref_t 	  = array[*:8]  of io_user_reference_t;
+type io_scalar_inband64_t = array[*:16] of uint64_t;
+type io_async_ref64_t 	  = array[*:8]  of uint64_t;
+#endif // __LP64__
+
+type io_object_t = mach_port_t
+		ctype: mach_port_t
+#if	KERNEL_SERVER
+		intran: io_object_t iokit_lookup_object_port(mach_port_t)
+		outtran: mach_port_t iokit_make_object_port(io_object_t)
+		destructor: iokit_remove_reference(io_object_t)
+#endif	/* KERNEL_SERVER */
+		;
+
+type io_connect_t = mach_port_t
+		ctype: mach_port_t
+#if	KERNEL_SERVER
+		intran: io_connect_t iokit_lookup_connect_port(mach_port_t)
+		outtran: mach_port_t iokit_make_connect_port(io_connect_t)
+		destructor: iokit_remove_connect_reference(io_connect_t)
+#endif	/* KERNEL_SERVER */
+		;
+
+routine io_object_get_class(
+	    object		: io_object_t;
+	out className		: io_name_t
+	);
+
+routine io_object_conforms_to(
+	    object		: io_object_t;
+	in  className		: io_name_t;
+	out conforms		: boolean_t
+	);
+
+routine io_iterator_next(
+	    iterator		: io_object_t;
+	out object		: io_object_t
+	);
+
+routine io_iterator_reset(
+	    iterator		: io_object_t
+	);
+
+routine io_service_get_matching_services(
+	    master_port		: mach_port_t;
+	in  matching		: io_string_t;
+	out existing		: io_object_t
+	);
+
+routine io_registry_entry_get_property(
+	    registry_entry	: io_object_t;
+	in  property_name	: io_name_t;
+	out properties		: io_buf_ptr_t, physicalcopy
+	);
+
+routine io_registry_create_iterator(
+	    master_port		: mach_port_t;
+	in  plane		: io_name_t;
+	in  options		: uint32_t;
+	out iterator		: io_object_t
+	);
+
+routine io_registry_iterator_enter_entry(
+	    iterator		: io_object_t
+	);
+
+routine io_registry_iterator_exit_entry(
+	    iterator		: io_object_t
+	);
+
+routine io_registry_entry_from_path(
+	    master_port		: mach_port_t;
+	in  path		: io_string_t;
+	out registry_entry	: io_object_t
+	);
+
+routine io_registry_entry_get_name(
+	    registry_entry	: io_object_t;
+	out name		: io_name_t
+	);
+
+routine io_registry_entry_get_properties(
+	    registry_entry	: io_object_t;
+	out properties		: io_buf_ptr_t, physicalcopy
+	);
+
+routine io_registry_entry_get_property_bytes(
+	    registry_entry	: io_object_t;
+	in  property_name	: io_name_t;
+	out data		: io_struct_inband_t, CountInOut
+	);
+
+routine io_registry_entry_get_child_iterator(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	out iterator		: io_object_t
+	);
+
+routine io_registry_entry_get_parent_iterator(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	out iterator		: io_object_t
+	);
+
+skip;
+/* was routine io_service_open
+	    service		: io_object_t;
+	in  owningTask		: task_t;
+	in  connect_type	: uint32_t;
+	out connection		: io_connect_t
+	);
+*/
+
+routine io_service_close(
+	    connection		: io_connect_t
+	);
+
+routine io_connect_get_service(
+	    connection		: io_connect_t;
+	out service		: io_object_t
+	);
+
+#if  IOKIT_ALL_IPC || __ILP32__
+routine io_connect_set_notification_port(
+	    connection		: io_connect_t;
+	in  notification_type	: uint32_t;
+	in  port		: mach_port_make_send_t;
+	in  reference		: uint32_t
+	);
+
+routine io_connect_map_memory(
+	    connection		: io_connect_t;
+	in  memory_type		: uint32_t;
+	in  into_task		: task_t;
+#if  IOKIT_ALL_IPC
+	inout address		: uint32_t;
+	inout size		: uint32_t;
+#else
+	inout address		: vm_address_t;
+	inout size		: vm_size_t;
+#endif
+	in  flags		: uint32_t
+	);
+#else
+skip;
+skip;
+#endif
+
+routine io_connect_add_client(
+	    connection		: io_connect_t;
+	in  connect_to		: io_connect_t
+	);
+
+routine io_connect_set_properties(
+	    connection		: io_connect_t;
+	in  properties		: io_buf_ptr_t, physicalcopy;
+        out result		: kern_return_t
+	);
+
+#if  IOKIT_ALL_IPC || __ILP32__
+routine io_connect_method_scalarI_scalarO(
+	    connection		: io_connect_t;
+	in  selector		: uint32_t;
+	in  input		: io_scalar_inband_t;
+	out output		: io_scalar_inband_t, CountInOut
+	);
+
+routine io_connect_method_scalarI_structureO(
+	    connection		: io_connect_t;
+	in  selector		: uint32_t;
+	in  input		: io_scalar_inband_t;
+	out output		: io_struct_inband_t, CountInOut
+	);
+
+routine io_connect_method_scalarI_structureI(
+	    connection		: io_connect_t;
+	in  selector		: uint32_t;
+	in  input		: io_scalar_inband_t;
+	in  inputStruct		: io_struct_inband_t
+	);
+
+routine io_connect_method_structureI_structureO(
+	    connection		: io_connect_t;
+	in  selector		: uint32_t;
+	in  input		: io_struct_inband_t;
+	out output		: io_struct_inband_t, CountInOut
+	);
+#else
+skip;
+skip;
+skip;
+skip;
+#endif
+
+routine io_registry_entry_get_path(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	out path		: io_string_t
+	);
+
+routine io_registry_get_root_entry(
+	    master_port		: mach_port_t;
+	out root		: io_object_t
+	);
+
+routine io_registry_entry_set_properties(
+	    registry_entry	: io_object_t;
+	in  properties		: io_buf_ptr_t, physicalcopy;
+        out result		: kern_return_t
+	);
+
+routine io_registry_entry_in_plane(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	out inPlane		: boolean_t
+	);
+
+routine io_object_get_retain_count(
+	    object		: io_object_t;
+	out retainCount		: uint32_t
+	);
+
+routine io_service_get_busy_state(
+	    service		: io_object_t;
+	out busyState		: uint32_t
+	);
+
+routine io_service_wait_quiet(
+	    service		: io_object_t;
+	    wait_time		: mach_timespec_t
+	);
+
+routine io_registry_entry_create_iterator(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	in  options		: uint32_t;
+	out iterator		: io_object_t
+	);
+
+routine io_iterator_is_valid(
+	    iterator		: io_object_t;
+	out is_valid		: boolean_t
+	);
+
+skip;
+/* was routine io_make_matching(
+	    master_port		: mach_port_t;
+	in  of_type		: uint32_t;
+	in  options		: uint32_t;
+	in  input		: io_struct_inband_t;
+	out matching		: io_string_t
+	);
+*/
+
+routine io_catalog_send_data(
+	    master_port		: mach_port_t;
+        in  flag                : uint32_t;
+	in  inData		: io_buf_ptr_t;
+        out result		: kern_return_t
+	);
+
+routine io_catalog_terminate(
+	    master_port		: mach_port_t;
+        in  flag                : uint32_t;
+	in  name		: io_name_t
+	);
+
+routine io_catalog_get_data(
+	    master_port		: mach_port_t;
+        in  flag                : uint32_t;
+	out outData		: io_buf_ptr_t
+	);
+
+routine io_catalog_get_gen_count(
+	    master_port		: mach_port_t;
+        out genCount            : uint32_t
+	);
+
+routine io_catalog_module_loaded(
+	    master_port		: mach_port_t;
+	in  name		: io_name_t
+	);
+
+routine io_catalog_reset(
+	    master_port		: mach_port_t;
+	in  flag		: uint32_t
+	);
+
+routine io_service_request_probe(
+	    service		: io_object_t;
+	in  options		: uint32_t
+	);
+
+routine io_registry_entry_get_name_in_plane(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	out name		: io_name_t
+	);
+
+routine io_service_match_property_table(
+	    service		: io_object_t;
+	in  matching		: io_string_t;
+	out matches		: boolean_t
+	);
+
+#if  IOKIT_ALL_IPC || __ILP32__
+routine io_async_method_scalarI_scalarO(
+	    connection		: io_connect_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref_t;
+	in  selector		: uint32_t;
+	in  input		: io_scalar_inband_t;
+	out output		: io_scalar_inband_t, CountInOut
+	);
+routine io_async_method_scalarI_structureO(
+	    connection		: io_connect_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref_t;
+	in  selector		: uint32_t;
+	in  input		: io_scalar_inband_t;
+	out output		: io_struct_inband_t, CountInOut
+	);
+routine io_async_method_scalarI_structureI(
+	    connection		: io_connect_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref_t;
+	in  selector		: uint32_t;
+	in  input		: io_scalar_inband_t;
+	in  inputStruct		: io_struct_inband_t
+	);
+routine io_async_method_structureI_structureO(
+	    connection		: io_connect_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref_t;
+	in  selector		: uint32_t;
+	in  input		: io_struct_inband_t;
+	out output		: io_struct_inband_t, CountInOut
+	);
+#else
+skip;
+skip;
+skip;
+skip;
+#endif
+
+#if IOKIT_ALL_IPC || __ILP32__
+routine io_service_add_notification(
+	    master_port		: mach_port_t;
+	in  notification_type	: io_name_t;
+	in  matching		: io_string_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref_t;
+	out notification	: io_object_t
+	);
+routine io_service_add_interest_notification(
+	    service		: io_object_t;
+	in  type_of_interest	: io_name_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref_t;
+	out notification	: io_object_t
+        );
+routine io_service_acknowledge_notification(
+           service             : io_object_t;
+       in  notify_ref          : natural_t;
+       in  response            : natural_t
+        );
+#else
+skip;
+skip;
+skip;
+#endif
+
+routine io_connect_get_notification_semaphore(
+	    connection		: io_connect_t;
+	in  notification_type	: natural_t;
+	out semaphore		: semaphore_t
+	);
+
+#if IOKIT_ALL_IPC || __ILP32__
+routine io_connect_unmap_memory(
+	    connection		: io_connect_t;
+	in  memory_type		: uint32_t;
+	in  into_task		: task_t;
+#if IOKIT_ALL_IPC
+	in  address		: uint32_t
+#else
+	in  address		: vm_address_t
+#endif
+	);
+#else
+skip;
+#endif
+
+routine io_registry_entry_get_location_in_plane(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	out location		: io_name_t
+	);
+
+routine io_registry_entry_get_property_recursively(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	in  property_name	: io_name_t;
+	in  options		: uint32_t;
+	out properties		: io_buf_ptr_t, physicalcopy
+	);
+
+routine io_service_get_state(
+	    service		: io_object_t;
+	out state		: uint64_t;
+	out busy_state		: uint32_t;
+	out accumulated_busy_time : uint64_t
+	);
+
+routine io_service_get_matching_services_ool(
+	    master_port		: mach_port_t;
+	in  matching		: io_buf_ptr_t, physicalcopy;
+        out result		: kern_return_t;
+	out existing		: io_object_t
+	);
+
+routine io_service_match_property_table_ool(
+	    service		: io_object_t;
+	in  matching		: io_buf_ptr_t, physicalcopy;
+        out result		: kern_return_t;
+	out matches		: boolean_t
+	);
+
+#if IOKIT_ALL_IPC || __ILP32__
+routine io_service_add_notification_ool(
+	    master_port		: mach_port_t;
+	in  notification_type	: io_name_t;
+	in  matching		: io_buf_ptr_t, physicalcopy;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref_t;
+        out result		: kern_return_t;
+	out notification	: io_object_t
+	);
+#else
+skip;
+#endif
+
+routine io_object_get_superclass(
+	    master_port		: mach_port_t;
+	in  obj_name			: io_name_t;
+	out class_name          : io_name_t   
+        );
+
+routine io_object_get_bundle_identifier(
+	    master_port		: mach_port_t;
+	in  obj_name			: io_name_t;
+	out class_name          : io_name_t   
+        );
+
+routine io_service_open_extended(
+	    service		: io_object_t;
+	in  owningTask		: task_t;
+	in  connect_type	: uint32_t;
+	in  ndr			: NDR_record_t;
+	in  properties		: io_buf_ptr_t, physicalcopy;
+        out result		: kern_return_t;
+	out connection		: io_connect_t
+	);
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+routine io_connect_map_memory_into_task(
+	    connection		: io_connect_t;
+	in  memory_type		: uint32_t;
+	in  into_task		: task_t;
+	inout address		: mach_vm_address_t;
+	inout size		: mach_vm_size_t;
+	in  flags		: uint32_t
+	);
+
+routine io_connect_unmap_memory_from_task(
+	    connection		: io_connect_t;
+	in  memory_type		: uint32_t;
+	in  from_task		: task_t;
+	in  address		: mach_vm_address_t
+	);
+
+routine io_connect_method(
+	    connection		: io_connect_t;
+	in  selector		: uint32_t;
+
+	in  scalar_input	: io_scalar_inband64_t;
+	in  inband_input	: io_struct_inband_t;
+	in  ool_input		: mach_vm_address_t;
+	in  ool_input_size	: mach_vm_size_t;
+
+	out inband_output	: io_struct_inband_t, CountInOut;
+	out scalar_output	: io_scalar_inband64_t, CountInOut;
+	in  ool_output		: mach_vm_address_t;
+	inout ool_output_size	: mach_vm_size_t
+	);
+
+routine io_connect_async_method(
+	    connection		: io_connect_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref64_t;
+	in  selector		: uint32_t;
+
+	in  scalar_input	: io_scalar_inband64_t;
+	in  inband_input	: io_struct_inband_t;
+	in  ool_input		: mach_vm_address_t;
+	in  ool_input_size	: mach_vm_size_t;
+
+	out inband_output	: io_struct_inband_t, CountInOut;
+	out scalar_output	: io_scalar_inband64_t, CountInOut;
+	in  ool_output		: mach_vm_address_t;
+	inout  ool_output_size	: mach_vm_size_t
+	);
+
+
+#if IOKIT_ALL_IPC || __LP64__
+
+#if IOKIT_ALL_IPC
+#define FUNC_NAME(name) name ## _64
+#else
+#define FUNC_NAME(name) name
+#endif
+
+routine FUNC_NAME(io_connect_set_notification_port)(
+	    connection		: io_connect_t;
+	in  notification_type	: uint32_t;
+	in  port		: mach_port_make_send_t;
+	in  reference		: io_user_reference_t
+	);
+
+routine FUNC_NAME(io_service_add_notification)(
+	    master_port		: mach_port_t;
+	in  notification_type	: io_name_t;
+	in  matching		: io_string_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref64_t;
+	out notification	: io_object_t
+	);
+
+routine FUNC_NAME(io_service_add_interest_notification)(
+	    service		: io_object_t;
+	in  type_of_interest	: io_name_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref64_t;
+	out notification	: io_object_t
+	);
+
+routine FUNC_NAME(io_service_add_notification_ool)(
+	    master_port		: mach_port_t;
+	in  notification_type	: io_name_t;
+	in  matching		: io_buf_ptr_t, physicalcopy;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref64_t;
+        out result		: kern_return_t;
+	out notification	: io_object_t
+	);
+
+#else
+
+    skip;
+    skip;
+    skip;
+    skip;
+
+#endif /* IOKIT_ALL_IPC || __LP64__ */
+
+routine io_registry_entry_get_registry_entry_id(
+	    registry_entry	: io_object_t;
+	out entry_id		: uint64_t
+	);
+
+routine io_connect_method_var_output(
+	    connection		: io_connect_t;
+	in  selector		: uint32_t;
+
+	in  scalar_input	: io_scalar_inband64_t;
+	in  inband_input	: io_struct_inband_t;
+	in  ool_input		: mach_vm_address_t;
+	in  ool_input_size	: mach_vm_size_t;
+
+	out inband_output	: io_struct_inband_t, CountInOut;
+	out scalar_output	: io_scalar_inband64_t, CountInOut;
+	out var_output		: io_buf_ptr_t, physicalcopy
+	);
+
+routine io_service_get_matching_service(
+	    master_port		: mach_port_t;
+	in  matching		: io_string_t;
+	out service		: io_object_t
+	);
+
+routine io_service_get_matching_service_ool(
+	    master_port		: mach_port_t;
+	in  matching		: io_buf_ptr_t, physicalcopy;
+        out result		: kern_return_t;
+	out service		: io_object_t
+	);
+
+routine io_service_get_authorization_id(
+	    service		: io_object_t;
+	out authorization_id	: uint64_t
+	);
+
+routine io_service_set_authorization_id(
+	    service		: io_object_t;
+	in  authorization_id	: uint64_t
+	);
+
+/* */
+
+routine io_server_version(
+	    master_port		: mach_port_t;
+	out version		: uint64_t
+	);
+
+routine io_registry_entry_get_properties_bin(
+	    registry_entry	: io_object_t;
+	out properties		: io_buf_ptr_t, physicalcopy
+	);
+
+routine io_registry_entry_get_property_bin(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	in  property_name	: io_name_t;
+	in  options		: uint32_t;
+	out properties		: io_buf_ptr_t, physicalcopy
+	);
+
+routine io_service_get_matching_service_bin(
+	    master_port		: mach_port_t;
+	in  matching		: io_struct_inband_t;
+	out service		: io_object_t
+	);
+
+routine io_service_get_matching_services_bin(
+	    master_port		: mach_port_t;
+	in  matching		: io_struct_inband_t;
+	out existing		: io_object_t
+	);
+
+routine io_service_match_property_table_bin(
+	    service		: io_object_t;
+	in  matching		: io_struct_inband_t;
+	out matches		: boolean_t
+	);
+
+#if IOKIT_ALL_IPC || __ILP32__
+routine io_service_add_notification_bin(
+	    master_port		: mach_port_t;
+	in  notification_type	: io_name_t;
+	in  matching		: io_struct_inband_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref_t;
+	out notification	: io_object_t
+	);
+#else
+skip;
+#endif
+
+#if IOKIT_ALL_IPC || __LP64__
+routine FUNC_NAME(io_service_add_notification_bin)(
+	    master_port		: mach_port_t;
+	in  notification_type	: io_name_t;
+	in  matching		: io_struct_inband_t;
+	in  wake_port		: mach_port_make_send_t;
+	in  reference		: io_async_ref64_t;
+	out notification	: io_object_t
+	);
+#else
+skip;
+#endif
+
+#if !IOKITSIMD
+
+routine io_registry_entry_get_path_ool(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	out path		: io_string_inband_t;
+	out path_ool		: io_buf_ptr_t, physicalcopy
+	);
+
+routine io_registry_entry_from_path_ool(
+	    master_port		: mach_port_t;
+	in  path                : io_string_inband_t;
+	in  path_ool		: io_buf_ptr_t, physicalcopy;
+        out result		: kern_return_t;
+	out registry_entry	: io_object_t
+	);
+
+#endif
+
+#endif /* IOKIT */
+
+/* vim: set ft=c : */
