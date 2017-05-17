@@ -46,3 +46,8 @@ install(TARGETS darling DESTINATION bin
     GROUP_READ GROUP_EXECUTE
     WORLD_READ WORLD_EXECUTE
     SETUID)
+
+include(setcap)
+setcap(libexec/darling/bin/mldr cap_sys_rawio+ep)
+setcap(libexec/darling/bin/mldr32 cap_sys_rawio+ep)
+
