@@ -18,6 +18,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/wrappers/spawn")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DPRIVATE=1 -D__DARWIN_C_LEVEL=20150101)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
+add_definitions(-DIOKIT_ALL_IPC=1 -DIOKIT=1)
 #add_definitions(-DKERNEL)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/lkm/osfmk)
@@ -37,6 +38,7 @@ mig(mach/processor.defs)
 mig(mach/task.defs)
 mig(mach/thread_act.defs)
 mig(mach/vm_map.defs)
+mig(device/device.defs)
 
 set(syscall_legacy_sources
 	wrappers/legacy/accept.c
@@ -155,6 +157,7 @@ set(syscall_sources
 	${CMAKE_CURRENT_BINARY_DIR}/mach/thread_actUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/vm_mapUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/clockUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/device/deviceUser.c
 	
 	mach/mach_init.c
 	mach/clock_sleep.c

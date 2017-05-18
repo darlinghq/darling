@@ -1,0 +1,107 @@
+/*
+ * Copyright (c) 2002,2000 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ * 
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+/*
+ * @OSF_COPYRIGHT@
+ */
+/* 
+ * Mach Operating System
+ * Copyright (c) 1991,1990,1989 Carnegie Mellon University
+ * All Rights Reserved.
+ * 
+ * Permission to use, copy, modify and distribute this software and its
+ * documentation is hereby granted, provided that both the copyright
+ * notice and this permission notice appear in all copies of the
+ * software, derivative works or modified versions, and any portions
+ * thereof, and that both notices appear in supporting documentation.
+ * 
+ * CARNEGIE MELLON ALLOWS FREE USE OF THIS SOFTWARE IN ITS "AS IS"
+ * CONDITION.  CARNEGIE MELLON DISCLAIMS ANY LIABILITY OF ANY KIND FOR
+ * ANY DAMAGES WHATSOEVER RESULTING FROM THE USE OF THIS SOFTWARE.
+ * 
+ * Carnegie Mellon requests users of this software to return to
+ * 
+ *  Software Distribution Coordinator  or  Software.Distribution@CS.CMU.EDU
+ *  School of Computer Science
+ *  Carnegie Mellon University
+ *  Pittsburgh PA 15213-3890
+ * 
+ * any improvements or extensions that they make and grant Carnegie Mellon
+ * the rights to redistribute these changes.
+ */
+/*
+ */
+/*
+ *	Author: David B. Golub, Carnegie Mellon University
+ *	Date: 	3/89
+ *	
+ *	Common definitions for device interface types.
+ */
+
+#ifndef	_DEVICE_DEVICE_TYPES_DEFS_
+#define	_DEVICE_DEVICE_TYPES_DEFS_
+
+/*
+ *	Basic types
+ */
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+type recnum_t		= uint32_t;
+type dev_mode_t		= uint32_t;
+type dev_flavor_t	= uint32_t;
+type dev_name_t         = c_string[*:128];
+type dev_status_t	= array[*:1024] of int;
+type io_buf_len_t	= integer_t;
+type io_buf_ptr_t	= ^array[] of MACH_MSG_TYPE_INTEGER_8;
+type io_buf_ptr_inband_t= array[*:128] of char;
+type filter_t		= short;
+type filter_array_t	= array[*:64] of filter_t;
+
+type device_t = mach_port_t
+		ctype: mach_port_t
+#if	KERNEL_SERVER
+		intran: device_t dev_port_lookup(mach_port_t)
+		outtran: mach_port_t convert_device_to_port(device_t)
+		destructor: device_deallocate(device_t)
+#endif	/* KERNEL_SERVER */
+		;
+
+type io_done_queue_t	= mach_port_t
+		ctype: mach_port_t
+#if	KERNEL_SERVER
+		intran: io_done_queue_t io_done_queue_port_lookup(mach_port_t)
+		outtran: mach_port_t convert_io_done_queue_to_port(io_done_queue_t)
+#endif	/* KERNEL_SERVER */
+		;
+
+import <device/device_types.h>;
+
+#endif	/* _DEVICE_DEVICE_TYPES_DEFS_ */
+
+/* vim: set ft=c : */

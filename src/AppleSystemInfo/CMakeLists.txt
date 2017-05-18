@@ -15,9 +15,8 @@ add_framework(AppleSystemInfo
 
 	SOURCES
 		src/AppleSystemInfo.c
-
+		src/functions.c
 	DEPENDENCIES
 		system
 		CoreFoundation
 )
-

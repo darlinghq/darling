@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # This file is part of Darling.
 #
 # Copyright (C) 2017 Lubos Dolezel
@@ -67,6 +68,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 header.write(copyright)
 source.write(copyright)
 
+source.write("""
+#include <stdlib.h>
+static int verbose = 0;
+__attribute__((constructor)) static void initme(void) {
+    verbose = getenv("STUB_VERBOSE") != NULL;
+}
+""")
+
 for funcname in functions:
-    header.write("void %s(void);\n" % funcname)
-    source.write("void %s(void) { }\n" % funcname)
+    header.write("void* %s(void);\n" % funcname)
+    source.write("void* %s(void) { if (verbose) puts(\"STUB: %s called\"); return NULL; }\n" % (funcname, funcname))
+
