@@ -5,14 +5,14 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/src/libc/stdtime/FreeBSD
 )
 
-mig(../notify_ipc.defs)
+mig(notify_ipc.defs)
 set(notifyd_sources
 	notifyd.c
 	notify_proc.c
 	pathwatch.c
 	service.c
 	timer.c
-	${CMAKE_CURRENT_BINARY_DIR}/../notify_ipcServer.c
+	${CMAKE_CURRENT_BINARY_DIR}/notify_ipcServer.c
 )
 
 add_darling_executable(notifyd ${notifyd_sources})
