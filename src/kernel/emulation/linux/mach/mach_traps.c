@@ -529,8 +529,12 @@ kern_return_t task_for_pid_impl(
 				int pid,
 				mach_port_name_t *t)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct task_for_pid args = {
+		.pid = pid,
+		.task_port = t,
+	};
+
+	return ioctl(driver_fd, NR_task_for_pid_trap, &args);
 }
 
 kern_return_t task_name_for_pid_impl(
@@ -546,8 +550,12 @@ kern_return_t pid_for_task_impl(
 				mach_port_name_t t,
 				int *x)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct pid_for_task args = {
+		.task_port = t,
+		.pid = x,
+	};
+
+	return ioctl(driver_fd, NR_pid_for_task_trap, &args);
 }
 
 kern_return_t bsdthread_terminate_trap_impl(
