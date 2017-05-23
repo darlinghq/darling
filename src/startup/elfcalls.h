@@ -27,6 +27,8 @@ struct elf_calls
 	// Get main executable's UUID (16 bytes)
 	const uint8_t* (*exe_uuid)(void);
 
+	// Get data for TASK_DYLD_INFO (struct task_dyld_info)
+	void (*dyld_info)(uintptr_t* all_image_location, __SIZE_TYPE__* all_image_length);
 };
 
 #endif

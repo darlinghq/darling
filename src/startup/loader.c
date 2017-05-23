@@ -154,6 +154,8 @@ no_slide:
 					{
 						if (strncmp(sect->sectname, "__all_image_info", 16) == 0)
 						{
+							dyld_all_image_location = slide + sect->addr;
+							dyld_all_image_size = sect->size;
 #ifdef GEN_64BIT
 							setup_gdb_notifications(slide, sect->addr);
 #endif

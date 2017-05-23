@@ -73,6 +73,10 @@ static void map_pagezero(void);
 // UUID of the main executable
 uint8_t exe_uuid[16];
 
+// Data for TASK_DYLD_INFO
+uintptr_t dyld_all_image_location;
+size_t dyld_all_image_size;
+
 #if USE_32IN64
 static void* setup_stack32(void* stack, int argc, const char** argv, const char** envp, const char** apple, uint64_t mh);
 

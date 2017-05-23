@@ -5,6 +5,8 @@
 #include "threads.h"
 
 extern uint8_t exe_uuid[16];
+extern uintptr_t dyld_all_image_location;
+extern size_t dyld_all_image_size;
 
 static void* dlopen_simple(const char* name)
 {
@@ -48,6 +50,12 @@ static const uint8_t* get_exe_uuid(void)
 	return exe_uuid;
 }
 
+static void get_dyld_info(uintptr_t* all_image_location, size_t* all_image_length)
+{
+	*all_image_location = dyld_all_image_location;
+	*all_image_length = dyld_all_image_size;
+}
+
 char* elfcalls_make(void)
 {
 	static char param[32];
@@ -67,6 +75,7 @@ char* elfcalls_make(void)
 	calls.darling_thread_get_stack = __darling_thread_get_stack;
 
 	calls.exe_uuid = get_exe_uuid;
+	calls.dyld_info = get_dyld_info;
 
 	sprintf(param, "elf_calls=%p", &calls);
 	return param;
