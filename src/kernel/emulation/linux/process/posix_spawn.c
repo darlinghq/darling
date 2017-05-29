@@ -17,6 +17,8 @@
 #include "../unistd/setgid.h"
 #include "../unistd/setpgid.h"
 #include "../signal/sigprocmask.h"
+#include "../mach/lkm.h"
+#include "lkm/api.h"
 #include "fork.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -75,6 +77,10 @@ no_fork:
 					pers |= LINUX_ADDR_NO_RANDOMIZE;
 					LINUX_SYSCALL(__NR_personality, pers);
 				}
+			}
+			if (desc->attrp->psa_flags & POSIX_SPAWN_START_SUSPENDED)
+			{
+				lkm_call(NR_stop_after_exec, NULL);
 			}
 
 			// TODO: other attributes

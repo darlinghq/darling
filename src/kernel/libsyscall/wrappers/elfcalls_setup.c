@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
+#include "elfcalls_setup.h"
 #include <elfcalls.h>
 
 extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);

@@ -27,7 +27,7 @@
  */
 
 #include "_libkernel_init.h"
-#include "elfcalls.h"
+#include "elfcalls_setup.h"
 
 extern int mach_init(void);
 
