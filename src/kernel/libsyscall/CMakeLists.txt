@@ -73,6 +73,7 @@ set(syscall_dynamic_sources
 set(syscall_sources
 	mach/mach_traps.S
 	os/alloc_once.c
+	wrappers/elfcalls.c
 	wrappers/libproc/libproc.c
 	wrappers/libproc/proc_listpidspath.c
 
