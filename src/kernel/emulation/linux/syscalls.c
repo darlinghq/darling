@@ -10,6 +10,14 @@
 #include "guarded/guarded_open_np.h"
 #include "guarded/guarded_close_np.h"
 #include "guarded/guarded_kqueue_np.h"
+#include "wrapped/shm_open.h"
+#include "wrapped/shm_unlink.h"
+#include "wrapped/sem_open.h"
+#include "wrapped/sem_unlink.h"
+#include "wrapped/sem_close.h"
+#include "wrapped/sem_wait.h"
+#include "wrapped/sem_trywait.h"
+#include "wrapped/sem_post.h"
 #include "mman/mman.h"
 #include "mman/madvise.h"
 #include "mman/msync.h"
@@ -319,6 +327,14 @@ void* __bsd_syscall_table[600] = {
 	[240] = sys_listxattr,
 	[241] = sys_flistxattr,
 	[244] = sys_posix_spawn,
+	[266] = sys_shm_open,
+	[267] = sys_shm_unlink,
+	[268] = sys_sem_open,
+	[269] = sys_sem_close,
+	[270] = sys_sem_unlink,
+	[271] = sys_sem_wait,
+	[272] = sys_sem_trywait,
+	[273] = sys_sem_post,
 	[274] = sys_sysctlbyname,
 	[282] = sys_chmod_extended,
 	[283] = sys_fchmod_extended,

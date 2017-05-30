@@ -25,6 +25,14 @@ set(emulation_sources
 	errno.c
 	readline.c
 	common_at.c
+	wrapped/shm_open.c
+	wrapped/shm_unlink.c
+	wrapped/sem_open.c
+	wrapped/sem_unlink.c
+	wrapped/sem_wait.c
+	wrapped/sem_trywait.c
+	wrapped/sem_close.c
+	wrapped/sem_post.c
 	guarded/guarded_open_np.c
 	guarded/guarded_close_np.c
 	guarded/guarded_kqueue_np.c
