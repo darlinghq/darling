@@ -55,7 +55,10 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 					int count = 0;
 
 					if (num < 0)
+					{
 						*buf++ = '-';
+						num = -num;
+					}
 
 					do
 					{
