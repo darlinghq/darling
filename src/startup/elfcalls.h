@@ -32,7 +32,7 @@ struct elf_calls
 
 	// POSIX semaphore APIs
 	int (*get_errno)(void);
-	int (*sem_open)(const char* name, int oflag, unsigned short mode, unsigned int value);
+	int* (*sem_open)(const char* name, int oflag, unsigned short mode, unsigned int value);
 	int (*sem_wait)(int* sem);
 	int (*sem_trywait)(int* sem);
 	int (*sem_post)(int* sem);
