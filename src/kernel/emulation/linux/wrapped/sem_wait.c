@@ -7,7 +7,7 @@
 
 extern struct elf_calls* _elfcalls;
 
-long sys_sem_wait(int sem)
+long sys_sem_wait(int* sem)
 {
 #ifndef VARIANT_DYLD
 	int ret;
