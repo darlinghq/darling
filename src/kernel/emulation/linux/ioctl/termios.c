@@ -5,6 +5,9 @@
 #include <stdbool.h>
 #include "../simple.h"
 
+#define USE_OLD_TTY
+#include <sys/ioctl_compat.h>
+
 // Speeds are stored in cflags
 // http://osxr.org/glibc/source/sysdeps/unix/sysv/linux/speed.c?v=glibc-2.13
 
@@ -23,6 +26,8 @@ static void lflag_linux_to_bsd(unsigned int l, unsigned long* b);
 static void lflag_bsd_to_linux(unsigned long b, unsigned int* l);
 static void speed_linux_to_bsd(unsigned int l, unsigned long* b);
 static void speed_bsd_to_linux(unsigned long b,	unsigned int* l);
+static void sgflag_linux_to_bsd(const struct linux_termios* tos, short* sgflags);
+static void sgflag_bsd_to_linux(const short sgflags, struct linux_termios* tos);
 
 int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 {
@@ -84,6 +89,44 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 
 			*retval = __real_ioctl(fd, op, &out);
 			
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCGETP:
+		{
+			struct linux_termios in;
+			struct sgttyb* out = (struct sgttyb*) arg;
+			unsigned long ispeed, ospeed;
+
+			*retval = __real_ioctl(fd, LINUX_TCGETS, &in);
+			
+			speed_linux_to_bsd(in.c_ispeed, &ispeed);
+			speed_linux_to_bsd(in.c_ospeed, &ospeed);
+			out->sg_ispeed = ispeed;
+			out->sg_ospeed = ospeed;
+
+			out->sg_erase = in.c_cc[LINUX_VERASE];
+			out->sg_kill = in.c_cc[LINUX_VKILL];
+			sgflag_linux_to_bsd(&in, &out->sg_flags);
+			
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCSETP:
+		{
+			struct linux_termios out;
+			const struct sgttyb* in = (struct sgttyb*) arg;
+
+			// Get existing values so that we don't overwrite many
+			// of the parameters not specified in struct sgttyb.
+			__real_ioctl(fd, LINUX_TCGETS, &out);
+
+			speed_bsd_to_linux(in->sg_ispeed, &out.c_ispeed);
+			speed_bsd_to_linux(in->sg_ospeed, &out.c_ospeed);
+			out.c_cc[LINUX_VERASE] = in->sg_erase;
+			out.c_cc[LINUX_VKILL] = in->sg_kill;
+			sgflag_bsd_to_linux(in->sg_flags, &out);
+
+			*retval = __real_ioctl(fd, LINUX_TCSETS, &out);
+
 			return IOCTL_HANDLED;
 		}
 		case BSD_TIOCGWINSZ:
@@ -583,5 +626,67 @@ static void speed_bsd_to_linux(unsigned long b,	unsigned int* l)
 	}
 
 	*l = lspeed;
+}
+
+// Linux provides TIOCGETP only on some architectures
+// and even there the support is very limited.
+// See http://elixir.free-electrons.com/linux/latest/source/drivers/tty/tty_ioctl.c#L712
+// Hence we do the translation ourselves.
+static void sgflag_linux_to_bsd(const struct linux_termios* tos, short* sgflags)
+{
+	*sgflags = 0;
+
+	if (!(tos->c_lflag & LINUX_ICANON))
+	{
+		if (tos->c_lflag & LINUX_ISIG)
+			*sgflags |= 0x2; // cbreak
+		else
+			*sgflags |= 0x20; // raw
+	}
+
+	if (tos->c_lflag & LINUX_ECHO)
+		*sgflags |= 0x8; // echo
+
+	if (tos->c_oflag & LINUX_OPOST)
+	{
+		if (tos->c_oflag & LINUX_ONLCR)
+			*sgflags |= 0x10; // crmod
+	}
+}
+
+static void sgflag_bsd_to_linux(const short sgflags, struct linux_termios* tos)
+{
+	tos->c_iflag = LINUX_ICRNL | LINUX_IXON;
+	tos->c_oflag = 0;
+	tos->c_lflag = LINUX_ISIG | LINUX_ICANON;
+
+	if (sgflags & 0x02) // cbreak
+	{
+		tos->c_iflag = 0;
+		tos->c_lflag &= LINUX_ICANON;
+	}
+
+	if (sgflags & 0x08) // echo
+	{
+		tos->c_lflag |= LINUX_ECHO | LINUX_ECHOE | LINUX_ECHOK
+			| LINUX_ECHOCTL | LINUX_ECHOKE | LINUX_IEXTEN;
+	}
+
+	if (sgflags & 0x10) // crmod
+	{
+		tos->c_oflag |= LINUX_OPOST | LINUX_ONLCR;
+	}
+
+	if (sgflags & 0x20) // raw
+	{
+		tos->c_iflag = 0;
+		tos->c_lflag &= ~(LINUX_ISIG | LINUX_ICANON);
+	}
+
+	if (!(tos->c_lflag & LINUX_ICANON))
+	{
+		tos->c_cc[LINUX_VMIN] = 1;
+		tos->c_cc[LINUX_VTIME] = 0;
+	}
 }
 
