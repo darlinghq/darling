@@ -4,7 +4,7 @@
 
 struct elf_calls
 {
-	// ELF synamic loader access
+	// ELF dynamic loader access
 	void* (*dlopen)(const char* name);
 	int (*dlclose)(void* lib);
 	void* (*dlsym)(void* lib, const char* name);
@@ -29,6 +29,19 @@ struct elf_calls
 
 	// Get data for TASK_DYLD_INFO (struct task_dyld_info)
 	void (*dyld_info)(uintptr_t* all_image_location, __SIZE_TYPE__* all_image_length);
+
+	// POSIX semaphore APIs
+	int (*get_errno)(void);
+	int* (*sem_open)(const char* name, int oflag, unsigned short mode, unsigned int value);
+	int (*sem_wait)(int* sem);
+	int (*sem_trywait)(int* sem);
+	int (*sem_post)(int* sem);
+	int (*sem_close)(int* sem);
+	int (*sem_unlink)(const char* name);
+
+	// POSIX SHM APIs
+	int (*shm_open)(const char* name, int oflag, unsigned short mode);
+	int (*shm_unlink)(const char* name);
 };
 
 #endif

@@ -1,6 +1,9 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <semaphore.h>
+#include <sys/mman.h>
 #include "elfcalls.h"
 #include "threads.h"
 
@@ -56,6 +59,11 @@ static void get_dyld_info(uintptr_t* all_image_location, size_t* all_image_lengt
 	*all_image_length = dyld_all_image_size;
 }
 
+static int get_errno(void)
+{
+	return errno;
+}
+
 char* elfcalls_make(void)
 {
 	static char param[32];
@@ -76,6 +84,17 @@ char* elfcalls_make(void)
 
 	calls.exe_uuid = get_exe_uuid;
 	calls.dyld_info = get_dyld_info;
+
+	calls.get_errno = get_errno;
+	*((void**)&calls.sem_open) = sem_open;
+	*((void**)&calls.sem_wait) = sem_wait;
+	*((void**)&calls.sem_trywait) = sem_trywait;
+	*((void**)&calls.sem_post) = sem_post;
+	*((void**)&calls.sem_close) = sem_close;
+	*((void**)&calls.sem_unlink) = sem_unlink;
+
+	*((void**)&calls.shm_open) = shm_open;
+	*((void**)&calls.shm_unlink) = shm_unlink;
 
 	sprintf(param, "elf_calls=%p", &calls);
 	return param;

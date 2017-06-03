@@ -26,10 +26,10 @@ set(mldr_sources
 	elfcalls.c
 )
 add_executable(mldr ${mldr_sources})
-target_link_libraries(mldr pthread dl)
+target_link_libraries(mldr pthread dl rt)
 
 add_executable(mldr32 ${mldr_sources})
-target_link_libraries(mldr32 pthread dl)
+target_link_libraries(mldr32 pthread dl rt)
 set_target_properties(mldr32
 	PROPERTIES
 		COMPILE_FLAGS "-m32"
