@@ -119,7 +119,7 @@
     #define PRAGMA_STRUCT_PACKPUSH      0
   #endif
 
-  #if __LP64__
+  #if __LP64__ || __arm64__ || __ARM_ARCH_7K
     #define PRAGMA_STRUCT_ALIGN         0
   #else
     #define PRAGMA_STRUCT_ALIGN         1

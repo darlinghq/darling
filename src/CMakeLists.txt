@@ -100,6 +100,8 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/foundation/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/syslog/libsystem_asl.tproj/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/objc4/runtime/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/corecrypto/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/security/include
 )
 
 add_subdirectory(external/libkqueue)
