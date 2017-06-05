@@ -129,6 +129,42 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 
 			return IOCTL_HANDLED;
 		}
+		case BSD_TIOCGETC:
+		{
+			struct linux_termios in;
+			struct tchars* out = (struct tchars*) arg;
+
+			*retval = __real_ioctl(fd, LINUX_TCGETS, &in);
+
+			out->t_intrc = in.c_cc[LINUX_VINTR];
+			out->t_quitc = in.c_cc[LINUX_VQUIT];
+			out->t_startc = in.c_cc[LINUX_VSTART];
+			out->t_stopc = in.c_cc[LINUX_VSTOP];
+			out->t_eofc = in.c_cc[LINUX_VEOF];
+			out->t_brkc = in.c_cc[LINUX_VEOL2];
+
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCSETC:
+		{
+			struct linux_termios out;
+			const struct tchars* in = (const struct tchars*) arg;
+
+			// Get existing values so that we don't overwrite many
+			// of the parameters not specified in struct tchars.
+			__real_ioctl(fd, LINUX_TCGETS, &out);
+
+			out.c_cc[LINUX_VINTR] = in->t_intrc;
+			out.c_cc[LINUX_VQUIT] = in->t_quitc;
+			out.c_cc[LINUX_VSTART] = in->t_startc;
+			out.c_cc[LINUX_VSTOP] = in->t_stopc;
+			out.c_cc[LINUX_VEOF] = in->t_eofc;
+			out.c_cc[LINUX_VEOL2] = in->t_brkc;
+
+			*retval = __real_ioctl(fd, LINUX_TCSETS, &out);
+
+			return IOCTL_HANDLED;
+		}
 		case BSD_TIOCGWINSZ:
 		{
 			*retval = __real_ioctl(fd, LINUX_TIOCGWINSZ, arg);
