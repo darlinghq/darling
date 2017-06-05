@@ -1,0 +1,17 @@
+Source: darling
+Maintainer: Lubos Dolezel <lubos@dolezel.info>
+Section: misc
+Priority: optional
+Standards-Version: 3.9.2
+Build-Depends: cmake, flex, bison, clang, ninja-build, libcap2-bin
+
+Package: darling
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, fuse, darling-dkms
+Description: Darling
+ macOS emulation layer for Linux
+
+Package: darling-dkms
+Architecture: amd64
+Description: Kernel module for Darling
+Depends: dkms
