@@ -6,9 +6,10 @@
 class CarbonComponent;
 #else
 struct __CarbonComponent;
-typedef CarbonComponent struct __CarbonComponent;
+typedef struct __CarbonComponent CarbonComponent;
 #endif
 struct ComponentDescription;
+typedef struct ComponentDescription ComponentDescription;
 
 typedef CarbonComponent* ComponentInstance;
 typedef void* Component;

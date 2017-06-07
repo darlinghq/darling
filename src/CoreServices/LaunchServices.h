@@ -47,6 +47,7 @@ struct LSApplicationParameters
 	CFArrayRef argv;
 	AppleEvent * initialEvent;
 };
+typedef struct LSApplicationParameters LSApplicationParameters;
 
 OSStatus LSInit(LSInitializeFlags flags);
 OSStatus LSTerm(void);
