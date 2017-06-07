@@ -51,3 +51,9 @@ include(setcap)
 setcap(libexec/darling/bin/mldr cap_sys_rawio+ep)
 setcap(libexec/darling/bin/mldr32 cap_sys_rawio+ep)
 
+# This tool is useful for packaging to detect ELF dependencies inside Mach-O libraries,
+# which standard distro tools cannot do.
+if (DEFINED WITH_PRINT_WRAPPED_ELF)
+	add_executable(print_wrapped_elf wrapgen/print_wrapped_elf.cpp)
+endif (DEFINED WITH_PRINT_WRAPPED_ELF)
+
