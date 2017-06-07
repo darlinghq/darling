@@ -6,7 +6,11 @@ MODVER="0.1"
 
 echo ">>> DKMS: Module add, build, and install"
 
-dkms add -m $MODNAME -v $MODVER
+line=$(dkms status -m $MODNAME)
+if ! echo "$line" | grep -E 'added|built|installed'; then
+	dkms add -m $MODNAME -v $MODVER
+fi
+
 dkms build -m $MODNAME -v $MODVER
 dkms install -m $MODNAME -v $MODVER
 
