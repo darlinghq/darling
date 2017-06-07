@@ -251,6 +251,3 @@
 [submodule "src/external/SmartCardServices"]
 	path = src/external/SmartCardServices
 	url = ../darling-SmartCardServices.git
-[submodule "src/external/gdb"]
-	path = src/external/gdb
-	url = ../darling-applegdb.git
