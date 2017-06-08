@@ -1,7 +1,12 @@
 #! /bin/bash
 
-# This runs as root,
-# with the current directory set to ${CMAKE_INSTALL_PREFIX}/libexec/darling
+WD="$1"
+if [[ -z "$WD" ]] || [[ ! -d "$WD" ]]; then
+    echo "$(basename $0): you must provide '\$INSTALL_PREFIX/libexec/darling' directory."
+    exit 1
+fi
+
+cd "$WD"
 
 for file in /etc/ld.so.conf $(find /etc/ld.so.conf.d/ -type f); do
     # Copy lines from e.g. /etc/ld.so.conf into ./etc/ld.so.conf,

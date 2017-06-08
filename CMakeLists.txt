@@ -10,6 +10,7 @@ include(MacroEnsureOutOfSourceBuild)
 MACRO_ENSURE_OUT_OF_SOURCE_BUILD()
 
 set(DARLING_TOP_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+set(LD_SO_CONF_DIRECTORY "${CMAKE_BINARY_DIR}/etc/ld.so.conf.d")
 set(DARLING_NO_EXECUTABLES OFF)
 set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "")
 set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
@@ -41,10 +42,15 @@ InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
 InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
 InstallSymlink(private/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
 
+file(MAKE_DIRECTORY ${LD_SO_CONF_DIRECTORY})
+execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh ${CMAKE_BINARY_DIR})
+
 install(FILES etc/dylib.conf etc/version.conf
 	DESTINATION libexec/darling/etc/darling)
-install(FILES etc/resolv.conf
+install(FILES etc/resolv.conf ${CMAKE_BINARY_DIR}/etc/ld.so.conf
 	DESTINATION libexec/darling/etc)
+install(DIRECTORY ${LD_SO_CONF_DIRECTORY}
+	DESTINATION libexec/darling/etc/ld.so.conf.d)
 
 install(DIRECTORY DESTINATION libexec/darling/Volumes)
 install(DIRECTORY DESTINATION libexec/darling/Volumes/SystemRoot)
@@ -71,8 +77,6 @@ InstallSymlink(/Volumes/SystemRoot/etc/passwd ${CMAKE_INSTALL_PREFIX}/libexec/da
 InstallSymlink(/Volumes/SystemRoot/etc/group ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/group)
 InstallSymlink(/Volumes/SystemRoot/etc/localtime ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/localtime)
 
-install(DIRECTORY DESTINATION libexec/darling/etc/ld.so.conf.d)
-install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
 InstallSymlink(/Volumes/SystemRoot/lib ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib)
 InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib64)
 
