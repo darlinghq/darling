@@ -251,3 +251,9 @@
 [submodule "src/external/SmartCardServices"]
 	path = src/external/SmartCardServices
 	url = ../darling-SmartCardServices.git
+[submodule "src/external/vim"]
+	path = src/external/vim
+	url = ../darling-vim.git
+[submodule "src/external/cctools"]
+	path = src/external/cctools
+	url = ../darling-cctools.git
