@@ -23,6 +23,8 @@
 #include <CoreServices/ToolUtils.h>
 #include <CoreServices/UniChar.h>
 #include <CoreServices/UnicodeUtilities.h>
+#include <CoreServices/TextCommon.h>
+#include <CoreServices/TextEncodingConverter.h>
 
 #endif
 
