@@ -1,4 +1,5 @@
 project(xcselect)
+include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -fblocks")
 
