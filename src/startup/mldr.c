@@ -91,17 +91,23 @@ int main(int argc, char** argv, char** envp)
 	void** sp;
 	int pushCount = 0;
 	const char* apple[3];
-	char *filename, *p;
-
+	char *filename, *p = NULL;
+	// sys_execve() passes the original file path appended to the mldr path in argv[0].
+	if (argc > 0)
+		p = strchr(argv[0], '!');
+	
 	if (argc <= 1)
 	{
-		fprintf(stderr, "mldr is part of Darling. It is not to be executed directly.\n");
-		return 1;
+		if (p == NULL) {
+			fprintf(stderr, "mldr is part of Darling. It is not to be executed directly.\n");
+			return 1;
+		}
+		else
+		{
+			fprintf(stderr, "mldr: warning: Executing with no argv[0]. Continuing anyway, but this is probably a bug.\n");
+		}
 	}
 
-	// sys_execve() passes the original file path appended to the mldr path in argv[0].
-
-	p = strchr(argv[0], '!');
 	if (p != NULL)
 	{
 		filename = (char*) __builtin_alloca(strlen(argv[0])+1);
