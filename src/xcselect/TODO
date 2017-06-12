@@ -1,4 +1,3 @@
 * Implement `xcode-select`
-* Integrate `man` so that it refers to `libxcselect.dylib` for man paths
 * Stub out tons of Apple private frameworks to have `xcodebuild` working
 
