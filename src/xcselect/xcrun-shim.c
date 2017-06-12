@@ -20,8 +20,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 
-int main(int argc, const char** argv)
+int main(int argc, char** argv)
 {
-	return xcselect_invoke_xcrun(TOOL_NAME, argc - 1, &argv[1], 0);
+	return xcselect_invoke_xcrun(TOOL_NAME, argc - 1, &argv[1],
+			REQUIRE_XCODE ? XCSELECT_FLAG_REQUIRE_XCODE : 0);
 }
 
