@@ -103,6 +103,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/corecrypto/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/security/include
 	${CMAKE_CURRENT_SOURCE_DIR}/xcselect/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libaks/include
 )
 
 add_subdirectory(external/libkqueue)

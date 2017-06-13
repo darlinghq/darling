@@ -15,6 +15,7 @@ CF_EXTERN_C_BEGIN
 typedef void* (*LAFunctionCopyExternalizedContext)(void*);
 
 static CFIndex kLAOptionNotInteractive = 1;
+static CFIndex kLAOptionCallerName = 2;
 
 CF_EXTERN_C_END
 

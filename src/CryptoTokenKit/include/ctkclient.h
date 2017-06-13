@@ -23,6 +23,11 @@ CF_EXTERN_C_BEGIN
 #define kTKErrorObjectNotFound TKErrorCodeObjectNotFound
 #define kTKErrorTokenNotFound TKErrorCodeTokenNotFound
 
+#define kTKTokenControlAttribAttestingKey "TKTokenControlAttribAttesting"
+#define kTKTokenControlAttribKeyToAttest "TKTokenControlAttribKeyToAttest"
+#define kTKTokenControlAttribAttestationData "TKTokenControlAttribAttestationData"
+#define kTKTokenCreateAttributeAuxParams "TKTokenCreateAttributeAuxParams"
+
 typedef const struct CF_BRIDGED_TYPE(TKToken) __TKToken * TKTokenRef;
 
 CF_EXPORT
@@ -48,6 +53,12 @@ CFDataRef TKTokenCopyObjectData(TKTokenRef token, CFDataRef object_id, CFErrorRe
 
 CF_EXPORT
 CFDataRef TKTokenCopyObjectCreationAccessControl(TKTokenRef token, CFTypeRef object_or_attrs, CFErrorRef *error);
+
+CF_EXPORT
+CFDataRef TKTokenCopyOperationResult(TKTokenRef token, CFDataRef objectID, int operation, CFArrayRef algorithms, int other, CFTypeRef in1, CFTypeRef in2, CFErrorRef *error);
+
+CF_EXPORT
+CFDictionaryRef TKTokenControl(TKTokenRef token, CFDictionaryRef attributes, CFErrorRef *error);
 
 CF_EXTERN_C_END
 CF_IMPLICIT_BRIDGING_DISABLED

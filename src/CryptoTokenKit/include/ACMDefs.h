@@ -10,10 +10,19 @@
 #define kACMKeyAclConstraintPolicy "ACMKeyAclConstraintPolicy"
 
 #define kAKSKeyOpSync CFSTR("AKSKeyOpSync")
-#define kAKSKeyOpSign CFSTR("AKSKeyOpSign")
+//#define kAKSKeyOpSign CFSTR("AKSKeyOpSign")
 #define kAKSKeyOpDelete CFSTR("AKSKeyOpDelete")
-#define kAKSKeyOpDecrypt CFSTR("AKSKeyOpDecrypt")
+//#define kAKSKeyOpDecrypt CFSTR("AKSKeyOpDecrypt")
 #define kAKSKeyOpEncrypt CFSTR("AKSKeyOpEncrypt")
 #define kAKSKeyOpDelete CFSTR("AKSKeyOpDelete")
+
+const static int kAKSKeyOpSign;
+
+const static CFStringRef kAKSKeyOpDecrypt;
+
+const static int kAKSKeyOpComputeKey;
+
+const static CFStringRef kAKSKeyOpAttest;
+
 
 #endif
