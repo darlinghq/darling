@@ -226,7 +226,8 @@ int xcselect_invoke_xcrun(const char* tool, int argc, char* argv[], int flags)
 			}
 			else
 			{
-				fn(getprogname(), argc, argv, dev_dir);
+				fn(tool, argc, argv, dev_dir);
+				fprintf(stderr, "xcrun: xcrun_main unexpectedly exited\n");
 			}
 		}
 		else
