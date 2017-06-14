@@ -68,6 +68,7 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/NetBSD
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/FreeBSD
 	${CMAKE_CURRENT_SOURCE_DIR}/kernel/libsyscall/wrappers
+	${CMAKE_CURRENT_SOURCE_DIR}/kernel/include
 	${CMAKE_SOURCE_DIR}/kernel-include
 	${CMAKE_CURRENT_SOURCE_DIR}/duct/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libm/include
@@ -104,6 +105,15 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/security/include
 	${CMAKE_CURRENT_SOURCE_DIR}/xcselect/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libaks/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/icu/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/libpthread/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libremovefile/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/libdispatch/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/libclosure/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cfnetwork/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cfnetwork/private_include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/libxml2/include
+	${CMAKE_CURRENT_BINARY_DIR}/external/libxml2/include
 )
 
 add_subdirectory(external/libkqueue)
