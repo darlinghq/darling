@@ -114,6 +114,9 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cfnetwork/private_include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/libxml2/include
 	${CMAKE_CURRENT_BINARY_DIR}/external/libxml2/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/expat/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libedit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/bzip2/include
 )
 
 add_subdirectory(external/libkqueue)
