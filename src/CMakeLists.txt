@@ -117,6 +117,15 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/expat/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libedit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/bzip2/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libnotify/include
+	${CMAKE_CURRENT_SOURCE_DIR}/opendirectory/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/commoncrypto/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/coregraphics/Headers
+	${CMAKE_CURRENT_SOURCE_DIR}/quarantine/include
+	${CMAKE_CURRENT_SOURCE_DIR}/copyfile/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
+	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
 )
 
 add_subdirectory(external/libkqueue)
