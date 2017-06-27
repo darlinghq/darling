@@ -40,10 +40,7 @@ int checkPrefixDir(void);
 // Creates the given directory, exit()ing if not possible
 void createDir(const char* path);
 
-// Spawn the specified proceess inside the namespaces that PID 1 is in
-// Returns the PID of the child
-// exit()s on error
-pid_t spawnChild(int pidInit, const char *path, const char *const argv[]);
+void spawnShell(const char** argv);
 
 // Set up some environment variables
 // As well as the working directory
@@ -57,7 +54,9 @@ pid_t getInitProcess(void);
 pid_t spawnInitProcess(void);
 
 void putInitPid(pid_t pidInit);
+void mapUids(pid_t pid);
 
+void spawnLaunchd(void);
 void darlingPreInit(void);
 
 void checkPrefixOwner(void);
