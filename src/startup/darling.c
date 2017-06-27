@@ -320,7 +320,7 @@ static void shellLoop(int sockfd, int master)
 		sigaction(i, &sa, NULL);
 
 	pfds[2].fd = master;
-	pfds[2].events = POLLOUT;
+	pfds[2].events = POLLIN;
 	pfds[2].revents = 0;
 	pfds[1].fd = STDIN_FILENO;
 	pfds[1].events = POLLIN;
@@ -347,7 +347,7 @@ static void shellLoop(int sockfd, int master)
 			}
 		}
 
-		if (pfds[2].revents & POLLOUT)
+		if (pfds[2].revents & POLLIN)
 		{
 			int rd;
 			do
@@ -1005,7 +1005,7 @@ pid_t getInitProcess()
 	}
 	fclose(fp);
 
-	if (strcmp(exeBuf, DARLING_INIT_COMM) != 0)
+	if (strcmp(exeBuf, "mldr") != 0)
 	{
 		unlink(pidPath);
 		return 0;
