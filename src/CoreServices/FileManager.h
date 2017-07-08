@@ -48,6 +48,7 @@ typedef struct FSRef
 	};
 } FSRef;
 typedef struct FSRef* FSRefPtr;
+typedef struct FSRef FSRef;
 
 struct HFSUniStr255
 {

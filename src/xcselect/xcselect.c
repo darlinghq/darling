@@ -226,7 +226,8 @@ int xcselect_invoke_xcrun(const char* tool, int argc, char* argv[], int flags)
 			}
 			else
 			{
-				fn(getprogname(), argc, argv, dev_dir);
+				fn(tool, argc, argv, dev_dir);
+				fprintf(stderr, "xcrun: xcrun_main unexpectedly exited\n");
 			}
 		}
 		else
@@ -237,7 +238,8 @@ int xcselect_invoke_xcrun(const char* tool, int argc, char* argv[], int flags)
 			buf[length] = 0;
 			strcat(buf, "usr/bin/xcrun");
 
-			argv2 = (char**) __builtin_alloca((argc+2) * sizeof(char*));
+			// +3: buf, tool, NULL
+			argv2 = (char**) __builtin_alloca((argc+3) * sizeof(char*));
 			argv2[j++] = buf;
 
 			if (tool != NULL)
@@ -245,23 +247,35 @@ int xcselect_invoke_xcrun(const char* tool, int argc, char* argv[], int flags)
 
 			for (int i = 0; i < argc; i++, j++)
 				argv2[j] = argv[i];
+			argv2[j] = NULL;
 
 			execv(buf, argv2);
 			fprintf(stderr, "xcrun: developer path '%s' is invalid, failed to execute '%s': %s\n",
 					dev_dir, buf, strerror(errno));
 		}
 	}
-	else if (dir_exists("/usr/libexec/DeveloperTools") && tool != NULL)
+	else 
 	{
-		char* buf = __builtin_alloca(strlen(tool) + 30);
-		strcpy(buf, "/usr/libexec/DeveloperTools/");
-		strcat(buf, tool);
+		if (dir_exists("/usr/libexec/DeveloperTools") && tool != NULL)
+		{
+			char* buf = __builtin_alloca(strlen(tool) + 30);
+			strcpy(buf, "/usr/libexec/DeveloperTools/");
+			strcat(buf, tool);
 
-		execv(buf, argv);
-		fprintf(stderr, "xcrun: failed to exec '%s': %s\n", buf, strerror(errno));
-	}
-	else
-	{
+			if (access(buf, F_OK) == 0)
+			{
+				char** argv2 = (char **) __builtin_alloca((argc+1+1) * sizeof(char*));
+				argv2[0] = buf;
+				for (int i = 0; i < argc; i++)
+					argv2[i+1] = argv[i];
+				argv2[argc+1] = NULL;
+
+				execv(buf, argv2);
+				fprintf(stderr, "xcrun: failed to exec '%s': %s\n", buf, strerror(errno));
+				exit(1);
+			}
+		}
+
 		fprintf(stderr, "xcrun: cannot find developer tools, set DEVELOPER_DIR if you are using a non-standard location.\n");
 	}
 

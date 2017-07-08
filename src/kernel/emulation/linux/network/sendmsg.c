@@ -41,7 +41,7 @@ long sys_sendmsg_nocancel(int socket, const struct bsd_msghdr* msg, int flags)
 		lmsg.msg_controllen = msg->msg_controllen + 4;
 
 		lchdr->cmsg_len = bchdr->cmsg_len;
-		lchdr->cmsg_level = bchdr->cmsg_level;
+		lchdr->cmsg_level = socket_level_bsd_to_linux(bchdr->cmsg_level);
 		lchdr->cmsg_type = bchdr->cmsg_type;
 
 		memcpy(lchdr->cmsg_data, bchdr->cmsg_data,

@@ -1,23 +1,24 @@
 project(darling-libstdcxx)
 
-cmake_minimum_required(VERSION 2.4.0)
-enable_language(C ASM)
+add_compile_options(
+	-nostdinc
+	-nostdinc++
+	-w
+	-include${CMAKE_CURRENT_SOURCE_DIR}/build.h
+)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2 -msse3 -w -nostdinc -nostdinc++")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__DARWIN_UNIX03 -fPIC -w -include ${CMAKE_CURRENT_SOURCE_DIR}/build.h")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
+include_directories(BEFORE
+	${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1
+	${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1/backward
+)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1/backward)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/locale)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/locale/FreeBSD)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/stdtime/FreeBSD)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/pthreads)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../external/libcxxabi/include)
 
-add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
-add_definitions(-DBUILDING_LIBSTDCXX -D_LIBCPPABI_VERSION=1)
+add_definitions(
+	-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080
+	-DBUILDING_LIBSTDCXX
+	-D_LIBCPPABI_VERSION=1
+)
 
 set(libstdcxx_sources
 	src/allocator-inst.cc

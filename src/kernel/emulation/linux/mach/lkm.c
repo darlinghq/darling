@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <sys/resource.h>
 #include "../../libsyscall/wrappers/_libkernel_init.h"
+#include <elfcalls.h>
+
+extern struct elf_calls* _elfcalls;
 
 int driver_fd = -1;
 
@@ -16,6 +19,8 @@ extern int sys_getrlimit(int, struct rlimit*);
 extern int sys_dup2(int, int);
 extern int sys_fcntl(int, int, int);
 extern _libkernel_functions_t _libkernel_functions;
+
+static void setup_dyld_info(void);
 
 void mach_driver_init(void)
 {
@@ -65,6 +70,23 @@ void mach_driver_init(void)
 		
 		driver_fd = d;
 	}
+	
+	// Setup TASK_DYLD_INFO (needed for debuggers)
+	setup_dyld_info();
+}
+
+static void setup_dyld_info(void)
+{
+	struct set_dyld_info_args dyld_info;
+	uintptr_t loc;
+	size_t len;
+	
+	_elfcalls->dyld_info(&loc, &len);
+	
+	dyld_info.all_images_address = loc;
+	dyld_info.all_images_length = len;
+	
+	__real_ioctl(driver_fd, NR_set_dyld_info, &dyld_info);
 }
 
 __attribute__((visibility("default")))

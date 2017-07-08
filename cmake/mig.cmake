@@ -1,4 +1,4 @@
-FUNCTION(mig defFileName)
+function(mig defFileName)
         set(MIG_EXECUTABLE "${CMAKE_BINARY_DIR}/mig")
 
         if (NOT MIG_USER_SOURCE_SUFFIX)
@@ -33,10 +33,14 @@ FUNCTION(mig defFileName)
         get_filename_component(dirName "${relativeName}" DIRECTORY)
         
         #if ((NOT BITS) OR (BITS EQUAL 64))
-        	set(MIG_ARCH "x86-64")
-        #else ()
-        #	set (MIG_ARCH "i386")
-        #endif()
+        #if(NOT arch)
+        #	set(MIG_ARCH "x86-64")
+        #else (NOT arch)
+        #	set (MIG_ARCH "${arch}")
+        #endif(NOT arch)
+        if (NOT MIG_ARCH)
+            set(MIG_ARCH "x86-64")
+        endif (NOT MIG_ARCH)
 
 		# I hate myself for the following copy&paste,
 		# but I could not figure out a better way.
@@ -83,5 +87,5 @@ FUNCTION(mig defFileName)
 				)
 
         endif (dirName)
-ENDFUNCTION(mig)
+endfunction(mig)
 

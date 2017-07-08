@@ -4,10 +4,13 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include "duct.h"
+#include "getsockopt.h"
 
 extern void *malloc(__SIZE_TYPE__ size);
 extern void free(void* ptr);
 extern void* memcpy(void* dest, const void* src, __SIZE_TYPE__ len);
+
+#define ALIGN(what, how) ( ((what) + (how) - 1) & ~((how) - 1) )
 
 long sys_recvmsg(int socket, struct bsd_msghdr* msg, int flags)
 {
@@ -35,7 +38,7 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 		// __simple_printf("controllen=%d\n", msg->msg_controllen);
 		lchdr = (struct linux_cmsghdr*) malloc(msg->msg_controllen + 4);
 		lmsg.msg_control = lchdr;
-		lmsg.msg_controllen = msg->msg_controllen + 4;
+		lmsg.msg_controllen = msg->msg_controllen + 4; // FIXME: there could be multiple control messages in a message
 	}
 	else
 	{
@@ -67,21 +70,32 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 		{
 			if (sizeof(unsigned long) != 4)
 			{
-				if (lmsg.msg_controllen > 0)
+				int lpos = 0, bpos = 0;
+				struct linux_cmsghdr* lnext;
+				struct bsd_cmsghdr* bnext;
+
+				msg->msg_controllen = lmsg.msg_controllen;
+
+				// __simple_printf("Processing %d bytes of control data\n", msg->msg_controllen);
+				while (lpos < lmsg.msg_controllen)
 				{
-					bchdr->cmsg_len = lchdr->cmsg_len;
-					bchdr->cmsg_level = lchdr->cmsg_level;
-					bchdr->cmsg_type = lchdr->cmsg_type;
+					lnext = (struct linux_cmsghdr*) (((char*) lmsg.msg_control) + lpos);
+					bnext = (struct bsd_cmsghdr*) (((char*) msg->msg_control) + bpos);
 
-					// __simple_printf("Copy %p to %p, %d bytes (of %d)\n", lchdr->cmsg_data, bchdr->cmsg_data, lchdr->cmsg_len - sizeof(struct linux_cmsghdr), lchdr->cmsg_len);
-					// __simple_printf("Hdr says controllen=%d\n", lmsg.msg_controllen);
+					// __simple_printf("Linux msg at %d -> BSD at %d\n", lpos, bpos);
 
-					memcpy(bchdr->cmsg_data, lchdr->cmsg_data,
-							lchdr->cmsg_len - sizeof(struct linux_cmsghdr));
-					msg->msg_controllen = lmsg.msg_controllen - 4;
+					bnext->cmsg_len = lnext->cmsg_len - (sizeof(struct linux_cmsghdr) - sizeof(struct bsd_cmsghdr));
+					bnext->cmsg_level = socket_level_linux_to_bsd(lnext->cmsg_level);
+					bnext->cmsg_type = lnext->cmsg_type;
+
+					// __simple_printf("About to copy %d bytes\n", lnext->cmsg_len - sizeof(struct linux_cmsghdr));
+
+					memcpy(bnext->cmsg_data, lnext->cmsg_data, lnext->cmsg_len - sizeof(struct linux_cmsghdr));
+					msg->msg_controllen -= 4;
+
+					lpos += ALIGN(lnext->cmsg_len, sizeof(unsigned long));
+					bpos += ALIGN(bnext->cmsg_len, 4);
 				}
-				else
-					msg->msg_controllen = 0;
 			}
 			else
 			{
@@ -97,4 +111,26 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 	return ret;
 }
 
+
+int socket_level_bsd_to_linux(int level)
+{
+	switch (level)
+	{
+		case BSD_SOL_SOCKET:
+			return LINUX_SOL_SOCKET;
+		default:
+			return level;
+	}
+}
+
+int socket_level_linux_to_bsd(int level)
+{
+	switch (level)
+	{
+		case LINUX_SOL_SOCKET:
+			return BSD_SOL_SOCKET;
+		default:
+			return level;
+	}
+}
 

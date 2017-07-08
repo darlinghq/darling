@@ -1,0 +1,146 @@
+project(PackageKit)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -mmacosx-version-min=10.10")
+
+include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}/Headers
+	${CMAKE_SOURCE_DIR}/src/external/foundation/include
+)
+
+set(pk_sources
+	functions.c
+	Sources/PKAddExtendedAttributesInstallOperation.m
+	Sources/PKAddRestrictedRootFlagInstallOperation.m
+	Sources/PKArchiveDistributionContainer.m
+	Sources/PKArchive.m
+	Sources/PKArchiveProduct.m
+	Sources/PKArchiveSignature.m
+	Sources/PKArchiveSigner.m
+	Sources/PKBOMDirectoryEnumerator.m
+	Sources/PKBOM.m
+	Sources/PKBundleComponent.m
+	Sources/PKBundleComponentVersion.m
+	Sources/PKBundleStorage.m
+	Sources/PKCFBundleStorage.m
+	Sources/PKCleanEFWCacheInstallOperation.m
+	Sources/PKComponent.m
+	Sources/PKDataSizeFormatter.m
+	Sources/PKDataSizeValueTransformer.m
+	Sources/PKDeferredInstallManager.m
+	Sources/PKDistributionContainer.m
+	Sources/PKDistributionChoice.m
+	Sources/PKDistribution.m
+	Sources/PKDistributionPackageReference.m
+	Sources/PKDistributionScript.m
+	Sources/PKDownloader.m
+	Sources/PKDownloaderQueueElement.m
+	Sources/PKDownloaderQueue.m
+	Sources/PKDownloaderSpeedTracker.m
+	Sources/PKDownload.m
+	Sources/PKDYLDCacheInstallOperation.m
+	Sources/PKExtendedAttributeEnumerator.m
+	Sources/PKExtendedAttribute.m
+	Sources/PKExtractInstallOperation.m
+	Sources/PKFileDownload.m
+	Sources/PKFirmwareBundleComponent.m
+	Sources/PKFirmwareBundleComponentModel.m
+	Sources/PKFirmwareInstallationController.m
+	Sources/PKFlatDistributionContainer.m
+	Sources/PKFolderArchive.m
+	Sources/PKFolderArchiveProduct.m
+	Sources/PKFolderArchiveSignature.m
+	Sources/PKCheckError.m
+	Sources/_PKCheckErrorRecoveryAttempter.m
+	Sources/PKInstallableObject.m
+	Sources/PKInstallAnalyzer.m
+	Sources/_PKInstallClientConnection.m
+	Sources/PKInstallClient.m
+	Sources/PKInstallCommitManager.m
+	Sources/PKInstallDaemonClient.m
+	Sources/PKInstallDaemon.m
+	Sources/PKInstallError.m
+	Sources/PKInstallHistory.m
+	Sources/PKInstall.m
+	Sources/PKInstallManifest.m
+	Sources/PKInstallOperationController.m
+	Sources/PKInstallOperation.m
+	Sources/PKInstallRequest.m
+	Sources/PKInstallSandbox.m
+	Sources/PKInstallSandboxManager.m
+	Sources/PKInstallStateHelper.m
+	Sources/PKInstallTask.m
+	Sources/PKJaguarPackage.m
+	Sources/PKKextCacheInstallOperation.m
+	Sources/PKLeopardPackage.m
+	Sources/PKLSRegisterInstallOperation.m
+	Sources/PKMachOWithInfoPlistBundleStorage.m
+	Sources/PKMutableArchive.m
+	Sources/PKMutableBOM.m
+	Sources/PKMutableDistributionContainer.m
+	Sources/PKMutableLeopardPackage.m
+	Sources/PKMutablePackage.m
+	Sources/PKMutableProduct.m
+	Sources/PKMutableReceipt.m
+	Sources/PKMutableSignedContainer.m
+	Sources/PKMutableXARArchive.m
+	Sources/PKNetEnabledProduct.m
+	Sources/PKObsoletionInstallOperation.m
+	Sources/_PKPackageCreationFileDigest.m
+	Sources/PKPackageChecker.m
+	Sources/PKPackageInfo.m
+	Sources/PKPackage.m
+	Sources/PKPackageReference.m
+	Sources/PKPackageRequirements.m
+	Sources/PKPackageSourceManager.m
+	Sources/PKPackageSpecifier.m
+	Sources/PKPatchAndUpdateInstallOperation.m
+	Sources/PKPatchFilesInstallOperation.m
+	Sources/PKPayloadCopier.m
+	Sources/PKPrepareDiskInstallOperation.m
+	Sources/PKPrepareForCommitInstallOperation.m
+	Sources/PKProductArchiver.m
+	Sources/PKProductChecker.m
+	Sources/PKProductInfo.m
+	Sources/PKProduct.m
+	Sources/PKProductUnarchiver.m
+	Sources/PKReceipt.m
+	Sources/PKRelocateComponentsInstallOperation.m
+	Sources/PKRunPackageScriptInstallOperation.m
+	Sources/PKSafariExtensionBundleStorage.m
+	Sources/PKScript.m
+	Sources/PKSecureNetEnabledProduct.m
+	Sources/PKSetupDeferredInstallOperation.m
+	Sources/PKShoveInstallOperation.m
+	Sources/_PKSignedContainerCopyCancelHandler.m
+	Sources/PKSignedContainer.m
+	Sources/PKSigningIdentity.m
+	Sources/PKStreamingProduct.m
+	Sources/PKStreamingXARArchive.m
+	Sources/PKTimeRemainingFormatter.m
+	Sources/PKTimeRemainingValueTransformer.m
+	Sources/PKTrustAdditions.m
+	Sources/PKTrust.m
+	Sources/PKUpdateEFWCacheInstallOperation.m
+	Sources/_PKURLConnectionDelegate.m
+	Sources/PKURLConnection.m
+	Sources/PKURLDownload.m
+	Sources/PKVerifyMASPayloadInstallOperation.m
+	Sources/PKWriteMASReceiptInstallOperation.m
+	Sources/PKWriteReceiptsInstallOperation.m
+	Sources/PKXARArchive.m
+	Sources/PKXARArchiveSignature.m
+	Sources/PKXPCCacheInstallOperation.m
+	Sources/XARDirectoryEnumerator.m
+)
+
+add_framework(PackageKit
+	PRIVATE
+	VERSION "A"
+	CURRENT_VERSION
+	SOURCES
+		${pk_sources}
+	DEPENDENCIES
+		system
+		Foundation
+)
+

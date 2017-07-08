@@ -8,6 +8,7 @@ class CarbonComponent;
 struct __CarbonComponent;
 typedef struct __CarbonComponent CarbonComponent;
 #endif
+struct ComponentDescription;
 typedef struct ComponentDescription ComponentDescription;
 
 typedef CarbonComponent* ComponentInstance;

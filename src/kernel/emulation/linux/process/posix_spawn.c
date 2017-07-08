@@ -17,10 +17,18 @@
 #include "../unistd/setgid.h"
 #include "../unistd/setpgid.h"
 #include "../signal/sigprocmask.h"
+#include "../mach/lkm.h"
+#include "lkm/api.h"
 #include "fork.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "../../../../../kernel-include/sys/spawn.h"
+#include <sys/spawn.h>
+
+#ifndef _POSIX_SPAWN_DISABLE_ASLR
+#define _POSIX_SPAWN_DISABLE_ASLR 0x0100
+#endif
+
+#define LINUX_ADDR_NO_RANDOMIZE 0x40000
 
 long sys_posix_spawn(int* pid, const char* path, const struct _posix_spawn_args_desc* desc,
 		char** argvp, char** envp)
@@ -60,6 +68,19 @@ no_fork:
 				ret = sys_sigprocmask(3 /* SIG_SETMASK */, &desc->attrp->psa_sigmask, NULL);
 				if (ret != 0)
 					goto fail;
+			}
+			if (desc->attrp->psa_flags & _POSIX_SPAWN_DISABLE_ASLR)
+			{
+				unsigned int pers = LINUX_SYSCALL(__NR_personality, 0xffffffff);
+				if (!(pers & LINUX_ADDR_NO_RANDOMIZE))
+				{
+					pers |= LINUX_ADDR_NO_RANDOMIZE;
+					LINUX_SYSCALL(__NR_personality, pers);
+				}
+			}
+			if (desc->attrp->psa_flags & POSIX_SPAWN_START_SUSPENDED)
+			{
+				lkm_call(NR_stop_after_exec, NULL);
 			}
 
 			// TODO: other attributes

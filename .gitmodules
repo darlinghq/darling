@@ -239,3 +239,18 @@
 [submodule "src/external/cocotron"]
 	path = src/external/cocotron
 	url = ../darling-cocotron.git
+[submodule "src/external/libtelnet"]
+	path = src/external/libtelnet
+	url = ../darling-libtelnet.git
+[submodule "src/external/remote_cmds"]
+	path = src/external/remote_cmds
+	url = ../darling-remote_cmds.git
+[submodule "src/external/SmartCardServices"]
+	path = src/external/SmartCardServices
+	url = ../darling-SmartCardServices.git
+[submodule "src/external/vim"]
+	path = src/external/vim
+	url = ../darling-vim.git
+[submodule "src/external/cctools"]
+	path = src/external/cctools
+	url = ../darling-git.cctools

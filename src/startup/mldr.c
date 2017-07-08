@@ -68,9 +68,14 @@ static int native_prot(int prot);
 static void apply_root_path(char* path);
 char* elfcalls_make(void);
 static char* apple0_make(const char* filepath);
+static void map_pagezero(void);
 
 // UUID of the main executable
 uint8_t exe_uuid[16];
+
+// Data for TASK_DYLD_INFO
+uintptr_t dyld_all_image_location;
+size_t dyld_all_image_size;
 
 #if USE_32IN64
 static void* setup_stack32(void* stack, int argc, const char** argv, const char** envp, const char** apple, uint64_t mh);
@@ -86,17 +91,23 @@ int main(int argc, char** argv, char** envp)
 	void** sp;
 	int pushCount = 0;
 	const char* apple[3];
-	char *filename, *p;
-
+	char *filename, *p = NULL;
+	// sys_execve() passes the original file path appended to the mldr path in argv[0].
+	if (argc > 0)
+		p = strchr(argv[0], '!');
+	
 	if (argc <= 1)
 	{
-		fprintf(stderr, "mldr is part of Darling. It is not to be executed directly.\n");
-		return 1;
+		if (p == NULL) {
+			fprintf(stderr, "mldr is part of Darling. It is not to be executed directly.\n");
+			return 1;
+		}
+		else
+		{
+			fprintf(stderr, "mldr: warning: Executing with no argv[0]. Continuing anyway, but this is probably a bug.\n");
+		}
 	}
 
-	// sys_execve() passes the original file path appended to the mldr path in argv[0].
-
-	p = strchr(argv[0], '!');
 	if (p != NULL)
 	{
 		filename = (char*) __builtin_alloca(strlen(argv[0])+1);
@@ -148,6 +159,8 @@ int main(int argc, char** argv, char** envp)
 	apple[0] = apple0_make(filename);
 	apple[1] = elfcalls_make();
 	apple[2] = NULL;
+
+	map_pagezero();
 
 #if USE_32IN64
 	if (!mode_32in64)
@@ -517,3 +530,8 @@ static void reexec32(char** argv)
 }
 #endif
 
+static void map_pagezero(void)
+{
+	if (mmap(NULL, 4096, PROT_READ | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0) == MAP_FAILED)
+		fprintf(stderr, "Cannot mmap page zero, some apps may crash because of this (%s)\n", strerror(errno));
+}

@@ -239,11 +239,12 @@ end_dyn:
 void generate_wrapper(std::ofstream& output, const char* soname, const std::set<std::string>& symbols)
 {
 	output << "#include <elfcalls.h>\n"
-		"extern struct elf_calls* _elfcalls;\n\n";
+		"extern struct elf_calls* _elfcalls;\n\n"
+		"extern const char __elfname[];\n\n";
 
 	output << "static void* lib_handle;\n"
 		"__attribute__((constructor)) static void initializer() {\n"
-		"\tlib_handle = _elfcalls->dlopen_fatal(\"" << soname << "\");\n"
+		"\tlib_handle = _elfcalls->dlopen_fatal(__elfname);\n"
 		"}\n\n";
 
 	output << "__attribute__((destructor)) static void destructor() {\n"
@@ -257,5 +258,8 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 			"\treturn _elfcalls->dlsym_fatal(lib_handle, \"" << sym << "\");\n"
 			"}\n\n";
 	}
+	output << "asm(\".section __TEXT,__elfname\\n"
+		".private_extern ___elfname\\n"
+		"___elfname: .asciz \\\"" << soname << "\\\"\");\n";
 }
 

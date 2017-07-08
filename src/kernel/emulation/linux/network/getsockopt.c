@@ -3,10 +3,14 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "duct.h"
+#include <sys/ucred.h>
+#include <sys/un.h>
 
 #define LINGER_TICKS_PER_SEC	100 // Is this the right number of ticks per sec?
+
+extern void* memset(void*, int, __SIZE_TYPE__);
 
 long sys_getsockopt(int fd, int level, int optname, void* optval, int* optlen)
 {
@@ -15,7 +19,7 @@ long sys_getsockopt(int fd, int level, int optname, void* optval, int* optlen)
 	linux_level = level;
 	linux_optname = optname;
 	
-	ret = sockopt_bsd_to_linux(&linux_level, &linux_optname, NULL, NULL);
+	ret = sockopt_bsd_to_linux(&linux_level, &linux_optname, NULL, optval);
 	
 	if (ret != 0 || !linux_optname)
 		return ret;
@@ -47,6 +51,14 @@ long sys_getsockopt(int fd, int level, int optname, void* optval, int* optlen)
 
 int sockopt_bsd_to_linux(int* level, int* optname, void** optval, void* optbuf)
 {
+	if (*optname == LOCAL_PEERCRED)
+	{
+		struct xucred* c = (struct xucred*) optbuf;
+		// Simulate euid 0
+		memset(c, 0, sizeof(*c));
+		*optname = 0;
+		return 0;
+	}
 	if (*level == BSD_SOL_SOCKET)
 	{
 		*level = LINUX_SOL_SOCKET;

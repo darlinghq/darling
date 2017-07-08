@@ -1,4 +1,4 @@
-#include "SCSchemaDefinitions.h"
+#include <SystemConfiguration/SCSchemaDefinitions.h>
 #include <CoreFoundation/CFString.h>
 
 #ifndef CONST_STRING_DECL

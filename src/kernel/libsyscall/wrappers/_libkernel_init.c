@@ -27,15 +27,9 @@
  */
 
 #include "_libkernel_init.h"
-#include <elfcalls.h>
+#include "elfcalls_setup.h"
 
 extern int mach_init(void);
-
-__attribute__((visibility("default")))
-struct elf_calls* _elfcalls;
-
-extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
-extern unsigned long long __simple_atoi16(const char* str, const char** endp);
 
 /* dlsym() funcptr is for legacy support in exc_catcher */
 void* (*_dlsym)(void*, const char*) __attribute__((visibility("hidden")));
@@ -49,20 +43,11 @@ __libkernel_init(_libkernel_functions_t fns,
 		const char *apple[] __attribute__((unused)),
 		const struct ProgramVars *vars __attribute__((unused)))
 {
-	int i;
 	_libkernel_functions = fns;
 	if (fns->dlsym) {
 		_dlsym = fns->dlsym;
 	}
 
-	for (i = 0; apple[i] != NULL; i++)
-	{
-		if (strncmp(apple[i], "elf_calls=", 10) == 0)
-		{
-			uintptr_t table = (uintptr_t) __simple_atoi16(apple[i] + 12, NULL);
-			_elfcalls = (struct elf_calls*) table;
-		}
-	}
-
+	setup_elfcalls(apple);
 	mach_init();
 }

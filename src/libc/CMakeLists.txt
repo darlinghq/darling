@@ -41,6 +41,8 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../external/libdispatch")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../external/libdispatch/private")
 include_directories("${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers")
 
+include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 add_subdirectory(db) # produces libc-db
 add_subdirectory(compat-43) # produces libc-compat
 add_subdirectory(emulated) # produces libc-emulated

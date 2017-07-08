@@ -151,7 +151,7 @@ void doSwitch(const char* path)
 	char buffer[1024];
 	bool unused;
 
-	if (!xcselect_find_developer_contents_from_path(path, buffer, unused, sizeof(buffer)))
+	if (!xcselect_find_developer_contents_from_path(path, buffer, &unused, sizeof(buffer)))
 	{
 		fprintf(stderr, "xcode-select: error: invalid developer directory '%s'\n", path);
 		exit(1);

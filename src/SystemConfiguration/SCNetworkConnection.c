@@ -1,4 +1,5 @@
-#include "SCNetworkConnection.h"
+#include <SystemConfiguration/SCNetworkConnection.h>
+
 CFTypeID SCNetworkConnectionGetTypeID(void)
 {
 	return 0;
@@ -24,8 +25,12 @@ Boolean SCNetworkConnectionStart(SCNetworkConnectionRef ref, CFDictionaryRef use
 	return 0;
 }
 
-Boolean SCNetworkConnectionCopyUserPreferences(CFDictionaryRef selectionOptions, CFStringRef serviceID, CFDictionaryRef* userOptions)
-{
+Boolean
+SCNetworkConnectionCopyUserPreferences		(
+						CFDictionaryRef				  __nullable	selectionOptions,
+						CFStringRef		__nonnull	* __nullable	serviceID,
+						CFDictionaryRef		__nonnull	* __nullable	userOptions
+						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_NA) {
 	return 0;
 }
 

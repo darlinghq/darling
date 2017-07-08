@@ -531,7 +531,7 @@ malloc_error_break(void)
 	// that will be called after an error message appears.  It does not make
 	// sense for developers to call this function, so it is marked
 	// hidden to prevent it from becoming API.
-	MAGMALLOC_MALLOCERRORBREAK(); // DTrace USDT probe
+
 }
 
 int

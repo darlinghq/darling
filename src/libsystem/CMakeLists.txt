@@ -40,11 +40,43 @@ add_circular(system FAT
 		${libsystem_sources}
 	OBJECTS
 		$<TARGET_OBJECTS:kqueue>
+
+	SIBLINGS
+
+	system_malloc
 )
-target_link_libraries(system PRIVATE system_malloc system_c system_kernel keymgr sandbox
-	system_m system_info system_notify system_quarantine libdispatch_shared launch compiler_rt
-	removefile system_copyfile unwind system_coreservices system_dyld macho CommonCrypto
-	system_pthread platform system_asl system_duct system_blocks xpc) # objc
+
+target_link_libraries(system PRIVATE
+	sandbox
+	system_quarantine
+	removefile
+	system_copyfile
+	system_coreservices
+
+	system_malloc
+	system_c
+	system_kernel
+	keymgr
+	system_m
+	system_info
+	system_notify
+	libdispatch_shared
+	launch
+	compiler_rt
+	unwind
+	system_dyld
+	macho
+	system_pthread
+	platform
+	system_asl
+	system_duct
+	system_blocks
+	xpc
+	corecrypto
+	system_coretls
+	commonCrypto
+)
+
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
 set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	" -sub_library libsystem_malloc \
@@ -70,9 +102,11 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libcommonCrypto \
 	-sub_library libsystem_sandbox \
 	-sub_library libsystem_coreservices \
+	-sub_library libsystem_coretls \
 	-sub_library libsystem_asl \
 	-sub_library libdispatch \
 	-sub_library libxpc \
+	-sub_library libcorecrypto \
 	-Wl,-compatibility_version,1.0.0 \
 	-Wl,-current_version,1238.0.0")
 

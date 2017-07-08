@@ -195,6 +195,7 @@ static void rebaseDyld(const struct macho_header* mh, intptr_t slide)
 }
 
 
+extern "C" void setup_elfcalls(const char** apple);
 extern "C" void mach_init();
 extern "C" void __guard_setup(const char* apple[]);
 
@@ -213,9 +214,6 @@ uintptr_t start(const struct macho_header* appsMachHeader, int argc, const char*
 		rebaseDyld(dyldsMachHeader, slide);
 	}
 
-	// allow dyld to use mach messaging
-	mach_init();
-
 	// kernel sets up env pointer to be just past end of agv array
 	const char** envp = &argv[argc+1];
 	
@@ -223,6 +221,12 @@ uintptr_t start(const struct macho_header* appsMachHeader, int argc, const char*
 	const char** apple = envp;
 	while(*apple != NULL) { ++apple; }
 	++apple;
+
+	// Setup elfcalls for Darling
+	setup_elfcalls(apple);
+
+	// allow dyld to use mach messaging
+	mach_init();
 
 	// set up random value for stack canary
 	__guard_setup(apple);

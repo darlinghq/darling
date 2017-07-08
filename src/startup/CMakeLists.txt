@@ -26,10 +26,10 @@ set(mldr_sources
 	elfcalls.c
 )
 add_executable(mldr ${mldr_sources})
-target_link_libraries(mldr pthread dl)
+target_link_libraries(mldr pthread dl rt)
 
 add_executable(mldr32 ${mldr_sources})
-target_link_libraries(mldr32 pthread dl)
+target_link_libraries(mldr32 pthread dl rt)
 set_target_properties(mldr32
 	PROPERTIES
 		COMPILE_FLAGS "-m32"
@@ -46,3 +46,14 @@ install(TARGETS darling DESTINATION bin
     GROUP_READ GROUP_EXECUTE
     WORLD_READ WORLD_EXECUTE
     SETUID)
+
+include(setcap)
+setcap(libexec/darling/bin/mldr cap_sys_rawio+ep)
+setcap(libexec/darling/bin/mldr32 cap_sys_rawio+ep)
+
+# This tool is useful for packaging to detect ELF dependencies inside Mach-O libraries,
+# which standard distro tools cannot do.
+if (DEFINED WITH_PRINT_WRAPPED_ELF)
+	add_executable(print_wrapped_elf wrapgen/print_wrapped_elf.cpp)
+endif (DEFINED WITH_PRINT_WRAPPED_ELF)
+

@@ -1,6 +1,0 @@
-This AES implementation is based on the Gladman implementation in xnu-863. 
-
-The C files in this directory have been modified to produce no object code
-unless the preprocessor symbol UseGladmanAES is defined (in aesopt.h).  If the
-symbol is not defined, there some other AES implementation (such as AESedp)
-must be supplied elsewhere in the build.

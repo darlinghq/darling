@@ -10,7 +10,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/libdispatch/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../lookup.subproj)
 
 set(info-gen_sources
-	#configuration_profile.c
+	configuration_profile.c
 	ether_addr.c
 	getifaddrs.c
 	getifmaddrs.c
