@@ -285,3 +285,4 @@ add_subdirectory(lkm)
 
 add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/cocotron/Onyx2D)
+add_subdirectory(external/cocotron/AppKit)
