@@ -388,6 +388,33 @@ static void restoreTermios(void)
 	tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
 }
 
+// Glibc openpty() fails for me on Debian, because grantpty() fails to chown() the pty node with error code EPERM.
+// This is a more lenient version of openpty() that just works.
+static int openpty_darling(int* amaster, int* aslave, char* name_unused, const struct termios* tos, const struct winsize* wsz)
+{
+	const char* slave_name;
+
+	*amaster = posix_openpt(O_RDWR);
+	if (*amaster == -1)
+		return -1;
+
+	grantpt(*amaster);
+	if (unlockpt(*amaster) < 0)
+		return -1;
+
+	slave_name = ptsname(*amaster);
+	*aslave = open(slave_name, O_RDWR | O_NOCTTY);
+	if (*aslave == -1)
+		return -1;
+
+	if (tos != NULL)
+		tcsetattr(*amaster, TCSANOW, tos);
+	if (wsz != NULL)
+		ioctl(*amaster, TIOCSWINSZ, wsz);
+
+	return 0;
+}
+
 static void setupPtys(int fds[3], int* master)
 {
 	struct winsize win;
@@ -397,9 +424,9 @@ static void setupPtys(int fds[3], int* master)
 	if (tcgetattr(STDIN_FILENO, &termios) < 0)
 		tty = false;
 
-	if (openpty(master, &fds[0], NULL, &termios, &win) < 0)
+	if (openpty_darling(master, &fds[0], NULL, &termios, NULL) < 0)
 	{
-		perror("opentty");
+		perror("openpty");
 		exit(1);
 	}
 	fds[2] = fds[1] = fds[0];
