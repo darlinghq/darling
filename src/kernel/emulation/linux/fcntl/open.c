@@ -38,6 +38,9 @@ long sys_open_nocancel(const char* filename, int flags, unsigned int mode)
 	// XNU /dev/random behaves like Linux /dev/urandom
 	if (strcmp(filename, "/dev/random") == 0)
 		filename = "/dev/urandom";
+	// launchd expects this file to appear
+	else if (strcmp(filename, "/dev/autofs_nowait") == 0)
+		filename = "/dev/null";
 
 	ret = LINUX_SYSCALL(__NR_open, filename, linux_flags, mode);
 	if (ret < 0)
