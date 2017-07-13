@@ -3,7 +3,7 @@ include(darling_lib)
 include(InstallSymlink)
 
 function(add_framework name)
-	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE" "VERSION;LINK_FLAGS" "SOURCES;DEPENDENCIES" ${ARGN})
+	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE" "VERSION;LINK_FLAGS" "SOURCES;DEPENDENCIES;CIRCULAR_DEPENDENCIES" ${ARGN})
 	if (FRAMEWORK_CURRENT_VERSION)
 		set(my_name "${name}")
 	else (FRAMEWORK_CURRENT_VERSION)
@@ -17,7 +17,28 @@ function(add_framework name)
 	endif (FRAMEWORK_PRIVATE)
 
 	set(DYLIB_INSTALL_NAME "/System/Library/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/${name}")
-	add_darling_library(${my_name} SHARED ${FRAMEWORK_SOURCES})
+
+
+	if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+		if (FRAMEWORK_FAT)
+			set (FRAMEWORK_FAT_ARG FAT)
+		else (FRAMEWORK_FAT)
+			set (FRAMEWORK_FAT_ARG)
+		endif (FRAMEWORK_FAT)
+		add_circular(${my_name}
+			${FRAMEWORK_FAT_ARG}
+			SOURCES ${FRAMEWORK_SOURCES}
+			SIBLINGS ${FRAMEWORK_CIRCULAR_DEPENDENCIES})
+
+	else (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+		add_darling_library(${my_name} SHARED ${FRAMEWORK_SOURCES})
+
+		if (FRAMEWORK_FAT)
+			make_fat(${my_name})
+		endif (FRAMEWORK_FAT)
+
+	endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+
 
 	if (FRAMEWORK_CURRENT_VERSION)
 		add_library("${name}_${FRAMEWORK_VERSION}" ALIAS "${name}")
@@ -31,10 +52,6 @@ function(add_framework name)
 	if (FRAMEWORK_DEPENDENCIES)
 		target_link_libraries(${my_name} PRIVATE ${FRAMEWORK_DEPENDENCIES})
 	endif (FRAMEWORK_DEPENDENCIES)
-
-	if (FRAMEWORK_FAT)
-		make_fat(${my_name})
-	endif (FRAMEWORK_FAT)
 
 	if (FRAMEWORK_LINK_FLAGS)
 		set_property(TARGET ${my_name} APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
