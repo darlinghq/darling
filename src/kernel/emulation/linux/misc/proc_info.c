@@ -169,7 +169,7 @@ static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize)
 	info->p_puniqueid |= (ppid & 0xffff);
 
 #endif
-	return 0;
+	return 1;
 }
 
 static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsize)
@@ -262,7 +262,7 @@ static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsiz
 		}
 	}
 
-	return 0;
+	return 1;
 reterr:
 	return -EINVAL;
 }
@@ -318,7 +318,7 @@ static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer
 	}
 
 	memcpy(buffer, &my_rpi, sizeof(my_rpi));
-	return foundRegion ? 0 : -ESRCH;
+	return foundRegion ? 1 : -ESRCH;
 }
 
 // Parses line such as:
