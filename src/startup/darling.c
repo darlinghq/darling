@@ -49,6 +49,12 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #define MLDR_PATH "/bin/mldr"
 
+// Between Linux 4.9 and 4.11, a strange bug has been introduced
+// which prevents connecting to Unix sockets if the socket was
+// created in a different mount namespace or under overlayfs
+// (dunno which one is really responsible for this).
+#define USE_LINUX_4_11_HACK 1
+
 const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
 uid_t g_originalUid, g_originalGid;
@@ -182,6 +188,10 @@ start_init:
 		}
 	}
 
+#if USE_LINUX_4_11_HACK
+	joinNamespace(pidInit, CLONE_NEWNS, "mnt");
+#endif
+
 	seteuid(g_originalUid);
 
 	if (strcmp(argv[1], "shell") == 0)
@@ -207,6 +217,31 @@ start_init:
 	}
 
 	return 0;
+}
+
+void joinNamespace(pid_t pid, int type, const char* typeName)
+{
+	int fdNS;
+	char pathNS[4096];
+	
+	snprintf(pathNS, sizeof(pathNS), "/proc/%d/ns/%s", pid, typeName);
+
+	fdNS = open(pathNS, O_RDONLY);
+
+	if (fdNS < 0)
+	{
+		fprintf(stderr, "Cannot open %s namespace file: %s\n", typeName, strerror(errno));
+		exit(1);
+	}
+
+	// Calling setns() with a PID namespace doesn't move our process into it,
+	// but our child process will be spawned inside the namespace
+	if (setns(fdNS, type) != 0)
+	{
+		fprintf(stderr, "Cannot join %s namespace: %s\n", typeName, strerror(errno));
+		exit(1);
+	}
+	close(fdNS);
 }
 
 static void pushShellspawnCommandData(int sockfd, shellspawn_cmd_type_t type, const void* data, size_t data_length)
@@ -487,7 +522,11 @@ void spawnShell(const char** argv)
 
 	// Connect to the shellspawn daemon in the container
 	addr.sun_family = AF_UNIX;
+#if USE_LINUX_4_11_HACK
+	strcpy(addr.sun_path, SHELLSPAWN_SOCKPATH);
+#else
 	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s"  SHELLSPAWN_SOCKPATH, prefix);
+#endif
 
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockfd == -1)
@@ -498,7 +537,7 @@ void spawnShell(const char** argv)
 
 	if (connect(sockfd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
 	{
-		fprintf(stderr, "Error connecting to shellspawn in the container: %s\n", strerror(errno));
+		fprintf(stderr, "Error connecting to shellspawn in the container (%s): %s\n", addr.sun_path, strerror(errno));
 		exit(1);
 	}
 
@@ -806,6 +845,7 @@ void spawnLaunchd(void)
 {
 	puts("Bootstrapping the container with launchd...");
 	
+	// putenv("KQUEUE_DEBUG=1");
 	execl(MLDR_PATH, "mldr!/sbin/launchd", "launchd", NULL);
 
 	fprintf(stderr, "Failed to exec launchd: %s\n", strerror(errno));
@@ -956,7 +996,8 @@ void setupPrefix()
 		"/private/var/db",
 		"/var",
 		"/var/run",
-		"/var/tmp"
+		"/var/tmp",
+		"/var/log"
 	};
 
 	fprintf(stderr, "Setting up a new Darling prefix at %s\n", prefix);
