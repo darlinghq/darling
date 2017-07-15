@@ -126,6 +126,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DiskImages/include
 )
 
 add_subdirectory(external/libkqueue)
