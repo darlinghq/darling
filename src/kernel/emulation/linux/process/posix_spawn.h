@@ -26,7 +26,7 @@ struct _psfa_action
 	struct _psfaa_open
 	{
 		int psfao_oflag;
-		unsigned int psfao_mode;
+		unsigned short psfao_mode;
 		char psfao_path[1024];
 	} psfaa_openargs;
 };
