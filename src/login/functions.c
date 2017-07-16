@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <login/login.h>
+
 void CFXPCRelease(void) { }
 void CreateArgumentsForFunction(void) { }
 void GetSessionAgentClient(void) { }
@@ -170,7 +172,7 @@ void SAClearLaunchSoftwareUpdateTrigger(void) { }
 void SAClearSoftwareUpdateOptions(void) { }
 void SAPrepareForSetupUserScreenShots(void) { }
 void SAResetLoginKeychainForAutoLoginPassword(void) { }
-void SASSessionStateForUser(void) { }
+SessionAgentState SASSessionStateForUser(int uid) { return -1; }
 void SASetAppleIDVerified(void) { }
 void SASetAutoLoginUserScreenLocked(void) { }
 void SASetAutologinPW(void) { }

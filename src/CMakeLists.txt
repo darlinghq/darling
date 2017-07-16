@@ -76,6 +76,7 @@ include_directories(
 
 include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/login/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
 	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
 	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
