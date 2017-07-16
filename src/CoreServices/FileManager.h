@@ -105,7 +105,7 @@ typedef void* QElemPtr;
 typedef uint16_t FSAllocationFlags;
 typedef uint32_t FSCatalogInfoBitmap;
 typedef unsigned long UniCharCount;
-typedef uint32_t TextEncoding;
+typedef UInt32 TextEncoding;
 
 struct FSRefParam
 {
