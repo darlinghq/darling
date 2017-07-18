@@ -1,15 +1,11 @@
 #include "chmod.h"
 #include "../base.h"
 #include "../errno.h"
+#include "fchmodat.h"
+#include "../bsdthread/per_thread_wd.h"
 #include <linux-syscalls/linux.h>
 
 long sys_chmod(const char* path, int mode)
 {
-	int ret;
-
-	ret = LINUX_SYSCALL(__NR_chmod, path, mode);
-	if (ret < 0)
-		ret = errno_linux_to_bsd(ret);
-
-	return ret;
+	return sys_fchmodat(get_perthread_wd(), path, mode, 0);
 }

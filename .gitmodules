@@ -257,3 +257,6 @@
 [submodule "src/external/cctools"]
 	path = src/external/cctools
 	url = ../darling-cctools.git
+[submodule "src/external/python_modules"]
+	path = src/external/python_modules
+	url = ../darling-python_modules.git

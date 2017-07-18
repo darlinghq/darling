@@ -159,6 +159,8 @@
 #include "bsdthread/bsdthread_terminate.h"
 #include "bsdthread/disable_threadsignal.h"
 #include "bsdthread/__pthread_canceled.h"
+#include "bsdthread/pthread_chdir.h"
+#include "bsdthread/pthread_fchdir.h"
 #include "hfs/stub.h"
 #include "xattr/getattrlistbulk.h"
 #include "xattr/getattrlistat.h"
@@ -363,6 +365,8 @@ void* __bsd_syscall_table[600] = {
 	[345] = sys_statfs64,
 	[346] = sys_fstatfs64,
 	[347] = sys_getfsstat64,
+	[348] = sys_pthread_chdir,
+	[349] = sys_pthread_fchdir,
 	[360] = sys_bsdthread_create,
 	[361] = sys_bsdthread_terminate,
 	[362] = sys_kqueue,

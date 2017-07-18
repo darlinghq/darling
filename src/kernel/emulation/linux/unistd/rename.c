@@ -2,18 +2,11 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
-
-extern char* strcpy(char* dst, const char* src);
+#include "renameat.h"
+#include "../bsdthread/per_thread_wd.h"
 
 long sys_rename(const char* oldpath, const char* newpath)
 {
-	int ret;
-
-	ret = LINUX_SYSCALL(__NR_rename, oldpath, newpath);
-
-	if (ret < 0)
-		return errno_linux_to_bsd(ret);
-
-	return 0;
+	int fd = get_perthread_wd();
+	return sys_renameat(fd, oldpath, fd, newpath);
 }

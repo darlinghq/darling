@@ -16,13 +16,13 @@
 #define kAKSKeyOpEncrypt CFSTR("AKSKeyOpEncrypt")
 #define kAKSKeyOpDelete CFSTR("AKSKeyOpDelete")
 
-const static int kAKSKeyOpSign;
+extern const int kAKSKeyOpSign;
 
-const static CFStringRef kAKSKeyOpDecrypt;
+extern const CFStringRef kAKSKeyOpDecrypt;
 
-const static int kAKSKeyOpComputeKey;
+extern const int kAKSKeyOpComputeKey;
 
-const static CFStringRef kAKSKeyOpAttest;
+extern const CFStringRef kAKSKeyOpAttest;
 
 
 #endif

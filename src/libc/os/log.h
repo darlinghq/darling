@@ -32,7 +32,7 @@
 #include <mach-o/loader.h>
 
 #if !__has_builtin(__builtin_os_log_format)
-#warning using os/log.h requires Xcode 8 or later
+//#warning using os/log.h requires Xcode 8 or later
 #endif
 
 __BEGIN_DECLS

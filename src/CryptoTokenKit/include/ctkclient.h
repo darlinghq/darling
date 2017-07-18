@@ -28,6 +28,8 @@ CF_EXTERN_C_BEGIN
 #define kTKTokenControlAttribAttestationData "TKTokenControlAttribAttestationData"
 #define kTKTokenCreateAttributeAuxParams "TKTokenCreateAttributeAuxParams"
 
+#define TKTokenKeyUsageAny 1
+
 typedef const struct CF_BRIDGED_TYPE(TKToken) __TKToken * TKTokenRef;
 
 CF_EXPORT
@@ -59,6 +61,9 @@ CFDataRef TKTokenCopyOperationResult(TKTokenRef token, CFDataRef objectID, int o
 
 CF_EXPORT
 CFDictionaryRef TKTokenControl(TKTokenRef token, CFDictionaryRef attributes, CFErrorRef *error);
+
+CF_EXPORT
+CFArrayRef TKTokenCopyIdentities(TKTokenRef token, int usage, CFErrorRef *error);
 
 CF_EXTERN_C_END
 CF_IMPLICIT_BRIDGING_DISABLED

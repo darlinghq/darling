@@ -5,6 +5,7 @@ cmake_policy(SET CMP0005 NEW)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
+include(pyc)
 
 add_definitions(-D_DARWIN_C_SOURCE -D_POSIX_C_SOURCE -DDARLING)
 set(DARLING TRUE)
@@ -76,6 +77,7 @@ include_directories(
 
 include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/login/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
 	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
 	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
@@ -126,6 +128,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DiskImages/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -184,6 +187,7 @@ add_subdirectory(external/openpam)
 add_subdirectory(external/libtelnet)
 add_subdirectory(external/remote_cmds)
 add_subdirectory(external/IOKitUser)
+add_subdirectory(external/python_modules)
 add_subdirectory(SystemConfiguration)
 add_subdirectory(CoreServices)
 add_subdirectory(ApplicationServices)

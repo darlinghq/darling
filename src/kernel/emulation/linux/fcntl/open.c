@@ -1,9 +1,11 @@
 #include "open.h"
+#include "openat.h"
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 //#include "../../../../platform-include/sys/fcntl.h"
 #include "../../../../libc/include/fcntl.h"
+#include "../bsdthread/per_thread_wd.h"
 
 #ifndef O_NOFOLLOW
 #	define O_NOFOLLOW 0x0100
@@ -21,32 +23,12 @@ extern int strcmp(const char *s1, const char *s2);
 
 long sys_open(const char* filename, int flags, unsigned int mode)
 {
-	return sys_open_nocancel(filename, flags, mode);
+	return sys_openat(get_perthread_wd(), filename, flags, mode);
 }
 
 long sys_open_nocancel(const char* filename, int flags, unsigned int mode)
 {
-	int ret, linux_flags;
-
-	linux_flags = oflags_bsd_to_linux(flags);
-
-	if (sizeof(void*) == 4)
-	{
-		linux_flags |= LINUX_O_LARGEFILE;
-	}
-
-	// XNU /dev/random behaves like Linux /dev/urandom
-	if (strcmp(filename, "/dev/random") == 0)
-		filename = "/dev/urandom";
-	// launchd expects this file to appear
-	else if (strcmp(filename, "/dev/autofs_nowait") == 0)
-		filename = "/dev/null";
-
-	ret = LINUX_SYSCALL(__NR_open, filename, linux_flags, mode);
-	if (ret < 0)
-		ret = errno_linux_to_bsd(ret);
-
-	return ret;
+	return sys_openat_nocancel(get_perthread_wd(), filename, flags, mode);
 }
 
 int oflags_bsd_to_linux(int flags)

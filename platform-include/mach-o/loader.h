@@ -286,6 +286,8 @@ struct load_command {
 #define	LC_ENCRYPTION_INFO_64 0x2C /* 64-bit encrypted segment information */
 #define LC_LINKER_OPTION 0x2D /* linker options in MH_OBJECT files */
 #define LC_LINKER_OPTIMIZATION_HINT 0x2E /* optimization hints in MH_OBJECT files */
+#define LC_VERSION_MIN_TVOS 0x2F /* build for AppleTV min OS version */
+#define LC_VERSION_MIN_WATCHOS 0x30 /* build for Watch min OS version */
 
 
 /*

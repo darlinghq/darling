@@ -3,41 +3,15 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
+#include "fstatat.h"
+#include "../bsdthread/per_thread_wd.h"
 
 long sys_stat(const char* path, struct stat* stat)
 {
-	int ret;
-	struct linux_stat lstat;
-
-#ifdef __NR_stat64
-	ret = LINUX_SYSCALL(__NR_stat64, path, &lstat);
-#else
-	ret = LINUX_SYSCALL(__NR_stat, path, &lstat);
-#endif
-
-	if (ret < 0)
-		return errno_linux_to_bsd(ret);
-
-	stat_linux_to_bsd(&lstat, stat);
-
-	return 0;
+	return sys_fstatat(get_perthread_wd(), path, stat, 0);
 }
 
 long sys_stat64(const char* path, struct stat64* stat)
 {
-	int ret;
-	struct linux_stat lstat;
-
-#ifdef __NR_stat64
-	ret = LINUX_SYSCALL(__NR_stat64, path, &lstat);
-#else
-	ret = LINUX_SYSCALL(__NR_stat, path, &lstat);
-#endif
-
-	if (ret < 0)
-		return errno_linux_to_bsd(ret);
-
-	stat_linux_to_bsd64(&lstat, stat);
-
-	return 0;
+	return sys_fstatat64(get_perthread_wd(), path, stat, 0);
 }

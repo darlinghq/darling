@@ -135,7 +135,14 @@ int main(int argc, char** argv, char** envp)
 		argv[i-1] = p;
 		p += len+1;
 	}
-	memset(p, 0, envp[0]-p);
+
+	if (envp[0] != NULL)
+		memset(p, 0, envp[0]-p);
+	else
+	{
+		while (*p)
+			*p++ = '\0';
+	}
 	argv[--argc] = NULL;
 
 #if __i386__ || __x86_64__

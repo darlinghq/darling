@@ -1,6 +1,9 @@
 project(DiskImages)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
+add_compile_options(
+	-nostdinc
+	-mmacosx-version-min=10.10
+)
 
 set(DYLIB_COMPAT_VERSION "1.0.8")
 
@@ -10,7 +13,8 @@ add_framework(DiskImages
 	CURRENT_VERSION
 	SOURCES
 		functions.c
+		#DIHelperProxy.m
 	DEPENDENCIES
 		system
+		Foundation
 )
-
