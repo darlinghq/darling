@@ -46,5 +46,9 @@ enum {
 	F_GETPATH = 50,
 };
 
+#ifndef FD_CLOEXEC
+#   define FD_CLOEXEC 1
+#endif
+
 #endif
 

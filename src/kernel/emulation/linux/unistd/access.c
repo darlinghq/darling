@@ -1,20 +1,11 @@
 #include "access.h"
 #include "../base.h"
 #include "../errno.h"
+#include "faccessat.h"
+#include "../bsdthread/per_thread_wd.h"
 #include <linux-syscalls/linux.h>
 
 long sys_access(const char* filename, int amode)
 {
-	int ret;
-
-#ifdef __NR_access
-	ret = LINUX_SYSCALL(__NR_access, filename, amode);
-#else
-	ret = LINUX_SYSCALL(__NR_faccessat, LINUX_AT_FDCWD, filename, amode, 0);
-#endif
-
-	if (ret < 0)
-		ret = errno_linux_to_bsd(ret);
-
-	return ret;
+	return sys_faccessat(get_perthread_wd(), filename, amode, 0);
 }

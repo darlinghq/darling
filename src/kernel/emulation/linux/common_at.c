@@ -1,4 +1,5 @@
 #include "common_at.h"
+#include "bsdthread/per_thread_wd.h"
 
 int atflags_bsd_to_linux(int flags)
 {
@@ -14,3 +15,9 @@ int atflags_bsd_to_linux(int flags)
 	return linux_flags;
 }
 
+int atfd(int fd)
+{
+	if (fd == BSD_AT_FDCWD)
+		return get_perthread_wd();
+	return fd;
+}

@@ -3,15 +3,10 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
+#include "mkdirat.h"
+#include "../bsdthread/per_thread_wd.h"
 
 long sys_mkdir(const char* path, unsigned int mode)
 {
-	int ret;
-
-	ret = LINUX_SYSCALL(__NR_mkdir, path, mode);
-
-	if (ret < 0)
-		return errno_linux_to_bsd(ret);
-
-	return 0;
+	return sys_mkdirat(get_perthread_wd(), path, mode);
 }

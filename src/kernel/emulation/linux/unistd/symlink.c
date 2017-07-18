@@ -2,17 +2,10 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
-
-extern char* strcpy(char* dst, const char* src);
+#include "symlinkat.h"
+#include "../bsdthread/per_thread_wd.h"
 
 long sys_symlink(const char* path, const char* link)
 {
-	int ret;
-
-	ret = LINUX_SYSCALL(__NR_symlink, path, link);
-	if (ret < 0)
-		ret = errno_linux_to_bsd(ret);
-
-	return ret;
+	return sys_symlinkat(path, get_perthread_wd(), link);
 }

@@ -37,6 +37,9 @@ long sys_openat_nocancel(int fd, const char* filename, int flags, unsigned int m
 	// XNU /dev/random behaves like Linux /dev/urandom
 	if (strcmp(filename, "/dev/random") == 0)
 		filename = "/dev/urandom";
+	// Expected by launchd and CF
+	else if (strcmp(filename, "/dev/autofs_nowait") == 0)
+		filename = "/dev/null";
 
 	ret = LINUX_SYSCALL(__NR_openat, atfd(fd), filename, linux_flags, mode);
 	if (ret < 0)

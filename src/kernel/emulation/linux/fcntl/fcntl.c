@@ -1,15 +1,13 @@
 #include "fcntl.h"
 #include "open.h"
 #include "../base.h"
+#include "../simple.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 
 #ifndef O_NOFOLLOW
 #   define O_NOFOLLOW 0x0100
-#endif
-#ifndef FD_CLOEXEC
-#   define FD_CLOEXEC 1
 #endif
 #ifndef O_DIRECTORY
 #   define O_DIRECTORY 0x100000

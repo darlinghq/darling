@@ -2,17 +2,12 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
-
-extern char* strcpy(char* dst, const char* src);
+#include "linkat.h"
+#include "../bsdthread/per_thread_wd.h"
 
 long sys_link(const char* path, const char* link)
 {
-	int ret;
-
-	ret = LINUX_SYSCALL(__NR_link, path, link);
-	if (ret < 0)
-		ret = errno_linux_to_bsd(ret);
-
-	return ret;
+	int fd = get_perthread_wd();
+	return sys_linkat(fd, path, fd, link, 0);
 }
+
