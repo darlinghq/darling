@@ -5,6 +5,7 @@ cmake_policy(SET CMP0005 NEW)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
+include(pyc)
 
 add_definitions(-D_DARWIN_C_SOURCE -D_POSIX_C_SOURCE -DDARLING)
 set(DARLING TRUE)
