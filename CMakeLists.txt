@@ -37,9 +37,9 @@ add_subdirectory(src)
 install(DIRECTORY DESTINATION libexec/darling/private)
 install(DIRECTORY DESTINATION libexec/darling/private/etc)
 install(DIRECTORY DESTINATION libexec/darling/private/var)
+install(DIRECTORY DESTINATION libexec/darling/private/tmp)
 InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
 InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
-InstallSymlink(private/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
 
 install(FILES etc/dylib.conf etc/version.conf
 	DESTINATION libexec/darling/etc/darling)
