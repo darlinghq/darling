@@ -281,7 +281,7 @@ add_subdirectory(external/libcxx)
 # Requires a newer Security version
 #add_subdirectory(external/SmartCardServices)
 # Has build issues
-add_subdirectory(external/security)
+#add_subdirectory(external/security)
 add_subdirectory(external/cctools)
 
 add_subdirectory(lkm)
