@@ -7,6 +7,7 @@
 #include "../../../../startup/threads.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
+#include <pthread/tsd_private.h>
 #include "../ext/futex.h"
 #include "../simple.h"
 
@@ -41,10 +42,7 @@ static int workq_parked_prio[WQ_MAX_THREADS];
 
 struct parked_thread workq_parked_head = { NULL, NULL };
 
-extern int thread_self_trap(void);
-
 extern void* pthread_get_stackaddr_np(void* pth);
-extern void* memmove(void* dest, const void* src, __SIZE_TYPE__ n);
 
 static void list_add(struct parked_thread* head, struct parked_thread* item);
 static void list_remove(struct parked_thread* head, struct parked_thread* item);
@@ -101,7 +99,7 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 
 			int thread_self;
 			struct parked_thread me;
-			void* stack;
+			void* pth;
 
 			sem_down(&workq_parked_lock, -1);
 
@@ -141,7 +139,7 @@ wakeup:
 			
 			// reset stack and call entry point again with WQ_FLAG_THREAD_REUSE
 			thread_self = thread_self_trap();
-			stack = __darling_thread_get_stack();
+			pth = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
 
 			// __simple_printf("Thread %d woken up, prio=%d\n", thread_self, me.flags & WQ_FLAG_THREAD_PRIOMASK);
 
@@ -157,7 +155,7 @@ wakeup:
 					"xorq %%rcx, %%rcx\n" // 4th argument
 					"subq $32, %%rsp\n"
 					"jmpq *%2\n"
-					:: "D" (stack), "S" (thread_self), "a" (wqueue_entry_point),
+					:: "D" (pth), "S" (thread_self), "a" (wqueue_entry_point),
 					"b" (me.flags | WQ_FLAG_THREAD_REUSE), "c" (me.event ? me.event->events : NULL),
 					"r" (me.event ? me.event->nevents : 0)
 			);
@@ -169,7 +167,7 @@ wakeup:
 					"xorl %%edx, %%edx\n"
 					"subl $32, %%esp\n"
 					"jmpl *%2\n"
-					:: "a" (stack), "b" (thread_self), "S" (wqueue_entry_point),
+					:: "a" (pth), "b" (thread_self), "S" (wqueue_entry_point),
 					"D" (me.flags | WQ_FLAG_THREAD_REUSE), "d" (me.event ? me.event->events : NULL),
 					"S" (me.event ? me.event->nevents : 0)
 			);
