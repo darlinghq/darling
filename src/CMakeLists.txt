@@ -122,13 +122,13 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/libnotify/include
 	${CMAKE_CURRENT_SOURCE_DIR}/opendirectory/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/commoncrypto/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/coregraphics/Headers
 	${CMAKE_CURRENT_SOURCE_DIR}/quarantine/include
 	${CMAKE_CURRENT_SOURCE_DIR}/copyfile/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskImages/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron
 )
 
 add_subdirectory(external/libkqueue)
@@ -215,6 +215,8 @@ add_subdirectory(DiskImages)
 add_subdirectory(PackageKit)
 #add_subdirectory(Cocoa)
 
+add_subdirectory(native)
+
 add_subdirectory(external/file/file)
 add_subdirectory(external/libxpc)
 add_subdirectory(external/openssl_certificates)
@@ -284,3 +286,11 @@ add_subdirectory(external/libcxx)
 add_subdirectory(external/cctools)
 
 add_subdirectory(lkm)
+
+add_subdirectory(external/cocotron/CoreGraphics)
+add_subdirectory(external/cocotron/Onyx2D)
+add_subdirectory(external/cocotron/AppKit)
+add_subdirectory(external/cocotron/CoreText)
+add_subdirectory(external/cocotron/QuartzCore)
+add_subdirectory(external/cocotron/OpenGL)
+add_subdirectory(external/cocotron/CoreData)

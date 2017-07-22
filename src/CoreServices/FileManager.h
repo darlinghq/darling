@@ -33,7 +33,7 @@ extern "C" {
 
 #define FSRef_MAX_DEPTH (80 / sizeof(ino_t))
 
-struct FSRef
+typedef struct FSRef
 {
 	union
 	{
@@ -46,7 +46,7 @@ struct FSRef
 		// sequence 1,2,0: [dir with inode 1]/[dir or file with inode 2]
 		ino_t inodes[FSRef_MAX_DEPTH];
 	};
-};
+} FSRef;
 typedef struct FSRef* FSRefPtr;
 typedef struct FSRef FSRef;
 
