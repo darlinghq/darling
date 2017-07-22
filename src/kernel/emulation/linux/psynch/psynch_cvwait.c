@@ -1,6 +1,6 @@
 #include "psynch_cvwait.h"
 #include "../base.h"
-#include "../errno.h"
+#include "psynch_errno.h"
 #include <linux-syscalls/linux.h>
 #include "../mach/lkm.h"
 #include "../../../../lkm/api.h"
@@ -11,17 +11,18 @@ long sys_psynch_cvwait(void* cv, uint32_t cvgen, uint32_t cvugen, void* mutex, u
 {
 	struct psynch_cvwait_args args = {
 		.cv = cv,
-		.cvgen = cvgen,
+		.cvlsgen = cvgen,
 		.cvugen = cvugen,
 		.mutex = mutex,
-		.mgen = mgen,
-		.ugen = ugen,
+		.mugen = mgen,
+		.flags = ugen,
 		.sec = sec,
-		.usec = usec,
+		.nsec = usec,
 	};
 
 	// __simple_printf("sys_psynch_mutexwait(mutex=%p, mgen=%x)\n", mutex, mgen);
 
-	return lkm_call(NR_psynch_cvwait_trap, &args);
+	int rv = lkm_call(NR_psynch_cvwait_trap, &args);
+	return psynch_errno(rv);
 }
 

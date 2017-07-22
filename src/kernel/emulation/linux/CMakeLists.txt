@@ -131,6 +131,7 @@ set(emulation_sources
 	signal/sigprocmask.c
 	signal/sig_restorer.S
 	signal/sigsuspend.c
+	misc/ptrace.c
 	misc/getentropy.c
 	misc/syscall.c
 	misc/shared_region_check_np.c
@@ -240,6 +241,11 @@ set(emulation_sources
 	bsdthread/__pthread_canceled.c
 	bsdthread/pthread_chdir.c
 	bsdthread/pthread_fchdir.c
+	psynch/psynch_errno.c
+	psynch/psynch_rw_rdlock.c
+	psynch/psynch_rw_wrlock.c
+	psynch/psynch_rw_unlock.c
+	psynch/psynch_cvclrprepost.c
 	psynch/psynch_mutexwait.c
 	psynch/psynch_mutexdrop.c
 	psynch/psynch_cvwait.c

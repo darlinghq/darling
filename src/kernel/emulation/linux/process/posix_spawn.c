@@ -18,6 +18,7 @@
 #include "../unistd/setpgid.h"
 #include "../signal/sigprocmask.h"
 #include "../mach/lkm.h"
+#include "../simple.h"
 #include "lkm/api.h"
 #include "fork.h"
 #include <stddef.h>
@@ -29,6 +30,8 @@
 #endif
 
 #define LINUX_ADDR_NO_RANDOMIZE 0x40000
+
+extern void mach_driver_init(void);
 
 long sys_posix_spawn(int* pid, const char* path, const struct _posix_spawn_args_desc* desc,
 		char** argvp, char** envp)
@@ -45,6 +48,8 @@ long sys_posix_spawn(int* pid, const char* path, const struct _posix_spawn_args_
 
 	if ((my_pid = sys_fork()) == 0)
 	{
+		mach_driver_init();
+
 		// child
 		// close the reading side
 		sys_close(pipe[0]);
@@ -141,6 +146,31 @@ no_fork:
 						;
 				}
 			}
+		}
+
+		char binprefs[64];
+		if (desc->attrp->psa_binprefs[0])
+		{
+			char** new_envp;
+			int i, env_len = 0;
+
+			while (envp[env_len])
+				env_len++;
+			env_len++; // terminating NULL
+
+			// +1 for our new entry
+			new_envp = (char**) __builtin_alloca((env_len + 1) * sizeof(char*));
+
+			__simple_sprintf(binprefs, "__mldr_bprefs=%x,%x,%x,%x",
+				desc->attrp->psa_binprefs[0],
+				desc->attrp->psa_binprefs[1],
+				desc->attrp->psa_binprefs[2],
+				desc->attrp->psa_binprefs[3]);
+
+			new_envp[0] = binprefs;
+			for (i = 0; i < env_len; i++)
+				new_envp[i+1] = envp[i];
+			envp = new_envp;
 		}
 
 		ret = sys_execve((char*) path, argvp, envp);
