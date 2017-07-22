@@ -18,6 +18,7 @@
 #include "../unistd/setpgid.h"
 #include "../signal/sigprocmask.h"
 #include "../mach/lkm.h"
+#include "../simple.h"
 #include "lkm/api.h"
 #include "fork.h"
 #include <stddef.h>
@@ -145,6 +146,31 @@ no_fork:
 						;
 				}
 			}
+		}
+
+		char binprefs[64];
+		if (desc->attrp->psa_binprefs[0])
+		{
+			char** new_envp;
+			int i, env_len = 0;
+
+			while (envp[env_len])
+				env_len++;
+			env_len++; // terminating NULL
+
+			// +1 for our new entry
+			new_envp = (char**) __builtin_alloca((env_len + 1) * sizeof(char*));
+
+			__simple_sprintf(binprefs, "__mldr_bprefs=%x,%x,%x,%x",
+				desc->attrp->psa_binprefs[0],
+				desc->attrp->psa_binprefs[1],
+				desc->attrp->psa_binprefs[2],
+				desc->attrp->psa_binprefs[3]);
+
+			new_envp[0] = binprefs;
+			for (i = 0; i < env_len; i++)
+				new_envp[i+1] = envp[i];
+			envp = new_envp;
 		}
 
 		ret = sys_execve((char*) path, argvp, envp);

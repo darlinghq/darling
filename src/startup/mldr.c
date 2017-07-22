@@ -278,10 +278,25 @@ void* setup_stack32(void* stack, int argc, const char** argv_in, const char** en
 }
 #endif
 
+static void parse_binprefs(uint32_t bprefs[4])
+{
+	const char* bprefs_str;
+
+	bprefs[0] = bprefs[1] = bprefs[2] = bprefs[3] = 0;
+	bprefs_str = getenv("__mldr_bprefs");
+
+	if (bprefs_str != NULL)
+	{
+		sscanf(bprefs_str, "%x,%x,%x,%x", &bprefs[0], &bprefs[1], &bprefs[2], &bprefs[3]);
+		unsetenv("__mldr_bprefs");
+	}
+}
+
 void load(const char* path, uintptr_t* entryPoint_out, uintptr_t* mh_out, cpu_type_t cpu_desired, char** argv)
 {
 	int fd;
 	uint32_t magic;
+	uint32_t bprefs[4];
 
 	fd = open(path, O_RDONLY);
 	if (fd == -1)
@@ -295,7 +310,8 @@ void load(const char* path, uintptr_t* entryPoint_out, uintptr_t* mh_out, cpu_ty
 	// In case the to-be-executed executable contains both, we prefer the 64-bit version,
 	// unless a special property has been passed to sys_posix_spawn() to force the 32-bit
 	// version. See posix_spawnattr_setbinpref_np().
-	
+	parse_binprefs(bprefs);
+
 	if (read(fd, &magic, sizeof(magic)) != sizeof(magic))
 	{
 		fprintf(stderr, "Cannot read the file header of %s.\n", path);
@@ -371,6 +387,16 @@ void load(const char* path, uintptr_t* entryPoint_out, uintptr_t* mh_out, cpu_ty
 			{
 				// Find the best arch
 #ifdef __x86_64__
+				// Analyze binprefs used with posix_spawn()
+				for (int i = 0; i < sizeof(bprefs) / sizeof(bprefs[0]) && bprefs[i] != 0; i++)
+				{
+					if (arch.cputype == bprefs[i])
+					{
+						memcpy(&best_arch, &arch, sizeof(arch));
+						break;
+					}
+				}
+
 				// Hope for x86-64, but also accept i386
 				// TODO: x86_64h (Haswell)
 				if (arch.cputype == CPU_TYPE_X86_64)
