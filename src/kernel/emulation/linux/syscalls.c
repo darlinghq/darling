@@ -176,6 +176,10 @@
 #include "select/select.h"
 #include "select/pselect.h"
 #include "select/poll.h"
+#include "psynch/psynch_rw_rdlock.h"
+#include "psynch/psynch_rw_wrlock.h"
+#include "psynch/psynch_rw_unlock.h"
+#include "psynch/psynch_cvclrprepost.h"
 #include "psynch/psynch_mutexwait.h"
 #include "psynch/psynch_mutexdrop.h"
 #include "psynch/psynch_cvwait.h"
@@ -348,7 +352,11 @@ void* __bsd_syscall_table[600] = {
 	[303] = sys_psynch_cvbroad,
 	[304] = sys_psynch_cvsignal,
 	[305] = sys_psynch_cvwait,
+	[306] = sys_psynch_rw_rdlock,
+	[307] = sys_psynch_rw_wrlock,
+	[308] = sys_psynch_rw_unlock,
 	[310] = sys_getsid,
+	[312] = sys_psynch_cvclrprepost,
 	[322] = sys_iopolicysys,
 	[327] = sys_issetugid,
 	[328] = sys_pthread_kill,
