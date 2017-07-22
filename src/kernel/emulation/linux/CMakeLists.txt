@@ -131,6 +131,7 @@ set(emulation_sources
 	signal/sigprocmask.c
 	signal/sig_restorer.S
 	signal/sigsuspend.c
+	misc/ptrace.c
 	misc/getentropy.c
 	misc/syscall.c
 	misc/shared_region_check_np.c

@@ -98,6 +98,7 @@
 #include "process/getpriority.h"
 #include "process/setpriority.h"
 #include "misc/getentropy.h"
+#include "misc/ptrace.h"
 #include "misc/getlogin.h"
 #include "misc/setlogin.h"
 #include "misc/reboot.h"
@@ -209,6 +210,7 @@ void* __bsd_syscall_table[600] = {
 	[23] = sys_setuid,
 	[24] = sys_getuid,
 	[25] = sys_geteuid,
+	[26] = sys_ptrace,
 	[27] = sys_recvmsg,
 	[28] = sys_sendmsg,
 	[29] = sys_recvfrom,

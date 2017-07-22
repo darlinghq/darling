@@ -2,19 +2,28 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../signal/duct_signals.h"
+#include "../misc/ptrace.h"
+#include <sys/signal.h>
+#include <stddef.h>
 #include <linux-syscalls/linux.h>
 
 long sys_wait4(int pid, int* status, int options, void* rusage)
 {
 	int ret, linux_options;
+	int mystatus;
+
+	// We always need status even if the caller doesn't
+	if (status == NULL)
+		status = &mystatus;
 
 	linux_options = waitopts_bsd_to_linux(options);
 
+restart:
 	ret = LINUX_SYSCALL(__NR_wait4, pid, status, linux_options, rusage);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	if ((*status & 0x7f) != 0x7f)
+	if ((*status & 0x7f) != 0x7f) // process terminated
 	{
 		int signum;
 
@@ -24,6 +33,29 @@ long sys_wait4(int pid, int* status, int options, void* rusage)
 	}
 	else if (*status == 0xffff) // Linux: __W_CONTINUED
 		*status = 0x7f | (0x13 << 8);
+	else if ((*status & 0x7f) == 0x7f) // process stopped
+	{
+		int signal = *status >> 8;
+		signal = signum_linux_to_bsd(signal);
+		*status = (*status & 0x7f) | (signal << 8);
+
+		switch (signal)
+		{
+			case SIGCONT:
+			case SIGSTOP:
+			case SIGTSTP:
+			case SIGTTIN:
+			case SIGTTOU:
+				// It is standard behavior that these signals stop (resume) the process
+				break;
+			default:
+				// We are probably ptracing the target process.
+				// Allow the execution to continue so that the ptraced process can translate
+				// the signal into a Mach message.
+				sys_ptrace(PT_CONTINUE, ret, NULL, signal);
+				goto restart;
+		}
+	}
 
 	return ret;
 }
