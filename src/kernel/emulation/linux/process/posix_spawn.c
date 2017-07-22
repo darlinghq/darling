@@ -30,6 +30,8 @@
 
 #define LINUX_ADDR_NO_RANDOMIZE 0x40000
 
+extern void mach_driver_init(void);
+
 long sys_posix_spawn(int* pid, const char* path, const struct _posix_spawn_args_desc* desc,
 		char** argvp, char** envp)
 {
@@ -45,6 +47,8 @@ long sys_posix_spawn(int* pid, const char* path, const struct _posix_spawn_args_
 
 	if ((my_pid = sys_fork()) == 0)
 	{
+		mach_driver_init();
+
 		// child
 		// close the reading side
 		sys_close(pipe[0]);
