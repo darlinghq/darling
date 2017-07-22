@@ -1,10 +1,11 @@
-#include "DADisk.h"
+#include <DiskArbitration/DiskArbitration.h>
 #include <stddef.h>
 #include <string.h>
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFURL.h>
 #include <CoreFoundation/CFDictionary.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 #define CONST_STRING_DECL(name, value) const CFStringRef name = CFSTR(value);
 
@@ -46,7 +47,7 @@ CONST_STRING_DECL(kDADiskDescriptionDeviceVendorKey, "kDADiskDescriptionDeviceVe
 CONST_STRING_DECL(kDADiskDescriptionBusNameKey, "kDADiskDescriptionBusNameKey");                                                                                                                                                            
 CONST_STRING_DECL(kDADiskDescriptionBusPathKey, "kDADiskDescriptionBusPathKey");                                                                                                                                                            
 
-struct _DADisk
+struct __DADisk
 {
   CFRuntimeBase _parent;
   DASessionRef session;
@@ -78,7 +79,7 @@ DADiskInitialize (void)
 	_kDADiskTypeID = _CFRuntimeRegisterClass (&DADiskClass);
 }
 
-#define DADISK_SIZE sizeof(struct _DADisk) - sizeof(CFRuntimeBase)
+#define DADISK_SIZE sizeof(struct __DADisk) - sizeof(CFRuntimeBase)
 
 static void
 DADiskFinalize (CFTypeRef cf)

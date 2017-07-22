@@ -7,10 +7,15 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
 include(pyc)
 
-add_definitions(-D_DARWIN_C_SOURCE -D_POSIX_C_SOURCE -DDARLING)
-set(DARLING TRUE)
+add_definitions(
+	-D_DARWIN_C_SOURCE
+	-D_POSIX_C_SOURCE
+	-DDARLING
+	-D__APPLE__
+	-D__DYNAMIC__
+)
 
-add_definitions(-D__APPLE__ -D__DYNAMIC__)
+set(DARLING TRUE)
 
 execute_process(
 	COMMAND git rev-parse --abbrev-ref HEAD
@@ -25,9 +30,9 @@ execute_process(
 	OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-configure_file(darling-config.h.in darling-config.h)
-include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+configure_file(include/darling-config.h.in include/darling-config.h)
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 include(compiler_include)
 GetCompilerInclude(COMPILER_INC_PATH)
@@ -76,25 +81,28 @@ include_directories(
 )
 
 include_directories(AFTER
+	${CMAKE_CURRENT_SOURCE_DIR}/DiskArbitration/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/AudioUnit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/login/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
 	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
 	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/coretls/include
-	${CMAKE_SOURCE_DIR}/src/libmalloc/include
-	${CMAKE_SOURCE_DIR}/src/libinfo/include
-	${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include
-	${CMAKE_SOURCE_DIR}/src/external/openssl/src/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libmalloc/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libinfo/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/syslog/libsystem_asl.tproj/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/openssl/src/include
 	${CMAKE_SOURCE_DIR}/kernel-include/iokit
-	${CMAKE_SOURCE_DIR}/src/external/IOKitUser
+	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser
 	${CMAKE_CURRENT_SOURCE_DIR}/external/openpam/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/sqlite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DebugSymbols/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenScripting/include
-	${CMAKE_SOURCE_DIR}/src/CryptoTokenKit/include
-	${CMAKE_SOURCE_DIR}/src/LocalAuthentication/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CryptoTokenKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/LocalAuthentication/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AppleSystemInfo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SystemConfiguration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
@@ -129,6 +137,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskImages/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron
+	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -205,7 +214,6 @@ add_subdirectory(external/python/2.7/Python-2.7.10)
 add_subdirectory(external/ruby)
 add_subdirectory(external/expat)
 add_subdirectory(shellspawn)
-#add_subdirectory(external/libauto)
 add_subdirectory(external/libarchive/libarchive)
 add_subdirectory(external/apr)
 add_subdirectory(sandbox)
@@ -278,6 +286,7 @@ add_subdirectory(libstdcxx)
 
 include_directories(BEFORE
 	${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include
 )
 
 add_subdirectory(external/libcxxabi)
@@ -287,6 +296,7 @@ add_subdirectory(external/libcxx)
 # Has build issues
 #add_subdirectory(external/security)
 add_subdirectory(external/cctools)
+add_subdirectory(external/libauto)
 
 add_subdirectory(lkm)
 

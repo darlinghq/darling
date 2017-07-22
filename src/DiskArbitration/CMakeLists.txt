@@ -2,14 +2,6 @@ project(DiskArbitration)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
 
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/external/corefoundation
-	${CMAKE_SOURCE_DIR}/src/external/libclosure
-	${CMAKE_SOURCE_DIR}/src/external/foundation/Headers
-	${CMAKE_SOURCE_DIR}/src/libc/include/FreeBSD
-	${CMAKE_SOURCE_DIR}/src/launchd/liblaunch
-)
-
 set(da_SRCS
 	DADisk.c
 	DADissenter.c

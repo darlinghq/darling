@@ -27,6 +27,10 @@
 #define QTN_FLAG_SANDBOX 1
 #define QTN_FLAG_HARD 2
 
+#define QTN_FLAG_USER_APPROVED      0x01 << 0
+#define QTN_FLAG_TRANSLOCATE        0x01 << 1
+#define QTN_FLAG_DO_NOT_TRANSLOCATE 0x01 << 2
+
 typedef struct _qtn_file_s *qtn_file_t;
 
 extern qtn_file_t _qtn_file_alloc();
@@ -59,6 +63,10 @@ void qtn_proc_set_identifier(qtn_proc_t proc, const char* ident);
 void qtn_proc_set_flags(qtn_proc_t proc, unsigned int flags);
 void qtn_proc_apply_to_self(qtn_proc_t proc);
 void qtn_proc_free(qtn_proc_t proc);
+
+extern int qtn_file_init_with_mount_point(qtn_file_t a, char b[1024]);
+
+extern int qtn_file_apply_to_mount_point(qtn_file_t a, const char *b);
 
 #define QTN_SERIALIZED_DATA_MAX 4096
 
