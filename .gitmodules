@@ -257,3 +257,6 @@
 [submodule "src/external/python_modules"]
 	path = src/external/python_modules
 	url = ../darling-python_modules.git
+[submodule "src/external/files"]
+	path = src/external/files
+	url = ../darling-files.git
