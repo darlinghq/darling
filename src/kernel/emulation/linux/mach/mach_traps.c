@@ -506,13 +506,19 @@ boolean_t swtch_impl(void)
 	return 0;
 }
 
+extern int __linux_nanosleep(struct timespec* tv, struct timespec* rem);
 kern_return_t syscall_thread_switch_impl(
 				mach_port_name_t thread_name,
 				int option,
 				mach_msg_timeout_t option_time)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct timespec tv = {
+		.tv_sec = 0,
+		.tv_nsec = 1000000
+	};
+	// Sleep for 1ms
+	__linux_nanosleep(&tv, &tv);
+	return KERN_SUCCESS;
 }
 
 mach_port_name_t task_self_trap_impl(void)

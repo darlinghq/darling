@@ -36,11 +36,24 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/utsname.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/inotify.h>
+#include <sys/poll.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <getopt.h>
+#include <termios.h>
+#include <pty.h>
+#include "../shellspawn/shellspawn.h"
 #include "darling.h"
 #include "darling-config.h"
 
 #define MLDR_PATH "/bin/mldr"
+
+// Between Linux 4.9 and 4.11, a strange bug has been introduced
+// which prevents connecting to Unix sockets if the socket was
+// created in a different mount namespace or under overlayfs
+// (dunno which one is really responsible for this).
+#define USE_LINUX_4_11_HACK 1
 
 const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
@@ -50,7 +63,7 @@ char **g_argv, **g_envp;
 
 int main(int argc, char ** argv, char ** envp)
 {
-	pid_t pidInit, pidChild;
+	pid_t pidInit;
 	int wstatus;
 
 	if (argc <= 1)
@@ -156,82 +169,57 @@ start_init:
 	// If prefix's init is not running, start it up
 	if (pidInit == 0)
 	{
+		char socketPath[4096];
+		
+		snprintf(socketPath, sizeof(socketPath), "%s"  SHELLSPAWN_SOCKPATH, prefix);
+		
+		unlink(socketPath);
+		
 		setupWorkdir();
 		pidInit = spawnInitProcess();
 		putInitPid(pidInit);
+		
+		// Wait until shellspawn starts
+		for (int i = 0; i < 15; i++)
+		{
+			if (access(socketPath, F_OK) == 0)
+				break;
+			sleep(1);
+		}
 	}
 
-	if (strcmp(argv[1], "shell") != 0)
+#if USE_LINUX_4_11_HACK
+	joinNamespace(pidInit, CLONE_NEWNS, "mnt");
+#endif
+
+	seteuid(g_originalUid);
+
+	if (strcmp(argv[1], "shell") == 0)
 	{
-		char *path = realpath(argv[1], NULL);
+		// Spawn the shell
+		if (argc > 2)
+			spawnShell((const char**) &argv[2]);
+		else
+			spawnShell(NULL);
+	}
+	else
+	{
 		char *fullPath;
-
-		if (path == NULL)
-		{
-			fprintf(stderr, "Cannot resolve path: %s\n", strerror(errno));
-			exit(1);
-		}
-
-		const char *argv_child[argc + 1];
-
-		argv_child[0] = MLDR_PATH;
+		char** child_argv;
+		char *path = realpath(argv[1], NULL);
 
 		fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
 		strcpy(fullPath, SYSTEM_ROOT);
 		strcat(fullPath, path);
-		argv_child[1] = fullPath;
 
-		for (int i = 2; i < argc; i++)
-			argv_child[i] = argv[i];
-		argv_child[argc] = NULL;
-
-		pidChild = spawnChild(pidInit, MLDR_PATH, argv_child);
-		free(path);
-		free(fullPath);
-	}
-	else
-	{
-		// Spawn the shell
-		if (argc > 2)
-		{
-			size_t total_len = 0;
-			for (int i = 2; i < argc; i++)
-			total_len += strlen(argv[i]);
-
-			char buffer[total_len + argc];
-
-			char *to = buffer;
-			for (int i = 2; i < argc; i++)
-			to = stpcpy(stpcpy(to, argv[i]), " ");
-			// Overwrite the last whitespace
-			*(to - 1) = '\0';
-
-			pidChild = spawnChild(pidInit, MLDR_PATH,
-				(const char *[5]) {MLDR_PATH, "/bin/bash", "-c", buffer, NULL});
-		}
-		else
-			pidChild = spawnChild(pidInit, MLDR_PATH,
-				(const char *[3]) {MLDR_PATH, "/bin/bash", NULL});
-	}
-	if (pidChild == -ENOMEM)
-	{
-		pidInit = 0;
-		goto start_init;
+		argv[1] = fullPath;
+		spawnShell((const char**) &argv[1]);
 	}
 
-	// Drop the privileges so that we can be killed, etc by the user
-	seteuid(g_originalUid);
-
-	waitpid(pidChild, &wstatus, 0);
-
-	if (WIFEXITED(wstatus))
-		return WEXITSTATUS(wstatus);
-	if (WIFSIGNALED(wstatus))
-		return WTERMSIG(wstatus);
 	return 0;
 }
 
-static void joinNamespace(pid_t pid, int type, const char* typeName)
+void joinNamespace(pid_t pid, int type, const char* typeName)
 {
 	int fdNS;
 	char pathNS[4096];
@@ -256,110 +244,352 @@ static void joinNamespace(pid_t pid, int type, const char* typeName)
 	close(fdNS);
 }
 
-pid_t spawnChild(int pidInit, const char *path, const char *const argv[])
+static void pushShellspawnCommandData(int sockfd, shellspawn_cmd_type_t type, const void* data, size_t data_length)
 {
-	pid_t pidChild;
-	char curPath[4096];
+	struct shellspawn_cmd* cmd;
+	size_t length;
 
-	if (getcwd(curPath, sizeof(curPath)) == NULL)
+	length = sizeof(*cmd) + data_length;
+
+	cmd = (struct shellspawn_cmd*) malloc(length);
+	cmd->cmd = type;
+	cmd->data_length = data_length;
+
+	if (data != NULL)
+		memcpy(cmd->data, data, data_length);
+
+	if (write(sockfd, cmd, length) != length)
 	{
-		fprintf(stderr, "Cannot get current directory: %s\n", strerror(errno));
-		exit(1);
+		fprintf(stderr, "Error sending command to shellspawn: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
 	}
-
-	joinNamespace(pidInit, CLONE_NEWPID, "pid");
-	joinNamespace(pidInit, CLONE_NEWUTS, "uts");
-
-	pidChild = fork();
-	if (pidChild < 0)
-	{
-		if (errno == ENOMEM)
-		{
-			// This condition happens specifically when the init process is a zombie.
-			// We should simply start a new init process.
-			return -ENOMEM;
-		}
-		fprintf(stderr, "Cannot spawn a child process: %s\n", strerror(errno));
-		exit(1);
-	}
-
-	if (pidChild == 0)
-	{
-		// This is the child process
-
-		// We still have the outside PIDs in /proc
-		joinNamespace(pidInit, CLONE_NEWNS, "mnt");
-
-		/*
-		snprintf(pathNS, sizeof(pathNS), SYSTEM_ROOT "/proc/%d/ns/user", pidInit);
-		fdNS = open(pathNS, O_RDONLY);
-		if (fdNS < 0)
-		{
-			fprintf(stderr, "Cannot open user namespace file: %s\n", strerror(errno));
-			exit(1);
-		}
-		*/
-		
-		// Drop the privileges. It's important to drop GID first, because
-		// non-root users can't change their GID.
-		setresgid(g_originalGid, g_originalGid, g_originalGid);
-		setresuid(g_originalUid, g_originalUid, g_originalUid);
-
-		/*
-		if (setns(fdNS, CLONE_NEWUSER) != 0)
-		{
-			fprintf(stderr, "Cannot join user namespace: %s\n", strerror(errno));
-			exit(1);
-		}
-		close(fdNS);
-		*/
-
-		setupChild(curPath);
-
-		execv(path, (char * const *) argv);
-
-		fprintf(stderr, "Cannot exec the target program: %s\n", strerror(errno));
-		exit(1);
-	}
-
-	return pidChild;
 }
 
-void setupChild(const char *curPath)
+static void pushShellspawnCommand(int sockfd, shellspawn_cmd_type_t type, const char* value)
 {
+	if (!value)
+		pushShellspawnCommandData(sockfd, type, NULL, 0);
+	else
+		pushShellspawnCommandData(sockfd, type, value, strlen(value) + 1);
+}
+
+static void pushShellspawnCommandFDs(int sockfd, shellspawn_cmd_type_t type, const int fds[3])
+{
+	struct shellspawn_cmd cmd;
+	char cmsgbuf[CMSG_SPACE(sizeof(int) * 3)];
+	struct msghdr msg;
+	struct iovec iov;
+	struct cmsghdr *cmptr;
+
+	cmd.cmd = type;
+	cmd.data_length = 0;
+
+	iov.iov_base = &cmd;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_control = cmsgbuf;
+	msg.msg_controllen = sizeof(cmsgbuf);
+
+	iov.iov_base = &cmd;
+	iov.iov_len = sizeof(cmd);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	cmptr = CMSG_FIRSTHDR(&msg);
+
+	cmptr->cmsg_len = CMSG_LEN(sizeof(int) * 3);
+	cmptr->cmsg_level = SOL_SOCKET;
+	cmptr->cmsg_type = SCM_RIGHTS;
+	memcpy(CMSG_DATA(cmptr), fds, sizeof(fds[0])*3);
+
+	if (sendmsg(sockfd, &msg, 0) < 0)
+	{
+		fprintf(stderr, "Error sending command to shellspawn: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+}
+
+static int _shSockfd = -1;
+static struct termios orig_termios;
+static int pty_master;
+static void signalHandler(int signo)
+{
+	// printf("Received signal %d\n", signo);
+
+	// Forward window size changes
+	if (signo == SIGWINCH && pty_master != -1)
+	{
+		struct winsize win;
+
+		ioctl(0, TIOCGWINSZ, &win);
+		ioctl(pty_master, TIOCSWINSZ, &win);
+	}
+	
+	// Foreground process loopkup in shellspawn doesn't work
+	// if we're not running in TTY mode, so shellspawn falls back
+	// to forwarding signals to the Bash subprocess.
+	// 
+	// Hence we translate SIGINT to SIGTERM for user convenience,
+	// because Bash will not terminate on SIGINT.
+	if (pty_master == -1 && signo == SIGINT)
+		signo = SIGTERM;
+
+	pushShellspawnCommandData(_shSockfd, SHELLSPAWN_SIGNAL, &signo, sizeof(signo));
+}
+
+static void shellLoop(int sockfd, int master)
+{
+	struct sigaction sa;
+	struct pollfd pfds[3];
+	const int fdcount = (master != -1) ? 3 : 1; // do we do pty proxying?
+
+	// Vars for signal handler
+	_shSockfd = sockfd;
+	pty_master = master;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = signalHandler;
+	sigfillset(&sa.sa_mask);
+
+	for (int i = 1; i < 32; i++)
+		sigaction(i, &sa, NULL);
+
+	pfds[2].fd = master;
+	pfds[2].events = POLLIN;
+	pfds[2].revents = 0;
+	pfds[1].fd = STDIN_FILENO;
+	pfds[1].events = POLLIN;
+	pfds[1].revents = 0;
+	pfds[0].fd = sockfd;
+	pfds[0].events = POLLIN;
+	pfds[0].revents = 0;
+
+	if (master != -1)
+		fcntl(master, F_SETFL, O_NONBLOCK);
+	fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
+	fcntl(sockfd, F_SETFL, O_NONBLOCK);
+
+	while (1)
+	{
+		char buf[4096];
+
+		if (poll(pfds, fdcount, -1) < 0)
+		{
+			if (errno != EINTR)
+			{
+				perror("poll");
+				break;
+			}
+		}
+
+		if (pfds[2].revents & POLLIN)
+		{
+			int rd;
+			do
+			{
+				rd = read(master, buf, sizeof(buf));
+				if (rd > 0)
+					write(STDOUT_FILENO, buf, rd);
+			}
+			while (rd == sizeof(buf));
+		}
+
+		if (pfds[1].revents & POLLIN)
+		{
+			int rd;
+			do
+			{
+				rd = read(STDIN_FILENO, buf, sizeof(buf));
+				if (rd > 0)
+					write(master, buf, rd);
+			}
+			while (rd == sizeof(buf));
+		}
+
+		if (pfds[0].revents & (POLLHUP | POLLIN))
+		{
+			int exitStatus;
+			
+			if (read(sockfd, &exitStatus, sizeof(int)) == sizeof(int))
+				exit(exitStatus);
+			else
+				exit(1);
+		}
+	}
+}
+
+static void restoreTermios(void)
+{
+	tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
+}
+
+// Glibc openpty() fails for me on Debian, because grantpty() fails to chown() the pty node with error code EPERM.
+// This is a more lenient version of openpty() that just works.
+static int openpty_darling(int* amaster, int* aslave, char* name_unused, const struct termios* tos, const struct winsize* wsz)
+{
+	const char* slave_name;
+
+	*amaster = posix_openpt(O_RDWR);
+	if (*amaster == -1)
+		return -1;
+
+	grantpt(*amaster);
+	if (unlockpt(*amaster) < 0)
+		return -1;
+
+	slave_name = ptsname(*amaster);
+	*aslave = open(slave_name, O_RDWR | O_NOCTTY);
+	if (*aslave == -1)
+		return -1;
+
+	if (tos != NULL)
+		tcsetattr(*amaster, TCSANOW, tos);
+	if (wsz != NULL)
+		ioctl(*amaster, TIOCSWINSZ, wsz);
+
+	return 0;
+}
+
+static void setupPtys(int fds[3], int* master)
+{
+	struct winsize win;
+	struct termios termios;
+	bool tty = true;
+
+	if (tcgetattr(STDIN_FILENO, &termios) < 0)
+		tty = false;
+
+	if (openpty_darling(master, &fds[0], NULL, &termios, NULL) < 0)
+	{
+		perror("openpty");
+		exit(1);
+	}
+	fds[2] = fds[1] = fds[0];
+
+	if (tty)
+	{
+		orig_termios = termios;
+
+		ioctl(0, TIOCGWINSZ, &win);
+
+		termios.c_lflag &= ~(ICANON | ISIG | IEXTEN | ECHO);
+		termios.c_iflag &= ~(BRKINT | ICRNL | IGNBRK | IGNCR | INLCR |
+				INPCK | ISTRIP | IXON | PARMRK);
+		termios.c_oflag &= ~OPOST;
+		termios.c_cc[VMIN] = 1;
+		termios.c_cc[VTIME] = 0;
+
+		if (tcsetattr(STDIN_FILENO, TCSANOW, &termios) < 0)
+		{
+			perror("tcsetattr");
+			exit(1);
+		}
+		ioctl(*master, TIOCSWINSZ, &win);
+
+		atexit(restoreTermios);
+	}
+}
+
+void spawnShell(const char** argv)
+{
+	size_t total_len = 0;
+	int count;
 	char buffer1[4096];
 	char buffer2[4096];
+	int sockfd;
+	struct sockaddr_un addr;
+	char* buffer;
 
+	if (argv != NULL)
+	{
+		for (count = 0; argv[count] != NULL; count++)
+			total_len += strlen(argv[count]);
 
-	unsetenv("LESSOPEN");
-	unsetenv("LESSCLOSE");
-	unsetenv("LESSECHO");
+		buffer = malloc(total_len + count*3);
 
-	setenv("PATH",
-		"/usr/bin:"
+		char *to = buffer;
+		for (int i = 0; argv[i] != NULL; i++)
+		{
+			if (to != buffer)
+				to = stpcpy(to, " ");
+			to = stpcpy(to, "'");
+			to = stpcpy(to, argv[i]);
+			to = stpcpy(to, "'");
+		}
+	}
+	else
+		buffer = NULL;
+
+	// Connect to the shellspawn daemon in the container
+	addr.sun_family = AF_UNIX;
+#if USE_LINUX_4_11_HACK
+	strcpy(addr.sun_path, SHELLSPAWN_SOCKPATH);
+#else
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s"  SHELLSPAWN_SOCKPATH, prefix);
+#endif
+
+	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sockfd == -1)
+	{
+		fprintf(stderr, "Error creating a unix domain socket: %s\n", strerror(errno));
+		exit(1);
+	}
+
+	if (connect(sockfd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
+	{
+		fprintf(stderr, "Error connecting to shellspawn in the container (%s): %s\n", addr.sun_path, strerror(errno));
+		exit(1);
+	}
+
+	// Push environment variables
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, 
+		"PATH=/usr/bin:"
 		"/bin:"
 		"/usr/sbin:"
 		"/sbin:"
-		"/usr/local/bin",
-		1);
+		"/usr/local/bin");
 
-	sscanf(getenv("HOME"), "/home/%4096s", buffer1);
-	snprintf(buffer2, sizeof(buffer2), "/Users/%s", buffer1);
-	setenv("HOME", buffer2, 1);
-
-	if (sscanf(curPath, "/home/%4096s", buffer1) == 1)
+	if (sscanf(getenv("HOME"), "/home/%4096s", buffer1) == 1)
 	{
-		// We're currently inside our home directory
-		snprintf(buffer2, sizeof(buffer2), "/Users/%s", buffer1);
-		setenv("PWD", buffer2, 1);
-		chdir(buffer2);
+		snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", buffer1);
+		pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
 	}
+
+	// Push shell arguments
+	if (buffer != NULL)
+	{
+		pushShellspawnCommand(sockfd, SHELLSPAWN_ADDARG, "-c");
+		pushShellspawnCommand(sockfd, SHELLSPAWN_ADDARG, buffer);
+
+		free(buffer);
+	}
+
+	if (getcwd(buffer1, sizeof(buffer1)) != NULL)
+	{
+		snprintf(buffer2, sizeof(buffer2), SYSTEM_ROOT "%s", buffer1);
+		pushShellspawnCommand(sockfd, SHELLSPAWN_CHDIR, buffer2);
+	}
+
+	int fds[3], master = -1;
+	
+	if (isatty(STDIN_FILENO))
+		setupPtys(fds, &master);
 	else
-	{
-		snprintf(buffer2, sizeof(buffer2), SYSTEM_ROOT "%s", curPath);
-		setenv("PWD", buffer2, 1);
-		chdir(buffer2);
-	}
+		fds[0] = dup(STDIN_FILENO); // dup() because we close() a few lines below
+	
+	if (master == -1 || !isatty(STDOUT_FILENO))
+		fds[1] = STDOUT_FILENO;
+	if (master == -1 || !isatty(STDERR_FILENO))
+		fds[2] = STDERR_FILENO;
+	
+	pushShellspawnCommandFDs(sockfd, SHELLSPAWN_GO, fds);
+	close(fds[0]);
+
+	shellLoop(sockfd, master);
+	
+	if (master != -1)
+		close(master);
+	close(sockfd);
 }
 
 void showHelp(const char* argv0)
@@ -432,7 +662,7 @@ pid_t spawnInitProcess(void)
 {
 	pid_t pid;
 	int pipefd[2];
-	// char idmap[100];
+	char path[1024];
 	char buffer[1];
 	FILE *file;
 
@@ -540,6 +770,8 @@ pid_t spawnInitProcess(void)
 		// if we enable user namespaces
 
 		darlingPreInit();
+		spawnLaunchd();
+
 		// Never returns
 	}
 
@@ -575,13 +807,6 @@ pid_t spawnInitProcess(void)
 		fprintf(stderr, "Cannot set gid_map for the init process: %s\n", strerror(errno));
 	}
 	*/
-	
-	// This is for development only!
-	if (getenv("TRY_LAUNCHD") != NULL)
-	{
-		int status = 0;
-		waitpid(pid, &status, 0);
-	}
 
 	// Here's where we resume the child
 	// if we enable user namespaces
@@ -616,33 +841,55 @@ void putInitPid(pid_t pidInit)
 	fclose(fp);
 }
 
+void spawnLaunchd(void)
+{
+	puts("Bootstrapping the container with launchd...");
+	
+	// putenv("KQUEUE_DEBUG=1");
+	execl(MLDR_PATH, "mldr!/sbin/launchd", "launchd", NULL);
+
+	fprintf(stderr, "Failed to exec launchd: %s\n", strerror(errno));
+	abort();
+}
+
+static void wipeDir(const char* dirpath)
+{
+	char path[4096];
+	struct dirent* ent;
+	DIR* dir = opendir(dirpath);
+
+	if (!dir)
+		return;
+
+	while ((ent = readdir(dir)) != NULL)
+	{
+		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+			continue;
+
+		snprintf(path, sizeof(path), "%s/%s", dirpath, ent->d_name);
+
+		if (ent->d_type == DT_DIR)
+		{
+			wipeDir(path);
+			rmdir(path);
+		}
+		else
+			unlink(path);
+	}
+
+	closedir(dir);
+}
+
 void darlingPreInit(void)
 {
 	// TODO: Run /usr/libexec/makewhatis
-	
-	// This is for development only!
-	if (getenv("TRY_LAUNCHD") != NULL)
-	{
-		// putenv("KQUEUE_DEBUG=1");
-		execl("/bin/mldr", "mldr!/sbin/launchd", "launchd", NULL);
-	
-		fprintf(stderr, "Failed to exec launchd: %s\n", strerror(errno));
-		abort();
-	}
-	
-	// TODO: this is where we will exec() launchd in future.
-	// Instead, we just reap zombies.
-	while (1)
-	{
-		int status, sig;
-		sigset_t chld;
+	const char* dirs[] = {
+		"/var/tmp",
+		"/var/run"
+	};
 
-		sigemptyset(&chld);
-		sigaddset(&chld, SIGCHLD);
-		sigwait(&chld, &sig);
-
-		while (waitpid(-1, &status, 0) != -1);
-	}
+	for (size_t i = 0; i < sizeof(dirs)/sizeof(dirs[0]); i++)
+		wipeDir(dirs[i]);
 }
 
 char* defaultPrefixPath(void)
@@ -749,7 +996,8 @@ void setupPrefix()
 		"/private/var/db",
 		"/var",
 		"/var/run",
-		"/var/tmp"
+		"/var/tmp",
+		"/var/log"
 	};
 
 	fprintf(stderr, "Setting up a new Darling prefix at %s\n", prefix);
@@ -825,7 +1073,7 @@ pid_t getInitProcess()
 	}
 	fclose(fp);
 
-	if (strcmp(exeBuf, DARLING_INIT_COMM) != 0)
+	if (strcmp(exeBuf, "mldr") != 0)
 	{
 		unlink(pidPath);
 		return 0;

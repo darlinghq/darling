@@ -210,6 +210,7 @@ set(emulation_sources
 	ioctl/socket.c
 	ext/sysinfo.c
 	ext/uname.c
+	ext/nanosleep.c
 	ext/epoll_create.c
 	ext/epoll_create1.c
 	ext/epoll_ctl.c
