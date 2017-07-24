@@ -44,6 +44,7 @@ void setupSocket(void);
 void listenForConnections(void);
 void spawnShell(int fd);
 void setupSigchild(void);
+void reapAll(void);
 
 int main(int argc, const char** argv)
 {
@@ -367,6 +368,8 @@ void spawnShell(int fd)
 
 	if (DBG) printf("Shell terminated with exit code %d\n", wstatus);
 	close(fd);
+
+	reapAll();
 	return;
 err:
 	if (DBG) fprintf(stderr, "Error spawning shell: %s\n", strerror(errno));
@@ -381,6 +384,7 @@ err:
 		kill(shell_pid, SIGKILL);
 
 	close(fd);
+	reapAll();
 }
 
 void setupSigchild(void)
@@ -390,4 +394,9 @@ void setupSigchild(void)
 		.sa_flags = SA_NOCLDWAIT
 	};
 	sigaction(SIGCHLD, &sigchld_action, NULL);
+}
+
+void reapAll(void)
+{
+    while (waitpid((pid_t)(-1), 0, WNOHANG) > 0);
 }
