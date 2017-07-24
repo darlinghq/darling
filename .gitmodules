@@ -260,3 +260,6 @@
 [submodule "src/external/files"]
 	path = src/external/files
 	url = ../darling-files.git
+[submodule "src/external/crontabs"]
+	path = src/external/crontabs
+	url = ../darling-crontabs.git
