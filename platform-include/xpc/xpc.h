@@ -105,7 +105,8 @@ typedef void (^xpc_handler_t)(xpc_object_t object);
 __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_5_0)
 XPC_EXPORT
 XPC_TYPE(_xpc_type_connection);
-XPC_DECL(xpc_connection);
+//XPC_DECL(xpc_connection);
+typedef xpc_object_t xpc_connection_t;
 
 /*!
  * @typedef xpc_connection_handler_t

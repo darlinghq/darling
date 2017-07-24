@@ -43,9 +43,11 @@ int g_serverSocket = -1;
 void setupSocket(void);
 void listenForConnections(void);
 void spawnShell(int fd);
+void setupSigchild(void);
 
 int main(int argc, const char** argv)
 {
+	setupSigchild();
 	setupSocket();
 	listenForConnections();
 
@@ -381,3 +383,11 @@ err:
 	close(fd);
 }
 
+void setupSigchild(void)
+{
+	struct sigaction sigchld_action = {
+		.sa_handler = SIG_DFL,
+		.sa_flags = SA_NOCLDWAIT
+	};
+	sigaction(SIGCHLD, &sigchld_action, NULL);
+}
