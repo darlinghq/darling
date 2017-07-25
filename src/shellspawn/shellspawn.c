@@ -181,7 +181,6 @@ void spawnShell(int fd)
 				{
 					if (DBG) printf("set env: %s\n", param);
 					putenv(param);
-					free(param);
 				}
 				break;
 			}

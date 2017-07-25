@@ -60,6 +60,7 @@ char *prefix;
 uid_t g_originalUid, g_originalGid;
 bool g_fixPermissions = false;
 char **g_argv, **g_envp;
+char g_workingDirectory[4096];
 
 int main(int argc, char ** argv, char ** envp)
 {
@@ -101,6 +102,7 @@ int main(int argc, char ** argv, char ** envp)
 		return 1;
 	}
 	unsetenv("DPREFIX");
+	getcwd(g_workingDirectory, sizeof(g_workingDirectory));
 
 	if (!checkPrefixDir())
 	{
@@ -564,11 +566,8 @@ void spawnShell(const char** argv)
 		free(buffer);
 	}
 
-	if (getcwd(buffer1, sizeof(buffer1)) != NULL)
-	{
-		snprintf(buffer2, sizeof(buffer2), SYSTEM_ROOT "%s", buffer1);
-		pushShellspawnCommand(sockfd, SHELLSPAWN_CHDIR, buffer2);
-	}
+	snprintf(buffer2, sizeof(buffer2), SYSTEM_ROOT "%s", g_workingDirectory);
+	pushShellspawnCommand(sockfd, SHELLSPAWN_CHDIR, buffer2);
 
 	int ids[2] = { g_originalUid, g_originalGid };
 	pushShellspawnCommandData(sockfd, SHELLSPAWN_SETUIDGID, ids, sizeof(ids));
