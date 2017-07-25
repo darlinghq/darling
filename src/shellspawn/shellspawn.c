@@ -223,6 +223,21 @@ void spawnShell(int fd)
 				read_cmds = false;
 				break;
 			}
+			case SHELLSPAWN_SETUIDGID:
+			{
+				int* ids = (int*) param;
+				if (cmd.data_length < 2*sizeof(int))
+				{
+					free(param);
+					break;
+				}
+
+				setuid(ids[0]);
+				setgid(ids[1]);
+				free(param);
+
+				break;
+			}
 		}
 	}
 

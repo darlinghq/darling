@@ -570,6 +570,9 @@ void spawnShell(const char** argv)
 		pushShellspawnCommand(sockfd, SHELLSPAWN_CHDIR, buffer2);
 	}
 
+	int ids[2] = { g_originalUid, g_originalGid };
+	pushShellspawnCommandData(sockfd, SHELLSPAWN_SETUIDGID, ids, sizeof(ids));
+
 	int fds[3], master = -1;
 	
 	if (isatty(STDIN_FILENO))

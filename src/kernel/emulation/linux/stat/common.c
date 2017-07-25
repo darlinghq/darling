@@ -1,5 +1,7 @@
-#include "../../../../../platform-include/sys/stat.h"
+#include <sys/stat.h>
 #include "common.h"
+#include "../unistd/getuid.h"
+#include "../unistd/getgid.h"
 
 void stat_linux_to_bsd(const struct linux_stat* lstat, struct stat* stat)
 {
@@ -7,8 +9,8 @@ void stat_linux_to_bsd(const struct linux_stat* lstat, struct stat* stat)
 	stat->st_mode = lstat->st_mode;
 	stat->st_nlink = lstat->st_nlink;
 	stat->st_ino = lstat->st_ino;
-	stat->st_uid = lstat->st_uid;
-	stat->st_gid = lstat->st_gid;
+	stat->st_uid = /*lstat->st_uid*/ sys_getuid();
+	stat->st_gid = /*lstat->st_gid*/ sys_getgid();
 	stat->st_rdev = lstat->st_rdev;
 	stat->st_size = lstat->st_size;
 	stat->st_blksize = lstat->st_blksize;
@@ -28,8 +30,8 @@ void stat_linux_to_bsd64(const struct linux_stat* lstat, struct stat64* stat)
 	stat->st_mode = lstat->st_mode;
 	stat->st_nlink = lstat->st_nlink;
 	stat->st_ino = lstat->st_ino;
-	stat->st_uid = lstat->st_uid;
-	stat->st_gid = lstat->st_gid;
+	stat->st_uid = /*lstat->st_uid*/ sys_getuid();
+	stat->st_gid = /*lstat->st_gid*/ sys_getgid();
 	stat->st_rdev = lstat->st_rdev;
 	stat->st_size = lstat->st_size;
 	stat->st_blksize = lstat->st_blksize;

@@ -34,6 +34,7 @@ enum {
 	SHELLSPAWN_CHDIR,
 	SHELLSPAWN_GO, // execute the shell now, must also contain file descriptors
 	SHELLSPAWN_SIGNAL, // pass a signal from client
+	SHELLSPAWN_SETUIDGID, // set virtual uid and gid
 };
 
 struct __attribute__((packed)) shellspawn_cmd

@@ -15,10 +15,8 @@ include_directories(
 )
 
 add_darling_executable(sw_vers sw_vers.c)
+add_darling_executable(sudo sudo.c)
 
-install(TARGETS sw_vers DESTINATION libexec/darling/usr/bin)
+install(TARGETS sw_vers sudo DESTINATION libexec/darling/usr/bin)
 target_link_libraries(sw_vers system CoreFoundation)
 
-install(PROGRAMS sudo DESTINATION libexec/darling/usr/bin
-            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ
-            GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
