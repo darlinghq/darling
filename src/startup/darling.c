@@ -672,9 +672,9 @@ pid_t spawnInitProcess(void)
 		exit(1);
 	}
 
-	if (unshare(CLONE_NEWPID | CLONE_NEWUTS) != 0)
+	if (unshare(CLONE_NEWPID | CLONE_NEWUTS | CLONE_NEWIPC) != 0)
 	{
-		fprintf(stderr, "Cannot unshare PID and UTS namespaces to create darling-init: %s\n", strerror(errno));
+		fprintf(stderr, "Cannot unshare PID, UTS and IPC namespaces to create darling-init: %s\n", strerror(errno));
 		exit(1);
 	}
 
@@ -709,6 +709,13 @@ pid_t spawnInitProcess(void)
 		if (mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL) != 0)
 		{
 			fprintf(stderr, "Cannot remount / as slave: %s\n", strerror(errno));
+			exit(1);
+		}
+
+		umount("/dev/shm");
+		if (mount("tmpfs", "/dev/shm", "tmpfs", MS_NOSUID | MS_NOEXEC | MS_NODEV, NULL) != 0)
+		{
+			fprintf(stderr, "Cannot mount new /dev/shm: %s\n", strerror(errno));
 			exit(1);
 		}
 
