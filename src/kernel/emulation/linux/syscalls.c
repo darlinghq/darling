@@ -21,6 +21,7 @@
 #include "mman/mman.h"
 #include "mman/madvise.h"
 #include "mman/msync.h"
+#include "unistd/initgroups.h"
 #include "unistd/getsid.h"
 #include "unistd/flock.h"
 #include "unistd/sync.h"
@@ -334,6 +335,7 @@ void* __bsd_syscall_table[600] = {
 	[239] = sys_fremovexattr,
 	[240] = sys_listxattr,
 	[241] = sys_flistxattr,
+	[243] = sys_initgroups,
 	[244] = sys_posix_spawn,
 	[266] = sys_shm_open,
 	[267] = sys_shm_unlink,

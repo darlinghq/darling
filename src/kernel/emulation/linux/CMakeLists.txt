@@ -46,6 +46,7 @@ set(emulation_sources
 	unistd/readv.c
 	unistd/writev.c
 	unistd/flock.c
+	unistd/initgroups.c
 	mount/unmount.c
 	mman/mman.c
 	mman/madvise.c
