@@ -48,7 +48,7 @@ function(mig defFileName)
 		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
 		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
 		COMMAND
-			/bin/mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/{$dirName} \;
+			/bin/mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/${dirName} \;
 			${MIG_EXECUTABLE}
 			-arch ${MIG_ARCH}
 			-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
