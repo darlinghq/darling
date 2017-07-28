@@ -42,50 +42,22 @@ function(mig defFileName)
             set(MIG_ARCH "x86-64")
         endif (NOT MIG_ARCH)
 
-		# I hate myself for the following copy&paste,
-		# but I could not figure out a better way.
-        if (dirName)
-                add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${dirName}
-                COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/${dirName})
-
-				add_custom_command(OUTPUT
-						${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
-						${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
-						${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
-						${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
-						COMMAND
-						${MIG_EXECUTABLE}
-						-arch ${MIG_ARCH}
-						-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
-						-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
-						-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
-						-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
-						${MIG_FLAGS}
-						${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
-						DEPENDS
-						migcom
-						"${CMAKE_CURRENT_BINARY_DIR}/${dirName}"
-				)
-		else (dirName)
-				add_custom_command(OUTPUT
-						${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
-						${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
-						${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
-						${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
-						COMMAND
-						${MIG_EXECUTABLE}
-						-arch ${MIG_ARCH}
-						-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
-						-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
-						-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
-						-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
-						${MIG_FLAGS}
-						${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
-						DEPENDS
-						migcom
-						#"${CMAKE_CURRENT_BINARY_DIR}/${dirName}"
-				)
-
-        endif (dirName)
+	add_custom_command(OUTPUT
+		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
+		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
+		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
+		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
+		COMMAND
+			/bin/mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/{$dirName} \;
+			${MIG_EXECUTABLE}
+			-arch ${MIG_ARCH}
+			-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
+			-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
+			-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
+			-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
+			${MIG_FLAGS}
+			${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
+		DEPENDS
+			migcom
+	)
 endfunction(mig)
-
