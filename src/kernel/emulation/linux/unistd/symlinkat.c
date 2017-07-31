@@ -7,11 +7,11 @@
 
 extern char* strcpy(char* dst, const char* src);
 
-long sys_symlinkat(int fd, const char* path, const char* link)
+long sys_symlinkat(const char* path, int fd, const char* link)
 {
 	int ret;
 
-	ret = LINUX_SYSCALL(__NR_symlinkat, atfd(fd), path, link);
+	ret = LINUX_SYSCALL(__NR_symlinkat, path, atfd(fd), link);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
 
