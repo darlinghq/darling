@@ -50,8 +50,8 @@ install(TARGETS darling DESTINATION bin
     SETUID)
 
 include(setcap)
-setcap(libexec/darling/bin/mldr cap_sys_rawio+ep)
-setcap(libexec/darling/bin/mldr32 cap_sys_rawio+ep)
+setcap(libexec/darling/bin/mldr cap_sys_rawio,cap_sys_ptrace+ep)
+setcap(libexec/darling/bin/mldr32 cap_sys_rawio,cap_sys_ptrace+ep)
 
 # This tool is useful for packaging to detect ELF dependencies inside Mach-O libraries,
 # which standard distro tools cannot do.
