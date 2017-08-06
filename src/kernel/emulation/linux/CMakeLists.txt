@@ -15,7 +15,11 @@ add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD
 
 
 include_directories(${CMAKE_SOURCE_DIR}/src/startup)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+# include src/startup for rtsig.h
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_BINARY_DIR}/src/startup
+)
 
 set(emulation_sources
 	elfcalls_wrapper.c
@@ -132,6 +136,7 @@ set(emulation_sources
 	signal/sigprocmask.c
 	signal/sig_restorer.S
 	signal/sigsuspend.c
+	signal/sigexc.c
 	misc/ptrace.c
 	misc/getentropy.c
 	misc/syscall.c
@@ -291,6 +296,7 @@ set_source_files_properties(misc/sysctl.c PROPERTIES COMPILE_FLAGS
 add_library(emulation OBJECT ${emulation_sources})
 add_library(emulation_dyld OBJECT ${emulation_sources})
 set_target_properties(emulation_dyld PROPERTIES COMPILE_FLAGS "-ffunction-sections -DVARIANT_DYLD")
+add_dependencies(emulation rtsig_h)
 
 make_fat(emulation)
 make_fat(emulation_dyld)

@@ -59,3 +59,7 @@ if (DEFINED WITH_PRINT_WRAPPED_ELF)
 	add_executable(print_wrapped_elf wrapgen/print_wrapped_elf.cpp)
 endif (DEFINED WITH_PRINT_WRAPPED_ELF)
 
+add_executable(rtsig rtsig.c)
+add_custom_command(OUTPUT rtsig.h DEPENDS rtsig COMMAND ${CMAKE_CURRENT_BINARY_DIR}/rtsig rtsig.h COMMENT "Determining available RT signals")
+add_custom_target(rtsig_h DEPENDS rtsig.h)
+

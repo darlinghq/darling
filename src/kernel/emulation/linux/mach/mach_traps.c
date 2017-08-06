@@ -518,6 +518,8 @@ kern_return_t syscall_thread_switch_impl(
 	};
 	// Sleep for 1ms
 	__linux_nanosleep(&tv, &tv);
+
+	// TODO: we could implement this with yield_to() in LKM
 	return KERN_SUCCESS;
 }
 

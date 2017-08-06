@@ -3,6 +3,8 @@
 #include "../errno.h"
 #include "../signal/duct_signals.h"
 #include "../misc/ptrace.h"
+#include "../mach/lkm.h"
+#include "../../../../lkm/api.h"
 #include <sys/signal.h>
 #include <stddef.h>
 #include <linux-syscalls/linux.h>
@@ -39,21 +41,18 @@ restart:
 		signal = signum_linux_to_bsd(signal);
 		*status = (*status & 0x7f) | (signal << 8);
 
-		switch (signal)
+		if (lkm_call(NR_get_tracer, (void*)(long) ret) == getpid())
 		{
-			case SIGCONT:
-			case SIGSTOP:
-			case SIGTSTP:
-			case SIGTTIN:
-			case SIGTTOU:
-				// It is standard behavior that these signals stop (resume) the process
-				break;
-			default:
-				// We are probably ptracing the target process.
-				// Allow the execution to continue so that the ptraced process can translate
-				// the signal into a Mach message.
-				sys_ptrace(PT_CONTINUE, ret, NULL, signal);
-				goto restart;
+			// We are ptracing the target process.
+			// Allow the execution to continue so that the ptraced process can translate
+			// the signal into a Mach message.
+			if (signal == SIGSTOP)
+			{
+				// TODO: notify target process it has been SIGSTOP'ed via sigqueue
+			}
+
+			sys_ptrace(PT_CONTINUE, ret, NULL, signal);
+			goto restart;
 		}
 	}
 

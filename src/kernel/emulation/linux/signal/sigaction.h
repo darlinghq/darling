@@ -51,6 +51,7 @@ struct linux_siginfo
 	union
 	{
 		int _pad[__SI_PAD_SIZE];
+		unsigned long si_value;
 	};
 };
 
@@ -193,6 +194,11 @@ struct bsd_ucontext
 	unsigned long uc_mcsize;
 	struct bsd_mcontext* uc_mcontext;
 };
+
+void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ctxt);
+extern bsd_sig_handler* sig_handlers[32];
+extern int sig_flags[32];
+extern unsigned int sig_masks[32];
 
 #endif
 

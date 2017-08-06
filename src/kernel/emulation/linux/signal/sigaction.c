@@ -4,9 +4,9 @@
 #include "../simple.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
+#include "sigexc.h"
 #include "../../../../../platform-include/sys/errno.h"
 
-static void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ctxt);
 static int sigflags_bsd_to_linux(int flags);
 static int sigflags_linux_to_bsd(int flags);
 extern void sig_restorer(void);
@@ -17,7 +17,9 @@ extern void* memset(void* dest, int v, __SIZE_TYPE__ len);
 
 // Libc uses only one trampoline
 void (*sa_tramp)(void*, int, int, struct bsd_siginfo*, void*) = 0;
-static bsd_sig_handler* sig_handlers[32];
+bsd_sig_handler* sig_handlers[32];
+int sig_flags[32];
+unsigned int sig_masks[32];
 
 long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sigaction* osa)
 {
@@ -42,7 +44,11 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 	if (nsa != NULL)
 	{
 		sa_tramp = nsa->sa_tramp;
-		if (nsa->sa_sigaction != SIG_DFL && nsa->sa_sigaction != SIG_IGN
+		if (darling_am_i_ptraced())
+		{
+			sa.sa_sigaction = &sigexc_handler;
+		}
+		else if (nsa->sa_sigaction != SIG_DFL && nsa->sa_sigaction != SIG_IGN
 				&& nsa->sa_sigaction != SIG_ERR)
 		{
 			sa.sa_sigaction = &handler_linux_to_bsd;
@@ -71,10 +77,12 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 		osa->sa_flags = sigflags_linux_to_bsd(olsa.sa_flags);
 	}
 	
-	if (nsa != NULL)
+	if (nsa != NULL && ret >= 0)
 	{
 		//  __simple_printf("Saving handler for signal %d: %d\n", linux_signum, nsa->sa_sigaction);
 		sig_handlers[linux_signum] = nsa->sa_sigaction;
+		sig_flags[linux_signum] = sa.sa_flags;
+		sig_masks[linux_signum] = sa.sa_mask;
 	}
 
 	return 0;
@@ -120,7 +128,7 @@ static void ucontext_linux_to_bsd(const struct linux_ucontext* lc, struct bsd_uc
 #undef copyreg
 }
 
-static void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ctxt)
+void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ctxt)
 {
 	int bsd_signum;
 	struct bsd_siginfo binfo;
