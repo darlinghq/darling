@@ -5,7 +5,7 @@ add_subdirectory(mach)
 cmake_policy(SET CMP0005 NEW)
 enable_language(ASM)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fvisibility=hidden -fPIC -fno-builtin -ggdb -Wno-int-conversion")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fvisibility=hidden -fPIC -fno-builtin -ggdb -Wno-int-conversion -Wno-compare-distinct-pointer-types")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD
@@ -19,9 +19,13 @@ include_directories(${CMAKE_SOURCE_DIR}/src/startup)
 # include src/startup for rtsig.h
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_BINARY_DIR}/src/startup
+	${CMAKE_CURRENT_BINARY_DIR}
 )
 
+mig(signal/mach_exc.defs)
+
 set(emulation_sources
+	${CMAKE_CURRENT_BINARY_DIR}/signal/mach_excUser.c
 	elfcalls_wrapper.c
 	base.c
 	syscalls.c

@@ -3,6 +3,8 @@
 #include "duct_signals.h"
 #include "sigaltstack.h"
 
+#undef sa_sigaction
+
 #define BSD_SA_ONSTACK      0x0001
 #define BSD_SA_RESTART      0x0002
 #define BSD_SA_RESETHAND    0x0004

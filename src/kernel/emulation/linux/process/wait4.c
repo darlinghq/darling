@@ -2,12 +2,15 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../signal/duct_signals.h"
+#include "../signal/sigexc.h"
 #include "../misc/ptrace.h"
 #include "../mach/lkm.h"
 #include "../../../../lkm/api.h"
 #include <sys/signal.h>
 #include <stddef.h>
 #include <linux-syscalls/linux.h>
+
+extern int getpid(void);
 
 long sys_wait4(int pid, int* status, int options, void* rusage)
 {
@@ -46,13 +49,19 @@ restart:
 			// We are ptracing the target process.
 			// Allow the execution to continue so that the ptraced process can translate
 			// the signal into a Mach message.
+
 			if (signal == SIGSTOP)
 			{
-				// TODO: notify target process it has been SIGSTOP'ed via sigqueue
+				// Notify target process it has been SIGSTOP'ed via sigqueue
+				// because we're just about to resume it and we need it
+				// to pass the signal back to us through a Mach message.
+				linux_sigqueue(ret, SIGNAL_SIGEXC_THUPDATE, -SIGSTOP);
 			}
 
 			sys_ptrace(PT_CONTINUE, ret, NULL, signal);
-			goto restart;
+
+			if (!(options & DARLING_WAIT_NORESTART))
+				goto restart;
 		}
 	}
 

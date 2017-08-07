@@ -19,5 +19,7 @@ int waitopts_bsd_to_linux(int options);
 #define BSD_WCONTINUED 0x10
 #define BSD_WNOWAIT 0x20
 
+#define DARLING_WAIT_NORESTART 0x20000
+
 #endif
 

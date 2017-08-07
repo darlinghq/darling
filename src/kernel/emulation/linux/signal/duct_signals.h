@@ -1,5 +1,7 @@
 #ifndef LINUX_DUCT_SIGNALS_H
 #define LINUX_DUCT_SIGNALS_H
+#define __sigset_t_defined
+#include <sys/signal.h>
 
 #define LINUX_NSIG 32
 #define LINUX_SIGHUP 1

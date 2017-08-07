@@ -1,5 +1,3 @@
-#define __sigset_t_defined
-#include "../../../../../platform-include/sys/signal.h"
 #include "duct_signals.h"
 
 int signum_linux_to_bsd(int signum)
