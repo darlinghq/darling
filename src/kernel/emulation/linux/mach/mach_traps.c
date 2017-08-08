@@ -550,8 +550,17 @@ kern_return_t task_name_for_pid_impl(
 				int pid,
 				mach_port_name_t *tn)
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	kern_return_t rv;
+	struct task_name_for_pid args = {
+		.task_port = target_tport,
+		.pid = pid
+	};
+
+	rv = ioctl(driver_fd, NR_task_name_for_pid_trap, &args);
+	if (rv == KERN_SUCCESS)
+		*tn = args.name_out;
+
+	return rv;
 }
 
 kern_return_t pid_for_task_impl(
