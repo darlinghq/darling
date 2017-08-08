@@ -3,6 +3,7 @@
 #include <string.h>
 
 // DUMMY implementation
+const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT = SANDBOX_FILTER_NONE;
 
 int sandbox_init(const char *profile, uint64_t flags, char **errorbuf)
 {

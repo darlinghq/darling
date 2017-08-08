@@ -52,7 +52,7 @@ target_link_libraries(system PRIVATE
 	removefile
 	system_copyfile
 	system_coreservices
-
+	system_coretls
 	system_malloc
 	system_c
 	system_kernel
@@ -73,7 +73,6 @@ target_link_libraries(system PRIVATE
 	system_blocks
 	xpc
 	corecrypto
-	system_coretls
 	commonCrypto
 )
 
