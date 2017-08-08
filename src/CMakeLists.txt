@@ -136,7 +136,16 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskImages/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/ApplicationServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreText/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/QuartzCore/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreGraphics/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/OpenGL/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/Onyx2D/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreVideo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
@@ -274,6 +283,9 @@ add_subdirectory(DebugSymbols)
 add_subdirectory(external/bsm)
 # Requires a newer version of Security to build
 #add_subdirectory(external/Heimdal)
+
+# /Applications
+#add_subdirectory(external/TextEdit)
 
 # Subprojects after this line need C++ headers
 
