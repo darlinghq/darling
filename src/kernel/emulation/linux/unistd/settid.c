@@ -1,12 +1,12 @@
-#include "setgid.h"
+#include "settid.h"
 #include "../base.h"
 #include "../mach/lkm.h"
 #include "../../../../lkm/api.h"
 
-long sys_setgid(int gid)
+long sys_settid(int uid, int gid)
 {
 	struct uidgid ug = {
-		.uid = -1,
+		.uid = uid,
 		.gid = gid
 	};
 

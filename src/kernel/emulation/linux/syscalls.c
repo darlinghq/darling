@@ -41,6 +41,8 @@
 #include "unistd/seteuid.h"
 #include "unistd/setsid.h"
 #include "unistd/setuid.h"
+#include "unistd/settid.h"
+#include "unistd/gettid.h"
 #include "unistd/getuid.h"
 #include "unistd/geteuid.h"
 #include "unistd/pread.h"
@@ -348,6 +350,8 @@ void* __bsd_syscall_table[600] = {
 	[274] = sys_sysctlbyname,
 	[282] = sys_chmod_extended,
 	[283] = sys_fchmod_extended,
+	[285] = sys_settid,
+	[286] = sys_gettid,
 	[294] = sys_shared_region_check_np,
 	[301] = sys_psynch_mutexwait,
 	[302] = sys_psynch_mutexdrop,

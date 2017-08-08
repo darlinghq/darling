@@ -79,10 +79,12 @@ set(emulation_sources
 	unistd/getegid.c
 	unistd/setgid.c
 	unistd/setuid.c
+	unistd/settid.c
 	unistd/setegid.c
 	unistd/seteuid.c
 	unistd/setsid.c
 	unistd/getuid.c
+	unistd/gettid.c
 	unistd/geteuid.c
 	unistd/getpid.c
 	unistd/lseek.c

@@ -6,6 +6,8 @@
 
 long sys_getegid(void)
 {
-	return lkm_call(NR_getgid, NULL);
+	struct uidgid ug;
+	lkm_call(NR_getuidgid, &ug);
+	return ug.uid;
 }
 

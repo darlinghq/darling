@@ -5,6 +5,11 @@
 
 long sys_setuid(int uid)
 {
-	return lkm_call(NR_setuid, (void*)(long)uid);
+	struct uidgid ug = {
+		.uid = uid,
+		.gid = -1
+	};
+
+	return lkm_call(NR_setuidgid, &ug);
 }
 
