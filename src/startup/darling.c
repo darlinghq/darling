@@ -210,9 +210,16 @@ start_init:
 		char** child_argv;
 		char *path = realpath(argv[1], NULL);
 
+		if (path == NULL)
+		{
+			printf("'%s' is not a supported command or a file.\n", argv[1]);
+			return 1;
+		}
+
 		fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
 		strcpy(fullPath, SYSTEM_ROOT);
 		strcat(fullPath, path);
+		free(path);
 
 		argv[1] = fullPath;
 		spawnShell((const char**) &argv[1]);
