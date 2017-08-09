@@ -16,13 +16,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <CoreFoundation/CFURL.h>
+#include <CoreFoundation/CFArray.h>
 
 void DBGAddDSYMURL(void) { }
 void DBGBlockPath(void) { }
-void DBGCopyDSYMURLForUUID(void) { }
-void DBGCopyDSYMURLForUUIDWithOptions(void) { }
-void DBGCopyFullDSYMURLForUUIDWithOptions(void) { }
-void DBGCopyMatchingUUIDsForURL(void) { }
+CFURLRef DBGCopyDSYMURLForUUID(void) { return NULL; }
+CFURLRef DBGCopyDSYMURLForUUIDWithOptions(void) { return NULL; }
+CFURLRef DBGCopyFullDSYMURLForUUIDWithOptions(void) { return NULL; }
+CFArrayRef DBGCopyMatchingUUIDsForURL(void) { return NULL; }
 void DBGDwarfClose(void) { }
 void DBGDwarfGetAttributeKey(void) { }
 void DBGDwarfGetCompileUnitFunctions(void) { }
