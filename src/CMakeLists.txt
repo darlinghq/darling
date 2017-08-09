@@ -39,6 +39,9 @@ GetCompilerInclude(COMPILER_INC_PATH)
 message(STATUS "Compiler include path detected as ${COMPILER_INC_PATH}")
 include_directories(${COMPILER_INC_PATH})
 
+find_package(BISON)
+find_package(FLEX)
+
 add_subdirectory(bootstrap_cmds)
 add_subdirectory(external/cctools-port/cctools/ld64/src)
 add_subdirectory(external/cctools-port/cctools/ar)
@@ -281,6 +284,7 @@ add_subdirectory(ImageIO)
 add_subdirectory(login)
 add_subdirectory(DebugSymbols)
 add_subdirectory(external/bsm)
+add_subdirectory(external/gdb)
 # Requires a newer version of Security to build
 #add_subdirectory(external/Heimdal)
 

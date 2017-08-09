@@ -263,3 +263,6 @@
 [submodule "src/external/crontabs"]
 	path = src/external/crontabs
 	url = ../darling-crontabs.git
+[submodule "src/external/gdb"]
+	path = src/external/gdb
+	url = ../darling-applegdb.git
