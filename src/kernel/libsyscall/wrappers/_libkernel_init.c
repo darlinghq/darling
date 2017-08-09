@@ -30,6 +30,7 @@
 #include "elfcalls_setup.h"
 
 extern int mach_init(void);
+extern void sigexc_setup(void);
 
 /* dlsym() funcptr is for legacy support in exc_catcher */
 void* (*_dlsym)(void*, const char*) __attribute__((visibility("hidden")));
@@ -49,5 +50,6 @@ __libkernel_init(_libkernel_functions_t fns,
 	}
 
 	setup_elfcalls(apple);
+	sigexc_setup();
 	mach_init();
 }
