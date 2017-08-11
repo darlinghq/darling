@@ -1,22 +1,7 @@
 project(tools)
 
-cmake_minimum_required(VERSION 2.4.0)
-
-if(COMMAND cmake_policy)
-	cmake_policy(SET CMP0003 NEW)
-endif(COMMAND cmake_policy)
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03")
-
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/external/corefoundation
-	${CMAKE_SOURCE_DIR}/src/external/libclosure
-	${CMAKE_SOURCE_DIR}/src/launchd/liblaunch
-)
-
 add_darling_executable(sw_vers sw_vers.c)
 add_darling_executable(sudo sudo.c)
 
 install(TARGETS sw_vers sudo DESTINATION libexec/darling/usr/bin)
-target_link_libraries(sw_vers system CoreFoundation)
-
+target_link_libraries(sw_vers ${CoreFoundation})

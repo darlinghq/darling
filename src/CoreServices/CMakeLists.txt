@@ -59,7 +59,7 @@ add_framework(CoreServices
 	DEPENDENCIES
 		icucore
 		system
-		CoreFoundation
+		${CoreFoundation}
 		cxx
 		iconv
 		${EXTRA_LIBS}

@@ -18,5 +18,5 @@ add_framework(DiskArbitration
 		${da_SRCS}
 	DEPENDENCIES
 		system
-		CoreFoundation
+		${CoreFoundation}
 )

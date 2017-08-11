@@ -152,6 +152,8 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
+set(CoreFoundation "${CMAKE_BINARY_DIR}/src/external/corefoundation/CoreFoundation")
+
 add_subdirectory(external/libkqueue)
 
 
