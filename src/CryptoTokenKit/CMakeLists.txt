@@ -24,5 +24,5 @@ add_framework(CryptoTokenKit
 
 	DEPENDENCIES
 		system
-		${CoreFoundation}
+		CoreFoundation
 )

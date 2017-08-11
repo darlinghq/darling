@@ -8,7 +8,7 @@ set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
 
 add_darling_library(xcselect xcselect.c)
-target_link_libraries(xcselect system)
+target_link_libraries(xcselect system CoreFoundation)
 
 add_darling_executable(xcrun xcrun.c)
 target_link_libraries(xcrun system xcselect)

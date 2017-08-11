@@ -18,5 +18,5 @@ add_framework(SystemConfiguration
 		${SystemConfiguration_SRCS}
 	DEPENDENCIES
 		system
-		${CoreFoundation}
+		CoreFoundation
 )

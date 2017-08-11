@@ -153,10 +153,15 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
-set(CoreFoundation "${CMAKE_BINARY_DIR}/src/external/corefoundation/CoreFoundation")
+# It must be done in this scope
+add_library(CoreFoundation SHARED IMPORTED)
+set_property(TARGET CoreFoundation PROPERTY
+	IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/external/corefoundation/CoreFoundation
+)
+add_dependencies(CoreFoundation CoreFoundation_build)
+set_target_properties(CoreFoundation PROPERTIES SUFFIX "" PREFIX "")
 
 add_subdirectory(external/libkqueue)
-
 
 add_subdirectory(external/libplatform)
 add_subdirectory(external/libpthread)
@@ -289,6 +294,7 @@ add_subdirectory(DebugSymbols)
 add_subdirectory(external/bsm)
 add_subdirectory(external/gdb)
 add_subdirectory(external/Heimdal)
+add_subdirectory(PlistBuddy)
 
 # /Applications
 #add_subdirectory(external/TextEdit)

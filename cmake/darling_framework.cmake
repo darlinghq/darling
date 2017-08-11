@@ -117,7 +117,7 @@ function(add_separated_framework name)
 			set_property(TARGET ${my_name}_x86_64 APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 	endif (FRAMEWORK_LINK_FLAGS)
 
-	add_custom_target(${my_name}
+	add_custom_target(${my_name}_build
 		COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
 			-arch i386 $<TARGET_FILE:${my_name}_i386>
 			-arch x86_64 $<TARGET_FILE:${my_name}_x86_64>

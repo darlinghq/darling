@@ -1,0 +1,152 @@
+.\"Copyright (c) 1999-2012 Apple Computer, Inc.  All Rights Reserved.
+.\"
+.\"This file contains Original Code and/or Modifications of Original Code
+.\"as defined in and that are subject to the Apple Public Source License
+.\"Version 2.0 (the 'License'). You may not use this file except in
+.\"compliance with the License. Please obtain a copy of the License at
+.\"http://www.opensource.apple.com/apsl/ and read it before using this
+.\"file.
+.\"
+.\"The Original Code and all software distributed under the License are
+.\"distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+.\"EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+.\"INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+.\"FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+.\"Please see the License for the specific language governing rights and
+.\"limitations under the License.
+.Dd February 19, 2007
+.Dt PLISTBUDDY 8
+.Os "Mac OS X"
+.Sh NAME
+.Nm PlistBuddy
+.Nd read and write values to plists
+.Sh SYNOPSIS
+.Nm
+.Op Fl cxh 
+.Ar file.plist
+.Sh DESCRIPTION
+The
+.Nm
+command is used to read and modify values inside of a plist. Unless specified by the 
+.Fl c
+switch,
+.Nm
+runs in interactive mode.  
+.Pp
+The following commands are used to manipulate plist data:
+.Bl -tag -width "Clear Type"
+.It Sy Help
+Prints this information.
+.It Sy Exit
+Exits the program. Changes are not saved to the file.
+.It Sy Save
+Saves the current changes to the file.
+.It Sy Revert
+Reloads the last saved version of the file.
+.It Sy Clear Ar type
+Clears out all existing entries, and creates root of type
+.Ar type .  
+See below for a list of types.
+.It Sy Print Op entry
+Prints value of 
+.Ar entry .
+If an entry is not specified, prints entire file. See below for an explanation of how entry works.
+.It Sy Set Ar entry Ar value
+Sets the value at 
+.Ar entry 
+to 
+.Ar value .
+.It Sy Add Ar entry Ar type Op value
+Adds 
+.Ar entry
+with type
+.Ar type
+and optional value
+.Ar value .
+See below for a list of types.
+.It Sy Copy Ar entrySrc Ar entryDst
+Copies the 
+.Ar entrySrc
+property to
+.Ar entryDst .
+.It Sy Delete Ar entry
+Deletes 
+.Ar entry
+from the plist.
+.It Sy Merge Ar file Op entry
+Adds the contents of plist 
+.Ar file
+to 
+.Ar entry .
+.It Sy Import Ar entry Ar file
+Creates or sets 
+.Ar entry
+to the contents of 
+.Ar file .
+.El
+.Pp
+Entries consist of property key names delimited by colons. Array items are specified by a zero-based integer index. Examples:
+.Pp
+    :CFBundleShortVersionString
+    :CFBundleDocumentTypes:2:CFBundleTypeExtensions
+.Pp
+Entries may be of the following types:
+.Pp
+    string
+    array
+    dict
+    bool
+    real
+    integer
+    date
+    data
+.Sh OPTIONS
+.Bl -tag -width "-c command"
+.It Fl c Ar command
+Execute command and exit. By default, PlistBuddy will run in interactive mode.
+.It Fl x
+Output will be in the form of an xml plist where appropriate.
+.It Fl h
+Print the complete help info.
+.El
+.Sh EXAMPLES
+.Pp
+Set the CFBundleIdentifier property to com.apple.plistbuddy:
+.Vb 1
+.Pp
+\&        Set :CFBundleIdentifier com.apple.plistbuddy
+.Ve
+.Pp
+Add the CFBundleGetInfoString property to the plist:
+.Vb 1
+.Pp
+\&        Add :CFBundleGetInfoString string "App version 1.0.1"
+.Ve
+.Pp
+Add a new item of type dict to the CFBundleDocumentTypes array:
+.Vb 1
+.Pp
+\&        Add :CFBundleDocumentTypes: dict
+.Ve
+.Pp
+Add the new item to the beginning of the array:
+.Vb 1
+.Pp
+\&        Add :CFBundleDocumentTypes:0 dict
+.Ve
+.Pp
+Delete the \s-1FIRST\s0 item in the array:
+.Vb 1
+.Pp
+\&        Delete :CFBundleDocumentTypes:0 dict
+.Ve
+.Pp
+Delete the \s-1ENTIRE\s0 CFBundleDocumentTypes array:
+.Vb 1
+.Pp
+\&        Delete :CFBundleDocumentTypes
+.Ve
+.Pp
+.Sh EXIT STATUS
+.Nm
+command returns a zero exit status if it succeeds. Non zero is returned in case of failure.
