@@ -139,6 +139,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskImages/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/ApplicationServices/include
@@ -287,8 +288,7 @@ add_subdirectory(login)
 add_subdirectory(DebugSymbols)
 add_subdirectory(external/bsm)
 add_subdirectory(external/gdb)
-# Requires a newer version of Security to build
-#add_subdirectory(external/Heimdal)
+add_subdirectory(external/Heimdal)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
