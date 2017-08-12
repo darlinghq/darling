@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2007, 2015 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -321,12 +321,23 @@ struct task_vm_info {
 	mach_vm_size_t	compressed;
 	mach_vm_size_t	compressed_peak;
 	mach_vm_size_t	compressed_lifetime;
+
+	/* added for rev1 */
+	mach_vm_size_t	phys_footprint;
+
+	/* added for rev2 */
+	mach_vm_address_t	min_address;
+	mach_vm_address_t	max_address;
 };
 typedef struct task_vm_info	task_vm_info_data_t;
 typedef struct task_vm_info	*task_vm_info_t;
 #define TASK_VM_INFO_COUNT	((mach_msg_type_number_t) \
 		(sizeof (task_vm_info_data_t) / sizeof (natural_t)))
-
+#define TASK_VM_INFO_REV2_COUNT TASK_VM_INFO_COUNT
+#define TASK_VM_INFO_REV1_COUNT /* doesn't include min and max address */ \
+	((mach_msg_type_number_t) (TASK_VM_INFO_REV2_COUNT - 4))
+#define TASK_VM_INFO_REV0_COUNT /* doesn't include phys_footprint */ \
+	((mach_msg_type_number_t) (TASK_VM_INFO_REV1_COUNT - 2))
 
 typedef struct vm_purgeable_info	task_purgable_info_t;
 
@@ -373,6 +384,24 @@ typedef struct task_power_info_v2	*task_power_info_v2_t;
 #define TASK_POWER_INFO_V2_COUNT	((mach_msg_type_number_t) \
 		(sizeof (task_power_info_v2_data_t) / sizeof (natural_t)))
 
+
+#define TASK_VM_INFO_PURGEABLE_ACCOUNT 27 /* Used for xnu purgeable vm unit tests */
+
+
+#define TASK_FLAGS_INFO  28			/* return t_flags field */
+struct task_flags_info {
+	uint32_t	flags;				/* task flags */
+};
+typedef struct task_flags_info task_flags_info_data_t;
+typedef struct task_flags_info * task_flags_info_t;
+#define TASK_FLAGS_INFO_COUNT  ((mach_msg_type_number_t) \
+		(sizeof(task_flags_info_data_t) / sizeof (natural_t)))
+
+#define TF_LP64                 0x00000001                              /* task has 64-bit addressing */
+
+#define TASK_DEBUG_INFO_INTERNAL    29 /* Used for kernel internal development tests. */
+
+
 /*
  * Obsolete interfaces.
  */
@@ -386,3 +415,4 @@ typedef struct task_power_info_v2	*task_power_info_v2_t;
 #pragma pack()
 
 #endif	/* _MACH_TASK_INFO_H_ */
+
