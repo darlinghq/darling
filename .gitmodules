@@ -278,3 +278,7 @@
 	path = src/external/JavaScriptCore
 	url = ../darling-JavaScriptCore.git
 	branch = master
+[submodule "src/external/bmalloc"]
+	path = src/external/bmalloc
+	url = ../darling-bmalloc.git
+	branch = master

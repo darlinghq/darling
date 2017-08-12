@@ -152,6 +152,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreVideo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/WTF/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/bmalloc/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
@@ -320,10 +321,11 @@ add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
 # Requires a newer Security version
 #add_subdirectory(external/SmartCardServices)
-# Has build issues
 add_subdirectory(external/security)
 add_subdirectory(external/cctools)
 add_subdirectory(external/libauto)
+add_subdirectory(external/WTF)
+add_subdirectory(external/bmalloc)
 
 add_subdirectory(lkm)
 
