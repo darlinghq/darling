@@ -139,6 +139,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskImages/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ServiceManagement/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
@@ -224,6 +225,7 @@ add_subdirectory(ApplicationServices)
 add_subdirectory(DiskArbitration)
 add_subdirectory(LocalAuthentication)
 add_subdirectory(CryptoTokenKit)
+add_subdirectory(ServiceManagement)
 add_subdirectory(xar)
 add_subdirectory(libedit)
 add_subdirectory(external/libclosure)
