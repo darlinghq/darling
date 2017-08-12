@@ -20,6 +20,7 @@ void addEntry(const char* entry, enum PropertyType type, const char* value);
 CFPropertyListRef parseValue(enum PropertyType type, const char* string);
 void deleteEntry(const char* entry);
 void copyEntry(const char* src, const char* dst);
+void mergeFile(const char* path, const char* entry);
 
 // Forces XML output when printing to screen
 bool forceXML = false;
@@ -159,6 +160,39 @@ bool processArgs(int argc, const char** argv, const char** command)
 	return outputFile != NULL;
 }
 
+CFPropertyListRef loadPlist(const char* filePath)
+{
+	SInt32 errorCode = 0;
+	CFStringRef errorString = NULL;
+	CFDataRef data = NULL;
+	CFPropertyListRef plist;
+	CFStringRef path = CFStringCreateWithCString(kCFAllocatorDefault, filePath, kCFStringEncodingUTF8);
+	CFURLRef url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, path, kCFURLPOSIXPathStyle, false);
+
+	CFRelease(path);
+
+	CFURLCreateDataAndPropertiesFromResource(kCFAllocatorDefault, url, &data, NULL, NULL, &errorCode);
+	CFRelease(url);
+
+	if (errorCode != 0)
+	{
+		printf("Error Reading File: %s\n", filePath);
+		return false;
+	}
+
+	plist = CFPropertyListCreateFromXMLData(kCFAllocatorDefault, data, kCFPropertyListMutableContainers, &errorString);
+
+	if (errorString != NULL)
+	{
+		CFShow(errorString);
+		CFRelease(errorString);
+
+		printf("Error Reading File: %s\n", filePath);
+	}
+
+	return plist;
+}
+
 bool revertToFile(void)
 {
 	if (plist != NULL)
@@ -172,34 +206,15 @@ bool revertToFile(void)
 	}
 	else
 	{
-		SInt32 errorCode = 0;
-		CFStringRef errorString = NULL;
-		CFDataRef data = NULL;
-		CFStringRef path = CFStringCreateWithCString(kCFAllocatorDefault, outputFile, kCFStringEncodingUTF8);
-		CFURLRef url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, path, kCFURLPOSIXPathStyle, false);
+		bool rv;
 
-		CFRelease(path);
+		plist = loadPlist(outputFile);
+		rv = plist != NULL;
 
-		CFURLCreateDataAndPropertiesFromResource(kCFAllocatorDefault, url, &data, NULL, NULL, &errorCode);
-		CFRelease(url);
+		if (plist == NULL)
+			plist = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
-		if (errorCode != 0)
-		{
-			printf("Error Reading File: %s\n", outputFile);
-			return false;
-		}
-
-		plist = CFPropertyListCreateFromXMLData(kCFAllocatorDefault, data, kCFPropertyListMutableContainers, &errorString);
-
-		if (errorString != NULL)
-		{
-			CFShow(errorString);
-			CFRelease(errorString);
-
-			printf("Error Reading File: %s\n", outputFile);
-		}
-
-		return plist != NULL;
+		return rv;
 	}
 }
 
@@ -458,6 +473,17 @@ void runCommand(const char* cmd)
 	else if (isCommand(cmd, "Merge", &next))
 	{
 		// file.plist [entryDst]
+		if (!next)
+		{
+			puts("Missing arguments");
+			return;
+		}
+
+		// FIXME: This isn't quite correct, this doesn't support paths with spaces
+		char* path = getWord(next, &next);
+
+		mergeFile(path, next);
+		free(path);
 	}
 	else if (isCommand(cmd, "Import", &next))
 	{
@@ -1048,5 +1074,82 @@ void copyEntry(const char* src, const char* dst)
 	CFRelease(entryCopy);
 out:
 	free(leafName);
+}
+
+void mergeFile(const char* path, const char* entry)
+{
+	CFPropertyListRef dest, fileContents;
+
+	fileContents = loadPlist(path);
+	if (fileContents == NULL)
+		return;
+
+	if (entry != NULL && *entry)
+	{
+		resolvePlistEntry(entry, NULL, &dest, NULL, true);
+		if (dest == NULL)
+		{
+			printf("Merge: Entry, \"%s\", Does Not Exist\n", entry);
+			CFRelease(fileContents);
+			return;
+		}
+	}
+	else
+		dest = plist;
+	
+	CFTypeID typeID = CFGetTypeID(dest);
+	CFTypeID sourceTypeID = CFGetTypeID(fileContents);
+
+	if (typeID == CFArrayGetTypeID())
+	{
+		if (sourceTypeID == CFArrayGetTypeID())
+		{
+			CFArrayAppendArray((CFMutableArrayRef) dest, fileContents, CFRangeMake(0, CFArrayGetCount(fileContents)));
+		}
+		else if (sourceTypeID == CFDictionaryGetTypeID())
+		{
+			CFIndex count = CFDictionaryGetCount((CFDictionaryRef) fileContents);
+			void** values = malloc(sizeof(void*) * count);
+			CFDictionaryGetKeysAndValues((CFDictionaryRef) fileContents, NULL, (const void**) values);
+
+			CFArrayReplaceValues((CFMutableArrayRef) dest, CFRangeMake(CFArrayGetCount((CFArrayRef) dest) - 1, 0), (const void**) values, count);
+			free(values);
+		}
+		else
+		{
+			CFArrayAppendValue((CFMutableArrayRef) dest, fileContents);
+		}
+	}
+	else if (typeID == CFDictionaryGetTypeID())
+	{
+		if (sourceTypeID == CFDictionaryGetTypeID())
+		{
+			CFIndex count = CFDictionaryGetCount((CFDictionaryRef) fileContents);
+			void** values = malloc(sizeof(void*) * count);
+			void** keys = malloc(sizeof(void*) * count);
+
+			CFDictionaryGetKeysAndValues((CFDictionaryRef) fileContents, (const void**) keys, (const void**) values);
+
+			for (CFIndex i = 0; i < count; i++)
+				CFDictionarySetValue((CFMutableDictionaryRef) dest, keys[i], values[i]);
+
+			free(keys);
+			free(values);
+		}
+		else if (sourceTypeID == CFArrayGetTypeID())
+		{
+			puts("Merge: Can't Add array Entries to dict");
+		}
+		else
+		{
+			CFDictionarySetValue((CFMutableDictionaryRef) dest, CFSTR(""), fileContents);
+		}
+	}
+	else
+	{
+		puts("Merge: Specified Entry Must Be a Container");
+	}
+
+	CFRelease(fileContents);
 }
 
