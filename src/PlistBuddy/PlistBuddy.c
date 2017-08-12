@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2017 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <CoreFoundation/CoreFoundation.h>
@@ -21,6 +40,7 @@ CFPropertyListRef parseValue(enum PropertyType type, const char* string);
 void deleteEntry(const char* entry);
 void copyEntry(const char* src, const char* dst);
 void mergeFile(const char* path, const char* entry);
+void importFile(const char* entry, const char* path);
 
 // Forces XML output when printing to screen
 bool forceXML = false;
@@ -332,19 +352,70 @@ static enum PropertyType inferType(CFPropertyListRef obj)
 
 char* getWord(const char* cmd, const char** next)
 {
-	char* p = strchr(cmd, ' ');
-	if (p == NULL)
+	if (cmd[0] == '"')
 	{
+		int i = 1, j = 0;
+		char* out = strdup(cmd);
+
+		for (; cmd[i] != '\0'; i++)
+		{
+			if (cmd[i] == '\\' && cmd[i+1] != '\0')
+			{
+				i++;
+				switch (cmd[i])
+				{
+					case '"':
+						out[j++] = '"';
+						break;
+					case 'n':
+						out[j++] = '\n';
+						break;
+					case 't':
+						out[j++] = '\t';
+						break;
+					default:
+						out[j++] = '\\';
+						out[j++] = cmd[i];
+				}
+			}
+			else if (cmd[i] == '"')
+			{
+				out[j++] = '\0';
+				break;
+			}
+			else
+			{
+				out[j++] = cmd[i];
+			}
+		}
+
+		if (j > 0 && out[j-1] != '\0')
+		{
+			free(out);
+			puts("Unterminated Quotes");
+			return NULL;
+		}
 		if (next)
-			*next = NULL;
-		return strdup(cmd);
+			*next = nextWord(cmd + i + 1);
+
+		return out;
 	}
 	else
 	{
-		char* rv = strndup(cmd, p-cmd);
-		if (next)
-			*next = nextWord(p);
-		return rv;
+		char* p = strchr(cmd, ' ');
+		if (p == NULL)
+		{
+			if (next)
+				*next = NULL;
+			return strdup(cmd);
+		}
+		else
+		{
+			char* rv = strndup(cmd, p-cmd);
+			if (next)
+				*next = nextWord(p);
+			return rv;
+		}
 	}
 }
 
@@ -479,7 +550,6 @@ void runCommand(const char* cmd)
 			return;
 		}
 
-		// FIXME: This isn't quite correct, this doesn't support paths with spaces
 		char* path = getWord(next, &next);
 
 		mergeFile(path, next);
@@ -488,6 +558,25 @@ void runCommand(const char* cmd)
 	else if (isCommand(cmd, "Import", &next))
 	{
 		// entry file.plist
+		if (!next)
+		{
+			puts("Missing arguments");
+			return;
+		}
+		char* entry = getWord(next, &next);
+
+		if (!next)
+		{
+			puts("Missing arguments");
+			free(entry);
+			return;
+		}
+		char* path = getWord(next, &next);
+
+		importFile(entry, path);
+
+		free(path);
+		free(entry);
 	}
 	else
 	{
@@ -1150,6 +1239,47 @@ void mergeFile(const char* path, const char* entry)
 		puts("Merge: Specified Entry Must Be a Container");
 	}
 
+	CFRelease(fileContents);
+}
+
+// NOTE: This function doesn't seem to work at all in the original program
+void importFile(const char* entry, const char* path)
+{
+	CFPropertyListRef dest, fileContents;
+	char* leafName;
+
+	fileContents = loadPlist(path);
+	if (fileContents == NULL)
+		return;
+
+	resolvePlistEntry(entry, &dest, NULL, &leafName, true);
+	if (dest == NULL)
+	{
+		printf("Import: Entry, \"%s\", Does Not Exist\n", entry);
+		CFRelease(fileContents);
+		return;
+	}
+
+	CFTypeID typeID = CFGetTypeID(dest);
+	if (typeID == CFDictionaryGetTypeID())
+	{
+		CFStringRef key = CFStringCreateWithCString(kCFAllocatorDefault, leafName, kCFStringEncodingUTF8);
+		CFDictionarySetValue((CFMutableDictionaryRef) dest, key, fileContents);
+		CFRelease(key);
+	}
+	else if (typeID == CFArrayGetTypeID())
+	{
+		CFIndex index = atoi(leafName);
+		if (index < 0)
+			index = 0;
+
+		if (index >= CFArrayGetCount((CFArrayRef) dest))
+			CFArrayAppendValue((CFMutableArrayRef) dest, fileContents);
+		else
+			CFArraySetValueAtIndex((CFMutableArrayRef) dest, index, fileContents);
+	}
+
+	free(leafName);
 	CFRelease(fileContents);
 }
 
