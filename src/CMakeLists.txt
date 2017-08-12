@@ -151,6 +151,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/Onyx2D/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreVideo/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/WTF/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 

@@ -266,3 +266,7 @@
 [submodule "src/external/gdb"]
 	path = src/external/gdb
 	url = ../darling-applegdb.git
+[submodule "src/external/WTF"]
+	path = src/external/WTF
+	url = ../darling-WTF.git
+	branch = master
