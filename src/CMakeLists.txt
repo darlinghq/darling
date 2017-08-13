@@ -158,6 +158,9 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/NetworkStatistics/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreSymbolication/include
 	${CMAKE_CURRENT_SOURCE_DIR}/LoggingSupport/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CrashReporterSupport/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SecurityFoundation/include
+	${CMAKE_CURRENT_SOURCE_DIR}/AuthKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
@@ -305,6 +308,9 @@ add_subdirectory(DiskManagement)
 add_subdirectory(NetworkStatistics)
 add_subdirectory(CoreSymbolication)
 add_subdirectory(LoggingSupport)
+add_subdirectory(CrashReporterSupport)
+add_subdirectory(SecurityFoundation)
+add_subdirectory(AuthKit)
 add_subdirectory(external/bsm)
 add_subdirectory(external/gdb)
 add_subdirectory(external/Heimdal)
