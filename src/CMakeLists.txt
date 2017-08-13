@@ -161,6 +161,9 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/CrashReporterSupport/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityFoundation/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AuthKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/IOPlatformPluginFamily/include
+	${CMAKE_CURRENT_SOURCE_DIR}/PlugInKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libsysmon/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
@@ -311,6 +314,9 @@ add_subdirectory(LoggingSupport)
 add_subdirectory(CrashReporterSupport)
 add_subdirectory(SecurityFoundation)
 add_subdirectory(AuthKit)
+add_subdirectory(IOPlatformPluginFamily)
+add_subdirectory(PlugInKit)
+add_subdirectory(libsysmon)
 add_subdirectory(external/bsm)
 add_subdirectory(external/gdb)
 add_subdirectory(external/Heimdal)
