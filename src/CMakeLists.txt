@@ -156,6 +156,8 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/PerformanceAnalysis/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskManagement/include
 	${CMAKE_CURRENT_SOURCE_DIR}/NetworkStatistics/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreSymbolication/include
+	${CMAKE_CURRENT_SOURCE_DIR}/LoggingSupport/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
@@ -301,6 +303,8 @@ add_subdirectory(DebugSymbols)
 add_subdirectory(PerformanceAnalysis)
 add_subdirectory(DiskManagement)
 add_subdirectory(NetworkStatistics)
+add_subdirectory(CoreSymbolication)
+add_subdirectory(LoggingSupport)
 add_subdirectory(external/bsm)
 add_subdirectory(external/gdb)
 add_subdirectory(external/Heimdal)
