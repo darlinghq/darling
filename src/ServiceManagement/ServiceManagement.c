@@ -1,6 +1,6 @@
 #include <ServiceManagement/ServiceManagement.h>
 
-#define STUB() (printf("STUB CALLED: %s:%s\n\t\t%s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__))
+#define STUB() (printf("STUB CALLED: %s:%i\n\t\t%s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__))
 
 const CFStringRef kSMDomainSystemLaunchd = CFSTR("kSMDomainSystemLaunchd");
 
