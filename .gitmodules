@@ -282,3 +282,7 @@
 	path = src/external/bmalloc
 	url = ../darling-bmalloc.git
 	branch = master
+[submodule "src/external/dtrace"]
+	path = src/external/dtrace
+	url = ../darling-dtrace.git
+	branch = master
