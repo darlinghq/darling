@@ -168,6 +168,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/Metal/include
 	${CMAKE_CURRENT_SOURCE_DIR}/kperf/include
 	${CMAKE_CURRENT_SOURCE_DIR}/StreamingZip/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
@@ -325,6 +326,7 @@ add_subdirectory(libcompression)
 add_subdirectory(Metal)
 add_subdirectory(kperf)
 add_subdirectory(StreamingZip)
+add_subdirectory(external/dtrace)
 add_subdirectory(external/bsm)
 add_subdirectory(external/gdb)
 add_subdirectory(external/Heimdal)
