@@ -165,6 +165,9 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/PlugInKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libsysmon/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libcompression/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Metal/include
+	${CMAKE_CURRENT_SOURCE_DIR}/kperf/include
+	${CMAKE_CURRENT_SOURCE_DIR}/StreamingZip/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
@@ -319,6 +322,9 @@ add_subdirectory(IOPlatformPluginFamily)
 add_subdirectory(PlugInKit)
 add_subdirectory(libsysmon)
 add_subdirectory(libcompression)
+add_subdirectory(Metal)
+add_subdirectory(kperf)
+add_subdirectory(StreamingZip)
 add_subdirectory(external/bsm)
 add_subdirectory(external/gdb)
 add_subdirectory(external/Heimdal)
