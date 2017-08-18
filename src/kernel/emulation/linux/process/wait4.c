@@ -43,26 +43,6 @@ restart:
 		int signal = *status >> 8;
 		signal = signum_linux_to_bsd(signal);
 		*status = (*status & 0x7f) | (signal << 8);
-
-		if (lkm_call(NR_get_tracer, (void*)(long) ret) == getpid())
-		{
-			// We are ptracing the target process.
-			// Allow the execution to continue so that the ptraced process can translate
-			// the signal into a Mach message.
-
-			if (signal == SIGSTOP)
-			{
-				// Notify target process it has been SIGSTOP'ed via sigqueue
-				// because we're just about to resume it and we need it
-				// to pass the signal back to us through a Mach message.
-				linux_sigqueue(ret, SIGNAL_SIGEXC_THUPDATE, -SIGSTOP);
-			}
-
-			sys_ptrace(PT_CONTINUE, ret, NULL, signal);
-
-			if (!(options & DARLING_WAIT_NORESTART))
-				goto restart;
-		}
 	}
 
 	return ret;

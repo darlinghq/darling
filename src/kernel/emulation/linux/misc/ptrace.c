@@ -12,12 +12,10 @@
 #include "../process/wait4.h"
 #include "../mach/lkm.h"
 #include "../../../../lkm/api.h"
+#include "../unistd/getppid.h"
 
-#define LINUX_PTRACE_TRACEME	0
-#define LINUX_PTRACE_ATTACH	16
-#define LINUX_PTRACE_DETACH	17
-#define LINUX_PTRACE_CONT	7
-#define LINUX_PTRACE_KILL	8
+// faster than sys_getpid(), because it caches the PID
+extern int getpid(void);
 
 long sys_ptrace(int request, int pid, void* addr, int data)
 {
@@ -28,8 +26,17 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 	{
 		case PT_PTRACE_ME:
 		{
-			ret = LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_TRACEME, pid, addr, data);
+			// ret = LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_TRACEME, pid, addr, data);
 			
+			// if (ret < 0)
+			// 	ret = errno_linux_to_bsd(ret);
+
+			// Use LKM mechanisms to set a tracing task (->disallow anyone else to attach)
+			struct set_tracer_args args = {
+				.target = 0,
+				.tracer = sys_getppid()
+			};
+			ret = lkm_call(NR_set_tracer, &args);
 			if (ret < 0)
 				ret = errno_linux_to_bsd(ret);
 			
@@ -38,21 +45,36 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		}
 		case PT_KILL:
 		{
-			//return sys_kill(pid, SIGKILL, 1);
-			ret = LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_KILL, pid, addr, data);
-			if (ret < 0)
-				ret = errno_linux_to_bsd(ret);
+			ret = sys_kill(pid, SIGKILL, 1);
+			// ret = LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_KILL, pid, addr, data);
+			// if (ret < 0)
+			// 	ret = errno_linux_to_bsd(ret);
 
 			// return ret;
 			cmd = "PT_KILL"; break;
 		}
 		case PT_ATTACHEXC:
-			// This triggers darling_sigexc_self() in the remote process.
-			linux_sigqueue(pid, SIGNAL_SIGEXC_TOGGLE, SIGRT_MAGIC_ENABLE_SIGEXC);
+		{
+			// Use LKM mechanisms to set a tracing task (->disallow anyone else to attach)
+			struct set_tracer_args args = {
+				.target = pid,
+				.tracer = getpid()
+			};
+			ret = lkm_call(NR_set_tracer, &args);
+			if (ret < 0)
+				ret = errno_linux_to_bsd(ret);
+			else
+			{
+				// This triggers darling_sigexc_self() in the remote process.
+				linux_sigqueue(pid, SIGNAL_SIGEXC_TOGGLE, SIGRT_MAGIC_ENABLE_SIGEXC);
+			}
 
-		// fall through to PT_ATTACH
+			cmd = "PT_ATTACHEXC";
+			break;
+		}
 		case PT_ATTACH:
 		{
+			/*
 			ret = LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_ATTACH, pid, addr, data);
 			
 			if (ret < 0)
@@ -65,6 +87,8 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 				// and make sure it is passed to the tracee (to get it sent back to us as a Mach message).
 				sys_wait4(pid, NULL, DARLING_WAIT_NORESTART | BSD_WSTOPPED, NULL);
 			}
+			*/
+			ret = -ENOSYS;
 			
 			//return ret;
 			cmd = "PT_ATTACH"; break;
@@ -74,10 +98,10 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 			// Tell the tracee to restore original application signal handlers.
 			linux_sigqueue(pid, SIGNAL_SIGEXC_TOGGLE, SIGRT_MAGIC_DISABLE_SIGEXC);
 
-			ret = LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_DETACH, pid, addr, data);
+			ret = 0; //LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_DETACH, pid, addr, data);
 			
-			if (ret < 0)
-				ret = errno_linux_to_bsd(ret);
+			// if (ret < 0)
+			// 	ret = errno_linux_to_bsd(ret);
 			
 			//return ret;
 			cmd = "PT_DETACH"; break;
@@ -92,6 +116,9 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		}
 		case PT_CONTINUE:
 		{
+			ret = sys_kill(pid, SIGCONT, 1);
+
+			/*
 			int signal = 0;
 			if (data != -1)
 				signal = signum_bsd_to_linux(data);
@@ -99,6 +126,7 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 			
 			if (ret < 0)
 				ret = errno_linux_to_bsd(ret);
+			*/
 			
 			// return ret;
 			cmd = "PT_CONTINUE"; break;

@@ -6,6 +6,7 @@
 #include <linux-syscalls/linux.h>
 #include <pthread/tsd_private.h>
 #include "signal/mach_exc.h"
+#include "sigaltstack.h"
 
 // Support for Darwin debugging.
 // Unlike other Unix-like systems, macOS doesn't use wait() to handle events in the debugged process.
@@ -20,12 +21,23 @@ void darling_sigexc_uninstall(void);
 void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt);
 
 #define SIGEXC_TSD_KEY	102
+static char sigexc_altstack[8192];
+static struct bsd_stack orig_stack;
 
 void sigexc_setup(void)
 {
 	// Setup handler for SIGNAL_SIGEXC_TOGGLE and SIGNAL_SIGEXC_THUPDATE
 	handle_rt_signal(SIGNAL_SIGEXC_TOGGLE);
 	handle_rt_signal(SIGNAL_SIGEXC_THUPDATE);
+
+	// If we have a tracer (i.e. we are a new process after execve),
+	// enable sigexc handling and send SIGTRAP to self to allow
+	// the debugger to handle this situation.
+	if (lkm_call(NR_get_tracer, NULL) != 0)
+	{
+		darling_sigexc_self();
+		sys_kill(getpid(), SIGTRAP, 1);
+	}
 }
 
 static void handle_rt_signal(int signum)
@@ -54,6 +66,9 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 		{
 			am_i_ptraced = true;
 			darling_sigexc_self();
+
+			// Stop on attach
+			sigexc_handler(LINUX_SIGSTOP, NULL, NULL);
 		}
 		else if (info->si_value == SIGRT_MAGIC_DISABLE_SIGEXC)
 		{
@@ -94,13 +109,20 @@ void darling_sigexc_self(void)
 		struct linux_sigaction sa;
 		sa.sa_sigaction = sigrt_handler;
 		sa.sa_mask = 0xffffffff; // all other standard Unix signals should be blocked while the handler is run
-		sa.sa_flags = LINUX_SA_RESTORER | LINUX_SA_SIGINFO | LINUX_SA_RESTART;
+		sa.sa_flags = LINUX_SA_RESTORER | LINUX_SA_SIGINFO | LINUX_SA_RESTART | LINUX_SA_ONSTACK;
 		sa.sa_restorer = sig_restorer;
 
 		LINUX_SYSCALL(__NR_rt_sigaction, i,
 				&sa, NULL,
 				sizeof(sa.sa_mask));
 	}
+
+	struct bsd_stack newstack = {
+		.ss_sp = sigexc_altstack,
+		.ss_size = sizeof(sigexc_altstack),
+		.ss_flags = 0
+	};
+	sys_sigaltstack(&newstack, &orig_stack);
 }
 void darling_sigexc_uninstall(void)
 {
@@ -124,6 +146,8 @@ void darling_sigexc_uninstall(void)
 				&sa, NULL,
 				sizeof(sa.sa_mask));
 	}
+
+	sys_sigaltstack(&orig_stack, NULL);
 }
 
 static mach_port_t get_exc_port(int type)
@@ -146,6 +170,9 @@ static mach_port_t get_exc_port(int type)
 void sigexc_handler(int linux_signum, struct linux_siginfo* info, void* ctxt)
 {
 	if (!darling_am_i_ptraced())
+		return;
+
+	if (linux_signum == LINUX_SIGCONT)
 		return;
 
 	// Send a Mach message to the debugger.
@@ -195,6 +222,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, void* ctxt)
 
 	port = get_exc_port(mach_exception);
 
+	// TODO: pass mcontext_t to LKM
 	if (port != 0)
 	{
 		_pthread_setspecific_direct(SIGEXC_TSD_KEY, bsd_signum);
@@ -203,6 +231,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, void* ctxt)
 
 		bsd_signum = _pthread_getspecific_direct(SIGEXC_TSD_KEY);
 	}
+	// Get (possibly updated) mcontext_t from LKM
 
 	// Pass the signal to the application handler or emulate the effects of the signal if SIG_DFL is set.
 	if (bsd_signum)
