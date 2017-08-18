@@ -7,6 +7,9 @@
 #include <pthread/tsd_private.h>
 #include "signal/mach_exc.h"
 #include "sigaltstack.h"
+#include "../mach/lkm.h"
+#include "../../../../lkm/api.h"
+#include "kill.h"
 
 // Support for Darwin debugging.
 // Unlike other Unix-like systems, macOS doesn't use wait() to handle events in the debugged process.
