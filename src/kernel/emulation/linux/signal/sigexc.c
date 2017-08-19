@@ -50,6 +50,7 @@ void sigexc_setup(void)
 	// the debugger to handle this situation.
 	if (lkm_call(NR_get_tracer, NULL) != 0)
 	{
+		__simple_printf("the predecessor is traced\n");
 		darling_sigexc_self();
 		sys_kill(getpid(), SIGTRAP, 1);
 	}
@@ -75,11 +76,11 @@ bool darling_am_i_ptraced(void)
 
 void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 {
+	__simple_printf("sigrt_handler signum=%d\n", signum);
 	if (signum == SIGNAL_SIGEXC_TOGGLE)
 	{
 		if (info->si_value == SIGRT_MAGIC_ENABLE_SIGEXC)
 		{
-			am_i_ptraced = true;
 			darling_sigexc_self();
 
 			// Stop on attach
@@ -87,7 +88,6 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 		}
 		else if (info->si_value == SIGRT_MAGIC_DISABLE_SIGEXC)
 		{
-			am_i_ptraced = false;
 			darling_sigexc_uninstall();
 		}
 	}
@@ -118,11 +118,14 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 
 void darling_sigexc_self(void)
 {
+	am_i_ptraced = true;
+
+	__simple_printf("darling_sigexc_self()\n");
 	// Make sigexc_handler the handler for all signals in the process
 	for (int i = 1; i <= 31; i++)
 	{
 		struct linux_sigaction sa;
-		sa.sa_sigaction = sigrt_handler;
+		sa.sa_sigaction = sigexc_handler;
 		sa.sa_mask = 0xffffffff; // all other standard Unix signals should be blocked while the handler is run
 		sa.sa_flags = LINUX_SA_RESTORER | LINUX_SA_SIGINFO | LINUX_SA_RESTART | LINUX_SA_ONSTACK;
 		sa.sa_restorer = sig_restorer;
@@ -141,6 +144,9 @@ void darling_sigexc_self(void)
 }
 void darling_sigexc_uninstall(void)
 {
+	am_i_ptraced = false;
+
+	__simple_printf("darling_sigexc_uninstall()\n");
 	for (int i = 1; i <= 31; i++)
 	{
 		struct linux_sigaction sa;
@@ -184,8 +190,12 @@ static mach_port_t get_exc_port(int type)
 
 void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
+	__simple_printf("sigexc_handler(%d)\n", linux_signum);
 	if (!darling_am_i_ptraced())
+	{
+		__simple_printf("NOT TRACED!\n");
 		return;
+	}
 
 	if (linux_signum == LINUX_SIGCONT)
 		return;
@@ -200,7 +210,10 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 
 	int bsd_signum = signum_linux_to_bsd(linux_signum);
 	if (bsd_signum <= 0)
+	{
+		__simple_printf("Unmapped signal!\n");
 		return;
+	}
 
 	// SIGSEGV + SIGBUS -> EXC_BAD_ACCESS
 	// SIGTRAP -> EXC_BREAKPOINT
@@ -246,8 +259,8 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
 	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
 
-	thread_set_state(thread, x86_THREAD_STATE64, &tstate, x86_THREAD_STATE64_COUNT);
-	thread_set_state(thread, x86_FLOAT_STATE64, &fstate, x86_THREAD_FLOAT64_COUNT);
+	thread_set_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, x86_THREAD_STATE64_COUNT);
+	thread_set_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, x86_FLOAT_STATE64_COUNT);
 #elif defined(__i386__)
 	x86_thread_state32_t tstate;
 	x86_float_state32_t fstate;
@@ -255,10 +268,11 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
 	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
 
-	thread_set_state(thread, x86_THREAD_STATE32, &tstate, x86_THREAD_STATE32_COUNT);
-	thread_set_state(thread, x86_FLOAT_STATE32, &fstate, x86_THREAD_FLOAT32_COUNT);
+	thread_set_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, x86_THREAD_STATE32_COUNT);
+	thread_set_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, x86_FLOAT_STATE32_COUNT);
 #endif
 
+	__simple_printf("Passing Mach exception to port %d\n", port);
 	if (port != 0)
 	{
 		_pthread_setspecific_direct(SIGEXC_TSD_KEY, bsd_signum);
@@ -273,9 +287,9 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	mach_msg_type_number_t count;
 
 	count = x86_THREAD_STATE64_COUNT;
-	thread_get_state(thread, x86_THREAD_STATE64, &tstate, &count);
-	count = x86_THREAD_FLOAT64_COUNT;
-	thread_get_state(thread, x86_FLOAT_STATE64, &fstate, &count);
+	thread_get_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, &count);
+	count = x86_FLOAT_STATE64_COUNT;
+	thread_get_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, &count);
 
 	thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
 	float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
@@ -283,9 +297,9 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	mach_msg_type_number_t count;
 
 	count = x86_THREAD_STATE32_COUNT;
-	thread_get_state(thread, x86_THREAD_STATE32, &tstate, &count);
-	count = x86_THREAD_FLOAT32_COUNT;
-	thread_get_state(thread, x86_FLOAT_STATE32, &fstate, &count);
+	thread_get_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, &count);
+	count = x86_FLOAT_STATE32_COUNT;
+	thread_get_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, &count);
 
 	thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
 	float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
@@ -329,159 +343,158 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 #if defined(__x86_64__)
 void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state64_t* s)
 {
-	s->rax = regs->rax;
-	s->rbx = regs->rbx;
-	s->rcx = regs->rcx;
-	s->rdx = regs->rdx;
-	s->rdi = regs->rdi;
-	s->rsi = regs->rsi;
-	s->rbp = regs->rbp;
-	s->rsp = regs->rsp;
-	s->r8 = regs->r8;
-	s->r9 = regs->r9;
-	s->r10 = regs->r10;
-	s->r11 = regs->r11;
-	s->r12 = regs->r12;
-	s->r13 = regs->r13;
-	s->r14 = regs->r14;
-	s->r15 = regs->r15;
-	s->rip = regs->rip;
-	s->rflags = regs->efl;
-	s->cs = regs->cs;
-	s->fs = regs->fs;
-	s->gs = regs->gs;
+	s->__rax = regs->rax;
+	s->__rbx = regs->rbx;
+	s->__rcx = regs->rcx;
+	s->__rdx = regs->rdx;
+	s->__rdi = regs->rdi;
+	s->__rsi = regs->rsi;
+	s->__rbp = regs->rbp;
+	s->__rsp = regs->rsp;
+	s->__r8 = regs->r8;
+	s->__r9 = regs->r9;
+	s->__r10 = regs->r10;
+	s->__r11 = regs->r11;
+	s->__r12 = regs->r12;
+	s->__r13 = regs->r13;
+	s->__r14 = regs->r14;
+	s->__r15 = regs->r15;
+	s->__rip = regs->rip;
+	s->__rflags = regs->efl;
+	s->__cs = regs->cs;
+	s->__fs = regs->fs;
+	s->__gs = regs->gs;
 }
 
 void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state64_t* s)
 {
-	*((uint32_t*)&s->fpu_fcw) = fx->cwd;
-	*((uint32_t*)&s->fpu_fsw) = fx->swd;
-	s->fpu_ftw = fx->ftw;
-	s->fpu_fop = fx->fop;
-	s->fpu_ip = fx->rip;
-	s->fpu_cs = 0;
-	s->fpu_dp = fx->rdp;
-	s->fpu_ds = 0;
-	s->fpu_mxcsr = fx->mxcsr;
-	s->fpu_mxcsrmask = fx->mxcsr_mask;
+	*((uint32_t*)&s->__fpu_fcw) = fx->cwd;
+	*((uint32_t*)&s->__fpu_fsw) = fx->swd;
+	s->__fpu_ftw = fx->ftw;
+	s->__fpu_fop = fx->fop;
+	s->__fpu_ip = fx->rip;
+	s->__fpu_cs = 0;
+	s->__fpu_dp = fx->rdp;
+	s->__fpu_ds = 0;
+	s->__fpu_mxcsr = fx->mxcsr;
+	s->__fpu_mxcsrmask = fx->mxcr_mask;
 
-	memcpy(&s->fpu_stmm0, fx->_st, 128);
-	memcpy(&s->fpu_xmm0, fx->_xmm, 256);
+	memcpy(&s->__fpu_stmm0, fx->_st, 128);
+	memcpy(&s->__fpu_xmm0, fx->_xmm, 256);
 }
 
 void thread_state_to_mcontext(const x86_thread_state64_t* s, struct linux_gregset* regs)
 {
-	regs->rax = s->rax;
-	regs->rbx = s->rbx;
-	regs->rcx = s->rcx;
-	regs->rdx = s->rdx;
-	regs->rdi = s->rdi;
-	regs->rsi = s->rsi;
-	regs->rbp = s->rbp;
-	regs->rsp = s->rsp;
-	regs->r8 = s->r8;
-	regs->r9 = s->r9;
-	regs->r10 = s->r10;
-	regs->r11 = s->r11;
-	regs->r12 = s->r12;
-	regs->r13 = s->r13;
-	regs->r14 = s->r14;
-	regs->r15 = s->r15;
-	regs->rip = s->rip;
-	regs->efl = s->rflags;
-	regs->cs = s->cs;
-	regs->fs = s->fs;
-	regs->gs = s->gs;
+	regs->rax = s->__rax;
+	regs->rbx = s->__rbx;
+	regs->rcx = s->__rcx;
+	regs->rdx = s->__rdx;
+	regs->rdi = s->__rdi;
+	regs->rsi = s->__rsi;
+	regs->rbp = s->__rbp;
+	regs->rsp = s->__rsp;
+	regs->r8 = s->__r8;
+	regs->r9 = s->__r9;
+	regs->r10 = s->__r10;
+	regs->r11 = s->__r11;
+	regs->r12 = s->__r12;
+	regs->r13 = s->__r13;
+	regs->r14 = s->__r14;
+	regs->r15 = s->__r15;
+	regs->rip = s->__rip;
+	regs->efl = s->__rflags;
+	regs->cs = s->__cs;
+	regs->fs = s->__fs;
+	regs->gs = s->__gs;
 }
 
 void float_state_to_mcontext(const x86_float_state64_t* s, linux_fpregset_t fx)
 {
-	fx->cwd = *((uint32_t*)&s->fpu_fcw);
-	fx->swd = *((uint32_t*)&s->fpu_fsw);
-	fx->ftw = s->fpu_ftw;
-	fx->fop = s->fpu_fop;
-	fx->rip = s->fpu_ip;
-	fx->rdp = s->fpu_dp;
-	fx->mxcsr = s->fpu_mxcsr;
-	fx->mxcsr_mask = s->fpu_mxcsrmask;
+	fx->cwd = *((uint32_t*)&s->__fpu_fcw);
+	fx->swd = *((uint32_t*)&s->__fpu_fsw);
+	fx->ftw = s->__fpu_ftw;
+	fx->fop = s->__fpu_fop;
+	fx->rip = s->__fpu_ip;
+	fx->rdp = s->__fpu_dp;
+	fx->mxcsr = s->__fpu_mxcsr;
+	fx->mxcr_mask = s->__fpu_mxcsrmask;
 
-	memcpy(fx->_st, &s->fpu_stmm0, 128);
-	memcpy(fx->_xmm, &s->fpu_xmm0, 256);
+	memcpy(fx->_st, &s->__fpu_stmm0, 128);
+	memcpy(fx->_xmm, &s->__fpu_xmm0, 256);
 }
 
 #elif defined(__i386__)
 void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state32_t* s)
 {
-	s->eax = regs->eax;
-	s->ebx = regs->ebx;
-	s->ecx = regs->ecx;
-	s->edx = regs->edx;
-	s->edi = regs->edi;
-	s->esi = regs->esi;
-	s->ebp = regs->ebp;
-	s->esp = regs->esp;
-	s->ss = regs->ss;
-	s->eflags = regs->efl;
-	s->eip = regs->eip;
-	s->cs = regs->cs;
-	s->ds = regs->ds;
-	s->es = regs->es;
-	s->fs = regs->fs;
-	s->gs = regs->gs;
+	s->__eax = regs->eax;
+	s->__ebx = regs->ebx;
+	s->__ecx = regs->ecx;
+	s->__edx = regs->edx;
+	s->__edi = regs->edi;
+	s->__esi = regs->esi;
+	s->__ebp = regs->ebp;
+	s->__esp = regs->esp;
+	s->__ss = regs->ss;
+	s->__eflags = regs->efl;
+	s->__eip = regs->eip;
+	s->__cs = regs->cs;
+	s->__ds = regs->ds;
+	s->__es = regs->es;
+	s->__fs = regs->fs;
+	s->__gs = regs->gs;
 }
 
 void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state32_t* s)
 {
-	*((uint32_t*)&s->fpu_fcw) = fx->cw;
-	*((uint32_t*)&s->fpu_fsw) = fx->sw;
-	s->fpu_ftw = fx->tag;
-	s->fpu_fop = 0;
-	s->fpu_ip = fx->ipoff;
-	s->fpu_cs = fx->cssel;
-	s->fpu_dp = fx->dataoff;
-	s->fpu_ds = fx->datasel;
-	s->fpu_mxcsr = fx->mxcsr;
-	s->fpu_mxcsrmask = fx->mxcsr_mask;
+	*((uint32_t*)&s->__fpu_fcw) = fx->cw;
+	*((uint32_t*)&s->__fpu_fsw) = fx->sw;
+	s->__fpu_ftw = fx->tag;
+	s->__fpu_fop = 0;
+	s->__fpu_ip = fx->ipoff;
+	s->__fpu_cs = fx->cssel;
+	s->__fpu_dp = fx->dataoff;
+	s->__fpu_ds = fx->datasel;
+	s->__fpu_mxcsr = fx->mxcsr;
+	s->__fpu_mxcsrmask = 0;
 
-	memcpy(&s->fpu_stmm0, fx->_st, 128);
-	memcpy(&s->fpu_xmm0, fx->_xmm, 128);
-	memset(((char*) &s->fpu_xmm0) + 128, 0, 128);
+	memcpy(&s->__fpu_stmm0, fx->_st, 128);
+	memcpy(&s->__fpu_xmm0, fx->_xmm, 128);
+	memset(((char*) &s->__fpu_xmm0) + 128, 0, 128);
 }
 
 void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux_gregset* regs)
 {
-	regs->eax = s->eax;
-	regs->ebx = s->ebx;
-	regs->ecx = s->ecx;
-	regs->edx = s->edx;
-	regs->edi = s->edi;
-	regs->esi = s->esi;
-	regs->ebp = s->ebp;
-	regs->esp = s->esp;
-	regs->ss = s->ss;
-	regs->efl = s->eflags;
-	regs->eip = s->eip;
-	regs->cs = s->cs;
-	regs->ds = s->ds;
-	regs->es = s->es;
-	regs->fs = s->fs;
-	regs->gs = s->gs;
+	regs->eax = s->__eax;
+	regs->ebx = s->__ebx;
+	regs->ecx = s->__ecx;
+	regs->edx = s->__edx;
+	regs->edi = s->__edi;
+	regs->esi = s->__esi;
+	regs->ebp = s->__ebp;
+	regs->esp = s->__esp;
+	regs->ss = s->__ss;
+	regs->efl = s->__eflags;
+	regs->eip = s->__eip;
+	regs->cs = s->__cs;
+	regs->ds = s->__ds;
+	regs->es = s->__es;
+	regs->fs = s->__fs;
+	regs->gs = s->__gs;
 }
 
 void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx)
 {
-	fx->cw = *((uint32_t*)&s->fpu_fcw);
-	fx->sw = *((uint32_t*)&s->fpu_fsw);
-	fx->tag = s->fpu_ftw;
-	fx->ipoff = s->fpu_ip;
-	fx->cssel = s->fpu_cs;
-	fx->dataoff = s->fpu_dp;
-	fx->datasel = s->fpu_ds;
-	fx->mxcsr = s->fpu_mxcsr;
-	fx->mxcsr_mask = s->fpu_mxcsrmask;
+	fx->cw = *((uint32_t*)&s->__fpu_fcw);
+	fx->sw = *((uint32_t*)&s->__fpu_fsw);
+	fx->tag = s->__fpu_ftw;
+	fx->ipoff = s->__fpu_ip;
+	fx->cssel = s->__fpu_cs;
+	fx->dataoff = s->__fpu_dp;
+	fx->datasel = s->__fpu_ds;
+	fx->mxcsr = s->__fpu_mxcsr;
 
-	memcpy(fx->_st, &s->fpu_stmm0, 128);
-	memcpy(fx->_xmm, &s->fpu_xmm0, 128);
+	memcpy(fx->_st, &s->__fpu_stmm0, 128);
+	memcpy(fx->_xmm, &s->__fpu_xmm0, 128);
 }
 #endif
 

@@ -50,6 +50,6 @@ __libkernel_init(_libkernel_functions_t fns,
 	}
 
 	setup_elfcalls(apple);
-	sigexc_setup();
 	mach_init();
+	sigexc_setup();
 }
