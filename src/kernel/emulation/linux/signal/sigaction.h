@@ -124,13 +124,25 @@ typedef struct _fpstate {
         struct {
                 unsigned short significand[4], exponent;
         } _st[8];
-        unsigned long status;
+        unsigned short status, magic;
+		unsigned int _fxsr_env[6];
+		unsigned int mxcsr;
+		unsigned int reserved;
+		struct _fpxreg {
+			unsigned short significand[4];
+			unsigned short exponent;
+			unsigned short padding[3];
+		} _fxsr_st[8];
+        struct {
+                unsigned element[4];
+        } _xmm[8];
 } *linux_fpregset_t;
 
 struct linux_gregset
 {
 	int gs, fs, es, ds, edi, esi, ebp, esp, ebx, edx, ecx, eax;
 	int trapno, err, eip, cs, efl, uesp;
+	int ss;
 };
 #endif
 
