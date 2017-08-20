@@ -2,9 +2,11 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
+#include "../bsdthread/cancelable.h"
 
 long sys_read(int fd, void* mem, int len)
 {
+	CANCELATION_POINT();
 	return sys_read_nocancel(fd, mem, len);
 }
 

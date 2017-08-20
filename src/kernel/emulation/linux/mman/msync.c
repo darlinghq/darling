@@ -3,6 +3,7 @@
 #include "../errno.h"
 #include "../base.h"
 #include <linux-syscalls/linux.h>
+#include "../bsdthread/cancelable.h"
 
 int msync_flags_bsd_to_linux(int flags)
 {
@@ -20,6 +21,7 @@ int msync_flags_bsd_to_linux(int flags)
 
 long sys_msync(void* addr, unsigned long len, int flags)
 {
+	CANCELATION_POINT();
 	return sys_msync_nocancel(addr, len, flags);
 }
 

@@ -4,9 +4,11 @@
 #include <linux-syscalls/linux.h>
 #include "socket.h"
 #include "duct.h"
+#include "../bsdthread/cancelable.h"
 
 long sys_accept(int fd, void* from, int* socklen)
 {
+	CANCELATION_POINT();
 	return sys_accept_nocancel(fd, from, socklen);
 }
 

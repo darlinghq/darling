@@ -2,6 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
+#include "../bsdthread/cancelable.h"
 
 __attribute__((weak))
 __attribute__((visibility("default")))
@@ -9,6 +10,7 @@ int kqueue_close(int kq) { return -1; }
 
 long sys_close(int fd)
 {
+	CANCELATION_POINT();
 	return sys_close_nocancel(fd);
 }
 

@@ -5,11 +5,13 @@
 #include "../../../../../platform-include/sys/socket.h"
 #include "../../../../../platform-include/sys/errno.h"
 #include "duct.h"
+#include "../bsdthread/cancelable.h"
 
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 
 long sys_connect(int fd, const void* name, int socklen)
 {
+	CANCELATION_POINT();
 	return sys_connect_nocancel(fd, name, socklen);
 }
 

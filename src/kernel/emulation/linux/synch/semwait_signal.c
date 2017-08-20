@@ -4,6 +4,7 @@
 #include "../time/gettimeofday.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
+#include "../bsdthread/cancelable.h"
 
 typedef int kern_return_t;
 extern kern_return_t semaphore_timedwait_signal_trap(int cond_sem, int mutex_sem, unsigned int tv_sec, unsigned int tv_nsec);
@@ -16,6 +17,7 @@ extern kern_return_t semaphore_wait_trap(int cond_sem);
 
 long sys_semwait_signal(int cond_sem, int mutex_sem, int timeout, int relative, int64_t tv_sec, int32_t tv_nsec)
 {
+	CANCELATION_POINT();
 	return sys_semwait_signal_nocancel(cond_sem, mutex_sem, timeout, relative, tv_sec, tv_nsec);
 }
 

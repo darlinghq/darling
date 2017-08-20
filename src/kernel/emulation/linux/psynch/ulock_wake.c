@@ -13,7 +13,7 @@ long sys_ulock_wake(uint32_t operation, void* addr, uint64_t wake_value)
 	bool no_errno = operation & ULF_NO_ERRNO;
 
 	char buf[100];
-	__simple_sprintf(buf, "ulock_wake on %p", addr);
+	// __simple_sprintf(buf, "ulock_wake on %p", addr);
 	lkm_call(0x1024, buf);
 
 	op = operation & UL_OPCODE_MASK;

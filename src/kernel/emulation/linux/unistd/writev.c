@@ -2,9 +2,11 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
+#include "../bsdthread/cancelable.h"
 
 long sys_writev(int fd, struct iovec* iovp, unsigned int len)
 {
+	CANCELATION_POINT();
 	return sys_writev_nocancel(fd, iovp, len);
 }
 

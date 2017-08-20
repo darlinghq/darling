@@ -6,6 +6,7 @@
 //#include "../../../../platform-include/sys/fcntl.h"
 #include "../../../../libc/include/fcntl.h"
 #include "../bsdthread/per_thread_wd.h"
+#include "../bsdthread/cancelable.h"
 
 #ifndef O_NOFOLLOW
 #	define O_NOFOLLOW 0x0100
@@ -23,7 +24,8 @@ extern int strcmp(const char *s1, const char *s2);
 
 long sys_open(const char* filename, int flags, unsigned int mode)
 {
-	return sys_openat(get_perthread_wd(), filename, flags, mode);
+	CANCELATION_POINT();
+	return sys_openat_nocancel(get_perthread_wd(), filename, flags, mode);
 }
 
 long sys_open_nocancel(const char* filename, int flags, unsigned int mode)

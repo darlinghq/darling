@@ -3,9 +3,11 @@
 #include "../errno.h"
 #include <stddef.h>
 #include <linux-syscalls/linux.h>
+#include "../bsdthread/cancelable.h"
 
 long sys_poll(struct pollfd* fds, unsigned int nfds, int timeout)
 {
+	CANCELATION_POINT();
 	return sys_poll_nocancel(fds, nfds, timeout);
 }
 

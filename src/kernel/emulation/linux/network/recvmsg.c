@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include "duct.h"
 #include "getsockopt.h"
+#include "../bsdthread/cancelable.h"
 
 extern void *malloc(__SIZE_TYPE__ size);
 extern void free(void* ptr);
@@ -14,6 +15,7 @@ extern void* memcpy(void* dest, const void* src, __SIZE_TYPE__ len);
 
 long sys_recvmsg(int socket, struct bsd_msghdr* msg, int flags)
 {
+	CANCELATION_POINT();
 	return sys_recvmsg_nocancel(socket, msg, flags);
 }
 

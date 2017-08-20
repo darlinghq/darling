@@ -5,6 +5,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
+#include "../bsdthread/cancelable.h"
 
 #ifndef O_NOFOLLOW
 #   define O_NOFOLLOW 0x0100
@@ -24,6 +25,7 @@ long sys_readlink(const char* path, char* buf, unsigned long bsize);
 
 long sys_fcntl(int fd, int cmd, long arg)
 {
+	CANCELATION_POINT();
 	return sys_fcntl_nocancel(fd, cmd, arg);
 }
 

@@ -162,9 +162,10 @@
 #include "bsdthread/bsdthread_create.h"
 #include "bsdthread/bsdthread_terminate.h"
 #include "bsdthread/disable_threadsignal.h"
-#include "bsdthread/__pthread_canceled.h"
 #include "bsdthread/pthread_chdir.h"
 #include "bsdthread/pthread_fchdir.h"
+#include "bsdthread/pthread_markcancel.h"
+#include "bsdthread/pthread_canceled.h"
 #include "hfs/stub.h"
 #include "xattr/getattrlistbulk.h"
 #include "xattr/getattrlistat.h"
@@ -368,6 +369,7 @@ void* __bsd_syscall_table[600] = {
 	[328] = sys_pthread_kill,
 	[329] = sys_sigprocmask, // __pthread_sigmask
 	[331] = sys_disable_threadsignal,
+	[332] = sys_pthread_markcancel,
 	[333] = sys_pthread_canceled,
 	[334] = sys_semwait_signal,
 	[336] = sys_proc_info,
@@ -400,7 +402,7 @@ void* __bsd_syscall_table[600] = {
 	[397] = sys_write_nocancel,
 	[398] = sys_open_nocancel,
 	[399] = sys_close_nocancel,
-	[400] = sys_wait4,
+	[400] = sys_wait4_nocancel,
 	[401] = sys_recvmsg_nocancel,
 	[402] = sys_sendmsg_nocancel,
 	[403] = sys_recvfrom_nocancel,
@@ -417,6 +419,7 @@ void* __bsd_syscall_table[600] = {
 	[414] = sys_pread_nocancel,
 	[415] = sys_pwrite_nocancel,
 	[417] = sys_poll_nocancel,
+	[420] = sys_sem_wait_nocancel,
 	[423] = sys_semwait_signal_nocancel,
 	[441] = sys_guarded_open_np,
 	[442] = sys_guarded_close_np,

@@ -253,9 +253,10 @@ set(emulation_sources
 	bsdthread/workq_kernreturn.c
 	bsdthread/workq_open.c
 	bsdthread/pthread_kill.c
-	bsdthread/__pthread_canceled.c
 	bsdthread/pthread_chdir.c
 	bsdthread/pthread_fchdir.c
+	bsdthread/pthread_markcancel.c
+	bsdthread/pthread_canceled.c
 	psynch/psynch_errno.c
 	psynch/psynch_rw_rdlock.c
 	psynch/psynch_rw_wrlock.c

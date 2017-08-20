@@ -3,9 +3,11 @@
 #include "../errno.h"
 #include <stddef.h>
 #include <linux-syscalls/linux.h>
+#include "../bsdthread/cancelable.h"
 
 long sys_pselect(int nfds, void* rfds, void* wfds, void* efds, struct bsd_timeval* timeout, const sigset_t* mask)
 {
+	CANCELATION_POINT();
 	return sys_pselect_nocancel(nfds, rfds, wfds, efds, timeout, mask);
 }
 

@@ -4,9 +4,11 @@
 #include "duct_signals.h"
 #include <stddef.h>
 #include <linux-syscalls/linux.h>
+#include "../bsdthread/cancelable.h"
 
 long sys_sigsuspend(sigset_t set)
 {
+	CANCELATION_POINT();
 	return sys_sigsuspend_nocancel(set);
 }
 

@@ -5,6 +5,7 @@
 #include <linux-syscalls/linux.h>
 #include "../../../../libc/include/fcntl.h"
 #include "../common_at.h"
+#include "../bsdthread/cancelable.h"
 
 #ifndef O_NOFOLLOW
 #	define O_NOFOLLOW 0x0100
@@ -20,6 +21,7 @@ extern int strcmp(const char *s1, const char *s2);
 
 long sys_openat(int fd, const char* filename, int flags, unsigned int mode)
 {
+	CANCELATION_POINT();
 	return sys_openat_nocancel(fd, filename, flags, mode);
 }
 

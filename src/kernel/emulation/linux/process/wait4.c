@@ -9,10 +9,17 @@
 #include <sys/signal.h>
 #include <stddef.h>
 #include <linux-syscalls/linux.h>
+#include "../bsdthread/cancelable.h"
 
 extern int getpid(void);
 
 long sys_wait4(int pid, int* status, int options, void* rusage)
+{
+	CANCELATION_POINT();
+	return sys_wait4_nocancel(pid, status, options, rusage);
+}
+
+long sys_wait4_nocancel(int pid, int* status, int options, void* rusage)
 {
 	int ret, linux_options;
 	int mystatus;

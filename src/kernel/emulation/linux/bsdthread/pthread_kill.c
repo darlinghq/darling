@@ -15,7 +15,10 @@ long sys_pthread_kill(int thread_port, int sig)
 	args.thread_port = thread_port;
 	args.sig = signum_bsd_to_linux(sig);
 
-	return lkm_call(NR_pthread_kill_trap, &args);
+	int ret = lkm_call(NR_pthread_kill_trap, &args);
+	if (ret < 0)
+		ret = errno_linux_to_bsd(ret);
 
+	return ret;
 }
 

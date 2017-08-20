@@ -2,9 +2,11 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
+#include "../bsdthread/cancelable.h"
 
 long sys_pwrite(int fd, const void* mem, int len, long long ofs)
 {
+	CANCELATION_POINT();
 	return sys_pwrite_nocancel(fd, mem, len, ofs);
 }
 

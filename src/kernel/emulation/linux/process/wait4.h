@@ -2,6 +2,7 @@
 #define LINUX_WAIT4_H
 
 long sys_wait4(int pid, int* status, int options, void* rusage);
+long sys_wait4_nocancel(int pid, int* status, int options, void* rusage);
 
 int waitopts_bsd_to_linux(int options);
 

@@ -5,12 +5,14 @@
 // #include "../../../../../platform-include/sys/socket.h"
 #include "../../../../../platform-include/sys/errno.h"
 #include "duct.h"
+#include "../bsdthread/cancelable.h"
 
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 
 long sys_sendto(int fd, const void* buffer, unsigned long length,
 		int flags, const void* sockaddr, int socklen)
 {
+	CANCELATION_POINT();
 	return sys_sendto_nocancel(fd, buffer, length, flags, sockaddr, socklen);
 }
 
