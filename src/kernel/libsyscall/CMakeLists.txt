@@ -23,7 +23,6 @@ add_definitions(-DIOKIT_ALL_IPC=1 -DIOKIT=1)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/lkm/osfmk)
 set(MIG_USER_HEADER_SUFFIX "_internal.h")
-mig(mach/exc.defs)
 mig(mach/host_priv.defs)
 mig(mach/host_security.defs)
 mig(mach/ledger.defs)
@@ -142,7 +141,6 @@ set(syscall_sources
 	custom/errno.c
 	
 	# MIG generated files
-	${CMAKE_CURRENT_BINARY_DIR}/mach/excUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/host_privUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/host_securityUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/ledgerUser.c

@@ -6,6 +6,7 @@
 #include <linux-syscalls/linux.h>
 #include <pthread/tsd_private.h>
 #include "signal/mach_exc.h"
+#include "signal/exc.h"
 #include "sigaltstack.h"
 #include "../mach/lkm.h"
 #include "../../../../lkm/api.h"
@@ -52,7 +53,7 @@ void sigexc_setup(void)
 	{
 		__simple_printf("the predecessor is traced\n");
 		darling_sigexc_self();
-		sys_kill(getpid(), SIGTRAP, 1);
+		sigexc_handler(LINUX_SIGTRAP, NULL, NULL);
 	}
 }
 
@@ -125,7 +126,7 @@ void darling_sigexc_self(void)
 	for (int i = 1; i <= 31; i++)
 	{
 		struct linux_sigaction sa;
-		sa.sa_sigaction = sigexc_handler;
+		sa.sa_sigaction = (linux_sig_handler*) sigexc_handler;
 		sa.sa_mask = 0xffffffff; // all other standard Unix signals should be blocked while the handler is run
 		sa.sa_flags = LINUX_SA_RESTORER | LINUX_SA_SIGINFO | LINUX_SA_RESTART | LINUX_SA_ONSTACK;
 		sa.sa_restorer = sig_restorer;
@@ -171,7 +172,7 @@ void darling_sigexc_uninstall(void)
 	sys_sigaltstack(&orig_stack, NULL);
 }
 
-static mach_port_t get_exc_port(int type)
+static mach_port_t get_exc_port(int type, int* behavior)
 {
 	mach_msg_type_number_t count = 0;
 	exception_mask_t masks[EXC_TYPES_COUNT];
@@ -182,8 +183,18 @@ static mach_port_t get_exc_port(int type)
 	kern_return_t result = task_get_exception_ports(mach_task_self(), 1 << type,
 			masks, &count, ports, behaviors, flavors);
 
-	if (result == KERN_SUCCESS)
-		return ports[type];
+	if (result != KERN_SUCCESS)
+		return 0;
+
+	for (int i = 0; i < count; i++)
+	{
+		if (masks[i] & (1 << type))
+		{
+			if (behavior != NULL)
+				*behavior = behaviors[i];
+			return ports[i];
+		}
+	}
 
 	return 0;
 }
@@ -203,7 +214,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	// Send a Mach message to the debugger.
 	// The debugger may use ptrace(PT_THUPDATE) to change how the signal is processed.
 
-	int mach_exception;
+	int mach_exception, behavior;
 	long long codes[EXCEPTION_CODE_MAX] = { 0 };
 	mach_port_t port;
 	thread_t thread = mach_thread_self();
@@ -249,15 +260,23 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 			codes[1] = bsd_signum;
 	}
 
-	port = get_exc_port(mach_exception);
+	port = get_exc_port(mach_exception, &behavior);
 
 	// Pass register states to LKM
 #if defined(__x86_64__)
 	x86_thread_state64_t tstate;
 	x86_float_state64_t fstate;
 
-	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
-	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
+	if (ctxt != NULL)
+	{
+		mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
+		mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
+	}
+	else
+	{
+		memset(&tstate, 0, sizeof(tstate));
+		memset(&fstate, 0, sizeof(fstate));
+	}
 
 	thread_set_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, x86_THREAD_STATE64_COUNT);
 	thread_set_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, x86_FLOAT_STATE64_COUNT);
@@ -265,8 +284,16 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	x86_thread_state32_t tstate;
 	x86_float_state32_t fstate;
 
-	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
-	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
+	if (ctxt != NULL)
+	{
+		mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
+		mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
+	}
+	else
+	{
+		memset(&tstate, 0, sizeof(tstate));
+		memset(&fstate, 0, sizeof(fstate));
+	}
 
 	thread_set_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, x86_THREAD_STATE32_COUNT);
 	thread_set_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, x86_FLOAT_STATE32_COUNT);
@@ -277,33 +304,44 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	{
 		_pthread_setspecific_direct(SIGEXC_TSD_KEY, bsd_signum);
 
-		mach_exception_raise(port, mach_thread_self(), thread, mach_exception, codes, sizeof(codes) / sizeof(codes[0]));
+		if (behavior & MACH_EXCEPTION_CODES)
+		{
+			mach_exception_raise(port, thread, mach_task_self(), mach_exception, codes, sizeof(codes) / sizeof(codes[0]));
+		}
+		else
+		{
+			exception_data_type_t small_codes[2] = { (exception_data_type_t) codes[0], (exception_data_type_t) codes[1] };
+			exception_raise(port, thread, mach_task_self(), mach_exception, small_codes, sizeof(small_codes) / sizeof(small_codes[0]));
+		}
 
 		bsd_signum = _pthread_getspecific_direct(SIGEXC_TSD_KEY);
 	}
 
 	// Get (possibly updated by GDB) register states from LKM
+	if (ctxt != NULL)
+	{
 #if defined(__x86_64__)
-	mach_msg_type_number_t count;
+		mach_msg_type_number_t count;
 
-	count = x86_THREAD_STATE64_COUNT;
-	thread_get_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, &count);
-	count = x86_FLOAT_STATE64_COUNT;
-	thread_get_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, &count);
+		count = x86_THREAD_STATE64_COUNT;
+		thread_get_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, &count);
+		count = x86_FLOAT_STATE64_COUNT;
+		thread_get_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, &count);
 
-	thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
-	float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
+		thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
+		float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
 #elif defined(__i386__)
-	mach_msg_type_number_t count;
+		mach_msg_type_number_t count;
 
-	count = x86_THREAD_STATE32_COUNT;
-	thread_get_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, &count);
-	count = x86_FLOAT_STATE32_COUNT;
-	thread_get_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, &count);
+		count = x86_THREAD_STATE32_COUNT;
+		thread_get_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, &count);
+		count = x86_FLOAT_STATE32_COUNT;
+		thread_get_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, &count);
 
-	thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
-	float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
+		thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
+		float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
 #endif
+	}
 
 	// Pass the signal to the application handler or emulate the effects of the signal if SIG_DFL is set.
 	if (bsd_signum)
@@ -324,6 +362,9 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 				case SIGWINCH:
 				case SIGURG:
 					break;
+				case SIGTRAP:
+					if (ctxt == NULL)
+						break; // This trap wasn't caused by int3, carry on
 				
 				// Other signals cause termination or core dump.
 				default:

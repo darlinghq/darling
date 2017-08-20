@@ -23,9 +23,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 mig(signal/mach_exc.defs)
+mig(signal/exc.defs)
 
 set(emulation_sources
 	${CMAKE_CURRENT_BINARY_DIR}/signal/mach_excUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/signal/excUser.c
 	elfcalls_wrapper.c
 	base.c
 	syscalls.c
