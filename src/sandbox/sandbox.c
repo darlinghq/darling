@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#include <sys/types.h>
+
 // DUMMY implementation
 const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT = SANDBOX_FILTER_NONE;
 
@@ -114,3 +116,6 @@ const char *_amkrtemp(const char *unused)
 	return NULL;
 }
 
+int rootless_allows_task_for_pid(pid_t pid) {
+	return 1;
+}
