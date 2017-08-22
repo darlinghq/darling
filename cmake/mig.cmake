@@ -39,7 +39,7 @@ function(mig defFileName)
         #	set (MIG_ARCH "${arch}")
         #endif(NOT arch)
         if (NOT MIG_ARCH)
-            set(MIG_ARCH "x86-64")
+            set(MIG_ARCH "i386")
         endif (NOT MIG_ARCH)
 
 	add_custom_command(OUTPUT
@@ -58,6 +58,6 @@ function(mig defFileName)
 			${MIG_FLAGS}
 			${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
 		DEPENDS
-			migcom
+			migexe
 	)
 endfunction(mig)

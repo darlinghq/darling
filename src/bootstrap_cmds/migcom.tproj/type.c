@@ -734,6 +734,7 @@ init_type(void)
   }
   else
     error("init_type unknown size %d", size);
+printf("Integer size is %d\n", size);
   
   machine_integer_bits = size;
   
@@ -882,7 +883,7 @@ itCheckIntType(identifier_t name, ipc_type_t *it)
       !it->itInLine ||
       !it->itStruct ||
       it->itVarArray)
-    error("argument %s isn't a proper integer", name);
+    error("argument %s isn't a proper integer, size=%d", name, it->itSize);
 }
 
 void

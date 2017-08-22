@@ -162,7 +162,7 @@ do
     fi
     rm -f "${temp}.c" "${temp}.d"
     (echo '#line 1 '\"${file}\" ; cat "${file}" ) > "${temp}.c"
-    "$C" -E -arch ${arch} "${cppflags[@]}" -I "${sourcedir}" "${iSysRootParm[@]}" "${temp}.c" | "$M" "${migflags[@]}"
+    "$C" -E -target ${arch} "${cppflags[@]}" -I "${sourcedir}" "${iSysRootParm[@]}" "${temp}.c" | "$M" "${migflags[@]}"
     if [ $? -ne 0 ]
     then
       rm -rf "${temp}.c" "${temp}.d" "${WORKTMP}"
