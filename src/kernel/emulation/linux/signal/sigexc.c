@@ -40,16 +40,31 @@ static void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux
 static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx);
 #endif
 
-void sigexc_setup(void)
+char xyzbuf[128];
+void sigexc_setup1(void)
 {
+	lkm_call(0x1028, "sigexc_setup1()");
 	// Setup handler for SIGNAL_SIGEXC_TOGGLE and SIGNAL_SIGEXC_THUPDATE
 	handle_rt_signal(SIGNAL_SIGEXC_TOGGLE);
 	handle_rt_signal(SIGNAL_SIGEXC_THUPDATE);
+}
+
+void sigexc_setup2(void)
+{
+	lkm_call(0x1028, xyzbuf);
+	lkm_call(0x1028, "sigexc_setup2()\n");
+
+	linux_sigset_t set;
+	set = (1ull << (SIGNAL_SIGEXC_TOGGLE-1));
+	set |= (1ull << (SIGNAL_SIGEXC_THUPDATE-1));
+
+	LINUX_SYSCALL(__NR_rt_sigprocmask, 1 /* LINUX_SIG_UNBLOCK */,
+		&set, NULL, sizeof(linux_sigset_t));
 
 	// If we have a tracer (i.e. we are a new process after execve),
 	// enable sigexc handling and send SIGTRAP to self to allow
 	// the debugger to handle this situation.
-	if (lkm_call(NR_get_tracer, NULL) != 0)
+	if (!am_i_ptraced && lkm_call(NR_get_tracer, NULL) != 0)
 	{
 		__simple_printf("the predecessor is traced\n");
 		darling_sigexc_self();
@@ -57,17 +72,39 @@ void sigexc_setup(void)
 	}
 }
 
+void sigexc_setup(void)
+{
+	sigexc_setup1();
+	if (lkm_call(NR_started_suspended, 0))
+	{
+		// sigsuspend until resumed or debugger attached
+		linux_sigset_t set = -1ll;
+		set &= ~(1ull << (LINUX_SIGCONT-1));
+		set &= ~(1ull << (SIGNAL_SIGEXC_TOGGLE-1));
+		set &= ~(1ull << (SIGNAL_SIGEXC_THUPDATE-1));
+
+		LINUX_SYSCALL(__NR_rt_sigsuspend, &set, 8);
+	}
+	sigexc_setup2();
+}
+
 static void handle_rt_signal(int signum)
 {
-  	struct linux_sigaction sa;
+	int rv;
+	struct linux_sigaction sa;
+
 	sa.sa_sigaction = sigrt_handler;
 	sa.sa_mask = 0;
 	sa.sa_flags = LINUX_SA_RESTORER | LINUX_SA_SIGINFO | LINUX_SA_RESTART;
 	sa.sa_restorer = sig_restorer;
 
-	LINUX_SYSCALL(__NR_rt_sigaction, signum,
+	rv = LINUX_SYSCALL(__NR_rt_sigaction, signum,
 			&sa, NULL,
 			sizeof(sa.sa_mask));
+
+	//char buf[128];
+	__simple_sprintf(xyzbuf, "Setting handler for RT signal %d: %d", signum, rv);
+	//lkm_call(0x1028, buf);
 }
 
 bool darling_am_i_ptraced(void)
@@ -77,17 +114,19 @@ bool darling_am_i_ptraced(void)
 
 void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 {
-	__simple_printf("sigrt_handler signum=%d\n", signum);
+	char buf[128];
+	__simple_sprintf(buf, "sigrt_handler signum=%d, si_value=%x\n", signum, info->si_value);
+	lkm_call(0x1028, buf);
 	if (signum == SIGNAL_SIGEXC_TOGGLE)
 	{
-		if (info->si_value == SIGRT_MAGIC_ENABLE_SIGEXC)
+		if (((uint32_t) info->si_value) == SIGRT_MAGIC_ENABLE_SIGEXC)
 		{
 			darling_sigexc_self();
 
 			// Stop on attach
 			sigexc_handler(LINUX_SIGSTOP, NULL, NULL);
 		}
-		else if (info->si_value == SIGRT_MAGIC_DISABLE_SIGEXC)
+		else if (((uint32_t) info->si_value) == SIGRT_MAGIC_DISABLE_SIGEXC)
 		{
 			darling_sigexc_uninstall();
 		}
@@ -121,13 +160,16 @@ void darling_sigexc_self(void)
 {
 	am_i_ptraced = true;
 
-	__simple_printf("darling_sigexc_self()\n");
+	lkm_call(0x1028, "darling_sigexc_self()\n");
 	// Make sigexc_handler the handler for all signals in the process
 	for (int i = 1; i <= 31; i++)
 	{
+		if (i == LINUX_SIGSTOP || i == LINUX_SIGKILL)
+			continue;
+
 		struct linux_sigaction sa;
 		sa.sa_sigaction = (linux_sig_handler*) sigexc_handler;
-		sa.sa_mask = 0xffffffff; // all other standard Unix signals should be blocked while the handler is run
+		sa.sa_mask = 0x7fffffff; // all other standard Unix signals should be blocked while the handler is run
 		sa.sa_flags = LINUX_SA_RESTORER | LINUX_SA_SIGINFO | LINUX_SA_RESTART | LINUX_SA_ONSTACK;
 		sa.sa_restorer = sig_restorer;
 
@@ -150,6 +192,9 @@ void darling_sigexc_uninstall(void)
 	__simple_printf("darling_sigexc_uninstall()\n");
 	for (int i = 1; i <= 31; i++)
 	{
+		if (i == LINUX_SIGSTOP || i == LINUX_SIGKILL)
+			continue;
+
 		struct linux_sigaction sa;
 
 		if (sig_handlers[i] == SIG_DFL || sig_handlers[i] != SIG_IGN
@@ -201,7 +246,10 @@ static mach_port_t get_exc_port(int type, int* behavior)
 
 void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
-	__simple_printf("sigexc_handler(%d)\n", linux_signum);
+	char buf[128];
+	__simple_sprintf(buf, "sigexc_handler(%d, %p)\n", linux_signum, info);
+	lkm_call(0x1028, buf);
+
 	if (!darling_am_i_ptraced())
 	{
 		__simple_printf("NOT TRACED!\n");
@@ -234,26 +282,31 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 
 	switch (bsd_signum)
 	{
-		case SIGSEGV:
-			mach_exception = EXC_BAD_ACCESS;
-			codes[0] = EXC_I386_GPFLT;
-			break;
-		case SIGBUS:
-			mach_exception = EXC_BAD_ACCESS;
-			codes[0] = EXC_I386_ALIGNFLT;
-			break;
-		case SIGTRAP:
-			mach_exception = EXC_BREAKPOINT;
-			codes[0] = EXC_I386_BPT;
-			break;
-		case SIGILL:
-			mach_exception = EXC_BAD_INSTRUCTION;
-			codes[0] = EXC_I386_INVOP;
-			break;
-		case SIGFPE:
-			mach_exception = EXC_ARITHMETIC;
-			codes[0] = info->si_code;
-			break;
+		// Only real exceptions produced by the CPU get translated to these
+		// Mach exceptions. The rest comes as EXC_SOFTWARE.
+		if (info != NULL && info->si_code == 0x80 /* SI_KERNEL */)
+		{
+			case SIGSEGV:
+				mach_exception = EXC_BAD_ACCESS;
+				codes[0] = EXC_I386_GPFLT;
+				break;
+			case SIGBUS:
+				mach_exception = EXC_BAD_ACCESS;
+				codes[0] = EXC_I386_ALIGNFLT;
+				break;
+			case SIGILL:
+				mach_exception = EXC_BAD_INSTRUCTION;
+				codes[0] = EXC_I386_INVOP;
+				break;
+			case SIGFPE:
+				mach_exception = EXC_ARITHMETIC;
+				codes[0] = info->si_code;
+				break;
+			case SIGTRAP:
+				mach_exception = EXC_BREAKPOINT;
+				codes[0] = EXC_I386_BPT;
+				break;
+		}
 		default:
 			mach_exception = EXC_SOFTWARE;
 			codes[0] = EXC_SOFT_SIGNAL;

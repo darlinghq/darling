@@ -13,8 +13,10 @@
 #define SIGRT_MAGIC_ENABLE_SIGEXC	0xdebdeb01
 #define SIGRT_MAGIC_DISABLE_SIGEXC	0xdebdeb00
 
-// Initializes this module
-void sigexc_setup(void);
+// Initializes this module (before opening LKM)
+void sigexc_setup1(void);
+// Finish initialization (after opening LKM)
+void sigexc_setup2(void);
 
 // Is this process currently traced by a debugger?
 bool darling_am_i_ptraced(void);

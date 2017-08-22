@@ -1,5 +1,8 @@
 #include "lkm.h"
 #include "../../lkm/api.h"
+#include "../signal/sigexc.h"
+#include "../base.h"
+#include "../linux-syscalls/linux.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/resource.h>
@@ -20,6 +23,9 @@ extern int sys_dup2(int, int);
 extern int sys_fcntl(int, int, int);
 extern _libkernel_functions_t _libkernel_functions;
 
+extern void sigexc_setup1(void);
+extern void sigexc_setup2(void);
+
 static void setup_dyld_info(void);
 
 void mach_driver_init(void)
@@ -36,6 +42,9 @@ void mach_driver_init(void)
 		_libkernel_functions->dyld_func_lookup("__dyld_get_mach_driver_fd", &p);
 
 		driver_fd = (*p)();
+
+		// Setup TASK_DYLD_INFO (needed for debuggers)
+		setup_dyld_info();
 
 		if (driver_fd != -1)
 			return;
@@ -70,9 +79,6 @@ void mach_driver_init(void)
 		
 		driver_fd = d;
 	}
-	
-	// Setup TASK_DYLD_INFO (needed for debuggers)
-	setup_dyld_info();
 }
 
 static void setup_dyld_info(void)

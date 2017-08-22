@@ -6,6 +6,7 @@
 #include "../unistd/read.h"
 #include "../unistd/close.h"
 #include "../unistd/readlink.h"
+#include "../signal/sigexc.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -149,9 +150,19 @@ long sys_execve(char* fname, char** argvp, char** envp)
 
 	// otherwise, it's a native Linux executable (ELF)
 
+	linux_sigset_t set;
+	set = (1ull << (SIGNAL_SIGEXC_TOGGLE-1));
+	set |= (1ull << (SIGNAL_SIGEXC_THUPDATE-1));
+
+	LINUX_SYSCALL(__NR_rt_sigprocmask, 0 /* LINUX_SIG_BLOCK */,
+			&set, NULL, sizeof(linux_sigset_t));
+
 	ret = LINUX_SYSCALL(__NR_execve, fname, argvp, envp);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
+
+	LINUX_SYSCALL(__NR_rt_sigprocmask, 1 /* LINUX_SIG_UNBLOCK */,
+			&set, NULL, sizeof(linux_sigset_t));
 
 	return ret;
 }

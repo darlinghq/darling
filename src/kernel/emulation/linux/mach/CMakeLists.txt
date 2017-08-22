@@ -7,6 +7,7 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/src/kernel/emulation/linux/ext
 	${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers
 	${CMAKE_SOURCE_DIR}/src/startup
+	${CMAKE_BINARY_DIR}/src/startup
 )
 
 set(mach_server_client_sources

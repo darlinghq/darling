@@ -66,7 +66,16 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 			else
 			{
 				// This triggers darling_sigexc_self() in the remote process.
-				linux_sigqueue(pid, SIGNAL_SIGEXC_TOGGLE, SIGRT_MAGIC_ENABLE_SIGEXC);
+				ret = linux_sigqueue(pid, SIGNAL_SIGEXC_TOGGLE, SIGRT_MAGIC_ENABLE_SIGEXC);
+
+				if (ret < 0)
+					ret = errno_linux_to_bsd(ret);
+				// This doesn't work if the process is stopped, e.g. when spawning a stopped
+				// process via posix_spawn(). So now we have to resume the process so that
+				// it gets the RT signal above and triggers a fake SIGSTOP on its own.
+				// int pstate = lkm_call(NR_pid_get_state, (void*)(long) pid);
+				// if (pstate & 4 /* __TASK_STOPPED */)
+				// 	sys_kill(pid, SIGCONT, 1);
 			}
 
 			cmd = "PT_ATTACHEXC";
@@ -151,10 +160,12 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		}
 	}
 
+	char buf[128];
 	if (cmd != NULL)
-		__simple_printf("ptrace() req=%s, ret=%d\n", cmd, ret);
+		__simple_sprintf(buf, "ptrace() req=%s, ret=%d\n", cmd, ret);
 	else
-		__simple_printf("ptrace() req=%d\n", request);
+		__simple_sprintf(buf, "ptrace() req=%d\n", request);
+	lkm_call(0x1028, buf);
 
 	return ret;
 }
