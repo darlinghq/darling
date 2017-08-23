@@ -136,6 +136,8 @@ enum {
 #define BSD_TIOCPTYGRANT    BSD_IO('t', 84)
 #define BSD_TIOCPTYGNAME    BSD_IOC(BSD_IOC_OUT, 't', 83, 128)
 #define BSD_TIOCPTYUNLK     BSD_IO('t', 82)
+#define BSD_TIOCGLTC        0x40067474
+#define BSD_TIOCSLTC        0x80067475
 
 #define BSD_IGNBRK          0x00000001
 #define BSD_BRKINT          0x00000002

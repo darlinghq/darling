@@ -1,8 +1,9 @@
 #include "termios.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/ioctl_compat.h>
 #include "../simple.h"
 
 #define USE_OLD_TTY
@@ -160,6 +161,41 @@ int handle_termios(int fd, unsigned int cmd, void* arg, int* retval)
 			out.c_cc[LINUX_VSTOP] = in->t_stopc;
 			out.c_cc[LINUX_VEOF] = in->t_eofc;
 			out.c_cc[LINUX_VEOL2] = in->t_brkc;
+
+			*retval = __real_ioctl(fd, LINUX_TCSETS, &out);
+
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCGLTC:
+		{
+			struct linux_termios in;
+			struct ltchars* out = (struct ltchars*) arg;
+
+			*retval = __real_ioctl(fd, LINUX_TCGETS, &in);
+
+			out->t_suspc = in.c_cc[LINUX_VSUSP];
+			out->t_dsuspc = in.c_cc[LINUX_VSUSP];
+			out->t_rprntc = in.c_cc[LINUX_VREPRINT];
+			out->t_flushc = in.c_cc[LINUX_VEOL2];
+			out->t_werasc = in.c_cc[LINUX_VWERASE];
+			out->t_lnextc = in.c_cc[LINUX_VLNEXT];
+
+			return IOCTL_HANDLED;
+		}
+		case BSD_TIOCSLTC:
+		{
+			struct linux_termios out;
+			const struct ltchars* in = (const struct ltchars*) arg;
+
+			// Get existing values so that we don't overwrite many
+			// of the parameters not specified in struct ltchars.
+			__real_ioctl(fd, LINUX_TCGETS, &out);
+
+			out.c_cc[LINUX_VSUSP] = in->t_suspc;
+			out.c_cc[LINUX_VREPRINT] = in->t_rprntc;
+			out.c_cc[LINUX_VEOL2] = in->t_flushc;
+			out.c_cc[LINUX_VWERASE] = in->t_werasc;
+			out.c_cc[LINUX_VLNEXT] = in->t_lnextc;
 
 			*retval = __real_ioctl(fd, LINUX_TCSETS, &out);
 
