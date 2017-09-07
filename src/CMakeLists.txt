@@ -169,6 +169,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/kperf/include
 	${CMAKE_CURRENT_SOURCE_DIR}/StreamingZip/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
+	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 )
 
@@ -262,7 +263,6 @@ add_subdirectory(ConfigurationProfiles)
 add_subdirectory(AppleSystemInfo)
 add_subdirectory(DiskImages)
 add_subdirectory(PackageKit)
-#add_subdirectory(Cocoa)
 
 add_subdirectory(native)
 
@@ -330,6 +330,7 @@ add_subdirectory(external/bsm)
 add_subdirectory(external/gdb)
 add_subdirectory(external/Heimdal)
 add_subdirectory(PlistBuddy)
+add_subdirectory(ScriptingBridge)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
