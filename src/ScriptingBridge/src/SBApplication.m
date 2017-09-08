@@ -1,6 +1,14 @@
-#import <ScriptingBridge/SBApplication.m>
+#import <ScriptingBridge/SBApplication.h>
+
+@interface SBApplication () {
+
+}
+
+@end
 
 @implementation SBApplication
+
+//@synthesize delegate, launchFlags, sendMode, timeout;
 
 - (nullable __kindof SBApplication *) initWithBundleIdentifier:(NSString *)ident {
     return nil;

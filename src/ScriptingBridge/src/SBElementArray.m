@@ -2,15 +2,15 @@
 
 @implementation SBElementArray
 
-- (ObjectType) objectWithName:(NSString *)name {
+- (id) objectWithName:(NSString *)name {
     return nil;
 }
 
-- (ObjectType) objectWithID:(id)identifier {
+- (id) objectWithID:(id)identifier {
     return nil;
 }
 
-- (ObjectType) objectAtLocation:(id)location {
+- (id) objectAtLocation:(id)location {
     return nil;
 }
 
@@ -22,7 +22,7 @@
     return nil;
 }
 
-- (nullable NSArray<ObjectType> *) get {
+- (nullable NSArray<id> *) get {
     return nil;
 }
 

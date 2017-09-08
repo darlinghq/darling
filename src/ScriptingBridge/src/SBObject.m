@@ -1,6 +1,6 @@
 #import <ScriptingBridge/SBObject.h>
 
-@implemtation SBObject
+@implementation SBObject
 
 - (instancetype) init {
     return nil;
