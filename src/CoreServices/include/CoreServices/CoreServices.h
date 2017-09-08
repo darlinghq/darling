@@ -26,6 +26,7 @@
 #include <CoreServices/TextEncodingConverter.h>
 
 #include <LaunchServices/LaunchServices.h>
+#include <AE/AE.h>
 
 #endif
 

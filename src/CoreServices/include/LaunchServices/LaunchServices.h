@@ -8,13 +8,14 @@
 #include <CoreFoundation/CFArray.h>
 #include <CoreFoundation/CFURL.h>
 
+#include <AE/AE.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef OptionBits LSInitializeFlags;
 typedef OptionBits LSLaunchFlags;
-typedef void AppleEvent;
 typedef int LSNotificationCode;
 typedef int LSNotificationID;
 typedef int LSASN;
