@@ -1,3 +1,10 @@
+SET(CMAKE_SYSTEM_NAME Linux)
+SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
+
+SET(CMAKE_C_COMPILER clang)
+SET(CMAKE_CXX_COMPILER clang++)
+SET(CMAKE_SKIP_RPATH TRUE)
+
 project(darling)
 
 cmake_minimum_required(VERSION 2.8)
