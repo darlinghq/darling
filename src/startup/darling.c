@@ -558,9 +558,13 @@ void spawnShell(const char** argv)
 		"/sbin:"
 		"/usr/local/bin");
 
-	if (sscanf(getenv("HOME"), "/home/%4096s", buffer1) == 1)
+	const char *home = getenv("HOME");
+	if (home)
 	{
-		snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", buffer1);
+		if (sscanf(home, "/home/%4096s", buffer1) == 1)
+			snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", buffer1);
+		else
+			snprintf(buffer2, sizeof(buffer2), "HOME=" SYSTEM_ROOT "%s", home);
 		pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
 	}
 
