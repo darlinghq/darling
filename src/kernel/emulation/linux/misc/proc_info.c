@@ -120,7 +120,7 @@ static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize)
 
 	memset(buffer, 0, bufsize);
 
-	memcpy(info->p_uuid, get_exe_uuid, sizeof(info->p_uuid));
+	memcpy(info->p_uuid, get_exe_uuid(), sizeof(info->p_uuid));
 
 	//////////////////////////
 	// Read info for pid    //
