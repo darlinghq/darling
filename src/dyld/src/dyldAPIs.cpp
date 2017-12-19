@@ -112,9 +112,6 @@ static bool client_dyld_find_unwind_sections(void* addr, dyld_unwind_sections* i
 #if DEPRECATED_APIS_SUPPORTED
 #endif
 
-#ifdef DARLING
-extern "C" int mach_driver_get_fd(void);
-#endif
 
 static void unimplemented()
 {
@@ -210,9 +207,6 @@ static struct dyld_func dyld_funcs[] = {
     {"__dyld_NSGetSectionDataInObjectFileImage",		(void*)NSGetSectionDataInObjectFileImage },
 #if OLD_LIBSYSTEM_SUPPORT
     {"__dyld_link_module",							(void*)_dyld_link_module },
-#endif
-#ifdef DARLING
-    {"__dyld_get_mach_driver_fd", (void*)mach_driver_get_fd },
 #endif
 #endif //DEPRECATED_APIS_SUPPORTED
 

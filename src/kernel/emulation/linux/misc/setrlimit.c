@@ -13,12 +13,6 @@ long sys_setrlimit(unsigned int which, const struct rlimit* rlp)
 	if (which == -1)
 		return -EINVAL;
 
-	if (which == LINUX_RLIMIT_NOFILE)
-	{
-		lim.rlim_cur++;
-		lim.rlim_max++;
-	}
-
 	ret = LINUX_SYSCALL(__NR_prlimit64, 0, which, &lim, 0);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);

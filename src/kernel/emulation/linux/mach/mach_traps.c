@@ -13,17 +13,17 @@
 
 mach_port_name_t mach_reply_port_impl(void)
 {
-	return ioctl(driver_fd, NR_mach_reply_port, 0);
+	return lkm_call(NR_mach_reply_port, 0);
 }
 
 mach_port_name_t thread_self_trap_impl(void)
 {
-	return ioctl(driver_fd, NR_thread_self_trap, 0);
+	return lkm_call(NR_thread_self_trap, 0);
 }
 
 mach_port_name_t host_self_trap_impl(void)
 {
-	return ioctl(driver_fd, NR_host_self_trap, 0);
+	return lkm_call(NR_host_self_trap, 0);
 }
 
 mach_msg_return_t mach_msg_trap_impl(
@@ -64,7 +64,7 @@ mach_msg_return_t mach_msg_overwrite_trap_impl(
 		.rcv_limit = rcv_limit
 	};
 
-	return ioctl(driver_fd, NR_mach_msg_overwrite_trap,
+	return lkm_call(NR_mach_msg_overwrite_trap,
 			&args);
 }
 
@@ -75,7 +75,7 @@ kern_return_t semaphore_signal_trap_impl(
 		.signal = signal_name
 	};
 
-	return ioctl(driver_fd, NR_semaphore_signal_trap, &args);
+	return lkm_call(NR_semaphore_signal_trap, &args);
 }
 					      
 kern_return_t semaphore_signal_all_trap_impl(
@@ -85,7 +85,7 @@ kern_return_t semaphore_signal_all_trap_impl(
 		.signal = signal_name
 	};
 
-	return ioctl(driver_fd, NR_semaphore_signal_all_trap,
+	return lkm_call(NR_semaphore_signal_all_trap,
 			&args);
 }
 
@@ -104,7 +104,7 @@ kern_return_t semaphore_wait_trap_impl(
 		.signal = wait_name
 	};
 
-	return ioctl(driver_fd, NR_semaphore_wait_trap, &args);
+	return lkm_call(NR_semaphore_wait_trap, &args);
 }
 
 kern_return_t semaphore_wait_signal_trap_impl(
@@ -116,7 +116,7 @@ kern_return_t semaphore_wait_signal_trap_impl(
 		.wait = wait_name
 	};
 
-	return ioctl(driver_fd, NR_semaphore_wait_signal_trap,
+	return lkm_call(NR_semaphore_wait_signal_trap,
 			&args);
 }
 
@@ -131,7 +131,7 @@ kern_return_t semaphore_timedwait_trap_impl(
 		.nsec = nsec
 	};
 
-	return ioctl(driver_fd, NR_semaphore_timedwait_trap,
+	return lkm_call(NR_semaphore_timedwait_trap,
 			&args);
 }
 
@@ -148,7 +148,7 @@ kern_return_t semaphore_timedwait_signal_trap_impl(
 		.nsec = nsec
 	};
 
-	return ioctl(driver_fd, NR_semaphore_timedwait_signal_trap,
+	return lkm_call(NR_semaphore_timedwait_signal_trap,
 			&args);
 }
 
@@ -299,7 +299,7 @@ kern_return_t _kernelrpc_mach_port_allocate_trap_impl(
 		.out_right_name = name
 	};
 
-	ret = ioctl(driver_fd, NR__kernelrpc_mach_port_allocate,
+	ret = lkm_call(NR__kernelrpc_mach_port_allocate,
 			&args);
 	return ret;
 }
@@ -315,7 +315,7 @@ kern_return_t _kernelrpc_mach_port_destroy_trap_impl(
 		.port_right_name = name
 	};
 
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_destroy,
+	return lkm_call(NR__kernelrpc_mach_port_destroy,
 			&args);
 }
 
@@ -329,7 +329,7 @@ kern_return_t _kernelrpc_mach_port_deallocate_trap_impl(
 		.port_right_name = name
 	};
 
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_deallocate,
+	return lkm_call(NR__kernelrpc_mach_port_deallocate,
 			&args);
 }
 
@@ -347,7 +347,7 @@ kern_return_t _kernelrpc_mach_port_mod_refs_trap_impl(
 		.delta = delta
 	};
 
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_mod_refs, &args);
+	return lkm_call(NR__kernelrpc_mach_port_mod_refs, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_move_member_trap_impl(
@@ -361,7 +361,7 @@ kern_return_t _kernelrpc_mach_port_move_member_trap_impl(
 		.port_right_name = member,
 		.pset_right_name = after
 	};
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_move_member_trap, &args);
+	return lkm_call(NR__kernelrpc_mach_port_move_member_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_insert_right_trap_impl(
@@ -377,7 +377,7 @@ kern_return_t _kernelrpc_mach_port_insert_right_trap_impl(
 		.right_name = poly,
 		.right_type = polyPoly
 	};
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_insert_right_trap, &args);
+	return lkm_call(NR__kernelrpc_mach_port_insert_right_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_insert_member_trap_impl(
@@ -391,7 +391,7 @@ kern_return_t _kernelrpc_mach_port_insert_member_trap_impl(
 		.port_right_name = name,
 		.pset_right_name = pset
 	};
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_insert_member_trap, &args);
+	return lkm_call(NR__kernelrpc_mach_port_insert_member_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_extract_member_trap_impl(
@@ -405,7 +405,7 @@ kern_return_t _kernelrpc_mach_port_extract_member_trap_impl(
 		.port_right_name = name,
 		.pset_right_name = pset
 	};
-	return ioctl(driver_fd, NR__kernelrpc_mach_port_extract_member_trap, &args);
+	return lkm_call(NR__kernelrpc_mach_port_extract_member_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_construct_trap_impl(
@@ -525,7 +525,7 @@ kern_return_t syscall_thread_switch_impl(
 
 mach_port_name_t task_self_trap_impl(void)
 {
-	return ioctl(driver_fd, NR_task_self_trap, 0);
+	return lkm_call(NR_task_self_trap, 0);
 }
 
 /*
@@ -542,7 +542,7 @@ kern_return_t task_for_pid_impl(
 		.task_port = t,
 	};
 
-	return ioctl(driver_fd, NR_task_for_pid_trap, &args);
+	return lkm_call(NR_task_for_pid_trap, &args);
 }
 
 kern_return_t task_name_for_pid_impl(
@@ -556,7 +556,7 @@ kern_return_t task_name_for_pid_impl(
 		.pid = pid
 	};
 
-	rv = ioctl(driver_fd, NR_task_name_for_pid_trap, &args);
+	rv = lkm_call(NR_task_name_for_pid_trap, &args);
 	if (rv == KERN_SUCCESS)
 		*tn = args.name_out;
 
@@ -572,7 +572,7 @@ kern_return_t pid_for_task_impl(
 		.pid = x,
 	};
 
-	return ioctl(driver_fd, NR_pid_for_task_trap, &args);
+	return lkm_call(NR_pid_for_task_trap, &args);
 }
 
 kern_return_t bsdthread_terminate_trap_impl(
@@ -588,7 +588,7 @@ kern_return_t bsdthread_terminate_trap_impl(
 		.signal = sem
 	};
 
-	return ioctl(driver_fd, NR_bsdthread_terminate_trap, &args);
+	return lkm_call(NR_bsdthread_terminate_trap, &args);
 }
 
 
@@ -617,7 +617,7 @@ kern_return_t mach_generate_activity_id_impl(mach_port_name_t task, int i, uint6
 
 mach_port_name_t mk_timer_create_impl(void)
 {
-	return ioctl(driver_fd, NR_mk_timer_create_trap, NULL);
+	return lkm_call(NR_mk_timer_create_trap, NULL);
 }
 
 kern_return_t mk_timer_destroy_impl(mach_port_name_t name)
@@ -626,7 +626,7 @@ kern_return_t mk_timer_destroy_impl(mach_port_name_t name)
 		.timer_port = name
 	};
 
-	return ioctl(driver_fd, NR_mk_timer_destroy_trap, &args);
+	return lkm_call(NR_mk_timer_destroy_trap, &args);
 }
 
 kern_return_t mk_timer_arm_impl(mach_port_name_t name, uint64_t expire_time)
@@ -636,7 +636,7 @@ kern_return_t mk_timer_arm_impl(mach_port_name_t name, uint64_t expire_time)
 		.expire_time = expire_time,
 	};
 
-	return ioctl(driver_fd, NR_mk_timer_arm_trap, &args);
+	return lkm_call(NR_mk_timer_arm_trap, &args);
 }
 
 kern_return_t mk_timer_cancel_impl(mach_port_name_t name, uint64_t *result_time)
@@ -646,6 +646,6 @@ kern_return_t mk_timer_cancel_impl(mach_port_name_t name, uint64_t *result_time)
 		.result_time = result_time,
 	};
 
-	return ioctl(driver_fd, NR_mk_timer_cancel_trap, &args);
+	return lkm_call(NR_mk_timer_cancel_trap, &args);
 }
 
