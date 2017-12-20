@@ -47,8 +47,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling.h"
 #include "darling-config.h"
 
-#define MLDR_PATH "/bin/mldr"
-
 // Between Linux 4.9 and 4.11, a strange bug has been introduced
 // which prevents connecting to Unix sockets if the socket was
 // created in a different mount namespace or under overlayfs
@@ -866,7 +864,7 @@ void spawnLaunchd(void)
 	puts("Bootstrapping the container with launchd...");
 	
 	// putenv("KQUEUE_DEBUG=1");
-	execl(MLDR_PATH, "mldr!/sbin/launchd", "launchd", NULL);
+	execl("/sbin/launchd", "launchd", NULL);
 
 	fprintf(stderr, "Failed to exec launchd: %s\n", strerror(errno));
 	abort();
@@ -1093,7 +1091,7 @@ pid_t getInitProcess()
 	}
 	fclose(fp);
 
-	if (strcmp(exeBuf, "mldr") != 0)
+	if (strcmp(exeBuf, "launchd") != 0)
 	{
 		unlink(pidPath);
 		return 0;

@@ -20,28 +20,9 @@ target_link_libraries(darling -lutil)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-set(mldr_sources
-	mldr.c
-	threads.c
-	gdb.c
-	commpage.c
-	elfcalls.c
-)
-add_executable(mldr ${mldr_sources})
-target_link_libraries(mldr pthread dl rt)
-
-add_executable(mldr32 ${mldr_sources})
-target_link_libraries(mldr32 pthread dl rt)
-set_target_properties(mldr32
-	PROPERTIES
-		COMPILE_FLAGS "-m32"
-		LINK_FLAGS "-m32"
-)
-
 add_executable(wrapgen wrapgen/wrapgen.cpp)
 target_link_libraries(wrapgen dl)
 
-install(TARGETS mldr mldr32 DESTINATION libexec/darling/bin)
 install(TARGETS darling DESTINATION bin
     PERMISSIONS
     OWNER_READ OWNER_WRITE OWNER_EXECUTE
@@ -49,9 +30,6 @@ install(TARGETS darling DESTINATION bin
     WORLD_READ WORLD_EXECUTE
     SETUID)
 
-include(setcap)
-setcap(libexec/darling/bin/mldr cap_sys_rawio,cap_sys_ptrace+ep)
-setcap(libexec/darling/bin/mldr32 cap_sys_rawio,cap_sys_ptrace+ep)
 
 # This tool is useful for packaging to detect ELF dependencies inside Mach-O libraries,
 # which standard distro tools cannot do.
