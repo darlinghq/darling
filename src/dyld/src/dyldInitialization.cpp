@@ -195,7 +195,6 @@ static void rebaseDyld(const struct macho_header* mh, intptr_t slide)
 }
 
 
-extern "C" void setup_elfcalls(const char** apple);
 extern "C" void mach_init();
 extern "C" void __guard_setup(const char* apple[]);
 
@@ -221,9 +220,6 @@ uintptr_t start(const struct macho_header* appsMachHeader, int argc, const char*
 	const char** apple = envp;
 	while(*apple != NULL) { ++apple; }
 	++apple;
-
-	// Setup elfcalls for Darling
-	setup_elfcalls(apple);
 
 	// allow dyld to use mach messaging
 	mach_init();
