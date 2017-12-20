@@ -171,6 +171,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
 )
 
 # It must be done in this scope
@@ -331,6 +332,7 @@ add_subdirectory(external/gdb)
 add_subdirectory(external/Heimdal)
 add_subdirectory(PlistBuddy)
 add_subdirectory(ScriptingBridge)
+add_subdirectory(libDiagnosticMessagesClient)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
