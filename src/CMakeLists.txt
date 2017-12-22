@@ -177,6 +177,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsNaturalLanguage/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Carbon/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
 )
 
 # It must be done in this scope
@@ -344,6 +345,7 @@ add_subdirectory(DataDetectors)
 add_subdirectory(DataDetectorsNaturalLanguage)
 add_subdirectory(SecurityInterface)
 add_subdirectory(Carbon)
+add_subdirectory(Quartz)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
