@@ -171,8 +171,11 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/includea
+	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsCore/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectors/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsNaturalLanguage/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 )
 
 # It must be done in this scope
@@ -336,6 +339,9 @@ add_subdirectory(ScriptingBridge)
 add_subdirectory(libDiagnosticMessagesClient)
 add_subdirectory(AudioToolbox)
 add_subdirectory(DataDetectorsCore)
+add_subdirectory(DataDetectors)
+add_subdirectory(DataDetectorsNaturalLanguage)
+add_subdirectory(SecurityInterface)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
