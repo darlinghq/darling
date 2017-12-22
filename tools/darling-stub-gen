@@ -71,6 +71,10 @@ def extract_library_name(name):
 def extract_framework_name(name):
 	return name[name.rfind("/") + 1 :]
 
+def write_objc_source_file_locs(cmake_file, classes, num_spaces):
+    for cls in classes:
+        cmake_file.write(" " * num_spaces + "src/%s.m\n" % cls)
+
 # Main program start
 if len(sys.argv) != 3:
 	usage()
@@ -135,6 +139,7 @@ c_header.write(copyright)
 c_source.write(copyright)
 
 c_source.write("""
+#include <%s/%s.h>
 #include <stdlib.h>
 
 static int verbose = 0;
@@ -143,14 +148,7 @@ __attribute__((constructor))
 static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
-""")
-
-c_hdr_buffer = "\n#ifndef _%s_H_\n#define _%s_H_\n\n" % (target_name, target_name)
-
-for funcname in functions:
-    #c_header.write("void* %s(void);\n" % funcname)
-    c_hdr_buffer += "void* %s(void);\n" % funcname
-    c_source.write(c_func_impl_stub % (funcname, funcname))
+""" % (target_name, target_name))
 
 cmake = open(output_dir + "/CMakeLists.txt", "w")
 
@@ -175,27 +173,68 @@ class_dump_output = subprocess.check_output(["class-dump", full_path]).decode('u
 
 uses_objc = "This file does not contain any Objective-C runtime information." not in class_dump_output
 
+c_header.write("\n#ifndef _%s_H_\n#define _%s_H_\n\n" % (target_name, target_name))
+
 if uses_objc:
-    class_dump_all = subprocess.check_output(["class-dump", "-H", "-o", header_dir,  full_path]).decode('utf8').strip()
+    c_header.write("#import <Foundation/Foundation.h>\n\n")
+    
+    typedef_void_regex = re.compile("(typedef void.+?;)", re.DOTALL | re.MULTILINE)
+    for typedef_void_def in typedef_void_regex.finditer(class_dump_output):
+        c_header.write(typedef_void_def.groups()[0])
+        c_header.write("\n\n")
+
+    structs_regex = re.compile("(struct (.+?)};)", re.DOTALL | re.MULTILINE)
+    for struct_def in structs_regex.finditer(class_dump_output):
+        c_header.write(struct_def.groups()[0])
+        c_header.write("\n\n")
+
+    typedef_struct_regex = re.compile("(typedef struct {.+?}.+?;)", re.DOTALL | re.MULTILINE)
+    for typedef_struct_def in typedef_struct_regex.finditer(class_dump_output):
+        c_header.write(typedef_struct_def.groups()[0])
+        c_header.write("\n\n")
+
     get_class_names = re.compile("@interface (.+) :.+")
     classes = get_class_names.findall(class_dump_output)
-    for classname in classes:
-        impl = open(source_dir + classname + ".m", "w")
-        impl.write(copyright)
-        
-        impl.write("#import <%s/%s.h>\n\n" % (target_name, target_name))
-        impl.write("@implementation " + classname + "\n\n")
-        impl.write(msg_handling)
-        impl.write("@end\n")
+    
+    protocols_regex = re.compile("(@protocol (.+?)[\n<].+?@end)", re.DOTALL | re.MULTILINE)
+    classes_regex = re.compile("(@interface (.+?) :.+?@end)", re.DOTALL | re.MULTILINE)
+    
+    for protocol_def in protocols_regex.finditer(class_dump_output):
+        protocol_contents, protocol_name = protocol_def.groups()
+        proto_header = open(header_dir + protocol_name + ".h", "w")
+        proto_header.write(copyright)
+        proto_header.write("#import <%s/%s.h>\n\n" % (target_name, target_name))
+        proto_header.write(protocol_contents)
+        proto_header.close()
+        c_header.write("#import <%s/%s.h>\n" % (target_name, protocol_name))
 
-        c_header.write("#import <%s/%s.h>\n" % (target_name, classname))
+    for class_def in classes_regex.finditer(class_dump_output):
+        class_contents, class_name = class_def.groups()
+        class_header = open(header_dir + class_name + ".h", "w")
+        class_header.write(copyright)
+        class_header.write("#import <%s/%s.h>\n\n" % (target_name, target_name))
+        class_header.write(class_contents)
+        class_header.close()
+        c_header.write("#import <%s/%s.h>\n" % (target_name, class_name))
 
-if uses_objc:
-    cmake.write("file(GLOB %s_OBJC_SOURCES src/*.m)\n\n" % target_name)
+        class_impl = open(source_dir + class_name + ".m", "w")
+        class_impl.write(copyright)
+        class_impl.write("#import <%s/%s.h>\n\n" % (target_name, class_name))
+        class_impl.write("@implementation " + class_name + "\n\n")
+        class_impl.write(msg_handling)
+        class_impl.write("@end\n")
+
+    c_header.write("\n")
+
+for funcname in functions:
+    c_header.write("void* %s(void);\n" % funcname)
+    c_source.write(c_func_impl_stub % (funcname, funcname))
 
 if library:
-    source_files = "src/%s.c\n${%s_OBJC_SOURCES}" % (target_name, target_name)
-    cmake.write("add_darling_library(%s SHARED %s)\n" % (target_name, source_files))
+    cmake.write("add_darling_library(%s SHARED\n" % target_name)
+    cmake.write("    src/%s.c\n" % target_name)
+    write_objc_source_file_locs(cmake, classes, 4)
+    cmake.write(")\n")
     cmake.write("make_fat(%s)\n" % target_name)
     libraries = "system objc" if uses_objc else "system"
     cmake.write("target_link_libraries(%s %s)\n" % (target_name, libraries))
@@ -209,7 +248,7 @@ else:
     cmake.write("    SOURCES\n")
     cmake.write("        src/%s.c\n" % target_name)
     if uses_objc:
-        cmake.write("        ${%s_OBJC_SOURCES}\n" % target_name)
+        write_objc_source_file_locs(cmake, classes, 8)
 
     cmake.write("\n")
 
@@ -220,5 +259,4 @@ else:
         cmake.write("        Foundation\n")
     cmake.write(")\n")
 
-c_header.write(c_hdr_buffer)
 c_header.write("\n#endif\n")
