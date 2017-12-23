@@ -178,6 +178,8 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Carbon/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreImage/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreVideo/include
 )
 
 # It must be done in this scope
@@ -346,6 +348,8 @@ add_subdirectory(DataDetectorsNaturalLanguage)
 add_subdirectory(SecurityInterface)
 add_subdirectory(Carbon)
 add_subdirectory(Quartz)
+add_subdirectory(CoreImage)
+add_subdirectory(CoreVideo)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
@@ -381,7 +385,7 @@ add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/cocotron/Onyx2D)
 add_subdirectory(external/cocotron/AppKit)
 add_subdirectory(external/cocotron/CoreText)
-add_subdirectory(external/cocotron/QuartzCore)
 add_subdirectory(external/cocotron/OpenGL)
 add_subdirectory(external/cocotron/CoreData)
 add_subdirectory(external/cocotron/Cocoa)
+add_subdirectory(external/cocotron/QuartzCore)
