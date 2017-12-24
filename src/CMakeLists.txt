@@ -143,10 +143,11 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/ApplicationServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreText/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/QuartzCore/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreGraphics/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/OpenGL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/Onyx2D/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreVideo/include
@@ -378,6 +379,7 @@ add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/cocotron/Onyx2D)
 add_subdirectory(external/cocotron/AppKit)
 add_subdirectory(external/cocotron/CoreText)
+add_subdirectory(external/cocotron/OpenGL)
 add_subdirectory(external/cocotron/CoreData)
 add_subdirectory(external/cocotron/Cocoa)
 add_subdirectory(external/cocotron/QuartzCore)
