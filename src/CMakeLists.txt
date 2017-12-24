@@ -343,7 +343,6 @@ add_subdirectory(DataDetectorsCore)
 add_subdirectory(DataDetectors)
 add_subdirectory(DataDetectorsNaturalLanguage)
 add_subdirectory(SecurityInterface)
-add_subdirectory(Carbon)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
