@@ -176,12 +176,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsNaturalLanguage/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Carbon/include
-	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreImage/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreVideo/include
-	${CMAKE_CURRENT_SOURCE_DIR}/Accelerate/include
-	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
-	${CMAKE_CURRENT_SOURCE_DIR}/OpenGL/include
 )
 
 # It must be done in this scope
@@ -349,12 +343,6 @@ add_subdirectory(DataDetectors)
 add_subdirectory(DataDetectorsNaturalLanguage)
 add_subdirectory(SecurityInterface)
 add_subdirectory(Carbon)
-add_subdirectory(Quartz)
-add_subdirectory(CoreImage)
-add_subdirectory(CoreVideo)
-add_subdirectory(Accelerate)
-add_subdirectory(IOSurface)
-add_subdirectory(OpenGL)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
