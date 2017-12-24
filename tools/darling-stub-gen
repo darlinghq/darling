@@ -145,6 +145,7 @@ c_source.write(copyright)
 c_source.write("""
 #include <%s/%s.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 static int verbose = 0;
 
@@ -202,7 +203,7 @@ if uses_objc:
     protocols_regex = re.compile("(@protocol (.+?)[\n ].+?@end)", re.DOTALL | re.MULTILINE)
     classes_regex = re.compile("(@interface (.+?) :.+?@end)", re.DOTALL | re.MULTILINE)
 
-    blacklisted_protocols = ["NSObject", "NSSecureCoding", "NSCoding", "NSCopying"]
+    blacklisted_protocols = ["NSObject", "NSSecureCoding", "NSCoding", "NSCopying", "NSFastEnumeration"]
     for protocol_def in protocols_regex.finditer(class_dump_output):
         protocol_contents, protocol_name = protocol_def.groups()
         if protocol_name in blacklisted_protocols:
