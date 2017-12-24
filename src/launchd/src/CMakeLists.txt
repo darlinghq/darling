@@ -18,19 +18,10 @@ add_definitions(
 	-Wno-implicit-function-declaration
 )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/libdispatch/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/libdispatch/private)
-include_directories(${CMAKE_SOURCE_DIR}/platform-include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../liblaunch/)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/gen)
-include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/libproc)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/spawn)
-include_directories(${CMAKE_SOURCE_DIR}/src/libinfo/lookup.subproj)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(
+	${CMAKE_CURRENT_BINARY_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/../liblaunch
+)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc -include ${CMAKE_SOURCE_DIR}/kernel-include/sys/fileport.h")
 
