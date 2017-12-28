@@ -7,14 +7,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
 include(pyc)
 
-add_definitions(
-	-D_DARWIN_C_SOURCE
-	-D_POSIX_C_SOURCE
-	-DDARLING
-	-D__APPLE__
-	-D__DYNAMIC__
-)
-
+add_definitions(-DDARLING)
 set(DARLING TRUE)
 
 execute_process(
@@ -42,7 +35,6 @@ include_directories(${COMPILER_INC_PATH})
 find_package(BISON)
 find_package(FLEX)
 
-add_subdirectory(bootstrap_cmds)
 add_subdirectory(external/cctools-port/cctools/ld64/src)
 add_subdirectory(external/cctools-port/cctools/ar)
 #add_subdirectory(external/cctools-port/cctools/as)
@@ -50,7 +42,17 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(util)
 #add_subdirectory(libmach-o)
 #add_subdirectory(libdyld)
+add_subdirectory(libelfloader/native)
 add_subdirectory(startup)
+
+add_definitions(
+	-D_DARWIN_C_SOURCE
+	-D_POSIX_C_SOURCE
+	-D__APPLE__
+	-D__DYNAMIC__
+)
+
+add_subdirectory(bootstrap_cmds)
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
@@ -207,6 +209,7 @@ add_subdirectory(launchd)
 add_subdirectory(keymgr)
 add_subdirectory(ncurses)
 add_subdirectory(libiconv)
+add_subdirectory(libelfloader)
 add_subdirectory(duct/src)
 add_subdirectory(libresolv)
 add_subdirectory(external/corecrypto)
