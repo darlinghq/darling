@@ -7,9 +7,6 @@
 #include <unistd.h>
 #include <sys/resource.h>
 #include "../../libsyscall/wrappers/_libkernel_init.h"
-#include <elfcalls.h>
-
-extern struct elf_calls* _elfcalls;
 
 extern int __real_ioctl(int fd, int cmd, void* arg);
 extern int sys_open(const char*, int, int);

@@ -4,7 +4,6 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../../../../../platform-include/sys/errno.h"
-#include "../../../../startup/threads.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <pthread/tsd_private.h>

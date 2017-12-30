@@ -19,6 +19,9 @@
 
 #ifndef _LOADER_H
 #define _LOADER_H
+#include "native/elfcalls.h"
+
+extern struct elf_calls* _elfcalls;
 
 #endif
 

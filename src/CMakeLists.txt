@@ -43,6 +43,7 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(libmach-o)
 #add_subdirectory(libdyld)
 add_subdirectory(libelfloader/native)
+add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(startup)
 
 add_definitions(

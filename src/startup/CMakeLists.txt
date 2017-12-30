@@ -20,9 +20,6 @@ target_link_libraries(darling -lutil)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(wrapgen wrapgen/wrapgen.cpp)
-target_link_libraries(wrapgen dl)
-
 install(TARGETS darling DESTINATION bin
     PERMISSIONS
     OWNER_READ OWNER_WRITE OWNER_EXECUTE

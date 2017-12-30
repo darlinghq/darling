@@ -10,7 +10,6 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/mach")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../iokit")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/os")
 include_directories("${CMAKE_SOURCE_DIR}/platform-include")
-include_directories("${CMAKE_SOURCE_DIR}/src/startup") # for elfcalls.h
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../libc/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/wrappers/libproc")
@@ -72,7 +71,6 @@ set(syscall_dynamic_sources
 set(syscall_sources
 	mach/mach_traps.S
 	os/alloc_once.c
-	wrappers/elfcalls_setup.c
 	wrappers/libproc/libproc.c
 	wrappers/libproc/proc_listpidspath.c
 

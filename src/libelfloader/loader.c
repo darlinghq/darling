@@ -73,12 +73,13 @@ static void loader_return(void);
 static const char SYSTEM_ROOT[] = "/Volumes/SystemRoot";
 
 static jmp_buf jmpbuf;
-static struct elf_calls elfcalls;
+struct elf_calls* _elfcalls;
 
 #ifndef TEST
 __attribute__((constructor))
 	static void runDummy(void)
 {
+	_elfcalls = (struct elf_calls*) malloc(sizeof(struct elf_calls));
 	run(DUMMY_PATH);
 }
 #endif
@@ -119,7 +120,7 @@ void run(const char* path)
 	stack[pos++] = 3; // argc
 	stack[pos++] = (unsigned long) "elfloader_dummy";
 
-	snprintf(pointer1, sizeof(pointer1), "%lx", (unsigned long) &elfcalls);
+	snprintf(pointer1, sizeof(pointer1), "%lx", (unsigned long) _elfcalls);
 	stack[pos++] = (unsigned long) pointer1;
 
 	snprintf(pointer2, sizeof(pointer2), "%lx", (unsigned long) loader_return);

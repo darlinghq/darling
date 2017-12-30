@@ -27,7 +27,6 @@
  */
 
 #include "_libkernel_init.h"
-#include "elfcalls_setup.h"
 
 extern int mach_init(void);
 extern void sigexc_setup(void);
@@ -49,7 +48,6 @@ __libkernel_init(_libkernel_functions_t fns,
 		_dlsym = fns->dlsym;
 	}
 
-	setup_elfcalls(apple);
 	mach_init();
 	sigexc_setup();
 }
