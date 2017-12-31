@@ -143,11 +143,10 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/ApplicationServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreText/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/QuartzCore/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreGraphics/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/OpenGL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/Onyx2D/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreVideo/include
@@ -177,6 +176,12 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsNaturalLanguage/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Carbon/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreImage/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreVideo/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Accelerate/include
+	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/OpenGL/include
 )
 
 # It must be done in this scope
@@ -343,6 +348,13 @@ add_subdirectory(DataDetectorsCore)
 add_subdirectory(DataDetectors)
 add_subdirectory(DataDetectorsNaturalLanguage)
 add_subdirectory(SecurityInterface)
+add_subdirectory(Carbon)
+add_subdirectory(Quartz)
+add_subdirectory(CoreImage)
+add_subdirectory(CoreVideo)
+add_subdirectory(Accelerate)
+add_subdirectory(IOSurface)
+add_subdirectory(external/cocotron/OpenGL)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
@@ -378,7 +390,6 @@ add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/cocotron/Onyx2D)
 add_subdirectory(external/cocotron/AppKit)
 add_subdirectory(external/cocotron/CoreText)
-add_subdirectory(external/cocotron/QuartzCore)
-add_subdirectory(external/cocotron/OpenGL)
 add_subdirectory(external/cocotron/CoreData)
 add_subdirectory(external/cocotron/Cocoa)
+add_subdirectory(external/cocotron/QuartzCore)

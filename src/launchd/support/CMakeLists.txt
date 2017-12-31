@@ -12,20 +12,9 @@ add_definitions(
 	-Wno-implicit-function-declaration
 )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/libdispatch/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/libdispatch/private)
-include_directories(${CMAKE_SOURCE_DIR}/platform-include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../liblaunch/)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/gen)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/include/NetBSD)
-include_directories(${CMAKE_SOURCE_DIR}/src/libedit/src)
-include_directories(${CMAKE_SOURCE_DIR}/src/libinfo/lookup.subproj)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/src/external/corefoundation)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libclosure)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/foundation/include)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fblocks -nostdinc -include ${CMAKE_SOURCE_DIR}/kernel-include/sys/fileport.h")
 
