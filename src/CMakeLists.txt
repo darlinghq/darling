@@ -354,6 +354,7 @@ add_subdirectory(CoreImage)
 add_subdirectory(CoreVideo)
 add_subdirectory(Accelerate)
 add_subdirectory(IOSurface)
+add_subdirectory(external/cocotron/OpenGL)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
