@@ -4,6 +4,7 @@
 #include "rtsig.h"
 #include "sigaction.h"
 
+// NOTE: Keep these definitions up to date with lkm/darling/binfmt.c!
 // Uses one of the below magic values to toggle the debugging state
 #define SIGNAL_SIGEXC_TOGGLE	LINUX_SIGRTMIN
 
