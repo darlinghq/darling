@@ -189,6 +189,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightReceiver/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServerKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Contacts/include
 )
 
 # It must be done in this scope
@@ -369,6 +370,7 @@ add_subdirectory(SpotlightIndex)
 add_subdirectory(SpotlightReceiver)
 add_subdirectory(SpotlightServerKit)
 add_subdirectory(SpotlightServices)
+add_subdirectory(Contacts)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
