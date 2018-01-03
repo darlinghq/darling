@@ -182,6 +182,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/Accelerate/include
 	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/OpenGL/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
 )
 
 # It must be done in this scope
@@ -355,6 +356,7 @@ add_subdirectory(CoreVideo)
 add_subdirectory(Accelerate)
 add_subdirectory(IOSurface)
 add_subdirectory(external/cocotron/OpenGL)
+add_subdirectory(libquit)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
