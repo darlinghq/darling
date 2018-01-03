@@ -183,6 +183,12 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/OpenGL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Spotlight/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightDaemon/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightIndex/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightReceiver/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServerKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServices/include
 )
 
 # It must be done in this scope
@@ -357,6 +363,12 @@ add_subdirectory(Accelerate)
 add_subdirectory(IOSurface)
 add_subdirectory(external/cocotron/OpenGL)
 add_subdirectory(libquit)
+add_subdirectory(Spotlight)
+add_subdirectory(SpotlightDaemon)
+add_subdirectory(SpotlightIndex)
+add_subdirectory(SpotlightReceiver)
+add_subdirectory(SpotlightServerKit)
+add_subdirectory(SpotlightServices)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
