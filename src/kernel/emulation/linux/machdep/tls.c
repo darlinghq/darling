@@ -37,7 +37,7 @@ void sys_thread_set_tsd_base(void* ptr, int unk)
 	LINUX_SYSCALL(__NR_set_thread_area, &desc);
 
 	entry_number = desc.entry_number;
-	__asm__ ("movl %0, %%gs" :: "r" (desc.entry_number*8 + 3));
+	__asm__ ("movl %0, %%fs" :: "r" (desc.entry_number*8 + 3));
 #endif
 }
 
