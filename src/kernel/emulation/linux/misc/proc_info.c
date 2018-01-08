@@ -46,16 +46,21 @@ long sys_proc_info(uint32_t callnum, int32_t pid, uint32_t flavor,
 		}
 		case 5: // proc_setthreadname
 		{
-			// On macOS, pthread_setname_np() takes only one argument,
-			// thus we can ignore pid and assume we're talking about
-			// the current thread.
-			int ret;
+			if (flavor == 2 /*PROC_SELFSET_THREADNAME*/)
+			{
+				// On macOS, pthread_setname_np() takes only one argument,
+				// thus we can ignore pid and assume we're talking about
+				// the current thread.
+				int ret;
 			
-			ret = LINUX_SYSCALL(__NR_prctl, LINUX_PR_SET_NAME, buffer, 0UL, 0UL, 0UL);
-			if (ret < 0)
-				return errno_linux_to_bsd(ret);
+				ret = LINUX_SYSCALL(__NR_prctl, LINUX_PR_SET_NAME, buffer, 0UL, 0UL, 0UL);
+				if (ret < 0)
+					return errno_linux_to_bsd(ret);
 
-			return ret;
+				return ret;
+			}
+			else
+				return 0; // PROC_SELFSET_PCONTROL (1)
 		}
 		case 8: // dirtycontrol
 			return 0;
