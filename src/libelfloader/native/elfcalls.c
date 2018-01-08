@@ -81,8 +81,6 @@ int main(int argc, const char** argv)
 {
 	typedef void (*retfunc)(void);
 
-	pthread_once(&once_control, once_test);
-
 	struct elf_calls* calls;
 	retfunc ret;
 
