@@ -9,6 +9,7 @@
 #include "../../../../../platform-include/sys/errno.h"
 #include "../mman/mman.h"
 #include "../simple.h"
+#include "../elfcalls_wrapper.h"
 
 extern void *memset(void *s, int c, size_t n);
 

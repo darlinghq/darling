@@ -7,6 +7,7 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "../elfcalls_wrapper.h"
 
 int bsdthread_terminate_trap(
                 uintptr_t stackaddr,

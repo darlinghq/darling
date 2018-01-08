@@ -179,7 +179,7 @@ void run(const char* path)
 		JUMPX(stack, lc.interp_entry);
 	else
 	{
-		puts("Back from loaded binary");
+		// puts("Back from loaded binary");
 	}
 }
 

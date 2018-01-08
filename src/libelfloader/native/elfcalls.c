@@ -65,6 +65,7 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->darling_thread_get_stack = __darling_thread_get_stack;
 
 	calls->get_errno = get_errno;
+	calls->exit = exit;
 	*((void**)&calls->sem_open) = sem_open;
 	*((void**)&calls->sem_wait) = sem_wait;
 	*((void**)&calls->sem_trywait) = sem_trywait;
@@ -80,20 +81,22 @@ int main(int argc, const char** argv)
 {
 	typedef void (*retfunc)(void);
 
+	pthread_once(&once_control, once_test);
+
 	struct elf_calls* calls;
 	retfunc ret;
 
-	for (int i = 0; i < argc; i++)
-		printf("arg %d: %s\n", i, argv[i]);
+	// for (int i = 0; i < argc; i++)
+	// 	printf("arg %d: %s\n", i, argv[i]);
 
 	calls = (struct elf_calls*) strtoul(argv[1], NULL, 16);
 	ret = (retfunc) strtoul(argv[2], NULL, 16);
 
-	puts("before elfcalls_make");
+	// puts("before elfcalls_make");
 
 	elfcalls_make(calls);
-	puts("after elfcalls_make");
-	printf("Will call %p\n", ret);
+	// puts("after elfcalls_make");
+	// printf("Will call %p\n", ret);
 	ret();
 
 	__builtin_unreachable();

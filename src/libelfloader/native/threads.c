@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2015 Lubos Dolezel
+Copyright (C) 2015-2018 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <signal.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <setjmp.h>
 
 // The point of this file is build macOS threads on top of native libc's threads,
 // otherwise it would not be possible to make native calls from these threads.
@@ -46,23 +47,10 @@ struct arg_struct
 	};
 	unsigned long pth_obj_size;
 	void* pth;
-};
-struct reaper_item
-{
-	struct reaper_item* next;
-	pthread_t thread;
-	void* stack;
-	size_t stacksize;
+	jmp_buf* jmpbuf;
 };
 
 static void* darling_thread_entry(void* p);
-static void start_reaper();
-
-static sem_t reaper_sem;
-static pthread_mutex_t reaper_mutex = PTHREAD_MUTEX_INITIALIZER;
-static struct reaper_item *reaper_items_front = NULL, *reaper_items_end = NULL;
-static void reaper_item_push(struct reaper_item* item);
-static struct reaper_item* reaper_item_pop(void);
 
 #ifndef PTHREAD_STACK_MIN
 #	define PTHREAD_STACK_MIN 16384
@@ -73,21 +61,17 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 				uintptr_t arg4, uintptr_t arg5, uintptr_t arg6,
 				int (*thread_self_trap)())
 {
-	static pthread_once_t reaper_once = PTHREAD_ONCE_INIT;
-
 	struct arg_struct args = { (thread_ep) entry_point, arg3,
 		arg4, arg5, arg6, thread_self_trap, pth_obj_size, NULL };
 	pthread_attr_t attr;
 	pthread_t nativeLibcThread;
 	void* pth;
 
-	pthread_once(&reaper_once, start_reaper);
-
 	pthread_attr_init(&attr);
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	// pthread_attr_setstacksize(&attr, stack_size);
 	
-	pth = mmap(NULL, stack_size + pth_obj_size + 0x1000, PROT_READ | PROT_WRITE,
+	pth = mmap(NULL, stack_size + pth_obj_size + 0x1000 + 0x1000, PROT_READ | PROT_WRITE,
 		MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	
 	// pthread_attr_setstack is buggy. The documentation states we should provide the lowest
@@ -97,7 +81,10 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	//pthread_attr_setstack(&attr, ((char*)pth) + pth_obj_size, stack_size - pth_obj_size - 0x1000);
 
 	// std::cout << "Allocated stack at " << pth << ", size " << stack_size << std::endl;
-	pth = ((char*) pth) + stack_size + 0x1000;
+
+	// We allocated an extra page for jmpbuf
+	args.jmpbuf = (jmp_buf*) pth;
+	pth = ((char*) pth) + stack_size + 0x2000;
 	pthread_attr_setstacksize(&attr, 4096);
 
 	args.pth = pth;
@@ -119,6 +106,15 @@ static void* darling_thread_entry(void* p)
 
 	args.port = args.thread_self_trap();
 	in_args->pth = NULL;
+
+	int freesize;
+	if ((freesize = setjmp(*args.jmpbuf)) != 0)
+	{
+		// Terminate the Linux thread
+		// +0x1000 is an extra page we allocated for the jmp_buf
+		munmap(args.jmpbuf, freesize + 0x1000);
+		return NULL;
+	}
 
 #ifdef __x86_64__
 	__asm__ __volatile__ (
@@ -159,7 +155,7 @@ static void* darling_thread_entry(void* p)
 	"ret\n" // Jump to the address pushed at the beginning
 	:: "c" (&args), "d" (args.pth));
 #endif
-	return NULL;
+	__builtin_unreachable();
 }
 
 int __darling_thread_terminate(void* stackaddr,
@@ -168,7 +164,7 @@ int __darling_thread_terminate(void* stackaddr,
 	if (getpid() == syscall(SYS_gettid))
 	{
 		// dispatch_main() calls pthread_exit(NULL) on the main thread,
-		// which turns the our process into a zombie.
+		// which turns our process into a zombie on Linux.
 		// Let's just hang around forever.
 		sigset_t mask;
 		memset(&mask, 0, sizeof(mask));
@@ -176,16 +172,10 @@ int __darling_thread_terminate(void* stackaddr,
 		while (1)
 			sigsuspend(&mask);
 	}
-	
-	struct reaper_item* item = (struct reaper_item*) malloc(sizeof(struct reaper_item));
-	item->thread = pthread_self();
-	item->stack = stackaddr;
-	item->stacksize = freesize;
-	reaper_item_push(item);
 
-	sem_post(&reaper_sem);
-
-	pthread_exit(NULL);
+	// Jump back into darling_thread_entry()
+	jmp_buf* jmpbuf = (jmp_buf*) (((char*) stackaddr) - 0x1000);
+	longjmp(*jmpbuf, freesize);
 
 	__builtin_unreachable();
 }
@@ -201,81 +191,3 @@ void* __darling_thread_get_stack(void)
 
 	return ((char*)stackaddr) + stacksize - 0x2000;
 }
-
-static void* reaper_entry(void* unused)
-{
-	while (true)
-	{
-		struct reaper_item* item;
-
-		sem_wait(&reaper_sem);
-
-		item = reaper_item_pop();
-		if (!item)
-			continue; // Should not happen!
-		
-		// std::cout << "Reaping thread " << (void*)item.thread << "; Free stack at " << item.stack << ", " << item.stacksize << " bytes\n";
-
-		// Wait for thread to terminate
-		pthread_join(item->thread, NULL);
-
-		// Free its stack in the extended range requested by Darwin's libc
-		munmap(item->stack, item->stacksize);
-
-		free(item);
-	}
-}
-
-static void start_reaper()
-{
-	pthread_attr_t attr;
-	pthread_t thread;
-
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-	sem_init(&reaper_sem, 0, 0);
-	pthread_create(&thread, &attr, reaper_entry, NULL);
-	pthread_attr_destroy(&attr);
-}
-
-static void reaper_item_push(struct reaper_item* item)
-{
-	pthread_mutex_lock(&reaper_mutex);
-
-	item->next = NULL;
-	if (reaper_items_end != NULL)
-	{
-		reaper_items_end->next = item;
-		reaper_items_end = item;
-	}
-	else
-	{
-		reaper_items_front = reaper_items_end = item;
-	}
-
-	pthread_mutex_unlock(&reaper_mutex);
-}
-
-static struct reaper_item* reaper_item_pop(void)
-{
-	struct reaper_item* e;
-	pthread_mutex_lock(&reaper_mutex);
-	
-	if (reaper_items_front != NULL)
-	{
-		e = reaper_items_front;
-
-		if (reaper_items_front == reaper_items_end)
-			reaper_items_front = reaper_items_end = NULL; // The list is now empty
-		else
-			reaper_items_front = e->next;
-	}
-	else
-		e = NULL;
-
-	pthread_mutex_unlock(&reaper_mutex);
-
-	return e;
-}
-

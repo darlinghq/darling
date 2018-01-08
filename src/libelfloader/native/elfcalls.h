@@ -36,6 +36,8 @@ struct elf_calls
 	// POSIX SHM APIs
 	int (*shm_open)(const char* name, int oflag, unsigned short mode);
 	int (*shm_unlink)(const char* name);
+
+	void (*exit)(int ec);
 };
 
 #endif

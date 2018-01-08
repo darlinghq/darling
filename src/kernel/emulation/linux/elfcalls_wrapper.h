@@ -12,6 +12,8 @@ char* native_dlerror(void);
 void* native_dlsym(void* module, const char* name);
 int native_dlclose(void* module);
 
+void native_exit(int ec);
+
 // Native thread wrapping
 void* __darling_thread_create(unsigned long stack_size, unsigned long pthobj_size,
 			void* entry_point, uintptr_t arg3,

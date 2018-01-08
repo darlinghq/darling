@@ -6,7 +6,7 @@
 #include <elfcalls.h>
 #include "../bsdthread/cancelable.h"
 
-extern struct elf_calls* _elfcalls;
+extern struct elf_calls* elfcalls(void);
 
 long sys_sem_wait(int* sem)
 {
@@ -19,9 +19,9 @@ long sys_sem_wait_nocancel(int* sem)
 #ifndef VARIANT_DYLD
 	int ret;
 
-	ret = _elfcalls->sem_wait(sem);
+	ret = elfcalls()->sem_wait(sem);
 	if (ret == -1)
-		ret = -errno_linux_to_bsd(_elfcalls->get_errno());
+		ret = -errno_linux_to_bsd(elfcalls()->get_errno());
 
 	return ret;
 #else
