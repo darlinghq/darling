@@ -115,6 +115,10 @@ void run(const char* path)
 		ptrcount++;
 	ptrcount++;
 
+	// Ensure 16-byte alignment
+	if (ptrcount % 2 == 0)
+		ptrcount++;
+
 	stack -= ptrcount;
 
 	stack[pos++] = 3; // argc
