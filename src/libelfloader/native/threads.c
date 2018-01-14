@@ -28,9 +28,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <setjmp.h>
+#include <sys/syscall.h>
 
 // The point of this file is build macOS threads on top of native libc's threads,
 // otherwise it would not be possible to make native calls from these threads.
+
+static __thread jmp_buf t_jmpbuf;
+static __thread void* t_freeaddr;
+static __thread size_t t_freesize;
 
 typedef void (*thread_ep)(void**, int, ...);
 struct arg_struct
@@ -47,7 +52,6 @@ struct arg_struct
 	};
 	unsigned long pth_obj_size;
 	void* pth;
-	jmp_buf* jmpbuf;
 };
 
 static void* darling_thread_entry(void* p);
@@ -71,7 +75,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	// pthread_attr_setstacksize(&attr, stack_size);
 	
-	pth = mmap(NULL, stack_size + pth_obj_size + 0x1000 + 0x1000, PROT_READ | PROT_WRITE,
+	pth = mmap(NULL, stack_size + pth_obj_size + 0x1000, PROT_READ | PROT_WRITE,
 		MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	
 	// pthread_attr_setstack is buggy. The documentation states we should provide the lowest
@@ -82,9 +86,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 
 	// std::cout << "Allocated stack at " << pth << ", size " << stack_size << std::endl;
 
-	// We allocated an extra page for jmpbuf
-	args.jmpbuf = (jmp_buf*) pth;
-	pth = ((char*) pth) + stack_size + 0x2000;
+	pth = ((char*) pth) + stack_size + 0x1000;
 	pthread_attr_setstacksize(&attr, 4096);
 
 	args.pth = pth;
@@ -108,11 +110,10 @@ static void* darling_thread_entry(void* p)
 	in_args->pth = NULL;
 
 	int freesize;
-	if ((freesize = setjmp(*args.jmpbuf)) != 0)
+	if (setjmp(t_jmpbuf))
 	{
 		// Terminate the Linux thread
-		// +0x1000 is an extra page we allocated for the jmp_buf
-		munmap(args.jmpbuf, freesize + 0x1000);
+		munmap(t_freeaddr, t_freesize);
 		return NULL;
 	}
 
@@ -173,9 +174,10 @@ int __darling_thread_terminate(void* stackaddr,
 			sigsuspend(&mask);
 	}
 
-	// Jump back into darling_thread_entry()
-	jmp_buf* jmpbuf = (jmp_buf*) (((char*) stackaddr) - 0x1000);
-	longjmp(*jmpbuf, freesize);
+	t_freeaddr = stackaddr;
+	t_freesize = freesize;
+
+	longjmp(t_jmpbuf, 1);
 
 	__builtin_unreachable();
 }
