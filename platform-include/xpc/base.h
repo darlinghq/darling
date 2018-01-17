@@ -15,11 +15,18 @@ __BEGIN_DECLS
 #define __has_attribute(x) 0
 #endif // !defined(__has_attribute)
 
+#if !defined(__has_feature)
+#define __has_feature(x) 0
+#endif // !defined(__has_feature)
+
+#if !defined(__has_extension)
+#define __has_extension(x) 0
+#endif // !defined(__has_extension)
+
 #if __has_include(<xpc/availability.h>)
 #include <xpc/availability.h>
 #else // __has_include(<xpc/availability.h>)
 #include <Availability.h>
-#define __XPC_IOS_SIMULATOR_AVAILABLE_STARTING(version)
 #endif // __has_include(<xpc/availability.h>)
 
 #if XPC_SERVICE_MAIN_IN_LIBXPC
@@ -61,6 +68,12 @@ __BEGIN_DECLS
 #define XPC_NOINLINE __attribute__((noinline))
 #define XPC_NOIMPL __attribute__((unavailable))
 
+#if __has_attribute(noescape)
+#define XPC_NOESCAPE __attribute__((__noescape__))
+#else
+#define XPC_NOESCAPE
+#endif
+
 #if __has_extension(attribute_unavailable_with_message)
 #define XPC_UNAVAILABLE(m) __attribute__((unavailable(m)))
 #else // __has_extension(attribute_unavailable_with_message)
@@ -78,6 +91,12 @@ __BEGIN_DECLS
 #define XPC_DEPRECATED(m) __attribute__((deprecated))
 #endif // __clang 
 
+#if __XPC_TEST__
+#define XPC_TESTSTATIC 
+#else // __XPC_TEST__
+#define XPC_TESTSTATIC static
+#endif // __XPC_TEST__
+
 #if __has_feature(objc_arc)
 #define XPC_GIVES_REFERENCE __strong
 #define XPC_UNRETAINED __unsafe_unretained
@@ -89,7 +108,7 @@ __BEGIN_DECLS
 #else // __has_feature(objc_arc)
 #define XPC_GIVES_REFERENCE
 #define XPC_UNRETAINED
-#define XPC_BRIDGE(xo)
+#define XPC_BRIDGE(xo) (xo)
 #define XPC_BRIDGEREF_BEGIN(xo) (xo)
 #define XPC_BRIDGEREF_BEGIN_WITH_REF(xo) (xo)
 #define XPC_BRIDGEREF_MIDDLE(xo) (xo)
@@ -158,7 +177,23 @@ __BEGIN_DECLS
 #define XPC_DEPRECATED
 /*! @parseOnly */
 #define XPC_UNAVAILABLE(m)
-#endif // __GNUC__ 
+/*! @parseOnly */
+#define XPC_NOESCAPE
+#endif // __GNUC__
+
+#if __has_feature(assume_nonnull)
+#define XPC_ASSUME_NONNULL_BEGIN _Pragma("clang assume_nonnull begin")
+#define XPC_ASSUME_NONNULL_END   _Pragma("clang assume_nonnull end")
+#else
+#define XPC_ASSUME_NONNULL_BEGIN
+#define XPC_ASSUME_NONNULL_END
+#endif
+
+#if __has_feature(nullability_on_arrays)
+#define XPC_NONNULL_ARRAY _Nonnull
+#else
+#define XPC_NONNULL_ARRAY
+#endif
 
 __END_DECLS
 

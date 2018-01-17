@@ -376,7 +376,7 @@
 
 /* file descriptor flags (F_GETFD, F_SETFD) */
 #define	FD_CLOEXEC	1		/* close-on-exec flag */
-#if PRIVATE
+#ifdef PRIVATE
 #define	FD_CLOFORK	2		/* close-on-fork flag */
 #endif
 
@@ -394,7 +394,7 @@
 #define	F_OFD_LOCK	0x400		/* Use "OFD" semantics for lock */
 #endif
 
-#if PRIVATE
+#ifdef PRIVATE
 /* 
  * ISOCHRONOUS attempts to sustain a minimum platform-dependent throughput 
  * for the duration of the I/O delivered to the driver.

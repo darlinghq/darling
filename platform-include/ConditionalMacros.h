@@ -89,7 +89,6 @@
     These conditionals specify whether the compiler supports particular types.
 
         TYPE_LONGLONG               - Compiler supports "long long" 64-bit integers
-        TYPE_BOOL                   - Compiler supports "bool"
         TYPE_EXTENDED               - Compiler supports "extended" 80/96 bit floating point
         TYPE_LONGDOUBLE_IS_DOUBLE   - Compiler implements "long double" same as "double"
 
@@ -143,11 +142,6 @@
   #endif
 
   #define TYPE_LONGLONG               1
-  #ifdef __cplusplus
-     #define TYPE_BOOL                1
-  #else
-     #define TYPE_BOOL                0
-  #endif
  
   #define FUNCTION_PASCAL             0
   #define FUNCTION_DECLSPEC           0
@@ -186,11 +180,6 @@
       #define TYPE_LONGLONG            1
    #else
      #define TYPE_LONGLONG             0
-   #endif
-   #if __option(bool)
-     #define TYPE_BOOL                 1
-   #else
-      #define TYPE_BOOL                0
    #endif
    #define TYPE_EXTENDED               0
    #define TYPE_LONGDOUBLE_IS_DOUBLE   1
@@ -238,9 +227,6 @@
   #endif
  #ifndef TYPE_LONGLONG
   #define TYPE_LONGLONG               0
-  #endif
- #ifndef TYPE_BOOL
-  #define TYPE_BOOL                   0
   #endif
  #ifndef FUNCTION_PASCAL
     #define FUNCTION_PASCAL             0
