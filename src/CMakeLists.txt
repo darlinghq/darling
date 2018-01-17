@@ -237,7 +237,6 @@ add_subdirectory(xtrace)
 add_subdirectory(dyld)
 add_subdirectory(external/objc4/runtime)
 add_subdirectory(external/syslog)
-add_subdirectory(external/libdispatch)
 add_subdirectory(external/zlib)
 add_subdirectory(external/bzip2)
 add_subdirectory(external/libxml2)
@@ -395,6 +394,9 @@ include_directories(BEFORE
 
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
+
+add_subdirectory(external/libdispatch)
+
 # Requires a newer Security version
 #add_subdirectory(external/SmartCardServices)
 add_subdirectory(external/security)
@@ -413,3 +415,5 @@ add_subdirectory(external/cocotron/CoreText)
 add_subdirectory(external/cocotron/CoreData)
 add_subdirectory(external/cocotron/Cocoa)
 add_subdirectory(external/cocotron/QuartzCore)
+
+add_subdirectory(external/JavaScriptCore)
