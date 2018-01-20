@@ -194,13 +194,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/ViewBridge/include
 )
 
-# It must be done in this scope
-add_library(CoreFoundation SHARED IMPORTED)
-set_property(TARGET CoreFoundation PROPERTY
-	IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/external/corefoundation/CoreFoundation
-)
-add_dependencies(CoreFoundation CoreFoundation_build)
-set_target_properties(CoreFoundation PROPERTIES SUFFIX "" PREFIX "")
 
 add_subdirectory(external/libkqueue)
 
@@ -244,6 +237,7 @@ add_subdirectory(external/libxslt)
 add_subdirectory(external/icu/icuSources)
 add_subdirectory(external/commoncrypto)
 add_subdirectory(external/corefoundation)
+
 add_subdirectory(external/openssl/src)
 #add_subdirectory(external/configd/SystemConfiguration.fproj)
 add_subdirectory(external/foundation)

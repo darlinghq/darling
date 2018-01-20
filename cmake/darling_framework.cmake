@@ -114,21 +114,26 @@ function(add_separated_framework name)
 
 	if (FRAMEWORK_LINK_FLAGS)
 		set_property(TARGET ${my_name}_i386 APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
-			set_property(TARGET ${my_name}_x86_64 APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
+		set_property(TARGET ${my_name}_x86_64 APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 	endif (FRAMEWORK_LINK_FLAGS)
-
-	add_custom_target(${my_name}_build
+	
+	add_dependencies(${my_name}_x86_64 ${my_name}_i386)
+	add_custom_command(TARGET ${my_name}_x86_64 POST_BUILD
 		COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
 			-arch i386 $<TARGET_FILE:${my_name}_i386>
 			-arch x86_64 $<TARGET_FILE:${my_name}_x86_64>
 			-create
 			-output
 			${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-
-		BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-
-		DEPENDS ${my_name}_i386 ${my_name}_x86_64 lipo
+		COMMENT "Running lipo to create ${my_name}"
 	)
+	add_library(${my_name} SHARED IMPORTED GLOBAL)
+	set_target_properties(${my_name} PROPERTIES
+		SUFFIX ""
+		PREFIX ""
+		IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
+	)
+	add_dependencies(${my_name} ${my_name}_x86_64)
 
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${my_name} DESTINATION "libexec/darling/System/Library/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/")
 
