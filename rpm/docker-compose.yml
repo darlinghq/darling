@@ -1,0 +1,10 @@
+version: "2.3"
+
+services:
+  rpm:
+    build:
+      context: .
+    volumes:
+      - ..:/src:ro
+      - ./RPMS:/root/rpmbuild/RPMS
+      - ./SRPMS:/root/rpmbuild/SRPMS

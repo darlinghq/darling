@@ -29,6 +29,8 @@ CMakeCache.txt
 *.cmd
 Module.symvers
 
+rpm/SOURCES
+
 # Directories where too much temp stuff may lay around
 tests
 
