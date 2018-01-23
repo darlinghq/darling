@@ -4,6 +4,8 @@ services:
   rpm:
     build:
       context: .
+      args:
+        - OS=${RPM_OS-fedora:27}
     volumes:
       - ..:/src:ro
       - ./RPMS:/root/rpmbuild/RPMS

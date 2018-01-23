@@ -30,22 +30,22 @@ AutoReqProv:    no
 %description
 Darling macOS emulator
 
-%package dkms
+%package mach
 Summary:        Darling mach dkms module
 Group:          Utility
 Requires:       dkms make gcc kernel-devel
 AutoReqProv:    no
 
-%description dkms
-Linux kernel module for darling
+%description mach
+Linux kernel module for darling-mach
 
 %prep
 %setup -q -n %{name}
 
 %build
-mkdir -p build
+%{__mkdir_p} build
 pushd build
-  # Release is broken! https://github.com/darlinghq/darling/issues/331
+  # Release is broken https://github.com/darlinghq/darling/issues/331
   #          -DCMAKE_BUILD_TYPE=Release \
   %{__cmake} -DCMAKE_INSTALL_PREFIX=/usr \
              ..
@@ -56,6 +56,7 @@ popd
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
 pushd build
   %{make_install}
+  %{make_build} lkm_generate
 popd
 %{__install} -d -m 755 %{?buildroot}/usr/src/%{name}-mach-%{version}/miggen
 cp -dr --no-preserve=ownership src/lkm %{?buildroot}/usr/src/%{name}-mach-%{version}/lkm
@@ -68,14 +69,14 @@ setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr32
 
 #setsebool -P mmap_low_allowed 1
 
-%preun dkms
+%preun mach
 /usr/sbin/dkms remove -m %{name}-mach -v %{version} --all
 
-%post dkms
+%post mach
 occurrences=$(/usr/sbin/dkms status | grep "%{name}" | grep "%{version}" | wc -l)
 if [ ! ${occurrences} -gt 0 ];
 then
-    /usr/sbin/dkms add -m %{name}-mach -v %{version}
+  /usr/sbin/dkms add -m %{name}-mach -v %{version}
 fi
 /usr/sbin/dkms build -m %{name}-mach -v %{version}
 /usr/sbin/dkms install -m %{name}-mach -v %{version}
@@ -85,7 +86,7 @@ fi
 %{_bindir}/darling
 %{_libexecdir}/darling
 
-%files dkms
+%files mach
 %{_sysconfdir}/udev/rules.d/00-darling-mach.rules
 %{_prefix}/src/%{name}-mach-%{version}
 
