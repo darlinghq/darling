@@ -29,10 +29,12 @@ CMakeCache.txt
 *.cmd
 Module.symvers
 
-rpm/SOURCES
-
 # Directories where too much temp stuff may lay around
 tests
 
 # The suggested build folder
 build
+
+rpm/SOURCES
+rpm/RPMS
+rpm/SRPMS

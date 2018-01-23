@@ -2,7 +2,7 @@
 
 set -eu
 
-yum-builddep -y /root/rpmbuild/SPECS/darling.spec
+yum-builddep -y /src/rpm/SPECS/darling.spec
 if [ -e "/src/rpm/SOURCES/darling.tar.gz" ]; then
   ln -s /src/rpm/SOURCES/darling.tar.gz /root/rpmbuild/SOURCES/
 else
@@ -11,4 +11,4 @@ else
 fi
 ln -s /src/rpm/SOURCES/dkms.conf /root/rpmbuild/SOURCES/
 #spectool -g -R /src/rpm/SPECS/darling.spec
-rpmbuild -ba /root/rpmbuild/SPECS/darling.spec
+rpmbuild -ba /src/rpm/SPECS/darling.spec
