@@ -62,6 +62,12 @@ cp -dr --no-preserve=ownership src/lkm %{?buildroot}/usr/src/%{name}-mach-%{vers
 cp -dr --no-preserve=ownership build/src/lkm/osfmk %{?buildroot}/usr/src/%{name}-mach-%{version}/miggen/osfmk
 %{__install} -m 644 %{SOURCE1} %{?buildroot}/usr/src/%{name}-mach-%{version}
 
+%post
+setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr
+setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr32
+
+#setsebool -P mmap_low_allowed 1
+
 %preun dkms
 /usr/sbin/dkms remove -m %{name}-mach -v %{version} --all
 

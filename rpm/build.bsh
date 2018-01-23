@@ -7,7 +7,7 @@ if [ -e "/src/rpm/SOURCES/darling.tar.gz" ]; then
   ln -s /src/rpm/SOURCES/darling.tar.gz /root/rpmbuild/SOURCES/
 else
   # Preparing tarball
-  tar --transform "s|^\./|/darling/|" -czf /root/rpmbuild/SOURCES/darling.tar.gz -C /src --exclude=.git --exclude SOURCES .
+  tar --transform "s|^\./|/darling/|" -cf /root/rpmbuild/SOURCES/darling.tar.gz -C /src --exclude=.git --exclude SOURCES .
 fi
 ln -s /src/rpm/SOURCES/dkms.conf /root/rpmbuild/SOURCES/
 #spectool -g -R /src/rpm/SPECS/darling.spec
