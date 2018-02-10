@@ -34,3 +34,7 @@ tests
 
 # The suggested build folder
 build
+
+rpm/SOURCES
+rpm/RPMS
+rpm/SRPMS
