@@ -12,7 +12,7 @@
 #include "math.h"
 #include <emmintrin.h>
 #include <stdint.h>
-#include "xmmLibm_Prefix.h"
+#include "xmmLibm_prefix.h"
 #include <float.h>
 
 #if defined( __SSE3__ )
