@@ -192,8 +192,8 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/Contacts/include
 	${CMAKE_CURRENT_SOURCE_DIR}/QuickLook/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ViewBridge/include
+	${CMAKE_CURRENT_SOURCE_DIR}/WebKit/include
 )
-
 
 add_subdirectory(external/libkqueue)
 
@@ -368,6 +368,8 @@ add_subdirectory(SpotlightServices)
 add_subdirectory(Contacts)
 add_subdirectory(QuickLook)
 add_subdirectory(ViewBridge)
+# Just a stub
+add_subdirectory(WebKit)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
