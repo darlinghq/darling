@@ -195,6 +195,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/WebKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AVFoundation/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreMedia/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -372,6 +373,7 @@ add_subdirectory(QuickLook)
 add_subdirectory(ViewBridge)
 add_subdirectory(AVFoundation)
 add_subdirectory(CoreAudio)
+add_subdirectory(CoreMedia)
 # Just a stub
 add_subdirectory(WebKit)
 
