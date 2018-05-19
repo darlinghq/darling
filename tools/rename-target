@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+
+parser = argparse.ArgumentParser(description="Rename a CMake target.")
+
+parser.add_argument("old", help="the target to rename", type=str)
+parser.add_argument("new", help="the new target name", type=str)
+
+args = parser.parse_args()
+
+print(args.old)
+print(args.new)
+
+for root, subdirs, files in os.walk("."):
+    with open(list_file_path, 'wb') as list_file:
+        for filename in files:
+            file_path = os.path.join(root, filename)
+
+
+            with open(file_path, 'rb') as f:
+                print("Parsing " + file_path)
+                f_content = f.read()
