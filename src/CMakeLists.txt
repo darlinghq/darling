@@ -85,7 +85,7 @@ include_directories(
 
 include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskArbitration/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudioOld/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AudioUnit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/login/include
@@ -194,6 +194,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/ViewBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/WebKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AVFoundation/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -370,6 +371,7 @@ add_subdirectory(Contacts)
 add_subdirectory(QuickLook)
 add_subdirectory(ViewBridge)
 add_subdirectory(AVFoundation)
+add_subdirectory(CoreAudio)
 # Just a stub
 add_subdirectory(WebKit)
 
