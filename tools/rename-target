@@ -2,8 +2,9 @@
 
 import argparse
 import os
+import re
 
-parser = argparse.ArgumentParser(description="Rename a CMake target.")
+parser = argparse.ArgumentParser(description="Rename a CMake target. Opperates on the current directory.")
 
 parser.add_argument("old", help="the target to rename", type=str)
 parser.add_argument("new", help="the new target name", type=str)
@@ -13,12 +14,19 @@ args = parser.parse_args()
 print(args.old)
 print(args.new)
 
-for root, subdirs, files in os.walk("."):
-    with open(list_file_path, 'wb') as list_file:
-        for filename in files:
-            file_path = os.path.join(root, filename)
+def editfile(f, old, new):
+    contents = f.read()
 
+    f.seek(0)
 
-            with open(file_path, 'rb') as f:
-                print("Parsing " + file_path)
-                f_content = f.read()
+    contents = re.sub(old, new, contents) 
+
+    f.write(contents)
+
+    f.truncate()
+
+for dirpath, dirname, filenames in os.walk("."):
+    for filename in filenames:
+        if filename.endswith("CMakeLists.txt"):
+            with open(dirpath +"/" + filename, "r+") as f:
+                editfile(f, args.old, args.new)
