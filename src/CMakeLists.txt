@@ -7,6 +7,8 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
 include(pyc)
 
+add_subdirectory(external/xcbuild)
+
 add_definitions(
 	-D_DARWIN_C_SOURCE
 	-D_POSIX_C_SOURCE
@@ -47,6 +49,7 @@ add_subdirectory(external/cctools-port/cctools/ld64/src)
 add_subdirectory(external/cctools-port/cctools/ar)
 #add_subdirectory(external/cctools-port/cctools/as)
 add_subdirectory(external/cctools-port/cctools/misc)
+
 #add_subdirectory(util)
 #add_subdirectory(libmach-o)
 #add_subdirectory(libdyld)
