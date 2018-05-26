@@ -15,7 +15,7 @@ function(pyc target_name)
 
 		set(output_name "${CMAKE_CURRENT_BINARY_DIR}/${dirName}/${bareName}c")
 		add_custom_command(OUTPUT "${output_name}"
-			COMMAND "${CMAKE_SOURCE_DIR}/tools/pyc.py" "${pyfile}" "${CMAKE_CURRENT_BINARY_DIR}/${dirName}/${bareName}c"
+			COMMAND "${CMAKE_SOURCE_DIR}/tools/pyc" "${pyfile}" "${CMAKE_CURRENT_BINARY_DIR}/${dirName}/${bareName}c"
 			WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 		
 		list(APPEND generated_files "${output_name}")
