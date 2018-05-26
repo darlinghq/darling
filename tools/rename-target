@@ -19,7 +19,7 @@ def editfile(f, old, new):
 
     f.seek(0)
 
-    contents = re.sub("([^\w])" + old + "([^\w])", r"\1" + new + r"\2", contents) 
+    contents = re.sub("([^\w.])" + old + "([^\w.])", r"\1" + new + r"\2", contents) 
 
     f.write(contents)
 
