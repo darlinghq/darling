@@ -78,10 +78,10 @@ vm_size_t vm_page_size = 0;
 vm_size_t vm_page_mask = 0;
 int vm_page_shift = 0;
 
-int mach_init(void);
+int mach_init(const char** applep);
 int _mach_fork_child(void);
 
-static void mach_init_doit(void);
+static void mach_init_doit(const char** applep);
 
 extern void _pthread_set_self(void *);
 extern void _init_cpu_capabilities(void);
@@ -99,11 +99,11 @@ host_page_size(__unused host_t host, vm_size_t *out_page_size)
  * called by libSystem_initializer() in dynamic executables
  */
 int
-mach_init(void)
+mach_init(const char** applep)
 {
 	static bool mach_init_inited = false;
 	if (!mach_init_inited) {
-		mach_init_doit();
+		mach_init_doit(applep);
 		mach_init_inited = true;
 	}
 	return 0;
@@ -113,7 +113,7 @@ mach_init(void)
 int
 _mach_fork_child(void)
 {
-	mach_init_doit();
+	mach_init_doit(NULL);
 	return 0;
 }
 
@@ -123,9 +123,9 @@ void _mach_fork_parent(void)
 }
 
 void
-mach_init_doit(void)
+mach_init_doit(const char** applep)
 {
-	mach_driver_init();
+	mach_driver_init(applep);
 
 	// Initialize cached mach ports defined in mach_init.h
 	mach_task_self_ = task_self_trap();

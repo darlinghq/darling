@@ -1,7 +1,7 @@
 #ifndef _LKM_H
 #define _LKM_H
 
-void mach_driver_init(void);
+void mach_driver_init(const char** applep);
 int lkm_call(int call_nr, void* arg);
 
 

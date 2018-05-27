@@ -28,7 +28,7 @@
 
 #include "_libkernel_init.h"
 
-extern int mach_init(void);
+extern int mach_init(const char** applep);
 extern void sigexc_setup(void);
 
 /* dlsym() funcptr is for legacy support in exc_catcher */
@@ -40,7 +40,7 @@ _libkernel_functions_t _libkernel_functions;
 void
 __libkernel_init(_libkernel_functions_t fns,
 		const char *envp[] __attribute__((unused)),
-		const char *apple[] __attribute__((unused)),
+		const char *apple[],
 		const struct ProgramVars *vars __attribute__((unused)))
 {
 	_libkernel_functions = fns;
@@ -48,6 +48,6 @@ __libkernel_init(_libkernel_functions_t fns,
 		_dlsym = fns->dlsym;
 	}
 
-	mach_init();
+	mach_init(apple);
 	sigexc_setup();
 }

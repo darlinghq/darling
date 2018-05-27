@@ -15,7 +15,6 @@ set(mach_server_client_sources
 	mach_time.c
 	lkm.c
 	darling_mach_syscall.S
-	lkm-int.S
 	mach_table.c
 )
 
