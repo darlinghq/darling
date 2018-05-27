@@ -184,7 +184,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreVideo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Accelerate/include
 	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/OpenGL/include
+	${CMAKE_CURRENT_SOURCE_DIR}/OpenGL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Spotlight/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightDaemon/include
@@ -363,7 +363,6 @@ add_subdirectory(CoreImage)
 add_subdirectory(CoreVideo)
 add_subdirectory(Accelerate)
 add_subdirectory(IOSurface)
-add_subdirectory(external/cocotron/OpenGL)
 add_subdirectory(libquit)
 add_subdirectory(Spotlight)
 add_subdirectory(SpotlightDaemon)
@@ -379,6 +378,7 @@ add_subdirectory(CoreAudio)
 add_subdirectory(CoreMedia)
 # Just a stub
 add_subdirectory(WebKit)
+add_subdirectory(OpenGL)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
