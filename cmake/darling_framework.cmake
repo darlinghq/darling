@@ -116,7 +116,7 @@ function(add_separated_framework name)
 		set_property(TARGET ${my_name}_i386 APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 		set_property(TARGET ${my_name}_x86_64 APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 	endif (FRAMEWORK_LINK_FLAGS)
-	
+
 	add_dependencies(${my_name}_x86_64 ${my_name}_i386)
 	add_custom_command(TARGET ${my_name}_x86_64 POST_BUILD
 		COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
@@ -126,6 +126,7 @@ function(add_separated_framework name)
 			-output
 			${CMAKE_CURRENT_BINARY_DIR}/${my_name}
 		COMMENT "Running lipo to create ${my_name}"
+		BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
 	)
 	add_library(${my_name} SHARED IMPORTED GLOBAL)
 	set_target_properties(${my_name} PROPERTIES
