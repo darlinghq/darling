@@ -1,5 +1,6 @@
 #include "simple.h"
 #include <unistd.h>
+#include <mach/message.h>
 #include <pthread.h>
 #include "xtracelib.h"
 
@@ -117,6 +118,42 @@ static const char* kern_return_values[] = {
 	"KERN_INSUFFICIENT_BUFFER_SIZE",
 };
 
+static const char* mach_send_errors[] = {
+	"MACH_SEND_IN_PROGRESS",
+	"MACH_SEND_INVALID_DATA",
+	"MACH_SEND_INVALID_DEST",
+	"MACH_SEND_TIMED_OUT",
+	"MACH_SEND_INTERRUPTED",
+	"MACH_SEND_MSG_TOO_SMALL",
+	"MACH_SEND_INVALID_REPLY",
+	"MACH_SEND_INVALID_RIGHT",
+	"MACH_SEND_INVALID_NOTIFY",
+	"MACH_SEND_INVALID_MEMORY",
+	"MACH_SEND_NO_BUFFER",
+	"MACH_SEND_TOO_LARGE",
+	"MACH_SEND_INVALID_TYPE",
+	"MACH_SEND_INVALID_HEADER",
+	"MACH_SEND_INVALID_TRAILER"
+};
+
+static const char* mach_rcv_errors[] = {
+	"MACH_RCV_IN_PROGRESS",
+	"MACH_RCV_INVALID_NAME",
+	"MACH_RCV_TIMED_OUT",
+	"MACH_RCV_TOO_LARGE",
+	"MACH_RCV_INTERRUPTED",
+	"MACH_RCV_PORT_CHANGED",
+	"MACH_RCV_INVALID_NOTIFY",
+	"MACH_RCV_INVALID_DATA",
+	"MACH_RCV_PORT_DIED",
+	"MACH_RCV_IN_SET",
+	"MACH_RCV_HEADER_ERROR",
+	"MACH_RCV_BODY_ERROR",
+	"MACH_RCV_INVALID_TYPE",
+	"MACH_RCV_SCATTER_SMALL",
+	"MACH_RCV_INVALID_TRAILER"
+};
+
 extern "C"
 void darling_mach_syscall_entry_print(int nr, void* args[])
 {
@@ -133,7 +170,12 @@ void darling_mach_syscall_exit_print(uintptr_t retval)
 
 static void print_kern_return(char* buf, uintptr_t rv)
 {
-	__simple_sprintf(buf, kern_return_values[rv]);
+	if (rv >= MACH_RCV_IN_PROGRESS)
+		__simple_sprintf(buf, mach_rcv_errors[rv - MACH_RCV_IN_PROGRESS]);
+	else if (rv >= MACH_SEND_IN_PROGRESS)
+                __simple_sprintf(buf, mach_send_errors[rv - MACH_SEND_IN_PROGRESS]);
+	else
+		__simple_sprintf(buf, kern_return_values[rv]);
 }
 
 static void print_port_return(char* buf, uintptr_t rv)
