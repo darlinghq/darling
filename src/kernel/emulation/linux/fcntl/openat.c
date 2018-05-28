@@ -28,6 +28,8 @@ long sys_openat(int fd, const char* filename, int flags, unsigned int mode)
 long sys_openat_nocancel(int fd, const char* filename, int flags, unsigned int mode)
 {
 	int ret, linux_flags;
+	if (!filename)
+		return -EFAULT;
 
 	linux_flags = oflags_bsd_to_linux(flags);
 
