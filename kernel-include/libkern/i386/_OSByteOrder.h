@@ -47,7 +47,7 @@ _OSSwapInt16(
     __uint16_t        _data
 )
 {
-    return ((_data << 8) | (_data >> 8));
+    return (__uint16_t)((_data << 8) | (_data >> 8));
 }
 
 __DARWIN_OS_INLINE

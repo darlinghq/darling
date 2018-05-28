@@ -7,7 +7,16 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
 include(pyc)
 
-add_definitions(-DDARLING)
+add_subdirectory(external/xcbuild)
+
+add_definitions(
+	-D_DARWIN_C_SOURCE
+	-D_POSIX_C_SOURCE
+	-DDARLING
+	-D__APPLE__
+	-D__DYNAMIC__
+)
+
 set(DARLING TRUE)
 
 execute_process(
@@ -39,6 +48,7 @@ add_subdirectory(external/cctools-port/cctools/ld64/src)
 add_subdirectory(external/cctools-port/cctools/ar)
 #add_subdirectory(external/cctools-port/cctools/as)
 add_subdirectory(external/cctools-port/cctools/misc)
+
 #add_subdirectory(util)
 #add_subdirectory(libmach-o)
 #add_subdirectory(libdyld)
@@ -88,7 +98,7 @@ include_directories(
 
 include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskArbitration/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudioOld/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AudioUnit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/login/include
@@ -146,11 +156,10 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/ApplicationServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreText/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/QuartzCore/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreGraphics/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/OpenGL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/Onyx2D/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreVideo/include
@@ -174,15 +183,33 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsCore/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectors/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsNaturalLanguage/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Carbon/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreImage/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreVideo/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Accelerate/include
+	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
+	${CMAKE_CURRENT_SOURCE_DIR}/OpenGL/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Spotlight/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightDaemon/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightIndex/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightReceiver/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServerKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/Contacts/include
+	${CMAKE_CURRENT_SOURCE_DIR}/QuickLook/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ViewBridge/include
+	${CMAKE_CURRENT_SOURCE_DIR}/WebKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/AVFoundation/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreMedia/include
 )
-
-# It must be done in this scope
-add_library(CoreFoundation SHARED IMPORTED)
-set_property(TARGET CoreFoundation PROPERTY
-	IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/external/corefoundation/CoreFoundation
-)
-add_dependencies(CoreFoundation CoreFoundation_build)
-set_target_properties(CoreFoundation PROPERTIES SUFFIX "" PREFIX "")
 
 add_subdirectory(external/libkqueue)
 
@@ -220,7 +247,6 @@ add_subdirectory(xtrace)
 add_subdirectory(dyld)
 add_subdirectory(external/objc4/runtime)
 add_subdirectory(external/syslog)
-add_subdirectory(external/libdispatch)
 add_subdirectory(external/zlib)
 add_subdirectory(external/bzip2)
 add_subdirectory(external/libxml2)
@@ -228,6 +254,7 @@ add_subdirectory(external/libxslt)
 add_subdirectory(external/icu/icuSources)
 add_subdirectory(external/commoncrypto)
 add_subdirectory(external/corefoundation)
+
 add_subdirectory(external/openssl/src)
 #add_subdirectory(external/configd/SystemConfiguration.fproj)
 add_subdirectory(external/foundation)
@@ -335,6 +362,34 @@ add_subdirectory(external/gdb)
 add_subdirectory(external/Heimdal)
 add_subdirectory(PlistBuddy)
 add_subdirectory(ScriptingBridge)
+add_subdirectory(libDiagnosticMessagesClient)
+add_subdirectory(AudioToolbox)
+add_subdirectory(DataDetectorsCore)
+add_subdirectory(DataDetectors)
+add_subdirectory(DataDetectorsNaturalLanguage)
+add_subdirectory(SecurityInterface)
+add_subdirectory(Carbon)
+add_subdirectory(Quartz)
+add_subdirectory(CoreImage)
+add_subdirectory(CoreVideo)
+add_subdirectory(Accelerate)
+add_subdirectory(IOSurface)
+add_subdirectory(libquit)
+add_subdirectory(Spotlight)
+add_subdirectory(SpotlightDaemon)
+add_subdirectory(SpotlightIndex)
+add_subdirectory(SpotlightReceiver)
+add_subdirectory(SpotlightServerKit)
+add_subdirectory(SpotlightServices)
+add_subdirectory(Contacts)
+add_subdirectory(QuickLook)
+add_subdirectory(ViewBridge)
+add_subdirectory(AVFoundation)
+add_subdirectory(CoreAudio)
+add_subdirectory(CoreMedia)
+# Just a stub
+add_subdirectory(WebKit)
+add_subdirectory(OpenGL)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
@@ -355,6 +410,9 @@ include_directories(BEFORE
 
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
+
+add_subdirectory(external/libdispatch)
+
 # Requires a newer Security version
 #add_subdirectory(external/SmartCardServices)
 add_subdirectory(external/security)
@@ -370,7 +428,8 @@ add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/cocotron/Onyx2D)
 add_subdirectory(external/cocotron/AppKit)
 add_subdirectory(external/cocotron/CoreText)
-add_subdirectory(external/cocotron/QuartzCore)
-add_subdirectory(external/cocotron/OpenGL)
 add_subdirectory(external/cocotron/CoreData)
 add_subdirectory(external/cocotron/Cocoa)
+add_subdirectory(external/cocotron/QuartzCore)
+
+add_subdirectory(external/JavaScriptCore)

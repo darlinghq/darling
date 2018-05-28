@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+
+import sys, os, subprocess, re
+
+# Data
+library = False
+framework = False
+private_framework = False
+
+# Constants
+library_prefix = "/usr/lib/"
+framework_prefix = "/System/Library/Frameworks/"
+private_framework_prefix = "/System/Library/PrivateFrameworks/"
+
+class_dump = "~/bin/class-dump"
+
+copyright = """/*
+ This file is part of Darling.
+
+ Copyright (C) 2017 Lubos Dolezel
+
+ Darling is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Darling is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+"""
+
+c_func_impl_stub = """
+void* %s(void) {
+    if (verbose) puts("STUB: %s called");
+    return NULL;
+}
+"""
+
+msg_handling = """- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    return [NSMethodSignature signatureWithObjCTypes: \"v@:\"];
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation {
+    NSLog(@\"Stub called: %@ in %@\", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+"""
+
+
+# Utility functions
+def usage():
+    print("Usage: " + sys.argv[0] + " <Mach-O> <output directory>")
+    exit(1)
+
+
+def extract_library_name(name):
+    prefix_len = len(library_prefix) + len("lib")
+    ext_len = len(".dylib")
+
+    return name[prefix_len: len(name) - ext_len]
+
+
+def extract_framework_name(name):
+    return name[name.rfind("/") + 1:]
+
+
+def write_objc_source_file_locs(cmake_file, classes, num_spaces):
+    for cls in classes:
+        cmake_file.write(" " * num_spaces + "src/%s.m\n" % cls)
+
+
+# Main program start
+if len(sys.argv) != 3:
+    usage()
+
+full_path = sys.argv[1]
+output_dir = sys.argv[2]
+
+try:
+    os.makedirs(output_dir)
+except FileExistsError:
+    pass
+
+if len(full_path) > len(library_prefix) and full_path[:len(library_prefix)] == library_prefix:
+    library = True
+    target_name = extract_library_name(full_path)
+elif len(full_path) > len(framework_prefix) and full_path[:len(framework_prefix)] == framework_prefix:
+    framework = True
+    target_name = extract_framework_name(full_path)
+elif len(full_path) > len(private_framework_prefix) and full_path[
+                                                        :len(private_framework_prefix)] == private_framework_prefix:
+    private_framework = True
+    target_name = extract_framework_name(full_path)
+else:
+    print("Failed to recognize Mach-O location")
+    target_name = None
+    exit(1)
+
+header_dir = output_dir + "/include/" + target_name + "/"
+source_dir = output_dir + "/src/"
+
+try:
+    os.makedirs(header_dir)
+except FileExistsError:
+    pass
+
+try:
+    os.makedirs(source_dir)
+except FileExistsError:
+    pass
+
+# Get C functions
+
+c_func_out = subprocess.check_output(["nm", "-Ug", full_path])
+c_func_out = c_func_out.decode('utf8').strip()
+
+functions = []
+for line in c_func_out.splitlines():
+
+    if line == "":
+        continue
+
+    address, id, name = line.split(" ")
+    # Remove the underscore
+    name = name[1:]
+
+    if id == "T":
+        functions.append(name)
+
+class_dump_output = subprocess.check_output(["class-dump", full_path]).decode('utf8').strip()
+uses_objc = "This file does not contain any Objective-C runtime information." not in class_dump_output
+
+c_header = open(header_dir + target_name + ".h", "w")
+c_source = open(source_dir + target_name + ".m", "w") if uses_objc else open(source_dir + target_name + ".c", "w")
+
+c_header.write(copyright)
+c_source.write(copyright)
+
+c_source.write("""
+#include <%s/%s.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+static int verbose = 0;
+
+__attribute__((constructor))
+static void initme(void) {
+    verbose = getenv("STUB_VERBOSE") != NULL;
+}
+""" % (target_name, target_name))
+
+cmake = open(output_dir + "/CMakeLists.txt", "w")
+
+cmake.write("project(%s)\n\n" % target_name)
+
+# Get current and compat versions
+
+otool_out = subprocess.check_output(["otool", "-L", full_path])
+otool_out = otool_out.decode('utf8').strip()
+version_line = otool_out.splitlines()[1]
+
+get_versions = re.compile("\\(compatibility version (.*?), current version (.*?)\\)")
+
+compat, current = get_versions.search(version_line).groups()
+
+if library:
+    cmake.write("set(DYLIB_INSTALL_NAME \"%s\")\n" % full_path)
+cmake.write("set(DYLIB_COMPAT_VERSION \"%s\")\n" % compat)
+cmake.write("set(DYLIB_CURRENT_VERSION \"%s\")\n\n" % current)
+
+c_header.write("\n#ifndef _%s_H_\n#define _%s_H_\n\n" % (target_name, target_name))
+
+if uses_objc:
+    c_header.write("#import <Foundation/Foundation.h>\n\n")
+
+    # typedef_void_regex = re.compile("(typedef void.+?;)", re.DOTALL | re.MULTILINE)
+    # for typedef_void_def in typedef_void_regex.finditer(class_dump_output):
+    #     c_header.write(typedef_void_def.groups()[0])
+    #     c_header.write("\n\n")
+    #
+    # blacklisted_structs = ["_NSRange"]
+    # structs_regex = re.compile("(struct (.+?) {.+?};)", re.DOTALL | re.MULTILINE)
+    # for struct_def in structs_regex.finditer(class_dump_output):
+    #     struct_contents, struct_name = struct_def.groups()
+    #     if struct_name in blacklisted_structs:
+    #         continue
+    #     c_header.write(struct_contents)
+    #     c_header.write("\n\n")
+    #
+    # typedef_struct_regex = re.compile("(typedef struct {.+?}.+?;)", re.DOTALL | re.MULTILINE)
+    # for typedef_struct_def in typedef_struct_regex.finditer(class_dump_output):
+    #     c_header.write(typedef_struct_def.groups()[0])
+    #     c_header.write("\n\n")
+
+    classes = []
+
+    protocols_regex = re.compile("(@protocol (.+?)[\n ].+?@end)", re.DOTALL | re.MULTILINE)
+    classes_regex = re.compile("(@interface (.+?) :.+?@end)", re.DOTALL | re.MULTILINE)
+
+    blacklisted_protocols = ["NSObject", "NSSecureCoding", "NSCoding", "NSCopying", "NSFastEnumeration"]
+    for protocol_def in protocols_regex.finditer(class_dump_output):
+        protocol_contents, protocol_name = protocol_def.groups()
+        if protocol_name in blacklisted_protocols:
+            continue
+        proto_header = open(header_dir + protocol_name + ".h", "w")
+        proto_header.write(copyright)
+        proto_header.write("#include <Foundation/Foundation.h>\n\n")
+        # proto_header.write(protocol_contents)
+        proto_header.write("@protocol %s\n\n@end\n" % protocol_name)
+        proto_header.close()
+        c_header.write("#import <%s/%s.h>\n" % (target_name, protocol_name))
+
+    for class_def in classes_regex.finditer(class_dump_output):
+        class_contents, class_name = class_def.groups()
+        classes.append(class_name)
+        class_header = open(header_dir + class_name + ".h", "w")
+        class_header.write(copyright)
+        class_header.write("#include <Foundation/Foundation.h>\n\n")
+        # class_header.write(class_contents)
+        class_header.write("@interface %s : NSObject\n\n@end\n" % class_name)
+        class_header.close()
+        c_header.write("#import <%s/%s.h>\n" % (target_name, class_name))
+
+        class_impl = open(source_dir + class_name + ".m", "w")
+        class_impl.write(copyright)
+        class_impl.write("#import <%s/%s.h>\n\n" % (target_name, class_name))
+        class_impl.write("@implementation " + class_name + "\n\n")
+        class_impl.write(msg_handling)
+        class_impl.write("@end\n")
+
+    c_header.write("\n")
+
+for funcname in functions:
+    c_header.write("void* %s(void);\n" % funcname)
+    c_source.write(c_func_impl_stub % (funcname, funcname))
+
+if library:
+    cmake.write("add_darling_library(%s SHARED\n" % target_name)
+    cmake.write("    src/%s." % target_name + ("m" if uses_objc else "c") + "\n")
+    if uses_objc:
+        write_objc_source_file_locs(cmake, classes, 4)
+    cmake.write(")\n")
+    cmake.write("make_fat(%s)\n" % target_name)
+    libraries = "system objc Foundation" if uses_objc else "system"
+    cmake.write("target_link_libraries(%s %s)\n" % (target_name, libraries))
+    cmake.write("install(TARGETS %s DESTINATION libexec/darling/usr/lib)\n" % target_name)
+else:
+    cmake.write("add_framework(%s\n" % target_name)
+    cmake.write("    FAT\n    CURRENT_VERSION\n")
+    if private_framework:
+        cmake.write("    PRIVATE\n")
+    cmake.write("    VERSION \"A\"\n\n")
+    cmake.write("    SOURCES\n")
+    cmake.write("        src/%s." % target_name + ("m" if uses_objc else "c") + "\n")
+    if uses_objc:
+        write_objc_source_file_locs(cmake, classes, 8)
+
+    cmake.write("\n")
+
+    cmake.write("    DEPENDENCIES\n")
+    cmake.write("        system\n")
+    if uses_objc:
+        cmake.write("        objc\n")
+        cmake.write("        Foundation\n")
+    cmake.write(")\n")
+
+c_header.write("\n#endif\n")

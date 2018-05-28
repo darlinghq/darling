@@ -32,7 +32,7 @@
   #endif
 #endif
 
-#include "xmmLibm_Prefix.h"
+#include "xmmLibm_prefix.h"
 
 #define AVOID_64_BIT_INTS defined(__i386__)
 

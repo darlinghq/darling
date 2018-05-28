@@ -99,6 +99,7 @@ __BEGIN_DECLS
 #define DBG_APPS            	33
 #define DBG_LAUNCHD         	34
 #define DBG_PERF                37
+#define DBG_ARIADNE     43
 #define DBG_MIG			255
 
 /* **** The Kernel Debug Sub Classes for Mach (DBG_MACH) **** */
@@ -337,6 +338,7 @@ __BEGIN_DECLS
 #define QTDBG_CODE(SubClass,code) KDBG_CODE(DBG_QT, SubClass, code)
 #define APPSDBG_CODE(SubClass,code) KDBG_CODE(DBG_APPS, SubClass, code)
 #define CPUPM_CODE(code) IOKDBG_CODE(DBG_IOCPUPM, code)
+#define ARIADNEDBG_CODE(SubClass, code) KDBG_CODE(DBG_ARIADNE, SubClass, code)
 
 #define KMEM_ALLOC_CODE MACHDBG_CODE(DBG_MACH_LEAKS, 0)
 #define KMEM_ALLOC_CODE_2 MACHDBG_CODE(DBG_MACH_LEAKS, 1)
@@ -728,5 +730,7 @@ typedef struct {
 
 #endif /* __APPLE_API_PRIVATE */
 #endif	/* PRIVATE */
+
+int kdebug_trace(int code, int arg1, int arg2, int arg3, int arg4);
 
 #endif /* !BSD_SYS_KDEBUG_H */

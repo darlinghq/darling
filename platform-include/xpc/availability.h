@@ -110,7 +110,7 @@ __attribute__((availability(macosx, introduced=10.10)))
 #define XPC_SIMULATOR_AVAILABILITY_STRING(version) \
 	"Use of this interface on the iOS Simulator requires that its minimum supported OS be OS X v" version " or later."
 
-#if __XPC_BUILDING_XPC__
+#ifdef __XPC_BUILDING_XPC__
 #define __XPC_IOS_SIMULATOR_AVAILABLE_STARTING__MAC_10_7
 #define __XPC_IOS_SIMULATOR_AVAILABLE_STARTING__MAC_10_8
 #define __XPC_IOS_SIMULATOR_AVAILABLE_STARTING__MAC_10_9

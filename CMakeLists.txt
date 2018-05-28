@@ -80,8 +80,12 @@ InstallSymlink(/Volumes/SystemRoot/etc/localtime ${CMAKE_INSTALL_PREFIX}/libexec
 
 install(DIRECTORY DESTINATION libexec/darling/etc/ld.so.conf.d)
 install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+install(DIRECTORY DESTINATION libexec/darling/etc/fonts/conf.d)
+install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-fonts.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+
 InstallSymlink(/Volumes/SystemRoot/lib ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib)
 InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib64)
+InstallSymlink(/Volumes/SystemRoot/usr/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib64)
 
 InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
 

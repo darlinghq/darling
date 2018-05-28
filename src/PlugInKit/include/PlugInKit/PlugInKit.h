@@ -29,8 +29,10 @@ void* pkErrorf(void);
 void* pkFindProtocol(void);
 void* pkFindProtocols(void);
 void* pkIssueSandboxExtension(void);
-void* xpc_dictionary_get_array(void);
-void* xpc_dictionary_get_dictionary(void);
+
+// Moved to libxpc
+//void* xpc_dictionary_get_array(void);
+//void* xpc_dictionary_get_dictionary(void);
 
 #import <PlugInKit/PKHostPlugIn.h>
 #import <PlugInKit/PKDiscoveryDriver.h>

@@ -33,6 +33,8 @@
 
 #include <sys/cdefs.h>
 
+#include <uuid/uuid.h>
+
 struct mach_timebase_info {
 	uint32_t	numer;
 	uint32_t	denom;
