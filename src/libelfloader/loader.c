@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <setjmp.h>
 #include <sys/random.h>
-#include "elf.h"
+#include <elf.h>
 #include "auxvec.h"
 #include "loader.h"
 #include "native/elfcalls.h"
