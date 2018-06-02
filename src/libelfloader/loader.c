@@ -292,7 +292,7 @@ void load(const char* path, struct loader_context* lc, bool isInterp)
 		    uintptr_t off = phdr->p_offset - ELF_PAGEOFFSET(phdr->p_vaddr);
 
 		    addr = ELF_PAGESTART(addr);
-		    size = ELF_PAGEALIGN(size);
+		    // size = ELF_PAGEALIGN(size);
 
 			if (phdr->p_flags & PF_X)
 				prot |= PROT_EXEC;
@@ -301,11 +301,15 @@ void load(const char* path, struct loader_context* lc, bool isInterp)
 			if (phdr->p_flags & PF_R)
 				prot |= PROT_READ;
 
-			if (phdr->p_flags & PF_W)
+			//if (phdr->p_flags & PF_W)
 				flags |= MAP_PRIVATE;
-			else
-				flags |= MAP_SHARED;
+			//else
+			//	flags |= MAP_SHARED;
 
+			bool needszeroing = size != ELF_PAGEALIGN(size);
+
+			if (needszeroing)
+				prot |= PROT_WRITE;
 			if (mprotect((void*) (addr), memsize, prot) == -1)
 			{
 				perror("mprotect");
@@ -316,6 +320,16 @@ void load(const char* path, struct loader_context* lc, bool isInterp)
 			{
 				perror("mmap");
 				goto out;
+			}
+
+			// Based on experiments, when we provide a size that is less than a multiple of page size
+			// mmap() will map up to the whole page of file data anyway. Many ELF files, including ld.so,
+			// however rely on the rest of the page being zeroed out.
+			if (needszeroing)
+			{
+				memset((void*)(addr + size), 0, ELF_PAGEALIGN(size) - size);
+				if (!(phdr->p_flags & PF_W))
+					mprotect((void*) (addr), memsize, prot & ~PROT_WRITE);
 			}
 
 			/*
