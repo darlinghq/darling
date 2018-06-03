@@ -66,7 +66,7 @@ void sigexc_setup2(void)
 	// the debugger to handle this situation.
 	if (!am_i_ptraced && lkm_call(NR_get_tracer, NULL) != 0)
 	{
-		__simple_printf("the predecessor is traced\n");
+		// __simple_printf("the predecessor is traced\n");
 		darling_sigexc_self();
 		sigexc_handler(LINUX_SIGTRAP, NULL, NULL);
 	}
@@ -124,7 +124,7 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 			darling_sigexc_self();
 
 			// Stop on attach
-			sigexc_handler(LINUX_SIGSTOP, NULL, NULL);
+			sigexc_handler(LINUX_SIGSTOP, NULL, ctxt);
 		}
 		else if (((uint32_t) info->si_value) == SIGRT_MAGIC_DISABLE_SIGEXC)
 		{
@@ -189,7 +189,7 @@ void darling_sigexc_uninstall(void)
 {
 	am_i_ptraced = false;
 
-	__simple_printf("darling_sigexc_uninstall()\n");
+	// __simple_printf("darling_sigexc_uninstall()\n");
 	for (int i = 1; i <= 31; i++)
 	{
 		if (i == LINUX_SIGSTOP || i == LINUX_SIGKILL)
@@ -247,7 +247,7 @@ static mach_port_t get_exc_port(int type, int* behavior)
 void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
 	char buf[128];
-	__simple_sprintf(buf, "sigexc_handler(%d, %p)\n", linux_signum, info);
+	__simple_sprintf(buf, "sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
 	lkm_call(0x1028, buf);
 
 	if (!darling_am_i_ptraced())
@@ -352,7 +352,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	thread_set_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, x86_FLOAT_STATE32_COUNT);
 #endif
 
-	__simple_printf("Passing Mach exception to port %d\n", port);
+	// __simple_printf("Passing Mach exception to port %d\n", port);
 	if (port != 0)
 	{
 		_pthread_setspecific_direct(SIGEXC_TSD_KEY, bsd_signum);
