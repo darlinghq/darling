@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import re
+
+parser = argparse.ArgumentParser(description="Renames the starts of lines in every file")
+
+parser.add_argument("old", help="old start of line", type=str)
+parser.add_argument("new", help="new start of line", type=str)
+
+args = parser.parse_args()
+
+lineCount = 0
+fileCount = 0
+def editfile(f, old, new):
+    global lineCount, fileCount
+    contents = f.readlines()
+    newContents = ""
+    f.seek(0)
+    edited = False
+    for line in contents:
+        if line.startswith(old):
+            edited = True
+            lineCount += 1
+            line = new + line[len(old):]
+
+        newContents += line
+    if edited:
+        fileCount += 1
+    f.write(newContents)
+
+    f.truncate()
+
+for dirpath, dirname, filenames in os.walk("."):
+    for filename in filenames:
+        if filename.endswith("CMakeLists.txt"):
+            with open(dirpath +"/" + filename, "r+") as f:
+                editfile(f, args.old, args.new)
+print("Edited " + str(lineCount) + " lines in " + str(fileCount) + " files.")
