@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Build alias -->
+	<key>BuildAliasOf</key>
+	<string>OSXPlatformSupport</string>
+
+	<!-- Version -->
+	<key>CFBundleShortVersionString</key>
+	<string>1.1</string>
+
+	<!-- Build -->
+	<key>BuildVersion</key>
+	<string>8</string>
+
+	<!-- Bundle version -->
+	<key>CFBundleVersion</key>
+	<string>14009</string>
+
+	<!-- Project Name -->
+	<key>ProjectName</key>
+	<string>OSXPlatformSupport</string>
+
+	<!-- Source version -->
+	<key>SourceVersion</key>
+	<string>14009000000000000</string>
+</dict>
+</plist>

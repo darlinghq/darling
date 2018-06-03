@@ -1,0 +1,30 @@
+{
+    /* The name of the build system */
+    Type = BuildSystem;
+
+    /* The build system we inherit from */
+    BasedOn = "com.apple.buildsettings.standard";
+
+    /* The identifier of this build system */
+    Identifier = com.apple.build-system.core;
+
+    /* Build system properties */
+    Properties = (
+	/* Require a property list */
+        {
+            Name = PRODUCT_DEFINITION_PLIST;
+            Type = String;
+            DefaultValue = "";
+            Category = "Deployment";
+        },
+
+	/* Don't combine high DPI images by default */
+        {
+            Name = COMBINE_HIDPI_IMAGES;
+            Type = bool;
+            DefaultValue = NO;
+            Category = "Deployment";
+        },
+
+    );
+}

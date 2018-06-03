@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+	<key>AdditionalInfo</key>
+	<dict>
+		<key>BuildMachineOSBuild</key>
+		<string>$(MAC_OS_X_PRODUCT_BUILD_VERSION)</string>
+		<key>CFBundleSupportedPlatforms</key>
+		<array>
+			<string>MacOSX</string>
+		</array>
+		<key>DTCompiler</key>
+		<string>$(GCC_VERSION)</string>
+		<key>DTPlatformBuild</key>
+		<string>$(PLATFORM_PRODUCT_BUILD_VERSION)</string>
+		<key>DTPlatformVersion</key>
+		<string>GM</string>
+		<key>DTSDKBuild</key>
+		<string>$(SDK_PRODUCT_BUILD_VERSION)</string>
+		<key>DTSDKName</key>
+		<string>$(SDK_NAME)</string>
+		<key>DTXcode</key>
+		<string>$(XCODE_VERSION_ACTUAL)</string>
+		<key>DTXcodeBuild</key>
+		<string>$(XCODE_PRODUCT_BUILD_VERSION)</string>
+	</dict>
+
+	<!-- OS Version that build this -->
+	<key>BuildMachineOSBuild</key>
+	<string>17E148</string>
+
+	<!-- Development region -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+
+	<!-- Bundle identifier -->
+	<key>CFBundleIdentifier</key>
+	<string>com.apple.platform.macosx</string>
+
+	<!-- Platform name -->
+	<key>CFBundleName</key>
+	<string>Darling platform</string>
+
+	<!-- Platform version (again) -->
+	<key>CFBundleShortVersionString</key>
+	<string>1.1</string>
+
+	<!-- Supported platforms (This is a platform) -->
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>MacOSX</string>
+	</array>
+
+	<!-- Build -->
+	<key>CFBundleVersion</key>
+	<string>14009</string>
+
+	<!-- Compiler that made this -->
+	<key>DTCompiler</key>
+	<string>com.apple.compilers.llvm.clang.1_0</string>
+
+	<!-- Platform build -->
+	<key>DTPlatformBuild</key>
+	<string>9E499</string>
+
+	<!-- Platform version -->
+	<key>DTPlatformVersion</key>
+	<string>GM</string>
+
+	<!-- Build -->
+	<key>DTSDKBuild</key>
+	<string>17E158</string>
+
+	<!-- Platform that built this -->
+	<key>DTSDKName</key>
+	<string>macosx10.13internal</string>
+
+	<!-- Xcode version -->
+	<key>DTXcode</key>
+	<string>0930</string>
+
+	<!-- Xcoe build -->
+	<key>DTXcodeBuild</key>
+	<string>9E499</string>
+
+	<!-- Platform settings -->
+	<key>DefaultDebuggerSettings</key>
+	<dict>
+		<key>RunInDebugger</key>
+		<string>YES</string>
+	</dict>
+
+	<!-- Properties / Behavior -->
+	<key>DefaultProperties</key>
+	<dict>
+		<key>DEFAULT_COMPILER</key>
+		<string>com.apple.compilers.llvm.clang.1_0</string>
+
+		<key>STRIP_PNG_TEXT</key>
+		<string>NO</string>
+
+		<key>DEPLOYMENT_TARGET_CLANG_ENV_NAME</key>
+		<string>MACOSX_DEPLOYMENT_TARGET</string>
+
+		<key>DEPLOYMENT_TARGET_SETTING_NAME</key>
+		<string>MACOSX_DEPLOYMENT_TARGET</string>
+
+		<key>COMPRESS_PNG_FILES</key>
+		<string>NO</string>
+
+		<key>EMBEDDED_PROFILE_NAME</key>
+		<string>embedded.provisionprofile</string>
+
+		<key>DEPLOYMENT_TARGET_CLANG_FLAG_NAME</key>
+		<string>mmacosx-version-min</string>
+
+	</dict>
+
+	<!-- Platform description -->
+	<key>Description</key>
+	<string>Darling Platform</string>
+
+	<!-- Platform Family identifier -->
+	<key>FamilyIdentifier</key>
+	<string>macosx</string>
+
+	<!-- Platform family -->
+	<key>FamilyName</key>
+	<string>macOS</string>
+
+	<!-- Platform Icon -->
+	<key>Icon</key>
+	<string>macOS.icns</string>
+
+	<!-- Platform identifier -->
+	<key>Identifier</key>
+	<string>com.apple.platform.macosx</string>
+
+	<!-- Minimum supported SDK version -->
+	<key>MinimumSDKVersion</key>
+	<string>10.11</string>
+
+	<!-- Name -->
+	<key>Name</key>
+	<string>macosx</string>
+
+	<!-- Type -->
+	<key>Type</key>
+	<string>Platform</string>
+
+	<!-- Platform version -->
+	<key>Version</key>
+	<string>1.1</string>
+
+</dict>
+</plist>

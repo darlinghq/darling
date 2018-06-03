@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CanonicalName</key>
+	<string>macosx10.13</string>
+	<key>CustomProperties</key>
+	<dict>
+		<key>KERNEL_EXTENSION_HEADER_SEARCH_PATHS</key>
+		<string>$(KERNEL_FRAMEWORK)/PrivateHeaders $(KERNEL_FRAMEWORK_HEADERS)</string>
+	</dict>
+	<key>DefaultProperties</key>
+	<dict>
+		<key>MACOSX_DEPLOYMENT_TARGET</key>
+		<string>10.13</string>
+		<key>PLATFORM_NAME</key>
+		<string>macosx</string>
+		<key>DEFAULT_KEXT_INSTALL_PATH</key>
+		<string>$(LIBRARY_KEXT_INSTALL_PATH)</string>
+		<key>KASAN_DEFAULT_CFLAGS</key>
+		<string>-DKASAN=1 -fsanitize=address -mllvm -asan-globals-live-support -mllvm -asan-force-dynamic-shadow</string>
+	</dict>
+	<key>DisplayName</key>
+	<string>Darling 10.13</string>
+	<key>MaximumDeploymentTarget</key>
+	<string>10.13.99</string>
+	<key>MinimalDisplayName</key>
+	<string>10.13</string>
+	<key>MinimumSupportedToolsVersion</key>
+	<string>3.2</string>
+	<key>SupportedBuildToolComponents</key>
+	<array>
+		<string>com.apple.compilers.gcc.headers.4_2</string>
+	</array>
+	<key>Version</key>
+	<string>10.13</string>
+	<key>IsBaseSDK</key>
+	<string>YES</string>
+</dict>
+</plist>
