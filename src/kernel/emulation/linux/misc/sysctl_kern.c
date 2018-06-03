@@ -28,6 +28,7 @@ static sysctl_handler(handle_hostname);
 static sysctl_handler(handle_domainname);
 static sysctl_handler(handle_osrelease);
 static sysctl_handler(handle_version);
+static sysctl_handler(handle_osversion);
 static sysctl_handler(handle_maxproc);
 static sysctl_handler(handle_netboot);
 static sysctl_handler(handle_safeboot);
@@ -51,6 +52,7 @@ const struct known_sysctl sysctls_kern[] = {
 	{ .oid = KERN_DOMAINNAME, .type = CTLTYPE_STRING, .exttype = "S", .name = "domainname", .handler = handle_domainname },
 	{ .oid = KERN_OSRELEASE, .type = CTLTYPE_STRING, .exttype = "S", .name = "osrelease", .handler = handle_osrelease },
 	{ .oid = KERN_VERSION, .type = CTLTYPE_STRING, .exttype = "S", .name = "version", .handler = handle_version },
+	{ .oid = KERN_OSVERSION, .type = CTLTYPE_STRING, .exttype = "S", .name = "osversion", .handler = handle_osversion },
 	{ .oid = -1 }
 };
 
@@ -154,6 +156,15 @@ sysctl_handler(handle_version)
 	copyout_string(s, (char*) old, oldlen);
 	return 0;
 }
+
+sysctl_handler(handle_osversion)
+{
+	const char* s = EMULATED_OSVERSION;
+
+	copyout_string(s, (char*) old, oldlen);
+	return 0;
+}
+
 
 static struct linux_utsname lu;
 struct linux_utsname* need_uname(void)
