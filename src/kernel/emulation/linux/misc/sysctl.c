@@ -96,13 +96,15 @@ long sys_sysctlbyname(const char* name, unsigned long namelen, void* old, unsign
 	const struct known_sysctl* current = &sysctls_root;
 	char* saveptr;
 	const char* token;
+	char name_copy[128];
 	// __simple_printf("sysctlbyname: %s\n", name);
 
 	// Used by launchd, assumed to succeed
 	if (strcmp(name, "vfs.generic.noremotehang") == 0)
 		return 0;
 	
-	token = strtok_r((char*) _new, ".", &saveptr);
+	strlcpy(name_copy, name, sizeof(name_copy));
+	token = strtok_r(name_copy, ".", &saveptr);
 
 	while (token != NULL)
 	{
