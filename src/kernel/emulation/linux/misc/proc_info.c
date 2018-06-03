@@ -17,6 +17,7 @@
 #include "../elfcalls_wrapper.h"
 #include <stdbool.h>
 #include <sys/proc.h>
+#include <lkm/api.h>
 #include "sysctl_proc.h"
 
 #define LINUX_PR_SET_NAME 15
@@ -247,28 +248,8 @@ static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsiz
 	info->pbsi_gid = info->pbsi_rgid = info->pbsi_svgid = gid;
 
 	// 32/64 bit detection
-	{
-		int fd;
-
-		__simple_sprintf(path, "/proc/%d/exe", pid);
-		fd = sys_open(path, BSD_O_RDONLY, 0);
-
-		if (fd != -1)
-		{
-			char magic[5];
-			if (sys_read(fd, magic, sizeof(magic)) == sizeof(magic))
-			{
-				if (magic[0] == 0x7f && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F')
-				{
-					if (magic[4] == 2)
-					{
-						info->pbsi_flags |= P_LP64;
-					}
-				}
-			}
-			sys_close(fd);
-		}
-	}
+	if (lkm_call(NR_task_64bit, (void*)(long)pid) > 0)
+		info->pbsi_flags |= P_LP64;
 
 	return 1;
 reterr:
