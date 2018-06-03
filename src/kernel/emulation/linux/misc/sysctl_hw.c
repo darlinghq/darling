@@ -17,7 +17,8 @@ enum {
 	_HW_LOGICAL_CPU_MAX,
 	_HW_CPUTYPE,
 	_HW_CPUSUBTYPE,
-	_HW_CPUTHREADTYPE
+	_HW_CPUTHREADTYPE,
+	_HW_64BITCAPABLE,
 };
 
 static sysctl_handler(handle_availcpu);
@@ -30,6 +31,7 @@ static sysctl_handler(handle_pagesize);
 static sysctl_handler(handle_cputype);
 static sysctl_handler(handle_cpusubtype);
 static sysctl_handler(handle_cputhreadtype);
+static sysctl_handler(handle_cpu64bitcapable);
 static sysctl_handler(handle_machine);
 
 const struct known_sysctl sysctls_hw[] = {
@@ -44,6 +46,7 @@ const struct known_sysctl sysctls_hw[] = {
 	{ .oid = _HW_CPUTYPE, .type = CTLTYPE_INT, .exttype = "", .name = "cputype", .handler = handle_cputype },
 	{ .oid = _HW_CPUSUBTYPE, .type = CTLTYPE_INT, .exttype = "", .name = "cpusubtype", .handler = handle_cpusubtype },
 	{ .oid = _HW_CPUTHREADTYPE, .type = CTLTYPE_INT, .exttype = "", .name = "cputhreadtype", .handler = handle_cputhreadtype },
+	{ .oid = _HW_64BITCAPABLE, .type = CTLTYPE_INT, .exttype = "", .name = "cpu64bit_capable", .handler = handle_cpu64bitcapable },
 	{ .oid = HW_MACHINE, .type = CTLTYPE_STRING, .exttype = "S", .name = "machine", .handler = handle_machine },
 	{ .oid = -1 }
 };
@@ -132,6 +135,13 @@ sysctl_handler(handle_cputhreadtype)
 {
 	sysctl_handle_size(sizeof(int));
 	*((int*) old) = gethostinfo()->cpu_threadtype;
+	return 0;
+}
+
+sysctl_handler(handle_cpu64bitcapable)
+{
+	sysctl_handle_size(sizeof(int));
+	*((int*) old) = 1; // Darling only supports 64-bit CPUs
 	return 0;
 }
 
