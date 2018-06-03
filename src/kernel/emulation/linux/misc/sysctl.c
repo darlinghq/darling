@@ -10,6 +10,7 @@
 #include "sysctl_unspec.h"
 #include "sysctl_kern.h"
 #include "sysctl_machdep.h"
+#include "sysctl_sysctl.h"
 
 extern char *strchr(const char *s, int c);
 extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
@@ -18,11 +19,14 @@ extern int strlcpy(char* dst, const char* src, __SIZE_TYPE__ n);
 extern __SIZE_TYPE__ strlen(const char* src);
 extern char* strtok_r(char* str, const char* delim, char** saveptr);
 
+#define _CTL_SYSCTL	100
+
 const struct known_sysctl sysctls_global[] = {
 	{ .oid = CTL_UNSPEC, .type = CTLTYPE_NODE, .exttype = "", .name = "unspec", .subctls = sysctls_unspec },
 	{ .oid = CTL_HW, .type = CTLTYPE_NODE, .exttype = "", .name = "hw", .subctls = sysctls_hw },
 	{ .oid = CTL_KERN, .type = CTLTYPE_NODE, .exttype = "", .name = "kern", .subctls = sysctls_kern },
 	{ .oid = CTL_MACHDEP, .type = CTLTYPE_NODE, .exttype = "", .name = "machdep", .subctls = sysctls_machdep },
+	{ .oid = _CTL_SYSCTL, .type = CTLTYPE_NODE, .exttype = "", .name = "sysctl", .subctls = sysctls_sysctl },
 	{ .oid = -1 }, /* terminating entry */
 };
 
