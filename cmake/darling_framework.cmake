@@ -3,7 +3,7 @@ include(darling_lib)
 include(InstallSymlink)
 
 function(add_framework name)
-	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE" "VERSION;LINK_FLAGS" "SOURCES;DEPENDENCIES;CIRCULAR_DEPENDENCIES" ${ARGN})
+	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE" "VERSION;LINK_FLAGS" "SOURCES;DEPENDENCIES;CIRCULAR_DEPENDENCIES;RESOURCES" ${ARGN})
 	if (FRAMEWORK_CURRENT_VERSION)
 		set(my_name "${name}")
 	else (FRAMEWORK_CURRENT_VERSION)
@@ -58,6 +58,22 @@ function(add_framework name)
 	endif (FRAMEWORK_LINK_FLAGS)
 
 	install(TARGETS ${my_name} DESTINATION "libexec/darling/System/Library/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/")
+
+	if (FRAMEWORK_RESOURCES)
+		if (FRAMEWORK_CURRENT_VERSION)
+			InstallSymlink("Versions/Current/Resources" "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/${dir_name}/${name}.framework/Resources")
+		endif (FRAMEWORK_CURRENT_VERSION)
+		while (FRAMEWORK_RESOURCES)
+			list(GET FRAMEWORK_RESOURCES 0 res_install_path)
+			list(GET FRAMEWORK_RESOURCES 1 res_source_path)
+			get_filename_component(res_install_dir ${res_install_path} DIRECTORY)
+			get_filename_component(res_install_name ${res_install_path} NAME)
+			install(FILES ${res_source_path}
+				DESTINATION libexec/darling/System/Library/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/Resources/${res_install_dir}
+				RENAME ${res_install_name})
+			list(REMOVE_AT FRAMEWORK_RESOURCES 0 1)
+		endwhile (FRAMEWORK_RESOURCES)
+	endif (FRAMEWORK_RESOURCES)
 
 	if (FRAMEWORK_CURRENT_VERSION)
 		InstallSymlink(${FRAMEWORK_VERSION} "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/${dir_name}/${name}.framework/Versions/Current")
