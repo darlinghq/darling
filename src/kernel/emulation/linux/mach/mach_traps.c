@@ -203,8 +203,11 @@ kern_return_t _kernelrpc_mach_vm_protect_trap_impl(
 	int prot = 0;
 	int ret;
 
+	// mach_vm_protect() on a remote process is not trivial to implement
+	// in a LKM. We simulate success. At the same time, we allow mach_vm_write()
+	// to work even if the target page is R/O (like ptrace(POKE_DATA)).
 	if (target != 0 && target != mach_task_self())
-		return KERN_FAILURE;
+		return KERN_SUCCESS;
 
 	if (new_protection & VM_PROT_READ)
 		prot |= PROT_READ;
