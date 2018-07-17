@@ -147,6 +147,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/opendirectory/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/commoncrypto/include
 	${CMAKE_CURRENT_SOURCE_DIR}/quarantine/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libpmenergy/include
 	${CMAKE_CURRENT_SOURCE_DIR}/copyfile/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
@@ -278,6 +279,7 @@ add_subdirectory(CryptoTokenKit)
 add_subdirectory(ServiceManagement)
 add_subdirectory(xar)
 add_subdirectory(libedit)
+add_subdirectory(libpmenergy)
 add_subdirectory(external/libclosure)
 add_subdirectory(external/compiler-rt/lib/builtins)
 add_subdirectory(csu)
