@@ -409,6 +409,8 @@ static void shellLoop(int sockfd, int master)
 				rd = read(STDIN_FILENO, buf, sizeof(buf));
 				if (rd > 0)
 					write(master, buf, rd);
+				else
+					exit(1);
 			}
 			while (rd == sizeof(buf));
 		}
