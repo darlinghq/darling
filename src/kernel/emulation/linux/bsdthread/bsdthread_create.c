@@ -22,6 +22,8 @@ extern void *memset(void *s, int c, size_t n);
 
 #define STACK_GUARD_SIZE 4096
 
+static bool _uses_threads = false;
+
 // http://www.tldp.org/FAQ/Threads-FAQ/clone.c
 
 long sys_bsdthread_create(void* thread_start, void* arg,
@@ -30,6 +32,8 @@ long sys_bsdthread_create(void* thread_start, void* arg,
 #ifndef VARIANT_DYLD // dyld doesn't create threads
 	int ret;
 	unsigned long stacksize = 0;
+
+	_uses_threads = true;
 
 #ifndef BSDTHREAD_WRAP_LINUX_PTHREAD
 	if (!(flags & PTHREAD_START_CUSTOM))
@@ -123,4 +127,8 @@ int darling_thread_create(void** stack, void* entry_point, uintptr_t arg3,
 }
 #endif
 
+bool uses_threads(void)
+{
+	return _uses_threads;
+}
 
