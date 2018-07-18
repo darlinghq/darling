@@ -402,6 +402,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 		bsd_sig_handler* handler = sig_handlers[bsd_signum];
 		if (handler == SIG_DFL || handler == SIG_ERR)
 		{
+			/*
 			switch (bsd_signum)
 			{
 				// We have to stop the process manually
@@ -426,6 +427,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 					sys_exit(linux_signum);
 				}
 			}
+			*/
 		}
 		else if (handler != SIG_IGN)
 		{
