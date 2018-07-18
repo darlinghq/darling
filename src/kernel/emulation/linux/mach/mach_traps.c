@@ -169,8 +169,27 @@ kern_return_t _kernelrpc_mach_vm_allocate_trap_impl(
 				mach_vm_size_t size,
 				int flags)
 {
-	return _kernelrpc_mach_vm_map_trap_impl(target, addr,
-			size, 0, flags, VM_PROT_READ | VM_PROT_WRITE);
+	if (target != 0 && target != mach_task_self())
+	{
+		struct mach_vm_allocate_args args = {
+			.target = target,
+			.address = (uint64_t) *addr,
+			.size = size,
+			.flags = flags
+		};
+
+		int rv = lkm_call(NR__kernelrpc_mach_vm_allocate_trap, &args);
+
+		if (rv == KERN_SUCCESS)
+			*addr = args.address;
+
+		return rv;
+	}
+	else
+	{
+		return _kernelrpc_mach_vm_map_trap_impl(target, addr,
+				size, 0, flags, VM_PROT_READ | VM_PROT_WRITE);
+	}
 }
 
 kern_return_t _kernelrpc_mach_vm_deallocate_trap_impl(
@@ -182,14 +201,24 @@ kern_return_t _kernelrpc_mach_vm_deallocate_trap_impl(
 	int ret;
 
 	if (target != 0 && target != mach_task_self())
-		return KERN_FAILURE;
+	{
+		struct mach_vm_deallocate_args args = {
+			.target = target,
+			.address = (uint64_t) address,
+			.size = size,
+		};
 
-	ret = munmap(address, size);
+		return lkm_call(NR__kernelrpc_mach_vm_deallocate_trap, &args);
+	}
+	else
+	{
+		ret = munmap(address, size);
 
-	if (ret == -1)
-		return KERN_FAILURE;
+		if (ret == -1)
+			return KERN_FAILURE;
 
-	return KERN_SUCCESS;
+		return KERN_SUCCESS;
+	}
 }
 
 kern_return_t _kernelrpc_mach_vm_protect_trap_impl(
