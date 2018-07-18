@@ -8,9 +8,9 @@
 
 ## Building on other operating systems
 
-By default, it will build for Fedora 27. To use a different OS, simply
+By default, it will build for Fedora 28. To use a different OS, simply
 
-    RPM_OS=fedora:26
+    RPM_OS=fedora:27
 
 ## Future improvements
 

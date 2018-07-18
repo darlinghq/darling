@@ -5,7 +5,7 @@
 
 Name:           darling
 Version:        0.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Darling
 
 Group:          Utility
@@ -19,10 +19,11 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:  cmake clang bison flex python2 glibc-devel(x86-64) glibc-devel(x86-32)
 BuildRequires:  fuse-devel systemd-devel kernel-devel dkms
 BuildRequires:  cairo-devel freetype-devel(x86-64) fontconfig-devel(x86-64)
-BuildRequires:  freetype-devel(x86-32) fontconfig-devel(x86-32)
+BuildRequires:  freetype-devel(x86-32) fontconfig-devel(x86-32) make
 BuildRequires:  libjpeg-turbo-devel(x86-64) libtiff-devel(x86-64)
 BuildRequires:  libjpeg-turbo-devel(x86-32) libtiff-devel(x86-32)
-BuildRequires:  libglvnd-devel mesa-libGL-devel
+BuildRequires:  libglvnd-devel mesa-libGL-devel mesa-libEGL-devel
+BuildRequires:  libxml2-devel elfutils-libelf-devel
 
 #It will pick up all the mac pieces as dependencies. No thank you!
 AutoReqProv:    no
@@ -48,6 +49,7 @@ pushd build
   # Release is broken https://github.com/darlinghq/darling/issues/331
   #          -DCMAKE_BUILD_TYPE=Release \
   %{__cmake} -DCMAKE_INSTALL_PREFIX=/usr \
+             -DOpenGL_GL_PREFERENCE=GLVND \
              ..
   %{make_build}
 popd
@@ -91,3 +93,8 @@ fi
 %{_prefix}/src/%{name}-mach-%{version}
 
 %changelog
+* Wed Jul 18 2018 Andy Neff <andy@visionsystemsinc.com> - 0.1-2
+- Update for Fedora 28 and new master
+
+* Tue Jan 23 2018 Andy Neff <andy@visionsystemsinc.com> - 0.1-1
+- Initial version working for Fedora 27
