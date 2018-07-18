@@ -14,3 +14,7 @@ long __real_ioctl(int fd, int req, void* arg)
 	return ret;
 }
 
+long __real_ioctl_raw(int fd, int req, void* arg)
+{
+	return LINUX_SYSCALL(__NR_ioctl, fd, req, arg);
+}

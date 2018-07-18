@@ -22,7 +22,7 @@ long sys_psynch_cvsignal(void* cv, uint32_t cvlsgen, uint32_t cvugen, int thread
 
 	// __simple_printf("sys_psynch_mutexwait(mutex=%p, mgen=%x)\n", mutex, mgen);
 
-	int rv = lkm_call(NR_psynch_cvsignal_trap, &args);
+	int rv = lkm_call_raw(NR_psynch_cvsignal_trap, &args);
 	return psynch_errno(rv);
 }
 

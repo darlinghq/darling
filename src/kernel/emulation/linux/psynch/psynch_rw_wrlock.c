@@ -16,7 +16,7 @@ long sys_psynch_rw_wrlock(void* rwlock, uint32_t lgenval, uint32_t ugenval, uint
 		.flags = flags
 	};
 
-	int rv = lkm_call(NR_psynch_rw_wrlock, &args);
+	int rv = lkm_call_raw(NR_psynch_rw_wrlock, &args);
 	return psynch_errno(rv);
 }
 

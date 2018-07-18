@@ -18,7 +18,7 @@ long sys_psynch_cvbroad(void* cv, uint64_t cvlsgen, uint64_t cvudgen, uint32_t f
 		.flags = flags,
 	};
 
-	int rv = lkm_call(NR_psynch_cvbroad_trap, &args);
+	int rv = lkm_call_raw(NR_psynch_cvbroad_trap, &args);
 	return psynch_errno(rv);
 }
 

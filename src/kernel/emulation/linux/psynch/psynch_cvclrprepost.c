@@ -18,7 +18,7 @@ long sys_psynch_cvclrprepost(void* cv, uint32_t cvgen, uint32_t cvugen, uint32_t
 		.flags = flags
 	};
 
-	int rv = lkm_call(NR_psynch_cvclrprepost, &args);
+	int rv = lkm_call_raw(NR_psynch_cvclrprepost, &args);
 	return psynch_errno(rv);
 }
 

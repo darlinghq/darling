@@ -22,7 +22,7 @@ long sys_psynch_cvwait(void* cv, uint32_t cvgen, uint32_t cvugen, void* mutex, u
 
 	// __simple_printf("sys_psynch_mutexwait(mutex=%p, mgen=%x)\n", mutex, mgen);
 
-	int rv = lkm_call(NR_psynch_cvwait_trap, &args);
+	int rv = lkm_call_raw(NR_psynch_cvwait_trap, &args);
 	return psynch_errno(rv);
 }
 

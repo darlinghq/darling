@@ -21,9 +21,9 @@ long sys_ulock_wait(uint32_t operation, void* addr, uint64_t value, uint32_t tim
 	bool no_errno = operation & ULF_NO_ERRNO;
 
 
-	char dbg[100];
+	// char dbg[100];
 	// __simple_sprintf(dbg, "ulock_wait on %p for %d ns", addr, timeout / 1000);
-	lkm_call(0x1028, dbg);
+	// lkm_call(0x1028, dbg);
 
 	if (timeout > 0)
 	{

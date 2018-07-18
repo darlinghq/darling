@@ -3,7 +3,7 @@
 
 void mach_driver_init(const char** applep);
 int lkm_call(int call_nr, void* arg);
-
+int lkm_call_raw(int call_nr, void* arg); // w/o errno translation
 
 #endif
 
