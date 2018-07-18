@@ -80,6 +80,8 @@ static bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, 
 static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize);
+static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize);
+static long _proc_pidinfo_pidthreadinfo(int32_t pid, void* buffer, int32_t bufsize);
 
 long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int32_t bufsize)
 {
@@ -101,6 +103,16 @@ long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int
 		{
 			return _proc_pidonfo_uniqinfo(pid, buffer, bufsize);
 		}
+		case PROC_PIDTBSDINFO:
+		{
+			return _proc_pidinfo_tbsdinfo(pid, buffer, bufsize);
+		}
+		/* Not implemented yet
+		case PROC_PIDTHREADINFO:
+		{
+			return _proc_pidinfo_pidthreadinfo(pid, buffer, bufsize);
+		}
+		*/
 		default:
 		{
 			__simple_printf("sys_proc_info(): Unsupported pidinfo flavor: %d\n",
@@ -179,6 +191,45 @@ static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize)
 
 #endif
 	return 1;
+}
+
+static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize)
+{
+	struct proc_bsdinfo* info = (struct proc_bsdinfo*) buffer;
+
+	if (bufsize < sizeof(*info))
+		return -ENOSPC;
+
+	struct proc_bsdshortinfo shortinfo;
+	int err = _proc_pidinfo_shortbsdinfo(pid, &shortinfo, sizeof(shortinfo));
+
+	if (err < 0)
+		return err;
+
+	memset(info, 0, sizeof(*info));
+	info->pbi_flags = shortinfo.pbsi_flags;
+	info->pbi_status = shortinfo.pbsi_status;
+	// info->pbi_xstatus
+	info->pbi_pid = shortinfo.pbsi_pid;
+	info->pbi_ppid = shortinfo.pbsi_ppid;
+	info->pbi_uid = shortinfo.pbsi_uid;
+	info->pbi_gid = shortinfo.pbsi_gid;
+	info->pbi_ruid = shortinfo.pbsi_ruid;
+	info->pbi_rgid = shortinfo.pbsi_rgid;
+	info->pbi_svuid = shortinfo.pbsi_svuid;
+	info->pbi_svgid = shortinfo.pbsi_svgid;
+	info->pbi_pgid = shortinfo.pbsi_pgid;
+	// info->pbi_nice
+	// info->pbi_start
+
+	memcpy(info->pbi_comm, shortinfo.pbsi_comm, sizeof(info->pbi_comm));
+
+	return err;
+}
+
+static long _proc_pidinfo_pidthreadinfo(int32_t pid, void* buffer, int32_t bufsize)
+{
+	// TODO
 }
 
 static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsize)
