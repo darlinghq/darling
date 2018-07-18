@@ -148,7 +148,7 @@ no_fork:
 		}
 
 		char binprefs[64];
-		if (desc->attrp->psa_binprefs[0])
+		if (desc && desc->attrp && desc->attrp->psa_binprefs[0])
 		{
 			char** new_envp;
 			int i, env_len = 0;
