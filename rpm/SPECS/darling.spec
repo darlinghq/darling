@@ -63,11 +63,14 @@ popd
 %{__install} -d -m 755 %{?buildroot}/usr/src/%{name}-mach-%{version}/miggen
 cp -dr --no-preserve=ownership src/lkm %{?buildroot}/usr/src/%{name}-mach-%{version}/lkm
 cp -dr --no-preserve=ownership build/src/lkm/osfmk %{?buildroot}/usr/src/%{name}-mach-%{version}/miggen/osfmk
+# Copy rtsig.h
+cp -dr --no-preserve=ownership build/src/startup/rtsig.h %{?buildroot}/usr/src/%{name}-mach-%{version}/lkm/darling/
+
 %{__install} -m 644 %{SOURCE1} %{?buildroot}/usr/src/%{name}-mach-%{version}
 
-%post
-setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr
-setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr32
+#%post
+#setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr
+#setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr32
 
 #setsebool -P mmap_low_allowed 1
 
