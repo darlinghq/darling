@@ -53,6 +53,7 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(util)
 #add_subdirectory(libmach-o)
 #add_subdirectory(libdyld)
+add_subdirectory(DebugSymbols/getuuid)
 add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(startup)
 

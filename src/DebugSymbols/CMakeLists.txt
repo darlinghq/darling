@@ -19,8 +19,9 @@ add_framework(DebugSymbols
 
 	SOURCES
 		functions.c
-		copy.c
+		DebugSymbols.c
 
 	DEPENDENCIES
 		system
+		CoreFoundation
 )
