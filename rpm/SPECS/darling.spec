@@ -5,7 +5,7 @@
 
 Name:           darling
 Version:        0.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Darling
 
 Group:          Utility
@@ -19,10 +19,11 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:  cmake clang bison flex python2 glibc-devel(x86-64) glibc-devel(x86-32)
 BuildRequires:  fuse-devel systemd-devel kernel-devel dkms
 BuildRequires:  cairo-devel freetype-devel(x86-64) fontconfig-devel(x86-64)
-BuildRequires:  freetype-devel(x86-32) fontconfig-devel(x86-32)
+BuildRequires:  freetype-devel(x86-32) fontconfig-devel(x86-32) make
 BuildRequires:  libjpeg-turbo-devel(x86-64) libtiff-devel(x86-64)
 BuildRequires:  libjpeg-turbo-devel(x86-32) libtiff-devel(x86-32)
-BuildRequires:  libglvnd-devel mesa-libGL-devel
+BuildRequires:  libglvnd-devel mesa-libGL-devel mesa-libEGL-devel
+BuildRequires:  libxml2-devel elfutils-libelf-devel
 
 #It will pick up all the mac pieces as dependencies. No thank you!
 AutoReqProv:    no
@@ -48,6 +49,7 @@ pushd build
   # Release is broken https://github.com/darlinghq/darling/issues/331
   #          -DCMAKE_BUILD_TYPE=Release \
   %{__cmake} -DCMAKE_INSTALL_PREFIX=/usr \
+             -DOpenGL_GL_PREFERENCE=GLVND \
              ..
   %{make_build}
 popd
@@ -61,11 +63,14 @@ popd
 %{__install} -d -m 755 %{?buildroot}/usr/src/%{name}-mach-%{version}/miggen
 cp -dr --no-preserve=ownership src/lkm %{?buildroot}/usr/src/%{name}-mach-%{version}/lkm
 cp -dr --no-preserve=ownership build/src/lkm/osfmk %{?buildroot}/usr/src/%{name}-mach-%{version}/miggen/osfmk
+# Copy rtsig.h
+cp -dr --no-preserve=ownership build/src/startup/rtsig.h %{?buildroot}/usr/src/%{name}-mach-%{version}/lkm/darling/
+
 %{__install} -m 644 %{SOURCE1} %{?buildroot}/usr/src/%{name}-mach-%{version}
 
-%post
-setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr
-setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr32
+#%post
+#setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr
+#setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr32
 
 #setsebool -P mmap_low_allowed 1
 
@@ -91,3 +96,8 @@ fi
 %{_prefix}/src/%{name}-mach-%{version}
 
 %changelog
+* Wed Jul 18 2018 Andy Neff <andy@visionsystemsinc.com> - 0.1-2
+- Update for Fedora 28 and new master
+
+* Tue Jan 23 2018 Andy Neff <andy@visionsystemsinc.com> - 0.1-1
+- Initial version working for Fedora 27
