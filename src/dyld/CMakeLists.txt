@@ -44,6 +44,8 @@ add_circular(system_dyld FAT
 	src/threadLocalHelpers.S
 	src/dyldLock.cpp
 	src/threadLocalVariables.c
+	src/dyld_process_info.cpp
+	src/dyld_process_info_notify.cpp
 	src/start_glue.S
 	SIBLINGS
 		system_c system_kernel compiler_rt platform
