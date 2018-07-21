@@ -13,6 +13,7 @@ enable_language(ASM)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(InstallSymlink)
 include(MacroEnsureOutOfSourceBuild)
+include(dsym)
 
 MACRO_ENSURE_OUT_OF_SOURCE_BUILD()
 
@@ -38,6 +39,8 @@ enable_language(ASM-ATT)
 
 option(FRAMEWORK_COREAUDIO "Enable audio-related functionality" OFF)
 option(FRAMEWORK_APPKIT "Enable AppKit development code" OFF)
+
+FindDsymutil()
 
 add_subdirectory(src)
 
