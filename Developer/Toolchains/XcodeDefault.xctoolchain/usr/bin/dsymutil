@@ -1,1 +1,1 @@
-echo TODO: build dsymutil from clang source
+llvm-dsymutil-6.0 "$@"
