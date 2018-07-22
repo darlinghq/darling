@@ -1,0 +1,77 @@
+(
+    {
+        Type = Architecture;
+        Identifier = Native;
+        ListInEnum = YES;
+        SortNumber = 100;
+        ArchitectureSetting = "NATIVE_ARCH_ACTUAL";
+    },
+	{
+		Type = Architecture;
+		Identifier = Standard;
+		ListInEnum = YES;
+		SortNumber = 0;
+		RealArchitectures = (
+			"x86_64",
+		);
+		ArchitectureSetting = "ARCHS_STANDARD";
+	},
+	{
+		Type = Architecture;
+		Identifier = Standard64bit;
+		ListInEnum = YES;
+		SortNumber = 102;
+		RealArchitectures = (
+			"x86_64",
+		);
+		ArchitectureSetting = "ARCHS_STANDARD_64_BIT";
+	},
+	{
+		Type = Architecture;
+		Identifier = Universal;
+		ListInEnum = NO;
+		SortNumber = 2;
+		RealArchitectures = (
+			"x86_64",
+			"i386",
+		);
+		ArchitectureSetting = "ARCHS_STANDARD_32_64_BIT";
+	},
+	{
+		Type = Architecture;
+		Identifier = Standard_Including_64_bit;
+		ListInEnum = NO;
+		SortNumber = 103;
+		RealArchitectures = (
+			"x86_64",
+		);
+		ArchitectureSetting = "ARCHS_STANDARD_INCLUDING_64_BIT";
+	},
+	{
+		Type = Architecture;
+		Identifier = Standard32bit;
+		ListInEnum = NO;
+		SortNumber = 101;
+		RealArchitectures = (
+			"i386",
+		);
+		ArchitectureSetting = "ARCHS_STANDARD_32_BIT";
+	},
+	{
+		Type = Architecture;
+		Identifier = i386;
+		PerArchBuildSettingName = Intel;
+		ByteOrder = little;
+		ListInEnum = NO;
+		SortNumber = 105;
+		Deprecated = YES;
+	},
+	{
+		Type = Architecture;
+		Identifier = "x86_64";
+		PerArchBuildSettingName = "Intel 64-bit";
+		ByteOrder = little;
+		ListInEnum = NO;
+		SortNumber = 106;
+	},
+)
