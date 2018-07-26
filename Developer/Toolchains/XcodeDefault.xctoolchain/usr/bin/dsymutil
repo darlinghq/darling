@@ -1,1 +1,3 @@
+#!/bin/bash
+
 llvm-dsymutil-6.0 "$@"

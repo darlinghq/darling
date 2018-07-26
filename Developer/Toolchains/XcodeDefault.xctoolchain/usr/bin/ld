@@ -1,0 +1,6 @@
+#!/bin/bash
+SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+LD="$SCRIPTDIR/../../../../../build/src/external/cctools-port/cctools/ld64/src/x86_64-apple-darwin11-ld"
+
+"$LD" "$@"
