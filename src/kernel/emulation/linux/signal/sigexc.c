@@ -11,6 +11,7 @@
 #include "../mach/lkm.h"
 #include "../../../../lkm/api.h"
 #include "kill.h"
+#include <emmintrin.h>
 
 // Support for Darwin debugging.
 // Unlike other Unix-like systems, macOS doesn't use wait() to handle events in the debugged process.
@@ -39,6 +40,8 @@ static void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state32
 static void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux_gregset* regs);
 static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx);
 #endif
+
+#define kern_printf(...) { char buf[128]; __simple_sprintf(buf, __VA_ARGS__); lkm_call(0x1028, buf); }
 
 char xyzbuf[128];
 void sigexc_setup1(void)
@@ -244,6 +247,18 @@ static mach_port_t get_exc_port(int type, int* behavior)
 	return 0;
 }
 
+
+// syscall tracking
+#define LINUX_TRAP_BRKPT	1
+// single-stepping
+#define LINUX_TRAP_TRACE	2
+// ???
+#define LINUX_TRAP_BRANCH	3
+// memory watchpoint
+#define LINUX_TRAP_HWBKPT	4
+// int3 (on x86, other platforms probably use TRAP_BRKPT)
+#define LINUX_SI_KERNEL		0x80
+
 void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
 	char buf[128];
@@ -284,7 +299,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	{
 		// Only real exceptions produced by the CPU get translated to these
 		// Mach exceptions. The rest comes as EXC_SOFTWARE.
-		if (info != NULL && info->si_code != 0 /* SI_KERNEL == 0x80*/)
+		if (info != NULL && info->si_code != 0)
 		{
 			case SIGSEGV:
 				mach_exception = EXC_BAD_ACCESS;
@@ -304,9 +319,18 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 				break;
 			case SIGTRAP:
 				mach_exception = EXC_BREAKPOINT;
-				// int3 -> si_code contains SI_KERNEL (0x80)
-				// singlestep -> si_code contains 0x02
-				codes[0] = (info->si_code == 0x80) ? EXC_I386_BPT : EXC_I386_SGL;
+				codes[0] = (info->si_code == LINUX_SI_KERNEL) ? EXC_I386_BPT : EXC_I386_SGL;
+
+				if (info->si_code == LINUX_TRAP_HWBKPT)
+				{
+					// Memory watchpoint triggered
+					struct last_triggered_watchpoint_args args;
+					if (lkm_call(NR_last_triggered_watchpoint, &args) == 0)
+					{
+						codes[1] = args.address;
+						codes[2] = args.flags;
+					}
+				}
 				break;
 		}
 		default:
@@ -326,6 +350,16 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	{
 		mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
 		mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
+		/*
+#ifdef __x86_64__
+		if (bsd_signum == SIGTRAP)
+		{
+			uint8_t* rip = (uint8_t*) ctxt->uc_mcontext.gregs.rip;
+			kern_printf("rip is %p\n", rip);
+			kern_printf("Value at rip-1 on suspend: 0x%x\n", *(rip-1));
+		}
+#endif
+		*/
 	}
 	else
 	{
@@ -369,6 +403,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 			exception_raise(port, thread, mach_task_self(), mach_exception, small_codes, sizeof(small_codes) / sizeof(small_codes[0]));
 		}
 
+		_mm_mfence();
 		bsd_signum = _pthread_getspecific_direct(SIGEXC_TSD_KEY);
 	}
 
@@ -385,6 +420,19 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 
 		thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
 		float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
+
+		/*
+		if (bsd_signum == SIGTRAP)
+		{
+			uint8_t* rip = (uint8_t*) ctxt->uc_mcontext.gregs.rip;
+			kern_printf("rip at resume: %p\n", rip);
+			kern_printf("Value at rip on resume: 0x%x\n", *rip);
+			_mm_clflush(rip);
+		}
+		*/
+		kern_printf("sigexc: test test\n");
+		kern_printf("sigexc: EFL at leave: 0x%x\n", ctxt->uc_mcontext.gregs.efl);
+		
 #elif defined(__i386__)
 		mach_msg_type_number_t count;
 
