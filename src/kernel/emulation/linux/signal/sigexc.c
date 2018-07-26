@@ -284,7 +284,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	{
 		// Only real exceptions produced by the CPU get translated to these
 		// Mach exceptions. The rest comes as EXC_SOFTWARE.
-		if (info != NULL && info->si_code == 0x80 /* SI_KERNEL */)
+		if (info != NULL && info->si_code != 0 /* SI_KERNEL == 0x80*/)
 		{
 			case SIGSEGV:
 				mach_exception = EXC_BAD_ACCESS;
@@ -304,7 +304,9 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 				break;
 			case SIGTRAP:
 				mach_exception = EXC_BREAKPOINT;
-				codes[0] = EXC_I386_BPT;
+				// int3 -> si_code contains SI_KERNEL (0x80)
+				// singlestep -> si_code contains 0x02
+				codes[0] = (info->si_code == 0x80) ? EXC_I386_BPT : EXC_I386_SGL;
 				break;
 		}
 		default:
