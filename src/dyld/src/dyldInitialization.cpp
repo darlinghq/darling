@@ -197,6 +197,7 @@ static void rebaseDyld(const struct macho_header* mh, intptr_t slide)
 
 extern "C" void mach_init(const char* apple[]);
 extern "C" void __guard_setup(const char* apple[]);
+extern "C" void sigexc_setup();
 
 
 //
@@ -230,6 +231,10 @@ uintptr_t start(const struct macho_header* appsMachHeader, int argc, const char*
 #if DYLD_INITIALIZER_SUPPORT
 	// run all C++ initializers inside dyld
 	runDyldInitializers(dyldsMachHeader, slide, argc, argv, envp, apple);
+#endif
+
+#ifdef DARLING
+	sigexc_setup();
 #endif
 
 	// now that we are done bootstrapping dyld, call dyld's main

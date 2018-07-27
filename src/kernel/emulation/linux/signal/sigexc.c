@@ -10,8 +10,9 @@
 #include "sigaltstack.h"
 #include "../mach/lkm.h"
 #include "../../../../lkm/api.h"
+#include "../../../libsyscall/wrappers/_libkernel_init.h"
 #include "kill.h"
-#include <emmintrin.h>
+#include "../simple.h"
 
 // Support for Darwin debugging.
 // Unlike other Unix-like systems, macOS doesn't use wait() to handle events in the debugged process.
@@ -21,6 +22,8 @@ static volatile bool am_i_ptraced = false;
 static void handle_rt_signal(int signum);
 extern void sig_restorer(void);
 extern int getpid(void);
+
+extern _libkernel_functions_t _libkernel_functions;
 
 void darling_sigexc_uninstall(void);
 void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt);
@@ -43,10 +46,9 @@ static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset
 
 #define kern_printf(...) { char buf[128]; __simple_sprintf(buf, __VA_ARGS__); lkm_call(0x1028, buf); }
 
-char xyzbuf[128];
 void sigexc_setup1(void)
 {
-	lkm_call(0x1028, "sigexc_setup1()");
+	kern_printf("sigexc_setup1()");
 	// Setup handler for SIGNAL_SIGEXC_TOGGLE and SIGNAL_SIGEXC_THUPDATE
 	handle_rt_signal(SIGNAL_SIGEXC_TOGGLE);
 	handle_rt_signal(SIGNAL_SIGEXC_THUPDATE);
@@ -54,8 +56,7 @@ void sigexc_setup1(void)
 
 void sigexc_setup2(void)
 {
-	lkm_call(0x1028, xyzbuf);
-	lkm_call(0x1028, "sigexc_setup2()\n");
+	kern_printf("sigexc_setup2()\n");
 
 	linux_sigset_t set;
 	set = (1ull << (SIGNAL_SIGEXC_TOGGLE-1));
@@ -69,7 +70,7 @@ void sigexc_setup2(void)
 	// the debugger to handle this situation.
 	if (!am_i_ptraced && lkm_call(NR_get_tracer, NULL) != 0)
 	{
-		// __simple_printf("the predecessor is traced\n");
+		kern_printf("sigexc: the parent is traced\n");
 		darling_sigexc_self();
 		sigexc_handler(LINUX_SIGTRAP, NULL, NULL);
 	}
@@ -77,9 +78,12 @@ void sigexc_setup2(void)
 
 void sigexc_setup(void)
 {
+#ifdef VARIANT_DYLD
 	sigexc_setup1();
 	if (lkm_call(NR_started_suspended, 0))
 	{
+		kern_printf("sigexc: waiting for signal\n");
+
 		// sigsuspend until resumed or debugger attached
 		linux_sigset_t set = -1ll;
 		set &= ~(1ull << (LINUX_SIGCONT-1));
@@ -87,8 +91,26 @@ void sigexc_setup(void)
 		set &= ~(1ull << (SIGNAL_SIGEXC_THUPDATE-1));
 
 		LINUX_SYSCALL(__NR_rt_sigsuspend, &set, 8);
+
+		kern_printf("sigexc: done waiting for signal\n");
 	}
 	sigexc_setup2();
+#else
+	sigexc_setup1();
+
+	// get am_i_ptraced value from dyld
+	bool (*is_traced)(void);
+	_libkernel_functions->dyld_func_lookup("__dyld_am_i_ptraced", (void**) &is_traced);
+	am_i_ptraced = is_traced();
+
+	if (am_i_ptraced)
+	{
+		// We have to take over from dyld's build of this file, because
+		// we rely on having accurate signal handler information of the running application.
+		kern_printf("sigexc: taking over sigexc handling\n");
+		darling_sigexc_self();
+	}
+#endif
 }
 
 static void handle_rt_signal(int signum)
@@ -106,7 +128,7 @@ static void handle_rt_signal(int signum)
 			sizeof(sa.sa_mask));
 
 	//char buf[128];
-	__simple_sprintf(xyzbuf, "Setting handler for RT signal %d: %d", signum, rv);
+	//__simple_sprintf(xyzbuf, "Setting handler for RT signal %d: %d", signum, rv);
 	//lkm_call(0x1028, buf);
 }
 
@@ -117,9 +139,8 @@ bool darling_am_i_ptraced(void)
 
 void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 {
-	char buf[128];
-	__simple_sprintf(buf, "sigrt_handler signum=%d, si_value=%x\n", signum, info->si_value);
-	lkm_call(0x1028, buf);
+	kern_printf("sigexc: sigrt_handler signum=%d, si_value=%x\n", signum, info->si_value);
+
 	if (signum == SIGNAL_SIGEXC_TOGGLE)
 	{
 		if (((uint32_t) info->si_value) == SIGRT_MAGIC_ENABLE_SIGEXC)
@@ -261,13 +282,11 @@ static mach_port_t get_exc_port(int type, int* behavior)
 
 void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
-	char buf[128];
-	__simple_sprintf(buf, "sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
-	lkm_call(0x1028, buf);
+	kern_printf("sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
 
 	if (!darling_am_i_ptraced())
 	{
-		__simple_printf("NOT TRACED!\n");
+		kern_printf("sigexc: NOT TRACED!\n");
 		return;
 	}
 
@@ -285,7 +304,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	int bsd_signum = signum_linux_to_bsd(linux_signum);
 	if (bsd_signum <= 0)
 	{
-		__simple_printf("Unmapped signal!\n");
+		kern_printf("sigexc: Unmapped signal!\n");
 		return;
 	}
 
@@ -328,7 +347,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 					if (lkm_call(NR_last_triggered_watchpoint, &args) == 0)
 					{
 						codes[1] = args.address;
-						codes[2] = args.flags;
+						// codes[2] = args.flags;
 					}
 				}
 				break;
@@ -420,18 +439,6 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 
 		thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
 		float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
-
-		/*
-		if (bsd_signum == SIGTRAP)
-		{
-			uint8_t* rip = (uint8_t*) ctxt->uc_mcontext.gregs.rip;
-			kern_printf("rip at resume: %p\n", rip);
-			kern_printf("Value at rip on resume: 0x%x\n", *rip);
-			_mm_clflush(rip);
-		}
-		*/
-		kern_printf("sigexc: test test\n");
-		kern_printf("sigexc: EFL at leave: 0x%x\n", ctxt->uc_mcontext.gregs.efl);
 		
 #elif defined(__i386__)
 		mach_msg_type_number_t count;

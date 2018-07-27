@@ -7,8 +7,9 @@
 #include <unistd.h>
 #include <sys/resource.h>
 #include "../../libsyscall/wrappers/_libkernel_init.h"
+#include "../simple.h"
+#include "../misc/ioctl.h"
 
-extern int __real_ioctl(int fd, int cmd, void* arg);
 extern int sys_open(const char*, int, int);
 extern int sys_close(int);
 extern int sys_write(int, const void*, int);
@@ -18,8 +19,6 @@ extern int sys_dup2(int, int);
 extern int sys_fcntl(int, int, int);
 extern _libkernel_functions_t _libkernel_functions;
 
-extern void sigexc_setup1(void);
-extern void sigexc_setup2(void);
 
 static int driver_fd = -1;
 
@@ -41,7 +40,7 @@ void mach_driver_init(const char** applep)
 #else
 	// Ask for fd already set up by dyld
 	int (*p)(void);
-	_libkernel_functions->dyld_func_lookup("__dyld_get_mach_driver_fd", &p);
+	_libkernel_functions->dyld_func_lookup("__dyld_get_mach_driver_fd", (void**) &p);
 
 	driver_fd = (*p)();
 #endif
