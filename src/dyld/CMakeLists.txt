@@ -96,3 +96,21 @@ make_fat(system_loader)
 
 install(TARGETS system_dyld DESTINATION libexec/darling/usr/lib/system)
 install(TARGETS system_loader DESTINATION libexec/darling/usr/lib)
+install(FILES
+	doc/man/man1/dyld.1
+	doc/man/man1/update_dyld_shared_cache.1
+	DESTINATION
+	libexec/darling/usr/share/man/man1
+)
+install(FILES
+	doc/man/man3/dladdr.3
+	doc/man/man3/dlclose.3
+	doc/man/man3/dlerror.3
+	doc/man/man3/dlopen.3
+	doc/man/man3/dlopen_preflight.3
+	doc/man/man3/dlsym.3
+	doc/man/man3/dyld.3
+	DESTINATION
+	libexec/darling/usr/share/man/man3
+)
+
