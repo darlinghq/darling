@@ -44,7 +44,11 @@ static void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux
 static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx);
 #endif
 
+#ifdef DEBUG_SIGEXC
 #define kern_printf(...) { char buf[128]; __simple_sprintf(buf, __VA_ARGS__); lkm_call(0x1028, buf); }
+#else
+#define kern_printf(...)
+#endif
 
 void sigexc_setup1(void)
 {
@@ -422,7 +426,6 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 			exception_raise(port, thread, mach_task_self(), mach_exception, small_codes, sizeof(small_codes) / sizeof(small_codes[0]));
 		}
 
-		_mm_mfence();
 		bsd_signum = _pthread_getspecific_direct(SIGEXC_TSD_KEY);
 	}
 
