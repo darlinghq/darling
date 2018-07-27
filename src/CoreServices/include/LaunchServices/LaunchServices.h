@@ -19,7 +19,7 @@ typedef OptionBits LSLaunchFlags;
 typedef int LSNotificationCode;
 typedef int LSNotificationID;
 typedef int LSASN;
-typedef LSASN *LSASNRef;
+typedef CFTypeRef LSASNRef;
 typedef int LSSessionID;
 
 #define kLSNotificationInvalidID -1
@@ -71,6 +71,16 @@ OSStatus LSOpenFSRef(const FSRef *inRef, FSRef *outLaunchedRef);
 OSStatus LSGetExtensionInfo(UniCharCount inNameLen, const UniChar* inNameBuffer, UniCharCount *outExtStartIndex);
 OSStatus LSSetExtensionHiddenForRef(const FSRef *inRef, Boolean hide);
 OSStatus LSSetExtensionHiddenForURL(CFURLRef inURL, Boolean hide);
+
+extern CFStringRef _kLSBundlePathKey;
+extern CFStringRef _kLSDisplayNameKey;
+extern CFStringRef _kLSExecutablePathKey;
+
+CFTypeRef _LSCopyApplicationInformationItem(int /* hopefully */, CFTypeRef asn, CFStringRef what);
+
+CFDictionaryRef _LSCopyApplicationInformation(int, CFTypeRef asn, int);
+
+LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid);
 
 // TODO: many other functions
 

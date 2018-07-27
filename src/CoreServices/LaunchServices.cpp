@@ -258,3 +258,25 @@ OSStatus LSGetExtensionInfo(UniCharCount inNameLen, const UniChar* inNameBuffer,
 	return noErr;
 }
 
+// TODO: See https://gist.github.com/zorgiepoo/d751cba19a0167a589a2
+
+CFStringRef _kLSBundlePathKey = CFSTR("LSBundlePath");
+CFStringRef _kLSDisplayNameKey = CFSTR("LSDisplayName");
+CFStringRef _kLSExecutablePathKey = CFSTR("LSExecutablePath");
+
+CFTypeRef _LSCopyApplicationInformationItem(int /* hopefully */, CFTypeRef asn, CFStringRef what)
+{
+	return NULL;
+}
+
+CFDictionaryRef _LSCopyApplicationInformation(int, CFTypeRef asn, int)
+{
+	return NULL;
+}
+
+LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid)
+{
+	return NULL;
+}
+
+
