@@ -847,7 +847,7 @@ static void notifyMonitoringDyld(bool unloading, unsigned portSlot, unsigned ima
 	}
 }
 
-#define MAX_KERNEL_IMAGES_PER_CALL (100)
+#define MAX_KERNEL_IMAGES_PER_CALL (100*3)
 
 static void flushKernelNotifications(bool loading, bool force, std::array<dyld_kernel_image_info_t,MAX_KERNEL_IMAGES_PER_CALL>& kernelInfos, uint32_t &kernelInfoCount) {
 #if 0
