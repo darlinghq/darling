@@ -42,6 +42,7 @@ set(CoreServices_SRCS
 	CoreServicesPriv.cpp
 	TextCommon.cpp
 	TextEncodingConverter.cpp
+	MDQuery.c
 )
 
 if (WITH_COREAUDIO)
