@@ -1,6 +1,7 @@
 Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libSystem.B.dylib
 Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libobjc.A.dylib
 Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation
+Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
 
 Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libcommonCrypto.dylib
 Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libcompiler_rt.dylib

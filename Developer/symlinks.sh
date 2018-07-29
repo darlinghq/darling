@@ -3,8 +3,11 @@ FRAMEWORKS="$SDK/System/Library/Frameworks"
 LIBS="$SDK/usr/lib"
 
 ln -sf "$BUILD/src/external/foundation/Foundation" "$FRAMEWORKS/Foundation.framework/Versions/C"
+ln -sf "$BUILD/src/external/corefoundation/CoreFoundation" "$FRAMEWORKS/CoreFoundation.framework/Versions/A"
+
 ln -sf "$BUILD/src/external/objc4/runtime/libobjc.A.dylib" "$LIBS"
 ln -sf "$BUILD/src/libsystem/libSystem.B.dylib" "$LIBS"
+
 mkdir -p "$LIBS/system"
 ln -sf "$BUILD/src/sandbox/libsystem_sandbox.dylib" "$LIBS/system"
 ln -sf "$BUILD/src/quarantine/libquarantine.dylib" "$LIBS/system"
