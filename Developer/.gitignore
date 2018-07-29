@@ -29,3 +29,4 @@ Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libsystem_pth
 Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libsystem_sandbox.dylib
 Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libunwind.dylib
 Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libxpc.dylib
+Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/liblaunch.dylib

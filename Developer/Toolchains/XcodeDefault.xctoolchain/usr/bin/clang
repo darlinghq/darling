@@ -4,4 +4,4 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/ga
 
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-clang -B $SCRIPTDIR -Wl,-v -target darwin "$@"
+clang -B $SCRIPTDIR -target darwin "$@"
