@@ -27,7 +27,7 @@ function(dsym target)
 			endif()
 		")
 
-	endif (DSYMUTIL_EXE)
+	endif ()
 
 endfunction(dsym)
 
