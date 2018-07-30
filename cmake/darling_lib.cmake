@@ -5,6 +5,7 @@ endif(COMMAND cmake_policy)
 
 include(use_ld64)
 include(CMakeParseArguments)
+include(dsym)
 
 FUNCTION(add_darling_library name)
 	foreach(f IN LISTS ARGN)
@@ -39,6 +40,10 @@ FUNCTION(add_darling_library name)
 	endif (DYLIB_CURRENT_VERSION)
 
 	use_ld64(${name})
+
+	if (NOT NO_DSYM)
+		dsym(${name})
+	endif (NOT NO_DSYM)
 ENDFUNCTION(add_darling_library)
 
 FUNCTION(make_fat)

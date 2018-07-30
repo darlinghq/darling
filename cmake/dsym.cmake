@@ -1,11 +1,13 @@
 
 function(dsym target)
-	if (DSYMUTIL_EXE)
+	if (DSYMUTIL_EXE AND CMAKE_BUILD_TYPE MATCHES DEBUG)
 
-		set(ENV{PATH} "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc:$ENV{PATH}") # for lipo
+		add_custom_command(OUTPUT "${target}.dSYM" COMMAND ${CMAKE_COMMAND} -E env
+			"PATH=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc:$ENV{PATH}"
+			"${DSYMUTIL_EXE}" "-flat" "-o" "${target}.dSYM" "$<TARGET_FILE:${target}>")
 
-		add_custom_command(OUTPUT "${target}.dSYM" COMMAND "${DSYMUTIL_EXE}" "-flat" "-o" "${target}.dSYM" "$<TARGET_FILE:${target}>")
 		add_custom_target("${target}-dSYM" ALL DEPENDS "${target}" "${target}.dSYM" getuuid lipo)
+
 		install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/files")
 		install(DIRECTORY DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/uuid")
 

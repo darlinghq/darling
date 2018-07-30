@@ -13,7 +13,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(emulation/linux)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -fblocks -ggdb")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3 -w -fblocks -ffreestanding")
 
 # Why -bind_at_load is necessary:
 # I couldn't find something like -Bsymbolic in Apple's ld

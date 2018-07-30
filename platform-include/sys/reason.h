@@ -30,6 +30,7 @@
 #define _REASON_H_
 
 #include <stdint.h>
+#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 
