@@ -81,7 +81,7 @@ static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer
 static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize);
-static long _proc_pidinfo_pidthreadinfo(int32_t pid, void* buffer, int32_t bufsize);
+static long _proc_pidinfo_pidthreadinfo(int32_t pid, uint64_t thread_handle, void* buffer, int32_t bufsize);
 
 long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int32_t bufsize)
 {
@@ -107,12 +107,10 @@ long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int
 		{
 			return _proc_pidinfo_tbsdinfo(pid, buffer, bufsize);
 		}
-		/* Not implemented yet
 		case PROC_PIDTHREADINFO:
 		{
-			return _proc_pidinfo_pidthreadinfo(pid, buffer, bufsize);
+			return _proc_pidinfo_pidthreadinfo(pid, arg, buffer, bufsize);
 		}
-		*/
 		default:
 		{
 			__simple_printf("sys_proc_info(): Unsupported pidinfo flavor: %d\n",
@@ -227,9 +225,33 @@ static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize)
 	return err;
 }
 
-static long _proc_pidinfo_pidthreadinfo(int32_t pid, void* buffer, int32_t bufsize)
+static long _proc_pidinfo_pidthreadinfo(int32_t pid, uint64_t thread_handle, void* buffer, int32_t bufsize)
 {
-	// TODO
+	char path[64], stat[1024];
+	int32_t tid = (int32_t)(thread_handle & 0xffffffff);
+
+	// __simple_printf("Asking for pid/tid %d/%d\n", pid, tid);
+
+	struct proc_threadinfo* info = (struct proc_threadinfo*) buffer;
+	if (bufsize < sizeof(*info))
+		return -ENOSPC;
+
+	memset(buffer, 0, bufsize);
+
+	__simple_sprintf(path, "/proc/%d/task/%d/comm", pid, tid);
+	// __simple_printf("Reading thread name from %s\n", path);
+	if (!read_string(path, info->pth_name, sizeof(info->pth_name)))
+		return -ESRCH;
+	else
+	{
+		// Kill LF at the end of pth_name
+		int length = strlen(info->pth_name);
+		if (length > 0 && info->pth_name[length-1] == '\n')
+			info->pth_name[length-1] = 0;
+	}
+
+	// TODO: Other proc_threadinfo fields
+	return 1;
 }
 
 static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsize)

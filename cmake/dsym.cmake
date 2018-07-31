@@ -1,12 +1,13 @@
 
 function(dsym target)
-	if (DSYMUTIL_EXE AND CMAKE_BUILD_TYPE MATCHES DEBUG)
+	string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type)
+	if (DSYMUTIL_EXE AND build_type MATCHES debug)
 
-		add_custom_command(OUTPUT "${target}.dSYM" COMMAND ${CMAKE_COMMAND} -E env
+		add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" DEPENDS "${target}" COMMAND ${CMAKE_COMMAND} -E env
 			"PATH=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc:$ENV{PATH}"
 			"${DSYMUTIL_EXE}" "-flat" "-o" "${target}.dSYM" "$<TARGET_FILE:${target}>")
 
-		add_custom_target("${target}-dSYM" ALL DEPENDS "${target}" "${target}.dSYM" getuuid lipo)
+		add_custom_target("${target}-dSYM" ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" getuuid lipo)
 
 		install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/files")
 		install(DIRECTORY DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/uuid")
@@ -26,13 +27,13 @@ function(dsym target)
 				endforeach (uuid)
 			endif()
 		")
-
 	endif ()
 
 endfunction(dsym)
 
 function(FindDsymutil)
-	find_program(DSYMUTIL_EXE NAMES "llvm-dsymutil" "dsymutil" "llvm-dsymutil-7.0" "llvm-dsymutil-6.0" "llvm-dsymutil-5.0" "llvm-dsymutil-4.0" "llvm-dsymutil-3.9" "llvm-dsymutil-3.8" "llvm-dsymutil-3.7")
+	# llvm-dsymutil-4.0 is not listed, because it's very buggy
+	find_program(DSYMUTIL_EXE NAMES "llvm-dsymutil" "dsymutil" "llvm-dsymutil-7.0" "llvm-dsymutil-6.0" "llvm-dsymutil-5.0" "llvm-dsymutil-3.9" "llvm-dsymutil-3.8" "llvm-dsymutil-3.7")
 	if (DSYMUTIL_EXE)
 		message(STATUS "Found dsymutil: ${DSYMUTIL_EXE}")
 	else (DSYMUTIL_EXE)
