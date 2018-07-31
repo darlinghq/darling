@@ -339,7 +339,7 @@ static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer
 			// This call returns true if we see the start of another mapping.
 			if (parse_smaps_firstline(line, &my_rpi.prp_prinfo, &my_rpi.prp_vip))
 			{
-				if (my_rpi.prp_prinfo.pri_address + my_rpi.prp_prinfo.pri_size >= arg)
+				if (arg >= my_rpi.prp_prinfo.pri_address && arg < (my_rpi.prp_prinfo.pri_address + my_rpi.prp_prinfo.pri_size))
 				{
 					foundRegion = true;
 				}
