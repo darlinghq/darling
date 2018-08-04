@@ -4,4 +4,29 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/ga
 
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-clang -B $SCRIPTDIR -target darwin "$@"
+foo="not"
+extra=()
+
+array=( "$@" )
+
+for i in "${array[@]}"
+do
+    if [ "$i" = "-x" ] && [ "$foo" != "found" ]
+    then
+        foo="found"
+	continue
+    fi
+    if [ "$i" = "c++" ] || [ "$i" = "objective-c++" ]
+    then
+	    if [ "$foo" == "found" ]
+	    then
+	    	extra+=( -I$SCRIPTDIR/../include/c++/v1 )
+		found="not"
+	fi
+    fi
+
+done
+
+extra+=( -I$SCRIPTDIR/../include )
+
+clang -B $SCRIPTDIR -target darwin ${extra[@]} "$@"
