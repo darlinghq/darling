@@ -14,6 +14,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(InstallSymlink)
 include(MacroEnsureOutOfSourceBuild)
 include(dsym)
+include(xcproj)
 
 MACRO_ENSURE_OUT_OF_SOURCE_BUILD()
 
