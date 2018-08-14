@@ -1,2 +1,0 @@
-# Make /dev/mach accessible by all users
-KERNEL=="mach", NAME="mach", MODE="0666"

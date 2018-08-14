@@ -54,8 +54,6 @@ install(DIRECTORY DESTINATION libexec/darling/private/tmp)
 InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
 InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
 
-install(FILES etc/dylib.conf etc/version.conf
-	DESTINATION libexec/darling/etc/darling)
 install(FILES etc/resolv.conf
 	DESTINATION libexec/darling/etc)
 
@@ -72,7 +70,6 @@ InstallSymlink(/dev/log ${CMAKE_INSTALL_PREFIX}/libexec/darling/var/run/syslog)
 install(DIRECTORY DESTINATION libexec/darling/usr)
 install(DIRECTORY DESTINATION libexec/darling/usr/local)
 install(DIRECTORY DESTINATION libexec/darling/usr/local/share)
-InstallSymlink(/Volumes/SystemRoot${CMAKE_INSTALL_PREFIX}/share/darling ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/local/share/darling)
 
 InstallSymlink(/Volumes/SystemRoot/dev ${CMAKE_INSTALL_PREFIX}/libexec/darling/dev)
 InstallSymlink(private/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
@@ -94,7 +91,3 @@ InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling
 InstallSymlink(/Volumes/SystemRoot/usr/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib64)
 
 InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
-
-# Our udev rules, so /dev/mach has 0666 permissions
-install(DIRECTORY etc/udev DESTINATION /etc)
-
