@@ -71,7 +71,11 @@ private:
                                 dyld_process_info_base(unsigned imageCount, size_t totalSize);
     void*                       operator new (size_t, void* buf) { return buf; }
 
+#ifndef DARLING
     static bool                 inCache(uint64_t addr) { return (addr > SHARED_REGION_BASE) && (addr < SHARED_REGION_BASE+SHARED_REGION_SIZE); }
+#else
+	static bool                 inCache(uint64_t addr) { return false; }
+#endif
     kern_return_t               addImage(task_t task, bool sameCacheAsThisProcess, uint64_t imageAddress, uint64_t imagePath, const char* imagePathLocal);
     kern_return_t               addDyldImage(task_t task, uint64_t dyldAddress, uint64_t dyldPathAddress, const char* localPath);
 
