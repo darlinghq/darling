@@ -90,6 +90,8 @@ CGL_EXPORT void CGLDestroyWindow(CGLWindowRef window) {
 }
 
 CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context, CGLWindowRef window) {
+    if (!context)
+        return kCGLBadContext;
     context->egl_surface = (EGLSurface) window;
     return CGLSetCurrentContext(context);
 }
