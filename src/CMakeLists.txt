@@ -9,6 +9,7 @@ include(pyc)
 
 add_subdirectory(external/xcbuild)
 add_subdirectory(libelfloader/native)
+add_subdirectory(bsdln)
 
 add_definitions(
 	-D_DARWIN_C_SOURCE
@@ -435,3 +436,4 @@ add_subdirectory(external/cocotron/Cocoa)
 add_subdirectory(external/cocotron/QuartzCore)
 
 add_subdirectory(external/JavaScriptCore)
+#add_subdirectory(external/WebCore)
