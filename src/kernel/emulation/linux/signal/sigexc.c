@@ -152,7 +152,7 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 			darling_sigexc_self();
 
 			// Stop on attach
-			sigexc_handler(LINUX_SIGSTOP, NULL, ctxt);
+			sigexc_handler(LINUX_SIGSTOP, NULL, (struct linux_ucontext*) ctxt);
 		}
 		else if (((uint32_t) info->si_value) == SIGRT_MAGIC_DISABLE_SIGEXC)
 		{
@@ -174,7 +174,7 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 			// This is only used to pass a SIGSTOP to the traced process (from the debugger)
 			// and have it passed back through the sigexc mechanism.
 			// See sys_wait4().
-			sigexc_handler(-sig, NULL, NULL);
+			sigexc_handler(-sig, NULL, (struct linux_ucontext*) ctxt);
 		}
 		else
 		{

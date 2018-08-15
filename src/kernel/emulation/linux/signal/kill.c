@@ -21,7 +21,7 @@ long sys_kill(int pid, int signum, int posix)
 		int tracer = lkm_call(NR_get_tracer, (void*)(long)pid);
 		if (tracer == getpid())
 		{
-			linux_sigqueue(ret, SIGNAL_SIGEXC_THUPDATE, -SIGSTOP);
+			linux_sigqueue(pid, SIGNAL_SIGEXC_THUPDATE, -LINUX_SIGSTOP);
 			return 0;
 		}
 	}
