@@ -8,10 +8,10 @@ struct elf_calls* elfcalls(void)
 {
 	if (!_elfcalls)
 	{
-		void* module = dlopen("/usr/lib/libelfloader.dylib", RTLD_NOW);
+		void* module = dlopen("/usr/lib/darling/libelfloader.dylib", RTLD_NOW);
 		// if (!module)
 		//	__simple_printf("Load error: %s\n", dlerror());
-		
+
 		// struct elf_calls** ptr = (struct elf_calls**) dlsym(module, "_elfcalls");
 		// __simple_printf("_elfcalls is at %p\n", ptr);
 		// __simple_printf("*_elfcalls = %p\n", *ptr);
