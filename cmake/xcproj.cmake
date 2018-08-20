@@ -1,8 +1,8 @@
 # Create developer dir symlinks
 
 add_custom_target(xcproj_symlinks
-	DEPENDS Foundation
-	COMMAND env BUILD=${CMAKE_BUID_DIR} ${CMAKE_SOURCE_DIR}/Developer/symlinks.sh
+	DEPENDS Foundation bsdln
+	COMMAND env BUILD=${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/Developer/symlinks.sh
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/Developer
 )
 

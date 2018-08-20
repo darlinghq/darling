@@ -1,12 +1,15 @@
 SDK="`pwd`/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
 FRAMEWORKS="$SDK/System/Library/Frameworks"
 LIBS="$SDK/usr/lib"
+TOOLS="`pwd`/Toolchains/XcodeDefault.xctoolchain/usr/bin"
 
 ln -sf "$BUILD/src/external/foundation/Foundation" "$FRAMEWORKS/Foundation.framework/Versions/C"
 ln -sf "$BUILD/src/external/corefoundation/CoreFoundation" "$FRAMEWORKS/CoreFoundation.framework/Versions/A"
 
 ln -sf "$BUILD/src/external/objc4/runtime/libobjc.A.dylib" "$LIBS"
 ln -sf "$BUILD/src/libsystem/libSystem.B.dylib" "$LIBS"
+
+echo $BUILD
 
 mkdir -p "$LIBS/system"
 ln -sf "$BUILD/src/sandbox/libsystem_sandbox.dylib" "$LIBS/system"
@@ -36,3 +39,6 @@ ln -sf "$BUILD/src/external/libxpc/libxpc.dylib" "$LIBS/system"
 ln -sf "$BUILD/src/external/corecrypto/libcorecrypto.dylib" "$LIBS/system"
 ln -sf "$BUILD/src/external/commoncrypto/libcommonCrypto.dylib" "$LIBS/system"
 ln -sf "$BUILD/src/launchd/liblaunch/liblaunch.dylib" "$LIBS/system"
+
+ln -sf "$BUILD/src/bsdln/bsdln" "$TOOLS/bsdln"
+ln -sf "$BUILD/src/bsdln/bsdln" "$TOOLS/ln"
