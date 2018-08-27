@@ -769,6 +769,8 @@ pid_t spawnInitProcess(void)
 		setresuid(g_originalUid, g_originalUid, g_originalUid);
 		prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
 
+		setupCoredumpPattern();
+
 		// Set name to darling-init
 		prctl(PR_SET_NAME, DARLING_INIT_COMM, 0, 0);
 		p = stpcpy(g_argv[0], DARLING_INIT_COMM);
@@ -1216,5 +1218,16 @@ void loadKernelModule()
 	{
 		fprintf(stderr, "Failed to load the kernel module\n");
 		exit(1);
+	}
+}
+
+void setupCoredumpPattern(void)
+{
+	FILE* f = fopen("/proc/sys/kernel/core_pattern", "w");
+	if (f != NULL)
+	{
+		// This is how macOS saves core dumps
+		fputs("/cores/core.%p\n", f);
+		fclose(f);
 	}
 }
