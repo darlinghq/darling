@@ -286,3 +286,6 @@
 [submodule "src/external/xcbuild"]
 	path = src/external/xcbuild
 	url = ../xcbuild.git
+[submodule "src/external/bind9"]
+	path = src/external/bind9
+	url = ../darling-bind9.git
