@@ -104,6 +104,11 @@ long sys_recvmsg_nocancel(int socket, struct bsd_msghdr* msg, int flags)
 				msg->msg_controllen = lmsg.msg_controllen;
 			}
 		}
+
+		struct sockaddr_fixup* saddr = (struct sockaddr_fixup*) lmsg.msg_name;
+		if (saddr != NULL && lmsg.msg_namelen > 0)
+			saddr->bsd_family = sfamily_linux_to_bsd(saddr->linux_family);
+		msg->msg_namelen = lmsg.msg_namelen;
 	}
 
 	if (lchdr != NULL)

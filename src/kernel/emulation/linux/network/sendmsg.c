@@ -21,8 +21,16 @@ long sys_sendmsg_nocancel(int socket, const struct bsd_msghdr* msg, int flags)
 	int ret, linux_flags;
 	struct linux_msghdr lmsg;
 	struct linux_cmsghdr* lchdr = NULL;
+	struct bsd_sockaddr* xname;
 
-	lmsg.msg_name = msg->msg_name;
+	if (msg->msg_name != NULL && msg->msg_namelen > 0)
+	{
+		struct sockaddr_fixup* saddr = __builtin_alloca(msg->msg_namelen);
+		memcpy(saddr, msg->msg_name, msg->msg_namelen);
+		saddr->linux_family = sfamily_bsd_to_linux(saddr->bsd_family);
+		lmsg.msg_name = saddr;
+	}
+
 	lmsg.msg_namelen = msg->msg_namelen;
 	lmsg.msg_iov = msg->msg_iov;
 	lmsg.msg_iovlen = msg->msg_iovlen;
