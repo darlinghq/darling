@@ -524,8 +524,8 @@ void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state
 
 void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state64_t* s)
 {
-	*((uint32_t*)&s->__fpu_fcw) = fx->cwd;
-	*((uint32_t*)&s->__fpu_fsw) = fx->swd;
+	*((uint16_t*)&s->__fpu_fcw) = fx->cwd;
+	*((uint16_t*)&s->__fpu_fsw) = fx->swd;
 	s->__fpu_ftw = fx->ftw;
 	s->__fpu_fop = fx->fop;
 	s->__fpu_ip = fx->rip;
@@ -566,8 +566,8 @@ void thread_state_to_mcontext(const x86_thread_state64_t* s, struct linux_gregse
 
 void float_state_to_mcontext(const x86_float_state64_t* s, linux_fpregset_t fx)
 {
-	fx->cwd = *((uint32_t*)&s->__fpu_fcw);
-	fx->swd = *((uint32_t*)&s->__fpu_fsw);
+	fx->cwd = *((uint16_t*)&s->__fpu_fcw);
+	fx->swd = *((uint16_t*)&s->__fpu_fsw);
 	fx->ftw = s->__fpu_ftw;
 	fx->fop = s->__fpu_fop;
 	fx->rip = s->__fpu_ip;
@@ -602,8 +602,8 @@ void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state
 
 void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state32_t* s)
 {
-	*((uint32_t*)&s->__fpu_fcw) = fx->cw;
-	*((uint32_t*)&s->__fpu_fsw) = fx->sw;
+	*((uint16_t*)&s->__fpu_fcw) = fx->cw;
+	*((uint16_t*)&s->__fpu_fsw) = fx->sw;
 	s->__fpu_ftw = fx->tag;
 	s->__fpu_fop = 0;
 	s->__fpu_ip = fx->ipoff;
@@ -640,8 +640,8 @@ void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux_gregse
 
 void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx)
 {
-	fx->cw = *((uint32_t*)&s->__fpu_fcw);
-	fx->sw = *((uint32_t*)&s->__fpu_fsw);
+	fx->cw = *((uint16_t*)&s->__fpu_fcw);
+	fx->sw = *((uint16_t*)&s->__fpu_fsw);
 	fx->tag = s->__fpu_ftw;
 	fx->ipoff = s->__fpu_ip;
 	fx->cssel = s->__fpu_cs;

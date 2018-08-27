@@ -77,6 +77,8 @@ int sockopt_bsd_to_linux(int* level, int* optname, void** optval, void* optbuf)
 				*optname = LINUX_SO_DONTROUTE; break;
 			case BSD_SO_BROADCAST:
 				*optname = LINUX_SO_BROADCAST; break;
+			case BSD_SO_TIMESTAMP:
+				*optname = LINUX_SO_TIMESTAMP; break;
 			case BSD_SO_USELOOPBACK:
 				return -ENOTSUP;
 			case BSD_SO_LINGER_TICKS:

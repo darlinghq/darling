@@ -147,6 +147,7 @@ set(emulation_sources
 	signal/sig_restorer.S
 	signal/sigsuspend.c
 	signal/sigexc.c
+	signal/sigwait.c
 	misc/ptrace.c
 	misc/getentropy.c
 	misc/syscall.c

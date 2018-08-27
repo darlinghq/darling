@@ -94,6 +94,7 @@
 #include "signal/sigreturn.h"
 #include "signal/sigprocmask.h"
 #include "signal/sigsuspend.h"
+#include "signal/sigwait.h"
 #include "process/vfork.h"
 #include "process/wait4.h"
 #include "process/waitid.h"
@@ -368,6 +369,7 @@ void* __bsd_syscall_table[600] = {
 	[327] = sys_issetugid,
 	[328] = sys_pthread_kill,
 	[329] = sys_sigprocmask, // __pthread_sigmask
+	[330] = sys_sigwait,
 	[331] = sys_disable_threadsignal,
 	[332] = sys_pthread_markcancel,
 	[333] = sys_pthread_canceled,
@@ -420,6 +422,7 @@ void* __bsd_syscall_table[600] = {
 	[415] = sys_pwrite_nocancel,
 	[417] = sys_poll_nocancel,
 	[420] = sys_sem_wait_nocancel,
+	[422] = sys_sigwait_nocancel,
 	[423] = sys_semwait_signal_nocancel,
 	[441] = sys_guarded_open_np,
 	[442] = sys_guarded_close_np,
