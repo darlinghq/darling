@@ -55,8 +55,6 @@ extern int getentropy(void* buf, size_t len);
 #define ELF_PAGEOFFSET(_v) ((_v) & (ELF_MIN_ALIGN-1))
 #define ELF_PAGEALIGN(_v) (((_v) + ELF_MIN_ALIGN - 1) & ~(ELF_MIN_ALIGN - 1))
 
-extern char** environ;
-
 struct loader_context
 {
 	uintptr_t interp_entry;
@@ -67,7 +65,7 @@ struct loader_context
 	uintptr_t interp_base;
 };
 
-static void run(const char* path);
+static void run(const char* path, const char** envp);
 static void load(const char* path, struct loader_context* lc, bool isInterp);
 static void loader_return(void);
 static const char SYSTEM_ROOT[] = "/Volumes/SystemRoot";
@@ -77,14 +75,14 @@ struct elf_calls* _elfcalls;
 
 #ifndef TEST
 __attribute__((constructor))
-	static void runDummy(void)
+	static void runDummy(int argc, const char** argv, const char** envp)
 {
 	_elfcalls = (struct elf_calls*) malloc(sizeof(struct elf_calls));
-	run(DUMMY_PATH);
+	run(DUMMY_PATH, envp);
 }
 #endif
 
-void run(const char* path)
+void run(const char* path, const char** envp)
 {
 	struct loader_context lc;
 	unsigned long *stack, *stackmem;
@@ -111,7 +109,7 @@ void run(const char* path)
 	ptrcount += 4; // argv
 
 	// environ
-	for (int i = 0; environ[i] != NULL; i++)
+	for (int i = 0; envp[i] != NULL; i++)
 		ptrcount++;
 	ptrcount++;
 
@@ -132,8 +130,8 @@ void run(const char* path)
 	stack[pos++] = 0;
 
 
-	for (int i = 0; environ[i] != NULL; i++)
-		stack[pos++] = (unsigned long) environ[i];
+	for (int i = 0; envp[i] != NULL; i++)
+		stack[pos++] = (unsigned long) envp[i];
 
 #ifdef __linux__ // For testing
 	getrandom(entropy, sizeof(entropy), 0);
