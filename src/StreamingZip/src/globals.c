@@ -1,0 +1,4 @@
+void* kSZArchiverOptionNoCentralDirectory;
+void* kSZArchiverOptionNoSeekOutput;
+
+

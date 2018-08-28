@@ -280,3 +280,10 @@ LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid)
 }
 
 
+CFStringRef LSUserApplicationType = CFSTR("User");
+CFStringRef LSSystemApplicationType = CFSTR("System");
+CFStringRef LSInternalApplicationType = CFSTR("Internal");
+CFStringRef LSPlugInKitType = CFSTR("PluginKitPlugin");
+CFStringRef LSVPNPluginType = CFSTR("VPNPlugin");
+
+

@@ -43,6 +43,8 @@ set(CoreServices_SRCS
 	TextCommon.cpp
 	TextEncodingConverter.cpp
 	MDQuery.c
+	LSApplicationProxy.m
+	LSApplicationWorkspace.m
 )
 
 if (WITH_COREAUDIO)
@@ -63,6 +65,7 @@ add_framework(CoreServices
 		CoreFoundation
 		cxx
 		iconv
+		Foundation
 		${EXTRA_LIBS}
 )
 

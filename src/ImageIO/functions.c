@@ -163,3 +163,7 @@ void CopyMetadataFromSequentialDataProviderCallbacks(void) { }
 void GetMetadataPropertyMatchingSchemaAndPropertyName(void) { }
 void ImageIODebug(void) { }
 void ImageIOSetLoggingProc(void) { }
+
+void* kCGImageSourceCreateThumbnailFromImageAlways;
+void* kCGImageSourceThumbnailMaxPixelSize;
+

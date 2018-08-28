@@ -3,8 +3,16 @@ project(StreamingZip)
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
 
-file(GLOB SZ_C src/*.c)
-file(GLOB SZ_OBJC src/*.m)
+set(SZ_C
+	src/functions.c
+	src/globals.c
+)
+set(SZ_OBJC
+	src/StreamingUnzipper.m
+	src/StreamingUnzipState.m
+	src/SZExtractorInternalDelegate.m
+	src/SZExtractor.m
+)
 
 add_framework(StreamingZip
 	FAT

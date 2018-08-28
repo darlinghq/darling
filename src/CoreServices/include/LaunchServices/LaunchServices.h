@@ -82,6 +82,8 @@ CFDictionaryRef _LSCopyApplicationInformation(int, CFTypeRef asn, int);
 
 LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid);
 
+extern CFStringRef LSUserApplicationType, LSSystemApplicationType, LSInternalApplicationType, LSPlugInKitType, LSVPNPluginType;
+
 // TODO: many other functions
 
 #ifdef __cplusplus
