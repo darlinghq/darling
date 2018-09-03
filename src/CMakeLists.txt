@@ -437,4 +437,4 @@ add_subdirectory(external/cocotron/Cocoa)
 add_subdirectory(external/cocotron/QuartzCore)
 
 add_subdirectory(external/JavaScriptCore)
-#add_subdirectory(external/WebCore)
+add_subdirectory(external/WebCore)

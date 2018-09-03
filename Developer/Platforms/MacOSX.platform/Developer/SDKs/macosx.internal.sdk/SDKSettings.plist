@@ -35,6 +35,6 @@
 	<key>Version</key>
 	<string>macosx.internal</string>
 	<key>isBaseSDK</key>
-	<string>YES</string>
+	<string>NO</string>
 </dict>
 </plist>
