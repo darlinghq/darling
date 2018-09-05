@@ -28,7 +28,7 @@ let copyright = "/*\n" +
     "This file is part of Darling.\n" +
     "\n" +
     
-    "Copyright (C) 2017 Lubos Dolezel\n" +
+    "Copyright (C) 2018 Lubos Dolezel\n" +
     "\n" +
     
     "Darling is free software: you can redistribute it and/or modify\n" +
@@ -90,7 +90,7 @@ while output.contains("@interface") {
         
         output.removeSubrange(output.startIndex ..< space.upperBound)
         
-        var endOfSuperclass: String.CharacterView.Index!
+        var endOfSuperclass: String.Index!
         let nextNewline = output.range(of: "\n")
         let nextProtocolConformance = output.range(of: " <")
         if nextNewline != nil && nextProtocolConformance != nil {
@@ -104,7 +104,7 @@ while output.contains("@interface") {
         }
         let superclass = output[output.startIndex ..< endOfSuperclass]
         
-        classes.append((class: className, superclass: superclass))
+        classes.append((class: String(className), superclass: String(superclass)))
     }
 }
 // End ugly string parsing code
@@ -119,7 +119,7 @@ var mh = copyright
 mh += "#import <Foundation/Foundation.h>\n"
 
 // Generate headers and sources for each class
-for var classEntry in classes {
+for classEntry in classes {
     
     mh += "#import <\(moduleName)/\(classEntry.class).h>\n"
     
