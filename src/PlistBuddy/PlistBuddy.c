@@ -843,30 +843,26 @@ void setEntry(const char* entry, const char* entryValue)
 	CFRelease(newValue);
 }
 
-char* strtok_empty(char* str, char delim)
+static const char* strtok_empty(char** pstr, char delim)
 {
-	static char* src = NULL;
-	char* p, *ret = NULL;
+	char* p;
+	char* str = *pstr;
 
-	if (str != NULL)
-		src = str;
-
-	if (src == NULL)
+	if (str == NULL)
 		return NULL;
 
-	if ((p = strchr (src, delim)) != NULL)
+	while (str[0] == delim)
+		str++;
+
+	if ((p = strchr (str, delim)) != NULL)
 	{
 		*p = '\0';
-		ret = src;
-		src = ++p;
-	}
-	else
-	{
-		ret = src;
-		src = NULL;
+		*pstr = p + 1;
+	} else {
+		*pstr = NULL;
 	}
 
-	return ret;
+	return str;
 }
 
 void resolvePlistEntry(const char* whatStr, CFPropertyListRef* parent, CFPropertyListRef* entry, char** last, bool autoCreate)
@@ -876,23 +872,20 @@ void resolvePlistEntry(const char* whatStr, CFPropertyListRef* parent, CFPropert
 
 	const char *tok, *lastTok = "";
 
-	if (whatStr[0] == ':')
+	// trim head
+	while (whatStr[0] == ':')
 		whatStr++;
 
-	char* whatStr2 = strdup(whatStr);
-	const char* finalTok = strrchr(whatStr2, ':');
+	// trim tail
+	size_t len = strlen(whatStr);
+	while(len > 0 && whatStr[len - 1] == ':') {
+		len--;
+	}
 
-	if (finalTok == NULL)
-		finalTok = whatStr2;
-	else
-		finalTok++;
+	char* whatStr2 = strndup(whatStr, len);
+	char* p = whatStr2;
 
-	if (*whatStr2)
-		tok = strtok_empty(whatStr2, ':');
-	else
-		tok = NULL;
-
-	while (tok != NULL && pos != NULL)
+	while ((tok = strtok_empty(&p, ':')) && pos != NULL)
 	{
 		lastPos = pos;
 		if (*tok)
@@ -903,8 +896,7 @@ void resolvePlistEntry(const char* whatStr, CFPropertyListRef* parent, CFPropert
 			{
 				CFStringRef key = CFStringCreateWithCString(kCFAllocatorDefault, tok, kCFStringEncodingUTF8);
 				pos = (CFPropertyListRef) CFDictionaryGetValue((CFDictionaryRef) pos, key);
-
-				if (pos == NULL && autoCreate && tok != finalTok)
+				if (pos == NULL && autoCreate && p != NULL)
 				{
 					pos = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 					CFDictionaryAddValue((CFMutableDictionaryRef) lastPos, key, pos);
@@ -928,11 +920,8 @@ void resolvePlistEntry(const char* whatStr, CFPropertyListRef* parent, CFPropert
 				pos = NULL;
 			}
 		}
-		else
-			pos = NULL;
 
 		lastTok = tok;
-		tok = strtok_empty(NULL, ':');
 	}
 
 	if (last != NULL)
@@ -975,7 +964,7 @@ void prettyPrintPlist(CFPropertyListRef what, int indentNum)
 			printf("\n");
 		}
 
-		printf("%s}\n", indent);
+		printf("%s}", indent);
 	}
 	else if (typeId == CFDictionaryGetTypeID())
 	{
@@ -1000,7 +989,7 @@ void prettyPrintPlist(CFPropertyListRef what, int indentNum)
 			printf("\n");
 		}
 
-		printf("%s}\n", indent);
+		printf("%s}", indent);
 
 		free(keys);
 		free(values);
@@ -1063,33 +1052,36 @@ void prettyPrintPlist(CFPropertyListRef what, int indentNum)
 		CFIndex len = CFDataGetLength(data);
 
 		fwrite(bytes, 1, len, stdout);
-		putchar('\n');
 	}
 }
 
 void doPrint(const char* whatStr)
 {
 	CFPropertyListRef what = plist;
+	CFPropertyListRef entry = plist;
 
 	if (whatStr != NULL)
 	{
-		resolvePlistEntry(whatStr, &what, NULL, NULL, false);
-		if (what == NULL)
+		resolvePlistEntry(whatStr, &what, &entry, NULL, false);
+		if (entry == NULL)
 		{
 			printf("Print: Entry, \"%s\", Does Not Exist\n", whatStr);
 			return;
 		}
 	}
 
-	if (!forceXML)
-		prettyPrintPlist(what, 0);
+	if (!forceXML) {
+		prettyPrintPlist(entry, 0);
+		printf("\n");
+	}
 	else
 	{
-		CFDataRef data = CFPropertyListCreateXMLData(kCFAllocatorDefault, plist);
+		CFDataRef data = CFPropertyListCreateXMLData(kCFAllocatorDefault, entry);
 
 		if (data != NULL)
 		{
 			prettyPrintPlist(data, 0);
+			printf("\n");
 
 			CFRelease(data);
 		}
