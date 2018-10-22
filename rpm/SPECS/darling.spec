@@ -92,7 +92,7 @@ fi
 %{_libexecdir}/darling
 
 %files mach
-%{_sysconfdir}/udev/rules.d/00-darling-mach.rules
+#%{_sysconfdir}/udev/rules.d/00-darling-mach.rules
 %{_prefix}/src/%{name}-mach-%{version}
 
 %changelog
