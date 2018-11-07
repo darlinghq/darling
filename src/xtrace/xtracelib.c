@@ -53,7 +53,7 @@ static void setup_hook(struct hook* hook, void* fnptr)
 static void xtrace_setup_mach(void)
 {
 	uintptr_t area = (uintptr_t)_darling_mach_syscall_entry;
-	uintptr_t areaEnd = area + sizeof(struct hook);
+	uintptr_t areaEnd = ((uintptr_t)_darling_mach_syscall_exit) + sizeof(struct hook);
 
 	// __asm__("int3");
 	area &= ~(4096-1);
@@ -72,7 +72,7 @@ static void xtrace_setup_mach(void)
 static void xtrace_setup_bsd(void)
 {
 	uintptr_t area = (uintptr_t)_darling_bsd_syscall_entry;
-	uintptr_t areaEnd = area + sizeof(struct hook);
+	uintptr_t areaEnd = ((uintptr_t)_darling_bsd_syscall_exit) + sizeof(struct hook);
 
 	// __asm__("int3");
 	area &= ~(4096-1);
