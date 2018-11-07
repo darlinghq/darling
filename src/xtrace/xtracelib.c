@@ -53,31 +53,39 @@ static void setup_hook(struct hook* hook, void* fnptr)
 static void xtrace_setup_mach(void)
 {
 	uintptr_t area = (uintptr_t)_darling_mach_syscall_entry;
+	uintptr_t areaEnd = area + sizeof(struct hook);
 
 	// __asm__("int3");
 	area &= ~(4096-1);
+	areaEnd &= ~(4096-1);
 
-	mprotect((void*) area, 4096, PROT_READ | PROT_WRITE | PROT_EXEC);
+	uintptr_t bytes = 4096 + (areaEnd-area);
+
+	mprotect((void*) area, bytes, PROT_READ | PROT_WRITE | PROT_EXEC);
 
 	setup_hook(_darling_mach_syscall_entry, darling_mach_syscall_entry_trampoline);
 	setup_hook(_darling_mach_syscall_exit, darling_mach_syscall_exit_trampoline);
 
-	mprotect((void*) area, 4096, PROT_READ | PROT_EXEC);
+	mprotect((void*) area, bytes, PROT_READ | PROT_EXEC);
 }
 
 static void xtrace_setup_bsd(void)
 {
 	uintptr_t area = (uintptr_t)_darling_bsd_syscall_entry;
+	uintptr_t areaEnd = area + sizeof(struct hook);
 
 	// __asm__("int3");
 	area &= ~(4096-1);
+	areaEnd &= ~(4096-1);
 
-	mprotect((void*) area, 4096, PROT_READ | PROT_WRITE | PROT_EXEC);
+	uintptr_t bytes = 4096 + (areaEnd-area);
+
+	mprotect((void*) area, bytes, PROT_READ | PROT_WRITE | PROT_EXEC);
 
 	setup_hook(_darling_bsd_syscall_entry, darling_bsd_syscall_entry_trampoline);
 	setup_hook(_darling_bsd_syscall_exit, darling_bsd_syscall_exit_trampoline);
 
-	mprotect((void*) area, 4096, PROT_READ | PROT_EXEC);
+	mprotect((void*) area, bytes, PROT_READ | PROT_EXEC);
 }
 
 void handle_generic_entry(const struct calldef* defs, const char* type, int nr, void* args[])
