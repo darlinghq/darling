@@ -33,7 +33,7 @@ endfunction(dsym)
 
 function(FindDsymutil)
 	# llvm-dsymutil-4.0 is not listed, because it's very buggy
-	find_program(DSYMUTIL_EXE NAMES "llvm-dsymutil" "dsymutil" "llvm-dsymutil-7.0" "llvm-dsymutil-6.0" "llvm-dsymutil-5.0" "llvm-dsymutil-3.9" "llvm-dsymutil-3.8" "llvm-dsymutil-3.7")
+	find_program(DSYMUTIL_EXE NAMES "llvm-dsymutil" "dsymutil" "dsymutil-7" "llvm-dsymutil-7.0" "llvm-dsymutil-6.0" "llvm-dsymutil-5.0" "llvm-dsymutil-3.9" "llvm-dsymutil-3.8" "llvm-dsymutil-3.7")
 	if (DSYMUTIL_EXE)
 		message(STATUS "Found dsymutil: ${DSYMUTIL_EXE}")
 	else (DSYMUTIL_EXE)
