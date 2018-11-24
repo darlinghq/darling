@@ -213,6 +213,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreMedia/include
 	${CMAKE_CURRENT_SOURCE_DIR}/JavaVM/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DirectoryServices/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -396,6 +397,7 @@ add_subdirectory(CoreMedia)
 add_subdirectory(WebKit)
 add_subdirectory(OpenGL)
 add_subdirectory(JavaVM)
+add_subdirectory(DirectoryServices)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
