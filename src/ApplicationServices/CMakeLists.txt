@@ -10,5 +10,6 @@ add_framework(ApplicationServices
 	DEPENDENCIES
 		system CoreServices
 	LINK_FLAGS
-		" -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/CoreServices/CoreServices"
+		" -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/CoreServices/CoreServices \
+		  -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/CoreGraphics"
 )
