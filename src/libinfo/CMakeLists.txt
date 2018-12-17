@@ -15,6 +15,8 @@ add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-D__APPLE__ -D__DYNAMIC__)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 
+add_definitions(-DDS_AVAILABLE)
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
@@ -67,9 +69,11 @@ add_circular(system_info FAT
 		system_pthread
 		libdispatch_shared
 		system_notify
+		system_asl
 		platform
 		xpc
 		compiler_rt
+		launch
 	DEPENDENCIES
 		resolv-darwin
 )
