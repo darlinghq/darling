@@ -440,5 +440,8 @@ add_subdirectory(external/cocotron/CoreData)
 add_subdirectory(external/cocotron/Cocoa)
 add_subdirectory(external/cocotron/QuartzCore)
 
+if(FULL_BUILD)
 add_subdirectory(external/JavaScriptCore)
+endif(FULL_BUILD)
+
 #add_subdirectory(external/WebCore)

@@ -42,6 +42,7 @@ enable_language(ASM-ATT)
 
 option(FRAMEWORK_COREAUDIO "Enable audio-related functionality" OFF)
 option(FRAMEWORK_APPKIT "Enable AppKit development code" OFF)
+option(FULL_BUILD "Include large items in the build" ON)
 
 FindDsymutil()
 
