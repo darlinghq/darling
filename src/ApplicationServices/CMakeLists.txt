@@ -13,3 +13,5 @@ add_framework(ApplicationServices
 		" -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/CoreServices/CoreServices \
 		  -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/CoreGraphics"
 )
+
+add_dependencies(ApplicationServices CoreServices CoreGraphics)
