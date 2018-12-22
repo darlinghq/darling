@@ -37,6 +37,7 @@ set(emulation_sources
 	errno.c
 	readline.c
 	common_at.c
+	fdpath.c
 	wrapped/shm_open.c
 	wrapped/shm_unlink.c
 	wrapped/sem_open.c

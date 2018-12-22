@@ -10,8 +10,8 @@
 kern_return_t		mach_timebase_info_trap_impl(
 						mach_timebase_info_t	info)
 {
-	info->numer = NSEC_PER_SEC;
-	info->denom = NSEC_PER_SEC;
+	info->numer = 1;
+	info->denom = 1;
 	return KERN_SUCCESS;
 }
 

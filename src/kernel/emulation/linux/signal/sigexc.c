@@ -44,6 +44,7 @@ static void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux
 static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx);
 #endif
 
+#define DEBUG_SIGEXC
 #ifdef DEBUG_SIGEXC
 #define kern_printf(...) { char buf[128]; __simple_sprintf(buf, __VA_ARGS__); lkm_call(0x1028, buf); }
 #else
@@ -524,6 +525,8 @@ void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state
 
 void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state64_t* s)
 {
+	kern_printf("sigexc: fcw out: 0x%x", fx->cwd);
+	kern_printf("sigexc: xmm0 out: 0x%x", fx->_xmm[0].element[0]);
 	*((uint16_t*)&s->__fpu_fcw) = fx->cwd;
 	*((uint16_t*)&s->__fpu_fsw) = fx->swd;
 	s->__fpu_ftw = fx->ftw;
@@ -577,6 +580,8 @@ void float_state_to_mcontext(const x86_float_state64_t* s, linux_fpregset_t fx)
 
 	memcpy(fx->_st, &s->__fpu_stmm0, 128);
 	memcpy(fx->_xmm, &s->__fpu_xmm0, 256);
+	kern_printf("sigexc: fcw in: 0x%x", fx->cwd);
+	kern_printf("sigexc: xmm0 in: 0x%x", fx->_xmm[0].element[0]);
 }
 
 #elif defined(__i386__)

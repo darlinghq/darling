@@ -7,6 +7,7 @@
 #include "../fcntl/open.h"
 #include "../unistd/close.h"
 #include "../unistd/readlink.h"
+#include "../fdpath.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 
@@ -46,8 +47,7 @@ long sys_fstatfs64(int fd, struct bsd_statfs64* buf)
 
 	statfs_linux_to_bsd64(&lbuf, buf);
 
-	sprintf(line, "/proc/self/fd/%d", fd);
-	ret = sys_readlink(line, path, sizeof(path));
+	ret = fdpath(fd, path, sizeof(fd));
 
 	if (ret < 0)
 		return ret;

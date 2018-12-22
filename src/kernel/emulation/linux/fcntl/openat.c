@@ -3,6 +3,8 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
+#include <lkm/api.h>
+#include <mach/lkm.h>
 #include "../../../../libc/include/fcntl.h"
 #include "../common_at.h"
 #include "../bsdthread/cancelable.h"
@@ -18,6 +20,7 @@
 #endif
 
 extern int strcmp(const char *s1, const char *s2);
+extern char* strcpy(char* dst, const char* src);
 
 long sys_openat(int fd, const char* filename, int flags, unsigned int mode)
 {
@@ -45,9 +48,24 @@ long sys_openat_nocancel(int fd, const char* filename, int flags, unsigned int m
 	else if (strcmp(filename, "/dev/autofs_nowait") == 0)
 		filename = "/dev/null";
 
-	ret = LINUX_SYSCALL(__NR_openat, atfd(fd), filename, linux_flags, mode);
+	struct vchroot_expand_args vc;
+	vc.flags = VCHROOT_FOLLOW;
+	vc.dfd = atfd(fd);
+	
+	strcpy(vc.path, filename);
+	ret = lkm_call(NR_vchroot_expand, &vc);
+	if (ret < 0) {
+		__simple_printf("vchroot_exoand failed for %s: %d\n", filename, ret);
+		return errno_linux_to_bsd(ret);
+	}
+	__simple_printf("vchroot_expand: %s -> %s\n", filename, vc.path);
+
+	ret = LINUX_SYSCALL(__NR_openat, vc.dfd, vc.path, linux_flags, mode);
 	if (ret < 0)
+	{
+		__simple_printf("open failed with error %d\n", ret);
 		ret = errno_linux_to_bsd(ret);
+	}
 
 	return ret;
 }

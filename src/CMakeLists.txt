@@ -56,6 +56,7 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(libdyld)
 add_subdirectory(DebugSymbols/getuuid)
 add_subdirectory(libelfloader/wrapgen)
+add_subdirectory(libelfloader/fakechroot)
 add_subdirectory(startup)
 
 add_definitions(
@@ -222,6 +223,7 @@ add_subdirectory(external/libplatform)
 add_subdirectory(external/libpthread)
 add_subdirectory(kernel)
 add_subdirectory(libc)
+add_subdirectory(vchroot)
 
 add_definitions(-D_LIBC_NO_FEATURE_VERIFICATION)
 add_subdirectory(external/darling-dmg)

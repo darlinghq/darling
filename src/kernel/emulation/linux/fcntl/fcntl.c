@@ -6,6 +6,7 @@
 #include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 #include "../bsdthread/cancelable.h"
+#include "../fdpath.h"
 
 #ifndef O_NOFOLLOW
 #   define O_NOFOLLOW 0x0100
@@ -62,14 +63,9 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 			break;
 		case F_GETPATH:
 		{
-			char buf[100];
-			int len;
-
-			__simple_sprintf(buf, "/proc/self/fd/%d", fd);
-			len = sys_readlink(buf, (char*) arg, MAXPATHLEN);
-
-			if (len >= 0)
-				((char*) arg)[len] = '\0';
+			ret = fdpath(fd, arg, MAXPATHLEN);
+			if (ret < 0)
+				return errno_linux_to_bsd(ret);
 
 			return 0;
 		}

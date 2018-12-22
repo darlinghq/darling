@@ -4,14 +4,25 @@
 #include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 #include "../common_at.h"
-
-extern char* strcpy(char* dst, const char* src);
+#include <lkm/api.h>
+#include <mach/lkm.h>
+#include "../bsdthread/per_thread_wd.h"
 
 long sys_symlinkat(const char* path, int fd, const char* link)
 {
 	int ret;
+	struct vchroot_expand_args vc;
 
-	ret = LINUX_SYSCALL(__NR_symlinkat, path, atfd(fd), link);
+	vc.flags = 0;
+	vc.dfd = get_perthread_wd();
+	
+	strcpy(vc.path, link);
+
+	ret = lkm_call(NR_vchroot_expand, &vc);
+	if (ret < 0)
+		return errno_linux_to_bsd(ret);
+
+	ret = LINUX_SYSCALL(__NR_symlinkat, path, vc.dfd, vc.path);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
 
