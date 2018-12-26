@@ -24,7 +24,7 @@ BuildRequires:  libjpeg-turbo-devel(x86-64) libtiff-devel(x86-64)
 BuildRequires:  libjpeg-turbo-devel(x86-32) libtiff-devel(x86-32)
 BuildRequires:  libglvnd-devel mesa-libGL-devel mesa-libEGL-devel
 BuildRequires:  libxml2-devel elfutils-libelf-devel
-
+BuildRequires:  libbsd-devel
 #It will pick up all the mac pieces as dependencies. No thank you!
 AutoReqProv:    no
 
@@ -92,7 +92,7 @@ fi
 %{_libexecdir}/darling
 
 %files mach
-%{_sysconfdir}/udev/rules.d/00-darling-mach.rules
+#%{_sysconfdir}/udev/rules.d/00-darling-mach.rules
 %{_prefix}/src/%{name}-mach-%{version}
 
 %changelog
