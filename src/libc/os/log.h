@@ -59,7 +59,14 @@ typedef struct os_log_s *os_log_t;
  * @discussion
  * Use this to disable a specific log message.
  */
-#define OS_LOG_DISABLED NULL
+#if OS_LOG_TARGET_HAS_10_13_FEATURES
+#define OS_LOG_DISABLED OS_OBJECT_GLOBAL_OBJECT(os_log_t, _os_log_disabled)
+API_AVAILABLE(macosx(10.13), ios(11.0), watchos(4.0), tvos(11.0))
+OS_EXPORT
+struct os_log_s _os_log_disabled;
+#else
+#define OS_LOG_DISABLED ((os_log_t _Nonnull)NULL)
+#endif
 
 /*!
  * @const OS_LOG_DEFAULT

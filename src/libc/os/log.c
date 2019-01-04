@@ -2,6 +2,13 @@
 
 #include <stdio.h>
 
+struct os_log_s
+{
+	int stub;
+};
+
+struct os_log_s _os_log_disabled;
+
 bool os_log_type_enabled(os_log_t oslog, os_log_type_t type)
 {
 	printf("os_log_enabled stub called\n");
