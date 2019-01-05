@@ -214,6 +214,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreMedia/include
 	${CMAKE_CURRENT_SOURCE_DIR}/JavaVM/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DirectoryServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ConfigurationProfiles/include
 )
 
 add_subdirectory(external/libkqueue)
