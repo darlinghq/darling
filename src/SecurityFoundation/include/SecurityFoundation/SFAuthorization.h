@@ -1,40 +1,24 @@
-#ifndef _SFAUTHORIZATION_H_
-#define _SFAUTHORIZATION_H_
+/*
+ This file is part of Darling.
 
-#import <Foundation/Foundation.h>
-#import <Security/Authorization.h>
+ Copyright (C) 2019 Lubos Dolezel
 
-@interface SFAuthorization : NSObject <NSCoding>
-{
-@private
-	AuthorizationRef _authorization;
-    id _reserved;
-}
+ Darling is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
 
-+ (id)authorization;
+ Darling is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
 
-- (AuthorizationRef)authorizationRef;
+ You should have received a copy of the GNU General Public License
+ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
-+ (id)authorizationWithFlags:(AuthorizationFlags)flags rights:(const AuthorizationRights *)rights environment:(const AuthorizationEnvironment *)environment;
+#include <Foundation/Foundation.h>
 
-- (id)initWithFlags:(AuthorizationFlags)flags rights:(const AuthorizationRights *)rights environment:(const AuthorizationEnvironment *)environment;
-
--(id)init;
-
-- (void)invalidateCredentials;
-
-- (BOOL)obtainWithRight:(AuthorizationString)rightName flags:(AuthorizationFlags)flags error:(NSError**)error;
-
-- (BOOL)obtainWithRights:(const AuthorizationRights *)rights flags:(AuthorizationFlags)flags environment:(const AuthorizationEnvironment *)environment authorizedRights:(AuthorizationRights **)authorizedRights error:(NSError**)error;
+@interface SFAuthorization : NSObject
 
 @end
-
-@interface SFAuthorization (SFAuthorizationDeprecated)
-
-- (OSStatus)permitWithRights:(const AuthorizationRights *)rights flags:(AuthorizationFlags)flags environment:(const AuthorizationEnvironment *)environment authorizedRights:(AuthorizationRights *)authorizedRights DEPRECATED_IN_MAC_OS_X_VERSION_10_5_AND_LATER;
-
-- (OSStatus)permitWithRight:(AuthorizationString)rightName flags:(AuthorizationFlags)flags DEPRECATED_IN_MAC_OS_X_VERSION_10_5_AND_LATER;
-
-@end
-
-#endif

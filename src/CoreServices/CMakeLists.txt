@@ -45,6 +45,7 @@ set(CoreServices_SRCS
 	MDQuery.c
 	LSApplicationProxy.m
 	LSApplicationWorkspace.m
+	constants.m
 )
 
 if (WITH_COREAUDIO)
