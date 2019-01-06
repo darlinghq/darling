@@ -1,5 +1,4 @@
 #include <CoreFoundation/CoreFoundation.h>
-<<<<<<< HEAD
 
 const CFStringRef _kLSPIDKey = CFSTR("pid");
 const CFStringRef kUTTagClassDeviceModelCode = CFSTR("com.apple.device-model-code");
