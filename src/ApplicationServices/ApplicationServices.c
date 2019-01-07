@@ -8,3 +8,5 @@ const CFStringRef kAXUIElementCopyHierarchyResultValueKey = CFSTR("value");
 const CFStringRef kAXUIElementCopyHierarchyReturnAttributeErrorsKey = CFSTR("AXCHRE");
 const CFStringRef kAXUIElementCopyHierarchySkipInspectionForAttributesKey = CFSTR("AXCHSIA");
 const CFStringRef kAXUIElementCopyHierarchyTruncateStringsKey = CFSTR("AXTRUNC");
+/* Not const for some reason */
+CFStringRef kAXTrustedCheckOptionPrompt = CFSTR("AXTrustedCheckOptionPrompt");

@@ -10,7 +10,9 @@ add_framework(Carbon
 
     SOURCES
         src/Carbon.c
+	src/constants.c
 
     DEPENDENCIES
+    	CoreFoundation
         system
 )
