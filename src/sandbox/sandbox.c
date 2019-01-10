@@ -1,7 +1,7 @@
 #include "sandbox.h"
 #include <stddef.h>
 #include <string.h>
-
+#include <stdlib.h>
 #include <sys/types.h>
 
 // DUMMY implementation
@@ -22,6 +22,26 @@ const char kSBXProfileNoWrite[] = "no_write";
 const char kSBXProfileNoWriteExceptTemporary[] = "no_write_except_temporary";
 
 const char kSBXProfilePureComputation[] = "pure_computation";
+
+const char APP_SANDBOX_IOKIT_CLIENT[] = "com.apple.app-sandbox.iokit-client";
+const char APP_SANDBOX_MACH[] = "com.apple.app-sandbox.mach";
+const char APP_SANDBOX_READ[] = "com.apple.app-sandbox.read";
+const char APP_SANDBOX_READ_WRITE[] = "com.apple.app-sandbox.read-write";
+const char IOS_SANDBOX_APPLICATION_GROUP[] = "com.apple.sandbox.application-group";
+const char IOS_SANDBOX_CONTAINER[] = "com.apple.sandbox.container";
+
+// Assuming these are 64-bit only because at least one has a value
+// that can't be stored in a 32-bit integer.
+#ifdef __LP64__
+
+const uint64_t SANDBOX_EXTENSION_CANONICAL = 0x0000001000000002;
+const uint64_t SANDBOX_EXTENSION_DEFAULT = 0x0000000400000000;
+const uint64_t SANDBOX_EXTENSION_MAGIC = 0x0000000000000001;
+const uint64_t SANDBOX_EXTENSION_NO_REPORT = 0x0000000100000010;
+const uint64_t SANDBOX_EXTENSION_PREFIXMATCH = 0x0000000200000004;
+const uint64_t SANDBOX_EXTENSION_UNRESOLVED = 0x0000000100000001;
+
+#endif
 
 void sandbox_free_error(char *errorbuf)
 {
