@@ -26,6 +26,9 @@
 const CFStringRef kCGImageDestinationLossyCompressionQuality = CFSTR("kCGImageDestinationLossyCompressionQuality");
 const CFStringRef kCGImageSourceCreateThumbnailFromImageAlways = CFSTR("kCGImageSourceCreateThumbnailFromImageAlways");
 const CFStringRef kCGImageSourceThumbnailMaxPixelSize = CFSTR("kCGImageSourceThumbnailMaxPixelSize");
+const CFStringRef kCGImagePropertyDPIHeight = CFSTR("DPIHeight");
+const CFStringRef kCGImagePropertyDPIWidth = CFSTR("DPIWidth");
+const CFStringRef kCGImageSourceCreateThumbnailFromImageIfAbsent = CFSTR("kCGImageSourceCreateThumbnailFromImageIfAbsent");
 
 static int verbose = 0;
 

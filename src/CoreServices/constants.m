@@ -13,8 +13,12 @@ const CFStringRef kUTTypePlainText = CFSTR("public.plain-text");
 const CFStringRef kUTTypeTIFF = CFSTR("public.tiff");
 const CFStringRef kUTTypeXMLPropertyList = CFSTR("com.apple.xml-property-list");
 const CFStringRef kUTTypeZipArchive = CFSTR("public.zip-archive");
+const CFStringRef kUTTypeAppleICNS = CFSTR("com.apple.icns");
+const CFStringRef kUTTypeFileURL = CFSTR("public.file-url");
 
 const CFStringRef _kLSASNKey = CFSTR("LSASN");
 const CFStringRef _kLSApplicationTypeKey = CFSTR("ApplicationType");
 const CFStringRef _kLSApplicationUIElementTypeKey = CFSTR("UIElement");
 const CFStringRef _kLSPreviousASNKey = CFSTR("LSOtherASN");
+
+const CFStringRef kMDItemDisplayName = CFSTR("kMDItemDisplayName");
