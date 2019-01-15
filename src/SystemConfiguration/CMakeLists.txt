@@ -1,13 +1,13 @@
 project(SystemConfiguration)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
+set(CMAKE_CXX_STANDARD 11)
 
 set(SystemConfiguration_SRCS
 	SCDynamicStoreCopySpecific.cpp
 	SCSchemaDefinitions.c
 	SCNetworkReachability.c
 	SCNetworkConnection.c
+	stubs.c
 )
 
 add_framework(SystemConfiguration
