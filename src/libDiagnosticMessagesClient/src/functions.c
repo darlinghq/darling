@@ -35,3 +35,4 @@ void* msgtracer_uuid_create(void) { if (verbose) puts("STUB: msgtracer_uuid_crea
 void* msgtracer_vlog(void) { if (verbose) puts("STUB: msgtracer_vlog called"); return NULL; }
 void* msgtracer_vlog_with_keys(void) { if (verbose) puts("STUB: msgtracer_vlog_with_keys called"); return NULL; }
 void* msgtracer_vlog_with_keys_skip_nulls(void) { if (verbose) puts("STUB: msgtracer_vlog_with_keys_skip_nulls called"); return NULL; }
+void *_Z23msgtracer_log_with_keysPciS_z(void) { puts("stub _Z23msgtracer_log_with_keysPciS_z");}
