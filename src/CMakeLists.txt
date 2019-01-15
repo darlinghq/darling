@@ -425,7 +425,7 @@ add_subdirectory(external/libcxx)
 add_subdirectory(external/libdispatch)
 
 # Requires a newer Security version
-#add_subdirectory(external/SmartCardServices)
+add_subdirectory(external/SmartCardServices)
 add_subdirectory(external/security)
 add_subdirectory(external/SecurityTokend)
 add_subdirectory(external/cctools)
