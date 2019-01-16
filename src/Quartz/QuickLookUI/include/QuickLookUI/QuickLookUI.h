@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,16 +17,10 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <QuickLook/QLPreview.h>
+#ifndef _QUICKLOOKUI_H_
+#define _QUICKLOOKUI_H_
 
-@implementation QLPreview
+#import <QuickLookUI/QLPreviewPanel.h>
+#import <QuickLookUI/QLPreviewView.h>
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
-}
-
-- (void)forwardInvocation:(NSInvocation *)anInvocation {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
-}
-
-@end
+#endif
