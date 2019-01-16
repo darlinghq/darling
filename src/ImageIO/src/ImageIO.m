@@ -29,6 +29,8 @@ const CFStringRef kCGImageSourceThumbnailMaxPixelSize = CFSTR("kCGImageSourceThu
 const CFStringRef kCGImagePropertyDPIHeight = CFSTR("DPIHeight");
 const CFStringRef kCGImagePropertyDPIWidth = CFSTR("DPIWidth");
 const CFStringRef kCGImageSourceCreateThumbnailFromImageIfAbsent = CFSTR("kCGImageSourceCreateThumbnailFromImageIfAbsent");
+const CFStringRef kCGImagePropertyPixelHeight = CFSTR("PixelHeight");
+const CFStringRef kCGImagePropertyPixelWidth = CFSTR("PixelWidth");
 
 static int verbose = 0;
 
