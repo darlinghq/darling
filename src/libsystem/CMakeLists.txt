@@ -103,7 +103,6 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libsystem_coreservices \
 	-sub_library libsystem_coretls \
 	-sub_library libsystem_asl \
-	-sub_library libdispatch \
 	-sub_library libxpc \
 	-sub_library libcorecrypto \
 	-Wl,-compatibility_version,1.0.0 \

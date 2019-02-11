@@ -1,6 +1,14 @@
 #include <os/log.h>
 
 #include <stdio.h>
+#include <stdarg.h>
+
+struct os_log_s
+{
+	int stub;
+};
+
+struct os_log_s _os_log_disabled;
 
 bool os_log_type_enabled(os_log_t oslog, os_log_type_t type)
 {
@@ -32,7 +40,12 @@ void _os_log_fault_impl(void *dso, os_log_t log, os_log_type_t type,
 
 void _os_log_internal(void *dso, os_log_t log, os_log_type_t type, const char *message, ...)
 {
-	printf("_os_log_internal called: %s\n", message);
+	va_list ap;
+	printf("_os_log_internal called: ");
+	va_start(ap, message);
+	vprintf(message, ap);
+	va_end(ap);
+	printf("\n");
 }
 
 os_log_t _os_log_create(void *dso, const char *subsystem, const char *category)
@@ -43,12 +56,12 @@ os_log_t _os_log_create(void *dso, const char *subsystem, const char *category)
 
 bool os_log_is_enabled(os_log_t log)
 {
-	printf("os_log_is_enabled called");
+	printf("os_log_is_enabled called\n");
 	return 1;
 }
 
 bool os_log_is_debug_enabled(os_log_t log)
 {
-	printf("os_log_is_debug_enabled called");
+	printf("os_log_is_debug_enabled called\n");
 	return 1;
 }

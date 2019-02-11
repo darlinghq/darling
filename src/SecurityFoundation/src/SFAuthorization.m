@@ -1,52 +1,32 @@
-#include <SecurityFoundation/SecurityFoundation.h>
+/*
+ This file is part of Darling.
+
+ Copyright (C) 2019 Lubos Dolezel
+
+ Darling is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Darling is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#import <SecurityFoundation/SFAuthorization.h>
 
 @implementation SFAuthorization
 
-+ (id)authorization {
-    return [[self alloc] init];
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }
 
-- (AuthorizationRef)authorizationRef {
-    return NULL;
-}
-
-+ (id)authorizationWithFlags:(AuthorizationFlags)flags rights:(const AuthorizationRights *)rights environment:(const AuthorizationEnvironment *)environment {
-    return nil;
-}
-
-- (id)initWithFlags:(AuthorizationFlags)flags rights:(const AuthorizationRights *)rights environment:(const AuthorizationEnvironment *)environment {
-    return nil;
-}
-
--(id)init {
-    if (self = [super init]) {
-        return self;
-    } else {
-        return nil;
-    }
-}
-
-- (void)invalidateCredentials {
-
-}
-
-- (BOOL)obtainWithRight:(AuthorizationString)rightName flags:(AuthorizationFlags)flags error:(NSError**)error {
-    return NO;
-}
-
-- (BOOL)obtainWithRights:(const AuthorizationRights *)rights flags:(AuthorizationFlags)flags environment:(const AuthorizationEnvironment *)environment authorizedRights:(AuthorizationRights **)authorizedRights error:(NSError**)error {
-    return NO;
-}
-
-@end
-
-@implementation SFAuthorization (SFAuthorizationDeprecated)
-
-- (OSStatus)permitWithRights:(const AuthorizationRights *)rights flags:(AuthorizationFlags)flags environment:(const AuthorizationEnvironment *)environment authorizedRights:(AuthorizationRights *)authorizedRights {
-    return 0;
-}
-- (OSStatus)permitWithRight:(AuthorizationString)rightName flags:(AuthorizationFlags)flags {
-    return 0;
+- (void)forwardInvocation:(NSInvocation *)anInvocation {
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
 }
 
 @end

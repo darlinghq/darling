@@ -289,3 +289,6 @@
 [submodule "src/external/bind9"]
 	path = src/external/bind9
 	url = ../darling-bind9.git
+[submodule "src/external/SecurityTokend"]
+	path = src/external/SecurityTokend
+	url = ../darling-SecurityTokend.git

@@ -17,7 +17,7 @@ class_dump = "~/bin/class-dump"
 copyright = """/*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -36,22 +36,24 @@ copyright = """/*
 """
 
 c_func_impl_stub = """
-void* %s(void) {
+void* %s(void)
+{
     if (verbose) puts("STUB: %s called");
     return NULL;
 }
 """
 
-msg_handling = """- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+msg_handling = """- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
     return [NSMethodSignature signatureWithObjCTypes: \"v@:\"];
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation {
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
     NSLog(@\"Stub called: %@ in %@\", NSStringFromSelector([anInvocation selector]), [self class]);
 }
 
 """
-
 
 # Utility functions
 def usage():
@@ -203,7 +205,7 @@ if uses_objc:
     protocols_regex = re.compile("(@protocol (.+?)[\n ].+?@end)", re.DOTALL | re.MULTILINE)
     classes_regex = re.compile("(@interface (.+?) :.+?@end)", re.DOTALL | re.MULTILINE)
 
-    blacklisted_protocols = ["NSObject", "NSSecureCoding", "NSCoding", "NSCopying", "NSFastEnumeration"]
+    blacklisted_protocols = ["NSObject", "NSSecureCoding", "NSCoding", "NSCopying", "NSFastEnumeration", "NSMutableCopying"]
     for protocol_def in protocols_regex.finditer(class_dump_output):
         protocol_contents, protocol_name = protocol_def.groups()
         if protocol_name in blacklisted_protocols:

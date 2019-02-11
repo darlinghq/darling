@@ -215,6 +215,9 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreMedia/include
 	${CMAKE_CURRENT_SOURCE_DIR}/JavaVM/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DirectoryServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ConfigurationProfiles/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ImageIO/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -424,8 +427,9 @@ add_subdirectory(external/libcxx)
 add_subdirectory(external/libdispatch)
 
 # Requires a newer Security version
-#add_subdirectory(external/SmartCardServices)
+add_subdirectory(external/SmartCardServices)
 add_subdirectory(external/security)
+add_subdirectory(external/SecurityTokend)
 add_subdirectory(external/cctools)
 add_subdirectory(external/libauto)
 add_subdirectory(external/WTF)

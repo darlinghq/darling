@@ -254,6 +254,8 @@ add_framework(Contacts
         src/CNCDContactFetcher.m
         src/CNCoreDataMapperX.m
 
+	manual.m
+
     DEPENDENCIES
         system
         objc

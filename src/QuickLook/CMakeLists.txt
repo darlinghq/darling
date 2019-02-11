@@ -16,9 +16,11 @@ add_framework(QuickLook
         src/QLDebugSatelliteController.m
         src/QLPreview.m
         src/QLImageWrapper.m
+	constants.c
 
     DEPENDENCIES
         system
         objc
         Foundation
+	CoreFoundation
 )
