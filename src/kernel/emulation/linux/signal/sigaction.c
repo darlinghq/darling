@@ -137,17 +137,20 @@ void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ct
 
 	bsd_signum = signum_linux_to_bsd(linux_signum);
 
-	memset(&binfo, 0, sizeof(binfo));
-	binfo.si_signo = signum_linux_to_bsd(info->si_signo);
-	binfo.si_errno = errno_linux_to_bsd(info->si_errno);
-	binfo.si_code = info->si_code;
-	binfo.si_pid = info->si_pid;
-	binfo.si_uid = info->si_uid;
-	
-	// TODO: The following 3 exist on Linux, but it's a mess to extract them
-	binfo.si_status = 0;
-	binfo.si_addr = 0;
-	binfo.si_band = 0;
+	if (info)
+	{
+		memset(&binfo, 0, sizeof(binfo));
+		binfo.si_signo = signum_linux_to_bsd(info->si_signo);
+		binfo.si_errno = errno_linux_to_bsd(info->si_errno);
+		binfo.si_code = info->si_code;
+		binfo.si_pid = info->si_pid;
+		binfo.si_uid = info->si_uid;
+		
+		// TODO: The following 3 exist on Linux, but it's a mess to extract them
+		binfo.si_status = 0;
+		binfo.si_addr = 0;
+		binfo.si_band = 0;
+	}
 	
 	if (lc != NULL)
 	{
@@ -165,7 +168,7 @@ void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ct
 		
 	// __simple_printf("Handling signal %d\n", linux_signum);
 
-	sig_handlers[linux_signum](bsd_signum, &binfo, (lc != NULL) ? &bc : NULL);
+	sig_handlers[linux_signum](bsd_signum, info ? &binfo : NULL, (lc != NULL) ? &bc : NULL);
 	
 	// __simple_printf("Signal handled\n");
 }
