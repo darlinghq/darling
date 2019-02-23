@@ -10,6 +10,7 @@
 #include "../fcntl/open.h"
 #include "../unistd/close.h"
 #include "../unistd/read.h"
+#include "../unistd/readlink.h"
 #include "../unistd/getuid.h"
 #include "../unistd/getgid.h"
 #include "../simple.h"
@@ -18,12 +19,14 @@
 #include <stdbool.h>
 #include <sys/proc.h>
 #include <lkm/api.h>
+#include "../mach/lkm.h"
 #include "sysctl_proc.h"
 
 #define LINUX_PR_SET_NAME 15
 
 static long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int32_t bufsize);
 
+extern __SIZE_TYPE__ strlen(const char *s);
 extern void *memset(void *s, int c, __SIZE_TYPE__ n);
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 extern char *strcpy(char *dest, const char *src);
@@ -53,7 +56,7 @@ long sys_proc_info(uint32_t callnum, int32_t pid, uint32_t flavor,
 				// thus we can ignore pid and assume we're talking about
 				// the current thread.
 				int ret;
-			
+
 				ret = LINUX_SYSCALL(__NR_prctl, LINUX_PR_SET_NAME, buffer, 0UL, 0UL, 0UL);
 				if (ret < 0)
 					return errno_linux_to_bsd(ret);
@@ -82,6 +85,7 @@ static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsiz
 static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_pidthreadinfo(int32_t pid, uint64_t thread_handle, void* buffer, int32_t bufsize);
+static long _proc_pidinfo_pathinfo(int32_t pid, void* buffer, int32_t bufsize);
 
 long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int32_t bufsize)
 {
@@ -110,6 +114,10 @@ long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int
 		case PROC_PIDTHREADINFO:
 		{
 			return _proc_pidinfo_pidthreadinfo(pid, arg, buffer, bufsize);
+		}
+		case PROC_PIDPATHINFO:
+		{
+			return _proc_pidinfo_pathinfo(pid, buffer, bufsize);
 		}
 		default:
 		{
@@ -385,7 +393,7 @@ static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer
 
 // Parses line such as:
 // 5568e1914000-5568e1915000 r--p 00024000 08:01 4861625                    /usr/bin/less
-bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, struct vnode_info_path* vip)
+static bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, struct vnode_info_path* vip)
 {
 	const char* p;
 	const char* minus = NULL;
@@ -446,3 +454,10 @@ bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, struct 
 	return true;
 }
 
+static long _proc_pidinfo_pathinfo(int32_t pid, void* buffer, int32_t bufsize)
+{
+	char path[64];
+	__simple_sprintf(path, "/proc/%d/exe", pid);
+	memset(buffer, 0, bufsize);
+	return sys_readlink(path, buffer, bufsize);
+}
