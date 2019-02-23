@@ -46,6 +46,18 @@ enum {
 	F_GETPATH = 50,
 };
 
+enum {
+	LINUX_F_RDLCK = 0,
+	LINUX_F_WRLCK,
+	LINUX_F_UNLCK,
+};
+
+enum {
+	F_RDLCK = 1,
+	F_UNLCK,
+	F_WRLCK,
+};
+
 #ifndef FD_CLOEXEC
 #   define FD_CLOEXEC 1
 #endif
