@@ -11,7 +11,7 @@ const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT = SANDBOX_FILTER_NONE;
 int sandbox_init(const char *profile, uint64_t flags, char **errorbuf)
 {
 	*errorbuf = strdup("Not implemented");
-	return -1;
+	return 0;
 }
 
 const char kSBXProfileNoInternet[] = "no_internet";
@@ -52,18 +52,18 @@ void sandbox_free_error(char *errorbuf)
 int sandbox_init_with_parameters(const char *profile, uint64_t flags, const char *const parameters[], char **errorbuf)
 {
 	*errorbuf = strdup("Not implemented");
-	return -1;
+	return 0;
 }
 
 int sandbox_init_with_extensions(const char *profile, uint64_t flags, const char *const extensions[], char **errorbuf)
 {
 	*errorbuf = strdup("Not implemented");
-	return -1;
+	return 0;
 }
 
 int sandbox_check(pid_t pid, const char *operation, enum sandbox_filter_type type, ...)
 {
-	return -1;
+	return 0;
 }
 
 int sandbox_note(const char *note)
