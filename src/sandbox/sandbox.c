@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/types.h>
 
 // DUMMY implementation
@@ -67,7 +68,8 @@ int sandbox_check(pid_t pid, const char *operation, enum sandbox_filter_type typ
 
 int sandbox_note(const char *note)
 {
-	return -1;
+	printf("%s\n", note);
+	return 0;
 }
 
 int sandbox_suspend(pid_t pid)
@@ -131,9 +133,14 @@ int sandbox_wakeup_daemon(char **errorbuf)
 	return -1;
 }
 
-const char *_amkrtemp(const char *unused)
+const char *_amkrtemp(const char *path)
 {
-	return NULL;
+	size_t len = strlen(path);
+	const char suffix[] = ".amkrtempXXXXXX";
+	char *template = malloc(len + sizeof(suffix));
+	memcpy(template, path, len);
+	memcpy(template + len, suffix, sizeof(suffix));
+	return mktemp(template);
 }
 
 int rootless_allows_task_for_pid(pid_t pid) {
