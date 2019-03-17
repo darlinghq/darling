@@ -7,6 +7,8 @@ set(darwin_sources
 	compatibility_hacks.c
 	forceLibcToBuild.c
 	init_cpu_capabilities.c
-	kvm.c)
+	kvm.c
+	variant.c
+	)
 
 add_library(libc-darwin OBJECT ${darwin_sources})

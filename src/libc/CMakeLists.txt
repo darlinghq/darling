@@ -199,6 +199,7 @@ add_circular(system_c FAT OBJECTS
 		macho
 		system_duct
 		system_asl
+		xpc
 	LINK_FLAGS
 		"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/xcodescripts/alias.list"
 )
