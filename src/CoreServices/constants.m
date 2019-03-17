@@ -23,10 +23,17 @@ const CFStringRef kUTTypeFolder = CFSTR("public.folder");
 const CFStringRef kUTTypeObjectiveCPlusPlusSource = CFSTR("public.objective-c-plus-plus-source");
 const CFStringRef kUTTypeObjectiveCSource = CFSTR("public.objective-c-source");
 const CFStringRef kUTTypeTagSpecificationKey = CFSTR("UTTypeTagSpecification");
+const CFStringRef kUTTypePDF = CFSTR("com.adobe.pdf");
+const CFStringRef kUTTypeSourceCode = CFSTR("public.source-code");
+const CFStringRef kUTTypeSwiftSource = CFSTR("public.swift-source");
 
 const CFStringRef _kLSASNKey = CFSTR("LSASN");
 const CFStringRef _kLSApplicationTypeKey = CFSTR("ApplicationType");
 const CFStringRef _kLSApplicationUIElementTypeKey = CFSTR("UIElement");
 const CFStringRef _kLSPreviousASNKey = CFSTR("LSOtherASN");
+const CFStringRef kLSQuarantineAgentNameKey = CFSTR("LSQuarantineAgentName");
+const CFStringRef kLSQuarantineOriginURLKey = CFSTR("LSQuarantineOriginURL");
+const CFStringRef kLSQuarantineTimeStampKey = CFSTR("LSQuarantineTimeStamp");
 
 const CFStringRef kMDItemDisplayName = CFSTR("kMDItemDisplayName");
+const CFStringRef kMDItemLastUsedDate = CFSTR("kMDItemLastUsedDate");
