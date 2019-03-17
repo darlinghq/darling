@@ -21,8 +21,8 @@
 #ifndef _CoreMedia_H_
 #define _CoreMedia_H_
 
-#import <Foundation/Foundation.h>
 
+#include <CoreMedia/CMTime.h>
 
 void* AudioToolbox_AudioConverterDispose(void);
 void* AudioToolbox_AudioConverterGetProperty(void);

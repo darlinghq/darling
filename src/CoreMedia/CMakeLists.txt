@@ -9,10 +9,10 @@ add_framework(CoreMedia
     VERSION "A"
 
     SOURCES
-        src/CoreMedia.m
+        src/CoreMedia.c
+	src/CMTime.c
 
     DEPENDENCIES
         system
-        objc
         Foundation
 )
