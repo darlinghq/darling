@@ -26,6 +26,8 @@ const CFStringRef kUTTypeTagSpecificationKey = CFSTR("UTTypeTagSpecification");
 const CFStringRef kUTTypePDF = CFSTR("com.adobe.pdf");
 const CFStringRef kUTTypeSourceCode = CFSTR("public.source-code");
 const CFStringRef kUTTypeSwiftSource = CFSTR("public.swift-source");
+const CFStringRef kUTTypeText = CFSTR("public.text");
+const CFStringRef kUTTypeFramework = CFSTR("com.apple.framework");
 
 const CFStringRef _kLSASNKey = CFSTR("LSASN");
 const CFStringRef _kLSApplicationTypeKey = CFSTR("ApplicationType");

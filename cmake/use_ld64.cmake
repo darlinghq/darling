@@ -55,7 +55,10 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libbz2.1.0.dylib:${CMAKE_BINARY_DIR}/src/external/bzip2/libbz2.1.0.dylib \
 -Wl,-dylib_file,/usr/lib/libssl.0.9.8.dylib:${CMAKE_BINARY_DIR}/src/external/openssl/src/libssl.0.9.8.dylib \
 -Wl,-dylib_file,/usr/lib/libcrypto.0.9.8.dylib:${CMAKE_BINARY_DIR}/src/external/openssl/src/libcrypto.0.9.8.dylib \
--Wl,-dylib_file,/usr/lib/native/libGL.dylib:${CMAKE_BINARY_DIR}/src/native/libGL.dylib ")
+-Wl,-dylib_file,/usr/lib/native/libGL.dylib:${CMAKE_BINARY_DIR}/src/native/libGL.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage:${CMAKE_BINARY_DIR}/src/CoreImage/CoreImage \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo:${CMAKE_BINARY_DIR}/src/CoreVideo/CoreVideo \
+")
 
 	add_dependencies(${target} x86_64-apple-darwin11-ld)
 
