@@ -12,7 +12,7 @@ library_prefix = "/usr/lib/"
 framework_prefix = "/System/Library/Frameworks/"
 private_framework_prefix = "/System/Library/PrivateFrameworks/"
 
-class_dump = "~/bin/class-dump"
+class_dump = "/Users/andrewhyatt/bin/class-dump"
 
 copyright = """/*
  This file is part of Darling.
@@ -128,14 +128,17 @@ for line in c_func_out.splitlines():
     if line == "":
         continue
 
-    address, id, name = line.split(" ")
-    # Remove the underscore
-    name = name[1:]
+    if len(line.split(" ")) == 3:
+        address, id, name = line.split(" ")
+        # Remove the underscore
+        name = name[1:]
 
-    if id == "T":
-        functions.append(name)
+        if id == "T":
+            functions.append(name)
+    else:
+        print("Skipping c function output line")
 
-class_dump_output = subprocess.check_output(["class-dump", full_path]).decode('utf8').strip()
+class_dump_output = subprocess.check_output([class_dump, full_path]).decode('utf8').strip()
 uses_objc = "This file does not contain any Objective-C runtime information." not in class_dump_output
 
 c_header = open(header_dir + target_name + ".h", "w")
