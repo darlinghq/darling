@@ -5,12 +5,13 @@
 
 Name:           darling
 Version:        0.1
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Darling
 
 Group:          Utility
 License:        GPLv3
 URL:            https://www.darlinghq.org/
+# Use this line for Source0 if there are ever official versions.
 # Source0:        https://github.com/darlinghq/darling/archive/%%{version}/%%{name}-%%{version}.tar.gz
 Source0:        %{name}.tar.gz
 Source1:        dkms.conf
@@ -25,7 +26,7 @@ BuildRequires:  libjpeg-turbo-devel(x86-32) libtiff-devel(x86-32)
 BuildRequires:  libglvnd-devel mesa-libGL-devel mesa-libEGL-devel
 BuildRequires:  libxml2-devel elfutils-libelf-devel
 BuildRequires:  libbsd-devel
-#It will pick up all the mac pieces as dependencies. No thank you!
+# Normally rpm will pick up all the mac pieces as dependencies. Disable that.
 AutoReqProv:    no
 
 %description
@@ -51,7 +52,7 @@ pushd build
   %{__cmake} -DCMAKE_INSTALL_PREFIX=/usr \
              -DOpenGL_GL_PREFERENCE=GLVND \
              ..
-  %{make_build}
+  %{make_build} -j `nproc`
 popd
 
 %install
@@ -68,23 +69,17 @@ cp -dr --no-preserve=ownership build/src/startup/rtsig.h %{?buildroot}/usr/src/%
 
 %{__install} -m 644 %{SOURCE1} %{?buildroot}/usr/src/%{name}-mach-%{version}
 
-#%post
-#setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr
-#setcap cap_sys_rawio=ep %{_libexecdir}/darling/bin/mldr32
-
-#setsebool -P mmap_low_allowed 1
-
 %preun mach
-/usr/sbin/dkms remove -m %{name}-mach -v %{version} --all
+/usr/sbin/dkms remove -m %{name}-mach -v %{version} --all || :
 
 %post mach
 occurrences=$(/usr/sbin/dkms status | grep "%{name}" | grep "%{version}" | wc -l)
 if [ ! ${occurrences} -gt 0 ];
 then
-  /usr/sbin/dkms add -m %{name}-mach -v %{version}
+  /usr/sbin/dkms add -m %{name}-mach -v %{version} || :
 fi
-/usr/sbin/dkms build -m %{name}-mach -v %{version}
-/usr/sbin/dkms install -m %{name}-mach -v %{version}
+/usr/sbin/dkms build -m %{name}-mach -v %{version} || :
+/usr/sbin/dkms install -m %{name}-mach -v %{version} || :
 
 %files
 %doc LICENSE
@@ -92,10 +87,12 @@ fi
 %{_libexecdir}/darling
 
 %files mach
-#%{_sysconfdir}/udev/rules.d/00-darling-mach.rules
 %{_prefix}/src/%{name}-mach-%{version}
 
 %changelog
+* Tue Mar 12 2019 Andy Neff <andy@visionsystemsinc.com> - 0.1-3
+- Remove bad commented macro, cleanup, and verify master works on Fedora 29
+
 * Wed Jul 18 2018 Andy Neff <andy@visionsystemsinc.com> - 0.1-2
 - Update for Fedora 28 and new master
 
