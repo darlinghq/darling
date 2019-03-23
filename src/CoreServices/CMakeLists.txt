@@ -46,6 +46,7 @@ set(CoreServices_SRCS
 	LSApplicationProxy.m
 	LSApplicationWorkspace.m
 	constants.m
+	src/FSEvents.c
 )
 
 if (WITH_COREAUDIO)

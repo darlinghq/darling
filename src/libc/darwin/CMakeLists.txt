@@ -9,6 +9,7 @@ set(darwin_sources
 	init_cpu_capabilities.c
 	kvm.c
 	variant.c
+	darling_hacks.c
 	)
 
 add_library(libc-darwin OBJECT ${darwin_sources})

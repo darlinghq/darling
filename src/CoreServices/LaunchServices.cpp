@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <unicode/unistr.h>
 #include "UniChar.h"
 
@@ -109,6 +110,12 @@ int execvpe(const char* name, char** argv, char** envp)
 
 	environ = orig_env;
 	return ret;
+}
+
+OSStatus LSRegisterURL(CFURLRef inURL, Boolean inUpdate)
+{
+	printf("STUB: LSRegisterURL");
+	return 0;
 }
 
 OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSerialNumber *outPSN)
