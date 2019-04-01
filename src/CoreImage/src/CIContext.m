@@ -19,6 +19,10 @@
 
 #import <CoreImage/CIContext.h>
 
+NSString * const kCIContextOutputColorSpace = @"output_color_space";
+NSString * const kCIContextUseSoftwareRenderer = @"software_renderer";
+NSString * const kCIContextWorkingColorSpace = @"working_color_space";
+
 @implementation CIContext
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {

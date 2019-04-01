@@ -19,6 +19,18 @@
 
 #import <CoreImage/CIFilter.h>
 
+#import <Foundation/NSString.h>
+
+NSString * const kCIInputAngleKey = @"inputAngle";
+NSString * const kCIInputBackgroundImageKey = @"inputBackgroundImage";
+NSString * const kCIInputBrightnessKey = @"inputBrightness";
+NSString * const kCIInputColorKey = @"inputColor";
+NSString * const kCIInputContrastKey = @"inputContrast";
+NSString * const kCIInputExtentKey = @"inputExtent";
+NSString * const kCIInputImageKey = @"inputImage";
+NSString * const kCIInputSaturationKey = @"inputSaturation";
+NSString * const kCIOutputImageKey = @"outputImage";
+
 @implementation CIFilter
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
