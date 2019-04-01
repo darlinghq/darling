@@ -10,3 +10,5 @@ const CFStringRef kAXUIElementCopyHierarchySkipInspectionForAttributesKey = CFST
 const CFStringRef kAXUIElementCopyHierarchyTruncateStringsKey = CFSTR("AXTRUNC");
 /* Not const for some reason */
 CFStringRef kAXTrustedCheckOptionPrompt = CFSTR("AXTrustedCheckOptionPrompt");
+
+

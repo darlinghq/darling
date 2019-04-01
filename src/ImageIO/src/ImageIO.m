@@ -31,6 +31,10 @@ const CFStringRef kCGImagePropertyDPIWidth = CFSTR("DPIWidth");
 const CFStringRef kCGImageSourceCreateThumbnailFromImageIfAbsent = CFSTR("kCGImageSourceCreateThumbnailFromImageIfAbsent");
 const CFStringRef kCGImagePropertyPixelHeight = CFSTR("PixelHeight");
 const CFStringRef kCGImagePropertyPixelWidth = CFSTR("PixelWidth");
+const CFStringRef kCGImagePropertyPNGDictionary = CFSTR("{PNG}");
+const CFStringRef kCGImagePropertyPNGGamma = CFSTR("Gamma");
+const CFStringRef kCGImageSourceCreateThumbnailWithTransform = CFSTR("kCGImageSourceCreateThumbnailWithTransform");
+const CFStringRef kCGImageSourceShouldCache = CFSTR("kCGImageSourceShouldCache");
 
 static int verbose = 0;
 

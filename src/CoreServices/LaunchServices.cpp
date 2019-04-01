@@ -286,6 +286,14 @@ LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid)
 	return NULL;
 }
 
+/*
+OSStatus _LSOpenURLsWithRole(CFArrayRef inURLs, LSRolesMask inRole, void *unknown)
+{
+	CFURLRef url = CFArrayGetValueAtIndex(inURLs, 0);
+	LSOpenCFURLRef(url, NULL);
+	return noErr;
+}
+*/
 
 CFStringRef LSUserApplicationType = CFSTR("User");
 CFStringRef LSSystemApplicationType = CFSTR("System");

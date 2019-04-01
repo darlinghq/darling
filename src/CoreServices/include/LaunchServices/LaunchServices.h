@@ -84,6 +84,8 @@ LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid);
 
 extern CFStringRef LSUserApplicationType, LSSystemApplicationType, LSInternalApplicationType, LSPlugInKitType, LSVPNPluginType;
 
+//OSStatus _LSOpenURLsWithRole(CFArrayRef inURLs, LSRolesMask inRole, void *unknown);
+
 // TODO: many other functions
 
 #ifdef __cplusplus
