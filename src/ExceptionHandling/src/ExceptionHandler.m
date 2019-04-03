@@ -1,9 +1,9 @@
-#include "ExceptionHandler.h"
+#include <ExceptionHandling/ExceptionHandler.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <unistd.h>
-#include <cstdlib>
+#include <stdlib.h>
 
 static void LocalExceptionHandler(NSException* e);
 
@@ -13,21 +13,24 @@ static void LocalExceptionHandler(NSException* e);
 @synthesize exceptionHangingMask = _hangingMask;
 @synthesize delegate = _delegate;
 
+static NSExceptionHandler* instance;
+
+static void init_routine(void)
+{
+	instance = [NSExceptionHandler new];
+	instance->_delegate = NULL;
+	instance->_handlingMask = 0xffffffff;
+	instance->_hangingMask = 0;
+
+	NSSetUncaughtExceptionHandler(LocalExceptionHandler);
+}
+
 + (NSExceptionHandler *)defaultExceptionHandler
 {
 	static pthread_once_t once = PTHREAD_ONCE_INIT;
-	static NSExceptionHandler* instance;
 	
-	pthread_once(&once, []() {
-	
-		instance = [NSExceptionHandler new];
-		instance->_delegate = NULL;
-		instance->_handlingMask = 0xffffffff;
-		instance->_hangingMask = 0;
-		
-		NSSetUncaughtExceptionHandler(LocalExceptionHandler);
-	});
-	
+	pthread_once(&once, &init_routine);
+
 	return instance;
 }
 
