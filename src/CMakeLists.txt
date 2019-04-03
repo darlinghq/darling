@@ -217,6 +217,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/ConfigurationProfiles/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ImageIO/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
+	${CMAKE_CURRENT_SOURCE_DIR}/LDAP/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -396,6 +397,7 @@ add_subdirectory(ViewBridge)
 add_subdirectory(AVFoundation)
 add_subdirectory(CoreAudio)
 add_subdirectory(CoreMedia)
+add_subdirectory(LDAP)
 # Just a stub
 add_subdirectory(WebKit)
 add_subdirectory(OpenGL)
