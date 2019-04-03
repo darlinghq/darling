@@ -23,6 +23,8 @@
 
 #import <Foundation/Foundation.h>
 
+extern NSString *NSStackTraceKey;
+
 #import <ExceptionHandling/ExceptionHandler.h>
 
 #endif

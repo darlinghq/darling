@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+NSString *NSStackTraceKey = @"NSStackTraceKey";
+
 static void LocalExceptionHandler(NSException* e);
 
 @implementation NSExceptionHandler
