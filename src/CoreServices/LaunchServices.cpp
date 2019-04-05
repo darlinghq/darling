@@ -112,12 +112,6 @@ int execvpe(const char* name, char** argv, char** envp)
 	return ret;
 }
 
-OSStatus LSRegisterURL(CFURLRef inURL, Boolean inUpdate)
-{
-	printf("STUB: LSRegisterURL");
-	return 0;
-}
-
 OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSerialNumber *outPSN)
 {
 	if (!appParams)

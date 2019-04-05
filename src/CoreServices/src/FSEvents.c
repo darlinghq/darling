@@ -39,7 +39,7 @@ FSEventStreamRef FSEventStreamCreate(
 	printf("STUB %s\n", __PRETTY_FUNCTION__);
 	stream = CFAllocatorAllocate(allocator, sizeof(struct __FSEventStream), 0);
 	stream->allocator = allocator;
-	stream->pathsToWatch = pathsToWatch;
+	stream->pathsToWatch = CFArrayCreateCopy(allocator, pathsToWatch);
 	return stream;
 }
 
