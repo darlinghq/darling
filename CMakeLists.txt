@@ -3,11 +3,17 @@ SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
 
 # This allows setting the compiler with -DCMAKE_C_COMPILER when configuring.
 if (NOT DEFINED CMAKE_C_COMPILER)
-	SET(CMAKE_C_COMPILER clang)
+	find_program(CMAKE_C_COMPILER NAMES
+		"clang"
+		"clang-4.0"
+		"clang-7")
 endif(NOT DEFINED CMAKE_C_COMPILER)
 
 if (NOT DEFINED CMAKE_CXX_COMPILER)
-	SET(CMAKE_CXX_COMPILER clang++)
+	find_program(CMAKE_CXX_COMPILER NAMES
+		"clang++"
+		"clang++-4.0"
+		"clang++-7")
 endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
 SET(CMAKE_SKIP_RPATH TRUE)
