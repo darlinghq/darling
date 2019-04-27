@@ -41,7 +41,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 include(compiler_include)
 GetCompilerInclude(COMPILER_INC_PATH)
 message(STATUS "Compiler include path detected as ${COMPILER_INC_PATH}")
-include_directories(${COMPILER_INC_PATH})
+include_directories(/usr/..${COMPILER_INC_PATH})
 
 find_package(BISON)
 find_package(FLEX)
