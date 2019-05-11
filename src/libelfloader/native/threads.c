@@ -142,7 +142,7 @@ static void* darling_thread_entry(void* p)
 #elif defined(__i386__) // args in eax, ebx, ecx, edx, edi, esi
 	__asm__ __volatile__ (
 	"movl (%0), %%eax\n"
-	"movl (%1), %%esp\n"
+	"movl %1, %%esp\n"
 	"pushl %%eax\n" // address to be jumped to
 	"movl %1, 28(%0)\n"
 	"movl %1, %%eax\n" // 1st arg
