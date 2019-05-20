@@ -21,6 +21,53 @@
 
 @implementation CNLabeledValue
 
+- (instancetype)initWithLabel:(NSString *)label value:(id)value {
+    return self;
+}
+
++ (instancetype)labeledValueWithLabel:(NSString *)label value:(id)value {
+    id new_class = [[[self class] alloc] init];
+    return new_class;
+}
+
+- (instancetype)labeledValueBySettingLabel:(NSString *)label {
+    return self;
+}
+
+- (instancetype)labeledValueBySettingLabel:(NSString *)label value:(id)value {
+    return self;
+}
+
+- (instancetype)labeledValueBySettingValue:(id)value {
+    return self;
+}
+
++ (NSString *)localizedStringForLabel:(NSString *)label {
+    return @"";
+}
+
+
+// NSCopy
+- (nonnull id)copyWithZone:(nullable NSZone *)zone {
+    id copy = [[[self class] alloc] init];
+    return copy;
+}
+
+
+// NSSecureCoder
++ (BOOL)supportsSecureCoding {
+    return YES;
+}
+
+- (void)encodeWithCoder:(nonnull NSCoder *)aCoder {
+    return;
+}
+
+- (nullable instancetype)initWithCoder:(nonnull NSCoder *)aDecoder {
+    return self;
+}
+
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }

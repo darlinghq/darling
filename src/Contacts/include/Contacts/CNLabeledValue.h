@@ -19,6 +19,20 @@
 
 #include <Foundation/Foundation.h>
 
-@interface CNLabeledValue : NSObject
+@interface CNLabeledValue<__covariant ValueType> : NSObject <NSCopying,NSSecureCoding>
+
+- (instancetype)initWithLabel:(NSString *)label value:(ValueType)value;
++ (instancetype)labeledValueWithLabel:(NSString *)label value:(ValueType)value;
+
+@property(readonly, copy, atomic) NSString *label;
+@property(readonly, copy, atomic) ValueType value;
+
+- (instancetype)labeledValueBySettingLabel:(NSString *)label;
+- (instancetype)labeledValueBySettingLabel:(NSString *)label value:(ValueType)value;
+- (instancetype)labeledValueBySettingValue:(ValueType)value;
+
++ (NSString *)localizedStringForLabel:(NSString *)label;
+
+@property(readonly, copy, atomic) NSString *identifier;
 
 @end
