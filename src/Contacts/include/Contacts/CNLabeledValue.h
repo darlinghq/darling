@@ -21,18 +21,18 @@
 
 @interface CNLabeledValue<__covariant ValueType> : NSObject <NSCopying,NSSecureCoding>
 
-- (instancetype)initWithLabel:(NSString *)label value:(ValueType)value;
-+ (instancetype)labeledValueWithLabel:(NSString *)label value:(ValueType)value;
+- (nonnull instancetype)initWithLabel:(nullable NSString *)label value:(nonnull ValueType)value;
++ (nonnull instancetype)labeledValueWithLabel:(nullable NSString *)label value:(nonnull ValueType)value;
 
-@property(readonly, copy, atomic) NSString *label;
-@property(readonly, copy, atomic) ValueType value;
+@property(readonly, copy, atomic, nullable) NSString *label;
+@property(readonly, copy, atomic, nonnull) ValueType value;
 
-- (instancetype)labeledValueBySettingLabel:(NSString *)label;
-- (instancetype)labeledValueBySettingLabel:(NSString *)label value:(ValueType)value;
-- (instancetype)labeledValueBySettingValue:(ValueType)value;
+- (nonnull instancetype)labeledValueBySettingLabel:(nullable NSString *)label;
+- (nonnull instancetype)labeledValueBySettingLabel:(nullable NSString *)label value:(nonnull ValueType)value;
+- (nonnull instancetype)labeledValueBySettingValue:(nonnull ValueType)value;
 
-+ (NSString *)localizedStringForLabel:(NSString *)label;
++ (nonnull NSString *)localizedStringForLabel:(nonnull NSString *)label;
 
-@property(readonly, copy, atomic) NSString *identifier;
+@property(readonly, copy, atomic, nonnull) NSString *identifier;
 
 @end

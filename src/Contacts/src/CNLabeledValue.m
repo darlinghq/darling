@@ -22,35 +22,69 @@
 @implementation CNLabeledValue
 
 - (instancetype)initWithLabel:(NSString *)label value:(id)value {
+    if (self = [super init]) {
+//        [self applyLabeledValueVariablesIdentifier: [[NSUUID alloc] init].UUIDString label:label value:value];
+        [self applyLabeledValueVariablesIdentifier: [[NSUUID alloc] init].UUIDString label:label value:value];
+    }
+    
+    return self;
+}
+
+- (instancetype)initWithIdentifier:(NSString *)identifier label:(NSString *)label value:(id)value {
+    if (self = [super init]) {
+        [self applyLabeledValueVariablesIdentifier:identifier label:label value:value];
+    }
+    
+    return self;
+}
+
+- (void)dealloc {
+    [_identifier release];
+    [_label release];
+    [_value release];
+    [super dealloc];
+}
+
+- (instancetype)applyLabeledValueVariablesIdentifier:(NSString *)identifier label:(NSString *)label value:(id)value {
+    if (value == nil) {
+        @throw [[NSException alloc] initWithName:@"CNPropertyInvalidTypeExpression" reason:@"Variable value cannot be null." userInfo:nil];
+    }
+    
+    _identifier = [identifier copy];
+    _label = [label copy];
+    _value = [value copy];
     return self;
 }
 
 + (instancetype)labeledValueWithLabel:(NSString *)label value:(id)value {
-    id new_class = [[[self class] alloc] init];
-    return new_class;
+    return [[[[self class] alloc] initWithLabel:label value:value] autorelease];
 }
 
 - (instancetype)labeledValueBySettingLabel:(NSString *)label {
-    return self;
+    return [[[[self class] alloc] initWithIdentifier:_identifier label:label value:_value] autorelease];
 }
 
 - (instancetype)labeledValueBySettingLabel:(NSString *)label value:(id)value {
-    return self;
+    return [[[[self class] alloc] initWithIdentifier:_identifier label:label value:value] autorelease];
 }
 
 - (instancetype)labeledValueBySettingValue:(id)value {
-    return self;
+    return [[[[self class] alloc] initWithIdentifier:_identifier label:_label value:value] autorelease];
 }
 
+/*
+ TODO: Add support for obtaining localized string from contact label
+ */
 + (NSString *)localizedStringForLabel:(NSString *)label {
-    return @"";
+    // If you provide a custom label, it will return the same label.
+    return label;
 }
 
 
 // NSCopy
-- (nonnull id)copyWithZone:(nullable NSZone *)zone {
+- (id)copyWithZone:(NSZone *)zone {
     id copy = [[[self class] alloc] init];
-    return copy;
+    return [copy autorelease];
 }
 
 
@@ -59,14 +93,13 @@
     return YES;
 }
 
-- (void)encodeWithCoder:(nonnull NSCoder *)aCoder {
+- (void)encodeWithCoder:(NSCoder *)aCoder {
     return;
 }
 
-- (nullable instancetype)initWithCoder:(nonnull NSCoder *)aDecoder {
+- (instancetype)initWithCoder:(NSCoder *)aDecoder {
     return self;
 }
-
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
