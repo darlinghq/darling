@@ -19,23 +19,21 @@
 
 #import <Contacts/CNLabeledValue.h>
 
+#define NSCODER_IDENTIFIER @"_identifier"
+#define NSCODER_LABEL @"_label"
+#define NSCODER_VALUE @"_value"
+
+const NSExceptionName CNPropertyInvalidTypeExceptionName = @"CNPropertyInvalidTypeException";
+
 @implementation CNLabeledValue
 
-- (instancetype)initWithLabel:(NSString *)label value:(id)value {
-    if (self = [super init]) {
-//        [self applyLabeledValueVariablesIdentifier: [[NSUUID alloc] init].UUIDString label:label value:value];
-        [self applyLabeledValueVariablesIdentifier: [[NSUUID alloc] init].UUIDString label:label value:value];
-    }
-    
-    return self;
-}
+@synthesize identifier = _identifier;
+@synthesize label = _label;
+@synthesize value = _value;
 
-- (instancetype)initWithIdentifier:(NSString *)identifier label:(NSString *)label value:(id)value {
-    if (self = [super init]) {
-        [self applyLabeledValueVariablesIdentifier:identifier label:label value:value];
-    }
-    
-    return self;
+- (instancetype)initWithLabel:(NSString *)label value:(id)value {
+    NSUUID *uuid = [NSUUID UUID];
+    return [self initWithIdentifier: [uuid UUIDString] label:label value:value];
 }
 
 - (void)dealloc {
@@ -45,31 +43,20 @@
     [super dealloc];
 }
 
-- (instancetype)applyLabeledValueVariablesIdentifier:(NSString *)identifier label:(NSString *)label value:(id)value {
-    if (value == nil) {
-        @throw [[NSException alloc] initWithName:@"CNPropertyInvalidTypeExpression" reason:@"Variable value cannot be null." userInfo:nil];
-    }
-    
-    _identifier = [identifier copy];
-    _label = [label copy];
-    _value = [value copy];
-    return self;
-}
-
 + (instancetype)labeledValueWithLabel:(NSString *)label value:(id)value {
-    return [[[[self class] alloc] initWithLabel:label value:value] autorelease];
+    return [[[self alloc] initWithLabel:label value:value] autorelease];
 }
 
 - (instancetype)labeledValueBySettingLabel:(NSString *)label {
-    return [[[[self class] alloc] initWithIdentifier:_identifier label:label value:_value] autorelease];
+    return [[[CNLabeledValue alloc] initWithIdentifier:_identifier label:label value:_value] autorelease];
 }
 
 - (instancetype)labeledValueBySettingLabel:(NSString *)label value:(id)value {
-    return [[[[self class] alloc] initWithIdentifier:_identifier label:label value:value] autorelease];
+    return [[[CNLabeledValue alloc] initWithIdentifier:_identifier label:label value:value] autorelease];
 }
 
 - (instancetype)labeledValueBySettingValue:(id)value {
-    return [[[[self class] alloc] initWithIdentifier:_identifier label:_label value:value] autorelease];
+    return [[[CNLabeledValue alloc] initWithIdentifier:_identifier label:_label value:value] autorelease];
 }
 
 /*
@@ -81,10 +68,27 @@
 }
 
 
-// NSCopy
+// Private method.
+- (instancetype)initWithIdentifier:(NSString *)identifier
+                             label:(NSString *)label
+                             value:(id)value {
+    if (self = [super init]) {
+        if (value == nil) {
+            [NSException raise:CNPropertyInvalidTypeExceptionName format:@"Variable value cannot be null."];
+        }
+        
+        _identifier = [identifier copy];
+        _label = [label copy];
+        _value = [value copy];
+    }
+    
+    return self;
+}
+
+// NSCopying
 - (id)copyWithZone:(NSZone *)zone {
-    id copy = [[[self class] alloc] init];
-    return [copy autorelease];
+    id copy = [[[self class] alloc] initWithIdentifier:_identifier label:_label value:_value];
+    return copy;
 }
 
 
@@ -93,13 +97,29 @@
     return YES;
 }
 
+/*
+ When you look at the original CNLabeledValue .plist, there are also
+ three other keynames: linkedIdentifiers, storeIdentifier, storeInfo.
+ 
+ TODO: Figure out what they are used for */
 - (void)encodeWithCoder:(NSCoder *)aCoder {
+    [aCoder encodeObject:_identifier forKey:NSCODER_IDENTIFIER];
+    [aCoder encodeObject:_label forKey:NSCODER_LABEL];
+    [aCoder encodeObject:_value forKey:NSCODER_VALUE];
+    
     return;
 }
 
 - (instancetype)initWithCoder:(NSCoder *)aDecoder {
-    return self;
+    NSString *temp_identifier = [aDecoder decodeObjectOfClass:[NSString class] forKey:NSCODER_IDENTIFIER];
+    NSString *temp_lable = [aDecoder decodeObjectOfClass:[NSString class] forKey:NSCODER_LABEL];
+    NSString *temp_value = [aDecoder decodeObjectOfClass:[NSString class] forKey:NSCODER_VALUE];
+    
+    // Since initWithIdentifier already uses copy for the variable, I decided just call
+    // that function instead.
+    return [self initWithIdentifier:temp_identifier label:temp_lable value:temp_value];
 }
+
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
