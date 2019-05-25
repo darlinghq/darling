@@ -192,6 +192,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsNaturalLanguage/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Carbon/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DrawSprocket/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreImage/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreVideo/include
@@ -406,6 +407,7 @@ add_subdirectory(WebKit)
 add_subdirectory(OpenGL)
 add_subdirectory(JavaVM)
 add_subdirectory(DirectoryServices)
+add_subdirectory(DrawSprocket)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
