@@ -199,6 +199,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/Accelerate/include
 	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenGL/include
+	${CMAKE_CURRENT_SOURCE_DIR}/AGL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Spotlight/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightDaemon/include
@@ -405,6 +406,7 @@ add_subdirectory(ExceptionHandling)
 # Just a stub
 add_subdirectory(WebKit)
 add_subdirectory(OpenGL)
+add_subdirectory(AGL)
 add_subdirectory(JavaVM)
 add_subdirectory(DirectoryServices)
 add_subdirectory(DrawSprocket)
