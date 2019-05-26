@@ -221,6 +221,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
 	${CMAKE_CURRENT_SOURCE_DIR}/LDAP/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ExceptionHandling/include
+	${CMAKE_CURRENT_SOURCE_DIR}/AddressBook/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -410,6 +411,7 @@ add_subdirectory(AGL)
 add_subdirectory(JavaVM)
 add_subdirectory(DirectoryServices)
 add_subdirectory(DrawSprocket)
+add_subdirectory(AddressBook)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
