@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <Foundation/Foundation.h>
 
-#ifndef _Accelerate_H_
-#define _Accelerate_H_
+@interface OS_la_object : NSObject
 
-
-#endif
+@end

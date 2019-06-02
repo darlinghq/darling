@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,8 +18,20 @@
 */
 
 
-#ifndef _Accelerate_H_
-#define _Accelerate_H_
+#ifndef _BNNS_H_
+#define _BNNS_H_
 
+void* BNNSApplyVectorActivationLayer(void);
+void* BNNSDequantize(void);
+void* BNNSFilterApply(void);
+void* BNNSFilterApplyBatch(void);
+void* BNNSFilterCreateConvolutionLayer(void);
+void* BNNSFilterCreateConvolutionWeightsTensorConversionLayer(void);
+void* BNNSFilterCreateFullyConnectedLayer(void);
+void* BNNSFilterCreateImageTensorConversionLayer(void);
+void* BNNSFilterCreatePoolingLayer(void);
+void* BNNSFilterCreateTensorConvolutionLayer(void);
+void* BNNSFilterCreateVectorActivationLayer(void);
+void* BNNSFilterDestroy(void);
 
 #endif

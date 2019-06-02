@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,18 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <LinearAlgebra/OS_la_object.h>
 
-#ifndef _Accelerate_H_
-#define _Accelerate_H_
+@implementation OS_la_object
 
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+}
 
-#endif
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+@end

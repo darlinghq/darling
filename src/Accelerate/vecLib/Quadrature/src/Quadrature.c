@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,8 +18,19 @@
 */
 
 
-#ifndef _Accelerate_H_
-#define _Accelerate_H_
+#include <Quadrature/Quadrature.h>
+#include <stdlib.h>
+#include <stdio.h>
 
+static int verbose = 0;
 
-#endif
+__attribute__((constructor))
+static void initme(void) {
+    verbose = getenv("STUB_VERBOSE") != NULL;
+}
+
+void* quadrature_integrate(void)
+{
+    if (verbose) puts("STUB: quadrature_integrate called");
+    return NULL;
+}
