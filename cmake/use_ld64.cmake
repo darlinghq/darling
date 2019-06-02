@@ -1,4 +1,7 @@
+set(dylib_paths "")
 FUNCTION(use_ld64 target)
+	get_property(ld_dylib_paths GLOBAL PROPERTY ld_dylib_paths)
+	message("dylib path is ${ld_dylib_paths}")
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ \
 -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
@@ -58,9 +61,19 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/native/libGL.dylib:${CMAKE_BINARY_DIR}/src/native/libGL.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage:${CMAKE_BINARY_DIR}/src/CoreImage/CoreImage \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo:${CMAKE_BINARY_DIR}/src/CoreVideo/CoreVideo \
-")
+${ld_dylib_paths}")
 
 	add_dependencies(${target} x86_64-apple-darwin11-ld)
 
 ENDFUNCTION(use_ld64)
 
+function(reexport reexporter reexportee)
+	get_property(reexportee_binary_dir TARGET ${reexportee} PROPERTY BINARY_DIR)
+	get_property(reexportee_output_name TARGET ${reexportee} PROPERTY OUTPUT_NAME)
+	set(reexportee_output "${reexportee_binary_dir}/${reexportee_output_name}")
+	get_property(reexportee_install_name TARGET ${reexportee} PROPERTY DYLIB_INSTALL_NAME)
+	set_property(TARGET ${reexporter} APPEND_STRING PROPERTY
+                LINK_FLAGS " -Wl,-reexport_library,${reexportee_output} ")
+	set_property(GLOBAL APPEND_STRING PROPERTY ld_dylib_paths " -Wl,-dylib_file,${reexportee_install_name}:${reexportee_output} ")
+	add_dependencies(${reexporter} ${reexportee})
+endfunction(reexport)

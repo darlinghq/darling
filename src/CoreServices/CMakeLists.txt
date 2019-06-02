@@ -46,9 +46,6 @@ set(CoreServices_SRCS
 	LSApplicationProxy.m
 	LSApplicationWorkspace.m
 	constants.m
-
-	src/FSEvents.c
-	src/LaunchServices.c
 )
 
 if (WITH_COREAUDIO)
@@ -56,7 +53,35 @@ if (WITH_COREAUDIO)
 endif (WITH_COREAUDIO)
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
-set(DYLIB_CURRENT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "1239.200.12")
+add_framework(FSEvents
+	FAT
+	CURRENT_VERSION
+	VERSION "A"
+	PARENT "CoreServices"
+	SOURCES
+		src/FSEvents/FSEvents.c
+	DEPENDENCIES
+		CoreFoundation
+		system
+)
+
+set(DYLIB_COMPAT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "945.0.0")
+add_framework(LaunchServices
+	FAT
+	CURRENT_VERSION
+	VERSION "A"
+	PARENT "CoreServices"
+	SOURCES
+	src/LaunchServices/LaunchServices.c
+	DEPENDENCIES
+		CoreFoundation
+		system
+)
+
+set(DYLIB_COMPAT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "945.0.0")
 add_framework(CoreServices
 	FAT
 	CURRENT_VERSION
@@ -64,6 +89,8 @@ add_framework(CoreServices
 	SOURCES
 		${CoreServices_SRCS}
 	DEPENDENCIES
+		FSEvents
+		LaunchServices
 		icucore
 		system
 		CoreFoundation
@@ -72,6 +99,9 @@ add_framework(CoreServices
 		Foundation
 		${EXTRA_LIBS}
 )
+
+reexport(CoreServices FSEvents)
+reexport(CoreServices LaunchServices)
 
 install(FILES SystemVersion.plist DESTINATION "libexec/darling/System/Library/CoreServices")
 

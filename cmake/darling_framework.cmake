@@ -2,8 +2,12 @@ include(CMakeParseArguments)
 include(darling_lib)
 include(InstallSymlink)
 
+define_property(TARGET PROPERTY DYLIB_INSTALL_NAME BRIEF_DOCS "Stores the DYLIB_INSTALL_NAME of the framework's main binary"
+	FULL_DOCS "Used to make reexporting child frameworks less painful.")
+
 function(add_framework name)
-	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE" "VERSION;LINK_FLAGS" "SOURCES;DEPENDENCIES;CIRCULAR_DEPENDENCIES;RESOURCES" ${ARGN})
+	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE" "VERSION;LINK_FLAGS;PARENT;PARENT_VERSION"
+		"SOURCES;DEPENDENCIES;CIRCULAR_DEPENDENCIES;RESOURCES" ${ARGN})
 	if (FRAMEWORK_CURRENT_VERSION)
 		set(my_name "${name}")
 	else (FRAMEWORK_CURRENT_VERSION)
@@ -15,9 +19,18 @@ function(add_framework name)
 	else (FRAMEWORK_PRIVATE)
 		set(dir_name "Frameworks")
 	endif (FRAMEWORK_PRIVATE)
+	
+	if(DEFINED FRAMEWORK_PARENT)
+		if(NOT DEFINED FRAMEWORK_PARENT_VERSION)
+			# 99% of the time it's version A
+			set(FRAMEWORK_PARENT_VERSION "A")
+		endif(NOT DEFINED FRAMEWORK_PARENT_VERSION)
+		InstallSymlink(Versions/Current/Frameworks
+			"${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/${dir_name}/${FRAMEWORK_PARENT}.framework/Frameworks")
+		set(dir_name "${dir_name}/${FRAMEWORK_PARENT}.framework/Versions/${FRAMEWORK_PARENT_VERSION}/Frameworks")
+	endif(DEFINED FRAMEWORK_PARENT)
 
 	set(DYLIB_INSTALL_NAME "/System/Library/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/${name}")
-
 
 	if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 		if (FRAMEWORK_FAT)
@@ -38,7 +51,8 @@ function(add_framework name)
 		endif (FRAMEWORK_FAT)
 
 	endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
-
+	
+	set_property(TARGET ${my_name} PROPERTY DYLIB_INSTALL_NAME ${DYLIB_INSTALL_NAME})
 
 	if (FRAMEWORK_CURRENT_VERSION)
 		add_library("${name}_${FRAMEWORK_VERSION}" ALIAS "${name}")
