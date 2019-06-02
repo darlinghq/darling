@@ -102,6 +102,7 @@ add_framework(CoreServices
 
 reexport(CoreServices FSEvents)
 reexport(CoreServices LaunchServices)
+reexport(CoreServices CFNetwork)
 
 install(FILES SystemVersion.plist DESTINATION "libexec/darling/System/Library/CoreServices")
 
