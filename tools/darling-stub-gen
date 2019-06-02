@@ -66,15 +66,12 @@ def usage():
 
 
 def extract_library_name(name):
-    prefix_len = len(library_prefix) + len("lib")
-    ext_len = len(".dylib")
-
-    return name[prefix_len: len(name) - ext_len]
-
+    name = re.search("/([A-Za-z0-9]+)\.dylib$", name).group(1)
+    print(name)
+    return name
 
 def extract_framework_name(name):
     return name[name.rfind("/") + 1:]
-
 
 def write_objc_source_file_locs(cmake_file, classes, num_spaces):
     for cls in classes:
@@ -93,7 +90,7 @@ try:
 except FileExistsError:
     pass
 
-if len(full_path) > len(library_prefix) and full_path[:len(library_prefix)] == library_prefix:
+if full_path.endswith(".dylib"):
     library = True
     target_name = extract_library_name(full_path)
 elif len(full_path) > len(framework_prefix) and full_path[:len(framework_prefix)] == framework_prefix:
