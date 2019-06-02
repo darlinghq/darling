@@ -1,7 +1,6 @@
 set(dylib_paths "")
 FUNCTION(use_ld64 target)
 	get_property(ld_dylib_paths GLOBAL PROPERTY ld_dylib_paths)
-	message("dylib path is ${ld_dylib_paths}")
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ \
 -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
@@ -70,6 +69,12 @@ ENDFUNCTION(use_ld64)
 function(reexport reexporter reexportee)
 	get_property(reexportee_binary_dir TARGET ${reexportee} PROPERTY BINARY_DIR)
 	get_property(reexportee_output_name TARGET ${reexportee} PROPERTY OUTPUT_NAME)
+	if(NOT DEFINED reexportee_output_name)
+		get_property(reexportee_output_name TARGET ${reexportee} PROPERTY DYLIB_BUILD_NAME)
+		if(NOT DEFINED reexportee_output_name)
+			message(FATAL_ERROR "failed to get reexportee path")
+		endif(NOT DEFINED reexportee_output_name)
+	endif(NOT DEFINED reexportee_output_name)
 	set(reexportee_output "${reexportee_binary_dir}/${reexportee_output_name}")
 	get_property(reexportee_install_name TARGET ${reexportee} PROPERTY DYLIB_INSTALL_NAME)
 	set_property(TARGET ${reexporter} APPEND_STRING PROPERTY
