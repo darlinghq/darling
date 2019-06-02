@@ -66,7 +66,7 @@ def usage():
 
 
 def extract_library_name(name):
-    name = re.search("/([A-Za-z0-9]+)\.dylib$", name).group(1)
+    name = re.search("/lib([A-Za-z0-9]+)\.dylib$", name).group(1)
     print(name)
     return name
 
