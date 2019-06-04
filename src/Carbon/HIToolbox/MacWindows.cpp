@@ -1,13 +1,31 @@
 #include "MacWindows.h"
 #include <X11/Xlib.h>
-#include <iostream>
-#include <cstdlib>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define NO_X11 
+
+
+static int verbose = 0;
+
+__attribute__((constructor))
+static void initme(void) {
+    verbose = getenv("STUB_VERBOSE") != NULL;
+}
+
 
 static Display* g_display = nullptr;
 static void closeDisplay() __attribute__((destructor));
 
-Display* Darling::Carbon::getDisplay()
+namespace Darling
 {
+
+namespace Carbon
+{
+
+Display* getDisplay()
+{
+#ifndef NO_X11
 	if (g_display)
 		return g_display;
 
@@ -15,26 +33,33 @@ Display* Darling::Carbon::getDisplay()
 
 	if (!g_display)
 	{
-		std::cerr << "Darling Carbon: Cannot open a connection to the X server!\n";
+		fprintf(stderr, "Darling Carbon: Cannot open a connection to the X server!\n");
 		if (!getenv("DISPLAY"))
-			std::cerr << "The application you are trying to run requires an X server and cannot be run only in the console.\n";
+			fprintf(stderr, "The application you are trying to run requires an X server and cannot be run only in the console.\n");
 		abort();
 	}
 
+#endif
 	return g_display;
 }
 
 void closeDisplay()
 {
+#ifndef NO_X11
 	if (g_display)
 	{
 		XCloseDisplay(g_display);
 		g_display = nullptr;
 	}
+#endif
+}
+
+}
 }
 
 OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rect, WindowRef* newWindow)
 {
+#ifndef NO_X11
 	Window win;
 	Display* dpy;
 	int blackColor, whiteColor;
@@ -56,25 +81,32 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 		return paramErr;
 
 	*newWindow = win;
+#endif
 	return noErr;
 }
 
 void DisposeWindow(WindowRef wnd)
 {
+#ifndef NO_X11
 	if (wnd)
-		XDestroyWindow(wnd);
+		XDestroyWindow(Darling::Carbon::getDisplay(), wnd);
+#endif
 }
 
 void ShowWindow(WindowRef wnd)
 {
+#ifndef NO_X11
 	if (wnd)
 		XMapWindow(Darling::Carbon::getDisplay(), Window(wnd));
+#endif
 }
 
 void HideWindow(WindowRef wnd)
 {
+#ifndef NO_X11
 	if (wnd)
 		XUnmapWindow(Darling::Carbon::getDisplay(), Window(wnd));
+#endif
 }
 
 void ShowHide(WindowRef wnd, Boolean showFlag)
@@ -87,6 +119,81 @@ void ShowHide(WindowRef wnd, Boolean showFlag)
 
 Boolean IsWindowVisible(WindowRef wnd)
 {
-	
+	return 0;
 }
 
+
+OSStatus SelectWindow(WindowRef a)
+{
+	return 0;
+}
+
+OSStatus SetWindowContentColor(WindowRef a, const RGBColor * b)
+{
+	return 0;
+}
+
+OSStatus SetWindowGroup(WindowRef a, WindowGroupRef b)
+{
+	return 0;
+}
+
+OSStatus SetWindowGroupLevel(WindowGroupRef a, SInt32 b)
+{
+	return 0;
+}
+
+OSStatus SetWindowTitleWithCFString(WindowRef a, CFStringRef b)
+{
+	return 0;
+}
+
+OSStatus TransitionWindowWithOptions(WindowRef a, WindowTransitionEffect b, WindowTransitionAction c, const HIRect * d, Boolean e, TransitionWindowOptions * f)
+{
+	return 0;
+}
+
+OSStatus CreateWindowGroup(WindowGroupAttributes a, WindowGroupRef *b)
+{
+	return 0;
+}
+
+OSStatus GetWindowBounds(WindowRef a, WindowRegionCode b, Rect * c)
+{
+	return 0;
+}
+
+OSStatus GetWindowEventTarget(WindowRef a)
+{
+	return 0;
+}
+
+OSStatus GetWindowGroupLevel(WindowGroupRef a, SInt32 * b)
+{
+	return 0;
+}
+
+WindowGroupRef GetWindowGroupOfClass(WindowClass a)
+{
+	return (WindowGroupRef)0;
+}
+
+CGrafPtr GetWindowPort(WindowRef a)
+{
+	return (CGrafPtr)0;
+}
+
+Rect* GetWindowPortBounds(WindowRef window, Rect * bounds)
+{
+	return NULL;
+}
+
+Boolean IsValidWindowPtr(WindowRef a)
+{
+	return 0;
+}
+
+OSStatus ReleaseWindow(WindowRef a)
+{
+	return 0;
+}

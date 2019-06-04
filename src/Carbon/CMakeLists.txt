@@ -10,7 +10,8 @@ add_framework(Carbon
 
     SOURCES
         src/Carbon.c
-	src/constants.c
+        src/constants.c
+        HIToolbox/MacWindows.cpp
 
     DEPENDENCIES
     	CoreFoundation

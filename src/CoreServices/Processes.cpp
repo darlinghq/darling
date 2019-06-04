@@ -222,4 +222,10 @@ OSErr WakeUpProcess(const ProcessSerialNumber* psn)
 	return noErr;
 }
 
+void DebugStr(ConstStr255Param a)
+{
+	printf("%s\n", a);
+}
+
+
 
