@@ -21,5 +21,16 @@
 #ifndef _Carbon_H_
 #define _Carbon_H_
 
+#include "CoreServices/MacErrors.h"
+#include "CoreServices/MacTypes.h"
+
+#include <HIToolbox/CarbonEventsCore.h>
+#include <HIToolbox/CarbonEvents.h>
+#include <HIToolbox/Dialogs.h>
+#include <HIToolbox/Events.h>
+#include <HIToolbox/Menus.h>
+#include <HIToolbox/Notification.h>
+#include <HIToolbox/Scrap.h>
+#include <HIToolbox/TextServices.h>
 
 #endif
