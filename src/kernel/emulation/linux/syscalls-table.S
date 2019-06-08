@@ -39,7 +39,7 @@ __darling_bsd_syscall_exit:
 
 #define copy_arg(off) \
 	movl	8+off(%esp), %ecx ;\
-	movl	%ecx, -48+off(%esp)
+	movl	%ecx, -56+off(%esp)
 
 __darling_bsd_syscall:
 Lentry_hook:
@@ -66,9 +66,11 @@ Lentry_hook:
 	copy_arg(36)
 	copy_arg(40)
 	copy_arg(44)
-	subl	$48, %esp
+	copy_arg(48)
+	copy_arg(52)
+	subl	$56, %esp
 	call	*%eax
-	addl	$48, %esp
+	addl	$56, %esp
 .std_ret:
 Lexit_hook:
 	.space 6, 0x90
