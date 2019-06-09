@@ -1,5 +1,6 @@
 project(ApplicationServices)
 
+set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "48.0.0")
 
 add_framework(ApplicationServices
@@ -8,10 +9,18 @@ add_framework(ApplicationServices
 	SOURCES
 		ApplicationServices.c
 	DEPENDENCIES
-		system CoreServices CoreFoundation
-	LINK_FLAGS
-		" -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/CoreServices/CoreServices \
-		  -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/CoreGraphics"
+	system CoreServices CoreFoundation
 )
 
-add_dependencies(ApplicationServices CoreServices CoreGraphics)
+reexport(ApplicationServices CoreGraphics)
+reexport(ApplicationServices CoreText)
+reexport(ApplicationServices ImageIO)
+reexport(ApplicationServices ColorSync)
+# reexport ATS
+# reexport ColorSyncLegacy
+reexport(ApplicationServices CoreServices)
+# reexport HIServices
+# reexport LangAnalysis
+# reexport PrintCore
+# reexport QD
+# reexport SpeechSynthesis

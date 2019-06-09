@@ -284,7 +284,6 @@ add_subdirectory(external/IOKitUser)
 add_subdirectory(external/python_modules)
 add_subdirectory(SystemConfiguration)
 add_subdirectory(CoreServices)
-add_subdirectory(ApplicationServices)
 #add_subdirectory(VideoDecodeAcceleration)
 add_subdirectory(DiskArbitration)
 add_subdirectory(LocalAuthentication)
@@ -415,6 +414,10 @@ add_subdirectory(DrawSprocket)
 add_subdirectory(AddressBook)
 add_subdirectory(EventKit)
 
+add_subdirectory(ApplicationServices)
+add_subdirectory(external/cocotron/CoreGraphics)
+add_subdirectory(ColorSync)
+
 # /Applications
 #add_subdirectory(external/TextEdit)
 
@@ -449,7 +452,6 @@ add_subdirectory(external/dtrace)
 
 add_subdirectory(lkm)
 
-add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/cocotron/Onyx2D)
 add_subdirectory(external/cocotron/AppKit)
 add_subdirectory(external/cocotron/CoreText)
