@@ -1,3 +1,7 @@
+// This is needed so stat is not stat64
+#define _DARWIN_NO_64_BIT_INODE
+
+// NOTE: in this case, platform-include/sys/stat.h is used
 #include <sys/stat.h>
 #include "common.h"
 #include "../unistd/getuid.h"
