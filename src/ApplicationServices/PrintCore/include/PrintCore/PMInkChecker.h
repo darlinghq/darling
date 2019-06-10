@@ -17,5 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-const char* ApplicationServicesVersionString = "Darling ApplicationServices-48";
-const unsigned long long ApplicationServicesVersionNumber = 0x4048000000000000;
+#include <Foundation/Foundation.h>
+
+@interface PMInkChecker : NSObject
+
+@end

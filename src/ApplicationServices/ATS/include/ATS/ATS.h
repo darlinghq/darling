@@ -17,5 +17,26 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-const char* ApplicationServicesVersionString = "Darling ApplicationServices-48";
-const unsigned long long ApplicationServicesVersionNumber = 0x4048000000000000;
+
+#ifndef _ATS_H_
+#define _ATS_H_
+
+#include <MacTypes.h>
+#include <stdint.h>
+
+typedef UInt32 FMFont;
+
+typedef uint32_t ATSFontRef;
+typedef OptionBits ATSOptionFlags;
+typedef void* ATSUTextLayout;
+typedef void* ATSUStyle;
+typedef uint32_t ATSUAttributeTag;
+typedef Fixed ATSUTextMeasurement;
+typedef void* ATSUAttributeValuePtr;
+
+typedef uint32_t UniCharArrayOffset;
+typedef char* ConstUniCharArrayPtr;
+
+typedef void* ATSFontMetrics;
+
+#endif

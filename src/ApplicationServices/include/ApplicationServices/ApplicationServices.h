@@ -24,5 +24,14 @@
 #include <CoreServices/CoreServices.h>
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreText/CoreText.h>
+#include <ATS/ATS.h>
+#include <ColorSync/ColorSync.h>
+#include <HIServices/HIServices.h>
+#include <ImageIO/ImageIO.h>
+#include <QD/QD.h>
+#include <ColorSyncLegacy/ColorSyncLegacy.h>
+#include <LangAnalysis/LangAnalysis.h>
+#include <PrintCore/PrintCore.h>
+#include <SpeechSynthesis/SpeechSynthesis.h>
 
 #endif

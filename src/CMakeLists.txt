@@ -223,6 +223,14 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/ExceptionHandling/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AddressBook/include
 	${CMAKE_CURRENT_SOURCE_DIR}/EventKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/HIServices/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/ATS/include	
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/QD/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/ColorSyncLegacy/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/LangAnalysis/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/PrintCore/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/SpeechSynthesis/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ColorSync/include
 )
 
 add_subdirectory(external/libkqueue)

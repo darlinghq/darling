@@ -1,3 +1,3 @@
 # TODO
 
-Move includes from Accelerate and ColorSync
+Move includes from Accelerate

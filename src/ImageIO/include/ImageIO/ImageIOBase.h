@@ -17,5 +17,10 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-const char* ApplicationServicesVersionString = "Darling ApplicationServices-48";
-const unsigned long long ApplicationServicesVersionNumber = 0x4048000000000000;
+
+#ifndef _ImageIOBase_H_
+#define _ImageIOBase_H_
+
+#define IMAGEIO_EXTERN extern
+
+#endif

@@ -1,16 +1,18 @@
-project(ColorSync)
+project(QD)
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
-set(DYLIB_CURRENT_VERSION "4.7.0")
+set(DYLIB_CURRENT_VERSION "1.0.0")
 
-add_framework(ColorSync
+add_framework(QD
     FAT
     CURRENT_VERSION
     VERSION "A"
+    PARENT ApplicationServices
 
     SOURCES
-        src/ColorSync.c
+    	src/QD.c
 
     DEPENDENCIES
+	CoreFoundation
         system
 )
