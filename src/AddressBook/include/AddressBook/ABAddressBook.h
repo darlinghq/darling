@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,21 +17,9 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <Foundation/Foundation.h>
 
-#ifndef _Carbon_H_
-#define _Carbon_H_
-
-#include "CoreServices/MacErrors.h"
-#include "CoreServices/MacTypes.h"
-
-#include <HIToolbox/CarbonEventsCore.h>
-#include <HIToolbox/CarbonEvents.h>
-#include <HIToolbox/Dialogs.h>
-#include <HIToolbox/Events.h>
-#include <HIToolbox/Menus.h>
-#include <HIToolbox/Notification.h>
-#include <HIToolbox/Scrap.h>
-#include <HIToolbox/TextInputSources.h>
-#include <HIToolbox/TextServices.h>
-
-#endif
+@interface ABAddressBook : NSObject
+{
+}
+@end

@@ -55,6 +55,7 @@ add_framework(AddressBook
         src/ABActionSocialProfileViewPhotos.m
         src/ABActionSocialProfileViewProfile.m
         src/ABActionURLsOpenURL.m
+        src/ABAddressBook.m
         src/ABAddSuggestedValueTask.m
         src/CNUISaveNonCuratedValueOntoContactCommand.m
         src/ABAddressBookAPIAdapter.m
@@ -262,6 +263,7 @@ add_framework(AddressBook
         src/CNUIDeleteCommandHelper.m
         src/CNUIPhoneNumerValueTransformer.m
         src/ABTelURLHelper.m
+        src/ABGlobals.m
         src/ABGroupActionScope.m
         src/ABGroupBrowsingContext.m
         src/ABGroupBrowsingGroupEntry.m
@@ -299,6 +301,7 @@ add_framework(AddressBook
         src/ABImmediateActionGestureAdapter.m
         src/ABTemplatePreferencesSaving.m
         src/ABRectObject.m
+        src/ABRecord.m
         src/ABPackedImage.m
         src/ABMutablePackedImage.m
         src/ABImportRecordFactory.m
