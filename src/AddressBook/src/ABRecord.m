@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,21 +17,20 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <AddressBook/ABRecord.h>
 
-#ifndef _Carbon_H_
-#define _Carbon_H_
+@implementation ABRecord
 
-#include "CoreServices/MacErrors.h"
-#include "CoreServices/MacTypes.h"
+@implementation ABAddressBook
 
-#include <HIToolbox/CarbonEventsCore.h>
-#include <HIToolbox/CarbonEvents.h>
-#include <HIToolbox/Dialogs.h>
-#include <HIToolbox/Events.h>
-#include <HIToolbox/Menus.h>
-#include <HIToolbox/Notification.h>
-#include <HIToolbox/Scrap.h>
-#include <HIToolbox/TextInputSources.h>
-#include <HIToolbox/TextServices.h>
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+}
 
-#endif
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+@end
