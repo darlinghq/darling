@@ -1,6 +1,4 @@
-set(dylib_paths "")
 FUNCTION(use_ld64 target)
-	get_property(ld_dylib_paths GLOBAL PROPERTY ld_dylib_paths)
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ \
 -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
@@ -59,27 +57,53 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libcrypto.0.9.8.dylib:${CMAKE_BINARY_DIR}/src/external/openssl/src/libcrypto.0.9.8.dylib \
 -Wl,-dylib_file,/usr/lib/native/libGL.dylib:${CMAKE_BINARY_DIR}/src/native/libGL.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage:${CMAKE_BINARY_DIR}/src/CoreImage/CoreImage \
--Wl,-dylib_file,/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo:${CMAKE_BINARY_DIR}/src/CoreVideo/CoreVideo \
-${ld_dylib_paths}")
+-Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/FSEvents:${CMAKE_BINARY_DIR}/src/CoreServices/FSEvents \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/LaunchServices:${CMAKE_BINARY_DIR}/src/CoreServices/LaunchServices \
+-Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libvMisc.dylib\
+:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/vMisc/libvMisc.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libvDSP.dylib\
+:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/vDSP/libvDSP.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib\
+:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/BLAS/libBLAS.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libLAPACK.dylib\
+:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/LAPACK/libLAPACK.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libLinearAlgebra.dylib\
+:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/LinearAlgebra/libLinearAlgebra.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libSparseBLAS.dylib\
+:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/SparseBLAS/libSparseBLAS.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libQuadrature.dylib\
+:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/Quadrature/libQuadrature.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBNNS.dylib\
+:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/BNNS/libBNNS.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libSparse.dylib\
+:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/Sparse/libSparse.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/ColorSync.framework/Versions/A/ColorSync:${CMAKE_BINARY_DIR}/src/ColorSync/ColorSync \
+-Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ATS.framework/Versions/A/ATS\
+:${CMAKE_BINARY_DIR}/src/ApplicationServices/ATS/ATS \
+-Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ColorSyncLegacy.framework/Versions/A/ColorSyncLegacy\
+:${CMAKE_BINARY_DIR}/src/ApplicationServices/ColorSyncLegacy/ColorSyncLegacy \
+-Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/HIServices.framework/Versions/A/HIServices\
+:${CMAKE_BINARY_DIR}/src/ApplicationServices/HIServices/HIServices \
+-Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/LangAnalysis.framework/Versions/A/LangAnalysis\
+:${CMAKE_BINARY_DIR}/src/ApplicationServices/LangAnalysis/LangAnalysis \
+-Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/PrintCore.framework/Versions/A/PrintCore\
+:${CMAKE_BINARY_DIR}/src/ApplicationServices/PrintCore/PrintCore \
+-Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/QD.framework/Versions/A/QD\
+:${CMAKE_BINARY_DIR}/src/ApplicationServices/QD/QD \
+-Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/SpeechSynthesis\
+:${CMAKE_BINARY_DIR}/src/ApplicationServices/SpeechSynthesis/SpeechSynthesis \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices:${CMAKE_BINARY_DIR}/src/CoreServices/CoreServices \
+-Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices:${CMAKE_BINARY_DIR}/src/ApplicationServices/ApplicationServices \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/CoreGraphics \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreText/CoreText \
+-Wl,-dylib_file,/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO:${CMAKE_BINARY_DIR}/src/ImageIO/ImageIO \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo:${CMAKE_BINARY_DIR}/src/CoreVideo/CoreVideo")
 
 	add_dependencies(${target} x86_64-apple-darwin11-ld)
 
 ENDFUNCTION(use_ld64)
 
-function(reexport reexporter reexportee)
+function(reexport reexporter reexportee reexportee_output)
 	add_dependencies(${reexporter} ${reexportee})
-	set(reexportee_binary_dir "$<TARGET_PROPERTY:${reexportee},BINARY_DIR>")
-	set(reexportee_output_name "$<TARGET_PROPERTY:${reexportee},OUTPUT_NAME>")
-	#message("binary dir: ${reexportee_binary_dir}, output name: ${reexportee_output_name}")
-	if(NOT DEFINED reexportee_output_name)
-		set(reexportee_output_name "$<TARGET_PROPERTY:${reexportee},DYLIB_BUILD_NAME>")
-		if(NOT DEFINED reexportee_output_name)
-			message(FATAL_ERROR "failed to get reexportee path")
-		endif(NOT DEFINED reexportee_output_name)
-	endif(NOT DEFINED reexportee_output_name)
-	set(reexportee_output "${reexportee_binary_dir}/${reexportee_output_name}")
-	set(reexportee_install_name "$<TARGET_PROPERTY:${reexportee},DYLIB_INSTALL_NAME>")
-	set_property(TARGET ${reexporter} APPEND PROPERTY
-		LINK_OPTIONS " -Wl,-reexport_library,${reexportee_output} ")
-	#set_property(GLOBAL APPEND_STRING PROPERTY ld_dylib_paths " -Wl,-dylib_file,${reexportee_install_name}:${reexportee_output} ")
+	set_property(TARGET ${reexporter} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-reexport_library,${reexportee_output} ")
 endfunction(reexport)

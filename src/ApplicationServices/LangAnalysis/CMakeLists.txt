@@ -7,6 +7,7 @@ add_framework(LangAnalysis
     FAT
     CURRENT_VERSION
     VERSION "A"
+    PARENT ApplicationServices
 
     SOURCES
         src/LangAnalysis.c

@@ -20,6 +20,8 @@ FUNCTION(add_darling_library name)
 		SUFFIX ".dylib"
 		NO_SONAME TRUE)
 
+	set_target_properties(${name} PROPERTIES PREFIX "lib")
+
 	set_property(TARGET ${name} APPEND_STRING PROPERTY
 		LINK_FLAGS " ${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 

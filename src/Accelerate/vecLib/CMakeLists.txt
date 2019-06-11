@@ -45,14 +45,15 @@ add_framework(vecLib
 	Sparse
         system
 )
-reexport(vecLib vMisc)
-reexport(vecLib vDSP)
-reexport(vecLib BLAS)
-reexport(vecLib LAPACK)
-reexport(vecLib LinearAlgebra)
-reexport(vecLib SparseBLAS)
-reexport(vecLib Quadrature)
-reexport(vecLib BNNS)
-reexport(vecLib Sparse)
+
+reexport(vecLib vMisc ${CMAKE_CURRENT_BINARY_DIR}/vMisc/libvMisc.dylib)
+reexport(vecLib vDSP ${CMAKE_CURRENT_BINARY_DIR}/vDSP/libvDSP.dylib)
+reexport(vecLib BLAS ${CMAKE_CURRENT_BINARY_DIR}/BLAS/libBLAS.dylib)
+reexport(vecLib LAPACK ${CMAKE_CURRENT_BINARY_DIR}/LAPACK/libLAPACK.dylib)
+reexport(vecLib LinearAlgebra ${CMAKE_CURRENT_BINARY_DIR}/LinearAlgebra/libLinearAlgebra.dylib)
+reexport(vecLib SparseBLAS ${CMAKE_CURRENT_BINARY_DIR}/SparseBLAS/libSparseBLAS.dylib)
+reexport(vecLib Quadrature ${CMAKE_CURRENT_BINARY_DIR}/Quadrature/libQuadrature.dylib)
+reexport(vecLib BNNS ${CMAKE_CURRENT_BINARY_DIR}/BNNS/libBNNS.dylib)
+reexport(vecLib Sparse ${CMAKE_CURRENT_BINARY_DIR}/Sparse/libSparse.dylib)
 
 InstallSymlink(Accelerate.framework/Versions/A/Frameworks/vecLib.framework ${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Frameworks/vecLib.framework)

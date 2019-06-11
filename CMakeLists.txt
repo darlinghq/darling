@@ -1,6 +1,8 @@
 SET(CMAKE_SYSTEM_NAME Linux)
 SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
 
+
+
 # This allows setting the compiler with -DCMAKE_C_COMPILER when configuring.
 if (NOT DEFINED CMAKE_C_COMPILER)
 	find_program(CMAKE_C_COMPILER NAMES

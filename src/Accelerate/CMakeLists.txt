@@ -16,4 +16,5 @@ add_framework(Accelerate
     DEPENDENCIES
         system
 )
-reexport(Accelerate vecLib)
+
+reexport(Accelerate vecLib ${CMAKE_CURRENT_BINARY_DIR}/vecLib/vecLib)
