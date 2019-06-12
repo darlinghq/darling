@@ -1,7 +1,7 @@
 #ifndef _Carbon_TextInputSources_H_
 #define _Carbon_TextInputSources_H_
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -12,7 +12,7 @@ extern const CFStringRef kTISPropertyInputSourceCategory;
 extern const CFStringRef kTISPropertyInputSourceType;
 extern const CFStringRef kTISTypeKeyboardLayout;
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 
