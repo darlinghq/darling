@@ -19,6 +19,7 @@
 
 #include <Foundation/Foundation.h>
 
+extern NSString *const kABDatabaseChangedNotification;
 extern NSString *const kABDatabaseChangedExternallyNotification;
 
 extern NSString *const kABEmailProperty;

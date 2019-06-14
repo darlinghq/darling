@@ -21,8 +21,6 @@
 
 @implementation ABRecord
 
-@implementation ABAddressBook
-
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];

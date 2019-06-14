@@ -19,7 +19,8 @@
 
 #import <AddressBook/ABGlobals.h>
 
-NSString *const kABDaabaseChangedExternallyNotification=@"ABDatabaseChangedExternallyNotification";
+NSString *const kABDatabaseChangedNotification=@"ABDatabaseChangedNotification";
+NSString *const kABDatabaseChangedExternallyNotification=@"ABDatabaseChangedExternallyNotification";
 
 NSString *const kABEmailProperty=@"ABEmailProperty";
 NSString *const kABFirstNameProperty=@"ABFirstNameProperty";
