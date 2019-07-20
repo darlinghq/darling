@@ -6,18 +6,19 @@
 #include "../../../../lkm/api.h"
 #include "../simple.h"
 
-long sys_psynch_cvwait(void* cv, uint32_t cvgen, uint32_t cvugen, void* mutex, uint64_t mgen,
-		uint32_t ugen, uint64_t sec, uint32_t usec)
+
+long sys_psynch_cvwait(void* cv, uint64_t cvlsgen, uint32_t cvugen, void * mutex, uint64_t mugen, 
+		uint32_t flags, int64_t sec, uint32_t nsec)
 {
 	struct psynch_cvwait_args args = {
 		.cv = cv,
-		.cvlsgen = cvgen,
+		.cvlsgen = cvlsgen,
 		.cvugen = cvugen,
 		.mutex = mutex,
-		.mugen = mgen,
-		.flags = ugen,
+		.mugen = mugen,
+		.flags = flags,
 		.sec = sec,
-		.nsec = usec,
+		.nsec = nsec,
 	};
 
 	// __simple_printf("sys_psynch_mutexwait(mutex=%p, mgen=%x)\n", mutex, mgen);

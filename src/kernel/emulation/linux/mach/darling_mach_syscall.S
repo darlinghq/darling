@@ -43,7 +43,7 @@ __darling_mach_syscall_exit:
 
 #define copy_arg(off) \
 	movl	8+off(%esp), %ecx ;\
-	movl	%ecx, -32+off(%esp)
+	movl	%ecx, -56+off(%esp)
 
 __darling_mach_syscall:
 	cmpl	$0, %eax
@@ -70,9 +70,16 @@ Lentry_hook:
 	copy_arg(20)
 	copy_arg(24)
 	copy_arg(28)
-	subl	$32, %esp
+	copy_arg(32)
+	copy_arg(36)
+	copy_arg(40)
+	copy_arg(44)
+	copy_arg(48)
+	copy_arg(52)
+
+	subl	$56, %esp
 	call	*%eax
-	addl	$32, %esp
+	addl	$56, %esp
 .std_ret:
 Lexit_hook:
 	.space 6, 0x90
