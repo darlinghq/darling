@@ -1,3 +1,6 @@
+cmake_policy(SET CMP0069 NEW)
+cmake_policy(SET CMP0063 NEW)
+
 include(darling_lib)
 
 function(add_darling_static_library name)

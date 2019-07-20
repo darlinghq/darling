@@ -231,6 +231,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/PrintCore/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/SpeechSynthesis/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ColorSync/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/lzfse/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -411,6 +412,7 @@ add_subdirectory(CoreAudio)
 add_subdirectory(CoreMedia)
 add_subdirectory(LDAP)
 add_subdirectory(ExceptionHandling)
+add_subdirectory(external/lzfse)
 
 # Just a stub
 add_subdirectory(WebKit)
