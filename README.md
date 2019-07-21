@@ -53,8 +53,6 @@ $ darling shell
 Darling [~]$ installer -pkg mc-4.8.7-0.pkg -target /
 ````
 
-If you have previously downloaded the Midnight Commander package from [Rudix](http://rudix.org), you can now run `mc` to start MC for OS X. For easier installation, install the Rudix Package Manager. Note that not all Rudix packages may work under Darling.
-
 You can uninstall and list packages with the `uninstaller` command.
 
 ### Working with DMG images
