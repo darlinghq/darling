@@ -236,6 +236,13 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/QTKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AudioUnit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreMediaIO/include
+	${CMAKE_CURRENT_SOURCE_DIR}/StoreKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ForceFeedback/include
+	${CMAKE_CURRENT_SOURCE_DIR}/GameController/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreWLAN/include
+	${CMAKE_CURRENT_SOURCE_DIR}/IOBluetooth/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreMIDI/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libsandbox/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -421,6 +428,13 @@ add_subdirectory(VideoToolbox)
 add_subdirectory(QTKit)
 add_subdirectory(AudioUnit)
 add_subdirectory(CoreMediaIO)
+add_subdirectory(StoreKit)
+add_subdirectory(ForceFeedback)
+add_subdirectory(GameController)
+add_subdirectory(CoreWLAN)
+add_subdirectory(IOBluetooth)
+add_subdirectory(CoreMIDI)
+add_subdirectory(libsandbox)
 
 # Just a stub
 add_subdirectory(WebKit)
