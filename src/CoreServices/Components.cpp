@@ -2,8 +2,10 @@
 #include "Components.h"
 #include "ComponentsInternal.h"
 #include "darling-config.h"
+#ifdef FRAMEWORK_COREAUDIO
 #include <AudioUnit/AUComponent.h>
 #include <AudioUnit/AudioUnitBase.h>
+#endif
 #include <CoreServices/MacErrors.h>
 
 #define TRACE1(x)

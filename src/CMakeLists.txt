@@ -232,6 +232,10 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/SpeechSynthesis/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ColorSync/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lzfse/include
+	${CMAKE_CURRENT_SOURCE_DIR}/VideoToolbox/include
+	${CMAKE_CURRENT_SOURCE_DIR}/QTKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/AudioUnit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreMediaIO/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -413,6 +417,10 @@ add_subdirectory(CoreMedia)
 add_subdirectory(LDAP)
 add_subdirectory(ExceptionHandling)
 add_subdirectory(external/lzfse)
+add_subdirectory(VideoToolbox)
+add_subdirectory(QTKit)
+add_subdirectory(AudioUnit)
+add_subdirectory(CoreMediaIO)
 
 # Just a stub
 add_subdirectory(WebKit)
