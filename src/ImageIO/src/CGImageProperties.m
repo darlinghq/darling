@@ -23,3 +23,7 @@ const CFStringRef kCGImagePropertyDPIWidth = CFSTR("DPIWidth");
 const CFStringRef kCGImagePropertyPixelWidth = CFSTR("PixelWidth");
 const CFStringRef kCGImagePropertyPNGDictionary = CFSTR("{PNG}");
 const CFStringRef kCGImagePropertyPNGGamma = CFSTR("Gamma");
+const CFStringRef kCGImagePropertyGIFDelayTime = CFSTR("DelayTime");
+const CFStringRef kCGImagePropertyGIFDictionary = CFSTR("{GIF}");
+const CFStringRef kCGImagePropertyGIFLoopCount = CFSTR("LoopCount");
+const CFStringRef kCGImagePropertyGIFUnclampedDelayTime = CFSTR("UnclampedDelayTime");

@@ -29,6 +29,9 @@ const CFStringRef kUTTypeSwiftSource = CFSTR("public.swift-source");
 const CFStringRef kUTTypeText = CFSTR("public.text");
 const CFStringRef kUTTypeFramework = CFSTR("com.apple.framework");
 const CFStringRef kUTTypeImage = CFSTR("public.image");
+const CFStringRef kUTTypeUTF8PlainText = CFSTR("public.utf8-plain-text");
+const CFStringRef kUTTypeApplication = CFSTR("com.apple.application");
+const CFStringRef kUTTypeBundle = CFSTR("com.apple.bundle");
 
 const CFStringRef _kLSASNKey = CFSTR("LSASN");
 const CFStringRef _kLSApplicationTypeKey = CFSTR("ApplicationType");

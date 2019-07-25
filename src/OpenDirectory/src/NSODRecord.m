@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,28 +17,17 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CoreImage/CIFilter.h>
+#import <OpenDirectory/NSODRecord.h>
 
-#import <Foundation/NSString.h>
+@implementation NSODRecord
 
-NSString * const kCIInputAngleKey = @"inputAngle";
-NSString * const kCIInputBackgroundImageKey = @"inputBackgroundImage";
-NSString * const kCIInputBrightnessKey = @"inputBrightness";
-NSString * const kCIInputColorKey = @"inputColor";
-NSString * const kCIInputContrastKey = @"inputContrast";
-NSString * const kCIInputExtentKey = @"inputExtent";
-NSString * const kCIInputImageKey = @"inputImage";
-NSString * const kCIInputSaturationKey = @"inputSaturation";
-NSString * const kCIOutputImageKey = @"outputImage";
-NSString * const kCIApplyOptionDefinition = @"definition";
-
-@implementation CIFilter
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation {
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
 }
 

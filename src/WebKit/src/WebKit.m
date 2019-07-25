@@ -22,6 +22,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+@interface WebView : NSObject
+@end
+@implementation WebView
+@end
+
 static int verbose = 0;
 
 __attribute__((constructor))
