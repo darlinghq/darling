@@ -245,6 +245,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/libsandbox/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenCL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenDirectory/include
+	${CMAKE_CURRENT_SOURCE_DIR}/MetalKit/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -439,6 +440,7 @@ add_subdirectory(CoreMIDI)
 add_subdirectory(libsandbox)
 add_subdirectory(OpenCL)
 add_subdirectory(OpenDirectory)
+add_subdirectory(MetalKit)
 
 # Just a stub
 add_subdirectory(WebKit)
