@@ -22,6 +22,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+
+const ODAttributeType kODAttributeTypeRecordName = @"dsAttrTypeStandard:RecordName";
+const ODAttributeType kODAttributeTypeStandardOnly = @"dsAttributesStandardAll";
+const ODAttributeType kODAttributeTypeUserShell = @"dsAttrTypeStandard:UserShell";
+
+const ODRecordType kODRecordTypeUsers = @"dsRecTypeStandard:Users";
+
+
 static int verbose = 0;
 
 __attribute__((constructor))

@@ -23,6 +23,15 @@
 
 #import <Foundation/Foundation.h>
 
+typedef NSString *ODRecordType;
+typedef NSString *ODAttributeType;
+
+extern const ODAttributeType kODAttributeTypeRecordName;
+extern const ODAttributeType kODAttributeTypeStandardOnly;
+extern const ODAttributeType kODAttributeTypeUserShell;
+
+extern const ODRecordType kODRecordTypeUsers;
+
 #import <OpenDirectory/ODQueryDelegate.h>
 #import <OpenDirectory/NSODSession.h>
 #import <OpenDirectory/ODSession.h>
