@@ -17,28 +17,18 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <MetalKit/MTKTextureLoaderPVR3.h>
 
-#include <OpenDirectory/OpenDirectory.h>
-#include <stdlib.h>
-#include <stdio.h>
+@implementation MTKTextureLoaderPVR3
 
-
-const ODAttributeType kODAttributeTypeRecordName = @"dsAttrTypeStandard:RecordName";
-const ODAttributeType kODAttributeTypeStandardOnly = @"dsAttributesStandardAll";
-const ODAttributeType kODAttributeTypeUserShell = @"dsAttrTypeStandard:UserShell";
-
-const ODRecordType kODRecordTypeUsers = @"dsRecTypeStandard:Users";
-
-
-static int verbose = 0;
-
-__attribute__((constructor))
-static void initme(void) {
-    verbose = getenv("STUB_VERBOSE") != NULL;
-}
-
-void* ODTrustInfoCopy(void)
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    if (verbose) puts("STUB: ODTrustInfoCopy called");
-    return NULL;
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+@end

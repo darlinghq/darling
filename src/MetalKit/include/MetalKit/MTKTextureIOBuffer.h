@@ -17,28 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <Foundation/Foundation.h>
 
-#include <OpenDirectory/OpenDirectory.h>
-#include <stdlib.h>
-#include <stdio.h>
+@interface MTKTextureIOBuffer : NSObject
 
-
-const ODAttributeType kODAttributeTypeRecordName = @"dsAttrTypeStandard:RecordName";
-const ODAttributeType kODAttributeTypeStandardOnly = @"dsAttributesStandardAll";
-const ODAttributeType kODAttributeTypeUserShell = @"dsAttrTypeStandard:UserShell";
-
-const ODRecordType kODRecordTypeUsers = @"dsRecTypeStandard:Users";
-
-
-static int verbose = 0;
-
-__attribute__((constructor))
-static void initme(void) {
-    verbose = getenv("STUB_VERBOSE") != NULL;
-}
-
-void* ODTrustInfoCopy(void)
-{
-    if (verbose) puts("STUB: ODTrustInfoCopy called");
-    return NULL;
-}
+@end
