@@ -5,7 +5,7 @@ services:
     build:
       context: .
       args:
-        - OS=${RPM_OS-fedora:29}
+        - OS=${RPM_OS-fedora:30}
     volumes:
       - ..:/src:ro
       - ./RPMS:/root/rpmbuild/RPMS
