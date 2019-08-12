@@ -295,3 +295,6 @@
 [submodule "src/external/lzfse"]
 	path = src/external/lzfse
 	url = ../lzfse.git
+[submodule "src/external/OpenDirectory"]
+	path = src/external/OpenDirectory
+	url = ../darling-opendirectory.git
