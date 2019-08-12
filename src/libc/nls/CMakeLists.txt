@@ -8,4 +8,4 @@ set(nls_sources
 	FreeBSD/msgcat.c
 )
 
-add_library(libc-nls OBJECT ${nls_sources})
+add_darling_object_library(libc-nls ${nls_sources})

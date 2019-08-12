@@ -30,4 +30,4 @@ set(info-lookup_sources
 	thread_data.c
 )
 
-add_library(info-lookup OBJECT ${info-lookup_sources})
+add_darling_object_library(info-lookup ${info-lookup_sources})

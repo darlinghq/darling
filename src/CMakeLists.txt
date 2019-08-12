@@ -7,7 +7,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
 include(pyc)
 
-add_subdirectory(external/xcbuild)
+#add_subdirectory(external/xcbuild)
 add_subdirectory(libelfloader/native)
 add_subdirectory(bsdln)
 

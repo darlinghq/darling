@@ -44,5 +44,5 @@ set(db_sources ${db_sources}
 	recno/FreeBSD/rec_seq.c
 	recno/FreeBSD/rec_utils.c)
 
-add_library(libc-db OBJECT ${db_sources})
+add_darling_object_library(libc-db ${db_sources})
 

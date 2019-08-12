@@ -18,4 +18,4 @@ set(dr_sources
 	resolver.c
 )
 
-add_library(darling-resolver OBJECT ${dr_sources})
+add_darling_object_library(darling-resolver ${dr_sources})

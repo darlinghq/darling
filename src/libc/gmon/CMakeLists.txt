@@ -6,4 +6,4 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c89")
 
 set(gmon_sources gmon.c)
 
-add_library(libc-gmon OBJECT ${gmon_sources})
+add_darling_object_library(libc-gmon ${gmon_sources})

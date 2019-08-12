@@ -9,4 +9,4 @@ set(info-rpc_sources
 	xdr.c
 )
 
-add_library(info-rpc OBJECT ${info-rpc_sources})
+add_darling_object_library(info-rpc ${info-rpc_sources})

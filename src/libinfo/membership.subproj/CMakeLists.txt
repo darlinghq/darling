@@ -18,4 +18,4 @@ set(info-membership_sources
 	membership.c
 )
 
-add_library(info-membership OBJECT ${info-membership_sources})
+add_darling_object_library(info-membership ${info-membership_sources})

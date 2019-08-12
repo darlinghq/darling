@@ -14,4 +14,4 @@ set(util_sources
 	opendev.c
 	pty.c)
 
-add_library(libc-util OBJECT ${util_sources})
+add_darling_object_library(libc-util ${util_sources})

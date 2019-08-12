@@ -150,7 +150,7 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_library(system_m_extra OBJECT Source/Intel/xmm_misc.c Source/Intel/xmm_log.c Source/Intel/fmaxfminfdim.S Source/Intel/nextafter.S Source/Intel/xmm_remainder.c Source/Intel/e_remquol.S)
+add_darling_object_library(system_m_extra Source/Intel/xmm_misc.c Source/Intel/xmm_log.c Source/Intel/fmaxfminfdim.S Source/Intel/nextafter.S Source/Intel/xmm_remainder.c Source/Intel/e_remquol.S)
 set_target_properties(system_m_extra PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY -O0 -ggdb")
 make_fat(system_m_extra)
 

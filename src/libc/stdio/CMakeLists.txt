@@ -129,21 +129,24 @@ set_source_files_properties(FreeBSD/freopen.c PROPERTIES COMPILE_FLAGS "${CMAKE_
 set_source_files_properties(FreeBSD/fwrite.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_FWRITE")
 set_source_files_properties(FreeBSD/tempnam.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_TEMPNAM")
 
-add_library(libc-stdio OBJECT ${stdio_sources})
+add_darling_object_library(libc-stdio ${stdio_sources})
 #SET_TARGET_PROPERTIES(libc-stdio PROPERTIES COMPILE_DEFINITIONS "VARIANT_DARWINEXTSN")
 
 # ***
 # Legacy variants
 # ***
 
-set(stdio-legacy_sources
-	 FreeBSD/fopen.c FreeBSD/fdopen.c
-	FreeBSD/fputs.c FreeBSD/tempnam.c
-	FreeBSD/freopen.c FreeBSD/fwrite.c)
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE")
-add_library(libc-stdio_legacy OBJECT ${stdio-legacy_sources})
-SET_TARGET_PROPERTIES(libc-stdio_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+
+if (TARGET_i386)
+	set(stdio-legacy_sources
+		 FreeBSD/fopen.c FreeBSD/fdopen.c
+		FreeBSD/fputs.c FreeBSD/tempnam.c
+		FreeBSD/freopen.c FreeBSD/fwrite.c)
+
+	add_library(libc-stdio_legacy OBJECT ${stdio-legacy_sources})
+	SET_TARGET_PROPERTIES(libc-stdio_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+endif (TARGET_i386)
 
 # ***
 # DARWIN_EXTSN variants

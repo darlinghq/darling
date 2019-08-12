@@ -7,14 +7,15 @@ add_definitions(-DPRIVATE)
 
 #set(CMAKE_C_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../../duct/include/commpage.h -include ${DARLING_TOP_DIRECTORY}/platform-include/sys/time.h")
 
-set(x86_64_sources
-	gen/mcount.S
-	string/strcpy.S
-	string/strlen.S
-	string/strncpy.S
-	string/strnlen.S
-)
-
+if (TARGET_x86_64)
+	set(x86_64_sources
+		gen/mcount.S
+		string/strcpy.S
+		string/strlen.S
+		string/strncpy.S
+		string/strnlen.S
+	)
+endif (TARGET_x86_64)
 
 add_library(libc-x86_64 OBJECT ${x86_64_sources})
 

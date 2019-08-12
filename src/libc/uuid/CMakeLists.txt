@@ -16,4 +16,4 @@ set(uuid_sources
 	uuidsrc/unpack.c
 	uuidsrc/unparse.c)
 
-add_library(libc-uuid OBJECT ${uuid_sources})
+add_darling_object_library(libc-uuid ${uuid_sources})

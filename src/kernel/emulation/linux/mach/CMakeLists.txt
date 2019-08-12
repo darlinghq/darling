@@ -18,8 +18,8 @@ set(mach_server_client_sources
 	mach_table.c
 )
 
-add_library(mach_server_client OBJECT ${mach_server_client_sources})
-add_library(mach_server_client_dyld OBJECT ${mach_server_client_sources})
+add_darling_object_library(mach_server_client ${mach_server_client_sources})
+add_darling_object_library(mach_server_client_dyld ${mach_server_client_sources})
 set_target_properties(mach_server_client_dyld PROPERTIES COMPILE_FLAGS "-DVARIANT_DYLD")
 make_fat(mach_server_client)
 make_fat(mach_server_client_dyld)

@@ -12,4 +12,4 @@ set(darwin_sources
 	darling_hacks.c
 	)
 
-add_library(libc-darwin OBJECT ${darwin_sources})
+add_darling_object_library(libc-darwin ${darwin_sources})

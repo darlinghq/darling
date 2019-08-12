@@ -41,6 +41,18 @@ FUNCTION(add_darling_library name)
 			LINK_FLAGS " -Wl,-current_version,${DYLIB_CURRENT_VERSION} ")
 	endif (DYLIB_CURRENT_VERSION)
 
+	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS  " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
+	add_dependencies(${name} lipo)
+
+	if (TARGET_x86_64 AND NOT DARLING_LIB_i386_ONLY)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS  " -arch x86_64")
+		set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " -arch x86_64")
+	endif (TARGET_x86_64 AND NOT DARLING_LIB_i386_ONLY)
+	if (TARGET_i386 AND NOT DARLING_LIB_x86_64_ONLY)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch i386")
+		set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " -arch i386")
+	endif (TARGET_i386 AND NOT DARLING_LIB_x86_64_ONLY)
+
 	use_ld64(${name})
 
 	if (NOT NO_DSYM)
@@ -49,13 +61,31 @@ FUNCTION(add_darling_library name)
 ENDFUNCTION(add_darling_library)
 
 FUNCTION(make_fat)
-	set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-		LINK_FLAGS " -arch i386 -arch x86_64")
-	set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-		COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch i386 -arch x86_64")
-	foreach(tgt ${ARGV})
-		add_dependencies(${tgt} lipo)
-	endforeach(tgt)
+	if (TARGET_i386 AND TARGET_x86_64)
+		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch i386 -arch x86_64")
+		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+			LINK_FLAGS " -arch i386 -arch x86_64")
+		foreach(tgt ${ARGV})
+			add_dependencies(${tgt} lipo)
+		endforeach(tgt)
+	elseif (TARGET_i386)
+		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch i386")
+		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+			LINK_FLAGS " -arch i386")
+		foreach(tgt ${ARGV})
+			add_dependencies(${tgt} lipo)
+		endforeach(tgt)
+	elseif (TARGET_x86_64)
+		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch x86_64")
+		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+			LINK_FLAGS " -arch x86_64")
+		foreach(tgt ${ARGV})
+			add_dependencies(${tgt} lipo)
+		endforeach(tgt)
+	endif (TARGET_i386 AND TARGET_x86_64)
 ENDFUNCTION(make_fat)
 
 # add_circular(name ...)
@@ -129,3 +159,21 @@ FUNCTION(add_circular name)
 		make_fat(${name})
 	endif (CIRCULAR_FAT)
 ENDFUNCTION(add_circular)
+
+function(add_darling_object_library name)
+	cmake_parse_arguments(OBJECT_LIB "i386_ONLY;x86_64_ONLY" "" "" ${ARGN})
+	foreach(f IN LISTS ARGN)
+                set(files ${files} ${f})
+        endforeach(f)
+
+	add_library(${name} OBJECT ${files})
+	add_dependencies(${name} lipo)
+	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
+
+	if (TARGET_i386 AND NOT OBJECT_LIB_x86_64_ONLY)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch i386")
+	endif (TARGET_i386 AND NOT OBJECT_LIB_x86_64_ONLY)
+	if (TARGET_x86_64 AND NOT OBJECT_LIB_i386_ONLY)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch x86_64")
+	endif (TARGET_x86_64 AND NOT OBJECT_LIB_i386_ONLY)
+endfunction(add_darling_object_library)

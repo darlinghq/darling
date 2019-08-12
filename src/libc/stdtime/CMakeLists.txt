@@ -22,13 +22,14 @@ SET_SOURCE_FILES_PROPERTIES(FreeBSD/localtime.c PROPERTIES COMPILE_FLAGS "${CMAK
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/strftime.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRFTIME -DLIBC_ALIAS_STRFTIME_L")
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/strptime.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRPTIME -DLIBC_ALIAS_STRPTIME_L")
 
-add_library(libc-stdtime OBJECT ${stdtime_sources})
+add_darling_object_library(libc-stdtime ${stdtime_sources})
 
 # Legacy variant
-set(stdtime-legacy_sources
-	FreeBSD/localtime.c
-	FreeBSD/strftime.c
-	FreeBSD/strptime.c)
-add_library(libc-stdtime_legacy OBJECT ${stdtime-legacy_sources})
-SET_TARGET_PROPERTIES(libc-stdtime_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
-
+if (TARGET_i386)
+	set(stdtime-legacy_sources
+		FreeBSD/localtime.c
+		FreeBSD/strftime.c
+		FreeBSD/strptime.c)
+	add_library(libc-stdtime_legacy OBJECT ${stdtime-legacy_sources})
+	SET_TARGET_PROPERTIES(libc-stdtime_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+endif (TARGET_i386)

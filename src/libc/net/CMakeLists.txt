@@ -29,7 +29,7 @@ set(net_sources
 	inet_pton.c
 )
 
-add_library(libc-net OBJECT ${net_sources})
+add_darling_object_library(libc-net ${net_sources})
 
 # ***
 # Cancelable variants
@@ -41,7 +41,9 @@ SET_TARGET_PROPERTIES(libc-net_cancelable PROPERTIES COMPILE_FLAGS "-U__DARWIN_U
 # ***
 # Legacy i386 variants
 #
-set(net-legacy_sources FreeBSD/recv.c FreeBSD/send.c)
-add_library(libc-net_legacy OBJECT ${net-legacy_sources})
-SET_TARGET_PROPERTIES(libc-net_legacy PROPERTIES COMPILE_FLAGS
-	"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_64_BIT_INO_T -D_DARWIN_NO_64_BIT_INODE")
+if (TARGET_i386)
+	set(net-legacy_sources FreeBSD/recv.c FreeBSD/send.c)
+	add_library(libc-net_legacy OBJECT ${net-legacy_sources})
+	SET_TARGET_PROPERTIES(libc-net_legacy PROPERTIES COMPILE_FLAGS
+		"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_64_BIT_INO_T -D_DARWIN_NO_64_BIT_INODE")
+endif (TARGET_i386)

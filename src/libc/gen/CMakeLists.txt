@@ -160,7 +160,7 @@ set(gen_sources ${gen_sources}
 	NetBSD/utmpx.c
 )
 
-add_library(libc-gen OBJECT ${gen_sources})
+add_darling_object_library(libc-gen ${gen_sources})
 
 # ***
 # Cancelable variants
@@ -183,16 +183,18 @@ SET_TARGET_PROPERTIES(libc-gen_noinode64 PROPERTIES COMPILE_FLAGS "-U__DARWIN_UN
 # Legacy variants
 # ***
 
-set(gen-legacy_sources FreeBSD/clock.c FreeBSD/closedir.c FreeBSD/fnmatch.c
-	FreeBSD/lockf.c FreeBSD/pause.c FreeBSD/popen.c FreeBSD/rewinddir.c
-	FreeBSD/seekdir.c FreeBSD/setmode.c FreeBSD/sleep.c FreeBSD/telldir.c
-	FreeBSD/ttyname.c FreeBSD/usleep.c FreeBSD/wait.c FreeBSD/waitpid.c
-	FreeBSD/timezone.c FreeBSD/termios.c FreeBSD/nice.c
-	confstr.c crypt.c nftw.c FreeBSD/opendir.c nanosleep.c)
+if (TARGET_i386)
+	set(gen-legacy_sources FreeBSD/clock.c FreeBSD/closedir.c FreeBSD/fnmatch.c
+		FreeBSD/lockf.c FreeBSD/pause.c FreeBSD/popen.c FreeBSD/rewinddir.c
+		FreeBSD/seekdir.c FreeBSD/setmode.c FreeBSD/sleep.c FreeBSD/telldir.c
+		FreeBSD/ttyname.c FreeBSD/usleep.c FreeBSD/wait.c FreeBSD/waitpid.c
+		FreeBSD/timezone.c FreeBSD/termios.c FreeBSD/nice.c
+		confstr.c crypt.c nftw.c FreeBSD/opendir.c nanosleep.c)
 
-add_library(libc-gen_legacy OBJECT ${gen-legacy_sources})
-SET_TARGET_PROPERTIES(libc-gen_legacy PROPERTIES COMPILE_FLAGS
-	"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_64_BIT_INO_T -D_DARWIN_NO_64_BIT_INODE")
+	add_library(libc-gen_legacy OBJECT ${gen-legacy_sources})
+	SET_TARGET_PROPERTIES(libc-gen_legacy PROPERTIES COMPILE_FLAGS
+		"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_64_BIT_INO_T -D_DARWIN_NO_64_BIT_INODE")
+endif (TARGET_i386)
 
 # ***
 # DARWIN_EXTSN variants
