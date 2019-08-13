@@ -5,7 +5,7 @@
 
 Name:           darling
 Version:        0.1
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Darling
 
 Group:          Utility
@@ -90,6 +90,9 @@ fi
 %{_prefix}/src/%{name}-mach-%{version}
 
 %changelog
+* Mon Aug 12 2019 Andy Neff <andy@visionsystemsinc.com> - 0.1-4
+- Update for Fedora 30
+
 * Tue Mar 12 2019 Andy Neff <andy@visionsystemsinc.com> - 0.1-3
 - Remove bad commented macro, cleanup, and verify master works on Fedora 29
 
