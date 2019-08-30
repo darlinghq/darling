@@ -440,6 +440,7 @@ add_subdirectory(CoreMIDI)
 add_subdirectory(libsandbox)
 add_subdirectory(OpenCL)
 add_subdirectory(OpenDirectory)
+add_subdirectory(opendirectory)
 add_subdirectory(MetalKit)
 
 # Just a stub
