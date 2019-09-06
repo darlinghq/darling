@@ -21,3 +21,14 @@ CFStringRef SCDynamicStoreKeyCreate(CFAllocatorRef allocator, CFStringRef fmt, .
 	STUB();
 	return NULL;
 }
+
+Boolean SCDynamicStoreSetDispatchQueue(SCDynamicStoreRef store, dispatch_queue_t queue)
+{
+	STUB();
+	return FALSE;
+}
+
+Boolean SCDynamicStoreSetNotificationKeys(SCDynamicStoreRef store, CFArrayRef __nullable keys, CFArrayRef __nullable patterns) {
+	STUB();
+	return FALSE;
+}
