@@ -111,3 +111,5 @@ InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling
 InstallSymlink(/Volumes/SystemRoot/usr/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib64)
 
 InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
+
+install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh)")
