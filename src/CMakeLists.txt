@@ -99,6 +99,7 @@ include_directories(
 )
 
 include_directories(AFTER
+	${CMAKE_CURRENT_SOURCE_DIR}/libutil/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskArbitration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudioOld/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
@@ -338,6 +339,7 @@ add_subdirectory(external/file/file)
 add_subdirectory(external/libxpc)
 add_subdirectory(external/openssl_certificates)
 
+add_subdirectory(external/sudo)
 add_subdirectory(external/shell_cmds)
 add_subdirectory(external/file_cmds)
 add_subdirectory(external/text_cmds)

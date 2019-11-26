@@ -298,3 +298,6 @@
 [submodule "src/external/OpenDirectory"]
 	path = src/external/OpenDirectory
 	url = ../darling-opendirectory.git
+[submodule "src/external/sudo"]
+	path = src/external/sudo
+	url = ../darling-sudo.git
