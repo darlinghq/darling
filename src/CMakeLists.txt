@@ -224,7 +224,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/AddressBook/include
 	${CMAKE_CURRENT_SOURCE_DIR}/EventKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/HIServices/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/ATS/include	
+	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/ATS/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/QD/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/ColorSyncLegacy/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/LangAnalysis/include
@@ -246,6 +246,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenCL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenDirectory/include
 	${CMAKE_CURRENT_SOURCE_DIR}/MetalKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreLocation/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -452,10 +453,10 @@ add_subdirectory(DirectoryServices)
 add_subdirectory(DrawSprocket)
 add_subdirectory(AddressBook)
 add_subdirectory(EventKit)
-
 add_subdirectory(ApplicationServices)
 add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(ColorSync)
+add_subdirectory(CoreLocation)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
