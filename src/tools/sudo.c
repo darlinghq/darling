@@ -34,6 +34,18 @@ int argparse(int argc, char **argv)
 			sscanf(argv[++firstarg], "%u", &uid);
 			firstarg++;
 		}
+		else if (!strcmp(argv[firstarg], "-A"))
+		{
+			firstarg++;
+		}
+		else if (!strcmp(argv[firstarg], "-n"))
+		{
+			firstarg++;
+		}
+		else if (!strcmp(argv[firstarg], "-v"))
+		{
+			firstarg++;
+		}
 		else if(!strcmp(argv[firstarg], "--"))
 		{
 			firstarg++;
