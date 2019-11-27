@@ -332,6 +332,7 @@ add_subdirectory(ConfigurationProfiles)
 add_subdirectory(AppleSystemInfo)
 add_subdirectory(DiskImages)
 add_subdirectory(PackageKit)
+add_subdirectory(external/OpenDirectory)
 
 add_subdirectory(native)
 
