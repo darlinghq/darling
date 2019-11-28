@@ -17,11 +17,17 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
 #include <stdio.h>
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
-	printf("%s DID NOT ACTUALLY VERIFY THE SIGNATURE OF ANY CODE "
-			"THIS IS JUST A STUB\n", argv[0]);
+	if (argc == 6)
+	{
+		if (!strcmp(argv[1], "checkmembership"))
+		{
+			printf("user is a member\n");
+		}
+	}
 	return 0;
 }
