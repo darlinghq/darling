@@ -105,6 +105,7 @@ sysctl_handler(handle_logicalcpu_max)
 
 sysctl_handler(handle_memsize)
 {
+
 	sysctl_handle_size(sizeof(unsigned long long));
 	*((unsigned long long*) old) = gethostinfo()->max_mem;
 	return 0;
@@ -112,8 +113,22 @@ sysctl_handler(handle_memsize)
 
 sysctl_handler(handle_pagesize)
 {
-	sysctl_handle_size(sizeof(int));
-	*((int*) old) = 4096; // true on all Darling platforms
+	//sysctl_handle_size(sizeof(int));
+	// TODO: maybe should be int64_t (long long) all the time, keeping compatability with int for now
+	if (old == NULL)
+	{
+		*oldlen = sizeof(int);
+		return 0;
+	}
+	else if (*oldlen == sizeof(long long))
+	{
+		*((long long*) old) = 4096; // true on all Darling platforms
+	}
+	else
+	{
+		*((int*) old) = 4096; // true on all Darling platforms
+		*oldlen = sizeof(int);
+	}
 	return 0;
 }
 
