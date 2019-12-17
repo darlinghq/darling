@@ -445,6 +445,8 @@ add_subdirectory(OpenDirectory)
 add_subdirectory(opendirectory)
 add_subdirectory(MetalKit)
 
+add_subdirectory(clt)
+
 # Just a stub
 add_subdirectory(WebKit)
 add_subdirectory(OpenGL)
