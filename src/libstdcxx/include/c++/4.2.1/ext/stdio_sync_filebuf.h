@@ -74,7 +74,7 @@ _GLIBCXX_BEGIN_NAMESPACE(__gnu_cxx)
 
 #if BUILDING_LIBSTDCXX
 	__attribute__((used))
-	virtual ~stdio_sync_filebuf() {}
+	virtual ~stdio_sync_filebuf() noexcept {}
 #endif
 		
 		/**
