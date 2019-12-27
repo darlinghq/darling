@@ -247,6 +247,8 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenDirectory/include
 	${CMAKE_CURRENT_SOURCE_DIR}/MetalKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreLocation/include
+	${CMAKE_CURRENT_SOURCE_DIR}/frameworks/include
+	${CMAKE_CURRENT_SOURCE_DIR}/private-frameworks/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -460,6 +462,9 @@ add_subdirectory(ApplicationServices)
 add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(ColorSync)
 add_subdirectory(CoreLocation)
+
+add_subdirectory(frameworks)
+add_subdirectory(private-frameworks)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
