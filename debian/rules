@@ -4,7 +4,7 @@
 
 override_dh_auto_configure:
 	mkdir debbuild
-	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_TOOLCHAIN_FILE=../Toolchain.cmake -DCMAKE_INSTALL_PREFIX=/usr
+	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr
 
 override_dh_auto_build:
 	cd debbuild && $(MAKE) && make lkm_generate printwrapgen
