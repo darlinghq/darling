@@ -3,6 +3,6 @@ set -e
 
 DATE=$(date +%Y%m%d)
 rm -f debian/changelog
-EDITOR=true NAME="Darling build server" EMAIL=noreply@darlinghq.org dch -u low -v 0.1.${DATE}-1 --create --distribution testing "Daily build"
+EDITOR=true NAME="Darling build server" EMAIL=noreply@darlinghq.org dch -u low -v 0.1.${DATE}-1 --create --distribution testing --package darling "Daily build"
 debuild -us -uc -b
 
