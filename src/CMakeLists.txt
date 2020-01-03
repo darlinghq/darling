@@ -1,5 +1,8 @@
 project(darling-src)
 
+unset(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES)
+unset(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+
 cmake_minimum_required(VERSION 2.4.0)
 cmake_policy(SET CMP0005 NEW)
 
@@ -41,7 +44,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 include(compiler_include)
 GetCompilerInclude(COMPILER_INC_PATH)
 message(STATUS "Compiler include path detected as ${COMPILER_INC_PATH}")
-include_directories(/usr/..${COMPILER_INC_PATH})
+include_directories(SYSTEM ${COMPILER_INC_PATH})
 
 find_package(BISON)
 find_package(FLEX)
