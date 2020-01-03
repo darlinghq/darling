@@ -4,13 +4,14 @@
 
 override_dh_auto_configure:
 	mkdir debbuild
-	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr
+	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
 override_dh_auto_build:
 	cd debbuild && $(MAKE) -j$(shell nproc) && $(MAKE) -j$(shell nproc) lkm_generate
 
 override_dh_fixperms:
 	dh_fixperms -Xusr/bin/darling
+	chmod -R -x $(DESTDIR)/usr/src/darling-mach-0.1/lkm
 
 override_dh_makeshlibs:
 	dh_makeshlibs
