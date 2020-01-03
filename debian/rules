@@ -14,6 +14,9 @@ override_dh_makeshlibs:
 	# TODO: append ELF files referenced from Mach-Os into debian/darling.shlibs
 
 override_dh_clean:
-	dh_clean -d
+	dh_clean -X.orig -X.bak -X~
+
+override_dh_fixperms:
+	dh_fixperms -Xbin/darling
 
 override_dh_update_autotools_config:
