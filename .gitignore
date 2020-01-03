@@ -41,3 +41,4 @@ rpm/SRPMS
 
 debbuild
 debian/changelog
+debian/.debhelper
