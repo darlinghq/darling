@@ -7,9 +7,13 @@ override_dh_auto_configure:
 	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr
 
 override_dh_auto_build:
-	cd debbuild && $(MAKE) && make lkm_generate printwrapgen
+	cd debbuild && $(MAKE) -j$(shell nproc) && make lkm_generate
 
 override_dh_makeshlibs:
 	dh_makeshlibs
 	# TODO: append ELF files referenced from Mach-Os into debian/darling.shlibs
 
+override_dh_clean:
+	dh_clean -d
+
+override_dh_update_autotools_config:
