@@ -40,3 +40,4 @@ rpm/RPMS
 rpm/SRPMS
 
 debbuild
+debian/changelog
