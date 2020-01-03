@@ -1,0 +1,7 @@
+darling: executable-not-elf-or-script usr/libexec/darling/System/Library/Frameworks/Ruby.framework/Versions/*
+darling: package-installs-python-bytecode usr/libexec/darling/System/Library/Frameworks/Python.framework/Versions/*
+darling: description-starts-with-package-name
+darling: description-too-short Darling
+darling: description-is-pkg-name Darling
+
+darling-dkms: package-contains-vcs-control-file usr/src/darling-mach-0.1/lkm/.gitignore
