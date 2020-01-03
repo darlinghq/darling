@@ -38,3 +38,5 @@ build
 rpm/SOURCES
 rpm/RPMS
 rpm/SRPMS
+
+debbuild
