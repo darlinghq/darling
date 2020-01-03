@@ -7,7 +7,10 @@ override_dh_auto_configure:
 	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr
 
 override_dh_auto_build:
-	cd debbuild && $(MAKE) -j$(shell nproc) && make lkm_generate
+	cd debbuild && $(MAKE) -j$(shell nproc) && $(MAKE) -j$(shell nproc) lkm_generate
+
+override_dh_fixperms:
+	dh_fixperms -Xusr/bin/darling
 
 override_dh_makeshlibs:
 	dh_makeshlibs
@@ -15,5 +18,6 @@ override_dh_makeshlibs:
 
 override_dh_clean:
 	dh_clean -d
+	rm -rf debbuild
 
 override_dh_update_autotools_config:
