@@ -9,16 +9,16 @@ override_dh_auto_configure:
 override_dh_auto_build:
 	cd debbuild && $(MAKE) -j$(shell nproc) && $(MAKE) -j$(shell nproc) lkm_generate
 
-override_dh_fixperms:
-	dh_fixperms -Xusr/bin/darling
-	chmod -R -x $(DESTDIR)/usr/src/darling-mach-0.1/lkm
-
 override_dh_makeshlibs:
 	dh_makeshlibs
 	# TODO: append ELF files referenced from Mach-Os into debian/darling.shlibs
 
 override_dh_clean:
-	dh_clean -d
+	dh_clean -X.orig -X.bak -X~
 	rm -rf debbuild
+
+override_dh_fixperms:
+	dh_fixperms -Xbin/darling
+	chmod -R -x $(DESTDIR)/usr/src/darling-mach-0.1/lkm
 
 override_dh_update_autotools_config:
