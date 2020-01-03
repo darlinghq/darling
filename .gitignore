@@ -43,3 +43,9 @@ debbuild
 debian/changelog
 debian/.debhelper
 debian/files
+debian/darling-dkms.substvars
+debian/darling-dkms/
+debian/darling.substvars
+debian/darling/
+debian/debhelper-build-stamp
+debian/tmp/
