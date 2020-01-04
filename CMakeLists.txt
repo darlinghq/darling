@@ -113,3 +113,7 @@ InstallSymlink(/Volumes/SystemRoot/usr/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/dar
 InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
 
 install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh)")
+
+add_custom_target(uninstall
+	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/uninstall
+	COMMENT "Uninstall Darling and kernel module")
