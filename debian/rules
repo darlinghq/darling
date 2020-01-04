@@ -24,4 +24,4 @@ override_dh_fixperms:
 override_dh_update_autotools_config:
 
 override_dh_auto_install:
-	sudo $(MAKE) -j$(shell nproc) install
+	sudo dh_auto_install
