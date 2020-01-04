@@ -258,6 +258,7 @@ set(syscall_sources
 	bsdsyscalls/_fremovexattr.S
 	bsdsyscalls/_fsctl.S
 	bsdsyscalls/_fsetattrlist.S
+	bsdsyscalls/_setattrlistat.S
 	bsdsyscalls/_fsetxattr.S
 	bsdsyscalls/_fsgetpath.S
 	bsdsyscalls/___fsgetpath.S
