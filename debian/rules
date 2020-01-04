@@ -19,6 +19,6 @@ override_dh_clean:
 
 override_dh_fixperms:
 	dh_fixperms -Xusr/bin/darling
-	chmod -R -x $(DESTDIR)/usr/src/darling-mach-0.1/lkm
+	chmod -R -x debian/darling-dkms/usr/src/darling-mach-0.1/lkm
 
 override_dh_update_autotools_config:
