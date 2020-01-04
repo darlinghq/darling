@@ -22,6 +22,3 @@ override_dh_fixperms:
 	chmod -R -x debian/darling-dkms/usr/src/darling-mach-0.1/lkm
 
 override_dh_update_autotools_config:
-
-override_dh_auto_install:
-	sudo $(MAKE) -j$(shell nproc) install
