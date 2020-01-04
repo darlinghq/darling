@@ -114,6 +114,7 @@ set(syscall_sources
 	wrappers/unlinkat.c
 	wrappers/unlink.c
 	wrappers/work_interval.c
+	wrappers/utimensat.c
 
 	wrappers/legacy/select-pre1050.c
 	
