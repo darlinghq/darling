@@ -36,6 +36,7 @@
                 ".previous")
 
 #define ADDED_IN_10_12(sym) WEAK_SYMBOL_LD_CMD(sym, 10.11)
+#define ADDED_IN_10_13(sym) WEAK_SYMBOL_LD_CMD(sym, 10.12)
 
 ADDED_IN_10_12(getentropy);
 
@@ -48,5 +49,7 @@ ADDED_IN_10_12(dirname_r);
 
 ADDED_IN_10_12(mkostemp);
 ADDED_IN_10_12(mkostemps);
+
+ADDED_IN_10_13(utimensat);
 
 #endif /* TARGET_OS_IPHONE */
