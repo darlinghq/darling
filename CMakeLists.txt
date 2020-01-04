@@ -1,8 +1,6 @@
 SET(CMAKE_SYSTEM_NAME Linux)
 SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
 
-
-
 # This allows setting the compiler with -DCMAKE_C_COMPILER when configuring.
 if (NOT DEFINED CMAKE_C_COMPILER)
 	find_program(CMAKE_C_COMPILER NAMES
@@ -66,6 +64,7 @@ option(FRAMEWORK_APPKIT "Enable AppKit development code" OFF)
 option(FULL_BUILD "Include large items in the build" ON)
 option(TARGET_i386 "Enable i386 slices" ON)
 option(TARGET_x86_64 "Enable x86_64 slices" ON)
+option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 
 FindDsymutil()
 
@@ -108,9 +107,11 @@ InstallSymlink(/Volumes/SystemRoot/etc/group ${CMAKE_INSTALL_PREFIX}/libexec/dar
 InstallSymlink(/Volumes/SystemRoot/etc/localtime ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/localtime)
 
 install(DIRECTORY DESTINATION libexec/darling/etc/ld.so.conf.d)
-install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
 install(DIRECTORY DESTINATION libexec/darling/etc/fonts/conf.d)
-install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-fonts.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+if(NOT DEBIAN_PACKAGING)
+	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-fonts.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+endif(NOT DEBIAN_PACKAGING)
 
 InstallSymlink(/Volumes/SystemRoot/lib ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib)
 InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib64)
@@ -118,7 +119,9 @@ InstallSymlink(/Volumes/SystemRoot/usr/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/dar
 
 InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
 
-install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh)")
+if(NOT DEBIAN_PACKAGING)
+	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh)")
+endif(NOT DEBIAN_PACKAGING)
 
 add_custom_target(uninstall
 	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/uninstall
