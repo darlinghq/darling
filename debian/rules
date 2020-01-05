@@ -4,7 +4,7 @@
 
 override_dh_auto_configure:
 	mkdir debbuild
-	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DDEBIAN_PACKAGING=ON
 
 override_dh_auto_build:
 	cd debbuild && $(MAKE) -j$(shell nproc) && $(MAKE) -j$(shell nproc) lkm_generate
