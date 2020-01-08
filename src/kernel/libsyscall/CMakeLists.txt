@@ -114,6 +114,7 @@ set(syscall_sources
 	wrappers/unlinkat.c
 	wrappers/unlink.c
 	wrappers/work_interval.c
+	wrappers/utimensat.c
 
 	wrappers/legacy/select-pre1050.c
 	
@@ -257,6 +258,7 @@ set(syscall_sources
 	bsdsyscalls/_fremovexattr.S
 	bsdsyscalls/_fsctl.S
 	bsdsyscalls/_fsetattrlist.S
+	bsdsyscalls/_setattrlistat.S
 	bsdsyscalls/_fsetxattr.S
 	bsdsyscalls/_fsgetpath.S
 	bsdsyscalls/___fsgetpath.S
