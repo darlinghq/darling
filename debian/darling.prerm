@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+
+rm -rf /usr/libexec/darling/etc/fonts
+rm -rf /usr/libexec/darling/etc/ld.so.conf.d/

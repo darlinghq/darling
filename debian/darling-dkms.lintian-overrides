@@ -1,2 +1,3 @@
 package-contains-vcs-control-file usr/src/darling-mach-0.1/lkm/.gitignore
+executable-not-elf-or-script usr/src/darling-mach-0.1/lkm*
 extended-description-is-empty
