@@ -12,7 +12,7 @@ function(dsym target)
 		install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/files")
 		install(DIRECTORY DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/uuid")
 
-		install(CODE "execute_process(COMMAND \"${CMAKE_BINARY_DIR}/src/DebugSymbols/getuuid/getuuid\" \"${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM\" RESULT_VARIABLE getuuid_result OUTPUT_VARIABLE macho_uuid)
+		install(CODE "execute_process(COMMAND \"${CMAKE_BINARY_DIR}/src/buildtools/getuuid\" \"${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM\" RESULT_VARIABLE getuuid_result OUTPUT_VARIABLE macho_uuid)
 
 			if (NOT \${getuuid_result} EQUAL 0)
 				message(WARNING \"Cannot determine UUID of ${target}\")

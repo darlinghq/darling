@@ -57,7 +57,7 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(util)
 #add_subdirectory(libmach-o)
 #add_subdirectory(libdyld)
-add_subdirectory(DebugSymbols/getuuid)
+add_subdirectory(buildtools)
 add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(startup)
 
@@ -118,7 +118,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser
 	${CMAKE_CURRENT_SOURCE_DIR}/external/openpam/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/sqlite/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DebugSymbols/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenScripting/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CryptoTokenKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/LocalAuthentication/include
@@ -154,7 +153,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DiskImages/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ServiceManagement/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
@@ -167,27 +165,15 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreVideo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/WTF/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/bmalloc/include
-	${CMAKE_CURRENT_SOURCE_DIR}/PerformanceAnalysis/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DiskManagement/include
-	${CMAKE_CURRENT_SOURCE_DIR}/NetworkStatistics/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreSymbolication/include
-	${CMAKE_CURRENT_SOURCE_DIR}/LoggingSupport/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CrashReporterSupport/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityFoundation/include
-	${CMAKE_CURRENT_SOURCE_DIR}/IOPlatformPluginFamily/include
-	${CMAKE_CURRENT_SOURCE_DIR}/PlugInKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libsysmon/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libcompression/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Metal/include
 	${CMAKE_CURRENT_SOURCE_DIR}/kperf/include
-	${CMAKE_CURRENT_SOURCE_DIR}/StreamingZip/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsCore/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectors/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsNaturalLanguage/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DrawSprocket/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
@@ -195,18 +181,10 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenGL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/Spotlight/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightDaemon/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightIndex/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightReceiver/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServerKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/QuickLook/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ViewBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/WebKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/JavaVM/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DirectoryServices/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ConfigurationProfiles/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ImageIO/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
 	${CMAKE_CURRENT_SOURCE_DIR}/LDAP/include
@@ -306,9 +284,6 @@ add_subdirectory(external/libarchive/libarchive)
 add_subdirectory(external/apr)
 add_subdirectory(sandbox)
 add_subdirectory(xcselect)
-add_subdirectory(ConfigurationProfiles)
-add_subdirectory(DiskImages)
-add_subdirectory(PackageKit)
 add_subdirectory(external/OpenDirectory)
 
 add_subdirectory(native)
@@ -358,42 +333,22 @@ add_subdirectory(external/DSTools)
 add_subdirectory(external/DirectoryService)
 add_subdirectory(ImageIO)
 add_subdirectory(login)
-add_subdirectory(DebugSymbols)
-add_subdirectory(PerformanceAnalysis)
-add_subdirectory(DiskManagement)
-add_subdirectory(NetworkStatistics)
-add_subdirectory(CoreSymbolication)
-add_subdirectory(LoggingSupport)
-add_subdirectory(CrashReporterSupport)
 add_subdirectory(SecurityFoundation)
-add_subdirectory(IOPlatformPluginFamily)
-add_subdirectory(PlugInKit)
 add_subdirectory(libsysmon)
 add_subdirectory(libcompression)
 add_subdirectory(Metal)
 add_subdirectory(kperf)
-add_subdirectory(StreamingZip)
 add_subdirectory(external/bsm)
 add_subdirectory(external/Heimdal)
 add_subdirectory(PlistBuddy)
 add_subdirectory(ScriptingBridge)
 add_subdirectory(libDiagnosticMessagesClient)
-add_subdirectory(DataDetectorsCore)
-add_subdirectory(DataDetectors)
-add_subdirectory(DataDetectorsNaturalLanguage)
 add_subdirectory(SecurityInterface)
 add_subdirectory(Quartz)
 add_subdirectory(CoreVideo)
 add_subdirectory(IOSurface)
 add_subdirectory(libquit)
-add_subdirectory(Spotlight)
-add_subdirectory(SpotlightDaemon)
-add_subdirectory(SpotlightIndex)
-add_subdirectory(SpotlightReceiver)
-add_subdirectory(SpotlightServerKit)
-add_subdirectory(SpotlightServices)
 add_subdirectory(QuickLook)
-add_subdirectory(ViewBridge)
 add_subdirectory(LDAP)
 add_subdirectory(ExceptionHandling)
 add_subdirectory(external/lzfse)
