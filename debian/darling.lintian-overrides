@@ -14,3 +14,4 @@ script-not-executable usr/lib/darling/*
 binary-without-manpage usr/bin/darling
 symlink-is-self-recursive usr/libexec/darling/*
 embedded-javascript-library usr/libexec/*
+script-uses-bin-env usr/libexec/darling/*
