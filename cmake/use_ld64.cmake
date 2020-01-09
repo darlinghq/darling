@@ -51,49 +51,49 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libsqlite3.0.dylib:${CMAKE_BINARY_DIR}/src/external/sqlite/libsqlite3.0.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/CryptoTokenKit.framework/Versions/A/CryptoTokenKit:${CMAKE_BINARY_DIR}/src/CryptoTokenKit/CryptoTokenKit \
 -Wl,-dylib_file,/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit:${CMAKE_BINARY_DIR}/src/external/IOKitUser/IOKit \
--Wl,-dylib_file,/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/SystemConfiguration:${CMAKE_BINARY_DIR}/src/SystemConfiguration/SystemConfiguration	\
+-Wl,-dylib_file,/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/SystemConfiguration:${CMAKE_BINARY_DIR}/src/private-frameworks/SystemConfiguration/SystemConfiguration	\
 -Wl,-dylib_file,/usr/lib/libbz2.1.0.dylib:${CMAKE_BINARY_DIR}/src/external/bzip2/libbz2.1.0.dylib \
 -Wl,-dylib_file,/usr/lib/libssl.0.9.8.dylib:${CMAKE_BINARY_DIR}/src/external/openssl/src/libssl.0.9.8.dylib \
 -Wl,-dylib_file,/usr/lib/libcrypto.0.9.8.dylib:${CMAKE_BINARY_DIR}/src/external/openssl/src/libcrypto.0.9.8.dylib \
 -Wl,-dylib_file,/usr/lib/native/libGL.dylib:${CMAKE_BINARY_DIR}/src/native/libGL.dylib \
--Wl,-dylib_file,/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage:${CMAKE_BINARY_DIR}/src/CoreImage/CoreImage \
--Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/FSEvents:${CMAKE_BINARY_DIR}/src/CoreServices/FSEvents \
--Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/LaunchServices:${CMAKE_BINARY_DIR}/src/CoreServices/LaunchServices \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage:${CMAKE_BINARY_DIR}/src/frameworks/CoreImage/CoreImage \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/FSEvents:${CMAKE_BINARY_DIR}/src/frameworks/CoreServices/FSEvents \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/LaunchServices:${CMAKE_BINARY_DIR}/src/frameworks/CoreServices/LaunchServices \
 -Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libvMisc.dylib\
-:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/vMisc/libvMisc.dylib \
+:${CMAKE_BINARY_DIR}/src/frameworks/Accelerate/vecLib/vMisc/libvMisc.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libvDSP.dylib\
-:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/vDSP/libvDSP.dylib \
+:${CMAKE_BINARY_DIR}/src/frameworks/Accelerate/vecLib/vDSP/libvDSP.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib\
-:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/BLAS/libBLAS.dylib \
+:${CMAKE_BINARY_DIR}/src/frameworks/Accelerate/vecLib/BLAS/libBLAS.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libLAPACK.dylib\
-:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/LAPACK/libLAPACK.dylib \
+:${CMAKE_BINARY_DIR}/src/frameworks/Accelerate/vecLib/LAPACK/libLAPACK.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libLinearAlgebra.dylib\
-:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/LinearAlgebra/libLinearAlgebra.dylib \
+:${CMAKE_BINARY_DIR}/src/frameworks/Accelerate/vecLib/LinearAlgebra/libLinearAlgebra.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libSparseBLAS.dylib\
-:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/SparseBLAS/libSparseBLAS.dylib \
+:${CMAKE_BINARY_DIR}/src/frameworks/Accelerate/vecLib/SparseBLAS/libSparseBLAS.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libQuadrature.dylib\
-:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/Quadrature/libQuadrature.dylib \
+:${CMAKE_BINARY_DIR}/src/frameworks/Accelerate/vecLib/Quadrature/libQuadrature.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBNNS.dylib\
-:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/BNNS/libBNNS.dylib \
+:${CMAKE_BINARY_DIR}/src/frameworks/Accelerate/vecLib/BNNS/libBNNS.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libSparse.dylib\
-:${CMAKE_BINARY_DIR}/src/Accelerate/vecLib/Sparse/libSparse.dylib \
--Wl,-dylib_file,/System/Library/Frameworks/ColorSync.framework/Versions/A/ColorSync:${CMAKE_BINARY_DIR}/src/ColorSync/ColorSync \
+:${CMAKE_BINARY_DIR}/src/frameworks/Accelerate/vecLib/Sparse/libSparse.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/ColorSync.framework/Versions/A/ColorSync:${CMAKE_BINARY_DIR}/src/frameworks/ColorSync/ColorSync \
 -Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ATS.framework/Versions/A/ATS\
-:${CMAKE_BINARY_DIR}/src/ApplicationServices/ATS/ATS \
+:${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/ATS/ATS \
 -Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ColorSyncLegacy.framework/Versions/A/ColorSyncLegacy\
-:${CMAKE_BINARY_DIR}/src/ApplicationServices/ColorSyncLegacy/ColorSyncLegacy \
+:${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/ColorSyncLegacy/ColorSyncLegacy \
 -Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/HIServices.framework/Versions/A/HIServices\
-:${CMAKE_BINARY_DIR}/src/ApplicationServices/HIServices/HIServices \
+:${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/HIServices/HIServices \
 -Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/LangAnalysis.framework/Versions/A/LangAnalysis\
-:${CMAKE_BINARY_DIR}/src/ApplicationServices/LangAnalysis/LangAnalysis \
+:${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/LangAnalysis/LangAnalysis \
 -Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/PrintCore.framework/Versions/A/PrintCore\
-:${CMAKE_BINARY_DIR}/src/ApplicationServices/PrintCore/PrintCore \
+:${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/PrintCore/PrintCore \
 -Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/QD.framework/Versions/A/QD\
-:${CMAKE_BINARY_DIR}/src/ApplicationServices/QD/QD \
+:${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/QD/QD \
 -Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/SpeechSynthesis\
-:${CMAKE_BINARY_DIR}/src/ApplicationServices/SpeechSynthesis/SpeechSynthesis \
--Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices:${CMAKE_BINARY_DIR}/src/CoreServices/CoreServices \
--Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices:${CMAKE_BINARY_DIR}/src/ApplicationServices/ApplicationServices \
+:${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/SpeechSynthesis/SpeechSynthesis \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices:${CMAKE_BINARY_DIR}/src/frameworks/CoreServices/CoreServices \
+-Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices:${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/ApplicationServices \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/CoreGraphics \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreText/CoreText \
 -Wl,-dylib_file,/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO:${CMAKE_BINARY_DIR}/src/ImageIO/ImageIO \
