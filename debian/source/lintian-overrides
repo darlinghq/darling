@@ -1,0 +1,4 @@
+darling source: configure-generated-file-in-source *
+darling source: autotools-pkg-config-macro-not-cross-compilation-safe *
+darling source: source-contains-prebuilt-windows-binary *
+darling source: maintainer-script-lacks-debhelper-token debian/*
