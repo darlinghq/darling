@@ -7,6 +7,10 @@ EDITOR=true NAME="Darling build server" EMAIL=noreply@darlinghq.org dch -u low -
 
 if [ "$1" = "--dsc" ]; then
     ARG='-S'
+    if [ -e "../darling_0.1.${DATE}.orig.tar.xz" ]; then
+        rm ../darling_0.1.${DATE}.orig.tar.xz
+    fi
+    tar -cJf ../darling_0.1.${DATE}.orig.tar.xz .
 else
     ARG='-b'
 fi
