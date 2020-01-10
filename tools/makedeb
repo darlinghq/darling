@@ -10,7 +10,8 @@ if [ "$1" = "--dsc" ]; then
     if [ -e "../darling_0.1.${DATE}.orig.tar.xz" ]; then
         rm ../darling_0.1.${DATE}.orig.tar.xz
     fi
-    tar -cJf ../darling_0.1.${DATE}.orig.tar.xz .
+    tar --exclude-vcs --exclude-vcs-ignores -cJf ../darling_0.1.${DATE}.orig.tar.xz .
+    tar -rJf ../darling_0.1.${DATE}.orig.tar.xz debian/changelog
 else
     ARG='-b'
 fi
