@@ -3,14 +3,16 @@ set -e
 
 DATE=$(date +%Y%m%d)
 rm -f debian/changelog
-EDITOR=true NAME="Darling build server" EMAIL=${DEB_EMAIL:-noreply@darlinghq.org} dch -u low -v 0.1.${DATE} --create --distribution ${DEB_DISTRO:-testing} --package darling "Daily build"
+DISTRO=${DEB_DISTRO:-testing}
+VERSION=0.1.${DATE}~${DISTRO}
+EDITOR=true NAME="Darling build server" EMAIL=${DEB_EMAIL:-noreply@darlinghq.org} dch -u low -v ${VERSION} --create --distribution ${DISTRO} --package darling "Daily build"
 
 if [ "$1" = "--dsc" ]; then
     ARG='-S'
-    if [ -e "../darling_0.1.${DATE}.orig.tar.xz" ]; then
-        rm ../darling_0.1.${DATE}.orig.tar.xz
+    if [ -e "../darling_${VERSION}.orig.tar.xz" ]; then
+        rm ../darling_${VERSION}.orig.tar.xz
     fi
-    tar -cJf ../darling_0.1.${DATE}.orig.tar.xz .
+    tar -cJf ../darling_${VERSION}.orig.tar.xz .
 else
     ARG='-b'
 fi
