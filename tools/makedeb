@@ -3,7 +3,7 @@ set -e
 
 DATE=$(date +%Y%m%d)
 rm -f debian/changelog
-EDITOR=true NAME="Darling build server" EMAIL=noreply@darlinghq.org dch -u low -v 0.1.${DATE} --create --distribution testing --package darling "Daily build"
+EDITOR=true NAME="Darling build server" EMAIL=${DEB_EMAIL:-noreply@darlinghq.org} dch -u low -v 0.1.${DATE} --create --distribution ${DEB_DISTRO:-testing} --package darling "Daily build"
 
 if [ "$1" = "--dsc" ]; then
     ARG='-S'
