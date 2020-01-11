@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 %:
-	dh $@ --builddirectory=debbuild --parallel
+	dh $@ --builddirectory=debbuild
 
 override_dh_auto_configure:
 	mkdir debbuild
