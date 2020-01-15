@@ -1,15 +1,23 @@
 #!/usr/bin/make -f
 %:
-	dh $@ --builddirectory=debbuild --parallel
+	dh $@ --builddirectory=debbuild
 
 override_dh_auto_configure:
 	mkdir debbuild
-	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_TOOLCHAIN_FILE=../Toolchain.cmake -DCMAKE_INSTALL_PREFIX=/usr
+	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DDEBIAN_PACKAGING=ON
 
 override_dh_auto_build:
-	cd debbuild && $(MAKE) && make lkm_generate printwrapgen
+	cd debbuild && $(MAKE) -j$(shell nproc) && $(MAKE) -j$(shell nproc) lkm_generate
 
 override_dh_makeshlibs:
 	dh_makeshlibs
 	# TODO: append ELF files referenced from Mach-Os into debian/darling.shlibs
 
+override_dh_clean:
+	dh_clean -X.orig -X.bak -X~
+	rm -rf debbuild
+
+override_dh_fixperms:
+	dh_fixperms -Xusr/bin/darling
+
+override_dh_update_autotools_config:

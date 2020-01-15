@@ -207,6 +207,7 @@ set(emulation_sources
 	stat/common.c
 	xattr/getattrlistbulk.c
 	xattr/getattrlistat.c
+	xattr/setattrlistat.c
 	xattr/listxattr.c
 	xattr/flistxattr.c
 	xattr/removexattr.c
@@ -307,8 +308,8 @@ set_source_files_properties(ext/timerfd_settime.c PROPERTIES COMPILE_FLAGS
 set_source_files_properties(misc/sysctl.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
 
-add_library(emulation OBJECT ${emulation_sources})
-add_library(emulation_dyld OBJECT ${emulation_sources})
+add_darling_object_library(emulation ${emulation_sources})
+add_darling_object_library(emulation_dyld ${emulation_sources})
 set_target_properties(emulation_dyld PROPERTIES COMPILE_FLAGS "-ffunction-sections -DVARIANT_DYLD")
 add_dependencies(emulation rtsig_h)
 

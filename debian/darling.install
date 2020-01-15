@@ -1,1 +1,4 @@
 usr
+src/setup-fonts.sh usr/lib/darling
+src/setup-ld-so.sh usr/lib/darling
+tools/shutdown-user.sh usr/lib/darling

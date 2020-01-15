@@ -40,7 +40,7 @@ SET_SOURCE_FILES_PROPERTIES(shmctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} 
 SET_SOURCE_FILES_PROPERTIES(sigtramp.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE")
 SET_SOURCE_FILES_PROPERTIES(OpenBSD/stack_protector.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -fno-stack-protector")
 
-add_library(libc-sys OBJECT ${sys_sources})
+add_darling_object_library(libc-sys ${sys_sources})
 
 # ***
 # No-INODE64 variants

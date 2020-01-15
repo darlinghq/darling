@@ -114,6 +114,7 @@ set(syscall_sources
 	wrappers/unlinkat.c
 	wrappers/unlink.c
 	wrappers/work_interval.c
+	wrappers/utimensat.c
 
 	wrappers/legacy/select-pre1050.c
 	
@@ -257,6 +258,7 @@ set(syscall_sources
 	bsdsyscalls/_fremovexattr.S
 	bsdsyscalls/_fsctl.S
 	bsdsyscalls/_fsetattrlist.S
+	bsdsyscalls/_setattrlistat.S
 	bsdsyscalls/_fsetxattr.S
 	bsdsyscalls/_fsgetpath.S
 	bsdsyscalls/___fsgetpath.S
@@ -617,17 +619,17 @@ foreach (file IN ITEMS ${syscall_legacy_sources})
 	set_source_files_properties(${file} PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0  -U__DARWIN_C_LEVEL")
 endforeach(file)
 
-add_library(libsyscall OBJECT ${syscall_sources})
-add_library(libsyscall_dynamic OBJECT ${syscall_dynamic_sources})
+add_darling_object_library(libsyscall ${syscall_sources})
+add_darling_object_library(libsyscall_dynamic ${syscall_dynamic_sources})
 make_fat(libsyscall)
 make_fat(libsyscall_dynamic)
 
-#add_library(libsyscall_static OBJECT wrappers/_libc_funcptr.c)
+#add_darling_object_library(libsyscall_static wrappers/_libc_funcptr.c)
 #set_target_properties(libsyscall_static PROPERTIES COMPILE_FLAGS "-DVARIANT_DYLD")
 #make_fat(libsyscall_static)
 
 # For i386
-#add_library(libsyscall_legacy_extra OBJECT wrappers/legacy/select.c)
+#add_darling_object_library(libsyscall_legacy_extra wrappers/legacy/select.c)
 #set_target_properties(libsyscall_legacy_extra PROPERTIES COMPILE_FLAGS
 #	"${CMAKE_C_FLAGS} -U_DARWIN_C_SOURCE -U_POSIX_C_SOURCE -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_C_LEVEL")
 

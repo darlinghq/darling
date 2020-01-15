@@ -174,6 +174,12 @@ bool xcselect_get_developer_dir_path(char* path, size_t path_len, bool* is_cmd_l
 		p = "/Library/Developer/CommandLineTools";
 		goto have_path;
 	}
+	else if (dir_exists("/Library/Developer/DarlingCLT"))
+	{
+		p = "/Library/Developer/DarlingCLT";
+		*is_cmd_line = true;
+		goto have_path;
+	}
 
 	return false;
 
@@ -209,7 +215,10 @@ int xcselect_invoke_xcrun(const char* tool, int argc, char* argv[], int flags)
 		}
 
 		strcpy(buf, dev_dir);
-		strcat(buf, "/");
+		if (buf[strlen(buf) - 1] != '/')
+		{
+			strcat(buf, "/");
+		}
 		length = strlen(buf);
 
 		strcat(buf, "usr/lib/libxcrun.dylib");

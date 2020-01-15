@@ -170,6 +170,7 @@
 #include "hfs/stub.h"
 #include "xattr/getattrlistbulk.h"
 #include "xattr/getattrlistat.h"
+#include "xattr/setattrlistat.h"
 #include "xattr/listxattr.h"
 #include "xattr/flistxattr.h"
 #include "xattr/removexattr.h"
@@ -445,5 +446,6 @@ void* __bsd_syscall_table[600] = {
 	[500] = sys_getentropy,
 	[515] = sys_ulock_wait,
 	[516] = sys_ulock_wake,
+	[524] = sys_setattrlistat,
 };
 

@@ -15,4 +15,4 @@ set(info-dns_sources
 	res_query.c
 )
 
-add_library(info-dns OBJECT ${info-dns_sources})
+add_darling_object_library(info-dns ${info-dns_sources})

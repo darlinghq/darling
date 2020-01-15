@@ -1,0 +1,227 @@
+/*
+ This file is part of Darling.
+
+ Copyright (C) 2019 Lubos Dolezel
+
+ Darling is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Darling is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+#ifndef _Sparse_H_
+#define _Sparse_H_
+
+void* _SparseCGIterate_Double(void);
+void* _SparseCGIterate_Float(void);
+void* _SparseCGSolve_Double(void);
+void* _SparseCGSolve_Float(void);
+void* _SparseConvertFromCoordinate_Double(void);
+void* _SparseConvertFromCoordinate_Float(void);
+void* _SparseConvertFromOpaque_Double(void);
+void* _SparseConvertFromOpaque_Float(void);
+void* _SparseCreatePreconditioner_Double(void);
+void* _SparseCreatePreconditioner_Float(void);
+void* _SparseDestroyOpaqueNumeric_Double(void);
+void* _SparseDestroyOpaqueNumeric_Float(void);
+void* _SparseDestroyOpaqueSymbolic(void);
+void* _SparseFactorQR_Double(void);
+void* _SparseFactorQR_Float(void);
+void* _SparseFactorSymmetric_Double(void);
+void* _SparseFactorSymmetric_Float(void);
+void* _SparseGMRESIterate_Double(void);
+void* _SparseGMRESIterate_Float(void);
+void* _SparseGMRESSolve_Double(void);
+void* _SparseGMRESSolve_Float(void);
+void* _SparseGetIterativeStateSize_Double(void);
+void* _SparseGetIterativeStateSize_Float(void);
+void* _SparseGetOptionsFromNumericFactor_Double(void);
+void* _SparseGetOptionsFromNumericFactor_Float(void);
+void* _SparseGetOptionsFromSymbolicFactor(void);
+void* _SparseGetWorkspaceRequired_Double(void);
+void* _SparseGetWorkspaceRequired_Float(void);
+void* _SparseLSMRIterate_Double(void);
+void* _SparseLSMRIterate_Float(void);
+void* _SparseLSMRSolve_Double(void);
+void* _SparseLSMRSolve_Float(void);
+void* _SparseMultiplySubfactor_Double(void);
+void* _SparseMultiplySubfactor_Float(void);
+void* _SparseNumericFactorQR_Double(void);
+void* _SparseNumericFactorQR_Float(void);
+void* _SparseNumericFactorSymmetric_Double(void);
+void* _SparseNumericFactorSymmetric_Float(void);
+void* _SparseRefactorQR_Double(void);
+void* _SparseRefactorQR_Float(void);
+void* _SparseRefactorSymmetric_Double(void);
+void* _SparseRefactorSymmetric_Float(void);
+void* _SparseReleaseOpaquePreconditioner_Double(void);
+void* _SparseReleaseOpaquePreconditioner_Float(void);
+void* _SparseRetainNumeric_Double(void);
+void* _SparseRetainNumeric_Float(void);
+void* _SparseRetainSymbolic(void);
+void* _SparseSolveOpaque_Double(void);
+void* _SparseSolveOpaque_Float(void);
+void* _SparseSolveSubfactor_Double(void);
+void* _SparseSolveSubfactor_Float(void);
+void* _SparseSpMV_Double(void);
+void* _SparseSpMV_Float(void);
+void* _SparseSymbolicFactorQR(void);
+void* _SparseSymbolicFactorSymmetric(void);
+void* _SparseTrap(void);
+void* _Z10SparseLSMR17SparseLSMROptions(void);
+void* _Z10SparseLSMRv(void);
+void* _Z11SparseGMRES18SparseGMRESOptions(void);
+void* _Z11SparseGMRESv(void);
+void* _Z11SparseSolve21SparseIterativeMethod18SparseMatrix_Float17DenseMatrix_FloatS1_(void);
+void* _Z11SparseSolve21SparseIterativeMethod18SparseMatrix_Float17DenseMatrix_FloatS1_32SparseOpaquePreconditioner_Float(void);
+void* _Z11SparseSolve21SparseIterativeMethod18SparseMatrix_Float17DenseMatrix_FloatS1_i(void);
+void* _Z11SparseSolve21SparseIterativeMethod18SparseMatrix_Float17DenseVector_FloatS1_(void);
+void* _Z11SparseSolve21SparseIterativeMethod18SparseMatrix_Float17DenseVector_FloatS1_32SparseOpaquePreconditioner_Float(void);
+void* _Z11SparseSolve21SparseIterativeMethod18SparseMatrix_Float17DenseVector_FloatS1_i(void);
+void* _Z11SparseSolve21SparseIterativeMethod19SparseMatrix_Double18DenseMatrix_DoubleS1_(void);
+void* _Z11SparseSolve21SparseIterativeMethod19SparseMatrix_Double18DenseMatrix_DoubleS1_33SparseOpaquePreconditioner_Double(void);
+void* _Z11SparseSolve21SparseIterativeMethod19SparseMatrix_Double18DenseMatrix_DoubleS1_i(void);
+void* _Z11SparseSolve21SparseIterativeMethod19SparseMatrix_Double18DenseVector_DoubleS1_(void);
+void* _Z11SparseSolve21SparseIterativeMethod19SparseMatrix_Double18DenseVector_DoubleS1_33SparseOpaquePreconditioner_Double(void);
+void* _Z11SparseSolve21SparseIterativeMethod19SparseMatrix_Double18DenseVector_DoubleS1_i(void);
+void* _Z11SparseSolve21SparseIterativeMethodU13block_pointerFvb15CBLAS_TRANSPOSE17DenseMatrix_FloatS1_ES1_S1_(void);
+void* _Z11SparseSolve21SparseIterativeMethodU13block_pointerFvb15CBLAS_TRANSPOSE17DenseMatrix_FloatS1_ES1_S1_32SparseOpaquePreconditioner_Float(void);
+void* _Z11SparseSolve21SparseIterativeMethodU13block_pointerFvb15CBLAS_TRANSPOSE17DenseVector_FloatS1_ES1_S1_(void);
+void* _Z11SparseSolve21SparseIterativeMethodU13block_pointerFvb15CBLAS_TRANSPOSE17DenseVector_FloatS1_ES1_S1_32SparseOpaquePreconditioner_Float(void);
+void* _Z11SparseSolve21SparseIterativeMethodU13block_pointerFvb15CBLAS_TRANSPOSE18DenseMatrix_DoubleS1_ES1_S1_(void);
+void* _Z11SparseSolve21SparseIterativeMethodU13block_pointerFvb15CBLAS_TRANSPOSE18DenseMatrix_DoubleS1_ES1_S1_33SparseOpaquePreconditioner_Double(void);
+void* _Z11SparseSolve21SparseIterativeMethodU13block_pointerFvb15CBLAS_TRANSPOSE18DenseVector_DoubleS1_ES1_S1_(void);
+void* _Z11SparseSolve21SparseIterativeMethodU13block_pointerFvb15CBLAS_TRANSPOSE18DenseVector_DoubleS1_ES1_S1_33SparseOpaquePreconditioner_Double(void);
+void* _Z11SparseSolve27SparseOpaqueSubfactor_Float17DenseMatrix_Float(void);
+void* _Z11SparseSolve27SparseOpaqueSubfactor_Float17DenseMatrix_FloatPv(void);
+void* _Z11SparseSolve27SparseOpaqueSubfactor_Float17DenseMatrix_FloatS0_(void);
+void* _Z11SparseSolve27SparseOpaqueSubfactor_Float17DenseMatrix_FloatS0_Pv(void);
+void* _Z11SparseSolve27SparseOpaqueSubfactor_Float17DenseVector_Float(void);
+void* _Z11SparseSolve27SparseOpaqueSubfactor_Float17DenseVector_FloatPv(void);
+void* _Z11SparseSolve27SparseOpaqueSubfactor_Float17DenseVector_FloatS0_(void);
+void* _Z11SparseSolve27SparseOpaqueSubfactor_Float17DenseVector_FloatS0_Pv(void);
+void* _Z11SparseSolve28SparseOpaqueSubfactor_Double18DenseMatrix_Double(void);
+void* _Z11SparseSolve28SparseOpaqueSubfactor_Double18DenseMatrix_DoublePv(void);
+void* _Z11SparseSolve28SparseOpaqueSubfactor_Double18DenseMatrix_DoubleS0_(void);
+void* _Z11SparseSolve28SparseOpaqueSubfactor_Double18DenseMatrix_DoubleS0_Pv(void);
+void* _Z11SparseSolve28SparseOpaqueSubfactor_Double18DenseVector_Double(void);
+void* _Z11SparseSolve28SparseOpaqueSubfactor_Double18DenseVector_DoublePv(void);
+void* _Z11SparseSolve28SparseOpaqueSubfactor_Double18DenseVector_DoubleS0_(void);
+void* _Z11SparseSolve28SparseOpaqueSubfactor_Double18DenseVector_DoubleS0_Pv(void);
+void* _Z11SparseSolve31SparseOpaqueFactorization_Float17DenseMatrix_Float(void);
+void* _Z11SparseSolve31SparseOpaqueFactorization_Float17DenseMatrix_FloatPv(void);
+void* _Z11SparseSolve31SparseOpaqueFactorization_Float17DenseMatrix_FloatS0_(void);
+void* _Z11SparseSolve31SparseOpaqueFactorization_Float17DenseMatrix_FloatS0_Pv(void);
+void* _Z11SparseSolve31SparseOpaqueFactorization_Float17DenseVector_Float(void);
+void* _Z11SparseSolve31SparseOpaqueFactorization_Float17DenseVector_FloatPv(void);
+void* _Z11SparseSolve31SparseOpaqueFactorization_Float17DenseVector_FloatS0_(void);
+void* _Z11SparseSolve31SparseOpaqueFactorization_Float17DenseVector_FloatS0_Pv(void);
+void* _Z11SparseSolve32SparseOpaqueFactorization_Double18DenseMatrix_Double(void);
+void* _Z11SparseSolve32SparseOpaqueFactorization_Double18DenseMatrix_DoublePv(void);
+void* _Z11SparseSolve32SparseOpaqueFactorization_Double18DenseMatrix_DoubleS0_(void);
+void* _Z11SparseSolve32SparseOpaqueFactorization_Double18DenseMatrix_DoubleS0_Pv(void);
+void* _Z11SparseSolve32SparseOpaqueFactorization_Double18DenseVector_Double(void);
+void* _Z11SparseSolve32SparseOpaqueFactorization_Double18DenseVector_DoublePv(void);
+void* _Z11SparseSolve32SparseOpaqueFactorization_Double18DenseVector_DoubleS0_(void);
+void* _Z11SparseSolve32SparseOpaqueFactorization_Double18DenseVector_DoubleS0_Pv(void);
+void* _Z12SparseFactor33SparseOpaqueSymbolicFactorization18SparseMatrix_Float(void);
+void* _Z12SparseFactor33SparseOpaqueSymbolicFactorization18SparseMatrix_Float26SparseNumericFactorOptions(void);
+void* _Z12SparseFactor33SparseOpaqueSymbolicFactorization18SparseMatrix_Float26SparseNumericFactorOptionsPvS2_(void);
+void* _Z12SparseFactor33SparseOpaqueSymbolicFactorization19SparseMatrix_Double(void);
+void* _Z12SparseFactor33SparseOpaqueSymbolicFactorization19SparseMatrix_Double26SparseNumericFactorOptions(void);
+void* _Z12SparseFactor33SparseOpaqueSymbolicFactorization19SparseMatrix_Double26SparseNumericFactorOptionsPvS2_(void);
+void* _Z12SparseFactorh18SparseMatrix_Float(void);
+void* _Z12SparseFactorh18SparseMatrix_Float27SparseSymbolicFactorOptions26SparseNumericFactorOptions(void);
+void* _Z12SparseFactorh19SparseMatrix_Double(void);
+void* _Z12SparseFactorh19SparseMatrix_Double27SparseSymbolicFactorOptions26SparseNumericFactorOptions(void);
+void* _Z12SparseFactorh21SparseMatrixStructure(void);
+void* _Z12SparseFactorh21SparseMatrixStructure27SparseSymbolicFactorOptions(void);
+void* _Z12SparseRetain27SparseOpaqueSubfactor_Float(void);
+void* _Z12SparseRetain28SparseOpaqueSubfactor_Double(void);
+void* _Z12SparseRetain31SparseOpaqueFactorization_Float(void);
+void* _Z12SparseRetain32SparseOpaqueFactorization_Double(void);
+void* _Z12SparseRetain33SparseOpaqueSymbolicFactorization(void);
+void* _Z13SparseCleanup18SparseMatrix_Float(void);
+void* _Z13SparseCleanup19SparseMatrix_Double(void);
+void* _Z13SparseCleanup27SparseOpaqueSubfactor_Float(void);
+void* _Z13SparseCleanup28SparseOpaqueSubfactor_Double(void);
+void* _Z13SparseCleanup31SparseOpaqueFactorization_Float(void);
+void* _Z13SparseCleanup32SparseOpaqueFactorization_Double(void);
+void* _Z13SparseCleanup32SparseOpaquePreconditioner_Float(void);
+void* _Z13SparseCleanup33SparseOpaquePreconditioner_Double(void);
+void* _Z13SparseCleanup33SparseOpaqueSymbolicFactorization(void);
+void* _Z13SparseIterate21SparseIterativeMethodiPKbPvU13block_pointerFvb15CBLAS_TRANSPOSE17DenseMatrix_FloatS4_ES4_S4_S4_(void);
+void* _Z13SparseIterate21SparseIterativeMethodiPKbPvU13block_pointerFvb15CBLAS_TRANSPOSE17DenseMatrix_FloatS4_ES4_S4_S4_32SparseOpaquePreconditioner_Float(void);
+void* _Z13SparseIterate21SparseIterativeMethodiPKbPvU13block_pointerFvb15CBLAS_TRANSPOSE18DenseMatrix_DoubleS4_ES4_S4_S4_(void);
+void* _Z13SparseIterate21SparseIterativeMethodiPKbPvU13block_pointerFvb15CBLAS_TRANSPOSE18DenseMatrix_DoubleS4_ES4_S4_S4_33SparseOpaquePreconditioner_Double(void);
+void* _Z14SparseMultiply18SparseMatrix_Float17DenseMatrix_FloatS0_(void);
+void* _Z14SparseMultiply18SparseMatrix_Float17DenseVector_FloatS0_(void);
+void* _Z14SparseMultiply19SparseMatrix_Double18DenseMatrix_DoubleS0_(void);
+void* _Z14SparseMultiply19SparseMatrix_Double18DenseVector_DoubleS0_(void);
+void* _Z14SparseMultiply27SparseOpaqueSubfactor_Float17DenseMatrix_Float(void);
+void* _Z14SparseMultiply27SparseOpaqueSubfactor_Float17DenseMatrix_FloatPv(void);
+void* _Z14SparseMultiply27SparseOpaqueSubfactor_Float17DenseMatrix_FloatS0_(void);
+void* _Z14SparseMultiply27SparseOpaqueSubfactor_Float17DenseMatrix_FloatS0_Pv(void);
+void* _Z14SparseMultiply27SparseOpaqueSubfactor_Float17DenseVector_Float(void);
+void* _Z14SparseMultiply27SparseOpaqueSubfactor_Float17DenseVector_FloatPv(void);
+void* _Z14SparseMultiply27SparseOpaqueSubfactor_Float17DenseVector_FloatS0_(void);
+void* _Z14SparseMultiply27SparseOpaqueSubfactor_Float17DenseVector_FloatS0_Pv(void);
+void* _Z14SparseMultiply28SparseOpaqueSubfactor_Double18DenseMatrix_Double(void);
+void* _Z14SparseMultiply28SparseOpaqueSubfactor_Double18DenseMatrix_DoublePv(void);
+void* _Z14SparseMultiply28SparseOpaqueSubfactor_Double18DenseMatrix_DoubleS0_(void);
+void* _Z14SparseMultiply28SparseOpaqueSubfactor_Double18DenseMatrix_DoubleS0_Pv(void);
+void* _Z14SparseMultiply28SparseOpaqueSubfactor_Double18DenseVector_Double(void);
+void* _Z14SparseMultiply28SparseOpaqueSubfactor_Double18DenseVector_DoublePv(void);
+void* _Z14SparseMultiply28SparseOpaqueSubfactor_Double18DenseVector_DoubleS0_(void);
+void* _Z14SparseMultiply28SparseOpaqueSubfactor_Double18DenseVector_DoubleS0_Pv(void);
+void* _Z14SparseMultiplyd19SparseMatrix_Double18DenseMatrix_DoubleS0_(void);
+void* _Z14SparseMultiplyd19SparseMatrix_Double18DenseVector_DoubleS0_(void);
+void* _Z14SparseMultiplyf18SparseMatrix_Float17DenseMatrix_FloatS0_(void);
+void* _Z14SparseMultiplyf18SparseMatrix_Float17DenseVector_FloatS0_(void);
+void* _Z14SparseRefactor18SparseMatrix_FloatP31SparseOpaqueFactorization_Float(void);
+void* _Z14SparseRefactor18SparseMatrix_FloatP31SparseOpaqueFactorization_Float26SparseNumericFactorOptions(void);
+void* _Z14SparseRefactor18SparseMatrix_FloatP31SparseOpaqueFactorization_Float26SparseNumericFactorOptionsPv(void);
+void* _Z14SparseRefactor18SparseMatrix_FloatP31SparseOpaqueFactorization_FloatPv(void);
+void* _Z14SparseRefactor19SparseMatrix_DoubleP32SparseOpaqueFactorization_Double(void);
+void* _Z14SparseRefactor19SparseMatrix_DoubleP32SparseOpaqueFactorization_Double26SparseNumericFactorOptions(void);
+void* _Z14SparseRefactor19SparseMatrix_DoubleP32SparseOpaqueFactorization_Double26SparseNumericFactorOptionsPv(void);
+void* _Z14SparseRefactor19SparseMatrix_DoubleP32SparseOpaqueFactorization_DoublePv(void);
+void* _Z17SparseMultiplyAdd18SparseMatrix_Float17DenseMatrix_FloatS0_(void);
+void* _Z17SparseMultiplyAdd18SparseMatrix_Float17DenseVector_FloatS0_(void);
+void* _Z17SparseMultiplyAdd19SparseMatrix_Double18DenseMatrix_DoubleS0_(void);
+void* _Z17SparseMultiplyAdd19SparseMatrix_Double18DenseVector_DoubleS0_(void);
+void* _Z17SparseMultiplyAddd19SparseMatrix_Double18DenseMatrix_DoubleS0_(void);
+void* _Z17SparseMultiplyAddd19SparseMatrix_Double18DenseVector_DoubleS0_(void);
+void* _Z17SparseMultiplyAddf18SparseMatrix_Float17DenseMatrix_FloatS0_(void);
+void* _Z17SparseMultiplyAddf18SparseMatrix_Float17DenseVector_FloatS0_(void);
+void* _Z18SparseGetTranspose18SparseMatrix_Float(void);
+void* _Z18SparseGetTranspose19SparseMatrix_Double(void);
+void* _Z18SparseGetTranspose27SparseOpaqueSubfactor_Float(void);
+void* _Z18SparseGetTranspose28SparseOpaqueSubfactor_Double(void);
+void* _Z18SparseGetTranspose31SparseOpaqueFactorization_Float(void);
+void* _Z18SparseGetTranspose32SparseOpaqueFactorization_Double(void);
+void* _Z21SparseCreateSubfactorh31SparseOpaqueFactorization_Float(void);
+void* _Z21SparseCreateSubfactorh32SparseOpaqueFactorization_Double(void);
+void* _Z23SparseConjugateGradient15SparseCGOptions(void);
+void* _Z23SparseConjugateGradientv(void);
+void* _Z23SparseConvertFromOpaqueP14sparse_m_float(void);
+void* _Z23SparseConvertFromOpaqueP15sparse_m_double(void);
+void* _Z24SparseGetStateSize_Float21SparseIterativeMethodbiii(void);
+void* _Z25SparseGetStateSize_Double21SparseIterativeMethodbiii(void);
+void* _Z26SparseCreatePreconditioneri18SparseMatrix_Float(void);
+void* _Z26SparseCreatePreconditioneri19SparseMatrix_Double(void);
+void* _Z27SparseConvertFromCoordinateiilh18SparseAttributes_tPKiS1_PKd(void);
+void* _Z27SparseConvertFromCoordinateiilh18SparseAttributes_tPKiS1_PKdPvS4_(void);
+void* _Z27SparseConvertFromCoordinateiilh18SparseAttributes_tPKiS1_PKf(void);
+void* _Z27SparseConvertFromCoordinateiilh18SparseAttributes_tPKiS1_PKfPvS4_(void);
+
+#endif

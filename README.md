@@ -1,4 +1,3 @@
-[![Stories in Ready](https://badge.waffle.io/darlinghq/darling.png?label=ready&title=Ready)](https://waffle.io/darlinghq/darling)
 # Darling
 
 ![Darling logo](http://darlinghq.org/img/darling250.png)
@@ -9,23 +8,12 @@ Please note that no GUI applications are supported at the moment.
 
 ## Download
 
-Darling uses many Git submodules, so a plain clone will not do.
-
-````
-git clone --recurse-submodules https://github.com/darlinghq/darling.git
-````
-
-Updating sources:
-
-````
-git pull
-git submodule init
-git submodule update
-````
+Packages for some distributions are available for download
+under [releases](https://github.com/darlinghq/darling/releases).
 
 ## Build Instructions
 
-For complete instructions, visit [DarlingHQ Wiki](https://wiki.darlinghq.org/build_instructions).
+For build instructions, visit [DarlingHQ Wiki](https://wiki.darlinghq.org/build_instructions).
 
 ### Prefixes
 
@@ -52,8 +40,6 @@ You can install `.pkg` packages with the installer tool available inside shell. 
 $ darling shell
 Darling [~]$ installer -pkg mc-4.8.7-0.pkg -target /
 ````
-
-If you have previously downloaded the Midnight Commander package from [Rudix](http://rudix.org), you can now run `mc` to start MC for OS X. For easier installation, install the Rudix Package Manager. Note that not all Rudix packages may work under Darling.
 
 You can uninstall and list packages with the `uninstaller` command.
 

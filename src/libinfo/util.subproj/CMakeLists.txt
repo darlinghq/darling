@@ -12,4 +12,4 @@ set(info-util_sources
 	rcmd.c
 )
 
-add_library(info-util OBJECT ${info-util_sources})
+add_darling_object_library(info-util ${info-util_sources})

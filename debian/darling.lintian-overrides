@@ -1,0 +1,17 @@
+executable-not-elf-or-script usr/libexec/darling/*
+package-installs-python-bytecode usr/libexec/darling/*
+ruby-script-but-no-ruby-dep usr/libexec/darling/*
+wrong-path-for-interpreter usr/libexec/darling/*
+script-not-executable usr/libexec/darling/*
+description-starts-with-package-name
+description-too-short Darling
+description-is-pkg-name Darling
+setuid-binary usr/bin/darling 4755 root/root
+executable-not-elf-or-script usr/lib/darling/*
+shell-script-fails-syntax-check usr/libexec/darling/*
+incorrect-path-for-interpreter usr/libexec/darling/*
+script-not-executable usr/lib/darling/*
+binary-without-manpage usr/bin/darling
+symlink-is-self-recursive usr/libexec/darling/*
+embedded-javascript-library usr/libexec/*
+script-uses-bin-env usr/libexec/darling/*

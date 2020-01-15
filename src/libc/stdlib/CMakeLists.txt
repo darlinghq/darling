@@ -85,7 +85,7 @@ SET_SOURCE_FILES_PROPERTIES(FreeBSD/realpath.c PROPERTIES COMPILE_FLAGS "${CMAKE
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/setenv.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SETENV -DLIBC_ALIAS_UNSETENV")
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/putenv.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_PUTENV")
 
-add_library(libc-stdlib OBJECT ${stdlib_sources})
+add_darling_object_library(libc-stdlib ${stdlib_sources})
 
 # Cancelable variant
 set(stdlib-cancelable_sources FreeBSD/system.c)
@@ -93,10 +93,12 @@ add_library(libc-stdlib_cancelable OBJECT ${stdlib-cancelable_sources})
 SET_TARGET_PROPERTIES(libc-stdlib_cancelable PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_CANCELABLE")
 
 # Legacy variant
-set(stdlib-legacy_sources FreeBSD/getopt.c FreeBSD/realpath.c
-	FreeBSD/setenv.c FreeBSD/putenv.c)
-add_library(libc-stdlib_legacy OBJECT ${stdlib-legacy_sources})
-SET_TARGET_PROPERTIES(libc-stdlib_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+if (TARGET_i386)
+	set(stdlib-legacy_sources FreeBSD/getopt.c FreeBSD/realpath.c
+		FreeBSD/setenv.c FreeBSD/putenv.c)
+	add_library(libc-stdlib_legacy OBJECT ${stdlib-legacy_sources})
+	SET_TARGET_PROPERTIES(libc-stdlib_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+endif (TARGET_i386)
 
 # DARWIN_EXTSN variant
 set(stdlib-extsn_sources FreeBSD/realpath.c)

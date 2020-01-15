@@ -38,17 +38,18 @@ set(gdtoa_sources ${gdtoa_sources}
 #SET_SOURCE_FILES_PROPERTIES(FreeBSD/gdtoa-strtod.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRTOD -DLIBC_ALIAS_STRTOD_L")
 #SET_SOURCE_FILES_PROPERTIES(FreeBSD/gdtoa-strtof.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRTOF -DLIBC_ALIAS_STRTOF_L")
 
-add_library(libc-gdtoa OBJECT ${gdtoa_sources})
+add_darling_object_library(libc-gdtoa ${gdtoa_sources})
 add_library(libc-gdtoa_dyld OBJECT ${gdtoa_sources})
 set_target_properties(libc-gdtoa_dyld PROPERTIES COMPILE_FLAGS "-DVARIANT_DYLD")
 make_fat(libc-gdtoa_dyld)
 
 # Legacy variant
-set(gdtoa-legacy_sources
-	FreeBSD/gdtoa-strtod.c
-	FreeBSD/gdtoa-strtodg.c
-	FreeBSD/gdtoa-strtof.c)
-add_library(libc-gdtoa_legacy OBJECT ${gdtoa-legacy_sources})
-SET_TARGET_PROPERTIES(libc-gdtoa_legacy PROPERTIES COMPILE_FLAGS
-	"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
-
+if (TARGET_i386)
+	set(gdtoa-legacy_sources
+		FreeBSD/gdtoa-strtod.c
+		FreeBSD/gdtoa-strtodg.c
+		FreeBSD/gdtoa-strtof.c)
+	add_library(libc-gdtoa_legacy OBJECT ${gdtoa-legacy_sources})
+	SET_TARGET_PROPERTIES(libc-gdtoa_legacy PROPERTIES COMPILE_FLAGS
+		"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
+endif (TARGET_i386)

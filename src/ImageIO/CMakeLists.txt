@@ -9,11 +9,14 @@ add_framework(ImageIO
     VERSION "A"
 
     SOURCES
-        src/ImageIO.m
+	src/CGImageDestination.m
+	src/CGImageProperties.m
+	src/CGImageSource.m
 
     DEPENDENCIES
         system
         objc
         Foundation
 	CoreFoundation
+	Onyx2D # Should be independent?
 )

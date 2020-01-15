@@ -19,4 +19,4 @@ set(info-nis_sources
 	setdomainname.c
 )
 
-add_library(info-nis OBJECT ${info-nis_sources})
+add_darling_object_library(info-nis ${info-nis_sources})

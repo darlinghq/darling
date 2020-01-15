@@ -102,7 +102,7 @@
 52	AUE_SIGPENDING	ALL	{ int sigpending(struct sigvec *osv); } 
 53	AUE_SIGALTSTACK	ALL	{ int sigaltstack(struct sigaltstack *nss, struct sigaltstack *oss) NO_SYSCALL_STUB ; } 
 54	AUE_IOCTL	ALL	{ int ioctl(int fd, u_long com, caddr_t data) NO_SYSCALL_STUB; } 
-55	AUE_REBOOT	ALL	{ int reboot(int opt, char *command); } 
+55	AUE_REBOOT	ALL	{ int reboot(int opt, char *command) NO_SYSCALL_STUB; }
 56	AUE_REVOKE	ALL	{ int revoke(char *path); } 
 57	AUE_SYMLINK	ALL	{ int symlink(char *path, char *link); } 
 58	AUE_READLINK	ALL	{ int readlink(char *path, char *buf, int count); } 
@@ -262,16 +262,16 @@
 174	AUE_NULL	ALL	{ int nosys(void); }   { old getdents }
 175	AUE_NULL	ALL	{ int nosys(void); }   { old gc_control }
 176	AUE_NULL	ALL	{ int nosys(void); }   { old add_profil }
-177	AUE_KDEBUGTRACE	ALL	{ int kdebug_typefilter(void** addr, size_t* size) NO_SYSCALL_STUB; } 
-178	AUE_KDEBUGTRACE	ALL 	{ uint64_t kdebug_trace_string(uint32_t debugid, uint64_t str_id, const char *str) NO_SYSCALL_STUB; }
-179	AUE_KDEBUGTRACE	ALL 	{ int kdebug_trace64(uint32_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4) NO_SYSCALL_STUB; } 
-180	AUE_KDEBUGTRACE	ALL 	{ int kdebug_trace(uint32_t code, u_long arg1, u_long arg2, u_long arg3, u_long arg4) NO_SYSCALL_STUB; } 
+177	AUE_NULL	ALL	{ int kdebug_typefilter(void** addr, size_t* size) NO_SYSCALL_STUB; } 
+178	AUE_NULL	ALL 	{ uint64_t kdebug_trace_string(uint32_t debugid, uint64_t str_id, const char *str) NO_SYSCALL_STUB; }
+179	AUE_NULL	ALL 	{ int kdebug_trace64(uint32_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4) NO_SYSCALL_STUB; } 
+180	AUE_NULL	ALL 	{ int kdebug_trace(uint32_t code, u_long arg1, u_long arg2, u_long arg3, u_long arg4) NO_SYSCALL_STUB; } 
 181	AUE_SETGID	ALL	{ int setgid(gid_t gid); } 
 182	AUE_SETEGID	ALL	{ int setegid(gid_t egid); } 
 183	AUE_SETEUID	ALL	{ int seteuid(uid_t euid); } 
 184	AUE_SIGRETURN	ALL	{ int sigreturn(struct ucontext *uctx, int infostyle) NO_SYSCALL_STUB; } 
 185	AUE_NULL	ALL 	{ int enosys(void); } { old chud }
-186	AUE_NULL	ALL	{ int nosys(void); } 
+186	AUE_NULL	ALL	{ int thread_selfcounts(int type, user_addr_t buf, user_size_t nbytes); }
 187	AUE_FDATASYNC	ALL	{ int fdatasync(int fd); } 
 188	AUE_STAT	ALL	{ int stat(user_addr_t path, user_addr_t ub); } 
 189	AUE_FSTAT	ALL	{ int fstat(int fd, user_addr_t ub); } 
@@ -565,7 +565,7 @@
 372	AUE_NULL	ALL	{ uint64_t thread_selfid (void) NO_SYSCALL_STUB; } 
 373	AUE_LEDGER	ALL	{ int ledger(int cmd, caddr_t arg1, caddr_t arg2, caddr_t arg3); } 
 374	AUE_NULL	ALL	{ int kevent_qos(int fd, const struct kevent_qos_s *changelist, int nchanges, struct kevent_qos_s *eventlist, int nevents, void *data_out, size_t *data_available, unsigned int flags); } 
-375	AUE_NULL	ALL	{ int nosys(void); } 
+375	AUE_NULL	ALL	{ int kevent_id(uint64_t id, const struct kevent_qos_s *changelist, int nchanges, struct kevent_qos_s *eventlist, int nevents, void *data_out, size_t *data_available, unsigned int flags); } 
 376	AUE_NULL	ALL	{ int nosys(void); } 
 377	AUE_NULL	ALL	{ int nosys(void); } 
 378	AUE_NULL	ALL	{ int nosys(void); } 
@@ -666,8 +666,16 @@
 432	AUE_NULL	ALL	{ int audit_session_port(au_asid_t asid, user_addr_t portnamep); }
 433	AUE_NULL	ALL	{ int pid_suspend(int pid); }
 434	AUE_NULL	ALL	{ int pid_resume(int pid); }
+#if CONFIG_EMBEDDED
+435	AUE_NULL	ALL	{ int pid_hibernate(int pid); }
+#else
 435     AUE_NULL        ALL     { int nosys(void); }
+#endif
+#if SOCKETS
+436	AUE_NULL	ALL	{ int pid_shutdown_sockets(int pid, int level); }
+#else
 436	AUE_NULL	ALL	{ int nosys(void); }
+#endif
 437	AUE_NULL	ALL	{ int nosys(void); } { old shared_region_slide_np }
 438	AUE_NULL	ALL	{ int shared_region_map_and_slide_np(int fd, uint32_t count, const struct shared_file_mapping_np *mappings, uint32_t slide, uint64_t* slide_start, uint32_t slide_size) NO_SYSCALL_STUB; }
 439	AUE_NULL	ALL	{ int kas_info(int selector, void *value, size_t *size); }
@@ -676,7 +684,7 @@
 #else
 440	AUE_NULL	ALL	{ int nosys(void); }
 #endif
-441	AUE_OPEN_RWTC	ALL	{ int guarded_open_np(const char *path, const guardid_t *guard, u_int guardflags, int flags, int mode) NO_SYSCALL_STUB; }
+441	AUE_OPEN_RWTC	ALL	{ int guarded_open_np(user_addr_t path, const guardid_t *guard, u_int guardflags, int flags, int mode) NO_SYSCALL_STUB; }
 442	AUE_CLOSE	ALL	{ int guarded_close_np(int fd, const guardid_t *guard); }
 443	AUE_KQUEUE	ALL	{ int guarded_kqueue_np(const guardid_t *guard, u_int guardflags); }
 444	AUE_NULL	ALL	{ int change_fdguard_np(int fd, const guardid_t *guard, u_int guardflags, const guardid_t *nguard, u_int nguardflags, int *fdflagsp); }
@@ -752,7 +760,7 @@
 #else
 483	AUE_NULL	ALL	{ int enosys(void); }
 #endif /* CSR */
-484	AUE_NULL	ALL	{ int guarded_open_dprotected_np(const char *path, const guardid_t *guard, u_int guardflags, int flags, int dpclass, int dpflags, int mode) NO_SYSCALL_STUB; }
+484	AUE_NULL	ALL	{ int guarded_open_dprotected_np(user_addr_t path, const guardid_t *guard, u_int guardflags, int flags, int dpclass, int dpflags, int mode) NO_SYSCALL_STUB; }
 485	AUE_NULL	ALL	{ user_ssize_t guarded_write_np(int fd, const guardid_t *guard, user_addr_t cbuf, user_size_t nbyte); }
 486	AUE_PWRITE	ALL	{ user_ssize_t guarded_pwrite_np(int fd, const guardid_t *guard, user_addr_t buf, user_size_t nbyte, off_t offset); }
 487	AUE_WRITEV	ALL	{ user_ssize_t guarded_writev_np(int fd, const guardid_t *guard, struct iovec *iovp, int iovcnt); }
@@ -773,7 +781,11 @@
 #else
 492	AUE_NULL	ALL { int enosys(void); }
 #endif /* CONFIG_TELEMETRY */
+#if PGO
 493 	AUE_NULL	ALL	{ user_ssize_t grab_pgo_data (user_addr_t uuid, int flags, user_addr_t buffer, user_ssize_t size); }
+#else
+493	AUE_NULL	ALL { int enosys(void); }
+#endif
 #if CONFIG_PERSONAS
 494	AUE_PERSONA	ALL	{ int persona(uint32_t operation, uint32_t flags, struct kpersona_info *info, uid_t *id, size_t *idlen) NO_SYSCALL_STUB; }
 #else
@@ -811,3 +823,18 @@
 519	AUE_NULL	ALL	{ int enosys(void); }
 520	AUE_KILL	ALL	{ int terminate_with_payload(int pid, uint32_t reason_namespace, uint64_t reason_code, void *payload, uint32_t payload_size, const char *reason_string, uint64_t reason_flags) NO_SYSCALL_STUB; }
 521	AUE_EXIT	ALL	{ void abort_with_payload(uint32_t reason_namespace, uint64_t reason_code, void *payload, uint32_t payload_size, const char *reason_string, uint64_t reason_flags) NO_SYSCALL_STUB; }
+#if NECP
+522	AUE_NECP	ALL	{ int necp_session_open(int flags); } }
+523	AUE_NECP	ALL	{ int necp_session_action(int necp_fd, uint32_t action, uint8_t *in_buffer, size_t in_buffer_length, uint8_t *out_buffer, size_t out_buffer_length); }
+#else /* NECP */
+522	AUE_NULL	ALL	{ int enosys(void); }
+523	AUE_NULL	ALL	{ int enosys(void); }
+#endif /* NECP */
+524	AUE_SETATTRLISTAT	ALL	{ int setattrlistat(int fd, const char *path, struct attrlist *alist, void *attributeBuffer, size_t bufferSize, uint32_t options); }
+525	AUE_NET		ALL	{ int net_qos_guideline(struct net_qos_param *param, uint32_t param_len); }
+526	AUE_FMOUNT	ALL	{ int fmount(const char *type, int fd, int flags, void *data); }
+527	AUE_NULL	ALL	{ int ntp_adjtime(struct timex *tp); }
+528	AUE_NULL	ALL	{ int ntp_gettime(struct ntptimeval *ntvp); }
+529	AUE_NULL	ALL	{ int os_fault_with_payload(uint32_t reason_namespace, uint64_t reason_code, void *payload, uint32_t payload_size, const char *reason_string, uint64_t reason_flags); }
+530	AUE_NULL	ALL	{ int enosys(void); }
+531	AUE_NULL	ALL	{ int enosys(void); }

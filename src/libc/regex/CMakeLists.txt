@@ -21,11 +21,13 @@ set(regex_sources
 
 SET_SOURCE_FILES_PROPERTIES(TRE/lib/regcomp.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_REGCOMP")
 
-add_library(libc-regex OBJECT ${regex_sources})
+add_darling_object_library(libc-regex ${regex_sources})
 
 # Legacy variant
-set(regex-legacy_sources
-	TRE/lib/regcomp.c)
-add_library(libc-regex_legacy OBJECT ${regex-legacy_sources})
-SET_TARGET_PROPERTIES(libc-regex_legacy PROPERTIES COMPILE_FLAGS
-	"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
+if (TARGET_i386)
+	set(regex-legacy_sources
+		TRE/lib/regcomp.c)
+	add_library(libc-regex_legacy OBJECT ${regex-legacy_sources})
+	SET_TARGET_PROPERTIES(libc-regex_legacy PROPERTIES COMPILE_FLAGS
+		"-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
+endif (TARGET_i386)

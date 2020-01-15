@@ -69,6 +69,11 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 
 			return 0;
 		}
+		case F_SETLK:
+		case F_SETLKW:
+		case F_GETLK:
+			// TODO
+			return 0;
 		// TODO: implement remaining commands
 		default:
 			return -EINVAL;

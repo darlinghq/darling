@@ -23,4 +23,4 @@ set(info-gen_sources
 	vars.c
 )
 
-add_library(info-gen OBJECT ${info-gen_sources})
+add_darling_object_library(info-gen ${info-gen_sources})

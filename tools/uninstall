@@ -1,0 +1,22 @@
+#!/bin/bash
+set +e
+
+if [ "$(whoami)" != "root" ]
+then
+	echo "Uninstall must be run as root, invoking sudo"
+	sudo su -c "$0"
+	exit
+fi
+
+if command -v darling
+then
+	darling shutdown
+fi
+if [ -d /usr/local/libexec ]
+then
+	rm -rf /usr/local/libexec/darling
+	rmdir --ignore-fail-on-non-empty /usr/local/libexec
+fi
+rm -f /usr/local/bin/darling
+find /lib/modules -name darling-mach.ko -delete
+echo "Uninstall complete"

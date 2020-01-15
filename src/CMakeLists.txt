@@ -1,5 +1,8 @@
 project(darling-src)
 
+unset(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES)
+unset(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+
 cmake_minimum_required(VERSION 2.4.0)
 cmake_policy(SET CMP0005 NEW)
 
@@ -7,7 +10,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
 include(pyc)
 
-add_subdirectory(external/xcbuild)
+#add_subdirectory(external/xcbuild)
 add_subdirectory(libelfloader/native)
 add_subdirectory(bsdln)
 
@@ -41,7 +44,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 include(compiler_include)
 GetCompilerInclude(COMPILER_INC_PATH)
 message(STATUS "Compiler include path detected as ${COMPILER_INC_PATH}")
-include_directories(${COMPILER_INC_PATH})
+include_directories(SYSTEM ${COMPILER_INC_PATH})
 
 find_package(BISON)
 find_package(FLEX)
@@ -54,7 +57,7 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(util)
 #add_subdirectory(libmach-o)
 #add_subdirectory(libdyld)
-add_subdirectory(DebugSymbols/getuuid)
+add_subdirectory(buildtools)
 add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(libelfloader/fakechroot)
 add_subdirectory(startup)
@@ -103,12 +106,10 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskArbitration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudioOld/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
-	${CMAKE_CURRENT_SOURCE_DIR}/AudioUnit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/login/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
 	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
 	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/coretls/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libmalloc/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libinfo/include
@@ -118,11 +119,9 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser
 	${CMAKE_CURRENT_SOURCE_DIR}/external/openpam/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/sqlite/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DebugSymbols/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenScripting/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CryptoTokenKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/LocalAuthentication/include
-	${CMAKE_CURRENT_SOURCE_DIR}/AppleSystemInfo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SystemConfiguration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ncurses/include
@@ -155,12 +154,10 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DiskImages/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ServiceManagement/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ApplicationServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreText/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/QuartzCore/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreGraphics/include
@@ -169,55 +166,45 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreVideo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/WTF/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/bmalloc/include
-	${CMAKE_CURRENT_SOURCE_DIR}/PerformanceAnalysis/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DiskManagement/include
-	${CMAKE_CURRENT_SOURCE_DIR}/NetworkStatistics/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreSymbolication/include
-	${CMAKE_CURRENT_SOURCE_DIR}/LoggingSupport/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CrashReporterSupport/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityFoundation/include
-	${CMAKE_CURRENT_SOURCE_DIR}/AuthKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/IOPlatformPluginFamily/include
-	${CMAKE_CURRENT_SOURCE_DIR}/PlugInKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libsysmon/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libcompression/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Metal/include
 	${CMAKE_CURRENT_SOURCE_DIR}/kperf/include
-	${CMAKE_CURRENT_SOURCE_DIR}/StreamingZip/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsCore/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectors/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DataDetectorsNaturalLanguage/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
-	${CMAKE_CURRENT_SOURCE_DIR}/Carbon/include
+	${CMAKE_CURRENT_SOURCE_DIR}/DrawSprocket/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreImage/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreVideo/include
-	${CMAKE_CURRENT_SOURCE_DIR}/Accelerate/include
 	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenGL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/Spotlight/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightDaemon/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightIndex/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightReceiver/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServerKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SpotlightServices/include
-	${CMAKE_CURRENT_SOURCE_DIR}/Contacts/include
 	${CMAKE_CURRENT_SOURCE_DIR}/QuickLook/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ViewBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/WebKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/AVFoundation/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreMedia/include
 	${CMAKE_CURRENT_SOURCE_DIR}/JavaVM/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DirectoryServices/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ConfigurationProfiles/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ImageIO/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
+	${CMAKE_CURRENT_SOURCE_DIR}/LDAP/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ExceptionHandling/include
+	${CMAKE_CURRENT_SOURCE_DIR}/EventKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/lzfse/include
+	${CMAKE_CURRENT_SOURCE_DIR}/VideoToolbox/include
+	${CMAKE_CURRENT_SOURCE_DIR}/QTKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/StoreKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/ForceFeedback/include
+	${CMAKE_CURRENT_SOURCE_DIR}/GameController/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreWLAN/include
+	${CMAKE_CURRENT_SOURCE_DIR}/IOBluetooth/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libsandbox/include
+	${CMAKE_CURRENT_SOURCE_DIR}/OpenCL/include
+	${CMAKE_CURRENT_SOURCE_DIR}/OpenDirectory/include
+	${CMAKE_CURRENT_SOURCE_DIR}/MetalKit/include
+	${CMAKE_CURRENT_SOURCE_DIR}/frameworks/include
+	${CMAKE_CURRENT_SOURCE_DIR}/private-frameworks/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -279,8 +266,6 @@ add_subdirectory(external/remote_cmds)
 add_subdirectory(external/IOKitUser)
 add_subdirectory(external/python_modules)
 add_subdirectory(SystemConfiguration)
-add_subdirectory(CoreServices)
-add_subdirectory(ApplicationServices)
 #add_subdirectory(VideoDecodeAcceleration)
 add_subdirectory(DiskArbitration)
 add_subdirectory(LocalAuthentication)
@@ -301,10 +286,7 @@ add_subdirectory(external/libarchive/libarchive)
 add_subdirectory(external/apr)
 add_subdirectory(sandbox)
 add_subdirectory(xcselect)
-add_subdirectory(ConfigurationProfiles)
-add_subdirectory(AppleSystemInfo)
-add_subdirectory(DiskImages)
-add_subdirectory(PackageKit)
+add_subdirectory(external/OpenDirectory)
 
 add_subdirectory(native)
 
@@ -353,56 +335,51 @@ add_subdirectory(external/DSTools)
 add_subdirectory(external/DirectoryService)
 add_subdirectory(ImageIO)
 add_subdirectory(login)
-add_subdirectory(DebugSymbols)
-add_subdirectory(PerformanceAnalysis)
-add_subdirectory(DiskManagement)
-add_subdirectory(NetworkStatistics)
-add_subdirectory(CoreSymbolication)
-add_subdirectory(LoggingSupport)
-add_subdirectory(CrashReporterSupport)
 add_subdirectory(SecurityFoundation)
-add_subdirectory(AuthKit)
-add_subdirectory(IOPlatformPluginFamily)
-add_subdirectory(PlugInKit)
 add_subdirectory(libsysmon)
 add_subdirectory(libcompression)
 add_subdirectory(Metal)
 add_subdirectory(kperf)
-add_subdirectory(StreamingZip)
 add_subdirectory(external/bsm)
 add_subdirectory(external/Heimdal)
 add_subdirectory(PlistBuddy)
 add_subdirectory(ScriptingBridge)
 add_subdirectory(libDiagnosticMessagesClient)
-add_subdirectory(AudioToolbox)
-add_subdirectory(DataDetectorsCore)
-add_subdirectory(DataDetectors)
-add_subdirectory(DataDetectorsNaturalLanguage)
 add_subdirectory(SecurityInterface)
-add_subdirectory(Carbon)
 add_subdirectory(Quartz)
-add_subdirectory(CoreImage)
 add_subdirectory(CoreVideo)
-add_subdirectory(Accelerate)
 add_subdirectory(IOSurface)
 add_subdirectory(libquit)
-add_subdirectory(Spotlight)
-add_subdirectory(SpotlightDaemon)
-add_subdirectory(SpotlightIndex)
-add_subdirectory(SpotlightReceiver)
-add_subdirectory(SpotlightServerKit)
-add_subdirectory(SpotlightServices)
-add_subdirectory(Contacts)
 add_subdirectory(QuickLook)
-add_subdirectory(ViewBridge)
-add_subdirectory(AVFoundation)
-add_subdirectory(CoreAudio)
-add_subdirectory(CoreMedia)
+add_subdirectory(LDAP)
+add_subdirectory(ExceptionHandling)
+add_subdirectory(external/lzfse)
+add_subdirectory(VideoToolbox)
+add_subdirectory(QTKit)
+add_subdirectory(StoreKit)
+add_subdirectory(ForceFeedback)
+add_subdirectory(GameController)
+add_subdirectory(CoreWLAN)
+add_subdirectory(IOBluetooth)
+add_subdirectory(libsandbox)
+add_subdirectory(OpenCL)
+add_subdirectory(OpenDirectory)
+add_subdirectory(opendirectory)
+add_subdirectory(MetalKit)
+
+add_subdirectory(clt)
+
 # Just a stub
 add_subdirectory(WebKit)
 add_subdirectory(OpenGL)
 add_subdirectory(JavaVM)
 add_subdirectory(DirectoryServices)
+add_subdirectory(DrawSprocket)
+add_subdirectory(EventKit)
+add_subdirectory(external/cocotron/CoreGraphics)
+
+add_subdirectory(frameworks)
+add_subdirectory(private-frameworks)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
@@ -438,13 +415,13 @@ add_subdirectory(external/dtrace)
 
 add_subdirectory(lkm)
 
-add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/cocotron/Onyx2D)
 add_subdirectory(external/cocotron/AppKit)
 add_subdirectory(external/cocotron/CoreText)
-add_subdirectory(external/cocotron/CoreData)
 add_subdirectory(external/cocotron/Cocoa)
+add_subdirectory(external/cocotron/CoreData)
 add_subdirectory(external/cocotron/QuartzCore)
+add_subdirectory(pboard)
 
 if(FULL_BUILD)
 add_subdirectory(external/JavaScriptCore)

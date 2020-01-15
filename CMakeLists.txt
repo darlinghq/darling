@@ -3,11 +3,17 @@ SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
 
 # This allows setting the compiler with -DCMAKE_C_COMPILER when configuring.
 if (NOT DEFINED CMAKE_C_COMPILER)
-	SET(CMAKE_C_COMPILER clang)
+	find_program(CMAKE_C_COMPILER NAMES
+		"clang"
+		"clang-4.0"
+		"clang-7")
 endif(NOT DEFINED CMAKE_C_COMPILER)
 
 if (NOT DEFINED CMAKE_CXX_COMPILER)
-	SET(CMAKE_CXX_COMPILER clang++)
+	find_program(CMAKE_CXX_COMPILER NAMES
+		"clang++"
+		"clang++-4.0"
+		"clang++-7")
 endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
 SET(CMAKE_SKIP_RPATH TRUE)
@@ -45,11 +51,20 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IGNORED_WARNINGS}")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -ggdb")
 SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb")
 
+if(CMAKE_POSITION_INDEPENDENT_CODE)
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+	SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
+endif(CMAKE_POSITION_INDEPENDENT_CODE)
+
 enable_language(ASM-ATT)
 
 option(FRAMEWORK_COREAUDIO "Enable audio-related functionality" OFF)
 option(FRAMEWORK_APPKIT "Enable AppKit development code" OFF)
 option(FULL_BUILD "Include large items in the build" ON)
+option(TARGET_i386 "Enable i386 slices" ON)
+option(TARGET_x86_64 "Enable x86_64 slices" ON)
+option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 
 FindDsymutil()
 
@@ -92,12 +107,22 @@ InstallSymlink(/Volumes/SystemRoot/etc/group ${CMAKE_INSTALL_PREFIX}/libexec/dar
 InstallSymlink(/Volumes/SystemRoot/etc/localtime ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/localtime)
 
 install(DIRECTORY DESTINATION libexec/darling/etc/ld.so.conf.d)
-install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
 install(DIRECTORY DESTINATION libexec/darling/etc/fonts/conf.d)
-install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-fonts.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+if(NOT DEBIAN_PACKAGING)
+	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-ld-so.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/src/setup-fonts.sh WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/libexec/darling)")
+endif(NOT DEBIAN_PACKAGING)
 
 InstallSymlink(/Volumes/SystemRoot/lib ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib)
 InstallSymlink(/Volumes/SystemRoot/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/lib64)
 InstallSymlink(/Volumes/SystemRoot/usr/lib64 ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib64)
 
 InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
+
+if(NOT DEBIAN_PACKAGING)
+	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh)")
+endif(NOT DEBIAN_PACKAGING)
+
+add_custom_target(uninstall
+	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/uninstall
+	COMMENT "Uninstall Darling and kernel module")

@@ -460,7 +460,9 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	// Pass the signal to the application handler or emulate the effects of the signal if SIG_DFL is set.
 	if (bsd_signum)
 	{
-		bsd_sig_handler* handler = sig_handlers[bsd_signum];
+		const int linux_signum = signum_bsd_to_linux(bsd_signum);
+
+		bsd_sig_handler* handler = sig_handlers[linux_signum];
 		if (handler == SIG_DFL || handler == SIG_ERR)
 		{
 			/*
@@ -492,7 +494,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 		}
 		else if (handler != SIG_IGN)
 		{
-			handler_linux_to_bsd(signum_bsd_to_linux(bsd_signum), info, ctxt);
+			handler_linux_to_bsd(linux_signum, info, ctxt);
 		}
 	}
 }

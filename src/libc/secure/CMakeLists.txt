@@ -31,4 +31,4 @@ set(secure_sources
 
 #SET_SOURCE_FILES_PROPERTIES(FreeBSD/snprintf.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS}")
 
-add_library(libc-secure OBJECT ${secure_sources})
+add_darling_object_library(libc-secure ${secure_sources})

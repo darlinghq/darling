@@ -64,34 +64,51 @@ add_subdirectory(nls)
 add_subdirectory(net)
 add_subdirectory(locale)
 add_subdirectory(darwin)
-add_subdirectory(i386)
-add_subdirectory(x86_64)
 
-set_property (
-	TARGET
-		libc-stdio_legacy
-		libc-compat_legacy
-		libc-stdlib_legacy
-		libc-stdtime_legacy
-		libc-gen_legacy
-		libc-string_legacy
-		libc-gdtoa_legacy
-		libc-regex_legacy
-		libc-locale_legacy
-		libc-net_legacy
-		libc-i386
-	APPEND_STRING PROPERTY COMPILE_FLAGS
-		" -arch i386"
-)
-set_property (
-	TARGET
-		libc-x86_64
-	APPEND_STRING PROPERTY COMPILE_FLAGS
-		" -arch x86_64"
-)
+if (TARGET_i386)
+	add_subdirectory(i386)
+	set_property (
+		TARGET
+			libc-stdio_legacy
+			libc-compat_legacy
+			libc-stdlib_legacy
+			libc-stdtime_legacy
+			libc-gen_legacy
+			libc-string_legacy
+			libc-gdtoa_legacy
+			libc-regex_legacy
+			libc-locale_legacy
+			libc-net_legacy
+			libc-i386
+		APPEND_STRING PROPERTY COMPILE_FLAGS
+			" -arch i386"
+	)
+else (TARGET_i386)
+	add_library(libc-stdio_legacy OBJECT empty.c)
+	add_library(libc-compat_legacy OBJECT empty.c)
+	add_library(libc-stdlib_legacy OBJECT empty.c)
+	add_library(libc-stdtime_legacy OBJECT empty.c)
+	add_library(libc-gen_legacy OBJECT empty.c)
+	add_library(libc-string_legacy OBJECT empty.c)
+	add_library(libc-gdtoa_legacy OBJECT empty.c)
+	add_library(libc-regex_legacy OBJECT empty.c)
+	add_library(libc-locale_legacy OBJECT empty.c)
+	add_library(libc-net_legacy OBJECT empty.c)
+	add_library(libc-i386 OBJECT empty.c)
+endif (TARGET_i386)
 
-#set_property (
-#	TARGET
+if (TARGET_x86_64)
+	add_subdirectory(x86_64)
+	set_property (
+		TARGET
+			libc-x86_64
+		APPEND_STRING PROPERTY COMPILE_FLAGS
+			" -arch x86_64"
+	)
+else (TARGET_x86_64)
+	add_library(libc-x86_64 OBJECT empty.c)
+endif (TARGET_x86_64)
+
 make_fat(
 		libc-db
 		libc-compat
@@ -129,9 +146,6 @@ make_fat(
 		libc-sys_dyld
 		libc-gdtoa_dyld
 )
-#	APPEND_STRING PROPERTY COMPILE_FLAGS
-#		" -arch x86_64 -arch i386"
-#)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_c.dylib")
 add_circular(system_c FAT OBJECTS
@@ -199,6 +213,7 @@ add_circular(system_c FAT OBJECTS
 		macho
 		system_duct
 		system_asl
+		xpc
 	LINK_FLAGS
 		"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/xcodescripts/alias.list"
 )
