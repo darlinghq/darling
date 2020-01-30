@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2016-2017 Lubos Dolezel
+Copyright (C) 2016-2018 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -608,7 +608,7 @@ void spawnShell(const char** argv)
 void showHelp(const char* argv0)
 {
 	fprintf(stderr, "This is Darling, translation layer for macOS software.\n\n");
-	fprintf(stderr, "Copyright (C) 2012-2017 Lubos Dolezel\n\n");
+	fprintf(stderr, "Copyright (C) 2012-2020 Lubos Dolezel\n\n");
 
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr, "\t%s program-path [arguments...]\n", argv0);
@@ -620,7 +620,7 @@ void showHelp(const char* argv0)
 
 void showVersion(const char* argv0) {
 	fprintf(stderr, "%s " GIT_BRANCH " @ " GIT_COMMIT_HASH "\n", argv0);
-	fprintf(stderr, "Copyright (C) 2012-2017 Lubos Dolezel\n");
+	fprintf(stderr, "Copyright (C) 2012-2020 Lubos Dolezel\n");
 }
 
 void missingSetuidRoot(void)
