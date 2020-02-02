@@ -6,6 +6,7 @@
 #include "../errno.h"
 #include "../unistd/readlink.h"
 #include "../fdpath.h"
+#include "../simple.h"
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -56,7 +57,7 @@ int handle_filio(int fd, int cmd, void* arg, int* retval)
 				*retval = -EBADF;
 				return IOCTL_HANDLED;
 			}
-			__simple_printf("dtype for fd %d -> %s\n", fd, orig_path);
+			__simple_kprintf("dtype for fd %d -> %s\n", fd, orig_path);
 
 			*retval = 0;
 			if (strncmp(orig_path, "/dev/pts", 8) == 0

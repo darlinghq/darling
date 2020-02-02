@@ -277,6 +277,7 @@ set(emulation_sources
 	psynch/ulock_wake.c
 	conf/pathconf.c
 	conf/fpathconf.c
+	vchroot_expand.c
 	syscalls-table.S
 	linux-syscall.S
 )

@@ -4,6 +4,7 @@
 #include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 #include "../common_at.h"
+#include "../vchroot_expand.h"
 #include <lkm/api.h>
 #include <mach/lkm.h>
 #include "../bsdthread/per_thread_wd.h"
@@ -18,7 +19,7 @@ long sys_symlinkat(const char* path, int fd, const char* link)
 	
 	strcpy(vc.path, link);
 
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

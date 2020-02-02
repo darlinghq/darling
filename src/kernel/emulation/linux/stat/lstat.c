@@ -5,6 +5,7 @@
 #include <linux-syscalls/linux.h>
 #include <lkm/api.h>
 #include <mach/lkm.h>
+#include "../vchroot_expand.h"
 #include "../bsdthread/per_thread_wd.h"
 
 long sys_lstat(const char* path, struct stat* stat)
@@ -18,7 +19,7 @@ long sys_lstat(const char* path, struct stat* stat)
 	
 	strcpy(vc.path, path);
 
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
@@ -47,7 +48,7 @@ long sys_lstat64(const char* path, struct stat64* stat)
 	
 	strcpy(vc.path, path);
 
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

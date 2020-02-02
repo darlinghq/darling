@@ -47,7 +47,7 @@ long sys_fstatfs64(int fd, struct bsd_statfs64* buf)
 
 	statfs_linux_to_bsd64(&lbuf, buf);
 
-	ret = fdpath(fd, path, sizeof(fd));
+	ret = fdpath(fd, path, sizeof(path));
 
 	if (ret < 0)
 		return ret;

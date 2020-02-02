@@ -3,6 +3,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../common_at.h"
+#include "../vchroot_expand.h"
 #include <lkm/api.h>
 #include <mach/lkm.h>
 #include <linux-syscalls/linux.h>
@@ -20,7 +21,7 @@ long sys_fstatat(int fd, const char* path, struct stat* stat, int flag)
 	vc.dfd = atfd(fd);
 	
 	strcpy(vc.path, path);
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
@@ -51,7 +52,7 @@ long sys_fstatat64(int fd, const char* path, struct stat64* stat, int flag)
 	vc.dfd = atfd(fd);
 	
 	strcpy(vc.path, path);
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

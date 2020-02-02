@@ -7,6 +7,8 @@
 #include <mach/lkm.h>
 #include "../../../../libc/include/fcntl.h"
 #include "../common_at.h"
+#include "../simple.h"
+#include "../vchroot_expand.h"
 #include "../bsdthread/cancelable.h"
 
 #ifndef O_NOFOLLOW
@@ -51,19 +53,19 @@ long sys_openat_nocancel(int fd, const char* filename, int flags, unsigned int m
 	struct vchroot_expand_args vc;
 	vc.flags = VCHROOT_FOLLOW;
 	vc.dfd = atfd(fd);
-	
+
 	strcpy(vc.path, filename);
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0) {
-		__simple_printf("vchroot_exoand failed for %s: %d\n", filename, ret);
+		__simple_kprintf("vchroot_expand failed for %s: %d\n", filename, ret);
 		return errno_linux_to_bsd(ret);
 	}
-	__simple_printf("vchroot_expand: %s -> %s\n", filename, vc.path);
+	__simple_kprintf("vchroot_expand: %s -> %s\n", filename, vc.path);
 
 	ret = LINUX_SYSCALL(__NR_openat, vc.dfd, vc.path, linux_flags, mode);
 	if (ret < 0)
 	{
-		__simple_printf("open failed with error %d\n", ret);
+		__simple_kprintf("open failed with error %d\n", ret);
 		ret = errno_linux_to_bsd(ret);
 	}
 

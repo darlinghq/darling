@@ -4,6 +4,7 @@
 #include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 #include "../common_at.h"
+#include "../vchroot_expand.h"
 #include <lkm/api.h>
 #include <mach/lkm.h>
 
@@ -24,11 +25,11 @@ long sys_linkat(int fd, const char* path, int fdlink, const char* link, int flag
 
 	strcpy(vc2.path, link);
 
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	ret = lkm_call(NR_vchroot_expand, &vc2);
+	ret = vchroot_expand(&vc2);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

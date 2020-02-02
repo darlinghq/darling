@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <linux-syscalls/linux.h>
+#include <lkm/api.h>
 
 void __simple_vsprintf(char* buf, const char* format, va_list vl);
 extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
@@ -128,6 +129,19 @@ void __simple_printf(const char* format, ...)
 	va_end(vl);
 
 	LINUX_SYSCALL3(__NR_write, 1, buffer, __simple_strlen(buffer));
+}
+
+__attribute__ ((visibility ("default")))
+void __simple_kprintf(const char* format, ...)
+{
+	char buffer[512];
+	va_list vl;
+
+	va_start(vl, format);
+	__simple_vsprintf(buffer, format, vl);
+	va_end(vl);
+
+	lkm_call(NR_kernel_printk, buffer);
 }
 
 void __simple_fprintf(int fd, const char* format, ...)

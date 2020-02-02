@@ -4,6 +4,7 @@
 #include <linux-syscalls/linux.h>
 #include "../../../../../platform-include/sys/errno.h"
 #include "../common_at.h"
+#include "../vchroot_expand.h"
 #include <lkm/api.h>
 #include <mach/lkm.h>
 
@@ -24,10 +25,10 @@ long sys_renameat(int oldfd, const char* oldpath, int newfd, const char* newpath
 
 	strcpy(vc2.path, newpath);
 
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
-	ret = lkm_call(NR_vchroot_expand, &vc2);
+	ret = vchroot_expand(&vc2);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

@@ -3,6 +3,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include "../common_at.h"
+#include "../vchroot_expand.h"
 #include <mach/lkm.h>
 #include <lkm/api.h>
 
@@ -18,7 +19,7 @@ long sys_fchmodat(int fd, const char* path, int mode, int flag)
 	
 	strcpy(vc.path, path);
 
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

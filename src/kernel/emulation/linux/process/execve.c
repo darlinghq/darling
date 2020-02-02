@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <lkm/api.h>
 #include <mach/lkm.h>
+#include "../vchroot_expand.h"
 #include "../bsdthread/per_thread_wd.h"
 
 long sys_execve(char* fname, char** argvp, char** envp)
@@ -25,7 +26,8 @@ long sys_execve(char* fname, char** argvp, char** envp)
 	
 	strcpy(vc.path, fname);
 
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
+	__simple_kprintf("execve expand %s -> %s, ret %d", fname, vc.path, ret);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

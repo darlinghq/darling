@@ -6,6 +6,7 @@
 #include "../../../../lkm/api.h"
 #include "../fcntl/open.h"
 #include "../unistd/close.h"
+#include "../vchroot_expand.h"
 #include "per_thread_wd.h"
 
 long sys_pthread_chdir(const char* path)
@@ -19,7 +20,7 @@ long sys_pthread_chdir(const char* path)
 	
 	strcpy(vc.path, path);
 
-	rv = lkm_call(NR_vchroot_expand, &vc);
+	rv = vchroot_expand(&vc);
 	if (rv < 0)
 		return errno_linux_to_bsd(rv);
 

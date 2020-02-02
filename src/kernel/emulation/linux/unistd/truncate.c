@@ -4,6 +4,7 @@
 #include <linux-syscalls/linux.h>
 #include <lkm/api.h>
 #include "../bsdthread/per_thread_wd.h"
+#include "../vchroot_expand.h"
 #include <mach/lkm.h>
 
 long sys_truncate(const char* path, long long length)
@@ -16,7 +17,7 @@ long sys_truncate(const char* path, long long length)
 	
 	strcpy(vc.path, path);
 
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

@@ -4,6 +4,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include "../bsdthread/per_thread_wd.h"
+#include "../vchroot_expand.h"
 #include <lkm/api.h>
 #include <mach/lkm.h>
 
@@ -19,7 +20,7 @@ long sys_rmdir(const char* path)
 	
 	strcpy(vc.path, path);
 
-	ret = lkm_call(NR_vchroot_expand, &vc);
+	ret = vchroot_expand(&vc);
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
