@@ -62,6 +62,7 @@ enable_language(ASM-ATT)
 option(FULL_BUILD "Include large items in the build" ON)
 option(TARGET_i386 "Enable i386 slices" ON)
 option(TARGET_x86_64 "Enable x86_64 slices" ON)
+option(TARGET_ARM64 "Enable AArch64 slices" OFF)
 option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 

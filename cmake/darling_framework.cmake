@@ -160,7 +160,37 @@ function(add_separated_framework name)
 			set_property(TARGET ${my_name}_x86_64 APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 		endif (FRAMEWORK_LINK_FLAGS)
 	endif (TARGET_x86_64)
-
+	
+	# if (TARGET_ARM)
+ 		#set(DARLING_LIB_ARM_ONLY TRUE)
+ 		#set(DARLING_LIB_ARM_ONLY FALSE)
+	# endif (TARGET_ARM)
+	
+	if (TARGET_ARM64)
+		set(DARLING_LIB_ARM64_ONLY TRUE)
+		add_darling_library(${my_name}_arm64 ${FRAMEWORK_SOURCES})
+		set(DARLING_LIB_ARM64_ONLY FALSE)
+		set_target_properties(${my_name}_arm64 PROPERTIES
+					OUTPUT_NAME "${name}_arm64"
+					SUFFIX ""
+					PREFIX "")
+		set_property(TARGET ${my_name}_arm64 APPEND_STRING PROPERTY
+			COMPILE_FLAGS " -arch arm64")
+		set_property(TARGET ${my_name}_arm64 APPEND_STRING PROPERTY
+			LINK_FLAGS " -arch arm64")
+		if (NOT FRAMEWORK_CURRENT_VERSION)
+			add_library("${my_name}_arm64" ALIAS "${name}_arm64")
+		endif (NOT FRAMEWORK_CURRENT_VERSION)
+		
+		if (FRAMEWORK_DEPENDENCIES)
+			target_link_libraries(${my_name}_arm64 PRIVATE ${FRAMEWORK_DEPENDENCIES})
+		endif (FRAMEWORK_DEPENDENCIES)
+		
+		if (FRAMEWORK_LINK_FLAGS)
+			set_property(TARGET ${my_name}_arm64 APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
+		endif (FRAMEWORK_LINK_FLAGS)
+	endif (TARGET_ARM64)
+	
 	if (TARGET_i386 AND TARGET_x86_64)
 		add_dependencies(${my_name}_x86_64 ${my_name}_i386)
 		add_custom_command(TARGET ${my_name}_x86_64 POST_BUILD
@@ -215,6 +245,23 @@ function(add_separated_framework name)
 			IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
 		)
 		add_dependencies(${my_name} ${my_name}_x86_64)
+	elseif (TARGET_ARM64)
+				add_custom_command(TARGET ${my_name}_arm64 POST_BUILD
+			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+				-arch arm64 $<TARGET_FILE:${my_name}_arm64>
+				-create
+				-output
+				${CMAKE_CURRENT_BINARY_DIR}/${my_name}
+			COMMENT "Running lipo to create ${my_name}"
+			BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
+		)
+		add_library(${my_name} SHARED IMPORTED GLOBAL)
+		set_target_properties(${my_name} PROPERTIES
+			SUFFIX ""
+			PREFIX ""
+			IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
+		)
+		add_dependencies(${my_name} ${my_name}_arm64)
 	endif (TARGET_i386 AND TARGET_x86_64)
 
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${my_name} DESTINATION "libexec/darling/System/Library/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/")

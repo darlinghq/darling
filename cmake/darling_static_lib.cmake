@@ -23,7 +23,12 @@ function(add_darling_static_library name)
 		set_property(TARGET ${name} APPEND_STRING PROPERTY
 			COMPILE_FLAGS " -arch i386")
 	endif (TARGET_i386)
-
+    
+	if (TARGET_ARM64)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY
+			COMPILE_FLAGS " -arch arm64")
+    endif (TARGET_ARM64)
+    
 	if (STATIC_LIB_FAT)
 		make_fat(${name})
 	endif (STATIC_LIB_FAT)

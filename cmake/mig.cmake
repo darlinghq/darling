@@ -27,6 +27,10 @@ function(mig defFileName)
         foreach (dir ${InclDirs})
                 set(MIG_FLAGS "${MIG_FLAGS} -I${dir}")
         endforeach()
+        
+        if (TARGET_ARM64)
+            set(MIG_FLAGS "${MIG_FLAGS} -D__arm64__")
+        endif (TARGET_ARM64)
 
         # message(STATUS "MIG flags: ${MIG_FLAGS}")
         separate_arguments(MIG_FLAGS)
@@ -42,7 +46,11 @@ function(mig defFileName)
         #	set (MIG_ARCH "${arch}")
         #endif(NOT arch)
         if (NOT MIG_ARCH)
-            set(MIG_ARCH "i386")
+            if (TARGET_x86_64 OR TARGET_i386)
+                set(MIG_ARCH "i386")
+            elseif (TARGET_ARM64)
+                set(MIG_ARCH "arm64")
+            endif (TARGET_x86_64 OR TARGET_i386)
         endif (NOT MIG_ARCH)
 
 	add_custom_command(OUTPUT

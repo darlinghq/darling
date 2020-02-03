@@ -1,11 +1,17 @@
 FUNCTION(use_ld64 target)
+	if (TARGET_x86_64 OR TARGET_i386)
+		set(func_ld64_triplet "x86_64-apple-darwin11")
+	elseif(TARGET_ARM64)
+		set(func_ld64_triplet "arm64-apple-darwin15")
+	endif()
+
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/x86_64-apple-darwin11-ld ")
 
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ \
 -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
--target x86_64-apple-darwin11 -Wl,-Z \
+-target ${func_ld64_triplet} -Wl,-Z \
 -Wl,-dylib_file,/usr/lib/system/libsystem_c.dylib:${CMAKE_BINARY_DIR}/src/libc/libsystem_c_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_kernel.dylib:${CMAKE_BINARY_DIR}/src/kernel/libsystem_kernel_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libunwind.dylib:${CMAKE_BINARY_DIR}/src/libunwind/libunwind_firstpass.dylib \

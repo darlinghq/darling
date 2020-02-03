@@ -73,8 +73,11 @@ add_subdirectory(bootstrap_cmds)
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
 
-add_definitions(-target x86_64-apple-darwin11)
-include(darling_lib)
+if (TARGET_x86_64 OR TARGET_i386)
+    add_definitions(-target x86_64-apple-darwin11)
+elseif (TARGET_ARM64)
+    add_definitions(-target arm64-apple-darwin15)
+endif()
 
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include

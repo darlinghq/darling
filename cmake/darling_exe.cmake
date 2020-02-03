@@ -20,8 +20,10 @@ FUNCTION(add_darling_executable exe)
 		target_compile_options(${exe} PRIVATE -arch i386)
 		set_property(TARGET ${exe} APPEND_STRING PROPERTY
 			LINK_FLAGS " -arch i386")
+	elseif (TARGET_ARM64)
+		target_compile_options(${exe} PRIVATE -arch arm64)
 	endif (TARGET_x86_64)
-
+    
 	use_ld64(${exe})
 	target_link_libraries(${exe} system)
 	add_dependencies(${exe} csu)
