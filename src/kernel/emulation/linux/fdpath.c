@@ -10,6 +10,7 @@ int fdpath(int fd, char* buf, size_t bufsiz)
 		.maxlen = bufsiz
 	};
 
-	return lkm_call(NR_vchroot_fdpath, &args);
+	// return lkm_call(NR_vchroot_fdpath, &args);
+	return vchroot_fdpath(&args);
 }
 
