@@ -102,6 +102,24 @@ int __darling_vchroot(int dfd)
 	return 0;
 }
 
+#ifndef TEST
+VISIBLE
+int __darling_vchroot_expand(const char* path, char* out)
+{
+	struct vchroot_expand_args a = {
+		.dfd = -100,
+		.flags = 0
+	};
+
+	strcpy(a.path, path);
+
+	int rv = vchroot_expand(&a);
+
+	strcpy(out, a.path);
+	return rv;
+}
+#endif
+
 static void init_vchroot_path(void)
 {
 	struct vchroot_expand_args a = {

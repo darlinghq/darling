@@ -198,6 +198,9 @@
 #include "bsdthread/pthread_kill.h"
 #include "conf/pathconf.h"
 #include "conf/fpathconf.h"
+#include "sysv_sem/semctl.h"
+#include "sysv_sem/semget.h"
+#include "sysv_sem/semop.h"
 
 void* __bsd_syscall_table[600] = {
 	[0] = sys_syscall,
@@ -342,6 +345,9 @@ void* __bsd_syscall_table[600] = {
 	[241] = sys_flistxattr,
 	[243] = sys_initgroups,
 	[244] = sys_posix_spawn,
+	[254] = sys_semctl,
+	[255] = sys_semget,
+	[256] = sys_semop,
 	[266] = sys_shm_open,
 	[267] = sys_shm_unlink,
 	[268] = sys_sem_open,
