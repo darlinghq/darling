@@ -3,8 +3,3 @@ set -e
 
 echo ">>> Shutting down old instances of Darling"
 bash /usr/lib/darling/shutdown-user.sh
-
-echo ">>> Deleting old configuration files"
-rm -rf /usr/libexec/darling/etc/fonts
-rm -rf /usr/libexec/darling/etc/ld.so.conf.d/
-rm -f /usr/libexec/darling/etc/ld.so.*
