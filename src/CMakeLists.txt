@@ -59,7 +59,6 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(libdyld)
 add_subdirectory(buildtools)
 add_subdirectory(libelfloader/wrapgen)
-add_subdirectory(libelfloader/fakechroot)
 add_subdirectory(startup)
 
 add_definitions(
