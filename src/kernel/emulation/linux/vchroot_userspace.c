@@ -60,7 +60,18 @@ static char prefix_path[4096] = {0}; // MUST NOT end with '/'
 static int prefix_path_len = -1;
 
 static const char EXIT_PATH[] = "/Volumes/SystemRoot";
+
+#ifndef TEST
+#ifdef VARIANT_DYLD
+#define icase_enabled false
+#else
+#define icase_enabled true
+#endif
+
+#else
 static bool icase_enabled = true;
+#endif
+
 static const int MAX_SYMLINK_DEPTH = 10;
 
 struct context
