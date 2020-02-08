@@ -539,7 +539,12 @@ void spawnShell(const char** argv)
 	// Connect to the shellspawn daemon in the container
 	addr.sun_family = AF_UNIX;
 #if USE_LINUX_4_11_HACK
-	strcpy(addr.sun_path, SHELLSPAWN_SOCKPATH);
+	addr.sun_path[0] = '\0';
+	
+	if (g_useVchroot)
+		strcpy(addr.sun_path, prefix);
+		
+	strcat(addr.sun_path, SHELLSPAWN_SOCKPATH);
 #else
 	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s"  SHELLSPAWN_SOCKPATH, prefix);
 #endif

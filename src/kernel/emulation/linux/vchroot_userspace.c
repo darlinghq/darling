@@ -49,7 +49,7 @@ extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 #define LINUX_S_IFMT 00170000
 #define LINUX_S_IFLNK 0120000
 
-#define __simple_printf(...)
+#define __simple_printf __simple_kprintf
 
 #endif
 
@@ -72,6 +72,7 @@ struct context
 
 	int symlink_depth;
 	bool unknown_component;
+	bool follow;
 };
 
 static int vchroot_run(const char* path, struct context* ctxt);
@@ -136,6 +137,7 @@ int vchroot_expand(struct vchroot_expand_args* args)
 	ctxt.symlink_depth = 0;
 	ctxt.current_root = prefix_path;
 	ctxt.current_root_len = prefix_path_len;
+	ctxt.follow = !!(args->flags & VCHROOT_FOLLOW);
 
 	const char* input_path = args->path;
 
@@ -284,30 +286,40 @@ done_getdents:
 					}
 					else if ((st.st_mode & LINUX_S_IFMT) == LINUX_S_IFLNK)
 					{
-						char link[512];
-						int rv;
-
-						rv = LINUX_SYSCALL(__NR_readlink, ctxt->current_path, link, sizeof(link) - 1);
-
-						if (rv < 0)
-							return rv;
-
-						link[rv] = '\0';
-
-						// Remove the last component (because it will be substituted with symlink contents)
-						if (link[0] != '/') // Only bother to do that if we know that the symlink is not absolute
+						// Follow symlink if follow is true or if we haven't reached the end of the input path yet
+						if (ctxt->follow || *end)
 						{
-							ctxt->current_path_len = prevlen - 1; // kill the last slash as well
-							ctxt->current_path[ctxt->current_path_len] = '\0';
+							char link[512];
+							int rv;
+
+							rv = LINUX_SYSCALL(__NR_readlink, ctxt->current_path, link, sizeof(link) - 1);
+
+							if (rv < 0)
+								return rv;
+
+							link[rv] = '\0';
+
+							// Remove the last component (because it will be substituted with symlink contents)
+							if (link[0] != '/') // Only bother to do that if we know that the symlink is not absolute
+							{
+								ctxt->current_path_len = prevlen - 1; // kill the last slash as well
+								ctxt->current_path[ctxt->current_path_len] = '\0';
+							}
+
+							// Symbolic link resolution
+							const bool orig_follow = ctxt->follow;
+
+							ctxt->follow = true;
+							ctxt->symlink_depth++;
+
+							rv = vchroot_run(link, ctxt);
+
+							ctxt->symlink_depth--;
+							ctxt->follow = orig_follow;
+
+							if (rv != 0)
+								return rv;
 						}
-
-						// Symbolic link resolution
-						ctxt->symlink_depth++;
-						rv = vchroot_run(link, ctxt);
-						ctxt->symlink_depth--;
-
-						if (rv != 0)
-							return rv;
 					}
 				}
 

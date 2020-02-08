@@ -6,6 +6,7 @@
 #include <lkm/api.h>
 
 extern int lkm_call(int nr, ...);
+extern int __darling_vchroot(int dfd);
 
 int main(int argc, const char** argv)
 {
@@ -37,7 +38,7 @@ int main(int argc, const char** argv)
 		return 2;
 	}
 
-	if (lkm_call(NR_vchroot, dfd) == -1)
+	if (__darling_vchroot(dfd) < 0)
 	{
 		perror("vchroot");
 		return 3;

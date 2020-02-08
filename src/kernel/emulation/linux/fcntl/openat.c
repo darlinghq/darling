@@ -57,17 +57,12 @@ long sys_openat_nocancel(int fd, const char* filename, int flags, unsigned int m
 	strcpy(vc.path, filename);
 	ret = vchroot_expand(&vc);
 	if (ret < 0) {
-		__simple_kprintf("vchroot_expand failed for %s: %d\n", filename, ret);
 		return errno_linux_to_bsd(ret);
 	}
-	__simple_kprintf("vchroot_expand: %s -> %s\n", filename, vc.path);
 
 	ret = LINUX_SYSCALL(__NR_openat, vc.dfd, vc.path, linux_flags, mode);
 	if (ret < 0)
-	{
-		__simple_kprintf("open failed with error %d\n", ret);
 		ret = errno_linux_to_bsd(ret);
-	}
 
 	return ret;
 }
