@@ -57,7 +57,6 @@ const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
 uid_t g_originalUid, g_originalGid;
 bool g_fixPermissions = false;
-bool g_useVchroot = false;
 char **g_argv, **g_envp;
 char g_workingDirectory[4096];
 
@@ -89,12 +88,6 @@ int main(int argc, char ** argv, char ** envp)
 
 	if (!isModuleLoaded())
 		loadKernelModule();
-
-	{
-		const char* vchroot;
-		if (vchroot = getenv("VCHROOT"))
-			g_useVchroot = atoi(vchroot) != 0;
-	}
 
 	prefix = getenv("DPREFIX");
 	if (!prefix)
@@ -541,9 +534,7 @@ void spawnShell(const char** argv)
 #if USE_LINUX_4_11_HACK
 	addr.sun_path[0] = '\0';
 	
-	if (g_useVchroot)
-		strcpy(addr.sun_path, prefix);
-		
+	strcpy(addr.sun_path, prefix);
 	strcat(addr.sun_path, SHELLSPAWN_SOCKPATH);
 #else
 	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s"  SHELLSPAWN_SOCKPATH, prefix);
@@ -758,35 +749,15 @@ pid_t spawnInitProcess(void)
 
 		// This is executed once at prefix creation
 		if (g_fixPermissions)
-			fixDirectoryPermissions(prefix);
+		fixDirectoryPermissions(prefix);
 
-		if (!g_useVchroot)
+		snprintf(putOld, sizeof(putOld), "%s/proc", prefix);
+
+		// mount procfs for our new PID namespace
+		if (mount("proc", putOld, "proc", 0, "") != 0)
 		{
-			snprintf(putOld, sizeof(putOld), "%s" SYSTEM_ROOT, prefix);
-
-			if (syscall(SYS_pivot_root, prefix, putOld) != 0)
-			{
-				fprintf(stderr, "Cannot pivot_root: %s\n", strerror(errno));
-				exit(1);
-			}
-
-			// mount procfs for our new PID namespace
-			if (mount("proc", "/proc", "proc", 0, "") != 0)
-			{
-				fprintf(stderr, "Cannot mount procfs: %s\n", strerror(errno));
-				exit(1);
-			}
-		}
-		else
-		{
-			snprintf(putOld, sizeof(putOld), "%s/proc", prefix);
-
-			// mount procfs for our new PID namespace
-			if (mount("proc", putOld, "proc", 0, "") != 0)
-			{
-				fprintf(stderr, "Cannot mount procfs: %s\n", strerror(errno));
-				exit(1);
-			}
+			fprintf(stderr, "Cannot mount procfs: %s\n", strerror(errno));
+			exit(1);
 		}
 
 		// Drop the privileges. It's important to drop GID first, because
@@ -894,13 +865,9 @@ void spawnLaunchd(void)
 	puts("Bootstrapping the container with launchd...");
 	
 	// putenv("KQUEUE_DEBUG=1");
-	if (!g_useVchroot)
-		execl("/sbin/launchd", "launchd", NULL);
-	else
-	{
-		setenv("DYLD_ROOT_PATH", LIBEXEC_PATH, 1);
-		execl(LIBEXEC_PATH "/usr/libexec/darling/vchroot", "vchroot", prefix, "/sbin/launchd", NULL);
-	}
+
+	setenv("DYLD_ROOT_PATH", LIBEXEC_PATH, 1);
+	execl(LIBEXEC_PATH "/usr/libexec/darling/vchroot", "vchroot", prefix, "/sbin/launchd", NULL);
 
 	fprintf(stderr, "Failed to exec launchd: %s\n", strerror(errno));
 	abort();
