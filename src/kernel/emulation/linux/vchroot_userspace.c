@@ -50,6 +50,7 @@ extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 #define LINUX_S_IFLNK 0120000
 
 #define __simple_printf(...)
+// #define __simple_printf __simple_kprintf // For bug hunting
 
 #endif
 
@@ -59,7 +60,7 @@ static char prefix_path[4096] = {0}; // MUST NOT end with '/'
 static int prefix_path_len = -1;
 
 static const char EXIT_PATH[] = "/Volumes/SystemRoot";
-static bool icase_enabled = false;
+static bool icase_enabled = true;
 static const int MAX_SYMLINK_DEPTH = 10;
 
 struct context
@@ -258,7 +259,10 @@ static int vchroot_run(const char* input_path, struct context* ctxt)
 						int len;
 
 						if (dfd < 0)
-							return dfd;
+						{
+							ctxt->unknown_component = true;
+							goto done_getdents;
+						}
 						
 						// Get a batch of directory entries
 						while ((len = LINUX_SYSCALL(__NR_getdents64, dfd, dirents, sizeof(dirents))) > 0)
@@ -284,7 +288,7 @@ done_getdents:
 						ctxt->current_path[prevlen-1] = '/';
 						LINUX_SYSCALL(__NR_close, dfd);
 					}
-					else if ((st.st_mode & LINUX_S_IFMT) == LINUX_S_IFLNK)
+					else if (status == 0 && (st.st_mode & LINUX_S_IFMT) == LINUX_S_IFLNK)
 					{
 						// Follow symlink if follow is true or if we haven't reached the end of the input path yet
 						if (ctxt->follow || *end)
