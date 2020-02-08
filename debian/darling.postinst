@@ -3,11 +3,3 @@ set -e
 
 echo ">>> Shutting down old instances of Darling"
 bash /usr/lib/darling/shutdown-user.sh
-
-cd /usr/libexec/darling
-
-echo ">>> Setting up fonts"
-bash /usr/lib/darling/setup-fonts.sh
-
-echo ">>> Setting up ld.so"
-bash /usr/lib/darling/setup-ld-so.sh
