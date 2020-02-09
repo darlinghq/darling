@@ -74,4 +74,8 @@ extern void WriteImplImports( FILE *file, statement_t *stats, boolean_t isuser )
 extern void WriteApplDefaults( FILE *file, char *dir );
 extern void WriteApplMacro( FILE *file, char *dir, char *when, routine_t *rt );
 
+#ifdef DARLING
+extern void WriteXtraceMig( FILE *file, statement_t *stats );
+#endif
+
 #endif /* _WRITE_H */

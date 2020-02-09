@@ -13,6 +13,9 @@ function(mig defFileName)
         if (NOT MIG_SERVER_HEADER_SUFFIX)
                 set (MIG_SERVER_HEADER_SUFFIX "Server.h")
         endif (NOT MIG_SERVER_HEADER_SUFFIX)
+        if (NOT MIG_XTRACE_SUFFIX)
+                set (MIG_XTRACE_SUFFIX "XtraceMig.c")
+        endif (NOT MIG_XTRACE_SUFFIX)
 
         get_directory_property(DirDefs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMPILE_DEFINITIONS)
         get_directory_property(InclDirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} INCLUDE_DIRECTORIES)
@@ -31,7 +34,7 @@ function(mig defFileName)
         string(REPLACE ".defs" "" relativeName "${defFileName}")
         get_filename_component(bareName "${relativeName}" NAME)
         get_filename_component(dirName "${relativeName}" DIRECTORY)
-        
+
         #if ((NOT BITS) OR (BITS EQUAL 64))
         #if(NOT arch)
         #	set(MIG_ARCH "x86-64")
@@ -47,6 +50,7 @@ function(mig defFileName)
 		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
 		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
 		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
+		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_XTRACE_SUFFIX}
 		COMMAND
 			/bin/mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/${dirName} \;
 			${MIG_EXECUTABLE}
@@ -55,9 +59,18 @@ function(mig defFileName)
 			-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
 			-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
 			-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
+			-xtracemig ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_XTRACE_SUFFIX}
 			${MIG_FLAGS}
 			${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
 		DEPENDS
-			migexe
+			migexe migcom
 	)
+
+	if (NOT TARGET ${bareName}_xtrace_mig AND NOT MIG_NO_XTRACE)
+		add_darling_library(${bareName}_xtrace_mig ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_XTRACE_SUFFIX})
+		target_compile_options(${bareName}_xtrace_mig PRIVATE
+			"-I" "${CMAKE_SOURCE_DIR}/src/xtrace/include"
+			"-Wno-extern-initializer")
+		install(TARGETS ${bareName}_xtrace_mig DESTINATION "libexec/darling/usr/lib/darling/xtrace-mig/")
+	endif (NOT TARGET ${bareName}_xtrace_mig AND NOT MIG_NO_XTRACE)
 endfunction(mig)

@@ -109,6 +109,7 @@ do
 	-sheader ) sheader="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-iheader ) iheader="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-dheader ) dheader="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
+	-xtracemig ) xtracemig="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-arch ) arch="$2"; shift; shift;;
 	-maxonstack ) migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-split ) migflags=( "${migflags[@]}" "$1" ); shift;;
