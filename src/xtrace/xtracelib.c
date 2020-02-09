@@ -1,10 +1,12 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
 #include "simple.h"
 #include "xtracelib.h"
+#include "mig_trace.h"
 
 // Defined in assembly
 extern void darling_mach_syscall_entry_trampoline(void);
@@ -32,13 +34,32 @@ extern struct hook* _darling_bsd_syscall_exit;
 static void xtrace_setup_mach(void);
 static void xtrace_setup_bsd(void);
 static void setup_hook(struct hook* hook, void* fnptr);
+static void xtrace_setup_options(void);
+
+static int xtrace_ignore = 1;
 
 __attribute__((constructor))
 void xtrace_setup()
 {
+	xtrace_setup_options();
+	xtrace_setup_mig_tracing();
 	xtrace_setup_mach();
 	xtrace_setup_bsd();
+
+	xtrace_ignore = 0;
 }
+
+static int xtrace_split_entry_and_exit = 0;
+int xtrace_no_color = 0;
+
+static void xtrace_setup_options(void)
+{
+	if (getenv("XTRACE_SPLIT_ENTRY_AND_EXIT") != NULL)
+		xtrace_split_entry_and_exit = 1;
+	if (getenv("XTRACE_NO_COLOR") != NULL)
+		xtrace_no_color = 1;
+}
+
 
 static void setup_hook(struct hook* hook, void* fnptr)
 {
@@ -88,34 +109,97 @@ static void xtrace_setup_bsd(void)
 	mprotect((void*) area, bytes, PROT_READ | PROT_EXEC);
 }
 
+void xtrace_set_gray_color(void)
+{
+	if (xtrace_no_color)
+		return;
+
+	__simple_printf("\033[37m");
+}
+
+void xtrace_reset_color(void)
+{
+	if (xtrace_no_color)
+		return;
+
+	__simple_printf("\033[0m");
+}
+
+void xtrace_start_line(int indent)
+{
+	xtrace_set_gray_color();
+
+	__simple_printf("[%d]", sys_thread_selfid());
+        for (int i = 0; i < indent + 1; i++)
+		__simple_printf(" ");
+
+	xtrace_reset_color();
+}
+
+static void print_call(const struct calldef* defs, const char* type, int nr, int indent, int gray_name)
+{
+	xtrace_start_line(indent);
+
+	if (gray_name)
+		xtrace_set_gray_color();
+
+	if (defs[nr].name != NULL)
+		__simple_printf("%s", defs[nr].name);
+	else
+		__simple_printf("%s %d", type, nr);
+
+	// Leaves gray color on!
+}
+
 void handle_generic_entry(const struct calldef* defs, const char* type, int nr, void* args[])
 {
+	if (xtrace_ignore)
+		return;
+
+	print_call(defs, type, nr, 0, 0);
+
 	if (defs[nr].name != NULL)
 	{
 		char args_buf[4096];
 		if (defs[nr].print_args != NULL)
-			defs[nr].print_args(args_buf, &args[1]); // because args[0] contains %rax
+			defs[nr].print_args(args_buf, nr, args);
 		else
 			strcpy(args_buf, "...");
-		__simple_printf("[%d] %s (%s)\n", sys_thread_selfid(), defs[nr].name, args_buf);
+		__simple_printf("(%s)", args_buf);
 	}
 	else
-		__simple_printf("[%d] %s %d (...)\n", sys_thread_selfid(), type, nr);
+		__simple_printf("(...)");
+
+	if (xtrace_split_entry_and_exit)
+		__simple_printf("\n");
 }
 
 
-void handle_generic_exit(const struct calldef* defs, const char* type, int nr, uintptr_t retval)
+void handle_generic_exit(const struct calldef* defs, const char* type, int nr, uintptr_t retval, int force_split)
 {
+	if (xtrace_ignore)
+		return;
+
+	if (xtrace_split_entry_and_exit || force_split)
+	{
+		print_call(defs, type, nr, 4, 1);
+		__simple_printf("()");
+	}
+
+	xtrace_set_gray_color();
+	__simple_printf(" -> ");
+	xtrace_reset_color();
+
 	if (defs[nr].name != NULL)
 	{
 		char args_buf[4096];
 		if (defs[nr].print_retval != NULL)
-			defs[nr].print_retval(args_buf, retval);
+			defs[nr].print_retval(args_buf, nr, retval);
 		else
-			__simple_sprintf(args_buf, "0x%x\n", retval);
-		__simple_printf("[%d]\t%s () -> %s\n", sys_thread_selfid(), defs[nr].name, args_buf);
+			__simple_sprintf(args_buf, "0x%lx\n", retval);
+		__simple_printf("%s\n", args_buf);
 	}
 	else
-		__simple_printf("[%d]\t%s %d () -> 0x%x\n", sys_thread_selfid(), type, nr, retval);
+		__simple_printf("0x%lx\n", retval);
 }
 

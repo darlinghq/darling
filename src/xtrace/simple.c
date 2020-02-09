@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-void __simple_vsprintf(char* buf, const char* format, va_list vl);
+int __simple_vsprintf(char* buf, const char* format, va_list vl);
 extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
 
 // We cannot call standard write(), because it would loop back to xtrace
@@ -21,8 +21,31 @@ static inline int abs(int n)
 	return (n < 0) ? -n : n;
 }
 
-void __simple_vsprintf(char* buf, const char* format, va_list vl)
+static inline void print_num(char** buf, long long num)
 {
+	char temp[128];
+	int count = 0;
+
+	if (num < 0)
+	{
+		*(*buf)++ = '-';
+		num = -num;
+	}
+
+	do
+	{
+		temp[count++] = '0' + (num % 10);
+		num /= 10;
+	}
+	while (num > 0);
+
+	while (count--)
+		*(*buf)++ = temp[count];
+}
+
+int __simple_vsprintf(char* buf, const char* format, va_list vl)
+{
+	const char* initial_buf = buf;
 	while (*format)
 	{
 		if (*format == '%')
@@ -30,11 +53,14 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 			format++;
 			if (!*format)
 				break;
-			
+
 			switch (*format)
 			{
 				case '%':
 					*buf++ = '%';
+					break;
+				case 'c':
+					*buf++ = (char) va_arg(vl, int);
 					break;
 				case 's':
 				{
@@ -52,22 +78,52 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 				case 'd':
 				{
 					int num = va_arg(vl, int);
-					char temp[16];
-					int count = 0;
-
-					if (num < 0)
-						*buf++ = '-';
-
-					do
+					print_num(&buf, num);
+					break;
+				}
+				case 'u':
+				{
+					unsigned num = va_arg(vl, unsigned);
+					print_num(&buf, num);
+					break;
+				}
+				case 'l':
+				{
+					format++;
+					if (*format == 'd')
 					{
-						temp[count++] = '0' + abs(num % 10);
-						num /= 10;
+						long num = va_arg(vl, long);
+						print_num(&buf, num);
 					}
-					while (num > 0);
-					
-					while (count--)
-						*buf++ = temp[count];
+					else if (*format == 'u')
+					{
+						unsigned long num = va_arg(vl, unsigned long);
+						print_num(&buf, num);
+					}
+					else if (*format == 'l')
+					{
+						format++;
+						if (*format == 'd')
+						{
+							long long num = va_arg(vl, long long);
+							print_num(&buf, num);
+						}
+						else if (*format == 'u')
+						{
+							unsigned long long num = va_arg(vl, unsigned long long);
+							char temp[128];
+							int count = 0;
+							do
+							{
+								temp[count++] = '0' + (num % 10);
+								num /= 10;
+							}
+							while (num > 0);
 
+							while (count--)
+								*buf++ = temp[count];
+						}
+					}
 					break;
 				}
 				case 'p':
@@ -90,11 +146,11 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 						if (c < 10)
 							temp[count++] = '0' + c;
 						else
-							temp[count++] = 'A' + (c - 10);
+							temp[count++] = 'a' + (c - 10);
 						num /= 16;
 					}
 					while (num > 0);
-					
+
 					while (count--)
 						*buf++ = temp[count];
 
@@ -113,6 +169,7 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 	}
 
 	*buf = 0;
+	return buf - initial_buf;
 }
 
 __attribute__ ((visibility ("default")))
@@ -128,13 +185,16 @@ void __simple_printf(const char* format, ...)
 	__write_for_xtrace(2, buffer, __simple_strlen(buffer));
 }
 
-void __simple_sprintf(char *buffer, const char* format, ...)
+int __simple_sprintf(char *buffer, const char* format, ...)
 {
 	va_list vl;
+	int res;
 
 	va_start(vl, format);
-	__simple_vsprintf(buffer, format, vl);
+	res = __simple_vsprintf(buffer, format, vl);
 	va_end(vl);
+
+	return res;
 }
 
 #ifdef isdigit

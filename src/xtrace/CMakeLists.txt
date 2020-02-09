@@ -3,12 +3,17 @@ project(xtrace)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -fno-exceptions -fno-rtti -std=c++11")
 
+include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 set(xtrace_sources
 	xtracelib.c
 	simple.c
 	trampoline.S
 	mach_trace.cpp
 	bsd_trace.cpp
+	mig_trace.c
 )
 
 if (TARGET_x86_64)
