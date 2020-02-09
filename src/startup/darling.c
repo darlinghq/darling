@@ -909,8 +909,16 @@ void darlingPreInit(void)
 		"/var/run"
 	};
 
+	char fullpath[4096];
+	strcpy(fullpath, prefix);
+	const size_t prefixLen = strlen(fullpath);
+
 	for (size_t i = 0; i < sizeof(dirs)/sizeof(dirs[0]); i++)
-		wipeDir(dirs[i]);
+	{
+		fullpath[prefixLen] = 0;
+		strcat(fullpath, dirs[i]);
+		wipeDir(fullpath);
+	}
 }
 
 char* defaultPrefixPath(void)
