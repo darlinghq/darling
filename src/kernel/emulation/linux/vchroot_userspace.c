@@ -49,8 +49,8 @@ extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 #define LINUX_S_IFMT 00170000
 #define LINUX_S_IFLNK 0120000
 
-#define __simple_printf(...)
-// #define __simple_printf __simple_kprintf // For bug hunting
+// #define __simple_printf(...)
+#define __simple_printf __simple_kprintf // For bug hunting
 
 #endif
 
@@ -190,8 +190,24 @@ int vchroot_expand(struct vchroot_expand_args* args)
 			return rv;
 		}
 		
-		ctxt.current_path_len = rv;
-		ctxt.current_path[rv] = '\0';
+		// If we got "/", then turn it into "", because our algorithm will add a trailing slash later
+		if (rv == 1 && ctxt.current_path[0] == '/')
+		{
+			ctxt.current_path[0] = '\0';
+			ctxt.current_path_len = 0;
+		}
+		else
+		{
+			ctxt.current_path_len = rv;
+			ctxt.current_path[rv] = '\0';
+		}
+
+		// Are we outside the vchrooted area already?
+		if (ctxt.current_path_len < ctxt.current_root_len || strncmp(ctxt.current_path, ctxt.current_root, ctxt.current_root_len) != 0)
+		{
+			ctxt.current_root = "";
+			ctxt.current_root_len = 0;
+		}
 	}
 
 	int rv = vchroot_run(input_path, &ctxt);
@@ -236,8 +252,19 @@ static int vchroot_run(const char* input_path, struct context* ctxt)
 
 			if (len == 2 && input_path[0] == '.' && input_path[1] == '.') // ..
 			{
+				// Returning back into the vchrooted area
 				if (ctxt->current_path_len <= 1)
-					return -LINUX_ENOENT;
+				{
+					strcpy(ctxt->current_path, prefix_path);
+					strcat(ctxt->current_path, EXIT_PATH);
+					ctxt->current_path_len = prefix_path_len + sizeof(EXIT_PATH);
+
+					ctxt->current_path[ctxt->current_path_len-1] = '/';
+					ctxt->current_path[ctxt->current_path_len] = '\0';
+
+					ctxt->current_root = prefix_path;
+					ctxt->current_root_len = prefix_path_len;
+				}
 
 				// current_path always ends with a slash
 				// p points before the last /
@@ -448,6 +475,7 @@ int main(int argc, const char** argv)
 		icase_enabled = true;
 
 	struct vchroot_expand_args args;
+	args.dfd = -100;
 	strcpy(args.path, argv[2]);
 
 	int rv = vchroot_expand(&args);
