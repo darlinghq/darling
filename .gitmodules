@@ -298,3 +298,6 @@
 [submodule "src/external/OpenDirectory"]
 	path = src/external/OpenDirectory
 	url = ../darling-opendirectory.git
+[submodule "src/external/iokitd"]
+	path = src/external/iokitd
+	url = ../darling-iokitd.git
