@@ -212,6 +212,7 @@ add_subdirectory(external/libplatform)
 add_subdirectory(external/libpthread)
 add_subdirectory(kernel)
 add_subdirectory(libc)
+add_subdirectory(vchroot)
 
 add_definitions(-D_LIBC_NO_FEATURE_VERIFICATION)
 add_subdirectory(external/darling-dmg)

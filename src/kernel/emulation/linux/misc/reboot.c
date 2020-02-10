@@ -8,7 +8,7 @@
 
 long sys_reboot(int opt, const char* cmd)
 {
-	__simple_printf("ALERT: The process has asked for system reboot with cmd '%s' - terminating\n", cmd);
+	__simple_printf("ALERT: The process has asked for system reboot with opt %d and cmd '%s' - terminating\n", cmd);
 	sys_exit(1);
 	return -ENOTSUP;
 }

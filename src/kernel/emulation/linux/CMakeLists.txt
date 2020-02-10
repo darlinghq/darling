@@ -37,6 +37,7 @@ set(emulation_sources
 	errno.c
 	readline.c
 	common_at.c
+	fdpath.c
 	wrapped/shm_open.c
 	wrapped/shm_unlink.c
 	wrapped/sem_open.c
@@ -274,8 +275,12 @@ set(emulation_sources
 	psynch/psynch_cvsignal.c
 	psynch/ulock_wait.c
 	psynch/ulock_wake.c
+	sysv_sem/semget.c
+	sysv_sem/semctl.c
+	sysv_sem/semop.c
 	conf/pathconf.c
 	conf/fpathconf.c
+	vchroot_userspace.c
 	syscalls-table.S
 	linux-syscall.S
 )

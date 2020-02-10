@@ -17,6 +17,10 @@ struct sockaddr_fixup
 			unsigned char bsd_family;
 		};
 	};
+	union
+	{
+		char sun_path[104];
+	};
 };
 
 #define LINUX_PF_LOCAL	1

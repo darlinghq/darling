@@ -84,8 +84,10 @@ add_framework(CoreServices
 set(FSEvents_BUILD ${CMAKE_CURRENT_BINARY_DIR}/FSEvents)
 set(LaunchServices_BUILD ${CMAKE_CURRENT_BINARY_DIR}/LaunchServices)
 set(CFNetwork_BUILD ${CMAKE_BINARY_DIR}/src/external/cfnetwork/src/CFNetwork)
+set(CoreFoundation_BUILD ${CMAKE_BINARY_DIR}/src/external/corefoundation/CoreFoundation)
 reexport(CoreServices FSEvents ${FSEvents_BUILD})
 reexport(CoreServices LaunchServices ${LaunchServices_BUILD})
 reexport(CoreServices CFNetwork ${CFNetwork_BUILD})
+reexport(CoreServices CoreFoundation ${CoreFoundation_BUILD})
 
 install(FILES SystemVersion.plist DESTINATION "libexec/darling/System/Library/CoreServices")

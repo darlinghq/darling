@@ -5,6 +5,8 @@
 #include "../../../../../platform-include/sys/errno.h"
 #include "../errno.h"
 #include "../unistd/readlink.h"
+#include "../fdpath.h"
+#include "../simple.h"
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -20,16 +22,12 @@ extern void* memmove(void*, void*, __SIZE_TYPE__);
 
 static bool get_fd_path(int fd, char* buf, size_t len)
 {
-	char proc[32];
 	int ret;
 
-	sprintf(proc, "/proc/self/fd/%d", fd);
-	ret = sys_readlink(proc, buf, len-1);
-
-	if (ret <= 0)
+	ret = fdpath(fd, buf, len);
+	if (ret < 0)
 		return false;
 
-	buf[ret] = 0;
 	if (strncmp(buf, "/Volumes/SystemRoot/dev/", 24) == 0)
 	{
 		// Remove /Volumes/SystemRoot from the start
@@ -59,6 +57,7 @@ int handle_filio(int fd, int cmd, void* arg, int* retval)
 				*retval = -EBADF;
 				return IOCTL_HANDLED;
 			}
+			__simple_kprintf("dtype for fd %d -> %s\n", fd, orig_path);
 
 			*retval = 0;
 			if (strncmp(orig_path, "/dev/pts", 8) == 0

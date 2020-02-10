@@ -532,7 +532,10 @@ void spawnShell(const char** argv)
 	// Connect to the shellspawn daemon in the container
 	addr.sun_family = AF_UNIX;
 #if USE_LINUX_4_11_HACK
-	strcpy(addr.sun_path, SHELLSPAWN_SOCKPATH);
+	addr.sun_path[0] = '\0';
+	
+	strcpy(addr.sun_path, prefix);
+	strcat(addr.sun_path, SHELLSPAWN_SOCKPATH);
 #else
 	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s"  SHELLSPAWN_SOCKPATH, prefix);
 #endif
@@ -746,18 +749,12 @@ pid_t spawnInitProcess(void)
 
 		// This is executed once at prefix creation
 		if (g_fixPermissions)
-			fixDirectoryPermissions(prefix);
+		fixDirectoryPermissions(prefix);
 
-		snprintf(putOld, sizeof(putOld), "%s" SYSTEM_ROOT, prefix);
-
-		if (syscall(SYS_pivot_root, prefix, putOld) != 0)
-		{
-			fprintf(stderr, "Cannot pivot_root: %s\n", strerror(errno));
-			exit(1);
-		}
+		snprintf(putOld, sizeof(putOld), "%s/proc", prefix);
 
 		// mount procfs for our new PID namespace
-		if (mount("proc", "/proc", "proc", 0, "") != 0)
+		if (mount("proc", putOld, "proc", 0, "") != 0)
 		{
 			fprintf(stderr, "Cannot mount procfs: %s\n", strerror(errno));
 			exit(1);
@@ -868,7 +865,9 @@ void spawnLaunchd(void)
 	puts("Bootstrapping the container with launchd...");
 	
 	// putenv("KQUEUE_DEBUG=1");
-	execl("/sbin/launchd", "launchd", NULL);
+
+	setenv("DYLD_ROOT_PATH", LIBEXEC_PATH, 1);
+	execl(LIBEXEC_PATH "/usr/libexec/darling/vchroot", "vchroot", prefix, "/sbin/launchd", NULL);
 
 	fprintf(stderr, "Failed to exec launchd: %s\n", strerror(errno));
 	abort();
@@ -910,8 +909,16 @@ void darlingPreInit(void)
 		"/var/run"
 	};
 
+	char fullpath[4096];
+	strcpy(fullpath, prefix);
+	const size_t prefixLen = strlen(fullpath);
+
 	for (size_t i = 0; i < sizeof(dirs)/sizeof(dirs[0]); i++)
-		wipeDir(dirs[i]);
+	{
+		fullpath[prefixLen] = 0;
+		strcat(fullpath, dirs[i]);
+		wipeDir(fullpath);
+	}
 }
 
 char* defaultPrefixPath(void)
