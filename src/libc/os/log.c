@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <asl.h>
 
 struct os_log_s
 {
@@ -9,6 +10,40 @@ struct os_log_s
 };
 
 struct os_log_s _os_log_disabled;
+static asl_object_t asl_client;
+
+static void deinit_asl(void)
+{
+	asl_close(asl_client);
+}
+
+static void init_asl(void)
+{
+	if (!asl_client)
+	{
+		asl_client = asl_open(getprogname(), "user", 0);
+		if (asl_client)
+			atexit(deinit_asl);
+	}
+}
+
+static int log_type_os2asl(os_log_type_t t)
+{
+	switch (t)
+	{
+		case OS_LOG_TYPE_INFO:
+			return ASL_LEVEL_INFO;
+		case OS_LOG_TYPE_DEBUG:
+			return ASL_LEVEL_DEBUG;
+		case OS_LOG_TYPE_ERROR:
+			return ASL_LEVEL_ERR;
+		case OS_LOG_TYPE_FAULT:
+			return ASL_LEVEL_CRIT;
+		case OS_LOG_TYPE_DEFAULT:
+		default:
+			return ASL_LEVEL_NOTICE;
+	}
+}
 
 bool os_log_type_enabled(os_log_t oslog, os_log_type_t type)
 {
@@ -40,12 +75,14 @@ void _os_log_fault_impl(void *dso, os_log_t log, os_log_type_t type,
 
 void _os_log_internal(void *dso, os_log_t log, os_log_type_t type, const char *message, ...)
 {
+	init_asl();
+
 	va_list ap;
-	printf("_os_log_internal called: ");
 	va_start(ap, message);
-	vprintf(message, ap);
+	
+	asl_vlog(asl_client, NULL, log_type_os2asl(type), message, ap);
+
 	va_end(ap);
-	printf("\n");
 }
 
 os_log_t _os_log_create(void *dso, const char *subsystem, const char *category)
