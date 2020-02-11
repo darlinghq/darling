@@ -412,7 +412,7 @@ static bool next_component(const char* from, const char** end)
 	while (*pos != '/' && *pos)
 		pos++;
 	*end = pos;
-	return pos != from;
+	return *from;
 }
 
 int vchroot_fdpath(struct vchroot_fdpath_args* args)

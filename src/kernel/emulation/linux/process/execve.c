@@ -47,13 +47,18 @@ long sys_execve(char* fname, char** argvp, char** envp)
 
 	sys_close(fd);
 
-	bool is_script = shebang[0] == '#' && shebang[1] == '!';
-	if (!is_script && ret >= 4)
+	bool is_script = false;
+	
+	if (ret >= 4)
 	{
-		if (istext(shebang[0]) && istext(shebang[1]) && istext(shebang[2]) && istext(shebang[3]))
+		is_script = shebang[0] == '#' && shebang[1] == '!';
+		if (!is_script)
 		{
-			strcpy(shebang, "#!/bin/sh\n");
-			is_script = true;
+			if (istext(shebang[0]) && istext(shebang[1]) && istext(shebang[2]) && istext(shebang[3]))
+			{
+				strcpy(shebang, "#!/bin/sh\n");
+				is_script = true;
+			}
 		}
 	}
 
