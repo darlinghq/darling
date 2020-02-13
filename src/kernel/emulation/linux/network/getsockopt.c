@@ -43,6 +43,12 @@ long sys_getsockopt(int fd, int level, int optname, void* optval, int* optlen)
 				struct linger* l = (struct linger*) optval;
 				l->l_linger *= LINGER_TICKS_PER_SEC;
 			}
+			else if (optname == BSD_SO_ERROR)
+			{
+				int* err = (int*) optval;
+				if (err && *err)
+					*err = errno_linux_to_bsd(*err);
+			}
 		}
 	}
 
