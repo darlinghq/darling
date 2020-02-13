@@ -191,3 +191,41 @@ OSStatus UCCompareTextNoLocale(uint32_t options, const UniChar* text1, unsigned 
 	delete col;
 	return rv;
 }
+
+#define shiftKeyBit 9
+#define shiftKey (1 << shiftKeyBit)
+
+OSStatus UCKeyTranslate(const UCKeyboardLayout *keyLayoutPtr, UInt16 virtualKeyCode, UInt16 keyAction, UInt32 modifierKeyState, UInt32 keyboardType,
+	OptionBits keyTranslateOptions, UInt32 *deadKeyState, UniCharCount maxStringLength, UniCharCount *actualStringLength, UniChar unicodeString[])
+{
+	if (!actualStringLength)
+		return paramErr;
+
+	*actualStringLength = 0;
+	if (!keyLayoutPtr || !unicodeString)
+		return paramErr;
+
+	const UCKeyModifiersToTableNum* modMaps = (UCKeyModifiersToTableNum*) (((char*) keyLayoutPtr) + keyLayoutPtr->keyboardTypeList[0].keyModifiersToTableNumOffset);
+	const UCKeyToCharTableIndex* tableIndex = (UCKeyToCharTableIndex*) (((char*) keyLayoutPtr) + keyLayoutPtr->keyboardTypeList[0].keyToCharTableIndexOffset);
+	uint8_t tableNumber = modMaps->defaultTableNum;
+
+	if ((modifierKeyState >> 8) < modMaps->modifiersCount)
+		tableNumber = modMaps->tableNum[(modifierKeyState >> 8)];
+
+	UniChar c;
+	if (virtualKeyCode >= tableIndex->keyToCharTableSize || tableNumber >= tableIndex->keyToCharTableCount)
+		c = 0;
+	else
+	{
+		const UCKeyOutput* table = (UCKeyOutput*) (((char*) keyLayoutPtr) + tableIndex->keyToCharTableOffsets[tableNumber]);
+		c = table[virtualKeyCode];
+	}
+
+	*actualStringLength = 1;
+	if (maxStringLength > 0)
+	{
+		unicodeString[0] = c;
+	}
+
+	return noErr;
+}

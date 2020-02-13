@@ -54,6 +54,73 @@ OSStatus UCCompareTextDefault(uint32_t options, const UniChar* text1, unsigned l
 
 OSStatus UCCompareTextNoLocale(uint32_t options, const UniChar* text1, unsigned long text1len, const UniChar* text2, unsigned long text2len, Boolean* equiv, int32_t* order);
 
+typedef UInt16 UCKeyOutput;
+
+enum {
+  kUCKeyLayoutHeaderFormat      = 0x1002,
+  kUCKeyLayoutFeatureInfoFormat = 0x2001,
+  kUCKeyModifiersToTableNumFormat = 0x3001,
+  kUCKeyToCharTableIndexFormat  = 0x4001,
+  kUCKeyStateRecordsIndexFormat = 0x5001,
+  kUCKeyStateTerminatorsFormat  = 0x6001,
+  kUCKeySequenceDataIndexFormat = 0x7001
+};
+
+struct UCKeyboardTypeHeader {
+  UInt32              keyboardTypeFirst;
+  UInt32              keyboardTypeLast;
+  UInt32              keyModifiersToTableNumOffset;
+  UInt32              keyToCharTableIndexOffset;
+  UInt32              keyStateRecordsIndexOffset;
+  UInt32              keyStateTerminatorsOffset;
+  UInt32              keySequenceDataIndexOffset;
+};
+typedef struct UCKeyboardTypeHeader     UCKeyboardTypeHeader;
+struct UCKeyboardLayout {
+  UInt16              keyLayoutHeaderFormat;
+  UInt16              keyLayoutDataVersion;
+  UInt32              keyLayoutFeatureInfoOffset;
+  UInt32              keyboardTypeCount;
+  UCKeyboardTypeHeader  keyboardTypeList[1];
+};
+typedef struct UCKeyboardLayout         UCKeyboardLayout;
+
+struct UCKeyLayoutFeatureInfo {
+  UInt16              keyLayoutFeatureInfoFormat;
+  UInt16              reserved;
+  UInt32              maxOutputStringLength;
+};
+typedef struct UCKeyLayoutFeatureInfo   UCKeyLayoutFeatureInfo;
+
+struct UCKeyModifiersToTableNum {
+  UInt16              keyModifiersToTableNumFormat;
+  UInt16              defaultTableNum;
+  UInt32              modifiersCount;
+  UInt8               tableNum[1];
+};
+typedef struct UCKeyModifiersToTableNum UCKeyModifiersToTableNum;
+
+struct UCKeyToCharTableIndex {
+  UInt16              keyToCharTableIndexFormat;
+  UInt16              keyToCharTableSize;
+  UInt32              keyToCharTableCount;
+  UInt32              keyToCharTableOffsets[1];
+};
+typedef struct UCKeyToCharTableIndex    UCKeyToCharTableIndex;
+
+extern OSStatus  UCKeyTranslate(
+  const UCKeyboardLayout *  keyLayoutPtr,
+  UInt16                    virtualKeyCode,
+  UInt16                    keyAction,
+  UInt32                    modifierKeyState,
+  UInt32                    keyboardType,
+  OptionBits                keyTranslateOptions,
+  UInt32 *                  deadKeyState,
+  UniCharCount              maxStringLength,
+  UniCharCount *            actualStringLength,
+  UniChar                   unicodeString[]);
+
+
 #ifdef __cplusplus
 }
 #endif

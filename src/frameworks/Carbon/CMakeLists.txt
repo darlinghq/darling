@@ -11,9 +11,12 @@ add_framework(Carbon
     SOURCES
         src/Carbon.c
         src/constants.c
+        HIToolbox/Events.cpp
         HIToolbox/MacWindows.cpp
+        HIToolbox/TextInputSources.mm
 
     DEPENDENCIES
     	CoreFoundation
+        Foundation
         system
 )
