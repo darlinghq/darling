@@ -1,11 +1,24 @@
 #include <stdlib.h>
 #include <stdio.h>  // for fprintf(stderr, "unimplemented")
 
-#include <EGL/egl.h>
 #include <pthread.h>
 
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/CGLInternal.h>
+
+// Try to get the right (generic) type definitions.
+// In particular, we really want EGLNativeDisplayType to be void *,
+// not int as it is if __APPLE__ is defined.
+#undef APPLE
+#undef __APPLE__
+
+#define __unix__
+#define EGL_NO_X11
+
+#include <EGL/egl.h>
+
+#define APPLE
+#define __APPLE__
 
 static EGLDisplay display;
 
