@@ -13,10 +13,6 @@ extern int getpid(void);
 long sys_kill(int pid, int signum, int posix)
 {
 	int ret, linux_signum;
-	char buf[128];
-
-	__simple_sprintf(buf, "sys_kill pid=%d bsd_signum=%d\n", pid, signum);
-	lkm_call(0x1028, buf);
 
 	// If we're stopping a process we're debugging, do an emulated SIGSTOP
 	// so that the tracee has a chance to talk to us before stopping.
@@ -34,8 +30,6 @@ long sys_kill(int pid, int signum, int posix)
 	if (!linux_signum)
 		return -EINVAL;
 
-	__simple_sprintf(buf, "sys_kill pid=%d linux_signum=%d\n", pid, linux_signum);
-	lkm_call(0x1028, buf);
 	ret = LINUX_SYSCALL(__NR_kill, pid, linux_signum);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
