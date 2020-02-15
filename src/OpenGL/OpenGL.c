@@ -37,6 +37,9 @@ struct _CGLContextObj {
     pthread_mutex_t lock;
     EGLContext egl_context;
     EGLSurface egl_surface;
+    // EGL has no function for getting the current swap interval,
+    // so we need to save the last set value. The default is 1.
+    int swap_interval;
 };
 
 struct _CGLPixelFormatObj {
@@ -236,6 +239,7 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     pthread_mutex_init(&(context->lock), NULL);
     context->egl_context = egl_context;
     context->egl_surface = NULL;
+    context->swap_interval = 1;
 
     *resultp = context;
 
@@ -308,11 +312,30 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
 }
 
 CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, const GLint *value) {
-    fprintf(stderr, "CGLSetParameter unimplemented\n");
+    if (!value)
+        return kCGLBadAddress;
+
+    if (parameter == kCGLCPSwapInterval)
+    {
+        GLint v = *value;
+        EGLBoolean success = eglSwapInterval(display, v);
+        if (success)
+            context->swap_interval = v;
+        return success ? kCGLNoError : kCGLBadValue;
+    }
+    fprintf(stderr, "CGLSetParameter unimplemented for parameter %d\n", parameter);
     return kCGLNoError;
 }
 
 CGLError CGLGetParameter(CGLContextObj context, CGLContextParameter parameter, GLint *value) {
-    fprintf(stderr, "CGLGetParameter unimplemented\n");
+    if (!value)
+        return kCGLBadAddress;
+
+    if (parameter == kCGLCPSwapInterval)
+    {
+        *value = context->swap_interval;
+        return kCGLNoError;
+    }
+    fprintf(stderr, "CGLGetParameter unimplemented for parameter %d\n", parameter);
     return kCGLNoError;
 }
