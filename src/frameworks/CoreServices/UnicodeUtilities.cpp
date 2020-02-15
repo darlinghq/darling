@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unicode/sortkey.h>
 #include <string>
 #include <cstring>
+#include <iostream>
 #include "UniChar.h"
 #include "MacErrors.h"
 
@@ -226,6 +227,8 @@ OSStatus UCKeyTranslate(const UCKeyboardLayout *keyLayoutPtr, UInt16 virtualKeyC
 	{
 		unicodeString[0] = c;
 	}
+
+	// std::cout << "UCKeyTranslate() virtualKeyCode: " << virtualKeyCode << " -> UC " << unicodeString[0] << std::endl;
 
 	return noErr;
 }

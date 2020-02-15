@@ -13,8 +13,4 @@ wrap_elf(Xcursor libXcursor.so)
 wrap_elf(cairo libcairo.so)
 wrap_elf(EGL libEGL.so)
 wrap_elf(fontconfig libfontconfig.so)
-
-
 wrap_elf(GL libGL.so "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries")
-InstallSymlink(Versions/Current/Libraries
-			"${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Frameworks/OpenGL.framework/Libraries")
