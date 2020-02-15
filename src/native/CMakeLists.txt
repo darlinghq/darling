@@ -7,9 +7,14 @@ wrap_elf(jpeg libjpeg.so)
 wrap_elf(png libpng.so)
 wrap_elf(tiff libtiff.so)
 wrap_elf(X11 libX11.so)
+wrap_elf(Xext libXext.so)
 wrap_elf(XRandR libXrandr.so)
 wrap_elf(Xcursor libXcursor.so)
 wrap_elf(cairo libcairo.so)
-wrap_elf(GL libGL.so)
 wrap_elf(EGL libEGL.so)
 wrap_elf(fontconfig libfontconfig.so)
+
+
+wrap_elf(GL libGL.so "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries")
+InstallSymlink(Versions/Current/Libraries
+			"${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Frameworks/OpenGL.framework/Libraries")
