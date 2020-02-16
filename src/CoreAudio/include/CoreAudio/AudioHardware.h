@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include <CoreAudio/CoreAudiotypes.h>
+#include <CoreAudio/CoreAudioTypes.h>
 #include <CoreAudio/AudioHardwareBase.h>
 	
 enum

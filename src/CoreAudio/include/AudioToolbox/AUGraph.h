@@ -1,7 +1,7 @@
 #ifndef AUGRAPH_H
 #define AUGRAPH_H
-#include "AudioUnit.h"
-#include "AudioUnitProperties.h"
+#include <AudioUnit/AudioUnit.h>
+#include <AudioUnit/AudioUnitProperties.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -301,3 +301,6 @@
 [submodule "src/external/iokitd"]
 	path = src/external/iokitd
 	url = ../darling-iokitd.git
+[submodule "src/external/OpenAL"]
+	path = src/external/OpenAL
+	url = ../darling-openal.git

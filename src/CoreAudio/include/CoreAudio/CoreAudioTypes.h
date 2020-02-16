@@ -2,6 +2,11 @@
 #define COREAUDIOTYPES_H
 #include <MacTypes.h>
 
+#define COREAUDIOTYPES_VERSION 1052
+
+typedef Float32 AudioSampleType;
+typedef Float32 AudioUnitSampleType;
+
 struct AudioStreamBasicDescription
 {
 	Float64 mSampleRate;
@@ -100,6 +105,7 @@ enum
 
 enum
 {
+   kAudioFormatFlagsNativeEndian = 0,
 	kAudioFormatFlagIsFloat                     = (1 << 0),     // 0x1
 	kAudioFormatFlagIsBigEndian                 = (1 << 1),     // 0x2
 	kAudioFormatFlagIsSignedInteger             = (1 << 2),     // 0x4
@@ -108,6 +114,7 @@ enum
 	kAudioFormatFlagIsNonInterleaved            = (1 << 5),     // 0x20
 	kAudioFormatFlagIsNonMixable                = (1 << 6),     // 0x40
 	kAudioFormatFlagsAreAllClear                = (1 << 31),
+   kAudioFormatFlagsCanonical = kAudioFormatFlagIsFloat | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsPacked,
 	
 	kLinearPCMFormatFlagIsFloat                 = kAudioFormatFlagIsFloat,
 	kLinearPCMFormatFlagIsBigEndian             = kAudioFormatFlagIsBigEndian,
