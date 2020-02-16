@@ -73,16 +73,6 @@ add_subdirectory(bootstrap_cmds)
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
 
-
-#if (FRAMEWORK_COREAUDIO)
-#	add_subdirectory(AudioToolbox)
-#	add_subdirectory(AudioUnit)
-#endif (FRAMEWORK_COREAUDIO)
-#if (FRAMEWORK_APPKIT)
-#	add_subdirectory(external/AppKit)
-#endif (FRAMEWORK_APPKIT)
-#add_subdirectory(IOKit)
-
 add_definitions(-target x86_64-apple-darwin11)
 include(darling_lib)
 
