@@ -1,5 +1,5 @@
 #include "lkm.h"
-#include "../../lkm/api.h"
+#include "../../external/lkm/api.h"
 #include "../signal/sigexc.h"
 #include "../base.h"
 #include "../linux-syscalls/linux.h"

@@ -3,7 +3,7 @@
 #include "psynch_errno.h"
 #include <linux-syscalls/linux.h>
 #include "../mach/lkm.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include "../simple.h"
 
 long sys_psynch_mutexdrop(void* mutex, uint32_t mgen, uint32_t ugen, uint64_t tid, uint32_t flags)

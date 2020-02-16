@@ -5,7 +5,7 @@
 #include "../signal/sigexc.h"
 #include "../misc/ptrace.h"
 #include "../mach/lkm.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include <sys/signal.h>
 #include <stddef.h>
 #include <linux-syscalls/linux.h>
