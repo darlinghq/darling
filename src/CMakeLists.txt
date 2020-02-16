@@ -285,6 +285,7 @@ add_subdirectory(external/libarchive/libarchive)
 add_subdirectory(external/apr)
 add_subdirectory(sandbox)
 add_subdirectory(xcselect)
+add_subdirectory(open)
 add_subdirectory(external/OpenDirectory)
 add_subdirectory(external/iokitd)
 
