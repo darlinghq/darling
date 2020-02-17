@@ -16,8 +16,6 @@
 #define GIT_COMMIT_HASH "@GIT_COMMIT_HASH@"
 
 #cmakedefine MULTILIB
-#cmakedefine FRAMEWORK_COREAUDIO
-#cmakedefine FRAMEWORK_APPKIT
 
 #ifndef __APPLE__
 
