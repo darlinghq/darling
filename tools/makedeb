@@ -8,7 +8,7 @@ VERSION=0.1.${DATE}~${DISTRO}
 EDITOR=true NAME="Darling build server" EMAIL=${DEB_EMAIL:-noreply@darlinghq.org} dch -u low -v ${VERSION} --create --distribution ${DISTRO} --package darling "Daily build"
 
 if [ "$1" = "--dsc" ]; then
-    ARG='-S'
+    ARG='-S -d'
     if [ -e "../darling_${VERSION}.orig.tar.xz" ]; then
         rm ../darling_${VERSION}.orig.tar.xz
     fi
