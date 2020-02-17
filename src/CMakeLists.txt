@@ -162,7 +162,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/kperf/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
-	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DrawSprocket/include
@@ -403,7 +403,7 @@ add_subdirectory(external/WTF)
 add_subdirectory(external/bmalloc)
 add_subdirectory(external/dtrace)
 
-add_subdirectory(lkm)
+add_subdirectory(external/lkm)
 
 add_subdirectory(external/cocotron/Onyx2D)
 add_subdirectory(external/cocotron/AppKit)

@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <stddef.h>
 #include "../mach/lkm.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include "../fcntl/open.h"
 #include "../unistd/close.h"
 #include "../vchroot_expand.h"
