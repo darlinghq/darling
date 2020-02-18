@@ -1,0 +1,3 @@
+Super simple examples using CA only API:
+http://web.mit.edu/ghudson/dev/nokrb/third/esound/audio_coreaudio.c
+https://sourceforge.net/p/sox/code/ci/master/tree/src/coreaudio.c

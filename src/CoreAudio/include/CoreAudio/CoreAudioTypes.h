@@ -115,6 +115,7 @@ enum
 	kAudioFormatFlagIsNonMixable                = (1 << 6),     // 0x40
 	kAudioFormatFlagsAreAllClear                = (1 << 31),
    kAudioFormatFlagsCanonical = kAudioFormatFlagIsFloat | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsPacked,
+   kAudioFormatFlagsNativeFloatPacked = kAudioFormatFlagIsFloat | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsPacked,
 	
 	kLinearPCMFormatFlagIsFloat                 = kAudioFormatFlagIsFloat,
 	kLinearPCMFormatFlagIsBigEndian             = kAudioFormatFlagIsBigEndian,
@@ -366,6 +367,94 @@ struct AudioChannelLayout
 	UInt32 mChannelBitmap;
 	UInt32 mNumberChannelDescriptions;
 	AudioChannelDescription mChannelDescriptions[1];
+};
+
+struct AudioValueTranslation
+{
+   void* mInputData;
+   UInt32 mInputDataSize;
+   void* mOutputData;
+   UInt32 mOutputDataSize;
+};
+
+enum
+{
+    kAudioChannelLabel_Unknown                  = 0xFFFFFFFF,
+    kAudioChannelLabel_Unused                   = 0,
+    kAudioChannelLabel_UseCoordinates           = 100,
+
+    kAudioChannelLabel_Left                     = 1,
+    kAudioChannelLabel_Right                    = 2,
+    kAudioChannelLabel_Center                   = 3,
+    kAudioChannelLabel_LFEScreen                = 4,
+    kAudioChannelLabel_LeftSurround             = 5,
+    kAudioChannelLabel_RightSurround            = 6,
+    kAudioChannelLabel_LeftCenter               = 7,
+    kAudioChannelLabel_RightCenter              = 8,
+    kAudioChannelLabel_CenterSurround           = 9, 
+    kAudioChannelLabel_LeftSurroundDirect       = 10,
+    kAudioChannelLabel_RightSurroundDirect      = 11,
+    kAudioChannelLabel_TopCenterSurround        = 12,
+    kAudioChannelLabel_VerticalHeightLeft       = 13,
+    kAudioChannelLabel_VerticalHeightCenter     = 14,
+    kAudioChannelLabel_VerticalHeightRight      = 15,
+
+    kAudioChannelLabel_TopBackLeft              = 16,
+    kAudioChannelLabel_TopBackCenter            = 17,
+    kAudioChannelLabel_TopBackRight             = 18,
+
+    kAudioChannelLabel_RearSurroundLeft         = 33,
+    kAudioChannelLabel_RearSurroundRight        = 34,
+    kAudioChannelLabel_LeftWide                 = 35,
+    kAudioChannelLabel_RightWide                = 36,
+    kAudioChannelLabel_LFE2                     = 37,
+    kAudioChannelLabel_LeftTotal                = 38,
+    kAudioChannelLabel_RightTotal               = 39,
+    kAudioChannelLabel_HearingImpaired          = 40,
+    kAudioChannelLabel_Narration                = 41,
+    kAudioChannelLabel_Mono                     = 42,
+    kAudioChannelLabel_DialogCentricMix         = 43,
+
+    kAudioChannelLabel_CenterSurroundDirect     = 44,
+    
+    kAudioChannelLabel_Haptic                   = 45,
+
+
+    kAudioChannelLabel_Ambisonic_W              = 200,
+    kAudioChannelLabel_Ambisonic_X              = 201,
+    kAudioChannelLabel_Ambisonic_Y              = 202,
+    kAudioChannelLabel_Ambisonic_Z              = 203,
+
+    kAudioChannelLabel_MS_Mid                   = 204,
+    kAudioChannelLabel_MS_Side                  = 205,
+
+    kAudioChannelLabel_XY_X                     = 206,
+    kAudioChannelLabel_XY_Y                     = 207,
+
+    kAudioChannelLabel_HeadphonesLeft           = 301,
+    kAudioChannelLabel_HeadphonesRight          = 302,
+    kAudioChannelLabel_ClickTrack               = 304,
+    kAudioChannelLabel_ForeignLanguage          = 305,
+
+    kAudioChannelLabel_Discrete                 = 400,
+
+    kAudioChannelLabel_Discrete_0               = (1U<<16) | 0,
+    kAudioChannelLabel_Discrete_1               = (1U<<16) | 1,
+    kAudioChannelLabel_Discrete_2               = (1U<<16) | 2,
+    kAudioChannelLabel_Discrete_3               = (1U<<16) | 3,
+    kAudioChannelLabel_Discrete_4               = (1U<<16) | 4,
+    kAudioChannelLabel_Discrete_5               = (1U<<16) | 5,
+    kAudioChannelLabel_Discrete_6               = (1U<<16) | 6,
+    kAudioChannelLabel_Discrete_7               = (1U<<16) | 7,
+    kAudioChannelLabel_Discrete_8               = (1U<<16) | 8,
+    kAudioChannelLabel_Discrete_9               = (1U<<16) | 9,
+    kAudioChannelLabel_Discrete_10              = (1U<<16) | 10,
+    kAudioChannelLabel_Discrete_11              = (1U<<16) | 11,
+    kAudioChannelLabel_Discrete_12              = (1U<<16) | 12,
+    kAudioChannelLabel_Discrete_13              = (1U<<16) | 13,
+    kAudioChannelLabel_Discrete_14              = (1U<<16) | 14,
+    kAudioChannelLabel_Discrete_15              = (1U<<16) | 15,
+    kAudioChannelLabel_Discrete_65535           = (1U<<16) | 65535
 };
 
 #endif

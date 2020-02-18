@@ -62,6 +62,31 @@ enum
 	kAudioObjectPropertyFirmwareVersion     = 'fwvn',
 };
 
+enum
+{
+    kAudioDevicePropertyConfigurationApplication        = 'capp',
+    kAudioDevicePropertyDeviceUID                       = 'uid ',
+    kAudioDevicePropertyModelUID                        = 'muid',
+    kAudioDevicePropertyTransportType                   = 'tran',
+    kAudioDevicePropertyRelatedDevices                  = 'akin',
+    kAudioDevicePropertyClockDomain                     = 'clkd',
+    kAudioDevicePropertyDeviceIsAlive                   = 'livn',
+    kAudioDevicePropertyDeviceIsRunning                 = 'goin',
+    kAudioDevicePropertyDeviceCanBeDefaultDevice        = 'dflt',
+    kAudioDevicePropertyDeviceCanBeDefaultSystemDevice  = 'sflt',
+    kAudioDevicePropertyLatency                         = 'ltnc',
+    kAudioDevicePropertyStreams                         = 'stm#',
+    kAudioObjectPropertyControlList                     = 'ctrl',
+    kAudioDevicePropertySafetyOffset                    = 'saft',
+    kAudioDevicePropertyNominalSampleRate               = 'nsrt',
+    kAudioDevicePropertyAvailableNominalSampleRates     = 'nsr#',
+    kAudioDevicePropertyIcon                            = 'icon',
+    kAudioDevicePropertyIsHidden                        = 'hidn',
+    kAudioDevicePropertyPreferredChannelsForStereo      = 'dch2',
+    kAudioDevicePropertyPreferredChannelLayout          = 'srnd',
+};
+
+
 // TODO: A lot more is missing
 
 #ifdef __cplusplus

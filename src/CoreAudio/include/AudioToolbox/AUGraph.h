@@ -1,7 +1,7 @@
 #ifndef AUGRAPH_H
 #define AUGRAPH_H
-#include <AudioUnit/AudioUnit.h>
-#include <AudioUnit/AudioUnitProperties.h>
+#include <AudioToolbox/AudioUnit.h>
+#include <AudioToolbox/AudioUnitProperties.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,7 +40,15 @@ struct AUNodeInteraction
 };
 typedef struct AUNodeInteraction AUNodeInteraction;
 
+typedef void
+(*AudioUnitPropertyListenerProc)(void * inRefCon,
+								AudioUnit                       inUnit,
+								AudioUnitPropertyID     inID,
+								AudioUnitScope          inScope,
+								AudioUnitElement        inElement);
+
 OSStatus AUGraphAddNode(AUGraph inGraph, const AudioComponentDescription *inDescription, AUNode *outNode);
+OSStatus AUGraphNewNode(AUGraph inGraph, const struct ComponentDescription *inDescription, UInt32 inClassDataSize, const void *inClassData, AUNode *outNode);
 OSStatus AUGraphAddRenderNotify(AUGraph inGraph, AURenderCallback inCallback, void *inRefCon);
 OSStatus AUGraphClearConnections(AUGraph inGraph);
 OSStatus AUGraphClose(AUGraph inGraph);
@@ -69,6 +77,8 @@ OSStatus AUGraphUninitialize(AUGraph inGraph);
 OSStatus AUGraphUpdate(AUGraph inGraph, Boolean *outIsUpdated);
 OSStatus DisposeAUGraph(AUGraph inGraph);
 OSStatus NewAUGraph(AUGraph *outGraph);
+OSStatus AUGraphGetNodeInfo(AUGraph inGraph, AUNode inNode, struct ComponentDescription *outDescription, UInt32 *outClassDataSize, void * _Nullable *outClassData, AudioUnit  _Nullable *outAudioUnit);
+OSStatus AudioUnitAddPropertyListener(AudioUnit inUnit, AudioUnitPropertyID inID, AudioUnitPropertyListenerProc inProc, void *inProcUserData);
 
 #ifdef __cplusplus
 }

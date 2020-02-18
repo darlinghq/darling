@@ -3,6 +3,7 @@
 
 #include <CoreServices/MacTypes.h>
 #include <CoreFoundation/CFURL.h>
+#include <CoreAudio/AudioHardware.h>
 
 #define kAFInfoDictionary_Artist "artist"
 #define kAFInfoDictionary_Album "album"
@@ -58,6 +59,40 @@ enum {
 	kAudioFile3GP2Type            = '3gp2',
 	kAudioFileAMRType             = 'amrf'
 };
+
+enum
+{
+	kAudioFilePropertyFileFormat                    =       'ffmt',
+	kAudioFilePropertyDataFormat                    =       'dfmt',
+	kAudioFilePropertyIsOptimized                   =       'optm',
+	kAudioFilePropertyMagicCookieData               =       'mgic',
+	kAudioFilePropertyAudioDataByteCount    =       'bcnt',
+	kAudioFilePropertyAudioDataPacketCount  =       'pcnt',
+	kAudioFilePropertyMaximumPacketSize             =       'psze',
+	kAudioFilePropertyDataOffset                    =       'doff',
+	kAudioFilePropertyChannelLayout                 =       'cmap',
+	kAudioFilePropertyDeferSizeUpdates              =       'dszu',
+	kAudioFilePropertyDataFormatName                =       'fnme',
+	kAudioFilePropertyMarkerList                    =       'mkls',
+	kAudioFilePropertyRegionList                    =       'rgls',
+	kAudioFilePropertyPacketToFrame                 =       'pkfr',
+	kAudioFilePropertyFrameToPacket                 =       'frpk',
+	kAudioFilePropertyPacketToByte                  =       'pkby',
+	kAudioFilePropertyByteToPacket                  =       'bypk',
+	kAudioFilePropertyChunkIDs                              =       'chid',
+	kAudioFilePropertyInfoDictionary        =       'info',
+	kAudioFilePropertyPacketTableInfo               =       'pnfo',
+	kAudioFilePropertyFormatList                    =       'flst',
+	kAudioFilePropertyPacketSizeUpperBound  =       'pkub',
+	kAudioFilePropertyReserveDuration               =       'rsrv',
+	kAudioFilePropertyEstimatedDuration             =       'edur',
+	kAudioFilePropertyBitRate                               =       'brat',
+	kAudioFilePropertyID3Tag                                =       'id3t',
+	kAudioFilePropertySourceBitDepth                =       'sbtd',
+	kAudioFilePropertyAlbumArtwork                  =       'aart',
+	kAudioFilePropertyAudioTrackCount       =   'atct',
+	kAudioFilePropertyUseAudioTrack                 =       'uatk',
+};
 typedef UInt32 AudioFileTypeID;
 
 struct AudioFileTypeAndFormatID
@@ -73,12 +108,19 @@ typedef SInt64 (*AudioFile_GetSizeProc)(void *inClientData);
 
 class AudioFileImpl;
 typedef AudioFileImpl* AudioFileID;
+typedef SInt8 AudioFilePermissions;
+typedef UInt32 AudioFilePropertyID;
 
 extern "C" {
 
+OSStatus AudioFileOpen(const struct FSRef *inFileRef, AudioFilePermissions inPermissions, AudioFileTypeID inFileTypeHint, AudioFileID  _Nullable *outAudioFile);
 OSStatus AudioFileOpenURL(CFURLRef inFileRef, SInt8 inPermissions, AudioFileTypeID inFileTypeHint, AudioFileID* outAudioFile);
 OSStatus AudioFileOpenWithCallbacks(void* opaque, AudioFile_ReadProc inReadFunc, AudioFile_WriteProc inWriteFunc, AudioFile_GetSizeProc inGetSizeFunc, AudioFile_SetSizeProc inSetSizeFunc, AudioFileTypeID inFileTypeHint, AudioFileID* outAudioFile);
 OSStatus AudioFileClose(AudioFileID inAudioFile);
+
+OSStatus AudioFileReadBytes(AudioFileID inAudioFile, Boolean inUseCache, SInt64 inStartingByte, UInt32 *ioNumBytes, void *outBuffer);
+OSStatus AudioFileGetProperty(AudioFileID inAudioFile, AudioFilePropertyID inPropertyID, UInt32 *ioDataSize, void *outPropertyData);
+OSStatus AudioFileSetProperty(AudioFileID inAudioFile, AudioFilePropertyID inPropertyID, UInt32 inDataSize, const void *inPropertyData);
 
 }
 

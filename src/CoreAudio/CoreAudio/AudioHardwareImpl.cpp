@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareImpl.h"
 #include <typeinfo>
 #include <iostream>
+#include <CoreServices/MacErrors.h>
 
 AudioHardwareImpl::AudioHardwareImpl()
 {
@@ -44,7 +45,7 @@ OSStatus AudioHardwareImpl::createIOProcID(AudioDeviceIOProc inProc, void* inCli
 		return paramErr;
 	
 	*outIOProcID = reinterpret_cast<AudioDeviceIOProcID>(m_nextProcId++);
-	m_proc[*outIOProcID] = std::pair(inProc, inClientData);
+	m_proc[*outIOProcID] = std::make_pair(inProc, inClientData);
 	
 	return noErr;
 }
@@ -67,14 +68,14 @@ OSStatus AudioHardwareImpl::start(AudioDeviceIOProcID inProcID,
 	AudioHardwareStream* stream;
 	
 	if (m_streams.find(inProcID) != m_streams.end())
-		return noErr;
+		return paramErr;
 	
 	stream = createStream(inProcID);
-	m_streams[inProcID] = stream;
+	m_streams.emplace(std::make_pair(inProcID, std::unique_ptr<AudioHardwareStream>(stream)));
 	
 	// TODO: time
 	
-	return stream;
+	return noErr;
 }
 
 OSStatus AudioHardwareImpl::stop(AudioDeviceIOProcID inProcID)
@@ -85,4 +86,45 @@ OSStatus AudioHardwareImpl::stop(AudioDeviceIOProcID inProcID)
 	
 	m_streams.erase(it);
 	return noErr;
+}
+
+bool AudioHardwareImpl::hasProperty(const AudioObjectPropertyAddress* address)
+{
+	return false;
+}
+
+OSStatus AudioHardwareImpl::getPropertyDataSize(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
+		const void* inQualifierData, UInt32* outDataSize)
+{
+	return kAudioHardwareUnknownPropertyError;
+}
+
+OSStatus AudioHardwareImpl::isPropertySettable(const AudioObjectPropertyAddress* inAddress, Boolean* outIsSettable)
+{
+	*outIsSettable = false;
+	return kAudioHardwareUnknownPropertyError;
+}
+
+OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
+	const void* inQualifierData, UInt32* ioDataSize, void* outData)
+{
+	return kAudioHardwareUnknownPropertyError;
+}
+
+OSStatus AudioHardwareImpl::setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
+	const void* inQualifierData, UInt32 inDataSize, const void* inData)
+{
+	return kAudioHardwareUnknownPropertyError;
+}
+
+OSStatus AudioHardwareImpl::addPropertyListener(const AudioObjectPropertyAddress* inAddress,
+	AudioObjectPropertyListenerProc inListener, void* inClientData)
+{
+	return kAudioHardwareUnknownPropertyError;
+}
+
+OSStatus AudioHardwareImpl::removePropertyListener(const AudioObjectPropertyAddress* inAddress,
+	AudioObjectPropertyListenerProc inListener, void* inClientData)
+{
+	return kAudioHardwareUnknownPropertyError;
 }

@@ -52,6 +52,55 @@ enum
         kAudioUnitProperty_ParameterHistoryInfo                 = 53
 };
 
+enum
+{
+        kSpatializationAlgorithm_EqualPowerPanning = 0,
+        kSpatializationAlgorithm_SphericalHead,
+        kSpatializationAlgorithm_HRTF,
+        kSpatializationAlgorithm_SoundField,
+        kSpatializationAlgorithm_VectorBasedPanning             = 4,
+        kSpatializationAlgorithm_StereoPassThrough,
+        kSpatializationAlgorithm_HRTFHQ,
+};
+
+enum
+{
+        k3DMixerRenderingFlags_InterAuralDelay                  = (1L << 0),
+        k3DMixerRenderingFlags_DopplerShift                             = (1L << 1),
+        k3DMixerRenderingFlags_DistanceAttenuation              = (1L << 2),
+        k3DMixerRenderingFlags_DistanceFilter                   = (1L << 3),
+        k3DMixerRenderingFlags_DistanceDiffusion                = (1L << 4),
+        k3DMixerRenderingFlags_LinearDistanceAttenuation = (1L << 5),
+        k3DMixerRenderingFlags_ConstantReverbBlend              = (1L << 6)
+};
+
+enum
+{
+        kAudioUnitProperty_3DMixerDistanceParams                = 3010,
+        kAudioUnitProperty_3DMixerAttenuationCurve              = 3013,
+        kAudioUnitProperty_DopplerShift                                 = 3002,
+        kAudioUnitProperty_3DMixerRenderingFlags                = 3003,
+        kAudioUnitProperty_3DMixerDistanceAtten                 = 3004,
+        kAudioUnitProperty_ReverbPreset                                 = 3012,
+};
+
+enum
+{
+        kAudioUnitProperty_ReverbRoomType                               = 10,
+        kAudioUnitProperty_UsesInternalReverb                   = 1005,
+        kAudioUnitProperty_SpatializationAlgorithm              = 3000,
+        kAudioUnitProperty_SpatialMixerDistanceParams   = 3010,
+        kAudioUnitProperty_SpatialMixerAttenuationCurve = 3013,
+        kAudioUnitProperty_SpatialMixerRenderingFlags   = 3003,
+};
+
+typedef struct MixerDistanceParams {
+        Float32 mReferenceDistance;
+        Float32 mMaxDistance;
+        Float32 mMaxAttenuation;
+} MixerDistanceParams;
+
+
 struct AURenderCallbackStruct
 {
 	AURenderCallback inputProc;

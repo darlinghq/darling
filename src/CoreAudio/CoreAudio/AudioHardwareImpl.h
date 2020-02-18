@@ -71,7 +71,7 @@ protected:
 	std::map<AudioDeviceIOProcID, std::pair<AudioDeviceIOProc, void*>> m_proc;
 	int m_nextProcId = 1;
 	
-	std::map<AudioDeviceIOProcID, std::unique_ptr<AudioHardwareStream> m_streams;
+	std::map<AudioDeviceIOProcID, std::unique_ptr<AudioHardwareStream>> m_streams;
 };
 
 #endif /* AUDIOHARDWAREIMPL_H */

@@ -3,11 +3,12 @@
 #include <MacTypes.h>
 #include <CoreServices/Components.h>
 #include <CoreFoundation/CFString.h>
+#include <AudioToolbox/AUGraph.h>
 
 class AudioUnitComponent;
 
 typedef Component AudioComponent;
-typedef AudioUnitComponent* AudioComponentInstance;
+typedef ComponentInstance AudioComponentInstance;
 typedef ComponentDescription AudioComponentDescription;
 
 enum
@@ -21,6 +22,19 @@ enum
 	kAudioUnitType_Panner  = 'aupn',
 	kAudioUnitType_Generator = 'augn',
 	kAudioUnitType_OfflineEffect = 'auol'
+};
+
+enum
+{
+	kAudioUnitSubType_HALOutput = 'ahal',
+	kAudioUnitSubType_DefaultOutput = 'def ',
+	kAudioUnitSubType_SystemOutput = 'sys ',
+	kAudioUnitSubType_3DMixer = '3dmx',
+};
+
+enum
+{
+	kAudioUnitManufacturer_Apple = 'appl',
 };
 
 extern "C" {

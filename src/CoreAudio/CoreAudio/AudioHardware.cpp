@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "AudioHardware.h"
+#include <CoreAudio/AudioHardware.h>
 #include "AudioHardwareImpl.h"
 #include <CoreServices/MacErrors.h>
 #include <memory>
@@ -148,6 +148,11 @@ OSStatus AudioHardwareCreateAggregateDevice(CFDictionaryRef, AudioObjectID* outD
 }
 
 OSStatus AudioHardwareDestroyAggregateDevice(AudioObjectID inDeviceID)
+{
+	return unimpErr;
+}
+
+OSStatus AudioHardwareGetProperty(AudioHardwarePropertyID inPropId, UInt32* ioPropertyDataSize, void* outPropertyData)
 {
 	return unimpErr;
 }
