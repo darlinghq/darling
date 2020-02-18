@@ -3,7 +3,7 @@
 #include "psynch_errno.h"
 #include <linux-syscalls/linux.h>
 #include "../mach/lkm.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include "../simple.h"
 
 long sys_psynch_cvclrprepost(void* cv, uint32_t cvgen, uint32_t cvugen, uint32_t cvsgen, uint32_t prepocnt, uint32_t preposeq, uint32_t flags)

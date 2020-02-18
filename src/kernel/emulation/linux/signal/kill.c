@@ -5,7 +5,7 @@
 #include "duct_signals.h"
 #include <linux-syscalls/linux.h>
 #include "../mach/lkm.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include "sigexc.h"
 
 extern int getpid(void);

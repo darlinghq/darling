@@ -4,7 +4,7 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include "../mach/lkm.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include "bsdthread_create.h"
 #include <sys/errno.h>
 

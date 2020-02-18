@@ -3,7 +3,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../../../../../platform-include/sys/errno.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <stdint.h>

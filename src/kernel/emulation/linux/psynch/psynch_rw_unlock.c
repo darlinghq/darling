@@ -3,7 +3,7 @@
 #include "psynch_errno.h"
 #include <linux-syscalls/linux.h>
 #include "../mach/lkm.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include "../simple.h"
 
 long sys_psynch_rw_unlock(void* rwlock, uint32_t lgenval, uint32_t ugenval, uint32_t rw_wc, int flags)

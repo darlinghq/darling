@@ -73,16 +73,6 @@ add_subdirectory(bootstrap_cmds)
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
 
-
-#if (FRAMEWORK_COREAUDIO)
-#	add_subdirectory(AudioToolbox)
-#	add_subdirectory(AudioUnit)
-#endif (FRAMEWORK_COREAUDIO)
-#if (FRAMEWORK_APPKIT)
-#	add_subdirectory(external/AppKit)
-#endif (FRAMEWORK_APPKIT)
-#add_subdirectory(IOKit)
-
 add_definitions(-target x86_64-apple-darwin11)
 include(darling_lib)
 
@@ -172,7 +162,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/kperf/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
-	${CMAKE_CURRENT_SOURCE_DIR}/lkm/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/DrawSprocket/include
@@ -322,7 +312,7 @@ add_subdirectory(external/gnutar/gnutar)
 add_subdirectory(external/gpatch)
 add_subdirectory(external/gnudiff)
 add_subdirectory(external/openssh)
-#add_subdirectory(external/top)
+add_subdirectory(external/top)
 add_subdirectory(external/perl)
 add_subdirectory(external/mail_cmds)
 add_subdirectory(external/screen)
@@ -414,7 +404,7 @@ add_subdirectory(external/WTF)
 add_subdirectory(external/bmalloc)
 add_subdirectory(external/dtrace)
 
-add_subdirectory(lkm)
+add_subdirectory(external/lkm)
 
 add_subdirectory(external/cocotron/Onyx2D)
 add_subdirectory(external/cocotron/AppKit)

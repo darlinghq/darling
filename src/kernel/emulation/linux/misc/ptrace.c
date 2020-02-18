@@ -11,7 +11,7 @@
 #include "../signal/sigexc.h"
 #include "../process/wait4.h"
 #include "../mach/lkm.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include "../unistd/getppid.h"
 
 // faster than sys_getpid(), because it caches the PID

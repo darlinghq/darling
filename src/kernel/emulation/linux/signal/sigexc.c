@@ -9,7 +9,7 @@
 #include "signal/exc.h"
 #include "sigaltstack.h"
 #include "../mach/lkm.h"
-#include "../../../../lkm/api.h"
+#include "../../../../external/lkm/api.h"
 #include "../../../libsyscall/wrappers/_libkernel_init.h"
 #include "kill.h"
 #include "../simple.h"
@@ -134,7 +134,7 @@ static void handle_rt_signal(int signum)
 
 	//char buf[128];
 	//__simple_sprintf(xyzbuf, "Setting handler for RT signal %d: %d", signum, rv);
-	//lkm_call(0x1028, buf);
+	//external/lkm_call(0x1028, buf);
 }
 
 bool darling_am_i_ptraced(void)

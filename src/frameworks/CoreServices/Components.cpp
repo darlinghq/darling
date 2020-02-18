@@ -2,10 +2,6 @@
 #include "Components.h"
 #include "ComponentsInternal.h"
 #include "darling-config.h"
-#ifdef FRAMEWORK_COREAUDIO
-#include <AudioUnit/AUComponent.h>
-#include <AudioUnit/AudioUnitBase.h>
-#endif
 #include <CoreServices/MacErrors.h>
 
 #define TRACE1(x)
@@ -14,26 +10,12 @@
 Component FindNextComponent(Component prev, ComponentDescription* desc)
 {
 	TRACE2(prev, desc);
-#ifdef FRAMEWORK_COREAUDIO
-	if ((desc->componentType & 0xffff0000) == kComponentTypeAudioUnit)
-	{
-		return AudioComponentFindNext((AudioComponent) prev, (AudioComponentDescription*) desc);
-	}
-	else
-#endif
-		return nullptr;
+	return nullptr;
 }
 
 long CountComponents(ComponentDescription* desc)
 {
-#ifdef FRAMEWORK_COREAUDIO
-	if ((desc->componentType & 0xffff0000) == kComponentTypeAudioUnit)
-	{
-		return AudioComponentCount((AudioComponentDescription*) desc);
-	}
-	else
-#endif
-		return 0;
+	return 0;
 }
 
 OSErr OpenAComponent(Component comp, ComponentInstance* out)
@@ -45,20 +27,7 @@ OSErr OpenAComponent(Component comp, ComponentInstance* out)
 
 	*out = nullptr;
 
-#ifdef FRAMEWORK_COREAUDIO
-	if (GetComponentType(comp) == kComponentTypeAudioUnit)
-	{
-		AudioComponentInstance inst;
-		OSErr err;
-
-		err = AudioComponentInstanceNew((AudioComponent) comp, &inst);
-
-		*out = inst;
-		return err;
-	}
-	else
-#endif
-		return unimpErr;
+	return unimpErr;
 }
 
 ComponentInstance OpenComponent(Component comp)

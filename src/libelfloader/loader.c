@@ -82,6 +82,21 @@ __attribute__((constructor))
 }
 #endif
 
+static unsigned long processEnvVariable(const char* var)
+{
+	if (strncmp(var, "HOME=/Users/", 12) == 0)
+	{
+		const size_t len = strlen(var);
+		char* home = malloc(len); // 1 byte shorter
+
+		strcpy(home, "HOME=/home/");
+		strcpy(home + 11, var+12);
+
+		return (unsigned long) home;
+	}
+	return (unsigned long) var;
+}
+
 void run(const char* path, const char** envp)
 {
 	struct loader_context lc;
@@ -131,7 +146,7 @@ void run(const char* path, const char** envp)
 
 
 	for (int i = 0; envp[i] != NULL; i++)
-		stack[pos++] = (unsigned long) envp[i];
+		stack[pos++] = processEnvVariable(envp[i]);
 
 #ifdef __linux__ // For testing
 	getrandom(entropy, sizeof(entropy), 0);
