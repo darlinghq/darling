@@ -19,7 +19,7 @@ jobs:
         git submodule sync --recursive
         git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
     - name: install
-      run: sudo apt-get install cmake clang bison flex libfuse-dev libudev-dev pkg-config libc6-dev-i386 linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libtiff5-dev libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev ccache devscripts debhelper ninja-build
+      run: sudo apt-get install cmake clang bison flex libfuse-dev libudev-dev pkg-config libc6-dev-i386 linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libtiff5-dev libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev ccache devscripts debhelper ninja-build tree
     - name: Prepare ccache timestamp
       id: ccache_cache_timestamp
       shell: cmake -P {0}
@@ -32,10 +32,12 @@ jobs:
       run: tools/makedeb --dsc
     - name: make deb
       run: tools/makedeb
+    - name: debug
+      run: tree
     - name: ccache cache files
       uses: actions/cache@v1.1.0
       with:
-        path: .ccache
+        path: /home/runner/.ccache
         key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
         restore-keys: |
           ${ { matrix.config.name } }-ccache-
