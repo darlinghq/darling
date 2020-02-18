@@ -26,14 +26,6 @@ jobs:
       run: |
         string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
         message("::set-output name=timestamp::${current_date}")
-    - name: ccache info
-      run: ccache -s
-    - name: make deb src
-      run: tools/makedeb --dsc
-    - name: make deb
-      run: tools/makedeb
-    - name: debug
-      run: tree
     - name: ccache cache files
       uses: actions/cache@v1.1.0
       with:
@@ -41,3 +33,11 @@ jobs:
         key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
         restore-keys: |
           ${ { matrix.config.name } }-ccache-
+    - name: ccache info
+      run: ccache -s
+    - name: make deb src
+      run: tools/makedeb --dsc
+    - name: make deb
+      run: tools/makedeb
+    - name: debug
+      run: ls -lah ..
