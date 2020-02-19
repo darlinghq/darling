@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Darling CI
 
 on: [push]
 
@@ -39,5 +39,3 @@ jobs:
       run: tools/makedeb --dsc
     - name: make deb
       run: tools/makedeb
-    - name: debug
-      run: ls -lah ..
