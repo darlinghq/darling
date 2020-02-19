@@ -17,6 +17,37 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <Foundation/NSString.h>
+#import <Foundation/NSURL.h>
+#import <Foundation/NSError.h>
+#import <dispatch/dispatch.h>
+#import <xar/xar.h>
+#import <libarchive/archive.h>
+#import <lzma.h>
+#import <pthread.h>
+
 @interface PKSignedContainer : NSObject
+{
+	xar_t _xar;
+	xar_file_t _xar_file;
+	xar_stream _xar_stream;
+	struct archive* _archive;
+	lzma_stream _zs;
+	uint64_t _blockLength, _flags;
+
+	char _inbuf[4096];
+	char _outbuf[4096 * 1024];
+	BOOL _abort;
+}
+
+- (instancetype)initForReadingFromContainerAtURL:(NSURL *)url
+                                                    error:(NSError **)error;
+
+- (void)startUnarchivingAtPath:(NSString *)path
+                 notifyOnQueue:(dispatch_queue_t)queue
+                      progress:(void (^)(double, NSString *))progressBlock
+                        finish:(void (^)(BOOL))finishBlock;
+
+- (xar_stream*)_xarStream;
 
 @end
