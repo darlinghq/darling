@@ -24,6 +24,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <fcntl.h>
 #include <pthread/private.h>
 
+// This class is (will) be implemented to allow applications such as
+// https://github.com/danzimm/xip_extract/blob/master/xip_extract.m
+// to work.
+
 static int open_cb(struct archive *a, void *_client_data)
 {
     return ARCHIVE_OK;
