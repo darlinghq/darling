@@ -171,6 +171,9 @@ int vchroot_expand(struct vchroot_expand_args* args)
 
 	const char* input_path = args->path;
 
+	if (*input_path == '\0')
+		return -LINUX_ENOENT;
+
 	if (*input_path != '/')
 	{
 		char buf[50];
