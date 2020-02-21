@@ -39,3 +39,8 @@ jobs:
       run: tools/makedeb --dsc
     - name: make deb
       run: tools/makedeb
+    - name: artifacts
+      uses: actions/upload-artifact@konradpabjan/v2-is-almost-here
+      with:
+        name: 'debs'
+        path: ../*.deb
