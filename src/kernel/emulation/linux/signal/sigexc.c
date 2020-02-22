@@ -318,13 +318,14 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	// SIGILL -> EXC_BAD_INSTRUCTION
 	// SIGFPE -> EXC_ARITHMETIC
 	// * -> EXC_SOFTWARE with EXC_SOFT_SIGNAL (e.g. SIGSTOP)
+	kern_printf("sigexc_handler #2\n");
 
-	switch (bsd_signum)
+	// Only real exceptions produced by the CPU get translated to these
+	// Mach exceptions. The rest comes as EXC_SOFTWARE.
+	if (info != NULL && info->si_code != 0)
 	{
-		// Only real exceptions produced by the CPU get translated to these
-		// Mach exceptions. The rest comes as EXC_SOFTWARE.
-		if (info != NULL && info->si_code != 0)
-		{
+		switch (bsd_signum)
+		{	
 			case SIGSEGV:
 				mach_exception = EXC_BAD_ACCESS;
 				codes[0] = EXC_I386_GPFLT;
@@ -356,11 +357,17 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 					}
 				}
 				break;
+			default:
+				mach_exception = EXC_SOFTWARE;
+				codes[0] = EXC_SOFT_SIGNAL;
+				codes[1] = bsd_signum;
 		}
-		default:
-			mach_exception = EXC_SOFTWARE;
-			codes[0] = EXC_SOFT_SIGNAL;
-			codes[1] = bsd_signum;
+	}
+	else
+	{
+		mach_exception = EXC_SOFTWARE;
+		codes[0] = EXC_SOFT_SIGNAL;
+		codes[1] = bsd_signum;
 	}
 
 	port = get_exc_port(mach_exception, &behavior);
@@ -417,14 +424,22 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	{
 		_pthread_setspecific_direct(SIGEXC_TSD_KEY, bsd_signum);
 
+		kern_return_t ret;
+
 		if (behavior & MACH_EXCEPTION_CODES)
 		{
-			mach_exception_raise(port, thread, mach_task_self(), mach_exception, codes, sizeof(codes) / sizeof(codes[0]));
+			ret = mach_exception_raise(port, thread, mach_task_self(), mach_exception, codes, sizeof(codes) / sizeof(codes[0]));
 		}
 		else
 		{
 			exception_data_type_t small_codes[2] = { (exception_data_type_t) codes[0], (exception_data_type_t) codes[1] };
-			exception_raise(port, thread, mach_task_self(), mach_exception, small_codes, sizeof(small_codes) / sizeof(small_codes[0]));
+			ret = exception_raise(port, thread, mach_task_self(), mach_exception, small_codes, sizeof(small_codes) / sizeof(small_codes[0]));
+		}
+
+		if (ret == MACH_RCV_PORT_DIED || ret == MACH_SEND_INVALID_DEST)
+		{
+			kern_printf("Exception handler death? ret is 0x%x\n", ret);
+			darling_sigexc_uninstall();
 		}
 
 		bsd_signum = _pthread_getspecific_direct(SIGEXC_TSD_KEY);
