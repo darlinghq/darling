@@ -2,9 +2,9 @@
 
 ![Darling logo](http://darlinghq.org/img/darling250.png)
 
-Darling is a runtime environment for OS X applications.
+Darling is a runtime environment for macOS applications.
 
-Please note that no GUI applications are supported at the moment.
+Please note that most GUI applications will not run at the moment.
 
 ## Download
 
