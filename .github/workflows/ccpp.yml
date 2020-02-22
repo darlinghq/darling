@@ -40,9 +40,9 @@ jobs:
     - name: make deb
       run: tools/makedeb
     - name: cp debs
-      run: cp ../*.deb .
+      run: cp ../*.deb debbuild/
     - name: artifacts
       uses: actions/upload-artifact@konradpabjan/v2-is-almost-here
       with:
         name: 'debs'
-        path: \*.deb
+        path: debbuild/*.deb
