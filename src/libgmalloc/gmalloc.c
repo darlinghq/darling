@@ -58,11 +58,6 @@ static struct gmalloc_header *header_for_ptr(void *ptr) {
 }
 
 static void *do_alloc(size_t payload_size, size_t align) {
-    if (align > vm_page_size) {
-        // We don't support this.
-        align = vm_page_size;
-    }
-
     // Decide how much memory we're going to allocate,
     // not counting the guard page.
     size_t accessible_size = round_up(payload_size, align);
@@ -116,7 +111,7 @@ void *aligned_alloc(size_t align, size_t size) {
     if (ptr == NULL) {
         int saved_errno = errno;
         const char msg[] = "Failed to alloc: ";
-        write(2, msg, sizeof(msg));
+        write(2, msg, sizeof(msg) - 1);
         // Do not use strerror(), because it allocates.
         extern const char *const sys_errlist[];
         write(2, sys_errlist[saved_errno], strlen(sys_errlist[saved_errno]));
@@ -147,13 +142,13 @@ void *calloc(size_t num, size_t size) {
     return ptr;
 }
 
-static void check_header(const struct gmalloc_header *header) {
-    if (!gmalloc_check_header) {
-        return;
-    }
-
+static void unlock_and_check_header(const struct gmalloc_header *header) {
     if (gmalloc_protect_before && !gmalloc_allow_reads) {
         mprotect(round_down((void *) header, vm_page_size), vm_page_size, PROT_READ);
+    }
+
+    if (!gmalloc_check_header) {
+        return;
     }
 
     if (header->magic != GMALLOC_MAGIC || header->magic_again != GMALLOC_MAGIC) {
@@ -167,7 +162,7 @@ void free(void *ptr) {
     }
 
     struct gmalloc_header *header = header_for_ptr(ptr);
-    check_header(header);
+    unlock_and_check_header(header);
 
     munmap(header->mmap_base, header->mmap_size);
 }
@@ -178,7 +173,7 @@ void *realloc(void *old_ptr, size_t new_size) {
         size_to_copy = 0;
     } else {
         struct gmalloc_header *header = header_for_ptr(old_ptr);
-        check_header(header);
+        unlock_and_check_header(header);
         size_to_copy = header->size;
     }
     if (size_to_copy > new_size) {

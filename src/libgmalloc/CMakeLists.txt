@@ -1,9 +1,5 @@
 project(libgmalloc)
 
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/dyld/include
-)
-
 set(libgmalloc_sources
 	gmalloc.c
 )
