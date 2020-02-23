@@ -11,6 +11,9 @@
 // A BSD signal number is passed as value
 #define SIGNAL_SIGEXC_THUPDATE	(LINUX_SIGRTMIN + 1)
 
+#define SIGNAL_THREAD_SUSPEND -100
+#define SIGNAL_THREAD_RESUME -101
+
 #define SIGRT_MAGIC_ENABLE_SIGEXC	0xdebdeb01
 #define SIGRT_MAGIC_DISABLE_SIGEXC	0xdebdeb00
 

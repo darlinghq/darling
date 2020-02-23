@@ -20,6 +20,7 @@
 
 static volatile bool am_i_ptraced = false;
 static void handle_rt_signal(int signum);
+static void sigexc_fake_suspend(struct linux_ucontext* ctxt);
 extern void sig_restorer(void);
 extern int getpid(void);
 
@@ -170,11 +171,20 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 		// If >0, process the signal
 		// If <0, introduce a new signal
 		int sig = info->si_value;
-		if (sig < 0)
+		if (sig == SIGNAL_THREAD_SUSPEND)
+		{
+			kern_printf("sigexc: SIGNAL_THREAD_SUSPEND");
+			sigexc_fake_suspend(ctxt);
+		}
+		else if (sig == SIGNAL_THREAD_RESUME)
+		{
+			kern_printf("sigexc: SIGNAL_THREAD_RESUME");
+		}
+		else if (sig < 0)
 		{
 			// This is only used to pass a SIGSTOP to the traced process (from the debugger)
 			// and have it passed back through the sigexc mechanism.
-			// See sys_wait4().
+			// See sys_kill().
 			sigexc_handler(-sig, NULL, (struct linux_ucontext*) ctxt);
 		}
 		else
@@ -273,6 +283,103 @@ static mach_port_t get_exc_port(int type, int* behavior)
 	return 0;
 }
 
+static void state_to_kernel(struct linux_ucontext* ctxt, thread_t thread)
+{
+#if defined(__x86_64__)
+	x86_thread_state64_t tstate;
+	x86_float_state64_t fstate;
+
+	if (ctxt != NULL)
+	{
+		mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
+		mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
+		/*
+#ifdef __x86_64__
+		if (bsd_signum == SIGTRAP)
+		{
+			uint8_t* rip = (uint8_t*) ctxt->uc_mcontext.gregs.rip;
+			kern_printf("rip is %p\n", rip);
+			kern_printf("Value at rip-1 on suspend: 0x%x\n", *(rip-1));
+		}
+#endif
+		*/
+	}
+	else
+	{
+		memset(&tstate, 0, sizeof(tstate));
+		memset(&fstate, 0, sizeof(fstate));
+	}
+
+	thread_set_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, x86_THREAD_STATE64_COUNT);
+	thread_set_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, x86_FLOAT_STATE64_COUNT);
+#elif defined(__i386__)
+	x86_thread_state32_t tstate;
+	x86_float_state32_t fstate;
+
+	if (ctxt != NULL)
+	{
+		mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
+		mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
+	}
+	else
+	{
+		memset(&tstate, 0, sizeof(tstate));
+		memset(&fstate, 0, sizeof(fstate));
+	}
+
+	thread_set_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, x86_THREAD_STATE32_COUNT);
+	thread_set_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, x86_FLOAT_STATE32_COUNT);
+#endif
+
+}
+
+static void state_from_kernel(struct linux_ucontext* ctxt, thread_t thread)
+{
+#if defined(__x86_64__)
+	x86_thread_state64_t tstate;
+	x86_float_state64_t fstate;
+	mach_msg_type_number_t count;
+
+	count = x86_THREAD_STATE64_COUNT;
+	thread_get_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, &count);
+	count = x86_FLOAT_STATE64_COUNT;
+	thread_get_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, &count);
+
+	thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
+	float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
+	
+#elif defined(__i386__)
+	x86_thread_state32_t tstate;
+	x86_float_state32_t fstate;
+	mach_msg_type_number_t count;
+
+	count = x86_THREAD_STATE32_COUNT;
+	thread_get_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, &count);
+	count = x86_FLOAT_STATE32_COUNT;
+	thread_get_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, &count);
+
+	thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
+	float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
+#endif
+}
+
+void sigexc_fake_suspend(struct linux_ucontext* ctxt)
+{
+	if (_pthread_getspecific_direct(SIGEXC_TSD_KEY) != 0)
+		return;
+	thread_t thread = mach_thread_self();
+
+	kern_printf("sigexc_fake_suspend -> state_to_kernel\n");
+	state_to_kernel(ctxt, thread);
+
+	linux_sigset_t set = -1ll;
+	set &= ~(1ull << (SIGNAL_SIGEXC_THUPDATE-1));
+
+	LINUX_SYSCALL(__NR_rt_sigsuspend, &set, 8);
+
+	kern_printf("sigexc_fake_suspend -> state_from_kernel\n");
+	state_from_kernel(ctxt, thread);
+}
 
 // syscall tracking
 #define LINUX_TRAP_BRKPT	1
@@ -318,7 +425,6 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	// SIGILL -> EXC_BAD_INSTRUCTION
 	// SIGFPE -> EXC_ARITHMETIC
 	// * -> EXC_SOFTWARE with EXC_SOFT_SIGNAL (e.g. SIGSTOP)
-	kern_printf("sigexc_handler #2\n");
 
 	// Only real exceptions produced by the CPU get translated to these
 	// Mach exceptions. The rest comes as EXC_SOFTWARE.
@@ -373,51 +479,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	port = get_exc_port(mach_exception, &behavior);
 
 	// Pass register states to LKM
-#if defined(__x86_64__)
-	x86_thread_state64_t tstate;
-	x86_float_state64_t fstate;
-
-	if (ctxt != NULL)
-	{
-		mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
-		mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
-		/*
-#ifdef __x86_64__
-		if (bsd_signum == SIGTRAP)
-		{
-			uint8_t* rip = (uint8_t*) ctxt->uc_mcontext.gregs.rip;
-			kern_printf("rip is %p\n", rip);
-			kern_printf("Value at rip-1 on suspend: 0x%x\n", *(rip-1));
-		}
-#endif
-		*/
-	}
-	else
-	{
-		memset(&tstate, 0, sizeof(tstate));
-		memset(&fstate, 0, sizeof(fstate));
-	}
-
-	thread_set_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, x86_THREAD_STATE64_COUNT);
-	thread_set_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, x86_FLOAT_STATE64_COUNT);
-#elif defined(__i386__)
-	x86_thread_state32_t tstate;
-	x86_float_state32_t fstate;
-
-	if (ctxt != NULL)
-	{
-		mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, &tstate);
-		mcontext_to_float_state(ctxt->uc_mcontext.fpregs, &fstate);
-	}
-	else
-	{
-		memset(&tstate, 0, sizeof(tstate));
-		memset(&fstate, 0, sizeof(fstate));
-	}
-
-	thread_set_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, x86_THREAD_STATE32_COUNT);
-	thread_set_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, x86_FLOAT_STATE32_COUNT);
-#endif
+	state_to_kernel(ctxt, thread);
 
 	// __simple_printf("Passing Mach exception to port %d\n", port);
 	if (port != 0)
@@ -443,34 +505,12 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 		}
 
 		bsd_signum = _pthread_getspecific_direct(SIGEXC_TSD_KEY);
+		_pthread_setspecific_direct(SIGEXC_TSD_KEY, 0);
 	}
 
 	// Get (possibly updated by GDB) register states from LKM
 	if (ctxt != NULL)
-	{
-#if defined(__x86_64__)
-		mach_msg_type_number_t count;
-
-		count = x86_THREAD_STATE64_COUNT;
-		thread_get_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, &count);
-		count = x86_FLOAT_STATE64_COUNT;
-		thread_get_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, &count);
-
-		thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
-		float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
-		
-#elif defined(__i386__)
-		mach_msg_type_number_t count;
-
-		count = x86_THREAD_STATE32_COUNT;
-		thread_get_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, &count);
-		count = x86_FLOAT_STATE32_COUNT;
-		thread_get_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, &count);
-
-		thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
-		float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
-#endif
-	}
+		state_from_kernel(ctxt, thread);
 
 	// Pass the signal to the application handler or emulate the effects of the signal if SIG_DFL is set.
 	if (bsd_signum)
