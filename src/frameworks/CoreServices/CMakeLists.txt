@@ -79,6 +79,8 @@ add_framework(CoreServices
 		iconv
 		Foundation
 		${EXTRA_LIBS}
+	RESOURCES
+		Info.plist Info.plist
 )
 
 set(FSEvents_BUILD ${CMAKE_CURRENT_BINARY_DIR}/FSEvents)
