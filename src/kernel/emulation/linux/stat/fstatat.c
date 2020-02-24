@@ -7,6 +7,7 @@
 #include <lkm/api.h>
 #include <mach/lkm.h>
 #include <linux-syscalls/linux.h>
+#include "../../../../../platform-include/sys/errno.h"
 
 extern char* strcpy(char* dst, const char* src);
 
@@ -17,6 +18,9 @@ long sys_fstatat(int fd, const char* path, struct stat* stat, int flag)
 	int ret;
 	struct linux_stat lstat;
 	int linux_flags;
+
+	if (!path)
+		return -EFAULT;
 
 	struct vchroot_expand_args vc;
 	vc.flags = (flag & AT_SYMLINK_NOFOLLOW) ? 0 : VCHROOT_FOLLOW;
@@ -48,6 +52,9 @@ long sys_fstatat64(int fd, const char* path, struct stat64* stat, int flag)
 	int ret;
 	struct linux_stat lstat;
 	int linux_flags;
+
+	if (!path)
+		return -EFAULT;
 
 	struct vchroot_expand_args vc;
 	vc.flags = (flag & AT_SYMLINK_NOFOLLOW) ? 0 : VCHROOT_FOLLOW;

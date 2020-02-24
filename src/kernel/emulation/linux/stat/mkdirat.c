@@ -7,6 +7,7 @@
 #include "../vchroot_expand.h"
 #include <lkm/api.h>
 #include <mach/lkm.h>
+#include "../../../../../platform-include/sys/errno.h"
 
 extern char* strcpy(char* dst, const char* src);
 
@@ -14,6 +15,9 @@ long sys_mkdirat(int fd, const char* path, unsigned int mode)
 {
 	int ret;
 	struct vchroot_expand_args vc;
+
+	if (!path)
+		return -EFAULT;
 
 	vc.flags = 0;
 	vc.dfd = atfd(fd);
