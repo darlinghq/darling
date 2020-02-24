@@ -54,6 +54,7 @@ struct inotify_event
                           | IN_CLOSE_NOWRITE | IN_OPEN | IN_MOVED_FROM        \
                           | IN_MOVED_TO | IN_CREATE | IN_DELETE               \
                           | IN_DELETE_SELF | IN_MOVE_SELF)
+#define IN_NONBLOCK		00004000
 
 extern int inotify_init (void) __THROW;
 

@@ -3,6 +3,9 @@ project(CoreServices)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions")
 
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/external/libcxx/include)
+include_directories(
+	${CMAKE_SOURCE_DIR}/src/kernel/emulation/linux
+)
 
 set(CoreServices_SRCS
 	CoreEndian.cpp
@@ -41,9 +44,11 @@ add_framework(FSEvents
 	VERSION "A"
 	PARENT "CoreServices"
 	SOURCES
-		src/FSEvents/FSEvents.c
+		src/FSEvents/FSEvents.m
+		src/FSEvents/FSEventsImpl.m
 	DEPENDENCIES
 		CoreFoundation
+		Foundation
 		system
 )
 

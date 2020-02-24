@@ -17,6 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef _FSEVENTS_H
+#define _FSEVENTS_H
 #include <CoreFoundation/CoreFoundation.h>
 #include <sys/types.h>
 #include <Availability.h>
@@ -27,6 +29,46 @@ typedef const struct __FSEventStream* ConstFSEventStreamRef;
 typedef UInt32 FSEventStreamCreateFlags;
 typedef UInt64 FSEventStreamEventId;
 typedef UInt32 FSEventStreamEventFlags;
+
+enum {
+	kFSEventStreamEventFlagNone = 0,
+	kFSEventStreamEventFlagMustScanSubDirs = 1,
+	kFSEventStreamEventFlagUserDropped = 2,
+	kFSEventStreamEventFlagKernelDropped = 4,
+	kFSEventStreamEventFlagEventIdsWrapped = 8,
+	kFSEventStreamEventFlagHistoryDone = 0x10,
+	kFSEventStreamEventFlagRootChanged = 0x20,
+	kFSEventStreamEventFlagMount = 0x40,
+	kFSEventStreamEventFlagUnmount = 0x80,
+	kFSEventStreamEventFlagItemCreated = 0x100,
+	kFSEventStreamEventFlagItemRemoved = 0x200,
+	kFSEventStreamEventFlagItemInodeMetaMod = 0x400,
+	kFSEventStreamEventFlagItemRenamed = 0x800,
+	kFSEventStreamEventFlagItemModified = 0x1000,
+	kFSEventStreamEventFlagItemFinderInfoMod = 0x2000,
+	kFSEventStreamEventFlagItemChangeOwner = 0x4000,
+	kFSEventStreamEventFlagItemXattrMod = 0x8000,
+	kFSEventStreamEventFlagItemIsFile = 0x10000,
+	kFSEventStreamEventFlagItemIsDir = 0x20000,
+	kFSEventStreamEventFlagItemIsSymlink = 0x40000,
+	kFSEventStreamEventFlagOwnEvent = 0x80000,
+	kFSEventStreamEventFlagItemIsHardlink = 0x100000,
+	kFSEventStreamEventFlagItemIsLastHardlink = 0x200000,
+	kFSEventStreamEventFlagItemCloned = 0x400000,
+};
+
+enum {
+	kFSEventStreamCreateFlagUseCFTypes = 1,
+	kFSEventStreamCreateFlagNoDefer = 2,
+	kFSEventStreamCreateFlagWatchRoot = 4,
+	kFSEventStreamCreateFlagIgnoreSelf = 8,
+	kFSEventStreamCreateFlagFileEvents = 0x10,
+	kFSEventStreamCreateFlagMarkSelf = 0x20,
+	kFSEventStreamCreateFlagUseExtendedData = 0x40,
+};
+
+#define kFSEventStreamEventExtendedDataPathKey      CFSTR("path")
+#define kFSEventStreamEventExtendedFileIDKey        CFSTR("fileID")
 
 typedef CALLBACK_API_C(void, FSEventStreamCallback)(
 		ConstFSEventStreamRef streamRef,
@@ -55,3 +97,21 @@ extern FSEventStreamRef FSEventStreamCreate(
 		FSEventStreamCreateFlags flags);
 
 extern CF_RETURNS_RETAINED CFArrayRef FSEventStreamCopyPathsBeingWatched(ConstFSEventStreamRef streamRef);
+
+extern FSEventStreamEventId FSEventStreamGetLatestEventId(ConstFSEventStreamRef streamRef);
+
+extern void FSEventStreamInvalidate(FSEventStreamRef streamRef);
+
+extern void FSEventStreamRelease(FSEventStreamRef streamRef);
+
+extern void FSEventStreamRetain(FSEventStreamRef streamRef);
+
+extern void FSEventStreamScheduleWithRunLoop(FSEventStreamRef streamRef, CFRunLoopRef runLoop, CFStringRef runLoopMode);
+
+extern void FSEventStreamSetDispatchQueue(FSEventStreamRef streamRef, dispatch_queue_t q);
+
+extern Boolean FSEventStreamStart(FSEventStreamRef streamRef);
+
+extern void FSEventStreamStop(FSEventStreamRef streamRef);
+
+#endif
