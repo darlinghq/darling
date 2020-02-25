@@ -371,6 +371,7 @@ add_subdirectory(external/cocotron/CoreGraphics)
 
 add_subdirectory(frameworks)
 add_subdirectory(private-frameworks)
+add_subdirectory(external/usertemplate)
 
 # /Applications
 #add_subdirectory(external/TextEdit)

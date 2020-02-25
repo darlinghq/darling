@@ -747,8 +747,6 @@ pid_t spawnInitProcess(void)
 
 		free(opts);
 
-		setupUserHome();
-
 		// This is executed once at prefix creation
 		if (g_fixPermissions)
 		fixDirectoryPermissions(prefix);
@@ -768,6 +766,7 @@ pid_t spawnInitProcess(void)
 		setresuid(g_originalUid, g_originalUid, g_originalUid);
 		prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
 
+		setupUserHome();
 		setupCoredumpPattern();
 
 		// Set name to darling-init
