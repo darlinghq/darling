@@ -222,33 +222,39 @@ static void rlPerform(void* info)
 -(void)_processSingleEvent:(struct inotify_event*)evt
 {
 	FSEventStreamEventFlags flags = 0;
-
-	if (evt->mask & IN_ISDIR)
-		flags |= kFSEventStreamEventFlagItemIsDir;
-	else
-		flags |= kFSEventStreamEventFlagItemIsFile; // TODO: symlinks
-	
-	if (evt->mask & (IN_DELETE|IN_DELETE_SELF))
-		flags |= kFSEventStreamEventFlagItemRemoved;
-	if (evt->mask & (IN_MOVE_SELF|IN_MOVED_FROM|IN_MOVED_TO))
-		flags |= kFSEventStreamEventFlagItemRenamed;
-	if (evt->mask & (IN_MODIFY))
-		flags |= kFSEventStreamEventFlagItemModified;
-	if (evt->mask & (IN_CREATE))
-		flags |= kFSEventStreamEventFlagItemCreated;
-	if (evt->mask & IN_ATTRIB)
-		flags |= kFSEventStreamEventFlagItemChangeOwner | kFSEventStreamEventFlagItemXattrMod;
+	NSString* fullPath;
 
 	NSString* watchPath = [_wdMap objectForKey: [NSNumber numberWithInt: evt->wd]];
 	if (!watchPath)
 		return;
 
-	NSString* fullPath;
-
-	if (evt->len == 0)
+	if (!(_flags & kFSEventStreamCreateFlagFileEvents))
+	{
 		fullPath = watchPath;
+	}
 	else
-		fullPath = [NSString stringWithFormat: @"%s/%s", [watchPath UTF8String], evt->name];
+	{
+		if (evt->mask & IN_ISDIR)
+			flags |= kFSEventStreamEventFlagItemIsDir;
+		else
+			flags |= kFSEventStreamEventFlagItemIsFile; // TODO: symlinks
+		
+		if (evt->mask & (IN_DELETE|IN_DELETE_SELF))
+			flags |= kFSEventStreamEventFlagItemRemoved;
+		if (evt->mask & (IN_MOVE_SELF|IN_MOVED_FROM|IN_MOVED_TO))
+			flags |= kFSEventStreamEventFlagItemRenamed;
+		if (evt->mask & (IN_MODIFY))
+			flags |= kFSEventStreamEventFlagItemModified;
+		if (evt->mask & (IN_CREATE))
+			flags |= kFSEventStreamEventFlagItemCreated;
+		if (evt->mask & IN_ATTRIB)
+			flags |= kFSEventStreamEventFlagItemChangeOwner | kFSEventStreamEventFlagItemXattrMod;
+
+		if (evt->len == 0)
+			fullPath = watchPath;
+		else
+			fullPath = [NSString stringWithFormat: @"%s/%s", [watchPath UTF8String], evt->name];
+	}
 
 	[_pathArray addObject: fullPath];
 	const int newCount = [_pathArray count];
