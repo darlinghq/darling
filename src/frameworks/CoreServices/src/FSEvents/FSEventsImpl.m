@@ -76,7 +76,7 @@ static void rlPerform(void* info)
 
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
-		g_fsEventsQueue = dispatch_queue_create("FSEvents queue", NULL);
+		g_fsEventsQueue = dispatch_queue_create("FSEvents queue", DISPATCH_QUEUE_SERIAL);
 	});
 
 	_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, _fd, 0, g_fsEventsQueue);
@@ -293,8 +293,9 @@ static void rlPerform(void* info)
 	char** cpathArray = NULL;
 	NSArray<NSDictionary*>* dicts = NULL;
 
-	dispatch_suspend(_source); // prevent races
-
+	dispatch_suspend(_source);
+	dispatch_sync(g_fsEventsQueue, ^{});
+	
 	if (!(_flags & kFSEventStreamCreateFlagUseCFTypes))
 	{
 		@autoreleasepool
