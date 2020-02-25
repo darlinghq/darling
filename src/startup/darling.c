@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2016-2018 Lubos Dolezel
+Copyright (C) 2016-2020 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -561,15 +561,15 @@ void spawnShell(const char** argv)
 		"/sbin:"
 		"/usr/local/bin");
 
-	const char *home = getenv("HOME");
-	if (home)
+	const char* login = getlogin();
+	if (!login)
 	{
-		if (sscanf(home, "/home/%4096s", buffer1) == 1)
-			snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", buffer1);
-		else
-			snprintf(buffer2, sizeof(buffer2), "HOME=" SYSTEM_ROOT "%s", home);
-		pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
+		fprintf(stderr, "Cannot determine your user name\n");
+		exit(1);
 	}
+
+	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", login);
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
 
 	// Push shell arguments
 	if (buffer != NULL)
@@ -746,6 +746,8 @@ pid_t spawnInitProcess(void)
 		}
 
 		free(opts);
+
+		setupUserHome();
 
 		// This is executed once at prefix creation
 		if (g_fixPermissions)
@@ -1236,5 +1238,98 @@ void setupCoredumpPattern(void)
 		// This is how macOS saves core dumps
 		fputs("/cores/core.%p\n", f);
 		fclose(f);
+	}
+}
+
+const char* xdgDirectory(const char* name)
+{
+	static char dir[4096];
+	char* cmd = (char*) malloc(16 + strlen(name));
+
+	sprintf(cmd, "xdg-user-dir %s", name);
+
+	FILE* proc = popen(cmd, "r");
+
+	free(cmd);
+
+	if (!proc)
+		return NULL;
+
+	fgets(dir, sizeof(dir)-1, proc);
+
+	pclose(proc);
+
+	size_t len = strlen(dir);
+	if (len <= 1)
+		return NULL;
+
+	if (dir[len-1] == '\n')
+		dir[len-1] = '\0';
+	return dir;
+}
+
+void setupUserHome(void)
+{
+	char buf[4096], buf2[4096];
+
+	snprintf(buf, sizeof(buf), "%s/Users", prefix);
+
+	// Remove the old /Users symlink that may exist
+	unlink(buf);
+
+	// mkdir /Users
+	mkdir(buf, 0777);
+
+	// mkdir /Users/Shared
+	strcat(buf, "/Shared");
+	mkdir(buf, 0777);
+
+	const char* home = getenv("HOME");
+	const char* login = getlogin();
+	if (!login)
+	{
+		fprintf(stderr, "Cannot determine your user name\n");
+		exit(1);
+	}
+	if (!home)
+	{
+		fprintf(stderr, "Cannot determine your home directory\n");
+		exit(1);
+	}
+
+	snprintf(buf, sizeof(buf), "%s/Users/%s", prefix, login);
+
+	// mkdir /Users/$LOGIN
+	mkdir(buf, 0755);
+
+	snprintf(buf2, sizeof(buf2), "/Volumes/SystemRoot%s", home);
+
+	strcat(buf, "/LinuxHome");
+	unlink(buf);
+
+	// symlink /Users/$LOGIN/LinuxHome -> $HOME
+	symlink(buf2, buf);
+
+	static const char* xdgmap[][2] = {
+		{ "DESKTOP", "Desktop" },
+		{ "DOWNLOAD", "Downloads" },
+		{ "PUBLICSHARE", "Public" },
+		{ "DOCUMENTS", "Documents" },
+		{ "MUSIC", "Music" },
+		{ "PICTURES", "Pictures" },
+		{ "VIDEOS", "Movies" },
+	};
+
+	for (int i = 0; i < sizeof(xdgmap) / sizeof(xdgmap[0]); i++)
+	{
+		const char* dir = xdgDirectory(xdgmap[i][0]);
+		if (!dir)
+			continue;
+		
+		snprintf(buf2, sizeof(buf2), "/Volumes/SystemRoot%s", dir);
+		snprintf(buf, sizeof(buf), "%s/Users/%s/%s", prefix, login, xdgmap[i][1]);
+
+		unlink(buf);
+		symlink(buf2, buf);
 	}
 }

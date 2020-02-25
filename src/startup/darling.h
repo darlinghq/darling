@@ -67,5 +67,6 @@ void loadKernelModule(void);
 void joinNamespace(pid_t pid, int type, const char* typeName);
 
 void setupCoredumpPattern(void);
+void setupUserHome(void);
 
 #endif
