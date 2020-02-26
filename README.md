@@ -41,6 +41,8 @@ $ darling shell
 Darling [~]$ installer -pkg mc-4.8.7-0.pkg -target /
 ````
 
+The Midnight Commander package from the above example is [available for download](https://osdn.net/projects/darling/storage/apps/mc-4.8.7-0.pkg).
+
 You can uninstall and list packages with the `uninstaller` command.
 
 ### Working with DMG images
@@ -60,3 +62,11 @@ Hello world
 
 Congratulations, you have just compiled and run your own Hello world application with Apple's toolchain.
 
+### Working with XIP archives
+
+Xcode is now distributed in `.xip` files. These can be installed using `unxip`:
+
+```
+cd /Applications
+unxip Xcode_11.3.xip
+```
