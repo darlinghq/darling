@@ -16,6 +16,7 @@
 #include "../simple.h"
 #include "../readline.h"
 #include "../elfcalls_wrapper.h"
+#include "../vchroot_expand.h"
 #include <stdbool.h>
 #include <sys/proc.h>
 #include <lkm/api.h>
@@ -457,7 +458,23 @@ static bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, 
 static long _proc_pidinfo_pathinfo(int32_t pid, void* buffer, int32_t bufsize)
 {
 	char path[64];
+	struct vchroot_unexpand_args args;
+
 	__simple_sprintf(path, "/proc/%d/exe", pid);
+
 	memset(buffer, 0, bufsize);
-	return sys_readlink(path, buffer, bufsize);
+	int rv = sys_readlink(path, buffer, bufsize - 1);
+
+	if (rv < 0)
+		return rv;
+
+	((char*)buffer)[rv] = 0;
+
+	strcpy(args.path, buffer);
+	rv = vchroot_unexpand(&args);
+	if (rv != 0)
+		return rv;
+
+	strncpy(buffer, args.path, bufsize);
+	return strlen(args.path);
 }
