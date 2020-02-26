@@ -94,6 +94,7 @@
 #include "signal/sigreturn.h"
 #include "signal/sigprocmask.h"
 #include "signal/sigsuspend.h"
+#include "signal/sigpending.h"
 #include "signal/sigwait.h"
 #include "process/vfork.h"
 #include "process/wait4.h"
@@ -244,6 +245,7 @@ void* __bsd_syscall_table[600] = {
 	[48] = sys_sigprocmask,
 	[49] = sys_getlogin,
 	[50] = sys_setlogin,
+	[52] = sys_sigpending,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,
 	[55] = sys_reboot,
