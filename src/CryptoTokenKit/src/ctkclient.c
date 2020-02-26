@@ -31,3 +31,18 @@ CFDataRef TKTokenCopyObjectData(TKTokenRef token, CFDataRef object_id, CFErrorRe
 CFDataRef TKTokenCopyObjectCreationAccessControl(TKTokenRef token, CFTypeRef object_or_attrs, CFErrorRef *error) {
 	return NULL;
 }
+
+CFDictionaryRef TKTokenControl(TKTokenRef token, CFDictionaryRef attributes, CFErrorRef *error)
+{
+	return NULL;
+}
+
+CFArrayRef TKTokenCopyIdentities(TKTokenRef token, int usage, CFErrorRef *error)
+{
+	return NULL;
+}
+
+CFDataRef TKTokenCopyOperationResult(TKTokenRef token, CFDataRef objectID, int operation, CFArrayRef algorithms, int other, CFTypeRef in1, CFTypeRef in2, CFErrorRef *error)
+{
+	return NULL;
+}

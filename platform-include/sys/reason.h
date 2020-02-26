@@ -95,6 +95,20 @@ void os_reason_free(os_reason_t cur_reason);
 #define OS_REASON_REPORTCRASH   12
 #define OS_REASON_COREANIMATION 13
 #define OS_REASON_AGGREGATED    14
+#define OS_REASON_RUNNINGBOARD  15
+#define OS_REASON_ASSERTIOND    OS_REASON_RUNNINGBOARD  /* old name */
+#define OS_REASON_SKYWALK       16
+#define OS_REASON_SETTINGS      17
+#define OS_REASON_LIBSYSTEM     18
+#define OS_REASON_FOUNDATION    19
+#define OS_REASON_WATCHDOG      20
+#define OS_REASON_METAL         21
+#define OS_REASON_WATCHKIT      22
+#define OS_REASON_GUARD         23
+#define OS_REASON_ANALYTICS     24
+#define OS_REASON_SANDBOX       25
+#define OS_REASON_SECURITY      26
+#define OS_REASON_ENDPOINTSECURITY      27
 
 /*
  * Update whenever new OS_REASON namespaces are added.
