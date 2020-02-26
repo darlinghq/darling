@@ -160,6 +160,8 @@ void doSwitch(const char* path)
 	doReset();
 
 	umask(022);
+	mkdir("/var/db", 0755);
+	
 	if (symlink(buffer, "/var/db/xcode_select_link") != 0)
 	{
 		fprintf(stderr, "xcode-select: error: unable to create symlink: %s\n",
