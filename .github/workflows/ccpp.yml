@@ -39,10 +39,10 @@ jobs:
       run: tools/makedeb --dsc
     - name: make deb
       run: tools/makedeb
-    - name: cp debs
-      run: cp ../*.deb debbuild/
-    - name: artifacts
-      uses: actions/upload-artifact@konradpabjan/v2-is-almost-here
+    - name: Move & compress DEBs
+      run: mkdir dist && cp ../*.deb dist && tar -cJf dist.tar.xz dist
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v1
       with:
         name: 'debs'
-        path: debbuild/*.deb
+        path: dist.tar.xz
