@@ -736,7 +736,7 @@ pid_t spawnInitProcess(void)
 		}
 
 		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 100);
-		sprintf(opts, "lowerdir=%s,upperdir=%s,workdir=%s.workdir", LIBEXEC_PATH, prefix, prefix);
+		sprintf(opts, "lowerdir=%s,upperdir=%s,workdir=%s.workdir,metacopy=on", LIBEXEC_PATH, prefix, prefix);
 
 		// Mount overlay onto our prefix
 		if (mount("overlay", prefix, "overlay", 0, opts) != 0)
@@ -749,7 +749,7 @@ pid_t spawnInitProcess(void)
 
 		// This is executed once at prefix creation
 		if (g_fixPermissions)
-		fixDirectoryPermissions(prefix);
+			fixDirectoryPermissions(prefix);
 
 		snprintf(putOld, sizeof(putOld), "%s/proc", prefix);
 
