@@ -208,6 +208,8 @@ set(emulation_sources
 	stat/common.c
 	xattr/getattrlistbulk.c
 	xattr/getattrlistat.c
+	xattr/getattrlist.c
+	xattr/fgetattrlist.c
 	xattr/setattrlistat.c
 	xattr/listxattr.c
 	xattr/flistxattr.c

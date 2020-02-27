@@ -170,6 +170,8 @@
 #include "bsdthread/pthread_canceled.h"
 #include "hfs/stub.h"
 #include "xattr/getattrlistbulk.h"
+#include "xattr/getattrlist.h"
+#include "xattr/fgetattrlist.h"
 #include "xattr/getattrlistat.h"
 #include "xattr/setattrlistat.h"
 #include "xattr/listxattr.h"
