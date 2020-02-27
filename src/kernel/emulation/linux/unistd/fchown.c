@@ -5,6 +5,7 @@
 
 long sys_fchown(int fd, int uid, int gid)
 {
+#if 0
 	int ret;
 
 #ifdef __NR_fchown32
@@ -16,5 +17,8 @@ long sys_fchown(int fd, int uid, int gid)
 		ret = errno_linux_to_bsd(ret);
 
 	return ret;
+#else
+	return 0;
+#endif
 }
 
