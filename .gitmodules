@@ -307,3 +307,6 @@
 [submodule "src/external/libtrace"]
 	path = src/external/libtrace
 	url = ../darling-libtrace.git
+[submodule "src/external/rsync"]
+	path = src/external/rsync
+	url = ../darling-rsync.git
