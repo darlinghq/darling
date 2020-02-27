@@ -174,6 +174,8 @@
 #include "xattr/fgetattrlist.h"
 #include "xattr/getattrlistat.h"
 #include "xattr/setattrlistat.h"
+#include "xattr/setattrlist.h"
+#include "xattr/fsetattrlist.h"
 #include "xattr/listxattr.h"
 #include "xattr/flistxattr.h"
 #include "xattr/removexattr.h"

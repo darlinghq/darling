@@ -211,6 +211,8 @@ set(emulation_sources
 	xattr/getattrlist.c
 	xattr/fgetattrlist.c
 	xattr/setattrlistat.c
+	xattr/setattrlist.c
+	xattr/fsetattrlist.c
 	xattr/listxattr.c
 	xattr/flistxattr.c
 	xattr/removexattr.c
