@@ -1,10 +1,17 @@
 #include "semctl.h"
 #include "../base.h"
 #include "../errno.h"
+#include "../duct_errno.h"
 #include <linux-syscalls/linux.h>
 #include <stdint.h>
+#include <stdarg.h>
 
+#if defined(__i386__) || defined(__arm__)
 #define LINUX_IPC_64 0x100
+#else
+#define LINUX_IPC_64 0
+#endif
+
 #define IPCOP_semop	1
 #define IPCOP_semget	2
 #define IPCOP_semctl	3
@@ -12,14 +19,29 @@
 #define IPC_SET 1
 #define IPC_STAT 2
 
+static const int cmd_map[] = { // bsd cmds to linux cmds
+	0, 1, 2, 14, 11, 12, 13, 15, 16, 17
+};
+
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 
-long sys_semctl(int semid, int semnum, int cmd, semun_t arg)
+long sys_semctl(int semid, int semnum, int cmd, ...)
 {
+	union semun arg;
+	va_list ap;
+	va_start(ap, cmd);
+	arg = va_arg(ap, union semun);
+	va_end(ap);
+
+	if (cmd < 0 || cmd >= sizeof(cmd_map) / sizeof(cmd_map[0]))
+		return -EINVAL;
+
+	int linux_cmd = cmd_map[cmd];
+
 #ifdef __NR_semctl
-	int ret = LINUX_SYSCALL(__NR_semctl, semid, semnum, cmd | LINUX_IPC_64, arg.buf);
+	int ret = LINUX_SYSCALL(__NR_semctl, semid, semnum, linux_cmd | LINUX_IPC_64, arg.buf);
 #else
-	int ret = LINUX_SYSCALL(__NR_ipc, IPCOP_semctl, semid, semnum, cmd | LINUX_IPC_64, &arg.buf);
+	int ret = LINUX_SYSCALL(__NR_ipc, IPCOP_semctl, semid, semnum, linux_cmd | LINUX_IPC_64, &arg.buf);
 #endif
 
 	if (ret < 0)
