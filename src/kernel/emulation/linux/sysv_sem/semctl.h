@@ -49,6 +49,6 @@ struct bsd_semid_ds
 
 typedef union semun semun_t;
 
-long sys_semctl(int semid, int semnum, int cmd, ...);
+long sys_semctl(int semid, int semnum, int cmd, union semun arg);
 
 #endif

@@ -4,7 +4,6 @@
 #include "../duct_errno.h"
 #include <linux-syscalls/linux.h>
 #include <stdint.h>
-#include <stdarg.h>
 
 #if defined(__i386__) || defined(__arm__)
 #define LINUX_IPC_64 0x100
@@ -25,14 +24,8 @@ static const int cmd_map[] = { // bsd cmds to linux cmds
 
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 
-long sys_semctl(int semid, int semnum, int cmd, ...)
+long sys_semctl(int semid, int semnum, int cmd, union semun arg)
 {
-	union semun arg;
-	va_list ap;
-	va_start(ap, cmd);
-	arg = va_arg(ap, union semun);
-	va_end(ap);
-
 	if (cmd < 0 || cmd >= sizeof(cmd_map) / sizeof(cmd_map[0]))
 		return -EINVAL;
 
