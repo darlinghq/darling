@@ -21,6 +21,7 @@ add_definitions(
 include_directories(
 	${CMAKE_CURRENT_BINARY_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/../liblaunch
+	${CMAKE_SOURCE_DIR}/src/external/libxpc
 )
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc -include ${CMAKE_SOURCE_DIR}/kernel-include/sys/fileport.h")
