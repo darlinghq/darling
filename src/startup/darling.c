@@ -42,6 +42,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/un.h>
 #include <getopt.h>
 #include <termios.h>
+#include <ctype.h>
 #include <pty.h>
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
@@ -674,6 +675,34 @@ void fixDirectoryPermissions(const char* path)
 	closedir(dir);
 }
 
+static uint32_t linux_release(void)
+{
+	struct utsname uts;
+	if (uname(&uts) == 0)
+	{
+		char* p = uts.release;
+		uint32_t version = 0;
+		int digits = 0;
+
+		while (*p && digits < 3)
+		{
+			if (isdigit(*p))
+			{
+				version <<= 8;
+				version |= strtol(p, &p, 10);
+				digits++;
+			}
+			else
+				p++;
+		}
+
+		return version;
+	}
+	return 0;
+}
+
+#define LINUX_RELEASE(a,b,c) ((a << 16) | (b << 8) | (c))
+
 pid_t spawnInitProcess(void)
 {
 	pid_t pid;
@@ -736,7 +765,12 @@ pid_t spawnInitProcess(void)
 		}
 
 		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 100);
-		sprintf(opts, "lowerdir=%s,upperdir=%s,workdir=%s.workdir,metacopy=on", LIBEXEC_PATH, prefix, prefix);
+
+		const char* opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir,metacopy=on";
+		if (linux_release() < LINUX_RELEASE(4, 19, 0))
+			opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir";
+
+		sprintf(opts, opts_fmt, LIBEXEC_PATH, prefix, prefix);
 
 		// Mount overlay onto our prefix
 		if (mount("overlay", prefix, "overlay", 0, opts) != 0)
