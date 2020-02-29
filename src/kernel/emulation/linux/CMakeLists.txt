@@ -21,6 +21,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/libelfloader/native)
 # include src/startup for rtsig.h
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_BINARY_DIR}/src/startup
+	${CMAKE_BINARY_DIR}/src/kernel/libsyscall
 	${CMAKE_CURRENT_BINARY_DIR}
 )
 

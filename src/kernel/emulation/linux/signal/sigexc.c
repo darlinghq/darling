@@ -6,7 +6,7 @@
 #include <linux-syscalls/linux.h>
 #include <pthread/tsd_private.h>
 #include "signal/mach_exc.h"
-#include "signal/exc.h"
+#include "mach/exc_internal.h"
 #include "sigaltstack.h"
 #include "../mach/lkm.h"
 #include "../../../../external/lkm/api.h"
