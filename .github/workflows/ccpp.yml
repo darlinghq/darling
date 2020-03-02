@@ -79,9 +79,9 @@ jobs:
     - name: make deb src
       run: tools/makedeb --dsc
     - name: Move & compress DEBs
-      run: mkdir dist && cp ../*.deb dist && tar -cJf dist.tar.xz dist
+      run: mkdir source && cp ../*~testing.* dist && tar -cJf source.tar.xz source
     - name: Upload Artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: 'debs'
-        path: dist.tar.xz
+        name: 'source'
+        path: source.tar.xz
