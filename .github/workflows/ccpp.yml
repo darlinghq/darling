@@ -79,7 +79,7 @@ jobs:
     - name: make deb src
       run: tools/makedeb --dsc
     - name: Move & compress DEBs
-      run: mkdir source && cp ../*~testing.* dist && tar -cJf source.tar.xz source
+      run: mkdir source && cp ../*~testing.* source && tar -cJf source.tar.xz source
     - name: Upload Artifacts
       uses: actions/upload-artifact@v1
       with:
