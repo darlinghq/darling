@@ -4,7 +4,9 @@
 
 union semun
 {
+	int val;
 	struct bsd_semid_ds* buf;
+	unsigned short* array;
 };
 
 struct linux_ipc_perm
@@ -47,6 +49,6 @@ struct bsd_semid_ds
 
 typedef union semun semun_t;
 
-long sys_semctl(int semid, int semnum, int cmd, semun_t arg);
+long sys_semctl(int semid, int semnum, int cmd, union semun arg);
 
 #endif

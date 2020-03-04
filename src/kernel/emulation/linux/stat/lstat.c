@@ -7,12 +7,16 @@
 #include <mach/lkm.h>
 #include "../vchroot_expand.h"
 #include "../bsdthread/per_thread_wd.h"
+#include "../../../../../platform-include/sys/errno.h"
 
 long sys_lstat(const char* path, struct stat* stat)
 {
 	int ret;
 	struct linux_stat lstat;
 	struct vchroot_expand_args vc;
+
+	if (!path)
+		return -EFAULT;
 
 	vc.flags = 0;
 	vc.dfd = get_perthread_wd();

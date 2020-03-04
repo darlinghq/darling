@@ -13,12 +13,6 @@ struct wq_kevent_data
 	int sem;
 };
 
-struct parked_thread
-{
-	struct parked_thread *prev, *next;
-	int sem, flags;
-	struct wq_kevent_data* event;
-};
 struct timespec;
 
 long sys_workq_kernreturn(int options, void* item, int affinity, int prio);

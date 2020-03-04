@@ -9,6 +9,7 @@
 
 long sys_lchown(const char* path, int uid, int gid)
 {
+#if 0
 	int ret;
 	struct vchroot_expand_args vc;
 
@@ -30,4 +31,7 @@ long sys_lchown(const char* path, int uid, int gid)
 		ret = errno_linux_to_bsd(ret);
 
 	return ret;
+#else
+	return 0;
+#endif
 }

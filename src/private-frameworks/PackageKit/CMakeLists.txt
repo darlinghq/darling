@@ -1,5 +1,11 @@
 project(PackageKit)
 
+include_directories(
+	${CMAKE_SOURCE_DIR}/src/external/libarchive/libarchive
+)
+
+add_definitions(-fobjc-arc)
+
 set(pk_sources
 	src/functions.c
 	src/PKAddExtendedAttributesInstallOperation.m
@@ -135,5 +141,8 @@ add_framework(PackageKit
 	DEPENDENCIES
 		system
 		Foundation
+		xar
+		archive
+		lzma
 )
 

@@ -4,6 +4,7 @@
 #include <mach/mach_init.h>
 #include <sys/errno.h>
 #include "sysctl_kern.h"
+#include "sysctl_proc.h"
 #include "../ext/sys/utsname.h"
 
 extern kern_return_t mach_port_deallocate(ipc_space_t task, mach_port_name_t name);
@@ -19,6 +20,7 @@ enum {
 	_HW_CPUSUBTYPE,
 	_HW_CPUTHREADTYPE,
 	_HW_64BITCAPABLE,
+	_HW_CPUFREQUENCY = 15,
 };
 
 static sysctl_handler(handle_availcpu);
@@ -33,6 +35,7 @@ static sysctl_handler(handle_cpusubtype);
 static sysctl_handler(handle_cputhreadtype);
 static sysctl_handler(handle_cpu64bitcapable);
 static sysctl_handler(handle_machine);
+static sysctl_handler(handle_cpufrequency);
 
 const struct known_sysctl sysctls_hw[] = {
 	{ .oid = HW_AVAILCPU, .type = CTLTYPE_INT, .exttype = "", .name = "availcpu", .handler = handle_availcpu },
@@ -48,6 +51,7 @@ const struct known_sysctl sysctls_hw[] = {
 	{ .oid = _HW_CPUTHREADTYPE, .type = CTLTYPE_INT, .exttype = "", .name = "cputhreadtype", .handler = handle_cputhreadtype },
 	{ .oid = _HW_64BITCAPABLE, .type = CTLTYPE_INT, .exttype = "", .name = "cpu64bit_capable", .handler = handle_cpu64bitcapable },
 	{ .oid = HW_MACHINE, .type = CTLTYPE_STRING, .exttype = "S", .name = "machine", .handler = handle_machine },
+	{ .oid = _HW_CPUFREQUENCY, .type = CTLTYPE_INT, .exttype = "", .name = "cpufrequency", .handler = handle_cpufrequency },
 	{ .oid = -1 }
 };
 
@@ -150,6 +154,18 @@ sysctl_handler(handle_cputhreadtype)
 {
 	sysctl_handle_size(sizeof(int));
 	*((int*) old) = gethostinfo()->cpu_threadtype;
+	return 0;
+}
+
+sysctl_handler(handle_cpufrequency)
+{
+	int freq = 2400000;
+	char buf[16];
+
+	if (read_string("/sys/bus/cpu/devices/cpu0/cpufreq/cpuinfo_max_freq", buf, sizeof(buf)))
+		freq = __simple_atoi(buf, NULL);
+	*((int*) old) = freq;
+	
 	return 0;
 }
 

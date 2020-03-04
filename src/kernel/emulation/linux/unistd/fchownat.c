@@ -11,6 +11,7 @@ extern char* strcpy(char* dst, const char* src);
 
 long sys_fchownat(int fd, const char* path, int uid, int gid, int flag)
 {
+#if 0
 	int ret;
 	struct vchroot_expand_args vc;
 
@@ -29,4 +30,7 @@ long sys_fchownat(int fd, const char* path, int uid, int gid, int flag)
 		ret = errno_linux_to_bsd(ret);
 
 	return ret;
+#else
+	return 0;
+#endif
 }

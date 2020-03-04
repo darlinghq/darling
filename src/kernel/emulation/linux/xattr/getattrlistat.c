@@ -1,10 +1,6 @@
 #include "getattrlistat.h"
-#include "../base.h"
-#include "../errno.h"
-#include "../../../../../platform-include/sys/errno.h"
 
-long sys_getattrlistat()
-{
-	return -ENOTSUP;
-}
+#define HAS_PATH 1
+#define FUNC_NAME sys_getattrlistat
 
+#include "getattrlist_generic.c"

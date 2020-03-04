@@ -6,6 +6,8 @@
 #include "../../../../libc/include/fcntl.h"
 #include "../fcntl/open.h"
 #include "../unistd/close.h"
+#include "../vchroot_expand.h"
+#include "../bsdthread/per_thread_wd.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 
@@ -32,10 +34,19 @@ long sys_statfs64(const char* path, struct bsd_statfs64* buf)
 	char line[512];
 	int max_len = 0;
 
+	struct vchroot_expand_args vc;
+	vc.flags = 0;
+	vc.dfd = get_perthread_wd();
+
+	strcpy(vc.path, path);
+	ret = vchroot_expand(&vc);
+	if (ret < 0)
+		return errno_linux_to_bsd(ret);
+
 #ifdef __NR_statfs64
-	ret = LINUX_SYSCALL2(__NR_statfs64, path, &lbuf);
+	ret = LINUX_SYSCALL2(__NR_statfs64, vc.path, &lbuf);
 #else
-	ret = LINUX_SYSCALL2(__NR_statfs, path, &lbuf);
+	ret = LINUX_SYSCALL2(__NR_statfs, vc.path, &lbuf);
 #endif
 
 	if (ret < 0)
@@ -70,7 +81,7 @@ long sys_statfs64(const char* path, struct bsd_statfs64* buf)
 			continue;
 		
 		len = strlen(p);
-		if (strncmp(p, path, len) != 0 || len < max_len)
+		if (strncmp(p, vc.path, len) != 0 || len < max_len)
 			continue;
 
 		max_len = len;

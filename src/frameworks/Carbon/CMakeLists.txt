@@ -11,6 +11,7 @@ add_framework(Carbon
     SOURCES
         src/Carbon.c
         src/constants.c
+        HIToolbox/Keyboards.cpp
         HIToolbox/Events.cpp
         HIToolbox/MacWindows.cpp
         HIToolbox/TextInputSources.mm

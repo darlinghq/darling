@@ -1,7 +1,6 @@
 #include "setattrlistat.h"
 
-long sys_setattrlistat()
-{
-	return 0;
-}
+#define HAS_PATH 1
+#define FUNC_NAME sys_setattrlistat
 
+#include "setattrlist_generic.c"

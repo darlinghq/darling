@@ -84,16 +84,36 @@ __attribute__((constructor))
 
 static unsigned long processEnvVariable(const char* var)
 {
-	if (strncmp(var, "HOME=/Users/", 12) == 0)
+	if (strncmp(var, "HOME=", 5) == 0)
 	{
-		const size_t len = strlen(var);
-		char* home = malloc(len); // 1 byte shorter
+		char* home = (char*) malloc(512);
+		char* symlink_path = (char*) malloc(strlen(var+5) + 10);
 
-		strcpy(home, "HOME=/home/");
-		strcpy(home + 11, var+12);
+		strcpy(symlink_path, var+5);
+		strcat(symlink_path, "/LinuxHome");
+
+		int len = readlink(symlink_path, home, 512-1);
+		free(symlink_path);
+
+		if (len < 0)
+		{
+			free(home);
+			goto out;
+		}
+		home[len] = '\0';
+
+		if (strncmp(home, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1) != 0)
+		{
+			free(home);
+			goto out;
+		}
+
+		strcpy(home, "HOME=");
+		memmove(home+5, home + sizeof(SYSTEM_ROOT) - 1, len - sizeof(SYSTEM_ROOT) + 2);
 
 		return (unsigned long) home;
 	}
+out:
 	return (unsigned long) var;
 }
 

@@ -143,3 +143,13 @@ void qtn_proc_free(qtn_proc_t proc)
 	free(proc);
 }
 
+int qtn_file_apply_to_mount_point(qtn_file_t a, const char *b)
+{
+	return 0;
+}
+
+int qtn_file_init_with_mount_point(qtn_file_t a, char b[1024])
+{
+	return 0;
+}
+

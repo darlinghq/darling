@@ -22,6 +22,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define QTN_NOT_QUARANTINED (-1)
 
 #define QTN_FLAG_SANDBOX 1
@@ -89,6 +93,10 @@ extern int qtn_file_apply_to_mount_point(qtn_file_t a, const char *b);
 #define qtn_error _qtn_error
 
 #define qtn_xattr_name _qtn_xattr_name
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

@@ -2,6 +2,11 @@
 #define _LIB_AKS_H_
 
 #include <IOKit/IOReturn.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // FIXME: I have no idea what these are for, so they are 0 for now
 #define session_keybag_handle 0
@@ -35,5 +40,9 @@ static kern_return_t aks_get_lock_state(keybag_handle_t handle, keybag_state_t *
 extern kern_return_t aks_assert_hold(keybag_handle_t keybagHandle, AKSAssertionType_t lockAssertType, uint64_t timeout);
 
 extern kern_return_t aks_assert_drop(keybag_handle_t keybagHandle, AKSAssertionType_t lockAssertType);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

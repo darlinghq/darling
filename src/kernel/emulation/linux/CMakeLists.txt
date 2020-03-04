@@ -21,15 +21,14 @@ include_directories(${CMAKE_SOURCE_DIR}/src/libelfloader/native)
 # include src/startup for rtsig.h
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_BINARY_DIR}/src/startup
+	${CMAKE_BINARY_DIR}/src/kernel/libsyscall
 	${CMAKE_CURRENT_BINARY_DIR}
 )
 
 mig(signal/mach_exc.defs)
-mig(signal/exc.defs)
 
 set(emulation_sources
 	${CMAKE_CURRENT_BINARY_DIR}/signal/mach_excUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/signal/excUser.c
 	elfcalls_wrapper.c
 	base.c
 	syscalls.c
@@ -147,6 +146,7 @@ set(emulation_sources
 	signal/sigprocmask.c
 	signal/sig_restorer.S
 	signal/sigsuspend.c
+	signal/sigpending.c
 	signal/sigexc.c
 	signal/sigwait.c
 	misc/ptrace.c
@@ -207,7 +207,11 @@ set(emulation_sources
 	stat/common.c
 	xattr/getattrlistbulk.c
 	xattr/getattrlistat.c
+	xattr/getattrlist.c
+	xattr/fgetattrlist.c
 	xattr/setattrlistat.c
+	xattr/setattrlist.c
+	xattr/fsetattrlist.c
 	xattr/listxattr.c
 	xattr/flistxattr.c
 	xattr/removexattr.c
@@ -311,6 +315,7 @@ set_source_files_properties(ext/timerfd_settime.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
 set_source_files_properties(misc/sysctl.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
+set_source_files_properties(signal/sigexc.c PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/../../libsyscall/mach/exc_internal.h)
 
 add_darling_object_library(emulation ${emulation_sources})
 add_darling_object_library(emulation_dyld ${emulation_sources})

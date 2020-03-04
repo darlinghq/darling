@@ -24,30 +24,6 @@ long sys_fstatv()
 	return -ENOTSUP;
 }
 
-
-// We could support the following four syscalls
-// because darling-dmg exports at least some
-// of this metadata.
-long sys_getattrlist()
-{
-	return -ENOTSUP;
-}
-
-long sys_setattrlist()
-{
-	return -ENOTSUP;
-}
-
-long sys_fgetattrlist()
-{
-	return -ENOTSUP;
-}
-
-long sys_fsetattrlist()
-{
-	return -ENOTSUP;
-}
-
 long sys_getdirentriesattr()
 {
 	return -ENOTSUP;

@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2016-2018 Lubos Dolezel
+Copyright (C) 2016-2020 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/un.h>
 #include <getopt.h>
 #include <termios.h>
+#include <ctype.h>
 #include <pty.h>
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
@@ -561,15 +562,15 @@ void spawnShell(const char** argv)
 		"/sbin:"
 		"/usr/local/bin");
 
-	const char *home = getenv("HOME");
-	if (home)
+	const char* login = getlogin();
+	if (!login)
 	{
-		if (sscanf(home, "/home/%4096s", buffer1) == 1)
-			snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", buffer1);
-		else
-			snprintf(buffer2, sizeof(buffer2), "HOME=" SYSTEM_ROOT "%s", home);
-		pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
+		fprintf(stderr, "Cannot determine your user name\n");
+		exit(1);
 	}
+
+	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", login);
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
 
 	// Push shell arguments
 	if (buffer != NULL)
@@ -674,6 +675,34 @@ void fixDirectoryPermissions(const char* path)
 	closedir(dir);
 }
 
+static uint32_t linux_release(void)
+{
+	struct utsname uts;
+	if (uname(&uts) == 0)
+	{
+		char* p = uts.release;
+		uint32_t version = 0;
+		int digits = 0;
+
+		while (*p && digits < 3)
+		{
+			if (isdigit(*p))
+			{
+				version <<= 8;
+				version |= strtol(p, &p, 10);
+				digits++;
+			}
+			else
+				p++;
+		}
+
+		return version;
+	}
+	return 0;
+}
+
+#define LINUX_RELEASE(a,b,c) ((a << 16) | (b << 8) | (c))
+
 pid_t spawnInitProcess(void)
 {
 	pid_t pid;
@@ -736,7 +765,12 @@ pid_t spawnInitProcess(void)
 		}
 
 		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 100);
-		sprintf(opts, "lowerdir=%s,upperdir=%s,workdir=%s.workdir", LIBEXEC_PATH, prefix, prefix);
+
+		const char* opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir,metacopy=on";
+		if (linux_release() < LINUX_RELEASE(4, 19, 0))
+			opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir";
+
+		sprintf(opts, opts_fmt, LIBEXEC_PATH, prefix, prefix);
 
 		// Mount overlay onto our prefix
 		if (mount("overlay", prefix, "overlay", 0, opts) != 0)
@@ -749,7 +783,7 @@ pid_t spawnInitProcess(void)
 
 		// This is executed once at prefix creation
 		if (g_fixPermissions)
-		fixDirectoryPermissions(prefix);
+			fixDirectoryPermissions(prefix);
 
 		snprintf(putOld, sizeof(putOld), "%s/proc", prefix);
 
@@ -766,6 +800,7 @@ pid_t spawnInitProcess(void)
 		setresuid(g_originalUid, g_originalUid, g_originalUid);
 		prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
 
+		setupUserHome();
 		setupCoredumpPattern();
 
 		// Set name to darling-init
@@ -1236,5 +1271,98 @@ void setupCoredumpPattern(void)
 		// This is how macOS saves core dumps
 		fputs("/cores/core.%p\n", f);
 		fclose(f);
+	}
+}
+
+const char* xdgDirectory(const char* name)
+{
+	static char dir[4096];
+	char* cmd = (char*) malloc(16 + strlen(name));
+
+	sprintf(cmd, "xdg-user-dir %s", name);
+
+	FILE* proc = popen(cmd, "r");
+
+	free(cmd);
+
+	if (!proc)
+		return NULL;
+
+	fgets(dir, sizeof(dir)-1, proc);
+
+	pclose(proc);
+
+	size_t len = strlen(dir);
+	if (len <= 1)
+		return NULL;
+
+	if (dir[len-1] == '\n')
+		dir[len-1] = '\0';
+	return dir;
+}
+
+void setupUserHome(void)
+{
+	char buf[4096], buf2[4096];
+
+	snprintf(buf, sizeof(buf), "%s/Users", prefix);
+
+	// Remove the old /Users symlink that may exist
+	unlink(buf);
+
+	// mkdir /Users
+	mkdir(buf, 0777);
+
+	// mkdir /Users/Shared
+	strcat(buf, "/Shared");
+	mkdir(buf, 0777);
+
+	const char* home = getenv("HOME");
+	const char* login = getlogin();
+	if (!login)
+	{
+		fprintf(stderr, "Cannot determine your user name\n");
+		exit(1);
+	}
+	if (!home)
+	{
+		fprintf(stderr, "Cannot determine your home directory\n");
+		exit(1);
+	}
+
+	snprintf(buf, sizeof(buf), "%s/Users/%s", prefix, login);
+
+	// mkdir /Users/$LOGIN
+	mkdir(buf, 0755);
+
+	snprintf(buf2, sizeof(buf2), "/Volumes/SystemRoot%s", home);
+
+	strcat(buf, "/LinuxHome");
+	unlink(buf);
+
+	// symlink /Users/$LOGIN/LinuxHome -> $HOME
+	symlink(buf2, buf);
+
+	static const char* xdgmap[][2] = {
+		{ "DESKTOP", "Desktop" },
+		{ "DOWNLOAD", "Downloads" },
+		{ "PUBLICSHARE", "Public" },
+		{ "DOCUMENTS", "Documents" },
+		{ "MUSIC", "Music" },
+		{ "PICTURES", "Pictures" },
+		{ "VIDEOS", "Movies" },
+	};
+
+	for (int i = 0; i < sizeof(xdgmap) / sizeof(xdgmap[0]); i++)
+	{
+		const char* dir = xdgDirectory(xdgmap[i][0]);
+		if (!dir)
+			continue;
+		
+		snprintf(buf2, sizeof(buf2), "/Volumes/SystemRoot%s", dir);
+		snprintf(buf, sizeof(buf), "%s/Users/%s/%s", prefix, login, xdgmap[i][1]);
+
+		unlink(buf);
+		symlink(buf2, buf);
 	}
 }

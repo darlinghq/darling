@@ -37,6 +37,7 @@ mig(mach/processor.defs)
 mig(mach/task.defs)
 mig(mach/thread_act.defs)
 mig(mach/vm_map.defs)
+mig(mach/exc.defs)
 mig(device/device.defs)
 
 set(syscall_legacy_sources
@@ -157,6 +158,8 @@ set(syscall_sources
 	${CMAKE_CURRENT_BINARY_DIR}/mach/vm_mapUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/clockUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/device/deviceUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/excServer.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/excUser.c
 	
 	mach/mach_init.c
 	mach/clock_sleep.c

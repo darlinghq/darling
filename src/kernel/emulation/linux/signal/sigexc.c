@@ -6,7 +6,7 @@
 #include <linux-syscalls/linux.h>
 #include <pthread/tsd_private.h>
 #include "signal/mach_exc.h"
-#include "signal/exc.h"
+#include "mach/exc_internal.h"
 #include "sigaltstack.h"
 #include "../mach/lkm.h"
 #include "../../../../external/lkm/api.h"
@@ -20,6 +20,7 @@
 
 static volatile bool am_i_ptraced = false;
 static void handle_rt_signal(int signum);
+static void sigexc_fake_suspend(struct linux_ucontext* ctxt);
 extern void sig_restorer(void);
 extern int getpid(void);
 
@@ -170,11 +171,20 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 		// If >0, process the signal
 		// If <0, introduce a new signal
 		int sig = info->si_value;
-		if (sig < 0)
+		if (sig == SIGNAL_THREAD_SUSPEND)
+		{
+			kern_printf("sigexc: SIGNAL_THREAD_SUSPEND");
+			sigexc_fake_suspend(ctxt);
+		}
+		else if (sig == SIGNAL_THREAD_RESUME)
+		{
+			kern_printf("sigexc: SIGNAL_THREAD_RESUME");
+		}
+		else if (sig < 0)
 		{
 			// This is only used to pass a SIGSTOP to the traced process (from the debugger)
 			// and have it passed back through the sigexc mechanism.
-			// See sys_wait4().
+			// See sys_kill().
 			sigexc_handler(-sig, NULL, (struct linux_ucontext*) ctxt);
 		}
 		else
@@ -273,99 +283,8 @@ static mach_port_t get_exc_port(int type, int* behavior)
 	return 0;
 }
 
-
-// syscall tracking
-#define LINUX_TRAP_BRKPT	1
-// single-stepping
-#define LINUX_TRAP_TRACE	2
-// ???
-#define LINUX_TRAP_BRANCH	3
-// memory watchpoint
-#define LINUX_TRAP_HWBKPT	4
-// int3 (on x86, other platforms probably use TRAP_BRKPT)
-#define LINUX_SI_KERNEL		0x80
-
-void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
+static void state_to_kernel(struct linux_ucontext* ctxt, thread_t thread)
 {
-	kern_printf("sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
-
-	if (!darling_am_i_ptraced())
-	{
-		kern_printf("sigexc: NOT TRACED!\n");
-		return;
-	}
-
-	if (linux_signum == LINUX_SIGCONT)
-		return;
-
-	// Send a Mach message to the debugger.
-	// The debugger may use ptrace(PT_THUPDATE) to change how the signal is processed.
-
-	int mach_exception, behavior;
-	long long codes[EXCEPTION_CODE_MAX] = { 0 };
-	mach_port_t port;
-	thread_t thread = mach_thread_self();
-
-	int bsd_signum = signum_linux_to_bsd(linux_signum);
-	if (bsd_signum <= 0)
-	{
-		kern_printf("sigexc: Unmapped signal!\n");
-		return;
-	}
-
-	// SIGSEGV + SIGBUS -> EXC_BAD_ACCESS
-	// SIGTRAP -> EXC_BREAKPOINT
-	// SIGILL -> EXC_BAD_INSTRUCTION
-	// SIGFPE -> EXC_ARITHMETIC
-	// * -> EXC_SOFTWARE with EXC_SOFT_SIGNAL (e.g. SIGSTOP)
-
-	switch (bsd_signum)
-	{
-		// Only real exceptions produced by the CPU get translated to these
-		// Mach exceptions. The rest comes as EXC_SOFTWARE.
-		if (info != NULL && info->si_code != 0)
-		{
-			case SIGSEGV:
-				mach_exception = EXC_BAD_ACCESS;
-				codes[0] = EXC_I386_GPFLT;
-				break;
-			case SIGBUS:
-				mach_exception = EXC_BAD_ACCESS;
-				codes[0] = EXC_I386_ALIGNFLT;
-				break;
-			case SIGILL:
-				mach_exception = EXC_BAD_INSTRUCTION;
-				codes[0] = EXC_I386_INVOP;
-				break;
-			case SIGFPE:
-				mach_exception = EXC_ARITHMETIC;
-				codes[0] = info->si_code;
-				break;
-			case SIGTRAP:
-				mach_exception = EXC_BREAKPOINT;
-				codes[0] = (info->si_code == LINUX_SI_KERNEL) ? EXC_I386_BPT : EXC_I386_SGL;
-
-				if (info->si_code == LINUX_TRAP_HWBKPT)
-				{
-					// Memory watchpoint triggered
-					struct last_triggered_watchpoint_args args;
-					if (lkm_call(NR_last_triggered_watchpoint, &args) == 0)
-					{
-						codes[1] = args.address;
-						// codes[2] = args.flags;
-					}
-				}
-				break;
-		}
-		default:
-			mach_exception = EXC_SOFTWARE;
-			codes[0] = EXC_SOFT_SIGNAL;
-			codes[1] = bsd_signum;
-	}
-
-	port = get_exc_port(mach_exception, &behavior);
-
-	// Pass register states to LKM
 #if defined(__x86_64__)
 	x86_thread_state64_t tstate;
 	x86_float_state64_t fstate;
@@ -412,50 +331,186 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	thread_set_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, x86_FLOAT_STATE32_COUNT);
 #endif
 
+}
+
+static void state_from_kernel(struct linux_ucontext* ctxt, thread_t thread)
+{
+#if defined(__x86_64__)
+	x86_thread_state64_t tstate;
+	x86_float_state64_t fstate;
+	mach_msg_type_number_t count;
+
+	count = x86_THREAD_STATE64_COUNT;
+	thread_get_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, &count);
+	count = x86_FLOAT_STATE64_COUNT;
+	thread_get_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, &count);
+
+	thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
+	float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
+	
+#elif defined(__i386__)
+	x86_thread_state32_t tstate;
+	x86_float_state32_t fstate;
+	mach_msg_type_number_t count;
+
+	count = x86_THREAD_STATE32_COUNT;
+	thread_get_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, &count);
+	count = x86_FLOAT_STATE32_COUNT;
+	thread_get_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, &count);
+
+	thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
+	float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
+#endif
+}
+
+void sigexc_fake_suspend(struct linux_ucontext* ctxt)
+{
+	if (_pthread_getspecific_direct(SIGEXC_TSD_KEY) != 0)
+		return;
+	thread_t thread = mach_thread_self();
+
+	kern_printf("sigexc_fake_suspend -> state_to_kernel\n");
+	state_to_kernel(ctxt, thread);
+
+	linux_sigset_t set = -1ll;
+	set &= ~(1ull << (SIGNAL_SIGEXC_THUPDATE-1));
+
+	LINUX_SYSCALL(__NR_rt_sigsuspend, &set, 8);
+
+	kern_printf("sigexc_fake_suspend -> state_from_kernel\n");
+	state_from_kernel(ctxt, thread);
+}
+
+// syscall tracking
+#define LINUX_TRAP_BRKPT	1
+// single-stepping
+#define LINUX_TRAP_TRACE	2
+// ???
+#define LINUX_TRAP_BRANCH	3
+// memory watchpoint
+#define LINUX_TRAP_HWBKPT	4
+// int3 (on x86, other platforms probably use TRAP_BRKPT)
+#define LINUX_SI_KERNEL		0x80
+
+void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
+{
+	kern_printf("sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
+
+	if (!darling_am_i_ptraced())
+	{
+		kern_printf("sigexc: NOT TRACED!\n");
+		return;
+	}
+
+	if (linux_signum == LINUX_SIGCONT)
+		return;
+
+	// Send a Mach message to the debugger.
+	// The debugger may use ptrace(PT_THUPDATE) to change how the signal is processed.
+
+	int mach_exception, behavior;
+	long long codes[EXCEPTION_CODE_MAX] = { 0 };
+	mach_port_t port;
+	thread_t thread = mach_thread_self();
+
+	int bsd_signum = signum_linux_to_bsd(linux_signum);
+	if (bsd_signum <= 0)
+	{
+		kern_printf("sigexc: Unmapped signal!\n");
+		return;
+	}
+
+	// SIGSEGV + SIGBUS -> EXC_BAD_ACCESS
+	// SIGTRAP -> EXC_BREAKPOINT
+	// SIGILL -> EXC_BAD_INSTRUCTION
+	// SIGFPE -> EXC_ARITHMETIC
+	// * -> EXC_SOFTWARE with EXC_SOFT_SIGNAL (e.g. SIGSTOP)
+
+	// Only real exceptions produced by the CPU get translated to these
+	// Mach exceptions. The rest comes as EXC_SOFTWARE.
+	if (info != NULL && info->si_code != 0)
+	{
+		switch (bsd_signum)
+		{	
+			case SIGSEGV:
+				mach_exception = EXC_BAD_ACCESS;
+				codes[0] = EXC_I386_GPFLT;
+				break;
+			case SIGBUS:
+				mach_exception = EXC_BAD_ACCESS;
+				codes[0] = EXC_I386_ALIGNFLT;
+				break;
+			case SIGILL:
+				mach_exception = EXC_BAD_INSTRUCTION;
+				codes[0] = EXC_I386_INVOP;
+				break;
+			case SIGFPE:
+				mach_exception = EXC_ARITHMETIC;
+				codes[0] = info->si_code;
+				break;
+			case SIGTRAP:
+				mach_exception = EXC_BREAKPOINT;
+				codes[0] = (info->si_code == LINUX_SI_KERNEL) ? EXC_I386_BPT : EXC_I386_SGL;
+
+				if (info->si_code == LINUX_TRAP_HWBKPT)
+				{
+					// Memory watchpoint triggered
+					struct last_triggered_watchpoint_args args;
+					if (lkm_call(NR_last_triggered_watchpoint, &args) == 0)
+					{
+						codes[1] = args.address;
+						// codes[2] = args.flags;
+					}
+				}
+				break;
+			default:
+				mach_exception = EXC_SOFTWARE;
+				codes[0] = EXC_SOFT_SIGNAL;
+				codes[1] = bsd_signum;
+		}
+	}
+	else
+	{
+		mach_exception = EXC_SOFTWARE;
+		codes[0] = EXC_SOFT_SIGNAL;
+		codes[1] = bsd_signum;
+	}
+
+	port = get_exc_port(mach_exception, &behavior);
+
+	// Pass register states to LKM
+	state_to_kernel(ctxt, thread);
+
 	// __simple_printf("Passing Mach exception to port %d\n", port);
 	if (port != 0)
 	{
 		_pthread_setspecific_direct(SIGEXC_TSD_KEY, bsd_signum);
 
+		kern_return_t ret;
+
 		if (behavior & MACH_EXCEPTION_CODES)
 		{
-			mach_exception_raise(port, thread, mach_task_self(), mach_exception, codes, sizeof(codes) / sizeof(codes[0]));
+			ret = mach_exception_raise(port, thread, mach_task_self(), mach_exception, codes, sizeof(codes) / sizeof(codes[0]));
 		}
 		else
 		{
 			exception_data_type_t small_codes[2] = { (exception_data_type_t) codes[0], (exception_data_type_t) codes[1] };
-			exception_raise(port, thread, mach_task_self(), mach_exception, small_codes, sizeof(small_codes) / sizeof(small_codes[0]));
+			ret = exception_raise(port, thread, mach_task_self(), mach_exception, small_codes, sizeof(small_codes) / sizeof(small_codes[0]));
+		}
+
+		if (ret == MACH_RCV_PORT_DIED || ret == MACH_SEND_INVALID_DEST)
+		{
+			kern_printf("Exception handler death? ret is 0x%x\n", ret);
+			darling_sigexc_uninstall();
 		}
 
 		bsd_signum = _pthread_getspecific_direct(SIGEXC_TSD_KEY);
+		_pthread_setspecific_direct(SIGEXC_TSD_KEY, 0);
 	}
 
 	// Get (possibly updated by GDB) register states from LKM
 	if (ctxt != NULL)
-	{
-#if defined(__x86_64__)
-		mach_msg_type_number_t count;
-
-		count = x86_THREAD_STATE64_COUNT;
-		thread_get_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, &count);
-		count = x86_FLOAT_STATE64_COUNT;
-		thread_get_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, &count);
-
-		thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
-		float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
-		
-#elif defined(__i386__)
-		mach_msg_type_number_t count;
-
-		count = x86_THREAD_STATE32_COUNT;
-		thread_get_state(thread, x86_THREAD_STATE32, (thread_state_t) &tstate, &count);
-		count = x86_FLOAT_STATE32_COUNT;
-		thread_get_state(thread, x86_FLOAT_STATE32, (thread_state_t) &fstate, &count);
-
-		thread_state_to_mcontext(&tstate, &ctxt->uc_mcontext.gregs);
-		float_state_to_mcontext(&fstate, ctxt->uc_mcontext.fpregs);
-#endif
-	}
+		state_from_kernel(ctxt, thread);
 
 	// Pass the signal to the application handler or emulate the effects of the signal if SIG_DFL is set.
 	if (bsd_signum)

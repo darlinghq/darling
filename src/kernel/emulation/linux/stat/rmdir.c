@@ -7,6 +7,7 @@
 #include "../vchroot_expand.h"
 #include <lkm/api.h>
 #include <mach/lkm.h>
+#include "../../../../../platform-include/sys/errno.h"
 
 #define LINUX_AT_REMOVEDIR	0x200
 
@@ -14,6 +15,9 @@ long sys_rmdir(const char* path)
 {
 	int ret;
 	struct vchroot_expand_args vc;
+
+	if (!path)
+		return -EFAULT;
 
 	vc.flags = 0;
 	vc.dfd = get_perthread_wd();

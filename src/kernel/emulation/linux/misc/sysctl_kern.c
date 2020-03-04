@@ -16,6 +16,7 @@
 
 enum {
 	_KERN_MSGBUF = 1000,
+	_KERN_SEMMNS = 1000,
 };
 
 static sysctl_handler(handle_msgbuf);
@@ -32,11 +33,17 @@ static sysctl_handler(handle_osversion);
 static sysctl_handler(handle_maxproc);
 static sysctl_handler(handle_netboot);
 static sysctl_handler(handle_safeboot);
+static sysctl_handler(handle_sysv_semmns);
 
 extern int _sysctl_proc(int what, int flag, struct kinfo_proc* out, unsigned long* buflen);
 extern int _sysctl_procargs(int pid, char* buf, unsigned long* buflen);
 extern int strlcpy(char* dst, const char* src, __SIZE_TYPE__ dst_size);
 extern __SIZE_TYPE__ strlen(const char* str);
+
+const struct known_sysctl sysctls_kern_sysv[] = {
+	{ .oid = _KERN_SEMMNS, .type = CTLTYPE_INT, .exttype = "I", .name = "semmns", .handler = handle_sysv_semmns },
+	{ .oid = -1 }
+};
 
 const struct known_sysctl sysctls_kern[] = {
 	{ .oid = _KERN_MSGBUF, .type = CTLTYPE_STRING, .exttype = "S", .name = "msgbuf", .handler = handle_msgbuf },
@@ -53,6 +60,7 @@ const struct known_sysctl sysctls_kern[] = {
 	{ .oid = KERN_OSRELEASE, .type = CTLTYPE_STRING, .exttype = "S", .name = "osrelease", .handler = handle_osrelease },
 	{ .oid = KERN_VERSION, .type = CTLTYPE_STRING, .exttype = "S", .name = "version", .handler = handle_version },
 	{ .oid = KERN_OSVERSION, .type = CTLTYPE_STRING, .exttype = "S", .name = "osversion", .handler = handle_osversion },
+	{ .oid = KERN_SYSV, .type = CTLTYPE_NODE, .exttype = "", .name = "sysv", .subctls = sysctls_kern_sysv },
 	{ .oid = -1 }
 };
 
@@ -220,7 +228,7 @@ sysctl_handler(handle_maxproc)
 	int value = 1024;
 	int* ovalue = (int*) old;
 	
-	if (!oldlen || *oldlen < sizeof(int))
+	if (!oldlen)
 		return -EINVAL;
 	
 	if (fd >= 0)
@@ -245,10 +253,12 @@ sysctl_handler(handle_maxproc)
 sysctl_handler(handle_netboot)
 {
 	int* ovalue = (int*) old;
-
-	if (!oldlen || *oldlen < sizeof(int))
+	if (!oldlen)
 		return -EINVAL;
-	*ovalue = 0;
+
+	if (*oldlen >= sizeof(int))
+		*ovalue = 0;
+	*oldlen = sizeof(int);
 
 	return 0;
 }
@@ -256,12 +266,24 @@ sysctl_handler(handle_netboot)
 sysctl_handler(handle_safeboot)
 {
 	int* ovalue = (int*) old;
-
-	if (!oldlen || *oldlen < sizeof(int))
+	if (!oldlen)
 		return -EINVAL;
-	*ovalue = 0;
+
+	if (*oldlen >= sizeof(int))
+		*ovalue = 0;
+	*oldlen = sizeof(int);
 
 	return 0;
 }
 
+sysctl_handler(handle_sysv_semmns)
+{
+	int* ovalue = (int*) old;
+	if (!oldlen)
+		return -EINVAL;
+	if (*oldlen >= sizeof(int))
+		*ovalue = -1;
+	*oldlen = sizeof(int);
+	return 0;
+}
 

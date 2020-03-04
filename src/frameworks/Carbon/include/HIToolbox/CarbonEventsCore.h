@@ -1,30 +1,42 @@
 #ifndef _Carbon_Carbon_Events_Core_H_
 #define _Carbon_Carbon_Events_Core_H_
 
+#include <CoreFoundation/CFBase.h>
+#include <CoreServices/MacTypes.h>
+#include <HIToolbox/Menus.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef int EventRef;
+typedef struct OpaqueEventRef* EventRef;
 typedef void* EventHandlerCallRef;
 typedef OSType EventParamType;
 
 typedef double EventTime;
-typedef uint32_t EventMask;
+typedef UInt16 EventMask;
+typedef UInt16 EventKind;
 typedef void* EventTargetRef;
 typedef OSType EventParamName;
-typedef struct EventTypeSpec { uint32_t params[2]; } EventTypeSpec;
+typedef struct EventTypeSpec { OSType eventClass; UInt32 eventKind; } EventTypeSpec;
 typedef EventTime EventTimeout;
 typedef void* EventHandlerProcPtr;
-typedef uint32_t EventAttributes;
-typedef uint32_t EventQueueRef;
+typedef UInt32 EventAttributes;
+typedef struct OpaqueEventQueueRef* EventQueueRef;
 typedef void* EventHandlerUPP;
-typedef int16_t EventPriority;
+typedef SInt16 EventPriority;
 typedef void* EventHandlerRef;
 
 
-typedef struct HICommand { uint8_t data[16]; } HICommand;
-typedef struct KeyMap { char data[16]; } KeyMap;
+typedef struct HICommand {
+	UInt32 attributes;
+	UInt32 commandID;
+	struct {
+		MenuRef menuRef;
+		MenuItemIndex menuItemIndex;
+	} menu;
+} HICommand;
+typedef UInt32 KeyMap[4];
 
 
 OSStatus CallNextEventHandler(EventHandlerCallRef a, EventRef b);

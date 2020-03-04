@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2017 Lubos Dolezel
+Copyright (C) 2017-2020 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include "xcselect.h"
 
 void printUsage(void);
@@ -75,9 +76,8 @@ int main(int argc, const char** argv)
 			}
 			else
 			{
-				printf("Please visit https://developer.apple.com/download/more/ and download\n"
-						"a package named \"Command Line Tools\".\n\n"
-						"After that, install them by running `installer -pkg file.pkg -target /`.\n");
+				int status = system("/usr/libexec/darling/clt_install.py");
+				return WEXITSTATUS(status);
 			}
 		}
 		else if (strcmp(argv[1], "-r") == 0 || strcmp(argv[1], "--reset") == 0)
@@ -160,6 +160,8 @@ void doSwitch(const char* path)
 	doReset();
 
 	umask(022);
+	mkdir("/var/db", 0755);
+	
 	if (symlink(buffer, "/var/db/xcode_select_link") != 0)
 	{
 		fprintf(stderr, "xcode-select: error: unable to create symlink: %s\n",

@@ -304,3 +304,12 @@
 [submodule "src/external/OpenAL"]
 	path = src/external/OpenAL
 	url = ../darling-openal.git
+[submodule "src/external/usertemplate"]
+	path = src/external/usertemplate
+	url = ../darling-usertemplate.git
+[submodule "src/external/libtrace"]
+	path = src/external/libtrace
+	url = ../darling-libtrace.git
+[submodule "src/external/rsync"]
+	path = src/external/rsync
+	url = ../darling-rsync.git

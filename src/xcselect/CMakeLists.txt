@@ -18,6 +18,7 @@ target_link_libraries(xcode-select system xcselect)
 
 install(TARGETS xcselect DESTINATION libexec/darling/usr/lib)
 install(TARGETS xcrun xcode-select DESTINATION libexec/darling/usr/bin)
+install(PROGRAMS clt_install.py DESTINATION libexec/darling/usr/libexec/darling)
 
 function(add_shim name require_xc)
 	add_darling_executable("${name}_shim" xcrun-shim.c)

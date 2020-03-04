@@ -56,6 +56,7 @@ target_link_libraries(system PRIVATE
 	system_malloc
 	system_c
 	system_kernel
+	system_trace
 	keymgr
 	system_m
 	system_info
@@ -90,6 +91,7 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libsystem_duct \
 	-sub_library libsystem_pthread \
 	-sub_library libsystem_platform \
+	-sub_library libsystem_trace \
 	-sub_library libdispatch \
 	-sub_library liblaunch \
 	-sub_library libremovefile \

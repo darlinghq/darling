@@ -9,6 +9,8 @@
 #include <pthread/tsd_private.h>
 #include "../ext/futex.h"
 #include "../simple.h"
+#include <sys/queue.h>
+#include <os/lock.h>
 
 #define WQ_MAX_THREADS	64
 
@@ -34,12 +36,19 @@
 #define WQ_FLAG_THREAD_KEVENT           0x00080000 /* thread is response to kevent req */
 
 static int workq_sem = WQ_MAX_THREADS; // max 64 threads in use
-static int workq_parked_lock = 1;
+static os_unfair_lock workq_parked_lock = OS_UNFAIR_LOCK_INIT;
 // static int workq_parked_threads = 0; // num spawned, but unused threads
 static int workq_parked[WQ_MAX_THREADS];
 static int workq_parked_prio[WQ_MAX_THREADS];
 
-struct parked_thread workq_parked_head = { NULL, NULL };
+TAILQ_HEAD(tailhead, parked_thread) workq_parked_head = TAILQ_HEAD_INITIALIZER(workq_parked_head);
+
+struct parked_thread
+{
+	int sem, flags;
+	struct wq_kevent_data* event;
+	TAILQ_ENTRY(parked_thread) entries;
+};
 
 extern void* pthread_get_stackaddr_np(void* pth);
 
@@ -51,6 +60,9 @@ struct timespec
 	long tv_sec;
 	long tv_nsec;
 };
+
+void __attribute__((weak)) os_unfair_lock_unlock(os_unfair_lock_t lock) {}
+void __attribute__((weak)) os_unfair_lock_lock(os_unfair_lock_t lock) {}
 
 //void* __attribute__((weak)) __attribute__((visibility("default"))) pthread_getspecific(unsigned long key) { return NULL; }
 //int __attribute__((weak)) __attribute__((visibility("default"))) pthread_setspecific(unsigned long key, const void* value) { return 1; }
@@ -100,18 +112,18 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 			struct parked_thread me;
 			void* pth;
 
-			sem_down(&workq_parked_lock, -1);
+			os_unfair_lock_lock(&workq_parked_lock);
 
 			// Semaphore locked state (wait for wakeup)
 			me.sem = 0;
 
 			// Enqueue for future WQOPS_QUEUE_REQTHREADS
-			list_add(&workq_parked_head, &me);
+			TAILQ_INSERT_HEAD(&workq_parked_head, &me, entries);
 
 			// Decrease the amount of running threads
 			sem_up(&workq_sem);
 
-			sem_up(&workq_parked_lock);
+			os_unfair_lock_unlock(&workq_parked_lock);
 
 			// Wait until someone calls WQOPS_QUEUE_REQTHREADS
 			// and wakes us up
@@ -119,17 +131,17 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 			{
 				// Make sure we haven't just been woken up before locking the queue
 				// and remove us from the queue if not.
-				sem_down(&workq_parked_lock, -1);
+				os_unfair_lock_lock(&workq_parked_lock);
 	
 				if (me.sem > 0)
 				{
-					sem_up(&workq_parked_lock);
+					os_unfair_lock_unlock(&workq_parked_lock);
 					goto wakeup;
 				}
 
-				list_remove(&workq_parked_head, &me);
+				TAILQ_REMOVE(&workq_parked_head, &me, entries);
 
-				sem_up(&workq_parked_lock);
+				os_unfair_lock_unlock(&workq_parked_lock);
 
 				// Let the thread terminate (libc will call pthread_exit)
 				return 0;
@@ -205,13 +217,13 @@ wakeup:
 				// Increase the amount of running threads
 				sem_down(&workq_sem, -1);
 
-				sem_down(&workq_parked_lock, -1);
+				os_unfair_lock_lock(&workq_parked_lock);
 
-				if (workq_parked_head.next != NULL)
+				if (workq_parked_head.tqh_first != NULL)
 				{
 					struct parked_thread* thread;
 
-					thread = workq_parked_head.next;
+					thread = workq_parked_head.tqh_first;
 
 					// Resume an existing thread
 					// __simple_printf("Resuming thread %d\n", id);
@@ -220,16 +232,16 @@ wakeup:
 					thread->event = wq_event;
 
 					// Dequeue
-					list_remove(&workq_parked_head, thread);
+					TAILQ_REMOVE(&workq_parked_head, thread, entries);
 
 					// Resume the thread
 					sem_up(&thread->sem);
-					sem_up(&workq_parked_lock);
+					os_unfair_lock_unlock(&workq_parked_lock);
 
 					continue;
 				}
 
-				sem_up(&workq_parked_lock);
+				os_unfair_lock_unlock(&workq_parked_lock);
 
 				// __simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
 				wq_event_pending = wq_event;
@@ -285,37 +297,6 @@ void sem_up(int* sem)
 		*sem = 1;
 		__linux_futex(sem, FUTEX_WAKE, 1, NULL, 0, 0);
 	}
-}
-
-static void list_add(struct parked_thread* head, struct parked_thread* item)
-{
-	if (head->next != NULL)
-	{
-		item->prev = head->next->prev;
-		item->next = head->next;
-		head->next->prev = item;
-	}
-	else
-	{
-		item->next = NULL;
-		item->prev = NULL;
-	}
-	head->next = item;
-
-	if (head->prev == NULL)
-		head->prev = item;
-}
-
-static void list_remove(struct parked_thread* head, struct parked_thread* item)
-{
-	if (item->prev != NULL)
-		item->prev->next = item->next;
-	if (item->next != NULL)
-		item->next->prev = item->prev;
-	if (head->next == item)
-		head->next = item->next;
-	if (head->prev == item)
-		head->prev = item->prev;
 }
 
 #define __PTHREAD_PRIORITY_CBIT_USER_INTERACTIVE 0x20

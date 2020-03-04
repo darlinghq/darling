@@ -1,5 +1,8 @@
 FUNCTION(use_ld64 target)
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
+		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/x86_64-apple-darwin11-ld ")
+
+	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ \
 -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
 -target x86_64-apple-darwin11 -Wl,-Z \
@@ -25,6 +28,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/system/libsystem_duct.dylib:${CMAKE_BINARY_DIR}/src/duct/src/libsystem_duct_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_pthread.dylib:${CMAKE_BINARY_DIR}/src/external/libpthread/src/libsystem_pthread_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_platform.dylib:${CMAKE_BINARY_DIR}/src/external/libplatform/libplatform_firstpass.dylib \
+-Wl,-dylib_file,/usr/lib/system/libsystem_trace.dylib:${CMAKE_BINARY_DIR}/src/external/libtrace/libsystem_trace_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libcorecrypto.dylib:${CMAKE_BINARY_DIR}/src/external/corecrypto/libcorecrypto_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_coretls.dylib:${CMAKE_BINARY_DIR}/src/external/coretls/libsystem_coretls.dylib \
 -Wl,-dylib_file,/usr/lib/system/libcommonCrypto.dylib:${CMAKE_BINARY_DIR}/src/external/commoncrypto/libcommonCrypto.dylib \
@@ -36,6 +40,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libobjc.A.dylib:${CMAKE_BINARY_DIR}/src/external/objc4/runtime/libobjc.A.dylib \
 -Wl,-dylib_file,/usr/lib/libicucore.A.dylib:${CMAKE_BINARY_DIR}/src/external/icu/icuSources/libicucore.A.dylib \
 -Wl,-dylib_file,/usr/lib/libncurses.5.4.dylib:${CMAKE_BINARY_DIR}/src/ncurses/ncurses/libncurses.5.4.dylib \
+-Wl,-dylib_file,/usr/lib/libDiagnosticMessagesClient.dylib:${CMAKE_BINARY_DIR}/src/libDiagnosticMessagesClient/libDiagnosticMessagesClient.dylib \
 -Wl,-dylib_file,/usr/lib/libSystem.B.dylib:${CMAKE_BINARY_DIR}/src/libsystem/libSystem.B.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Python.framework/Versions/2.6/Python:${CMAKE_BINARY_DIR}/src/external/python/2.6/Python-2.6.9/Python \
 -Wl,-dylib_file,/System/Library/Frameworks/Python.framework/Versions/2.7/Python:${CMAKE_BINARY_DIR}/src/external/python/2.7/Python-2.7.10/Python \
@@ -97,6 +102,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/CoreGraphics \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreText/CoreText \
 -Wl,-dylib_file,/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO:${CMAKE_BINARY_DIR}/src/ImageIO/ImageIO \
+-Wl,-dylib_file,/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication:${CMAKE_BINARY_DIR}/src/LocalAuthentication/LocalAuthentication \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo:${CMAKE_BINARY_DIR}/src/CoreVideo/CoreVideo")
 
 	add_dependencies(${target} x86_64-apple-darwin11-ld)

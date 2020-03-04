@@ -3,6 +3,7 @@
 
 enum {
 	_OID_TO_NAME = 1,
+	// TODO: implement 2 - for listing?
 	_NAME_TO_OID = 3,
 	_GET_DATA_TYPE = 4,
 };

@@ -94,6 +94,7 @@
 #include "signal/sigreturn.h"
 #include "signal/sigprocmask.h"
 #include "signal/sigsuspend.h"
+#include "signal/sigpending.h"
 #include "signal/sigwait.h"
 #include "process/vfork.h"
 #include "process/wait4.h"
@@ -169,8 +170,12 @@
 #include "bsdthread/pthread_canceled.h"
 #include "hfs/stub.h"
 #include "xattr/getattrlistbulk.h"
+#include "xattr/getattrlist.h"
+#include "xattr/fgetattrlist.h"
 #include "xattr/getattrlistat.h"
 #include "xattr/setattrlistat.h"
+#include "xattr/setattrlist.h"
+#include "xattr/fsetattrlist.h"
 #include "xattr/listxattr.h"
 #include "xattr/flistxattr.h"
 #include "xattr/removexattr.h"
@@ -244,6 +249,7 @@ void* __bsd_syscall_table[600] = {
 	[48] = sys_sigprocmask,
 	[49] = sys_getlogin,
 	[50] = sys_setlogin,
+	[52] = sys_sigpending,
 	[53] = sys_sigaltstack,
 	[54] = sys_ioctl,
 	[55] = sys_reboot,

@@ -122,7 +122,7 @@ void spawnShell(int fd)
 	int rv;
 	struct pollfd pfd[2];
 	char** argv = NULL;
-	int argc = 1;
+	int argc = 2;
 	struct msghdr msg;
 	struct iovec iov;
 	char cmsgbuf[CMSG_SPACE(sizeof(int)) * 3];
@@ -130,8 +130,9 @@ void spawnShell(int fd)
 
 	bool read_cmds = true;
 
-	argv = (char**) malloc(sizeof(char*) * 2);
+	argv = (char**) malloc(sizeof(char*) * 3);
 	argv[0] = "/bin/bash";
+	argv[1] = "--login";
 
 	// Read commands from client
 	while (read_cmds)

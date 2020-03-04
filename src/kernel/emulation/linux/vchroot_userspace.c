@@ -1,5 +1,6 @@
 
 #include <lkm/api.h>
+#include "vchroot_expand.h"
 #ifdef TEST
 #	include <unistd.h>
 #	include <sys/stat.h>
@@ -170,6 +171,9 @@ int vchroot_expand(struct vchroot_expand_args* args)
 	ctxt.follow = !!(args->flags & VCHROOT_FOLLOW);
 
 	const char* input_path = args->path;
+
+	if (*input_path == '\0')
+		return -LINUX_ENOENT;
 
 	if (*input_path != '/')
 	{
@@ -454,6 +458,23 @@ int vchroot_fdpath(struct vchroot_fdpath_args* args)
 #ifndef TEST
 	__simple_printf("fdpath %d -> %s\n", args->fd, args->path);
 #endif
+
+	return 0;
+}
+
+int vchroot_unexpand(struct vchroot_unexpand_args* args)
+{
+	if (memcmp(args->path, prefix_path, prefix_path_len) == 0)
+	{
+		int bytes = strlen(args->path + prefix_path_len) + 1;
+		memmove(args->path, args->path + prefix_path_len, bytes);
+	}
+	else
+	{
+		int bytes = strlen(args->path) + 1;
+		memmove(args->path + sizeof(EXIT_PATH) - 1, args->path, bytes);
+		memcpy(args->path, EXIT_PATH, sizeof(EXIT_PATH) - 1);
+	}
 
 	return 0;
 }
