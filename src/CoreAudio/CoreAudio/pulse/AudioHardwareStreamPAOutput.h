@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2015-2016 Lubos Dolezel
+Copyright (C) 2020 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,19 +17,24 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef AUDIOHARDWARESTREAM_H
-#define AUDIOHARDWARESTREAM_H
+#ifndef AUDIOHARDWARESTREAMPAOUTPUT_H
+#define AUDIOHARDWARESTREAMPAOUTPUT_H
+#include "AudioHardwareStreamPA.h"
 
-class AudioHardwareStream
+class AudioHardwareStreamPAOutput : public AudioHardwareStreamPA
 {
 public:
-	AudioHardwareStream();
-	virtual ~AudioHardwareStream();
+	AudioHardwareStreamPAOutput(AudioDeviceIOProc callback, void* clientData);
+	~AudioHardwareStreamPAOutput();
 
-	virtual void stop(void(^cbDone)()) = 0;
+	void stop(void(^cbDone)()) override;
 private:
-
+	void start();
+	static void paStreamWriteCB(pa_stream* s, size_t length, void* self);
+private:
+	pa_stream* m_stream;
+	void(^m_cbDone)();
 };
 
-#endif /* AUDIOHARDWARESTREAM_H */
+#endif /* AUDIOHARDWARESTREAMPA_H */
 

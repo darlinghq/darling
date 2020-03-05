@@ -70,7 +70,7 @@ private:
 	static OSStatus getPropertyCFString(CFStringRef str, UInt32* ioDataSize, void* outData);
 	static OSStatus getPropertyString(CFStringRef str, UInt32* ioDataSize, void* outData);
 protected:
-	virtual AudioHardwareStream* createStream(AudioDeviceIOProcID procID) = 0;
+	virtual AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) = 0;
 protected:
 	std::mutex m_procMutex;
 	std::map<AudioDeviceIOProcID, std::pair<AudioDeviceIOProc, void*>> m_proc;
@@ -79,7 +79,7 @@ protected:
 	std::map<AudioDeviceIOProcID, std::unique_ptr<AudioHardwareStream>> m_streams;
 	uint32_t m_bufferSize = 8192;
 
-	CFStringRef m_name = CFSTR("unknown"), m_uid = CFSTR("unknown"), m_manufacturer = CFSTR("unknown");
+	CFStringRef m_name = CFSTR("unknown"), m_uid = CFSTR("unknown"), m_manufacturer = CFSTR("unknown"), m_modelUid = CFSTR("unknown");
 };
 
 #endif /* AUDIOHARDWAREIMPL_H */

@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2015-2016 Lubos Dolezel
+Copyright (C) 2015-2020 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,33 +19,41 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <CoreAudio/AudioHardware.h>
 #include "AudioHardwareImpl.h"
-#include "AudioHardwareImplPA.h"
+#include "pulse/AudioHardwareImplPA.h"
+#include "pulse/AudioHardwareImplPAOutput.h"
 #include <CoreServices/MacErrors.h>
 #include <dispatch/dispatch.h>
 #include <memory>
+#include <unordered_map>
 #include "stub.h"
 
-static std::unique_ptr<AudioHardwareImpl> g_systemObject;
+static std::unordered_map<AudioObjectID, std::unique_ptr<AudioHardwareImpl>> g_objects;
 
-static AudioHardwareImpl* GetSystemObject()
+static void initObjects()
 {
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
 		// TODO: Or ALSA
-		g_systemObject.reset(new AudioHardwareImplPA);
+		g_objects.insert(std::make_pair(kAudioObjectSystemObject, std::make_unique<AudioHardwareImplPA>()));
+		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 1, std::make_unique<AudioHardwareImplPAOutput>()));
+		// TODO: PA input
 	});
-	
-	return g_systemObject.get();
 }
 
 static AudioHardwareImpl* GetObject(AudioObjectID objID)
 {
-	if (objID == kAudioObjectSystemObject)
-		return GetSystemObject();
+	initObjects();
 
-	// TODO: For ALSA, support more objects for every device
-	
-	return nullptr;
+	auto it = g_objects.find(objID);
+	if (it == g_objects.end())
+		return nullptr;
+
+	return it->second.get();
+}
+
+static AudioHardwareImpl* GetSystemObject()
+{
+	return GetObject(kAudioObjectSystemObject);
 }
 
 void AudioObjectShow(AudioObjectID inObjectID)
@@ -165,7 +173,7 @@ OSStatus AudioDeviceGetProperty(AudioDeviceID inDevice, UInt32 inChannel, Boolea
 {
 	AudioObjectPropertyAddress aopa = {
 		inPropertyID,
-		kAudioObjectPropertyScopeGlobal,
+		isInput ? kAudioDevicePropertyScopeInput : kAudioDevicePropertyScopeOutput, // kAudioObjectPropertyScopeGlobal
 		kAudioObjectPropertyElementMaster
 	};
 
@@ -176,7 +184,7 @@ OSStatus AudioDeviceGetPropertyInfo(AudioDeviceID inDevice, UInt32 inChannel, Bo
 {
 	AudioObjectPropertyAddress aopa = {
 		inPropertyID,
-		kAudioObjectPropertyScopeGlobal,
+		isInput ? kAudioDevicePropertyScopeInput : kAudioDevicePropertyScopeOutput, // kAudioObjectPropertyScopeGlobal
 		kAudioObjectPropertyElementMaster
 	};
 

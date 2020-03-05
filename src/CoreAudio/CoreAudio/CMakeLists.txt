@@ -7,8 +7,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 set(coreaudio_sources
 	AudioHardware.cpp
     AudioHardwareImpl.cpp
-    AudioHardwareImplPA.cpp
-	AudioHardwareStream.cpp
+    pulse/AudioHardwareImplPA.cpp
+    pulse/AudioHardwareImplPAOutput.cpp
+    AudioHardwareStream.cpp
+    pulse/AudioHardwareStreamPA.cpp
+    pulse/AudioHardwareStreamPAOutput.cpp
+    pulse/PADispatchMainLoop.cpp
 )
 
 add_framework(CoreAudio
@@ -22,5 +26,6 @@ add_framework(CoreAudio
     DEPENDENCIES
         system
         cxx
-		CoreFoundation
+        CoreFoundation
+        pulse
 )

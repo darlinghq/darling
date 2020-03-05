@@ -116,6 +116,17 @@ enum
     kAudioDevicePropertyClockDevice                     = 'apcd'
 };
 
+enum {
+    kAudioDevicePropertyScopeInput = kAudioObjectPropertyScopeInput,
+    kAudioDevicePropertyScopeOutput = kAudioObjectPropertyScopeOutput,
+    kAudioDevicePropertyScopePlayThrough = kAudioObjectPropertyScopePlayThrough,
+};
+
+enum {
+    kAudioDevicePropertyVolumeScalar = 'volm',
+    kAudioDevicePropertyMute = 'mute',
+};
+
 typedef AudioObjectPropertySelector AudioHardwarePropertyID;
 typedef AudioObjectPropertySelector AudioDevicePropertyID;
 

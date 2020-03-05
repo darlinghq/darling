@@ -17,23 +17,15 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef AUDIOHARDWAREIMPLPA_H
-#define AUDIOHARDWAREIMPLPA_H
-#include "AudioHardwareImpl.h"
+#include "AudioHardwareStreamPA.h"
 
-class AudioHardwareImplPA : public AudioHardwareImpl
+AudioHardwareStreamPA::AudioHardwareStreamPA(AudioDeviceIOProc callback, void* clientData)
+: m_callback(callback), m_clientData(clientData)
 {
-public:
-	AudioHardwareImplPA();
 
-	OSStatus getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
-		const void* inQualifierData, UInt32* ioDataSize, void* outData) override;
-	
-	OSStatus setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
-		const void* inQualifierData, UInt32 inDataSize, const void* inData) override;
-protected:
-	AudioHardwareStream* createStream(AudioDeviceIOProcID procID) override;
-};
+}
 
-#endif
+AudioHardwareStreamPA::~AudioHardwareStreamPA()
+{
 
+}

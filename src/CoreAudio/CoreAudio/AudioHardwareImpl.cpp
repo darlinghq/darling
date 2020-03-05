@@ -72,11 +72,17 @@ OSStatus AudioHardwareImpl::start(AudioDeviceIOProcID inProcID,
 		AudioTimeStamp* ioRequestedStartTime, UInt32 inFlags)
 {
 	AudioHardwareStream* stream;
+	std::lock_guard<std::mutex> guard(m_procMutex);
 	
 	if (m_streams.find(inProcID) != m_streams.end())
 		return paramErr;
+
+	auto it = m_proc.find(inProcID);
 	
-	stream = createStream(inProcID);
+	if (it == m_proc.end())
+		return paramErr;
+	
+	stream = createStream(it->second.first, it->second.second);
 	if (!stream)
 		return kAudioHardwareBadStreamError;
 	m_streams.emplace(std::make_pair(inProcID, std::unique_ptr<AudioHardwareStream>(stream)));
@@ -92,6 +98,10 @@ OSStatus AudioHardwareImpl::stop(AudioDeviceIOProcID inProcID)
 	if (it == m_streams.end())
 		return kAudioHardwareNotRunningError;
 	
+	AudioHardwareStream* stream = it->second.release();
+	stream->stop(^{
+		delete stream;
+	});
 	m_streams.erase(it);
 	return noErr;
 }
@@ -111,6 +121,13 @@ OSStatus AudioHardwareImpl::getPropertyDataSize(const AudioObjectPropertyAddress
 
 OSStatus AudioHardwareImpl::isPropertySettable(const AudioObjectPropertyAddress* inAddress, Boolean* outIsSettable)
 {
+	switch (inAddress->mSelector)
+	{
+		case kAudioDevicePropertyVolumeScalar:
+			*outIsSettable = true;
+			return kAudioHardwareNoError;
+	}
+
 	*outIsSettable = false;
 	return kAudioHardwareUnknownPropertyError;
 }
@@ -144,8 +161,11 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 			return getPropertyString(m_manufacturer, ioDataSize, outData);
 		case kAudioDevicePropertyDeviceManufacturerCFString:
 			return getPropertyCFString(m_manufacturer, ioDataSize, outData);
+		// NOTE: This is related to [NSSound setPlaybackDeviceIdentifier]
 		case kAudioDevicePropertyDeviceUID: // returns CFStringRef
 			return getPropertyCFString(m_uid, ioDataSize, outData);
+		case kAudioDevicePropertyModelUID:
+		return getPropertyCFString(m_modelUid, ioDataSize, outData);
 		case kAudioDevicePropertyDeviceNameCFString:
 			return getPropertyCFString(m_name, ioDataSize, outData);
 		case kAudioDevicePropertyDeviceName: // return char[]
@@ -168,7 +188,38 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 			*ioDataSize = sizeof(AudioValueRange) * 1;
 			return kAudioHardwareNoError;
 		}
-		
+		case kAudioDevicePropertyDeviceIsAlive: // int
+		case kAudioDevicePropertyDeviceIsRunning:
+		{
+			if (int* b = static_cast<int*>(outData); outData && *ioDataSize >= sizeof(int))
+				*b = 1;
+			*ioDataSize = sizeof(int);
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyIsHidden:
+		{
+			if (int* b = static_cast<int*>(outData); outData && *ioDataSize >= sizeof(int))
+				*b = 0;
+			*ioDataSize = sizeof(int);
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyPreferredChannelsForStereo:
+		{
+			if (UInt32* b = static_cast<UInt32*>(outData); outData && *ioDataSize >= sizeof(UInt32)*2)
+			{
+				b[0] = 0;
+				b[1] = 1;
+			}
+			*ioDataSize = sizeof(UInt32)*2;
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyVolumeScalar:
+		{
+			if (Float32* v = static_cast<Float32*>(outData); outData && *ioDataSize >= sizeof(Float32))
+				*v = 1.0f; // TODO: Ask for real volume from PulseAudio
+			*ioDataSize = sizeof(Float32);
+			return kAudioHardwareNoError;
+		}
 	}
 	return kAudioHardwareUnknownPropertyError;
 }
@@ -177,7 +228,7 @@ OSStatus AudioHardwareImpl::getPropertyCFString(CFStringRef str, UInt32* ioDataS
 {
 	if (CFStringRef* ref = static_cast<CFStringRef*>(outData); ref && *ioDataSize >= sizeof(CFStringRef))
 	{
-		*ref = str;
+		*ref = (CFStringRef) CFRetain(str);
 	}
 	*ioDataSize = sizeof(CFStringRef);
 	return noErr;
@@ -201,11 +252,17 @@ OSStatus AudioHardwareImpl::setPropertyData(const AudioObjectPropertyAddress* in
 		{
 			return setBufferSize(*static_cast<const uint32_t*>(inData));
 		}
+		case kAudioDevicePropertyVolumeScalar:
+		{
+			// TODO: Implement setting the volume
+			// Note: qualifier contains the channel ID (from kAudioDevicePropertyPreferredChannelsForStereo)
+			return kAudioHardwareNoError;
+		}
 		// These make sense only for ALSA, but I find it ridiculous that these properties can be set...
 		case kAudioHardwarePropertyDefaultOutputDevice:
-			return noErr;
+			return kAudioHardwareNoError;
 		case kAudioHardwarePropertyDefaultInputDevice:
-			return noErr;
+			return kAudioHardwareNoError;
 	}
 	return kAudioHardwareUnknownPropertyError;
 }

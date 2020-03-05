@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2015-2016 Lubos Dolezel
+Copyright (C) 2020 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,19 +17,22 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef AUDIOHARDWARESTREAM_H
-#define AUDIOHARDWARESTREAM_H
+#ifndef AUDIOHARDWARESTREAMPA_H
+#define AUDIOHARDWARESTREAMPA_H
+#include "../AudioHardwareStream.h"
+#include <pulse/pulseaudio.h>
+#include <CoreAudio/CoreAudioTypes.h>
+#include <CoreAudio/AudioHardware.h>
 
-class AudioHardwareStream
+class AudioHardwareStreamPA : public AudioHardwareStream
 {
 public:
-	AudioHardwareStream();
-	virtual ~AudioHardwareStream();
-
-	virtual void stop(void(^cbDone)()) = 0;
-private:
-
+	AudioHardwareStreamPA(AudioDeviceIOProc callback, void* clientData);
+	~AudioHardwareStreamPA();
+protected:
+	AudioDeviceIOProc m_callback;
+	void* m_clientData;
 };
 
-#endif /* AUDIOHARDWARESTREAM_H */
+#endif /* AUDIOHARDWARESTREAMPA_H */
 
