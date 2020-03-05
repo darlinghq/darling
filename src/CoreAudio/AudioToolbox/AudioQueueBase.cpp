@@ -1,5 +1,5 @@
 #include "AudioQueueBase.h"
-#include <util/debug.h>
+#include "stub.h"
 #include <CoreServices/MacErrors.h>
 
 AudioQueue::AudioQueue(const AudioStreamBasicDescription* format, void* userData,

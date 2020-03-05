@@ -7,7 +7,7 @@
 #include <sstream>
 #include <memory>
 #include <cstring>
-#include <util/debug.h>
+#include "stub.h"
 #include <objc/runtime.h>
 
 extern "C" char*** _NSGetArgv(void);
@@ -71,7 +71,7 @@ OSStatus AudioUnitPA::initOutput()
 	
 	if (m_stream == nullptr)
 	{
-		ERROR() << "pa_stream_new() failed";
+		// ERROR() << "pa_stream_new() failed";
 		return kAudioUnitErr_FailedInitialization;
 	}
 	
@@ -93,15 +93,15 @@ int AudioUnitPA::cardIndex() const
 void AudioUnitPA::paStreamStateCB(pa_stream* s, void*)
 {
 	int state = pa_stream_get_state(s);
-	TRACE() << "state=" << state;
+	//TRACE() << "state=" << state;
 	
 	switch (state)
 	{
 		case PA_STREAM_FAILED:
-			ERROR() << "PA stream error: " << pa_strerror(pa_context_errno(pa_stream_get_context(s)));
+			//ERROR() << "PA stream error: " << pa_strerror(pa_context_errno(pa_stream_get_context(s)));
 			break;
 		case PA_STREAM_READY:
-			LOG << "PA stream is ready\n";
+			//LOG << "PA stream is ready\n";
 			break;
 	}
 } 
@@ -124,11 +124,11 @@ void AudioUnitPA::requestDataForPlayback(size_t length)
 
 	if (!m_stream)
 	{
-		std::cerr << "No stream?!\n";
+		// std::cerr << "No stream?!\n";
 		return;
 	}
 	
-	TRACE() << "m_started=" << m_started;
+	//TRACE() << "m_started=" << m_started;
 	
 	if (!m_started)
 	{
@@ -210,7 +210,7 @@ void AudioUnitPA::requestDataForPlayback(size_t length)
 	
 	if (err != noErr || bufs->mBuffers[0].mDataByteSize == 0)
 	{
-		ERROR() << "Render callback failed with error " << err;
+		// ERROR() << "Render callback failed with error " << err;
 		
 		// Fill with silence, the error may be temporary
 		UInt32 bytes = length;
@@ -244,7 +244,7 @@ void AudioUnitPA::requestDataForPlayback(size_t length)
 		}
 	}
 	
-	LOG << "Rendering...\n";
+	//LOG << "Rendering...\n";
 	m_lastRenderError = AudioUnitRender(this, &flags, &ts, kOutputBus, length / config.mBytesPerFrame, bufs);
 	
 	operator delete(bufs);
@@ -280,7 +280,7 @@ OSStatus AudioUnitPA::renderInterleavedOutput(AudioUnitRenderActionFlags *ioActi
 		if (!bytes)
 			break;
 		
-		LOG << "AudioUnitPA::renderInterleavedOutput(): data=" << ioData->mBuffers[i].mData << ", bytes=" << bytes << std::endl;
+		//LOG << "AudioUnitPA::renderInterleavedOutput(): data=" << ioData->mBuffers[i].mData << ", bytes=" << bytes << std::endl;
 		pa_stream_write(m_stream, ((char*) ioData->mBuffers[i].mData) + framesSoFar * config.mBytesPerFrame, bytes,
 				nullptr, 0, PA_SEEK_RELATIVE);
 		
@@ -468,7 +468,7 @@ void AudioUnitPA::initializePA()
 		pa_mainloop_free(m_mainloop);
 		m_mainloop = nullptr;
 		
-		ERROR() << e.what();
+		// ERROR() << e.what();
 	}
 }
 
@@ -519,7 +519,7 @@ void AudioUnitPA::paContextStateCB(pa_context* c, void* priv)
 {
 	Completion* comp = static_cast<Completion*>(priv);
 	
-	TRACE() << pa_context_get_state(c);
+	// TRACE() << pa_context_get_state(c);
 	switch (pa_context_get_state(c))
 	{
 		case PA_CONTEXT_READY:

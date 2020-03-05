@@ -2,29 +2,27 @@
 #include "AudioUnit.h"
 #include "AudioOutputUnitComponent.h"
 #include "AudioUnitALSA.h"
-#include <log.h>
-#include <trace.h>
-#include <alsa/asoundlib.h>
+#include "stub.h"
 #include <CoreServices/MacErrors.h>
 
 OSStatus AudioUnitInitialize(AudioUnit inUnit)
 {
-	return inUnit->init();
+	return ((AudioUnitComponent*)inUnit)->init();
 }
 
 OSStatus AudioUnitUninitialize(AudioUnit inUnit)
 {
-	return inUnit->deinit();
+	return ((AudioUnitComponent*)inUnit)->deinit();
 }
 
 OSStatus AudioUnitAddRenderNotify(AudioUnit inUnit, AURenderCallback inProc, void* opaque)
 {
-	return inUnit->addRenderNotify(inProc, opaque);
+	return ((AudioUnitComponent*)inUnit)->addRenderNotify(inProc, opaque);
 }
 
 OSStatus AudioUnitRemoveRenderNotify(AudioUnit inUnit, AURenderCallback inProc, void* opaque)
 {
-	return inUnit->removeRenderNotify(inProc, opaque);
+	return ((AudioUnitComponent*)inUnit)->removeRenderNotify(inProc, opaque);
 }
 
 OSStatus AudioUnitRender(AudioUnit inUnit, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inOutputBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData)
@@ -35,39 +33,39 @@ OSStatus AudioUnitRender(AudioUnit inUnit, AudioUnitRenderActionFlags *ioActionF
 		return paramErr;
 	
 	*ioActionFlags |= kAudioUnitRenderAction_PreRender;
-	status = inUnit->notifyListeners(ioActionFlags, inTimeStamp, inOutputBusNumber, inNumberFrames, ioData);
+	status = ((AudioUnitComponent*)inUnit)->notifyListeners(ioActionFlags, inTimeStamp, inOutputBusNumber, inNumberFrames, ioData);
 	
 	if (status != noErr)
 		return status;
 	
 	*ioActionFlags &= ~kAudioUnitRenderAction_PreRender;
-	status = inUnit->render(ioActionFlags, inTimeStamp, inOutputBusNumber, inNumberFrames, ioData);
+	status = ((AudioUnitComponent*)inUnit)->render(ioActionFlags, inTimeStamp, inOutputBusNumber, inNumberFrames, ioData);
 	
 	if (status != noErr)
 		*ioActionFlags |= kAudioUnitRenderAction_PostRenderError;
 	
 	*ioActionFlags |= kAudioUnitRenderAction_PostRender;
-	return inUnit->notifyListeners(ioActionFlags, inTimeStamp, inOutputBusNumber, inNumberFrames, ioData);
+	return ((AudioUnitComponent*)inUnit)->notifyListeners(ioActionFlags, inTimeStamp, inOutputBusNumber, inNumberFrames, ioData);
 }
 
 OSStatus AudioUnitReset(AudioUnit inUnit, AudioUnitScope inScope, AudioUnitElement inElement)
 {
-	return inUnit->reset(inScope, inElement);
+	return ((AudioUnitComponent*)inUnit)->reset(inScope, inElement);
 }
 
 OSStatus AudioUnitGetProperty(AudioUnit inUnit, AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, void* outData, UInt32 *ioDataSize)
 {
-	return inUnit->getProperty(inID, inScope, inElement, outData, ioDataSize);
+	return ((AudioUnitComponent*)inUnit)->getProperty(inID, inScope, inElement, outData, ioDataSize);
 }
 
 OSStatus AudioUnitGetPropertyInfo(AudioUnit inUnit, AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, UInt32 *outDataSize, Boolean *outWritable)
 {
-	return inUnit->getPropertyInfo(inID, inScope, inElement, outDataSize, outWritable);
+	return ((AudioUnitComponent*)inUnit)->getPropertyInfo(inID, inScope, inElement, outDataSize, outWritable);
 }
 
 OSStatus AudioUnitSetProperty(AudioUnit inUnit, AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, const void *inData, UInt32 inDataSize)
 {
-	return inUnit->setProperty(inID, inScope, inElement, inData, inDataSize);
+	return ((AudioUnitComponent*)inUnit)->setProperty(inID, inScope, inElement, inData, inDataSize);
 }
 
 OSStatus AudioOutputUnitStart(AudioUnit inUnit)

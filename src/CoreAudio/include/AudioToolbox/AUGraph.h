@@ -2,6 +2,7 @@
 #define AUGRAPH_H
 #include <AudioToolbox/AudioUnit.h>
 #include <AudioToolbox/AudioUnitProperties.h>
+#include <AudioToolbox/AUComponent.h>
 
 #ifdef __cplusplus
 extern "C" {

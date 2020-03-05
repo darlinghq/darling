@@ -2,14 +2,12 @@
 #include "AUComponent.h"
 #include "AudioUnitALSA.h"
 #include "AudioUnitPA.h"
-#include <util/debug.h>
 #include <alsa/asoundlib.h>
 #include <CoreServices/MacErrors.h>
+#include "stub.h"
 
 AudioComponent AudioComponentFindNext(AudioComponent inAComponent, AudioComponentDescription *inDesc)
 {
-	TRACE2(inAComponent, inDesc);
-
 	int index = -1;
 
 	if (inDesc->componentType != kAudioUnitType_Output && inDesc->componentType != kAudioUnitType_Mixer)
@@ -18,8 +16,10 @@ AudioComponent AudioComponentFindNext(AudioComponent inAComponent, AudioComponen
 	if (inAComponent != nullptr)
 		index = GetComponentIndex(inAComponent);
 
+#if defined(ENABLE_ALSA)
 	if (snd_card_next(&index) || index == -1)
 		return nullptr;
+#endif
 
 	return CreateComponent(kComponentTypeAudioUnit, index);
 }
@@ -48,8 +48,6 @@ Boolean AudioComponentInstanceCanDo(AudioComponentInstance inInstance, SInt16 in
 
 OSStatus AudioComponentInstanceDispose(AudioComponentInstance inInstance)
 {
-	TRACE1(inInstance);
-
 	delete inInstance;
 	return noErr;
 }
@@ -61,8 +59,6 @@ AudioComponent AudioComponentInstanceGetComponent(AudioComponentInstance inInsta
 
 OSStatus AudioComponentInstanceNew(AudioComponent inComponent, AudioComponentInstance *outInstance)
 {
-	TRACE1(inComponent);
-
 #if defined(ENABLE_PULSEAUDIO)
 	*outInstance = new AudioUnitPA;
 #elif defined(ENABLE_ALSA)
@@ -82,8 +78,12 @@ OSStatus AudioComponentCopyName(AudioComponent inComponent, CFStringRef *outName
 	if (!outName)
 		return paramErr;
 	
+#if defined(ENABLE_ALSA)
 	if (snd_card_get_longname(index, &name))
 		return paramErr;
+#elif defined(ENABLE_PULSEAUDIO)
+	name = strdup("PulseAudio");
+#endif
 	
 	*outName = CFStringCreateWithCString(nullptr, name, kCFStringEncodingUTF8);
 	free(name);
@@ -94,6 +94,8 @@ OSStatus AudioComponentCopyName(AudioComponent inComponent, CFStringRef *outName
 UInt32 AudioComponentCount(AudioComponentDescription *inDesc)
 {
 	UInt32 count = 0;
+
+#if defined(ENABLE_ALSA)
 	int index = -1;
 	
 	// Is there a better way?
@@ -104,6 +106,9 @@ UInt32 AudioComponentCount(AudioComponentDescription *inDesc)
 			count++;
 	}
 	while (index != -1);
+#elif defined(ENABLE_PULSEAUDIO)
+	count = 1;
+#endif
 	
 	return count;
 }

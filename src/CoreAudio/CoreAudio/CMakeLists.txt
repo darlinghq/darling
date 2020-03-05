@@ -8,7 +8,7 @@ set(coreaudio_sources
 	AudioHardwareStream.cpp
 )
 
-add_framework(
+add_framework(CoreAudio
 	FAT
     CURRENT_VERSION
     VERSION "A"

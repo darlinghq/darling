@@ -1,8 +1,10 @@
 #include "AudioConverterImpl.h"
 #include <CoreServices/MacErrors.h>
-#include <util/debug.h>
 #include <stdexcept>
 #include <cstring>
+#include <cassert>
+#include <iostream>
+#include "stub.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -49,7 +51,7 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 
 	if (idIn == AV_CODEC_ID_NONE || idOut == AV_CODEC_ID_NONE)
 	{
-		LOG << "AudioConverter::create(): Unsupported codec, format in = " << std::hex << inSourceFormat->mFormatID << ", out = " << inDestinationFormat->mFormatID << std::dec << std::endl;
+		// LOG << "AudioConverter::create(): Unsupported codec, format in = " << std::hex << inSourceFormat->mFormatID << ", out = " << inDestinationFormat->mFormatID << std::dec << std::endl;
 		return paramErr;
 	}
 
@@ -58,7 +60,7 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 
 	if (!codecIn || !codecOut)
 	{
-		LOG << "AudioConverter::create(): avcodec_find_*() failed, format in = " << std::hex << inSourceFormat->mFormatID << ", out = " << inDestinationFormat->mFormatID << std::dec << std::endl;
+		// LOG << "AudioConverter::create(): avcodec_find_*() failed, format in = " << std::hex << inSourceFormat->mFormatID << ", out = " << inDestinationFormat->mFormatID << std::dec << std::endl;
 		return paramErr;
 	}
 
@@ -71,13 +73,13 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 		cIn->channels = inSourceFormat->mChannelsPerFrame;
 		cIn->sample_rate = inSourceFormat->mSampleRate;
 		
-		LOG << "Converting from PCM with " << cIn->channels << " channels at " << cIn->sample_rate << " Hz\n";
+		// LOG << "Converting from PCM with " << cIn->channels << " channels at " << cIn->sample_rate << " Hz\n";
 	}
 	
 	if (avcodec_open2((*out)->m_decoder, codecIn, nullptr) < 0)
 	{
 		delete *out;
-		LOG << "AudioConverter::create(): avcodec_open() failed, format in = " << std::hex << inSourceFormat->mFormatID << ", out = " << inDestinationFormat->mFormatID << std::dec << std::endl;
+		// LOG << "AudioConverter::create(): avcodec_open() failed, format in = " << std::hex << inSourceFormat->mFormatID << ", out = " << inDestinationFormat->mFormatID << std::dec << std::endl;
 
 		return paramErr;
 	}
@@ -130,14 +132,14 @@ void AudioConverter::allocateBuffers()
 
 	if (!audioSampleBuffer)
 	{
-		ERROR() << "Failed to allocate sample buffer";
+		std::cerr << "AudioConverter::allocateBuffers(): Failed to allocate sample buffer\n";
 		//return paramErr; // TODO
 	}
 
 	// Setup the data pointers in the AVFrame
 	if (avcodec_fill_audio_frame(m_audioFrame, m_encoder->channels, m_encoder->sample_fmt, (const uint8_t*) audioSampleBuffer, audioSampleBuffer_size, 0 ) < 0)
 	{
-		ERROR() << "Could not set up audio frame";
+		std::cerr << "AudioConverter::allocateBuffers(): Could not set up audio frame\n";
 		//return paramErr; // TODO
 	}
 }
@@ -261,7 +263,7 @@ OSStatus AudioConverter::feedInput(AudioConverterComplexInputDataProc dataProc, 
 	m_avpkt.size = bufferList.mBuffers[0].mDataByteSize;
 	m_avpkt.data = (uint8_t*) bufferList.mBuffers[0].mData;
 	
-	LOG << "dataProc() returned " << m_avpkt.size << " bytes of data\n";
+	// LOG << "dataProc() returned " << m_avpkt.size << " bytes of data\n";
 	
 	return noErr;
 }
@@ -314,7 +316,7 @@ OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc
 			{
 				if (m_avpktOutUsed < m_avpktOut.size)
 				{
-					LOG << "case 1 (used " << m_avpktOutUsed << " from " << m_avpktOut.size << ")\n";
+					// LOG << "case 1 (used " << m_avpktOutUsed << " from " << m_avpktOut.size << ")\n";
 					// Feed output from previous conversion
 					while (m_avpktOutUsed < m_avpktOut.size && newSize < origSize)
 					{
@@ -333,14 +335,14 @@ OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc
 				}
 				else if (!m_resampler || avresample_available(m_resampler) == 0)
 				{
-					LOG << "case 2\n";
+					// LOG << "case 2\n";
 					feedDecoder(dataProc, opaque, srcaudio);
 					if (avresample_available(m_resampler) == 0)
 						goto end;
 				}
 				else
 				{
-					LOG << "case 3\n";
+					// LOG << "case 3\n";
 					feedEncoder();
 				}
 			}
@@ -355,7 +357,7 @@ end:
 	}
 	catch (const std::exception& e)
 	{
-		ERROR() << "Exception: " << e.what();
+		// ERROR() << "Exception: " << e.what();
 #ifdef HAVE_AV_FRAME_ALLOC
 		av_frame_free(&srcaudio);
 #else
@@ -364,7 +366,7 @@ end:
 	}
 	catch (OSStatus err)
 	{
-		ERROR() << "OSStatus error: " << err;
+		// ERROR() << "OSStatus error: " << err;
 #ifdef HAVE_AV_FRAME_ALLOC
 		av_frame_free(&srcaudio);
 #else
@@ -441,7 +443,7 @@ void AudioConverter::feedEncoder()
 		m_avpktOut.size = 0;
 		m_avpktOutUsed = 0;
 
-		LOG << "Got " << avail << " samples\n";
+		// LOG << "Got " << avail << " samples\n";
 		err = avcodec_fill_audio_frame(m_audioFrame, m_encoder->channels,
 				m_encoder->sample_fmt, output, avail * m_destinationFormat.mChannelsPerFrame * (m_destinationFormat.mBitsPerChannel / 8),
 				m_destinationFormat.mChannelsPerFrame * (m_destinationFormat.mBitsPerChannel / 8));

@@ -1,5 +1,5 @@
 #include "AudioQueueOutput.h"
-#include <util/debug.h>
+#include "stub.h"
 #include <CoreServices/MacErrors.h>
 
 AudioQueueOutput::AudioQueueOutput(const AudioStreamBasicDescription *inFormat,

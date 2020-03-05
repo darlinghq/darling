@@ -1,8 +1,8 @@
-#include "darling-config.h"
+#include <iostream>
 #include "AudioUnitALSA.h"
 #include "AudioUnitProperties.h"
 #include <CoreServices/MacErrors.h>
-#include <util/debug.h>
+#include "stub.h"
 #include <sstream>
 #include <stdexcept>
 #include <memory>
@@ -18,7 +18,7 @@ AudioUnitALSA::AudioUnitALSA(int cardIndex, char* cardName)
 {
 	static dispatch_once_t pred;
 	dispatch_once(&pred, ^{
-		g_audioQueue = dispatch_queue_create("org.darlinghw.audiounit", nullptr);
+		g_audioQueue = dispatch_queue_create("org.darlinghq.audiounit", nullptr);
 	});
 }
 
@@ -145,7 +145,7 @@ void AudioUnitALSA::initOutput()
 		if (err < 0)
 			throwAlsaError("Failed to set sample rate", err);
 		
-		LOG << "Channel count: " << int(alsaConfig.mChannelsPerFrame) << std::endl;
+		// LOG << "Channel count: " << int(alsaConfig.mChannelsPerFrame) << std::endl;
 		err = snd_pcm_hw_params_set_channels(m_pcmOutput, hw_params, alsaConfig.mChannelsPerFrame);
 		if (err < 0)
 			throwAlsaError("Failed to set channel count", err);
@@ -237,7 +237,7 @@ OSStatus AudioUnitALSA::init()
 	}
 	catch (const std::exception& e)
 	{
-		ERROR() << e.what();
+		// ERROR() << e.what();
 		
 		deinit();
 		return kAudioUnitErr_FailedInitialization;
@@ -272,8 +272,8 @@ void AudioUnitALSA::processAudioEvent(struct pollfd origPoll, int event)
 	pfd.revents = event;
 
 	err = snd_pcm_poll_descriptors_revents(m_pcmOutput, &pfd, 1, &revents);
-	if (err < 0)
-		ERROR() << "snd_pcm_poll_descriptors_revents() failed: " << snd_strerror(err);
+	// if (err < 0)
+	// 	ERROR() << "snd_pcm_poll_descriptors_revents() failed: " << snd_strerror(err);
 	
 	if (revents & POLLIN)
 		pushDataFromInput();
@@ -294,7 +294,7 @@ void AudioUnitALSA::requestDataForPlayback()
 	const AudioStreamBasicDescription& config = m_config[kOutputBus].first;
 	UInt32 cc = config.mChannelsPerFrame;
 	
-	TRACE();
+	// TRACE();
 	
 	memset(&ts, 0, sizeof(ts));
 	
@@ -358,7 +358,7 @@ void AudioUnitALSA::requestDataForPlayback()
 	
 	if (err != noErr)
 	{
-		ERROR() << "Render callback failed with error " << err;
+		// ERROR() << "Render callback failed with error " << err;
 		
 		// Fill with silence, the error may be temporary
 		UInt32 bytes = config.mBytesPerFrame * SAMPLE_PERIOD;
@@ -488,7 +488,7 @@ OSStatus AudioUnitALSA::renderInterleavedOutput(AudioUnitRenderActionFlags *ioAc
 	
 	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
 	{
-		LOG << "Writing " << ioData->mBuffers[i].mDataByteSize << " bytes into sound card\n";
+		// LOG << "Writing " << ioData->mBuffers[i].mDataByteSize << " bytes into sound card\n";
 		
 		sampleCount = std::min<UInt32>(ioData->mBuffers[i].mDataByteSize / config.mBytesPerFrame, inNumberFrames - framesSoFar);
 		framesSoFar += sampleCount;
@@ -502,18 +502,18 @@ do_write:
 		{
 			if (wr == -EINTR || wr == -EPIPE)
 			{
-				LOG << "Recovering PCM\n";
+				// LOG << "Recovering PCM\n";
 				snd_pcm_recover(m_pcmOutput, wr, false);
 				goto do_write;
 			}
 			else
 			{
-				ERROR() << "snd_pcm_writei() failed: " << snd_strerror(wr);
+				// ERROR() << "snd_pcm_writei() failed: " << snd_strerror(wr);
 				return kAudioUnitErr_NoConnection;
 			}
 		}
 		else if (wr < sampleCount)
-			ERROR() << "snd_pcm_writei(): not all data written?";
+			;// ERROR() << "snd_pcm_writei(): not all data written?";
 	}
 	
 	return noErr;
@@ -527,7 +527,7 @@ OSStatus AudioUnitALSA::renderPlanarOutput(AudioUnitRenderActionFlags *ioActionF
 	
 	if (ioData->mNumberBuffers != config.mChannelsPerFrame)
 	{
-		ERROR() << "Incorrect buffer count for planar audio, only " << ioData->mNumberBuffers;
+		// ERROR() << "Incorrect buffer count for planar audio, only " << ioData->mNumberBuffers;
 		return paramErr;
 	}
 	
@@ -536,7 +536,7 @@ OSStatus AudioUnitALSA::renderPlanarOutput(AudioUnitRenderActionFlags *ioActionF
 	{
 		if (size != ioData->mBuffers[i].mDataByteSize)
 		{
-			ERROR() << "Bad buffer size in buffer " << i;
+			// ERROR() << "Bad buffer size in buffer " << i;
 			return paramErr;
 		}
 	}
@@ -552,18 +552,18 @@ do_write:
 	{
 		if (wr == -EINTR || wr == -EPIPE)
 		{
-			LOG << "Recovering PCM\n";
+			// LOG << "Recovering PCM\n";
 			snd_pcm_recover(m_pcmOutput, wr, false);
 			goto do_write;
 		}
 		else
 		{
-			ERROR() << "snd_pcm_writen() failed: " << snd_strerror(wr);
+			// ERROR() << "snd_pcm_writen() failed: " << snd_strerror(wr);
 			return kAudioUnitErr_NoConnection;
 		}
 	}
 	else if (wr < sampleCount)
-		ERROR() << "snd_pcm_writen(): not all data written?";
+		;// ERROR() << "snd_pcm_writen(): not all data written?";
 	
 	return noErr;
 }
@@ -586,7 +586,7 @@ OSStatus AudioUnitALSA::renderInterleavedInput(AudioUnitRenderActionFlags *ioAct
 	
 	for (UInt32 i = 0; i < ioData->mNumberBuffers; i++)
 	{
-		LOG << "Reading up to " << ioData->mBuffers[i].mDataByteSize << " bytes from sound card\n";
+		// LOG << "Reading up to " << ioData->mBuffers[i].mDataByteSize << " bytes from sound card\n";
 		
 		sampleCount = ioData->mBuffers[i].mDataByteSize / config.mBytesPerFrame;
 
@@ -601,7 +601,7 @@ do_write:
 			}
 			else
 			{
-				ERROR() << "snd_pcm_writei() failed: " << snd_strerror(wr);
+				// ERROR() << "snd_pcm_writei() failed: " << snd_strerror(wr);
 				return kAudioUnitErr_NoConnection;
 			}
 		}
@@ -620,7 +620,7 @@ OSStatus AudioUnitALSA::renderPlanarInput(AudioUnitRenderActionFlags *ioActionFl
 	
 	if (ioData->mNumberBuffers != config.mChannelsPerFrame)
 	{
-		ERROR() << "Incorrect buffer count for planar audio, only " << ioData->mNumberBuffers;
+		// ERROR() << "Incorrect buffer count for planar audio, only " << ioData->mNumberBuffers;
 		return paramErr;
 	}
 	
@@ -629,7 +629,7 @@ OSStatus AudioUnitALSA::renderPlanarInput(AudioUnitRenderActionFlags *ioActionFl
 	{
 		if (size != ioData->mBuffers[i].mDataByteSize)
 		{
-			ERROR() << "Bad buffer size in buffer " << i;
+			// ERROR() << "Bad buffer size in buffer " << i;
 			return paramErr;
 		}
 	}
@@ -650,7 +650,7 @@ do_write:
 		}
 		else
 		{
-			ERROR() << "snd_pcm_writen() failed: " << snd_strerror(wr);
+			// ERROR() << "snd_pcm_writen() failed: " << snd_strerror(wr);
 			return kAudioUnitErr_NoConnection;
 		}
 	}
@@ -679,7 +679,7 @@ void AudioUnitALSA::startOutput()
 	if (snd_pcm_poll_descriptors(m_pcmOutput, pollfds.get(), count) != count)
 		throw std::runtime_error("snd_pcm_poll_descriptors() failed");
 	
-	LOG << "ALSA descriptor count: " << count << std::endl;
+	// LOG << "ALSA descriptor count: " << count << std::endl;
 	startDescriptors(pollfds.get(), count);
 }
 
@@ -728,7 +728,7 @@ OSStatus AudioUnitALSA::start()
 {
 	int err;
 	
-	TRACE();
+	// TRACE();
 	
 	try
 	{
@@ -746,7 +746,7 @@ OSStatus AudioUnitALSA::start()
 		if (m_pcmOutput)
 			snd_pcm_drop(m_pcmOutput);
 		
-		ERROR() << e.what();
+		// ERROR() << e.what();
 		return kAudioUnitErr_FailedInitialization;
 	}
 	

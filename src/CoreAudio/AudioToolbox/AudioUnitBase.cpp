@@ -2,7 +2,7 @@
 #include "AudioUnitProperties.h"
 #include "AudioUnitRenderer.h"
 #include <CoreServices/MacErrors.h>
-#include <util/debug.h>
+#include "stub.h"
 #include <cstring>
 
 AudioUnitComponent::AudioUnitComponent(std::initializer_list<CFStringRef> elements)
@@ -80,7 +80,7 @@ OSStatus AudioUnitComponent::getPropertyInfo(AudioUnitPropertyID prop, AudioUnit
 
 OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, const void* data, UInt32 dataSize)
 {
-	TRACE5(prop, scope, elem, data, dataSize);
+	// TRACE5(prop, scope, elem, data, dataSize);
 
 	switch (prop)
 	{
@@ -177,7 +177,7 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 
 OSStatus AudioUnitComponent::getProperty(AudioUnitPropertyID prop, AudioUnitScope scope, AudioUnitElement elem, void* data, UInt32* dataSize)
 {
-	TRACE5(prop, scope, elem, data, dataSize);
+	// TRACE5(prop, scope, elem, data, dataSize);
 
 	switch (prop)
 	{

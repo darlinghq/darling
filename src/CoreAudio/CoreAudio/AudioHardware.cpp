@@ -21,6 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareImpl.h"
 #include <CoreServices/MacErrors.h>
 #include <memory>
+#include "stub.h"
 
 static std::unique_ptr<AudioHardwareImpl> g_systemObject;
 
@@ -60,7 +61,7 @@ Boolean AudioObjectHasProperty(AudioObjectID inObjectID,
 {
 	AudioHardwareImpl* obj = GetObject(inObjectID);
 	if (!obj)
-		return kAudioHardwareBadObjectError;
+		return 0;
 	
 	return obj->hasProperty(inAddress);
 }
@@ -141,6 +142,7 @@ OSStatus AudioHardwareUnload(void)
 
 OSStatus AudioHardwareCreateAggregateDevice(CFDictionaryRef, AudioObjectID* outDeviceID)
 {
+	STUB();
 	if (outDeviceID)
 		*outDeviceID = 0;
 	
@@ -149,11 +151,19 @@ OSStatus AudioHardwareCreateAggregateDevice(CFDictionaryRef, AudioObjectID* outD
 
 OSStatus AudioHardwareDestroyAggregateDevice(AudioObjectID inDeviceID)
 {
+	STUB();
 	return unimpErr;
 }
 
 OSStatus AudioHardwareGetProperty(AudioHardwarePropertyID inPropId, UInt32* ioPropertyDataSize, void* outPropertyData)
 {
+	STUB();
+	return unimpErr;
+}
+
+OSStatus AudioHardwareGetPropertyInfo(AudioHardwarePropertyID inPropertyID, UInt32 *outSize, Boolean *outWritable)
+{
+	STUB();
 	return unimpErr;
 }
 

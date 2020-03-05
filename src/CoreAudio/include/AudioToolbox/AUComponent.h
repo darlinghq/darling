@@ -3,13 +3,21 @@
 #include <MacTypes.h>
 #include <CoreServices/Components.h>
 #include <CoreFoundation/CFString.h>
-#include <AudioToolbox/AUGraph.h>
+//#include <AudioToolbox/AUGraph.h>
 
-class AudioUnitComponent;
+// class AudioUnitComponent;
 
 typedef Component AudioComponent;
 typedef ComponentInstance AudioComponentInstance;
-typedef ComponentDescription AudioComponentDescription;
+// typedef ComponentDescription AudioComponentDescription;
+
+typedef struct AudioComponentDescription {
+    OSType              componentType;
+    OSType              componentSubType;
+    OSType              componentManufacturer;
+    UInt32              componentFlags;
+    UInt32              componentFlagsMask;
+} AudioComponentDescription;
 
 enum
 {
