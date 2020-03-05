@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef AUDIOHARDWAREIMPL_H
 #define AUDIOHARDWAREIMPL_H
 #include <CoreAudio/AudioHardware.h>
+#include <CoreFoundation/CFString.h>
 #include <map>
 #include <mutex>
 #include "AudioHardwareStream.h"
@@ -57,13 +58,17 @@ public:
 		AudioTimeStamp* ioRequestedStartTime, UInt32 inFlags);
 	virtual OSStatus stop(AudioDeviceIOProcID inProcID);
 	
-	virtual OSStatus getCurrentTime(AudioTimeStamp* outTime) = 0;
+	virtual OSStatus getCurrentTime(AudioTimeStamp* outTime);
 	
 	virtual OSStatus translateTime(const AudioTimeStamp* inTime,
-		AudioTimeStamp* outTime) = 0;
+		AudioTimeStamp* outTime);
 	
 	virtual OSStatus getNearestStartTime(AudioTimeStamp* ioRequestedStartTime,
-		UInt32 inFlags) = 0;
+		UInt32 inFlags);
+	virtual OSStatus setBufferSize(uint32_t bufferSize);
+private:
+	static OSStatus getPropertyCFString(CFStringRef str, UInt32* ioDataSize, void* outData);
+	static OSStatus getPropertyString(CFStringRef str, UInt32* ioDataSize, void* outData);
 protected:
 	virtual AudioHardwareStream* createStream(AudioDeviceIOProcID procID) = 0;
 protected:
@@ -72,6 +77,9 @@ protected:
 	int m_nextProcId = 1;
 	
 	std::map<AudioDeviceIOProcID, std::unique_ptr<AudioHardwareStream>> m_streams;
+	uint32_t m_bufferSize = 8192;
+
+	CFStringRef m_name = CFSTR("unknown"), m_uid = CFSTR("unknown"), m_manufacturer = CFSTR("unknown");
 };
 
 #endif /* AUDIOHARDWAREIMPL_H */

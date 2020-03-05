@@ -176,6 +176,7 @@ typedef AudioDeviceIOProc AudioDeviceIOProcID;
 OSStatus AudioDeviceCreateIOProcID(AudioObjectID inDevice,
 		AudioDeviceIOProc inProc, void* inClientData,
 		AudioDeviceIOProcID* outIOProcID);
+OSStatus AudioDeviceAddIOProc(AudioDeviceID inDevice, AudioDeviceIOProc inProc, void *inClientData);
 
 #ifdef __BLOCKS__
 
@@ -191,6 +192,7 @@ OSStatus AudioDeviceCreateIOProcIDWithBlock(AudioDeviceIOProcID* outIOProcID,
 
 OSStatus AudioDeviceDestroyIOProcID(AudioObjectID inDevice,
 		AudioDeviceIOProcID inIOProcID);
+OSStatus AudioDeviceRemoveIOProc(AudioDeviceID inDevice, AudioDeviceIOProc inProc);
 
 OSStatus AudioDeviceStart(AudioObjectID inDevice, AudioDeviceIOProcID inProcID);
 
@@ -208,6 +210,7 @@ struct AudioHardwareIOProcStreamUsage
 
 OSStatus AudioDeviceGetProperty(AudioDeviceID inDevice, UInt32 inChannel, Boolean isInput, AudioDevicePropertyID inPropertyID, UInt32* ioPropertyDataSize, void* outPropertyData);
 OSStatus AudioDeviceGetPropertyInfo(AudioDeviceID inDevice, UInt32 inChannel, Boolean isInput, AudioDevicePropertyID inPropertyID, UInt32* outSize, Boolean* outWritable);
+OSStatus AudioDeviceSetProperty(AudioDeviceID inDevice, const AudioTimeStamp *inWhen, UInt32 inChannel, Boolean isInput, AudioDevicePropertyID inPropertyID, UInt32 inPropertyDataSize, const void *inPropertyData);
 
 OSStatus AudioDeviceGetCurrentTime(AudioObjectID inDevice, AudioTimeStamp* outTime);
 

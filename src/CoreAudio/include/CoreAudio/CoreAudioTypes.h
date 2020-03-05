@@ -7,7 +7,7 @@
 typedef Float32 AudioSampleType;
 typedef Float32 AudioUnitSampleType;
 
-struct AudioStreamBasicDescription
+typedef struct 
 {
 	Float64 mSampleRate;
 	UInt32 mFormatID;
@@ -18,43 +18,49 @@ struct AudioStreamBasicDescription
 	UInt32 mChannelsPerFrame;
 	UInt32 mBitsPerChannel;
 	UInt32 mReserved;
-};
+} AudioStreamBasicDescription;
 
-struct AudioClassDescription
+typedef struct
 {
 	OSType mType;
 	OSType mSubType;
 	OSType mManufacturer;
-};
+} AudioClassDescription;
 
-struct AudioBuffer
+typedef struct
 {
 	UInt32 mNumberChannels;
 	UInt32 mDataByteSize;
 	void* mData;
-};
+} AudioBuffer;
 
-struct AudioBufferList
+typedef struct
 {
 	UInt32 mNumberBuffers;
 	AudioBuffer mBuffers[1];
-};
+} AudioBufferList;
 
-struct AudioStreamPacketDescription
+typedef struct
+{
+   Float64 mMinimum;
+   Float64 mMaximum;
+} AudioValueRange;
+
+typedef struct
 {
 	SInt64 mStartOffset;
 	UInt32 mVariableFramesInPacket; // 0 for constant streams
 	UInt32 mDataByteSize;
-};
+} AudioStreamPacketDescription;
 
-struct SMPTETime
+typedef struct
 {
 	SInt64 mSubframes, mSubframeDivisor;
 	UInt32 mCounter, mType, mFlags;
 	SInt16 mHours, mMinutes, mSeconds, mFrames;
-};
+} SMPTETime;
 
-struct AudioTimeStamp
+typedef struct
 {
 	Float64 mSampleTime;
 	UInt64 mHostTime;
@@ -62,7 +68,7 @@ struct AudioTimeStamp
 	UInt64 mWordClockTime;
 	SMPTETime mSMPTETime;
 	UInt32 mFlags, mReserved;
-};
+} AudioTimeStamp;
 
 enum
 {

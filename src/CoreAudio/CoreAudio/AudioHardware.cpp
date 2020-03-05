@@ -19,7 +19,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <CoreAudio/AudioHardware.h>
 #include "AudioHardwareImpl.h"
+#include "AudioHardwareImplPA.h"
 #include <CoreServices/MacErrors.h>
+#include <dispatch/dispatch.h>
 #include <memory>
 #include "stub.h"
 
@@ -27,16 +29,11 @@ static std::unique_ptr<AudioHardwareImpl> g_systemObject;
 
 static AudioHardwareImpl* GetSystemObject()
 {
-	if (!g_systemObject)
-	{
-		static std::mutex singleLock;
-		singleLock.lock();
-		
-		if (!g_systemObject)
-			g_systemObject.reset(nullptr); // TODO: create ALSA or PA here
-		
-		singleLock.unlock();
-	}
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		// TODO: Or ALSA
+		g_systemObject.reset(new AudioHardwareImplPA);
+	});
 	
 	return g_systemObject.get();
 }
@@ -45,6 +42,8 @@ static AudioHardwareImpl* GetObject(AudioObjectID objID)
 {
 	if (objID == kAudioObjectSystemObject)
 		return GetSystemObject();
+
+	// TODO: For ALSA, support more objects for every device
 	
 	return nullptr;
 }
@@ -136,7 +135,6 @@ OSStatus AudioObjectRemovePropertyListener(AudioObjectID inObjectID,
 
 OSStatus AudioHardwareUnload(void)
 {
-	g_systemObject.reset(nullptr);
 	return noErr;
 }
 
@@ -157,14 +155,61 @@ OSStatus AudioHardwareDestroyAggregateDevice(AudioObjectID inDeviceID)
 
 OSStatus AudioHardwareGetProperty(AudioHardwarePropertyID inPropId, UInt32* ioPropertyDataSize, void* outPropertyData)
 {
-	STUB();
-	return unimpErr;
+	if (!ioPropertyDataSize)
+		return paramErr;
+
+	return AudioDeviceGetProperty(kAudioObjectSystemObject, 0, false, inPropId, ioPropertyDataSize, outPropertyData);
+}
+
+OSStatus AudioDeviceGetProperty(AudioDeviceID inDevice, UInt32 inChannel, Boolean isInput, AudioDevicePropertyID inPropertyID, UInt32* ioPropertyDataSize, void* outPropertyData)
+{
+	AudioObjectPropertyAddress aopa = {
+		inPropertyID,
+		kAudioObjectPropertyScopeGlobal,
+		kAudioObjectPropertyElementMaster
+	};
+
+	return AudioObjectGetPropertyData(inDevice, &aopa, 0, nullptr, ioPropertyDataSize, outPropertyData);
+}
+
+OSStatus AudioDeviceGetPropertyInfo(AudioDeviceID inDevice, UInt32 inChannel, Boolean isInput, AudioDevicePropertyID inPropertyID, UInt32* outSize, Boolean* outWritable)
+{
+	AudioObjectPropertyAddress aopa = {
+		inPropertyID,
+		kAudioObjectPropertyScopeGlobal,
+		kAudioObjectPropertyElementMaster
+	};
+
+	OSStatus status;
+	if (outSize)
+	{
+		status = AudioObjectGetPropertyDataSize(inDevice, &aopa, 0, nullptr, outSize);
+		if (status != noErr)
+			return status;
+	}
+
+	if (outWritable)
+	{
+		status = AudioObjectIsPropertySettable(inDevice, &aopa, outWritable);
+	}
+	return status;
+}
+
+OSStatus AudioDeviceSetProperty(AudioDeviceID inDevice, const AudioTimeStamp *inWhen, UInt32 inChannel,
+	Boolean isInput, AudioDevicePropertyID inPropertyID, UInt32 inPropertyDataSize, const void *inPropertyData)
+{
+	AudioObjectPropertyAddress aopa = {
+		inPropertyID,
+		kAudioObjectPropertyScopeGlobal,
+		kAudioObjectPropertyElementMaster
+	};
+
+	return AudioObjectSetPropertyData(inDevice, &aopa, 0, nullptr, inPropertyDataSize, inPropertyData);
 }
 
 OSStatus AudioHardwareGetPropertyInfo(AudioHardwarePropertyID inPropertyID, UInt32 *outSize, Boolean *outWritable)
 {
-	STUB();
-	return unimpErr;
+	return AudioDeviceGetPropertyInfo(kAudioObjectSystemObject, 0, false, inPropertyID, outSize, outWritable);
 }
 
 OSStatus AudioDeviceCreateIOProcID(AudioObjectID inDevice,
@@ -178,6 +223,14 @@ OSStatus AudioDeviceCreateIOProcID(AudioObjectID inDevice,
 	return obj->createIOProcID(inProc, inClientData, outIOProcID);
 }
 
+OSStatus AudioDeviceAddIOProc(AudioDeviceID inDevice, AudioDeviceIOProc inProc, void *inClientData)
+{
+	AudioHardwareImpl* obj = GetObject(inDevice);
+	if (!obj)
+		return kAudioHardwareBadObjectError;
+	return obj->createIOProcID(inProc, inClientData, nullptr);
+}
+
 OSStatus AudioDeviceDestroyIOProcID(AudioObjectID inDevice,
 		AudioDeviceIOProcID inIOProcID)
 {
@@ -186,6 +239,15 @@ OSStatus AudioDeviceDestroyIOProcID(AudioObjectID inDevice,
 		return kAudioHardwareBadObjectError;
 	
 	return obj->destroyIOProcID(inIOProcID);
+}
+
+OSStatus AudioDeviceRemoveIOProc(AudioDeviceID inDevice, AudioDeviceIOProc inProc)
+{
+	AudioHardwareImpl* obj = GetObject(inDevice);
+	if (!obj)
+		return kAudioHardwareBadObjectError;
+	
+	return obj->destroyIOProcID(AudioDeviceIOProcID(inProc));
 }
 
 OSStatus AudioDeviceStart(AudioObjectID inDevice, AudioDeviceIOProcID inProcID)
