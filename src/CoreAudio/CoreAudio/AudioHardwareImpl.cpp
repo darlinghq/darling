@@ -138,7 +138,7 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 				asbd->mBytesPerFrame = UInt32(asbd->mBytesPerPacket = asbd->mChannelsPerFrame * asbd->mSampleRate * asbd->mBitsPerChannel / 8);
 			}
 			*ioDataSize = sizeof(AudioStreamBasicDescription);
-			return noErr;
+			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyDeviceManufacturer:
 			return getPropertyString(m_manufacturer, ioDataSize, outData);
@@ -156,7 +156,7 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 				*flt = 44100;
 
 			*ioDataSize = sizeof(Float64);
-			return noErr;
+			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyAvailableNominalSampleRates: // AudioValueRange[]
 		{
@@ -166,7 +166,7 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 				avr->mMaximum = 44100;
 			}
 			*ioDataSize = sizeof(AudioValueRange) * 1;
-			return noErr;
+			return kAudioHardwareNoError;
 		}
 		
 	}

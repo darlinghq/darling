@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AudioHardwareImplPA.h"
+#include "stub.h"
 
 AudioHardwareImplPA::AudioHardwareImplPA()
 {
@@ -40,14 +41,14 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 				*devId = kAudioObjectSystemObject;
 			}
 			*ioDataSize = sizeof(AudioDeviceID);
-			break;
+			return kAudioHardwareNoError;
 		case kAudioHardwarePropertyDefaultOutputDevice: // returns AudioDeviceID
 			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
 			{
 				*devId = kAudioObjectSystemObject;
 			}
 			*ioDataSize = sizeof(AudioDeviceID);
-			break;
+			return kAudioHardwareNoError;
 		case kAudioHardwarePropertyDevices:
 		{
 			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
@@ -55,7 +56,7 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 				devId[0] = kAudioObjectSystemObject;
 			}
 			*ioDataSize = sizeof(AudioDeviceID) * 1;
-			break;
+			return kAudioHardwareNoError;
 		}
 		// END kAudioObjectSystemObject properties
 
@@ -77,7 +78,7 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 			}
 
 			*ioDataSize = size;
-			break;
+			return kAudioHardwareNoError;
 		}
 		
 	}
@@ -94,5 +95,6 @@ OSStatus AudioHardwareImplPA::setPropertyData(const AudioObjectPropertyAddress* 
 AudioHardwareStream* AudioHardwareImplPA::createStream(AudioDeviceIOProcID procID)
 {
 	// TODO
+	STUB();
 	return nullptr;
 }
