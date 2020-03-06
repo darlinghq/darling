@@ -20,12 +20,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef AUDIOHARDWAREIMPLPA_H
 #define AUDIOHARDWAREIMPLPA_H
 #include "../AudioHardwareImpl.h"
-#include <pulse/pulseaudio.h>
+#include "PADispatchMainLoop.h"
+#include <memory>
+
+class PADispatchMainLoop;
 
 class AudioHardwareImplPA : public AudioHardwareImpl
 {
 public:
-	AudioHardwareImplPA();
+	AudioHardwareImplPA(AudioObjectID myId);
 
 	OSStatus getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32* ioDataSize, void* outData) override;
@@ -38,6 +41,7 @@ protected:
 	AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) override;
 private:
 	static pa_context* m_context;
+	static std::unique_ptr<PADispatchMainLoop> m_loop;
 };
 
 #endif

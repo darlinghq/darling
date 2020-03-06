@@ -24,7 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 class AudioHardwareStreamPAOutput : public AudioHardwareStreamPA
 {
 public:
-	AudioHardwareStreamPAOutput(AudioDeviceIOProc callback, void* clientData);
+	AudioHardwareStreamPAOutput(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData);
 	~AudioHardwareStreamPAOutput();
 
 	void stop(void(^cbDone)()) override;

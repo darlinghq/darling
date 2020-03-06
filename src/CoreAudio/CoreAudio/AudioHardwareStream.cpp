@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2015-2016 Lubos Dolezel
+Copyright (C) 2015-2020 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,12 +18,17 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AudioHardwareStream.h"
+#include "AudioHardwareImpl.h"
 
-AudioHardwareStream::AudioHardwareStream()
+AudioHardwareStream::AudioHardwareStream(AudioHardwareImpl* hw)
+: m_hw(hw)
 {
+	m_bufferSize = hw->bufferSize();
+	m_buffer = new uint8_t[m_bufferSize];
 }
 
 AudioHardwareStream::~AudioHardwareStream()
 {
+	delete m_buffer;
 }
 

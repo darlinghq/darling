@@ -124,6 +124,9 @@ enum {
 
 enum {
     kAudioDevicePropertyVolumeScalar = 'volm',
+    kAudioDevicePropertyVolumeDecibels = 'vold',
+    kAudioDevicePropertyVolumeDecibelsToScalar = 'db2v',
+    kAudioDevicePropertyVolumeScalarToDecibels = 'v2db',
     kAudioDevicePropertyMute = 'mute',
 };
 

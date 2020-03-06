@@ -20,7 +20,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareImplPAOutput.h"
 #include "AudioHardwareStreamPAOutput.h"
 
-AudioHardwareImplPAOutput::AudioHardwareImplPAOutput()
+AudioHardwareImplPAOutput::AudioHardwareImplPAOutput(AudioObjectID myId)
+: AudioHardwareImplPA(myId)
 {
 	m_uid = CFSTR("PulseAudio:Output");
 }
@@ -70,5 +71,5 @@ OSStatus AudioHardwareImplPAOutput::setPropertyData(const AudioObjectPropertyAdd
 
 AudioHardwareStream* AudioHardwareImplPAOutput::createStream(AudioDeviceIOProc callback, void* clientData)
 {
-	return new AudioHardwareStreamPAOutput(callback, clientData);
+	return new AudioHardwareStreamPAOutput(this, callback, clientData);
 }

@@ -23,7 +23,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 #include <CoreServices/MacErrors.h>
 
-AudioHardwareImpl::AudioHardwareImpl()
+AudioHardwareImpl::AudioHardwareImpl(AudioObjectID myId)
+: m_myId(myId)
 {
 }
 
@@ -124,6 +125,7 @@ OSStatus AudioHardwareImpl::isPropertySettable(const AudioObjectPropertyAddress*
 	switch (inAddress->mSelector)
 	{
 		case kAudioDevicePropertyVolumeScalar:
+		case kAudioDevicePropertyVolumeDecibels:
 			*outIsSettable = true;
 			return kAudioHardwareNoError;
 	}
@@ -220,6 +222,10 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 			*ioDataSize = sizeof(Float32);
 			return kAudioHardwareNoError;
 		}
+		case kAudioDevicePropertyVolumeDecibels:
+		{
+			return kAudioHardwareNoError;
+		}
 	}
 	return kAudioHardwareUnknownPropertyError;
 }
@@ -256,6 +262,10 @@ OSStatus AudioHardwareImpl::setPropertyData(const AudioObjectPropertyAddress* in
 		{
 			// TODO: Implement setting the volume
 			// Note: qualifier contains the channel ID (from kAudioDevicePropertyPreferredChannelsForStereo)
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyVolumeDecibels:
+		{
 			return kAudioHardwareNoError;
 		}
 		// These make sense only for ALSA, but I find it ridiculous that these properties can be set...

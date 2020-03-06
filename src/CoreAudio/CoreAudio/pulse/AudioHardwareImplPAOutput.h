@@ -24,7 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 class AudioHardwareImplPAOutput : public AudioHardwareImplPA
 {
 public:
-	AudioHardwareImplPAOutput();
+	AudioHardwareImplPAOutput(AudioObjectID myId);
 	~AudioHardwareImplPAOutput();
 
 	OSStatus getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,

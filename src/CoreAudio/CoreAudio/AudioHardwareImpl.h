@@ -28,7 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 class AudioHardwareImpl
 {
 public:
-	AudioHardwareImpl();
+	AudioHardwareImpl(AudioObjectID myId);
 	virtual ~AudioHardwareImpl();
 	
 	virtual void show();
@@ -66,12 +66,16 @@ public:
 	virtual OSStatus getNearestStartTime(AudioTimeStamp* ioRequestedStartTime,
 		UInt32 inFlags);
 	virtual OSStatus setBufferSize(uint32_t bufferSize);
+	uint32_t bufferSize() const { return m_bufferSize; }
+
+	AudioObjectID id() const { return m_myId; }
 private:
 	static OSStatus getPropertyCFString(CFStringRef str, UInt32* ioDataSize, void* outData);
 	static OSStatus getPropertyString(CFStringRef str, UInt32* ioDataSize, void* outData);
 protected:
 	virtual AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) = 0;
 protected:
+	AudioObjectID m_myId;
 	std::mutex m_procMutex;
 	std::map<AudioDeviceIOProcID, std::pair<AudioDeviceIOProc, void*>> m_proc;
 	int m_nextProcId = 1;

@@ -24,11 +24,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 class PADispatchMainLoop
 {
-private:
-	PADispatchMainLoop();
 public:
-	static PADispatchMainLoop* instance();
-	static pa_mainloop_api* getAPI();
+	PADispatchMainLoop();
+	~PADispatchMainLoop();
+
+	void suspend();
+	void resume();
+	
+	pa_mainloop_api* getAPI();
 private:
 	static pa_io_event* io_new(pa_mainloop_api *a, int fd, pa_io_event_flags_t events, pa_io_event_cb_t cb, void *userdata);
 	static void io_enable(pa_io_event *e, pa_io_event_flags_t events);
@@ -47,6 +50,8 @@ private:
 	static void defer_event_fire(void* context);
 private:
 	dispatch_queue_t m_queue;
+	pa_mainloop_api m_api = {0};
+	bool m_suspended = true;
 };
 
 #endif

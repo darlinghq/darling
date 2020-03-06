@@ -27,7 +27,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 class AudioHardwareStreamPA : public AudioHardwareStream
 {
 public:
-	AudioHardwareStreamPA(AudioDeviceIOProc callback, void* clientData);
+	AudioHardwareStreamPA(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData);
 	~AudioHardwareStreamPA();
 protected:
 	AudioDeviceIOProc m_callback;

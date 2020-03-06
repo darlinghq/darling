@@ -23,11 +23,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "PADispatchMainLoop.h"
 #include <CoreFoundation/CFBundle.h>
 #include <CoreFoundation/CFString.h>
+#include <iostream>
 #include <mutex>
 
 pa_context* AudioHardwareImplPA::m_context;
+std::unique_ptr<PADispatchMainLoop> AudioHardwareImplPA::m_loop;
 
-AudioHardwareImplPA::AudioHardwareImplPA()
+AudioHardwareImplPA::AudioHardwareImplPA(AudioObjectID myId)
+: AudioHardwareImpl(myId)
 {
 	m_name = CFSTR("PulseAudio");
 	m_manufacturer = CFSTR("PulseAudio");
@@ -64,7 +67,24 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 			*ioDataSize = sizeof(AudioDeviceID) * 2;
 			return kAudioHardwareNoError;
 		}
-		
+		case kAudioDevicePropertyVolumeDecibelsToScalar:
+		{
+			if (Float32* vol = static_cast<Float32*>(outData); vol && *ioDataSize == sizeof(Float32))
+			{
+				*vol = pa_sw_volume_to_linear(pa_sw_volume_from_dB(*vol));
+			}
+			*ioDataSize = sizeof(Float32);
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyVolumeScalarToDecibels:
+		{
+			if (Float32* vol = static_cast<Float32*>(outData); vol && *ioDataSize == sizeof(Float32))
+			{
+				*vol = pa_sw_volume_to_dB(pa_sw_volume_from_linear(*vol));
+			}
+			*ioDataSize = sizeof(Float32);
+			return kAudioHardwareNoError;
+		}
 	}
 
 	return AudioHardwareImpl::getPropertyData(inAddress, inQualifierDataSize, inQualifierData, ioDataSize, outData);
@@ -91,6 +111,8 @@ static void paContextStateCB(pa_context* c, void* priv)
 	pa_context_state_t state = pa_context_get_state(c);
 	if (state == PA_CONTEXT_READY)
 	{
+		std::cout << "PA_CONTEXT_READY\n";
+
 		cb(c);
 		Block_release(cb);
 
@@ -99,10 +121,22 @@ static void paContextStateCB(pa_context* c, void* priv)
 	}
 	else if (state == PA_CONTEXT_FAILED)
 	{
+		std::cout << "PA_CONTEXT_FAILED\n";
+
 		cb(nullptr);
 		Block_release(cb);
 		pa_context_set_state_callback(c, nullptr, nullptr);
 	}
+}
+
+static const char* appNameFromExecutable()
+{
+	const char* name = (*_NSGetArgv())[0];
+	const char* p = std::strrchr(name, '/');
+
+	if (p && *(p+1))
+		return p+1;
+	return name;
 }
 
 void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
@@ -116,7 +150,7 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 
 		if (m_context == nullptr)
 		{
-			const char* appname = (*_NSGetArgv())[0];
+			const char* appname = appNameFromExecutable();
 			const char* appid = "org.darlinghq.some-app";
 
 			pa_proplist* proplist = pa_proplist_new();
@@ -148,7 +182,11 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 			// pa_proplist_sets(proplist, PA_PROP_APPLICATION_ICON_NAME, "icon-name");
 			// pa_proplist_sets(proplist, PA_PROP_MEDIA_ROLE, "game");
 
-			m_context = pa_context_new_with_proplist(PADispatchMainLoop::getAPI(), appname, proplist);
+			//pa_mainloop *mainloop = pa_mainloop_new ();
+
+			m_loop.reset(new PADispatchMainLoop);
+
+			m_context = pa_context_new_with_proplist(m_loop->getAPI() /*pa_mainloop_get_api(mainloop)*/, appname, proplist);
 			pa_proplist_free(proplist);
 
 			if (!m_context)
@@ -159,14 +197,18 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 
 			pa_context_set_state_callback(m_context, paContextStateCB, Block_copy(cb));
 
-			if (pa_context_connect(m_context, nullptr, pa_context_flags_t(0), nullptr) < 0)
+			if (pa_context_connect(m_context, nullptr, PA_CONTEXT_NOFLAGS, nullptr) < 0)
 			{
+				std::cerr << "pa_context_connect() returned an error\n";
 				pa_context_set_state_callback(m_context, nullptr, nullptr);
 				cb(nullptr);
 				return;
 			}
+
+			// pa_mainloop_run (mainloop, NULL);
+			m_loop->resume();
 		}
 	}
-	
-	cb(m_context);
+	else
+		cb(m_context);
 }

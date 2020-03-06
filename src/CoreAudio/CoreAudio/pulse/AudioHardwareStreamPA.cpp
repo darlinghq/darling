@@ -19,8 +19,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "AudioHardwareStreamPA.h"
 
-AudioHardwareStreamPA::AudioHardwareStreamPA(AudioDeviceIOProc callback, void* clientData)
-: m_callback(callback), m_clientData(clientData)
+AudioHardwareStreamPA::AudioHardwareStreamPA(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData)
+: AudioHardwareStream(hw), m_callback(callback), m_clientData(clientData)
 {
 
 }
