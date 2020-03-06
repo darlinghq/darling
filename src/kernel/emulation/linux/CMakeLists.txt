@@ -316,6 +316,7 @@ set_source_files_properties(ext/timerfd_settime.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
 set_source_files_properties(misc/sysctl.c PROPERTIES COMPILE_FLAGS
 	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
+set_source_files_properties(signal/sigexc.c PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/signal/exc.h)
 
 add_darling_object_library(emulation ${emulation_sources})
 add_darling_object_library(emulation_dyld ${emulation_sources})
