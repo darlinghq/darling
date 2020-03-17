@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Darling .pkg
+Comment=Install .pkg into Darling
+Exec=darling shell installer -pkg %F -target /
+Icon=/usr/local/share/pkg.png
+Terminal=false
+Type=Application
+NoDisplay=true
+MimeType=application/x-xar
+Categories=Core;
