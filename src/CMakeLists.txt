@@ -196,7 +196,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/private-frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/AVKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/MultipeerConnectivity/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreGraphics/include
 )
 
 add_subdirectory(external/libkqueue)
@@ -380,7 +379,6 @@ add_subdirectory(private-frameworks)
 add_subdirectory(external/usertemplate)
 add_subdirectory(AVKit)
 add_subdirectory(MultipeerConnectivity)
-add_subdirectory(CoreGraphics)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
