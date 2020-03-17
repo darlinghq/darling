@@ -17,12 +17,10 @@ add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 
 add_definitions(-DDS_AVAILABLE)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -ggdb")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
+add_definitions(-w -nostdinc)
 
-add_compile_options(
-	-Wno-macro-redefined
-)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -ggdb")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)

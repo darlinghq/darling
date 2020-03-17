@@ -1,6 +1,6 @@
 project(unxip)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
+add_definitions(-nostdinc)
 
 include_directories(
 	${CMAKE_SOURCE_DIR}/src/xar

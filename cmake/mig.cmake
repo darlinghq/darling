@@ -1,5 +1,5 @@
 function(mig defFileName)
-        set(MIG_EXECUTABLE "${CMAKE_BINARY_DIR}/mig")
+        set(MIG_EXECUTABLE "${CMAKE_BINARY_DIR}/build-mig")
 
         if (NOT MIG_USER_SOURCE_SUFFIX)
                 set (MIG_USER_SOURCE_SUFFIX "User.c")

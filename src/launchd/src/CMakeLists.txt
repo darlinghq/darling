@@ -7,15 +7,8 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 add_definitions(
-	-Wno-macro-redefined
-	-Wno-shift-negative-value
-	-Wno-int-conversion
-	-Wno-format
-	-Wno-tautological-compare
-	-Wno-deprecated-declarations
-	-Wextra-tokens
-	-Wpointer-bool-conversion
-	-Wno-implicit-function-declaration
+	-w
+	-nostdinc
 )
 
 include_directories(
@@ -24,7 +17,7 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/src/external/libxpc
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc -include ${CMAKE_SOURCE_DIR}/kernel-include/sys/fileport.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -include ${CMAKE_SOURCE_DIR}/kernel-include/sys/fileport.h")
 
 mig(job.defs)
 mig(helper.defs)
