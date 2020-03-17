@@ -76,8 +76,6 @@ install(DIRECTORY DESTINATION libexec/darling/private/tmp)
 InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
 InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
 
-install(DIRECTORY share DESTINATION ${CMAKE_INSTALL_PREFIX})
-
 install(FILES etc/resolv.conf
 	DESTINATION libexec/darling/etc)
 InstallSymlink(/Volumes/SystemRoot/etc/machine-id ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc/machine-id)
