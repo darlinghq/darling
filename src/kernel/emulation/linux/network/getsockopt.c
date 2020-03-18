@@ -57,7 +57,8 @@ long sys_getsockopt(int fd, int level, int optname, void* optval, int* optlen)
 
 int sockopt_bsd_to_linux(int* level, int* optname, void** optval, void* optbuf)
 {
-	if (*optname == LOCAL_PEERCRED)
+	/* TCP_NODELAY and LOCAL_PEERCRED both have values of 1 */
+	if (*optname == LOCAL_PEERCRED && *level == IPPROTO_IP)
 	{
 		struct xucred* c = (struct xucred*) optbuf;
 		// Simulate euid 0
