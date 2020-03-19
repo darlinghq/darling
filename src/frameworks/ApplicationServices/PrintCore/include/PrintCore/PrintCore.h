@@ -21,9 +21,8 @@
 #ifndef _PrintCore_H_
 #define _PrintCore_H_
 
-#import <Foundation/Foundation.h>
-
-#import <PrintCore/PMInkChecker.h>
+/* Private */
+/* #import <PrintCore/PMInkChecker.h> */
 
 void* CPLAutoSelectCancel(void);
 void* CPLAutoSelectCopyLocation(void);

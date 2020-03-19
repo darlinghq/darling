@@ -1,12 +1,13 @@
-@class O2ImageDestination;
-typedef O2ImageDestination *CGImageDestinationRef;
-
 #include <ImageIO/ImageIOBase.h>
+
+typedef struct CF_BRIDGED_TYPE(id) O2ImageDestination *CGImageDestinationRef;
 
 #import <CoreGraphics/CGImage.h>
 #import <ImageIO/CGImageSource.h>
 #import <CoreGraphics/CGDataConsumer.h>
 #import <CoreFoundation/CFURL.h>
+
+CF_IMPLICIT_BRIDGING_ENABLED
 
 IMAGEIO_EXTERN const CFStringRef kCGImageDestinationLossyCompressionQuality;
 IMAGEIO_EXTERN const CFStringRef kCGImageDestinationBackgroundColor;
@@ -26,3 +27,5 @@ IMAGEIO_EXTERN void CGImageDestinationAddImage(CGImageDestinationRef self, CGIma
 IMAGEIO_EXTERN void CGImageDestinationAddImageFromSource(CGImageDestinationRef self, CGImageSourceRef imageSource, size_t index, CFDictionaryRef properties);
 
 IMAGEIO_EXTERN bool CGImageDestinationFinalize(CGImageDestinationRef self);
+
+CF_IMPLICIT_BRIDGING_DISABLED
