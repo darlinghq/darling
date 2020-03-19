@@ -211,7 +211,7 @@ if uses_objc:
     classes_regex = re.compile("(@interface (.+?) :.+?@end)", re.DOTALL | re.MULTILINE)
 
     blacklisted_protocols = ["NSObject", "NSSecureCoding", "NSCoding", "NSCopying", "NSFastEnumeration", "NSMutableCopying",
-                "NSURLConnectionDataDelegate", "NSURLSessionTaskDelegate", "NSURLConnectionDelegate"
+                "NSURLConnectionDataDelegate", "NSURLSessionTaskDelegate", "NSURLConnectionDelegate", "NSLocking"
             ]
     for protocol_def in protocols_regex.finditer(class_dump_output):
         protocol_contents, protocol_name = protocol_def.groups()
