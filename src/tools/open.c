@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 		usage();
 		return EXIT_FAILURE;
 	}
-	url_or_path = CFStringCreateWithCString(kCFAllocatorDefault, argv[1], kCFStringEncodingUTF8);
+	url_or_path = CFStringCreateWithFileSystemRepresentation(kCFAllocatorDefault, argv[1]);
 	/* TODO: What is the URL is not a file URL? (http:, ftp:, etc) */
 	/* url = CFURLCreateWithString(kCFAllocatorDefault, url_or_path, NULL); */
 	url = NULL;
