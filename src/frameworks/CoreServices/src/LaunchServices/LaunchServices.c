@@ -112,16 +112,16 @@ OSStatus _LSLaunchApplication(CFURLRef appPath)
 		CFRelease(pre);
 		/* Launch the executable */
 		executable = CFURLGetString(url_plus_exec);
-		CFShow(executable);
+
 		/* Try to use CFBundleName first */
 		if (bundleName == NULL)
 			bundleName = CFStringCreateCopy(kCFAllocatorDefault, executable);
-		nameSize = CFStringGetLength(bundleName)+1;
+		nameSize = CFStringGetMaximumSizeOfFileSystemRepresentation(bundleName);
 		name = malloc(nameSize);
-		CFStringGetCString(bundleName, name, nameSize, kCFStringEncodingUTF8);
-		execSize = CFStringGetLength(executable)+1;
+		CFStringGetFileSystemRepresentation(bundleName, name, nameSize);
+		execSize = CFStringGetMaximumSizeOfFileSystemRepresentation(executable);
 		exec = malloc(execSize);
-		CFStringGetCString(executable, exec, execSize, kCFStringEncodingUTF8);
+		CFStringGetFileSystemRepresentation(executable, exec, execSize);
 		argv[0] = exec;
 		argv[1] = NULL;
 		pid = spawn_via_launchd(name, (const char *const *)argv, NULL);
@@ -148,6 +148,8 @@ static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStrin
 	CFReadStreamRef rs = CFReadStreamCreateWithFile(kCFAllocatorDefault, info_plist_url);
 	CFDictionaryRef info_plist;
 	CFStringRef ret = NULL;
+
+	/* TODO: Simplify by using CFBundleGetInfoDictionary */
 
 	*exec = NULL;
 	*bundleName = NULL;
