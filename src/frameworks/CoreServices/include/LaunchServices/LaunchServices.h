@@ -26,6 +26,8 @@ typedef int LSSessionID;
 #define kLSNotifyApplicationDeath 1
 #define kLSUnknownErr -1
 
+#define kLSApplicationNotFoundErr -10814;
+
 #define kLSDefaultSessionID 1
 
 enum
@@ -64,8 +66,19 @@ typedef struct LSApplicationParameters
 OSStatus LSInit(LSInitializeFlags flags);
 OSStatus LSTerm(void);
 
+typedef struct LSLaunchURLSpec
+{
+	CFURLRef appURL;
+	CFArrayRef itemURLs;
+	const AEDesc *passThruParams;
+	LSLaunchFlags launchFlags;
+	void *asyncRefCon;
+} LSLaunchURLSpec;
+
+
 OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSerialNumber *outPSN);
 OSStatus LSOpenCFURLRef(CFURLRef inURL, CFURLRef *outLaunchedURL);
+OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLaunchedURL);
 OSStatus LSOpenFSRef(const FSRef *inRef, FSRef *outLaunchedRef);
 
 OSStatus LSGetExtensionInfo(UniCharCount inNameLen, const UniChar* inNameBuffer, UniCharCount *outExtStartIndex);

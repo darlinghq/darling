@@ -18,27 +18,56 @@
 */
 
 #include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
+
 #include <CoreFoundation/CoreFoundation.h>
 #include <ApplicationServices/ApplicationServices.h>
 
-void usage(void);
+static void usage(void);
 
+/* TODO: Options */
 int main(int argc, char *argv[])
 {
-	if (argc < 0)
+	CFStringRef url_or_path;
+	CFURLRef url;
+	struct stat path_stat;
+	if (argc != 2)
 	{
 		usage();
-		return 1;
+		return EXIT_FAILURE;
 	}
-	CFStringRef str = CFStringCreateWithCString(kCFAllocatorDefault, argv[1], kCFStringEncodingMacRoman);
-	CFURLRef url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, str, kCFURLPOSIXPathStyle, FALSE);
+	url_or_path = CFStringCreateWithCString(kCFAllocatorDefault, argv[1], kCFStringEncodingUTF8);
+	/* TODO: What is the URL is not a file URL? (http:, ftp:, etc) */
+	/* url = CFURLCreateWithString(kCFAllocatorDefault, url_or_path, NULL); */
+	url = NULL;
 
+	if (url == NULL)
+	{
+		if (lstat(argv[1], &path_stat))
+		{
+			perror(argv[1]);
+			return EXIT_FAILURE;
+		}
+		url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, url_or_path, kCFURLPOSIXPathStyle, path_stat.st_mode & S_IFDIR);
+		if (url == NULL)
+		{
+			printf("Failed to create file url: %s\n", argv[1]);
+			return EXIT_FAILURE;
+		}
+	}
 
+	LSOpenCFURLRef(url, NULL);
 
-	return 0;
+	CFRelease(url);
+
+	return EXIT_SUCCESS;
 }
 
-void usage(void)
+static void usage(void)
 {
 	printf("Usage: open [filenames]\n"
 		"Help: Use open to open files, folders, and URLs from the command line.\n");
