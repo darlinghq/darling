@@ -74,6 +74,7 @@ target_link_libraries(system PRIVATE
 	xpc
 	corecrypto
 	commonCrypto
+	system_dnssd
 )
 
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
@@ -106,6 +107,7 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libsystem_asl \
 	-sub_library libxpc \
 	-sub_library libcorecrypto \
+	-sub_library libsystem_dnssd \
 	-Wl,-compatibility_version,1.0.0 \
 	-Wl,-current_version,1238.0.0")
 

@@ -310,3 +310,6 @@
 [submodule "src/external/rsync"]
 	path = src/external/rsync
 	url = ../darling-rsync.git
+[submodule "src/external/cups"]
+	path = src/external/cups
+	url = ../darling-cups.git

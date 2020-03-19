@@ -205,6 +205,8 @@ add_subdirectory(kernel)
 add_subdirectory(libc)
 add_subdirectory(vchroot)
 
+add_subdirectory(lib)
+
 add_definitions(-D_LIBC_NO_FEATURE_VERIFICATION)
 add_subdirectory(external/darling-dmg)
 add_subdirectory(libm)
@@ -360,6 +362,7 @@ add_subdirectory(OpenCL)
 add_subdirectory(OpenDirectory)
 add_subdirectory(opendirectory)
 add_subdirectory(MetalKit)
+add_subdirectory(external/cups)
 
 add_subdirectory(clt)
 

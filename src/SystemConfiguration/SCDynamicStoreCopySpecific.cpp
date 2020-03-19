@@ -10,6 +10,8 @@
 
 #define MAX_PASSENTRY_LENGTH 4096
 
+
+
 CFStringRef SCDynamicStoreCopyComputerName (SCDynamicStoreRef store, CFStringEncoding *nameEncoding){
 	//LOG << "fixme: SCDynamicStoreCopyComputerName() - stub" << std::endl;
 	return NULL;

@@ -4,6 +4,18 @@
 
 #define STUB() printf("STUB %s\n", __func__)
 
+const CFStringRef kSCDynamicStoreDomainState = CFSTR("State:");
+const CFStringRef kSCEntNetIPv4 = CFSTR("IPv4");
+const CFStringRef kSCEntNetIPv6 = CFSTR("IPv6");
+const CFStringRef kSCPropNetIPv4Router = CFSTR("Router");
+const CFStringRef kSCPropNetIPv6Router = CFSTR("Router"); /* Yes, they are the same */
+
+CFStringRef SCDynamicStoreKeyCreateNetworkGlobalEntity(CFAllocatorRef allocator, CFStringRef domain, CFStringRef entity)
+{
+	STUB();
+	return NULL;
+}
+
 CFPropertyListRef SCDynamicStoreCopyValue(SCDynamicStoreRef store, CFStringRef key)
 {
 	STUB();
