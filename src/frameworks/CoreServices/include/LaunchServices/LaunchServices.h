@@ -101,6 +101,9 @@ extern CFStringRef LSUserApplicationType, LSSystemApplicationType, LSInternalApp
 
 // TODO: many other functions
 
+// Undocumented, not sure on correct parameters
+OSStatus _LSLaunchApplication(CFURLRef appPath);
+
 #ifdef __cplusplus
 }
 #endif

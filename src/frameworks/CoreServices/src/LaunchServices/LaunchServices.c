@@ -20,8 +20,9 @@
 #include <LaunchServices/LaunchServices.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <launch_priv.h>
 
-static CFStringRef get_main_executable(CFURLRef appURL);
+static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName);
 
 OSStatus LSRegisterURL(CFURLRef inURL, Boolean inUpdate)
 {
@@ -41,11 +42,11 @@ OSStatus LSOpenCFURLRef(CFURLRef inURL, CFURLRef *outLaunchedURL)
 
 OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLaunchedURL)
 {
-	CFStringRef scheme, extension, executable;
+	CFStringRef scheme, extension;
 	CFIndex count, i;
-	CFURLRef url, url_plus_exec, pre;
+	CFURLRef url;
 	CFRange range;
-	OSStatus ret = 0;
+	OSStatus ret = 0, temp;
 
 	/* Inspect scheme of URL */
 	count = CFArrayGetCount(inLaunchSpec->itemURLs);
@@ -61,29 +62,13 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 
 			/* Check for .app suffix */
 			extension = CFURLCopyPathExtension(url);
-			range = CFRangeMake(0, CFStringGetLength(extension));
-			if (CFStringCompareWithOptions(extension, CFSTR("app"), range, kCFCompareCaseInsensitive) == kCFCompareEqualTo)
+			if (extension != NULL)
+				range = CFRangeMake(0, CFStringGetLength(extension));
+			if (extension != NULL && (CFStringCompareWithOptions(extension, CFSTR("app"), range, kCFCompareCaseInsensitive) == kCFCompareEqualTo))
 			{
-				/* Read info.plist, find path to main executable */
-				if ((executable = get_main_executable(url)) == NULL)
-				{
-					ret = 1;
-				}
-				else
-				{
-					url_plus_exec = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, url, CFSTR("Contents"), TRUE);
-					pre = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, url_plus_exec, CFSTR("MacOS"), TRUE);
-					CFRelease(url_plus_exec);
-					url_plus_exec = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, pre, executable, FALSE);
-					CFRelease(pre);
-
-					/* Launch the executable */
-					executable = CFURLGetString(url_plus_exec);
-					CFShow(executable);
-
-					CFRelease(url_plus_exec);
-					CFRelease(executable);
-				}
+				temp = _LSLaunchApplication(url);
+				if (temp)
+					ret = temp;
 			}
 			else
 			{
@@ -91,12 +76,12 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 				ret = 1;
 			}
 
-			CFRelease(extension);
+			if (extension != NULL)
+				CFRelease(extension);
 		}
 		else
 		{
 			printf("We can't handle this scheme yet\n");
-			CFShow(scheme);
 			ret = kLSApplicationNotFoundErr;
 		}
 		CFRelease(scheme);
@@ -104,13 +89,68 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 	return ret;
 }
 
-static CFStringRef get_main_executable(CFURLRef appURL)
+OSStatus _LSLaunchApplication(CFURLRef appPath)
+{
+	CFStringRef executable, bundleName;
+	CFIndex nameSize, execSize;
+	CFURLRef pre, url_plus_exec;
+	pid_t pid;
+	char *name, *exec, *argv[2];
+
+	/* Read info.plist, find path to main executable */
+	get_main_executable_info(appPath, &executable, &bundleName);
+	if (executable == NULL)
+	{
+		return 1;
+	}
+	else
+	{
+		url_plus_exec = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, appPath, CFSTR("Contents"), TRUE);
+		pre = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, url_plus_exec, CFSTR("MacOS"), TRUE);
+		CFRelease(url_plus_exec);
+		url_plus_exec = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, pre, executable, FALSE);
+		CFRelease(pre);
+		/* Launch the executable */
+		executable = CFURLGetString(url_plus_exec);
+		CFShow(executable);
+		/* Try to use CFBundleName first */
+		if (bundleName == NULL)
+			bundleName = CFStringCreateCopy(kCFAllocatorDefault, executable);
+		nameSize = CFStringGetLength(bundleName)+1;
+		name = malloc(nameSize);
+		CFStringGetCString(bundleName, name, nameSize, kCFStringEncodingUTF8);
+		execSize = CFStringGetLength(executable)+1;
+		exec = malloc(execSize);
+		CFStringGetCString(executable, exec, execSize, kCFStringEncodingUTF8);
+		argv[0] = exec;
+		argv[1] = NULL;
+		pid = spawn_via_launchd(name, (const char *const *)argv, NULL);
+		if (pid < 0)
+		{
+			printf("%s: Failed to spawn via launchd\n", exec);
+			return 1;
+		}
+		free(name);
+		free(exec);
+		CFRelease(url_plus_exec);
+		CFRelease(executable);
+
+	}
+	if (bundleName != NULL)
+		CFRelease(bundleName);
+	return 0;
+}
+
+static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName)
 {
 	CFURLRef pre = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, appURL, CFSTR("Contents"), TRUE);
 	CFURLRef info_plist_url = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, pre, CFSTR("Info.plist"), FALSE);
 	CFReadStreamRef rs = CFReadStreamCreateWithFile(kCFAllocatorDefault, info_plist_url);
 	CFDictionaryRef info_plist;
 	CFStringRef ret = NULL;
+
+	*exec = NULL;
+	*bundleName = NULL;
 
 	CFRelease(pre);
 
@@ -132,10 +172,15 @@ static CFStringRef get_main_executable(CFURLRef appURL)
 	if (ret != NULL)
 		ret = CFStringCreateCopy(kCFAllocatorDefault, ret);
 
+	*exec = ret;
+
+	ret = CFDictionaryGetValue(info_plist, CFSTR("CFBundleName"));
+	if (ret != NULL)
+		*bundleName = CFStringCreateCopy(kCFAllocatorDefault, ret);
+
 err:
 	CFRelease(info_plist);
 err_pre_info:
 	CFRelease(rs);
 	CFRelease(info_plist_url);
-	return ret;
 }
