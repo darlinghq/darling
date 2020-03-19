@@ -285,6 +285,7 @@ set(emulation_sources
 	sysv_sem/semop.c
 	conf/pathconf.c
 	conf/fpathconf.c
+	mach/audit_session_self.c
 	vchroot_userspace.c
 	syscalls-table.S
 	linux-syscall.S

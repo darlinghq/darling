@@ -1,6 +1,9 @@
 project(mach_server_client)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -nostdinc")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+
+add_definitions(-nostdinc)
+
 include_directories(
 	${CMAKE_SOURCE_DIR}/platform-include
 	${CMAKE_SOURCE_DIR}/src/libc/include
