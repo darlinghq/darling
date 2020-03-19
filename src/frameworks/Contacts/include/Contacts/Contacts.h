@@ -59,7 +59,6 @@
 #import <Contacts/CNXPCDataMapperService.h>
 #import <Contacts/NSItemProviderReading.h>
 #import <Contacts/NSItemProviderWriting.h>
-#import <Contacts/NSMutableCopying.h>
 #import <Contacts/NSPredicateVisitor.h>
 #import <Contacts/ProgressiveResultsCancellationProtocol.h>
 #import <Contacts/ProgressiveResultsHandlerProtocol.h>

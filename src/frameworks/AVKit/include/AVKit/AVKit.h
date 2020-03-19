@@ -66,7 +66,6 @@
 #import <AVKit/CAStateControllerDelegate.h>
 #import <AVKit/NSAccessibilityElement.h>
 #import <AVKit/NSAccessibilitySlider.h>
-#import <AVKit/NSCacheDelegate.h>
 #import <AVKit/NSDescriptionBasedTouchBarItem.h>
 #import <AVKit/NSDescriptionBasedTouchBarItemProvider.h>
 #import <AVKit/NSMenuDelegate.h>

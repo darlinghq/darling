@@ -26,7 +26,7 @@ OSStatus CopyProcessName(const ProcessSerialNumber* psn, CFStringRef* name)
 	char path[100];
 	int fd, len;
 
-	sprintf(path, "/proc/%u/comm", psn->lowLongOfPSN);
+	sprintf(path, "/proc/%u/comm", (unsigned int)psn->lowLongOfPSN);
 
 	fd = ::open(path, O_RDONLY);
 	if (fd == -1)
@@ -160,7 +160,7 @@ CFDictionaryRef ProcessInformationCopyDictionary(const ProcessSerialNumber *PSN,
 	if (status != noErr)
 		return nullptr;
 
-	sprintf(lpath, "/proc/%u/exe", PSN->lowLongOfPSN);
+	sprintf(lpath, "/proc/%u/exe", (unsigned int)PSN->lowLongOfPSN);
 	len = ::readlink(lpath, procpath, sizeof(procpath)-1);
 	if (len < 0)
 		return nullptr;

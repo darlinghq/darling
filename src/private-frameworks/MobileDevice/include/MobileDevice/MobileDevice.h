@@ -24,11 +24,6 @@
 #import <Foundation/Foundation.h>
 
 #import <MobileDevice/MDRemoteServiceSupportProtocol.h>
-#import <MobileDevice/NSURLConnectionDataDelegate.h>
-#import <MobileDevice/NSURLConnectionDelegate.h>
-#import <MobileDevice/NSURLSessionDelegate.h>
-#import <MobileDevice/NSURLSessionStreamDelegate.h>
-#import <MobileDevice/NSURLSessionTaskDelegate.h>
 #import <MobileDevice/AMSupportURLConnectionDelegate.h>
 #import <MobileDevice/AMSupportURLSession.h>
 #import <MobileDevice/RPStream.h>

@@ -112,9 +112,6 @@
 #import <MapKit/NSSharingServicePickerDelegate.h>
 #import <MapKit/NSTableViewDataSource.h>
 #import <MapKit/NSTableViewDelegate.h>
-#import <MapKit/NSURLSessionDataDelegate.h>
-#import <MapKit/NSURLSessionDelegate.h>
-#import <MapKit/NSURLSessionTaskDelegate.h>
 #import <MapKit/VKAnnotation.h>
 #import <MapKit/VKCustomFeatureAnnotation.h>
 #import <MapKit/VKCustomFeatureDataSource.h>

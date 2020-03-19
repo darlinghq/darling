@@ -1,5 +1,7 @@
 project(frameworks)
 
+add_compile_options(-Werror)
+
 add_subdirectory(AGL)
 add_subdirectory(AVFoundation)
 add_subdirectory(Accelerate)

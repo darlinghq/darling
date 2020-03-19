@@ -26,12 +26,6 @@
 #import <MultipeerConnectivity/MCNearbyServiceAdvertiserDelegate.h>
 #import <MultipeerConnectivity/MCNearbyServiceBrowserDelegate.h>
 #import <MultipeerConnectivity/MCSessionPrivateDelegate.h>
-#import <MultipeerConnectivity/NSNetServiceBrowserDelegate.h>
-#import <MultipeerConnectivity/NSNetServiceDelegate.h>
-#import <MultipeerConnectivity/NSStreamDelegate.h>
-#import <MultipeerConnectivity/NSURLSessionDataDelegate.h>
-#import <MultipeerConnectivity/NSURLSessionDelegate.h>
-#import <MultipeerConnectivity/NSURLSessionTaskDelegate.h>
 #import <MultipeerConnectivity/MCBrowserViewController.h>
 #import <MultipeerConnectivity/MCAdvertiserAssistant.h>
 #import <MultipeerConnectivity/MCSessionPeerState.h>
