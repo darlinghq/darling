@@ -2,7 +2,7 @@ project(copyfile)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -fblocks")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${CMAKE_SOURCE_DIR}/platform-include)
@@ -18,8 +18,8 @@ add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
 # Hide warnings
 add_definitions(
-	-Wno-parentheses
-	-Wno-int-conversion
+	-w
+	-nostdinc
 )
 
 set(copyfile_sources

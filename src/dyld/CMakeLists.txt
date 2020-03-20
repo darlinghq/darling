@@ -8,8 +8,9 @@ endif(COMMAND cmake_policy)
 
 include (darling_exe)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -std=c++11 -include ${CMAKE_SOURCE_DIR}/src/duct/include/CrashReporterClient.h")
+add_definitions(-nostdinc)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -include ${CMAKE_SOURCE_DIR}/src/duct/include/CrashReporterClient.h")
 set(CMAKE_SHARED_LINKER_FLAGS_SAVED "${CMAKE_SHARED_LINKER_FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load -Wl,-flat_namespace -Wl,-undefined,suppress")
 

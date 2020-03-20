@@ -2,7 +2,6 @@ project(DiskImages)
 
 add_compile_options(
 	-nostdinc
-	-mmacosx-version-min=10.10
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.8")

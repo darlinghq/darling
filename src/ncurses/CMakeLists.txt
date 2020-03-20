@@ -2,7 +2,7 @@ project(ncurses-top)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
+add_definitions(-nostdinc)
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${DARLING_TOP_DIRECTORY}/platform-include)

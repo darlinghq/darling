@@ -12,7 +12,7 @@ enum {
 	kKeyboardJIS                  = 'JIS ',
 	kKeyboardANSI                 = 'ANSI',
 	kKeyboardISO                  = 'ISO ',
-	kKeyboardUnknown              = '????'
+	kKeyboardUnknown              =  kUnknownType /* ???? */
 };
 
 typedef OSType PhysicalKeyboardLayoutType;

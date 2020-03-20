@@ -11,8 +11,10 @@ include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale/FreeBSD)
 include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale)
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
+
+add_definitions(-w -nostdinc)
 
 set(removefile_sources
 	removefile.c

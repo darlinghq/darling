@@ -7,16 +7,14 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 add_definitions(
-	-Wno-extra-tokens
-	-Wno-pointer-bool-conversion
-	-Wno-implicit-function-declaration
+	-w -nostdinc
 )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../liblaunch/)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fblocks -nostdinc -include ${CMAKE_SOURCE_DIR}/kernel-include/sys/fileport.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fblocks -include ${CMAKE_SOURCE_DIR}/kernel-include/sys/fileport.h")
 
 add_definitions(-DPRIVATE)
 

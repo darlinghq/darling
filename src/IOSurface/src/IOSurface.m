@@ -21,6 +21,14 @@
 #include <stdio.h>
 #import <IOSurface/IOSurface.h>
 
+#include <CoreFoundation/CoreFoundation.h>
+
+const CFStringRef kIOSurfaceBytesPerElement = CFSTR("kIOSurfaceBytesPerElement");
+const CFStringRef kIOSurfaceHeight = CFSTR("kIOSurfaceHeight");
+const CFStringRef kIOSurfaceIsGlobal = CFSTR("kIOSurfaceIsGlobal");
+const CFStringRef kIOSurfacePixelFormat = CFSTR("kIOSurfacePixelFormat");
+const CFStringRef kIOSurfaceWidth = CFSTR("kIOSurfaceWidth");
+
 static int verbose = 0;
 
 __attribute__((constructor))
@@ -40,7 +48,7 @@ static void initme(void) {
 
 @end
 
-sting(void) {
+void* IOSurfaceAllowsPixelSizeCasting(void) {
     if (verbose) puts("STUB: IOSurfaceAllowsPixelSizeCasting called");
     return NULL;
 }

@@ -1,10 +1,13 @@
 project(private-frameworks)
 
+add_compile_options(-Werror)
+
 add_subdirectory(AppleSystemInfo)
 add_subdirectory(AuthKit)
 add_subdirectory(CrashReporterSupport)
 add_subdirectory(ConfigurationProfiles)
 add_subdirectory(CoreSymbolication)
+add_subdirectory(CoreUI)
 add_subdirectory(DataDetectors)
 add_subdirectory(DataDetectorsCore)
 add_subdirectory(DataDetectorsNaturalLanguage)

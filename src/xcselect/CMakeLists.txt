@@ -1,7 +1,9 @@
 project(xcselect)
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -fblocks")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
+
+add_definitions(-nostdinc)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libxcselect.dylib")
 set(DYLIB_COMPAT_VERSION "1.0.0")

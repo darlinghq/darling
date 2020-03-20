@@ -1,5 +1,7 @@
 project(frameworks)
 
+add_compile_options(-Werror)
+
 add_subdirectory(AGL)
 add_subdirectory(AVFoundation)
 add_subdirectory(Accelerate)
@@ -16,3 +18,6 @@ add_subdirectory(CoreMediaIO)
 add_subdirectory(CoreServices)
 add_subdirectory(Kerberos)
 add_subdirectory(MapKit)
+add_subdirectory(OpenAL)
+add_subdirectory(AVKit)
+add_subdirectory(MultipeerConnectivity)

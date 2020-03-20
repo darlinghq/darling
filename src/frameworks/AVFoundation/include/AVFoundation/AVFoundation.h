@@ -71,11 +71,6 @@
 #import <AVFoundation/AVVideoCompositing.h>
 #import <AVFoundation/AVVideoCompositionInstruction.h>
 #import <AVFoundation/AVWeakObservable.h>
-#import <AVFoundation/NSMutableCopying.h>
-#import <AVFoundation/NSURLAuthenticationChallengeSender.h>
-#import <AVFoundation/NSURLSessionDataDelegate.h>
-#import <AVFoundation/NSURLSessionDelegate.h>
-#import <AVFoundation/NSURLSessionTaskDelegate.h>
 #import <AVFoundation/AVPlayerLayerIntermediateLayer.h>
 #import <AVFoundation/AVPlayerLayerInternal.h>
 #import <AVFoundation/AVPlayerLayer.h>

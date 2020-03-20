@@ -55,6 +55,7 @@ static ssize_t read_cb(struct archive *a, void *_client_data, const void **_buff
     {
         // TODO
     }
+    return 0;
 }
 
 static NSError* makeError(NSURL* url, NSString* errorString)

@@ -7,7 +7,7 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -ggdb")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load")
 
 include_directories(${CMAKE_SOURCE_DIR}/src/libc/fbsdcompat)
@@ -23,9 +23,8 @@ add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
 # Hide warnings
 add_definitions(
-	-Wno-implicit-function-declaration
-	-Wno-incompatible-pointer-types-discards-qualifiers
-	-Wno-incompatible-pointer-types
+	-w
+	-nostdinc
 )
 
 set(libsystem_sources
@@ -75,6 +74,7 @@ target_link_libraries(system PRIVATE
 	xpc
 	corecrypto
 	commonCrypto
+	system_dnssd
 )
 
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
@@ -107,6 +107,7 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libsystem_asl \
 	-sub_library libxpc \
 	-sub_library libcorecrypto \
+	-sub_library libsystem_dnssd \
 	-Wl,-compatibility_version,1.0.0 \
 	-Wl,-current_version,1238.0.0")
 

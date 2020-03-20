@@ -1,8 +1,6 @@
 project(shellspawn)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
-
-include(darling_exe)
+add_definitions(-nostdinc)
 
 add_darling_executable(shellspawn shellspawn.c duct_signals.c)
 

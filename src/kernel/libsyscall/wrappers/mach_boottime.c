@@ -21,9 +21,16 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 #include <machine/cpu_capabilities.h>
+#include <time.h>
+#include "../../emulation/linux/base.h"
+#include "../../emulation/linux/linux-syscalls/linux.h"
 
 uint64_t
 mach_boottime_usec(void)
 {
-	return *(uint64_t*)_COMM_PAGE_BOOTTIME_USEC;
+	struct timespec ts;
+	LINUX_SYSCALL(__NR_clock_gettime, CLOCK_MONOTONIC, &ts);
+	return ((ts.tv_sec*1000*1000*1000)+ts.tv_nsec)/1000;
+	/* We don't have this working, so make Linux syscall */
+	/* return *(uint64_t*)_COMM_PAGE_BOOTTIME_USEC; */
 }

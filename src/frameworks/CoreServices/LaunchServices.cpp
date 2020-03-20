@@ -226,7 +226,7 @@ OSStatus LSSetExtensionHiddenForURL(CFURLRef inURL, Boolean hide)
 	return noErr; // dummy operation
 }
 
-OSStatus LSOpenCFURLRef(CFURLRef inURL, CFURLRef *outLaunchedURL)
+/*OSStatus LSOpenCFURLRef(CFURLRef inURL, CFURLRef *outLaunchedURL)
 {
 	// TODO: use 'xdg-mime query' and 'xdg-mime default' to determine the app?
 
@@ -236,7 +236,7 @@ OSStatus LSOpenCFURLRef(CFURLRef inURL, CFURLRef *outLaunchedURL)
     launchApp(g_scXdgOpenPath,args);
     outLaunchedURL = nullptr;
 	return unimpErr;
-}
+}*/
 
 OSStatus LSOpenFSRef(const FSRef *inRef, FSRef *outLaunchedRef)
 {

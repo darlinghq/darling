@@ -23,4 +23,6 @@
 
 #define IMAGEIO_EXTERN extern
 
+#include <CoreFoundation/CoreFoundation.h>
+
 #endif
