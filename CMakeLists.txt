@@ -67,6 +67,9 @@ option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 
 FindDsymutil()
 
+# Missing CMakeLists.txt must trigger an error
+cmake_policy(SET CMP0014 NEW)
+
 add_subdirectory(src)
 
 install(DIRECTORY DESTINATION libexec/darling/private)
