@@ -17,15 +17,31 @@ add_definitions(-D__APPLE__ -D__DYNAMIC__)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
+include_directories(${CMAKE_SOURCE_DIR}/platform-include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/darwin/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 set(ffi_SRCS
-	ffi.c
-	types.c
-	x86/darwin64.S
-	x86/x86-darwin.S
-	x86/x86-ffi64.c
-	x86/x86-ffi_darwin.c
+	src/closures.c
+	# src/debug.c
+	# src/dlmalloc.c
+	src/java_raw_api.c
+	src/prep_cif.c
+	src/raw_api.c
+	src/types.c
+
+	src/x86/sysv.S
+	src/x86/ffi.c
+	src/x86/ffi64.c
+	src/x86/unix64.S
+	src/x86/ffiw64.c
+	src/x86/win64.S
+
+	src/arm/sysv.S
+	src/arm/ffi.c
+
+	src/aarch64/sysv.S
+	src/aarch64/ffi.c
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libffi.dylib")
