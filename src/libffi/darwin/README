@@ -1,0 +1,16 @@
+These header files potentially need to be updated whenever we update to a newer version of upstream libffi.
+
+Running the generate-darwin-source-and-headers.py script in the parent directory will create the updated headers
+in darwin_ios/include and darwin_osx/include.  Replace the headers in darwin/include with newer copies of those
+headers.
+
+fficonfig*.h don't get installed, so just copy the _arch.h versions in place.
+
+ffitarget*.h are customized per architecture, so just copy the _arch.h versions in place.  Note that i386 and
+x86_64 are the same, so just squash them.
+
+The only difference between the ffi_*.h are in the architecture definition macros, so it's easiest to just
+hand craft those as necessary.  It's actually probably easier to compare the differences in ffi.h.in between
+versions and applying that to our ffi.h.
+
+Don't forget to add availability markup as needed.

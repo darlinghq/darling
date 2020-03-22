@@ -1,0 +1,5 @@
+module FFI [system] [extern_c] {
+	umbrella header "ffi.h"
+	export *
+	link "ffi"
+}
