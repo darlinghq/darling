@@ -86,6 +86,7 @@ struct dual_source
 	pa_io_event_destroy_cb_t destroy = nullptr;
 	pa_io_event_flags_t events;
 	void* userdata;
+	int fd;
 };
 
 pa_io_event* PADispatchMainLoop::io_new(pa_mainloop_api *a, int fd, pa_io_event_flags_t events, pa_io_event_cb_t cb, void *userdata)
@@ -95,7 +96,12 @@ pa_io_event* PADispatchMainLoop::io_new(pa_mainloop_api *a, int fd, pa_io_event_
 
 	dual_source* dual = new dual_source;
 
+	bool read = events & (PA_IO_EVENT_INPUT | PA_IO_EVENT_ERROR | PA_IO_EVENT_HANGUP);
+	bool write = events & (PA_IO_EVENT_OUTPUT);
+	// std::cout << "PADispatchMainLoop::io_new(): fd=" << fd << ", read=" << read << ", write=" << write << std::endl;
+
 	dual->callback = cb;
+	dual->fd = fd;
 	dual->events = events;
 	dual->userdata = userdata;
 	dual->sourceRead = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, fd, 0, q);
@@ -106,7 +112,7 @@ pa_io_event* PADispatchMainLoop::io_new(pa_mainloop_api *a, int fd, pa_io_event_
 	});
 
 	dispatch_source_set_event_handler(dual->sourceWrite, ^{
-		std::cout << "PADispatchMainLoop::io_new(): write event\n";
+		// std::cout << "PADispatchMainLoop::io_new(): write event on fd " << fd << std::endl;
 		dual->callback(This->getAPI(), reinterpret_cast<pa_io_event*>(dual), fd, PA_IO_EVENT_OUTPUT, dual->userdata);
 	});
 
@@ -146,12 +152,14 @@ void PADispatchMainLoop::io_enable(pa_io_event *e, pa_io_event_flags_t events)
 	{
 		if (!dual->readResumed)
 		{
+			// std::cout << "PADispatchMainLoop::io_enable(): disable read fd=" << dual->fd << std::endl;
 			dispatch_resume(dual->sourceRead);
 			dual->readResumed = true;
 		}
 	}
 	else if (dual->readResumed)
 	{
+		// std::cout << "PADispatchMainLoop::io_enable(): disable read fd=" << dual->fd << std::endl;
 		dispatch_suspend(dual->sourceRead);
 		dual->readResumed = false;
 	}
@@ -160,12 +168,14 @@ void PADispatchMainLoop::io_enable(pa_io_event *e, pa_io_event_flags_t events)
 	{
 		if (!dual->writeResumed)
 		{
+			// std::cout << "PADispatchMainLoop::io_enable(): enable write fd=" << dual->fd << std::endl;
 			dispatch_resume(dual->sourceWrite);
 			dual->writeResumed = true;
 		}
 	}
 	else if (dual->writeResumed)
 	{
+		// std::cout << "PADispatchMainLoop::io_enable(): disable write fd=" << dual->fd << std::endl;
 		dispatch_suspend(dual->sourceWrite);
 		dual->writeResumed = false;
 	}
@@ -174,6 +184,7 @@ void PADispatchMainLoop::io_enable(pa_io_event *e, pa_io_event_flags_t events)
 void PADispatchMainLoop::io_free(pa_io_event *e)
 {
 	dual_source* dual = reinterpret_cast<dual_source*>(e);
+	// std::cout << "PADispatchMainLoop::io_free(): fd=" << dual->fd << std::endl;
 
 	if (!dual->readResumed)
 		dispatch_resume(dual->sourceRead);
@@ -225,9 +236,12 @@ pa_time_event *PADispatchMainLoop::time_new(pa_mainloop_api *a, const struct tim
 	timer->when.tv_nsec = real_tv->tv_usec * 1000; // convert to ns
 	timer->tv = *real_tv;
 
+	// std::cout << "PADispatchMainLoop::time_new(), sec=" << real_tv->tv_sec << ", usec=" << real_tv->tv_usec << std::endl;
+
 	dispatch_source_set_timer(timer->source, dispatch_walltime(&timer->when, 0), 0, 0);
 
 	dispatch_source_set_event_handler(timer->source, ^{
+		// std::cout << "PADispatchMainLoop::time_new(): fired\n";
 		cb(This->getAPI(), reinterpret_cast<pa_time_event*>(timer), reinterpret_cast<const struct timeval *>(&timer->tv), timer->userdata);
 	});
 	dispatch_source_set_cancel_handler(timer->source, ^{
@@ -250,6 +264,8 @@ void PADispatchMainLoop::time_restart(pa_time_event *e, const struct timeval *tv
 	timer->when.tv_nsec = real_tv->tv_usec * 1000; // convert to ns
 	timer->tv = *real_tv;
 
+	// std::cout << "PADispatchMainLoop::time_restart(), sec=" << real_tv->tv_sec << ", usec=" << real_tv->tv_usec << std::endl;
+
 	dispatch_source_set_timer(timer->source, dispatch_walltime(&timer->when, 0), 0, 0);
 }
 
@@ -263,6 +279,8 @@ void PADispatchMainLoop::time_set_destroy(pa_time_event *e, pa_time_event_destro
 void PADispatchMainLoop::time_free(pa_time_event *e)
 {
 	pa_timer* timer = reinterpret_cast<pa_timer*>(e);
+
+	// std::cout << "PADispatchMainLoop::time_free()\n";
 
 	dispatch_source_cancel(timer->source);
 	dispatch_release(timer->source);
@@ -285,6 +303,8 @@ void PADispatchMainLoop::defer_event_fire(void* context)
 		pa_mainloop_api* a = ev->loop->getAPI();
 		dispatch_queue_t q = static_cast<PADispatchMainLoop*>(a->userdata)->m_queue;
 
+		// std::cout << "PADispatchMainLoop::defer_event_fire(): with userdata=" << ev->userdata << std::endl;
+
 		ev->callback(a, static_cast<pa_defer_event*>(context), ev->userdata);
 
 		if (ev->active)
@@ -294,6 +314,7 @@ void PADispatchMainLoop::defer_event_fire(void* context)
 
 pa_defer_event *PADispatchMainLoop::defer_new(pa_mainloop_api *a, pa_defer_event_cb_t cb, void *userdata)
 {
+	// std::cout << "PADispatchMainLoop::defer_new(): with userdata=" << userdata << std::endl;
 	PADispatchMainLoop* This = static_cast<PADispatchMainLoop*>(a->userdata);
 	dispatch_queue_t q = This->m_queue;
 	defer_event* e = new defer_event;
@@ -319,6 +340,8 @@ void PADispatchMainLoop::defer_enable(pa_defer_event *e, int b)
 	defer_event* ev = reinterpret_cast<defer_event*>(e);
 	dispatch_queue_t q = ev->loop->m_queue;
 
+	// std::cout << "PADispatchMainLoop::defer_enable(): with userdata=" << ev->userdata << ", enable=" << b << std::endl;
+
 	if (!ev->active && b)
 		dispatch_async_f(q, e, defer_event_fire);
 	ev->active = !!b;
@@ -328,6 +351,8 @@ void PADispatchMainLoop::defer_free(pa_defer_event *e)
 {
 	defer_event* ev = reinterpret_cast<defer_event*>(e);
 	dispatch_queue_t q = ev->loop->m_queue;
+
+	// std::cout << "PADispatchMainLoop::defer_free(): with userdata=" << ev->userdata << std::endl;
 
 	ev->active = false;
 

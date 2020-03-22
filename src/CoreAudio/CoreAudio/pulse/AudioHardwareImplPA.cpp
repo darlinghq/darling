@@ -25,6 +25,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreFoundation/CFString.h>
 #include <iostream>
 #include <mutex>
+#include <thread>
 
 pa_context* AudioHardwareImplPA::m_context;
 std::unique_ptr<PADispatchMainLoop> AudioHardwareImplPA::m_loop;
@@ -182,11 +183,9 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 			// pa_proplist_sets(proplist, PA_PROP_APPLICATION_ICON_NAME, "icon-name");
 			// pa_proplist_sets(proplist, PA_PROP_MEDIA_ROLE, "game");
 
-			//pa_mainloop *mainloop = pa_mainloop_new ();
-
 			m_loop.reset(new PADispatchMainLoop);
 
-			m_context = pa_context_new_with_proplist(m_loop->getAPI() /*pa_mainloop_get_api(mainloop)*/, appname, proplist);
+			m_context = pa_context_new_with_proplist(m_loop->getAPI(), appname, proplist);
 			pa_proplist_free(proplist);
 
 			if (!m_context)
@@ -205,7 +204,6 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 				return;
 			}
 
-			// pa_mainloop_run (mainloop, NULL);
 			m_loop->resume();
 		}
 	}
