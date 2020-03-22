@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2002,2000 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -25,10 +25,11 @@
  * 
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
-#if defined (__i386__) || defined (__x86_64__)
-#include "i386/_mcontext.h"
-#elif defined(__ppc__)
-#include "ppc/_mcontext.h"
-#else
-#error architecture not supported
-#endif
+/*
+ * @OSF_COPYRIGHT@
+ */
+
+#ifndef	_MACH_PPC_RPC_H_
+#define	_MACH_PPC_RPC_H_
+
+#endif	/* _MACH_PPC_RPC_H_ */

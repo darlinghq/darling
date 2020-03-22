@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -25,10 +25,15 @@
  * 
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
-#if defined (__i386__) || defined (__x86_64__)
-#include "i386/_mcontext.h"
-#elif defined(__ppc__)
-#include "ppc/_mcontext.h"
-#else
-#error architecture not supported
-#endif
+/*
+ * Copyright (c) 1997, Apple Computer, Inc. All rights reserved.
+ *
+ */
+
+#ifndef _BSD_PPC_PROFILE_H_
+#define _BSD_PPC_PROFILE_H_
+
+#include <sys/appleapiopts.h>
+
+
+#endif /* _BSD_PPC_PROFILE_H_ */

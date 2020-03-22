@@ -30,6 +30,8 @@
 
 #if defined (__i386__) || defined(__x86_64__)
 #include "i386/signal.h"
+#elif defined(__ppc__)
+#include "ppc/signal.h"
 #else
 #error architecture not supported
 #endif

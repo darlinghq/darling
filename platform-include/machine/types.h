@@ -33,6 +33,8 @@
 
 #if defined (__i386__) || defined(__x86_64__)
 #include "i386/types.h"
+#elif defined(__ppc__)
+#include "ppc/types.h"
 #else
 #error architecture not supported
 #endif

@@ -4,6 +4,8 @@
    This file is public domain.  */
 #if defined (__i386__) || defined(__x86_64__)
 #include <i386/limits.h>
+#elif defined (__ppc__)
+#include <ppc/limits.h>
 #else
 #error architecture not supported
 #endif

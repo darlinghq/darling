@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  * 
@@ -25,10 +25,22 @@
  * 
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
-#if defined (__i386__) || defined (__x86_64__)
-#include "i386/_mcontext.h"
-#elif defined(__ppc__)
-#include "ppc/_mcontext.h"
-#else
-#error architecture not supported
-#endif
+
+#ifndef	_PPC__PARAM_H_
+#define	_PPC__PARAM_H_
+
+#include <ppc/_types.h>
+
+/*
+ * Round p (pointer or byte index) up to a correctly-aligned value for all
+ * data types (int, long, ...).   The result is unsigned int and must be
+ * cast to any desired pointer type.
+ */
+#define	__DARWIN_ALIGNBYTES	(sizeof(__darwin_size_t) - 1)
+#define	__DARWIN_ALIGN(p)	((__darwin_size_t)((char *)(__darwin_size_t)(p) + __DARWIN_ALIGNBYTES) &~ __DARWIN_ALIGNBYTES)
+
+#define      __DARWIN_ALIGNBYTES32     (sizeof(__uint32_t) - 1)
+#define       __DARWIN_ALIGN32(p)       ((__darwin_size_t)((char *)(__darwin_size_t)(p) + __DARWIN_ALIGNBYTES32) &~ __DARWIN_ALIGNBYTES32)
+
+
+#endif /* _PPC__PARAM_H_ */
