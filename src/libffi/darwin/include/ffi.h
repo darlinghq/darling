@@ -52,11 +52,15 @@ extern "C" {
 
 /* TODO: Add arm64_32 and armv7k support to support watchOS unconditionally */
 #ifdef __LP64__
-#define FFI_AVAILABLE_APPLE      API_AVAILABLE(macos(10.0), iosmac(13.0)) SPI_AVAILABLE(ios(13.0), tvos(13.0), watchos(6.0))
-#define FFI_AVAILABLE_APPLE_2019 API_AVAILABLE(macos(10.15), iosmac(13.0)) SPI_AVAILABLE(ios(13.0), tvos(13.0), watchos(6.0))
+// #define FFI_AVAILABLE_APPLE      API_AVAILABLE(macos(10.0), iosmac(13.0)) SPI_AVAILABLE(ios(13.0), tvos(13.0), watchos(6.0))
+// #define FFI_AVAILABLE_APPLE_2019 API_AVAILABLE(macos(10.15), iosmac(13.0)) SPI_AVAILABLE(ios(13.0), tvos(13.0), watchos(6.0))
+#define FFI_AVAILABLE_APPLE      API_AVAILABLE(macos(10.0))
+#define FFI_AVAILABLE_APPLE_2019 API_AVAILABLE(macos(10.15))
 #else
-#define FFI_AVAILABLE_APPLE      API_AVAILABLE(macos(10.0), iosmac(13.0)) SPI_AVAILABLE(ios(13.0), tvos(13.0)) API_UNAVAILABLE(watchos)
-#define FFI_AVAILABLE_APPLE_2019 API_AVAILABLE(macos(10.15), iosmac(13.0)) SPI_AVAILABLE(ios(13.0), tvos(13.0)) API_UNAVAILABLE(watchos)
+// #define FFI_AVAILABLE_APPLE      API_AVAILABLE(macos(10.0), iosmac(13.0)) SPI_AVAILABLE(ios(13.0), tvos(13.0)) API_UNAVAILABLE(watchos)
+// #define FFI_AVAILABLE_APPLE_2019 API_AVAILABLE(macos(10.15), iosmac(13.0)) SPI_AVAILABLE(ios(13.0), tvos(13.0)) API_UNAVAILABLE(watchos)
+#define FFI_AVAILABLE_APPLE      API_AVAILABLE(macos(10.0)) API_UNAVAILABLE(watchos)
+#define FFI_AVAILABLE_APPLE_2019 API_AVAILABLE(macos(10.15)) API_UNAVAILABLE(watchos)
 #endif
 
 /* ---- System configuration information --------------------------------- */
