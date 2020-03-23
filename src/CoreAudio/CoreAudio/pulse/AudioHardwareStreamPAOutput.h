@@ -25,15 +25,9 @@ class AudioHardwareStreamPAOutput : public AudioHardwareStreamPA
 {
 public:
 	AudioHardwareStreamPAOutput(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData);
-	~AudioHardwareStreamPAOutput();
-
-	void stop(void(^cbDone)()) override;
 private:
-	void start();
+	void start() override;
 	static void paStreamWriteCB(pa_stream* s, size_t length, void* self);
-private:
-	pa_stream* m_stream;
-	void(^m_cbDone)();
 };
 
 #endif /* AUDIOHARDWARESTREAMPA_H */

@@ -20,11 +20,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareStream.h"
 #include "AudioHardwareImpl.h"
 
-AudioHardwareStream::AudioHardwareStream(AudioHardwareImpl* hw)
+AudioHardwareStream::AudioHardwareStream(AudioHardwareImpl* hw, bool needBuffer)
 : m_hw(hw)
 {
 	m_bufferSize = hw->bufferSize();
-	m_buffer = new uint8_t[m_bufferSize];
+
+	if (needBuffer)
+		m_buffer = new uint8_t[m_bufferSize];
+	else
+		m_buffer = nullptr;
 }
 
 AudioHardwareStream::~AudioHardwareStream()

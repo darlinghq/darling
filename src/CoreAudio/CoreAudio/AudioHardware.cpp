@@ -21,6 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareImpl.h"
 #include "pulse/AudioHardwareImplPA.h"
 #include "pulse/AudioHardwareImplPAOutput.h"
+#include "pulse/AudioHardwareImplPAInput.h"
 #include <CoreServices/MacErrors.h>
 #include <dispatch/dispatch.h>
 #include <memory>
@@ -36,7 +37,7 @@ static void initObjects()
 		// TODO: Or ALSA
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject, std::make_unique<AudioHardwareImplPA>(kAudioObjectSystemObject)));
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 1, std::make_unique<AudioHardwareImplPAOutput>(kAudioObjectSystemObject + 1)));
-		// TODO: PA input
+		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 2, std::make_unique<AudioHardwareImplPAInput>(kAudioObjectSystemObject + 2)));
 	});
 }
 

@@ -8,9 +8,11 @@ set(coreaudio_sources
 	AudioHardware.cpp
     AudioHardwareImpl.cpp
     pulse/AudioHardwareImplPA.cpp
+    pulse/AudioHardwareImplPAInput.cpp
     pulse/AudioHardwareImplPAOutput.cpp
     AudioHardwareStream.cpp
     pulse/AudioHardwareStreamPA.cpp
+    pulse/AudioHardwareStreamPAInput.cpp
     pulse/AudioHardwareStreamPAOutput.cpp
     pulse/PADispatchMainLoop.cpp
 )

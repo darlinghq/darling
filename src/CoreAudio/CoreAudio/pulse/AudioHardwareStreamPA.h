@@ -29,9 +29,15 @@ class AudioHardwareStreamPA : public AudioHardwareStream
 public:
 	AudioHardwareStreamPA(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData);
 	~AudioHardwareStreamPA();
+
+	void stop(void(^cbDone)()) override;
+protected:
+	virtual void start() = 0;
 protected:
 	AudioDeviceIOProc m_callback;
 	void* m_clientData;
+	pa_stream* m_stream;
+	void(^m_cbDone)();
 };
 
 #endif /* AUDIOHARDWARESTREAMPA_H */

@@ -112,7 +112,7 @@ static void paContextStateCB(pa_context* c, void* priv)
 	pa_context_state_t state = pa_context_get_state(c);
 	if (state == PA_CONTEXT_READY)
 	{
-		std::cout << "PA_CONTEXT_READY\n";
+		// std::cout << "PA_CONTEXT_READY\n";
 
 		cb(c);
 		Block_release(cb);
@@ -122,7 +122,7 @@ static void paContextStateCB(pa_context* c, void* priv)
 	}
 	else if (state == PA_CONTEXT_FAILED)
 	{
-		std::cout << "PA_CONTEXT_FAILED\n";
+		std::cerr << "PulseAudio error: PA_CONTEXT_FAILED\n";
 
 		cb(nullptr);
 		Block_release(cb);

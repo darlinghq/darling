@@ -17,16 +17,16 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "AudioHardwareImplPAOutput.h"
-#include "AudioHardwareStreamPAOutput.h"
+#include "AudioHardwareImplPAInput.h"
+#include "AudioHardwareStreamPAInput.h"
 
-AudioHardwareImplPAOutput::AudioHardwareImplPAOutput(AudioObjectID myId)
+AudioHardwareImplPAInput::AudioHardwareImplPAInput(AudioObjectID myId)
 : AudioHardwareImplPA(myId)
 {
-	m_uid = CFSTR("PulseAudio:Output");
+	m_uid = CFSTR("PulseAudio:Input");
 }
 
-OSStatus AudioHardwareImplPAOutput::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
+OSStatus AudioHardwareImplPAInput::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 	const void* inQualifierData, UInt32* ioDataSize, void* outData)
 {
 	if (inAddress->mSelector == kAudioDevicePropertyStreamConfiguration)
@@ -59,13 +59,13 @@ OSStatus AudioHardwareImplPAOutput::getPropertyData(const AudioObjectPropertyAdd
 	return AudioHardwareImplPA::getPropertyData(inAddress, inQualifierDataSize, inQualifierData, ioDataSize, outData);
 }
 
-OSStatus AudioHardwareImplPAOutput::setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
+OSStatus AudioHardwareImplPAInput::setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 	const void* inQualifierData, UInt32 inDataSize, const void* inData)
 {
 	return AudioHardwareImplPA::setPropertyData(inAddress, inQualifierDataSize, inQualifierData, inDataSize, inData);
 }
 
-AudioHardwareStream* AudioHardwareImplPAOutput::createStream(AudioDeviceIOProc callback, void* clientData)
+AudioHardwareStream* AudioHardwareImplPAInput::createStream(AudioDeviceIOProc callback, void* clientData)
 {
-	return new AudioHardwareStreamPAOutput(this, callback, clientData);
+	return new AudioHardwareStreamPAInput(this, callback, clientData);
 }
