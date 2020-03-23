@@ -46,6 +46,11 @@
 #define API_AVAILABLE(...) __API_AVAILABLE_GET_MACRO(__VA_ARGS__,__API_AVAILABLE4, __API_AVAILABLE3, __API_AVAILABLE2, __API_AVAILABLE1)(__VA_ARGS__)
 
 /*
+ * Stub for SPI_AVAILABLE
+ */
+#define SPI_AVAILABLE(...)
+
+/*
  * API Deprecations
  *
  * Use to specify the release that a particular API became unavailable.
