@@ -46,6 +46,10 @@ ResFileRefNum CurResFile(void);
 ResFileRefNum HomeResFile(Handle resource);
 void UseResFile(ResFileRefNum ref);
 
+// NOTE: What's the difference between CountTypes() and Count1Types()?
+// CountTypes() applies to *all* open resource files.
+// Count1Types() applies to CurResFile() only.
+
 ResourceCount CountTypes(void);
 ResourceCount Count1Types(void);
 

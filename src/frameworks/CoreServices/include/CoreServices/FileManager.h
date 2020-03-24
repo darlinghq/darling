@@ -45,6 +45,7 @@ struct HFSUniStr255
 	uint16_t length;
 	uint16_t unicode[255];
 };
+typedef struct HFSUniStr255 HFSUniStr255;
 struct FSSpec;
 
 typedef struct FSSpec* FSSpecPtr;

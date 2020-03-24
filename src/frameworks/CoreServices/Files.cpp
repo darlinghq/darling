@@ -16,36 +16,22 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <CoreServices/Files.h>
+#include <CoreServices/MacErrors.h>
 
-
-#ifndef _CS_FILES_H
-#define _CS_FILES_H
-#include <CoreServices/MacTypes.h>
-#include <CoreServices/FileManager.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#if __LP64__
-	typedef int FSIORefNum;
-#else
-	typedef SInt16 FSIORefNum;
-#endif
-
-enum {
-	fsCurPerm = 0,
-	fsRdPerm = 1,
-	fsWrPerm = 2,
-	fsRdWrPerm = 3,
-	dsRdWrShPerm = 4,
-};
-
-OSErr FSGetDataForkName(HFSUniStr255* dataForkName);
-OSErr FSGetResourceForkName(HFSUniStr255* rsrcForkName);
-
-#ifdef __cplusplus
+OSErr FSGetDataForkName(HFSUniStr255* dataForkName)
+{
+	dataForkName->length = 0;
+	return noErr;
 }
-#endif
 
-#endif
+OSErr FSGetResourceForkName(HFSUniStr255* rsrcForkName)
+{
+	const char name[] = "RESOURCE_FORK";
+	rsrcForkName->length = sizeof(name) - 1;
+
+	for (int i = 0; i < sizeof(name) - 1; i++)
+		rsrcForkName->unicode[i] = name[i];
+
+	return noErr;
+}

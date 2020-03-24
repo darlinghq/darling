@@ -16,36 +16,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "ResourcesImpl.h"
+#include <stdexcept>
 
+// File format documentation:
+// https://developer.apple.com/library/archive/documentation/mac/MoreToolbox/MoreToolbox-99.html
 
-#ifndef _CS_FILES_H
-#define _CS_FILES_H
-#include <CoreServices/MacTypes.h>
-#include <CoreServices/FileManager.h>
+Resources::Resources(const char* file, bool readOnly, bool resourceFork)
+: m_file(file), m_readOnly(readOnly), m_resourceFork(resourceFork)
+{
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#if __LP64__
-	typedef int FSIORefNum;
-#else
-	typedef SInt16 FSIORefNum;
-#endif
-
-enum {
-	fsCurPerm = 0,
-	fsRdPerm = 1,
-	fsWrPerm = 2,
-	fsRdWrPerm = 3,
-	dsRdWrShPerm = 4,
-};
-
-OSErr FSGetDataForkName(HFSUniStr255* dataForkName);
-OSErr FSGetResourceForkName(HFSUniStr255* rsrcForkName);
-
-#ifdef __cplusplus
 }
-#endif
-
-#endif

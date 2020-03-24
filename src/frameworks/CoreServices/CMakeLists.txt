@@ -1,6 +1,6 @@
 project(CoreServices)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/external/libcxx/include)
 include_directories(
@@ -35,6 +35,9 @@ set(CoreServices_SRCS
 	LSApplicationWorkspace.m
 	constants.m
 	ComponentManager.cpp
+	Files.cpp
+	Resources.cpp
+	ResourcesImpl.cpp
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.0")

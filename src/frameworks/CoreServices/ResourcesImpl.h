@@ -17,35 +17,20 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef _CS_RESOURCES_IMPL_H
+#define _CS_RESOURCES_IMPL_H
+#include <CoreServices/Resources.h>
+#include <string>
 
-#ifndef _CS_FILES_H
-#define _CS_FILES_H
-#include <CoreServices/MacTypes.h>
-#include <CoreServices/FileManager.h>
+class Resources
+{
+public:
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#if __LP64__
-	typedef int FSIORefNum;
-#else
-	typedef SInt16 FSIORefNum;
-#endif
-
-enum {
-	fsCurPerm = 0,
-	fsRdPerm = 1,
-	fsWrPerm = 2,
-	fsRdWrPerm = 3,
-	dsRdWrShPerm = 4,
+	Resources(const char* file, bool readOnly, bool resourceFork);
+private:
+	std::string m_file;
+	const bool m_readOnly, m_resourceFork;
 };
 
-OSErr FSGetDataForkName(HFSUniStr255* dataForkName);
-OSErr FSGetResourceForkName(HFSUniStr255* rsrcForkName);
-
-#ifdef __cplusplus
-}
 #endif
 
-#endif
