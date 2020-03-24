@@ -33,20 +33,10 @@ extern "C" {
 
 #define FSRef_MAX_DEPTH (80 / sizeof(ino_t))
 
-struct FSRef
+typedef struct FSRef
 {
-	union
-	{
-		uint8_t hidden[80];
-
-		// Inode numbers leading to the file in the directory structure
-		//
-		// EXAMPLES:
-		// All zeroes: /
-		// sequence 1,2,0: [dir with inode 1]/[dir or file with inode 2]
-		ino_t inodes[FSRef_MAX_DEPTH];
-	};
-};
+	uint8_t hidden[80];
+} FSRef;
 typedef struct FSRef* FSRefPtr;
 typedef struct FSRef FSRef;
 
@@ -99,6 +89,7 @@ struct FSCatalogInfo
 	uint32_t valence; // file count within a directory
 	uint32_t textEncodingHint;
 };
+typedef struct FSCatalogInfo FSCatalogInfo;
 
 typedef void* IOCompletionUPP;
 typedef void* QElemPtr;

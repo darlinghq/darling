@@ -19,6 +19,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ComponentManager.h"
 #include <CoreServices/MacErrors.h>
+#include <CoreServices/Resources.h>
+
+// Some clues about how this work can be found here:
+// https://vintageapple.org/develop/pdf/develop-12_9212_December_1992.pdf
 
 ComponentManager* ComponentManager::instance()
 {

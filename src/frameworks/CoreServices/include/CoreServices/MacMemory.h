@@ -18,6 +18,12 @@ Ptr NewPtr(long len);
 Ptr NewPtrClear(long len);
 void DiposePtr(Ptr p);
 void DisposeHandle(Handle handle);
+Size GetHandleSize(Handle h);
+void EmptyHandle(Handle h);
+OSErr PtrToHand(const void* srcPtr, Handle* dstHndl, long size);
+
+// free and new alloc
+void ReallocateHandle(Handle h, Size byteCount);
 // and other crap with relocatable memory blocks etc.
 
 #ifdef __cplusplus

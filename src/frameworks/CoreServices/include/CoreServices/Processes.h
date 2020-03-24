@@ -1,7 +1,7 @@
 #ifndef PROCESSES_H
 #define PROCESSES_H
 #include "MacTypes.h"
-#include "FileManager.h"
+#include <CoreServices/FileManager.h>
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFDictionary.h>
 #include <sys/types.h>

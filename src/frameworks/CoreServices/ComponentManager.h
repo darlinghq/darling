@@ -67,6 +67,8 @@ private:
 		ComponentDescription cd;
 		ComponentRoutineUPP entryPoint;
 		std::string name, info;
+		
+		std::string bundlePath;
 
 		uint32_t instances;
 	};
