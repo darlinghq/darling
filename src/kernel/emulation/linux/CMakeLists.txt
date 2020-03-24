@@ -257,6 +257,7 @@ set(emulation_sources
 	ext/syslog.c
 	ext/futex.c
 	ext/mremap.c
+	ext/file_handle.c
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_terminate.c
