@@ -23328,6 +23328,7 @@
 #define __API_AVAILABLE_PLATFORM_macos(x) macos,introduced=x
 #define __API_AVAILABLE_PLATFORM_macosx(x) macosx,introduced=x
 #define __API_AVAILABLE_PLATFORM_ios(x) ios,introduced=x
+#define __API_AVAILABLE_PLATFORM_iosmac(x) iosmac,introduced=x
 #define __API_AVAILABLE_PLATFORM_watchos(x) watchos,introduced=x
 #define __API_AVAILABLE_PLATFORM_tvos(x) tvos,introduced=x
 

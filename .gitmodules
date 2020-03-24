@@ -313,3 +313,6 @@
 [submodule "src/external/cups"]
 	path = src/external/cups
 	url = ../darling-cups.git
+[submodule "src/external/libffi"]
+	path = src/external/libffi
+	url = ../darling-libffi.git
