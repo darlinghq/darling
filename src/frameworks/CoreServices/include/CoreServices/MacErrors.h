@@ -39,4 +39,15 @@ inline OSStatus makeOSStatus(int errNo) { return 100000 + errNo; }
 
 #define kMPTimeoutErr -29296
 
+enum {
+	invalidComponentID = -3000,
+	validInstancesExist = -3001,
+	componentNotCaptured = -3002,
+	componentDontRegister = -3003,
+	unresolvedComponentDLLErr = -3004,
+	retryComponentRegistrationErr = -3005,
+	badComponentInstance = (int)0x80008001,
+	badComponentSelector = (int)0x80008002,
+};
+
 #endif

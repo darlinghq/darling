@@ -34,6 +34,7 @@ set(CoreServices_SRCS
 	LSApplicationProxy.m
 	LSApplicationWorkspace.m
 	constants.m
+	ComponentManager.cpp
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
