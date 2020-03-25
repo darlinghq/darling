@@ -117,6 +117,14 @@ void UseResFile(ResFileRefNum ref)
 {
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 
+	if (ref == kResFileNotOpened)
+	{
+		g_currentResFile = ref;
+		g_currentResources = nullptr;
+		g_lastError = noErr;
+		return;
+	}
+
 	if (auto it = g_resources.find(ref); it != g_resources.end())
 	{
 		g_currentResFile = ref;

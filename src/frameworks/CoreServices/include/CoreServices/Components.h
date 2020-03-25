@@ -82,6 +82,17 @@ enum {
 	defaultComponentAnyFlagsAnyManufacturerAnySubType = (defaultComponentFlags + defaultComponentAnyManufacturer + defaultComponentAnySubType),
 };
 
+enum {
+	platform68k = 1,
+	platformPowerPC = 2,
+	platformInterpreted = 3,
+	platformWin32 = 4,
+	platformPowerPCNativeEntryPoint = 5,
+	platformIA32NativeEntryPoint = 6,
+	platformPowerPC64NativeEntryPoint = 7,
+	platformX86_64NativeEntryPoint = 8,
+};
+
 typedef struct ResourceSpec
 {
 	OSType resType;

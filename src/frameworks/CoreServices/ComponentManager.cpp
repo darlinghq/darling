@@ -20,9 +20,26 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "ComponentManager.h"
 #include <CoreServices/MacErrors.h>
 #include <CoreServices/Resources.h>
+#include <CoreServices/MacMemory.h>
+#include <dirent.h>
+#include <cstdlib>
+#include <CoreFoundation/CFBundle.h>
+#include <CoreFoundation/CFURL.h>
+#include <CoreFoundation/CFString.h>
+#include <CoreFoundation/CFArray.h>
 
-// Some clues about how this work can be found here:
+// Some clues about how this works can be found here:
 // https://vintageapple.org/develop/pdf/develop-12_9212_December_1992.pdf
+
+#if defined(__i386__)
+#	define CURRENT_PLATFORM platformIA32NativeEntryPoint
+#elif defined(__x86_64__)
+#	define CURRENT_PLATFORM platformX86_64NativeEntryPoint
+#elif defined(__ppc__)
+#	define CURRENT_PLATFORM platformPowerPCNativeEntryPoint
+#elif defined(__ppc64__)
+#	define CURRENT_PLATFORM platformPowerPC64NativeEntryPoint
+#endif
 
 ComponentManager* ComponentManager::instance()
 {
@@ -37,7 +54,275 @@ ComponentManager::ComponentManager()
 
 void ComponentManager::discoverComponents()
 {
-	// TODO
+	discoverComponents("/System/Library/Components");
+
+	const char* home = ::getenv("HOME");
+	if (home != NULL)
+	{
+		std::string userPath = home;
+		userPath += "/Library/Audio/Plug-Ins/Components";
+
+		discoverComponents(userPath.c_str());
+	}
+}
+
+void ComponentManager::discoverComponents(const char* dir)
+{
+	CFArrayRef componentBundles;
+	CFURLRef urlDir;
+	CFStringRef strDir;
+
+	strDir = CFStringCreateWithCStringNoCopy(nullptr, dir, kCFStringEncodingUTF8, kCFAllocatorNull);
+	urlDir = CFURLCreateWithFileSystemPath(nullptr, strDir, kCFURLPOSIXPathStyle, true);
+	CFRelease(strDir);
+
+	componentBundles = CFBundleCreateBundlesFromDirectory(nullptr, urlDir, CFSTR("component"));
+
+	CFRelease(urlDir);
+
+	for (CFIndex i = 0; i < CFArrayGetCount(componentBundles); i++)
+		analyzeComponent((CFBundleRef) CFArrayGetValueAtIndex(componentBundles, i));
+
+	CFRelease(componentBundles);
+}
+
+void ComponentManager::analyzeComponent(CFBundleRef bundle)
+{
+	OSStatus status;
+	FSRef fsref;
+	bool analyzed = false;
+
+	CFURLRef url = CFBundleCopyExecutableURL(bundle);
+	if (url != nullptr)
+	{
+		CFStringRef filePath = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
+
+		// Check for a resource fork to analyze
+		status = FSPathMakeRef((const uint8_t*) CFStringGetCStringPtr(filePath, kCFStringEncodingUTF8), &fsref, nullptr);
+
+		if (status == noErr)
+		{
+			HFSUniStr255 rsrcForkName;
+			ResFileRefNum resFile;
+
+			FSGetResourceForkName(&rsrcForkName);
+
+			status = FSOpenResourceFile(&fsref, rsrcForkName.length, rsrcForkName.unicode, fsRdPerm, &resFile);
+
+			if (status == noErr)
+			{
+				analyzeComponent(bundle, resFile);
+				CloseResFile(resFile);
+				analyzed = true;
+			}
+		}
+
+		CFRelease(filePath);
+		CFRelease(url);
+	}
+
+	if (analyzed)
+		return;
+
+	CFURLRef bundleUrl = CFBundleCopyBundleURL(bundle);
+	CFURLRef bundleUrlNoExt = CFURLCreateCopyDeletingPathExtension(nullptr, bundleUrl);
+	CFRelease(bundleUrl);
+
+	CFStringRef bundleName = CFURLCopyLastPathComponent(bundleUrlNoExt);
+	CFRelease(bundleUrlNoExt);
+
+	url = CFBundleCopyResourceURL(bundle, bundleName, CFSTR("rsrc"), nullptr);
+	CFRelease(bundleName);
+
+	// Check for a resource file
+	if (url != nullptr)
+	{
+		CFStringRef filePath = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
+
+		status = FSPathMakeRef((const uint8_t*) CFStringGetCStringPtr(filePath, kCFStringEncodingUTF8), &fsref, nullptr);
+
+		if (status == noErr)
+		{
+			HFSUniStr255 rsrcForkName;
+			ResFileRefNum resFile;
+
+			FSGetDataForkName(&rsrcForkName);
+
+			status = FSOpenResourceFile(&fsref, rsrcForkName.length, rsrcForkName.unicode, fsRdPerm, &resFile);
+
+			if (status == noErr)
+			{
+				analyzeComponent(bundle, resFile);
+				CloseResFile(resFile);
+			}
+		}
+
+		CFRelease(filePath);
+		CFRelease(url);
+	}
+}
+
+#pragma pack(push, 1)
+struct PlatformInfo
+{
+	uint32_t ComponentFlags;
+	uint32_t CodeType;
+	uint16_t CodeId;
+	uint16_t PlatformType;
+};
+
+struct CarbonThng
+{
+    uint32_t Type;
+    uint32_t Subtype;
+    uint32_t Manufacturer;
+    uint32_t ComponentFlags;
+    uint32_t ComponentFlagsMask;
+    uint32_t CodeType;
+    uint16_t CodeId;
+    uint32_t NameType;
+    uint16_t NameId;
+    uint32_t InfoType;
+    uint16_t InfoId;
+    uint32_t IconType;
+    uint16_t IconId;
+    uint32_t ComponentVersion;
+    uint32_t RegistrationFlags;
+    uint16_t IconFamilyId;
+
+    uint32_t PlatformInfoCount;
+    PlatformInfo PlatformInfos[];
+};
+#pragma pack(pop)
+
+#ifdef __LITTLE_ENDIAN__
+#	define SWAP(x) x = _bswap(x)
+
+static inline uint16_t _bswap(uint16_t v) { return __builtin_bswap16(v); }
+static inline int16_t _bswap(int16_t v) { return __builtin_bswap16(v); }
+static inline uint32_t _bswap(uint32_t v) { return __builtin_bswap32(v); }
+
+#else
+#	define SWAP(x)
+#endif
+
+static std::string loadResString(ResType type, ResID id)
+{
+	Handle h = Get1Resource(type, id);
+	if (!h)
+		return std::string();
+
+	return std::string(*h, GetHandleSize(h));
+}
+
+void ComponentManager::analyzeComponent(CFBundleRef bundle, ResFileRefNum resFile)
+{
+	ResFileRefNum origRes = CurResFile();
+	UseResFile(resFile);
+
+	ResourceCount thingCount = Count1Resources('thng');
+	for (int i = 1; i <= thingCount; i++)
+	{
+		Handle handle = Get1IndResource('thng', i);
+		if (handle && GetHandleSize(handle) >= sizeof(CarbonThng))
+		{
+			CarbonThng thng = *((CarbonThng*) *handle);
+
+			SWAP(thng.Type);
+			SWAP(thng.Subtype);
+			SWAP(thng.Manufacturer);
+
+			SWAP(thng.CodeType);
+			SWAP(thng.CodeId);
+
+			SWAP(thng.NameType);
+			SWAP(thng.NameId);
+
+			SWAP(thng.InfoType);
+			SWAP(thng.InfoId);
+
+			SWAP(thng.ComponentFlags);
+			SWAP(thng.ComponentFlagsMask);
+
+			SWAP(thng.PlatformInfoCount);
+			SWAP(thng.RegistrationFlags);
+
+			ComponentDescription cd;
+			cd.componentType = thng.Type;
+			cd.componentSubType = thng.Subtype;
+			cd.componentManufacturer = thng.Manufacturer;
+
+			std::string name, info, entryPoint;
+			name = loadResString(thng.NameType, thng.NameId);
+			info = loadResString(thng.InfoType, thng.InfoId);
+
+			for (int p = 0; p < thng.PlatformInfoCount; p++)
+			{
+				SWAP(thng.PlatformInfos[p].PlatformType);
+
+				if (thng.PlatformInfos[p].PlatformType == CURRENT_PLATFORM)
+				{
+					SWAP(thng.PlatformInfos[p].CodeType);
+					SWAP(thng.PlatformInfos[p].CodeId);
+					entryPoint = loadResString(thng.PlatformInfos[p].CodeType, thng.PlatformInfos[p].CodeId);
+				}
+			}
+
+			if (!entryPoint.empty())
+			{
+				CFURLRef url = CFBundleCopyBundleURL(bundle);
+				CFStringRef cfpath = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
+
+				CFRelease(url);
+
+				const char* path = CFStringGetCStringPtr(cfpath, kCFStringEncodingUTF8);
+				registerComponent(&cd, thng.RegistrationFlags, path, entryPoint.c_str(), name.c_str(), info.c_str(), nullptr);
+				CFRelease(cfpath);
+			}
+		}
+	}
+
+	UseResFile(origRes);
+}
+
+#undef SWAP
+
+Component ComponentManager::registerComponent(const ComponentDescription* cd, SInt16 flags, const char* bundlePath,
+	const char* entryPoint, const char* name, const char* info, void* icon)
+{
+	std::unique_lock<std::recursive_mutex> l(m_componentsMutex);
+
+	ComponentData data;
+	data.cd = *cd;
+	data.instances = 0;
+
+	if (name)
+		data.name = name;
+	if (info)
+		data.info = info;
+
+	data.entryPoint = nullptr;
+	data.entryPointName = entryPoint;
+	data.bundlePath = bundlePath;
+
+	ComponentData* dataPtr;
+	if (flags & registerComponentAfterExisting)
+	{
+		m_components.push_back(data);
+		dataPtr = &m_components.back();
+	}
+	else
+	{
+		m_components.push_front(data);
+		dataPtr = &m_components.front();
+	}
+	
+	Component c = Component(uintptr_t(nextComponentId++));
+	dataPtr->component = c;
+
+	m_componentsMap.insert(std::make_pair(c, dataPtr));
+
+	return c;
 }
 
 Component ComponentManager::registerComponent(const ComponentDescription* cd, ComponentRoutineUPP entryPointIn, SInt16 flags,
@@ -169,10 +454,36 @@ OSStatus ComponentManager::instantiate(Component c, ComponentInstance* out)
 	if (itMap == m_componentsMap.end())
 		return invalidComponentID;
 
+	ComponentData* cd = itMap->second;
+
+	if (!cd->entryPoint)
+	{
+		CFStringRef cfpath = CFStringCreateWithCString(nullptr, cd->bundlePath.c_str(), kCFStringEncodingUTF8);
+
+		CFURLRef url = CFURLCreateWithFileSystemPath(nullptr, cfpath, kCFURLPOSIXPathStyle, true);
+		CFRelease(cfpath);
+
+		CFBundleRef bundle = CFBundleCreate(nullptr, url);
+		CFRelease(url);
+
+		if (!bundle)
+			return invalidComponentID;
+
+		CFStringRef cfEntryPointName = CFStringCreateWithCString(nullptr, cd->entryPointName.c_str(), kCFStringEncodingUTF8);
+		cd->entryPoint = (ComponentRoutineUPP) CFBundleGetFunctionPointerForName(bundle, cfEntryPointName);
+		CFRelease(cfEntryPointName);
+
+		if (!cd->entryPoint)
+			return invalidComponentID;
+
+		// Releasing the bundle triggers CFBundleUnloadExecutable(),
+		// so we leak the bundle instance here.
+	}
+
 	ComponentInstanceData cid;
 
 	cid.component = c;
-	cid.componentData = itMap->second;
+	cid.componentData = cd;
 	cid.componentData->instances++;
 	cid.storage = nullptr;
 

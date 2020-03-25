@@ -28,6 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <stdint.h>
 #include <CoreServices/MacTypes.h>
+#include <CoreFoundation/CFBundle.h>
 
 class ComponentManager
 {
@@ -37,10 +38,20 @@ private:
 	// Search in /System/Library/Components for components
 	// Examine resource forks of the main binary, but also check for Resources/$BUNDLE_NAME.rsrc
 	void discoverComponents();
+	void discoverComponents(const char* dir);
+	void analyzeComponent(CFBundleRef bundle);
+	void analyzeComponent(CFBundleRef bundle, ResFileRefNum resFile);
 public:
 	static ComponentManager* instance();
 
-	Component registerComponent(const ComponentDescription* cd, ComponentRoutineUPP entryPoint, SInt16 flags, const char* name, const char* info, void* icon);
+	// Dynamic registration (in memory)
+	Component registerComponent(const ComponentDescription* cd, ComponentRoutineUPP entryPoint, SInt16 flags,
+		const char* name, const char* info, void* icon);
+	
+	// Bundle registration (automatic)
+	Component registerComponent(const ComponentDescription* cd, SInt16 flags, const char* path, const char* entryPoint,
+		const char* name, const char* info, void* icon);
+
 	void setDefault(Component c, SInt16 flags);
 	OSStatus unregisterComponent(Component c);
 
@@ -68,7 +79,7 @@ private:
 		ComponentRoutineUPP entryPoint;
 		std::string name, info;
 		
-		std::string bundlePath;
+		std::string bundlePath, entryPointName;
 
 		uint32_t instances;
 	};
