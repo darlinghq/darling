@@ -476,8 +476,7 @@ OSStatus ComponentManager::instantiate(Component c, ComponentInstance* out)
 		if (!cd->entryPoint)
 			return invalidComponentID;
 
-		// Releasing the bundle triggers CFBundleUnloadExecutable(),
-		// so we leak the bundle instance here.
+		cd->loadedBundle = bundle;
 	}
 
 	ComponentInstanceData cid;
@@ -528,6 +527,23 @@ OSStatus ComponentManager::dispose(ComponentInstance c)
 	cp.params[0] = uintptr_t(c);
 
 	OSStatus status = dispatch(&cp);
+
+	Component component = it->second.component;
+	auto itMap = m_componentsMap.find(component);
+	if (itMap != m_componentsMap.end())
+	{
+		ComponentData* cd = itMap->second;
+		cd->instances--;
+
+		// If this was a dynamically loaded component
+		// and there are not instances left, release the bundle.
+		if (cd->instances == 0 && cd->loadedBundle)
+		{
+			cd->entryPoint = nullptr;
+			CFRelease(cd->loadedBundle);
+			cd->loadedBundle = nullptr;
+		}
+	}
 
 	m_componentInstances.erase(it);
 	return status;

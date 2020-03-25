@@ -72,7 +72,6 @@ public:
 private:
 	struct ComponentData
 	{
-		// Assigned identifier
 		Component component;
 
 		ComponentDescription cd;
@@ -80,6 +79,7 @@ private:
 		std::string name, info;
 		
 		std::string bundlePath, entryPointName;
+		CFBundleRef loadedBundle = nullptr;
 
 		uint32_t instances;
 	};
