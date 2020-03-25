@@ -16,15 +16,23 @@ void BlockZeroUncached(void* dst, size_t count);
 
 Ptr NewPtr(long len);
 Ptr NewPtrClear(long len);
-void DiposePtr(Ptr p);
+void DisposePtr(Ptr p);
 void DisposeHandle(Handle handle);
 Size GetHandleSize(Handle h);
 void EmptyHandle(Handle h);
 OSErr PtrToHand(const void* srcPtr, Handle* dstHndl, long size);
-
-// free and new alloc
+OSErr PtrToXHand(const void* srcPtr, Handle dstHndl, long size);
+Handle NewHandle(long size);
+Handle NewHandleClear(long size);
+Handle NewEmptyHandle(void);
+long GetPtrSize(Ptr ptr);
+void SetPtrSize(Ptr p, long newSize);
+void SetHandleSize(Handle h, long newSize);
+long GetHandleSize(Handle h);
 void ReallocateHandle(Handle h, Size byteCount);
-// and other crap with relocatable memory blocks etc.
+void HLock(Handle h);
+void HLockHi(Handle h);
+void HUnlock(Handle h);
 
 #ifdef __cplusplus
 }

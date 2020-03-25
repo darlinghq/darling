@@ -33,6 +33,15 @@ enum {
 	kSystemResFile = 0,
 };
 
+enum {
+	resSysHeap = 64,
+	resPurgeable = 32,
+	resLocked = 16,
+	resProtected = 8,
+	resPreload = 4,
+	resChanged = 2,
+};
+
 typedef SInt16 ResID;
 typedef SInt16 ResAttributes;
 typedef SInt16 ResFileAttributes;
@@ -52,6 +61,8 @@ void UseResFile(ResFileRefNum ref);
 
 ResourceCount CountTypes(void);
 ResourceCount Count1Types(void);
+
+// NOTE: Indexes start from 1!
 
 void GetIndType(ResType* type, ResourceIndex index);
 void Get1IndType(ResType* type, ResourceIndex index);
