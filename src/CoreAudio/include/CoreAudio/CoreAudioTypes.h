@@ -111,7 +111,6 @@ enum
 
 enum
 {
-   kAudioFormatFlagsNativeEndian = 0,
 	kAudioFormatFlagIsFloat                     = (1 << 0),     // 0x1
 	kAudioFormatFlagIsBigEndian                 = (1 << 1),     // 0x2
 	kAudioFormatFlagIsSignedInteger             = (1 << 2),     // 0x4
@@ -120,6 +119,11 @@ enum
 	kAudioFormatFlagIsNonInterleaved            = (1 << 5),     // 0x20
 	kAudioFormatFlagIsNonMixable                = (1 << 6),     // 0x40
 	kAudioFormatFlagsAreAllClear                = (1 << 31),
+#if defined(__BIG_ENDIAN__)
+   kAudioFormatFlagsNativeEndian = kAudioFormatFlagIsBigEndian,
+#else
+   kAudioFormatFlagsNativeEndian = 0,
+#endif
    kAudioFormatFlagsCanonical = kAudioFormatFlagIsFloat | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsPacked,
    kAudioFormatFlagsNativeFloatPacked = kAudioFormatFlagIsFloat | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsPacked,
 	

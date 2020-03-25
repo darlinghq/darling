@@ -20,6 +20,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareStreamPA.h"
 #include "AudioHardwareImplPA.h"
 #include <iostream>
+#include <type_traits>
+#include <limits>
 
 AudioHardwareStreamPA::AudioHardwareStreamPA(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData)
 : AudioHardwareStream(hw, false), m_callback(callback), m_clientData(clientData)
@@ -30,18 +32,9 @@ AudioHardwareStreamPA::AudioHardwareStreamPA(AudioHardwareImpl* hw, AudioDeviceI
 			std::cerr << "Failed to get PulseAudio context\n";
 			return;
 		}
-
-		pa_sample_spec spec;
-
-		spec.rate = 44100;
-		spec.channels = 2;
-#if defined(__BIG_ENDIAN__)
-		spec.format = PA_SAMPLE_FLOAT32BE;
-#elif defined(__LITTLE_ENDIAN__)
-		spec.format = PA_SAMPLE_FLOAT32LE;
-#else
-#	error Unknown endianess!
-#endif
+		
+		pa_sample_spec spec = AudioHardwareImplPA::paSampleSpecForASBD(hw->asbd(), &m_convertSignedUnsigned);
+		
 		if (!pa_sample_spec_valid(&spec))
 		{
 			std::cerr << "Failed to create a valid pa_sample_spec\n";
@@ -85,3 +78,83 @@ void AudioHardwareStreamPA::stop(void(^cbDone)())
 	}, this);
 }
 
+// This function seems to only convert unsigned to signed, but it works both ways in practice
+template <typename T>
+void transform(typename std::make_unsigned<T>::type* data)
+{
+	typedef typename std::make_signed<T>::type signed_type;
+	signed_type* s = reinterpret_cast<signed_type*>(data);
+
+	*s = *data + std::numeric_limits<signed_type>::min();
+}
+
+void AudioHardwareStreamPA::transformSignedUnsigned(AudioBufferList* abl) const
+{
+	const AudioStreamBasicDescription& asbd = m_hw->asbd();
+	const bool revEndian = (asbd.mFormatFlags & kAudioFormatFlagIsBigEndian) != (asbd.mFormatFlags & kAudioFormatFlagsNativeEndian);
+
+	for (int i = 0; i < abl->mNumberBuffers; i++)
+	{
+		AudioBuffer* buf = &abl->mBuffers[i];
+
+		switch (asbd.mBitsPerChannel)
+		{
+			case 8:
+				for (int j = 0; j < buf->mDataByteSize; j++)
+					transform<uint8_t>(reinterpret_cast<uint8_t*>(buf->mData) + j);
+				break;
+			case 16:
+				if (!revEndian)
+				{
+					for (int j = 0; j < buf->mDataByteSize / sizeof(uint16_t); j++)
+						transform<uint16_t>(reinterpret_cast<uint16_t*>(buf->mData) + j);
+				}
+				else
+				{
+					for (int j = 0; j < buf->mDataByteSize / sizeof(uint16_t); j++)
+					{
+						uint16_t v = __builtin_bswap16(*(reinterpret_cast<uint16_t*>(buf->mData) + j));
+						transform<uint16_t>(&v);
+						*(reinterpret_cast<uint16_t*>(buf->mData) + j) = __builtin_bswap16(v);
+					}
+				}
+				break;
+			case 24:
+				for (int j = 0; j < buf->mDataByteSize / sizeof(uint32_t); j++)
+				{
+					uint32_t v = *(reinterpret_cast<uint32_t*>(buf->mData) + j);
+					if (revEndian)
+						v = __builtin_bswap32(v);
+					
+					// sign extend
+					if (v & 0x800000)
+						v |= 0xff000000;
+
+					transform<uint32_t>(&v);
+					
+					v &= 0xffffff;
+					if (revEndian)
+						v = __builtin_bswap32(v);
+					
+					*(reinterpret_cast<uint32_t*>(buf->mData) + j) = v;
+				}
+				break;
+			case 32:
+				if (!revEndian)
+				{
+					for (int j = 0; j < buf->mDataByteSize / sizeof(uint32_t); j++)
+						transform<uint32_t>(reinterpret_cast<uint32_t*>(buf->mData) + j);
+				}
+				else
+				{
+					for (int j = 0; j < buf->mDataByteSize / sizeof(uint32_t); j++)
+					{
+						uint32_t v = __builtin_bswap32(*(reinterpret_cast<uint32_t*>(buf->mData) + j));
+						transform<uint32_t>(&v);
+						*(reinterpret_cast<uint32_t*>(buf->mData) + j) = __builtin_bswap32(v);
+					}
+				}
+				break;
+		}
+	}
+}

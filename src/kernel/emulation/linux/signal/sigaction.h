@@ -47,8 +47,15 @@ struct linux_siginfo
 	int si_signo;
 	int si_errno;
 	int si_code;
-	int si_pid;
-	int si_uid;
+	union
+	{
+		struct
+		{
+			int si_pid;
+			int si_uid;
+		};
+		void* si_addr;
+	};
 
 	union
 	{

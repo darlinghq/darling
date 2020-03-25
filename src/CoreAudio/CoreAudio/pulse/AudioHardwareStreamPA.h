@@ -33,11 +33,13 @@ public:
 	void stop(void(^cbDone)()) override;
 protected:
 	virtual void start() = 0;
+	void transformSignedUnsigned(AudioBufferList* abl) const;
 protected:
 	AudioDeviceIOProc m_callback;
 	void* m_clientData;
 	pa_stream* m_stream;
 	void(^m_cbDone)();
+	bool m_convertSignedUnsigned = false;
 };
 
 #endif /* AUDIOHARDWARESTREAMPA_H */

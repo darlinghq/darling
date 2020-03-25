@@ -7,6 +7,9 @@ class AudioUnitRenderer : public AudioUnitComponent
 {
 public:
 	AudioUnitRenderer(const AURenderCallbackStruct& cb);
+	AudioUnitRenderer();
+
+	AudioUnitRenderer& operator=(const AURenderCallbackStruct& cb) { m_renderCallback = cb; return *this; }
 	OSStatus init() override;
 	OSStatus deinit() override;
 	

@@ -26,6 +26,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 AudioHardwareImpl::AudioHardwareImpl(AudioObjectID myId)
 : m_myId(myId)
 {
+	// These are the standard values macOS applications have learned to expect
+	m_asbd.mChannelsPerFrame = 2;
+	m_asbd.mSampleRate = 44100;
+	m_asbd.mBitsPerChannel = 32;
+	m_asbd.mFormatID = kAudioFormatLinearPCM;
+	m_asbd.mFormatFlags = kLinearPCMFormatFlagIsFloat | kAudioFormatFlagsNativeEndian;
+	m_asbd.mFramesPerPacket = 1;
+	m_asbd.mBytesPerFrame = UInt32(m_asbd.mBytesPerPacket = m_asbd.mChannelsPerFrame * m_asbd.mSampleRate * m_asbd.mBitsPerChannel / 8);
 }
 
 
@@ -147,14 +155,7 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 		{
 			if (AudioStreamBasicDescription* asbd = static_cast<AudioStreamBasicDescription*>(outData); asbd && *ioDataSize >= sizeof(AudioStreamBasicDescription))
 			{
-				// These are standard values macOS applications have learned to expect
-				asbd->mChannelsPerFrame = 2;
-				asbd->mSampleRate = 44100;
-				asbd->mBitsPerChannel = 32;
-				asbd->mFormatID = kAudioFormatLinearPCM;
-				asbd->mFormatFlags = kLinearPCMFormatFlagIsFloat;
-				asbd->mFramesPerPacket = 1;
-				asbd->mBytesPerFrame = UInt32(asbd->mBytesPerPacket = asbd->mChannelsPerFrame * asbd->mSampleRate * asbd->mBitsPerChannel / 8);
+				memcpy(asbd, &m_asbd, sizeof(m_asbd));
 			}
 			*ioDataSize = sizeof(AudioStreamBasicDescription);
 			return kAudioHardwareNoError;
@@ -266,6 +267,24 @@ OSStatus AudioHardwareImpl::setPropertyData(const AudioObjectPropertyAddress* in
 		}
 		case kAudioDevicePropertyVolumeDecibels:
 		{
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyStreamFormat:
+		{
+			if (inDataSize != sizeof(m_asbd))
+				return kAudioHardwareBadPropertySizeError;
+
+			const AudioStreamBasicDescription* setting = static_cast<const AudioStreamBasicDescription*>(inData);
+			if (setting->mFormatID != kAudioFormatLinearPCM)
+				return kAudioDeviceUnsupportedFormatError;
+			if (!validateFormat(setting))
+				return kAudioDeviceUnsupportedFormatError;
+
+			memcpy(&m_asbd, setting, sizeof(m_asbd));
+
+			m_asbd.mFramesPerPacket = 1;
+			m_asbd.mBytesPerFrame = UInt32(m_asbd.mBytesPerPacket = m_asbd.mChannelsPerFrame * m_asbd.mSampleRate * m_asbd.mBitsPerChannel / 8);
+
 			return kAudioHardwareNoError;
 		}
 		// These make sense only for ALSA, but I find it ridiculous that these properties can be set...

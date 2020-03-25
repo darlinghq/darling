@@ -21,12 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 #include <stdint.h>
 #include <cstdlib>
-
-struct PtrInternal
-{
-	uintptr_t size;
-	uint8_t data[];
-};
+#include <malloc/malloc.h>
 
 void BlockMove(const void* src, void* dst, size_t count)
 {
@@ -60,21 +55,17 @@ void BlockZeroUncached(void* dst, size_t count)
 
 Ptr NewPtr(long len)
 {
-	PtrInternal* ptr = (PtrInternal*) malloc(len + sizeof(uintptr_t));
-	ptr->size = len;
-	return (Ptr) ptr->data;
+	return (Ptr) malloc(len);
 }
 
 Ptr NewPtrClear(long len)
 {
-	PtrInternal* ptr = (PtrInternal*) calloc(1, len + sizeof(uintptr_t));
-	ptr->size = len;
-	return (Ptr) ptr->data;
+	return (Ptr) calloc(1, len);
 }
 
 void DisposePtr(Ptr p)
 {
-	free(((uint8_t*)p) - sizeof(uintptr_t));
+	free(p);
 }
 
 void DisposeHandle(Handle handle)
@@ -136,15 +127,13 @@ Handle NewEmptyHandle(void)
 
 long GetPtrSize(Ptr ptr)
 {
-	PtrInternal* internal = (PtrInternal*)(((char*) ptr) - sizeof(uintptr_t));
-	return internal->size;
+	return malloc_size(ptr);
 }
 
 void SetPtrSize(Ptr ptr, long newSize)
 {
-	PtrInternal* internal = (PtrInternal*)(((char*) ptr) - sizeof(uintptr_t));
-	if (newSize < internal->size)
-		internal->size = newSize;
+	if (newSize < malloc_size(ptr))
+		realloc(ptr, newSize); // Let's hope this never changes the ptr, but the whole SetPtrSize() call is idiotic
 	else
 	{
 		// This is not possible with a non-relocatable block
@@ -162,12 +151,7 @@ void SetHandleSize(Handle h, long newSize)
 	}
 	else
 	{
-		PtrInternal* internal = (PtrInternal*)(((char*) *h) - sizeof(uintptr_t));
-
-		internal = (PtrInternal*) realloc(internal, newSize + sizeof(uintptr_t));
-		internal->size = newSize;
-
-		*h = (Ptr) internal->data;
+		*h = (Ptr) realloc(*h, newSize);
 	}
 }
 

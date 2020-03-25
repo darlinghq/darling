@@ -20,4 +20,4 @@ wrap_elf(avutil libavutil.so)
 wrap_elf(pulse libpulse.so)
 
 add_subdirectory(CoreAudio)
-add_subdirectory(AudioToolbox)
+#add_subdirectory(AudioToolbox)

@@ -69,11 +69,13 @@ public:
 	uint32_t bufferSize() const { return m_bufferSize; }
 
 	AudioObjectID id() const { return m_myId; }
+	const AudioStreamBasicDescription& asbd() const { return m_asbd; }
 private:
 	static OSStatus getPropertyCFString(CFStringRef str, UInt32* ioDataSize, void* outData);
 	static OSStatus getPropertyString(CFStringRef str, UInt32* ioDataSize, void* outData);
 protected:
 	virtual AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) = 0;
+	virtual bool validateFormat(const AudioStreamBasicDescription* absd) const { return true; }
 protected:
 	AudioObjectID m_myId;
 	std::mutex m_procMutex;
@@ -84,6 +86,7 @@ protected:
 	uint32_t m_bufferSize = 8192;
 
 	CFStringRef m_name = CFSTR("unknown"), m_uid = CFSTR("unknown"), m_manufacturer = CFSTR("unknown"), m_modelUid = CFSTR("unknown");
+	AudioStreamBasicDescription m_asbd;
 };
 
 #endif /* AUDIOHARDWAREIMPL_H */

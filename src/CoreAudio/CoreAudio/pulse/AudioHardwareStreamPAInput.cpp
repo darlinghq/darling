@@ -63,6 +63,8 @@ void AudioHardwareStreamPAInput::paStreamReadCB(pa_stream* s, size_t length, voi
 
 		// This->m_dump.write((char*) abl->mBuffers[0].mData, nbytes);
 		// This->m_dump.flush();
+		if (This->m_convertSignedUnsigned)
+			This->transformSignedUnsigned(abl);
 
 		// std::cout << "AudioHardwareStreamPAInput::paStreamReadCB(): bytes=" << nbytes << std::endl;
 		OSStatus status = This->m_callback(This->m_hw->id(), &fake, abl, &fake, nullptr, nullptr, This->m_clientData);

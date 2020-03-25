@@ -6,8 +6,6 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/../include/AudioToolbox
 )
 
-add_definitions(-DENABLE_PULSEAUDIO=1)
-
 set(audiotoolbox_sources
 	AUComponent.cpp
 	AudioConverter.cpp
@@ -17,10 +15,9 @@ set(audiotoolbox_sources
 	AudioQueueBase.cpp
 	AudioQueue.cpp
 	AudioQueueOutput.cpp
-	# AudioUnitALSA.cpp
-	AudioUnitBase.cpp
-	AudioUnit.cpp
-	AudioUnitPA.cpp
+	#AudioUnitBase.cpp
+	#AudioUnit.cpp
+	#AudioUnitCA.cpp
 	AudioUnitRenderer.cpp
 	AUGraph.cpp
 )
@@ -44,7 +41,6 @@ add_framework(AudioToolbox
 		avresample
 		avcodec
 		avutil
-		pulse # This should go away in favor of abstraction inside CoreAudio
 )
 
 # TODO: Add AudioUnit.framework

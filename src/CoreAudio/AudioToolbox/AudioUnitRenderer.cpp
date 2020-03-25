@@ -6,6 +6,11 @@ AudioUnitRenderer::AudioUnitRenderer(const AURenderCallbackStruct& cb)
 {
 }
 
+AudioUnitRenderer::AudioUnitRenderer()
+: AudioUnitComponent({ CFSTR("Fake") }), m_renderCallback({0})
+{
+}
+
 OSStatus AudioUnitRenderer::init()
 {
 	return noErr;

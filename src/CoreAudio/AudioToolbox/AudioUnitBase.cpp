@@ -7,6 +7,7 @@
 
 AudioUnitComponent::AudioUnitComponent(std::initializer_list<CFStringRef> elements)
 {
+	m_inputRenderer.reset(new AudioUnitRenderer);
 	m_elementNames.insert(m_elementNames.end(), elements.begin(), elements.end());
 	m_config.resize(m_elementNames.size());
 	
@@ -96,9 +97,9 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 
 			// TODO: perform validation
 
-			if (scope == kAudioUnitScope_Output)
+			if (scope == kAudioUnitScope_Output) // playback
 				m_config[elem].second = *newConfig;
-			else if (scope == kAudioUnitScope_Input)
+			else if (scope == kAudioUnitScope_Input) // recording
 				m_config[elem].first = *newConfig;
 			else if (scope == kAudioUnitScope_Global)
 				m_config[0].second = *newConfig;
@@ -107,23 +108,35 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 
 			return noErr;
 		}
+		case 7: // kAudioUnitProperty_SetInputCallback (do not mistake with kAudioOutputUnitProperty_SetInputCallback)
 		case kAudioUnitProperty_SetRenderCallback:
 		{
 			if (dataSize != sizeof(AURenderCallbackStruct))
 				return kAudioUnitErr_InvalidParameter;
 			//if (scope == kAudioUnitScope_Input)
 			//{
-				if (elem != 0)
+				if (elem != kOutputBus)
 					return kAudioUnitErr_InvalidElement;
 				
-				CloseComponent(m_inputUnit.sourceAudioUnit); // TODO: wrong, we may not own the unit!
+				*m_inputRenderer = *(AURenderCallbackStruct*) data;
 				m_inputUnit.sourceOutputNumber = 0;
 				m_inputUnit.destInputNumber = 0;
-				m_inputUnit.sourceAudioUnit = new AudioUnitRenderer(*(AURenderCallbackStruct*) data);
+				m_inputUnit.sourceAudioUnit = m_inputRenderer.get();
 			//}
 			//else
 			//	return kAudioUnitErr_InvalidScope;
 			
+			return noErr;
+		}
+		case kAudioOutputUnitProperty_SetInputCallback:
+		{
+			// For audio recording
+
+			if (elem != kInputBus)
+				return kAudioUnitErr_InvalidElement;
+
+			// Notification callback - the recipient needs to call AudioUnitRender to obtain microphone data
+			m_outputCallback = *(AURenderCallbackStruct*) data;
 			return noErr;
 		}
 		case kAudioUnitProperty_MakeConnection:
@@ -136,7 +149,6 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 			// TODO: support multiple units!
 			// TODO: reconfigure input format based on output format
 			
-			CloseComponent(m_inputUnit.sourceAudioUnit); // TODO: wrong, we may not own the unit!
 			memcpy(&m_inputUnit, data, sizeof(AudioUnitConnection));
 			
 			return noErr;

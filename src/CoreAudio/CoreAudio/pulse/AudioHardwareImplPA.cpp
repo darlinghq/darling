@@ -210,3 +210,65 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 	else
 		cb(m_context);
 }
+
+pa_sample_spec AudioHardwareImplPA::paSampleSpecForASBD(const AudioStreamBasicDescription& asbd, bool* convertSignedUnsigned)
+{
+	const bool isFloat = asbd.mFormatFlags & kAudioFormatFlagIsFloat;
+	const bool isSigned = asbd.mFormatFlags & kAudioFormatFlagIsSignedInteger;
+	const bool isBE = asbd.mFormatFlags & kAudioFormatFlagIsBigEndian;
+	
+	pa_sample_spec spec;
+	
+	spec.rate = asbd.mSampleRate;
+	spec.channels = asbd.mChannelsPerFrame;
+	spec.format = PA_SAMPLE_INVALID;
+
+	if (convertSignedUnsigned)
+		*convertSignedUnsigned = false;
+	
+	if (asbd.mFormatID == kAudioFormatLinearPCM)
+	{
+		if (isFloat)
+			spec.format = isBE ? PA_SAMPLE_FLOAT32BE : PA_SAMPLE_FLOAT32LE;
+		else
+		{
+			switch (asbd.mBitsPerChannel)
+			{
+				case 8:
+					if (convertSignedUnsigned)
+						*convertSignedUnsigned = isSigned;
+					spec.format = PA_SAMPLE_U8;
+					break;
+				case 16:
+					if (convertSignedUnsigned)
+						*convertSignedUnsigned = !isSigned;
+					
+					spec.format = isBE ? PA_SAMPLE_S16BE : PA_SAMPLE_S16LE;
+					break;
+				case 24:
+					if (convertSignedUnsigned)
+						*convertSignedUnsigned = !isSigned;
+					
+					if (asbd.mFormatFlags & kAudioFormatFlagIsPacked)
+						spec.format = isBE ? PA_SAMPLE_S24BE : PA_SAMPLE_S24LE;
+					else
+						spec.format = isBE ? PA_SAMPLE_S24_32BE : PA_SAMPLE_S24_32LE;
+					break;
+				case 32:
+					if (convertSignedUnsigned)
+						*convertSignedUnsigned = !isSigned;
+					
+					spec.format = isBE ? PA_SAMPLE_S32BE : PA_SAMPLE_S32LE;
+					break;
+			}
+		}
+	}
+	
+	return spec;
+}
+
+bool AudioHardwareImplPA::validateFormat(const AudioStreamBasicDescription* asbd) const
+{
+	pa_sample_spec spec = paSampleSpecForASBD(*asbd);
+	return pa_sample_spec_valid(&spec);
+}
