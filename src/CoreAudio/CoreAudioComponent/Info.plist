@@ -56,7 +56,7 @@
 			<key>manufacturer</key>
 			<string>appl</string>
 			<key>name</key>
-			<string>Apple: SystemOutputUnit</string>
+			<string>Darling: SystemOutputUnit</string>
 			<key>sandboxSafe</key>
 			<true/>
 			<key>subtype</key>
@@ -68,7 +68,7 @@
 			<key>type</key>
 			<string>auou</string>
 			<key>version</key>
-			<integer>67072</integer>
+			<integer>1</integer>
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>

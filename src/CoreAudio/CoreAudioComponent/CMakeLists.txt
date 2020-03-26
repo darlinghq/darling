@@ -27,6 +27,7 @@ set(component_sources
 	PublicUtility/CAStreamBasicDescription.cpp
 	PublicUtility/CAHostTimeBase.cpp
 	PublicUtility/CAVectorUnit.cpp
+	AUHAL.cpp
 )
 
 add_darling_bundle(CoreAudioComponent "" ${component_sources})
@@ -37,6 +38,6 @@ target_link_libraries(CoreAudioComponent
 	system
 	CoreFoundation
 )
-set_target_properties(CoreAudioComponent PROPERTIES OUTPUT_NAME "CoreAudio")
+set_target_properties(CoreAudioComponent PROPERTIES OUTPUT_NAME "CoreAudio" PREFIX "" SUFFIX "")
 install(TARGETS CoreAudioComponent DESTINATION libexec/darling/System/Library/Components/CoreAudio.component/Contents/MacOS)
 install(FILES Info.plist DESTINATION libexec/darling/System/Library/Components/CoreAudio.component/Contents)
