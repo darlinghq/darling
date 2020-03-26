@@ -19,6 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Components.h"
 #include <CoreServices/MacErrors.h>
+#include <CoreServices/MacMemory.h>
 #include "ComponentManager.h"
 
 Component FindNextComponent(Component prev, ComponentDescription* desc)
@@ -94,5 +95,32 @@ void SetComponentInstanceStorage(ComponentInstance aComponentInstance, Handle th
 
 OSErr OpenAComponentResFile(Component aComponent, ResFileRefNum* resRef)
 {
-	return kResFileNotOpened;
+	return ComponentManager::instance()->resFileForComponent(aComponent, resRef);
+}
+
+static void stringToHandle(const std::string& str, Handle h)
+{
+	SetHandleSize(h, str.length() + 1);
+	Ptr p = *h;
+
+	p[0] = str.length();
+	memcpy(p+1, str.c_str(), str.length());
+}
+
+OSErr GetComponentInfo(Component aComponent, ComponentDescription *cd,
+	Handle componentName, Handle componentInfo, Handle componentIcon)
+{
+	ComponentManager::ComponentData cmd;
+	OSStatus status;
+
+	status = ComponentManager::instance()->componentData(aComponent, &cmd);
+	if (status != noErr)
+		return status;
+	
+	*cd = cmd.cd;
+	stringToHandle(cmd.name, componentName);
+	stringToHandle(cmd.info, componentInfo);
+	EmptyHandle(componentIcon);
+
+	return noErr;
 }

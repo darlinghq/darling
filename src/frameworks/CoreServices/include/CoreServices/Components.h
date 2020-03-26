@@ -151,6 +151,7 @@ Handle GetComponentInstanceStorage(ComponentInstance aComponentInstance);
 void SetComponentInstanceStorage(ComponentInstance aComponentInstance, Handle theStorage);
 
 OSErr OpenAComponentResFile(Component aComponent, ResFileRefNum* resRef);
+OSErr GetComponentInfo(Component aComponent, ComponentDescription *cd, Handle componentName, Handle componentInfo, Handle componentIcon);
 
 #ifdef __cplusplus
 }

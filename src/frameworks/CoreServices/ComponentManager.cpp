@@ -88,9 +88,42 @@ void ComponentManager::discoverComponents(const char* dir)
 
 void ComponentManager::analyzeComponent(CFBundleRef bundle)
 {
+	ResFileRefNum resFile = resFileForBundle(bundle);
+	analyzeComponent(bundle, resFile);
+	CloseResFile(resFile);
+}
+
+OSStatus ComponentManager::resFileForComponent(Component c, ResFileRefNum* resFile)
+{
+	std::unique_lock<std::recursive_mutex> l(m_componentsMutex);
+
+	*resFile = kResFileNotOpened;
+
+	auto itMap = m_componentsMap.find(c);
+	if (itMap == m_componentsMap.end())
+		return invalidComponentID;
+
+	ComponentData* cd = itMap->second;
+	if (cd->bundlePath.empty())
+		return resFNotFound; // This is a dynamically registered component
+
+	CFBundleRef bundle = bundleFromPath(cd->bundlePath.c_str());
+	if (!bundle)
+		return resFNotFound;
+
+	*resFile = resFileForBundle(bundle);
+	CFRelease(bundle);
+
+	if (*resFile == kResFileNotOpened)
+		return resFNotFound;
+
+	return noErr;
+}
+
+ResFileRefNum ComponentManager::resFileForBundle(CFBundleRef bundle)
+{
 	OSStatus status;
 	FSRef fsref;
-	bool analyzed = false;
 
 	CFURLRef url = CFBundleCopyExecutableURL(bundle);
 	if (url != nullptr)
@@ -111,18 +144,15 @@ void ComponentManager::analyzeComponent(CFBundleRef bundle)
 
 			if (status == noErr)
 			{
-				analyzeComponent(bundle, resFile);
-				CloseResFile(resFile);
-				analyzed = true;
+				CFRelease(filePath);
+				CFRelease(url);
+				return resFile;
 			}
 		}
 
 		CFRelease(filePath);
 		CFRelease(url);
 	}
-
-	if (analyzed)
-		return;
 
 	CFURLRef bundleUrl = CFBundleCopyBundleURL(bundle);
 	CFURLRef bundleUrlNoExt = CFURLCreateCopyDeletingPathExtension(nullptr, bundleUrl);
@@ -152,14 +182,15 @@ void ComponentManager::analyzeComponent(CFBundleRef bundle)
 
 			if (status == noErr)
 			{
-				analyzeComponent(bundle, resFile);
-				CloseResFile(resFile);
+				return resFile;
 			}
 		}
 
 		CFRelease(filePath);
 		CFRelease(url);
 	}
+
+	return kResFileNotOpened;
 }
 
 #pragma pack(push, 1)
@@ -444,6 +475,19 @@ ComponentInstance ComponentManager::getComponentInstance(ComponentParameters* de
 #endif
 }
 
+CFBundleRef ComponentManager::bundleFromPath(const char* path)
+{
+	CFStringRef cfpath = CFStringCreateWithCString(nullptr, path, kCFStringEncodingUTF8);
+
+	CFURLRef url = CFURLCreateWithFileSystemPath(nullptr, cfpath, kCFURLPOSIXPathStyle, true);
+	CFRelease(cfpath);
+
+	CFBundleRef bundle = CFBundleCreate(nullptr, url);
+	CFRelease(url);
+
+	return bundle;
+}
+
 OSStatus ComponentManager::instantiate(Component c, ComponentInstance* out)
 {
 	std::unique_lock<std::recursive_mutex> l(m_componentsMutex);
@@ -458,13 +502,7 @@ OSStatus ComponentManager::instantiate(Component c, ComponentInstance* out)
 
 	if (!cd->entryPoint)
 	{
-		CFStringRef cfpath = CFStringCreateWithCString(nullptr, cd->bundlePath.c_str(), kCFStringEncodingUTF8);
-
-		CFURLRef url = CFURLCreateWithFileSystemPath(nullptr, cfpath, kCFURLPOSIXPathStyle, true);
-		CFRelease(cfpath);
-
-		CFBundleRef bundle = CFBundleCreate(nullptr, url);
-		CFRelease(url);
+		CFBundleRef bundle = bundleFromPath(cd->bundlePath.c_str());
 
 		if (!bundle)
 			return invalidComponentID;
@@ -514,7 +552,7 @@ OSStatus ComponentManager::instantiate(Component c, ComponentInstance* out)
 
 OSStatus ComponentManager::dispose(ComponentInstance c)
 {
-	std::unique_lock<std::recursive_mutex> l(m_componentsMutex);
+	std::unique_lock<std::recursive_mutex> l(m_componentInstancesMutex);
 
 	auto it = m_componentInstances.find(c);
 	if (it == m_componentInstances.end())
@@ -562,7 +600,7 @@ OSStatus ComponentManager::dispatch(ComponentParameters* cp)
 
 Handle ComponentManager::getStorage(ComponentInstance ci)
 {
-	std::unique_lock<std::recursive_mutex> l(m_componentsMutex);
+	std::unique_lock<std::recursive_mutex> l(m_componentInstancesMutex);
 
 	auto it = m_componentInstances.find(ci);
 	if (it == m_componentInstances.end())
@@ -573,11 +611,26 @@ Handle ComponentManager::getStorage(ComponentInstance ci)
 
 void ComponentManager::setStorage(ComponentInstance ci, Handle storage)
 {
-	std::unique_lock<std::recursive_mutex> l(m_componentsMutex);
+	std::unique_lock<std::recursive_mutex> l(m_componentInstancesMutex);
 
 	auto it = m_componentInstances.find(ci);
 	if (it == m_componentInstances.end())
 		return;
 
 	it->second.storage = storage;
+}
+
+OSStatus ComponentManager::componentData(Component c, ComponentData* out)
+{
+	std::unique_lock<std::recursive_mutex> l(m_componentsMutex);
+
+	auto itMap = m_componentsMap.find(c);
+	if (itMap == m_componentsMap.end())
+		return invalidComponentID;
+
+	ComponentData* cd = itMap->second;
+
+	*out = *cd;
+
+	return noErr;
 }

@@ -41,6 +41,7 @@ private:
 	void discoverComponents(const char* dir);
 	void analyzeComponent(CFBundleRef bundle);
 	void analyzeComponent(CFBundleRef bundle, ResFileRefNum resFile);
+	ResFileRefNum resFileForBundle(CFBundleRef bundle);
 public:
 	static ComponentManager* instance();
 
@@ -69,7 +70,10 @@ public:
 
 	Handle getStorage(ComponentInstance ci);
 	void setStorage(ComponentInstance ci, Handle storage);
-private:
+
+	static CFBundleRef bundleFromPath(const char* path);
+	OSStatus resFileForComponent(Component c, ResFileRefNum* resFile);
+
 	struct ComponentData
 	{
 		Component component;
@@ -84,6 +88,8 @@ private:
 		uint32_t instances;
 	};
 
+	OSStatus componentData(Component c, ComponentData* out);
+private:
 	struct ComponentInstanceData
 	{
 		// instance of
