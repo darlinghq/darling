@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AudioComponents</key>
+	<array>
+		<dict>
+			<key>description</key>
+			<string>AudioDevice interface output unit</string>
+			<key>factoryFunction</key>
+			<string>AUHALFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: AudioDeviceOutput</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>ahal</string>
+			<key>tags</key>
+			<array>
+				<string>Output</string>
+			</array>
+			<key>type</key>
+			<string>auou</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>Default output unit that redirects its output to the user selected default device</string>
+			<key>factoryFunction</key>
+			<string>DefaultOutputAUFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: DefaultOutputUnit</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>def </string>
+			<key>tags</key>
+			<array>
+				<string>Output</string>
+			</array>
+			<key>type</key>
+			<string>auou</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>System Sounds output unit that redirects its output to the user selected System Sounds device</string>
+			<key>factoryFunction</key>
+			<string>SystemOutputAUFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Apple: SystemOutputUnit</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>sys </string>
+			<key>tags</key>
+			<array>
+				<string>Output</string>
+			</array>
+			<key>type</key>
+			<string>auou</string>
+			<key>version</key>
+			<integer>67072</integer>
+		</dict>
+	</array>
+	<key>CFBundleExecutable</key>
+	<string>CoreAudio</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.apple.audio.units.Components</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>CoreAudioComponents</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>MacOSX</string>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>1.0</string>
+</dict>
+</plist>

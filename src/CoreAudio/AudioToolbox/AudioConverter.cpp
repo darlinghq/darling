@@ -1,3 +1,22 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2020 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "AudioConverter.h"
 #include "AudioConverterImpl.h"
 #include <CoreServices/MacErrors.h>
@@ -6,7 +25,7 @@
 
 OSStatus AudioConverterNew(const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat, AudioConverterRef* outAudioConverter)
 {
-	return AudioConverter::create(inSourceFormat, inDestinationFormat, outAudioConverter);
+	return AudioConverter::create(inSourceFormat, inDestinationFormat, (AudioConverter**)outAudioConverter);
 }
 
 OSStatus AudioConverterNewSpecific(const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat, UInt32 inNumberClassDescriptions, AudioClassDescription* nClassDescriptions, AudioConverterRef* outAudioConverter)
@@ -19,7 +38,7 @@ OSStatus AudioConverterReset(AudioConverterRef inAudioConverter)
 {
 	if (inAudioConverter)
 	{
-		inAudioConverter->flush();
+		((AudioConverter*)inAudioConverter)->flush();
 		return noErr;
 	}
 	else
@@ -28,23 +47,23 @@ OSStatus AudioConverterReset(AudioConverterRef inAudioConverter)
 
 OSStatus AudioConverterDispose(AudioConverterRef inAudioConverter)
 {
-	delete inAudioConverter;
+	delete (AudioConverter*)inAudioConverter;
 	return noErr;
 }
 
 OSStatus AudioConverterGetProperty(AudioConverterRef inAudioConverter, AudioConverterPropertyID inPropertyID, UInt32 *ioPropertyDataSize, void *outPropertyData)
 {
-	return inAudioConverter->getProperty(inPropertyID, ioPropertyDataSize, outPropertyData);
+	return ((AudioConverter*)inAudioConverter)->getProperty(inPropertyID, ioPropertyDataSize, outPropertyData);
 }
 
 OSStatus AudioConverterGetPropertyInfo(AudioConverterRef inAudioConverter, AudioConverterPropertyID inPropertyID, UInt32 *outSize, Boolean *outWritable)
 {
-	return inAudioConverter->getPropertyInfo(inPropertyID, outSize, outWritable);
+	return ((AudioConverter*)inAudioConverter)->getPropertyInfo(inPropertyID, outSize, outWritable);
 }
 
 OSStatus AudioConverterSetProperty(AudioConverterRef inAudioConverter, AudioConverterPropertyID inPropertyID, UInt32 inPropertyDataSize, const void *inPropertyData)
 {
-	return inAudioConverter->setProperty(inPropertyID, inPropertyDataSize, inPropertyData);
+	return ((AudioConverter*)inAudioConverter)->setProperty(inPropertyID, inPropertyDataSize, inPropertyData);
 }
 
 OSStatus AudioConverterConvertBuffer(AudioConverterRef inAudioConverter, UInt32 inInputDataSize, const void* inInputData, UInt32 *ioOutputDataSize, void *outOutputData)
@@ -63,7 +82,7 @@ OSStatus AudioConverterConvertBuffer(AudioConverterRef inAudioConverter, UInt32 
 	out.mBuffers[0].mDataByteSize = *ioOutputDataSize;
 	out.mBuffers[0].mData = outOutputData;
 
-	stat = AudioConverterConvertComplexBuffer(inAudioConverter, inInputDataSize/inAudioConverter->frameSize(), &in, &out);
+	stat = AudioConverterConvertComplexBuffer(inAudioConverter, inInputDataSize/((AudioConverter*)inAudioConverter)->frameSize(), &in, &out);
 	*ioOutputDataSize = out.mBuffers[0].mDataByteSize;
 
 	return stat;
@@ -71,7 +90,7 @@ OSStatus AudioConverterConvertBuffer(AudioConverterRef inAudioConverter, UInt32 
 
 OSStatus AudioConverterFillComplexBuffer(AudioConverterRef inAudioConverter, AudioConverterComplexInputDataProc inInputDataProc, void *inInputDataProcUserData, UInt32 *ioOutputDataPacketSize, AudioBufferList *outOutputData, AudioStreamPacketDescription* outPacketDescription)
 {
-	return inAudioConverter->fillComplex(inInputDataProc, inInputDataProcUserData, ioOutputDataPacketSize, outOutputData, outPacketDescription);
+	return ((AudioConverter*)inAudioConverter)->fillComplex(inInputDataProc, inInputDataProcUserData, ioOutputDataPacketSize, outOutputData, outPacketDescription);
 }
 
 OSStatus AudioConverterConvertComplexBuffer(AudioConverterRef inAudioConverter, UInt32 inNumberPCMFrames, const AudioBufferList *inInputData, AudioBufferList *outOutputData)
@@ -104,7 +123,7 @@ OSStatus AudioConverterConvertComplexBuffer(AudioConverterRef inAudioConverter, 
 	for (UInt32 i = 0; i < outOutputData->mNumberBuffers; i++)
 		totalOutBytes += outOutputData->mBuffers[i].mDataByteSize;
 
-	dataPacketSize = totalOutBytes / inAudioConverter->frameSize();
+	dataPacketSize = totalOutBytes / ((AudioConverter*)inAudioConverter)->frameSize();
 
 	status = AudioConverterFillComplexBuffer(inAudioConverter, proc, (void*) inInputData, &dataPacketSize, outOutputData, nullptr);
 	return status;

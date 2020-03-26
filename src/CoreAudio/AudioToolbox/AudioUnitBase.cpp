@@ -153,6 +153,10 @@ OSStatus AudioUnitComponent::setProperty(AudioUnitPropertyID prop, AudioUnitScop
 			
 			return noErr;
 		}
+		case kAudioUnitProperty_ElementCount:
+		{
+			
+		}
 		case kAudioUnitProperty_ShouldAllocateBuffer:
 		{
 			int* b = (int*) data;

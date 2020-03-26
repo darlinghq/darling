@@ -6,20 +6,19 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/../include/AudioToolbox
 )
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+
 set(audiotoolbox_sources
 	AUComponent.cpp
 	AudioConverter.cpp
 	AudioConverterImpl.cpp
 	AudioFile.cpp
-	AudioOutputUnitComponent.cpp
 	AudioQueueBase.cpp
 	AudioQueue.cpp
 	AudioQueueOutput.cpp
-	#AudioUnitBase.cpp
-	#AudioUnit.cpp
-	#AudioUnitCA.cpp
-	AudioUnitRenderer.cpp
 	AUGraph.cpp
+	AudioComponent.mm
+	AudioComponentManager.mm
 )
 
 add_framework(AudioToolbox
