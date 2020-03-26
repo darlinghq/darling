@@ -25,7 +25,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 struct ComponentDescription;
 typedef struct ComponentDescription ComponentDescription;
 
-typedef struct __ComponentInstance* ComponentInstance;
+typedef struct ComponentInstanceRecord* ComponentInstance;
 
 typedef SInt32 ComponentResult;
 

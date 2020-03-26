@@ -512,7 +512,10 @@ OSStatus ComponentManager::instantiate(Component c, ComponentInstance* out)
 		CFRelease(cfEntryPointName);
 
 		if (!cd->entryPoint)
+		{
+			CFRelease(bundle);
 			return invalidComponentID;
+		}
 
 		cd->loadedBundle = bundle;
 	}

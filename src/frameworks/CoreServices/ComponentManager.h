@@ -30,7 +30,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreServices/MacTypes.h>
 #include <CoreFoundation/CFBundle.h>
 
-class ComponentManager
+class __attribute__((visibility("hidden"))) ComponentManager
 {
 private:
 	ComponentManager();
