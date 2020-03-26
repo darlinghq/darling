@@ -20,7 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AUHAL.h"
 
 #pragma GCC visibility push(default)
-AUDIOCOMPONENT_ENTRY(AUBaseFactory, AUHAL);
+AUDIOCOMPONENT_ENTRY(AUOutputBaseFactory, AUHAL);
 #pragma GCC visibility pop
 
 enum {
@@ -43,7 +43,7 @@ bool AUHAL::CanScheduleParameters() const
 
 bool AUHAL::StreamFormatWritable(AudioUnitScope scope, AudioUnitElement element)
 {
-	return !m_running;
+	return !m_running && IsInitialized();
 }
 
 OSStatus AUHAL::Version()
