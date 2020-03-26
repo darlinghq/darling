@@ -22,7 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <vector>
 
-AudioHardwareStreamPAInput::AudioHardwareStreamPAInput(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData)
+AudioHardwareStreamPAInput::AudioHardwareStreamPAInput(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData)
 : AudioHardwareStreamPA(hw, callback, clientData)
 {
 	// m_dump.open("/tmp/dump.raw", std::ios_base::out | std::ios_base::binary);

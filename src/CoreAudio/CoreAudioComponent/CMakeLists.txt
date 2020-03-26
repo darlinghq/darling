@@ -28,6 +28,7 @@ set(component_sources
 	PublicUtility/CAHostTimeBase.cpp
 	PublicUtility/CAVectorUnit.cpp
 	AUHAL.cpp
+	SystemOutputAU.cpp
 )
 
 add_darling_bundle(CoreAudioComponent "" ${component_sources})

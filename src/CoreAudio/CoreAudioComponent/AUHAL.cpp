@@ -28,8 +28,8 @@ enum {
 	kInputBus
 };
 
-AUHAL::AUHAL(AudioComponentInstance inInstance)
-: AUBase(inInstance, 1, 1)
+AUHAL::AUHAL(AudioComponentInstance inInstance, bool supportRecording)
+: AUBase(inInstance, 1, supportRecording ? 1 : 0)
 {
 	UInt32 propSize = sizeof(AudioDeviceID);
 	AudioHardwareGetProperty(kAudioHardwarePropertyDefaultOutputDevice, &propSize, &m_outputDevice);

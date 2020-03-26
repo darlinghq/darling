@@ -23,10 +23,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <type_traits>
 #include <limits>
 
-AudioHardwareStreamPA::AudioHardwareStreamPA(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData)
+AudioHardwareStreamPA::AudioHardwareStreamPA(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData)
 : AudioHardwareStream(hw, false), m_callback(callback), m_clientData(clientData)
 {
-	AudioHardwareImplPA::getPAContext(^(pa_context* context) {
+	hw->getPAContext(^(pa_context* context) {
 		if (!context)
 		{
 			std::cerr << "Failed to get PulseAudio context\n";

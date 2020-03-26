@@ -25,7 +25,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 class AudioHardwareStreamPAInput : public AudioHardwareStreamPA
 {
 public:
-	AudioHardwareStreamPAInput(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData);
+	AudioHardwareStreamPAInput(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData);
 private:
 	void start() override;
 	static void paStreamReadCB(pa_stream* s, size_t length, void* self);

@@ -27,15 +27,18 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <thread>
 
-pa_context* AudioHardwareImplPA::m_context;
-std::unique_ptr<PADispatchMainLoop> AudioHardwareImplPA::m_loop;
-
-AudioHardwareImplPA::AudioHardwareImplPA(AudioObjectID myId)
-: AudioHardwareImpl(myId)
+AudioHardwareImplPA::AudioHardwareImplPA(AudioObjectID myId, const char* paRole)
+: AudioHardwareImpl(myId), m_paRole(paRole)
 {
 	m_name = CFSTR("PulseAudio");
 	m_manufacturer = CFSTR("PulseAudio");
 	m_uid = CFSTR("PulseAudio:SystemObject");
+}
+
+AudioHardwareImplPA::~AudioHardwareImplPA()
+{
+	if (m_context)
+		pa_context_unref(m_context);
 }
 
 OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
@@ -55,6 +58,13 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
 			{
 				*devId = kAudioObjectSystemObject + 1;
+			}
+			*ioDataSize = sizeof(AudioDeviceID);
+			return kAudioHardwareNoError;
+		case kAudioHardwarePropertyDefaultSystemOutputDevice:
+			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
+			{
+				*devId = kAudioObjectSystemObject + 3;
 			}
 			*ioDataSize = sizeof(AudioDeviceID);
 			return kAudioHardwareNoError;
@@ -180,6 +190,8 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 
 			pa_proplist_sets(proplist, PA_PROP_APPLICATION_NAME, appname);
 			pa_proplist_sets(proplist, PA_PROP_APPLICATION_ID, appid);
+			if (m_paRole)
+				pa_proplist_sets(proplist, PA_PROP_MEDIA_ROLE, m_paRole);
 			// pa_proplist_sets(proplist, PA_PROP_APPLICATION_ICON_NAME, "icon-name");
 			// pa_proplist_sets(proplist, PA_PROP_MEDIA_ROLE, "game");
 

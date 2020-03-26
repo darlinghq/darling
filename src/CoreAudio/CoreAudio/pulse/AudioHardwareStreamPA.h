@@ -23,11 +23,12 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <pulse/pulseaudio.h>
 #include <CoreAudio/CoreAudioTypes.h>
 #include <CoreAudio/AudioHardware.h>
+#include "AudioHardwareImplPA.h"
 
 class AudioHardwareStreamPA : public AudioHardwareStream
 {
 public:
-	AudioHardwareStreamPA(AudioHardwareImpl* hw, AudioDeviceIOProc callback, void* clientData);
+	AudioHardwareStreamPA(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData);
 	~AudioHardwareStreamPA();
 
 	void stop(void(^cbDone)()) override;

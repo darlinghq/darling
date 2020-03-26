@@ -28,7 +28,8 @@ class PADispatchMainLoop;
 class AudioHardwareImplPA : public AudioHardwareImpl
 {
 public:
-	AudioHardwareImplPA(AudioObjectID myId);
+	AudioHardwareImplPA(AudioObjectID myId, const char* paRole = nullptr);
+	~AudioHardwareImplPA();
 
 	OSStatus getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32* ioDataSize, void* outData) override;
@@ -36,14 +37,15 @@ public:
 	OSStatus setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32 inDataSize, const void* inData) override;
 	
-	static void getPAContext(void (^cb)(pa_context*));
+	void getPAContext(void (^cb)(pa_context*));
 	static pa_sample_spec paSampleSpecForASBD(const AudioStreamBasicDescription& asbd, bool* convertSignedUnsigned = nullptr);
 protected:
 	AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) override;
 	bool validateFormat(const AudioStreamBasicDescription* asbd) const override;
 private:
-	static pa_context* m_context;
-	static std::unique_ptr<PADispatchMainLoop> m_loop;
+	pa_context* m_context = nullptr;
+	std::unique_ptr<PADispatchMainLoop> m_loop;
+	const char* m_paRole;
 };
 
 #endif

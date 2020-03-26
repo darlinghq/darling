@@ -29,7 +29,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 class AUHAL : public AUBase
 {
 public:
-	AUHAL(AudioComponentInstance inInstance);
+	AUHAL(AudioComponentInstance inInstance, bool supportRecording = true);
 
 	bool CanScheduleParameters() const override;
 	bool StreamFormatWritable(AudioUnitScope scope, AudioUnitElement element) override;
@@ -58,7 +58,7 @@ private:
 	OSStatus doPlayback(const AudioTimeStamp* inNow, AudioBufferList* outOutputData, const AudioTimeStamp* inOutputTime);
 	OSStatus doRecord(const AudioTimeStamp* inNow, const AudioBufferList* inInputData, const AudioTimeStamp* inInputTime);
 	
-private:
+protected:
 	AURenderCallbackStruct m_outputAvailableCb = { 0 };
 	bool m_enableOutput = true, m_enableInput = false;
 	bool m_running = false;

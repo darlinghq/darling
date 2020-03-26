@@ -20,8 +20,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareImplPAOutput.h"
 #include "AudioHardwareStreamPAOutput.h"
 
-AudioHardwareImplPAOutput::AudioHardwareImplPAOutput(AudioObjectID myId)
-: AudioHardwareImplPA(myId)
+AudioHardwareImplPAOutput::AudioHardwareImplPAOutput(AudioObjectID myId, const char* paRole)
+: AudioHardwareImplPA(myId, paRole)
 {
 	m_uid = CFSTR("PulseAudio:Output");
 }
