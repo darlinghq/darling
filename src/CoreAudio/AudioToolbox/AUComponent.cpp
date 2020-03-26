@@ -27,10 +27,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 const CFStringRef kAudioComponentRegistrationsChangedNotification = CFSTR("AudioComponentRegistrationsChangedNotification");
 const CFStringRef kAudioComponentInstanceInvalidationNotification = CFSTR("AudioComponentInstanceInvalidationNotification");
 
-inline static void assignParams(ComponentParameters* cp, size_t totalArgs, size_t argumentIndex)
-{
-}
-
 template <typename First, typename... Rest>
 void assignParams(ComponentParameters* cp, size_t totalArgs, size_t argumentIndex, First arg, Rest... rest)
 {
@@ -39,7 +35,9 @@ void assignParams(ComponentParameters* cp, size_t totalArgs, size_t argumentInde
 #else
     cp->params[totalArgs - argumentIndex - 1] = long(arg);
 #endif
-    assignParams(cp, totalArgs, argumentIndex+1, rest...);
+
+    if constexpr (sizeof...(Rest) > 0)
+        assignParams(cp, totalArgs, argumentIndex+1, rest...);
 }
 
 template <typename ...Args>
@@ -57,11 +55,17 @@ OSStatus dispatchCall(AudioUnit inUnit, SInt16 sel, Args... args)
     else
     {
         ComponentParameters* cp = (ComponentParameters*) alloca(sizeof(ComponentParameters) + sizeof...(Args) * sizeof(long));
-        assignParams(cp, sizeof...(Args)+1, 0, inUnit);
-        assignParams(cp, sizeof...(Args)+1, 1, args...);
-        cp->paramSize = (sizeof...(Args)+1) * sizeof(long);
+        constexpr size_t totalArgs = sizeof...(Args)+1;
+
+        assignParams(cp, totalArgs, 0, inUnit);
+
+        if constexpr (totalArgs > 1)
+            assignParams(cp, totalArgs, 1, args...);
+
+        cp->paramSize = totalArgs * sizeof(long);
         cp->what = sel;
         cp->flags = 0;
+
         return CallComponentDispatch(cp);
     }
 }
