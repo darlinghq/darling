@@ -30,6 +30,7 @@ class AUHAL : public AUBase
 {
 public:
 	AUHAL(AudioComponentInstance inInstance, bool supportRecording = true);
+	~AUHAL();
 
 	bool CanScheduleParameters() const override;
 	bool StreamFormatWritable(AudioUnitScope scope, AudioUnitElement element) override;

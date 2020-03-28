@@ -63,19 +63,16 @@ AudioHardwareStreamPA::~AudioHardwareStreamPA()
 		pa_stream_unref(m_stream);
 }
 
-void AudioHardwareStreamPA::stop(void(^cbDone)())
+void AudioHardwareStreamPA::start()
 {
-	// std::cerr << "AudioHardwareStreamPA::stop()\n";
-	m_cbDone = Block_copy(cbDone);
+	m_running = true;
+}
 
-	pa_stream_cork(m_stream, true, [](pa_stream*, int, void* self) {
-		AudioHardwareStreamPA* This = static_cast<AudioHardwareStreamPA*>(self);
-
-		pa_stream_disconnect(This->m_stream);
-		This->m_cbDone();
-
-		Block_release(This->m_cbDone);
-	}, this);
+void AudioHardwareStreamPA::stop()
+{
+	std::unique_lock<std::mutex> l(m_stopMutex);
+	pa_stream_disconnect(m_stream);
+	m_running = false;
 }
 
 // This function seems to only convert unsigned to signed, but it works both ways in practice

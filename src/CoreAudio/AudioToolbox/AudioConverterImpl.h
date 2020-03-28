@@ -1,7 +1,9 @@
 #ifndef AUDIOCONVERTERINTERNAL_H
 #define AUDIOCONVERTERINTERNAL_H
 #include "AudioConverter.h"
+#include "ConsumableBuffer.h"
 #include <stdint.h>
+#include <fstream>
 
 extern "C" {
 #include <libavresample/avresample.h>
@@ -37,21 +39,29 @@ private:
 	void allocateBuffers();
 	void initEncoder();
 	
-	void feedDecoder(AudioConverterComplexInputDataProc dataProc, void* opaque, AVFrame* srcaudio);
-	void feedEncoder();
+	bool feedDecoder(AudioConverterComplexInputDataProc dataProc, void* opaque, AVFrame* srcaudio);
+	bool feedEncoder();
 private:
 	AudioStreamBasicDescription m_sourceFormat, m_destinationFormat;
 	UInt32 m_inputChannelLayout, m_outputChannelLayout;
+	AVSampleFormat m_targetFormat;
 	AVCodecContext* m_decoder;
 	AVCodecContext* m_encoder;
 	AVPacket m_avpkt, m_avpktOut;
 	UInt32 m_avpktOutUsed = 0;
-	AVFrame* m_audioFrame;
+
+	AVFrame* m_audioFrame = nullptr;
+	ConsumableBuffer m_audioFramePrebuf;
+
 	AVAudioResampleContext* m_resampler = nullptr;
 	UInt32 m_outBitRate = 128000;
 	bool m_encoderInitialized = false;
 	AVCodec* m_codecIn = nullptr;
 	AVCodec* m_codecOut = nullptr;
+
+#ifdef DEBUG_AUDIOCONVERTER
+	std::ofstream m_resamplerInput, m_resamplerOutput, m_encoderOutput;
+#endif
 };
 
 #endif

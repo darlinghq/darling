@@ -29,15 +29,23 @@ AudioHardwareStreamPAOutput::AudioHardwareStreamPAOutput(AudioHardwareImplPA* hw
 
 void AudioHardwareStreamPAOutput::paStreamWriteCB(pa_stream* s, size_t length, void* self)
 {
-	// std::cout << "AudioHardwareStreamPAOutput::paStreamWriteCB()\n";
 	AudioHardwareStreamPAOutput* This = static_cast<AudioHardwareStreamPAOutput*>(self);
+	std::unique_lock<std::mutex> l(This->m_stopMutex);
+
+	if (!This->m_running)
+	{
+		pa_stream_cork(This->m_stream, true, [](pa_stream*, int, void*) {}, nullptr);
+		return;
+	}
+
+	// std::cout << "AudioHardwareStreamPAOutput::paStreamWriteCB()\n";
 
 	AudioTimeStamp fake = {0};
 	AudioBufferList* abl = static_cast<AudioBufferList*>(alloca(sizeof(AudioBufferList) + sizeof(AudioBuffer)));
 
 	size_t done = 0;
 
-	while (done < length)
+	while (done < length && This->m_running)
 	{
 		// Non-interleaved (planar) audio would have multiple buffers, but PA doesn't even support that AFAIK
 		abl->mNumberBuffers = 1;
@@ -58,6 +66,7 @@ void AudioHardwareStreamPAOutput::paStreamWriteCB(pa_stream* s, size_t length, v
 			// std::cerr << "AudioDeviceIOProc returned " << status << ", corking...\n";
 
 			pa_stream_cork(This->m_stream, true, [](pa_stream*, int, void*) {}, nullptr);
+			break;
 		}
 		else
 		{
@@ -97,5 +106,6 @@ void AudioHardwareStreamPAOutput::start()
 			nullptr, nullptr);
 
 	// pa_stream_cork(m_stream, false, [](pa_stream*, int, void*) {}, nullptr);
+	AudioHardwareStreamPA::start();
 }
 

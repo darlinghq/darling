@@ -19,6 +19,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "AudioHardwareStream.h"
 #include "AudioHardwareImpl.h"
+#include <condition_variable>
+#include <mutex>
+#include <iostream>
 
 AudioHardwareStream::AudioHardwareStream(AudioHardwareImpl* hw, bool needBuffer)
 : m_hw(hw)
@@ -35,4 +38,3 @@ AudioHardwareStream::~AudioHardwareStream()
 {
 	delete m_buffer;
 }
-

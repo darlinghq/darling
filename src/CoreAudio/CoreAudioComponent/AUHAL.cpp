@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AUHAL.h"
+#include <iostream>
 
 #pragma GCC visibility push(default)
 AUDIOCOMPONENT_ENTRY(AUOutputBaseFactory, AUHAL);
@@ -34,6 +35,11 @@ AUHAL::AUHAL(AudioComponentInstance inInstance, bool supportRecording)
 	UInt32 propSize = sizeof(AudioDeviceID);
 	AudioHardwareGetProperty(kAudioHardwarePropertyDefaultOutputDevice, &propSize, &m_outputDevice);
 	AudioHardwareGetProperty(kAudioHardwarePropertyDefaultInputDevice, &propSize, &m_inputDevice);
+}
+
+AUHAL::~AUHAL()
+{
+	Stop();
 }
 
 bool AUHAL::CanScheduleParameters() const
@@ -75,7 +81,10 @@ OSStatus AUHAL::Start()
 
 	if (m_enableOutput)
 	{
+		// std::cout << "Output is enabled, starting playback\n";
 		AudioDeviceCreateIOProcID(m_outputDevice, playbackCallback, this, &m_outputProcID);
+
+		// m_auhalData.open("/tmp/auhal.raw", std::ios_base::binary | std::ios_base::out);
 
 		const CAStreamBasicDescription& desc = GetStreamFormat(kAudioUnitScope_Input, kOutputBus);
 		AudioDeviceSetProperty(m_outputDevice, nullptr, 0, false, kAudioDevicePropertyStreamFormat, sizeof(AudioStreamBasicDescription), &desc);
@@ -89,6 +98,7 @@ OSStatus AUHAL::Start()
 		AudioDeviceStart(m_inputDevice, m_inputProcID);
 	}
 
+	m_running = m_enableOutput || m_enableInput;
 	return noErr;
 }
 
@@ -269,8 +279,12 @@ OSStatus AUHAL::recordCallback(AudioObjectID inObjectID,
 
 OSStatus AUHAL::doPlayback(const AudioTimeStamp* inNow, AudioBufferList* outOutputData, const AudioTimeStamp* inOutputTime)
 {
+	// std::cout << "AUHAL::DoPlayback()\n";
 	if (!HasInput(0))
+	{
+		// std::cerr << "No connection\n";
 		return kAudioUnitErr_NoConnection;
+	}
 
 	OSStatus result = noErr;
 	AudioUnitRenderActionFlags flags = kAudioUnitRenderAction_PreRender;
@@ -278,6 +292,11 @@ OSStatus AUHAL::doPlayback(const AudioTimeStamp* inNow, AudioBufferList* outOutp
 
 	UInt32 nFrames = outOutputData->mBuffers[0].mDataByteSize / (desc.mBytesPerFrame / outOutputData->mBuffers[0].mNumberChannels);
 	result = GetInput(kOutputBus)->PullInputWithBufferList(flags, *inNow, kOutputBus, nFrames, outOutputData);
+
+	// std::cout << "Pull result: " << result << std::endl;
+	// std::cout << "Bytes: " << outOutputData->mBuffers[0].mDataByteSize << std::endl;
+	// m_auhalData.write((char*) outOutputData->mBuffers[0].mData, outOutputData->mBuffers[0].mDataByteSize);
+	// m_auhalData.flush();
 
 	return result;
 }

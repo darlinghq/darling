@@ -24,6 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreAudio/CoreAudioTypes.h>
 #include <CoreAudio/AudioHardware.h>
 #include "AudioHardwareImplPA.h"
+#include <condition_variable>
 
 class AudioHardwareStreamPA : public AudioHardwareStream
 {
@@ -31,9 +32,9 @@ public:
 	AudioHardwareStreamPA(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData);
 	~AudioHardwareStreamPA();
 
-	void stop(void(^cbDone)()) override;
+	void stop(/*void(^cbDone)()*/) override;
 protected:
-	virtual void start() = 0;
+	virtual void start();
 	void transformSignedUnsigned(AudioBufferList* abl) const;
 protected:
 	AudioDeviceIOProc m_callback;
@@ -41,6 +42,9 @@ protected:
 	pa_stream* m_stream;
 	void(^m_cbDone)();
 	bool m_convertSignedUnsigned = false;
+
+	bool m_running = false;
+	std::mutex m_stopMutex;
 };
 
 #endif /* AUDIOHARDWARESTREAMPA_H */

@@ -108,9 +108,9 @@ OSStatus AudioHardwareImpl::stop(AudioDeviceIOProcID inProcID)
 		return kAudioHardwareNotRunningError;
 	
 	AudioHardwareStream* stream = it->second.release();
-	stream->stop(^{
-		delete stream;
-	});
+	stream->stop();
+
+	delete stream;
 	m_streams.erase(it);
 	return noErr;
 }
