@@ -43,3 +43,4 @@ target_link_libraries(CoreAudioComponent
 set_target_properties(CoreAudioComponent PROPERTIES OUTPUT_NAME "CoreAudio" PREFIX "" SUFFIX "")
 install(TARGETS CoreAudioComponent DESTINATION libexec/darling/System/Library/Components/CoreAudio.component/Contents/MacOS)
 install(FILES Info.plist DESTINATION libexec/darling/System/Library/Components/CoreAudio.component/Contents)
+install(FILES CoreAudio.rsrc DESTINATION libexec/darling/System/Library/Components/CoreAudio.component/Contents/Resources)
