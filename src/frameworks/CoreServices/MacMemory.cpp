@@ -21,6 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 #include <stdint.h>
 #include <cstdlib>
+#include <cstdio>
 #include <malloc/malloc.h>
 
 void BlockMove(const void* src, void* dst, size_t count)
@@ -106,21 +107,21 @@ OSErr PtrToXHand(const void* srcPtr, Handle dstHndl, long size)
 
 Handle NewHandle(long size)
 {
-	Handle h = (Handle) malloc(sizeof(Handle));
+	Handle h = (Handle) malloc(sizeof(*h));
 	*h = NewPtr(size);
 	return h;
 }
 
 Handle NewHandleClear(long size)
 {
-	Handle h = (Handle) malloc(sizeof(Handle));
+	Handle h = (Handle) malloc(sizeof(*h));
 	*h = NewPtrClear(size);
 	return h;
 }
 
 Handle NewEmptyHandle(void)
 {
-	Handle h = (Handle) malloc(sizeof(Handle));
+	Handle h = (Handle) malloc(sizeof(*h));
 	*h = nullptr;
 	return h;
 }
