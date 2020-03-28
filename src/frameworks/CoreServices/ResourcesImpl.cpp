@@ -135,6 +135,7 @@ Resources::ResourceData::ResourceData(ResourceData&& that)
 	dataBacking = std::move(that.dataBacking);
 	attributes = that.attributes;
 	data = that.data;
+	parent = that.parent;
 	that.data = nullptr;
 }
 
@@ -179,13 +180,23 @@ void Resources::ResourceData::dataChanged()
 
 #ifdef __LITTLE_ENDIAN__
 #	define SWAP(x) x = _bswap(x)
+#	define SWAP3(x) x = _bswap24(x)
 
 static inline uint16_t _bswap(uint16_t v) { return __builtin_bswap16(v); }
 static inline int16_t _bswap(int16_t v) { return __builtin_bswap16(v); }
 static inline uint32_t _bswap(uint32_t v) { return __builtin_bswap32(v); }
 
+static inline uint32_t _bswap24(uint32_t v)
+{
+	uint32_t rv = (v >> 16) & 0xff;
+	rv |= v & 0xff00;
+	rv |= (v << 16) & 0xff0000;
+	return rv;
+}
+
 #else
 #	define SWAP(x)
+#	define SWAP3(x)
 #endif
 
 void Resources::loadResources(const uint8_t* mem, size_t length)
@@ -219,7 +230,8 @@ void Resources::loadResources(const uint8_t* mem, size_t length)
 
 	m_attributes = resourceMapHeader.attributes;
 
-	const ResourceType* t = reinterpret_cast<const ResourceType*>(mem + header.resourceMapOffset + resourceMapHeader.typeListOffset);
+	// NOTE: +2 here is not documented, but is needed!
+	const ResourceType* t = reinterpret_cast<const ResourceType*>(mem + header.resourceMapOffset + resourceMapHeader.typeListOffset + 2);
 	for (int i = 0; i <= resourceMapHeader.numOfTypesMinusOne; i++, t++)
 	{
 		ResourceType type = *t;
@@ -229,7 +241,7 @@ void Resources::loadResources(const uint8_t* mem, size_t length)
 		SWAP(type.referenceListOffset);
 
 		const ReferenceListItem* rli = reinterpret_cast<const ReferenceListItem*>(
-			reinterpret_cast<const uint8_t*>(t) + type.referenceListOffset
+			mem + header.resourceMapOffset + resourceMapHeader.typeListOffset + type.referenceListOffset
 		);
 
 		ResourceTypeData resourceTypeData;
@@ -242,18 +254,23 @@ void Resources::loadResources(const uint8_t* mem, size_t length)
 
 			SWAP(refListItem.resourceID);
 			SWAP(refListItem.resourceNameListOffset);
-			SWAP(refListItem.resourceDataOffset);
+			SWAP3(refListItem.resourceDataOffset);
 			
-			const char* pascalStringName = reinterpret_cast<const char*>(mem + header.resourceMapOffset + resourceMapHeader.nameListOffset + refListItem.resourceNameListOffset);
+			if (refListItem.resourceNameListOffset != 0xffff)
+			{
+				const char* pascalStringName = reinterpret_cast<const char*>(mem + header.resourceMapOffset + resourceMapHeader.nameListOffset + refListItem.resourceNameListOffset);
+				res.name.assign(pascalStringName+1, *pascalStringName);
+			}
 
-			const uint8_t* dataHeader = mem + header.resourceDataOffset + refListItem.resourceDataOffset;
-			uint32_t dataLength = *reinterpret_cast<const uint32_t*>(dataHeader);
+			if (refListItem.resourceDataOffset != 0xffff)
+			{
+				const uint8_t* dataHeader = mem + header.resourceDataOffset + refListItem.resourceDataOffset;
+				uint32_t dataLength = *reinterpret_cast<const uint32_t*>(dataHeader);
 
-			SWAP(dataLength);
+				SWAP(dataLength);
 
-			res.name.assign(pascalStringName+1, *pascalStringName);
-
-			res.dataBacking.assign(dataHeader + 4, dataHeader + 4 + dataLength);
+				res.dataBacking.assign(dataHeader + 4, dataHeader + 4 + dataLength);
+			}
 
 			res.id = refListItem.resourceID;
 			res.attributes = refListItem.attributes;
