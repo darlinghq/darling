@@ -18,7 +18,6 @@ struct LaunchParamBlockRec
 };
 
 enum { kNoProcess = 0, kSystemProcess = 1, kCurrentProcess = 2 };
-enum { procNotFound = -600 };
 
 #ifdef __cplusplus
 extern "C" {

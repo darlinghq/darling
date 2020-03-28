@@ -38,6 +38,8 @@ set(CoreServices_SRCS
 	Files.cpp
 	Resources.cpp
 	ResourcesImpl.cpp
+	MacErrors.cpp
+	UserBreak.cpp
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
