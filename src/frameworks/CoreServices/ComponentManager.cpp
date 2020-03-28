@@ -289,13 +289,15 @@ void ComponentManager::analyzeComponent(CFBundleRef bundle, ResFileRefNum resFil
 
 			for (int p = 0; p < thng.PlatformInfoCount; p++)
 			{
-				SWAP(thng.PlatformInfos[p].PlatformType);
+				PlatformInfo pi = ((CarbonThng*) *handle)->PlatformInfos[p];
 
-				if (thng.PlatformInfos[p].PlatformType == CURRENT_PLATFORM)
+				SWAP(pi.PlatformType);
+
+				if (pi.PlatformType == CURRENT_PLATFORM)
 				{
-					SWAP(thng.PlatformInfos[p].CodeType);
-					SWAP(thng.PlatformInfos[p].CodeId);
-					entryPoint = loadResString(thng.PlatformInfos[p].CodeType, thng.PlatformInfos[p].CodeId);
+					SWAP(pi.CodeType);
+					SWAP(pi.CodeId);
+					entryPoint = loadResString(pi.CodeType, pi.CodeId);
 				}
 			}
 
