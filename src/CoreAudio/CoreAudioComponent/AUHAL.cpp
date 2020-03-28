@@ -331,3 +331,35 @@ OSStatus AUHAL::doRecord(const AudioTimeStamp* inNow, const AudioBufferList* inI
 
 	return noErr;
 }
+
+// AUDispatch.cpp doesn't implement dispatch code for AudioOutputUnits
+OSStatus AUHAL::ComponentEntryDispatch(ComponentParameters *params, AUHAL *This)
+{
+	if (This == NULL) return kAudio_ParamError;
+
+	OSStatus result = noErr;
+
+	switch (params->what)
+	{
+		case kComponentCanDoSelect:
+			switch (GetSelectorForCanDo(params))
+			{
+				case kAudioOutputUnitStartSelect:
+				case kAudioOutputUnitStopSelect:
+					return 1;
+			}
+			break;
+		case kAudioOutputUnitStartSelect:
+		{
+			CAMutex::Locker lock(This->GetMutex());
+			return This->Start();
+		}
+		case kAudioOutputUnitStopSelect:
+		{
+			CAMutex::Locker lock(This->GetMutex());
+			return This->Stop();
+		}
+	}
+
+	return AUBase::ComponentEntryDispatch(params, This);
+}

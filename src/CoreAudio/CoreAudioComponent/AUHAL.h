@@ -44,6 +44,8 @@ public:
 	OSStatus GetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, void* outData) override;
 
 	OSStatus Render(AudioUnitRenderActionFlags& ioActionFlags, const AudioTimeStamp& inTimeStamp, UInt32 inNumberFrames) override;
+
+	static OSStatus ComponentEntryDispatch(ComponentParameters *params, AUHAL *This);
 private:
 	static OSStatus playbackCallback(AudioObjectID inObjectID,
 		const AudioTimeStamp* inNow, const AudioBufferList* inInputData,
