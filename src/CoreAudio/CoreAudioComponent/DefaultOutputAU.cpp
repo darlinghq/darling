@@ -16,10 +16,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "SystemOutputAU.h"
+#include "DefaultOutputAU.h"
 
 #pragma GCC visibility push(default)
-AUDIOCOMPONENT_ENTRY(AUOutputBaseFactory, SystemOutputAU);
+AUDIOCOMPONENT_ENTRY(AUOutputBaseFactory, DefaultOutputAU);
 #pragma GCC visibility pop
 
 enum {
@@ -27,14 +27,12 @@ enum {
 	kInputBus
 };
 
-SystemOutputAU::SystemOutputAU(AudioComponentInstance inInstance)
+DefaultOutputAU::DefaultOutputAU(AudioComponentInstance inInstance)
 : AUHAL(inInstance)
 {
-	UInt32 propSize = sizeof(AudioDeviceID);
-	AudioHardwareGetProperty(kAudioHardwarePropertyDefaultSystemOutputDevice, &propSize, &m_outputDevice);
 }
 
-OSStatus SystemOutputAU::GetPropertyInfo(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, UInt32& outDataSize, Boolean& outWritable)
+OSStatus DefaultOutputAU::GetPropertyInfo(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, UInt32& outDataSize, Boolean& outWritable)
 {
 	OSStatus status = AUHAL::GetPropertyInfo(inID, inScope, inElement, outDataSize, outWritable);
 
@@ -44,17 +42,11 @@ OSStatus SystemOutputAU::GetPropertyInfo(AudioUnitPropertyID inID, AudioUnitScop
 	return status;
 }
 
-OSStatus SystemOutputAU::SetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope,
+OSStatus DefaultOutputAU::SetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope,
 	AudioUnitElement inElement, const void* inData, UInt32 inDataSize)
 {
 	switch (inID)
 	{
-		case kAudioOutputUnitProperty_EnableIO:
-		{
-			if (inElement == kInputBus)
-				return kAudioUnitErr_InvalidElement;
-			break;
-		}
 		case kAudioOutputUnitProperty_CurrentDevice:
 			return kAudioUnitErr_InvalidProperty;
 	}

@@ -29,6 +29,7 @@ set(component_sources
 	PublicUtility/CAVectorUnit.cpp
 	AUHAL.cpp
 	SystemOutputAU.cpp
+	DefaultOutputAU.cpp
 )
 
 add_darling_bundle(CoreAudioComponent "" ${component_sources})

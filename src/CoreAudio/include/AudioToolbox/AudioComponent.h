@@ -23,7 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreServices/MacTypes.h>
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -119,7 +119,7 @@ typedef UInt32 AudioComponentValidationResult;
 
 OSStatus AudioComponentValidate(AudioComponent component, CFDictionaryRef validationParams, AudioComponentValidationResult* result);
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

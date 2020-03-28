@@ -72,14 +72,18 @@ static bool isString(CFStringRef str)
 static UInt32 stringToFourCC(CFStringRef str)
 {
 	union {
-		char chars[4];
+		char chars[5]; // CFStringGetCString requires space for the NUL character
 		uint32_t code;
 	} cc;
 
 	if (CFStringGetLength(str) != 4)
 		return 0;
-	if (!CFStringGetCString(str, cc.chars, 4, kCFStringEncodingUTF8))
+	if (!CFStringGetCString(str, cc.chars, 5, kCFStringEncodingUTF8))
 		return 0;
+
+#if __LITTLE_ENDIAN__
+	cc.code = __builtin_bswap32(cc.code);
+#endif
 
 	return cc.code;
 }

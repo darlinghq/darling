@@ -17,14 +17,14 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CA_SYSTEM_OUTPUT_AU_H
-#define _CA_SYSTEM_OUTPUT_AU_H
+#ifndef _CA_DEFAULT_OUTPUT_AU_H
+#define _CA_DEFAULT_OUTPUT_AU_H
 #include "AUHAL.h"
 
-class SystemOutputAU : public AUHAL
+class DefaultOutputAU : public AUHAL
 {
 public:
-	SystemOutputAU(AudioComponentInstance inInstance);
+	DefaultOutputAU(AudioComponentInstance inInstance);
 	OSStatus GetPropertyInfo(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, UInt32& outDataSize, Boolean& outWritable) override;
 	OSStatus SetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, const void* inData, UInt32 inDataSize) override;
 };
