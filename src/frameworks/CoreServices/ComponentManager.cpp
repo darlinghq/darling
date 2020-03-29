@@ -55,6 +55,7 @@ ComponentManager::ComponentManager()
 void ComponentManager::discoverComponents()
 {
 	discoverComponents("/System/Library/Components");
+	discoverComponents("/Library/Components");
 
 	const char* home = ::getenv("HOME");
 	if (home != NULL)

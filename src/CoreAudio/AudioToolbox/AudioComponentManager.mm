@@ -29,6 +29,7 @@ AudioComponentManager::AudioComponentManager()
 void AudioComponentManager::discoverComponents()
 {
 	discoverComponents("/System/Library/Components");
+	discoverComponents("/Library/Components");
 
 	const char* home = ::getenv("HOME");
 	if (home != NULL)
