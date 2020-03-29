@@ -17,6 +17,9 @@ set(component_sources
 	AFPublic/DataSource.cpp
 	AUPublic/AUBase/ComponentBase.cpp
 	PublicUtility/CACFDictionary.cpp
+	AVFormatFileObject.cpp
+	AudioFileFormatGeneric.cpp
+	AudioFileFormatMP3.cpp
 )
 
 add_darling_bundle(AFAVFormatComponent "" ${component_sources})
