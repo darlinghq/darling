@@ -19,6 +19,7 @@ set(audiotoolbox_sources
 	AUGraph.cpp
 	AudioComponent.mm
 	AudioComponentManager.mm
+	AudioFileComponent.cpp
 )
 
 add_framework(AudioToolbox
