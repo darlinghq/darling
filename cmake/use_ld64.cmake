@@ -31,6 +31,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/system/libsystem_trace.dylib:${CMAKE_BINARY_DIR}/src/external/libtrace/libsystem_trace_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libcorecrypto.dylib:${CMAKE_BINARY_DIR}/src/external/corecrypto/libcorecrypto_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_dnssd.dylib:${CMAKE_BINARY_DIR}/src/lib/system/dnssd/libsystem_dnssd.dylib \
+-Wl,-dylib_file,/usr/lib/system/libsystem_networkextension.dylib:${CMAKE_BINARY_DIR}/src/networkextension/libsystem_networkextension.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_coretls.dylib:${CMAKE_BINARY_DIR}/src/external/coretls/libsystem_coretls.dylib \
 -Wl,-dylib_file,/usr/lib/system/libcommonCrypto.dylib:${CMAKE_BINARY_DIR}/src/external/commoncrypto/libcommonCrypto.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_asl.dylib:${CMAKE_BINARY_DIR}/src/external/syslog/libsystem_asl.tproj/libsystem_asl_firstpass.dylib \
