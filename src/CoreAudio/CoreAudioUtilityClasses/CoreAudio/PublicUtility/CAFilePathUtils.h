@@ -63,6 +63,7 @@ OSStatus	PosixPathToParentFSRefAndName(const char *path, FSRef &outParentDir, CF
 #if !TARGET_OS_WIN32
 	#include <libgen.h>
 #else
+#error
 	char*	dirname(const char* inPath);
 	char*	basename(const char* inPath);
 #endif

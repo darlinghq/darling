@@ -1,0 +1,26 @@
+{\rtf1\mac\ansicpg10000\cocoartf102
+{\fonttbl\f0\fswiss\fcharset77 Helvetica;\f1\fnil\fcharset77 Monaco;}
+{\colortbl;\red255\green255\blue255;\red104\green56\blue33;}
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f0\fs36 \cf0 AudioFile-new\
+\
+
+\fs24 This folder contains new classes for working with audio files, using the AudioToolbox AudioFile and AudioConverter API's. It is currently a work in progress. Some command-line tools using these classes are in the AudioFileTools sample project.\
+\
+CAAudioFile has been reworked to optionally use the new ExtendedAudioFile API in Tiger. The functionality is essentially the same but a number of method names have been changed. To use the provided Panther-compatible implementation instead of requiring ExtendedAudioFile, define 
+\f1\fs18 \cf2 \CocoaLigature0 CAAF_USE_EXTAUDIOFILE 
+\f0\fs24 \cf0 \CocoaLigature1 to 1.\
+\
+The main classes are:\
+\
+CAAudioFile - wraps an AudioFile in an AudioConverter. The client specifies a PCM format to be used when reading/writing from the file, and the class performs any necessary decoding/encoding transparently. Be aware that most methods of this class may throw exceptions.\
+\
+CAAudioFileStreamer / CAAudioFileReader / CAAudioFileWriter - perfom asynchronous streaming of CAAudioFiles on a separate work thread for file I/O and decoding.These classes don't actually connect to the audio hardware.\
+\
+CAAudioFilePlayer / CAAudioFileRecorder - Subclasses of CAAudioFileReader / CAAudioFileWriter which use audio "output" (now I/O) units to actually play and recorder the audio.\
+\
+CAChannelMapper - uses the matrix mixer audio unit for converting (downmixing if necessary) between audio channel layouts.\
+\
+The other classes are support classes for the above.\
+}
