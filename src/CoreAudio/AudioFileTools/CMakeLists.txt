@@ -38,7 +38,7 @@ set(sources
 	Utility/AFToolsCommon.cpp
 )
 
-add_library(AudioFileTools_util OBJECT ${sources})
+add_library(AudioFileTools_util SHARED ${sources})
 
 add_darling_executable(afplay afplay.cpp)
 target_link_libraries(afplay AudioFileTools_util system AudioToolbox cxx CoreServices CoreAudio)
