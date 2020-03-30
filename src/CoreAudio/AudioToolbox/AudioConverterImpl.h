@@ -10,7 +10,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
-class AudioConverter
+class __attribute__((visibility("hidden"))) AudioConverter
 {
 	AudioConverter(const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat);
 public:

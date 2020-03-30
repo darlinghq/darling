@@ -42,6 +42,31 @@ Component FindNextComponent(Component prev, ComponentDescription* desc)
 	return nullptr;
 }
 
+OSErr OpenADefaultComponent(OSType componentType, OSType componentSubType, ComponentInstance *ci)
+{
+	ComponentDescription desc = {
+		.componentFlags = 0,
+		.componentFlagsMask = 0,
+		.componentManufacturer = 0,
+		.componentType = componentType,
+		.componentSubType = componentSubType,
+	};
+	Component c = FindNextComponent(nullptr, &desc);
+
+	if (!c)
+	{
+		*ci = nullptr;
+		return invalidComponentID;
+	}
+
+	return OpenAComponent(c, ci);
+}
+
+long CountComponentInstances(Component aComponent)
+{
+	return ComponentManager::instance()->componentInstances(aComponent);
+}
+
 long CountComponents(ComponentDescription* desc)
 {
 	return ComponentManager::instance()->findMatching(desc).size();
@@ -117,10 +142,50 @@ OSErr GetComponentInfo(Component aComponent, ComponentDescription *cd,
 	if (status != noErr)
 		return status;
 	
-	*cd = cmd.cd;
-	stringToHandle(cmd.name, componentName);
-	stringToHandle(cmd.info, componentInfo);
-	EmptyHandle(componentIcon);
+	if (cd)
+		*cd = cmd.cd;
+	if (componentName)
+		stringToHandle(cmd.name, componentName);
+	if (componentInfo)
+		stringToHandle(cmd.info, componentInfo);
+
+	if (componentIcon)
+		EmptyHandle(componentIcon);
 
 	return noErr;
+}
+
+ComponentResult CallComponentCanDo(ComponentInstance ci, SInt16 ftnNumber)
+{
+	ComponentParameters* params = (ComponentParameters*) alloca(sizeof(ComponentParameters) + sizeof(long));
+
+	params->flags = 0;
+	params->what = kComponentCanDoSelect;
+	params->paramSize = sizeof(long) * 2;
+
+#if __LP64__
+	params->params[0] = long(ci);
+	params->params[1] = ftnNumber;
+#else
+
+	params->params[1] = long(ci);
+#ifdef __ppc__
+	params->params[0] = long(ftnNumber) << 16;
+#else
+	params->params[0] = ftnNumber;
+#endif
+
+#endif
+	return ComponentManager::instance()->dispatch(params);
+}
+
+OSErr CloseComponentResFile(ResFileRefNum refnum)
+{
+	CloseResFile(refnum);
+	return ResError();
+}
+
+Component GetComponentIDFromComponentInstance(ComponentInstance inst)
+{
+	return ComponentManager::instance()->componentID(inst);
 }

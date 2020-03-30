@@ -153,6 +153,15 @@ void SetComponentInstanceStorage(ComponentInstance aComponentInstance, Handle th
 OSErr OpenAComponentResFile(Component aComponent, ResFileRefNum* resRef);
 OSErr GetComponentInfo(Component aComponent, ComponentDescription *cd, Handle componentName, Handle componentInfo, Handle componentIcon);
 
+ComponentResult CallComponentCanDo(ComponentInstance ci, SInt16 ftnNumber);
+OSErr OpenADefaultComponent(OSType componentType, OSType componentSubType, ComponentInstance *ci);
+
+long CountComponentInstances(Component aComponent);
+OSErr CloseComponentResFile(ResFileRefNum refnum);
+
+// Apple private API
+Component GetComponentIDFromComponentInstance(ComponentInstance inst);
+
 #ifdef __cplusplus
 }
 #endif

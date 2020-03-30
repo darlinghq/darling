@@ -640,3 +640,25 @@ OSStatus ComponentManager::componentData(Component c, ComponentData* out)
 
 	return noErr;
 }
+
+uint32_t ComponentManager::componentInstances(Component c)
+{
+	std::unique_lock<std::recursive_mutex> l(m_componentsMutex);
+
+	auto itMap = m_componentsMap.find(c);
+	if (itMap == m_componentsMap.end())
+		return 0;
+
+	ComponentData* cd = itMap->second;
+	return cd->instances;
+}
+
+Component ComponentManager::componentID(ComponentInstance ci)
+{
+	std::unique_lock<std::recursive_mutex> l(m_componentInstancesMutex);
+
+	auto it = m_componentInstances.find(ci);
+	if (it == m_componentInstances.end())
+		return nullptr;
+	return it->second.component;
+}

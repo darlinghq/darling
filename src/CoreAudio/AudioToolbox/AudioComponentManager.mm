@@ -164,6 +164,11 @@ bool AudioComponentManager::isOurInstance(AudioComponentInstance instance)
 	return v & 0x80000000;
 }
 
+bool AudioComponentManager::isOurInstance(AudioComponent component)
+{
+	return isOurInstance(AudioComponentInstance(component));
+}
+
 /*
 AudioComponentInstance AudioComponentManager::audioUnitToInstance(AudioUnit unit)
 {

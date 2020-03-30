@@ -59,6 +59,7 @@ public:
 	// Returns true if it looks like an instance managed by this class.
 	// False means it is probably managed by the Carbon Component Manager.
 	static bool isOurInstance(AudioComponentInstance instance);
+	static bool isOurInstance(AudioComponent component);
 
 	AudioComponent registerComponent(const AudioComponentDescription* desc, const char* name,
 		uint32_t version, AudioComponentFactoryFunction factory);
@@ -80,7 +81,7 @@ public:
 private:
 
 	std::unordered_map<AudioComponent, RegisteredComponent> m_components;
-	uint32_t m_nextComponentId = 0x4000;
+	uint32_t m_nextComponentId = 0x4000 | 0x80000000;
 	std::recursive_mutex m_componentsMutex;
 
 	struct ComponentInstanceData

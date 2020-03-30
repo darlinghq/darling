@@ -74,6 +74,9 @@ public:
 	static CFBundleRef bundleFromPath(const char* path);
 	OSStatus resFileForComponent(Component c, ResFileRefNum* resFile);
 
+	uint32_t componentInstances(Component c);
+	Component componentID(ComponentInstance ci);
+
 	struct ComponentData
 	{
 		Component component;
