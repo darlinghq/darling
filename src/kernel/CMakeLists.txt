@@ -33,7 +33,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
-add_definitions(-D__APPLE__ -D__DYNAMIC__ -DPRIVATE=1)
+add_definitions(-DPRIVATE=1)
 
 add_subdirectory(libsyscall)
 

@@ -19,7 +19,6 @@ include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/dyld-apple/include)
 
 add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1 -DHAVE_SYSTEM_CORESERVICES)
-add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
 # Hide warnings
 add_definitions(

@@ -14,8 +14,6 @@ add_compile_options(
 )
 
 add_definitions(
-	-D__APPLE__
-	-D__DYNAMIC__
 	-DPRIVATE
 	-DOS_UNFAIR_LOCK_INLINE=1
 	-DTARGET_OS_MAC=1
