@@ -16,7 +16,6 @@ add_compile_options(
 add_definitions(
 	-DPRIVATE
 	-DOS_UNFAIR_LOCK_INLINE=1
-	-DTARGET_OS_MAC=1
 	-D__DARWIN_UNIX03
 )
 

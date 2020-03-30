@@ -9,7 +9,6 @@ include_directories(${CMAKE_SOURCE_DIR}/libc/fbsdcompat)
 include_directories(${CMAKE_SOURCE_DIR}/kernel/libsyscall/wrappers)
 include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
 
-add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
 
 set(keymgr_sources

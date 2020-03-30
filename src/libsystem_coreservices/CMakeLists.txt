@@ -2,8 +2,6 @@ project(system_coreservices)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-add_definitions(-DTARGET_OS_MAC=1)
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)

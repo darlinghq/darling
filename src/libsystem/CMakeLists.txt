@@ -17,7 +17,6 @@ include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread/private)
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/dyld-apple/include)
 
-add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1 -DHAVE_SYSTEM_CORESERVICES)
 
 # Hide warnings

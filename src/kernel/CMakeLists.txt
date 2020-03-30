@@ -31,7 +31,6 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 #add_darling_library(fakedyld SHARED fakedyld.c)
 #make_fat(fakedyld)
 
-add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-DPRIVATE=1)
 

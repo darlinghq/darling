@@ -2,7 +2,6 @@ project(duct)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-DPRIVATE)
 add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)

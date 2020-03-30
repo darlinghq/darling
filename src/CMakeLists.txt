@@ -15,11 +15,7 @@ add_subdirectory(libelfloader/native)
 add_subdirectory(bsdln)
 
 add_definitions(
-	-D_DARWIN_C_SOURCE
-	-D_POSIX_C_SOURCE
 	-DDARLING
-	-D__APPLE__
-	-D__DYNAMIC__
 )
 
 set(DARLING TRUE)
@@ -62,6 +58,15 @@ add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(startup)
 
 add_subdirectory(bootstrap_cmds)
+
+add_definitions(
+	-D__APPLE__
+	-D__DYNAMIC__
+	-D__MACH__
+	-D_DARWIN_C_SOURCE
+	-D_POSIX_C_SOURCE
+	-DTARGET_OS_MAC=1
+)
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
