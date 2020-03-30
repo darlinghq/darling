@@ -61,13 +61,6 @@ add_subdirectory(buildtools)
 add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(startup)
 
-add_definitions(
-	-D_DARWIN_C_SOURCE
-	-D_POSIX_C_SOURCE
-	-D__APPLE__
-	-D__DYNAMIC__
-)
-
 add_subdirectory(bootstrap_cmds)
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
