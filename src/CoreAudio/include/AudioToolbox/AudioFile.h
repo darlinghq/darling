@@ -249,7 +249,7 @@ AudioFileReadPackets ( AudioFileID inAudioFile,
                         AudioStreamPacketDescription * _Nullable outPacketDescriptions,
                         SInt64 inStartingPacket,
                         UInt32 * ioNumPackets,
-                        void * _Nullable outBuffer) __attribute__((availability(macosx,introduced=10.2,deprecated=10.10)));
+                        void * _Nullable outBuffer);
 extern OSStatus
 AudioFileWritePackets ( AudioFileID inAudioFile,
                         Boolean inUseCache,
