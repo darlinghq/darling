@@ -20,6 +20,11 @@ set(audiotoolbox_sources
 	AudioComponent.mm
 	AudioComponentManager.mm
 	AudioFileComponent.cpp
+	AudioFileFormatManager.cpp
+	ExtendedAudioFile.cpp
+	AudioFormat.cpp
+	MusicDevice.cpp
+	AudioToolbox.cpp
 )
 
 add_framework(AudioToolbox
