@@ -33,20 +33,10 @@ extern "C" {
 
 #define FSRef_MAX_DEPTH (80 / sizeof(ino_t))
 
-struct FSRef
+typedef struct FSRef
 {
-	union
-	{
-		uint8_t hidden[80];
-
-		// Inode numbers leading to the file in the directory structure
-		//
-		// EXAMPLES:
-		// All zeroes: /
-		// sequence 1,2,0: [dir with inode 1]/[dir or file with inode 2]
-		ino_t inodes[FSRef_MAX_DEPTH];
-	};
-};
+	uint8_t hidden[80];
+} FSRef;
 typedef struct FSRef* FSRefPtr;
 typedef struct FSRef FSRef;
 
@@ -55,6 +45,7 @@ struct HFSUniStr255
 	uint16_t length;
 	uint16_t unicode[255];
 };
+typedef struct HFSUniStr255 HFSUniStr255;
 struct FSSpec;
 
 typedef struct FSSpec* FSSpecPtr;
@@ -99,6 +90,7 @@ struct FSCatalogInfo
 	uint32_t valence; // file count within a directory
 	uint32_t textEncodingHint;
 };
+typedef struct FSCatalogInfo FSCatalogInfo;
 
 typedef void* IOCompletionUPP;
 typedef void* QElemPtr;
@@ -224,6 +216,7 @@ OSStatus FSRefMakePath(const struct FSRef* fsref, uint8_t* path, uint32_t maxSiz
 Boolean CFURLGetFSRef(CFURLRef urlref, struct FSRef* fsref); // in CF
 CFURLRef CFURLCreateFromFSRef(CFAllocatorRef alloc, struct FSRef* location); // --> in CF
 OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, struct FSRef* location);
+OSStatus FSDeleteObject(const FSRef* fsref);
 
 OSStatus FSGetCatalogInfo(const FSRefPtr ref, uint32_t infoBits, struct FSCatalogInfo* infoOut, struct HFSUniStr255* nameOut, FSSpecPtr fsspec, FSRefPtr parentDir);
 

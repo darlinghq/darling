@@ -1,0 +1,6 @@
+This is a file format component built on top of AVFormat.
+
+The area of macOS surrounding AudioFileComponents is very badly documented, especially with regard to where this component belongs etc.
+This project may serve as an example: https://sourceforge.net/projects/coreaudio-flac/
+
+The goal is to support formats specified here: https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/SupportedAudioFormatsMacOSX/SupportedAudioFormatsMacOSX.html

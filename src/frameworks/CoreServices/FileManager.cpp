@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2012-2013 Lubos Dolezel
+Copyright (C) 2012-2020 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "FileManager.h"
+#include <CoreServices/FileManager.h>
 #include <cstdlib>
 #include <string>
 #include <cstring>
@@ -38,46 +38,12 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include "DateTimeUtils.h"
 #include <errno.h>
+#include <ext/file_handle.h>
 
 #define STUB() // TODO
 
-// Doesn't resolve the last symlink
-// Mallocates a new buffer
-static char* realpath_ns(const char* path);
-/*static*/ bool FSRefMakePath(const FSRef* ref, std::string& out);
-static bool FSRefParamMakePath(const FSRefParam* param, std::string& out);
 // Is the current user member of the specified group?
 static bool hasgid(gid_t gid);
-
-static bool string_endsWith(const std::string& str, const std::string& what)
-{
-	if (str.size() < what.size())
-		return false;
-	else
-		return str.compare(str.size()-what.size(), what.size(), what) == 0;
-}
-
-static std::vector<std::string> string_explode(const std::string& str, char delim, bool keepEmpty)
-{
-	std::vector<std::string> rv;
-	size_t start = 0, end;
-
-	do
-	{
-		std::string substr;
-
-		end = str.find(delim, start);
-		substr = str.substr(start, (end != std::string::npos) ? end-start : std::string::npos);
-
-		if (keepEmpty || !substr.empty())
-			rv.push_back(substr);
-		
-		start = end+1;
-	}
-	while (end != std::string::npos);
-
-	return rv;
-}
 
 OSStatus FSPathMakeRef(const uint8_t* path, FSRef* fsref, Boolean* isDirectory)
 {
@@ -89,129 +55,40 @@ OSStatus FSPathMakeRefWithOptions(const uint8_t* path, long options, FSRef* fsre
 	if (!path || !fsref)
 		return paramErr;
 
-	std::string fullPath;
-	char* rpath;
-	
+	int flags = 1;
 	if (options & kFSPathMakeRefDoNotFollowLeafSymlink)
-		rpath = realpath_ns(reinterpret_cast<const char*>(path));
-	else
-		rpath = realpath(reinterpret_cast<const char*>(path), nullptr);
+		flags = 0;
 
-	if (!rpath)
+	int err = sys_name_to_handle((const char*) path, (RefData*) fsref, flags);
+	if (err != 0)
 		return fnfErr;
-	if (std::count(rpath, rpath+strlen(rpath), '/') > FSRef_MAX_DEPTH)
+
+	if (isDirectory)
 	{
-		free(rpath);
-		return unimpErr;
-	}
+		struct stat st;
 
-	fullPath = rpath;
-	free(rpath);
+		if (options & kFSPathMakeRefDoNotFollowLeafSymlink)
+			err = lstat((const char*) path, &st);
+		else
+			err = stat((const char*) path, &st);
 
-	memset(fsref, 0, sizeof(*fsref));
-
-	if (fullPath == "/")
-	{
-		if (isDirectory)
-			*isDirectory = true;
-		return noErr;
-	}
-
-	std::vector<std::string> components = string_explode(fullPath, '/', false);
-	std::string position = "/";
-	size_t pos;
-
-	for (size_t pos = 0; pos < components.size(); pos++)
-	{
-		bool found = false;
-		struct dirent* ent;
-
-		DIR* dir = opendir(position.c_str());
-		if (!dir)
-			return makeOSStatus(errno);
-
-		while ((ent = readdir(dir)))
-		{
-			if (components[pos] == ent->d_name)
-			{
-				found = true;
-				fsref->inodes[pos] = ent->d_ino;
-
-				if (pos+1 == components.size() && isDirectory != nullptr)
-					*isDirectory = ent->d_type == DT_DIR;
-				break;
-			}
-		}
-
-		closedir(dir);
-
-		if (!found)
-			return fnfErr;
-
-		if (!string_endsWith(position, "/"))
-			position += '/';
-		position += components[pos];
-
-		pos++;
+		if (err == 0)
+			*isDirectory = S_ISDIR(st.st_mode);
+		else
+			*isDirectory = 0;
 	}
 
 	return noErr; 
 }
 
-char* realpath_ns(const char* path)
-{
-	char *dup1, *dup2;
-	char *dname, *bname;
-	char *real, *complete;
-
-	dup1 = strdup(path);
-	dup2 = strdup(path);
-	dname = dirname(dup1);
-	bname = basename(dup2);
-
-	real = realpath(dname, nullptr);
-	complete = (char*) malloc(strlen(real) + strlen(bname) + 2);
-
-	strcpy(complete, real);
-	if (strrchr(complete, '/') != complete+strlen(complete)-1)
-		strcat(complete, "/");
-	strcat(complete, bname);
-
-	free(real);
-	free(dup1);
-	free(dup2);
-
-	return complete;
-}
-
 bool FSRefMakePath(const FSRef* fsref, std::string& out)
 {
-	out = '/';
-	for (int i = 0; i < FSRef_MAX_DEPTH && fsref->inodes[i] != 0; i++)
-	{
-		ino_t inode = fsref->inodes[i];
-		DIR* dir = opendir(out.c_str());
-		struct dirent* ent;
-		bool found = false;
+	char name[4096];
+	int ret = sys_handle_to_name((RefData*) fsref, name);
+	if (ret != 0)
+		return false;
 
-		while ((ent = readdir(dir)))
-		{
-			if (strcmp(ent->d_name, "..") == 0 || strcmp(ent->d_name, ".") == 0)
-				continue;
-			if (ent->d_ino == inode)
-			{
-				found = true;
-				if (!string_endsWith(out, "/"))
-					out += '/';
-				out += ent->d_name;
-			}
-		}
-
-		closedir(dir);
-
-		if (!found)
-			return false;
-	}
+	out = name;
 	return true;
 }
 
@@ -244,6 +121,18 @@ bool FSRefParamMakePath(const FSRefParam* param, std::string& out)
 	}
 	else
 		return false;
+}
+
+OSStatus FSDeleteObject(const FSRef* fsref)
+{
+	std::string path;
+	if (FSRefMakePath(fsref, path))
+	{
+		if (::unlink(path.c_str()) == -1)
+			return makeOSStatus(errno);
+		return noErr;
+	}
+	return fnfErr;
 }
 
 OSStatus FSRefMakePath(const FSRef* fsref, uint8_t* path, uint32_t maxSize)
@@ -279,11 +168,14 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 
 	if (parentDir)
 	{
+		/*
 		memcpy(parentDir, ref, sizeof(FSRef));
 		ino_t* last = std::find(parentDir->inodes, parentDir->inodes+FSRef_MAX_DEPTH, 0);
 
 		if (last != parentDir->inodes)
 			*(last-1) = 0;
+		*/
+		// TODO
 	}
 
 	if (infoOut && infoBits != kFSCatInfoNone)
@@ -303,6 +195,7 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 	
 		if (infoBits & (kFSCatInfoParentDirID|kFSCatInfoNodeID))
 		{
+			/*
 			if (infoBits & kFSCatInfoNodeID)
 				infoOut->nodeID = ref->inodes[0];
 			for (int i = FSRef_MAX_DEPTH-1; i > 0; i--)
@@ -315,6 +208,8 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 				if (infoBits & kFSCatInfoNodeID)
 					infoOut->nodeID = ref->inodes[i];
 			}
+			*/
+			// TODO
 		}
 
 		if (infoBits & kFSCatInfoDataSizes)

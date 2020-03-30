@@ -1,0 +1,6 @@
+This is a component that provides audio input / output on top of CoreAudio.framework in the form
+of an AudioUnit (which is an AudioToolkit thing).
+
+The component gets installed into /System/Library/Components/CoreAudio.component.
+
+It is reachable both as an AudioComponent (AudioComponentInstanceNew) and a Carbon Component (OpenAComponent).

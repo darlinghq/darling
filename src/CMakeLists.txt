@@ -93,7 +93,7 @@ include_directories(
 
 include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/DiskArbitration/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudioOld/include
+	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/login/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
@@ -258,6 +258,8 @@ add_subdirectory(external/openpam)
 add_subdirectory(external/libtelnet)
 add_subdirectory(external/remote_cmds)
 add_subdirectory(external/IOKitUser)
+add_subdirectory(CoreAudio)
+#add_subdirectory(external/OpenAL)
 add_subdirectory(external/python_modules)
 add_subdirectory(SystemConfiguration)
 #add_subdirectory(VideoDecodeAcceleration)
