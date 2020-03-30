@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "CoreEndian.h"
+#include <CoreServices/Endian.h>
 #include <stdint.h>
 #include <map>
 #include <TargetConditionals.h>
