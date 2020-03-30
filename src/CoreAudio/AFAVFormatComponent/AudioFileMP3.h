@@ -17,26 +17,15 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "AudioFileFormatMP3.h"
+#ifndef _AUDIO_FILE_MP3_H
+#define _AUDIO_FILE_MP3_H
+#include "AudioFileObject.h"
 
-AudioFileFormatMP3::AudioFileFormatMP3()
-: AudioFileFormatGeneric('.mp3', "mp3")
+class AudioFileMP3 : public AudioFileObject
 {
-}
+public:
+	AudioFileMP3();
+	Boolean IsDataFormatSupported(const AudioStreamBasicDescription	*inFormat) override;
+};
 
-AudioFileFormatMP3* AudioFileFormatMP3::instance()
-{
-	static AudioFileFormatMP3 inst;
-	return &inst;
-}
- 
-const AudioFileFormatMP3::Description& AudioFileFormatMP3::description() const
-{
-	static const Description d = {
-		.name = "MPEG Layer 3",
-		.extensions = { "mp3" },
-		.utis = { "public.mp3", "public.audio", "public.data" },
-		.mimeTypes = { "audio/mpeg" },
-	};
-	return d;
-}
+#endif

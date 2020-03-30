@@ -21,11 +21,20 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define _AV_FORMAT_FILE_OBJECT_H
 #include "AudioFileComponentBase.h"
 
+template <typename FormatClass, typename FileClass, UInt32 FileType>
 class AVFormatFileObject : public AudioFileObjectComponentBase
 {
 public:
-	AVFormatFileObject(AudioComponentInstance inInstance);
-	AudioFileFormat* GetAudioFormat() const override;
+	AVFormatFileObject(AudioComponentInstance inInstance)
+	: AudioFileObjectComponentBase(inInstance)
+	{
+		mAudioFileObject = new FileClass;
+	}
+	AudioFileFormat* GetAudioFormat() const override
+	{
+		static FormatClass inst;
+		return &inst;
+	}
 };
 
 #endif

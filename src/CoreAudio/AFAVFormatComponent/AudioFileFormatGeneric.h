@@ -34,17 +34,28 @@ public:
 
 	AudioFileObject* New() override;
 	AudioFileStreamObject* NewStream() override { return NULL; }
+
+	// File format -> data formats
+	// https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/SupportedAudioFormatsMacOSX/SupportedAudioFormatsMacOSX.html
 	OSStatus GetAvailableFormatIDs(UInt32* ioDataSize, void* outPropertyData) override;
+
 	OSStatus GetAvailableStreamDescriptions(UInt32 inFormatID, UInt32* ioDataSize, void* outPropertyData) override;
 private:
 	static CFArrayRef toCFArray(const std::vector<const char*>& array);
 protected:
+	struct Format : public AudioStreamBasicDescription
+	{
+		Format(UInt32 formatID) { mFormatID = formatID; }
+		Format(UInt32 formatID, UInt32 formatFlags, UInt32 bitsPerChannel) { mFormatID = formatID; mFormatFlags = formatFlags; mBitsPerChannel = bitsPerChannel; }
+		Format() {}
+	};
 	struct Description
 	{
 		const char* name;
 		std::vector<const char*> extensions;
 		std::vector<const char*> utis;
 		std::vector<const char*> mimeTypes;
+		std::vector<Format> formats;
 	};
 	virtual const Description& description() const = 0;
 private:

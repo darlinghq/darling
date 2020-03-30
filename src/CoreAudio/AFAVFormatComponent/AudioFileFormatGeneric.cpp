@@ -101,18 +101,42 @@ UncertainResult AudioFileFormatGeneric::FileDataIsThisFormat(UInt32 inDataByteSi
 
 AudioFileObject* AudioFileFormatGeneric::New()
 {
-	// TODO
+	// This method is never called from AFPublic
 	return nullptr;
 }
 
 OSStatus AudioFileFormatGeneric::GetAvailableFormatIDs(UInt32* ioDataSize, void* outPropertyData)
 {
-	// TODO
-	return unimpErr;
+	const std::vector<Format>& formats = description().formats;
+
+	*ioDataSize = formats.size() * sizeof(UInt32);
+	if (outPropertyData)
+	{
+		UInt32* dest = static_cast<UInt32*>(outPropertyData);
+		for (int i = 0; i < formats.size(); i++)
+			dest[i] = formats[i].mFormatID;
+	}
+
+	return noErr;
 }
 
 OSStatus AudioFileFormatGeneric::GetAvailableStreamDescriptions(UInt32 inFormatID, UInt32* ioDataSize, void* outPropertyData)
 {
-	// TODO
-	return unimpErr;
+	int count = 0;
+
+	for (const Format& format : description().formats)
+	{
+		if (format.mFormatID == inFormatID)
+		{
+			if (outPropertyData)
+			{
+				AudioStreamBasicDescription* ptr = static_cast<AudioStreamBasicDescription*>(outPropertyData);
+				ptr[count] = format;
+			}
+			count++;
+		}
+	}
+
+	*ioDataSize = count * sizeof(AudioStreamBasicDescription);
+	return noErr;
 }
