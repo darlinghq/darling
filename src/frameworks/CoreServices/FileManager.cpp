@@ -123,6 +123,18 @@ bool FSRefParamMakePath(const FSRefParam* param, std::string& out)
 		return false;
 }
 
+OSStatus FSDeleteObject(const FSRef* fsref)
+{
+	std::string path;
+	if (FSRefMakePath(fsref, path))
+	{
+		if (::unlink(path.c_str()) == -1)
+			return makeOSStatus(errno);
+		return noErr;
+	}
+	return fnfErr;
+}
+
 OSStatus FSRefMakePath(const FSRef* fsref, uint8_t* path, uint32_t maxSize)
 {
 	std::string rpath;

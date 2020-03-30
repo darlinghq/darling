@@ -216,6 +216,7 @@ OSStatus FSRefMakePath(const struct FSRef* fsref, uint8_t* path, uint32_t maxSiz
 Boolean CFURLGetFSRef(CFURLRef urlref, struct FSRef* fsref); // in CF
 CFURLRef CFURLCreateFromFSRef(CFAllocatorRef alloc, struct FSRef* location); // --> in CF
 OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, struct FSRef* location);
+OSStatus FSDeleteObject(const FSRef* fsref);
 
 OSStatus FSGetCatalogInfo(const FSRefPtr ref, uint32_t infoBits, struct FSCatalogInfo* infoOut, struct HFSUniStr255* nameOut, FSSpecPtr fsspec, FSRefPtr parentDir);
 
