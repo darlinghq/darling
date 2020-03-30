@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <CoreServices/MacMemory.h>
+#include <CoreServices/MacErrors.h>
 #include <cstring>
 #include <stdint.h>
 #include <cstdlib>
@@ -172,4 +173,54 @@ void HLockHi(Handle h)
 
 void HUnlock(Handle h)
 {
+}
+
+OSErr HandToHand(Handle* h)
+{
+	if (!h)
+		return paramErr;
+	if (!*h)
+	{
+		*h = NewEmptyHandle();
+		return noErr;
+	}
+
+	Handle src = *h;
+	long size = GetHandleSize(src);
+	Handle newHandle = NewHandle(size);
+
+	memcpy(*newHandle, *src, size);
+	*h = newHandle;
+
+	return noErr;
+}
+
+// Append h1 to h2
+OSErr HandAndHand(Handle h1, Handle h2)
+{
+	if (!h1 || !h2)
+		return paramErr;
+	if (!*h1)
+		return noErr;
+	long origSize = GetHandleSize(h2);
+	long addSize = GetHandleSize(h1);
+
+	SetHandleSize(h2, origSize + addSize);
+	memcpy(*h2 + origSize, *h1, addSize);
+
+	return noErr;
+}
+
+OSErr PtrAndHand(const void* ptr1, Handle hand2, long size)
+{
+	if (!size)
+		return noErr;
+	if (!ptr1 || !hand2)
+		return paramErr;
+	
+	long origSize = GetHandleSize(hand2);
+	SetHandleSize(hand2, origSize + size);
+
+	memcpy(*hand2 + origSize, ptr1, size);
+	return noErr;
 }

@@ -33,6 +33,9 @@ void ReallocateHandle(Handle h, Size byteCount);
 void HLock(Handle h);
 void HLockHi(Handle h);
 void HUnlock(Handle h);
+OSErr HandToHand(Handle* h);
+OSErr HandAndHand(Handle h1, Handle h2);
+OSErr PtrAndHand(const void* ptr1, Handle hand2, long size);
 
 #ifdef __cplusplus
 }
