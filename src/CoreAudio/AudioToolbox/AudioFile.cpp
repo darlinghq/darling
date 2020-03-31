@@ -19,6 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <AudioToolbox/AudioFile.h>
 #include <CoreServices/MacErrors.h>
+#include "AudioFileFormatManager.h"
 
 OSStatus AudioFileCreateWithURL (CFURLRef inFileRef,
 	AudioFileTypeID inFileType,
@@ -193,7 +194,34 @@ OSStatus AudioFileGetGlobalInfoSize( AudioFilePropertyID inPropertyID,
 	void * _Nullable inSpecifier,
 	UInt32 *outDataSize)
 {
-	return unimpErr;
+	return AudioFileGetGlobalInfo(inPropertyID, inSpecifierSize, inSpecifier, outDataSize, nullptr);
+}
+
+static void writeUInt32Set(const std::set<UInt32>& set, void *outPropertyData)
+{
+	if (outPropertyData)
+	{
+		UInt32* out = static_cast<UInt32*>(outPropertyData);
+		int i = 0;
+		for (UInt32 v : set)
+			out[i++] = v;
+	}
+}
+
+template <typename ContainerType>
+CFArrayRef stringContainerToArray(const ContainerType& t)
+{
+	std::unique_ptr<CFStringRef[]> ptrs(new CFStringRef[t.size()]);
+	int i = 0;
+
+	for (const std::string& str : t)
+		ptrs[i++] = CFStringCreateWithCString(nullptr, str.c_str(), kCFStringEncodingUTF8);
+	
+	CFArrayRef rv = CFArrayCreate(nullptr, (const void**) ptrs.get(), t.size(), &kCFTypeArrayCallBacks);
+
+	for (int i = 0; i < t.size(); i++)
+		CFRelease(ptrs[i]);
+	return rv;
 }
 
 OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
@@ -202,6 +230,142 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 	UInt32 *ioDataSize,
 	void *outPropertyData)
 {
+	switch (inPropertyID)
+	{
+		case kAudioFileGlobalInfo_ReadableTypes:
+		case kAudioFileGlobalInfo_WritableTypes:
+		{
+			std::set<UInt32> types = AudioFileFormatManager::instance()->types(inPropertyID == kAudioFileGlobalInfo_WritableTypes);
+
+			*ioDataSize = types.size() * sizeof(UInt32);
+			writeUInt32Set(types, outPropertyData);
+			
+			return noErr;
+		}
+		case kAudioFileGlobalInfo_FileTypeName:
+		{
+			const UInt32* fileType = static_cast<const UInt32*>(inSpecifier);
+			if (inSpecifierSize != sizeof(*fileType))
+				return kAudioFileBadPropertySizeError;
+
+			const AudioFileFormatManager::ComponentInfo* ci;
+
+			ci = AudioFileFormatManager::instance()->fileType(*fileType);
+			if (!ci)
+				return kAudioFileUnsupportedFileTypeError;
+
+			CFStringRef* out = static_cast<CFStringRef*>(outPropertyData);
+			*ioDataSize = sizeof(*out);
+
+			if (out)
+				*out = CFStringCreateWithCString(nullptr, ci->name.c_str(), kCFStringEncodingUTF8);
+
+			return noErr;
+		}
+		case kAudioFileGlobalInfo_AvailableStreamDescriptionsForFormat:
+		{
+			const AudioFileTypeAndFormatID* spec = static_cast<const AudioFileTypeAndFormatID*>(inSpecifier);
+			if (inSpecifierSize != sizeof(*spec))
+				return kAudioFileBadPropertySizeError;
+			break;
+		}
+		case kAudioFileGlobalInfo_AvailableFormatIDs:
+		{
+			const UInt32* fileType = static_cast<const UInt32*>(inSpecifier);
+			if (inSpecifierSize != sizeof(*fileType))
+				return kAudioFileBadPropertySizeError;
+
+			auto set = AudioFileFormatManager::instance()->availableFormatIDs(*fileType);
+			*ioDataSize = set.size() * sizeof(UInt32);
+
+			writeUInt32Set(set, outPropertyData);
+
+			return noErr;
+		}
+		case kAudioFileGlobalInfo_AllHFSTypeCodes:
+		case kAudioFileGlobalInfo_HFSTypeCodesForType:
+		case kAudioFileGlobalInfo_TypesForHFSTypeCode:
+			*ioDataSize = 0;
+			return noErr;
+		case kAudioFileGlobalInfo_AllExtensions:
+		case kAudioFileGlobalInfo_AllUTIs:
+		case kAudioFileGlobalInfo_AllMIMETypes:
+		{
+			*ioDataSize = sizeof(CFArrayRef);
+
+			if (outPropertyData)
+			{
+				std::set<std::string> set;
+				AudioFileFormatManager* mgr = AudioFileFormatManager::instance();
+
+				if (inPropertyID == kAudioFileGlobalInfo_AllExtensions)
+					set = mgr->allExtensions();
+				else if (inPropertyID == kAudioFileGlobalInfo_AllUTIs)
+					set = mgr->allUTIs();
+				else if (inPropertyID == kAudioFileGlobalInfo_AllMIMETypes)
+					set = mgr->allMIMEs();
+
+				*((CFArrayRef*)outPropertyData) = stringContainerToArray(set);
+			}
+
+			return noErr;
+		}
+		case kAudioFileGlobalInfo_ExtensionsForType:
+		case kAudioFileGlobalInfo_UTIsForType:
+		case kAudioFileGlobalInfo_MIMETypesForType:
+		{
+			const UInt32* fileType = static_cast<const UInt32*>(inSpecifier);
+			if (inSpecifierSize != sizeof(*fileType))
+				return kAudioFileBadPropertySizeError;
+
+			*ioDataSize = sizeof(CFArrayRef);
+
+			if (outPropertyData)
+			{
+				const std::vector<std::string>* vector;
+				const AudioFileFormatManager::ComponentInfo* ci;
+
+				ci = AudioFileFormatManager::instance()->fileType(*fileType);
+				if (!ci)
+					return kAudioFileUnsupportedFileTypeError;
+				
+				if (inPropertyID == kAudioFileGlobalInfo_ExtensionsForType)
+					vector = &ci->extensions;
+				else if (inPropertyID == kAudioFileGlobalInfo_UTIsForType)
+					vector = &ci->utis;
+				else if (inPropertyID == kAudioFileGlobalInfo_MIMETypesForType)
+					vector = &ci->mimeTypes;
+
+				*((CFArrayRef*)outPropertyData) = stringContainerToArray(*vector);
+			}
+
+			return noErr;
+		}
+		case kAudioFileGlobalInfo_TypesForMIMEType:
+		case kAudioFileGlobalInfo_TypesForUTI:
+		case kAudioFileGlobalInfo_TypesForExtension:
+		{
+			CFStringRef str = static_cast<CFStringRef>(inSpecifier);
+			if (inSpecifierSize != sizeof(str))
+				return kAudioFileBadPropertySizeError;
+			
+			AudioFileFormatManager* mgr = AudioFileFormatManager::instance();
+			const char* cstr = CFStringGetCStringPtr(str, kCFStringEncodingUTF8);
+			std::set<UInt32> set;
+
+			if (inPropertyID == kAudioFileGlobalInfo_TypesForMIMEType)
+				set = mgr->typesForMIME(cstr);
+			else if (inPropertyID == kAudioFileGlobalInfo_TypesForUTI)
+				set = mgr->typesForUTI(cstr);
+			else if (inPropertyID == kAudioFileGlobalInfo_TypesForExtension)
+				set = mgr->typesForExtension(cstr);
+
+			*ioDataSize = set.size() * sizeof(UInt32);
+			writeUInt32Set(set, outPropertyData);
+
+			return noErr;
+		}
+	}
 	return unimpErr;
 }
 
