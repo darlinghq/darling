@@ -234,7 +234,7 @@ sysctl_handler(handle_maxproc)
 	if (fd >= 0)
 	{
 		int rd = sys_read(fd, buf, sizeof(buf) - 1);
-		sys_close(fd);
+		close_internal(fd);
 		
 		if (rd > 0)
 		{

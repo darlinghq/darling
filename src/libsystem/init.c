@@ -248,6 +248,7 @@ libSystem_atfork_child(void)
 
 	_pthread_fork_child_postinit();
 	// _libtrace_fork_child(); // no prep work required for the fork
+	kqueue_atfork();
 }
 
 /*  

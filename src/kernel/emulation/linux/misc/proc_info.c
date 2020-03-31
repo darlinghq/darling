@@ -381,7 +381,7 @@ static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer
 			// TODO: Parse additional information (e.g. RSS)
 		}
 	}
-	sys_close(fd);
+	close_internal(fd);
 
 	if (my_rpi.prp_vip.vip_path[0])
 	{

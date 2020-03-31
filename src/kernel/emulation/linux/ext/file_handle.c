@@ -117,7 +117,7 @@ int sys_handle_to_name(RefData* ref, char name[4096])
 			p = strtok_r(NULL, " ", &saveptr);
 			if (p == NULL)
 			{
-				sys_close(fd_m);
+				close_internal(fd_m);
 				return -ENOENT;
 			}
 		}
@@ -127,7 +127,7 @@ int sys_handle_to_name(RefData* ref, char name[4096])
 		break;
 	}
 
-	sys_close(fd_m);
+	close_internal(fd_m);
 
 	if (mount_path == NULL)
 		return -ENOENT;
@@ -143,7 +143,7 @@ int sys_handle_to_name(RefData* ref, char name[4096])
 
 	int ret = lkm_call(NR_handle_to_path, &args);
 
-	sys_close(fd_m);
+	close_internal(fd_m);
 
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
@@ -197,7 +197,7 @@ int sys_open_by_handle(RefData* ref, int flags)
 			p = strtok_r(NULL, " ", &saveptr);
 			if (p == NULL)
 			{
-				sys_close(fd_m);
+				close_internal(fd_m);
 				return -ENOENT;
 			}
 		}
@@ -207,7 +207,7 @@ int sys_open_by_handle(RefData* ref, int flags)
 		break;
 	}
 
-	sys_close(fd_m);
+	close_internal(fd_m);
 
 	if (mount_path == NULL)
 		return -ENOENT;
@@ -220,7 +220,7 @@ int sys_open_by_handle(RefData* ref, int flags)
 	// And now, finally, open the file by handle relative to the mount
 	int ret = LINUX_SYSCALL(__NR_open_by_handle_at, fd_m, &ref->fh, linux_flags);
 
-	sys_close(fd_m);
+	close_internal(fd_m);
 
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);

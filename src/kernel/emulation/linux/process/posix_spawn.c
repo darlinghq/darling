@@ -51,7 +51,7 @@ long sys_posix_spawn(int* pid, const char* path, const struct _posix_spawn_args_
 
 		// child
 		// close the reading side
-		sys_close(pipe[0]);
+		close_internal(pipe[0]);
 
 no_fork:
 		if (desc && desc->attrp)
@@ -105,14 +105,14 @@ no_fork:
 					if (ret < 0)
 						goto fail;
 
-					sys_close(pipe[1]);
+					close_internal(pipe[1]);
 					pipe[1] = ret;
 				}
 
 				switch (act->psfaa_type)
 				{
 					case PSFA_CLOSE:
-						ret = sys_close(act->psfaa_filedes);
+						ret = close_internal(act->psfaa_filedes);
 						if (ret != 0)
 							goto fail;
 						break;
@@ -135,7 +135,7 @@ no_fork:
 
 							if (ret < 0)
 							{
-								sys_close(fd);
+								close_internal(fd);
 								goto fail;
 							}
 						}
@@ -193,7 +193,7 @@ fail:
 		int err;
 
 		// close the writing side
-		sys_close(pipe[1]);
+		close_internal(pipe[1]);
 
 		if (my_pid < 0)
 		{
@@ -206,7 +206,7 @@ fail:
 
 		if (sys_read(pipe[0], &ret, sizeof(ret)) != sizeof(ret))
 			ret = 0;
-		sys_close(pipe[0]);
+		close_internal(pipe[0]);
 	}
 
 out:

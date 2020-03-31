@@ -15,7 +15,7 @@ long sys_pthread_fchdir(int newfd)
 	int fd = get_perthread_wd();
 
 	if (fd != LINUX_AT_FDCWD)
-		sys_close(fd);
+		close_internal(fd);
 
 	if (newfd == -1)
 		newfd = LINUX_AT_FDCWD; // return to per-process wd
