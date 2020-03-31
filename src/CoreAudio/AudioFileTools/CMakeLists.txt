@@ -40,16 +40,16 @@ set(sources
 
 add_library(AudioFileTools_util OBJECT ${sources})
 
-add_darling_executable(afplay afplay.cpp)
-target_link_libraries(afplay AudioFileTools_util system AudioToolbox cxx CoreServices CoreAudio)
+add_darling_executable(afplay afplay.cpp $<TARGET_OBJECTS:AudioFileTools_util>)
+target_link_libraries(afplay system AudioToolbox cxx CoreServices CoreAudio)
 
-add_darling_executable(afrecord afrecord.cpp)
-target_link_libraries(afrecord AudioFileTools_util system AudioToolbox cxx CoreServices CoreAudio)
+add_darling_executable(afrecord afrecord.cpp $<TARGET_OBJECTS:AudioFileTools_util>)
+target_link_libraries(afrecord system AudioToolbox cxx CoreServices CoreAudio)
 
-add_darling_executable(afinfo afinfo.cpp)
-target_link_libraries(afinfo AudioFileTools_util system AudioToolbox cxx CoreServices CoreAudio)
+add_darling_executable(afinfo afinfo.cpp $<TARGET_OBJECTS:AudioFileTools_util>)
+target_link_libraries(afinfo system AudioToolbox cxx CoreServices CoreAudio)
 
-add_darling_executable(afconvert afconvert.cpp afconvert_main.cpp)
-target_link_libraries(afconvert AudioFileTools_util system AudioToolbox cxx CoreServices CoreAudio)
+add_darling_executable(afconvert afconvert.cpp afconvert_main.cpp $<TARGET_OBJECTS:AudioFileTools_util>)
+target_link_libraries(afconvert system AudioToolbox cxx CoreServices CoreAudio)
 
 install(TARGETS afplay afrecord afinfo afconvert DESTINATION libexec/darling/usr/bin)
