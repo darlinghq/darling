@@ -64,6 +64,7 @@ add_definitions(
 	-D__MACH__
 	-D_DARWIN_C_SOURCE
 	-D_POSIX_C_SOURCE
+	-DDARWIN
 	-DTARGET_OS_MAC=1
 )
 
