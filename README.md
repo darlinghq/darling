@@ -13,7 +13,7 @@ under [releases](https://github.com/darlinghq/darling/releases).
 
 ## Build Instructions
 
-For build instructions, visit [DarlingHQ Wiki](https://wiki.darlinghq.org/build_instructions).
+For build instructions, visit [Darling Docs](http://docs.darlinghq.org/build-instructions.html).
 
 ### Prefixes
 
