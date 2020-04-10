@@ -118,6 +118,7 @@
 #include "misc/gethostuuid.h"
 #include "misc/getrusage.h"
 #include "misc/syscall.h"
+#include "misc/csops.h"
 #include "synch/semwait_signal.h"
 #include "fcntl/open.h"
 #include "fcntl/openat.h"
@@ -309,6 +310,7 @@ void* __bsd_syscall_table[600] = {
 	[157] = sys_statfs,
 	[158] = sys_fstatfs,
 	[159] = sys_unmount,
+	[169] = sys_csops,
 	[173] = sys_waitid,
 	[181] = sys_setgid,
 	[182] = sys_setegid,
