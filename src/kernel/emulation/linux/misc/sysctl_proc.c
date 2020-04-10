@@ -377,6 +377,7 @@ int _sysctl_procargs(int pid, char* buf, unsigned long* buflen)
 		*buflen = totallen;
 		memcpy(buf, &argc, sizeof(argc));
 		strcpy(buf+sizeof(argc), cmdline); // copy arg0 as executable_path (TODO: not 100% correct)
+		buf[sizeof(argc)+arg0len+1] = 0;
 		buf[sizeof(argc)+arg0len+2] = 0;
 		memcpy(buf+sizeof(argc)+arg0len+2, cmdline, argslen+1);
 	}
