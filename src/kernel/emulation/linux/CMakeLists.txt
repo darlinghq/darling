@@ -172,6 +172,7 @@ set(emulation_sources
 	misc/setlogin.c
 	misc/reboot.c
 	misc/iopolicysys.c
+	misc/csops.c
 	fcntl/open.c
 	fcntl/openat.c
 	fcntl/fcntl.c
