@@ -19,7 +19,7 @@ jobs:
         git submodule sync --recursive
         git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
     - name: install
-      run: sudo apt-get update && sudo apt-get install cmake clang bison flex libfuse-dev libudev-dev pkg-config libc6-dev-i386 linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libtiff5-dev libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libavutil-dev libpulse-dev libavformat-dev libavcodec-dev libavresample-dev ccache devscripts debhelper ninja-build tree
+      run: sudo apt-get update && sudo apt-get install cmake clang bison flex libfuse-dev libudev-dev pkg-config libc6-dev-i386 linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libtiff5-dev libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev libavutil-dev libpulse-dev libavformat-dev libavcodec-dev libavresample-dev ccache devscripts debhelper ninja-build tree
     - name: Prepare ccache timestamp
       id: ccache_cache_timestamp
       shell: cmake -P {0}
@@ -37,13 +37,13 @@ jobs:
       run: ccache -s
     - name: make deb
       run: tools/makedeb
-    - name: Move & compress DEBs
-      run: mkdir dist && cp ../*.deb dist && tar -cJf dist.tar.xz dist
+    - name: Move DEBs
+      run: mkdir dist && mv ../*.deb dist
     - name: Upload Artifacts
       uses: actions/upload-artifact@v1
       with:
         name: 'debs'
-        path: dist.tar.xz
+        path: dist/
   build-src:
 
     runs-on: ubuntu-latest
@@ -60,7 +60,7 @@ jobs:
         git submodule sync --recursive
         git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
     - name: install
-      run: sudo apt-get update && sudo apt-get install cmake clang bison flex libfuse-dev libudev-dev pkg-config libc6-dev-i386 linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libtiff5-dev libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libavutil-dev libpulse-dev libavformat-dev libavcodec-dev libavresample-dev ccache devscripts debhelper ninja-build tree
+      run: sudo apt-get update && sudo apt-get install cmake clang bison flex libfuse-dev libudev-dev pkg-config libc6-dev-i386 linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libtiff5-dev libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev libavutil-dev libpulse-dev libavformat-dev libavcodec-dev libavresample-dev ccache devscripts debhelper ninja-build tree
     - name: Prepare ccache timestamp
       id: ccache_cache_timestamp
       shell: cmake -P {0}
@@ -78,10 +78,10 @@ jobs:
       run: ccache -s
     - name: make deb src
       run: tools/makedeb --dsc
-    - name: Move & compress DEBs
-      run: mkdir source && cp ../*~testing.* source && tar -cJf source.tar.xz source
+    - name: Move DEBs
+      run: mkdir source && mv ../*~testing.* source
     - name: Upload Artifacts
       uses: actions/upload-artifact@v1
       with:
         name: 'source'
-        path: source.tar.xz
+        path: source/
