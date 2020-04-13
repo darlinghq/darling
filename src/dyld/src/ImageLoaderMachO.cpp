@@ -1388,7 +1388,7 @@ bool ImageLoaderMachO::needsAddedLibSystemDepency(unsigned int libCount, const m
 				// It is OK for OS dylibs (libSystem or libmath or Rosetta shims) to have no dependents
 				// but all other dylibs must depend on libSystem for initialization to initialize libSystem first
 				// <rdar://problem/6497528> rosetta circular dependency spew
-				isNonOSdylib = ( (strncmp(installPath, "/usr/lib/", 9) != 0) && (strncmp(installPath, "/usr/libexec/oah/Shims", 9) != 0) );
+				isNonOSdylib = ( (strncmp(installPath, "/usr/lib/", 9) != 0) && (strncmp(installPath, "/usr/libexec/oah/Shims", 22) != 0) );
 				}
 				break;
 		}
