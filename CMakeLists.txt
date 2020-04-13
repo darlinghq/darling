@@ -16,6 +16,11 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 		"clang++-7")
 endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+endif()
+
 SET(CMAKE_SKIP_RPATH TRUE)
 
 project(darling)
