@@ -11,6 +11,8 @@ add_framework(CoreVideo
     VERSION "A"
 
     SOURCES
+	src/constants.c
+	src/stubs.c
         src/CVDisplayLink.mm
 
     DEPENDENCIES
