@@ -7,7 +7,9 @@ if (NOT DEFINED CMAKE_C_COMPILER)
 		"clang"
 		"clang-4.0"
 		"clang-6.0"
-		"clang-7")
+		"clang-7"
+		"clang-9"
+)
 endif(NOT DEFINED CMAKE_C_COMPILER)
 
 if (NOT DEFINED CMAKE_CXX_COMPILER)
@@ -15,7 +17,9 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 		"clang++"
 		"clang++-4.0"
 		"clang++-6.0"
-		"clang++-7")
+		"clang++-7"
+		"clang++-9"
+)
 endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
 find_program(CCACHE_PROGRAM ccache)
