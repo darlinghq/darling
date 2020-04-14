@@ -6,6 +6,7 @@ if (NOT DEFINED CMAKE_C_COMPILER)
 	find_program(CMAKE_C_COMPILER NAMES
 		"clang"
 		"clang-4.0"
+		"clang-6.0"
 		"clang-7")
 endif(NOT DEFINED CMAKE_C_COMPILER)
 
@@ -13,6 +14,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 	find_program(CMAKE_CXX_COMPILER NAMES
 		"clang++"
 		"clang++-4.0"
+		"clang++-6.0"
 		"clang++-7")
 endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
