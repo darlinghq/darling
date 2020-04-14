@@ -25,6 +25,7 @@ set(CarbonCore_SRCS
 	ResourcesImpl.cpp
 	MacErrors.cpp
 	UserBreak.cpp
+	Debugging.cpp
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.0")

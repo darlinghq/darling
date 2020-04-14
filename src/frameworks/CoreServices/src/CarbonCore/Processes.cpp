@@ -29,6 +29,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreFoundation/CFBundle.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <iostream>
+#include "UserBreak.h"
 
 #define STUB() // TODO
 #ifndef PATH_MAX
@@ -241,10 +243,9 @@ OSErr WakeUpProcess(const ProcessSerialNumber* psn)
 	return noErr;
 }
 
-void DebugStr(ConstStr255Param a)
+void DebugStr(ConstStr255Param msg)
 {
-	printf("%s\n", a);
+	std::cerr.write((const char*) &msg[1], msg[0]);
+	std::cerr << std::endl;
+	doUserBreak();
 }
-
-
-
