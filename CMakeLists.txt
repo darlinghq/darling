@@ -9,6 +9,7 @@ if (NOT DEFINED CMAKE_C_COMPILER)
 		"clang-6.0"
 		"clang-7"
 		"clang-9"
+		"clang-10"
 )
 endif(NOT DEFINED CMAKE_C_COMPILER)
 
@@ -19,6 +20,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 		"clang++-6.0"
 		"clang++-7"
 		"clang++-9"
+		"clang++-10"
 )
 endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
