@@ -173,6 +173,8 @@ set(emulation_sources
 	misc/reboot.c
 	misc/iopolicysys.c
 	misc/csops.c
+	misc/fileport_makeport.c
+	misc/fileport_makefd.c
 	fcntl/open.c
 	fcntl/openat.c
 	fcntl/fcntl.c
