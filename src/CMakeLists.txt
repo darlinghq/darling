@@ -257,6 +257,7 @@ add_subdirectory(external/openpam)
 add_subdirectory(external/libtelnet)
 add_subdirectory(external/remote_cmds)
 add_subdirectory(external/IOKitUser)
+add_subdirectory(external/IOKitTools)
 add_subdirectory(CoreAudio)
 #add_subdirectory(external/OpenAL)
 add_subdirectory(external/python_modules)
@@ -390,6 +391,8 @@ add_subdirectory(external/cocotron/Cocoa)
 add_subdirectory(external/cocotron/CoreData)
 add_subdirectory(external/cocotron/QuartzCore)
 add_subdirectory(pboard)
+
+add_subdirectory(external/dbuskit)
 
 
 # /Applications

@@ -319,3 +319,9 @@
 [submodule "src/external/libffi"]
 	path = src/external/libffi
 	url = ../darling-libffi.git
+[submodule "src/external/dbuskit"]
+        path = src/external/dbuskit
+        url = ../darling-dbuskit.git
+[submodule "src/external/IOKitTools"]
+        path = src/external/IOKitTools
+        url = ../darling-IOKitTools.git
