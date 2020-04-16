@@ -3,13 +3,11 @@ name: Darling CI
 on: [push]
 
 jobs:
-  build:
-
+  build-deb:
     runs-on: ubuntu-latest
-    
     steps:
     - uses: actions/checkout@v2
-    - name: Checkout submodules
+    - name: Checkout Submodules
       shell: bash
       run: |
         # If your submodules are configured to use SSH instead of HTTPS please uncomment the following line
@@ -18,10 +16,12 @@ jobs:
         auth_header="$(git config --local --get http.https://github.com/.extraheader)"
         git submodule sync --recursive
         git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
-    - name: install
-      run: sudo apt-get update && sudo apt-get install cmake clang bison flex libfuse-dev libudev-dev pkg-config libc6-dev-i386 linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libtiff5-dev libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev libavutil-dev libpulse-dev libavformat-dev libavcodec-dev libavresample-dev devscripts debhelper ninja-build tree 	libdbus-1-dev
-    - name: make deb
-      run: tools/makedeb -j2
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install devscripts equivs
+        sudo mk-build-deps -ir
+    - name: Build DEB
+      run: tools/makedeb
     - name: Move DEBs
       run: mkdir dist && mv ../*.deb dist
     - name: Upload Artifacts
@@ -29,13 +29,12 @@ jobs:
       with:
         name: 'debs'
         path: dist/
-  build-src:
 
+  build-dsc:
     runs-on: ubuntu-latest
-    
     steps:
     - uses: actions/checkout@v2
-    - name: Checkout submodules
+    - name: Checkout Submodules
       shell: bash
       run: |
         # If your submodules are configured to use SSH instead of HTTPS please uncomment the following line
@@ -44,26 +43,11 @@ jobs:
         auth_header="$(git config --local --get http.https://github.com/.extraheader)"
         git submodule sync --recursive
         git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
-    - name: install
-      run: sudo apt-get update && sudo apt-get install cmake clang bison flex libfuse-dev libudev-dev pkg-config libc6-dev-i386 linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libtiff5-dev libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev libavutil-dev libpulse-dev libavformat-dev libavcodec-dev libavresample-dev ccache devscripts debhelper ninja-build tree 	libdbus-1-dev
-    - name: Prepare ccache timestamp
-      id: ccache_cache_timestamp
-      shell: cmake -P {0}
-      run: |
-        string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-        message("::set-output name=timestamp::${current_date}")
-    - name: ccache cache files
-      uses: actions/cache@v1.1.0
-      with:
-        path: /home/runner/.ccache
-        key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
-        restore-keys: |
-          ${ { matrix.config.name } }-ccache-
-    - name: ccache info
-      run: ccache -s
-    - name: make deb src
+    - name: Install Dependencies
+      run: sudo apt-get update && sudo apt-get install devscripts dpkg-dev
+    - name: Build DSC
       run: tools/makedeb --dsc
-    - name: Move DEBs
+    - name: Move DSCs
       run: mkdir source && mv ../*~testing.* source
     - name: Upload Artifacts
       uses: actions/upload-artifact@v1
