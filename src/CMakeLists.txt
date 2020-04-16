@@ -381,6 +381,17 @@ add_subdirectory(frameworks)
 add_subdirectory(private-frameworks)
 add_subdirectory(external/usertemplate)
 
+add_subdirectory(external/lkm)
+
+add_subdirectory(external/cocotron/Onyx2D)
+add_subdirectory(external/cocotron/AppKit)
+add_subdirectory(external/cocotron/CoreText)
+add_subdirectory(external/cocotron/Cocoa)
+add_subdirectory(external/cocotron/CoreData)
+add_subdirectory(external/cocotron/QuartzCore)
+add_subdirectory(pboard)
+
+
 # /Applications
 #add_subdirectory(external/TextEdit)
 
@@ -412,16 +423,6 @@ add_subdirectory(external/libauto)
 add_subdirectory(external/WTF)
 add_subdirectory(external/bmalloc)
 add_subdirectory(external/dtrace)
-
-add_subdirectory(external/lkm)
-
-add_subdirectory(external/cocotron/Onyx2D)
-add_subdirectory(external/cocotron/AppKit)
-add_subdirectory(external/cocotron/CoreText)
-add_subdirectory(external/cocotron/Cocoa)
-add_subdirectory(external/cocotron/CoreData)
-add_subdirectory(external/cocotron/QuartzCore)
-add_subdirectory(pboard)
 
 if(FULL_BUILD)
 add_subdirectory(external/JavaScriptCore)
