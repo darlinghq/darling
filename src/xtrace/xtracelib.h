@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 void handle_generic_entry(const struct calldef* defs, const char* type, int nr, void* args[]);
-void handle_generic_exit(const struct calldef* defs, const char* type, int nr, uintptr_t retval, int force_split);
+void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t retval, int force_split);
 
 extern int xtrace_no_color;
 void xtrace_set_gray_color(void);

@@ -2,7 +2,7 @@ project(xtrace)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti -std=c++11")
 
-add_definitions(-nostdinc)
+add_definitions(-nostdinc -fvisibility=hidden)
 
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/include

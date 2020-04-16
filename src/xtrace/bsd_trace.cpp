@@ -7,8 +7,6 @@
 #include "xtracelib.h"
 #include "bsd_trace.h"
 
-_Thread_local int bsd_call_nr = -1;
-
 static void print_errno(char* buf, int nr, uintptr_t rv);
 static void print_errno_num(char* buf, int nr, uintptr_t rv);
 static void print_errno_ptr(char* buf, int nr, uintptr_t rv);
@@ -1022,8 +1020,7 @@ static void print_args(char* buf, int nr, void* args[])
 extern "C"
 void darling_bsd_syscall_entry_print(int nr, void* args[])
 {
-	bsd_call_nr = nr;
-	handle_generic_entry(bsd_defs, "bsd", bsd_call_nr, args);
+	handle_generic_entry(bsd_defs, "bsd", nr, args);
 
 	if (nr == 1 || nr == 59)
 	{
@@ -1036,8 +1033,7 @@ void darling_bsd_syscall_entry_print(int nr, void* args[])
 extern "C"
 void darling_bsd_syscall_exit_print(uintptr_t retval)
 {
-	handle_generic_exit(bsd_defs, "bsd", bsd_call_nr, retval, 0);
-	bsd_call_nr = -1;
+	handle_generic_exit(bsd_defs, "bsd", retval, 0);
 }
 
 const char* error_strings[128] = {
