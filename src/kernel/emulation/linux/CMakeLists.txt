@@ -175,6 +175,7 @@ set(emulation_sources
 	misc/csops.c
 	misc/fileport_makeport.c
 	misc/fileport_makefd.c
+	misc/csrctl.c
 	fcntl/open.c
 	fcntl/openat.c
 	fcntl/fcntl.c

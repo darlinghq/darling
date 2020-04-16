@@ -121,6 +121,7 @@
 #include "misc/csops.h"
 #include "misc/fileport_makeport.h"
 #include "misc/fileport_makefd.h"
+#include "misc/csrctl.h"
 #include "synch/semwait_signal.h"
 #include "fcntl/open.h"
 #include "fcntl/openat.h"
@@ -463,6 +464,7 @@ void* __bsd_syscall_table[600] = {
 	[474] = sys_symlinkat,
 	[475] = sys_mkdirat,
 	[476] = sys_getattrlistat,
+	[483] = sys_csrctl,
 	[500] = sys_getentropy,
 	[515] = sys_ulock_wait,
 	[516] = sys_ulock_wake,
