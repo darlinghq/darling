@@ -117,15 +117,39 @@ static void ucontext_linux_to_bsd(const struct linux_ucontext* lc, struct bsd_uc
 	copyreg(r11); copyreg(r12); copyreg(r13); copyreg(r14); copyreg(r15); copyreg(rip);
 	copyreg(cs); copyreg(fs); copyreg(gs);
 	bm->ss.rflags = lc->uc_mcontext.gregs.efl;
-#else
+
+#elif defined(__i386__)
 	copyreg(eax); copyreg(ebx); copyreg(ecx); copyreg(edx); copyreg(edi); copyreg(esi);
 	copyreg(ebp); copyreg(esp);
 	copyreg(eip); copyreg(cs); copyreg(ds); copyreg(es); copyreg(fs); copyreg(gs);
 	bm->ss.eflags = lc->uc_mcontext.gregs.efl;
 	bm->ss.ss = 0;
+#else
+#	warning Missing code for current arch
 #endif
 	
 #undef copyreg
+}
+
+static void mcontext_bsd_to_linux(const struct bsd_mcontext* bm, struct linux_mcontext* lm)
+{
+#define copyreg(__name) lm->gregs.__name = bm->ss.__name
+
+#ifdef __x86_64__
+	copyreg(rax); copyreg(rbx); copyreg(rcx); copyreg(rdx); copyreg(rdi); copyreg(rsi);
+	copyreg(rbp); copyreg(rsp); copyreg(r8); copyreg(r9); copyreg(r10);
+	copyreg(r11); copyreg(r12); copyreg(r13); copyreg(r14); copyreg(r15); copyreg(rip);
+	copyreg(cs); copyreg(fs); copyreg(gs);
+	lm->gregs.efl = bm->ss.rflags;
+#elif defined(__i386__)
+	copyreg(eax); copyreg(ebx); copyreg(ecx); copyreg(edx); copyreg(edi); copyreg(esi);
+	copyreg(ebp); copyreg(esp);
+	copyreg(eip); copyreg(cs); copyreg(ds); copyreg(es); copyreg(fs); copyreg(gs);
+	lm->gregs.efl = bm->ss.eflags;
+#else
+#	warning Missing code for current arch
+#endif
+
 }
 
 void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ctxt)
@@ -145,10 +169,11 @@ void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ct
 		binfo.si_code = info->si_code;
 		binfo.si_pid = info->si_pid;
 		binfo.si_uid = info->si_uid;
+		binfo.si_addr = info->si_addr;
+		binfo.si_val_ptr = (void*) info->si_value;
 		
-		// TODO: The following 3 exist on Linux, but it's a mess to extract them
+		// TODO: The following exist on Linux, but it's a mess to extract them
 		binfo.si_status = 0;
-		binfo.si_addr = 0;
 		binfo.si_band = 0;
 	}
 	
@@ -169,6 +194,11 @@ void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ct
 	// __simple_printf("Handling signal %d\n", linux_signum);
 
 	sig_handlers[linux_signum](bsd_signum, info ? &binfo : NULL, (lc != NULL) ? &bc : NULL);
+
+	if (lc != NULL)
+	{
+		mcontext_bsd_to_linux(bc.uc_mcontext, &lc->uc_mcontext);
+	}
 	
 	// __simple_printf("Signal handled\n");
 }
