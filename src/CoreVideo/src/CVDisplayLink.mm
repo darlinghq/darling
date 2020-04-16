@@ -1,11 +1,11 @@
 #include <CoreVideo/CVDisplayLink.h>
+#include <memory>
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSWindow.h>
 #import <AppKit/NSScreen.h>
 #import <Foundation/NSDictionary.h>
 #include <CoreGraphics/CGWindow.h>
 #include <CoreGraphics/CGDirectDisplay.h>
-#include <memory>
 
 static const NSString* kDirectDisplayArray = @"CGDirectDisplay";
 
