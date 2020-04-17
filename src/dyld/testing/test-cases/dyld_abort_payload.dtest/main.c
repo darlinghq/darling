@@ -1,10 +1,14 @@
 
 // BUILD:  $CC foo.c -dynamiclib -install_name /cant/find/me.dylib -o $BUILD_DIR/libmissing.dylib
-// BUILD:  $CC emptyMain.c $BUILD_DIR/libmissing.dylib  -o $BUILD_DIR/prog_missing_dylib.exe
-// BUILD:  $CC defSymbol.c -dynamiclib -install_name libMissingSymbols.dylib -o $BUILD_DIR/libMissingSymbols.dylib
-// BUILD:  $CC defSymbol.c -dynamiclib -install_name libMissingSymbols.dylib -o $BUILD_DIR/libHasSymbols.dylib -DHAS_SYMBOL
+// BUILD:  $CC foo.c -dynamiclib $BUILD_DIR/libmissing.dylib -install_name $RUN_DIR/libMissingDylib.dylib -o $BUILD_DIR/libMissingDylib.dylib
+// BUILD:  $CC emptyMain.c $BUILD_DIR/libMissingDylib.dylib  -o $BUILD_DIR/prog_missing_dylib.exe
+// BUILD:  $CC defSymbol.c -dynamiclib -install_name $RUN_DIR/libMissingSymbols.dylib -o $BUILD_DIR/libMissingSymbols.dylib
+// BUILD:  $CC defSymbol.c -dynamiclib -install_name $RUN_DIR/libMissingSymbols.dylib -o $BUILD_DIR/libHasSymbols.dylib -DHAS_SYMBOL
 // BUILD:  $CC useSymbol.c $BUILD_DIR/libHasSymbols.dylib -o $BUILD_DIR/prog_missing_symbol.exe
 // BUILD:  $CC main.c -o $BUILD_DIR/dyld_abort_tests.exe
+
+// NO_CRASH_LOG: prog_missing_dylib.exe
+// NO_CRASH_LOG: prog_missing_symbol.exe
 
 // RUN:  ./dyld_abort_tests.exe 
 
@@ -44,16 +48,17 @@ static void childDied(int sig)
     info.eri_reason_buf_size = OS_REASON_BUFFER_MAX_SIZE;
     info.eri_kcd_buf = (user_addr_t)packReasonData;
     //fprintf(stderr, "info=%p\n", &info);
-    if ( proc_pidinfo(sChildPid, PROC_PIDEXITREASONINFO, 1, &info, PROC_PIDEXITREASONINFO_SIZE) != sizeof(struct proc_exitreasoninfo) ) {
-        printf("bad return size from proc_pidinfo()\n");
+    int procResult = proc_pidinfo(sChildPid, PROC_PIDEXITREASONINFO, 1, &info, PROC_PIDEXITREASONINFO_SIZE);
+    if ( procResult != sizeof(struct proc_exitreasoninfo) ) {
+        printf("bad return size from proc_pidinfo(), %d expected %lu\n", procResult, PROC_PIDEXITREASONINFO_SIZE);
         return;
     }
     if ( info.eri_namespace != OS_REASON_DYLD ) {
-        printf("eri_namespace != OS_REASON_DYLD\n");
+        printf("eri_namespace (%d) != OS_REASON_DYLD\n", info.eri_namespace);
         return;
     }
     if ( info.eri_code != sExpectedDyldReason ) {
-        printf("eri_code != %lld\n", sExpectedDyldReason);
+        printf("eri_code (%llu) != %lld\n", sExpectedDyldReason, info.eri_code);
         return;
     }
     kcdata_iter_t iter = kcdata_iter(packReasonData, info.eri_reason_buf_size);
@@ -88,7 +93,7 @@ static void childDied(int sig)
     if ( sExpectedDylibPath != NULL ) {
         if ( dyldInfo->targetDylibPathOffset != 0 ) {
             const char* targetDylib = (char*)dyldInfo + dyldInfo->targetDylibPathOffset;
-            if ( strcmp(sExpectedDylibPath, targetDylib) != 0 ) {
+            if ( strstr(targetDylib, sExpectedDylibPath) == NULL ) {
                 printf("dylib path (%s) not what expected (%s)\n", targetDylib, sExpectedDylibPath);
                 return;
             }

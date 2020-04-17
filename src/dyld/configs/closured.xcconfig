@@ -1,0 +1,2 @@
+
+CODE_SIGN_ENTITLEMENTS[sdk=embedded*] = dyld3/closured/closured_entitlements.plist

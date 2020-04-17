@@ -4,6 +4,11 @@ ENTRY[sdk=*simulator*]     = -Wl,-e,_start_sim
 ENTRY[sdk=iphoneos*]       = -Wl,-e,__dyld_start
 ENTRY[sdk=macosx*]         = -Wl,-e,__dyld_start
 
+OTHER_CODE_SIGN_FLAGS[sdk=*simulator*]   = --entitlements $(SRCROOT)/dyld_sim-entitlements.plist
+OTHER_CODE_SIGN_FLAGS[sdk=iphoneos*]     =
+OTHER_CODE_SIGN_FLAGS[sdk=macosx*]       =
+
+
 EXPORTED_SYMBOLS_FILE[sdk=*simulator*]   = $(SRCROOT)/src/dyld_sim.exp
 EXPORTED_SYMBOLS_FILE[sdk=iphoneos*]     = $(SRCROOT)/src/dyld.exp
 EXPORTED_SYMBOLS_FILE[sdk=macosx*]       = $(SRCROOT)/src/dyld.exp
@@ -13,3 +18,9 @@ PRODUCT_NAME[sdk=iphoneos*]   = dyld
 PRODUCT_NAME[sdk=macosx*]     = dyld
 
 INSTALL_PATH   = /usr/lib
+
+//:configuration = Debug
+GCC_PREPROCESSOR_DEFINITIONS = DYLD_VERSION=$(RC_ProjectSourceVersion) BUILDING_DYLD=1 DEBUG=1
+
+//:configuration = Release
+GCC_PREPROCESSOR_DEFINITIONS = DYLD_VERSION=$(RC_ProjectSourceVersion) BUILDING_DYLD=1

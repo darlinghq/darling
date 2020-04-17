@@ -1,4 +1,4 @@
-module MachO [system] {
+module MachO [system] [extern_c] {
   export *
   
   module arch {

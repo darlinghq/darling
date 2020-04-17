@@ -74,3 +74,9 @@ int _dyld_func_lookup(const char* dyld_func_name, void **address)
 	return (*myDyldSection.lookup)(dyld_func_name, address);
 }
 
+#if TARGET_OS_IOS && !TARGET_OS_SIMULATOR
+__attribute__((visibility("hidden")))
+void setLookupFunc(void* ptr) {
+    myDyldSection.lookup = ptr;
+}
+#endif

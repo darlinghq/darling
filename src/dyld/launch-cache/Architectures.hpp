@@ -54,6 +54,12 @@ struct arm64
 
 };
 
+struct arm64_32
+{
+	typedef Pointer32<LittleEndian>		P;
+
+};
+
 
 
 

@@ -1,8 +1,8 @@
 
-LIBSYSTEM_LIBS[sdk=*simulator*]     = -Wl,-upward-lsystem_sim_platform -Wl,-upward-lsystem_malloc -Wl,-upward-lsystem_c -Wl,-upward-lsystem_sim_pthread -Wl,-upward-lxpc -Wl,-upward-lsystem_blocks -Wl,-upward-lsystem_sim_kernel -Wl,-upward-lsystem_sandbox -Wl,-upward-ldispatch
-LIBSYSTEM_LIBS[sdk=iphoneos*]       = -Wl,-upward-lsystem_platform     -Wl,-upward-lsystem_malloc -Wl,-upward-lsystem_c -Wl,-upward-lsystem_pthread     -Wl,-upward-lxpc -Wl,-upward-lsystem_blocks -Wl,-upward-lsystem_kernel     -Wl,-upward-lsystem_sandbox -Wl,-upward-ldispatch
-LIBSYSTEM_LIBS[sdk=macosx*]         = -Wl,-upward-lsystem_platform     -Wl,-upward-lsystem_malloc -Wl,-upward-lsystem_c -Wl,-upward-lsystem_pthread     -Wl,-upward-lxpc -Wl,-upward-lsystem_blocks -Wl,-upward-lsystem_kernel     -Wl,-upward-lsystem_sandbox -Wl,-upward-ldispatch
+LIBSYSTEM_LIBS[sdk=*simulator*]     = -Wl,-upward-lsystem_sim_platform -Wl,-upward-lsystem_malloc -Wl,-upward-lsystem_c -Wl,-upward-lsystem_sim_pthread -Wl,-upward-lxpc -Wl,-upward-lsystem_blocks -Wl,-upward-lsystem_sim_kernel -Wl,-upward-lsystem_sandbox -Wl,-upward-ldispatch -Wl,-upward-lcorecrypto  -Wl,-upward-lcompiler_rt
+LIBSYSTEM_LIBS[sdk=embedded*]       = -Wl,-upward-lsystem_platform     -Wl,-upward-lsystem_malloc -Wl,-upward-lsystem_c -Wl,-upward-lsystem_pthread     -Wl,-upward-lxpc -Wl,-upward-lsystem_blocks -Wl,-upward-lsystem_kernel     -Wl,-upward-lsystem_sandbox -Wl,-upward-ldispatch -Wl,-upward-lcorecrypto  -Wl,-upward-lcompiler_rt
+LIBSYSTEM_LIBS[sdk=macosx*]         = -Wl,-upward-lsystem_platform     -Wl,-upward-lsystem_malloc -Wl,-upward-lsystem_c -Wl,-upward-lsystem_pthread     -Wl,-upward-lxpc -Wl,-upward-lsystem_blocks -Wl,-upward-lsystem_kernel     -Wl,-upward-lsystem_sandbox -Wl,-upward-ldispatch -Wl,-upward-lcorecrypto  -Wl,-upward-lcompiler_rt
+LIBSYSTEM_LIBS[sdk=driverkit*]      = -Wl,-upward-lsystem_platform     -Wl,-upward-lsystem_malloc -Wl,-upward-lsystem_c -Wl,-upward-lsystem_pthread  -Wl,-upward-lsystem_blocks -Wl,-upward-lsystem_kernel    -Wl,-upward-lcompiler_rt
 
 INSTALL_PATH = /usr/lib/system
-
 

@@ -68,8 +68,8 @@ namespace dyld {
 		bool			(*OSAtomicCompareAndSwapPtrBarrier)(void* old, void* nw, void * volatile *value);
 		void			(*OSMemoryBarrier)(void);
 		void*			(*getProcessInfo)(void); // returns dyld_all_image_infos*;
-		int*			(*errnoAddress)();
-		uint64_t		(*mach_absolute_time)();
+		int*			(*errnoAddress)(void);
+		uint64_t		(*mach_absolute_time)(void);
 		// Added in version 2
 		kern_return_t	(*thread_switch)(mach_port_name_t, int, mach_msg_timeout_t);
 		// Added in version 3
@@ -81,7 +81,7 @@ namespace dyld {
 		void			(*coresymbolication_unload_notifier)(void *connection, uint64_t unload_timestamp, const char *image_path, const struct mach_header *mach_header);
 		// Added in version 5
 		int				(*proc_regionfilename)(int pid, uint64_t address, void* buffer, uint32_t buffersize);
-		int				(*getpid)();
+		int				(*getpid)(void);
 		kern_return_t	(*mach_port_insert_right)(ipc_space_t task, mach_port_name_t name, mach_port_t poly, mach_msg_type_name_t polyPoly);
 		kern_return_t   (*mach_port_allocate)(ipc_space_t, mach_port_right_t, mach_port_name_t*);
 		kern_return_t   (*mach_msg)(mach_msg_header_t *, mach_msg_option_t , mach_msg_size_t , mach_msg_size_t , mach_port_name_t , mach_msg_timeout_t , mach_port_name_t);
@@ -93,9 +93,24 @@ namespace dyld {
 		kern_return_t	(*task_get_dyld_image_infos)(task_t task, dyld_kernel_image_info_array_t *dyld_images, mach_msg_type_number_t *dyld_imagesCnt);
 		kern_return_t	(*task_register_dyld_shared_cache_image_info)(task_t task, dyld_kernel_image_info_t dyld_cache_image, boolean_t no_cache, boolean_t private_cache);
 		kern_return_t	(*task_register_dyld_set_dyld_state)(task_t task, uint8_t dyld_state);
-		kern_return_t	(*task_register_dyld_get_process_state)(task_t task, dyld_kernel_process_info_t *dyld_process_state);
-	};
-
+        kern_return_t   (*task_register_dyld_get_process_state)(task_t task, dyld_kernel_process_info_t *dyld_process_state);
+        kern_return_t   (*task_info)(task_name_t target_task, task_flavor_t flavor, task_info_t task_info_out, mach_msg_type_number_t *task_info_outCnt);
+        kern_return_t   (*thread_info)(thread_inspect_t target_act, thread_flavor_t flavor, thread_info_t thread_info_out, mach_msg_type_number_t *thread_info_outCnt);
+        // Add in version 8
+        bool            (*kdebug_is_enabled)(uint32_t code);
+        int             (*kdebug_trace)(uint32_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4);
+        // Add in version 9
+        uint64_t        (*kdebug_trace_string)(uint32_t debugid, uint64_t str_id, const char *str);
+        // Add in version 10
+        int             (*amfi_check_dyld_policy_self)(uint64_t input_flags, uint64_t* output_flags);
+        // Add in version 11
+        void            (*notifyMonitoringDyldMain)(void);
+        void            (*notifyMonitoringDyld)(bool unloading, unsigned imageCount, const struct mach_header* loadAddresses[], const char* imagePaths[]);
+        // Add in version 12
+        void              (*mach_msg_destroy)(mach_msg_header_t *msg);
+        kern_return_t     (*mach_port_construct)(ipc_space_t task, mach_port_options_ptr_t options, mach_port_context_t context, mach_port_name_t *name);
+        kern_return_t     (*mach_port_destruct)(ipc_space_t task, mach_port_name_t name, mach_port_delta_t srdelta, mach_port_context_t guard);
+    };
 	extern const struct SyscallHelpers* gSyscallHelpers;
 
 

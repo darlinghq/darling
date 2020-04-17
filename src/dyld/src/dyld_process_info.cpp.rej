@@ -1,0 +1,40 @@
+--- src/dyld_process_info.cpp
++++ src/dyld_process_info.cpp
+@@ -238,28 +408,32 @@ private:
+         uint64_t                size;
+     };
+ 
+-                                dyld_process_info_base(unsigned imageCount, size_t totalSize);
++                                dyld_process_info_base(dyld_platform_t platform, unsigned imageCount, size_t totalSize);
+     void*                       operator new (size_t, void* buf) { return buf; }
+ 
+     static bool                 inCache(uint64_t addr) { return (addr > SHARED_REGION_BASE) && (addr < SHARED_REGION_BASE+SHARED_REGION_SIZE); }
+-    kern_return_t               addImage(task_t task, bool sameCacheAsThisProcess, uint64_t imageAddress, uint64_t imagePath, const char* imagePathLocal);
++    bool                        addImage(task_t task, bool sameCacheAsThisProcess, uint64_t imageAddress, uint64_t imagePath, const char* imagePathLocal);
++
+     kern_return_t               addDyldImage(task_t task, uint64_t dyldAddress, uint64_t dyldPathAddress, const char* localPath);
+ 
+     bool                        invalid() { return ((char*)_stringRevBumpPtr < (char*)_curSegment); }
+-    const char*                 copyPath(task_t task, uint64_t pathAddr, kern_return_t* kr);
+-    const char*                 addString(const char*);
++    const char*                 copyPath(task_t task, uint64_t pathAddr);
++    const char*                 addString(const char*, size_t);
+     const char*                 copySegmentName(const char*);
+ 
+     void                        addInfoFromLoadCommands(const mach_header* mh, uint64_t addressInTask, size_t size);
++    kern_return_t               addInfoFromRemoteLoadCommands(task_t task, uint64_t remoteMH);
+ 
+     void                        inspectLocalImageLoadCommands(uint64_t imageAddress, void* func);
+     kern_return_t               inspectRemoteImageLoadCommands(task_t task, uint64_t imageAddress, void* func);
+ 
+-    mutable uint32_t            _retainCount;
++    mutable std::atomic<uint32_t>            _retainCount;
+     const uint32_t              _cacheInfoOffset;
+     const uint32_t              _stateInfoOffset;
+     const uint32_t              _imageInfosOffset;
+     const uint32_t              _segmentInfosOffset;
++    size_t                      _freeSpace;
++    dyld_platform_t             _platform;
+     ImageInfo* const            _firstImage;
+     ImageInfo*                  _curImage;
+     SegmentInfo* const          _firstSegment;

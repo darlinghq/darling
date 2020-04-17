@@ -1,7 +1,7 @@
 
-// BUILD:  $CC foo.c -dynamiclib -o $BUILD_DIR/test.dylib
-// BUILD:  $CC foo.c -bundle     -o $BUILD_DIR/test.bundle
-// BUILD:  $CC main.c            -o $BUILD_DIR/dlopen-basic.exe
+// BUILD:  $CC foo.c -dynamiclib           -o $BUILD_DIR/test.dylib
+// BUILD:  $CC foo.c -bundle               -o $BUILD_DIR/test.bundle
+// BUILD:  $CC main.c -DRUN_DIR="$RUN_DIR" -o $BUILD_DIR/dlopen-basic.exe
 
 // RUN:  ./dlopen-basic.exe
 
@@ -28,7 +28,7 @@ static void tryImage(const char* path)
 	
 	int result = dlclose(handle);
 	if ( result != 0 ) {
-        printf("dlclose() returned %c\n", result);
+        printf("dlclose() returned %d, dlerror()=%s\n", result, dlerror());
         printf("[FAIL] dlopen-basic %s\n", path);
 		return;
 	}
@@ -40,8 +40,8 @@ static void tryImage(const char* path)
 
 int main()
 {
-	tryImage("test.bundle");
-	tryImage("test.dylib");
+	tryImage(RUN_DIR "/test.bundle");
+	tryImage(RUN_DIR "/test.dylib");
   
 	return 0;
 }

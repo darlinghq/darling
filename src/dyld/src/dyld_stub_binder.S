@@ -331,7 +331,14 @@ dyld_stub_binder:
 	mov		sp, fp
 	ldp		fp, lr, [sp], #16
 	add		sp, sp, #16	; remove meta-parameters
-	br		x16
+#if __arm64e__
+    // Note arm64e executables will never hit this line as they don't have lazy binding.
+    // However, arm64 binaries running on an arm64e system will hit this line but the
+    // authentication won't have any effect there.
+	braaz   x16
+#else
+	br      x16
+#endif
 
 #endif
 

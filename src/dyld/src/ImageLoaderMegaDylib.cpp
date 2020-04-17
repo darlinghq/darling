@@ -39,16 +39,19 @@
 #include <mach/mach.h>
 #include <mach/thread_status.h>
 #include <mach-o/loader.h> 
+#include <mach-o/dyld_images.h>
 #include <libkern/OSAtomic.h>
 
 #include "ImageLoaderMegaDylib.h"
 #include "ImageLoaderMachO.h"
-#include "mach-o/dyld_images.h"
 #include "dyldLibSystemInterface.h"
-#include "dyld.h"
+#include "Tracing.h"
+#include "dyld2.h"
 
 // from dyld_gdb.cpp 
 extern void addImagesToAllImages(uint32_t infoCount, const dyld_image_info info[]);
+
+extern "C" int _dyld_func_lookup(const char* name, void** address);
 
 
 #ifndef EXPORT_SYMBOL_FLAGS_KIND_ABSOLUTE
@@ -77,9 +80,9 @@ extern void addImagesToAllImages(uint32_t infoCount, const dyld_image_info info[
 #if SUPPORT_ACCELERATE_TABLES
  
 
-ImageLoaderMegaDylib* ImageLoaderMegaDylib::makeImageLoaderMegaDylib(const dyld_cache_header* header, long slide, const LinkContext& context)
+ImageLoaderMegaDylib* ImageLoaderMegaDylib::makeImageLoaderMegaDylib(const dyld_cache_header* header, long slide, const macho_header* mainMH, const LinkContext& context)
 {
-	return new ImageLoaderMegaDylib(header, slide, context);
+	return new ImageLoaderMegaDylib(header, slide, mainMH, context);
 }
 
 struct DATAdyld {
@@ -91,7 +94,7 @@ struct DATAdyld {
 
 
 
-ImageLoaderMegaDylib::ImageLoaderMegaDylib(const dyld_cache_header* header, long slide, const LinkContext& context)
+ImageLoaderMegaDylib::ImageLoaderMegaDylib(const dyld_cache_header* header, long slide, const macho_header* mainMH, const LinkContext& context)
 	: ImageLoader("dyld shared cache", 0), _header(header), _linkEditBias(NULL), _slide(slide),
 	 _lockArray(NULL), _lockArrayInUseCount(0)
 {
@@ -123,7 +126,7 @@ ImageLoaderMegaDylib::ImageLoaderMegaDylib(const dyld_cache_header* header, long
 	DATAdyld* dyldSection = (DATAdyld*)(accHeader->dyldSectionAddr + slide);
 	dyldSection->dyldLazyBinder = NULL; // not used by libdyld.dylib
 	dyldSection->dyldFuncLookup = (void*)&_dyld_func_lookup;
-	dyldSection->vars.mh = context.mainExecutable->machHeader();
+	dyldSection->vars.mh = mainMH;
 	context.setNewProgramVars(dyldSection->vars);
 }
 
@@ -265,10 +268,21 @@ unsigned ImageLoaderMegaDylib::findImageIndex(const LinkContext& context, const 
 	if ( hasDylib(path, &index) )
 		return index;
 
-	// <rdar://problem/26934069> Somehow we found the dylib in the cache, but it is not this literal string, try simple expansions of @rpath
-	if ( strncmp(path, "@rpath/", 7) == 0 ) {
+	if ( strncmp(path, "@rpath/libswift", 15) == 0 ) {
+		// <rdar://problem/51352017> a stable swift app built to run on pre-iOS-12.2 will use @rpath to reference swift dylibs in OS
+		const char* trailingPath = &path[7];
+		char possiblePath[strlen(trailingPath)+16];
+		strcpy(possiblePath, "/usr/lib/swift/");
+		strcat(possiblePath, trailingPath);
+		if ( hasDylib(possiblePath, &index) )
+			return index;
+	}
+	else if ( strncmp(path, "@rpath/", 7) == 0 ) {
+		// <rdar://problem/26934069> Somehow we found the dylib in the cache, but it is not this literal string, try simple expansions of @rpath
 		std::vector<const char*> rpathsFromMainExecutable;
 		context.mainExecutable->getRPaths(context, rpathsFromMainExecutable);
+		rpathsFromMainExecutable.push_back("/System/Library/Frameworks/");
+		rpathsFromMainExecutable.push_back("/usr/lib/swift/");
 		const char* trailingPath = &path[7];
 		for (const char* anRPath : rpathsFromMainExecutable) {
 			if ( anRPath[0] != '/' )
@@ -283,6 +297,18 @@ unsigned ImageLoaderMegaDylib::findImageIndex(const LinkContext& context, const 
 			}
 		}
 	}
+    else {
+        // handle symlinks embedded in load commands
+        char resolvedPath[PATH_MAX];
+        realpath(path, resolvedPath);
+        int realpathErrno = errno;
+        // If realpath() resolves to a path which does not exist on disk, errno is set to ENOENT
+        if ( (realpathErrno == ENOENT) || (realpathErrno == 0) ) {
+            if ( strcmp(resolvedPath, path) != 0 )
+                return findImageIndex(context, resolvedPath);
+        }
+    }
+
 	dyld::throwf("no cache image with name (%s)", path);
 }
 
@@ -351,7 +377,7 @@ bool ImageLoaderMegaDylib::incrementCoalIterator(CoalIterator& it)
 				segOffset = read_uleb128(p, end);
 				mh = (mach_header*)getIndexedMachHeader((unsigned)it.imageIndex);
 				if ( uintptr_t segPrefAddress = ImageLoaderMachO::segPreferredAddress(mh, segIndex) )
-					it.address = segPrefAddress + segOffset + _slide;
+					it.address = segPrefAddress + (uintptr_t)segOffset + _slide;
 				else
 					dyld::throwf("BIND_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB has segment %d which is too large", segIndex);
 				break;
@@ -436,7 +462,7 @@ void ImageLoaderMegaDylib::updateUsesCoalIterator(CoalIterator& it, uintptr_t va
 				segOffset = read_uleb128(p, end);
 				mh = (mach_header*)getIndexedMachHeader((unsigned)it.imageIndex);
 				if ( uintptr_t segPrefAddress = ImageLoaderMachO::segPreferredAddress(mh, segIndex) )
-					address = segPrefAddress + segOffset + _slide;
+					address = segPrefAddress + (uintptr_t)segOffset + _slide;
 				else
 					dyld::throwf("BIND_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB has segment %d which is too large", segIndex);
 				break;
@@ -444,17 +470,17 @@ void ImageLoaderMegaDylib::updateUsesCoalIterator(CoalIterator& it, uintptr_t va
 				address += read_uleb128(p, end);
 				break;
 			case BIND_OPCODE_DO_BIND:
-				ImageLoaderMachO::bindLocation(context, address, value, type, symbolName, addend, getIndexedPath((unsigned)it.imageIndex), targetImagePath, "weak ");
+				ImageLoaderMachO::bindLocation(context, 0, address, value, type, symbolName, addend, getIndexedPath((unsigned)it.imageIndex), targetImagePath, "weak ", NULL, _slide);
 				boundSomething = true;
 				address += sizeof(intptr_t);
 				break;
 			case BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB:
-				ImageLoaderMachO::bindLocation(context, address, value, type, symbolName, addend, getIndexedPath((unsigned)it.imageIndex), targetImagePath, "weak ");
+				ImageLoaderMachO::bindLocation(context, 0, address, value, type, symbolName, addend, getIndexedPath((unsigned)it.imageIndex), targetImagePath, "weak ", NULL, _slide);
 				boundSomething = true;
 				address += read_uleb128(p, end) + sizeof(intptr_t);
 				break;
 			case BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED:
-				ImageLoaderMachO::bindLocation(context, address, value, type, symbolName, addend, getIndexedPath((unsigned)it.imageIndex), targetImagePath, "weak ");
+				ImageLoaderMachO::bindLocation(context, 0, address, value, type, symbolName, addend, getIndexedPath((unsigned)it.imageIndex), targetImagePath, "weak ", NULL, _slide);
 				boundSomething = true;
 				address += immediate*sizeof(intptr_t) + sizeof(intptr_t);
 				break;
@@ -462,7 +488,7 @@ void ImageLoaderMegaDylib::updateUsesCoalIterator(CoalIterator& it, uintptr_t va
 				count = read_uleb128(p, end);
 				skip = read_uleb128(p, end);
 				for (uint32_t i=0; i < count; ++i) {
-					ImageLoaderMachO::bindLocation(context, address, value, type, symbolName, addend, getIndexedPath((unsigned)it.imageIndex), targetImagePath, "weak ");
+					ImageLoaderMachO::bindLocation(context, 0, address, value, type, symbolName, addend, getIndexedPath((unsigned)it.imageIndex), targetImagePath, "weak ", NULL, _slide);
 					boundSomething = true;
 					address += skip + sizeof(intptr_t);
 				}
@@ -492,7 +518,7 @@ void ImageLoaderMegaDylib::appendImagesNeedingCoalescing(ImageLoader* images[], 
 }
 
 
-bool ImageLoaderMegaDylib::weakSymbolsBound(unsigned index)
+bool ImageLoaderMegaDylib::weakSymbolsBound(unsigned index) const
 {
 	return ( _stateFlags[index] >= kStateFlagWeakBound );
 }
@@ -705,7 +731,7 @@ void ImageLoaderMegaDylib::processExportNode(const LinkContext& context, const c
 		default:
 			dyld::throwf("unsupported exported symbol kind. flags=%lu at node=%p", flags, exportNode);
 	}
-	dyld::throwf("unsupported exported symbol node=%p", exportNode);
+	//dyld::throwf("unsupported exported symbol node=%p", exportNode);
 }
 
 bool ImageLoaderMegaDylib::findInChainedTries(const LinkContext& context, const char* symbolName, unsigned definedImageIndex,
@@ -761,24 +787,32 @@ bool ImageLoaderMegaDylib::findInChainedTriesAndDependents(const LinkContext& co
 }
 
 
-bool ImageLoaderMegaDylib::flatFindSymbol(const char* name, bool onlyInCoalesced, const ImageLoader::Symbol** sym, const ImageLoader** image)
+bool ImageLoaderMegaDylib::flatFindSymbol(const char* name, bool onlyInCoalesced, const ImageLoader::Symbol** sym, const ImageLoader** image, ImageLoader::CoalesceNotifier notifier)
 {
+	bool found = false;
 	// check export trie of all in-use images
 	for (unsigned i=0; i < _imageCount ; ++i) {
 		uint16_t imageIndex = _bottomUpArray[i];
 		if ( _stateFlags[imageIndex] == kStateUnused )
 			continue;
-		if ( onlyInCoalesced && (_imageExtras[imageIndex].weakBindingsSize == 0) )
+		const macho_header* mh = getIndexedMachHeader(imageIndex);
+		if ( onlyInCoalesced && (mh->flags & MH_WEAK_DEFINES) == 0 )
 			continue;
 		const uint8_t* exportNode;
 		const uint8_t* exportTrieEnd;
 		if ( exportTrieHasNode(name, imageIndex, &exportNode, &exportTrieEnd) ) {
-			*sym = (Symbol*)exportNode;
-			*image = this;
-			return true;
+			if ( notifier )
+				notifier((Symbol*)exportNode, this, (mach_header*)getIndexedMachHeader(imageIndex));
+			if ( !found ) {
+				*sym = (Symbol*)exportNode;
+				*image = this;
+				found = true;
+			}
+			if ( !onlyInCoalesced )
+				return true;
 		}
 	}
-	return false;
+	return found;
 }
 
 
@@ -827,7 +861,7 @@ void ImageLoaderMegaDylib::recursiveSpinLockRelease(unsigned int imageIndex, mac
 
 
 void ImageLoaderMegaDylib::recursiveInitialization(const LinkContext& context, mach_port_t thisThread, unsigned int imageIndex,
-													InitializerTimingList& timingInfo)
+													InitializerTimingList& timingInfo, UpwardIndexes& upInits)
 {
 	// Don't do any locking until libSystem.dylib is initialized, so we can malloc() the lock array
 	bool useLock = dyld::gProcessInfo->libSystemInitialized;
@@ -846,7 +880,9 @@ void ImageLoaderMegaDylib::recursiveInitialization(const LinkContext& context, m
 			unsigned subDepIndex = _dependenciesArray[i];
 			// ignore upward links
 			if ( (subDepIndex & 0x8000) == 0 )
-				recursiveInitialization(context, thisThread, subDepIndex, timingInfo);
+				recursiveInitialization(context, thisThread, subDepIndex, timingInfo, upInits);
+            else
+                upInits.images[upInits.count++] = (subDepIndex & 0x7FFF);
 		}
 
 		// notify objc about this image
@@ -863,7 +899,10 @@ void ImageLoaderMegaDylib::recursiveInitialization(const LinkContext& context, m
 				if ( context.verboseInit )
 					dyld::log("dyld: calling initializer function %p in %s\n", func, getIndexedPath(imageIndex));
 				bool haveLibSystemHelpersBefore = (dyld::gLibSystemHelpers != NULL);
-				func(context.argc, context.argv, context.envp, context.apple, &context.programVars);
+				{
+					dyld3::ScopedTimer timer(DBG_DYLD_TIMING_STATIC_INITIALIZER, (uint64_t)getIndexedMachHeader(imageIndex), (uint64_t)func, 0);
+					func(context.argc, context.argv, context.envp, context.apple, &context.programVars);
+				};
 				bool haveLibSystemHelpersAfter = (dyld::gLibSystemHelpers != NULL);
 				ranSomeInitializers = true;
 				if ( !haveLibSystemHelpersBefore && haveLibSystemHelpersAfter ) {
@@ -892,11 +931,18 @@ void ImageLoaderMegaDylib::recursiveInitialization(const LinkContext& context, m
 
 
 void ImageLoaderMegaDylib::recursiveInitialization(const LinkContext& context, mach_port_t thisThread, const char* pathToInitialize,
-													InitializerTimingList& timingInfo, UninitedUpwards& uninitUps)
+													InitializerTimingList& timingInfo, UninitedUpwards&)
 {
-	unsigned imageIndex;
-	if ( hasDylib(pathToInitialize, &imageIndex) ) {
-		this->recursiveInitialization(context, thisThread, imageIndex, timingInfo);
+	UpwardIndexes upsBuffer[256];
+	UpwardIndexes& ups = upsBuffer[0];
+	ups.count = 0;
+	unsigned imageIndex = findImageIndex(context, pathToInitialize);
+	this->recursiveInitialization(context, thisThread, imageIndex, timingInfo, ups);
+	for (int i=0; i < ups.count; ++i) {
+		UpwardIndexes upsBuffer2[256];
+		UpwardIndexes& ignoreUp = upsBuffer2[0];
+		ignoreUp.count = 0;
+		this->recursiveInitialization(context, thisThread, ups.images[i], timingInfo, ignoreUp);
 	}
 }
 
@@ -935,9 +981,8 @@ unsigned ImageLoaderMegaDylib::appendImagesToNotify(dyld_image_states state, boo
 	uint8_t targetCacheState = dyldStateToCacheState(state);
 	if ( targetCacheState == kStateUnused )
 		return 0;
-
 	unsigned usedCount = 0;
-	for (int i=_imageCount-1; i > 0; --i) {
+	for (int i=_imageCount-1; i >= 0; --i) {
 		uint16_t index = _bottomUpArray[i];
 		uint8_t imageState = _stateFlags[index];
 		if ( imageState == kStateFlagWeakBound )
@@ -982,7 +1027,17 @@ bool ImageLoaderMegaDylib::dlopenFromCache(const LinkContext& context, const cha
 		InitializerTimingList timingInfo[_initializerCount];
 		timingInfo[0].count = 0;
 		mach_port_t thisThread  = mach_thread_self();
-		this->recursiveInitialization(context, thisThread, imageIndex, timingInfo[0]);
+		UpwardIndexes upsBuffer[256];  // room for 511 dangling upward links
+		UpwardIndexes& ups = upsBuffer[0];
+		ups.count = 0;
+		this->recursiveInitialization(context, thisThread, imageIndex, timingInfo[0], ups);
+		// make sure any upward linked dylibs were initialized
+		for (int i=0; i < ups.count; ++i) {
+			UpwardIndexes upsBuffer2[256];
+			UpwardIndexes& ignoreUp = upsBuffer2[0];
+			ignoreUp.count = 0;
+			this->recursiveInitialization(context, thisThread, ups.images[i], timingInfo[0], ignoreUp);
+		}
 		mach_port_deallocate(mach_task_self(), thisThread);
 		context.notifyBatch(dyld_image_state_initialized, false);
 	}

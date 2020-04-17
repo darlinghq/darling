@@ -27,50 +27,23 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
-#include <Availability.h>
+#include <sys/mman.h>
 #include <mach/mach.h>
-#include <mach-o/loader.h>
-#include <mach-o/ldsyms.h>
-#include <mach-o/reloc.h>
-#if __x86_64__
-	#include <mach-o/x86_64/reloc.h>
-#endif
-#include "dyld.h"
-#include "dyldSyscallInterface.h"
 
-// from dyld_gdb.cpp 
-extern void addImagesToAllImages(uint32_t infoCount, const dyld_image_info info[]);
+#include "dyld2.h"
+#include "dyldSyscallInterface.h"
+#include "MachOAnalyzer.h"
+#include "Tracing.h"
+
+// from libc.a
+extern "C" void mach_init(const char* apple[]);
+extern "C" void __guard_setup(const char* apple[]);
+
+
+// from dyld_debugger.cpp
 extern void syncProcessInfo();
 
-#ifndef MH_PIE
-	#define MH_PIE 0x200000 
-#endif
-
-// currently dyld has no initializers, but if some come back, set this to non-zero
-#define DYLD_INITIALIZER_SUPPORT  0
-
-#if __LP64__
-	#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
-	#define macho_segment_command	segment_command_64
-	#define macho_section			section_64
-	#define RELOC_SIZE				3
-#else
-	#define LC_SEGMENT_COMMAND		LC_SEGMENT
-	#define macho_segment_command	segment_command
-	#define macho_section			section
-	#define RELOC_SIZE				2
-#endif
-
-#if __x86_64__
-	#define POINTER_RELOC X86_64_RELOC_UNSIGNED
-#else
-	#define POINTER_RELOC GENERIC_RELOC_VANILLA
-#endif
-
-
-#if TARGET_IPHONE_SIMULATOR
 const dyld::SyscallHelpers* gSyscallHelpers = NULL;
-#endif
 
 
 //
@@ -80,6 +53,9 @@ const dyld::SyscallHelpers* gSyscallHelpers = NULL;
 
 namespace dyldbootstrap {
 
+
+// currently dyld has no initializers, but if some come back, set this to non-zero
+#define DYLD_INITIALIZER_SUPPORT  0
 
 
 #if DYLD_INITIALIZER_SUPPORT
@@ -95,7 +71,7 @@ extern const Initializer  inits_end    __asm("section$end$__DATA$__mod_init_func
 // dyld (should be static) but is a dynamic executable and needs this hack to run its own initializers.
 // We pass argc, argv, etc in case libc.a uses those arguments
 //
-static void runDyldInitializers(const struct macho_header* mh, intptr_t slide, int argc, const char* argv[], const char* envp[], const char* apple[])
+static void runDyldInitializers(int argc, const char* argv[], const char* envp[], const char* apple[])
 {
 	for (const Initializer* p = &inits_start; p < &inits_end; ++p) {
 		(*p)(argc, argv, envp, apple);
@@ -105,115 +81,61 @@ static void runDyldInitializers(const struct macho_header* mh, intptr_t slide, i
 
 
 //
-//  The kernel may have slid a Position Independent Executable
+// On disk, all pointers in dyld's DATA segment are chained together.
+// They need to be fixed up to be real pointers to run.
 //
-static uintptr_t slideOfMainExecutable(const struct macho_header* mh)
+static void rebaseDyld(const dyld3::MachOLoaded* dyldMH, const char* apple[])
 {
-	const uint32_t cmd_count = mh->ncmds;
-	const struct load_command* const cmds = (struct load_command*)(((char*)mh)+sizeof(macho_header));
-	const struct load_command* cmd = cmds;
-	for (uint32_t i = 0; i < cmd_count; ++i) {
-		if ( cmd->cmd == LC_SEGMENT_COMMAND ) {
-			const struct macho_segment_command* segCmd = (struct macho_segment_command*)cmd;
-			if ( (segCmd->fileoff == 0) && (segCmd->filesize != 0)) {
-				return (uintptr_t)mh - segCmd->vmaddr;
-			}
-		}
-		cmd = (const struct load_command*)(((char*)cmd)+cmd->cmdsize);
-	}
-	return 0;
+    // walk all fixups chains and rebase dyld
+    const dyld3::MachOAnalyzer* ma = (dyld3::MachOAnalyzer*)dyldMH;
+    assert(ma->hasChainedFixups());
+    uintptr_t slide = (long)ma; // all fixup chain based images have a base address of zero, so slide == load address
+    __block Diagnostics diag;
+    ma->withChainStarts(diag, 0, ^(const dyld_chained_starts_in_image* starts) {
+        ma->fixupAllChainedFixups(diag, starts, slide, dyld3::Array<const void*>(), nullptr);
+    });
+    diag.assertNoError();
+
+    // now that rebasing done, initialize mach/syscall layer
+    mach_init(apple);
+
+    // <rdar://47805386> mark __DATA_CONST segment in dyld as read-only (once fixups are done)
+    ma->forEachSegment(^(const dyld3::MachOFile::SegmentInfo& info, bool& stop) {
+        if ( info.readOnlyData ) {
+            ::mprotect(((uint8_t*)(dyldMH))+info.vmAddr, (size_t)info.vmSize, VM_PROT_READ);
+        }
+    });
 }
 
 
-//
-// If the kernel does not load dyld at its preferred address, we need to apply 
-// fixups to various initialized parts of the __DATA segment
-//
-static void rebaseDyld(const struct macho_header* mh, intptr_t slide)
-{
-	// rebase non-lazy pointers (which all point internal to dyld, since dyld uses no shared libraries)
-	// and get interesting pointers into dyld
-	const uint32_t cmd_count = mh->ncmds;
-	const struct load_command* const cmds = (struct load_command*)(((char*)mh)+sizeof(macho_header));
-	const struct load_command* cmd = cmds;
-	const struct macho_segment_command* linkEditSeg = NULL;
-#if __x86_64__
-	const struct macho_segment_command* firstWritableSeg = NULL;
+#ifdef DARLING
+extern "C" void sigexc_setup(void);
 #endif
-	const struct dysymtab_command* dynamicSymbolTable = NULL;
-	for (uint32_t i = 0; i < cmd_count; ++i) {
-		switch (cmd->cmd) {
-			case LC_SEGMENT_COMMAND:
-				{
-					const struct macho_segment_command* seg = (struct macho_segment_command*)cmd;
-					if ( strcmp(seg->segname, "__LINKEDIT") == 0 )
-						linkEditSeg = seg;
-					const struct macho_section* const sectionsStart = (struct macho_section*)((char*)seg + sizeof(struct macho_segment_command));
-					const struct macho_section* const sectionsEnd = &sectionsStart[seg->nsects];
-					for (const struct macho_section* sect=sectionsStart; sect < sectionsEnd; ++sect) {
-						const uint8_t type = sect->flags & SECTION_TYPE;
-						if ( type == S_NON_LAZY_SYMBOL_POINTERS ) {
-							// rebase non-lazy pointers (which all point internal to dyld, since dyld uses no shared libraries)
-							const uint32_t pointerCount = (uint32_t)(sect->size / sizeof(uintptr_t));
-							uintptr_t* const symbolPointers = (uintptr_t*)(sect->addr + slide);
-							for (uint32_t j=0; j < pointerCount; ++j) {
-								symbolPointers[j] += slide;
-							}
-						}
-					}
-#if __x86_64__
-					if ( (firstWritableSeg == NULL) && (seg->initprot & VM_PROT_WRITE) )
-						firstWritableSeg = seg;
-#endif
-				}
-				break;
-			case LC_DYSYMTAB:
-				dynamicSymbolTable = (struct dysymtab_command *)cmd;
-				break;
-		}
-		cmd = (const struct load_command*)(((char*)cmd)+cmd->cmdsize);
-	}
-	
-	// use reloc's to rebase all random data pointers
-#if __x86_64__
-	const uintptr_t relocBase = firstWritableSeg->vmaddr + slide;
-#else
-	const uintptr_t relocBase = (uintptr_t)mh;
-#endif
-	const relocation_info* const relocsStart = (struct relocation_info*)(linkEditSeg->vmaddr + slide + dynamicSymbolTable->locreloff - linkEditSeg->fileoff);
-	const relocation_info* const relocsEnd = &relocsStart[dynamicSymbolTable->nlocrel];
-	for (const relocation_info* reloc=relocsStart; reloc < relocsEnd; ++reloc) {
-		if ( reloc->r_length != RELOC_SIZE ) 
-			throw "relocation in dyld has wrong size";
-
-		if ( reloc->r_type != POINTER_RELOC ) 
-			throw "relocation in dyld has wrong type";
-		
-		// update pointer by amount dyld slid
-		*((uintptr_t*)(reloc->r_address + relocBase)) += slide;
-	}
-}
-
-
-extern "C" void mach_init(const char* apple[]);
-extern "C" void __guard_setup(const char* apple[]);
-extern "C" void sigexc_setup();
-
 
 //
 //  This is code to bootstrap dyld.  This work in normally done for a program by dyld and crt.
 //  In dyld we have to do this manually.
 //
-uintptr_t start(const struct macho_header* appsMachHeader, int argc, const char* argv[], 
-				intptr_t slide, const struct macho_header* dyldsMachHeader,
-				uintptr_t* startGlue)
+uintptr_t start(const dyld3::MachOLoaded* appsMachHeader, int argc, const char* argv[],
+				const dyld3::MachOLoaded* dyldsMachHeader, uintptr_t* startGlue)
 {
+
+    // Emit kdebug tracepoint to indicate dyld bootstrap has started <rdar://46878536>
+    dyld3::kdebug_trace_dyld_marker(DBG_DYLD_TIMING_BOOTSTRAP_START, 0, 0, 0, 0);
+
+	// kernel sets up env pointer to be just past end of agv array
+	const char** envp = &argv[argc+1];
+
+	// kernel sets up apple pointer to be just past end of envp array
+	const char** apple = envp;
+	while(*apple != NULL) { ++apple; }
+	++apple;
+
 	// if kernel had to slide dyld, we need to fix up load sensitive locations
 	// we have to do this before using any global variables
-	if ( slide != 0 ) {
-		rebaseDyld(dyldsMachHeader, slide);
-	}
+    rebaseDyld(dyldsMachHeader, apple);
 
+	/*
 	// kernel sets up env pointer to be just past end of agv array
 	const char** envp = &argv[argc+1];
 	
@@ -221,50 +143,41 @@ uintptr_t start(const struct macho_header* appsMachHeader, int argc, const char*
 	const char** apple = envp;
 	while(*apple != NULL) { ++apple; }
 	++apple;
-
-	// allow dyld to use mach messaging
-	mach_init(apple);
+	*/
 
 	// set up random value for stack canary
 	__guard_setup(apple);
 
-#if DYLD_INITIALIZER_SUPPORT
-	// run all C++ initializers inside dyld
-	runDyldInitializers(dyldsMachHeader, slide, argc, argv, envp, apple);
-#endif
-
 #ifdef DARLING
 	sigexc_setup();
 #endif
+#if DYLD_INITIALIZER_SUPPORT
+	// run all C++ initializers inside dyld
+	runDyldInitializers(argc, argv, envp, apple);
+#endif
 
 	// now that we are done bootstrapping dyld, call dyld's main
-	uintptr_t appsSlide = slideOfMainExecutable(appsMachHeader);
-	return dyld::_main(appsMachHeader, appsSlide, argc, argv, envp, apple, startGlue);
+	uintptr_t appsSlide = appsMachHeader->getSlide();
+	return dyld::_main((macho_header*)appsMachHeader, appsSlide, argc, argv, envp, apple, startGlue);
 }
 
 
-#if TARGET_IPHONE_SIMULATOR
+#if TARGET_OS_SIMULATOR
 
 extern "C" uintptr_t start_sim(int argc, const char* argv[], const char* envp[], const char* apple[],
-							const macho_header* mainExecutableMH, const macho_header* dyldMH, uintptr_t dyldSlide,
+							const dyld3::MachOLoaded* mainExecutableMH, const dyld3::MachOLoaded* dyldMH, uintptr_t dyldSlide,
 							const dyld::SyscallHelpers*, uintptr_t* startGlue);
 					
-					
+
 uintptr_t start_sim(int argc, const char* argv[], const char* envp[], const char* apple[],
-					const macho_header* mainExecutableMH, const macho_header* dyldMH, uintptr_t dyldSlide,
+					const dyld3::MachOLoaded* mainExecutableMH, const dyld3::MachOLoaded* dyldSimMH, uintptr_t dyldSlide,
 					const dyld::SyscallHelpers* sc, uintptr_t* startGlue)
 {
-	// if simulator dyld loaded slid, it needs to rebase itself
-	// we have to do this before using any global variables
-	if ( dyldSlide != 0 ) {
-		rebaseDyld(dyldMH, dyldSlide);
-	}
+    // save table of syscall pointers
+    gSyscallHelpers = sc;
 
-	// save table of syscall pointers
-	gSyscallHelpers = sc;
-	
-	// allow dyld to use mach messaging
-	mach_init();
+	// dyld_sim uses chained rebases, so it always need to be fixed up
+    rebaseDyld(dyldSimMH);
 
 	// set up random value for stack canary
 	__guard_setup(apple);
@@ -274,8 +187,8 @@ uintptr_t start_sim(int argc, const char* argv[], const char* envp[], const char
 	syncProcessInfo();
 
 	// now that we are done bootstrapping dyld, call dyld's main
-	uintptr_t appsSlide = slideOfMainExecutable(mainExecutableMH);
-	return dyld::_main(mainExecutableMH, appsSlide, argc, argv, envp, apple, startGlue);
+    uintptr_t appsSlide = mainExecutableMH->getSlide();
+	return dyld::_main((macho_header*)mainExecutableMH, appsSlide, argc, argv, envp, apple, startGlue);
 }
 #endif
 

@@ -40,11 +40,13 @@ typedef struct dyld_shared_cache_dylib_info dyld_shared_cache_dylib_info;
 
 struct dyld_shared_cache_segment_info {
 	uint64_t		version;		// initial version 1
+	// following fields exist in version 1
 	const char*		name;			// of segment
 	uint64_t		fileOffset;		// of segment in cache file
 	uint64_t		fileSize;		// of segment
 	uint64_t		address;		// of segment when cache mapped with ASLR (sliding) off
-	// above fields all exist in version 1
+    // following fields exist in version 2
+	uint64_t		addressOffset;	// of segment from base of mapped cache
 };
 typedef struct dyld_shared_cache_segment_info dyld_shared_cache_segment_info;
 
