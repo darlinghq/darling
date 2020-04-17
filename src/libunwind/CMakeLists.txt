@@ -46,7 +46,8 @@ add_circular(unwind FAT
 #set_target_properties(unwind PROPERTIES LINKER_LANGUAGE C)
 #make_fat(unwind)
 
-add_library(unwind_static STATIC ${libunwind_sources})
+include(darling_static_lib)
+add_darling_static_library(unwind_static SOURCES ${libunwind_sources})
 set_target_properties(unwind_static PROPERTIES COMPILE_FLAGS "-DNDEBUG=1")
 make_fat(unwind_static)
 
