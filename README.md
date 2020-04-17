@@ -13,7 +13,7 @@ under [releases](https://github.com/darlinghq/darling/releases).
 
 ## Build Instructions
 
-For build instructions, visit [DarlingHQ Wiki](https://wiki.darlinghq.org/build_instructions).
+For build instructions, visit [Darling Docs](http://docs.darlinghq.org/build-instructions.html).
 
 ### Prefixes
 
@@ -41,7 +41,7 @@ $ darling shell
 Darling [~]$ installer -pkg mc-4.8.7-0.pkg -target /
 ````
 
-The Midnight Commander package from the above example is [available for download](https://osdn.net/projects/darling/storage/apps/mc-4.8.7-0.pkg).
+The Midnight Commander package from the above example is [available for download](https://darling-misc.s3.eu-central-1.amazonaws.com/mc-4.8.7-0.pkg).
 
 You can uninstall and list packages with the `uninstaller` command.
 

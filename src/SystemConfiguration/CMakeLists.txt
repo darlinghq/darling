@@ -1,6 +1,7 @@
 project(SystemConfiguration)
 
 set(CMAKE_CXX_STANDARD 11)
+include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/external/libcxx/include ${CMAKE_CURRENT_BINARY_DIR})
 
 set(SystemConfiguration_SRCS
 	SCDynamicStoreCopySpecific.cpp
@@ -19,4 +20,5 @@ add_framework(SystemConfiguration
 	DEPENDENCIES
 		system
 		CoreFoundation
+		cxx
 )

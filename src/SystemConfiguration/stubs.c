@@ -9,6 +9,7 @@ const CFStringRef kSCEntNetIPv4 = CFSTR("IPv4");
 const CFStringRef kSCEntNetIPv6 = CFSTR("IPv6");
 const CFStringRef kSCPropNetIPv4Router = CFSTR("Router");
 const CFStringRef kSCPropNetIPv6Router = CFSTR("Router"); /* Yes, they are the same */
+const CFStringRef kSCCompSystem = CFSTR("System");
 
 CFStringRef SCDynamicStoreKeyCreateNetworkGlobalEntity(CFAllocatorRef allocator, CFStringRef domain, CFStringRef entity)
 {
@@ -44,3 +45,8 @@ Boolean SCDynamicStoreSetNotificationKeys(SCDynamicStoreRef store, CFArrayRef __
 	STUB();
 	return FALSE;
 }
+
+CFStringRef SCDynamicStoreKeyCreateComputerName(CFAllocatorRef allocator) {
+	STUB();
+	return NULL;
+};

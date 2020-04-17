@@ -12,9 +12,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1)
-add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
 # Hide warnings
 add_definitions(

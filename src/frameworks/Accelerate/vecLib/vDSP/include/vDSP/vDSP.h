@@ -21,6 +21,9 @@
 #ifndef _vDSP_H_
 #define _vDSP_H_
 
+typedef unsigned long vDSP_Length;
+typedef long vDSP_Stride;
+
 void* vDSP_DCT_CreateSetup(void);
 void* vDSP_DCT_Execute(void);
 void* vDSP_DFT_CreateSetup(void);
@@ -144,7 +147,6 @@ void* vDSP_hann_window(void);
 void* vDSP_hann_windowD(void);
 void* vDSP_imgfir(void);
 void* vDSP_imgfirD(void);
-void* vDSP_maxmgv(void);
 void* vDSP_maxmgvD(void);
 void* vDSP_maxmgvi(void);
 void* vDSP_maxmgviD(void);

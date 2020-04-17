@@ -89,7 +89,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	pth = ((char*) pth) + stack_size + 0x1000;
 	pthread_attr_setstacksize(&attr, 4096);
 
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
 	args.pth = pth;
 	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
@@ -116,6 +116,7 @@ static void* darling_thread_entry(void* p)
 	{
 		// Terminate the Linux thread
 		munmap(t_freeaddr, t_freesize);
+		pthread_detach(pthread_self());
 		return NULL;
 	}
 

@@ -2,7 +2,7 @@ project(libc-stdlib)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D__DYNAMIC__ -D__BLOCKS__ -fblocks -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fblocks -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
 
 include_directories(${CMAKE_SOURCE_DIR}/src/external/libclosure)
 include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread_workqueue-0.8.2/include)

@@ -1,9 +1,9 @@
 #include "simple.h"
 #include <stdarg.h>
 #include <stddef.h>
+#include <string.h>
 
 int __simple_vsprintf(char* buf, const char* format, va_list vl);
-extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
 
 // We cannot call standard write(), because it would loop back to xtrace
 extern int __write_for_xtrace(int fd, const void* mem, __SIZE_TYPE__ count);

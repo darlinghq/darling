@@ -77,7 +77,7 @@ long sys_getfsstat64(struct bsd_statfs64* buf, int bufsize, int flags)
 		count++;
 	}
 
-	sys_close(fd);
+	close_internal(fd);
 	return count;
 }
 

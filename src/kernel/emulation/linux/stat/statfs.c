@@ -95,7 +95,7 @@ long sys_statfs64(const char* path, struct bsd_statfs64* buf)
 		strlcpy(buf->f_mntfromname, mntfrom, sizeof(buf->f_mntfromname));
 	}
 
-	sys_close(fd);
+	close_internal(fd);
 	return 0;
 }
 

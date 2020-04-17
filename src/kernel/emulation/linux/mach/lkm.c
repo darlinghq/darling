@@ -11,7 +11,7 @@
 #include "../misc/ioctl.h"
 
 extern int sys_open(const char*, int, int);
-extern int sys_close(int);
+extern int close_internal(int);
 extern int sys_write(int, const void*, int);
 extern int sys_kill(int, int);
 extern int sys_getrlimit(int, struct rlimit*);
@@ -67,7 +67,7 @@ void mach_driver_init(const char** applep)
 		// It also means rlim_cur is not above the limit
 		// in the following statement.
 		int d = sys_dup2(driver_fd, lim.rlim_cur);
-		sys_close(driver_fd);
+		close_internal(driver_fd);
 
 		driver_fd = d;
 	}

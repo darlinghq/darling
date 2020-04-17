@@ -4,7 +4,7 @@
 struct bsd_stack
 {
 	void* ss_sp;
-	int ss_size;
+	unsigned long ss_size;
 	int ss_flags;
 };
 

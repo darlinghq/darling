@@ -27,9 +27,7 @@ long sys_close_nocancel(int fd)
 	return ret;
 }
 
-// Special variant for libkqueue to avoid recursion into kqueue_close()
-__attribute__((visibility("default")))
-long __close_for_kqueue(int fd)
+long close_internal(int fd)
 {
 	int ret;
 
@@ -38,5 +36,12 @@ long __close_for_kqueue(int fd)
 		ret = errno_linux_to_bsd(ret);
 
 	return ret;
+}
+
+// Special variant for libkqueue to avoid recursion into kqueue_close()
+__attribute__((visibility("default")))
+long __close_for_kqueue(int fd)
+{
+	return close_internal(fd);
 }
 

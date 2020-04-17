@@ -217,7 +217,7 @@ extern "C"
 void darling_mach_syscall_exit_print(uintptr_t retval)
 {
 	int is_msg = mach_call_nr == 31 || mach_call_nr == 32;
-	handle_generic_exit(mach_defs, "mach", mach_call_nr, retval, is_msg);
+	handle_generic_exit(mach_defs, "mach", retval, is_msg);
 	if (retval == KERN_SUCCESS && is_msg)
 		print_mach_msg_exit();
 	mach_call_nr = -1;

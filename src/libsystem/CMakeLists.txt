@@ -17,9 +17,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread/private)
 include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/dyld-apple/include)
 
-add_definitions(-DTARGET_OS_MAC=1)
 add_definitions(-DHAVE_STDINT_H=1 -DHAVE_SYSTEM_CORESERVICES)
-add_definitions(-D__APPLE__ -D__DYNAMIC__)
 
 # Hide warnings
 add_definitions(
@@ -75,6 +73,7 @@ target_link_libraries(system PRIVATE
 	corecrypto
 	commonCrypto
 	system_dnssd
+	system_networkextension
 )
 
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
@@ -108,6 +107,7 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libxpc \
 	-sub_library libcorecrypto \
 	-sub_library libsystem_dnssd \
+	-sub_library libsystem_networkextension \
 	-Wl,-compatibility_version,1.0.0 \
 	-Wl,-current_version,1238.0.0")
 

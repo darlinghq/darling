@@ -27,7 +27,7 @@ long sys_connect_nocancel(int fd, const void* name, int socklen)
 	if (socklen > 512)
 		return -EINVAL;
 
-	fixed = __builtin_alloca(socklen);
+	fixed = __builtin_alloca(socklen+100);
 	memcpy(fixed, name, socklen);
 
 	fixed->linux_family = sfamily_bsd_to_linux(fixed->bsd_family);

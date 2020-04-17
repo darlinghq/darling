@@ -45,7 +45,7 @@ long sys_execve(char* fname, char** argvp, char** envp)
 	if (ret < 0)
 		return ret;
 
-	sys_close(fd);
+	close_internal(fd);
 
 	bool is_script = false;
 	

@@ -301,6 +301,9 @@
 [submodule "src/external/iokitd"]
 	path = src/external/iokitd
 	url = ../darling-iokitd.git
+[submodule "src/external/OpenAL"]
+	path = src/external/OpenAL
+	url = ../darling-openal.git
 [submodule "src/external/usertemplate"]
 	path = src/external/usertemplate
 	url = ../darling-usertemplate.git
@@ -316,3 +319,9 @@
 [submodule "src/external/libffi"]
 	path = src/external/libffi
 	url = ../darling-libffi.git
+[submodule "src/external/dbuskit"]
+        path = src/external/dbuskit
+        url = ../darling-dbuskit.git
+[submodule "src/external/IOKitTools"]
+        path = src/external/IOKitTools
+        url = ../darling-IOKitTools.git

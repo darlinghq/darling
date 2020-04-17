@@ -23,6 +23,7 @@
 
 #include "CoreServices/MacErrors.h"
 #include "CoreServices/MacTypes.h"
+#include "CoreServices/FileManager.h"
 
 #include <HIToolbox/CarbonEventsCore.h>
 #include <HIToolbox/CarbonEvents.h>

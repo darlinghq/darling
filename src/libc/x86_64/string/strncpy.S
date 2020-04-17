@@ -49,7 +49,7 @@
 
         .align 	4
 _strncpy:				// char  *strncpy(const char *dst, const char *src, size_t n);
-	movq	%rdi,%r8	// preserve destination pointer so we can return it
+	pushq	%rdi	// preserve destination pointer so we can return it
 	movl	%edi,%ecx		// copy low 4 bytes of dest ptr
 	negl	%ecx
 	andl	$15,%ecx		// how many bytes to align dest ptr?
@@ -179,5 +179,5 @@ LZeroBuffer:
 	addq	$8,%rsp			// restore stack
 
 LDone:
-	movq	%r8,%rax		// original dest ptr is return value
+	popq	%rax		// original dest ptr is return value
 	ret

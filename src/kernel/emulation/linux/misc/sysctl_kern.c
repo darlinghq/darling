@@ -1,4 +1,5 @@
 #include "sysctl_kern.h"
+#include "sysctl_proc.h"
 #include "getrlimit.h"
 #include "../ext/sysinfo.h"
 #include "../ext/syslog.h"
@@ -33,6 +34,8 @@ static sysctl_handler(handle_osversion);
 static sysctl_handler(handle_maxproc);
 static sysctl_handler(handle_netboot);
 static sysctl_handler(handle_safeboot);
+static sysctl_handler(handle_usrstack32);
+static sysctl_handler(handle_usrstack64);
 static sysctl_handler(handle_sysv_semmns);
 
 extern int _sysctl_proc(int what, int flag, struct kinfo_proc* out, unsigned long* buflen);
@@ -60,6 +63,8 @@ const struct known_sysctl sysctls_kern[] = {
 	{ .oid = KERN_OSRELEASE, .type = CTLTYPE_STRING, .exttype = "S", .name = "osrelease", .handler = handle_osrelease },
 	{ .oid = KERN_VERSION, .type = CTLTYPE_STRING, .exttype = "S", .name = "version", .handler = handle_version },
 	{ .oid = KERN_OSVERSION, .type = CTLTYPE_STRING, .exttype = "S", .name = "osversion", .handler = handle_osversion },
+	{ .oid = KERN_USRSTACK32, .type = CTLTYPE_INT, .exttype = "I", .name = "usrstack", .handler = handle_usrstack32 },
+	{ .oid = KERN_USRSTACK64, .type = CTLTYPE_QUAD, .exttype = "Q", .name = "usrstack64", .handler = handle_usrstack64 },
 	{ .oid = KERN_SYSV, .type = CTLTYPE_NODE, .exttype = "", .name = "sysv", .subctls = sysctls_kern_sysv },
 	{ .oid = -1 }
 };
@@ -234,7 +239,7 @@ sysctl_handler(handle_maxproc)
 	if (fd >= 0)
 	{
 		int rd = sys_read(fd, buf, sizeof(buf) - 1);
-		sys_close(fd);
+		close_internal(fd);
 		
 		if (rd > 0)
 		{
@@ -287,3 +292,34 @@ sysctl_handler(handle_sysv_semmns)
 	return 0;
 }
 
+static void* mystack(void)
+{
+	char buf[400];
+	char* ptr = buf;
+
+	if (!read_string("/proc/self/stat", buf, sizeof(buf)))
+		return NULL;
+
+	skip_stat_elems(&ptr, 27);
+
+	const char* stack = next_stat_elem(&ptr);
+	return (void*) __simple_atoi(stack, NULL);
+}
+
+sysctl_handler(handle_usrstack32)
+{
+	unsigned int* ovalue = (unsigned int*) old;
+	if (ovalue)
+		*ovalue = mystack();
+	*oldlen = sizeof(*ovalue);
+	return 0;
+}
+
+sysctl_handler(handle_usrstack64)
+{
+	unsigned long long* ovalue = (unsigned long long*) old;
+	if (ovalue)
+		*ovalue = mystack();
+	*oldlen = sizeof(*ovalue);
+	return 0;
+}

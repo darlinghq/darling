@@ -19,8 +19,12 @@
 
 
 #include <CoreMedia/CoreMedia.h>
+#include <CoreFoundation/CoreFoundation.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+const CFStringRef kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms = CFSTR("SampleDescriptionExtensionAtoms");
+const CFStringRef kCMSampleAttachmentKey_NotSync = CFSTR("NotSync");
 
 static int verbose = 0;
 

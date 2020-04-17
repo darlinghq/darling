@@ -151,12 +151,33 @@ static void print_call(const struct calldef* defs, const char* type, int nr, int
 	// Leaves gray color on!
 }
 
+
+_Thread_local struct {
+	// We're inside this many calls. In other words, we have printed this many
+	// call entries without matching exits.
+	int current_level;
+	// What that value was the last time. if we've just handled an entry or an
+	// exit, this will be greater/less than current_level.
+	int previous_level;
+	// Call numbers, indexed by current level.
+	int nrs[64];
+} nested_call;
+
 void handle_generic_entry(const struct calldef* defs, const char* type, int nr, void* args[])
 {
 	if (xtrace_ignore)
 		return;
 
-	print_call(defs, type, nr, 0, 0);
+	if (nested_call.previous_level < nested_call.current_level && !xtrace_split_entry_and_exit)
+	{
+		// We are after an earlier entry without an exit.
+		__simple_printf("\n");
+	}
+
+	int indent = 4 * nested_call.current_level;
+	nested_call.nrs[nested_call.current_level] = nr;
+
+	print_call(defs, type, nr, indent, 0);
 
 	if (defs[nr].name != NULL)
 	{
@@ -172,17 +193,28 @@ void handle_generic_entry(const struct calldef* defs, const char* type, int nr, 
 
 	if (xtrace_split_entry_and_exit)
 		__simple_printf("\n");
+
+	nested_call.previous_level = nested_call.current_level++;
 }
 
 
-void handle_generic_exit(const struct calldef* defs, const char* type, int nr, uintptr_t retval, int force_split)
+void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t retval, int force_split)
 {
 	if (xtrace_ignore)
 		return;
 
+	if (nested_call.previous_level > nested_call.current_level)
+	{
+		// We are after an exit, so our call has been split up.
+		force_split = 1;
+	}
+	nested_call.previous_level = nested_call.current_level--;
+	int nr = nested_call.nrs[nested_call.current_level];
+
 	if (xtrace_split_entry_and_exit || force_split)
 	{
-		print_call(defs, type, nr, 4, 1);
+		int indent = 4 * nested_call.current_level;
+		print_call(defs, type, nr, indent, 1);
 		__simple_printf("()");
 	}
 

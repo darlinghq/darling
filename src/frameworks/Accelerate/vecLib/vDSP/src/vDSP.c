@@ -767,11 +767,13 @@ void* vDSP_imgfirD(void)
     return NULL;
 }
 
+/*
 void* vDSP_maxmgv(void)
 {
     if (verbose) puts("STUB: vDSP_maxmgv called");
     return NULL;
 }
+*/
 
 void* vDSP_maxmgvD(void)
 {
@@ -1991,11 +1993,13 @@ void* vDSP_vrvrsD(void)
     return NULL;
 }
 
+/*
 void* vDSP_vsadd(void)
 {
     if (verbose) puts("STUB: vDSP_vsadd called");
     return NULL;
 }
+*/
 
 void* vDSP_vsaddD(void)
 {

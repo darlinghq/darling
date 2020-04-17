@@ -113,7 +113,7 @@ int _sysctl_proc(int what, int flag, struct kinfo_proc* out, unsigned long* bufl
 	}
 
 	free_chain(first);
-	sys_close(fd);
+	close_internal(fd);
 
 	// __simple_printf("sysctl_proc returning %d, len %d\n", ret, *buflen);
 	return ret;
@@ -131,7 +131,7 @@ bool read_string(const char* path, char* dst, int maxlen)
 	if (rd >= 0)
 		dst[rd] = '\0';
 
-	sys_close(fd);
+	close_internal(fd);
 	return rd >= 0;
 }
 
@@ -377,6 +377,7 @@ int _sysctl_procargs(int pid, char* buf, unsigned long* buflen)
 		*buflen = totallen;
 		memcpy(buf, &argc, sizeof(argc));
 		strcpy(buf+sizeof(argc), cmdline); // copy arg0 as executable_path (TODO: not 100% correct)
+		buf[sizeof(argc)+arg0len+1] = 0;
 		buf[sizeof(argc)+arg0len+2] = 0;
 		memcpy(buf+sizeof(argc)+arg0len+2, cmdline, argslen+1);
 	}

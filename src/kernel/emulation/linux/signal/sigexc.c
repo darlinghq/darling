@@ -30,6 +30,7 @@ void darling_sigexc_uninstall(void);
 void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt);
 
 #define SIGEXC_TSD_KEY	102
+#define SIGEXC_CONTEXT_TSD_KEY	103
 static char sigexc_altstack[8192];
 static struct bsd_stack orig_stack;
 
@@ -44,6 +45,8 @@ static void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state32
 static void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux_gregset* regs);
 static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx);
 #endif
+
+static void state_to_kernel(struct linux_ucontext* ctxt, thread_t thread);
 
 #define DEBUG_SIGEXC
 #ifdef DEBUG_SIGEXC
@@ -173,12 +176,25 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 		int sig = info->si_value;
 		if (sig == SIGNAL_THREAD_SUSPEND)
 		{
-			kern_printf("sigexc: SIGNAL_THREAD_SUSPEND");
-			sigexc_fake_suspend(ctxt);
+			kern_printf("sigexc: SIGNAL_THREAD_SUSPEND\n");
+			if (_pthread_getspecific_direct(SIGEXC_TSD_KEY) == 0)
+				sigexc_fake_suspend(ctxt);
+			else
+			{
+				kern_printf("sigexc: already suspended\n");
+				void* ctxt = _pthread_getspecific_direct(SIGEXC_CONTEXT_TSD_KEY);
+
+				if (ctxt)
+				{
+					thread_t thread = mach_thread_self();
+					state_to_kernel(ctxt, thread);
+					kern_printf("sigexc: state_to_kernel complete\n");
+				}
+			}
 		}
 		else if (sig == SIGNAL_THREAD_RESUME)
 		{
-			kern_printf("sigexc: SIGNAL_THREAD_RESUME");
+			kern_printf("sigexc: SIGNAL_THREAD_RESUME\n");
 		}
 		else if (sig < 0)
 		{
@@ -310,6 +326,8 @@ static void state_to_kernel(struct linux_ucontext* ctxt, thread_t thread)
 		memset(&fstate, 0, sizeof(fstate));
 	}
 
+	__simple_kprintf("sigexc: Telling kernel our RIP is %p\n", tstate.__rip);
+
 	thread_set_state(thread, x86_THREAD_STATE64, (thread_state_t) &tstate, x86_THREAD_STATE64_COUNT);
 	thread_set_state(thread, x86_FLOAT_STATE64, (thread_state_t) &fstate, x86_FLOAT_STATE64_COUNT);
 #elif defined(__i386__)
@@ -420,6 +438,11 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 		return;
 	}
 
+	if (linux_signum == 11)
+	{
+		kern_printf("sigexc: faulting address: %p, code: %d\n", info->si_addr, info->si_code);
+	}
+
 	// SIGSEGV + SIGBUS -> EXC_BAD_ACCESS
 	// SIGTRAP -> EXC_BREAKPOINT
 	// SIGILL -> EXC_BAD_INSTRUCTION
@@ -485,6 +508,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	if (port != 0)
 	{
 		_pthread_setspecific_direct(SIGEXC_TSD_KEY, bsd_signum);
+		_pthread_setspecific_direct(SIGEXC_CONTEXT_TSD_KEY, ctxt);
 
 		kern_return_t ret;
 
@@ -552,6 +576,8 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 			handler_linux_to_bsd(linux_signum, info, ctxt);
 		}
 	}
+
+	kern_printf("sigexc: handler (%d) returning\n", linux_signum);
 }
 
 #if defined(__x86_64__)
@@ -578,6 +604,8 @@ void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state
 	s->__cs = regs->cs;
 	s->__fs = regs->fs;
 	s->__gs = regs->gs;
+
+	kern_printf("sigexc: saving to kernel: RIP %p, eflags 0x%x\n", regs->rip, regs->efl);
 }
 
 void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state64_t* s)
@@ -622,6 +650,8 @@ void thread_state_to_mcontext(const x86_thread_state64_t* s, struct linux_gregse
 	regs->cs = s->__cs;
 	regs->fs = s->__fs;
 	regs->gs = s->__gs;
+
+	kern_printf("sigexc: Next RIP will be %p, eflags: 0x%x\n", regs->rip, regs->efl); // single step trace bit is 0x100
 }
 
 void float_state_to_mcontext(const x86_float_state64_t* s, linux_fpregset_t fx)

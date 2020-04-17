@@ -2,7 +2,7 @@
 #define _CORESERVICES_CORESERVICES_H_
 
 #include <CoreServices/Components.h>
-#include <CoreServices/CoreEndian.h>
+#include <CoreServices/Endian.h>
 #include <CoreServices/DateTimeUtils.h>
 #include <CoreServices/DriverServices.h>
 #include <CoreServices/DriverSynchronization.h>
