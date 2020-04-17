@@ -69,10 +69,11 @@ add_definitions(
 )
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
-set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
+set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ranlib")
 
 add_definitions(-target x86_64-apple-darwin11)
 include(darling_lib)
+include(darling_static_lib)
 
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include
