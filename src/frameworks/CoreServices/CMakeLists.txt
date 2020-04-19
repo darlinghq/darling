@@ -26,7 +26,6 @@ add_framework(CoreServices
 	VERSION "A"
 	SOURCES
 		constants.m
-		CoreServicesPriv.cpp
 	DEPENDENCIES
 		FSEvents
 		LaunchServices

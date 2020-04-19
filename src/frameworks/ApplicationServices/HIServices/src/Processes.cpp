@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/Processes.h>
+#include <HIServices/Processes.h>
 #include <CoreServices/MacErrors.h>
 #include <unistd.h>
 #include <signal.h>
@@ -30,12 +30,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <ctype.h>
 #include <iostream>
-#include "UserBreak.h"
 
 #define STUB() // TODO
 #ifndef PATH_MAX
 #	define PATH_MAX	4096
 #endif
+
+// TODO: 99% of these should be rewritten to call LaunchServices instead
 
 // CFStringRef kCFBundleExecutableKey = CFSTR("kCFBundleExecutableKey");
 // CFStringRef kCFBundleNameKey = CFSTR("kCFBundleNameKey");
@@ -243,9 +244,3 @@ OSErr WakeUpProcess(const ProcessSerialNumber* psn)
 	return noErr;
 }
 
-void DebugStr(ConstStr255Param msg)
-{
-	std::cerr.write((const char*) &msg[1], msg[0]);
-	std::cerr << std::endl;
-	doUserBreak();
-}

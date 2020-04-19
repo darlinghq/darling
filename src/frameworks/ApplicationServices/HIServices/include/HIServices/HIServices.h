@@ -20,5 +20,18 @@
 
 #ifndef _HIServices_H_
 #define _HIServices_H_
+#include <CoreServices/MacTypes.h>
+#include "Processes.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+OSStatus SetApplicationIsDaemon(Boolean daemon);
+Boolean GetApplicationIsDaemon(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

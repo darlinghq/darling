@@ -3,7 +3,7 @@
 
 #include <CoreServices/MacTypes.h>
 #include <CoreServices/FileManager.h>
-#include <CoreServices/Processes.h>
+#include <HIServices/Processes.h>
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CFArray.h>
 #include <CoreFoundation/CFURL.h>
@@ -84,10 +84,6 @@ OSStatus LSOpenFSRef(const FSRef *inRef, FSRef *outLaunchedRef);
 OSStatus LSGetExtensionInfo(UniCharCount inNameLen, const UniChar* inNameBuffer, UniCharCount *outExtStartIndex);
 OSStatus LSSetExtensionHiddenForRef(const FSRef *inRef, Boolean hide);
 OSStatus LSSetExtensionHiddenForURL(CFURLRef inURL, Boolean hide);
-
-extern CFStringRef _kLSBundlePathKey;
-extern CFStringRef _kLSDisplayNameKey;
-extern CFStringRef _kLSExecutablePathKey;
 
 CFTypeRef _LSCopyApplicationInformationItem(int /* hopefully */, CFTypeRef asn, CFStringRef what);
 
