@@ -378,6 +378,7 @@ add_subdirectory(DirectoryServices)
 add_subdirectory(DrawSprocket)
 add_subdirectory(EventKit)
 add_subdirectory(external/cocotron/CoreGraphics)
+add_subdirectory(external/fmdb)
 
 add_subdirectory(frameworks)
 add_subdirectory(private-frameworks)
