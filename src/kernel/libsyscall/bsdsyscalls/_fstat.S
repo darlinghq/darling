@@ -5,7 +5,9 @@
 #error "SYS_fstat not defined. The header files libsyscall is building against do not match syscalls.master."
 #endif
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__)
 __SYSCALL2(_fstat, fstat, 2, cerror)
+#else
+__SYSCALL2(___fstat, fstat, 2, cerror)
 #endif
 

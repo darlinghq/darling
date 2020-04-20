@@ -59,3 +59,18 @@ PSEUDO(___pipe, pipe, 0, cerror_nocancel)
 	.set	_pipe, ___pipe
 #endif
 
+#if defined(__ppc__)
+	.globl	_pipe
+	.set	_pipe, ___pipe
+#endif
+
+#if defined(__arm__)
+	.globl	_pipe
+	.set	_pipe, ___pipe
+#endif
+
+#if defined(__arm64__)
+	.globl	_pipe
+	.set	_pipe, ___pipe
+#endif
+
