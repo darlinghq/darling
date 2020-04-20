@@ -328,3 +328,6 @@
 [submodule "src/external/fmdb"]
 	path = src/external/fmdb
 	url = ../fmdb.git
+[submodule "src/external/swift"]
+	path = src/external/swift
+	url = ../darling-swift.git
