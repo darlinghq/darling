@@ -9,8 +9,10 @@ add_framework(LaunchServices
 		LaunchServices.cpp
 		LSApplicationProxy.m
 		LSApplicationWorkspace.m
-		LaunchServicesNew.cpp
+		LSRunning.m
 		constants.c
+		LSInfo.m
+		LSOpen.m
 	DEPENDENCIES
 		CoreFoundation
 		Foundation

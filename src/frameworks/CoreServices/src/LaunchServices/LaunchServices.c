@@ -18,6 +18,7 @@
 */
 
 #include <LaunchServices/LaunchServices.h>
+#include <LaunchServices/LaunchServicesPriv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <launch_priv.h>

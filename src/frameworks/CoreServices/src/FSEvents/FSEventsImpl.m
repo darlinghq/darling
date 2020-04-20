@@ -132,9 +132,6 @@ static void rlPerform(void* info)
 	}
 	if (queue)
 	{
-		[self scheduleWithRunLoop: NULL
-							mode: NULL];
-
 		_queue = queue;
 		dispatch_retain(_queue);
 	}

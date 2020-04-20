@@ -8,9 +8,22 @@
 extern "C" {
 #endif
 
+typedef CFTypeRef LSASNRef;
+typedef int LSSessionID;
+typedef int LSNotificationCode;
+typedef int LSNotificationID;
+typedef OptionBits LSInitializeFlags;
+
 enum
 {
-	_kLSDefaultSessionID = -2,
+	kLSDefaultSessionID = -2,
+};
+
+// Used in Security
+enum
+{
+	kLSNotificationInvalidID = -1,
+	kLSNotifyApplicationDeath = 1,
 };
 
 enum
@@ -62,15 +75,31 @@ extern const CFStringRef _kLSExecutableFormatMachOKey;
 extern const CFStringRef _kLSExecutableFormatCFMKey;
 
 // Example call:
-// _LSApplicationCheckIn(_kLSDefaultSessionID, CFBundleGetInfoDictionary(CFBundleGetMainBundle()))
+// _LSApplicationCheckIn(kLSDefaultSessionID, CFBundleGetInfoDictionary(CFBundleGetMainBundle()))
 // Normally to be called from -[NSApplication init]
-CFDictionaryRef _LSApplicationCheckIn(int sessionID, CFDictionaryRef applicationInfo);
+CFDictionaryRef _LSApplicationCheckIn(LSSessionID sessionID, CFDictionaryRef applicationInfo);
 
 CFTypeRef _LSGetCurrentApplicationASN(void);
-OSStatus _LSSetApplicationInformationItem(int sessionID, LSASNRef asn, CFStringRef key, CFStringRef value, CFDictionaryRef *info);
+OSStatus _LSSetApplicationInformationItem(LSSessionID sessionID, LSASNRef asn, CFStringRef key, CFStringRef value, CFDictionaryRef *info);
 
 typedef bool (^LSServerConnectionAllowedBlock) ( CFDictionaryRef optionsRef );
 void _LSSetApplicationLaunchServicesServerConnectionStatus(uint64_t flags, LSServerConnectionAllowedBlock block);
+
+CFTypeRef _LSCopyApplicationInformationItem(LSSessionID sessionID, CFTypeRef asn, CFStringRef what);
+
+CFDictionaryRef _LSCopyApplicationInformation(LSSessionID sessionID, CFTypeRef asn, int);
+
+LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid);
+
+OSStatus _LSLaunchApplication(CFURLRef appPath);
+
+// Assumed
+#define kLSDownloadRiskCategoryKey CFSTR("LSDownloadRiskCategory")
+
+#define kLSRiskCategorySafe "LSRiskCategorySafe"
+#define kLSRiskCategoryNeutral "LSRiskCategoryNeutral"
+#define kLSRiskCategoryUnknown "LSRiskCategoryUnknown"
+#define kLSRiskCategoryMayContainUnsafeExecutable "LSRiskCategoryMayContainUnsafeExecutable"
 
 #ifdef __cplusplus
 }

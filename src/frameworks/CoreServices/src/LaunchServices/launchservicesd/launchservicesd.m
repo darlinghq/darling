@@ -1,41 +1,47 @@
-#include <xpc/xpc.h>
-#include <FSEvents/FSEvents.h>
-#include <iostream>
-#include <dispatch/dispatch.h>
-#include <sqlite3.h>
+/*
+This file is part of Darling.
 
-#define DATABASE_VERSION 1
+Copyright (C) 2020 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include <xpc/xpc.h>
+#include <dispatch/dispatch.h>
+#include "LSBundle.h"
 
 static void connectionCallback(xpc_connection_t connection);
 static void handleMessage(xpc_connection_t connection, xpc_object_t msg);
 
-sqlite3* g_database;
-
-static const char* MONITORED_DIRECTORIES[] = {
-	"/Applications",
-	"/System/Applications"
-	"/System/Library/Frameworks"
-};
+dispatch_queue_t g_serverQueue;
 
 int main(int argc, const char** argv)
 {
-	if (int err = sqlite3_open("/var/cache/launchservices.db", &g_database); err != SQLITE_OK)
-	{
-		std::cerr << "SQLite error: " << sqlite3_errstr(err) << std::endl;
-		exit(1);
-	}
+	g_serverQueue = dispatch_queue_create("service queue", NULL);
+	
+	[LSBundle scanForBundles];
+	[LSBundle watchForBundles];
 
 	// xpc_main(connectionCallback);
 	// Our xpc_main() isn't done yet, so we do this manually
 
-	dispatch_queue_t server_queue = dispatch_queue_create("xpc service", NULL);
-
 	xpc_connection_t listener = xpc_connection_create_mach_service("com.apple.coreservices.launchservicesd",
-		server_queue, XPC_CONNECTION_MACH_SERVICE_LISTENER);
+		g_serverQueue, XPC_CONNECTION_MACH_SERVICE_LISTENER);
 
 	xpc_connection_set_event_handler(listener, ^(xpc_object_t peer) {
 		if (xpc_get_type(peer) == XPC_TYPE_CONNECTION)
-			connectionCallback(xpc_connection_t(peer));
+			connectionCallback((xpc_connection_t) peer);
 	});
 	xpc_connection_resume(listener);
 

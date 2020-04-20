@@ -26,8 +26,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreFoundation/CFDate.h>
 #include <CoreServices/MacErrors.h>
 #include <dispatch/dispatch.h>
-#include <cstdlib>
-#include <iostream>
+#include <stdlib.h>
+#include <stdio.h>
 #include <Block.h>
 
 static xpc_connection_t g_lsdConnection, g_endpointConnection;
@@ -37,15 +37,15 @@ static xpc_object_t createCommandDictionary(uint64_t command);
 static mach_port_name_t deathPort();
 static CFTypeRef g_ourASN;
 
-static CFStringRef g_applicationType = _kLSApplicationForegroundTypeKey;
-static LSServerConnectionAllowedBlock g_connectionAllowedBlock = nullptr;
+static CFStringRef g_applicationType = NULL;
+static LSServerConnectionAllowedBlock g_connectionAllowedBlock = NULL;
 
 CFDictionaryRef _LSApplicationCheckIn(int sessionID, CFDictionaryRef applicationInfo)
 {
 	if (g_connectionAllowedBlock && !g_connectionAllowedBlock(applicationInfo))
-		return nullptr;
+		return NULL;
 
-	CFMutableDictionaryRef modAppInfo = CFDictionaryCreateMutableCopy(nullptr, 0, applicationInfo);
+	CFMutableDictionaryRef modAppInfo = CFDictionaryCreateMutableCopy(NULL, 0, applicationInfo);
 
 	if (!CFDictionaryContainsValue(modAppInfo, _kLSArchitectureKey))
 	{
@@ -64,7 +64,7 @@ CFDictionaryRef _LSApplicationCheckIn(int sessionID, CFDictionaryRef application
 
 	if (!CFDictionaryContainsValue(modAppInfo, _kLSExecutablePathKey))
 	{
-		CFStringRef path = CFStringCreateWithFileSystemRepresentation(nullptr, _CFProcessPath());
+		CFStringRef path = CFStringCreateWithFileSystemRepresentation(NULL, _CFProcessPath());
 		CFDictionaryAddValue(modAppInfo, _kLSExecutablePathKey, path);
 		CFRelease(path);
 	}
@@ -73,7 +73,7 @@ CFDictionaryRef _LSApplicationCheckIn(int sessionID, CFDictionaryRef application
 	{
 		// Are we supposed to set this one if not present?
 		long pid = getpid();
-		CFNumberRef num = CFNumberCreate(nullptr, kCFNumberLongType, &pid);
+		CFNumberRef num = CFNumberCreate(NULL, kCFNumberLongType, &pid);
 		CFDictionaryAddValue(modAppInfo, _kLSPIDKey, num);
 		CFRelease(num);
 	}
@@ -87,13 +87,15 @@ CFDictionaryRef _LSApplicationCheckIn(int sessionID, CFDictionaryRef application
 
 	if (!CFDictionaryContainsValue(modAppInfo, _kLSCheckInTimeKey))
 	{
-		CFDateRef now = CFDateCreate(nullptr, CFAbsoluteTimeGetCurrent());
+		CFDateRef now = CFDateCreate(NULL, CFAbsoluteTimeGetCurrent());
 		CFDictionaryAddValue(modAppInfo, _kLSCheckInTimeKey, now);
 		CFRelease(now);
 	}
 
 	if (!CFDictionaryContainsValue(modAppInfo, _kLSApplicationTypeKey))
 	{
+		if (!g_applicationType)
+			g_applicationType = _kLSApplicationForegroundTypeKey;
 		CFDictionaryAddValue(modAppInfo, _kLSApplicationTypeKey, g_applicationType);
 	}
 
@@ -113,8 +115,8 @@ CFDictionaryRef _LSApplicationCheckIn(int sessionID, CFDictionaryRef application
 	{
 		if (!xpc_dictionary_get_bool(reply, "success"))
 		{
-			std::cerr << "LaunchServices: check-in failed\n";
-			return nullptr;
+			fprintf(stderr, "LaunchServices: check-in failed\n");
+			return NULL;
 		}
 
 		CFDictionaryRef result = (CFDictionaryRef) _CFXPCCreateCFObjectFromXPCObject(xpc_dictionary_get_value(reply, "result"));
@@ -126,10 +128,10 @@ CFDictionaryRef _LSApplicationCheckIn(int sessionID, CFDictionaryRef application
 	}
 	else
 	{
-		std::cerr << "LaunchServices: check-in operation didn't execute\n";
+		fprintf(stderr, "LaunchServices: check-in operation didn't execute\n");
 	}
 
-	return nullptr;
+	return NULL;
 }
 
 CFTypeRef _LSGetCurrentApplicationASN(void)
@@ -152,7 +154,7 @@ void _LSSetApplicationLaunchServicesServerConnectionStatus(uint64_t flags, LSSer
 	if (g_connectionAllowedBlock)
 		Block_release(g_connectionAllowedBlock);
 	
-	g_connectionAllowedBlock = nullptr;
+	g_connectionAllowedBlock = NULL;
 	if (block)
 		g_connectionAllowedBlock = Block_copy(block);
 }
@@ -160,7 +162,7 @@ void _LSSetApplicationLaunchServicesServerConnectionStatus(uint64_t flags, LSSer
 LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid)
 {
 	long lpid = pid;
-	return CFNumberCreate(nullptr, kCFNumberLongType, &lpid);
+	return CFNumberCreate(NULL, kCFNumberLongType, &lpid);
 }
 
 static mach_port_name_t deathPort()
@@ -182,11 +184,14 @@ static xpc_connection_t getLSDConnection()
 {
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
-		if (const char* env = getenv("SCDontUseServer"); env != nullptr && atoi(env) != 0)
+		const char* env = getenv("SCDontUseServer");
+		if (env != NULL && atoi(env) != 0)
 			return;
 
 		const char* serviceName = "com.apple.coreservices.launchservicesd";
-		if (const char* altName = getenv("__LSXPCSERVICENAME"); altName != nullptr)
+		const char* altName = getenv("__LSXPCSERVICENAME");
+
+		if (altName != NULL)
 			serviceName = altName;
 
 		xpc_connection_t master = xpc_connection_create_mach_service(serviceName,
@@ -196,7 +201,7 @@ static xpc_connection_t getLSDConnection()
 			if (peer == 0)
 			{
 				// TODO:
-				std::cerr << "LaunchServices: Cannot connect to lsd\n";
+				fprintf(stderr, "LaunchServices: Cannot connect to lsd\n");
 				return;
 			}
 			g_lsdConnection = (xpc_connection_t) xpc_retain(peer);
@@ -207,12 +212,12 @@ static xpc_connection_t getLSDConnection()
 
 			if (reply == XPC_ERROR_CONNECTION_INTERRUPTED || reply == XPC_ERROR_CONNECTION_INVALID)
 			{
-				std::cerr << "LaunchServices: lsd connection broken\n";
+				fprintf(stderr, "LaunchServices: lsd connection broken\n");
 				return;
 			}
 			if (!xpc_dictionary_get_bool(reply, "success"))
 			{
-				std::cerr << "LaunchServices: lsd hello failed\n";
+				fprintf(stderr, "LaunchServices: lsd hello failed\n");
 				return;
 			}
 			xpc_object_t result = xpc_dictionary_get_value(reply, "result");
@@ -238,7 +243,7 @@ static xpc_connection_t getLSDConnection()
 
 static xpc_object_t createCommandDictionary(uint64_t command)
 {
-	xpc_object_t dict = xpc_dictionary_create(nullptr, nullptr, 0);
+	xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
 	xpc_dictionary_set_int64(dict, "command", command);
 	return dict;
 }
