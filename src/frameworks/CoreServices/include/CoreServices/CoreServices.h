@@ -26,6 +26,7 @@
 
 #include <LaunchServices/LaunchServices.h>
 #include <AE/AE.h>
+#include <FSEvents/FSEvents.h>
 
 #endif
 
