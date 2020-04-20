@@ -395,6 +395,7 @@ add_subdirectory(external/cocotron/QuartzCore)
 add_subdirectory(pboard)
 
 add_subdirectory(external/dbuskit)
+add_subdirectory(external/swift)
 
 
 # /Applications
