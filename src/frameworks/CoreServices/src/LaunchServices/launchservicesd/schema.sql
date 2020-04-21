@@ -70,6 +70,8 @@ CREATE TABLE `app_doc` (
 	FOREIGN KEY(`bundle`) REFERENCES `bundle`(`id`) ON DELETE CASCADE
 );
 CREATE INDEX `app_doc_bundle_index` ON `app_doc`(`bundle`);
+CREATE INDEX `app_doc_role_index` ON `app_doc`(`role`);
+CREATE INDEX `app_doc_rank_index` ON `app_doc`(`rank`);
 
 -- LSItemContentTypes
 CREATE TABLE `app_doc_uti` (
@@ -100,3 +102,26 @@ CREATE TABLE `app_doc_extension` (
 );
 CREATE INDEX `app_doc_extension_doc_index` ON `app_doc_extension`(`doc`);
 CREATE INDEX `app_doc_extension_index` ON `app_doc_extension`(`extension`);
+
+-- CFBundleURLTypes
+CREATE TABLE `bundle_url_type` (
+	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
+	`bundle` INTEGER,
+	`role` TEXT NOT NULL,
+	`name` TEXT,
+	`icon` TEXT,
+	FOREIGN KEY(`bundle`) REFERENCES `bundle`(`id`) ON DELETE CASCADE
+);
+CREATE INDEX `bundle_url_type_bundle` ON `bundle_url_type`(`bundle`);
+CREATE INDEX `bundle_url_type_role_index` ON `bundle_url_type`(`role`);
+
+-- CFBundleURLSchemes
+
+CREATE TABLE `bundle_url_type_scheme` (
+	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
+	`type` INTEGER,
+	`scheme` TEXT NOT NULL COLLATE NOCASE,
+	FOREIGN KEY(`type`) REFERENCES `bundle_url_type`(`id`) ON DELETE CASCADE
+);
+CREATE INDEX `bundle_url_type_scheme_type_index` ON `bundle_url_type_scheme`(`type`);
+CREATE INDEX `bundle_url_type_scheme_scheme_index` ON `bundle_url_type_scheme`(`scheme`);

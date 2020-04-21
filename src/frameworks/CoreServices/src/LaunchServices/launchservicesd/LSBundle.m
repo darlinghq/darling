@@ -269,6 +269,40 @@ static FSEventStreamRef g_eventStream;
 	}
 }
 
+-(void)processURLTypes
+{
+	NSDictionary* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
+	NSArray<NSDictionary*>* urlTypes = (NSArray*) infoDict[@"CFBundleURLTypes"];
+	NSNumber* myId = [NSNumber numberWithInt: _bundleId];
+
+	[g_database executeUpdate:@"delete from bundle_url_type where bundle = ?", myId];
+	if (urlTypes != nil)
+	{
+		for (NSDictionary<NSString*, id>* type in urlTypes)
+		{
+			NSString* role = type[@"CFBundleTypeRole"];
+			NSString* iconFile = type[@"CFBundleURLTypes"];
+			NSString* name = type[@"CFBundleURLName"];
+
+			if (role == nil)
+				role = @"None";
+
+			NSArray<NSString*>* schemes = type[@"CFBundleURLSchemes"];
+
+			[g_database executeUpdate:@"insert into bundle_url_type (bundle, role, name, icon) values (?,?,?,?)",
+				myId, role, name, iconFile];
+
+			if (schemes)
+			{
+				NSNumber* typeId = [NSNumber numberWithInt:[g_database lastInsertRowId]];
+				
+				for (NSString* scheme in schemes)
+					[g_database executeUpdate:@"insert into bundle_url_type_scheme (type, scheme) values (?,?)", typeId, scheme];
+			}
+		}
+	}
+}
+
 -(BOOL)setupBundleID
 {
 	NSURL* url = (NSURL*) CFBundleCopyBundleURL(_bundle);
@@ -353,6 +387,7 @@ static FSEventStreamRef g_eventStream;
 	}
 
 	[self processFileAssociations];
+	[self processURLTypes];
 	[g_database commit];
 }
 
