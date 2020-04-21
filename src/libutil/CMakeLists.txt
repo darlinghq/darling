@@ -6,6 +6,7 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+include(InstallSymlink)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -nostdinc++ -D__DARWIN_UNIX03 -fPIC -w")
@@ -53,3 +54,4 @@ install(FILES
 	DESTINATION
 		libexec/darling/usr/share/man/man3
 )
+InstallSymlink("libutil1.0.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libutil.dylib")
