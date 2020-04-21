@@ -363,6 +363,13 @@
 
 #define F_ADDFILESIGS_RETURN	97	/* Add signature from same file, return end offset in structure on sucess */
 #define F_CHECK_LV		98	/* Check if Library Validation allows this Mach-O file to be mapped into the calling process */
+#define F_PUNCHHOLE     99              /* Deallocate a range of the file */
+
+#define F_TRIM_ACTIVE_FILE      100     /* Trim an active file */
+
+#define F_SPECULATIVE_READ     101      /* Synchronous advisory read fcntl for regular and compressed file */
+
+#define F_GETPATH_NOFIRMLINK       102              /* return the full path without firmlinks of the fd */
 
 
 // FS-specific fcntl()'s numbers begin at 0x00010000 and go up
@@ -600,6 +607,28 @@ typedef struct fstore {
 	off_t	fst_length;	/* IN: size of the region */
 	off_t   fst_bytesalloc;	/* OUT: number of bytes allocated */
 } fstore_t;
+
+/* fpunchhole_t used by F_PUNCHHOLE */
+typedef struct fpunchhole {
+        unsigned int fp_flags; /* unused */
+        unsigned int reserved; /* (to maintain 8-byte alignment) */
+        off_t fp_offset; /* IN: start of the region */
+        off_t fp_length; /* IN: size of the region */
+} fpunchhole_t;
+
+/* factive_file_trim_t used by F_TRIM_ACTIVE_FILE */
+typedef struct ftrimactivefile {
+        off_t fta_offset;  /* IN: start of the region */
+        off_t fta_length; /* IN: size of the region */
+} ftrimactivefile_t;
+
+/* fspecread_t used by F_SPECULATIVE_READ */
+typedef struct fspecread {
+        unsigned int fsr_flags;  /* IN: flags word */
+        unsigned int reserved;   /* to maintain 8-byte alignment */
+        off_t fsr_offset;        /* IN: start of the region */
+        off_t fsr_length;        /* IN: size of the region */
+} fspecread_t;
 
 /* fbootstraptransfer_t used by F_READBOOTSTRAP and F_WRITEBOOTSTRAP commands */
 

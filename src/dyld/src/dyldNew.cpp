@@ -31,7 +31,7 @@
 
 extern "C" void* __dso_handle;
 
-#include "dyld.h"
+#include "dyld2.h"
 #include "dyldLibSystemInterface.h"
 
 //
@@ -69,8 +69,8 @@ void* malloc(size_t size)
 	}
 	else {
 		if ( size > DYLD_POOL_CHUNK_SIZE ) {
-			dyld::log("dyld malloc overflow: size=%zu\n", size);
-			exit(1);
+			dyld::log("dyld malloc overflow: size=%lu\n", size);
+			dyld::halt("dyld malloc overflow\n");
 		}
 		size = (size+sizeof(void*)-1) & (-sizeof(void*)); // pointer align
 		uint8_t* result = currentPool->current;
@@ -79,8 +79,7 @@ void* malloc(size_t size)
 			vm_address_t addr = 0;
 			kern_return_t r = vm_allocate(mach_task_self(), &addr, DYLD_POOL_CHUNK_SIZE, VM_FLAGS_ANYWHERE);
 			if ( r != KERN_SUCCESS ) {
-				dyld::log("out of address space for dyld memory pool\n");
-				exit(1);
+				dyld::halt("out of address space for dyld memory pool\n");
 			}
 			dyld_static_pool* newPool = (dyld_static_pool*)addr;
 			newPool->previousPool = NULL;
@@ -90,7 +89,7 @@ void* malloc(size_t size)
 			currentPool = newPool;
 			if ( (currentPool->current + size) > currentPool->end ) {
 				dyld::log("dyld memory pool exhausted: size=%lu\n", size);
-				exit(1);
+				dyld::halt("dyld memory pool exhausted\n");
 			}
 			result = currentPool->current;
 			currentPool->current += size;
@@ -126,18 +125,20 @@ void free(void* ptr)
 
 void* calloc(size_t count, size_t size)
 {
+    // Check for overflow of integer multiplication
+    size_t total = count * size;
+    if ( total/count != size ) {
+        dyld::log("dyld calloc overflow: count=%zu, size=%zu\n", count, size);
+        dyld::halt("dyld calloc overflow");
+    }
 	if ( dyld::gLibSystemHelpers != NULL ) {
-		void* result = dyld::gLibSystemHelpers->malloc(size*count);
-		bzero(result, size*count);
+		void* result = dyld::gLibSystemHelpers->malloc(total);
+        if ( result != NULL )
+		    bzero(result, total);
 		return result;
 	}
 	else {
-		// Check for overflow of integer multiplication
-		size_t total = count * size;
-		if ( total/count != size ) {
-			dyld::log("dyld calloc overflow: count=%zu, size=%zu\n", count, size);
-			exit(1);
-		}
+        // this allocates out of static buffer which is already zero filled
 		return malloc(total);
 	}
 }
@@ -146,7 +147,10 @@ void* calloc(size_t count, size_t size)
 void* realloc(void *ptr, size_t size)
 {
 	void* result = malloc(size);
-	memcpy(result, ptr, size);
+#ifdef DARLING
+	if (ptr)
+#endif
+		memcpy(result, ptr, size);
 	return result;
 }
 

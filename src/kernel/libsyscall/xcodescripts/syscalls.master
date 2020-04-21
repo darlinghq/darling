@@ -102,7 +102,7 @@
 52	AUE_SIGPENDING	ALL	{ int sigpending(struct sigvec *osv); } 
 53	AUE_SIGALTSTACK	ALL	{ int sigaltstack(struct sigaltstack *nss, struct sigaltstack *oss) NO_SYSCALL_STUB ; } 
 54	AUE_IOCTL	ALL	{ int ioctl(int fd, u_long com, caddr_t data) NO_SYSCALL_STUB; } 
-55	AUE_REBOOT	ALL	{ int reboot(int opt, char *command) NO_SYSCALL_STUB; }
+55	AUE_REBOOT	ALL	{ int reboot(int opt, char *msg) NO_SYSCALL_STUB; }
 56	AUE_REVOKE	ALL	{ int revoke(char *path); } 
 57	AUE_SYMLINK	ALL	{ int symlink(char *path, char *link); } 
 58	AUE_READLINK	ALL	{ int readlink(char *path, char *buf, int count); } 
@@ -269,7 +269,7 @@
 181	AUE_SETGID	ALL	{ int setgid(gid_t gid); } 
 182	AUE_SETEGID	ALL	{ int setegid(gid_t egid); } 
 183	AUE_SETEUID	ALL	{ int seteuid(uid_t euid); } 
-184	AUE_SIGRETURN	ALL	{ int sigreturn(struct ucontext *uctx, int infostyle) NO_SYSCALL_STUB; } 
+184	AUE_SIGRETURN	ALL	{ int sigreturn(struct ucontext *uctx, int infostyle, user_addr_t token) NO_SYSCALL_STUB; }
 185	AUE_NULL	ALL 	{ int enosys(void); } { old chud }
 186	AUE_NULL	ALL	{ int thread_selfcounts(int type, user_addr_t buf, user_size_t nbytes); }
 187	AUE_FDATASYNC	ALL	{ int fdatasync(int fd); } 
@@ -836,5 +836,9 @@
 527	AUE_NULL	ALL	{ int ntp_adjtime(struct timex *tp); }
 528	AUE_NULL	ALL	{ int ntp_gettime(struct ntptimeval *ntvp); }
 529	AUE_NULL	ALL	{ int os_fault_with_payload(uint32_t reason_namespace, uint64_t reason_code, void *payload, uint32_t payload_size, const char *reason_string, uint64_t reason_flags); }
+#if CONFIG_WORKQUEUE
+530	AUE_WORKLOOPCTL	ALL	{ int kqueue_workloop_ctl(user_addr_t cmd, uint64_t options, user_addr_t addr, size_t sz) NO_SYSCALL_STUB; }
+#else
 530	AUE_NULL	ALL	{ int enosys(void); }
-531	AUE_NULL	ALL	{ int enosys(void); }
+#endif // CONFIG_WORKQUEUE
+531	AUE_NULL	ALL	{ uint64_t __mach_bridge_remote_time(uint64_t local_timestamp); }

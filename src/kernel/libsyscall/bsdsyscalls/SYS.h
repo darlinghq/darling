@@ -217,6 +217,369 @@ LEAF(pseudo, 0)					;\
 	PSEUDO(pseudo, name, nargs, cerror)			;\
 	ret
 
+#elif defined(__arm__)
+
+#include <architecture/arm/asm_help.h>
+#include <mach/arm/syscall_sw.h>
+
+/*
+ * ARM system call interface:
+ *
+ * swi 0x80
+ * args: r0-r6
+ * return code: r0
+ * on error, carry bit is set in the psr, otherwise carry bit is cleared.
+ */
+
+/*
+ * Macros.
+ */
+
+/*
+ * until we update the architecture project, these live here
+ */
+
+#if defined(__DYNAMIC__)
+#define MI_GET_ADDRESS(reg,var)  \
+	ldr	reg, 4f					;\
+3:	ldr	reg, [pc, reg]				;\
+	b	5f					;\
+4:	.long	6f - (3b + 8)				;\
+5:							;\
+	.non_lazy_symbol_pointer			;\
+6:							;\
+	.indirect_symbol var				;\
+	.long 0						;\
+	.text						;\
+	.align 2
+#else
+#define MI_GET_ADDRESS(reg,var)  \
+	ldr	reg, 3f	;\
+	b	4f	;\
+3:	.long var	;\
+4:
+#endif
+
+#if defined(__DYNAMIC__)
+#define MI_BRANCH_EXTERNAL(var)				\
+	.globl	var								;\
+	MI_GET_ADDRESS(ip, var)				;\
+ 	bx	ip
+#else
+#define MI_BRANCH_EXTERNAL(var)				;\
+	.globl	var								;\
+ 	b	var
+#endif
+
+#if defined(__DYNAMIC__)
+#define MI_CALL_EXTERNAL(var)    \
+	.globl	var				;\
+	MI_GET_ADDRESS(ip,var)	;\
+	blx	ip
+#else
+#define MI_CALL_EXTERNAL(var)				\
+	.globl	var								;\
+ 	bl	var
+#endif
+
+#define MI_ENTRY_POINT(name)				\
+	.text									;\
+	.align 2	;\
+	.globl  name							;\
+name:
+
+/* load the syscall number into r12 and trap */
+#define DO_SYSCALL(num)		\
+	.if (((num) & 0xff) == (num)) 	       				;\
+	mov		r12, #(num)		       			;\
+	.elseif (((num) & 0x3fc) == (num))				;\
+	mov		r12, #(num)					;\
+	.else								;\
+	mov		r12, #((num) & 0xffffff00)	/* top half of the syscall number */ ;\
+	orr		r12, r12, #((num) & 0xff)	/* bottom half */ ;\
+	.endif								;\
+	swi		#SWI_SYSCALL
+
+/* simple syscalls (0 to 4 args) */
+#define	SYSCALL_0to4(name, cerror)			\
+	MI_ENTRY_POINT(_##name)					;\
+	DO_SYSCALL(SYS_##name)					;\
+	bxcc	lr								/* return if carry is clear (no error) */ ; \
+1:	MI_BRANCH_EXTERNAL(_##cerror)
+
+/* syscalls with 5 args is different, because of the single arg register load */
+#define	SYSCALL_5(name, cerror)				\
+	MI_ENTRY_POINT(_##name)					;\
+	mov		ip, sp							/* save a pointer to the args */ ; \
+	stmfd	sp!, { r4-r5 }					/* save r4-r5 */ ;\
+	ldr		r4, [ip]						/* load 5th arg */ ; \
+	DO_SYSCALL(SYS_##name)					;\
+	ldmfd	sp!, { r4-r5 }					/* restore r4-r5 */ ; \
+	bxcc	lr								/* return if carry is clear (no error) */ ; \
+1:	MI_BRANCH_EXTERNAL(_##cerror)
+
+/* syscalls with 6 to 12 args. kernel may have to read from stack */
+#define SYSCALL_6to12(name, save_regs, arg_regs, cerror) \
+	MI_ENTRY_POINT(_##name)					;\
+	mov		ip, sp							/* save a pointer to the args */ ; \
+	stmfd	sp!, { save_regs }				/* callee saved regs */ ;\
+	ldmia	ip, { arg_regs }				/* load arg regs */ ; \
+	DO_SYSCALL(SYS_##name)					;\
+	ldmfd	sp!, { save_regs }				/* restore callee saved regs */ ; \
+	bxcc	lr								/* return if carry is clear (no error) */ ; \
+1:	MI_BRANCH_EXTERNAL(_##cerror)
+
+#define COMMA ,
+
+#if __BIGGEST_ALIGNMENT__ > 4
+
+/* For the armv7k ABI, the alignment requirements may add padding. So we
+ * let the kernel figure it out and push extra on the stack to avoid un-needed
+ * copy-ins */
+
+ /* We'll also use r8 for moving arguments */
+
+#define SYSCALL_0(name)						SYSCALL_0to4(name)
+#define SYSCALL_1(name)						SYSCALL_0to4(name)
+#define SYSCALL_2(name)						SYSCALL_0to4(name)
+#define SYSCALL_3(name)						SYSCALL_0to4(name)
+#define SYSCALL_4(name)						SYSCALL_6to12(name, r4-r5, r4-r5)
+#undef SYSCALL_5
+#define SYSCALL_5(name)						SYSCALL_6to12(name, r4-r5, r4-r5)
+#define SYSCALL_6(name)						SYSCALL_6to12(name, r4-r6 COMMA r8, r4-r6 COMMA r8)
+#define SYSCALL_7(name)						SYSCALL_6to12(name, r4-r6 COMMA r8, r4-r6 COMMA r8)
+#define SYSCALL_8(name)						SYSCALL_6to12(name, r4-r6 COMMA r8, r4-r6 COMMA r8)
+#define SYSCALL_12(name)					SYSCALL_6to12(name, r4-r6 COMMA r8, r4-r6 COMMA r8)
+
+#else // !(__BIGGEST_ALIGNMENT__ > 4) (the normal arm32 ABI case)
+
+#define SYSCALL_0(name)						SYSCALL_0to4(name)
+#define SYSCALL_1(name)						SYSCALL_0to4(name)
+#define SYSCALL_2(name)						SYSCALL_0to4(name)
+#define SYSCALL_3(name)						SYSCALL_0to4(name)
+#define SYSCALL_4(name)						SYSCALL_0to4(name)
+/* SYSCALL_5 declared above */
+#define SYSCALL_6(name)						SYSCALL_6to12(name, r4-r5, r4-r5)
+#define SYSCALL_7(name)						SYSCALL_6to12(name, r4-r6 COMMA r8, r4-r6)
+#define SYSCALL_8(name)						SYSCALL_6to12(name, r4-r6 COMMA r8, r4-r6) /* 8th on stack */
+#define SYSCALL_12(name)					SYSCALL_6to12(name, r4-r6 COMMA r8, r4-r6) /* 8th-12th on stack */
+
+#endif // __BIGGEST_ALIGNMENT__ > 4
+
+/* select the appropriate syscall code, based on the number of arguments */
+#ifndef __SYSCALL_32BIT_ARG_BYTES
+#define SYSCALL(name, nargs, cerror)		SYSCALL_##nargs(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_##nargs(name, cerror)
+#else
+#if __SYSCALL_32BIT_ARG_BYTES < 20
+#define SYSCALL(name, nargs, cerror)		SYSCALL_0to4(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_0to4(name, cerror)
+#elif __SYSCALL_32BIT_ARG_BYTES == 20
+#define SYSCALL(name, nargs, cerror)		SYSCALL_5(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_5(name, cerror)
+#elif __SYSCALL_32BIT_ARG_BYTES == 24
+#define SYSCALL(name, nargs, cerror)		SYSCALL_6(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_6(name, cerror)
+#elif __SYSCALL_32BIT_ARG_BYTES == 28 
+#define SYSCALL(name, nargs, cerror)		SYSCALL_7(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_7(name, cerror)
+#elif __SYSCALL_32BIT_ARG_BYTES == 32 
+#define SYSCALL(name, nargs, cerror)		SYSCALL_8(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_8(name, cerror)
+#elif __SYSCALL_32BIT_ARG_BYTES == 36 
+#define SYSCALL(name, nargs, cerror)		SYSCALL_8(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_8(name, cerror)
+#elif __SYSCALL_32BIT_ARG_BYTES == 44 
+#define SYSCALL(name, nargs, cerror)		SYSCALL_8(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_8(name, cerror)
+#elif __SYSCALL_32BIT_ARG_BYTES == 48 
+#define SYSCALL(name, nargs, cerror)		SYSCALL_12(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_12(name, cerror)
+#endif
+#endif
+
+#define	SYSCALL_NONAME_0to4(name, cerror)	\
+	DO_SYSCALL(SYS_##name)					;\
+	bcc		1f								/* branch if carry bit is clear (no error) */ ; \
+	MI_BRANCH_EXTERNAL(_##cerror)			/* call cerror */ ; \
+1:
+
+#define	SYSCALL_NONAME_5(name, cerror)		\
+	mov		ip, sp 							/* save a pointer to the args */ ; \
+	stmfd	sp!, { r4-r5 }					/* save r4-r5 */ ;\
+	ldr		r4, [ip]						/* load 5th arg */ ; \
+	DO_SYSCALL(SYS_##name)					;\
+	ldmfd	sp!, { r4-r5 }					/* restore r4-r7 */ ; \
+	bcc		1f								/* branch if carry bit is clear (no error) */ ; \
+	MI_BRANCH_EXTERNAL(_##cerror)			/* call cerror */ ; \
+1:
+
+#define	SYSCALL_NONAME_6to12(name, save_regs, arg_regs, cerror)	\
+	mov		ip, sp 							/* save a pointer to the args */ ; \
+	stmfd	sp!, { save_regs }				/* callee save regs */ ;\
+	ldmia	ip, { arg_regs }				/* load arguments */ ; \
+	DO_SYSCALL(SYS_##name)					;\
+	ldmfd	sp!, { save_regs }				/* restore callee saved regs */ ; \
+	bcc		1f								/* branch if carry bit is clear (no error) */ ; \
+	MI_BRANCH_EXTERNAL(_##cerror)			/* call cerror */ ; \
+1:
+
+
+#if __BIGGEST_ALIGNMENT__ > 4
+
+/* For the armv7k ABI, the alignment requirements may add padding. So we
+ * let the kernel figure it out and push extra on the stack to avoid un-needed
+ * copy-ins. We are relying on arguments that aren't in registers starting
+ * 32 bytes from sp. We also use r8 like in the mach case. */
+
+#define SYSCALL_NONAME_0(name, cerror)				SYSCALL_NONAME_0to4(name, cerror)
+#define SYSCALL_NONAME_1(name, cerror)				SYSCALL_NONAME_0to4(name, cerror)
+#define SYSCALL_NONAME_2(name, cerror)				SYSCALL_NONAME_0to4(name, cerror)
+#define SYSCALL_NONAME_3(name, cerror)				SYSCALL_NONAME_0to4(name, cerror)
+#define SYSCALL_NONAME_4(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r5, r4-r5, cerror)
+#undef SYSCALL_NONAME_5
+#define SYSCALL_NONAME_5(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r5, r4-r5, cerror)
+#define SYSCALL_NONAME_6(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r6 COMMA r8, r4-r6 COMMA r8, cerror)
+#define SYSCALL_NONAME_7(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r6 COMMA r8, r4-r6 COMMA r8, cerror)
+#define SYSCALL_NONAME_8(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r6 COMMA r8, r4-r6 COMMA r8, cerror)
+#define SYSCALL_NONAME_12(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r6 COMMA r8, r4-r6 COMMA r8, cerror)
+
+#else // !(__BIGGEST_ALIGNMENT__ > 4) (the normal arm32 ABI case)
+
+#define SYSCALL_NONAME_0(name, cerror)				SYSCALL_NONAME_0to4(name, cerror)
+#define SYSCALL_NONAME_1(name, cerror)				SYSCALL_NONAME_0to4(name, cerror)
+#define SYSCALL_NONAME_2(name, cerror)				SYSCALL_NONAME_0to4(name, cerror)
+#define SYSCALL_NONAME_3(name, cerror)				SYSCALL_NONAME_0to4(name, cerror)
+#define SYSCALL_NONAME_4(name, cerror)				SYSCALL_NONAME_0to4(name, cerror)
+/* SYSCALL_NONAME_5 declared above */
+#define SYSCALL_NONAME_6(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r5, r4-r5, cerror)
+#define SYSCALL_NONAME_7(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r6 COMMA r8, r4-r6, cerror)
+#define SYSCALL_NONAME_8(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r6 COMMA r8, r4-r6, cerror)
+#define SYSCALL_NONAME_12(name, cerror)				SYSCALL_NONAME_6to12(name, r4-r6 COMMA r8, r4-r6, cerror)
+
+#endif // __BIGGEST_ALIGNMENT__ > 4
+
+#define	PSEUDO(pseudo, name, nargs, cerror)			\
+	.globl pseudo						;\
+	.text									;\
+	.align  2								;\
+pseudo:									;\
+	SYSCALL_NONAME(name, nargs, cerror)
+
+#define __SYSCALL2(pseudo, name, nargs, cerror)		\
+	PSEUDO(pseudo, name, nargs, cerror)				;\
+	bx lr
+
+#define __SYSCALL(pseudo, name, nargs)				\
+	PSEUDO(pseudo, name, nargs, cerror)				;\
+	bx lr
+
+#elif defined(__arm64__)
+
+#include <mach/arm/syscall_sw.h>
+#include <mach/arm/vm_param.h>
+#include <mach/arm64/asm.h>
+
+#if defined(__arm64__) && !defined(__LP64__)
+#define ZERO_EXTEND(argnum) uxtw  x ## argnum, w ## argnum
+#else
+#define ZERO_EXTEND(argnum)
+#endif
+
+#if defined(__arm64__) && !defined(__LP64__)
+#define SIGN_EXTEND(argnum) sxtw  x ## argnum, w ## argnum
+#else
+#define SIGN_EXTEND(argnum)
+#endif
+
+/*
+ * ARM64 system call interface:
+ *
+ * TBD
+ */
+
+#define DO_SYSCALL(num, cerror)	\
+   mov   x16, #(num)    %%\
+   svc   #SWI_SYSCALL	%%\
+   b.cc  2f             %%\
+   PUSH_FRAME			%%\
+   bl    _##cerror		%%\
+   POP_FRAME			%%\
+   ret					%%\
+2:			
+
+#define MI_GET_ADDRESS(reg,var)  \
+   adrp	reg, var@page      %%\
+   add  reg, reg, var@pageoff   %%
+
+#define MI_CALL_EXTERNAL(sym)	\
+   .globl sym                %% \
+   bl sym                  	
+
+#define	SYSCALL_NONAME(name, nargs, cerror)						\
+  DO_SYSCALL(SYS_##name, cerror)					%%	\
+1:
+
+#define MI_ENTRY_POINT(name)				\
+  .text					%% \
+  .align 2	            %% \
+  .globl  name			%%	\
+name:
+
+#define	PSEUDO(pseudo, name, nargs, cerror)			\
+  .text									%% \
+  .align  2								%% \
+  .globl pseudo						%%		\
+  pseudo:									%% \
+	SYSCALL_NONAME(name, nargs, cerror)
+
+#define __SYSCALL(pseudo, name, nargs)		\
+  PSEUDO(pseudo, name, nargs, cerror)		%%	\
+  ret
+
+#define __SYSCALL2(pseudo, name, nargs, cerror)		\
+  PSEUDO(pseudo, name, nargs, cerror)		%% \
+  ret
+
+#elif defined(__ppc__) || defined(__ppc64__)
+
+#include <architecture/ppc/mode_independent_asm.h>
+
+/*
+ * Macros.
+ */
+
+#define	SYSCALL(name, nargs)			\
+	.globl	cerror				@\
+	MI_ENTRY_POINT(_##name)     @\
+	li	r0,SYS_##name			@\
+	sc                          @\
+	b	1f                      @\
+	blr                         @\
+1:	MI_BRANCH_EXTERNAL(cerror)
+
+
+#define	SYSCALL_NONAME(name, nargs)		\
+	.globl	cerror				@\
+	li	r0,SYS_##name			@\
+	sc                          @\
+	b	1f                      @\
+	b	2f                      @\
+1:	MI_BRANCH_EXTERNAL(cerror)  @\
+2:
+
+
+#define	PSEUDO(pseudo, name, nargs)		\
+    .private_extern  _##pseudo           @\
+    .text                       @\
+    .align  2                   @\
+_##pseudo:                      @\
+	SYSCALL_NONAME(name, nargs)
+
+#define __SYSCALL(pseudo, name, nargs)	\
+    PSEUDO(pseudo, name, nargs)	@\
+    blr
+
 #else
 #error Unsupported architecture
 #endif

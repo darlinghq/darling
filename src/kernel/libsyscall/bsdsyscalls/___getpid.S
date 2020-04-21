@@ -102,8 +102,28 @@ LEAF(___getpid, 0)
 #else
 #error Unsupported architecture
 #endif
-
-#if defined(__x86_64__) || defined(__i386__)
+#if defined(__i386__)
 	.globl	_getpid
-		_getpid = ___getpid
+	.set	_getpid, ___getpid
 #endif
+
+#if defined(__x86_64__)
+	.globl	_getpid
+	.set	_getpid, ___getpid
+#endif
+
+#if defined(__ppc__)
+	.globl	_getpid
+	.set	_getpid, ___getpid
+#endif
+
+#if defined(__arm__)
+	.globl	_getpid
+	.set	_getpid, ___getpid
+#endif
+
+#if defined(__arm64__)
+	.globl	_getpid
+	.set	_getpid, ___getpid
+#endif
+

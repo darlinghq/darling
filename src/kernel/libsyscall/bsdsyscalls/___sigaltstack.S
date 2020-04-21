@@ -44,3 +44,8 @@ __SYSCALL_INT(___sigaltstack, sigaltstack, 3)
 	.set	_sigaltstack, ___sigaltstack
 #endif
 
+#if defined(__ppc__)
+	.globl	_sigaltstack
+	.set	_sigaltstack, ___sigaltstack
+#endif
+

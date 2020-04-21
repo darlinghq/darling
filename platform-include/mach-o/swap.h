@@ -44,6 +44,11 @@ extern void swap_fat_arch(
     uint32_t nfat_arch,
     enum NXByteOrder target_byte_order);
 
+extern void swap_fat_arch_64(
+    struct fat_arch_64 *fat_archs64,
+    uint32_t nfat_arch,
+    enum NXByteOrder target_byte_order);
+
 extern void swap_mach_header(
     struct mach_header *mh,
     enum NXByteOrder target_byte_order);
@@ -186,6 +191,19 @@ extern void swap_source_version_command(
     struct source_version_command *sv,
     enum NXByteOrder target_byte_sex);
 
+extern void swap_note_command(
+    struct note_command *nc,
+    enum NXByteOrder target_byte_sex);
+
+extern void swap_build_version_command(
+    struct build_version_command *bv,
+    enum NXByteOrder target_byte_sex);
+
+extern void swap_build_tool_version(
+    struct build_tool_version *bt,
+    uint32_t ntools,
+    enum NXByteOrder target_byte_sex);
+
 extern void swap_prebind_cksum_command(
     struct prebind_cksum_command *cksum_cmd,
     enum NXByteOrder target_byte_sex);
@@ -212,6 +230,11 @@ extern void swap_nlist_64(
 extern void swap_ranlib(
     struct ranlib *ranlibs,
     uint32_t nranlibs,
+    enum NXByteOrder target_byte_order);
+
+extern void swap_ranlib_64(
+    struct ranlib_64 *ranlibs,
+    uint64_t nranlibs,
     enum NXByteOrder target_byte_order);
 
 extern void swap_relocation_info(

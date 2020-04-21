@@ -38,6 +38,7 @@
 
 #include "SYS.h"
 
+
 #if defined(__i386__)
 
 #if defined(__DYNAMIC__)
@@ -79,15 +80,13 @@ L1:
 	testl		%edx, %edx		// CF=OF=0,  ZF set if zero result
 	jz		L2			// parent, since r1 == 0 in parent, 1 in child
 	xorl		%eax, %eax		// zero eax
-	//jmp		*%ecx
-	ret
+	jmp		*%ecx
 
 L2:
 	GET_CURRENT_PID
 	lock
 	incl		__current_pid
-	//jmp		*%ecx
-	ret
+	jmp		*%ecx
 
 #elif defined(__x86_64__)
 
@@ -135,8 +134,7 @@ L1:
 	jnz		L2
 #endif
 	xorq		%rax, %rax		// zero rax
-	//jmp		*%rdi
-	ret
+	jmp		*%rdi
 
 L2:
 	movq		__current_pid@GOTPCREL(%rip), %rdx
@@ -164,6 +162,21 @@ L2:
 #endif
 
 #if defined(__x86_64__)
+	.globl	_vfork
+	.set	_vfork, ___vfork
+#endif
+
+#if defined(__ppc__)
+	.globl	_vfork
+	.set	_vfork, ___vfork
+#endif
+
+#if defined(__arm__)
+	.globl	_vfork
+	.set	_vfork, ___vfork
+#endif
+
+#if defined(__arm64__)
 	.globl	_vfork
 	.set	_vfork, ___vfork
 #endif

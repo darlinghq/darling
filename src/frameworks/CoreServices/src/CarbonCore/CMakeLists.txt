@@ -14,7 +14,6 @@ set(CarbonCore_SRCS
 	DriverSynchronization.cpp
 	DriverServices.cpp
 	Components.cpp
-	Processes.cpp
 	OpenTransport.cpp
 	Timer.cpp
 	TextCommon.cpp
@@ -26,6 +25,7 @@ set(CarbonCore_SRCS
 	MacErrors.cpp
 	UserBreak.cpp
 	Debugging.cpp
+	CoreServicesPriv.cpp
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.0")

@@ -67,6 +67,10 @@ enum {
 	kFSEventStreamCreateFlagUseExtendedData = 0x40,
 };
 
+enum {
+	kFSEventStreamEventIdSinceNow = 0xFFFFFFFFFFFFFFFFULL,
+};
+
 #define kFSEventStreamEventExtendedDataPathKey      CFSTR("path")
 #define kFSEventStreamEventExtendedFileIDKey        CFSTR("fileID")
 

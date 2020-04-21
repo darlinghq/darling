@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <CoreFoundation/CoreFoundation.h>
+#include <LaunchServices/LaunchServicesPriv.h>
+#include <CoreGraphics/CGS.h>
 
 const CFStringRef kAXUIElementCopyHierarchyArrayAttributesKey = CFSTR("AXCHAA");
 const CFStringRef kAXUIElementCopyHierarchyMaxArrayCountKey = CFSTR("AXCHMAC");
@@ -33,10 +35,27 @@ const CFStringRef kAXUIElementCopyHierarchyTruncateStringsKey = CFSTR("AXTRUNC")
 CFStringRef kAXTrustedCheckOptionPrompt = CFSTR("AXTrustedCheckOptionPrompt");
 
 static int verbose = 0;
+static Boolean g_isDaemon = FALSE;
 
 __attribute__((constructor))
 static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
+}
+
+OSStatus SetApplicationIsDaemon(Boolean daemon)
+{
+    g_isDaemon = daemon;
+    if (daemon)
+        CGSSetDenyWindowServerConnections(TRUE);
+
+    _LSSetApplicationLaunchServicesServerConnectionStatus(daemon ? 2 : 0, NULL);
+
+    return noErr;
+}
+
+Boolean GetApplicationIsDaemon(void)
+{
+    return g_isDaemon;
 }
 
 void* AXAPIEnabled(void)
@@ -348,12 +367,6 @@ void* CGRectInIconRef(void)
 void* CopyLabelColorAndName(void)
 {
     if (verbose) puts("STUB: CopyLabelColorAndName called");
-    return NULL;
-}
-
-void* CopyProcessName(void)
-{
-    if (verbose) puts("STUB: CopyProcessName called");
     return NULL;
 }
 
@@ -1509,30 +1522,6 @@ void* DesktopPictureSetValue(void)
     return NULL;
 }
 
-void* ExitToShell(void)
-{
-    if (verbose) puts("STUB: ExitToShell called");
-    return NULL;
-}
-
-void* GetApplicationIsDaemon(void)
-{
-    if (verbose) puts("STUB: GetApplicationIsDaemon called");
-    return NULL;
-}
-
-void* GetCurrentProcess(void)
-{
-    if (verbose) puts("STUB: GetCurrentProcess called");
-    return NULL;
-}
-
-void* GetFrontProcess(void)
-{
-    if (verbose) puts("STUB: GetFrontProcess called");
-    return NULL;
-}
-
 void* GetGlobalIconImagesCacheMaxEntriesAndMaxDataSize(void)
 {
     if (verbose) puts("STUB: GetGlobalIconImagesCacheMaxEntriesAndMaxDataSize called");
@@ -1548,36 +1537,6 @@ void* GetIconFamilyData(void)
 void* GetIconRefVariant(void)
 {
     if (verbose) puts("STUB: GetIconRefVariant called");
-    return NULL;
-}
-
-void* GetNextProcess(void)
-{
-    if (verbose) puts("STUB: GetNextProcess called");
-    return NULL;
-}
-
-void* GetProcessBundleLocation(void)
-{
-    if (verbose) puts("STUB: GetProcessBundleLocation called");
-    return NULL;
-}
-
-void* GetProcessForPID(void)
-{
-    if (verbose) puts("STUB: GetProcessForPID called");
-    return NULL;
-}
-
-void* GetProcessInformation(void)
-{
-    if (verbose) puts("STUB: GetProcessInformation called");
-    return NULL;
-}
-
-void* GetProcessPID(void)
-{
-    if (verbose) puts("STUB: GetProcessPID called");
     return NULL;
 }
 
@@ -2121,24 +2080,6 @@ void* IsProcessManagerInitialized(void)
     return NULL;
 }
 
-void* IsProcessVisible(void)
-{
-    if (verbose) puts("STUB: IsProcessVisible called");
-    return NULL;
-}
-
-void* KillProcess(void)
-{
-    if (verbose) puts("STUB: KillProcess called");
-    return NULL;
-}
-
-void* LaunchApplication(void)
-{
-    if (verbose) puts("STUB: LaunchApplication called");
-    return NULL;
-}
-
 void* LaunchProcess(void)
 {
     if (verbose) puts("STUB: LaunchProcess called");
@@ -2289,12 +2230,6 @@ void* PlotIconRefInContext(void)
     return NULL;
 }
 
-void* ProcessInformationCopyDictionary(void)
-{
-    if (verbose) puts("STUB: ProcessInformationCopyDictionary called");
-    return NULL;
-}
-
 void* SXArbitrationAddQueuedOutputRequest(void)
 {
     if (verbose) puts("STUB: SXArbitrationAddQueuedOutputRequest called");
@@ -2331,33 +2266,9 @@ void* SXArbitrationRegisterOutputStopped(void)
     return NULL;
 }
 
-void* SameProcess(void)
-{
-    if (verbose) puts("STUB: SameProcess called");
-    return NULL;
-}
-
 void* SerializeCFType(void)
 {
     if (verbose) puts("STUB: SerializeCFType called");
-    return NULL;
-}
-
-void* SetApplicationIsDaemon(void)
-{
-    if (verbose) puts("STUB: SetApplicationIsDaemon called");
-    return NULL;
-}
-
-void* SetFrontProcess(void)
-{
-    if (verbose) puts("STUB: SetFrontProcess called");
-    return NULL;
-}
-
-void* SetFrontProcessWithOptions(void)
-{
-    if (verbose) puts("STUB: SetFrontProcessWithOptions called");
     return NULL;
 }
 
@@ -2385,21 +2296,9 @@ void* ShowHideDrag(void)
     return NULL;
 }
 
-void* ShowHideProcess(void)
-{
-    if (verbose) puts("STUB: ShowHideProcess called");
-    return NULL;
-}
-
 void* StartIPCPing(void)
 {
     if (verbose) puts("STUB: StartIPCPing called");
-    return NULL;
-}
-
-void* TransformProcessType(void)
-{
-    if (verbose) puts("STUB: TransformProcessType called");
     return NULL;
 }
 
@@ -2472,12 +2371,6 @@ void* UAZoomEnabled(void)
 void* UnserializeCFType(void)
 {
     if (verbose) puts("STUB: UnserializeCFType called");
-    return NULL;
-}
-
-void* WakeUpProcess(void)
-{
-    if (verbose) puts("STUB: WakeUpProcess called");
     return NULL;
 }
 

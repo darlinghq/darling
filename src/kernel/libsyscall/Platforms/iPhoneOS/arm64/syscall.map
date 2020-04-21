@@ -1,0 +1,67 @@
+_accept$NOCANCEL	___accept_nocancel
+_aio_suspend$NOCANCEL	___aio_suspend_nocancel
+_close$NOCANCEL	___close_nocancel
+_connect$NOCANCEL	___connect_nocancel
+_fstat	___fstat64
+_fstat64
+_fstatat	___fstatat64
+_fstatat64
+_fstatfs	___fstatfs64
+_fstatfs64
+_fstatx_np	___fstatx64_np
+_fstatx64_np
+_fsync$NOCANCEL	___fsync_nocancel
+_getfsstat	___getfsstat64
+_getfsstat64
+_getmntinfo	___getmntinfo64
+_getmntinfo64
+_lstat	___lstat64
+_lstat64
+_lstatx_np	___lstatx64_np
+_lstatx64_np
+_msgrcv$NOCANCEL	___msgrcv_nocancel
+_msgsnd$NOCANCEL	___msgsnd_nocancel
+_msync$NOCANCEL	___msync_nocancel
+_poll$NOCANCEL	___poll_nocancel
+_pread$NOCANCEL	___pread_nocancel
+_pwrite$NOCANCEL	___pwrite_nocancel
+_read$NOCANCEL	___read_nocancel
+_readv$NOCANCEL	___readv_nocancel
+_recvfrom$NOCANCEL	___recvfrom_nocancel
+_recvmsg$NOCANCEL	___recvmsg_nocancel
+_select$DARWIN_EXTSN	___select
+_select$DARWIN_EXTSN$NOCANCEL	___select_nocancel
+_sem_wait$NOCANCEL	___sem_wait_nocancel
+_sendmsg$NOCANCEL	___sendmsg_nocancel
+_sendto$NOCANCEL	___sendto_nocancel
+_stat	___stat64
+_stat64
+_statfs	___statfs64
+_statfs64
+_statx_np	___statx64_np
+_statx64_np
+_waitid$NOCANCEL	___waitid_nocancel
+_write$NOCANCEL	___write_nocancel
+_writev$NOCANCEL	___writev_nocancel
+
+_accept ___accept
+_bind ___bind
+_getattrlist ___getattrlist
+_getpeername ___getpeername
+_getsockname ___getsockname
+_lchown ___lchown
+_listen ___listen
+_recvfrom ___recvfrom
+_recvmsg ___recvmsg
+_sendmsg ___sendmsg
+_sendto ___sendto
+_setattrlist ___setattrlist
+_socketpair ___socketpair
+
+_mprotect ___mprotect
+_setregid ___setregid
+_setreuid ___setreuid
+_connect ___connect
+_msync ___msync
+_msgctl ___msgctl
+_shmctl ___shmctl

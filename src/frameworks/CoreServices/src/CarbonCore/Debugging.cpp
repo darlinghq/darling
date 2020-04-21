@@ -61,3 +61,9 @@ UInt32 TaskLevel(void)
 	return 0;
 }
 
+void DebugStr(ConstStr255Param msg)
+{
+	std::cerr.write((const char*) &msg[1], msg[0]);
+	std::cerr << std::endl;
+	doUserBreak();
+}

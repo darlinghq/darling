@@ -90,13 +90,17 @@
 #define	N_STSYM	0x26	/* static symbol: name,,n_sect,type,address */
 #define	N_LCSYM	0x28	/* .lcomm symbol: name,,n_sect,type,address */
 #define N_BNSYM 0x2e	/* begin nsect sym: 0,,n_sect,0,address */
+#define N_AST	0x32	/* AST file path: name,,NO_SECT,0,0 */
 #define N_OPT	0x3c	/* emitted with gcc2_compiled and in gcc source */
 #define	N_RSYM	0x40	/* register sym: name,,NO_SECT,type,register */
 #define	N_SLINE	0x44	/* src line: 0,,n_sect,linenumber,address */
 #define N_ENSYM 0x4e	/* end nsect sym: 0,,n_sect,0,address */
 #define	N_SSYM	0x60	/* structure elt: name,,NO_SECT,type,struct_offset */
 #define	N_SO	0x64	/* source file name: name,,n_sect,0,address */
-#define	N_OSO	0x66	/* object file name: name,,0,0,st_mtime */
+#define	N_OSO	0x66	/* object file name: name,,(see below),0,st_mtime */
+			/*   historically N_OSO set n_sect to 0. The N_OSO
+			 *   n_sect may instead hold the low byte of the
+			 *   cpusubtype value from the Mach-O header. */
 #define	N_LSYM	0x80	/* local sym: name,,NO_SECT,type,offset */
 #define N_BINCL	0x82	/* include file beginning: name,,NO_SECT,0,sum */
 #define	N_SOL	0x84	/* #included file name: name,,n_sect,0,address */

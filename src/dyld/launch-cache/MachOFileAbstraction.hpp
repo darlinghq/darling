@@ -30,73 +30,12 @@
 #include <mach/machine.h>
 
 // suport older versions of mach-o/loader.h
-#ifndef LC_UUID
-#define LC_UUID		0x1b
-struct uuid_command {
-    uint32_t	cmd;		/* LC_UUID */
-    uint32_t	cmdsize;	/* sizeof(struct uuid_command) */
-    uint8_t	uuid[16];	/* the 128-bit uuid */
-};
-#endif
 
-#ifndef S_16BYTE_LITERALS
-	#define S_16BYTE_LITERALS 0xE
-#endif
 
-#ifndef CPU_SUBTYPE_ARM_V5TEJ
-	#define CPU_SUBTYPE_ARM_V5TEJ		((cpu_subtype_t) 7)
-#endif
-#ifndef CPU_SUBTYPE_ARM_XSCALE
-	#define CPU_SUBTYPE_ARM_XSCALE		((cpu_subtype_t) 8)
-#endif
-#ifndef CPU_SUBTYPE_ARM_V7
-	#define CPU_SUBTYPE_ARM_V7			((cpu_subtype_t) 9)
-#endif
-#ifndef CPU_SUBTYPE_ARM_V7F
-	#define CPU_SUBTYPE_ARM_V7F			((cpu_subtype_t) 10)
-#endif
-#ifndef CPU_SUBTYPE_ARM_V7K
-	#define CPU_SUBTYPE_ARM_V7K			((cpu_subtype_t) 12)
-#endif
-#ifndef CPU_SUBTYPE_ARM_V7S
-	#define CPU_SUBTYPE_ARM_V7S			((cpu_subtype_t) 11)
-#endif
-#ifndef CPU_SUBTYPE_ARM64_ALL
-	#define CPU_SUBTYPE_ARM64_ALL		((cpu_subtype_t) 0)
-#endif
-#ifndef CPU_TYPE_ARM64
-	#define CPU_TYPE_ARM64				((cpu_type_t) (CPU_TYPE_ARM | CPU_ARCH_ABI64))
-#endif
 
 #define ARM64_RELOC_UNSIGNED            0 // for pointers
 
 
-#ifndef LC_LOAD_UPWARD_DYLIB
-	#define	LC_LOAD_UPWARD_DYLIB (0x23|LC_REQ_DYLD)	/* load of dylib whose initializers run later */
-#endif
-
-#ifndef EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER
-	#define EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER 0x10
-#endif
-#ifndef EXPORT_SYMBOL_FLAGS_REEXPORT
-	#define EXPORT_SYMBOL_FLAGS_REEXPORT 0x08
-#endif
-
-#ifndef LC_FUNCTION_STARTS
-	#define LC_FUNCTION_STARTS 0x26
-#endif
-
-#ifndef LC_DATA_IN_CODE
-	#define LC_DATA_IN_CODE 0x29
-#endif
-
-#ifndef LC_DYLIB_CODE_SIGN_DRS
-	#define LC_DYLIB_CODE_SIGN_DRS 0x2B
-#endif
-
-#ifndef CPU_SUBTYPE_X86_64_H
-	#define CPU_SUBTYPE_X86_64_H		((cpu_subtype_t) 8) 
-#endif
 
 
 #define DYLD_CACHE_ADJ_V2_FORMAT				0x7F
@@ -114,7 +53,6 @@ struct uuid_command {
 #define DYLD_CACHE_ADJ_V2_THUMB_BR22			0x0B
 #define DYLD_CACHE_ADJ_V2_IMAGE_OFF_32			0x0C
 
-#define MH_HAS_OBJC			0x40000000
 
 #include "FileAbstraction.hpp"
 #include "Architectures.hpp"
@@ -947,12 +885,12 @@ inline int64_t read_sleb128(const uint8_t*& p, const uint8_t* end)
 		if (p == end)
 			throw "malformed sleb128";
 		byte = *p++;
-		result |= ((byte & 0x7f) << bit);
+		result |= (((int64_t)(byte & 0x7f)) << bit);
 		bit += 7;
 	} while (byte & 0x80);
 	// sign extend negative numbers
 	if ( (byte & 0x40) != 0 )
-		result |= (-1LL) << bit;
+		result |= (~0ULL) << bit;
 	return result;
 }
 

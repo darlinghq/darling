@@ -36,18 +36,13 @@
 
 int main()
 {
-	const struct dyld_all_image_infos* allInfo = _dyld_get_all_image_infos();
-	if ( allInfo == NULL ) {
-		FAIL("dyld_shared_cache_iterate_text: _dyld_get_all_image_infos() failed");
-		exit(0);
-	}
     uuid_t curUuid;
-    memcpy(curUuid, allInfo->sharedCacheUUID, 16);
+    _dyld_get_shared_cache_uuid(curUuid);
 
     int __block imageCount = 0;
     int result = dyld_shared_cache_iterate_text(curUuid, ^(const dyld_shared_cache_dylib_text_info* info) {
         ++imageCount;
-        //printf("  cur: 0x%09llX -> 0x%09llX  %s\n", info->loadAddressUnslid, info->loadAddressUnslid +  info->textSegmentSize, info->path);
+        //printf("  cur: 0x%09llX -> 0x%09llX  off=0x%0llX %s\n", info->loadAddressUnslid, info->loadAddressUnslid +  info->textSegmentSize, info->textSegmentOffset, info->path);
     });
 	if ( result != 0 ) {
 		FAIL("dyld_shared_cache_iterate_text: dyld_shared_cache_iterate_text() failed");

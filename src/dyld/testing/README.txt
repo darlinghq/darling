@@ -1,7 +1,7 @@
 
 When the dyld_tests target is built, all test cases are built into /AppleInternal/.
 A test case is a directory in $SRCROOT/testing/test-cases/ whose name ends in ".dtest".
-The build system scraps any .c or .cxx files in the .dtest directory looking for BUILD: or RUN: lines.
+The build system reads any .c or .cxx files in the .dtest directory looking for BUILD: or RUN: lines.
 The BUILD: lines are use to build the test case binaries.
 The RUN: lines are used to build the information needed for BATS to run the test cases.
 Example, main.c may contain:

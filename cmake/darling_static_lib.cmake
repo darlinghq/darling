@@ -7,7 +7,7 @@ function(add_darling_static_library name)
 	cmake_parse_arguments(STATIC_LIB "FAT" "" "SOURCES" ${ARGN})
 
 	set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
-	set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
+	set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ranlib")
 	add_library(${name} STATIC ${STATIC_LIB_SOURCES})
 
 	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")

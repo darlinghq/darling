@@ -8,7 +8,7 @@ add_compile_options(
 add_darling_executable(sw_vers sw_vers.c)
 add_darling_executable(sudo sudo.c)
 add_darling_executable(codesign codesign.c)
-add_darling_executable(open open.c)
+add_darling_executable(open open.m)
 add_darling_executable(dsmemberutil dsmemberutil.c)
 add_darling_executable(softwareupdate softwareupdate.c)
 
@@ -16,4 +16,4 @@ install(TARGETS sw_vers sudo codesign dsmemberutil open DESTINATION libexec/darl
 install(TARGETS softwareupdate DESTINATION libexec/darling/usr/sbin)
 
 target_link_libraries(sw_vers CoreFoundation)
-target_link_libraries(open CoreFoundation ApplicationServices)
+target_link_libraries(open CoreServices Foundation AppKit)

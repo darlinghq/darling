@@ -1,9 +1,9 @@
 
 // BUILD:  $CC linksWithCF.c  -o $BUILD_DIR/linksWithCF.exe -framework CoreFoundation
-// BUILD:  $CC main.c         -o $BUILD_DIR/dyld_process_info.exe
+// BUILD:  $CC main.c         -o $BUILD_DIR/dyld_process_info.exe -ldarwintest
 // BUILD:  $TASK_FOR_PID_ENABLE  $BUILD_DIR/dyld_process_info.exe
 
-// RUN:  $SUDO ./dyld_process_info.exe $RUN_DIR/linksWithCF.exe
+// RUN:  $SUDO ./dyld_process_info.exe
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,166 +12,96 @@
 #include <signal.h>
 #include <spawn.h>
 #include <errno.h>
+#include <sys/uio.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 #include <mach/mach.h>
 #include <mach/machine.h>
+#include <mach-o/dyld_priv.h>
 #include <mach-o/dyld_process_info.h>
+#include <Availability.h>
 
+#include "dyld_test.h"
 
-extern char** environ;
-
-#if __x86_64__
-    cpu_type_t otherArch[] = { CPU_TYPE_I386 };
-#elif __i386__
-    cpu_type_t otherArch[] = { CPU_TYPE_X86_64 };
-#elif __arm64__
-    cpu_type_t otherArch[] = { CPU_TYPE_ARM };
-#elif __arm__
-    cpu_type_t otherArch[] = { CPU_TYPE_ARM64 };
-#endif
-
-static task_t launchTest(const char* testProgPath, bool launchOtherArch, bool launchSuspended)
+static void inspectProcess(task_t task, bool launchedSuspended, bool expectCF, bool forceIOSMac)
 {
-    posix_spawnattr_t attr;
-    if ( posix_spawnattr_init(&attr) != 0 ) {
-        printf("[FAIL] dyld_process_info posix_spawnattr_init()\n");
-        exit(0);
-    }
-    if ( launchSuspended ) {
-        if ( posix_spawnattr_setflags(&attr, POSIX_SPAWN_START_SUSPENDED) != 0 ) {
-            printf("[FAIL] dyld_process_info POSIX_SPAWN_START_SUSPENDED\n");
-            exit(0);
-        }
-    }
-    if ( launchOtherArch ) {
-        size_t copied;
-        if ( posix_spawnattr_setbinpref_np(&attr, 1, otherArch, &copied) != 0 ) {
-           printf("[FAIL] dyld_process_info posix_spawnattr_setbinpref_np()\n");
-            exit(0);
-        }
+    kern_return_t result;
+    dyld_process_info info = _dyld_process_info_create(task, 0, &result);
+    T_EXPECT_MACH_SUCCESS(result, "dyld_process_info() should succeed");
+    T_ASSERT_NOTNULL(info, "dyld_process_info(task, 0) alwats return a value");
+
+    dyld_process_state_info stateInfo;
+    bzero(&stateInfo, sizeof(stateInfo));
+    _dyld_process_info_get_state(info, &stateInfo);
+    T_EXPECT_EQ_UINT((stateInfo.dyldState == dyld_process_state_not_started), launchedSuspended, "If launchSuspended then stateInfo.dyldState shoould be dyld_process_state_not_started");
+    if ( !launchedSuspended ) {
+        T_EXPECT_GE_UCHAR(stateInfo.dyldState, dyld_process_state_libSystem_initialized, "libSystem should be initalized by now");
+        T_EXPECT_GT_UINT(stateInfo.imageCount, 0, "image count should be > 0");
+        T_EXPECT_GT_UINT(stateInfo.initialImageCount, 0, "initial image count should be > 0");
+        T_EXPECT_GE_UINT(stateInfo.imageCount, stateInfo.initialImageCount, "image count should be >= initial image count");
     }
 
-    pid_t childPid;
-    const char* argv[] = { testProgPath, NULL };
-    int psResult = posix_spawn(&childPid, testProgPath, NULL, &attr, (char**)argv, environ);
-    if ( psResult != 0 ) {
-        printf("[FAIL] dyld_process_info posix_spawn(%s) failed, err=%d\n", testProgPath, psResult);
-        exit(0);
+    if (launchedSuspended) {
+        T_EXPECT_EQ_UINT(_dyld_process_info_get_platform(info), 0, "_dyld_process_info_get_platform() should be 0 for launchSuspended processes");
+    } else if (forceIOSMac) {
+        T_EXPECT_EQ_UINT(_dyld_process_info_get_platform(info), PLATFORM_IOSMAC, "_dyld_process_info_get_platform() should be PLATFORM_IOSMAC");
+    } else {
+        T_EXPECT_EQ_UINT(_dyld_process_info_get_platform(info), dyld_get_active_platform(), "_dyld_process_info_get_platform() should be the same dyld_get_active_platform()");
     }
-    //printf("child pid=%d\n", childPid);
 
-    task_t childTask = 0;
-    if ( task_for_pid(mach_task_self(), childPid, &childTask) != KERN_SUCCESS ) {
-        printf("[FAIL] dyld_process_info task_for_pid()\n");
-        kill(childPid, SIGKILL);
-        exit(0);
+    __block bool foundDyld = false;
+    __block bool foundMain = false;
+    __block bool foundCF = false;
+    _dyld_process_info_for_each_image(info, ^(uint64_t machHeaderAddress, const uuid_t uuid, const char* path) {
+        if ( strstr(path, "/dyld") != NULL )
+            foundDyld = true;
+        if ( strstr(path, "/linksWithCF.exe") != NULL )
+            foundMain = true;
+        if ( strstr(path, "/dyld_process_info.exe") != NULL )
+            foundMain = true;
+        if ( strstr(path, "/CoreFoundation.framework/") != NULL )
+            foundCF = true;
+    });
+    T_EXPECT_TRUE(foundDyld, "dyld should always be in the image list");
+    T_EXPECT_TRUE(foundMain, "The main executable should always be in the image list");
+    if (expectCF) {
+        T_EXPECT_TRUE(foundCF, "CF should be in the image list");
     }
+
+     _dyld_process_info_release(info);
+}
+
+static void launchTest(bool launchOtherArch, bool launchSuspended, bool forceIOSMac)
+{
+    if (forceIOSMac) { setenv("DYLD_FORCE_PLATFORM", "6", 1); }
+    pid_t pid = T_POSIXSPAWN_ASSERT(launchSuspended, launchOtherArch, INSTALL_PATH "/linksWithCF.exe");
+    task_t task = T_TASK_FOR_PID_ASSERT(pid);
+    if (forceIOSMac) { unsetenv("DYLD_FORCE_PLATFORM"); }
 
     // wait until process is up and has suspended itself
     struct task_basic_info info;
     do {
         unsigned count = TASK_BASIC_INFO_COUNT;
-        kern_return_t kr = task_info(childTask, TASK_BASIC_INFO, (task_info_t)&info, &count);
-        sleep(1);
+        kern_return_t kr = task_info(task, TASK_BASIC_INFO, (task_info_t)&info, &count);
+        usleep(10000);
     } while ( info.suspend_count == 0 );
 
-    return childTask;
+    inspectProcess(task, launchSuspended, !launchSuspended, forceIOSMac);
+    int r = kill(pid, SIGKILL);
+    waitpid(pid, &r, 0);
 }
 
-static bool hasCF(task_t task, bool launchedSuspended)
-{
-    kern_return_t result;
-    dyld_process_info info = _dyld_process_info_create(task, 0, &result);
-    if ( info == NULL ) {
-        printf("[FAIL] dyld_process_info _dyld_process_info_create(), kern_return_t=%d\n", result);
-        return false;
-    }
-
-    dyld_process_state_info stateInfo;
-    _dyld_process_info_get_state(info, &stateInfo);
-    bool valueSaysLaunchedSuspended = (stateInfo.dyldState == dyld_process_state_not_started);
-    if ( valueSaysLaunchedSuspended != launchedSuspended ) {
-        printf("[FAIL] dyld_process_info suspend state mismatch\n");
-        return false;
-    }
-
-    __block bool foundDyld = false;
-    _dyld_process_info_for_each_image(info, ^(uint64_t machHeaderAddress, const uuid_t uuid, const char* path) {
-        //fprintf(stderr, "0x%llX %s\n", machHeaderAddress, path);
-        if ( strstr(path, "/usr/lib/dyld") != NULL )
-            foundDyld = true;
-    });
-
-    if ( launchedSuspended ) {
-        // fprintf(stderr, "launched suspended image list:\n");
-        __block bool foundMain = false;
-        _dyld_process_info_for_each_image(info, ^(uint64_t machHeaderAddress, const uuid_t uuid, const char* path) {
-            //fprintf(stderr, "0x%llX %s\n", machHeaderAddress, path);
-            if ( strstr(path, "/linksWithCF.exe") != NULL )
-                foundMain = true;
-       });
-        return foundMain && foundDyld;
-    }
-
-    __block bool foundCF = false;
-    _dyld_process_info_for_each_image(info, ^(uint64_t machHeaderAddress, const uuid_t uuid, const char* path) {
-        //fprintf(stderr, "0x%llX %s\n", machHeaderAddress, path);
-        if ( strstr(path, "/CoreFoundation.framework/") != NULL )
-            foundCF = true;
-    });
-
-    _dyld_process_info_release(info);
-
-    return foundCF && foundDyld;
-}
-
-
-int main(int argc, const char* argv[])
-{
-    printf("[BEGIN] dyld_process_info\n");
-
-    if ( argc < 2 ) {
-        printf("[FAIL] dyld_process_info missing argument\n");
-        exit(0);
-    }
-    const char* testProgPath = argv[1];
-    task_t childTask;
-
-    // launch test program same arch as this program
-    childTask = launchTest(testProgPath, false, false);
-    if ( ! hasCF(childTask, false) ) {
-        printf("[FAIL] dyld_process_info same arch does not link with CF and dyld\n");
-        task_terminate(childTask);
-        exit(0);
-    }
-    task_terminate(childTask);
-    
-    // launch test program suspended
-    childTask = launchTest(testProgPath, false, true);
-    if ( ! hasCF(childTask, true) ) {
-        printf("[FAIL] dyld_process_info suspended does not link with CF and dyld\n");
-        task_terminate(childTask);
-        exit(0);
-    }
-    task_resume(childTask);
-    task_terminate(childTask);
-
-#if !TARGET_OS_WATCH && !TARGET_OS_TV && __LP64__
-    // on 64/32 devices, run test program as other arch too
-    childTask = launchTest(testProgPath, true, false);
-    if ( ! hasCF(childTask, false) ) {
-        printf("[FAIL] dyld_process_info other arch does not link with CF and dyld\n");
-        task_terminate(childTask);
-        exit(0);
-    }
-    task_terminate(childTask);
+T_DECL_DYLD(dyld_process_info, "Test basic dyld_process_info functionality", T_META_ASROOT(true)) {
+    launchTest(false, false, false);
+    launchTest(false, true, false);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED
+    // FIXME: Reenable these ones i386 is turned back on for simulators
+    //launchTest(true, false, false);
+    //launchTest(true, true, false);
+    launchTest(false, false, true);
+    launchTest(false, true, true);
+    //FIXME: This functionality is broken, but it is an edge case no one should ever hit
+    //launchTest(true, true, true);
 #endif
-
-    // verify this program does not use CF
-    if ( hasCF(mach_task_self(), false) ) {
-        printf("[FAIL] dyld_process_info self links with CF and dyld\n");
-        exit(0);
-    }
-
-    printf("[PASS] dyld_process_info\n");
-	return 0;
+    inspectProcess(mach_task_self(), false, false, false);
 }

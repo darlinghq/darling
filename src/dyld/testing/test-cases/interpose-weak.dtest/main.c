@@ -1,10 +1,12 @@
 // BUILD:  $CC foo.c -dynamiclib -o $BUILD_DIR/libfoo.dylib -install_name $RUN_DIR/libfoo.dylib
 // BUILD:  $CC main.c $BUILD_DIR/libfoo.dylib -o $BUILD_DIR/interpose-weak-present.exe
+// BUILD:  $DYLD_ENV_VARS_ENABLE $BUILD_DIR/interpose-weak-present.exe
 // BUILD:  $CC interposer.c -dynamiclib $BUILD_DIR/libfoo.dylib -o $BUILD_DIR/libinterposer.dylib -install_name libinterposer.dylib
 
 // BUILD:  $CC foo.c            -dynamiclib -o $TEMP_DIR/libfoo2.dylib  -install_name $RUN_DIR/libfoo2.dylib
 // BUILD:  $CC foo.c -DNO_FOO34 -dynamiclib -o $BUILD_DIR/libfoo2.dylib -install_name $RUN_DIR/libfoo2.dylib
 // BUILD:  $CC main.c -DNO_FOO34  $TEMP_DIR/libfoo2.dylib -o $BUILD_DIR/interpose-weak-missing.exe
+// BUILD:  $DYLD_ENV_VARS_ENABLE $BUILD_DIR/interpose-weak-missing.exe
 // BUILD:  $CC interposer.c -dynamiclib $TEMP_DIR/libfoo2.dylib -o $BUILD_DIR/libinterposer2.dylib -install_name libinterposer.dylib
 
 

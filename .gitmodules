@@ -325,3 +325,9 @@
 [submodule "src/external/IOKitTools"]
         path = src/external/IOKitTools
         url = ../darling-IOKitTools.git
+[submodule "src/external/fmdb"]
+	path = src/external/fmdb
+	url = ../fmdb.git
+[submodule "src/external/swift"]
+	path = src/external/swift
+	url = ../darling-swift.git

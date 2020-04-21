@@ -36,6 +36,8 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 
 	switch (cmd)
 	{
+		case F_CHECK_LV:
+			return 0;
 		case F_DUPFD:
 			linux_cmd = LINUX_F_DUPFD;
 			break;

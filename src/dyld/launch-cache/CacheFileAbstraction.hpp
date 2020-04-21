@@ -97,6 +97,7 @@ private:
 };
 
 
+
 template <typename E>
 class dyldCacheFileMapping {
 public:		
@@ -292,6 +293,7 @@ private:
 	dyld_cache_accelerator_dof			fields;
 };
 
+
 template <typename E>
 class dyldCacheSlideInfo {
 public:		
@@ -362,6 +364,30 @@ public:
 
 private:
 	dyld_cache_slide_info2			fields;
+};
+
+
+template <typename E>
+class dyldCacheSlideInfo3 {
+public:
+    uint32_t        version() const                                INLINE { return E::get32(fields.version); }
+    void            set_version(uint32_t value)                    INLINE { E::set32(fields.version, value); }
+
+    uint32_t        page_starts_count() const                    INLINE { return E::get32(fields.page_starts_count); }
+    void            set_page_starts_count(uint32_t value)        INLINE { E::set32(fields.page_starts_count, value); }
+
+    uint32_t        page_size() const                            INLINE { return E::get32(fields.page_size); }
+    void            set_page_size(uint32_t value)                INLINE { E::set32(fields.page_size, value); }
+
+    uint64_t        auth_value_add() const                       INLINE { return E::get64(fields.auth_value_add); }
+    void            set_auth_value_add(uint64_t value)           INLINE { E::set64(fields.auth_value_add, value); }
+
+    uint16_t        page_starts(unsigned index) const                INLINE { return E::get16(fields.page_starts[index]); }
+    void            set_page_starts(unsigned index, uint16_t value) INLINE { E::set16(fields.page_starts[index], value); }
+
+
+private:
+    dyld_cache_slide_info3            fields;
 };
 
 

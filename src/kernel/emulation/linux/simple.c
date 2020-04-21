@@ -30,6 +30,8 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 			format++;
 			if (!*format)
 				break;
+			if (*format == 'l')
+				format++;
 			
 			switch (*format)
 			{
@@ -64,6 +66,24 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 					do
 					{
 						temp[count++] = '0' + abs(num % 10);
+						num /= 10;
+					}
+					while (num > 0);
+					
+					while (count--)
+						*buf++ = temp[count];
+
+					break;
+				}
+				case 'u':
+				{
+					unsigned int num = va_arg(vl, unsigned int);
+					char temp[16];
+					int count = 0;
+
+					do
+					{
+						temp[count++] = '0' + (num % 10);
 						num /= 10;
 					}
 					while (num > 0);

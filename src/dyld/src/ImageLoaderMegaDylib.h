@@ -27,7 +27,8 @@
 #define __IMAGELOADER_MEGADYLIB__
 
 #include <stdint.h> 
-#include <pthread.h> 
+#include <pthread.h>
+#include <uuid/uuid.h>
 
 #include "ImageLoaderMachO.h"
 #include "dyld_cache_format.h"
@@ -39,7 +40,7 @@
 //
 class ImageLoaderMegaDylib : public ImageLoader {
 public:
-	static ImageLoaderMegaDylib*		makeImageLoaderMegaDylib(const dyld_cache_header*, long slide, const LinkContext&);
+	static ImageLoaderMegaDylib*		makeImageLoaderMegaDylib(const dyld_cache_header*, long slide, const macho_header* mainMH, const LinkContext&);
 
 
 	virtual								~ImageLoaderMegaDylib();
@@ -55,8 +56,8 @@ public:
 	virtual const char*					getInstallPath() const;
 	virtual bool						inSharedCache() const { return true; }
 	virtual bool						containsSymbol(const void* addr) const { unreachable(); }
-	virtual void*						getThreadPC() const { unreachable(); }
-	virtual void*						getMain() const { unreachable(); }
+	virtual void*						getEntryFromLC_MAIN() const { unreachable(); }
+	virtual void*						getEntryFromLC_UNIXTHREAD() const { unreachable(); }
 	virtual const struct mach_header*   machHeader() const { unreachable(); }
 	virtual uintptr_t					getSlide() const { return _slide; }
 	virtual const void*					getEnd() const { unreachable(); }
@@ -89,7 +90,8 @@ public:
 	virtual bool						needsInitialization() { unreachable(); }
 	virtual bool						getSectionContent(const char* segmentName, const char* sectionName, void** start, size_t* length) { unreachable(); }
 	virtual void						getUnwindInfo(dyld_unwind_sections* info) { unreachable(); }
-	virtual bool						findSection(const void* imageInterior, const char** segmentName, const char** sectionName, size_t* sectionOffset) { unreachable(); }
+    virtual bool                        findSection(const void* imageInterior, const char** segmentName, const char** sectionName, size_t* sectionOffset) { unreachable(); }
+    virtual const struct macho_section* findSection(const void* imageInterior) const { unreachable(); }
 	virtual bool						isPrebindable() const { unreachable();  }
 	virtual bool						usablePrebinding(const LinkContext& context) const { unreachable(); }
 	virtual	void						getRPaths(const LinkContext& context, std::vector<const char*>&) const { }
@@ -118,7 +120,7 @@ public:
 	virtual uint32_t					minOSVersion() const { unreachable(); }
 	
 										// if the image contains interposing functions, register them
-	virtual void						registerInterposing() { unreachable(); }
+	virtual void						registerInterposing(const LinkContext& context) { unreachable(); }
 
 	virtual ImageLoader*				libImage(unsigned int) const { unreachable(); }
 	virtual bool						libReExported(unsigned int) const { unreachable(); }
@@ -137,11 +139,13 @@ public:
 	bool								findUnwindSections(const void* addr, dyld_unwind_sections* info);
 	bool								dladdrFromCache(const void* address, Dl_info* info);
 	uintptr_t							bindLazy(uintptr_t lazyBindingInfoOffset, const LinkContext& context, const mach_header* mh, unsigned index);
-	bool								flatFindSymbol(const char* name, bool onlyInCoalesced, const ImageLoader::Symbol** sym, const ImageLoader** image);
+	bool								flatFindSymbol(const char* name, bool onlyInCoalesced, const ImageLoader::Symbol** sym, const ImageLoader** image, ImageLoader::CoalesceNotifier);
 	void								getDylibUUID(unsigned int index, uuid_t) const;
 
 protected:
 	virtual void						setDyldInfo(const dyld_info_command* dyldInfo) { unreachable(); }
+	virtual void						setChainedFixups(const linkedit_data_command* fixups) { unreachable(); }
+	virtual void						setExportsTrie(const linkedit_data_command*) { unreachable(); }
 	virtual void						setSymbolTableInfo(const macho_nlist*, const char*, const dysymtab_command*) { unreachable(); }
 	virtual uint32_t*					segmentCommandOffsets() const { unreachable(); }
 	virtual	void						rebase(const LinkContext& context, uintptr_t slide) { unreachable(); }
@@ -162,6 +166,7 @@ protected:
 	virtual void						recursiveRebase(const LinkContext& context) {  }
 	virtual void						recursiveBind(const LinkContext& context, bool forceLazysBound, bool neverUnload);
 	virtual void						recursiveApplyInterposing(const LinkContext& context);
+	virtual void						recursiveMakeDataReadOnly(const LinkContext& context) {}
 	virtual void						recursiveGetDOFSections(const LinkContext& context, std::vector<DOFInfo>& dofs) { }
 	virtual void						recursiveInitialization(const LinkContext& context, mach_port_t this_thread, const char* pathToInitialize,
 																ImageLoader::InitializerTimingList&, ImageLoader::UninitedUpwards&);
@@ -181,11 +186,17 @@ protected:
 			bool						allDependentLibrariesAsWhenPreBound() const { unreachable(); }
 	virtual	bool						isSubframeworkOf(const LinkContext& context, const ImageLoader* image) const { return false; }
 	virtual	bool						hasSubLibrary(const LinkContext& context, const ImageLoader* child) const { return false; }
-	virtual bool						weakSymbolsBound(unsigned index);
+	virtual bool						weakSymbolsBound(unsigned index) const;
 	virtual void						setWeakSymbolsBound(unsigned index);
 
 private:
-										ImageLoaderMegaDylib(const dyld_cache_header*, long slide, const LinkContext&);
+										ImageLoaderMegaDylib(const dyld_cache_header*, long slide, const macho_header* mainMH, const LinkContext&);
+
+    struct UpwardIndexes
+	{
+		uint16_t	 count;
+		uint16_t     images[1];
+	};
 
 	const macho_header*					getIndexedMachHeader(unsigned index) const;
 	const uint8_t*						getIndexedTrie(unsigned index, uint32_t& trieSize) const;
@@ -213,7 +224,7 @@ private:
 															const ImageLoader* requestorImage, bool runResolver, uintptr_t* address) const;
 	static uint8_t						dyldStateToCacheState(dyld_image_states state);
 	void								recursiveInitialization(const LinkContext& context, mach_port_t this_thread, unsigned int imageIndex,
-																InitializerTimingList& timingInfo);
+																InitializerTimingList& timingInfo, UpwardIndexes&);
 	void								recursiveSpinLockAcquire(unsigned int imageIndex, mach_port_t thisThread);
 	void								recursiveSpinLockRelease(unsigned int imageIndex, mach_port_t thisThread);
 

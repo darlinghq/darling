@@ -15,7 +15,6 @@
 #include <CoreServices/Math64.h>
 #include <CoreServices/Multiprocessing.h>
 #include <CoreServices/OpenTransport.h>
-#include <CoreServices/Processes.h>
 #include <CoreServices/ScriptManager.h>
 #include <CoreServices/TextUtils.h>
 #include <CoreServices/Timer.h>
@@ -27,6 +26,7 @@
 
 #include <LaunchServices/LaunchServices.h>
 #include <AE/AE.h>
+#include <FSEvents/FSEvents.h>
 
 #endif
 

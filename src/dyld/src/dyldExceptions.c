@@ -31,8 +31,8 @@
 #include <stdarg.h>
 #include <pthread.h>
 #include <Availability.h>
+#include <mach-o/dyld_priv.h>
 
-#include "mach-o/dyld_priv.h"
 #include "dyldLibSystemInterface.h"
 
 
@@ -78,7 +78,8 @@ char* __cxa_get_globals()
 	}
 	char* data = (char*)_ZN4dyld17gLibSystemHelpersE->pthread_getspecific(sCxaKey);
 	if ( data == NULL ) {
-		data = calloc(2,sizeof(void*));
+        long* t = (long*)calloc(2,sizeof(long));
+		data = (char*)t;
 		_ZN4dyld17gLibSystemHelpersE->pthread_setspecific(sCxaKey, data);
 	}
 	return data; 

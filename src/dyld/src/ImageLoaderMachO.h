@@ -28,10 +28,20 @@
 
 #include <stdint.h> 
 #include <mach-o/loader.h> 
-#include <mach-o/nlist.h> 
+#include <mach-o/nlist.h>
+#include <uuid/uuid.h>
+#include <mach-o/dyld_images.h>
+
+#if __has_feature(ptrauth_calls)
+#include <ptrauth.h>
+#endif
 
 #include "ImageLoader.h"
-#include "mach-o/dyld_images.h"
+
+#define BIND_TYPE_THREADED_BIND 100
+
+
+#define BIND_TYPE_THREADED_REBASE 102
 
 
 //
@@ -51,8 +61,8 @@ public:
 	void								disableCoverageCheck() { fCoveredCodeLength = UINT64_MAX; }
 
 	const char*							getInstallPath() const;
-	virtual void*						getMain() const;
-	virtual void*						getThreadPC() const;
+	virtual void*						getEntryFromLC_UNIXTHREAD() const;
+	virtual void*						getEntryFromLC_MAIN() const;
 	virtual const struct mach_header*   machHeader() const;
 	virtual uintptr_t					getSlide() const;
 	virtual const void*					getEnd() const;
@@ -85,6 +95,7 @@ public:
 	virtual bool						needsInitialization();
 	virtual bool						getSectionContent(const char* segmentName, const char* sectionName, void** start, size_t* length);
 	virtual void						getUnwindInfo(dyld_unwind_sections* info);
+    virtual const struct macho_section* findSection(const void* imageInterior) const;
 	virtual bool						findSection(const void* imageInterior, const char** segmentName, const char** sectionName, size_t* sectionOffset);
 	virtual bool						usablePrebinding(const LinkContext& context) const;
 	virtual unsigned int				segmentCount() const;
@@ -101,11 +112,14 @@ public:
 	virtual uintptr_t					segActualLoadAddress(unsigned int) const;
 	virtual uintptr_t					segPreferredLoadAddress(unsigned int) const;
 	virtual uintptr_t					segActualEndAddress(unsigned int) const;
-	virtual void						registerInterposing();
+	virtual void						registerInterposing(const LinkContext& context);
 	virtual uint32_t					sdkVersion() const;
 	virtual uint32_t					minOSVersion() const;
 	virtual const char*					libPath(unsigned int) const;
 	virtual	bool						notifyObjC() const { return fNotifyObjC; }
+	virtual bool						overridesCachedDylib(uint32_t& num) const { num = fOverrideOfCacheImageNum; return (num != 0); }
+	virtual void						setOverridesCachedDylib(uint32_t num) { fOverrideOfCacheImageNum = num; }
+
 
 	static void							printStatisticsDetails(unsigned int imageCount, const InitializerTimingList&);
 	static uint32_t						minOSVersion(const mach_header*);
@@ -117,9 +131,34 @@ public:
 	static bool							getLazyBindingInfo(uint32_t& lazyBindingInfoOffset, const uint8_t* lazyInfoStart, const uint8_t* lazyInfoEnd,
 														  uint8_t* segIndex, uintptr_t* segOffset, int* ordinal, const char** symbolName, bool* doneAfterBind);
 	static uintptr_t					segPreferredAddress(const mach_header* mh, unsigned segIndex);
-	static uintptr_t					bindLocation(const LinkContext& context, uintptr_t location, uintptr_t value, 
-													uint8_t type, const char* symbolName,
-													intptr_t addend, const char* inPath, const char* toPath, const char* msg);
+
+    uintptr_t                           imageBaseAddress() const;
+
+    struct ExtraBindData {
+        ExtraBindData() = default;
+        explicit ExtraBindData(uint64_t d) : data(d) { }
+
+        union {
+            uint64_t data = 0;
+        };
+        bool operator==(const ExtraBindData& other) const {
+            return this->data == other.data;
+        }
+        bool operator!=(const ExtraBindData& other) const {
+            return !(*this == other);
+        }
+        bool operator<(const ExtraBindData& other) const {
+            return data < other.data;
+        }
+
+    };
+
+	static uintptr_t					bindLocation(const LinkContext& context, uintptr_t baseVMAddress,
+                                                     uintptr_t location, uintptr_t value,
+                                                     uint8_t type, const char* symbolName,
+                                                     intptr_t addend, const char* inPath, const char* toPath, const char* msg,
+                                                     ExtraBindData *extraBindData,
+                                                     uintptr_t fSlide);
 	virtual	void						rebase(const LinkContext& context, uintptr_t slide) = 0;
 
 
@@ -133,6 +172,8 @@ protected:
 	void				operator=(const ImageLoaderMachO&);
 
 	virtual void						setDyldInfo(const struct dyld_info_command*) = 0;
+	virtual void						setChainedFixups(const linkedit_data_command*) = 0;
+	virtual void						setExportsTrie(const linkedit_data_command*) = 0;
 	virtual void						setSymbolTableInfo(const macho_nlist*, const char*, const dysymtab_command*) = 0;
 	virtual	bool						isSubframeworkOf(const LinkContext& context, const ImageLoader* image) const = 0;
 	virtual	bool						hasSubLibrary(const LinkContext& context, const ImageLoader* child) const = 0;
@@ -188,6 +229,7 @@ protected:
 #if __i386__
 			bool		segIsReadOnlyImport(unsigned int) const;
 #endif
+			bool		segIsReadOnlyData(unsigned int) const;
 			intptr_t	assignSegmentAddresses(const LinkContext& context);
 			uintptr_t	reserveAnAddressRange(size_t length, const ImageLoader::LinkContext& context);
 			bool		reserveAddressRange(uintptr_t start, size_t length);
@@ -203,7 +245,6 @@ protected:
 			void		lookupProgramVars(const LinkContext& context) const;
 
 			void		makeTextSegmentWritable(const LinkContext& context, bool writeable);
-			void		preFetchDATA(int fd, uint64_t offsetInFat, const LinkContext& context);
 
 
 			void		doInterpose(const LinkContext& context) = 0;
@@ -225,7 +266,9 @@ protected:
 											fInSharedCache : 1,
 #if TEXT_RELOC_SUPPORT
 											fTextSegmentRebases : 1, 
-											fTextSegmentBinds : 1, 
+											fTextSegmentBinds : 1,
+#else
+											fReadOnlyDataSegment : 1,
 #endif
 #if __i386__
 											fReadOnlyImportSegment : 1,
@@ -239,7 +282,8 @@ protected:
 											fHasTerminators : 1,
 											fNotifyObjC : 1,
 											fRetainForObjC : 1,
-											fRegisteredAsRequiresCoalescing : 1; 	// <rdar://problem/7886402> Loading MH_DYLIB_STUB causing coalescable miscount
+											fRegisteredAsRequiresCoalescing : 1, 	// <rdar://problem/7886402> Loading MH_DYLIB_STUB causing coalescable miscount
+											fOverrideOfCacheImageNum : 12;
 
 											
 	static uint32_t					fgSymbolTableBinarySearchs;

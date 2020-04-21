@@ -45,18 +45,47 @@
 #include <sys/sysctl.h>
 #include <mach/mach_traps.h> // for task_self_trap()
 
-
-#include "mach-o/dyld_images.h"
-#include "mach-o/dyld.h"
-#include "mach-o/dyld_priv.h"
+#include <mach-o/dyld_images.h>
+#include <mach-o/dyld.h>
+#include <mach-o/dyld_priv.h>
 
 #include "ImageLoader.h"
 #include "ImageLoaderMachO.h"
-#include "dyld.h"
+#include "dyld2.h"
 #include "dyldLibSystemInterface.h"
+#include "DyldSharedCache.h"
+#include "MachOFile.h"
 
 #undef _POSIX_C_SOURCE
-#include "dlfcn.h"
+#include <dlfcn.h>
+
+#if __has_feature(ptrauth_calls)
+  #include <ptrauth.h>
+#endif
+
+
+// relocation_info.r_length field has value 3 for 64-bit executables and value 2 for 32-bit executables
+#if __LP64__
+#define RELOC_SIZE 3
+#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
+#define LC_ROUTINES_COMMAND		LC_ROUTINES_64
+struct macho_segment_command	: public segment_command_64  {};
+struct macho_section			: public section_64  {};
+struct macho_routines_command	: public routines_command_64  {};
+#else
+#define RELOC_SIZE 2
+#define LC_SEGMENT_COMMAND		LC_SEGMENT
+#define LC_ROUTINES_COMMAND		LC_ROUTINES
+struct macho_segment_command	: public segment_command {};
+struct macho_section			: public section  {};
+struct macho_routines_command	: public routines_command  {};
+#endif
+
+
+// this was in dyld_priv.h but it is no longer exported
+extern "C" {
+    const struct dyld_all_image_infos* _dyld_get_all_image_infos();
+}
 
 // from dyldExceptions.c
 extern "C" void __Unwind_SjLj_SetThreadKey(pthread_key_t key);
@@ -66,6 +95,17 @@ extern void addImagesToAllImages(uint32_t infoCount, const dyld_image_info info[
 extern uint32_t allImagesCount();
 extern const mach_header* allImagesIndexedMachHeader(uint32_t index);
 extern const char* allImagesIndexedPath(uint32_t index);
+
+extern "C" int _dyld_func_lookup(const char* name, void** address);
+
+extern "C" void* dlopen_internal(const char* path, int mode, void* callerAddress);
+extern "C" bool  dlopen_preflight_internal(const char* path, void* callerAddress);
+extern "C" void* dlsym_internal(void* handle, const char* symbolName, void* callerAddress);
+
+extern "C" void* dlopen_compat(const char* path, int mode);
+extern "C" bool  dlopen_preflight_compat(const char* path);
+extern "C" void* dlsym_compat(void* handle, const char* symbolName);
+
 
 
 // deprecated APIs are still availble on Mac OS X, but not on iPhone OS
@@ -128,15 +168,18 @@ struct dyld_func {
     void*		implementation;
 };
 
-static struct dyld_func dyld_funcs[] = {
+static const struct dyld_func dyld_funcs[] = {
     {"__dyld_register_func_for_add_image",				(void*)_dyld_register_func_for_add_image },
     {"__dyld_register_func_for_remove_image",			(void*)_dyld_register_func_for_remove_image },
     {"__dyld_dladdr",									(void*)dladdr },
     {"__dyld_dlclose",									(void*)dlclose },
     {"__dyld_dlerror",									(void*)dlerror },
-    {"__dyld_dlopen",									(void*)dlopen },
-    {"__dyld_dlsym",									(void*)dlsym },
-    {"__dyld_dlopen_preflight",							(void*)dlopen_preflight },
+    {"__dyld_dlopen_internal",							(void*)dlopen_internal },
+    {"__dyld_dlsym_internal",							(void*)dlsym_internal },
+    {"__dyld_dlopen_preflight_internal",				(void*)dlopen_preflight_internal },
+    {"__dyld_dlopen",									(void*)dlopen_compat },
+    {"__dyld_dlsym",									(void*)dlsym_compat },
+    {"__dyld_dlopen_preflight",							(void*)dlopen_preflight_compat },
 	{"__dyld_image_count",								(void*)_dyld_image_count },
     {"__dyld_get_image_header",							(void*)_dyld_get_image_header },
     {"__dyld_get_image_vmaddr_slide",					(void*)_dyld_get_image_vmaddr_slide },
@@ -159,24 +202,28 @@ static struct dyld_func dyld_funcs[] = {
 	{"__dyld_shared_cache_some_image_overridden",		(void*)dyld_shared_cache_some_image_overridden },
 	{"__dyld_process_is_restricted",					(void*)dyld::processIsRestricted },
 	{"__dyld_dynamic_interpose",						(void*)dyld_dynamic_interpose },
-#if DYLD_SHARED_CACHE_SUPPORT
 	{"__dyld_shared_cache_file_path",					(void*)dyld::getStandardSharedCacheFilePath },
-#endif
+	{"__dyld_has_inserted_or_interposing_libraries",	(void*)dyld::hasInsertedOrInterposingLibraries },
     {"__dyld_get_image_header_containing_address",		(void*)dyld_image_header_containing_address },
     {"__dyld_is_memory_immutable",						(void*)_dyld_is_memory_immutable },
     {"__dyld_objc_notify_register",						(void*)_dyld_objc_notify_register },
     {"__dyld_get_shared_cache_uuid",					(void*)_dyld_get_shared_cache_uuid },
+    {"__dyld_get_shared_cache_range",					(void*)_dyld_get_shared_cache_range },
+    {"__dyld_images_for_addresses",						(void*)_dyld_images_for_addresses },
+    {"__dyld_register_for_image_loads",					(void*)_dyld_register_for_image_loads },
+    {"__dyld_register_for_bulk_image_loads",			(void*)_dyld_register_for_bulk_image_loads },
+    {"__dyld_register_driverkit_main",					(void*)_dyld_register_driverkit_main },
 
 
-	// deprecated
 #if DEPRECATED_APIS_SUPPORTED
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     {"__dyld_lookup_and_bind",						(void*)client_dyld_lookup_and_bind },
     {"__dyld_lookup_and_bind_with_hint",			(void*)_dyld_lookup_and_bind_with_hint },
     {"__dyld_lookup_and_bind_fully",				(void*)_dyld_lookup_and_bind_fully },
     {"__dyld_install_handlers",						(void*)_dyld_install_handlers },
     {"__dyld_link_edit_error",						(void*)NSLinkEditError },
     {"__dyld_unlink_module",						(void*)NSUnLinkModule },
-    {"__dyld_bind_objc_module",						(void*)_dyld_bind_objc_module },
     {"__dyld_bind_fully_image_containing_address",  (void*)_dyld_bind_fully_image_containing_address },
     {"__dyld_image_containing_address",				(void*)_dyld_image_containing_address },
     {"__dyld_register_binding_handler",				(void*)_dyld_register_binding_handler },
@@ -203,7 +250,6 @@ static struct dyld_func dyld_funcs[] = {
     {"__dyld_NSCreateObjectFileImageFromMemory",		(void*)NSCreateObjectFileImageFromMemory },
     {"__dyld_NSDestroyObjectFileImage",					(void*)NSDestroyObjectFileImage },
     {"__dyld_NSLinkModule",								(void*)NSLinkModule },
-    {"__dyld_NSHasModInitObjectFileImage",				(void*)NSHasModInitObjectFileImage },
     {"__dyld_NSSymbolDefinitionCountInObjectFileImage",	(void*)NSSymbolDefinitionCountInObjectFileImage },
     {"__dyld_NSSymbolDefinitionNameInObjectFileImage",	(void*)NSSymbolDefinitionNameInObjectFileImage },
     {"__dyld_NSIsSymbolDefinedInObjectFileImage",		(void*)NSIsSymbolDefinedInObjectFileImage },
@@ -217,6 +263,7 @@ static struct dyld_func dyld_funcs[] = {
 	{"__dyld_get_mach_driver_fd", (void*)mach_driver_get_fd },
 	{"__dyld_am_i_ptraced", (void*)darling_am_i_ptraced },
 #endif
+#pragma clang diagnostic pop
 #endif //DEPRECATED_APIS_SUPPORTED
 
     {NULL, 0}
@@ -262,6 +309,7 @@ struct __NSObjectFileImage
 	const void*		imageBaseAddress;	// not used with OFI created from files
 	size_t			imageLength;		// not used with OFI created from files
 };
+typedef __NSObjectFileImage*  NSObjectFileImage;
 
 
 VECTOR_NEVER_DESTRUCTED(NSObjectFileImage);
@@ -352,10 +400,27 @@ const char* _dyld_get_image_name(uint32_t image_index)
 	return allImagesIndexedPath(image_index);
 }
 
+static const void *stripPointer(const void *ptr) {
+#if __has_feature(ptrauth_calls)
+	return __builtin_ptrauth_strip(ptr, ptrauth_key_asia);
+#else
+	return ptr;
+#endif
+}
+
+static void *stripPointer(void *ptr) {
+#if __has_feature(ptrauth_calls)
+	return __builtin_ptrauth_strip(ptr, ptrauth_key_asia);
+#else
+	return ptr;
+#endif
+}
+
 const struct mach_header * dyld_image_header_containing_address(const void* address)
 {
 	if ( dyld::gLogAPIs )
 		dyld::log("%s(%p)\n", __func__, address);
+	address = stripPointer(address);
 #if SUPPORT_ACCELERATE_TABLES
 	const mach_header* mh;
 	const char* path;
@@ -363,7 +428,7 @@ const struct mach_header * dyld_image_header_containing_address(const void* addr
 		return mh;
 #endif
 	ImageLoader* image = dyld::findImageContainingAddress(address);
-	if ( image != NULL ) 
+	if ( image != NULL )
 		return image->machHeader();
 	return NULL;
 }
@@ -650,6 +715,7 @@ NSSymbol NSLookupSymbolInImage(const struct mach_header* mh, const char* symbolN
 	dyld::clearErrorMessage();
 	ImageLoader* image = dyld::findImageByMachHeader(mh);
 	if ( image != NULL ) {
+		const char* symbolToFind = symbolName;
 		try {
 			if ( options & NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_FULLY ) {
 				image->bindAllLazyPointers(dyld::gLinkContext, true);
@@ -663,7 +729,7 @@ NSSymbol NSLookupSymbolInImage(const struct mach_header* mh, const char* symbolN
 				dyldAPIhalt(__func__, msg);
 			}
 		}
-		symbol = image->findExportedSymbol(symbolName, true, NULL);
+		symbol = image->findExportedSymbol(symbolToFind, true, NULL);
 	}
 	if ( dyld::gLogAPIs && (symbol == NULL) )
 		dyld::log("%s(%p, \"%s\", 0x%08X) ==> NULL\n", __func__, mh, symbolName, options);
@@ -743,18 +809,11 @@ bool _dyld_all_twolevel_modules_prebound(void)
 	return FALSE; 
 }
 
-void _dyld_bind_objc_module(const void *objc_module)
-{
-	if ( dyld::gLogAPIs )
-		dyld::log("%s(%p)\n", __func__, objc_module);
-	// do nothing, with new dyld everything already bound
-}
-
-
 bool _dyld_bind_fully_image_containing_address(const void* address)
 {
 	if ( dyld::gLogAPIs )
 		dyld::log("%s(%p)\n", __func__, address);
+	address = stripPointer(address);
 	dyld::clearErrorMessage();
 	ImageLoader* image = dyld::findImageContainingAddress(address);
 	if ( image != NULL ) {
@@ -858,8 +917,8 @@ NSObjectFileImageReturnCode NSCreateObjectFileImageFromMemory(const void* addres
 
 static bool validOFI(NSObjectFileImage objectFileImage)
 {
-	const int ofiCount = sObjectFileImages.size();
-	for (int i=0; i < ofiCount; ++i) {
+	const size_t ofiCount = sObjectFileImages.size();
+	for (size_t i=0; i < ofiCount; ++i) {
 		if ( sObjectFileImages[i] == objectFileImage )
 			return true;
 	}
@@ -912,13 +971,6 @@ bool NSDestroyObjectFileImage(NSObjectFileImage objectFileImage)
 		return true;
 	}
 	return false;
-}
-
-bool NSHasModInitObjectFileImage(NSObjectFileImage objectFileImage)
-{
-	if ( dyld::gLogAPIs )
-		dyld::log("%s(%p)\n", __func__, objectFileImage);
-	return objectFileImage->image->needsInitialization();
 }
 
 uint32_t NSSymbolDefinitionCountInObjectFileImage(NSObjectFileImage objectFileImage)
@@ -1154,9 +1206,9 @@ bool NSUnLinkModule(NSModule module, uint32_t options)
 
 	// Only delete image if there is no ofi referencing it
 	// That means the ofi was destroyed after linking, so no one is left to delete this image	
-	const int ofiCount = sObjectFileImages.size();
+	const size_t ofiCount = sObjectFileImages.size();
 	bool found = false;
-	for (int i=0; i < ofiCount; ++i) {
+	for (size_t i=0; i < ofiCount; ++i) {
 		NSObjectFileImage ofi = sObjectFileImages[i];
 		if ( ofi->image == image )
 			found = true;
@@ -1318,7 +1370,7 @@ static void dlerrorSet(const char* msg)
 }
 
 
-bool dlopen_preflight(const char* path)
+bool dlopen_preflight_internal(const char* path, void* callerAddress)
 {
 	if ( dyld::gLogAPIs )
 		dyld::log("%s(%s)\n", __func__, path);
@@ -1355,17 +1407,25 @@ bool dlopen_preflight(const char* path)
 		return true;
 #endif
 
-#if DYLD_SHARED_CACHE_SUPPORT
 	// <rdar://problem/5910137> dlopen_preflight() on image in shared cache leaves it loaded but not objc initialized
 	// if requested path is to something in the dyld shared cache, always succeed
 	if ( dyld::inSharedCache(path) )
 		return true;
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED
+	// <rdar://problem/47464387> dlopen_preflight() on symlink to image in shared cache leaves it half loaded
+	if ( strncmp(path, "/System/Library/", 16) == 0 ) {
+		char canonicalPath[PATH_MAX];
+		if ( realpath(path, canonicalPath) ) {
+			if ( dyld::inSharedCache(canonicalPath) )
+				return true;
+		}
+	}
 #endif
-	
+
 	bool result = false;
 	std::vector<const char*> rpathsFromCallerImage;
 	try {
-		void* callerAddress = __builtin_return_address(1); // note layers: 1: real client, 0: libSystem glue
 		ImageLoader* callerImage = dyld::findImageContainingAddress(callerAddress);
 		// for dlopen, use rpath from caller image and from main executable
 		if ( callerImage != NULL )
@@ -1431,14 +1491,13 @@ bool static callerIsNonOSApp(void* callerAddress, const char** shortName)
 }
 #endif
 
-void* dlopen(const char* path, int mode)
+void* dlopen_internal(const char* path, int mode, void* callerAddress)
 {
 	if ( dyld::gLogAPIs )
 		dyld::log("%s(%s, 0x%08X)\n", __func__, ((path==NULL) ? "NULL" : path), mode);
 
 #if SUPPORT_ACCELERATE_TABLES
 	if ( dyld::gLogAppAPIs ) {
-		void* callerAddress = __builtin_return_address(1); // note layers: 1: real client, 0: libSystem glue
 		const char* shortName;
 		if ( callerIsNonOSApp(callerAddress, &shortName) ) {
 			dyld::log("%s: %s(%s, 0x%08X)\n", shortName, __func__, ((path==NULL) ? "NULL" : path), mode);
@@ -1502,7 +1561,6 @@ void* dlopen(const char* path, int mode)
 	std::vector<const char*> rpathsFromCallerImage;
 	ImageLoader::RPathChain callersRPaths(NULL, &rpathsFromCallerImage);
 	try {
-		void* callerAddress = __builtin_return_address(1); // note layers: 1: real client, 0: libSystem glue
 		ImageLoader* callerImage = dyld::findImageContainingAddress(callerAddress);
 		if ( (mode & RTLD_NOLOAD) == 0 ) {
 			// for dlopen, use rpath from caller image and from main executable
@@ -1529,12 +1587,13 @@ void* dlopen(const char* path, int mode)
 		image = load(path, context, cacheIndex);
 #if SUPPORT_ACCELERATE_TABLES
 		if ( (image != NULL) && (cacheIndex != UINT32_MAX) ) {
-			if ( dyld::makeCacheHandle(image, cacheIndex, mode, &result) ) {
-				if ( dyld::gLogAPIs )
-					dyld::log("  %s(%s) ==> %p\n", __func__, path, result);
-				if ( lockHeld )
-					dyld::gLibSystemHelpers->releaseGlobalDyldLock();
-				return result;
+            // found in cache, but under a different path
+            const char* betterPath = dyld::getPathFromIndex(cacheIndex);
+            if ( (betterPath != NULL) && dyld::dlopenFromCache(betterPath, mode, &result) ) {
+                // Note: dlopenFromCache() releases the lock
+                if ( dyld::gLogAPIs )
+                    dyld::log("  %s(%s) ==> %p\n", __func__, path, result);
+                return result;
 			}
 		}
 #endif
@@ -1547,7 +1606,12 @@ void* dlopen(const char* path, int mode)
 				bool alreadyLinked = image->isLinked();
 				bool forceLazysBound = ( (mode & RTLD_NOW) != 0 );
 				dyld::link(image, forceLazysBound, false, callersRPaths, cacheIndex);
-				if ( ! alreadyLinked ) {
+				if ( alreadyLinked ) {
+					// upgrade
+					if ( ((mode & RTLD_LOCAL) == 0) && image->hasHiddenExports() )
+						image->setHideExports(false);
+				}
+				else {
 					// only hide exports if image is not already in use
 					if ( (mode & RTLD_LOCAL) != 0 )
 						image->setHideExports(true);
@@ -1623,8 +1687,6 @@ void* dlopen(const char* path, int mode)
 	return result;
 }
 
-
-
 int dlclose(void* handle)
 {
 	if ( dyld::gLogAPIs )
@@ -1635,7 +1697,14 @@ int dlclose(void* handle)
 		return 0;
 	if ( handle == RTLD_DEFAULT )
 		return 0;
-	
+
+#if SUPPORT_ACCELERATE_TABLES
+	if ( dyld::isCacheHandle(handle) ) {
+		dlerrorClear();
+		return 0;
+	}
+#endif
+
 	ImageLoader* image = (ImageLoader*)(((uintptr_t)handle) & (-4));	// clear mode bits
 	if ( dyld::validImage(image) ) {
 		dlerrorClear();
@@ -1661,6 +1730,12 @@ int dladdr(const void* address, Dl_info* info)
 {
 	if ( dyld::gLogAPIs )
 		dyld::log("%s(%p, %p)\n", __func__, address, info);
+
+	// <rdar://problem/42171466> calling dladdr(xx,NULL) crashes
+	if ( info == NULL )
+		return 0; // failure
+
+	address = stripPointer(address);
 
 	CRSetCrashLogMessage("dyld: in dladdr()");
 #if SUPPORT_ACCELERATE_TABLES
@@ -1729,14 +1804,13 @@ char* dlerror()
 	return NULL;
 }
 
-void* dlsym(void* handle, const char* symbolName)
+void* dlsym_internal(void* handle, const char* symbolName, void* callerAddress)
 {
 	if ( dyld::gLogAPIs )
 		dyld::log("%s(%p, %s)\n", __func__, handle, symbolName);
 
 #if SUPPORT_ACCELERATE_TABLES
 	if ( dyld::gLogAppAPIs ) {
-		void* callerAddress = __builtin_return_address(1); // note layers: 1: real client, 0: libSystem glue
 		const char* shortName;
 		if ( callerIsNonOSApp(callerAddress, &shortName) ) {
 			dyld::log("%s: %s(%p, %s)\n", shortName, __func__, handle, symbolName);
@@ -1762,6 +1836,20 @@ void* dlsym(void* handle, const char* symbolName)
 		if ( dyld::flatFindExportedSymbol(underscoredName, &sym, &image) ) {
 			CRSetCrashLogMessage(NULL);
 			result = (void*)image->getExportedSymbolAddress(sym, dyld::gLinkContext, NULL, false, underscoredName);
+#if __has_feature(ptrauth_calls)
+			// Sign the pointer if it points to a function
+			// Note we only do this if the main executable is arm64e as otherwise we
+			// may end up calling containsAddress on the accelerator tables.
+			if ( result && (dyld::gLinkContext.mainExecutable->machHeader()->cpusubtype == CPU_SUBTYPE_ARM64E) ) {
+				const ImageLoader* symbolImage = image;
+				if (!symbolImage->containsAddress(result)) {
+					symbolImage = dyld::findImageContainingAddress(result);
+				}
+				const macho_section *sect = symbolImage ? symbolImage->findSection(result) : NULL;
+				if ( sect && ((sect->flags & S_ATTR_PURE_INSTRUCTIONS) || (sect->flags & S_ATTR_SOME_INSTRUCTIONS)) )
+					result = __builtin_ptrauth_sign_unauthenticated(result, ptrauth_key_asia, 0);
+			}
+#endif
 			if ( dyld::gLogAPIs )
 				dyld::log("  %s(RTLD_DEFAULT, %s) ==> %p\n", __func__, symbolName, result);
 			return result;
@@ -1782,6 +1870,20 @@ void* dlsym(void* handle, const char* symbolName)
 		if ( sym != NULL ) {
 			CRSetCrashLogMessage(NULL);
 			result = (void*)image->getExportedSymbolAddress(sym, dyld::gLinkContext, NULL, false, underscoredName);
+#if __has_feature(ptrauth_calls)
+			// Sign the pointer if it points to a function
+			// Note we only do this if the main executable is arm64e as otherwise we
+			// may end up calling containsAddress on the accelerator tables.
+			if ( result && (dyld::gLinkContext.mainExecutable->machHeader()->cpusubtype == CPU_SUBTYPE_ARM64E) ) {
+				const ImageLoader* symbolImage = image;
+				if (!symbolImage->containsAddress(result)) {
+					symbolImage = dyld::findImageContainingAddress(result);
+				}
+				const macho_section *sect = symbolImage ? symbolImage->findSection(result) : NULL;
+				if ( sect && ((sect->flags & S_ATTR_PURE_INSTRUCTIONS) || (sect->flags & S_ATTR_SOME_INSTRUCTIONS)) )
+					result = __builtin_ptrauth_sign_unauthenticated(result, ptrauth_key_asia, 0);
+			}
+#endif
 			if ( dyld::gLogAPIs )
 				dyld::log("  %s(RTLD_MAIN_ONLY, %s) ==> %p\n", __func__, symbolName, result);
 			return result;
@@ -1797,7 +1899,6 @@ void* dlsym(void* handle, const char* symbolName)
 	
 	// magic "search what I would see" handle
 	else if ( handle == RTLD_NEXT ) {
-		void* callerAddress = __builtin_return_address(1); // note layers: 1: real client, 0: libSystem glue
 #if SUPPORT_ACCELERATE_TABLES
 		const mach_header* mh;
 		const char* path;
@@ -1815,6 +1916,20 @@ void* dlsym(void* handle, const char* symbolName)
 		if ( sym != NULL ) {
 			CRSetCrashLogMessage(NULL);
 			result = (void*)image->getExportedSymbolAddress(sym, dyld::gLinkContext , callerImage, false, underscoredName);
+#if __has_feature(ptrauth_calls)
+			// Sign the pointer if it points to a function
+			// Note we only do this if the main executable is arm64e as otherwise we
+			// may end up calling containsAddress on the accelerator tables.
+			if ( result && (dyld::gLinkContext.mainExecutable->machHeader()->cpusubtype == CPU_SUBTYPE_ARM64E) ) {
+				const ImageLoader* symbolImage = image;
+				if (!symbolImage->containsAddress(result)) {
+					symbolImage = dyld::findImageContainingAddress(result);
+				}
+				const macho_section *sect = symbolImage ? symbolImage->findSection(result) : NULL;
+				if ( sect && ((sect->flags & S_ATTR_PURE_INSTRUCTIONS) || (sect->flags & S_ATTR_SOME_INSTRUCTIONS)) )
+					result = __builtin_ptrauth_sign_unauthenticated(result, ptrauth_key_asia, 0);
+			}
+#endif
 			if ( dyld::gLogAPIs )
 				dyld::log("  %s(RTLD_NEXT, %s) ==> %p\n", __func__, symbolName, result);
 			return result;
@@ -1829,7 +1944,6 @@ void* dlsym(void* handle, const char* symbolName)
 	}
 	// magic "search me, then what I would see" handle
 	else if ( handle == RTLD_SELF ) {
-		void* callerAddress = __builtin_return_address(1); // note layers: 1: real client, 0: libSystem glue
 #if SUPPORT_ACCELERATE_TABLES
 		const mach_header* mh;
 		const char* path;
@@ -1847,6 +1961,20 @@ void* dlsym(void* handle, const char* symbolName)
 		if ( sym != NULL ) {
 			CRSetCrashLogMessage(NULL);
 			result = (void*)image->getExportedSymbolAddress(sym, dyld::gLinkContext, callerImage, false, underscoredName);
+#if __has_feature(ptrauth_calls)
+			// Sign the pointer if it points to a function
+			// Note we only do this if the main executable is arm64e as otherwise we
+			// may end up calling containsAddress on the accelerator tables.
+			if ( result && (dyld::gLinkContext.mainExecutable->machHeader()->cpusubtype == CPU_SUBTYPE_ARM64E) ) {
+				const ImageLoader* symbolImage = image;
+				if (!symbolImage->containsAddress(result)) {
+					symbolImage = dyld::findImageContainingAddress(result);
+				}
+				const macho_section *sect = symbolImage ? symbolImage->findSection(result) : NULL;
+				if ( sect && ((sect->flags & S_ATTR_PURE_INSTRUCTIONS) || (sect->flags & S_ATTR_SOME_INSTRUCTIONS)) )
+					result = __builtin_ptrauth_sign_unauthenticated(result, ptrauth_key_asia, 0);
+			}
+#endif
 			if ( dyld::gLogAPIs )
 				dyld::log("  %s(RTLD_SELF, %s) ==> %p\n", __func__, symbolName, result);
 			return result;
@@ -1881,10 +2009,23 @@ void* dlsym(void* handle, const char* symbolName)
 			ImageLoader* callerImage = NULL;
 			if ( sDynamicInterposing ) {
 				// only take time to look up caller, if dynamic interposing in use
-				void* callerAddress = __builtin_return_address(1); // note layers: 1: real client, 0: libSystem glue
 				callerImage = dyld::findImageContainingAddress(callerAddress);
 			}
 			result = (void*)image->getExportedSymbolAddress(sym, dyld::gLinkContext, callerImage, false, underscoredName);
+#if __has_feature(ptrauth_calls)
+			// Sign the pointer if it points to a function
+			// Note we only do this if the main executable is arm64e as otherwise we
+			// may end up calling containsAddress on the accelerator tables.
+			if ( result && (dyld::gLinkContext.mainExecutable->machHeader()->cpusubtype == CPU_SUBTYPE_ARM64E) ) {
+				const ImageLoader* symbolImage = image;
+				if (!symbolImage->containsAddress(result)) {
+					symbolImage = dyld::findImageContainingAddress(result);
+				}
+				const macho_section *sect = symbolImage ? symbolImage->findSection(result) : NULL;
+				if ( sect && ((sect->flags & S_ATTR_PURE_INSTRUCTIONS) || (sect->flags & S_ATTR_SOME_INSTRUCTIONS)) )
+					result = __builtin_ptrauth_sign_unauthenticated(result, ptrauth_key_asia, 0);
+			}
+#endif
 			if ( dyld::gLogAPIs )
 				dyld::log("  %s(%p, %s) ==> %p\n", __func__, handle, symbolName, result);
 			return result;
@@ -1902,11 +2043,25 @@ void* dlsym(void* handle, const char* symbolName)
 	return NULL;
 }
 
+// Note this is only here to support ___pthread_abort in libpthread.a
+void* dlsym(void* handle, const char* symbolName) {
+	return dlsym_internal(handle, symbolName, __builtin_return_address(1));
+}
 
 
-
-
-
+// <rdar://problem/40352925> *_compat functions are for old binaries that have __dyld section and use it to bypass libdyld.dylib
+void* dlopen_compat(const char* path, int mode)
+{
+	return dlopen_internal(path, mode, (void*)dyld::mainExecutable()->machHeader());
+}
+bool  dlopen_preflight_compat(const char* path)
+{
+	return dlopen_preflight_internal(path, (void*)dyld::mainExecutable()->machHeader());
+}
+void* dlsym_compat(void* handle, const char* symbolName)
+{
+	return dlsym_internal(handle, symbolName, (void*)dyld::mainExecutable()->machHeader());
+}
 
 
 
@@ -1922,6 +2077,8 @@ static bool client_dyld_find_unwind_sections(void* addr, dyld_unwind_sections* i
 {
 	//if ( dyld::gLogAPIs )
 	//	dyld::log("%s(%p, %p)\n", __func__, addr, info);
+
+	addr = stripPointer(addr);
 	
 #if SUPPORT_ACCELERATE_TABLES
 	if ( dyld::findUnwindSections(addr, info) )
@@ -1942,6 +2099,8 @@ const char* dyld_image_path_containing_address(const void* address)
 	if ( dyld::gLogAPIs )
 		dyld::log("%s(%p)\n", __func__, address);
 
+    address = (void*)stripPointer(address);
+    
 #if SUPPORT_ACCELERATE_TABLES
 	const mach_header* mh;
 	const char* path;
@@ -1950,8 +2109,9 @@ const char* dyld_image_path_containing_address(const void* address)
 #endif
 
 	ImageLoader* image = dyld::findImageContainingAddress(address);
-	if ( image != NULL )
+	if ( image != NULL ) {
 		return image->getRealPath();
+	}
 	return NULL;
 }
 
@@ -1959,11 +2119,7 @@ const char* dyld_image_path_containing_address(const void* address)
 
 bool dyld_shared_cache_some_image_overridden()
 {
- #if DYLD_SHARED_CACHE_SUPPORT
 	return dyld::gSharedCacheOverridden;
- #else
-    return true;
- #endif
 }
 
 
@@ -2001,15 +2157,15 @@ bool _dyld_is_memory_immutable(const void* addr, size_t length)
 	uintptr_t checkStart = (uintptr_t)addr;
 	uintptr_t checkEnd   = checkStart + length;
 
-#if DYLD_SHARED_CACHE_SUPPORT
 	// quick check to see if in r/o region of shared cache.  If so return true.
-	if ( dyld_shared_cache_ranges.sharedRegionsCount > 2 ) {
-		uintptr_t roStart    = dyld_shared_cache_ranges.ranges[0].start;
-		uintptr_t roEnd      = roStart + dyld_shared_cache_ranges.ranges[0].length;
+    const DyldSharedCache* cache = (DyldSharedCache*)dyld::imMemorySharedCacheHeader();
+    if ( cache != nullptr ) {
+        const dyld_cache_mapping_info* const mappings = (dyld_cache_mapping_info*)((char*)cache + cache->header.mappingOffset);
+		uintptr_t roStart    = (uintptr_t)cache;
+		uintptr_t roEnd      = roStart + (uintptr_t)mappings[0].size;
 		if ( (roStart < checkStart) && (checkEnd < roEnd) )
 			return true;
-	}
-#endif
+    }
 
 	// Otherwise find if addr is in a dyld loaded image
 	ImageLoader* image = dyld::findImageContainingAddress(addr);
@@ -2042,3 +2198,60 @@ bool _dyld_get_shared_cache_uuid(uuid_t uuid)
 {
 	return dyld::sharedCacheUUID(uuid);
 }
+
+const void* _dyld_get_shared_cache_range(size_t* length)
+{
+    const DyldSharedCache* cache = (DyldSharedCache*)dyld::imMemorySharedCacheHeader();
+    if ( cache != nullptr ) {
+        const dyld_cache_mapping_info* const mappings = (dyld_cache_mapping_info*)((char*)cache + cache->header.mappingOffset);
+        *length = (size_t)((mappings[2].address + mappings[2].size) - mappings[0].address);
+        return cache;
+    }
+	return nullptr;
+}
+
+void _dyld_images_for_addresses(unsigned count, const void* addresses[], struct dyld_image_uuid_offset infos[])
+{
+	for (unsigned i=0; i < count; ++i) {
+        const void* addr = addresses[i];
+		addr = stripPointer(addr);
+        bzero(&infos[i], sizeof(dyld_image_uuid_offset));
+#if SUPPORT_ACCELERATE_TABLES
+		const mach_header* 	mh;
+		const char* 		path;
+		if ( dyld::addressInCache(addr, &mh, &path) ) {
+			infos[i].image         = mh;
+			infos[i].offsetInImage = (uintptr_t)addr - (uintptr_t)mh;
+			((dyld3::MachOFile*)mh)->getUuid(infos[i].uuid);
+			continue;
+		}
+#endif
+		ImageLoader* image = dyld::findImageContainingAddress(addr);
+        if ( image != nullptr ) {
+            infos[i].image         = image->machHeader();
+            infos[i].offsetInImage = (uintptr_t)addr - (uintptr_t)(image->machHeader());
+            image->getUUID(infos[i].uuid);
+        }
+    }
+}
+
+void _dyld_register_for_image_loads(void (*func)(const mach_header* mh, const char* path, bool unloadable))
+{
+	if ( dyld::gLogAPIs )
+		dyld::log("%s(%p)\n", __func__, (void *)func);
+	dyld::registerLoadCallback(func);
+}
+
+void _dyld_register_for_bulk_image_loads(void (*func)(unsigned imageCount, const struct mach_header* mhs[], const char* paths[]))
+{
+	if ( dyld::gLogAPIs )
+		dyld::log("%s(%p)\n", __func__, (void *)func);
+	dyld::registerBulkLoadCallback(func);
+}
+
+void _dyld_register_driverkit_main(void (*mainFunc)())
+{
+	dyld::setMainEntry(mainFunc);
+}
+
+

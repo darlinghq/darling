@@ -9,6 +9,10 @@ add_framework(LaunchServices
 		LaunchServices.cpp
 		LSApplicationProxy.m
 		LSApplicationWorkspace.m
+		LSRunning.m
+		constants.c
+		LSInfo.m
+		LSOpen.m
 	DEPENDENCIES
 		CoreFoundation
 		Foundation
@@ -17,3 +21,5 @@ add_framework(LaunchServices
 		system
 		CarbonCore
 )
+
+add_subdirectory(launchservicesd)

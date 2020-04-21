@@ -222,9 +222,8 @@ add_circular(system_c FAT OBJECTS
 
 install(TARGETS system_c DESTINATION libexec/darling/usr/lib/system)
 
-set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
-set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
-add_library(libc_static STATIC
+include(darling_static_lib)
+add_darling_static_library(libc_static SOURCES
 	$<TARGET_OBJECTS:libc-gen_dyld>
 	$<TARGET_OBJECTS:libc-stdlib_dyld>
 	$<TARGET_OBJECTS:libc-string_dyld>

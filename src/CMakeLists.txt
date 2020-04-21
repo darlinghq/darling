@@ -69,13 +69,16 @@ add_definitions(
 )
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
-set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
+set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ranlib")
 
 if (TARGET_x86_64 OR TARGET_i386)
     add_definitions(-target x86_64-apple-darwin11)
 elseif (TARGET_ARM64)
     add_definitions(-target arm64-apple-darwin15)
 endif()
+
+include(darling_lib)
+include(darling_static_lib)
 
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include
@@ -380,6 +383,7 @@ add_subdirectory(DirectoryServices)
 add_subdirectory(DrawSprocket)
 add_subdirectory(EventKit)
 add_subdirectory(external/cocotron/CoreGraphics)
+add_subdirectory(external/fmdb)
 
 add_subdirectory(frameworks)
 add_subdirectory(private-frameworks)
@@ -396,6 +400,7 @@ add_subdirectory(external/cocotron/QuartzCore)
 add_subdirectory(pboard)
 
 add_subdirectory(external/dbuskit)
+add_subdirectory(external/swift)
 
 
 # /Applications

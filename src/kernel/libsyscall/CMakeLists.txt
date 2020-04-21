@@ -593,7 +593,22 @@ set(syscall_sources
 	bsdsyscalls/_write.S
 	bsdsyscalls/___writev_nocancel.S
 	bsdsyscalls/_writev.S
-
+	bsdsyscalls/___kqueue_workloop_ctl.S
+	bsdsyscalls/___mach_bridge_remote_time.S
+	bsdsyscalls/___reboot.S
+	bsdsyscalls/_fmount.S
+	bsdsyscalls/_kevent_id.S
+	bsdsyscalls/_necp_session_action.S
+	bsdsyscalls/_necp_session_open.S
+	bsdsyscalls/_net_qos_guideline.S
+	bsdsyscalls/_ntp_adjtime.S
+	bsdsyscalls/_ntp_gettime.S
+	bsdsyscalls/_os_fault_with_payload.S
+	bsdsyscalls/_pid_hibernate.S
+	bsdsyscalls/_pid_shutdown_sockets.S
+	#bsdsyscalls/_quota.S
+	#bsdsyscalls/_setquota.S
+	bsdsyscalls/_thread_selfcounts.S
 )
 
 

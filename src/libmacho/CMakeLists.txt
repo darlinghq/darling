@@ -39,8 +39,7 @@ add_circular(macho FAT
 #target_link_libraries(macho system_kernel)
 #make_fat(macho)
 
-set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
-set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ranlib")
-add_library(macho_static STATIC $<TARGET_OBJECTS:macho_obj>)
+include(darling_static_lib)
+add_darling_static_library(macho_static SOURCES $<TARGET_OBJECTS:macho_obj>)
 
 install(TARGETS macho DESTINATION libexec/darling/usr/lib/system)

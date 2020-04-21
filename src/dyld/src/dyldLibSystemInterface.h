@@ -27,6 +27,7 @@
 #define __DYLDLIBSYSTEMHELPERS__
 
 #include <stdint.h>
+#include <mach/mach.h>
 
 struct __cxa_range_t { const void* addr; size_t length; };
 
@@ -41,19 +42,19 @@ namespace dyld {
 	struct LibSystemHelpers
 	{
 		uintptr_t	version;
-		void		(*acquireGlobalDyldLock)();
-		void		(*releaseGlobalDyldLock)();
+		void		(*acquireGlobalDyldLock)(void);
+		void		(*releaseGlobalDyldLock)(void);
 		char*		(*getThreadBufferFor_dlerror)(size_t sizeRequired);
 		// addded in version 2
 		void*		(*malloc)(size_t);
 		void		(*free)(void*);
 		int			(*cxa_atexit)(void (*)(void*), void*, void*);
 		// addded in version 3
-		void		(*dyld_shared_cache_missing)();
-		void		(*dyld_shared_cache_out_of_date)();
+		void		(*dyld_shared_cache_missing)(void);
+		void		(*dyld_shared_cache_out_of_date)(void);
 		// addded in version 4
-		void		(*acquireDyldInitializerLock)();
-		void		(*releaseDyldInitializerLock)();
+		void		(*acquireDyldInitializerLock)(void);
+		void		(*releaseDyldInitializerLock)(void);
 		// added in version 5
 		int			(*pthread_key_create)(pthread_key_t*, void (*destructor)(void*));
 		int			(*pthread_setspecific)(pthread_key_t, const void*);
@@ -66,9 +67,9 @@ namespace dyld {
 		// added in version 9
 		void*		startGlueToCallExit;
 		// added in version 10
-		bool		(*hasPerThreadBufferFor_dlerror)();
+		bool		(*hasPerThreadBufferFor_dlerror)(void);
 		// added in version 11
-		bool		(*isLaunchdOwned)();
+		bool		(*isLaunchdOwned)(void);
 		// added in version 12
 		kern_return_t (*vm_alloc)(vm_map_t task, vm_address_t* addr, vm_size_t size, int flags);
 		void*		(*mmap)(void* addr, size_t len, int prot, int flags, int fd, off_t offset);

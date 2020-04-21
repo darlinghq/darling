@@ -1,4 +1,4 @@
-.Dd November 29, 2010
+.Dd June 20, 2019
 .Dt dyld 3
 .Sh NAME
 .Nm _dyld_image_count,
@@ -85,7 +85,9 @@ is out of range NULL is returned.
 registers the specified function to be called when a new image is added
 (a bundle or a dynamic shared library) to the program.  When this function is
 first registered it is called for once for each image that is currently part of
-the process.
+the process.  The function is called with the dyld lock held.  This blocks other
+threads from using dlopen().  Therefore, the function should do minimal work and
+return.
 .Pp
 .Fn _dyld_register_func_for_remove_image
 registers the specified function to be called when an image is removed
@@ -123,4 +125,4 @@ needed could be more than MAXPATHLEN.
 .Xr dlopen 3
 .Xr dladdr 3
 .Xr dyld 1
-http://developer.apple.com/documentation/DeveloperTools/Conceptual/MachOTopics/index.html
+https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/MachOTopics/0-Introduction/introduction.html

@@ -49,3 +49,18 @@ __SYSCALL_INT(___lseek, lseek, 3)
 	.set	_lseek, ___lseek
 #endif
 
+#if defined(__ppc__)
+	.globl	_lseek
+	.set	_lseek, ___lseek
+#endif
+
+#if defined(__arm__)
+	.globl	_lseek
+	.set	_lseek, ___lseek
+#endif
+
+#if defined(__arm64__)
+	.globl	_lseek
+	.set	_lseek, ___lseek
+#endif
+

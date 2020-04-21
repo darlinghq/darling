@@ -34,7 +34,7 @@
 #include <mach-o/loader.h>
 #include <libkern/OSAtomic.h>
 
-#include "dyld_priv.h"
+#include <mach-o/dyld_priv.h>
 
 
 #if __LP64__
@@ -49,30 +49,6 @@
 	typedef struct section				macho_section;
 #endif
 
-#ifndef S_THREAD_LOCAL_REGULAR
-#define S_THREAD_LOCAL_REGULAR                   0x11
-#endif
-
-#ifndef S_THREAD_LOCAL_ZEROFILL
-#define S_THREAD_LOCAL_ZEROFILL                  0x12
-#endif
-
-#ifndef S_THREAD_LOCAL_VARIABLES
-#define S_THREAD_LOCAL_VARIABLES                 0x13
-#endif
-
-#ifndef S_THREAD_LOCAL_VARIABLE_POINTERS
-#define S_THREAD_LOCAL_VARIABLE_POINTERS         0x14
-#endif
-
-#ifndef S_THREAD_LOCAL_INIT_FUNCTION_POINTERS
-#define S_THREAD_LOCAL_INIT_FUNCTION_POINTERS    0x15
-#endif
-
-#ifndef MH_HAS_TLV_DESCRIPTORS
-	#define MH_HAS_TLV_DESCRIPTORS 0x800000
-#endif
-
 
 typedef void (*TermFunc)(void*);
 
@@ -80,14 +56,14 @@ typedef void (*TermFunc)(void*);
 
 #if __has_feature(tls) || __arm64__ || __arm__
 
-typedef struct TLVHandler {
-	struct TLVHandler *next;
-	dyld_tlv_state_change_handler handler;
-	enum dyld_tlv_states state;
-} TLVHandler;
-
-// lock-free prepend-only linked list
-static TLVHandler * volatile tlv_handlers = NULL;
+//
+// Info about thread-local variable storage.
+//
+typedef struct {
+    size_t info_size;    // sizeof(dyld_tlv_info)
+    void * tlv_addr;     // Base address of TLV storage
+    size_t tlv_size;     // Byte size of TLV storage
+} dyld_tlv_info;
 
 
 struct TLVDescriptor
@@ -148,23 +124,6 @@ static const struct mach_header* tlv_get_image_for_key(pthread_key_t key)
 }
 
 
-static void
-tlv_notify(enum dyld_tlv_states state, void *buffer)
-{
-	if (!tlv_handlers) return;
-
-	// Always use malloc_size() to ensure allocated and deallocated states 
-	// send the same size. tlv_free() doesn't have anything else recorded.
-	dyld_tlv_info info = { sizeof(info), buffer, malloc_size(buffer) };
-	
-	for (TLVHandler *h = tlv_handlers; h != NULL; h = h->next) {
-		if (h->state == state  &&  h->handler) {
-			h->handler(h->state, &info);
-		}
-	}
-}
-
-
 // called lazily when TLV is first accessed
 __attribute__((visibility("hidden")))
 void* tlv_allocate_and_initialize_for_key(pthread_key_t key)
@@ -214,6 +173,9 @@ void* tlv_allocate_and_initialize_for_key(pthread_key_t key)
 		}
 		cmd = (const struct load_command*)(((char*)cmd)+cmd->cmdsize);
 	}
+    // no thread local storage in image: should never happen
+    if ( size == 0 )
+        return NULL;
 	
 	// allocate buffer and fill with template
 	void* buffer = malloc(size);
@@ -221,9 +183,6 @@ void* tlv_allocate_and_initialize_for_key(pthread_key_t key)
 	
 	// set this thread's value for key to be the new buffer.
 	pthread_setspecific(key, buffer);
-
-	// send tlv state notifications
-	tlv_notify(dyld_tlv_state_allocated, buffer);
 	
 	// second pass, run initializers
 	if ( hasInitializers ) {
@@ -256,7 +215,6 @@ void* tlv_allocate_and_initialize_for_key(pthread_key_t key)
 static void
 tlv_free(void *storage)
 {
-	tlv_notify(dyld_tlv_state_deallocated, storage);
 	free(storage);
 }
 
@@ -306,45 +264,12 @@ static void tlv_initialize_descriptors(const struct mach_header* mh)
 }
 
 
-void tlv_load_notification(const struct mach_header* mh, intptr_t slide)
+static void tlv_load_notification(const struct mach_header* mh, intptr_t slide)
 {
 	// This is called on all images, even those without TLVs. So we want this to be fast.
 	// The linker sets MH_HAS_TLV_DESCRIPTORS so we don't have to search images just to find the don't have TLVs.
 	if ( mh->flags & MH_HAS_TLV_DESCRIPTORS )
 		tlv_initialize_descriptors(mh);
-}
-
-
-void dyld_register_tlv_state_change_handler(enum dyld_tlv_states state, dyld_tlv_state_change_handler handler)
-{
-	TLVHandler *h = malloc(sizeof(TLVHandler));
-	h->state = state;
-	h->handler = Block_copy(handler);
-
-	TLVHandler *old;
-	do {
-		old = tlv_handlers;
-		h->next = old;
-	} while (! OSAtomicCompareAndSwapPtrBarrier(old, h, (void * volatile *)&tlv_handlers));
-}
-
-
-void dyld_enumerate_tlv_storage(dyld_tlv_state_change_handler handler)
-{
-	pthread_mutex_lock(&tlv_live_image_lock);
-		unsigned int count = tlv_live_image_used_count;
-		void *list[count];
-		for (unsigned int i = 0; i < count; ++i) {
-			list[i] = pthread_getspecific(tlv_live_images[i].key);
-		}
-	pthread_mutex_unlock(&tlv_live_image_lock);
-
-	for (unsigned int i = 0; i < count; ++i) {
-		if (list[i]) {
-			dyld_tlv_info info = { sizeof(info), list[i], malloc_size(list[i]) };
-			handler(dyld_tlv_state_allocated, &info);
-		}
-	}
 }
 
 
@@ -394,7 +319,7 @@ void _tlv_atexit(TermFunc func, void* objAddr)
         pthread_setspecific(tlv_terminators_key, list);
     }
     else {
-        if ( list->allocCount == list->allocCount ) {
+        if ( list->useCount == list->allocCount ) {
             // handle resizing allocation 
             uint32_t newAllocCount = list->allocCount * 2;
             size_t newAllocSize = offsetof(struct TLVTerminatorList, entries[newAllocCount]);
@@ -414,29 +339,52 @@ void _tlv_atexit(TermFunc func, void* objAddr)
     }
 }
 
-// called by pthreads when the current thread is going away and 
-// _tlv_atexit() has been called on the thread.
-static void tlv_finalize(void* storage)
-{
-    struct TLVTerminatorList* list = (struct TLVTerminatorList*)storage;
+static void tlv_finalize_list(struct TLVTerminatorList* list) {
     // destroy in reverse order of construction
     for(uint32_t i=list->useCount; i > 0 ; --i) {
         struct TLVTerminatorListEntry* entry = &list->entries[i-1];
         if ( entry->termFunc != NULL ) {
             (*entry->termFunc)(entry->objAddr);
         }
+
+        // If a new tlv was added via tlv_atexit, then we need to immediately
+        // destroy it
+        struct TLVTerminatorList* newlist = (struct TLVTerminatorList*)pthread_getspecific(tlv_terminators_key);
+        if ( newlist != NULL ) {
+            // Set the list to NULL so that if yet another tlv is registered, we put it in a new list
+            pthread_setspecific(tlv_terminators_key, NULL);
+            tlv_finalize_list(newlist);
+        }
     }
-    free(storage);
+    free(list);
+}
+
+// called by pthreads when the current thread is going away and
+// _tlv_atexit() has been called on the thread.
+static void tlv_finalize(void* storage)
+{
+    // Note, on entry to this function, _tlv_exit set the list to NULL.  libpthread
+    // also set it to NULL before calling us.  If new thread locals are added to our
+    // tlv_terminators_key, then they will be on a new list, but the list we have here
+    // is one we own and need to destroy it
+    tlv_finalize_list((struct TLVTerminatorList*)storage);
 }
 
 // <rdar://problem/13741816>
 // called by exit() before it calls cxa_finalize() so that thread_local
 // objects are destroyed before global objects.
+// Note this is only called on macOS, and by libc.
+// iOS only destroys tlv's when each thread is destroyed and libpthread calls
+// tlv_finalize as that is the pointer we provided when we created the key
 void _tlv_exit()
 {
-	void* termFuncs = pthread_getspecific(tlv_terminators_key);
-	if ( termFuncs != NULL )
-		tlv_finalize(termFuncs);
+    void* termFuncs = pthread_getspecific(tlv_terminators_key);
+    if ( termFuncs != NULL ) {
+        // Clear the value so that calls to tlv_atexit during tlv_finalize
+        // will go on to a new list to destroy.
+        pthread_setspecific(tlv_terminators_key, NULL);
+        tlv_finalize(termFuncs);
+    }
 }
 
 
@@ -463,16 +411,6 @@ void _tlv_bootstrap()
 
 
 #else
-
-
-
-void dyld_register_tlv_state_change_handler(enum dyld_tlv_states state, dyld_tlv_state_change_handler handler)
-{
-}
-
-void dyld_enumerate_tlv_storage(dyld_tlv_state_change_handler handler)
-{
-}
 
 void _tlv_exit()
 {

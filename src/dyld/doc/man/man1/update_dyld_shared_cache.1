@@ -1,4 +1,4 @@
-.Dd June 23, 2016
+.Dd June 1, 2017
 .Dt update_dyld_shared_cache 1
 .Os Darwin
 .Sh NAME
@@ -12,7 +12,6 @@
 .Op Fl force 
 .Op Fl debug
 .Op Fl universal_boot
-.Op Fl verify
 .Sh DESCRIPTION
 .Nm update_dyld_shared_cache
 ensures that dyld's shared cache is up-to-date.  This tool is normally
@@ -23,9 +22,6 @@ used another mechanism to alter an OS dylib, you should manually run
 .Pp
 Note that the new cache does not take effect until the OS is rebooted.  
 .Pp
-If a safe-boot is
-done (booting with shift key held down) the cache is deleted.  
-.Pp
 The dyld shared cache
 is mapped by dyld into a process at launch time. Later, when loading
 any mach-o image, dyld will first check if is in the share cache, and if
@@ -34,11 +30,8 @@ the original file.  This results in significant performance improvements to
 launch time.
 .Pp
 .Nm update_dyld_shared_cache
-scans the directory /var/db/dyld/shared_region_roots for text files containing paths to
-mach-o executables.  The full dependencies of all dylibs required by those executables is
-used to determine which libraries are commonly used and should be placed in the
-shared cache. If one of the text files contains a path to a dylib, that dylib and its
-dependents will be forced into the cache.
+scans the directory /System/Library/Receipts/ for .bom files which list all files
+installed.  From that info it creates the set of OS dylibs to build into the dyld cache.
 .Pp
 .Nm update_dyld_shared_cache
 builds a separate cache file for each architecture.  The cache files and a readable text
@@ -77,14 +70,6 @@ to regenerated the shared cache files even if they appear to be already up-to-da
 This option prints out additional information about the work being done.
 .It Fl universal_boot
 This option builds caches for all machines.
-.It Fl verify
-Will regenerate a shared cache in-memory that matches the randomization of the existing shared 
-cache file.  Then instead of writing the cache file, it compares the in-memory cache file to
-the on disk version and reports any differences.  
 .El
-.Sh FILES
-.Tp
-/var/db/dyld/shared_region_roots
-directory of text files with paths to mach-o images used to determine what should be in shared cache.
 .Sh SEE ALSO
 .Xr dyld 1

@@ -96,7 +96,7 @@ __thread_set_tsd_base:
 	.globl _i386_get_ldt
 	ALIGN
 _i386_get_ldt:
-	movl    $6,%eax
+	movl    $SYSCALL_CONSTRUCT_MDEP(6), %eax
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
 	movq	%rax, %rdi
@@ -107,7 +107,7 @@ _i386_get_ldt:
 	.globl _i386_set_ldt
 	ALIGN
 _i386_set_ldt:
-	movl    $5,%eax
+	movl    $SYSCALL_CONSTRUCT_MDEP(5), %eax
 	MACHDEP_SYSCALL_TRAP
 	jnb		2f
 	movq	%rax, %rdi
@@ -120,6 +120,26 @@ __thread_set_tsd_base:
 	movl	$0, %esi	// 0 as the second argument
 	movl    $ SYSCALL_CONSTRUCT_MDEP(3), %eax	// Machine-dependent syscall number 3
 	MACHDEP_SYSCALL_TRAP
+	ret
+
+#elif defined(__arm__)
+
+	.align 2
+	.globl __thread_set_tsd_base
+__thread_set_tsd_base:
+	mov	r3, #2
+	mov	r12, #0x80000000
+	swi	#SWI_SYSCALL
+	bx	lr
+
+#elif defined(__arm64__)
+
+	.align 2
+	.globl __thread_set_tsd_base
+__thread_set_tsd_base:
+	mov	x3, #2
+	mov	x16, #0x80000000
+	svc 	#SWI_SYSCALL
 	ret
 
 #else

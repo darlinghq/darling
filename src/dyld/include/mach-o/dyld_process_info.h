@@ -27,6 +27,11 @@
 #include <unistd.h>
 #include <mach/mach.h>
 #include <dispatch/dispatch.h>
+#include <uuid/uuid.h>
+#include <os/availability.h>
+
+//FIXME we should include dyld_priv.h, but we need to do this to workaround a header search path bug in tapi
+typedef uint32_t dyld_platform_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,10 +48,11 @@ extern "C" {
 // a list of images that were just added or removed from the process.  Dyld calls this function before running
 // any initializers in the image, so the debugger will have a chance to set break points in the image.
 //
+//
 
 enum dyld_notify_mode { dyld_notify_adding=0, dyld_notify_removing=1, dyld_notify_remove_all=2 };
+// void _dyld_debugger_notification(enum dyld_notify_mode, unsigned long count, uint64_t machHeaders[]);
 
-void _dyld_debugger_notification(enum dyld_notify_mode, unsigned long count, uint64_t machHeaders[]);
 
 
 struct dyld_process_cache_info {
@@ -106,8 +112,8 @@ extern void _dyld_process_info_for_each_image(dyld_process_info info, void (^cal
 // iterate all segments in an image
 extern void _dyld_process_info_for_each_segment(dyld_process_info info, uint64_t machHeaderAddress, void (^callback)(uint64_t segmentAddress, uint64_t segmentSize, const char* segmentName));
 
-
-
+// returns 0 if the platform cannot be determined, otherwise returns the platform of the remote process
+extern dyld_platform_t _dyld_process_info_get_platform(dyld_process_info info) SPI_AVAILABLE(macos(10.15), ios(13.0), tvos(13.0), watchos(6.0), bridgeos(4.0));
 
 typedef const struct dyld_process_info_notify_base* dyld_process_info_notify;
 
@@ -120,8 +126,12 @@ typedef const struct dyld_process_info_notify_base* dyld_process_info_notify;
 //
 extern dyld_process_info_notify _dyld_process_info_notify(task_t task, dispatch_queue_t queue,
                                                           void (^notify)(bool unload, uint64_t timestamp, uint64_t machHeader, const uuid_t uuid, const char* path),
-                                                          void (^notifyExit)(),
+                                                          void (^notifyExit)(void),
                                                           kern_return_t* kernelError);
+// add block to call right before main() is entered.
+// does nothing if process is already in main().
+extern void _dyld_process_info_notify_main(dyld_process_info_notify objc, void (^notifyMain)(void));
+
 
 // stop notifications and invalid dyld_process_info_notify object
 extern void  _dyld_process_info_notify_release(dyld_process_info_notify object);

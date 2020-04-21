@@ -228,12 +228,24 @@ LlazyAllocate:
 	.globl _tlv_get_addr
 	.private_extern _tlv_get_addr
 _tlv_get_addr:
+#if __LP64__
 	ldr		x16, [x0, #8]			// get key from descriptor
+#else
+	ldr		w16, [x0, #4]			// get key from descriptor
+#endif
 	mrs		x17, TPIDRRO_EL0
 	and		x17, x17, #-8			// clear low 3 bits???
+#if __LP64__
 	ldr		x17, [x17, x16, lsl #3]	// get thread allocation address for this key
+#else
+	ldr		w17, [x17, x16, lsl #2]	// get thread allocation address for this key
+#endif
 	cbz		x17, LlazyAllocate		// if NULL, lazily allocate
+#if __LP64__
 	ldr		x16, [x0, #16]			// get offset from descriptor
+#else
+	ldr		w16, [x0, #8]			// get offset from descriptor
+#endif
 	add		x0, x17, x16			// return allocation+offset
 	ret		lr
 
@@ -258,7 +270,11 @@ LlazyAllocate:
 	mov		x0, x16					// use key from descriptor as parameter
 	bl		_tlv_allocate_and_initialize_for_key
 	ldp		x16, x17, [sp], #16		// pop descriptor
+#if __LP64__
 	ldr		x16, [x16, #16]			// get offset from descriptor
+#else
+	ldr		w16, [x16, #8]			// get offset from descriptor
+#endif
 	add		x0, x0, x16				// return allocation+offset
 
 	ldp		q6,  q7,  [sp], #32

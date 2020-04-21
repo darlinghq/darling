@@ -23,15 +23,15 @@ is the value returned by a previous call to dlopen.
 Prior to Mac OS X 10.5, only bundles could be unloaded.  Starting in Mac OS X 10.5, 
 dynamic libraries may also be unloaded.  There are a couple of cases in which a
 dynamic library will never be unloaded: 1) the main executable links against it, 
-2) An API that does not supoort unloading (e.g. NSAddImage()) was used to load
-it or some other dynnamic library that depends on it, 3) the dynamic library
+2) an API that does not support unloading (e.g. NSAddImage()) was used to load
+it or some other dynamic library that depends on it, 3) the dynamic library
 is in dyld's shared cache.
 .Sh RETURN VALUES
 If
 .Fn dlclose
 is successful, it returns a value of 0.
 Otherwise it returns -1, and sets an error string that can be
-retrived with
+retrieved with
 .Fn dlerror .
 .Pp
 .Sh SEE ALSO

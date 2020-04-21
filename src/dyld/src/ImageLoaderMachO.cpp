@@ -39,6 +39,7 @@
 #include <mach/thread_status.h>
 #include <mach-o/loader.h> 
 #include <mach-o/nlist.h> 
+#include <mach-o/dyld_images.h>
 #include <sys/sysctl.h>
 #include <sys/syscall.h>
 #include <libkern/OSAtomic.h>
@@ -46,34 +47,26 @@
 #include <stdint.h>
 #include <System/sys/codesign.h>
 
+#if __has_feature(ptrauth_calls)
+#include <ptrauth.h>
+#endif
+
 #include "ImageLoaderMachO.h"
 #include "ImageLoaderMachOCompressed.h"
 #if SUPPORT_CLASSIC_MACHO
 #include "ImageLoaderMachOClassic.h"
 #endif
-#include "mach-o/dyld_images.h"
-#include "dyld.h"
+#include "Tracing.h"
+#include "dyld2.h"
 
 // <rdar://problem/8718137> use stack guard random value to add padding between dylibs
 extern "C" long __stack_chk_guard;
 
-#ifndef LC_LOAD_UPWARD_DYLIB
-	#define	LC_LOAD_UPWARD_DYLIB (0x23|LC_REQ_DYLD)	/* load of dylib whose initializers run later */
-#endif
-
-#ifndef LC_VERSION_MIN_TVOS
-	#define LC_VERSION_MIN_TVOS 0x2F
-#endif
-
-#ifndef LC_VERSION_MIN_WATCHOS
-	#define LC_VERSION_MIN_WATCHOS 0x30
-#endif
-
-
-#if TARGET_IPHONE_SIMULATOR
-	#define LIBSYSTEM_DYLIB_PATH "/usr/lib/libSystem.dylib"
-#else
-	#define LIBSYSTEM_DYLIB_PATH "/usr/lib/libSystem.B.dylib"
+#define LIBSYSTEM_DYLIB_PATH 		  	  "/usr/lib/libSystem.B.dylib"
+#define LIBDYLD_DYLIB_PATH 		  	  "/usr/lib/system/libdyld.dylib"
+#if __MAC_OS_X_VERSION_MIN_REQUIRED
+  #define DRIVERKIT_LIBSYSTEM_DYLIB_PATH  "/System/DriverKit/usr/lib/libSystem.dylib"
+  #define DRIVERKIT_LIBDYLD_DYLIB_PATH 	  "/System/DriverKit/usr/lib/system/libdyld.dylib"
 #endif
 
 // relocation_info.r_length field has value 3 for 64-bit executables and value 2 for 32-bit executables
@@ -104,12 +97,14 @@ fSegmentsCount(segCount), fIsSplitSeg(false), fInSharedCache(false),
 #if TEXT_RELOC_SUPPORT
 	fTextSegmentRebases(false),
 	fTextSegmentBinds(false),
+#else
+    fReadOnlyDataSegment(false),
 #endif
 #if __i386__
 	fReadOnlyImportSegment(false),
 #endif
 	fHasSubLibraries(false), fHasSubUmbrella(false), fInUmbrella(false), fHasDOFSections(false), fHasDashInit(false),
-	fHasInitializers(false), fHasTerminators(false), fNotifyObjC(false), fRetainForObjC(false), fRegisteredAsRequiresCoalescing(false)
+	fHasInitializers(false), fHasTerminators(false), fNotifyObjC(false), fRetainForObjC(false), fRegisteredAsRequiresCoalescing(false), fOverrideOfCacheImageNum(0)
 {
 	fIsSplitSeg = ((mh->flags & MH_SPLIT_SEGS) != 0);        
 
@@ -164,6 +159,8 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 	const macho_segment_command* linkeditSegCmd = NULL;
 	const macho_segment_command* startOfFileSegCmd = NULL;
 	const dyld_info_command* dyldInfoCmd = NULL;
+	const linkedit_data_command* chainedFixupsCmd = NULL;
+	const linkedit_data_command* exportsTrieCmd = NULL;
 	const symtab_command* symTabCmd = NULL;
 	const dysymtab_command*	dynSymbTabCmd = NULL;
 	for (uint32_t i = 0; i < cmd_count; ++i) {
@@ -187,6 +184,17 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 				dyldInfoCmd = (struct dyld_info_command*)cmd;
 				*compressed = true;
 				break;
+			case LC_DYLD_CHAINED_FIXUPS:
+				if ( cmd->cmdsize != sizeof(linkedit_data_command) )
+					throw "malformed mach-o image: LC_DYLD_CHAINED_FIXUPS size wrong";
+				chainedFixupsCmd = (struct linkedit_data_command*)cmd;
+				*compressed = true;
+				break;
+			case LC_DYLD_EXPORTS_TRIE:
+				if ( cmd->cmdsize != sizeof(linkedit_data_command) )
+					throw "malformed mach-o image: LC_DYLD_EXPORTS_TRIE size wrong";
+				exportsTrieCmd = (struct linkedit_data_command*)cmd;
+				break;
 			case LC_SEGMENT_COMMAND:
 				segCmd = (struct macho_segment_command*)cmd;
 #if __MAC_OS_X_VERSION_MIN_REQUIRED
@@ -205,7 +213,7 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 				if ( segCmd->vmsize != 0 )
 					*segCount += 1;
 				if ( strcmp(segCmd->segname, "__LINKEDIT") == 0 ) {
-		#if TARGET_IPHONE_SIMULATOR
+		#if TARGET_OS_SIMULATOR
 					// Note: should check on all platforms that __LINKEDIT is read-only, but <rdar://problem/22637626&22525618>
 					if ( segCmd->initprot != VM_PROT_READ )
 						throw "malformed mach-o image: __LINKEDIT segment does not have read-only permissions";
@@ -224,7 +232,7 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 					if ( (segCmd->initprot != 0) && ((segCmd->initprot & VM_PROT_READ) == 0) )
 						dyld::throwf("malformed mach-o image: %s segment is not mapped readable", segCmd->segname);
 				}
-				if ( (segCmd->fileoff == 0) && (segCmd->filesize != 0) ) {
+                if ( (segCmd->fileoff == 0) && (segCmd->filesize != 0) ) {
 					if ( (segCmd->initprot & VM_PROT_READ) == 0 )
 						dyld::throwf("malformed mach-o image: %s segment maps start of file but is not readable", segCmd->segname);
 					if ( (segCmd->initprot & VM_PROT_WRITE) == VM_PROT_WRITE ) {
@@ -299,6 +307,7 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 			case LC_LOAD_UPWARD_DYLIB:
 				*libCount += 1;
 				// fall thru
+				[[clang::fallthrough]];
 			case LC_ID_DYLIB:
 				dylibCmd = (dylib_command*)cmd;
 				if ( dylibCmd->dylib.name.offset > cmdLength )
@@ -345,7 +354,8 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 			case LC_VERSION_MIN_WATCHOS:
 			case LC_VERSION_MIN_TVOS:
 			case LC_VERSION_MIN_IPHONEOS:
-				throw "mach-o, but built for simulator (not macOS)";
+				if ( !context.iOSonMac )
+					throw "mach-o, but built for simulator (not macOS)";
 				break;
 #endif
 		}
@@ -356,7 +366,7 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 		throw "load commands not in a segment";
 	if ( linkeditSegCmd == NULL )
 		throw "malformed mach-o image: missing __LINKEDIT segment";
-	if ( startOfFileSegCmd == NULL )
+	if ( !inCache && (startOfFileSegCmd == NULL) )
 		throw "malformed mach-o image: missing __TEXT segment that maps start of file";
 	// <rdar://problem/13145644> verify every segment does not overlap another segment
 	if ( context.strictMachORequired ) {
@@ -406,8 +416,8 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 	}
 
 	// validate linkedit content
-	if  ( (dyldInfoCmd == NULL) && (symTabCmd == NULL) )
-		throw "malformed mach-o image: missing LC_SYMTAB or LC_DYLD_INFO";
+	if  ( (dyldInfoCmd == NULL) && (chainedFixupsCmd == NULL) && (symTabCmd == NULL) )
+		throw "malformed mach-o image: missing LC_SYMTAB, LC_DYLD_INFO, or LC_DYLD_CHAINED_FIXUPS";
 	if  ( dynSymbTabCmd == NULL )
 		throw "malformed mach-o image: missing LC_DYSYMTAB";
 
@@ -464,9 +474,25 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 		}
 	}
 
+	if ( !inCache && (chainedFixupsCmd != NULL) && context.strictMachORequired ) {
+		// validate all LC_DYLD_CHAINED_FIXUPS chunks fit in LINKEDIT and don't overlap
+		if ( chainedFixupsCmd->dataoff < linkeditFileOffsetStart )
+			throw "malformed mach-o image: dyld chained fixups info underruns __LINKEDIT";
+		if ( (chainedFixupsCmd->dataoff + chainedFixupsCmd->datasize) > linkeditFileOffsetEnd )
+			throw "malformed mach-o image: dyld chained fixups info overruns __LINKEDIT";
+	}
+
+	if ( !inCache && (exportsTrieCmd != NULL) && context.strictMachORequired ) {
+		// validate all LC_DYLD_EXPORTS_TRIE chunks fit in LINKEDIT and don't overlap
+		if ( exportsTrieCmd->dataoff < linkeditFileOffsetStart )
+			throw "malformed mach-o image: dyld chained fixups info underruns __LINKEDIT";
+		if ( (exportsTrieCmd->dataoff + exportsTrieCmd->datasize) > linkeditFileOffsetEnd )
+			throw "malformed mach-o image: dyld chained fixups info overruns __LINKEDIT";
+	}
+
 	if ( symTabCmd != NULL ) {
 		// validate symbol table fits in LINKEDIT
-		if ( symTabCmd->symoff < linkeditFileOffsetStart )
+		if ( (symTabCmd->nsyms > 0) && (symTabCmd->symoff < linkeditFileOffsetStart) )
 			throw "malformed mach-o image: symbol table underruns __LINKEDIT";
 		if ( symTabCmd->nsyms > 0x10000000 )
 			throw "malformed mach-o image: symbol table too large";
@@ -484,6 +510,13 @@ void ImageLoaderMachO::sniffLoadCommands(const macho_header* mh, const char* pat
 			if ( context.strictMachORequired || (symTabCmd->stroff + symTabCmd->strsize > ((linkeditFileOffsetEnd + 4095) & (-4096))) )
 				throw "malformed mach-o image: symbol strings overrun __LINKEDIT";
 		}
+#if __MAC_OS_X_VERSION_MIN_REQUIRED
+		if ( (symTabCmd->symoff % sizeof(void*)) != 0 ) {
+			// <rdar://53723577> allow old malformed plugins in new app
+			if ( sdkVersion((mach_header*)mh) >= DYLD_PACKED_VERSION(10,15,0) )
+				throw "malformed mach-o image: mis-aligned symbol table __LINKEDIT";
+		}
+#endif
 		// validate indirect symbol table
 		if ( dynSymbTabCmd->nindirectsyms != 0 ) {
 			if ( dynSymbTabCmd->indirectsymoff < linkeditFileOffsetStart )
@@ -635,8 +668,11 @@ void ImageLoaderMachO::parseLoadCmds(const LinkContext& context)
 	for(unsigned int i=0; i < fSegmentsCount; ++i) {
 		// set up pointer to __LINKEDIT segment
 		if ( strcmp(segName(i),"__LINKEDIT") == 0 ) {
-			if ( context.requireCodeSignature && (segFileOffset(i) > fCoveredCodeLength))
+	#if !__MAC_OS_X_VERSION_MIN_REQUIRED
+			// <rdar://problem/42419336> historically, macOS never did this check
+			if ( segFileOffset(i) > fCoveredCodeLength )
 				dyld::throwf("cannot load '%s' (segment outside of code signature)", this->getShortName());
+	#endif
 			fLinkEditBase = (uint8_t*)(segActualLoadAddress(i) - segFileOffset(i));
 		}
 #if TEXT_RELOC_SUPPORT
@@ -647,6 +683,9 @@ void ImageLoaderMachO::parseLoadCmds(const LinkContext& context)
 			if ( segHasBindFixUps(i) )
 				fTextSegmentBinds = true;
 		}
+#else
+		if ( segIsReadOnlyData(i) )
+			fReadOnlyDataSegment = true;
 #endif
 #if __i386__
 		if ( segIsReadOnlyImport(i) )
@@ -672,6 +711,8 @@ void ImageLoaderMachO::parseLoadCmds(const LinkContext& context)
 
 	// walk load commands (mapped in at start of __TEXT segment)
 	const dyld_info_command* dyldInfo = NULL;
+	const linkedit_data_command* chainedFixupsCmd = NULL;
+	const linkedit_data_command* exportsTrieCmd = NULL;
 	const macho_nlist* symbolTable = NULL;
 	const char* symbolTableStrings = NULL;
 	const struct load_command* firstUnknownCmd = NULL;
@@ -708,6 +749,12 @@ void ImageLoaderMachO::parseLoadCmds(const LinkContext& context)
 			case LC_DYLD_INFO_ONLY:
 				dyldInfo = (struct dyld_info_command*)cmd;
 				break;
+			case LC_DYLD_CHAINED_FIXUPS:
+				chainedFixupsCmd = (struct linkedit_data_command*)cmd;
+				break;
+			case LC_DYLD_EXPORTS_TRIE:
+				exportsTrieCmd = (struct linkedit_data_command*)cmd;
+				break;
 			case LC_SEGMENT_COMMAND:
 				{
 					const struct macho_segment_command* seg = (struct macho_segment_command*)cmd;
@@ -724,6 +771,8 @@ void ImageLoaderMachO::parseLoadCmds(const LinkContext& context)
 					for (const struct macho_section* sect=sectionsStart; sect < sectionsEnd; ++sect) {
 						const uint8_t type = sect->flags & SECTION_TYPE;
 						if ( type == S_MOD_INIT_FUNC_POINTERS )
+							fHasInitializers = true;
+						else if ( type == S_INIT_FUNC_OFFSETS )
 							fHasInitializers = true;
 						else if ( type == S_MOD_TERM_FUNC_POINTERS )
 							fHasTerminators = true;
@@ -775,7 +824,6 @@ void ImageLoaderMachO::parseLoadCmds(const LinkContext& context)
 		    case LC_REEXPORT_DYLIB:
 			case LC_LOAD_UPWARD_DYLIB:
 			case LC_MAIN:
-				// do nothing, just prevent LC_REQ_DYLD exception from occuring
 				break;
 			case LC_VERSION_MIN_MACOSX:
 			case LC_VERSION_MIN_IPHONEOS:
@@ -807,9 +855,13 @@ void ImageLoaderMachO::parseLoadCmds(const LinkContext& context)
 	
 	if ( dyldInfo != NULL )
 		this->setDyldInfo(dyldInfo);
+	if ( chainedFixupsCmd != NULL )
+		this->setChainedFixups(chainedFixupsCmd);
+	if ( exportsTrieCmd != NULL )
+		this->setExportsTrie(exportsTrieCmd);
+
 	if ( symbolTable != NULL)
 		this->setSymbolTableInfo(symbolTable, symbolTableStrings, dynSymbolTable);
-	
 }
 
 // don't do this work in destructor because we need object to be full subclass
@@ -959,6 +1011,13 @@ bool ImageLoaderMachO::segIsReadOnlyImport(unsigned int segIndex) const
 }
 #endif
 
+bool ImageLoaderMachO::segIsReadOnlyData(unsigned int segIndex) const
+{
+	const macho_segment_command* segCmd = segLoadCommand(segIndex);
+	return (    (segCmd->initprot & VM_PROT_WRITE)
+			&& ((segCmd->initprot & VM_PROT_EXECUTE) == 0)
+			&& (segCmd->flags & SG_READ_ONLY) );
+}
 
 void ImageLoaderMachO::UnmapSegments()
 {
@@ -982,32 +1041,6 @@ void ImageLoaderMachO::UnmapSegments()
 		--ImageLoader::fgTotalSegmentsMapped;
 		ImageLoader::fgTotalBytesMapped -= segSize(textSegmentIndex);
 		munmap((void*)segActualLoadAddress(textSegmentIndex), segSize(textSegmentIndex));
-	}
-}
-
-
-// prefetch __DATA/__OBJC pages during launch, but not for dynamically loaded code
-void ImageLoaderMachO::preFetchDATA(int fd, uint64_t offsetInFat, const LinkContext& context)
-{
-	if ( context.linkingMainExecutable ) {
-		for(unsigned int i=0, e=segmentCount(); i < e; ++i) {
-			if ( segWriteable(i) && (segFileSize(i) > 0) ) {
-				// prefetch writable segment that have mmap'ed regions
-				radvisory advice;
-				advice.ra_offset = offsetInFat + segFileOffset(i);
-				advice.ra_count = (int)segFileSize(i);
-				// limit prefetch to 1MB (256 pages)
-				if ( advice.ra_count > 1024*1024 )
-					advice.ra_count = 1024*1024;
-				// don't prefetch single pages, let them fault in
-				fgTotalBytesPreFetched += advice.ra_count;
-				fcntl(fd, F_RDADVISE, &advice);
-				if ( context.verboseMapping ) {
-					dyld::log("%18s prefetching 0x%0lX -> 0x%0lX\n", 
-						segName(i), segActualLoadAddress(i), segActualLoadAddress(i)+advice.ra_count-1);
-				}
-			}
-		}
 	}
 }
 
@@ -1096,29 +1129,27 @@ void ImageLoaderMachO::setSlide(intptr_t slide)
 
 void ImageLoaderMachO::loadCodeSignature(const struct linkedit_data_command* codeSigCmd, int fd,  uint64_t offsetInFatFile, const LinkContext& context)
 {
+	dyld3::ScopedTimer(DBG_DYLD_TIMING_ATTACH_CODESIGNATURE, 0, 0, 0);
 	// if dylib being loaded has no code signature load command
 	if ( codeSigCmd == NULL) {
-		if (context.requireCodeSignature ) {
-			// if we require dylibs to be codesigned there needs to be a signature.
-			dyld::throwf("required code signature missing for '%s'\n", this->getPath());
-		} else {
-			disableCoverageCheck();
-		}
+		disableCoverageCheck();
 	}
 	else {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED
 		// <rdar://problem/13622786> ignore code signatures in binaries built with pre-10.9 tools
-		if ( this->sdkVersion() < DYLD_MACOSX_VERSION_10_9 ) {
+		if ( this->sdkVersion() < DYLD_PACKED_VERSION(10,9,0) ) {
+			disableCoverageCheck();
 			return;
 		}
 #endif
+
 		fsignatures_t siginfo;
-		siginfo.fs_file_start=offsetInFatFile;				// start of mach-o slice in fat file 
+		siginfo.fs_file_start=offsetInFatFile;				// start of mach-o slice in fat file
 		siginfo.fs_blob_start=(void*)(long)(codeSigCmd->dataoff);	// start of CD in mach-o file
 		siginfo.fs_blob_size=codeSigCmd->datasize;			// size of CD
 		int result = fcntl(fd, F_ADDFILESIGS_RETURN, &siginfo);
 
-#if TARGET_IPHONE_SIMULATOR
+#if TARGET_OS_SIMULATOR
 		// rdar://problem/18759224> check range covered by the code directory after loading
 		// Attempt to fallback only if we are in the simulator
 
@@ -1131,28 +1162,26 @@ void ImageLoaderMachO::loadCodeSignature(const struct linkedit_data_command* cod
 		if ( result == -1 ) {
 			if ( (errno == EPERM) || (errno == EBADEXEC) )
 				dyld::throwf("code signature invalid for '%s'\n", this->getPath());
-			if ( context.verboseCodeSignatures ) 
+			if ( context.verboseCodeSignatures )
 				dyld::log("dyld: Failed registering code signature for %s, errno=%d\n", this->getPath(), errno);
 			siginfo.fs_file_start = UINT64_MAX;
 		} else if ( context.verboseCodeSignatures )  {
 			dyld::log("dyld: Registered code signature for %s\n", this->getPath());
 		}
 		fCoveredCodeLength = siginfo.fs_file_start;
+	}
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED
-		if ( context.processUsingLibraryValidation ) {
-			fchecklv checkInfo;
-			char  messageBuffer[512];
-			messageBuffer[0] = '\0';
-			checkInfo.lv_file_start = offsetInFatFile;
-			checkInfo.lv_error_message_size = sizeof(messageBuffer);
-			checkInfo.lv_error_message = messageBuffer;
-			int res = fcntl(fd, F_CHECK_LV, &checkInfo);
-			if ( res == -1 ) {
-				dyld::throwf("code signature in (%s) not valid for use in process using Library Validation: %s", this->getPath(), messageBuffer);
-			}
+	{
+		fchecklv checkInfo;
+		char  messageBuffer[512];
+		messageBuffer[0] = '\0';
+		checkInfo.lv_file_start = offsetInFatFile;
+		checkInfo.lv_error_message_size = sizeof(messageBuffer);
+		checkInfo.lv_error_message = messageBuffer;
+		int res = fcntl(fd, F_CHECK_LV, &checkInfo);
+		if ( res == -1 ) {
+			dyld::throwf("code signature in (%s) not valid for use in process using Library Validation: %s", this->getPath(), messageBuffer);
 		}
-#endif
 	}
 }
 
@@ -1161,30 +1190,22 @@ void ImageLoaderMachO::validateFirstPages(const struct linkedit_data_command* co
 #if __MAC_OS_X_VERSION_MIN_REQUIRED
 	// rdar://problem/21839703> 15A226d: dyld crashes in mageLoaderMachO::validateFirstPages during dlopen() after encountering an mmap failure
 	// We need to ignore older code signatures because they will be bad.
-	if ( this->sdkVersion() < DYLD_MACOSX_VERSION_10_9 ) {
+	if ( this->sdkVersion() < DYLD_PACKED_VERSION(10,9,0) ) {
 		return;
 	}
 #endif
 	if (codeSigCmd != NULL) {
-		void *fdata = xmmap(NULL, lenFileData, PROT_READ | PROT_EXEC, MAP_SHARED, fd, offsetInFat);
+		void *fdata = xmmap(NULL, lenFileData, PROT_READ, MAP_SHARED, fd, offsetInFat);
 		if ( fdata == MAP_FAILED ) {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED
-			if ( context.processUsingLibraryValidation ) {
-				dyld::throwf("cannot load image with wrong team ID in process using Library Validation");
+			int errnoCopy = errno;
+			if ( errnoCopy == EPERM ) {
+				if ( dyld::sandboxBlockedMmap(getPath()) )
+					dyld::throwf("file system sandbox blocked mmap() of '%s'", getPath());
+				else
+					dyld::throwf("code signing blocked mmap() of '%s'", getPath());
 			}
 			else
-#endif
-			{
-				int errnoCopy = errno;
-				if ( errnoCopy == EPERM ) {
-					if ( dyld::sandboxBlockedMmap(getPath()) )
-						dyld::throwf("file system sandbox blocked mmap() of '%s'", getPath());
-					else
-						dyld::throwf("code signing blocked mmap() of '%s'", getPath());
-				}
-				else
-					dyld::throwf("mmap() errno=%d validating first page of '%s'", errnoCopy, getPath());
-			}
+				dyld::throwf("mmap() errno=%d validating first page of '%s'", errnoCopy, getPath());
 		}
 		if ( memcmp(fdata, fileData, lenFileData) != 0 )
 			dyld::throwf("mmap() page compare failed for '%s'", getPath());
@@ -1202,7 +1223,7 @@ const char* ImageLoaderMachO::getInstallPath() const
 	return NULL;
 }
 
-void ImageLoaderMachO::registerInterposing()
+void ImageLoaderMachO::registerInterposing(const LinkContext& context)
 {
 	// mach-o files advertise interposing by having a __DATA __interpose section
 	struct InterposeData { uintptr_t replacement; uintptr_t replacee; };
@@ -1258,6 +1279,7 @@ uint32_t ImageLoaderMachO::sdkVersion(const mach_header* mh)
 	const struct load_command* const cmds = (struct load_command*)(((char*)mh) + sizeof(macho_header));
 	const struct load_command* cmd = cmds;
 	const struct version_min_command* versCmd;
+	const struct build_version_command* buildVersCmd;
 	for (uint32_t i = 0; i < cmd_count; ++i) {
 		switch ( cmd->cmd ) {
 			case LC_VERSION_MIN_MACOSX:
@@ -1266,6 +1288,9 @@ uint32_t ImageLoaderMachO::sdkVersion(const mach_header* mh)
 			case LC_VERSION_MIN_WATCHOS:
 				versCmd = (version_min_command*)cmd;
 				return versCmd->sdk;
+			case LC_BUILD_VERSION:
+				buildVersCmd = (build_version_command*)cmd;
+				return buildVersCmd->sdk;
 		}
 		cmd = (const struct load_command*)(((char*)cmd)+cmd->cmdsize);
 	}
@@ -1283,6 +1308,7 @@ uint32_t ImageLoaderMachO::minOSVersion(const mach_header* mh)
 	const struct load_command* const cmds = (struct load_command*)(((char*)mh) + sizeof(macho_header));
 	const struct load_command* cmd = cmds;
 	const struct version_min_command* versCmd;
+	const struct build_version_command* buildVersCmd;
 	for (uint32_t i = 0; i < cmd_count; ++i) {
 		switch ( cmd->cmd ) {
 			case LC_VERSION_MIN_MACOSX:
@@ -1291,6 +1317,9 @@ uint32_t ImageLoaderMachO::minOSVersion(const mach_header* mh)
 			case LC_VERSION_MIN_WATCHOS:
 				versCmd = (version_min_command*)cmd;
 				return versCmd->version;
+			case LC_BUILD_VERSION:
+				buildVersCmd = (build_version_command*)cmd;
+				return buildVersCmd->minos;
 		}
 		cmd = (const struct load_command*)(((char*)cmd)+cmd->cmdsize);
 	}
@@ -1303,7 +1332,7 @@ uint32_t ImageLoaderMachO::minOSVersion() const
 }
 
 
-void* ImageLoaderMachO::getThreadPC() const
+void* ImageLoaderMachO::getEntryFromLC_MAIN() const
 {
 	const uint32_t cmd_count = ((macho_header*)fMachOData)->ncmds;
 	const struct load_command* const cmds = (struct load_command*)&fMachOData[sizeof(macho_header)];
@@ -1324,36 +1353,33 @@ void* ImageLoaderMachO::getThreadPC() const
 }
 
 
-void* ImageLoaderMachO::getMain() const
+void* ImageLoaderMachO::getEntryFromLC_UNIXTHREAD() const
 {
 	const uint32_t cmd_count = ((macho_header*)fMachOData)->ncmds;
 	const struct load_command* const cmds = (struct load_command*)&fMachOData[sizeof(macho_header)];
 	const struct load_command* cmd = cmds;
 	for (uint32_t i = 0; i < cmd_count; ++i) {
-		switch (cmd->cmd) {
-			case LC_UNIXTHREAD:
-			{
-			#if __i386__
-				const i386_thread_state_t* registers = (i386_thread_state_t*)(((char*)cmd) + 16);
-				void* entry = (void*)(registers->eip + fSlide);
-			#elif __x86_64__
-				const x86_thread_state64_t* registers = (x86_thread_state64_t*)(((char*)cmd) + 16);
-				void* entry = (void*)(registers->rip + fSlide);
-			#elif __arm__
-				const arm_thread_state_t* registers = (arm_thread_state_t*)(((char*)cmd) + 16);
-				void* entry = (void*)(registers->__pc + fSlide);
-			#elif __arm64__
-				const arm_thread_state64_t* registers = (arm_thread_state64_t*)(((char*)cmd) + 16);
-				void* entry = (void*)(registers->__pc + fSlide);
-			#else
-				#warning need processor specific code
-			#endif
-				// <rdar://problem/8543820&9228031> verify entry point is in image
-				if ( this->containsAddress(entry) ) {
-					return entry;
-				}
-			}
-			break;
+		if ( cmd->cmd == LC_UNIXTHREAD ) {
+	#if __i386__
+			const i386_thread_state_t* registers = (i386_thread_state_t*)(((char*)cmd) + 16);
+			void* entry = (void*)(registers->eip + fSlide);
+			// <rdar://problem/8543820&9228031> verify entry point is in image
+			if ( this->containsAddress(entry) )
+				return entry;
+	#elif __x86_64__
+			const x86_thread_state64_t* registers = (x86_thread_state64_t*)(((char*)cmd) + 16);
+			void* entry = (void*)(registers->rip + fSlide);
+			// <rdar://problem/8543820&9228031> verify entry point is in image
+			if ( this->containsAddress(entry) )
+				return entry;
+	#elif __arm64__ && !__arm64e__
+			// temp support until <rdar://39514191> is fixed
+			const uint64_t* regs64 = (uint64_t*)(((char*)cmd) + 16);
+			void* entry = (void*)(regs64[32] + fSlide); // arm_thread_state64_t.__pc
+			// <rdar://problem/8543820&9228031> verify entry point is in image
+			if ( this->containsAddress(entry) )
+				return entry;
+	#endif
 		}
 		cmd = (const struct load_command*)(((char*)cmd)+cmd->cmdsize);
 	}
@@ -1388,7 +1414,8 @@ bool ImageLoaderMachO::needsAddedLibSystemDepency(unsigned int libCount, const m
 				// It is OK for OS dylibs (libSystem or libmath or Rosetta shims) to have no dependents
 				// but all other dylibs must depend on libSystem for initialization to initialize libSystem first
 				// <rdar://problem/6497528> rosetta circular dependency spew
-				isNonOSdylib = ( (strncmp(installPath, "/usr/lib/", 9) != 0) && (strncmp(installPath, "/usr/libexec/oah/Shims", 9) != 0) );
+				isNonOSdylib = ( (strncmp(installPath, "/usr/lib/", 9) != 0) && (strncmp(installPath, "/System/DriverKit/usr/lib/", 26) != 0) && (strncmp(installPath, "/usr/libexec/oah/Shims", 9) != 0) );
+				// if (isNonOSdylib) dyld::log("ImageLoaderMachO::needsAddedLibSystemDepency(%s)\n", installPath);
 				}
 				break;
 		}
@@ -1468,12 +1495,10 @@ void ImageLoaderMachO::getRPaths(const LinkContext& context, std::vector<const c
 				const char* pathToAdd = NULL;
 				const char* path = (char*)cmd + ((struct rpath_command*)cmd)->path.offset;
 				if ( (strncmp(path, "@loader_path", 12) == 0) && ((path[12] == '/') || (path[12] == '\0')) ) {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED
-					if ( context.processIsRestricted && (context.mainExecutable == this) ) {
-						dyld::warn("LC_RPATH %s in %s being ignored in restricted program because of @loader_path\n", path, this->getPath());
+					if ( !context.allowAtPaths && (context.mainExecutable == this) ) {
+						dyld::warn("LC_RPATH %s in %s being ignored in restricted program because of @loader_path (Codesign main executable with Library Validation to allow @ paths)\n", path, this->getPath());
 						break;
 					}
-#endif
 					char resolvedPath[PATH_MAX];
 					if ( realpath(this->getPath(), resolvedPath) != NULL ) {
 						char newRealPath[strlen(resolvedPath) + strlen(path)];
@@ -1486,12 +1511,10 @@ void ImageLoaderMachO::getRPaths(const LinkContext& context, std::vector<const c
 					}
 				}
 				else if ( (strncmp(path, "@executable_path", 16) == 0) && ((path[16] == '/') || (path[16] == '\0')) ) {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED
-					if ( context.processIsRestricted ) {
-						dyld::warn("LC_RPATH %s in %s being ignored in restricted program because of @executable_path\n", path, this->getPath());
+					if ( !context.allowAtPaths) {
+						dyld::warn("LC_RPATH %s in %s being ignored in restricted program because of @executable_path (Codesign main executable with Library Validation to allow @ paths)\n", path, this->getPath());
 						break;
 					}
-#endif
 					char resolvedPath[PATH_MAX];
 					if ( realpath(context.mainExecutable->getPath(), resolvedPath) != NULL ) {
 						char newRealPath[strlen(resolvedPath) + strlen(path)];
@@ -1503,36 +1526,38 @@ void ImageLoaderMachO::getRPaths(const LinkContext& context, std::vector<const c
 						}
 					}
 				}
-#if __MAC_OS_X_VERSION_MIN_REQUIRED
-				else if ( (path[0] != '/') && context.processIsRestricted ) {
+				else if ( (path[0] != '/') && !context.allowAtPaths) {
 					dyld::warn("LC_RPATH %s in %s being ignored in restricted program because it is a relative path\n", path, this->getPath());
 					break;
 				}
-#endif
 #if SUPPORT_ROOT_PATH
 				else if ( (path[0] == '/') && (context.rootPaths != NULL) ) {
 					// <rdar://problem/5869973> DYLD_ROOT_PATH should apply to LC_RPATH rpaths
+					// <rdar://problem/49576123> Even if DYLD_ROOT_PATH exists, LC_RPATH should add raw path to rpaths
 					// DYLD_ROOT_PATH can be a list of paths, but at this point we can only support one, so use first combination that exists
-					bool found = false;
-					for(const char** rp = context.rootPaths; *rp != NULL; ++rp) {
+					for (const char** rp = context.rootPaths; *rp != NULL; ++rp) {
 						char newPath[PATH_MAX];
 						strlcpy(newPath, *rp, PATH_MAX);
 						strlcat(newPath, path, PATH_MAX);
 						struct stat stat_buf;
 						if ( stat(newPath, &stat_buf) != -1 ) {
-							//dyld::log("combined DYLD_ROOT_PATH and LC_RPATH: %s\n", newPath);
-							pathToAdd = strdup(newPath);
-							found = true;
-							break;
+							// dyld::log("combined DYLD_ROOT_PATH and LC_RPATH: %s\n", newPath);
+							paths.push_back(strdup(newPath));
 						}
 					}
-					if ( ! found ) {
-						// make copy so that all elements of 'paths' can be freed
-						pathToAdd = strdup(path);
-					}
+					// add in raw absolute path without root prefix
+					pathToAdd = strdup(path);
 				}
 #endif
 				else {
+					// realpath() is slow, and /usr/lib/swift is a real path, so don't realpath it
+					if ( strcmp(path, "/usr/lib/swift") != 0 ) {
+						char resolvedPath[PATH_MAX];
+						if ( (realpath(path, resolvedPath) != NULL) && (strcmp(path, resolvedPath) != 0) ) {
+							// <rdar://problem/45470293> support LC_RPATH symlinks to directories of things in the dyld cache
+							path = resolvedPath;
+						}
+					}
 					// make copy so that all elements of 'paths' can be freed
 					pathToAdd = strdup(path);
 				}
@@ -1568,6 +1593,10 @@ void ImageLoaderMachO::doRebase(const LinkContext& context)
 	// <rdar://problem/25329861> Delay calling setNeverUnload() until we know this is not for dlopen_preflight()
 	if ( fRetainForObjC )
 		this->setNeverUnload();
+
+    // dylibs with thread local variables cannot be unloaded because there is no way to clean up all threads
+    if ( !this->inSharedCache() && (this->machHeader()->flags & MH_HAS_TLV_DESCRIPTORS) )
+        this->setNeverUnload();
 
 	// if prebound and loaded at prebound address, then no need to rebase
 	if ( this->usablePrebinding(context) ) {
@@ -1605,7 +1634,7 @@ void ImageLoaderMachO::doRebase(const LinkContext& context)
 #endif
 
 	// if loaded at preferred address, no rebasing necessary
-	if ( this->fSlide == 0 ) 
+	if ( this->fSlide == 0 )
 		return;
 
 #if TEXT_RELOC_SUPPORT
@@ -1794,7 +1823,7 @@ intptr_t ImageLoaderMachO::computeSlide(const mach_header* mh)
 	for (uint32_t i = 0; i < cmd_count; ++i) {
 		if ( cmd->cmd == LC_SEGMENT_COMMAND ) {
 			const macho_segment_command* seg = (macho_segment_command*)cmd;
-			if ( (seg->fileoff == 0) && (seg->filesize != 0) )
+			if ( strcmp(seg->segname, "__TEXT") == 0 )
 				return (char*)mh - (char*)(seg->vmaddr);
 		}
 		cmd = (const load_command*)(((char*)cmd)+cmd->cmdsize);
@@ -1830,7 +1859,7 @@ bool ImageLoaderMachO::findSection(const mach_header* mh, const char* segmentNam
 }
 
 
-bool ImageLoaderMachO::findSection(const void* imageInterior, const char** segmentName, const char** sectionName, size_t* sectionOffset)
+const macho_section* ImageLoaderMachO::findSection(const void* imageInterior) const
 {
 	const uint32_t cmd_count = ((macho_header*)fMachOData)->ncmds;
 	const struct load_command* const cmds = (struct load_command*)&fMachOData[sizeof(macho_header)];
@@ -1846,13 +1875,7 @@ bool ImageLoaderMachO::findSection(const void* imageInterior, const char** segme
 						const struct macho_section* const sectionsEnd = &sectionsStart[seg->nsects];
 						for (const struct macho_section* sect=sectionsStart; sect < sectionsEnd; ++sect) {
 							if ((sect->addr <= unslidInteriorAddress) && (unslidInteriorAddress < (sect->addr+sect->size))) {
-								if ( segmentName != NULL )
-									*segmentName = sect->segname;
-								if ( sectionName != NULL )
-									*sectionName = sect->sectname;
-								if ( sectionOffset != NULL )
-									*sectionOffset = unslidInteriorAddress - sect->addr;
-								return true;
+								return sect;
 							}
 						}
 					}
@@ -1860,6 +1883,22 @@ bool ImageLoaderMachO::findSection(const void* imageInterior, const char** segme
 				break;
 		}
 		cmd = (const struct load_command*)(((char*)cmd)+cmd->cmdsize);
+	}
+	return nullptr;
+}
+
+
+bool ImageLoaderMachO::findSection(const void* imageInterior, const char** segmentName, const char** sectionName, size_t* sectionOffset)
+{
+	if (const struct macho_section* sect = findSection(imageInterior)) {
+		const uintptr_t unslidInteriorAddress = (uintptr_t)imageInterior - this->getSlide();
+		if ( segmentName != NULL )
+			*segmentName = sect->segname;
+		if ( sectionName != NULL )
+			*sectionName = sect->sectname;
+		if ( sectionOffset != NULL )
+			*sectionOffset = unslidInteriorAddress - sect->addr;
+		return true;
 	}
 	return false;
 }
@@ -1929,24 +1968,29 @@ const void* ImageLoaderMachO::getEnd() const
 	return (const void*)lastAddress;
 }
 
-
-uintptr_t ImageLoaderMachO::bindLocation(const LinkContext& context, uintptr_t location, uintptr_t value, 
-										uint8_t type, const char* symbolName,
-										intptr_t addend, const char* inPath, const char* toPath, const char* msg)
+uintptr_t ImageLoaderMachO::bindLocation(const LinkContext& context, uintptr_t baseVMAddress,
+                                         uintptr_t location, uintptr_t value,
+                                         uint8_t type, const char* symbolName,
+                                         intptr_t addend, const char* inPath, const char* toPath, const char* msg,
+                                         ExtraBindData *extraBindData, uintptr_t slide)
 {
-	// log
-	if ( context.verboseBind ) {
-		if ( addend != 0 )
-			dyld::log("dyld: %sbind: %s:0x%08lX = %s:%s, *0x%08lX = 0x%08lX + %ld\n",
-						msg, shortName(inPath), (uintptr_t)location,
-						((toPath != NULL) ? shortName(toPath) : "<missing weak_import>"),
-						symbolName, (uintptr_t)location, value, addend);
-		else
-			dyld::log("dyld: %sbind: %s:0x%08lX = %s:%s, *0x%08lX = 0x%08lX\n",
-						msg, shortName(inPath), (uintptr_t)location,
-						((toPath != NULL) ? shortName(toPath) : "<missing weak_import>"),
-						 symbolName, (uintptr_t)location, value);
-	}
+    auto logBind = [&]() {
+        if ( !context.verboseBind )
+            return;
+        if ( addend != 0 ) {
+            dyld::log("dyld: %sbind: %s:0x%08lX = %s:%s, *0x%08lX = 0x%08lX + %ld\n",
+                      msg, shortName(inPath), (uintptr_t)location,
+                      ((toPath != NULL) ? shortName(toPath) : "<missing weak_import>"),
+                      symbolName, (uintptr_t)location, value, addend);
+        } else {
+            dyld::log("dyld: %sbind: %s:0x%08lX = %s:%s, *0x%08lX = 0x%08lX\n",
+                      msg, shortName(inPath), (uintptr_t)location,
+                      ((toPath != NULL) ? shortName(toPath) : "<missing weak_import>"),
+                      symbolName, (uintptr_t)location, value);
+        }
+    };
+
+
 #if LOG_BINDINGS
 //	dyld::logBindings("%s: %s\n", targetImage->getShortName(), symbolName);
 #endif
@@ -1958,22 +2002,45 @@ uintptr_t ImageLoaderMachO::bindLocation(const LinkContext& context, uintptr_t l
 	uint32_t value32;
 	switch (type) {
 		case BIND_TYPE_POINTER:
+            logBind();
 			// test first so we don't needless dirty pages
 			if ( *locationToFix != newValue )
 				*locationToFix = newValue;
 			break;
-		case BIND_TYPE_TEXT_ABSOLUTE32:
+        case BIND_TYPE_TEXT_ABSOLUTE32:
+            logBind();
 			loc32 = (uint32_t*)locationToFix;
 			value32 = (uint32_t)newValue;
 			if ( *loc32 != value32 )
 				*loc32 = value32;
 			break;
-		case BIND_TYPE_TEXT_PCREL32:
+        case BIND_TYPE_TEXT_PCREL32:
+            logBind();
 			loc32 = (uint32_t*)locationToFix;
 			value32 = (uint32_t)(newValue - (((uintptr_t)locationToFix) + 4));
 			if ( *loc32 != value32 )
 				*loc32 = value32;
+            break;
+        case BIND_TYPE_THREADED_BIND:
+            logBind();
+            // test first so we don't needless dirty pages
+            if ( *locationToFix != newValue )
+                *locationToFix = newValue;
+            break;
+        case BIND_TYPE_THREADED_REBASE: {
+            // Regular pointer which needs to fit in 51-bits of value.
+            // C++ RTTI uses the top bit, so we'll allow the whole top-byte
+            // and the signed-extended bottom 43-bits to be fit in to 51-bits.
+            uint64_t top8Bits = *locationToFix & 0x0007F80000000000ULL;
+            uint64_t bottom43Bits = *locationToFix & 0x000007FFFFFFFFFFULL;
+            uint64_t targetValue = ( top8Bits << 13 ) | (((intptr_t)(bottom43Bits << 21) >> 21) & 0x00FFFFFFFFFFFFFF);
+            newValue = (uintptr_t)(targetValue + slide);
+            if ( context.verboseRebase ) {
+                dyld::log("dyld: rebase: %s:*0x%08lX += 0x%08lX = 0x%08lX\n", shortName(inPath), (uintptr_t)locationToFix, slide, newValue);
+            }
+            *locationToFix = newValue;
 			break;
+        }
 		default:
 			dyld::throwf("bad bind type %d", type);
 	}
@@ -2004,7 +2071,17 @@ struct DATAdyld {
 
 // These are defined in dyldStartup.s
 extern "C" void stub_binding_helper();
+extern "C" int _dyld_func_lookup(const char* name, void** address);
 
+static const char* libDyldPath(const ImageLoader::LinkContext& context)
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED
+	if ( context.driverKit )
+		return DRIVERKIT_LIBDYLD_DYLIB_PATH;
+	else
+#endif
+	return LIBDYLD_DYLIB_PATH;
+}
 
 void ImageLoaderMachO::setupLazyPointerHandler(const LinkContext& context)
 {
@@ -2032,6 +2109,24 @@ void ImageLoaderMachO::setupLazyPointerHandler(const LinkContext& context)
 									dd->dyldLazyBinder = (void*)&stub_binding_helper;
 							}
 				#endif // !__arm64__
+							// <rdar://problem/40352925> Add work around for existing apps that have deprecated __dyld section
+							const char* installNm = this->getInstallPath();
+							if ( (mh->filetype != MH_DYLIB) || (installNm == NULL) || (strcmp(installNm, libDyldPath(context)) != 0) ) {
+						#if TARGET_OS_OSX
+								// don't allow macOS apps build with 10.14 or later SDK and targeting 10.8 or later to have a __dyld section
+								if ( (minOSVersion() >= 0x000a0800) && (sdkVersion() >= 0x000a0e00) )
+									dyld::throwf("__dyld section not supported in %s", this->getPath());
+						#endif
+						#if TARGET_OS_IOS || TARGET_OS_TV
+								// don't allow iOS apps build with 12.0 or later SDK to have a __dyld section
+								if ( sdkVersion() >= 0x000c0000 )
+									dyld::throwf("__dyld section not supported in %s", this->getPath());
+						#endif
+						#if TARGET_OS_WATCH
+								if ( sdkVersion() >= 0x00050000 )
+									dyld::throwf("__dyld section not supported in %s", this->getPath());
+						#endif
+							}
 							if ( sect->size > offsetof(DATAdyld, dyldFuncLookup) ) {
 								if ( dd->dyldFuncLookup != (void*)&_dyld_func_lookup )
 									dd->dyldFuncLookup = (void*)&_dyld_func_lookup;
@@ -2051,7 +2146,7 @@ void ImageLoaderMachO::setupLazyPointerHandler(const LinkContext& context)
 									// match what crt1.o supplies, then the program has a custom entry point.
 									// This means it might be doing something that needs to be executed before 
 									// initializers are run. 
-									if ( memcmp(this->getMain(), sStandardEntryPointInstructions, 16) != 0 ) {
+									if ( memcmp(this->getEntryFromLC_UNIXTHREAD(), sStandardEntryPointInstructions, 16) != 0 ) {
 										if ( context.verboseInit )
 											dyld::log("dyld: program uses non-standard entry point so delaying running of initializers\n");
 										context.setRunInitialzersOldWay();
@@ -2061,7 +2156,7 @@ void ImageLoaderMachO::setupLazyPointerHandler(const LinkContext& context)
 							}
 							else if ( mh->filetype == MH_DYLIB ) {
 								const char* installPath = this->getInstallPath();
-								if ( (installPath != NULL) && (strncmp(installPath, "/usr/lib/", 9) == 0) ) {
+								if ( (installPath != NULL) && ((strncmp(installPath, "/usr/lib/", 9) == 0) || (strncmp(installPath, "/System/DriverKit/usr/lib/", 26) == 0)) ) {
 									if ( sect->size > offsetof(DATAdyld, vars) ) {
 										// use ProgramVars from libdyld.dylib but tweak mh field to correct value
 										dd->vars.mh = context.mainExecutable->machHeader();
@@ -2118,10 +2213,9 @@ void ImageLoaderMachO::lookupProgramVars(const LinkContext& context) const
 
 bool ImageLoaderMachO::usablePrebinding(const LinkContext& context) const
 {
-	// if prebound and loaded at prebound address, and all libraries are same as when this was prebound, then no need to bind
-	if ( ((this->isPrebindable() && (this->getSlide() == 0)) || fInSharedCache)
-		&& this->usesTwoLevelNameSpace()
-		&& this->allDependentLibrariesAsWhenPreBound() ) {
+	// dylibs in dyld cache do not need to be rebased or bound
+	// for chained fixups always pretend dylib is up to date, patch tables will be used later
+	if ( fInSharedCache && (this->allDependentLibrariesAsWhenPreBound() || context.dyldCache->header.builtFromChainedFixups) ) {
 		// allow environment variables to disable prebinding
 		if ( context.bindFlat )
 			return false;
@@ -2139,6 +2233,14 @@ bool ImageLoaderMachO::usablePrebinding(const LinkContext& context) const
 	return false;
 }
 
+static void *stripPointer(void *ptr) {
+#if __has_feature(ptrauth_calls)
+    return __builtin_ptrauth_strip(ptr, ptrauth_key_asia);
+#else
+    return ptr;
+#endif
+}
+
 
 void ImageLoaderMachO::doImageInit(const LinkContext& context)
 {
@@ -2150,8 +2252,11 @@ void ImageLoaderMachO::doImageInit(const LinkContext& context)
 			switch (cmd->cmd) {
 				case LC_ROUTINES_COMMAND:
 					Initializer func = (Initializer)(((struct macho_routines_command*)cmd)->init_address + fSlide);
+#if __has_feature(ptrauth_calls)
+					func = (Initializer)__builtin_ptrauth_sign_unauthenticated((void*)func, ptrauth_key_asia, 0);
+#endif
 					// <rdar://problem/8543820&9228031> verify initializers are in image
-					if ( ! this->containsAddress((void*)func) ) {
+					if ( ! this->containsAddress(stripPointer((void*)func)) ) {
 						dyld::throwf("initializer function %p not in mapped image for %s\n", func, this->getPath());
 					}
 					if ( ! dyld::gProcessInfo->libSystemInitialized ) {
@@ -2160,13 +2265,28 @@ void ImageLoaderMachO::doImageInit(const LinkContext& context)
 					}
 					if ( context.verboseInit )
 						dyld::log("dyld: calling -init function %p in %s\n", func, this->getPath());
-					func(context.argc, context.argv, context.envp, context.apple, &context.programVars);
+					{
+						dyld3::ScopedTimer(DBG_DYLD_TIMING_STATIC_INITIALIZER, (uint64_t)fMachOData, (uint64_t)func, 0);
+						func(context.argc, context.argv, context.envp, context.apple, &context.programVars);
+					}
 					break;
 			}
 			cmd = (const struct load_command*)(((char*)cmd)+cmd->cmdsize);
 		}
 	}
 }
+
+static const char* libSystemPath(const ImageLoader::LinkContext& context)
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED
+	if ( context.driverKit )
+		return DRIVERKIT_LIBSYSTEM_DYLIB_PATH;
+	else
+#endif
+	return LIBSYSTEM_DYLIB_PATH;
+}
+
+
 
 void ImageLoaderMachO::doModInitFunctions(const LinkContext& context)
 {
@@ -2190,19 +2310,57 @@ void ImageLoaderMachO::doModInitFunctions(const LinkContext& context)
 						for (size_t j=0; j < count; ++j) {
 							Initializer func = inits[j];
 							// <rdar://problem/8543820&9228031> verify initializers are in image
-							if ( ! this->containsAddress((void*)func) ) {
+							if ( ! this->containsAddress(stripPointer((void*)func)) ) {
 								dyld::throwf("initializer function %p not in mapped image for %s\n", func, this->getPath());
 							}
 							if ( ! dyld::gProcessInfo->libSystemInitialized ) {
 								// <rdar://problem/17973316> libSystem initializer must run first
 								const char* installPath = getInstallPath();
-								if ( (installPath == NULL) || (strcmp(installPath, LIBSYSTEM_DYLIB_PATH) != 0) )
+								if ( (installPath == NULL) || (strcmp(installPath, libSystemPath(context)) != 0) )
 									dyld::throwf("initializer in image (%s) that does not link with libSystem.dylib\n", this->getPath());
 							}
 							if ( context.verboseInit )
 								dyld::log("dyld: calling initializer function %p in %s\n", func, this->getPath());
 							bool haveLibSystemHelpersBefore = (dyld::gLibSystemHelpers != NULL);
-							func(context.argc, context.argv, context.envp, context.apple, &context.programVars);
+							{
+								dyld3::ScopedTimer(DBG_DYLD_TIMING_STATIC_INITIALIZER, (uint64_t)fMachOData, (uint64_t)func, 0);
+								func(context.argc, context.argv, context.envp, context.apple, &context.programVars);
+							}
+							bool haveLibSystemHelpersAfter = (dyld::gLibSystemHelpers != NULL);
+							if ( !haveLibSystemHelpersBefore && haveLibSystemHelpersAfter ) {
+								// now safe to use malloc() and other calls in libSystem.dylib
+								dyld::gProcessInfo->libSystemInitialized = true;
+							}
+						}
+					}
+					else if ( type == S_INIT_FUNC_OFFSETS ) {
+						const uint32_t* inits = (uint32_t*)(sect->addr + fSlide);
+						const size_t count = sect->size / sizeof(uint32_t);
+						// Ensure section is within segment
+						if ( (sect->addr < seg->vmaddr) || (sect->addr+sect->size > seg->vmaddr+seg->vmsize) || (sect->addr+sect->size < sect->addr) )
+							dyld::throwf("__init_offsets section has malformed address range for %s\n", this->getPath());
+						if ( seg->initprot & VM_PROT_WRITE )
+							dyld::throwf("__init_offsets section is not in read-only segment %s\n", this->getPath());
+						for (size_t j=0; j < count; ++j) {
+							uint32_t funcOffset = inits[j];
+							// verify initializers are in TEXT segment
+							if ( funcOffset > seg->filesize ) {
+								dyld::throwf("initializer function offset 0x%08X not in mapped image for %s\n", funcOffset, this->getPath());
+							}
+							if ( ! dyld::gProcessInfo->libSystemInitialized ) {
+								// <rdar://problem/17973316> libSystem initializer must run first
+								const char* installPath = getInstallPath();
+								if ( (installPath == NULL) || (strcmp(installPath, libSystemPath(context)) != 0) )
+									dyld::throwf("initializer in image (%s) that does not link with libSystem.dylib\n", this->getPath());
+							}
+                            Initializer func = (Initializer)((uint8_t*)this->machHeader() + funcOffset);
+							if ( context.verboseInit )
+								dyld::log("dyld: calling initializer function %p in %s\n", func, this->getPath());
+							bool haveLibSystemHelpersBefore = (dyld::gLibSystemHelpers != NULL);
+							{
+								dyld3::ScopedTimer(DBG_DYLD_TIMING_STATIC_INITIALIZER, (uint64_t)fMachOData, (uint64_t)func, 0);
+                                func(context.argc, context.argv, context.envp, context.apple, &context.programVars);
+                            }
 							bool haveLibSystemHelpersAfter = (dyld::gLibSystemHelpers != NULL);
 							if ( !haveLibSystemHelpersBefore && haveLibSystemHelpersAfter ) {
 								// now safe to use malloc() and other calls in libSystem.dylib
@@ -2300,8 +2458,11 @@ void ImageLoaderMachO::doTermination(const LinkContext& context)
 						const size_t count = sect->size / sizeof(uintptr_t);
 						for (size_t j=count; j > 0; --j) {
 							Terminator func = terms[j-1];
+#if __has_feature(ptrauth_calls)
+							func = (Terminator)__builtin_ptrauth_sign_unauthenticated((void*)func, ptrauth_key_asia, 0);
+#endif
 							// <rdar://problem/8543820&9228031> verify terminators are in image
-							if ( ! this->containsAddress((void*)func) ) {
+							if ( ! this->containsAddress(stripPointer((void*)func)) ) {
 								dyld::throwf("termination function %p not in mapped image for %s\n", func, this->getPath());
 							}
 							if ( context.verboseInit )
@@ -2424,16 +2585,24 @@ void ImageLoaderMachO::mapSegments(int fd, uint64_t offsetInFat, uint64_t lenInF
 		else
 			dyld::log("dyld: Mapping %s\n", this->getPath());
 	}
+
+	// <rdar://problem/47163421> speculatively read whole slice
+	fspecread_t specread = {} ;
+	specread.fsr_offset = offsetInFat;
+	specread.fsr_length = lenInFat;
+	specread.fsr_flags  = 0;
+	fcntl(fd, F_SPECULATIVE_READ, &specread);
+	if ( context.verboseMapping )
+		dyld::log("dyld: Speculatively read offset=0x%08llX, len=0x%08llX, path=%s\n", offsetInFat, lenInFat, this->getPath());
+
 	// map in all segments
 	for(unsigned int i=0, e=segmentCount(); i < e; ++i) {
-		vm_offset_t fileOffset = segFileOffset(i) + offsetInFat;
+		vm_offset_t fileOffset = (vm_offset_t)(segFileOffset(i) + offsetInFat);
 		vm_size_t size = segFileSize(i);
 		uintptr_t requestedLoadAddress = segPreferredLoadAddress(i) + slide;
 		int protection = 0;
 		if ( !segUnaccessible(i) ) {
-			// If has text-relocs, don't set x-bit initially.
-			// Instead set it later after text-relocs have been done.
-			if ( segExecutable(i) && !(segHasRebaseFixUps(i) && (slide != 0)) )
+			if ( segExecutable(i) )
 				protection   |= PROT_EXEC;
 			if ( segReadable(i) )
 				protection   |= PROT_READ;
@@ -2532,12 +2701,13 @@ void ImageLoaderMachO::segProtect(unsigned int segIndex, const ImageLoader::Link
 	}
 }	
 
+#if TEXT_RELOC_SUPPORT
 void ImageLoaderMachO::segMakeWritable(unsigned int segIndex, const ImageLoader::LinkContext& context)
 {
 	vm_address_t addr = segActualLoadAddress(segIndex);
 	vm_size_t size = segSize(segIndex);
 	const bool setCurrentPermissions = false;
-	vm_prot_t protection = VM_PROT_WRITE | VM_PROT_READ;
+	vm_prot_t protection = VM_PROT_WRITE | VM_PROT_READ | VM_PROT_COPY;
 	if ( segExecutable(segIndex) && !segHasRebaseFixUps(segIndex) )
 		protection |= VM_PROT_EXECUTE;
 	kern_return_t r = vm_protect(mach_task_self(), addr, size, setCurrentPermissions, protection);
@@ -2550,7 +2720,7 @@ void ImageLoaderMachO::segMakeWritable(unsigned int segIndex, const ImageLoader:
 			(protection & PROT_READ) ? 'r' : '.',  (protection & PROT_WRITE) ? 'w' : '.',  (protection & PROT_EXEC) ? 'x' : '.' );
 	}
 }
-
+#endif
 
 const char* ImageLoaderMachO::findClosestSymbol(const mach_header* mh, const void* addr, const void** closestAddr)
 {
@@ -2573,8 +2743,9 @@ const char* ImageLoaderMachO::findClosestSymbol(const mach_header* mh, const voi
 					unslidLinkEditBase = (uint8_t*)(seg->vmaddr - seg->fileoff);
 					linkEditBaseFound = true;
 				}
-				else if ( (seg->fileoff == 0) && (seg->filesize != 0) )
+				else if ( strcmp(seg->segname, "__TEXT") == 0 ) {
 					slide = (uintptr_t)mh - seg->vmaddr;
+                }
 				break;
 			case LC_SYMTAB:
 				symtab = (symtab_command*)cmd;
@@ -2642,8 +2813,6 @@ bool ImageLoaderMachO::getLazyBindingInfo(uint32_t& lazyBindingInfoOffset, const
 {
 	if ( lazyBindingInfoOffset > (lazyInfoEnd-lazyInfoStart) )
 		return false;
-	uint8_t type = BIND_TYPE_POINTER;
-	uint8_t symboFlags = 0;
 	bool done = false;
 	const uint8_t* p = &lazyInfoStart[lazyBindingInfoOffset];
 	while ( !done && (p < lazyInfoEnd) ) {
@@ -2672,13 +2841,11 @@ bool ImageLoaderMachO::getLazyBindingInfo(uint32_t& lazyBindingInfoOffset, const
 				break;
 			case BIND_OPCODE_SET_SYMBOL_TRAILING_FLAGS_IMM:
 				*symbolName = (char*)p;
-				symboFlags = immediate;
 				while (*p != '\0')
 					++p;
 				++p;
 				break;
 			case BIND_OPCODE_SET_TYPE_IMM:
-				type = immediate;
 				break;
 			case BIND_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB:
 				*segIndex  = immediate;
@@ -2738,4 +2905,13 @@ uintptr_t ImageLoaderMachO::segPreferredAddress(const mach_header* mh, unsigned 
 }
 
 
+
+uintptr_t ImageLoaderMachO::imageBaseAddress() const {
+    //printf("imageBaseAddress: %s %d->%d\n", getPath(), 0, segmentCount());
+    for (unsigned int i = 0, e = segmentCount(); i != e; ++i) {
+        if ( (segFileOffset(i) == 0) && (segFileSize(i) != 0) )
+            return segPreferredLoadAddress(i);
+    }
+    return 0;
+}
 

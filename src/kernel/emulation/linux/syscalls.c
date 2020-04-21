@@ -108,6 +108,8 @@
 #include "misc/setlogin.h"
 #include "misc/reboot.h"
 #include "misc/iopolicysys.h"
+#include "misc/fsgetpath.h"
+#include "misc/abort_with_payload.h"
 #include "misc/shared_region_check_np.h"
 #include "ioctl/ioctl.h"
 #include "misc/getrlimit.h"
@@ -443,6 +445,7 @@ void* __bsd_syscall_table[600] = {
 	[420] = sys_sem_wait_nocancel,
 	[422] = sys_sigwait_nocancel,
 	[423] = sys_semwait_signal_nocancel,
+	[427] = sys_fsgetpath,
 	[428] = sys_audit_session_self,
 	[430] = sys_fileport_makeport,
 	[431] = sys_fileport_makefd,
@@ -468,6 +471,7 @@ void* __bsd_syscall_table[600] = {
 	[500] = sys_getentropy,
 	[515] = sys_ulock_wait,
 	[516] = sys_ulock_wake,
+	[521] = sys_abort_with_payload,
 	[524] = sys_setattrlistat,
 };
 

@@ -176,6 +176,8 @@ set(emulation_sources
 	misc/fileport_makeport.c
 	misc/fileport_makefd.c
 	misc/csrctl.c
+	misc/fsgetpath.c
+	misc/abort_with_payload.c
 	fcntl/open.c
 	fcntl/openat.c
 	fcntl/fcntl.c
