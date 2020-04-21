@@ -82,7 +82,11 @@ void ComponentManager::discoverComponents(const char* dir)
 	CFRelease(urlDir);
 
 	for (CFIndex i = 0; i < CFArrayGetCount(componentBundles); i++)
-		analyzeComponent((CFBundleRef) CFArrayGetValueAtIndex(componentBundles, i));
+	{
+		CFBundleRef bundle = (CFBundleRef) CFArrayGetValueAtIndex(componentBundles, i);
+		analyzeComponent(bundle);
+		CFRelease(bundle);
+	}
 
 	CFRelease(componentBundles);
 }

@@ -5,10 +5,16 @@ CREATE TABLE `bundle` (
 	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
 	`path` TEXT NOT NULL,
 	`bundle_id` TEXT NOT NULL,
-	`checksum` INTEGER NOT NULL
+	`checksum` INTEGER NOT NULL,
+	'package_type' TEXT,
+	'creator' TEXT,
+	'signature' TEXT
 );
 CREATE INDEX `bundle_id_index` ON `bundle`(`bundle_id`);
 CREATE INDEX `bundle_path_index` ON `bundle`(`path`);
+CREATE INDEX `bundle_type` ON `bundle`(`package_type`);
+CREATE INDEX `bundle_creator` ON `bundle`(`creator`);
+CREATE INDEX `bundle_signature` ON `bundle`(`signature`);
 
 CREATE TABLE `uti` (
 	`id` INTEGER PRIMARY KEY AUTOINCREMENT,

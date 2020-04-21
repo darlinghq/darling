@@ -260,13 +260,11 @@ static FSEventStreamRef g_eventStream;
 	NSArray<NSDictionary*>* types = (NSArray*) infoDict[@"CFBundleDocumentTypes"];
 	if (types)
 	{
-		NSLog(@"Found type array\n");
 		for (NSDictionary* type in types)
 			[self processFileAssociation: type];
 	}
 	if (infoDict[@"CFBundleTypeRole"] != nil)
 	{
-		NSLog(@"Found a single type\n");
 		[self processFileAssociation: infoDict];
 	}
 }
@@ -275,7 +273,8 @@ static FSEventStreamRef g_eventStream;
 {
 	NSURL* url = (NSURL*) CFBundleCopyBundleURL(_bundle);
 	NSString* path = [url path];
-	const uint32_t newChecksum = [[(NSDictionary*) CFBundleGetInfoDictionary(_bundle) description] crc32];
+	NSDictionary* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
+	const uint32_t newChecksum = [[infoDict description] crc32];
 
 	[url release];
 	FMResultSet* rs = [g_database executeQuery:@"select id, checksum from bundle where path = ?", path];
@@ -296,14 +295,26 @@ static FSEventStreamRef g_eventStream;
 
 	[rs close];
 
+	UInt32 packageType = 0, packageCreator = 0;
+	CFBundleGetPackageInfo(_bundle, &packageType, &packageCreator);
+
+	NSString* packageTypeStr = nil;
+	NSString* packageCreatorStr = nil;
+	NSString* bundleSignature = infoDict[@"CFBundleSignature"];
+
+	if (packageType != 0)
+		packageTypeStr = [LSBundle fourcc:packageType];
+	if (packageCreator != 0)
+		packageCreatorStr = [LSBundle fourcc:packageCreator];
+
 	if (!_bundleId)
 	{
 		CFStringRef identifier = CFBundleGetIdentifier(_bundle);
 
 		NSLog(@"Registering new bundle at '%@', identifier '%@'\n", path, identifier);
 
-		[g_database executeUpdate:@"insert into bundle (path, bundle_id, checksum) values (?,?,?)",
-			path, identifier, [NSNumber numberWithInt:newChecksum]];
+		[g_database executeUpdate:@"insert into bundle (path, bundle_id, checksum, package_type, creator, signature) values (?,?,?,?,?,?)",
+			path, identifier, [NSNumber numberWithInt:newChecksum], packageTypeStr, packageCreatorStr, bundleSignature];
 			
 		_bundleId = [g_database lastInsertRowId];
 	}
@@ -312,8 +323,9 @@ static FSEventStreamRef g_eventStream;
 		NSLog(@"Updating bundle at '%@'\n", path);
 
 		// We're in a transaction, so it's OK to set the new checksum now
-		[g_database executeUpdate:@"update bundle set checksum = ? where id = ?",
-			[NSNumber numberWithInt:newChecksum], [NSNumber numberWithInt: _bundleId]];
+		[g_database executeUpdate:@"update bundle set checksum = ?, package_type = ?, creator = ?, signature = ? where id = ?",
+			[NSNumber numberWithInt:newChecksum], packageTypeStr, packageCreatorStr,
+			bundleSignature, [NSNumber numberWithInt: _bundleId]];
 	}
 
 	return TRUE;
@@ -368,6 +380,17 @@ static FSEventStreamRef g_eventStream;
 	}
 }
 
++(NSString*)fourcc:(UInt32)code
+{
+	char str[5];
+	str[0] = (code >> 24) & 0xff;
+	str[1] = (code >> 16) & 0xff;
+	str[2] = (code >> 8) & 0xff;
+	str[3] = code & 0xff;
+	str[4] = '\0';
+	return [NSString stringWithCString:str encoding:NSASCIIStringEncoding];
+}
+
 +(void)scanForBundles:(NSString*)dir
 {
 	@autoreleasepool
@@ -386,6 +409,8 @@ static FSEventStreamRef g_eventStream;
 				LSBundle* b = [[[LSBundle alloc] initWithBundle: (CFBundleRef) bundle] autorelease];
 				[b process];
 			}
+
+			CFRelease((CFBundleRef) bundle);
 		}
 
 		[bundles release];
