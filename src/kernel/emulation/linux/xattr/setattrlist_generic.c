@@ -8,6 +8,7 @@
 #include <stddef.h>
 
 extern char *strcpy(char *dest, const char *src);
+extern int do_linux_fchmodat(int fd, const char* path, int mode, int flag);
 
 #define ATTR_BIT_MAP_COUNT 5
 
@@ -125,7 +126,7 @@ struct attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, unsigne
 	{
 		int perms = *((int*) next);
 #if HAS_PATH
-		rv = LINUX_SYSCALL(__NR_chmod, vc.path, perms);
+		rv = do_linux_fchmodat(LINUX_AT_FDCWD, vc.path, perms, LINUX_AT_SYMLINK_NOFOLLOW);
 #else
 		rv = LINUX_SYSCALL(__NR_fchmod, fd, perms);
 #endif
