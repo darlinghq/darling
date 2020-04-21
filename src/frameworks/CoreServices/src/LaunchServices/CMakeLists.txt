@@ -17,6 +17,7 @@ add_framework(LaunchServices
 		constants.c
 		LSInfo.m
 		LSOpen.m
+		UTType.m
 	DEPENDENCIES
 		CoreFoundation
 		Foundation

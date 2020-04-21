@@ -36,33 +36,21 @@ FMDatabaseQueue* getDatabaseQueue(void)
 	return db;
 }
 
-// An SQL-safe fourcc string
-static NSString* fourcc(UInt32 code)
-{
-	char buf[9];
-	int pos = 0;
-	int shift = 24;
-
-	do
-	{
-		buf[pos] = (code >> shift) & 0xff;
-
-		// Escape ' by doubling it
-		if (buf[pos++] == '\'')
-			buf[pos++] = '\'';
-
-		shift -= 8;
-	}
-	while (shift != 0);
-	buf[pos] = '\0';
-
-	return [NSString stringWithCString:buf encoding:NSASCIIStringEncoding];
-}
-
-static NSString* escape(NSString* str)
+__attribute__((visibility("hidden")))
+NSString* escape(NSString* str)
 {
 	return [str stringByReplacingOccurrencesOfString:@"'"
 		withString:@"''"];
+}
+
+// An SQL-safe fourcc string
+static NSString* fourcc(UInt32 code)
+{
+	CFStringRef str = UTCreateStringForOSType(code);
+	NSString* rv = escape((NSString*) str);
+	CFRelease(str);
+
+	return rv;
 }
 
 OSStatus
@@ -80,7 +68,12 @@ LSFindApplicationForInfo(
 		return paramErr;
 
 	__block OSStatus retval;
-	[getDatabaseQueue() inDatabase:^(FMDatabase* db) {
+	FMDatabaseQueue* dq = getDatabaseQueue();
+
+	if (dq == nil)
+		return fnfErr;
+
+	[dq inDatabase:^(FMDatabase* db) {
 		NSString* query = @"select path from bundle where package_type='APPL'";
 
 		if (inCreator != kLSUnknownCreator)
@@ -119,8 +112,16 @@ CFArrayRef LSCopyApplicationURLsForBundleIdentifier(CFStringRef inBundleIdentifi
 	}
 
 	__block CFArrayRef retval;
+	FMDatabaseQueue* dq = getDatabaseQueue();
 
-	[getDatabaseQueue() inDatabase:^(FMDatabase* db) {
+	if (dq == nil)
+	{
+		if (*outError)
+			*outError = CFErrorCreate(NULL, kCFErrorDomainOSStatus, fnfErr, NULL);
+		return NULL;
+	}
+
+	[dq inDatabase:^(FMDatabase* db) {
 		FMResultSet* rs = [db executeQuery:@"select path from bundle where package_type='APPL' and bundle_id = ?", inBundleIdentifier];
 
 		if ([rs next])
@@ -188,25 +189,37 @@ LSGetApplicationForInfo(
 		return paramErr;
 	}
 
-	[getDatabaseQueue() inDatabase:^(FMDatabase* db) {
-		NSString* query = @"select path from bundle where package_type='APPL'";
+	FMDatabaseQueue* dq = getDatabaseQueue();
+	if (dq == nil)
+		return fnfErr;
 
+	[dq inDatabase:^(FMDatabase* db) {
+		NSString* query = @"select path, AD.rank from bundle INNER JOIN app_doc AD on AD.bundle=bundle.id where bundle.package_type='APPL'";
+
+		if (inExtension != NULL)
+		{
+			NSString* escaped = escape((NSString*) inExtension);
+			query = [query stringByAppendingFormat:@" and (EXISTS (SELECT * FROM app_doc_extension AE WHERE AE.doc=AD.class AND AE.extension = '%@')"
+							@" OR "
+					@"EXISTS (SELECT * FROM app_doc_uti AU JOIN uti ON uti.type_identifier = AU.uti JOIN uti_tag UT ON UT.uti=uti.id WHERE AU.doc=AD.id AND UT.tag = 'public.filename-extension' AND UT.value='%@'))",
+					escaped, escaped];
+		}
+		
 		if (inType != kLSUnknownType)
 			query = [query stringByAppendingFormat:@" and signature='%@'", fourcc(inType)];
 		if (inCreator != kLSUnknownCreator)
 			query = [query stringByAppendingFormat:@" and creator='%@'", fourcc(inCreator)];
-		if (inExtension != NULL)
-		{
-			NSString* escaped = escape((NSString*) inExtension);
-			query = [query stringByAppendingFormat:@" and (id IN (SELECT A.bundle FROM app_doc A LEFT JOIN app_doc_extension AE ON AE.doc=A.id WHERE AE.extension = '%@')"
-							@" OR "
-					@"id IN (SELECT A.bundle FROM app_doc A LEFT JOIN app_doc_uti AU ON AU.doc=A.id LEFT JOIN uti ON uti.type_identifier = AU.uti LEFT JOIN uti_tag UT ON UT.uti=uti.id WHERE UT.tag = 'public.filename-extension' AND UT.value='%@'))",
-					escaped, escaped];
-		}
 		if (inRoleMask != kLSRolesAll)
 		{
 			query = [query stringByAppendingFormat:@" and id IN (SELECT A.bundle FROM app_doc WHERE role IN (%@))", roleSQLArray(inRoleMask)];
 		}
+
+		query = [query stringByAppendingString:@" order by case "
+			@"when AD.rank='Owner' then 1 "
+			@"when AD.rank='Default' then 2 "
+			@"when AD.rank='Alternate' then 3 "
+			@"else 5 "
+			@"end asc"];
 
 		FMResultSet* rs = [db executeQuery:query];
 		if ([rs next])
@@ -230,14 +243,29 @@ LSGetApplicationForInfo(
 CFURLRef LSCopyDefaultApplicationURLForContentType(CFStringRef inContentType, LSRolesMask inRoleMask, CFErrorRef  _Nullable *outError)
 {
 	__block CFURLRef retval;
+	FMDatabaseQueue* dq = getDatabaseQueue();
 
-	[getDatabaseQueue() inDatabase:^(FMDatabase* db) {
-		NSString* query = @"select path from bundle LEFT JOIN app_doc AD on AD.bundle=bundle.id LEFT JOIN app_doc_uti AU on AU.doc=AD.id WHERE uti=?";
+	if (dq == nil)
+	{
+		if (*outError)
+			*outError = CFErrorCreate(NULL, kCFErrorDomainOSStatus, fnfErr, NULL);
+		return NULL;
+	}
+
+	[dq inDatabase:^(FMDatabase* db) {
+		NSString* query = @"select path, AD.rank from bundle INNER JOIN app_doc AD on AD.bundle=bundle.id LEFT JOIN app_doc_uti AU on AU.doc=AD.id WHERE bundle.package_type='APPL' AND uti=?";
 
 		if (inRoleMask != kLSRolesAll)
 		{
 			query = [query stringByAppendingFormat:@" and AD.role in (%@)", roleSQLArray(inRoleMask)];
 		}
+
+		query = [query stringByAppendingString:@" order by case "
+			@"when AD.rank='Owner' then 1 "
+			@"when AD.rank='Default' then 2 "
+			@"when AD.rank='Alternate' then 3 "
+			@"else 5 "
+			@"end asc"];
 
 		FMResultSet* rs = [db executeQuery:query, inContentType];
 
@@ -255,4 +283,29 @@ CFURLRef LSCopyDefaultApplicationURLForContentType(CFStringRef inContentType, LS
 	}];
 
 	return retval;
+}
+
+CFURLRef LSCopyDefaultApplicationURLForURL(CFURLRef inURL, LSRolesMask inRoleMask, CFErrorRef  _Nullable *outError)
+{
+	CFURLRef retval;
+	OSStatus status = LSGetApplicationForURL(inURL, inRoleMask, NULL, &retval);
+
+	if (status != noErr)
+	{
+		if (*outError)
+			*outError = CFErrorCreate(NULL, kCFErrorDomainOSStatus, status, NULL);
+		return NULL;
+	}
+	else
+	{
+		if (outError)
+			*outError = NULL;
+		return retval;
+	}
+}
+
+OSStatus LSGetApplicationForURL(CFURLRef inURL, LSRolesMask inRoleMask, FSRef *outAppRef, CFURLRef *outAppURL)
+{
+	NSString* extension = [(NSURL*) inURL pathExtension];
+	return LSGetApplicationForInfo(kLSUnknownType, kLSUnknownCreator, (CFStringRef) extension, inRoleMask, outAppRef, outAppURL);
 }

@@ -18,7 +18,7 @@ CREATE INDEX `bundle_signature` ON `bundle`(`signature`);
 
 CREATE TABLE `uti` (
 	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
-	`type_identifier` TEXT NOT NULL, -- UTTypeIdentifier
+	`type_identifier` TEXT NOT NULL COLLATE NOCASE, -- UTTypeIdentifier
 	`description` TEXT, -- UTTypeDescription
 	`bundle` INTEGER,
 	FOREIGN KEY(`bundle`) REFERENCES `bundle`(`id`) ON DELETE CASCADE
@@ -30,7 +30,7 @@ CREATE INDEX `uti_bundle_index` ON `uti`(`bundle`);
 CREATE TABLE `uti_conforms` (
 	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
 	`uti` INTEGER,
-	`conforms_to` TEXT NOT NULL,
+	`conforms_to` TEXT NOT NULL COLLATE NOCASE,
 	FOREIGN KEY(`uti`) REFERENCES `uti`(`id`) ON DELETE CASCADE
 );
 CREATE INDEX `uti_conforms_index` ON `uti_conforms`(`conforms_to`);
@@ -50,7 +50,7 @@ CREATE TABLE `uti_tag` (
 	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
 	`uti` INTEGER,
 	`tag` TEXT NOT NULL,
-	`value` TEXT NOT NULL,
+	`value` TEXT NOT NULL COLLATE NOCASE,
 	FOREIGN KEY(`uti`) REFERENCES `uti`(`id`) ON DELETE CASCADE
 );
 CREATE INDEX `uti_tag_uti_index` ON `uti_tag`(`uti`);
