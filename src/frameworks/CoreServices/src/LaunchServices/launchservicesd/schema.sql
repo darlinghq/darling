@@ -69,9 +69,28 @@ CREATE INDEX `app_doc_bundle_index` ON `app_doc`(`bundle`);
 CREATE TABLE `app_doc_uti` (
 	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
 	`doc` INTEGER,
-	`uti` INTEGER,
-	FOREIGN KEY(`doc`) REFERENCES `app_doc`(`id`) ON DELETE CASCADE,
-	FOREIGN KEY(`uti`) REFERENCES `uti`(`id`) ON DELETE CASCADE
+	`uti` TEXT,
+	FOREIGN KEY(`doc`) REFERENCES `app_doc`(`id`) ON DELETE CASCADE
 );
 CREATE INDEX `app_doc_uti_doc_index` ON `app_doc_uti`(`doc`);
 CREATE INDEX `app_doc_uti_index` ON `app_doc_uti`(`uti`);
+
+-- obsolete CFBundleTypeMIMETypes
+CREATE TABLE `app_doc_mime` (
+	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
+	`doc` INTEGER,
+	`mime` TEXT,
+	FOREIGN KEY(`doc`) REFERENCES `app_doc`(`id`) ON DELETE CASCADE
+);
+CREATE INDEX `app_doc_mime_doc_index` ON `app_doc_mime`(`doc`);
+CREATE INDEX `app_doc_mime_index` ON `app_doc_mime`(`mime`);
+
+-- obsolete CFBundleTypeExtensions
+CREATE TABLE `app_doc_extension` (
+	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
+	`doc` INTEGER,
+	`extension` TEXT,
+	FOREIGN KEY(`doc`) REFERENCES `app_doc`(`id`) ON DELETE CASCADE
+);
+CREATE INDEX `app_doc_extension_doc_index` ON `app_doc_extension`(`doc`);
+CREATE INDEX `app_doc_extension_index` ON `app_doc_extension`(`extension`);

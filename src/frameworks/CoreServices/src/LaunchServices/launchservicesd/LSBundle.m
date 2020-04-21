@@ -186,11 +186,89 @@ static FSEventStreamRef g_eventStream;
 	}
 }
 
+// https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundledocumenttypes?language=objc
+-(void)processFileAssociation:(NSDictionary*)dict
+{
+	NSNumber* myId = [NSNumber numberWithInt: _bundleId];
+	NSNumber* appDocId;
+
+	NSString* iconFile = dict[@"CFBundleTypeIconFile"];
+	NSString* displayName = dict[@"CFBundleTypeName"];
+	NSString* role = dict[@"CFBundleTypeRole"];
+	NSString* rank = dict[@"LSHandlerRank"];
+	NSString* documentClass = dict[@"NSDocumentClass"];
+
+	// TODO: exportable types?
+
+	if (!role)
+		role = @"None";
+	if (!rank)
+		rank = @"Default";
+
+	[g_database executeUpdate:@"insert into app_doc (icon,name,role,rank,class,bundle) values (?,?,?,?,?,?)",
+		iconFile, displayName, role, rank, documentClass, myId];
+	appDocId = [NSNumber numberWithInt: [g_database lastInsertRowId]];
+
+	NSArray<NSString*>* contentTypes = dict[@"LSItemContentTypes"];
+	if (contentTypes)
+	{
+		for (NSString* uti in contentTypes)
+		{
+			if (![uti isKindOfClass: [NSString class]])
+				continue;
+
+			[g_database executeUpdate:@"insert into app_doc_uti (doc, uti) values (?,?)", appDocId, uti];
+		}
+	}
+	else
+	{
+		// Support for obsolete CFBundleTypeExtensions and CFBundleTypeMIMETypes
+		NSArray<NSString*>* extensions = dict[@"CFBundleTypeExtensions"];
+
+		if (extensions)
+		{
+			for (NSString* extension in extensions)
+			{
+				if (![extension isKindOfClass: [NSString class]])
+					continue;
+
+				[g_database executeUpdate:@"insert into app_doc_extension (doc, extension) values (?,?)", appDocId, extension];
+			}
+		}
+
+		NSArray<NSString*>* mimeTypes = dict[@"CFBundleTypeMIMETypes"];
+		if (mimeTypes)
+		{
+			for (NSString* mime in mimeTypes)
+			{
+				if (![mime isKindOfClass: [NSString class]])
+					continue;
+				
+				[g_database executeUpdate:@"insert into app_doc_mime (doc, mime) values (?,?)", appDocId, mime];
+			}
+		}
+	}
+}
+
 -(void)processFileAssociations
 {
 	NSDictionary<NSString*,id>* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
+	NSNumber* myId = [NSNumber numberWithInt: _bundleId];
 
-	NSArray<NSString*>* contentTypes = infoDict[@"LSItemContentTypes"];
+	[g_database executeUpdate:@"delete from app_doc where bundle = ?", [NSNumber numberWithInt: _bundleId]];
+
+	NSArray<NSDictionary*>* types = (NSArray*) infoDict[@"CFBundleDocumentTypes"];
+	if (types)
+	{
+		NSLog(@"Found type array\n");
+		for (NSDictionary* type in types)
+			[self processFileAssociation: type];
+	}
+	if (infoDict[@"CFBundleTypeRole"] != nil)
+	{
+		NSLog(@"Found a single type\n");
+		[self processFileAssociation: infoDict];
+	}
 }
 
 -(BOOL)setupBundleID
@@ -256,17 +334,13 @@ static FSEventStreamRef g_eventStream;
 
 	NSDictionary<NSString*,id>* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
 
-	NSArray<NSDictionary*>* utis = infoDict[@"UTExportedTypeDeclarations"];
+	NSArray<NSDictionary*>* utis = infoDict[(NSString*) kUTExportedTypeDeclarationsKey];
 	if (utis != nil)
 	{
 		[self processUTIs:utis];
 	}
 
-	if (infoDict[@"LSItemContentTypes"] != nil)
-	{
-		[self processFileAssociations];
-	}
-
+	[self processFileAssociations];
 	[g_database commit];
 }
 
@@ -275,10 +349,11 @@ static FSEventStreamRef g_eventStream;
 	if (self == [LSBundle class])
 	{
 		MONITORED_DIRECTORIES = @[
-			@"/Applications",
-			@"/System/Applications",
 			// This path doesn't contain apps, but may still contain UTI definitions
 			@"/System/Library/Frameworks",
+
+			@"/Applications",
+			@"/System/Applications",
 		];
 
 		FMDatabase* db = [FMDatabase databaseWithPath: @"/private/var/db/launchservices.db"];
@@ -312,6 +387,8 @@ static FSEventStreamRef g_eventStream;
 				[b process];
 			}
 		}
+
+		[bundles release];
 	}
 }
 
@@ -319,6 +396,7 @@ static FSEventStreamRef g_eventStream;
 {
 	for (NSString* dir in MONITORED_DIRECTORIES)
 		[LSBundle scanForBundles: dir];
+	NSLog(@"scanForBundles done\n");
 }
 
 +(void)watchForBundles
@@ -342,7 +420,7 @@ static FSEventStreamRef g_eventStream;
 
 static void createDBSchema(void)
 {
-	NSString* sqlSchema = [NSString stringWithContentsOfFile: @"/System/Library/CoreServices/launchservicesd-schema.sql"
+	NSString* sqlSchema = [NSString stringWithContentsOfFile: @"/System/Library/Frameworks/CoreServices.framework/Versions/A/Resources/launchservicesd-schema.sql"
 		encoding: NSUTF8StringEncoding
 		error: nil];
 
@@ -406,6 +484,8 @@ static void fsEventCallback(ConstFSEventStreamRef streamRef, void *clientCallBac
 						[LSBundle deleteBundleAtPath:bundlePath];
 					}
 				}
+
+				// TODO: If somebody renames the bundle's directory, we still need to pick it up
 			}
 		}
 		index++;
