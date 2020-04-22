@@ -5,6 +5,10 @@ cmake_minimum_required(VERSION 2.4.0)
 find_package(BISON)
 find_package(FLEX)
 
+if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "aarch64")
+    add_compile_definitions(__arm64__)
+endif()
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 add_definitions(-Du_int=unsigned -D__int64_t=int64_t -D__int32_t=int32_t -D__darwin_natural_t=unsigned -D__uint32_t=uint32_t -D__uint16_t=uint16_t -D__uint64_t=uint64_t -D_BSD_I386__TYPES_H_)
 add_definitions('-DMIG_VERSION="1.0"')
