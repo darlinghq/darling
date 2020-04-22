@@ -60,7 +60,7 @@ const struct known_sysctl sysctls_machdep[] = {
 #endif
 
 
-static inline void copyout_int(int value, char* to_copy, size_t to_copy_length)
+static inline void copyout_int(int value, char* to_copy, size_t* to_copy_length)
 {
         char tmp[64];
         __simple_sprintf(tmp, "%d", value);
@@ -202,7 +202,7 @@ sysctl_handler(handle_features)
             if(i == 10 || i == 20)
                 continue;
 
-            if(edx>>i&1 && counter < oldlen)
+            if(edx>>i&1 && counter < *oldlen)
             {
                 int len = __simple_strlen(features[i]);
                 
@@ -210,7 +210,7 @@ sysctl_handler(handle_features)
 
                 counter = counter + len;
                 
-                if(counter < oldlen)
+                if(counter < *oldlen)
                 {
 
                 old[counter] = ' ';
