@@ -1,5 +1,7 @@
 #include "sysctl_machdep.h"
+#include "simple.h"
 #include <sys/errno.h>
+#include <alloca.h>
 
 enum {
 	_MACHDEP_CPU = 1000,
@@ -53,6 +55,7 @@ const struct known_sysctl sysctls_machdep[] = {
             unsigned int ebx;\
             unsigned int edx;\
             unsigned int ecx
+#endif
 
 sysctl_handler(handle_vendor)
 {
@@ -113,7 +116,7 @@ sysctl_handler(handle_model)
     eax = eax >> 3;
     eax &= 15;
 
-    sprintf(old,"%d",eax);
+    __simple_sprintf(old,"%d",eax);
 
     return 0;
 }
@@ -133,17 +136,14 @@ sysctl_handler(handle_stepping)
 
 sysctl_handler(handle_brand_string)
 {
-    unsigned int level = 0;
-    unsigned int eax = 0x80000000;
+    setup(0x80000000);
 
-    unsigned int test[3];
-
-    __cpuid(level,eax,test, test+1,test+2);
+    __cpuid(level,eax,eabx, eacx, eadx);
 
     if(eax < 0x80000004) // the information is not implemented
         return 2;
 
-    eax = 0x80000001;
+
 
     union
     {
@@ -151,16 +151,15 @@ sysctl_handler(handle_brand_string)
         char name[49];
     } v;
 
-    __cpuid(level, eax, v.brand+0x1, v.brand+0x2, v.brand+0x3);
-    v.brand[0x0] = eax;
-    eax = 0x80000002;
-
-    __cpuid(level, eax, v.brand+0x5, v.brand+0x6, v.brand+0x7);
-    v.brand[0x4] = eax;
-    eax = 0x80000003;
-
-    __cpuid(level, eax, v.brand+0x9, v.brand+0xa, v.brand+0xb);
-    v.brand[0x8] = eax;
+		for (int i = 1; i < 4; i++)
+		{
+				eax = 0x80000000+i;
+				__cpuid(level, eax, ebx, ecx, edx);
+				v.brand[0x0+(i-1)*4] = eax;
+				v.brand[0x1+(i-1)*4] = ebx;
+				v.brand[0x2+(i-1)*4] = ecx;
+				v.brand[0x3+(i-1)*4] = edx;
+		}
 
     v.name[48] = 0;
     copyout_string(v.name, (char*) old, oldlen);
@@ -171,37 +170,48 @@ sysctl_handler(handle_features)
 {
     setup(1);
 
-    char *features[] = {"FPU","VME", "DE", "PSE", "TSC", "MSR", "PAE", "MCE", "CX8", "APIC", NULL,"SEP","PGE","MCA",
-                        "CMOV", "PAT", "PSE-36", "PSN", "CLFSH", "DS", "ACPI", "MMX", "FXSR", "SSE", "SSE2", "SS",
-                        "HTT", "TM", NULL, "PBE"};
+    char *features[] = {"FPU","VME", "DE", "PSE", "TSC", "MSR", "PAE", "MCE", "CX8", "APIC", NULL,"SEP","MTRR","PGE",
+                        "MCA", "CMOV", "PSE-36", "PSN", "CLFSH", NULL, "DS", "ACPI", "MMX", "FXSR", "SSE", "SSE2", "SS",
+                        "HTT", "TM","IA64","PBE"};
 
-    char *out = (char*)(calloc(119, sizeof(char))); //"worst" case: we have all of it plus null termination
+    char *out = ""; //"worst" case: we have all of it plus null termination
 
     __cpuid(0,eax,ebx,ecx,edx);
 
     int j = 0;
-    int size = sizeof(char);
     int counter = 0;
 
-    for (int i = 0; i < 32; ++i)
+    for (int i = 0; i < 32; i++)
     {
         if(edx>>i&1)
         {
-            for(j=0;j< sizeof(features[i])/size; j++)
+						int len = __simple_strlen(features[i]);
+						int out_len = ____simple_strlen(out);
+						char *new_out = alloca((len+out_len+1)*sizeof(char))
+						for(j=0; j < out_len; j++)
+						{
+							new_out[j] = out[j];
+						}
+
+            for(j=0; j < len; j++)
             {
-                out[counter+j] = features[i][j]
+                new_out[counter+j] = features[i][j];
             }
 
-            counter = counter + j + 1;
+            counter = counter + j;
 
-            out[counter] = ' ';
+            new_out[counter] = ' ';
 
-            counter += 1;
+						out=new_out;
+
+            counter++;
 
         }
     }
 
-    copyout_string(out,(*char) old, oldlen);
+		out[counter] = 0;
+
+    copyout_string(out,(char*) old, oldlen);
 
     return 0;
 
