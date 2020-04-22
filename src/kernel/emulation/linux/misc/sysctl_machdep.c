@@ -3,6 +3,8 @@
 #include <sys/errno.h>
 #include <alloca.h>
 
+extern char *strcpy(char *dest, const char *src);
+
 enum {
 	_MACHDEP_CPU = 1000,
 };
@@ -58,11 +60,11 @@ const struct known_sysctl sysctls_machdep[] = {
 #endif
 
 
-inline void copyout_int(int value, char* to_copy, int to_copy_leng)
+static inline void copyout_int(int value, char* to_copy, size_t to_copy_length)
 {
         char tmp[64];
         __simple_sprintf(tmp, "%d", value);
-        copyout_string(tmp, to_copy, to_copy_leng);
+        copyout_string(tmp, to_copy, to_copy_length);
 }
 
 
@@ -113,7 +115,7 @@ sysctl_handler(handle_family)
     eax = eax >> 7;
     eax &= 15;
 
-    copyout_string(old,"%d",eax);
+    copyout_int(eax, old, oldlen);
 
     return 0;
 }
@@ -149,7 +151,7 @@ sysctl_handler(handle_brand_string)
 {
     setup(0x80000000);
 
-    __cpuid(level,eax,eabx, eacx, eadx);
+    __cpuid(level,eax,ebx, ecx, edx);
 
     if(eax < 0x80000004) // the information is not implemented
         return 2;
@@ -180,18 +182,19 @@ sysctl_handler(handle_brand_string)
 sysctl_handler(handle_features)
 {
 
-    if(old != NULL)
-    {
-        setup(1);
+    setup(1);
 
-        char features[][] = {"FPU","VME", "DE", "PSE", "TSC", "MSR", "PAE", "MCE", "CX8", "APIC", "","SEP","MTRR","PGE",
+        static const char features[][7] = {"FPU","VME", "DE", "PSE", "TSC", "MSR", "PAE", "MCE", "CX8", "APIC", "","SEP","MTRR","PGE",
                             "MCA", "CMOV", "PAT", "PSE-36", "PSN", "CLFSH", "", "DS", "ACPI", "MMX", "FXSR", "SSE", "SSE2", "SS",
                             "HTT", "TM","IA64","PBE"};
 
         __cpuid(0,eax,ebx,ecx,edx);
 
+    if(old != NULL)
+    {
+
         int counter = 0;
-        int current_old_len = __simple_strlen(old);
+        int j = 0;
 
         for (int i = 0; i < 32; i++)
         {
@@ -199,20 +202,52 @@ sysctl_handler(handle_features)
             if(i == 10 || i == 20)
                 continue;
 
-            if(edx>>i&1 && current_old_len < oldlen)
+            if(edx>>i&1 && counter < oldlen)
             {
                 int len = __simple_strlen(features[i]);
-                __simple_sprintf(old,"%s %s",old,features[i]);
+                
+                strncpy(old,features[i]);
 
-                counter = counter + len + 1;
+                counter = counter + len;
+                
+                if(counter < oldlen)
+                {
 
-                current_old_len = __simple_strlen(old);
+                old[counter] = ' ';
+
+                counter++;
+
+                }
 
             }
         }
-
-        
     }
+    else
+    {
+        int len = 0;
+
+        for (int i = 0; i < 32; i++)
+        {
+
+            if(i == 10 || i == 20)
+                continue;
+
+            if(edx>>i&1) 
+            {
+                if (len != 0)
+                    len++;
+                
+                len += __simple_strlen(features[i]);
+            }
+
+        }
+
+        if (oldlen)
+            *oldlen = len;
+
+    }
+        
+
 
     return 0;
 
