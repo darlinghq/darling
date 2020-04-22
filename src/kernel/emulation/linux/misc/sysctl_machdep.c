@@ -57,6 +57,15 @@ const struct known_sysctl sysctls_machdep[] = {
             unsigned int ecx
 #endif
 
+
+inline void copyout_int(int value, char* to_copy, int to_copy_leng)
+{
+        char tmp[64];
+        __simple_sprintf(tmp, "%d", value);
+        copyout_string(tmp, to_copy, to_copy_leng);
+}
+
+
 sysctl_handler(handle_vendor)
 {
 	unsigned int level = 0;
@@ -88,7 +97,9 @@ sysctl_handler(handle_max_basic)
     __cpuid(level, eax, ebx, ecx, edx);
 
 
-	sprintf(old,"%d",eax);
+
+
+	copyout_int(eax, (char*)old,oldlen);
 
 	return 0;
 }
@@ -102,7 +113,7 @@ sysctl_handler(handle_family)
     eax = eax >> 7;
     eax &= 15;
 
-    sprintf(old,"%d",eax);
+    copyout_string(old,"%d",eax);
 
     return 0;
 }
@@ -116,7 +127,7 @@ sysctl_handler(handle_model)
     eax = eax >> 3;
     eax &= 15;
 
-    __simple_sprintf(old,"%d",eax);
+    copyout_int(eax,(char*)old, oldlen);
 
     return 0;
 }
@@ -129,7 +140,7 @@ sysctl_handler(handle_stepping)
 
     eax &= 15;
 
-    sprintf(old,"%d",eax);
+    copyout_int(eax,(char*)old, oldlen);
 
     return 0;
 }
@@ -168,50 +179,40 @@ sysctl_handler(handle_brand_string)
 }
 sysctl_handler(handle_features)
 {
-    setup(1);
 
-    char *features[] = {"FPU","VME", "DE", "PSE", "TSC", "MSR", "PAE", "MCE", "CX8", "APIC", NULL,"SEP","MTRR","PGE",
-                        "MCA", "CMOV", "PSE-36", "PSN", "CLFSH", NULL, "DS", "ACPI", "MMX", "FXSR", "SSE", "SSE2", "SS",
-                        "HTT", "TM","IA64","PBE"};
-
-    char *out = ""; //"worst" case: we have all of it plus null termination
-
-    __cpuid(0,eax,ebx,ecx,edx);
-
-    int j = 0;
-    int counter = 0;
-
-    for (int i = 0; i < 32; i++)
+    if(old != NULL)
     {
-        if(edx>>i&1)
+        setup(1);
+
+        char features[][] = {"FPU","VME", "DE", "PSE", "TSC", "MSR", "PAE", "MCE", "CX8", "APIC", "","SEP","MTRR","PGE",
+                            "MCA", "CMOV", "PAT", "PSE-36", "PSN", "CLFSH", "", "DS", "ACPI", "MMX", "FXSR", "SSE", "SSE2", "SS",
+                            "HTT", "TM","IA64","PBE"};
+
+        __cpuid(0,eax,ebx,ecx,edx);
+
+        int counter = 0;
+        int current_old_len = __simple_strlen(old);
+
+        for (int i = 0; i < 32; i++)
         {
-						int len = __simple_strlen(features[i]);
-						int out_len = ____simple_strlen(out);
-						char *new_out = alloca((len+out_len+1)*sizeof(char))
-						for(j=0; j < out_len; j++)
-						{
-							new_out[j] = out[j];
-						}
 
-            for(j=0; j < len; j++)
+            if(i == 10 || i == 20)
+                continue;
+
+            if(edx>>i&1 && current_old_len < oldlen)
             {
-                new_out[counter+j] = features[i][j];
+                int len = __simple_strlen(features[i]);
+                __simple_sprintf(old,"%s %s",old,features[i]);
+
+                counter = counter + len + 1;
+
+                current_old_len = __simple_strlen(old);
+
             }
-
-            counter = counter + j;
-
-            new_out[counter] = ' ';
-
-						out=new_out;
-
-            counter++;
-
         }
+
+        
     }
-
-		out[counter] = 0;
-
-    copyout_string(out,(char*) old, oldlen);
 
     return 0;
 
