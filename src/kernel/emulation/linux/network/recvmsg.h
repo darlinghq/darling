@@ -49,5 +49,15 @@ int socket_level_linux_to_bsd(int level);
 
 #define LINUX_SYS_RECVMSG	17
 
+#define BSD_CMSG_ALIGN(len) (((len) + sizeof(uint32_t) - 1) & (size_t)~(sizeof(uint32_t) - 1))
+#define BSD_CMSG_SPACE(len) (BSD_CMSG_ALIGN(sizeof(struct bsd_cmsghdr)) + BSD_CMSG_ALIGN(len))
+#define BSD_CMSG_LEN(len) (BSD_CMSG_ALIGN(sizeof(struct bsd_cmsghdr)) + (len))
+
+#define LINUX_CMSG_ALIGN(len) (((len) + sizeof(unsigned long) - 1) & (size_t)~(sizeof(unsigned long) - 1))
+#define LINUX_CMSG_SPACE(len) (LINUX_CMSG_ALIGN(sizeof(struct linux_cmsghdr)) + LINUX_CMSG_ALIGN(len))
+#define LINUX_CMSG_LEN(len) (LINUX_CMSG_ALIGN(sizeof(struct linux_cmsghdr)) + (len))
+
+#define LINUX_BSD_CMSGHDR_SIZE_DIFFERENCE (sizeof(struct linux_cmsghdr) - sizeof(struct bsd_cmsghdr))
+
 #endif
 
