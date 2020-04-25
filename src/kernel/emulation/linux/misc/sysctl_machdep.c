@@ -3,7 +3,7 @@
 #include <sys/errno.h>
 #include <alloca.h>
 
-extern char *strcpy(char *dest, const char *src);
+extern char *strncpy(char *dest, const char *src);
 
 enum {
 	_MACHDEP_CPU = 1000,
@@ -179,6 +179,7 @@ sysctl_handler(handle_brand_string)
 
     return 0;
 }
+
 sysctl_handler(handle_features)
 {
 
@@ -193,7 +194,8 @@ sysctl_handler(handle_features)
     if(old != NULL)
     {
 
-        int counter = 0;
+        char *outsr = (char*)old;
+        int current_length = 0;
         int j = 0;
 
         for (int i = 0; i < 32; i++)
@@ -202,25 +204,41 @@ sysctl_handler(handle_features)
             if(i == 10 || i == 20)
                 continue;
 
-            if(edx>>i&1 && counter < *oldlen)
+            if(edx>>i&1 && current_length < *oldlen)
             {
-                int len = __simple_strlen(features[i]);
-                
-                strncpy(old,features[i]);
 
-                counter = counter + len;
-                
-                if(counter < *oldlen)
+                if (current_length)
                 {
 
-                old[counter] = ' ';
+                    outsr[current_length] = ' ';
 
-                counter++;
+                    current_length++;
+
+                }
+                
+                if(current_length < *oldlen)
+                {
+
+                int len = __simple_strlen(features[i]);
+                
+                strncpy(outsr + current_length, features[i],
+                 (len < (*oldlen - current_length) ? len : (*oldlen - current_length)));
+
+                current_length = current_length + len;
 
                 }
 
             }
+
         }
+
+        if(current_length < *oldlen)
+        {
+
+            outsr[current_length] = '\0';
+
+        }
+
     }
     else
     {
