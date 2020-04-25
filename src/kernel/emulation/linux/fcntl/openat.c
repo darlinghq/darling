@@ -51,7 +51,7 @@ long sys_openat_nocancel(int fd, const char* filename, int flags, unsigned int m
 		filename = "/dev/null";
 
 	struct vchroot_expand_args vc;
-	vc.flags = VCHROOT_FOLLOW;
+	vc.flags = (flags & BSD_O_SYMLINK || flags & BSD_O_NOFOLLOW) ? 0 : VCHROOT_FOLLOW;
 	vc.dfd = atfd(fd);
 
 	strcpy(vc.path, filename);
@@ -59,6 +59,14 @@ long sys_openat_nocancel(int fd, const char* filename, int flags, unsigned int m
 	if (ret < 0) {
 		return errno_linux_to_bsd(ret);
 	}
+
+	// when we're given O_SYMLINK, `oflags_bsd_to_linux` translates it into
+	// O_NOFOLLOW and O_PATH
+	// this is the only way to open the symlink itself on Linux
+	// unfortunately, this presents additional challenges
+	// only a select few Linux syscalls support O_PATH descriptors, which means
+	// that for other syscalls, we either have to check for this and use an
+	// `l` variant (e.g. `llistxattr` instead of `listxatrr`) or we're screwed
 
 	ret = LINUX_SYSCALL(__NR_openat, vc.dfd, vc.path, linux_flags, mode);
 	if (ret < 0)
