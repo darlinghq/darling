@@ -3,7 +3,7 @@
 #include <sys/errno.h>
 #include <alloca.h>
 
-extern char *strncpy(char *dest, const char *src);
+extern char *strncpy(char *dest, const char *src, __SIZE_TYPE__ n);
 
 enum {
 	_MACHDEP_CPU = 1000,
