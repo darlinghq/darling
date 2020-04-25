@@ -178,6 +178,7 @@ set(emulation_sources
 	misc/csrctl.c
 	misc/fsgetpath.c
 	misc/abort_with_payload.c
+	misc/clonefile.c
 	fcntl/open.c
 	fcntl/openat.c
 	fcntl/fcntl.c

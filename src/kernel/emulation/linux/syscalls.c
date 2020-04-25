@@ -124,6 +124,7 @@
 #include "misc/fileport_makeport.h"
 #include "misc/fileport_makefd.h"
 #include "misc/csrctl.h"
+#include "misc/clonefile.h"
 #include "synch/semwait_signal.h"
 #include "fcntl/open.h"
 #include "fcntl/openat.h"
@@ -453,6 +454,7 @@ void* __bsd_syscall_table[600] = {
 	[442] = sys_guarded_close_np,
 	[443] = sys_guarded_kqueue_np,
 	[461] = sys_getattrlistbulk,
+	[462] = sys_clonefileat,
 	[463] = sys_openat,
 	[464] = sys_openat_nocancel,
 	[465] = sys_renameat,
@@ -471,6 +473,7 @@ void* __bsd_syscall_table[600] = {
 	[500] = sys_getentropy,
 	[515] = sys_ulock_wait,
 	[516] = sys_ulock_wake,
+	[517] = sys_fclonefileat,
 	[521] = sys_abort_with_payload,
 	[524] = sys_setattrlistat,
 };
