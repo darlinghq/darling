@@ -44,6 +44,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <termios.h>
 #include <ctype.h>
 #include <pty.h>
+#include <pwd.h>
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
 #include "darling-config.h"
@@ -1318,7 +1319,16 @@ void setupUserHome(void)
 	mkdir(buf, 0777);
 
 	const char* home = getenv("HOME");
-	const char* login = getlogin();
+
+	const char* login = NULL;
+	struct passwd* pw = getpwuid(getuid());
+
+	if (pw != NULL)
+		login = pw->pw_name;
+
+	if (!login)
+		login = getlogin();
+
 	if (!login)
 	{
 		fprintf(stderr, "Cannot determine your user name\n");
