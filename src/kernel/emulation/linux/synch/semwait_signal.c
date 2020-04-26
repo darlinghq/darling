@@ -14,6 +14,7 @@ extern kern_return_t semaphore_wait_trap(int cond_sem);
 
 #define KERN_SUCCESS	0
 #define KERN_ABORTED	14
+#define KERN_OPERATION_TIMED_OUT 49
 
 long sys_semwait_signal(int cond_sem, int mutex_sem, int timeout, int relative, int64_t tv_sec, int32_t tv_nsec)
 {
@@ -58,6 +59,8 @@ long sys_semwait_signal_nocancel(int cond_sem, int mutex_sem, int timeout, int r
 
 	if (kr == KERN_ABORTED)
 		return -EINTR;
+	else if (kr == KERN_OPERATION_TIMED_OUT)
+		return -ETIMEDOUT;
 	else if (kr != KERN_SUCCESS)
 		return -EINVAL;
 
