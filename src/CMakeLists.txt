@@ -134,7 +134,7 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/libedit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/bzip2/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libnotify/include
-	${CMAKE_CURRENT_SOURCE_DIR}/opendirectory/include
+	${CMAKE_CURRENT_SOURCE_DIR}/opendirectory_internal/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/commoncrypto/include
 	${CMAKE_CURRENT_SOURCE_DIR}/quarantine/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libpmenergy/include
@@ -364,7 +364,7 @@ add_subdirectory(IOBluetooth)
 add_subdirectory(libsandbox)
 add_subdirectory(OpenCL)
 add_subdirectory(OpenDirectory)
-add_subdirectory(opendirectory)
+add_subdirectory(opendirectory_internal)
 add_subdirectory(MetalKit)
 add_subdirectory(external/cups)
 
