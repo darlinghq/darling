@@ -11,6 +11,9 @@ long sys_kevent(int	kq, const struct kevent	*changelist, int nchanges,
 			struct	kevent *eventlist, int nevents,
 			const struct timespec *timeout)
 {
-	return kevent_impl(kq, changelist, nchanges, eventlist, nevents, timeout);
+	int ret = kevent_impl(kq, changelist, nchanges, eventlist, nevents, timeout);
+	if (ret < 0)
+		ret = -errno;
+	return ret;
 }
 

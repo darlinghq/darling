@@ -11,6 +11,9 @@ long sys_kevent64(int kq, const struct kevent64_s *changelist, int nchanges,
 			struct kevent64_s *eventlist, int nevents, unsigned int flags,
 			const struct timespec *timeout)
 {
-	return kevent64_impl(kq, changelist, nchanges, eventlist, nevents, flags, timeout);
+	int ret = kevent64_impl(kq, changelist, nchanges, eventlist, nevents, flags, timeout);
+	if (ret < 0)
+		ret = -errno;
+	return ret;
 }
 
