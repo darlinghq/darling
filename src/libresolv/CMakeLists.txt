@@ -63,5 +63,6 @@ set_target_properties(resolv-darwin PROPERTIES OUTPUT_NAME "resolv.9")
 make_fat(resolv-darwin)
 #target_link_libraries(resolv-darwin PRIVATE system)
 
+InstallSymlink("libresolv.9.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libresolv.dylib")
 install(TARGETS resolv-darwin DESTINATION libexec/darling/usr/lib)
 
