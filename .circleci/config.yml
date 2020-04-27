@@ -4,32 +4,34 @@ orbs:
 workflows:
   build:
     jobs:
-      - git-shallow-clone/checkout
-      - run:
-          name: Checkout submodules
-          command: |
-            git submodule sync
-            git submodule update --init --recursive --depth=1
-      - run:
-          name: Install Dependencies
-          command: |
-            sudo apt-get update && sudo apt-get install devscripts equivs debhelper
-            sudo mk-build-deps -ir
-      - run:
-          name: Build DSCs
-          command: tools/makedeb --dsc
-      - run:
-          name: Move DSCs
-          command: mkdir source && mv ../*~testing.* source
-      - run:
-          name: Build DEBs
-          command: tools/makedeb
-      - run:
-          name: Move DEBs
-          command: mkdir dist && mv ../*.deb dist
-      - store_artifacts:
-          path: dist/
-          destination: debs
-      - store_artifacts:
-          path: source/
-          destination: source
+      - build:
+          steps:
+            - git-shallow-clone/checkout
+            - run:
+                name: Checkout submodules
+                command: |
+                  git submodule sync
+                  git submodule update --init --recursive --depth=1
+            - run:
+                name: Install Dependencies
+                command: |
+                  sudo apt-get update && sudo apt-get install devscripts equivs debhelper
+                  sudo mk-build-deps -ir
+            - run:
+                name: Build DSCs
+                command: tools/makedeb --dsc
+            - run:
+                name: Move DSCs
+                command: mkdir source && mv ../*~testing.* source
+            - run:
+                name: Build DEBs
+                command: tools/makedeb
+            - run:
+                name: Move DEBs
+                command: mkdir dist && mv ../*.deb dist
+            - store_artifacts:
+                path: dist/
+                destination: debs
+            - store_artifacts:
+                path: source/
+                destination: source
