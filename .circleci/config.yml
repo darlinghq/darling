@@ -15,15 +15,10 @@ jobs:
       - run:
           name: Install dependencies
           command: |
+            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
+            sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ xenial main'
             sudo apt-get update && sudo apt-get install --no-install-recommends -y devscripts equivs debhelper libdistro-info-perl
             sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" debian/control
-            
-            # we have to install CMake ourselves because Xenial's version (3.5) is too old for Darling
-            wget https://github.com/Kitware/CMake/releases/download/v3.17.1/cmake-3.17.1-Linux-x86_64.sh
-            sudo sh cmake-3.17.1-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license
-            
-            # remove the older CMake
-            sudo apt remove -y cmake
       - run:
           name: Build DSCs
           no_output_timeout: 30m
