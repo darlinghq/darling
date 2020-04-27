@@ -2,7 +2,7 @@ version: 2.1
 orbs:
   git-shallow-clone: guitarrapc/git-shallow-clone@2.0.3
 workflows:
-  build-deb:
+  build:
     jobs:
       - git-shallow-clone/checkout
       - run:
