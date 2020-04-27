@@ -16,7 +16,7 @@ jobs:
           name: Install Dependencies
           command: |
             sudo apt-get update && sudo apt-get install devscripts equivs debhelper
-            sudo mk-build-deps -ir
+            sudo mk-build-deps -ir --tool "apt-get --no-install-recommends -y"
       - run:
           name: Build DSCs
           command: tools/makedeb --dsc
