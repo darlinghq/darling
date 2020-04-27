@@ -22,6 +22,7 @@ jobs:
           command: |
             export DEB_DISTRO=$(lsb_release -cs)
             tools/makedeb --dsc
+            no_output_timeout: 30m
       - run:
           name: Move DSCs
           command: mkdir source && mv ../*~testing.* source
