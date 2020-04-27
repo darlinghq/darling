@@ -25,7 +25,7 @@ jobs:
             tools/makedeb --dsc
       - run:
           name: Move DSCs
-          command: mkdir source && mv ../*~testing.* source
+          command: mkdir source && mv ../*~$(lsb_release -cs).* source
       - run:
           name: Build DEBs
           command: |
