@@ -28,6 +28,7 @@ jobs:
           command: mkdir source && mv ../*~$(lsb_release -cs).* source
       - run:
           name: Build DEBs
+          no_output_timeout: 30m
           command: |
             export DEB_DISTRO=$(lsb_release -cs)
             tools/makedeb
