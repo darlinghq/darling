@@ -19,10 +19,10 @@ jobs:
             sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" debian/control
       - run:
           name: Build DSCs
+          no_output_timeout: 30m
           command: |
             export DEB_DISTRO=$(lsb_release -cs)
             tools/makedeb --dsc
-            no_output_timeout: 30m
       - run:
           name: Move DSCs
           command: mkdir source && mv ../*~testing.* source
