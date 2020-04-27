@@ -15,18 +15,20 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            # we have to install CMake ourselves because Xenial's version (3.5) is too old for Darling
-            mkdir -p cmake-install
-            wget https://github.com/Kitware/CMake/releases/download/v3.17.1/cmake-3.17.1-Linux-x86_64.sh
-            sh cmake-3.17.1-Linux-x86_64.sh --prefix=$(pwd)/cmake-install --exclude-subdir --skip-license
             sudo apt-get update && sudo apt-get install --no-install-recommends -y devscripts equivs debhelper libdistro-info-perl
             sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" debian/control
+            
+            # we have to install CMake ourselves because Xenial's version (3.5) is too old for Darling
+            # note that this assumes that `/usr/local/bin` comes before `/usr/bin` in PATH
+            # otherwise (if `/usr/bin` comes first), later commands will find the CMake installed by APT
+            # (which is *not* the one we want)
+            wget https://github.com/Kitware/CMake/releases/download/v3.17.1/cmake-3.17.1-Linux-x86_64.sh
+            sudo sh cmake-3.17.1-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license
       - run:
           name: Build DSCs
           no_output_timeout: 30m
           command: |
             export DEB_DISTRO=$(lsb_release -cs)
-            export PATH="$(pwd)/cmake-install/bin:$PATH"
             tools/makedeb --dsc
       - run:
           name: Move DSCs
@@ -36,7 +38,6 @@ jobs:
           no_output_timeout: 30m
           command: |
             export DEB_DISTRO=$(lsb_release -cs)
-            export PATH="$(pwd)/cmake-install/bin:$PATH"
             tools/makedeb
       - run:
           name: Move DEBs
