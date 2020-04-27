@@ -19,11 +19,11 @@ jobs:
             sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" debian/control
             
             # we have to install CMake ourselves because Xenial's version (3.5) is too old for Darling
-            # note that this assumes that `/usr/local/bin` comes before `/usr/bin` in PATH
-            # otherwise (if `/usr/bin` comes first), later commands will find the CMake installed by APT
-            # (which is *not* the one we want)
             wget https://github.com/Kitware/CMake/releases/download/v3.17.1/cmake-3.17.1-Linux-x86_64.sh
             sudo sh cmake-3.17.1-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license
+            
+            # remove the older CMake
+            sudo apt remove -y cmake
       - run:
           name: Build DSCs
           no_output_timeout: 30m
