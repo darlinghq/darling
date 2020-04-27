@@ -16,19 +16,19 @@ jobs:
           name: Install Dependencies
           command: |
             sudo apt-get update && sudo apt-get install --no-install-recommends -y devscripts equivs debhelper
-            sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" control
+            sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" debian/control
       - run:
           name: Build DSCs
           command: tools/makedeb --dsc
       - run:
           name: Move DSCs
-          command: mkdir source && mv ../*~testing.* source
+          command: mkdir source && mv *~testing.* source
       - run:
           name: Build DEBs
           command: tools/makedeb
       - run:
           name: Move DEBs
-          command: mkdir dist && mv ../*.deb dist
+          command: mkdir dist && mv *.deb dist
       - store_artifacts:
           path: dist/
           destination: debs
