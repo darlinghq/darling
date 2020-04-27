@@ -26,8 +26,8 @@ FUNCTION(add_darling_executable exe)
 	target_link_libraries(${exe} system)
 	add_dependencies(${exe} csu)
 
-	if (NOT NO_DSYM)
+	if ((NOT NO_DSYM) AND (NOT ${${exe}_NO_DSYM}))
 		dsym(${exe})
-	endif (NOT NO_DSYM)
+	endif ((NOT NO_DSYM) AND (NOT ${${exe}_NO_DSYM}))
 ENDFUNCTION(add_darling_executable)
 
