@@ -3,8 +3,8 @@ orbs:
   git-shallow-clone: guitarrapc/git-shallow-clone@2.0.3
 jobs:
   build:
-    docker:
-      - image: 'cimg/base:2020.01'
+    machine:
+      - image: 'ubuntu-1604:202004-01'
     steps:
       - git-shallow-clone/checkout
       - run:
