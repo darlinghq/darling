@@ -20,21 +20,19 @@ jobs:
       - run:
           name: Build DSCs
           command: |
-            mkdir -p makedeb-dir/cwd
-            cd makedeb-dir/cwd
-            ../../tools/makedeb --dsc
+            export DEB_DISTRO=$(lsb_release -cs)
+            tools/makedeb --dsc
       - run:
           name: Move DSCs
-          command: mkdir ../../source && mv ../*~testing.* ../../source
+          command: mkdir source && mv ../*~testing.* source
       - run:
           name: Build DEBs
           command: |
-            mkdir -p makedeb-dir/cwd
-            cd makedeb-dir/cwd
-            ../../tools/makedeb
+            export DEB_DISTRO=$(lsb_release -cs)
+            tools/makedeb
       - run:
           name: Move DEBs
-          command: mkdir ../../dist && mv ../*.deb ../../dist
+          command: mkdir dist && mv ../*.deb dist
       - store_artifacts:
           path: dist/
           destination: debs
