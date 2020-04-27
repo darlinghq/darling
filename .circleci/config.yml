@@ -17,8 +17,10 @@ jobs:
           command: |
             wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
             sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ xenial main'
+            sudo apt-get remove -y cmake # remove the system installed cmake
             sudo apt-get update && sudo apt-get install --no-install-recommends -y devscripts equivs debhelper libdistro-info-perl
             sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" debian/control
+            cmake --version # debugging
       - run:
           name: Build DSCs
           no_output_timeout: 30m
