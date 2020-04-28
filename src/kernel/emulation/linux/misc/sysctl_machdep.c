@@ -182,63 +182,51 @@ sysctl_handler(handle_features)
 
     setup(1);
 
-        static const char features[][7] = {"FPU","VME", "DE", "PSE", "TSC", "MSR", "PAE", "MCE", "CX8", "APIC", "","SEP","MTRR","PGE",
-                            "MCA", "CMOV", "PAT", "PSE-36", "PSN", "CLFSH", "", "DS", "ACPI", "MMX", "FXSR", "SSE", "SSE2", "SS",
-                            "HTT", "TM","IA64","PBE"};
+    static const char features[][7] = {"FPU","VME", "DE", "PSE", "TSC", "MSR", "PAE", "MCE", "CX8", "APIC", "","SEP","MTRR","PGE",
+                        "MCA", "CMOV", "PAT", "PSE-36", "PSN", "CLFSH", "", "DS", "ACPI", "MMX", "FXSR", "SSE", "SSE2", "SS",
+                        "HTT", "TM","IA64","PBE"};
 
-        __cpuid(0,eax,ebx,ecx,edx);
+    __cpuid(0,eax,ebx,ecx,edx);
+    int current_length = 0;
 
     if (old != NULL)
     {
 
         char *outsr = (char*)old;
-        int current_length = 0;
 
         for (int i = 0; i < 32; i++)
         {
-
             if (i == 10 || i == 20)
                 continue;
 
             if ( (edx & (1<<i)) && current_length < *oldlen)
             {
-
                 if (current_length)
                 {
-
                     outsr[current_length] = ' ';
 
                     current_length++;
-
                 }
-                
                 if (current_length < *oldlen)
                 {
-
                     int len = __simple_strlen(features[i]);
                     
                     strncpy(outsr + current_length, features[i],
                     *oldlen - current_length);
 
                     current_length += len;
-
                 }
-
             }
-
         }
 
         if (current_length < *oldlen)
         {
-
             outsr[current_length] = '\0';
-
         }
 
     }
     else
     {
-        int len = 0;
 
         for (int i = 0; i < 32; i++)
         {
@@ -246,18 +234,18 @@ sysctl_handler(handle_features)
             if (i == 10 || i == 20)
                 continue;
 
-            if (edx>>i&1) 
+            if (edx & (1<<i)) 
             {
-                if (len != 0)
-                    len++;
+                if (current_length != 0)
+                    current_length++;
                 
-                len += __simple_strlen(features[i]);
+                current_length += __simple_strlen(features[i]);
             }
 
         }
 
         if (oldlen)
-            *oldlen = len;
+            *oldlen = current_length;
 
     }
         
