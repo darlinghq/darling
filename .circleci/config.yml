@@ -21,7 +21,7 @@ jobs:
             
             # repos
             sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ xenial main'
-            sudo apt-add-repository 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial main'
+            sudo apt-add-repository 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main'
             sudo add-apt-repository ppa:deadsnakes/ppa
             
             sudo apt-get update
