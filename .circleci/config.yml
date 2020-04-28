@@ -15,12 +15,19 @@ jobs:
       - run:
           name: Install dependencies
           command: |
+            # keys
             wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
+            wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+            
+            # repos
             sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ xenial main'
-            sudo apt-get remove -y cmake # remove the system installed cmake
-            sudo apt-get update && sudo apt-get install --no-install-recommends -y devscripts equivs debhelper libdistro-info-perl
+            sudo apt-add-repository 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial main'
+            sudo add-apt-repository ppa:deadsnakes/ppa
+            
+            sudo apt-get update
+            sudo apt-get upgrade cmake
+            sudo apt-get install --no-install-recommends -y devscripts equivs debhelper libdistro-info-perl python3.8
             sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" debian/control
-            cmake --version # debugging
       - run:
           name: Build DSCs
           no_output_timeout: 30m
