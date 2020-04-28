@@ -41,48 +41,29 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 		return 0;
 	}
 
-	if (nsa != NULL)
-	{
-		sa_tramp = nsa->sa_tramp;
-		if (darling_am_i_ptraced())
-		{
-			sa.sa_sigaction = &sigexc_handler;
-		}
-		else if (nsa->sa_sigaction != SIG_DFL && nsa->sa_sigaction != SIG_IGN
-				&& nsa->sa_sigaction != SIG_ERR)
-		{
-			sa.sa_sigaction = &handler_linux_to_bsd;
-		}
-		else
-			sa.sa_sigaction = (linux_sig_handler*) nsa->sa_sigaction;
-
-		sigset_bsd_to_linux(&nsa->sa_mask, &sa.sa_mask);
-		sa.sa_flags = sigflags_bsd_to_linux(nsa->sa_flags) | LINUX_SA_RESTORER;
-		sa.sa_restorer = sig_restorer;
-	}
-
-	ret = LINUX_SYSCALL(__NR_rt_sigaction, linux_signum,
-			(nsa != NULL) ? &sa : NULL, &olsa,
-			sizeof(sa.sa_mask));
-	if (ret < 0)
-		return errno_linux_to_bsd(ret);
+	ret = 0;
 
 	if (osa != NULL)
 	{
+		/*
 		if (olsa.sa_sigaction == handler_linux_to_bsd)
 			osa->sa_sigaction = sig_handlers[linux_signum];
 		else // values such as SIG_DFL
 			osa->sa_sigaction = (bsd_sig_handler*) olsa.sa_sigaction;
 		sigset_linux_to_bsd(&olsa.sa_mask, &osa->sa_mask);
 		osa->sa_flags = sigflags_linux_to_bsd(olsa.sa_flags);
+		*/
+		osa->sa_sigaction = sig_handlers[linux_signum];
+		osa->sa_flags = sig_flags[linux_signum];
+		osa->sa_mask = sig_masks[linux_signum];
 	}
 	
 	if (nsa != NULL && ret >= 0)
 	{
-		//  __simple_printf("Saving handler for signal %d: %d\n", linux_signum, nsa->sa_sigaction);
+		// __simple_printf("Saving handler for signal %d: %p\n", linux_signum, nsa->sa_sigaction);
 		sig_handlers[linux_signum] = nsa->sa_sigaction;
-		sig_flags[linux_signum] = sa.sa_flags;
-		sig_masks[linux_signum] = sa.sa_mask;
+		sig_flags[linux_signum] = nsa->sa_flags;
+		sig_masks[linux_signum] = nsa->sa_mask;
 	}
 
 	return 0;
