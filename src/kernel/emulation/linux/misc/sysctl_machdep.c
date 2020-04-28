@@ -52,10 +52,10 @@ const struct known_sysctl sysctls_machdep[] = {
 
 #ifndef setup
 #define setup(value)\
-            unsigned int level = 0;\
-            unsigned int eax = value;\
-            unsigned int ebx;\
-            unsigned int edx;\
+            unsigned int level = 0;     \
+            unsigned int eax = value;   \
+            unsigned int ebx;           \
+            unsigned int edx;           \
             unsigned int ecx
 #endif
 
@@ -97,9 +97,6 @@ sysctl_handler(handle_max_basic)
 
 
     __cpuid(level, eax, ebx, ecx, edx);
-
-
-
 
 	copyout_int(eax, (char*)old,oldlen);
 
@@ -153,7 +150,7 @@ sysctl_handler(handle_brand_string)
 
     __cpuid(level,eax,ebx, ecx, edx);
 
-    if(eax < 0x80000004) // the information is not implemented
+    if (eax < 0x80000004) // the information is not implemented
         return 2;
 
 
@@ -191,20 +188,19 @@ sysctl_handler(handle_features)
 
         __cpuid(0,eax,ebx,ecx,edx);
 
-    if(old != NULL)
+    if (old != NULL)
     {
 
         char *outsr = (char*)old;
         int current_length = 0;
-        int j = 0;
 
         for (int i = 0; i < 32; i++)
         {
 
-            if(i == 10 || i == 20)
+            if (i == 10 || i == 20)
                 continue;
 
-            if(edx>>i&1 && current_length < *oldlen)
+            if ( (edx & (1<<i)) && current_length < *oldlen)
             {
 
                 if (current_length)
@@ -216,15 +212,15 @@ sysctl_handler(handle_features)
 
                 }
                 
-                if(current_length < *oldlen)
+                if (current_length < *oldlen)
                 {
 
-                int len = __simple_strlen(features[i]);
-                
-                strncpy(outsr + current_length, features[i],
-                 (len < (*oldlen - current_length) ? len : (*oldlen - current_length)));
+                    int len = __simple_strlen(features[i]);
+                    
+                    strncpy(outsr + current_length, features[i],
+                    *oldlen - current_length);
 
-                current_length = current_length + len;
+                    current_length += len;
 
                 }
 
@@ -232,7 +228,7 @@ sysctl_handler(handle_features)
 
         }
 
-        if(current_length < *oldlen)
+        if (current_length < *oldlen)
         {
 
             outsr[current_length] = '\0';
@@ -247,10 +243,10 @@ sysctl_handler(handle_features)
         for (int i = 0; i < 32; i++)
         {
 
-            if(i == 10 || i == 20)
+            if (i == 10 || i == 20)
                 continue;
 
-            if(edx>>i&1) 
+            if (edx>>i&1) 
             {
                 if (len != 0)
                     len++;
