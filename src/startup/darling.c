@@ -58,6 +58,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
 uid_t g_originalUid, g_originalGid;
+bool g_fixPermissions = false;
 char **g_argv, **g_envp;
 char g_workingDirectory[4096];
 
@@ -106,6 +107,7 @@ int main(int argc, char ** argv, char ** envp)
 	if (!checkPrefixDir())
 	{
 		setupPrefix();
+		g_fixPermissions = true;
 	}
 	checkPrefixOwner();
 
@@ -765,18 +767,22 @@ pid_t spawnInitProcess(void)
 
 		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 100);
 
-		const char* opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir,nfs_export=on,uid=%d";
+		const char* opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir";
 
-		sprintf(opts, opts_fmt, LIBEXEC_PATH, prefix, prefix, g_originalUid);
+		sprintf(opts, opts_fmt, LIBEXEC_PATH, prefix, prefix);
 
 		// Mount overlay onto our prefix
-		if (mount("darling-overlay", prefix, "darling-overlay", 0, opts) != 0)
+		if (mount("overlay", prefix, "overlay", 0, opts) != 0)
 		{
 			fprintf(stderr, "Cannot mount overlay: %s\n", strerror(errno));
 			exit(1);
 		}
 
 		free(opts);
+
+		// This is executed once at prefix creation
+		if (g_fixPermissions)
+			fixDirectoryPermissions(prefix);
 
 		snprintf(putOld, sizeof(putOld), "%s/proc", prefix);
 
