@@ -24,11 +24,11 @@ jobs:
             sudo apt-add-repository 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main'
             sudo add-apt-repository ppa:deadsnakes/ppa
             
-            dpkg --add-architecture i386
+            sudo dpkg --add-architecture i386
             
             sudo apt-get update
             sudo apt-get upgrade -y cmake
-            sudo apt-get install --no-install-recommends -y devscripts equivs debhelper libdistro-info-perl python3.8 clang-9 libfreetype6-dev:i386
+            sudo apt-get install --no-install-recommends -y devscripts equivs debhelper libdistro-info-perl python3.8 clang-9
             sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" debian/control
             
             sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
