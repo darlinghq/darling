@@ -2,6 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../../../../../platform-include/sys/errno.h"
+#include "../signal/sigexc.h"
 #include <linux-syscalls/linux.h>
 
 int pthread_obj_size;
@@ -24,3 +25,16 @@ long sys_bsdthread_register(void* thread_start, void* wqthread, int pthsize,
 		| PTHREAD_FEATURE_DISPATCHFUNC | PTHREAD_FEATURE_QOS_DEFAULT */ 0;
 }
 
+void pthread_entry_point_wrapper(void* self, int thread_port, void* funptr,
+		void* funarg, unsigned long stacksize, unsigned int flags)
+{
+	sigexc_thread_setup();
+	pthread_entry_point(self, thread_port, funptr, funarg, stacksize, flags);
+}
+
+void wqueue_entry_point_wrapper(void* self, int thread_port, void* stackaddr,
+		void* item, int reuse, int nevents)
+{
+	sigexc_thread_setup();
+	wqueue_entry_point(self, thread_port, stackaddr, item, reuse, nevents);
+}

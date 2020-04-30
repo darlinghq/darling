@@ -42,14 +42,14 @@ long sys_bsdthread_create(void* thread_start, void* arg,
 		pthread = stack = thread_stack_allocate(stacksize);
 	}
 
-	ret = darling_thread_create((void**) stack, pthread_entry_point, thread_start,
+	ret = darling_thread_create((void**) stack, pthread_entry_point_wrapper, thread_start,
 			arg, stacksize, flags);
 #else
 	// Implemented in libdyld
 	extern int thread_self_trap(void);
 
 	return __darling_thread_create(((uintptr_t)stack), pthread_obj_size,
-			pthread_entry_point, thread_start, arg, (uintptr_t) stack, flags,
+			pthread_entry_point_wrapper, thread_start, arg, (uintptr_t) stack, flags,
 			thread_self_trap);
 #endif
 

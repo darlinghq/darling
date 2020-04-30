@@ -119,8 +119,8 @@ long sys_execve(char* fname, char** argvp, char** envp)
 	}
 
 	linux_sigset_t set;
-	set = (1ull << (SIGNAL_SIGEXC_TOGGLE-1));
-	set |= (1ull << (SIGNAL_SIGEXC_THUPDATE-1));
+	set = (1ull << (SIGNAL_SIGEXC_SUSPEND-1));
+	//set |= (1ull << (SIGNAL_SIGEXC_THUPDATE-1));
 
 	LINUX_SYSCALL(__NR_rt_sigprocmask, 0 /* LINUX_SIG_BLOCK */,
 			&set, NULL, sizeof(linux_sigset_t));

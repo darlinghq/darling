@@ -11,6 +11,10 @@ extern bsdwqthread_entry_t wqueue_entry_point;
 
 long sys_bsdthread_register(void* thread_start, void* wqthread, int pthsize,
 		void* dummy, void* targetconc, unsigned long long dpq_offset);
+void pthread_entry_point_wrapper(void* self, int thread_port, void* funptr,
+		void* funarg, unsigned long stacksize, unsigned int flags);
+void wqueue_entry_point_wrapper(void* self, int thread_port, void* stackaddr,
+		void* item, int reuse, int nevents);
 
 #endif
 
