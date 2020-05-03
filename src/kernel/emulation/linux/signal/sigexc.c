@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <sys/signal.h>
 #include <linux-syscalls/linux.h>
-#include <pthread/tsd_private.h>
 #include "sigaltstack.h"
 #include "../mach/lkm.h"
 #include "../../../../external/lkm/api.h"
@@ -30,8 +29,6 @@ extern _libkernel_functions_t _libkernel_functions;
 void darling_sigexc_uninstall(void);
 void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt);
 
-#define SIGEXC_TSD_KEY	102
-#define SIGEXC_CONTEXT_TSD_KEY	103
 static char sigexc_altstack[8*1024];
 
 #if defined(__x86_64__)
