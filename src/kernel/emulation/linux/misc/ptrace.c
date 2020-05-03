@@ -63,20 +63,14 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 			ret = lkm_call(NR_set_tracer, &args);
 			if (ret < 0)
 				ret = errno_linux_to_bsd(ret);
-			else
-			{
-				// This triggers darling_sigexc_self() in the remote process.
-				ret = linux_sigqueue(pid, SIGNAL_SIGEXC_TOGGLE, SIGRT_MAGIC_ENABLE_SIGEXC);
 
-				if (ret < 0)
-					ret = errno_linux_to_bsd(ret);
-				// This doesn't work if the process is stopped, e.g. when spawning a stopped
-				// process via posix_spawn(). So now we have to resume the process so that
-				// it gets the RT signal above and triggers a fake SIGSTOP on its own.
-				// int pstate = lkm_call(NR_pid_get_state, (void*)(long) pid);
-				// if (pstate & 4 /* __TASK_STOPPED */)
-				// 	sys_kill(pid, SIGCONT, 1);
-			}
+			sys_kill(pid, SIGSTOP, 1);
+
+			struct ptrace_sigexc_args args2;
+			args2.pid = pid;
+			args2.sigexc = 1;
+
+			ret = lkm_call(NR_ptrace_sigexc, &args2);
 
 			cmd = "PT_ATTACHEXC";
 			break;
@@ -105,9 +99,14 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		case PT_DETACH:
 		{
 			// Tell the tracee to restore original application signal handlers.
-			linux_sigqueue(pid, SIGNAL_SIGEXC_TOGGLE, SIGRT_MAGIC_DISABLE_SIGEXC);
+			//linux_sigqueue(pid, SIGNAL_SIGEXC_TOGGLE, SIGRT_MAGIC_DISABLE_SIGEXC);
 
-			ret = 0; //LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_DETACH, pid, addr, data);
+			//ret = 0; //LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_DETACH, pid, addr, data);
+			struct ptrace_sigexc_args args;
+			args.pid = pid;
+			args.sigexc = 0;
+
+			ret = lkm_call(NR_ptrace_sigexc, &args);
 			
 			// if (ret < 0)
 			// 	ret = errno_linux_to_bsd(ret);
@@ -118,8 +117,12 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		case PT_SIGEXC:
 		{
 			lkm_call(0x1028, "sigexc: self via ptrace\n");
-			darling_sigexc_self();
-			ret = 0;
+
+			struct ptrace_sigexc_args args;
+			args.pid = getpid();
+			args.sigexc = 1;
+
+			ret = lkm_call(NR_ptrace_sigexc, &args);
 
 			// return ret;
 			cmd = "PT_SIGEXC"; break;
@@ -148,11 +151,11 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 			if (tid < 0)
 				return -ESRCH;
 
-			int signal = 0;
-			if (data != -1)
-				signal = signum_bsd_to_linux(data);
+			struct ptrace_thupdate_args args;
+			args.tid = tid;
+			args.signum = data;
 
-			ret = linux_sigqueue_thread(pid, tid, SIGNAL_SIGEXC_THUPDATE, signal);
+			ret = lkm_call(NR_ptrace_thupdate, &args);
 			if (ret < 0)
 				ret = errno_linux_to_bsd(ret);
 

@@ -246,7 +246,7 @@ wakeup:
 				// __simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
 				wq_event_pending = wq_event;
 
-				__darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point, 0,
+				__darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point_wrapper, 0,
 						(wq_event != NULL) ? wq_event->events : NULL, flags,
 						(wq_event != NULL) ? wq_event->nevents : 0,
 						thread_self_trap);
