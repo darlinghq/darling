@@ -4,6 +4,7 @@ add_compile_options(-Werror)
 
 add_subdirectory(AppleSystemInfo)
 add_subdirectory(AppleSauce)
+add_subdirectory(AssetCacheServices)
 add_subdirectory(AuthKit)
 add_subdirectory(CrashReporterSupport)
 add_subdirectory(ConfigurationProfiles)
