@@ -339,3 +339,15 @@ CGLError CGLGetParameter(CGLContextObj context, CGLContextParameter parameter, G
     fprintf(stderr, "CGLGetParameter unimplemented for parameter %d\n", parameter);
     return kCGLNoError;
 }
+
+CGLError CGLDescribeRenderer(CGLRendererInfoObj rend, long rend_num, CGLRendererProperty prop, long *value) {
+    return kCGLNoError;
+}
+
+CGLError CGLQueryRendererInfo(unsigned long display_mask, CGLRendererInfoObj *rend, long *nrend) {
+    return kCGLNoError;
+}
+
+CGLError CGLDestroyRendererInfo(CGLRendererInfoObj rend) {
+    return kCGLNoError;
+}

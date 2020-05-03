@@ -93,6 +93,8 @@ typedef enum _CGLRendererProperty {
    kCGLRPDepthModes          = 105,
    kCGLRPStencilModes        = 106,
    kCGLRPMaxAuxBuffers       = 107,
+   kCGLRPMaxSampleBuffers    = 108,
+   kCGLRPMaxSamples          = 109,
    kCGLRPVideoMemory         = 120,
    kCGLRPTextureMemory       = 121,
    kCGLRPRendererCount       = 128,
