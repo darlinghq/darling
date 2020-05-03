@@ -274,7 +274,22 @@ void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ct
 		
 	// __simple_printf("Handling signal %d\n", linux_signum);
 
-	sig_handlers[linux_signum](bsd_signum, info ? &binfo : NULL, (lc != NULL) ? &bc : NULL);
+	bsd_sig_handler* handler = sig_handlers[linux_signum];
+	if (sig_flags[linux_signum] & LINUX_SA_RESETHAND)
+	{
+		switch (linux_signum)
+		{
+			case LINUX_SIGWINCH:
+			case LINUX_SIGCHLD:
+			case LINUX_SIGURG:
+				sig_handlers[linux_signum] = (bsd_sig_handler*) SIG_IGN;
+				break;
+			default:
+				sig_handlers[linux_signum] = NULL; // SIG_DFL
+		}
+	}
+
+	handler(bsd_signum, info ? &binfo : NULL, (lc != NULL) ? &bc : NULL);
 
 	if (lc != NULL)
 	{

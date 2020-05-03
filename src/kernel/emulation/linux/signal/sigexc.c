@@ -262,6 +262,17 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 		if (sig_handlers[linux_signum])
 		{
 			kern_printf("sigexc: will forward signal to app handler (%p)\n", sig_handlers[linux_signum]);
+
+			// Update the signal mask to what the application actually wanted
+			linux_sigset_t set = sig_masks[linux_signum];
+
+			// Keep the current signal blocked, which is the default behavior
+			if (!(sig_flags[linux_signum] & LINUX_SA_NODEFER))
+				set |= (1ull << (linux_signum-1));
+
+			LINUX_SYSCALL(__NR_rt_sigprocmask, 2 /* LINUX_SIG_SETMASK */,
+				&set, NULL, sizeof(linux_sigset_t));
+
 			handler_linux_to_bsd(linux_signum, info, ctxt);
 		}
 		else
