@@ -21,10 +21,12 @@ add_framework(OpenGL
     DEPENDENCIES
         system
         GL
+        GLU
         EGL
 )
 
 set_property(TARGET OpenGL APPEND_STRING PROPERTY LINK_FLAGS
-	" -sub_library libGL")
+    " -sub_library libGL \
+    -sub_library libGLU ")
 InstallSymlink(Versions/Current/Libraries
 			"${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Frameworks/OpenGL.framework/Libraries")
