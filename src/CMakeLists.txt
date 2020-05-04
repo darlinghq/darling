@@ -370,6 +370,8 @@ add_subdirectory(external/cups)
 
 add_subdirectory(clt)
 
+add_subdirectory(diskutil)
+
 # Just a stub
 add_subdirectory(WebKit)
 add_subdirectory(OpenGL)

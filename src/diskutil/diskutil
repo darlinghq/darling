@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# helper functions
+
+# errcho - a variant of echo that prints to stderr
+errcho() {
+	>&2 echo $@
+}
+
+# subcommands
+
+eject() {
+	if [ "$#" -lt 1 ]; then
+		errcho "Usage:  diskutil eject MountPoint|DiskIdentifier|DeviceNode"
+		exit 1
+	fi
+
+	DISK_PATH=$1
+	shift;
+
+	if [ ! -e "$DISK_PATH" ]; then
+		errcho "Unable to find disk for $DISK_PATH"
+		exit 1
+	fi
+
+	if ! hdiutil detach "$DISK_PATH" > /dev/null 2>&1; then
+		errcho "Unmount of $DISK_PATH failed: at least one volume could not be unmounted"
+		exit 1
+	fi
+
+	echo "Disk $DISK_PATH ejected"
+}
+
+if [ "$#" -lt 1 ]; then
+	>&2 cat <<- 'EOF'
+		Disk Utility Tool
+		Utility to manage local disks and volumes
+		Most commands require an administrator or root user
+		
+		WARNING: Most destructive operations are not prompted
+
+		     eject                (Eject a disk)
+	EOF
+	exit 1
+fi
+
+VERB="$1"
+shift;
+
+case "$VERB" in
+	eject)
+		eject $@
+		;;
+	*)
+		errcho "diskutil: did not recognize verb \"$VERB\"; type \"diskutil\" for a list"
+		exit 1
+		;;
+esac
