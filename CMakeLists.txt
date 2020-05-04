@@ -79,6 +79,7 @@ option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 
 FindDsymutil()
+find_package(Setcap REQUIRED)
 
 # Missing CMakeLists.txt must trigger an error
 cmake_policy(SET CMP0014 NEW)
