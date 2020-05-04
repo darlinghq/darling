@@ -1,7 +1,5 @@
 project(private-frameworks)
 
-add_compile_options(-Werror)
-
 add_subdirectory(AppleSystemInfo)
 add_subdirectory(AppleSauce)
 add_subdirectory(AssetCacheServices)
