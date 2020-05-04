@@ -26,7 +26,7 @@ add_framework(OpenGL
 )
 
 set_property(TARGET OpenGL APPEND_STRING PROPERTY LINK_FLAGS
-    " -sub_library libGL \
-    -sub_library libGLU ")
+    " -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/native/libGL.dylib \
+    -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/native/libGLU.dylib ")
 InstallSymlink(Versions/Current/Libraries
 			"${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Frameworks/OpenGL.framework/Libraries")
