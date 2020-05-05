@@ -55,9 +55,9 @@ FUNCTION(add_darling_library name)
 
 	use_ld64(${name})
 
-	if ((NOT NO_DSYM) AND (NOT ${${name}_NO_DSYM}))
+	if ((NOT NO_DSYM) AND (NOT ${name}_NO_DSYM))
 		dsym(${name})
-	endif ((NOT NO_DSYM) AND (NOT ${${name}_NO_DSYM}))
+	endif ((NOT NO_DSYM) AND (NOT ${name}_NO_DSYM))
 ENDFUNCTION(add_darling_library)
 
 FUNCTION(make_fat)
