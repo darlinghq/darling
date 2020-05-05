@@ -107,8 +107,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/openpam/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/sqlite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenScripting/include
-	${CMAKE_CURRENT_SOURCE_DIR}/LocalAuthentication/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SystemConfiguration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ncurses/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/corefoundation/include
@@ -154,7 +152,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityFoundation/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libsysmon/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libcompression/include
-	${CMAKE_CURRENT_SOURCE_DIR}/Metal/include
 	${CMAKE_CURRENT_SOURCE_DIR}/kperf/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
@@ -162,23 +159,13 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
-	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/QuickLook/include
 	${CMAKE_CURRENT_SOURCE_DIR}/WebKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/JavaVM/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ImageIO/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
-	${CMAKE_CURRENT_SOURCE_DIR}/LDAP/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lzfse/include
-	${CMAKE_CURRENT_SOURCE_DIR}/VideoToolbox/include
-	${CMAKE_CURRENT_SOURCE_DIR}/QTKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/StoreKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ForceFeedback/include
-	${CMAKE_CURRENT_SOURCE_DIR}/IOBluetooth/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libsandbox/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenDirectory/include
-	${CMAKE_CURRENT_SOURCE_DIR}/MetalKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/private-frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lib/include
@@ -250,9 +237,7 @@ add_subdirectory(external/IOKitTools)
 add_subdirectory(CoreAudio)
 #add_subdirectory(external/OpenAL)
 add_subdirectory(external/python_modules)
-add_subdirectory(SystemConfiguration)
 #add_subdirectory(VideoDecodeAcceleration)
-add_subdirectory(LocalAuthentication)
 add_subdirectory(ServiceManagement)
 add_subdirectory(xar)
 add_subdirectory(libedit)
@@ -318,13 +303,11 @@ add_subdirectory(external/misc_cmds)
 add_subdirectory(external/patch_cmds)
 add_subdirectory(external/DSTools)
 add_subdirectory(external/DirectoryService)
-add_subdirectory(ImageIO)
 add_subdirectory(login)
 add_subdirectory(libaks)
 add_subdirectory(SecurityFoundation)
 add_subdirectory(libsysmon)
 add_subdirectory(libcompression)
-add_subdirectory(Metal)
 add_subdirectory(kperf)
 add_subdirectory(external/bsm)
 add_subdirectory(external/Heimdal)
@@ -333,20 +316,12 @@ add_subdirectory(ScriptingBridge)
 add_subdirectory(libDiagnosticMessagesClient)
 add_subdirectory(SecurityInterface)
 add_subdirectory(Quartz)
-add_subdirectory(IOSurface)
 add_subdirectory(libquit)
 add_subdirectory(QuickLook)
-add_subdirectory(LDAP)
 add_subdirectory(external/lzfse)
-add_subdirectory(VideoToolbox)
-add_subdirectory(QTKit)
-add_subdirectory(StoreKit)
-add_subdirectory(ForceFeedback)
-add_subdirectory(IOBluetooth)
 add_subdirectory(libsandbox)
 add_subdirectory(OpenDirectory)
 add_subdirectory(opendirectory_internal)
-add_subdirectory(MetalKit)
 add_subdirectory(external/cups)
 
 add_subdirectory(clt)
@@ -355,7 +330,6 @@ add_subdirectory(diskutil)
 
 # Just a stub
 add_subdirectory(WebKit)
-add_subdirectory(JavaVM)
 add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/fmdb)
 
