@@ -4,7 +4,7 @@
 
 # errcho - a variant of echo that prints to stderr
 errcho() {
-	>&2 echo $@
+	>&2 echo "$@"
 }
 
 # subcommands
@@ -49,7 +49,7 @@ shift;
 
 case "$VERB" in
 	eject)
-		eject $@
+		eject "$@"
 		;;
 	*)
 		errcho "diskutil: did not recognize verb \"$VERB\"; type \"diskutil\" for a list"
