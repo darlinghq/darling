@@ -91,7 +91,6 @@ include_directories(
 )
 
 include_directories(AFTER
-	${CMAKE_CURRENT_SOURCE_DIR}/DiskArbitration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/login/include
@@ -108,7 +107,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/openpam/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/sqlite/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenScripting/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CryptoTokenKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/LocalAuthentication/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SystemConfiguration/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
@@ -151,7 +149,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreGraphics/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/Onyx2D/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreVideo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/WTF/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/bmalloc/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityFoundation/include
@@ -164,31 +161,22 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
 	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DrawSprocket/include
 	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreVideo/include
 	${CMAKE_CURRENT_SOURCE_DIR}/IOSurface/include
-	${CMAKE_CURRENT_SOURCE_DIR}/OpenGL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/QuickLook/include
 	${CMAKE_CURRENT_SOURCE_DIR}/WebKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/JavaVM/include
-	${CMAKE_CURRENT_SOURCE_DIR}/DirectoryServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ImageIO/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
 	${CMAKE_CURRENT_SOURCE_DIR}/LDAP/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ExceptionHandling/include
-	${CMAKE_CURRENT_SOURCE_DIR}/EventKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lzfse/include
 	${CMAKE_CURRENT_SOURCE_DIR}/VideoToolbox/include
 	${CMAKE_CURRENT_SOURCE_DIR}/QTKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/StoreKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/ForceFeedback/include
-	${CMAKE_CURRENT_SOURCE_DIR}/GameController/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreWLAN/include
 	${CMAKE_CURRENT_SOURCE_DIR}/IOBluetooth/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libsandbox/include
-	${CMAKE_CURRENT_SOURCE_DIR}/OpenCL/include
 	${CMAKE_CURRENT_SOURCE_DIR}/OpenDirectory/include
 	${CMAKE_CURRENT_SOURCE_DIR}/MetalKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/frameworks/include
@@ -264,9 +252,7 @@ add_subdirectory(CoreAudio)
 add_subdirectory(external/python_modules)
 add_subdirectory(SystemConfiguration)
 #add_subdirectory(VideoDecodeAcceleration)
-add_subdirectory(DiskArbitration)
 add_subdirectory(LocalAuthentication)
-add_subdirectory(CryptoTokenKit)
 add_subdirectory(ServiceManagement)
 add_subdirectory(xar)
 add_subdirectory(libedit)
@@ -347,22 +333,17 @@ add_subdirectory(ScriptingBridge)
 add_subdirectory(libDiagnosticMessagesClient)
 add_subdirectory(SecurityInterface)
 add_subdirectory(Quartz)
-add_subdirectory(CoreVideo)
 add_subdirectory(IOSurface)
 add_subdirectory(libquit)
 add_subdirectory(QuickLook)
 add_subdirectory(LDAP)
-add_subdirectory(ExceptionHandling)
 add_subdirectory(external/lzfse)
 add_subdirectory(VideoToolbox)
 add_subdirectory(QTKit)
 add_subdirectory(StoreKit)
 add_subdirectory(ForceFeedback)
-add_subdirectory(GameController)
-add_subdirectory(CoreWLAN)
 add_subdirectory(IOBluetooth)
 add_subdirectory(libsandbox)
-add_subdirectory(OpenCL)
 add_subdirectory(OpenDirectory)
 add_subdirectory(opendirectory_internal)
 add_subdirectory(MetalKit)
@@ -374,11 +355,7 @@ add_subdirectory(diskutil)
 
 # Just a stub
 add_subdirectory(WebKit)
-add_subdirectory(OpenGL)
 add_subdirectory(JavaVM)
-add_subdirectory(DirectoryServices)
-add_subdirectory(DrawSprocket)
-add_subdirectory(EventKit)
 add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/fmdb)
 
