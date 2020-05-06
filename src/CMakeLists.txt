@@ -306,6 +306,7 @@ add_subdirectory(libsandbox)
 add_subdirectory(OpenDirectory)
 add_subdirectory(opendirectory_internal)
 add_subdirectory(external/cups)
+# add_subdirectory(external/glut)
 
 add_subdirectory(clt)
 
