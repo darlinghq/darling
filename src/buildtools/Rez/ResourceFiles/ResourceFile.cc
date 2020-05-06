@@ -515,7 +515,7 @@ bool ResourceFile::write()
                 longword(out, 32);
             }
             break;
-
+#ifndef DARLING
         case Format::diskimage:
             {
                 std::ostringstream rsrcOut;
@@ -545,7 +545,7 @@ bool ResourceFile::write()
 
             }
             break;
-
+#endif
         default:
             return false;
     }
