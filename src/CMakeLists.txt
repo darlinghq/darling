@@ -93,7 +93,6 @@ include_directories(
 include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
-	${CMAKE_CURRENT_SOURCE_DIR}/login/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
 	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
 	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
@@ -138,7 +137,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ServiceManagement/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
@@ -149,19 +147,12 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/WTF/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/bmalloc/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SecurityFoundation/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libsysmon/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libcompression/include
-	${CMAKE_CURRENT_SOURCE_DIR}/kperf/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
-	${CMAKE_CURRENT_SOURCE_DIR}/ScriptingBridge/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
-	${CMAKE_CURRENT_SOURCE_DIR}/SecurityInterface/include
-	${CMAKE_CURRENT_SOURCE_DIR}/Quartz/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/QuickLook/include
-	${CMAKE_CURRENT_SOURCE_DIR}/WebKit/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lzfse/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libsandbox/include
@@ -238,7 +229,6 @@ add_subdirectory(CoreAudio)
 #add_subdirectory(external/OpenAL)
 add_subdirectory(external/python_modules)
 #add_subdirectory(VideoDecodeAcceleration)
-add_subdirectory(ServiceManagement)
 add_subdirectory(xar)
 add_subdirectory(libedit)
 add_subdirectory(libpmenergy)
@@ -303,21 +293,14 @@ add_subdirectory(external/misc_cmds)
 add_subdirectory(external/patch_cmds)
 add_subdirectory(external/DSTools)
 add_subdirectory(external/DirectoryService)
-add_subdirectory(login)
 add_subdirectory(libaks)
-add_subdirectory(SecurityFoundation)
 add_subdirectory(libsysmon)
 add_subdirectory(libcompression)
-add_subdirectory(kperf)
 add_subdirectory(external/bsm)
 add_subdirectory(external/Heimdal)
 add_subdirectory(PlistBuddy)
-add_subdirectory(ScriptingBridge)
 add_subdirectory(libDiagnosticMessagesClient)
-add_subdirectory(SecurityInterface)
-add_subdirectory(Quartz)
 add_subdirectory(libquit)
-add_subdirectory(QuickLook)
 add_subdirectory(external/lzfse)
 add_subdirectory(libsandbox)
 add_subdirectory(OpenDirectory)
@@ -329,7 +312,6 @@ add_subdirectory(clt)
 add_subdirectory(diskutil)
 
 # Just a stub
-add_subdirectory(WebKit)
 add_subdirectory(external/cocotron/CoreGraphics)
 add_subdirectory(external/fmdb)
 
