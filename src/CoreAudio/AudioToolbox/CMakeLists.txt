@@ -48,4 +48,18 @@ add_framework(AudioToolbox
 		avutil
 )
 
-# TODO: Add AudioUnit.framework
+add_framework(AudioUnit
+	FAT
+	CURRENT_VERSION
+	VERSION "A"
+
+	SOURCES
+		empty.c
+
+	DEPENDENCIES
+		AudioToolbox
+)
+set(AudioToolbox_BUILD ${CMAKE_CURRENT_BINARY_DIR}/AudioToolbox)
+
+reexport(AudioUnit AudioToolbox ${AudioToolbox_BUILD})
+
