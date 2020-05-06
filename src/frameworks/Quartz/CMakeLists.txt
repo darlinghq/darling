@@ -27,4 +27,4 @@ add_framework(Quartz
 add_dependencies(Quartz QuickLook)
 
 # Ideally would be done through a nested QuickLookUI framework
-set_property(TARGET Quartz APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/QuickLook/QuickLook ")
+set_property(TARGET Quartz APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/frameworks/QuickLook/QuickLook ")
