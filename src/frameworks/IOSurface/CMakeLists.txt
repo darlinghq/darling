@@ -9,11 +9,14 @@ add_framework(IOSurface
     VERSION "A"
 
     SOURCES
-        src/IOSurface.m
-        src/IOSurface.m
+        src/stubs.m
+        src/api.m
+        src/constants.m
+        src/IOSurfaceObjC.m
 
     DEPENDENCIES
         system
         objc
         Foundation
+        IOKit
 )
