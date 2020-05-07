@@ -9,8 +9,11 @@ extern "C" {
 typedef struct __TISInputSource* TISInputSourceRef;
 
 extern const CFStringRef kTISPropertyUnicodeKeyLayoutData;
+extern const CFStringRef kTISPropertyInputSourceLanguages;
+extern const CFStringRef kTISPropertyLocalizedName;
 
 extern TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void);
+extern TISInputSourceRef TISCopyCurrentKeyboardInputSource(void);
 
 extern void* TISGetInputSourceProperty(TISInputSourceRef inputSourceRef, CFStringRef key);
 

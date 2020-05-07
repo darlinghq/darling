@@ -8,6 +8,14 @@ static os_unfair_lock g_keyboardLock = OS_UNFAIR_LOCK_INIT;
 static int g_lastKeyboardLayoutId = -1;
 static TISInputSourceRef g_lastKeyboardLayout = NULL;
 
+const CFStringRef kTISPropertyInputSourceLanguages = CFSTR("TISPropertyInputSourceLanguages");
+const CFStringRef kTISPropertyLocalizedName = CFSTR("TISPropertyLocalizedName");
+
+TISInputSourceRef TISCopyCurrentKeyboardInputSource(void)
+{
+	return TISCopyCurrentKeyboardLayoutInputSource();
+}
+
 TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void)
 {
 	NSDisplay* display = [NSClassFromString(@"NSDisplay") currentDisplay];
@@ -35,9 +43,12 @@ TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void)
 	CFDataRef data = CFDataCreate(NULL, (UInt8*) layout, length);
 	free(layout);
 
-	const void* keys[1] = { kTISPropertyUnicodeKeyLayoutData };
-	const void* values[1] = { data };
-	CFDictionaryRef dict = CFDictionaryCreate(NULL, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	NSString *name, *fullName;
+	[display keyboardLayoutName: &name fullName:&fullName];
+
+	const void* keys[] = { kTISPropertyUnicodeKeyLayoutData, kTISPropertyLocalizedName, kTISPropertyInputSourceLanguages };
+	const void* values[] = { data, fullName, @[name] };
+	CFDictionaryRef dict = CFDictionaryCreate(NULL, keys, values, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
 	CFRelease(data);
 
