@@ -23,7 +23,7 @@ add_framework(ApplicationServices
 set(CoreGraphics_BUILD ${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/CoreGraphics)
 set(CoreText_BUILD ${CMAKE_BINARY_DIR}/src/external/cocotron/CoreText/CoreText)
 set(CoreServices_BUILD ${CMAKE_BINARY_DIR}/src/frameworks/CoreServices/CoreServices)
-set(ImageIO_BUILD ${CMAKE_BINARY_DIR}/src/ImageIO/ImageIO)
+set(ImageIO_BUILD ${CMAKE_BINARY_DIR}/src/frameworks/ImageIO/ImageIO)
 set(ColorSync_BUILD ${CMAKE_BINARY_DIR}/src/frameworks/ColorSync/ColorSync)
 set(ATS_BUILD ${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/ATS/ATS)
 set(ColorSyncLegacy_BUILD ${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/ColorSyncLegacy/ColorSyncLegacy)

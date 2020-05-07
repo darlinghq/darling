@@ -186,18 +186,129 @@ static FSEventStreamRef g_eventStream;
 	}
 }
 
+// https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundledocumenttypes?language=objc
+-(void)processFileAssociation:(NSDictionary*)dict
+{
+	NSNumber* myId = [NSNumber numberWithInt: _bundleId];
+	NSNumber* appDocId;
+
+	NSString* iconFile = dict[@"CFBundleTypeIconFile"];
+	NSString* displayName = dict[@"CFBundleTypeName"];
+	NSString* role = dict[@"CFBundleTypeRole"];
+	NSString* rank = dict[@"LSHandlerRank"];
+	NSString* documentClass = dict[@"NSDocumentClass"];
+
+	// TODO: exportable types?
+
+	if (!role)
+		role = @"None";
+	if (!rank)
+		rank = @"Default";
+
+	[g_database executeUpdate:@"insert into app_doc (icon,name,role,rank,class,bundle) values (?,?,?,?,?,?)",
+		iconFile, displayName, role, rank, documentClass, myId];
+	appDocId = [NSNumber numberWithInt: [g_database lastInsertRowId]];
+
+	NSArray<NSString*>* contentTypes = dict[@"LSItemContentTypes"];
+	if (contentTypes)
+	{
+		for (NSString* uti in contentTypes)
+		{
+			if (![uti isKindOfClass: [NSString class]])
+				continue;
+
+			[g_database executeUpdate:@"insert into app_doc_uti (doc, uti) values (?,?)", appDocId, uti];
+		}
+	}
+	else
+	{
+		// Support for obsolete CFBundleTypeExtensions and CFBundleTypeMIMETypes
+		NSArray<NSString*>* extensions = dict[@"CFBundleTypeExtensions"];
+
+		if (extensions)
+		{
+			for (NSString* extension in extensions)
+			{
+				if (![extension isKindOfClass: [NSString class]])
+					continue;
+
+				[g_database executeUpdate:@"insert into app_doc_extension (doc, extension) values (?,?)", appDocId, extension];
+			}
+		}
+
+		NSArray<NSString*>* mimeTypes = dict[@"CFBundleTypeMIMETypes"];
+		if (mimeTypes)
+		{
+			for (NSString* mime in mimeTypes)
+			{
+				if (![mime isKindOfClass: [NSString class]])
+					continue;
+				
+				[g_database executeUpdate:@"insert into app_doc_mime (doc, mime) values (?,?)", appDocId, mime];
+			}
+		}
+	}
+}
+
 -(void)processFileAssociations
 {
 	NSDictionary<NSString*,id>* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
+	NSNumber* myId = [NSNumber numberWithInt: _bundleId];
 
-	NSArray<NSString*>* contentTypes = infoDict[@"LSItemContentTypes"];
+	[g_database executeUpdate:@"delete from app_doc where bundle = ?", [NSNumber numberWithInt: _bundleId]];
+
+	NSArray<NSDictionary*>* types = (NSArray*) infoDict[@"CFBundleDocumentTypes"];
+	if (types)
+	{
+		for (NSDictionary* type in types)
+			[self processFileAssociation: type];
+	}
+	if (infoDict[@"CFBundleTypeRole"] != nil)
+	{
+		[self processFileAssociation: infoDict];
+	}
+}
+
+-(void)processURLTypes
+{
+	NSDictionary* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
+	NSArray<NSDictionary*>* urlTypes = (NSArray*) infoDict[@"CFBundleURLTypes"];
+	NSNumber* myId = [NSNumber numberWithInt: _bundleId];
+
+	[g_database executeUpdate:@"delete from bundle_url_type where bundle = ?", myId];
+	if (urlTypes != nil)
+	{
+		for (NSDictionary<NSString*, id>* type in urlTypes)
+		{
+			NSString* role = type[@"CFBundleTypeRole"];
+			NSString* iconFile = type[@"CFBundleURLTypes"];
+			NSString* name = type[@"CFBundleURLName"];
+
+			if (role == nil)
+				role = @"None";
+
+			NSArray<NSString*>* schemes = type[@"CFBundleURLSchemes"];
+
+			[g_database executeUpdate:@"insert into bundle_url_type (bundle, role, name, icon) values (?,?,?,?)",
+				myId, role, name, iconFile];
+
+			if (schemes)
+			{
+				NSNumber* typeId = [NSNumber numberWithInt:[g_database lastInsertRowId]];
+				
+				for (NSString* scheme in schemes)
+					[g_database executeUpdate:@"insert into bundle_url_type_scheme (type, scheme) values (?,?)", typeId, scheme];
+			}
+		}
+	}
 }
 
 -(BOOL)setupBundleID
 {
 	NSURL* url = (NSURL*) CFBundleCopyBundleURL(_bundle);
 	NSString* path = [url path];
-	const uint32_t newChecksum = [[(NSDictionary*) CFBundleGetInfoDictionary(_bundle) description] crc32];
+	NSDictionary* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
+	const uint32_t newChecksum = [[infoDict description] crc32];
 
 	[url release];
 	FMResultSet* rs = [g_database executeQuery:@"select id, checksum from bundle where path = ?", path];
@@ -218,14 +329,26 @@ static FSEventStreamRef g_eventStream;
 
 	[rs close];
 
+	UInt32 packageType = 0, packageCreator = 0;
+	CFBundleGetPackageInfo(_bundle, &packageType, &packageCreator);
+
+	NSString* packageTypeStr = nil;
+	NSString* packageCreatorStr = nil;
+	NSString* bundleSignature = infoDict[@"CFBundleSignature"];
+
+	if (packageType != 0)
+		packageTypeStr = [LSBundle fourcc:packageType];
+	if (packageCreator != 0)
+		packageCreatorStr = [LSBundle fourcc:packageCreator];
+
 	if (!_bundleId)
 	{
 		CFStringRef identifier = CFBundleGetIdentifier(_bundle);
 
 		NSLog(@"Registering new bundle at '%@', identifier '%@'\n", path, identifier);
 
-		[g_database executeUpdate:@"insert into bundle (path, bundle_id, checksum) values (?,?,?)",
-			path, identifier, [NSNumber numberWithInt:newChecksum]];
+		[g_database executeUpdate:@"insert into bundle (path, bundle_id, checksum, package_type, creator, signature) values (?,?,?,?,?,?)",
+			path, identifier, [NSNumber numberWithInt:newChecksum], packageTypeStr, packageCreatorStr, bundleSignature];
 			
 		_bundleId = [g_database lastInsertRowId];
 	}
@@ -234,8 +357,9 @@ static FSEventStreamRef g_eventStream;
 		NSLog(@"Updating bundle at '%@'\n", path);
 
 		// We're in a transaction, so it's OK to set the new checksum now
-		[g_database executeUpdate:@"update bundle set checksum = ? where id = ?",
-			[NSNumber numberWithInt:newChecksum], [NSNumber numberWithInt: _bundleId]];
+		[g_database executeUpdate:@"update bundle set checksum = ?, package_type = ?, creator = ?, signature = ? where id = ?",
+			[NSNumber numberWithInt:newChecksum], packageTypeStr, packageCreatorStr,
+			bundleSignature, [NSNumber numberWithInt: _bundleId]];
 	}
 
 	return TRUE;
@@ -256,17 +380,14 @@ static FSEventStreamRef g_eventStream;
 
 	NSDictionary<NSString*,id>* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
 
-	NSArray<NSDictionary*>* utis = infoDict[@"UTExportedTypeDeclarations"];
+	NSArray<NSDictionary*>* utis = infoDict[(NSString*) kUTExportedTypeDeclarationsKey];
 	if (utis != nil)
 	{
 		[self processUTIs:utis];
 	}
 
-	if (infoDict[@"LSItemContentTypes"] != nil)
-	{
-		[self processFileAssociations];
-	}
-
+	[self processFileAssociations];
+	[self processURLTypes];
 	[g_database commit];
 }
 
@@ -275,10 +396,11 @@ static FSEventStreamRef g_eventStream;
 	if (self == [LSBundle class])
 	{
 		MONITORED_DIRECTORIES = @[
-			@"/Applications",
-			@"/System/Applications",
 			// This path doesn't contain apps, but may still contain UTI definitions
 			@"/System/Library/Frameworks",
+
+			@"/Applications",
+			@"/System/Applications",
 		];
 
 		FMDatabase* db = [FMDatabase databaseWithPath: @"/private/var/db/launchservices.db"];
@@ -291,6 +413,17 @@ static FSEventStreamRef g_eventStream;
 
 		setupDBSchema();
 	}
+}
+
++(NSString*)fourcc:(UInt32)code
+{
+	char str[5];
+	str[0] = (code >> 24) & 0xff;
+	str[1] = (code >> 16) & 0xff;
+	str[2] = (code >> 8) & 0xff;
+	str[3] = code & 0xff;
+	str[4] = '\0';
+	return [NSString stringWithCString:str encoding:NSASCIIStringEncoding];
 }
 
 +(void)scanForBundles:(NSString*)dir
@@ -311,7 +444,11 @@ static FSEventStreamRef g_eventStream;
 				LSBundle* b = [[[LSBundle alloc] initWithBundle: (CFBundleRef) bundle] autorelease];
 				[b process];
 			}
+
+			CFRelease((CFBundleRef) bundle);
 		}
+
+		[bundles release];
 	}
 }
 
@@ -319,6 +456,7 @@ static FSEventStreamRef g_eventStream;
 {
 	for (NSString* dir in MONITORED_DIRECTORIES)
 		[LSBundle scanForBundles: dir];
+	NSLog(@"scanForBundles done\n");
 }
 
 +(void)watchForBundles
@@ -342,7 +480,7 @@ static FSEventStreamRef g_eventStream;
 
 static void createDBSchema(void)
 {
-	NSString* sqlSchema = [NSString stringWithContentsOfFile: @"/System/Library/CoreServices/launchservicesd-schema.sql"
+	NSString* sqlSchema = [NSString stringWithContentsOfFile: @"/System/Library/Frameworks/CoreServices.framework/Versions/A/Resources/launchservicesd-schema.sql"
 		encoding: NSUTF8StringEncoding
 		error: nil];
 
@@ -406,6 +544,8 @@ static void fsEventCallback(ConstFSEventStreamRef streamRef, void *clientCallBac
 						[LSBundle deleteBundleAtPath:bundlePath];
 					}
 				}
+
+				// TODO: If somebody renames the bundle's directory, we still need to pick it up
 			}
 		}
 		index++;

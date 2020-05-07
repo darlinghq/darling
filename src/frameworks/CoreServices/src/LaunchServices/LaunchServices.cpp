@@ -239,11 +239,6 @@ OSStatus LSSetExtensionHiddenForURL(CFURLRef inURL, Boolean hide)
 	return unimpErr;
 }*/
 
-OSStatus LSOpenFSRef(const FSRef *inRef, FSRef *outLaunchedRef)
-{
-	return unimpErr;
-}
-
 OSStatus LSGetExtensionInfo(UniCharCount inNameLen, const UniChar* inNameBuffer, UniCharCount *outExtStartIndex)
 {
 	if (!outExtStartIndex)

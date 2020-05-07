@@ -8,6 +8,7 @@
 #include <stddef.h>
 
 extern char *strcpy(char *dest, const char *src);
+extern int do_linux_fchmodat(int fd, const char* path, int mode, int flag);
 
 #define ATTR_BIT_MAP_COUNT 5
 
@@ -44,6 +45,10 @@ struct attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, unsigne
 {
 	int rv;
 	char* next;
+	int linux_at_flag = 0;
+
+	if (options & FSOPT_NOFOLLOW)
+		linux_at_flag |= LINUX_AT_SYMLINK_NOFOLLOW;
 
 	if (!alist)
 		return -EFAULT;
@@ -92,9 +97,9 @@ struct attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, unsigne
 			*ts
 		};
 #if HAS_PATH
-		rv = LINUX_SYSCALL(__NR_utimensat, LINUX_AT_FDCWD, vc.path, times, 0);
+		rv = LINUX_SYSCALL(__NR_utimensat, LINUX_AT_FDCWD, vc.path, times, linux_at_flag);
 #else
-		rv = LINUX_SYSCALL(__NR_utimensat, fd, 0, times, 0);
+		rv = LINUX_SYSCALL(__NR_utimensat, fd, 0, times, linux_at_flag);
 #endif
 		if (rv < 0)
 			return errno_linux_to_bsd(rv);
@@ -113,9 +118,9 @@ struct attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, unsigne
 			{ LINUX_UTIME_OMIT, LINUX_UTIME_OMIT }
 		};
 #if HAS_PATH
-		rv = LINUX_SYSCALL(__NR_utimensat, LINUX_AT_FDCWD, vc.path, times, 0);
+		rv = LINUX_SYSCALL(__NR_utimensat, LINUX_AT_FDCWD, vc.path, times, linux_at_flag);
 #else
-		rv = LINUX_SYSCALL(__NR_utimensat, fd, 0, times, 0);
+		rv = LINUX_SYSCALL(__NR_utimensat, fd, 0, times, linux_at_flag);
 #endif
 		if (rv < 0)
 			return errno_linux_to_bsd(rv);
@@ -125,7 +130,7 @@ struct attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, unsigne
 	{
 		int perms = *((int*) next);
 #if HAS_PATH
-		rv = LINUX_SYSCALL(__NR_chmod, vc.path, perms);
+		rv = do_linux_fchmodat(LINUX_AT_FDCWD, vc.path, perms, linux_at_flag);
 #else
 		rv = LINUX_SYSCALL(__NR_fchmod, fd, perms);
 #endif

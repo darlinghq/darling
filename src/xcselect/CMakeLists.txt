@@ -62,3 +62,6 @@ add_shims(1
 	agvtool desdp genstrings ibtool ictool instruments
 	iprofiler opendiff sdef sdp xcodebuild xcscontrol
 	xcsdiagnose xed)
+
+InstallSymlink(clang ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/bin/cc)
+InstallSymlink(clang++ ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/bin/c++)

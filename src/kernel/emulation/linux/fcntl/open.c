@@ -17,6 +17,9 @@
 #ifndef O_DIRECTORY
 #	define O_DIRECTORY 0x100000
 #endif
+#ifndef LINUX_O_PATH
+	#define LINUX_O_PATH 0x200000
+#endif
 
 int oflags_bsd_to_linux(int flags);
 
@@ -55,7 +58,7 @@ int oflags_bsd_to_linux(int flags)
 		linux_flags |= LINUX_O_EXCL;
 	if (flags & BSD_O_CLOEXEC)
 		linux_flags |= LINUX_O_CLOEXEC;
-	if (flags & BSD_O_NOFOLLOW)
+	if (flags & BSD_O_NOFOLLOW || flags & BSD_O_SYMLINK)
 		linux_flags |= LINUX_O_NOFOLLOW;
 	if (flags & BSD_O_DIRECTORY)
 		linux_flags |= LINUX_O_DIRECTORY;
@@ -63,6 +66,8 @@ int oflags_bsd_to_linux(int flags)
 		linux_flags |= LINUX_O_CLOEXEC;
 	if (flags & BSD_O_NOCTTY)
 		linux_flags |= LINUX_O_NOCTTY;
+	if (flags & BSD_O_SYMLINK)
+		linux_flags |= LINUX_O_PATH;
 
 	return linux_flags;
 }

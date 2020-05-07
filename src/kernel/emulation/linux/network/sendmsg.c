@@ -45,17 +45,19 @@ long sys_sendmsg_nocancel(int socket, const struct bsd_msghdr* msg, int flags)
 		struct bsd_cmsghdr* bchdr;
 
 		bchdr = (struct bsd_cmsghdr*) msg->msg_control;
-		lchdr = (struct linux_cmsghdr*) malloc(msg->msg_controllen + 4);
+
+		lmsg.msg_controllen = LINUX_CMSG_ALIGN(msg->msg_controllen + LINUX_BSD_CMSGHDR_SIZE_DIFFERENCE);
+
+		lchdr = (struct linux_cmsghdr*)malloc(lmsg.msg_controllen);
 
 		lmsg.msg_control = lchdr;
-		lmsg.msg_controllen = msg->msg_controllen + 4;
 
-		lchdr->cmsg_len = bchdr->cmsg_len;
+		lchdr->cmsg_len = bchdr->cmsg_len + LINUX_BSD_CMSGHDR_SIZE_DIFFERENCE;
 		lchdr->cmsg_level = socket_level_bsd_to_linux(bchdr->cmsg_level);
 		lchdr->cmsg_type = bchdr->cmsg_type;
 
 		memcpy(lchdr->cmsg_data, bchdr->cmsg_data,
-				lchdr->cmsg_len - sizeof(struct bsd_cmsghdr));
+				bchdr->cmsg_len - sizeof(struct bsd_cmsghdr));
 	}
 	else
 	{

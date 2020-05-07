@@ -7,6 +7,7 @@
 #include "duct.h"
 #include <sys/ucred.h>
 #include <sys/un.h>
+#include "../time/gettimeofday.h"
 
 #define LINGER_TICKS_PER_SEC	100 // Is this the right number of ticks per sec?
 
@@ -48,6 +49,14 @@ long sys_getsockopt(int fd, int level, int optname, void* optval, int* optlen)
 				int* err = (int*) optval;
 				if (err && *err)
 					*err = errno_linux_to_bsd(*err);
+			}
+			else if (optname == BSD_SO_RCVTIMEO)
+			{
+				// This only makes a difference on big-endian (PPC)
+				struct linux_timeval ltv = *((struct linux_timeval*) optval);
+				struct bsd_timeval* btv = (struct bsd_timeval*) optval;
+				btv->tv_sec = ltv.tv_sec;
+				btv->tv_usec = ltv.tv_usec;
 			}
 		}
 	}

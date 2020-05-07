@@ -44,6 +44,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <termios.h>
 #include <ctype.h>
 #include <pty.h>
+#include <pwd.h>
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
 #include "darling-config.h"
@@ -766,9 +767,7 @@ pid_t spawnInitProcess(void)
 
 		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 100);
 
-		const char* opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir,metacopy=on";
-		if (linux_release() < LINUX_RELEASE(4, 19, 0))
-			opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir";
+		const char* opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir";
 
 		sprintf(opts, opts_fmt, LIBEXEC_PATH, prefix, prefix);
 
@@ -1057,6 +1056,7 @@ void setupPrefix()
 		"/usr/local/share",
 		"/private",
 		"/private/var",
+		"/private/var/log",
 		"/private/var/db",
 		"/var",
 		"/var/run",
@@ -1318,7 +1318,16 @@ void setupUserHome(void)
 	mkdir(buf, 0777);
 
 	const char* home = getenv("HOME");
-	const char* login = getlogin();
+
+	const char* login = NULL;
+	struct passwd* pw = getpwuid(getuid());
+
+	if (pw != NULL)
+		login = pw->pw_name;
+
+	if (!login)
+		login = getlogin();
+
 	if (!login)
 	{
 		fprintf(stderr, "Cannot determine your user name\n");

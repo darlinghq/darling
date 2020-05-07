@@ -44,6 +44,7 @@ enum {
 	F_RDADVISE,
 	F_RDAHEAD,
 	F_GETPATH = 50,
+	F_FULLFSYNC = 51,
 	F_CHECK_LV = 98,
 };
 

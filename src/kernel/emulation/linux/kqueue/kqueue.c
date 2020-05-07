@@ -14,6 +14,9 @@ int __attribute__((weak)) __attribute__((visibility("default"))) kqueue_impl(voi
 
 long sys_kqueue(void)
 {
-	return kqueue_impl();
+	int ret = kqueue_impl();
+	if (ret < 0)
+		ret = -errno;
+	return ret;
 }
 

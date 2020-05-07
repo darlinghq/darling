@@ -468,6 +468,9 @@ int vchroot_unexpand(struct vchroot_unexpand_args* args)
 	{
 		int bytes = strlen(args->path + prefix_path_len) + 1;
 		memmove(args->path, args->path + prefix_path_len, bytes);
+
+		if (args->path[0] == '\0')
+			strcpy(args->path, "/");
 	}
 	else
 	{

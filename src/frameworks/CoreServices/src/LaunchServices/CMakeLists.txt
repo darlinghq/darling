@@ -1,4 +1,8 @@
 
+include_directories(
+	${CMAKE_SOURCE_DIR}/src/external/fmdb/src
+)
+
 add_framework(LaunchServices
 	FAT
 	CURRENT_VERSION
@@ -13,6 +17,7 @@ add_framework(LaunchServices
 		constants.c
 		LSInfo.m
 		LSOpen.m
+		UTType.m
 	DEPENDENCIES
 		CoreFoundation
 		Foundation
@@ -20,6 +25,7 @@ add_framework(LaunchServices
 		icucore
 		system
 		CarbonCore
+		FMDB
 )
 
 add_subdirectory(launchservicesd)

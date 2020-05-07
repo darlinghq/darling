@@ -76,6 +76,12 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 		case F_GETLK:
 			// TODO
 			return 0;
+		case F_FULLFSYNC: {
+			ret = LINUX_SYSCALL1(__NR_fsync, fd);
+			if (ret < 0)
+				ret = errno_linux_to_bsd(ret);
+			return 0;
+		};
 		// TODO: implement remaining commands
 		default:
 			return -EINVAL;

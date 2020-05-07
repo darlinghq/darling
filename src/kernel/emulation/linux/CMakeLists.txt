@@ -178,6 +178,7 @@ set(emulation_sources
 	misc/csrctl.c
 	misc/fsgetpath.c
 	misc/abort_with_payload.c
+	misc/clonefile.c
 	fcntl/open.c
 	fcntl/openat.c
 	fcntl/fcntl.c
@@ -264,6 +265,7 @@ set(emulation_sources
 	ext/futex.c
 	ext/mremap.c
 	ext/file_handle.c
+	ext/fanotify.c
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_terminate.c

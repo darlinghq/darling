@@ -331,3 +331,6 @@
 [submodule "src/external/swift"]
 	path = src/external/swift
 	url = ../darling-swift.git
+[submodule "src/external/glut"]
+	path = src/external/glut
+	url = ../darling-glut

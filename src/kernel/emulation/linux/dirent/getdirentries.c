@@ -3,6 +3,10 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include <sys/dirent.h>
+//#include "../simple.h"
+
+#define LINUX_SEEK_SET 0
+#define LINUX_SEEK_CUR 1
 
 extern __SIZE_TYPE__ strlen(const char* s);
 extern char* strcpy(char* dest, const char* src);
@@ -11,6 +15,11 @@ extern int strcmp(const char* str1, const char* str2);
 #ifndef min
 #	define min(a,b) ((a) < (b)) ? (a) : (b)
 #endif
+
+#define ALIGN(x, alignment) (((x) + (alignment - 1)) & ~(alignment - 1))
+#define BSD_DIRENT_MIN_SIZE ALIGN(sizeof(struct bsd_dirent) + 2, 4)
+#define BSD_DIRENT64_MIN_SIZE ALIGN(sizeof(struct bsd_dirent64) + 2, 4)
+#define LINUX_DIRENT64_MIN_SIZE ALIGN(sizeof(struct linux_dirent64) + 2, 8)
 
 static inline void round_to_4(unsigned short* reclen)
 {
@@ -25,12 +34,19 @@ static inline void round_to_4(unsigned short* reclen)
 long sys_getdirentries(int fd, char* ibuf, unsigned int len, long* basep)
 {
 	int ret, bpos = 0, opos = 0;
-	char buf[1024];
+
+	unsigned int max_entry_count = len / BSD_DIRENT_MIN_SIZE;
+
+	// don't want to blow up the stack
+	if (max_entry_count > 20)
+		max_entry_count = 20;
+
+	char buf[max_entry_count * LINUX_DIRENT64_MIN_SIZE];
 
 	if (basep)
 		*basep = 0;
 
-	ret = LINUX_SYSCALL(__NR_getdents64, fd, buf, min(len, sizeof(buf)));
+	ret = LINUX_SYSCALL(__NR_getdents64, fd, buf, sizeof(buf));
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
@@ -68,12 +84,19 @@ struct dirent64 __DARWIN_STRUCT_DIRENTRY;
 long sys_getdirentries64(int fd, char* ibuf, unsigned int len, long* basep)
 {
 	int ret, bpos = 0, opos = 0;
-	char buf[1024];
+
+	unsigned int max_entry_count = len / BSD_DIRENT64_MIN_SIZE;
+
+	// don't want to blow up the stack
+	if (max_entry_count > 20)
+		max_entry_count = 20;
+
+	char buf[max_entry_count * LINUX_DIRENT64_MIN_SIZE];
 
 	if (basep)
 		*basep = 0;
 
-	ret = LINUX_SYSCALL(__NR_getdents64, fd, buf, min(len, sizeof(buf)));
+	ret = LINUX_SYSCALL(__NR_getdents64, fd, buf, sizeof(buf));
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
@@ -103,6 +126,12 @@ long sys_getdirentries64(int fd, char* ibuf, unsigned int len, long* basep)
 		opos += bsd->d_reclen;
 		bpos += l64->d_reclen;
 	}
+
+	/*
+	if (bpos < ret) {
+		__simple_printf("bpos < ret; %d < %d", bpos, ret);
+	}
+	*/
 
 	return opos;
 }

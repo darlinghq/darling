@@ -16,7 +16,7 @@ long sys_kill(int pid, int signum, int posix)
 
 	// If we're stopping a process we're debugging, do an emulated SIGSTOP
 	// so that the tracee has a chance to talk to us before stopping.
-	if (signum == SIGSTOP && pid > 0)
+	/*if (signum == SIGSTOP && pid > 0)
 	{
 		int tracer = lkm_call(NR_get_tracer, (void*)(long)pid);
 		if (tracer == getpid())
@@ -24,7 +24,7 @@ long sys_kill(int pid, int signum, int posix)
 			linux_sigqueue(pid, SIGNAL_SIGEXC_THUPDATE, -LINUX_SIGSTOP);
 			return 0;
 		}
-	}
+	}*/
 
 	linux_signum = signum_bsd_to_linux(signum);
 	if (!linux_signum)
