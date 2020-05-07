@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <TargetConditionals.h>
 
+#if !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
 /*
  * system call stubs are no longer generated for these from
  * syscalls.master. Instead, provide simple stubs here.
@@ -33,12 +34,15 @@
 extern int quota(void);
 extern int setquota(void);
 
-int quota(void)
+int
+quota(void)
 {
 	return kill(getpid(), SIGSYS);
 }
 
-int setquota(void)
+int
+setquota(void)
 {
 	return kill(getpid(), SIGSYS);
 }
+#endif /* !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR) */

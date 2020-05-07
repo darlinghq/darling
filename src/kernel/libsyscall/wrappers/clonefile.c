@@ -27,5 +27,5 @@
 int
 clonefile(const char *old, const char *new, uint32_t flags)
 {
-	return (clonefileat(AT_FDCWD, old, AT_FDCWD, new, flags));
+	return clonefileat(AT_FDCWD, old, AT_FDCWD, new, flags);
 }

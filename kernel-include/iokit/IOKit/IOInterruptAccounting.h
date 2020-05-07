@@ -2,7 +2,7 @@
  * Copyright (c) 2014 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -11,10 +11,10 @@
  * unlawful or unlicensed copies of an Apple operating system, or to
  * circumvent, violate, or enable the circumvention or violation of, any
  * terms of an Apple operating system software license agreement.
- * 
+ *
  * Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -22,12 +22,14 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
 #ifndef __IOKIT_IOINTERRUPTACCOUNTING_H
 #define __IOKIT_IOINTERRUPTACCOUNTING_H
+
+#include <IOKit/IOReportTypes.h>
 
 /*
  * This header contains definitions that will be needed by userspace clients of the interrupt accounting
@@ -131,17 +133,17 @@
  *   path).
  */
 enum {
-    kInterruptAccountingFirstLevelCountIndex = 0, /* Number of times we invoked the top level handler */
-    kInterruptAccountingSecondLevelCountIndex, /* Number of times we invoked the workloop action */
-    kInterruptAccountingFirstLevelTimeIndex, /* Time spent in the top level handler, if one was installed */
-    kInterruptAccountingSecondLevelCPUTimeIndex, /* CPU time spent in the workloop action */
-    kInterruptAccountingSecondLevelSystemTimeIndex, /* System time spent in the workloop action */
-    kInterruptAccountingNoThreadWakeupsIndex, /* Number of first level (filter) invocations that did not wake up a thread */
-    kInterruptAccountingTotalThreadWakeupsIndex, /* Number of actual thread wakeups caused by this interrupt */
-    kInterruptAccountingPackageWakeupsIndex, /* Number of times this interrupt woke up the package */
-    kInterruptAccountingCPUWakeupsIndex, /* Number of times this interrupt woke up a CPU */
-    kInterruptAccountingIdleExitsIndex, /* Number of times this interrupt forced a CPU out of the idle loop */
-    kInterruptAccountingInvalidStatisticIndex /* Sentinel value for checking for a nonsensical index */
+	kInterruptAccountingFirstLevelCountIndex = 0, /* Number of times we invoked the top level handler */
+	kInterruptAccountingSecondLevelCountIndex, /* Number of times we invoked the workloop action */
+	kInterruptAccountingFirstLevelTimeIndex, /* Time spent in the top level handler, if one was installed */
+	kInterruptAccountingSecondLevelCPUTimeIndex, /* CPU time spent in the workloop action */
+	kInterruptAccountingSecondLevelSystemTimeIndex, /* System time spent in the workloop action */
+	kInterruptAccountingNoThreadWakeupsIndex, /* Number of first level (filter) invocations that did not wake up a thread */
+	kInterruptAccountingTotalThreadWakeupsIndex, /* Number of actual thread wakeups caused by this interrupt */
+	kInterruptAccountingPackageWakeupsIndex, /* Number of times this interrupt woke up the package */
+	kInterruptAccountingCPUWakeupsIndex, /* Number of times this interrupt woke up a CPU */
+	kInterruptAccountingIdleExitsIndex, /* Number of times this interrupt forced a CPU out of the idle loop */
+	kInterruptAccountingInvalidStatisticIndex /* Sentinel value for checking for a nonsensical index */
 };
 
 /*
@@ -152,4 +154,3 @@ enum {
 #define kInterruptAccountingGroupName "Interrupt Statistics (by index)"
 
 #endif /* __IOKIT_IOINTERRUPTACCOUNTING_PRIVATE_H */
-

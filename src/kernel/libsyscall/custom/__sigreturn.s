@@ -30,11 +30,19 @@
 
 #if defined(__x86_64__)
 
-__SYSCALL(___sigreturn, sigreturn, 2)
+__SYSCALL(___sigreturn, sigreturn, 3)
 
 #elif defined(__i386__)
 
-__SYSCALL_INT(___sigreturn, sigreturn, 2)
+__SYSCALL_INT(___sigreturn, sigreturn, 3)
+
+#elif defined(__arm__)
+
+__SYSCALL(___sigreturn, sigreturn, 3)
+
+#elif defined(__arm64__)
+
+__SYSCALL(___sigreturn, sigreturn, 3)
 
 #else
 #error Unsupported architecture

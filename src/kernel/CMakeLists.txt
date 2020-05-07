@@ -6,7 +6,11 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0018 NEW)
 endif(COMMAND cmake_policy)
 
-include_directories(${CMAKE_SOURCE_DIR}/kernel-include)
+include_directories(
+	${CMAKE_SOURCE_DIR}/kernel-include/bsd
+	${CMAKE_SOURCE_DIR}/kernel-include/libkern
+	${CMAKE_SOURCE_DIR}/kernel-include/osfmk
+)
 include_directories(${CMAKE_SOURCE_DIR}/src/libc/derived)
 include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

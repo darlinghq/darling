@@ -103,6 +103,12 @@ enum {
 #define kIOPMMessageSystemSleepPreventers \
                 iokit_family_msg(sub_iokit_powermanagement, 0x430)
 
+#define kIOPMMessageLaunchBootSpinDump \
+                iokit_family_msg(sub_iokit_powermanagement, 0x440)
+
+#define kIOPMMessageProModeStateChange \
+                iokit_family_msg(sub_iokit_powermanagement, 0x450)
+
 /* @enum SystemSleepReasons
  * @abstract The potential causes for system sleep as logged in the system event record.
  */
@@ -180,6 +186,7 @@ enum {
  * These are valid values for IOPM.h:IOPMCalendarStruct->selector
  */
 enum {
+    kPMCalendarTypeInvalid = 0,
     kPMCalendarTypeMaintenance = 1,
     kPMCalendarTypeSleepService = 2
 };
@@ -266,6 +273,8 @@ enum {
 #define kIOPMSleepStatisticsAppsKey             "AppStatistics"
 #define kIOPMIdleSleepPreventersKey             "IdleSleepPreventers"
 #define kIOPMSystemSleepPreventersKey           "SystemSleepPreventers"
+#define kIOPMIdleSleepPreventersWithIDKey       "IdleSleepPreventersWithID"
+#define kIOPMSystemSleepPreventersWithIDKey     "SystemSleepPreventersWithID"
 
 // Application response statistics
 #define kIOPMStatsNameKey                       "Name"
@@ -531,10 +540,49 @@ enum {
 /*****************************************************************************/
 
 /*
-Ê* kIOPMLoginWindowSecurityDebugKey - identifies PM debug data specific to LoginWindow
- *  for use with IOPMrootDomain.
-Ê*/
-#define kIOPMLoginWindowSecurityDebugKey        "LoginWindowSecurity"
+ * Component wake progress keys
+ *
+ * Certain components have the ability to log their wake progress with
+ * root domain using the keys provided below.
+ *
+ * LoginWindow - 4 bits
+ * CoreDisplay - 8 bits
+ * CoreGraphics - 8 bits
+ *
+ * These bits are stored with the trace phase that gets logged to
+ * the RTC register.
+ */
+
+// Values that should be passed in to IOPMLogWakeProgress
+enum {
+    kIOPMLoginWindowProgress    = 1,
+    kIOPMCoreDisplayProgress    = 2,
+    kIOPMCoreGraphicsProgress   = 3
+};
+
+enum {
+    kIOPMLoginWindowProgressMask    = 0x0f,
+    kIOPMCoreDisplayProgressMask    = 0xff,
+    kIOPMCoreGraphicsProgressMask   = 0xff
+};
+
+/*
+ * kIOPMLoginWindowProgressKey - identifies PM debug data specific to LoginWindow
+ *  for use with IOPMrootDomain. Only 4 bits of data are allotted.
+ */
+#define kIOPMLoginWindowProgressKey             "LoginWindowProgress"
+
+/*
+ * kIOPMCoreDisplayProgressKey - identifies PM debug data specific to CoreDisplay
+ *  for use with IOPMrootDomain. Only 8 bits of data are allotted.
+ */
+#define kIOPMCoreDisplayProgressKey             "CoreDisplayProgress"
+
+/*
+ * kIOPMCoreGraphicsProgressKey - identifies PM debug data specific to CoreGraphics
+ *  for use with IOPMrootDomain. Only 8 bits of data are allotted.
+ */
+#define kIOPMCoreGraphicsProgressKey            "CoreGraphicsProgress"
 
 // For PM internal use only - key to locate sleep failure results within SCDynamicStore.
 #define kIOPMDynamicStoreSleepFailureKey        "SleepFailure"
@@ -584,6 +632,13 @@ enum {
  */
 #define kIOPMAutoPowerOffTimerKey           "AutoPowerOff Timer"
 
+/* kIOPMDeepSleepTimerKey
+ * Key refers to a CFNumberRef that indicates the time in seconds until the
+ * expiration of the Standby delay period. This value should be used
+ * to program a wake alarm before system sleep.
+ */
+#define kIOPMDeepSleepTimerKey                "Standby Timer"
+
 /* kIOPMUserWakeAlarmScheduledKey
  * Key refers to a boolean value that indicates if an user alarm was scheduled
  * or pending.
@@ -625,6 +680,11 @@ enum {
 #define kIOPMWakeEventReasonKey             "Reason"
 #define kIOPMWakeEventDetailsKey            "Details"
 
+/* kIOPMFeatureProModeKey
+ * Feature published if ProMode is supported
+ */
+#define kIOPMFeatureProModeKey              "ProMode"
+
 /*****************************************************************************
  *
  * Wake event flags reported to IOPMrootDomain::claimSystemWakeEvent()
@@ -632,6 +692,84 @@ enum {
  *****************************************************************************/
 
 #define kIOPMWakeEventSource                0x00000001
+
+#if !(defined(RC_HIDE_N144) || defined(RC_HIDE_N146))
+/*****************************************************************************
+ *
+ * AOT defs
+ *
+ *****************************************************************************/
+
+// signals the device should wake up to user space running
+#define kIOPMWakeEventAOTExit                   0x00000002
+
+// will start a 400 ms timer before sleeping
+#define kIOPMWakeEventAOTPossibleExit           0x00000004
+
+// signals the device should wake up to user space running
+#define kIOPMWakeEventAOTConfirmedPossibleExit  0x00000008
+
+// signals the device should go back to AOT
+#define kIOPMWakeEventAOTRejectedPossibleExit   0x00000010
+
+// signals the device should go back to AOT
+#define kIOPMWakeEventAOTExpiredPossibleExit    0x00000020
+
+#define kIOPMWakeEventAOTFlags \
+                                 (kIOPMWakeEventAOTExit \
+                                | kIOPMWakeEventAOTPossibleExit \
+                                | kIOPMWakeEventAOTConfirmedPossibleExit \
+                                | kIOPMWakeEventAOTRejectedPossibleExit \
+                                | kIOPMWakeEventAOTExpiredPossibleExit)
+
+#define kIOPMWakeEventAOTPossibleFlags \
+                                 (kIOPMWakeEventAOTPossibleExit \
+                                | kIOPMWakeEventAOTConfirmedPossibleExit \
+                                | kIOPMWakeEventAOTRejectedPossibleExit \
+                                | kIOPMWakeEventAOTExpiredPossibleExit)
+
+#define kIOPMWakeEventAOTPerCycleFlags \
+                                 (kIOPMWakeEventAOTPossibleExit \
+                                | kIOPMWakeEventAOTRejectedPossibleExit \
+                                | kIOPMWakeEventAOTExpiredPossibleExit)
+
+#define kIOPMWakeEventAOTExitFlags \
+                                 (kIOPMWakeEventAOTExit \
+                                | kIOPMWakeEventAOTConfirmedPossibleExit)
+
+enum {
+    kIOPMAOTModeEnable        = 0x00000001,
+    kIOPMAOTModeCycle         = 0x00000002,
+    kIOPMAOTModeAddEventFlags = 0x00000004,
+    kIOPMAOTModeRespectTimers = 0x00000008,
+    kIOPMAOTModeDefault       = (kIOPMAOTModeEnable | kIOPMAOTModeAddEventFlags | kIOPMAOTModeRespectTimers)
+};
+
+enum {
+    kIOPMAOTMetricsKernelWakeCountMax = 24
+};
+
+struct IOPMAOTMetrics
+{
+    uint32_t sleepCount;
+    uint32_t possibleCount;
+    uint32_t confirmedPossibleCount;
+    uint32_t rejectedPossibleCount;
+    uint32_t expiredPossibleCount;
+    uint32_t noTimeSetCount;
+    uint32_t rtcAlarmsCount;
+    uint32_t softwareRequestCount;
+    uint64_t totalTime;
+
+	char     kernelWakeReason[kIOPMAOTMetricsKernelWakeCountMax][64];
+	// 54:10 secs:ms calendar time
+    uint64_t kernelSleepTime[kIOPMAOTMetricsKernelWakeCountMax];
+    uint64_t kernelWakeTime[kIOPMAOTMetricsKernelWakeCountMax];
+};
+
+#define kIOPMAOTPowerKey    "aot-power"
+
+#endif /* !(defined(RC_HIDE_N144) || defined(RC_HIDE_N146)) */
 
 /*****************************************************************************
  *
@@ -667,6 +805,7 @@ struct IOPMSystemSleepPolicyVariables
     uint32_t    hibernateMode;              // current hibernate mode
 
     uint32_t    standbyDelay;               // standby delay in seconds
+    uint32_t    standbyTimer;               // standby timer in seconds
     uint32_t    poweroffDelay;              // auto-poweroff delay in seconds
     uint32_t    scheduledAlarms;            // bitmask of scheduled alarm types
     uint32_t    poweroffTimer;              // auto-poweroff timer in seconds
@@ -749,7 +888,18 @@ enum {
     kIOPMWakeEventUserPME                   = 0x00000400,
     kIOPMWakeEventSleepTimer                = 0x00000800,
     kIOPMWakeEventBatteryLow                = 0x00001000,
-    kIOPMWakeEventDarkPME                   = 0x00002000
+    kIOPMWakeEventDarkPME                   = 0x00002000,
+    kIOPMWakeEventWifi                      = 0x00004000,
+    kIOPMWakeEventRTCSystem                 = 0x00008000,  // Maintenance RTC wake
+    kIOPMWakeEventUSBCPlugin                = 0x00010000,  // USB-C Plugin
+    kIOPMWakeEventHID                       = 0x00020000,
+    kIOPMWakeEventBluetooth                 = 0x00040000,
+    kIOPMWakeEventDFR                       = 0x00080000,
+    kIOPMWakeEventSD                        = 0x00100000,  // SD card
+    kIOPMWakeEventLANWake                   = 0x00200000,  // Wake on Lan
+    kIOPMWakeEventLANPlugin                 = 0x00400000,  // Ethernet media sense
+    kIOPMWakeEventThunderbolt               = 0x00800000,
+    kIOPMWakeEventRTCUser                   = 0x01000000,  // User requested RTC wake
 };
 
 /*!
@@ -788,28 +938,22 @@ typedef struct {
 
    /* All members from UUID onwards are saved into log file */
    char             UUID[44];
-   char             cps[9];          /* Current power state */
+   char             spindump_status[24];   /* stackshot status*/
    char             PMStatusCode[32];
    char             reason[32];
 } swd_hdr;
 
-/*
- * Structure between stackshot samples, expected by spindump
- */
-typedef struct {
-    uint32_t magic;      // 0xbad51ee4
-    uint32_t size;       // Size of the stackshot buffer following this struct
-} swd_stackshot_hdr;
-
 
 #define SWD_HDR_SIGNATURE       0xdeb8da2a
-#define SWD_STACKSHOTHDR_MAGIC  0xbad51ee4  // expected by spindump
 
-#define SWD_BUF_SIZE            (40*PAGE_SIZE)
-#define SWD_INITIAL_STACK_SIZE  ((SWD_BUF_SIZE/2)-sizeof(swd_hdr))
+#define SWD_STACKSHOT_SIZE      (40*PAGE_SIZE)
+#define SWD_COMPRESSED_BUFSIZE  (5*PAGE_SIZE)
+#define SWD_ZLIB_BUFSIZE        (10*PAGE_SIZE)
+#define SWD_STACKSHOT_VAR_PREFIX    "sleepwake_diags"
 
 #define SWD_SPINDUMP_SIZE          (256*1024)
 #define SWD_INITIAL_SPINDUMP_SIZE  ((SWD_SPINDUMP_SIZE/2)-sizeof(swd_hdr))
+#define SWD_MAX_STACKSHOTS          (10)
 
 /* Bits in swd_flags */
 #define SWD_WDOG_ENABLED        0x01
@@ -818,27 +962,22 @@ typedef struct {
 #define SWD_VALID_LOGS          0x08
 #define SWD_LOGS_IN_FILE        0x10
 #define SWD_LOGS_IN_MEM         0x20
+#define SWD_PWR_BTN_STACKSHOT   0x30
+
+#define SWD_DATA_CRC_ERROR      0x010000
+#define SWD_BUF_SIZE_ERROR      0x020000
+#define SWD_HDR_SIZE_ERROR      0x040000
+#define SWD_FILEOP_ERROR        0x080000
+#define SWD_HDR_SIGNATURE_ERROR 0x100000
+#define SWD_INTERNAL_FAILURE    0x200000
+
 
 /* Filenames associated with the stackshots/logs generated by the SWD */
-#define kSleepWakeStackBinFilename          "/var/log/SleepWakeStacks.bin"
-#define kSleepWakeStackFilename             "/var/log/SleepWakeStacks.dump"
-#define kSleepWakeLogFilename               "/var/log/SleepWakeLog.dump"
-#define kAppleOSXWatchdogStackFilename      "/var/log/AppleOSXWatchdogStacks.dump"
-#define kAppleOSXWatchdogLogFilename        "/var/log/AppleOSXWatchdogLog.dump"
+#define kOSWatchdogStacksFilename           "/var/log/OSXWatchdogStacks.gz"
+#define kOSWatchdogFailureStringFile        "/var/log/OSWatchdogFailureString.txt"
+#define kSleepWakeStacksFilename            "/var/log/SleepWakeStacks.gz"
+#define kSleepWakeFailureStringFile         "/var/log/SleepWakeFailureString.txt"
 
-inline char const* getDumpStackFilename(swd_hdr *hdr)
-{
-    if (hdr && hdr->is_osx_watchdog)
-        return kAppleOSXWatchdogStackFilename;
-    return kSleepWakeStackFilename;
-}
-
-inline char const* getDumpLogFilename(swd_hdr *hdr)
-{
-    if (hdr && hdr->is_osx_watchdog)
-        return kAppleOSXWatchdogLogFilename;
-    return kSleepWakeLogFilename;
-}
 
 /* RootDomain IOReporting channels */
 #define kSleepCntChID IOREPORT_MAKEID('S','l','e','e','p','C','n','t')

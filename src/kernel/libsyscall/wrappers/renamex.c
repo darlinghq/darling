@@ -30,7 +30,9 @@ int
 renameatx_np(int oldfd, const char *old, int newfd, const char *new, unsigned int flags)
 {
 	int res = __renameatx_np(oldfd, old, newfd, new, flags);
-	if (res == 0) __inc_remove_counter();
+	if (res == 0) {
+		__inc_remove_counter();
+	}
 	return res;
 }
 

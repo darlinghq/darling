@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -11,10 +11,10 @@
  * unlawful or unlicensed copies of an Apple operating system, or to
  * circumvent, violate, or enable the circumvention or violation of, any
  * terms of an Apple operating system software license agreement.
- * 
+ *
  * Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -22,7 +22,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
@@ -157,13 +157,13 @@ typedef struct IOWorkLoopDependency {
 	OSKextLoadTag loadTag;
 } IOWorkLoopDependency;
 
-typedef struct IOWorkLoopCounter {    
+typedef struct IOWorkLoopCounter {
 	SLIST_ENTRY(IOWorkLoopCounter) link;
 	KextNode *parentKext;
 	int attachedEventSources;
 	IOWorkLoop *workLoop;
 	uint64_t startTimeStamp;
-    uint64_t timeOnGate;
+	uint64_t timeOnGate;
 	uint32_t closeGateCalls;
 	uint32_t openGateCalls;
 	typedef RB_HEAD(DependencyTree, IOWorkLoopDependency) DependencyTreeHead;
@@ -196,7 +196,7 @@ class IOStatistics {
 	static uint32_t attachedEventSources;
 
 	static KextNode *kextHint;
-	
+
 	static IOWorkLoopDependency *nextWorkLoopDependency;
 
 	typedef RB_HEAD(KextTree, KextNode) KextTreeHead;
@@ -236,7 +236,7 @@ class IOStatistics {
 	static void releaseKextNode(KextNode *node);
 
 public:
-	
+
 	static void initialize();
 
 	static void onKextLoad(OSKext *kext, kmod_info_t *kmod_info);
@@ -246,7 +246,7 @@ public:
 
 	static IOEventSourceCounter *registerEventSource(OSObject *inOwner);
 	static void unregisterEventSource(IOEventSourceCounter *counter);
-	
+
 	static IOWorkLoopCounter *registerWorkLoop(IOWorkLoop *workLoop);
 	static void unregisterWorkLoop(IOWorkLoopCounter *counter);
 
@@ -257,91 +257,111 @@ public:
 	static int getWorkLoopStatistics(sysctl_req *req);
 	static int getUserClientStatistics(sysctl_req *req);
 
-	/* Inlines for counter manipulation.
-	 * 				
-	 * NOTE: counter access is not expressly guarded here so as not to incur performance penalties
-	 * in the instrumented parent objects. Writes are arranged so as to be protected by pre-existing
-	 * locks in the parent where appropriate, but reads have no such guarantee. Counters should
-	 * therefore be regarded as providing an indication of current state, rather than precisely
-	 * accurate statistics. 
-	 */
-	
-	static inline void setCounterType(IOEventSourceCounter *counter, IOStatisticsCounterType type) {
+/* Inlines for counter manipulation.
+ *
+ * NOTE: counter access is not expressly guarded here so as not to incur performance penalties
+ * in the instrumented parent objects. Writes are arranged so as to be protected by pre-existing
+ * locks in the parent where appropriate, but reads have no such guarantee. Counters should
+ * therefore be regarded as providing an indication of current state, rather than precisely
+ * accurate statistics.
+ */
+
+	static inline void
+	setCounterType(IOEventSourceCounter *counter, IOStatisticsCounterType type)
+	{
 		if (counter) {
 			counter->type = type;
 		}
 	}
 
-	static inline void countOpenGate(IOEventSourceCounter *counter) {
+	static inline void
+	countOpenGate(IOEventSourceCounter *counter)
+	{
 		if (counter) {
 			counter->timeOnGate += mach_absolute_time() - counter->startTimeStamp;
 			counter->openGateCalls++;
 		}
 	}
 
-	static inline void countCloseGate(IOEventSourceCounter *counter) {
+	static inline void
+	countCloseGate(IOEventSourceCounter *counter)
+	{
 		if (counter) {
 			counter->startTimeStamp = mach_absolute_time();
 			counter->closeGateCalls++;
 		}
 	}
 
-	/* Interrupt */
-	static inline void countInterruptCheckForWork(IOEventSourceCounter *counter) {
+/* Interrupt */
+	static inline void
+	countInterruptCheckForWork(IOEventSourceCounter *counter)
+	{
 		if (counter) {
 			counter->u.interrupt.checksForWork++;
 		}
 	}
 
-	static inline void countInterrupt(IOEventSourceCounter *counter) {
+	static inline void
+	countInterrupt(IOEventSourceCounter *counter)
+	{
 		if (counter) {
 			counter->u.interrupt.produced++;
 		}
 	}
 
-	/* CommandQueue */
-	static inline void countCommandQueueActionCall(IOEventSourceCounter *counter) {
+/* CommandQueue */
+	static inline void
+	countCommandQueueActionCall(IOEventSourceCounter *counter)
+	{
 		if (counter) {
 			counter->u.commandQueue.actionCalls++;
 		}
 	}
 
-	/* CommandGate */
-	static inline void countCommandGateActionCall(IOEventSourceCounter *counter) {
+/* CommandGate */
+	static inline void
+	countCommandGateActionCall(IOEventSourceCounter *counter)
+	{
 		if (counter) {
 			counter->u.commandGate.actionCalls++;
 		}
 	}
 
-	/* Timer */
-	static inline void countTimerTimeout(IOEventSourceCounter *counter) {
+/* Timer */
+	static inline void
+	countTimerTimeout(IOEventSourceCounter *counter)
+	{
 		if (counter) {
 			counter->u.timer.timeouts++;
 		}
 	}
 
-	/* WorkLoop */
+/* WorkLoop */
 	static void attachWorkLoopEventSource(IOWorkLoopCounter *wlc, IOEventSourceCounter *esc);
 	static void detachWorkLoopEventSource(IOWorkLoopCounter *wlc, IOEventSourceCounter *esc);
 
-	static inline void countWorkLoopOpenGate(IOWorkLoopCounter *counter) {
+	static inline void
+	countWorkLoopOpenGate(IOWorkLoopCounter *counter)
+	{
 		if (counter) {
 			counter->timeOnGate += mach_absolute_time() - counter->startTimeStamp;
 			counter->openGateCalls++;
 		}
 	}
 
-	static inline void countWorkLoopCloseGate(IOWorkLoopCounter *counter) {
+	static inline void
+	countWorkLoopCloseGate(IOWorkLoopCounter *counter)
+	{
 		if (counter) {
 			counter->startTimeStamp = mach_absolute_time();
 			counter->closeGateCalls++;
 		}
 	}
 
-	/* IOLib allocations */	
+/* IOLib allocations */
 	static void countAlloc(uint32_t index, vm_size_t size);
 
-	/* UserClient */
+/* UserClient */
 	static void countUserClientCall(IOUserClient *client);
 };
 
@@ -351,7 +371,10 @@ public:
 
 class IOStatistics {
 public:
-	static void initialize() {}
+	static void
+	initialize()
+	{
+	}
 };
 
 #endif /* IOKITSTATS */

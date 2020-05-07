@@ -85,7 +85,9 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/FreeBSD
 	${CMAKE_CURRENT_SOURCE_DIR}/kernel/libsyscall/wrappers
 	${CMAKE_CURRENT_SOURCE_DIR}/kernel/include
-	${CMAKE_SOURCE_DIR}/kernel-include
+	${CMAKE_SOURCE_DIR}/kernel-include/bsd
+	${CMAKE_SOURCE_DIR}/kernel-include/libkern
+	${CMAKE_SOURCE_DIR}/kernel-include/osfmk
 	${CMAKE_CURRENT_SOURCE_DIR}/duct/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libm/include
 )

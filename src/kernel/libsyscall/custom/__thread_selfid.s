@@ -36,4 +36,12 @@ __SYSCALL(___thread_selfid, thread_selfid, 0)
 
 __SYSCALL_INT(___thread_selfid, thread_selfid, 0)
 
+#elif defined(__arm__)
+
+__SYSCALL(___thread_selfid, thread_selfid, 0)
+
+#elif defined(__arm64__)
+
+__SYSCALL(___thread_selfid, thread_selfid, 0)
+
 #endif

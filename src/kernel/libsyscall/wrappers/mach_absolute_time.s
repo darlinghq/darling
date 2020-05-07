@@ -150,6 +150,129 @@ _mach_absolute_time:
 	popq	%rbp
 	ret
 
+#elif defined(__arm__)
+
+#include <mach/arm/syscall_sw.h>
+
+/*
+ * If userspace access to the timebase is supported (indicated through the commpage),
+ * directly reads the timebase and uses it and the current timebase offset (also in
+ * the commpage, and updated whenever the system wakes from sleep) to construct the
+ * current time value; otherwise, traps to the kernel to handle this.
+ *
+ * If we do this in user mode, there are two cases where we may need to redrive the
+ * read.  We do 3 reads (high-low-high) to the timebase, because we only have a
+ * 32-bit interface to it (despite the use of mrrc).  If the high bits change, we
+ * need to reread the register (as our returned value could otherwise be off by
+ * 2^32 mach absolute time units).
+ *
+ * We do two reads of the offset, before and after the register reads.  If the offset
+ * changes, we have gone to sleep in the midst of doing a read.  This case should be
+ * exceedingly rare, but could result in a terribly inaccurate result, so we need
+ * to get a fresh timebase value.
+ */
+	.text
+	.align 2
+	.globl _mach_absolute_time
+_mach_absolute_time:
+	movw	ip, #((_COMM_PAGE_TIMEBASE_OFFSET) & 0x0000FFFF)
+	movt	ip, #(((_COMM_PAGE_TIMEBASE_OFFSET) >> 16) & 0x0000FFFF)
+	ldrb	r0, [ip, #((_COMM_PAGE_USER_TIMEBASE) - (_COMM_PAGE_TIMEBASE_OFFSET))]
+	cmp	r0, #USER_TIMEBASE_NONE		// Are userspace reads supported?
+	beq	_mach_absolute_time_kernel	// If not, go to the kernel
+	isb					// Prevent speculation on CNTPCT across calls
+						// (see ARMV7C.b section B8.1.2, ARMv8 section D6.1.2)
+	push	{r4, r5, r7, lr}		// Push a frame
+	add	r7, sp, #8
+L_mach_absolute_time_user:
+	ldr	r4, [ip]			// Load offset low bits
+	ldr	r5, [ip, #4]			// Load offset high bits
+	mrrc	p15, 0, r3, r1, c14		// Read timebase high to r1
+	mrrc	p15, 0, r0, r3, c14		// Read timebase low to r0
+	mrrc	p15, 0, r3, r2, c14		// Read timebase high to r2
+	cmp	r1, r2				// Did the high bits change?
+	bne	L_mach_absolute_time_user	// Loop if timebase high changed
+	ldr	r2, [ip]			// Load offset low bits
+	ldr	r3, [ip, #4]			// Load offset high bits
+	eor	r4, r2				// Compare our offset values...
+	eor	r5, r3
+	orrs	r5, r4
+	bne	L_mach_absolute_time_user	// If they changed, try again
+	adds	r0, r0, r2			// Construct mach_absolute_time
+	adcs	r1, r1, r3
+	pop	{r4, r5, r7, pc}		// Pop the frame
+
+	.text
+	.align 2
+	.globl _mach_absolute_time_kernel
+_mach_absolute_time_kernel:
+	mov	r12, #-3			// Load the magic MAT number
+	swi	#SWI_SYSCALL
+	bx	lr
+
+	.text
+	.align 2
+	.globl _mach_continuous_time_kernel
+_mach_continuous_time_kernel:
+	mov	r12, #-4			// Load the magic MCT number
+	swi	#SWI_SYSCALL
+	bx	lr
+
+#elif defined(__arm64__)
+
+#include <mach/arm/syscall_sw.h>
+
+/*
+ * If userspace access to the timebase is supported (indicated through the commpage),
+ * directly reads the timebase and uses it and the current timebase offset (also in
+ * the commpage, and updated whenever the system wakes from sleep) to construct the
+ * current time value; otherwise, traps to the kernel to handle this.
+ *
+ * If we do this in user mode, we do two reads of the offset, before and after we
+ * read the register.  If the offset changes, we have gone to sleep in the midst of
+ * doing a read.  This case should be exceedingly rare, but could result in a terribly
+ * inaccurate result, so we need to get a fresh timebase value.
+ */
+	.text
+	.align 2
+	.globl _mach_absolute_time
+_mach_absolute_time:
+	movk	x3, #(((_COMM_PAGE_TIMEBASE_OFFSET) >> 48) & 0x000000000000FFFF), lsl #48
+	movk	x3, #(((_COMM_PAGE_TIMEBASE_OFFSET) >> 32) & 0x000000000000FFFF), lsl #32
+	movk	x3, #(((_COMM_PAGE_TIMEBASE_OFFSET) >> 16) & 0x000000000000FFFF), lsl #16
+	movk	x3, #((_COMM_PAGE_TIMEBASE_OFFSET) & 0x000000000000FFFF)
+	ldrb	w2, [x3, #((_COMM_PAGE_USER_TIMEBASE) - (_COMM_PAGE_TIMEBASE_OFFSET))]
+	cmp	x2, #USER_TIMEBASE_NONE		// Are userspace reads supported?
+	b.eq	_mach_absolute_time_kernel	// If not, go to the kernel
+	isb					// Prevent speculation on CNTPCT across calls
+						// (see ARMV7C.b section B8.1.2, ARMv8 section D6.1.2)
+L_mach_absolute_time_user:
+	ldr	x1, [x3]			// Load the offset
+	mrs	x0, CNTPCT_EL0			// Read the timebase
+	ldr	x2, [x3]			// Load the offset
+	cmp	x1, x2				// Compare our offset values...
+	b.ne	L_mach_absolute_time_user	// If they changed, try again
+	add	x0, x0, x1			// Construct mach_absolute_time
+	ret
+
+
+
+	.text
+	.align 2
+	.globl _mach_absolute_time_kernel
+_mach_absolute_time_kernel:
+	mov	w16, #-3			// Load the magic MAT number
+	svc	#SWI_SYSCALL
+	ret
+
+	.text
+	.align 2
+	.globl _mach_continuous_time_kernel
+_mach_continuous_time_kernel:
+	mov	w16, #-4			// Load the magic MCT number
+	svc	#SWI_SYSCALL
+	ret
+
 #else
 #error Unsupported architecture
 #endif

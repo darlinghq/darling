@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2010 Apple Inc. All rights reserved.
  *
@@ -78,16 +77,10 @@ L2:
 LEAF(___fork, 0)
 	subq  $24, %rsp   // Align the stack, plus room for local storage
 
-#ifndef DARLING
 	movl 	$ SYSCALL_CONSTRUCT_UNIX(SYS_fork),%eax; // code for fork -> rax
 	UNIX_SYSCALL_TRAP		// do the system call
 	jnc	L1			// jump if CF==0
-#else
-	movl    $ SYS_fork, %eax
-	call    __darling_bsd_syscall
-	cmpq    $0, %rax
-	jnb L1
-#endif
+
 	movq	%rax, %rdi
 	CALL_EXTERN(_cerror)
 	movq	$-1, %rax
@@ -95,14 +88,9 @@ LEAF(___fork, 0)
 	ret
 	
 L1:
-#ifndef DARLING
 	orl	%edx,%edx	// CF=OF=0,  ZF set if zero result	
 	jz	L2		// parent, since r1 == 0 in parent, 1 in child
-#else
-	testl	%eax, %eax
-	jnz	L2
-#endif	
-
+	
 	//child here...
 	xorq	%rax, %rax
 	PICIFY(__current_pid)
@@ -111,6 +99,60 @@ L2:
 	// parent ends up here skipping child portion
 	addq	$24, %rsp   // restore the stack
 	ret
+
+#elif defined(__arm__)
+	
+MI_ENTRY_POINT(___fork)
+	stmfd	sp!, {r4, r7, lr}
+	add	r7, sp, #4
+
+	mov	r1, #1					// prime results
+	mov	r12, #SYS_fork
+	swi	#SWI_SYSCALL				// make the syscall
+	bcs	Lbotch					// error?
+
+	cmp	r1, #0					// parent (r1=0) or child(r1=1)
+	beq	Lparent
+
+	//child here...
+	MI_GET_ADDRESS(r3, __current_pid)
+	mov	r0, #0
+	str	r0, [r3]		// clear cached pid in child
+	ldmfd   sp!, {r4, r7, pc}
+
+Lbotch:
+	MI_CALL_EXTERNAL(_cerror)			// jump here on error
+	mov	r0,#-1					// set the error
+	// fall thru
+Lparent:	
+	ldmfd   sp!, {r4, r7, pc}			// pop and return
+
+#elif defined(__arm64__)
+
+#include <mach/arm64/asm.h>
+	
+MI_ENTRY_POINT(___fork)
+	ARM64_STACK_PROLOG
+	PUSH_FRAME
+	// ARM moves a 1 in to r1 here, but I can't see why.
+	mov		x16, #SYS_fork				// Syscall code
+	svc		#SWI_SYSCALL				// Trap to kernel
+	b.cs	Lbotch						// Carry bit indicates failure
+	cbz		x1, Lparent					// x1 == 0 indicates that we are the parent
+
+	// Child
+	MI_GET_ADDRESS(x9, __current_pid)	// Get address of cached "current pid"
+	mov		w0, #0	
+	str		w0, [x9]					// Clear cached current pid				
+	POP_FRAME							// And done
+	ARM64_STACK_EPILOG
+
+Lbotch:
+	MI_CALL_EXTERNAL(_cerror)			// Handle error
+	mov		w0, #-1						// Return value is -1
+Lparent:
+	POP_FRAME							// Return
+	ARM64_STACK_EPILOG
 
 #else
 #error Unsupported architecture

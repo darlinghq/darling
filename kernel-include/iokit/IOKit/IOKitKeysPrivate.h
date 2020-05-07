@@ -2,7 +2,7 @@
  * Copyright (c) 1998-2000 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -11,10 +11,10 @@
  * unlawful or unlicensed copies of an Apple operating system, or to
  * circumvent, violate, or enable the circumvention or violation of, any
  * terms of an Apple operating system software license agreement.
- * 
+ *
  * Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -22,7 +22,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
@@ -46,6 +46,7 @@
 #define kIOConsoleSessionLoginDoneKey           "kCGSessionLoginDoneKey"       /* value is OSBoolean */
 #define kIOConsoleSessionSecureInputPIDKey      "kCGSSessionSecureInputPID"    /* value is OSNumber */
 #define kIOConsoleSessionScreenLockedTimeKey    "CGSSessionScreenLockedTime"   /* value is OSNumber, secs - 1970 */
+#define kIOConsoleSessionScreenIsLockedKey      "CGSSessionScreenIsLocked"     /* value is OSBoolean */
 
 // IOResources property
 #define kIOConsoleUsersSeedKey                  "IOConsoleUsersSeed"           /* value is OSNumber */
@@ -53,9 +54,10 @@
 // IODeviceTree:chosen properties
 #define kIOProgressBackbufferKey                "IOProgressBackbuffer"           /* value is OSData   */
 #define kIOProgressColorThemeKey                "IOProgressColorTheme"           /* value is OSNumber */
+#define kIOBridgeBootSessionUUIDKey             "bridge-boot-session-uuid"       /* value is OSData   */
 
 // interest type
-#define kIOConsoleSecurityInterest		"IOConsoleSecurityInterest"
+#define kIOConsoleSecurityInterest              "IOConsoleSecurityInterest"
 
 
 // private keys for clientHasPrivilege
@@ -67,13 +69,13 @@
 // Embedded still throttles NVRAM commits via kIONVRAMSyncNowPropertyKey, but
 // some clients still need a stricter NVRAM commit contract. Please use this with
 // care.
-#define kIONVRAMForceSyncNowPropertyKey		"IONVRAM-FORCESYNCNOW-PROPERTY"
+#define kIONVRAMForceSyncNowPropertyKey         "IONVRAM-FORCESYNCNOW-PROPERTY"
 
 
 // clientHasPrivilege security token for kIOClientPrivilegeSecureConsoleProcess
 typedef struct _IOUCProcessToken {
-    void *  token;
-    UInt32  pid;
+	void *  token;
+	UInt32  pid;
 } IOUCProcessToken;
 
 #define kIOKernelHasSafeSleep        1
@@ -96,18 +98,18 @@ typedef struct _IOUCProcessToken {
 #endif /* defined(__i386__) || defined(__x86_64__) */
 
 enum {
-    // these flags are valid for the prepare() method only
-    kIODirectionPrepareNoZeroFill = 0x00000010,
+	// these flags are valid for the prepare() method only
+	kIODirectionPrepareNoZeroFill = 0x00000010,
 };
 
 enum {
-    kIOServiceTerminateNeedWillTerminate = 0x00000100,
+	kIOServiceTerminateNeedWillTerminate = 0x00000100,
 };
 
 #define kIOClassNameOverrideKey "IOClassNameOverride"
 
 enum {
-    kIOClassNameOverrideNone = 0x00000001,
+	kIOClassNameOverrideNone = 0x00000001,
 };
 
 #define kIOServiceLegacyMatchingRegistryIDKey "IOServiceLegacyMatchingRegistryID"

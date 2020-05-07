@@ -31,17 +31,18 @@
 
 __attribute__((visibility("hidden")))
 char *
-index
-(const char *p, int ch)
+_libkernel_strchr(const char *p, int ch)
 {
 	char c;
 
 	c = ch;
 	for (;; ++p) {
-		if (*p == c)
-			return ((char *)p);
-		if (*p == '\0')
-			return (NULL);
+		if (*p == c) {
+			return (char *)p;
+		}
+		if (*p == '\0') {
+			return NULL;
+		}
 	}
 	/* NOTREACHED */
 }

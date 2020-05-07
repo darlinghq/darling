@@ -46,6 +46,25 @@ PSEUDO(___pipe, pipe, 0, cerror_nocancel)
 	xorl	%eax, %eax
 	ret
 
+#elif defined(__arm__)
+
+MI_ENTRY_POINT(___pipe)
+	mov		r3,r0              // save fildes across syscall
+	SYSCALL_NONAME(pipe, 0, cerror_nocancel)
+	str     r0, [r3, #0]
+	str     r1, [r3, #4]
+	mov		r0,#0
+	bx		lr
+
+#elif defined(__arm64__)
+
+MI_ENTRY_POINT(___pipe)
+	mov		x9, x0				// Stash FD array
+	SYSCALL_NONAME(pipe, 0, cerror_nocancel)
+	stp		w0, w1, [x9]		// Save results
+	mov		x0, #0				// Success
+	ret							// Done
+
 #else
 #error Unsupported architecture
 #endif

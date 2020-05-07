@@ -12,7 +12,11 @@ include_directories(BEFORE
 	${CMAKE_CURRENT_SOURCE_DIR}/include/c++/4.2.1/backward
 )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include)
+include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include/bsd
+	${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include/libkern
+	${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include/osfmk
+)
 
 add_definitions(
 	-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080

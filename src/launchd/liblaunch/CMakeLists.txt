@@ -9,7 +9,7 @@ include_directories(
 
 add_definitions(-w -nostdinc)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -include ${CMAKE_SOURCE_DIR}/kernel-include/sys/fileport.h -ggdb")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -include ${CMAKE_SOURCE_DIR}/kernel-include/bsd/sys/fileport.h -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
 
 mig(job.defs)

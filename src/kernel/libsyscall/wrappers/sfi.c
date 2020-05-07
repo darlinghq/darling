@@ -26,32 +26,38 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-int system_set_sfi_window(uint64_t sfi_window_usec)
+int
+system_set_sfi_window(uint64_t sfi_window_usec)
 {
 	return __sfi_ctl(SFI_CTL_OPERATION_SFI_SET_WINDOW, 0, sfi_window_usec, NULL);
 }
 
-int system_get_sfi_window(uint64_t *sfi_window_usec)
+int
+system_get_sfi_window(uint64_t *sfi_window_usec)
 {
 	return __sfi_ctl(SFI_CTL_OPERATION_SFI_GET_WINDOW, 0, 0, sfi_window_usec);
 }
 
-int sfi_set_class_offtime(sfi_class_id_t class_id, uint64_t offtime_usec)
+int
+sfi_set_class_offtime(sfi_class_id_t class_id, uint64_t offtime_usec)
 {
 	return __sfi_ctl(SFI_CTL_OPERATION_SET_CLASS_OFFTIME, class_id, offtime_usec, NULL);
 }
 
-int sfi_get_class_offtime(sfi_class_id_t class_id, uint64_t *offtime_usec)
+int
+sfi_get_class_offtime(sfi_class_id_t class_id, uint64_t *offtime_usec)
 {
 	return __sfi_ctl(SFI_CTL_OPERATION_GET_CLASS_OFFTIME, class_id, 0, offtime_usec);
 }
 
-int sfi_process_set_flags(pid_t pid, uint32_t flags)
+int
+sfi_process_set_flags(pid_t pid, uint32_t flags)
 {
 	return __sfi_pidctl(SFI_PIDCTL_OPERATION_PID_SET_FLAGS, pid, flags, NULL);
 }
 
-int sfi_process_get_flags(pid_t pid, uint32_t *flags)
+int
+sfi_process_get_flags(pid_t pid, uint32_t *flags)
 {
 	return __sfi_pidctl(SFI_PIDCTL_OPERATION_PID_GET_FLAGS, pid, 0, flags);
 }

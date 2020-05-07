@@ -55,10 +55,11 @@ static const char * const err_codes_mach_send[] = {
        /* 15 */	"(ipc/send) invalid msg-type",
        /* 16 */	"(ipc/send) invalid msg-header",
        /* 17 */ "(ipc/send) invalid msg-trailer",
-       /* 18 */ "(ipc/send) unused error",
+       /* 18 */ "(ipc/send) invalid context for reply",
        /* 19 */ "(ipc/send) unused error",
        /* 20 */ "(ipc/send) unused error",
        /* 21 */ "(ipc/send) out-of-line buffer too large",
+       /* 22 */ "(ipc/send) destination does not accept OOL ports",
 };
 
 static const char * const err_codes_mach_rcv[] = {

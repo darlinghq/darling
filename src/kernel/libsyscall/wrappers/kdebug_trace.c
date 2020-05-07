@@ -36,12 +36,12 @@
 
 extern int __kdebug_typefilter(void** addr, size_t* size);
 extern int __kdebug_trace64(uint32_t code, uint64_t arg1, uint64_t arg2,
-	uint64_t arg3, uint64_t arg4);
+    uint64_t arg3, uint64_t arg4);
 extern uint64_t __kdebug_trace_string(uint32_t debugid, uint64_t str_id,
-	const char *str);
+    const char *str);
 
 static int kdebug_signpost_internal(uint32_t debugid, uintptr_t arg1,
-	uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
+    uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
 
 /*
  * GENERAL API DESIGN NOTE!
@@ -95,7 +95,7 @@ kdebug_is_enabled(uint32_t debugid)
 		 * Typefilter rules...
 		 *
 		 * If no typefilter is available (even if due to error),
-		 * debugids are allowed. 
+		 * debugids are allowed.
 		 *
 		 * The typefilter will always allow DBG_TRACE; this is a kernel
 		 * invariant. There is no need for an explicit check here.
@@ -116,9 +116,16 @@ kdebug_is_enabled(uint32_t debugid)
 	return TRUE;
 }
 
+bool
+kdebug_using_continuous_time(void)
+{
+	uint32_t state = *((volatile uint32_t *)(uintptr_t)(_COMM_PAGE_KDEBUG_ENABLE));
+	return state & KDEBUG_ENABLE_CONT_TIME;
+}
+
 int
 kdebug_trace(uint32_t debugid, uint64_t arg1, uint64_t arg2, uint64_t arg3,
-             uint64_t arg4)
+    uint64_t arg4)
 {
 	if (!kdebug_is_enabled(debugid)) {
 		return 0;

@@ -2,7 +2,7 @@
  * Copyright (c) 2014 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -11,10 +11,10 @@
  * unlawful or unlicensed copies of an Apple operating system, or to
  * circumvent, violate, or enable the circumvention or violation of, any
  * terms of an Apple operating system software license agreement.
- * 
+ *
  * Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -22,7 +22,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
@@ -106,16 +106,16 @@ extern uint32_t gInterruptAccountingStatisticBitmask;
 #define kInterruptAccountingChannelNameIdleExits             ("               Idle exits caused by this interrupt")
 
 static const char * const kInterruptAccountingStatisticNameArray[IA_NUM_INTERRUPT_ACCOUNTING_STATISTICS] = {
-    [kInterruptAccountingFirstLevelCountIndex] = kInterruptAccountingChannelNameFirstLevelCount,
-    [kInterruptAccountingSecondLevelCountIndex] = kInterruptAccountingChannelNameSecondLevelCount,
-    [kInterruptAccountingFirstLevelTimeIndex] = kInterruptAccountingChannelNameFirstLevelTime,
-    [kInterruptAccountingSecondLevelCPUTimeIndex] = kInterruptAccountingChannelNameSecondLevelCPUTime,
-    [kInterruptAccountingSecondLevelSystemTimeIndex] = kInterruptAccountingChannelNameSecondLevelSystemTime,
-    [kInterruptAccountingNoThreadWakeupsIndex] = kInterruptAccountingChannelNameNoThreadWakeups,
-    [kInterruptAccountingTotalThreadWakeupsIndex] = kInterruptAccountingChannelNameTotalThreadWakeups,
-    [kInterruptAccountingPackageWakeupsIndex] = kInterruptAccountingChannelNamePackageWakeups,
-    [kInterruptAccountingCPUWakeupsIndex] = kInterruptAccountingChannelNameCPUWakeups,
-    [kInterruptAccountingIdleExitsIndex] = kInterruptAccountingChannelNameIdleExits,
+	[kInterruptAccountingFirstLevelCountIndex] = kInterruptAccountingChannelNameFirstLevelCount,
+	[kInterruptAccountingSecondLevelCountIndex] = kInterruptAccountingChannelNameSecondLevelCount,
+	[kInterruptAccountingFirstLevelTimeIndex] = kInterruptAccountingChannelNameFirstLevelTime,
+	[kInterruptAccountingSecondLevelCPUTimeIndex] = kInterruptAccountingChannelNameSecondLevelCPUTime,
+	[kInterruptAccountingSecondLevelSystemTimeIndex] = kInterruptAccountingChannelNameSecondLevelSystemTime,
+	[kInterruptAccountingNoThreadWakeupsIndex] = kInterruptAccountingChannelNameNoThreadWakeups,
+	[kInterruptAccountingTotalThreadWakeupsIndex] = kInterruptAccountingChannelNameTotalThreadWakeups,
+	[kInterruptAccountingPackageWakeupsIndex] = kInterruptAccountingChannelNamePackageWakeups,
+	[kInterruptAccountingCPUWakeupsIndex] = kInterruptAccountingChannelNameCPUWakeups,
+	[kInterruptAccountingIdleExitsIndex] = kInterruptAccountingChannelNameIdleExits,
 };
 
 /*
@@ -134,38 +134,41 @@ static const char * const kInterruptAccountingStatisticNameArray[IA_NUM_INTERRUP
  * two processors at once (and the interrupt should serve to force out stores), and the second level
  * handler should be synchonized by the work loop it runs on.
  */
-#if __x86_64__ || __arm64
+#if __x86_64__ || __arm64__
 #define IA_ADD_VALUE(target, value) \
     (*(target) += (value))
-#else
+#else /* !(__x86_64__ || __arm64__) */
 #define IA_ADD_VALUE(target, value) \
     (OSAddAtomic64((value), (target)))
-#endif
+#endif /* !(__x86_64__ || __arm64__) */
 
 /*
  * TODO: Should this be an OSObject?  Or properly pull in its methods as member functions?
  */
 struct IOInterruptAccountingData {
-    OSObject * owner; /* The owner of the statistics; currently always an IOIES or a subclass of it */
-    queue_chain_t chain;
-    /*
-     * We have no guarantee that the owner will not temporarily mutate its index value (i.e, in setWorkLoop
-     * for IOIES).  To ensure we can properly recalculate our own identity (and our channel IDs for the
-     * reporter), stash the index we set up the reporter with here.
-     *
-     * Note that we should never remap the interrupt (point it to a different specifier).  The mutation of
-     * the index value is usually to negate it; I am uncertain of the reason for this at the moment.  The
-     * practical impact being that we should never need to update the stashed index value; it should stay
-     * valid for the lifetime of the owner.
-     */
-    int interruptIndex;
+	OSObject * owner; /* The owner of the statistics; currently always an IOIES or a subclass of it */
+	queue_chain_t chain;
+	/*
+	 * We have no guarantee that the owner will not temporarily mutate its index value (i.e, in setWorkLoop
+	 * for IOIES).  To ensure we can properly recalculate our own identity (and our channel IDs for the
+	 * reporter), stash the index we set up the reporter with here.
+	 *
+	 * Note that we should never remap the interrupt (point it to a different specifier).  The mutation of
+	 * the index value is usually to negate it; I am uncertain of the reason for this at the moment.  The
+	 * practical impact being that we should never need to update the stashed index value; it should stay
+	 * valid for the lifetime of the owner.
+	 */
+	int interruptIndex;
 
-    /*
-     * As long as we are based on the simple reporter, all our channels will be 64 bits.  Align the data
-     * to allow for safe atomic updates (we don't want to cross a cache line on any platform, but for some
-     * it would cause a panic).
-     */
-    volatile uint64_t interruptStatistics[IA_NUM_INTERRUPT_ACCOUNTING_STATISTICS] __attribute__((aligned(8)));
+	bool enablePrimaryTimestamp;
+	volatile uint64_t primaryTimestamp __attribute__((aligned(8)));
+
+	/*
+	 * As long as we are based on the simple reporter, all our channels will be 64 bits.  Align the data
+	 * to allow for safe atomic updates (we don't want to cross a cache line on any platform, but for some
+	 * it would cause a panic).
+	 */
+	volatile uint64_t interruptStatistics[IA_NUM_INTERRUPT_ACCOUNTING_STATISTICS] __attribute__((aligned(8)));
 };
 
 /*
@@ -198,4 +201,3 @@ void interruptAccountingDataUpdateChannels(IOInterruptAccountingData * data, IOS
 void interruptAccountingDataInheritChannels(IOInterruptAccountingData * data, IOSimpleReporter * reporter);
 
 #endif /* __IOKIT_IOINTERRUPTACCOUNTING_PRIVATE_H */
-

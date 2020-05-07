@@ -36,6 +36,14 @@ __SYSCALL(___kdebug_trace_string, kdebug_trace_string, 3)
 
 __SYSCALL_INT(___kdebug_trace_string, kdebug_trace_string, 3)
 
+#elif defined(__arm__)
+
+__SYSCALL(___kdebug_trace_string, kdebug_trace_string, 4)
+
+#elif defined(__arm64__)
+
+__SYSCALL(___kdebug_trace_string, kdebug_trace_string, 3)
+
 #else
 #error Unsupported architecture
 #endif

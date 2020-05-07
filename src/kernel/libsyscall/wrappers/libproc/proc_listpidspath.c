@@ -2,14 +2,14 @@
  * Copyright (c) 2007, 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -32,26 +32,25 @@
 
 typedef struct {
 	// process IDs
-	int				*pids;
-	int				pids_count;
-	size_t				pids_size;
+	int                             *pids;
+	int                             pids_count;
+	size_t                          pids_size;
 
 	// threads
-	uint64_t			*threads;
-	int				thr_count;
-	size_t				thr_size;
+	uint64_t                        *threads;
+	int                             thr_count;
+	size_t                          thr_size;
 
 	// open file descriptors
-	struct proc_fdinfo		*fds;
-	int				fds_count;
-	size_t				fds_size;
+	struct proc_fdinfo              *fds;
+	int                             fds_count;
+	size_t                          fds_size;
 
 	// file/volume of interest
-	struct stat			match_stat;
+	struct stat                     match_stat;
 
 	// flags
-	uint32_t			flags;
-
+	uint32_t                        flags;
 } fdOpenInfo, *fdOpenInfoRef;
 
 
@@ -61,35 +60,36 @@ typedef struct {
 static fdOpenInfoRef
 check_init(const char *path, uint32_t flags)
 {
-	fdOpenInfoRef	info;
-	int		status;
+	fdOpenInfoRef   info;
+	int             status;
 
 	info = malloc(sizeof(*info));
-	if (!info)
+	if (!info) {
 		return NULL;
+	}
 
-	info->pids		= NULL;
-	info->pids_count	= 0;
-	info->pids_size		= 0;
+	info->pids              = NULL;
+	info->pids_count        = 0;
+	info->pids_size         = 0;
 
-	info->threads		= NULL;
-	info->thr_count		= 0;
-	info->thr_size		= 0;
+	info->threads           = NULL;
+	info->thr_count         = 0;
+	info->thr_size          = 0;
 
-	info->fds		= NULL;
-	info->fds_count		= 0;
-	info->fds_size		= 0;
+	info->fds               = NULL;
+	info->fds_count         = 0;
+	info->fds_size          = 0;
 
 	status = stat(path, &info->match_stat);
 	if (status == -1) {
 		goto fail;
 	}
 
-	info->flags		= flags;
+	info->flags             = flags;
 
 	return info;
 
-    fail :
+fail:
 
 	free(info);
 	return NULL;
@@ -165,9 +165,9 @@ check_file(fdOpenInfoRef info, struct vinfo_stat *sb)
 static int
 check_process_vnodes(fdOpenInfoRef info, int pid)
 {
-	int				buf_used;
-	int				status;
-	struct proc_vnodepathinfo	vpi;
+	int                             buf_used;
+	int                             status;
+	struct proc_vnodepathinfo       vpi;
 
 	buf_used = proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &vpi, sizeof(vpi));
 	if (buf_used <= 0) {
@@ -211,12 +211,11 @@ check_process_vnodes(fdOpenInfoRef info, int pid)
 static int
 check_process_text(fdOpenInfoRef info, int pid)
 {
-	int		status;
-	int		buf_used;
-	struct proc_regionwithpathinfo	rwpi;
+	int             status;
+	int             buf_used;
+	struct proc_regionwithpathinfo  rwpi;
 
 	if (info->flags & PROC_LISTPIDSPATH_PATH_IS_VOLUME) {
-
 		// ask for first memory region that matches mountpoint
 		buf_used = proc_pidinfo(pid, PROC_PIDREGIONPATHINFO3, info->match_stat.st_dev, &rwpi, sizeof(rwpi));
 		if (buf_used <= 0) {
@@ -229,16 +228,16 @@ check_process_text(fdOpenInfoRef info, int pid)
 			// if we didn't get enough information
 			return -1;
 		}
-		
+
 		status = check_file(info, &rwpi.prp_vip.vip_vi.vi_stat);
 		if (status != 0) {
 			// if error or match
 			return status;
 		}
 	} else {
-		uint64_t	a	= 0;
-		
-		while (1) {	// for all memory regions
+		uint64_t        a       = 0;
+
+		while (1) {     // for all memory regions
 			// processing next address
 			buf_used = proc_pidinfo(pid, PROC_PIDREGIONPATHINFO2, a, &rwpi, sizeof(rwpi));
 			if (buf_used <= 0) {
@@ -251,13 +250,13 @@ check_process_text(fdOpenInfoRef info, int pid)
 				// if we didn't get enough information
 				return -1;
 			}
-			
+
 			status = check_file(info, &rwpi.prp_vip.vip_vi.vi_stat);
 			if (status != 0) {
 				// if error or match
 				return status;
 			}
-			
+
 			a = rwpi.prp_prinfo.pri_address + rwpi.prp_prinfo.pri_size;
 		}
 	}
@@ -278,9 +277,9 @@ check_process_text(fdOpenInfoRef info, int pid)
 static int
 check_process_fds(fdOpenInfoRef info, int pid)
 {
-	int	buf_used;
-	int	i;
-	int	status;
+	int     buf_used;
+	int     i;
+	int     status;
 
 	// get list of open file descriptors
 	buf_used = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, NULL, 0);
@@ -322,46 +321,46 @@ check_process_fds(fdOpenInfoRef info, int pid)
 
 	// iterate through each file descriptor
 	for (i = 0; i < info->fds_count; i++) {
-		struct proc_fdinfo	*fdp;
+		struct proc_fdinfo      *fdp;
 
 		fdp = &info->fds[i];
 		switch (fdp->proc_fdtype) {
-			case PROX_FDTYPE_VNODE : {
-				int			buf_used;
-				struct vnode_fdinfo	vi;
+		case PROX_FDTYPE_VNODE: {
+			int                     buf_used;
+			struct vnode_fdinfo     vi;
 
-				buf_used = proc_pidfdinfo(pid, fdp->proc_fd, PROC_PIDFDVNODEINFO, &vi, sizeof(vi));
-				if (buf_used <= 0) {
-					if (errno == ENOENT) {
-						/*
-						 * The file descriptor's vnode may have been revoked. This is a
-						 * bit of a hack, since an ENOENT error might not always mean the
-						 * descriptor's vnode has been revoked. As the libproc API
-						 * matures, this code may need to be revisited.
-						 */
-						continue;
-					}
-					return -1;
-				} else if (buf_used < sizeof(vi)) {
-					// if we didn't get enough information
-					return -1;
-				}
-
-				if ((info->flags & PROC_LISTPIDSPATH_EXCLUDE_EVTONLY) &&
-				    (vi.pfi.fi_openflags & O_EVTONLY)) {
-					// if this file should be excluded
+			buf_used = proc_pidfdinfo(pid, fdp->proc_fd, PROC_PIDFDVNODEINFO, &vi, sizeof(vi));
+			if (buf_used <= 0) {
+				if (errno == ENOENT) {
+					/*
+					 * The file descriptor's vnode may have been revoked. This is a
+					 * bit of a hack, since an ENOENT error might not always mean the
+					 * descriptor's vnode has been revoked. As the libproc API
+					 * matures, this code may need to be revisited.
+					 */
 					continue;
 				}
-
-				status = check_file(info, &vi.pvi.vi_stat);
-				if (status != 0) {
-					// if error or match
-					return status;
-				}
-				break;
+				return -1;
+			} else if (buf_used < sizeof(vi)) {
+				// if we didn't get enough information
+				return -1;
 			}
-			default :
-				break;
+
+			if ((info->flags & PROC_LISTPIDSPATH_EXCLUDE_EVTONLY) &&
+			    (vi.pfi.fi_openflags & O_EVTONLY)) {
+				// if this file should be excluded
+				continue;
+			}
+
+			status = check_file(info, &vi.pvi.vi_stat);
+			if (status != 0) {
+				// if error or match
+				return status;
+			}
+			break;
+		}
+		default:
+			break;
 		}
 	}
 
@@ -381,9 +380,9 @@ check_process_fds(fdOpenInfoRef info, int pid)
 static int
 check_process_threads(fdOpenInfoRef info, int pid)
 {
-	int				buf_used;
-	int				status;
-	struct proc_taskallinfo		tai;
+	int                             buf_used;
+	int                             status;
+	struct proc_taskallinfo         tai;
 
 	buf_used = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &tai, sizeof(tai));
 	if (buf_used <= 0) {
@@ -399,7 +398,7 @@ check_process_threads(fdOpenInfoRef info, int pid)
 
 	// check thread info
 	if (tai.pbsd.pbi_flags & PROC_FLAG_THCWD) {
-		int	i;
+		int     i;
 
 		// get list of threads
 		buf_used = tai.ptinfo.pti_threadnum * sizeof(uint64_t);
@@ -438,8 +437,8 @@ check_process_threads(fdOpenInfoRef info, int pid)
 
 		// iterate through each thread
 		for (i = 0; i < info->thr_count; i++) {
-			uint64_t			thr	= info->threads[i];
-			struct proc_threadwithpathinfo	tpi;
+			uint64_t                        thr     = info->threads[i];
+			struct proc_threadwithpathinfo  tpi;
 
 			buf_used = proc_pidinfo(pid, PROC_PIDTHREADPATHINFO, thr, &tpi, sizeof(tpi));
 			if (buf_used <= 0) {
@@ -478,7 +477,7 @@ check_process_threads(fdOpenInfoRef info, int pid)
 static int
 check_process_phase1(fdOpenInfoRef info, int pid)
 {
-	int	status;
+	int     status;
 
 	// check root and current working directory
 	status = check_process_vnodes(info, pid);
@@ -516,7 +515,7 @@ check_process_phase1(fdOpenInfoRef info, int pid)
 static int
 check_process_phase2(fdOpenInfoRef info, int pid)
 {
-	int	status;
+	int     status;
 
 	// check process text (memory)
 	status = check_process_text(info, pid);
@@ -543,18 +542,18 @@ check_process_phase2(fdOpenInfoRef info, int pid)
  *         that contains valid information.
  */
 int
-proc_listpidspath(uint32_t	type,
-		  uint32_t	typeinfo,
-		  const char	*path,
-		  uint32_t	pathflags,
-		  void		*buffer,
-		  int		buffersize)
+proc_listpidspath(uint32_t      type,
+    uint32_t      typeinfo,
+    const char    *path,
+    uint32_t      pathflags,
+    void          *buffer,
+    int           buffersize)
 {
-	int		buf_used;
-	int		*buf_next	= (int *)buffer;
-	int		i;
-	fdOpenInfoRef	info;
-	int		status		= -1;
+	int             buf_used;
+	int             *buf_next       = (int *)buffer;
+	int             i;
+	fdOpenInfoRef   info;
+	int             status          = -1;
 
 	if (buffer == NULL) {
 		// if this is a sizing request
@@ -615,8 +614,8 @@ proc_listpidspath(uint32_t	type,
 	// iterate through each process
 	buf_used = 0;
 	for (i = info->pids_count - 1; i >= 0; i--) {
-		int	pid;
-		int	pstatus;
+		int     pid;
+		int     pstatus;
 
 		pid = info->pids[i];
 		if (pid == 0) {
@@ -646,8 +645,8 @@ proc_listpidspath(uint32_t	type,
 
 	// do a more expensive search if we still have buffer space
 	for (i = info->pids_count - 1; i >= 0; i--) {
-		int	pid;
-		int	pstatus;
+		int     pid;
+		int     pstatus;
 
 		pid = info->pids[i];
 		if (pid == 0) {
@@ -671,7 +670,7 @@ proc_listpidspath(uint32_t	type,
 
 	status = buf_used;
 
-    done :
+done:
 
 	// cleanup
 	check_free(info);

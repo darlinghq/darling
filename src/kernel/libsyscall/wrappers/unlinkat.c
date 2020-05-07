@@ -28,6 +28,8 @@ int
 unlinkat(int fd, const char *path, int flag)
 {
 	int res = __unlinkat(fd, path, flag);
-	if (res == 0) __inc_remove_counter();
+	if (res == 0) {
+		__inc_remove_counter();
+	}
 	return res;
 }

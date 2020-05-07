@@ -808,6 +808,29 @@ routine io_registry_entry_from_path_ool(
 
 #endif
 
+routine io_device_tree_entry_exists_with_name(
+	    master_port		: mach_port_t;
+	in  name		: io_name_t;
+	out exists		: boolean_t
+	);
+
+routine io_registry_entry_get_properties_bin_buf(
+	    registry_entry	: io_object_t;
+	in  buf			: mach_vm_address_t;
+	inout  bufsize		: mach_vm_size_t;
+	out properties		: io_buf_ptr_t, physicalcopy
+	);
+
+routine io_registry_entry_get_property_bin_buf(
+	    registry_entry	: io_object_t;
+	in  plane		: io_name_t;
+	in  property_name	: io_name_t;
+	in  options		: uint32_t;
+	in  buf			: mach_vm_address_t;
+	inout  bufsize		: mach_vm_size_t;
+	out properties		: io_buf_ptr_t, physicalcopy
+	);
+
 #endif /* IOKIT */
 
 /* vim: set ft=c : */

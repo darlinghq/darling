@@ -1,9 +1,8 @@
-// Modofied by Lubos Dolezel for Darling
 /*
  * Copyright (c) 2010 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -12,10 +11,10 @@
  * unlawful or unlicensed copies of an Apple operating system, or to
  * circumvent, violate, or enable the circumvention or violation of, any
  * terms of an Apple operating system software license agreement.
- * 
+ *
  * Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -23,7 +22,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
@@ -37,13 +36,13 @@ __XNU_PRIVATE_EXTERN mach_port_t _task_reply_port = MACH_PORT_NULL;
 static inline mach_port_t
 _mig_get_reply_port()
 {
-	return _os_tsd_get_direct(__TSD_MIG_REPLY);
+	return (mach_port_t)(uintptr_t)_os_tsd_get_direct(__TSD_MIG_REPLY);
 }
 
 static inline void
 _mig_set_reply_port(mach_port_t port)
 {
-	_os_tsd_set_direct(__TSD_MIG_REPLY, port);
+	_os_tsd_set_direct(__TSD_MIG_REPLY, (void *)(uintptr_t)port);
 }
 
 /*
@@ -89,11 +88,4 @@ mig_dealloc_reply_port(mach_port_t migport)
 void
 mig_put_reply_port(mach_port_t reply_port __unused)
 {
-}
-
-__attribute__((visibility("default")))
-void
-_mig_fork_child(void)
-{
-	_mig_set_reply_port(MACH_PORT_NULL);
 }

@@ -14,7 +14,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
 
 add_definitions(-nostdinc -w)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -include ${DARLING_TOP_DIRECTORY}/kernel-include/sys/fileport.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -include ${DARLING_TOP_DIRECTORY}/kernel-include/bsd/sys/fileport.h")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 mig(notify_ipc.defs)

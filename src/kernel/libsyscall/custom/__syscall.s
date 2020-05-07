@@ -50,6 +50,24 @@ END(___syscall)
 // that value anyway.
 __SYSCALL(___syscall, syscall, 0);
 
+#elif defined(__arm__)
+
+__SYSCALL(___syscall, syscall, 7)
+
+#elif defined(__arm64__)
+
+/* 
+ * Ignore nominal number of arguments: just pop from stack and let the kernel 
+ * interpret.
+ */
+#include <mach/arm64/asm.h>
+MI_ENTRY_POINT(___syscall)
+		ldp x1, x2, [sp]
+		ldp x3, x4, [sp, #16]
+		ldp x5, x6, [sp, #32]
+		ldr x7, [sp, #48]
+		DO_SYSCALL(SYS_syscall, cerror)
+		ret
 #else
 #error Unsupported architecture
 #endif
