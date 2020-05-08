@@ -39,6 +39,7 @@ enum
 	kIOSurfaceMethodLock = 2,
 	// in: struct _IOSurfaceLockUnlock
 	kIOSurfaceMethodUnlock = 3,
+	// in: IOSurfaceID
 	kIOSurfaceMethodLookupByID = 4,
 	kIOSurfaceMethodSetValue = 9,
 	// out: data for IOCFUnserializeWithSize()
@@ -49,7 +50,9 @@ enum
 	// in: IOSurfaceID
 	kIOSurfaceMethodDecrementUseCount = 15,
 	// in: mach_port_t as a plain value
+	// out: _IOSurfaceObjectRetval
 	kIOSurfaceMethodCreateByMachPort = 34,
+	// in: IOSurfaceID
 	// out: mach_port_t as a plain value
 	kIOSurfaceMethodCreateMachPort = 35,
 };
