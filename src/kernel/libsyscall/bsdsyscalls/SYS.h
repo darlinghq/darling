@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling
 /*
  * Copyright (c) 1999-2011 Apple Inc. All rights reserved.
  *
@@ -49,15 +48,6 @@
 
 #include <sys/syscall.h>
 
-/* Binary compatibility stubs for syscalls that no longer exist */
-
-#ifndef SYS_setquota
-#define SYS_setquota	148
-#endif
-#ifndef SYS_quota
-#define SYS_quota	149
-#endif
-
 #if defined(__i386__)
 
 #include <architecture/i386/asm_help.h>
@@ -69,20 +59,17 @@
  * for the majority of syscalls which just return a value in %eax.
  */
 
-#ifndef DARLING
-#define UNIX_SYSCALL_SYSENTER		call __sysenter_trap
+#ifdef DARLING
+	#define UNIX_SYSCALL_SYSENTER		call __darling_bsd_syscall
 #else
-#define UNIX_SYSCALL_SYSENTER		call __darling_bsd_syscall
+	#define UNIX_SYSCALL_SYSENTER		call __sysenter_trap
 #endif
-
 #define UNIX_SYSCALL(name, nargs)			\
 	.globl	tramp_cerror				;\
 LEAF(_##name, 0)					;\
 	movl	$ SYS_##name, %eax			;\
 	UNIX_SYSCALL_SYSENTER				;\
-	cmpl	$-4095, %eax ;\
-	jb	2f					;\
-	negl	%eax ;\
+	jnb	2f					;\
 	BRANCH_EXTERN(tramp_cerror)  			;\
 2:
 
@@ -91,9 +78,7 @@ LEAF(_##name, 0)					;\
 LEAF(_##name, 0)					;\
 	movl	$ SYS_##name, %eax			;\
 	UNIX_SYSCALL_TRAP				;\
-	cmpl	$-4095, %eax ;\
-	jb	2f					;\
-	negl	%eax ;\
+	jnb	2f					;\
 	BRANCH_EXTERN(tramp_cerror)  			;\
 2:
 
@@ -101,18 +86,14 @@ LEAF(_##name, 0)					;\
 #define UNIX_SYSCALL_NONAME(name, nargs, cerror)			\
 	movl	$(SYS_##name | (__SYSCALL_32BIT_ARG_BYTES << I386_SYSCALL_ARG_BYTES_SHIFT)), %eax		;\
 	UNIX_SYSCALL_SYSENTER					;\
-	cmpl	$-4095, %eax ;\
-	jb	2f						;\
-	negl	%eax ;\
+	jnb	2f						;\
 	BRANCH_EXTERN(tramp_##cerror)				;\
 2:
 #else /* __SYSCALL_32BIT_ARG_BYTES < 4 || > 20 */
 #define UNIX_SYSCALL_NONAME(name, nargs, cerror)	\
 	movl	$ SYS_##name, %eax			;\
 	UNIX_SYSCALL_SYSENTER				;\
-	cmpl	$-4095, %eax ;\
-	jb	2f					;\
-	negl %eax ;\
+	jnb	2f					;\
 	BRANCH_EXTERN(tramp_##cerror)			;\
 2:
 #endif
@@ -121,9 +102,7 @@ LEAF(_##name, 0)					;\
 	.globl	tramp_cerror_nocancel			;\
 	movl	$ SYS_##name, %eax			;\
 	UNIX_SYSCALL_TRAP				;\
-	cmpl	$-4095, %eax ;\
-	jb	2f					;\
-	negl	%eax ;\
+	jnb	2f					;\
 	BRANCH_EXTERN(tramp_cerror_nocancel) 		;\
 2:
 
@@ -153,57 +132,52 @@ LEAF(pseudo, 0)					;\
 #include <mach/i386/syscall_sw.h>
 
 #ifdef DARLING
+	#define UNIX_SYSCALL(name, nargs)						 \
+		.globl	cerror								;\
+	LEAF(_#name, 0)								;\
+		movl	$ SYS_##name, %eax			;\
+		call	__darling_bsd_syscall							;\
+		cmpq	$-4095, %rax	;\
+		jb		2f							;\
+		movq	%rax, %rdi							;\
+		negq	%rdi	;\
+		BRANCH_EXTERN(_cerror)							;\
+	2:
 
-#define UNIX_SYSCALL(name, nargs)						 \
-	.globl	cerror								;\
-LEAF(_#name, 0)								;\
-	movl	$ SYS_##name, %eax			;\
-	call	__darling_bsd_syscall							;\
-	cmpq	$-4095, %rax	;\
-	jb		2f							;\
-	movq	%rax, %rdi							;\
-	negq	%rdi	;\
-	BRANCH_EXTERN(_cerror)							;\
-2:
-
-#define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
-	.globl	cerror								;\
-	movl	$ SYS_##name, %eax			;\
-	call __darling_bsd_syscall							;\
-	cmpq	$-4095, %rax	;\
-	jb		2f							;\
-	movq	%rax, %rdi							;\
-	negq	%rdi	;\
-	BRANCH_EXTERN(_##cerror)						;\
-2:
-
-
+	#define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
+		.globl	cerror								;\
+		movl	$ SYS_##name, %eax			;\
+		call __darling_bsd_syscall							;\
+		cmpq	$-4095, %rax	;\
+		jb		2f							;\
+		movq	%rax, %rdi							;\
+		negq	%rdi	;\
+		BRANCH_EXTERN(_##cerror)						;\
+	2:
 #else
+	#define UNIX_SYSCALL_SYSCALL	\
+		movq	%rcx, %r10		;\
+		syscall
 
-#define UNIX_SYSCALL_SYSCALL	\
-	movq	%rcx, %r10		;\
-	syscall
+	#define UNIX_SYSCALL(name, nargs)						 \
+		.globl	cerror								;\
+	LEAF(_##name, 0)								;\
+		movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
+		UNIX_SYSCALL_SYSCALL							;\
+		jnb		2f							;\
+		movq	%rax, %rdi							;\
+		BRANCH_EXTERN(_cerror)							;\
+	2:
 
-#define UNIX_SYSCALL(name, nargs)						 \
-	.globl	cerror								;\
-LEAF(_##name, 0)								;\
-	movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
-	UNIX_SYSCALL_SYSCALL							;\
-	jnb		2f							;\
-	movq	%rax, %rdi							;\
-	BRANCH_EXTERN(_cerror)							;\
-2:
-
-#define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
-	.globl	cerror								;\
-	movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
-	UNIX_SYSCALL_SYSCALL							;\
-	jnb		2f							;\
-	movq	%rax, %rdi							;\
-	BRANCH_EXTERN(_##cerror)						;\
-2:
-
-#endif // DARLING
+	#define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
+		.globl	cerror								;\
+		movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
+		UNIX_SYSCALL_SYSCALL							;\
+		jnb		2f							;\
+		movq	%rax, %rdi							;\
+		BRANCH_EXTERN(_##cerror)						;\
+	2:
+#endif
 
 #define PSEUDO(pseudo, name, nargs, cerror)			\
 LEAF(pseudo, 0)					;\
@@ -540,45 +514,6 @@ name:
 #define __SYSCALL2(pseudo, name, nargs, cerror)		\
   PSEUDO(pseudo, name, nargs, cerror)		%% \
   ret
-
-#elif defined(__ppc__) || defined(__ppc64__)
-
-#include <architecture/ppc/mode_independent_asm.h>
-
-/*
- * Macros.
- */
-
-#define	SYSCALL(name, nargs)			\
-	.globl	cerror				@\
-	MI_ENTRY_POINT(_##name)     @\
-	li	r0,SYS_##name			@\
-	sc                          @\
-	b	1f                      @\
-	blr                         @\
-1:	MI_BRANCH_EXTERNAL(cerror)
-
-
-#define	SYSCALL_NONAME(name, nargs)		\
-	.globl	cerror				@\
-	li	r0,SYS_##name			@\
-	sc                          @\
-	b	1f                      @\
-	b	2f                      @\
-1:	MI_BRANCH_EXTERNAL(cerror)  @\
-2:
-
-
-#define	PSEUDO(pseudo, name, nargs)		\
-    .private_extern  _##pseudo           @\
-    .text                       @\
-    .align  2                   @\
-_##pseudo:                      @\
-	SYSCALL_NONAME(name, nargs)
-
-#define __SYSCALL(pseudo, name, nargs)	\
-    PSEUDO(pseudo, name, nargs)	@\
-    blr
 
 #else
 #error Unsupported architecture
