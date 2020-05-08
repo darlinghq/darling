@@ -65,9 +65,16 @@ LEAF(___vfork, 0)
 	cmpxchgl	%ecx, __current_pid
 	jne		0b
 	popl		%ecx
-	movl		$(SYS_vfork), %eax	// code for vfork -> eax
-	UNIX_SYSCALL_TRAP			// do the system call
-	jnb		L1                     	// jump if CF==0
+	#ifdef DARLING
+		movl	$ SYS_vfork, %eax
+		call	__darling_bsd_syscall
+		cmpq	$0, %eax
+		jnb L1
+	#else
+		movl		$(SYS_vfork), %eax	// code for vfork -> eax
+		UNIX_SYSCALL_TRAP			// do the system call
+		jnb		L1                     	// jump if CF==0
+	#endif
 	GET_CURRENT_PID
 	lock
 	incl		__current_pid
@@ -105,11 +112,18 @@ LEAF(___vfork, 0)
 	lock
 	cmpxchgl	%ecx, (%rdx)
 	jne		0b
-	popq		%rdi			// return address in %rdi
-	movq		$ SYSCALL_CONSTRUCT_UNIX(SYS_vfork), %rax	// code for vfork -> rax
-	UNIX_SYSCALL_TRAP			// do the system call
-	jnb		L1			// jump if CF==0
-	pushq		%rdi			// put return address back on stack for cerror
+	#ifdef DARLING
+		movl	$ SYS_vfork, %eax
+		call	__darling_bsd_syscall
+		cmpq	$0, %rax
+		jnb L1
+	#else
+		popq		%rdi			// return address in %rdi
+		movq		$ SYSCALL_CONSTRUCT_UNIX(SYS_vfork), %rax	// code for vfork -> rax
+		UNIX_SYSCALL_TRAP			// do the system call
+		jnb		L1			// jump if CF==0
+		pushq		%rdi			// put return address back on stack for cerror
+	#endif
 	movq		__current_pid@GOTPCREL(%rip), %rcx
 	lock
 	addl		$1, (%rcx)

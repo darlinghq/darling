@@ -59,7 +59,11 @@
  * for the majority of syscalls which just return a value in %eax.
  */
 
-#define UNIX_SYSCALL_SYSENTER		call __sysenter_trap
+#ifdef DARLING
+	#define UNIX_SYSCALL_SYSENTER		call __darling_bsd_syscall
+#else
+	#define UNIX_SYSCALL_SYSENTER		call __sysenter_trap
+#endif
 #define UNIX_SYSCALL(name, nargs)			\
 	.globl	tramp_cerror				;\
 LEAF(_##name, 0)					;\
@@ -127,28 +131,53 @@ LEAF(pseudo, 0)					;\
 #include <architecture/i386/asm_help.h>
 #include <mach/i386/syscall_sw.h>
 
-#define UNIX_SYSCALL_SYSCALL	\
-	movq	%rcx, %r10		;\
-	syscall
+#ifdef DARLING
+	#define UNIX_SYSCALL(name, nargs)						 \
+		.globl	cerror								;\
+	LEAF(_#name, 0)								;\
+		movl	$ SYS_##name, %eax			;\
+		call	__darling_bsd_syscall							;\
+		cmpq	$-4095, %rax	;\
+		jb		2f							;\
+		movq	%rax, %rdi							;\
+		negq	%rdi	;\
+		BRANCH_EXTERN(_cerror)							;\
+	2:
 
-#define UNIX_SYSCALL(name, nargs)						 \
-	.globl	cerror								;\
-LEAF(_##name, 0)								;\
-	movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
-	UNIX_SYSCALL_SYSCALL							;\
-	jnb		2f							;\
-	movq	%rax, %rdi							;\
-	BRANCH_EXTERN(_cerror)							;\
-2:
+	#define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
+		.globl	cerror								;\
+		movl	$ SYS_##name, %eax			;\
+		call __darling_bsd_syscall							;\
+		cmpq	$-4095, %rax	;\
+		jb		2f							;\
+		movq	%rax, %rdi							;\
+		negq	%rdi	;\
+		BRANCH_EXTERN(_##cerror)						;\
+	2:
+#else
+	#define UNIX_SYSCALL_SYSCALL	\
+		movq	%rcx, %r10		;\
+		syscall
 
-#define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
-	.globl	cerror								;\
-	movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
-	UNIX_SYSCALL_SYSCALL							;\
-	jnb		2f							;\
-	movq	%rax, %rdi							;\
-	BRANCH_EXTERN(_##cerror)						;\
-2:
+	#define UNIX_SYSCALL(name, nargs)						 \
+		.globl	cerror								;\
+	LEAF(_##name, 0)								;\
+		movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
+		UNIX_SYSCALL_SYSCALL							;\
+		jnb		2f							;\
+		movq	%rax, %rdi							;\
+		BRANCH_EXTERN(_cerror)							;\
+	2:
+
+	#define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
+		.globl	cerror								;\
+		movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
+		UNIX_SYSCALL_SYSCALL							;\
+		jnb		2f							;\
+		movq	%rax, %rdi							;\
+		BRANCH_EXTERN(_##cerror)						;\
+	2:
+#endif
 
 #define PSEUDO(pseudo, name, nargs, cerror)			\
 LEAF(pseudo, 0)					;\

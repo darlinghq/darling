@@ -80,6 +80,12 @@ _os_cpu_number(void)
 #if defined(__has_attribute)
 #if __has_attribute(address_space)
 #define OS_GS_RELATIVE  __attribute__((address_space(256)))
+
+#if defined(DARLING) && defined(__i386__) && !defined(__x86_64__)
+#undef OS_GS_RELATIVE
+#define OS_GS_RELATIVE  __attribute__((address_space(257)))
+#endif
+
 #endif
 #endif
 
