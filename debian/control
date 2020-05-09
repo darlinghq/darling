@@ -3,7 +3,7 @@ Maintainer: Lubos Dolezel <lubos@dolezel.info>
 Section: misc
 Priority: optional
 Standards-Version: 4.4.0
-Build-Depends: cmake, clang | clang-9, bison, flex, libfuse-dev, libudev-dev, pkg-config, libc6-dev-i386, linux-headers-amd64|linux-headers-generic, gcc-multilib, libcairo2-dev, libgl1-mesa-dev, libtiff5-dev, libfreetype6-dev, libelf-dev, libxml2-dev, libegl1-mesa-dev, libglu1-mesa-dev, libfontconfig1-dev, libbsd-dev, debhelper, ninja-build, python, libxrandr-dev, libxcursor-dev, libgif-dev, libavcodec-dev, libavformat-dev, libavresample-dev, libavutil-dev, libpulse-dev, libavformat-dev, libavcodec-dev, libavresample-dev, libdbus-1-dev
+Build-Depends: cmake, clang | clang-9, bison, flex, libfuse-dev, libudev-dev, pkg-config, libc6-dev-i386, linux-headers-amd64|linux-headers-generic, gcc-multilib, libcairo2-dev, libgl1-mesa-dev, libtiff5-dev, libfreetype6-dev, libelf-dev, libxml2-dev, libegl1-mesa-dev, libglu1-mesa-dev, libfontconfig1-dev, libbsd-dev, debhelper, ninja-build, python, libxrandr-dev, libxcursor-dev, libgif-dev, libavcodec-dev, libavformat-dev, libavresample-dev, libavutil-dev, libpulse-dev, libavformat-dev, libavcodec-dev, libavresample-dev, libdbus-1-dev, libxkbfile-dev
 
 Package: darling
 Architecture: amd64
