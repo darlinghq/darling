@@ -9,9 +9,9 @@
 
 ## Building on other operating systems
 
-By default, it will build for Fedora 29. To use a different OS, simply
+By default, it will build for Fedora 30. To use a different OS, simply
 
-    RPM_OS=fedora:27 docker-compose build rpm
+    RPM_OS=fedora:31 docker-compose build rpm
 
 ## Future improvements
 
