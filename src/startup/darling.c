@@ -501,6 +501,12 @@ static void setupPtys(int fds[3], int* master)
 	}
 }
 
+static const char* getUser()
+{
+	struct passwd* pw = getpwuid(getuid());
+	return (pw != NULL && pw->pw_name) ? pw->pw_name : getlogin();
+}
+
 void spawnShell(const char** argv)
 {
 	size_t total_len = 0;
@@ -563,14 +569,14 @@ void spawnShell(const char** argv)
 		"/sbin:"
 		"/usr/local/bin");
 
-	const char* login = getlogin();
-	if (!login)
+	const char* user = getUser();
+	if (!user)
 	{
 		fprintf(stderr, "Cannot determine your user name\n");
 		exit(1);
 	}
 
-	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", login);
+	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", user);
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
 
 	// Push shell arguments
@@ -1318,17 +1324,9 @@ void setupUserHome(void)
 	mkdir(buf, 0777);
 
 	const char* home = getenv("HOME");
+	const char* user = getUser();
 
-	const char* login = NULL;
-	struct passwd* pw = getpwuid(getuid());
-
-	if (pw != NULL)
-		login = pw->pw_name;
-
-	if (!login)
-		login = getlogin();
-
-	if (!login)
+	if (!user)
 	{
 		fprintf(stderr, "Cannot determine your user name\n");
 		exit(1);
@@ -1339,7 +1337,7 @@ void setupUserHome(void)
 		exit(1);
 	}
 
-	snprintf(buf, sizeof(buf), "%s/Users/%s", prefix, login);
+	snprintf(buf, sizeof(buf), "%s/Users/%s", prefix, user);
 
 	// mkdir /Users/$LOGIN
 	mkdir(buf, 0755);
@@ -1369,7 +1367,7 @@ void setupUserHome(void)
 			continue;
 		
 		snprintf(buf2, sizeof(buf2), "/Volumes/SystemRoot%s", dir);
-		snprintf(buf, sizeof(buf), "%s/Users/%s/%s", prefix, login, xdgmap[i][1]);
+		snprintf(buf, sizeof(buf), "%s/Users/%s/%s", prefix, user, xdgmap[i][1]);
 
 		unlink(buf);
 		symlink(buf2, buf);
