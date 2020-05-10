@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/thread_special_ports.h
+../../../../../../../../../src/external/lkm/osfmk/mach/thread_special_ports.h

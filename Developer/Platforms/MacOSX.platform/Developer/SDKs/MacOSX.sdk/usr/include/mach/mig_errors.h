@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/mig_errors.h
+../../../../../../../../../src/external/lkm/osfmk/mach/mig_errors.h

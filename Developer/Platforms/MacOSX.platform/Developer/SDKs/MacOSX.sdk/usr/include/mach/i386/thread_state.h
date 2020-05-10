@@ -1,1 +1,1 @@
-../../../../../../../../../../platform-include/mach/i386/thread_state.h
+../../../../../../../../../../src/external/lkm/osfmk/mach/i386/thread_state.h

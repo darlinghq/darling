@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/host_info.h
+../../../../../../../../../src/external/lkm/osfmk/mach/host_info.h

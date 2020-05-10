@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach-o/getsect.h
+../../../../../../../../../src/external/cctools-port/cctools/include/mach-o/getsect.h

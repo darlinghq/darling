@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach-o/ranlib.h
+../../../../../../../../../src/external/cctools-port/cctools/include/mach-o/ranlib.h

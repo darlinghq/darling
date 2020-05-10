@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/ndr.h
+../../../../../../../../../src/external/lkm/osfmk/mach/ndr.h

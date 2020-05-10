@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/pthread/pthread_spis.h
+../../../../../../../../../src/external/libpthread/pthread/pthread_spis.h

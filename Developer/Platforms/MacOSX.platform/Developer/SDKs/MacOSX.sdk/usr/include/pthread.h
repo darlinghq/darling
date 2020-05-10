@@ -1,1 +1,1 @@
-../../../../../../../../platform-include/pthread.h
+pthread/pthread.h

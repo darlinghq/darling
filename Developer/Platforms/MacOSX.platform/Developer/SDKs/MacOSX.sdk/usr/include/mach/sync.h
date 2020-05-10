@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/sync.h
+../../../../../../../../../src/kernel/libsyscall/mach/mach/sync.h

@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/host_reboot.h
+../../../../../../../../../src/external/lkm/osfmk/mach/host_reboot.h

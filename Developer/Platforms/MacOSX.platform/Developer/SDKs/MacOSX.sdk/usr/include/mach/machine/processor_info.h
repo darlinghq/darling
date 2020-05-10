@@ -1,1 +1,1 @@
-../../../../../../../../../../platform-include/mach/machine/processor_info.h
+../../../../../../../../../../src/external/lkm/osfmk/mach/machine/processor_info.h

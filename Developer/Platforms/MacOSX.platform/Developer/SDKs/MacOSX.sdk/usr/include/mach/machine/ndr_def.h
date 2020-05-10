@@ -1,1 +1,1 @@
-../../../../../../../../../../platform-include/mach/machine/ndr_def.h
+../../../../../../../../../../src/external/lkm/osfmk/mach/machine/ndr_def.h
