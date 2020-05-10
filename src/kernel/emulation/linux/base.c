@@ -27,7 +27,7 @@ void _start()
 {
 #ifdef __x86_64__
 	__asm__ ("andq    $-16, %rsp");
-#elif defined(__i386__
+#elif defined(__i386__)
 	__asm__ ("andl    $-16, %esp");
 #endif
 	__simple_printf("Hello world\n");
