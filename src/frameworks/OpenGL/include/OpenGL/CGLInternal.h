@@ -2,6 +2,8 @@
 #define _CGL_INTERNAL_H_
 
 #include <OpenGL/OpenGL.h>
+#include <CoreGraphics/CoreGraphicsPrivate.h>
+#include <CoreFoundation/CFDictionary.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,7 +17,8 @@ CGL_EXPORT CGLWindowRef CGLGetWindow(void *native_window);
 CGL_EXPORT void CGLDestroyWindow(CGLWindowRef window);
 
 CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context, CGLWindowRef window);
-CGL_EXPORT CGLError CGLSwapBuffers(CGLWindowRef window);
+CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, CGSSurfaceID sid);
+CGLContextObj CGWindowContextCreate(CGSConnectionID cid, CGSWindowID wid, CFDictionaryRef options);
 
 #ifdef __cplusplus
 }

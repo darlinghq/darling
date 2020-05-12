@@ -5,6 +5,7 @@
 
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/CGLInternal.h>
+#include <CoreFoundation/CFDictionary.h>
 
 // Try to get the right (generic) type definitions.
 // In particular, we really want EGLNativeDisplayType to be void *,
@@ -31,6 +32,15 @@ static EGLint const attribute_list[] = {
     EGL_BLUE_SIZE, 1,
     EGL_NONE
 };
+
+struct _CGLDisplay
+{
+    EGLDisplay display;
+    EGLConfig config;
+    int num_config;
+};
+
+static CFMutableDictionaryRef g_displays;
 
 struct _CGLContextObj {
     GLuint retain_count;
@@ -63,6 +73,12 @@ static inline int attribute_has_argument(CGLPixelFormatAttribute attr) {
    }
 }
 
+__attribute__((constructor))
+static void _CGLInitialize(void)
+{
+    g_displays = CFDictionaryCreateMutable(NULL, 0, NULL, NULL);
+}
+
 static int attributes_count(const CGLPixelFormatAttribute *attrs) {
     int result;
     for (result = 0; attrs[result] != 0; result++) {
@@ -87,6 +103,72 @@ CGLError CGLRegisterNativeDisplay(void *native_display) {
     eglBindAPI(EGL_OPENGL_API);
 
     return kCGLNoError;
+}
+
+static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)
+{
+    struct _CGLDisplay* rv = (struct _CGLDisplay*) CFDictionaryGetValue(g_displays, (const void*)(unsigned long) cid);
+
+    if (!rv)
+    {
+        EGLDisplay disp = eglGetDisplay(_CGSNativeDisplay(cid));
+        if (disp == EGL_NO_DISPLAY)
+            return NULL;
+
+        rv = (struct _CGLDisplay*) malloc(sizeof(*rv));
+        rv->display = disp;
+
+        eglInitialize(rv->display, NULL, NULL);
+        eglChooseConfig(rv->display, attribute_list, &rv->config, 1, &rv->num_config);
+
+        eglBindAPI(EGL_OPENGL_API);
+
+        CFDictionaryAddValue(g_displays, (const void*)(unsigned long) cid, rv);
+    }
+
+    return rv;
+}
+
+CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, CGSSurfaceID sid)
+{
+    struct _CGLDisplay* disp = getCGLDisplay(cid);
+    if (!disp)
+        return kCGLBadConnection;
+
+    EGLNativeWindowType window = (EGLNativeWindowType) _CGSNativeWindowForSurfaceID(cid, wid, sid);
+    if (!window)
+        return kCGLBadWindow;
+
+    gl->egl_surface = eglCreateWindowSurface(disp->display, disp->config, window, NULL);
+    if (gl->egl_surface == EGL_NO_SURFACE)
+        return kCGLBadState;
+    return kCGLNoError;
+}
+
+CGLContextObj CGWindowContextCreate(CGSConnectionID cid, CGSWindowID wid, CFDictionaryRef options)
+{
+    struct _CGLDisplay* disp = getCGLDisplay(cid);
+    if (!disp)
+        return NULL;
+
+    EGLNativeWindowType window = (EGLNativeWindowType) _CGSNativeWindowForID(cid, wid);
+    if (!window)
+        return NULL;
+
+    CGLContextObj context;
+    CGLError err = CGLCreateContext(NULL, NULL, &context);
+
+    if (err != kCGLNoError)
+        return NULL;
+    
+    context->egl_surface = eglCreateWindowSurface(disp->display, disp->config, window, NULL);
+    if (context->egl_surface == EGL_NO_SURFACE)
+    {
+        CGLReleaseContext(context);
+        return NULL;
+    }
+
+    return context;
 }
 
 CGLWindowRef CGLGetWindow(void *native_window) {
@@ -243,11 +325,6 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
 
     *resultp = context;
 
-    return kCGLNoError;
-}
-
-CGLError CGLSwapBuffers(CGLWindowRef window) {
-    eglSwapBuffers(display, window);
     return kCGLNoError;
 }
 
