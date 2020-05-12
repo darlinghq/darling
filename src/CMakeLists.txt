@@ -80,6 +80,13 @@ endif()
 include(darling_lib)
 include(darling_static_lib)
 
+if (TARGET_ARM64)
+	# There are two implementations of the atomic code that non-x86 platforms could use:
+	# libplatform/include/libkern/OSAtomicDeprecated.h and libplatform/src/os/atomic.c
+	# I decided to stick with OSAtomicDeprecated.h for the time being.
+	add_definitions("-DOSATOMIC_USE_INLINED=1")
+endif (TARGET_ARM64)
+
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include
