@@ -78,6 +78,7 @@ include(darling_static_lib)
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/private
 	${CMAKE_SOURCE_DIR}/platform-include
 	${CMAKE_SOURCE_DIR}/platform-include/pthread
 	${CMAKE_CURRENT_SOURCE_DIR}/libc/derived
