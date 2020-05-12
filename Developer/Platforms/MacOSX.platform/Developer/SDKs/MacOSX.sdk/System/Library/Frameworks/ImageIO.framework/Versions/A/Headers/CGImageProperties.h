@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../src/frameworks/ImageIO/include/ImageIO/CGImageProperties.h

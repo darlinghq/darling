@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../src/frameworks/CryptoTokenKit/include/CryptoTokenKit/TKSmartCardToken.h

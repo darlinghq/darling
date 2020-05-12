@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../src/external/foundation/include/Foundation/NSHFSFileTypes.h

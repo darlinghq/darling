@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../src/frameworks/QuickLook/include/QuickLook/QLThumbnail.h

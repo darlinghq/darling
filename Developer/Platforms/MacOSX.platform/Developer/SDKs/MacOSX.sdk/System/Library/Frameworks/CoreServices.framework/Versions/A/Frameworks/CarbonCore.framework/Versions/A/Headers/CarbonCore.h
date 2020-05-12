@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../../../../../src/frameworks/CoreServices/include/CarbonCore/CarbonCore.h

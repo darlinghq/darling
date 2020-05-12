@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../src/frameworks/CoreWLAN/include/CoreWLAN/CWWiFiClient.h

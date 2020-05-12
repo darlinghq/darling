@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../src/frameworks/GameController/include/GameController/GCExtendedGamepadSnapshot.h

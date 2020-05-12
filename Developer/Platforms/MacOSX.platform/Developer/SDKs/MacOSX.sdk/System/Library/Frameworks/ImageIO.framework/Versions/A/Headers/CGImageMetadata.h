@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../src/frameworks/ImageIO/include/ImageIO/CGImageMetadata.h

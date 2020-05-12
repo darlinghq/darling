@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../src/frameworks/MapKit/include/MapKit/MKPointOfInterestCategory.h
