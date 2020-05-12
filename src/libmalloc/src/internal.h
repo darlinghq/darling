@@ -30,8 +30,6 @@
 #include <TargetConditionals.h>
 #include <_simple.h>
 #include <platform/string.h>
-static size_t _platform_strlen(const char *s);
-static size_t _platform_strlcpy(char * restrict dst, const char * restrict src, size_t maxlen);
 #define memcpy _platform_memmove
 #include <platform/compat.h>
 #include <assert.h>
