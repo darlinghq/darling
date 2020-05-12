@@ -6,6 +6,7 @@
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/CGLInternal.h>
 #include <CoreFoundation/CFDictionary.h>
+#include <pthread.h>
 
 // Try to get the right (generic) type definitions.
 // In particular, we really want EGLNativeDisplayType to be void *,
@@ -41,6 +42,7 @@ struct _CGLDisplay
 };
 
 static CFMutableDictionaryRef g_displays;
+static pthread_mutex_t g_displaysMutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct _CGLContextObj {
     GLuint retain_count;
@@ -107,7 +109,11 @@ CGLError CGLRegisterNativeDisplay(void *native_display) {
 
 static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)
 {
-    struct _CGLDisplay* rv = (struct _CGLDisplay*) CFDictionaryGetValue(g_displays, (const void*)(unsigned long) cid);
+    struct _CGLDisplay* rv;
+
+    pthread_mutex_lock(&g_displaysMutex);
+    rv = (struct _CGLDisplay*) CFDictionaryGetValue(g_displays, (const void*)(unsigned long) cid);
+    pthread_mutex_unlock(&g_displaysMutex);
 
     if (!rv)
     {
@@ -123,7 +129,9 @@ static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)
 
         eglBindAPI(EGL_OPENGL_API);
 
+        pthread_mutex_lock(&g_displaysMutex);
         CFDictionaryAddValue(g_displays, (const void*)(unsigned long) cid, rv);
+        pthread_mutex_unlock(&g_displaysMutex);
     }
 
     return rv;
@@ -135,7 +143,12 @@ CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, C
     if (!disp)
         return kCGLBadConnection;
 
-    EGLNativeWindowType window = (EGLNativeWindowType) _CGSNativeWindowForSurfaceID(cid, wid, sid);
+    EGLNativeWindowType window;
+    if (sid)
+        window = (EGLNativeWindowType) _CGSNativeWindowForSurfaceID(cid, wid, sid);
+    else
+        window = (EGLNativeWindowType) _CGSNativeWindowForID(cid, wid);
+
     if (!window)
         return kCGLBadWindow;
 
@@ -143,32 +156,6 @@ CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, C
     if (gl->egl_surface == EGL_NO_SURFACE)
         return kCGLBadState;
     return kCGLNoError;
-}
-
-CGLContextObj CGWindowContextCreate(CGSConnectionID cid, CGSWindowID wid, CFDictionaryRef options)
-{
-    struct _CGLDisplay* disp = getCGLDisplay(cid);
-    if (!disp)
-        return NULL;
-
-    EGLNativeWindowType window = (EGLNativeWindowType) _CGSNativeWindowForID(cid, wid);
-    if (!window)
-        return NULL;
-
-    CGLContextObj context;
-    CGLError err = CGLCreateContext(NULL, NULL, &context);
-
-    if (err != kCGLNoError)
-        return NULL;
-    
-    context->egl_surface = eglCreateWindowSurface(disp->display, disp->config, window, NULL);
-    if (context->egl_surface == EGL_NO_SURFACE)
-    {
-        CGLReleaseContext(context);
-        return NULL;
-    }
-
-    return context;
 }
 
 CGLWindowRef CGLGetWindow(void *native_window) {
