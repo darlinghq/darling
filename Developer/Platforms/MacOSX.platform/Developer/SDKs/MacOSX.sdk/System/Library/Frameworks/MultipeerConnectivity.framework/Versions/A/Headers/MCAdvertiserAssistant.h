@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/frameworks/MultipeerConnectivity/include/MultipeerConnectivity/MCAdvertiserAssistant.h

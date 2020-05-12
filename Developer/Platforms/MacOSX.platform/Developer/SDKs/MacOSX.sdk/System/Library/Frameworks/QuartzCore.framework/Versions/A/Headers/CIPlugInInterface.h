@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/external/cocotron/QuartzCore/include/QuartzCore/CIPlugInInterface.h

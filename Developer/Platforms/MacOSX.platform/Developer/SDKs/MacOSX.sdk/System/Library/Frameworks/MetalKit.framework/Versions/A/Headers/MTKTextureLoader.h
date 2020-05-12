@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/frameworks/MetalKit/include/MetalKit/MTKTextureLoader.h

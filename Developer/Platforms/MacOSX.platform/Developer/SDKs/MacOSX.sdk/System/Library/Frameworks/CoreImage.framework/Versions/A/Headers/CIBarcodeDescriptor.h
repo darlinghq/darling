@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/frameworks/CoreImage/include/CoreImage/CIBarcodeDescriptor.h

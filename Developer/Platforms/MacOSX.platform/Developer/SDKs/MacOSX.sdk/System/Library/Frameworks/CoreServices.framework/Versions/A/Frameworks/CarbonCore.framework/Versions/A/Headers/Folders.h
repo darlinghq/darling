@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../../../../../src/frameworks/CoreServices/include/CarbonCore/Folders.h

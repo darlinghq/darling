@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/external/foundation/include/Foundation/NSURLAuthenticationChallenge.h

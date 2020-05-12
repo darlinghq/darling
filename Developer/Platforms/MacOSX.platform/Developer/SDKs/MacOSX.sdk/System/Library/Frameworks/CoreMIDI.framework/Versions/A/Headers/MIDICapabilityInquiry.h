@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/frameworks/CoreMIDI/include/CoreMIDI/MIDICapabilityInquiry.h

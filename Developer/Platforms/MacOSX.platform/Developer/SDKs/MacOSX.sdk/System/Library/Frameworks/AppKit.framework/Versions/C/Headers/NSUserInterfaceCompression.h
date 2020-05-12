@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/external/cocotron/AppKit/include/AppKit/NSUserInterfaceCompression.h

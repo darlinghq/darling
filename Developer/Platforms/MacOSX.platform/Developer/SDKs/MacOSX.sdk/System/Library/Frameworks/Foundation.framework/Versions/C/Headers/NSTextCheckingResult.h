@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/external/foundation/include/Foundation/NSTextCheckingResult.h

@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/external/cocotron/OpenGL/include/OpenGL/CGLTypes.h

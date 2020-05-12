@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../../../../../src/frameworks/CoreServices/include/LaunchServices/LSInfoDeprecated.h

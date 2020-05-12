@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/frameworks/VideoToolbox/include/VideoToolbox/VTPixelTransferProperties.h

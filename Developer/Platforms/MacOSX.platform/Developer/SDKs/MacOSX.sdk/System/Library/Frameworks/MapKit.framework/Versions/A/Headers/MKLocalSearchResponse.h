@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/frameworks/MapKit/include/MapKit/MKLocalSearchResponse.h
