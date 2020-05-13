@@ -1,1 +1,1 @@
-../../../../platform-include/sys/_types.h
+../../../../Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/_types.h
