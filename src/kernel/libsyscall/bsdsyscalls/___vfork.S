@@ -68,7 +68,7 @@ LEAF(___vfork, 0)
 	#ifdef DARLING
 		movl	$ SYS_vfork, %eax
 		call	__darling_bsd_syscall
-		cmpq	$0, %eax
+		cmpl	$0, %eax
 		jnb L1
 	#else
 		movl		$(SYS_vfork), %eax	// code for vfork -> eax

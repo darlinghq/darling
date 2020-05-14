@@ -54,7 +54,7 @@ LEAF(___fork, 0)
 	movl 	$ SYS_fork,%eax; 	// code for fork -> eax
 	#ifdef DARLING
 		call	__darling_bsd_syscall
-		cmpq	$0, %eax
+		cmpl	$0, %eax
 		jnb L1
 	#else
 		UNIX_SYSCALL_TRAP		// do the system call
