@@ -2,12 +2,6 @@ project(unxip)
 
 add_definitions(-nostdinc)
 
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/xar
-	${CMAKE_SOURCE_DIR}/src/external/liblzma/src/liblzma/api
-)
-
-
 add_darling_executable(xip_extract_cpio xip_extract_cpio.c)
 target_link_libraries(xip_extract_cpio system lzma xar)
 

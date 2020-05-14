@@ -1,9 +1,5 @@
 project(launchservicesd)
 
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/external/fmdb/src
-)
-
 set(sources
 	launchservicesd.m
 	LSBundle.m

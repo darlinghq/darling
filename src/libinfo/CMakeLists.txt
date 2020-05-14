@@ -20,12 +20,6 @@ add_definitions(-w -nostdinc)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
-include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libdispatch/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include)
-
 add_subdirectory(gen.subproj)
 add_subdirectory(util.subproj)
 add_subdirectory(dns.subproj)

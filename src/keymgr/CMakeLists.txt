@@ -5,10 +5,6 @@ cmake_minimum_required(VERSION 2.4.0)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
-include_directories(${CMAKE_SOURCE_DIR}/libc/fbsdcompat)
-include_directories(${CMAKE_SOURCE_DIR}/kernel/libsyscall/wrappers)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-
 add_definitions(-DHAVE_STDINT_H=1)
 
 set(keymgr_sources

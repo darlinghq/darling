@@ -1,9 +1,5 @@
 project(PackageKit)
 
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/external/libarchive/libarchive
-)
-
 add_definitions(-fobjc-arc)
 
 set(pk_sources

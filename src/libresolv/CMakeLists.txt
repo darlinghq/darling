@@ -4,13 +4,6 @@ cmake_minimum_required(VERSION 2.4.0)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../external/libdispatch/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../external/libdispatch/private)
-include_directories(${CMAKE_SOURCE_DIR}/platform-include)
-include_directories(${CMAKE_SOURCE_DIR}/src/libinfo/lookup.subproj/)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale/FreeBSD)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/stdtime/FreeBSD)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/dnsinfo)
 

@@ -10,8 +10,6 @@ endif(COMMAND cmake_policy)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 
-#include_directories(${DARLING_TOP_DIRECTORY}/src/libc/include/FreeBSD)
-
 set(csu_SRCS
 	crt1.10.6.S
 )

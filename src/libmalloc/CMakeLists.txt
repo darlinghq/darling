@@ -3,11 +3,6 @@ project(darling-libsystem_malloc)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/malloc)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/private)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/gen)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/darwin)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../kernel/libsyscall/wrappers/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../kernel/libsyscall)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread/private)
 
 add_compile_options(
 	-nostdinc

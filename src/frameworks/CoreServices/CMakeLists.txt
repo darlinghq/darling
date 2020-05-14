@@ -2,11 +2,6 @@ project(CoreServices)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
-include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/external/libcxx/include)
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/kernel/emulation/linux
-)
-
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1239.200.12")
 

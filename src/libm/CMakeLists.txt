@@ -9,11 +9,6 @@ set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -DBUILDING_FOR_CARBONCORE_LEGACY")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
-include_directories(
-	${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include/bsd
-	${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include/libkern
-	${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include/osfmk
-)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/darwin)
 add_definitions(-Dmovsxw=movswl -DPRIVATE)
 

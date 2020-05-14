@@ -2,7 +2,6 @@ project(system_networkextension)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_networkextension.dylib")

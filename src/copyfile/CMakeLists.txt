@@ -5,12 +5,7 @@ cmake_minimum_required(VERSION 2.4.0)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
-include_directories(${CMAKE_SOURCE_DIR}/platform-include)
-include_directories(${CMAKE_SOURCE_DIR}/src/libinfo/membership.subproj/)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libdispatch)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_definitions(-DHAVE_STDINT_H=1)
 

@@ -4,9 +4,6 @@ cmake_minimum_required(VERSION 2.4.0)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fblocks -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
 
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libclosure)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread_workqueue-0.8.2/include)
-
 set(stdlib_sources a64l.c grantpt.c l64a.c qsort_b-fbsd.c)
 
 set(stdlib_sources ${stdlib_sources}

@@ -17,22 +17,6 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_
 
 add_definitions(-DHAVE_STDINT_H=1)
 
-include_directories(${CMAKE_SOURCE_DIR}/src/launchd/liblaunch)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/gen)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale/FreeBSD)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/stdtime/FreeBSD)
-include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/libproc)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/emulation/linux/misc)
-include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/sandbox)
-include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/external/libcxx/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/include)
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/external/libclosure
-	${CMAKE_SOURCE_DIR}/src/libutil
-)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/launch-cache)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include

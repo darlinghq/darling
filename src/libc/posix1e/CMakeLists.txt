@@ -1,7 +1,6 @@
 project(libc-posix1e)
 
 cmake_minimum_required(VERSION 2.4.0)
-include_directories(${DARLING_TOP_DIRECTORY}/src/libinfo/membership.subproj)
 
 set(posix1e_sources
 	acl.c

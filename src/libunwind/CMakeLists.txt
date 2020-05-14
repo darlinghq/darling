@@ -13,17 +13,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -w")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/)
-include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/../external/libcxx/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/locale)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/locale/FreeBSD)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/stdtime/FreeBSD)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/pthreads)
-include_directories(${CMAKE_SOURCE_DIR}/platform-include)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread/private)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall)
 
 set(libunwind_sources
 	src/libuwind.cxx

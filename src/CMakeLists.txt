@@ -56,6 +56,8 @@ add_subdirectory(buildtools)
 add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(startup)
 
+include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
+
 add_subdirectory(bootstrap_cmds)
 
 add_definitions(
@@ -70,106 +72,45 @@ add_definitions(
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ranlib")
+#set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/as/x86_64-apple-darwin11-as")
 
 add_definitions(-target x86_64-apple-darwin11)
 include(darling_lib)
 include(darling_static_lib)
 
+set(DARLING_SDK_RELATIVE_PATH "Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../..")
+
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include)
+
 include_directories(
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include
-	${CMAKE_SOURCE_DIR}/platform-include
-	${CMAKE_SOURCE_DIR}/platform-include/pthread
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/derived
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/NetBSD
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/FreeBSD
-	${CMAKE_CURRENT_SOURCE_DIR}/kernel/libsyscall/wrappers
-	${CMAKE_CURRENT_SOURCE_DIR}/kernel/include
-	${CMAKE_SOURCE_DIR}/kernel-include/bsd
-	${CMAKE_SOURCE_DIR}/kernel-include/libkern
-	${CMAKE_SOURCE_DIR}/kernel-include/osfmk
-	${CMAKE_CURRENT_SOURCE_DIR}/duct/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libm/include
+	${CMAKE_SOURCE_DIR}/src/external/libcxx/include
+	${CMAKE_SOURCE_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
+	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
+	${CMAKE_SOURCE_DIR}/framework-include
 )
 
 include_directories(AFTER
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
-	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
-	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/coretls/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libmalloc/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libinfo/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/syslog/libsystem_asl.tproj/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/openssl/src/include
-	${CMAKE_SOURCE_DIR}/kernel-include/iokit
-	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser
-	${CMAKE_CURRENT_SOURCE_DIR}/external/openpam/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/sqlite/include
-	${CMAKE_CURRENT_SOURCE_DIR}/OpenScripting/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ncurses/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/corefoundation/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/foundation/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/syslog/libsystem_asl.tproj/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/objc4/runtime/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/corecrypto/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/security/include
-	${CMAKE_CURRENT_SOURCE_DIR}/xcselect/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libaks/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/icu/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libpthread/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libremovefile/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libdispatch/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libclosure/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cfnetwork/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cfnetwork/private_include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libxml2/include
-	${CMAKE_CURRENT_BINARY_DIR}/external/libxml2/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/expat/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libedit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/bzip2/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libnotify/include
-	${CMAKE_CURRENT_SOURCE_DIR}/opendirectory_internal/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/commoncrypto/include
-	${CMAKE_CURRENT_SOURCE_DIR}/quarantine/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libpmenergy/include
-	${CMAKE_CURRENT_SOURCE_DIR}/copyfile/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
-	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreText/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/QuartzCore/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreGraphics/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/Onyx2D/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/WTF/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/bmalloc/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libsysmon/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libcompression/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/lzfse/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libsandbox/include
-	${CMAKE_CURRENT_SOURCE_DIR}/OpenDirectory/include
 	${CMAKE_CURRENT_SOURCE_DIR}/frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/private-frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lib/include
+
+	# necessary because this is the expected behavior when using `xml2-config --cflags`
+	# it adds `$sdk_dir/libxml2` to the include path
+	${CMAKE_SOURCE_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/libxml2
+	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/libxml2
 )
 
 add_subdirectory(external/libkqueue)
 
+# needs to come before libplatform because it generates mig headers that libplatform needs
+add_subdirectory(kernel)
+
 add_subdirectory(external/libplatform)
 add_subdirectory(external/libpthread)
 add_subdirectory(external/libtrace)
-add_subdirectory(kernel)
 add_subdirectory(libc)
 add_subdirectory(vchroot)
 
@@ -347,11 +288,6 @@ include_directories(BEFORE
 
 # libstdc++ doesn't use the headers included below
 add_subdirectory(libstdcxx)
-
-include_directories(BEFORE
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include
-)
 
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
