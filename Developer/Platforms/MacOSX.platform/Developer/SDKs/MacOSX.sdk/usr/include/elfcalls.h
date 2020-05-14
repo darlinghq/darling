@@ -1,1 +1,1 @@
-../../../../../../../../src/libelfloader/native/elfcalls.h
+elfcalls/elfcalls.h

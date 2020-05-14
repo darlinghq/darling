@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/mach/mach_interface.h
+../../../../../../../../../src/kernel/libsyscall/mach/mach/mach_interface.h
