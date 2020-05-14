@@ -65,6 +65,7 @@ typedef const struct _libkernel_functions {
 	void (*pthread_clear_qos_tsd)(mach_port_t);
 
 	/* Subsequent versions must only add pointers! */
+	void (*dyld_func_lookup)(const char*,void**);
 } *_libkernel_functions_t;
 
 typedef const struct _libkernel_string_functions {
