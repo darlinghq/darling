@@ -31,17 +31,20 @@
 #include <signal.h>
 #include <string.h>
 #include <stdlib.h>
-#include <asl.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#if __has_include(<CrashReporterClient.h>)
 #include <CrashReporterClient.h>
+#else
+#define CRSetCrashLogMessage(...)
+#endif
 #include "libproc.h"
 #include "_simple.h"
 
 #define	GUARD_MAX 8
 long __stack_chk_guard[GUARD_MAX] = {0, 0, 0, 0, 0, 0, 0, 0};
-void __abort(void) __dead2;
+void __abort(void) __cold __dead2;
 void __guard_setup(const char *apple[]) __attribute__ ((visibility ("hidden")));
 void __stack_chk_fail(void);
 
@@ -112,30 +115,18 @@ __guard_setup(const char *apple[])
 	((unsigned char *)__stack_chk_guard)[3] = 255;
 }
 
-#define STACKOVERFLOW	"] stack overflow"
+static const char *stackoverflow_msg = "stack buffer overflow";
 
 void
 __stack_chk_fail()
 {
-	char n[16]; // bigger than will hold the digits in a pid_t
-	char *np;
-	int pid = getpid();
-	char message[sizeof(n) + sizeof(STACKOVERFLOW)] = "[";
-	char prog[2*MAXCOMLEN+1] = {0};
+	CRSetCrashLogMessage(stackoverflow_msg);
 
-	proc_name(pid, prog, 2*MAXCOMLEN);
-	prog[2*MAXCOMLEN] = 0;
-	np = n + sizeof(n);
-	*--np = 0;
-	while(pid > 0) {
-	    *--np = (pid % 10) + '0';
-	    pid /= 10;
-	}
-	strlcat(message, np, sizeof(message));
-	strlcat(message, STACKOVERFLOW, sizeof(message));
 	/* This may fail on a chroot jail... */
-	_simple_asl_log_prog(ASL_LEVEL_CRIT, "user", message, prog);
+	char prog[2*MAXCOMLEN+1] = {0};
+	proc_name(getpid(), prog, 2*MAXCOMLEN);
+	prog[2*MAXCOMLEN] = 0;
+	_simple_asl_log_prog(ASL_LEVEL_CRIT, "user", stackoverflow_msg, prog);
 
-	CRSetCrashLogMessage(message);
 	__abort();
 }

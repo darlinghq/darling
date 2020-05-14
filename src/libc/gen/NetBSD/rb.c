@@ -1,4 +1,4 @@
-/*	$NetBSD: rb.c,v 1.11 2011/06/20 09:11:16 mrg Exp $	*/
+/*	$NetBSD: rb.c,v 1.13 2014/08/22 17:19:48 matt Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -52,7 +52,7 @@
 
 #ifndef __predict_false
 #ifdef __GNUC__
-#define __predict_false(x)	(__builtin_expect((long)(x), 0l))
+#define __predict_false(x)	((typeof(x))__builtin_expect((long)(x), 0l))
 #else
 #define __predict_false(x)      (x)
 #endif

@@ -53,34 +53,14 @@ static int	sflush_locked(FILE *);
 int
 fflush(FILE *fp)
 {
-	int retval;
+	int retval = 0;
 
-	if (fp == NULL)
+	if (fp == NULL) {
 		return (_fwalk(sflush_locked));
-	FLOCKFILE(fp);
+	}
 
-	/*
-	 * 11103146: Conformance change:
-	 * --- Begin History ---
-	 * There is disagreement about the correct behaviour of fflush()
-	 * when passed a file which is not open for writing.  According to
-	 * the ISO C standard, the behaviour is undefined.
-	 * Under linux, such an fflush returns success and has no effect;
-	 * under Windows, such an fflush is documented as behaving instead
-	 * as fpurge().
-	 * Given that applications may be written with the expectation of
-	 * either of these two behaviours, the only safe (non-astonishing)
-	 * option is to return EBADF and ask that applications be fixed.
-	 * --- End History ---
-	 * SUSv3 now requires that fflush() returns success on a read-only
-	 * stream.  In addition, the conformance tests will warn if a fflush
-	 * on a read-only stream does not set the file descriptor's file offset
-	 * to the real position.  We won't be fixing the warning at this time.
-	 */
-	if ((fp->_flags & (__SWR | __SRW)) == 0) {
-		retval = 0;
-	} else
-		retval = __sflush(fp);
+	FLOCKFILE(fp);
+	retval = __sflush(fp);
 	FUNLOCKFILE(fp);
 	return (retval);
 }
@@ -110,36 +90,77 @@ __sflush(FILE *fp)
 	int n, t;
 
 	t = fp->_flags;
-	if ((t & __SWR) == 0)
-		return (0);
 
 	if ((p = fp->_bf._base) == NULL)
 		return (0);
 
-	n = fp->_p - p;		/* write this much */
-
 	/*
-	 * Set these immediately to avoid problems with longjmp and to allow
-	 * exchange buffering (via setvbuf) in user write function.
+	 * SUSv3 requires that fflush() on a seekable input stream updates the file
+	 * position indicator with the underlying seek function.  Use a dumb fseek
+	 * for this (don't attempt to preserve the buffers).
 	 */
-	fp->_p = p;
-	fp->_w = t & (__SLBF|__SNBF) ? 0 : fp->_bf._size;
+	if ((t & __SRD) != 0) {
+		if (fp->_seek == NULL) {
+			/*
+			 * No way to seek this file -- just return "success."
+			 */
+			return (0);
+		}
 
-	for (; n > 0; n -= t, p += t) {
-		t = _swrite(fp, (char *)p, n);
-		if (t <= 0) {
-			/* 5340694: reset _p and _w on EAGAIN */
-			if (t < 0 && errno == EAGAIN) {
-				if (p > fp->_p) {
-					/* some was written */
-					memmove(fp->_p, p, n);
-					fp->_p += n;
-					if (!(fp->_flags & (__SLBF|__SNBF)))
-						fp->_w -= n;
+		n = fp->_r;
+
+		if (n > 0) {
+			/*
+			 * See _fseeko's dumb path.
+			 */
+			if (_sseek(fp, (fpos_t)-n, SEEK_CUR) == -1) {
+				if (errno == ESPIPE) {
+					/*
+					 * Ignore ESPIPE errors, since there's no way to put the bytes
+					 * back into the pipe.
+					 */
+					return (0);
 				}
+				return (EOF);
 			}
-			fp->_flags |= __SERR;
-			return (EOF);
+
+			if (HASUB(fp)) {
+				FREEUB(fp);
+			}
+			fp->_p = fp->_bf._base;
+			fp->_r = 0;
+			fp->_flags &= ~__SEOF;
+			memset(&fp->_mbstate, 0, sizeof(mbstate_t));
+		}
+		return (0);
+	}
+
+	if ((t & __SWR) != 0) {
+		n = fp->_p - p;		/* write this much */
+
+		/*
+		 * Set these immediately to avoid problems with longjmp and to allow
+		 * exchange buffering (via setvbuf) in user write function.
+		 */
+		fp->_p = p;
+		fp->_w = t & (__SLBF|__SNBF) ? 0 : fp->_bf._size;
+
+		for (; n > 0; n -= t, p += t) {
+			t = _swrite(fp, (char *)p, n);
+			if (t <= 0) {
+				/* 5340694: reset _p and _w on EAGAIN */
+				if (t < 0 && errno == EAGAIN) {
+					if (p > fp->_p) {
+						/* some was written */
+						memmove(fp->_p, p, n);
+						fp->_p += n;
+						if (!(fp->_flags & (__SLBF|__SNBF)))
+							fp->_w -= n;
+					}
+				}
+				fp->_flags |= __SERR;
+				return (EOF);
+			}
 		}
 	}
 	return (0);

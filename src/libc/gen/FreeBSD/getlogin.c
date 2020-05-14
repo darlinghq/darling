@@ -88,7 +88,6 @@ int
 getlogin_r(char *logname, size_t namelen)
 {
 	char	*result;
-	int	len;
 	int	status;
 
 	pthread_mutex_lock(&__logname_mutex);

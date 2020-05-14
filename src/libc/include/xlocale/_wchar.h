@@ -24,6 +24,10 @@
 #ifndef _XLOCALE__WCHAR_H_
 #define _XLOCALE__WCHAR_H_
 
+#include <_stdio.h>
+#include <_xlocale.h>
+#include <sys/_types/_mbstate_t.h>
+
 /* Initially added in Issue 4 */
 __BEGIN_DECLS
 wint_t	btowc_l(int, locale_t);

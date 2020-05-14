@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -129,14 +125,19 @@ int	glob(const char * __restrict, int, int (*)(const char *, int),
 #endif /* !LIBC_ALIAS_GLOB */
 //End-Libc
 #ifdef __BLOCKS__
+#if __has_attribute(noescape)
+#define __glob_noescape __attribute__((__noescape__))
+#else
+#define __glob_noescape
+#endif
 //Begin-Libc
 #ifndef LIBC_ALIAS_GLOB_B
 //End-Libc
-int	glob_b(const char * __restrict, int, int (^)(const char *, int), 
+int	glob_b(const char * __restrict, int, int (^)(const char *, int) __glob_noescape,
 	     glob_t * __restrict) __DARWIN_INODE64(glob_b) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 //Begin-Libc
 #else /* LIBC_ALIAS_GLOB_B */
-int	glob_b(const char * __restrict, int, int (^)(const char *, int), 
+int	glob_b(const char * __restrict, int, int (^)(const char *, int) __glob_noescape,
 	     glob_t * __restrict) LIBC_INODE64(glob_b);
 #endif /* !LIBC_ALIAS_GLOB_B */
 //End-Libc

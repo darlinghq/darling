@@ -30,9 +30,6 @@
 #define _USE_EXTENDED_LOCALES_
 #endif /* _USE_EXTENDED_LOCALES_ */
 
-struct _xlocale; /* forward reference */
-typedef struct _xlocale *		locale_t;
-
 #include <_locale.h>
 #include <_xlocale.h>
 
@@ -53,6 +50,7 @@ typedef struct _xlocale *		locale_t;
 #define _LC_LAST_MASK			(1 << (_LC_NUM_MASK - 1))
 
 #define LC_GLOBAL_LOCALE		((locale_t)-1)
+#define LC_C_LOCALE				((locale_t)NULL)
 
 #ifdef MB_CUR_MAX
 #undef MB_CUR_MAX

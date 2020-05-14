@@ -28,5 +28,6 @@
 
 #ifndef _WCTYPE_T
 #define _WCTYPE_T 
+#include <_types.h>
 typedef __darwin_wctype_t wctype_t;
 #endif /* _WCTYPE_T */

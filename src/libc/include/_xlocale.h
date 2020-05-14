@@ -26,6 +26,9 @@
 
 #include <sys/cdefs.h>
 
+struct _xlocale; /* forward reference */
+typedef struct _xlocale *		locale_t;
+
 __BEGIN_DECLS
 int		___mb_cur_max(void);
 int		___mb_cur_max_l(locale_t);

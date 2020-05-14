@@ -32,7 +32,7 @@
 	0, XPERMANENT,			\
 	{}, {}, {}, {}, {},		\
 	{}, {}, {}, {}, {},		\
-	LOCK_INITIALIZER,		\
+	OS_UNFAIR_LOCK_INIT,		\
 	XMAGIC,				\
 	1, 0, 0, 0, 0, 0, 1, 1, 0,	\
 	NULL,				\
@@ -105,7 +105,7 @@ _duplocale(locale_t loc)
 		return NULL;
 	new->__refcount = 1;
 	new->__free_extra = (__free_extra_t)_releaselocale;
-	new->__lock = LOCK_INITIALIZER;
+	new->__lock = OS_UNFAIR_LOCK_INIT;
 	if (loc == NULL)
 		loc = __current_locale();
 	else if (loc == LC_GLOBAL_LOCALE)
@@ -114,7 +114,7 @@ _duplocale(locale_t loc)
 		*new = __c_locale;
 		new->__refcount = 1;
 		new->__free_extra = (__free_extra_t)_releaselocale;
-		new->__lock = LOCK_INITIALIZER;
+		new->__lock = OS_UNFAIR_LOCK_INIT;
 		return new;
 	}
 	XL_LOCK(loc);

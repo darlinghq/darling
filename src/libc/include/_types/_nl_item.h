@@ -28,5 +28,6 @@
 
 #ifndef _NL_ITEM
 #define _NL_ITEM 
+#include <_types.h>
 typedef __darwin_nl_item nl_item;
 #endif /* _NL_ITEM */

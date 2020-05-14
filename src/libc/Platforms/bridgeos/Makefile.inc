@@ -1,5 +1,5 @@
 #
-# Selectable features for Apple Watch
+# Selectable features for bridgeOS
 #
 
 # Legacy *64 APIs
@@ -16,12 +16,6 @@
 
 # OSThermalNotification APIs
 FEATURE_THERM_NOTIFICATION_APIS = 1
-
-# Move localtime to /var/db/timezone
-FEATURE_MOVE_LOCALTIME = 0
-
-# Use TZDIR symlink in /var/db
-FEATURE_TZDIR_SYMLINK = 0
 
 # No pre-1050 variants (should match sys/cdefs.h)
 FEATURE_ONLY_1050_VARIANTS = 1
@@ -49,3 +43,6 @@ FEATURE_SMALL_STDIOBUF = 1
 
 # Disable registration of specific signals (<rdar://problem/21952708>)
 FEATURE_SIGNAL_RESTRICTION = 1
+
+# Enable 32-bit compilation in unistd.h (<rdar://problem/51818745>)
+# FEATURE_POSIX_ILP32_ALLOW = 0

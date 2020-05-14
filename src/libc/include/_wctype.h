@@ -39,22 +39,7 @@
 #ifndef __WCTYPE_H_
 #define __WCTYPE_H_
 
-#include <sys/cdefs.h>
-#include <_types.h>
-
-#include <sys/_types/_wint_t.h>
-#include <sys/_types/_wint_t.h>
-#include <_types/_wctype_t.h>
-
-#ifndef WEOF
-#define WEOF			__DARWIN_WEOF
-#endif
-
-#ifndef __DARWIN_WCTYPE_TOP_inline
-#define __DARWIN_WCTYPE_TOP_inline __header_inline
-#endif
-
-#include <ctype.h>
+#include <__wctype.h>
 
 /*
  * Use inline functions if we are allowed to and the compiler supports them.

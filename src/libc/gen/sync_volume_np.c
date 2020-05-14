@@ -55,7 +55,7 @@ sync_volume_np(const char *path, int flags) {
 		full_sync |= FSCTL_SYNC_WAIT;
 
 	terrno = errno;
-	rv = (fsctl(path, FSCTL_SYNC_VOLUME, &full_sync, 0) == -1) ? errno : 0;
+	rv = (fsctl(path, FSIOC_SYNC_VOLUME, &full_sync, 0) == -1) ? errno : 0;
 	errno = terrno;
 	return rv;
 }

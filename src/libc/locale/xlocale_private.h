@@ -32,8 +32,9 @@
 #include <locale.h>
 #include <libkern/OSAtomic.h>
 #include <pthread.h>
-#include <pthread_spinlock.h>
+#include <pthread/tsd_private.h>
 #include <limits.h>
+#include <os/lock.h>
 #include "setlocale.h"
 #include "collate.h"
 #include "runetype.h"
@@ -132,7 +133,7 @@ struct _xlocale {
 	__darwin_mbstate_t __mbs_wcsnrtombs;
 	__darwin_mbstate_t __mbs_wcsrtombs;
 	__darwin_mbstate_t __mbs_wctomb;
-	pthread_lock_t __lock;
+	os_unfair_lock __lock;
 /* magic (Here up to the end is copied when duplicating locale_t's) */
 	int64_t __magic;
 /* flags */
@@ -169,13 +170,13 @@ struct _xlocale {
 					(x) = &__global_locale; \
 				}
 
-#define NORMALIZE_LOCALE(x)	if ((x) == NULL) { \
+#define NORMALIZE_LOCALE(x)	if ((x) == LC_C_LOCALE) { \
 					(x) = _c_locale; \
 				} else if ((x) == LC_GLOBAL_LOCALE) { \
 					(x) = &__global_locale; \
 				}
 
-#define XL_LOCK(x)	LOCK((x)->__lock);
+#define XL_LOCK(x)	os_unfair_lock_lock(&(x)->__lock);
 #define	XL_RELEASE(x)	if ((x) && (x)->__free_extra != XPERMANENT && OSAtomicDecrement32Barrier(&(x)->__refcount) == 0) { \
 				if ((x)->__free_extra) \
 					(*(x)->__free_extra)((x)); \
@@ -183,7 +184,7 @@ struct _xlocale {
 				(x) = NULL; \
 			}
 #define	XL_RETAIN(x)	if ((x) && (x)->__free_extra != XPERMANENT) { OSAtomicIncrement32Barrier(&(x)->__refcount); }
-#define XL_UNLOCK(x)	UNLOCK((x)->__lock);
+#define XL_UNLOCK(x)	os_unfair_lock_unlock(&(x)->__lock);
 
 __attribute__((visibility("hidden")))
 extern struct __xlocale_st_runelocale _DefaultRuneXLocale;
@@ -211,9 +212,13 @@ __current_locale(void)
 		return &__global_locale;
 	}
 #endif
-
-	locale_t __locale = (locale_t)pthread_getspecific(__locale_key);
-	return (__locale ? __locale : &__global_locale);
+	void *__thread_locale;
+	if (_pthread_has_direct_tsd()) {
+		__thread_locale = _pthread_getspecific_direct(__locale_key);
+	} else {
+		__thread_locale = pthread_getspecific(__locale_key);
+	}
+	return (__thread_locale ? (locale_t)__thread_locale : &__global_locale);
 }
 
 static inline __attribute__((always_inline)) locale_t

@@ -26,13 +26,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\"
-.Dd February 15, 2007
+.Dd March 1, 2018
 .Dt backtrace 3
-.Os "Mac OS X"
+.Os "Darwin"
 .Sh NAME
 .Nm backtrace ,
 .Nm backtrace_symbols ,
-.Nm backtrace_symbols_fd
+.Nm backtrace_symbols_fd ,
+.Nm backtrace_image_offsets ,
+.Nm backtrace_from_fp
 .Nd call stack backtrace and display functions
 .Sh SYNOPSIS
 .In execinfo.h
@@ -51,6 +53,18 @@
 .Fa "void* const* array"
 .Fa "int size"
 .Fa "int fd"
+.Fc
+.Ft void
+.Fo backtrace_image_offsets
+.Fa "void* const* array"
+.Fa "struct image_offset *image_offsets"
+.Fa "int size"
+.Fc
+.Ft int
+.Fo backtrace_from_fp
+.Fa "void* startfp"
+.Fa "void** array"
+.Fa "int size"
 .Fc
 .Sh DESCRIPTION
 These routines provide a mechanism to examine the current thread's call stack.
@@ -84,6 +98,21 @@ performs the same operation as
 but the resulting strings are immediately written to the file descriptor
 .Fa fd ,
 and are not returned.
+.Pp
+.Fn backtrace_image_offsets
+attempts to transform a call stack obtained by
+.Fn backtrace
+into an array of image offsets, for deferred symbolication.  Each entry in the
+array has an offset relative to the
+.Li __TEXT
+section of the image with the given UUID.  The results are written to
+.Fa image_offsets
+which should be an array of
+.Fa size
+length.
+.Pp
+.Fn backtrace_from_fp
+takes a backtrace of frames starting from the given frame pointer.
 .Sh EXAMPLE
 .Pp
     #include <execinfo.h>
@@ -99,8 +128,15 @@ and are not returned.
     ...
 .Pp
 .Sh HISTORY
-These functions first appeared in
-Mac OS X 10.5.
+.Fn backtrace ,
+.Fn backtrace_symbols ,
+and
+.Fn backtrace_symbols_fd
+first appeared in Mac OS X 10.5.
+.Fn backtrace_image_offsets
+and
+.Fn backtrace_from_fp
+first appeared macOS 10.14 and iOS 12.
 .Sh SEE ALSO
 .Xr dladdr 3 ,
 .Xr malloc 3

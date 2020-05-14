@@ -64,7 +64,7 @@ dirname_r(const char *path, char *dname)
 		errno = ENAMETOOLONG;
 		return (NULL);
 	}
-	memcpy(dname, path, len);
+	memmove(dname, path, len);
 	dname[len] = '\0';
 	return (dname);
 }

@@ -52,7 +52,7 @@ void _init_clock_port(void) {
 		abort();
 	}
 	
-	kr = semaphore_create(mach_task_self_, &clock_sem, SYNC_POLICY_FIFO, 0);
+	kr = semaphore_create(mach_task_self(), &clock_sem, SYNC_POLICY_FIFO, 0);
 	if (kr != KERN_SUCCESS) {
 		abort();
 	}

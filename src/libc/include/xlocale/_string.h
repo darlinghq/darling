@@ -24,6 +24,10 @@
 #ifndef _XLOCALE__STRING_H_
 #define _XLOCALE__STRING_H_
 
+#include <sys/cdefs.h>
+#include <sys/_types/_size_t.h>
+#include <_xlocale.h>
+
 __BEGIN_DECLS
 int	 strcoll_l(const char *, const char *, locale_t);
 size_t	 strxfrm_l(char *, const char *, size_t, locale_t);

@@ -349,7 +349,7 @@ acl_from_text(const char *buf_p)
 	 */
 	field = strsep(&entry, " ");
 	errno = 0;
-	if (!*field || strtol(field, NULL, 0) != 1)
+	if (field == NULL || !*field || strtol(field, NULL, 0) != 1)
 	{
 	    error = EINVAL;
 	    goto exit;

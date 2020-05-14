@@ -70,7 +70,7 @@ union IEEEl2bits {
 	(a)[0] = (uint32_t)(u).bits.manl;		\
 	(a)[1] = (uint32_t)(u).bits.manh;		\
 } while(0)
-#elif defined(__arm__) 
+#elif defined(__arm__) || defined(__arm64__)
 
 union IEEEl2bits {
     long double     e;

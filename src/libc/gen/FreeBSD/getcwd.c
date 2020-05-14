@@ -27,6 +27,9 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)getcwd.c	8.5 (Berkeley) 2/7/95";
 #endif /* LIBC_SCCS and not lint */
@@ -332,3 +335,4 @@ getcwd(pt, size)
 {
 	return __private_getcwd(pt, size, 1);
 }
+#pragma clang diagnostic pop

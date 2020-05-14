@@ -24,6 +24,11 @@
 #ifndef _XLOCALE__REGEX_H_
 #define _XLOCALE__REGEX_H_
 
+#ifndef _REGEX_H_
+#include <_regex.h>
+#endif // _REGEX_H_
+#include <_xlocale.h>
+
 __BEGIN_DECLS
 
 int	regcomp_l(regex_t * __restrict, const char * __restrict, int,

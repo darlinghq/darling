@@ -3,6 +3,9 @@
 ** 1996-06-05 by Arthur David Olson.
 */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunreachable-code"
+
 #include <sys/cdefs.h>
 #ifndef lint
 #ifndef NOID
@@ -67,3 +70,4 @@ const time_t	time0;
 	return -(double) ((unsigned long) time0 +
 		(unsigned long) (-(time1 + 1)) + 1);
 }
+#pragma clang diagnostic pop

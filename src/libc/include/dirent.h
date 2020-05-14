@@ -65,6 +65,7 @@
 #include <sys/dirent.h>
 #include <sys/cdefs.h>
 #include <Availability.h>
+#include <sys/_pthread/_pthread_types.h> /* __darwin_pthread_mutex_t */
 
 struct _telldir;		/* forward reference */
 
@@ -76,7 +77,7 @@ typedef struct {
 	char	*__dd_buf;	/* data buffer */
 	int	__dd_len;	/* size of data buffer */
 	long	__dd_seek;	/* magic cookie returned */
-	long	__dd_rewind;	/* magic cookie for rewinding */
+	__unused long	__padding; /* (__dd_rewind space left for bincompat) */
 	int	__dd_flags;	/* flags for readdir */
 	__darwin_pthread_mutex_t __dd_lock; /* for thread locking */
 	struct _telldir *__dd_td; /* telldir position recording */
@@ -92,6 +93,8 @@ typedef struct {
 #define DTF_NODUP	0x0002	/* don't return duplicate names */
 #define DTF_REWIND	0x0004	/* rewind after reading union stack */
 #define __DTF_READALL	0x0008	/* everything has been read */
+#define __DTF_SKIPREAD  0x0010  /* assume internal buffer is populated */
+#define __DTF_ATEND     0x0020  /* there's nothing more to read in the kernel */
 
 #endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
@@ -194,8 +197,16 @@ int dirfd(DIR *dirp) __OSX_AVAILABLE_STARTING(__MAC_10_8, __IPHONE_6_0);
 int scandir(const char *, struct dirent ***,
     int (*)(const struct dirent *), int (*)(const struct dirent **, const struct dirent **)) __DARWIN_INODE64(scandir);
 #ifdef __BLOCKS__
+#if __has_attribute(noescape)
+#define __scandir_noescape __attribute__((__noescape__))
+#else
+#define __scandir_noescape
+#endif
+
 int scandir_b(const char *, struct dirent ***,
-    int (^)(const struct dirent *), int (^)(const struct dirent **, const struct dirent **)) __DARWIN_INODE64(scandir_b) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+    int (^)(const struct dirent *) __scandir_noescape,
+    int (^)(const struct dirent **, const struct dirent **) __scandir_noescape)
+    __DARWIN_INODE64(scandir_b) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
 
 __END_DECLS

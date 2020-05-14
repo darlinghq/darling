@@ -142,7 +142,7 @@ getdelim(char ** __restrict linep, size_t * __restrict linecapp, int delim,
 
 	linelen = 0;
 	while ((endp = memchr(fp->_p, delim, fp->_r)) == NULL) {
-		if (sappend(linep, &linelen, linecapp, fp->_p, fp->_r))
+		if (sappend(linep, &linelen, linecapp, (char*)fp->_p, fp->_r))
 			goto error;
 		if (__srefill(fp)) {
 			if (__sferror(fp))
@@ -151,7 +151,7 @@ getdelim(char ** __restrict linep, size_t * __restrict linecapp, int delim,
 		}
 	}
 	endp++;	/* snarf the delimiter, too */
-	if (sappend(linep, &linelen, linecapp, fp->_p, endp - fp->_p))
+	if (sappend(linep, &linelen, linecapp, (char*)fp->_p, endp - fp->_p))
 		goto error;
 	fp->_r -= endp - fp->_p;
 	fp->_p = endp;

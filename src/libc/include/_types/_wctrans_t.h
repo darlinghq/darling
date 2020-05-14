@@ -28,5 +28,6 @@
 
 #ifndef _WCTRANS_T 
 #define _WCTRANS_T 
+#include <_types.h>
 typedef	__darwin_wctrans_t wctrans_t;
 #endif /* _WCTRANS_T */

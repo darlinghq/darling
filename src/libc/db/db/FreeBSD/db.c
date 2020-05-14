@@ -31,6 +31,9 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)db.c	8.4 (Berkeley) 2/21/94";
 #endif /* LIBC_SCCS and not lint */
@@ -99,3 +102,4 @@ __dbpanic(dbp)
 	dbp->seq = (int (*)())__dberr;
 	dbp->sync = (int (*)())__dberr;
 }
+#pragma clang diagnostic pop

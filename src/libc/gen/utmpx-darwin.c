@@ -55,24 +55,13 @@
 #include <ttyent.h>
 #endif /* UTMP_COMPAT */
 
-#if ASL_API_VERSION < 20131108
-#include <asl_private.h>
-#include <asl_store.h>
-#endif
-
 __private_extern__ const char __utx_magic__[UTMPX_MAGIC] = __UTX_MAGIC__;
 
 extern const char _utmpx_vers[];	/* in utmpx.c */
 
-#if ASL_API_VERSION < 20131108
-static void msg2lastlogx(const aslmsg, struct lastlogx *);
-static void msg2utmpx(const aslmsg, struct utmpx *);
-static void utmpx2msg(const struct utmpx *, aslmsg);
-#else
 static void msg2lastlogx(asl_object_t, struct lastlogx *);
 static void msg2utmpx(asl_object_t, struct utmpx *);
 static void utmpx2msg(const struct utmpx *, asl_object_t);
-#endif
 
 static size_t pw_size = 0;
 
@@ -84,6 +73,9 @@ static size_t pw_size = 0;
 
 /* indirection causes argument to be substituted before stringification */
 #define STR(x)		__STRING(x)
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 #ifdef UTMP_COMPAT
 static char *
@@ -149,26 +141,11 @@ getlastlogx(uid_t uid, struct lastlogx *lx)
 struct lastlogx *
 getlastlogxbyname(const char *user, struct lastlogx *lx)
 {
-#if ASL_API_VERSION < 20131108
-	aslmsg m;
-	asl_msg_t *qm[1];
-	asl_search_result_t query, *res;
-	uint32_t status;
-	asl_store_t *store = NULL;
-	uint64_t cmax;
-#else
 	asl_object_t m, query, res;
 	size_t cmax;
-#endif
 	struct lastlogx *result = NULL;
 
 	if (!user || !*user) return NULL;
-
-#if ASL_API_VERSION < 20131108
-	status = asl_store_open_read(NULL, &store);
-	if (status != 0) return NULL;
-	if (store == NULL) return NULL;
-#endif
 
 	/*
 	 * We search for the last LASTLOG_FACILITY entry that has the
@@ -177,20 +154,12 @@ getlastlogxbyname(const char *user, struct lastlogx *lx)
 	m = asl_new(ASL_TYPE_QUERY);
 	if (m == NULL)
 	{
-#if ASL_API_VERSION < 20131108
-		asl_store_close(store);
-#endif
 		return NULL;
 	}
 
 	asl_set_query(m, FACILITY, LASTLOG_FACILITY, ASL_QUERY_OP_EQUAL);
 	asl_set_query(m, "ut_user", user, ASL_QUERY_OP_EQUAL);
 
-#if ASL_API_VERSION < 20131108
-	qm[0] = (asl_msg_t *)m;
-	query.count = 1;
-	query.msg = qm;
-#else
 	query = asl_new(ASL_TYPE_LIST);
 	if (query == NULL)
 	{
@@ -200,35 +169,20 @@ getlastlogxbyname(const char *user, struct lastlogx *lx)
 
 	asl_append(query, m);
 	asl_release(m);
-#endif
 
 	res = NULL;
 	cmax = 0;
 
-#if ASL_API_VERSION < 20131108
-	asl_store_match_timeout(store, &query, &res, &cmax, -1, 1, -1, ASL_QUERY_TIMEOUT);
-	asl_store_close(store);
-	asl_free(m);
-#else
 	res = asl_match(NULL, query, &cmax, -1, 1, ASL_QUERY_TIMEOUT, ASL_MATCH_DIRECTION_REVERSE);
 	asl_release(query);
-#endif
 
 	if (res == NULL) return NULL;
 
-#if ASL_API_VERSION < 20131108
-	m = aslresponse_next(res);
-#else
 	m = asl_next(res);
-#endif
 
 	if (m == NULL)
 	{
-#if ASL_API_VERSION < 20131108
-		aslresponse_free(res);
-#else
 		asl_release(res);
-#endif
 		return NULL;
 	}
 
@@ -236,39 +190,28 @@ getlastlogxbyname(const char *user, struct lastlogx *lx)
 	{
 		if ((lx = (struct lastlogx *)malloc(sizeof(*lx))) == NULL)
 		{
-#if ASL_API_VERSION < 20131108
-			aslresponse_free(res);
-#else
 			asl_release(res);
-#endif
 			return NULL;
 		}
 	}
 
 	msg2lastlogx(m, lx);
-#if ASL_API_VERSION < 20131108
-	aslresponse_free(res);
-#else
 	asl_release(res);
-#endif
 	result = lx;
 
 	return result;
 }
 
-#define IGET(e,p)	if ((cp = asl_get(m, __STRING(ut_##e))) != NULL) \
-				u->p##_##e = strtol(cp, NULL, 10);
-#define LGET(e,p)	IGET(e,p)
-#define SGET(e,p)	if ((cp = asl_get(m, __STRING(ut_##e))) != NULL) \
-				strncpy(u->p##_##e, cp, sizeof(u->p##_##e))
+#define IGET(e,p)	do { if ((cp = asl_get(m, __STRING(ut_##e))) != NULL) \
+				u->p##_##e = (int)strtol(cp, NULL, 10); } while (0)
+#define LGET(e,p)	do { if ((cp = asl_get(m, __STRING(ut_##e))) != NULL) \
+				u->p##_##e = strtol(cp, NULL, 10); } while (0)
+#define SGET(e,p)	do { if ((cp = asl_get(m, __STRING(ut_##e))) != NULL) \
+				strncpy(u->p##_##e, cp, sizeof(u->p##_##e)); } while (0)
 
 /* fill in a struct lastlogx from an ASL message */
 static void
-#if ASL_API_VERSION < 20131108
-msg2lastlogx(const aslmsg m, struct lastlogx *u)
-#else
 msg2lastlogx(asl_object_t m, struct lastlogx *u)
-#endif
 {
 	const char *cp;
 
@@ -281,11 +224,7 @@ msg2lastlogx(asl_object_t m, struct lastlogx *u)
 
 /* fill in a struct utmpx from an ASL message */
 static void
-#if ASL_API_VERSION < 20131108
-msg2utmpx(aslmsg m, struct utmpx *u)
-#else
 msg2utmpx(asl_object_t m, struct utmpx *u)
-#endif
 {
 	const char *cp;
 
@@ -302,11 +241,7 @@ msg2utmpx(asl_object_t m, struct utmpx *u)
 
 /* fill in an ASL message from a struct utmpx */
 static void
-#if ASL_API_VERSION < 20131108
-utmpx2msg(const struct utmpx *u, aslmsg m)
-#else
 utmpx2msg(const struct utmpx *u, asl_object_t m)
-#endif
 {
 	char buf[_UTX_HOSTSIZE + 1];	/* the largest string in struct utmpx */
 	const char *cp;
@@ -359,23 +294,14 @@ static const char *utmpx_types[] = {
 __private_extern__ void
 _utmpx_asl(const struct utmpx *u)
 {
-#if ASL_API_VERSION < 20131108
-	aslclient asl = asl_open(NULL, NULL, ASL_OPT_NO_REMOTE); /* could be NULL, but still works */
-	aslmsg m;
-#else
 	asl_object_t asl = asl_open(NULL, NULL, ASL_OPT_NO_REMOTE);
 	asl_object_t m;
-#endif
 	char msg[64];
 
 	if (u->ut_type == EMPTY)
 		return;
 	if ((m = asl_new(ASL_TYPE_MSG)) == NULL) {
-#if ASL_API_VERSION < 20131108
-		asl_close(asl);
-#else
 		asl_release(asl);
-#endif
 		return;
 	}
 	/*
@@ -416,13 +342,8 @@ _utmpx_asl(const struct utmpx *u)
 	}
 	asl_set(m, ASL_KEY_MSG, msg);
 	asl_send(asl, m);
-#if ASL_API_VERSION < 20131108
-	asl_free(m);
-	asl_close(asl);
-#else
 	asl_release(m);
 	asl_release(asl);
-#endif
 }
 
 #define UT_USER	(1 << 0)
@@ -506,7 +427,7 @@ _utmpx_working_copy(const struct utmpx *utx, struct utmpx *temp, int onlyid)
 	/* UT_ID is set only if we already know we need to add it */
 	if ((which & UT_ID)) {
 		char *cp;
-		int i = sizeof(temp->ut_line);
+		ssize_t i = sizeof(temp->ut_line);
 
 		for(cp = temp->ut_line; i > 0 && *cp; i--)
 			cp++;
@@ -560,11 +481,7 @@ static struct {
 static struct {
 	uint64_t start;
 	int dir;
-#if ASL_API_VERSION < 20131108
-	asl_search_result_t *res;
-#else
 	asl_object_t res;
-#endif
 	char *str;
 	uint32_t len;
 	char inited;
@@ -657,11 +574,7 @@ end_asl(void)
 {
 	if (wtmp_asl.res != NULL)
 	{
-#if ASL_API_VERSION < 20131108
-		aslresponse_free(wtmp_asl.res);
-#else
 		asl_release(wtmp_asl.res);
-#endif
 		wtmp_asl.res = NULL;
 	}
 
@@ -685,28 +598,16 @@ end_file(void)
 static struct utmpx *
 get_asl(void)
 {
-#if ASL_API_VERSION < 20131108
-	aslmsg m;
-#else
 	asl_object_t m;
-#endif
 	static struct utmpx utx;
 
 	if (wtmp_asl.inited == 0) set_asl(-1);
 	if (wtmp_asl.done != 0) return NULL;
 
-#if ASL_API_VERSION < 20131108
-	m = aslresponse_next(wtmp_asl.res);
-#else
 	m = asl_next(wtmp_asl.res);
-#endif
 	if (m == NULL)
 	{
-#if ASL_API_VERSION < 20131108
-		aslresponse_free(wtmp_asl.res);
-#else
 		asl_release(wtmp_asl.res);
-#endif
 		wtmp_asl.res = NULL;
 		wtmp_asl.done = 1;
 		return NULL;
@@ -811,17 +712,8 @@ _set_dir(int forward)
 static void
 set_asl(int forward)
 {
-#if ASL_API_VERSION < 20131108
-	aslmsg q0, q1;
-	asl_msg_t *m[2];
-	asl_search_result_t query;
-	asl_store_t *store = NULL;
-	uint32_t status;
-	uint64_t cmax;
-#else
 	asl_object_t q0, q1, query;
 	size_t cmax;
-#endif
 
 	_set_dir(forward);
 
@@ -830,19 +722,9 @@ set_asl(int forward)
 
 	if (wtmp_asl.res != NULL)
 	{
-#if ASL_API_VERSION < 20131108
-		aslresponse_free(wtmp_asl.res);
-#else
 		asl_release(wtmp_asl.res);
-#endif
 		wtmp_asl.res = NULL;
 	}
-
-#if ASL_API_VERSION < 20131108
-	status = asl_store_open_read(NULL, &store);
-	if (status != 0) return;
-	if (store == NULL) return;
-#endif
 
 	/*
 	 * Create a search query that matches either UTMPX_FACILITY
@@ -856,22 +738,12 @@ set_asl(int forward)
 	q1 = asl_new(ASL_TYPE_QUERY);
 	if (q1 == NULL)
 	{
-#if ASL_API_VERSION < 20131108
-		asl_free(q0);
-#else
 		asl_release(q0);
-#endif
 		return;
 	}
 
 	asl_set_query(q1, FACILITY, LASTLOG_FACILITY, ASL_QUERY_OP_EQUAL);
 
-#if ASL_API_VERSION < 20131108
-	m[0] = (asl_msg_t *)q0;
-	m[1] = (asl_msg_t *)q1;
-	query.count = 2;
-	query.msg = m;
-#else
 	query = asl_new(ASL_TYPE_LIST);
 	if (query == NULL)
 	{
@@ -885,19 +757,11 @@ set_asl(int forward)
 
 	asl_release(q0);
 	asl_release(q1);
-#endif
 
 	cmax = 0;
 
-#if ASL_API_VERSION < 20131108
-	asl_store_match_timeout(store, &query, &(wtmp_asl.res), &cmax, wtmp_asl.start, 0, wtmp_asl.dir, ASL_QUERY_TIMEOUT);
-	asl_store_close(store);
-	asl_free(q0);
-	asl_free(q1);
-#else
 	wtmp_asl.res = asl_match(NULL, query, &cmax, wtmp_asl.start, 0, ASL_QUERY_TIMEOUT, wtmp_asl.dir);
 	asl_release(query);
-#endif
 	
 	if (wtmp_asl.res == NULL) return;
 
@@ -1325,3 +1189,5 @@ _closeutx(utmpx_t u)
 	free(U);
 	return 0;
 }
+
+#pragma clang diagnostic pop

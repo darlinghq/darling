@@ -114,7 +114,7 @@ _GB2312_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 	}
 
 	ncopy = MIN(MIN(n, GB2312_MB_CUR_MAX), sizeof(gs->bytes) - gs->count);
-	strncpy(gs->bytes + gs->count, s, ncopy);
+	strncpy((char*)(gs->bytes + gs->count), s, ncopy);
 	ocount = gs->count;
 	gs->count += ncopy;
 	s = (char *)gs->bytes;

@@ -24,6 +24,9 @@
 #ifndef _XLOCALE___WCTYPE_H_
 #define _XLOCALE___WCTYPE_H_
 
+#include <__wctype.h>
+#include <xlocale/_ctype.h>
+
 #if !defined(_DONT_USE_CTYPE_INLINE_) && \
     (defined(_USE_CTYPE_INLINE_) || defined(__GNUC__) || defined(__cplusplus))
 

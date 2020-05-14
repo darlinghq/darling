@@ -45,6 +45,7 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/realpath.c,v 1.20 2003/05/28 08:23:01 fj
 #include <sys/vnode.h>
 #include "un-namespace.h"
 
+
 struct attrs {
 	u_int32_t len;
 	attrreference_t name;
@@ -65,7 +66,7 @@ __private_extern__ const struct attrlist _rp_alist = {
 	0,
 };
 #else /* BUILDING_VARIANT */
-__private_extern__ const struct attrlist _rp_alist;
+extern const struct attrlist _rp_alist;
 #endif /* BUILDING_VARIANT */
 
 extern char * __private_getcwd(char *, size_t, int);
@@ -82,10 +83,11 @@ realpath(const char *path, char inresolved[PATH_MAX])
 {
 	struct attrs attrs;
 	struct stat sb;
-	char *p, *q, *s;
-	size_t left_len, resolved_len, save_resolved_len;
+	char *p, *q;
+	size_t left_len, resolved_len, save_resolved_len, next_token_len;
 	unsigned symlinks;
-	int serrno, slen, useattrs, islink;
+	int serrno, useattrs, islink;
+	ssize_t slen;
 	char left[PATH_MAX], next_token[PATH_MAX], symlink[PATH_MAX];
 	dev_t dev, lastdev;
 	struct statfs sfs;
@@ -104,6 +106,7 @@ realpath(const char *path, char inresolved[PATH_MAX])
 		return (NULL);
 	}
 #endif /* __DARWIN_UNIX03 */
+
 	/*
 	 * Extension to the standard; if inresolved == NULL, allocate memory
 	 */
@@ -171,16 +174,18 @@ error_return:
 		 * and its length.
 		 */
 		p = strchr(left, '/');
-		s = p ? p : left + left_len;
-		if (s - left >= sizeof(next_token)) {
-			errno = ENAMETOOLONG;
-			goto error_return;
+		next_token_len = p ? p - left : left_len;
+		memcpy(next_token, left, next_token_len);
+		next_token[next_token_len] = '\0';
+
+		if (p != NULL) {
+			left_len -= next_token_len + 1;
+			memmove(left, p + 1, left_len + 1);
+		} else {
+			left[0] = '\0';
+			left_len = 0;
 		}
-		memcpy(next_token, left, s - left);
-		next_token[s - left] = '\0';
-		left_len -= s - left;
-		if (p != NULL)
-			memmove(left, s + 1, left_len + 1);
+
 		if (resolved[resolved_len - 1] != '/') {
 			if (resolved_len + 1 >= PATH_MAX) {
 				errno = ENAMETOOLONG;
@@ -189,11 +194,12 @@ error_return:
 			resolved[resolved_len++] = '/';
 			resolved[resolved_len] = '\0';
 		}
-		if (next_token[0] == '\0')
+		if (next_token[0] == '\0') {
+			/* Handle consequential slashes. */
 			continue;
-		else if (strcmp(next_token, ".") == 0)
+		} else if (strcmp(next_token, ".") == 0) {
 			continue;
-		else if (strcmp(next_token, "..") == 0) {
+		} else if (strcmp(next_token, "..") == 0) {
 			/*
 			 * Strip the last path component except when we have
 			 * single "/"
@@ -296,8 +302,14 @@ error_return:
 				errno = ELOOP;
 				goto error_return;
 			}
-			slen = readlink(resolved, symlink, sizeof(symlink) - 1);
-			if (slen < 0) {
+			slen = readlink(resolved, symlink, sizeof(symlink));
+			if (slen <= 0 || slen >= sizeof(symlink)) {
+				if (slen < 0)
+					; /* keep errno from readlink(2) call */
+				else if (slen == 0)
+					errno = ENOENT;
+				else
+					errno = ENAMETOOLONG;
 				goto error_return;
 			}
 			symlink[slen] = '\0';
@@ -305,9 +317,8 @@ error_return:
 				resolved[1] = 0;
 				resolved_len = 1;
 				lastdev = rootdev;
-			} else if (resolved_len > 1) {
+			} else {
 				/* Strip the last path component. */
-				resolved[resolved_len - 1] = '\0';
 				q = strrchr(resolved, '/') + 1;
 				*q = '\0';
 				resolved_len = q - resolved;
@@ -328,7 +339,7 @@ error_return:
 					symlink[slen + 1] = 0;
 				}
 				left_len = strlcat(symlink, left, sizeof(symlink));
-				if (left_len >= sizeof(left)) {
+				if (left_len >= sizeof(symlink)) {
 					errno = ENAMETOOLONG;
 					goto error_return;
 				}

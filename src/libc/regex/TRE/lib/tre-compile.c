@@ -31,6 +31,9 @@
 #include "tre-last-matched.h"
 #include "xmalloc.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunreachable-code"
+
 /*
   The bit_ffs() macro in bitstring.h is flawed.  Replace it with a working one.
 */
@@ -3475,5 +3478,5 @@ tre_config(int query, void *result)
 }
 #endif /* !__LIBC__ */
 
-
+#pragma clang diagnostic push
 /* EOF */

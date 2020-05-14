@@ -89,7 +89,7 @@ __fgetwc(FILE *fp, locale_t loc)
 		return (wc);
 	}
 	do {
-		nconv = __mbrtowc(&wc, fp->_p, fp->_r, &fp->_mbstate, loc);
+		nconv = __mbrtowc(&wc, (char*)fp->_p, fp->_r, &fp->_mbstate, loc);
 		if (nconv == (size_t)-1)
 			break;
 		else if (nconv == (size_t)-2)

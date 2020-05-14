@@ -36,12 +36,12 @@ cvt_statfs_to_statvfs(struct statfs *from, struct statvfs *to)
 {
 	to->f_bsize	= from->f_iosize;
 	to->f_frsize	= from->f_bsize;
-	to->f_blocks	= from->f_blocks;
-	to->f_bfree	= from->f_bfree;
-	to->f_bavail	= from->f_bavail;
-	to->f_files	= from->f_files;
-	to->f_ffree	= from->f_ffree;
-	to->f_favail	= from->f_ffree;
+	to->f_blocks	= (fsblkcnt_t)from->f_blocks;
+	to->f_bfree	= (fsblkcnt_t)from->f_bfree;
+	to->f_bavail	= (fsblkcnt_t)from->f_bavail;
+	to->f_files	= (fsfilcnt_t)from->f_files;
+	to->f_ffree	= (fsfilcnt_t)from->f_ffree;
+	to->f_favail	= (fsfilcnt_t)from->f_ffree;
 	to->f_fsid	= from->f_fsid.val[0];	/* XXX bad if non-root */
 	to->f_namemax	= NAME_MAX;		/* XXX should be per FS */
 

@@ -21,9 +21,17 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#include <sys/time.h>
+#include <TargetConditionals.h>
+#if !TARGET_OS_DRIVERKIT
 #include <notify.h>
 #include <notify_keys.h>
+#else
+#define notify_post(...)
+#endif
+#include <sys/time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "_simple.h"
 
 #ifndef kNotifyClockSet
 #define kNotifyClockSet "com.apple.system.clock_set"
@@ -39,6 +47,13 @@ settimeofday(const struct timeval *tp, const struct timezone *tzp)
 {
 	int ret = __settimeofday(tp, tzp);
 	if (ret == 0) notify_post(kNotifyClockSet);
+
+	if (tp) {
+		char *msg = NULL;
+		asprintf(&msg, "settimeofday({%#lx,%#x}) == %d", tp->tv_sec, tp->tv_usec, ret);
+		_simple_asl_log(ASL_LEVEL_NOTICE, "com.apple.settimeofday", msg);
+		free(msg);
+	}
 
 	return ret;
 }

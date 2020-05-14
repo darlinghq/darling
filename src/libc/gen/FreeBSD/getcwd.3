@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)getcwd.3	8.2 (Berkeley) 12/11/93
-.\" $FreeBSD: src/lib/libc/gen/getcwd.3,v 1.17 2007/01/09 00:27:53 imp Exp $
+.\" $FreeBSD$
 .\"
-.Dd November 24, 1997
+.Dd April 17, 2010
 .Dt GETCWD 3
 .Os
 .Sh NAME
@@ -60,7 +60,9 @@ If
 .Fa buf
 is
 .Dv NULL ,
-space is allocated as necessary to store the pathname.
+space is allocated as necessary to store the pathname and
+.Fa size
+is ignored.
 This space may later be
 .Xr free 3 Ns 'd .
 .Pp
@@ -108,8 +110,6 @@ The
 function
 will fail if:
 .Bl -tag -width Er
-.It Bq Er EACCES
-Read or search permission was denied for a component of the pathname.
 .It Bq Er EINVAL
 The
 .Fa size
@@ -123,6 +123,16 @@ The
 .Fa size
 argument is greater than zero but smaller than the length of the pathname
 plus 1.
+.El
+.Pp
+The
+.Fn getcwd
+function
+may fail if:
+.Bl -tag -width Er
+.It Bq Er EACCES
+Read or search permission was denied for a component of the pathname.
+This is only checked in limited cases, depending on implementation details.
 .El
 .Sh SEE ALSO
 .Xr chdir 2 ,

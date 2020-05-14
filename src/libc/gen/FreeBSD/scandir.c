@@ -31,7 +31,7 @@
 static char sccsid[] = "@(#)scandir.c	8.3 (Berkeley) 1/2/94";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/gen/scandir.c,v 1.9 2008/03/16 19:08:53 das Exp $");
+__FBSDID("$FreeBSD$");
 
 /*
  * Scan the directory dirname calling select to make a list of selected
@@ -47,24 +47,38 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/scandir.c,v 1.9 2008/03/16 19:08:53 das Exp
 #include "un-namespace.h"
 
 /*
- * The _GENERIC_DIRSIZ macro is the minimum record length which will hold the directory
+ * The DIRSIZ macro is the minimum record length which will hold the directory
  * entry.  This requires the amount of space in struct dirent without the
  * d_name field, plus enough space for the name and a terminating nul byte
  * (dp->d_namlen + 1), rounded up to a 4 byte boundary.
  */
+#undef DIRSIZ
+#define DIRSIZ(dp)							\
+	((sizeof(struct dirent) - sizeof(dp)->d_name) +			\
+	    (((dp)->d_namlen + 1 + 3) &~ 3))
 
 int
-scandir(dirname, namelist, select, _dcomp)
-	const char *dirname;
-	struct dirent ***namelist;
-	int (*select)(const struct dirent *);
-	int (*_dcomp)(const struct dirent **, const struct dirent **);
+#ifdef I_AM_SCANDIR_B
+scandir_b(const char *dirname, struct dirent ***namelist,
+    int (^select)(const struct dirent *),
+    int (^_dcomp)(const struct dirent **, const struct dirent **))
+#else
+scandir(const char *dirname, struct dirent ***namelist,
+    int (*select)(const struct dirent *),
+    int (*_dcomp)(const struct dirent **, const struct dirent **))
+#endif
 {
 	struct dirent *d, *p, **names = NULL;
 	size_t nitems = 0;
 	long arraysz;
 	DIR *dirp;
-	int (*dcomp)(const void *, const void *) = (void *)_dcomp; /* see <rdar://problem/10293482> */
+
+	/* see <rdar://problem/10293482> */
+#ifdef I_AM_SCANDIR_B
+	int (^dcomp)(const void *, const void *) = (void *)_dcomp;
+#else
+	int (*dcomp)(const void *, const void *) = (void *)_dcomp;
+#endif
 
 	if ((dirp = opendir(dirname)) == NULL)
 		return(-1);
@@ -75,12 +89,12 @@ scandir(dirname, namelist, select, _dcomp)
 		goto fail;
 
 	while ((d = readdir(dirp)) != NULL) {
-		if (select != NULL && !(*select)(d))
+		if (select != NULL && !select(d))
 			continue;	/* just selected names */
 		/*
 		 * Make a minimum size copy of the data
 		 */
-		p = (struct dirent *)malloc(_GENERIC_DIRSIZ(d));
+		p = (struct dirent *)malloc(DIRSIZ(d));
 		if (p == NULL)
 			goto fail;
 		p->d_fileno = d->d_fileno;
@@ -108,26 +122,32 @@ scandir(dirname, namelist, select, _dcomp)
 	}
 	closedir(dirp);
 	if (nitems && dcomp != NULL)
+#ifdef I_AM_SCANDIR_B
+		qsort_b(names, nitems, sizeof(struct dirent *), dcomp);
+#else
 		qsort(names, nitems, sizeof(struct dirent *), dcomp);
+#endif
 	*namelist = names;
-	return(nitems);
+	return (int) (nitems);
 
 fail:
 	while (nitems > 0)
 		free(names[--nitems]);
 	free(names);
 	closedir(dirp);
-	return -1;
+	return (-1);
 }
 
+#ifndef I_AM_SCANDIR_B
 /*
  * Alphabetic order comparison routine for those who want it.
+ * POSIX 2008 requires that alphasort() uses strcoll().
  */
 int
-alphasort(d1, d2)
-	const struct dirent **d1;
-	const struct dirent **d2;
+alphasort(const struct dirent **d1, const struct dirent **d2)
 {
-	return(strcmp((*(struct dirent **)d1)->d_name,
-	    (*(struct dirent **)d2)->d_name));
+
+	return (strcoll((*d1)->d_name, (*d2)->d_name));
 }
+#endif // I_AM_SCANDIR_B
+

@@ -62,6 +62,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <malloc_private.h>
 
 /* Stuff lifted from <a.out.h> and <sys/exec.h> since they are gone */
 /*
@@ -183,8 +184,8 @@ __fdnlist(fd, list)
 		fh.nfat_arch = OSSwapBigToHostInt32(fh.nfat_arch);
 
 		/* Read in the fat archs */
-		fat_archs = (struct fat_arch *)malloc(fh.nfat_arch *
-						      sizeof(struct fat_arch));
+		fat_archs = (struct fat_arch *)reallocarray(NULL, fh.nfat_arch,
+				sizeof(struct fat_arch));
 		if (fat_archs == NULL) {
 			return (-1);
 		}
@@ -216,7 +217,6 @@ __fdnlist(fd, list)
 		fap = cpusubtype_getbestarch(hbi.cpu_type, hbi.cpu_subtype,
 					     fat_archs, fh.nfat_arch);
 #else
-#warning	Use the cpusubtype functions!!!
 		fap = NULL;
 		for (i = 0; i < fh.nfat_arch; i++) {
 			if (fat_archs[i].cputype == hbi.cpu_type) {

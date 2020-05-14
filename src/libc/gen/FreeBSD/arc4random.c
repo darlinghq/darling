@@ -35,16 +35,128 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: src/lib/libc/gen/arc4random.c,v 1.25 2008/09/09 09:46:36 ache Exp $");
 
-#include "namespace.h"
 #include <sys/types.h>
 #include <sys/time.h>
-#include <stdlib.h>
+#include <sys/param.h>
+#include <sys/random.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <pthread.h>
 
+#include <TargetConditionals.h>
+#if !TARGET_OS_DRIVERKIT
+#define OS_CRASH_ENABLE_EXPERIMENTAL_LIBTRACE 1
+#endif
+#include <os/assumes.h>
+#include <os/lock.h>
+
+#include "string.h"
 #include "libc_private.h"
-#include "un-namespace.h"
+
+#if defined(__APPLE__) && !defined(VARIANT_STATIC)
+#include <corecrypto/ccrng.h>
+
+static struct ccrng_state *rng;
+
+static void
+arc4_init(void)
+{
+	int err;
+
+	if (rng != NULL) return;
+
+	rng = ccrng(&err);
+	if (rng == NULL) {
+#if OS_CRASH_ENABLE_EXPERIMENTAL_LIBTRACE
+		os_crash("arc4random: unable to get ccrng() handle (%d)", err);
+#else
+		os_crash("arc4random: unable to get ccrng() handle");
+#endif
+	}
+}
+
+void
+arc4random_addrandom(__unused u_char *dat, __unused int datlen)
+{
+	/* NOP - deprecated */
+}
+
+uint32_t
+arc4random(void)
+{
+	uint32_t rand;
+
+	arc4random_buf(&rand, sizeof(rand));
+
+	return rand;
+}
+
+void
+arc4random_buf(void *buf, size_t buf_size)
+{
+	arc4_init();
+	ccrng_generate(rng, buf_size, buf);
+}
+
+void
+arc4random_stir(void)
+{
+	/* NOP */
+}
+
+uint32_t
+arc4random_uniform(uint32_t upper_bound)
+{
+	uint64_t rand;
+
+	arc4_init();
+	ccrng_uniform(rng, upper_bound, &rand);
+
+	return (uint32_t)rand;
+}
+
+__private_extern__ void
+_arc4_fork_child(void)
+{
+	/* NOP */
+}
+
+#else /* __APPLE__ && !VARIANT_STATIC */
+
+#define	RANDOMDEV	"/dev/random"
+
+static void
+_my_getentropy(uint8_t *buf, size_t size){
+    int fd;
+	ssize_t ret;
+	if (getentropy(buf, size) == 0) {
+		return;
+	}
+
+	// The above should never fail, but we'll try /dev/random anyway
+	fd = open(RANDOMDEV, O_RDONLY, 0);
+	if (fd == -1) {
+#if !defined(VARIANT_STATIC)
+		os_crash("arc4random: unable to open /dev/random");
+#else
+		abort();
+#endif
+	}
+shortread:
+	ret = read(fd, buf, size);
+	if (ret == -1) {
+#if !defined(VARIANT_STATIC)
+		os_crash("arc4random: unable to read from /dev/random");
+#else
+		abort();
+#endif
+	} else if ((size_t)ret < size) {
+		size -= (size_t)ret;
+		buf += ret;
+		goto shortread;
+	}
+	(void)close(fd);
+}
 
 struct arc4_stream {
 	u_int8_t i;
@@ -52,23 +164,7 @@ struct arc4_stream {
 	u_int8_t s[256];
 };
 
-static int lock = 0;
-extern void spin_lock(int*);
-extern void spin_unlock(int*);
-
-#define	RANDOMDEV	"/dev/random"
 #define KEYSIZE		128
-#define	THREAD_LOCK()						\
-	do {							\
-		if (__isthreaded)				\
-			spin_lock(&lock);			\
-	} while (0)
-
-#define	THREAD_UNLOCK()						\
-	do {							\
-		if (__isthreaded)				\
-			spin_unlock(&lock);			\
-	} while (0)
 
 static struct arc4_stream rs = {
 	.i = 0,
@@ -92,9 +188,7 @@ static struct arc4_stream rs = {
 		240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255
 	}
 };
-static int rs_initialized;
 static int rs_stired;
-static int arc4_count;
 
 static inline u_int8_t arc4_getbyte(void);
 static void arc4_stir(void);
@@ -126,20 +220,11 @@ arc4_addrandom(u_char *dat, int datlen)
 static void
 arc4_fetch(void)
 {
-	int done, fd;
-	fd = _open(RANDOMDEV, O_RDONLY, 0);
-	done = 0;
-	if (fd >= 0) {
-		if (_read(fd, &rdat, KEYSIZE) == KEYSIZE)
-			done = 1;
-		(void)_close(fd);
-	} 
-	if (!done) {
-		(void)gettimeofday(&rdat.tv, NULL);
-		rdat.pid = getpid();
-		/* We'll just take whatever was on the stack too... */
-	}
+	_my_getentropy((uint8_t*)&rdat, KEYSIZE);
 }
+
+static os_unfair_lock arc4_lock = OS_UNFAIR_LOCK_INIT;
+static int arc4_count;
 
 static void
 arc4_stir(void)
@@ -203,6 +288,7 @@ arc4_getword(void)
 __private_extern__ void
 _arc4_fork_child(void)
 {
+	arc4_lock = OS_UNFAIR_LOCK_INIT;
 	rs_stired = 0;
 	rs_data_available = 0;
 }
@@ -218,20 +304,12 @@ arc4_check_stir(void)
 }
 
 void
-arc4random_stir(void)
-{
-	THREAD_LOCK();
-	arc4_stir();
-	THREAD_UNLOCK();
-}
-
-void
 arc4random_addrandom(u_char *dat, int datlen)
 {
-	THREAD_LOCK();
+	os_unfair_lock_lock(&arc4_lock);
 	arc4_check_stir();
 	arc4_addrandom(dat, datlen);
-	THREAD_UNLOCK();
+	os_unfair_lock_unlock(&arc4_lock);
 }
 
 u_int32_t
@@ -239,13 +317,13 @@ arc4random(void)
 {
 	u_int32_t rnd;
 
-	THREAD_LOCK();
+	os_unfair_lock_lock(&arc4_lock);
 
 	int did_stir = arc4_check_stir();
 	rnd = arc4_getword();
 	arc4_count -= 4;
 
-	THREAD_UNLOCK();
+	os_unfair_lock_unlock(&arc4_lock);
 	if (did_stir)
 	{
 		/* stirring used up our data pool, we need to read in new data outside of the lock */
@@ -263,7 +341,7 @@ arc4random_buf(void *_buf, size_t n)
 	u_char *buf = (u_char *)_buf;
 	int did_stir = 0;
 
-	THREAD_LOCK();
+	os_unfair_lock_lock(&arc4_lock);
 
 	while (n--) {
 		if (arc4_check_stir())
@@ -273,8 +351,8 @@ arc4random_buf(void *_buf, size_t n)
 		buf[n] = arc4_getbyte();
 		arc4_count--;
 	}
-	
-	THREAD_UNLOCK();
+
+	os_unfair_lock_unlock(&arc4_lock);
 	if (did_stir)
 	{
 		/* stirring used up our data pool, we need to read in new data outside of the lock */
@@ -284,68 +362,53 @@ arc4random_buf(void *_buf, size_t n)
 	}
 }
 
+void
+arc4random_stir(void)
+{
+	os_unfair_lock_lock(&arc4_lock);
+	arc4_stir();
+	os_unfair_lock_unlock(&arc4_lock);
+}
+
 /*
  * Calculate a uniformly distributed random number less than upper_bound
  * avoiding "modulo bias".
  *
- * Uniformity is achieved by generating new random numbers until the one
- * returned is outside the range [0, 2**32 % upper_bound).  This
- * guarantees the selected random number will be inside
- * [2**32 % upper_bound, 2**32) which maps back to [0, upper_bound)
- * after reduction modulo upper_bound.
+ * Uniformity is achieved by trying successive ranges of bits from the random
+ * value, each large enough to hold the desired upper bound, until a range
+ * holding a value less than the bound is found.
  */
-u_int32_t
-arc4random_uniform(u_int32_t upper_bound)
+uint32_t
+arc4random_uniform(uint32_t upper_bound)
 {
-	u_int32_t r, min;
-
 	if (upper_bound < 2)
-		return (0);
+		return 0;
 
-#if (ULONG_MAX > 0xffffffffUL)
-	min = 0x100000000UL % upper_bound;
-#else
-	/* Calculate (2**32 % upper_bound) avoiding 64-bit math */
-	if (upper_bound > 0x80000000)
-		min = 1 + ~upper_bound;		/* 2**32 - upper_bound */
-	else {
-		/* (2**32 - (x * 2)) % x == 2**32 % x when x <= 2**31 */
-		min = ((0xffffffff - (upper_bound * 2)) + 1) % upper_bound;
-	}
-#endif
+	// find smallest 2**n -1 >= upper_bound
+	int zeros = __builtin_clz(upper_bound);
+	int bits = CHAR_BIT * sizeof(uint32_t) - zeros;
+	uint32_t mask = 0xFFFFFFFFU >> zeros;
 
-	/*
-	 * This could theoretically loop forever but each retry has
-	 * p > 0.5 (worst case, usually far better) of selecting a
-	 * number inside the range we need, so it should rarely need
-	 * to re-roll.
-	 */
-	for (;;) {
-		r = arc4random();
-		if (r >= min)
-			break;
-	}
+	do {
+		uint32_t value = arc4random();
 
-	return (r % upper_bound);
+		// If low 2**n-1 bits satisfy the requested condition, return result
+		uint32_t result = value & mask;
+		if (result < upper_bound) {
+			return result;
+		}
+
+		// otherwise consume remaining bits of randomness looking for a satisfactory result.
+		int bits_left = zeros;
+		while (bits_left >= bits) {
+			value >>= bits;
+			result = value & mask;
+			if (result < upper_bound) {
+				return result;
+			}
+			bits_left -= bits;
+		}
+	} while (1);
 }
 
-#if 0
-/*-------- Test code for i386 --------*/
-#include <stdio.h>
-#include <machine/pctr.h>
-int
-main(int argc, char **argv)
-{
-	const int iter = 1000000;
-	int     i;
-	pctrval v;
-
-	v = rdtsc();
-	for (i = 0; i < iter; i++)
-		arc4random();
-	v = rdtsc() - v;
-	v /= iter;
-
-	printf("%qd cycles\n", v);
-}
-#endif
+#endif /* __APPLE__ */

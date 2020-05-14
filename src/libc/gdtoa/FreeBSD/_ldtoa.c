@@ -46,7 +46,7 @@ char *
 __ldtoa(long double *ld, int mode, int ndigits, int *decpt, int *sign,
     char **rve)
 {
-#if defined(__arm__) 
+#if defined(__arm__) || defined(__arm64__)
 	/* On arm, double == long double, so short circuit this */
 	char * ret = __dtoa((double)*ld, mode, ndigits, decpt, sign, rve);
 	if (*decpt == 9999)

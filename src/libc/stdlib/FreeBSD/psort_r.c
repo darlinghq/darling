@@ -42,6 +42,7 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/qsort.c,v 1.15 2008/01/14 09:21:34 das E
 #include <libkern/OSAtomic.h>
 #include <sys/mman.h>
 #include <errno.h>
+#include <os/lock.h>
 #define __APPLE_API_PRIVATE
 #include <machine/cpu_capabilities.h>
 
@@ -95,7 +96,7 @@ struct shared {
     size_t turnoff;
     dispatch_queue_t queue;
     dispatch_group_t group;
-    OSSpinLock sharedlock;
+    os_unfair_lock sharedlock;
 };
 
 static union args *
@@ -103,7 +104,7 @@ getargs(struct shared *shared)
 {
     union args *args;
 
-    OSSpinLockLock(&shared->sharedlock);
+    os_unfair_lock_lock(&shared->sharedlock);
     if(!shared->freelist) {
 	struct page *page;
 	union args *prev;
@@ -121,17 +122,17 @@ getargs(struct shared *shared)
     }
     args = shared->freelist;
     shared->freelist = args->next;
-    OSSpinLockUnlock(&shared->sharedlock);
+    os_unfair_lock_unlock(&shared->sharedlock);
     return args;
 }
 
 static void
 returnargs(struct shared *shared, union args *args)
 {
-    OSSpinLockLock(&shared->sharedlock);
+    os_unfair_lock_lock(&shared->sharedlock);
     args->next = shared->freelist;
     shared->freelist = args;
-    OSSpinLockUnlock(&shared->sharedlock);
+    os_unfair_lock_unlock(&shared->sharedlock);
 }
 
 /*
@@ -374,7 +375,7 @@ psort(void *a, size_t n, size_t es, cmp_t *cmp)
 		union args *args;
 
 		bzero(&shared, sizeof(shared));
-		shared.sharedlock = OS_SPINLOCK_INIT;
+		shared.sharedlock = OS_UNFAIR_LOCK_INIT;
 		if ((args = getargs(&shared)) != NULL) {
 			struct page *p, *pp;
 #ifdef I_AM_PSORT_R

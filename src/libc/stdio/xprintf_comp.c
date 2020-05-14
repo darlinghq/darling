@@ -30,6 +30,9 @@
 #include "xprintf_domain.h"
 #include "xprintf_private.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpointer-bool-conversion"
+
 void
 free_printf_comp(printf_comp_t pc)
 {
@@ -84,3 +87,5 @@ new_printf_comp(printf_domain_t restrict domain, locale_t loc, const char * rest
     }
     return pc;
 }
+#pragma clang diagnostic pop
+

@@ -56,11 +56,12 @@
 #define	assert(e)	((void)0)
 #else
 
+#ifndef UNIFDEF_DRIVERKIT
 #ifndef __GNUC__
 
 __BEGIN_DECLS
 #ifndef __cplusplus
-void abort(void) __dead2;
+void abort(void) __dead2 __cold;
 #endif /* !__cplusplus */
 int  printf(const char * __restrict, ...);
 __END_DECLS
@@ -68,20 +69,20 @@ __END_DECLS
 #define assert(e)  \
     ((void) ((e) ? ((void)0) : __assert (#e, __FILE__, __LINE__)))
 #define __assert(e, file, line) \
-    ((void)printf ("%s:%u: failed assertion `%s'\n", file, line, e), abort())
+    ((void)printf ("%s:%d: failed assertion `%s'\n", file, line, e), abort())
 
 #else /* __GNUC__ */
 
 __BEGIN_DECLS
-void __assert_rtn(const char *, const char *, int, const char *) __dead2;
+void __assert_rtn(const char *, const char *, int, const char *) __dead2 __cold __disable_tail_calls;
 #if defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) && ((__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__-0) < 1070)
-void __eprintf(const char *, const char *, unsigned, const char *) __dead2;
+void __eprintf(const char *, const char *, unsigned, const char *) __dead2 __cold;
 #endif
 __END_DECLS
 
 #if defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) && ((__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__-0) < 1070)
 #define __assert(e, file, line) \
-    __eprintf ("%s:%u: failed assertion `%s'\n", file, line, e)
+    __eprintf ("%s:%d: failed assertion `%s'\n", file, line, e)
 #else
 /* 8462256: modified __assert_rtn() replaces deprecated __eprintf() */
 #define __assert(e, file, line) \
@@ -97,6 +98,13 @@ __END_DECLS
 #endif /* __DARWIN_UNIX03 */
 
 #endif /* __GNUC__ */
+#else /* UNIFDEF_DRIVERKIT */
+__BEGIN_DECLS
+void __assert_rtn(const char *, const char *, int, const char *) __dead2 __cold __disable_tail_calls;
+__END_DECLS
+#define	assert(e) \
+    (__builtin_expect(!(e), 0) ? __assert_rtn(__func__, __FILE__, __LINE__, #e) : (void)0)
+#endif /* UNIFDEF_DRIVERKIT */
 #endif /* NDEBUG */
 
 #ifndef _ASSERT_H_

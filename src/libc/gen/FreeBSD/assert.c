@@ -36,7 +36,12 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/assert.c,v 1.8 2007/01/09 00:27:53 imp Exp 
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
+#if __has_include(<CrashReporterClient.h>)
 #include <CrashReporterClient.h>
+#else
+#define CRGetCrashLogMessage() NULL
+#define CRSetCrashLogMessage(...)
+#endif
 #include "_simple.h"
 
 void
@@ -48,12 +53,12 @@ __assert_rtn(func, file, line, failedexpr)
 	if (func == (const char *)-1L) {
 		/* 8462256: special case to replace __eprintf */
 		_simple_dprintf(STDERR_FILENO,
-		     "%s:%u: failed assertion `%s'\n", file, line, failedexpr);
+		     "%s:%d: failed assertion `%s'\n", file, line, failedexpr);
 		if (!CRGetCrashLogMessage()) {
 			_SIMPLE_STRING s = _simple_salloc();
 			if (s) {
 				_simple_sprintf(s,
-				  "%s:%u: failed assertion `%s'\n",
+				  "%s:%d: failed assertion `%s'\n",
 				  file, line, failedexpr);
 				CRSetCrashLogMessage(_simple_string(s));
 			} else

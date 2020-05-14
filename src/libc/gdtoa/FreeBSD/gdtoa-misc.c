@@ -87,7 +87,6 @@ Balloc
 #ifdef GDTOA_TSD
 	Bigint **freelist;
 
-#ifndef VARIANT_DYLD
 	if (gdtoa_tsd_key == (pthread_key_t)-1) {
 		pthread_mutex_lock(&gdtoa_tsd_lock);
 		if (gdtoa_tsd_key == (pthread_key_t)-1) {
@@ -96,7 +95,6 @@ Balloc
 			}
 		pthread_mutex_unlock(&gdtoa_tsd_lock);
 		}
-#endif
 	if ((freelist = (Bigint **)pthread_getspecific(gdtoa_tsd_key)) == NULL) {
 		freelist = (Bigint **)MALLOC((Kmax+1) * sizeof(Bigint *));
 		bzero(freelist, (Kmax+1) * sizeof(Bigint *));

@@ -92,5 +92,10 @@ __END_DECLS
 #include <string.h>
 #endif
 
+#if defined (__GNUC__) && _FORTIFY_SOURCE > 0 && !defined (__cplusplus)
+/* Security checking functions.  */
+#include <secure/_strings.h>
+#endif
+
 #endif  /* _STRINGS_H_ */
 

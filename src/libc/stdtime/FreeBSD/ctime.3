@@ -44,7 +44,8 @@
 .Nm localtime ,
 .Nm localtime_r ,
 .Nm mktime ,
-.Nm timegm
+.Nm timegm ,
+.Nm timelocal
 .Nd transform binary date and time values
 .Sh LIBRARY
 .Lb libc
@@ -73,6 +74,8 @@
 .Fn mktime "struct tm *timeptr"
 .Ft time_t
 .Fn timegm "struct tm *timeptr"
+.Ft time_t
+.Fn timelocal "struct tm *timeptr"
 .Sh DESCRIPTION
 The functions
 .Fn ctime ,
@@ -203,6 +206,16 @@ The
 function interprets the input structure
 as representing Universal Coordinated Time
 .Pq Tn UTC .
+.Pp
+The
+.Fn timelocal
+function is like
+.Fn timegm ,
+but uses the current timezone setting.
+This makes
+.Fn timelocal
+equivalent to
+.Fn mktime .
 .Pp
 The original values of the
 .Fa tm_wday

@@ -38,6 +38,7 @@
 __FBSDID("$FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.16 2008/04/17 22:17:53 jhb Exp $");
 
 #include "namespace.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +46,6 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.16 2008/04/17 22:17:53 
 #include "un-namespace.h"
 
 #include "local.h"
-
 
 /*
  * Weak symbols for externally visible functions in this file:
@@ -58,7 +58,10 @@ __weak_reference(_funlockfile, funlockfile);
 void
 _flockfile(FILE *fp)
 {
+	// <rdar://problem/21533199> - preserve errno.
+	int save_errno = errno;
 	_pthread_mutex_lock(&fp->_fl_mutex);
+	errno = save_errno;
 }
 
 /*
@@ -75,14 +78,20 @@ _ftrylockfile(FILE *fp)
 {
 	int	ret = 0;
 
+	// <rdar://problem/21533199> - preserve errno.
+	int save_errno = errno;
 	if (_pthread_mutex_trylock(&fp->_fl_mutex) != 0)
 		ret = -1;
-	
+	errno = save_errno;
+
 	return (ret);
 }
 
 void 
 _funlockfile(FILE *fp)
 {
+	// <rdar://problem/21533199> - preserve errno.
+	int save_errno = errno;
 	_pthread_mutex_unlock(&fp->_fl_mutex);
+	errno = save_errno;
 }

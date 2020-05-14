@@ -42,15 +42,15 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/setenv.c,v 1.14 2007/05/01 16:02:41 ache
 #include <fcntl.h>
 
 struct owned_ptr;
-__private_extern__ char *__findenv_locked(const char *, int *, char **);
-__private_extern__ int __setenv_locked(const char *, const char *, int, int, char ***, struct owned_ptr *);
-__private_extern__ void __unsetenv_locked(const char *, char **, struct owned_ptr *);
+extern char *__findenv_locked(const char *, int *, char **);
+extern int __setenv_locked(const char *, const char *, int, int, char ***, struct owned_ptr *);
+extern void __unsetenv_locked(const char *, char **, struct owned_ptr *);
 
-__private_extern__ void __environ_lock(void);
-__private_extern__ void __environ_unlock(void);
+extern void __environ_lock(void);
+extern void __environ_unlock(void);
 
-__private_extern__ struct owned_ptr *__env_owned;
-__private_extern__ int __init__env_owned_locked(int);
+extern struct owned_ptr *__env_owned;
+extern int __init__env_owned_locked(int);
 
 /*
  * _cthread_init_routine used to be called from crt1.o to initialize threads.

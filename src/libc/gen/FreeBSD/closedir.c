@@ -31,7 +31,7 @@
 static char sccsid[] = "@(#)closedir.c	8.1 (Berkeley) 6/10/93";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/gen/closedir.c,v 1.13 2007/12/03 14:33:50 des Exp $");
+__FBSDID("$FreeBSD$");
 
 #include "namespace.h"
 #include <sys/types.h>
@@ -47,17 +47,13 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/closedir.c,v 1.13 2007/12/03 14:33:50 des E
 /*
  * close a directory.
  */
-int
-closedir(dirp)
-	DIR *dirp;
+static int
+_fdclosedir(DIR *dirp)
 {
 	int fd;
 
 	if (__isthreaded)
 		_pthread_mutex_lock(&dirp->dd_lock);
-#if !__DARWIN_UNIX03
-	_seekdir(dirp, dirp->dd_rewind);	/* free seekdir storage */
-#endif /* __DARWIN_UNIX03 */
 	fd = dirp->dd_fd;
 	dirp->dd_fd = -1;
 	dirp->dd_loc = 0;
@@ -68,5 +64,12 @@ closedir(dirp)
 		_pthread_mutex_destroy(&dirp->dd_lock);
 	}
 	free((void *)dirp);
-	return(_close(fd));
+	return (fd);
+}
+
+int
+closedir(DIR *dirp)
+{
+
+	return (_close(_fdclosedir(dirp)));
 }

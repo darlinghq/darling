@@ -25,12 +25,38 @@
 
 #include <sys/cdefs.h>
 #include <Availability.h>
+#include <os/base.h>
+#include <os/availability.h>
+#include <stdint.h>
+#include <uuid/uuid.h>
 
 __BEGIN_DECLS
 
 int backtrace(void**,int) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
+
+API_AVAILABLE(macosx(10.14), ios(12.0), tvos(12.0), watchos(5.0))
+OS_EXPORT
+int backtrace_from_fp(void *startfp, void **array, int size);
+
 char** backtrace_symbols(void* const*,int) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
 void backtrace_symbols_fd(void* const*,int,int) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
+
+struct image_offset {
+	/*
+	 * The UUID of the image.
+	 */
+	uuid_t uuid;
+
+	/*
+	 * The offset is relative to the __TEXT section of the image.
+	 */
+	uint32_t offset;
+};
+
+API_AVAILABLE(macosx(10.14), ios(12.0), tvos(12.0), watchos(5.0))
+OS_EXPORT
+void backtrace_image_offsets(void* const* array,
+		struct image_offset *image_offsets, int size);
 
 __END_DECLS
 

@@ -70,10 +70,13 @@
 #include <unistd.h>
 #include <ctype.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomma"
+
 #ifdef unused
 static int	error(int);
 #endif // unused
-static int	gettype(char *, char **);
+static int	gettype(const char *, const char **);
 
 struct disklabel *
 getdiskbyname(const char *name)
@@ -121,7 +124,7 @@ getdiskbyname(const char *name)
 		dp->d_flags |= D_BADSECT;
 
 #define getnumdflt(field, dname, dflt) \
-        { long f; (field) = (cgetnum(buf, dname, &f) == -1) ? (dflt) : f; }
+        { long f; (field) = (typeof(field))((cgetnum(buf, dname, &f) == -1) ? (dflt) : f); }
 
 	getnumdflt(dp->d_secsize, "se", DEV_BSIZE);
 	cgetnum(buf, "nt",(long *) &dp->d_ntracks);
@@ -184,15 +187,13 @@ getdiskbyname(const char *name)
 }
 
 static int
-gettype(t, names)
-	char *t;
-	char **names;
+gettype(const char *t, const char **names)
 {
-	register char **nm;
+	const char **nm;
 
 	for (nm = names; *nm; nm++)
 		if (strcasecmp(t, *nm) == 0)
-			return (nm - names);
+			return (int)(nm - names);
 	if (isdigit(*t))
 		return (atoi(t));
 	return (0);
@@ -213,3 +214,5 @@ error(err)
 	(void)write(STDERR_FILENO, "\n", 1);
 }
 #endif // unused
+#pragma clang diagnostic pop
+

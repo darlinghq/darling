@@ -111,7 +111,7 @@ int	sigaddset(sigset_t *, int);
 //Begin-Libc
 #ifndef LIBC_ALIAS_SIGALTSTACK
 //End-Libc
-int	sigaltstack(const stack_t * __restrict, stack_t * __restrict)  __DARWIN_ALIAS(sigaltstack) ;//__WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+int	sigaltstack(const stack_t * __restrict, stack_t * __restrict)  __DARWIN_ALIAS(sigaltstack) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 //Begin-Libc
 #else /* LIBC_ALIAS_SIGALTSTACK */
 int	sigaltstack(const stack_t * __restrict, stack_t * __restrict)  LIBC_ALIAS(sigaltstack) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;

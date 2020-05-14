@@ -58,6 +58,9 @@
 #include <utmpx.h>
 #include <utmpx-darwin.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 void
 login(struct utmp *ut)
 {
@@ -70,3 +73,5 @@ login(struct utmp *ut)
 	pututxline(&ux);
 	endutxent();
 }
+
+#pragma clang diagnostic pop

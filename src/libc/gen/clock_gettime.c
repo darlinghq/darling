@@ -214,8 +214,10 @@ clock_settime(clockid_t clk_id, const struct timespec *tp)
 {
     switch(clk_id){
     case CLOCK_REALTIME: {
-        struct timeval tv;
-        TIMESPEC_TO_TIMEVAL(&tv,tp)
+        struct timeval tv = {
+            .tv_sec = (time_t)tp->tv_sec,
+            .tv_usec = (suseconds_t)(tp->tv_nsec / NSEC_PER_USEC)
+        };
         return settimeofday(&tv, NULL);
     }
     default:

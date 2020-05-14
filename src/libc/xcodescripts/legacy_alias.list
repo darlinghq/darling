@@ -1,0 +1,19 @@
+# (i386 only)
+# There used to be legacy versions of various funciotns, but we've removed them
+# and just given everyone the UNIX2003 behavior. The legacy variant doesn't
+# build those functions anymore, they are just aliased to corresponding 32-bit
+# non-legacy symbols. e.g.:
+#	_opendir					legacy, aliased to _opendir$UNIX2003
+#	_opendir$UNIX2003			32-bit inodes
+#	_opendir$INODE64$UNIX2003	64-bit inodes
+
+___opendir2$UNIX2003	___opendir2
+__seekdir$UNIX2003		__seekdir
+_closedir$UNIX2003		_closedir
+_fdopendir$UNIX2003		_fdopendir
+_opendir$UNIX2003		_opendir
+_rewinddir$UNIX2003		_rewinddir
+_seekdir$UNIX2003		_seekdir
+_telldir$UNIX2003		_telldir
+
+_strerror$UNIX2003		_strerror

@@ -20,13 +20,7 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 	# set ENV{"CURRENT_ARCH"} so we can predicate on it
 	$ENV{"CURRENT_ARCH"} = $arch;
 
-	# BridgeOS shares the same platform name than the watch so
-	# we need to fix it and pick the right configuration.
-	my $platformName = $ENV{"PLATFORM_NAME"};
-	if ($ENV{"RC_BRIDGE"} eq "YES") {
-		$platformName = "bridgeos";
-	}
-
+	my $platformName = $ENV{"VARIANT_PLATFORM_NAME"};
 	$platformName =~ s/simulator/os/;
 
 	my $platformPath = $ENV{"SRCROOT"} . "/Platforms/" . $platformName . "/Makefile.inc";
@@ -80,16 +74,13 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 	}
 
 	elsif ($unifdef == 1) {
-		if ($platformName eq "macosx") {
-			$unifdefs{"__OSX_OPEN_SOURCE__"} = 1;
-		}
 		# assume FEATURE_BLOCKS was on by default
 		$unifdefs{"UNIFDEF_BLOCKS"} = 1;
+		$unifdefs{"UNIFDEF_DRIVERKIT"} = defined($ENV{"DRIVERKITSDK"});
 		$unifdefs{"UNIFDEF_LEGACY_64_APIS"} = defined($features{"FEATURE_LEGACY_64_APIS"});
 		$unifdefs{"UNIFDEF_LEGACY_RUNE_APIS"} = defined($features{"FEATURE_LEGACY_RUNE_APIS"});
 		$unifdefs{"UNIFDEF_LEGACY_UTMP_APIS"} = defined($features{"FEATURE_LEGACY_UTMP_APIS"});
-		$unifdefs{"UNIFDEF_MOVE_LOCALTIME"} = defined($features{"FEATURE_MOVE_LOCALTIME"});
-		$unifdefs{"UNIFDEF_TZDIR_SYMLINK"} = defined($features{"FEATURE_TZDIR_SYMLINK"});
+		$unifdefs{"UNIFDEF_POSIX_ILP32_ALLOW"} = defined($features{"FEATURE_POSIX_ILP32_ALLOW"});
 		
 		my $output = "";
 		for my $d (keys %unifdefs) {
@@ -128,7 +119,9 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 
 		my $shortarch = $arch;
 		$shortarch =~ s/armv\d+[a-z]?/arm/g;
-		$shortarch =~ s/arm64_32/arm64/g;
+
+		# map all arm64 subtypes to arm64
+		$shortarch =~ s/arm64[_a-z0-9]*/arm64/g;
 
 		printf HEADER "#if !defined(__".$shortarch."__)\n";
 		printf HEADER "#error Mismatched libc-features.h architecture\n";
@@ -150,18 +143,6 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 			printf HEADER "#define UNIFDEF_LEGACY_UTMP_APIS 1\n";
 		} else {
 			printf HEADER "/* #undef UNIFDEF_LEGACY_UTMP_APIS */\n";
-		}
-
-		if (defined($features{"FEATURE_MOVE_LOCALTIME"})) {
-			printf HEADER "#define UNIFDEF_MOVE_LOCALTIME 1\n";
-		} else {
-			printf HEADER "/* #undef UNIFDEF_MOVE_LOCALTIME */\n";
-		}
-
-		if (defined($features{"FEATURE_TZDIR_SYMLINK"})) {
-			printf HEADER "#define UNIFDEF_TZDIR_SYMLINK 1\n";
-		} else {
-			printf HEADER "/* #undef UNIFDEF_TZDIR_SYMLINK */\n";
 		}
 
 		if (defined($features{"FEATURE_ONLY_1050_VARIANTS"})) {
@@ -210,12 +191,6 @@ for my $arch (split(/ /, $ENV{"ARCHS"}))
 			printf HEADER "#define NOTIFY_TZ 1\n";
 		} else {
 			printf HEADER "/* #undef NOTIFY_TZ */\n";
-		}
-
-		if (defined($features{"FEATURE_NO_LIBCRASHREPORTERCLIENT"})) {
-			printf HEADER "#define LIBC_NO_LIBCRASHREPORTERCLIENT 1\n";
-		} else {
-			printf HEADER "/* #undef LIBC_NO_LIBCRASHREPORTERCLIENT */\n";
 		}
 
 		if (defined($features{"FEATURE_SMALL_STDIOBUF"})) {

@@ -6,7 +6,7 @@
 ** This file is in the public domain, so clarified as of
 ** 1996-06-05 by Arthur David Olson.
 **
-** $FreeBSD: src/lib/libc/stdtime/private.h,v 1.11 2009/05/23 06:31:50 edwin Exp $
+** $FreeBSD: head/contrib/tzcode/stdtime/private.h 289027 2015-10-08 11:42:15Z rodrigc $
 */
 
 /* Stuff moved from Makefile.inc to reduce clutter */
@@ -173,6 +173,12 @@ typedef long		int_fast64_t;
 #define INT32_MIN (-1 - INT32_MAX)
 #endif /* !defined INT32_MIN */
 
+#if 2 < __GNUC__ || (__GNUC__ == 2 && 96 <= __GNUC_MINOR__)
+# define ATTRIBUTE_PURE __attribute__ ((__pure__))
+#else
+# define ATTRIBUTE_PURE /* empty */
+#endif
+
 /*
 ** Workarounds for compilers/systems.
 */
@@ -191,13 +197,8 @@ extern char *	asctime_r(struct tm const *, char *);
 ** Private function declarations.
 */
 
-char *		icalloc(int nelem, int elsize);
 char *		icatalloc(char * old, const char * new);
 char *		icpyalloc(const char * string);
-char *		imalloc(int n);
-void *		irealloc(void * pointer, int size);
-void		icfree(char * pointer);
-void		ifree(char * pointer);
 const char *	scheck(const char * string, const char * format);
 
 /*

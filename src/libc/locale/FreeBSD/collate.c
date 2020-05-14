@@ -72,6 +72,7 @@ int __collate_load_error = 1;
 __private_extern__ int
 __collate_load_tables(const char *encoding, locale_t loc)
 {
+	int fd;
 	FILE *fp;
 	int i, saverr, chains, z;
 	char strbuf[STR_LEN], buf[PATH_MAX];
@@ -111,7 +112,12 @@ __collate_load_tables(const char *encoding, locale_t loc)
 	/* Range checking not needed, encoding has fixed size */
 	(void)strcpy(buf, encoding);
 	(void)strcat(buf, "/LC_COLLATE");
-	if ((fp = fdopen(__open_path_locale(buf), "r")) == NULL) {
+	fd = __open_path_locale(buf);
+	if (fd == -1) {
+		return (_LDP_ERROR);
+	}
+	if ((fp = fdopen(fd, "r")) == NULL) {
+		close(fd);
 		return (_LDP_ERROR);
 	}
 

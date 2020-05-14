@@ -101,7 +101,7 @@ static wchar_t *do_svis(wchar_t *, wint_t, int, wint_t, const wchar_t *);
 
 #define MAXEXTRAS	10
 
-_Static_assert(MB_LEN_MAX <= sizeof(uint64_t));
+_Static_assert(MB_LEN_MAX <= sizeof(uint64_t), "MB_LEN_MAX is less than 64-bits");
 
 /*
  * This is do_hvis, for HTTP style (RFC 1808)

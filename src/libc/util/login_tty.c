@@ -35,6 +35,9 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
 int login_tty(fd)
 	int fd;
 {
@@ -48,3 +51,4 @@ int login_tty(fd)
 		(void) close(fd);
 	return (0);
 }
+#pragma clang diagnostic pop

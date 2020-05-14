@@ -39,7 +39,6 @@
 .Nm inet_netof ,
 .Nm inet_network ,
 .Nm inet_ntoa ,
-.Nm inet_ntoa_r ,
 .Nm inet_ntop ,
 .Nm inet_pton
 .Nd Internet address manipulation routines
@@ -76,12 +75,6 @@
 .Ft char *
 .Fo inet_ntoa
 .Fa "struct in_addr in"
-.Fc
-.Ft char *
-.Fo inet_ntoa_r
-.Fa "struct in_addr in"
-.Fa "char *buf"
-.Fa "socklen_t size"
 .Fc
 .Ft const char *
 .Fo inet_ntop
@@ -170,10 +163,6 @@ takes an Internet address and returns an
 string representing the address in
 .Ql .\&
 notation.
-The routine
-.Fn inet_ntoa_r
-is the reentrant version of
-.Fn inet_ntoa .
 The routine
 .Fn inet_makeaddr
 takes an Internet network number and a local

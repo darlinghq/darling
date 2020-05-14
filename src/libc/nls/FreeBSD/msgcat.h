@@ -36,6 +36,9 @@ up-to-date.  Many thanks.
 
 ******************************************************************/
 
+#include <_stdio.h>
+#include <sys/_types/_off_t.h>
+
 /*
  * Magic definitions
  */

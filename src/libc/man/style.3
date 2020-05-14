@@ -1,0 +1,1482 @@
+.\" Copyright (c) 2017 Apple Inc. All rights reserved.
+.Dd 12 January, 2018
+.Dt style 3
+.Os Darwin
+.Sh NAME
+.Nm style
+.Nd C language style guide for Darwin low-level userspace projects
+.Sh DESCRIPTION
+This style's primary objective is to be as friendly to the code review process
+as possible. Therefore, the style aims to ensure that code changes to the
+project produce diffs that are
+.Pp
+.Bl -bullet -compact -offset indent
+.It
+small
+.It
+unambiguous
+.It
+viewable in side-by-side comparison tools
+.El
+.Pp
+As a secondary objective, this style also aims to make code as clear as possible
+for an uninitiated programmer reading it. "Clever" syntactic shortcuts are
+actively discouraged in favor of code that is easy to understand, even if it is
+less concise. Coincidentally, this practice also tends to lend itself to
+generating more readable diffs.
+.Pp
+Like any style, consistent adherence across a project is a virtue in and of
+itself, resulting in less distraction for the reader. However, these guidelines
+should be taken as exactly that: guidelines. No style can be completely adhered
+to all the time. When you have convinced yourself that a deviation from the
+style is called for, just make sure it is for the greater good and maintains the
+style's aims of minimizing diffs and code complexity.
+.Sh GENERAL PRINCIPLES
+.Ss Vertical space is a commodity
+Scrolling vertically has always been easier than scrolling horizontally.
+Computer mouse manufacturers went so far as to dedicate hardware to the task of
+scrolling vertically when they came up with scroll wheels. Even on modern
+trackpads, while it is possible to scroll horizontally, it is far easier to
+scroll vertically. You just flick upwards. Do not be afraid to introduce extra
+lines of code if it will result in clearer, more human-parseable diffs when
+those lines are changed.
+.Ss Horizontal space is precious
+Scrolling horizontally is typically awkward, imprecise, and does not lend itself
+well toward reading on computers or even in print. (Academic journals frequently
+publish with two narrow columns per page to make reading easier, for example.)
+Lines should be wrapped consciously; this should not be left to the editor. A
+soft-wrapping scheme that looks good in your editor may not look good in someone
+else's editor (or with a different configuration for the same editor).
+.Pp
+Just as natural language comments are difficult to read in one, long line,
+so too are lines of code. Both natural languages and programming languages
+deserve conscious, deliberate wrapping to improve readability.
+.Pp
+Wrap at a column width narrow enough to accommodate side-by-side patch
+review. 80 is more likely to accommodate this, but 120 might be fine too. Pick a
+reasonable column width and stick to it. Think about the lines you are wrapping.
+If you have to wrap a line, do so in a way that is clear, and be willing to make
+changes to accommodate that (e.g. don't be afraid to declare a variable
+separately if having the declaration and assignment on the same line causes it
+to wrap in an unclear way).
+.Ss Indentation is for scope indication and nothing else
+Indentation's sole purpose is to indicate scope. You should not use indentation
+to align characters on two lines of source code (beyond, of course, aligning
+the first characters of each line if they are both in the same scope).
+.Pp
+Given this aspect of the style, it does not particularly matter whether the
+author chooses spaces or tabs for indentation, and therefore the style makes no
+prescription (other than to pick one and stick with it).
+.Pp
+This style also has another implication: tabs and spaces should never appear
+in sequence. Each line will be a series of tabs followed by the first character
+of code. Tabs will never appear after the initial indentation of the line.
+.Ss Don't require leaving the source to understand it
+Always think of future maintainers and document your thought process for them.
+Remember, a "future maintainer" might be you after you've forgotten why you did
+something. For non-trivial changes, you should not rely on linking to a
+ticket-tracking system to provide context and explanation for a piece of code.
+You should strive to ensure the reader of your code does not have to
+context-switch out of reading it in order to understand it.
+.Pp
+This is not to say that linking to external resources in code is bad, but
+if a change's purpose can be reasonably expressed without interrupting how the
+code reads and flows, just do it. You don't need to publish a whitepaper in
+comments, but don't just give a link or ticket number with no context.
+.Ss Each line of code should minimize entropy
+It is actually very difficult to construct a hash comparison scheme that humans
+can use without error consistently, and there have been successful social
+engineering attacks on getting humans to read two hashes that are "close enough"
+as identical. This means that humans need a lot of help telling the difference
+between two lines of text.
+.Pp
+For any expression, divide it up into fundamental atoms (variable declarations,
+conditionals, etc.) and then assign each of those atoms to its own line of code.
+If you do this, when you change a single atom, it is immediately obvious that
+.Em only
+that atom changed and nothing else did. The more atoms share lines of code, the
+more likely it is that changes to them will generate complex diffs that humans
+will have difficulty understanding.
+.Ss Don't assume a specific editor
+Assume people will be reading your code in a tool that you do not control and
+cannot influence. Try viewing your code in such a tool and make sure that it is
+understandable. If you follow the guidelines of this style, your code may appear
+different in another viewer (in terms of how many columns are required to
+display a single line), but its structure will appear identical.
+.Sh SPECIFIC GUIDELINES
+.Ss Column Width and Line Wrap
+80 columns opens the door for a three-way, side-by-side comparison, but it could
+be impractical for a number of reasons. 120 columns should provide a nice
+balance, but really all that matters is that you pick a width and stick to it.
+.Pp
+When indenting a continuation line, indent over by two additional tabs. This
+visually separates the indented line from the next line, which may itself be
+indented. If there is an operator in the middle of the line, the operator should
+.Em not
+be wrapped to the continuation line.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+if (some_condition && some_other_condition &&
+        yet_another_condition) {
+    exit(0);
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+if (some_condition && some_other_condition &&
+    yet_another_condition) {
+    exit(0);
+}
+
+if (some_condition && some_other_condition
+    && yet_another_condition) {
+    exit(0);
+}
+.Ed
+.Pp
+Notice on the good example that the
+.Ic exit(0)
+line is made obviously distinct from the indented conditions above it. It's very
+clear on quick visual inspection that it's not a part of the conditional checks.
+The
+.Ic &&
+is left on the first line because, when reviewing a patch to this area, it will
+be immediately clear to the reviewer that that line continues to the next one.
+.Pp
+.Ss Avoid prettifying alignment
+Indentation is used only for indicating scope, so no consideration is given to
+visual alignment of equal signs, colons, etc. across multiple lines.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+typedef enum {
+    THING0 = 0,
+    THING1 = 1,
+    THING_THAT_IS_REALLY_LONG = 2,
+} thing_t;
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+enum {
+    THING0                    = 0,
+    THING1                    = 1,
+    THING_THAT_IS_REALLY_LONG = 2,
+};
+.Ed
+.Pp
+This creates bloated diffs. If you have to re-align a ton of lines after you've
+added something longer, you get a bunch of whitespace diffs. So for variable
+declarations, enumerations, assignments, etc. just keep every line independent.
+.Pp
+There is one exception to this rule, and that is if you choose to define a
+flagset in terms of its raw hexadecimal values and wish to align them. In this
+case, it is a significant benefit to have these values aligned, and you may do
+so with spaces.
+.Pp
+.Em Example
+.Bd -literal -offset indent
+typedef enum {
+	F_INIT   = 0x00,
+	F_FOO    = 0x01,
+	F_BARBAZ = 0x02,
+	F_CAD    = 0x04,
+	F_FAD    = 0x08,
+	F_FUD    = 0x10,
+	F_FLAME  = 0x20,
+	F_FOOD   = 0x40,
+} flag_t;
+.Ed
+.Ss Only one blank line at a time
+Use blank lines to separate logical chunks of code. Do not use more than one.
+.Ss Initialization
+C99 has named initializers for structures. Prefer those to initializing members
+one-by-one later on. Both structures and arrays should be initialized in the
+same style, with each element of the initializer being on its own line. This is
+so that when an element is added to or removed from the initialization list,
+that change gets its own line of diff.
+.Pp
+The exception to this is the string literal.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+struct my_struct baz = {
+    .ms_foo = 1,
+    .ms_bar = NULL,
+};
+
+char *strings[] = {
+    "string",
+    "other string",
+};
+.Ed
+.Em Bad
+.Bd -literal -offset indent
+struct my_struct baz = { 1, NULL };
+
+struct my_struct baz = {
+    1,
+    NULL
+};
+
+struct my_struct baz = { .ms_foo = 1, .ms_bar = NULL, };
+.Ed
+.Pp
+The last element of an initializer list should be followed by a comma. This is
+so that when you add a new element to that list, it's a one-line diff rather
+rather than a two-line diff (one line of diff to add the
+.Ic ,
+to the previous-last element, and another line of diff to add the new-last
+element).
+.Pp
+.Em Good
+.Bd -literal -offset indent
+enum {
+    THING0,
+    THING1,
+};
+
+struct my_point p = {
+    .x = 1,
+    .y = 0,
+    .z = 1,
+};
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+enum {
+    THING0, THING1,
+};
+
+enum {
+    THING0,
+    THING1
+};
+
+struct my_point p = { .x = 1, .y = 0, .z = 1 };
+.Ed
+.Pp
+Note that, if your project requires ANSI C compliance, you should disregard this
+guideline, as it will not work under C89.
+.Ss Avoid function name overloading
+The
+.Xr clang 1
+compiler supports extensions to the C language which allow for function name
+overloading. Name overloading generally leads to code which is difficult to
+read and introspect and should be avoided.
+.Ss Prefix `struct` members
+Any
+.Ic struct
+which is shared or exported should have a common prefix for each member. This
+helps avoid collisions with preprocessor macros.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+struct foobar {
+	int64_t fb_baz;
+	char *fb_string;
+};
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+struct foobar {
+	int64_t baz;
+	char *string;
+};
+.Ed
+.Pp
+.Ss Types end with `_t`
+A type is indicated with
+.Ic _t
+at the end of the
+.Ic typedef ,
+whether the type refers to a
+.Ic struct ,
+.Ic union ,
+.Ic enum ,
+etc. All types are indicated this way. Types are in all lower-case letters.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+typedef uint64_t handle_t;
+typedef enum foo foo_t;
+typedef union bar bar_t;
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+typedef uint64_t Handle;
+typedef enum foo foo_e;
+typedef union bar bar_u;
+.Ed
+.Ss Use explicitly-sized integer types
+Avoid integer types whose names do not indicate size, such as
+.Ic int
+or
+.Ic long .
+Instead, use the types from
+.Ic stdint.h
+(e.g.
+.Ic int64_t ,
+.Ic uint32_t ,
+etc.), which explicitly indicate size. You may use size-ambiguous integer types
+if an API requires it.
+.Ss Use `sizeof()` on variables rather than types where appropriate
+The
+.Ic sizeof()
+operator can take both types and variables as arguments. Where possible and
+relevant, always pass a variable. This ensures that if the variable's type
+changes, the proper size is used automatically.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+uuid_t ident;
+memcpy(ident, buff, sizeof(ident));
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+uuid_t ident;
+memcpy(ident, buff, sizeof(uuid_t));
+.Ed
+.Pp
+.Em IMPORTANT :
+When applied to a
+.Ic char * ,
+.Ic sizeof()
+will return the width of a pointer,
+.Em not
+the size of the string literal it points to, so take care to only use
+.Xr strlen 3
+for such cases.
+.Pp
+Relatedly, when applied to an array variable that is a parameter in a function's
+parameter list,
+.Ic sizeof()
+will return the width of a pointer,
+.Em not
+the size of the type.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+char *string = "the quick brown fox";
+size_t len = strlen(string);
+
+void
+foo(uuid_t u)
+{
+	uuid_t u2;
+	memcpy(u2, u, sizeof(uuid_t));
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+char *string = "the quick brown fox";
+size_t len = sizeof(string) - 1;
+
+void
+foo(uuid_t u)
+{
+	uuid_t u2;
+
+	// sizeof(u) == sizeof(void *) in this context.
+	memcpy(u2, u, sizeof(u));
+}
+.Ed
+.Ss Functions which take no parameters have a parameter list of `void`
+In C, an empty function parameter list means that
+.Em any
+set of parameters is acceptable. In virtually all cases where you do this, you
+mean to have a parameter list of
+.Ic void .
+.Pp
+.Em Good
+.Bd -literal -offset indent
+void
+foo(void)
+{
+    do_a_thing_without_arguments();
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+void
+foo()
+{
+    do_a_thing_without_arguments();
+}
+.Ed
+.Ss Preprocessor macros
+Preprocessor definitions are written in all-caps. Macros which are function-like
+may be lower-case provided they do not double-evaluate their arguments.
+Function-like macros that do double-evaluate their arguments should be in
+all-caps.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+#define FOO 1
+#define halt() abort()
+
+// Does not double-evaluate _a and _b such that max(i++, j) is safe.
+#define max(_a, _b) ({ \\
+    typeof(_a) a1 = (_a); \\
+    typeof(_b) b1 = (_b); \\
+    (a1 < b1 ? b1 : a1); \\
+})
+
+// Double-evaluates _a and _b, so MAX(i++, j) is not safe.
+#define MAX(_a, _b) ((_a) < (_b) ? (_b) : (_a))
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+#define kFoo 1
+
+// Double-evaluates _a and _b.
+#define max(_a, _b) ((_a) < (_b) ? (_b) : (_a))
+.Ed
+.Pp
+Where possible, you should prefer inline functions to preprocessor macros, or
+split a macro into a preprocessor piece and an inline function piece.
+.Pp
+.Em Example
+.Bd -literal -offset indent
+static inline void
+_debug_uint64_impl(const char *name, uint64_t val)
+{
+    fprintf(stderr, "%s = %llu\\n", name, val);
+}
+
+#define debug_uint64(_v) do { \\
+	_debug_uint64_impl(#_v, _v); \\
+} while (0)
+.Ed
+.Pp
+In this example, the preprocessor is used to do something that only the
+preprocessor can do: stringify the input variable's name. But once that work is
+done, the actual logging of the value is done by an inline function. This keeps
+the code much more readable.
+.Ss Preprocessor macro parameters should be distinguished
+Preprocessor macro expansion can run afoul of naming collisions with other
+variables that are in the same scope as the macro being expanded. To help avoid
+such collisions, parameters to preprocessor macros should have a prefix, suffix
+or both. Another good option is to use a
+.Ic _[A-Z]
+prefix, since it is reserved by the C standard and will not collide with
+preprocessor evaluation.
+.Pp
+.Em Example
+.Bd -literal -offset indent
+#define foo2(_x_) ((_x_) * 2)
+#define foo4(_x) ((_x) * 4)
+#define foo8(_X) ((_X) * 8)
+.Ed
+.Ss Preprocessor macro parameters should always be evaluated
+When passing a parameter to a preprocessor macro, it should always be referred
+to within parentheses to force evaluation. The exception is for parameters
+intended to be string literals.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+#define add2(__x) ((__x) + 2)
+#define println(__fmt, ...) printf(__fmt "\\n", ## __VA_ARGS__)
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+#define add2(__x) x + 2
+.Ed
+.Ss Preprocessor directives always start at column 0
+Preprocessor directives do not have scope, and therefore they always start at
+column zero.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+if (do_loop) {
+	for (i = 0; i < 10; i++) {
+#if CONFIG_FOOBAR
+		foobar(i);
+#else
+		foobaz(i);
+#endif
+	}
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+if (do_loop) {
+	for (i = 0; i < 10; i++) {
+	#if CONFIG_FOOBAR
+		foobar(i);
+	#else
+		foobaz(i);
+	#endif
+	}
+}
+.Ed
+.Ss Always reference string length directly
+Do not hard-code the size of a string. Use either
+.Ic sizeof(str) - 1
+or
+.Ic strlen(str) .
+In the latter case,
+.Xr clang 1
+is smart enough to recognize when a constant string is being passed to
+.Xr strlen(3)
+and replace the function call with the string's actual length.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+char str[] = "string";
+frob_string(str, sizeof(str) - 1);
+frob_string(str, strlen(str));
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+char str[] = "string";
+frob_string(str, 6);
+.Ed
+.Ss Don't pointlessly validate inputs
+If you control all call sites for a function, then there is no point to
+validating the inputs to that function. If none of your call sites pass
+.Ic NULL ,
+to a pointer parameter, for example, then the a
+.Ic NULL
+input indicates that there is state corruption in your address space. You may
+think that it's good to catch such corruption, but
+.Ic NULL
+is just
+.Em one
+possible invalid pointer value. What if the invalid input is
+.Ic 0x1 ?
+What if it is
+.Ic 0x2 ?
+Should you also check for those?
+.Pp
+This kind of input checking complicates code. Because it indicates state
+corruption, the only sensible thing to do in that situation would be to abort.
+But the operating system has mechanisms in place to detect the reference of an
+invalid resource, such as virtual memory and use-after-free detection. There is
+no point to you duplicating these mechanisms.
+.Pp
+Of course, you should always validate inputs
+.Em when they come from untrusted external sources
+(such as a file or IPC message), but if the inputs only ever comes from your
+program, you should trust them.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+static foo_t *
+get_item(foo_t *arr, size_t idx)
+{
+	return &arr[idx];
+}
+
+int
+only_call_site(foo_t *f)
+{
+	foo_t *arr = calloc(10, sizeof(arr[0]));
+	if (!arr) {
+		return errno;
+	}
+
+	*f = get_item(arr, 0);
+	return 0;
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+static foo_t *
+get_item(foo_t *arr, size_t idx)
+{
+	if (!arr) {
+		// No point to this check since we'll abort immediately below when we
+		// try to dereference `arr`. The crash report will have more than enough
+		// information to diagnose the NULL pointer dereference if it ever
+		// happens.
+		abort();
+	}
+	return &arr[idx];
+}
+
+int
+only_call_site(foo_t *f)
+{
+	foo_t *arr = calloc(10, sizeof(arr[0]));
+	if (!arr) {
+		return errno;
+	}
+
+	*f = get_item(arr, 0);
+	return 0;
+}
+.Ed
+.Ss Abort on bad API inputs
+The C language provides precious few compile-time validation mechanisms, and so
+in many cases it is not possible to fully describe to the compiler the range of
+expected inputs for an API. So your API should validate input from its caller
+and abort on invalid input. Returning an error in such a case is pointless,
+since the caller probably isn't checking the return code anyway. The only sure
+way to get the programmer's attention is to abort the calling process with a
+helpful message. The
+.Ic os_crash
+routine allows you to supply such a message that the crash reporter on Darwin
+will display in its crash report.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+uint8_t
+foo_a_bar(uint8_t number)
+{
+	if (number > (UINT8_MAX / 2)) {
+		os_crash("number given to foo_a_bar() too large");
+	}
+	return (number * 2);
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+int
+foo_a_bar(uint8_t number, uint8_t *new_number)
+{
+	if (number > (UINT8_MAX / 2)) {
+		return EINVAL;
+	}
+	*new_number = (number * 2);
+	return 0;
+}
+.Ed
+.Ss Don't mingle POSIX return codes and errors
+Some POSIX routines have return values that indicate whether you should check
+.Ic errno ,
+and others just return the error directly. While POSIX generally documents what
+does what pretty well, there are lots of SPIs scattered around the system that
+use both conventions and aren't documented at all, leaving you to spelunk
+through the implementation to find out what's what.
+.Pp
+To avoid confusion, do not re-use the same variable for the return codes from
+these functions. If an API returns a code indicating that you should check
+.Ic errno ,
+name it
+.Ic ret
+or similar. If it returns the error directly, name it
+.Ic error
+or similar and make it of type
+.Ic errno_t .
+This makes it very clear to the person reading the code that you did the work to
+find out how the API worked. By naming the variable you store the return value
+in appropriately, a reader of your code (possibly Future You) can immediately
+know what's going on.
+.Pp
+If you are making new API or SPI that returns an error code, make it return
+.Ic errno_t
+and do not use the global
+.Ic errno
+for communicating error information.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+#include <sys/types.h>
+
+errno_t error = posix_spawn(NULL, "ls", NULL, NULL, argv, envp);
+switch (error) {
+case 0:
+    // Handle success.
+    break;
+case EACCES:
+    // Handle "permission denied".
+    break;
+}
+
+int ret = reboot(RB_AUTOBOOT);
+if (ret == -1) {
+    switch (errno) {
+    case EPERM:
+        // Handle "permission denied".
+        break;
+    case EBUSY:
+        // Handle "reboot already in progress".
+        break;
+    }
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+int ret = posix_spawn(NULL, "ls", NULL, NULL, argv, envp);
+switch (error) {
+case 0:
+    // Handle success.
+    break;
+case EACCES:
+    // Handle "permission denied".
+    break;
+}
+
+int error = reboot(RB_AUTOBOOT);
+if (error == -1) {
+    switch (errno) {
+    case EPERM:
+        // Handle "permission denied".
+        break;
+    case EBUSY:
+        // Handle "reboot already in progress".
+        break;
+    }
+}
+.Ed
+.Ss Avoid complex `if` statements and return distinct error codes
+Breaking up a single complex
+.Ic if
+statement
+into multiple distinct checks is both more readable and makes it possible to be
+more granular about handling failure cases. It also leads to smaller diffs if
+one of those conditions turns out to require special handling.
+.Pp
+Complex
+.Ic if
+statements are often associated with input validation and just returning an
+error code (usually
+.Ic EINVAL )
+if any input is invalid. While deciding which error to return in which case is
+more of an art than a science, that doesn't mean you should just give up and
+return a single error every time there isn't an immediately obvious fit to the
+case you've encountered.
+.Pp
+Ideally, every case where your routine may fail should be represented by a
+distinct error code, but this is often not practical. Still, you should attempt
+to distinguish each
+.Em likely
+failure case with its own error code. The POSIX error space is fairly rich, and
+error descriptions are brief enough that they can be liberally interpreted. For
+example,
+.Ic ESRCH
+can be used to apply to any situation where a resource could not be located, not
+just conditions where there is literally "No such process".
+.Pp
+This isn't to say that you should never have compound conditions in an
+.Ic if
+statement, but the groupings should almost always be small, and the grouped
+checks should be highly likely to require change as a group when change is
+needed.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+if (foo->f_int > 10 || foo->f_int < 5)
+	return ERANGE;
+}
+
+if (!foo->f_uaddr) {
+	return EFAULT;
+}
+
+if (foo->f_has_idx && foo->f_idx > 100) {
+	return ERANGE;
+}
+
+if (foo->f_state != FS_INITIALIZED) {
+	return EBUSY;
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+if (foo->f_int > 10 || foo->f_int < 5 || !foo->f_uaddr || (foo->f_has_idx && foo->f_idx > 100) ||
+		foo->f_state != FS_INITIALIZED) {
+	return EINVAL;
+}
+.Ed
+.Pp
+See
+.Xr intro 2 ,
+.Ic <sys/errno.h> ,
+and
+.Ic <os/error.h>
+for the error codes supported on Darwin.
+.Ss Don't NULL-check when calling `free(3)`
+.Ic NULL
+is valid input to
+.Xr free 3 .
+It's part of the API contract. Armed with this knowledge, you can do things like
+avoid conditional memory calls, which are always weird.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+char buff[1024];
+char *ptr = buff;
+char *what2free = NULL;
+
+if (condition) {
+    ptr = malloc(8);
+    what2free = ptr;
+}
+
+free(what2free);
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+char buff[1024];
+char *ptr = buff;
+bool did_malloc = false;
+
+if (condition) {
+    ptr = malloc(8);
+    did_malloc = true;
+}
+
+if (did_malloc) {
+    free(ptr);
+}
+.Ed
+.Ss Distinguish exported and non-exported symbols
+Any non-exported symbols should be prefixed with a
+.Ic _ .
+Thus any
+.Ic static
+functions, project-local interfaces, etc. should have this prefix. Exported
+symbols (API or SPI) should
+.Em not
+have such a prefix.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+static const char *_thing = "thing";
+static void _foo(void);
+
+void
+_project_local_interface(void);
+.Ed
+.Em Bad
+.Bd -literal -offset indent
+static const char *thing = "thing";
+static void foo(void);
+
+void
+project_local_interface(void);
+.Ed
+.Pp
+Global variables should have a sensible prefix, preferably related to the
+project name -- e.g. globals in the
+.Xr libxpc 3
+project are prefixed with
+.Ic xpc_ .
+.Pp
+You may also consider declaring a global structure which contains all of your
+project's shared, unexported global state. This makes it very clear when code is
+referencing that state. Also, if your project is a library at the libSystem
+layer, this is required if you are ever to adopt
+.Xr os_alloc_once 3 .
+.Pp
+.Em Example
+.Bd -literal -offset indent
+typedef struct _foobar_globals {
+	uint64_t fg_global_int;
+	char *fg_global_string;
+} foobar_globals_t;
+
+foobar_globals_t _g;
+foobar_globals_t *g = &_g;
+.Ed
+.Ss Distinguish SPIs meant for one caller
+Sometimes projects must create bespoke SPIs for one particular caller, and these
+SPIs are not considered suitable for general use. Append a suffix to these SPIs
+to indicate their bespokeness and the intended caller with
+.Ic _4caller .
+For example, if you add an SPI specifically for IOKit, your suffix would likely
+be
+.Ic _4IOKit .
+.Ss Use `#if` instead of `#ifdef` where appropriate
+.Ic #ifdef
+is to check if a token is
+.Em defined at all to anything.
+.Ic #if
+is to check the token's value. The C standard specifies that when a token is
+undefined,
+.Ic #if
+will evaluate it as
+.Ic 0 .
+When checking for features, it's almost always more appropriate to use
+.Ic #if
+since the lack of a feature could still be communicated by setting the token's
+value to
+.Ic 0 ,
+which would pass the
+.Ic #ifdef
+check.
+.Ss Use Function Attributes from `<os/base.h>`
+If you're on Darwin,
+.Ic libplatform
+defines a lot of nice macros for compiler attributes. Use them to decorate your
+functions. This gives the compiler lots more information so it can do fancy
+optimizations. Things like
+.Ic OS_NONNULL
+let the compiler know that a parameter should never be
+.Ic NULL .
+.Ic OS_WARN_RESULT
+is great for enforcing that a caller always check the return value of a
+function.
+.Pp
+.Ic OS_MALLOC
+lets the compiler know that the function returns a heap allocation, and
+.Ic OS_OBJECT_RETURNS_RETAINED
+lets ARC know that the function returns an object with a reference that the
+caller is responsible for releasing.
+.Pp
+You can avoid having to decorate all your pointer parameters by using
+.Ic OS_ASSUME_NONNULL_BEGIN
+and
+.Ic OS_ASSUME_NONNULL_END
+and specifically annotating variables which
+.Em can
+be
+.Ic NULL
+with the
+.Ic _Nullable
+keyword. Either approach is acceptable.
+.Pp
+Generally, use these attributes on functions which will have callers who cannot
+view the implementation. Putting many of these attributes on (for example) an
+inline function is harmless, but the compiler can reason about things like
+.Ic OS_NONNULL
+and infer it when it can view the implementation at all call sites.
+.Pp
+So as a rule of thumb, if it's in a header, decorate it appropriately. These
+attributes can also serve as nice implicit documentation around API and SPI. For
+example, if you have a decoration of
+.Ic OS_NONNULL1 ,
+you don't have to spell out in the HeaderDoc that you can't pass
+.Ic NULL
+for that parameter; it'll be right there in the declaration, and the compiler
+will catch attempts to do so.
+.Ss Distinguish C function definitions from declarations
+In C, make the definition of a function findable and distinguishable from its
+declaration (if any) through regular expressions. This way, you can find the
+implementation of
+.Ic foo
+by doing a regex search for
+.Ic ^foo ,
+and you won't get the declaration as a result.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+static int foo(int bar);
+
+int
+foo(int bar)
+{
+    return bar;
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+static int foo(int bar);
+
+int foo(int bar)
+{
+    return bar;
+}
+.Ed
+.Pp
+This has the additional benefit of allowing you to change the name/parameter
+list of a function independently of the return type. A diff of either will not
+be confused with the rest of the function signature.
+.Ss Use HeaderDoc for API declarations
+Make them look nice. Include the appropriate decorations (including an explicit
+export attribute such as
+.Ic OS_EXPORT
+so it's very, very clear that it's intended to be API), availability attributes,
+and HeaderDoc. Put this stuff before the function.
+.Pp
+.Em Example
+.Bd -literal -offset indent
+/*!
+ * @function foo
+ * Returns `bar` and ignores another parameter.
+ *
+ * @param bar
+ * The value to return.
+ *
+ * @param baz
+ * The value to ignore.
+ *
+ * @result
+ * The value of `bar`. This routine cannot fail.
+ */
+__API_AVAILABLE(macos(10.14), ios(12.0), tvos(12.0), watchos(5.0))
+OS_EXPORT OS_WARN_RESULT OS_NONNULL2
+int
+foo(int bar, char *baz);
+.Ed
+.Ss Comments
+In general, use C++/C99-style comments. But there may be good reasons to use the
+classic C-style comments, such as for HeaderDoc, which requires them, e.g.
+.Bd -literal -offset indent
+/*!
+ * Documentation
+ */
+.Ed
+.Pp
+Long, top-level comments may also use classic C-style comments.
+.Pp
+C++/C99-style comments may directly follow code on the same line only if they
+are extremely brief. Otherwise, in general, comments and code should not share
+a line.
+.Pp
+Also, do not get cute with
+.Ic /* */
+comments and embed them within code.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+// Comment on what the loop does.
+for (i = 0; i < cnt; i++) {
+    // some code...
+}
+
+/*
+ * A top-level or very long comment.
+ */
+
+int ret = esoteric_spi(); // returns -1 on failure, does not set errno
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+//Comment
+
+int ret = esoteric_spi(); // This SPI returns -1 on failure but does not set
+    // errno, so here is a comment explaining that that really should be above
+    // the line of code rather than immediately following it.
+
+foo(arg1, /* first argument */, arg2 /* second argument */);
+.Ed
+.Ss `case` and `switch` are indented at the same level
+.Ic case
+and
+.Ic switch
+belong at the same column indent because indentation indicates scope, and due to
+case fall-through, all cases are in the same scope -- one lower than the
+previous. (Unless you scope them explicitly with braces, but you should avoid
+doing that if at all possible.)
+.Pp
+.Em Good
+.Bd -literal -offset indent
+switch (thing) {
+case THING1:
+    exit(0);
+    break;
+case THING2:
+    exit(1);
+    break;
+default:
+    __builtin_unreachable();
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+switch (thing) {
+case THING1: {
+    exit(0);
+    break;
+}
+case THING2: {
+    exit(1);
+    break;
+}
+default:
+    __builtin_unreachable();
+}
+
+switch (thing) {
+    case THING1:
+        exit(0);
+        break;
+    case THING2:
+        exit(1);
+        break;
+    default: {
+        __builtin_unreachable();
+    }
+}
+.Ed
+.Ss Use typed `enum`s
+If you're declaring an
+.Ic enum ,
+you should
+.Ic typedef
+it so the compiler can reason about valid values and know the width of the
+.Ic enum
+type if possible. The
+.Ic OS_ENUM
+macro provides the correct behavior for C, C++, and Objective-C.
+.Ss Initialize all variables and fail closed
+If you pre-declare a variable before using it, initialize it to a sane value. If
+this value is something like the return value of the function, initialize it to
+a value which indicates failure of the operation. You should
+.Em always
+do this even if there are no code paths which fail to initialize the variable
+later. It's just good practice, and it gives the person reading your code an
+indication of what ranges of values the variable is expected to hold.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+int result = -1;
+
+if (success) {
+    result = 0;
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+int result;
+
+if (success) {
+    result = 0;
+}
+.Ed
+.Pp
+Any error variable should always be initialized to a non-success condition. In
+general, consider success as something that your code must
+.Em explicitly declare
+and that the absence of such a declaration indicates failure.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+int error = -1;
+
+if (is_root()) {
+    error = 0;
+} else {
+    error = EPERM;
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+int error = 0;
+
+if (!is_root()) {
+    error = EPERM;
+}
+.Ed
+.Pp
+Note that you may omit an initializer for a complex
+.Ic struct
+type (such as the
+.Xr stat 2
+.Ic struct )
+but then it is incumbent upon you to ensure that that variable is not used
+uninitialized except to populate it. For many
+.Ic struct
+types, you can initialize them with
+.Ic {0} .
+This will not work for structures with nested structures though. For those you
+can use
+.Xr bzero 3
+or similar.
+.Ss Using `goto` is fine
+.Ic goto
+has gotten a bad rap, but it's probably the best way in C to do lots of
+sequential error handling. You don't
+.Em have
+to use
+.Ic goto
+if you don't want to, but if you do, just keep a a couple things in mind.
+.Pp
+.Bl -bullet -compact -offset indent
+.It
+Compile with
+.Ic -Wsometimes-uninitialized .
+With this warning,
+.Xr clang 1
+will catch cases where a variable may be used uninitialized because a
+.Ic goto
+skipped the initialization.
+.It
+Never use
+.Ic goto
+as a looping construct. The C language has a few different control statements
+for looping and iteration. Use one of those; it's not the 70's anymore.
+.El
+.Pp
+These guidelines make it simple to use
+.Ic goto
+effectively while avoiding the
+most common pitfalls.
+.Ss Avoid magic Booleans
+Sometimes you have to pass a parameter to a function to trigger some sort of
+behavior. Avoid using a magic Boolean for these cases. Instead, use an invariant
+that describes the behavior you are triggering.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+replace_spaces(string, REPLACE_TABS_TOO);
+replace_spaces(string, REPLACE_ONLY_SPACES);
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+replace_spaces(string, true);
+replace_spaces(string, false);
+.Ed
+.Pp
+If you find yourself creating many such Boolean values for function parameters,
+you should seriously considering defining a set of flags and passing that as one
+parameter instead.
+.Ss Spaces around binary operators
+In general, avoid code that looks crunched together, especially around
+operators. Specifically:
+.Bl -bullet -compact -offset indent
+.It
+Unary operators should
+.Em not
+have spaces around them.
+.It
+Binary operators
+.Em should
+have spaces around them.
+.It
+The ternary operator
+.Em should
+have spacing around it.
+.El
+.Pp
+.Em Good
+.Bd -literal -offset indent
+i++;
+j = i + k;
+k += condition ? i : j;
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+i ++;
+j=i+k
+k+=condition?i:j;
+.Ed
+.Ss Reserve the ternary operator for trivial cases
+Don't use the ternary operator to choose between complex or long expressions.
+Reserve it for very trivial cases that are highly unlikely to change. In general
+if you've found yourself putting the expressions in your usage of ternary
+operator on multiple lines, you should just be using an
+.Ic if
+statement.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+i += condition ? j : k;
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+i += (i < j && j > k || i == j) ? foo(bar, baz, 0, NULL) : frob(bar, 0, NULL, baz);
+.Ed
+.Ss Spaces around parentheses
+.Bl -bullet -compact -offset indent
+.It
+Put a space between the control statement and the parenthesis indicating its
+condition.
+.It
+Do
+.Em not
+put a space between the end of a function name and the parenthesis
+indicating its argument list.
+.It
+Do
+.Em not
+put spaces between any parenthesis and its following content.
+.El
+.Pp
+.Em Good
+.Bd -literal -offset indent
+if (condition) {
+    do_thing();
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+if(condition) {
+    do_thing ();
+}
+
+if ( condition ) {
+    do_thing ( argument );
+}
+.Ed
+.Pp
+.Em Worse
+.Bd -literal -offset indent
+while( condition) {
+    do_thing( );
+}
+.Ed
+.Ss Braces and statements
+Always, always, always use braces for your control statements. Lack of braces
+can and has led to serious security issues that were missed during code review,
+and putting the braces there from the start means that adding new statements to
+that clause does not require you to also add the braces.
+.Pp
+The clause should be indented on the next line with no blank lines in between.
+.Pp
+.Em Good
+.Bd -literal -offset indent
+if (condition) {
+    do_thing();
+}
+
+while (condition) {
+    do_thing();
+}
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+if (condition) do_thing();
+
+if (condition)
+    do_thing();
+
+while (condition) do_thing();
+
+while (condition) {
+
+    do_thing();
+}
+.Ed
+.Pp
+Even trivial uses of braceless
+.Ic if
+statements are problematic. Consider the following:
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+if (error) i++,
+i++;
+.Ed
+.Pp
+This is admittedly contrived, but it would be likely to escape code review
+because it's very easy to miss that the first line ends with a
+.Ic ,
+rather than a
+.Ic ; .
+Braces in
+.Ic if
+statements are sensitive enough to security that the best policy is to simply
+always use them, without exception.
+.Pp
+Specific rules for braces:
+.Bl -bullet -compact -offset indent
+.It
+.Ic else
+goes between two braces on the same line.
+.It
+The brace which indicates the expression associated with a control flow
+statement goes on the same line as that statement or the same line as the last
+continuation line of the statement.
+.It
+The brace which begins the definition of a
+.Ic struct ,
+.Ic union ,
+.Ic enum ,
+etc. goes on the same line as the declaration.
+.It
+The brace concluding the expression associated with a control flow statement
+is aligned with the same column as that control flow statement.
+.It
+The opening brace of a function definition goes on its own line and is
+immediately followed by a new line.
+.It
+Control statements with empty bodies should have empty braces.
+.El
+.Pp
+.Em Good
+.Bd -literal -offset indent
+if (condition) {
+    do_thing();
+} else {
+    do_other_thing();
+}
+
+void
+function(void)
+{
+    return;
+}
+
+struct my_struct {
+    uint32_t thing;
+};
+
+for (cur; cur; cur = cur->next) { }
+.Ed
+.Pp
+.Em Bad
+.Bd -literal -offset indent
+if (condition)
+{
+    do_thing();
+}
+else
+{
+    do_other_thing();
+}
+
+if (condition)
+{
+    do_thing();
+}
+else
+    do_other_thing();
+
+void
+function(void) {
+    return;
+}
+
+struct my_struct
+{
+    uint32_t thing;
+};
+
+for (cur; cur; cur = cur->next)
+.Ed
+.Pp
+.Em Worse
+.Bd -literal -offset indent
+if (condition)
+    {
+    do_thing();
+    }
+
+void
+function(void)
+{ return;
+}
+.Ed
+.Sh SEE ALSO
+.Xr style 9 ,
+.Xr intro 2 ,
+.Xr errno 3 ,
+.Xr types 5
+.Sh HISTORY
+This style was largely derived from the style that evolved through the
+.Xr launchd 8 ,
+.Xr libdispatch 3 ,
+and
+.Xr libxpc 3
+projects.

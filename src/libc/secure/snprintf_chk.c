@@ -45,3 +45,22 @@ __snprintf_chk (char *dest, size_t len, int flags, size_t dstlen,
 
   return done;
 }
+
+int
+__snprintf_object_size_chk (char *dest, size_t dstlen, size_t len,
+const char *format, ...)
+{
+    va_list arg;
+    int done;
+
+    if (__builtin_expect (dstlen < len, 0))
+        __chk_fail_overflow ();
+
+    va_start (arg, format);
+
+    done = vsnprintf (dest, len, format, arg);
+
+    va_end (arg);
+
+    return done;
+}

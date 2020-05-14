@@ -56,7 +56,7 @@ atexit.3 atexit.3 atexit_b.3
 atof.3 atof.3 atof_l.3
 atoi.3 atoi.3 atoi_l.3
 atol.3 atol.3 atol_l.3 atoll.3 atoll_l.3
-backtrace.3 backtrace.3 backtrace_symbols.3 backtrace_symbols_fd.3
+backtrace.3 backtrace.3 backtrace_symbols.3 backtrace_symbols_fd.3 backtrace_from_fp.3 backtrace_image_offsets.3
 basename.3 basename.3 basename_r.3
 bcmp.3 bcmp.3
 bcopy.3 bcopy.3
@@ -74,9 +74,10 @@ catopen.3 catopen.3
 clock.3 clock.3
 clock_gettime.3 clock_gettime.3 clock_settime.3 clock_getres.3 clock_gettime_nsec_np.3
 confstr.3 confstr.3
+open_memstream.3 open_memstream.3 open_wmemstream.3
 crypt.3 crypt.3 encrypt.3 setkey.3
 ctermid.3 ctermid.3 ctermid_r.3
-ctime.3 ctime.3 asctime.3 asctime_r.3 asctime_r.3 ctime_r.3 difftime.3 gmtime.3 gmtime.3 gmtime_r.3 gmtime_r.3 localtime.3 localtime_r.3 mktime.3 mktime.3
+ctime.3 ctime.3 asctime.3 asctime_r.3 asctime_r.3 ctime_r.3 difftime.3 gmtime.3 gmtime.3 gmtime_r.3 gmtime_r.3 localtime.3 localtime_r.3 mktime.3 mktime.3 timegm.3 timelocal.3
 ctype.3 ctype.3
 ctype_l.3 ctype_l.3
 daemon.3 daemon.3
@@ -105,7 +106,7 @@ flockfile.3 flockfile.3 ftrylockfile.3 funlockfile.3
 fmtcheck.3 fmtcheck.3
 fmtmsg.3 fmtmsg.3
 fnmatch.3 fnmatch.3
-fopen.3 fopen.3 fdopen.3 freopen.3
+fopen.3 fopen.3 fdopen.3 freopen.3 fmemopen.3
 fparseln.3 fparseln.3
 fputs.3 fputs.3 puts.3
 fputws.3 fputws.3 fputws_l.3
@@ -130,7 +131,7 @@ gethostname.3 gethostname.3 sethostname.3
 getlastlogx.3 getlastlogx.3 getlastlogxbyname.3 getutmp.3 getutmpx.3 utmpxname.3
 getline.3 getline.3 getdelim.3
 getloadavg.3 getloadavg.3
-getmntinfo.3 getmntinfo.3
+getmntinfo.3 getmntinfo.3 getmntinfo_r_np.3
 getopt.3 getopt.3
 getopt_long.3 getopt_long.3 getopt_long_only.3
 getpagesize.3 getpagesize.3
@@ -205,7 +206,7 @@ memset.3 memset.3
 memset_s.3 memset_s.3
 memset_pattern.3 memset_pattern.3 memset_pattern4.3 memset_pattern8.3 memset_pattern16.3
 mkpath_np.3 mkpath_np.3
-mktemp.3 mktemp.3 mkdtemp.3 mkstemp.3 mkstemps.3
+mktemp.3 mktemp.3 mkdtemp.3 mkstemp.3 mkstemps.3 mkostemp.3 mkostemps.3 mkdtempat_np.3 mkstempsat_np.3 mkostempsat_np.3
 mpool.3 mpool.3 mpool_close.3 mpool_filter.3 mpool_get.3 mpool_new.3 mpool_open.3 mpool_put.3 mpool_sync.3
 multibyte.3 multibyte.3
 newlocale.3 newlocale.3
@@ -233,7 +234,7 @@ raise.3 raise.3
 rand.3 rand.3 rand_r.3 srand.3 sranddev.3
 rand48.3 rand48.3 _rand48.3 drand48.3 erand48.3 jrand48.3 lcong48.3 lrand48.3 mrand48.3 nrand48.3 seed48.3 srand48.3
 random.3 random.3 initstate.3 setstate.3 srandom.3 srandomdev.3
-rbtree.3 rbtree.3
+rbtree.3 rbtree.3 rb_tree_init.3 rb_tree_insert_node.3 rb_tree_remove_node.3 rb_tree_find_node.3 rb_tree_find_node_geq.3 rb_tree_find_node_leq.3 rb_tree_iterate.3 rb_tree_count.3 RB_TREE_MIN.3 RB_TREE_MAX.3 RB_TREE_FOREACH.3 RB_TREE_FOREACH_REVERSE.3
 readpassphrase.3 readpassphrase.3
 realpath.3 realpath.3
 recno.3 recno.3
@@ -286,6 +287,7 @@ strtol.3 strtol.3 strtoll.3 strtoq.3 strtoimax.3
 strtol_l.3 strtol_l.3 strtoimax_l.3 strtoll_l.3 strtoq_l.3 strtoul_l.3 strtoull_l.3 strtoumax_l.3 strtouq_l.3
 strtoul.3 strtoul.3 strtoull.3 strtoumax.3 strtouq.3
 strxfrm.3 strxfrm.3 strxfrm_l.3
+style.3 style.3
 swab.3 swab.3
 sync_volume_np.3 sync_volume_np.3 fsync_volume_np.3
 sysconf.3 sysconf.3
@@ -299,10 +301,10 @@ tcsetattr.3 tcsetattr.3 cfgetispeed.3 cfgetospeed.3 cfmakeraw.3 cfsetispeed.3 cf
 tcsetpgrp.3 tcsetpgrp.3
 time.3 time.3
 time2posix.3 time2posix.3 posix2time.3
-timegm.3 timegm.3 timelocal.3
 times.3 times.3
 timezone.3 timezone.3
 timingsafe_bcmp.3 timingsafe_bcmp.3
+timespec_get.3 timespec_get.3
 tmpnam.3 tmpnam.3 tempnam.3 tmpfile.3
 toascii.3 toascii.3
 tolower.3 tolower.3 tolower_l.3
@@ -310,7 +312,7 @@ toupper.3 toupper.3 toupper_l.3
 towlower.3 towlower.3 towlower_l.3
 towupper.3 towupper.3 towupper_l.3
 tsearch.3 tsearch.3 tdelete.3 tfind.3 twalk.3
-ttyname.3 ttyname.3 isatty.3 ttyslot.3
+ttyname.3 ttyname.3 ttyname_r.3 isatty.3 ttyslot.3
 tzset.3 tzset.3 tzsetwall.3
 ualarm.3 ualarm.3
 ulimit.3 ulimit.3

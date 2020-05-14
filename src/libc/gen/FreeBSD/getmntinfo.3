@@ -28,11 +28,12 @@
 .\"     @(#)getmntinfo.3	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/gen/getmntinfo.3,v 1.13 2007/01/09 00:27:54 imp Exp $
 .\"
-.Dd May 4, 2010
+.Dd April 12, 2017
 .Dt GETMNTINFO 3
 .Os
 .Sh NAME
 .Nm getmntinfo
+.Nm getmntinfo_r_np
 .Nm getmntinfo64
 .Nd get information about mounted file systems
 .Sh SYNOPSIS
@@ -41,6 +42,8 @@
 .In sys/mount.h
 .Ft int
 .Fn getmntinfo "struct statfs **mntbufp" "int flags"
+.Ft int
+.Fn getmntinfo_r_np "struct statfs **mntbufp" "int flags"
 .Sh TRANSITIIONAL SYNOPSIS (NOW DEPRECATED)
 .Ft int
 .br
@@ -62,30 +65,63 @@ for more information on this macro).
 .Pp
 The
 .Fn getmntinfo
-function
-passes its
+and
+.Fn getmntinfo_r_np
+functions
+pass their
 .Fa flags
 argument transparently to
 .Xr getfsstat 2 .
+.Pp
+The
+.Fn getmntinfo
+function maintains ownership of the results buffer it allocates,
+and may overwrite or free this buffer in subsequent calls to
+.Fn getmntinfo .
+For this reason,
+.Fn getmntinfo
+is not thread-safe.
+.Pp
+The
+.Fn getmntinfo_r_np
+function is a thread-safe equivalent of
+.Fn getmntinfo
+that allocates a new results buffer on every call and transfers ownership
+of this buffer to the caller.
+The caller is responsible for freeing this memory with
+.Xr free 3 .
 .Sh RETURN VALUES
 On successful completion,
 .Fn getmntinfo
-returns a count of the number of elements in the array.
+and
+.Fn getmntinfo_r_np
+return a count of the number of elements in the array.
 The pointer to the array is stored into
 .Fa mntbufp .
 .Pp
 If an error occurs, zero is returned and the external variable
 .Va errno
 is set to indicate the error.
-Although the pointer
-.Fa mntbufp
-will be unmodified, any information previously returned by
+The
 .Fn getmntinfo
-will be lost.
+function may modify the
+.Fa mbtbufp
+pointer even in the case of an error.
+In this situation, callers should consider any previous information
+returned by
+.Fn getmntinfo
+to be lost.
+The
+.Fn getmntinfo_r_np
+function will not modify the
+.Fa mntbufp
+pointer in the case of an error.
 .Sh ERRORS
 The
 .Fn getmntinfo
-function
+and
+.Fn getmntinfo_r_np
+functions
 may fail and set errno for any of the errors specified for the library
 routines
 .Xr getfsstat 2
@@ -118,6 +154,9 @@ The
 .Fn getmntinfo
 function first appeared in
 .Bx 4.4 .
+The
+.Fn getmntinfo_r_np
+function first appeared in macOS 10.13.
 .Sh BUGS
 The
 .Fn getmntinfo

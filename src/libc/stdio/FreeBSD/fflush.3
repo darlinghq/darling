@@ -32,7 +32,7 @@
 .\"     @(#)fflush.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdio/fflush.3,v 1.11 2007/01/09 00:28:06 imp Exp $
 .\"
-.Dd June 4, 1993
+.Dd August 1, 2019
 .Dt FFLUSH 3
 .Os
 .Sh NAME
@@ -50,9 +50,13 @@
 .Sh DESCRIPTION
 The function
 .Fn fflush
-forces a write of all buffered data for the given output or update
+synchronizes the state of the given
 .Fa stream
-via the stream's underlying write function.
+in light of buffered I/O.
+For output or update streams it writes all buffered data via the stream's
+underlying write function.
+For input streams it seeks to the current file position indicator via the
+stream's underlying seek function.
 The open status of the stream is unaffected.
 .Pp
 If the
@@ -62,7 +66,7 @@ argument is
 .Fn fflush
 flushes
 .Em all
-open output streams.
+open streams.
 .Pp
 The function
 .Fn fpurge
@@ -87,25 +91,28 @@ is set to indicate the error.
 The
 .Fa stream
 argument
-is not an open stream, or, in the case of
-.Fn fflush ,
-not a stream open for writing.
+is not an open stream.
 .El
 .Pp
 The function
 .Fn fflush
 may also fail and set
 .Va errno
-for any of the errors specified for the routine
-.Xr write 2 .
+for any of the errors specified for the routines
+.Xr write 2
+and
+.Xr lseek 2 .
 .Sh SEE ALSO
 .Xr write 2 ,
 .Xr fclose 3 ,
 .Xr fopen 3 ,
+.Xr lseek 2 ,
 .Xr setbuf 3
 .Sh STANDARDS
 The
 .Fn fflush
 function
 conforms to
-.St -isoC .
+.St -isoC
+and
+.St -susv3 .

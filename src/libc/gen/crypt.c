@@ -56,6 +56,8 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
 
 #include <sys/cdefs.h>
 #include <unistd.h>
@@ -346,7 +348,7 @@ STATIC void permute(cp, out, p, chars_in)
 #ifndef BUILDING_VARIANT
 __private_extern__ int __crypt_des_setkey_called = 0;
 #else /* BUILDING_VARIANT */
-__private_extern__ int __crypt_des_setkey_called;
+extern int __crypt_des_setkey_called;
 #endif /* BUILDING_VARIANT */
 
 /* =====  (mostly) Standard DES Tables ==================== */
@@ -1044,3 +1046,5 @@ prtab(s, t, num_rows)
 }
 #endif
 #endif /* BUILDING_VARIANT */
+
+#pragma clang diagnostic pop

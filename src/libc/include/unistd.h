@@ -164,7 +164,12 @@
 #endif /* __DARWIN_C_LEVEL */
 
 #define	__ILP32_OFF32          (-1)
+#ifdef UNIFDEF_POSIX_ILP32_ALLOW
 #define	__ILP32_OFFBIG         (1)
+#else // UNIFDEF_POSIX_ILP32_ALLOW
+#define	__ILP32_OFFBIG         (-1)
+#endif // UNIFDEF_POSIX_ILP32_ALLOW
+
 #define	__LP64_OFF64           (1)
 #define	__LPBIG_OFFBIG         (1)
 
@@ -586,6 +591,7 @@ __END_DECLS
  */
 
 #if __DARWIN_C_LEVEL >= 199506L
+#include <_ctermid.h>
                                /* These F_* are really XSI or Issue 6 */
 #define F_ULOCK         0      /* unlock locked section */
 #define	F_LOCK          1      /* lock a section for exclusive use */
@@ -605,11 +611,6 @@ int	 chroot(const char *) __POSIX_C_DEPRECATED(199506L);
 #endif
 
 char	*crypt(const char *, const char *);
-#ifndef __CTERMID_DEFINED
-/* Multiply defined in stdio.h and unistd.h by SUS */
-#define __CTERMID_DEFINED 1
-char    *ctermid(char *);
-#endif
 #if __DARWIN_UNIX03
 //Begin-Libc
 #ifndef LIBC_ALIAS_ENCRYPT
@@ -839,10 +840,22 @@ int	 mkostemps(char *path, int slen, int oflags)
 int	 mkstemp_dprotected_np(char *path, int dpclass, int dpflags)
 		__OSX_UNAVAILABLE __IOS_AVAILABLE(10.0)
 		__TVOS_AVAILABLE(10.0) __WATCHOS_AVAILABLE(3.0);
+char   *mkdtempat_np(int dfd, char *path)
+		__OSX_AVAILABLE(10.13) __IOS_AVAILABLE(11.0)
+		__TVOS_AVAILABLE(11.0) __WATCHOS_AVAILABLE(4.0);
+int     mkstempsat_np(int dfd, char *path, int slen)
+		__OSX_AVAILABLE(10.13) __IOS_AVAILABLE(11.0)
+		__TVOS_AVAILABLE(11.0) __WATCHOS_AVAILABLE(4.0);
+int     mkostempsat_np(int dfd, char *path, int slen, int oflags)
+		__OSX_AVAILABLE(10.13) __IOS_AVAILABLE(11.0)
+		__TVOS_AVAILABLE(11.0) __WATCHOS_AVAILABLE(4.0);
 int	 nfssvc(int, void *);
 int	 profil(char *, size_t, unsigned long, unsigned int);
+
+__deprecated_msg("Use of per-thread security contexts is error-prone and discouraged.")
 int	 pthread_setugid_np(uid_t, gid_t);
 int	 pthread_getugid_np( uid_t *, gid_t *);
+
 int	 reboot(int);
 int	 revoke(const char *);
 
@@ -950,7 +963,10 @@ int	setattrlist(const char*,void*,void*,size_t,unsigned long) __DARWIN_ALIAS(set
 int	setattrlist(const char*,void*,void*,size_t,unsigned long) LIBC_ALIAS(setattrlist);
 #endif /* !LIBC_ALIAS_SETATTRLIST */
 //End-Libc
-int exchangedata(const char*,const char*,unsigned long) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
+int exchangedata(const char*,const char*,unsigned long)
+		__OSX_DEPRECATED(10.0, 10.13, "use renamex_np with the RENAME_SWAP flag")
+		__IOS_DEPRECATED(2.0, 11.0, "use renamex_np with the RENAME_SWAP flag")
+		__WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 int	getdirentriesattr(int,void*,void*,size_t,unsigned long*,unsigned long*,unsigned long*,unsigned long) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
 
 #endif /* __LP64__ */

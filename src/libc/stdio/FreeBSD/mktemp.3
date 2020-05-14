@@ -34,9 +34,12 @@
 .Nm mktemp ,
 .Nm mkstemp ,
 .Nm mkdtemp ,
+.Nm mkdtempat_np ,
 .Nm mkstemps ,
+.Nm mkstempsat_np ,
 .Nm mkostemp ,
-.Nm mkostemps
+.Nm mkostemps ,
+.Nm mkostempsat_np
 .Nd make temporary file name (unique)
 .Sh LIBRARY
 .Lb libc
@@ -54,8 +57,19 @@
 .Fo mkdtemp
 .Fa "char *template"
 .Fc
+.Ft char *
+.Fo mkdtempat_np
+.Fa "int dfd"
+.Fa "char *template"
+.Fc
 .Ft int
 .Fo mkstemps
+.Fa "char *template"
+.Fa "int suffixlen"
+.Fc
+.Ft int
+.Fo mkstempsat_np
+.Fa "int dfd"
 .Fa "char *template"
 .Fa "int suffixlen"
 .Fc
@@ -66,6 +80,13 @@
 .Fc
 .Ft int
 .Fo mkostemps
+.Fa "char *template"
+.Fa "int suffixlen"
+.Fa "int oflags"
+.Fc
+.Ft int
+.Fo mkostempsat_np
+.Fa "int dfd"
 .Fa "char *template"
 .Fa "int suffixlen"
 .Fa "int oflags"
@@ -147,6 +168,25 @@ and
 .Fn mkostemps
 functions
 are told the length of the suffix string.
+.Pp
+The
+.Fn mkdtempat_np ,
+.Fn mkstempsat_np ,
+and
+.Fn mkostempsat_np
+functions
+act the same as
+.Fn mkdtemp ,
+.Fn mkstemps ,
+and
+.Fn mkostemps
+respectively,
+except in the case where the
+.Ar path
+specifies a relative path.
+In this case, path is treated as relative to the directory associated with the file descriptor
+.Ar fd
+instead of the current working directory.
 .Sh RETURN VALUES
 The
 .Fn mktemp

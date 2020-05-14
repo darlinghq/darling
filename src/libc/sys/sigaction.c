@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2017 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -20,13 +20,12 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-/*
- * Copyright (c) 1995 NeXT Computer, Inc. All Rights Reserved
- *
- *	@(#)sigaction.c	1.0
- */
 
+#if __has_include(<CrashReporterClient.h>)
 #include <CrashReporterClient.h>
+#else
+#define CRSetCrashLogMessage(...)
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -34,34 +33,18 @@
 #include <sys/signal.h>
 #include <errno.h>
 
-/*
- *	Intercept the sigaction syscall and use our signal trampoline
- *	as the signal handler instead.  The code here is derived
- *	from sigvec in sys/kern_sig.c.
- */
-extern int __sigaction (int, struct __sigaction * __restrict, struct sigaction * __restrict);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
+extern int __platform_sigaction (int sig,
+		const struct sigaction * __restrict nsv,
+		struct sigaction * __restrict osv);
 
 int
-sigaction (int sig, const struct sigaction * __restrict nsv, struct sigaction * __restrict osv)
+sigaction (int sig, const struct sigaction * __restrict nsv,
+		struct sigaction * __restrict osv)
 {
-	extern void _sigtramp();
-	struct __sigaction sa;
-	struct __sigaction *sap;
-	int ret;
-
-	if (sig <= 0 || sig >= NSIG || sig == SIGKILL || sig == SIGSTOP) {
-	        errno = EINVAL;
-	        return (-1);
-	}
-	sap = (struct __sigaction *)0;
-	if (nsv) {
-		sa.sa_handler = nsv->sa_handler;
-		sa.sa_tramp = _sigtramp;
-		sa.sa_mask = nsv->sa_mask;
-		sa.sa_flags = nsv->sa_flags;	
-		sap = &sa;
-	}
-	ret = __sigaction(sig, sap, osv);
+	int ret = __platform_sigaction(sig, nsv, osv);
 #ifdef FEATURE_SIGNAL_RESTRICTION
 	// Note: The "sig != 0" here is to force the compiler to maintain that "sig"
 	// is live, and in a register, after __sigaction so it is visible in the
@@ -87,3 +70,4 @@ _sigaction_nobind (sig, nsv, osv)
 }
 #endif
 
+#pragma clang diagnostic pop

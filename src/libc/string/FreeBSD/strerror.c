@@ -53,7 +53,6 @@ __FBSDID("$FreeBSD: src/lib/libc/string/strerror.c,v 1.16 2007/01/09 00:28:12 im
  */
 #define	EBUFSIZE	(20 + 2 + sizeof(UPREFIX))
 
-#ifndef BUILDING_VARIANT
 /*
  * Doing this by hand instead of linking with stdio(3) avoids bloat for
  * statically linked binaries.
@@ -117,31 +116,26 @@ strerror_r(int errnum, char *strerrbuf, size_t buflen)
 	return (retval);
 }
 
-__private_extern__ char *__strerror_ebuf = NULL;
-#else /* BUILDING_VARIANT */
-__private_extern__ void __errstr(int, char *, size_t);
-
-extern char *__strerror_ebuf;
-#endif /* !BUILDING_VARIANT */
+static char *__strerror_ebuf = NULL;
 
 char *
 strerror(int num)
 {
-	// Dynamically allocate a big buffer to receive the text then shrink it
-	// down to the actual size needed.
-	size_t ebufsiz = NL_TEXTMAX;
+#if !defined(NLS)
+	if (num >= 0 && num < sys_nerr) {
+		return (char*)sys_errlist[num];
+	}
+#endif
 
 	if (__strerror_ebuf == NULL) {
-		__strerror_ebuf = calloc(1, ebufsiz);
+		__strerror_ebuf = calloc(1, NL_TEXTMAX);
 		if (__strerror_ebuf == NULL) {
 			return NULL;
 		}
 	}
-	
-	if (strerror_r(num, __strerror_ebuf, ebufsiz) != 0) {
-#if !__DARWIN_UNIX03
+
+	if (strerror_r(num, __strerror_ebuf, NL_TEXTMAX) != 0) {
 		errno = EINVAL;
-#endif
 	}
 	return __strerror_ebuf;
 }

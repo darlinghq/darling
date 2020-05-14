@@ -34,7 +34,7 @@
  */
 #include_next <sys/cdefs.h>
 #ifndef _LIBC_NO_FEATURE_VERIFICATION
-#if defined(__arm__) || defined(__i386__) || defined(__x86_64__) || defined(__ppc__)
+#if defined(__arm64__) || defined(__arm__) || defined(__i386__) || defined(__x86_64__)
 #  include "libc-features.h"
 #else
 #  error "Unknown architecture."
@@ -103,15 +103,7 @@
 #define LIBC_EXTSN(sym)		__asm("_" __STRING(sym) LIBC_SUF_EXTSN)
 #define LIBC_EXTSN_C(sym)	__asm("_" __STRING(sym) LIBC_SUF_EXTSN LIBC_SUF_NON_CANCELABLE)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 extern int pthread_key_init_np(int, void (*)(void *));
-
-#ifdef __cplusplus
-}
-#endif
 
 #include <TargetConditionals.h>
 #if TARGET_IPHONE_SIMULATOR

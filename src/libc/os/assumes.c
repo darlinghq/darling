@@ -22,36 +22,54 @@
  */
 
 #include <TargetConditionals.h>
-#include <dispatch/dispatch.h>
 #include <uuid/uuid.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <mach-o/loader.h>
 #include <mach-o/fat.h>
-#include <mach-o/arch.h>
 #include <mach-o/getsect.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <sys/reason.h>
+#include <unistd.h>
 #include <execinfo.h>
 #include <stdio.h>
-#include <dlfcn.h>
 #include <_simple.h>
 #include <errno.h>
 #include <pthread.h>
 #include <string.h>
 #include "os/assumes.h"
+
+#if !TARGET_OS_DRIVERKIT
+#include <dlfcn.h>
 #include <os/debug_private.h>
+#include <os/log.h>
+#include <os/log_private.h>
+#include <os/reason_private.h>
+#else
+#define _os_debug_log_error_str(...)
+// placeholder to disable usage of dlfcn.h
+typedef struct dl_info {
+	void *dli_fbase;
+} Dl_info;
+#endif
+#if __has_include(<CrashReporterClient.h>)
+#include <CrashReporterClient.h>
+#define os_set_crash_message(arg) CRSetCrashLogMessage(arg)
+#else
+#define os_set_crash_message(arg)
+#endif
 
 #define OSX_ASSUMES_LOG_REDIRECT_SECT_NAME "__osx_log_func"
 #define os_atomic_cmpxchg(p, o, n) __sync_bool_compare_and_swap((p), (o), (n))
 
-static bool _os_should_abort_on_assumes = false;
-
+#if !TARGET_OS_DRIVERKIT
 static const char *
 _os_basename(const char *p)
 {
 	return ((strrchr(p, '/') ? : p - 1) + 1);
 }
+#endif
 
 static void
 _os_get_build(char *build, size_t sz)
@@ -77,6 +95,7 @@ _os_get_build(char *build, size_t sz)
 #endif
 }
 
+#if !TARGET_OS_DRIVERKIT
 static void
 _os_get_image_uuid(void *hdr, uuid_t uuid)
 {
@@ -104,35 +123,16 @@ _os_get_image_uuid(void *hdr, uuid_t uuid)
 		uuid_clear(uuid);
 	}
 }
-
-static void
-_os_abort_on_assumes_once(void)
-{
-	/* Embedded boot-args can get pretty long. Let's just hope this is big
-	 * enough.
-	 */
-	char bootargs[2048];
-	size_t len = sizeof(bootargs) - 1;
-
-	if (sysctlbyname("kern.bootargs", bootargs, &len, NULL, 0) == 0) {
-		if (strnstr(bootargs, "-os_assumes_fatal", len)) {
-			_os_should_abort_on_assumes = true;
-		}
-	}
-}
+#endif
 
 static bool
 _os_abort_on_assumes(void)
 {
-	static pthread_once_t once = PTHREAD_ONCE_INIT;
 	bool result = false;
 
 	if (getpid() != 1) {
 		if (getenv("OS_ASSUMES_FATAL")) {
 			result = true;
-		} else {
-			pthread_once(&once, _os_abort_on_assumes_once);
-			result = _os_should_abort_on_assumes;
 		}
 	} else {
 		if (getenv("OS_ASSUMES_FATAL_PID1")) {
@@ -154,6 +154,7 @@ _os_find_log_redirect_func(os_mach_header *hdr)
 {
 	os_redirect_t result = NULL;
 
+#if !TARGET_OS_DRIVERKIT
 	char name[128];
 	unsigned long size = 0;
 	uint8_t *data = getsectiondata(hdr, OS_ASSUMES_REDIRECT_SEG, OS_ASSUMES_REDIRECT_SECT, &size);
@@ -168,6 +169,7 @@ _os_find_log_redirect_func(os_mach_header *hdr)
 		struct _os_redirect_assumes_s *redirect = (struct _os_redirect_assumes_s *)data;
 		result = redirect->redirect;
 	}
+#endif
 
 	return result;
 }
@@ -193,6 +195,7 @@ _os_construct_message(uint64_t code, _SIMPLE_STRING asl_message, Dl_info *info, 
 	uintptr_t offset = 0;
 	uuid_string_t uuid_str;
 
+#if !TARGET_OS_DRIVERKIT
 	void *ret = __builtin_return_address(0);
 	if (dladdr(ret, info)) {
 		uuid_t uuid;
@@ -203,6 +206,9 @@ _os_construct_message(uint64_t code, _SIMPLE_STRING asl_message, Dl_info *info, 
 		
 		offset = ret - info->dli_fbase;
 	}
+#else
+	info->dli_fbase = NULL;
+#endif
 
 	char sig[64];
 	(void)snprintf(sig, sizeof(sig), "%s:%lu", uuid_str, offset);
@@ -231,13 +237,43 @@ __attribute__((always_inline))
 static inline void
 _os_crash_impl(const char *message) {
 	os_set_crash_message(message);
+#if !TARGET_OS_DRIVERKIT
 	if (!_os_crash_callback) {
 		_os_crash_callback = dlsym(RTLD_MAIN_ONLY, "os_crash_function");
 	}
 	if (_os_crash_callback) {
 		_os_crash_callback(message);
 	}
+#endif
 }
+
+#if !TARGET_OS_DRIVERKIT
+__attribute__((always_inline))
+static inline bool
+_os_crash_fmt_impl(os_log_pack_t pack, size_t pack_size)
+{
+	/*
+	 * We put just the format string into the CrashReporter buffer so that we
+	 * can get at least that on customer builds.
+	 */
+	const char *message = pack->olp_format;
+	_os_crash_impl(message);
+
+	char *(*_os_log_pack_send_and_compose)(os_log_pack_t, os_log_t,
+			os_log_type_t, char *, size_t) = NULL;
+	_os_log_pack_send_and_compose = dlsym(RTLD_DEFAULT, "os_log_pack_send_and_compose");
+	if (!_os_log_pack_send_and_compose) return false;
+
+	os_log_t __os_log_default = NULL;
+	__os_log_default = dlsym(RTLD_DEFAULT, "_os_log_default");
+	if (!__os_log_default) return false;
+
+	char *composed = _os_log_pack_send_and_compose(pack, __os_log_default,
+			OS_LOG_TYPE_ERROR, NULL, 0);
+
+	abort_with_payload(OS_REASON_LIBSYSTEM, OS_REASON_LIBSYSTEM_CODE_FAULT, pack, pack_size, composed, 0);
+}
+#endif
 
 __attribute__((always_inline))
 static inline void
@@ -286,25 +322,6 @@ _os_assert_log_impl(uint64_t code)
 		result = strdup(message);
 	}
 
-#if LIBC_NO_LIBCRASHREPORTERCLIENT
-	/* There is no crash report information facility on embedded, which is
-	 * really regrettable. Fortunately, all we need to capture is the value
-	 * which tripped up the assertion. We can just stuff that into the thread's 
-	 * name.
-	 */
-	char name[64];
-	(void)pthread_getname_np(pthread_self(), name, sizeof(name));
-
-	char newname[64];
-	if (strlen(name) == 0) {
-		(void)snprintf(newname, sizeof(newname), "[Fatal bug: 0x%llx]", code);
-	} else {
-		(void)snprintf(newname, sizeof(newname), "%s [Fatal bug: 0x%llx]", name, code);
-	}
-
-	(void)pthread_setname_np(newname);
-#endif
-
 	return result;
 }
 
@@ -352,6 +369,13 @@ void _os_crash(const char *message)
 {
 	_os_crash_impl(message);
 }
+
+#if !TARGET_OS_DRIVERKIT
+void _os_crash_fmt(os_log_pack_t pack, size_t pack_size)
+{
+	_os_crash_fmt_impl(pack, pack_size);
+}
+#endif
 
 void
 _os_assumes_log(uint64_t code)

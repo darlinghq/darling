@@ -30,6 +30,14 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wint-conversion"
+
+#include <TargetConditionals.h>
+#if !TARGET_OS_DRIVERKIT
+#define OS_CRASH_ENABLE_EXPERIMENTAL_LIBTRACE 1
+#endif
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)vfprintf.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
@@ -63,6 +71,10 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.90 2009/02/28 06:06:57 das
 
 #include <stdarg.h>
 #include "un-namespace.h"
+
+#include <os/assumes.h>
+#include <mach-o/dyld_priv.h>
+#include <mach/vm_region.h>
 
 #include "libc_private.h"
 #include "local.h"
@@ -308,6 +320,26 @@ vfprintf(FILE * __restrict fp, const char * __restrict fmt0, va_list ap)
 #error "BUF must be large enough to format a uintmax_t"
 #endif
 
+__private_extern__ bool
+__printf_is_memory_read_only(void *addr, size_t __unused size)
+{
+	vm_address_t address = addr;
+	vm_size_t vmsize = 0;
+	vm_region_basic_info_data_64_t info;
+	mach_msg_type_number_t info_cnt = VM_REGION_BASIC_INFO_COUNT_64;
+	memory_object_name_t object = MACH_PORT_NULL;
+	kern_return_t kr = KERN_SUCCESS;
+
+	kr = vm_region_64(mach_task_self(),
+			&address,
+			&vmsize,
+			VM_REGION_BASIC_INFO_64,
+			(vm_region_info_t) &info,
+			&info_cnt,
+			&object);
+	return (kr == KERN_SUCCESS) && !(info.protection & VM_PROT_WRITE);
+}
+
 /*
  * Non-MT-safe version
  */
@@ -316,14 +348,18 @@ __vfprintf(FILE *fp, locale_t loc, const char *fmt0, va_list ap)
 {
 	char *fmt;		/* format string */
 	int ch;			/* character from fmt */
-	int n, n2;		/* handy integer (short term usage) */
+	ssize_t n, n2;		/* handy integer (short term usage) */
 	char *cp;		/* handy char pointer (short term usage) */
 	int flags;		/* flags as above */
-	int ret;		/* return value accumulator */
-	int width;		/* width from format (%8d), or 0 */
-	int prec;		/* precision from format; <0 for N/A */
+	ssize_t ret;		/* return value accumulator */
+	ssize_t width;		/* width from format (%8d), or 0 */
+	ssize_t prec;		/* precision from format; <0 for N/A */
 	char sign;		/* sign prefix (' ', '+', '-', or \0) */
 	struct grouping_state gs; /* thousands' grouping info */
+
+#ifndef ALLOW_DYNAMIC_PERCENT_N
+	bool static_format_checked = false;
+#endif // ALLOW_DYNAMIC_PERCENT_N
 
 #ifndef NO_FLOATING_POINT
 	/*
@@ -364,9 +400,9 @@ __vfprintf(FILE *fp, locale_t loc, const char *fmt0, va_list ap)
 	uintmax_t ujval;	/* %j, %ll, %q, %t, %z integers */
 	int base;		/* base for [diouxX] conversion */
 	int dprec;		/* a copy of prec if [diouxX], 0 otherwise */
-	int realsz;		/* field size expanded by dprec, sign, etc */
-	int size;		/* size of converted field or string */
-	int prsize;             /* max size of printed field */
+	ssize_t realsz;		/* field size expanded by dprec, sign, etc */
+	ssize_t size;		/* size of converted field or string */
+	ssize_t prsize;             /* max size of printed field */
 	const char *xdigs;     	/* digits for %[xX] conversion */
 	struct io_state io;	/* I/O buffering state */
 	char buf[BUF];		/* buffer with space for digits of uintmax_t */
@@ -492,8 +528,9 @@ __vfprintf(FILE *fp, locale_t loc, const char *fmt0, va_list ap)
 		for (cp = fmt; (ch = *fmt) != '\0' && ch != '%'; fmt++)
 			/* void */;
 		if ((n = fmt - cp) != 0) {
-			if ((unsigned)ret + n > INT_MAX) {
+			if (ret + n >= INT_MAX) {
 				ret = EOF;
+				errno = EOVERFLOW;
 				goto error;
 			}
 			PRINT(cp, n);
@@ -833,7 +870,21 @@ fp_common:
 			void *ptr = GETARG(void *);
 			if (ptr == NULL)
 				continue;
-			else if (flags & LLONGINT)
+
+#ifndef ALLOW_DYNAMIC_PERCENT_N
+			if (!static_format_checked) {
+				static_format_checked = __printf_is_memory_read_only((void*)fmt0, strlen(fmt0));
+			}
+			if (!static_format_checked) {
+#if OS_CRASH_ENABLE_EXPERIMENTAL_LIBTRACE
+				os_crash("%%n used in a non-immutable format string: %s", fmt0);
+#else
+				os_crash("%%n used in a non-immutable format string");
+#endif
+			}
+#endif // ALLOW_DYNAMIC_PERCENT_N
+
+			if (flags & LLONGINT)
 				*(long long *)ptr = ret;
 			else if (flags & SIZET)
 				*(ssize_t *)ptr = (ssize_t)ret;
@@ -904,7 +955,15 @@ fp_common:
 				}
 			} else if ((cp = GETARG(char *)) == NULL)
 				cp = "(null)";
-			size = (prec >= 0) ? strnlen(cp, prec) : strlen(cp);
+			{
+				size_t cp_len = (prec >= 0) ? strnlen(cp, prec) : strlen(cp);
+				if (cp_len < INT_MAX) {
+					size = cp_len;
+				} else {
+					ret = EOF;
+					goto error;
+				}
+			}
 			sign = '\0';
 			break;
 		case 'U':
@@ -976,7 +1035,7 @@ number:			if ((dprec = prec) >= 0)
 			}
 			size = buf + BUF - cp;
 			if (size > BUF)	/* should never happen */
-				LIBC_ABORT("size (%d) > BUF (%d)", size, BUF);
+				LIBC_ABORT("size (%zd) > BUF (%d)", size, BUF);
 			if ((flags & GROUPING) && size != 0)
 				size += grouping_init(&gs, size, loc);
 			break;
@@ -1301,8 +1360,9 @@ number:			if ((dprec = prec) >= 0)
 			realsz += 2;
 
 		prsize = width > realsz ? width : realsz;
-		if ((unsigned)ret + prsize > INT_MAX) {
+		if (ret + prsize >= INT_MAX) {
 			ret = EOF;
+			errno = EOVERFLOW;
 			goto error;
 		}
 
@@ -1395,7 +1455,7 @@ error:
 		ret = EOF;
 	if ((argtable != NULL) && (argtable != statargtable))
 		free (argtable);
-	return (ret);
+	return (ret < 0 || ret >= INT_MAX) ? -1 : (int)ret;
 	/* NOTREACHED */
 }
-
+#pragma clang diagnostic pop

@@ -21,7 +21,11 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include <os/assumes.h>
+#include <os/once_private.h>
+#include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -53,6 +57,19 @@ grantpt(int fd)
 	return ioctl(fd, TIOCPTYGRANT);
 }
 
+// defined by TIOCPTYGNAME
+#define PTSNAME_MAX_SIZE 128
+
+static pthread_key_t ptsname_buffer_specific_key;
+static os_once_t ptsname_once;
+
+static void
+ptsname_once_init(void *ctx __unused)
+{
+	int ret = pthread_key_create(&ptsname_buffer_specific_key, free);
+	os_assert_zero(ret);
+}
+
 /*
  * ptsname call for cloning pty implementation.
  *
@@ -62,29 +79,59 @@ grantpt(int fd)
 char *
 ptsname(int fd)
 {
-	static char *ptsnamebuf = NULL;
-	int error;
-	char *retval = NULL;
-	struct stat sbuf;
+	os_once(&ptsname_once, NULL, ptsname_once_init);
+	char *ptsnamebuf = pthread_getspecific(ptsname_buffer_specific_key);
 
 	if (ptsnamebuf == NULL) {
-		ptsnamebuf = malloc(128); // defined by TIOCPTYGNAME
-	}
-	
-	error = ioctl(fd, TIOCPTYGNAME, ptsnamebuf);
-	if (!error) {
-		/*
-		 * XXX TSD
-		 *
-		 * POSIX: Handle device rename test case, which is expected
-		 * to fail if the pty has been renamed.
-		 */
-		if (stat(ptsnamebuf, &sbuf) == 0) {
-			retval = ptsnamebuf;
-		}
+		ptsnamebuf = malloc(PTSNAME_MAX_SIZE);
+		os_assert(ptsnamebuf);
+
+		int error = pthread_setspecific(ptsname_buffer_specific_key, ptsnamebuf);
+		os_assert_zero(error);
 	}
 
-	return (retval);
+	int error = ptsname_r(fd, ptsnamebuf, PTSNAME_MAX_SIZE);
+
+	return error ? NULL : ptsnamebuf;
+}
+
+int
+ptsname_r(int fd, char *buffer, size_t buflen)
+{
+	int error;
+	struct stat sbuf;
+	char ptsnamebuf[PTSNAME_MAX_SIZE];
+
+	if (!buffer) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	error = ioctl(fd, TIOCPTYGNAME, ptsnamebuf);
+	if (error) {
+		return -1;
+	}
+
+	/*
+	 * XXX TSD
+	 *
+	 * POSIX: Handle device rename test case, which is expected
+	 * to fail if the pty has been renamed.
+	 */
+	error = stat(ptsnamebuf, &sbuf);
+	if (error) {
+		return -1;
+	}
+
+	size_t len = strlen(ptsnamebuf) + 1;
+	if (buflen < len) {
+		errno = ERANGE;
+		return -1;
+	}
+
+	memcpy(buffer, ptsnamebuf, len);
+
+	return 0;
 }
 
 /*

@@ -76,12 +76,12 @@ int openpty(amaster, aslave, name, termp, winp)
 	struct winsize *winp;
 {
 	int master, slave;
-	char *sname;
+	char sname[128];
 
 	if ((master = posix_openpt(O_RDWR|O_NOCTTY)) < 0)
 		return -1;
 	if (grantpt(master) < 0 || unlockpt(master) < 0
-	    || (sname = ptsname(master)) == NULL
+	    || ptsname_r(master, sname, sizeof(sname)) == -1
 	    || (slave = open(sname, O_RDWR|O_NOCTTY, 0)) < 0) {
 		(void) close(master);
 		return -1;

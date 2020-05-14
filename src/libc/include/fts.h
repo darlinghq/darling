@@ -65,6 +65,9 @@
 
 #include <Availability.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
 typedef struct {
 	struct _ftsent *fts_cur;	/* current node */
 	struct _ftsent *fts_child;	/* linked list of children */
@@ -194,15 +197,22 @@ FTS	*fts_open(char * const *, int,
 #endif /* !LIBC_ALIAS_FTS_OPEN */
 //End-Libc
 #ifdef __BLOCKS__
+#if __has_attribute(noescape)
+#define __fts_noescape __attribute__((__noescape__))
+#else
+#define __fts_noescape
+#endif
 //Begin-Libc
 #ifndef LIBC_ALIAS_FTS_OPEN_B
 //End-Libc
 FTS	*fts_open_b(char * const *, int,
-	    int (^)(const FTSENT **, const FTSENT **)) __DARWIN_INODE64(fts_open_b) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+	    int (^)(const FTSENT **, const FTSENT **) __fts_noescape)
+	    __DARWIN_INODE64(fts_open_b) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 //Begin-Libc
 #else /* LIBC_ALIAS_FTS_OPEN */
 FTS	*fts_open_b(char * const *, int,
-	    int (^)(const FTSENT **, const FTSENT **)) LIBC_INODE64(fts_open_b);
+	    int (^)(const FTSENT **, const FTSENT **) __fts_noescape)
+	    LIBC_INODE64(fts_open_b);
 #endif /* !LIBC_ALIAS_FTS_OPEN */
 //End-Libc
 #endif /* __BLOCKS__ */
@@ -226,4 +236,6 @@ int	 fts_set(FTS *, FTSENT *, int) LIBC_INODE64(fts_set);
 //End-Libc
 __END_DECLS
 
+#pragma clang diagnostic pop
 #endif /* !_FTS_H_ */
+
