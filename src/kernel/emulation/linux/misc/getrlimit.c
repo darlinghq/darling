@@ -1,7 +1,7 @@
 #include "getrlimit.h"
 #include "../base.h"
 #include "../errno.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <linux-syscalls/linux.h>
 
 long sys_getrlimit(unsigned int which, struct rlimit* rlp)

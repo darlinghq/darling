@@ -1,7 +1,7 @@
 #include "bsdthread_register.h"
 #include "../base.h"
 #include "../errno.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "../signal/sigexc.h"
 #include "../mach/lkm.h"
 #include "../../../../external/lkm/api.h"

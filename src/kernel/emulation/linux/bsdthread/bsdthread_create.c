@@ -5,8 +5,8 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "../../../../../platform-include/sys/mman.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/mman.h>
+#include <sys/errno.h>
 #include "../mman/mman.h"
 #include "../simple.h"
 #include "../elfcalls_wrapper.h"

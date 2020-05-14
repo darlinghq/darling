@@ -6,6 +6,7 @@
 #include "sysctl_kern.h"
 #include "sysctl_proc.h"
 #include "../ext/sys/utsname.h"
+#include "../simple.h"
 
 extern kern_return_t mach_port_deallocate(ipc_space_t task, mach_port_name_t name);
 extern kern_return_t host_info(mach_port_name_t host, int itype, void* hinfo, mach_msg_type_number_t* count);

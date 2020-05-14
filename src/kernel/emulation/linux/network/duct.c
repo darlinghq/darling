@@ -1,5 +1,5 @@
 #include "duct.h"
-#include "../../../../../platform-include/sys/socket.h"
+#include <sys/socket.h>
 
 int sfamily_linux_to_bsd(int family)
 {

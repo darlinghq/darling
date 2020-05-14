@@ -5,7 +5,7 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include "sigexc.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 
 static int sigflags_bsd_to_linux(int flags);
 static int sigflags_linux_to_bsd(int flags);

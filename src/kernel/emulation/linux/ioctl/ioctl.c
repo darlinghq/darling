@@ -1,6 +1,6 @@
 #include "ioctl.h"
 #include "../base.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include "termios.h"

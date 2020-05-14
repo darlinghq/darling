@@ -1,7 +1,7 @@
 #include "madvise.h"
 #include "../errno.h"
 #include "../base.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <linux-syscalls/linux.h>
 
 #define MADV_FREE 5

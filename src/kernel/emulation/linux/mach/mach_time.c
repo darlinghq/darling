@@ -2,6 +2,7 @@
 #include <mach/kern_return.h>
 #include <errno.h>
 #include <sys/linux_time.h>
+#include "../time/gettimeofday.h"
 
 #ifndef NSEC_PER_SEC
 #	define NSEC_PER_SEC 1000000000ull

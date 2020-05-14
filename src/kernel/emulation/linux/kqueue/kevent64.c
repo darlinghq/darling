@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 
 int __attribute__((weak)) __attribute__((visibility("default"))) kevent64_impl(int kq, ...) { return -ENOSYS; }
 

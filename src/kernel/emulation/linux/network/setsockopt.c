@@ -4,7 +4,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "../time/gettimeofday.h"
 #include "duct.h"
 

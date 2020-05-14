@@ -5,13 +5,15 @@
 #include "../bsdthread/per_thread_wd.h"
 #include "../fcntl/open.h"
 #include "../simple.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "../unistd/close.h"
 #include "../mach/lkm.h"
 #include "../duct_errno.h"
 #include "../unistd/access.h"
 #include <linux-syscalls/linux.h>
 #include <os/lock.h>
+
+extern void free(void* ptr);
 
 struct SavedRef
 {

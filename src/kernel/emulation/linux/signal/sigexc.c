@@ -9,7 +9,7 @@
 #include "../mach/lkm.h"
 #include "../../../../external/lkm/api.h"
 #include "../../../libsyscall/wrappers/_libkernel_init.h"
-#include "../../../../../platform-include/sys/mman.h"
+#include <sys/mman.h>
 #include "../mman/mman.h"
 #include "kill.h"
 #include "../simple.h"

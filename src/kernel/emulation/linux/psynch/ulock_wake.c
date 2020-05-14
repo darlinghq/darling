@@ -3,7 +3,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <stdbool.h>
 #include <limits.h>
 

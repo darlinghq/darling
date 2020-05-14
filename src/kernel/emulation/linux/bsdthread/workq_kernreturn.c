@@ -3,7 +3,7 @@
 #include "bsdthread_create.h"
 #include "../base.h"
 #include "../errno.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <pthread/tsd_private.h>
@@ -11,6 +11,7 @@
 #include "../simple.h"
 #include <sys/queue.h>
 #include <os/lock.h>
+#include <elfcalls/threads.h>
 
 #define WQ_MAX_THREADS	64
 

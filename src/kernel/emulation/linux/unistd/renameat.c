@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "../common_at.h"
 #include "../vchroot_expand.h"
 #include <lkm/api.h>

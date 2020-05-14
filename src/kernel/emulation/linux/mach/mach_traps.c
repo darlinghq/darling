@@ -8,6 +8,8 @@
 #include "../../external/lkm/api.h"
 #include "lkm.h"
 #include "mach_traps.h"
+#include <mach/mach_init.h>
+#include "../ext/mremap.h"
 
 #define UNIMPLEMENTED_TRAP() { char msg[] = "Called unimplemented Mach trap: "; write(2, msg, sizeof(msg)-1); write(2, __FUNCTION__, sizeof(__FUNCTION__)-1); write(2, "\n", 1); }
 
@@ -279,7 +281,7 @@ kern_return_t _kernelrpc_mach_vm_map_trap_impl(
 	if (!(flags & VM_FLAGS_ANYWHERE))
 		posix_flags |= MAP_FIXED;
 	if ((flags >> 24) == VM_MEMORY_REALLOC)
-		addr = __linux_mremap(((char*)*address) - 0x1000, 0x1000, 0x1000 + size, 0);
+		addr = __linux_mremap(((char*)*address) - 0x1000, 0x1000, 0x1000 + size, 0, NULL);
 	else
 		addr = mmap(*address, size, prot, posix_flags, -1, 0);
 	

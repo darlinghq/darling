@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../simple.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "sysctl_inc.h"
 #include <stddef.h>
 #include <limits.h>

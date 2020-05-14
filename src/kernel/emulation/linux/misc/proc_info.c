@@ -3,9 +3,9 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
-#include "../../../../../platform-include/sys/proc_info.h"
-#include "../../../../../platform-include/mach/vm_prot.h"
+#include <sys/errno.h>
+#include <sys/proc_info.h>
+#include <mach/vm_prot.h>
 #include "../ext/syslog.h"
 #include "../fcntl/open.h"
 #include "../unistd/close.h"

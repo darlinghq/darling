@@ -1,7 +1,7 @@
 #include "kill.h"
 #include "../base.h"
 #include "../errno.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "duct_signals.h"
 #include <linux-syscalls/linux.h>
 #include "../mach/lkm.h"

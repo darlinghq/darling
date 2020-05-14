@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "duct.h"
 
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);

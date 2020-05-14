@@ -1,7 +1,7 @@
 #include "fsetxattr.h"
 #include "../base.h"
 #include "../errno.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <linux-syscalls/linux.h>
 
 long sys_fsetxattr(int fd, const char* name, const void* value,

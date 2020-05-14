@@ -129,6 +129,6 @@
 #define LINUX_EHWPOISON 133
 #define LINUX_ENOTSUP EOPNOTSUPP
 
-#include "../../../../kernel-include/sys/errno.h"
+#include <sys/errno.h>
 
 #endif
