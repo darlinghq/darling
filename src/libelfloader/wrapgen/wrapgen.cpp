@@ -128,12 +128,23 @@ void parse_elf(const char* elf, std::string& soname, std::set<std::string>& symb
 		throw std::runtime_error(ss.str());
 	}
 
-	if (ehdr->e_machine != EM_X86_64)
-	{
-		std::stringstream ss;
-		ss << elf << " is not an ELF for x86-64";
-		throw std::runtime_error(ss.str());
-	}
+	#if defined(__x86_64__) || defined(__i386__)
+		if (ehdr->e_machine != EM_X86_64)
+		{
+			std::stringstream ss;
+			ss << elf << " is not an ELF for x86-64";
+			throw std::runtime_error(ss.str());
+		}
+	#elif defined(__aarch64__)
+		if (ehdr->e_machine != EM_AARCH64)
+		{
+			std::stringstream ss;
+			ss << elf << " is not an ELF for AARCH64/ARM64";
+			throw std::runtime_error(ss.str());
+		}
+	#else
+		#error "ehdr->e_machine needs to be compared with your architecture"
+	#endif
 
 	// Now read program headers, find a PT_DYNAMIC segment type
 	for (int i = 0; i < ehdr->e_phnum; i++)
