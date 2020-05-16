@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <LaunchServices/LaunchServicesPriv.h>
-#include <CoreGraphics/CGS.h>
+#include <CoreGraphics/CoreGraphicsPrivate.h>
 
 const CFStringRef kAXUIElementCopyHierarchyArrayAttributesKey = CFSTR("AXCHAA");
 const CFStringRef kAXUIElementCopyHierarchyMaxArrayCountKey = CFSTR("AXCHMAC");
