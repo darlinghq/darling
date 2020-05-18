@@ -39,6 +39,7 @@ set(LIBSYSCALL_MIG_NAMES
 	mach/exc
 	device/device
 	mach/clock
+	mach/clock_priv
 )
 
 foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIG_NAMES)
@@ -47,6 +48,7 @@ foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIG_NAMES)
 	get_filename_component(MIG_BASENAME ${MIG_FILENAME} NAME)
 	get_filename_component(MIG_HEADER_DIR ${MIG_FILENAME} DIRECTORY)
 
+	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${MIG_HEADER_DIR}")
 	file(CREATE_LINK
 		"${MIG_BASENAME}.h"
 		"${CMAKE_CURRENT_BINARY_DIR}/${MIG_FILENAME}_internal.h"
@@ -180,6 +182,7 @@ set(syscall_sources
 	${CMAKE_CURRENT_BINARY_DIR}/device/deviceUser.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/excServer.c
 	${CMAKE_CURRENT_BINARY_DIR}/mach/excUser.c
+	${CMAKE_CURRENT_BINARY_DIR}/mach/clock_privUser.c
 	
 	mach/mach_init.c
 	mach/clock_sleep.c
