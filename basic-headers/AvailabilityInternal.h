@@ -4444,6 +4444,7 @@
     #define __API_AVAILABLE_PLATFORM_ios(x) ios,introduced=x
     #define __API_AVAILABLE_PLATFORM_watchos(x) watchos,introduced=x
     #define __API_AVAILABLE_PLATFORM_tvos(x) tvos,introduced=x
+    #define __API_AVAILABLE_PLATFORM_bridgeos(x) bridgeos,introduced=x
     
     #define __API_AVAILABLE_PLATFORM_macCatalyst(x) macCatalyst,introduced=x
     #define __API_AVAILABLE_PLATFORM_macCatalyst(x) macCatalyst,introduced=x
@@ -4492,6 +4493,7 @@
     #define __API_DEPRECATED_PLATFORM_ios(x,y) ios,introduced=x,deprecated=y
     #define __API_DEPRECATED_PLATFORM_watchos(x,y) watchos,introduced=x,deprecated=y
     #define __API_DEPRECATED_PLATFORM_tvos(x,y) tvos,introduced=x,deprecated=y
+    #define __API_DEPRECATED_PLATFORM_bridgeos(x,y) bridgeos,introduced=x,deprecated=y
     
     #define __API_DEPRECATED_PLATFORM_macCatalyst(x,y) macCatalyst,introduced=x,deprecated=y
     #define __API_DEPRECATED_PLATFORM_macCatalyst(x,y) macCatalyst,introduced=x,deprecated=y
@@ -4573,6 +4575,7 @@
     #define __API_UNAVAILABLE_PLATFORM_ios ios,unavailable
     #define __API_UNAVAILABLE_PLATFORM_watchos watchos,unavailable
     #define __API_UNAVAILABLE_PLATFORM_tvos tvos,unavailable
+    #define __API_UNAVAILABLE_PLATFORM_bridgeos bridgeos,unavailable
     
     #define __API_UNAVAILABLE_PLATFORM_macCatalyst macCatalyst,unavailable
     #define __API_UNAVAILABLE_PLATFORM_macCatalyst macCatalyst,unavailable
