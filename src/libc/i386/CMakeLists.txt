@@ -9,11 +9,6 @@ add_definitions(-DPRIVATE)
 
 set(i386_sources
 	gen/mcount.S
-	string/strcpy.S
-	string/strlcat.S
-	string/strlcpy.S
-	string/strlen.S
-	string/strncpy.S
 )
 
 add_library(libc-i386 OBJECT ${i386_sources})

@@ -77,46 +77,14 @@ __END_DECLS
 #ifndef	_ANSI_SOURCE
 __BEGIN_DECLS
 void	(* _Nullable bsd_signal(int, void (* _Nullable)(int)))(int);
-//Begin-Libc
-#ifndef LIBC_ALIAS_KILL
-//End-Libc
 int	kill(pid_t, int) __DARWIN_ALIAS(kill);
-//Begin-Libc
-#else /* LIBC_ALIAS_KILL */
-int	kill(pid_t, int) LIBC_ALIAS(kill);
-#endif /* !LIBC_ALIAS_KILL */
-//End-Libc
-//Begin-Libc
-#ifndef LIBC_ALIAS_KILLPG
-//End-Libc
 int	killpg(pid_t, int) __DARWIN_ALIAS(killpg);
-//Begin-Libc
-#else /* LIBC_ALIAS_KILLPG */
-int	killpg(pid_t, int) LIBC_ALIAS(killpg);
-#endif /* !LIBC_ALIAS_KILLPG */
-//End-Libc
 int	pthread_kill(pthread_t, int);
-//Begin-Libc
-#ifndef LIBC_ALIAS_PTHREAD_SIGMASK
-//End-Libc
 int	pthread_sigmask(int, const sigset_t *, sigset_t *) __DARWIN_ALIAS(pthread_sigmask);
-//Begin-Libc
-#else /* LIBC_ALIAS_PTHREAD_SIGMASK */
-int	pthread_sigmask(int, const sigset_t *, sigset_t *) LIBC_ALIAS(pthread_sigmask);
-#endif /* !LIBC_ALIAS_PTHREAD_SIGMASK */
-//End-Libc
 int	sigaction(int, const struct sigaction * __restrict,
 	    struct sigaction * __restrict);
 int	sigaddset(sigset_t *, int);
-//Begin-Libc
-#ifndef LIBC_ALIAS_SIGALTSTACK
-//End-Libc
 int	sigaltstack(const stack_t * __restrict, stack_t * __restrict)  __DARWIN_ALIAS(sigaltstack) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
-//Begin-Libc
-#else /* LIBC_ALIAS_SIGALTSTACK */
-int	sigaltstack(const stack_t * __restrict, stack_t * __restrict)  LIBC_ALIAS(sigaltstack) __WATCHOS_PROHIBITED __TVOS_PROHIBITED;
-#endif /* !LIBC_ALIAS_SIGALTSTACK */
-//End-Libc
 int	sigdelset(sigset_t *, int);
 int	sigemptyset(sigset_t *);
 int	sigfillset(sigset_t *);
@@ -124,37 +92,13 @@ int	sighold(int);
 int	sigignore(int);
 int	siginterrupt(int, int);
 int	sigismember(const sigset_t *, int);
-//Begin-Libc
-#ifndef LIBC_ALIAS_SIGPAUSE
-//End-Libc
 int	sigpause(int) __DARWIN_ALIAS_C(sigpause);
-//Begin-Libc
-#else /* LIBC_ALIAS_SIGPAUSE */
-int	sigpause(int) LIBC_ALIAS_C(sigpause);
-#endif /* !LIBC_ALIAS_SIGPAUSE */
-//End-Libc
 int	sigpending(sigset_t *);
 int	sigprocmask(int, const sigset_t * __restrict, sigset_t * __restrict);
 int	sigrelse(int);
 void    (* _Nullable sigset(int, void (* _Nullable)(int)))(int);
-//Begin-Libc
-#ifndef LIBC_ALIAS_SIGSUSPEND
-//End-Libc
 int	sigsuspend(const sigset_t *) __DARWIN_ALIAS_C(sigsuspend);
-//Begin-Libc
-#else /* LIBC_ALIAS_SIGSUSPEND */
-int	sigsuspend(const sigset_t *) LIBC_ALIAS_C(sigsuspend);
-#endif /* !LIBC_ALIAS_SIGSUSPEND */
-//End-Libc
-//Begin-Libc
-#ifndef LIBC_ALIAS_SIGWAIT
-//End-Libc
 int	sigwait(const sigset_t * __restrict, int * __restrict) __DARWIN_ALIAS_C(sigwait);
-//Begin-Libc
-#else /* LIBC_ALIAS_SIGWAIT */
-int	sigwait(const sigset_t * __restrict, int * __restrict) LIBC_ALIAS_C(sigwait);
-#endif /* !LIBC_ALIAS_SIGWAIT */
-//End-Libc
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 void	psignal(unsigned int, const char *);
 int	sigblock(int);

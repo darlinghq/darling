@@ -64,6 +64,8 @@ set(stdio_sources
 	FreeBSD/getwchar.c
 	FreeBSD/makebuf.c
 	FreeBSD/mktemp.c
+	FreeBSD/open_memstream.c
+	FreeBSD/open_wmemstream.c
 	FreeBSD/perror.c
 	FreeBSD/printf.c
 	FreeBSD/printf-pos.c

@@ -101,15 +101,7 @@ extern char *tzname[];
 
 extern int getdate_err;
 #if __DARWIN_UNIX03
-//Begin-Libc
-#ifndef LIBC_ALIAS_TIMEZONE
-//End-Libc
 extern long timezone __DARWIN_ALIAS(timezone);
-//Begin-Libc
-#else /* LIBC_ALIAS_TIMEZONE */
-extern long timezone LIBC_ALIAS(timezone);
-#endif /* !LIBC_ALIAS_TIMEZONE */
-//End-Libc
 #endif /* __DARWIN_UNIX03 */
 extern int daylight;
 #endif /* UNIFDEF_DRIVERKIT */
@@ -117,47 +109,15 @@ extern int daylight;
 __BEGIN_DECLS
 #ifndef UNIFDEF_DRIVERKIT
 char *asctime(const struct tm *);
-//Begin-Libc
-#ifndef LIBC_ALIAS_CLOCK
-//End-Libc
 clock_t clock(void) __DARWIN_ALIAS(clock);
-//Begin-Libc
-#else /* LIBC_ALIAS_CLOCK */
-clock_t clock(void) LIBC_ALIAS(clock);
-#endif /* !LIBC_ALIAS_CLOCK */
-//End-Libc
 char *ctime(const time_t *);
 double difftime(time_t, time_t);
 struct tm *getdate(const char *);
 struct tm *gmtime(const time_t *);
 struct tm *localtime(const time_t *);
-//Begin-Libc
-#ifndef LIBC_ALIAS_MKTIME
-//End-Libc
 time_t mktime(struct tm *) __DARWIN_ALIAS(mktime);
-//Begin-Libc
-#else /* LIBC_ALIAS_MKTIME */
-time_t mktime(struct tm *) LIBC_ALIAS(mktime);
-#endif /* !LIBC_ALIAS_MKTIME */
-//End-Libc
-//Begin-Libc
-#ifndef LIBC_ALIAS_STRFTIME
-//End-Libc
 size_t strftime(char * __restrict, size_t, const char * __restrict, const struct tm * __restrict) __DARWIN_ALIAS(strftime);
-//Begin-Libc
-#else /* LIBC_ALIAS_STRFTIME */
-size_t strftime(char * __restrict, size_t, const char * __restrict, const struct tm * __restrict) LIBC_ALIAS(strftime);
-#endif /* !LIBC_ALIAS_STRFTIME */
-//End-Libc
-//Begin-Libc
-#ifndef LIBC_ALIAS_STRPTIME
-//End-Libc
 char *strptime(const char * __restrict, const char * __restrict, struct tm * __restrict) __DARWIN_ALIAS(strptime);
-//Begin-Libc
-#else /* LIBC_ALIAS_STRPTIME */
-char *strptime(const char * __restrict, const char * __restrict, struct tm * __restrict) LIBC_ALIAS(strptime);
-#endif /* !LIBC_ALIAS_STRPTIME */
-//End-Libc
 time_t time(time_t *);
 
 #ifndef _ANSI_SOURCE
@@ -182,15 +142,7 @@ time_t timegm(struct tm * const);
 #endif /* neither ANSI nor POSIX */
 
 #if !defined(_ANSI_SOURCE)
-//Begin-Libc
-#ifndef LIBC_ALIAS_NANOSLEEP
-//End-Libc
 int nanosleep(const struct timespec *__rqtp, struct timespec *__rmtp) __DARWIN_ALIAS_C(nanosleep);
-//Begin-Libc
-#else /* LIBC_ALIAS_NANOSLEEP */
-int nanosleep(const struct timespec *__rqtp, struct timespec *__rmtp) LIBC_ALIAS_C(nanosleep);
-#endif /* !LIBC_ALIAS_NANOSLEEP */
-//End-Libc
 #endif
 #endif /* UNIFDEF_DRIVERKIT */
 

@@ -178,15 +178,7 @@
 #endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
 __BEGIN_DECLS
-//Begin-Libc
-#ifndef LIBC_ALIAS_REGCOMP
-//End-Libc
 int	regcomp(regex_t * __restrict, const char * __restrict, int) __DARWIN_ALIAS(regcomp);
-//Begin-Libc
-#else /* LIBC_ALIAS_REGCOMP */
-int	regcomp(regex_t * __restrict, const char * __restrict, int) LIBC_ALIAS(regcomp);
-#endif /* !LIBC_ALIAS_REGCOMP */
-//End-Libc
 size_t	regerror(int, const regex_t * __restrict, char * __restrict, size_t) __cold;
 /*
  * gcc under c99 mode won't compile "[ __restrict]" by itself.  As a workaround,

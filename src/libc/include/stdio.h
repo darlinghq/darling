@@ -151,52 +151,19 @@ char	*fgets(char * __restrict, int, FILE *);
 #if defined(_DARWIN_UNLIMITED_STREAMS) || defined(_DARWIN_C_SOURCE)
 FILE	*fopen(const char * __restrict __filename, const char * __restrict __mode) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_3_2, __DARWIN_EXTSN(fopen));
 #else /* !_DARWIN_UNLIMITED_STREAMS && !_DARWIN_C_SOURCE */
-//Begin-Libc
-#ifndef LIBC_ALIAS_FOPEN
-//End-Libc
 FILE	*fopen(const char * __restrict __filename, const char * __restrict __mode) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_2_0, __DARWIN_ALIAS(fopen));
-//Begin-Libc
-#else /* LIBC_ALIAS_FOPEN */
-FILE	*fopen(const char * __restrict __filename, const char * __restrict __mode) LIBC_ALIAS(fopen);
-#endif /* !LIBC_ALIAS_FOPEN */
-//End-Libc
 #endif /* (DARWIN_UNLIMITED_STREAMS || _DARWIN_C_SOURCE) */
 int	 fprintf(FILE * __restrict, const char * __restrict, ...) __printflike(2, 3);
 int	 fputc(int, FILE *);
-//Begin-Libc
-#ifndef LIBC_ALIAS_FPUTS
-//End-Libc
 int	 fputs(const char * __restrict, FILE * __restrict) __DARWIN_ALIAS(fputs);
-//Begin-Libc
-#else /* LIBC_ALIAS_FPUTS */
-int	 fputs(const char * __restrict, FILE * __restrict) LIBC_ALIAS(fputs);
-#endif /* !LIBC_ALIAS_FPUTS */
-//End-Libc
 size_t	 fread(void * __restrict __ptr, size_t __size, size_t __nitems, FILE * __restrict __stream);
-//Begin-Libc
-#ifndef LIBC_ALIAS_FREOPEN
-//End-Libc
 FILE	*freopen(const char * __restrict, const char * __restrict,
                  FILE * __restrict) __DARWIN_ALIAS(freopen);
-//Begin-Libc
-#else /* LIBC_ALIAS_FREOPEN */
-FILE	*freopen(const char * __restrict, const char * __restrict,
-                 FILE * __restrict) LIBC_ALIAS(freopen);
-#endif /* !LIBC_ALIAS_FREOPEN */
-//End-Libc
 int	 fscanf(FILE * __restrict, const char * __restrict, ...) __scanflike(2, 3);
 int	 fseek(FILE *, long, int);
 int	 fsetpos(FILE *, const fpos_t *);
 long	 ftell(FILE *);
-//Begin-Libc
-#ifndef LIBC_ALIAS_FWRITE
-//End-Libc
 size_t	 fwrite(const void * __restrict __ptr, size_t __size, size_t __nitems, FILE * __restrict __stream) __DARWIN_ALIAS(fwrite);
-//Begin-Libc
-#else /* LIBC_ALIAS_FWRITE */
-size_t	 fwrite(const void * __restrict __ptr, size_t __size, size_t __nitems, FILE * __restrict __stream) LIBC_ALIAS(fwrite);
-#endif /* !LIBC_ALIAS_FWRITE */
-//End-Libc
 int	 getc(FILE *);
 int	 getchar(void);
 char	*gets(char *);
@@ -241,15 +208,7 @@ __BEGIN_DECLS
 #if defined(_DARWIN_UNLIMITED_STREAMS) || defined(_DARWIN_C_SOURCE)
 FILE	*fdopen(int, const char *) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_3_2, __DARWIN_EXTSN(fdopen));
 #else /* !_DARWIN_UNLIMITED_STREAMS && !_DARWIN_C_SOURCE */
-//Begin-Libc
-#ifndef LIBC_ALIAS_FDOPEN
-//End-Libc
 FILE	*fdopen(int, const char *) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_2_0, __DARWIN_ALIAS(fdopen));
-//Begin-Libc
-#else /* LIBC_ALIAS_FDOPEN */
-FILE	*fdopen(int, const char *) LIBC_ALIAS(fdopen);
-#endif /* !LIBC_ALIAS_FDOPEN */
-//End-Libc
 #endif /* (DARWIN_UNLIMITED_STREAMS || _DARWIN_C_SOURCE) */
 int	 fileno(FILE *);
 __END_DECLS
@@ -271,15 +230,7 @@ int	 pclose(FILE *) __swift_unavailable_on("Use posix_spawn APIs or NSTask inste
 #if defined(_DARWIN_UNLIMITED_STREAMS) || defined(_DARWIN_C_SOURCE)
 FILE	*popen(const char *, const char *) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_3_2, __DARWIN_EXTSN(popen)) __swift_unavailable_on("Use posix_spawn APIs or NSTask instead.", "Process spawning is unavailable.");
 #else /* !_DARWIN_UNLIMITED_STREAMS && !_DARWIN_C_SOURCE */
-//Begin-Libc
-#ifndef LIBC_ALIAS_POPEN
-//End-Libc
 FILE	*popen(const char *, const char *) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_2_0, __DARWIN_ALIAS(popen)) __swift_unavailable_on("Use posix_spawn APIs or NSTask instead.", "Process spawning is unavailable.");
-//Begin-Libc
-#else /* LIBC_ALIAS_POPEN */
-FILE	*popen(const char *, const char *) LIBC_ALIAS(popen);
-#endif /* !LIBC_ALIAS_POPEN */
-//End-Libc
 #endif /* (DARWIN_UNLIMITED_STREAMS || _DARWIN_C_SOURCE) */
 __END_DECLS
 #endif /* __DARWIN_C_LEVEL >= 199209L */
@@ -351,15 +302,7 @@ __swift_unavailable("Use mkstemp(3) instead.")
 #if !defined(_POSIX_C_SOURCE)
 __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of tempnam(3), it is highly recommended that you use mkstemp(3) instead.")
 #endif
-//Begin-Libc
-#ifndef LIBC_ALIAS_TEMPNAM
-//End-Libc
 char	*tempnam(const char *__dir, const char *__prefix) __DARWIN_ALIAS(tempnam);
-//Begin-Libc
-#else /* LIBC_ALIAS_TEMPNAM */
-char	*tempnam(const char *__dir, const char *__prefix) LIBC_ALIAS(tempnam);
-#endif /* !LIBC_ALIAS_TEMPNAM */
-//End-Libc
 __END_DECLS
 
 #ifndef lint

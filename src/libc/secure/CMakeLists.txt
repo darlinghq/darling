@@ -24,7 +24,6 @@ set(secure_sources
 	strncpy_chk.c
 	vsnprintf_chk.c
 	vsprintf_chk.c
-	secure.c
 )
 
 #SET_SOURCE_FILES_PROPERTIES(FreeBSD/snprintf.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS}")

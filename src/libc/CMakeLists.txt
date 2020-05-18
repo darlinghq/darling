@@ -27,18 +27,23 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/weak_re
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0") # development flags
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load")
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/darwin")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/derived")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../libmalloc/src")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../libmalloc/private")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/locale")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/gen")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/locale/FreeBSD")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/NetBSD")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/stdtime/FreeBSD")
+include_directories(
+	"${CMAKE_CURRENT_SOURCE_DIR}/fbsdcompat"
+	"${CMAKE_CURRENT_SOURCE_DIR}/darwin"
+	"${CMAKE_CURRENT_SOURCE_DIR}/derived"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../libmalloc/src"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../libmalloc/private"
+	"${CMAKE_CURRENT_SOURCE_DIR}/locale"
+	"${CMAKE_CURRENT_SOURCE_DIR}/gen"
+	"${CMAKE_CURRENT_SOURCE_DIR}/locale/FreeBSD"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/NetBSD"
+	"${CMAKE_CURRENT_SOURCE_DIR}/stdtime/FreeBSD"
+)
 
-include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(BEFORE
+	"${CMAKE_CURRENT_SOURCE_DIR}/include"
+	"${CMAKE_CURRENT_SOURCE_DIR}/private-include"
+)
 
 add_subdirectory(db) # produces libc-db
 add_subdirectory(compat-43) # produces libc-compat
@@ -61,6 +66,7 @@ add_subdirectory(nls)
 add_subdirectory(net)
 add_subdirectory(locale)
 add_subdirectory(darwin)
+add_subdirectory(libdarwin)
 
 if (TARGET_i386)
 	add_subdirectory(i386)
@@ -161,8 +167,6 @@ add_circular(system_c FAT OBJECTS
 	$<TARGET_OBJECTS:libc-uuid>
 	$<TARGET_OBJECTS:libc-util>
 	$<TARGET_OBJECTS:libc-string>
-	$<TARGET_OBJECTS:libc-string-x86_64>
-	$<TARGET_OBJECTS:libc-string-i386>
 	$<TARGET_OBJECTS:libc-stdtime>
 	$<TARGET_OBJECTS:libc-sys>
 	$<TARGET_OBJECTS:libc-sys_noinode64>

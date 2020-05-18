@@ -102,58 +102,18 @@ typedef struct {
 
 __BEGIN_DECLS
 
-//Begin-Libc
-#ifndef LIBC_ALIAS_CLOSEDIR
-//End-Libc
 int closedir(DIR *) __DARWIN_ALIAS(closedir);
-//Begin-Libc
-#else /* LIBC_ALIAS_CLOSEDIR */
-int closedir(DIR *) LIBC_ALIAS(closedir);
-#endif /* !LIBC_ALIAS_CLOSEDIR */
-//End-Libc
 
-//Begin-Libc
-#ifndef LIBC_ALIAS_OPENDIR
-//End-Libc
 DIR *opendir(const char *) __DARWIN_ALIAS_I(opendir);
-//Begin-Libc
-#else /* LIBC_ALIAS_OPENDIR */
-DIR *opendir(const char *) LIBC_ALIAS_I(opendir);
-#endif /* !LIBC_ALIAS_OPENDIR */
-//End-Libc
 
 struct dirent *readdir(DIR *) __DARWIN_INODE64(readdir);
 int readdir_r(DIR *, struct dirent *, struct dirent **) __DARWIN_INODE64(readdir_r);
 
-//Begin-Libc
-#ifndef LIBC_ALIAS_REWINDDIR
-//End-Libc
 void rewinddir(DIR *) __DARWIN_ALIAS_I(rewinddir);
-//Begin-Libc
-#else /* LIBC_ALIAS_REWINDDIR */
-void rewinddir(DIR *) LIBC_ALIAS_I(rewinddir);
-#endif /* !LIBC_ALIAS_REWINDDIR */
-//End-Libc
 
-//Begin-Libc
-#ifndef LIBC_ALIAS_SEEKDIR
-//End-Libc
 void seekdir(DIR *, long) __DARWIN_ALIAS_I(seekdir);
-//Begin-Libc
-#else /* LIBC_ALIAS_SEEKDIR */
-void seekdir(DIR *, long) LIBC_ALIAS_I(seekdir);
-#endif /* !LIBC_ALIAS_SEEKDIR */
-//End-Libc
 
-//Begin-Libc
-#ifndef LIBC_ALIAS_TELLDIR
-//End-Libc
 long telldir(DIR *) __DARWIN_ALIAS_I(telldir);
-//Begin-Libc
-#else /* LIBC_ALIAS_TELLDIR */
-long telldir(DIR *) LIBC_ALIAS_I(telldir);
-#endif /* !LIBC_ALIAS_TELLDIR */
-//End-Libc
 
 __END_DECLS
 
@@ -165,16 +125,8 @@ __END_DECLS
 #if __DARWIN_C_LEVEL >= 200809L
 __BEGIN_DECLS
 
-//Begin-Libc
-#ifndef LIBC_ALIAS_OPENDIR
-//End-Libc
 __OSX_AVAILABLE_STARTING(__MAC_10_10, __IPHONE_8_0)
 DIR *fdopendir(int) __DARWIN_ALIAS_I(fdopendir);
-//Begin-Libc
-#else /* LIBC_ALIAS_OPENDIR */
-DIR *fdopendir(int) LIBC_ALIAS_I(fdopendir);
-#endif /* !LIBC_ALIAS_OPENDIR */
-//End-Libc
 
 int alphasort(const struct dirent **, const struct dirent **) __DARWIN_INODE64(alphasort);
 
@@ -218,9 +170,6 @@ __BEGIN_DECLS
 
 int getdirentries(int, char *, int, long *)
 
-//Begin-Libc
-#ifndef __LIBC__
-//End-Libc
 #if __DARWIN_64_BIT_INO_T
 /*
  * getdirentries() doesn't work when 64-bit inodes is in effect, so we
@@ -230,20 +179,9 @@ int getdirentries(int, char *, int, long *)
 #else /* !__DARWIN_64_BIT_INO_T */
 						__OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_0,__MAC_10_6, __IPHONE_2_0,__IPHONE_2_0)
 #endif /* __DARWIN_64_BIT_INO_T */
-//Begin-Libc
-#endif /* !__LIBC__ */
-//End-Libc
 ;
 
-//Begin-Libc
-#ifndef LIBC_ALIAS___OPENDIR2
-//End-Libc
 DIR *__opendir2(const char *, int) __DARWIN_ALIAS_I(__opendir2);
-//Begin-Libc
-#else /* LIBC_ALIAS___OPENDIR2 */
-DIR *__opendir2(const char *, int) LIBC_ALIAS_I(__opendir2);
-#endif /* !LIBC_ALIAS___OPENDIR2 */
-//End-Libc
 
 __END_DECLS
 #endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */

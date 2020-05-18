@@ -71,9 +71,6 @@ __const char *	querylocale(int, locale_t);
 locale_t	uselocale(locale_t);
 __END_DECLS
 
-//Begin-Libc
-#ifndef __DARWIN_XLOCALE_PRIVATE
-//End-Libc
 #ifdef _CTYPE_H_
 #include <xlocale/_ctype.h>
 #endif /* _CTYPE_H_ */
@@ -110,8 +107,5 @@ __END_DECLS
 #ifdef _WCTYPE_H_
 #include <xlocale/_wctype.h>
 #endif /* _WCTYPE_H_ */
-//Begin-Libc
-#endif /* __DARWIN_XLOCALE_PRIVATE */
-//End-Libc
 
 #endif /* _XLOCALE_H_ */

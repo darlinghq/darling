@@ -128,11 +128,6 @@ extern int __mb_cur_max;
     && defined(_USE_EXTENDED_LOCALES_) && !defined(MB_CUR_MAX_L)
 #define	MB_CUR_MAX_L(x)	(___mb_cur_max_l(x))
 #endif
-//Begin-Libc
-#include "libc_private.h"
-/* f must be a literal string */
-#define LIBC_ABORT(f,...)	abort_report_np("%s:%s:%u: " f, __FILE__, __func__, __LINE__, ## __VA_ARGS__)
-//End-Libc
 
 #ifndef UNIFDEF_DRIVERKIT
 #include <malloc/_malloc.h>
@@ -201,9 +196,6 @@ unsigned long long
 	 strtoull(const char *__str, char **__endptr, int __base);
 #endif /* !__DARWIN_NO_LONG_LONG */
 #ifndef UNIFDEF_DRIVERKIT
-//Begin-Libc
-#ifndef LIBC_ALIAS_SYSTEM
-//End-Libc
 
 #if TARGET_OS_EMBEDDED
 #define __swift_unavailable_on(osx_msg, ios_msg) __swift_unavailable(ios_msg)
@@ -215,11 +207,6 @@ __swift_unavailable_on("Use posix_spawn APIs or NSTask instead.", "Process spawn
 __API_AVAILABLE(macos(10.0)) __IOS_PROHIBITED
 __WATCHOS_PROHIBITED __TVOS_PROHIBITED
 int	 system(const char *) __DARWIN_ALIAS_C(system);
-//Begin-Libc
-#else /* LIBC_ALIAS_SYSTEM */
-int	 system(const char *) LIBC_ALIAS_C(system);
-#endif /* !LIBC_ALIAS_SYSTEM */
-//End-Libc
 
 #undef __swift_unavailable_on
 #endif /* UNIFDEF_DRIVERKIT */
@@ -258,59 +245,19 @@ char	*ptsname(int);
 int ptsname_r(int fildes, char *buffer, size_t buflen) __API_AVAILABLE(macos(10.13.4), ios(11.3), tvos(11.3), watchos(4.3));
 #endif
 
-//Begin-Libc
-#ifndef LIBC_ALIAS_PUTENV
-//End-Libc
 int	 putenv(char *) __DARWIN_ALIAS(putenv);
-//Begin-Libc
-#else /* LIBC_ALIAS_PUTENV */
-int	 putenv(char *) LIBC_ALIAS(putenv);
-#endif /* !LIBC_ALIAS_PUTENV */
-//End-Libc
 long	 random(void) __swift_unavailable("Use arc4random instead.");
 int	 rand_r(unsigned *) __swift_unavailable("Use arc4random instead.");
-//Begin-Libc
-#ifdef __LIBC__
-#ifndef LIBC_ALIAS_REALPATH
-char	*realpath(const char * __restrict, char * __restrict) __DARWIN_EXTSN(realpath);
-#else /* LIBC_ALIAS_REALPATH */
-#ifdef VARIANT_DARWINEXTSN
-char	*realpath(const char * __restrict, char * __restrict) LIBC_EXTSN(realpath);
-#else /* !VARIANT_DARWINEXTSN */
-char	*realpath(const char * __restrict, char * __restrict) LIBC_ALIAS(realpath);
-#endif /* VARIANT_DARWINEXTSN */
-#endif /* !LIBC_ALIAS_REALPATH */
-#else /* !__LIBC__ */
-//End-Libc
 #if (__DARWIN_UNIX03 && !defined(_POSIX_C_SOURCE)) || defined(_DARWIN_C_SOURCE) || defined(_DARWIN_BETTER_REALPATH)
 char	*realpath(const char * __restrict, char * __restrict) __DARWIN_EXTSN(realpath);
 #else /* (!__DARWIN_UNIX03 || _POSIX_C_SOURCE) && !_DARWIN_C_SOURCE && !_DARWIN_BETTER_REALPATH */
 char	*realpath(const char * __restrict, char * __restrict) __DARWIN_ALIAS(realpath);
 #endif /* (__DARWIN_UNIX03 && _POSIX_C_SOURCE) || _DARWIN_C_SOURCE || _DARWIN_BETTER_REALPATH */
-//Begin-Libc
-#endif /* __LIBC__ */
-//End-Libc
 unsigned short
 	*seed48(unsigned short[3]);
-//Begin-Libc
-#ifndef LIBC_ALIAS_SETENV
-//End-Libc
 int	 setenv(const char * __name, const char * __value, int __overwrite) __DARWIN_ALIAS(setenv);
-//Begin-Libc
-#else /* LIBC_ALIAS_SETENV */
-int	 setenv(const char * __name, const char * __value, int __overwrite) LIBC_ALIAS(setenv);
-#endif /* !LIBC_ALIAS_SETENV */
-//End-Libc
 #if __DARWIN_UNIX03
-//Begin-Libc
-#ifndef LIBC_ALIAS_SETKEY
-//End-Libc
 void	 setkey(const char *) __DARWIN_ALIAS(setkey);
-//Begin-Libc
-#else /* LIBC_ALIAS_SETKEY */
-void	 setkey(const char *) LIBC_ALIAS(setkey);
-#endif /* !LIBC_ALIAS_SETKEY */
-//End-Libc
 #else /* !__DARWIN_UNIX03 */
 int	 setkey(const char *);
 #endif /* __DARWIN_UNIX03 */
@@ -323,15 +270,7 @@ void	 srandom(unsigned long);
 #endif /* __DARWIN_UNIX03 */
 int	 unlockpt(int);
 #if __DARWIN_UNIX03
-//Begin-Libc
-#ifndef LIBC_ALIAS_UNSETENV
-//End-Libc
 int	 unsetenv(const char *) __DARWIN_ALIAS(unsetenv);
-//Begin-Libc
-#else /* LIBC_ALIAS_UNSETENV */
-int	 unsetenv(const char *) LIBC_ALIAS(unsetenv);
-#endif /* !LIBC_ALIAS_UNSETENV */
-//End-Libc
 #else /* !__DARWIN_UNIX03 */
 void	 unsetenv(const char *);
 #endif /* __DARWIN_UNIX03 */

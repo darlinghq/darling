@@ -82,15 +82,7 @@ int	 strcoll(const char *__s1, const char *__s2);
 char	*strcpy(char *__dst, const char *__src);
 #endif /* UNIFDEF_DRIVERKIT */
 size_t	 strcspn(const char *__s, const char *__charset);
-//Begin-Libc
-#ifndef LIBC_ALIAS_STRERROR
-//End-Libc
 char	*strerror(int __errnum) __DARWIN_ALIAS(strerror);
-//Begin-Libc
-#else /* LIBC_ALIAS_STRERROR */
-char	*strerror(int __errnum) LIBC_ALIAS(strerror);
-#endif /* !LIBC_ALIAS_STRERROR */
-//End-Libc
 size_t	 strlen(const char *__s);
 char	*strncat(char *__s1, const char *__s2, size_t __n);
 int	 strncmp(const char *__s1, const char *__s2, size_t __n);

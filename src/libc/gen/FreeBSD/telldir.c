@@ -140,6 +140,13 @@ _seekdir(DIR *dirp, long loc)
 	}
 }
 
+#if defined(DARLING) && defined(VARIANT_LEGACY)
+// we can't include this in libc-gen_legacy because the noinode64 variant already
+// defines it exactly as it is in the legacy variant, and it causes a duplicate
+// symbol error (which we resolve here be removing it from the legacy variant since,
+// as noted earlier, the legacy and noinode64 version are exactly the same)
+extern void _fixtelldir(DIR *dirp, long oldseek, long oldloc);
+#else
 /*
  * After readdir returns the last entry in a block, a call to telldir
  * returns a location that is after the end of that last entry.
@@ -167,6 +174,7 @@ _fixtelldir(DIR *dirp, long oldseek, long oldloc)
 		}
 	}
 }
+#endif
 
 #ifndef BUILDING_VARIANT
 /*

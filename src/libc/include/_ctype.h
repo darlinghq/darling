@@ -63,9 +63,6 @@
  *	@(#)ctype.h	8.4 (Berkeley) 1/21/94
  */
 
-//Begin-Libc
-#include "xlocale_private.h"
-//End-Libc
 #ifndef	__CTYPE_H_
 #define __CTYPE_H_
 
@@ -117,35 +114,9 @@
 #define	_SW3		_CTYPE_SW3		/* 3 width character */
 #endif /* _NONSTD_SOURCE */
 
-//Begin-Libc
-/*
- * _EXTERNALIZE_CTYPE_INLINES_ is defined in locale/nomacros.c to tell us
- * to generate code for extern versions of all intermediate inline functions.
- */
-#ifdef _EXTERNALIZE_CTYPE_INLINES_
-#define _USE_CTYPE_INLINE_
-#define __DARWIN_CTYPE_inline
-#else /* !_EXTERNALIZE_CTYPE_INLINES_ */
-//End-Libc
 #define __DARWIN_CTYPE_inline		__header_inline
-//Begin-Libc
-#endif /* !_EXTERNALIZE_CTYPE_INLINES_ */
-//End-Libc
 
-//Begin-Libc
-/*
- * _EXTERNALIZE_CTYPE_INLINES_TOP_ is defined in locale/isctype.c to tell us
- * to generate code for extern versions of all top-level inline functions.
- */
-#ifdef _EXTERNALIZE_CTYPE_INLINES_TOP_
-#define _USE_CTYPE_INLINE_
-#define __DARWIN_CTYPE_TOP_inline
-#else /* !_EXTERNALIZE_CTYPE_INLINES_TOP_ */
-//End-Libc
 #define __DARWIN_CTYPE_TOP_inline	__header_inline
-//Begin-Libc
-#endif /* _EXTERNALIZE_CTYPE_INLINES_TOP_ */
-//End-Libc
 
 /*
  * Use inline functions if we are allowed to and the compiler supports them.
@@ -172,20 +143,6 @@ __maskrune(__darwin_ct_rune_t _c, unsigned long _f)
 {
 	return (int)_DefaultRuneLocale.__runetype[_c & 0xff] & (__uint32_t)_f;
 }
-//Begin-Libc
-#elif defined(__LIBC__)
-__DARWIN_CTYPE_inline int
-__maskrune(__darwin_ct_rune_t _c, unsigned long _f)
-{
-	/* _CurrentRuneLocale.__runetype[_c] is __uint32_t
-	 * _f is unsigned long
-	 * ___runetype(_c) is unsigned long
-	 * retval is int
-	 */
-	return (int)((_c < 0 || _c >= _CACHED_RUNES) ? (__uint32_t)___runetype(_c) :
-		__current_locale()->__lc_ctype->_CurrentRuneLocale.__runetype[_c]) & (__uint32_t)_f;
-}
-//End-Libc
 #else /* !USE_ASCII */
 __BEGIN_DECLS
 int             	__maskrune(__darwin_ct_rune_t, unsigned long);
@@ -226,28 +183,6 @@ __tolower(__darwin_ct_rune_t _c)
 {
 	return _DefaultRuneLocale.__maplower[_c & 0xff];
 }
-//Begin-Libc
-#elif defined(__LIBC__)
-/*
- * We can't do what we do for __toupper_l() (check for ASCII first, then call
- * ___toupper_l() otherwise) because versions of ___toupper() before Tiger
- * assume c >= _CACHED_RUNES.  So we are stuck making __toupper() a routine
- * to hide the extended locale details, outside of Libc.
- */
-__DARWIN_CTYPE_inline __darwin_ct_rune_t
-__toupper(__darwin_ct_rune_t _c)
-{
-	return (_c < 0 || _c >= _CACHED_RUNES) ? ___toupper(_c) :
-		__current_locale()->__lc_ctype->_CurrentRuneLocale.__mapupper[_c];
-}
-
-__DARWIN_CTYPE_inline __darwin_ct_rune_t
-__tolower(__darwin_ct_rune_t _c)
-{
-	return (_c < 0 || _c >= _CACHED_RUNES) ? ___tolower(_c) :
-		__current_locale()->__lc_ctype->_CurrentRuneLocale.__maplower[_c];
-}
-//End-Libc
 #else /* !USE_ASCII */
 __BEGIN_DECLS
 __darwin_ct_rune_t	__toupper(__darwin_ct_rune_t);

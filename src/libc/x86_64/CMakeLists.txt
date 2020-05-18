@@ -10,10 +10,6 @@ add_definitions(-DPRIVATE)
 if (TARGET_x86_64)
 	set(x86_64_sources
 		gen/mcount.S
-		string/strcpy.S
-		string/strlen.S
-		string/strncpy.S
-		string/strnlen.S
 	)
 endif (TARGET_x86_64)
 
@@ -21,10 +17,6 @@ add_library(libc-x86_64 OBJECT ${x86_64_sources})
 
 add_library(libc-hwplat_dyld OBJECT
 	gen/mcount.S
-	string/strcpy.S
-	string/strlen.S
-	string/strncpy.S
-	string/strnlen.S
 )
 
 set_target_properties(libc-hwplat_dyld PROPERTIES COMPILE_FLAGS "-DVARIANT_DYLD")

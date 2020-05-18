@@ -2,7 +2,7 @@ project(libc-gen)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -fblocks -DPRIVATE")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fblocks -DPRIVATE")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
 
 set(gen_sources
@@ -102,6 +102,7 @@ set(gen_sources ${gen_sources}
 	FreeBSD/termios.c
 	FreeBSD/time.c
 	FreeBSD/times.c
+	FreeBSD/timespec_get.c
 	#FreeBSD/timezone.c # legacy only
 	FreeBSD/ttyname.c
 	FreeBSD/ttyslot.c

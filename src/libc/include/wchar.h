@@ -138,17 +138,8 @@ int	wcscoll(const wchar_t *, const wchar_t *);
 wchar_t	*wcscpy(wchar_t * __restrict, const wchar_t * __restrict);
 size_t	wcscspn(const wchar_t *, const wchar_t *);
 #ifndef UNIFDEF_DRIVERKIT
-//Begin-Libc
-#ifndef LIBC_ALIAS_WCSFTIME
-//End-Libc
 size_t	wcsftime(wchar_t * __restrict, size_t, const wchar_t * __restrict,
 	    const struct tm * __restrict) __DARWIN_ALIAS(wcsftime);
-//Begin-Libc
-#else /* LIBC_ALIAS_WCSFTIME */
-size_t	wcsftime(wchar_t * __restrict, size_t, const wchar_t * __restrict,
-	    const struct tm * __restrict) LIBC_ALIAS(wcsftime);
-#endif /* !LIBC_ALIAS_WCSFTIME */
-//End-Libc
 #endif /* UNIFDEF_DRIVERKIT */
 size_t	wcslen(const wchar_t *);
 wchar_t	*wcsncat(wchar_t * __restrict, const wchar_t * __restrict, size_t);

@@ -53,6 +53,13 @@ __FBSDID("$FreeBSD: src/lib/libc/string/strerror.c,v 1.16 2007/01/09 00:28:12 im
  */
 #define	EBUFSIZE	(20 + 2 + sizeof(UPREFIX))
 
+#if defined(DARLING) && defined(VARIANT_LEGACY)
+// these can't be included in the legacy variant because they're already
+// included in the regular variant (and they're exactly the same in both versions,
+// both in terms of symbol naming and functionality)
+__private_extern__ void __errstr(int num, char *uprefix, char *buf, size_t len);
+extern int strerror_r(int errnum, char *strerrbuf, size_t buflen);
+#else
 /*
  * Doing this by hand instead of linking with stdio(3) avoids bloat for
  * statically linked binaries.
@@ -115,6 +122,7 @@ strerror_r(int errnum, char *strerrbuf, size_t buflen)
 
 	return (retval);
 }
+#endif
 
 static char *__strerror_ebuf = NULL;
 

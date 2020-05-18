@@ -167,73 +167,22 @@ typedef struct _ftsent {
 #include <Availability.h>
 
 __BEGIN_DECLS
-//Begin-Libc
-#ifndef LIBC_ALIAS_FTS_CHILDREN
-//End-Libc
 FTSENT	*fts_children(FTS *, int) __DARWIN_INODE64(fts_children);
-//Begin-Libc
-#else /* LIBC_ALIAS_FTS_CHILDREN */
-FTSENT	*fts_children(FTS *, int) LIBC_INODE64(fts_children);
-#endif /* !LIBC_ALIAS_FTS_CHILDREN */
-//End-Libc
-//Begin-Libc
-#ifndef LIBC_ALIAS_FTS_CLOSE
-//End-Libc
 int	 fts_close(FTS *) __DARWIN_INODE64(fts_close);
-//Begin-Libc
-#else /* LIBC_ALIAS_FTS_CLOSE */
-int	 fts_close(FTS *) LIBC_INODE64(fts_close);
-#endif /* !LIBC_ALIAS_FTS_CLOSE */
-//End-Libc
-//Begin-Libc
-#ifndef LIBC_ALIAS_FTS_OPEN
-//End-Libc
 FTS	*fts_open(char * const *, int,
 	    int (*)(const FTSENT **, const FTSENT **)) __DARWIN_INODE64(fts_open);
-//Begin-Libc
-#else /* LIBC_ALIAS_FTS_OPEN */
-FTS	*fts_open(char * const *, int,
-	    int (*)(const FTSENT **, const FTSENT **)) LIBC_INODE64(fts_open);
-#endif /* !LIBC_ALIAS_FTS_OPEN */
-//End-Libc
 #ifdef __BLOCKS__
 #if __has_attribute(noescape)
 #define __fts_noescape __attribute__((__noescape__))
 #else
 #define __fts_noescape
 #endif
-//Begin-Libc
-#ifndef LIBC_ALIAS_FTS_OPEN_B
-//End-Libc
 FTS	*fts_open_b(char * const *, int,
 	    int (^)(const FTSENT **, const FTSENT **) __fts_noescape)
 	    __DARWIN_INODE64(fts_open_b) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
-//Begin-Libc
-#else /* LIBC_ALIAS_FTS_OPEN */
-FTS	*fts_open_b(char * const *, int,
-	    int (^)(const FTSENT **, const FTSENT **) __fts_noescape)
-	    LIBC_INODE64(fts_open_b);
-#endif /* !LIBC_ALIAS_FTS_OPEN */
-//End-Libc
 #endif /* __BLOCKS__ */
-//Begin-Libc
-#ifndef LIBC_ALIAS_FTS_READ
-//End-Libc
 FTSENT	*fts_read(FTS *) __DARWIN_INODE64(fts_read);
-//Begin-Libc
-#else /* LIBC_ALIAS_FTS_READ */
-FTSENT	*fts_read(FTS *) LIBC_INODE64(fts_read);
-#endif /* !LIBC_ALIAS_FTS_READ */
-//End-Libc
-//Begin-Libc
-#ifndef LIBC_ALIAS_FTS_SET
-//End-Libc
 int	 fts_set(FTS *, FTSENT *, int) __DARWIN_INODE64(fts_set);
-//Begin-Libc
-#else /* LIBC_ALIAS_FTS_SET */
-int	 fts_set(FTS *, FTSENT *, int) LIBC_INODE64(fts_set);
-#endif /* !LIBC_ALIAS_FTS_SET */
-//End-Libc
 __END_DECLS
 
 #pragma clang diagnostic pop

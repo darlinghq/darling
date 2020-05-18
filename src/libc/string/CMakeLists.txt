@@ -12,23 +12,10 @@ set(string_sources
 	stpcpy.c
 	stpncpy.c
 	strcat.c
-	#strcpy.c
 	strncat.c
-	#strncpy.c
 )
-
-# x86_64 only, i386 has its own assembly impl
-set(string_x86_64_sources
-	strlcat.c
-	strlcpy.c
-)
-
-# i386 only, vice versa
-set(string_i386_sources
-	FreeBSD/strnlen.c)
 
 set(string_sources ${string_sources}
-	FreeBSD/index.c
 	FreeBSD/memmem.c
 	FreeBSD/rindex.c
 	FreeBSD/strcasecmp.c
@@ -37,17 +24,14 @@ set(string_sources ${string_sources}
 	FreeBSD/strcspn.c
 	FreeBSD/strdup.c
 	FreeBSD/strerror.c
-	#FreeBSD/strlen.c
 	FreeBSD/strmode.c
 	FreeBSD/strndup.c
-	#FreeBSD/strnlen.c
 	FreeBSD/strnstr.c
 	FreeBSD/strpbrk.c
 	FreeBSD/strrchr.c
 	FreeBSD/strsep.c
 	FreeBSD/strsignal.c
 	FreeBSD/strspn.c
-	FreeBSD/strstr.c
 	FreeBSD/strtok.c
 	FreeBSD/strxfrm.c
 	FreeBSD/swab.c
@@ -88,23 +72,27 @@ set(string_sources ${string_sources}
 SET_SOURCE_FILES_PROPERTIES(FreeBSD/strerror.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_STRERROR")
 
 add_darling_object_library(libc-string ${string_sources})
-add_library(libc-string-x86_64 OBJECT ${string_x86_64_sources})
-set_target_properties(libc-string-x86_64 PROPERTIES COMPILE_FLAGS "-arch x86_64")
-
-add_library(libc-string-i386 OBJECT ${string_i386_sources})
-set_target_properties(libc-string-i386 PROPERTIES COMPILE_FLAGS "-arch i386")
 
 # Legacy variant
 if (TARGET_i386)
 	set(string-legacy_sources
 		FreeBSD/strerror.c)
 	add_library(libc-string_legacy OBJECT ${string-legacy_sources})
-	SET_TARGET_PROPERTIES(libc-string_legacy PROPERTIES COMPILE_DEFINITIONS "BUILDING_VARIANT;VARIANT_LEGACY")
+	SET_TARGET_PROPERTIES(libc-string_legacy PROPERTIES COMPILE_FLAGS "-DBUILDING_VARIANT -DVARIANT_LEGACY -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -U__DARWIN_64_BIT_INO_T -D_DARWIN_NO_64_BIT_INODE")
 endif (TARGET_i386)
 
 # DYLD variant
-add_library(libc-string_dyld OBJECT strcat.c strcpy.c FreeBSD/strdup.c strlcat.c strlcpy.c FreeBSD/strnlen.c FreeBSD/strrchr.c FreeBSD/strstr.c FreeBSD/strtok.c
-	FreeBSD/wcscpy.c FreeBSD/wcslen.c FreeBSD/wcsncmp.c FreeBSD/wcsncpy.c FreeBSD/strerror.c
-	strlcat.c strlcpy.c strncat.c strncpy.c)
+add_library(libc-string_dyld OBJECT
+	strcat.c
+	strncat.c
+	FreeBSD/strdup.c
+	FreeBSD/strrchr.c
+	FreeBSD/strtok.c
+	FreeBSD/wcscpy.c
+	FreeBSD/wcslen.c
+	FreeBSD/wcsncmp.c
+	FreeBSD/wcsncpy.c
+	FreeBSD/strerror.c
+)
 SET_TARGET_PROPERTIES(libc-string_dyld PROPERTIES COMPILE_FLAGS "-UBUILDING_VARIANT -DVARIANT_DYLD -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN")
 

@@ -85,17 +85,8 @@ typedef struct {
 	void *rbto_context;
 } rb_tree_ops_t;
 
-//Begin-Libc
-#ifdef _RBTREE_NO_OPAQUE_STRUCTS_
-typedef struct rb_node rb_node_t;
-typedef struct rb_tree rb_tree_t;
-#else
-//End-Libc
 typedef struct rb_node { void * opaque[3]; } rb_node_t;
 typedef struct rb_tree { void *opaque[8]; } rb_tree_t;
-//Begin-Libc
-#endif
-//End-Libc
 
 #define _rb_availability __OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
 void	rb_tree_init(rb_tree_t *, const rb_tree_ops_t *) _rb_availability;

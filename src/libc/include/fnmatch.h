@@ -76,15 +76,7 @@
 #endif
 
 __BEGIN_DECLS
-//Begin-Libc
-#ifndef LIBC_ALIAS_FNMATCH
-//End-Libc
 int	 fnmatch(const char *, const char *, int) __DARWIN_ALIAS(fnmatch);
-//Begin-Libc
-#else /* LIBC_ALIAS_FNMATCH */
-int	 fnmatch(const char *, const char *, int) LIBC_ALIAS(fnmatch);
-#endif /* !LIBC_ALIAS_FNMATCH */
-//End-Libc
 __END_DECLS
 
 #endif /* !_FNMATCH_H_ */

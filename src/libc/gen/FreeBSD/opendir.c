@@ -139,6 +139,12 @@ opendir_compar(const void *p1, const void *p2)
 	    (*(const struct dirent **)p2)->d_name));
 }
 
+#if defined(DARLING) && defined(VARIANT_LEGACY)
+// not included in legacy variant for the same reason `_fixtelldir` isn't included
+// in it: the noinode64 variant already has the same exact function defined, and keeping
+// this one in the legacy variant causes duplicate symbol errors
+extern bool _filldir(DIR *dirp, bool use_current_pos);
+#else
 /*
  * For a directory at the top of a unionfs stack, the entire directory's
  * contents are read and cached locally until the next call to rewinddir().
@@ -312,6 +318,7 @@ _filldir(DIR *dirp, bool use_current_pos)
 	dirp->dd_size = ddptr - dirp->dd_buf;
 	return (true);
 }
+#endif
 
 
 /*
