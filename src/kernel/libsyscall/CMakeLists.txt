@@ -17,6 +17,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DPRIVATE=1 -D__DARWIN_C_LEVEL=20150101)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
 add_definitions(-DIOKIT_ALL_IPC=1 -DIOKIT=1)
+add_compile_definitions(LIBSYSCALL_INTERFACE=1)
 #add_definitions(-DKERNEL)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/external/lkm/osfmk)
