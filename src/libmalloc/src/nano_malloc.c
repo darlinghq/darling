@@ -27,132 +27,42 @@
 #if CONFIG_NANOZONE
 
 /*********************             PROTOTYPES		***********************/
-// msg prints after fmt, ...
-static MALLOC_NOINLINE void
-nanozone_error(nanozone_t *nanozone, int is_corruption, const char *msg, const void *ptr, const char *fmt, ...) __printflike(5, 6);
 
 static void nano_statistics(nanozone_t *nanozone, malloc_statistics_t *stats);
 
 /*********************	   VERY LOW LEVEL UTILITIES    ************************/
 // msg prints after fmt, ...
 
-static MALLOC_NOINLINE void
-nanozone_error(nanozone_t *nanozone, int is_corruption, const char *msg, const void *ptr, const char *fmt, ...)
+static MALLOC_ALWAYS_INLINE unsigned int
+nano_mag_index(const nanozone_t *nanozone)
 {
-	va_list ap;
-	_SIMPLE_STRING b = _simple_salloc();
-
-	if (b) {
-		if (fmt) {
-			va_start(ap, fmt);
-			_simple_vsprintf(b, fmt, ap);
-			va_end(ap);
-		}
-		if (ptr) {
-			_simple_sprintf(b, "*** error for object %p: %s\n", ptr, msg);
-		} else {
-			_simple_sprintf(b, "*** error: %s\n", msg);
-		}
-		malloc_printf("%s*** set a breakpoint in malloc_error_break to debug\n", _simple_string(b));
-	} else {
-		/*
-		 * Should only get here if vm_allocate() can't get a single page of
-		 * memory, implying _simple_asl_log() would also fail.  So we just
-		 * print to the file descriptor.
-		 */
-		if (fmt) {
-			va_start(ap, fmt);
-			_malloc_vprintf(MALLOC_PRINTF_NOLOG, fmt, ap);
-			va_end(ap);
-		}
-		if (ptr) {
-			_malloc_printf(MALLOC_PRINTF_NOLOG, "*** error for object %p: %s\n", ptr, msg);
-		} else {
-			_malloc_printf(MALLOC_PRINTF_NOLOG, "*** error: %s\n", msg);
-		}
-		_malloc_printf(MALLOC_PRINTF_NOLOG, "*** set a breakpoint in malloc_error_break to debug\n");
+	if (os_likely(_os_cpu_number_override == -1)) {
+		return (_os_cpu_number() >> hyper_shift) % nano_common_max_magazines;
 	}
-	malloc_error_break();
-
-	// Call abort() if this is a memory corruption error and the abort on
-	// corruption flag is set, or if any error should abort.
-	if ((is_corruption && (nanozone->debug_flags & MALLOC_ABORT_ON_CORRUPTION)) ||
-			(nanozone->debug_flags & MALLOC_ABORT_ON_ERROR)) {
-		_os_set_crash_log_message_dynamic(b ? _simple_string(b) : msg);
-		abort();
-	} else if (b) {
-		_simple_sfree(b);
-	}
+	return (_os_cpu_number_override >> hyper_shift) % nano_common_max_magazines;
 }
 
-static void *
-allocate_based_pages(nanozone_t *nanozone,
-		size_t size,
-		unsigned char align,
-		unsigned debug_flags,
-		int vm_page_label,
-		void *base_addr)
+#if NANO_PREALLOCATE_BAND_VM
+static boolean_t
+nano_preallocate_band_vm(void)
 {
-	boolean_t add_guard_pages = debug_flags & MALLOC_ADD_GUARD_PAGES;
-	mach_vm_address_t vm_addr;
-	uintptr_t addr;
-	mach_vm_size_t allocation_size = round_page(size);
-	mach_vm_offset_t allocation_mask = ((mach_vm_offset_t)1 << align) - 1;
-	int alloc_flags = VM_FLAGS_ANYWHERE | VM_MAKE_TAG(vm_page_label);
-	kern_return_t kr;
+	nano_blk_addr_t u;
+	uintptr_t s, e;
 
-	if (!allocation_size) {
-		allocation_size = vm_page_size;
-	}
-	if (add_guard_pages) {
-		allocation_size += 2 * vm_page_size;
-	}
-	if (allocation_size < size) { // size_t arithmetic wrapped!
-		return NULL;
-	}
+	u.fields.nano_signature = NANOZONE_SIGNATURE;
+	u.fields.nano_mag_index = 0;
+	u.fields.nano_band = 0;
+	u.fields.nano_slot = 0;
+	u.fields.nano_offset = 0;
+	s = u.addr; // start of first possible band
 
-	vm_addr = round_page((mach_vm_address_t)base_addr);
-	if (!vm_addr) {
-		vm_addr = vm_page_size;
-	}
-	kr = mach_vm_map(mach_task_self(), &vm_addr, allocation_size, allocation_mask, alloc_flags, MEMORY_OBJECT_NULL, 0, FALSE,
-			VM_PROT_DEFAULT, VM_PROT_ALL, VM_INHERIT_DEFAULT);
-	if (kr) {
-		nanozone_error(nanozone, 0, "can't allocate pages", NULL, "*** mach_vm_map(size=%lu) failed (error code=%d)\n", size, kr);
-		return NULL;
-	}
-	addr = (uintptr_t)vm_addr;
+	u.fields.nano_mag_index = (1 << NANO_MAG_BITS) - 1;
+	u.fields.nano_band = (1 << NANO_BAND_BITS) - 1;
+	e = u.addr + BAND_SIZE; // end of last possible band
 
-	if (add_guard_pages) {
-		addr += vm_page_size;
-		protect((void *)addr, size, PROT_NONE, debug_flags);
-	}
-	return (void *)addr;
+	return nano_common_allocate_vm_space(s, e - s);
 }
-
-static void *
-nano_allocate_pages(nanozone_t *nanozone, size_t size, unsigned char align, unsigned debug_flags, int vm_page_label)
-{
-	return allocate_based_pages(nanozone, size, align, debug_flags, vm_page_label, 0);
-}
-
-static void
-nano_deallocate_pages(nanozone_t *nanozone, void *addr, size_t size, unsigned debug_flags)
-{
-	boolean_t add_guard_pages = debug_flags & MALLOC_ADD_GUARD_PAGES;
-	mach_vm_address_t vm_addr = (mach_vm_address_t)addr;
-	mach_vm_size_t allocation_size = size;
-	kern_return_t kr;
-
-	if (add_guard_pages) {
-		vm_addr -= vm_page_size;
-		allocation_size += 2 * vm_page_size;
-	}
-	kr = mach_vm_deallocate(mach_task_self(), vm_addr, allocation_size);
-	if (kr && nanozone) {
-		nanozone_error(nanozone, 0, "Can't deallocate_pages at", addr, NULL);
-	}
-}
+#endif
 
 /*
  * We maintain separate free lists for each (quantized) size. The literature
@@ -190,8 +100,8 @@ segregated_band_grow(nanozone_t *nanozone, nano_meta_admin_t pMeta, size_t slot_
 	pMeta->slot_current_base_addr = p;
 
 	mach_vm_address_t vm_addr = p & ~((uintptr_t)(BAND_SIZE - 1)); // Address of the (2MB) band covering this (128KB) slot
-
 	if (nanozone->band_max_mapped_baseaddr[mag_index] < vm_addr) {
+#if !NANO_PREALLOCATE_BAND_VM
 		// Obtain the next band to cover this slot
 		kern_return_t kr = mach_vm_map(mach_task_self(), &vm_addr, BAND_SIZE, 0, VM_MAKE_TAG(VM_MEMORY_MALLOC_NANO),
 				MEMORY_OBJECT_NULL, 0, FALSE, VM_PROT_DEFAULT, VM_PROT_ALL, VM_INHERIT_DEFAULT);
@@ -203,7 +113,7 @@ segregated_band_grow(nanozone_t *nanozone, nano_meta_admin_t pMeta, size_t slot_
 			}
 			return FALSE;
 		}
-
+#endif
 		nanozone->band_max_mapped_baseaddr[mag_index] = vm_addr;
 	}
 
@@ -254,6 +164,7 @@ segregated_next_block(nanozone_t *nanozone, nano_meta_admin_t pMeta, size_t slot
 			return (void *)b; // Yep, so the slot_bump_addr this thread incremented is good to go
 		} else {
 			if (pMeta->slot_exhausted) { // exhausted all the bands availble for this slot?
+				pMeta->slot_bump_addr = theLimit;
 				return 0;				 // We're toast
 			} else {
 				// One thread will grow the heap, others will see its been grown and retry allocation
@@ -270,6 +181,7 @@ segregated_next_block(nanozone_t *nanozone, nano_meta_admin_t pMeta, size_t slot
 					continue; // ... the slot has been successfully grown by us. Now try again.
 				} else {
 					pMeta->slot_exhausted = TRUE;
+					pMeta->slot_bump_addr = theLimit;
 					_malloc_lock_unlock(&nanozone->band_resupply_lock[mag_index]);
 					return 0;
 				}
@@ -330,7 +242,7 @@ segregated_in_use_enumerator(task_t task,
 	kern_return_t err;
 	unsigned count = 0;
 
-	for (mag_index = 0; mag_index < nanozone->phys_ncpus; mag_index++) {
+	for (mag_index = 0; mag_index < nano_common_max_magazines; mag_index++) {
 		uintptr_t clone_magazine;  // magazine base for ourselves
 		nano_blk_addr_t p;		   // slot base for remote
 		uintptr_t clone_slot_base; // slot base for ourselves (tracks with "p")
@@ -390,16 +302,80 @@ segregated_in_use_enumerator(task_t task,
 				uintptr_t slot_band, clone_slot_band_base = clone_slot_base;
 				uintptr_t skip_adj = index_to_offset(nanozone, pMeta, (index_t)pMeta->slot_objects_skipped);
 
-				while (q.addr < pMeta->slot_limit_addr) {
-					// read slot in each remote band. Lands in some random location.
-					size_t len = MIN(pMeta->slot_bump_addr - q.addr, SLOT_IN_BAND_SIZE);
-					err = reader(task, (vm_address_t)(q.addr + skip_adj), len - skip_adj, (void **)&slot_band);
+				// Copy the bitarray_t denoting madvise()'d pages (if any) into *this* task's address space
+				bitarray_t madv_page_bitarray;
+				int log_page_count;
+
+				if (pMeta->slot_madvised_pages) {
+					log_page_count = pMeta->slot_madvised_log_page_count;
+					err = reader(task, (vm_address_t)(pMeta->slot_madvised_pages), bitarray_size(log_page_count),
+							(void **)&madv_page_bitarray);
 					if (err) {
 						return err;
 					}
+				} else {
+					madv_page_bitarray = NULL;
+					log_page_count = 0;
+				}
 
-					// Place the data just read in the correct position relative to the local magazine.
-					memcpy((void *)(clone_slot_band_base + skip_adj), (void *)slot_band, len - skip_adj);
+				while (q.addr < pMeta->slot_limit_addr) {
+					// read slot in each remote band. Lands in some random location. Do not read
+					// parts of the slot that are in madvised pages.
+					if (!madv_page_bitarray) {
+						// Nothing madvised yet - read everything in one go.
+						size_t len = MIN(pMeta->slot_bump_addr - q.addr, SLOT_IN_BAND_SIZE) - skip_adj;
+						err = reader(task, (vm_address_t)(q.addr + skip_adj), len, (void **)&slot_band);
+						if (err) {
+							return err;
+						}
+
+						// Place the data just read in the correct position relative to the local magazine.
+						memcpy((void *)(clone_slot_band_base + skip_adj), (void *)slot_band, len);
+					} else {
+						// We madvised at least one page. Read only the pages that
+						// have not been madvised. If bitarray_t had operations
+						// like "get next bit set after a given bit" and "find
+						// next unset bit after a given bit", we could do this more
+						// efficiently but given that it doesn't, we have to walk
+						// through each page individually. In practice this is not
+						// much of an issue because this code is only used by
+						// sampling tools and the additional time required is not
+						// really noticeable.
+						size_t len = MIN(pMeta->slot_bump_addr - q.addr, SLOT_IN_BAND_SIZE) - skip_adj;
+						vm_address_t start_addr = (vm_address_t)(q.addr + skip_adj);
+						vm_address_t end_addr = (vm_address_t)(start_addr + len);
+						void *target_addr = (void *)(clone_slot_band_base + skip_adj);
+						for (vm_address_t addr = start_addr; addr < end_addr;) {
+							vm_address_t next_page_addr = trunc_page_kernel(addr + vm_kernel_page_size);
+							size_t read_size = MIN(len, next_page_addr - addr);
+
+							boolean_t madvised = false;
+							nano_blk_addr_t r;
+							r.addr = addr;
+							index_t pgnum = ((((unsigned)r.fields.nano_band) << NANO_OFFSET_BITS) | ((unsigned)r.fields.nano_offset)) >>
+								vm_kernel_page_shift;
+							unsigned int log_page_count = pMeta->slot_madvised_log_page_count;
+							madvised = (pgnum < (1 << log_page_count)) &&
+									bitarray_get(madv_page_bitarray, log_page_count, pgnum);
+							if (!madvised) {
+								// This is not an madvised page - grab the data.
+								err = reader(task, addr, read_size, (void **)&slot_band);
+								if (err) {
+									return err;
+								}
+
+								// Place the data just read in the correct position relative to the local magazine.
+								memcpy(target_addr, (void *)slot_band, read_size);
+							} else {
+								// This is an madvised page - there should be nothing in here that's
+								// on the freelist, so just write garbage to the target memory.
+								memset(target_addr, (char)0xee, read_size);
+							}
+							addr = next_page_addr;
+							target_addr += read_size;
+							len -= read_size;
+						}
+					}
 
 					// Simultaneously advance pointers in remote and ourselves to the next band.
 					q.addr += BAND_SIZE;
@@ -420,7 +396,7 @@ segregated_in_use_enumerator(task_t task,
 				while ((t = OSAtomicDequeue(
 								&(pMeta->slot_LIFO), offsetof(struct chained_block_s, next) + (clone_slot_base - p.addr)))) {
 					if (0 == stoploss) {
-						malloc_printf("Free list walk in segregated_in_use_enumerator exceeded object count.");
+						malloc_report(ASL_LEVEL_ERR, "Free list walk in segregated_in_use_enumerator exceeded object count.\n");
 						break;
 					}
 					stoploss--;
@@ -434,21 +410,6 @@ segregated_in_use_enumerator(task_t task,
 				}
 				// N.B. pMeta->slot_LIFO in *this* task is now drained (remote free list has *not* been disturbed)
 
-				// Copy the bitarray_t denoting madvise()'d pages (if any) into *this* task's address space
-				bitarray_t madv_page_bitarray;
-				int log_page_count;
-
-				if (pMeta->slot_madvised_pages) {
-					log_page_count = pMeta->slot_madvised_log_page_count;
-					err = reader(task, (vm_address_t)(pMeta->slot_madvised_pages), bitarray_size(log_page_count),
-							(void **)&madv_page_bitarray);
-					if (err) {
-						return err;
-					}
-				} else {
-					madv_page_bitarray = NULL;
-					log_page_count = 0;
-				}
 
 				// Enumerate all the block indices issued to date, and report those not on the free list
 				index_t i;
@@ -528,8 +489,9 @@ _nano_block_inuse_p(nanozone_t *nanozone, const void *ptr)
 	unsigned stoploss = (unsigned)pMeta->slot_objects_mapped;
 	while ((t = OSAtomicDequeue(&(pMeta->slot_LIFO), offsetof(struct chained_block_s, next)))) {
 		if (0 == stoploss) {
-			nanozone_error(
-					nanozone, 1, "Free list walk in _nano_block_inuse_p exceeded object count.", (void *)&(pMeta->slot_LIFO), NULL);
+			malloc_zone_error(nanozone->debug_flags, true,
+					"Free list walk for slot %p in _nano_block_inuse_p exceeded object count.\n",
+					(void *)&(pMeta->slot_LIFO));
 		}
 		stoploss--;
 
@@ -558,7 +520,7 @@ _nano_block_inuse_p(nanozone_t *nanozone, const void *ptr)
 }
 
 static MALLOC_INLINE size_t
-__nano_vet_and_size(nanozone_t *nanozone, const void *ptr)
+__nano_vet_and_size_inner(nanozone_t *nanozone, const void *ptr, boolean_t inner)
 {
 	// Extracts the size of the block in bytes. Checks for a plausible ptr.
 	nano_blk_addr_t p; // the compiler holds this in a register
@@ -566,15 +528,15 @@ __nano_vet_and_size(nanozone_t *nanozone, const void *ptr)
 
 	p.addr = (uint64_t)ptr; // Begin the dissection of ptr
 
-	if (nanozone->our_signature != p.fields.nano_signature) {
+	if (NANOZONE_SIGNATURE != p.fields.nano_signature) {
 		return 0;
 	}
 
-	if (nanozone->phys_ncpus <= p.fields.nano_mag_index) {
+	if (nano_common_max_magazines <= p.fields.nano_mag_index) {
 		return 0;
 	}
 
-	if (p.fields.nano_offset & NANO_QUANTA_MASK) { // stray low-order bits?
+	if (!inner && p.fields.nano_offset & NANO_QUANTA_MASK) { // stray low-order bits?
 		return 0;
 	}
 
@@ -582,10 +544,31 @@ __nano_vet_and_size(nanozone_t *nanozone, const void *ptr)
 	if ((void *)(pMeta->slot_bump_addr) <= ptr) {
 		return 0; // Beyond what's ever been allocated!
 	}
-	if ((p.fields.nano_offset % pMeta->slot_bytes) != 0) {
+	if (!inner && ((p.fields.nano_offset % pMeta->slot_bytes) != 0)) {
 		return 0; // Not an exact multiple of the block size for this slot
 	}
 	return pMeta->slot_bytes;
+}
+
+
+static MALLOC_INLINE size_t
+__nano_vet_and_size(nanozone_t *nanozone, const void *ptr)
+{
+	return __nano_vet_and_size_inner(nanozone, ptr, false);
+}
+
+static MALLOC_ALWAYS_INLINE boolean_t
+_nano_block_has_canary_value(nanozone_t *nanozone, const void *ptr)
+{
+	return (((chained_block_t)ptr)->double_free_guard ^ nanozone->cookie)
+			== (uintptr_t)ptr;
+}
+
+static MALLOC_ALWAYS_INLINE void
+_nano_block_set_canary_value(nanozone_t *nanozone, const void *ptr)
+{
+	((chained_block_t)ptr)->double_free_guard =
+			((uintptr_t)ptr) ^ nanozone->cookie;
 }
 
 static MALLOC_INLINE size_t
@@ -599,7 +582,7 @@ _nano_vet_and_size_of_live(nanozone_t *nanozone, const void *ptr)
 	
 	// We have the invariant: If ptr is on a free list, then ptr->double_free_guard is the canary.
 	// So if ptr->double_free_guard is NOT the canary, then ptr is not on a free list, hence is live.
-	if ((((chained_block_t)ptr)->double_free_guard ^ nanozone->cookie) != 0xBADDC0DEDEADBEADULL) {
+	if (!_nano_block_has_canary_value(nanozone, ptr)) {
 		return size; // Common case: not on a free list, hence live. Return its size.
 	} else {
 		// confirm that ptr is live despite ptr->double_free_guard having the canary value
@@ -621,7 +604,7 @@ _nano_vet_and_size_of_free(nanozone_t *nanozone, const void *ptr)
 	}
 	
 	// ptr was just dequed from a free list, so ptr->double_free_guard must have the canary value.
-	if ((((chained_block_t)ptr)->double_free_guard ^ nanozone->cookie) == 0xBADDC0DEDEADBEADULL) {
+	if (_nano_block_has_canary_value(nanozone, ptr)) {
 		return size; // return the size of this well formed free block.
 	} else {
 		return 0; // Broken invariant: If ptr is on a free list, then ptr->double_free_guard is the canary. (likely use after free)
@@ -636,58 +619,74 @@ _nano_malloc_check_clear(nanozone_t *nanozone, size_t size, boolean_t cleared_re
 	void *ptr;
 	size_t slot_key;
 	size_t slot_bytes = segregated_size_to_fit(nanozone, size, &slot_key); // Note slot_key is set here
-	unsigned int mag_index = NANO_MAG_INDEX(nanozone);
+	mag_index_t mag_index = nano_mag_index(nanozone);
 
 	nano_meta_admin_t pMeta = &(nanozone->meta_data[mag_index][slot_key]);
 
 	ptr = OSAtomicDequeue(&(pMeta->slot_LIFO), offsetof(struct chained_block_s, next));
 	if (ptr) {
+		unsigned debug_flags = nanozone->debug_flags;
 #if NANO_FREE_DEQUEUE_DILIGENCE
 		size_t gotSize;
 		nano_blk_addr_t p; // the compiler holds this in a register
 
 		p.addr = (uint64_t)ptr; // Begin the dissection of ptr
-		if (nanozone->our_signature != p.fields.nano_signature) {
-			nanozone_error(nanozone, 1, "Invalid signature for pointer dequeued from free list", ptr, NULL);
+		if (NANOZONE_SIGNATURE != p.fields.nano_signature) {
+			malloc_zone_error(debug_flags, true,
+					"Invalid signature for pointer %p dequeued from free list\n",
+					ptr);
 		}
 
 		if (mag_index != p.fields.nano_mag_index) {
-			nanozone_error(nanozone, 1, "Mismatched magazine for pointer dequeued from free list", ptr, NULL);
+			malloc_zone_error(debug_flags, true,
+					"Mismatched magazine for pointer %p dequeued from free list\n",
+					ptr);
 		}
 
 		gotSize = _nano_vet_and_size_of_free(nanozone, ptr);
 		if (0 == gotSize) {
-			nanozone_error(nanozone, 1, "Invalid pointer dequeued from free list", ptr, NULL);
+			malloc_zone_error(debug_flags, true,
+					"Invalid pointer %p dequeued from free list\n", ptr);
 		}
 		if (gotSize != slot_bytes) {
-			nanozone_error(nanozone, 1, "Mismatched size for pointer dequeued from free list", ptr, NULL);
+			malloc_zone_error(debug_flags, true,
+					"Mismatched size for pointer %p dequeued from free list\n",
+					ptr);
 		}
 
-		if ((((chained_block_t)ptr)->double_free_guard ^ nanozone->cookie) != 0xBADDC0DEDEADBEADULL) {
-			nanozone_error(nanozone, 1, "Heap corruption detected, free list canary is damaged", ptr, NULL);
+		if (!_nano_block_has_canary_value(nanozone, ptr)) {
+			malloc_zone_error(debug_flags, true,
+					"Heap corruption detected, free list canary is damaged for %p\n"
+					"*** Incorrect guard value: %lu\n", ptr,
+					((chained_block_t)ptr)->double_free_guard);
 		}
+
 #if defined(DEBUG)
 		void *next = (void *)(((chained_block_t)ptr)->next);
 		if (next) {
 			p.addr = (uint64_t)next; // Begin the dissection of next
-			if (nanozone->our_signature != p.fields.nano_signature) {
-				nanozone_error(nanozone, 1, "Invalid next signature for pointer dequeued from free list (showing ptr, next)", ptr,
-						", %p", next);
+			if (NANOZONE_SIGNATURE != p.fields.nano_signature) {
+				malloc_zone_error(debug_flags, true,
+						"Invalid next signature for pointer %p dequeued from free "
+						"list, next = %p\n", ptr, "next");
 			}
 
 			if (mag_index != p.fields.nano_mag_index) {
-				nanozone_error(nanozone, 1, "Mismatched next magazine for pointer dequeued from free list (showing ptr, next)", ptr,
-						", %p", next);
+				malloc_zone_error(debug_flags, true,
+						"Mismatched next magazine for pointer %p dequeued from "
+						"free list, next = %p\n", ptr, next);
 			}
 
 			gotSize = _nano_vet_and_size_of_free(nanozone, next);
 			if (0 == gotSize) {
-				nanozone_error(
-						nanozone, 1, "Invalid next for pointer dequeued from free list (showing ptr, next)", ptr, ", %p", next);
+				malloc_zone_error(debug_flags, true,
+						"Invalid next for pointer %p dequeued from free list, "
+						"next = %p\n", ptr, next);
 			}
 			if (gotSize != slot_bytes) {
-				nanozone_error(nanozone, 1, "Mismatched next size for pointer dequeued from free list (showing ptr, next)", ptr,
-						", %p", next);
+				malloc_zone_error(debug_flags, true,
+						"Mismatched next size for pointer %p dequeued from free "
+						"list, next = %p\n", ptr, next);
 			}
 		}
 #endif /* DEBUG */
@@ -748,13 +747,14 @@ _nano_free_trusted_size_check_scribble(nanozone_t *nanozone, void *ptr, size_t t
 		if (do_scribble) {
 			(void)memset(ptr, SCRABBLE_BYTE, trusted_size);
 		}
-		((chained_block_t)ptr)->double_free_guard = (0xBADDC0DEDEADBEADULL ^ nanozone->cookie);
+		_nano_block_set_canary_value(nanozone, ptr);
 
 		p.addr = (uint64_t)ptr; // place ptr on the dissecting table
 		pMeta = &(nanozone->meta_data[p.fields.nano_mag_index][p.fields.nano_slot]);
 		OSAtomicEnqueue(&(pMeta->slot_LIFO), ptr, offsetof(struct chained_block_s, next));
 	} else {
-		nanozone_error(nanozone, 1, "Freeing unallocated pointer", ptr, NULL);
+		malloc_zone_error(nanozone->debug_flags, true,
+				"Freeing unallocated pointer %p\n", ptr);
 	}
 }
 
@@ -785,7 +785,8 @@ _nano_realloc(nanozone_t *nanozone, void *ptr, size_t new_size)
 
 	old_size = _nano_vet_and_size_of_live(nanozone, ptr);
 	if (!old_size) {
-		nanozone_error(nanozone, 1, "pointer being reallocated was not allocated", ptr, NULL);
+		malloc_zone_error(nanozone->debug_flags, true,
+				"pointer %p being reallocated was not allocated\n", ptr);
 		return NULL;
 	}
 
@@ -821,7 +822,8 @@ static MALLOC_INLINE void
 _nano_destroy(nanozone_t *nanozone)
 {
 	/* Now destroy the separate nanozone region */
-	nano_deallocate_pages(nanozone, (void *)nanozone, NANOZONE_PAGED_SIZE, 0);
+	nano_common_deallocate_pages((void *)nanozone, NANOZONE_PAGED_SIZE,
+			nanozone->debug_flags);
 }
 
 /******************           nanozone dispatch          **********************/
@@ -874,18 +876,10 @@ nano_malloc_scribble(nanozone_t *nanozone, size_t size)
 static void *
 nano_calloc(nanozone_t *nanozone, size_t num_items, size_t size)
 {
-	size_t total_bytes = num_items * size;
+	size_t total_bytes;
 
-	// Check for overflow of integer multiplication
-	if (num_items > 1) {
-		/* size_t is uint64_t */
-		if ((num_items | size) & 0xffffffff00000000ul) {
-			// num_items or size equals or exceeds sqrt(2^64) == 2^32, appeal to wider arithmetic
-			__uint128_t product = ((__uint128_t)num_items) * ((__uint128_t)size);
-			if ((uint64_t)(product >> 64)) { // compiles to test on upper register of register pair
-				return NULL;
-			}
-		}
+	if (calloc_get_size(num_items, size, 0, &total_bytes)) {
+		return NULL;
 	}
 
 	if (total_bytes <= NANO_MAX_SIZE) {
@@ -923,12 +917,13 @@ __nano_free_definite_size(nanozone_t *nanozone, void *ptr, size_t size, boolean_
 	nano_blk_addr_t p; // happily, the compiler holds this in a register
 
 	p.addr = (uint64_t)ptr; // place ptr on the dissecting table
-	if (nanozone->our_signature == p.fields.nano_signature) {
+	if (NANOZONE_SIGNATURE == p.fields.nano_signature) {
 		if (size == ((p.fields.nano_slot + 1) << SHIFT_NANO_QUANTUM)) { // "Trust but verify."
 			_nano_free_trusted_size_check_scribble(nanozone, ptr, size, do_scribble);
 			return;
 		} else {
-			nanozone_error(nanozone, 1, "Freeing pointer whose size was misdeclared", ptr, NULL);
+			malloc_zone_error(nanozone->debug_flags, true,
+					"Freeing pointer %p whose size was misdeclared\n", ptr);
 		}
 	} else {
 		malloc_zone_t *zone = (malloc_zone_t *)(nanozone->helper_zone);
@@ -987,13 +982,17 @@ nano_free(nanozone_t *nanozone, void *ptr)
 static void
 nano_forked_free(nanozone_t *nanozone, void *ptr)
 {
-	nano_blk_addr_t p; // happily, the compiler holds this in a register
-
 	if (!ptr) {
 		return; // Protect against malloc_zone_free() passing NULL.
 	}
-	p.addr = (uint64_t)ptr; // place ptr on the dissecting table
-	if (nanozone->our_signature == p.fields.nano_signature) {
+
+	// <rdar://problem/26481467> exhausting a slot may result in a pointer with
+	// the nanozone prefix being given to nano_free via malloc_zone_free. Calling
+	// vet_and_size here, instead of in _nano_free_check_scribble means we can
+	// early-out into the helper_zone if it turns out nano does not own this ptr.
+	size_t sz = _nano_vet_and_size_of_live(nanozone, ptr);
+
+	if (sz) {
 		/* NOTHING. Drop it on the floor as nanozone metadata could be fouled by fork. */
 		return;
 	} else {
@@ -1023,7 +1022,7 @@ nano_size(nanozone_t *nanozone, const void *ptr)
 
 	p.addr = (uint64_t)ptr; // place ptr on the dissecting table
 
-	if (nanozone->our_signature == p.fields.nano_signature) { // Our signature?
+	if (NANOZONE_SIGNATURE == p.fields.nano_signature) { // Our signature?
 		return _nano_size(nanozone, ptr);
 	} else {
 		malloc_zone_t *zone = (malloc_zone_t *)(nanozone->helper_zone);
@@ -1035,49 +1034,42 @@ nano_size(nanozone_t *nanozone, const void *ptr)
 static void *
 nano_realloc(nanozone_t *nanozone, void *ptr, size_t new_size)
 {
-	nano_blk_addr_t p; // happily, the compiler holds this in a register
-
-	p.addr = (uint64_t)ptr; // place ptr on the dissecting table
-
-	if (NULL == ptr) { // could occur through malloc_zone_realloc() path
+	// could occur through malloc_zone_realloc() path
+	if (!ptr) {
 		// If ptr is a null pointer, realloc() shall be equivalent to malloc() for the specified size.
 		return nano_malloc(nanozone, new_size);
-	} else if (nanozone->our_signature == p.fields.nano_signature) { // Our signature?
-		if (new_size <= NANO_MAX_SIZE) {							 // nano to nano?
+	}
+
+	size_t old_size = _nano_vet_and_size_of_live(nanozone, ptr);
+	if (!old_size) {
+		// not-nano pointer, hand down to helper zone
+		malloc_zone_t *zone = (malloc_zone_t *)(nanozone->helper_zone);
+		return zone->realloc(zone, ptr, new_size);
+	} else {
+		if (new_size <= NANO_MAX_SIZE) {
+			// nano to nano?
 			void *q = _nano_realloc(nanozone, ptr, new_size);
 			if (q) {
 				return q;
-			} else { // nano exhausted
-					 /* FALLTHROUGH to helper zone copying case */
+			} else { 
+				// nano exhausted
+				/* FALLTHROUGH to helper zone copying case */
 			}
 		}
 
-		// nano to larger-than-nano (or FALLTHROUGH from just above)
-		size_t old_size = _nano_vet_and_size_of_live(nanozone, ptr);
-
-		if (!old_size) {
-			nanozone_error(nanozone, 1, "pointer being reallocated was not allocated", ptr, NULL);
-			return NULL;
-		} else {
-			malloc_zone_t *zone = (malloc_zone_t *)(nanozone->helper_zone);
-			void *new_ptr = zone->malloc(zone, new_size);
-
-			if (new_ptr) {
-				size_t valid_size = MIN(old_size, new_size);
-				memcpy(new_ptr, ptr, valid_size);
-				_nano_free_check_scribble(nanozone, ptr, (nanozone->debug_flags & MALLOC_DO_SCRIBBLE));
-				return new_ptr;
-			} else {
-				/* Original ptr is left intact */
-				return NULL;
-			}
-			/* NOTREACHED */
-		}
-	} else {
-		// other-than-nano (not necessarily larger! possibly NULL!) to whatever
 		malloc_zone_t *zone = (malloc_zone_t *)(nanozone->helper_zone);
+		void *new_ptr = zone->malloc(zone, new_size);
 
-		return zone->realloc(zone, ptr, new_size);
+		if (new_ptr) {
+			size_t valid_size = MIN(old_size, new_size);
+			memcpy(new_ptr, ptr, valid_size);
+			_nano_free_check_scribble(nanozone, ptr, (nanozone->debug_flags & MALLOC_DO_SCRIBBLE));
+			return new_ptr;
+		} else {
+			/* Original ptr is left intact */
+			return NULL;
+		}
+		/* NOTREACHED */
 	}
 	/* NOTREACHED */
 }
@@ -1085,14 +1077,18 @@ nano_realloc(nanozone_t *nanozone, void *ptr, size_t new_size)
 static void *
 nano_forked_realloc(nanozone_t *nanozone, void *ptr, size_t new_size)
 {
-	nano_blk_addr_t p; // happily, the compiler holds this in a register
-
-	p.addr = (uint64_t)ptr; // place ptr on the dissecting table
-
-	if (NULL == ptr) { // could occur through malloc_zone_realloc() path
+	// could occur through malloc_zone_realloc() path
+	if (!ptr) {
 		// If ptr is a null pointer, realloc() shall be equivalent to malloc() for the specified size.
 		return nano_forked_malloc(nanozone, new_size);
-	} else if (nanozone->our_signature == p.fields.nano_signature) { // Our signature?
+	}
+
+	size_t old_size = _nano_vet_and_size_of_live(nanozone, ptr);
+	if (!old_size) {
+		// not-nano pointer, hand down to helper zone
+		malloc_zone_t *zone = (malloc_zone_t *)(nanozone->helper_zone);
+		return zone->realloc(zone, ptr, new_size);
+	} else {
 		if (0 == new_size) {
 			// If size is 0 and ptr is not a null pointer, the object pointed to is freed.
 			// However as nanozone metadata could be fouled by fork, we'll intentionally leak it.
@@ -1102,31 +1098,19 @@ nano_forked_realloc(nanozone_t *nanozone, void *ptr, size_t new_size)
 			return nano_forked_malloc(nanozone, 1);
 		}
 
-		size_t old_size = _nano_vet_and_size_of_live(nanozone, ptr);
-
-		if (!old_size) {
-			nanozone_error(nanozone, 1, "pointer being reallocated was not allocated", ptr, NULL);
-			return NULL;
-		} else {
-			malloc_zone_t *zone = (malloc_zone_t *)(nanozone->helper_zone);
-			void *new_ptr = zone->malloc(zone, new_size);
-
-			if (new_ptr) {
-				size_t valid_size = MIN(old_size, new_size);
-				memcpy(new_ptr, ptr, valid_size);
-				/* Original pointer is intentionally leaked as nanozone metadata could be fouled by fork. */
-				return new_ptr;
-			} else {
-				/* Original ptr is left intact */
-				return NULL;
-			}
-			/* NOTREACHED */
-		}
-	} else {
-		// other-than-nano (not necessarily larger! possibly NULL!) to whatever
 		malloc_zone_t *zone = (malloc_zone_t *)(nanozone->helper_zone);
+		void *new_ptr = zone->malloc(zone, new_size);
 
-		return zone->realloc(zone, ptr, new_size);
+		if (new_ptr) {
+			size_t valid_size = MIN(old_size, new_size);
+			memcpy(new_ptr, ptr, valid_size);
+			/* Original pointer is intentionally leaked as nanozone metadata could be fouled by fork. */
+			return new_ptr;
+		} else {
+			/* Original ptr is left intact */
+			return NULL;
+		}
+		/* NOTREACHED */
 	}
 	/* NOTREACHED */
 }
@@ -1218,13 +1202,34 @@ nano_memalign(nanozone_t *nanozone, size_t alignment, size_t size)
 	return zone->memalign(zone, alignment, size);
 }
 
+static boolean_t
+nano_claimed_address(nanozone_t *nanozone, void *ptr)
+{
+	nano_blk_addr_t p;
+	p.addr = (uint64_t)ptr;
+	if (NANOZONE_SIGNATURE != p.fields.nano_signature) {
+		// Not a nano address - let the helper zone handle it.
+		malloc_zone_t *helper_zone = nanozone->helper_zone;
+		return malloc_zone_claimed_address(helper_zone, ptr);
+	}
+	return __nano_vet_and_size_inner(nanozone, ptr, true) != 0;
+}
+
+static boolean_t
+nano_forked_claimed_address(struct _malloc_zone_t *zone, void *ptr)
+{
+	// This does not operate after fork - default to true to avoid
+	// false negatives.
+	return true;
+}
+
 static size_t
 nano_try_madvise(nanozone_t *nanozone, size_t goal)
 {
 	unsigned int mag_index, slot_key;
 	size_t bytes_toward_goal = 0;
 
-	for (mag_index = 0; mag_index < nanozone->phys_ncpus; mag_index++) {
+	for (mag_index = 0; mag_index < nano_common_max_magazines; mag_index++) {
 		nano_blk_addr_t p;
 
 		// Establish p as base address for band 0, slot 0, offset 0
@@ -1236,7 +1241,7 @@ nano_try_madvise(nanozone_t *nanozone, size_t goal)
 
 		for (slot_key = 0; slot_key < SLOT_KEY_LIMIT; p.addr += SLOT_IN_BAND_SIZE, // Advance to next slot base
 				slot_key++) {
-			// _malloc_printf(ASL_LEVEL_WARNING,"nano_try_madvise examining slot base %p\n", p.addr);
+			// malloc_report(ASL_LEVEL_WARNING,"nano_try_madvise examining slot base %p\n", p.addr);
 			nano_meta_admin_t pMeta = &(nanozone->meta_data[mag_index][slot_key]);
 			uintptr_t slot_bump_addr = pMeta->slot_bump_addr;		 // capture this volatile pointer
 			size_t slot_objects_mapped = pMeta->slot_objects_mapped; // capture this volatile count
@@ -1253,16 +1258,16 @@ nano_try_madvise(nanozone_t *nanozone, size_t goal)
 				log_page_count = 1 + MAX(0, log_page_count);
 				bitarray_t page_bitarray = bitarray_create(log_page_count);
 
-				// _malloc_printf(ASL_LEVEL_WARNING,"slot_bitarray: %db page_bitarray: %db\n", bitarray_size(log_size),
+				// malloc_report(ASL_LEVEL_WARNING,"slot_bitarray: %db page_bitarray: %db\n", bitarray_size(log_size),
 				// bitarray_size(log_page_count));
 				if (!slot_bitarray) {
-					malloc_printf("bitarray_create(%d) in nano_try_madvise returned errno=%d.", log_size, errno);
+					malloc_report(ASL_LEVEL_ERR, "bitarray_create(%d) in nano_try_madvise returned errno=%d.\n", log_size, errno);
 					free(page_bitarray);
 					return bytes_toward_goal;
 				}
 
 				if (!page_bitarray) {
-					malloc_printf("bitarray_create(%d) in nano_try_madvise returned errno=%d.", log_page_count, errno);
+					malloc_report(ASL_LEVEL_ERR, "bitarray_create(%d) in nano_try_madvise returned errno=%d.\n", log_page_count, errno);
 					free(slot_bitarray);
 					return bytes_toward_goal;
 				}
@@ -1271,7 +1276,7 @@ nano_try_madvise(nanozone_t *nanozone, size_t goal)
 				unsigned stoploss = (unsigned)slot_objects_mapped;
 				while ((t = OSAtomicDequeue(&(pMeta->slot_LIFO), offsetof(struct chained_block_s, next)))) {
 					if (0 == stoploss) {
-						malloc_printf("Free list walk in nano_try_madvise exceeded object count.");
+						malloc_report(ASL_LEVEL_ERR, "Free list walk in nano_try_madvise exceeded object count.\n");
 						break;
 					}
 					stoploss--;
@@ -1335,7 +1340,7 @@ nano_try_madvise(nanozone_t *nanozone, size_t goal)
 				q.addr = slot_bump_addr - slot_bytes;
 				pgnum = ((((unsigned)q.fields.nano_band) << NANO_OFFSET_BITS) | ((unsigned)q.fields.nano_offset)) >> vm_kernel_page_shift;
 
-				// _malloc_printf(ASL_LEVEL_WARNING,"Examining %d pages. Slot base %p.\n", pgnum - pgstart + 1, p.addr);
+				// malloc_report(ASL_LEVEL_WARNING,"Examining %d pages. Slot base %p.\n", pgnum - pgstart + 1, p.addr);
 
 				if (pMeta->slot_madvised_pages) {
 					if (pMeta->slot_madvised_log_page_count < log_page_count) {
@@ -1369,7 +1374,7 @@ nano_try_madvise(nanozone_t *nanozone, size_t goal)
 
 				if (num_advised) {
 					chained_block_t new_head = NULL, new_tail = NULL;
-					// _malloc_printf(ASL_LEVEL_WARNING,"Constructing residual free list starting at %p num_advised %d\n", head,
+					// malloc_report(ASL_LEVEL_WARNING,"Constructing residual free list starting at %p num_advised %d\n", head,
 					// num_advised);
 					t = head;
 					while (t) {
@@ -1415,7 +1420,7 @@ nano_try_madvise(nanozone_t *nanozone, size_t goal)
 								(uintptr_t)new_tail - (uintptr_t)new_head + offsetof(struct chained_block_s, next));
 					}
 				} else {
-					// _malloc_printf(ASL_LEVEL_WARNING,"Reinstating free list since no pages were madvised (%d).\n", num_advised);
+					// malloc_report(ASL_LEVEL_WARNING,"Reinstating free list since no pages were madvised (%d).\n", num_advised);
 					if (head) {
 						OSAtomicEnqueue(&(pMeta->slot_LIFO), head,
 								(uintptr_t)tail - (uintptr_t)head + offsetof(struct chained_block_s, next));
@@ -1427,7 +1432,7 @@ nano_try_madvise(nanozone_t *nanozone, size_t goal)
 						q = p;
 						q.fields.nano_band = (i << vm_kernel_page_shift) >> NANO_OFFSET_BITS;
 						q.fields.nano_offset = (i << vm_kernel_page_shift) & ((1 << NANO_OFFSET_BITS) - 1);
-						// _malloc_printf(ASL_LEVEL_WARNING,"Entire page non-live: %d. Slot base %p, madvising %p\n", i, p.addr,
+						// malloc_report(ASL_LEVEL_WARNING,"Entire page non-live: %d. Slot base %p, madvising %p\n", i, p.addr,
 						// q.addr);
 
 						if (nanozone->debug_flags & MALLOC_DO_SCRIBBLE) {
@@ -1467,17 +1472,18 @@ nano_try_madvise(nanozone_t *nanozone, size_t goal)
 static size_t
 nano_pressure_relief(nanozone_t *nanozone, size_t goal)
 {
-	return nano_try_madvise(nanozone, goal);
+	MAGMALLOC_PRESSURERELIEFBEGIN((void *)nanozone, nanozone->basic_zone.zone_name, (int)goal);
+	MALLOC_TRACE(TRACE_nano_memory_pressure | DBG_FUNC_START, (uint64_t)nanozone, goal, 0, 0);
+
+	size_t total = nano_try_madvise(nanozone, goal);
+
+	MAGMALLOC_PRESSURERELIEFEND((void *)nanozone, nanozone->basic_zone.zone_name, (int)goal, (int)total);
+	MALLOC_TRACE(TRACE_nano_memory_pressure | DBG_FUNC_END, (uint64_t)nanozone, goal, total, 0);
+
+	return total;
 }
 
 /****************           introspection methods         *********************/
-
-static kern_return_t
-nanozone_default_reader(task_t task, vm_address_t address, vm_size_t size, void **ptr)
-{
-	*ptr = (void *)address;
-	return 0;
-}
 
 static kern_return_t
 nano_ptr_in_use_enumerator(task_t task,
@@ -1489,17 +1495,19 @@ nano_ptr_in_use_enumerator(task_t task,
 {
 	nanozone_t *nanozone;
 	kern_return_t err;
+	struct nanozone_s zone_copy;
 
 	if (!reader) {
-		reader = nanozone_default_reader;
+		reader = nano_common_default_reader;
 	}
 
 	err = reader(task, zone_address, sizeof(nanozone_t), (void **)&nanozone);
 	if (err) {
 		return err;
 	}
+	memcpy(&zone_copy, nanozone, sizeof(zone_copy));
 
-	err = segregated_in_use_enumerator(task, context, type_mask, nanozone, reader, recorder);
+	err = segregated_in_use_enumerator(task, context, type_mask, &zone_copy, reader, recorder);
 	return err;
 }
 
@@ -1507,7 +1515,7 @@ static size_t
 nano_good_size(nanozone_t *nanozone, size_t size)
 {
 	if (size <= NANO_MAX_SIZE) {
-		return _nano_good_size(nanozone, size);
+		return _nano_common_good_size(size);
 	} else {
 		malloc_zone_t *zone = (malloc_zone_t *)(nanozone->helper_zone);
 		return zone->introspect->good_size(zone, size);
@@ -1515,9 +1523,9 @@ nano_good_size(nanozone_t *nanozone, size_t size)
 }
 
 // TODO sanity checks
-unsigned nanozone_check_counter = 0;
-unsigned nanozone_check_start = 0;
-unsigned nanozone_check_modulo = 1;
+static unsigned nanozone_check_counter = 0;
+static unsigned nanozone_check_start = 0;
+static unsigned nanozone_check_modulo = 1;
 
 static boolean_t
 nano_check_all(nanozone_t *nanozone, const char *function)
@@ -1529,7 +1537,7 @@ static boolean_t
 nanozone_check(nanozone_t *nanozone)
 {
 	if ((++nanozone_check_counter % 10000) == 0) {
-		_malloc_printf(ASL_LEVEL_NOTICE, "at nanozone_check counter=%d\n", nanozone_check_counter);
+		malloc_report(ASL_LEVEL_NOTICE, "at nanozone_check counter=%d\n", nanozone_check_counter);
 	}
 
 	if (nanozone_check_counter < nanozone_check_start) {
@@ -1552,7 +1560,9 @@ count_free(nanozone_t *nanozone, nano_meta_admin_t pMeta)
 	unsigned stoploss = (unsigned)pMeta->slot_objects_mapped;
 	while ((t = OSAtomicDequeue(&(pMeta->slot_LIFO), offsetof(struct chained_block_s, next)))) {
 		if (0 == stoploss) {
-			nanozone_error(nanozone, 1, "Free list walk in count_free exceeded object count.", (void *)&(pMeta->slot_LIFO), NULL);
+			malloc_zone_error(nanozone->debug_flags, true,
+					"Free list walk in count_free exceeded object count.\n",
+					(void *)&(pMeta->slot_LIFO), NULL);
 		}
 		stoploss--;
 
@@ -1584,10 +1594,12 @@ nano_print(nanozone_t *nanozone, boolean_t verbose)
 	malloc_statistics_t stats;
 
 	nano_statistics(nanozone, &stats);
-	_malloc_printf(MALLOC_PRINTF_NOLOG | MALLOC_PRINTF_NOPREFIX, "Nanozone %p: inUse=%d(%dKB) touched=%dKB allocated=%dMB\n",
-			nanozone, stats.blocks_in_use, stats.size_in_use >> 10, stats.max_size_in_use >> 10, stats.size_allocated >> 20);
+	malloc_report(MALLOC_REPORT_NOLOG | MALLOC_REPORT_NOPREFIX,
+			"Nanozone %p: inUse=%d(%lluKB) touched=%lluKB allocated=%lluMB\n",
+			nanozone, stats.blocks_in_use, (uint64_t)stats.size_in_use >> 10,
+			(uint64_t)stats.max_size_in_use >> 10, (uint64_t)stats.size_allocated >> 20);
 
-	for (mag_index = 0; mag_index < nanozone->phys_ncpus; mag_index++) {
+	for (mag_index = 0; mag_index < nano_common_max_magazines; mag_index++) {
 		nano_blk_addr_t p;
 
 		// Establish p as base address for band 0, slot 0, offset 0
@@ -1604,7 +1616,7 @@ nano_print(nanozone_t *nanozone, boolean_t verbose)
 			size_t slot_objects_mapped = pMeta->slot_objects_mapped; // capture this volatile count
 
 			if (0 == slot_objects_mapped) { // Nothing allocated in this magazine for this slot?
-				_malloc_printf(MALLOC_PRINTF_NOLOG | MALLOC_PRINTF_NOPREFIX, "Magazine %2d(%3d) Unrealized\n", mag_index,
+				malloc_report(MALLOC_REPORT_NOLOG | MALLOC_REPORT_NOPREFIX, "Magazine %2d(%3d) Unrealized\n", mag_index,
 						(slot_key + 1) << SHIFT_NANO_QUANTUM);
 				continue;
 			}
@@ -1618,10 +1630,10 @@ nano_print(nanozone_t *nanozone, boolean_t verbose)
 			size_t size_in_use = ((slot_key + 1) << SHIFT_NANO_QUANTUM) * blocks_in_use;
 			size_t size_allocated = ((offset / BAND_SIZE) + 1) * SLOT_IN_BAND_SIZE;
 
-			_malloc_printf(MALLOC_PRINTF_NOLOG | MALLOC_PRINTF_NOPREFIX,
-					"Magazine %2d(%3d) [%p, %3dKB] \t Allocations in use=%4d \t Bytes in use=%db \t Untouched=%dKB\n", mag_index,
-					(slot_key + 1) << SHIFT_NANO_QUANTUM, p, (size_allocated >> 10), blocks_in_use, size_in_use,
-					(size_allocated - size_hiwater) >> 10);
+			malloc_report(MALLOC_REPORT_NOLOG | MALLOC_REPORT_NOPREFIX,
+					"Magazine %2d(%3d) [%p, %3lluKB] \t Allocations in use=%4d \t Bytes in use=%llub \t Untouched=%lluKB\n", mag_index,
+					(slot_key + 1) << SHIFT_NANO_QUANTUM, (void *)p.addr, (uint64_t)(size_allocated >> 10), blocks_in_use, (uint64_t)size_in_use,
+					(uint64_t)((size_allocated - size_hiwater) >> 10));
 
 			if (!verbose) {
 				continue;
@@ -1631,7 +1643,7 @@ nano_print(nanozone_t *nanozone, boolean_t verbose)
 				bitarray_t slot_bitarray = bitarray_create(log_size);
 
 				if (!slot_bitarray) {
-					malloc_printf("bitarray_create(%d) in nano_print returned errno=%d.", log_size, errno);
+					malloc_report(ASL_LEVEL_ERR, "bitarray_create(%d) in nano_print returned errno=%d.\n", log_size, errno);
 					return;
 				}
 
@@ -1639,7 +1651,7 @@ nano_print(nanozone_t *nanozone, boolean_t verbose)
 				unsigned stoploss = (unsigned)slot_objects_mapped;
 				while ((t = OSAtomicDequeue(&(pMeta->slot_LIFO), offsetof(struct chained_block_s, next)))) {
 					if (0 == stoploss) {
-						malloc_printf("Free list walk in nano_print exceeded object count.");
+						malloc_report(ASL_LEVEL_ERR, "Free list walk in nano_print exceeded object count.\n");
 						break;
 					}
 					stoploss--;
@@ -1676,17 +1688,17 @@ nano_print(nanozone_t *nanozone, boolean_t verbose)
 							vm_kernel_page_shift;
 
 					if (i < pMeta->slot_objects_skipped) {
-						_malloc_printf(MALLOC_PRINTF_NOLOG | MALLOC_PRINTF_NOPREFIX, "_");
+						malloc_report(MALLOC_REPORT_NOLOG | MALLOC_REPORT_NOPREFIX, "_");
 					} else if (bitarray_get(slot_bitarray, log_size, i)) {
-						_malloc_printf(MALLOC_PRINTF_NOLOG | MALLOC_PRINTF_NOPREFIX, "F");
+						malloc_report(MALLOC_REPORT_NOLOG | MALLOC_REPORT_NOPREFIX, "F");
 					} else if (pMeta->slot_madvised_pages && (pgnum < (1 << pMeta->slot_madvised_log_page_count)) &&
 							   bitarray_get(pMeta->slot_madvised_pages, pMeta->slot_madvised_log_page_count, (index_t)pgnum)) {
-						_malloc_printf(MALLOC_PRINTF_NOLOG | MALLOC_PRINTF_NOPREFIX, "M");
+						malloc_report(MALLOC_REPORT_NOLOG | MALLOC_REPORT_NOPREFIX, "M");
 					} else {
-						_malloc_printf(MALLOC_PRINTF_NOLOG | MALLOC_PRINTF_NOPREFIX, ".");
+						malloc_report(MALLOC_REPORT_NOLOG | MALLOC_REPORT_NOPREFIX, ".");
 					}
 				}
-				_malloc_printf(MALLOC_PRINTF_NOLOG | MALLOC_PRINTF_NOPREFIX, "\n");
+				malloc_report(MALLOC_REPORT_NOLOG | MALLOC_REPORT_NOPREFIX, "\n");
 
 				free(slot_bitarray);
 
@@ -1711,7 +1723,7 @@ nano_force_lock(nanozone_t *nanozone)
 {
 	int i;
 
-	for (i = 0; i < nanozone->phys_ncpus; ++i) {
+	for (i = 0; i < nano_common_max_magazines; ++i) {
 		_malloc_lock_lock(&nanozone->band_resupply_lock[i]);
 	}
 }
@@ -1721,7 +1733,7 @@ nano_force_unlock(nanozone_t *nanozone)
 {
 	int i;
 
-	for (i = 0; i < nanozone->phys_ncpus; ++i) {
+	for (i = 0; i < nano_common_max_magazines; ++i) {
 		_malloc_lock_unlock(&nanozone->band_resupply_lock[i]);
 	}
 }
@@ -1731,7 +1743,7 @@ nano_reinit_lock(nanozone_t *nanozone)
 {
 	int i;
 
-	for (i = 0; i < nanozone->phys_ncpus; ++i) {
+	for (i = 0; i < nano_common_max_magazines; ++i) {
 		_malloc_lock_init(&nanozone->band_resupply_lock[i]);
 	}
 }
@@ -1743,7 +1755,7 @@ nano_statistics(nanozone_t *nanozone, malloc_statistics_t *stats)
 
 	bzero(stats, sizeof(*stats));
 
-	for (i = 0; i < nanozone->phys_ncpus; ++i) {
+	for (i = 0; i < nano_common_max_magazines; ++i) {
 		nano_blk_addr_t p;
 
 		// Establish p as base address for slot 0 in this CPU magazine
@@ -1784,7 +1796,7 @@ _nano_locked(nanozone_t *nanozone)
 {
 	int i;
 
-	for (i = 0; i < nanozone->phys_ncpus; ++i) {
+	for (i = 0; i < nano_common_max_magazines; ++i) {
 		if (_malloc_lock_trylock(&nanozone->band_resupply_lock[i])) {
 			_malloc_lock_unlock(&nanozone->band_resupply_lock[i]);
 			return TRUE;
@@ -1833,34 +1845,34 @@ nano_forked_zone(nanozone_t *nanozone)
 	nanozone->basic_zone.introspect = (struct malloc_introspection_t *)&nano_introspect; /* Unchanged. */
 	nanozone->basic_zone.memalign = (void *)nano_memalign;								 /* Unchanged. */
 	nanozone->basic_zone.free_definite_size = (void *)nano_forked_free_definite_size;
+	nanozone->basic_zone.claimed_address = nano_forked_claimed_address;
 
 	mprotect(nanozone, sizeof(nanozone->basic_zone), PROT_READ);
 }
 
 malloc_zone_t *
-create_nano_zone(size_t initial_size, malloc_zone_t *helper_zone, unsigned debug_flags)
+nano_create_zone(malloc_zone_t *helper_zone, unsigned debug_flags)
 {
 	nanozone_t *nanozone;
 	int i, j;
 
-	if (!_malloc_engaged_nano) {
-		return NULL;
-	}
-
-#if defined(__x86_64__)
-	if (_COMM_PAGE_VERSION_REQD > (*((uint16_t *)_COMM_PAGE_VERSION))) {
-		MALLOC_PRINTF_FATAL_ERROR((*((uint16_t *)_COMM_PAGE_VERSION)), "comm page version mismatch");
-	}
-#endif
+	/* Note: It is important that nano_create_zone resets _malloc_engaged_nano
+	 * if it is unable to enable the nanozone (and chooses not to abort). As
+	 * several functions rely on _malloc_engaged_nano to determine if they
+	 * should manipulate the nanozone, and these should not run if we failed
+	 * to create the zone.
+	 */
+ 	MALLOC_ASSERT(_malloc_engaged_nano == NANO_V1);
 
 	/* get memory for the zone. */
-	nanozone = nano_allocate_pages(NULL, NANOZONE_PAGED_SIZE, 0, 0, VM_MEMORY_MALLOC);
+	nanozone = nano_common_allocate_based_pages(NANOZONE_PAGED_SIZE, 0, 0, VM_MEMORY_MALLOC, 0);
 	if (!nanozone) {
+		_malloc_engaged_nano = NANO_NONE;
 		return NULL;
 	}
 
 	/* set up the basic_zone portion of the nanozone structure */
-	nanozone->basic_zone.version = 9;
+	nanozone->basic_zone.version = 10;
 	nanozone->basic_zone.size = (void *)nano_size;
 	nanozone->basic_zone.malloc = (debug_flags & MALLOC_DO_SCRIBBLE) ? (void *)nano_malloc_scribble : (void *)nano_malloc;
 	nanozone->basic_zone.calloc = (void *)nano_calloc;
@@ -1876,50 +1888,31 @@ create_nano_zone(size_t initial_size, malloc_zone_t *helper_zone, unsigned debug
 																						  : (void *)nano_free_definite_size;
 
 	nanozone->basic_zone.pressure_relief = (void *)nano_pressure_relief;
+	nanozone->basic_zone.claimed_address = (void *)nano_claimed_address;
 
 	nanozone->basic_zone.reserved1 = 0; /* Set to zero once and for all as required by CFAllocator. */
 	nanozone->basic_zone.reserved2 = 0; /* Set to zero once and for all as required by CFAllocator. */
 
 	mprotect(nanozone, sizeof(nanozone->basic_zone), PROT_READ); /* Prevent overwriting the function pointers in basic_zone. */
 
+	/* Nano zone does not support MALLOC_ADD_GUARD_PAGES. */
+	if (debug_flags & MALLOC_ADD_GUARD_PAGES) {
+		malloc_report(ASL_LEVEL_INFO, "nano zone does not support guard pages\n");
+		debug_flags &= ~MALLOC_ADD_GUARD_PAGES;
+	}
+
 	/* set up the remainder of the nanozone structure */
 	nanozone->debug_flags = debug_flags;
-	nanozone->our_signature = NANOZONE_SIGNATURE;
 
-/* Query the number of configured processors. */
-#if defined(__x86_64__)
-	nanozone->phys_ncpus = *(uint8_t *)(uintptr_t)_COMM_PAGE_PHYSICAL_CPUS;
-	nanozone->logical_ncpus = *(uint8_t *)(uintptr_t)_COMM_PAGE_LOGICAL_CPUS;
-#else
-#error Unknown architecture
-#endif
-
-	if (nanozone->phys_ncpus > sizeof(nanozone->core_mapped_size) / sizeof(nanozone->core_mapped_size[0])) {
-		_malloc_printf(ASL_LEVEL_NOTICE, "nano zone abandoned because NCPUS mismatch.\n");
-		return NULL;
-	}
-
-	if (0 != (nanozone->logical_ncpus % nanozone->phys_ncpus)) {
-		MALLOC_PRINTF_FATAL_ERROR(nanozone->logical_ncpus % nanozone->phys_ncpus, "logical_ncpus % phys_ncpus != 0");
-	}
-
-	switch (nanozone->logical_ncpus / nanozone->phys_ncpus) {
-	case 1:
-		nanozone->hyper_shift = 0;
-		break;
-	case 2:
-		nanozone->hyper_shift = 1;
-		break;
-	case 4:
-		nanozone->hyper_shift = 2;
-		break;
-	default:
-		MALLOC_PRINTF_FATAL_ERROR(nanozone->logical_ncpus / nanozone->phys_ncpus, "logical_ncpus / phys_ncpus not 1, 2, or 4");
+	if (phys_ncpus > sizeof(nanozone->core_mapped_size) /
+			sizeof(nanozone->core_mapped_size[0])) {
+		MALLOC_REPORT_FATAL_ERROR(phys_ncpus,
+				"nanozone abandoned because NCPUS > max magazines.\n");
 	}
 
 	/* Initialize slot queue heads and resupply locks. */
 	OSQueueHead q0 = OS_ATOMIC_QUEUE_INIT;
-	for (i = 0; i < nanozone->phys_ncpus; ++i) {
+	for (i = 0; i < nano_common_max_magazines; ++i) {
 		_malloc_lock_init(&nanozone->band_resupply_lock[i]);
 
 		for (j = 0; j < NANO_SLOT_SIZE; ++j) {
@@ -1928,22 +1921,34 @@ create_nano_zone(size_t initial_size, malloc_zone_t *helper_zone, unsigned debug
 	}
 
 	/* Initialize the security token. */
-	if (0 == _dyld_get_image_slide((const struct mach_header *)_NSGetMachExecuteHeader())) {
-		// zero slide when ASLR has been disabled by boot-arg. Eliminate cloaking.
-		malloc_entropy[0] = 0;
-		malloc_entropy[1] = 0;
-	}
 	nanozone->cookie = (uintptr_t)malloc_entropy[0] & 0x0000ffffffff0000ULL; // scramble central 32bits with this cookie
-
-	/* Nano zone does not support MALLOC_ADD_GUARD_PAGES. */
-	if (nanozone->debug_flags & MALLOC_ADD_GUARD_PAGES) {
-		_malloc_printf(ASL_LEVEL_INFO, "nano zone does not support guard pages\n");
-		nanozone->debug_flags &= ~MALLOC_ADD_GUARD_PAGES;
-	}
 
 	nanozone->helper_zone = helper_zone;
 
 	return (malloc_zone_t *)nanozone;
+}
+
+void
+nano_init(const char *envp[], const char *apple[],
+		const char *bootargs MALLOC_UNUSED)
+{
+#if NANO_PREALLOCATE_BAND_VM
+	// Unconditionally preallocate the VA space set aside for nano malloc to
+	// reserve it in all configurations. rdar://problem/33392283
+	boolean_t preallocated = nano_preallocate_band_vm();
+	if (!preallocated) {
+		malloc_report(ASL_LEVEL_NOTICE, "nano zone abandoned due to inability to preallocate reserved vm space.\n");
+		_malloc_engaged_nano = NANO_NONE;
+	}
+#endif
+}
+
+// Second phase of initialization, called during _malloc_initialize(), after
+// environment variables have been read and processed.
+void
+nano_configure()
+{
+	// Nothing to do.
 }
 
 #endif // CONFIG_NANOZONE

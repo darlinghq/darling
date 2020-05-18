@@ -25,6 +25,10 @@
 #ifndef __FROZEN_MALLOC_H
 #define __FROZEN_MALLOC_H
 
+#ifndef MALLOC_EXPORT
+#define MALLOC_EXPORT __attribute__((visibility("default")))
+#endif // MALLOC_EXPORT
+
 MALLOC_EXPORT
 uintptr_t
 malloc_freezedry(void);

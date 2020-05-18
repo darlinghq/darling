@@ -24,21 +24,23 @@
 #ifndef __NANO_MALLOC_H
 #define __NANO_MALLOC_H
 
-#define MALLOC_HELPER_ZONE_STRING "MallocHelperZone"
-
 // Forward decl for the nanozone.
 typedef struct nanozone_s nanozone_t;
 
-// Nano malloc enabled flag
-MALLOC_NOEXPORT
-extern boolean_t _malloc_engaged_nano;
-
 MALLOC_NOEXPORT
 malloc_zone_t *
-create_nano_zone(size_t initial_size, malloc_zone_t *helper_zone, unsigned debug_flags);
+nano_create_zone(malloc_zone_t *helper_zone, unsigned debug_flags);
 
 MALLOC_NOEXPORT
 void
 nano_forked_zone(nanozone_t *nanozone);
+
+MALLOC_NOEXPORT
+void
+nano_init(const char *envp[], const char *apple[], const char *bootargs);
+
+MALLOC_NOEXPORT
+void
+nano_configure(void);
 
 #endif // __NANO_MALLOC_H

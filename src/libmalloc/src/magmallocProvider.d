@@ -5,7 +5,8 @@ provider magmalloc {
 		probe allocRegion(void *, int, void *, int);
 		probe deallocRegion(void *, void *, int);
 		probe madvfreeRegion(void *, void *, void *, int);
-		probe pressureRelief(void *, int, int);
+		probe pressureReliefBegin(void *, char *, int);
+		probe pressureReliefEnd(void *, char *, int, int);
 		probe mallocErrorBreak();
 };
 

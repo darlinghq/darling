@@ -27,7 +27,8 @@
 .Nm malloc ,
 .Nm realloc ,
 .Nm reallocf ,
-.Nm valloc
+.Nm valloc ,
+.Nm aligned_alloc
 .Nd memory allocation
 .Sh SYNOPSIS
 .In stdlib.h
@@ -58,6 +59,11 @@
 .Fo valloc
 .Fa "size_t size"
 .Fc
+.Ft void *
+.Fo aligned_alloc
+.Fa "size_t alignment"
+.Fa "size_t size"
+.Fc
 .Sh DESCRIPTION
 The
 .Fn malloc ,
@@ -69,6 +75,9 @@ and
 functions allocate memory.
 The allocated memory is aligned such that it can be used for any data type,
 including AltiVec- and SSE-related types.
+The
+.Fn aligned_alloc
+function allocates memory with the requested alignment.
 The
 .Fn free
 function frees allocations that were created via the preceding allocation
@@ -95,6 +104,14 @@ function allocates
 .Fa size
 bytes of memory and returns a pointer to the allocated memory.
 The allocated memory is aligned on a page boundary.
+.Pp
+The
+.Fn aligned_alloc
+function allocates
+.Fa size
+bytes of memory with an alignment specified by
+.Fa alignment
+and returns a pointer to the allocated memory.
 .Pp
 The
 .Fn realloc
@@ -154,8 +171,9 @@ If successful,
 .Fn malloc ,
 .Fn realloc ,
 .Fn reallocf ,
+.Fn valloc ,
 and
-.Fn valloc
+.Fn aligned_alloc
 functions return a pointer to allocated memory.
 If there is an error, they return a
 .Dv NULL
@@ -163,6 +181,23 @@ pointer and set
 .Va errno
 to
 .Er ENOMEM .
+.Pp
+In addition,
+.Fn aligned_alloc
+returns a
+.Dv NULL
+pointer and sets
+.Va errno
+to
+.Er EINVAL
+if
+.Fa size
+is not an integral multiple of
+.Fa alignment ,
+or if
+.Fa alignment
+is not a power of 2 at least as large as
+.Fn sizeof "void *" .
 .Pp
 For
 .Fn realloc ,
@@ -183,10 +218,13 @@ The recognized environment variables and their meanings are documented below.
 The following environment variables change the behavior of the
 allocation-related functions.
 .Bl -tag -width ".Ev MallocStackLoggingNoCompact"
-.It Ev MallocLogFile <f>
-Create/append messages to the given file path
-.Fa <f>
-instead of writing to the standard error.
+.It Ev MallocDebugReport
+If set, specifies where messages are written. Set to "stderr" to write messages
+to the standard error stream, "none" to discard all messages and "crash" to
+write messages to standard error only for a condition that is about to cause a
+crash. When not set, message are written to the standard error stream if it
+appears to be a terminal (that is, if isatty(STDERR_FILENO) returns a non-zero
+value) and are otherwise discarded.
 .It Ev MallocGuardEdges
 If set, add a guard page before and after each large block.
 .It Ev MallocDoNotProtectPrelude
@@ -200,9 +238,21 @@ even if the
 .Ev MallocGuardEdges
 environment variable is set.
 .It Ev MallocStackLogging
-If set, record all stacks, so that tools like
-.Nm leaks
+The default behavior if this is set is to record all allocation and deallocation events to an on-disk log, along with stacks, so that tools like
+.Xr leaks 1
+and
+.Xr malloc_history 1
 can be used.
+.Pp
+Set to "vm" to record only allocation of virtual memory regions allocated by system calls and mach traps, such as by
+.Xr mmap 1
+.
+.Pp
+Set to "malloc" to record only allocations via
+.Xr malloc 3
+and related interfaces, not virtual memory regions.
+.Pp
+Set to "lite" to record current allocations only, not history.   These are recorded by in-memory data structures, instead of an on-disk log.
 .It Ev MallocStackLoggingNoCompact
 If set, record all stacks in a manner that is compatible with the
 .Nm malloc_history
@@ -215,7 +265,9 @@ This increases the likelihood that a program making assumptions about the conten
 freshly allocated memory will fail.
 Also if set, fill memory that has been deallocated with 0x55 bytes.
 This increases the likelihood that a program will fail due to accessing memory
-that is no longer allocated.
+that is no longer allocated. Note that due to the way in which freed memory is
+managed internally, the 0x55 pattern may not appear in some parts of a
+deallocated memory block.
 .It Ev MallocCheckHeapStart <s>
 If set, specifies the number of allocations
 .Fa <s>

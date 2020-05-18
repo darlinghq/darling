@@ -19,14 +19,20 @@ set(libmalloc_sources
 	src/frozen_malloc.c
 	src/legacy_malloc.c
 	src/magazine_large.c
-	src/magazine_lite.c
 	src/magazine_malloc.c
 	src/magazine_small.c
 	src/magazine_tiny.c
 	src/malloc.c
 	src/nano_malloc.c
 	src/purgeable_malloc.c
-	src/stack_logging_disk.c
+	src/magazine_medium.c
+	src/magazine_rack.c
+	src/malloc_common.c
+	src/malloc_printf.c
+	src/msl_lite_support.c
+	src/nano_malloc_common.c
+	src/nanov2_malloc.c
+	src/vm.c
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_malloc.dylib")

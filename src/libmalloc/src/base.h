@@ -47,15 +47,19 @@
 		__builtin_trap(); \
 })
 
-#define MALLOC_PRINTF_FATAL_ERROR(cause, message) ({ \
-		malloc_printf("*** FATAL ERROR - " message ".\n"); \
+#define MALLOC_REPORT_FATAL_ERROR(cause, message) ({ \
+		malloc_report(ASL_LEVEL_ERR, "*** FATAL ERROR - " message ".\n"); \
 		MALLOC_FATAL_ERROR((cause), message); \
 })
 
 #if defined(__i386__) || defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
 #   define __APPLE_API_PRIVATE
 #   include <machine/cpu_capabilities.h>
-#   define _COMM_PAGE_VERSION_REQD 9
+#   if defined(__i386__) || defined(__x86_64__)
+#      define _COMM_PAGE_VERSION_REQD 9
+#   else
+#      define _COMM_PAGE_VERSION_REQD 3
+#   endif
 #   undef __APPLE_API_PRIVATE
 #else
 #   include <sys/sysctl.h>
@@ -121,6 +125,7 @@ typedef unsigned short msize_t;
 typedef unsigned int grain_t; // N.B. wide enough to index all free slots
 typedef struct large_entry_s large_entry_t;
 typedef struct szone_s szone_t;
+typedef struct rack_s rack_t;
 typedef struct magazine_s magazine_t;
 typedef int mag_index_t;
 typedef void *region_t;

@@ -29,17 +29,13 @@
 
 /*********************	DEFINITIONS	************************/
 
-#define NANO_MAG_INDEX(nz)		(_os_cpu_number() >> nz->hyper_shift)
-
 #define MAX_RECORDER_BUFFER		256
 
 /*************          nanozone address field layout        ******************/
 
 #if defined(__x86_64)
-#define NANO_SIGNATURE_BITS		20
-#define NANOZONE_SIGNATURE		0x00006ULL			// 0x00006nnnnnnnnnnn the address range devoted to us.
-#define NANO_MAG_BITS			5
-#define NANO_BAND_BITS			18
+#define NANO_MAG_BITS			6
+#define NANO_BAND_BITS			17
 #define NANO_SLOT_BITS			4
 #define NANO_OFFSET_BITS		17
 
@@ -52,7 +48,7 @@
 #if defined(__BIG_ENDIAN__)
 struct nano_blk_addr_s {
     uint64_t
-	nano_signature:NANO_SIGNATURE_BITS,	// 0x00006nnnnnnnnnnn the address range devoted to us.
+	nano_signature:NANOZONE_SIGNATURE_BITS,	// the address range devoted to us.
 	nano_mag_index:NANO_MAG_BITS,		// the core that allocated this block
 	nano_band:NANO_BAND_BITS,
 	nano_slot:NANO_SLOT_BITS,		// bucket of homogenous quanta-multiple blocks
@@ -66,7 +62,7 @@ struct nano_blk_addr_s {
 	nano_slot:NANO_SLOT_BITS,		// bucket of homogenous quanta-multiple blocks
 	nano_band:NANO_BAND_BITS,
 	nano_mag_index:NANO_MAG_BITS,		// the core that allocated this block
-	nano_signature:NANO_SIGNATURE_BITS;	// 0x00006nnnnnnnnnnn the address range devoted to us.
+	nano_signature:NANOZONE_SIGNATURE_BITS;	// the address range devoted to us.
 };
 #endif
 // clang-format on
@@ -76,16 +72,13 @@ typedef union  {
     struct nano_blk_addr_s	fields;
 } nano_blk_addr_t;
 
-#define NANO_MAX_SIZE			256 /* Buckets sized {16, 32, 48, 64, 80, 96, 112, ...} */
-#define SHIFT_NANO_QUANTUM		4
-#define NANO_REGIME_QUANTA_SIZE		(1 << SHIFT_NANO_QUANTUM)	// 16
-#define NANO_QUANTA_MASK		0xFULL				// NANO_REGIME_QUANTA_SIZE - 1
-
 #define SLOT_IN_BAND_SIZE 	(1 << NANO_OFFSET_BITS)
 #define SLOT_KEY_LIMIT 		(1 << NANO_SLOT_BITS) /* Must track nano_slot width */
 #define BAND_SIZE 		(1 << (NANO_SLOT_BITS + NANO_OFFSET_BITS)) /*  == Number of bytes covered by a page table entry */
 #define NANO_MAG_SIZE 		(1 << NANO_MAG_BITS)
 #define NANO_SLOT_SIZE 		(1 << NANO_SLOT_BITS)
+
+#ifdef __INTERNAL_H
 
 /****************************** zone itself ***********************************/
 
@@ -129,10 +122,6 @@ typedef struct nanozone_s {
     size_t			core_mapped_size[NANO_MAG_SIZE];
 
     unsigned			debug_flags;
-    unsigned			our_signature;
-    unsigned			phys_ncpus;
-    unsigned			logical_ncpus;
-    unsigned			hyper_shift;
 
     /* security cookie */
     uintptr_t			cookie;
@@ -145,6 +134,8 @@ typedef struct nanozone_s {
 } nanozone_t;
 
 #define NANOZONE_PAGED_SIZE	((sizeof(nanozone_t) + vm_page_size - 1) & ~ (vm_page_size - 1))
+
+#endif // __INTERNAL_H
 
 #endif // CONFIG_NANOZONE
 
