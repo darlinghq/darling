@@ -4,11 +4,13 @@ import sys, os, subprocess, re, getpass
 
 # Data
 library = False
+iossupport_system = False
 framework = False
 private_framework = False
 
 # Constants
 library_prefix = "/usr/lib/"
+iossupport_system_prefix = "/System/iOSSupport"
 framework_prefix = "/System/Library/Frameworks/"
 private_framework_prefix = "/System/Library/PrivateFrameworks/"
 
@@ -84,22 +86,27 @@ if len(sys.argv) != 3:
 
 full_path = sys.argv[1]
 output_dir = sys.argv[2]
+validate_path = full_path
 
 try:
     os.makedirs(output_dir)
 except FileExistsError:
     pass
 
-if full_path.endswith(".dylib"):
+if full_path.startswith(iossupport_system_prefix):
+    iossupport_system = True
+    validate_path = full_path[len(iossupport_system_prefix):]
+
+if validate_path.endswith(".dylib"):
     library = True
-    target_name = extract_library_name(full_path)
-elif len(full_path) > len(framework_prefix) and full_path[:len(framework_prefix)] == framework_prefix:
+    target_name = extract_library_name(validate_path)
+elif len(validate_path) > len(framework_prefix) and validate_path[:len(framework_prefix)] == framework_prefix:
     framework = True
-    target_name = extract_framework_name(full_path)
-elif len(full_path) > len(private_framework_prefix) and full_path[
+    target_name = extract_framework_name(validate_path)
+elif len(validate_path) > len(private_framework_prefix) and validate_path[
                                                         :len(private_framework_prefix)] == private_framework_prefix:
     private_framework = True
-    target_name = extract_framework_name(full_path)
+    target_name = extract_framework_name(validate_path)
 else:
     print("Failed to recognize Mach-O location")
     target_name = None
@@ -262,6 +269,8 @@ if library:
 else:
     cmake.write("add_framework(%s\n" % target_name)
     cmake.write("    FAT\n    CURRENT_VERSION\n")
+    if iossupport_system:
+        cmake.write("    IOSSUPPORT\n")
     if private_framework:
         cmake.write("    PRIVATE\n")
     cmake.write("    VERSION \"A\"\n\n")
