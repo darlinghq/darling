@@ -17,44 +17,61 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DPRIVATE=1 -D__DARWIN_C_LEVEL=20150101)
 add_definitions('-D__XNU_PRIVATE_EXTERN=')
 add_definitions(-DIOKIT_ALL_IPC=1 -DIOKIT=1)
-add_compile_definitions(LIBSYSCALL_INTERFACE=1)
-#add_definitions(-DKERNEL)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/external/lkm/osfmk)
 
-set(LIBSYSCALL_MIG_NAMES
+set(LIBSYSCALL_MIGS
+	mach/clock
+	mach/clock_priv
+	mach/clock_reply
+	mach/exc
 	mach/host_priv
 	mach/host_security
-	mach/ledger
 	mach/lock_set
 	mach/mach_host
 	mach/mach_port
-	mach/mach_vm
 	mach/mach_voucher
-	mach/notify
-	mach/processor_set
+	mach/memory_entry
 	mach/processor
+	mach/processor_set
 	mach/task
 	mach/thread_act
 	mach/vm_map
-	mach/exc
-	device/device
-	mach/clock
-	mach/clock_priv
+	mach/mach_vm
 )
 
-foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIG_NAMES)
+set(LIBSYSCALL_MIGS_INTERNAL
+	mach/mach_port
+	mach/mach_vm
+	mach/thread_act
+	mach/vm_map
+)
+
+set(syscall_mig_sources "")
+set(syscall_mig_headers "")
+set(syscall_mig_internal_headers "")
+
+add_definitions(-DLIBSYSCALL_INTERFACE=1)
+set(MIG_USER_HEADER_SUFFIX ".h")
+set(MIG_USER_SOURCE_SUFFIX "_unused_user.c")
+set(MIG_SERVER_HEADER_SUFFIX "_unused_server.h")
+set(MIG_SERVER_SOURCE_SUFFIX "_unused_server.c")
+foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIGS)
+	mig("${MIG_FILENAME}.defs")
+	list(APPEND syscall_mig_headers "${CMAKE_CURRENT_BINARY_DIR}/${MIG_FILENAME}.h")
+endforeach()
+
+remove_definitions(-DLIBSYSCALL_INTERFACE=1)
+set(MIG_USER_HEADER_SUFFIX "_unused_user.h")
+set(MIG_USER_SOURCE_SUFFIX)
+set(MIG_SERVER_HEADER_SUFFIX)
+set(MIG_SERVER_SOURCE_SUFFIX)
+foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIGS)
 	mig("${MIG_FILENAME}.defs")
 
-	get_filename_component(MIG_BASENAME ${MIG_FILENAME} NAME)
-	get_filename_component(MIG_HEADER_DIR ${MIG_FILENAME} DIRECTORY)
+	list(APPEND syscall_mig_sources "${CMAKE_CURRENT_BINARY_DIR}/${MIG_FILENAME}User.c")
 
-	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${MIG_HEADER_DIR}")
-	file(CREATE_LINK
-		"${MIG_BASENAME}.h"
-		"${CMAKE_CURRENT_BINARY_DIR}/${MIG_FILENAME}_internal.h"
-		SYMBOLIC
-	)
+	get_filename_component(MIG_HEADER_DIR ${MIG_FILENAME} DIRECTORY)
 
 	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/${MIG_HEADER_DIR}")
 	file(CREATE_LINK
@@ -63,6 +80,35 @@ foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIG_NAMES)
 		SYMBOLIC
 	)
 endforeach()
+
+set(MIG_USER_HEADER_SUFFIX "_internal.h")
+set(MIG_USER_SOURCE_SUFFIX "_unused_internal_user.c")
+set(MIG_SERVER_HEADER_SUFFIX "_unused_internal_server.h")
+set(MIG_SERVER_SOURCE_SUFFIX "_unused_internal_server.c")
+
+foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIGS_INTERNAL)
+	mig("${MIG_FILENAME}.defs")
+	list(APPEND syscall_mig_internal_headers "${CMAKE_CURRENT_BINARY_DIR}/${MIG_FILENAME}_internal.h")
+
+	get_filename_component(MIG_HEADER_DIR ${MIG_FILENAME} DIRECTORY)
+
+	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/${MIG_HEADER_DIR}")
+	file(CREATE_LINK
+		"${DARLING_ROOT_RELATIVE_TO_SDK}/../../../src/kernel/libsyscall/${MIG_FILENAME}_internal.h"
+		"${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/${MIG_FILENAME}_internal.h"
+		SYMBOLIC
+	)
+endforeach()
+
+add_custom_target(libsyscall_generate_mig_headers
+	DEPENDS
+		${syscall_mig_headers}
+)
+
+add_custom_target(libsyscall_generate_mig_internal_headers
+	DEPENDS
+		${syscall_mig_internal_headers}
+)
 
 set(syscall_legacy_sources
 	wrappers/legacy/accept.c
@@ -97,10 +143,11 @@ set(syscall_dynamic_sources
 set(syscall_sources
 	mach/mach_traps.S
 	os/alloc_once.c
+	os/log_data.c
 	wrappers/libproc/libproc.c
 	wrappers/libproc/proc_listpidspath.c
 
-	wrappers/mach_approximate_time.S
+	wrappers/mach_approximate_time_i386.S
 	wrappers/carbon_delete.c
 	wrappers/clonefile.c
 	wrappers/coalition.c
@@ -139,6 +186,10 @@ set(syscall_sources
 	wrappers/unlink.c
 	wrappers/work_interval.c
 	wrappers/utimensat.c
+	wrappers/mach_bridge_remote_time.c
+	wrappers/pid_shutdown_networking.c
+	wrappers/proc.c
+	wrappers/reboot.c
 
 	wrappers/legacy/select-pre1050.c
 	
@@ -159,32 +210,22 @@ set(syscall_sources
 	wrappers/unix03/setrlimit.c
 
 	wrappers/spawn/posix_spawn.c
-	
+
+	wrappers/string/index.c
+	wrappers/string/memcpy.c
+	wrappers/string/memset.c
+	wrappers/string/strcmp.c
+	wrappers/string/strcpy.c
+	wrappers/string/strlcpy.c
+	wrappers/string/strlen.c
+	wrappers/string/strsep.c
+
 	${syscall_legacy_sources}
 
+	${syscall_mig_sources}
+
 	custom/errno.c
-	
-	# MIG generated files
-	${CMAKE_CURRENT_BINARY_DIR}/mach/host_privUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/host_securityUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/ledgerUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/lock_setUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/mach_hostUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/mach_portUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/mach_vmUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/mach_voucherUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/notifyUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/processor_setUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/processorUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/taskUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/thread_actUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/vm_mapUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/clockUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/device/deviceUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/excServer.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/excUser.c
-	${CMAKE_CURRENT_BINARY_DIR}/mach/clock_privUser.c
-	
+
 	mach/mach_init.c
 	mach/clock_sleep.c
 	mach/error_codes.c
@@ -211,6 +252,9 @@ set(syscall_sources
 	mach/slot_name.c
 	mach/string.c
 	mach/thread_act.c
+	mach/host.c
+	mach/mach_right.c
+	mach/port_descriptions.c
 
 	bsdsyscalls/___abort_with_payload.S
 	bsdsyscalls/___accept_nocancel.S
@@ -243,6 +287,7 @@ set(syscall_sources
 	bsdsyscalls/_close.S
 	bsdsyscalls/___coalition_info.S
 	bsdsyscalls/___coalition.S
+	bsdsyscalls/___coalition_ledger.S
 	bsdsyscalls/___connect_nocancel.S
 	bsdsyscalls/___connect.S
 	bsdsyscalls/_connectx.S
@@ -374,6 +419,7 @@ set(syscall_sources
 	bsdsyscalls/_lio_listio.S
 	bsdsyscalls/___listen.S
 	bsdsyscalls/_listxattr.S
+	bsdsyscalls/___log_data.S
 	bsdsyscalls/___lseek.S
 	bsdsyscalls/___lstat_extended.S
 	bsdsyscalls/_lstat.S
@@ -640,6 +686,11 @@ foreach (file IN ITEMS ${syscall_legacy_sources})
 endforeach(file)
 
 add_darling_object_library(libsyscall ${syscall_sources})
+add_dependencies(libsyscall
+	libsyscall_generate_mig_headers
+	libsyscall_generate_mig_internal_headers
+)
+
 add_darling_object_library(libsyscall_dynamic ${syscall_dynamic_sources})
 make_fat(libsyscall)
 make_fat(libsyscall_dynamic)

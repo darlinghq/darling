@@ -254,6 +254,7 @@ __libkernel_voucher_init(_libkernel_voucher_functions_t fns)
 	return KERN_SUCCESS;
 }
 
+#ifndef DARLING
 boolean_t
 voucher_mach_msg_set(mach_msg_header_t *msg)
 {
@@ -287,3 +288,4 @@ voucher_mach_msg_revert(voucher_mach_msg_state_t state)
 		return _libkernel_voucher_functions->voucher_mach_msg_revert(state);
 	}
 }
+#endif

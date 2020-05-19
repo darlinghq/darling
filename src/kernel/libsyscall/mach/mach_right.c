@@ -29,10 +29,13 @@
 #include <mach/mach_traps.h>
 #include <mach/mach_port.h>
 #include <mach/mach_right.h>
-
+#ifdef DARLING
+#define __OS_EXPOSE_INTERNALS_INDIRECT__
+#include <os/internal/crashlog.h>
+#endif
 
 #pragma mark Utilities
-#define _assert_mach(__op, __kr) \
+#define _mach_assert(__op, __kr) \
 	do { \
 	        if (kr != KERN_SUCCESS) { \
 	                __builtin_trap(); \
