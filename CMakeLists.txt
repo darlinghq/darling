@@ -31,6 +31,10 @@ endif()
 
 SET(CMAKE_SKIP_RPATH TRUE)
 
+# technically ignored by CMake when building on non-Apple platforms, but it's already a standard variable for the
+# SDK deployment target, so we'll just use it and then add it to the compiler flags manually
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15.2 CACHE STRING "The version of macOS we're simulating")
+
 project(darling)
 
 cmake_minimum_required(VERSION 3.10)
@@ -63,6 +67,11 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${IGNORED_WARNINGS}")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IGNORED_WARNINGS}")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -ggdb")
 SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb")
+
+# set macOS deployment version
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
 
 if(CMAKE_POSITION_INDEPENDENT_CODE)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
