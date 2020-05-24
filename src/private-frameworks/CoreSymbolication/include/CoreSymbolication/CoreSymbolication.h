@@ -21,7 +21,7 @@
 #define __CORESYMBOLICATION_CORESYMBOLICATION_H__
 
 #include <CoreFoundation/CoreFoundation.h>
-#include <mach/i386/vm_types.h>
+#include <mach/machine/vm_types.h>
 #include <mach/mach_types.h>
 #include <sys/types.h>
 
@@ -140,7 +140,7 @@ void* CSSymbolGetSection(void);
 void* CSSymbolGetSegment(void);
 CSSymbolOwnerRef CSSymbolGetSymbolOwner(CSSymbolRef symbol);
 void* CSSymbolGetSymbolicator(void);
-void* CSSymbolIsArm(void);
+void* CSSymbolIsArm(CSSymbolRef symbol);
 void* CSSymbolIsDebugMap(void);
 void* CSSymbolIsDwarf(void);
 int CSSymbolIsDyldStub(CSSymbolRef symbol);

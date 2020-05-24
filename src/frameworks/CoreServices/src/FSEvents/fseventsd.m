@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <ext/fanotify.h>
 #include <ext/file_handle.h>
-#include <linux/fanotify.h>
+#include "./linux/fanotify.h"
 #include <dispatch/dispatch.h>
 #include <CoreServices/FileManager.h>
 #import <Foundation/NSObjCRuntime.h>
