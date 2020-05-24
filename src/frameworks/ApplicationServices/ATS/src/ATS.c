@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+const CFStringRef kATSValidationActivationInfoKeep = CFSTR("ATSValidationActivationInfoKeep");
+
 static int verbose = 0;
 
 __attribute__((constructor))
