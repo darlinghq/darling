@@ -49,3 +49,4 @@ const CFStringRef kLSQuarantineTimeStampKey = CFSTR("LSQuarantineTimeStamp");
 
 const CFStringRef kMDItemDisplayName = CFSTR("kMDItemDisplayName");
 const CFStringRef kMDItemLastUsedDate = CFSTR("kMDItemLastUsedDate");
+const CFStringRef kMDItemFinderComment = CFSTR("MDItemFinderComment");
