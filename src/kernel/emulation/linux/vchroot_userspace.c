@@ -37,6 +37,7 @@ typedef struct stat stat_t;
 #	include "duct_errno.h"
 #	include "stat/common.h"
 #	include "dirent/getdirentries.h"
+#	include "common_at.h"
 typedef struct linux_stat stat_t;
 
 extern __SIZE_TYPE__ strlen(const char* s);
@@ -107,7 +108,11 @@ int __darling_vchroot(int dfd)
 
 	__simple_sprintf(buf, "/proc/self/fd/%d", dfd);
 
-	rv = LINUX_SYSCALL(__NR_readlink, buf, prefix_path, sizeof(prefix_path) - 1);
+	#if defined(__NR_readlink)
+		rv = LINUX_SYSCALL(__NR_readlink, buf, prefix_path, sizeof(prefix_path) - 1);
+	#else
+		rv = LINUX_SYSCALL(__NR_readlinkat, LINUX_AT_FDCWD, buf, prefix_path, sizeof(prefix_path) - 1);
+	#endif
 	prefix_path[rv] = '\0';
 	prefix_path_len = rv;
 
@@ -184,7 +189,11 @@ int vchroot_expand(struct vchroot_expand_args* args)
 		else
 			strcpy(buf, "/proc/self/cwd");
 
-		int rv = LINUX_SYSCALL(__NR_readlink, buf, ctxt.current_path, sizeof(ctxt.current_path) - 1);
+		#if defined(__NR_readlink)
+			int rv = LINUX_SYSCALL(__NR_readlink, buf, ctxt.current_path, sizeof(ctxt.current_path) - 1);
+		#else
+			int rv = LINUX_SYSCALL(__NR_readlinkat, LINUX_AT_FDCWD, buf, ctxt.current_path, sizeof(ctxt.current_path) - 1);
+		#endif
 
 		if (rv < 0)
 		{
@@ -305,7 +314,15 @@ static int vchroot_run(const char* input_path, struct context* ctxt)
 				if (!ctxt->unknown_component)
 				{
 					stat_t st;
-					int status = LINUX_SYSCALL(__NR_lstat, ctxt->current_path, &st);
+					#if defined(__NR_lstat)
+						int status = LINUX_SYSCALL(__NR_lstat, ctxt->current_path, &st);
+					#else
+						#if __NR_newfstatat
+							int status = LINUX_SYSCALL(__NR_newfstatat, LINUX_AT_FDCWD, ctxt->current_path, &st, LINUX_AT_SYMLINK_NOFOLLOW);
+						#else
+							int status = LINUX_SYSCALL(__NR_fstatat64, LINUX_AT_FDCWD, ctxt->current_path, &st, LINUX_AT_SYMLINK_NOFOLLOW);
+						#endif
+					#endif
 
 					if (icase_enabled && status == -LINUX_ENOENT)
 					{
@@ -313,8 +330,12 @@ static int vchroot_run(const char* input_path, struct context* ctxt)
 
 						// Examine the directory above
 						ctxt->current_path[prevlen-1] = '\0';
-
-						int dfd = LINUX_SYSCALL(__NR_open, (prevlen > 1) ? ctxt->current_path : "/", LINUX_O_RDONLY);
+						
+						#if defined(__NR_open)
+							int dfd = LINUX_SYSCALL(__NR_open, (prevlen > 1) ? ctxt->current_path : "/", LINUX_O_RDONLY);
+						#else
+							int dfd = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, (prevlen > 1) ? ctxt->current_path : "/", LINUX_O_RDONLY);
+						#endif
 						char dirents[4096]; // buffer space for struct linux_dirent64 entries
 						int len;
 
@@ -356,7 +377,11 @@ done_getdents:
 							char link[512];
 							int rv;
 
-							rv = LINUX_SYSCALL(__NR_readlink, ctxt->current_path, link, sizeof(link) - 1);
+							#if defined(__NR_readlink)
+								rv = LINUX_SYSCALL(__NR_readlink, ctxt->current_path, link, sizeof(link) - 1);
+							#else
+								rv = LINUX_SYSCALL(__NR_readlinkat, LINUX_AT_FDCWD, ctxt->current_path, link, sizeof(link) - 1);
+							#endif
 
 							if (rv < 0)
 								return rv;
@@ -431,7 +456,11 @@ int vchroot_fdpath(struct vchroot_fdpath_args* args)
 
 	__simple_sprintf(buf, "/proc/self/fd/%d", args->fd);
 
-	int rv = LINUX_SYSCALL(__NR_readlink, buf, link, sizeof(link) - 1);
+	#if defined(__NR_readlink)
+		int rv = LINUX_SYSCALL(__NR_readlink, buf, link, sizeof(link) - 1);
+	#else
+		int rv = LINUX_SYSCALL(__NR_readlinkat, LINUX_AT_FDCWD, buf, link, sizeof(link) - 1);
+	#endif
 	if (rv < 0)
 		return rv;
 

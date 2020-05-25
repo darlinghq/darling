@@ -30,7 +30,11 @@ long sys_utimes(const char* path, struct bsd_timeval* tv)
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	ret = LINUX_SYSCALL(__NR_utimes, vc.path, tv ? ltv: 0);
+	#if defined(__NR_utimes)
+		ret = LINUX_SYSCALL(__NR_utimes, vc.path, tv ? ltv: 0);
+	#else
+		ret = LINUX_SYSCALL(__NR_utimensat, LINUX_AT_FDCWD, vc.path, tv ? ltv: 0, 0);
+	#endif
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
 

@@ -28,7 +28,11 @@ long sys_mkfifo(const char* path, unsigned int mode)
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	ret = LINUX_SYSCALL(__NR_mknod, vc.path, mode | LINUX_S_IFIFO, 0);
+	#if defined(__NR_mknod)
+		ret = LINUX_SYSCALL(__NR_mknod, vc.path, mode | LINUX_S_IFIFO, 0);
+	#else
+		ret = LINUX_SYSCALL(__NR_mknodat, LINUX_AT_FDCWD, vc.path, mode | LINUX_S_IFIFO, 0);
+	#endif
 
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
