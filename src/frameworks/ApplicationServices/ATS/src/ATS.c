@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-const CFStringRef kATSValidationActivationInfoKeep = CFSTR("ATSValidationActivationInfoKeep");
+const CFStringRef kATSValidationActivationInfoKeep = CFSTR("activationinforetain");
 
 static int verbose = 0;
 
