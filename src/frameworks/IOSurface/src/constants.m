@@ -44,6 +44,14 @@ const CFStringRef kIOSurfacePixelFormat = CFSTR("IOSurfacePixelFormat");
 const CFStringRef kIOSurfacePixelSizeCastingAllowed = CFSTR("IOSurfacePixelSizeCastingAllowed");
 const CFStringRef kIOSurfacePlaneComponentBitDepths = CFSTR("IOSurfacePlaneComponentBitDepths");
 const CFStringRef kIOSurfacePlaneComponentBitOffsets = CFSTR("IOSurfacePlaneComponentBitOffsets");
+const CFStringRef kIOSurfaceColorSpace = CFSTR("IOSurfaceColorSpace");
+const CFStringRef kIOSurfaceIsDisplayable = CFSTR("IsDisplayable");
+const CFStringRef kIOSurfaceName = CFSTR("IOSurfaceName");
+const CFStringRef kIOSurfacePixelCastingAllowed = CFSTR("IOSurfacePixelSizeCastingAllowed");
+const CFStringRef kIOSurfaceProtectionOptions = CFSTR("IOSurfaceProtectionOptions");
+const CFStringRef kIOSurfaceYCbCrMatrix = CFSTR("IOSurfaceYCbCrMatrix");
+const CFStringRef kIOSurfaceYCbCrMatrix_ITU_R_601_4_String = CFSTR("ITU_R_601_4");
+const CFStringRef kIOSurfaceYCbCrMatrix_ITU_R_709_2_String = CFSTR("ITU_R_709_2");
 
 IOSurfacePropertyKey IOSurfacePropertyKeyAllocSize = @"IOSurfacePropertyKeyAllocSize";
 IOSurfacePropertyKey IOSurfacePropertyKeyWidth = @"IOSurfacePropertyKeyWidth";
