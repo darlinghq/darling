@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -55,7 +55,7 @@
 string_t
 strmake(char *string)
 {
-  register string_t saved;
+  string_t saved;
   
   saved = malloc(strlen(string) + 1);
   if (saved == strNULL)
@@ -66,7 +66,7 @@ strmake(char *string)
 string_t
 strconcat(string_t left, string_t right)
 {
-  register string_t saved;
+  string_t saved;
   
   saved = malloc(strlen(left) + strlen(right) + 1);
   if (saved == strNULL)
@@ -120,7 +120,7 @@ strstring(string_t string)
 char *
 toupperstr(char *p)
 {
-  register char *s = p;
+  char *s = p;
   char c;
   
   while ((c = *s)) {

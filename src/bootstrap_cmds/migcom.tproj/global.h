@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -51,6 +51,7 @@
 
 #include "type.h"
 
+extern boolean_t PrintVersion; /* print bootstrap_cmds project version and exit */
 extern boolean_t BeQuiet;   /* no warning messages */
 extern boolean_t BeVerbose; /* summarize types, routines */
 extern boolean_t BeDebug;   /* enters in the debug mode */
@@ -69,6 +70,10 @@ extern boolean_t IsVoucherCodeAllowed;
 
 extern boolean_t IsKernelUser;
 extern boolean_t IsKernelServer;
+extern boolean_t UseSpecialReplyPort;
+extern boolean_t HasUseSpecialReplyPort; /* whether UseSpecialReplyPort has ever been set to TRUE */
+extern boolean_t HasConsumeOnSendError; /* whether ConsumeOnSendError has ever been set */
+extern u_int ConsumeOnSendError;
 
 extern string_t RCSId;
 
@@ -90,7 +95,7 @@ extern int UserTypeLimit;
 extern int yylineno;
 extern string_t yyinname;
 
-extern void init_global();
+extern void init_global(void);
 
 extern string_t UserFilePrefix;
 extern string_t UserHeaderFileName;
@@ -99,11 +104,8 @@ extern string_t InternalHeaderFileName;
 extern string_t DefinesHeaderFileName;
 extern string_t UserFileName;
 extern string_t ServerFileName;
-#ifdef DARLING
-extern string_t XtraceMigFileName;
-#endif
 
-extern void more_global();
+extern void more_global(void);
 
 extern char NewCDecl[];
 extern char LintLib[];

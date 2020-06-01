@@ -1,7 +1,6 @@
 #!/bin/bash
 #
 # Copyright (c) 1999-2008 Apple Inc. All rights reserved.
-# Modified by Lubos Dolezel for Darling
 #
 # @APPLE_LICENSE_HEADER_START@
 #
@@ -84,12 +83,17 @@ fi
 C=${MIGCC}
 M=${MIGCOM-${migcomPath}}
 
+if [ $# -eq 1 ] && [ "$1" = "-version" ] ; then
+	"$M" "$@"
+	exit $?
+fi
+
 cppflags="-D__MACH30__"
 
 files=
-arch=`uname -m`
+arch=`/usr/bin/arch`
 
-WORKTMP=`mktemp -d "${TMPDIR:-/tmp}/mig.XXXXXX"`
+WORKTMP=`/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mig.XXXXXX"`
 if [ $? -ne 0 ]; then
       echo "Failure creating temporary work directory: ${WORKTMP}"
       echo "Exiting..."
@@ -109,8 +113,8 @@ do
 	-sheader ) sheader="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-iheader ) iheader="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-dheader ) dheader="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
-	-xtracemig ) xtracemig="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-arch ) arch="$2"; shift; shift;;
+	-target ) target=( "$1" "$2"); shift; shift;;
 	-maxonstack ) migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-split ) migflags=( "${migflags[@]}" "$1" ); shift;;
 	-novouchers ) migflags=( "${migflags[@]}" "$1" ); shift;;
@@ -137,6 +141,7 @@ do
 	-iheader ) echo "warning: option \"$1 $2\" after filename(s) ignored"; shift; shift; continue;;
 	-dheader ) echo "warning: option \"$1 $2\" after filename(s) ignored"; shift; shift; continue;;
 	-arch ) echo "warning: option \"$1 $2\" after filename(s) ignored"; shift ; shift; continue;;
+	-target ) echo "warning: option \"$1 $2\" after filename(s) ignored"; shift ; shift; continue;;
 	-maxonstack ) echo "warning: option \"$1 $2\" after filename(s) ignored"; shift; shift; continue;;
 	-split ) echo "warning: option \"$1\" after filename(s) ignored"; shift; continue;;
 	-novouchers ) echo "warning: option \"$1\" after filename(s) ignored"; shift; continue;;
@@ -163,7 +168,7 @@ do
     fi
     rm -f "${temp}.c" "${temp}.d"
     (echo '#line 1 '\"${file}\" ; cat "${file}" ) > "${temp}.c"
-    "$C" -E -target ${arch} "${cppflags[@]}" -I "${sourcedir}" "${iSysRootParm[@]}" "${temp}.c" | "$M" "${migflags[@]}"
+    "$C" -E -arch ${arch} "${target[@]}" "${cppflags[@]}" -I "${sourcedir}" "${iSysRootParm[@]}" "${temp}.c" | "$M" "${migflags[@]}"
     if [ $? -ne 0 ]
     then
       rm -rf "${temp}.c" "${temp}.d" "${WORKTMP}"
@@ -208,6 +213,6 @@ do
     rm -f "${temp}.c"
 done
 
-rmdir "${WORKTMP}"
+/bin/rmdir "${WORKTMP}"
 exit 0
 

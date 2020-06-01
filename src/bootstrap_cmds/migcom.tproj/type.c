@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -83,18 +83,18 @@ static u_int machine_integer_bits;
 ipc_type_t *
 itLookUp(identifier_t name)
 {
-  register ipc_type_t *it, **last;
-  
+  ipc_type_t *it, **last;
+
   for (it = *(last = &list); it != itNULL; it = *(last = &it->itNext))
     if (streql(name, it->itName)) {
       /* move this type to the front of the list */
       *last = it->itNext;
       it->itNext = list;
       list = it;
-      
+
       return it;
     }
-  
+
   return itNULL;
 }
 
@@ -146,8 +146,8 @@ itAlloc(void)
     strNULL,  /* identifier_t itOutTrans */
     strNULL,  /* identifier_t itDestructor */
   };
-  register ipc_type_t *new;
-  
+  ipc_type_t *new;
+
   new = (ipc_type_t *) malloc(sizeof *new);
   if (new == itNULL)
     fatal("itAlloc(): %s", strerror(errno));
@@ -162,7 +162,7 @@ static char *
 itNameToString(u_int name)
 {
   char buffer[100];
-  
+
   (void) sprintf(buffer, "%u", name);
   return strmake(buffer);
 }
@@ -173,13 +173,13 @@ itNameToString(u_int name)
  * when itInLine, itNumber, or itSize changes.
  */
 static void
-itCalculateSizeInfo(register ipc_type_t *it)
+itCalculateSizeInfo(ipc_type_t *it)
 {
   if (!IS_KERN_PROC_DATA(it))
   {
     u_int bytes = (it->itNumber * it->itSize + 7) / 8;
     u_int padding = machine_padding(bytes);
-    
+
     it->itTypeSize = bytes;
     it->itPadSize = padding;
     if (IS_VARIABLE_SIZED_UNTYPED(it)) {
@@ -209,15 +209,15 @@ itCalculateSizeInfo(register ipc_type_t *it)
       bytes = it->itKPD_Number * 12 /* sizeof(mach_msg_descriptor_t) */;
     else
       bytes = 12 /* sizeof(mach_msg_descriptor_t) */;
-    
+
     it->itTypeSize = bytes;
     it->itPadSize = 0;
     it->itMinTypeSize = bytes;
   }
-  
+
   /* Unfortunately, these warning messages can't give a type name;
    we haven't seen a name yet (it might stay anonymous.) */
-  
+
   if ((it->itTypeSize == 0) && !it->itVarArray && !it->itNative)
     warn("sizeof(%s) == 0");
 }
@@ -228,13 +228,13 @@ itCalculateSizeInfo(register ipc_type_t *it)
  * Every argument's type should have these values filled in.
  */
 static void
-itCalculateNameInfo(register ipc_type_t *it)
+itCalculateNameInfo(ipc_type_t *it)
 {
   if (it->itInNameStr == strNULL)
     it->itInNameStr = strmake(itNameToString(it->itInName));
   if (it->itOutNameStr == strNULL)
     it->itOutNameStr = strmake(itNameToString(it->itOutName));
-  
+
   if (it->itUserType == strNULL)
     it->itUserType = it->itName;
   if (it->itServerType == strNULL)
@@ -252,7 +252,7 @@ itCalculateNameInfo(register ipc_type_t *it)
    *  mucking with type declarations throughout the kernel .def files,
    *  hand-conditionalizing on KERNEL_SERVER and KERNEL_USER.
    */
-  
+
   if (IsKernelServer &&
       streql(it->itServerType, "mach_port_t") &&
       (((it->itInName == MACH_MSG_TYPE_POLYMORPHIC) &&
@@ -260,7 +260,7 @@ itCalculateNameInfo(register ipc_type_t *it)
        MACH_MSG_TYPE_PORT_ANY(it->itInName) ||
        MACH_MSG_TYPE_PORT_ANY(it->itOutName)))
     it->itServerType = "ipc_port_t";
-  
+
   if (IsKernelUser &&
       streql(it->itUserType, "mach_port_t") &&
       (((it->itInName == MACH_MSG_TYPE_POLYMORPHIC) &&
@@ -269,7 +269,7 @@ itCalculateNameInfo(register ipc_type_t *it)
        MACH_MSG_TYPE_PORT_ANY(it->itOutName)))
     it->itUserType = "ipc_port_t";
 #endif /* 0 */
-  
+
   if (it->itTransType == strNULL)
     it->itTransType = it->itServerType;
 }
@@ -281,19 +281,19 @@ itCalculateNameInfo(register ipc_type_t *it)
  *  is parsed.
  ******************************************************/
 static void
-itCheckDecl(identifier_t name, register ipc_type_t *it)
+itCheckDecl(identifier_t name, ipc_type_t *it)
 {
   it->itName = name;
-  
+
   itCalculateNameInfo(it);
-  
+
   /* do a bit of error checking, mostly necessary because of
    limitations in Mig */
-  
+
   if (it->itVarArray) {
     if ((it->itInTrans != strNULL) || (it->itOutTrans != strNULL))
       error("%s: can't translate variable-sized arrays", name);
-    
+
     if (it->itDestructor != strNULL)
       error("%s: can't destroy variable-sized array", name);
   }
@@ -303,20 +303,20 @@ itCheckDecl(identifier_t name, register ipc_type_t *it)
  *  Pretty-prints translation/destruction/type information.
  */
 static void
-itPrintTrans(register ipc_type_t *it)
+itPrintTrans(ipc_type_t *it)
 {
   if (!streql(it->itName, it->itUserType))
     printf("\tCUserType:\t%s\n", it->itUserType);
-  
+
   if (!streql(it->itName, it->itServerType))
     printf("\tCServerType:\t%s\n", it->itServerType);
-  
+
   if (it->itInTrans != strNULL)
     printf("\tInTran:\t\t%s %s(%s)\n", it->itTransType, it->itInTrans, it->itServerType);
-  
+
   if (it->itOutTrans != strNULL)
     printf("\tOutTran:\t%s %s(%s)\n", it->itServerType, it->itOutTrans, it->itTransType);
-  
+
   if (it->itDestructor != strNULL)
     printf("\tDestructor:\t%s(%s)\n", it->itDestructor, it->itTransType);
 }
@@ -340,16 +340,16 @@ itPrintDecl(identifier_t name, ipc_type_t *it)
       printf("struct [%d] of ", it->itNumber);
     else if (it->itNumber != 1)
       printf("array [%d] of ", it->itNumber);
-  
+
   if (streql(it->itInNameStr, it->itOutNameStr))
     printf("(%s,", it->itInNameStr);
   else
     printf("(%s|%s", it->itInNameStr, it->itOutNameStr);
-  
+
   printf(" %d)\n", it->itSize);
-  
+
   itPrintTrans(it);
-  
+
   printf("\n");
 }
 
@@ -363,7 +363,7 @@ void
 itTypeDecl(identifier_t name, ipc_type_t *it)
 {
   itCheckDecl(name, it);
-  
+
   if (BeVerbose)
     itPrintDecl(name, it);
 }
@@ -376,11 +376,11 @@ itTypeDecl(identifier_t name, ipc_type_t *it)
 ipc_type_t *
 itShortDecl(u_int inname,  string_t instr, u_int outname, string_t outstr, u_int defsize)
 {
-  register ipc_type_t *it;
-  
+  ipc_type_t *it;
+
   if (defsize == 0)
     error("must use full IPC type decl");
-  
+
   it = itAlloc();
   it->itInName = inname;
   it->itInNameStr = instr;
@@ -402,7 +402,7 @@ itShortDecl(u_int inname,  string_t instr, u_int outname, string_t outstr, u_int
     it->itPortType = TRUE;
     it->itKPD_Number = 1;
   }
-  
+
   itCalculateSizeInfo(it);
   return it;
 }
@@ -410,13 +410,13 @@ itShortDecl(u_int inname,  string_t instr, u_int outname, string_t outstr, u_int
 static ipc_type_t *
 itCopyType(ipc_type_t *old)
 {
-  register ipc_type_t *new = itAlloc();
-  
+  ipc_type_t *new = itAlloc();
+
   *new = *old;
   new->itName = strNULL;
   new->itNext = itNULL;
   new->itElement = old;
-  
+
   /* size info still valid */
   return new;
 }
@@ -437,7 +437,7 @@ ipc_type_t *
 itResetType(ipc_type_t *old)
 {
   /* reset all special translation/destruction/type info */
-  
+
   old->itInTrans = strNULL;
   old->itOutTrans = strNULL;
   old->itDestructor = strNULL;
@@ -454,8 +454,8 @@ itResetType(ipc_type_t *old)
 ipc_type_t *
 itPrevDecl(identifier_t name)
 {
-  register ipc_type_t *old;
-  
+  ipc_type_t *old;
+
   old = itLookUp(name);
   if (old == itNULL) {
     error("type '%s' not defined", name);
@@ -472,10 +472,10 @@ itPrevDecl(identifier_t name)
  * type new = array[*:number] of old;
  */
 ipc_type_t *
-itVarArrayDecl(u_int number, register ipc_type_t *old)
+itVarArrayDecl(u_int number, ipc_type_t *old)
 {
-  register ipc_type_t *it = itResetType(itCopyType(old));
-  
+  ipc_type_t *it = itResetType(itCopyType(old));
+
   if (!it->itInLine) {
     /* already an initialized KPD */
     if (it->itKPD_Number != 1 || !number)
@@ -484,6 +484,7 @@ itVarArrayDecl(u_int number, register ipc_type_t *old)
     it->itNumber = 1;
     it->itInLine = FALSE;
     it->itStruct = FALSE;
+    it->itOOL_Number = number;
   }
   else if (it->itVarArray)
     error("IPC type decl is too complicated");
@@ -496,6 +497,7 @@ itVarArrayDecl(u_int number, register ipc_type_t *old)
     it->itStruct = FALSE;
     if (it->itPortType)
       it->itKPD_Number *= number;
+    it->itOOL_Number = number;
   }
   else {
     it->itNumber = 0;
@@ -507,11 +509,12 @@ itVarArrayDecl(u_int number, register ipc_type_t *old)
     it->itInLine = FALSE;
     it->itStruct = TRUE;
     it->itKPD_Number = 1;
+    it->itOOL_Number = 0;
   }
-  
+
   it->itVarArray = TRUE;
   it->itString = FALSE;
-  
+
   itCalculateSizeInfo(it);
   return it;
 }
@@ -523,8 +526,8 @@ itVarArrayDecl(u_int number, register ipc_type_t *old)
 ipc_type_t *
 itArrayDecl(u_int number, ipc_type_t *old)
 {
-  register ipc_type_t *it = itResetType(itCopyType(old));
-  
+  ipc_type_t *it = itResetType(itCopyType(old));
+
   if (!it->itInLine) {
     /* already an initialized KPD */
     if (it->itKPD_Number != 1)
@@ -544,7 +547,7 @@ itArrayDecl(u_int number, ipc_type_t *old)
     if (it->itPortType)
       it->itKPD_Number *= number;
   }
-  
+
   itCalculateSizeInfo(it);
   return it;
 }
@@ -563,7 +566,7 @@ itPtrDecl(ipc_type_t *it)
   it->itString = FALSE;
   it->itMigInLine = FALSE;
   it->itKPD_Number = 1;
-  
+
   itCalculateSizeInfo(it);
   return it;
 }
@@ -575,14 +578,14 @@ itPtrDecl(ipc_type_t *it)
 ipc_type_t *
 itStructDecl(u_int number, ipc_type_t *old)
 {
-  register ipc_type_t *it = itResetType(itCopyType(old));
-  
+  ipc_type_t *it = itResetType(itCopyType(old));
+
   if (!it->itInLine || it->itVarArray)
     error("IPC type decl is too complicated");
   it->itNumber *= number;
   it->itStruct = TRUE;
   it->itString = FALSE;
-  
+
   itCalculateSizeInfo(it);
   return it;
 }
@@ -594,18 +597,18 @@ itStructDecl(u_int number, ipc_type_t *old)
 ipc_type_t *
 itCStringDecl(int count, boolean_t varying)
 {
-  register ipc_type_t *it;
-  register ipc_type_t *itElement;
-  
+  ipc_type_t *it;
+  ipc_type_t *itElement;
+
   itElement = itShortDecl(MACH_MSG_TYPE_STRING_C, "MACH_MSG_TYPE_STRING_C", MACH_MSG_TYPE_STRING_C, "MACH_MSG_TYPE_STRING_C", 8);
   itCheckDecl("char", itElement);
-  
+
   it = itResetType(itCopyType(itElement));
   it->itNumber = count;
   it->itVarArray = varying;
   it->itStruct = FALSE;
   it->itString = TRUE;
-  
+
   itCalculateSizeInfo(it);
   return it;
 }
@@ -613,12 +616,12 @@ itCStringDecl(int count, boolean_t varying)
 extern ipc_type_t *
 itMakeSubCountType(int count, boolean_t varying, string_t  name)
 {
-  register ipc_type_t *it;
-  register ipc_type_t *itElement;
-  
+  ipc_type_t *it;
+  ipc_type_t *itElement;
+
   itElement = itShortDecl(machine_integer_size, machine_integer_name, machine_integer_size, machine_integer_name, machine_integer_bits);
   itCheckDecl("mach_msg_type_number_t", itElement);
-  
+
   it = itResetType(itCopyType(itElement));
   it->itNumber = count;
   /*
@@ -636,7 +639,7 @@ itMakeSubCountType(int count, boolean_t varying, string_t  name)
     /* to skip the optimized copy of fixed array: in fact we need to
      * reference each element and we also miss a user type for it */
     it->itNoOptArray = TRUE;
-  
+
   itCalculateSizeInfo(it);
   itCalculateNameInfo(it);
   return it;
@@ -646,14 +649,14 @@ extern ipc_type_t *
 itMakeCountType(void)
 {
   ipc_type_t *it = itAlloc();
-  
+
   it->itName = "mach_msg_type_number_t";
   it->itInName = machine_integer_size;
   it->itInNameStr = machine_integer_name;
   it->itOutName = machine_integer_size;
   it->itOutNameStr = machine_integer_name;
   it->itSize = machine_integer_bits;
-  
+
   itCalculateSizeInfo(it);
   itCalculateNameInfo(it);
   return it;
@@ -663,14 +666,14 @@ extern ipc_type_t *
 itMakePolyType(void)
 {
   ipc_type_t *it = itAlloc();
-  
+
   it->itName = "mach_msg_type_name_t";
   it->itInName = machine_integer_size;
   it->itInNameStr = machine_integer_name;
   it->itOutName = machine_integer_size;
   it->itOutNameStr = machine_integer_name;
   it->itSize = machine_integer_bits;
-  
+
   itCalculateSizeInfo(it);
   itCalculateNameInfo(it);
   return it;
@@ -680,14 +683,14 @@ extern ipc_type_t *
 itMakeDeallocType(void)
 {
   ipc_type_t *it = itAlloc();
-  
+
   it->itName = "boolean_t";
   it->itInName = MACH_MSG_TYPE_BOOLEAN;
   it->itInNameStr = "MACH_MSG_TYPE_BOOLEAN";
   it->itOutName = MACH_MSG_TYPE_BOOLEAN;
   it->itOutNameStr = "MACH_MSG_TYPE_BOOLEAN";
   it->itSize = machine_integer_bits;
-  
+
   itCalculateSizeInfo(it);
   itCalculateNameInfo(it);
   return it;
@@ -697,7 +700,7 @@ extern ipc_type_t *
 itNativeType(identifier_t id, boolean_t ptr, identifier_t badval)
 {
   ipc_type_t *it = itAlloc();
-  
+
   it->itInName = MACH_MSG_TYPE_BYTE;
   it->itInNameStr = "MACH_MSG_TYPE_BYTE";
   it->itOutName = MACH_MSG_TYPE_BYTE;
@@ -709,7 +712,7 @@ itNativeType(identifier_t id, boolean_t ptr, identifier_t badval)
   it->itUserType = id;
   it->itTransType = id;
   it->itBadValue = badval;
-  
+
   itCalculateSizeInfo(it);
   itCalculateNameInfo(it);
   return it;
@@ -722,7 +725,7 @@ void
 init_type(void)
 {
   u_int size;
-  
+
   size = NBBY * sizeof (natural_t);
   if (size == 32) {
     machine_integer_name = "MACH_MSG_TYPE_INTEGER_32";
@@ -734,9 +737,9 @@ init_type(void)
   }
   else
     error("init_type unknown size %d", size);
-  
+
   machine_integer_bits = size;
-  
+
   itRetCodeType = itAlloc();
   itRetCodeType->itName = "kern_return_t";
   itRetCodeType->itInName = machine_integer_size;
@@ -746,7 +749,7 @@ init_type(void)
   itRetCodeType->itSize = machine_integer_bits;
   itCalculateSizeInfo(itRetCodeType);
   itCalculateNameInfo(itRetCodeType);
-  
+
   itNdrCodeType = itAlloc();
   itNdrCodeType->itName = "NDR_record_t";
   itNdrCodeType->itInName = 0;
@@ -756,7 +759,7 @@ init_type(void)
   itNdrCodeType->itSize = sizeof(NDR_record_t) * 8;
   itCalculateSizeInfo(itNdrCodeType);
   itCalculateNameInfo(itNdrCodeType);
-  
+
   itDummyType = itAlloc();
   itDummyType->itName = "char *";
   itDummyType->itInName = MACH_MSG_TYPE_UNSTRUCTURED;
@@ -766,7 +769,7 @@ init_type(void)
   itDummyType->itSize = PortSize;
   itCalculateSizeInfo(itDummyType);
   itCalculateNameInfo(itDummyType);
-  
+
   itTidType = itAlloc();
   itTidType->itName = "tid_t";
   itTidType->itInName = machine_integer_size;
@@ -777,7 +780,7 @@ init_type(void)
   itTidType->itNumber = 6;
   itCalculateSizeInfo(itTidType);
   itCalculateNameInfo(itTidType);
-  
+
   itRequestPortType = itAlloc();
   itRequestPortType->itName = "mach_port_t";
   itRequestPortType->itInName = MACH_MSG_TYPE_COPY_SEND;
@@ -787,7 +790,7 @@ init_type(void)
   itRequestPortType->itSize = PortSize;
   itCalculateSizeInfo(itRequestPortType);
   itCalculateNameInfo(itRequestPortType);
-  
+
   itZeroReplyPortType = itAlloc();
   itZeroReplyPortType->itName = "mach_port_t";
   itZeroReplyPortType->itInName = 0;
@@ -797,7 +800,7 @@ init_type(void)
   itZeroReplyPortType->itSize = PortSize;
   itCalculateSizeInfo(itZeroReplyPortType);
   itCalculateNameInfo(itZeroReplyPortType);
-  
+
   itRealReplyPortType = itAlloc();
   itRealReplyPortType->itName = "mach_port_t";
   itRealReplyPortType->itInName = MACH_MSG_TYPE_MAKE_SEND_ONCE;
@@ -807,7 +810,7 @@ init_type(void)
   itRealReplyPortType->itSize = PortSize;
   itCalculateSizeInfo(itRealReplyPortType);
   itCalculateNameInfo(itRealReplyPortType);
-  
+
   itWaitTimeType = itMakeCountType();
   itMsgOptionType = itMakeCountType();
 }
@@ -892,5 +895,5 @@ itCheckTokenType(identifier_t name, ipc_type_t *it)
       it->itTypeSize != 8 || !it->itInLine || !it->itStruct ||
       it->itVarArray || it->itPortType)
     error("argument %s isn't a proper Token", name);
-  
+
 }
