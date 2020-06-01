@@ -110,6 +110,9 @@ string_t DefinesHeaderFileName = strNULL;
 string_t UserFileName = strNULL;
 string_t ServerFileName = strNULL;
 string_t GenerationDate = strNULL;
+#ifdef DARLING
+string_t XtraceMigFileName = strNULL;
+#endif
 
 void
 more_global()
@@ -131,6 +134,13 @@ more_global()
     ServerFileName = strconcat(SubsystemName, "Server.c");
   else if (streql(ServerFileName, "/dev/null"))
     ServerFileName = strNULL;
+
+#ifdef DARLING
+  if (XtraceMigFileName == strNULL)
+    XtraceMigFileName = strconcat(SubsystemName, "XtraceMig.c");
+  else if (streql(XtraceMigFileName, "/dev/null"))
+    XtraceMigFileName = strNULL;
+#endif
 
   if (ServerDemux == strNULL)
     ServerDemux = strconcat(SubsystemName, "_server");

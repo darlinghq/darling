@@ -75,4 +75,8 @@ extern void WriteApplDefaults( FILE *file, char *dir );
 extern void WriteApplMacro( FILE *file, char *dir, char *when, routine_t *rt );
 extern void WriteBogusServerRoutineAnnotationDefine( FILE *file );
 
+#ifdef DARLING
+extern void WriteXtraceMig( FILE *file, statement_t *stats );
+#endif
+
 #endif /* _WRITE_H */

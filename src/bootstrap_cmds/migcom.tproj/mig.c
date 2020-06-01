@@ -275,6 +275,17 @@ parseArgs(int argc,char *argv[])
           break;
 
         case 'x':
+#ifdef DARLING
+          if (streql(argv[0], "-xtracemig")) {
+            --argc;
+            ++argv;
+            if (argc == 0)
+              fatal("missing name for -xtracemig option");
+            XtraceMigFileName = strmake(argv[0]);
+            break;
+          }
+          else
+#endif
           ShortCircuit = TRUE;
           /* fall thru - no longer supported */
 
@@ -288,6 +299,9 @@ parseArgs(int argc,char *argv[])
 }
 
 FILE *uheader, *server, *user;
+#ifdef DARLING
+FILE *xtracemig;
+#endif
 
 int
 main(int argc, char *argv[])
@@ -329,6 +343,10 @@ main(int argc, char *argv[])
   }
   if (DefinesHeaderFileName)
     dheader = myfopen(DefinesHeaderFileName, "w");
+#ifdef DARLING
+  if (XtraceMigFileName && !IsKernelServer && !IsKernelUser)
+    xtracemig = myfopen(XtraceMigFileName, "w");
+#endif
   if (BeVerbose) {
     printf("Writing %s ... ", UserHeaderFileName);
     fflush(stdout);
@@ -379,6 +397,15 @@ main(int argc, char *argv[])
     fflush(stdout);
   }
   WriteServer(server, stats);
+#ifdef DARLING
+  if (XtraceMigFileName && !IsKernelServer && !IsKernelUser) {
+    if (BeVerbose) {
+      printf("done.\nWriting %s ... ", XtraceMigFileName);
+      fflush(stdout);
+    }
+    WriteXtraceMig(xtracemig, stats);
+  }
+#endif
   fclose(server);
   if (BeVerbose)
     printf("done.\n");

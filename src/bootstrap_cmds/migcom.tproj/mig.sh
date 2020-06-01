@@ -91,9 +91,9 @@ fi
 cppflags="-D__MACH30__"
 
 files=
-arch=`/usr/bin/arch`
+arch=`uname -m`
 
-WORKTMP=`/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mig.XXXXXX"`
+WORKTMP=`mktemp -d "${TMPDIR:-/tmp}/mig.XXXXXX"`
 if [ $? -ne 0 ]; then
       echo "Failure creating temporary work directory: ${WORKTMP}"
       echo "Exiting..."
@@ -113,6 +113,7 @@ do
 	-sheader ) sheader="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-iheader ) iheader="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-dheader ) dheader="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
+	-xtracemig ) xtracemig="$2"; migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
 	-arch ) arch="$2"; shift; shift;;
 	-target ) target=( "$1" "$2"); shift; shift;;
 	-maxonstack ) migflags=( "${migflags[@]}" "$1" "$2"); shift; shift;;
