@@ -5,10 +5,6 @@
 #if defined(__x86_64__)
 
 __darling_mach_syscall:
-	cmpl	$0, %eax
-	jnl		Lpositive
-	negl	%eax
-Lpositive:
 Lentry_hook:
 	.space 13, 0x90
 	movq    ___mach_syscall_table@GOTPCREL(%rip), %r10
