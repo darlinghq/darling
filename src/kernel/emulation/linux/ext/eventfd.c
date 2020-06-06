@@ -10,8 +10,14 @@ int __linux_eventfd (int __count, int __flags)
 {
 	int rv;
 
-	rv = LINUX_SYSCALL(__flags ? __NR_eventfd2 : __NR_eventfd, __count,
-			__flags);
+	#if defined(__x86_64__) || defined(__i386__)
+		rv = LINUX_SYSCALL(__flags ? __NR_eventfd2 : __NR_eventfd, __count,
+				__flags);
+	#else
+		// It's not clear if 0 is offically a valid flag argument.
+		// But we don't really have a choice.
+		rv = LINUX_SYSCALL(__NR_eventfd2, __count, __flags);
+	#endif
 	if (rv < 0)
 	{
 		cerror(errno_linux_to_bsd(-rv));
