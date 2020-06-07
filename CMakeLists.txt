@@ -73,6 +73,11 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
 set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
 
+# prevent object filename conflicts for two source files that differ only in extension (e.g. `object.c` and `object.m`)
+set(CMAKE_C_OUTPUT_EXTENSION ".c.o")
+set(CMAKE_CXX_OUTPUT_EXTENSION ".cpp.o")
+set(CMAKE_OBJC_OUTPUT_EXTENSION ".m.o")
+
 if(CMAKE_POSITION_INDEPENDENT_CODE)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
