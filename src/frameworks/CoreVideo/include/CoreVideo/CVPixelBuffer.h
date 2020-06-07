@@ -70,6 +70,7 @@ enum
 	kCVPixelFormatType_420YpCbCr8VideoRange_8A_TriPlanar   = 'v0a8',
 };
 
+extern const CFStringRef kCVPixelBufferMetalCompatibilityKey;
 // TODO: This header file is incomplete
 
 #endif

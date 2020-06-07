@@ -24,6 +24,22 @@ const CFStringRef _kLSExecutableFormatCFMKey = CFSTR("LSExecutableCFMFormat");
 
 const CFStringRef _kLSASNKey = CFSTR("LSASN");
 
+const CFStringRef kLSSharedFileListFavoriteItems = CFSTR("com.apple.LSSharedFileList.FavoriteItems");
+const CFStringRef kLSSharedFileListFavoriteVolumes = CFSTR("com.apple.LSSharedFileList.FavoriteVolumes");
+const CFStringRef kLSSharedFileListGlobalLoginItems = CFSTR("com.apple.LSSharedFileList.GlobalLoginItems");
+// const LSSharedFileListRef kLSSharedFileListItemBeforeFirst;
+const CFStringRef kLSSharedFileListItemHidden = CFSTR("com.apple.LSSharedFileList.ItemIsHidden");
+// const LSSharedFileListItemRef kLSSharedFileListItemLast;
+const CFStringRef kLSSharedFileListLoginItemHidden = CFSTR("com.apple.loginitem.HideOnLaunch");
+const CFStringRef kLSSharedFileListRecentApplicationItems = CFSTR("com.apple.LSSharedFileList.RecentApplications");
+const CFStringRef kLSSharedFileListRecentDocumentItems = CFSTR("com.apple.LSSharedFileList.RecentDocuments");
+const CFStringRef kLSSharedFileListRecentItemsMaxAmount = CFSTR("com.apple.LSSharedFileList.MaxAmount");
+const CFStringRef kLSSharedFileListRecentServerItems = CFSTR("com.apple.LSSharedFileList.RecentServers");
+const CFStringRef kLSSharedFileListSessionLoginItems = CFSTR("com.apple.LSSharedFileList.SessionLoginItems");
+const CFStringRef kLSSharedFileListVolumesComputerVisible = CFSTR("com.apple.LSSharedFileList.FavoriteVolumes.ComputerIsVisible");
+const CFStringRef kLSSharedFileListVolumesIDiskVisible = CFSTR("com.apple.LSSharedFileList.FavoriteVolumes.iDiskIsVisible");
+const CFStringRef kLSSharedFileListVolumesNetworkVisible = CFSTR("com.apple.LSSharedFileList.FavoriteVolumes.NetworkIsVisible");
+
 const CFStringRef kUTExportedTypeDeclarationsKey = CFSTR("UTExportedTypeDeclarations");
 const CFStringRef kUTImportedTypeDeclarationsKey = CFSTR("UTImportedTypeDeclarations");
 const CFStringRef kUTTypeIdentifierKey = CFSTR("UTTypeIdentifier");

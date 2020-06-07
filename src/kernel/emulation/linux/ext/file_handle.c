@@ -133,7 +133,11 @@ int sys_handle_to_name(RefData* ref, char name[4096])
 		return -ENOENT;
 	
 	// We have the path of the mount, lets get a file descriptor
-	fd_m = LINUX_SYSCALL(__NR_open, mount_path, LINUX_O_RDONLY, 0);
+	#if defined(__NR_open)
+		fd_m = LINUX_SYSCALL(__NR_open, mount_path, LINUX_O_RDONLY, 0);
+	#else
+		fd_m = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, mount_path, LINUX_O_RDONLY, 0);
+	#endif
 	if (fd_m < 0)
 		return fd_m;
 

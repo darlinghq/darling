@@ -6,6 +6,7 @@
 #include "../fdpath.h"
 #include <sys/stat.h>
 #include "../simple.h"
+#include "../common_at.h"
 
 #ifdef __NR_fstat64
 	#define STAT_CALL __NR_fstat64
@@ -31,7 +32,11 @@ long sys_flistxattr(int fd, char* namebuf, unsigned long size, int options)
 		char buf[64] = {0};
 		char path[4096] = {0};
 		__simple_sprintf(buf, "/proc/self/fd/%d", fd);
-		ret = LINUX_SYSCALL(__NR_readlink, buf, path, sizeof(path) - 1);
+		#if __NR_readlink
+			ret = LINUX_SYSCALL(__NR_readlink, buf, path, sizeof(path) - 1);
+		#else
+			ret = LINUX_SYSCALL(__NR_readlinkat, LINUX_AT_FDCWD, buf, path, sizeof(path) - 1);
+		#endif
 		if (ret < 0)
 			return errno_linux_to_bsd(ret);
 		path[ret] = '\0';

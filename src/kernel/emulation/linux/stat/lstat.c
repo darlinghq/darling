@@ -27,11 +27,17 @@ long sys_lstat(const char* path, struct stat* stat)
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-#ifdef __NR_lstat64
-	ret = LINUX_SYSCALL(__NR_lstat64, vc.path, &lstat);
-#else
-	ret = LINUX_SYSCALL(__NR_lstat, vc.path, &lstat);
-#endif
+	#ifdef defined(__NR_lstat64)
+		ret = LINUX_SYSCALL(__NR_lstat64, vc.path, &lstat);
+	#elif defined(__NR_lstat)
+		ret = LINUX_SYSCALL(__NR_lstat, vc.path, &lstat);
+	#else
+		#if defined(__NR_newfstatat)
+			int status = LINUX_SYSCALL(__NR_newfstatat, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
+		#else
+			int status = LINUX_SYSCALL(__NR_fstatat64, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
+		#endif
+	#endif
 
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
@@ -56,11 +62,17 @@ long sys_lstat64(const char* path, struct stat64* stat)
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-#ifdef __NR_lstat64
-	ret = LINUX_SYSCALL(__NR_lstat64, vc.path, &lstat);
-#else
-	ret = LINUX_SYSCALL(__NR_lstat, vc.path, &lstat);
-#endif
+	#ifdef defined(__NR_lstat64)
+		ret = LINUX_SYSCALL(__NR_lstat64, vc.path, &lstat);
+	#elif defined(__NR_lstat)
+		ret = LINUX_SYSCALL(__NR_lstat, vc.path, &lstat);
+	#else
+		#if defined(__NR_newfstatat)
+			int status = LINUX_SYSCALL(__NR_newfstatat, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
+		#else
+			int status = LINUX_SYSCALL(__NR_fstatat64, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
+		#endif
+	#endif
 
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
