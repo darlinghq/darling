@@ -69,6 +69,12 @@ _linux_syscall:
 	pop %ebp
 	ret
 
+#elif __arm64__
+; linux_syscall(long x0, x1, x2, x3, x4, x5, x6 /* syscall number */)
+	mov x8,x6	; copy syscall number to x8
+	svc #0		; activate syscall
+	ret
+
 #else
 
 #	error Missing assembly!

@@ -96,6 +96,32 @@ __darling_bsd_syscall_exit:
 
 .subsections_via_symbols
 
+#elif __arm64__
+; https://stackoverflow.com/a/56993314/5988706
+__darling_bsd_syscall:
+Lentry_hook:
+	lsl		x9,x16,3						; x9 = syscall_number << 3 // (syscall_number * 8)
+	ldr		x10,=___bsd_syscall_table		 
+	add		x10,x9,x10						; x10 = __bsd_syscall_table + x9
+	ldr		x9,[x10]						; x9 = *(x10)
+	cbz		x9, .no_sys
+	blr		x9
+.std_ret:
+Lexit_hook:
+	ret
+.no_sys:
+	bl		___unknown_syscall
+	b		.std_ret
+
+.section        __DATA,__data
+.globl __darling_bsd_syscall_entry
+.globl __darling_bsd_syscall_exit
+__darling_bsd_syscall_entry:
+	.quad Lentry_hook
+__darling_bsd_syscall_exit:
+	.quad Lexit_hook
+
+
 #else
 #	error Missing assembly
 #endif

@@ -182,6 +182,20 @@ wakeup:
 					"D" (me.flags | WQ_FLAG_THREAD_REUSE), "d" (me.event ? me.event->events : NULL),
 					"S" (me.event ? me.event->nevents : 0)
 			);
+#elif defined(__arm64__)
+			{
+				register void *x0 	__asm__ ("x0") = pth;									// void* self
+				register int w1 	__asm__ ("w1") = thread_self;							// int thread_port
+				register void *x2 	__asm__ ("x2") = wqueue_entry_point;					// void* stackaddr
+				register void *w3 	__asm__ ("w3") = me.flags | WQ_FLAG_THREAD_REUSE;		// void* item
+				register int w4 	__asm__ ("w4") = me.event ? me.event->events : NULL;	// int reuse
+				register int w5 	__asm__ ("w5") = me.event ? me.event->nevents : 0;		// int nevents
+				__asm__ __volatile__ (
+					"br %2"
+					:: "r" (x0), "r" (w1), "S" (x2),
+					"r" (w3), "r" (w4), "r" (w5)
+				);
+			}
 #else
 #	error Missing assembly!
 #endif
