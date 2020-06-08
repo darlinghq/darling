@@ -3,7 +3,7 @@ set -e
 
 DATE=$(date +%Y%m%d)
 rm -f debian/changelog
-DISTRO=${DEB_DISTRO:-testing}
+DISTRO=${DEB_DISTRO:-"$(lsb_release -cs)"}
 VERSION=0.1.${DATE}~${DISTRO}
 EDITOR=true NAME="Darling build server" EMAIL=${DEB_EMAIL:-noreply@darlinghq.org} dch -u low -v ${VERSION} --create --distribution ${DISTRO} --package darling "Daily build"
 

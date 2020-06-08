@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+ARGS_FILE="$(mktemp)"
+
+find debian/darling -type f -exec tools/debian/make-shlibdeps-file "${ARGS_FILE}" {} \;
+
+OUT="$(mktemp)"
+clang -shared -o "${OUT}"$(cat ${ARGS_FILE})
+dpkg-shlibdeps -Tdebian/darling.substvars -p"macho" -e"${OUT}" > /dev/null 2>&1
+
+rm -f "${ARGS_FILE}"
+rm -f "${OUT}"

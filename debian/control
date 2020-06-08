@@ -7,7 +7,7 @@ Build-Depends: cmake, clang | clang-9, bison, flex, libfuse-dev, libudev-dev, pk
 
 Package: darling
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, fuse, darling-dkms
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, fuse, darling-dkms
 Description: Darling
  macOS emulation layer for Linux
 
