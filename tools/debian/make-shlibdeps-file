@@ -5,7 +5,7 @@ set -e
 PATH="$(pwd)/debbuild/src/buildtools:${PATH}"
 
 if ! LIBS="$(elfdep "$2" 2>&1)"; then
-    exit 1
+    exit
 fi
 
 ARGS=''

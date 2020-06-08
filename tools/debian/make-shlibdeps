@@ -2,13 +2,15 @@
 
 set -e
 
+DEB_PACKAGE='darling'
+
 ARGS_FILE="$(mktemp)"
 
-find debian/darling -type f -exec tools/debian/make-shlibdeps-file "${ARGS_FILE}" {} \;
+find "debian/${DEB_PACKAGE}" -type f -exec tools/debian/make-shlibdeps-file "${ARGS_FILE}" {} \;
 
 OUT="$(mktemp)"
 clang -shared -o "${OUT}"$(cat ${ARGS_FILE})
-dpkg-shlibdeps -Tdebian/darling.substvars -p"macho" -e"${OUT}" > /dev/null 2>&1
+dpkg-shlibdeps -T"debian/${DEB_PACKAGE}.substvars" -p"macho" -e"${OUT}" > /dev/null 2>&1
 
 rm -f "${ARGS_FILE}"
 rm -f "${OUT}"
