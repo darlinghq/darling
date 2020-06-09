@@ -3,6 +3,7 @@ project(darling-libsystem_malloc)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/malloc)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/private)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/resolver)
 
 add_compile_options(
 	-nostdinc
