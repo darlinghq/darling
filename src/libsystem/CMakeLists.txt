@@ -25,6 +25,7 @@ set(libsystem_sources
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
+set(DYLIB_CURRENT_VERSION "1281.0.0")
 add_circular(system FAT
 	SOURCES
 		${libsystem_sources}
@@ -100,11 +101,7 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libxpc \
 	-sub_library libcorecrypto \
 	-sub_library libsystem_dnssd \
-	-sub_library libsystem_networkextension \
-	-Wl,-compatibility_version,1.0.0 \
-	-Wl,-current_version,1238.0.0")
-
-#make_fat(system)
+	-sub_library libsystem_networkextension")
 
 install(TARGETS system DESTINATION libexec/darling/usr/lib)
 
