@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/objc4/runtime/include/objc/objc-sync.h
+../../../../../../../../../src/external/objc4/runtime/objc-sync.h
