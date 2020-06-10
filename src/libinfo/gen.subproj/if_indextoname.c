@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
 /*	$KAME: if_indextoname.c,v 1.7 2000/11/08 03:09:30 itojun Exp $	*/
 
 /*-
@@ -24,6 +27,8 @@
  *
  *	BSDI Id: if_indextoname.c,v 2.3 2000/04/17 22:38:05 dab Exp
  */
+
+#include "libinfo_common.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -55,6 +60,7 @@
  * NULL and errno would be set to the proper value (e.g., ENOMEM).
  */
 
+LIBINFO_EXPORT
 char *
 if_indextoname(unsigned int ifindex, char *ifname)
 {

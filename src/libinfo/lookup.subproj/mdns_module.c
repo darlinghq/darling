@@ -1,16 +1,15 @@
-// Modified by Lubos Dolezel for Darling build
 /*
- * Copyright (c) 2008-2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2008-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -40,7 +39,7 @@
 /*
  * Copyright (c) 1988, 1993
  *    The Regents of the University of California.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -52,7 +51,7 @@
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -67,14 +66,14 @@
  */
 /*
  * Portions Copyright (c) 1993 by Digital Equipment Corporation.
- * 
+ *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies, and that
  * the name of Digital Equipment Corporation not be used in advertising or
  * publicity pertaining to distribution of the document or software without
  * specific, written prior permission.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS" AND DIGITAL EQUIPMENT CORP. DISCLAIMS ALL
  * WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS.   IN NO EVENT SHALL DIGITAL EQUIPMENT
@@ -97,8 +96,9 @@
 #include <netinet/in.h>
 #include <ctype.h>
 #include <dns_sd.h>
-//#include <dnsinfo.h>
+#include <dnsinfo.h>
 #include <errno.h>
+#include <ifaddrs.h>
 #include <nameser.h>
 #include <notify.h>
 #include <pthread.h>
@@ -114,7 +114,7 @@
 #include <net/if.h>
 #include <time.h>
 #include <unistd.h>
-#include <asl.h>
+#include <os/log.h>
 #include <dns.h>
 #include <dns_util.h>
 #include <TargetConditionals.h>
@@ -139,14 +139,14 @@
 #define MDNS_DEBUG_STDERR 0x00000002
 #define MDNS_DEBUG_ASL    0x00000004
 #define MDNS_DEBUG_OUT    0x00000007
-#define MDNS_DEBUG_MORE   0x00000010
 
 static int _mdns_debug = 0;
 
-// mutex protects DNSServiceProcessResult and DNSServiceRefDeallocate
+/* mutex protects DNSServiceProcessResult and DNSServiceRefDeallocate */
 static pthread_mutex_t _mdns_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-typedef struct {
+typedef struct
+{
 	uint16_t priority;
 	uint16_t weight;
 	uint16_t port;
@@ -154,18 +154,21 @@ typedef struct {
 } mdns_rr_srv_t;
 
 typedef struct mdns_srv_t mdns_srv_t;
-struct mdns_srv_t {
+struct mdns_srv_t
+{
 	si_srv_t srv;
 	mdns_srv_t *next;
 };
 
-typedef struct {
+typedef struct
+{
 	struct hostent host;
 	int alias_count;
 	int addr_count;
 } mdns_hostent_t;
 
-typedef struct {
+typedef struct
+{
 	mdns_hostent_t *h4;
 	mdns_hostent_t *h6;
 	mdns_srv_t *srv;
@@ -180,6 +183,7 @@ static DNSServiceRef _mdns_old_sdref;
 static void _mdns_hostent_clear(mdns_hostent_t *h);
 static void _mdns_reply_clear(mdns_reply_t *r);
 static int _mdns_search(const char *name, int class, int type, const char *interface, DNSServiceFlags flags, uint8_t *answer, uint32_t *anslen, mdns_reply_t *reply);
+static int _mdns_search_ex(const char *name, int class, int type, uint32_t ifindex, DNSServiceFlags flags, uint8_t *answer, uint32_t *anslen, mdns_reply_t *reply);
 
 static const char hexchar[] = "0123456789abcdef";
 
@@ -210,6 +214,8 @@ _mdns_debug_message(const char *str, ...)
 {
 	va_list v;
 	char *out = NULL;
+
+	if (str == NULL) return;
 	if ((_mdns_debug & MDNS_DEBUG_OUT) == 0) return;
 
 	va_start(v, str);
@@ -218,16 +224,14 @@ _mdns_debug_message(const char *str, ...)
 
 	if (_mdns_debug & MDNS_DEBUG_STDOUT) fprintf(stdout, "%s", out);
 	if (_mdns_debug & MDNS_DEBUG_STDERR) fprintf(stderr, "%s", out);
-#ifndef DARLING // No ASL in Darling yet
-	if (_mdns_debug & MDNS_DEBUG_ASL) asl_log_message(ASL_LEVEL_NOTICE, "%s", out);
-#endif
+	if (_mdns_debug & MDNS_DEBUG_ASL) os_log(OS_LOG_DEFAULT, "%s", out);
 	free(out);
 
 	va_end(v);
 }
 
 static char *
-_mdns_reverse_ipv4(const char *addr)
+_mdns_reverse_ipv4(const uint8_t *addr)
 {
 	union
 	{
@@ -245,7 +249,7 @@ _mdns_reverse_ipv4(const char *addr)
 }
 
 static char *
-_mdns_reverse_ipv6(const char *addr)
+_mdns_reverse_ipv6(const uint8_t *addr)
 {
 	char x[65], *p;
 	int i, j;
@@ -255,6 +259,7 @@ _mdns_reverse_ipv6(const char *addr)
 
 	x[64] = '\0';
 	j = 63;
+
 	for (i = 0; i < 16; i++)
 	{
 		d = addr[i];
@@ -271,7 +276,8 @@ _mdns_reverse_ipv6(const char *addr)
 	return p;
 }
 
-/* _mdns_canonicalize
+/*
+ * _mdns_canonicalize
  * Canonicalize the domain name by converting to lower case and removing the
  * trailing '.' if present.
  */
@@ -280,18 +286,26 @@ _mdns_canonicalize(const char *s)
 {
 	int i;
 	char *t;
+
 	if (s == NULL) return NULL;
+
 	t = strdup(s);
 	if (t == NULL) return NULL;
+
 	if (t[0] == '\0') return t;
-	for (i = 0; t[i] != '\0'; i++) {
+
+	for (i = 0; t[i] != '\0'; i++)
+	{
 		if (t[i] >= 'A' && t[i] <= 'Z') t[i] += 32;
 	}
+
 	if (t[i-1] == '.') t[i-1] = '\0';
+
 	return t;
 }
 
-/* _mdns_hostent_append_alias
+/*
+ * _mdns_hostent_append_alias
  * Appends an alias to the mdns_hostent_t structure.
  */
 static int
@@ -299,56 +313,74 @@ _mdns_hostent_append_alias(mdns_hostent_t *h, const char *alias)
 {
 	int i;
 	char *name;
-	if (h == NULL || alias == NULL) return 0;
+
+	_mdns_debug_message(";; _mdns_hostent_append_alias(%p, %s)\n", h, alias);
+	if ((h == NULL) || (alias == NULL)) return 0;
+
 	name = _mdns_canonicalize(alias);
 	if (name == NULL) return -1;
 
-	// don't add the name if it matches an existing name
-	if (h->host.h_name && string_equal(h->host.h_name, name)) {
+	/* don't add the name if it matches an existing name */
+	if ((h->host.h_name != NULL) && string_equal(h->host.h_name, name))
+	{
 		free(name);
 		return 0;
 	}
-	for (i = 0; i < h->alias_count; ++i) {
-		if (string_equal(h->host.h_aliases[i], name)) {
+
+	for (i = 0; i < h->alias_count; ++i)
+	{
+		if (string_equal(h->host.h_aliases[i], name))
+		{
 			free(name);
 			return 0;
 		}
 	}
 
-	// add the alias and NULL terminate the list
-	h->host.h_aliases = (char **)reallocf(h->host.h_aliases, (h->alias_count+2) * sizeof(char *));
-	if (h->host.h_aliases == NULL) {
+	/* add the alias and NULL terminate the list if it is new */
+	h->host.h_aliases = (char **)reallocf(h->host.h_aliases, (h->alias_count + 2) * sizeof(char *));
+	if (h->host.h_aliases == NULL)
+	{
 		h->alias_count = 0;
 		free(name);
 		return -1;
 	}
+
 	h->host.h_aliases[h->alias_count] = name;
-	++h->alias_count;
+	h->alias_count++;
+
 	h->host.h_aliases[h->alias_count] = NULL;
 	return 0;
 }
 
-/* _mdns_hostent_append_addr
+/*
+ * _mdns_hostent_append_addr
  * Appends an alias to the mdns_hostent_t structure.
  */
 static int
 _mdns_hostent_append_addr(mdns_hostent_t *h, const uint8_t *addr, uint32_t len)
 {
-	if (h == NULL || addr == NULL || len == 0) return 0;
+	_mdns_debug_message(";; _mdns_hostent_append_addr(%p, %p, %u)\n", h, addr, len);
+	if ((h == NULL) || (addr == NULL) || (len == 0)) return 0;
 
-	// copy the address buffer
+	/* copy the address buffer */
 	uint8_t *buf = malloc(len);
 	if (buf == NULL) return -1;
+
 	memcpy(buf, addr, len);
 
-	// add the address and NULL terminate the list
-	h->host.h_addr_list = (char **)reallocf(h->host.h_addr_list, (h->addr_count+2) * sizeof(char *));
-	if (h->host.h_addr_list == NULL) {
+	/* add the address and NULL terminate the list if it is new */
+	h->host.h_addr_list = (char **)reallocf(h->host.h_addr_list, (h->addr_count + 2) * sizeof(char *));
+
+	if (h->host.h_addr_list == NULL)
+	{
 		h->addr_count = 0;
+		free(buf);
 		return -1;
 	}
+
 	h->host.h_addr_list[h->addr_count] = (char*)buf;
 	h->addr_count++;
+
 	h->host.h_addr_list[h->addr_count] = NULL;
 	return 0;
 }
@@ -357,37 +389,38 @@ static void
 _mdns_hostent_clear(mdns_hostent_t *h)
 {
 	if (h == NULL) return;
+
 	free(h->host.h_name);
 	h->host.h_name = NULL;
 
 	char **aliases = h->host.h_aliases;
-	while (aliases && *aliases) {
-		free(*aliases++);
-	}
+	while (aliases && *aliases) free(*aliases++);
+
 	free(h->host.h_aliases);
 	h->host.h_aliases = NULL;
 	h->alias_count = 0;
 
 	char **addrs = h->host.h_addr_list;
-	while (addrs && *addrs) {
-		free(*addrs++);
-	}
+	while (addrs && *addrs) free(*addrs++);
+
 	free(h->host.h_addr_list);
 	h->host.h_addr_list = NULL;
 	h->addr_count = 0;
-
 }
 
 static void
 _mdns_reply_clear(mdns_reply_t *r)
 {
 	if (r == NULL) return;
+
 	r->ifnum = 0;
 	_mdns_hostent_clear(r->h4);
 	_mdns_hostent_clear(r->h6);
 	mdns_srv_t *srv = r->srv;
 	r->srv = NULL;
-	while (srv) {
+
+	while (srv != NULL)
+	{
 		mdns_srv_t *next = srv->next;
 		free(srv->srv.target);
 		free(srv);
@@ -408,7 +441,8 @@ mdns_hostbyname(si_mod_t *si, const char *name, int af, const char *interface, u
 
 	if (err != NULL) *err = SI_STATUS_NO_ERROR;
 
-	if (name == NULL) {
+	if ((name == NULL) || (si == NULL))
+	{
 		if (err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 		return NULL;
 	}
@@ -416,7 +450,8 @@ mdns_hostbyname(si_mod_t *si, const char *name, int af, const char *interface, u
 	memset(&h, 0, sizeof(h));
 	memset(&reply, 0, sizeof(reply));
 
-	switch (af) {
+	switch (af)
+	{
 		case AF_INET:
 			type = ns_t_a;
 			h.host.h_length = 4;
@@ -431,10 +466,14 @@ mdns_hostbyname(si_mod_t *si, const char *name, int af, const char *interface, u
 			if (err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 			return NULL;
 	}
+
+	_mdns_debug_message(";; mdns_hostbyname %s type %u class %u\n", name, type, ns_c_in);
+
 	h.host.h_addrtype = af;
 
 	status = _mdns_search(name, ns_c_in, type, interface, flags, NULL, NULL, &reply);
-	if (status != 0 || h.addr_count == 0) {
+	if ((status != 0) || (h.addr_count == 0))
+	{
 		_mdns_reply_clear(&reply);
 		if (err != NULL) *err = SI_STATUS_H_ERRNO_HOST_NOT_FOUND;
 		return NULL;
@@ -442,7 +481,8 @@ mdns_hostbyname(si_mod_t *si, const char *name, int af, const char *interface, u
 
 	bb = reply.ttl + time(NULL);
 
-	switch (af) {
+	switch (af)
+	{
 		case AF_INET:
 			out = (si_item_t *)LI_ils_create("L4488s*44a", (unsigned long)si, CATEGORY_HOST_IPV4, 1, bb, 0LL, h.host.h_name, h.host.h_aliases, h.host.h_addrtype, h.host.h_length, h.host.h_addr_list);
 			break;
@@ -453,9 +493,67 @@ mdns_hostbyname(si_mod_t *si, const char *name, int af, const char *interface, u
 
 	_mdns_reply_clear(&reply);
 
-	if (out == NULL && err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
+	if ((out == NULL) && (err != NULL)) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 
 	return out;
+}
+
+static bool _is_v4addr_ifaddr(const uint8_t addrBytes[4])
+{
+	int err;
+	struct ifaddrs *ifaddrs;
+	const struct ifaddrs *ifa;
+	const struct sockaddr_in *sa4;
+	in_addr_t addr;
+	bool found = false;
+
+	err = getifaddrs(&ifaddrs);
+	if (err != 0) goto exit;
+
+	memcpy(&addr, addrBytes, 4);
+	for (ifa = ifaddrs; ifa; ifa = ifa->ifa_next)
+	{
+		if ((ifa->ifa_flags & IFF_UP) == 0) continue;
+		if (!ifa->ifa_addr || (ifa->ifa_addr->sa_family != AF_INET)) continue;
+		sa4 = (const struct sockaddr_in *)ifa->ifa_addr;
+		if (sa4->sin_addr.s_addr == addr)
+		{
+			found = true;
+			break;
+		}
+	}
+	freeifaddrs(ifaddrs);
+
+exit:
+	return found;
+}
+
+static bool _is_v6addr_ifaddr(const uint8_t addrBytes[16], uint32_t ifindex)
+{
+	int err;
+	struct ifaddrs *ifaddrs;
+	const struct ifaddrs *ifa;
+	const struct sockaddr_in6 *sa6;
+	bool found = false;
+
+	err = getifaddrs(&ifaddrs);
+	if (err != 0) goto exit;
+
+	for (ifa = ifaddrs; ifa; ifa = ifa->ifa_next)
+	{
+		if ((ifa->ifa_flags & IFF_UP) == 0) continue;
+		if (!ifa->ifa_addr || (ifa->ifa_addr->sa_family != AF_INET6)) continue;
+		sa6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
+		if ((sa6->sin6_scope_id == ifindex) && (memcmp(&sa6->sin6_addr.s6_addr, addrBytes, 16) == 0))
+		{
+			found = true;
+			break;
+		}
+	}
+	freeifaddrs(ifaddrs);
+
+exit:
+	return found;
 }
 
 static si_item_t *
@@ -469,10 +567,12 @@ mdns_hostbyaddr(si_mod_t *si, const void *addr, int af, const char *interface, u
 	int cat;
 	int status;
 	DNSServiceFlags flags = 0;
+	uint32_t ifindex = 0;
 
 	if (err != NULL) *err = SI_STATUS_NO_ERROR;
 
-	if (addr == NULL || si == NULL) {
+	if ((addr == NULL) || (si == NULL))
+	{
 		if (err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 		return NULL;
 	}
@@ -480,54 +580,120 @@ mdns_hostbyaddr(si_mod_t *si, const void *addr, int af, const char *interface, u
 	memset(&h, 0, sizeof(h));
 	memset(&reply, 0, sizeof(reply));
 
-	switch (af) {
+	switch (af)
+	{
 		case AF_INET:
+		{
+			const uint8_t * const target_addr = (const uint8_t *)addr;
+
+			// If no interface is specified; the IPv4 address is a link-local address, i.e., it's in 169.254.0.0/16; and the
+			// IPv4 address belongs to one of the local host's interfaces, then use kDNSServiceInterfaceIndexLocalOnly as
+			// the interface index to pass to DNSServiceQueryRecord(). This is done to get a response directly from
+			// mDNSResponder's authoritative resource records as opposed to issuing an mDNS query, which does not work if
+			// the interface is currently not participating in mDNS. See <rdar://problem/40702045> for more details.
+
+			if (!interface && (target_addr[0] == 169) && (target_addr[1] == 254) && _is_v4addr_ifaddr(target_addr))
+			{
+				ifindex = kDNSServiceInterfaceIndexLocalOnly;
+			}
 			h.host.h_length = 4;
 			reply.h4 = &h;
-			name = _mdns_reverse_ipv4(addr);
+			name = _mdns_reverse_ipv4(target_addr);
 			cat = CATEGORY_HOST_IPV4;
 			break;
+		}
 		case AF_INET6:
+		{
+			const uint8_t *target_addr = (const uint8_t *)addr;
+			uint8_t fixed_addr[16];
+
+			// If no interface is specified; the IPv6 address is a link-local address, i.e., it's in fe80::/10; and the IPv6
+			// address belongs to one of the local host's interfaces, then use kDNSServiceInterfaceIndexLocalOnly as the
+			// interface index to pass to DNSServiceQueryRecord(). For rationale, see the comment for the AF_INET case.
+
+			if (!interface && (target_addr[0] == 0xFE) && ((target_addr[1] & 0xC0) == 0x80))
+			{
+				// Note: si_nameinfo() embeds the scope ID (interface index) in bytes 2 and 3 in network byte order.
+
+				const uint32_t embedded_index = (target_addr[2] << 8) | target_addr[3];
+
+				memcpy(fixed_addr, target_addr, 16);
+				fixed_addr[2] = 0;
+				fixed_addr[3] = 0;
+
+				if ((embedded_index != 0) && _is_v6addr_ifaddr(fixed_addr, embedded_index))
+				{
+					target_addr = fixed_addr;
+					ifindex = kDNSServiceInterfaceIndexLocalOnly;
+				}
+				else
+				{
+					ifindex = embedded_index;
+				}
+			}
+
 			h.host.h_length = 16;
 			reply.h6 = &h;
-			name = _mdns_reverse_ipv6(addr);
+			name = _mdns_reverse_ipv6(target_addr);
 			cat = CATEGORY_HOST_IPV6;
 			break;
+		}
 		default:
 			if (err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 			return NULL;
 	}
+
 	h.host.h_addrtype = af;
 
-	status = _mdns_search(name, ns_c_in, ns_t_ptr, interface, flags, NULL, NULL, &reply);
+	_mdns_debug_message(";; mdns_hostbyaddr %s type %u class %u\n", name, ns_t_ptr, ns_c_in);
+
+	if (interface)
+	{
+		status = _mdns_search(name, ns_c_in, ns_t_ptr, interface, flags, NULL, NULL, &reply);
+	}
+	else
+	{
+		status = _mdns_search_ex(name, ns_c_in, ns_t_ptr, ifindex, flags, NULL, NULL, &reply);
+	}
 	free(name);
-	if (status != 0) {
+	if (status != 0)
+	{
 		_mdns_reply_clear(&reply);
 		if (err != NULL) *err = SI_STATUS_H_ERRNO_HOST_NOT_FOUND;
 		return NULL;
 	}
 
 	status = _mdns_hostent_append_addr(&h, addr, h.host.h_length);
-	if (status != 0) {
+	if (status != 0)
+	{
 		_mdns_hostent_clear(&h);
 		if (err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 		return NULL;
 	}
 
 	bb = reply.ttl + time(NULL);
-	out = (si_item_t *)LI_ils_create("L4488s*44a", (unsigned long)si, cat, 1, bb, 0LL, h.host.h_name, h.host.h_aliases, h.host.h_addrtype, h.host.h_length, h.host.h_addr_list);
+
+	switch (af)
+	{
+		case AF_INET:
+			out = (si_item_t *)LI_ils_create("L4488s*44a", (unsigned long)si, CATEGORY_HOST_IPV4, 1, bb, 0LL, h.host.h_name, h.host.h_aliases, h.host.h_addrtype, h.host.h_length, h.host.h_addr_list);
+			break;
+		case AF_INET6:
+			out = (si_item_t *)LI_ils_create("L4488s*44c", (unsigned long)si, CATEGORY_HOST_IPV6, 1, bb, 0LL, h.host.h_name, h.host.h_aliases, h.host.h_addrtype, h.host.h_length, h.host.h_addr_list);
+			break;
+	}
 
 	_mdns_hostent_clear(&h);
 
-	if (out == NULL && err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
+	if ((out == NULL) && (err != NULL)) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 	return out;
 }
 
 static si_list_t *
 mdns_addrinfo(si_mod_t *si, const void *node, const void *serv, uint32_t family, uint32_t socktype, uint32_t proto, uint32_t flags, const char *interface, uint32_t *err)
 {
-	int wantv4 = 1;
-	int wantv6 = 1;
+	bool wantv4 = true;
+	bool wantv6 = true;
 	struct in_addr a4;
 	struct in6_addr a6;
 	mdns_hostent_t h4;
@@ -536,13 +702,19 @@ mdns_addrinfo(si_mod_t *si, const void *node, const void *serv, uint32_t family,
 	uint32_t type;
 	uint16_t port;
 
+	if (si == NULL)
+	{
+		if (err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
+		return NULL;
+	}
+
 	if (family == AF_INET6)
 	{
-		if ((flags & AI_V4MAPPED) == 0) wantv4 = 0;
+		if ((flags & AI_V4MAPPED) == 0) wantv4 = false;
 	}
 	else if (family == AF_INET)
 	{
-		wantv6 = 0;
+		wantv6 = false;
 	}
 	else if (family != AF_UNSPEC)
 	{
@@ -550,6 +722,8 @@ mdns_addrinfo(si_mod_t *si, const void *node, const void *serv, uint32_t family,
 	}
 
 	if (err != NULL) *err = SI_STATUS_NO_ERROR;
+
+	_mdns_debug_message(";; mdns_addrinfo node %s serv %s\n", (const char *)node, (const char *)serv);
 
 	si_list_t *out = NULL;
 
@@ -562,61 +736,90 @@ mdns_addrinfo(si_mod_t *si, const void *node, const void *serv, uint32_t family,
 	h6.host.h_addrtype = AF_INET6;
 	h6.host.h_length = 16;
 
-	if (wantv4 && wantv6) {
+	if (wantv4 && wantv6)
+	{
 		type = 0;
 		reply.h4 = &h4;
 		reply.h6 = &h6;
-	} else if (wantv4) {
+	}
+	else if (wantv4)
+	{
 		reply.h4 = &h4;
 		type = ns_t_a;
-	} else if (wantv6) {
+	}
+	else if (wantv6)
+	{
 		type = ns_t_aaaa;
 		reply.h6 = &h6;
-	} else {
+	}
+	else
+	{
 		if (err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 		return NULL;
 	}
 
-	// service lookup
-	if ((flags & AI_NUMERICSERV) != 0) {
-		port = *(uint16_t *)serv;
-	} else {
-		if (_gai_serv_to_port(serv, proto, &port) != 0) {
+	/* service lookup */
+	if ((flags & AI_NUMERICSERV) != 0)
+	{
+		if (serv == NULL) port = 0;
+		else port = *(uint16_t *)serv;
+	}
+	else
+	{
+		if (_gai_serv_to_port(serv, proto, &port) != 0)
+		{
 			if (err) *err = SI_STATUS_EAI_NONAME;
 			return NULL;
 		}
 	}
 
-	// host lookup
-	if ((flags & AI_NUMERICHOST) != 0) {
+	/* host lookup */
+	if ((flags & AI_NUMERICHOST) != 0)
+	{
 		char *cname = NULL;
 		struct in_addr *p4 = NULL;
 		struct in6_addr *p6 = NULL;
-		if (family == AF_INET) {
+
+		if (node == NULL) return NULL;
+
+		if (family == AF_INET)
+		{
 			p4 = &a4;
 			memcpy(p4, node, sizeof(a4));
-		} else if (family == AF_INET6) {
+		}
+		else if (family == AF_INET6)
+		{
 			p6 = &a6;
 			memcpy(p6, node, sizeof(a6));
 		}
+
 		out = si_addrinfo_list(si, flags, socktype, proto, p4, p6, port, 0, cname, cname);
-	} else {
+	}
+	else
+	{
+		int res;
 		DNSServiceFlags dns_flags = 0;
-		if (flags & AI_ADDRCONFIG) {
+
+		if (node == NULL) return NULL;
+
+		if (flags & AI_ADDRCONFIG)
+		{
 			dns_flags |= kDNSServiceFlagsSuppressUnusable;
 		}
-		int res;
+
 		res = _mdns_search(node, ns_c_in, type, interface, dns_flags, NULL, NULL, &reply);
-		if (res == 0 && (h4.addr_count > 0 || h6.addr_count > 0)) {
-			out = si_addrinfo_list_from_hostent(si, flags, socktype, proto,
-												port, 0,
-												(wantv4 ? &h4.host : NULL),
-												(wantv6 ? &h6.host : NULL));
-		} else if (err != NULL) {
+		if ((res == 0) && ((h4.addr_count > 0) || (h6.addr_count > 0)))
+		{
+			out = si_addrinfo_list_from_hostent(si, flags, socktype, proto, port, 0, (wantv4 ? &h4.host : NULL), (wantv6 ? &h6.host : NULL));
+		}
+		else if (err != NULL)
+		{
 			*err = SI_STATUS_EAI_NONAME;
 		}
+
 		_mdns_reply_clear(&reply);
 	}
+
 	return out;
 }
 
@@ -630,13 +833,23 @@ mdns_srv_byname(si_mod_t* si, const char *qname, const char *interface, uint32_t
 	const uint64_t unused = 0;
 	DNSServiceFlags flags = 0;
 
+	if (si == NULL)
+	{
+		if (err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
+		return NULL;
+	}
+
 	if (err != NULL) *err = SI_STATUS_NO_ERROR;
+
+	_mdns_debug_message(";; mdns_srv_byname %s type %u class %u\n", qname, ns_t_srv, ns_c_in);
 
 	memset(&reply, 0, sizeof(reply));
 	res = _mdns_search(qname, ns_c_in, ns_t_srv, interface, flags, NULL, NULL, &reply);
-	if (res == 0) {
+	if (res == 0)
+	{
 		srv = reply.srv;
-		while (srv) {
+		while (srv != NULL)
+		{
 			si_item_t *item;
 			item = (si_item_t *)LI_ils_create("L4488222s", (unsigned long)si, CATEGORY_SRV, 1, unused, unused, srv->srv.priority, srv->srv.weight, srv->srv.port, srv->srv.target);
 			out = si_list_add(out, item);
@@ -644,6 +857,7 @@ mdns_srv_byname(si_mod_t* si, const char *qname, const char *interface, uint32_t
 			srv = srv->next;
 		}
 	}
+
 	_mdns_reply_clear(&reply);
 	return out;
 }
@@ -663,12 +877,15 @@ mdns_item_call(si_mod_t *si, int call, const char *name, const char *ignored, co
 	si_item_t *out;
 	DNSServiceFlags flags = 0;
 
-	if (err != NULL) *err = SI_STATUS_NO_ERROR;
-
-	if (name == NULL) {
+	if ((si == NULL) || (name == NULL))
+	{
 		if (err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 		return NULL;
 	}
+
+	if (err != NULL) *err = SI_STATUS_NO_ERROR;
+
+	_mdns_debug_message(";; mdns_item_call %s type %u class %u\n", name, type, class);
 
 	memset(&h4, 0, sizeof(h4));
 	memset(&h6, 0, sizeof(h6));
@@ -682,7 +899,8 @@ mdns_item_call(si_mod_t *si, int call, const char *name, const char *ignored, co
 	reply.h6 = &h6;
 
 	res = _mdns_search(name, class, type, interface, flags, buf, &len, &reply);
-	if (res != 0 || len <= 0 || len > DNS_MAX_RECEIVE_SIZE) {
+	if ((res != 0) || (len <= 0) || (len > DNS_MAX_RECEIVE_SIZE))
+	{
 		_mdns_reply_clear(&reply);
 		if (err != NULL) *err = SI_STATUS_H_ERRNO_HOST_NOT_FOUND;
 		return NULL;
@@ -694,13 +912,15 @@ mdns_item_call(si_mod_t *si, int call, const char *name, const char *ignored, co
 	from.sin6_len = fromlen;
 	from.sin6_family = AF_INET6;
 	from.sin6_addr.__u6_addr.__u6_addr8[15] = 1;
-	if (reply.ifnum != 0) {
+
+	if (reply.ifnum != 0)
+	{
 		from.sin6_addr.__u6_addr.__u6_addr16[0] = htons(0xfe80);
 		from.sin6_scope_id = reply.ifnum;
 	}
 
 	out = (si_item_t *)LI_ils_create("L4488@@", (unsigned long)si, CATEGORY_DNSPACKET, 1, 0LL, 0LL, len, buf, fromlen, &from);
-	if (out == NULL && err != NULL) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
+	if ((out == NULL) && (err != NULL)) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
 
 	_mdns_reply_clear(&reply);
 
@@ -721,21 +941,21 @@ mdns_close(si_mod_t *si)
 static void
 _mdns_atfork_prepare(void)
 {
-	// acquire our lock so that we know all other threads have "drained"
+	/* acquire our lock so that we know all other threads have "drained" */
 	pthread_mutex_lock(&_mdns_mutex);
 }
 
 static void
 _mdns_atfork_parent(void)
 {
-	// parent can simply resume
+	/* parent can simply resume */
 	pthread_mutex_unlock(&_mdns_mutex);
 }
 
 static void
 _mdns_atfork_child(void)
 {
-	// child needs to force re-initialization
+	/* child needs to force re-initialization */
 	_mdns_old_sdref = _mdns_sdref; // for later deallocation
 	_mdns_sdref = NULL;
 	pthread_mutex_unlock(&_mdns_mutex);
@@ -749,6 +969,7 @@ _mdns_init(void)
 	if (getenv("RES_DEBUG") != NULL) _mdns_debug |= MDNS_DEBUG_STDOUT;
 	int fd = open(MDNS_DEBUG_FILE, O_RDONLY, 0);
 	errno = 0;
+
 	if (fd >= 0)
 	{
 		int i, n;
@@ -761,7 +982,6 @@ _mdns_init(void)
 			if ((c[i] == 'o') || (c[i] == 'O')) _mdns_debug |= MDNS_DEBUG_STDOUT;
 			if ((c[i] == 'e') || (c[i] == 'E')) _mdns_debug |= MDNS_DEBUG_STDERR;
 			if ((c[i] == 'a') || (c[i] == 'A')) _mdns_debug |= MDNS_DEBUG_ASL;
-			if ((c[i] == 'm') || (c[i] == 'M')) _mdns_debug |= MDNS_DEBUG_MORE;
 		}
 	}
 }
@@ -815,28 +1035,40 @@ _mdns_parse_domain_name(const uint8_t *data, uint32_t datalen)
 
 	if ((data == NULL) || (datalen == 0)) return NULL;
 
-	// i: index into input data
-	// j: index into output string
-	while (datalen-- > 0) {
+	/*
+	 * i: index into input data
+	 * j: index into output string
+	 */
+	while (datalen-- > 0)
+	{
 		len = data[i++];
 		domainlen += (len + 1);
 		domain = reallocf(domain, domainlen);
+
 		if (domain == NULL) return NULL;
+
 		if (len == 0) break;	// DNS root (NUL)
-		if (j > 0) {
-			domain[j++] = datalen ? '.' : '\0'; 
+
+		if (j > 0)
+		{
+			domain[j++] = datalen ? '.' : '\0';
 		}
 
-		while ((len-- > 0) && (datalen--)) {
-			if (data[i] == '.') {
-				// special case: escape the '.' with a '\'
+		while ((len-- > 0) && (0 != datalen--))
+		{
+			if (data[i] == '.')
+			{
+				/* special case: escape the '.' with a '\' */
 				domain = reallocf(domain, ++domainlen);
 				if (domain == NULL) return NULL;
+
 				domain[j++] = '\\';
 			}
+
 			domain[j++] = data[i++];
 		}
 	}
+
 	domain[j] = '\0';
 
 	return domain;
@@ -848,29 +1080,38 @@ _mdns_parse_domain_name(const uint8_t *data, uint32_t datalen)
  * Only used for one string at a time, therefore no need for compression.
  */
 static int
-_mdns_pack_domain_name(const char* str, uint8_t *buf, size_t buflen) {
+_mdns_pack_domain_name(const char *str, uint8_t *buf, size_t buflen)
+{
 	int i = 0;
 	uintptr_t len = 0;
 
-	while (i < buflen) {
-		// calculate length to next '.' or '\0'
+	if ((str == NULL) || (buf == NULL)) return -1;
+
+	while (i < buflen)
+	{
+		/* calculate length to next '.' or '\0' */
 		char *dot = strchr(str, '.');
 		if (dot == NULL) dot = strchr(str, '\0');
+
 		len = (dot - str);
 		if (len > NS_MAXLABEL) return -1;
-		// copy data for label
+
+		/* copy data for label */
 		buf[i++] = len;
-		while (str < dot && i < buflen) {
+		while (str < dot && i < buflen)
+		{
 			buf[i++] = *str++;
 		}
-		// skip past '.', break if '\0'
+
+		/* skip past '.', break if '\0' */
 		if (*str++ == '\0') break;
 	}
 
 	if (i >= buflen) return -1;
 
-	if (len > 0) {
-		// no trailing dot - add a null label
+	if (len > 0)
+	{
+		/* no trailing dot - add a null label */
 		buf[i++] = 0;
 		if (i >= buflen) return -1;
 	}
@@ -912,7 +1153,8 @@ _is_rev_link_local(const char *name)
 	return 1;
 }
 
-/* _mdns_ipv6_extract_scope_id
+/*
+ * _mdns_ipv6_extract_scope_id
  * If the input string is a link local IPv6 address with an encoded scope id,
  * the scope id is extracted and a new string is constructed with the scope id removed.
  */
@@ -925,9 +1167,10 @@ _mdns_ipv6_extract_scope_id(const char *name, uint32_t *out_ifnum)
 	int i;
 
 	if (out_ifnum != NULL) *out_ifnum = 0;
+	if (name == NULL) return NULL;
 
 	/* examine the address, extract the scope id if present */
-	if ((name != NULL) && (_is_rev_link_local(name)))
+	if (_is_rev_link_local(name))
 	{
 		/* _is_rev_link_local rejects chars > 127 so it's safe to index into hexval */
 		i = IPv6_REVERSE_LINK_LOCAL_SCOPE_ID_LOW;
@@ -969,7 +1212,8 @@ _mdns_make_query(const char* name, int class, int type, uint8_t *buf, uint32_t b
 {
 	uint32_t len = 0;
 
-	if (buf == NULL || buflen < (NS_HFIXEDSZ + NS_QFIXEDSZ)) return -1;
+	if ((buf == NULL) || (buflen < (NS_HFIXEDSZ + NS_QFIXEDSZ))) return -1;
+
 	memset(buf, 0, NS_HFIXEDSZ);
 	HEADER *hp = (HEADER *)buf;
 
@@ -992,32 +1236,38 @@ _mdns_make_query(const char* name, int class, int type, uint8_t *buf, uint32_t b
 	word = htons(class);
 	memcpy(&buf[len], &word, sizeof(word));
 	len += sizeof(word);
+
 	return len;
 }
 
-typedef struct {
+typedef struct mdns_query_context_s
+{
 	mdns_reply_t *reply;
 	mdns_hostent_t *host;
-	uint8_t *answer; // DNS packet buffer
-	size_t anslen; // DNS packet buffer current length
-	size_t ansmaxlen; // DNS packet buffer maximum length
-	int type; // type of query: A, AAAA, PTR, SRV...
-	uint16_t last_type; // last type received
+	uint8_t *answer;		// DNS packet buffer
+	size_t anslen;			// DNS packet buffer current length
+	size_t ansmaxlen;		// DNS packet buffer maximum length
+	int type;				// type of query: A, AAAA, PTR, SRV...
+	uint16_t last_type;		// last type received
 	uint32_t sd_gen;
 	DNSServiceRef sd;
 	DNSServiceFlags flags;
 	DNSServiceErrorType error;
-	int kq; // kqueue to notify when callback received
+	int kq;					// kqueue to notify when callback received
+	struct mdns_query_context_s *next; // linked list
 } mdns_query_context_t;
+
+static mdns_query_context_t *in_flight;
 
 static void
 _mdns_query_callback(DNSServiceRef, DNSServiceFlags, uint32_t, DNSServiceErrorType, const char *, uint16_t, uint16_t, uint16_t, const void *, uint32_t, void *);
 
-/* _mdns_query_start
+/*
+ * _mdns_query_start
  * initializes the context and starts a DNS-SD query.
  */
 static DNSServiceErrorType
-_mdns_query_start(mdns_query_context_t *ctx, mdns_reply_t *reply, uint8_t *answer, uint32_t *anslen, const char* name, int class, int type, const char *interface, DNSServiceFlags flags, int kq)
+_mdns_query_start(mdns_query_context_t *ctx, mdns_reply_t *reply, uint8_t *answer, uint32_t *anslen, const char* name, int class, int type, uint32_t ifindex, DNSServiceFlags flags, int kq)
 {
 	DNSServiceErrorType status;
 
@@ -1029,8 +1279,9 @@ _mdns_query_start(mdns_query_context_t *ctx, mdns_reply_t *reply, uint8_t *answe
 
 	memset(ctx, 0, sizeof(mdns_query_context_t));
 
-	if (answer && anslen) {
-		// build a dummy DNS header to return to the caller
+	if ((answer != NULL) && (anslen != NULL))
+	{
+		/* build a dummy DNS header to return to the caller */
 		ctx->answer = answer;
 		ctx->ansmaxlen = *anslen;
 		ctx->anslen = _mdns_make_query(name, class, type, answer, ctx->ansmaxlen);
@@ -1041,7 +1292,9 @@ _mdns_query_start(mdns_query_context_t *ctx, mdns_reply_t *reply, uint8_t *answe
 	ctx->sd = _mdns_sdref;
 	ctx->sd_gen = _mdns_generation;
 	ctx->kq = kq;
-	if (reply) {
+
+	if (reply != NULL)
+	{
 		ctx->reply = reply;
 		if (type == ns_t_a) ctx->host = reply->h4;
 		else if (type == ns_t_aaaa) ctx->host = reply->h6;
@@ -1054,87 +1307,108 @@ _mdns_query_start(mdns_query_context_t *ctx, mdns_reply_t *reply, uint8_t *answe
 	char *qname = _mdns_ipv6_extract_scope_id(name, &iface);
 	if (qname == NULL) qname = (char *)name;
 
-	if (interface != NULL)
+	if (ifindex != 0)
 	{
-		/* get interface number from name */
-		int iface2 = if_nametoindex(interface);
-
-		/* balk if interface name lookup failed */
-		if (iface2 == 0) return -1;
-
 		/* balk if scope id is set AND interface is given AND they don't match */
-		if ((iface != 0) && (iface2 != 0) && (iface != iface2)) return -1;
-		if (iface2 != 0) iface = iface2;
+		if ((iface != 0) && (iface != ifindex)) return -1;
+		iface = ifindex;
 	}
 
-	_mdns_debug_message(";; mdns query %s %d %d [ctx %p]\n", qname, type, class, ctx);
+	_mdns_debug_message(";; mdns query %s type %d class %d ifindex %d [ctx %p]\n", qname, type, class, (int)iface, ctx);
 
 	status = DNSServiceQueryRecord(&ctx->sd, flags, iface, qname, type, class, _mdns_query_callback, ctx);
 	if (qname != name) free(qname);
+
+	/* keep a linked list of all in-flight queries */
+	ctx->next = in_flight;
+	in_flight = ctx;
+
 	return status;
 }
 
-/* _mdns_query_is_complete
+/*
+ * _mdns_query_is_complete
  * Determines whether the specified query has sufficient information to be
  * considered complete.
  */
-static int
-_mdns_query_is_complete(mdns_query_context_t *ctx)
+static bool
+_mdns_query_is_complete(mdns_query_context_t *ctx, bool *more)
 {
-	int complete = 0;
+	bool complete = false;
 
 	/* NULL context is an error, but we call it complete */
-	if (ctx == NULL) return 1;
+	if (ctx == NULL) return true;
 
-	/*
-	 * The default is to ignore kDNSServiceFlagsMoreComing, since it has either
-	 * never been supported or worked correctly.  MDNS_DEBUG_MORE makes us honor it.
-	 */
-	if (ctx->flags & kDNSServiceFlagsMoreComing) {
-		if (_mdns_debug & MDNS_DEBUG_MORE) {
-			_mdns_debug_message(";; mdns is_complete type %d ctx %p more coming - incomplete\n", ctx->type, ctx);
-			return 0;
-		}
-	}
+	/* not complete if discoveryd says there is more coming (for some in-flight query - possibly not this one) */
+	if (ctx->flags & kDNSServiceFlagsMoreComing)
+	{
+		if (more != NULL) *more = true;
+		_mdns_debug_message(";; mdns is_complete type %d ctx %p more coming - incomplete\n", ctx->type, ctx);
+		return false;
+    } else {
+        if (more != NULL) *more = false;
+        _mdns_debug_message(";; mdns is_complete type %d ctx %p clear more coming - complete\n", ctx->type, ctx);
+    }
 
-	if (ctx->last_type != ctx->type) {
+	if (ctx->last_type != ctx->type)
+	{
 		_mdns_debug_message(";; mdns is_complete ctx %p type mismatch (%d != %d) - incomplete\n", ctx, ctx->last_type, ctx->type);
-		return 0;
+		return false;
 	}
 
-	switch (ctx->type) {
+	switch (ctx->type)
+	{
 		case ns_t_a:
 		case ns_t_aaaa:
-			if (ctx->host != NULL && ctx->host->addr_count > 0) complete = 1;
+			if (ctx->host != NULL && ctx->host->addr_count > 0)
+			{
+				_mdns_debug_message(";; mdns is_complete type %d ctx %p host addr count %d complete -> true\n", ctx->type, ctx, ctx->host->addr_count);
+				complete = true;
+			}
 			break;
 		case ns_t_ptr:
-			if (ctx->host != NULL && ctx->host->host.h_name != NULL) complete = 1;
+			if (ctx->host != NULL && ctx->host->host.h_name != NULL)
+			{
+				complete = true;
+				_mdns_debug_message(";; mdns is_complete type %d ctx %p host name %s complete -> true\n", ctx->type, ctx, ctx->host->host.h_name);
+			}
 			break;
 		case ns_t_srv:
-			if (ctx->reply != NULL && ctx->reply->srv != NULL) complete = 1;
+			if (ctx->reply != NULL && ctx->reply->srv != NULL)
+			{
+				_mdns_debug_message(";; mdns is_complete type %d ctx %p srv %s complete -> true\n", ctx->type, ctx, ctx->reply->srv);
+				complete = true;
+			}
 			break;
 		default:
 			_mdns_debug_message(";; mdns is_complete unexpected type %d ctx %p\n", ctx->type, ctx);
 	}
 
-	_mdns_debug_message(";; mdns is_complete type %d ctx %p %s%scomplete\n", ctx->type, ctx, (ctx->flags & kDNSServiceFlagsMoreComing) ? "(more coming flag ignored)" : "", (complete == 0) ? " - in" : " - ");
+    _mdns_debug_message(";; mdns is_complete type %d ctx %p %scomplete\n", ctx->type, ctx, complete ?  " - " : " - in");
 
 	return complete;
 }
 
-/* _mdns_query_clear
+/*
+ * _mdns_query_clear
  * Clear out the temporary fields of the context, and clear any result
- * structures that are incomplete.  Retrns 1 if the query was complete.
+ * structures that are incomplete.  Returns true if the query was complete.
  */
-static int
+static bool
 _mdns_query_clear(mdns_query_context_t *ctx)
 {
-	int complete = _mdns_query_is_complete(ctx);
-	if (ctx == NULL) return complete;
+	mdns_query_context_t *p;
 
-	if (ctx->sd != NULL) {
+	if (ctx == NULL) return true;
+
+	bool more = false;
+	bool complete = _mdns_query_is_complete(ctx, &more);
+
+	if (ctx->sd != NULL)
+	{
 		/* only dealloc this DNSServiceRef if the "main" _mdns_sdref has not been deallocated */
-		if (ctx->sd != NULL && ctx->sd_gen == _mdns_generation) {
+		if (ctx->sd != NULL && ctx->sd_gen == _mdns_generation)
+		{
 			DNSServiceRefDeallocate(ctx->sd);
 		}
 	}
@@ -1144,68 +1418,103 @@ _mdns_query_clear(mdns_query_context_t *ctx)
 	ctx->flags = 0;
 	ctx->kq = -1;
 
-	if (complete == 0) {
+	if (in_flight == ctx)
+	{
+		in_flight = ctx->next;
+	}
+	else
+	{
+		p = in_flight;
+		while ((p != NULL) && (p->next != ctx)) p = p->next;
+		if (p != NULL) p->next = ctx->next;
+	}
+
+	ctx->next = NULL;
+
+	if (!complete && !more)
+	{
 		_mdns_hostent_clear(ctx->host);
 		ctx->anslen = -1;
 	}
 
-	return complete;
+	return complete | more;
 }
 
 static void
 _mdns_query_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t ifIndex, DNSServiceErrorType errorCode, const char *fullname, uint16_t rrtype, uint16_t rrclass, uint16_t rdlen, const void *rdata, uint32_t ttl, void *ctx)
 {
-	mdns_query_context_t *context;
+	mdns_query_context_t *p, *context;
 	struct in6_addr a6;
 
 	context = (mdns_query_context_t *)ctx;
+	_mdns_debug_message(";; _mdns_query_callback ctx %p flags=0x%08x%s\n", context, flags, (flags & kDNSServiceFlagsMoreComing) ? " (kDNSServiceFlagsMoreComing is set)" : "");
 
 	context->flags = flags;
 	context->error = errorCode;
 	context->last_type = rrtype;
 
-	if (errorCode != kDNSServiceErr_NoError) {
-		_mdns_debug_message(";; [%s %hu %hu]: error %d [ctx %p]\n", fullname, rrtype, rrclass, errorCode, context);
+	/* if kDNSServiceFlagsMoreComing is NOT set, there is no more data coming for ALL in-flight queries */
+	if (!(flags & kDNSServiceFlagsMoreComing))
+	{
+		for (p = in_flight; p != NULL; p = p->next)
+		{
+			if (p->flags & kDNSServiceFlagsMoreComing)
+			{
+				_mdns_debug_message(";; cleared kDNSServiceFlagsMoreComing flag for ctx %p\n", p);
+				p->flags &= ~kDNSServiceFlagsMoreComing;
+			}
+		}
+	}
+
+	if (errorCode != kDNSServiceErr_NoError)
+	{
+		_mdns_debug_message(";; [%s type %hu class %hu]: error %d [ctx %p]\n", fullname, rrtype, rrclass, errorCode, context);
 		goto wakeup_kevent;
 	}
 
-	// embed the scope ID into link-local IPv6 addresses
-	if (rrtype == ns_t_aaaa && rdlen == sizeof(struct in6_addr) &&
-	    IN6_IS_ADDR_LINKLOCAL((struct in6_addr *)rdata)) {
+	/* embed the scope ID into link-local IPv6 addresses */
+	if ((rrtype == ns_t_aaaa) && (rdlen == sizeof(struct in6_addr)) && IN6_IS_ADDR_LINKLOCAL((struct in6_addr *)rdata))
+	{
 		memcpy(&a6, rdata, rdlen);
 		a6.__u6_addr.__u6_addr16[1] = htons(ifIndex);
 		rdata = &a6;
 	}
 
-	if (context->reply) {
+	if (context->reply != NULL)
+	{
 		char *name;
 		int malformed = 0;
 		mdns_reply_t *reply = context->reply;
 
-		if (reply->ifnum == 0) {
-			reply->ifnum = ifIndex;
-		}
+		if (reply->ifnum == 0) reply->ifnum = ifIndex;
 
 		_mdns_hostent_append_alias(context->host, fullname);
-		if (reply->ttl == 0 || ttl < reply->ttl) reply->ttl = ttl;
+		if ((reply->ttl == 0) || (ttl < reply->ttl)) reply->ttl = ttl;
 
-		switch (rrtype) {
+		switch (rrtype)
+		{
 			case ns_t_a:
 			case ns_t_aaaa:
-				if (((rrtype == ns_t_a && context->host->host.h_addrtype == AF_INET) ||
-					 (rrtype == ns_t_aaaa && context->host->host.h_addrtype == AF_INET6)) &&
-					rdlen >= context->host->host.h_length) {
-					if (context->host->host.h_name == NULL) {
+			{
+				if ((context->host != NULL) &&
+					((((rrtype == ns_t_a) && (context->host->host.h_addrtype == AF_INET)) || ((rrtype == ns_t_aaaa) && (context->host->host.h_addrtype == AF_INET6))) &&
+					 (rdlen >= context->host->host.h_length)))
+				{
+					if (context->host->host.h_name == NULL)
+					{
 						int i;
 						mdns_hostent_t *h = context->host;
 						char *h_name = _mdns_canonicalize(fullname);
 						context->host->host.h_name = h_name;
 
-						// 6863416 remove h_name from h_aliases
-						for (i = 0; i < h->alias_count; ++i) {
+						/* 6863416 remove h_name from h_aliases */
+						for (i = 0; i < h->alias_count; ++i)
+						{
 							if (h_name == NULL) break;
-							if (string_equal(h->host.h_aliases[i], h_name)) {
-								// includes trailing NULL pointer
+
+							if (string_equal(h->host.h_aliases[i], h_name))
+							{
+								/* includes trailing NULL pointer */
 								int sz = sizeof(char *) * (h->alias_count - i);
 								free(h->host.h_aliases[i]);
 								memmove(&h->host.h_aliases[i], &h->host.h_aliases[i+1], sz);
@@ -1214,86 +1523,123 @@ _mdns_query_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t ifInde
 							}
 						}
 					}
+
 					_mdns_hostent_append_addr(context->host, rdata, context->host->host.h_length);
-				} else {
+				}
+				else
+				{
 					malformed = 1;
 				}
+
 				break;
+			}
 			case ns_t_cname:
+			{
 				name = _mdns_parse_domain_name(rdata, rdlen);
-				if (!name) malformed = 1;
+				if (name == NULL) malformed = 1;
+
 				_mdns_hostent_append_alias(context->host, name);
-				_mdns_debug_message(";; [%s %hu %hu] cname %s [ctx %p]\n", fullname, rrtype, rrclass, name, context);
+				_mdns_debug_message(";; [%s type %hu class %hu] cname %s [ctx %p]\n", fullname, rrtype, rrclass, name, context);
 				free(name);
 				break;
+			}
 			case ns_t_ptr:
+			{
 				name = _mdns_parse_domain_name(rdata, rdlen);
-				if (!name) malformed = 1;
-				if (context->host && context->host->host.h_name == NULL) {
+				if (name == NULL) malformed = 1;
+
+				if ((context->host != NULL) && (context->host->host.h_name == NULL))
+				{
 					context->host->host.h_name = _mdns_canonicalize(name);
 				}
+
 				_mdns_hostent_append_alias(context->host, name);
 				free(name);
 				break;
-			case ns_t_srv: {
-				mdns_rr_srv_t *p = (mdns_rr_srv_t*)rdata;
+			}
+			case ns_t_srv:
+			{
+				mdns_rr_srv_t *p = (mdns_rr_srv_t *)rdata;
 				mdns_srv_t *srv = calloc(1, sizeof(mdns_srv_t));
 				if (srv == NULL) break;
-				if (rdlen < sizeof(mdns_rr_srv_t)) {
+
+				if (rdlen < sizeof(mdns_rr_srv_t))
+				{
 					malformed = 1;
+					free(srv);
 					break;
 				}
+
 				srv->srv.priority = ntohs(p->priority);
 				srv->srv.weight = ntohs(p->weight);
 				srv->srv.port = ntohs(p->port);
 				srv->srv.target = _mdns_parse_domain_name(&p->target[0], rdlen - 3*sizeof(uint16_t));
-				if (srv->srv.target == NULL) {
+
+				if (srv->srv.target == NULL)
+				{
 					malformed = 1;
+					free(srv);
 					break;
 				}
-				// append to the end of the list
-				if (reply->srv == NULL) {
+
+				/* append to the end of the list */
+				if (reply->srv == NULL)
+				{
 					reply->srv = srv;
-				} else {
+				}
+				else
+				{
 					mdns_srv_t *iter = reply->srv;
 					while (iter->next) iter = iter->next;
 					iter->next = srv;
 				}
+
 				break;
 			}
 			default:
+			{
 				malformed = _mdns_debug;
 				break;
+			}
 		}
-		if (malformed != 0) {
-			_mdns_debug_message(";; [%s %hu %hu]: malformed reply [ctx %p]\n", fullname, rrtype, rrclass, context);
+
+		if (malformed != 0)
+		{
+			_mdns_debug_message(";; [%s type %hu class %hu]: malformed reply [ctx %p]\n", fullname, rrtype, rrclass, context);
 			goto wakeup_kevent;
 		}
 	}
 
-	if (context->answer) {
+	if (context->answer != NULL)
+	{
 		int n;
 		uint8_t *cp;
 		HEADER *ans;
 		size_t buflen = context->ansmaxlen - context->anslen;
-		if (buflen < NS_HFIXEDSZ) {
-			_mdns_debug_message(";; [%s %hu %hu]: malformed reply (too small) [ctx %p]\n", fullname, rrtype, rrclass, context);
+
+		if (buflen < NS_HFIXEDSZ)
+		{
+			_mdns_debug_message(";; [%s type %hu class %hu]: malformed reply (too small) [ctx %p]\n", fullname, rrtype, rrclass, context);
 			goto wakeup_kevent;
 		}
 
 		cp = context->answer + context->anslen;
 
 		n = _mdns_pack_domain_name(fullname, cp, buflen);
-		if (n < 0) {
-			_mdns_debug_message(";; [%s %hu %hu]: name mismatch [ctx %p]\n", fullname, rrtype, rrclass, context);
+		if (n < 0)
+		{
+			_mdns_debug_message(";; [%s type %hu class %hu]: name mismatch [ctx %p]\n", fullname, rrtype, rrclass, context);
 			goto wakeup_kevent;
 		}
 
-		// check that there is enough space in the buffer for the
-		// resource name (n), the resource record data (rdlen) and
-		// the resource record header (10).
-		if (buflen < n + rdlen + 10) {
-			_mdns_debug_message(";; [%s %hu %hu]: insufficient buffer space for reply [ctx %p]\n", fullname, rrtype, rrclass, context);
+		/*
+		 * check that there is enough space in the buffer for the
+		 * resource name (n), the resource record data (rdlen) and
+		 * the resource record header (10).
+		 */
+		if (buflen < (n + rdlen + 10))
+		{
+			_mdns_debug_message(";; [%s type %hu class %hu]: insufficient buffer space for reply [ctx %p]\n", fullname, rrtype, rrclass, context);
 			goto wakeup_kevent;
 		}
 
@@ -1328,11 +1674,14 @@ _mdns_query_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t ifInde
 		context->anslen = (size_t)(cp - context->answer);
 	}
 
-	_mdns_debug_message(";; [%s %hu %hu] reply [ctx %p]\n", fullname, rrtype, rrclass, context);
+	_mdns_debug_message(";; [%s type %hu class %hu] reply [ctx %p]\n", fullname, rrtype, rrclass, context);
 
 wakeup_kevent:
-	// Ping the waiting thread in case this callback was invoked on another
-	if (context->kq != -1) {
+
+	/* Ping the waiting thread in case this callback was invoked on another */
+	if (context->kq != -1)
+	{
+		_mdns_debug_message(";; _mdns_query_callback sending kevent wakeup\n");
 		struct kevent ev;
 		EV_SET(&ev, 1, EVFILT_USER, 0, NOTE_TRIGGER, 0, 0);
 		int res = kevent(context->kq, &ev, 1, NULL, 0, NULL);
@@ -1341,7 +1690,8 @@ wakeup_kevent:
 }
 
 static void
-_mdns_now(struct timespec *now) {
+_mdns_now(struct timespec *now)
+{
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	now->tv_sec = tv.tv_sec;
@@ -1353,13 +1703,15 @@ _mdns_add_time(struct timespec *sum, const struct timespec *a, const struct time
 {
 	sum->tv_sec = a->tv_sec + b->tv_sec;
 	sum->tv_nsec = a->tv_nsec + b->tv_nsec;
-	if (sum->tv_nsec > 1000000000) {
+
+	if (sum->tv_nsec > 1000000000)
+	{
 		sum->tv_sec += (sum->tv_nsec / 1000000000);
 		sum->tv_nsec %= 1000000000;
 	}
 }
 
-// calculate a deadline from the current time based on the desired timeout
+/* calculate a deadline from the current time based on the desired timeout */
 static void
 _mdns_deadline(struct timespec *deadline, const struct timespec *delta)
 {
@@ -1373,13 +1725,15 @@ _mdns_sub_time(struct timespec *delta, const struct timespec *a, const struct ti
 {
 	delta->tv_sec = a->tv_sec - b->tv_sec;
 	delta->tv_nsec = a->tv_nsec - b->tv_nsec;
-	if (delta->tv_nsec < 0) {
+
+	if (delta->tv_nsec < 0)
+	{
 		delta->tv_nsec += 1000000000;
 		delta->tv_sec -= 1;
 	}
 }
 
-// calculate a timeout remaining before the given deadline
+/* calculate a timeout remaining before the given deadline */
 static void
 _mdns_timeout(struct timespec *timeout, const struct timespec *deadline)
 {
@@ -1388,135 +1742,166 @@ _mdns_timeout(struct timespec *timeout, const struct timespec *deadline)
 	_mdns_sub_time(timeout, deadline, &now);
 }
 
-int
+extern int
+si_inet_config(uint32_t *inet4, uint32_t *inet6);
+
+static int
 _mdns_search(const char *name, int class, int type, const char *interface, DNSServiceFlags flags, uint8_t *answer, uint32_t *anslen, mdns_reply_t *reply)
 {
+	uint32_t ifindex;
+
+	if (interface)
+	{
+		ifindex = if_nametoindex(interface);
+		if (ifindex == 0) return -1;
+	}
+	else
+	{
+		ifindex = 0;
+	}
+
+	return _mdns_search_ex(name, class, type, ifindex, flags, answer, anslen, reply);
+}
+
+static int
+_mdns_search_ex(const char *name, int class, int type, uint32_t ifindex, DNSServiceFlags flags, uint8_t *answer, uint32_t *anslen, mdns_reply_t *reply)
+{
 	DNSServiceErrorType err = 0;
-	int kq, n, wait = 1;
+	int kq, n;
 	struct kevent ev;
 	struct timespec start, finish, delta, timeout;
 	int res = 0;
-	int i, complete, got_a_response = 0;
-	int initialize = 1;
+	int i, got_a_response = 0;
+	bool complete, initialize = true;
+	bool wait = true;
 	uint32_t n_iface_4 = 0;
 
-	// determine number of IPv4 interfaces (ignore loopback)
+	/* determine number of IPv4 interfaces (ignore loopback) */
 	si_inet_config(&n_iface_4, NULL);
 	if (n_iface_4 > 0) n_iface_4--;
 
-	// <rdar://problem/7732497> limit the number of initialization retries
+	/* <rdar://problem/7732497> limit the number of initialization retries */
 	int initialize_retries = 3;
 
-	// 2 for A and AAAA parallel queries
+	/* 2 for A and AAAA parallel queries */
 	int n_ctx = 0;
 	mdns_query_context_t ctx[2];
+    bool more_coming[2];
 
 	if (name == NULL) return -1;
 
-#if TARGET_OS_EMBEDDED
-	// log a warning for queries from the main thread 
-	if (pthread_is_threaded_np() && pthread_main_np()) asl_log(NULL, NULL, ASL_LEVEL_WARNING, "Warning: Libinfo call to mDNSResponder on main thread");
-#endif // TARGET_OS_EMBEDDED
+#if (TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
+	/* log a warning for queries from the main thread */
+	if (pthread_is_threaded_np() && pthread_main_np()) os_log(OS_LOG_DEFAULT, "Warning: Libinfo call to mDNSResponder on main thread");
+#endif /* (TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR) */
 
-	// Timeout Logic
-	// The kevent(2) API timeout parameter is used to enforce the total
-	// timeout of the DNS query.  Each iteraion recalculates the relative
-	// timeout based on the desired end time (total timeout from origin).
-	//
-	// In order to workaround some DNS configurations that do not return
-	// responses for AAAA queries, parallel queries modify the total
-	// timeout upon receipt of the first response.  The new total timeout is
-	// set to an effective value of 2N where N is the time taken to receive
-	// the A response (the original total timeout is preserved if 2N would
-	// have exceeded it).  However, since mDNSResponder caches values, a
-	// minimum value of 50ms for N is enforced in order to give some time
-	// for the receipt of a AAAA response.
+	/*
+	 * Timeout Logic
+	 * The kevent(2) API timeout parameter is used to enforce the total
+	 * timeout of the DNS query.  Each iteraion recalculates the relative
+	 * timeout based on the desired end time (total timeout from origin).
+	 *
+	 * In order to workaround some DNS configurations that do not return
+	 * responses for AAAA queries, parallel queries modify the total
+	 * timeout upon receipt of the first response.  The new total timeout is
+	 * set to an effective value of 2N where N is the time taken to receive
+	 * the A response (the original total timeout is preserved if 2N would
+	 * have exceeded it).  However, since mDNSResponder caches values, a
+	 * minimum value of 50ms for N is enforced in order to give some time
+	 * for the receipt of a AAAA response.
+	 */
 
-	// determine the maximum time to wait for a result
+	/* determine the maximum time to wait for a result */
 	delta.tv_sec = RES_MAXRETRANS + 5;
 	delta.tv_nsec = 0;
 	_mdns_deadline(&finish, &delta);
 	timeout = delta;
 	_mdns_now(&start);
 
-	for (i = 0; i < 2; ++i) {
-		memset(&ctx[i], 0 , sizeof(mdns_query_context_t));
-	}
 
-	// set up the kqueue
+    for (i = 0; i < 2; ++i) {
+        memset(&ctx[i], 0 , sizeof(mdns_query_context_t));
+        more_coming[i] = false;
+    }
+	/* set up the kqueue */
 	kq = kqueue();
 	EV_SET(&ev, 1, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, 0);
 	n = kevent(kq, &ev, 1, NULL, 0, NULL);
-	if (n != 0) wait = 0;
+	if (n != 0) wait = false;
 
-	while (wait == 1) {
-		if (initialize) {
-			initialize = 0;
+	while (wait)
+	{
+		_mdns_debug_message(";; _mdns_search wait loop\n");
+
+		if (initialize)
+		{
+			initialize = false;
 			pthread_mutex_lock(&_mdns_mutex);
-			// clear any stale contexts
-			for (i = 0; i < n_ctx; ++i) {
-				_mdns_query_clear(&ctx[i]);
-			}
+
+			/* clear any stale contexts */
+			for (i = 0; i < n_ctx; ++i) _mdns_query_clear(&ctx[i]);
 			n_ctx = 0;
 
-			if (_mdns_sdref == NULL) {
-				if (_mdns_old_sdref != NULL) {
+			if (_mdns_sdref == NULL)
+			{
+				if (_mdns_old_sdref != NULL)
+				{
 					_mdns_generation++;
 					DNSServiceRefDeallocate(_mdns_old_sdref);
 					_mdns_old_sdref = NULL;
 				}
-				// (re)initialize the shared connection
+
+				/* (re)initialize the shared connection */
 				err = DNSServiceCreateConnection(&_mdns_sdref);
 
-				// limit the number of retries
-				if (initialize_retries-- <= 0 && err == 0) {
-					err = kDNSServiceErr_Unknown;
-				}
-				if (err != 0) {
-					wait = 0;
+				/* limit the number of retries */
+				if ((initialize_retries-- <= 0) && (err == 0)) err = kDNSServiceErr_Unknown;
+				if (err != 0)
+				{
+					wait = false;
 					pthread_mutex_unlock(&_mdns_mutex);
 					break;
 				}
 			}
 
-			// issue (or reissue) the queries
-			// unspecified type: do parallel A and AAAA
-			if (err == 0) {
-				err = _mdns_query_start(&ctx[n_ctx++], reply,
-										answer, anslen,
-										name, class,
-										(type == 0) ? ns_t_a : type, interface, flags, kq);
+			/*
+			 * issue (or reissue) the queries
+			 * unspecified type: do parallel A and AAAA
+			 */
+			if (err == 0)
+			{
+				err = _mdns_query_start(&ctx[n_ctx++], reply, answer, anslen, name, class, (type == 0) ? ns_t_a : type, ifindex, flags, kq);
 			}
 
-			if (err == 0 && type == 0) {
-				err = _mdns_query_start(&ctx[n_ctx++], reply,
-										answer, anslen,
-										name, class, ns_t_aaaa, interface, flags, kq);
+			if ((err == 0) && (type == 0))
+			{
+				err = _mdns_query_start(&ctx[n_ctx++], reply, answer, anslen, name, class, ns_t_aaaa, ifindex, flags, kq);
 			}
 
-			if (err != 0) {
-				_mdns_debug_message(";; initialization error %d\n", err);
-			}
+			if (err != 0) _mdns_debug_message(";; initialization error %d\n", err);
 
-			// try to reinitialize
-			if (err == kDNSServiceErr_Unknown ||
-				err == kDNSServiceErr_ServiceNotRunning ||
-				err == kDNSServiceErr_BadReference) {
-				if (_mdns_sdref) {
+			/* try to reinitialize */
+			if ((err == kDNSServiceErr_Unknown) || (err == kDNSServiceErr_ServiceNotRunning) || (err == kDNSServiceErr_BadReference) || (err == kDNSServiceErr_DefunctConnection))
+			{
+				if (_mdns_sdref != NULL)
+				{
 					_mdns_generation++;
 					DNSServiceRefDeallocate(_mdns_sdref);
 					_mdns_sdref = NULL;
 				}
+
 				err = 0;
-				initialize = 1;
+				initialize = true;
 				pthread_mutex_unlock(&_mdns_mutex);
 				continue;
-			} else if (err != 0) {
+			}
+			else if (err != 0)
+			{
 				pthread_mutex_unlock(&_mdns_mutex);
 				break;
 			}
 
-			// (re)register the fd with kqueue
+			/* (re)register the fd with kqueue */
 			int fd = DNSServiceRefSockFD(_mdns_sdref);
 			EV_SET(&ev, fd, EVFILT_READ, EV_ADD, 0, 0, 0);
 			n = kevent(kq, &ev, 1, NULL, 0, NULL);
@@ -1526,117 +1911,191 @@ _mdns_search(const char *name, int class, int type, const char *interface, DNSSe
 
 		_mdns_debug_message(";; set kevent timeout %ld.%ld [ctx %p %p]\n", timeout.tv_sec, timeout.tv_nsec, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
 
+		errno = 0;
 		n = kevent(kq, NULL, 0, &ev, 1, &timeout);
-		if (n < 0 && errno != EINTR) {
+		if ((n < 0) && (errno != EINTR))
+		{
 			res = -1;
 			break;
 		}
 
 		pthread_mutex_lock(&_mdns_mutex);
-		// DNSServiceProcessResult() is a blocking API
-		// confirm that there is still data on the socket
+
+		/*
+		 * DNSServiceProcessResult() is a blocking API
+		 * confirm that there is still data on the socket
+		 */
 		const struct timespec notimeout = { 0, 0 };
 		int m = kevent(kq, NULL, 0, &ev, 1, &notimeout);
-		if (_mdns_sdref == NULL) {
-			initialize = 1;
-		} else if (m > 0 && ev.filter == EVFILT_READ) {
+
+		if (_mdns_sdref == NULL)
+		{
+			initialize = true;
+			_mdns_debug_message(";; _mdns_sdref is NULL, initialize = true\n");
+		}
+		else if (m > 0 && ev.filter == EVFILT_READ)
+		{
+			_mdns_debug_message(";; _mdns_search calling DNSServiceProcessResult\n", err);
 			err = DNSServiceProcessResult(_mdns_sdref);
-			if (err == kDNSServiceErr_ServiceNotRunning ||
-			    err == kDNSServiceErr_BadReference) {
+			_mdns_debug_message(";; DNSServiceProcessResult -> %s\n", err);
+			if ((err == kDNSServiceErr_ServiceNotRunning) || (err == kDNSServiceErr_BadReference) || (err == kDNSServiceErr_DefunctConnection))
+			{
 				_mdns_debug_message(";; DNSServiceProcessResult status %d [ctx %p %p]\n", err, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
 				err = 0;
-				// re-initialize the shared connection
+
+				/* re-initialize the shared connection */
 				_mdns_generation++;
 				DNSServiceRefDeallocate(_mdns_sdref);
 				_mdns_sdref = NULL;
-				initialize = 1;
+				initialize = true;
 			}
 		}
+		else if (m == 0 && ev.filter == EVFILT_USER)
+		{
+			_mdns_debug_message(";; kevent wakeup\n", m, (int)ev.filter);
+		}
+		else
+		{
+			_mdns_debug_message(";; kevent m=%d ev.filter=0x%08x\n", m, ev.filter);
+		}
 
-		// Check if all queries are complete (including errors)
-		complete = 1;
-		for (i = 0; i < n_ctx; ++i) {
-			if ((ctx[i].error != 0) || _mdns_query_is_complete(&ctx[i])) {
-				if (ctx[i].type == ns_t_a) {
+		/* Check if all queries are complete (including errors) */
+		complete = true;
+		for (i = 0; i < n_ctx; ++i)
+		{
+			bool qc = _mdns_query_is_complete(&ctx[i], &more_coming[i]);
+			_mdns_debug_message(";; ctx %d %p error=%d complete=%s\n", i, &(ctx[i]), ctx[i].error, qc ? "true" : "false");
+
+			if ((ctx[i].error != 0) || qc)
+			{
+				if (ctx[i].type == ns_t_a)
+				{
 					got_a_response = GOT_DATA;
 					if (ctx[i].error != 0) got_a_response = GOT_ERROR;
+					_mdns_debug_message(";; type ns_t_a got_a_response=%s ctx %p\n", (got_a_response == GOT_DATA) ? "GOT_DATA" : "GOT_ERROR", &(ctx[i]));
 				}
-				_mdns_debug_message(";; [%s %d %d] finished processing ctx %p\n", name, class, type, &(ctx[i]));
 
-			} else {
-				_mdns_debug_message(";; [%s %d %d] continuing ctx %p\n", name, class, type, &(ctx[i]));
-				complete = 0;
+				_mdns_debug_message(";; [%s type %d class %d] finished processing ctx %p\n", name, type, class, &(ctx[i]));
+			}
+			else
+			{
+				_mdns_debug_message(";; [%s type %d class %d] continuing ctx %p\n", name, type, class,  &(ctx[i]));
+				complete = false;
 			}
 		}
+
 		pthread_mutex_unlock(&_mdns_mutex);
 
-		if (err != 0) {
+		if (err != 0)
+		{
 			_mdns_debug_message(";; DNSServiceProcessResult error status %d [ctx %p %p]\n", err, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
 			break;
-		} else if (complete == 1) {
-			_mdns_debug_message(";; [%s %d %d] done [ctx %p %p]\n", name, class, type, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
+		}
+		else if (complete)
+		{
+			_mdns_debug_message(";; [%s type %d class %d] done [ctx %p %p]\n", name, type, class, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
 			break;
-		} else if (got_a_response != 0) {
-			// got A, adjust deadline for AAAA
+		}
+		else if (more_coming[0] || more_coming[1])
+		{
+			/* got partial data - probably from cache - reduce wait time */
+			struct timespec now, tmp, extra;
+
+			/* tmp = now - start */
+			_mdns_now(&now);
+			_mdns_sub_time(&tmp, &now, &start);
+
+			extra.tv_sec = MEDIUM_AAAA_EXTRA;
+			extra.tv_nsec = 0;
+
+			/* delta = tmp + extra */
+			_mdns_add_time(&delta, &tmp, &extra);
+
+			/* check that delta doesn't exceed our total timeout */
+			_mdns_sub_time(&tmp, &timeout, &delta);
+			if (tmp.tv_sec >= 0)
+			{
+				_mdns_debug_message(";; new timeout [%s type %d class %d] (waiting for more) %ld.%ld [ctx %p %p]\n", name, type, class, delta.tv_sec, delta.tv_nsec, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
+				_mdns_deadline(&finish, &delta);
+			}
+		}
+		else if (got_a_response == GOT_DATA)
+		{
+			/* got A, adjust deadline for AAAA */
 			struct timespec now, tn, extra;
 
-			// delta = now - start
+			/* delta = now - start */
 			_mdns_now(&now);
 			_mdns_sub_time(&delta, &now, &start);
 
 			extra.tv_sec = SHORT_AAAA_EXTRA;
 			extra.tv_nsec = 0;
 
-			// if delta is small (<= 20 milliseconds), we probably got a result from mDNSResponder's cache
-			if ((delta.tv_sec == 0) && (delta.tv_nsec <= 20000000)) {
+			/* if delta is small (<= 20 milliseconds), we probably got a result from cache */
+			if ((delta.tv_sec == 0) && (delta.tv_nsec <= 20000000))
+			{
 				extra.tv_sec = MEDIUM_AAAA_EXTRA;
 			}
-			else if (n_iface_4 == 0) {
+			else if (n_iface_4 == 0)
+			{
 				extra.tv_sec = LONG_AAAA_EXTRA;
-			} else if (got_a_response == GOT_ERROR) {
+			}
+			else if (got_a_response == GOT_ERROR)
+			{
 				extra.tv_sec = MEDIUM_AAAA_EXTRA;
 			}
 
-			// tn = 2 * delta
+			/* tn = 2 * delta */
 			_mdns_add_time(&tn, &delta, &delta);
 
-			// delta = tn + extra
+			/* delta = tn + extra */
 			_mdns_add_time(&delta, &tn, &extra);
 
-			// check that delta doesn't exceed our total timeout
+			/* check that delta doesn't exceed our total timeout */
 			_mdns_sub_time(&tn, &timeout, &delta);
-			if (tn.tv_sec >= 0) {
-				_mdns_debug_message(";; new timeout [%s %d %d] (waiting for AAAA) %ld.%ld [ctx %p %p]\n", name, class, type, delta.tv_sec, delta.tv_nsec, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
+			if (tn.tv_sec >= 0)
+			{
+				_mdns_debug_message(";; new timeout [%s type %d class %d] (waiting for AAAA) %ld.%ld [ctx %p %p]\n", name, type, class, delta.tv_sec, delta.tv_nsec, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
 				_mdns_deadline(&finish, &delta);
 			}
 		}
 
-		// calculate remaining timeout
+		/* calculate remaining timeout */
 		_mdns_timeout(&timeout, &finish);
 
-		// check for time remaining
-		if (timeout.tv_sec < 0) {
-			_mdns_debug_message(";; [%s %d %d] timeout [ctx %p %p]\n", name, class, type, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
+		/* check for time remaining */
+		if (timeout.tv_sec < 0)
+		{
+			_mdns_debug_message(";; [%s type %d class %d] timeout [ctx %p %p]\n", name, type, class, (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
 			break;
 		}
 	}
 
-	complete = 0;
+	_mdns_debug_message(";; finished _mdns_search loop [ctx %p %p]\n", (n_ctx > 0) ? &(ctx[0]) : NULL, (n_ctx > 1) ? &(ctx[1]) : NULL);
+
+	complete = false;
 	pthread_mutex_lock(&_mdns_mutex);
-	for (i = 0; i < n_ctx; ++i) {
-		if (err == 0) err = ctx[i].error;
-		// Only clears hostents if result is incomplete.
-		complete = _mdns_query_clear(&ctx[i]) || complete;
+
+	for (i = 0; i < n_ctx; ++i)
+	{
+		/* only clears hostents if result is incomplete */
+		bool cc = _mdns_query_clear(&ctx[i]);
+		complete = cc | complete;
+		_mdns_debug_message(";; _mdns_search ctx %p %scomplete\n", &ctx[i], cc ? "" : "in");
 	}
+
+	if (more_coming[0] || more_coming[1]) complete = false;
+
+	_mdns_debug_message(";; _mdns_search overall %scomplete\n", complete ? "" : "in");
 	pthread_mutex_unlock(&_mdns_mutex);
-	// Everything should be done with the kq by now.
+
+	/* everything should be done with the kq by now */
 	close(kq);
 
-	// Return error if everything is incomplete
-	if (complete == 0) {
-		res = -1;
-	}
+	/* return error if everything is incomplete */
+	if (!complete) res = -1;
 
-	if (anslen) *anslen = ctx[0].anslen;
+	if (anslen != NULL) *anslen = ctx[0].anslen;
+	_mdns_debug_message(";; _mdns_search exit res %d\n", res);
 	return res;
 }

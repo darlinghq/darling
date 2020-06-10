@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -68,6 +68,8 @@ static char *rcsid = "$Id: rpc_prot.c,v 1.3 2003/06/23 17:24:59 majka Exp $";
  * routines are also in this program.
  */
 
+#include "libinfo_common.h"
+
 #include <sys/param.h>
 
 #include <rpc/rpc.h>
@@ -98,6 +100,7 @@ xdr_opaque_auth(xdrs, ap)
 /*
  * XDR a DES block
  */
+LIBINFO_EXPORT
 bool_t
 xdr_des_block(xdrs, blkp)
 	register XDR *xdrs;
@@ -169,6 +172,7 @@ static struct xdr_discrim reply_dscrm[3] = {
 /*
  * XDR a reply message
  */
+LIBINFO_EXPORT
 bool_t
 xdr_replymsg(xdrs, rmsg)
 	register XDR *xdrs;
@@ -189,6 +193,7 @@ xdr_replymsg(xdrs, rmsg)
  * The fields include: rm_xid, rm_direction, rpcvers, prog, and vers.
  * The rm_xid is not really static, but the user can easily munge on the fly.
  */
+LIBINFO_EXPORT
 bool_t
 xdr_callhdr(xdrs, cmsg)
 	register XDR *xdrs;
@@ -283,6 +288,7 @@ rejected(rjct_stat, error)
 /*
  * given a reply message, fills in the error
  */
+LIBINFO_EXPORT
 void
 _seterr_reply(msg, error)
 	register struct rpc_msg *msg;

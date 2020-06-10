@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Apple Inc.  All rights reserved.
+ * Copyright (c) 2008-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -20,6 +20,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
+#include "libinfo_common.h"
 
 #include <thread_data.h>
 #include <pthread.h>
@@ -162,6 +164,7 @@ LI_get_thread_info(uint32_t key)
 	return tdata;
 }
 
+LIBINFO_EXPORT
 si_item_t *
 LI_get_thread_item(uint32_t key)
 {
@@ -173,6 +176,7 @@ LI_get_thread_item(uint32_t key)
 	return tdata->thread_item;
 }
 
+LIBINFO_EXPORT
 si_list_t *
 LI_get_thread_list(uint32_t key)
 {
@@ -184,6 +188,7 @@ LI_get_thread_list(uint32_t key)
 	return tdata->thread_list;
 }
 
+LIBINFO_EXPORT
 void
 LI_set_thread_item(uint32_t key, si_item_t *item)
 {
@@ -196,6 +201,7 @@ LI_set_thread_item(uint32_t key, si_item_t *item)
 	tdata->thread_item = item;
 }
 
+LIBINFO_EXPORT
 void
 LI_set_thread_list(uint32_t key, si_list_t *list)
 {

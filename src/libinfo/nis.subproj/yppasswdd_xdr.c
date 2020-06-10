@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -58,9 +58,12 @@
 static char rcsid[] = "$OpenBSD: yppasswdd_xdr.c,v 1.4 1997/08/19 07:00:52 niklas Exp $";
 #endif
 
+#include "libinfo_common.h"
+
 #include <rpc/rpc.h>
 #include <rpcsvc/yppasswd.h>
 
+LIBINFO_EXPORT
 bool_t
 xdr_x_passwd(xdrs, objp)
 	XDR *xdrs;
@@ -90,6 +93,7 @@ xdr_x_passwd(xdrs, objp)
 	return (TRUE);
 }
 
+LIBINFO_EXPORT
 bool_t
 xdr_yppasswd(xdrs, objp)
 	XDR *xdrs;

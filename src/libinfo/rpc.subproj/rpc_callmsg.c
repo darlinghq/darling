@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -63,6 +63,8 @@ static char *rcsid = "$Id: rpc_callmsg.c,v 1.4 2003/06/23 17:24:59 majka Exp $";
  *
  */
 
+#include "libinfo_common.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
@@ -74,6 +76,7 @@ extern bool_t		xdr_opaque_auth();
 /*
  * XDR a call message
  */
+LIBINFO_EXPORT
 bool_t
 xdr_callmsg(xdrs, cmsg)
 	register XDR *xdrs;

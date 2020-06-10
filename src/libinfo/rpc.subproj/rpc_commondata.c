@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -55,15 +55,20 @@
 static char *rcsid = "$Id: rpc_commondata.c,v 1.3 2002/02/19 20:36:24 epeyton Exp $";
 #endif
 
+#include "libinfo_common.h"
+
 #include <rpc/rpc.h>
 /*
  * This file should only contain common data (global data) that is exported
  * by public interfaces 
  */
 #if defined(__APPLE__)
+LIBINFO_EXPORT
 struct opaque_auth _null_auth = {0};
+LIBINFO_EXPORT
 fd_set svc_fdset = {{0}};
 int svc_maxfd = -1;
+LIBINFO_EXPORT
 struct rpc_createerr rpc_createerr = {0};
 #else
 struct opaque_auth _null_auth;

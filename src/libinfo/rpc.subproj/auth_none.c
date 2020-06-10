@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -64,6 +64,8 @@ static char *rcsid = "$Id: auth_none.c,v 1.3 2002/02/19 20:36:22 epeyton Exp $";
  * Copyright (C) 1984, Sun Microsystems, Inc. 
  */
 
+#include "libinfo_common.h"
+
 #include <stdlib.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -97,6 +99,7 @@ static struct authnone_private {
 	u_int	mcnt;
 } *authnone_private;
 
+LIBINFO_EXPORT
 AUTH *
 authnone_create()
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -61,6 +61,8 @@ static char *rcsid = "$Id: clnt_udp.c,v 1.4 2002/03/15 22:07:49 majka Exp $";
  *
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
+
+#include "libinfo_common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -259,6 +261,7 @@ fooy:
 	return NULL;
 }
 
+LIBINFO_EXPORT
 CLIENT *
 clntudp_bufcreate(raddr, program, version, wait, sockp, sendsz, recvsz)
 #ifdef __LP64__
@@ -282,6 +285,7 @@ clntudp_bufcreate(raddr, program, version, wait, sockp, sendsz, recvsz)
 	return clntudp_bufcreate_timeout(raddr, (uint32_t)program, (uint32_t)version, sockp, (uint32_t)sendsz, (uint32_t)recvsz, &wait, NULL);
 }
 
+LIBINFO_EXPORT
 CLIENT *
 clntudp_create(raddr, program, version, wait, sockp)
 #ifdef __LP64__

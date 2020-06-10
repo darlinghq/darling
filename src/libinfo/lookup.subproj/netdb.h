@@ -228,6 +228,10 @@ struct rpcent {
 /* special recommended flags for getipnodebyname */
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 #define	AI_DEFAULT	(AI_V4MAPPED_CFG | AI_ADDRCONFIG)
+/* If the hints pointer is null or ai_flags is zero, getaddrinfo() automatically defaults to the AI_DEFAULT behavior.
+ * To override this default behavior, thereby causing unusable addresses to be included in the results, pass any nonzero
+ * value for ai_flags, by setting any desired flag values, or by setting AI_UNUSABLE if no other flags are desired. */
+#define	AI_UNUSABLE	0x10000000 /* return addresses even if unusable (i.e. opposite of AI_DEFAULT) */
 #endif /* (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
 
 /*
@@ -244,6 +248,7 @@ struct rpcent {
 #define	NI_NUMERICHOST	0x00000002
 #define	NI_NAMEREQD	0x00000004
 #define	NI_NUMERICSERV	0x00000008
+#define	NI_NUMERICSCOPE 0x00000100
 #define	NI_DGRAM	0x00000010
 #if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
 #define NI_WITHSCOPEID	0x00000020

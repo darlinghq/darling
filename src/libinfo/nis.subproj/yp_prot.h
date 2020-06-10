@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
+/*
  * Copyright (c) 1992/3 Theo de Raadt <deraadt@fsa.ca>
  * All rights reserved.
  *
@@ -31,6 +34,7 @@
 
 #ifndef _RPCSVC_YP_PROT_H_
 #define _RPCSVC_YP_PROT_H_
+#include <rpc/clnt.h>
 
 /*
  * YPSERV PROTOCOL:
@@ -313,11 +317,15 @@ struct yppushresp_xfr {
 __BEGIN_DECLS
 bool_t xdr_domainname __P((XDR *, char *));
 bool_t xdr_peername __P((XDR *, char *));
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 bool_t xdr_datum __P((XDR *, datum *));
+#endif
 bool_t xdr_mapname __P((XDR *, char *));
 bool_t xdr_ypreq_key __P((XDR *, struct ypreq_key *));
 bool_t xdr_ypreq_nokey __P((XDR *, struct ypreq_nokey *));
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 bool_t xdr_yp_inaddr __P((XDR *, struct in_addr *));
+#endif
 bool_t xdr_ypbind_binding __P((XDR *, struct ypbind_binding *));
 bool_t xdr_ypbind_resptype __P((XDR *, enum ypbind_resptype *));
 bool_t xdr_ypstat __P((XDR *, enum ypbind_resptype *));
@@ -328,7 +336,9 @@ bool_t xdr_ypresp_key_val __P((XDR *, struct ypresp_key_val *));
 bool_t xdr_ypresp_all __P((XDR *, struct ypresp_all *));
 bool_t xdr_ypresp_all_seq __P((XDR *, unsigned long *));
 bool_t xdr_ypresp_master __P((XDR *, struct ypresp_master *));
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 bool_t xdr_ypmaplist_str __P((XDR *, char *));
+#endif
 bool_t xdr_ypmaplist __P((XDR *, struct ypmaplist *));
 bool_t xdr_ypresp_maplist __P((XDR *, struct ypresp_maplist *));
 bool_t xdr_ypresp_order __P((XDR *, struct ypresp_order *));

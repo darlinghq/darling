@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999-2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -34,6 +34,7 @@ static  char sccsid[] = "@(#)ether_addr.c	1.2 88/05/10 4.0NFSSRC; from 1.9 88/02
  * "x:x:x:x:x:x" where x is a hex number between 0x00 and 0xff;  the
  * bytes are always in network order.
  */
+#include "libinfo_common.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -51,6 +52,7 @@ static  char sccsid[] = "@(#)ether_addr.c	1.2 88/05/10 4.0NFSSRC; from 1.9 88/02
  * the corresponding hosts name.
  * Returns zero if successful, non-zero otherwise.
  */
+LIBINFO_EXPORT
 int
 ether_line(const char *s, struct ether_addr *e, char *hostname)
 {
@@ -68,6 +70,7 @@ ether_line(const char *s, struct ether_addr *e, char *hostname)
  * Converts a 48 bit ethernet number to its string representation.
  */
 #define EI(i) (unsigned int)(e->ether_addr_octet[(i)])
+LIBINFO_EXPORT
 char *
 ether_ntoa(const struct ether_addr *e)
 {
@@ -87,6 +90,7 @@ ether_ntoa(const struct ether_addr *e)
 /*
  * Converts a ethernet address representation back into its 48 bits.
  */
+LIBINFO_EXPORT
 struct ether_addr *
 ether_aton(const char *s)
 {

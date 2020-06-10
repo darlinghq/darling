@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -64,6 +64,8 @@ static char *rcsid = "$Id: authunix_prot.c,v 1.4 2002/02/19 20:36:22 epeyton Exp
  */
 
 
+#include "libinfo_common.h"
+
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <rpc/types.h>
@@ -75,6 +77,7 @@ static char *rcsid = "$Id: authunix_prot.c,v 1.4 2002/02/19 20:36:22 epeyton Exp
 /*
  * XDR for unix authentication parameters.
  */
+LIBINFO_EXPORT
 bool_t
 xdr_authunix_parms(xdrs, p)
 	register XDR *xdrs;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -63,6 +63,8 @@ static char *rcsid = "$FreeBSD: src/lib/libc/rpc/bindresvport.c,v 1.12 2000/01/2
  * Portions Copyright(C) 1996, Jason Downs.  All rights reserved.
  */
 
+#include "libinfo_common.h"
+
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -73,6 +75,7 @@ static char *rcsid = "$FreeBSD: src/lib/libc/rpc/bindresvport.c,v 1.12 2000/01/2
 /*
  * Bind a socket to a privileged port for whatever protocol.
  */
+LIBINFO_EXPORT
 int
 bindresvport_sa(sd, sa)
 	int sd;
@@ -157,6 +160,7 @@ bindresvport_sa(sd, sa)
 /*
  * Bind a socket to a privileged IP port
  */
+LIBINFO_EXPORT
 int
 bindresvport(sd, sin)
 	int sd;

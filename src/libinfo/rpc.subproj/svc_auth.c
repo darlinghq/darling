@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -63,6 +63,8 @@ static char *rcsid = "$Id: svc_auth.c,v 1.3 2002/02/19 20:36:25 epeyton Exp $";
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "libinfo_common.h"
+
 #include <rpc/rpc.h>
 
 /*
@@ -112,6 +114,7 @@ static struct {
  * There is an assumption that any flavour less than AUTH_NULL is
  * invalid.
  */
+LIBINFO_EXPORT
 enum auth_stat
 _authenticate(rqst, msg)
 	register struct svc_req *rqst;

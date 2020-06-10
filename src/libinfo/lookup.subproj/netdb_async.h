@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2002-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,8 +30,10 @@
 
 #define gethostbyname_async_handle_reply gethostbyname_async_handleReply
 #define gethostbyaddr_async_handle_reply gethostbyaddr_async_handleReply
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 #define getipnodebyaddr_async_handle_reply getipnodebyaddr_async_handleReply
 #define getipnodebyname_async_handle_reply getipnodebyname_async_handleReply
+#endif
 
 /* SPI for parallel / fast getaddrinfo */
 #define	AI_PARALLEL	0x00000008
@@ -57,10 +59,13 @@ void getaddrinfo_async_cancel(mach_port_t p);
 typedef void (*getnameinfo_async_callback)(int32_t status, char *host, char *serv, void *context);
 int32_t getnameinfo_async_start(mach_port_t *p, const struct sockaddr *sa, size_t salen, int flags, getnameinfo_async_callback callback, void *context);
 int32_t getnameinfo_async_send(mach_port_t *p, const struct sockaddr *sa, size_t salen, int flags);
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 int32_t getnameinfo_async_receive(mach_port_t p, char **host, char **serv);
+#endif
 int32_t getnameinfo_async_handle_reply(void *msg);
 void getnameinfo_async_cancel(mach_port_t p);
 
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 /*
  * DNS
  */
@@ -70,6 +75,7 @@ int32_t dns_async_send(mach_port_t *p, const char *name, uint16_t dnsclass, uint
 int32_t dns_async_receive(mach_port_t p, char **buf, uint32_t *len, struct sockaddr **from, uint32_t *fromlen);
 int32_t dns_async_handle_reply(void *msg);
 void dns_async_cancel(mach_port_t p);
+#endif
 
 /*
  * Host lookup
@@ -165,6 +171,7 @@ void gethostbyname_async_cancel(mach_port_t port);
  */
 void gethostbyname_async_handleReply(void *replyMsg);
 
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 /*
  @typedef getipnodebyaddr_async_callback
  @discussion Type of the callback function used when a
@@ -261,6 +268,7 @@ void getipnodebyname_async_cancel(mach_port_t port);
  @param replyMsg The Mach message.
  */
 void getipnodebyname_async_handleReply(void *replyMsg);
+#endif // !LIBINFO_INSTALL_API
 
 __END_DECLS
 

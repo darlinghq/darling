@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2009 Apple Inc.  All rights reserved.
+ * Copyright (c) 2008-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,6 +21,8 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include "libinfo_common.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -28,6 +30,7 @@
 #include "si_data.h"
 #include "si_module.h"
 
+LIBINFO_EXPORT
 si_list_t *
 si_list_add(si_list_t *l, si_item_t *e)
 {
@@ -38,7 +41,7 @@ si_list_add(si_list_t *l, si_item_t *e)
 	if (l == NULL)
 	{
 		l = (si_list_t *)calloc(1, sizeof(si_list_t));
-		l->refcount = 1;
+		if (l != NULL) l->refcount = 1;
 	}
 
 	if (l != NULL)
@@ -46,10 +49,7 @@ si_list_add(si_list_t *l, si_item_t *e)
 		size = (l->count + 1) * sizeof(si_item_t *);
 
 		l->entry = (si_item_t **)reallocf(l->entry, size);
-		if (l->entry != NULL)
-		{
-			l->entry[l->count++] = si_item_retain(e);
-		}
+		if (l->entry != NULL) l->entry[l->count++] = si_item_retain(e);
 	}
 
 	if ((l == NULL) || (l->entry == NULL))
@@ -62,11 +62,12 @@ si_list_add(si_list_t *l, si_item_t *e)
 	return l;
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_list_concat(si_list_t *l, si_list_t *x)
 {
 	si_item_t *item;
-	uint32_t newcount;
+	size_t newcount;
 	size_t size;
 	int i;
 
@@ -80,7 +81,7 @@ si_list_concat(si_list_t *l, si_list_t *x)
 
 	if (l != NULL)
 	{
-		newcount = l->count + x->count;
+		newcount = (size_t)l->count + (size_t)x->count;
 		size = newcount * sizeof(si_item_t *);
 
 		l->entry = (si_item_t **)reallocf(l->entry, size);
@@ -98,6 +99,7 @@ si_list_concat(si_list_t *l, si_list_t *x)
 		else
 		{
 			l->count = 0;
+			free(l);
 			l = NULL;
 		}
 	}
@@ -107,6 +109,7 @@ si_list_concat(si_list_t *l, si_list_t *x)
 	return l;
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_list_next(si_list_t *list)
 {
@@ -116,12 +119,14 @@ si_list_next(si_list_t *list)
 	return list->entry[list->curr++];
 }
 
+LIBINFO_EXPORT
 void
 si_list_reset(si_list_t *list)
 {
 	if (list != NULL) list->curr = 0;
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_list_retain(si_list_t *list)
 {
@@ -135,6 +140,7 @@ si_list_retain(si_list_t *list)
 	return list;
 }
 
+LIBINFO_EXPORT
 void
 si_list_release(si_list_t *list)
 {
@@ -157,6 +163,7 @@ si_list_release(si_list_t *list)
 	}
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_item_retain(si_item_t *item)
 {
@@ -170,6 +177,7 @@ si_item_retain(si_item_t *item)
 	return item;
 }
 
+LIBINFO_EXPORT
 void
 si_item_release(si_item_t *item)
 {

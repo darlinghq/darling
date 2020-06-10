@@ -1,6 +1,5 @@
-// Modified by Lubos Dolezel for Darling build
 /*
- * Copyright (c) 2008-2011 Apple Inc.  All rights reserved.
+ * Copyright (c) 2008-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -22,6 +21,9 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include "libinfo_common.h"
+
+#include <dlfcn.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <ctype.h>
@@ -30,17 +32,18 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <netinet/in.h>
-//#include <network/sa_compare.h>
+#include <os/log.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <string.h>
 #include <sys/param.h>
 #include <notify.h>
-//#include <notify_keys.h>
+#include <notify_keys.h>
 #include <pthread.h>
 #include <TargetConditionals.h>
 #include "netdb_async.h"
+#include "si_compare.h"
 #include "si_module.h"
 
 #define SOCK_UNSPEC 0
@@ -61,6 +64,7 @@ static int net_config_token = -1;
 static uint32_t net_v4_count = 0;
 static uint32_t net_v6_count = 0;	// includes 6to4 addresses
 static pthread_mutex_t net_config_mutex = PTHREAD_MUTEX_INITIALIZER;
+static os_log_t _gai_log = OS_LOG_DEFAULT;
 
 // Libc SPI
 int _inet_aton_check(const char *cp, struct in_addr *addr, int strict);
@@ -72,6 +76,28 @@ typedef struct {
 	uint64_t ttl;
 } build_hostent_t;
 
+static void
+gai_child_has_forked(void)
+{
+	// Cannot use os_log_t object from parent process in child process.
+	_gai_log = OS_LOG_DEFAULT;
+}
+
+static void
+gai_log_init(void)
+{
+	_gai_log = os_log_create("com.apple.network.libinfo", "getaddrinfo");
+	(void)pthread_atfork(NULL, NULL, gai_child_has_forked);
+}
+
+static os_log_t
+gai_log(void)
+{
+	static pthread_once_t	once = PTHREAD_ONCE_INIT;
+	pthread_once(&once, gai_log_init);
+	return _gai_log;
+}
+
 __private_extern__ int
 si_inet_config(uint32_t *inet4, uint32_t *inet6)
 {
@@ -82,7 +108,6 @@ si_inet_config(uint32_t *inet4, uint32_t *inet6)
 
 	checkit = 1;
 
-#ifndef DARLING
 	if (net_config_token < 0)
 	{
 		status = notify_register_check(kNotifySCNetworkChange, &net_config_token);
@@ -94,7 +119,6 @@ si_inet_config(uint32_t *inet4, uint32_t *inet6)
 		status = notify_check(net_config_token, &checkit);
 		if (status != 0) checkit = 1;
 	}
-#endif
 
 	status = 0;
 
@@ -136,6 +160,7 @@ si_inet_config(uint32_t *inet4, uint32_t *inet6)
 	return status;
 }
 
+LIBINFO_EXPORT
 void
 freeaddrinfo(struct addrinfo *a)
 {
@@ -151,6 +176,7 @@ freeaddrinfo(struct addrinfo *a)
 	}
 }
 
+LIBINFO_EXPORT
 const char *
 gai_strerror(int32_t err)
 {
@@ -186,6 +212,7 @@ gai_strerror(int32_t err)
  * string.  If the caller specifies both NI_NUMERICHOST and NI_NUMERICSERV,
  * we inet_ntop() and printf() and return the results.
  */
+LIBINFO_EXPORT
 si_item_t *
 si_nameinfo(si_mod_t *si, const struct sockaddr *sa, int flags, const char *interface, uint32_t *err)
 {
@@ -275,6 +302,13 @@ si_nameinfo(si_mod_t *si, const struct sockaddr *sa, int flags, const char *inte
 		{
 			struct hostent *h;
 			h = (struct hostent *)((uintptr_t)item + sizeof(si_item_t));
+			if (h->h_name == NULL)
+			{
+				si_item_release(item);
+				if (err != NULL) *err = SI_STATUS_EAI_FAIL;
+				return NULL;
+			}
+
 			host = strdup(h->h_name);
 			si_item_release(item);
 			if (host == NULL)
@@ -292,6 +326,14 @@ si_nameinfo(si_mod_t *si, const struct sockaddr *sa, int flags, const char *inte
 		{
 			struct servent *s;
 			s = (struct servent *)((uintptr_t)item + sizeof(si_item_t));
+			if (s->s_name == NULL)
+			{
+				si_item_release(item);
+				free(host);
+				if (err != NULL) *err = SI_STATUS_EAI_FAIL;
+				return NULL;
+			}
+	
 			serv = strdup(s->s_name);
 			si_item_release(item);
 			if (serv == NULL)
@@ -342,6 +384,7 @@ si_nameinfo(si_mod_t *si, const struct sockaddr *sa, int flags, const char *inte
 					{
 						/* ENXIO */
 						if (err != NULL) *err = SI_STATUS_EAI_FAIL;
+						free(serv);
 						return NULL;
 					}
 				}
@@ -410,6 +453,7 @@ _gai_numericserv(const char *serv, uint16_t *port)
 	return numeric;
 }
 
+LIBINFO_EXPORT
 int
 _gai_serv_to_port(const char *serv, uint32_t proto, uint16_t *port)
 {
@@ -432,6 +476,7 @@ _gai_serv_to_port(const char *serv, uint32_t proto, uint16_t *port)
 	return 0;
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_addrinfo_v4(si_mod_t *si, int32_t flags, int32_t sock, int32_t proto, uint16_t port, struct in_addr *addr, uint16_t iface, const char *cname)
 {
@@ -457,6 +502,7 @@ si_addrinfo_v4(si_mod_t *si, int32_t flags, int32_t sock, int32_t proto, uint16_
 	return (si_item_t *)LI_ils_create("L448844444Ss", (unsigned long)si, CATEGORY_ADDRINFO, 1, unused, unused, flags, AF_INET, sock, proto, len, sockdata, cname);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_addrinfo_v4_mapped(si_mod_t *si, int32_t flags, int32_t sock, int32_t proto, uint16_t port, struct in_addr *addr, uint16_t iface, const char *cname)
 {
@@ -483,6 +529,7 @@ si_addrinfo_v4_mapped(si_mod_t *si, int32_t flags, int32_t sock, int32_t proto, 
 }
 
 
+LIBINFO_EXPORT
 si_item_t *
 si_addrinfo_v6(si_mod_t *si, int32_t flags, int32_t sock, int32_t proto, uint16_t port, struct in6_addr *addr, uint16_t iface, const char *cname)
 {
@@ -518,6 +565,7 @@ si_addrinfo_v6(si_mod_t *si, int32_t flags, int32_t sock, int32_t proto, uint16_
 	return (si_item_t *)LI_ils_create("L448844444Ss", (unsigned long)si, CATEGORY_ADDRINFO, 1, unused, unused, flags, AF_INET6, sock, proto, len, sockdata, cname);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_addrinfo_list(si_mod_t *si, uint32_t flags, int socktype, int proto, struct in_addr *a4, struct in6_addr *a6, int port, int scopeid, const char *cname4, const char *cname6)
 {
@@ -713,6 +761,7 @@ _gai_numerichost(const char* nodename, uint32_t *family, int flags, struct in_ad
 /* si_addrinfo_list_from_hostent
  * Returns an addrinfo list from IPv4 and IPv6 hostent entries
  */
+LIBINFO_EXPORT
 si_list_t *
 si_addrinfo_list_from_hostent(si_mod_t *si, uint32_t flags, uint32_t socktype, uint32_t proto, uint16_t port, uint16_t scope, const struct hostent *h4, const struct hostent *h6)
 {
@@ -764,11 +813,11 @@ _gai_addr_sort(const void *a, const void *b)
 	sq = (struct sockaddr *)q->ai_addr.x;
 
 	/*
-	 * sa_dst_compare(A,B) returns -1 if A is less desirable than B,
+	 * si_destination_compare(A,B) returns -1 if A is less desirable than B,
 	 * 0 if they are equally desirable, and 1 if A is more desirable.
 	 * qsort() expects the inverse, so we swap sp and sq.
 	 */
-	return sa_dst_compare(sq, sp, 0);
+	return si_destination_compare(sq, 0, sp, 0, true);
 }
 
 static si_list_t *
@@ -848,6 +897,7 @@ _gai_sort_list(si_list_t *in, uint32_t flags)
 /* _gai_simple
  * Simple lookup via gethostbyname2(3) mechanism.
  */
+LIBINFO_EXPORT
 si_list_t *
 _gai_simple(si_mod_t *si, const void *nodeptr, const void *servptr, uint32_t family, uint32_t socktype, uint32_t proto, uint32_t flags, const char *interface, uint32_t *err)
 {
@@ -858,6 +908,11 @@ _gai_simple(si_mod_t *si, const void *nodeptr, const void *servptr, uint32_t fam
 
 	if ((flags & AI_NUMERICSERV) != 0)
 	{
+		if (servptr == NULL)
+		{
+			if (err) *err = SI_STATUS_H_ERRNO_NO_RECOVERY;
+			return NULL;
+		}
 		port = *(uint16_t*)servptr;
 	}
 	else
@@ -910,6 +965,7 @@ _gai_simple(si_mod_t *si, const void *nodeptr, const void *servptr, uint32_t fam
 	return _gai_sort_list(out, flags);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_srv_byname(si_mod_t *si, const char *qname, const char *interface, uint32_t *err)
 {
@@ -919,6 +975,7 @@ si_srv_byname(si_mod_t *si, const char *qname, const char *interface, uint32_t *
 	return si->vtable->sim_srv_byname(si, qname, interface, err);
 }
 
+LIBINFO_EXPORT
 int
 si_wants_addrinfo(si_mod_t *si)
 {
@@ -1010,9 +1067,333 @@ _gai_srv(si_mod_t *si, const char *node, const char *serv, uint32_t family, uint
 	return result;
 }
 
+#pragma mark -- NAT64 --
+
+static bool (*nat64_v4_requires_synthesis)(const struct in_addr *ipv4_addr) = NULL;
+static int (*nat64_v4_synthesize)(uint32_t *index, const struct in_addr *ipv4, struct in6_addr **out_ipv6_addrs) = NULL;
+
+#if !TARGET_OS_SIMULATOR
+static void _gai_load_libnetwork_once(void)
+{
+	// If the function pointers are already loaded, we don't need to call dlopen
+	if (nat64_v4_requires_synthesis != NULL && nat64_v4_synthesize != NULL) {
+		return;
+	}
+
+	// Using dlopen will trigger libnetwork's init functions which should call
+	// si_set_nat64_v4_synthesize and si_set_nat64_v4_requires_synthesis
+	static void *handle;
+	os_log_debug(gai_log(), "Opening libnetwork.dylib");
+	handle = dlopen("/usr/lib/libnetwork.dylib", RTLD_LAZY | RTLD_LOCAL);
+	if (handle == NULL) {
+		const char *error_description = dlerror();
+		os_log_error(gai_log(), "dlopen(\"...libnetwork.dylib\") failed: %{public}s",
+					 error_description ? error_description : "?");
+	} else {
+		if (nat64_v4_requires_synthesis == NULL) {
+			os_log_error(gai_log(), "libnetwork.dylib did not set nat64_v4_requires_synthesis");
+		}
+		if (nat64_v4_synthesize == NULL) {
+			os_log_error(gai_log(), "libnetwork.dylib did not set nat64_v4_synthesize");
+		}
+	}
+}
+
+static void _gai_load_libnetwork(void)
+{
+	static pthread_once_t	load_once = PTHREAD_ONCE_INIT;
+	pthread_once(&load_once, _gai_load_libnetwork_once);
+}
+#else
+static void _gai_load_libnetwork(void)
+{
+}
+#endif
+
+static bool _gai_nat64_v4_address_requires_synthesis(const struct in_addr *ipv4_addr)
+{
+	_gai_load_libnetwork();
+	if (nat64_v4_requires_synthesis == NULL) {
+		return false;
+	}
+	bool result = nat64_v4_requires_synthesis(ipv4_addr);
+	os_log_debug(gai_log(), "nat64_v4_requires_synthesis(%{network:in_addr}d) == %{bool}d", ipv4_addr->s_addr, result);
+	return result;
+}
+
+static int _gai_nat64_v4_synthesize(uint32_t *index, const struct in_addr *ipv4, struct in6_addr **out_ipv6_addrs)
+{
+	_gai_load_libnetwork();
+	if (nat64_v4_synthesize == NULL) {
+		return 0;
+	}
+	int result = nat64_v4_synthesize(index, ipv4, out_ipv6_addrs);
+	os_log_debug(gai_log(), "nat64_v4_synthesize(%d, %{network:in_addr}d, ...) returned %d", index != NULL ? *index : 0,
+				 ipv4->s_addr, result);
+	return nat64_v4_synthesize(index, ipv4, out_ipv6_addrs);
+}
+
+LIBINFO_EXPORT
+void si_set_nat64_v4_requires_synthesis(bool (*new_requires_synthesis)(const struct in_addr *ipv4_addr))
+{
+	if (new_requires_synthesis == NULL) {
+		os_log_fault(gai_log(), "new_requires_synthesis is NULL");
+		return;
+	}
+	nat64_v4_requires_synthesis = new_requires_synthesis;
+}
+
+LIBINFO_EXPORT
+void si_set_nat64_v4_synthesize(int (*new_synthesize)(uint32_t *index, const struct in_addr *ipv4,
+													  struct in6_addr **out_ipv6_addrs))
+{
+	if (new_synthesize == NULL) {
+		os_log_fault(gai_log(), "new_synthesize is NULL");
+		return;
+	}
+	nat64_v4_synthesize = new_synthesize;
+}
+
+LIBINFO_EXPORT
+bool _gai_nat64_can_v4_address_be_synthesized(const struct in_addr *ipv4_addr)
+{
+	if (ipv4_addr == NULL) {
+		os_log_fault(gai_log(), "ipv4_addr is NULL");
+		return false;
+	}
+
+	const in_addr_t addr_hbo = ntohl(ipv4_addr->s_addr); // host byte order
+
+	if (IN_ZERONET(addr_hbo)			||	// 0.0.0.0/8			Source hosts on local network
+		IN_LOOPBACK(addr_hbo)			||	// 127.0.0.0/8			Loopback
+		IN_LINKLOCAL(addr_hbo)			||	// 169.254.0.0/16		Link Local
+		IN_DS_LITE(addr_hbo)			||	// 192.0.0.0/29			DS-Lite
+		IN_6TO4_RELAY_ANYCAST(addr_hbo)	||	// 192.88.99.0/24		6to4 Relay Anycast
+		IN_MULTICAST(addr_hbo)			||	// 224.0.0.0/4			Multicast
+		INADDR_BROADCAST == addr_hbo) {		// 255.255.255.255/32	Limited Broadcast
+		return false;
+	}
+
+	return true;
+}
+
+static si_list_t *
+_gai_nat64_synthesis(si_mod_t *si, const char *node, const void *servptr, int numericserv,
+					 uint32_t family, uint32_t socktype, uint32_t proto, uint32_t flags, const char *interface)
+{
+	if (NULL == node)
+	{
+		return NULL;
+	}
+
+	/* validate AI_NUMERICHOST */
+	if ((flags & AI_NUMERICHOST) != 0)
+	{
+		return NULL;
+	}
+
+	/* validate family */
+	if ((AF_UNSPEC != family) && (AF_INET6 != family))
+	{
+		return NULL;
+	}
+
+	/* validate that node is an IPv4 address */
+	struct in_addr a4;
+	if (1 != inet_pton(AF_INET, node, &a4))
+	{
+		return NULL;
+	}
+
+	/* validate that IPv4 address is eligible for NAT64 synthesis */
+	if (!_gai_nat64_can_v4_address_be_synthesized(&a4)) {
+		return NULL;
+	}
+
+	/* validate that there is at least an IPv6 address configured */
+	uint32_t num_inet6 = 0;
+	if ((si_inet_config(NULL, &num_inet6) < 0) || (0 == num_inet6))
+	{
+		return NULL;
+	}
+
+	/* validate interface name and convert to index */
+	uint32_t ifindex = 0;
+	if (NULL != interface)
+	{
+		ifindex = if_nametoindex(interface);
+		if (0 == ifindex)
+		{
+			return NULL;
+		}
+	}
+
+	/* validate serv and convert to port */
+	uint16_t port = 0;
+	if (0 == numericserv)
+	{
+		if (_gai_serv_to_port((const char *)servptr, proto, &port) != 0)
+		{
+			return NULL;
+		}
+		else
+		{
+			flags |= AI_NUMERICSERV;
+		}
+	}
+	else if (NULL != servptr)
+	{
+		port = *((const uint16_t *)servptr);
+	}
+
+	/* query NAT64 prefixes */
+	struct in6_addr *synthesized = NULL;
+	const size_t count = _gai_nat64_v4_synthesize(&ifindex, &a4, &synthesized);
+	if (count <= 0 || (NULL == synthesized)) {
+		return false;
+	}
+
+	/* add every address to results */
+	si_list_t *out_list = NULL;
+	for (size_t i = 0; i < count; i++)
+	{
+		si_list_t *temp_list = si_addrinfo_list(si, flags, socktype, proto, NULL, &synthesized[i], port, 0, NULL, NULL);
+		if (NULL == temp_list)
+		{
+			continue;
+		}
+		if (NULL != out_list)
+		{
+			out_list = si_list_concat(out_list, temp_list);
+			si_list_release(temp_list);
+		}
+		else
+		{
+			out_list = temp_list;
+		}
+	}
+
+	free(synthesized);
+
+	/* return to standard code path if no NAT64 addresses could be synthesized */
+	if (NULL == out_list)
+	{
+		return NULL;
+	}
+
+	/* add IPv4 addresses and IPv4-mapped IPv6 addresses if appropriate */
+	if (((AF_UNSPEC == family) && ((flags & AI_ADDRCONFIG) == 0)) ||
+		((AF_INET6 == family) && ((flags & AI_ALL) != 0) && ((flags & AI_V4MAPPED) != 0)))
+	{
+		si_list_t *list4 = si_addrinfo_list(si, flags, socktype, proto, &a4, NULL, port, 0, NULL, NULL);
+		if (NULL != list4)
+		{
+			out_list = si_list_concat(out_list, list4);
+			si_list_release(list4);
+		}
+	}
+
+	return _gai_sort_list(out_list, flags);
+}
+
+static si_list_t *
+_gai_nat64_second_pass(si_list_t *out, si_mod_t *si, const char *serv, uint32_t family, uint32_t socktype,
+					   uint32_t proto, uint32_t flags, const char *interface)
+{
+	if (out == NULL || out->count == 0)
+	{
+		return NULL;
+	}
+
+	/* validate AI_NUMERICHOST */
+	if ((flags & AI_NUMERICHOST) != 0)
+	{
+		return NULL;
+	}
+
+	/* validate family */
+	if ((AF_UNSPEC != family) && (AF_INET6 != family))
+	{
+		return NULL;
+	}
+
+	/* skip if we already have an IPv6 address (unless it is v4-mapped) */
+	for (uint32_t i = 0; i < out->count; i++)
+	{
+		si_addrinfo_t *a = (si_addrinfo_t *)((uintptr_t)out->entry[i] + sizeof(si_item_t));
+		if (a->ai_family == AF_INET6)
+		{
+			struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)a->ai_addr.x;
+			if (!IN6_IS_ADDR_V4MAPPED(&s6->sin6_addr))
+			{
+				return NULL;
+			}
+		}
+	}
+
+	si_list_t *out_list = NULL;
+	const uint32_t flags2 = flags & (~(AI_V4MAPPED | AI_V4MAPPED_CFG));
+
+	for (uint32_t i = 0; i < out->count; i++)
+	{
+		si_addrinfo_t *a = (si_addrinfo_t *)((uintptr_t)out->entry[i] + sizeof(si_item_t));
+		struct in_addr *addr4 = NULL;
+		if (a->ai_family == AF_INET)
+		{
+			addr4 = &((struct sockaddr_in *)a->ai_addr.x)->sin_addr;
+		}
+		else if (a->ai_family == AF_INET6)
+		{
+			struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)a->ai_addr.x;
+			addr4 = (struct in_addr *)&(s6->sin6_addr.__u6_addr.__u6_addr32[3]);
+		}
+		else
+		{
+			continue;
+		}
+
+		if (!_gai_nat64_v4_address_requires_synthesis(addr4))
+		{
+			continue;
+		}
+
+		char v4_str[INET_ADDRSTRLEN] = {0};
+		if (NULL == inet_ntop(AF_INET, addr4, v4_str, sizeof(v4_str)))
+		{
+			continue;
+		}
+
+		uint32_t err = SI_STATUS_NO_ERROR;
+		si_list_t *temp_list = si_addrinfo(si, v4_str, serv, AF_INET6, socktype, proto, flags2, interface, &err);
+		if (NULL == temp_list)
+		{
+			continue;
+		}
+		if (err != SI_STATUS_NO_ERROR)
+		{
+			si_list_release(temp_list);
+			continue;
+		}
+		if (NULL != out_list)
+		{
+			out_list = si_list_concat(out_list, temp_list);
+			si_list_release(temp_list);
+		}
+		else
+		{
+			out_list = temp_list;
+		}
+	}
+	return out_list;
+}
+
+#pragma mark -- /NAT64 --
+
+LIBINFO_EXPORT
 si_list_t *
 si_addrinfo(si_mod_t *si, const char *node, const char *serv, uint32_t family, uint32_t socktype, uint32_t proto, uint32_t flags, const char *interface, uint32_t *err)
 {
+	const uint32_t family_ori = family, flags_ori = flags;
 	int numerichost, numericserv = 0;
 	int scope = 0;
 	const void *nodeptr = NULL, *servptr = NULL;
@@ -1087,6 +1468,12 @@ si_addrinfo(si_mod_t *si, const char *node, const char *serv, uint32_t family, u
 		return NULL;
 	}
 
+	/* replace AI_V4MAPPED_CFG with AI_V4MAPPED */
+	if ((flags & AI_V4MAPPED_CFG) != 0)
+	{
+		flags = (flags & ~AI_V4MAPPED_CFG) | AI_V4MAPPED;
+	}
+
 	/* check AI_V4MAPPED and AI_ALL */
 	if (family != AF_INET6)
 	{
@@ -1138,6 +1525,13 @@ si_addrinfo(si_mod_t *si, const char *node, const char *serv, uint32_t family, u
 		{
 			servptr = serv;
 		}
+	}
+
+	/* NAT64 IPv6 address synthesis support */
+	si_list_t *nat64_list = _gai_nat64_synthesis(si, node, servptr, numericserv, family, socktype, proto, flags, interface);
+	if (NULL != nat64_list)
+	{
+		return nat64_list;
 	}
 
 	numerichost = _gai_numerichost(node, &family, flags, &a4, &a6, &scope);
@@ -1201,6 +1595,16 @@ si_addrinfo(si_mod_t *si, const char *node, const char *serv, uint32_t family, u
 	{
 		/* or let the current module handle the host lookups intelligently */
 		out = si->vtable->sim_addrinfo(si, nodeptr, servptr, family, socktype, proto, flags, interface, err);
+
+		/* run a second NAT64 pass in case a hostname was resolved over VPN to an IPv4 address
+		 and it needs to be synthesized in order to be used on IPv6-only cellular */
+		si_list_t *nat64_list2 = _gai_nat64_second_pass(out, si, serv, family_ori, socktype,
+														proto, flags_ori, interface);
+		if (nat64_list2 != NULL)
+		{
+			out = si_list_concat(out, nat64_list2);
+		}
+
 		return _gai_sort_list(out, flags);
 	}
 
@@ -1327,6 +1731,7 @@ lower_case(const char *s)
 	if (s == NULL) return NULL;
 
 	t = malloc(strlen(s) + 1);
+	if (t == NULL) return NULL;
 
 	for (i = 0; s[i] != '\0'; i++) 
 	{
@@ -1346,6 +1751,7 @@ merge_alias(const char *name, build_hostent_t *h)
 
 	if (name == NULL) return 0;
 	if (h == NULL) return 0;
+	if (h->host.h_name == NULL) return 0;
 
 	if ((h->host.h_name != NULL) && (string_equal(name, h->host.h_name))) return 0;
 
@@ -1425,6 +1831,7 @@ free_build_hostent(build_hostent_t *h)
 	free(h);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_ipnode_byname(si_mod_t *si, const char *name, int family, int flags, const char *interface, uint32_t *err)
 {

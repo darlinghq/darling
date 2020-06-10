@@ -131,8 +131,10 @@ or be the bitwise-inclusive OR of one or more of the values
 .Dv AI_NUMERICHOST ,
 .Dv AI_NUMERICSERV ,
 .Dv AI_PASSIVE ,
+.Dv AI_V4MAPPED ,
+.Dv AI_V4MAPPED_CFG ,
 and
-.Dv AI_V4MAPPED .
+.Dv AI_DEFAULT .
 .Bl -tag -width "AI_CANONNAMEXX"
 .It Dv AI_ADDRCONFIG
 If the
@@ -224,7 +226,7 @@ If the
 flag is specified along with an
 .Fa ai_family
 of
-.Dv AF_INET6 ,
+.Dv PF_INET6 ,
 then
 .Fn getaddrinfo
 shall return IPv4-mapped IPv6 addresses
@@ -236,9 +238,51 @@ The
 flag shall be ignored unless
 .Fa ai_family
 equals
-.Dv AF_INET6 .
+.Dv PF_INET6 .
+.It Dv AI_V4MAPPED_CFG
+The
+.Dv AI_V4MAPPED_CFG
+flag behaves exactly like the
+.Dv AI_V4MAPPED
+flag if the kernel supports IPv4-mapped IPv6 addresses. Otherwise it is ignored.
+.It Dv AI_DEFAULT
+.Dv AI_DEFAULT
+is defined as (
+.Dv AI_V4MAPPED_CFG
+|
+.Dv AI_ADDRCONFIG
+).
+.It Dv AI_UNUSABLE
+To override the automatic
+.Dv AI_DEFAULT
+behavior that occurs when
+.Fa ai_flags
+is zero pass
+.Dv AI_UNUSABLE
+instead of zero.
+This suppresses the implicit setting of
+.Dv AI_V4MAPPED_CFG
+and
+.Dv AI_ADDRCONFIG ,
+thereby causing unusable addresses to be included in the results.
 .El
 .El
+.Pp
+If
+.Fa ai_flags
+is zero,
+.Fn getaddrinfo
+gives the
+.Dv AI_DEFAULT
+behavior (
+.Dv AI_V4MAPPED_CFG
+|
+.Dv AI_ADDRCONFIG
+). To override this default behavior, pass any nonzero value for
+.Fa ai_flags ,
+by setting any desired flag values, or setting
+.Dv AI_UNUSABLE
+if no other flags are desired.
 .Pp
 All other elements of the
 .Li addrinfo
@@ -257,7 +301,12 @@ with
 set to
 .Dv PF_UNSPEC
 and all other elements set to zero or
-.Dv NULL .
+.Dv NULL
+(which includes treating the
+.Fa ai_flags
+field as effectively zero, giving the automatic default
+.Dv AI_DEFAULT
+behavior).
 .Pp
 After a successful call to
 .Fn getaddrinfo ,
@@ -289,7 +338,7 @@ member points to a filled-in socket address structure of length
 This implementation of
 .Fn getaddrinfo
 allows numeric IPv6 address notation with scope identifier,
-as documented in chapter 11 of draft-ietf-ipv6-scoping-arch-02.txt.
+as documented in section 11 of RFC 4007.
 By appending the percent character and scope identifier to addresses,
 one can fill the
 .Li sin6_scope_id
@@ -339,6 +388,77 @@ pointer should be an
 .Li addrinfo
 structure created by a call to
 .Fn getaddrinfo .
+.Pp
+The current implementation supports synthesis of NAT64 mapped IPv6 addresses.
+If
+.Fa hostname
+is a numeric string defining an IPv4 address (for example,
+.Dq Li 192.0.2.1
+) and
+.Fa ai_family
+is set to
+.Dv PF_UNSPEC
+or
+.Dv PF_INET6,
+.Fn getaddrinfo
+will synthesize the appropriate IPv6 address(es) (for example,
+.Dq Li 64:ff9b::192.0.2.1
+) if the current interface supports IPv6, NAT64 and DNS64
+and does not support IPv4. If the
+.Dv AI_ADDRCONFIG
+flag is set, the IPv4 address will be suppressed on those interfaces.
+On non-qualifying interfaces,
+.Fn getaddrinfo
+is guaranteed to return immediately without attempting any resolution, and will
+return the IPv4 address if
+.Fa ai_family
+is
+.Dv PF_UNSPEC
+or
+.Dv PF_INET.
+NAT64 address synthesis can be disabled by setting the
+.Dv AI_NUMERICHOST
+flag. To best support NAT64 networks, it is recommended to resolve all
+IP address literals with
+.Fa ai_family
+set to
+.Dv PF_UNSPEC
+and
+.Fa ai_flags
+set to
+.Dv AI_DEFAULT.
+.Pp
+Note that NAT64 address synthesis is always disabled for IPv4 addresses
+in the following ranges:
+0.0.0.0/8,
+127.0.0.0/8,
+169.254.0.0/16,
+192.0.0.0/29,
+192.88.99.0/24,
+224.0.0.0/4, and
+255.255.255.255/32.
+Additionally, NAT64 address synthesis is disabled when the network uses
+the well-known prefix (64:ff9b::/96)
+for IPv4 addresses in the following ranges:
+10.0.0.0/8,
+100.64.0.0/10,
+172.16.0.0/12, and
+192.168.0.0/16.
+.Pp
+Historically, passing a host's own hostname to 
+.Fn getaddrinfo 
+has been a popular 
+technique for determining that host's IP address(es), but this is fragile, 
+and doesn't work reliably in all cases. The appropriate way for software to 
+discover the IP address(es) of the host it is running on is to use 
+.Xr getifaddrs 3 .
+.Pp
+The 
+.Fn getaddrinfo 
+implementations on all versions of OS X and iOS are now, and always have been, 
+thread-safe. Previous versions of this man page incorrectly reported that 
+.Fn getaddrinfo 
+was not thread-safe.
 .Sh RETURN VALUES
 .Fn getaddrinfo
 returns zero on success or one of the error codes listed in
@@ -352,10 +472,10 @@ service
 via a stream socket.
 It loops through all the addresses available, regardless of address family.
 If the destination resolves to an IPv4 address, it will use an
-.Dv AF_INET
+.Dv PF_INET
 socket.
 Similarly, if it resolves to IPv6, an
-.Dv AF_INET6
+.Dv PF_INET6
 socket is used.
 Observe that there is no hardcoded reference to a particular address family.
 The code works even if
@@ -475,9 +595,8 @@ freeaddrinfo(res0);
 .%A E. Nordmark
 .%A B. Zill
 .%T "IPv6 Scoped Address Architecture"
-.%R internet draft
-.%N draft-ietf-ipv6-scoping-arch-02.txt
-.%O work in progress material
+.%R RFC 4007
+.%D March 2005
 .Re
 .Rs
 .%A Craig Metz

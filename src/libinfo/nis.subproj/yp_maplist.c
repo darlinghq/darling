@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -56,6 +56,8 @@
 static char *rcsid = "$OpenBSD: yp_maplist.c,v 1.5 1996/12/03 08:20:04 deraadt Exp $";
 #endif /* LIBC_SCCS and not lint */
 
+#include "libinfo_common.h"
+
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -72,6 +74,7 @@ static char *rcsid = "$OpenBSD: yp_maplist.c,v 1.5 1996/12/03 08:20:04 deraadt E
 #include <rpcsvc/ypclnt.h>
 #include "ypinternal.h"
 
+LIBINFO_EXPORT
 int
 yp_maplist(indomain, outmaplist)
 	const char     *indomain;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -63,11 +63,14 @@ static char *rcsid = "$Id: pmap_prot.c,v 1.2 1999/10/14 21:56:53 wsanchez Exp $"
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "libinfo_common.h"
+
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 #include <rpc/pmap_prot.h>
 
 
+LIBINFO_EXPORT
 bool_t
 xdr_pmap(xdrs, regs)
 	XDR *xdrs;

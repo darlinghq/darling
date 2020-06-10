@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
 /*	$KAME: rthdr.c,v 1.19 2003/06/06 10:48:51 itojun Exp $	*/
 
 /*
@@ -31,6 +34,8 @@
 
 /* __FBSDID("$FreeBSD: src/lib/libc/net/rthdr.c,v 1.9.10.1.4.1 2010/06/14 02:09:06 kensmith Exp $"); */
 
+#include "libinfo_common.h"
+
 /*
  * These routines support RFC 2292.
  * __APPLE_USE_RFC_2292 selects the appropriate API in <netinet6/in6.h>
@@ -53,6 +58,7 @@
  * RFC2292 API
  */
 
+LIBINFO_EXPORT
 size_t
 inet6_rthdr_space(type, seg)
 int type, seg;
@@ -73,6 +79,7 @@ int type, seg;
 	}
 }
 
+LIBINFO_EXPORT
 struct cmsghdr *
 inet6_rthdr_init(bp, type)
 void *bp;
@@ -104,6 +111,7 @@ int type;
 }
 
 /* ARGSUSED */
+LIBINFO_EXPORT
 int
 inet6_rthdr_add(cmsg, addr, flags)
 struct cmsghdr *cmsg;
@@ -149,6 +157,7 @@ u_int flags;
 }
 
 /* ARGSUSED */
+LIBINFO_EXPORT
 int
 inet6_rthdr_lasthop(cmsg, flags)
 struct cmsghdr *cmsg;
@@ -199,6 +208,7 @@ struct cmsghdr *out;
 }
 #endif
 
+LIBINFO_EXPORT
 int
 inet6_rthdr_segments(cmsg)
 const struct cmsghdr *cmsg;
@@ -223,6 +233,7 @@ const struct cmsghdr *cmsg;
 	}
 }
 
+LIBINFO_EXPORT
 struct in6_addr *
 inet6_rthdr_getaddr(cmsg, idx)
 struct cmsghdr *cmsg;
@@ -255,6 +266,7 @@ int idx;
 	}
 }
 
+LIBINFO_EXPORT
 int
 inet6_rthdr_getflags(cmsg, idx)
 const struct cmsghdr *cmsg;
@@ -294,6 +306,7 @@ int idx;
  * RFC3542 API
  */
 
+LIBINFO_EXPORT
 socklen_t
 inet6_rth_space(int type, int segments)
 {
@@ -307,6 +320,7 @@ inet6_rth_space(int type, int segments)
 	}
 }
 
+LIBINFO_EXPORT
 void *
 inet6_rth_init(void *bp, socklen_t bp_len, int type, int segments)
 {
@@ -336,6 +350,7 @@ inet6_rth_init(void *bp, socklen_t bp_len, int type, int segments)
 	return (bp);
 }
 
+LIBINFO_EXPORT
 int
 inet6_rth_add(void *bp, const struct in6_addr *addr)
 {
@@ -360,6 +375,7 @@ inet6_rth_add(void *bp, const struct in6_addr *addr)
 	return (0);
 }
 
+LIBINFO_EXPORT
 int
 inet6_rth_reverse(const void *in, void *out)
 {
@@ -402,6 +418,7 @@ inet6_rth_reverse(const void *in, void *out)
 	return (0);
 }
 
+LIBINFO_EXPORT
 int
 inet6_rth_segments(const void *bp)
 {
@@ -427,6 +444,7 @@ inet6_rth_segments(const void *bp)
 	}
 }
 
+LIBINFO_EXPORT
 struct in6_addr *
 inet6_rth_getaddr(const void *bp, int idx)
 {

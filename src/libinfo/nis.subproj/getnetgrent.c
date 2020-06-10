@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2015 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -46,7 +46,7 @@ static struct grouplist {		/* also used by pwlib */
 	char	*gl_name;
 	char	*gl_domain;
 	struct	grouplist *gl_nxt;
-} *grouplist, *grlist;
+} *grouplist;
 
 
 struct list {			/* list of names to check for loops */
@@ -59,64 +59,8 @@ static	char *fill();
 static	char *match();
 
 static	char *domain;
-static	char *oldgrp;
 
 char	*NETGROUP = "netgroup";
-
-void _old_endnetgrent(void);
-void _old_setnetgrent(char *);
-
-void _old_setnetgrent(grp)
-	char *grp;
-{
-	
-	if (oldgrp == NULL)
-		oldgrp = (char *)calloc(1,256);
-	if (strcmp(oldgrp, grp) == 0)
-		grlist = grouplist;
-	else {
-		if (grouplist != NULL)
-			_old_endnetgrent();
-		doit(grp, (struct list *) NULL);
-		grlist = grouplist;
-		(void) strcpy(oldgrp, grp);
-	}
-}
-
-void _old_endnetgrent()
-{
-	register struct grouplist *gl;
-	
-	for (gl = grouplist; gl != NULL; gl = gl->gl_nxt) {
-		if (gl->gl_name)
-			free(gl->gl_name);
-		if (gl->gl_domain)
-			free(gl->gl_domain);
-		if (gl->gl_machine)
-			free(gl->gl_machine);
-		free((char *) gl);
-	}
-	grouplist = NULL;
-	grlist = NULL;
-	if (oldgrp) {
-		free(oldgrp);
-		oldgrp = 0;
-	}
-}
-
-int _old_getnetgrent(machinep, namep, domainp)
-	char **machinep, **namep, **domainp;
-{
-
-	if (grlist == 0)
-		return (0);
-	*machinep = grlist->gl_machine;
-	*namep = grlist->gl_name;
-	*domainp = grlist->gl_domain;
-	grlist = grlist->gl_nxt;
-	return (1);
-}
-
 /*
  * recursive function to find the members of netgroup "group". "list" is
  * the path followed through the netgroups so far, to check for cycles.
@@ -162,6 +106,7 @@ doit(group,list)
 		if (*p == '(') {
 			gpls = (struct grouplist *)
 			    malloc(sizeof(struct grouplist));
+			if (gpls == NULL) return;
 			p++;
 			if (!(p = fill(p,&gpls->gl_machine,',')))
 				goto syntax_error;
@@ -173,7 +118,7 @@ doit(group,list)
 			grouplist = gpls;
 		} else {
 			q = strpbrk(p, " \t\n#");
-			if (q && *q == '#')
+			if (q == NULL || *q == '#')
 				break;
 			*q = 0;
 			doit(p,list);
@@ -184,6 +129,7 @@ doit(group,list)
 	return;
  
 syntax_error:
+	free(gpls);
 	(void) fprintf(stderr,"syntax error in /etc/netgroup\n");
 	(void) fprintf(stderr,"--- %s\n",val);
 	return;
@@ -215,6 +161,7 @@ fill(start,target,termchar)
 			;
 		size = q - p + 1;
 		*target = malloc(size+1);
+		if (*target == NULL) return NULL;
 		(void) strncpy(*target,p,(int) size);
 		(*target)[size] = 0;
 	}

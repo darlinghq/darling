@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -53,6 +53,8 @@
  * Mountain View, California  94043
  */
 
+#include "libinfo_common.h"
+
 #include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint) 
 static char *sccsid = "@(#)xdr_reference.c 1.11 87/08/11 SMI";
@@ -87,6 +89,7 @@ static char *rcsid = "$FreeBSD: src/lib/libc/xdr/xdr_reference.c,v 1.11 2002/03/
  * size is the sizeof the referneced structure.
  * proc is the routine to handle the referenced structure.
  */
+LIBINFO_EXPORT
 bool_t
 xdr_reference(xdrs, pp, size, proc)
 	XDR *xdrs;
@@ -144,6 +147,7 @@ xdr_reference(xdrs, pp, size, proc)
  * > xdr_obj: routine to XDR an object.
  *
  */
+LIBINFO_EXPORT
 bool_t
 xdr_pointer(xdrs,objpp,obj_size,xdr_obj)
 	XDR *xdrs;

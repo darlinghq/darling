@@ -1,8 +1,8 @@
+#!/bin/bash -e -x
 # exit immediately on failure
-set -e -x
 
 function InstallHeaders() {
-	DESTDIR="$DSTROOT/$INSTALL_PATH_PREFIX/$1"
+	DESTDIR="$DSTROOT/$1"
 	shift
 	install -d -o "$INSTALL_OWNER" -g "$INSTALL_GROUP" -m 0755 "$DESTDIR"
 	install -o "$INSTALL_OWNER" -g "$INSTALL_GROUP" -m 0444 "$@" "$DESTDIR"
@@ -24,11 +24,13 @@ InstallHeaders /usr/local/include \
 	lookup.subproj/ils.h \
 	lookup.subproj/kvbuf.h \
 	lookup.subproj/libinfo.h \
+	lookup.subproj/si_compare.h \
 	lookup.subproj/si_data.h \
 	lookup.subproj/si_module.h \
 	lookup.subproj/thread_data.h
 
 InstallHeaders /usr/local/include \
+	lookup.subproj/libinfo_muser.h \
 	lookup.subproj/netdb_async.h \
 	membership.subproj/membershipPriv.h
 
@@ -50,10 +52,14 @@ InstallHeaders /usr/include/rpcsvc \
 	nis.subproj/yp_prot.h \
 	nis.subproj/ypclnt.h
 
-# Don't install man pages for installhdrs nor simulator builds
-if [ "$ACTION" == "installhdrs" -o \
-     "${RC_ProjectName%_Sim}" != "${RC_ProjectName}" ] ; then
-	exit 0
+# Don't install man pages for installhdrs, installapi, nor simulator builds
+if [[ "${ACTION}" == "installhdrs" ]] || [[ "${ACTION}" == "installapi" ]]; then
+    exit 0
+fi
+
+if [[ "${PLATFORM_NAME}" =~ "simulator" ]]; then
+    ln -s libsystem_info.dylib ${DSTROOT}${INSTALL_PATH}/libsystem_sim_info.dylib
+    exit 0
 fi
 
 function InstallManPages() {

@@ -37,7 +37,7 @@
  *
  *	@(#)grp.h	8.2 (Berkeley) 1/21/94
  */
-/* Portions copyright (c) 2000-2011 Apple Inc. All rights reserved. */ 
+/* Portions copyright (c) 2000-2018 Apple Inc. All rights reserved. */ 
 
 #ifndef _GRP_H_
 #define	_GRP_H_
@@ -83,7 +83,9 @@ __END_DECLS
 
 #if !defined(_XOPEN_SOURCE) || defined(_DARWIN_C_SOURCE)
 __BEGIN_DECLS
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 void setgrfile(const char *);
+#endif
 int setgroupent(int);
 __END_DECLS
 #endif

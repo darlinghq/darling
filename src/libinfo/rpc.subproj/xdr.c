@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -69,6 +69,8 @@ static char *sccsid = "@(#)xdr.c	2.1 88/07/29 4.0 RPCSRC";
  * xdr.
  */
 
+#include "libinfo_common.h"
+
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -107,6 +109,7 @@ static const char xdr_zero[BYTES_PER_XDR_UNIT] = { 0, 0, 0, 0 };
  * Free a data structure using XDR
  * Not a filter, but a convenient utility nonetheless
  */
+LIBINFO_EXPORT
 void
 xdr_free(proc, objp)
 	xdrproc_t proc;
@@ -121,6 +124,7 @@ xdr_free(proc, objp)
 /*
  * XDR nothing
  */
+LIBINFO_EXPORT
 bool_t
 xdr_void(void)
 {
@@ -133,6 +137,7 @@ xdr_void(void)
  * XDR integers
  */
 bool_t
+LIBINFO_EXPORT
 xdr_int(xdrs, ip)
 	XDR *xdrs;
 	int *ip;
@@ -162,6 +167,7 @@ xdr_int(xdrs, ip)
 /*
  * XDR unsigned integers
  */
+LIBINFO_EXPORT
 bool_t
 xdr_u_int(xdrs, up)
 	XDR *xdrs;
@@ -194,6 +200,7 @@ xdr_u_int(xdrs, up)
  * XDR long integers
  * same as xdr_u_long - open coded to save a proc call!
  */
+LIBINFO_EXPORT
 bool_t
 xdr_long(xdrs, lp)
 	XDR *xdrs;
@@ -219,6 +226,7 @@ xdr_long(xdrs, lp)
  * XDR unsigned long integers
  * same as xdr_long - open coded to save a proc call!
  */
+LIBINFO_EXPORT
 bool_t
 xdr_u_long(xdrs, ulp)
 	XDR *xdrs;
@@ -245,6 +253,7 @@ xdr_u_long(xdrs, ulp)
  * XDR 32-bit integers
  * same as xdr_u_int32_t - open coded to save a proc call!
  */
+LIBINFO_EXPORT
 bool_t
 xdr_int32_t(xdrs, int32_p)
 	XDR *xdrs;
@@ -276,6 +285,7 @@ xdr_int32_t(xdrs, int32_p)
  * XDR unsigned 32-bit integers
  * same as xdr_int32_t - open coded to save a proc call!
  */
+LIBINFO_EXPORT
 bool_t
 xdr_u_int32_t(xdrs, u_int32_p)
 	XDR *xdrs;
@@ -305,6 +315,7 @@ xdr_u_int32_t(xdrs, u_int32_p)
 /*
  * XDR short integers
  */
+LIBINFO_EXPORT
 bool_t
 xdr_short(xdrs, sp)
 	XDR *xdrs;
@@ -335,6 +346,7 @@ xdr_short(xdrs, sp)
 /*
  * XDR unsigned short integers
  */
+LIBINFO_EXPORT
 bool_t
 xdr_u_short(xdrs, usp)
 	XDR *xdrs;
@@ -366,6 +378,7 @@ xdr_u_short(xdrs, usp)
 /*
  * XDR 16-bit integers
  */
+LIBINFO_EXPORT
 bool_t
 xdr_int16_t(xdrs, int16_p)
 	XDR *xdrs;
@@ -396,6 +409,7 @@ xdr_int16_t(xdrs, int16_p)
 /*
  * XDR unsigned 16-bit integers
  */
+LIBINFO_EXPORT
 bool_t
 xdr_u_int16_t(xdrs, u_int16_p)
 	XDR *xdrs;
@@ -427,6 +441,7 @@ xdr_u_int16_t(xdrs, u_int16_p)
 /*
  * XDR a char
  */
+LIBINFO_EXPORT
 bool_t
 xdr_char(xdrs, cp)
 	XDR *xdrs;
@@ -445,6 +460,7 @@ xdr_char(xdrs, cp)
 /*
  * XDR an unsigned char
  */
+LIBINFO_EXPORT
 bool_t
 xdr_u_char(xdrs, cp)
 	XDR *xdrs;
@@ -463,6 +479,7 @@ xdr_u_char(xdrs, cp)
 /*
  * XDR booleans
  */
+LIBINFO_EXPORT
 bool_t
 xdr_bool(xdrs, bp)
 	XDR *xdrs;
@@ -493,6 +510,7 @@ xdr_bool(xdrs, bp)
 /*
  * XDR enumerations
  */
+LIBINFO_EXPORT
 bool_t
 xdr_enum(xdrs, ep)
 	XDR *xdrs;
@@ -519,6 +537,7 @@ xdr_enum(xdrs, ep)
  * Allows the specification of a fixed size sequence of opaque bytes.
  * cp points to the opaque object and cnt gives the byte length.
  */
+LIBINFO_EXPORT
 bool_t
 xdr_opaque(xdrs, cp, cnt)
 	XDR *xdrs;
@@ -571,6 +590,7 @@ xdr_opaque(xdrs, cp, cnt)
  * *cpp is a pointer to the bytes, *sizep is the count.
  * If *cpp is NULL maxsize bytes are allocated
  */
+LIBINFO_EXPORT
 bool_t
 xdr_bytes(xdrs, cpp, sizep, maxsize)
 	XDR *xdrs;
@@ -627,6 +647,7 @@ xdr_bytes(xdrs, cpp, sizep, maxsize)
 /*
  * Implemented here due to commonality of the object.
  */
+LIBINFO_EXPORT
 bool_t
 xdr_netobj(xdrs, np)
 	XDR *xdrs;
@@ -647,6 +668,7 @@ xdr_netobj(xdrs, np)
  * routine may be called.
  * If there is no specific or default routine an error is returned.
  */
+LIBINFO_EXPORT
 bool_t
 xdr_union(xdrs, dscmp, unp, choices, dfault)
 	XDR *xdrs;
@@ -696,6 +718,7 @@ xdr_union(xdrs, dscmp, unp, choices, dfault)
  * storage is allocated.  The last parameter is the max allowed length
  * of the string as specified by a protocol.
  */
+LIBINFO_EXPORT
 bool_t
 xdr_string(xdrs, cpp, maxsize)
 	XDR *xdrs;
@@ -763,6 +786,7 @@ xdr_string(xdrs, cpp, maxsize)
  * Wrapper for xdr_string that can be called directly from 
  * routines like clnt_call
  */
+LIBINFO_EXPORT
 bool_t
 xdr_wrapstring(xdrs, cpp)
 	XDR *xdrs;
@@ -782,6 +806,7 @@ xdr_wrapstring(xdrs, cpp)
 /*
  * XDR 64-bit integers
  */
+LIBINFO_EXPORT
 bool_t
 xdr_int64_t(xdrs, llp)
 	XDR *xdrs;
@@ -815,6 +840,7 @@ xdr_int64_t(xdrs, llp)
 /*
  * XDR unsigned 64-bit integers
  */
+LIBINFO_EXPORT
 bool_t
 xdr_u_int64_t(xdrs, ullp)
 	XDR *xdrs;
@@ -848,6 +874,7 @@ xdr_u_int64_t(xdrs, ullp)
 /*
  * XDR hypers
  */
+LIBINFO_EXPORT
 bool_t
 xdr_hyper(xdrs, llp)
 	XDR *xdrs;
@@ -864,6 +891,7 @@ xdr_hyper(xdrs, llp)
 /*
  * XDR unsigned hypers
  */
+LIBINFO_EXPORT
 bool_t
 xdr_u_hyper(xdrs, ullp)
 	XDR *xdrs;
@@ -880,6 +908,7 @@ xdr_u_hyper(xdrs, ullp)
 /*
  * XDR longlong_t's
  */
+LIBINFO_EXPORT
 bool_t
 xdr_longlong_t(xdrs, llp)
 	XDR *xdrs;
@@ -896,6 +925,7 @@ xdr_longlong_t(xdrs, llp)
 /*
  * XDR u_longlong_t's
  */
+LIBINFO_EXPORT
 bool_t
 xdr_u_longlong_t(xdrs, ullp)
 	XDR *xdrs;

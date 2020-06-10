@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -64,6 +64,8 @@ static char *rcsid = "$Id: pmap_getmaps.c,v 1.4 2004/12/19 22:45:44 zarzycki Exp
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "libinfo_common.h"
+
 #include <unistd.h>
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
@@ -83,6 +85,7 @@ extern int errno;
  * Get a copy of the current port maps.
  * Calls the pmap service remotely to do get the maps.
  */
+LIBINFO_EXPORT
 struct pmaplist *
 pmap_getmaps(address)
 	 struct sockaddr_in *address;

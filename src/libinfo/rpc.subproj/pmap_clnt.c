@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -63,6 +63,8 @@ static char *rcsid = "$Id: pmap_clnt.c,v 1.5 2004/12/19 22:45:44 zarzycki Exp $"
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "libinfo_common.h"
+
 #include <string.h>
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
@@ -90,6 +92,7 @@ void clnt_perror();
  * Set a mapping between program,version and port.
  * Calls the pmap service remotely to do the mapping.
  */
+LIBINFO_EXPORT
 bool_t
 pmap_set(program, version, protocol, port)
 #ifdef __LP64__
@@ -134,6 +137,7 @@ pmap_set(program, version, protocol, port)
  * Remove the mapping between program,version and port.
  * Calls the pmap service remotely to do the un-mapping.
  */
+LIBINFO_EXPORT
 bool_t
 pmap_unset(program, version)
 #ifdef __LP64__

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999-2008 Apple Inc.  All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -22,24 +22,30 @@
  */
 /* Copyright (c) 1994 NeXT Computer, Inc.  All rights reserved. */
 
+#include "libinfo_common.h"
+
 #import <libkern/OSByteOrder.h>
 #import <stdint.h>
 
+LIBINFO_EXPORT
 uint32_t ntohl(uint32_t x)
 {
 	return OSSwapBigToHostInt32(x);
 }
 
+LIBINFO_EXPORT
 uint32_t htonl(uint32_t x)
 {
 	return OSSwapHostToBigInt32(x);
 }
 
+LIBINFO_EXPORT
 uint16_t ntohs(uint16_t x)
 {
 	return OSSwapBigToHostInt16(x);
 }
 
+LIBINFO_EXPORT
 uint16_t htons(uint16_t x)
 {
 	return OSSwapHostToBigInt16(x);

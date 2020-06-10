@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -59,6 +59,8 @@ static char *rcsid = "$Id: clnt_generic.c,v 1.3 2002/02/19 20:36:22 epeyton Exp 
 /*
  * Copyright (C) 1987, Sun Microsystems, Inc.
  */
+#include "libinfo_common.h"
+
 #include <string.h>
 #include <rpc/rpc.h>
 #include <sys/socket.h>
@@ -70,6 +72,7 @@ static char *rcsid = "$Id: clnt_generic.c,v 1.3 2002/02/19 20:36:22 epeyton Exp 
  * returns client handle. Default options are set, which the user can 
  * change using the rpc equivalent of ioctl()'s.
  */
+LIBINFO_EXPORT
 CLIENT *
 clnt_create(hostname, prog, vers, proto)
 #ifdef __LP64__

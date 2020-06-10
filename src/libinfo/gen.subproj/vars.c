@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
+/*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
  * All rights reserved.
  * 
@@ -29,15 +32,18 @@
  * $FreeBSD: src/lib/libc/net/vars.c,v 1.1 1999/12/16 18:32:01 shin Exp $
  */
 
+#include "libinfo_common.h"
+
 #include <sys/types.h>
 #include <netinet/in.h>
 
 /*
  * Definitions of some costant IPv6 addresses.
  */
-const struct in6_addr in6addr_any = IN6ADDR_ANY_INIT;
-const struct in6_addr in6addr_loopback = IN6ADDR_LOOPBACK_INIT;
-const struct in6_addr in6addr_nodelocal_allnodes = IN6ADDR_NODELOCAL_ALLNODES_INIT;
-const struct in6_addr in6addr_linklocal_allnodes = IN6ADDR_LINKLOCAL_ALLNODES_INIT;
-const struct in6_addr in6addr_linklocal_allrouters = IN6ADDR_LINKLOCAL_ALLROUTERS_INIT;
+LIBINFO_EXPORT const struct in6_addr in6addr_any = IN6ADDR_ANY_INIT;
+LIBINFO_EXPORT const struct in6_addr in6addr_loopback = IN6ADDR_LOOPBACK_INIT;
+LIBINFO_EXPORT const struct in6_addr in6addr_nodelocal_allnodes = IN6ADDR_NODELOCAL_ALLNODES_INIT;
+LIBINFO_EXPORT const struct in6_addr in6addr_linklocal_allnodes = IN6ADDR_LINKLOCAL_ALLNODES_INIT;
+LIBINFO_EXPORT const struct in6_addr in6addr_linklocal_allrouters = IN6ADDR_LINKLOCAL_ALLROUTERS_INIT;
+LIBINFO_EXPORT const struct in6_addr in6addr_linklocal_allv2routers = IN6ADDR_LINKLOCAL_ALLV2ROUTERS_INIT;
 

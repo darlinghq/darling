@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
+/*
  * Copyright (c) 1995, 1999
  *	Berkeley Software Design, Inc.  All rights reserved.
  *
@@ -26,6 +29,8 @@
  * NOTE: SIOCGIFCONF case is not LP64 friendly.  it also does not perform
  * try-and-error for region size.
  */
+#include "libinfo_common.h"
+
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -86,6 +91,7 @@
 #define MEMORY_MIN 2048
 #define MEMORY_MAX 16777216
 
+LIBINFO_EXPORT
 int
 getifaddrs(struct ifaddrs **pif)
 {
@@ -402,28 +408,30 @@ getifaddrs(struct ifaddrs **pif)
 	if (--ift >= ifa) {
 		ift->ifa_next = NULL;
 		*pif = ifa;
-	} else {
-		*pif = NULL;
-		free(ifa);
-	}
-
-	for (ift = ifa; ift != NULL; ift = ift->ifa_next)
-	{
-		if (ift->ifa_addr->sa_family == AF_INET6)
+		
+		for (ift = ifa; ift != NULL; ift = ift->ifa_next)
 		{
-			sin6 = (struct sockaddr_in6 *)ift->ifa_addr;
-			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) || IN6_IS_ADDR_SITELOCAL(&sin6->sin6_addr))
+			if (ift->ifa_addr->sa_family == AF_INET6)
 			{
-				esid = ntohs(sin6->sin6_addr.__u6_addr.__u6_addr16[1]);
-				sin6->sin6_addr.__u6_addr.__u6_addr16[1] = 0;
-				if (sin6->sin6_scope_id == 0) sin6->sin6_scope_id = esid;
+				sin6 = (struct sockaddr_in6 *)ift->ifa_addr;
+				if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) || IN6_IS_ADDR_SITELOCAL(&sin6->sin6_addr))
+				{
+					esid = ntohs(sin6->sin6_addr.__u6_addr.__u6_addr16[1]);
+					sin6->sin6_addr.__u6_addr.__u6_addr16[1] = 0;
+					if (sin6->sin6_scope_id == 0) sin6->sin6_scope_id = esid;
+				}
 			}
 		}
+	}
+	else {
+		*pif = NULL;
+		free(ifa);
 	}
 
 	return (0);
 }
 
+LIBINFO_EXPORT
 void
 freeifaddrs(struct ifaddrs *ifp)
 {

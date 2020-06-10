@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999-2010 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,6 +21,8 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include "libinfo_common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +43,12 @@
 
 /* GLOBAL */
 
+#if __ARM_ARCH_7K__ || __ARM64_ARCH_8_32__
+static const uint32_t align_32[] = { 0, 1, 2, 0, 4, 0, 0, 0, 8 };
+#else
 static const uint32_t align_32[] = { 0, 1, 2, 0, 4, 0, 0, 0, 4 };
+#endif
+
 static const uint32_t align_64[] = { 0, 1, 2, 0, 4, 0, 0, 0, 8 };
 
 static uint32_t
@@ -83,6 +90,7 @@ padsize(size_t curr, size_t item, const uint32_t *align)
  *	@	length (4 bytes) and buffer (requires two parameters)
  *
  */
+LIBINFO_EXPORT
 void *
 LI_ils_create(char *fmt, ...)
 {

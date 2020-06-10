@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -55,6 +55,8 @@
 #if defined(LIBC_SCCS) && !defined(lint)
 static char *rcsid = "$OpenBSD: ypmatch_cache.c,v 1.6 1996/12/03 08:20:06 deraadt Exp $";
 #endif /* LIBC_SCCS and not lint */
+
+#include "libinfo_common.h"
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -174,6 +176,7 @@ ypmatch_find(map, key, keylen, val, vallen)
 }
 #endif 
 
+LIBINFO_EXPORT
 int
 yp_match(indomain, inmap, inkey, inkeylen, outval, outvallen)
 	const char     *indomain;
@@ -262,6 +265,7 @@ out:
 	return r;
 }
 
+LIBINFO_EXPORT
 int
 yp_next(indomain, inmap, inkey, inkeylen, outkey, outkeylen, outval, outvallen)
 	const char     *indomain;

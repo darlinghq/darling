@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2012-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -25,9 +25,9 @@
 #define __CONFIGURATION_PROFILE_H__
 
 #include <xpc/xpc.h>
-#include <Availability.h>
+#include <os/availability.h>
 
-char *configuration_profile_create_notification_key(const char *ident) __OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_7_0);
-xpc_object_t configuration_profile_copy_property_list(const char *ident) __OSX_AVAILABLE_STARTING(__MAC_10_9, __IPHONE_7_0);
+char *configuration_profile_create_notification_key(const char *ident) API_AVAILABLE(macos(10.9), ios(7.0));
+xpc_object_t configuration_profile_copy_property_list(const char *ident) API_AVAILABLE(macos(10.9), ios(7.0));
 
 #endif /* __CONFIGURATION_PROFILE_H__ */

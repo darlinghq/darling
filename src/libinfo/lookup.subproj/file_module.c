@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Apple Inc.  All rights reserved.
+ * Copyright (c) 2008-2015 Apple Inc.  All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -236,12 +236,12 @@ char *
 _fsi_get_line(FILE *fp)
 {
 	char s[4096];
-	char *out;
+	char *x, *out;
 
 	s[0] = '\0';
 
-	fgets(s, sizeof(s), fp);
-	if ((s == NULL) || (s[0] == '\0')) return NULL;
+	x = fgets(s, sizeof(s), fp);
+	if ((x == NULL) || (s[0] == '\0')) return NULL;
 
 	if (s[0] != '#') s[strlen(s) - 1] = '\0';
 
@@ -341,18 +341,18 @@ _fsi_get_validation(si_mod_t *si, int vtype, const char *path, FILE *f, uint64_t
 static int
 _fsi_validate(si_mod_t *si, int cat, uint64_t va, uint64_t vb)
 {
+#if !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
 	struct stat sb;
 	const char *path;
 	uint32_t item_val, curr_val, vtype;
 	file_si_private_t *pp;
 	int status;
+#endif
 
 	if (si == NULL) return 0;
 
-#if TARGET_OS_EMBEDDED
+#if !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
 	/* /etc is on a read-only filesystem, so no validation is required */
-	return 1;
-#endif
 
 	pp = (file_si_private_t *)si->private;
 	if (pp == NULL) return 0;
@@ -449,6 +449,7 @@ _fsi_validate(si_mod_t *si, int cat, uint64_t va, uint64_t vb)
 		curr_val = ntohl(curr_val);
 		if (item_val != curr_val) return 0;
 	}
+#endif
 
 	return 1;
 }
@@ -464,6 +465,8 @@ _fsi_append_char_to_line(char c, char *buf, size_t *x)
 	if ((*x % CHUNK) == 0)
 	{
 		buf = reallocf(buf, *x + CHUNK);
+		if (buf == NULL) return NULL;
+
 		memset(buf + *x, 0, CHUNK);
 	}
 
@@ -1859,8 +1862,22 @@ _fsi_fs_root(si_mod_t *si)
 		}
 
 		root_spec = _fsi_get_device_path(rootstat.st_dev);
-
+		
+		// In case root is mounted from snapshot, _fsi_get_device_path will return NULL as the device name does not comply to
+		// /dev/diskAAsBB, but in the format of snap@/dev/diskAAsBB, in that case f_mntfromname has the correct device name, so return it
+		if (root_spec == NULL) {
+			const char *mntfromname = rootfsinfo.f_mntfromname;
+			size_t len = sizeof(rootfsinfo.f_mntfromname);
+			const char *p;
+			while ((p = strnstr(mntfromname, "@", len))) {
+				len -= p + 1 - mntfromname;
+				mntfromname = p + 1;
+			}
+			root_spec = strndup(mntfromname, len);
+		}
+		
 		rootfs = (si_item_t *)LI_ils_create("L4488sssss44", (unsigned long)si, CATEGORY_FS, 1, 0LL, 0LL, root_spec, root_path, rootfsinfo.f_fstypename, FSTAB_RW, FSTAB_RW, 0, 1);
+		free(root_spec);
 	});
 
 	return si_item_retain(rootfs);

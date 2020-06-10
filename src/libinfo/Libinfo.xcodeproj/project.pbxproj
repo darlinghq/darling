@@ -22,9 +22,11 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		03056CE61F71A8EF0094A9FA /* si_compare.c in Sources */ = {isa = PBXBuildFile; fileRef = 03056CE51F71A8EF0094A9FA /* si_compare.c */; };
 		2D31A0FC128074E700D5A84C /* getifmaddrs.c in Sources */ = {isa = PBXBuildFile; fileRef = 2D31A0FB128074E700D5A84C /* getifmaddrs.c */; };
 		2D4070B1129354A700FE81ED /* getnameinfo_link.c in Sources */ = {isa = PBXBuildFile; fileRef = 2D4070B0129354A700FE81ED /* getnameinfo_link.c */; };
 		2D5DD5D21608E6E80051891A /* configuration_profile.c in Sources */ = {isa = PBXBuildFile; fileRef = 2D5DD5D01608E6E80051891A /* configuration_profile.c */; };
+		C965793A1B94C97100624699 /* muser_module.c in Sources */ = {isa = PBXBuildFile; fileRef = C96579391B94C97100624699 /* muser_module.c */; };
 		FC5284C011478C200058CCB0 /* herror.c in Sources */ = {isa = PBXBuildFile; fileRef = FC5283EE11478C200058CCB0 /* herror.c */; };
 		FC5284C811478C200058CCB0 /* res_comp.c in Sources */ = {isa = PBXBuildFile; fileRef = FC5283F711478C200058CCB0 /* res_comp.c */; };
 		FC5284CD11478C200058CCB0 /* res_query.c in Sources */ = {isa = PBXBuildFile; fileRef = FC5283FC11478C200058CCB0 /* res_query.c */; };
@@ -50,7 +52,6 @@
 		FC5284F411478C200058CCB0 /* thread_data.c in Sources */ = {isa = PBXBuildFile; fileRef = FC52843811478C200058CCB0 /* thread_data.c */; };
 		FC5284F711478C200058CCB0 /* membership.c in Sources */ = {isa = PBXBuildFile; fileRef = FC52843E11478C200058CCB0 /* membership.c */; };
 		FC5284FD11478C200058CCB0 /* getdomainname.c in Sources */ = {isa = PBXBuildFile; fileRef = FC52844611478C200058CCB0 /* getdomainname.c */; };
-		FC5284FE11478C200058CCB0 /* getnetgrent.c in Sources */ = {isa = PBXBuildFile; fileRef = FC52844711478C200058CCB0 /* getnetgrent.c */; };
 		FC5284FF11478C200058CCB0 /* innetgr.c in Sources */ = {isa = PBXBuildFile; fileRef = FC52844811478C200058CCB0 /* innetgr.c */; };
 		FC52850111478C200058CCB0 /* setdomainname.c in Sources */ = {isa = PBXBuildFile; fileRef = FC52844A11478C200058CCB0 /* setdomainname.c */; };
 		FC52850211478C200058CCB0 /* xdr_domainname.c in Sources */ = {isa = PBXBuildFile; fileRef = FC52844B11478C200058CCB0 /* xdr_domainname.c */; };
@@ -139,6 +140,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		03056CE31F71A8EE0094A9FA /* si_compare.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = si_compare.h; sourceTree = "<group>"; };
+		03056CE51F71A8EF0094A9FA /* si_compare.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = si_compare.c; sourceTree = "<group>"; };
 		2D31A0FA128074E700D5A84C /* getifmaddrs.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = getifmaddrs.3; sourceTree = "<group>"; };
 		2D31A0FB128074E700D5A84C /* getifmaddrs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = getifmaddrs.c; sourceTree = "<group>"; };
 		2D4070B0129354A700FE81ED /* getnameinfo_link.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = getnameinfo_link.c; sourceTree = "<group>"; };
@@ -147,6 +150,11 @@
 		2D5DD5D11608E6E80051891A /* configuration_profile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = configuration_profile.h; sourceTree = "<group>"; };
 		2DBB147712DBD63300D710E3 /* inet6_opt_init.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = inet6_opt_init.3; sourceTree = "<group>"; };
 		3F397F7D185BD67F00987BCC /* Libinfo.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Libinfo.xcconfig; path = xcodescripts/Libinfo.xcconfig; sourceTree = "<group>"; };
+		BDE3980D2044CDA300CAD4A2 /* libinfo_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libinfo_common.h; sourceTree = "<group>"; };
+		BDE3980E2044CDA300CAD4A2 /* pseudo_public.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pseudo_public.h; sourceTree = "<group>"; };
+		BDE3980F2044CDA300CAD4A2 /* pseudo_private.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pseudo_private.h; sourceTree = "<group>"; };
+		C96579391B94C97100624699 /* muser_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = muser_module.c; sourceTree = "<group>"; };
+		C965793B1B94CF2B00624699 /* libinfo_muser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libinfo_muser.h; sourceTree = "<group>"; };
 		D2AAC0630554660B00DB518D /* libsystem_info.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libsystem_info.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		FC5283EE11478C200058CCB0 /* herror.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = herror.c; sourceTree = "<group>"; };
 		FC5283F711478C200058CCB0 /* res_comp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = res_comp.c; sourceTree = "<group>"; };
@@ -173,7 +181,7 @@
 		FC52841911478C200058CCB0 /* bootparams.5 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = bootparams.5; sourceTree = "<group>"; };
 		FC52841A11478C200058CCB0 /* bootparams.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bootparams.h; sourceTree = "<group>"; };
 		FC52841B11478C200058CCB0 /* cache_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = cache_module.c; sourceTree = "<group>"; };
-		FC52841C11478C200058CCB0 /* ds_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ds_module.c; sourceTree = "<group>"; };
+		FC52841C11478C200058CCB0 /* ds_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ds_module.c; sourceTree = "<group>"; usesTabs = 1; };
 		FC52841D11478C200058CCB0 /* file_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = file_module.c; sourceTree = "<group>"; };
 		FC52841E11478C200058CCB0 /* gai_strerror.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = gai_strerror.3; sourceTree = "<group>"; };
 		FC52841F11478C200058CCB0 /* getaddrinfo.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = getaddrinfo.3; sourceTree = "<group>"; };
@@ -188,9 +196,9 @@
 		FC52842811478C200058CCB0 /* initgroups.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = initgroups.3; sourceTree = "<group>"; };
 		FC52842911478C200058CCB0 /* kvbuf.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = kvbuf.c; sourceTree = "<group>"; };
 		FC52842A11478C200058CCB0 /* kvbuf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kvbuf.h; sourceTree = "<group>"; };
-		FC52842B11478C200058CCB0 /* libinfo.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libinfo.c; sourceTree = "<group>"; };
+		FC52842B11478C200058CCB0 /* libinfo.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libinfo.c; sourceTree = "<group>"; usesTabs = 1; };
 		FC52842C11478C200058CCB0 /* libinfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libinfo.h; sourceTree = "<group>"; };
-		FC52842E11478C200058CCB0 /* mdns_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mdns_module.c; sourceTree = "<group>"; };
+		FC52842E11478C200058CCB0 /* mdns_module.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mdns_module.c; sourceTree = "<group>"; usesTabs = 1; };
 		FC52842F11478C200058CCB0 /* netdb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = netdb.h; sourceTree = "<group>"; };
 		FC52843011478C200058CCB0 /* netdb_async.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = netdb_async.h; sourceTree = "<group>"; };
 		FC52843111478C200058CCB0 /* printerdb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = printerdb.h; sourceTree = "<group>"; };
@@ -204,7 +212,7 @@
 		FC52843911478C200058CCB0 /* thread_data.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = thread_data.h; sourceTree = "<group>"; };
 		FC52843C11478C200058CCB0 /* mbr_check_membership.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = mbr_check_membership.3; sourceTree = "<group>"; };
 		FC52843D11478C200058CCB0 /* mbr_uid_to_uuid.3 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = mbr_uid_to_uuid.3; sourceTree = "<group>"; };
-		FC52843E11478C200058CCB0 /* membership.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = membership.c; sourceTree = "<group>"; };
+		FC52843E11478C200058CCB0 /* membership.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = membership.c; sourceTree = "<group>"; usesTabs = 1; };
 		FC52843F11478C200058CCB0 /* membership.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = membership.h; sourceTree = "<group>"; };
 		FC52844011478C200058CCB0 /* membershipPriv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = membershipPriv.h; sourceTree = "<group>"; };
 		FC52844111478C200058CCB0 /* ntsid.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ntsid.h; sourceTree = "<group>"; };
@@ -342,6 +350,7 @@
 			isa = PBXGroup;
 			children = (
 				3F397F7D185BD67F00987BCC /* Libinfo.xcconfig */,
+				BDE3980C2044CDA300CAD4A2 /* Libinfo */,
 				FC5283ED11478C200058CCB0 /* dns.subproj */,
 				FC52840011478C200058CCB0 /* gen.subproj */,
 				FC52841711478C200058CCB0 /* lookup.subproj */,
@@ -360,6 +369,16 @@
 				D2AAC0630554660B00DB518D /* libsystem_info.dylib */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BDE3980C2044CDA300CAD4A2 /* Libinfo */ = {
+			isa = PBXGroup;
+			children = (
+				BDE3980D2044CDA300CAD4A2 /* libinfo_common.h */,
+				BDE3980E2044CDA300CAD4A2 /* pseudo_public.h */,
+				BDE3980F2044CDA300CAD4A2 /* pseudo_private.h */,
+			);
+			path = Libinfo;
 			sourceTree = "<group>";
 		};
 		FC5283ED11478C200058CCB0 /* dns.subproj */ = {
@@ -430,12 +449,16 @@
 				FC52842A11478C200058CCB0 /* kvbuf.h */,
 				FC52842B11478C200058CCB0 /* libinfo.c */,
 				FC52842C11478C200058CCB0 /* libinfo.h */,
+				C965793B1B94CF2B00624699 /* libinfo_muser.h */,
 				FC52842E11478C200058CCB0 /* mdns_module.c */,
+				C96579391B94C97100624699 /* muser_module.c */,
 				FC52842F11478C200058CCB0 /* netdb.h */,
 				FC52843011478C200058CCB0 /* netdb_async.h */,
 				FC52843111478C200058CCB0 /* printerdb.h */,
 				FCFDBF0B145CC5C100A39A66 /* pwd.h */,
 				FC52843211478C200058CCB0 /* search_module.c */,
+				03056CE51F71A8EF0094A9FA /* si_compare.c */,
+				03056CE31F71A8EE0094A9FA /* si_compare.h */,
 				FC52843311478C200058CCB0 /* si_data.c */,
 				FC52843411478C200058CCB0 /* si_data.h */,
 				FC52843511478C200058CCB0 /* si_getaddrinfo.c */,
@@ -446,6 +469,7 @@
 			);
 			path = lookup.subproj;
 			sourceTree = "<group>";
+			usesTabs = 1;
 		};
 		FC52843A11478C200058CCB0 /* membership.subproj */ = {
 			isa = PBXGroup;
@@ -459,6 +483,7 @@
 			);
 			path = membership.subproj;
 			sourceTree = "<group>";
+			usesTabs = 1;
 		};
 		FC52844511478C200058CCB0 /* nis.subproj */ = {
 			isa = PBXGroup;
@@ -621,7 +646,7 @@
 		08FB7793FE84155DC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0440;
+				LastUpgradeCheck = 0800;
 			};
 			buildConfigurationList = 1DEB914E08733D8E0010E9CD /* Build configuration list for PBXProject "Libinfo" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -704,7 +729,6 @@
 				FC5284F411478C200058CCB0 /* thread_data.c in Sources */,
 				FC5284F711478C200058CCB0 /* membership.c in Sources */,
 				FC5284FD11478C200058CCB0 /* getdomainname.c in Sources */,
-				FC5284FE11478C200058CCB0 /* getnetgrent.c in Sources */,
 				FC5284FF11478C200058CCB0 /* innetgr.c in Sources */,
 				FC52850111478C200058CCB0 /* setdomainname.c in Sources */,
 				FC52850211478C200058CCB0 /* xdr_domainname.c in Sources */,
@@ -740,6 +764,7 @@
 				FC52852411478C200058CCB0 /* auth_none.c in Sources */,
 				FC52852511478C200058CCB0 /* auth_unix.c in Sources */,
 				FC52852711478C200058CCB0 /* authunix_prot.c in Sources */,
+				C965793A1B94C97100624699 /* muser_module.c in Sources */,
 				FC52852811478C200058CCB0 /* bindresvport.c in Sources */,
 				FC52852A11478C200058CCB0 /* clnt_generic.c in Sources */,
 				FC52852B11478C200058CCB0 /* clnt_perror.c in Sources */,
@@ -748,6 +773,7 @@
 				FC52852E11478C200058CCB0 /* clnt_tcp.c in Sources */,
 				FC52852F11478C200058CCB0 /* clnt_udp.c in Sources */,
 				FC52853011478C200058CCB0 /* get_myaddress.c in Sources */,
+				03056CE61F71A8EF0094A9FA /* si_compare.c in Sources */,
 				FC52853111478C200058CCB0 /* getrpcent.c in Sources */,
 				FC52853211478C200058CCB0 /* getrpcport.c in Sources */,
 				FC52853511478C200058CCB0 /* pmap_clnt.c in Sources */,
@@ -801,42 +827,47 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3F397F7D185BD67F00987BCC /* Libinfo.xcconfig */;
 			buildSettings = {
+				IS_ZIPPERED = YES;
 				PRODUCT_NAME = info;
-				VERSION_INFO_EXPORT_DECL = static;
-				VERSION_INFO_PREFIX = __;
 			};
 			name = Release;
 		};
 		1DEB915008733D8E0010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
-				BUILD_VARIANTS = (
-					normal,
-					profile,
-					debug,
-				);
-				CODE_SIGN_IDENTITY = "-";
-				CURRENT_PROJECT_VERSION = "$(RC_ProjectSourceVersion)";
-				DEAD_CODE_STRIPPING = YES;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DYLIB_CURRENT_VERSION = "$(CURRENT_PROJECT_VERSION)";
-				GCC_C_LANGUAGE_STANDARD = gnu99;
-				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				VERSIONING_SYSTEM = "apple-generic";
-				WARNING_LDFLAGS = "-Wall";
 			};
 			name = Release;
 		};
 		3F397F80185BD71500987BCC /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F397F7D185BD67F00987BCC /* Libinfo.xcconfig */;
 			buildSettings = {
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
+		};
+		90E08A3C1BB364CA0093311B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		90E08A3D1BB364CA0093311B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F397F7D185BD67F00987BCC /* Libinfo.xcconfig */;
+			buildSettings = {
+				IS_ZIPPERED = YES;
+				PRODUCT_NAME = info;
+			};
+			name = Debug;
+		};
+		90E08A3E1BB364CA0093311B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F397F7D185BD67F00987BCC /* Libinfo.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
@@ -845,6 +876,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1DEB914C08733D8E0010E9CD /* Release */,
+				90E08A3D1BB364CA0093311B /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -853,6 +885,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1DEB915008733D8E0010E9CD /* Release */,
+				90E08A3C1BB364CA0093311B /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -861,8 +894,10 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				3F397F80185BD71500987BCC /* Release */,
+				90E08A3E1BB364CA0093311B /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

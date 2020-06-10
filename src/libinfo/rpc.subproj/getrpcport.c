@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -60,6 +60,8 @@ static char *rcsid = "$Id: getrpcport.c,v 1.3 2002/02/19 20:36:23 epeyton Exp $"
  * Copyright (c) 1985 by Sun Microsystems, Inc.
  */
 
+#include "libinfo_common.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <rpc/rpc.h>
@@ -67,6 +69,7 @@ static char *rcsid = "$Id: getrpcport.c,v 1.3 2002/02/19 20:36:23 epeyton Exp $"
 #include <netdb.h>
 #include <sys/socket.h>
 
+LIBINFO_EXPORT
 int
 getrpcport(host, prognum, versnum, proto)
 	char *host;

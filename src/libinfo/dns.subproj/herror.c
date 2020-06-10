@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
+/*
  * ++Copyright++ 1987, 1993
  * -
  * Copyright (c) 1987, 1993
@@ -58,6 +61,8 @@ static char sccsid[] = "@(#)herror.c	8.1 (Berkeley) 6/4/93";
 static char rcsid[] = "$Id: herror.c,v 1.4 2003/04/10 20:21:16 majka Exp $";
 #endif /* LIBC_SCCS and not lint */
 
+#include "libinfo_common.h"
+
 #include <sys/param.h>
 #include <sys/uio.h>
 #include <netdb.h>
@@ -73,12 +78,14 @@ const char * const h_errlist[] = {
 };
 const int h_nerr = { sizeof h_errlist / sizeof h_errlist[0] };
 
+LIBINFO_EXPORT
 int h_errno;
 
 /*
  * herror --
  *	print the error indicated by the h_errno value.
  */
+LIBINFO_EXPORT
 void
 herror(const char *s)
 {
@@ -101,6 +108,7 @@ herror(const char *s)
 	writev(STDERR_FILENO, iov, (v - iov) + 1);
 }
 
+LIBINFO_EXPORT
 const char *
 hstrerror(int err)
 {

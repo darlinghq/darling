@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
 /*	$KAME: if_nameindex.c,v 1.8 2000/11/24 08:20:01 itojun Exp $	*/
 
 /*-
@@ -25,6 +28,8 @@
  *	BSDI Id: if_nameindex.c,v 2.3 2000/04/17 22:38:05 dab Exp
  */
 
+#include "libinfo_common.h"
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <net/if_dl.h>
@@ -32,6 +37,8 @@
 #include <ifaddrs.h>
 #include <stdlib.h>
 #include <string.h>
+#include <os/overflow.h>
+#include <sys/errno.h>
 
 /*
  * From RFC 2553:
@@ -73,14 +80,16 @@
  *    if_nameindex().
  */
 
+LIBINFO_EXPORT
 struct if_nameindex *
 if_nameindex(void)
 {
 	struct ifaddrs *ifaddrs, *ifa;
 	unsigned int ni;
-	int nbytes;
-	struct if_nameindex *ifni, *ifni2;
+	size_t nbytes;
+	struct if_nameindex *ifni= NULL, *ifni2;
 	char *cp;
+	size_t cpsz;
 
 	if (getifaddrs(&ifaddrs) < 0)
 		return(NULL);
@@ -94,17 +103,38 @@ if_nameindex(void)
 	for (ifa = ifaddrs; ifa != NULL; ifa = ifa->ifa_next) {
 		if (ifa->ifa_addr &&
 		    ifa->ifa_addr->sa_family == AF_LINK) {
-			nbytes += strlen(ifa->ifa_name) + 1;
-			ni++;
+			/*
+			 * Security Check: Verify nbytes and ni do not overflow
+			 */
+			if (os_add_overflow(nbytes, strlen(ifa->ifa_name) + 1, &nbytes) ||
+				os_add_overflow(ni, 1, &ni)) {
+				errno = EOVERFLOW;
+				goto out;
+			}
 		}
 	}
 
+	/*
+	 * Security Check: Verify cpsz does not overflow in next 3 operations
+	 */
+	if (os_add_overflow(ni, 1, &cpsz)) {
+		errno = EOVERFLOW;
+		goto out;
+	}
+	if (os_mul_overflow(cpsz, sizeof(struct if_nameindex), &cpsz)) {
+		errno = EOVERFLOW;
+		goto out;
+	}
+	if (os_add_overflow(cpsz, nbytes, &cpsz)) {
+		errno = EOVERFLOW;
+		goto out;
+	}
 	/*
 	 * Next, allocate a chunk of memory, use the first part
 	 * for the array of structures, and the last part for
 	 * the strings.
 	 */
-	cp = malloc((ni + 1) * sizeof(struct if_nameindex) + nbytes);
+	cp = malloc(cpsz);
 	ifni = (struct if_nameindex *)cp;
 	if (ifni == NULL)
 		goto out;
@@ -138,6 +168,7 @@ out:
 }
 
 #ifndef __OpenBSD__
+LIBINFO_EXPORT
 void
 if_freenameindex(struct if_nameindex *ptr)
 {

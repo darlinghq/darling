@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -62,6 +62,7 @@
 
 #ifndef _RPC_CLNT_H_
 #define _RPC_CLNT_H_
+#include <rpc/auth.h>
 #include <sys/cdefs.h>
 
 /*

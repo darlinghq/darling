@@ -60,7 +60,7 @@ Additionally, if the user or group is hosted on a PDC
 or Active Directory server, it will have a 128 bit or larger sid.
 .Pp
 These routines communicate with
-.Xr openditectoryd 8 .
+.Xr opendirectoryd 8 .
 .Pp
 .Fn mbr_uid_to_uuid
 takes a uid and looks up the associated user account.
@@ -82,7 +82,7 @@ is set to ID_TYPE_UID or ID_TYPE_GID to indicate which type was found.
 Note that
 .Fn mbr_uuid_to_id
 always returns an id even if the uuid is not found.
-This returned id is not persistant, 
+This returned id is not persistent,
 but can be used to map back to the uuid during runtime.
 To determine if the uuid exists, the returned id can be used in a call to
 .Xr getpwuid 3
@@ -112,13 +112,13 @@ These functions return 0 on success or one of the following error codes on failu
 .Bl -tag -width Er
 .It Bq Er EIO
 Communication with
-.Xr openditectoryd 8
+.Xr opendirectoryd 8
 failed.
 .It Bq Er ENOENT
 The mapping can not be performed.
 .It Bq Er EAUTH
 Communication with
-.Xr openditectoryd 8
+.Xr opendirectoryd 8
 failed due to an authentication error.
 .It Bq Er EINVAL
 Invalid arguments were provided.
@@ -134,4 +134,4 @@ return 0 (success), even if the user/group does not exist.
 .Xr getpwuid 3 ,
 .Xr getgrgid 3 ,
 .Xr mbr_check_membership 3 ,
-.Xr openditectoryd 8
+.Xr opendirectoryd 8

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -66,6 +66,8 @@
 
 #ifndef _RPC_AUTH_H
 #define _RPC_AUTH_H
+#include <rpc/types.h>
+#include <rpc/xdr.h>
 #include <sys/cdefs.h>
 
 #define MAX_AUTH_BYTES	400
@@ -201,9 +203,11 @@ __BEGIN_DECLS
 extern AUTH *authunix_create		__P((char *, int, int, int, int *));
 extern AUTH *authunix_create_default	__P((void));
 extern AUTH *authnone_create		__P((void));
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 extern AUTH *authdes_create		__P((char *, unsigned int,
 					     struct sockaddr_in *,
 					     des_block *));
+#endif
 __END_DECLS
 
 #define AUTH_NONE	0		/* no authentication */

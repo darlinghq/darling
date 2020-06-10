@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -62,6 +62,8 @@
 static char sccsid[] = "@(#)rcmd.c	8.3 (Berkeley) 3/26/94";
 #endif /* LIBC_SCCS and not lint */
 
+#include "libinfo_common.h"
+
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -109,6 +111,7 @@ int __ivaliduser_sa __P((FILE *, const struct sockaddr *, socklen_t,
 static int __icheckhost __P((const struct sockaddr *, socklen_t,
 	const char *));
 
+LIBINFO_EXPORT
 int
 rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, af)
 	char **ahost;
@@ -336,6 +339,7 @@ bad:
 	return (-1);
 }
 
+LIBINFO_EXPORT
 int
 rcmd(ahost, rport, locuser, remuser, cmd, fd2p)
 	char **ahost;
@@ -346,6 +350,7 @@ rcmd(ahost, rport, locuser, remuser, cmd, fd2p)
 	return rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, AF_INET);
 }
 
+LIBINFO_EXPORT
 int
 rresvport(port)
 	int *port;
@@ -353,6 +358,7 @@ rresvport(port)
 	return rresvport_af(port, AF_INET);
 }
 
+LIBINFO_EXPORT
 int
 rresvport_af(alport, family)
 	int *alport, family;
@@ -413,6 +419,7 @@ char	*__rcmd_errstr;
  *
  * Returns 0 if ok, -1 if not ok.
  */
+LIBINFO_EXPORT
 int
 iruserok_sa(ra, rlen, superuser, ruser, luser)
 	const void *ra;
@@ -498,6 +505,7 @@ again:
 	return (-1);
 }
 
+LIBINFO_EXPORT
 int
 ruserok(rhost, superuser, ruser, luser)
 	const char *rhost, *ruser, *luser;
@@ -533,6 +541,7 @@ ruserok(rhost, superuser, ruser, luser)
  *
  * Returns 0 if ok, -1 if not ok.
  */
+LIBINFO_EXPORT
 int
 iruserok(raddr, superuser, ruser, luser)
 	unsigned long raddr;

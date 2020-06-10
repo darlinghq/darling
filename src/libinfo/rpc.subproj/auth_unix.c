@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -68,6 +68,8 @@ static char *rcsid = "$Id: auth_unix.c,v 1.4 2002/02/19 20:36:22 epeyton Exp $";
  *
  */
 
+#include "libinfo_common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -123,6 +125,7 @@ static void marshal_new_auth();
  * Create a unix style authenticator.
  * Returns an auth handle with the given stuff in it.
  */
+LIBINFO_EXPORT
 AUTH *
 authunix_create(machname, uid, gid, len, aup_gids)
 	char *machname;
@@ -151,6 +154,7 @@ authunix_create(machname, uid, gid, len, aup_gids)
 	au = (struct audata *)mem_alloc(sizeof(*au));
 #ifndef KERNEL
 	if (au == NULL) {
+		mem_free(auth, sizeof(*auth));
 		(void)fprintf(stderr, "authunix_create: out of memory\n");
 		return (NULL);
 	}
@@ -183,6 +187,8 @@ authunix_create(machname, uid, gid, len, aup_gids)
 	au->au_origcred.oa_base = mem_alloc((u_int) len);
 #else
 	if ((au->au_origcred.oa_base = mem_alloc((u_int) len)) == NULL) {
+		mem_free(auth, sizeof(*auth));
+		mem_free(au, sizeof(*au));
 		(void)fprintf(stderr, "authunix_create: out of memory\n");
 		return (NULL);
 	}
@@ -217,6 +223,7 @@ set_rpc_maxgrouplist(num)
  * Returns an auth handle with parameters determined by doing lots of
  * syscalls.
  */
+LIBINFO_EXPORT
 AUTH *
 authunix_create_default()
 {

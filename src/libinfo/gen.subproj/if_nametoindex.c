@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
 /*	$KAME: if_nametoindex.c,v 1.6 2000/11/24 08:18:54 itojun Exp $	*/
 
 /*-
@@ -24,6 +27,8 @@
  *
  *	BSDI Id: if_nametoindex.c,v 2.3 2000/04/17 22:38:05 dab Exp
  */
+
+#include "libinfo_common.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -53,6 +58,7 @@
  *    proper value (e.g., ENOMEM).
  */
 
+LIBINFO_EXPORT
 unsigned int
 if_nametoindex(const char *ifname)
 {

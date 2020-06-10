@@ -1,6 +1,5 @@
-// Modified by Lubos Dolezel for Darling
 /*
- * Copyright (c) 1999, 2012 Apple Inc. All rights reserved.
+ * Copyright (c) 1999, 2012-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -23,6 +22,8 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include "libinfo_common.h"
+
 #include <dns_sd.h>
 #include <errno.h>
 
@@ -43,9 +44,10 @@ extern int h_errno;
 #else
 #define RES_9_STATE_SIZE 512
 #endif
+LIBINFO_EXPORT
 char _res[RES_9_STATE_SIZE] = {0};
 
-#ifndef DARLING
+LIBINFO_EXPORT
 int
 res_init(void)
 {
@@ -63,6 +65,7 @@ _mdns_query(int call, const char *name, int class, int type, u_char *answer, int
 	int res = -1;
 	si_item_t *item;
 	uint32_t err;
+	int cpylen = 0;
 	
 	si_mod_t *dns = si_module_with_name("mdns");
 	if (dns == NULL) {
@@ -79,8 +82,14 @@ _mdns_query(int call, const char *name, int class, int type, u_char *answer, int
 		
 		res = p->dns_packet_len;
 		
-		// Truncate to destination buffer size.
-		memcpy(answer, p->dns_packet, MIN(res, anslen));
+		if (res >= 0 && anslen >= 0) {
+			// Truncate destination buffer size.
+			memcpy(answer, p->dns_packet, (cpylen = MIN(res, anslen)));
+		}
+		else {
+			h_errno = NO_RECOVERY;
+			res = -1;
+		}
 		
 		si_item_release(item);
 	} else {
@@ -88,7 +97,7 @@ _mdns_query(int call, const char *name, int class, int type, u_char *answer, int
 		res = -1;
 	}
 
-	if (MIN(res, anslen) >= sizeof(HEADER)) {
+	if (cpylen >= sizeof(HEADER)) {
 		HEADER *hp = (HEADER *)answer;
 		switch (hp->rcode) {
 			case NXDOMAIN:
@@ -119,15 +128,16 @@ _mdns_query(int call, const char *name, int class, int type, u_char *answer, int
 	return res;
 }
 
+LIBINFO_EXPORT
 int
 res_query(const char *name, int class, int type, u_char *answer, int anslen)
 {
 	return _mdns_query(SI_CALL_DNS_QUERY, name, class, type, answer, anslen);
 }
 
+LIBINFO_EXPORT
 int
 res_search(const char *name, int class, int type, u_char *answer, int anslen)
 {
 	return _mdns_query(SI_CALL_DNS_SEARCH, name, class, type, answer, anslen);
 }
-#endif

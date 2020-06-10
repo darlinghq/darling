@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Apple Inc.  All rights reserved.
+ * Copyright (c) 2008-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -22,6 +22,8 @@
  */
 
 #ifdef DS_AVAILABLE
+
+#include "libinfo_common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,12 +51,28 @@
 #include <servers/bootstrap.h>
 #include <bootstrap_priv.h>
 #include <opendirectory/DSlibinfoMIG_types.h>
-#ifdef DEBUG
-#include <asl.h>
-#endif
+#include <os/activity.h>
+#include <os/log.h>
 
 #define IPV6_ADDR_LEN 16
 #define IPV4_ADDR_LEN 4
+
+/* The LI_OS_ACTIVITY macro contains os_activity_t functions
+ * that are not POSIX compliant. So calling them may
+ * inadvertantly change errno. To avoid this, the macro
+ * explicityly restores the errno to its state on entry
+ * when done.
+ *
+ * Macro cannot contain any {} because it will end the scope
+ * of the activity prematurely
+ */
+#define _LI_OS_ACTIVITY(_var, _desc) \
+	int _var = errno; \
+	os_activity_t activity __attribute__((__cleanup__(_li_auto_os_release))) = os_activity_create(_desc, OS_ACTIVITY_CURRENT, OS_ACTIVITY_FLAG_DEFAULT); \
+	os_activity_scope(activity); \
+	errno = _var
+
+#define LI_OS_ACTIVITY(_desc) _LI_OS_ACTIVITY(OS_CONCAT(errnosav, __COUNTER__), _desc)
 
 typedef si_item_t *(*od_extract_t)(si_mod_t *si, xpc_object_t reply, const void *extra, uint64_t valid_global, uint64_t valid_cat);
 
@@ -112,11 +130,19 @@ _ds_serv_cache_free(void *x)
 	if (x != NULL) si_item_release(x);
 }
 
+LIBINFO_EXPORT
 void
 _si_disable_opendirectory(void)
 {
 	_si_opendirectory_disabled = 1;
 	_ds_port = MACH_PORT_NULL;
+}
+
+static void
+_li_auto_os_release(os_activity_t *activity)
+{
+	os_release(*activity);
+	(*activity) = NULL;
 }
 
 XPC_RETURNS_RETAINED
@@ -186,6 +212,7 @@ _ds_child(void)
 	_ds_port = MACH_PORT_NULL;
 }
 
+LIBINFO_EXPORT
 int
 _ds_running(void)
 {
@@ -267,12 +294,14 @@ _od_rpc_call(const char *procname, xpc_object_t payload, xpc_pipe_t (*get_pipe)(
 	xpc_object_t reply;
 	xpc_pipe_t od_pipe;
 	int retries, rc;
+	bool free_payload = false;
 
 	od_pipe = get_pipe(false);
 	if (od_pipe == NULL) return NULL;
 
 	if (payload == NULL) {
 		payload = xpc_dictionary_create(NULL, NULL, 0);
+		free_payload = true;
 	}
 
 	// we nest it for backward compatibility so we can do independent submissions
@@ -309,6 +338,10 @@ _od_rpc_call(const char *procname, xpc_object_t payload, xpc_pipe_t (*get_pipe)(
 		xpc_release(od_pipe);
 	}
 
+	if (free_payload) {
+		xpc_release(payload);
+	}
+
 	return result;
 }
 
@@ -316,7 +349,7 @@ static si_list_t *
 _ds_list(si_mod_t *si, int cat, const char *procname, const void *extra, od_extract_t extract)
 {
 	__block si_list_t *list;
-	uint64_t va, vb;
+	uint64_t va = 0, vb = 0;
 	xpc_object_t reply, result;
 
 	if (procname == NULL) return NULL;
@@ -347,7 +380,7 @@ static si_item_t *
 _ds_item(si_mod_t *si, int cat, const char *procname, const void *extra, od_extract_t extract, xpc_object_t payload)
 {
 	xpc_object_t result;
-	uint64_t va, vb;
+	uint64_t va = 0, vb = 0;
 	si_item_t *item = NULL;
 
 	if (procname == NULL) return NULL;
@@ -408,52 +441,6 @@ _ds_is_valid(si_mod_t *si, si_item_t *item)
 	if (oldval != newval) return 0;
 
 	return 1;
-}
-
-static void
-_free_addr_list(char **l)
-{
-	int i;
-
-	if (l == NULL) return;
-	for (i = 0; l[i] != NULL; i++) free(l[i]);
-	free(l);
-}
-
-/* map ipv4 addresses and append to v6 list */
-static int
-_map_v4(char ***v6, uint32_t n6, char **v4, uint32_t n4)
-{
-	struct in6_addr a6;
-	uint32_t i;
-
-	a6.__u6_addr.__u6_addr32[0] = 0x00000000;
-	a6.__u6_addr.__u6_addr32[1] = 0x00000000;
-	a6.__u6_addr.__u6_addr32[2] = htonl(0x0000ffff);
-
-	if (*v6 == NULL)
-	{
-		*v6 = (char **)calloc(n4 + 1, sizeof(char *));
-	}
-	else
-	{
-		*v6 = (char **)reallocf(*v6, (n6 + n4 + 1) * sizeof(char *));
-	}
-
-	if (*v6 == NULL) return -1;
-
-	for (i = 0; i < n4; i++)
-	{
-		(*v6)[n6] = (char *)calloc(1, IPV6_ADDR_LEN);
-		if ((*v6)[n6] == NULL) return -1;
-
-		memcpy(&(a6.__u6_addr.__u6_addr32[3]), v4[i], IPV4_ADDR_LEN);
-		memcpy((*v6)[n6], &(a6.__u6_addr.__u6_addr32[0]), IPV6_ADDR_LEN);
-
-		n6++;
-	}
-
-	return 0;
 }
 
 static xpc_object_t
@@ -1649,6 +1636,8 @@ ds_user_byname(si_mod_t *si, const char *name)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve User by Name");
+
 	payload = _xpc_query_key_string("name", name);
 	if (payload == NULL) return NULL;
 
@@ -1665,6 +1654,8 @@ ds_user_byuid(si_mod_t *si, uid_t uid)
 	si_item_t *item;
 
 	if (!_od_running()) return NULL;
+
+	LI_OS_ACTIVITY("Retrieve User by ID");
 
 	payload = _xpc_query_key_id("uid", uid);
 	if (payload == NULL) return NULL;
@@ -1683,6 +1674,8 @@ ds_user_byuuid(si_mod_t *si, uuid_t uuid)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve User by UUID");
+
 	payload = _xpc_query_key_uuid("uuid", uuid);
 	if (payload == NULL) return NULL;
 
@@ -1695,6 +1688,8 @@ ds_user_byuuid(si_mod_t *si, uuid_t uuid)
 static si_list_t *
 ds_user_all(si_mod_t *si)
 {
+	LI_OS_ACTIVITY("Performance Impact - Enumerate all users");
+
 	return _ds_list(si, CATEGORY_USER, "getpwent", NULL, _extract_user);
 }
 
@@ -1705,6 +1700,8 @@ ds_group_byname(si_mod_t *si, const char *name)
 	si_item_t *item;
 
 	if (!_od_running()) return NULL;
+
+	LI_OS_ACTIVITY("Retrieve Group by Name");
 
 	payload = _xpc_query_key_string("name", name);
 	if (payload == NULL) return NULL;
@@ -1723,6 +1720,8 @@ ds_group_bygid(si_mod_t *si, gid_t gid)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve Group by ID");
+
 	payload = _xpc_query_key_id("gid", gid);
 	if (payload == NULL) return NULL;
 
@@ -1740,6 +1739,8 @@ ds_group_byuuid(si_mod_t *si, uuid_t uuid)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve Group by UUID");
+
 	payload = _xpc_query_key_uuid("uuid", uuid);
 	if (payload == NULL) return NULL;
 
@@ -1753,6 +1754,7 @@ static si_list_t *
 ds_group_all(si_mod_t *si)
 {
 	if (!_od_running()) return NULL;
+	LI_OS_ACTIVITY("Performance Impact - Enumerate all Groups");
 	return _ds_list(si, CATEGORY_GROUP, "getgrent", NULL, _extract_group);
 }
 
@@ -1761,9 +1763,18 @@ ds_grouplist(si_mod_t *si, const char *name, uint32_t ngroups)
 {
 	xpc_object_t payload, reply;
 	si_item_t *item = NULL;
+	os_activity_t activity;
 
 	if (!_od_running()) return NULL;
 	if (name == NULL) return NULL;
+
+	if (ngroups > 17) {
+		activity = os_activity_create("Performance impact - Resolve user group list (>17 groups)", OS_ACTIVITY_CURRENT, OS_ACTIVITY_FLAG_DEFAULT);
+		os_log(OS_LOG_DEFAULT, "Too many groups requested (%u).  Can cause performance issues when network directories are involved", ngroups);
+	} else {
+		activity = os_activity_create("Resolve user group list", OS_ACTIVITY_CURRENT, OS_ACTIVITY_FLAG_DEFAULT);
+	}
+	os_activity_scope(activity);
 
 	payload = xpc_dictionary_create(NULL, NULL, 0);
 	if (payload == NULL) return NULL;
@@ -1794,6 +1805,7 @@ ds_grouplist(si_mod_t *si, const char *name, uint32_t ngroups)
 	}
 
 	xpc_release(payload);
+	os_release(activity);
 
 	return item;
 }
@@ -1806,6 +1818,8 @@ ds_netgroup_byname(si_mod_t *si, const char *name)
 	si_item_t *item;
 
 	if (!_od_running()) return NULL;
+
+	LI_OS_ACTIVITY("Retrieve netgroup by name");
 
 	payload = _xpc_query_key_string("netgroup", name);
 	if (payload == NULL) return NULL;
@@ -1828,6 +1842,8 @@ ds_in_netgroup(si_mod_t *si, const char *group, const char *host, const char *us
 	int is_innetgr;
 
 	if (!_od_running()) return 0;
+
+	LI_OS_ACTIVITY("Match netgroup");
 
 	payload = xpc_dictionary_create(NULL, NULL, 0);
 	if (payload == NULL) return 0;
@@ -1858,6 +1874,7 @@ ds_alias_byname(si_mod_t *si, const char *name)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve alias by name");
 	payload = _xpc_query_key_string("name", name);
 	if (payload == NULL) return NULL;
 
@@ -1871,6 +1888,7 @@ static si_list_t *
 ds_alias_all(si_mod_t *si)
 {
 	if (!_od_running()) return NULL;
+	LI_OS_ACTIVITY("Enumerate all alias entries");
 	return _ds_list(si, CATEGORY_ALIAS, "alias_getent", NULL, _extract_alias);
 }
 
@@ -1882,6 +1900,7 @@ ds_network_byname(si_mod_t *si, const char *name)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve network by name");
 	payload = _xpc_query_key_string("name", name);
 	if (payload == NULL) return NULL;
 
@@ -1901,6 +1920,7 @@ ds_network_byaddr(si_mod_t *si, uint32_t addr)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve network by address");
 	f1 = addr & 0xff;
 	addr >>= 8;
 	f2 = addr & 0xff;
@@ -1924,6 +1944,7 @@ static si_list_t *
 ds_network_all(si_mod_t *si)
 {
 	if (!_od_running()) return NULL;
+	LI_OS_ACTIVITY("Emumerate all network entries");
 	return _ds_list(si, CATEGORY_NETWORK, "getnetent", NULL, _extract_network);
 }
 
@@ -1937,6 +1958,8 @@ ds_service_byname(si_mod_t *si, const char *name, const char *proto)
 	if (!_od_running()) return NULL;
 	if (name == NULL) name = "";
 	if (proto == NULL) proto = "";
+
+	LI_OS_ACTIVITY("Retrieve service by name");
 
 	/* Check our local service cache (see ds_addrinfo). */
 	item = pthread_getspecific(_ds_serv_cache_key);
@@ -1967,6 +1990,8 @@ ds_service_byport(si_mod_t *si, int port, const char *proto)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve service by port");
+
 	payload = xpc_dictionary_create(NULL, NULL, 0);
 	if (payload == NULL) return NULL;
 
@@ -1985,6 +2010,7 @@ static si_list_t *
 ds_service_all(si_mod_t *si)
 {
 	if (!_od_running()) return NULL;
+	LI_OS_ACTIVITY("Enumerate all services");
 	return _ds_list(si, CATEGORY_SERVICE, "getservent", NULL, _extract_service);
 }
 
@@ -1996,6 +2022,7 @@ ds_protocol_byname(si_mod_t *si, const char *name)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve protocol by name");
 	payload = _xpc_query_key_string("name", name);
 	if (payload == NULL) return NULL;
 
@@ -2013,6 +2040,7 @@ ds_protocol_bynumber(si_mod_t *si, int number)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve protocol by number");
 	payload = _xpc_query_key_int("number", number);
 	if (payload == NULL) return NULL;
 
@@ -2025,6 +2053,7 @@ ds_protocol_bynumber(si_mod_t *si, int number)
 static si_list_t *
 ds_protocol_all(si_mod_t *si)
 {
+	LI_OS_ACTIVITY("Enumerate all protocols");
 	return _ds_list(si, CATEGORY_PROTOCOL, "getprotoent", NULL, _extract_protocol);
 }
 
@@ -2036,6 +2065,7 @@ ds_rpc_byname(si_mod_t *si, const char *name)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve RPC by name");
 	payload = _xpc_query_key_string("name", name);
 	if (payload == NULL) return NULL;
 
@@ -2053,6 +2083,7 @@ ds_rpc_bynumber(si_mod_t *si, int number)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve RPC by number");
 	payload = _xpc_query_key_int("number", number);
 	if (payload == NULL) return NULL;
 
@@ -2065,6 +2096,7 @@ ds_rpc_bynumber(si_mod_t *si, int number)
 static si_list_t *
 ds_rpc_all(si_mod_t *si)
 {
+	LI_OS_ACTIVITY("Enumerate all RPC entries");
 	return _ds_list(si, CATEGORY_RPC, "getrpcent", NULL, _extract_rpc);
 }
 
@@ -2076,6 +2108,7 @@ ds_fs_byspec(si_mod_t *si, const char *name)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Lookup FS entry by spec");
 	payload = _xpc_query_key_string("name", name);
 	if (payload == NULL) return NULL;
 
@@ -2088,6 +2121,7 @@ ds_fs_byspec(si_mod_t *si, const char *name)
 static si_list_t *
 ds_fs_all(si_mod_t *si)
 {
+	LI_OS_ACTIVITY("Performance impact - Enumerate all FS entries");
 	return _ds_list(si, CATEGORY_FS, "getfsent", NULL, _extract_fstab);
 }
 
@@ -2102,6 +2136,7 @@ ds_fs_byfile(si_mod_t *si, const char *name)
 	if (!_od_running()) return NULL;
 	if (name == NULL) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve FS by file location");
 	list = ds_fs_all(si);
 	if (list == NULL) return NULL;
 
@@ -2124,6 +2159,7 @@ ds_mac_byname(si_mod_t *si, const char *name)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve FS by name");
 	payload = _xpc_query_key_string("name", name);
 	if (payload == NULL) return NULL;
 
@@ -2142,6 +2178,7 @@ ds_mac_bymac(si_mod_t *si, const char *mac)
 
 	if (!_od_running()) return NULL;
 
+	LI_OS_ACTIVITY("Retrieve MAC entry by MAC");
 	cmac = si_standardize_mac_address(mac);
 	if (cmac == NULL) return NULL;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 Apple Inc.  All rights reserved.
+ * Copyright (c) 2009-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -20,6 +20,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
+#include "libinfo_common.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -69,6 +71,7 @@
  * (keys are always strings), "s" denotes a string value,
  * "i" denotes a 32 bit signed int, and "u" denotes an unsigned.
  */
+LIBINFO_EXPORT
 kvbuf_t *
 kvbuf_query(char *fmt, ...)
 {
@@ -116,6 +119,7 @@ kvbuf_query(char *fmt, ...)
 	return kv;
 }
 
+LIBINFO_EXPORT
 kvbuf_t *
 kvbuf_query_key_val(const char *key, const char *val)
 {
@@ -188,6 +192,7 @@ kvbuf_query_key_val(const char *key, const char *val)
 	return kv;
 }
 
+LIBINFO_EXPORT
 kvbuf_t *
 kvbuf_query_key_int(const char *key, int32_t i)
 {
@@ -197,6 +202,7 @@ kvbuf_query_key_int(const char *key, int32_t i)
 	return kvbuf_query_key_val(key, str);
 }
 
+LIBINFO_EXPORT
 kvbuf_t *
 kvbuf_query_key_uint(const char *key, uint32_t u)
 {
@@ -206,6 +212,7 @@ kvbuf_query_key_uint(const char *key, uint32_t u)
 	return kvbuf_query_key_val(key, str);
 }
 
+LIBINFO_EXPORT
 kvbuf_t *
 kvbuf_new_zone(malloc_zone_t *zone)
 {
@@ -230,12 +237,14 @@ kvbuf_new_zone(malloc_zone_t *zone)
 	return kv;
 }
 
+LIBINFO_EXPORT
 kvbuf_t *
 kvbuf_new(void)
 {
 	return kvbuf_new_zone(malloc_default_zone());
 }
 
+LIBINFO_EXPORT
 kvbuf_t *
 kvbuf_init_zone(malloc_zone_t *zone, char *buffer, uint32_t length)
 {
@@ -265,6 +274,7 @@ kvbuf_init_zone(malloc_zone_t *zone, char *buffer, uint32_t length)
 	return kv;
 }
 
+LIBINFO_EXPORT
 kvbuf_t *
 kvbuf_init(char *buffer, uint32_t length)
 {
@@ -317,6 +327,7 @@ kvbuf_grow(kvbuf_t *kv, uint32_t delta)
 	}
 }
 
+LIBINFO_EXPORT
 void
 kvbuf_add_dict(kvbuf_t *kv)
 {
@@ -348,6 +359,7 @@ kvbuf_add_dict(kvbuf_t *kv)
 	memcpy(p, &x, sizeof(uint32_t));
 }
 
+LIBINFO_EXPORT
 void
 kvbuf_add_key(kvbuf_t *kv, const char *key)
 {
@@ -397,6 +409,7 @@ kvbuf_add_key(kvbuf_t *kv, const char *key)
 	kv->_val = kv->datalen;
 }
 
+LIBINFO_EXPORT
 void
 kvbuf_add_val_len(kvbuf_t *kv, const char *val, uint32_t len)
 {
@@ -443,6 +456,7 @@ kvbuf_add_val_len(kvbuf_t *kv, const char *val, uint32_t len)
  * which preceeds a pointer to a key or value.  Obviously, calling it with anything
  * other than a pointer value which is embedded in a kvbuf_t is asking for trouble.
  */
+LIBINFO_EXPORT
 uint32_t
 kvbuf_get_len(const char *p)
 {
@@ -453,6 +467,7 @@ kvbuf_get_len(const char *p)
 	return ntohl(x);
 }
 
+LIBINFO_EXPORT
 void
 kvbuf_add_val(kvbuf_t *kv, const char *val)
 {
@@ -462,6 +477,7 @@ kvbuf_add_val(kvbuf_t *kv, const char *val)
 	kvbuf_add_val_len(kv, val, strlen(val) + 1);
 }
 
+LIBINFO_EXPORT
 void
 kvbuf_make_purgeable(kvbuf_t *kv)
 {
@@ -470,6 +486,7 @@ kvbuf_make_purgeable(kvbuf_t *kv)
 	if (kv->databuf != NULL) malloc_make_purgeable(kv->databuf);
 }
 
+LIBINFO_EXPORT
 int
 kvbuf_make_nonpurgeable(kvbuf_t *kv)
 {
@@ -485,6 +502,7 @@ kvbuf_make_nonpurgeable(kvbuf_t *kv)
 	return 1;
 }
 
+LIBINFO_EXPORT
 void
 kvbuf_free(kvbuf_t *kv)
 {
@@ -496,6 +514,7 @@ kvbuf_free(kvbuf_t *kv)
 }
 
 /* appends a kvbuf to an existing kvbuf */
+LIBINFO_EXPORT
 void
 kvbuf_append_kvbuf(kvbuf_t *kv, const kvbuf_t *kv2)
 {
@@ -532,6 +551,7 @@ kvbuf_append_kvbuf(kvbuf_t *kv, const kvbuf_t *kv2)
 }
 
 /* returns number of dictionaries */
+LIBINFO_EXPORT
 uint32_t
 kvbuf_reset(kvbuf_t *kv)
 {
@@ -553,6 +573,7 @@ kvbuf_reset(kvbuf_t *kv)
 }
 
 /* advance to next dictionary, returns key count */
+LIBINFO_EXPORT
 uint32_t
 kvbuf_next_dict(kvbuf_t *kv)
 {
@@ -629,6 +650,7 @@ kvbuf_next_dict(kvbuf_t *kv)
 }
 
 /* advance to next key, returns key and sets val_count */
+LIBINFO_EXPORT
 char *
 kvbuf_next_key(kvbuf_t *kv, uint32_t *val_count)
 {
@@ -715,12 +737,14 @@ kvbuf_next_key(kvbuf_t *kv, uint32_t *val_count)
 	return out;
 }
 
+LIBINFO_EXPORT
 char *
 kvbuf_next_val(kvbuf_t *kv)
 {
 	return kvbuf_next_val_len(kv, NULL);
 }
 
+LIBINFO_EXPORT
 char *
 kvbuf_next_val_len(kvbuf_t *kv, uint32_t *len)
 {
@@ -774,6 +798,7 @@ kvbuf_next_val_len(kvbuf_t *kv, uint32_t *len)
  * memory AND to free the original kvbuf, clients only
  * need to call kvarray_free().
  */
+LIBINFO_EXPORT
 kvarray_t *
 kvbuf_decode(kvbuf_t *kv)
 {
@@ -935,6 +960,7 @@ kvbuf_decode(kvbuf_t *kv)
 	return a;
 }
 
+LIBINFO_EXPORT
 void
 kvarray_free(kvarray_t *a)
 {
