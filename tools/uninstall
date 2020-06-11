@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set +e
 
 if [ "$(whoami)" != "root" ]
@@ -8,15 +8,17 @@ then
 	exit
 fi
 
+DARLING_PREFIX="$(dirname "$(dirname "$(which darling)")")"
+
 if command -v darling
 then
 	darling shutdown
 fi
-if [ -d /usr/local/libexec ]
+if [ -d "${DARLING_PREFIX}/libexec" ]
 then
-	rm -rf /usr/local/libexec/darling
-	rmdir --ignore-fail-on-non-empty /usr/local/libexec
+	rm -rf "${DARLING_PREFIX}/libexec/darling"
+	rmdir --ignore-fail-on-non-empty "${DARLING_PREFIX}/libexec"
 fi
-rm -f /usr/local/bin/darling
+rm -f "${DARLING_PREFIX}/bin/darling"
 find /lib/modules -name darling-mach.ko -delete
 echo "Uninstall complete"
