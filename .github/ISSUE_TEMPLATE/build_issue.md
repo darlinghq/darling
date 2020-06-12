@@ -5,7 +5,10 @@ labels: 'build'
 ---
 
 **Build Log**
-What was the build error?
+What is the build error?
+```
+Put the build log here!
+```
 
 **System Information**
 What system are you building with?

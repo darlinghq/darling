@@ -1,6 +1,6 @@
 ---
 name: Startup Bug
-about: An issue with starting Darling
+about: An issue with Darling's startup
 labels: 'bug, container'
 ---
 
@@ -15,6 +15,9 @@ What did happen?
 
 **```strace``` Output**
 Run ```sudo strace -f -u $USER darling shell```, what is the output?
+```
+Put the command output here!
+```
 
 **System Information**
 What system are you running?
