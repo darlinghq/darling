@@ -9,3 +9,10 @@ What tool is missing? What is it supposed to do? Is it or a variant open-source?
 
 **Example Command**
 What is an example command for this tool?
+
+**System Information**
+What system are you running?
+
+| Software | Version |
+| --- | --- |
+| Darling | Git Commit Hash |

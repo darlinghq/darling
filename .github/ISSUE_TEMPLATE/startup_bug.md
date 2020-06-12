@@ -1,7 +1,7 @@
 ---
-name: Miscellaneous Bug
-about: A miscellaneous bug with Darling
-labels: 'bug'
+name: Startup Bug
+about: An issue with starting Darling
+labels: 'bug, container'
 ---
 
 **Expected Result**
@@ -13,8 +13,11 @@ What did happen?
 **Steps To Reproduce**
 1. If possible, what steps can you take to reproduce the issue?
 
+**```strace``` Output**
+Run ```sudo strace -f -u $USER darling shell```, what is the output?
+
 **System Information**
-What system are you using?
+What system are you running?
 
 | Software | Version |
 | --- | --- |

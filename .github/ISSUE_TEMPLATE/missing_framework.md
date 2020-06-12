@@ -12,3 +12,10 @@ What application requires this framework?
 
 **Steps To Reproduce**
 1. If possible, what steps can you take to reproduce the issue?
+
+**System Information**
+What system are you running?
+
+| Software | Version |
+| --- | --- |
+| Darling | Git Commit Hash |

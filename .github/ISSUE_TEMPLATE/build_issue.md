@@ -4,6 +4,9 @@ about: An issue building Darling
 labels: 'build'
 ---
 
+**Build Log**
+What was the build error?
+
 **System Information**
 What system are you building with?
 
@@ -12,6 +15,4 @@ What system are you building with?
 | Clang | X.Y.Z |
 | CMake | X.Y.Z |
 | Linux Kernel | X.Y.Z |
-
-**Build Log**
-What was the build error?
+| Darling | Git Commit Hash |
