@@ -19,6 +19,12 @@ Run ```sudo strace -f -u $USER darling shell```, what is the output?
 Put the command output here!
 ```
 
+**``dmesg`` Output**
+Run ```dmesg | grep 'overlay\|darling'```
+```
+Put the command output here!
+```
+
 **System Information**
 What system are you running?
 

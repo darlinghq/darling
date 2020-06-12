@@ -13,6 +13,12 @@ What did happen?
 **Steps To Reproduce**
 1. If possible, what steps can you take to reproduce the issue?
 
+**``dmesg`` Output**
+Run ```dmesg | grep 'overlay\|darling'```
+```
+Put the command output here!
+```
+
 **System Information**
 What system are you using?
 
