@@ -1,6 +1,6 @@
 ---
-name: Missing Tool
-about: MacOS contains a command-line tool Darling does not
+name: Missing Built-In Tool
+about: MacOS contains a command-line tool that Darling does not
 labels: 'enhancement'
 ---
 

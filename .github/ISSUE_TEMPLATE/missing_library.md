@@ -10,5 +10,5 @@ What library is required? What does Apple's developer documentation say about it
 **Test Application**
 What application requires this library?
 
-**Output**
-What output does the application print when run?
+**Steps To Reproduce**
+1. If possible, what steps can you take to reproduce the issue?

@@ -10,5 +10,5 @@ What framework is required? What does Apple's developer documentation say about 
 **Test Application**
 What application requires this framework?
 
-**Output**
-What output does the application print when run?
+**Steps To Reproduce**
+1. If possible, what steps can you take to reproduce the issue?
