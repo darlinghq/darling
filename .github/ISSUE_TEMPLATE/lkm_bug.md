@@ -1,6 +1,6 @@
 ---
 name: LKM Bug
-about: An issue with the LKM
+about: An issue with the Linux kernel module
 labels: 'bug, linux kernel module'
 ---
 
