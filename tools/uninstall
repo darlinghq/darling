@@ -8,17 +8,17 @@ then
 	exit
 fi
 
-DARLING_PREFIX="$(dirname "$(dirname "$(which darling)")")"
+INSTALL_PREFIX="$(dirname "$(dirname "$(which darling)")")"
 
 if command -v darling
 then
 	darling shutdown
 fi
-if [ -d "${DARLING_PREFIX}/libexec" ]
+if [ -d "${INSTALL_PREFIX}/libexec" ]
 then
-	rm -rf "${DARLING_PREFIX}/libexec/darling"
-	rmdir --ignore-fail-on-non-empty "${DARLING_PREFIX}/libexec"
+	rm -rf "${INSTALL_PREFIX}/libexec/darling"
+	rmdir --ignore-fail-on-non-empty "${INSTALL_PREFIX}/libexec"
 fi
-rm -f "${DARLING_PREFIX}/bin/darling"
+rm -f "${INSTALL_PREFIX}/bin/darling"
 find /lib/modules -name darling-mach.ko -delete
 echo "Uninstall complete"
