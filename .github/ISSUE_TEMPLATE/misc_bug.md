@@ -1,6 +1,6 @@
 ---
 name: Miscellaneous Bug
-about: A miscellaneous bug with Darling
+about: A miscellaneous bug in Darling
 labels: 'bug'
 ---
 
