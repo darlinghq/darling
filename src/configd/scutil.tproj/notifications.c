@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2005, 2008-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2005, 2008-2015, 2017, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -42,14 +42,10 @@
 #include "notifications.h"
 
 
-static int			osig;
-static struct sigaction		*oact	= NULL;
-
-
 static char *
 elapsed()
 {
-	int			n;
+	size_t			n;
 	static char		str[128];
 	struct tm		tm_diff;
 	struct tm		tm_now;
@@ -80,7 +76,9 @@ elapsed()
 
 
 static CFComparisonResult
-sort_keys(const void *p1, const void *p2, void *context) {
+sort_keys(const void *p1, const void *p2, void *context)
+{
+#pragma unused(context)
 	CFStringRef key1 = (CFStringRef)p1;
 	CFStringRef key2 = (CFStringRef)p2;
 	return CFStringCompare(key1, key2, 0);
@@ -91,6 +89,7 @@ __private_extern__
 void
 storeCallback(SCDynamicStoreRef store, CFArrayRef changedKeys, void *info)
 {
+#pragma unused(info)
 	int		i;
 	CFIndex		n;
 
@@ -118,6 +117,7 @@ __private_extern__
 void
 do_notify_list(int argc, char **argv)
 {
+#pragma unused(argv)
 	int			i;
 	CFArrayRef		list;
 	CFIndex			listCnt;
@@ -247,6 +247,8 @@ __private_extern__
 void
 do_notify_changes(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	CFArrayRef	list;
 	CFIndex		listCnt;
 	int		i;
@@ -279,6 +281,7 @@ do_notify_changes(int argc, char **argv)
 static void *
 _watcher(void *arg)
 {
+#pragma unused(arg)
 	notifyRl = CFRunLoopGetCurrent();
 	if (notifyRl == NULL) {
 		SCPrint(TRUE, stdout, CFSTR("  CFRunLoopGetCurrent() failed\n"));
@@ -312,6 +315,8 @@ __private_extern__
 void
 do_notify_watch(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	pthread_attr_t	tattr;
 	pthread_t	tid;
 
@@ -335,6 +340,8 @@ __private_extern__
 void
 do_notify_wait(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	if (!SCDynamicStoreNotifyWait(store)) {
 		SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
 		return;
@@ -369,7 +376,7 @@ do_notify_file(int argc, char **argv)
 		return;
 	}
 
-	bzero(buf.data, sizeof(buf.data));
+	memset(buf.data, 0, sizeof(buf.data));
 	bufPtr = &buf.data[0];
 	needed = sizeof(buf.gotID);
 	while (needed > 0) {
@@ -409,86 +416,12 @@ do_notify_file(int argc, char **argv)
 }
 
 
-static void
-signalCatcher(int signum)
-{
-	static int	n = 0;
-
-	SCPrint(TRUE, stdout, CFSTR("Received sig%s (#%d).\n"), sys_signame[signum], n++);
-	return;
-}
-
-
-__private_extern__
-void
-do_notify_signal(int argc, char **argv)
-{
-	int			sig;
-	pid_t			pid;
-	struct sigaction	nact;
-
-	if (isdigit(*argv[0])) {
-		if ((sscanf(argv[0], "%d", &sig) != 1) || (sig <= 0) || (sig >= NSIG)) {
-			SCPrint(TRUE, stdout, CFSTR("signal must be in the range of 1 .. %d.\n"), NSIG-1);
-			return;
-		}
-	} else {
-		for (sig = 1; sig < NSIG; sig++) {
-			if (strcasecmp(argv[0], sys_signame[sig]) == 0)
-				break;
-		}
-		if (sig >= NSIG) {
-			CFMutableStringRef	str;
-
-			SCPrint(TRUE, stdout, CFSTR("Signal must be one of the following:\n"));
-
-			str = CFStringCreateMutable(NULL, 0);
-			for (sig = 1; sig < NSIG; sig++) {
-				CFStringAppendFormat(str, NULL, CFSTR(" %-6s"), sys_signame[sig]);
-				if ((sig % 10) == 0) {
-					CFStringAppendFormat(str, NULL, CFSTR("\n"));
-				}
-			}
-			if ((sig % 10) != 0) {
-				CFStringAppendFormat(str, NULL, CFSTR("\n"));
-			}
-			SCPrint(TRUE, stdout, CFSTR("%@"), str);
-			CFRelease(str);
-			return;
-		}
-
-	}
-
-	if ((argc != 2) || (sscanf(argv[1], "%d", &pid) != 1)) {
-		pid = getpid();
-	}
-
-	if (oact != NULL) {
-		(void) sigaction(osig, oact, NULL);	/* restore original signal handler */
-	} else {
-		oact = malloc(sizeof(struct sigaction));
-	}
-
-	nact.sa_handler = signalCatcher;
-	sigemptyset(&nact.sa_mask);
-	nact.sa_flags = SA_RESTART;
-	(void) sigaction(sig, &nact, oact);
-	osig = sig;
-	SCPrint(TRUE, stdout, CFSTR("signal handler started.\n"));
-
-	if (!SCDynamicStoreNotifySignal(store, pid, sig)) {
-		SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
-		return;
-	}
-
-	return;
-}
-
-
 __private_extern__
 void
 do_notify_cancel(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	if (notifyRls != NULL) {
 		if (doDispatch) {
 			if (!SCDynamicStoreSetDispatchQueue(store, NULL)) {
@@ -509,12 +442,6 @@ do_notify_cancel(int argc, char **argv)
 
 	if (notifyRl != NULL) {
 		CFRunLoopStop(notifyRl);
-	}
-
-	if (oact != NULL) {
-		(void) sigaction(osig, oact, NULL);	/* restore original signal handler */
-		free(oact);
-		oact = NULL;
 	}
 
 	return;

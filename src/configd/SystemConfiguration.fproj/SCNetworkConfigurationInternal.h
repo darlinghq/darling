@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2004-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2004-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,25 +17,26 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SCNETWORKCONFIGURATIONINTERNAL_H
 #define _SCNETWORKCONFIGURATIONINTERNAL_H
 
-
 #include <TargetConditionals.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCPreferencesPathKey.h>
-#include <SystemConfiguration/SCNetworkConfigurationPrivate.h>
-#include <IOKit/IOKitLib.h>
 
-#if	!TARGET_IPHONE_SIMULATOR
+#ifndef	SC_LOG_HANDLE
+#define	SC_LOG_HANDLE	__log_SCNetworkConfiguration
+#endif	// SC_LOG_HANDLE
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <SystemConfiguration/SCPrivate.h>
+#include <SystemConfiguration/SCValidation.h>
+#include "SCPreferencesPathKey.h"
 #include "IPMonitorControl.h"
-#endif	// !TARGET_IPHONE_SIMULATOR
+#include <IOKit/IOKitLib.h>
 
 
 typedef struct {
@@ -152,10 +153,12 @@ typedef struct {
 	CFStringRef		path;
 	uint64_t		entryID;
 	CFMutableDictionaryRef	overrides;
-	Boolean			modemIsV92;
 	CFStringRef		prefix;
+	Boolean			trustRequired;
 	CFNumberRef		type;
 	CFNumberRef		unit;
+	CFNumberRef		family;
+	CFNumberRef		subfamily;
 	struct {
 		CFStringRef	name;
 		CFNumberRef	vid;
@@ -163,7 +166,7 @@ typedef struct {
 	} usb;
 
 	// misc
-	int			sort_order;		// sort order for this interface
+	unsigned int		sort_order;		// sort order for this interface
 
 	// for BOND interfaces
 	Boolean			supportsBond;
@@ -188,10 +191,9 @@ typedef struct {
 		CFDictionaryRef		options;
 	} vlan;
 
-#if	!TARGET_IPHONE_SIMULATOR
 	// for interface rank assertions
 	IPMonitorControlRef	IPMonitorControl;
-#endif	// !TARGET_IPHONE_SIMULATOR
+
 } SCNetworkInterfacePrivate, *SCNetworkInterfacePrivateRef;
 
 
@@ -202,10 +204,11 @@ __BEGIN_DECLS
 #pragma mark SCNetworkInterface configuration (internal)
 
 Boolean
-__SCNetworkInterfaceMatchesName	(CFStringRef name, CFStringRef key);
+__SCNetworkInterfaceMatchesName			(CFStringRef		name,
+						 CFStringRef		key);
 
 CFArrayRef
-__SCNetworkInterfaceCopyAll_IONetworkInterface	(void);
+__SCNetworkInterfaceCopyAll_IONetworkInterface	(Boolean		keep_pre_configured);
 
 /*!
  @function __SCNetworkInterfaceCopyStorageEntity
@@ -216,7 +219,7 @@ __SCNetworkInterfaceCopyAll_IONetworkInterface	(void);
  You must release the returned value.
  */
 CFDictionaryRef
-__SCNetworkInterfaceCopyStorageEntity	(SCNetworkInterfaceRef		interface);
+__SCNetworkInterfaceCopyStorageEntity		(SCNetworkInterfaceRef	interface);
 
 /*!
  @function __SCNetworkInterfaceCopyStoredWithPreferences
@@ -228,7 +231,7 @@ __SCNetworkInterfaceCopyStorageEntity	(SCNetworkInterfaceRef		interface);
  */
 
 CFArrayRef  // SCNetworkInterfaceRef
-__SCNetworkInterfaceCopyStoredWithPreferences (SCPreferencesRef ni_prefs);
+__SCNetworkInterfaceCopyStoredWithPreferences	(SCPreferencesRef	ni_prefs);
 
 SCNetworkInterfacePrivateRef
 __SCNetworkInterfaceCreateCopy			(CFAllocatorRef		allocator,
@@ -240,12 +243,12 @@ __SCNetworkInterfaceCreateCopy			(CFAllocatorRef		allocator,
  @function __SCNetworkInterfaceCreateMappingUsingBSDName
  @discussion This function creates mapping of BSD name and network interface using
  preferences which point to the NetworkInterfaces.plist file.
- @param ni_prefs Preferences pointing to NetworkInterfaces.plist
+ @param interfaces An array of network interfaces to use for the mapping.
  @result BSD Mapping in a dictionary.
  You must release the returned value.
  */
 CFDictionaryRef
-__SCNetworkInterfaceCreateMappingUsingBSDName(CFArrayRef interfaces);
+__SCNetworkInterfaceCreateMappingUsingBSDName	(CFArrayRef		interfaces);
 
 SCNetworkInterfaceRef
 __SCNetworkInterfaceCreateWithNIPreferencesUsingBSDName(CFAllocatorRef		allocator,
@@ -285,15 +288,6 @@ CFStringRef
 __SCNetworkInterfaceCopyXNonLocalizedDisplayName(SCNetworkInterfaceRef	interface);
 #endif	// !TARGET_OS_IPHONE
 
-int
-__SCNetworkInterfaceCreateCapabilities		(SCNetworkInterfaceRef	interface,
-						 int			capability_base,
-						 CFDictionaryRef	capability_options);
-
-int
-__SCNetworkInterfaceCreateMediaOptions		(SCNetworkInterfaceRef	interface,
-						 CFDictionaryRef	media_options);
-
 CFStringRef
 __SCNetworkInterfaceGetDefaultConfigurationType	(SCNetworkInterfaceRef	interface);
 
@@ -325,11 +319,14 @@ __SCNetworkInterfaceGetUserDefinedName(SCNetworkInterfaceRef interface);
  @result	TRUE if the interface configuration is active.
  */
 Boolean
-__SCNetworkInterfaceIsActive			(SCNetworkInterfaceRef		interface);
+__SCNetworkInterfaceIsActive			(SCNetworkInterfaceRef	interface);
 
 Boolean
 __SCNetworkInterfaceIsMember			(SCPreferencesRef	prefs,
 						 SCNetworkInterfaceRef	interface);
+
+Boolean
+__SCNetworkInterfaceEntityIsPPTP		(CFDictionaryRef	entity);
 
 Boolean
 __SCNetworkInterfaceIsValidExtendedConfigurationType
@@ -337,7 +334,7 @@ __SCNetworkInterfaceIsValidExtendedConfigurationType
 						 CFStringRef		extendedType,
 						 Boolean		requirePerInterface);
 
-CFDictionaryRef
+CFPropertyListRef
 __SCNetworkInterfaceGetTemplateOverrides	(SCNetworkInterfaceRef	interface,
 						 CFStringRef		overrideType);
 
@@ -378,7 +375,7 @@ __SCNetworkInterfaceSetDeepConfiguration	(SCNetworkSetRef	set,
  */
 void
 __SCNetworkInterfaceSetIOInterfaceUnit		(SCNetworkInterfaceRef interface,
-						 CFNumberRef unit);
+						 CFNumberRef		unit);
 
 Boolean
 __SCNetworkInterfaceSupportsVLAN		(CFStringRef		bsd_if);
@@ -398,6 +395,12 @@ __SCBridgeInterfaceListCollectMembers		(CFArrayRef 		interfaces,
 Boolean
 __SCBridgeInterfaceSetMemberInterfaces		(SCBridgeInterfaceRef	bridge,
 						 CFArrayRef		members);
+
+void
+_SCNetworkInterfaceCacheOpen(void);
+
+void
+_SCNetworkInterfaceCacheClose(void);
 
 #pragma mark -
 #pragma mark SCNetworkProtocol configuration (internal)
@@ -429,6 +432,9 @@ __SCNetworkServiceCreatePrivate			(CFAllocatorRef		allocator,
 						 SCNetworkInterfaceRef	interface);
 
 Boolean
+__SCNetworkServiceExists			(SCNetworkServiceRef	service);
+
+Boolean
 __SCNetworkServiceExistsForInterface		(CFArrayRef		services,
 						 SCNetworkInterfaceRef	interface);
 
@@ -436,6 +442,10 @@ Boolean
 __SCNetworkServiceCreate			(SCPreferencesRef	prefs,
 						 SCNetworkInterfaceRef	interface,
 						 CFStringRef		userDefinedName);
+
+Boolean
+__SCNetworkServiceIsPPTP			(SCNetworkServiceRef	service);
+
 
 SCPreferencesRef
 __SCNetworkCreateDefaultNIPrefs			(CFStringRef		prefsID);
@@ -449,14 +459,32 @@ __SCNetworkCreateDefaultNIPrefs			(CFStringRef		prefsID);
  @result TRUE if add service to prefs is successful
  */
 Boolean
-__SCNetworkServiceMigrateNew			(SCPreferencesRef		prefs,
-						 SCNetworkServiceRef		service,
-						 CFDictionaryRef		bsdMapping,
-						 CFDictionaryRef		setMapping,
-						 CFDictionaryRef		serviceSetMapping);
+__SCNetworkServiceMigrateNew			(SCPreferencesRef	prefs,
+						 SCNetworkServiceRef	service,
+						 CFDictionaryRef	bsdMapping,
+						 CFDictionaryRef	setMapping,
+						 CFDictionaryRef	serviceSetMapping);
+
+void
+__SCNetworkServiceAddProtocolToService		(SCNetworkServiceRef		service,
+						 CFStringRef			protocolType,
+						 CFDictionaryRef		configuration,
+						 Boolean			enabled);
 
 #pragma mark -
 #pragma mark SCNetworkSet configuration (internal)
+
+
+Boolean
+__SCNetworkSetExists				(SCNetworkSetRef		set);
+
+
+#pragma mark -
+#pragma mark Logging
+
+
+os_log_t
+__log_SCNetworkConfiguration			(void);
 
 
 #pragma mark -

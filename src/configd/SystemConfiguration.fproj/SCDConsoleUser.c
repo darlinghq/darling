@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2005, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2005, 2009, 2011, 2015 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -152,7 +152,7 @@ SCDynamicStoreCopyConsoleInformation(SCDynamicStoreRef store)
 
 	info = CFDictionaryGetValue(dict, kSCPropUsersConsoleSessionInfo);
 	info = isA_CFArray(info);
-	if (!info) {
+	if (info == NULL) {
 		_SCErrorSet(kSCStatusNoKey);
 		goto done;
 	}

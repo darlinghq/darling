@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2011, 2013, 2015-2017, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -42,153 +42,78 @@
 
 #include "configd.h"
 #include "configd_server.h"
-#include "notify_server.h"
 #include "session.h"
 
 /* MiG generated externals and functions */
 extern struct mig_subsystem	_config_subsystem;
-extern boolean_t		config_server(mach_msg_header_t *, mach_msg_header_t *);
-
-/* configd server port (for new session requests) */
-static CFMachPortRef		configd_port		= NULL;
-
-__private_extern__
-boolean_t
-config_demux(mach_msg_header_t *request, mach_msg_header_t *reply)
-{
-	Boolean				processed = FALSE;
-
-	/*
-	 * (attempt to) process SCDynamicStore requests.
-	 */
-	processed = config_server(request, reply);
-	if (processed) {
-		return TRUE;
-	}
-
-	/*
-	 * (attempt to) process (NO MORE SENDERS) notification messages.
-	 */
-	processed = notify_server(request, reply);
-	if (processed) {
-		return TRUE;
-	}
-
-	/*
-	 * unknown message ID, log and return an error.
-	 */
-	SCLog(TRUE, LOG_ERR, CFSTR("config_demux(): unknown message ID (%d) received"), request->msgh_id);
-	reply->msgh_bits        = MACH_MSGH_BITS(MACH_MSGH_BITS_REMOTE(request->msgh_bits), 0);
-	reply->msgh_remote_port = request->msgh_remote_port;
-	reply->msgh_size        = sizeof(mig_reply_error_t);	/* Minimal size */
-	reply->msgh_local_port  = MACH_PORT_NULL;
-	reply->msgh_id          = request->msgh_id + 100;
-	((mig_reply_error_t *)reply)->NDR = NDR_record;
-	((mig_reply_error_t *)reply)->RetCode = MIG_BAD_ID;
-
-	return FALSE;
-}
-
-
-#define	MACH_MSG_BUFFER_SIZE	128
 
 
 __private_extern__
 void
-configdCallback(CFMachPortRef port, void *msg, CFIndex size, void *info)
+server_mach_channel_handler(void			*context,	// serverSessionRef
+			    dispatch_mach_reason_t	reason,
+			    dispatch_mach_msg_t		message,
+			    mach_error_t		error)
 {
-	mig_reply_error_t *	bufRequest	= msg;
-	uint32_t		bufReply_q[MACH_MSG_BUFFER_SIZE/sizeof(uint32_t)];
-	mig_reply_error_t *	bufReply	= (mig_reply_error_t *)bufReply_q;
-	static CFIndex		bufSize		= 0;
-	mach_msg_return_t	mr;
-	int			options;
+#pragma unused(error)
+	bool			ok;
+	serverSessionRef	session	= (serverSessionRef)context;
 
-	if (bufSize == 0) {
-		// get max size for MiG reply buffers
-		bufSize = _config_subsystem.maxsize;
+	static const struct mig_subsystem * const subsystems[] = {
+		(mig_subsystem_t)&_config_subsystem,
+	};
 
-		// check if our on-the-stack reply buffer will be big enough
-		if (bufSize > sizeof(bufReply_q)) {
-			SCLog(TRUE, LOG_NOTICE,
-			      CFSTR("configdCallback(): buffer size should be increased > %d"),
-			      _config_subsystem.maxsize);
-		}
+	switch (reason) {
+		case DISPATCH_MACH_MESSAGE_RECEIVED:
+			ok = dispatch_mach_mig_demux(context, subsystems, 1, message);
+			if (ok) {
+				/*
+				 * the dispatch mach message has been consumed as per
+				 * usual MIG rules.  Check for, and if necessary, push
+				 * out [SCDynamicStore] change notifications to other
+				 * processes.
+				 */
+				pushNotifications();
+			} else {
+				/*
+				 * no subsystem claimed the message, destroy it
+				 */
+				mach_msg_destroy(dispatch_mach_msg_get_msg(message, NULL));
+			}
+			break;
+
+		case DISPATCH_MACH_NO_SENDERS:
+			__MACH_PORT_DEBUG(TRUE, "*** server_mach_channel_handler DISPATCH_MACH_NO_SENDERS", session->key);
+			closeSession(session);
+			break;
+
+		case DISPATCH_MACH_CANCELED:
+			__MACH_PORT_DEBUG(TRUE, "*** server_mach_channel_handler DISPATCH_MACH_CANCELED", session->key);
+			cleanupSession(session);
+			break;
+
+		default:
+			break;
 	}
 
-	if (bufSize > sizeof(bufReply_q)) {
-		bufReply = CFAllocatorAllocate(NULL, _config_subsystem.maxsize, 0);
-	}
-	bufReply->RetCode = 0;
-
-	/* we have a request message */
-	(void) config_demux(&bufRequest->Head, &bufReply->Head);
-
-	if (!(bufReply->Head.msgh_bits & MACH_MSGH_BITS_COMPLEX)) {
-		if (bufReply->RetCode == MIG_NO_REPLY) {
-			bufReply->Head.msgh_remote_port = MACH_PORT_NULL;
-		} else if ((bufReply->RetCode != KERN_SUCCESS) &&
-			   (bufRequest->Head.msgh_bits & MACH_MSGH_BITS_COMPLEX)) {
-			/*
-			 * destroy the request - but not the reply port
-			 */
-			bufRequest->Head.msgh_remote_port = MACH_PORT_NULL;
-			mach_msg_destroy(&bufRequest->Head);
-		}
-	}
-
-	if (bufReply->Head.msgh_remote_port != MACH_PORT_NULL) {
-		/*
-		 * send reply.
-		 *
-		 * We don't want to block indefinitely because the client
-		 * isn't receiving messages from the reply port.
-		 * If we have a send-once right for the reply port, then
-		 * this isn't a concern because the send won't block.
-		 * If we have a send right, we need to use MACH_SEND_TIMEOUT.
-		 * To avoid falling off the kernel's fast RPC path unnecessarily,
-		 * we only supply MACH_SEND_TIMEOUT when absolutely necessary.
-		 */
-
-		options = MACH_SEND_MSG;
-		if (MACH_MSGH_BITS_REMOTE(bufReply->Head.msgh_bits) != MACH_MSG_TYPE_MOVE_SEND_ONCE) {
-			options |= MACH_SEND_TIMEOUT;
-		}
-		mr = mach_msg(&bufReply->Head,		/* msg */
-			      options,			/* option */
-			      bufReply->Head.msgh_size,	/* send_size */
-			      0,			/* rcv_size */
-			      MACH_PORT_NULL,		/* rcv_name */
-			      MACH_MSG_TIMEOUT_NONE,	/* timeout */
-			      MACH_PORT_NULL);		/* notify */
-
-		/* Has a message error occurred? */
-		switch (mr) {
-			case MACH_SEND_INVALID_DEST:
-			case MACH_SEND_TIMED_OUT:
-				break;
-			default :
-				/* Includes success case.  */
-				goto done;
-		}
-	}
-
-	if (bufReply->Head.msgh_bits & MACH_MSGH_BITS_COMPLEX) {
-		mach_msg_destroy(&bufReply->Head);
-	}
-
-    done :
-
-	if (bufReply != (mig_reply_error_t *)bufReply_q)
-		CFAllocatorDeallocate(NULL, bufReply);
 	return;
 }
 
 
-static CFStringRef
-serverMPCopyDescription(const void *info)
+__private_extern__
+dispatch_workloop_t
+server_queue(void)
 {
-	return CFStringCreateWithFormat(NULL, NULL, CFSTR("<main DynamicStore MP>"));
+	static dispatch_once_t		once;
+	static dispatch_workloop_t	workloop;
+
+	dispatch_once(&once, ^{
+		workloop = dispatch_workloop_create_inactive("configd/SCDynamicStore");
+		dispatch_set_qos_class_fallback(workloop, QOS_CLASS_UTILITY);
+		dispatch_activate(workloop);
+	});
+
+	return workloop;
 }
 
 
@@ -196,14 +121,12 @@ __private_extern__
 void
 server_init()
 {
-	serverSessionRef	mySession;
-	CFRunLoopSourceRef	rls;
 	char			*service_name;
 	mach_port_t		service_port	= MACH_PORT_NULL;
 	kern_return_t 		status;
 
 	service_name = getenv("SCD_SERVER");
-	if (!service_name) {
+	if (service_name == NULL) {
 		service_name = SCD_SERVER;
 	}
 
@@ -215,75 +138,21 @@ server_init()
 			break;
 		case BOOTSTRAP_NOT_PRIVILEGED :
 			/* if another instance of the server is starting */
-			SCLog(TRUE, LOG_ERR, CFSTR("'%s' server already starting"), service_name);
+			SC_log(LOG_ERR, "'%s' server already starting", service_name);
 			exit (EX_UNAVAILABLE);
 		case BOOTSTRAP_SERVICE_ACTIVE :
 			/* if another instance of the server is active */
-			SCLog(TRUE, LOG_ERR, CFSTR("'%s' server already active"), service_name);
+			SC_log(LOG_ERR, "'%s' server already active", service_name);
 			exit (EX_UNAVAILABLE);
 		default :
-			SCLog(TRUE, LOG_ERR,
-			      CFSTR("server_init bootstrap_check_in(..., '%s', ...) failed: %s"),
-			      service_name,
-			      bootstrap_strerror(status));
+			SC_log(LOG_ERR, "server_init bootstrap_check_in(..., '%s', ...) failed: %s",
+			       service_name,
+			       bootstrap_strerror(status));
 			exit (EX_UNAVAILABLE);
 	}
 
 	/* Create the primary / new connection port and backing session */
-	mySession = addSession(service_port, serverMPCopyDescription);
-	configd_port = mySession->serverPort;
-
-	/*
-	 * Create and add a run loop source for the port and add this source
-	 * to the default run loop mode.
-	 */
-	rls = CFMachPortCreateRunLoopSource(NULL, configd_port, 0);
-	CFRunLoopAddSource(CFRunLoopGetCurrent(), rls, kCFRunLoopDefaultMode);
-	CFRelease(rls);
+	addServer(service_port);
 
 	return;
-}
-
-
-__private_extern__
-int
-server_shutdown()
-{
-	if (configd_port != NULL) {
-		mach_port_t	service_port	= CFMachPortGetPort(configd_port);
-
-		CFMachPortInvalidate(configd_port);
-		CFRelease(configd_port);
-		configd_port = NULL;
-
-		if (service_port != MACH_PORT_NULL) {
-			(void) mach_port_mod_refs(mach_task_self(),
-						  service_port,
-						  MACH_PORT_RIGHT_RECEIVE,
-						  -1);
-		}
-	}
-
-	return EX_OK;
-}
-
-
-__private_extern__
-void
-server_loop()
-{
-	pthread_setname_np("SCDynamicStore");
-
-	while (TRUE) {
-		/*
-		 * process one run loop event
-		 */
-		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1.0e10, TRUE);
-
-		/*
-		 * check for, and if necessary, push out change notifications
-		 * to other processes.
-		 */
-		pushNotifications(_configd_trace);
-	}
 }

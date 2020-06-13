@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -69,9 +69,7 @@
 #include "session.h"
 #include "tests.h"
 
-
 #define LINE_LENGTH 2048
-
 
 __private_extern__ AuthorizationRef	authorization	= NULL;
 __private_extern__ InputRef		currentInput	= NULL;
@@ -110,6 +108,11 @@ static const struct option longopts[] = {
 	{ "password",		required_argument,	NULL,	0	},
 	{ "secret",		required_argument,	NULL,	0	},
 	{ "log",		required_argument,	NULL,	0	},
+	{ "advisory",		required_argument,	NULL,	0	},
+#if	!TARGET_OS_IPHONE
+	{ "allow-new-interfaces", no_argument,		NULL,	0	},
+#endif	// !TARGET_OS_IPHONE
+	{ "disable-until-needed", no_argument,		NULL,	0	},
 	{ NULL,			0,			NULL,	0	}
 };
 
@@ -190,7 +193,7 @@ getLine(char *buf, int len, InputRef src)
 		if (line == NULL)
 			return NULL;
 
-		strncpy(buf, line, len);
+		strlcpy(buf, line, len);
 	} else {
 		if (fgets(buf, len, src->fp) == NULL)
 			return NULL;
@@ -212,7 +215,6 @@ getLine(char *buf, int len, InputRef src)
 
 		history(src->h, &ev, H_ENTER, buf);
 	}
-
 
 	return buf;
 }
@@ -361,7 +363,17 @@ usage(const char *command)
 		SCPrint(TRUE, stderr, CFSTR("\n"));
 		SCPrint(TRUE, stderr, CFSTR("   or: %s --log IPMonitor [off|on]\n"), command);
 		SCPrint(TRUE, stderr, CFSTR("\tmanage logging.\n"));
+
+		SCPrint(TRUE, stderr, CFSTR("\n"));
+		SCPrint(TRUE, stderr, CFSTR("   or: %s --disable-until-needed <interfaceName> [on|off ]\n"), command);
+		SCPrint(TRUE, stderr, CFSTR("\tmanage secondary interface demand.\n"));
 	}
+
+#if	!TARGET_OS_IPHONE
+	SCPrint(TRUE, stderr, CFSTR("\n"));
+	SCPrint(TRUE, stderr, CFSTR("   or: %s --allow-new-interfaces [off|on]\n"), command);
+	SCPrint(TRUE, stderr, CFSTR("\tmanage new interface creation with screen locked.\n"));
+#endif	// !TARGET_OS_IPHONE
 
 	if (getenv("ENABLE_EXPERIMENTAL_SCUTIL_COMMANDS")) {
 		SCPrint(TRUE, stderr, CFSTR("\n"));
@@ -380,43 +392,50 @@ usage(const char *command)
 static char *
 prompt(EditLine *el)
 {
-#if	!TARGET_IPHONE_SIMULATOR
+#pragma unused(el)
+#if	!TARGET_OS_SIMULATOR
 	return "> ";
-#else	// !TARGET_IPHONE_SIMULATOR
+#else	// !TARGET_OS_SIMULATOR
 	return "sim> ";
-#endif	// !TARGET_IPHONE_SIMULATOR
+#endif	// !TARGET_OS_SIMULATOR
 }
 
 
 int
 main(int argc, char * const argv[])
 {
-	Boolean			doDNS	= FALSE;
-	Boolean			doNet	= FALSE;
-	Boolean			doNWI	= FALSE;
-	Boolean			doPrefs	= FALSE;
-	Boolean			doProxy	= FALSE;
-	Boolean			doReach	= FALSE;
-	Boolean			doSnap	= FALSE;
-	char			*error	= NULL;
-	char			*get	= NULL;
-	char			*log	= NULL;
+#if	!TARGET_OS_IPHONE
+	Boolean			allowNewInterfaces	= FALSE;
+#endif	// !TARGET_OS_IPHONE
+	Boolean			disableUntilNeeded	= FALSE;
+	const char *		advisoryInterface	= NULL;
+	Boolean			doAdvisory		= FALSE;
+	Boolean			doDNS			= FALSE;
+	Boolean			doNet			= FALSE;
+	Boolean			doNWI			= FALSE;
+	Boolean			doPrefs			= FALSE;
+	Boolean			doProxy			= FALSE;
+	Boolean			doReach			= FALSE;
+	Boolean			doSnap			= FALSE;
+	char			*error			= NULL;
+	char			*get			= NULL;
+	char			*log			= NULL;
 	extern int		optind;
 	int			opt;
 	int			opti;
-	const char		*prog	= argv[0];
-	char			*renew	= NULL;
-	char			*set	= NULL;
-	char			*nc_cmd	= NULL;
+	const char		*prog			= argv[0];
+	char			*renew			= NULL;
+	char			*set			= NULL;
+	char			*nc_cmd			= NULL;
 	InputRef		src;
-	int			timeout	= 15;	/* default timeout (in seconds) */
-	char			*wait	= NULL;
-	Boolean			watch	= FALSE;
-	int			xStore	= 0;	/* non dynamic store command line options */
+	int			timeout			= 15;	/* default timeout (in seconds) */
+	char			*wait			= NULL;
+	Boolean			watch			= FALSE;
+	int			xStore			= 0;	/* non dynamic store command line options */
 
 	/* process any arguments */
 
-	while ((opt = getopt_long(argc, argv, "dDvprt:w:W", longopts, &opti)) != -1)
+	while ((opt = getopt_long(argc, argv, "dDvprt:w:W", longopts, &opti)) != -1) {
 		switch(opt) {
 		case 'd':
 			_sc_debug = TRUE;
@@ -483,18 +502,32 @@ main(int argc, char * const argv[])
 			} else if (strcmp(longopts[opti].name, "log") == 0) {
 				log = optarg;
 				xStore++;
+#if	!TARGET_OS_IPHONE
+			} else if (strcmp(longopts[opti].name, "allow-new-interfaces") == 0) {
+				allowNewInterfaces = TRUE;
+				xStore++;
+#endif	// !TARGET_OS_IPHONE
+			} else if (strcmp(longopts[opti].name, "disable-until-needed") == 0) {
+				disableUntilNeeded = TRUE;
+				xStore++;
 			} else if (strcmp(longopts[opti].name, "user") == 0) {
 				username = CFStringCreateWithCString(NULL, optarg, kCFStringEncodingUTF8);
 			} else if (strcmp(longopts[opti].name, "password") == 0) {
 				password = CFStringCreateWithCString(NULL, optarg, kCFStringEncodingUTF8);
 			} else if (strcmp(longopts[opti].name, "secret") == 0) {
 				sharedsecret = CFStringCreateWithCString(NULL, optarg, kCFStringEncodingUTF8);
+			} else if (strcmp(longopts[opti].name, "advisory") == 0) {
+				doAdvisory = TRUE;
+				advisoryInterface = optarg;
+				xStore++;
 			}
 			break;
 		case '?':
 		default :
 			usage(prog);
 		}
+	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -542,17 +575,18 @@ main(int argc, char * const argv[])
 	}
 
 	if (doSnap) {
-		if (!enablePrivateAPI
-#if	!TARGET_IPHONE_SIMULATOR
-		    || (geteuid() != 0)
-#endif	// !TARGET_IPHONE_SIMULATOR
-		   ) {
+		if (!enablePrivateAPI) {
 			usage(prog);
 		}
 
 		do_open(0, NULL);	/* open the dynamic store */
 		do_snapshot(argc, (char**)argv);
 		exit(0);
+	}
+
+	if (doAdvisory) {
+		do_advisory(advisoryInterface, watch, argc, (char**)argv);
+		/* NOT REACHED */
 	}
 
 	/* are we translating error #'s to descriptive text */
@@ -568,15 +602,22 @@ main(int argc, char * const argv[])
 
 	/* are we looking up a preference value */
 	if (get) {
-		if (argc != 2) {
+		if (argc == 0) {
 			if (findPref(get) < 0) {
 				usage(prog);
 			}
-		} else {
-			/* need to go back one argument
-			 * for the filename */
+		} else if (argc == 2) {
+			/*
+			 * extended --get
+			 *   i.e. scutil --get <filename> <prefs path> <key>
+			 *
+			 * need to go back one argument to re-use the 1st "--get"
+			 * argument as the prefs path name
+			 */
 			argc++;
 			argv--;
+		} else {
+			usage(prog);
 		}
 
 		do_getPref(get, argc, (char **)argv);
@@ -604,6 +645,20 @@ main(int argc, char * const argv[])
 			usage(prog);
 		}
 		do_log(log, argc, (char * *)argv);
+		/* NOT REACHED */
+	}
+
+#if	!TARGET_OS_IPHONE
+	/* allowNewInterfaces */
+	if (allowNewInterfaces) {
+		do_ifnamer("allow-new-interfaces", argc, (char * *)argv);
+		/* NOT REACHED */
+	}
+#endif	// !TARGET_OS_IPHONE
+
+	/* disableUntilNeeded */
+	if (disableUntilNeeded) {
+		do_disable_until_needed(argc, (char * *)argv);
 		/* NOT REACHED */
 	}
 

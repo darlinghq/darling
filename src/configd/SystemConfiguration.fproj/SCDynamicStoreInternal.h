@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2004, 2006, 2009-2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2004, 2006, 2009-2011, 2013, 2015-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,14 +17,14 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SCDYNAMICSTOREINTERNAL_H
 #define _SCDYNAMICSTOREINTERNAL_H
 
-#include <Availability.h>
+#include <os/availability.h>
 #include <TargetConditionals.h>
 #include <sys/cdefs.h>
 #include <dispatch/dispatch.h>
@@ -32,9 +32,16 @@
 #include <mach/mach.h>
 #include <pthread.h>
 #include <regex.h>
+#include <os/log.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
-#include <SystemConfiguration/SCDynamicStore.h>
+
+#ifndef	SC_LOG_HANDLE
+#define	SC_LOG_HANDLE	__log_SCDynamicStore
+#endif	// SC_LOG_HANDLE
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <SystemConfiguration/SCPrivate.h>
+#include <SystemConfiguration/SCValidation.h>
 
 
 /* Define the status of any registered notification. */
@@ -43,7 +50,6 @@ typedef enum {
 	Using_NotifierWait,
 	Using_NotifierInformViaMachPort,
 	Using_NotifierInformViaFD,
-	Using_NotifierInformViaSignal,
 	Using_NotifierInformViaRunLoop,
 	Using_NotifierInformViaDispatch
 } __SCDynamicStoreNotificationStatus;
@@ -97,14 +103,21 @@ typedef struct {
 	int				notifyFile;
 	int				notifyFileIdentifier;
 
-	/* "server" information associated with SCDynamicStoreNotifySignal() */
-	int				notifySignal;
-	task_t				notifySignalTask;
+	/* caching */
+	Boolean				cache_active;
+	CFMutableDictionaryRef		cached_keys;
+	CFMutableDictionaryRef		cached_set;
+	CFMutableArrayRef		cached_removals;
+	CFMutableArrayRef		cached_notifys;
 
 } SCDynamicStorePrivate, *SCDynamicStorePrivateRef;
 
 
 __BEGIN_DECLS
+
+__private_extern__
+os_log_t
+__log_SCDynamicStore			(void);
 
 SCDynamicStorePrivateRef
 __SCDynamicStoreCreatePrivate		(CFAllocatorRef			allocator,
@@ -112,18 +125,21 @@ __SCDynamicStoreCreatePrivate		(CFAllocatorRef			allocator,
 					 SCDynamicStoreCallBack		callout,
 					 SCDynamicStoreContext		*context);
 
+__private_extern__
 SCDynamicStoreRef
 __SCDynamicStoreNullSession		(void);
 
+__private_extern__
 Boolean
 __SCDynamicStoreCheckRetryAndHandleError(SCDynamicStoreRef		store,
 					 kern_return_t			status,
 					 int				*sc_status,
 					 const char			*func);
 
+__private_extern__
 Boolean
 __SCDynamicStoreReconnectNotifications	(SCDynamicStoreRef		store);
 
 __END_DECLS
 
-#endif /* _SCDYNAMICSTOREINTERNAL_H */
+#endif	/* _SCDYNAMICSTOREINTERNAL_H */

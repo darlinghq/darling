@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2003-2005, 2009, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003-2005, 2009, 2011, 2012, 2015-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -38,8 +38,6 @@
 #include "configd_server.h"
 #include "session.h"
 
-
-__private_extern__ CFMutableDictionaryRef	sessionData		= NULL;
 
 __private_extern__ CFMutableDictionaryRef	storeData		= NULL;
 
@@ -72,7 +70,7 @@ _addWatcher(CFNumberRef sessionNum, CFStringRef watchedKey)
 	 * Get the dictionary associated with this key out of the store
 	 */
 	dict = CFDictionaryGetValue(storeData, watchedKey);
-	if (dict) {
+	if (dict != NULL) {
 		newDict = CFDictionaryCreateMutableCopy(NULL, 0, dict);
 	} else {
 		newDict = CFDictionaryCreateMutable(NULL,
@@ -132,7 +130,7 @@ _addWatcher(CFNumberRef sessionNum, CFStringRef watchedKey)
 	CFRelease(newDict);
 
 #ifdef	DEBUG
-	SCLog(_configd_verbose, LOG_DEBUG, CFSTR("  _addWatcher: %@, %@"), sessionNum, watchedKey);
+	SC_log(LOG_DEBUG, "  _addWatcher: %@, %@", sessionNum, watchedKey);
 #endif	/* DEBUG */
 
 	return;
@@ -157,10 +155,10 @@ _removeWatcher(CFNumberRef sessionNum, CFStringRef watchedKey)
 	 * Get the dictionary associated with this key out of the store
 	 */
 	dict = CFDictionaryGetValue(storeData, watchedKey);
-	if ((dict == NULL) || (CFDictionaryContainsKey(dict, kSCDWatchers) == FALSE)) {
+	if ((dict == NULL) || !CFDictionaryContainsKey(dict, kSCDWatchers)) {
 		/* key doesn't exist (isn't this really fatal?) */
 #ifdef	DEBUG
-		SCLog(_configd_verbose, LOG_DEBUG, CFSTR("  _removeWatcher: %@, %@, key not watched"), sessionNum, watchedKey);
+		SC_log(LOG_DEBUG, "  _removeWatcher: %@, %@, key not watched", sessionNum, watchedKey);
 #endif	/* DEBUG */
 		return;
 	}
@@ -182,7 +180,7 @@ _removeWatcher(CFNumberRef sessionNum, CFStringRef watchedKey)
 					sessionNum);
 	if (i == kCFNotFound) {
 #ifdef	DEBUG
-		SCLog(_configd_verbose, LOG_DEBUG, CFSTR("  _removeWatcher: %@, %@, session not watching"), sessionNum, watchedKey);
+		SC_log(LOG_DEBUG, "  _removeWatcher: %@, %@, session not watching", sessionNum, watchedKey);
 #endif	/* DEBUG */
 		CFRelease(newDict);
 		CFRelease(newWatchers);
@@ -225,7 +223,7 @@ _removeWatcher(CFNumberRef sessionNum, CFStringRef watchedKey)
 	CFRelease(newDict);
 
 #ifdef	DEBUG
-	SCLog(_configd_verbose, LOG_DEBUG, CFSTR("  _removeWatcher: %@, %@"), sessionNum, watchedKey);
+	SC_log(LOG_DEBUG, "  _removeWatcher: %@, %@", sessionNum, watchedKey);
 #endif	/* DEBUG */
 
 	return;
@@ -237,7 +235,7 @@ _removeWatcher(CFNumberRef sessionNum, CFStringRef watchedKey)
 
 __private_extern__
 void
-pushNotifications(FILE *_configd_trace)
+pushNotifications(void)
 {
 	CFIndex				notifyCnt;
 	int				server;
@@ -258,23 +256,25 @@ pushNotifications(FILE *_configd_trace)
 					kCFNumberIntType,
 					&server);
 		theSession = getSession(server);
+		assert(theSession != NULL);
+
 		storePrivate = (SCDynamicStorePrivateRef)theSession->store;
 
 		/*
-		 * deliver notifications to client sessions
+		 * deliver [CFRunLoop/dispatch] notifications to client sessions
 		 */
 		if ((storePrivate->notifyStatus == Using_NotifierInformViaMachPort) &&
 		    (storePrivate->notifyPort != MACH_PORT_NULL)) {
 			/*
 			 * Post notification as mach message
 			 */
-			if (_configd_trace != NULL) {
-				SCTrace(TRUE, _configd_trace,
-					CFSTR("%s : %5d : port = %d, msgid = %d\n"),
-					"-->port",
-					storePrivate->server,
-					storePrivate->notifyPort,
-					storePrivate->notifyPortIdentifier);
+			SC_trace("-->port : %5d : port = %d",
+				 storePrivate->server,
+				 storePrivate->notifyPort);
+
+			/* use a random (and non-zero) identifier */
+			while (storePrivate->notifyPortIdentifier == 0) {
+				storePrivate->notifyPortIdentifier = (mach_msg_id_t)random();
 			}
 
 			_SC_sendMachMessage(storePrivate->notifyPort, storePrivate->notifyPortIdentifier);
@@ -284,14 +284,10 @@ pushNotifications(FILE *_configd_trace)
 		    (storePrivate->notifyFile >= 0)) {
 			ssize_t		written;
 
-			if (_configd_trace != NULL) {
-				SCTrace(TRUE, _configd_trace,
-					CFSTR("%s : %5d : fd = %d, msgid = %d\n"),
-					"-->fd  ",
-					storePrivate->server,
-					storePrivate->notifyFile,
-					storePrivate->notifyFileIdentifier);
-			}
+			SC_trace("-->fd   : %5d : fd = %d, msgid = %d",
+				 storePrivate->server,
+				 storePrivate->notifyFile,
+				 storePrivate->notifyFileIdentifier);
 
 			written = write(storePrivate->notifyFile,
 					&storePrivate->notifyFileIdentifier,
@@ -299,72 +295,22 @@ pushNotifications(FILE *_configd_trace)
 			if (written == -1) {
 				if (errno == EWOULDBLOCK) {
 #ifdef	DEBUG
-					SCLog(_configd_verbose, LOG_DEBUG,
-					      CFSTR("sorry, only one outstanding notification per session."));
+					SC_log(LOG_DEBUG, "sorry, only one outstanding notification per session");
 #endif	/* DEBUG */
 				} else {
 #ifdef	DEBUG
-					SCLog(_configd_verbose, LOG_DEBUG,
-					      CFSTR("could not send notification, write() failed: %s"),
+					SC_log(LOG_DEBUG, "could not send notification, write() failed: %s",
 					      strerror(errno));
 #endif	/* DEBUG */
 					storePrivate->notifyFile = -1;
 				}
 			} else if (written != sizeof(storePrivate->notifyFileIdentifier)) {
 #ifdef	DEBUG
-				SCLog(_configd_verbose, LOG_DEBUG,
-				      CFSTR("could not send notification, incomplete write()"));
+				SC_log(LOG_DEBUG, "could not send notification, incomplete write()");
 #endif	/* DEBUG */
 				storePrivate->notifyFile = -1;
 			}
 		}
-
-		if ((storePrivate->notifyStatus == Using_NotifierInformViaSignal) &&
-		    (storePrivate->notifySignal > 0)) {
-			kern_return_t	status;
-			pid_t		pid;
-			/*
-			 * Post notification as signal
-			 */
-			status = pid_for_task(storePrivate->notifySignalTask, &pid);
-			if (status == KERN_SUCCESS) {
-				if (_configd_trace != NULL) {
-					SCTrace(TRUE, _configd_trace,
-						CFSTR("%s : %5d : pid = %d, signal = sig%s (%d)\n"),
-						"-->sig ",
-						storePrivate->server,
-						pid,
-						sys_signame[storePrivate->notifySignal],
-						storePrivate->notifySignal);
-				}
-
-				if (kill(pid, storePrivate->notifySignal) != 0) {
-					if (errno != ESRCH) {
-						SCLog(TRUE, LOG_ERR,
-						      CFSTR("could not send sig%s to PID %d: %s"),
-						      sys_signame[storePrivate->notifySignal],
-						      pid,
-						      strerror(errno));
-					}
-				}
-			} else {
-				mach_port_type_t	pt;
-
-				__MACH_PORT_DEBUG(TRUE, "*** pushNotifications pid_for_task failed: releasing task", storePrivate->notifySignalTask);
-				if (mach_port_type(mach_task_self(), storePrivate->notifySignalTask, &pt) == KERN_SUCCESS) {
-					if ((pt & MACH_PORT_TYPE_DEAD_NAME) != 0) {
-						SCLog(TRUE, LOG_ERR, CFSTR("pushNotifications pid_for_task() failed: %s"), mach_error_string(status));
-					}
-				} else {
-					SCLog(TRUE, LOG_ERR, CFSTR("pushNotifications mach_port_type() failed: %s"), mach_error_string(status));
-				}
-
-				/* don't bother with any more attempts */
-				(void) mach_port_deallocate(mach_task_self(), storePrivate->notifySignalTask);
-				storePrivate->notifySignal     = 0;
-				storePrivate->notifySignalTask = TASK_NULL;
-			}
-	       }
 	}
 	if (sessionsToNotify != sessionsToNotify_q) CFAllocatorDeallocate(NULL, sessionsToNotify);
 

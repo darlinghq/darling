@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2003, 2004, 2006, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003, 2004, 2006, 2009, 2011, 2015, 2016, 2018, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -59,26 +59,7 @@
 #define	kSCDSession	CFSTR("session")
 
 
-/*
- * keys in the "sessionData" dictionary
- */
-
-/*
- * the name of the calling application / plug-in
- */
-#define	kSCDName	CFSTR("name")
-/*
- * keys which have changed since last call to SCDNotifierGetChanges()
- */
-#define	kSCDChangedKeys	CFSTR("changedKeys")
-/*
- * keys which are to be removed when the session is closed
- */
-#define	kSCDSessionKeys	CFSTR("sessionKeys")
-
-
 extern CFMutableDictionaryRef	storeData;
-extern CFMutableDictionaryRef	sessionData;
 extern CFMutableDictionaryRef	patternData;
 extern CFMutableSetRef		changedKeys;
 extern CFMutableSetRef		deferredRemovals;
@@ -172,14 +153,7 @@ __SCDynamicStoreNotifyMachPort		(SCDynamicStoreRef	store,
 					 mach_port_t		port);
 
 int
-__SCDynamicStoreNotifyFileDescriptor	(SCDynamicStoreRef	store,
-					 int32_t		identifier,
-					 int			*fd);
-
-int
-__SCDynamicStoreNotifySignal		(SCDynamicStoreRef	store,
-					 pid_t			pid,
-					 int			sig);
+__SCDynamicStoreNotifyFileDescriptor	(SCDynamicStoreRef	store);
 
 int
 __SCDynamicStoreNotifyCancel		(SCDynamicStoreRef	store);
@@ -193,8 +167,8 @@ _removeWatcher				(CFNumberRef		sessionNum,
 					 CFStringRef		watchedKey);
 
 void
-pushNotifications			(FILE			*_configd_trace);
+pushNotifications			(void);
 
 __END_DECLS
 
-#endif /* !_S_SCD_H */
+#endif	/* !_S_SCD_H */

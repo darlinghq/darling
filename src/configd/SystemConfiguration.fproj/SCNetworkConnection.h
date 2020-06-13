@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2003-2006, 2008-2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2003-2006, 2008-2010, 2015, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,17 +17,14 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SCNETWORKCONNECTION_H
-#ifdef	USE_SYSTEMCONFIGURATION_PRIVATE_HEADERS
-#include <SystemConfiguration/_SCNetworkConnection.h>
-#else	/* USE_SYSTEMCONFIGURATION_PRIVATE_HEADERS */
 #define _SCNETWORKCONNECTION_H
 
-#include <Availability.h>
+#include <os/availability.h>
 #include <TargetConditionals.h>
 #include <sys/cdefs.h>
 #include <dispatch/dispatch.h>
@@ -36,6 +33,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <SystemConfiguration/SystemConfiguration.h>
 
+CF_IMPLICIT_BRIDGING_ENABLED
+CF_ASSUME_NONNULL_BEGIN
 
 /*!
 	@header SCNetworkConnection
@@ -56,7 +55,7 @@
 	@typedef SCNetworkConnectionRef
 	@discussion This is the handle to manage a connection-oriented service.
  */
-typedef const struct __SCNetworkConnection * SCNetworkConnectionRef;
+typedef const struct CF_BRIDGED_TYPE(id) __SCNetworkConnection * SCNetworkConnectionRef;
 
 
 /*!
@@ -79,10 +78,10 @@ typedef const struct __SCNetworkConnection * SCNetworkConnectionRef;
  */
 typedef struct {
 	CFIndex         version;
-	void *          info;
-	const void      *(*retain)(const void *info);
-	void            (*release)(const void *info);
-	CFStringRef     (*copyDescription)(const void *info);
+	void *          __nullable info;
+	const void      * __nonnull (* __nullable retain)(const void *info);
+	void            (* __nullable release)(const void *info);
+	CFStringRef     __nonnull (* __nullable copyDescription)(const void *info);
 } SCNetworkConnectionContext;
 
 
@@ -105,14 +104,13 @@ typedef struct {
 	@constant kSCNetworkConnectionDisconnecting
 		The network connection is disconnecting.
  */
-enum {
+typedef CF_ENUM(int32_t, SCNetworkConnectionStatus) {
 	kSCNetworkConnectionInvalid		=  -1,
 	kSCNetworkConnectionDisconnected	=  0,
 	kSCNetworkConnectionConnecting		=  1,
 	kSCNetworkConnectionConnected		=  2,
 	kSCNetworkConnectionDisconnecting	=  3
 };
-typedef int32_t SCNetworkConnectionStatus;
 
 
 /*!
@@ -159,7 +157,7 @@ typedef int32_t SCNetworkConnectionStatus;
 	@constant kSCNetworkConnectionPPPWaitingForRedial
 		PPP has found a busy server and is waiting for redial.
  */
-enum {
+typedef CF_ENUM(int32_t, SCNetworkConnectionPPPStatus) {
 	kSCNetworkConnectionPPPDisconnected		=  0,
 	kSCNetworkConnectionPPPInitializing		=  1,
 	kSCNetworkConnectionPPPConnectingLink		=  2,
@@ -175,8 +173,6 @@ enum {
 	kSCNetworkConnectionPPPSuspended		=  12,
 	kSCNetworkConnectionPPPWaitingForRedial		=  13
 };
-typedef int32_t SCNetworkConnectionPPPStatus;
-
 
 /*!
 	@typedef SCNetworkConnectionCallBack
@@ -187,9 +183,9 @@ typedef int32_t SCNetworkConnectionPPPStatus;
 	@param info Application-specific information.
  */
 typedef void (*SCNetworkConnectionCallBack)	(
-						SCNetworkConnectionRef          connection,
-						SCNetworkConnectionStatus       status,
-						void                            *info
+						SCNetworkConnectionRef				connection,
+						SCNetworkConnectionStatus			status,
+						void			    *	__nullable	info
 						);
 
 
@@ -217,7 +213,8 @@ typedef void (*SCNetworkConnectionCallBack)	(
 		"best" SCNetworkConnection.
  */
 #define kSCNetworkConnectionSelectionOptionOnDemandHostName	CFSTR("OnDemandHostName")	// CFString
-												// __OSX_AVAILABLE_STARTING(__MAC_10_6,__IPHONE_3_0/*SPI*/)
+												// API_AVAILABLE(macos(4.0))
+												// SPI_AVAILABLE(ios(3.0), tvos(9.0), watchos(1.0), bridgeos(1.0))
 
 /*!
 	@define kSCNetworkConnectionSelectionOptionOnDemandRetry
@@ -225,7 +222,8 @@ typedef void (*SCNetworkConnectionCallBack)	(
 		already been issued for the specified OnDemand host name.
  */
 #define kSCNetworkConnectionSelectionOptionOnDemandRetry	CFSTR("OnDemandRetry")		// CFBoolean
-												// __OSX_AVAILABLE_STARTING(__MAC_10_6,__IPHONE_3_0/*SPI*/)
+												// API_AVAILABLE(macos(4.0))
+												// SPI_AVAILABLE(ios(3.0), tvos(9.0), watchos(1.0), bridgeos(1.0))
 
 __BEGIN_DECLS
 
@@ -235,7 +233,7 @@ __BEGIN_DECLS
 		instances.
  */
 CFTypeID
-SCNetworkConnectionGetTypeID			(void)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+SCNetworkConnectionGetTypeID			(void)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -255,10 +253,10 @@ SCNetworkConnectionGetTypeID			(void)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IP
  */
 Boolean
 SCNetworkConnectionCopyUserPreferences		(
-						CFDictionaryRef			selectionOptions,
-						CFStringRef			*serviceID,
-						CFDictionaryRef			*userOptions
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						CFDictionaryRef				  __nullable	selectionOptions,
+						CFStringRef		__nonnull	* __nullable	serviceID,
+						CFDictionaryRef		__nonnull	* __nullable	userOptions
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -282,13 +280,13 @@ SCNetworkConnectionCopyUserPreferences		(
 		callout.
 	@result Returns a reference to the new SCNetworkConnection.
  */
-SCNetworkConnectionRef
+SCNetworkConnectionRef __nullable
 SCNetworkConnectionCreateWithServiceID		(
-						CFAllocatorRef			allocator,
-						CFStringRef			serviceID,
-						SCNetworkConnectionCallBack	callout,
-						SCNetworkConnectionContext	*context
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						CFAllocatorRef			__nullable	allocator,
+						CFStringRef					serviceID,
+						SCNetworkConnectionCallBack	__nullable	callout,
+						SCNetworkConnectionContext	* __nullable	context
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -297,10 +295,10 @@ SCNetworkConnectionCreateWithServiceID		(
 	@param connection The SCNetworkConnection to obtain status from.
 	@result Returns the service ID associated with the SCNetworkConnection.
  */
-CFStringRef
+CFStringRef __nullable
 SCNetworkConnectionCopyServiceID		(
 						SCNetworkConnectionRef		connection
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -323,7 +321,7 @@ SCNetworkConnectionCopyServiceID		(
 SCNetworkConnectionStatus
 SCNetworkConnectionGetStatus			(
 						SCNetworkConnectionRef		connection
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -368,10 +366,10 @@ SCNetworkConnectionGetStatus			(
 	@result Returns the status dictionary.
 		If NULL is returned, the error can be retrieved using the SCError function.
  */
-CFDictionaryRef
+CFDictionaryRef __nullable
 SCNetworkConnectionCopyExtendedStatus		(
 						SCNetworkConnectionRef		connection
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -410,10 +408,10 @@ SCNetworkConnectionCopyExtendedStatus		(
 	@result Returns the statistics dictionary.
 		If NULL is returned, the error can be retrieved using the SCError function.
  */
-CFDictionaryRef
+CFDictionaryRef __nullable
 SCNetworkConnectionCopyStatistics		(
 						SCNetworkConnectionRef		connection
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -462,10 +460,10 @@ SCNetworkConnectionCopyStatistics		(
  */
 Boolean
 SCNetworkConnectionStart			(
-						SCNetworkConnectionRef		connection,
-						CFDictionaryRef			userOptions,
-						Boolean				linger
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						SCNetworkConnectionRef				connection,
+						CFDictionaryRef			__nullable	userOptions,
+						Boolean						linger
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -491,7 +489,7 @@ Boolean
 SCNetworkConnectionStop				(
 						SCNetworkConnectionRef		connection,
 						Boolean				forceDisconnect
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -504,10 +502,10 @@ SCNetworkConnectionStop				(
 		The dictionary can be empty if no user options were used.
 		If NULL is returned, the error can be retrieved using the SCError function.
  */
-CFDictionaryRef
+CFDictionaryRef __nullable
 SCNetworkConnectionCopyUserOptions		(
 						SCNetworkConnectionRef		connection
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -525,7 +523,7 @@ SCNetworkConnectionScheduleWithRunLoop		(
 						SCNetworkConnectionRef		connection,
 						CFRunLoopRef			runLoop,
 						CFStringRef			runLoopMode
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -543,7 +541,7 @@ SCNetworkConnectionUnscheduleFromRunLoop	(
 						SCNetworkConnectionRef		connection,
 						CFRunLoopRef			runLoop,
 						CFStringRef			runLoopMode
-						)			__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0/*SPI*/);
+						)			API_AVAILABLE(macos(10.3)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -558,11 +556,13 @@ SCNetworkConnectionUnscheduleFromRunLoop	(
  */
 Boolean
 SCNetworkConnectionSetDispatchQueue		(
-						 SCNetworkConnectionRef		connection,
-						 dispatch_queue_t		queue
-						 )			__OSX_AVAILABLE_STARTING(__MAC_10_6,__IPHONE_4_0/*SPI*/);
+						 SCNetworkConnectionRef				connection,
+						 dispatch_queue_t		__nullable	queue
+						 )			API_AVAILABLE(macos(10.6)) SPI_AVAILABLE(ios(4.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 __END_DECLS
 
-#endif	/* USE_SYSTEMCONFIGURATION_PRIVATE_HEADERS */
-#endif /* _SCNETWORKCONNECTION_H */
+CF_ASSUME_NONNULL_END
+CF_IMPLICIT_BRIDGING_DISABLED
+
+#endif	/* _SCNETWORKCONNECTION_H */

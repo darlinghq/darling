@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2003-2005, 2007-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003-2005, 2007-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -39,180 +39,140 @@
 
 #include <unistd.h>
 #include <bsm/libbsm.h>
+#include <os/state_private.h>
 #include <sandbox.h>
 
-#if !TARGET_IPHONE_SIMULATOR || (defined(IPHONE_SIMULATOR_HOST_MIN_VERSION_REQUIRED) && (IPHONE_SIMULATOR_HOST_MIN_VERSION_REQUIRED >= 1090))
+#if !TARGET_OS_SIMULATOR || (defined(IPHONE_SIMULATOR_HOST_MIN_VERSION_REQUIRED) && (IPHONE_SIMULATOR_HOST_MIN_VERSION_REQUIRED >= 1090))
 #define HAVE_MACHPORT_GUARDS
 #endif
 
 
-/* information maintained for each active session */
-static serverSessionRef	*sessions	= NULL;
-static int		nSessions	= 0;	/* # of allocated sessions */
-static int		lastSession	= -1;	/* # of last used session */
+/* information maintained for the main listener */
+static serverSessionRef		server_session		= NULL;
 
-/* CFMachPortInvalidation runloop */
-static CFRunLoopRef	sessionRunLoop	= NULL;
-
-/* temp session */
-static serverSessionRef	temp_session	= NULL;
+/*
+ * information maintained for each active session
+ * Note: sync w/sessionQueue()
+ */
+static CFMutableDictionaryRef	client_sessions		= NULL;
 
 
-__private_extern__
-serverSessionRef
-getSession(mach_port_t server)
+static dispatch_queue_t
+sessionQueue(void)
 {
-	int	i;
-
-	if (server == MACH_PORT_NULL) {
-		SCLog(TRUE, LOG_ERR, CFSTR("Excuse me, why is getSession() being called with an invalid port?"));
-		return NULL;
-	}
-
-	/* look for matching session (note: slot 0 is the "server" port) */
-	for (i = 1; i <= lastSession; i++) {
-		serverSessionRef	thisSession = sessions[i];
-
-		if (thisSession == NULL) {
-			/* found an empty slot, skip it */
-			continue;
-		}
-
-		if (thisSession->key == server) {
-			/* we've seen this server before */
-			return thisSession;
-		}
-
-		if ((thisSession->store != NULL) &&
-		    (((SCDynamicStorePrivateRef)thisSession->store)->notifySignalTask == server)) {
-			/* we've seen this task port before */
-			return thisSession;
-		}
-	}
-
-	/* no sessions available */
-	return NULL;
-}
-
-
-__private_extern__
-serverSessionRef
-tempSession(mach_port_t server, CFStringRef name, audit_token_t auditToken)
-{
-	static dispatch_once_t		once;
-	SCDynamicStorePrivateRef	storePrivate;
-
-	if (sessions[0]->key != server) {
-		// if not SCDynamicStore "server" port
-		return NULL;
-	}
+	static dispatch_once_t	once;
+	static dispatch_queue_t	q;
 
 	dispatch_once(&once, ^{
-		temp_session = sessions[0];	/* use "server" session */
-		(void) __SCDynamicStoreOpen(&temp_session->store, NULL);
+		// allocate mapping between [client] session mach port and session info
+		client_sessions = CFDictionaryCreateMutable(NULL,
+							    0,
+							    NULL,	// use the actual mach_port_t as the key
+							    &kCFTypeDictionaryValueCallBacks);
+
+		// and a queue to synchronize access to the mapping
+		q = dispatch_queue_create("SCDynamicStore/sessions", NULL);
 	});
 
-	/* save audit token, caller entitlements */
-	temp_session->auditToken		= auditToken;
-	temp_session->callerEUID		= 1;		/* not "root" */
-	temp_session->callerRootAccess		= UNKNOWN;
-	if ((temp_session->callerWriteEntitlement != NULL) &&
-	    (temp_session->callerWriteEntitlement != kCFNull)) {
-		CFRelease(temp_session->callerWriteEntitlement);
-	}
-	temp_session->callerWriteEntitlement	= kCFNull;	/* UNKNOWN */
-
-	/* save name */
-	storePrivate = (SCDynamicStorePrivateRef)temp_session->store;
-	if (storePrivate->name != NULL) CFRelease(storePrivate->name);
-	storePrivate->name = CFRetain(name);
-
-	return temp_session;
+	return q;
 }
 
 
-__private_extern__
-serverSessionRef
-addSession(mach_port_t server, CFStringRef (*copyDescription)(const void *info))
-{
-	CFMachPortContext	context		= { 0, NULL, NULL, NULL, NULL };
-	kern_return_t		kr;
-	mach_port_t		mp		= server;
-	int			n		= -1;
-	serverSessionRef	newSession	= NULL;
+#pragma mark -
+#pragma mark __serverSession object
 
-	/* save current (SCDynamicStore) runloop */
-	if (sessionRunLoop == NULL) {
-		sessionRunLoop = CFRunLoopGetCurrent();
+static CFStringRef		__serverSessionCopyDescription	(CFTypeRef cf);
+static void			__serverSessionDeallocate	(CFTypeRef cf);
+
+static const CFRuntimeClass	__serverSessionClass = {
+	0,					// version
+	"serverSession",			// className
+	NULL,					// init
+	NULL,					// copy
+	__serverSessionDeallocate,		// dealloc
+	NULL,					// equal
+	NULL,					// hash
+	NULL,					// copyFormattingDesc
+	__serverSessionCopyDescription	// copyDebugDesc
+};
+
+static CFTypeID	__serverSessionTypeID	= _kCFRuntimeNotATypeID;
+
+
+static CFStringRef
+__serverSessionCopyDescription(CFTypeRef cf)
+{
+	CFAllocatorRef		allocator	= CFGetAllocator(cf);
+	CFMutableStringRef	result;
+	serverSessionRef	session		= (serverSessionRef)cf;
+
+	result = CFStringCreateMutable(allocator, 0);
+	CFStringAppendFormat(result, NULL, CFSTR("<serverSession %p [%p]> {"), cf, allocator);
+
+	// add client port
+	CFStringAppendFormat(result, NULL, CFSTR("port = 0x%x (%d)"), session->key, session->key);
+
+	// add session info
+	if (session->name != NULL) {
+		CFStringAppendFormat(result, NULL, CFSTR(", name = %@"), session->name);
 	}
 
-	if (nSessions <= 0) {
-		/* if first session (the "server" port) */
-		n = 0;		/* use slot "0" */
-		lastSession = 0;	/* last used slot */
+	CFStringAppendFormat(result, NULL, CFSTR("}"));
+	return result;
+}
 
-		nSessions = 64;
-		sessions = malloc(nSessions * sizeof(serverSessionRef));
 
-		// allocate a new session for "the" server
-		newSession = calloc(1, sizeof(serverSession));
-	} else {
-		int			i;
+static void
+__serverSessionDeallocate(CFTypeRef cf)
+{
+#pragma unused(cf)
+	serverSessionRef	session		= (serverSessionRef)cf;
+
+	if (session->changedKeys != NULL)	CFRelease(session->changedKeys);
+	if (session->name != NULL)		CFRelease(session->name);
+	if (session->sessionKeys != NULL)	CFRelease(session->sessionKeys);
+
+	return;
+}
+
+
+static serverSessionRef
+__serverSessionCreate(CFAllocatorRef allocator, mach_port_t server)
+{
+	static dispatch_once_t	once;
+	serverSessionRef	session;
+	uint32_t		size;
+
+	// initialize runtime
+	dispatch_once(&once, ^{
+		__serverSessionTypeID = _CFRuntimeRegisterClass(&__serverSessionClass);
+	});
+
+	// allocate session
+	size    = sizeof(serverSession) - sizeof(CFRuntimeBase);
+	session = (serverSessionRef)_CFRuntimeCreateInstance(allocator,
+							     __serverSessionTypeID,
+							     size,
+							     NULL);
+	if (session == NULL) {
+		return NULL;
+	}
+
+	// if needed, allocate a mach port for SCDynamicStore client
+	if (server == MACH_PORT_NULL) {
+		kern_return_t		kr;
+		mach_port_t		mp	= MACH_PORT_NULL;
 #ifdef	HAVE_MACHPORT_GUARDS
 		mach_port_options_t	opts;
 #endif	// HAVE_MACHPORT_GUARDS
 
-		/* check to see if we already have an open session (note: slot 0 is the "server" port) */
-		for (i = 1; i <= lastSession; i++) {
-			serverSessionRef	thisSession	= sessions[i];
-
-			if (thisSession == NULL) {
-				/* found an empty slot */
-				if (n < 0) {
-					/* keep track of the first [empty] slot */
-					n = i;
-				}
-
-				/* and keep looking for a matching session */
-				continue;
-			}
-
-			if (thisSession->key == server) {
-				/* we've seen this server before */
-				return NULL;
-			}
-
-			if ((thisSession->store != NULL) &&
-				   (((SCDynamicStorePrivateRef)thisSession->store)->notifySignalTask == server)) {
-				/* we've seen this task port before */
-				return NULL;
-			}
-		}
-
-		/* add a new session */
-		if (n < 0) {
-			/* if no empty slots */
-			n = ++lastSession;
-			if (lastSession >= nSessions) {
-				/* expand the session list */
-				nSessions *= 2;
-				sessions = reallocf(sessions, (nSessions * sizeof(serverSessionRef)));
-			}
-		}
-
-		// allocate a session for this client
-		newSession = calloc(1, sizeof(serverSession));
-
-		// create mach port for SCDynamicStore client
-		mp = MACH_PORT_NULL;
-
 	    retry_allocate :
 
 #ifdef	HAVE_MACHPORT_GUARDS
-		bzero(&opts, sizeof(opts));
+		memset(&opts, 0, sizeof(opts));
 		opts.flags = MPO_CONTEXT_AS_GUARD;
 
-		kr = mach_port_construct(mach_task_self(), &opts, newSession, &mp);
+		kr = mach_port_construct(mach_task_self(), &opts, (mach_port_context_t)session, &mp);
 #else	// HAVE_MACHPORT_GUARDS
 		kr = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &mp);
 #endif	// HAVE_MACHPORT_GUARDS
@@ -220,38 +180,21 @@ addSession(mach_port_t server, CFStringRef (*copyDescription)(const void *info))
 		if (kr != KERN_SUCCESS) {
 			char	*err	= NULL;
 
-			SCLog(TRUE, LOG_ERR, CFSTR("addSession: could not allocate mach port: %s"), mach_error_string(kr));
+			SC_log(LOG_NOTICE, "could not allocate mach port: %s", mach_error_string(kr));
 			if ((kr == KERN_NO_SPACE) || (kr == KERN_RESOURCE_SHORTAGE)) {
 				sleep(1);
 				goto retry_allocate;
 			}
 
-			(void) asprintf(&err, "addSession: could not allocate mach port: %s", mach_error_string(kr));
-			_SC_crash(err != NULL ? err : "addSession: could not allocate mach port",
+			(void) asprintf(&err, "Could not allocate mach port: %s", mach_error_string(kr));
+			_SC_crash(err != NULL ? err : "Could not allocate new session (mach) port",
 				  NULL,
 				  NULL);
 			if (err != NULL) free(err);
-
-			free(newSession);
+			CFRelease(session);
 			return NULL;
 		}
-	}
 
-	// create server port
-	context.info		= newSession;
-	context.copyDescription = copyDescription;
-
-	//
-	// Note: we create the CFMachPort *before* we insert a send
-	//       right present to ensure that CF does not establish
-	//       its dead name notification.
-	//
-	newSession->serverPort = _SC_CFMachPortCreateWithPort("SCDynamicStore/session",
-							      mp,
-							      configdCallback,
-							      &context);
-
-	if (n > 0) {
 		// insert send right that will be moved to the client
 		kr = mach_port_insert_right(mach_task_self(),
 					    mp,
@@ -263,103 +206,374 @@ addSession(mach_port_t server, CFStringRef (*copyDescription)(const void *info))
 			 * only happen if someone stomped on OUR port (so let's leave
 			 * the port alone).
 			 */
-			SCLog(TRUE, LOG_ERR, CFSTR("addSession mach_port_insert_right(): %s"), mach_error_string(kr));
-
-			free(newSession);
+			SC_log(LOG_ERR, "mach_port_insert_right() failed: %s", mach_error_string(kr));
+			CFRelease(session);
 			return NULL;
 		}
+
+		server = mp;
 	}
 
-	sessions[n] = newSession;
-	sessions[n]->key			= mp;
-//	sessions[n]->serverRunLoopSource	= NULL;
-//	sessions[n]->store			= NULL;
-	sessions[n]->callerEUID			= 1;		/* not "root" */
-	sessions[n]->callerRootAccess		= UNKNOWN;
-	sessions[n]->callerWriteEntitlement	= kCFNull;	/* UNKNOWN */
+	session->callerEUID		= 1;		/* not "root" */
+	session->callerRootAccess	= UNKNOWN;
+	session->callerWriteEntitlement	= kCFNull;	/* UNKNOWN */
+	session->key			= server;
+//	session->store			= NULL;
+
+	return session;
+}
+
+
+#pragma mark -
+#pragma mark SCDynamicStore state handler
+
+
+static void
+addSessionReference(const void *key, const void *value, void *context)
+{
+#pragma unused(key)
+	CFMutableDictionaryRef	dict		= (CFMutableDictionaryRef)context;
+	serverSessionRef	session		= (serverSessionRef)value;
+
+	if (session->name != NULL) {
+		int		cnt;
+		CFNumberRef	num;
+
+		if (!CFDictionaryGetValueIfPresent(dict,
+						   session->name,
+						   (const void **)&num) ||
+		    !CFNumberGetValue(num, kCFNumberIntType, &cnt)) {
+			// if first session
+			cnt = 0;
+		}
+		cnt++;
+		num = CFNumberCreate(NULL, kCFNumberIntType, &cnt);
+		CFDictionarySetValue(dict, session->name, num);
+		CFRelease(num);
+	}
+
+	return;
+}
+
+
+static void
+add_state_handler()
+{
+	os_state_block_t	state_block;
+
+	state_block = ^os_state_data_t(os_state_hints_t hints) {
+#pragma unused(hints)
+		CFDataRef		data	= NULL;
+		CFIndex			n;
+		Boolean			ok;
+		os_state_data_t		state_data;
+		size_t			state_data_size;
+		CFIndex			state_len;
+
+		n = CFDictionaryGetCount(client_sessions);
+		if (n < 500) {
+			CFStringRef	str;
+
+			str = CFStringCreateWithFormat(NULL, NULL, CFSTR("n = %ld"), n);
+			ok = _SCSerialize(str, &data, NULL, NULL);
+			CFRelease(str);
+		} else {
+			CFMutableDictionaryRef	dict;
+
+			dict = CFDictionaryCreateMutable(NULL,
+							 0,
+							 &kCFTypeDictionaryKeyCallBacks,
+							 &kCFTypeDictionaryValueCallBacks);
+			CFDictionaryApplyFunction(client_sessions, addSessionReference, dict);
+			ok = _SCSerialize(dict, &data, NULL, NULL);
+			CFRelease(dict);
+		}
+
+		state_len = (ok && (data != NULL)) ? CFDataGetLength(data) : 0;
+		state_data_size = OS_STATE_DATA_SIZE_NEEDED(state_len);
+		if (state_data_size > MAX_STATEDUMP_SIZE) {
+			SC_log(LOG_ERR, "SCDynamicStore/sessions : state data too large (%zd > %zd)",
+			       state_data_size,
+			       (size_t)MAX_STATEDUMP_SIZE);
+			if (data != NULL) CFRelease(data);
+			return NULL;
+		}
+
+		state_data = calloc(1, state_data_size);
+		if (state_data == NULL) {
+			SC_log(LOG_ERR, "SCDynamicStore/sessions: could not allocate state data");
+			if (data != NULL) CFRelease(data);
+			return NULL;
+		}
+
+		state_data->osd_type = OS_STATE_DATA_SERIALIZED_NSCF_OBJECT;
+		state_data->osd_data_size = (uint32_t)state_len;
+		strlcpy(state_data->osd_title, "SCDynamicStore/sessions", sizeof(state_data->osd_title));
+		if (state_len > 0) {
+			memcpy(state_data->osd_data, CFDataGetBytePtr(data), state_len);
+		}
+		if (data != NULL) CFRelease(data);
+
+		return state_data;
+	};
+
+	(void) os_state_add_handler(sessionQueue(), state_block);
+	return;
+}
+
+
+#pragma mark -
+#pragma mark SCDynamicStore session management
+
+
+__private_extern__
+serverSessionRef
+getSession(mach_port_t server)
+{
+	__block serverSessionRef	session;
+
+	assert(server != MACH_PORT_NULL);
+	dispatch_sync(sessionQueue(), ^{
+		session = (serverSessionRef)CFDictionaryGetValue(client_sessions,
+								 (const void *)(uintptr_t)server);
+	});
+
+	return session;
+}
+
+
+__private_extern__
+serverSessionRef
+getSessionNum(CFNumberRef serverNum)
+{
+	union {
+		mach_port_t	mp;
+		uint64_t	val;
+	} server;
+	serverSessionRef	session;
+
+	(void) CFNumberGetValue(serverNum, kCFNumberSInt64Type, &server.val);
+	session = getSession(server.mp);
+
+	return session;
+}
+
+
+__private_extern__
+serverSessionRef
+getSessionStr(CFStringRef serverKey)
+{
+	mach_port_t		server;
+	serverSessionRef	session;
+	char			str[16];
+
+	(void) _SC_cfstring_to_cstring(serverKey, str, sizeof(str), kCFStringEncodingASCII);
+	server = atoi(str);
+	session = getSession(server);
+
+	return session;
+}
+
+
+__private_extern__
+serverSessionRef
+tempSession(mach_port_t server, CFStringRef name, audit_token_t auditToken)
+{
+	static dispatch_once_t		once;
+	SCDynamicStorePrivateRef	storePrivate;	/* temp session */
+	static serverSession		temp_session;
+
+	dispatch_once(&once, ^{
+		temp_session = *server_session;		/* use "server" session clone */
+		(void) __SCDynamicStoreOpen(&temp_session.store, NULL);
+	});
+
+	if (temp_session.key != server) {
+		// if not SCDynamicStore "server" port
+		return NULL;
+	}
+
+	/* save audit token, caller entitlements */
+	temp_session.auditToken			= auditToken;
+	temp_session.callerEUID			= 1;		/* not "root" */
+	temp_session.callerRootAccess		= UNKNOWN;
+	if ((temp_session.callerWriteEntitlement != NULL) &&
+	    (temp_session.callerWriteEntitlement != kCFNull)) {
+		CFRelease(temp_session.callerWriteEntitlement);
+	}
+	temp_session.callerWriteEntitlement	= kCFNull;	/* UNKNOWN */
+
+	/* save name */
+	storePrivate = (SCDynamicStorePrivateRef)temp_session.store;
+	if (storePrivate->name != NULL) CFRelease(storePrivate->name);
+	storePrivate->name = CFRetain(name);
+
+	return &temp_session;
+}
+
+
+__private_extern__
+void
+addSession(serverSessionRef session, Boolean isMain)
+{
+	session->serverChannel = dispatch_mach_create_f("configd/SCDynamicStore",
+							server_queue(),
+							(void *)session,
+							server_mach_channel_handler);
+	if (!isMain) {
+		// if not main SCDynamicStore port, watch for exit
+		dispatch_mach_request_no_senders(session->serverChannel);
+	}
+#if	TARGET_OS_SIMULATOR
+	// simulators don't support MiG QoS propagation yet
+	dispatch_set_qos_class_fallback(session->serverChannel, QOS_CLASS_USER_INITIATED);
+#else
+	dispatch_set_qos_class_fallback(session->serverChannel, QOS_CLASS_BACKGROUND);
+#endif
+	dispatch_mach_connect(session->serverChannel, session->key, MACH_PORT_NULL, NULL);
+	return;
+}
+
+
+__private_extern__
+serverSessionRef
+addClient(mach_port_t server, audit_token_t audit_token)
+{
+
+	__block serverSessionRef	newSession	= NULL;
+
+	dispatch_sync(sessionQueue(), ^{
+		Boolean		ok;
+
+		// check to see if we already have an open session
+		ok = CFDictionaryContainsKey(client_sessions,
+					     (const void *)(uintptr_t)server);
+		if (ok) {
+			// if we've already added a session for this port
+			return;
+		}
+
+		// allocate a new session for "the" server
+		newSession = __serverSessionCreate(NULL, MACH_PORT_NULL);
+		if (newSession != NULL) {
+			// and add a port --> session mapping
+			CFDictionarySetValue(client_sessions,
+					     (const void *)(uintptr_t)newSession->key,
+					     newSession);
+
+			// save the audit_token in case we need to check the callers credentials
+			newSession->auditToken = audit_token;
+
+			CFRelease(newSession);	// reference held by dictionary
+		}
+	});
+
+	if (newSession != NULL) {
+		addSession(newSession, FALSE);
+	}
 
 	return newSession;
 }
 
 
 __private_extern__
-void
-cleanupSession(mach_port_t server)
+serverSessionRef
+addServer(mach_port_t server)
 {
-	int		i;
+	// allocate a session for "the" server
+	server_session = __serverSessionCreate(NULL, server);
+	addSession(server_session, TRUE);
 
-	for (i = 1; i <= lastSession; i++) {
-		CFStringRef		sessionKey;
-		serverSessionRef	thisSession = sessions[i];
+	// add a state dump handler
+	add_state_handler();
 
-		if (thisSession == NULL) {
-			/* found an empty slot, skip it */
-			continue;
-		}
+	return server_session;
+}
 
-		if (thisSession->key == server) {
-			/*
-			 * session entry still exists.
-			 */
 
-			if (_configd_trace) {
-				SCTrace(TRUE, _configd_trace, CFSTR("cleanup : %5d\n"), server);
-			}
+__private_extern__
+void
+cleanupSession(serverSessionRef session)
+{
+	mach_port_t	server		= session->key;
 
-			/*
-			 * Close any open connections including cancelling any outstanding
-			 * notification requests and releasing any locks.
-			 */
-			__MACH_PORT_DEBUG(TRUE, "*** cleanupSession", server);
-			(void) __SCDynamicStoreClose(&thisSession->store);
-			__MACH_PORT_DEBUG(TRUE, "*** cleanupSession (after __SCDynamicStoreClose)", server);
+	SC_trace("cleanup : %5d", server);
 
-			/*
-			 * Our send right has already been removed. Remove our receive right.
-			 */
+	/*
+	 * Close any open connections including cancelling any outstanding
+	 * notification requests and releasing any locks.
+	 */
+	__MACH_PORT_DEBUG(TRUE, "*** cleanupSession", server);
+	(void) __SCDynamicStoreClose(&session->store);
+	__MACH_PORT_DEBUG(TRUE, "*** cleanupSession (after __SCDynamicStoreClose)", server);
+
+	/*
+	 * Our send right has already been removed. Remove our receive right.
+	 */
 #ifdef	HAVE_MACHPORT_GUARDS
-			(void) mach_port_destruct(mach_task_self(), server, 0, thisSession);
+	(void) mach_port_destruct(mach_task_self(), server, 0, (mach_port_context_t)session);
 #else	// HAVE_MACHPORT_GUARDS
-			(void) mach_port_mod_refs(mach_task_self(), server, MACH_PORT_RIGHT_RECEIVE, -1);
+	(void) mach_port_mod_refs(mach_task_self(), server, MACH_PORT_RIGHT_RECEIVE, -1);
 #endif	// HAVE_MACHPORT_GUARDS
 
-			/*
-			 * release any entitlement info
-			 */
-			if ((thisSession->callerWriteEntitlement != NULL) &&
-			    (thisSession->callerWriteEntitlement != kCFNull)) {
-				CFRelease(thisSession->callerWriteEntitlement);
-			}
-
-			/*
-			 * We don't need any remaining information in the
-			 * sessionData dictionary, remove it.
-			 */
-			sessionKey = CFStringCreateWithFormat(NULL, NULL, CFSTR("%d"), server);
-			CFDictionaryRemoveValue(sessionData, sessionKey);
-			CFRelease(sessionKey);
-
-			/*
-			 * get rid of the per-session structure.
-			 */
-			free(thisSession);
-			sessions[i] = NULL;
-
-			if (i == lastSession) {
-				/* we are removing the last session, update last used slot */
-				while (--lastSession > 0) {
-					if (sessions[lastSession] != NULL) {
-						break;
-					}
-				}
-			}
-
-			return;
-		}
+	/*
+	 * release any entitlement info
+	 */
+	if ((session->callerWriteEntitlement != NULL) &&
+	    (session->callerWriteEntitlement != kCFNull)) {
+		CFRelease(session->callerWriteEntitlement);
 	}
 
-	SCLog(TRUE, LOG_ERR, CFSTR("MACH_NOTIFY_NO_SENDERS w/no session, port = %d"), server);
-	__MACH_PORT_DEBUG(TRUE, "*** cleanupSession w/no session", server);
+	/*
+	 * get rid of the per-session structure.
+	 */
+	dispatch_sync(sessionQueue(), ^{
+		CFDictionaryRemoveValue(client_sessions,
+					(const void *)(uintptr_t)server);
+	});
+
+	return;
+}
+
+
+__private_extern__
+void
+closeSession(serverSessionRef session)
+{
+	/*
+	 * cancel and release the mach channel
+	 */
+	if (session->serverChannel != NULL) {
+		dispatch_mach_cancel(session->serverChannel);
+		dispatch_release(session->serverChannel);
+		session->serverChannel = NULL;
+	}
+
+	return;
+}
+
+
+typedef struct ReportSessionInfo {
+	FILE	*f;
+	int	n;
+} ReportSessionInfo, *ReportSessionInfoRef;
+
+static void
+printOne(const void *key, const void *value, void *context)
+{
+#pragma unused(key)
+	ReportSessionInfoRef	reportInfo	= (ReportSessionInfoRef)context;
+	serverSessionRef	session		= (serverSessionRef)value;
+
+	SCPrint(TRUE, reportInfo->f, CFSTR("  %d : port = 0x%x"), ++reportInfo->n, session->key);
+	SCPrint(TRUE, reportInfo->f, CFSTR(", name = %@"), session->name);
+	if (session->changedKeys != NULL) {
+		SCPrint(TRUE, reportInfo->f, CFSTR("\n    changedKeys = %@"), session->changedKeys);
+	}
+	if (session->sessionKeys != NULL) {
+		SCPrint(TRUE, reportInfo->f, CFSTR("\n    sessionKeys = %@"), session->sessionKeys);
+	}
+	SCPrint(TRUE, reportInfo->f, CFSTR("\n"));
 	return;
 }
 
@@ -368,79 +582,21 @@ __private_extern__
 void
 listSessions(FILE *f)
 {
-	int	i;
+	dispatch_sync(sessionQueue(), ^{
+		ReportSessionInfo	reportInfo	= { .f = f, .n = 0 };
 
-	SCPrint(TRUE, f, CFSTR("Current sessions :\n"));
-	for (i = 0; i <= lastSession; i++) {
-		serverSessionRef	thisSession = sessions[i];
-
-		if (thisSession == NULL) {
-			continue;
-		}
-
-		SCPrint(TRUE, f, CFSTR("\t%d : port = 0x%x"), i, thisSession->key);
-
-		if (thisSession->store != NULL) {
-			SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)thisSession->store;
-
-			if (storePrivate->notifySignalTask != TASK_NULL) {
-			       SCPrint(TRUE, f, CFSTR(", task = %d"), storePrivate->notifySignalTask);
-			}
-		}
-
-		if (sessionData != NULL) {
-			CFDictionaryRef	info;
-			CFStringRef	key;
-
-			key = CFStringCreateWithFormat(NULL, NULL, CFSTR("%d"), thisSession->key);
-			info = CFDictionaryGetValue(sessionData, key);
-			CFRelease(key);
-			if (info != NULL) {
-				CFStringRef	name;
-
-				name = CFDictionaryGetValue(info, kSCDName);
-				if (name != NULL) {
-					SCPrint(TRUE, f, CFSTR(", name = %@"), name);
-				}
-			}
-		}
-
-		if (thisSession->serverPort != NULL) {
-			SCPrint(TRUE, f, CFSTR("\n\t\t%@"), thisSession->serverPort);
-		}
-
-		if (thisSession->serverRunLoopSource != NULL) {
-			SCPrint(TRUE, f, CFSTR("\n\t\t%@"), thisSession->serverRunLoopSource);
-		}
-
+		SCPrint(TRUE, f, CFSTR("Current sessions :\n"));
+		CFDictionaryApplyFunction(client_sessions,
+					  printOne,
+					  (void *)&reportInfo);
 		SCPrint(TRUE, f, CFSTR("\n"));
-	}
-
-	SCPrint(TRUE, f, CFSTR("\n"));
+	});
 	return;
 }
 
 
 #include <Security/Security.h>
 #include <Security/SecTask.h>
-
-static CFStringRef
-sessionName(serverSessionRef session)
-{
-	CFDictionaryRef	info;
-	CFStringRef	name	= NULL;
-	CFStringRef	sessionKey;
-
-	sessionKey = CFStringCreateWithFormat(NULL, NULL, CFSTR("%d"), session->key);
-	info = CFDictionaryGetValue(sessionData, sessionKey);
-	CFRelease(sessionKey);
-
-	if (info != NULL) {
-		name = CFDictionaryGetValue(info, kSCDName);
-	}
-
-	return (name != NULL) ? name : CFSTR("???");
-}
 
 static CFTypeRef
 copyEntitlement(serverSessionRef session, CFStringRef entitlement)
@@ -462,20 +618,18 @@ copyEntitlement(serverSessionRef session, CFStringRef entitlement)
 			if (!CFEqual(domain, kCFErrorDomainMach) ||
 			    ((code != kIOReturnInvalid) && (code != kIOReturnNotFound))) {
 				// if unexpected error
-				SCLog(TRUE, LOG_ERR,
-				      CFSTR("SecTaskCopyValueForEntitlement(,\"%@\",) failed, error = %@ : %@"),
-				      entitlement,
-				      error,
-				      sessionName(session));
+				SC_log(LOG_NOTICE, "SecTaskCopyValueForEntitlement(,\"%@\",) failed, error = %@ : %@",
+				       entitlement,
+				       error,
+				       session->name);
 			}
 			CFRelease(error);
 		}
 
 		CFRelease(task);
 	} else {
-		SCLog(TRUE, LOG_ERR,
-		      CFSTR("SecTaskCreateWithAuditToken() failed: %@"),
-		      sessionName(session));
+		SC_log(LOG_NOTICE, "SecTaskCreateWithAuditToken() failed: %@",
+		       session->name);
 	}
 
 	return value;
@@ -509,7 +663,7 @@ __private_extern__
 Boolean
 hasRootAccess(serverSessionRef session)
 {
-#if	!TARGET_IPHONE_SIMULATOR
+#if	!TARGET_OS_SIMULATOR
 
 	if (session->callerRootAccess == UNKNOWN) {
 #if     (__MAC_OS_X_VERSION_MIN_REQUIRED >= 1080) && !TARGET_OS_IPHONE
@@ -530,7 +684,8 @@ hasRootAccess(serverSessionRef session)
 
 	return (session->callerRootAccess == YES) ? TRUE : FALSE;
 
-#else	// !TARGET_IPHONE_SIMULATOR
+#else	// !TARGET_OS_SIMULATOR
+#pragma unused(session)
 
 	/*
 	 * assume that all processes interacting with
@@ -538,13 +693,13 @@ hasRootAccess(serverSessionRef session)
 	 */
 	return TRUE;
 
-#endif	// !TARGET_IPHONE_SIMULATOR
+#endif	// !TARGET_OS_SIMULATOR
 }
 
 
 __private_extern__
 Boolean
-hasWriteAccess(serverSessionRef session, CFStringRef key)
+hasWriteAccess(serverSessionRef session, const char *op, CFStringRef key)
 {
 	Boolean	isSetup;
 
@@ -566,10 +721,10 @@ hasWriteAccess(serverSessionRef session, CFStringRef key)
 			 * general, this is unwise and we should at the
 			 * very least complain.
 			 */
-			SCLog(TRUE, LOG_ERR,
-			      CFSTR("*** Non-configd process (pid=%d) attempting to modify \"%@\" ***"),
-			      pid,
-			      key);
+			SC_log(LOG_NOTICE, "*** Non-configd process (pid=%d) attempting to %s \"%@\" ***",
+			       pid,
+			       op,
+			       key);
 		}
 
 		return TRUE;
@@ -584,12 +739,11 @@ hasWriteAccess(serverSessionRef session, CFStringRef key)
 		 * something we should ever allow (regardless of
 		 * any entitlements).
 		 */
-		SCLog(TRUE, LOG_ERR,
-		      CFSTR("*** Non-root process (pid=%d) attempting to modify \"%@\" ***"),
-		      sessionPid(session),
-		      key);
+		SC_log(LOG_NOTICE, "*** Non-root process (pid=%d) attempting to modify \"%@\" ***",
+		       sessionPid(session),
+		       key);
 
-		//return FALSE;		// return FALSE when rdar://9811832 has beed fixed
+		return FALSE;
 	}
 
 	if (session->callerWriteEntitlement == kCFNull) {
@@ -654,7 +808,7 @@ hasPathAccess(serverSessionRef session, const char *path)
 	char	realPath[PATH_MAX];
 
 	if (realpath(path, realPath) == NULL) {
-		SCLog(TRUE, LOG_DEBUG, CFSTR("hasPathAccess realpath() failed: %s"), strerror(errno));
+		SC_log(LOG_INFO, "realpath() failed: %s", strerror(errno));
 		return FALSE;
 	}
 
@@ -675,7 +829,7 @@ hasPathAccess(serverSessionRef session, const char *path)
 			  "file-write-data",					// operation
 			  SANDBOX_FILTER_PATH | SANDBOX_CHECK_NO_REPORT,	// sandbox_filter_type
 			  realPath) > 0) {					// ...
-		SCLog(TRUE, LOG_DEBUG, CFSTR("hasPathAccess sandbox access denied: %s"), strerror(errno));
+		SC_log(LOG_INFO, "sandbox access denied: %s", strerror(errno));
 		return FALSE;
 	}
 

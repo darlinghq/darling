@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2004, 2006, 2008, 2010, 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2004, 2006, 2008, 2010, 2011, 2014-2016 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -89,14 +89,11 @@ __SCDynamicStoreAddWatchedKey(SCDynamicStoreRef store, CFStringRef key, Boolean 
 	CFNumberRef			sessionNum	= NULL;
 	SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
 
-	if (_configd_trace) {
-		SCTrace(TRUE, _configd_trace,
-			CFSTR("%s : %5d : %s : %@\n"),
-			internal ? "*watch+" : "watch+ ",
-			storePrivate->server,
-			isRegex  ? "pattern" : "key",
-			key);
-	}
+	SC_trace("%s : %5d : %s : %@",
+		 internal ? "*watch+" : "watch+ ",
+		 storePrivate->server,
+		 isRegex  ? "pattern" : "key",
+		 key);
 
 	sessionNum = CFNumberCreate(NULL, kCFNumberIntType, &storePrivate->server);
 
@@ -246,13 +243,10 @@ __SCDynamicStoreSetNotificationKeys(SCDynamicStoreRef store, CFArrayRef keys, CF
 	updateKeysContext		myContext;
 	SCDynamicStorePrivateRef	storePrivate = (SCDynamicStorePrivateRef)store;
 
-	if (_configd_trace) {
-		SCTrace(TRUE, _configd_trace,
-			CFSTR("watch   : %5d : %ld keys, %ld patterns\n"),
-			storePrivate->server,
-			keys     ? CFArrayGetCount(keys)     : 0,
-			patterns ? CFArrayGetCount(patterns) : 0);
-	}
+	SC_trace("watch   : %5d : %ld keys, %ld patterns",
+		 storePrivate->server,
+		 keys     ? CFArrayGetCount(keys)     : 0,
+		 patterns ? CFArrayGetCount(patterns) : 0);
 
 	myContext.store     = store;
 	myContext.sc_status = kSCStatusOK;

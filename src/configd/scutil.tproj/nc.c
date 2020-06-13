@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2010-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2010-2015, 2017-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -44,6 +44,9 @@
 #include <SystemConfiguration/VPNConfiguration.h>
 
 #include <sys/time.h>
+#if !TARGET_OS_SIMULATOR
+#include <NEHelperClient.h>
+#endif	// !TARGET_OS_SIMULATOR
 
 CFStringRef			username	= NULL;
 CFStringRef			password	= NULL;
@@ -558,6 +561,7 @@ checkOnDemandHost(SCDynamicStoreRef store, CFStringRef nodeName, Boolean retry)
 static void
 nc_ondemand_callback(SCDynamicStoreRef store, CFArrayRef changedKeys, void *info)
 {
+#pragma unused(info)
 	CFStringRef		key		= NULL;
 	CFDictionaryRef		ondemand_dict	= NULL;
 	struct tm		tm_now;
@@ -608,7 +612,7 @@ nc_ondemand(int argc, char **argv)
 	}
 
 	if (argc == 1) {
-#if	!TARGET_IPHONE_SIMULATOR
+#if	!TARGET_OS_SIMULATOR
 		if (strcmp("--refresh", argv[0]) == 0) {
 			SCNetworkConnectionRef	connection	= NULL;
 
@@ -624,7 +628,7 @@ nc_ondemand(int argc, char **argv)
 			my_CFRelease(&connection);
 			goto done;
 		}
-#endif	// !TARGET_IPHONE_SIMULATOR
+#endif	// !TARGET_OS_SIMULATOR
 
 		ondemand_nodename = CFStringCreateWithCString(NULL, argv[0], kCFStringEncodingUTF8);
 	} else if (argc != 0) {
@@ -765,6 +769,8 @@ nc_print_VPN_service(SCNetworkServiceRef service)
 static void
 nc_list(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	CFIndex			count;
 	CFIndex			i;
 	CFArrayRef		services	= NULL;
@@ -919,12 +925,7 @@ nc_set_application_url(CFStringRef subtype, CFStringRef directory)
 	do_prefs_init();		/* initialization */
 	do_prefs_open(1, &path);	/* open prefs */
 
-	if (!SCPreferencesSetValue(prefs, CFSTR("ApplicationURL"), directory_url_data)) {
-		SCPrint(TRUE, stderr,
-			CFSTR("SCPreferencesSetValue ApplicationURL failed, %s\n"),
-			SCErrorString(SCError()));
-		goto done;
-	}
+	SCPreferencesSetValue(prefs, CFSTR("ApplicationURL"), directory_url_data);
 
 	_prefs_save();
 
@@ -939,7 +940,7 @@ done:
 
 	exit(0);
 }
-#endif
+#endif	// !TARGET_OS_IPHONE
 
 /* -----------------------------------------------------------------------------
  ----------------------------------------------------------------------------- */
@@ -966,7 +967,7 @@ nc_enablevpn(int argc, char **argv)
 			nc_set_application_url(vendorType, argument);
 			my_CFRelease(&argument);
 		}
-#endif
+#endif	// !TARGET_OS_IPHONE
 	}
 
 	exit_code = 0;
@@ -998,7 +999,7 @@ nc_show(int argc, char **argv)
 	Boolean			isStale			= FALSE;
 	char			*path			= NULL;
 	CFIndex			path_len		= 0;
-#endif
+#endif	// !TARGET_OS_IPHONE
 
 	service = nc_copy_service_from_arguments(argc, argv, NULL);
 	if (service == NULL) {
@@ -1006,16 +1007,14 @@ nc_show(int argc, char **argv)
 		exit(exit_code);
 	}
 
-	serviceID = SCNetworkServiceGetServiceID(service);
-
-	nc_get_service_type_and_subtype(service, &iftype, &ifsubtype);
-
-	if (!CFEqual(iftype, kSCEntNetPPP) &&
-	    !CFEqual(iftype, kSCEntNetIPSec) &&
-	    !CFEqual(iftype, kSCEntNetVPN)) {
+	if (!_SCNetworkServiceIsVPN(service)) {
 		SCPrint(TRUE, stderr, CFSTR("Not a connection oriented service: %@\n"), serviceID);
 		goto done;
 	}
+
+	serviceID = SCNetworkServiceGetServiceID(service);
+
+	nc_get_service_type_and_subtype(service, &iftype, &ifsubtype);
 
 	type_entity_key = SCDynamicStoreKeyCreateNetworkServiceEntity(NULL, kSCDynamicStoreDomainSetup, serviceID, iftype);
 
@@ -1053,7 +1052,7 @@ nc_show(int argc, char **argv)
 
 	SCPrint(TRUE, stdout, CFSTR("ApplicationURL: %@\n"), directory);
 skipURL:
-#endif
+#endif	// !TARGET_OS_IPHONE
 
 	store = SCDynamicStoreCreate(NULL, CFSTR("scutil --nc"), NULL, NULL);
 	if (store == NULL) {
@@ -1101,7 +1100,12 @@ nc_select(int argc, char **argv)
 	SCNetworkSetRef		current_set;
 	int			exit_code	= 1;
 	SCNetworkServiceRef	service		= NULL;
+#if NE_HAS_ENABLE_VPN
+	uuid_string_t		config_id_string;
+	uuid_t 			config_id;
+#else	// NE_HAS_ENABLE_VPN
 	Boolean			status;
+#endif	// NE_HAS_ENABLE_VPN
 
 	do_prefs_init();	/* initialization */
 	do_prefs_open(0, NULL);	/* open default prefs */
@@ -1118,21 +1122,34 @@ nc_select(int argc, char **argv)
 		goto done;
 	}
 
+#if NE_HAS_ENABLE_VPN
+	memset(config_id_string, 0, sizeof(config_id_string));
+	if (_SC_cfstring_to_cstring(SCNetworkServiceGetServiceID(service), config_id_string, sizeof(config_id_string), kCFStringEncodingUTF8) != NULL &&
+		uuid_parse(config_id_string, config_id) == 0)
+	{
+		if (!NEHelperVPNSetEnabled(config_id, true)) {
+			SCPrint(TRUE, stderr, CFSTR("Unable to enable service\n"));
+		}
+	} else {
+		SCPrint(TRUE, stderr, CFSTR("Invalid service ID: %@\n"), SCNetworkServiceGetServiceID(service));
+	}
+#else	// NE_HAS_ENABLE_VPN
 #if !TARGET_OS_IPHONE
 	status = SCNetworkServiceSetEnabled(service, TRUE);
 	if (!status) {
 		SCPrint(TRUE, stderr, CFSTR("Unable to enable service: %s\n"), SCErrorString(SCError()));
 		goto done;
 	}
-#else
+#else	// !TARGET_OS_IPHONE
 	status = SCNetworkSetSetSelectedVPNService(current_set, service);
 	if (!status) {
 		SCPrint(TRUE, stderr, CFSTR("Unable to select service: %s\n"), SCErrorString(SCError()));
 		goto done;
 	}
-#endif
+#endif	// !TARGET_OS_IPHONE
 
 	_prefs_save();
+#endif	// NE_HAS_ENABLE_VPN
 	exit_code = 0;
 done:
 	my_CFRelease(&service);
@@ -1146,6 +1163,8 @@ done:
 static void
 nc_help(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	SCPrint(TRUE, stderr, CFSTR("Valid commands for scutil --nc (VPN connections)\n"));
 	SCPrint(TRUE, stderr, CFSTR("Usage: scutil --nc [command]\n"));
 	SCPrint(TRUE, stderr, CFSTR("\n"));
@@ -1187,11 +1206,11 @@ nc_help(int argc, char **argv)
 	SCPrint(TRUE, stderr, CFSTR("\tenablevpn <service or vpn type> [path]\n"));
 	SCPrint(TRUE, stderr, CFSTR("\t\tEnables the given VPN application type. Takes either a service or VPN type. Pass a path to set ApplicationURL\n"));
 	SCPrint(TRUE, stderr, CFSTR("\n"));
-#else
+#else	// !TARGET_OS_IPHONE
 	SCPrint(TRUE, stderr, CFSTR("\tenablevpn <service or vpn type>\n"));
 	SCPrint(TRUE, stderr, CFSTR("\t\tEnables the given VPN application type. Takes either a service or VPN type\n"));
 	SCPrint(TRUE, stderr, CFSTR("\n"));
-#endif
+#endif	// !TARGET_OS_IPHONE
 	SCPrint(TRUE, stderr, CFSTR("\tdisablevpn <service or vpn type>\n"));
 	SCPrint(TRUE, stderr, CFSTR("\t\tDisables the given VPN application type. Takes either a service or VPN type\n"));
 	SCPrint(TRUE, stderr, CFSTR("\n"));

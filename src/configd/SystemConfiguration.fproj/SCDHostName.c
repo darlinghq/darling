@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2008, 2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2008, 2011, 2013-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -34,16 +34,32 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFStringDefaultEncoding.h>	// for __CFStringGetUserDefaultEncoding
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCValidation.h>
-#include <SystemConfiguration/SCPrivate.h>
+#include "SCPreferencesInternal.h"
 #include "dy_framework.h"
 
 
 #pragma mark ComputerName
 
 
-__private_extern__ CFStringRef
+static CFStringEncoding
+getNameEncoding(CFDictionaryRef dict)
+{
+	CFStringEncoding	encoding;
+	CFNumberRef		num;
+
+	if (!CFDictionaryGetValueIfPresent(dict,
+					   kSCPropSystemComputerNameEncoding,
+					   (const void **)&num) ||
+	    !isA_CFNumber(num) ||
+	    !CFNumberGetValue(num, kCFNumberSInt32Type, &encoding)) {
+		encoding = CFStringGetSystemEncoding();
+	}
+
+	return encoding;
+}
+
+
+CFStringRef
 _SCPreferencesCopyComputerName(SCPreferencesRef	prefs,
 			       CFStringEncoding	*nameEncoding)
 {
@@ -78,15 +94,7 @@ _SCPreferencesCopyComputerName(SCPreferencesRef	prefs,
 		}
 
 		if (nameEncoding != NULL) {
-			CFNumberRef	num;
-
-			num = CFDictionaryGetValue(dict,
-						   kSCPropSystemComputerNameEncoding);
-			if (isA_CFNumber(num)) {
-				CFNumberGetValue(num, kCFNumberIntType, nameEncoding);
-			} else {
-				*nameEncoding = CFStringGetSystemEncoding();
-			}
+			*nameEncoding = getNameEncoding(dict);
 		}
 	}
 
@@ -140,15 +148,7 @@ SCDynamicStoreCopyComputerName(SCDynamicStoreRef	store,
 	CFRetain(name);
 
 	if (nameEncoding != NULL) {
-		CFNumberRef	num;
-
-		num = CFDictionaryGetValue(dict,
-					   kSCPropSystemComputerNameEncoding);
-		if (isA_CFNumber(num)) {
-			CFNumberGetValue(num, kCFNumberIntType, nameEncoding);
-		} else {
-			*nameEncoding = CFStringGetSystemEncoding();
-		}
+		*nameEncoding = getNameEncoding(dict);
 	}
 
 	_SCErrorSet(kSCStatusOK);
@@ -231,6 +231,14 @@ SCPreferencesSetComputerName(SCPreferencesRef	prefs,
 		ok = SCPreferencesPathSetValue(prefs, path, newDict);
 	} else {
 		ok = SCPreferencesPathRemoveValue(prefs, path);
+	}
+
+	if (ok) {
+		if (name != NULL) {
+			SC_log(LOG_NOTICE, "attempting to set the computer name to \"%@\"", name);
+		} else {
+			SC_log(LOG_NOTICE, "attempting to reset the computer name");
+		}
 	}
 
 	CFRelease(path);
@@ -325,6 +333,14 @@ SCPreferencesSetHostName(SCPreferencesRef	prefs,
 		ok = SCPreferencesPathRemoveValue(prefs, path);
 	}
 
+	if (ok) {
+		if (name != NULL) {
+			SC_log(LOG_NOTICE, "attempting to set the host name to \"%@\"", name);
+		} else {
+			SC_log(LOG_NOTICE, "attempting to reset the host name");
+		}
+	}
+
 	CFRelease(path);
 	CFRelease(newDict);
 
@@ -336,7 +352,7 @@ SCPreferencesSetHostName(SCPreferencesRef	prefs,
 #pragma mark LocalHostName
 
 
-__private_extern__ CFStringRef
+CFStringRef
 _SCPreferencesCopyLocalHostName(SCPreferencesRef	prefs)
 {
 	CFDictionaryRef	dict;
@@ -433,7 +449,7 @@ SCDynamicStoreCopyLocalHostName(SCDynamicStoreRef store)
 Boolean
 _SC_stringIsValidDNSName(const char *name)
 {
-	int		i;
+	size_t		i;
 	size_t		len	= strlen(name);
 	char		prev	= '\0';
 	const char	*scan;
@@ -459,10 +475,7 @@ _SC_stringIsValidDNSName(const char *name)
 		} else if (isalnum(ch) == 0) {
 			switch (ch) {
 				case '.':
-					if (prev == '.') {
-						/* no empty labels */
-						return FALSE;
-					}
+					/* a label separator */
 					break;
 				case '-':
 					/* hyphens are OK within a label */
@@ -562,6 +575,14 @@ SCPreferencesSetLocalHostName(SCPreferencesRef	prefs,
 		ok = SCPreferencesPathSetValue(prefs, path, newDict);
 	} else {
 		ok = SCPreferencesPathRemoveValue(prefs, path);
+	}
+
+	if (ok) {
+		if (name != NULL) {
+			SC_log(LOG_NOTICE, "attempting to set the local host name to \"%@\"", name);
+		} else {
+			SC_log(LOG_NOTICE, "attempting to reset the local host name");
+		}
 	}
 
 	CFRelease(path);

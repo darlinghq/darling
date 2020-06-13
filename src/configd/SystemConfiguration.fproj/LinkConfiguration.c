@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2002-2007, 2010, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2002-2007, 2010, 2011, 2013, 2015-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -42,10 +42,7 @@
 #include <netinet/in.h>
 #include <netinet/ip6.h>			// for IPV6_MMTU
 
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCPrivate.h>	// for SCLog()
 #include "SCNetworkConfigurationInternal.h"	// for __SCNetworkInterfaceCreatePrivate
-#include <SystemConfiguration/SCValidation.h>
 
 #include <IOKit/IOKitLib.h>
 #include <IOKit/network/IONetworkInterface.h>
@@ -83,9 +80,7 @@ static const struct {
 static CFIndex
 findCapability(CFStringRef capability)
 {
-	CFIndex		i;
-
-	for (i = 0; i < sizeof(capabilityMappings) / sizeof(capabilityMappings[0]); i++) {
+	for (size_t i = 0; i < sizeof(capabilityMappings) / sizeof(capabilityMappings[0]); i++) {
 		if (CFEqual(capability, *capabilityMappings[i].name)) {
 			return i;
 		}
@@ -105,9 +100,9 @@ __getCapabilities(CFStringRef	interfaceName,
 	Boolean		ok		= FALSE;
 	int		sock		= -1;
 
-	bzero((void *)&ifr, sizeof(ifr));
+	memset((void *)&ifr, 0, sizeof(ifr));
 	if (_SC_cfstring_to_cstring(interfaceName, ifr.ifr_name, sizeof(ifr.ifr_name), kCFStringEncodingASCII) == NULL) {
-		SCLog(TRUE, LOG_ERR, CFSTR("could not convert interface name"));
+		SC_log(LOG_NOTICE, "could not convert interface name");
 		_SCErrorSet(kSCStatusInvalidArgument);
 		return FALSE;
 	}
@@ -115,7 +110,7 @@ __getCapabilities(CFStringRef	interfaceName,
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock == -1) {
 		_SCErrorSet(errno);
-		SCLog(TRUE, LOG_ERR, CFSTR("socket() failed: %s"), strerror(errno));
+		SC_log(LOG_ERR, "socket() failed: %s", strerror(errno));
 		return FALSE;
 	}
 
@@ -126,9 +121,7 @@ __getCapabilities(CFStringRef	interfaceName,
 			case ENXIO :
 				break;
 			default :
-				SCLog(TRUE, LOG_ERR,
-				      CFSTR("ioctl(SIOCGIFCAP) failed: %s"),
-				      strerror(errno));
+				SC_log(LOG_NOTICE, "ioctl(SIOCGIFCAP) failed: %s", strerror(errno));
 		}
 		goto done;
 	}
@@ -157,7 +150,6 @@ __SCNetworkInterfaceCreateCapabilities(SCNetworkInterfaceRef	interface,
 {
 	int		cap_available	= 0;
 	int		cap_current	= capability_base;
-	CFIndex		i;
 	CFStringRef	interfaceName;
 
 	if (!isA_SCNetworkInterface(interface)) {
@@ -185,7 +177,7 @@ __SCNetworkInterfaceCreateCapabilities(SCNetworkInterfaceRef	interface,
 		goto done;
 	}
 
-	for (i = 0; i < sizeof(capabilityMappings) / sizeof(capabilityMappings[0]); i++) {
+	for (size_t i = 0; i < sizeof(capabilityMappings) / sizeof(capabilityMappings[0]); i++) {
 		int		cap_val;
 		CFTypeRef	val;
 
@@ -221,7 +213,6 @@ SCNetworkInterfaceCopyCapability(SCNetworkInterfaceRef	interface,
 	int		cap_current	= 0;
 	int		cap_available	= 0;
 	int		cap_val;
-	CFIndex		i;
 	CFStringRef	interfaceName;
 	CFTypeRef	val		= NULL;
 
@@ -244,7 +235,7 @@ SCNetworkInterfaceCopyCapability(SCNetworkInterfaceRef	interface,
 		CFMutableDictionaryRef	all	= NULL;
 
 		// if ALL capabilities requested
-		for (i = 0; i < sizeof(capabilityMappings) / sizeof(capabilityMappings[0]); i++) {
+		for (size_t i = 0; i < sizeof(capabilityMappings) / sizeof(capabilityMappings[0]); i++) {
 			if ((cap_available & capabilityMappings[i].val) == capabilityMappings[i].val) {
 				if (all == NULL) {
 					all = CFDictionaryCreateMutable(NULL,
@@ -262,6 +253,8 @@ SCNetworkInterfaceCopyCapability(SCNetworkInterfaceRef	interface,
 
 		val = all;
 	} else {
+		CFIndex		i;
+
 		i = findCapability(capability);
 		if (i == kCFNotFound) {
 			// if unknown capability
@@ -404,28 +397,28 @@ __copyMediaList(CFStringRef interfaceName)
 	int			sock	= -1;
 
 	ifm = (struct ifmediareq *)CFAllocatorAllocate(NULL, sizeof(struct ifmediareq), 0);
-	bzero((void *)ifm, sizeof(*ifm));
+	memset((void *)ifm, 0, sizeof(*ifm));
 
 	if (_SC_cfstring_to_cstring(interfaceName, ifm->ifm_name, sizeof(ifm->ifm_name), kCFStringEncodingASCII) == NULL) {
-		SCLog(TRUE, LOG_ERR, CFSTR("could not convert interface name"));
+		SC_log(LOG_NOTICE, "could not convert interface name");
 		goto done;
 	}
 
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock == -1) {
-		SCLog(TRUE, LOG_ERR, CFSTR("socket() failed: %s"), strerror(errno));
+		SC_log(LOG_ERR, "socket() failed: %s", strerror(errno));
 		goto done;
 	}
 
-	if (ioctl(sock, SIOCGIFMEDIA, (caddr_t)ifm) == -1) {
-//		SCLog(TRUE, LOG_DEBUG, CFSTR("ioctl(SIOCGIFMEDIA) failed: %s"), strerror(errno));
+	if (ioctl(sock, SIOCGIFXMEDIA, (caddr_t)ifm) == -1) {
+//		SC_log(LOG_NOTICE, "ioctl(SIOCGIFXMEDIA) failed: %s", strerror(errno));
 		goto done;
 	}
 
 	if (ifm->ifm_count > 0) {
 		ifm->ifm_ulist = (int *)CFAllocatorAllocate(NULL, ifm->ifm_count * sizeof(int), 0);
-		if (ioctl(sock, SIOCGIFMEDIA, (caddr_t)ifm) == -1) {
-			SCLog(TRUE, LOG_DEBUG, CFSTR("ioctl(SIOCGIFMEDIA) failed: %s"), strerror(errno));
+		if (ioctl(sock, SIOCGIFXMEDIA, (caddr_t)ifm) == -1) {
+			SC_log(LOG_NOTICE, "ioctl(SIOCGIFXMEDIA) failed: %s", strerror(errno));
 			goto done;
 		}
 	}
@@ -907,9 +900,9 @@ _SCNetworkInterfaceIsPhysicalEthernet(SCNetworkInterfaceRef interface)
 }
 
 static Boolean
-__getMTULimits(char	ifr_name[IFNAMSIZ],
-	       int	*mtu_min,
-	       int	*mtu_max)
+__getIOMTULimits(char	ifr_name[IFNAMSIZ],
+		 int	*mtu_min,
+		 int	*mtu_max)
 {
 	int			ifType		= 0;
 	io_iterator_t		io_iter		= 0;
@@ -1019,9 +1012,9 @@ SCNetworkInterfaceCopyMTU(SCNetworkInterfaceRef	interface,
 		return FALSE;
 	}
 
-	bzero((void *)&ifr, sizeof(ifr));
+	memset((void *)&ifr, 0, sizeof(ifr));
 	if (_SC_cfstring_to_cstring(interfaceName, ifr.ifr_name, sizeof(ifr.ifr_name), kCFStringEncodingASCII) == NULL) {
-		SCLog(TRUE, LOG_ERR, CFSTR("could not convert interface name"));
+		SC_log(LOG_NOTICE, "could not convert interface name");
 		_SCErrorSet(kSCStatusInvalidArgument);
 		return FALSE;
 	}
@@ -1029,13 +1022,13 @@ SCNetworkInterfaceCopyMTU(SCNetworkInterfaceRef	interface,
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock == -1) {
 		_SCErrorSet(errno);
-		SCLog(TRUE, LOG_ERR, CFSTR("socket() failed: %s"), strerror(errno));
+		SC_log(LOG_ERR, "socket() failed: %s", strerror(errno));
 		return FALSE;
 	}
 
 	if (ioctl(sock, SIOCGIFMTU, (caddr_t)&ifr) == -1) {
 		_SCErrorSet(errno);
-//		SCLog(TRUE, LOG_DEBUG, CFSTR("ioctl(SIOCGIFMTU) failed: %s"), strerror(errno));
+//		SC_log(LOG_NOTICE, "ioctl(SIOCGIFMTU) failed: %s", strerror(errno));
 		goto done;
 	}
 
@@ -1058,7 +1051,40 @@ SCNetworkInterfaceCopyMTU(SCNetworkInterfaceRef	interface,
 				*mtu_max = devmtu_p->ifdm_max;
 			}
 		} else {
-			(void)__getMTULimits(ifr.ifr_name, mtu_min, mtu_max);
+			ok = __getIOMTULimits(ifr.ifr_name, mtu_min, mtu_max);
+			if (!ok) {
+				CFStringRef	interfaceType;
+
+				interfaceType = SCNetworkInterfaceGetInterfaceType(interface);
+				if (CFEqual(interfaceType, kSCNetworkInterfaceTypeBridge)) {
+					CFIndex		i;
+					CFArrayRef	members;
+					CFIndex		n;
+
+					members = SCBridgeInterfaceGetMemberInterfaces(interface);
+					n = (members != NULL) ? CFArrayGetCount(members) : 0;
+					if (n > 1) {
+						if (mtu_min)	*mtu_min = IF_MINMTU;
+						if (mtu_max)	*mtu_max = IF_MAXMTU;
+					}
+					for (i = 0; i < n; i++) {
+						SCNetworkInterfaceRef	member;
+						int			member_mtu_min;
+						int			member_mtu_max;
+
+						member = CFArrayGetValueAtIndex(members, i);
+						ok = SCNetworkInterfaceCopyMTU(member, NULL, &member_mtu_min, &member_mtu_max);
+						if (ok) {
+							if ((mtu_min != NULL) && (*mtu_min < member_mtu_min)) {
+								*mtu_min = member_mtu_min;	// min MTU needs to be higher
+							}
+							if ((mtu_max != NULL) && (*mtu_max > member_mtu_max)) {
+								*mtu_max = member_mtu_max;	// max MTU needs to be lower
+							}
+						}
+					}
+				}
+			}
 		}
 
 		if (mtu_min != NULL) {
@@ -1131,7 +1157,7 @@ SCNetworkInterfaceSetMediaOptions(SCNetworkInterfaceRef	interface,
 		}
 
 		if (!SCNetworkInterfaceCopyMediaOptions(interface, NULL, NULL, &available, FALSE)) {
-			SCLog(_sc_debug, LOG_DEBUG, CFSTR("media type / options not available"));
+			SC_log(LOG_INFO, "media type / options not available");
 			goto checked;
 		}
 
@@ -1145,7 +1171,7 @@ SCNetworkInterfaceSetMediaOptions(SCNetworkInterfaceRef	interface,
 		    !CFArrayContainsValue(subtypes,
 					 CFRangeMake(0, CFArrayGetCount(subtypes)),
 					 subtype)) {
-			SCLog(_sc_debug, LOG_DEBUG, CFSTR("media type not valid"));
+			SC_log(LOG_INFO, "media type not valid");
 			_SCErrorSet(kSCStatusInvalidArgument);
 			goto checked;
 		}
@@ -1155,7 +1181,7 @@ SCNetworkInterfaceSetMediaOptions(SCNetworkInterfaceRef	interface,
 		    !CFArrayContainsValue(subtype_options,
 					  CFRangeMake(0, CFArrayGetCount(subtype_options)),
 					  config_options)) {
-			SCLog(_sc_debug, LOG_DEBUG, CFSTR("media options not valid for \"%@\""), subtype);
+			SC_log(LOG_INFO, "media options not valid for \"%@\"", subtype);
 			_SCErrorSet(kSCStatusInvalidArgument);
 			goto checked;
 		}
@@ -1182,7 +1208,7 @@ SCNetworkInterfaceSetMediaOptions(SCNetworkInterfaceRef	interface,
 		}
 		ok = TRUE;
 	} else {
-		SCLog(_sc_debug, LOG_DEBUG, CFSTR("media type must be specified with options"));
+		SC_log(LOG_INFO, "media type must be specified with options");
 		_SCErrorSet(kSCStatusInvalidArgument);
 	}
 
@@ -1211,7 +1237,7 @@ SCNetworkInterfaceSetMTU(SCNetworkInterfaceRef	interface,
 	}
 
 	if (!SCNetworkInterfaceCopyMTU(interface, NULL, &mtu_min, &mtu_max)) {
-		SCLog(_sc_debug, LOG_DEBUG, CFSTR("MTU bounds not available"));
+		SC_log(LOG_INFO, "MTU bounds not available");
 		return FALSE;
 	}
 
@@ -1241,7 +1267,7 @@ SCNetworkInterfaceSetMTU(SCNetworkInterfaceRef	interface,
 		}
 		ok = TRUE;
 	} else {
-		SCLog(_sc_debug, LOG_DEBUG, CFSTR("MTU out of range"));
+		SC_log(LOG_INFO, "MTU out of range");
 		_SCErrorSet(kSCStatusInvalidArgument);
 	}
 

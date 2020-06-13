@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2009, 2011, 2015-2017, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -52,10 +52,6 @@ __SCDynamicStoreOpen(SCDynamicStoreRef *store, CFStringRef name)
 	 * If necessary, initialize the store and session data dictionaries
 	 */
 	if (storeData == NULL) {
-		sessionData        = CFDictionaryCreateMutable(NULL,
-							       0,
-							       &kCFTypeDictionaryKeyCallBacks,
-							       &kCFTypeDictionaryValueCallBacks);
 		storeData          = CFDictionaryCreateMutable(NULL,
 							       0,
 							       &kCFTypeDictionaryKeyCallBacks,
@@ -79,13 +75,6 @@ __SCDynamicStoreOpen(SCDynamicStoreRef *store, CFStringRef name)
 }
 
 
-static CFStringRef
-openMPCopyDescription(const void *info)
-{
-	return CFStringCreateWithFormat(NULL, NULL, CFSTR("<SCDynamicStore MP>"));
-}
-
-
 __private_extern__
 kern_return_t
 _configopen(mach_port_t			server,
@@ -97,17 +86,13 @@ _configopen(mach_port_t			server,
 	    int				*sc_status,
 	    audit_token_t		audit_token)
 {
-	CFDictionaryRef			info;
 	serverSessionRef		mySession;
 	CFStringRef			name		= NULL;	/* name (un-serialized) */
-	CFMutableDictionaryRef		newInfo;
-	mach_port_t			oldNotify;
 	CFDictionaryRef			options		= NULL;	/* options (un-serialized) */
-	CFStringRef			sessionKey;
-	kern_return_t 			status;
 	SCDynamicStorePrivateRef	storePrivate;
 	CFBooleanRef			useSessionKeys	= NULL;
 
+	*newServer = MACH_PORT_NULL;
 	*sc_status = kSCStatusOK;
 
 	/* un-serialize the name */
@@ -152,33 +137,19 @@ _configopen(mach_port_t			server,
 	/*
 	 * establish the new session
 	 */
-	mySession = addSession(server, openMPCopyDescription);
+	mySession = addClient(server, audit_token);
 	if (mySession == NULL) {
-#ifdef	DEBUG
-		SCLog(TRUE, LOG_DEBUG, CFSTR("_configopen(): session is already open."));
-#endif	/* DEBUG */
+		SC_log(LOG_NOTICE, "session is already open");
 		*sc_status = kSCStatusFailed;	/* you can't re-open an "open" session */
 		goto done;
 	}
 
 	*newServer = mySession->key;
-	__MACH_PORT_DEBUG(TRUE, "*** _configopen (after addSession)", *newServer);
+	__MACH_PORT_DEBUG(TRUE, "*** _configopen (after addClient)", *newServer);
 
-	/* save the audit_token in case we need to check the callers credentials */
-	mySession->auditToken = audit_token;
-
-	/* Create and add a run loop source for the port */
-	mySession->serverRunLoopSource = CFMachPortCreateRunLoopSource(NULL, mySession->serverPort, 0);
-	CFRunLoopAddSource(CFRunLoopGetCurrent(),
-			   mySession->serverRunLoopSource,
-			   kCFRunLoopDefaultMode);
-
-	if (_configd_trace) {
-		SCTrace(TRUE, _configd_trace,
-			CFSTR("open    : %5d : %@\n"),
-			*newServer,
-			name);
-	}
+	SC_trace("open    : %5d : %@",
+		 *newServer,
+		 name);
 
 	*sc_status = __SCDynamicStoreOpen(&mySession->store, name);
 	storePrivate = (SCDynamicStorePrivateRef)mySession->store;
@@ -196,44 +167,10 @@ _configopen(mach_port_t			server,
 		storePrivate->useSessionKeys = CFBooleanGetValue(useSessionKeys);
 	}
 
-	/* Request a notification when/if the client dies */
-	status = mach_port_request_notification(mach_task_self(),
-						*newServer,
-						MACH_NOTIFY_NO_SENDERS,
-						1,
-						*newServer,
-						MACH_MSG_TYPE_MAKE_SEND_ONCE,
-						&oldNotify);
-	if (status != KERN_SUCCESS) {
-		SCLog(TRUE, LOG_ERR, CFSTR("_configopen() mach_port_request_notification() failed: %s"), mach_error_string(status));
-		cleanupSession(*newServer);
-		*newServer = MACH_PORT_NULL;
-		*sc_status = kSCStatusFailed;
-		goto done;
-	}
-	__MACH_PORT_DEBUG(TRUE, "*** _configopen (after mach_port_request_notification)", *newServer);
-
-	if (oldNotify != MACH_PORT_NULL) {
-		SCLog(TRUE, LOG_ERR, CFSTR("_configopen(): oldNotify != MACH_PORT_NULL"));
-	}
-
 	/*
 	 * Save the name of the calling application / plug-in with the session data.
 	 */
-	sessionKey = CFStringCreateWithFormat(NULL, NULL, CFSTR("%d"), *newServer);
-	info = CFDictionaryGetValue(sessionData, sessionKey);
-	if (info != NULL) {
-		newInfo = CFDictionaryCreateMutableCopy(NULL, 0, info);
-	} else {
-		newInfo = CFDictionaryCreateMutable(NULL,
-						    0,
-						    &kCFTypeDictionaryKeyCallBacks,
-						    &kCFTypeDictionaryValueCallBacks);
-	}
-	CFDictionarySetValue(newInfo, kSCDName, name);
-	CFDictionarySetValue(sessionData, sessionKey, newInfo);
-	CFRelease(newInfo);
-	CFRelease(sessionKey);
+	mySession->name = name;
 
 	/*
 	 * Note: at this time we should be holding ONE send right and
@@ -243,7 +180,6 @@ _configopen(mach_port_t			server,
 
     done :
 
-	if (name != NULL)	CFRelease(name);
 	if (options != NULL)	CFRelease(options);
 	return KERN_SUCCESS;
 }

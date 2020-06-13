@@ -1,0 +1,76 @@
+framework module SystemConfiguration_Private [extern_c] [system] {
+  umbrella header "SCPrivate.h"
+
+  export *
+  module * { export * }
+
+  explicit module SCDPlugin {
+	  header "SCDPlugin.h"
+	  export *
+  }
+
+  explicit module SCNetworkInterfaceProvider {
+	  header "SCNetworkInterfaceProvider.h"
+	  export *
+  }
+
+  explicit module SCDynamicStoreCopyDHCPInfo {
+	  header "SCDynamicStoreCopyDHCPInfo.h"
+	  export *
+  }
+
+  explicit module SCNetworkSignature {
+	  header "SCNetworkSignature.h"
+	  export *
+  }
+
+  explicit module SCNetworkSignaturePrivate {
+	  header "SCNetworkSignaturePrivate.h"
+	  export *
+  }
+
+  explicit module SCPreferencesPathKey {
+	  header "SCPreferencesPathKey.h"
+	  export *
+  }
+
+  explicit module SCValidation {
+	  header "SCValidation.h"
+	  export *
+  }
+
+  explicit module SNHelperPrivate {
+	  header "SNHelperPrivate.h"
+	  export *
+  }
+
+  explicit module VPNConfiguration {
+	  header "VPNConfiguration.h"
+	  export *
+  }
+
+  explicit module VPNFlow {
+	  header "VPNFlow.h"
+	  export *
+  }
+
+  explicit module VPNPrivate {
+	  header "VPNPrivate.h"
+	  export *
+  }
+
+  explicit module VPNTunnel {
+	  header "VPNTunnel.h"
+	  export *
+  }
+
+  explicit module VPNTunnelPrivate {
+	  header "VPNTunnelPrivate.h"
+	  export *
+  }
+
+  explicit module scprefs_observer {
+	  header "scprefs_observer.h"
+	  export *
+  }
+}

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Builtin</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleExecutable</key>
+	<string>QoSMarking</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>com.apple.SystemConfiguration.QoSMarking</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.19</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>1.19</string>
+	<key>QoSMarking_AppleAudioVideoCalls_BundleIDs</key>
+	<array>
+		<string>com.apple.datausage.telephony.ims</string>
+		<string>com.apple.facetime</string>
+		<string>com.apple.siri</string>
+	</array>
+	<key>Requires</key>
+	<array>
+		<string>com.apple.SystemConfiguration.InterfaceNamer</string>
+		<string>com.apple.SystemConfiguration.PreferencesMonitor</string>
+	</array>
+</dict>
+</plist>

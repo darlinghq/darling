@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2004-2010, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2004-2010, 2013, 2014, 2016, 2017 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -490,6 +490,7 @@ __private_extern__
 void
 select_service(int argc, char **argv)
 {
+#pragma unused(argc)
 	SCNetworkInterfaceRef	interface;
 	SCNetworkServiceRef	service;
 	CFStringRef		serviceName;
@@ -670,8 +671,9 @@ set_service(int argc, char **argv)
 				return;
 			}
 		} else if (strcmp(command, "rank") == 0) {
-			SCNetworkServicePrimaryRank	rank	= kSCNetworkServicePrimaryRankDefault;
-			SCNetworkServiceRef		service	= (argc < 2) ? net_service : NULL;
+			SCNetworkServicePrimaryRank	rank		= kSCNetworkServicePrimaryRankDefault;
+			SCNetworkServiceRef		service		= (argc < 2) ? net_service : NULL;
+			Boolean				useActive	= FALSE;
 
 			if (argc < 1) {
 				SCPrint(TRUE, stdout, CFSTR("rank not specified\n"));
@@ -706,16 +708,19 @@ set_service(int argc, char **argv)
 				serviceID = SCNetworkServiceGetServiceID(net_service);
 				service = _SCNetworkServiceCopyActive(store, serviceID);
 				CFRelease(store);
+				useActive = TRUE;
 
 				argv++;
 				argc--;
 			}
 
 			ok = SCNetworkServiceSetPrimaryRank(service, rank);
-			if (service != net_service) CFRelease(service);
-			if (ok) {
-				if (service == net_service) _prefs_changed = TRUE;
-			} else {
+			if (useActive) {
+				CFRelease(service);
+			} else if (ok) {
+				_prefs_changed = TRUE;
+			}
+			if (!ok) {
 				SCPrint(TRUE, stdout, CFSTR("%s\n"), SCErrorString(SCError()));
 				return;
 			}
@@ -785,7 +790,7 @@ __show_service_protocols(SCNetworkServiceRef service, const char *prefix, Boolea
 		sorted = CFArrayCreateMutableCopy(NULL, 0, protocols);
 		CFArraySortValues(sorted,
 				  CFRangeMake(0, n),
-				  _compare_protocols,
+				  _SCNetworkProtocolCompare,
 				  NULL);
 		CFRelease(protocols);
 		protocols = sorted;
@@ -854,16 +859,16 @@ show_service(int argc, char **argv)
 			// nothing to report
 			break;
 		case kSCNetworkServicePrimaryRankFirst :
-			SCPrint(TRUE, stdout, CFSTR("primary rank         = FIRST\n"));
+			SCPrint(TRUE, stdout, CFSTR("primary rank         = %@\n"), kSCValNetServicePrimaryRankFirst);
 			break;
 		case kSCNetworkServicePrimaryRankLast :
-			SCPrint(TRUE, stdout, CFSTR("primary rank         = LAST\n"));
+			SCPrint(TRUE, stdout, CFSTR("primary rank         = %@\n"), kSCValNetServicePrimaryRankLast);
 			break;
 		case kSCNetworkServicePrimaryRankNever :
-			SCPrint(TRUE, stdout, CFSTR("primary rank         = NEVER\n"));
+			SCPrint(TRUE, stdout, CFSTR("primary rank         = %@\n"), kSCValNetServicePrimaryRankNever);
 			break;
 		case kSCNetworkServicePrimaryRankScoped :
-			SCPrint(TRUE, stdout, CFSTR("primary rank         = SCOPED\n"));
+			SCPrint(TRUE, stdout, CFSTR("primary rank         = %@\n"), kSCValNetServicePrimaryRankScoped);
 			break;
 		default :
 			SCPrint(TRUE, stdout, CFSTR("primary rank         = %d\n"), serviceRank);
@@ -899,7 +904,7 @@ show_service(int argc, char **argv)
 			sorted = CFArrayCreateMutableCopy(NULL, 0, protocols);
 			CFArraySortValues(sorted,
 					  CFRangeMake(0, n),
-					  _compare_protocols,
+					  _SCNetworkProtocolCompare,
 					  NULL);
 			CFRelease(protocols);
 			protocols = sorted;
@@ -939,6 +944,7 @@ __private_extern__
 void
 show_services(int argc, char **argv)
 {
+#pragma unused(argv)
 	CFIndex	i;
 	CFIndex	n;
 

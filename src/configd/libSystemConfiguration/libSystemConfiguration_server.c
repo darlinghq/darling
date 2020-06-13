@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2012-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2012-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,13 +17,11 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#include <Availability.h>
 #include <TargetConditionals.h>
-#include <asl.h>
 #include <dispatch/dispatch.h>
 #include <vproc.h>
 #include <vproc_priv.h>
@@ -32,24 +30,14 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <SystemConfiguration/SCPrivate.h>
-
 #include "libSystemConfiguration_server.h"
 
 #define kTrailingEdgeAgentEntitlement "com.apple.SystemConfiguration.trailing-edge-agent"
 
-#pragma mark -
-#pragma mark Support functions
-
-
-//__private_extern__ void
-//log_xpc_object(const char *msg, xpc_object_t obj)
-//{
-//	char	*desc;
-//
-//	desc = xpc_copy_description(obj);
-//	asl_log(NULL, NULL, ASL_LEVEL_ERR, "%s = %s", msg, desc);
-//	free(desc);
-//}
+#ifdef	SC_LOG_HANDLE
+#include <os/log.h>
+os_log_t	SC_LOG_HANDLE(void);
+#endif	//SC_LOG_HANDLE
 
 
 #pragma mark -
@@ -98,7 +86,7 @@ _handle_entitlement_check_failure(pid_t pid)
 		if (!CFArrayContainsValue(pids, CFRangeMake(0, CFArrayGetCount(pids)), pidNumber)) {
 			CFArrayAppendValue(pids, pidNumber);
 
-			SCLog(TRUE, LOG_ERR, CFSTR("DNS/nwi dropping ack w/no entitlement, pid = %d"), pid);
+			SC_log(LOG_INFO, "DNS/nwi dropping ack w/no entitlement, pid = %d", pid);
 
 			if (!cleanupScheduled) {
 				cleanupScheduled = TRUE;
@@ -124,7 +112,7 @@ _handle_entitlement_check_failure(pid_t pid)
 __private_extern__
 void
 _libSC_info_server_init(libSC_info_server_t *server_info) {
-	bzero(server_info, sizeof(*server_info));
+	memset(server_info, 0, sizeof(*server_info));
 	server_info->info = CFDictionaryCreateMutable(NULL,
 						      0,
 						      &kCFTypeDictionaryKeyCallBacks,

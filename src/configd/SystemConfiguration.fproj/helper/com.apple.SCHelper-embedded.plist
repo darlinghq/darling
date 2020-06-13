@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>EnableTransactions</key>
+	<false/>
+	<key>EnablePressuredExit</key>
+	<false/>
 	<key>Label</key>
 	<string>com.apple.SCHelper</string>
 	<key>Program</key>
@@ -12,6 +16,6 @@
 		<true/>
 	</dict>
 	<key>POSIXSpawnType</key>
-	<string>Adaptive</string>
+	<string>Interactive</string>
 </dict>
 </plist>

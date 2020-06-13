@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2003, 2004, 2006-2008, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2003, 2004, 2006-2008, 2011, 2012, 2015 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -82,7 +82,7 @@ keyMatchesPattern(CFStringRef key, CFDataRef pRegex)
 	if (len > (CFIndex)sizeof(str_q))
 		str = CFAllocatorAllocate(NULL, len, 0);
 	if (_SC_cfstring_to_cstring(key, str, len, kCFStringEncodingASCII) == NULL) {
-		SCLog(TRUE, LOG_DEBUG, CFSTR("keyMatchesPattern(): could not convert store key to C string"));
+		SC_log(LOG_INFO, "could not convert store key to C string");
 		goto done;
 	}
 
@@ -102,7 +102,7 @@ keyMatchesPattern(CFStringRef key, CFDataRef pRegex)
 			char	reErrBuf[256];
 
 			(void)regerror(reError, preg, reErrBuf, sizeof(reErrBuf));
-			SCLog(TRUE, LOG_DEBUG, CFSTR("keyMatchesPattern regexec(): %s"), reErrBuf);
+			SC_log(LOG_INFO, "regexec() failed: %s", reErrBuf);
 			break;
 		}
 	}
@@ -148,7 +148,7 @@ patternCompile(CFStringRef pattern, CFDataRef pRegex, CFStringRef *error)
 	char *		str		= str_q;
 
 	if (CFStringGetLength(pattern) == 0) {
-		SCLog(TRUE, LOG_ERR, CFSTR("patternCompile(): empty string"));
+		SC_log(LOG_NOTICE, "empty regex pattern");
 	}
 
 	if (!CFStringHasPrefix(pattern, CFSTR("^"))) {
@@ -179,7 +179,7 @@ patternCompile(CFStringRef pattern, CFDataRef pRegex, CFStringRef *error)
 				 0,
 				 &len);
 	if (len_c <= 0) {
-		SCLog(TRUE, LOG_ERR, CFSTR("patternCompile(): could not get buffer length for \"%@\""), pattern);
+		SC_log(LOG_NOTICE, "could not get buffer length for \"%@\"", pattern);
 		len = sizeof(str_q) - 1;
 	}
 	if (++len > (CFIndex)sizeof(str_q)) {
@@ -203,14 +203,14 @@ patternCompile(CFStringRef pattern, CFDataRef pRegex, CFStringRef *error)
 			(void)regerror(reError, preg, reErrBuf, sizeof(reErrBuf));
 			*error = CFStringCreateWithCString(NULL, reErrBuf, kCFStringEncodingASCII);
 #ifdef	DEBUG
-			SCLog(_configd_verbose, LOG_DEBUG, CFSTR("patternCompile regcomp(%s) failed: %s"), str, reErrBuf);
+			SC_log(LOG_DEBUG, "regcomp(%s) failed: %s", str, reErrBuf);
 #endif	/* DEBUG */
 			ok = FALSE;
 		}
 	} else {
 		*error = CFRetain(CFSTR("could not convert pattern to regex string"));
 #ifdef	DEBUG
-		SCLog(_configd_verbose, LOG_DEBUG, CFSTR("%@"), *error);
+		SC_log(LOG_DEBUG, "%@", *error);
 #endif	/* DEBUG */
 	}
 
@@ -475,7 +475,7 @@ addKeyForPattern(const void *key, void *val, void *context)
 	if (len > (CFIndex)sizeof(str_q))
 		str = CFAllocatorAllocate(NULL, len, 0);
 	if (_SC_cfstring_to_cstring(storeKey, str, len, kCFStringEncodingASCII) == NULL) {
-		SCLog(TRUE, LOG_DEBUG, CFSTR("addKeyForPattern(): could not convert store key to C string"));
+		SC_log(LOG_INFO, "could not convert store key to C string");
 		goto done;
 	}
 
@@ -516,7 +516,7 @@ addKeyForPattern(const void *key, void *val, void *context)
 			char	reErrBuf[256];
 
 			(void)regerror(reError, preg, reErrBuf, sizeof(reErrBuf));
-			SCLog(TRUE, LOG_DEBUG, CFSTR("addKeyForPattern regexec(): %s"), reErrBuf);
+			SC_log(LOG_INFO, "%s", reErrBuf);
 			break;
 		}
 	}

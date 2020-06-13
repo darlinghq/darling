@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2013, 2015-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -33,11 +33,13 @@
  * - created
  */
 
+#include <TargetConditionals.h>
 #include <SystemConfiguration/SCPreferences.h>
 #include <SystemConfiguration/SCPrivate.h>
 #include <SystemConfiguration/scprefs_observer.h>
-#include <TargetConditionals.h>
 #include "IPMonitorControlPrefs.h"
+
+os_log_t	__log_IPMonitor(void);
 
 /*
  * kIPMonitorControlPrefsID
@@ -65,12 +67,14 @@ IPMonitorControlPrefsGet(void)
 }
 
 static void
-prefs_changed(__unused void * arg)
+prefs_changed(void * arg)
 {
+#pragma unused(arg)
     /* get the current value */
     if (S_callback != NULL) {
 	(*S_callback)(S_prefs);
     }
+
     return;
 }
 
@@ -103,7 +107,7 @@ enable_prefs_observer(CFRunLoopRef runloop)
     dispatch_queue_t		queue;
     CFRunLoopSourceRef		source;
 
-    bzero(&context, sizeof(context));
+    memset(&context, 0, sizeof(context));
     context.perform = prefs_changed;
     source = CFRunLoopSourceCreate(kCFAllocatorDefault, 0, &context);
     CFRunLoopAddSource(runloop, source, kCFRunLoopCommonModes);
@@ -127,6 +131,7 @@ enable_prefs_observer(CFRunLoopRef runloop)
 static void
 enable_prefs_observer(CFRunLoopRef runloop)
 {
+#pragma unused(runloop)
     return;
 }
 
@@ -137,6 +142,9 @@ IPMonitorControlPrefsChanged(SCPreferencesRef prefs,
 			     SCPreferencesNotification type,
 			     void * info)
 {
+#pragma unused(prefs)
+#pragma unused(type)
+#pragma unused(info)
     prefs_changed(NULL);
     return;
 }
@@ -149,11 +157,20 @@ IPMonitorControlPrefsInit(CFRunLoopRef runloop,
 				  kIPMonitorControlPrefsID);
     if (runloop != NULL && callback != NULL) {
 	S_callback = callback;
-	SCPreferencesSetCallback(S_prefs, IPMonitorControlPrefsChanged, NULL);
-	SCPreferencesScheduleWithRunLoop(S_prefs, runloop,
-					 kCFRunLoopCommonModes);
+	if (!SCPreferencesSetCallback(S_prefs, IPMonitorControlPrefsChanged, NULL)) {
+		SC_log(LOG_NOTICE, "SCPreferencesSetCallBack() failed: %s", SCErrorString(SCError()));
+		goto done;
+	}
+
+	if (!SCPreferencesScheduleWithRunLoop(S_prefs, runloop, kCFRunLoopCommonModes)) {
+		SC_log(LOG_NOTICE, "SCPreferencesScheduleWithRunLoop() failed: %s", SCErrorString(SCError()));
+		(void) SCPreferencesSetCallback(S_prefs, NULL, NULL);
+	}
+
 	enable_prefs_observer(runloop);
     }
+
+done :
     return (S_prefs);
 }
 
@@ -239,7 +256,7 @@ IPMonitorControlPrefsIsVerbose(void)
 __private_extern__ Boolean
 IPMonitorControlPrefsSetVerbose(Boolean verbose)
 {
-    if (verbose == FALSE) {
+    if (!verbose) {
 	prefs_set_boolean(kVerbose, NULL);
     }
     else {
@@ -271,7 +288,7 @@ main(int argc, char * argv[])
 	fprintf(stderr, "usage: %s ( on | off )\n", argv[0]);
 	exit(1);
     }
-    if (success == FALSE) {
+    if (!success) {
 	fprintf(stderr, "failed to save prefs\n");
 	exit(2);
     }

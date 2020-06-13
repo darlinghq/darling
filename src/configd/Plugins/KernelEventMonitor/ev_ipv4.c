@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2002-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2002-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -29,18 +29,7 @@
  */
 
 #include "eventmon.h"
-#include "cache.h"
 #include "ev_ipv4.h"
-
-#ifndef	kSCEntNetIPv4ARPCollision
-#define	kSCEntNetIPv4ARPCollision	CFSTR("IPv4ARPCollision")
-#endif	/* kSCEntNetIPv4ARPCollision */
-
-#if	!TARGET_OS_IPHONE
-#ifndef	kSCEntNetIPv4PortInUse
-#define	kSCEntNetIPv4PortInUse		CFSTR("PortInUse")
-#endif	/* kSCEntNetIPv4PortInUse */
-#endif	/* !TARGET_OS_IPHONE */
 
 #define IP_FORMAT	"%d.%d.%d.%d"
 #define IP_CH(ip, i)	(((u_char *)(ip))[i])
@@ -80,7 +69,7 @@ copyIF(CFStringRef key, CFMutableDictionaryRef oldIFs, CFMutableDictionaryRef ne
 	if (CFDictionaryGetValueIfPresent(newIFs, key, (const void **)&dict)) {
 		newDict = CFDictionaryCreateMutableCopy(NULL, 0, dict);
 	} else {
-		dict = cache_SCDynamicStoreCopyValue(store, key);
+		dict = SCDynamicStoreCopyValue(store, key);
 		if (dict) {
 			CFDictionarySetValue(oldIFs, key, dict);
 			if (isA_CFDictionary(dict)) {
@@ -116,9 +105,17 @@ updateStore(const void *key, const void *value, void *context)
 
 	if (!dict || !CFEqual(dict, newDict)) {
 		if (CFDictionaryGetCount(newDict) > 0) {
-			cache_SCDynamicStoreSetValue(store, key, newDict);
+			SC_log(LOG_DEBUG, "Update interface configuration: %@: %@", key, newDict);
+			SCDynamicStoreSetValue(store, key, newDict);
 		} else if (dict) {
-			cache_SCDynamicStoreRemoveValue(store, key);
+			CFDictionaryRef		oldDict;
+
+			oldDict = SCDynamicStoreCopyValue(store, key);
+			if (oldDict != NULL) {
+				SC_log(LOG_DEBUG, "Update interface configuration: %@: <removed>", key);
+				CFRelease(oldDict);
+			}
+			SCDynamicStoreRemoveValue(store, key);
 		}
 		network_changed = TRUE;
 	}
@@ -151,7 +148,7 @@ ipv4_interface_update(struct ifaddrs *ifap, const char *if_name)
 
 	if (!ifap) {
 		if (getifaddrs(&ifap_temp) == -1) {
-			SCLog(TRUE, LOG_ERR, CFSTR("getifaddrs() failed: %s"), strerror(errno));
+			SC_log(LOG_NOTICE, "getifaddrs() failed: %s", strerror(errno));
 			goto error;
 		}
 		ifap = ifap_temp;
@@ -260,7 +257,8 @@ ipv4_arp_collision(const char *if_name, struct in_addr ip_addr, int hw_len, cons
 	    CFStringAppendFormat(key, NULL, CFSTR("%s%02x"),
 				 (i == 0) ? "/" : ":", hw_addr_bytes[i]);
 	}
-	cache_SCDynamicStoreNotifyValue(store, key);
+	SC_log(LOG_DEBUG, "Post ARP collision: %@", key);
+	SCDynamicStoreNotifyValue(store, key);
 	CFRelease(key);
 	CFRelease(prefix);
 	CFRelease(if_name_cf);
@@ -281,14 +279,15 @@ ipv4_port_in_use(uint16_t port, pid_t req_pid)
 				      kSCEntNetIPv4,
 				      kSCEntNetIPv4PortInUse,
 				      port, req_pid);
-	cache_SCDynamicStoreNotifyValue(store, key);
+	SC_log(LOG_DEBUG, "Post port-in-use: %@", key);
+	SCDynamicStoreNotifyValue(store, key);
 	CFRelease(key);
 	return;
 }
 #endif	/* !TARGET_OS_IPHONE */
 
 static void
-interface_notify_entity(const char * if_name, CFStringRef entity)
+interface_notify_entity(const char * if_name, const char * type, CFStringRef entity)
 {
 	CFStringRef		if_name_cf;
 	CFStringRef		key;
@@ -300,7 +299,8 @@ interface_notify_entity(const char * if_name, CFStringRef entity)
 							    if_name_cf,
 							    entity);
 	CFRelease(if_name_cf);
-	cache_SCDynamicStoreNotifyValue(store, key);
+	SC_log(LOG_DEBUG, "Post %s: %@", type, key);
+	SCDynamicStoreNotifyValue(store, key);
 	CFRelease(key);
 	return;
 }
@@ -308,13 +308,13 @@ interface_notify_entity(const char * if_name, CFStringRef entity)
 __private_extern__ void
 ipv4_router_arp_failure(const char * if_name)
 {
-	interface_notify_entity(if_name, kSCEntNetIPv4RouterARPFailure);
+	interface_notify_entity(if_name, "Router ARP failure", kSCEntNetIPv4RouterARPFailure);
 	return;
 }
 
 __private_extern__ void
 ipv4_router_arp_alive(const char * if_name)
 {
-	interface_notify_entity(if_name, kSCEntNetIPv4RouterARPAlive);
+	interface_notify_entity(if_name, "Router ARP alive", kSCEntNetIPv4RouterARPAlive);
 	return;
 }

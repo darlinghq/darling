@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2004-2006, 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2004-2006, 2010, 2015, 2016 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -31,8 +31,6 @@
  * - initial revision
  */
 
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCPrivate.h>
 #include "SCPreferencesInternal.h"
 #include "SCHelper_client.h"
 
@@ -103,7 +101,7 @@ SCPreferencesApplyChanges(SCPreferencesRef prefs)
 	wasLocked = prefsPrivate->locked;
 	if (!wasLocked) {
 		if (!SCPreferencesLock(prefs, TRUE)) {
-			SCLog(_sc_verbose, LOG_DEBUG, CFSTR("SCPreferencesApplyChanges SCPreferencesLock() failed"));
+			SC_log(LOG_INFO, "SCPreferencesLock() failed");
 			return FALSE;
 		}
 	}
@@ -113,15 +111,14 @@ SCPreferencesApplyChanges(SCPreferencesRef prefs)
 		goto done;
 	}
 
+	SC_log(LOG_INFO, "SCPreferences() apply: %s",
+	       prefsPrivate->newPath ? prefsPrivate->newPath : prefsPrivate->path);
+
 	/* post notification */
-	if (prefsPrivate->session == NULL) {
-		ok = TRUE;
-	} else {
-		ok = SCDynamicStoreNotifyValue(prefsPrivate->session, prefsPrivate->sessionKeyApply);
-		if (!ok) {
-			SCLog(_sc_verbose, LOG_DEBUG, CFSTR("SCPreferencesApplyChanges SCDynamicStoreNotifyValue() failed"));
-			_SCErrorSet(kSCStatusFailed);
-		}
+	ok = SCDynamicStoreNotifyValue(NULL, prefsPrivate->sessionKeyApply);
+	if (!ok) {
+		SC_log(LOG_INFO, "SCDynamicStoreNotifyValue() failed");
+		_SCErrorSet(kSCStatusFailed);
 	}
 
     done :

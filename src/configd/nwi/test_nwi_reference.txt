@@ -1,0 +1,215 @@
+nwi_state = { gen=0 max_if=1 #v4=0 #v6=0 reach_flags=(v4=0x0, v6=0x0) }
+0 interfaces
+IPv4 traverse list:
+IPv6 traverse list:
+-----------------------------------
+nwi_state = { gen=0 max_if=2 #v4=0 #v6=0 reach_flags=(v4=0x0, v6=0x0) }
+0 interfaces
+IPv4 traverse list:
+IPv6 traverse list:
+-----------------------------------
+nwi_state = { gen=0 max_if=10 #v4=0 #v6=0 reach_flags=(v4=0x0, v6=0x0) }
+0 interfaces
+IPv4 traverse list:
+IPv6 traverse list:
+-----------------------------------
+nwi_state = { gen=0 max_if=5 #v4=5 #v6=5 reach_flags=(v4=0x0, v6=0x0) }
+IPv4:
+[0] en0 rank 0x1 iaddr 0.0.0.1 reach_flags 0x0
+[1] en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+[2] en2 rank 0x3 iaddr 0.0.0.3 reach_flags 0x0
+[3] en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+[4] en4 rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+IPv6:
+[0] en0 rank 0x0 iaddr :: reach_flags 0x0
+[1] en1 rank 0x9 iaddr 0:1:: reach_flags 0x0
+[2] en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+[3] en3 rank 0x7 iaddr 0:3:: reach_flags 0x0
+[4] en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+5 interfaces: en0, en1, en2, en3, en4
+IPv4 traverse list:
+[0] flags=0x0 en0 rank 0x1 iaddr 0.0.0.1 reach_flags 0x0
+	 alias is en0 rank 0x0 iaddr :: reach_flags 0x0
+[1] flags=0x0 en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+	 alias is en1 rank 0x9 iaddr 0:1:: reach_flags 0x0
+[2] flags=0x0 en2 rank 0x3 iaddr 0.0.0.3 reach_flags 0x0
+	 alias is en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+[3] flags=0x0 en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+	 alias is en3 rank 0x7 iaddr 0:3:: reach_flags 0x0
+[4] flags=0x1000 en4 rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+	 alias is en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+IPv6 traverse list:
+[0] flags=0x0 en0 rank 0x0 iaddr :: reach_flags 0x0
+	 alias is en0 rank 0x1 iaddr 0.0.0.1 reach_flags 0x0
+[1] flags=0x0 en1 rank 0x9 iaddr 0:1:: reach_flags 0x0
+	 alias is en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+[2] flags=0x0 en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+	 alias is en2 rank 0x3 iaddr 0.0.0.3 reach_flags 0x0
+[3] flags=0x0 en3 rank 0x7 iaddr 0:3:: reach_flags 0x0
+	 alias is en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+[4] flags=0x1000 en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+	 alias is en4 rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+-----------------------------------
+DIFF
+nwi_state = { gen=0 max_if=5 #v4=5 #v6=5 reach_flags=(v4=0x0, v6=0x0) }
+IPv4:
+[0] en0+ rank 0x1 iaddr 0.0.0.1 reach_flags 0x0
+[1] en1+ rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+[2] en2+ rank 0x3 iaddr 0.0.0.3 reach_flags 0x0
+[3] en3+ rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+[4] en4+ rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+IPv6:
+[0] en0+ rank 0x0 iaddr :: reach_flags 0x0
+[1] en1+ rank 0x9 iaddr 0:1:: reach_flags 0x0
+[2] en2+ rank 0x2 iaddr 0:2:: reach_flags 0x0
+[3] en3+ rank 0x7 iaddr 0:3:: reach_flags 0x0
+[4] en4+ rank 0x4 iaddr 0:4:: reach_flags 0x0
+-----------------------------------
+nwi_state = { gen=0 max_if=10 #v4=5 #v6=5 reach_flags=(v4=0x0, v6=0x0) }
+IPv4:
+[0] en0 rank 0x1 iaddr 0.0.0.1 reach_flags 0x0
+[1] en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+[2] en2 rank 0x3 iaddr 0.0.0.3 reach_flags 0x0
+[3] en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+[4] en4 rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+IPv6:
+[0] en0 rank 0x0 iaddr :: reach_flags 0x0
+[1] en1 rank 0x9 iaddr 0:1:: reach_flags 0x0
+[2] en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+[3] en3 rank 0x7 iaddr 0:3:: reach_flags 0x0
+[4] en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+5 interfaces: en0, en1, en2, en3, en4
+IPv4 traverse list:
+[0] flags=0x0 en0 rank 0x1 iaddr 0.0.0.1 reach_flags 0x0
+	 alias is en0 rank 0x0 iaddr :: reach_flags 0x0
+[1] flags=0x0 en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+	 alias is en1 rank 0x9 iaddr 0:1:: reach_flags 0x0
+[2] flags=0x0 en2 rank 0x3 iaddr 0.0.0.3 reach_flags 0x0
+	 alias is en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+[3] flags=0x0 en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+	 alias is en3 rank 0x7 iaddr 0:3:: reach_flags 0x0
+[4] flags=0x1000 en4 rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+	 alias is en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+IPv6 traverse list:
+[0] flags=0x0 en0 rank 0x0 iaddr :: reach_flags 0x0
+	 alias is en0 rank 0x1 iaddr 0.0.0.1 reach_flags 0x0
+[1] flags=0x0 en1 rank 0x9 iaddr 0:1:: reach_flags 0x0
+	 alias is en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+[2] flags=0x0 en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+	 alias is en2 rank 0x3 iaddr 0.0.0.3 reach_flags 0x0
+[3] flags=0x0 en3 rank 0x7 iaddr 0:3:: reach_flags 0x0
+	 alias is en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+[4] flags=0x1000 en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+	 alias is en4 rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+-----------------------------------
+nwi_state = { gen=0 max_if=10 #v4=10 #v6=10 reach_flags=(v4=0x0, v6=0x0) }
+IPv4:
+[0] en0 rank 0x0 iaddr 0.0.0.0 reach_flags 0x0
+[1] en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+[2] en2 rank 0x2 iaddr 0.0.0.2 reach_flags 0x0
+[3] en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+[4] en4 rank 0x4 iaddr 0.0.0.4 reach_flags 0x0
+[5] en9 rank 0x9 iaddr 0.0.0.9 reach_flags 0x0
+[6] en8 rank 0x8 iaddr 0.0.0.8 reach_flags 0x0
+[7] en7 rank 0x7 iaddr 0.0.0.7 reach_flags 0x0
+[8] en6 rank 0x6 iaddr 0.0.0.6 reach_flags 0x0
+[9] en5 rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+IPv6:
+[0] en0 rank 0x0 iaddr :: reach_flags 0x0
+[1] en1 rank 0x1 iaddr 0:1:: reach_flags 0x0
+[2] en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+[3] en3 rank 0x3 iaddr 0:3:: reach_flags 0x0
+[4] en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+[5] en5 rank 0x5 iaddr 0:5:: reach_flags 0x0
+[6] en6 rank 0x6 iaddr 0:6:: reach_flags 0x0
+[7] en7 never rank 0x7 iaddr 0:7:: reach_flags 0x0
+[8] en8 never rank 0x8 iaddr 0:8:: reach_flags 0x0
+[9] en9 never rank 0x9 iaddr 0:9:: reach_flags 0x0
+10 interfaces: en0, en1, en2, en3, en4, en5, en6, en7, en8, en9
+IPv4 traverse list:
+[0] flags=0x0 en0 rank 0x0 iaddr 0.0.0.0 reach_flags 0x0
+	 alias is en0 rank 0x0 iaddr :: reach_flags 0x0
+[1] flags=0x0 en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+	 alias is en1 rank 0x1 iaddr 0:1:: reach_flags 0x0
+[2] flags=0x0 en2 rank 0x2 iaddr 0.0.0.2 reach_flags 0x0
+	 alias is en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+[3] flags=0x0 en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+	 alias is en3 rank 0x3 iaddr 0:3:: reach_flags 0x0
+[4] flags=0x0 en4 rank 0x4 iaddr 0.0.0.4 reach_flags 0x0
+	 alias is en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+[5] flags=0x0 en9 rank 0x9 iaddr 0.0.0.9 reach_flags 0x0
+	 alias is en9 never rank 0x9 iaddr 0:9:: reach_flags 0x0
+[6] flags=0x0 en8 rank 0x8 iaddr 0.0.0.8 reach_flags 0x0
+	 alias is en8 never rank 0x8 iaddr 0:8:: reach_flags 0x0
+[7] flags=0x0 en7 rank 0x7 iaddr 0.0.0.7 reach_flags 0x0
+	 alias is en7 never rank 0x7 iaddr 0:7:: reach_flags 0x0
+[8] flags=0x0 en6 rank 0x6 iaddr 0.0.0.6 reach_flags 0x0
+	 alias is en6 rank 0x6 iaddr 0:6:: reach_flags 0x0
+[9] flags=0x1000 en5 rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+	 alias is en5 rank 0x5 iaddr 0:5:: reach_flags 0x0
+IPv6 traverse list:
+[0] flags=0x0 en0 rank 0x0 iaddr :: reach_flags 0x0
+	 alias is en0 rank 0x0 iaddr 0.0.0.0 reach_flags 0x0
+[1] flags=0x0 en1 rank 0x1 iaddr 0:1:: reach_flags 0x0
+	 alias is en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+[2] flags=0x0 en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+	 alias is en2 rank 0x2 iaddr 0.0.0.2 reach_flags 0x0
+[3] flags=0x0 en3 rank 0x3 iaddr 0:3:: reach_flags 0x0
+	 alias is en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+[4] flags=0x0 en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+	 alias is en4 rank 0x4 iaddr 0.0.0.4 reach_flags 0x0
+[5] flags=0x0 en5 rank 0x5 iaddr 0:5:: reach_flags 0x0
+	 alias is en5 rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+[6] flags=0x0 en6 rank 0x6 iaddr 0:6:: reach_flags 0x0
+	 alias is en6 rank 0x6 iaddr 0.0.0.6 reach_flags 0x0
+-----------------------------------
+DIFF
+nwi_state = { gen=0 max_if=15 #v4=10 #v6=10 reach_flags=(v4=0x0, v6=0x0) }
+IPv4:
+[0] en0! rank 0x0 iaddr 0.0.0.0 reach_flags 0x0
+[1] en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+[2] en2! rank 0x2 iaddr 0.0.0.2 reach_flags 0x0
+[3] en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+[4] en4! rank 0x4 iaddr 0.0.0.4 reach_flags 0x0
+[5] en9+ rank 0x9 iaddr 0.0.0.9 reach_flags 0x0
+[6] en8+ rank 0x8 iaddr 0.0.0.8 reach_flags 0x0
+[7] en7+ rank 0x7 iaddr 0.0.0.7 reach_flags 0x0
+[8] en6+ rank 0x6 iaddr 0.0.0.6 reach_flags 0x0
+[9] en5+ rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+IPv6:
+[0] en0 rank 0x0 iaddr :: reach_flags 0x0
+[1] en1/ rank 0x1 iaddr 0:1:: reach_flags 0x0
+[2] en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+[3] en3/ rank 0x3 iaddr 0:3:: reach_flags 0x0
+[4] en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+[5] en5+ rank 0x5 iaddr 0:5:: reach_flags 0x0
+[6] en6+ rank 0x6 iaddr 0:6:: reach_flags 0x0
+[7] en7+ never rank 0x7 iaddr 0:7:: reach_flags 0x0
+[8] en8+ never rank 0x8 iaddr 0:8:: reach_flags 0x0
+[9] en9+ never rank 0x9 iaddr 0:9:: reach_flags 0x0
+-----------------------------------
+DIFF
+nwi_state = { gen=0 max_if=15 #v4=10 #v6=10 reach_flags=(v4=0x0, v6=0x0) }
+IPv4:
+[0] en0! rank 0x1 iaddr 0.0.0.1 reach_flags 0x0
+[1] en1 rank 0x0 iaddr 0.0.0.1 reach_flags 0x0
+[2] en2! rank 0x3 iaddr 0.0.0.3 reach_flags 0x0
+[3] en3 rank 0x2 iaddr 0.0.0.3 reach_flags 0x0
+[4] en4! rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+[5] en9- rank 0x9 iaddr 0.0.0.9 reach_flags 0x0
+[6] en8- rank 0x8 iaddr 0.0.0.8 reach_flags 0x0
+[7] en7- rank 0x7 iaddr 0.0.0.7 reach_flags 0x0
+[8] en6- rank 0x6 iaddr 0.0.0.6 reach_flags 0x0
+[9] en5- rank 0x5 iaddr 0.0.0.5 reach_flags 0x0
+IPv6:
+[0] en0 rank 0x0 iaddr :: reach_flags 0x0
+[1] en1\ rank 0x9 iaddr 0:1:: reach_flags 0x0
+[2] en2 rank 0x2 iaddr 0:2:: reach_flags 0x0
+[3] en3\ rank 0x7 iaddr 0:3:: reach_flags 0x0
+[4] en4 rank 0x4 iaddr 0:4:: reach_flags 0x0
+[5] en5- rank 0x5 iaddr 0:5:: reach_flags 0x0
+[6] en6- rank 0x6 iaddr 0:6:: reach_flags 0x0
+[7] en7- never rank 0x7 iaddr 0:7:: reach_flags 0x0
+[8] en8- never rank 0x8 iaddr 0:8:: reach_flags 0x0
+[9] en9- never rank 0x9 iaddr 0:9:: reach_flags 0x0
+-----------------------------------

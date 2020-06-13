@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2004, 2005, 2010, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2004, 2005, 2010, 2011, 2013, 2015, 2018, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,13 +17,15 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SCDYNAMICSTOREPRIVATE_H
 #define _SCDYNAMICSTOREPRIVATE_H
 
+#include <TargetConditionals.h>
+#include <os/availability.h>
 #include <sys/cdefs.h>
 #include <mach/message.h>
 #include <CoreFoundation/CoreFoundation.h>
@@ -167,25 +169,6 @@ SCDynamicStoreNotifyFileDescriptor	(SCDynamicStoreRef		store,
 					 int				*fd);
 
 /*!
-	@function SCDynamicStoreNotifySignal
-	@discussion Requests that the specified BSD signal be sent to the process
-		with the indicated process id whenever a change has been detected
-		to one of the system configuration data entries associated with the
-		current session's notifier keys.
-
-		Note: this function is not valid for "configd" plug-ins.
-
-	@param store An SCDynamicStoreRef that should be used for communication with the server.
-	@param pid A UNIX process ID that should be signalled for any notifications.
-	@param sig A signal number to be used.
-	@result A boolean indicating the success (or failure) of the call.
- */
-Boolean
-SCDynamicStoreNotifySignal		(SCDynamicStoreRef		store,
-					 pid_t				pid,
-					 int				sig);
-
-/*!
 	@function SCDynamicStoreNotifyWait
 	@discussion Waits for a change to be made to a value in the
 		"dynamic store" that is being monitored.
@@ -223,11 +206,32 @@ Boolean
 SCDynamicStoreSetDisconnectCallBack	(
 					 SCDynamicStoreRef			store,
 					 SCDynamicStoreDisconnectCallBack	callout
-					)				__OSX_AVAILABLE_STARTING(__MAC_10_7,__IPHONE_5_0/*SPI*/);
+					)				API_AVAILABLE(macos(10.7)) SPI_AVAILABLE(ios(5.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 Boolean
 SCDynamicStoreSnapshot			(SCDynamicStoreRef		store);
 
+
+Boolean
+_SCDynamicStoreCacheIsActive		(SCDynamicStoreRef		store)
+									API_AVAILABLE(macos(10.15)) SPI_AVAILABLE(ios(13.0), tvos(13.0), watchos(6.0), bridgeos(4.0));
+
+Boolean
+_SCDynamicStoreCacheOpen		(SCDynamicStoreRef		store)
+									API_AVAILABLE(macos(10.15)) SPI_AVAILABLE(ios(13.0), tvos(13.0), watchos(6.0), bridgeos(4.0));
+
+Boolean
+_SCDynamicStoreCacheCommitChanges	(SCDynamicStoreRef		store)
+									API_AVAILABLE(macos(10.15)) SPI_AVAILABLE(ios(13.0), tvos(13.0), watchos(6.0), bridgeos(4.0));
+
+Boolean
+_SCDynamicStoreCacheClose		(SCDynamicStoreRef		store)
+									API_AVAILABLE(macos(10.15)) SPI_AVAILABLE(ios(13.0), tvos(13.0), watchos(6.0), bridgeos(4.0));
+
+void
+_SCDynamicStoreSetSessionWatchLimit	(unsigned int			limit)
+									API_AVAILABLE(macos(10.15)) SPI_AVAILABLE(ios(13.0), tvos(13.0), watchos(6.0), bridgeos(4.0));
+
 __END_DECLS
 
-#endif /* _SCDYNAMICSTOREPRIVATE_H */
+#endif	/* _SCDYNAMICSTOREPRIVATE_H */

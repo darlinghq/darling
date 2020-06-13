@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2013, 2017 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,8 +21,8 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#ifndef _EAP8021X_EAPOLCONTROLPREFS_H
-#define _EAP8021X_EAPOLCONTROLPREFS_H
+#ifndef _IPMONITORCONTROLPREFS_H
+#define _IPMONITORCONTROLPREFS_H
 
 /*
  * IPMonitorControlPrefs.h
@@ -51,4 +51,4 @@ IPMonitorControlPrefsIsVerbose(void);
 Boolean
 IPMonitorControlPrefsSetVerbose(Boolean verbose);
 
-#endif /* _COMMON_IPMONITORCONTROLPREFS_H */
+#endif /* _IPMONITORCONTROLPREFS_H */

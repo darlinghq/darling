@@ -7,9 +7,9 @@
 	<key>CFBundleExecutable</key>
 	<string>SystemConfiguration</string>
 	<key>CFBundleGetInfoString</key>
-	<string>1.14</string>
+	<string>1.19</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.apple.SystemConfiguration</string>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -17,10 +17,10 @@
 	<key>CFBundlePackageType</key>
 	<string>FMWK</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.14.4</string>
+	<string>1.19</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1.14</string>
+	<string>1.19</string>
 </dict>
 </plist>

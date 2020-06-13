@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2001, 2003-2006, 2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003-2006, 2009, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -59,16 +59,6 @@ __SCDynamicStoreNotifyCancel(SCDynamicStoreRef store)
 		// close (notification) fd
 		(void) close(storePrivate->notifyFile);
 		storePrivate->notifyFile = -1;
-	}
-
-	/*
-	 * cleanup any signal notifications.
-	 */
-	if (storePrivate->notifySignal > 0) {
-		__MACH_PORT_DEBUG(TRUE, "*** __SCDynamicStoreNotifyCancel (signal)", storePrivate->notifySignalTask);
-		(void) mach_port_deallocate(mach_task_self(), storePrivate->notifySignalTask);
-		storePrivate->notifySignal     = 0;
-		storePrivate->notifySignalTask = TASK_NULL;
 	}
 
 	/* remove this session from the to-be-notified list */

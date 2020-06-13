@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2003, 2004, 2006, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003, 2004, 2006, 2009, 2011, 2015, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -40,13 +40,17 @@ __SCDynamicStoreNotifyMachPort(SCDynamicStoreRef	store,
 			       mach_msg_id_t		identifier,
 			       mach_port_t		port)
 {
+	serverSessionRef		mySession;
 	SCDynamicStorePrivateRef	storePrivate = (SCDynamicStorePrivateRef)store;
-	CFStringRef			sessionKey;
-	CFDictionaryRef			info;
 
 	if (storePrivate->notifyStatus != NotifierNotRegistered) {
 		/* sorry, you can only have one notification registered at once */
 		return kSCStatusNotifierActive;
+	}
+
+	if (identifier != 0) {
+		/* sorry, the message ID (never used, no longer supported) must be zero */
+		return kSCStatusInvalidArgument;
 	}
 
 	if (port == MACH_PORT_NULL) {
@@ -55,10 +59,8 @@ __SCDynamicStoreNotifyMachPort(SCDynamicStoreRef	store,
 	}
 
 	/* push out a notification if any changes are pending */
-	sessionKey = CFStringCreateWithFormat(NULL, NULL, CFSTR("%d"), storePrivate->server);
-	info = CFDictionaryGetValue(sessionData, sessionKey);
-	CFRelease(sessionKey);
-	if (info && CFDictionaryContainsKey(info, kSCDChangedKeys)) {
+	mySession = getSession(storePrivate->server);
+	if (mySession->changedKeys != NULL) {
 		CFNumberRef	sessionNum;
 
 		if (needsNotification == NULL)
@@ -110,7 +112,6 @@ _notifyviaport(mach_port_t	server,
 	__MACH_PORT_DEBUG(TRUE, "*** _notifyviaport", port);
 	storePrivate->notifyStatus         = Using_NotifierInformViaMachPort;
 	storePrivate->notifyPort           = port;
-	storePrivate->notifyPortIdentifier = identifier;
 
 	return KERN_SUCCESS;
 }

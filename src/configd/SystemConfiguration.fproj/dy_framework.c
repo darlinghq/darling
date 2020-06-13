@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008, 2010-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2002-2008, 2010-2015, 2017 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -33,8 +33,45 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <dlfcn.h>
+#include <mach-o/dyld_priv.h>
 
+#include <CoreFoundation/CFRuntime.h>
 #include "dy_framework.h"
+
+
+void *
+_SC_dlopen(const char *framework)
+{
+	void			*image;
+	static dispatch_once_t	once;
+	static const char	*suffix	= NULL;
+
+	dispatch_once(&once, ^{
+		if (!dyld_process_is_restricted()) {
+			suffix = getenv("DYLD_IMAGE_SUFFIX");
+			if ((suffix != NULL) &&
+			    ((strlen(suffix) < 2) || (suffix[0] != '_'))) {
+				// if too short or no leading "_"
+				suffix = NULL;
+			}
+		}
+	});
+
+	if (suffix != NULL) {
+		struct stat	statbuf;
+		char		path[MAXPATHLEN];
+
+		strlcpy(path, framework, sizeof(path));
+		strlcat(path, suffix, sizeof(path));
+		if (0 <= stat(path, &statbuf)) {
+			image = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+			return image;
+		}
+	}
+
+	image = dlopen(framework, RTLD_LAZY | RTLD_LOCAL);
+	return image;
+}
 
 
 #pragma mark -
@@ -42,22 +79,14 @@
 
 static void *
 __loadIOKit(void) {
-	static void *image = NULL;
-	if (NULL == image) {
-		const char	*framework		= "/System/Library/Frameworks/IOKit.framework/IOKit";
-		struct stat	statbuf;
-		const char	*suffix			= getenv("DYLD_IMAGE_SUFFIX");
-		char		path[MAXPATHLEN];
+	static void		*image	= NULL;
+	static dispatch_once_t	once;
 
-		strlcpy(path, framework, sizeof(path));
-		if (suffix) strlcat(path, suffix, sizeof(path));
-		if (0 <= stat(path, &statbuf)) {
-			image = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
-		} else {
-			image = dlopen(framework, RTLD_LAZY | RTLD_LOCAL);
-		}
-	}
-	return (void *)image;
+	dispatch_once(&once, ^{
+		image = _SC_dlopen("/System/Library/Frameworks/IOKit.framework/IOKit");
+	});
+
+	return image;
 }
 
 
@@ -384,27 +413,19 @@ _IOServiceMatching(const char *name)
 
 static void *
 __loadSecurity(void) {
-	static void *image = NULL;
-	if (NULL == image) {
-		const char	*framework		= "/System/Library/Frameworks/Security.framework/Security";
-		struct stat	statbuf;
-		const char	*suffix			= getenv("DYLD_IMAGE_SUFFIX");
-		char		path[MAXPATHLEN];
+	static void		*image	= NULL;
+	static dispatch_once_t	once;
 
-		strlcpy(path, framework, sizeof(path));
-		if (suffix) strlcat(path, suffix, sizeof(path));
-		if (0 <= stat(path, &statbuf)) {
-			image = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
-		} else {
-			image = dlopen(framework, RTLD_LAZY | RTLD_LOCAL);
-		}
-	}
-	return (void *)image;
+	dispatch_once(&once, ^{
+		image = _SC_dlopen("/System/Library/Frameworks/Security.framework/Security");
+	});
+
+	return image;
 }
 
 #define	SECURITY_FRAMEWORK_EXTERN(t, s)				\
 	__private_extern__ t					\
-	_ ## s()						\
+	_ ## s(void)						\
 	{							\
 		static t	*dysym = NULL;			\
 		if (!dysym) {					\
@@ -627,7 +648,6 @@ _SecCertificateCreateWithData(CFAllocatorRef allocator, CFDataRef data)
 	}
 	return dyfunc ? dyfunc(allocator, data) : NULL;
 }
-
 
 
 

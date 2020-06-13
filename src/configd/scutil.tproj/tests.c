@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2001, 2003-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -48,10 +48,18 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#define	my_log(__level, __format, ...)	SCPrint(TRUE, stdout, CFSTR(__format "\n"), ## __VA_ARGS__)
+
 #include <dnsinfo.h>
 #include "dnsinfo_internal.h"
+#include "dnsinfo_logging.h"
+
 #include <network_information.h>
+#include "network_state_information_logging.h"
+#include "network_state_information_priv.h"
+
 #include "SCNetworkReachabilityInternal.h"
+
 #include <CommonCrypto/CommonDigest.h>
 
 
@@ -93,7 +101,6 @@ _setupReachabilityOptions(int argc, char **argv, const char *interface)
 					     kCFBooleanTrue);
 			continue;
 		}
-
 
 		if (strcasecmp(argv[i], "no-connection-on-demand") == 0) {
 			CFDictionarySetValue(options,
@@ -162,11 +169,11 @@ _setupReachability(int argc, char **argv, SCNetworkReachabilityContext *context)
 	struct sockaddr_in6		sin6;
 	SCNetworkReachabilityRef	target		= NULL;
 
-	bzero(&sin, sizeof(sin));
+	memset(&sin, 0, sizeof(sin));
 	sin.sin_len    = sizeof(sin);
 	sin.sin_family = AF_INET;
 
-	bzero(&sin6, sizeof(sin6));
+	memset(&sin6, 0, sizeof(sin6));
 	sin6.sin6_len    = sizeof(sin6);
 	sin6.sin6_family = AF_INET6;
 
@@ -194,7 +201,7 @@ _setupReachability(int argc, char **argv, SCNetworkReachabilityContext *context)
 		struct sockaddr_in	r_sin;
 
 		if (argc > 1) {
-			bzero(&r_sin, sizeof(r_sin));
+			memset(&r_sin, 0, sizeof(r_sin));
 			r_sin.sin_len    = sizeof(r_sin);
 			r_sin.sin_family = AF_INET;
 		}
@@ -283,7 +290,7 @@ _setupReachability(int argc, char **argv, SCNetworkReachabilityContext *context)
 		}
 
 		if (argc > 1) {
-			bzero(&r_sin6, sizeof(r_sin6));
+			memset(&r_sin6, 0, sizeof(r_sin6));
 			r_sin6.sin6_len    = sizeof(r_sin6);
 			r_sin6.sin6_family = AF_INET6;
 		}
@@ -423,6 +430,7 @@ static void
 _printReachability(SCNetworkReachabilityRef target)
 {
 	SCNetworkReachabilityFlags	flags;
+	char				flags_str[100];
 	Boolean				ok;
 
 	ok = SCNetworkReachabilityGetFlags(target, &flags);
@@ -431,16 +439,16 @@ _printReachability(SCNetworkReachabilityRef target)
 		return;
 	}
 
-	SCPrint(_sc_debug, stdout, CFSTR("flags = 0x%08x ("), flags);
-	__SCNetworkReachabilityPrintFlags(flags);
-	SCPrint(_sc_debug, stdout, CFSTR(")"));
-	SCPrint(TRUE, stdout, CFSTR("\n"));
+	__SCNetworkReachability_flags_string(flags, _sc_debug, flags_str, sizeof(flags_str));
+	SCPrint(TRUE, stdout,
+		_sc_debug ? CFSTR("flags = %s\n") : CFSTR("%s\n"),
+		flags_str);
 
-	if (resolver_bypass) {
+	if (resolver_bypass && _sc_debug) {
 		int	if_index;
 
 		if_index = SCNetworkReachabilityGetInterfaceIndex(target);
-		SCPrint(_sc_debug, stdout, CFSTR("interface index = %d\n"), if_index);
+		SCPrint(TRUE, stdout, CFSTR("interface index = %d\n"), if_index);
 	}
 
 	return;
@@ -466,144 +474,36 @@ do_checkReachability(int argc, char **argv)
 
 
 static void
-_printNWIFlags(nwi_ifstate_flags flags)
-{
-	if (flags == 0) {
-		return;
-	}
-
-	SCPrint(TRUE, stdout, CFSTR(" ("));
-	if (flags & NWI_IFSTATE_FLAGS_HAS_IPV4) {
-		SCPrint(TRUE, stdout, CFSTR("IPv4"));
-		flags &= ~NWI_IFSTATE_FLAGS_HAS_IPV4;
-		SCPrint(flags != 0, stdout, CFSTR(","));
-	}
-	if (flags & NWI_IFSTATE_FLAGS_HAS_IPV6) {
-		SCPrint(TRUE, stdout, CFSTR("IPv6"));
-		flags &= ~NWI_IFSTATE_FLAGS_HAS_IPV6;
-		SCPrint(flags != 0, stdout, CFSTR(","));
-	}
-	if (flags & NWI_IFSTATE_FLAGS_HAS_DNS) {
-		SCPrint(TRUE, stdout, CFSTR("DNS"));
-		flags &= ~NWI_IFSTATE_FLAGS_HAS_DNS;
-		SCPrint(flags != 0, stdout, CFSTR(","));
-	}
-	if (flags != 0) {
-		SCPrint(TRUE, stdout, CFSTR("%p"), (void *)flags);
-	}
-	SCPrint(TRUE, stdout, CFSTR(")"));
-
-	return;
-}
-
-
-static void
-_printNWIInfo(nwi_ifstate_t ifstate)
-{
-	nwi_ifstate_flags		ifstate_flags = nwi_ifstate_get_flags(ifstate);
-	SCNetworkReachabilityFlags	reach_flags = nwi_ifstate_get_reachability_flags(ifstate);
-	const uint8_t			*signature;
-	int				signature_length;
-	const struct sockaddr		*vpn_addr = nwi_ifstate_get_vpn_server(ifstate);
-
-	SCPrint(TRUE, stdout,
-		CFSTR(" %7s : flags %p"),
-		nwi_ifstate_get_ifname(ifstate),
-		(void *)ifstate_flags);
-	_printNWIFlags(ifstate_flags);
-
-	SCPrint(TRUE, stdout, CFSTR("\n           reach 0x%08x ("), reach_flags);
-	__SCNetworkReachabilityPrintFlags(reach_flags);
-	SCPrint(TRUE, stdout, CFSTR(")"));
-
-	if (vpn_addr != NULL) {
-		char vpn_ntopbuf[INET6_ADDRSTRLEN];
-
-		_SC_sockaddr_to_string(vpn_addr, vpn_ntopbuf, sizeof(vpn_ntopbuf));
-		SCPrint(TRUE, stdout, CFSTR("\n           VPN server: %s"), vpn_ntopbuf);
-	}
-
-	signature = nwi_ifstate_get_signature(ifstate, AF_UNSPEC, &signature_length);
-	if (signature != NULL) {
-		CFDataRef	digest	= NULL;
-
-		digest = CFDataCreate(NULL, signature, CC_SHA1_DIGEST_LENGTH);
-		SCPrint(TRUE, stdout, CFSTR("\n           Signature Hash: %@"), digest);
-		CFRelease(digest);
-	} else {
-		SCPrint(TRUE, stdout, CFSTR("\n           Signature Hash: <empty>"));
-	}
-
-	SCPrint(TRUE, stdout, CFSTR("\n           generation %llu\n"),
-		nwi_ifstate_get_generation(ifstate));
-
-	return;
-}
-
-
-static void
-_printNWIReachInfo(nwi_state_t state, int af)
-{
-	uint32_t	reach_flags;
-
-	reach_flags = nwi_state_get_reachability_flags(state, af);
-	SCPrint(TRUE, stdout, CFSTR("\n   REACH : flags 0x%08x ("), reach_flags);
-	__SCNetworkReachabilityPrintFlags(reach_flags);
-	SCPrint(TRUE, stdout, CFSTR(")\n"));
-
-	return;
-}
-
-
-static void
 do_printNWI(int argc, char **argv, nwi_state_t state)
 {
-	nwi_ifstate_t	ifstate;
-
 	if (state == NULL) {
 		SCPrint(TRUE, stdout, CFSTR("No network information\n"));
 		return;
 	}
 
 	if (argc > 0) {
+		nwi_ifstate_t	ifstate;
+
 		ifstate = nwi_state_get_ifstate(state, argv[0]);
 		if (ifstate != NULL) {
-			_printNWIInfo(ifstate);
+			nwi_ifstate_t	alias;
+			int		alias_af;
+
+			_nwi_ifstate_log(ifstate, _sc_debug, NULL);
+
+			alias_af = (ifstate->af == AF_INET) ? AF_INET6 : AF_INET;
+			alias = nwi_ifstate_get_alias(ifstate, alias_af);
+			if (alias != NULL) {
+				SCPrint(TRUE, stdout, CFSTR("\n"));
+				_nwi_ifstate_log(alias, _sc_debug, NULL);
+			}
 		} else {
 			SCPrint(TRUE, stdout, CFSTR("No network information (for %s)\n"), argv[0]);
 		}
 		return;
 	}
 
-	SCPrint(TRUE, stdout, CFSTR("Network information (generation %llu)"),
-		nwi_state_get_generation(state));
-
-	SCPrint(TRUE, stdout, CFSTR("\nIPv4 network interface information\n"));
-
-	ifstate = nwi_state_get_first_ifstate(state, AF_INET);
-	if (ifstate == NULL) {
-		SCPrint(TRUE, stdout, CFSTR("   No IPv4 states found\n"));
-	} else {
-		while (ifstate != NULL) {
-			_printNWIInfo(ifstate);
-			ifstate = nwi_ifstate_get_next(ifstate, AF_INET);
-		}
-	}
-	_printNWIReachInfo(state, AF_INET);
-
-	SCPrint(TRUE, stdout, CFSTR("\nIPv6 network interface information\n"));
-
-	ifstate = nwi_state_get_first_ifstate(state, AF_INET6);
-	if (ifstate == NULL) {
-		SCPrint(TRUE, stdout, CFSTR("   No IPv6 states found\n"));
-	} else {
-		while (ifstate != NULL) {
-			_printNWIInfo(ifstate);
-			ifstate = nwi_ifstate_get_next(ifstate, AF_INET6);
-		}
-	}
-	_printNWIReachInfo(state, AF_INET6);
-
+	_nwi_state_log(state, _sc_debug, NULL);
 	return;
 }
 
@@ -644,6 +544,7 @@ do_watchNWI(int argc, char **argv)
 					  &token,
 					  dispatch_get_main_queue(),
 					  ^(int token){
+#pragma unused(token)
 						  nwi_state_t		state;
 						  struct tm		tm_now;
 						  struct timeval	tv_now;
@@ -663,7 +564,7 @@ do_watchNWI(int argc, char **argv)
 						  }
 					  });
 	if (status != NOTIFY_STATUS_OK) {
-		SCLog(TRUE, LOG_INFO, CFSTR("notify_register_dispatch() failed for nwi changes, status=%u"), status);
+		SCPrint(TRUE, stderr, CFSTR("notify_register_dispatch() failed for nwi changes, status=%u\n"), status);
 		exit(1);
 	}
 
@@ -771,55 +672,19 @@ do_watchReachability(int argc, char **argv)
 static void
 do_printDNSConfiguration(int argc, char **argv, dns_config_t *dns_config)
 {
-	SCNetworkReachabilityRef	target;
+#pragma unused(argc)
+#pragma unused(argv)
+	int	_sc_log_save;
 
 	if (dns_config == NULL) {
 		SCPrint(TRUE, stdout, CFSTR("No DNS configuration available\n"));
 		return;
 	}
 
-	if (argc > 1) {
-		int				dns_config_index = -1;
-		SCNetworkReachabilityFlags	flags = 0;
-		Boolean				haveDNS = FALSE;
-		Boolean				ok = FALSE;
-		dns_resolver_t			*resolver;
-		uint32_t			resolver_if_index;
-		SCNetworkReachabilityPrivateRef targetPrivate;
-
-		target = _setupReachability(argc, argv, NULL);
-
-		targetPrivate = (SCNetworkReachabilityPrivateRef)target;
-
-		if (targetPrivate->type != reachabilityTypeName) {
-			SCPrint(TRUE, stdout, CFSTR("\"%s\" is not a hostname.\n"), argv[0]);
-			exit(1);
-		}
-
-		ok = __SC_checkResolverReachabilityInternal(&store, &flags,
-							    &haveDNS, targetPrivate->name,
-							    &resolver_if_index, &dns_config_index);
-
-		if (!ok) {
-			SCPrint(TRUE, stdout, CFSTR("No DNS configuration available.\n" ));
-			return;
-		}
-
-		SCPrint(TRUE, stdout, CFSTR("DNS configuration for %s\n"),
-			targetPrivate->name);
-
-		if (targetPrivate->if_index == 0) {
-			resolver = dns_config->resolver[dns_config_index];
-		} else {
-			resolver = dns_config->scoped_resolver[dns_config_index];
-		}
-
-		_dns_resolver_print(resolver, dns_config_index + 1);
-
-		if (target != NULL) CFRelease(target);
-	} else {
-		_dns_configuration_print(dns_config);
-	}
+	_sc_log_save = _sc_log;
+	_sc_log = FALSE;
+	_dns_configuration_log(dns_config, _sc_debug, NULL);
+	_sc_log = _sc_log_save;
 
 	if (_sc_debug) {
 		SCPrint(TRUE, stdout, CFSTR("\ngeneration = %llu\n"), dns_config->generation);
@@ -865,6 +730,7 @@ do_watchDNSConfiguration(int argc, char **argv)
 					  &token,
 					  dispatch_get_main_queue(),
 					  ^(int token){
+#pragma unused(token)
 						  dns_config_t		*dns_config;
 						  struct tm		tm_now;
 						  struct timeval	tv_now;
@@ -884,7 +750,7 @@ do_watchDNSConfiguration(int argc, char **argv)
 						  }
 					  });
 	if (status != NOTIFY_STATUS_OK) {
-		SCLog(TRUE, LOG_INFO, CFSTR("notify_register_dispatch() failed for DNS configuration changes, status=%u"), status);
+		SCPrint(TRUE, stderr, CFSTR("notify_register_dispatch() failed for nwi changes, status=%u\n"), status);
 		exit(1);
 	}
 
@@ -916,20 +782,19 @@ __private_extern__
 void
 do_showProxyConfiguration(int argc, char **argv)
 {
-	CFMutableDictionaryRef	options = NULL;
 	CFDictionaryRef		proxies;
 
 	if (getenv("BYPASS_GLOBAL_PROXY") != NULL) {
+		CFMutableDictionaryRef	options ;
+
 		options = CFDictionaryCreateMutable(NULL, 0,
 						    &kCFTypeDictionaryKeyCallBacks,
 						    &kCFTypeDictionaryValueCallBacks);
 		CFDictionaryAddValue(options, kSCProxiesNoGlobal, kCFBooleanTrue);
-	}
-
-	proxies = SCDynamicStoreCopyProxiesWithOptions(NULL, options);
-
-	if (options != NULL) {
+		proxies = SCDynamicStoreCopyProxiesWithOptions(NULL, options);
 		CFRelease(options);
+	} else {
+		proxies = SCDynamicStoreCopyProxies(NULL);
 	}
 
 	if (proxies != NULL) {
@@ -1022,11 +887,52 @@ __private_extern__
 void
 do_snapshot(int argc, char **argv)
 {
-	if (!SCDynamicStoreSnapshot(store)) {
-		SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
-	}
+#pragma unused(argc)
+#pragma unused(argv)
+	if (argc == 1) {
+		CFDictionaryRef		dict;
+		int			fd;
+		CFMutableArrayRef	patterns;
 
-	(void) _SCNetworkReachabilityServer_snapshot();
+		fd = open(argv[0], O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0644);
+		if (fd == -1) {
+			SCPrint(TRUE, stdout, CFSTR("open() failed: %s\n"), strerror(errno));
+			return;
+		}
+
+		patterns = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+		CFArrayAppendValue(patterns, CFSTR(".*"));
+		dict = SCDynamicStoreCopyMultiple(store, NULL, patterns);
+		CFRelease(patterns);
+		if (dict != NULL) {
+			CFDataRef	xmlData;
+
+			xmlData = CFPropertyListCreateData(NULL, dict, kCFPropertyListXMLFormat_v1_0, 0, NULL);
+			CFRelease(dict);
+			if (xmlData != NULL) {
+				(void) write(fd, CFDataGetBytePtr(xmlData), CFDataGetLength(xmlData));
+				CFRelease(xmlData);
+			} else {
+				SC_log(LOG_NOTICE, "CFPropertyListCreateData() failed");
+			}
+		} else {
+			if (SCError() == kSCStatusOK) {
+				SCPrint(TRUE, stdout, CFSTR("No SCDynamicStore content\n"));
+			} else {
+				SCPrint(TRUE, stdout, CFSTR("%s\n"), SCErrorString(SCError()));
+			}
+		}
+		(void) close(fd);
+	} else {
+#if	!TARGET_OS_SIMULATOR
+		if (geteuid() != 0) {
+			SCPrint(TRUE, stdout, CFSTR("Need to be \"root\" to capture snapshot\n"));
+		} else
+#endif	// !TARGET_OS_SIMULATOR
+		if (!SCDynamicStoreSnapshot(store)) {
+			SCPrint(TRUE, stdout, CFSTR("%s\n"), SCErrorString(SCError()));
+		}
+	}
 
 	return;
 }
@@ -1153,6 +1059,7 @@ waitKeyFound()
 static void
 waitTimeout(int sigraised)
 {
+#pragma unused(sigraised)
 	exit(1);
 }
 
@@ -1203,7 +1110,7 @@ do_wait(char *waitKey, int timeout)
 
 	if (timeout > 0) {
 		signal(SIGALRM, waitTimeout);
-		bzero(&itv, sizeof(itv));
+		memset(&itv, 0, sizeof(itv));
 		itv.it_value.tv_sec = timeout;
 		if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
 			SCPrint(TRUE, stderr,
@@ -1214,6 +1121,135 @@ do_wait(char *waitKey, int timeout)
 
 	CFRunLoopRun();
 }
+
+/**
+ ** "scutil --advisory <ifname> [ set | -W ]"
+ **/
+void
+timestamp_fprintf(FILE * f, const char * message, ...)
+{
+	struct timeval	tv;
+	struct tm       tm;
+	time_t		t;
+	va_list		ap;
+
+	(void)gettimeofday(&tv, NULL);
+	t = tv.tv_sec;
+	(void)localtime_r(&t, &tm);
+
+	va_start(ap, message);
+	fprintf(f, "%04d/%02d/%02d %2d:%02d:%02d.%06d ",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec,
+		tv.tv_usec);
+	vfprintf(f, message, ap);
+	va_end(ap);
+}
+
+static void
+advisoryCheck(SCNetworkInterfaceRef interface, Boolean show_timestamp)
+{
+	if (show_timestamp) {
+		timestamp_fprintf(stdout, "");
+	}
+	printf("%sset\n",
+	       SCNetworkInterfaceAdvisoryIsSet(interface) ? "" : "not ");
+}
+
+static void
+advisoryChanged(SCDynamicStoreRef session, CFArrayRef changes,
+		void * info)
+{
+#pragma unused(session, changes)
+	SCNetworkInterfaceRef	interface = (SCNetworkInterfaceRef)info;
+
+	advisoryCheck(interface, TRUE);
+	return;
+}
+
+static void
+advisoryWatch(SCNetworkInterfaceRef interface)
+{
+	SCDynamicStoreContext	context = {
+		.info = (void *)interface,
+	};
+	CFStringRef		key;
+	CFMutableArrayRef	keys;
+	Boolean			ok;
+
+	store = SCDynamicStoreCreate(NULL, CFSTR("scutil (advisory)"), advisoryChanged, &context);
+	if (store == NULL) {
+		SCPrint(TRUE, stderr,
+			CFSTR("SCDynamicStoreCreate() failed: %s\n"), SCErrorString(SCError()));
+		exit(1);
+	}
+	key = SCNetworkInterfaceCopyAdvisoryNotificationKey(interface);
+	keys = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+	CFArrayAppendValue(keys, key);
+	CFRelease(key);
+	ok = SCDynamicStoreSetNotificationKeys(store, keys, NULL);
+	CFRelease(keys);
+	if (!ok) {
+		SCPrint(TRUE, stderr,
+			CFSTR("SCDynamicStoreSetNotificationKeys() failed: %s\n"), SCErrorString(SCError()));
+		exit(1);
+	}
+	notifyRls = SCDynamicStoreCreateRunLoopSource(NULL, store, 0);
+	if (!notifyRls) {
+		SCPrint(TRUE, stderr,
+			CFSTR("SCDynamicStoreCreateRunLoopSource() failed: %s\n"), SCErrorString(SCError()));
+		exit(1);
+	}
+	CFRunLoopAddSource(CFRunLoopGetCurrent(), notifyRls, kCFRunLoopDefaultMode);
+}
+
+__private_extern__
+void
+do_advisory(const char * ifname, Boolean watch, int argc, char **argv)
+{
+	CFStringRef		ifname_cf;
+	SCNetworkInterfaceRef	interface;
+
+	ifname_cf = CFStringCreateWithCString(NULL, ifname, kCFStringEncodingUTF8);
+	interface = _SCNetworkInterfaceCreateWithBSDName(NULL, ifname_cf, kIncludeAllVirtualInterfaces);
+	CFRelease(ifname_cf);
+	if (interface == NULL) {
+		fprintf(stderr, "Failed to instantiate SCNetworkInterfaceRef\n");
+		exit(1);
+	}
+	if (argc >= 1) {
+		SCNetworkInterfaceAdvisory advisory = kSCNetworkInterfaceAdvisoryUplinkIssue;
+
+		if (strcasecmp(argv[0], "set") != 0) {
+			fprintf(stderr,
+				"usage: scutil --advisory <ifname> "
+				"[ set [ linklayer | uplink ] | -W ]\n");
+			exit(1);
+		}
+		if (argc >= 2) {
+			if (strcasecmp(argv[1], "uplink") == 0) {
+				advisory = kSCNetworkInterfaceAdvisoryUplinkIssue;
+			} else if (strcasecmp(argv[1], "linklayer") == 0) {
+				advisory = kSCNetworkInterfaceAdvisoryLinkLayerIssue;
+			} else {
+				fprintf(stderr,
+					"Bad advisory '%s', must be either 'uplink' or 'linklayer'\n",
+					argv[1]);
+				exit(1);
+			}
+		}
+		SCNetworkInterfaceSetAdvisory(interface, advisory, CFSTR("Because"));
+		CFRunLoopRun();
+	} else {
+		advisoryCheck(interface, watch);
+		if (watch) {
+			advisoryWatch(interface);
+			CFRunLoopRun();
+		}
+	}
+	exit(0);
+}
+
 
 #ifdef	TEST_DNS_CONFIGURATION
 
@@ -1243,7 +1279,7 @@ sleep(120);
 		dns_configuration_free(dns_config);
 	}
 
-	  do_showDNSConfiguration(argc, argv);
+	do_showDNSConfiguration(argc, argv);
 	exit(0);
 }
 

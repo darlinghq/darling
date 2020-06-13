@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2004-2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2004-2011, 2013-2017, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -273,6 +273,19 @@ _find_interface(int argc, char **argv, int *nArgs)
 		goto done;
 	}
 
+	// try to select an [Apple] pre-configured / hidden interface by its BSD name
+
+	selected = _SCNetworkInterfaceCreateWithBSDName(NULL, select_name, kIncludeNoVirtualInterfaces);
+	if (selected != NULL) {
+		if (_SCNetworkInterfaceGetIOPath(selected) != NULL) {
+			// if [real] interface exists
+			goto done;
+		}
+
+		CFRelease(selected);
+		selected = NULL;
+	}
+
 	// try to select the interface by its interface type
 
 	for (i = 0; i < n; i++) {
@@ -497,6 +510,7 @@ _show_interface(SCNetworkInterfaceRef interface, CFStringRef prefix, Boolean sho
 		int		mtu_cur;
 		int		mtu_min;
 		int		mtu_max;
+		CFDictionaryRef	qosPolicy;
 
 		cap_current = SCNetworkInterfaceCopyCapability(interface, NULL);
 		if (cap_current != NULL) {
@@ -551,8 +565,8 @@ _show_interface(SCNetworkInterfaceRef interface, CFStringRef prefix, Boolean sho
 				CFNumberRef	num;
 
 				num = CFDictionaryGetValue(configuration, kSCPropNetEthernetMTU);
-				if (isA_CFNumber(num)) {
-					CFNumberGetValue(num, kCFNumberIntType, &mtu_req);
+				if (isA_CFNumber(num) &&
+				    CFNumberGetValue(num, kCFNumberIntType, &mtu_req)) {
 					if (mtu_cur != mtu_req) {
 						mtu_cur = mtu_req;
 						isCurrent = ' ';
@@ -682,6 +696,52 @@ _show_interface(SCNetworkInterfaceRef interface, CFStringRef prefix, Boolean sho
 		} else {
 			SCPrint(TRUE, stdout, CFSTR("\n"));
 		}
+
+		qosPolicy = SCNetworkInterfaceGetQoSMarkingPolicy(interface);
+		if (qosPolicy != NULL) {
+			CFBooleanRef	bVal;
+			CFArrayRef	bundleIDs;
+			Boolean		needComma	= FALSE;
+
+			SCPrint(TRUE, stdout, CFSTR("%@  qos marking          ="), prefix);
+
+			bVal = CFDictionaryGetValue(qosPolicy, kSCPropNetQoSMarkingEnabled);
+			if ((bVal != NULL) && isA_CFBoolean(bVal)) {
+				SCPrint(TRUE, stdout, CFSTR(" %senabled"),
+					CFBooleanGetValue(bVal) ? "" : "!");
+				needComma = TRUE;
+			}
+
+			bVal = CFDictionaryGetValue(qosPolicy, kSCPropNetQoSMarkingAppleAudioVideoCalls);
+			if ((bVal != NULL) && isA_CFBoolean(bVal)) {
+				SCPrint(TRUE, stdout, CFSTR("%s %sapple-av"),
+					needComma ? "," : "",
+					CFBooleanGetValue(bVal) ? "" : "!");
+				needComma = TRUE;
+			}
+
+			bundleIDs = CFDictionaryGetValue(qosPolicy, kSCPropNetQoSMarkingWhitelistedAppIdentifiers);
+			if ((bundleIDs != NULL) && CFArrayGetCount(bundleIDs)) {
+				CFIndex		n	= CFArrayGetCount(bundleIDs);
+
+				SCPrint(TRUE, stdout, CFSTR("%s applications = ("),
+					needComma ? "," : "");
+				for (CFIndex i = 0; i < n; i++) {
+					CFStringRef	bundleID;
+
+					bundleID = CFArrayGetValueAtIndex(bundleIDs, i);
+					if (!isA_CFString(bundleID)) {
+						bundleID = CFSTR("--invalid-bundle-id--");
+					}
+					SCPrint(TRUE, stdout, CFSTR("%s%@"),
+						(i > 0) ? ", " : "",
+						bundleID);
+				}
+				SCPrint(TRUE, stdout, CFSTR(")"));
+			}
+
+			SCPrint(TRUE, stdout, CFSTR("\n"));
+		}
 	}
 
 	supported = SCNetworkInterfaceGetSupportedInterfaceTypes(interface);
@@ -713,8 +773,13 @@ _show_interface(SCNetworkInterfaceRef interface, CFStringRef prefix, Boolean sho
 	SCPrint(TRUE, stdout, CFSTR("\n"));
 
 	isPhysicalEthernet = _SCNetworkInterfaceIsPhysicalEthernet(interface);
-	SCPrint(TRUE, stdout, CFSTR("%@  is physical ethernet = %s \n"),
-		prefix, (isPhysicalEthernet == TRUE) ? "YES" : "NO");
+	SCPrint(TRUE, stdout, CFSTR("%@  is%s physical ethernet\n"),
+		prefix,
+		isPhysicalEthernet ? "" : " not");
+
+	if (_SCNetworkInterfaceIsApplePreconfigured(interface)) {
+		SCPrint(TRUE, stdout, CFSTR("%@  is pre-configured\n"), prefix);
+	}
 
 	if (configuration != NULL) {
 		CFMutableDictionaryRef	effective;
@@ -878,6 +943,8 @@ __private_extern__
 void
 show_interfaces(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	CFIndex		i;
 	CFIndex		n;
 
@@ -988,6 +1055,9 @@ show_interfaces(int argc, char **argv)
 static int
 __doRank(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(key)
+#pragma unused(info)
+#pragma unused(newConfiguration)
 	SCNetworkInterfaceRef		interface;
 	CFStringRef			interfaceName;
 	Boolean				ok	= FALSE;
@@ -1071,6 +1141,85 @@ updateInterfaceConfiguration(CFMutableDictionaryRef newConfiguration)
 
 
 #pragma mark -
+#pragma mark QoS Marking Policy options
+
+
+static options qosOptions[] = {
+	{ "enabled"   , NULL, isBool       , &kSCPropNetQoSMarkingEnabled                  , NULL, NULL },
+	{ "apple-av"  , NULL, isBool       , &kSCPropNetQoSMarkingAppleAudioVideoCalls     , NULL, NULL },
+	{ "bundle-ids", NULL, isStringArray, &kSCPropNetQoSMarkingWhitelistedAppIdentifiers, NULL, NULL },
+
+	{ "?"         , NULL, isHelp       , NULL                                          , NULL,
+	    "\nQoS marking policy commands\n\n"
+	    " set interface qos [enabled {yes|no}]\n"
+	    " set interface qos [apple-av {yes|no}]\n"
+	    " set interface qos [bundle-ids bundle-id[,bundle-id]]\n"
+	}
+};
+#define	N_QOS_OPTIONS	(sizeof(qosOptions) / sizeof(qosOptions[0]))
+
+
+static int
+__doQoSMarking(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
+{
+#pragma unused(key)
+#pragma unused(description)
+#pragma unused(info)
+#pragma unused(newConfiguration)
+	CFStringRef		interfaceName;
+	CFMutableDictionaryRef	newPolicy;
+	Boolean			ok;
+	CFDictionaryRef		policy;
+
+	if (argc < 1) {
+		SCPrint(TRUE, stdout, CFSTR("set what?\n"));
+		return -1;
+	}
+
+	interfaceName = SCNetworkInterfaceGetBSDName(net_interface);
+	if (interfaceName == NULL) {
+		SCPrint(TRUE, stdout, CFSTR("no BSD interface\n"));
+		return -1;
+	}
+
+	policy = SCNetworkInterfaceGetQoSMarkingPolicy(net_interface);
+	if (policy != NULL) {
+		newPolicy = CFDictionaryCreateMutableCopy(NULL, 0, policy);
+		CFDictionaryRemoveValue(newPolicy, kSCResvInactive);
+	} else {
+		newPolicy = CFDictionaryCreateMutable(NULL,
+						      0,
+						      &kCFTypeDictionaryKeyCallBacks,
+						      &kCFTypeDictionaryValueCallBacks);
+	}
+
+	ok = _process_options(qosOptions, N_QOS_OPTIONS, argc, argv, newPolicy);
+	if (!ok) {
+		goto done;
+	}
+
+	if (((policy == NULL) && (CFDictionaryGetCount(newPolicy) > 0)) ||
+	    ((policy != NULL) && !CFEqual(policy, newPolicy))) {
+		if (!SCNetworkInterfaceSetQoSMarkingPolicy(net_interface, newPolicy)) {
+			if (SCError() == kSCStatusNoKey) {
+				SCPrint(TRUE, stdout, CFSTR("could not update per-interface QoS marking policy\n"));
+			} else {
+				SCPrint(TRUE, stdout, CFSTR("%s\n"), SCErrorString(SCError()));
+			}
+			goto done;
+		}
+
+		_prefs_changed = TRUE;
+	}
+
+	done :
+
+	if (newPolicy != NULL) CFRelease(newPolicy);
+	return argc;
+}
+
+
+#pragma mark -
 #pragma mark Bond options
 
 
@@ -1080,8 +1229,8 @@ static options bondOptions[] = {
 	// xxx  { "-device"   , ... },
 
 	{ "?"         , NULL , isHelp     , NULL                            , NULL,
-		"\nBond configuration commands\n\n"
-		" set interface [mtu n] [media type] [mediaopts opts]\n"
+	     "\nBond configuration commands\n\n"
+	     " set interface [mtu n] [media type] [mediaopts opts]\n"
 	}
 };
 #define	N_BOND_OPTIONS	(sizeof(bondOptions) / sizeof(bondOptions[0]))
@@ -1163,9 +1312,13 @@ static options airportOptions[] = {
 
 	{ "rank"      , NULL, isOther      , NULL                            , __doRank, NULL },
 
+	{ "qos"       , NULL, isOther      , NULL                            , __doQoSMarking, NULL },
+
 	{ "?"         , NULL, isHelp       , NULL                            , NULL,
 	    "\nAirPort configuration commands\n\n"
 	    " set interface [mtu n] [media type] [mediaopts opts]\n"
+	    " set interface [rank [{First|Last|Never|Scoped}]]\n"
+	    " set interface [qos <qos-options>]]\n"
 	}
 };
 #define	N_AIRPORT_OPTIONS	(sizeof(airportOptions) / sizeof(airportOptions[0]))
@@ -1202,6 +1355,7 @@ set_interface_airport(int argc, char **argv, CFMutableDictionaryRef newConfigura
 static int
 __doCapability(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(info)
 	Boolean	ok	= FALSE;
 
 	if (argc < 1) {
@@ -1243,9 +1397,9 @@ __doCapability(CFStringRef key, const char *description, void *info, int argc, c
 
 
 static options ethernetOptions[] = {
-	{ "mtu"       , NULL, isNumber     , &kSCPropNetEthernetMTU         , NULL, NULL },
-	{ "media"     , NULL, isString     , &kSCPropNetEthernetMediaSubType, NULL, NULL },
-	{ "mediaopt"  , NULL, isStringArray, &kSCPropNetEthernetMediaOptions, NULL, NULL },
+	{ "mtu"       , NULL, isNumber     , &kSCPropNetEthernetMTU             , NULL, NULL },
+	{ "media"     , NULL, isString     , &kSCPropNetEthernetMediaSubType    , NULL, NULL },
+	{ "mediaopt"  , NULL, isStringArray, &kSCPropNetEthernetMediaOptions    , NULL, NULL },
 
 	{ "av"        , NULL, isOther      , &kSCPropNetEthernetCapabilityAV    , __doCapability, NULL },
 	{ "lro"       , NULL, isOther      , &kSCPropNetEthernetCapabilityLRO   , __doCapability, NULL },
@@ -1253,11 +1407,15 @@ static options ethernetOptions[] = {
 	{ "tso"       , NULL, isOther      , &kSCPropNetEthernetCapabilityTSO   , __doCapability, NULL },
 	{ "txcsum"    , NULL, isOther      , &kSCPropNetEthernetCapabilityTXCSUM, __doCapability, NULL },
 
-	{ "rank"      , NULL, isOther      , NULL                            , __doRank, NULL },
+	{ "rank"      , NULL, isOther      , NULL                               , __doRank, NULL },
 
-	{ "?"         , NULL, isHelp       , NULL                            , NULL,
+	{ "qos"       , NULL, isOther      , NULL                               , __doQoSMarking, NULL },
+
+	{ "?"         , NULL, isHelp       , NULL                               , NULL,
 	    "\nEthernet configuration commands\n\n"
 	    " set interface [mtu n] [media type] [mediaopts opts]\n"
+	    " set interface [rank [{First|Last|Never|Scoped}]]\n"
+	    " set interface [qos [<qos-options>]]\n"
 	}
 };
 #define	N_ETHERNET_OPTIONS	(sizeof(ethernetOptions) / sizeof(ethernetOptions[0]))
@@ -1294,6 +1452,8 @@ set_interface_ethernet(int argc, char **argv, CFMutableDictionaryRef newConfigur
 static int
 __doIPSecSharedSecret(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	CFStringRef	encryptionType;
 
 	if (argc < 1) {
@@ -1372,6 +1532,8 @@ __doIPSecSharedSecret(CFStringRef key, const char *description, void *info, int 
 static int
 __doIPSecSharedSecretType(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	if (argc < 1) {
 		SCPrint(TRUE, stdout, CFSTR("IPSec shared secret type mode not specified\n"));
 		return -1;
@@ -1398,6 +1560,8 @@ __doIPSecSharedSecretType(CFStringRef key, const char *description, void *info, 
 static int
 __doIPSecXAuthPassword(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	CFStringRef	encryptionType;
 
 	if (argc < 1) {
@@ -1477,6 +1641,8 @@ __doIPSecXAuthPassword(CFStringRef key, const char *description, void *info, int
 static int
 __doIPSecXAuthPasswordType(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	if (argc < 1) {
 		SCPrint(TRUE, stdout, CFSTR("IPSec XAuth password type mode not specified\n"));
 		return -1;
@@ -1520,6 +1686,8 @@ __cleanupDomainName(CFStringRef domain)
 static int
 __doOnDemandDomains(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	CFMutableArrayRef	domains;
 
 	if (argc < 1) {
@@ -1580,9 +1748,9 @@ static options ipsecOnDemandOptions[] = {
 
 	{ "?"                          , NULL    , isHelp , NULL                                       , NULL               ,
 	    "\nOnDemandMatch configuration commands\n\n"
-	    " set interface OnDemandMatch always domain-name[,domain-name]\n"
-	    " set interface OnDemandMatch retry  domain-name[,domain-name]\n"
-	    " set interface OnDemandMatch never  domain-name[,domain-name]\n"
+	    " set interface OnDemandMatch [always domain-name[,domain-name]]\n"
+	    " set interface OnDemandMatch [retry  domain-name[,domain-name]]\n"
+	    " set interface OnDemandMatch [never  domain-name[,domain-name]]\n"
 	}
 };
 #define	N_IPSEC_ONDEMAND_OPTIONS	(sizeof(ipsecOnDemandOptions) / sizeof(ipsecOnDemandOptions[0]))
@@ -1591,6 +1759,9 @@ static options ipsecOnDemandOptions[] = {
 static int
 __doIPSecOnDemandMatch(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(key)
+#pragma unused(description)
+#pragma unused(info)
 	Boolean	ok;
 
 	if (argc < 1) {
@@ -1643,18 +1814,18 @@ static options ipsecOptions[] = {
 	{ "OnDemandMatch"          , NULL, isOther      , NULL                                   , __doIPSecOnDemandMatch    , NULL },
 
 	{ "?"         , NULL , isHelp     , NULL                            , NULL,
-		"\nIPSec configuration commands\n\n"
-		" set interface [AuthenticationMethod {SharedSecret|Certificate|Hybrid}]\n"
-		" set interface [LocalIdentifier group]\n"
-		" set interface [LocalIdentifierType {KeyID}]\n"
-		" set interface [RemoteAddress name-or-address]\n"
-		" set interface [SharedSecret secret]\n"
-		" set interface [SharedSecretEncryption {Keychain}]\n"
-		" set interface [XAuthEnabled {enable|disable}]\n"
-		" set interface [XAuthPassword password]\n"
-		" set interface [XAuthPasswordEncryption {Keychain}]\n"
-		" set interface [OnDemandEnabled {enable|disable}]\n"
-		" set interface [OnDemandMatch <match-options>]\n"
+	    "\nIPSec configuration commands\n\n"
+	    " set interface [AuthenticationMethod {SharedSecret|Certificate|Hybrid}]\n"
+	    " set interface [LocalIdentifier group]\n"
+	    " set interface [LocalIdentifierType {KeyID}]\n"
+	    " set interface [RemoteAddress name-or-address]\n"
+	    " set interface [SharedSecret secret]\n"
+	    " set interface [SharedSecretEncryption {Keychain}]\n"
+	    " set interface [XAuthEnabled {enable|disable}]\n"
+	    " set interface [XAuthPassword password]\n"
+	    " set interface [XAuthPasswordEncryption {Keychain}]\n"
+	    " set interface [OnDemandEnabled {enable|disable}]\n"
+	    " set interface [OnDemandMatch <match-options>]\n"
 	}
 };
 #define	N_IPSEC_OPTIONS	(sizeof(ipsecOptions) / sizeof(ipsecOptions[0]))
@@ -1778,6 +1949,8 @@ set_interface_modem(int argc, char **argv, CFMutableDictionaryRef newConfigurati
 static int
 __doPPPAuthPW(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	CFStringRef	encryptionType;
 
 	if (argc < 1) {
@@ -1857,6 +2030,8 @@ __doPPPAuthPW(CFStringRef key, const char *description, void *info, int argc, ch
 static int
 __doPPPAuthPWType(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	if (argc < 1) {
 		SCPrint(TRUE, stdout, CFSTR("PPP password type mode not specified\n"));
 		return -1;
@@ -1881,13 +2056,13 @@ __doPPPAuthPWType(CFStringRef key, const char *description, void *info, int argc
 
 
 static options l2tp_ipsecOptions[] = {
-	{ "SharedSecret"          , NULL, isOther      , &kSCPropNetIPSecSharedSecret          , __doIPSecSharedSecret    , NULL                                        },
-	{ "SharedSecretEncryption", NULL, isOther      , &kSCPropNetIPSecSharedSecretEncryption, __doIPSecSharedSecretType, NULL                                        },
+	{ "SharedSecret"          , NULL, isOther      , &kSCPropNetIPSecSharedSecret          , __doIPSecSharedSecret    , NULL },
+	{ "SharedSecretEncryption", NULL, isOther      , &kSCPropNetIPSecSharedSecretEncryption, __doIPSecSharedSecretType, NULL },
 
 	{ "?"         , NULL , isHelp     , NULL                            , NULL,
-		"\nIPSec configuration commands\n\n"
-		" set interface ipsec [SharedSecret secret]\n"
-		" set interface ipsec [SharedSecretEncryption {Keychain}]\n"
+	    "\nIPSec configuration commands\n\n"
+	    " set interface ipsec [SharedSecret secret]\n"
+	    " set interface ipsec [SharedSecretEncryption {Keychain}]\n"
 	}
 };
 #define	N_L2TP_IPSEC_OPTIONS	(sizeof(l2tp_ipsecOptions) / sizeof(l2tp_ipsecOptions[0]))
@@ -1896,6 +2071,10 @@ static options l2tp_ipsecOptions[] = {
 static int
 __doPPPIPSec(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newPPPConfiguration)
 {
+#pragma unused(key)
+#pragma unused(description)
+#pragma unused(info)
+#pragma unused(newPPPConfiguration)
 	SCNetworkInterfaceRef	childInterface;
 	CFStringRef		childInterfaceType;
 	CFDictionaryRef		configuration;
@@ -2027,14 +2206,20 @@ static options pppOptions[] = {
 	{ "IdleReminder"              , NULL          , isBoolean        , &kSCPropNetPPPIdleReminder              , NULL                , NULL                           },
 	{ "IdleReminderTimer"         , "time"        , isNumber         , &kSCPropNetPPPIdleReminderTimer         , NULL                , NULL                           },
 	{ "Logfile"                   , "path"        , isString         , &kSCPropNetPPPLogfile                   , NULL                , NULL                           },
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated"
 	{ "Plugins"                   , "plugin"      , isStringArray    , &kSCPropNetPPPPlugins                   , NULL                , NULL                           },
+#pragma GCC diagnostic pop
 	{ "RetryConnectTime"          , "time"        , isNumber         , &kSCPropNetPPPRetryConnectTime          , NULL                , NULL                           },
 	{ "SessionTimer"              , "time"        , isNumber         , &kSCPropNetPPPSessionTimer              , NULL                , NULL                           },
 	{ "UseSessionTimer"           , NULL          , isBoolean        , &kSCPropNetPPPUseSessionTimer           , NULL                , NULL                           },
 	{ "VerboseLogging"            , NULL          , isBoolean        , &kSCPropNetPPPVerboseLogging            , NULL                , NULL                           },
 
 	// --- Auth: ---
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated"
 	{ "AuthEAPPlugins"            , "plugin"      , isStringArray    , &kSCPropNetPPPAuthEAPPlugins            , NULL                , NULL                           },
+#pragma GCC diagnostic pop
 	{ "AuthName"                  , "account"     , isString         , &kSCPropNetPPPAuthName                  , NULL                , NULL                           },
 	{   "Account"                 , "account"     , isString         , &kSCPropNetPPPAuthName                  , NULL                , NULL                           },
 	{ "AuthPassword"              , "password"    , isOther          , &kSCPropNetPPPAuthPassword              , __doPPPAuthPW       , NULL                           },
@@ -2123,6 +2308,9 @@ set_interface_ppp(int argc, char **argv, CFMutableDictionaryRef newConfiguration
 static Boolean
 set_interface_vlan(int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(argc)
+#pragma unused(argv)
+#pragma unused(newConfiguration)
 // xxxxx ("device", "tag")
 SCPrint(TRUE, stdout, CFSTR("vlan interface management not yet supported\n"));
 	return FALSE;
@@ -2136,6 +2324,8 @@ SCPrint(TRUE, stdout, CFSTR("vlan interface management not yet supported\n"));
 static int
 __doVPNAuthPW(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	CFStringRef	encryptionType;
 
 	if (argc < 1) {
@@ -2214,6 +2404,8 @@ __doVPNAuthPW(CFStringRef key, const char *description, void *info, int argc, ch
 static int
 __doVPNAuthPWType(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	if (argc < 1) {
 		SCPrint(TRUE, stdout, CFSTR("VPN password type mode not specified\n"));
 		return -1;

@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2004, 2006, 2008-2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2004, 2006, 2008-2013, 2015-2017, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -31,285 +31,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <mach/mach.h>
-#include <mach/mach_error.h>
 #include <dispatch/dispatch.h>
+#include <mach/mach.h>
 #include <xpc/xpc.h>
+
+#ifndef	SC_LOG_HANDLE
+#include <os/log.h>
+#define	my_log(__level, __format, ...)	os_log(OS_LOG_DEFAULT, __format, ## __VA_ARGS__)
+#endif	// SC_LOG_HANDLE
 
 #include "libSystemConfiguration_client.h"
 #include "dnsinfo.h"
 #include "dnsinfo_private.h"
-
-typedef uint32_t getflags;
-
-static boolean_t
-add_list(void **padding, uint32_t *n_padding, int32_t count, int32_t size, void **list)
-{
-	int32_t	need;
-
-	need = count * size;
-	if (need > *n_padding) {
-		return FALSE;
-	}
-
-	*list = (need == 0) ? NULL : *padding;
-	*padding   += need;
-	*n_padding -= need;
-	return TRUE;
-}
-
-
-#define	DNS_CONFIG_BUF_MAX	1024*1024
-
-
-static dns_resolver_t *
-expand_resolver(_dns_resolver_buf_t *buf, uint32_t n_buf, void **padding, uint32_t *n_padding)
-{
-	dns_attribute_t		*attribute;
-	uint32_t		n_attribute;
-	int32_t			n_nameserver    = 0;
-	int32_t			n_search	= 0;
-	int32_t			n_sortaddr      = 0;
-	dns_resolver_t		*resolver	= (dns_resolver_t *)&buf->resolver;
-
-	if (n_buf < sizeof(_dns_resolver_buf_t)) {
-		goto error;
-	}
-
-	// initialize domain
-
-	resolver->domain = NULL;
-
-	// initialize nameserver list
-
-	resolver->n_nameserver = ntohl(resolver->n_nameserver);
-	if (!add_list(padding,
-		      n_padding,
-		      resolver->n_nameserver,
-		      sizeof(DNS_PTR(struct sockaddr *, x)),
-		      (void **)&resolver->nameserver)) {
-		goto error;
-	}
-
-	// initialize port
-
-	resolver->port = ntohs(resolver->port);
-
-	// initialize search list
-
-	resolver->n_search = ntohl(resolver->n_search);
-	if (!add_list(padding,
-		      n_padding,
-		      resolver->n_search,
-		      sizeof(DNS_PTR(char *, x)),
-		      (void **)&resolver->search)) {
-		goto error;
-	}
-
-	// initialize sortaddr list
-
-	resolver->n_sortaddr = ntohl(resolver->n_sortaddr);
-	if (!add_list(padding,
-		      n_padding,
-		      resolver->n_sortaddr,
-		      sizeof(DNS_PTR(dns_sortaddr_t *, x)),
-		      (void **)&resolver->sortaddr)) {
-		goto error;
-	}
-
-	// initialize options
-
-	resolver->options = NULL;
-
-	// initialize timeout
-
-	resolver->timeout = ntohl(resolver->timeout);
-
-	// initialize search_order
-
-	resolver->search_order = ntohl(resolver->search_order);
-
-	// initialize if_index
-
-	resolver->if_index = ntohl(resolver->if_index);
-
-	// initialize service_identifier
-
-	resolver->service_identifier = ntohl(resolver->service_identifier);
-
-	// initialize flags
-
-	resolver->flags = ntohl(resolver->flags);
-
-	// initialize SCNetworkReachability flags
-
-	resolver->reach_flags = ntohl(resolver->reach_flags);
-
-	// process resolver buffer "attribute" data
-
-	n_attribute = n_buf - sizeof(_dns_resolver_buf_t);
-	/* ALIGN: alignment not assumed, using accessors */
-	attribute = (dns_attribute_t *)(void *)&buf->attribute[0];
-	if (n_attribute != ntohl(buf->n_attribute)) {
-		goto error;
-	}
-
-	while (n_attribute >= sizeof(dns_attribute_t)) {
-		uint32_t	attribute_length	= ntohl(attribute->length);
-
-		switch (ntohl(attribute->type)) {
-			case RESOLVER_ATTRIBUTE_DOMAIN :
-				resolver->domain = (char *)&attribute->attribute[0];
-				break;
-
-			case RESOLVER_ATTRIBUTE_ADDRESS :
-				resolver->nameserver[n_nameserver++] = (struct sockaddr *)&attribute->attribute[0];
-				break;
-
-			case RESOLVER_ATTRIBUTE_SEARCH :
-				resolver->search[n_search++] = (char *)&attribute->attribute[0];
-				break;
-
-			case RESOLVER_ATTRIBUTE_SORTADDR :
-				resolver->sortaddr[n_sortaddr++] = (dns_sortaddr_t *)(void *)&attribute->attribute[0];
-				break;
-
-			case RESOLVER_ATTRIBUTE_OPTIONS :
-				resolver->options = (char *)&attribute->attribute[0];
-				break;
-
-			default :
-				break;
-		}
-
-		attribute   = (dns_attribute_t *)((void *)attribute + attribute_length);
-		n_attribute -= attribute_length;
-	}
-
-	if ((n_nameserver != resolver->n_nameserver) ||
-	    (n_search     != resolver->n_search    ) ||
-	    (n_sortaddr   != resolver->n_sortaddr  )) {
-		goto error;
-	}
-
-	return resolver;
-
-    error :
-
-	return NULL;
-}
-
-
-static dns_config_t *
-expand_config(_dns_config_buf_t *buf)
-{
-	dns_attribute_t		*attribute;
-	dns_config_t		*config			= (dns_config_t *)buf;
-	uint32_t		n_attribute;
-	uint32_t		n_padding;
-	int32_t			n_resolver		= 0;
-	int32_t			n_scoped_resolver	= 0;
-	int32_t			n_service_specific_resolver	= 0;
-	void			*padding;
-
-	// establish padding
-
-	padding   = &buf->attribute[ntohl(buf->n_attribute)];
-	n_padding = ntohl(buf->n_padding);
-
-	// initialize resolver lists
-
-	config->n_resolver = ntohl(config->n_resolver);
-	if (!add_list(&padding,
-		      &n_padding,
-		      config->n_resolver,
-		      sizeof(DNS_PTR(dns_resolver_t *, x)),
-		      (void **)&config->resolver)) {
-		goto error;
-	}
-
-	config->n_scoped_resolver = ntohl(config->n_scoped_resolver);
-	if (!add_list(&padding,
-		      &n_padding,
-		      config->n_scoped_resolver,
-		      sizeof(DNS_PTR(dns_resolver_t *, x)),
-		      (void **)&config->scoped_resolver)) {
-		goto error;
-	}
-
-	config->n_service_specific_resolver = ntohl(config->n_service_specific_resolver);
-	if (!add_list(&padding,
-		      &n_padding,
-		      config->n_service_specific_resolver,
-		      sizeof(DNS_PTR(dns_resolver_t *, x)),
-		      (void **)&config->service_specific_resolver)) {
-		goto error;
-	}
-
-	// process configuration buffer "attribute" data
-
-	n_attribute = ntohl(buf->n_attribute);
-	attribute   = (dns_attribute_t *)(void *)&buf->attribute[0];
-
-	while (n_attribute >= sizeof(dns_attribute_t)) {
-		uint32_t	attribute_length	= ntohl(attribute->length);
-		uint32_t	attribute_type		= ntohl(attribute->type);
-
-		switch (attribute_type) {
-			case CONFIG_ATTRIBUTE_RESOLVER :
-			case CONFIG_ATTRIBUTE_SCOPED_RESOLVER   :
-			case CONFIG_ATTRIBUTE_SERVICE_SPECIFIC_RESOLVER : {
-				dns_resolver_t	*resolver;
-
-				// expand resolver buffer
-
-				resolver = expand_resolver((_dns_resolver_buf_t *)(void *)&attribute->attribute[0],
-							   attribute_length - sizeof(dns_attribute_t),
-							   &padding,
-							   &n_padding);
-				if (resolver == NULL) {
-					goto error;
-				}
-
-				// add resolver to config list
-
-				if (attribute_type == CONFIG_ATTRIBUTE_RESOLVER) {
-					config->resolver[n_resolver++] = resolver;
-				} else if (attribute_type == CONFIG_ATTRIBUTE_SCOPED_RESOLVER) {
-					config->scoped_resolver[n_scoped_resolver++] = resolver;
-				} else if (attribute_type == CONFIG_ATTRIBUTE_SERVICE_SPECIFIC_RESOLVER) {
-					config->service_specific_resolver[n_service_specific_resolver++] = resolver;
-				}
-
-				break;
-			}
-
-			default :
-				break;
-		}
-
-		attribute   = (dns_attribute_t *)((void *)attribute + attribute_length);
-		n_attribute -= attribute_length;
-	}
-
-	if (n_resolver != config->n_resolver) {
-		goto error;
-	}
-
-	if (n_scoped_resolver != config->n_scoped_resolver) {
-		goto error;
-	}
-
-	if (n_service_specific_resolver != config->n_service_specific_resolver) {
-		goto error;
-	}
-
-	return config;
-
-    error :
-
-	return NULL;
-}
+#include "dnsinfo_internal.h"
 
 
 const char *
@@ -317,11 +51,7 @@ dns_configuration_notify_key()
 {
 	const char	*key;
 
-#if	!TARGET_IPHONE_SIMULATOR
 	key = "com.apple.system.SystemConfiguration.dns_configuration";
-#else	// !TARGET_IPHONE_SIMULATOR
-	key = "com.apple.iOS_Simulator.SystemConfiguration.dns_configuration";
-#endif	// !TARGET_IPHONE_SIMULATOR
 	return key;
 }
 
@@ -331,8 +61,8 @@ dns_configuration_notify_key()
 
 
 // Note: protected by __dns_configuration_queue()
-static int			dnsinfo_active	= 0;
-static libSC_info_client_t	*dnsinfo_client	= NULL;
+static int			dnsinfo_active		= 0;
+static libSC_info_client_t	*dnsinfo_client		= NULL;
 
 
 static dispatch_queue_t
@@ -352,11 +82,16 @@ __dns_configuration_queue()
 dns_config_t *
 dns_configuration_copy()
 {
-	uint8_t			*buf		= NULL;
-	dns_config_t		*config		= NULL;
+	dns_config_t		*dns_config	= NULL;
+	_dns_config_buf_t	*dns_config_buf	= NULL;
 	static const char	*proc_name	= NULL;
 	xpc_object_t		reqdict;
 	xpc_object_t		reply;
+
+	if (!libSC_info_available()) {
+		os_log(OS_LOG_DEFAULT, "*** DNS configuration requested between fork() and exec()");
+		return NULL;
+	}
 
 	dispatch_sync(__dns_configuration_queue(), ^{
 		if ((dnsinfo_active++ == 0) || (dnsinfo_client == NULL)) {
@@ -364,13 +99,15 @@ dns_configuration_copy()
 			static const char	*service_name	= DNSINFO_SERVICE_NAME;
 
 			dispatch_once(&once, ^{
+#if	DEBUG
 				const char	*name;
 
 				// get [XPC] service name
 				name = getenv(service_name);
-				if ((name != NULL) && (issetugid() == 0)) {
+				if (name != NULL) {
 					service_name = strdup(name);
 				}
+#endif	// DEBUG
 
 				// get process name
 				proc_name = getprogname();
@@ -413,31 +150,21 @@ dns_configuration_copy()
 		dataRef = xpc_dictionary_get_data(reply, DNSINFO_CONFIGURATION, &dataLen);
 		if ((dataRef != NULL) &&
 		    ((dataLen >= sizeof(_dns_config_buf_t)) && (dataLen <= DNS_CONFIG_BUF_MAX))) {
-			_dns_config_buf_t       *config         = (_dns_config_buf_t *)(void *)dataRef;
-			uint32_t                n_padding       = ntohl(config->n_padding);
-
-			if (n_padding <= (DNS_CONFIG_BUF_MAX - dataLen)) {
-				size_t        len;
-
-				len = dataLen + n_padding;
-				buf = malloc(len);
-				bcopy((void *)dataRef, buf, dataLen);
-				bzero(&buf[dataLen], n_padding);
-			}
+			dns_config_buf = _dns_configuration_buffer_create(dataRef, dataLen);
 		}
 
 		xpc_release(reply);
 	}
 
-	if (buf != NULL) {
-		/* ALIGN: cast okay since _dns_config_buf_t is int aligned */
-		config = expand_config((_dns_config_buf_t *)(void *)buf);
-		if (config == NULL) {
-			free(buf);
+	if (dns_config_buf != NULL) {
+		dns_config = _dns_configuration_buffer_expand(dns_config_buf);
+		if (dns_config == NULL) {
+			// if we were unable to expand the configuration
+			_dns_configuration_buffer_free(&dns_config_buf);
 		}
 	}
 
-	return config;
+	return dns_config;
 }
 
 
@@ -464,6 +191,7 @@ dns_configuration_free(dns_config_t *config)
 void
 _dns_configuration_ack(dns_config_t *config, const char *bundle_id)
 {
+#pragma unused(bundle_id)
 	xpc_object_t	reqdict;
 
 	if (config == NULL) {

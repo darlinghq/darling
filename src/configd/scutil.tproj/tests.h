@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2001, 2004, 2007, 2011, 2012, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2004, 2007, 2011, 2012, 2014, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -50,6 +50,7 @@ void	do_snapshot			(int argc, char **argv);
 void	do_wait				(char *waitKey, int timeout);
 void	do_showNWI			(int argc, char **argv);
 void	do_watchNWI			(int argc, char **argv);
+void	do_advisory			(const char * interface, Boolean watch, int argc, char **argv);
 
 __END_DECLS
 

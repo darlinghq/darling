@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2006, 2008, 2009, 2011-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2006, 2008, 2009, 2011-2015, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,24 +17,25 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SCNETWORKCONNECTIONPRIVATE_H
 #define _SCNETWORKCONNECTIONPRIVATE_H
 
-#include <Availability.h>
+#include <os/availability.h>
+#include <TargetConditionals.h>
 #include <sys/cdefs.h>
-#if !TARGET_IPHONE_SIMULATOR
+#if	!TARGET_OS_SIMULATOR
 #include <ne_session.h>
-#endif
+#endif	// !TARGET_OS_SIMULATOR
 #include <CoreFoundation/CoreFoundation.h>
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <SystemConfiguration/SCNetworkConfigurationPrivate.h>
 
 
-typedef const struct __SCUserPreferencesRef * SCUserPreferencesRef;
+typedef const struct CF_BRIDGED_TYPE(id) __SCUserPreferencesRef * SCUserPreferencesRef;
 
 
 __BEGIN_DECLS
@@ -44,41 +45,43 @@ __BEGIN_DECLS
 #pragma mark SCNetworkConnection SPIs
 
 CFArrayRef /* of SCNetworkServiceRef's */
-SCNetworkConnectionCopyAvailableServices	(SCNetworkSetRef		set)			__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCNetworkConnectionCopyAvailableServices	(SCNetworkSetRef		set)			API_AVAILABLE(macos(10.5), ios(2.0));
 
 SCNetworkConnectionRef
 SCNetworkConnectionCreateWithService		(CFAllocatorRef			allocator,
 						 SCNetworkServiceRef		service,
 						 SCNetworkConnectionCallBack	callout,
-						 SCNetworkConnectionContext	*context)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 SCNetworkConnectionContext	*context)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 SCNetworkServiceRef
-SCNetworkConnectionGetService			(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCNetworkConnectionGetService			(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 CFArrayRef /* of SCUserPreferencesRef's */
-SCNetworkConnectionCopyAllUserPreferences	(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCNetworkConnectionCopyAllUserPreferences	(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 SCUserPreferencesRef
-SCNetworkConnectionCopyCurrentUserPreferences	(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCNetworkConnectionCopyCurrentUserPreferences	(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 SCUserPreferencesRef
-SCNetworkConnectionCreateUserPreferences	(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCNetworkConnectionCreateUserPreferences	(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 Boolean
-SCNetworkConnectionSuspend			(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0);
+SCNetworkConnectionSuspend			(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.3), ios(2.0));
 
 Boolean
-SCNetworkConnectionResume			(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_3,__IPHONE_2_0);
+SCNetworkConnectionResume			(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.3), ios(2.0));
 
+#if	!TARGET_OS_SIMULATOR
 Boolean
-SCNetworkConnectionRefreshOnDemandState		(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+SCNetworkConnectionRefreshOnDemandState		(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.9), ios(7.0));
+#endif	// !TARGET_OS_SIMULATOR
 
 Boolean
 SCNetworkConnectionSetClientInfo		(SCNetworkConnectionRef		connection,
 						 mach_port_t			client_audit_session,
 						 uid_t				client_uid,
 						 gid_t				client_gid,
-						 pid_t				client_pid)		__OSX_AVAILABLE_STARTING(__MAC_10_8,__IPHONE_5_0);
+						 pid_t				client_pid)		API_AVAILABLE(macos(10.8), ios(5.0));
 
 /*!
  @function SCNetworkConnectionCreate
@@ -100,7 +103,7 @@ SCNetworkConnectionSetClientInfo		(SCNetworkConnectionRef		connection,
 SCNetworkConnectionRef
 SCNetworkConnectionCreate			(CFAllocatorRef			allocator,
 						 SCNetworkConnectionCallBack	callout,
-						 SCNetworkConnectionContext	*context)		__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+						 SCNetworkConnectionContext	*context)		API_AVAILABLE(macos(10.9), ios(7.0));
 
 /*!
  @function SCNetworkConnectionSetClientAuditInfo
@@ -122,7 +125,7 @@ SCNetworkConnectionSetClientAuditInfo		(SCNetworkConnectionRef		connection,
 						 mach_port_t			bootstrap_port,
 						 pid_t				pid,
 						 const uuid_t			uuid,
-						 const char			*bundle_id)		__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+						 const char			*bundle_id)		API_AVAILABLE(macos(10.9), ios(7.0));
 
 /*!
  @defined kSCNetworkConnectionSelectionOptionNoUserPrefs
@@ -136,7 +139,9 @@ SCNetworkConnectionSetClientAuditInfo		(SCNetworkConnectionRef		connection,
  @abstract The traffic class that is attempting to trigger OnDemand.
  */
 #define kSCNetworkConnectionSelectionOptionOnDemandTrafficClass	CFSTR("OnDemandTrafficClass")	// CFNumber
-												// __OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0/*SPI*/)
+												// API_AVAILABLE(macos(9.0))
+												// SPI_AVAILABLE(ios(7.0), tvos(9.0), watchos(1.0), bridgeos(1.0))
+
 /*!
  @define kSCNetworkConnectionSelectionOptionOnDemandAccountIdentifier
  @abstract The account identifier that is attempting to trigger OnDemand.
@@ -187,7 +192,7 @@ SCNetworkConnectionSetClientAuditInfo		(SCNetworkConnectionRef		connection,
  */
 Boolean
 SCNetworkConnectionSelectServiceWithOptions	(SCNetworkConnectionRef		connection,
-						 CFDictionaryRef		selectionOptions)	__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+						 CFDictionaryRef		selectionOptions)	API_AVAILABLE(macos(10.9), ios(7.0));
 
 /*!
  @function SCNetworkConnectionOnDemandShouldRetryOnFailure
@@ -199,7 +204,7 @@ SCNetworkConnectionSelectServiceWithOptions	(SCNetworkConnectionRef		connection,
 	failure, FALSE otherwise.
  */
 Boolean
-SCNetworkConnectionOnDemandShouldRetryOnFailure	(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+SCNetworkConnectionOnDemandShouldRetryOnFailure	(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.9), ios(7.0));
 
 /*!
  @function SCNetworkConnectionCanTunnelAddress
@@ -217,7 +222,7 @@ SCNetworkConnectionOnDemandShouldRetryOnFailure	(SCNetworkConnectionRef		connect
 Boolean
 SCNetworkConnectionCanTunnelAddress		(SCNetworkConnectionRef		connection,
 						 const struct sockaddr		*address,
-						 Boolean			*startImmediately)	__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+						 Boolean			*startImmediately)	API_AVAILABLE(macos(10.9), ios(7.0));
 
 /*!
  @function SCNetworkConnectionIsOnDemandSuspended
@@ -227,7 +232,7 @@ SCNetworkConnectionCanTunnelAddress		(SCNetworkConnectionRef		connection,
  @return TRUE if the On Demand connection is suspended, FALSE otherwise.
  */
 Boolean
-SCNetworkConnectionIsOnDemandSuspended		(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+SCNetworkConnectionIsOnDemandSuspended		(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.9), ios(7.0));
 
 /*!
  @function SCNetworkConnectionCopyOnDemandInfo
@@ -243,7 +248,7 @@ SCNetworkConnectionIsOnDemandSuspended		(SCNetworkConnectionRef		connection)		__
 Boolean
 SCNetworkConnectionCopyOnDemandInfo		(SCNetworkConnectionRef		connection,
 						 CFStringRef			*onDemandRemoteAddress,
-						 SCNetworkConnectionStatus	*onDemandConnectionStatus)	__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+						 SCNetworkConnectionStatus	*onDemandConnectionStatus)	API_AVAILABLE(macos(10.9), ios(7.0));
 
 /*!
  @function SCNetworkConnectionTriggerOnDemandIfNeeded
@@ -264,7 +269,7 @@ Boolean
 SCNetworkConnectionTriggerOnDemandIfNeeded	(CFStringRef			hostName,
 						 Boolean			afterDNSFail,
 						 int				timeout,
-						 int				trafficClass)			__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+						 int				trafficClass)			API_AVAILABLE(macos(10.9), ios(7.0));
 
 /*!
  @function SCNetworkConnectionGetReachabilityInfo
@@ -279,7 +284,7 @@ SCNetworkConnectionTriggerOnDemandIfNeeded	(CFStringRef			hostName,
 Boolean
 SCNetworkConnectionGetReachabilityInfo		(SCNetworkConnectionRef		connection,
 						 SCNetworkReachabilityFlags	*reach_flags,
-						 unsigned int			*reach_if_index)	__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+						 unsigned int			*reach_if_index)	API_AVAILABLE(macos(10.9), ios(7.0));
 
 
 /*!
@@ -310,7 +315,7 @@ typedef int SCNetworkConnectionType;
  @return The type of the network connection.
  */
 SCNetworkConnectionType
-SCNetworkConnectionGetType			(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+SCNetworkConnectionGetType			(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.9), ios(7.0));
 
 /*!
  @defined kSCNetworkConnectionFlowPropertyHostName
@@ -343,7 +348,7 @@ SCNetworkConnectionGetType			(SCNetworkConnectionRef		connection)		__OSX_AVAILAB
  */
 CFDataRef
 SCNetworkConnectionCopyFlowDivertToken		(SCNetworkConnectionRef		connection,
-						 CFDictionaryRef		flowProperties)		__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+						 CFDictionaryRef		flowProperties)		API_AVAILABLE(macos(10.9), ios(7.0));
 
 #define kSCNetworkConnectionAppPropertyRuleID		CFSTR("RuleID")
 #define kSCNetworkConnectionAppPropertyCodeDirHash	CFSTR("CodeDirHash")
@@ -353,7 +358,7 @@ SCNetworkConnectionCopyFlowDivertToken		(SCNetworkConnectionRef		connection,
 #define kSCNetworkConnectionAppPropertyUUID		CFSTR("UUID")
 
 int
-SCNetworkConnectionGetServiceIdentifier		(SCNetworkConnectionRef		connection)		__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
+SCNetworkConnectionGetServiceIdentifier		(SCNetworkConnectionRef		connection)		API_AVAILABLE(macos(10.9), ios(7.0));
 
 #pragma mark -
 #pragma mark SCNetworkConnection "VPN on Demand" SPIs
@@ -485,65 +490,65 @@ __SCNetworkConnectionCopyOnDemandInfoWithName	(SCDynamicStoreRef		*storeP,
 						 Boolean			onDemandRetry,
 						 CFStringRef			*connectionServiceID,
 						 SCNetworkConnectionStatus	*connectionStatus,
-						 CFStringRef			*vpnRemoteAddress)	__OSX_AVAILABLE_STARTING(__MAC_10_6,__IPHONE_2_0);
+						 CFStringRef			*vpnRemoteAddress)	API_AVAILABLE(macos(10.6), ios(2.0));
 
-#if !TARGET_IPHONE_SIMULATOR
+#if	!TARGET_OS_SIMULATOR
 SCNetworkConnectionStatus
-SCNetworkConnectionGetStatusFromNEStatus	(ne_session_status_t status)				__OSX_AVAILABLE_STARTING(__MAC_10_10,__IPHONE_8_0);
-#endif /* !TARGET_IPHONE_SIMULATOR */
+SCNetworkConnectionGetStatusFromNEStatus	(ne_session_status_t		status)			API_AVAILABLE(macos(10.10), ios(8.0));
+#endif	/* !TARGET_OS_SIMULATOR */
 
 #pragma mark -
 #pragma mark SCUserPreferences SPIs
 
 
 Boolean
-SCUserPreferencesRemove				(SCUserPreferencesRef		userPreferences)	__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCUserPreferencesRemove				(SCUserPreferencesRef		userPreferences)	API_AVAILABLE(macos(10.5), ios(2.0));
 
 Boolean
-SCUserPreferencesSetCurrent			(SCUserPreferencesRef		userPreferences)	__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCUserPreferencesSetCurrent			(SCUserPreferencesRef		userPreferences)	API_AVAILABLE(macos(10.5), ios(2.0));
 
 CFStringRef
-SCUserPreferencesCopyName			(SCUserPreferencesRef		userPreferences)	__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCUserPreferencesCopyName			(SCUserPreferencesRef		userPreferences)	API_AVAILABLE(macos(10.5), ios(2.0));
 
 CFTypeID
-SCUserPreferencesGetTypeID			(void)							__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCUserPreferencesGetTypeID			(void)							API_AVAILABLE(macos(10.5), ios(2.0));
 
 CFStringRef
-SCUserPreferencesGetUniqueID			(SCUserPreferencesRef		userPreferences)	__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCUserPreferencesGetUniqueID			(SCUserPreferencesRef		userPreferences)	API_AVAILABLE(macos(10.5), ios(2.0));
 
 Boolean
-SCUserPreferencesIsForced			(SCUserPreferencesRef		userPreferences)	__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+SCUserPreferencesIsForced			(SCUserPreferencesRef		userPreferences)	API_AVAILABLE(macos(10.5), ios(2.0));
 
 Boolean
 SCUserPreferencesSetName			(SCUserPreferencesRef		userPreferences,
-						 CFStringRef			newName)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 CFStringRef			newName)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 Boolean
 SCNetworkConnectionStartWithUserPreferences	(SCNetworkConnectionRef		connection,
 						 SCUserPreferencesRef		userPreferences,
-						 Boolean			linger)			__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 Boolean			linger)			API_AVAILABLE(macos(10.5), ios(2.0));
 
 CFDictionaryRef
 SCUserPreferencesCopyInterfaceConfiguration	(SCUserPreferencesRef		userPreferences,
-						 SCNetworkInterfaceRef		interface)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 SCNetworkInterfaceRef		interface)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 Boolean
 SCUserPreferencesSetInterfaceConfiguration	(SCUserPreferencesRef		userPreferences,
 						 SCNetworkInterfaceRef		interface,
-						 CFDictionaryRef		newOptions)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 CFDictionaryRef		newOptions)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 CFDictionaryRef
 SCUserPreferencesCopyExtendedInterfaceConfiguration
 						(SCUserPreferencesRef		userPreferences,
 						 SCNetworkInterfaceRef		interface,
-						 CFStringRef			extendedType)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 CFStringRef			extendedType)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 Boolean
 SCUserPreferencesSetExtendedInterfaceConfiguration
 						(SCUserPreferencesRef		userPreferences,
 						 SCNetworkInterfaceRef		interface,
 						 CFStringRef			extendedType,
-						 CFDictionaryRef		newOptions)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 CFDictionaryRef		newOptions)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 
 #pragma mark -
@@ -553,25 +558,25 @@ SCUserPreferencesSetExtendedInterfaceConfiguration
 Boolean
 SCUserPreferencesCheckInterfacePassword		(SCUserPreferencesRef		userPreferences,
 						 SCNetworkInterfaceRef		interface,
-						 SCNetworkInterfacePasswordType	passwordType)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 SCNetworkInterfacePasswordType	passwordType)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 CFDataRef
 SCUserPreferencesCopyInterfacePassword		(SCUserPreferencesRef		userPreferences,
 						 SCNetworkInterfaceRef		interface,
-						 SCNetworkInterfacePasswordType	passwordType)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 SCNetworkInterfacePasswordType	passwordType)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 Boolean
 SCUserPreferencesRemoveInterfacePassword	(SCUserPreferencesRef		userPreferences,
 						 SCNetworkInterfaceRef		interface,
-						 SCNetworkInterfacePasswordType	passwordType)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 SCNetworkInterfacePasswordType	passwordType)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 Boolean
 SCUserPreferencesSetInterfacePassword		(SCUserPreferencesRef		userPreferences,
 						 SCNetworkInterfaceRef		interface,
 						 SCNetworkInterfacePasswordType	passwordType,
 						 CFDataRef			password,
-						 CFDictionaryRef		options)		__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+						 CFDictionaryRef		options)		API_AVAILABLE(macos(10.5), ios(2.0));
 
 __END_DECLS
 
-#endif /* _SCNETWORKCONNECTIONPRIVATE_H */
+#endif	/* _SCNETWORKCONNECTIONPRIVATE_H */

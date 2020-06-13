@@ -1,0 +1,21 @@
+framework module SystemConfiguration [extern_c] [system] {
+  umbrella header "SystemConfiguration.h"
+
+  export *
+  module * { export * }
+
+  explicit module CaptiveNetwork {
+    header "CaptiveNetwork.h"
+    export *
+  }
+
+  explicit module DHCPClientPreferences {
+    header "DHCPClientPreferences.h"
+    export *
+  }
+
+  explicit module SCDynamicStoreCopyDHCPInfo {
+    header "SCDynamicStoreCopyDHCPInfo.h"
+    export *
+  }
+}

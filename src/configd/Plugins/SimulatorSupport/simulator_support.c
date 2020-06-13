@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2013, 2015-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -29,26 +29,41 @@
  */
 
 
+#include <TargetConditionals.h>
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <SystemConfiguration/SCPrivate.h>
 #include <SystemConfiguration/SCValidation.h>
 
 #include <dns_sd.h>
-#ifndef	kDNSServiceCompMulticastDNS
-#define	kDNSServiceCompMulticastDNS	"MulticastDNS"
-#endif
-#ifndef	kDNSServiceCompPrivateDNS
-#define	kDNSServiceCompPrivateDNS	"PrivateDNS"
-#endif
+#include <dns_sd_private.h>
 
-#include "cache.h"
+#if	TARGET_OS_SIMULATOR && !TARGET_OS_IOSMAC
 
 
-static Boolean			_verbose	= FALSE;
 static CFMutableArrayRef	mirror_keys	= NULL;
 static CFMutableArrayRef	mirror_patterns	= NULL;
 static SCDynamicStoreRef	store_host	= NULL;
 static SCDynamicStoreRef	store_sim	= NULL;
+
+
+#pragma mark -
+#pragma mark Logging
+
+
+/*
+ * Logging
+ */
+__private_extern__ os_log_t
+__log_SimulatorSupport(void)
+{
+	static os_log_t	log = NULL;
+
+	if (log == NULL) {
+		log = os_log_create("com.apple.SystemConfiguration", "SimulatorSupport");
+	}
+
+	return log;
+}
 
 
 #pragma mark -
@@ -58,6 +73,7 @@ static SCDynamicStoreRef	store_sim	= NULL;
 static void
 mirror(SCDynamicStoreRef store, CFArrayRef changes, void *info)
 {
+#pragma unused(store)
 	CFDictionaryRef	content_host;
 	CFDictionaryRef	content_sim;
 	CFIndex		i;
@@ -80,7 +96,7 @@ mirror(SCDynamicStoreRef store, CFArrayRef changes, void *info)
 	content_sim = SCDynamicStoreCopyMultiple(store_sim, changes, NULL);
 
 	// update
-	cache_open();
+	_SCDynamicStoreCacheOpen(store);
 	for (i = 0; i < n; i++) {
 		CFStringRef		key;
 		CFPropertyListRef	val;
@@ -89,21 +105,21 @@ mirror(SCDynamicStoreRef store, CFArrayRef changes, void *info)
 		val = (content_host != NULL) ? CFDictionaryGetValue(content_host, key) : NULL;
 		if (val != NULL) {
 			// if "host" content changed
-			cache_SCDynamicStoreSetValue(store_sim, key, val);
+			SCDynamicStoreSetValue(store_sim, key, val);
 		} else {
 			// if no "host" content
 			val = (content_sim != NULL) ? CFDictionaryGetValue(content_sim, key) : NULL;
 			if (val != NULL) {
 				// if we need to remove the "sim" content
-				cache_SCDynamicStoreRemoveValue(store_sim, key);
+				SCDynamicStoreRemoveValue(store_sim, key);
 			} else {
 				// if no "sim" content to remove, just notify
-				cache_SCDynamicStoreNotifyValue(store_sim, key);
+				SCDynamicStoreNotifyValue(store_sim, key);
 			}
 		}
 	}
-	cache_write(store_sim);
-	cache_close();
+	_SCDynamicStoreCacheCommitChanges(store_sim);
+	_SCDynamicStoreCacheClose(store);
 
 	// cleanup
 	if ((info == NULL) && (content_host != NULL)) {
@@ -198,7 +214,7 @@ prime_SimulatorSupport()
 	CFDictionaryRef	content_host;
 	CFIndex		n;
 
-	SCLog(_verbose, LOG_DEBUG, CFSTR("prime() called"));
+	SC_log(LOG_DEBUG, "prime() called");
 
 	// copy current content from base OS store to _Sim store
 	content_host = SCDynamicStoreCopyMultiple(store_host, mirror_keys, mirror_patterns);
@@ -241,16 +257,13 @@ __private_extern__
 void
 load_SimulatorSupport(CFBundleRef bundle, Boolean bundleVerbose)
 {
+#pragma unused(bundleVerbose)
 	Boolean			ok;
 	CFMutableDictionaryRef	options;
 	CFRunLoopSourceRef	rls;
 
-	if (bundleVerbose) {
-		_verbose = TRUE;
-	}
-
-	SCLog(_verbose, LOG_DEBUG, CFSTR("load() called"));
-	SCLog(_verbose, LOG_DEBUG, CFSTR("  bundle ID = %@"), CFBundleGetIdentifier(bundle));
+	SC_log(LOG_DEBUG, "load() called");
+	SC_log(LOG_DEBUG, "  bundle ID = %@", CFBundleGetIdentifier(bundle));
 
 	// setup
 	mirror_setup();
@@ -309,3 +322,5 @@ main(int argc, char **argv)
 	return 0;
 }
 #endif
+
+#endif	// TARGET_OS_SIMULATOR && !TARGET_OS_IOSMAC

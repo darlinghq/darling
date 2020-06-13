@@ -2,32 +2,61 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>com.apple.multitasking.systemappassertions</key>
+	<true/>
 	<key>keychain-access-groups</key>
 	<array>
 		<string>apple</string>
 		<string>com.apple.certificates</string>
 		<string>com.apple.identities</string>
 	</array>
-	<key>com.apple.coretelephony.Identity.get</key>
-	<true/>
+	<key>com.apple.CommCenter.fine-grained</key>
+	<array>
+		<string>spi</string>
+		<string>identity</string>
+	</array>
 	<key>com.apple.multitasking.unlimitedassertions</key>
 	<true/>
 	<key>com.apple.private.SCNetworkConnection-proxy-user</key>
 	<true/>
+	<key>com.apple.private.lockdown.is-host-trusted</key>
+	<array>
+		<string>com.apple.SystemConfiguration.InterfaceNamer</string>
+	</array>
 	<key>com.apple.private.mobileinstall.allowedSPI</key>
 	<array>
 		<string>Uninstall</string>
 		<string>Lookup</string>
 	</array>
+	<key>com.apple.private.necp.drop_all_bypass</key>
+	<true/>
 	<key>com.apple.private.necp.match</key>
+	<true/>
+	<key>com.apple.private.necp.policies</key>
+	<true/>
+	<key>com.apple.private.nehelper.privileged</key>
 	<true/>
 	<key>com.apple.private.snhelper</key>
 	<true/>
-	<key>com.apple.springboard.launchapplications</key>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
 	<true/>
 	<key>com.apple.wifi.manager-access</key>
 	<true/>
 	<key>com.apple.wlan.authentication</key>
+	<true/>
+	<key>com.apple.captiveagent.privileged</key>
+	<true/>
+	<key>com.apple.networkd_privileged</key>
+	<true/>
+	<key>com.apple.networkd.modify_settings</key>
+	<true/>
+	<key>com.apple.frontboard.launchapplications</key>
+	<true/>
+	<key>com.apple.private.usbdevice.setdescription</key>
+	<true/>
+	<key>com.apple.carousel.modalappservice</key>
 	<true/>
 </dict>
 </plist>

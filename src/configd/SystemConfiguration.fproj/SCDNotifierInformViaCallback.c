@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2005, 2008-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2005, 2008-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -31,21 +31,176 @@
  * - initial revision
  */
 
-#include <Availability.h>
-#include <TargetConditionals.h>
-#include <sys/cdefs.h>
-#include <dispatch/dispatch.h>
-#include <mach/mach.h>
-#include <mach/mach_error.h>
-
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCPrivate.h>
 #include "SCDynamicStoreInternal.h"
 #include "config.h"		/* MiG generated file */
+#include "SCD.h"
 
-#if !TARGET_IPHONE_SIMULATOR || (defined(IPHONE_SIMULATOR_HOST_MIN_VERSION_REQUIRED) && (IPHONE_SIMULATOR_HOST_MIN_VERSION_REQUIRED >= 1090))
+#if    !TARGET_OS_SIMULATOR || (defined(IPHONE_SIMULATOR_HOST_MIN_VERSION_REQUIRED) && (IPHONE_SIMULATOR_HOST_MIN_VERSION_REQUIRED >= 1090))
 #define HAVE_MACHPORT_GUARDS
 #endif
+
+
+static void
+removeReceiveRight(SCDynamicStoreRef store, mach_port_t port)
+{
+	/* remove our receive right */
+#ifdef	HAVE_MACHPORT_GUARDS
+	(void) mach_port_destruct(mach_task_self(), port, 0, (mach_port_context_t)store);
+#else	// HAVE_MACHPORT_GUARDS
+	(void) mach_port_mod_refs(mach_task_self(), port, MACH_PORT_RIGHT_RECEIVE, -1);
+#endif	// HAVE_MACHPORT_GUARDS
+	return;
+}
+
+
+#define	MAX_INVALID_RIGHT_RETRY	3
+
+static mach_port_t
+addNotifyPort(SCDynamicStoreRef store)
+{
+	kern_return_t				kr;
+	mach_port_t				oldNotify;
+#ifdef	HAVE_MACHPORT_GUARDS
+	mach_port_options_t			opts;
+#endif	// HAVE_MACHPORT_GUARDS
+	mach_port_t				port;
+	int					sc_status;
+	SCDynamicStorePrivateRef		storePrivate	= (SCDynamicStorePrivateRef)store;
+	int					try		= 0;
+
+	/* allocate a mach port for the SCDynamicStore notifications */
+
+    retry_allocate :
+
+#ifdef	HAVE_MACHPORT_GUARDS
+	memset(&opts, 0, sizeof(opts));
+	opts.flags = MPO_CONTEXT_AS_GUARD|MPO_INSERT_SEND_RIGHT;
+
+	kr = mach_port_construct(mach_task_self(), &opts, (mach_port_context_t)store, &port);
+#else	// HAVE_MACHPORT_GUARDS
+	kr = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &port);
+#endif	// HAVE_MACHPORT_GUARDS
+
+	if (kr != KERN_SUCCESS) {
+		SC_log(LOG_NOTICE, "could not allocate mach port: %s", mach_error_string(kr));
+		if ((kr == KERN_NO_SPACE) || (kr == KERN_RESOURCE_SHORTAGE)) {
+			usleep(50 * 1000);	// sleep 50ms between attempts
+			goto retry_allocate;
+		}
+		goto fail;
+	}
+
+#ifndef	HAVE_MACHPORT_GUARDS
+	kr = mach_port_insert_right(mach_task_self(),
+				    port,
+				    port,
+				    MACH_MSG_TYPE_MAKE_SEND);
+	if (kr != KERN_SUCCESS) {
+		/*
+		 * We can't insert a send right into our own port!  This should
+		 * only happen if someone stomped on OUR port (so let's leave
+		 * the port alone).
+		 */
+		SC_log(LOG_NOTICE, "mach_port_insert_right() failed: %s", mach_error_string(kr));
+		goto fail;
+	}
+#endif	// HAVE_MACHPORT_GUARDS
+
+	/* Request a notification when/if the server dies */
+	kr = mach_port_request_notification(mach_task_self(),
+					    port,
+					    MACH_NOTIFY_NO_SENDERS,
+					    1,
+					    port,
+					    MACH_MSG_TYPE_MAKE_SEND_ONCE,
+					    &oldNotify);
+	if (kr != KERN_SUCCESS) {
+		/*
+		 * We can't request a notification for our own port!  This should
+		 * only happen if someone stomped on OUR port (so let's leave
+		 * the port alone).
+		 */
+		SC_log(LOG_NOTICE, "mach_port_request_notification() failed: %s", mach_error_string(kr));
+		goto fail;
+	}
+
+	if (oldNotify != MACH_PORT_NULL) {
+		SC_log(LOG_NOTICE, "oldNotify != MACH_PORT_NULL");
+	}
+
+#ifdef	DEBUG
+	SC_log(LOG_DEBUG, "+ establish notification request w/port=0x%x (%d) with SCDynamicStore server (%@)",
+	       port, port,
+	       (storePrivate->name != NULL) ? storePrivate->name : CFSTR("?"));
+#endif	/* DEBUG */
+
+    retry :
+
+	__MACH_PORT_DEBUG(TRUE, "*** addNotifyPort", port);
+	kr = notifyviaport(storePrivate->server, port, 0, (int *)&sc_status);
+
+	if (kr == MACH_SEND_INVALID_RIGHT) {
+		/*
+		 * the notifyviaport() call was not able to pass/process
+		 * the [notify port] send right.  This was most likely due
+		 * to the [SCDynamicStore] server having restarted.  We
+		 * handle this issue by removing the remaining receive
+		 * right, reallocating the notify port, and retrying
+		 * the operation.
+		 */
+		SC_log((try++ < MAX_INVALID_RIGHT_RETRY) ? LOG_INFO : LOG_ERR,
+		       "SCDynamicStore callback notifyviaport() w/port 0x%x (%d) failed (try %d): %s",
+		       port, port,
+		       try,
+		       mach_error_string(kr));
+
+		removeReceiveRight(store, port);
+	}
+
+	if (__SCDynamicStoreCheckRetryAndHandleError(store,
+						     kr,
+						     &sc_status,
+						     "SCDynamicStore callback notifyviaport()")) {
+		if (kr == MACH_SEND_INVALID_RIGHT) {
+			if (try <= MAX_INVALID_RIGHT_RETRY) {
+				goto retry_allocate;
+			}
+			goto fail;
+		}
+		goto retry;
+	}
+
+	if (try > 0) {
+		SC_log(LOG_INFO,
+		       "SCDynamicStore callback notifyviaport() succeeded after %d retr%s w/port 0x%x (%d)",
+		       try,
+		       (try == 1) ? "y" : "ies",
+		       port, port);
+	}
+
+	if (kr != KERN_SUCCESS) {
+		if ((kr == MACH_SEND_INVALID_DEST) || (kr == MIG_SERVER_DIED)) {
+			/* remove the send right that we tried (but failed) to pass to the server */
+			(void) mach_port_deallocate(mach_task_self(), port);
+		}
+		removeReceiveRight(store, port);
+		goto fail;
+	}
+
+	if (sc_status != kSCStatusOK) {
+		/* something [else] didn't work  */
+		removeReceiveRight(store, port);
+		kr = sc_status;
+		goto fail;
+	}
+
+	return port;
+
+    fail :
+
+	_SCErrorSet(kr);
+	return MACH_PORT_NULL;
+}
 
 
 static CFStringRef
@@ -63,20 +218,30 @@ notifyMPCopyDescription(const void *info)
 static void
 rlsCallback(CFMachPortRef port, void *msg, CFIndex size, void *info)
 {
+#ifndef	DEBUG
+#pragma unused(port)
+#endif	/* DEBUG */
+#pragma unused(size)
 	mach_no_senders_notification_t	*buf		= msg;
 	mach_msg_id_t			msgid		= buf->not_header.msgh_id;
 	SCDynamicStoreRef		store		= (SCDynamicStoreRef)info;
 	SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
 
+#ifdef	DEBUG
+	SC_log(LOG_DEBUG, "mach port callback, %ssignal RLS(%@)",
+	       (msgid == MACH_NOTIFY_NO_SENDERS) ? "reconnect and " : "",
+	       (storePrivate->name != NULL) ? storePrivate->name : CFSTR("?"));
+#endif	/* DEBUG */
+
 	if (msgid == MACH_NOTIFY_NO_SENDERS) {
 		/* the server died, disable additional callbacks */
 #ifdef	DEBUG
-		SCLog(_sc_verbose, LOG_INFO, CFSTR("  rlsCallback(), notifier port closed"));
+		SC_log(LOG_DEBUG, "  notifier port closed");
 #endif	/* DEBUG */
 
 #ifdef	DEBUG
 		if (port != storePrivate->rlsNotifyPort) {
-			SCLog(_sc_verbose, LOG_DEBUG, CFSTR("rlsCallback(), why is port != rlsNotifyPort?"));
+			SC_log(LOG_DEBUG, "why is port != rlsNotifyPort?");
 		}
 #endif	/* DEBUG */
 
@@ -88,6 +253,7 @@ rlsCallback(CFMachPortRef port, void *msg, CFIndex size, void *info)
 	if (storePrivate->rls != NULL) {
 		CFRunLoopSourceSignal(storePrivate->rls);
 	}
+
 	return;
 }
 
@@ -99,139 +265,43 @@ rlsSchedule(void *info, CFRunLoopRef rl, CFStringRef mode)
 	SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
 
 #ifdef	DEBUG
-	SCLog(_sc_verbose, LOG_DEBUG,
-	      CFSTR("schedule notifications for mode %@"),
-	      (rl != NULL) ? mode : CFSTR("libdispatch"));
+	SC_log(LOG_DEBUG, "schedule notifications for mode %@", mode);
 #endif	/* DEBUG */
 
-	if (storePrivate->rlList == NULL) {
+	if (storePrivate->rlsNotifyPort == NULL) {
 		CFMachPortContext	context		= { 0
 							  , (void *)store
 							  , CFRetain
 							  , CFRelease
 							  , notifyMPCopyDescription
 							  };
-		kern_return_t		kr;
-		mach_port_t		oldNotify;
-#ifdef	HAVE_MACHPORT_GUARDS
-		mach_port_options_t	opts;
-#endif	// HAVE_MACHPORT_GUARDS
 		mach_port_t		port;
-		int			sc_status;
 
 #ifdef	DEBUG
-		SCLog(_sc_verbose, LOG_DEBUG, CFSTR("  activate callback runloop source"));
+		SC_log(LOG_DEBUG, "  activate callback runloop source");
 #endif	/* DEBUG */
 
-		/* allocate a mach port for the SCDynamicStore notifications */
-
-	    retry_allocate :
-
-#ifdef	HAVE_MACHPORT_GUARDS
-		bzero(&opts, sizeof(opts));
-		opts.flags = MPO_CONTEXT_AS_GUARD|MPO_INSERT_SEND_RIGHT;
-
-		kr = mach_port_construct(mach_task_self(), &opts, store, &port);
-#else	// HAVE_MACHPORT_GUARDS
-		kr = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &port);
-#endif	// HAVE_MACHPORT_GUARDS
-
-		if (kr != KERN_SUCCESS) {
-			SCLog(TRUE, LOG_ERR, CFSTR("rlsSchedule could not allocate mach port: %s"), mach_error_string(kr));
-			if ((kr == KERN_NO_SPACE) || (kr == KERN_RESOURCE_SHORTAGE)) {
-				sleep(1);
-				goto retry_allocate;
-			} else {
-				return;
-			}
-		}
-
-#ifndef	HAVE_MACHPORT_GUARDS
-		kr = mach_port_insert_right(mach_task_self(),
-					    port,
-					    port,
-					    MACH_MSG_TYPE_MAKE_SEND);
-		if (kr != KERN_SUCCESS) {
-			/*
-			 * We can't insert a send right into our own port!  This should
-			 * only happen if someone stomped on OUR port (so let's leave
-			 * the port alone).
-			 */
-			SCLog(TRUE, LOG_ERR, CFSTR("rlsSchedule mach_port_insert_right(): %s"), mach_error_string(kr));
-			return;
-		}
-#endif	// HAVE_MACHPORT_GUARDS
-
-		/* Request a notification when/if the server dies */
-		kr = mach_port_request_notification(mach_task_self(),
-						    port,
-						    MACH_NOTIFY_NO_SENDERS,
-						    1,
-						    port,
-						    MACH_MSG_TYPE_MAKE_SEND_ONCE,
-						    &oldNotify);
-		if (kr != KERN_SUCCESS) {
-			/*
-			 * We can't request a notification for our own port!  This should
-			 * only happen if someone stomped on OUR port (so let's leave
-			 * the port alone).
-			 */
-			SCLog(TRUE, LOG_ERR, CFSTR("rlsSchedule mach_port_request_notification(): %s"), mach_error_string(kr));
+		port = addNotifyPort(store);
+		if (port == MACH_PORT_NULL) {
 			return;
 		}
 
-		if (oldNotify != MACH_PORT_NULL) {
-			SCLog(TRUE, LOG_ERR, CFSTR("rlsSchedule(): oldNotify != MACH_PORT_NULL"));
-		}
-
-	    retry :
-
-		__MACH_PORT_DEBUG(TRUE, "*** rlsSchedule", port);
-		kr = notifyviaport(storePrivate->server, port, 0, (int *)&sc_status);
-
-		if (__SCDynamicStoreCheckRetryAndHandleError(store,
-							     kr,
-							     &sc_status,
-							     "rlsSchedule notifyviaport()")) {
-			goto retry;
-		}
-
-		if (kr != KERN_SUCCESS) {
-			if ((kr == MACH_SEND_INVALID_DEST) || (kr == MIG_SERVER_DIED)) {
-				/* remove the send right that we tried (but failed) to pass to the server */
-				(void) mach_port_deallocate(mach_task_self(), port);
-			}
-
-			/* remove our receive right  */
-#ifdef	HAVE_MACHPORT_GUARDS
-			(void) mach_port_destruct(mach_task_self(), port, 0, store);
-#else	// HAVE_MACHPORT_GUARDS
-			(void) mach_port_mod_refs(mach_task_self(), port, MACH_PORT_RIGHT_RECEIVE, -1);
-#endif	// HAVE_MACHPORT_GUARDS
-			return;
-		}
-
-		if (sc_status != kSCStatusOK) {
-			/* something [else] didn't work, remove our receive right  */
-#ifdef	HAVE_MACHPORT_GUARDS
-			(void) mach_port_destruct(mach_task_self(), port, 0, store);
-#else	// HAVE_MACHPORT_GUARDS
-			(void) mach_port_mod_refs(mach_task_self(), port, MACH_PORT_RIGHT_RECEIVE, -1);
-#endif	// HAVE_MACHPORT_GUARDS
-			return;
-		}
-
-		__MACH_PORT_DEBUG(TRUE, "*** rlsSchedule (after notifyviaport)", port);
+		__MACH_PORT_DEBUG(TRUE, "*** rlsSchedule (after addNotifyPort)", port);
 		storePrivate->rlsNotifyPort = _SC_CFMachPortCreateWithPort("SCDynamicStore",
 									   port,
 									   rlsCallback,
 									   &context);
-		storePrivate->rlsNotifyRLS = CFMachPortCreateRunLoopSource(NULL, storePrivate->rlsNotifyPort, 0);
 
-		storePrivate->rlList = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+		if (rl != NULL) {
+			storePrivate->rlsNotifyRLS = CFMachPortCreateRunLoopSource(NULL, storePrivate->rlsNotifyPort, 0);
+			storePrivate->rlList = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+		}
 	}
 
-	if ((rl != NULL) && (storePrivate->rlsNotifyRLS != NULL)) {
+	if (storePrivate->rlsNotifyRLS != NULL) {
+		/* set notifier active */
+		storePrivate->notifyStatus = Using_NotifierInformViaRunLoop;
+
 		if (!_SC_isScheduled(store, rl, mode, storePrivate->rlList)) {
 			/*
 			 * if we are not already scheduled with this runLoop / runLoopMode
@@ -255,12 +325,10 @@ rlsCancel(void *info, CFRunLoopRef rl, CFStringRef mode)
 	SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
 
 #ifdef	DEBUG
-	SCLog(_sc_verbose, LOG_DEBUG,
-	      CFSTR("cancel notifications for mode %@"),
-	      (rl != NULL) ? mode : CFSTR("libdispatch"));
+	SC_log(LOG_DEBUG, "cancel notifications for mode %@", mode);
 #endif	/* DEBUG */
 
-	if ((rl != NULL) && (storePrivate->rlsNotifyRLS != NULL)) {
+	if (storePrivate->rlsNotifyRLS != NULL) {
 		if (_SC_unschedule(store, rl, mode, storePrivate->rlList, FALSE)) {
 			/*
 			 * if currently scheduled on this runLoop / runLoopMode
@@ -281,11 +349,18 @@ rlsCancel(void *info, CFRunLoopRef rl, CFStringRef mode)
 		kern_return_t	kr;
 
 #ifdef	DEBUG
-		SCLog(_sc_verbose, LOG_DEBUG, CFSTR("  cancel callback runloop source"));
+		SC_log(LOG_DEBUG, "  cancel callback runloop source");
 #endif	/* DEBUG */
 		__MACH_PORT_DEBUG((storePrivate->rlsNotifyPort != NULL),
 				  "*** rlsCancel",
 				  CFMachPortGetPort(storePrivate->rlsNotifyPort));
+
+		if (storePrivate->rls != NULL) {
+			// Remove the reference we took on the rls. We do not invalidate
+			// the runloop source and let the client do it when appropriate.
+			CFRelease(storePrivate->rls);
+			storePrivate->rls = NULL;
+		}
 
 		if (storePrivate->rlList != NULL) {
 			CFRelease(storePrivate->rlList);
@@ -313,12 +388,12 @@ rlsCancel(void *info, CFRunLoopRef rl, CFStringRef mode)
 			storePrivate->rlsNotifyPort = NULL;
 
 			/* and, finally, remove our receive right  */
-#ifdef	HAVE_MACHPORT_GUARDS
-			(void) mach_port_destruct(mach_task_self(), mp, 0, store);
-#else	// HAVE_MACHPORT_GUARDS
-			(void) mach_port_mod_refs(mach_task_self(), mp, MACH_PORT_RIGHT_RECEIVE, -1);
-#endif	// HAVE_MACHPORT_GUARDS
+			removeReceiveRight(store, mp);
 		}
+
+#ifdef	DEBUG
+		SC_log(LOG_DEBUG, "  cancel notification request with SCDynamicStore server");
+#endif	/* DEBUG */
 
 		if (storePrivate->server != MACH_PORT_NULL) {
 			kr = notifycancel(storePrivate->server, (int *)&sc_status);
@@ -332,6 +407,9 @@ rlsCancel(void *info, CFRunLoopRef rl, CFStringRef mode)
 				return;
 			}
 		}
+
+		/* set notifier inactive */
+		storePrivate->notifyStatus = NotifierNotRegistered;
 	}
 
 	return;
@@ -341,7 +419,7 @@ rlsCancel(void *info, CFRunLoopRef rl, CFStringRef mode)
 static void
 rlsPerform(void *info)
 {
-	CFArrayRef			changedKeys;
+	CFArrayRef			changedKeys	= NULL;
 	void				*context_info;
 	void				(*context_release)(const void *);
 	SCDynamicStoreCallBack		rlsFunction;
@@ -349,7 +427,8 @@ rlsPerform(void *info)
 	SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
 
 #ifdef	DEBUG
-	SCLog(_sc_verbose, LOG_DEBUG, CFSTR("  executing notification function"));
+	SC_log(LOG_DEBUG, "handling SCDynamicStore changes (%@)",
+	       (storePrivate->name != NULL) ? storePrivate->name : CFSTR("?"));
 #endif	/* DEBUG */
 
 	changedKeys = SCDynamicStoreCopyNotifiedKeys(store);
@@ -358,13 +437,9 @@ rlsPerform(void *info)
 		if (changedKeys == NULL) {
 			changedKeys = CFArrayCreate(NULL, NULL, 0, &kCFTypeArrayCallBacks);
 		}
-	} else {
-		if (changedKeys == NULL) {
-			/* if no changes or something happened to the server */
-			return;
-		} else if (CFArrayGetCount(changedKeys) == 0) {
-			goto done;
-		}
+	} else if ((changedKeys == NULL) || (CFArrayGetCount(changedKeys) == 0)) {
+		/* if no changes or something happened to the server */
+		goto done;
 	}
 
 	rlsFunction = storePrivate->rlsFunction;
@@ -377,7 +452,9 @@ rlsPerform(void *info)
 		context_release	= NULL;
 	}
 	if (rlsFunction != NULL) {
+		SC_log(LOG_DEBUG, "+ exec SCDynamicStore callout");
 		(*rlsFunction)(store, changedKeys, context_info);
+		SC_log(LOG_DEBUG, "+ done");
 	}
 	if (context_release != NULL) {
 		context_release(context_info);
@@ -385,55 +462,12 @@ rlsPerform(void *info)
 
     done :
 
-	CFRelease(changedKeys);
-	return;
-}
+#ifdef	DEBUG
+	SC_log(LOG_DEBUG, "done");
+#endif	/* DEBUG */
 
-
-static CFTypeRef
-rlsRetain(CFTypeRef cf)
-{
-	SCDynamicStoreRef		store		= (SCDynamicStoreRef)cf;
-	SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
-
-	switch (storePrivate->notifyStatus) {
-		case NotifierNotRegistered :
-			/* mark RLS active */
-			storePrivate->notifyStatus = Using_NotifierInformViaRunLoop;
-			/* keep a reference to the store */
-			CFRetain(store);
-			break;
-		case Using_NotifierInformViaRunLoop :
-			break;
-		default :
-			SCLog(TRUE, LOG_ERR, CFSTR("rlsRetain() error: notifyStatus=%d"), storePrivate->notifyStatus);
-			break;
-	}
-
-	return cf;
-}
-
-
-static void
-rlsRelease(CFTypeRef cf)
-{
-	SCDynamicStoreRef		store		= (SCDynamicStoreRef)cf;
-	SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
-
-	switch (storePrivate->notifyStatus) {
-		case NotifierNotRegistered :
-			break;
-		case Using_NotifierInformViaRunLoop :
-			/* mark RLS inactive */
-			storePrivate->notifyStatus = NotifierNotRegistered;
-			storePrivate->rls = NULL;
-
-			/* release our reference to the store */
-			CFRelease(store);
-			break;
-		default :
-			SCLog(TRUE, LOG_ERR, CFSTR("rlsRelease() error: notifyStatus=%d"), storePrivate->notifyStatus);
-			break;
+	if (changedKeys != NULL) {
+		CFRelease(changedKeys);
 	}
 
 	return;
@@ -503,13 +537,11 @@ SCDynamicStoreCreateRunLoopSource(CFAllocatorRef	allocator,
 			return NULL;
 	}
 
-	if (storePrivate->rls != NULL) {
-		CFRetain(storePrivate->rls);
-	} else {
+	if (storePrivate->rls == NULL) {
 		CFRunLoopSourceContext	context = { 0			// version
 						  , (void *)store	// info
-						  , rlsRetain		// retain
-						  , rlsRelease		// release
+						  , CFRetain		// retain
+						  , CFRelease		// release
 						  , rlsCopyDescription	// copyDescription
 						  , CFEqual		// equal
 						  , CFHash		// hash
@@ -522,6 +554,10 @@ SCDynamicStoreCreateRunLoopSource(CFAllocatorRef	allocator,
 		if (storePrivate->rls == NULL) {
 			_SCErrorSet(kSCStatusFailed);
 		}
+	}
+
+	if (storePrivate->rls != NULL) {
+		CFRetain(storePrivate->rls);
 	}
 
 	return storePrivate->rls;
@@ -547,9 +583,15 @@ SCDynamicStoreSetDispatchQueue(SCDynamicStoreRef store, dispatch_queue_t queue)
 
 	if (queue == NULL) {
 		if (storePrivate->dispatchQueue == NULL) {
+			// if not scheduled
 			_SCErrorSet(kSCStatusInvalidArgument);
 			return FALSE;
 		}
+
+#ifdef	DEBUG
+		SC_log(LOG_DEBUG, "unschedule notifications from dispatch queue (%@)",
+		       (storePrivate->name != NULL) ? storePrivate->name : CFSTR("?"));
+#endif	/* DEBUG */
 
 		ok = TRUE;
 		goto cleanup;
@@ -561,27 +603,34 @@ SCDynamicStoreSetDispatchQueue(SCDynamicStoreRef store, dispatch_queue_t queue)
 		return FALSE;
 	}
 
-	if ((storePrivate->dispatchQueue != NULL) || (storePrivate->rls != NULL)) {
-		_SCErrorSet(kSCStatusInvalidArgument);
-		return FALSE;
-	}
-
-	if (storePrivate->notifyStatus != NotifierNotRegistered) {
-		// sorry, you can only have one notification registered at once...
+	if ((storePrivate->dispatchQueue != NULL)	||
+	    (storePrivate->rls != NULL)			||
+	    (storePrivate->notifyStatus != NotifierNotRegistered)) {
+		// if already scheduled
 		_SCErrorSet(kSCStatusNotifierActive);
 		return FALSE;
 	}
 
-	/*
-	 * mark our using of the SCDynamicStore notifications, create and schedule
-	 * the notification port (storePrivate->rlsNotifyPort), and a bunch of other
-	 * "setup"
-	 */
+#ifdef	DEBUG
+	SC_log(LOG_DEBUG, "schedule notifications for dispatch queue (%@)",
+	       (storePrivate->name != NULL) ? storePrivate->name : CFSTR("?"));
+#endif	/* DEBUG */
+
+	//
+	// mark our using of the SCDynamicStore notifications, create and schedule
+	// the notification source/port (storePrivate->dispatchSource), and a bunch
+	// of other "setup"
+	//
 	storePrivate->notifyStatus = Using_NotifierInformViaDispatch;
-	rlsSchedule((void*)store, NULL, NULL);
-	if (storePrivate->rlsNotifyPort == NULL) {
-		/* if we could not schedule the notification */
+
+	mp = addNotifyPort(store);
+	if (mp == MACH_PORT_NULL) {
+		// if we could not schedule the notification
 		_SCErrorSet(kSCStatusFailed);
+#ifdef	DEBUG
+		SC_log(LOG_DEBUG, "addNotifyPort() failed (%@)",
+		       (storePrivate->name != NULL) ? storePrivate->name : CFSTR("?"));
+#endif	/* DEBUG */
 		goto cleanup;
 	}
 
@@ -605,10 +654,13 @@ SCDynamicStoreSetDispatchQueue(SCDynamicStoreRef store, dispatch_queue_t queue)
 	dispatch_set_finalizer_f(storePrivate->dispatchGroup, (dispatch_function_t)CFRelease);
 
 	// create a dispatch source for the mach notifications
-	mp = CFMachPortGetPort(storePrivate->rlsNotifyPort);
 	source = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_RECV, mp, 0, queue);
 	if (source == NULL) {
-		SCLog(TRUE, LOG_ERR, CFSTR("SCDynamicStore dispatch_source_create() failed"));
+		SC_log(LOG_NOTICE, "dispatch_source_create() failed");
+
+		//  remove our receive right
+		removeReceiveRight(store, mp);
+
 		_SCErrorSet(kSCStatusFailed);
 		goto cleanup;
 	}
@@ -617,7 +669,8 @@ SCDynamicStoreSetDispatchQueue(SCDynamicStoreRef store, dispatch_queue_t queue)
 		kern_return_t	kr;
 		mach_msg_id_t	msgid;
 		union {
-			u_int8_t			buf[sizeof(mach_msg_empty_t) + MAX_TRAILER_SIZE];
+			u_int8_t			buf1[sizeof(mach_msg_empty_rcv_t) + MAX_TRAILER_SIZE];
+			u_int8_t			buf2[sizeof(mach_no_senders_notification_t) + MAX_TRAILER_SIZE];
 			mach_msg_empty_rcv_t		msg;
 			mach_no_senders_notification_t	no_senders;
 		} notify_msg;
@@ -630,13 +683,17 @@ SCDynamicStoreSetDispatchQueue(SCDynamicStoreRef store, dispatch_queue_t queue)
 			      MACH_MSG_TIMEOUT_NONE,	// timeout
 			      MACH_PORT_NULL);		// notify
 		if (kr != KERN_SUCCESS) {
-			SCLog(TRUE, LOG_ERR,
-			      CFSTR("SCDynamicStore notification handler, kr=0x%x"),
-			      kr);
+			SC_log(LOG_NOTICE, "mach_msg() failed, kr=0x%x", kr);
 			return;
 		}
 
 		msgid = notify_msg.msg.header.msgh_id;
+		mach_msg_destroy(&notify_msg.msg.header);
+
+#ifdef	DEBUG
+		SC_log(LOG_DEBUG, "dispatch source callback, queue rlsPerform (%@)",
+		       (storePrivate->name != NULL) ? storePrivate->name : CFSTR("?"));
+#endif	/* DEBUG */
 
 		CFRetain(store);
 		dispatch_group_async(group, queue, ^{
@@ -650,6 +707,14 @@ SCDynamicStoreSetDispatchQueue(SCDynamicStoreRef store, dispatch_queue_t queue)
 	});
 
 	dispatch_source_set_cancel_handler(source, ^{
+		__MACH_PORT_DEBUG(TRUE,
+				  "*** SCDynamicStoreSetDispatchQueue (before cancel)",
+				  mp);
+
+		// remove our receive right
+		removeReceiveRight(store, mp);
+
+		// release source
 		dispatch_release(source);
 	});
 
@@ -671,9 +736,7 @@ SCDynamicStoreSetDispatchQueue(SCDynamicStoreRef store, dispatch_queue_t queue)
 	drainQueue = storePrivate->dispatchQueue;
 	storePrivate->dispatchQueue = NULL;
 
-	rlsCancel((void*)store, NULL, NULL);
-
-	if (drainGroup != NULL) {
+	if ((drainGroup != NULL) && (drainQueue != NULL)) {
 		dispatch_group_notify(drainGroup, drainQueue, ^{
 			// release group/queue references
 			dispatch_release(drainQueue);

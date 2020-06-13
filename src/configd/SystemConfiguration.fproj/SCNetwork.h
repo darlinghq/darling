@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2003-2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003-2009, 2015, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,19 +17,21 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SCNETWORK_H
 #define _SCNETWORK_H
 
-#include <Availability.h>
+#include <os/availability.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+CF_IMPLICIT_BRIDGING_ENABLED
+CF_ASSUME_NONNULL_BEGIN
 
 /*!
 	@header SCNetwork
@@ -123,8 +125,8 @@ __BEGIN_DECLS
 		Note: this API has been deprecated but you can
 		      get equivalent results with :
 <pre>
-	SCNetworkReachabiltyRef   target;
-	SCNetworkReachabiltyFlags flags = 0;
+	SCNetworkReachabilityRef   target;
+	SCNetworkReachabilityFlags flags = 0;
 	Boolean                   ok;
 
 	target = SCNetworkReachabilityCreateWithAddress(NULL, address);
@@ -144,7 +146,7 @@ SCNetworkCheckReachabilityByAddress	(
 					const struct sockaddr		*address,
 					socklen_t			addrlen,
 					SCNetworkConnectionFlags	*flags
-					)				__OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_1,__MAC_10_6,__IPHONE_NA,__IPHONE_NA);
+					)				API_DEPRECATED("No longer supported", macos(10.1,10.6)) API_UNAVAILABLE(ios, tvos, watchos, bridgeos);
 
 /*!
 	@function SCNetworkCheckReachabilityByName
@@ -175,7 +177,7 @@ Boolean
 SCNetworkCheckReachabilityByName	(
 					const char			*nodename,
 					SCNetworkConnectionFlags	*flags
-					)				__OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_1,__MAC_10_6,__IPHONE_NA,__IPHONE_NA);
+					)				API_DEPRECATED("No longer supported", macos(10.1,10.6)) API_UNAVAILABLE(ios, tvos, watchos, bridgeos);
 
 /*!
 	@function SCNetworkInterfaceRefreshConfiguration
@@ -192,8 +194,11 @@ SCNetworkCheckReachabilityByName	(
 Boolean
 SCNetworkInterfaceRefreshConfiguration	(
 					CFStringRef			ifName
-					)				__OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_1,__MAC_10_5,__IPHONE_NA,__IPHONE_NA);
+					)				API_DEPRECATED("No longer supported", macos(10.1,10.5)) API_UNAVAILABLE(ios, tvos, watchos, bridgeos);
 
 __END_DECLS
 
-#endif /* _SCNETWORK_H */
+CF_ASSUME_NONNULL_END
+CF_IMPLICIT_BRIDGING_DISABLED
+
+#endif	/* _SCNETWORK_H */

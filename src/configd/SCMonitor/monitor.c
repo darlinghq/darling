@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2007-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -31,11 +31,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <asl.h>
 #include <CoreFoundation/CoreFoundation.h>
+
+#define	SC_LOG_HANDLE		__log_SCMonitor
+#define SC_LOG_HANDLE_TYPE	static
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <SystemConfiguration/SCPrivate.h>
+
 #include <IOKit/IOKitLib.h>
+#include <IOKit/IOKitKeysPrivate.h>
 #include <IOKit/IOMessage.h>
 #include <ApplicationServices/ApplicationServices.h>
 #include "UserEventAgentInterface.h"
@@ -78,8 +82,6 @@ typedef struct {
 
 	Boolean				debug;
 
-	asl_object_t			log_msg;
-
 	CFStringRef			configuration_action;
 
 	CFRunLoopSourceRef		monitorRls;
@@ -107,6 +109,26 @@ static CFMutableDictionaryRef	notify_to_instance	= NULL;
 
 
 #pragma mark -
+#pragma mark Logging
+
+
+/*
+ * Logging
+ */
+static os_log_t
+__log_SCMonitor(void)
+{
+	static os_log_t	log	= NULL;
+
+	if (log == NULL) {
+		log = os_log_create("com.apple.SystemConfiguration", "SCMonitor");
+	}
+
+	return log;
+}
+
+
+#pragma mark -
 #pragma mark Authorization
 
 
@@ -122,9 +144,7 @@ getAuthorization(MyType *myInstance)
 					     flags,
 					     &myInstance->authorization);
 		if (status != errAuthorizationSuccess) {
-			SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR,
-			      CFSTR("AuthorizationCreate() failed: status = %d"),
-			      (int)status);
+			SC_log(LOG_ERR, "AuthorizationCreate() failed: status = %d", (int)status);
 		}
 	}
 
@@ -185,6 +205,7 @@ freeAuthorization(MyType *myInstance)
 static void
 open_NetworkPrefPane(MyType *myInstance)
 {
+#pragma unused(myInstance)
 	AEDesc		aeDesc	= { typeNull, NULL };
 	CFArrayRef	prefArray;
 	CFURLRef	prefURL;
@@ -203,7 +224,7 @@ open_NetworkPrefPane(MyType *myInstance)
 			      strlen(NETWORK_PREF_CMD),
 			      &aeDesc);
 	if (status != noErr) {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR, CFSTR("SCMonitor: AECreateDesc() failed: %d"), (int)status);
+		SC_log(LOG_ERR, "AECreateDesc() failed: %d", (int)status);
 	}
 
 	prefSpec.appURL		= NULL;
@@ -214,7 +235,7 @@ open_NetworkPrefPane(MyType *myInstance)
 
 	status = LSOpenFromURLSpec(&prefSpec, NULL);
 	if (status != noErr) {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR, CFSTR("SCMonitor: LSOpenFromURLSpec() failed: %d"), (int)status);
+		SC_log(LOG_ERR, "LSOpenFromURLSpec() failed: %d", (int)status);
 	}
 
 	CFRelease(prefArray);
@@ -248,9 +269,9 @@ notify_remove(MyType *myInstance, Boolean cancel)
 
 			status = CFUserNotificationCancel(myInstance->userNotification);
 			if (status != 0) {
-				SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR,
-				      CFSTR("SCMonitor: CFUserNotificationCancel() failed, status=%d"),
-				      (int)status);
+				SC_log(LOG_ERR,
+				       "CFUserNotificationCancel() failed, status=%d",
+				       (int)status);
 			}
 		}
 		CFRelease(myInstance->userNotification);
@@ -278,7 +299,7 @@ notify_reply(CFUserNotificationRef userNotification, CFOptionFlags response_flag
 		}
 	}
 	if (myInstance == NULL) {
-		SCLOG(NULL, NULL, ASL_LEVEL_ERR, CFSTR("SCMonitor: can't find user notification"));
+		SC_log(LOG_ERR, "can't find user notification");
 		return;
 	}
 
@@ -348,7 +369,7 @@ notify_add(MyType *myInstance)
 		CFDictionarySetValue(dict, kCFUserNotificationLocalizationURLKey, url);
 		CFRelease(url);
 	} else {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR, CFSTR("SCMonitor: can't find bundle"));
+		SC_log(LOG_ERR, "can't find bundle");
 		goto done;
 	}
 
@@ -374,7 +395,7 @@ notify_add(MyType *myInstance)
 		CFStringRef		message;
 		CFStringRef		name;
 
-#define MESSAGE_1 "The \"%@\" network interface has not been set up. To set up this interface, use Network Preferences."
+#define MESSAGE_1 "The “%@” network interface has not been set up. To set up this interface, use Network Preferences."
 
 		format = CFBundleCopyLocalizedString(bundle,
 						     CFSTR("MESSAGE_1"),
@@ -418,7 +439,7 @@ notify_add(MyType *myInstance)
 								&error,
 								dict);
 	if (myInstance->userNotification == NULL) {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR, CFSTR("SCMonitor: CFUserNotificationCreate() failed, %d"), (int)error);
+		SC_log(LOG_ERR, "CFUserNotificationCreate() failed: %d", (int)error);
 		goto done;
 	}
 
@@ -428,7 +449,7 @@ notify_add(MyType *myInstance)
 								    notify_reply,
 								    0);
 	if (myInstance->userRls == NULL) {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR, CFSTR("SCMonitor: CFUserNotificationCreateRunLoopSource() failed"));
+		SC_log(LOG_ERR, "CFUserNotificationCreateRunLoopSource() failed");
 		CFRelease(myInstance->userNotification);
 		myInstance->userNotification = NULL;
 		goto done;
@@ -475,10 +496,12 @@ notify_configure(MyType *myInstance)
 
 	set = SCNetworkSetCopyCurrent(prefs);
 	if (set == NULL) {
-		set = SCNetworkSetCreate(prefs);
+		// if no "current" set, create new/default ("Automatic") set
+		set = _SCNetworkSetCreateDefault(prefs);
 		if (set == NULL) {
 			goto done;
 		}
+		SC_log(LOG_DEBUG, "added new \"default\" set");
 	}
 
 	for (i = 0; i < n; i++) {
@@ -490,23 +513,23 @@ notify_configure(MyType *myInstance)
 			CFStringRef	name;
 
 			name = SCNetworkInterfaceGetLocalizedDisplayName(interface);
-			SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_NOTICE, CFSTR("add/update service for %@"), name);
+			SC_log(LOG_NOTICE, "add/update service for %@", name);
 		}
 	}
 
 	ok = SCPreferencesCommitChanges(prefs);
 	if (!ok) {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR,
-		      CFSTR("SCPreferencesCommitChanges() failed: %s"),
-		      SCErrorString(SCError()));
+		SC_log(LOG_ERR,
+		       "SCPreferencesCommitChanges() failed: %s",
+		       SCErrorString(SCError()));
 		goto done;
 	}
 
 	ok = SCPreferencesApplyChanges(prefs);
 	if (!ok) {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR,
-		      CFSTR("SCPreferencesApplyChanges() failed: %s"),
-		      SCErrorString(SCError()));
+		SC_log(LOG_ERR,
+		       "SCPreferencesApplyChanges() failed: %s",
+		       SCErrorString(SCError()));
 		goto done;
 	}
 
@@ -531,6 +554,67 @@ notify_configure(MyType *myInstance)
 
 #pragma mark -
 
+static Boolean
+onConsole()
+{
+	CFArrayRef		console_sessions;
+	Boolean			on		= FALSE;
+	io_registry_entry_t	root;
+	uid_t			uid		= geteuid();
+
+	root = IORegistryGetRootEntry(kIOMasterPortDefault);
+	console_sessions = IORegistryEntryCreateCFProperty(root,
+							   CFSTR(kIOConsoleUsersKey),
+							   NULL,
+							   0);
+	if (console_sessions != NULL) {
+		CFIndex	n;
+
+		n = isA_CFArray(console_sessions) ? CFArrayGetCount(console_sessions) : 0;
+		for (CFIndex i = 0; i < n; i++) {
+			CFBooleanRef	bVal;
+			CFDictionaryRef	session;
+			uint64_t	sessionUID;
+			CFNumberRef	val;
+
+			session = CFArrayGetValueAtIndex(console_sessions, i);
+			if (!isA_CFDictionary(session)) {
+				// if not dictionary
+				continue;
+			}
+
+			if (!CFDictionaryGetValueIfPresent(session,
+							   CFSTR(kIOConsoleSessionUIDKey),
+							   (const void **)&val) ||
+			    !isA_CFNumber(val) ||
+			    !CFNumberGetValue(val, kCFNumberSInt64Type, (void *)&sessionUID) ||
+			    (uid != sessionUID)) {
+				// if not my session
+				continue;
+			}
+
+			if (CFDictionaryGetValueIfPresent(session,
+							  CFSTR(kIOConsoleSessionOnConsoleKey),
+							  (const void **)&bVal) &&
+			    isA_CFBoolean(bVal) &&
+			    CFBooleanGetValue(bVal)) {
+				// if "on console" session
+				on = TRUE;
+			}
+
+			break;
+		}
+
+		CFRelease(console_sessions);
+	}
+	IOObjectRelease(root);
+
+	return on;
+}
+
+
+#pragma mark -
+
 
 // configure ONLY IF authorized
 #define kSCNetworkInterfaceConfigurationActionValueConfigureAuthorized	CFSTR("Configure-Authorized")
@@ -547,6 +631,10 @@ updateInterfaceList(MyType *myInstance)
 	SCPreferencesRef	prefs;
 	SCNetworkSetRef		set		= NULL;
 
+	if (!onConsole()) {
+		return;
+	}
+
 	prefs = SCPreferencesCreate(NULL, CFSTR("SCMonitor"), NULL);
 	if (prefs == NULL) {
 		return;
@@ -554,7 +642,8 @@ updateInterfaceList(MyType *myInstance)
 
 	set = SCNetworkSetCopyCurrent(prefs);
 	if (set == NULL) {
-		set = SCNetworkSetCreate(prefs);
+		// if no "current" set, create new/default ("Automatic") set
+		set = _SCNetworkSetCreateDefault(prefs);
 		if (set == NULL) {
 			goto done;
 		}
@@ -692,6 +781,8 @@ updateInterfaceList(MyType *myInstance)
 static void
 update_lan(SCDynamicStoreRef store, CFArrayRef changes, void * arg)
 {
+#pragma unused(store)
+#pragma unused(changes)
 	MyType	*myInstance	= (MyType *)arg;
 
 	updateInterfaceList(myInstance);
@@ -709,9 +800,9 @@ watcher_add_lan(MyType *myInstance)
 
 	store = SCDynamicStoreCreate(NULL, CFSTR("SCMonitor"), update_lan, &context);
 	if (store == NULL) {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR,
-		      CFSTR("SCMonitor: SCDynamicStoreCreate() failed: %s"),
-		      SCErrorString(SCError()));
+		SC_log(LOG_ERR,
+		       "SCDynamicStoreCreate() failed: %s",
+		       SCErrorString(SCError()));
 		return;
 	}
 
@@ -719,7 +810,7 @@ watcher_add_lan(MyType *myInstance)
 
 	// watch for changes to the list of network interfaces
 	keys = CFArrayCreate(NULL, (const void **)&key, 1, &kCFTypeArrayCallBacks);
-	SCDynamicStoreSetNotificationKeys(store, NULL, keys);
+	SCDynamicStoreSetNotificationKeys(store, keys, NULL);
 	CFRelease(keys);
 	myInstance->monitorRls = SCDynamicStoreCreateRunLoopSource(NULL, store, 0);
 	CFRunLoopAddSource(CFRunLoopGetCurrent(),
@@ -802,6 +893,7 @@ add_node_watcher(MyType *myInstance, io_registry_entry_t node, io_registry_entry
 static void
 update_node(void *refCon, io_service_t service, natural_t messageType, void *messageArgument)
 {
+#pragma unused(messageArgument)
 	CFIndex		i;
 	CFDataRef	myData		= (CFDataRef)refCon;
 	MyType		*myInstance;
@@ -822,7 +914,7 @@ update_node(void *refCon, io_service_t service, natural_t messageType, void *mes
 				return;
 			}
 
-			val = IORegistryEntryCreateCFProperty(service, CFSTR("Initializing"), NULL, 0);
+			val = IORegistryEntryCreateCFProperty(service, kSCNetworkInterfaceInitializingKey, NULL, 0);
 			if (val != NULL) {
 				initializing = (isA_CFBoolean(val) && CFBooleanGetValue(val));
 				CFRelease(val);
@@ -888,7 +980,7 @@ add_node_watcher(MyType *myInstance, io_registry_entry_t node, io_registry_entry
 	/* ALIGN: CF aligns to at least >8 bytes */
 	myNode = (MyNode *)(void *)CFDataGetBytePtr(myData);
 
-	bzero(myNode, sizeof(MyNode));
+	memset(myNode, 0, sizeof(MyNode));
 	myNode->interface      = interface;
 	if (myNode->interface != MACH_PORT_NULL) {
 		IOObjectRetain(myNode->interface);
@@ -912,8 +1004,9 @@ add_node_watcher(MyType *myInstance, io_registry_entry_t node, io_registry_entry
 		}
 		CFArrayAppendValue(myInstance->notifyNodes, myData);
 	} else {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR,
-		      CFSTR("add_init_watcher IOServiceAddInterestNotification() failed, kr =  0x%x"), kr);
+		SC_log(LOG_ERR,
+		       "add_init_watcher IOServiceAddInterestNotification() failed, kr =  0x%x",
+		       kr);
 	}
 	CFRelease(myData);
 }
@@ -948,7 +1041,7 @@ add_init_watcher(MyType *myInstance, io_registry_entry_t interface)
 			case kIOReturnNoDevice :	// if we have hit the root node
 				break;
 			default :
-				SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR, CFSTR("add_init_watcher IORegistryEntryGetParentEntry() failed, kr = 0x%x"), kr);
+				SC_log(LOG_ERR, "add_init_watcher IORegistryEntryGetParentEntry() failed, kr = 0x%x", kr);
 				break;
 		}
 		if (node != interface) {
@@ -1018,8 +1111,7 @@ watcher_add_serial(MyType *myInstance)
 
 	myInstance->notifyPort = IONotificationPortCreate(kIOMasterPortDefault);
 	if (myInstance->notifyPort == NULL) {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR,
-		      CFSTR("SCMonitor: IONotificationPortCreate failed"));
+		SC_log(LOG_ERR, "IONotificationPortCreate failed");
 		return;
 	}
 
@@ -1031,9 +1123,7 @@ watcher_add_serial(MyType *myInstance)
 					      (void *)myInstance,		// refCon
 					      &myInstance->notifyIterator);	// notification
 	if (kr != KERN_SUCCESS) {
-		SCLOG(NULL, myInstance->log_msg, ASL_LEVEL_ERR,
-		      CFSTR("SCMonitor : IOServiceAddMatchingNotification returned 0x%x"),
-		      kr);
+		SC_log(LOG_ERR, "SCMonitor : IOServiceAddMatchingNotification returned 0x%x", kr);
 		return;
 	}
 
@@ -1136,11 +1226,6 @@ watcher_add(MyType *myInstance)
 {
 	CFBundleRef	bundle;
 
-	if (myInstance->log_msg == NULL) {
-		myInstance->log_msg = asl_new(ASL_TYPE_MSG);
-		asl_set(myInstance->log_msg, ASL_KEY_FACILITY, MY_BUNDLE_ID);
-	}
-
 	bundle = CFBundleGetBundleWithIdentifier(CFSTR(MY_BUNDLE_ID));
 	if (bundle != NULL) {
 		CFStringRef	action;
@@ -1196,8 +1281,6 @@ watcher_remove(MyType *myInstance)
 		myInstance->interfaces_known = NULL;
 	}
 
-	asl_release(myInstance->log_msg);
-	myInstance->log_msg = NULL;
 	return;
 }
 
@@ -1284,11 +1367,12 @@ static UserEventAgentInterfaceStruct UserEventAgentInterfaceFtbl = {
 void *
 UserEventAgentFactory(CFAllocatorRef allocator, CFUUIDRef typeID)
 {
+#pragma unused(allocator)
 	MyType	*newOne	= NULL;
 
 	if (CFEqual(typeID, kUserEventAgentTypeID)) {
 		newOne	= (MyType *)malloc(sizeof(MyType));
-		bzero(newOne, sizeof(*newOne));
+		memset(newOne, 0, sizeof(*newOne));
 		newOne->_UserEventAgentInterface = &UserEventAgentInterfaceFtbl;
 		newOne->_factoryID = (CFUUIDRef)CFRetain(kUserEventAgentFactoryID);
 		CFPlugInAddInstanceForFactory(kUserEventAgentFactoryID);
@@ -1308,7 +1392,7 @@ main(int argc, char **argv)
 	_sc_log     = FALSE;
 	_sc_verbose = (argc > 1) ? TRUE : FALSE;
 
-	bzero(newOne, sizeof(*newOne));
+	memset(newOne, 0, sizeof(*newOne));
 	myInstall(newOne);
 	CFRunLoopRun();
 	exit(0);

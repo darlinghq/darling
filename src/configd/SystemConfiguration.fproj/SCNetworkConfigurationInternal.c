@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2004-2007, 2009, 2010, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2004-2007, 2009, 2010-2013, 2015-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -29,13 +29,24 @@
  */
 
 
-#include <CoreFoundation/CoreFoundation.h>
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCValidation.h>
-#include <SystemConfiguration/SCPrivate.h>
+#include "SCPreferencesInternal.h"
+#include "SCNetworkConfigurationInternal.h"
 
 #include <sys/ioctl.h>
 #include <net/if.h>
+
+
+__private_extern__ os_log_t
+__log_SCNetworkConfiguration(void)
+{
+	static os_log_t	log	= NULL;
+
+	if (log == NULL) {
+		log = os_log_create("com.apple.SystemConfiguration", "SCNetworkConfiguration");
+	}
+
+	return log;
+}
 
 
 __private_extern__ CFDictionaryRef
@@ -190,16 +201,20 @@ __setPrefsEnabled(SCPreferencesRef      prefs,
 	return ok;
 }
 
+#if	TARGET_OS_OSX
+#define SYSTEMCONFIGURATION_RESOURCES_PATH	SYSTEMCONFIGURATION_FRAMEWORK_PATH "/Resources"
+#else
+#define SYSTEMCONFIGURATION_RESOURCES_PATH	SYSTEMCONFIGURATION_FRAMEWORK_PATH
+#endif	// TARGET_OS_OSX
+
+#define NETWORKCONFIGURATION_RESOURCE_FILE	"NetworkConfiguration.plist"
 
 static CFDictionaryRef
 __copyTemplates()
 {
 	CFBundleRef     bundle;
-	CFErrorRef	error		= NULL;
-	Boolean		ok;
 	CFDictionaryRef templates;
 	CFURLRef	url;
-	CFDataRef       xmlTemplates    = NULL;
 
 	bundle = _SC_CFBundleGet();
 	if (bundle == NULL) {
@@ -208,30 +223,26 @@ __copyTemplates()
 
 	url = CFBundleCopyResourceURL(bundle, CFSTR("NetworkConfiguration"), CFSTR("plist"), NULL);
 	if (url == NULL) {
-		return NULL;
-	}
+		SC_log(LOG_ERR, "failed to GET resource URL to \"%s\". Trying harder...", NETWORKCONFIGURATION_RESOURCE_FILE);
+		url = CFURLCreateWithFileSystemPath(NULL,
+						    CFSTR(SYSTEMCONFIGURATION_RESOURCES_PATH
+							  "/"
+							  NETWORKCONFIGURATION_RESOURCE_FILE),
+						    kCFURLPOSIXPathStyle,
+						    TRUE);
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated"
-	ok = CFURLCreateDataAndPropertiesFromResource(NULL, url, &xmlTemplates, NULL, NULL, NULL);
-#pragma GCC diagnostic pop
-	CFRelease(url);
-	if (!ok || (xmlTemplates == NULL)) {
-		return NULL;
-	}
-
-	// convert the XML data into a property list
-	templates = CFPropertyListCreateWithData(NULL, xmlTemplates, kCFPropertyListImmutable, NULL, &error);
-	CFRelease(xmlTemplates);
-	if (templates == NULL) {
-		if (error != NULL) {
-			SCLog(TRUE, LOG_DEBUG, CFSTR("could not load SCNetworkConfiguration templates: %@"), error);
-			CFRelease(error);
+		if (url == NULL) {
+			SC_log(LOG_ERR, "failed to CREATE resource URL to \"%s\"", SYSTEMCONFIGURATION_RESOURCES_PATH
+										   "/"
+										   NETWORKCONFIGURATION_RESOURCE_FILE);
+			return NULL;
 		}
-		return NULL;
 	}
 
-	if (!isA_CFDictionary(templates)) {
+	templates = _SCCreatePropertyListFromResource(url);
+	CFRelease(url);
+
+	if ((templates != NULL) && !isA_CFDictionary(templates)) {
 		CFRelease(templates);
 		return NULL;
 	}
@@ -350,18 +361,16 @@ __createInterface(int s, CFStringRef interface)
 {
 	struct ifreq	ifr;
 
-	bzero(&ifr, sizeof(ifr));
+	memset(&ifr, 0, sizeof(ifr));
 	(void) _SC_cfstring_to_cstring(interface,
 				       ifr.ifr_name,
 				       sizeof(ifr.ifr_name),
 				       kCFStringEncodingASCII);
 
 	if (ioctl(s, SIOCIFCREATE, &ifr) == -1) {
-		SCLog(TRUE,
-		      LOG_ERR,
-		      CFSTR("could not create interface \"%@\": %s"),
-		      interface,
-		      strerror(errno));
+		SC_log(LOG_NOTICE, "could not create interface \"%@\": %s",
+		       interface,
+		       strerror(errno));
 		return FALSE;
 	}
 
@@ -374,18 +383,16 @@ __destroyInterface(int s, CFStringRef interface)
 {
 	struct ifreq	ifr;
 
-	bzero(&ifr, sizeof(ifr));
+	memset(&ifr, 0, sizeof(ifr));
 	(void) _SC_cfstring_to_cstring(interface,
 				       ifr.ifr_name,
 				       sizeof(ifr.ifr_name),
 				       kCFStringEncodingASCII);
 
 	if (ioctl(s, SIOCIFDESTROY, &ifr) == -1) {
-		SCLog(TRUE,
-		      LOG_ERR,
-		      CFSTR("could not destroy interface \"%@\": %s"),
-		      interface,
-		      strerror(errno));
+		SC_log(LOG_NOTICE, "could not destroy interface \"%@\": %s",
+		       interface,
+		       strerror(errno));
 		return FALSE;
 	}
 

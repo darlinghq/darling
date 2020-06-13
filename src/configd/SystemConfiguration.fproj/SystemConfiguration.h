@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2004, 2006, 2008-2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2004, 2006, 2008-2010, 2012, 2015, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,14 +17,14 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SYSTEMCONFIGURATION_H
 #define _SYSTEMCONFIGURATION_H
 
-#include <Availability.h>
+#include <os/availability.h>
 #include <sys/cdefs.h>
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -106,12 +106,14 @@ enum {
 	/*
 	 * SCNetworkConnection error codes
 	 */
-	kSCStatusConnectionNoService		= 5001,	/* Network service for connection not available
-							   __OSX_AVAILABLE_STARTING(__MAC_10_6,__IPHONE_2_0)
-							 */
-	kSCStatusConnectionIgnore               = 5002, /* Network connection information not available at this time
-							   __OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_6_0)
-							 */
+	kSCStatusConnectionNoService
+		API_AVAILABLE(macos(6.0))
+		SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0))
+						= 5001,	/* Network service for connection not available */
+	kSCStatusConnectionIgnore
+		API_AVAILABLE(macos(9.0))
+		SPI_AVAILABLE(ios(6.0), tvos(9.0), watchos(1.0), bridgeos(1.0))
+						= 5002, /* Network connection information not available at this time */
 };
 
 
@@ -136,12 +138,15 @@ enum {
 #include <SystemConfiguration/SCNetworkReachability.h>
 #include <SystemConfiguration/SCNetworkConnection.h>
 
+CF_IMPLICIT_BRIDGING_ENABLED
+CF_ASSUME_NONNULL_BEGIN
+
 /*!
 	@const kCFErrorDomainSystemConfiguration
 	@discussion CFError domain associated with errors reported by
 		the SystemConfiguration.framework.
  */
-extern const CFStringRef	kCFErrorDomainSystemConfiguration	__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+extern const CFStringRef	kCFErrorDomainSystemConfiguration	API_AVAILABLE(macos(10.5), ios(2.0));
 
 __BEGIN_DECLS
 
@@ -151,7 +156,7 @@ __BEGIN_DECLS
 		as the result of calling a System Configuration framework API.
 	@result Returns the last error encountered.
  */
-CFErrorRef	SCCopyLastError		(void)				__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0);
+CFErrorRef	SCCopyLastError		(void)				API_AVAILABLE(macos(10.5), ios(2.0));
 
 /*!
 	@function SCError
@@ -159,17 +164,21 @@ CFErrorRef	SCCopyLastError		(void)				__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHO
 		as the result of calling a System Configuration framework API.
 	@result Returns the last error encountered.
  */
-int		SCError			(void)				__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0);
+int		SCError			(void)				API_AVAILABLE(macos(10.1), ios(2.0));
 
 /*!
 	@function SCErrorString
 	@discussion Returns a pointer to the message string
-		associated with the specified status or error.
-	@param status The SCDynamicStoreStatus to be returned.
+		associated with the specified status or error
+		number.
+	@param status The status or error number.
 	@result Returns a pointer to the error message string.
  */
-const char *	SCErrorString		(int	status)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0);
+const char *	SCErrorString		(int	status)			API_AVAILABLE(macos(10.1), ios(2.0));
 
 __END_DECLS
 
-#endif /* _SYSTEMCONFIGURATION_H */
+CF_ASSUME_NONNULL_END
+CF_IMPLICIT_BRIDGING_DISABLED
+
+#endif	/* _SYSTEMCONFIGURATION_H */

@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2001, 2003-2005, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2001, 2003-2005, 2011, 2013, 2015, 2017 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -101,7 +101,7 @@ S_application_path(CFStringRef applicationID)
 
 Boolean
 DHCPClientPreferencesSetApplicationOptions(CFStringRef applicationID,
-					   UInt8 * options,
+					   const UInt8 * options,
 					   CFIndex count)
 {
     CFMutableDictionaryRef	dict = NULL;
@@ -514,7 +514,7 @@ main(int argc, char * argv[])
 		  printed = FALSE;
 	      }
 	  }
-	  if (printed == FALSE) {
+	  if (!printed) {
 	      print_data((void *)CFDataGetBytePtr(option), len);
 	  }
 	  if (serviceID)
@@ -592,19 +592,13 @@ main(int argc, char * argv[])
 
 	      count = argc - 3;
 	      options = malloc(count);
-	      if (options == NULL) {
-		  fprintf(stderr, "malloc failed %s\n",
-			  strerror(errno));
-		  exit(1);
-	      }
 	      for (i = 0; i < count; i++) {
 		  options[i] = atoi(argv[3 + i]);
 	      }
 	  }
 	  app_id = CFStringCreateWithFormat(NULL, NULL,
 					    CFSTR("%s"), argv[2]);
-	  if (DHCPClientPreferencesSetApplicationOptions(app_id, options,
-							 count) == FALSE) {
+	  if (!DHCPClientPreferencesSetApplicationOptions(app_id, options, count) {
 	      printf("operation failed\n");
 	  }
 	  if (options) {

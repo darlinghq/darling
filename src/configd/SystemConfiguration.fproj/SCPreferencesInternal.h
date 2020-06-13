@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2003-2005, 2007-2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003-2005, 2007-2011, 2013-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,21 +17,31 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SCPREFERENCESINTERNAL_H
 #define _SCPREFERENCESINTERNAL_H
 
+#include <dispatch/dispatch.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <os/log.h>
+#include <os/state_private.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
+
+#ifndef	SC_LOG_HANDLE
+#define	SC_LOG_HANDLE	__log_SCPreferences
+#endif	// SC_LOG_HANDLE
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <SystemConfiguration/SCValidation.h>
+#include <SystemConfiguration/SCPrivate.h>
+
 #include <SystemConfiguration/SCPreferences.h>
 #include <SystemConfiguration/SCDynamicStore.h>
-#include <dispatch/dispatch.h>
 
 
 #define	PREFS_DEFAULT_DIR		CFSTR("/Library/Preferences/SystemConfiguration")
@@ -79,6 +89,8 @@ typedef struct {
 
 	/* configd session */
 	SCDynamicStoreRef	session;
+	SCDynamicStoreRef	sessionNoO_EXLOCK;
+	int			sessionRefcnt;
 
 	/* configd session keys */
 	CFStringRef		sessionKeyLock;
@@ -104,7 +116,6 @@ typedef struct {
 
 	/* authorization, helper */
 	CFDataRef		authorizationData;
-	Boolean			authorizationRequired;
 	mach_port_t		helper_port;
 
 } SCPreferencesPrivate, *SCPreferencesPrivateRef;
@@ -122,14 +133,27 @@ typedef struct {
 
 __BEGIN_DECLS
 
+os_log_t
+__log_SCPreferences			(void);
+
 Boolean
 __SCPreferencesCreate_helper		(SCPreferencesRef	prefs);
 
 void
 __SCPreferencesAccess			(SCPreferencesRef	prefs);
 
+void
+__SCPreferencesAddSessionKeys		(SCPreferencesRef       prefs);
+
 Boolean
 __SCPreferencesAddSession		(SCPreferencesRef       prefs);
+
+void
+__SCPreferencesRemoveSession		(SCPreferencesRef       prefs);
+
+void
+__SCPreferencesUpdateLockedState	(SCPreferencesRef       prefs,
+					 Boolean		locked);
 
 CF_RETURNS_RETAINED
 CFDataRef
@@ -139,6 +163,9 @@ char *
 __SCPreferencesPath			(CFAllocatorRef		allocator,
 					 CFStringRef		prefsID,
 					 Boolean		useNewPrefs);
+
+off_t
+__SCPreferencesPrefsSize		(SCPreferencesRef	prefs);
 
 CF_RETURNS_RETAINED
 CFStringRef

@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2004-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2004-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -35,11 +35,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
 
-#include <SystemConfiguration/SystemConfiguration.h>
 #include "SCNetworkConfigurationInternal.h"
 #include "SCPreferencesInternal.h"
-#include <SystemConfiguration/SCValidation.h>
-#include <SystemConfiguration/SCPrivate.h>
 
 #include <ifaddrs.h>
 #include <pthread.h>
@@ -67,22 +64,22 @@ inet_dgram_socket()
 
 	s = socket(AF_INET, SOCK_DGRAM, 0);
 	if (s == -1) {
-		SCLog(TRUE, LOG_ERR, CFSTR("socket() failed: %s"), strerror(errno));
+		SC_log(LOG_ERR, "socket() failed: %s", strerror(errno));
 	}
 
 	return s;
 }
 
 static int
-siocgifmedia(int s, const char * ifname, int * status, int * active)
+siocgifxmedia(int s, const char * ifname, int * status, int * active)
 {
 	struct ifmediareq	ifmr;
 
 	*status = 0;
 	*active = 0;
-	bzero(&ifmr, sizeof(ifmr));
-	strncpy(ifmr.ifm_name, ifname, sizeof(ifmr.ifm_name));
-	if (ioctl(s, SIOCGIFMEDIA, &ifmr) == -1) {
+	memset(&ifmr, 0, sizeof(ifmr));
+	strlcpy(ifmr.ifm_name, ifname, sizeof(ifmr.ifm_name));
+	if (ioctl(s, SIOCGIFXMEDIA, &ifmr) == -1) {
 		return (-1);
 	}
 	if (ifmr.ifm_count != 0) {
@@ -100,9 +97,9 @@ if_bond_status_req_copy(int s, const char * ifname)
 	struct if_bond_status_req *	ibsr_p;
 	struct ifreq			ifr;
 
-	bzero(&ifr, sizeof(ifr));
+	memset(&ifr, 0, sizeof(ifr));
 	strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
-	bzero((char *)&ibr, sizeof(ibr));
+	memset((char *)&ibr, 0, sizeof(ibr));
 	ibr.ibr_op = IF_BOND_OP_GET_STATUS;
 	ibsr_p = &ibr.ibr_ibru.ibru_status;
 	ibsr_p->ibsr_version = IF_BOND_STATUS_REQ_VERSION;
@@ -153,7 +150,7 @@ add_interface(CFMutableArrayRef *interfaces, CFStringRef if_name, SCPreferencesR
 		interface = _SCNetworkInterfaceCreateWithBSDName(NULL, if_name,
 								 kIncludeNoVirtualInterfaces);
 	}
-	
+
 	if (interface != NULL) {
 		CFArrayAppendValue(*interfaces, interface);
 		CFRelease(interface);
@@ -262,19 +259,17 @@ SCBondInterfaceCopyAll(SCPreferencesRef prefs)
 	CFDictionaryRef		dict;
 	SCPreferencesRef	ni_prefs;
 	CFStringRef		path;
-	
-	if ((prefs == NULL) ||
-	    (__SCPreferencesUsingDefaultPrefs(prefs) == TRUE)) {
+
+	if (__SCPreferencesUsingDefaultPrefs(prefs)) {
 		ni_prefs = NULL;
-	}
-	else {
+	} else {
 		ni_prefs = __SCPreferencesCreateNIPrefsFromPrefs(prefs);
 	}
-	
+
 	context.bonds = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
 	context.prefs = prefs;
 	context.ni_prefs = ni_prefs;
-	
+
 	path = CFStringCreateWithFormat(NULL,
 					NULL,
 					CFSTR("/%@/%@"),
@@ -369,7 +364,7 @@ SCBondInterfaceCopyAvailableMemberInterfaces(SCPreferencesRef prefs)
 	}
 
 	// identify available interfaces
-	interfaces = __SCNetworkInterfaceCopyAll_IONetworkInterface();
+	interfaces = __SCNetworkInterfaceCopyAll_IONetworkInterface(FALSE);
 	if (interfaces != NULL) {
 		CFIndex	i;
 		CFIndex	n;
@@ -413,7 +408,7 @@ _SCBondInterfaceCopyActive(void)
 
 	if (getifaddrs(&ifap) == -1) {
 		_SCErrorSet(errno);
-		SCLog(TRUE, LOG_ERR, CFSTR("getifaddrs() failed: %s"), strerror(errno));
+		SC_log(LOG_NOTICE, "getifaddrs() failed: %s", strerror(errno));
 		return NULL;
 	}
 
@@ -447,10 +442,9 @@ _SCBondInterfaceCopyActive(void)
 				continue;
 			}
 			_SCErrorSet(errno);
-			SCLog(TRUE, LOG_ERR,
-			      CFSTR("if_bond_status_req_copy(%s) failed: %s"),
-			      ifp->ifa_name,
-			      strerror(errno));
+			SC_log(LOG_NOTICE, "if_bond_status_req_copy(%s) failed: %s",
+			       ifp->ifa_name,
+			       strerror(errno));
 			CFRelease(bonds);
 			bonds = NULL;
 			goto done;
@@ -508,7 +502,7 @@ _SCBondInterfaceCopyActive(void)
 SCBondInterfaceRef
 SCBondInterfaceCreate(SCPreferencesRef prefs)
 {
-	CFAllocatorRef		allocator;
+	CFAllocatorRef 		allocator;
 	SCBondInterfaceRef	bond		= NULL;
 	CFIndex			i;
 
@@ -986,7 +980,7 @@ SCBondInterfaceSetMode(SCBondInterfaceRef bond, CFNumberRef mode)
 		return FALSE;
 	}
 
-	if (CFNumberGetValue(mode, kCFNumberIntType, &mode_num) == FALSE) {
+	if (!CFNumberGetValue(mode, kCFNumberIntType, &mode_num)) {
 		_SCErrorSet(kSCStatusInvalidArgument);
 		return FALSE;
 	}
@@ -1068,7 +1062,7 @@ static pthread_once_t	bondStatus_init		= PTHREAD_ONCE_INIT;
 static CFStringRef
 __SCBondStatusCopyDescription(CFTypeRef cf)
 {
-	CFAllocatorRef		allocator	= CFGetAllocator(cf);
+	CFAllocatorRef 		allocator	= CFGetAllocator(cf);
 	CFMutableStringRef	result;
 	SCBondStatusPrivateRef	statusPrivate	= (SCBondStatusPrivateRef)cf;
 
@@ -1129,10 +1123,10 @@ __SCBondStatusInitialize(void)
 
 
 static SCBondStatusRef
-__SCBondStatusCreatePrivate(CFAllocatorRef	allocator,
-			    SCBondInterfaceRef	bond,
-			    CFDictionaryRef	status_bond,
-			    CFDictionaryRef	status_interfaces)
+__SCBondStatusCreatePrivate(CFAllocatorRef __nullable	allocator,
+			    SCBondInterfaceRef		bond,
+			    CFDictionaryRef		status_bond,
+			    CFDictionaryRef		status_interfaces)
 {
 	SCBondStatusPrivateRef	statusPrivate;
 	uint32_t		size;
@@ -1150,12 +1144,9 @@ __SCBondStatusCreatePrivate(CFAllocatorRef	allocator,
 		return NULL;
 	}
 
-	/* establish the bond status */
-
+	/* initialize non-zero/NULL members */
 	statusPrivate->bond		 = CFRetain(bond);
 	statusPrivate->status_bond       = CFDictionaryCreateCopy(NULL, status_bond);
-
-	statusPrivate->interfaces        = NULL;
 	statusPrivate->status_interfaces = CFDictionaryCreateCopy(NULL, status_interfaces);
 
 	return (SCBondStatusRef)statusPrivate;
@@ -1262,17 +1253,16 @@ SCBondInterfaceCopyStatus(SCBondInterfaceRef bond)
 				if_name,
 				sizeof(if_name),
 				kCFStringEncodingASCII);
-	if (siocgifmedia(s, if_name, &bond_if_status, &bond_if_active) == -1) {
+	if (siocgifxmedia(s, if_name, &bond_if_status, &bond_if_active) == -1) {
 		_SCErrorSet(errno);
 		switch (errno) {
 			case EBUSY :
 			case ENXIO :
 				break;
 			default :
-				SCLog(TRUE, LOG_ERR,
-				      CFSTR("siocgifmedia(%s) failed: %s"),
-				      if_name,
-				      strerror(errno));
+				SC_log(LOG_NOTICE, "siocgifxmedia(%s) failed: %s",
+				       if_name,
+				       strerror(errno));
 		}
 		goto done;
 	}
@@ -1324,16 +1314,15 @@ SCBondInterfaceCopyStatus(SCBondInterfaceRef bond)
 			int			status = 0;
 			static lacp_system	zeroes = { {0, 0, 0, 0, 0, 0}};
 
-			if (siocgifmedia(s, scan_p->ibs_if_name, &status, &active) == -1) {
+			if (siocgifxmedia(s, scan_p->ibs_if_name, &status, &active) == -1) {
 				switch (errno) {
 					case EBUSY :
 					case ENXIO :
 						break;
 					default :
-						SCLog(TRUE, LOG_ERR,
-						      CFSTR("siocgifmedia(%s) failed: %s"),
-						      if_name,
-						      strerror(errno));
+						SC_log(LOG_NOTICE, "siocgifxmedia(%s) failed: %s",
+						       if_name,
+						       strerror(errno));
 						break;
 				}
 			}
@@ -1407,7 +1396,7 @@ __bond_set_mode(int s, CFStringRef bond_if, CFNumberRef mode)
 {
 	struct if_bond_req	breq;
 	struct ifreq		ifr;
-	int					mode_num;
+	int			mode_num;
 
 	mode_num = IF_BOND_MODE_LACP;
 	if (mode != NULL) {
@@ -1415,22 +1404,21 @@ __bond_set_mode(int s, CFStringRef bond_if, CFNumberRef mode)
 	}
 
 	// bond interface
-	bzero(&ifr, sizeof(ifr));
+	memset(&ifr, 0, sizeof(ifr));
 	(void) _SC_cfstring_to_cstring(bond_if,
 				       ifr.ifr_name,
 				       sizeof(ifr.ifr_name),
 				       kCFStringEncodingASCII);
 	ifr.ifr_data = (caddr_t)&breq;
-	bzero(&breq, sizeof(breq));
+	memset(&breq, 0, sizeof(breq));
 	breq.ibr_op = IF_BOND_OP_SET_MODE;
 	breq.ibr_ibru.ibru_int_val = mode_num;
 	if (ioctl(s, SIOCSIFBOND, (caddr_t)&ifr) == -1) {
 		_SCErrorSet(errno);
-		SCLog(TRUE, LOG_ERR,
-		      CFSTR("could not set mode to %@ on bond \"%@\": %s"),
-		      mode,
-		      bond_if,
-		      strerror(errno));
+		SC_log(LOG_ERR, "could not set mode to %@ on bond \"%@\": %s",
+		       mode,
+		       bond_if,
+		       strerror(errno));
 		return FALSE;
 	}
 
@@ -1444,7 +1432,7 @@ __bond_add_interface(int s, CFStringRef bond_if, CFStringRef interface_if)
 	struct ifreq		ifr;
 
 	// bond interface
-	bzero(&ifr, sizeof(ifr));
+	memset(&ifr, 0, sizeof(ifr));
 	(void) _SC_cfstring_to_cstring(bond_if,
 				       ifr.ifr_name,
 				       sizeof(ifr.ifr_name),
@@ -1452,7 +1440,7 @@ __bond_add_interface(int s, CFStringRef bond_if, CFStringRef interface_if)
 	ifr.ifr_data = (caddr_t)&breq;
 
 	// new bond member
-	bzero(&breq, sizeof(breq));
+	memset(&breq, 0, sizeof(breq));
 	breq.ibr_op = IF_BOND_OP_ADD_INTERFACE;
 	(void) _SC_cfstring_to_cstring(interface_if,
 				       breq.ibr_ibru.ibru_if_name,
@@ -1462,11 +1450,10 @@ __bond_add_interface(int s, CFStringRef bond_if, CFStringRef interface_if)
 	// add new bond member
 	if (ioctl(s, SIOCSIFBOND, (caddr_t)&ifr) == -1) {
 		_SCErrorSet(errno);
-		SCLog(TRUE, LOG_ERR,
-		      CFSTR("could not add interface \"%@\" to bond \"%@\": %s"),
-		      interface_if,
-		      bond_if,
-		      strerror(errno));
+		SC_log(LOG_ERR, "could not add interface \"%@\" to bond \"%@\": %s",
+		       interface_if,
+		       bond_if,
+		       strerror(errno));
 		return FALSE;
 	}
 
@@ -1481,7 +1468,7 @@ __bond_remove_interface(int s, CFStringRef bond_if, CFStringRef interface_if)
 	struct ifreq		ifr;
 
 	// bond interface
-	bzero(&ifr, sizeof(ifr));
+	memset(&ifr, 0, sizeof(ifr));
 	(void) _SC_cfstring_to_cstring(bond_if,
 				       ifr.ifr_name,
 				       sizeof(ifr.ifr_name),
@@ -1489,7 +1476,7 @@ __bond_remove_interface(int s, CFStringRef bond_if, CFStringRef interface_if)
 	ifr.ifr_data = (caddr_t)&breq;
 
 	// bond member to remove
-	bzero(&breq, sizeof(breq));
+	memset(&breq, 0, sizeof(breq));
 	breq.ibr_op = IF_BOND_OP_REMOVE_INTERFACE;
 	(void) _SC_cfstring_to_cstring(interface_if,
 				       breq.ibr_ibru.ibru_if_name,
@@ -1499,11 +1486,10 @@ __bond_remove_interface(int s, CFStringRef bond_if, CFStringRef interface_if)
 	// remove bond member
 	if (ioctl(s, SIOCSIFBOND, (caddr_t)&ifr) == -1) {
 		_SCErrorSet(errno);
-		SCLog(TRUE, LOG_ERR,
-		      CFSTR("could not remove interface \"%@\" from bond \"%@\": %s"),
-		      interface_if,
-		      bond_if,
-		      strerror(errno));
+		SC_log(LOG_ERR, "could not remove interface \"%@\" from bond \"%@\": %s",
+		       interface_if,
+		       bond_if,
+		       strerror(errno));
 		return FALSE;
 	}
 
@@ -1652,7 +1638,7 @@ _SCBondInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 			a_bond            = CFArrayGetValueAtIndex(active, j);
 			a_bond_if         = SCNetworkInterfaceGetBSDName(a_bond);
 			a_bond_interfaces = SCBondInterfaceGetMemberInterfaces(a_bond);
-			a_bond_mode		  = SCBondInterfaceGetMode(a_bond);
+			a_bond_mode       = SCBondInterfaceGetMode(a_bond);
 			a_count           = (a_bond_interfaces != NULL) ? CFArrayGetCount(a_bond_interfaces) : 0;
 
 			if (CFEqual(c_bond_if, a_bond_if)) {

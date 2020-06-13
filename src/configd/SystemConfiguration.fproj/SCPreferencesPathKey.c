@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2004, 2005, 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2001, 2004, 2005, 2010, 2015 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,7 +32,7 @@
 
 #include <stdarg.h>
 
-__private_extern__ CFStringRef
+CFStringRef
 SCPreferencesPathKeyCreate(CFAllocatorRef	allocator,
 			   CFStringRef		fmt,
 			   ...)
@@ -51,7 +51,7 @@ SCPreferencesPathKeyCreate(CFAllocatorRef	allocator,
 }
 
 
-__private_extern__ CFStringRef
+CFStringRef
 SCPreferencesPathKeyCreateNetworkServices(CFAllocatorRef	allocator)
 {
 	/*
@@ -64,7 +64,7 @@ SCPreferencesPathKeyCreateNetworkServices(CFAllocatorRef	allocator)
 }
 
 
-__private_extern__ CFStringRef
+CFStringRef
 SCPreferencesPathKeyCreateNetworkServiceEntity(CFAllocatorRef	allocator,
 					       CFStringRef	service,
 					       CFStringRef	entity)
@@ -96,7 +96,7 @@ SCPreferencesPathKeyCreateNetworkServiceEntity(CFAllocatorRef	allocator,
 }
 
 
-__private_extern__ CFStringRef
+CFStringRef
 SCPreferencesPathKeyCreateSets(CFAllocatorRef	allocator)
 {
 	/*
@@ -109,7 +109,7 @@ SCPreferencesPathKeyCreateSets(CFAllocatorRef	allocator)
 }
 
 
-__private_extern__ CFStringRef
+CFStringRef
 SCPreferencesPathKeyCreateSet(CFAllocatorRef	allocator,
 			      CFStringRef       set)
 {
@@ -124,7 +124,7 @@ SCPreferencesPathKeyCreateSet(CFAllocatorRef	allocator,
 }
 
 
-__private_extern__ CFStringRef
+CFStringRef
 SCPreferencesPathKeyCreateSetNetworkGlobalEntity(CFAllocatorRef	allocator,
 					      CFStringRef	set,
 					      CFStringRef	entity)
@@ -143,7 +143,7 @@ SCPreferencesPathKeyCreateSetNetworkGlobalEntity(CFAllocatorRef	allocator,
 }
 
 
-__private_extern__ CFStringRef
+CFStringRef
 SCPreferencesPathKeyCreateSetNetworkInterfaceEntity(CFAllocatorRef	allocator,
 						 CFStringRef	set,
 						 CFStringRef	ifname,
@@ -152,6 +152,16 @@ SCPreferencesPathKeyCreateSetNetworkInterfaceEntity(CFAllocatorRef	allocator,
 	/*
 	 * create "/Sets/set-id/Network/Interface/interface-name/entity"
 	 */
+	if (entity == NULL) {
+		return CFStringCreateWithFormat(allocator,
+						NULL,
+						CFSTR("/%@/%@/%@/%@/%@"),
+						kSCPrefSets,
+						set,
+						kSCCompNetwork,
+						kSCCompInterface,
+						ifname);
+	}
 	return CFStringCreateWithFormat(allocator,
 					NULL,
 					CFSTR("/%@/%@/%@/%@/%@/%@"),
@@ -164,7 +174,7 @@ SCPreferencesPathKeyCreateSetNetworkInterfaceEntity(CFAllocatorRef	allocator,
 }
 
 
-__private_extern__ CFStringRef
+CFStringRef
 SCPreferencesPathKeyCreateSetNetworkService(CFAllocatorRef	allocator,
 					    CFStringRef		set,
 					    CFStringRef		service)
@@ -200,7 +210,7 @@ SCPreferencesPathKeyCreateSetNetworkService(CFAllocatorRef	allocator,
 }
 
 
-__private_extern__ CFStringRef
+CFStringRef
 SCPreferencesPathKeyCreateSetNetworkServiceEntity(CFAllocatorRef	allocator,
 						  CFStringRef		set,
 						  CFStringRef		service,

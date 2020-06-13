@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2004-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -42,21 +42,24 @@
 #include <notify.h>
 
 #ifdef	MAIN
-#define my_log(__level, fmt, ...)	SCPrint(TRUE, stdout, CFSTR(fmt "\n"), ## __VA_ARGS__)
+#define	my_log(__level, __format, ...)	SCPrint(TRUE, stdout, CFSTR(__format "\n"), ## __VA_ARGS__)
 #else	// MAIN
 #include "ip_plugin.h"
 #endif	// MAIN
 
 static SCDynamicStoreRef	store		= NULL;
+static CFRunLoopRef		rl		= NULL;
 static CFRunLoopSourceRef	rls		= NULL;
+static dispatch_queue_t		queue		= NULL;
+
+static int			notify_token	= -1;
 
 static struct timeval		ptrQueryStart;
 static SCNetworkReachabilityRef	ptrTarget	= NULL;
 
-static Boolean			_verbose	= FALSE;
-
 
 #define	HOSTNAME_NOTIFY_KEY	"com.apple.system.hostname"
+#define SET_HOSTNAME_QUEUE	"com.apple.config.set-hostname"
 
 CFStringRef copy_dhcp_hostname(CFStringRef serviceID);
 
@@ -76,7 +79,7 @@ set_hostname(CFStringRef hostname)
 					    new_name,
 					    sizeof(new_name),
 					    kCFStringEncodingUTF8) == NULL) {
-			my_log(LOG_ERR, "could not convert [new] hostname");
+			my_log(LOG_NOTICE, "could not convert [new] hostname");
 			new_name[0] = '\0';
 		}
 
@@ -212,8 +215,10 @@ ptr_query_stop()
 		return;
 	}
 
+	my_log(LOG_INFO, "hostname: ptr query stop");
+
 	SCNetworkReachabilitySetCallback(ptrTarget, NULL, NULL);
-	SCNetworkReachabilityUnscheduleFromRunLoop(ptrTarget, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+	SCNetworkReachabilityUnscheduleFromRunLoop(ptrTarget, rl, kCFRunLoopDefaultMode);
 	CFRelease(ptrTarget);
 	ptrTarget = NULL;
 
@@ -221,21 +226,66 @@ ptr_query_stop()
 }
 
 
+/* Return a ptr record if the sharing pref name is a matching FQDN */
+static CFStringRef
+hostname_match_full(CFArrayRef hosts, CFIndex count, CFStringRef nameToMatch)
+{
+	CFIndex		i;
+	CFStringRef	matchedHostName	= NULL;
+
+	for (i = 0; i < count; i++) {
+		CFStringRef tempHostName;
+
+		tempHostName = CFArrayGetValueAtIndex(hosts, i);
+		if (CFStringCompare(tempHostName, nameToMatch, kCFCompareCaseInsensitive) == 0) {
+			matchedHostName = tempHostName;
+			break;
+		}
+	}
+	return matchedHostName;
+}
+
+
+/* Return a ptr record if the sharing pref name matches DNS record's first label */
+static CFStringRef
+hostname_match_first_label(CFArrayRef hosts, CFIndex count, CFStringRef nameToMatch)
+{
+	CFIndex		i;
+	CFStringRef	matchedHostName	= NULL;
+
+	for (i = 0; i < count; i++) {
+		CFArrayRef	fqdnSeparated;
+		CFStringRef	tempHostName;
+
+		tempHostName = CFArrayGetValueAtIndex(hosts, i);
+		fqdnSeparated = CFStringCreateArrayBySeparatingStrings(NULL, tempHostName, CFSTR("."));
+		if (fqdnSeparated != NULL) {
+			CFStringRef	firstLabel;
+			Boolean		matchFound;
+
+			firstLabel = CFArrayGetValueAtIndex(fqdnSeparated, 0);
+			matchFound = (CFStringCompare(firstLabel, nameToMatch, kCFCompareCaseInsensitive) == 0);
+			CFRelease(fqdnSeparated);
+			if (matchFound) {
+				matchedHostName = tempHostName;
+				break;
+			}
+		}
+	}
+	return matchedHostName;
+}
+
+
 static void
 ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info)
 {
+#pragma unused(info)
 	CFStringRef		hostname	= NULL;
 	struct timeval		ptrQueryComplete;
 	struct timeval		ptrQueryElapsed;
 
 	(void) gettimeofday(&ptrQueryComplete, NULL);
 	timersub(&ptrQueryComplete, &ptrQueryStart, &ptrQueryElapsed);
-	if (_verbose) {
-		my_log(LOG_DEBUG, "ptr query complete%s (query time = %ld.%3.3d)",
-		       (flags & kSCNetworkReachabilityFlagsReachable) ? "" : ", host not found",
-		       ptrQueryElapsed.tv_sec,
-		       ptrQueryElapsed.tv_usec / 1000);
-	}
 
 	// use reverse DNS name, if available
 
@@ -248,38 +298,89 @@ ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags f
 		 */
 		hosts = SCNetworkReachabilityCopyResolvedAddress(target, &error_num);
 		if (hosts != NULL) {
-			if (CFArrayGetCount(hosts) > 0) {
+			CFIndex count = CFArrayGetCount(hosts);
+			if (count > 0) {
+				CFStringRef	computerName;
+				CFStringRef	localHostName;
 
-				hostname = CFArrayGetValueAtIndex(hosts, 0);
-				my_log(LOG_DEBUG, "hostname (reverse DNS query) = %@", hostname);
+				my_log(LOG_INFO, "hostname: ptr query complete (query time = %ld.%3.3d)",
+				       ptrQueryElapsed.tv_sec,
+				       ptrQueryElapsed.tv_usec / 1000);
+
+				// first, check if ComputerName is dns-clean
+				computerName = _SCPreferencesCopyComputerName(NULL, NULL);
+				if (computerName != NULL) {
+					if (_SC_CFStringIsValidDNSName(computerName)) {
+						CFRange	dotsCheck;
+
+						dotsCheck = CFStringFind(computerName, CFSTR("."), 0);
+						if (dotsCheck.length == 0) {
+							hostname = hostname_match_first_label(hosts, count, computerName);
+						} else {
+							hostname = hostname_match_full(hosts, count, computerName);
+						}
+					}
+					CFRelease(computerName);
+				}
+
+				// if no match, check LocalHostName against the first label of FQDN
+				localHostName = (hostname == NULL) ? SCDynamicStoreCopyLocalHostName(store) : NULL;
+				if (localHostName != NULL) {
+					hostname = hostname_match_first_label(hosts, count, localHostName);
+					CFRelease(localHostName);
+				}
+
+				// if no match, use the first of the returned names
+				if (hostname == NULL) {
+					hostname = CFArrayGetValueAtIndex(hosts, 0);
+				}
+
+				my_log(LOG_INFO, "hostname (reverse DNS query) = %@", hostname);
 				set_hostname(hostname);
+			} else {
+				my_log(LOG_INFO, "hostname: ptr query complete w/no hosts (query time = %ld.%3.3d)",
+				       ptrQueryElapsed.tv_sec,
+				       ptrQueryElapsed.tv_usec / 1000);
 			}
 			CFRelease(hosts);
 
 			if (hostname != NULL) {
 				goto done;
 			}
+		} else {
+			// if kSCNetworkReachabilityFlagsReachable and hosts == NULL
+			// it means the PTR request has not come back yet
+			// we must wait for this callback to be called again
+			my_log(LOG_INFO, "hostname: ptr query reply w/no hosts (query time = %ld.%3.3d)",
+			       ptrQueryElapsed.tv_sec,
+			       ptrQueryElapsed.tv_usec / 1000);
+			return;
 		}
+	} else {
+		my_log(LOG_INFO, "hostname: ptr query complete, host not found (query time = %ld.%3.3d)",
+		       ptrQueryElapsed.tv_sec,
+		       ptrQueryElapsed.tv_usec / 1000);
 	}
 
 	// get local (multicast DNS) name, if available
 
 	hostname = SCDynamicStoreCopyLocalHostName(store);
 	if (hostname != NULL) {
-		CFMutableStringRef	localName;
+		CFMutableStringRef	localHostName;
 
-		my_log(LOG_DEBUG, "hostname (multicast DNS) = %@", hostname);
-		localName = CFStringCreateMutableCopy(NULL, 0, hostname);
-		assert(localName != NULL);
-		CFStringAppend(localName, CFSTR(".local"));
-		set_hostname(localName);
-		CFRelease(localName);
+		my_log(LOG_INFO, "hostname (multicast DNS) = %@", hostname);
+		localHostName = CFStringCreateMutableCopy(NULL, 0, hostname);
+		assert(localHostName != NULL);
+		CFStringAppend(localHostName, CFSTR(".local"));
+		set_hostname(localHostName);
+		CFRelease(localHostName);
 		CFRelease(hostname);
 		goto done;
 	}
 
 	// use "localhost" if not other name is available
 
+	my_log(LOG_INFO, "hostname (localhost)");
 	set_hostname(CFSTR("localhost"));
 
     done :
@@ -287,7 +388,7 @@ ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags f
 	ptr_query_stop();
 
 #ifdef	MAIN
-	CFRunLoopStop(CFRunLoopGetCurrent());
+	CFRunLoopStop(rl);
 #endif	// MAIN
 
 	return;
@@ -330,8 +431,11 @@ ptr_query_start(CFStringRef address)
 		return FALSE;
 	}
 
+	my_log(LOG_INFO, "hostname: ptr query start");
+
+	(void) gettimeofday(&ptrQueryStart, NULL);
 	(void) SCNetworkReachabilitySetCallback(ptrTarget, ptr_query_callback, NULL);
-	(void) SCNetworkReachabilityScheduleWithRunLoop(ptrTarget, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+	(void) SCNetworkReachabilityScheduleWithRunLoop(ptrTarget, rl, kCFRunLoopDefaultMode);
 
 	return TRUE;
 }
@@ -340,6 +444,8 @@ ptr_query_start(CFStringRef address)
 static void
 update_hostname(SCDynamicStoreRef store, CFArrayRef changedKeys, void *info)
 {
+#pragma unused(changedKeys)
+#pragma unused(info)
 	CFStringRef	address		= NULL;
 	CFStringRef	hostname	= NULL;
 	CFStringRef	serviceID	= NULL;
@@ -354,7 +460,7 @@ update_hostname(SCDynamicStoreRef store, CFArrayRef changedKeys, void *info)
 
 	hostname = copy_prefs_hostname(store);
 	if (hostname != NULL) {
-		my_log(LOG_DEBUG, "hostname (prefs) = %@", hostname);
+		my_log(LOG_INFO, "hostname (prefs) = %@", hostname);
 		set_hostname(hostname);
 		goto done;
 	}
@@ -370,7 +476,7 @@ update_hostname(SCDynamicStoreRef store, CFArrayRef changedKeys, void *info)
 
 	hostname = copy_dhcp_hostname(serviceID);
 	if (hostname != NULL) {
-		my_log(LOG_DEBUG, "hostname (DHCP) = %@", hostname);
+		my_log(LOG_INFO, "hostname (DHCP) = %@", hostname);
 		set_hostname(hostname);
 		goto done;
 	}
@@ -379,13 +485,19 @@ update_hostname(SCDynamicStoreRef store, CFArrayRef changedKeys, void *info)
 
 	address = copy_primary_ip(store, serviceID);
 	if (address != NULL) {
-		Boolean	ok;
+		boolean_t	isExpensive;
 
 		// start reverse DNS query using primary IP address
-		ok = ptr_query_start(address);
-		if (ok) {
-			// if query started
-			goto done;
+		// if primary service is not expensive
+		isExpensive = check_if_service_expensive(serviceID);
+		if (!isExpensive) {
+			Boolean	ok;
+
+			ok = ptr_query_start(address);
+			if (ok) {
+				// if query started
+				goto done;
+			}
 		}
 	}
 
@@ -395,14 +507,14 @@ update_hostname(SCDynamicStoreRef store, CFArrayRef changedKeys, void *info)
 
 	hostname = SCDynamicStoreCopyLocalHostName(store);
 	if (hostname != NULL) {
-		CFMutableStringRef	localName;
+		CFMutableStringRef	localHostName;
 
-		my_log(LOG_DEBUG, "hostname (multicast DNS) = %@", hostname);
-		localName = CFStringCreateMutableCopy(NULL, 0, hostname);
-		assert(localName != NULL);
-		CFStringAppend(localName, CFSTR(".local"));
-		set_hostname(localName);
-		CFRelease(localName);
+		my_log(LOG_INFO, "hostname (multicast DNS) = %@", hostname);
+		localHostName = CFStringCreateMutableCopy(NULL, 0, hostname);
+		assert(localHostName != NULL);
+		CFStringAppend(localHostName, CFSTR(".local"));
+		set_hostname(localHostName);
+		CFRelease(localHostName);
 		goto done;
 	}
 
@@ -424,13 +536,13 @@ __private_extern__
 void
 load_hostname(Boolean verbose)
 {
+#pragma unused(verbose)
 	CFStringRef		key;
 	CFMutableArrayRef	keys		= NULL;
+	dispatch_block_t	notify_block;
+	Boolean			ok;
 	CFMutableArrayRef	patterns	= NULL;
-
-	if (verbose) {
-		_verbose = TRUE;
-	}
+	uint32_t		status;
 
 	/* initialize a few globals */
 
@@ -442,24 +554,17 @@ load_hostname(Boolean verbose)
 		goto error;
 	}
 
+	queue = dispatch_queue_create(SET_HOSTNAME_QUEUE, NULL);
+	if (queue == NULL) {
+		my_log(LOG_ERR,
+		       "dispatch_queue_create() failed");
+		goto error;
+	}
+
 	/* establish notification keys and patterns */
 
 	keys     = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
 	patterns = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
-
-	/* ...watch for primary service / interface changes */
-	key = SCDynamicStoreKeyCreateNetworkGlobalEntity(NULL,
-							 kSCDynamicStoreDomainState,
-							 kSCEntNetIPv4);
-	CFArrayAppendValue(keys, key);
-	CFRelease(key);
-
-	/* ...watch for DNS configuration changes */
-	key = SCDynamicStoreKeyCreateNetworkGlobalEntity(NULL,
-							 kSCDynamicStoreDomainState,
-							 kSCEntNetDNS);
-	CFArrayAppendValue(keys, key);
-	CFRelease(key);
 
 	/* ...watch for (per-service) DHCP option changes */
 	key = SCDynamicStoreKeyCreateNetworkServiceEntity(NULL,
@@ -480,31 +585,74 @@ load_hostname(Boolean verbose)
 	CFRelease(key);
 
 	/* register the keys/patterns */
-	if (!SCDynamicStoreSetNotificationKeys(store, keys, patterns)) {
+	ok = SCDynamicStoreSetNotificationKeys(store, keys, patterns);
+	CFRelease(keys);
+	CFRelease(patterns);
+	if (!ok) {
 		my_log(LOG_ERR,
 		       "SCDynamicStoreSetNotificationKeys() failed: %s",
 		       SCErrorString(SCError()));
 		goto error;
 	}
 
+	rl = CFRunLoopGetCurrent();
 	rls = SCDynamicStoreCreateRunLoopSource(NULL, store, 0);
-	if (!rls) {
+	if (rls == NULL) {
 		my_log(LOG_ERR,
 		       "SCDynamicStoreCreateRunLoopSource() failed: %s",
 		       SCErrorString(SCError()));
 		goto error;
 	}
-	CFRunLoopAddSource(CFRunLoopGetCurrent(), rls, kCFRunLoopDefaultMode);
+	CFRunLoopAddSource(rl, rls, kCFRunLoopDefaultMode);
 
-	CFRelease(keys);
-	CFRelease(patterns);
+	/* ...watch for primary service/interface and DNS configuration changes */
+	notify_block = ^{
+		CFArrayRef      changes;
+		CFStringRef     key;
+
+		key = SCDynamicStoreKeyCreateNetworkGlobalEntity(NULL,
+								 kSCDynamicStoreDomainState,
+								 kSCEntNetDNS);
+		changes = CFArrayCreate(NULL, (const void **)&key, 1, &kCFTypeArrayCallBacks);
+		(*update_hostname)(store, changes, NULL);
+		CFRelease(changes);
+		CFRelease(key);
+
+		return;
+	};
+	status = notify_register_dispatch(_SC_NOTIFY_NETWORK_CHANGE,
+					  &notify_token,
+					  queue,
+					  ^(int token){
+#pragma unused(token)
+						  CFRunLoopPerformBlock(rl,
+									kCFRunLoopDefaultMode,
+									notify_block);
+						  CFRunLoopWakeUp(rl);
+					  });
+	if (status != NOTIFY_STATUS_OK) {
+		my_log(LOG_ERR, "notify_register_dispatch() failed: %u", status);
+		goto error;
+	}
+
 	return;
 
     error :
 
-	if (keys != NULL)	CFRelease(keys);
-	if (patterns != NULL)	CFRelease(patterns);
-	if (store != NULL)	CFRelease(store);
+	if (rls != NULL) {
+		CFRunLoopRemoveSource(rl, rls, kCFRunLoopDefaultMode);
+		CFRelease(rls);
+		rls = NULL;
+	}
+	if (store != NULL) {
+		CFRelease(store);
+		store = NULL;
+	}
+	if (queue != NULL) {
+		dispatch_release(queue);
+		queue = NULL;
+	}
+
 	return;
 }
 
@@ -519,7 +667,6 @@ main(int argc, char **argv)
 	_sc_log = FALSE;
 	if ((argc > 1) && (strcmp(argv[1], "-d") == 0)) {
 		_sc_verbose = TRUE;
-		_verbose = TRUE;
 		argv++;
 		argc--;
 	}
