@@ -32,7 +32,7 @@ long sys_flistxattr(int fd, char* namebuf, unsigned long size, int options)
 		char buf[64] = {0};
 		char path[4096] = {0};
 		__simple_sprintf(buf, "/proc/self/fd/%d", fd);
-		#if __NR_readlink
+		#if defined(__NR_readlink)
 			ret = LINUX_SYSCALL(__NR_readlink, buf, path, sizeof(path) - 1);
 		#else
 			ret = LINUX_SYSCALL(__NR_readlinkat, LINUX_AT_FDCWD, buf, path, sizeof(path) - 1);

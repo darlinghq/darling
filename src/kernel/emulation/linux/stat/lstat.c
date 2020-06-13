@@ -27,7 +27,7 @@ long sys_lstat(const char* path, struct stat* stat)
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	#ifdef defined(__NR_lstat64)
+	#if defined(__NR_lstat64)
 		ret = LINUX_SYSCALL(__NR_lstat64, vc.path, &lstat);
 	#elif defined(__NR_lstat)
 		ret = LINUX_SYSCALL(__NR_lstat, vc.path, &lstat);
@@ -62,7 +62,7 @@ long sys_lstat64(const char* path, struct stat64* stat)
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	#ifdef defined(__NR_lstat64)
+	#if defined(__NR_lstat64)
 		ret = LINUX_SYSCALL(__NR_lstat64, vc.path, &lstat);
 	#elif defined(__NR_lstat)
 		ret = LINUX_SYSCALL(__NR_lstat, vc.path, &lstat);
