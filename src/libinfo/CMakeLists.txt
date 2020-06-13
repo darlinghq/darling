@@ -19,6 +19,8 @@ add_definitions(-w -nostdinc)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/Libinfo")
+
 add_subdirectory(gen.subproj)
 add_subdirectory(util.subproj)
 add_subdirectory(dns.subproj)
@@ -66,8 +68,6 @@ add_circular(system_info FAT
 	DEPENDENCIES
 		resolv-darwin
 )
-#target_link_libraries(system_info PRIVATE system_c resolv-darwin system_dyld system_blocks libdispatch_shared system_notify platform)
-#make_fat(system_info)
 
 install(TARGETS system_info DESTINATION libexec/darling/usr/lib/system)
 install(FILES master.passwd DESTINATION libexec/darling/etc)

@@ -21,11 +21,17 @@ set(info-lookup_sources
 	kvbuf.c
 	libinfo.c
 	mdns_module.c
+	muser_module.c
 	search_module.c
+	si_compare.c
 	si_data.c
 	si_getaddrinfo.c
 	si_module.c
 	thread_data.c
+)
+
+set_source_files_properties("si_compare.c" PROPERITES
+	COMPILE_FLAGS " -DPRIVATE"
 )
 
 add_darling_object_library(info-lookup ${info-lookup_sources})
