@@ -1,1 +1,1 @@
-../../../../../../../../src/libinfo/include/membershipPriv.h
+../../../../../../../../src/libinfo/membership.subproj/membershipPriv.h

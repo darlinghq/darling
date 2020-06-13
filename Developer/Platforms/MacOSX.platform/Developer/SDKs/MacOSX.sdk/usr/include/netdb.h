@@ -1,1 +1,1 @@
-../../../../../../../../src/libinfo/include/netdb.h
+../../../../../../../../src/libinfo/lookup.subproj/netdb.h

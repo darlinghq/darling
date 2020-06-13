@@ -1,1 +1,1 @@
-../../../../../../../../src/libinfo/include/ntsid.h
+../../../../../../../../src/libinfo/membership.subproj/ntsid.h

@@ -1,1 +1,1 @@
-../../../../../../../../src/libinfo/include/aliasdb.h
+../../../../../../../../src/libinfo/lookup.subproj/aliasdb.h
