@@ -7,7 +7,6 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 add_definitions(-DHAVE_STDINT_H=1)
-add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1090)
 add_definitions(-D__LIBC__ -D__DARWIN_UNIX03=1 -D__DARWIN_64_BIT_INO_T=1 -D__DARWIN_NON_CANCELABLE=1 -D__DARWIN_VERS_1050=1)
 add_definitions("'-D__warn_references(name,warning)='")
 add_definitions(-DBUILDING_LIBC -DPRIVATE)
