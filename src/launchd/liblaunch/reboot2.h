@@ -34,11 +34,6 @@ __BEGIN_DECLS
 __attribute__((visibility("default")))
 void *reboot2(uint64_t flags);
 
-/* This function is implemented in libxpc */
-/* It's header is here because it isn't clear where else it goes */
-__attribute__((visibility("default")))
-void *reboot3(uint64_t flags);
-
 __END_DECLS
 
 #endif /* __REBOOT2_H__ */

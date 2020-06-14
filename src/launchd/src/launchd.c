@@ -465,7 +465,7 @@ pid1_magic_init(void)
 	(void)posix_assumes_zero(chdir("/"));
 	(void)posix_assumes_zero(setlogin("root"));
 
-#if !TARGET_OS_EMBEDDED && !DARLING
+#if !TARGET_OS_EMBEDDED
 	auditinfo_addr_t auinfo = {
 		.ai_termid = { 
 			.at_type = AU_IPv4
