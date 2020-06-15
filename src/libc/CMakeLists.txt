@@ -214,6 +214,8 @@ add_circular(system_c FAT OBJECTS
 		system_duct
 		system_asl
 		xpc
+		corecrypto
+		system_trace
 	LINK_FLAGS
 		"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/xcodescripts/alias.list"
 )
