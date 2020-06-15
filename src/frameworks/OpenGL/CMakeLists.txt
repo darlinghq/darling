@@ -23,6 +23,8 @@ add_framework(OpenGL
         GL
         GLU
         EGL
+        CoreFoundation
+        CoreGraphics
 )
 
 set_property(TARGET OpenGL APPEND_STRING PROPERTY LINK_FLAGS

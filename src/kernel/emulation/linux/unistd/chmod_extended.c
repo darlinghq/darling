@@ -18,11 +18,19 @@ long sys_chmod_extended(const char* path, int uid, int gid, int mode, void* xsec
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	ret = LINUX_SYSCALL(__NR_chmod, vc.path, mode);
+	#if defined(__NR_chmod)
+		ret = LINUX_SYSCALL(__NR_chmod, vc.path, mode);
+	#else
+		ret = LINUX_SYSCALL(__NR_fchmodat, LINUX_AT_FDCWD, vc.path, mode, 0);
+	#endif
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 
-	ret = LINUX_SYSCALL(__NR_chown, vc.path, uid, gid);
+	#if defined(__NR_chown)
+		ret = LINUX_SYSCALL(__NR_chown, vc.path, uid, gid);
+	#else
+		ret = LINUX_SYSCALL(__NR_fchownat, LINUX_AT_FDCWD, vc.path, uid, gid, 0);
+	#endif
 	if (ret < 0)
 		return errno_linux_to_bsd(ret);
 

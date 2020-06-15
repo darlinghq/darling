@@ -11,6 +11,15 @@ const CFStringRef kSCPropNetIPv4Router = CFSTR("Router");
 const CFStringRef kSCPropNetIPv6Router = CFSTR("Router"); /* Yes, they are the same */
 const CFStringRef kSCCompSystem = CFSTR("System");
 
+const CFStringRef kSCConsoleSessionUserName		= CFSTR("kCGSSessionUserNameKey");		/* value is CFString */
+const CFStringRef kSCConsoleSessionUID			= CFSTR("kCGSSessionUserIDKey");		/* value is CFNumber (a uid_t) */
+const CFStringRef kSCConsoleSessionConsoleSet		= CFSTR("kCGSSessionConsoleSetKey");		/* value is CFNumber */
+const CFStringRef kSCConsoleSessionOnConsole		= CFSTR("kCGSSessionOnConsoleKey");		/* value is CFBoolean */
+const CFStringRef kSCConsoleSessionLoginDone		= CFSTR("kCGSessionLoginDoneKey");		/* value is CFBoolean */
+const CFStringRef kSCConsoleSessionID			= CFSTR("kCGSSessionIDKey");			/* value is CFNumber */
+const CFStringRef kSCConsoleSessionSystemSafeBoot	= CFSTR("kCGSSessionSystemSafeBoot");		/* value is CFBoolean */
+const CFStringRef kSCConsoleSessionLoginwindowSafeLogin	= CFSTR("kCGSSessionLoginwindowSafeLogin");	/* value is CFBoolean */
+
 CFStringRef SCDynamicStoreKeyCreateNetworkGlobalEntity(CFAllocatorRef allocator, CFStringRef domain, CFStringRef entity)
 {
 	STUB();

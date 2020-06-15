@@ -32,4 +32,12 @@
 #error Unknown architecture
 #endif
 
+struct __float2 { float __sinval; float __cosval; };
+struct __double2 { double __sinval; double __cosval; };
+
+extern struct __float2 __sincosf_stret(float v);
+extern struct __double2 __sincos_stret(double v);
+extern struct __float2 __sincospif_stret(float v);
+extern struct __double2 __sincospi_stret(double v);
+
 #endif /* __MATH_H__ */

@@ -1,4 +1,4 @@
-#include <i386/cpu_capabilities.h>
+#include <machine/cpu_capabilities.h>
 #include <sys/mman.h>
 #include <stdint.h>
 

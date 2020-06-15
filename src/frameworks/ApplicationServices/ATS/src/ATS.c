@@ -22,6 +22,39 @@
 #include <stdio.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+const CFStringRef kATSAutoActivationConfirmDontShowAgainKey = CFSTR("DontShow");
+const CFStringRef kATSAutoActivationConfirmResultKey = CFSTR("Result");
+const CFStringRef kATSValidationActivationInfo = CFSTR("activationinfo");
+const CFStringRef kATSValidationActivationInfoKeep = CFSTR("activationinforetain");
+const CFStringRef kATSValidationDontRunHiLevelAPITests = CFSTR("hilevelapitests");
+const CFStringRef kATSValidationDynamicActivationInfo = CFSTR("getactivationinto");
+const CFStringRef kATSValidationDynamicGlyphTests = CFSTR("performglyphtests");
+const CFStringRef kATSValidationFontMD5 = CFSTR("md5");
+const CFStringRef kATSValidationFontSummaryOnly = CFSTR("fontsummary");
+const CFStringRef kATSValidationGenerateFontChecksum = CFSTR("generatechecksum");
+const CFStringRef kATSValidationIgnoreDumpFiles = CFSTR("ignoredumpfiles");
+const CFStringRef kATSValidationIgnoreErrors = CFSTR("ignoreerrors");
+const CFStringRef kATSValidationOverallResult = CFSTR("overallresult");
+const CFStringRef kATSValidationPostScriptName = CFSTR("fontname");
+const CFStringRef kATSValidationResults = CFSTR("results");
+const CFStringRef kATSValidationRuleAuthor = CFSTR("author");
+const CFStringRef kATSValidationRuleComponents = CFSTR("components");
+const CFStringRef kATSValidationRuleCoverage = CFSTR("coverage");
+const CFStringRef kATSValidationRuleDescription = CFSTR("kATSFontTestDescriptionKey");
+const CFStringRef kATSValidationRuleFormat = CFSTR("format");
+const CFStringRef kATSValidationRuleName = CFSTR("kATSFontTestNameKey");
+const CFStringRef kATSValidationRulePriority = CFSTR("priority");
+const CFStringRef kATSValidationRuleResult = CFSTR("result");
+const CFStringRef kATSValidationRuleSeverity = CFSTR("severity");
+const CFStringRef kATSValidationRuleVersion = CFSTR("version");
+const CFStringRef kATSValidationRulesList = CFSTR("ruleslist");
+const CFStringRef kATSValidationRunDynamic = CFSTR("dynamic");
+const CFStringRef kATSValidationSkipDuplicateFontCheck = CFSTR("skipduplicates");
+const CFStringRef kATSValidationTestsFailed = CFSTR("fail");
+const CFStringRef kATSValidationTestsPassed = CFSTR("pass");
+const CFStringRef kATSValidationTestsRun = CFSTR("run");
+const CFStringRef kATSValidationTestsWarned = CFSTR("warn");
+
 static int verbose = 0;
 
 __attribute__((constructor))
