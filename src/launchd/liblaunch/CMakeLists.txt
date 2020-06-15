@@ -31,8 +31,6 @@ add_circular(launch FAT
 		system_c
 		system_kernel
 )
-#target_link_libraries(launch PRIVATE system_c system_kernel)
-#make_fat(launch)
 
 install(TARGETS launch DESTINATION libexec/darling/usr/lib/system)
 
