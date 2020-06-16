@@ -52,6 +52,7 @@ enum {
  ***/
 
 #define __CHECKINT_INLINE static inline __attribute__((always_inline))
+#define __CHECKINT_UNLIKELY(X)  __builtin_expect((X),0)
 
 __CHECKINT_INLINE int32_t
 __checkint_is_mixed_sign32(int32_t x, int32_t y) {return ((x ^ y) < 0);}
@@ -74,7 +75,7 @@ __checkint_uint64_type_error(int32_t* err) {*err |= CHECKINT_TYPE_ERROR; return 
 __CHECKINT_INLINE int32_t
 __checkint_int32_add(int64_t x, int64_t y, int32_t* err) {
 	int64_t z = x + y;
-	if (x < INT32_MIN || x > INT32_MAX || y < INT32_MIN || y > INT32_MAX) {
+	if (__CHECKINT_UNLIKELY(x < INT32_MIN || x > INT32_MAX || y < INT32_MIN || y > INT32_MAX)) {
 		*err |= CHECKINT_OVERFLOW_ERROR;
 	}
 	if (z > INT32_MAX || z < INT32_MIN) *err |= CHECKINT_OVERFLOW_ERROR;
@@ -84,8 +85,8 @@ __checkint_int32_add(int64_t x, int64_t y, int32_t* err) {
 __CHECKINT_INLINE uint32_t
 __checkint_uint32_add(int64_t x, int64_t y, int32_t* err) {
 	int64_t z = x + y;
-	if ((x & 0xffffffff00000000ull) || (y & 0xffffffff00000000ull)) *err |= CHECKINT_OVERFLOW_ERROR;
-	if (z > UINT_MAX || z < 0) *err |= CHECKINT_OVERFLOW_ERROR;
+	if (__CHECKINT_UNLIKELY((x & 0xffffffff00000000ull) || (y & 0xffffffff00000000ull))) *err |= CHECKINT_OVERFLOW_ERROR;
+	if (__CHECKINT_UNLIKELY(z > UINT_MAX || z < 0)) *err |= CHECKINT_OVERFLOW_ERROR;
 	return (uint32_t)z;
 }
 
@@ -95,17 +96,17 @@ __checkint_int64_add_signed_signed(int64_t x, int64_t y, int32_t* err) {
 	if (__checkint_is_mixed_sign64(x,y)) {
 	/* else, both arguments negative */
 	} else if (y < 0) {
-		if (x < LLONG_MIN - y) *err |= CHECKINT_OVERFLOW_ERROR;
+		if (__CHECKINT_UNLIKELY(x < LLONG_MIN - y)) *err |= CHECKINT_OVERFLOW_ERROR;
 	/* else, both arguments positive */
 	} else {
-		if (LLONG_MAX - x < y) *err |= CHECKINT_OVERFLOW_ERROR;
+		if (__CHECKINT_UNLIKELY(LLONG_MAX - x < y)) *err |= CHECKINT_OVERFLOW_ERROR;
         }
 	return x + y;
 }
 
 __CHECKINT_INLINE int64_t
 __checkint_int64_add_signed_unsigned(int64_t x, uint64_t y, int32_t* err) {
-  if(((int64_t)(LLONG_MAX - y)) < x)
+  if(__CHECKINT_UNLIKELY(((int64_t)(LLONG_MAX - y)) < x))
            *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x + y;
 }
@@ -118,23 +119,23 @@ __checkint_int64_add_unsigned_signed(uint64_t x, int64_t y, int32_t* err) {
 __CHECKINT_INLINE int64_t
 __checkint_int64_add_unsigned_unsigned(uint64_t x, uint64_t y, int32_t* err) {
  int64_t diff = LLONG_MAX - y;
-   if(diff < 0 || ((uint64_t) diff) < x)
+   if(__CHECKINT_UNLIKELY(diff < 0 || ((uint64_t) diff) < x))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    return x + y;
 }
 
 __CHECKINT_INLINE uint64_t
 __checkint_uint64_add_unsigned_unsigned(uint64_t x, uint64_t y, int32_t* err) {
-   if((ULLONG_MAX - y) < x)
+   if(__CHECKINT_UNLIKELY((ULLONG_MAX - y) < x))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    return x + y;
 }
 
 __CHECKINT_INLINE uint64_t
 __checkint_uint64_add_signed_signed(int64_t x, int64_t y, int32_t* err) {
-  if(((x < 0 && y >= 0) || (x >= 0 && y < 0)) && (x + y) < 0)
+  if(__CHECKINT_UNLIKELY(((x < 0 && y >= 0) || (x >= 0 && y < 0)) && (x + y) < 0))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
-  else if(x < 0 && y < 0)
+  else if(__CHECKINT_UNLIKELY(x < 0 && y < 0))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x + y;
 }
@@ -143,7 +144,7 @@ __CHECKINT_INLINE uint64_t
 __checkint_uint64_add_signed_unsigned(int64_t x, uint64_t y, int32_t* err) {
   if(x > 0)
         return __checkint_uint64_add_unsigned_unsigned(x, y, err);
-  if((y < ((uint64_t)LLONG_MAX + 1)) && (((int64_t) (x + y)) < 0))
+  if(__CHECKINT_UNLIKELY((y < ((uint64_t)LLONG_MAX + 1)) && (((int64_t) (x + y)) < 0)))
            *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x + y;
 }
@@ -155,19 +156,19 @@ __checkint_uint64_add_unsigned_signed(uint64_t x, int64_t y, int32_t* err) {
 
 __CHECKINT_INLINE int32_t
 __checkint_int32_sub(int64_t x, int64_t y, int32_t* err) {
-	if (x < INT32_MIN || x > INT32_MAX || y < INT32_MIN || y > INT32_MAX) {
+	if (__CHECKINT_UNLIKELY(x < INT32_MIN || x > INT32_MAX || y < INT32_MIN || y > INT32_MAX)) {
 		*err |= CHECKINT_OVERFLOW_ERROR;
 	}
 	int64_t z = x - y;
-	if (z > INT_MAX || z < INT_MIN) *err |= CHECKINT_OVERFLOW_ERROR;
+	if (__CHECKINT_UNLIKELY(z > INT_MAX || z < INT_MIN)) *err |= CHECKINT_OVERFLOW_ERROR;
 	return (int32_t)z;
 }
 
 __CHECKINT_INLINE uint32_t
 __checkint_uint32_sub(int64_t x, int64_t y, int32_t* err) {
 	int64_t z = x - y;
-	if ((x & 0xffffffff00000000ull) || (y & 0xffffffff00000000ull)) *err |= CHECKINT_OVERFLOW_ERROR;
-	if (z > UINT_MAX || z < 0) *err |= CHECKINT_OVERFLOW_ERROR;
+	if (__CHECKINT_UNLIKELY((x & 0xffffffff00000000ull) || (y & 0xffffffff00000000ull))) *err |= CHECKINT_OVERFLOW_ERROR;
+	if (__CHECKINT_UNLIKELY(z > UINT_MAX || z < 0)) *err |= CHECKINT_OVERFLOW_ERROR;
 	return (uint32_t)z;
 }
 
@@ -178,13 +179,13 @@ __checkint_int64_sub_signed_signed(int64_t x, int64_t y, int32_t* err) {
      /* Positive x subtract a negative y */
      if(x >= 0)
      {
-            if(x > LLONG_MAX + y)
+            if(__CHECKINT_UNLIKELY(x > LLONG_MAX + y))
                 *err = *err | CHECKINT_OVERFLOW_ERROR;
      }
      /* Negative x subtract a positive y */
      else
      {
-            if(x < LLONG_MIN + y)
+            if(__CHECKINT_UNLIKELY(x < LLONG_MIN + y))
                 *err = *err | CHECKINT_OVERFLOW_ERROR;
      }
   }
@@ -194,39 +195,39 @@ __checkint_int64_sub_signed_signed(int64_t x, int64_t y, int32_t* err) {
 
 __CHECKINT_INLINE int64_t
 __checkint_int64_sub_signed_unsigned(int64_t x, uint64_t y, int32_t* err) {
-  if(x < ((int64_t)(LLONG_MIN + y)))
+  if(__CHECKINT_UNLIKELY(x < ((int64_t)(LLONG_MIN + y))))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x - y;
 }
 
 __CHECKINT_INLINE int64_t
 __checkint_int64_sub_unsigned_signed(uint64_t x, int64_t y, int32_t* err) {
-  if(x > ((uint64_t)(LLONG_MAX + y)) || y == LLONG_MIN)
+  if(__CHECKINT_UNLIKELY(x > ((uint64_t)(LLONG_MAX + y)) || y == LLONG_MIN))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x - y;
 }
 
 __CHECKINT_INLINE int64_t
 __checkint_int64_sub_unsigned_unsigned(uint64_t x, uint64_t y, int32_t* err) {
-   if(x > y && ((x - y) > LLONG_MAX))
+   if(__CHECKINT_UNLIKELY(x > y && ((x - y) > LLONG_MAX)))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
-   else if(x < y && ((y - x - 1) > LLONG_MAX))
+   else if(__CHECKINT_UNLIKELY(x < y && ((y - x - 1) > LLONG_MAX)))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    return x - y;
 }
 
 __CHECKINT_INLINE uint64_t
 __checkint_uint64_sub_signed_signed(int64_t x, int64_t y, int32_t* err) {
-  if(((x < 0 && y <= 0) || (x >= 0 && y > 0)) && (x - y) < 0)
+  if(__CHECKINT_UNLIKELY(((x < 0 && y <= 0) || (x >= 0 && y > 0)) && (x - y) < 0))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
-  else if(x < 0 && y > 0)
+  else if(__CHECKINT_UNLIKELY(x < 0 && y > 0))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x - y;
 } 
 
 __CHECKINT_INLINE uint64_t
 __checkint_uint64_sub_signed_unsigned(int64_t x, uint64_t y, int32_t* err) {
-   if(y > ((uint64_t) LLONG_MAX + 1) || ((int64_t) y) > x)
+   if(__CHECKINT_UNLIKELY(y > ((uint64_t) LLONG_MAX + 1) || ((int64_t) y) > x))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    return x - y;
 }
@@ -235,14 +236,14 @@ __CHECKINT_INLINE uint64_t
 __checkint_uint64_sub_unsigned_signed(uint64_t x, int64_t y, int32_t* err) {
   if(x <= LLONG_MAX)
         return __checkint_uint64_sub_signed_signed(x, y, err);
-  else if (y == LLONG_MIN || -y > ULLONG_MAX - x)
+  else if (__CHECKINT_UNLIKELY(y == LLONG_MIN || -y > ULLONG_MAX - x))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x - y;
 }
 
 __CHECKINT_INLINE uint64_t
 __checkint_uint64_sub_unsigned_unsigned(uint64_t x, uint64_t y, int32_t* err) {
-   if(x < y)
+   if(__CHECKINT_UNLIKELY(x < y))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    return x - y;
 }
@@ -250,18 +251,18 @@ __checkint_uint64_sub_unsigned_unsigned(uint64_t x, uint64_t y, int32_t* err) {
 __CHECKINT_INLINE int32_t
 __checkint_int32_mul(int64_t x, int64_t y, int32_t* err) {
 	int64_t z = x * y;
-	if (x < INT32_MIN || x > INT32_MAX || y < INT32_MIN || y > INT32_MAX) {
+	if (__CHECKINT_UNLIKELY(x < INT32_MIN || x > INT32_MAX || y < INT32_MIN || y > INT32_MAX)) {
 		*err |= CHECKINT_OVERFLOW_ERROR;
 	}
-	if (z > INT_MAX || z < INT_MIN) *err |= CHECKINT_OVERFLOW_ERROR;
+	if (__CHECKINT_UNLIKELY(z > INT_MAX || z < INT_MIN)) *err |= CHECKINT_OVERFLOW_ERROR;
 	return (int32_t)z;
 }
 
 __CHECKINT_INLINE uint32_t
 __checkint_uint32_mul(int64_t x, int64_t y, int32_t* err) {
 	int64_t z = x * y;
-	if ((x & 0xffffffff00000000ull) || (y & 0xffffffff00000000ull)) *err |= CHECKINT_OVERFLOW_ERROR;
-	if (z > UINT_MAX || z < 0) *err |= CHECKINT_OVERFLOW_ERROR;
+	if (__CHECKINT_UNLIKELY((x & 0xffffffff00000000ull) || (y & 0xffffffff00000000ull))) *err |= CHECKINT_OVERFLOW_ERROR;
+	if (__CHECKINT_UNLIKELY(z > UINT_MAX || z < 0)) *err |= CHECKINT_OVERFLOW_ERROR;
 	return (uint32_t)z;
 }
 
@@ -273,14 +274,14 @@ __checkint_int64_mul_signed_signed(int64_t x, int64_t y, int32_t* err) {
   {
     if(x > 0)
     {
-       if(LLONG_MAX/x < y)
+       if(__CHECKINT_UNLIKELY(LLONG_MAX/x < y))
             *err = *err | CHECKINT_OVERFLOW_ERROR;
     }
     else
     {
-       if(x == LLONG_MIN || y == LLONG_MIN)
+       if(__CHECKINT_UNLIKELY(x == LLONG_MIN || y == LLONG_MIN))
             *err = *err | CHECKINT_OVERFLOW_ERROR;
-       if(LLONG_MAX/(-x) < (-y))
+       if(__CHECKINT_UNLIKELY(LLONG_MAX/(-x) < (-y)))
             *err = *err | CHECKINT_OVERFLOW_ERROR;
     }
   }
@@ -288,11 +289,10 @@ __checkint_int64_mul_signed_signed(int64_t x, int64_t y, int32_t* err) {
   {
     if(x < 0)
     {
-       if(x < LLONG_MIN/y)
+       if(__CHECKINT_UNLIKELY(x < LLONG_MIN/y))
             *err = *err | CHECKINT_OVERFLOW_ERROR;
     }
-    else
-       if(y < LLONG_MIN/x)
+    else if(__CHECKINT_UNLIKELY(y < LLONG_MIN/x))
             *err = *err | CHECKINT_OVERFLOW_ERROR;
   }
   return x * y;
@@ -302,7 +302,7 @@ __CHECKINT_INLINE uint64_t
 __checkint_uint64_mul_unsigned_unsigned(uint64_t x, uint64_t y, int32_t* err) {
   if(x == 0) return 0;
        
-  if(ULLONG_MAX/x < y)
+  if(__CHECKINT_UNLIKELY(ULLONG_MAX/x < y))
      *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x * y;
 }
@@ -312,7 +312,7 @@ __CHECKINT_INLINE int64_t
 __checkint_int64_mul_unsigned_unsigned(uint64_t x, uint64_t y, int32_t* err) {
   if(x == 0) return 0;
        
-  if(LLONG_MAX/x < y)
+  if(__CHECKINT_UNLIKELY(LLONG_MAX/x < y))
      *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x * y;
 }
@@ -324,7 +324,7 @@ __checkint_int64_mul_signed_unsigned(int64_t x, uint64_t y, int32_t* err) {
   if(x >= 0)
        return __checkint_int64_mul_unsigned_unsigned(x, y, err);
   else
-       if(x < LLONG_MIN/y || x > LLONG_MAX/y)
+       if(__CHECKINT_UNLIKELY(x < LLONG_MIN/y || x > LLONG_MAX/y))
             *err = *err | CHECKINT_OVERFLOW_ERROR;
   return x * y;
 }
@@ -336,7 +336,7 @@ __checkint_int64_mul_unsigned_signed(uint64_t x, int64_t y, int32_t* err) {
 
 __CHECKINT_INLINE uint64_t
 __checkint_uint64_mul_signed_signed(int64_t x, int64_t y, int32_t* err) {
-  if((x < 0 && y > 0) || (x > 0 && y < 0))
+  if(__CHECKINT_UNLIKELY((x < 0 && y > 0) || (x > 0 && y < 0)))
      *err = *err | CHECKINT_OVERFLOW_ERROR;
   else if(x > 0 && y > 0)
      return __checkint_uint64_mul_unsigned_unsigned(x, y, err);
@@ -360,8 +360,10 @@ __checkint_uint64_mul_unsigned_signed(uint64_t x, int64_t y, int32_t* err) {
 
 __CHECKINT_INLINE int32_t
 __checkint_int32_div_signed_signed(int32_t x, int32_t y, int32_t* err) {
-   if((x == INT_MIN) && y == -1)
-        *err = *err | CHECKINT_OVERFLOW_ERROR;
+   if(__CHECKINT_UNLIKELY((x == INT_MIN) && y == -1)) {
+       *err = *err | CHECKINT_OVERFLOW_ERROR;
+       return 0;
+   }
    return x / y;
 }
 
@@ -376,9 +378,9 @@ __CHECKINT_INLINE int32_t
 __checkint_int32_div_unsigned_signed(uint32_t x, int32_t y, int32_t* err) {
   if(x == ((uint32_t) INT_MAX + 1) && y == -1)
 	return INT_MIN;
-  if(x > ((uint32_t) INT_MAX + 1) && y == -1)
+  if(__CHECKINT_UNLIKELY(x > ((uint32_t) INT_MAX + 1) && y == -1))
                 *err = *err | CHECKINT_OVERFLOW_ERROR;
-  else if(x > INT_MAX && y == 1)
+  else if(__CHECKINT_UNLIKELY(x > INT_MAX && y == 1))
                 *err = *err | CHECKINT_OVERFLOW_ERROR;
   if(x <= INT_MAX)
     return ((int32_t) x) / y;
@@ -390,7 +392,7 @@ __checkint_int32_div_unsigned_signed(uint32_t x, int32_t y, int32_t* err) {
 __CHECKINT_INLINE int32_t
 __checkint_int32_div_unsigned_unsigned(uint32_t x, uint32_t y, int32_t* err) {
    uint32_t result = x / y;
-   if(result > INT_MAX)
+   if(__CHECKINT_UNLIKELY(result > INT_MAX))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    return x / y;
 }
@@ -400,7 +402,7 @@ __checkint_uint32_div_signed_signed(int32_t x, int32_t y, int32_t* err) {
  int32_t result = x / y;
    if(x == INT_MIN && y == -1)
 	return ((uint32_t) -x);
-   if(result < 0)
+   if(__CHECKINT_UNLIKELY(result < 0))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    if(x >= 0 && y > 0)
      return x / y;
@@ -414,7 +416,7 @@ __checkint_uint32_div_signed_signed(int32_t x, int32_t y, int32_t* err) {
 
 __CHECKINT_INLINE uint32_t
 __checkint_uint32_div_signed_unsigned(int32_t x, uint32_t y, int32_t* err) {
-   if(x < 0 && ((uint32_t) -x) >= y)
+   if(__CHECKINT_UNLIKELY(x < 0 && ((uint32_t) -x) >= y))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    if(x >= 0)
    	return x / y;
@@ -423,7 +425,7 @@ __checkint_uint32_div_signed_unsigned(int32_t x, uint32_t y, int32_t* err) {
 
 __CHECKINT_INLINE uint32_t
 __checkint_uint32_div_unsigned_signed(uint32_t x, int32_t y, int32_t* err) {
-   if(y < 0 && ((uint32_t) -y) <= x)
+   if(__CHECKINT_UNLIKELY(y < 0 && ((uint32_t) -y) <= x))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    if(y > 0)
      return x / y;
@@ -437,8 +439,10 @@ __checkint_uint32_div_unsigned_unsigned(uint32_t x, uint32_t y, int32_t* err) {
 
 __CHECKINT_INLINE int64_t
 __checkint_int64_div_signed_signed(int64_t x, int64_t y, int32_t* err) {
-   if((x == LLONG_MIN) && y == -1)
-        *err = *err | CHECKINT_OVERFLOW_ERROR;
+   if(__CHECKINT_UNLIKELY((x == LLONG_MIN) && y == -1)) {
+      *err = *err | CHECKINT_OVERFLOW_ERROR;
+      return 0;
+   }
    return x / y;
 }
 
@@ -453,9 +457,9 @@ __CHECKINT_INLINE int64_t
 __checkint_int64_div_unsigned_signed(uint64_t x, int64_t y, int32_t* err) {
   if(x == ((uint64_t) LLONG_MAX + 1) && y == -1)
         return LLONG_MIN;
-  if(x > ((uint64_t) LLONG_MAX + 1) && y == -1)
+  if(__CHECKINT_UNLIKELY(x > ((uint64_t) LLONG_MAX + 1) && y == -1))
                 *err = *err | CHECKINT_OVERFLOW_ERROR;
-  else if(x > LLONG_MAX && y == 1)
+  else if(__CHECKINT_UNLIKELY(x > LLONG_MAX && y == 1))
                 *err = *err | CHECKINT_OVERFLOW_ERROR;
   if(x <= LLONG_MAX)
     return ((int64_t) x) / y;
@@ -467,17 +471,17 @@ __checkint_int64_div_unsigned_signed(uint64_t x, int64_t y, int32_t* err) {
 __CHECKINT_INLINE int64_t
 __checkint_int64_div_unsigned_unsigned(uint64_t x, uint64_t y, int32_t* err) {
    uint64_t result = x / y;
-   if(result > LLONG_MAX)
+   if(__CHECKINT_UNLIKELY(result > LLONG_MAX))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    return x / y;
 }
 
 __CHECKINT_INLINE uint64_t
 __checkint_uint64_div_signed_signed(int64_t x, int64_t y, int32_t* err) {
- int64_t result = x / y;
+   int64_t result = x / y;
    if(x == LLONG_MIN && y == -1)
 	return ((uint64_t)LLONG_MAX) + 1;
-   if(result < 0)
+   if(__CHECKINT_UNLIKELY(result < 0))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    if(x >= 0 && y > 0)
      return x / y;
@@ -491,7 +495,7 @@ __checkint_uint64_div_signed_signed(int64_t x, int64_t y, int32_t* err) {
 
 __CHECKINT_INLINE uint64_t
 __checkint_uint64_div_signed_unsigned(int64_t x, uint64_t y, int32_t* err) {
-   if(x < 0 && ((uint64_t) -x) >= y)
+   if(__CHECKINT_UNLIKELY(x < 0 && ((uint64_t) -x) >= y))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    if(x >= 0)
         return x / y;
@@ -500,7 +504,7 @@ __checkint_uint64_div_signed_unsigned(int64_t x, uint64_t y, int32_t* err) {
 
 __CHECKINT_INLINE uint64_t
 __checkint_uint64_div_unsigned_signed(uint64_t x, int64_t y, int32_t* err) {
-   if(y < 0 && ((uint64_t) -y) <= x)
+   if(__CHECKINT_UNLIKELY(y < 0 && ((uint64_t) -y) <= x))
         *err = *err | CHECKINT_OVERFLOW_ERROR;
    if(y > 0)
      return x / y;

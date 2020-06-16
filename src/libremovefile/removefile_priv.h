@@ -60,3 +60,8 @@ void __removefile_randomize_buffer(unsigned char *buffer, size_t length, removef
 }
 #endif
 
+#if __APPLE__
+#ifndef AT_REMOVEDIR_DATALESS
+#define AT_REMOVEDIR_DATALESS   0x0100  /* Remove a dataless directory without materializing first */
+#endif
+#endif

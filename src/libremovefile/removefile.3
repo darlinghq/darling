@@ -1,4 +1,4 @@
-.\" Copyright (c) 2007 Apple Inc.
+.\" Copyright (c) 2015 Apple Inc.
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd May 4, 2007
+.Dd Feb 26, 2015
 .Dt REMOVEFILE 3
 .Os
 .Sh NAME
@@ -101,6 +101,11 @@ location is not deleted.  If specified in conjunction with REMOVEFILE_RECURSIVE,
 then all of the contents of the directory at 
 .Va path
 location will be deleted, but not the directory itself.
+.It Dv REMOVEFILE_CROSS_MOUNT
+By default, recursive traversals do not cross mount points. This option allows
+.Fn removefile
+to descend into directories that have a different device number than the file from which
+the descent began.
 .It Dv REMOVEFILE_SECURE_7_PASS
 Overwrite the file with 7 US DoD compliant passes (0xF6, 0x00,  0xFF,  random, 0x00, 0xFF, random).
 .It Dv REMOVEFILE_SECURE_35_PASS
@@ -274,7 +279,6 @@ removefile("/tmp", s, REMOVEFILE_RECURSIVE | REMOVEFILE_KEEP_PARENT);
 removefile_state_free(s);
 .Ed
 .Sh "SEE ALSO"
-.Xr srm 1 ,
 .Xr unlink 1 ,
 .Xr sync 2 ,
 .Xr sync_volume_np 3
