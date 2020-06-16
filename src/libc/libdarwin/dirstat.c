@@ -38,7 +38,7 @@
 #include "dirstat.h"
 #include "dirstat_collection.h"
 
-#if !TARGET_OS_SIMULATOR
+#if !TARGET_OS_SIMULATOR && !defined(DARLING)
 #define HAS_APFS
 #endif
 
