@@ -34,6 +34,7 @@ add_circular(system_notify FAT
 		system_pthread
 		platform
 		system_asl
+		xpc
 )
 #target_link_libraries(system_notify system_c system_kernel system_blocks libdispatch_shared launch system_dyld system_malloc system_pthread)
 #make_fat(system_notify)
