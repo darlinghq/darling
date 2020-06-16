@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Apple, Inc. All rights reserved.
+ * Copyright (c) 2013-19 Apple, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -88,40 +88,6 @@ typedef uint64_t CopyOperationProperties_t;
  * intention type.
  */
 #define kCopyOperationPropertyNeverPreserve	((CopyOperationProperties_t)0x0004)
-
-#if 0
-/*
- * These are all going to be removed, and I don't believe anyone used them.
- */
-/*
- * Given an extended attribute name, and a set of properties, return an
- *  allocated C string with the name.  This will return NULL on error;
- * errno may be set to ENOMEM if the new name cannot be allocated, or
- * ENAMETOOLONG if the new name is longer than the maximum for EAs (127 UTF8
- * characters).  The caller must deallocate the return value otherwise.
- *
- * If no properties are set, it returns a copy of the EA name.
- *
- * If the EA name is in the internal list, and the properties are the same as
- * defined there, then it will also return an unmodified copy of the EA name.
- */
-extern char *_xattrNameWithProperties(const char *, CopyOperationProperties_t) DEPRECATED_IN_MAC_OS_X_VERSION_10_10_AND_LATER;
-
-/*
- * Given an extended attribute name, which may or may not have properties encoded
- * as a suffix, return just the name of the attribute.  E.g., com.example.mine#P
- * would return "com.example.mine".  The return value will be NULL on error;
- * errno will be set to ENOMEM if it cannot be allocated.  The caller must deallocate
- * the return value.
- */
-extern char *_xattrNameWithoutProperties(const char *) DEPRECATED_IN_MAC_OS_X_VERSION_10_10_AND_LATER;
-
-/*
- * Given an EA name, return the properties.  If the name is in the internal list,
- * those properties will be returned.  Unknown property encodings are ignored.
- */
-extern CopyOperationProperties_t _xattrPropertiesFromName(const char *) DEPRECATED_IN_MAC_OS_X_VERSION_10_10_AND_LATER;
-#endif /* 0 */
 
 __END_DECLS
 

@@ -1,7 +1,7 @@
 .\"
 .\" Copyright (c) 2013 Apple Computer, Inc.  All rights reserved.
 .\"
-.Dd October 7, 2013
+.Dd October 9, 2018
 .Dt XATTR_NAME_WITH_FLAGS 3
 .Os
 .Sh NAME
@@ -10,7 +10,7 @@
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
-.In xattr_properties.h
+.In xattr_flags.h
 .Ft int
 .Fn xattr_preserve_for_intent "const char *" "xattr_operation_intent_t"
 .Ft char *
@@ -56,7 +56,7 @@ argument indicates it should not be preserved for the given
 intent, or 1 if it should.
 .Pp
 The function
-.Fn xattr_presere_for_intent
+.Fn xattr_preserve_for_intent
 combines the functions above, and will return zero if the
 named extended attribute should be preserved during a copy for
 the given intent.
@@ -73,14 +73,14 @@ case.
 .It Dv XATTR_OPERATION_INTENT_SAVE
 Indicates that intent is to perform a save (perhaps as in a "safe save").
 This differs from a copy in that the content may be changing; the destination
-may be over-writing or replacing the source, and som extended attributes should
+may be over-writing or replacing the source, and some extended attributes should
 not be preserved during this process.
 .It Dv XATTR_OPERATION_INTENT_SHARE
 Indicates that the intent is to share, or export, the object.  For example,
 saving as an attachment in an email message, or placing in a public folder.
 Sensitive information should probably not be preserved in this case.
 .It Dv XATTR_OPERATION_INTENT_SYNC
-Indicates that the intent is to sync the object to a service like iCloud.
+Indicates that the intent is to sync the object to a service like iCloud Drive.
 .El
 .Sh FLAGS
 Various flags are defined by the type
@@ -101,9 +101,8 @@ This indicates that the extended attribute should never be copied from a
 source object to a destination, no matter what the given intent is.
 .It Dv XATTR_FLAG_SYNCABLE
 This indicates that the extended attribute should be copied when the file
-is synced on services like iCloud. Sync services tends to want the metadata
-synced to be kept to a bare minimum, and may enforce additional restrictions
-on the acceptable size and number of extended attributes.
+is synced on services like iCloud Drive. Sync services may enforce additional
+restrictions on the acceptable size and number of extended attributes.
 .El
 .Sh EXAMPLE
 The following example is a simple function that, given an extended attribute

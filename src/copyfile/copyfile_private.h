@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Apple, Inc. All rights reserved.
+ * Copyright (c) 2013-19 Apple, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -33,6 +33,11 @@
 /*
  * File flags that are not preserved when copying stat information.
  */
-#define COPYFILE_OMIT_FLAGS 	(UF_TRACKED | SF_RESTRICTED)
+#define COPYFILE_OMIT_FLAGS 	(UF_TRACKED | SF_RESTRICTED | SF_NOUNLINK | UF_DATAVAULT)
+
+/*
+ * File flags that are not removed when replacing an existing file.
+ */
+#define COPYFILE_PRESERVE_FLAGS	(SF_RESTRICTED | SF_NOUNLINK | UF_DATAVAULT)
 
 #endif /* _COPYFILE_PRIVATE_H */

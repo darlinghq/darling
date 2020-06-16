@@ -1,7 +1,7 @@
 .\"
 .\" Copyright (c) 2002 Apple Computer, Inc.  All rights reserved.
 .\"
-.Dd April 27, 2006
+.Dd July 22, 2019
 .Dt COPYFILE 3
 .Os
 .Sh NAME
@@ -178,10 +178,64 @@ Unlink the
 file before starting.  (This is only applicable for the
 .Fn copyfile
 function.)
+.It Dv COPYFILE_CLONE_FORCE
+Clone the file instead.
+This is a force flag i.e. if cloning fails, an error is returned.
+This flag is equivalent to (COPYFILE_EXCL | COPYFILE_ACL | COPYFILE_STAT | COPYFILE_XATTR | COPYFILE_DATA
+| COPYFILE_NOFOLLOW_SRC).
+Note that if cloning is successful, progress callbacks will not be invoked.
+Note also that there is no support for cloning directories: if a directory is provided as the source,
+an error will be returned. Since this flag implies COPYFILE_NOFOLLOW_SRC, symbolic links themselves will
+be cloned instead of their targets.
+(This is only applicable for the
+.Fn copyfile
+function.)
+.It Dv COPYFILE_CLONE
+Try to clone the file instead.
+This is a best try flag i.e. if cloning fails, fallback to copying the file.
+This flag is equivalent to (COPYFILE_EXCL | COPYFILE_ACL | COPYFILE_STAT | COPYFILE_XATTR | COPYFILE_DATA
+| COPYFILE_NOFOLLOW_SRC).
+Note that if cloning is successful, progress callbacks will not be invoked.
+Note also that there is no support for cloning directories: if a directory is provided as the source and
+COPYFILE_CLONE_FORCE is not passed, this will instead copy the directory. Since this flag implies COPYFILE_NOFOLLOW_SRC,
+symbolic links themselves will be cloned instead of their targets. Recursive copying however is
+supported, see below for more information.
+(This is only applicable for the
+.Fn copyfile
+function.)
+.It Dv COPYFILE_DATA_SPARSE
+Copy a file sparsely.
+This requires that the source and destination file systems support sparse files with hole sizes
+at least as large as their block sizes.
+This also requires that the source file is sparse, and for
+.Fn fcopyfile
+the source file descriptor's offset be a multiple of the minimum hole size.
+If COPYFILE_DATA is also specified, this will fall back to a full copy
+if sparse copying cannot be performed for any reason; otherwise, an error is returned.
 .It Dv COPYFILE_NOFOLLOW
 This is a convenience macro, equivalent to
-.Dv (COPYFILE_NOFOLLOW_DST|COPYFILE_NOFOLLOW_SRC) .
+.Dv (COPYFILE_NOFOLLOW_DST | COPYFILE_NOFOLLOW_SRC) .
+.It Dv COPYFILE_RUN_IN_PLACE
+If the src file has quarantine information, add the QTN_FLAG_DO_NOT_TRANSLOCATE flag to the quarantine information of the dst file. This allows a bundle to run in place instead of being translocated.
+.It Dv COPYFILE_PRESERVE_DST_TRACKED
+Preserve the UF_TRACKED flag at
+.Va to
+when copying metadata, regardless of whether
+.Va from
+has it set.  This flag is used in conjunction with COPYFILE_STAT, or COPYFILE_CLONE (for its fallback case).
 .El
+.Pp
+Copying files into a directory is supported. If
+.Va to
+is a directory,
+.Va from
+will be copied into
+.Va to
+(if
+.Va from
+is a directory,
+copying its contents requires use of the COPYFILE_RECURSIVE parameter,
+which is documented below).
 .Pp
 The
 .Fn copyfile_state_get
@@ -264,6 +318,11 @@ Get the number of data bytes copied so far.
 (Only valid for
 .Fn copyfile_state_get ;
 see below for more details about callbacks.)
+If a
+.Dv COPYFILE_CLONE
+or
+.Dv COPYFILE_CLONE_FORCE
+operation successfully cloned the requested objects, then this value will be 0.
 The
 .Va dst
 parameter is a pointer to
@@ -277,6 +336,18 @@ for
 (see below for details).  This field cannot be set,
 and may be
 .Dv NULL .
+.It Dv COPYFILE_STATE_WAS_CLONED
+True if a
+.Dv COPYFILE_CLONE
+or
+.Dv COPYFILE_CLONE_FORCE
+operation successfully cloned the requested objects.
+The
+.Va dst
+parameter is a pointer to
+.Vt bool
+(type
+.Vt bool\ * ).
 .El
 .Sh Recursive Copies
 When given the
@@ -399,6 +470,26 @@ In the event of an error, the
 .Dv errno
 value will be set appropriately.
 .Pp
+Note that recursive cloning is also supported with the
+.Dv COPYFILE_CLONE
+flag (but not the
+.Dv COPYFILE_CLONE_FORCE
+flag). A recursive clone operation invokes
+.Fn copyfile
+with
+.Dv COPYFILE_CLONE
+on every entry found in the source file-system object. Because
+.Fn copyfile
+does not allow the cloning of directories, a recursive clone will
+instead copy any directory it finds (while cloning its contents).
+As symbolic links may point to directories, they are not followed
+during recursive clones even if the source is a symbolic link.
+Additionally, because the
+.Dv COPYFILE_CLONE
+flag implies the
+.Dv COPYFILE_EXCL
+flag, recursive clones require a nonexistent destination.
+.Pp
 The
 .Dv COPYFILE_PACK ,
 .Dv COPYFILE_UNPACK ,
@@ -407,6 +498,19 @@ and
 .Dv COPYFILE_UNLINK
 flags are not used during a recursive copy, and will result
 in an error being returned.
+.Pp
+Note that if the source path ends in a
+.Va /
+its contents are copied rather than the directory itself (like cp(1)).
+The behavior of a recursive copy on a directory hierarchy also depends
+on the contents of the destination. If the destination is a directory,
+the source directory (or its contents, if the source path ends in a
+.Va /
+) will be copied into it. If the destination exists but is not a
+directory, and the source is a non-empty directory, the copy will fail;
+the exact error set depends on the flags provided to
+.Fn copyfile
+initially.
 .Sh Progress Callback
 In addition to the recursive callbacks described above,
 .Fn copyfile
@@ -485,6 +589,11 @@ parameters will be passed in, they may be
 .Dv NULL
 in the case of
 .Fn fcopyfile .
+.Pp
+Note that progress callbacks are not invoked when a clone is requested
+(e.g.
+.Dv COPYFILE_CLONE )
+unless the clone cannot be performed and a copy is performed instead.
 .Sh RETURN VALUES
 Except when given the
 .Dv COPYFILE_CHECK
@@ -537,15 +646,45 @@ The
 or
 .Va to
 parameter to
-.Fn copyfile
+.Fn fcopyfile
 was a negative number.
 .It Bq Er ENOMEM
 A memory allocation failed.
 .It Bq Er ENOTSUP
 The source file was not a directory, symbolic link, or regular file.
+.It Bq Er ENOTSUP
+COPYFILE_CLONE_FORCE was specified and file cloning is not supported.
+.It Bq Er ENOTSUP
+COPYFILE_DATA_SPARSE was specified, sparse copying is not supported,
+and COPYFILE_DATA was not specified.
 .It Bq Er ECANCELED
 The copy was cancelled by callback.
+.It Bq Er EEXIST
+The
+.Va to
+parameter to
+.Fn copyfile
+already existed and was passed in with
+.Dv COPYFILE_EXCL .
+.It Bq Er ENOENT
+The
+.Va from
+parameter to
+.Fn copyfile
+did not exist.
+.It Bq Er EACCES
+Search permission is denied for a component of the path prefix for
+the
+.Va from
+or
+.Va to
+parameters.
+.It Bq Er EACCES
+Write permission is denied for a component of the path prefix for the
+.Va to
+parameter.
 .El
+.Pp
 In addition, both functions may set
 .Dv errno
 via an underlying library or system call.
