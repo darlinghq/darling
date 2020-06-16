@@ -29,7 +29,6 @@
 #ifndef __REGISTERS_HPP__
 #define __REGISTERS_HPP__
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -107,8 +106,7 @@ private:
 
 inline Registers_x86::Registers_x86(const void* registers)
 {
-	static_assert( sizeof(Registers_x86) < sizeof(unw_context_t),
-	"sizeof(Registers_x86) MUST be < sizeof(unw_context_t)" );
+	COMPILE_TIME_ASSERT( sizeof(Registers_x86) < sizeof(unw_context_t) );
 	fRegisters = *((GPRs*)registers); 
 }
 
@@ -312,8 +310,7 @@ private:
 
 inline Registers_x86_64::Registers_x86_64(const void* registers)
 {
-	static_assert( sizeof(Registers_x86_64) < sizeof(unw_context_t),
-	"sizeof(Registers_x86_64) MUST be < sizeof(unw_context_t)" );
+	COMPILE_TIME_ASSERT( sizeof(Registers_x86_64) < sizeof(unw_context_t) );
 	fRegisters = *((GPRs*)registers); 
 }
 
@@ -591,8 +588,7 @@ private:
 
 inline Registers_ppc::Registers_ppc(const void* registers) 
 {
-	static_assert( sizeof(Registers_ppc) < sizeof(unw_context_t) ,
-	              "sizeof(Registers_ppc) MUST be < sizeof(unw_context_t)");
+	COMPILE_TIME_ASSERT( sizeof(Registers_ppc) < sizeof(unw_context_t) );
 	fRegisters = *((ppc_thread_state_t*)registers); 
 	fFloatRegisters = *((ppc_float_state_t*)((char*)registers+160));
 	memcpy(fVectorRegisters, ((char*)registers+424), sizeof(fVectorRegisters));
