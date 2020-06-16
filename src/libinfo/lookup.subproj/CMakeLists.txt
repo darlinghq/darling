@@ -30,7 +30,7 @@ set(info-lookup_sources
 	thread_data.c
 )
 
-set_source_files_properties("si_compare.c" PROPERITES
+set_source_files_properties("si_compare.c" "si_getaddrinfo.c" PROPERITES
 	COMPILE_FLAGS " -DPRIVATE"
 )
 

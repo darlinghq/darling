@@ -65,6 +65,7 @@ add_circular(system_info FAT
 		xpc
 		compiler_rt
 		launch
+		system_trace
 	DEPENDENCIES
 		resolv-darwin
 )
