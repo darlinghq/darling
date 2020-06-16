@@ -121,7 +121,7 @@ static const Tinfo_Node keymgr_info = {
 
 /* __keymgr_global - contains pointers to keymgr data that needs to be
    global and known across all dlls/plugins.  */
-struct {
+static struct {
   /* Formerly, a pthreads semaphore for accessing the keymgr global data.  
      Now unused.  */
   void *unused;
