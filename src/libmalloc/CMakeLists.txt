@@ -36,6 +36,10 @@ set(libmalloc_sources
 	src/vm.c
 )
 
+set_source_files_properties(src/nanov2_malloc.c PROPERTIES
+	COMPILE_FLAGS " -DOS_VARIANT_NOTRESOLVED=1 -DOS_VARIANT_RESOLVED=1"
+)
+
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_malloc.dylib")
 add_circular(system_malloc FAT
 	SOURCES
