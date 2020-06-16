@@ -39,11 +39,12 @@ typedef struct
 	void *private;
 } svc_info_t;
 
-int service_open(const char *name, client_t *client, uint32_t uid, uint32_t gid);
+int service_open(const char *name, client_t *client, audit_token_t audit);
 int service_open_path(const char *name, const char *path, uid_t uid, gid_t gid);
-int service_open_path_private(const char *name, client_t *client, const char *path, uid_t uid, gid_t gid, uint32_t flags);
+int service_open_path_private(const char *name, client_t *client, const char *path, audit_token_t audit, uint32_t flags);
 int service_open_timer(const char *name, const char *args);
 int service_open_timer_private(const char *name, client_t *client, const char *args);
-void service_close(svc_info_t *info);
+void service_close(uint16_t service_index);
+void *service_info_get(uint16_t index);
 
 #endif /* _NOTIFY_SERVICE_H_ */

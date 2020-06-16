@@ -32,6 +32,7 @@
 #include "service.h"
 #include "pathwatch.h"
 #include "timer.h"
+#include "notify_internal.h"
 
 #define NOTIFY_PATH_SERVICE "path:"
 #define NOTIFY_PATH_SERVICE_LEN 5
@@ -81,7 +82,7 @@ service_open_path(const char *name, const char *path, uid_t uid, gid_t gid)
 
 	if (path == NULL) return NOTIFY_STATUS_INVALID_REQUEST;
 
-	n = (name_info_t *)_nc_table_find(global.notify_state->name_table, name);
+	n = _nc_table_find(&global.notify_state.name_table, name);
 	if (n == NULL) return NOTIFY_STATUS_INVALID_NAME;
 
 	if (n->private != NULL)
@@ -98,8 +99,13 @@ service_open_path(const char *name, const char *path, uid_t uid, gid_t gid)
 		return NOTIFY_STATUS_OK;
 	}
 
-	node = path_node_create(path, uid, gid, PATH_NODE_ALL, dispatch_get_main_queue());
-	if (node == NULL) return NOTIFY_STATUS_FAILED;
+	{
+		audit_token_t audit;
+		memset(&audit, 0, sizeof(audit_token_t));
+		node = path_node_create(path, audit, true, PATH_NODE_ALL);
+	}
+
+	if (node == NULL) return NOTIFY_STATUS_PATH_NODE_CREATE_FAILED;
 	
 	node->contextp = strdup(name);
 
@@ -111,24 +117,72 @@ service_open_path(const char *name, const char *path, uid_t uid, gid_t gid)
 	n->private = info;
 
 	dispatch_source_set_event_handler(node->src, ^{
-		dispatch_async(global.work_q, ^{
-			if (0 == dispatch_source_testcancel(node->src))
-			{
-				daemon_post((const char *)node->contextp, uid, gid);
-			}
-		});
+		daemon_post((const char *)node->contextp, uid, gid);
 	});
 	
-	dispatch_resume(node->src);
+	dispatch_activate(node->src);
 
 	return NOTIFY_STATUS_OK;
 }
 
+static uint16_t service_info_add(void *info)
+{
+	assert(global.service_info_count != UINT16_MAX);
+
+	for(int i = 0; i < global.service_info_count; i++)
+	{
+		if(global.service_info_list[i] == NULL){
+			global.service_info_list[i] = info;
+			return i + 1;
+		}
+	}
+
+	if(global.service_info_count == 0){
+		global.service_info_count = 1;
+		global.service_info_list = malloc(sizeof(void *));
+	} else {
+		global.service_info_count++;
+		global.service_info_list = realloc(global.service_info_list, global.service_info_count * sizeof(void *));
+	}
+
+	global.service_info_list[global.service_info_count - 1] = info;
+
+	return global.service_info_count;
+}
+
+void *service_info_get(uint16_t index)
+{
+	if(index == 0)
+	{
+		return NULL;
+	}
+
+	return global.service_info_list[index - 1];
+}
+
+
+static void *service_info_remove(uint16_t index)
+{
+	if(index == 0)
+	{
+		return NULL;
+	}
+
+	void *ret = global.service_info_list[index - 1];
+
+	global.service_info_list[index - 1] = NULL;
+
+	return ret;
+
+}
+
+
 /*
  * The private (per-client) path watch service.
+ * Must be callled on global.workloop if it is initialized
  */
 int
-service_open_path_private(const char *name, client_t *c, const char *path, uid_t uid, gid_t gid, uint32_t flags)
+service_open_path_private(const char *name, client_t *c, const char *path, audit_token_t audit, uint32_t flags)
 {
 	name_info_t *n;
 	svc_info_t *info;
@@ -138,14 +192,14 @@ service_open_path_private(const char *name, client_t *c, const char *path, uid_t
 
 	if (path == NULL) return NOTIFY_STATUS_INVALID_REQUEST;
 	
-	n = (name_info_t *)_nc_table_find(global.notify_state->name_table, name);
+	n = _nc_table_find(&global.notify_state.name_table, name);
 	if (n == NULL) return NOTIFY_STATUS_INVALID_NAME;
-	if (c == NULL) return NOTIFY_STATUS_FAILED;
+	if (c == NULL) return NOTIFY_STATUS_NULL_INPUT;
 
-	if (c->private != NULL)
+	if (c->service_index != 0)
 	{
 		/* a client may only have one service */
-		info = (svc_info_t *)c->private;
+		info = (svc_info_t *)service_info_get(c->service_index);
 		if (info->type != SERVICE_TYPE_PATH_PRIVATE) return NOTIFY_STATUS_INVALID_REQUEST;
 		
 		/* the client must be asking for the same path that is being monitored */
@@ -158,28 +212,23 @@ service_open_path_private(const char *name, client_t *c, const char *path, uid_t
 
 	if (flags == 0) flags = PATH_NODE_ALL;
 
-	node = path_node_create(path, uid, gid, flags, dispatch_get_main_queue());
-	if (node == NULL) return NOTIFY_STATUS_FAILED;
+	node = path_node_create(path, audit, false, flags);
+	if (node == NULL) return NOTIFY_STATUS_PATH_NODE_CREATE_FAILED;
 	
-	node->context64 = c->client_id;
+	node->context64 = c->cid.hash_key;
 	
 	info = (svc_info_t *)calloc(1, sizeof(svc_info_t));
 	assert(info != NULL);
 	
 	info->type = SERVICE_TYPE_PATH_PRIVATE;
 	info->private = node;
-	c->private = info;
+	c->service_index = service_info_add(info);
 	
 	dispatch_source_set_event_handler(node->src, ^{
-		dispatch_async(global.work_q, ^{
-			if (0 == dispatch_source_testcancel(node->src))
-			{
-				daemon_post_client(node->context64);
-			}
-		});
+		daemon_post_client(node->context64);
 	});
 	
-	dispatch_resume(node->src);
+	dispatch_activate(node->src);
 	
 	return NOTIFY_STATUS_OK;
 }
@@ -296,7 +345,7 @@ service_open_timer(const char *name, const char *args)
 
 	call_statistics.service_timer++;
 
-	n = (name_info_t *)_nc_table_find(global.notify_state->name_table, name);
+	n = _nc_table_find(&global.notify_state.name_table, name);
 	if (n == NULL) return NOTIFY_STATUS_INVALID_NAME;
 
 	s = f = e = 0;
@@ -323,26 +372,26 @@ service_open_timer(const char *name, const char *args)
 	{
 		case TIME_EVENT_ONESHOT:
 		{
-			timer = timer_oneshot(s, dispatch_get_main_queue());
+			timer = timer_oneshot(s, global.workloop);
 			break;
 		}
 		case TIME_EVENT_CLOCK:
 		{
-			timer = timer_clock(s, f, e, dispatch_get_main_queue());
+			timer = timer_clock(s, f, e, global.workloop);
 			break;
 		}
 		case TIME_EVENT_CAL:
 		{
-			timer = timer_calendar(s, f, d, e, dispatch_get_main_queue());
+			timer = timer_calendar(s, f, e, d, global.workloop);
 			break;
 		}
 		default:
 		{
-			return NOTIFY_STATUS_FAILED;
+			return NOTIFY_STATUS_INVALID_TIME_EVENT;
 		}
 	}
 
-	if (timer == NULL) return NOTIFY_STATUS_FAILED;
+	if (timer == NULL) return NOTIFY_STATUS_TIMER_FAILED;
 	timer->contextp = strdup(name);
 
 	info = (svc_info_t *)calloc(1, sizeof(svc_info_t));
@@ -353,15 +402,10 @@ service_open_timer(const char *name, const char *args)
 	n->private = info;
 
 	dispatch_source_set_event_handler(timer->src, ^{
-		dispatch_async(global.work_q, ^{
-			if (0 == dispatch_source_testcancel(timer->src))
-			{
-				daemon_post((const char *)timer->contextp, 0, 0);
-			}
-		});
+		daemon_post((const char *)timer->contextp, 0, 0);
 	});
-	
-	dispatch_resume(timer->src);
+
+	dispatch_activate(timer->src);
 
 	return NOTIFY_STATUS_OK;
 }
@@ -378,9 +422,9 @@ service_open_timer_private(const char *name, client_t *c, const char *args)
 
 	call_statistics.service_timer++;
 
-	n = (name_info_t *)_nc_table_find(global.notify_state->name_table, name);
+	n = _nc_table_find(&global.notify_state.name_table, name);
 	if (n == NULL) return NOTIFY_STATUS_INVALID_NAME;
-	if (c == NULL) return NOTIFY_STATUS_FAILED;
+	if (c == NULL) return NOTIFY_STATUS_NULL_INPUT;
 
 	s = f = e = 0;
 	d = 0;
@@ -388,10 +432,10 @@ service_open_timer_private(const char *name, client_t *c, const char *args)
 	t = parse_timer_args(args, &s, &f, &e, &d);
 	if (t == TIME_EVENT_NONE) return NOTIFY_STATUS_INVALID_REQUEST;
 	
-	if (c->private != NULL)
+	if (c->service_index != 0)
 	{
 		/* a client may only have one service */
-		info = (svc_info_t *)c->private;
+		info = (svc_info_t *)service_info_get(c->service_index);
 		if (info->type != SERVICE_TYPE_TIMER_PRIVATE) return NOTIFY_STATUS_INVALID_REQUEST;
 		
 		/* the client must be asking for the same timer that is active */
@@ -406,52 +450,47 @@ service_open_timer_private(const char *name, client_t *c, const char *args)
 	{
 		case TIME_EVENT_ONESHOT:
 		{
-			timer = timer_oneshot(s, dispatch_get_main_queue());
+			timer = timer_oneshot(s, global.workloop);
 			break;
 		}
 		case TIME_EVENT_CLOCK:
 		{
-			timer = timer_clock(s, f, e, dispatch_get_main_queue());
+			timer = timer_clock(s, f, e, global.workloop);
 			break;
 		}
 		case TIME_EVENT_CAL:
 		{
-			timer = timer_calendar(s, f, d, e, dispatch_get_main_queue());
+			timer = timer_calendar(s, f, e, d, global.workloop);
 			break;
 		}
 		default:
 		{
-			return NOTIFY_STATUS_FAILED;
+			return NOTIFY_STATUS_INVALID_TIME_EVENT;
 		}
 	}
 	
-	if (timer == NULL) return NOTIFY_STATUS_FAILED;
-	timer->context64 = c->client_id;
+	if (timer == NULL) return NOTIFY_STATUS_TIMER_FAILED;
+	timer->context64 = c->cid.hash_key;
 	
 	info = (svc_info_t *)calloc(1, sizeof(svc_info_t));
 	assert(info != NULL);
 	
 	info->type = SERVICE_TYPE_TIMER_PRIVATE;
 	info->private = timer;
-	c->private = info;
+	c->service_index = service_info_add(info);
 	
 	dispatch_source_set_event_handler(timer->src, ^{
-		dispatch_async(global.work_q, ^{
-			if (0 == dispatch_source_testcancel(timer->src))
-			{
-				daemon_post_client(timer->context64);
-			}
-		});
+		daemon_post_client(timer->context64);
 	});
 	
-	dispatch_resume(timer->src);
+	dispatch_activate(timer->src);
 	
 	return NOTIFY_STATUS_OK;
 }
 
 /* called from server-side routines in notify_proc - services are private to the client */
 int
-service_open(const char *name, client_t *client, uint32_t uid, uint32_t gid)
+service_open(const char *name, client_t *client, audit_token_t audit)
 {
 	uint32_t t, flags;
     char *p, *q;
@@ -474,11 +513,11 @@ service_open(const char *name, client_t *client, uint32_t uid, uint32_t gid)
 			q = strchr(p, ':');
 			if (q != NULL) 
 			{
-				flags = strtol(p, NULL, 0);
+				flags = (uint32_t)strtol(p, NULL, 0);
 				p = q + 1;
 			}
 
-			return service_open_path_private(name, client, p, uid, gid, flags);
+			return service_open_path_private(name, client, p, audit, flags);
 		}
 		case SERVICE_TYPE_TIMER_PRIVATE:
 		{
@@ -496,9 +535,11 @@ service_open(const char *name, client_t *client, uint32_t uid, uint32_t gid)
 }
 
 void
-service_close(svc_info_t *info)
+service_close(uint16_t service_index)
 {
-	if (info == NULL) return;
+	if (service_index == 0) return;
+
+	svc_info_t *info = service_info_remove(service_index);
 
 	switch (info->type)
 	{

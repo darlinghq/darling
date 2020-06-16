@@ -24,65 +24,45 @@
 #ifndef _NOTIFY_TABLE_H_
 #define _NOTIFY_TABLE_H_
 
+#include <os/base.h>
 #include <stdint.h>
 
-typedef struct __table_private table_t;
-typedef struct __list_private list_t;
+#define _nc_table(key_t, _ns) \
+	struct _nc_table##_ns { \
+		uint32_t     count; \
+		uint32_t     tombstones; \
+		uint32_t     size; \
+		uint16_t     grow_shift; \
+		uint16_t     key_offset; \
+		key_t      **keys; \
+	}
 
-extern table_t *_nc_table_new(uint32_t n);
+typedef _nc_table(char *, ) table_t;
+typedef _nc_table(uint32_t, _n) table_n_t;
+typedef _nc_table(uint64_t, _64) table_64_t;
 
-extern void _nc_table_insert(table_t *t, const char *key, void *datum);
-extern void _nc_table_insert_no_copy(table_t *t, const char *key, void *datum);
-extern void _nc_table_insert_pass(table_t *t, char *key, void *datum);
-extern void _nc_table_insert_n(table_t *t, uint32_t key, void *datum);
-extern void _nc_table_insert_64(table_t *t, uint64_t key, void *datum);
+__BEGIN_DECLS
+
+extern void _nc_table_init(table_t *t, size_t key_offset);
+extern void _nc_table_init_n(table_n_t *t, size_t key_offset);
+extern void _nc_table_init_64(table_64_t *t, size_t key_offset);
+
+extern void _nc_table_insert(table_t *t, char **key);
+extern void _nc_table_insert_n(table_n_t *t, uint32_t *key);
+extern void _nc_table_insert_64(table_64_t *t, uint64_t *key);
 
 extern void *_nc_table_find(table_t *t, const char *key);
-extern void *_nc_table_find_get_key(table_t *tin, const char *key, const char **shared_key);
-extern void *_nc_table_find_n(table_t *t, uint32_t key);
-extern void *_nc_table_find_64(table_t *t, uint64_t key);
+extern void *_nc_table_find_n(table_n_t *t, uint32_t key);
+extern void *_nc_table_find_64(table_64_t *t, uint64_t key);
 
 extern void _nc_table_delete(table_t *t, const char *key);
-extern void _nc_table_delete_n(table_t *t, uint32_t key);
-extern void _nc_table_delete_64(table_t *t, uint64_t key);
+extern void _nc_table_delete_n(table_n_t *t, uint32_t key);
+extern void _nc_table_delete_64(table_64_t *t, uint64_t key);
 
-extern void *_nc_table_traverse_start(table_t *tin);
-extern void *_nc_table_traverse(table_t *tin, void *ttin);
-extern void _nc_table_traverse_end(table_t *tin, void *ttin);
+extern void _nc_table_foreach(table_t *t, OS_NOESCAPE bool (^)(void *));
+extern void _nc_table_foreach_n(table_n_t *t, OS_NOESCAPE bool (^)(void *));
+extern void _nc_table_foreach_64(table_64_t *t, OS_NOESCAPE bool (^)(void *));
 
-extern void _nc_table_free(table_t *tin);
-
-extern list_t *_nc_list_new(void *d);
-
-extern list_t *_nc_list_retain(list_t *l);
-extern list_t *_nc_list_retain_list(list_t *l);
-
-extern void _nc_list_release(list_t *l);
-extern void _nc_list_release_list(list_t *l);
-
-extern list_t *_nc_list_prev(list_t *l);
-extern list_t *_nc_list_next(list_t *l);
-
-extern void _nc_list_set_next(list_t *l, list_t *n);
-extern void _nc_list_set_prev(list_t *l, list_t *p);
-
-extern list_t *_nc_list_head(list_t *l);
-extern list_t *_nc_list_tail(list_t *l);
-
-extern list_t *_nc_list_prepend(list_t *l, list_t *n);
-extern list_t *_nc_list_append(list_t *l, list_t *n);
-
-extern list_t *_nc_list_concat(list_t *a, list_t *b);
-
-extern void *_nc_list_data(list_t *l);
-extern void _nc_list_set_data(list_t *l, void *d);
-
-extern list_t *_nc_list_find(list_t *l, void *d);
-extern list_t *_nc_list_find_release(list_t *l, void *d);
-
-extern list_t * _nc_list_reverse(list_t *l);
-extern uint32_t _nc_list_count(list_t *l);
-extern list_t *_nc_list_extract(list_t *n);
-extern list_t *_nc_list_chop(list_t *l);
+__END_DECLS
 
 #endif /* _NOTIFY_TABLE_H_ */

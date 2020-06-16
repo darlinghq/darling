@@ -1,0 +1,5 @@
+#
+# Notification Center configuration file
+#
+
+monitor com.apple.system.timezone /etc/localtime

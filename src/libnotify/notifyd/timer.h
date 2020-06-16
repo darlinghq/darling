@@ -35,25 +35,22 @@
  */
 typedef struct
 {
-	uint32_t type;
-	int64_t start;
-	int64_t end;
-	uint32_t freq;
-	int32_t day;
-	int64_t next;
-	void (^deactivation_handler)();
 	dispatch_source_t src;
 	dispatch_source_t t_src;
 	dispatch_queue_t t_queue;
 	void *contextp;
-	uint32_t context32;
+	int64_t start;
+	int64_t end;
+	int64_t next;
 	uint64_t context64;
+	uint32_t freq;
+	uint32_t type;
+	int32_t day;
+	uint32_t context32;
 } timer_t;
 
 timer_t *timer_oneshot(time_t when, dispatch_queue_t queue);
 timer_t *timer_clock(time_t first, time_t freq_sec, time_t end, dispatch_queue_t queue);
 timer_t *timer_calendar(time_t first, time_t freq_mth, time_t end, int day, dispatch_queue_t queue);
-timer_t *timer_calendar_long(uint32_t yf, uint32_t mf, uint32_t df, uint32_t hf, uint32_t nf, uint32_t sf, time_t fm, int d, uint32_t ye, uint32_t me, uint32_t de, uint32_t he, uint32_t ne, uint32_t se, dispatch_queue_t queue);
 
-void timer_set_deactivation_handler(timer_t *t, void(^handler)());
 void timer_close(timer_t *t);
