@@ -24,6 +24,10 @@ set(libsystem_sources
 	CompatibilityHacks.c
 )
 
+set_source_files_properties(init.c PROPERTIES
+	COMPILE_FLAGS " -DPRIVATE=1"
+)
+
 set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
 set(DYLIB_CURRENT_VERSION "1281.0.0")
 add_circular(system FAT
