@@ -22,12 +22,25 @@ add_circular(system_darwin FAT
 		mach.c
 		stdio.c
 		stdlib.c
+		string.c
 		variant.c
 	SIBLINGS
 		macho
 		system_dyld
-	UPWARD
+		compiler_rt
+		system_dyld
+		system_kernel
+		system_m
+		system_malloc
+		platform
+		system_pthread
+		system_c
+		libdispatch_shared
+		xpc
 		system_trace
+
+		# not listed in the Xcode files, but apparently required for `mach.c` (for `bootstrap_strerror`)
+		launch
 )
 
 install(TARGETS system_darwin DESTINATION libexec/darling/usr/lib/system)
