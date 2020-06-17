@@ -44,10 +44,15 @@ const struct known_sysctl sysctls_machdep[] = {
 };
 
 #ifndef __cpuid
-#define __cpuid(level, a, b, c, d)			\
-  __asm__ ("cpuid\n\t"					\
-	   : "=a" (a), "=b" (b), "=c" (c), "=d" (d)	\
-	   : "0" (level))
+#if defined(__i386__) || defined(__x86_64__)
+    #define __cpuid(level, a, b, c, d)			\
+    __asm__ ("cpuid\n\t"					\
+        : "=a" (a), "=b" (b), "=c" (c), "=d" (d)	\
+        : "0" (level))
+#elif defined(__arm64__)
+    #define __cpuid(level, a, b, c, d)
+    #warning "__cpuid not implemented for ARM64"
+#endif
 #endif
 
 #ifndef setup
