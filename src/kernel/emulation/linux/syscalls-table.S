@@ -100,10 +100,11 @@ __darling_bsd_syscall_exit:
 ; https://stackoverflow.com/a/56993314/5988706
 __darling_bsd_syscall:
 Lentry_hook:
-	lsl		x9,x16,3						; x9 = syscall_number << 3 // (syscall_number * 8)
-	ldr		x10,=___bsd_syscall_table		 
-	add		x10,x9,x10						; x10 = __bsd_syscall_table + x9
-	ldr		x9,[x10]						; x9 = *(x10)
+	lsl		x9,x16,3								; x9 = syscall_number << 3 // (syscall_number * 8)
+	adrp	x10,___bsd_syscall_table@PAGE
+	add		x10,x10,___bsd_syscall_table@PAGEOFF	 
+	add		x10,x9,x10								; x10 = __bsd_syscall_table + x9
+	ldr		x9,[x10]								; x9 = *(x10)
 	cbz		x9, .no_sys
 	blr		x9
 .std_ret:

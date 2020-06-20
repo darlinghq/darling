@@ -65,11 +65,12 @@ L___machdep_syscall_table$non_lazy_ptr:
 
 #elif __arm64__
 __darling_machdep_syscall:
-	and		x9,x16,#0xff					; x9 = syscall_number & 0xff
-	lsl		x9,x9,3							; x9 = x9 << 3 // (x9 * 8)
-	ldr		x10,=___machdep_syscall_table		 
-	add		x10,x9,x10						; x10 = __machdep_syscall_table + x9
-	ldr		x9,[x10]						; x9 = *(x10)
+	and		x9,x16,#0xff								; x9 = syscall_number & 0xff
+	lsl		x9,x9,3										; x9 = x9 << 3 // (x9 * 8)
+	adrp	x10,___machdep_syscall_table@PAGE
+	add		x10,x10,___machdep_syscall_table@PAGEOFF		 
+	add		x10,x9,x10									; x10 = __machdep_syscall_table + x9
+	ldr		x9,[x10]									; x9 = *(x10)
 	cbz		x9, .no_sys
 	blr		x9
 	ret

@@ -105,10 +105,11 @@ __darling_mach_syscall_exit:
 #elif __arm64__
 __darling_mach_syscall:
 Lentry_hook:
-	lsl		x9,x16,3						; x9 = x9 << 3 // (x9 * 8)
-	ldr		x10,=___mach_syscall_table		 
-	add		x10,x9,x10						; x10 = __mach_syscall_table + x9
-	ldr		x9,[x10]						; x9 = *(x10)
+	lsl		x9,x16,3								; x9 = x9 << 3 // (x9 * 8)
+	adrp	x10,___mach_syscall_table@PAGE
+	add		x10,x10,___mach_syscall_table@PAGEOFF
+	add		x10,x9,x10								; x10 = __mach_syscall_table + x9
+	ldr		x9,[x10]								; x9 = *(x10)
 	cbz		x9, .no_sys
 	blr		x9
 .std_ret:
