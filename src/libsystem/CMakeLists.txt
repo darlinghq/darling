@@ -72,6 +72,7 @@ target_link_libraries(system PRIVATE
 	commonCrypto
 	system_dnssd
 	system_networkextension
+	system_darwin
 )
 
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
@@ -105,7 +106,8 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libxpc \
 	-sub_library libcorecrypto \
 	-sub_library libsystem_dnssd \
-	-sub_library libsystem_networkextension")
+	-sub_library libsystem_networkextension \
+	-sub_library libsystem_darwin")
 
 install(TARGETS system DESTINATION libexec/darling/usr/lib)
 
