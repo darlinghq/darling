@@ -10,6 +10,7 @@ add_compile_definitions(
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/h")
 
+set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_darwin.dylib")
 add_circular(system_darwin FAT
 	SOURCES
 		bsd.c
