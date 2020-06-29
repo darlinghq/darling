@@ -48,12 +48,25 @@ target_link_libraries(system PRIVATE
 	system_copyfile
 	system_coreservices
 	system_coretls
-	system_malloc
 	system_c
 	system_kernel
 	system_trace
 	keymgr
-	system_m
+
+	# workaround a CMake/ld link order bug
+	#
+	# for some reason, Apple's linker (which we build and use) decided that if system_malloc appears
+	# after system_m, it won't emit LC_REEXPORT_LIBRARY for system_malloc. instead, it emits LC_LOAD_LIBRARY,
+	# which kind of borks the System umbrella library and defeats the point of including it
+	#
+	# to add to that, CMake decided that, after adding system_darwin, it would no longer place system_malloc
+	# before system_m like we had specified here
+	#
+	# so, as a workaround, we add this order explicitly and then add dependencies on the targets
+	#
+	# the `-Wl,-warn_commons` is just to fool CMake into thinking this is a link flag
+	"-Wl,-warn_commons ../libmalloc/libsystem_malloc.dylib ../libm/libsystem_m.dylib"
+
 	system_info
 	system_notify
 	libdispatch_shared
@@ -74,6 +87,8 @@ target_link_libraries(system PRIVATE
 	system_networkextension
 	system_darwin
 )
+
+add_dependencies(system system_malloc system_m)
 
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
 set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
