@@ -1,1 +1,1 @@
-../../../../../../../../src/external/bzip2/include/bzlib.h
+../../../../../../../../src/external/bzip2/bzip2/bzlib.h
