@@ -1,0 +1,83 @@
+# -*- Makefile -*- for libcharset/lib on VMS using the MMS utility
+
+#### Start of system configuration section. ####
+
+# Directories used by "make install":
+prefix = SYS$DATA:[
+exec_prefix = $(prefix)
+bindir = $(exec_prefix).bin
+libdir = $(exec_prefix).lib
+
+# Programs used by "make":
+
+CC = cc
+
+# These flags affect binary compatibility. GNU gettext does not need them,
+# but other packages do, and we need to be binary compatible with them.
+ABIFLAGS = /name=(as_is,short) /float=ieee
+
+WARN_CFLAGS = /warning
+
+OPTIMFLAGS = /optimize
+
+CFLAGS = $(ABIFLAGS) $(WARN_CFLAGS) $(OPTIMFLAGS)
+DEFS = "VMS=1","HAVE_CONFIG_H=1","ENABLE_RELOCATABLE=1","IN_LIBRARY=1","INSTALLPREFIX=""$(prefix)]""","INSTALLDIR=""$(bindir)]""","NO_XMALLOC=1","set_relocation_prefix=libcharset_set_relocation_prefix","relocate=libcharset_relocate"
+
+INCLUDES = /include=([],[-],[-.include])
+
+AR = library
+AR_FLAGS = /create
+
+LN = copy
+RM = delete
+
+# Programs used by "make install":
+INSTALL = copy
+INSTALL_PROGRAM = copy
+INSTALL_DATA = copy
+
+#### End of system configuration section. ####
+
+OBJECTS = localcharset.obj,relocatable.obj
+
+all : charset.olb
+	write sys$output "Nothing else to be done for 'all'."
+
+localcharset.obj : localcharset.c
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) localcharset.c
+
+relocatable.obj : relocatable.c
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) relocatable.c
+
+charset.olb : $(OBJECTS)
+	$(AR) $(AR_FLAGS) charset.olb $(OBJECTS)
+
+install : all
+	create /directory $(prefix)]
+	create /directory $(exec_prefix)]
+	create /directory $(libdir)]
+	$(INSTALL_DATA) charset.olb $(libdir)]charset.olb
+
+installdirs :
+	create /directory $(prefix)]
+	create /directory $(exec_prefix)]
+	create /directory $(libdir)]
+
+uninstall :
+	$(RM) $(libdir)]charset.olb
+
+check : all
+	write sys$output "Nothing else to be done for 'check'."
+
+mostlyclean : clean
+	write sys$output "Nothing else to be done for 'mostlyclean'."
+
+clean :
+	$(RM) *.obj;*
+	$(RM) *.olb;*
+
+distclean : clean
+	write sys$output "Nothing else to be done for 'distclean'."
+
+maintainer-clean : distclean
+	write sys$output "Nothing else to be done for 'maintainer-clean'."

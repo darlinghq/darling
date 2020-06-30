@@ -1,0 +1,17 @@
+#include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
+
+ALWAYS_SEARCH_USER_PATHS = NO
+COPY_PHASE_STRIP = YES
+ZERO_LINK = NO
+GCC_C_LANGUAGE_STANDARD = gnu89
+GCC_OPTIMIZATION_LEVEL = s
+GCC_TREAT_WARNINGS_AS_ERRORS = YES
+
+BASE_GCC_PREPROCESSOR_DEFINITIONS = HAVE_CONFIG_H
+GCC_PREPROCESSOR_DEFINITIONS = $(BASE_GCC_PREPROCESSOR_DEFINITIONS)
+
+INSTALLHDRS_SCRIPT_PHASE = YES
+
+// This can be removed once builders/desktops have newer Xcode with:
+// <rdar://problem/38097113> Don't export version symbols
+VERSION_INFO_PREFIX = __attribute__((visibility("hidden")))

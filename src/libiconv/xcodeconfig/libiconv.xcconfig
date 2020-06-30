@@ -1,0 +1,23 @@
+#include "lib.xcconfig"
+
+GCC_PREPROCESSOR_DEFINITIONS = $(LIB_GCC_PREPROCESSOR_DEFINITIONS) BUILDING_LIBICONV relocate=libiconv_relocate set_relocation_prefix=libiconv_set_relocation_prefix
+
+// Before being converted to an Xcode project, libiconv.dylib contained its own
+// internal copy of _locale_charset, and libcharset.dylib exported its
+// _locale_charset.  After the Xcode conversion, libiconv.dylib incorrectly
+// started exporting its _locale_charset symbol.  To correct this, we are
+// updating libiconv.dylib to re-export libcharset.dylib to satisfy clients
+// that linked against libiconv's _locale_charset in SDKs that contained this
+// bug.  As a consequence of this change, libiconv.dylib also just uses
+// libcharset.dylib's _locale_charset instead of having its own second copy.
+//
+// Since both of these dylibs are public dylibs, any client that uses
+// _locale_charset and links against libiconv in SDKs with this change will
+// see that linkage automatically promoted to libcharset.dylib by ld64.  This
+// has the minor downside of potentially masking portability bugs in clients'
+// build systems since our SDK will allow -liconv wihtout -lcharset whereas
+// other platforms will explicitly require an -lcharset.
+OTHER_LDFLAGS = -Wl,-reexport-lcharset
+OTHER_TAPI_FLAGS = $(OTHER_TAPI_FLAGS_$(DEPLOYMENT_LOCATION))
+OTHER_TAPI_FLAGS_YES = -reexport_library $(DSTROOT)$(INSTALL_PATH)/libcharset.1.tbd
+OTHER_TAPI_FLAGS_NO = -reexport_library $(BUILT_PRODUCTS_DIR)/libcharset.1.tbd

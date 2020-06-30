@@ -1,6 +1,0 @@
-#define DLL_VARIABLE
-#define EXEEXT ""
-#define relocate libiconv_relocate
-#define set_relocation_prefix libiconv_set_relocation_prefix
-#define LIBDIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/darling"
-

@@ -1,0 +1,277 @@
+# translation of libiconv-1.9.1.po to Rumantsch (Rhaeto-Romance) [rm]
+# Copyright (C) 2005 Free Software Foundation, Inc.
+# This file is distributed under the same license as the PACKAGE package.
+# Florian Verdet _goto <fvgoto@linuxbourg.ch>, 2005.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: libiconv 1.9.1\n"
+"Report-Msgid-Bugs-To: bug-gnu-libiconv@gnu.org\n"
+"POT-Creation-Date: 2006-07-19 21:16+0200\n"
+"PO-Revision-Date: 2005-02-06 15:27+0100\n"
+"Last-Translator: Florian Verdet _goto <fvgoto@linuxbourg.ch>\n"
+"Language-Team: Rhaeto-Romance <gnu-rumantsch@guglielmtux.ch>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: KBabel 1.2\n"
+
+#: src/iconv.c:107
+msgid "Usage: iconv [-c] [-s] [-f fromcode] [-t tocode] [file ...]"
+msgstr ""
+"Adöver: iconv [-c] [-s] [-f codificaziun d'origin] [-t codificaziun da "
+"destinaziun] [datoteca ...]"
+
+#: src/iconv.c:109
+msgid "or:    iconv -l"
+msgstr "obain:    iconv -l"
+
+#: src/iconv.c:111
+#, c-format
+msgid "Try `%s --help' for more information.\n"
+msgstr ""
+
+#: src/iconv.c:114
+#, c-format, no-wrap
+msgid "Usage: %s [OPTION...] [-f ENCODING] [-t ENCODING] [INPUTFILE...]\n"
+msgstr ""
+
+#: src/iconv.c:118
+#, fuzzy, c-format, no-wrap
+msgid "or:    %s -l\n"
+msgstr "obain:    iconv -l"
+
+#: src/iconv.c:123
+#, c-format, no-wrap
+msgid "Converts text from one encoding to another encoding.\n"
+msgstr ""
+
+#: src/iconv.c:127
+#, c-format, no-wrap
+msgid "Options controlling the input and output format:\n"
+msgstr ""
+
+#: src/iconv.c:130
+#, c-format, no-wrap
+msgid ""
+"  -f ENCODING, --from-code=ENCODING\n"
+"                              the encoding of the input\n"
+msgstr ""
+
+#: src/iconv.c:134
+#, c-format, no-wrap
+msgid ""
+"  -t ENCODING, --to-code=ENCODING\n"
+"                              the encoding of the output\n"
+msgstr ""
+
+#: src/iconv.c:139
+#, c-format, no-wrap
+msgid "Options controlling conversion problems:\n"
+msgstr ""
+
+#: src/iconv.c:142
+#, c-format, no-wrap
+msgid "  -c                          discard unconvertible characters\n"
+msgstr ""
+
+#: src/iconv.c:145
+#, c-format, no-wrap
+msgid ""
+"  --unicode-subst=FORMATSTRING\n"
+"                              substitution for unconvertible Unicode characters\n"
+msgstr ""
+
+#: src/iconv.c:149
+#, c-format, no-wrap
+msgid "  --byte-subst=FORMATSTRING   substitution for unconvertible bytes\n"
+msgstr ""
+
+#: src/iconv.c:152
+#, c-format, no-wrap
+msgid ""
+"  --widechar-subst=FORMATSTRING\n"
+"                              substitution for unconvertible wide characters\n"
+msgstr ""
+
+#: src/iconv.c:157
+#, c-format, no-wrap
+msgid "Options controlling error output:\n"
+msgstr ""
+
+#: src/iconv.c:160
+#, c-format, no-wrap
+msgid "  -s, --silent                suppress error messages about conversion problems\n"
+msgstr ""
+
+#: src/iconv.c:164
+#, c-format, no-wrap
+msgid "Informative output:\n"
+msgstr ""
+
+#: src/iconv.c:167
+#, c-format, no-wrap
+msgid "  -l, --list                  list the supported encodings\n"
+msgstr ""
+
+#: src/iconv.c:170
+#, c-format, no-wrap
+msgid "  --help                      display this help and exit\n"
+msgstr ""
+
+#: src/iconv.c:173
+#, c-format, no-wrap
+msgid "  --version                   output version information and exit\n"
+msgstr ""
+
+#: src/iconv.c:176
+msgid "Report bugs to <bug-gnu-libiconv@gnu.org>.\n"
+msgstr ""
+
+#: src/iconv.c:186
+#, c-format
+msgid ""
+"This is free software; see the source for copying conditions.  There is NO\n"
+"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
+msgstr ""
+"Quist es ün program liber; guarda ils texts da funtana pellas cundiziuns da "
+"copcha.\n"
+"I nu da INGÜNA garanzia; neir na per MARCHADANTIBILITÀ o per\n"
+"l'OPPORTUNITÀ PER ÜN BÖT PARTICULAR.\n"
+
+#: src/iconv.c:189
+#, c-format
+msgid "Written by %s.\n"
+msgstr "Scrit da %s.\n"
+
+#: src/iconv.c:280
+#, c-format
+msgid ""
+"%s argument: A format directive with a variable width is not allowed here."
+msgstr ""
+
+#: src/iconv.c:291
+#, c-format
+msgid ""
+"%s argument: A format directive with a variable precision is not allowed "
+"here."
+msgstr ""
+
+#: src/iconv.c:303
+#, c-format
+msgid "%s argument: A format directive with a size is not allowed here."
+msgstr ""
+
+#: src/iconv.c:341
+#, c-format
+msgid "%s argument: The string ends in the middle of a directive."
+msgstr ""
+
+#: src/iconv.c:343
+#, c-format
+msgid "%s argument: The character '%c' is not a valid conversion specifier."
+msgstr ""
+
+#: src/iconv.c:345
+#, c-format
+msgid ""
+"%s argument: The character that terminates the format directive is not a "
+"valid conversion specifier."
+msgstr ""
+
+#: src/iconv.c:356
+#, c-format
+msgid ""
+"%s argument: The format string consumes more than one argument: %u argument."
+msgid_plural ""
+"%s argument: The format string consumes more than one argument: %u arguments."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/iconv.c:411
+#, c-format
+msgid "cannot convert byte substitution to Unicode: %s"
+msgstr ""
+
+#: src/iconv.c:447
+#, c-format
+msgid "cannot convert unicode substitution to target encoding: %s"
+msgstr ""
+
+#: src/iconv.c:484
+#, c-format
+msgid "cannot convert byte substitution to wide string: %s"
+msgstr ""
+
+#: src/iconv.c:521
+#, c-format
+msgid "cannot convert widechar substitution to target encoding: %s"
+msgstr ""
+
+#: src/iconv.c:558
+#, c-format
+msgid "cannot convert byte substitution to target encoding: %s"
+msgstr ""
+
+#: src/iconv.c:592 src/iconv.c:636 src/iconv.c:710
+#, fuzzy, c-format
+msgid "%s:%u:%u: incomplete character or shift sequence"
+msgstr "iconv: %s: segn incumplet o sequenza da translocaziun\n"
+
+#: src/iconv.c:625 src/iconv.c:700
+#, fuzzy, c-format
+msgid "%s:%u:%u: cannot convert"
+msgstr "iconv: %s: nu poss convertir\n"
+
+#: src/iconv.c:667 src/iconv.c:730
+#, fuzzy, c-format
+msgid "%s:%u:%u"
+msgstr "iconv: %s: "
+
+#: src/iconv.c:742
+#, fuzzy, c-format
+msgid "%s: I/O error"
+msgstr "iconv: %s: sbagl d'I/O\n"
+
+#: src/iconv.c:926
+#, fuzzy, c-format
+msgid "conversion from %s unsupported"
+msgstr "iconv: conversiun davent da %s na sustgnida\n"
+
+#: src/iconv.c:928
+#, fuzzy, c-format
+msgid "conversion to %s unsupported"
+msgstr "iconv: conversiun vers %s na sustgnida\n"
+
+#: src/iconv.c:930
+#, fuzzy, c-format
+msgid "conversion from %s to %s unsupported"
+msgstr "iconv: conversiun da %s vers %s na sustgnida\n"
+
+#: src/iconv.c:931
+#, c-format
+msgid "try '%s -l' to get the list of supported encodings"
+msgstr ""
+
+#: src/iconv.c:985
+msgid "(stdin)"
+msgstr "(stdin)"
+
+#: src/iconv.c:993
+#, c-format
+msgid "%s"
+msgstr ""
+
+#: src/iconv.c:1004
+#, fuzzy, c-format
+msgid "I/O error"
+msgstr "iconv: sbagl I/O\n"
+
+#~ msgid "iconv: %s: "
+#~ msgstr "iconv: %s: "
+
+#~ msgid ""
+#~ "Usage: iconv [--binary] [-c] [-s] [-f fromcode] [-t tocode] [file ...]"
+#~ msgstr ""
+#~ "Adöver: iconv [--binary] [-c] [-s] [-f codificaziun d'origin] [-t "
+#~ "codificaziun da destinaziun] [datoteca ...]"

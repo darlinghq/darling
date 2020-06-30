@@ -1,0 +1,75 @@
+# -*- Makefile -*- for libiconv/man on VMS using the MMS utility
+
+#### Start of system configuration section. ####
+
+# Directories used by "make install":
+prefix = SYS$DATA:[
+datadir = $(prefix).share
+mandir = $(datadir).man
+man1dir = $(mandir).man1
+man3dir = $(mandir).man3
+docdir = $(datadir).doc.libiconv
+
+# Programs used by "make":
+RM = delete
+
+# Programs used by "make install":
+INSTALL = copy
+INSTALL_PROGRAM = copy
+INSTALL_DATA = copy
+
+#### End of system configuration section. ####
+
+all :
+	write sys$output "Nothing to be done for 'all'."
+
+install : all
+	create /directory $(prefix)]
+	create /directory $(datadir)]
+	create /directory $(mandir)]
+	create /directory $(man1dir)]
+	$(INSTALL_DATA) iconv.1 $(man1dir)]iconv.1
+	create /directory $(man3dir)]
+	$(INSTALL_DATA) iconv_open.3 $(man3dir)]iconv_open.3
+	$(INSTALL_DATA) iconv.3 $(man3dir)]iconv.3
+	$(INSTALL_DATA) iconv_close.3 $(man3dir)]iconv_close.3
+	create /directory $(datadir).doc]
+	create /directory $(docdir)]
+	$(INSTALL_DATA) iconv.1.html $(docdir)]iconv.1.html
+	$(INSTALL_DATA) iconv_open.3.html $(docdir)]iconv_open.3.html
+	$(INSTALL_DATA) iconv.3.html $(docdir)]iconv.3.html
+	$(INSTALL_DATA) iconv_close.3.html $(docdir)]iconv_close.3.html
+
+installdirs :
+	create /directory $(prefix)]
+	create /directory $(datadir)]
+	create /directory $(mandir)]
+	create /directory $(man1dir)]
+	create /directory $(man3dir)]
+	create /directory $(datadir).doc]
+	create /directory $(docdir)]
+
+uninstall :
+	$(RM) $(man1dir)]iconv.1
+	$(RM) $(man3dir)]iconv_open.3
+	$(RM) $(man3dir)]iconv.3
+	$(RM) $(man3dir)]iconv_close.3
+	$(RM) $(docdir)]iconv.1.html
+	$(RM) $(docdir)]iconv_open.3.html
+	$(RM) $(docdir)]iconv.3.html
+	$(RM) $(docdir)]iconv_close.3.html
+
+check : all
+	write sys$output "Nothing else to be done for 'check'."
+
+mostlyclean : clean
+	write sys$output "Nothing else to be done for 'mostlyclean'."
+
+clean :
+	write sys$output "Nothing to be done for 'clean'."
+
+distclean : clean
+	write sys$output "Nothing else to be done for 'distclean'."
+
+maintainer-clean : distclean
+	write sys$output "Nothing else to be done for 'maintainer-clean'."

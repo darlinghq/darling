@@ -1,0 +1,49 @@
+# Makefile for libiconv/src, OS2/EMX specific
+#
+#	requires EMX/GCC development environment and
+#	GNU fileutils and GNU textutils installed
+#
+
+#### Start of system configuration section. ####
+
+# Programs used by "make":
+CC = gcc
+CFLAGS = -O2 -Zmtd
+INCLUDES = -I. -I../include
+
+# Directories used by "make install":
+prefix = @prefix@
+exec_prefix = $(prefix)
+bindir = $(exec_prefix)/bin
+
+#### End of system configuration section. ####
+
+srcdir = .
+
+.SUFFIXES: .obj .o
+
+all : iconv.exe
+
+iconv.exe : iconv.c
+	$(CC) $(INCLUDES) -I../lib $(CFLAGS) iconv.c ../lib/iconv.a
+	copy ..\lib\iconv.dll iconv.dll
+
+install : all force
+	cp -i iconv.exe $(bindir)/iconv.exe
+
+uninstall : force
+	rm -f $(bindir)/iconv.exe
+
+check : all
+
+mostlyclean : clean
+
+clean : force
+	rm -f *.obj *.dll *.exe core
+
+distclean : clean
+	rm -f Makefile
+
+maintainer-clean : distclean
+
+force :
