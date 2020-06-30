@@ -1,1 +1,1 @@
-../../../../../../../../src/external/zlib/include/zconf.h
+../../../../../../../../src/external/zlib/zlib/zconf.h
