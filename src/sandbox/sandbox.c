@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <mach/message.h>
 
 // DUMMY implementation
 const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT = SANDBOX_FILTER_NONE;
@@ -146,3 +147,9 @@ const char *_amkrtemp(const char *path)
 int rootless_allows_task_for_pid(pid_t pid) {
 	return 1;
 }
+
+int sandbox_check_by_audit_token(audit_token_t tok, const char* operation, enum sandbox_filter_type filt, ...) {
+	// technically unimplemented
+	// just return 0 as an indiciation that whatever operation the caller asked about is allowed
+	return 0;
+};
