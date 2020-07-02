@@ -208,12 +208,16 @@ void run(const char* path, const char** envp)
 #       define JUMPX(stack, addr) __asm__ volatile("mov %1, %%rsp; jmpq *%0" :: "m"(addr), "r"(stack) :)
 #elif defined(__i386__)
 #       define JUMPX(stack, addr) __asm__ volatile("mov %1, %%esp; jmp *%0" :: "m"(addr), "r"(stack) :)
+#elif defined(__arm64__)
+#       define JUMPX(stack, addr) register uintptr_t x0 __asm__ ("x0") = stack; __asm__ volatile("br %0" :: "r"(addr), "r"(x0) :)
 #else 
 #       error Unsupported platform!
 #endif
 
 	if (!setjmp(jmpbuf))
+	{
 		JUMPX(stack, lc.interp_entry);
+	}
 	else
 	{
 		// puts("Back from loaded binary");
