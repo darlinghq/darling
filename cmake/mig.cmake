@@ -46,11 +46,7 @@ function(mig defFileName)
         #	set (MIG_ARCH "${arch}")
         #endif(NOT arch)
         if (NOT MIG_ARCH)
-            if (TARGET_x86_64 OR TARGET_i386)
                 set(MIG_ARCH "i386")
-            elseif (TARGET_ARM64)
-                set(MIG_ARCH "arm64")
-            endif (TARGET_x86_64 OR TARGET_i386)
         endif (NOT MIG_ARCH)
 
 	add_custom_command(OUTPUT
