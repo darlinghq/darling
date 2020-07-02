@@ -36,4 +36,10 @@ struct _os_alloc_once_s {
 
 __attribute__((visibility("default")))
 extern struct _os_alloc_once_s _os_alloc_once_table[];
+#ifdef DARLING
+// for some reason, the linker doesn't see uninitialized symbols in static libraries
+// so we need to initialize this so dyld can use it
+struct _os_alloc_once_s _os_alloc_once_table[OS_ALLOC_ONCE_KEY_MAX] = { 0 };
+#else
 struct _os_alloc_once_s _os_alloc_once_table[OS_ALLOC_ONCE_KEY_MAX];
+#endif
