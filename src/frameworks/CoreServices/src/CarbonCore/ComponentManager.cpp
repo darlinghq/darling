@@ -39,6 +39,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #	define CURRENT_PLATFORM platformPowerPCNativeEntryPoint
 #elif defined(__ppc64__)
 #	define CURRENT_PLATFORM platformPowerPC64NativeEntryPoint
+#elif defined(__arm64__)
+#	define CURRENT_PLATFORM platformArm64NativeEntryPoint
 #endif
 
 ComponentManager* ComponentManager::instance()
