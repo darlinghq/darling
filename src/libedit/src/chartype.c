@@ -149,7 +149,9 @@ ct_decode_argv(int argc, const char *argv[], ct_buffer_t *conv)
 	if (!conv->wsize)
 		return NULL;
 
-	wargv = el_malloc((size_t)argc * sizeof(*wargv));
+	// radar:20968385 map_bind reads beyond the array
+	wargv = el_malloc((size_t)(argc + 1) * sizeof(*wargv));
+	wargv[argc] = NULL;
 
 	for (i = 0, p = conv->wbuff; i < argc; ++i) {
 		if (!argv[i]) {   /* don't pass null pointers to mbstowcs */

@@ -1,4 +1,4 @@
-/*	$NetBSD: filecomplete.c,v 1.31 2011/09/16 16:13:16 plunky Exp $	*/
+/*	$NetBSD: filecomplete.c,v 1.34 2014/10/18 15:07:02 riz Exp $	*/
 
 /*-
  * Copyright (c) 1997 The NetBSD Foundation, Inc.
@@ -30,9 +30,8 @@
  */
 
 #include "config.h"
-
 #if !defined(lint) && !defined(SCCSID)
-__RCSID("$NetBSD: filecomplete.c,v 1.31 2011/09/16 16:13:16 plunky Exp $");
+__RCSID("$NetBSD: filecomplete.c,v 1.34 2014/10/18 15:07:02 riz Exp $");
 #endif /* not lint && not SCCSID */
 
 #include <sys/types.h>
@@ -47,7 +46,6 @@ __RCSID("$NetBSD: filecomplete.c,v 1.31 2011/09/16 16:13:16 plunky Exp $");
 #include <limits.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <vis.h>
 
 #include "el.h"
 #include "fcns.h"		/* for EL_NUM_FCNS */
@@ -56,6 +54,8 @@ __RCSID("$NetBSD: filecomplete.c,v 1.31 2011/09/16 16:13:16 plunky Exp $");
 
 static const Char break_chars[] = { ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
     '$', '>', '<', '=', ';', '|', '&', '{', '(', '\0' };
+/* Tilde is deliberately omitted here, we treat it specially. */
+static const Char extra_quote_chars[] = { ')', '}', '*', '?', '[', '$', '\0' };
 
 
 /********************************/
@@ -66,7 +66,7 @@ static const Char break_chars[] = { ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
  * if ``user'' isn't valid user name or ``txt'' doesn't start
  * w/ '~', returns pointer to strdup()ed copy of ``txt''
  *
- * it's callers's responsibility to free() returned string
+ * it's the caller's responsibility to free() the returned string
  */
 char *
 fn_tilde_expand(const char *txt)
@@ -139,7 +139,7 @@ fn_tilde_expand(const char *txt)
  * such file can be found
  * value of ``state'' is ignored
  *
- * it's caller's responsibility to free returned string
+ * it's the caller's responsibility to free the returned string
  */
 char *
 fn_filename_completion_function(const char *text, int state)
@@ -230,8 +230,11 @@ fn_filename_completion_function(const char *text, int state)
 		/* otherwise, get first entry where first */
 		/* filename_len characters are equal	  */
 		if (entry->d_name[0] == filename[0]
-          /* Some dirents have d_namlen, but it is not portable. */
+#if HAVE_STRUCT_DIRENT_D_NAMLEN
+		    && entry->d_namlen >= filename_len
+#else
 		    && strlen(entry->d_name) >= filename_len
+#endif
 		    && strncmp(entry->d_name, filename,
 			filename_len) == 0)
 			break;
@@ -239,8 +242,11 @@ fn_filename_completion_function(const char *text, int state)
 
 	if (entry) {		/* match found */
 
-       /* Some dirents have d_namlen, but it is not portable. */
+#if HAVE_STRUCT_DIRENT_D_NAMLEN
+		len = entry->d_namlen;
+#else
 		len = strlen(entry->d_name);
+#endif
 
 		len = strlen(dirname) + len + 1;
 		temp = el_malloc(len * sizeof(*temp));
@@ -417,13 +423,17 @@ fn_complete(EditLine *el,
 	char **(*attempted_completion_function)(const char *, int, int),
 	const Char *word_break, const Char *special_prefixes,
 	const char *(*app_func)(const char *), size_t query_items,
-	int *completion_type, int *over, int *point, int *end)
+	int *completion_type, int *over, int *point, int *end,
+	const Char *(*find_word_start_func)(const Char *, const Char *),
+	char *(*dequoting_func)(const char *),
+	char *(*quoting_func)(const char *))
 {
 	const LineInfo *li;
 #ifdef WIDECHAR
 	const LineInfoW *wli;
 #endif /* WIDECHAR */
 	char *temp;
+	char *dequoted_temp;
         char **matches;
 	const Char *ctemp;
 	size_t len;
@@ -451,11 +461,15 @@ fn_complete(EditLine *el,
 #	define li	wli
 #endif /* WIDECHAR */
 	li = FUN(el,line)(el);
-	ctemp = li->cursor;
-	while (ctemp > li->buffer
-	    && !Strchr(word_break, ctemp[-1])
-	    && (!special_prefixes || !Strchr(special_prefixes, ctemp[-1]) ) )
-		ctemp--;
+	if (find_word_start_func)
+		ctemp = find_word_start_func(li->buffer, li->cursor);
+	else {
+		ctemp = li->cursor;
+		while (ctemp > li->buffer
+		    && !Strchr(word_break, ctemp[-1])
+		    && (!special_prefixes || !Strchr(special_prefixes, ctemp[-1]) ) )
+			ctemp--;
+	}
 
 #ifdef WIDECHAR
 	/* Unmap li and convert wide character values */
@@ -480,6 +494,13 @@ fn_complete(EditLine *el,
 #endif /* !WIDECHAR */
 	temp[len] = '\0';
 
+	if (dequoting_func) {
+		dequoted_temp = dequoting_func(temp);
+		if (dequoted_temp == NULL)
+			return retval;
+	} else
+		dequoted_temp = NULL;
+
 	/* these can be used by function called in completion_matches() */
 	/* or (*attempted_completion_function)() */
 	if (point != 0)
@@ -490,14 +511,14 @@ fn_complete(EditLine *el,
 	if (attempted_completion_function) {
 		int cur_off = (int)(li->cursor - li->buffer);
 		matches = (*attempted_completion_function)(
-		    temp,
+		    dequoted_temp ? dequoted_temp : temp,
 		    cur_off - (int)len, cur_off);
 	} else
 		matches = 0;
 	if (!attempted_completion_function || 
 	    (over != NULL && !*over && !matches))
 		matches = completion_matches(
-		    temp, complet_func);
+		    dequoted_temp ? dequoted_temp : temp, complet_func);
 
 	if (over != NULL)
 		*over = 0;
@@ -512,18 +533,28 @@ fn_complete(EditLine *el,
 		 * possible matches if there is possible completion.
 		 */
 		if (matches[0][0] != '\0') {
+			char *quoted_match;
+			if (quoting_func) {
+				quoted_match = quoting_func(matches[0]);
+				if (quoted_match == NULL)
+					goto free_matches;
+			} else
+				quoted_match = NULL;
 #ifdef WIDECHAR
 			len = wli->cursor - ctemp;
 #endif /* WIDECHAR */
 			el_deletestr(el, (int) len);
 			FUN(el,insertstr)(el,
-			    ct_decode_string(matches[0], &el->el_scratch));
+			    ct_decode_string(quoted_match ? quoted_match :
+			        matches[0] , &el->el_scratch));
+			free(quoted_match);
 		}
 
 		if (what_to_do == '?')
 			goto display_matches;
 
-		if (matches[2] == NULL && strcmp(matches[0], matches[1]) == 0) {
+		if (matches[2] == NULL &&
+		    (matches[1] == NULL || strcmp(matches[0], matches[1]) == 0)) {
 			/*
 			 * We found exact match. Add a space after
 			 * it, unless we do filename completion and the
@@ -590,12 +621,14 @@ fn_complete(EditLine *el,
 			retval = CC_NORM;
 		}
 
+free_matches:
 		/* free elements of array and the array itself */
 		for (i = 0; matches[i]; i++)
 			el_free(matches[i]);
 		el_free(matches);
 		matches = NULL;
 	}
+	free(dequoted_temp);
 	el_free(temp);
 	return retval;
 }
@@ -609,5 +642,93 @@ _el_fn_complete(EditLine *el, int ch __attribute__((__unused__)))
 {
 	return (unsigned char)fn_complete(el, NULL, NULL,
 	    break_chars, NULL, NULL, (size_t)100,
-	    NULL, NULL, NULL, NULL);
+	    NULL, NULL, NULL, NULL,
+	    NULL, NULL, NULL);
+}
+
+static const Char *
+sh_find_word_start(const Char *buffer, const Char *cursor)
+{
+	const Char *word_start = buffer;
+
+	while (buffer < cursor) {
+		if (*buffer == '\\')
+			buffer++;
+		else if (Strchr(break_chars, *buffer))
+			word_start = buffer + 1;
+		buffer++;
+	}
+	return word_start;
+}
+
+static char *
+sh_quote(const char *str)
+{
+	const char *src;
+	int extra_len = 0;
+	char *quoted_str, *dst;
+
+	 for (src = str; *src != '\0'; src++)
+		if (Strchr(break_chars, *src) ||
+		    Strchr(extra_quote_chars, *src))
+			extra_len++;
+
+	quoted_str = malloc(sizeof(*quoted_str) *
+	     (strlen(str) + extra_len + 1));
+	if (quoted_str == NULL)
+		return NULL;
+
+	dst = quoted_str;
+	for (src = str; *src != '\0'; src++) {
+		if (Strchr(break_chars, *src) ||
+		    Strchr(extra_quote_chars, *src))
+			*dst++ = '\\';
+		*dst++ = *src;
+	}
+	*dst = '\0';
+
+	return quoted_str;
+}
+
+static char *
+sh_dequote(const char *str)
+{
+	char *dequoted_str, *dst;
+
+	/* save extra space to replace \~ with ./~ */
+	dequoted_str = malloc(sizeof(*dequoted_str) * (strlen(str) + 1 + 1));
+	if (dequoted_str == NULL)
+		return NULL;
+
+	dst = dequoted_str;
+
+	/* dequote \~ at start as ./~ */
+	if (*str == '\\' && str[1] == '~') {
+		str++;
+		*dst++ = '.';
+		*dst++ = '/';
+	}
+
+	while (*str) {
+		if (*str == '\\')
+			str++;
+		if (*str)
+			*dst++ = *str++;
+	}
+	*dst = '\0';
+
+	return dequoted_str;
+}
+
+/*
+ * completion function using sh quoting rules; for key binding
+ */
+/* ARGSUSED */
+unsigned char
+_el_fn_sh_complete(EditLine *el, int ch __attribute__((__unused__)))
+{
+	return (unsigned char)fn_complete(el, NULL, NULL,
+	    break_chars, NULL, NULL, 100,
+	    NULL, NULL, NULL, NULL,
+	    sh_find_word_start, sh_dequote, sh_quote);
 }

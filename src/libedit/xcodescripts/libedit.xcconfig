@@ -1,12 +1,10 @@
 #include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
-#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
 
 ARCHS = $(ARCHS_STANDARD_32_64_BIT)
 ONLY_ACTIVE_ARCH = NO
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
 CODE_SIGN_IDENTITY = -
-INSTALL_PATH_ACTUAL = /usr/lib
-INSTALL_PATH[sdk=macosx*] = $(INSTALL_PATH_ACTUAL)
+INSTALL_PATH = /usr/lib
 COPY_PHASE_STRIP = YES
 STRIP_INSTALLED_PRODUCT = YES
 STRIP_STYLE = non-global
@@ -27,3 +25,10 @@ GCC_WARN_ABOUT_RETURN_TYPE = YES
 GCC_WARN_UNUSED_VARIABLE = YES
 PREBINDING = NO
 ZERO_LINK = NO
+IS_ZIPPERED = YES
+OTHER_LDFLAGS = $(inherited) -Wl,-unexported_symbols_list,$(SRCROOT)/unexports
+SUPPORTS_TEXT_BASED_API = YES
+TAPI_VERIFY_MODE = Pedantic
+OTHER_TAPI_FLAGS = -extra-public-header $(SRCROOT)/src/editline/readline.h -extra-public-header $(SRCROOT)/src/histedit.h
+INSTALLHDRS_COPY_PHASE = YES
+INSTALLHDRS_SCRIPT_PHASE = YES

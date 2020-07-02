@@ -1,4 +1,4 @@
-/*	$NetBSD: parse.c,v 1.26 2011/08/16 16:25:15 christos Exp $	*/
+/*	$NetBSD: parse.c,v 1.27 2014/07/06 18:15:34 christos Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -37,7 +37,7 @@
 #if 0
 static char sccsid[] = "@(#)parse.c	8.1 (Berkeley) 6/4/93";
 #else
-__RCSID("$NetBSD: parse.c,v 1.26 2011/08/16 16:25:15 christos Exp $");
+__RCSID("$NetBSD: parse.c,v 1.27 2014/07/06 18:15:34 christos Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
@@ -276,10 +276,11 @@ parse__string(Char *out, const Char *in)
 protected int
 parse_cmd(EditLine *el, const Char *cmd)
 {
-	el_bindings_t *b;
+	el_bindings_t *b = el->el_map.help;
+	size_t i;
 
-	for (b = el->el_map.help; b->name != NULL; b++)
-		if (Strcmp(b->name, cmd) == 0)
-			return b->func;
+	for (i = 0; i < el->el_map.nfunc; i++)
+		if (Strcmp(b[i].name, cmd) == 0)
+			return b[i].func;
 	return -1;
 }
