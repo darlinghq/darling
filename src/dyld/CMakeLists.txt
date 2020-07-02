@@ -122,7 +122,10 @@ target_link_libraries(system_loader libc_static system_blocks_static
 	cxx_static
 	unwind_static system_kernel_static system_m_static cxxabi_static
 	keymgr_static system_duct_static
-	pthread_static macho_static)
+	pthread_static macho_static
+	system_trace_static
+	corecrypto_static
+)
 
 if (TARGET_i386)
 	target_link_libraries(system_loader libc_static32 compiler_rt_static32 platform_static32)
