@@ -153,3 +153,9 @@ int sandbox_check_by_audit_token(audit_token_t tok, const char* operation, enum 
 	// just return 0 as an indiciation that whatever operation the caller asked about is allowed
 	return 0;
 };
+
+int rootless_check_trusted(const char* kext_path) {
+	// also unimplemented
+	// Darling doesn't have rootless anyways so just return a value indicating trust
+	return 0;
+};
