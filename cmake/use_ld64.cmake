@@ -116,7 +116,8 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO:${CMAKE_BINARY_DIR}/src/frameworks/ImageIO/ImageIO \
 -Wl,-dylib_file,/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication:${CMAKE_BINARY_DIR}/src/frameworks/LocalAuthentication/LocalAuthentication \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo:${CMAKE_BINARY_DIR}/src/frameworks/CoreVideo/CoreVideo \
--Wl,-dylib_file,/System/Library/PrivateFrameworks/FMDB.framework/Versions/A/FMDB:${CMAKE_BINARY_DIR}/src/external/fmdb/FMDB")
+-Wl,-dylib_file,/System/Library/PrivateFrameworks/FMDB.framework/Versions/A/FMDB:${CMAKE_BINARY_DIR}/src/external/fmdb/FMDB \
+-Wl,-dylib_file,/usr/lib/system/libkxld.dylib:${CMAKE_BINARY_DIR}/src/external/lkm/libkern/kxld/libkxld.dylib")
 
 	add_dependencies(${target} x86_64-apple-darwin11-ld)
 
