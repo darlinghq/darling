@@ -19,6 +19,8 @@
 
 #import <AVFoundation/AVPlayerItem.h>
 
+NSString *const AVPlayerItemDidPlayToEndTimeNotification = @"AVPlayerItemDidPlayToEndTimeNotification";
+
 @implementation AVPlayerItem
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
