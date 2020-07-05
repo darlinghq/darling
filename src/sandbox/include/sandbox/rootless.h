@@ -3,4 +3,6 @@
 
 int rootless_allows_task_for_pid(pid_t pid);
 
+int rootless_check_trusted(const char* kext_path);
+
 #endif
