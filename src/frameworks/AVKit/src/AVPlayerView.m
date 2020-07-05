@@ -21,6 +21,11 @@
 
 @implementation AVPlayerView
 
+-(id)initWithCoder:(NSCoder *) decoder {
+    self = [super initWithCoder: decoder];
+    return self;
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];

@@ -179,4 +179,5 @@ add_framework(AVKit
         system
         objc
         Foundation
+        AppKit
 )
