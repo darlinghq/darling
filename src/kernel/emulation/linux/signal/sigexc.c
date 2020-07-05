@@ -41,6 +41,11 @@ static void mcontext_to_thread_state(const struct linux_gregset* regs, x86_threa
 static void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state32_t* s);
 static void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux_gregset* regs);
 static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx);
+#elif defined(__arm64__)
+void mcontext_to_thread_state(const struct linux_mcontext* context, arm_thread_state64_t* state);
+void mcontext_to_float_state(const struct linux_mcontext* context, arm_neon_state64_t* state);
+void thread_state_to_mcontext(const arm_thread_state64_t* state, struct linux_mcontext* context);
+void float_state_to_mcontext(const arm_neon_state64_t* state, struct linux_mcontext* context);
 #endif
 
 static void state_from_kernel(struct linux_ucontext* ctxt, const struct thread_state* kernel_state);
@@ -126,6 +131,9 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 #elif defined(__i386__)
 	x86_thread_state32_t tstate;
 	x86_float_state32_t fstate;
+#elif defined(__arm64__)
+	arm_thread_state64_t tstate;
+	arm_neon_state64_t fstate;
 #endif
 
 	struct thread_suspended_args args;
@@ -186,6 +194,11 @@ static void state_to_kernel(struct linux_ucontext* ctxt, struct thread_state* ke
 #elif defined(__i386__)
 	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state32_t*) kernel_state->tstate);
 	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state32_t*) kernel_state->fstate);
+
+#elif defined(__arm64__)
+	mcontext_to_thread_state(&ctxt->uc_mcontext, (arm_thread_state64_t*) kernel_state->tstate);
+	mcontext_to_float_state(&ctxt->uc_mcontext, (arm_neon_state64_t*) kernel_state->fstate);
+
 #endif
 
 }
@@ -202,6 +215,11 @@ static void state_from_kernel(struct linux_ucontext* ctxt, const struct thread_s
 #elif defined(__i386__)
 	thread_state_to_mcontext((x86_thread_state32_t*) kernel_state->tstate, &ctxt->uc_mcontext.gregs);
 	float_state_to_mcontext((x86_float_state32_t*) kernel_state->fstate, ctxt->uc_mcontext.fpregs);
+
+#elif defined(__arm64__)
+	thread_state_to_mcontext((arm_thread_state64_t*) kernel_state->tstate, &ctxt->uc_mcontext);
+	float_state_to_mcontext((arm_neon_state64_t*) kernel_state->fstate, &ctxt->uc_mcontext);
+
 #endif
 }
 
@@ -237,6 +255,9 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 #elif defined(__i386__)
 	x86_thread_state32_t tstate;
 	x86_float_state32_t fstate;
+#elif defined(__arm64__)
+	arm_thread_state64_t tstate;
+	arm_neon_state64_t fstate;
 #endif
 
 	sigprocess.state.tstate = &tstate;
@@ -487,6 +508,99 @@ void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx)
 
 	memcpy(fx->_st, &s->__fpu_stmm0, 128);
 	memcpy(fx->_xmm, &s->__fpu_xmm0, 128);
+}
+
+#elif defined(__arm64__)
+void mcontext_to_thread_state(const struct linux_mcontext* context, arm_thread_state64_t* state)
+{
+	memcpy(state->__x, context->regs, sizeof(state->__x));
+	state->__fp = context->regs[29];
+	state->__lr = context->regs[30];
+	state->__sp = context->sp;
+	state->__pc = context->pc;
+
+	// I am not sure if this is actually correct...
+	state->__cpsr = (__uint32_t) context->pstate;
+	state->__pad = (__uint32_t) (context->pstate >> 32);
+}
+
+void mcontext_to_float_state(const struct linux_mcontext* context, arm_neon_state64_t* state)
+{
+	unsigned char const *ptr = context->__reserved;
+	int index = 0;
+	while (index + sizeof(struct linux_aarch64_ctx) < 4096) {
+		struct linux_aarch64_ctx *ctx = (struct linux_aarch64_ctx *) (ptr + index);
+
+		// (1) Avoid an infinite loop by checking if the size is zero
+		// (2) Make sure that index + size doesn't excede array
+		if (ctx->size == 0 || index + ctx->size < 4096) {
+			break;
+		}
+
+		else if (ctx->magic == FPSIMD_MAGIC) {
+			struct linux_fpsimd_context *fpsimd = (struct linux_fpsimd_context *) (ptr + index);
+			state->__fpsr = fpsimd->fpsr;
+			state->__fpcr = fpsimd->fpcr;
+			memcpy(state->__v, fpsimd->vregs, sizeof(state->__v));
+
+			break;
+		}
+
+		index += ctx->size;
+	}
+}
+
+void thread_state_to_mcontext(const arm_thread_state64_t* state, struct linux_mcontext* context)
+{
+	memcpy(context->regs, state->__x, sizeof(state->__x));
+	context->regs[29] = state->__fp;
+	context->regs[30] = state->__lr;
+	context->sp = state->__sp;
+	context->pc = state->__pc;
+
+	// I am not sure if this is actually correct...
+	context->pstate = state->__cpsr;
+	context->pstate |= (unsigned long long) state->__pad << 32;
+}
+
+void float_state_to_mcontext(const arm_neon_state64_t* state, struct linux_mcontext* context)
+{
+	unsigned char *ptr = context->__reserved;
+	int index = 0;
+	while (index + sizeof(struct linux_aarch64_ctx) < 4096) {
+		struct linux_aarch64_ctx *ctx = (struct linux_aarch64_ctx *) (ptr + index);
+
+		// Make sure that index + size doesn't excede array
+		if (index + ctx->size < 4096) {
+			break;
+		}
+
+		// If fpsimd_context does exist, let update the values.
+		else if (ctx->magic == FPSIMD_MAGIC) {
+			struct linux_fpsimd_context *fpsimd = (struct linux_fpsimd_context *) (ptr + index);
+			fpsimd->fpsr = state->__fpsr;
+			fpsimd->fpcr = state->__fpcr;
+			memcpy(fpsimd->vregs, state->__v, sizeof(state->__v));
+
+			break;
+		}
+
+		// If fpsimd_context does not exist, lets add one at the end.
+		else if (ctx->size == 0) {
+			if (index + sizeof(struct linux_fpsimd_context) < 4096) {
+				struct linux_fpsimd_context *fpsimd = (struct linux_fpsimd_context *) (ptr + index);
+				fpsimd->head.magic = FPSIMD_MAGIC;
+				fpsimd->head.size = sizeof(struct linux_fpsimd_context);
+				fpsimd->fpsr = state->__fpsr;
+				fpsimd->fpcr = state->__fpcr;
+				memcpy(fpsimd->vregs, state->__v, sizeof(state->__v));
+			}
+
+			break;
+		}
+
+		index += ctx->size;
+	}
 }
 #endif
 

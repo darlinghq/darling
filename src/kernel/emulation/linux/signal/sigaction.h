@@ -36,7 +36,7 @@ struct bsd_siginfo
 };
 
 # define __SI_MAX_SIZE     128
-# if defined (__x86_64__)
+# ifdef __LP64__
 #  define __SI_PAD_SIZE     ((__SI_MAX_SIZE / sizeof (int)) - 4)
 # else
 #  define __SI_PAD_SIZE     ((__SI_MAX_SIZE / sizeof (int)) - 3)
@@ -103,35 +103,40 @@ struct linux_sigaction
 long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sigaction* osa);
 
 #ifdef __x86_64__
-typedef struct _fpstate {
-        unsigned short cwd, swd, ftw, fop;
-        unsigned long long rip, rdp;
-        unsigned mxcsr, mxcr_mask;
-        struct {
-                unsigned short significand[4], exponent, padding[3];
-        } _st[8];
-        struct {
-                unsigned element[4];
-        } _xmm[16];
-        unsigned padding[24];
-} *linux_fpregset_t;
+	// #include <asm/sigcontext.h>
+	// struct _fpstate_64 { ... };
+	typedef struct _fpstate {
+		unsigned short cwd, swd, ftw, fop;
+		unsigned long long rip, rdp;
+		unsigned mxcsr, mxcr_mask;
+		struct {
+				unsigned short significand[4], exponent, padding[3];
+		} _st[8];
+		struct {
+				unsigned element[4];
+		} _xmm[16];
+		unsigned padding[24];
+	} *linux_fpregset_t;
 
-struct linux_gregset
-{
-	long long r8, r9, r10, r11, r12, r13, r14, r15, rdi, rsi, rbp, rbx;
-	long long rdx, rax, rcx, rsp, rip, efl;
-	short cs, gs, fs, __pad0;
-	long long err, trapno, oldmask, cr2;
-};
+	// #include <sys/user.h>
+	// struct user_regs_struct { ... };
+	struct linux_gregset
+	{
+		long long r8, r9, r10, r11, r12, r13, r14, r15, rdi, rsi, rbp, rbx;
+		long long rdx, rax, rcx, rsp, rip, efl;
+		short cs, gs, fs, __pad0;
+		long long err, trapno, oldmask, cr2;
+	};
 
-#else // now the i386 version
-
-typedef struct _fpstate {
-        unsigned long cw, sw, tag, ipoff, cssel, dataoff, datasel;
-        struct {
-                unsigned short significand[4], exponent;
-        } _st[8];
-        unsigned short status, magic;
+#elif defined(__i386__)
+	// #include <asm/sigcontext.h>
+	// struct _fpstate_32 { ... };
+	typedef struct _fpstate {
+		unsigned long cw, sw, tag, ipoff, cssel, dataoff, datasel;
+		struct {
+				unsigned short significand[4], exponent;
+		} _st[8];
+		unsigned short status, magic;
 		unsigned int _fxsr_env[6];
 		unsigned int mxcsr;
 		unsigned int reserved;
@@ -140,39 +145,82 @@ typedef struct _fpstate {
 			unsigned short exponent;
 			unsigned short padding[3];
 		} _fxsr_st[8];
-        struct {
-                unsigned element[4];
-        } _xmm[8];
-} *linux_fpregset_t;
+		struct {
+				unsigned element[4];
+		} _xmm[8];
+	} *linux_fpregset_t;
 
-struct linux_gregset
-{
-	int gs, fs, es, ds, edi, esi, ebp, esp, ebx, edx, ecx, eax;
-	int trapno, err, eip, cs, efl, uesp;
-	int ss;
-};
-#endif
+	// #include <asm/sigcontext.h>
+	// struct sigcontext_32 { ... }; ?
+	struct linux_gregset
+	{
+		int gs, fs, es, ds, edi, esi, ebp, esp, ebx, edx, ecx, eax;
+		int trapno, err, eip, cs, efl, uesp;
+		int ss;
+	};
 
-struct linux_mcontext
-{
-	struct linux_gregset gregs;
-	linux_fpregset_t fpregs;
-#ifdef __x86_64__
-	unsigned long long __reserved[8];
+#elif defined(__arm64__)
+	// #include <asm/sigcontext.h>
+	// struct _aarch64_ctx { ... };
+	struct linux_aarch64_ctx {
+		__uint32_t magic;
+		__uint32_t size;
+	};
+
+	#define FPSIMD_MAGIC    0x46508001
+	
+	// #include <asm/sigcontext.h>
+	// struct fpsimd_context { ... }
+	struct linux_fpsimd_context {
+		struct linux_aarch64_ctx head;
+		__uint32_t fpsr;
+		__uint32_t fpcr;
+		__uint128_t vregs[32];
+	};
 #else
-	unsigned long oldmask, cr2;
+	#error "Floating point registers not defined"
 #endif
+
+// #include <sys/ucontext.h>
+// typedef struct { ... } mcontext_t;
+struct linux_mcontext 
+{
+	#if defined(__x86_64__) || defined(__i386__)
+		struct linux_gregset gregs;
+		linux_fpregset_t fpregs;
+		#ifdef __x86_64__
+			unsigned long long __reserved[8];
+		#else
+			unsigned long oldmask, cr2;
+		#endif
+	#elif defined(__arm64__)
+		unsigned long long int fault_address;
+		unsigned long long int regs[31];
+		unsigned long long int sp;
+		unsigned long long int pc;
+		unsigned long long int pstate;
+		unsigned char __reserved[4096] __attribute__ ((__aligned__ (16)));
+	#else
+		#error "linux_mcontext not defined"
+	#endif
 	// +reserved
 };
 
+// #include <sys/ucontext.h>
+// typedef struct ucontext_t { ... } ucontext_t;
 struct linux_ucontext
 {
 	unsigned long uc_flags;
 	struct linux_ucontext* uc_link;
 	struct linux_stack uc_stack;
-	struct linux_mcontext uc_mcontext;
-	linux_sigset_t uc_sigmask;
-	// linux_libc_fpstate fpregs_mem;
+	#if defined(__x64_64__) || defined(__i386__)
+		struct linux_mcontext uc_mcontext;
+		linux_sigset_t uc_sigmask;
+		// linux_libc_fpstate fpregs_mem;
+	#else //defined(__arm64__)
+		linux_sigset_t uc_sigmask;
+		struct linux_mcontext uc_mcontext;
+	#endif
 };
 
 struct bsd_exception_state
@@ -188,9 +236,15 @@ struct bsd_thread_state
 #ifdef __x86_64__
 	long long rax, rbx, rcx, rdx, rdi, rsi, rbp, rsp, r8, r9, r10;
 	long long r11, r12, r13, r14, r15, rip, rflags, cs, fs, gs;
-#else
+#elif defined(__i386__)
 	int eax, ebx, ecx, edx, edi, esi, ebp, esp, ss, eflags;
 	int eip, cs, ds, es, fs, gs;
+#elif defined(__arm64__)
+	__uint64_t x[29];
+	__uint64_t fp, lr, sp, pc;
+	__uint32_t cpsr, __pad;
+#else
+	#error "Architecture registers are missing in bsd_thread_state"
 #endif
 };
 

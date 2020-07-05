@@ -181,16 +181,25 @@ static void ucontext_linux_to_bsd(const struct linux_ucontext* lc, struct bsd_uc
 	bc->uc_stack.ss_size = lc->uc_stack.ss_size;
 	bc->uc_stack.ss_sp = lc->uc_stack.ss_sp;
 	
-	bm->es.trapno = lc->uc_mcontext.gregs.trapno;
-	bm->es.cpu = 0;
-	bm->es.err = lc->uc_mcontext.gregs.err;
-#ifdef __x86_64__
-	bm->es.faultvaddr = lc->uc_mcontext.gregs.rip;
-#else
-	bm->es.faultvaddr = lc->uc_mcontext.gregs.eip;
+	#if defined(__x86_64__) || defined(__i386__)
+		bm->es.trapno = lc->uc_mcontext.gregs.trapno;
+		bm->es.cpu = 0;
+		bm->es.err = lc->uc_mcontext.gregs.err;
+		#ifdef __x86_64__
+			bm->es.faultvaddr = lc->uc_mcontext.gregs.rip;
+		#else
+			bm->es.faultvaddr = lc->uc_mcontext.gregs.eip;
+		#endif
+	#endif
+
+#undef copyreg
+#undef copyreg2
+#if defined(__x86_64__) || defined(__i386__)
+	#define copyreg(__name) bm->ss.__name = lc->uc_mcontext.gregs.__name
+#elif defined(__arm64__)
+	#define copyreg(__name) bm->ss.__name = lc->uc_mcontext.__name
+	#define copyreg2(__nameA, __nameB) bm->ss.__nameA = lc->uc_mcontext.__nameB
 #endif
-	
-#define copyreg(__name) bm->ss.__name = lc->uc_mcontext.gregs.__name
 	
 #ifdef __x86_64__
 	copyreg(rax); copyreg(rbx); copyreg(rcx); copyreg(rdx); copyreg(rdi); copyreg(rsi);
@@ -205,6 +214,15 @@ static void ucontext_linux_to_bsd(const struct linux_ucontext* lc, struct bsd_uc
 	copyreg(eip); copyreg(cs); copyreg(ds); copyreg(es); copyreg(fs); copyreg(gs);
 	bm->ss.eflags = lc->uc_mcontext.gregs.efl;
 	bm->ss.ss = 0;
+#elif defined(__arm64__)
+	memcpy(bm->ss.x, lc->uc_mcontext.regs, sizeof(bm->ss.x));
+	copyreg2(fp, regs[29]); copyreg2(lr, regs[30]);
+	copyreg(sp); copyreg(pc);
+
+	// I'm unsure about this...
+	bm->ss.cpsr = lc->uc_mcontext.pstate;
+	bm->ss.__pad = lc->uc_mcontext.pstate >> 32;
+	bm->es.faultvaddr = lc->uc_mcontext.fault_address;
 #else
 #	warning Missing code for current arch
 #endif
@@ -214,7 +232,14 @@ static void ucontext_linux_to_bsd(const struct linux_ucontext* lc, struct bsd_uc
 
 static void mcontext_bsd_to_linux(const struct bsd_mcontext* bm, struct linux_mcontext* lm)
 {
-#define copyreg(__name) lm->gregs.__name = bm->ss.__name
+#undef copyreg
+#undef copyreg2
+#if defined(__x86_64__) || defined(__i386__)
+	#define copyreg(__name) lm->gregs.__name = bm->ss.__name
+#elif defined(__arm64__)
+	#define copyreg(__name) lm->__name = bm->ss.__name
+	#define copyreg2(__nameA, __nameB) lm->__nameA = bm->ss.__nameB
+#endif
 
 #ifdef __x86_64__
 	copyreg(rax); copyreg(rbx); copyreg(rcx); copyreg(rdx); copyreg(rdi); copyreg(rsi);
@@ -227,6 +252,15 @@ static void mcontext_bsd_to_linux(const struct bsd_mcontext* bm, struct linux_mc
 	copyreg(ebp); copyreg(esp);
 	copyreg(eip); copyreg(cs); copyreg(ds); copyreg(es); copyreg(fs); copyreg(gs);
 	lm->gregs.efl = bm->ss.eflags;
+#elif defined(__arm64__)
+	memcpy(lm->regs, bm->ss.x, sizeof(bm->ss.x));
+	copyreg2(regs[29], fp); copyreg2(regs[30], lr);
+	copyreg(sp); copyreg(pc);
+
+	// I am not so sure about these
+	lm->pstate = bm->ss.cpsr;
+	lm->pstate |= (unsigned long long int) bm->ss.__pad << 32;
+	lm->fault_address = bm->es.faultvaddr;
 #else
 #	warning Missing code for current arch
 #endif
