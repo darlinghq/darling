@@ -1,0 +1,11 @@
+#########################################################################################
+# Project Created by Christopher Ryan (ryanc@apple.com)					#
+# Sources based on tot as of 7/12/06							#
+# cvs -d :pserver:anonymous@anoncvs.opendarwin.org:/Volumes/src/cvs/od co -P xar 	#
+#											#
+# Patched folder, included in the project contain some					#
+# patches on the original project xar-1.4.tar.gz. This					#
+# project was created because creating changes ontop of					#
+# the original open source project has become a serious 				#
+# hassle.										#
+#########################################################################################

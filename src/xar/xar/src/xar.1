@@ -1,0 +1,158 @@
+.TH XAR "1" "June 4, 2015" "version 1.8" "User Commands"
+.SH NAME
+xar \- eXtensible ARchiver
+.SH SYNOPSIS
+.B xar
+\-[\fIctx\fR][\fIv\fR] ...
+.SH DESCRIPTION
+The XAR project aims to provide an easily extensible archive format. Important
+design decisions include an easily extensible XML table of contents (TOC) for
+random access to archived files, storing the TOC at the beginning of the
+archive to allow for efficient handling of streamed archives, the ability to
+handle files of arbitrarily large sizes, the ability to choose independent
+encodings for individual files in the archive, the ability to store checksums
+for individual files in both compressed and uncompressed form, and the ability
+to query the table of content's rich meta-data.
+.SH FUNCTIONS
+.TP
+.B One of the following options must be used:
+.TP
+\-c
+Creates an archive
+.TP
+\-t
+Lists the contents of an archive
+.TP
+\-x
+Extracts an archive
+.TP
+.B NOTE: all of the above require the use of the -f option (filename) as this release of xar doesn't correctly handle pipes or sockets.
+.TP
+\-f
+The filename to use for creation, listing or extraction.  With extraction, this can be a POSIX regular expression.
+.SH OPTIONS
+.TP
+\-\-compression
+Specifies the compression type to use.
+Valid values: none, gzip, bzip2, lzma (on some systems).  Default value: gzip
+.TP
+\-C <path>
+On extract, xar will chdir to the specified path before extracting the archive.
+.TP
+\-a
+Synonym for \-\-compression=lzma
+.TP
+\-j
+Synonym for \-\-compression=bzip2
+.TP
+\-z
+Synonym for \-\-compression=gzip
+.TP
+\-\-compression-args=<arguments>
+Specifies arguments to the compression engine selected.
+gzip, bzip2, and lzma all take a single integer argument between 0 and 9 specifying the compression level to use.
+.TP
+\-\-dump\-toc=<filename>
+Has xar dump the xml header into the specified file.  "-" can be specified to mean stdout.
+.TP
+\-\-dump\-toc\-cksum
+Dumps the ToC checksum to stdout along with the algorithm of the ToC.
+.TP
+\-\-dump\-header
+Has xar print out the xar binary header information to stdout.
+.TP
+\-\-extract\-subdoc=<name> 
+Extracts the specified subdocument to a document in cwd named <name>.xml
+.TP
+\-\-list\-subdocs
+List the subdocuments in the xml header
+.TP
+\-\-toc\-cksum
+Specifies the hashing algorithm to use for xml header verification.
+Valid values: md5 (on some systems), sha1, sha256, and sha512.  Default value: sha1
+.TP
+\-\-file\-cksum
+Specifies the hashing algorithm to use for file content verification.
+Valid values: md5 (on some systems), sha1, sha256, and sha512.  Default value: sha1
+.TP
+\-l
+On archival, stay on the local device.
+.TP
+\-P
+On extract, set ownership based on uid/gid.  If the uid/gid can be set
+on the extracted file, setuid/setgid bits will also be preserved.
+.TP
+\-p
+On extract, set ownership based on symbolic names, if possible.  
+If the uid/gid can be set on the extracted file, setuid/setgid bits 
+will also be preserved.
+.TP
+\-s <filename>
+On extract, specifies the file to extract subdocuments to.
+On archival, specifies an xml file to add as a subdocument.
+.TP
+\-v
+Verbose output
+.TP
+\-\-exclude
+Specifies a POSIX regular expression of files to exclude from adding to
+the archive during creation or from being extracted during extraction.  
+This option can be specified multiple times.
+.TP
+\-\-rsize
+Specifies a size (in bytes) for the internal libxar read buffer while performing I/O.
+.TP
+\-\-coalesce-heap
+When multiple files in the archive are identical, only store one copy of the data in the heap.  This creates smaller archives, but the archives created are not streamable.
+.TP
+\-\-link-same
+When the data section of multiple files are identical, hardlink them within the archive.
+.TP
+\-\-no-compress
+Specifies a POSIX regular expression of files to archive, but not compress.  The archived files will be copied raw into the archive.  This can be used to exclude already gzipped files from being gzipped during the archival process.
+.TP
+\-\-prop-include
+Specifies a file property to be included in the archive.  When this option is specified, only the specified options will be included.  Anything not specifically included with this option will be omitted.  This option can be used multiple times.
+.TP
+\-\-prop-exclude
+Specifies a file property to be excluded from the archive.  When this option is specified, all file properties will be included except the specified properties.  This option can be used multiple times.
+.TP
+\-\-distribution
+Creates an archive to only contain file properties safe for file distribution.  Currently, only name, type, mode, and data are preserved with this option.
+.TP
+\-\-keep-existing
+Does not overwrite existing files during extraction.  Keeps any previously existing files while extracting.
+.TP
+\-k
+Synonym for \-\-keep-existing.
+.TP
+\-\-keep-setuid
+When extracting without -p or -P options, xar will extract files as the
+uid/gid of the extracting process.  In this situation, xar will strip
+setuid/setgid bits from the extracted files for security reasons.
+\-\-keep-setuid will preserve the setuid/setgid bits even though the
+uid/gid of the extracted file is not the same as the archived file.
+.SH EXAMPLES
+.TP
+xar -cf sample.xar /home/uid
+Create a xar archive of all files in /home/uid
+.TP
+xar -tf sample.xar
+List the contents of the xar archive sample.xar
+.TP
+xar -xf sample.xar
+Extract the contents of sample.xar to the current working directory
+.SH BUGS
+.TP
+Doesn't currently work with pipes or streams.  Might be fixed in a future release.
+.TP
+Probably one or two more somewhere in there. If you find one please report it to http://code.google.com/p/xar/
+.SH AUTHORS
+Rob Braun <bbraun AT synack DOT net>
+.br
+Landon Fuller <landonf AT bikemonkey DOT org>
+.br
+David Leimbach
+.br
+Kevin Van Vechten
+

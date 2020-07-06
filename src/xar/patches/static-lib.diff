@@ -1,0 +1,39 @@
+diff -urN xar/lib/Makefile.inc.in xar.change/lib/Makefile.inc.in
+--- xar/lib/Makefile.inc.in	2006-03-20 21:29:23.000000000 -0800
++++ xar.change/lib/Makefile.inc.in	2006-03-20 21:29:08.000000000 -0800
+@@ -39,6 +39,12 @@
+ LIBXAR_SNAME := libxar.@LIB_REV@.dylib
+ LIBXAR_LNAME := libxar.dylib
+ LIBXAR_L := @objroot@lib/$(LIBXAR_LNAME)
++
++LIBXARSTATIC := libxar.a
++LIBXARSTATIC_L := @objroot@lib/$(LIBXARSTATIC)
++
++
++
+ endif
+ ifeq (aout, @abi@)
+ LIBRXAR_SNAME := librxar.so.@LIB_REV@.0
+@@ -64,11 +70,13 @@
+ 
+ lib_all : $(LIBRXAR_S) $(LIBXAR_S)
+ 
+-lib_install : $(LIBXAR_S)
++lib_install : $(LIBXAR_S) $(LIBXARSTATIC)
+ 	@INSTALL@ -d $(DESTDIR)$(INCLUDEDIR)/xar
+ 	@INSTALL@ -m 0644 $(LIBXAR_INCS) $(DESTDIR)$(INCLUDEDIR)/xar
+ 	@INSTALL@ -d $(DESTDIR)$(LIBDIR)
+ 	@INSTALL@ -m 0444 $(LIBXAR_S) $(DESTDIR)$(LIBDIR)
++	@INSTALL@ -d $(DESTDIR)/usr/local/lib/
++	@INSTALL@ -m 0444 $(LIBXARSTATIC) $(DESTDIR)/usr/local/lib/
+ ifneq ($(words "" $(LIBXAR_LNAME)), 1)
+ 	rm -f $(DESTDIR)$(LIBDIR)/$(LIBXAR_LNAME)
+ 	ln -s $(LIBXAR_SNAME) $(DESTDIR)$(LIBDIR)/$(LIBXAR_LNAME)
+@@ -125,6 +133,7 @@
+ endif
+ ifeq (macho, @abi@)
+ 	$(CC) -dynamiclib -compatibility_version @LIB_REV@ -current_version @LIB_REV@ -install_name $(LIBDIR)/$(LIBXAR_SNAME) -o $@ $+ $(LDFLAGS) @LIBS@
++	$(AR) cq $(LIBXARSTATIC) $+
+ endif
+ ifeq (aout, @abi@)
+ 	$(CC) -shared -o $@ $+

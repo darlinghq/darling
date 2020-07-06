@@ -1,0 +1,11 @@
+//
+//  xar.xcconfig
+//  xar
+//
+//  Created by Lucy Zhang on 1/30/19.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+IS_ZIPPERED = YES
