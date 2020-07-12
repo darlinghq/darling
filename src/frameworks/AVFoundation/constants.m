@@ -18,7 +18,19 @@
 */
 
 #import <Foundation/NSString.h>
+#import <AVFoundation/AVFoundation.h>
 
+NSString *const AVAssetExportPresetHighestQuality = @"AVAssetExportPresetHighestQuality";
+NSString *const AVAssetExportPresetMediumQuality = @"AVAssetExportPresetMediumQuality";
+NSString *const AVAssetExportPresetLowQuality = @"AVAssetExportPresetLowQuality";
+NSString *const AVCaptureDeviceWasConnectedNotification = @"AVCaptureDeviceWasConnectedNotification";
+NSString *const AVCaptureDeviceWasDisconnectedNotification = @"AVCaptureDeviceWasDisconnectedNotification";
+NSString *const AVCaptureSessionDidStartRunningNotification = @"AVCaptureSessionDidStartRunningNotification";
+NSString *const AVCaptureSessionDidStopRunningNotification = @"AVCaptureSessionDidStopRunningNotification";
+NSString *const AVCaptureSessionErrorKey = @"AVCaptureSessionErrorKey";
+NSString *const AVCaptureSessionRuntimeErrorNotification = @"AVCaptureSessionRuntimeErrorNotification";
+NSString *const AVChannelLayoutKey = @"AVChannelLayoutKey";
+NSString *const AVEncoderBitRateChannelKey = @"AVEncoderBitRatePerChannelKey";
 NSString *const AVErrorDeviceKey = @"AVErrorDeviceKey";
 NSString *const AVErrorFileSizeKey = @"AVErrorFileSizeKey";
 NSString *const AVErrorMediaSubTypeKey = @"AVErrorMediaSubTypeKey";
@@ -29,12 +41,46 @@ NSString *const AVErrorRecordingSuccessfullyFinishedKey = @"AVErrorRecordingSucc
 NSString *const AVErrorPresentationTimeStampKey = @"AVErrorPresentationTimeStampKey";
 NSString *const AVErrorPersistentTrackIDKey = @"AVErrorPersistentTrackIDKey";
 NSString *const AVErrorFileTypeKey = @"AVErrorFileTypeKey";
-NSString *const AVFoundationErrorDomain = @"AVFoundationErrorDomain";
-NSString *const AVCaptureDeviceWasConnectedNotification = @"AVCaptureDeviceWasConnectedNotification";
-NSString *const AVCaptureDeviceWasDisconnectedNotification = @"AVCaptureDeviceWasDisconnectedNotification";
-NSString *const AVCaptureSessionPreset1280x720 = @"AVCaptureSessionPreset1280x720";
-NSString *const AVCaptureSessionPreset352x288 = @"AVCaptureSessionPreset352x288";
-NSString *const AVCaptureSessionPreset640x480 = @"AVCaptureSessionPreset640x480";
-NSString *const AVCaptureSessionPresetLow = @"AVCaptureSessionPresetLow";
-NSString *const AVMediaTypeAudio = @"soun";
-NSString *const AVMediaTypeVideo = @"vide";
+NSString *const AVFormatIDKey = @"AVFormatIDKey";
+NSString *const AVLinearPCMBitDepthKey = @"AVLinearPCMBitDepthKey";
+NSString *const AVNumberOfChannelsKey = @"AVNumberOfChannelsKey";
+NSString *const AVPlayerItemDidPlayToEndTimeNotification = @"AVPlayerItemFailedToPlayToEndTimeNotification";
+NSString *const AVPlayerItemFailedToPlayToEndTimeNotification = @"AVPlayerItemPlaybackStalledNotification";
+NSString *const AVSampleRateKey = @"AVSampleRateKey";
+NSString *const AVURLAssetPreferPreciseDurationAndTimingKey = @"AVURLAssetPreferPreciseDurationAndTimingKey";
+NSString *const AVVideoAverageBitRateKey = @"AverageBitRate";
+NSString *const AVVideoCodecAppleProRes422 = @"apcn";
+NSString *const AVVideoCodecAppleProRes4444 = @"ap4h";
+NSString *const AVVideoCodecH264 = @"avc1";
+NSString *const AVVideoCodecHEVC = @"hvc1";
+NSString *const AVVideoCodecJPEG = @"jpeg";
+NSString *const AVVideoCodecKey = @"AVVideoCodecKey";
+NSString *const AVVideoCompressionPropertiesKey = @"AVVideoCompressionPropertiesKey";
+NSString *const AVVideoHeightKey = @"AVVideoHeightKey";
+NSString *const AVVideoMaxKeyFrameIntervalKey = @"MaxKeyFrameInterval";
+NSString *const AVVideoWidthKey = @"AVVideoWidthKey";
+
+const AVCaptureSessionPreset AVCaptureSessionPreset3840x2160 = @"AVCaptureSessionPreset3840x2160";
+const AVCaptureSessionPreset AVCaptureSessionPreset1920x1080 = @"AVCaptureSessionPreset1920x1080";
+const AVCaptureSessionPreset AVCaptureSessionPreset1280x720 = @"AVCaptureSessionPreset1280x720";
+const AVCaptureSessionPreset AVCaptureSessionPreset960x540 = @"AVCaptureSessionPreset960x540";
+const AVCaptureSessionPreset AVCaptureSessionPreset640x480 = @"AVCaptureSessionPreset640x480";
+const AVCaptureSessionPreset AVCaptureSessionPreset352x288 = @"AVCaptureSessionPreset352x288";
+const AVCaptureSessionPreset AVCaptureSessionPreset320x240 = @"AVCaptureSessionPreset320x240";
+const AVCaptureSessionPreset AVCaptureSessionPresetiFrame1280x720 = @"AVCaptureSessionPresetiFrame1280x720";
+const AVCaptureSessionPreset AVCaptureSessionPresetiFrame960x540 = @"AVCaptureSessionPresetiFrame960x540";
+const AVCaptureSessionPreset AVCaptureSessionPresetHigh = @"AVCaptureSessionPresetHigh";
+const AVCaptureSessionPreset AVCaptureSessionPresetLow = @"AVCaptureSessionPresetLow";
+const AVCaptureSessionPreset AVCaptureSessionPresetMedium = @"AVCaptureSessionPresetMedium";
+
+const NSErrorDomain AVFoundationErrorDomain = @"AVFoundationErrorDomain";
+
+const AVFileType AVFileTypeMPEG4 = @"public.mpeg-4";
+const AVFileType AVFileTypeQuickTimeMovie = @"com.apple.quicktime-movie";
+
+const AVLayerVideoGravity AVLayerVideoGravityResize = @"AVLayerVideoGravityResize";
+const AVLayerVideoGravity AVLayerVideoGravityResizeAspect = @"AVLayerVideoGravityResizeAspect";
+const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill = @"AVLayerVideoGravityResizeAspectFill";
+
+const AVMediaType AVMediaTypeAudio = @"soun";
+const AVMediaType AVMediaTypeVideo = @"vide";

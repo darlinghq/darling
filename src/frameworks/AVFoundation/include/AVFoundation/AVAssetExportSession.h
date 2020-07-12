@@ -19,6 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
+NSString *const AVAssetExportPresetHighestQuality;
+NSString *const AVAssetExportPresetMediumQuality;
+NSString *const AVAssetExportPresetLowQuality;
+
 @interface AVAssetExportSession : NSObject
 
 @end
