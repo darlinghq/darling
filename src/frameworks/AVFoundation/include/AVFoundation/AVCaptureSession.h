@@ -19,6 +19,28 @@
 
 #include <Foundation/Foundation.h>
 
+typedef NSString *AVCaptureSessionPreset;
+
+NSString *const AVCaptureDeviceWasConnectedNotification;
+NSString *const AVCaptureDeviceWasDisconnectedNotification;
+NSString *const AVCaptureSessionDidStartRunningNotification;
+NSString *const AVCaptureSessionDidStopRunningNotification;
+NSString *const AVCaptureSessionErrorKey;
+NSString *const AVCaptureSessionRuntimeErrorNotification;
+
+const AVCaptureSessionPreset AVCaptureSessionPreset3840x2160;
+const AVCaptureSessionPreset AVCaptureSessionPreset1920x1080;
+const AVCaptureSessionPreset AVCaptureSessionPreset1280x720;
+const AVCaptureSessionPreset AVCaptureSessionPreset960x540;
+const AVCaptureSessionPreset AVCaptureSessionPreset640x480;
+const AVCaptureSessionPreset AVCaptureSessionPreset352x288;
+const AVCaptureSessionPreset AVCaptureSessionPreset320x240;
+const AVCaptureSessionPreset AVCaptureSessionPresetiFrame1280x720;
+const AVCaptureSessionPreset AVCaptureSessionPresetiFrame960x540;
+const AVCaptureSessionPreset AVCaptureSessionPresetHigh;
+const AVCaptureSessionPreset AVCaptureSessionPresetLow;
+const AVCaptureSessionPreset AVCaptureSessionPresetMedium;
+
 @interface AVCaptureSession : NSObject
 
 @end

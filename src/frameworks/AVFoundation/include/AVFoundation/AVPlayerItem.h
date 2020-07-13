@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
+NSString *const AVPlayerItemDidPlayToEndTimeNotification;
+
 @interface AVPlayerItem : NSObject
 
 @end

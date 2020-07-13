@@ -18,7 +18,10 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <AppKit/AppKit.h>
 
-@interface AVPlayerView : NSObject
+@interface AVPlayerView : NSView
+
+-(id)initWithCoder:(NSCoder *) decoder;
 
 @end

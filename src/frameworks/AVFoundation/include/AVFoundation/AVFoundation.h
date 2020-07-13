@@ -572,6 +572,11 @@
 #import <AVFoundation/AVCameraCalibrationDataInternal.h>
 #import <AVFoundation/AVCameraCalibrationData.h>
 #import <AVFoundation/AVCaptionOutputSettings.h>
+#import <AVFoundation/AVError.h>
+#import <AVFoundation/AVMediaFormat.h>
+#import <AVFoundation/AVAudioSettings.h>
+#import <AVFoundation/AVAnimation.h>
+#import <AVFoundation/AVVideoSettings.h>
 
 void* AVMakeRectWithAspectRatioInsideRect(void);
 void* AVMediaSubtypesForAC3(void);
