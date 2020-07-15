@@ -10,6 +10,7 @@
 
 #define OS_STATE_API_FAULT 0
 #define OS_STATE_API_REQUEST 1
+#define OS_STATE_DATA_PROTOCOL_BUFFER 2
 
 #define OS_STATE_DATA_SIZE_NEEDED(statelen) statelen
 
