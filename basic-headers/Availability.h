@@ -590,5 +590,7 @@
   #define __SPI_DEPRECATED_WITH_REPLACEMENT(...)
 #endif
 
+
+
 #endif /* __AVAILABILITY__ */
 

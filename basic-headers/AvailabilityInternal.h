@@ -4452,6 +4452,7 @@
      #define __API_AVAILABLE_PLATFORM_uikitformac(x) uikitformac,introduced=x
     #endif
     #define __API_AVAILABLE_PLATFORM_driverkit(x) driverkit,introduced=x
+    #define __API_AVAILABLE_PLATFORM_iosmac(x) iosmac,introduced=x
 
     #if defined(__has_attribute)
       #if __has_attribute(availability)
@@ -4501,6 +4502,7 @@
      #define __API_DEPRECATED_PLATFORM_uikitformac(x) uikitformac,introduced=x,deprecated=y
     #endif
     #define __API_DEPRECATED_PLATFORM_driverkit(x,y) driverkit,introduced=x,deprecated=y
+    #define __API_DEPRECATED_PLATFORM_iosmac(x,y) iosmac,introduced=x,deprecated=y
 
     #if defined(__has_attribute)
       #if __has_attribute(availability)
@@ -4583,6 +4585,7 @@
      #define __API_UNAVAILABLE_PLATFORM_uikitformac(x) uikitformac,unavailable
     #endif
     #define __API_UNAVAILABLE_PLATFORM_driverkit driverkit,unavailable
+    #define __API_UNAVAILABLE_PLATFORM_iosmac iosmac,unavailable
 
     #if defined(__has_attribute)
       #if __has_attribute(availability)
