@@ -11,6 +11,7 @@ extern "C" {
 // FIXME: I have no idea what these are for, so they are 0 for now
 #define session_keybag_handle 0
 #define device_keybag_handle 0
+#define bad_keybag_handle (-1) // that's a pretty common "bad" signed integer value
 
 typedef uint32_t keybag_state_t;
 typedef int32_t keybag_handle_t;
@@ -40,6 +41,37 @@ static kern_return_t aks_get_lock_state(keybag_handle_t handle, keybag_state_t *
 extern kern_return_t aks_assert_hold(keybag_handle_t keybagHandle, AKSAssertionType_t lockAssertType, uint64_t timeout);
 
 extern kern_return_t aks_assert_drop(keybag_handle_t keybagHandle, AKSAssertionType_t lockAssertType);
+
+enum {
+    kAKSReturnSuccess = 0, // 100% sure this is the correct value
+    kAKSReturnError = KERN_FAILURE, // 90% sure this is the correct value
+
+    // i have no clue what these could be
+    kAKSReturnBusy,
+    kAKSReturnNoPermission,
+    kAKSReturnNotReady,
+    kAKSReturnTimeout,
+    kAKSReturnBadArgument,
+    kAKSReturnNotPrivileged,
+    kAKSReturnNotFound,
+    kAKSReturnDecodeError,
+    kAKSReturnPolicyError,
+    kAKSReturnBadDeviceKey,
+    kAKSReturnBadSignature,
+    kAKSReturnPolicyInvalid,
+};
+
+typedef int32_t keyclass_t;
+
+// i know it's a pointer, but it seems to be used opaquely, so not much more information
+// oh, it's also a CF type (deduced because it's used with `__bridge_retained` in Objective-C code)
+typedef void* aks_ref_key_t;
+
+enum {
+    kAppleKeyStoreAsymmetricBackupBag,
+};
+
+#define key_class_last (0)
 
 #ifdef __cplusplus
 }

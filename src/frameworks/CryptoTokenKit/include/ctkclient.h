@@ -26,11 +26,14 @@ CF_EXTERN_C_BEGIN
 #define kTKTokenControlAttribAttestingKey "TKTokenControlAttribAttesting"
 #define kTKTokenControlAttribKeyToAttest "TKTokenControlAttribKeyToAttest"
 #define kTKTokenControlAttribAttestationData "TKTokenControlAttribAttestationData"
+#define kTKTokenControlAttribLifetimeControlKey "TKTokenControlAttribLifetimeControlKey"
+#define kTKTokenControlAttribLifetimeType "TKTokenControlAttribLifetimeType"
+
 #define kTKTokenCreateAttributeAuxParams "TKTokenCreateAttributeAuxParams"
 
 #define TKTokenKeyUsageAny 1
 
-typedef const struct CF_BRIDGED_TYPE(TKToken) __TKToken * TKTokenRef;
+typedef const struct CF_BRIDGED_TYPE(id) __TKToken * TKTokenRef;
 
 CF_EXPORT
 CFDataRef TKTokenCopyObjectAccessControl(TKTokenRef token, CFDataRef object_id, CFErrorRef *error);

@@ -3,4 +3,16 @@
 
 //typedef aks_key_t *aks_ref_key_t;
 
+extern CFStringRef kAKSKeyAcl;
+extern CFStringRef kAKSKeyAclParamRequirePasscode;
+
+extern CFStringRef kAKSKeyOpDefaultAcl;
+extern CFStringRef kAKSKeyOpSign;
+extern CFStringRef kAKSKeyOpComputeKey;
+extern CFStringRef kAKSKeyOpAttest;
+extern CFStringRef kAKSKeyOpDecrypt;
+extern CFStringRef kAKSKeyOpEncrypt;
+extern CFStringRef kAKSKeyOpDelete;
+extern CFStringRef kAKSKeyOpECIESTranscode;
+
 #endif
