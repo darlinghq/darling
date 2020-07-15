@@ -162,9 +162,9 @@ ENDFUNCTION(add_circular)
 
 function(add_darling_object_library name)
 	cmake_parse_arguments(OBJECT_LIB "i386_ONLY;x86_64_ONLY" "" "" ${ARGN})
-	foreach(f IN LISTS ARGN)
-                set(files ${files} ${f})
-        endforeach(f)
+	foreach(f IN LISTS OBJECT_LIB_UNPARSED_ARGUMENTS)
+		set(files ${files} ${f})
+	endforeach(f)
 
 	add_library(${name} OBJECT ${files})
 	add_dependencies(${name} lipo)
