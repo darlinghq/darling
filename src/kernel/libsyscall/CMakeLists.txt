@@ -61,6 +61,16 @@ foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIGS)
 	list(APPEND syscall_mig_headers "${CMAKE_CURRENT_BINARY_DIR}/${MIG_FILENAME}.h")
 endforeach()
 
+mig(mach/servers/netname.defs)
+list(APPEND syscall_mig_headers "${CMAKE_CURRENT_BINARY_DIR}/mach/servers/netname.h")
+
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/servers")
+file(CREATE_LINK
+	"${DARLING_ROOT_RELATIVE_TO_SDK}/../../../src/kernel/libsyscall/mach/servers/netname.h"
+	"${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/servers/netname.h"
+	SYMBOLIC
+)
+
 remove_definitions(-DLIBSYSCALL_INTERFACE=1)
 set(MIG_USER_HEADER_SUFFIX "_unused_user.h")
 set(MIG_USER_SOURCE_SUFFIX)
