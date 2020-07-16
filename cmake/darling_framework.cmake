@@ -6,8 +6,8 @@ define_property(TARGET PROPERTY DYLIB_INSTALL_NAME BRIEF_DOCS "Stores the DYLIB_
 	FULL_DOCS "Used to make reexporting child frameworks less painful.")
 
 function(add_framework name)
-	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE;IOSSUPPORT" "VERSION;LINK_FLAGS;PARENT;PARENT_VERSION"
-		"SOURCES;DEPENDENCIES;CIRCULAR_DEPENDENCIES;RESOURCES" ${ARGN})
+	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE;IOSSUPPORT;CIRCULAR" "VERSION;LINK_FLAGS;PARENT;PARENT_VERSION"
+		"SOURCES;DEPENDENCIES;CIRCULAR_DEPENDENCIES;RESOURCES;UPWARD_DEPENDENCIES;OBJECTS" ${ARGN})
 	if (FRAMEWORK_CURRENT_VERSION)
 		set(my_name "${name}")
 	else (FRAMEWORK_CURRENT_VERSION)
@@ -38,7 +38,7 @@ function(add_framework name)
 
 	set(DYLIB_INSTALL_NAME "/${sys_library_dir}/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/${name}")
 
-	if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+	if (FRAMEWORK_CIRCULAR OR FRAMEWORK_CIRCULAR_DEPENDENCIES OR FRAMEWORK_UPWARD_DEPENDENCIES)
 		if (FRAMEWORK_FAT)
 			set (FRAMEWORK_FAT_ARG FAT)
 		else (FRAMEWORK_FAT)
@@ -47,16 +47,19 @@ function(add_framework name)
 		add_circular(${my_name}
 			${FRAMEWORK_FAT_ARG}
 			SOURCES ${FRAMEWORK_SOURCES}
-			SIBLINGS ${FRAMEWORK_CIRCULAR_DEPENDENCIES})
+			SIBLINGS ${FRAMEWORK_CIRCULAR_DEPENDENCIES}
+			UPWARD ${FRAMEWORK_UPWARD_DEPENDENCIES}
+			OBJECTS ${FRAMEWORK_OBJECTS}
+		)
 
-	else (FRAMEWORK_CIRCULAR_DEPENDENCIES)
-		add_darling_library(${my_name} SHARED ${FRAMEWORK_SOURCES})
+	else (FRAMEWORK_CIRCULAR OR FRAMEWORK_CIRCULAR_DEPENDENCIES OR FRAMEWORK_UPWARD_DEPENDENCIES)
+		add_darling_library(${my_name} SHARED ${FRAMEWORK_SOURCES} ${FRAMEWORK_OBJECTS})
 
 		if (FRAMEWORK_FAT)
 			make_fat(${my_name})
 		endif (FRAMEWORK_FAT)
 
-	endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+	endif (FRAMEWORK_CIRCULAR OR FRAMEWORK_CIRCULAR_DEPENDENCIES OR FRAMEWORK_UPWARD_DEPENDENCIES)
 	
 	set_property(TARGET ${my_name} PROPERTY DYLIB_INSTALL_NAME ${DYLIB_INSTALL_NAME})
 
@@ -125,7 +128,14 @@ function(add_separated_framework name)
 
 	if (TARGET_i386)
 		set(DARLING_LIB_i386_ONLY TRUE)
-		add_darling_library(${my_name}_i386 ${FRAMEWORK_SOURCES})
+		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+			add_circular(${my_name}_i386
+				SOURCES ${FRAMEWORK_SOURCES}
+				SIBLINGS ${FRAMEWORK_CIRCULAR_DEPENDENCIES}
+			)
+		else (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+			add_darling_library(${my_name}_i386 ${FRAMEWORK_SOURCES})
+		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 		set(DARLING_LIB_i386_ONLY FALSE)
 		set_target_properties(${my_name}_i386 PROPERTIES
 					OUTPUT_NAME "${name}_i386"
@@ -150,7 +160,14 @@ function(add_separated_framework name)
 
 	if (TARGET_x86_64)
 		set(DARLING_LIB_x86_64_ONLY TRUE)
-		add_darling_library(${my_name}_x86_64 ${FRAMEWORK_SOURCES})
+		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+			add_circular(${my_name}_x86_64
+				SOURCES ${FRAMEWORK_SOURCES}
+				SIBLINGS ${FRAMEWORK_CIRCULAR_DEPENDENCIES}
+			)
+		else (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+			add_darling_library(${my_name}_x86_64 ${FRAMEWORK_SOURCES})
+		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 		set(DARLING_LIB_x86_64_ONLY FALSE)
 		set_target_properties(${my_name}_x86_64 PROPERTIES
 					OUTPUT_NAME "${name}_x86_64"
@@ -174,6 +191,27 @@ function(add_separated_framework name)
 	endif (TARGET_x86_64)
 
 	if (TARGET_i386 AND TARGET_x86_64)
+		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+			add_dependencies(${my_name}_x86_64_firstpass ${my_name}_i386_firstpass)
+			add_custom_command(TARGET ${my_name}_x86_64_firstpass POST_BUILD
+				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+					-arch i386 $<TARGET_FILE:${my_name}_i386_firstpass>
+					-arch x86_64 $<TARGET_FILE:${my_name}_x86_64_firstpass>
+					-create
+					-output
+					${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+				COMMENT "Running lipo to create ${my_name}_firstpass"
+				BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+			)
+			add_library(${my_name}_firstpass SHARED IMPORTED GLOBAL)
+			set_target_properties(${my_name}_firstpass PROPERTIES
+				SUFFIX ""
+				PREFIX ""
+				IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+			)
+			add_dependencies(${my_name}_firstpass ${my_name}_x86_64_firstpass)
+		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+
 		add_dependencies(${my_name}_x86_64 ${my_name}_i386)
 		add_custom_command(TARGET ${my_name}_x86_64 POST_BUILD
 			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
@@ -193,6 +231,24 @@ function(add_separated_framework name)
 		)
 		add_dependencies(${my_name} ${my_name}_x86_64)
 	elseif (TARGET_i386)
+		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+			add_custom_command(TARGET ${my_name}_i386_firstpass POST_BUILD
+				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+					-arch i386 $<TARGET_FILE:${my_name}_i386_firstpass>
+					-create
+					-output
+					${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+				COMMENT "Running lipo to create ${my_name}_firstpass"
+				BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+			)
+			add_library(${my_name}_firstpass SHARED IMPORTED GLOBAL)
+			set_target_properties(${my_name}_firstpass PROPERTIES
+				SUFFIX ""
+				PREFIX ""
+				IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+			)
+			add_dependencies(${my_name}_firstpass ${my_name}_i386_firstpass)
+		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 
 		add_custom_command(TARGET ${my_name}_i386 POST_BUILD
 			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
@@ -211,6 +267,25 @@ function(add_separated_framework name)
 		)
 		add_dependencies(${my_name} ${my_name}_i386)
 	elseif (TARGET_x86_64)
+		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+			add_custom_command(TARGET ${my_name}_x86_64_firstpass POST_BUILD
+				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+					-arch x86_64 $<TARGET_FILE:${my_name}_x86_64_firstpass>
+					-create
+					-output
+					${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+				COMMENT "Running lipo to create ${my_name}_firstpass"
+				BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+			)
+			add_library(${my_name}_firstpass SHARED IMPORTED GLOBAL)
+			set_target_properties(${my_name}_firstpass PROPERTIES
+				SUFFIX ""
+				PREFIX ""
+				IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+			)
+			add_dependencies(${my_name}_firstpass ${my_name}_x86_64_firstpass)
+		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+
 		add_custom_command(TARGET ${my_name}_x86_64 POST_BUILD
 			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
 				-arch x86_64 $<TARGET_FILE:${my_name}_x86_64>
