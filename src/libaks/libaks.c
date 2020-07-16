@@ -1,6 +1,17 @@
 #include "libaks.h"
 #include "libaks_smartcard.h"
 
+CFStringRef kAKSKeyAcl                     = CFSTR("AKSKeyAcl");
+CFStringRef kAKSKeyAclParamRequirePasscode = CFSTR("AKSKeyAclParamRequirePasscode");
+CFStringRef kAKSKeyOpDefaultAcl            = CFSTR("AKSKeyOpDefaultAcl");
+CFStringRef kAKSKeyOpSign                  = CFSTR("AKSKeyOpSign");
+CFStringRef kAKSKeyOpComputeKey            = CFSTR("AKSKeyOpComputeKey");
+CFStringRef kAKSKeyOpAttest                = CFSTR("AKSKeyOpAttest");
+CFStringRef kAKSKeyOpDecrypt               = CFSTR("AKSKeyOpDecrypt");
+CFStringRef kAKSKeyOpEncrypt               = CFSTR("AKSKeyOpEncrypt");
+CFStringRef kAKSKeyOpDelete                = CFSTR("AKSKeyOpDelete");
+CFStringRef kAKSKeyOpECIESTranscode        = CFSTR("AKSKeyOpECIESTranscode");
+
 void aks_smartcard_unregister(int a)
 {
 
@@ -40,3 +51,15 @@ kern_return_t aks_assert_drop(keybag_handle_t keybagHandle, AKSAssertionType_t l
 {
 	return KERN_FAILURE;
 }
+
+kern_return_t aks_create_bag(uint8_t* secret, int secret_size, int bag_type, keybag_handle_t* handle) {
+	return KERN_FAILURE;
+};
+
+kern_return_t aks_save_bag(keybag_handle_t handle, void** bytes, size_t* size) {
+	return KERN_FAILURE;
+};
+
+kern_return_t aks_unload_bag(keybag_handle_t handle) {
+	return KERN_FAILURE;
+};
