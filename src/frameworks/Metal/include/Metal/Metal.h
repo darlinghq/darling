@@ -136,3 +136,5 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #import <Metal/_MTLCommandQueue.h>
 #import <Metal/MTLCommandQueueDescriptor.h>
 #import <Metal/MTLCommandQueueDescriptorInternal.h>
+#import <Metal/MTLDevice.h>
+#import <Metal/MTLTypes.h>
