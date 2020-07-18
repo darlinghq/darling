@@ -11,7 +11,11 @@ typedef struct {
     NSUInteger depth;
 } MTLSize;
 
-MTLSize MTLSizeMake(NSUInteger width, NSUInteger height, NSUInteger depth);
+inline MTLSize MTLSizeMake(NSUInteger width, NSUInteger height, NSUInteger depth) {
+    MTLSize item = { width, height, depth };
+    return item;
+}
+
 
 typedef struct {
     NSUInteger x;
@@ -19,7 +23,11 @@ typedef struct {
     NSUInteger z;
 } MTLOrigin;
 
-MTLOrigin MTLOriginMake(NSUInteger x, NSUInteger y, NSUInteger z);
+inline MTLOrigin MTLOriginMake(NSUInteger x, NSUInteger y, NSUInteger z) {
+    MTLOrigin item = { x, y, z };
+    return item;
+}
+
 
 typedef struct {
     MTLOrigin origin;
