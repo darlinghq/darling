@@ -142,3 +142,4 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #import <Metal/MTLCommandQueue.h>
 #import <Metal/MTLTexture.h>
 #import <Metal/MTLPixelFormat.h>
+#import <Metal/MTLRenderPass.h>
