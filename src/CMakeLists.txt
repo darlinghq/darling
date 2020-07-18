@@ -91,6 +91,7 @@ include_directories(
 )
 
 include_directories(AFTER
+	${CMAKE_CURRENT_SOURCE_DIR}/simd/include
 	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
 	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
