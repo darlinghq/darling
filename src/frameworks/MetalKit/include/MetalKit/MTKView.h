@@ -17,8 +17,25 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#if TARGET_OS_IPHONE
+// #import <IOKit/IOKit.h>
+// #define View UIView
+#else // TARGET_OS_OSX
+#import <AppKit/AppKit.h>
+#define View NSView
+#endif
 
-@interface MTKView : NSObject
+#import <CoreGraphics/CoreGraphics.h>
+#import <Foundation/Foundation.h>
+#import <Metal/Metal.h>
+
+
+@interface MTKView : View {
+    id<MTLDevice> _device;
+    MTLClearColor _clearColor;
+}
+
+@property(nonatomic, retain) id<MTLDevice> device;
+@property(nonatomic) MTLClearColor clearColor;
 
 @end

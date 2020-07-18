@@ -21,6 +21,9 @@
 
 @implementation MTKView
 
+@synthesize device = _device;
+@synthesize clearColor = _clearColor;
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];

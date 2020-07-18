@@ -31,6 +31,7 @@ add_framework(MetalKit
         src/MTKView.m
 
     DEPENDENCIES
+        AppKit
         system
         objc
         Foundation
