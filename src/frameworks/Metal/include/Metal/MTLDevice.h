@@ -1,5 +1,11 @@
 #import <Foundation/Foundation.h>
+
+#import <Metal/MTLCommandQueue.h>
+#import <Metal/MTLPixelFormat.h>
+#import <Metal/MTLTexture.h>
 #import <Metal/MTLTypes.h>
+
+@protocol MTLCommandQueue;
 
 typedef NS_ENUM(NSUInteger, MTLDeviceLocation) {
     MTLDeviceLocationBuiltIn        = 0,
@@ -81,9 +87,14 @@ typedef NS_ENUM(NSUInteger, MTLFeatureSet) {
 @property(readonly, getter=areRasterOrderGroupsSupported) BOOL rasterOrderGroupsSupported;
 @property(readonly, getter=isDepth24Stencil8PixelFormatSupported) BOOL depth24Stencil8PixelFormatSupported;
 @property(readonly, getter=areBarycentricCoordsSupported) BOOL barycentricCoordsSupported;
+@property(readonly) BOOL supportsShaderBarycentricCoordinates;
+@property(readonly) NSUInteger sparseTileSizeInBytes;
 
 - (BOOL)supportsFamily:(MTLGPUFamily)gpuFamily;
 - (BOOL)supportsFeatureSet:(MTLFeatureSet)featureSet;
 - (void)getDefaultSamplePositions:(MTLSamplePosition *)positions count:(NSUInteger)count;
+- (BOOL)supportsVertexAmplificationCount:(NSUInteger)count;
+- (id<MTLCommandQueue>)newCommandQueue;
+- (MTLSize)sparseTileSizeWithTextureType:(MTLTextureType)textureType pixelFormat:(MTLPixelFormat)pixelFormat sampleCount:(NSUInteger)sampleCount;
 
 @end
