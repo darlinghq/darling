@@ -337,3 +337,18 @@
 [submodule "src/external/energytrace"]
 	path = src/external/energytrace
 	url = ../darling-energytrace.git
+[submodule "src/external/nghttp2"]
+	path = src/external/nghttp2
+	url = ../darling-nghttp2
+[submodule "src/external/libressl-2.2.9"]
+	path = src/external/libressl-2.2.9
+	url = ../darling-libressl.git
+[submodule "src/external/libressl-2.5.5"]
+	path = src/external/libressl-2.5.5
+	url = ../darling-libressl.git
+[submodule "src/external/libressl-2.6.5"]
+	path = src/external/libressl-2.6.5
+	url = ../darling-libressl.git
+[submodule "src/external/libressl-2.8.3"]
+	path = src/external/libressl-2.8.3
+	url = ../darling-libressl.git
