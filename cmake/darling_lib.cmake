@@ -163,6 +163,9 @@ FUNCTION(add_circular name)
 
 	target_link_libraries("${name}" PRIVATE ${CIRCULAR_DEPENDENCIES})
 
+	# strong dependencies are linked again in the finalpass
+	target_link_libraries("${name}" PRIVATE ${CIRCULAR_STRONG_DEPENDENCIES})
+
 	if (CIRCULAR_FAT)
 		make_fat(${name})
 	endif (CIRCULAR_FAT)
