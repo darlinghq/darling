@@ -108,8 +108,13 @@ ENDFUNCTION(make_fat)
 #             loaded and initialized after the current library is fully loaded. This is needed to break
 #             certain dependency issues, esp. if a libSystem sublibrary depends on a library that depends on libSystem
 #             and has initializers. dyld bails out unless this dependency is upward.
+# * STRONG_DEPENDENCIES: Which regular dependencies we should link against in the firstpass.
+#             Just like STRONG_SIBLINGS, this should only be used in special cases. The intended use case is when
+#             another sibling depends on symbols linked into this sibling from dependencies (usually static libraries).
+#             Current use case is for Security to link to its static libraries in the firstpass,
+#             because coretls_cfhelpers depends on them.
 FUNCTION(add_circular name)
-	cmake_parse_arguments(CIRCULAR "FAT" "LINK_FLAGS" "SOURCES;OBJECTS;SIBLINGS;STRONG_SIBLINGS;DEPENDENCIES;UPWARD" ${ARGN})
+	cmake_parse_arguments(CIRCULAR "FAT" "LINK_FLAGS" "SOURCES;OBJECTS;SIBLINGS;STRONG_SIBLINGS;DEPENDENCIES;UPWARD;STRONG_DEPENDENCIES" ${ARGN})
 	#message(STATUS "${name} sources: ${CIRCULAR_SOURCES}")
 	#message(STATUS "${name} siblings ${CIRCULAR_SIBLINGS}")
 	#message(STATUS "${name} deps: ${CIRCULAR_DEPENDENCIES}")
@@ -132,6 +137,9 @@ FUNCTION(add_circular name)
 	foreach(dep ${CIRCULAR_STRONG_SIBLINGS})
 		target_link_libraries("${name}_firstpass" PRIVATE "${dep}_firstpass")
 	endforeach(dep)
+
+	# strong dependencies are linked in the firstpass
+	target_link_libraries("${name}_firstpass" PRIVATE ${CIRCULAR_STRONG_DEPENDENCIES})
 	
 	if (CIRCULAR_FAT)
 		make_fat("${name}_firstpass")
