@@ -564,7 +564,7 @@ void spawnShell(const char** argv)
 		"/usr/local/bin");
 
 	const char* login = NULL;
-	struct passwd* pw = getpwuid(getuid());
+	struct passwd* pw = getpwuid(geteuid());
 
 	if (pw != NULL)
 		login = pw->pw_name;
