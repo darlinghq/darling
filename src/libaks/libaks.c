@@ -63,3 +63,11 @@ kern_return_t aks_save_bag(keybag_handle_t handle, void** bytes, size_t* size) {
 kern_return_t aks_unload_bag(keybag_handle_t handle) {
 	return KERN_FAILURE;
 };
+
+kern_return_t aks_unlock_bag(keybag_handle_t handle, const void* passcode, int length) {
+	return KERN_FAILURE;
+};
+
+kern_return_t aks_load_bag(const void* data, int length, keybag_handle_t* handle) {
+	return KERN_FAILURE;
+};
