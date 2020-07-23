@@ -932,7 +932,7 @@ static void wipeDir(const char* dirpath)
 
 		if (ent->d_type == DT_DIR)
 		{
-			wipeDir(path);
+			// wipeDir(path); /* Do not recurse! */
 			rmdir(path);
 		}
 		else
@@ -946,8 +946,14 @@ void darlingPreInit(void)
 {
 	// TODO: Run /usr/libexec/makewhatis
 	const char* dirs[] = {
-		"/var/tmp",
-		"/var/run"
+		"/var/tmp/launchd/sock",
+		"/var/tmp/launchd", /* directory to be removed, after their contents */
+		"/var/run/.systemStarterRunning",
+		"/var/run/memberd.pid",
+		"/var/run/shellspawn.sock",
+		"/var/run/syslog.pid",
+		"/var/run/syslog",
+		"/var/run/utmpx"
 	};
 
 	char fullpath[4096];
