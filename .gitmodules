@@ -352,3 +352,15 @@
 [submodule "src/external/libressl-2.8.3"]
 	path = src/external/libressl-2.8.3
 	url = ../darling-libressl.git
+[submodule "src/external/OpenLDAP"]
+	path = src/external/OpenLDAP
+	url = ../darling-openldap.git
+[submodule "src/external/passwordserver_sasl"]
+	path = src/external/passwordserver_sasl
+	url = ../darling-passwordserver_sasl.git
+[submodule "src/external/MITKerberosShim"]
+	path = src/external/MITKerberosShim
+	url = ../darling-MITKerberosShim.git
+[submodule "src/external/mDNSResponder"]
+	path = src/external/mDNSResponder
+	url = ../darling-mDNSResponder.git
