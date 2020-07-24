@@ -59,3 +59,13 @@ CFStringRef SCDynamicStoreKeyCreateComputerName(CFAllocatorRef allocator) {
 	STUB();
 	return NULL;
 };
+
+Boolean SCPreferencesSetComputerName(SCPreferencesRef	prefs, CFStringRef __nullable	name, CFStringEncoding	nameEncoding) {
+	STUB();
+	return FALSE;
+};
+
+Boolean SCPreferencesSetLocalHostName(SCPreferencesRef	prefs, CFStringRef __nullable	name) {
+	STUB();
+	return FALSE;
+};
