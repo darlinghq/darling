@@ -55,12 +55,12 @@ void* CSRangeIntersectsRange(void) { if (verbose) puts("STUB: CSRangeIntersectsR
 void* CSRegionCopyDescriptionWithIndent(void) { if (verbose) puts("STUB: CSRegionCopyDescriptionWithIndent called"); return NULL; }
 void* CSRegionForeachSourceInfo(void) { if (verbose) puts("STUB: CSRegionForeachSourceInfo called"); return NULL; }
 void CSRegionForeachSymbol(CSRegionRef region, void (^handler)(CSSymbolRef)) { if (verbose) puts("STUB: CSRegionForeachSymbol called"); }
-void* CSRegionGetName(void) { if (verbose) puts("STUB: CSRegionGetName called"); return NULL; }
-void* CSRegionGetRange(void) { if (verbose) puts("STUB: CSRegionGetRange called"); return NULL; }
+const char* CSRegionGetName(CSSegmentRef seg) { if (verbose) puts("STUB: CSRegionGetName called"); return NULL; };
+CSRange CSRegionGetRange(CSSegmentRef seg) { if (verbose) puts("STUB: CSRegionGetRange called"); return (CFRange){0}; }
 void* CSRegionGetSymbolOwner(void) { if (verbose) puts("STUB: CSRegionGetSymbolOwner called"); return NULL; }
 void* CSRegionGetSymbolicator(void) { if (verbose) puts("STUB: CSRegionGetSymbolicator called"); return NULL; }
-void CSRelease(CSSymbolicatorRef symbolicator) { if (verbose) puts("STUB: CSRelease called"); }
-void* CSRetain(void) { if (verbose) puts("STUB: CSRetain called"); return NULL; }
+void CSRelease(void* ref) { if (verbose) puts("STUB: CSRelease called"); }
+void* CSRetain(void* ref) { if (verbose) puts("STUB: CSRetain called"); return NULL; }
 void* CSSectionGetSegment(void) { if (verbose) puts("STUB: CSSectionGetSegment called"); return NULL; }
 void* CSSegmentForeachSection(void) { if (verbose) puts("STUB: CSSegmentForeachSection called"); return NULL; }
 void* CSShow(void) { if (verbose) puts("STUB: CSShow called"); return NULL; }
@@ -73,8 +73,8 @@ void* CSSignatureFreeSegments(void) { if (verbose) puts("STUB: CSSignatureFreeSe
 void* CSSourceInfoCopyDescriptionWithIndent(void) { if (verbose) puts("STUB: CSSourceInfoCopyDescriptionWithIndent called"); return NULL; }
 void* CSSourceInfoGetColumn(void) { if (verbose) puts("STUB: CSSourceInfoGetColumn called"); return NULL; }
 void* CSSourceInfoGetFilename(void) { if (verbose) puts("STUB: CSSourceInfoGetFilename called"); return NULL; }
-void* CSSourceInfoGetLineNumber(void) { if (verbose) puts("STUB: CSSourceInfoGetLineNumber called"); return NULL; }
-void* CSSourceInfoGetPath(void) { if (verbose) puts("STUB: CSSourceInfoGetPath called"); return NULL; }
+int CSSourceInfoGetLineNumber(CSSourceInfoRef info) { if (verbose) puts("STUB: CSSourceInfoGetLineNumber called"); return 0; }
+const char* CSSourceInfoGetPath(CSSourceInfoRef info) { if (verbose) puts("STUB: CSSourceInfoGetPath called"); return NULL; }
 void* CSSourceInfoGetRange(void) { if (verbose) puts("STUB: CSSourceInfoGetRange called"); return NULL; }
 void* CSSourceInfoGetRegion(void) { if (verbose) puts("STUB: CSSourceInfoGetRegion called"); return NULL; }
 void* CSSourceInfoGetSymbol(void) { if (verbose) puts("STUB: CSSourceInfoGetSymbol called"); return NULL; }
@@ -132,14 +132,14 @@ void* CSSymbolOwnerForEachStackFrameAtAddress(void) { if (verbose) puts("STUB: C
 void* CSSymbolOwnerForeachRegion(void) { if (verbose) puts("STUB: CSSymbolOwnerForeachRegion called"); return NULL; }
 void* CSSymbolOwnerForeachRegionWithName(void) { if (verbose) puts("STUB: CSSymbolOwnerForeachRegionWithName called"); return NULL; }
 void* CSSymbolOwnerForeachSection(void) { if (verbose) puts("STUB: CSSymbolOwnerForeachSection called"); return NULL; }
-void* CSSymbolOwnerForeachSegment(void) { if (verbose) puts("STUB: CSSymbolOwnerForeachSegment called"); return NULL; }
+void CSSymbolOwnerForeachSegment(CSSymbolOwnerRef sym_owner, void (^loop)(CSSegmentRef)) { if (verbose) puts("STUB: CSSymbolOwnerForeachSegment called"); }
 void* CSSymbolOwnerForeachSourceInfo(void) { if (verbose) puts("STUB: CSSymbolOwnerForeachSourceInfo called"); return NULL; }
 void CSSymbolOwnerForeachSymbol(CSSymbolOwnerRef owner, void (^symbol)(CSSymbolRef)) { if (verbose) puts("STUB: CSSymbolOwnerForeachSymbol called"); }
 void CSSymbolOwnerForeachSymbolWithMangledName(CSSymbolOwnerRef owner, const char* name, void (^handler)(CSSymbolRef)) { if (verbose) puts("STUB: CSSymbolOwnerForeachSymbolWithMangledName called"); }
 void CSSymbolOwnerForeachSymbolWithName(CSSymbolOwnerRef owner, const char* name, void (^handler)(CSSymbolRef)) { if (verbose) puts("STUB: CSSymbolOwnerForeachSymbolWithName called"); }
 int CSSymbolOwnerGetArchitecture(CSSymbolOwnerRef owner) { if (verbose) puts("STUB: CSSymbolOwnerGetArchitecture called"); return 0; }
 uintptr_t CSSymbolOwnerGetBaseAddress(CSSymbolOwnerRef owner) { if (verbose) puts("STUB: CSSymbolOwnerGetBaseAddress called"); return 0; }
-void* CSSymbolOwnerGetCFUUIDBytes(void) { if (verbose) puts("STUB: CSSymbolOwnerGetCFUUIDBytes called"); return NULL; }
+const CFUUIDBytes* CSSymbolOwnerGetCFUUIDBytes(CSSymbolOwnerRef sym_owner) { if (verbose) puts("STUB: CSSymbolOwnerGetCFUUIDBytes called"); return NULL; }
 void* CSSymbolOwnerGetCompatibilityVersion(void) { if (verbose) puts("STUB: CSSymbolOwnerGetCompatibilityVersion called"); return NULL; }
 void* CSSymbolOwnerGetCurrentVersion(void) { if (verbose) puts("STUB: CSSymbolOwnerGetCurrentVersion called"); return NULL; }
 int CSSymbolOwnerGetDataFlags(CSSymbolOwnerRef owner) { if (verbose) puts("STUB: CSSymbolOwnerGetDataFlags called"); return 0; }
@@ -150,7 +150,7 @@ void* CSSymbolOwnerGetFlags(void) { if (verbose) puts("STUB: CSSymbolOwnerGetFla
 void* CSSymbolOwnerGetLastModifiedTimestamp(void) { if (verbose) puts("STUB: CSSymbolOwnerGetLastModifiedTimestamp called"); return NULL; }
 void* CSSymbolOwnerGetLoadTimestamp(void) { if (verbose) puts("STUB: CSSymbolOwnerGetLoadTimestamp called"); return NULL; }
 char* CSSymbolOwnerGetName(CSSymbolOwnerRef owner) { if (verbose) puts("STUB: CSSymbolOwnerGetName called"); return NULL; }
-char* CSSymbolOwnerGetPath(int arg0) { if (verbose) puts("STUB: CSSymbolOwnerGetPath called"); return NULL; }
+char* CSSymbolOwnerGetPath(CSSymbolOwnerRef owner) { if (verbose) puts("STUB: CSSymbolOwnerGetPath called"); return NULL; }
 void* CSSymbolOwnerGetPathForSymbolication(void) { if (verbose) puts("STUB: CSSymbolOwnerGetPathForSymbolication called"); return NULL; }
 void* CSSymbolOwnerGetRegionCount(void) { if (verbose) puts("STUB: CSSymbolOwnerGetRegionCount called"); return NULL; }
 void* CSSymbolOwnerGetRegionWithAddress(void) { if (verbose) puts("STUB: CSSymbolOwnerGetRegionWithAddress called"); return NULL; }
@@ -208,7 +208,7 @@ void* CSSymbolicatorCreateWithMachKernel(void) { if (verbose) puts("STUB: CSSymb
 void* CSSymbolicatorCreateWithMachKernelFlagsAndNotification(int arg0, void* arg1) { if (verbose) puts("STUB: CSSymbolicatorCreateWithMachKernelFlagsAndNotification called"); return NULL; }
 void* CSSymbolicatorCreateWithPathAndArchitecture(void) { if (verbose) puts("STUB: CSSymbolicatorCreateWithPathAndArchitecture called"); return NULL; }
 void* CSSymbolicatorCreateWithPathArchitectureFlagsAndNotification(void) { if (verbose) puts("STUB: CSSymbolicatorCreateWithPathArchitectureFlagsAndNotification called"); return NULL; }
-void* CSSymbolicatorCreateWithPid(void) { if (verbose) puts("STUB: CSSymbolicatorCreateWithPid called"); return NULL; }
+CSSymbolicatorRef CSSymbolicatorCreateWithPid(pid_t pid) { if (verbose) puts("STUB: CSSymbolicatorCreateWithPid called"); return NULL; }
 void* CSSymbolicatorCreateWithPidFlagsAndNotification(void) { if (verbose) puts("STUB: CSSymbolicatorCreateWithPidFlagsAndNotification called"); return NULL; }
 void* CSSymbolicatorCreateWithSignature(void) { if (verbose) puts("STUB: CSSymbolicatorCreateWithSignature called"); return NULL; }
 void* CSSymbolicatorCreateWithSignatureAndNotification(void) { if (verbose) puts("STUB: CSSymbolicatorCreateWithSignatureAndNotification called"); return NULL; }
@@ -257,7 +257,7 @@ void* CSSymbolicatorGetSegmentWithAddressAtTime(void) { if (verbose) puts("STUB:
 void* CSSymbolicatorGetSharedCacheSlide(void) { if (verbose) puts("STUB: CSSymbolicatorGetSharedCacheSlide called"); return NULL; }
 void* CSSymbolicatorGetSharedCacheUUID(void) { if (verbose) puts("STUB: CSSymbolicatorGetSharedCacheUUID called"); return NULL; }
 void* CSSymbolicatorGetSourceInfoCountAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSourceInfoCountAtTime called"); return NULL; }
-void* CSSymbolicatorGetSourceInfoWithAddressAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSourceInfoWithAddressAtTime called"); return NULL; }
+CSSourceInfoRef CSSymbolicatorGetSourceInfoWithAddressAtTime(CSSymbolicatorRef symbolicator, mach_vm_address_t address, time_t time) { if (verbose) puts("STUB: CSSymbolicatorGetSourceInfoWithAddressAtTime called"); return NULL; }
 void* CSSymbolicatorGetSymbolCountAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolCountAtTime called"); return NULL; }
 void* CSSymbolicatorGetSymbolOwner(void) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolOwner called"); return NULL; }
 void* CSSymbolicatorGetSymbolOwnerCountAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolOwnerCountAtTime called"); return NULL; }
@@ -271,7 +271,7 @@ void* CSSymbolicatorGetSymbolWithMangledNameFromSymbolOwnerWithNameAtTime(void) 
 void* CSSymbolicatorGetSymbolWithNameAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolWithNameAtTime called"); return NULL; }
 void* CSSymbolicatorGetSymbolWithNameFromSymbolOwnerWithNameAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolWithNameFromSymbolOwnerWithNameAtTime called"); return NULL; }
 task_t CSSymbolicatorGetTask(CSSymbolicatorRef symbolicator) { if (verbose) puts("STUB: CSSymbolicatorGetTask called"); return 0; }
-void* CSSymbolicatorIsKernelSymbolicator(void) { if (verbose) puts("STUB: CSSymbolicatorIsKernelSymbolicator called"); return NULL; }
+Boolean CSSymbolicatorIsKernelSymbolicator(CSSymbolicatorRef symbolicator) { if (verbose) puts("STUB: CSSymbolicatorIsKernelSymbolicator called"); return 0; }
 void* CSSymbolicatorIsTaskTranslated(void) { if (verbose) puts("STUB: CSSymbolicatorIsTaskTranslated called"); return NULL; }
 void* CSSymbolicatorIsTaskValid(void) { if (verbose) puts("STUB: CSSymbolicatorIsTaskValid called"); return NULL; }
 void* CSSymbolicatorResymbolicate(void) { if (verbose) puts("STUB: CSSymbolicatorResymbolicate called"); return NULL; }
