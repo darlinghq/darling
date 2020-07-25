@@ -10,6 +10,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
+	${CMAKE_CURRENT_SOURCE_DIR}/xar/lib
 )
 
 set(xar_SRCS
