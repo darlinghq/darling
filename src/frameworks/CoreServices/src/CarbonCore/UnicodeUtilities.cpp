@@ -27,6 +27,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreServices/UniChar.h>
 #include <CoreServices/MacErrors.h>
 
+using namespace icu;
+
 namespace Darling
 {
 	int getLocaleUID(const std::string& str);

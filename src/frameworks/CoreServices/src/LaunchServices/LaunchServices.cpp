@@ -12,6 +12,8 @@
 #include <unicode/unistr.h>
 #include <CoreServices/UniChar.h>
 
+using namespace icu;
+
 extern char** environ;
 
 namespace
