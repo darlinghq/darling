@@ -364,3 +364,6 @@
 [submodule "src/external/mDNSResponder"]
 	path = src/external/mDNSResponder
 	url = ../darling-mDNSResponder.git
+[submodule "src/external/BerkeleyDB"]
+	path = src/external/BerkeleyDB
+	url = ../darling-BerkeleyDB.git
