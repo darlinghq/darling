@@ -118,7 +118,14 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/System/Library/PrivateFrameworks/FMDB.framework/Versions/A/FMDB:${CMAKE_BINARY_DIR}/src/external/fmdb/FMDB \
 -Wl,-dylib_file,/usr/lib/system/libkxld.dylib:${CMAKE_BINARY_DIR}/src/external/lkm/libkern/kxld/libkxld.dylib \
 -Wl,-dylib_file,/usr/lib/libcrypto.44.dylib:${CMAKE_BINARY_DIR}/src/external/libressl-2.8.3/libcrypto.44.dylib \
--Wl,-dylib_file,/usr/lib/libssl.46.dylib:${CMAKE_BINARY_DIR}/src/external/libressl-2.8.3/libssl.46.dylib")
+-Wl,-dylib_file,/usr/lib/libssl.46.dylib:${CMAKE_BINARY_DIR}/src/external/libressl-2.8.3/libssl.46.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Security.framework/Versions/A/Security:${CMAKE_BINARY_DIR}/src/external/security/OSX/Security \
+-Wl,-dylib_file,/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation:${CMAKE_BINARY_DIR}/src/external/foundation/Foundation \
+-Wl,-dylib_file,/usr/lib/libz.1.dylib:${CMAKE_BINARY_DIR}/src/external/zlib/libz.1.dylib \
+-Wl,-dylib_file,/usr/lib/libcoretls_cfhelpers.dylib:${CMAKE_BINARY_DIR}/src/external/coretls/libcoretls_cfhelpers.dylib \
+-Wl,-dylib_file,/System/Library/PrivateFrameworks/AppleFSCompression.framework/Versions/A/AppleFSCompression:${CMAKE_BINARY_DIR}/src/private-frameworks/AppleFSCompression/AppleFSCompression \
+-Wl,-dylib_file,/usr/lib/libcoretls.dylib:${CMAKE_BINARY_DIR}/src/external/coretls/libcoretls.dylib \
+-Wl,-dylib_file,/usr/lib/libenergytrace.dylib:${CMAKE_BINARY_DIR}/src/external/energytrace/libenergytrace.dylib")
 
 	add_dependencies(${target} x86_64-apple-darwin11-ld)
 
