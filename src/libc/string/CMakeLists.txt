@@ -18,6 +18,7 @@ set(string_sources
 set(string_sources ${string_sources}
 	FreeBSD/memmem.c
 	FreeBSD/rindex.c
+	FreeBSD/rpmatch.c
 	FreeBSD/strcasecmp.c
 	FreeBSD/strcasestr.c
 	FreeBSD/strcoll.c
