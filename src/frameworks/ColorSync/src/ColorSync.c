@@ -137,12 +137,6 @@ void* ColorSyncCreateSignatureFromFourCharCode(void)
     return NULL;
 }
 
-void* ColorSyncCreateUUIDFromUInt32(void)
-{
-    if (verbose) puts("STUB: ColorSyncCreateUUIDFromUInt32 called");
-    return NULL;
-}
-
 void* ColorSyncDataCanBeIgnoredOnSRGBDevice(void)
 {
     if (verbose) puts("STUB: ColorSyncDataCanBeIgnoredOnSRGBDevice called");
@@ -539,12 +533,6 @@ void* ColorSyncPureGammaOriginalTRC(void)
     return NULL;
 }
 
-void* ColorSyncRegisterDevice(void)
-{
-    if (verbose) puts("STUB: ColorSyncRegisterDevice called");
-    return NULL;
-}
-
 void* ColorSyncSwapProfileHeader(void)
 {
     if (verbose) puts("STUB: ColorSyncSwapProfileHeader called");
@@ -635,12 +623,6 @@ void* ColorSyncTransformSetProperty(void)
     return NULL;
 }
 
-void* ColorSyncUnregisterDevice(void)
-{
-    if (verbose) puts("STUB: ColorSyncUnregisterDevice called");
-    return NULL;
-}
-
 void* ColorSyncVerifyAdobeRGBData(void)
 {
     if (verbose) puts("STUB: ColorSyncVerifyAdobeRGBData called");
@@ -670,3 +652,30 @@ void* ColorSyncVerifySRGBData(void)
     if (verbose) puts("STUB: ColorSyncVerifySRGBData called");
     return NULL;
 }
+
+// stubs with fixed-up declarations
+
+CFUUIDRef ColorSyncCreateUUIDFromUInt32(unsigned int uuid) {
+    if (verbose) puts("STUB: ColorSyncCreateUUIDFromUInt32 called");
+    return NULL;
+};
+
+bool ColorSyncRegisterDevice(CFStringRef class, CFUUIDRef uuid, CFDictionaryRef info) {
+    if (verbose) puts("STUB: ColorSyncRegisterDevice called");
+    return 0;
+};
+
+bool ColorSyncUnregisterDevice(CFStringRef class, CFUUIDRef uuid) {
+    if (verbose) puts("STUB: ColorSyncUnregisterDevice called");
+    return 0;
+};
+
+// someone please check these and replace them with the correct values
+CFStringRef kColorSyncDeviceProfileURL       = CFSTR("ColorSyncDeviceProfileURL");
+CFStringRef kColorSyncDeviceModeDescriptions = CFSTR("ColorSyncDeviceModeDescriptions");
+CFStringRef kColorSyncDeviceDefaultProfileID = CFSTR("ColorSyncDeviceDefaultProfileID");
+CFStringRef kColorSyncDeviceDescriptions     = CFSTR("ColorSyncDeviceDescriptions");
+CFStringRef kColorSyncFactoryProfiles        = CFSTR("ColorSyncFactoryProfiles");
+CFStringRef kColorSyncDeviceUserScope        = CFSTR("ColorSyncDeviceUserScope");
+CFStringRef kColorSyncDeviceHostScope        = CFSTR("ColorSyncDeviceHostScope");
+CFStringRef kColorSyncPrinterDeviceClass     = CFSTR("ColorSyncPrinterDeviceClass");
