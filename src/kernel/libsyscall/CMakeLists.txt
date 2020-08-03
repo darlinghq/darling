@@ -702,6 +702,11 @@ add_dependencies(libsyscall
 )
 
 add_darling_object_library(libsyscall_dynamic ${syscall_dynamic_sources})
+add_dependencies(libsyscall_dynamic
+	libsyscall_generate_mig_headers
+	libsyscall_generate_mig_internal_headers
+)
+
 make_fat(libsyscall)
 make_fat(libsyscall_dynamic)
 
