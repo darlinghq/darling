@@ -7,7 +7,7 @@ FUNCTION(use_ld64 target)
 -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
 -target x86_64-apple-darwin11 -Wl,-Z \
 -Wl,-dylib_file,/usr/lib/system/libsystem_c.dylib:${CMAKE_BINARY_DIR}/src/libc/libsystem_c_firstpass.dylib \
--Wl,-dylib_file,/usr/lib/system/libsystem_darwin.dylib:${CMAKE_BINARY_DIR}/src/libc/libdarwin/libsystem_darwin_firstpass.dylib \
+-Wl,-dylib_file,/usr/lib/system/libsystem_darwin.dylib:${CMAKE_BINARY_DIR}/src/libc/libdarwin/libsystem_darwin.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_kernel.dylib:${CMAKE_BINARY_DIR}/src/kernel/libsystem_kernel_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libunwind.dylib:${CMAKE_BINARY_DIR}/src/libunwind/libunwind_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_m.dylib:${CMAKE_BINARY_DIR}/src/libm/libsystem_m_firstpass.dylib \
