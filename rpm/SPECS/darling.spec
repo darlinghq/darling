@@ -4,8 +4,8 @@
 %define debug_package %{nil}
 
 Name:           darling
-Version:        0.1
-Release:        4%{?dist}
+Version:        0.1.20200331
+Release:        1%{?dist}
 Summary:        Darling
 
 Group:          Utility
@@ -26,6 +26,8 @@ BuildRequires:  libjpeg-turbo-devel(x86-32) libtiff-devel(x86-32)
 BuildRequires:  libglvnd-devel mesa-libGL-devel mesa-libEGL-devel
 BuildRequires:  libxml2-devel elfutils-libelf-devel
 BuildRequires:  libbsd-devel
+BuildRequires:  ffmpeg-devel pulseaudio-libs-devel openssl-devel giflib-devel
+BuildRequires:  libXrandr-devel libXcursor-devel libxkbfile-devel dbus-devel mesa-libGLU-devel
 # Normally rpm will pick up all the mac pieces as dependencies. Disable that.
 AutoReqProv:    no
 
@@ -69,6 +71,12 @@ cp -dr --no-preserve=ownership build/src/startup/rtsig.h %{?buildroot}/usr/src/%
 
 %{__install} -m 644 %{SOURCE1} %{?buildroot}/usr/src/%{name}-mach-%{version}
 
+# Note: This is run AFTER the new version is installed... If the new version
+# has the same version number as the old, this means the new version is
+# uninstalled.
+# Order of events:
+# - New version %pre -> (installs files) -> %post
+# - Old version %preun -> (uninstalls files) -> %postun
 %preun mach
 /usr/sbin/dkms remove -m %{name}-mach -v %{version} --all || :
 
@@ -90,6 +98,9 @@ fi
 %{_prefix}/src/%{name}-mach-%{version}
 
 %changelog
+* Tue Aug 18 2020 Andy Neff <andy@visionsystemsinc.com> - 0.1.20200331-1
+- Update for latest version and Fedora 31
+
 * Mon Aug 12 2019 Andy Neff <andy@visionsystemsinc.com> - 0.1-4
 - Update for Fedora 30
 
