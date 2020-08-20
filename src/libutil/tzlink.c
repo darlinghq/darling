@@ -1,4 +1,3 @@
-// Modified by Lubos Dolezel for Darling build
 /*
  * Copyright (c) 2013 Apple Inc. All rights reserved.
  *
@@ -23,9 +22,7 @@
  */
 
 #include <TargetConditionals.h>
-#if TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
-#	include <xpc/xpc.h>
-#endif
+#include <xpc/xpc.h>
 #include <errno.h>
 
 #include "tzlink.h"
@@ -34,7 +31,7 @@
 errno_t
 tzlink(const char *tz)
 {
-#if TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+#if TARGET_OS_IPHONE || TARGET_OS_OSX && !TARGET_OS_SIMULATOR
 	xpc_connection_t connection;
 	xpc_object_t request, reply;
 	errno_t e;

@@ -1,9 +1,4 @@
-#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
-
-// Set INSTALL_PATH_ACTUAL to whatever INSTALL_PATH would normally be
-INSTALL_PATH_ACTUAL = /usr/sbin
-
-INSTALL_PATH_ACTUAL = /usr/libexec
+INSTALL_PATH = /usr/libexec
 PRODUCT_NAME = tzlinkd
 
 CODE_SIGN_IDENTITY = -
