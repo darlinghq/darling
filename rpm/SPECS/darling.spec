@@ -71,21 +71,18 @@ cp -dr --no-preserve=ownership build/src/startup/rtsig.h %{?buildroot}/usr/src/%
 
 %{__install} -m 644 %{SOURCE1} %{?buildroot}/usr/src/%{name}-mach-%{version}
 
-# Note: This is run AFTER the new version is installed... If the new version
-# has the same version number as the old, this means the new version is
-# uninstalled.
-# Order of events:
-# - New version %pre -> (installs files) -> %post
-# - Old version %preun -> (uninstalls files) -> %postun
+# https://github.com/dell/dkms/issues/25
 %preun mach
-/usr/sbin/dkms remove -m %{name}-mach -v %{version} --all || :
+/usr/sbin/dkms remove -m %{name}-mach -v %{version} --all --rpm_safe_upgrade || :
+
+%pre mach
+occurrences=$(/usr/sbin/dkms status "%{name}/%{version}" | wc -l)
+if [ ! ${occurrences} -gt 0 ]; then
+  /usr/sbin/dkms remove -m %{name}-mach -v %{version} --all --rpm_safe_upgrade || :
+fi
 
 %post mach
-occurrences=$(/usr/sbin/dkms status | grep "%{name}" | grep "%{version}" | wc -l)
-if [ ! ${occurrences} -gt 0 ];
-then
-  /usr/sbin/dkms add -m %{name}-mach -v %{version} || :
-fi
+/usr/sbin/dkms add -m %{name}-mach -v %{version} --rpm_safe_upgrade || :
 /usr/sbin/dkms build -m %{name}-mach -v %{version} || :
 /usr/sbin/dkms install -m %{name}-mach -v %{version} || :
 
