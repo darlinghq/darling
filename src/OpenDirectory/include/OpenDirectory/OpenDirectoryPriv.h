@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2005-2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,34 +21,14 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#ifndef __OPENDIRECTORYPRIV_H
+#define __OPENDIRECTORYPRIV_H
+
+#include <CFOpenDirectory/CFOpenDirectoryConstants.h>
+#include <CFOpenDirectory/CFOpenDirectoryPriv.h>
+
 #if __OBJC__
-#import <Foundation/Foundation.h>
-#endif /* __OBJC__ */
-
-#include <CFOpenDirectory/CFOpenDirectory.h>
-
-#if __OBJC__
-
-FOUNDATION_EXPORT NSString *const ODFrameworkErrorDomain NS_AVAILABLE(10_6, NA);
-
-#import <OpenDirectory/ODSession.h>
-#import <OpenDirectory/ODRecord.h>
-#import <OpenDirectory/ODNode.h>
-#import <OpenDirectory/ODQuery.h>
-#import <OpenDirectory/ODConfiguration.h>
-#import <OpenDirectory/ODMappings.h>
-#import <OpenDirectory/ODRecordMap.h>
-#import <OpenDirectory/ODAttributeMap.h>
-#import <OpenDirectory/ODModuleEntry.h>
-
-#ifdef DARLING
-#import <OpenDirectory/ODContext.h>
-
-#import <OpenDirectory/NSODContext.h>
-#import <OpenDirectory/NSODNode.h>
-#import <OpenDirectory/NSODQuery.h>
-#import <OpenDirectory/NSODRecord.h>
-#import <OpenDirectory/NSODSession.h>
+#import <OpenDirectory/NSOpenDirectoryPriv.h>
 #endif
 
-#endif /* __OBJC__ */
+#endif

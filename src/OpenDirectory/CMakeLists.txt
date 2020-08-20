@@ -31,3 +31,5 @@ add_framework(OpenDirectory
         objc
         Foundation
 )
+
+reexport(OpenDirectory CFOpenDirectory ${CMAKE_BINARY_DIR}/src/frameworks/CFOpenDirectory/CFOpenDirectory)
