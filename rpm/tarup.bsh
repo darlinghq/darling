@@ -6,4 +6,4 @@ CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)"
 if [ -e "${CWD}/SOURCES/darling.tar.gz" ]; then
   rm "${CWD}/SOURCES/darling.tar.gz"
 fi
-tar --transform "s|^\./|darling/|" -cf "${CWD}/SOURCES/darling.tar.gz" -C "${CWD}/.." --exclude=.git --exclude SOURCES .
+tar --transform "s|^\./|darling/|" -cf "${CWD}/SOURCES/darling.tar.gz" -C "${CWD}/.." --exclude=.git --exclude SOURCES --exclude SRPMS --exclude RPMS .
