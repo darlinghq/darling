@@ -367,3 +367,6 @@
 [submodule "src/external/BerkeleyDB"]
 	path = src/external/BerkeleyDB
 	url = ../darling-BerkeleyDB.git
+[submodule "src/external/libnetwork"]
+	path = src/external/libnetwork
+	url = ../darling-libnetwork.git
