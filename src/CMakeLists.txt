@@ -84,7 +84,6 @@ set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../..")
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include)
 
 include_directories(
-	${CMAKE_SOURCE_DIR}/src/external/libcxx/include
 	${CMAKE_SOURCE_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
 	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
 	${CMAKE_SOURCE_DIR}/framework-include
@@ -115,6 +114,13 @@ add_subdirectory(libc)
 add_subdirectory(vchroot)
 
 add_subdirectory(lib)
+
+# libstdc++ doesn't use the libc++ headers included below
+add_subdirectory(libstdcxx)
+
+include_directories(BEFORE
+	${CMAKE_SOURCE_DIR}/src/external/libcxx/include
+)
 
 add_definitions(-D_LIBC_NO_FEATURE_VERIFICATION)
 add_subdirectory(external/darling-dmg)
@@ -298,9 +304,6 @@ add_subdirectory(external/swift)
 include_directories(BEFORE
 	${CMAKE_CURRENT_SOURCE_DIR}/external/libcxxabi/include
 )
-
-# libstdc++ doesn't use the headers included below
-add_subdirectory(libstdcxx)
 
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
