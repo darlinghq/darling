@@ -50,8 +50,7 @@ char* _dirhelper(int which, char* p, size_t limit)
 				home = "";
 
 			snprintf(p, limit, "%s/%s%s", home, dir_suffix ? dir_suffix : "", dir_suffix ? "/" : "");
-			return p;
-		}
+		} break;
 		case DIRHELPER_USER_LOCAL_TEMP:
 		{
 			const char* tmp;
@@ -61,8 +60,7 @@ char* _dirhelper(int which, char* p, size_t limit)
 				tmp = "/tmp";
 
 			snprintf(p, limit, "%s/%s%s", tmp, dir_suffix ? dir_suffix : "", dir_suffix ? "/" : "");
-			return p;
-		}
+		} break;
 		case DIRHELPER_USER_LOCAL_CACHE:
 		{
 			const char* home;
@@ -72,9 +70,7 @@ char* _dirhelper(int which, char* p, size_t limit)
 				snprintf(p, limit, "%s/.cache/%s%s", home, dir_suffix ? dir_suffix : "", dir_suffix ? "/" : "");
 			else
 				snprintf(p, limit, "/tmp/%s%s", dir_suffix ? dir_suffix : "", dir_suffix ? "/" : "");
-
-			return p;
-		}
+		} break;
 		default:
 			p = NULL;
 	}
