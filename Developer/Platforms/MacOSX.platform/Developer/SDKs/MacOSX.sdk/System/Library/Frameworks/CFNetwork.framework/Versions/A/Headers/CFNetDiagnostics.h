@@ -1,1 +1,1 @@
-../../../../../../../../../../../../../src/external/cfnetwork/include/CFNetwork/CFNetDiagnostics.h
+../../../../../../../../../../../../../src/external/cfnetwork/src/Headers/CFNetDiagnostics.h
