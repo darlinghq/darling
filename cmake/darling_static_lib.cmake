@@ -4,7 +4,7 @@ cmake_policy(SET CMP0063 NEW)
 include(darling_lib)
 
 function(add_darling_static_library name)
-	cmake_parse_arguments(STATIC_LIB "FAT" "" "SOURCES" ${ARGN})
+	cmake_parse_arguments(STATIC_LIB "FAT;x86_64_ONLY;i386_ONLY" "" "SOURCES" ${ARGN})
 
 	set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
 	set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ranlib")
@@ -14,15 +14,15 @@ function(add_darling_static_library name)
 	set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
 	add_dependencies(${name} lipo)
 
-	if (TARGET_x86_64)
+	if (TARGET_x86_64 AND NOT STATIC_LIB_i386_ONLY)
 		set_property(TARGET ${name} APPEND_STRING PROPERTY
 			COMPILE_FLAGS " -arch x86_64")
-	endif (TARGET_x86_64)
+	endif ()
 
-	if (TARGET_i386)
+	if (TARGET_i386 AND NOT STATIC_LIB_x86_64_ONLY)
 		set_property(TARGET ${name} APPEND_STRING PROPERTY
 			COMPILE_FLAGS " -arch i386")
-	endif (TARGET_i386)
+	endif ()
 
 	if (STATIC_LIB_FAT)
 		make_fat(${name})
