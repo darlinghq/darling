@@ -1,16 +1,16 @@
 #include "libaks.h"
 #include "libaks_smartcard.h"
 
-CFStringRef kAKSKeyAcl                     = CFSTR("AKSKeyAcl");
-CFStringRef kAKSKeyAclParamRequirePasscode = CFSTR("AKSKeyAclParamRequirePasscode");
-CFStringRef kAKSKeyOpDefaultAcl            = CFSTR("AKSKeyOpDefaultAcl");
-CFStringRef kAKSKeyOpSign                  = CFSTR("AKSKeyOpSign");
-CFStringRef kAKSKeyOpComputeKey            = CFSTR("AKSKeyOpComputeKey");
-CFStringRef kAKSKeyOpAttest                = CFSTR("AKSKeyOpAttest");
-CFStringRef kAKSKeyOpDecrypt               = CFSTR("AKSKeyOpDecrypt");
-CFStringRef kAKSKeyOpEncrypt               = CFSTR("AKSKeyOpEncrypt");
-CFStringRef kAKSKeyOpDelete                = CFSTR("AKSKeyOpDelete");
-CFStringRef kAKSKeyOpECIESTranscode        = CFSTR("AKSKeyOpECIESTranscode");
+const CFStringRef kAKSKeyAcl                     = CFSTR("AKSKeyAcl");
+const CFStringRef kAKSKeyAclParamRequirePasscode = CFSTR("AKSKeyAclParamRequirePasscode");
+const CFStringRef kAKSKeyOpDefaultAcl            = CFSTR("AKSKeyOpDefaultAcl");
+const CFStringRef kAKSKeyOpSign                  = CFSTR("AKSKeyOpSign");
+const CFStringRef kAKSKeyOpComputeKey            = CFSTR("AKSKeyOpComputeKey");
+const CFStringRef kAKSKeyOpAttest                = CFSTR("AKSKeyOpAttest");
+const CFStringRef kAKSKeyOpDecrypt               = CFSTR("AKSKeyOpDecrypt");
+const CFStringRef kAKSKeyOpEncrypt               = CFSTR("AKSKeyOpEncrypt");
+const CFStringRef kAKSKeyOpDelete                = CFSTR("AKSKeyOpDelete");
+const CFStringRef kAKSKeyOpECIESTranscode        = CFSTR("AKSKeyOpECIESTranscode");
 
 void aks_smartcard_unregister(int a)
 {

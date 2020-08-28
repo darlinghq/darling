@@ -12,16 +12,11 @@ extern "C" {
 // FIXME: I have no idea what these are for, so they are 0 for now
 #define session_keybag_handle 0
 #define device_keybag_handle 0
+#define backup_keybag_handle 1 // ???
 #define bad_keybag_handle (-1) // that's a pretty common "bad" signed integer value
 
 typedef uint32_t keybag_state_t;
 typedef int32_t keybag_handle_t;
-
-#if TARGET_OS_MAC && !TARGET_OS_EMBEDDED
-static keybag_handle_t g_keychain_keybag = session_keybag_handle;
-#else
-static keybag_handle_t g_keychain_keybag = device_keybag_handle;
-#endif
 
 enum keybag_state {
     keybag_state_unlocked = 0,
@@ -60,7 +55,11 @@ enum {
     kAKSReturnBadDeviceKey,
     kAKSReturnBadSignature,
     kAKSReturnPolicyInvalid,
+    kAKSReturnBadPassword,
 };
+
+// i'm 99.9999999...% sure this is a typo in Security, but whatever
+#define kSKSReturnNoPermission kAKSReturnNoPermission
 
 typedef int32_t keyclass_t;
 
@@ -72,13 +71,40 @@ enum {
     kAppleKeyStoreAsymmetricBackupBag,
 };
 
-#define key_class_last (0)
-
 kern_return_t aks_create_bag(uint8_t* secret, int secret_size, int bag_type, keybag_handle_t* handle);
 kern_return_t aks_save_bag(keybag_handle_t handle, void** bytes, size_t* size);
 kern_return_t aks_unload_bag(keybag_handle_t handle);
 kern_return_t aks_unlock_bag(keybag_handle_t handle, const void* passcode, int length);
 kern_return_t aks_load_bag(const void* data, int length, keybag_handle_t* handle);
+
+typedef enum _aks_key_type_enum {
+    key_class_none,
+    key_type_sym,
+    key_class_ak,
+    key_class_ck,
+    key_class_dk,
+    key_class_aku,
+    key_class_cku,
+    key_class_dku,
+    key_class_akpu, // implied to exist by some Security code (`SecDbBackupmanager.m`)
+    key_class_last,
+} aks_key_type_t;
+
+// 4096-bit = 512-byte; i *think* that's the maximum key length?
+#define APPLE_KEYSTORE_MAX_KEY_LEN (512)
+
+// according to `mockaks.m` in Security, these seem to be the same?
+#define APPLE_KEYSTORE_MAX_ASYM_WRAPPED_KEY_LEN (APPLE_KEYSTORE_MAX_KEY_LEN + 8)
+#define APPLE_KEYSTORE_MAX_SYM_WRAPPED_KEY_LEN (APPLE_KEYSTORE_MAX_KEY_LEN + 8)
+
+enum _generation_option_enum {
+    generation_noop,
+    generation_current,
+    generation_change_in_progress,
+};
+typedef enum _generation_option_enum generation_option_t;
+
+kern_return_t aks_generation(keybag_handle_t handle, generation_option_t option, uint32_t* current);
 
 #ifdef __cplusplus
 }
