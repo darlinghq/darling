@@ -19,6 +19,14 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFPasswordCredential : NSObject
+#import <SecurityFoundation/_SFServiceIdentifier.h>
+#import <SecurityFoundation/_SFCredential.h>
+
+#define SFPasswordCredential _SFPasswordCredential
+
+@interface SFPasswordCredential : SFCredential
+
+@property (copy, nonatomic) NSString* username;
+@property (copy, nonatomic) NSString* password;
 
 @end

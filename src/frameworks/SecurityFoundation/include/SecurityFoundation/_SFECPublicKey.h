@@ -19,6 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFECPublicKey : NSObject
+#import <SecurityFoundation/_SFPublicKey.h>
+
+@interface _SFECPublicKey : SFPublicKey
 
 @end
+
+#define SFECPublicKey _SFECPublicKey

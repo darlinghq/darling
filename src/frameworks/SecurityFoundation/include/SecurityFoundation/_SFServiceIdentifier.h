@@ -19,6 +19,11 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFServiceIdentifier : NSObject
+#define SFServiceIdentifier _SFServiceIdentifier
+
+@interface SFServiceIdentifier : NSObject
+
+@property (readonly, copy, nonatomic) NSString* lookupKey;
+@property (readonly, copy, nonatomic) NSString* serviceID;
 
 @end

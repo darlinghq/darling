@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFKeySpecifier : NSObject
+#define SFKeySpecifier _SFKeySpecifier
+
+@interface SFKeySpecifier : NSObject
 
 @end

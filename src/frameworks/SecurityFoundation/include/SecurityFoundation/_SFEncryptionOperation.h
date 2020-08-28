@@ -19,6 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
-@protocol _SFEncryptionOperation
+@protocol _SFEncryptionOperation <NSObject>
 
 @end
+
+#define SFEncryptionOperation _SFEncryptionOperation
+
+#import <SecurityFoundation/_SFAuthenticatedEncryptionOperation.h>

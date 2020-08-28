@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2020 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,10 +17,9 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _SF_APIMACROS_H_
+#define _SF_APIMACROS_H_
 
-@interface _SFSignedData : NSObject
+// nothing here yet
 
-@end
-
-#define SFSignedData _SFSignedData
+#endif // _SF_APIMACROS_H_

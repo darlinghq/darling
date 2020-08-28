@@ -169,6 +169,7 @@ add_framework(SecurityFoundation
         src/SFCertificateData_ivars.m
         src/SFCertificateData.m
         src/SecFoundationModVector.m
+        src/SFKeychain.m
 
     DEPENDENCIES
         system

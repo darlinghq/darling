@@ -19,6 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
+#import <SecurityFoundation/_SFSignedData.h>
+
 @protocol SFSigningOperation
 
 @end
+
+#import <SecurityFoundation/_SFEC_X962SigningOperation.h>

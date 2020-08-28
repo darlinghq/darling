@@ -21,4 +21,8 @@
 
 @interface _SFKey : NSObject
 
+@property (readonly, nonatomic) NSData* keyData;
+
 @end
+
+#define SFKey _SFKey

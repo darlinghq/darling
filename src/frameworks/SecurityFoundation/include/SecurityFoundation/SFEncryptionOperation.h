@@ -17,28 +17,6 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <SecurityFoundation/_SFEncryptionOperation.h>
 
-#define SFAccessPolicy _SFAccessPolicy
-
-typedef NS_ENUM(NSInteger, SFAccessible) {
-	SFAccessibleAfterFirstUnlock,
-};
-
-typedef NS_ENUM(NSInteger, SFSharingPolicy) {
-	SFSharingPolicyThisDeviceOnly,
-};
-
-// not sure what `accessibility` is
-// it's not a class, so i guess it's a structure?
-typedef struct SFAccessibilityStructure {
-	SFAccessible mode;
-} SFAccessibilityStructure;
-
-@interface SFAccessPolicy : NSObject
-
-@property (nonatomic) SFAccessibilityStructure accessibility;
-@property (nonatomic) SFSharingPolicy sharingPolicy;
-@property (copy, nonatomic) NSString* accessGroup;
-
-@end
+// not sure if this should just be a symlink or what

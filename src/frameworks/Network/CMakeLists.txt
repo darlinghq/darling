@@ -109,3 +109,5 @@ add_framework(Network
         objc
         Foundation
 )
+
+reexport(Network libnetwork ${CMAKE_BINARY_DIR}/src/external/libnetwork/libnetwork.dylib)

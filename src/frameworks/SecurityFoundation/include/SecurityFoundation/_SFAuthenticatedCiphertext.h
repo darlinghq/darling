@@ -19,6 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFAuthenticatedCiphertext : NSObject
+#import <SecurityFoundation/_SFCiphertext.h>
+
+#define SFAuthenticatedCiphertext _SFAuthenticatedCiphertext
+
+@interface SFAuthenticatedCiphertext : SFCiphertext
 
 @end

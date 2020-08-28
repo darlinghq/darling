@@ -19,6 +19,19 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFCredential : NSObject
+#import <SecurityFoundation/_SFServiceIdentifier.h>
+
+#define SFCredential _SFCredential
+
+@interface SFCredential : NSObject
+
+@property (retain, nonatomic) SFServiceIdentifier* primaryServiceIdentifier;
+@property (retain, nonatomic) NSArray<SFServiceIdentifier*>* supplementaryServiceIdentifiers;
+@property (copy, nonatomic) NSString* localizedLabel;
+@property (copy, nonatomic) NSString* localizedDescription;
+@property (copy, nonatomic) NSDictionary* customAttributes;
+@property (copy, nonatomic) NSDate* creationDate;
+@property (copy, nonatomic) NSDate* modificationDate;
+@property (copy, nonatomic) NSString* persistentIdentifier;
 
 @end

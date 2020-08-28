@@ -120,6 +120,8 @@
 #import <Network/NWPathEvaluator.h>
 #import <Network/NWAWDLibnetcoreTCPECNStatsReport.h>
 
+#import <nw/nw.h>
+
 void* NWCreateDispatchDataFromNSData(void);
 void* NWCreateNSDataFromDispatchData(void);
 void* NWMonitorStatusToString(void);

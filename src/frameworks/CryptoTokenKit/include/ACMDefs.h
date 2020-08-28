@@ -8,5 +8,7 @@
 // these are guessed and not verified
 
 #define kACMPolicyDeviceOwnerAuthentication "ACMPolicyDeviceOwnerAuthentication"
+#define kACMPassphrasePurposeGeneral "ACMPassphrasePurposeGeneral"
+#define kACMScopeContext "ACMScopeContext"
 
 #endif
