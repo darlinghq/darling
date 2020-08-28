@@ -3,6 +3,10 @@
 
 #include <asl.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * how it seems to be used:
  *   msgtracer_log_with_keys(
@@ -17,5 +21,9 @@
  *   )
  */
 extern void msgtracer_log_with_keys(char* logger_id, int log_level, ...);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif
