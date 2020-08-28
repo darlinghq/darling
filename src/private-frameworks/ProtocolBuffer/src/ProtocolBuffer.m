@@ -29,124 +29,124 @@ static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
-void* PBDataWriterPlaceMark(void)
+void PBDataWriterPlaceMark(PBDataWriter* writer, PBDataReaderMark* mark, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterPlaceMark called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterRecallMark(void)
+void PBDataWriterRecallMark(PBDataWriter* writer, PBDataReaderMark* mark, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterRecallMark called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteBOOLField(void)
+void PBDataWriterWriteBOOLField(PBDataWriter* writer, BOOL boolean, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteBOOLField called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteBareVarint(void)
+void PBDataWriterWriteBareVarint(PBDataWriter* writer, void* value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteBareVarint called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteDataField(void)
+void PBDataWriterWriteDataField(PBDataWriter* writer, NSData* value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteDataField called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteDoubleField(void)
+void PBDataWriterWriteDoubleField(PBDataWriter* writer, double value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteDoubleField called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteFixed32Field(void)
+void PBDataWriterWriteFixed32Field(PBDataWriter* writer, int32_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteFixed32Field called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteFixed64Field(void)
+void PBDataWriterWriteFixed64Field(PBDataWriter* writer, int64_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteFixed64Field called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteFloatField(void)
+void PBDataWriterWriteFloatField(PBDataWriter* writer, float value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteFloatField called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteInt32Field(void)
+void PBDataWriterWriteInt32Field(PBDataWriter* writer, int32_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteInt32Field called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteInt64Field(void)
+void PBDataWriterWriteInt64Field(PBDataWriter* writer, int64_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteInt64Field called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteSfixed32Field(void)
+void PBDataWriterWriteSfixed32Field(PBDataWriter* writer, int32_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteSfixed32Field called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteSfixed64Field(void)
+void PBDataWriterWriteSfixed64Field(PBDataWriter* writer, int64_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteSfixed64Field called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteSint32Field(void)
+void PBDataWriterWriteSint32Field(PBDataWriter* writer, int32_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteSint32Field called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteSint64Field(void)
+void PBDataWriterWriteSint64Field(PBDataWriter* writer, int64_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteSint64Field called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteStringField(void)
+void PBDataWriterWriteStringField(PBDataWriter* writer, NSString* string, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteStringField called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteSubgroup(void)
+void PBDataWriterWriteSubgroup(PBDataWriter* writer, void* group, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteSubgroup called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteSubmessage(void)
+void PBDataWriterWriteSubmessage(PBDataWriter* writer, PBCodable* codable, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteSubmessage called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteUint32Field(void)
+void PBDataWriterWriteUint32Field(PBDataWriter* writer, uint32_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteUint32Field called");
-    return NULL;
+    return;
 }
 
-void* PBDataWriterWriteUint64Field(void)
+void PBDataWriterWriteUint64Field(PBDataWriter* writer, uint64_t value, uint32_t tag)
 {
     if (verbose) puts("STUB: PBDataWriterWriteUint64Field called");
-    return NULL;
+    return;
 }
 
 void* PBHashBytes(void)
@@ -155,58 +155,58 @@ void* PBHashBytes(void)
     return NULL;
 }
 
-void* PBReaderPlaceMark(void)
+BOOL PBReaderPlaceMark(PBDataReader* reader, PBDataReaderMark* mark)
 {
     if (verbose) puts("STUB: PBReaderPlaceMark called");
-    return NULL;
+    return FALSE;
 }
 
-void* PBReaderReadBigEndianFixed16(void)
+uint16_t PBReaderReadBigEndianFixed16(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadBigEndianFixed16 called");
-    return NULL;
+    return;
 }
 
-void* PBReaderReadBigEndianFixed32(void)
+uint32_t PBReaderReadBigEndianFixed32(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadBigEndianFixed32 called");
-    return NULL;
+    return;
 }
 
-void* PBReaderReadBigEndianFixed64(void)
+uint64_t PBReaderReadBigEndianFixed64(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadBigEndianFixed64 called");
-    return NULL;
+    return;
 }
 
-void* PBReaderReadData(void)
+NSData* PBReaderReadData(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadData called");
-    return NULL;
+    return;
 }
 
-void* PBReaderReadString(void)
+NSString* PBReaderReadString(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadString called");
     return NULL;
 }
 
-void* PBReaderReadVarIntBuf(void)
+void* PBReaderReadVarIntBuf(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadVarIntBuf called");
-    return NULL;
+    return;
 }
 
-void* PBReaderRecallMark(void)
+void PBReaderRecallMark(PBDataReader* reader, PBDataReaderMark* mark);
 {
     if (verbose) puts("STUB: PBReaderRecallMark called");
-    return NULL;
+    return;
 }
 
-void* PBReaderSkipValueWithTag(void)
+BOOL PBReaderSkipValueWithTag(PBDataReader* reader, uint32_t tag, uint8_t type)
 {
     if (verbose) puts("STUB: PBReaderSkipValueWithTag called");
-    return NULL;
+    return FALSE;
 }
 
 void* PBRepeatedBOOLAdd(void)

@@ -19,15 +19,6 @@
 
 #include <Foundation/Foundation.h>
 
-// apparently imports these? at least according to Security's `SECC2MPCloudKitInfo.{h,m}`
-#import <ProtocolBuffer/PBDataReader.h>
-#import <ProtocolBuffer/PBDataWriter.h>
-
-@interface PBCodable : NSObject
-
-- (id)initWithData:(NSData*)data;
-
-@property (readonly) NSDictionary* dictionaryRepresentation;
-@property (readonly) NSData* data;
+@interface MAXpcConnection : NSObject
 
 @end

@@ -19,6 +19,43 @@
 
 #include <Foundation/Foundation.h>
 
+// not sure what this type is
+typedef int PBDataReaderMark;
+
 @interface PBDataReader : NSObject
 
 @end
+
+// seems to be either a macro or an inline function
+// (probably the latter)
+static inline BOOL PBReaderHasMoreData(PBDataReader* reader) {
+	return FALSE; // stubbed
+};
+
+static inline void PBReaderReadTag32AndType(PBDataReader* reader, uint32_t* tag, uint8_t* type) {
+	return;
+};
+
+static inline BOOL PBReaderHasError(PBDataReader* reader) {
+	return FALSE;
+};
+
+static inline BOOL PBReaderReadBOOL(PBDataReader* reader) {
+	return FALSE;
+};
+
+static inline uint64_t PBReaderReadUint64(PBDataReader* reader) {
+	return 0;
+};
+
+NSString* PBReaderReadString(PBDataReader* reader);
+NSData* PBReaderReadData(PBDataReader* reader);
+BOOL PBReaderPlaceMark(PBDataReader* reader, PBDataReaderMark* mark);
+void PBReaderRecallMark(PBDataReader* reader, PBDataReaderMark* mark);
+BOOL PBReaderSkipValueWithTag(PBDataReader* reader, uint32_t tag, uint8_t type);
+
+// guesses
+uint16_t PBReaderReadBigEndianFixed16(PBDataReader* reader);
+uint32_t PBReaderReadBigEndianFixed32(PBDataReader* reader);
+uint64_t PBReaderReadBigEndianFixed64(PBDataReader* reader);
+void* PBReaderReadVarIntBuf(PBDataReader* reader);

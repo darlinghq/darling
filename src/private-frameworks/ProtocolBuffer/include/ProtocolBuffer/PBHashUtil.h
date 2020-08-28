@@ -17,17 +17,13 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _PBHASHUTIL_H_
+#define _PBHASHUTIL_H_
 
-// apparently imports these? at least according to Security's `SECC2MPCloudKitInfo.{h,m}`
-#import <ProtocolBuffer/PBDataReader.h>
-#import <ProtocolBuffer/PBDataWriter.h>
+static inline NSUInteger PBHashInt(NSUInteger integer) {
+	return integer;
+};
 
-@interface PBCodable : NSObject
+void* PBHashBytes(void);
 
-- (id)initWithData:(NSData*)data;
-
-@property (readonly) NSDictionary* dictionaryRepresentation;
-@property (readonly) NSData* data;
-
-@end
+#endif // _PBHASHUTIL_H_

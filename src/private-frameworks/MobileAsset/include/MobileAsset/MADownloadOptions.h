@@ -19,15 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
-// apparently imports these? at least according to Security's `SECC2MPCloudKitInfo.{h,m}`
-#import <ProtocolBuffer/PBDataReader.h>
-#import <ProtocolBuffer/PBDataWriter.h>
+@interface MADownloadOptions : NSObject
 
-@interface PBCodable : NSObject
-
-- (id)initWithData:(NSData*)data;
-
-@property (readonly) NSDictionary* dictionaryRepresentation;
-@property (readonly) NSData* data;
+// i know `readwrite` isn't necessary, but i hate seeing the empty parentheses
+@property (readwrite) BOOL discretionary;
+@property (readwrite) BOOL allowsCellularAccess;
 
 @end

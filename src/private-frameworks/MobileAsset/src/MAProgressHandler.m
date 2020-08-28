@@ -17,17 +17,18 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <MobileAsset/MAProgressHandler.h>
 
-// apparently imports these? at least according to Security's `SECC2MPCloudKitInfo.{h,m}`
-#import <ProtocolBuffer/PBDataReader.h>
-#import <ProtocolBuffer/PBDataWriter.h>
+@implementation MAProgressHandler
 
-@interface PBCodable : NSObject
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+}
 
-- (id)initWithData:(NSData*)data;
-
-@property (readonly) NSDictionary* dictionaryRepresentation;
-@property (readonly) NSData* data;
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
 
 @end

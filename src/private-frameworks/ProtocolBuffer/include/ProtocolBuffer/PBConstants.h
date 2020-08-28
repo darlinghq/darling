@@ -17,17 +17,10 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _PBCONSTANTS_H_
+#define _PBCONSTANTS_H_
 
-// apparently imports these? at least according to Security's `SECC2MPCloudKitInfo.{h,m}`
-#import <ProtocolBuffer/PBDataReader.h>
-#import <ProtocolBuffer/PBDataWriter.h>
+// not sure what the value is here
+#define TYPE_END_GROUP ((uint8_t)0xff)
 
-@interface PBCodable : NSObject
-
-- (id)initWithData:(NSData*)data;
-
-@property (readonly) NSDictionary* dictionaryRepresentation;
-@property (readonly) NSData* data;
-
-@end
+#endif // _PBCONSTANTS_H_

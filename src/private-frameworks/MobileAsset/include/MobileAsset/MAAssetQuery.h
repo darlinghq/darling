@@ -19,15 +19,20 @@
 
 #include <Foundation/Foundation.h>
 
-// apparently imports these? at least according to Security's `SECC2MPCloudKitInfo.{h,m}`
-#import <ProtocolBuffer/PBDataReader.h>
-#import <ProtocolBuffer/PBDataWriter.h>
+#import <MobileAsset/MAAsset.h>
 
-@interface PBCodable : NSObject
+// seems to be implicitly depended on by `OTATrustUtilities.m` in Security
+#import <MobileAsset/ASAssetQuery.h>
 
-- (id)initWithData:(NSData*)data;
+// really not sure if this is an enum
+typedef NS_ENUM(NSInteger, MAQueryResult) {
+	MAQuerySuccessful = 0,
+};
 
-@property (readonly) NSDictionary* dictionaryRepresentation;
-@property (readonly) NSData* data;
+@interface MAAssetQuery : NSObject
+
+// guessing it's readonly, since it wouldn't really make sense for clients to be able to
+// write results to a query
+@property (readonly) NSArray<MAAsset*>* results;
 
 @end
