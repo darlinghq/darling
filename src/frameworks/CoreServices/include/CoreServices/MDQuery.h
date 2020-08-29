@@ -10,7 +10,6 @@ extern "C" {
 
 typedef CFTypeRef MDQueryRef;
 
-extern CFStringRef kMDItemPath;
 extern CFStringRef kMDQueryDidFinishNotification;
 extern CFStringRef kMDQueryDidUpdateNotification;
 extern CFStringRef kMDQueryUpdateAddedItems;

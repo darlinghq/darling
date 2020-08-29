@@ -1,6 +1,5 @@
 #include <CoreServices/MDQuery.h>
 
-CFStringRef kMDItemPath = CFSTR("MDItemPath");
 CFStringRef kMDQueryDidFinishNotification = CFSTR("MDQueryDidFinishNotification");
 CFStringRef kMDQueryDidUpdateNotification = CFSTR("MDQueryDidUpdateNotification");
 CFStringRef kMDQueryUpdateAddedItems = CFSTR("MDQueryUpdateAddedItems");

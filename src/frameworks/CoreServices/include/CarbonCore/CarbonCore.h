@@ -13,4 +13,8 @@
 #include <MacTypes.h>
 #endif
 
+#ifndef _CC_BACKUPCORE_H_
+#include <CarbonCore/BackupCore.h>
+#endif
+
 #endif

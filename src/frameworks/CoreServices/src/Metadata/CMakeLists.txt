@@ -6,6 +6,7 @@ VERSION "A"
 PARENT "CoreServices"
 SOURCES
 	MDQuery.c
+	MDItem.c
 DEPENDENCIES
 	CoreFoundation
 	system
