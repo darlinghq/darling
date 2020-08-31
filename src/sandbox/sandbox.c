@@ -165,3 +165,9 @@ int rootless_restricted_environment() {
 	// Darling doesn't have rootless anyways, so just return a value indicating an unrestricted environment
 	return 0;
 };
+
+int rootless_check_datavault_flag(const char* path, const char* storage_class) {
+	// also unimplemented
+	// not quite sure what a "data vault" is here, but its usage in `JSScript.mm` in JavaScriptCore seems to indicate that we should return `0`
+	return 0;
+};
