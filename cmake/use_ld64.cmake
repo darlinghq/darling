@@ -127,7 +127,8 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libcoretls.dylib:${CMAKE_BINARY_DIR}/src/external/coretls/libcoretls.dylib \
 -Wl,-dylib_file,/usr/lib/libenergytrace.dylib:${CMAKE_BINARY_DIR}/src/external/energytrace/libenergytrace.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/CFOpenDirectory.framework/Versions/A/CFOpenDirectory:${CMAKE_BINARY_DIR}/src/frameworks/CFOpenDirectory/CFOpenDirectory \
--Wl,-dylib_file,/usr/lib/libnetwork.dylib:${CMAKE_BINARY_DIR}/src/external/libnetwork/libnetwork.dylib")
+-Wl,-dylib_file,/usr/lib/libnetwork.dylib:${CMAKE_BINARY_DIR}/src/external/libnetwork/libnetwork.dylib \
+-Wl,-dylib_file,/usr/lib/system/libcache.dylib:${CMAKE_BINARY_DIR}/src/libcache/libcache.dylib")
 
 	add_dependencies(${target} x86_64-apple-darwin11-ld)
 

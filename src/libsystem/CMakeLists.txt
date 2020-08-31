@@ -86,6 +86,7 @@ target_link_libraries(system PRIVATE
 	system_dnssd
 	system_networkextension
 	system_darwin
+	libcache
 )
 
 add_dependencies(system system_malloc system_m)
@@ -122,7 +123,8 @@ set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
 	-sub_library libcorecrypto \
 	-sub_library libsystem_dnssd \
 	-sub_library libsystem_networkextension \
-	-sub_library libsystem_darwin")
+	-sub_library libsystem_darwin \
+	-sub_library libcache")
 
 install(TARGETS system DESTINATION libexec/darling/usr/lib)
 
