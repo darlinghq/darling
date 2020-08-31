@@ -57,7 +57,7 @@ if (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
 	message(FATAL_ERROR "This software can only be built on x86-64 systems")
 endif (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
 
-SET(IGNORED_WARNINGS "-Wno-nullability-completeness -Wno-deprecated-declarations")
+SET(IGNORED_WARNINGS "-Wno-nullability-completeness -Wno-deprecated-declarations -Wno-availability")
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS "3.9")
 	SET(IGNORED_WARNINGS "${IGNORED_WARNINGS} -Wno-expansion-to-defined")
