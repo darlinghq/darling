@@ -466,6 +466,8 @@ void* AVFDepthDataType(void);
 void* CI_GenericRGBLinear_to_TempTint(void);
 void* CI_TempTint_to_xy(void);
 void* CI_xy_to_TempTint(void);
-void* open_memstream(void);
+
+// already defined in updated libc, but still present in macOS 10.15's CoreImage?
+FILE* open_memstream(char** buffer, size_t* size);
 
 #endif
