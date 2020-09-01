@@ -23,6 +23,10 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void* CGDisplayCreateUUIDFromDisplayID(void);
 void* CGDisplayGetDisplayIDFromUUID(void);
 void* CMProfileFromColorSyncProfile(void);
@@ -131,8 +135,8 @@ void* ColorSyncVerifySRGBData(void);
 // fixed-up declarations
 
 CFUUIDRef ColorSyncCreateUUIDFromUInt32(unsigned int uuid);
-bool ColorSyncRegisterDevice(CFStringRef class, CFUUIDRef uuid, CFDictionaryRef info);
-bool ColorSyncUnregisterDevice(CFStringRef class, CFUUIDRef uuid);
+bool ColorSyncRegisterDevice(CFStringRef deviceClass, CFUUIDRef uuid, CFDictionaryRef info);
+bool ColorSyncUnregisterDevice(CFStringRef deviceClass, CFUUIDRef uuid);
 
 extern CFStringRef kColorSyncDeviceProfileURL;
 extern CFStringRef kColorSyncDeviceModeDescriptions;
@@ -142,5 +146,9 @@ extern CFStringRef kColorSyncFactoryProfiles;
 extern CFStringRef kColorSyncDeviceUserScope;
 extern CFStringRef kColorSyncDeviceHostScope;
 extern CFStringRef kColorSyncPrinterDeviceClass;
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif
