@@ -164,25 +164,25 @@ BOOL PBReaderPlaceMark(PBDataReader* reader, PBDataReaderMark* mark)
 uint16_t PBReaderReadBigEndianFixed16(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadBigEndianFixed16 called");
-    return;
+    return 0;
 }
 
 uint32_t PBReaderReadBigEndianFixed32(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadBigEndianFixed32 called");
-    return;
+    return 0;
 }
 
 uint64_t PBReaderReadBigEndianFixed64(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadBigEndianFixed64 called");
-    return;
+    return 0;
 }
 
 NSData* PBReaderReadData(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadData called");
-    return;
+    return NULL;
 }
 
 NSString* PBReaderReadString(PBDataReader* reader)
@@ -194,10 +194,10 @@ NSString* PBReaderReadString(PBDataReader* reader)
 void* PBReaderReadVarIntBuf(PBDataReader* reader)
 {
     if (verbose) puts("STUB: PBReaderReadVarIntBuf called");
-    return;
+    return NULL;
 }
 
-void PBReaderRecallMark(PBDataReader* reader, PBDataReaderMark* mark);
+void PBReaderRecallMark(PBDataReader* reader, PBDataReaderMark* mark)
 {
     if (verbose) puts("STUB: PBReaderRecallMark called");
     return;

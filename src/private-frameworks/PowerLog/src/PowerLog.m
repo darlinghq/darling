@@ -239,7 +239,7 @@ void* PLLogRegisteredAggregateEvent(void)
     return NULL;
 }
 
-void* PLLogRegisteredEvent(void)
+void* PLLogRegisteredEvent(int client_id, CFStringRef event_name, CFDictionaryRef event_dictionary, void* last_parameter)
 {
     if (verbose) puts("STUB: PLLogRegisteredEvent called");
     return NULL;
@@ -251,7 +251,7 @@ void* PLLogRegisteredEventFilterByInterval(void)
     return NULL;
 }
 
-void* PLLogTimeSensitiveRegisteredEvent(void)
+void* PLLogTimeSensitiveRegisteredEvent(int client_id, CFStringRef event_name, CFDictionaryRef event_dictionary, void* last_parameter)
 {
     if (verbose) puts("STUB: PLLogTimeSensitiveRegisteredEvent called");
     return NULL;
@@ -281,7 +281,7 @@ void* PLShouldLogEvent(void)
     return NULL;
 }
 
-void* PLShouldLogRegisteredEvent(void)
+void* PLShouldLogRegisteredEvent(int client_id, CFStringRef event_name)
 {
     if (verbose) puts("STUB: PLShouldLogRegisteredEvent called");
     return NULL;
