@@ -51,5 +51,5 @@ target_link_libraries(xarexe system xar)
 
 install(TARGETS xar DESTINATION libexec/darling/usr/lib)
 install(TARGETS xarexe DESTINATION libexec/darling/usr/bin)
-install(FILES src/xar.1 DESTINATION libexec/darling/usr/share/man/man1)
+install(FILES xar/src/xar.1 DESTINATION libexec/darling/usr/share/man/man1)
 InstallSymlink("libxar.1.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libxar.dylib")
