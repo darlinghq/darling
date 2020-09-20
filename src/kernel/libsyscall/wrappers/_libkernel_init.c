@@ -31,9 +31,14 @@
 #include <strings.h>
 #include <unistd.h>
 #include "_libkernel_init.h"
+
+#ifdef DARLING
 #include <elfcalls.h>
 
+extern int mach_init(const char** applep);
+#else
 extern int mach_init(void);
+#endif
 
 #if TARGET_OS_OSX
 __attribute__((visibility("default")))
@@ -43,14 +48,19 @@ bool _os_xbs_chrooted;
 
 /* dlsym() funcptr is for legacy support in exc_catcher */
 void* (*_dlsym)(void*, const char*) __attribute__((visibility("hidden")));
+
+#ifdef DARLING
 extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
 extern unsigned long long __simple_atoi16(const char* str, const char** endp);
+#endif
 
 __attribute__((visibility("hidden")))
 _libkernel_functions_t _libkernel_functions;
 
+#ifdef DARLING
 __attribute__((visibility("hidden")))
 struct elf_calls* _elfcalls;
+#endif
 
 void
 __libkernel_init(_libkernel_functions_t fns,
@@ -58,12 +68,16 @@ __libkernel_init(_libkernel_functions_t fns,
     const char *apple[],
     const struct ProgramVars *vars __attribute__((unused)))
 {
+#ifdef DARLING
 	int i;
+#endif
+
 	_libkernel_functions = fns;
 	if (fns->dlsym) {
 		_dlsym = fns->dlsym;
 	}
 
+#ifdef DARLING
 	for (i = 0; apple[i] != NULL; i++)
 	{
 		if (strncmp(apple[i], "elf_calls=", 10) == 0)
@@ -73,5 +87,9 @@ __libkernel_init(_libkernel_functions_t fns,
 		}
 	}
 
+	mach_init(apple);
+	sigexc_setup();
+#else
 	mach_init();
+#endif
 }

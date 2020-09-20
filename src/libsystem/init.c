@@ -46,6 +46,10 @@
 
 #include <mach-o/dyld_priv.h>
 
+#ifdef DARLING
+extern int _dyld_func_lookup(const char* name, void** address);
+#endif
+
 // system library initialisers
 extern void mach_init(void);			// from libsystem_kernel.dylib
 extern void __libplatform_init(void *future_use, const char *envp[], const char *apple[], const struct ProgramVars *vars);
@@ -84,6 +88,9 @@ extern void _malloc_fork_parent(void);
 extern void _malloc_fork_child(void);
 
 extern void _mach_fork_child(void);
+#ifdef DARLING
+extern void _mach_fork_parent(void);
+#endif
 extern void _notify_fork_child(void);
 extern void _dyld_atfork_prepare(void);
 extern void _dyld_atfork_parent(void);
@@ -181,6 +188,9 @@ libSystem_initializer(int argc,
 		// V2 functions (removed)
 		// V3 functions
 		.pthread_clear_qos_tsd = _pthread_clear_qos_tsd,
+#ifdef DARLING
+		.dyld_func_lookup = _dyld_func_lookup,
+#endif
 	};
 
 	static const struct _libpthread_functions libpthread_funcs = {
@@ -329,6 +339,10 @@ libSystem_atfork_parent(void)
 	xpc_atfork_parent();
 	_libSC_info_fork_parent();
 #endif // !TARGET_OS_DRIVERKIT
+
+#ifdef DARLING
+	_mach_fork_parent();
+#endif
 
 	// second call client parent handlers registered with pthread_atfork()
 	_pthread_atfork_parent_handlers();
