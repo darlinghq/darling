@@ -101,6 +101,9 @@ static const struct _libkernel_string_functions
 	.strcpy = _libkernel_strcpy,
 	.strlcpy = _libkernel_strlcpy,
 	.strlen = _libkernel_strlen,
+#ifdef DARLING
+	.strncmp = _darling_libkernel_strncmp,
+#endif
 };
 static _libkernel_string_functions_t _libkernel_string_functions =
     &_libkernel_generic_string_functions;

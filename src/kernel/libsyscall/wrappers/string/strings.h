@@ -84,5 +84,8 @@ size_t   _libkernel_strlen(const char *);
 size_t   _libkernel_strlcpy(char *, const char *, size_t);
 void     _libkernel_bzero(void *, size_t);
 char    *_libkernel_strchr(const char *, int);
+#ifdef DARLING
+int      _darling_libkernel_strncmp(const char *, const char *, size_t);
+#endif
 
 #endif  /* _STRINGS_H_ */
