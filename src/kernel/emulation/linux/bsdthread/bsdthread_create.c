@@ -27,7 +27,7 @@ static bool _uses_threads = false;
 // http://www.tldp.org/FAQ/Threads-FAQ/clone.c
 
 long sys_bsdthread_create(void* thread_start, void* arg,
-		void** stack, void* pthread, uint32_t flags)
+		void* stack, void* pthread, uint32_t flags)
 {
 #ifndef VARIANT_DYLD // dyld doesn't create threads
 	int ret;
@@ -47,10 +47,17 @@ long sys_bsdthread_create(void* thread_start, void* arg,
 #else
 	// Implemented in libdyld
 	extern int thread_self_trap(void);
+	// give it the exernal definition rather than `sys_thread_set_tsd_base` directly
+	extern void _thread_set_tsd_base(void *tsd_base);
+
+	struct darling_thread_create_callbacks callbacks = {
+		.thread_self_trap = &thread_self_trap,
+		.thread_set_tsd_base = &_thread_set_tsd_base,
+	};
 
 	return __darling_thread_create(((uintptr_t)stack), pthread_obj_size,
 			pthread_entry_point_wrapper, thread_start, arg, (uintptr_t) stack, flags,
-			thread_self_trap);
+			&callbacks, pthread);
 #endif
 
 	if (ret < 0)

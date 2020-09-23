@@ -51,7 +51,7 @@ long sys_bsdthread_register(void* thread_start, void* wqthread, int pthsize,
 }
 
 void pthread_entry_point_wrapper(void* self, int thread_port, void* funptr,
-		void* funarg, unsigned long stacksize, unsigned int flags)
+		void* funarg, unsigned long stack_addr, unsigned int flags)
 {
 	sigexc_thread_setup();
 
@@ -60,7 +60,7 @@ void pthread_entry_point_wrapper(void* self, int thread_port, void* funptr,
 	args.dispatch_qaddr = args.pthread_handle + g_pth_regdata.tsd_offset + g_pth_regdata.dispatch_queue_offset;
 
 	lkm_call(NR_set_thread_handles, &args);
-	pthread_entry_point(self, thread_port, funptr, funarg, stacksize, flags);
+	pthread_entry_point(self, thread_port, funptr, funarg, stack_addr, flags);
 }
 
 void wqueue_entry_point_wrapper(void* self, int thread_port, void* stackaddr,

@@ -247,10 +247,15 @@ wakeup:
 				// __simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
 				wq_event_pending = wq_event;
 
+				struct darling_thread_create_callbacks callbacks = {
+					.thread_self_trap = &thread_self_trap,
+					.thread_set_tsd_base = &_thread_set_tsd_base,
+				};
+
 				__darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point_wrapper, 0,
 						(wq_event != NULL) ? wq_event->events : NULL, flags,
 						(wq_event != NULL) ? wq_event->nevents : 0,
-						thread_self_trap);
+						&callbacks, NULL);
 
 				/*if (ret < 0)
 				{

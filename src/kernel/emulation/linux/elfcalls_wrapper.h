@@ -1,6 +1,7 @@
 #ifndef _ELFCALLS_WRAPPER_H
 #define _ELFCALLS_WRAPPER_H
-#include <stdint.h>
+
+#include <elfcalls.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +19,7 @@ void native_exit(int ec);
 void* __darling_thread_create(unsigned long stack_size, unsigned long pthobj_size,
 			void* entry_point, uintptr_t arg3,
 			uintptr_t arg4, uintptr_t arg5, uintptr_t arg6,
-			int (*thread_self_trap)());
+			darling_thread_create_callbacks_t callbacks, void* dthread);
 
 int __darling_thread_terminate(void* stackaddr,
 			unsigned long freesize, unsigned long pthobj_size);
