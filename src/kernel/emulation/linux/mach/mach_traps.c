@@ -485,6 +485,65 @@ kern_return_t _kernelrpc_mach_port_unguard_trap_impl(
 	return KERN_FAILURE;
 }
 
+kern_return_t thread_get_special_reply_port_impl(void)
+{
+	return lkm_call(NR_thread_get_special_reply_port, 0);
+};
+
+kern_return_t _kernelrpc_mach_port_request_notification_impl(
+	ipc_space_t task,
+	mach_port_name_t name,
+	mach_msg_id_t msgid,
+	mach_port_mscount_t sync,
+	mach_port_name_t notify,
+	mach_msg_type_name_t notifyPoly,
+	mach_port_name_t* previous
+)
+{
+	struct mach_port_request_notification_args args = {
+		.task_right_name = task,
+		.port_right_name = name,
+		.message_id = msgid,
+		.make_send_count = sync,
+		.notification_destination_port_name = notify,
+		.message_type = notifyPoly,
+		.previous_destination_port_name_out = previous,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_request_notification_trap, &args);
+};
+
+kern_return_t _kernelrpc_mach_port_get_attributes_impl(
+	mach_port_name_t target,
+	mach_port_name_t name,
+	mach_port_flavor_t flavor,
+	mach_port_info_t port_info_out,
+	mach_msg_type_number_t* port_info_outCnt
+)
+{
+	struct mach_port_get_attributes_args args = {
+		.task_right_name = target,
+		.port_right_name = name,
+		.flavor = flavor,
+		.info_out = port_info_out,
+		.count_out = port_info_outCnt,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_get_attributes_trap, &args);
+};
+
+kern_return_t _kernelrpc_mach_port_type_impl(
+	ipc_space_t task,
+	mach_port_name_t name,
+	mach_port_type_t* ptype
+)
+{
+	struct mach_port_type_args args = {
+		.task_right_name = task,
+		.port_right_name = name,
+		.port_type_out = ptype,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_type_trap, &args);
+};
+
 kern_return_t macx_swapon_impl(
 				uint64_t filename,
 				int flags,
