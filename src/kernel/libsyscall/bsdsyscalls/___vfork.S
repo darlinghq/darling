@@ -65,16 +65,9 @@ LEAF(___vfork, 0)
 	cmpxchgl	%ecx, __current_pid
 	jne		0b
 	popl		%ecx
-	#ifdef DARLING
-		movl	$ SYS_vfork, %eax
-		call	__darling_bsd_syscall
-		cmpl	$0, %eax
-		jnb L1
-	#else
-		movl		$(SYS_vfork), %eax	// code for vfork -> eax
-		UNIX_SYSCALL_TRAP			// do the system call
-		jnb		L1                     	// jump if CF==0
-	#endif
+	movl		$(SYS_vfork), %eax	// code for vfork -> eax
+	UNIX_SYSCALL_TRAP			// do the system call
+	jnb		L1                     	// jump if CF==0
 	GET_CURRENT_PID
 	lock
 	incl		__current_pid
@@ -112,18 +105,18 @@ LEAF(___vfork, 0)
 	lock
 	cmpxchgl	%ecx, (%rdx)
 	jne		0b
-	#ifdef DARLING
+#ifdef DARLING
 		movl	$ SYS_vfork, %eax
 		call	__darling_bsd_syscall
 		cmpq	$0, %rax
 		jnb L1
-	#else
+#else
 		popq		%rdi			// return address in %rdi
 		movq		$ SYSCALL_CONSTRUCT_UNIX(SYS_vfork), %rax	// code for vfork -> rax
 		UNIX_SYSCALL_TRAP			// do the system call
 		jnb		L1			// jump if CF==0
 		pushq		%rdi			// put return address back on stack for cerror
-	#endif
+#endif
 	movq		__current_pid@GOTPCREL(%rip), %rcx
 	lock
 	addl		$1, (%rcx)
@@ -131,8 +124,13 @@ LEAF(___vfork, 0)
 	BRANCH_EXTERN(_cerror)
 
 L1:
+#ifdef DARLING
+	testl		%eax, %eax
+	jnz		L2
+#else
 	testl		%edx, %edx		// CF=OF=0,  ZF set if zero result
 	jz		L2			// parent, since r1 == 0 in parent, 1 in child
+#endif
 	xorq		%rax, %rax		// zero rax
 	jmp		*%rdi
 
@@ -140,7 +138,11 @@ L2:
 	movq		__current_pid@GOTPCREL(%rip), %rdx
 	lock
 	addl		$1, (%rdx)
+#ifdef DARLING
+	ret
+#else
 	jmp		*%rdi
+#endif
 
 #elif defined(__arm__)
 
