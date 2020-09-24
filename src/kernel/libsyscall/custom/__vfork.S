@@ -106,16 +106,16 @@ LEAF(___vfork, 0)
 	cmpxchgl	%ecx, (%rdx)
 	jne		0b
 #ifdef DARLING
-		movl	$ SYS_vfork, %eax
-		call	__darling_bsd_syscall
-		cmpq	$0, %rax
-		jnb L1
+	movl	$ SYS_vfork, %eax
+	call	__darling_bsd_syscall
+	cmpq	$0, %rax
+	jnb L1
 #else
-		popq		%rdi			// return address in %rdi
-		movq		$ SYSCALL_CONSTRUCT_UNIX(SYS_vfork), %rax	// code for vfork -> rax
-		UNIX_SYSCALL_TRAP			// do the system call
-		jnb		L1			// jump if CF==0
-		pushq		%rdi			// put return address back on stack for cerror
+	popq		%rdi			// return address in %rdi
+	movq		$ SYSCALL_CONSTRUCT_UNIX(SYS_vfork), %rax	// code for vfork -> rax
+	UNIX_SYSCALL_TRAP			// do the system call
+	jnb		L1			// jump if CF==0
+	pushq		%rdi			// put return address back on stack for cerror
 #endif
 	movq		__current_pid@GOTPCREL(%rip), %rcx
 	lock
@@ -132,7 +132,11 @@ L1:
 	jz		L2			// parent, since r1 == 0 in parent, 1 in child
 #endif
 	xorq		%rax, %rax		// zero rax
+#ifdef DARLING
+	ret
+#else
 	jmp		*%rdi
+#endif
 
 L2:
 	movq		__current_pid@GOTPCREL(%rip), %rdx
