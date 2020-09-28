@@ -164,18 +164,17 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 				// resume the thread; it'll call `_pthread_wqthread_exit` and kill itself
 				goto resume_thread;
 			}
-wakeup:
-			
-			// reset stack and call entry point again with WQ_FLAG_THREAD_REUSE
-			thread_self = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_MACH_THREAD_SELF);
-			dthread = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
 
+wakeup: // we actually want to go back into the thread to do work
 			// __simple_printf("Thread %d woken up, prio=%d\n", thread_self, me.flags & WQ_FLAG_THREAD_PRIOMASK);
 
 			if (me.event)
 				wq_event_pending = me.event;
 
-resume_thread:
+resume_thread: // we want the thread to resume, but it might be just to die
+			// reset stack and call entry point again with WQ_FLAG_THREAD_REUSE
+			thread_self = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_MACH_THREAD_SELF);
+			dthread = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
 
 #ifdef __x86_64__
 			// arguments are in rdi, rsi, rdx, rcx, r8, r9
@@ -197,7 +196,7 @@ resume_thread:
 					"subl $32, %%esp\n"
 					"jmpl *%2\n"
 					:: "a" (dthread), "b" (thread_self), "S" (wqueue_entry_point),
-					"D" (me.flags | WQ_FLAG_THREAD_REUSE), "d" (me.event ? me.event->events : NULL),
+					"D" (me.flags | WQ_FLAG_THREAD_REUSE), "d" ((!terminating && me.event) ? me.event->events : NULL),
 					"S" (terminating ? WORKQ_EXIT_THREAD_NKEVENT : (me.event ? me.event->nevents : 0)), "c" (dthread->stackbottom)
 			);
 #else
