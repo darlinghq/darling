@@ -87,6 +87,26 @@ static int priority_to_class(int prio);
 // This is horrible, but it may work
 static struct wq_kevent_data* wq_event_pending = NULL;
 
+static int extract_wq_flags(int priority) {
+	int flags = 0;
+	int qos = _pthread_priority_thread_qos(priority);
+
+	// Apple has created a mess of QoS in libdispatch and sometimes libdispatch doesn't set QoS properly when building with configurations Apple (apparently) hasn't tested
+	//
+	// we only do this is a hack/workaround until we improve our workqueue/kqueue support to use libdispatch's new SPIs
+	if (qos == 0) {
+		qos = 4; // default libdispatch QoS
+	}
+
+	flags = WQ_FLAG_THREAD_NEWSPI | qos | WQ_FLAG_THREAD_PRIO_QOS;
+
+	if (priority & _PTHREAD_PRIORITY_OVERCOMMIT_FLAG) {
+		flags |= WQ_FLAG_THREAD_OVERCOMMIT;
+	}
+
+	return flags;
+};
+
 long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 {
 #ifndef VARIANT_DYLD
@@ -132,6 +152,14 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 
 			// Semaphore locked state (wait for wakeup)
 			me.sem = 0;
+
+			// extract initial flags
+			// (in case we only get created and used once and then terminate; `_pthread_wqthread` requires a valid `flags` argument)
+			dthread = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
+			prio = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_QOS_CLASS);
+			// doesn't extract `WQ_FLAG_THREAD_KEVENT` if we had it set, but that shouldn't matter
+			// like i said before, the only case where we actually need these flags to be set here is when the thread is going to die immediately after creation
+			me.flags = extract_wq_flags(prio);
 
 			// Enqueue for future WQOPS_QUEUE_REQTHREADS
 			TAILQ_INSERT_HEAD(&workq_parked_head, &me, entries);
@@ -180,13 +208,13 @@ resume_thread: // we want the thread to resume, but it might be just to die
 			// arguments are in rdi, rsi, rdx, rcx, r8, r9
 			__asm__ __volatile__ (
 					// "int3\n"
-					"movq %%rbx, %%r8\n" // 5th argument
+					"movl %3, %%r8d\n" // 5th argument
 					"movl %5, %%r9d\n" // 6th argument
 					"movq %0, %%rsp\n"
 					"subq $32, %%rsp\n"
 					"jmpq *%2\n"
 					:: "D" (dthread), "S" (thread_self), "a" (wqueue_entry_point),
-					"b" (me.flags | WQ_FLAG_THREAD_REUSE), "c" ((!terminating && me.event) ? me.event->events : NULL),
+					"r" (me.flags | WQ_FLAG_THREAD_REUSE), "c" ((!terminating && me.event) ? me.event->events : NULL),
 					"r" (terminating ? WORKQ_EXIT_THREAD_NKEVENT : (me.event ? me.event->nevents : 0)), "d" (dthread->stackbottom)
 			);
 #elif defined(__i386__)
@@ -219,21 +247,7 @@ resume_thread: // we want the thread to resume, but it might be just to die
 		{
 			// affinity contains thread count
 
-			int i, flags, qos = _pthread_priority_thread_qos(prio);
-
-			// Apple has created a mess of QoS in libdispatch and sometimes libdispatch doesn't set QoS properly
-			// when building with configurations Apple (apparently) hasn't tested
-			//
-			// we only do this is a hack/workaround until we improve our workqueue/kqueue support to use libdispatch's new SPIs
-			if (qos == 0) {
-				qos = 4; // default libdispatch QoS
-			}
-
-			flags = WQ_FLAG_THREAD_NEWSPI | qos | WQ_FLAG_THREAD_PRIO_QOS;
-
-			if (prio & _PTHREAD_PRIORITY_OVERCOMMIT_FLAG) {
-				flags |= WQ_FLAG_THREAD_OVERCOMMIT;
-			}
+			int i, flags = extract_wq_flags(prio);
 
 			if (wq_event != NULL)
 				flags |= WQ_FLAG_THREAD_KEVENT;
