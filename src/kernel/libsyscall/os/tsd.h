@@ -52,12 +52,28 @@
 #include <arm/arch.h>
 #endif
 
+#ifdef DARLING
+#include <darling/emulation/linux-syscalls.h>
+#endif
+
 extern void _thread_set_tsd_base(void *tsd_base);
 
 __attribute__((always_inline))
 static __inline__ unsigned int
 _os_cpu_number(void)
 {
+#ifdef DARLING
+	extern int __linux_syscall(int nr, ...);
+
+	unsigned int cpu_num = 0;
+	int status = __linux_syscall(__NR_getcpu, &cpu_num, 0, 0, 0, 0, 0);
+	// should we even check? i don't think it's possible for it to fail with these arguments
+	if (status < 0) {
+		return 0; // i guess?
+	}
+
+	return cpu_num;
+#else // !DARLING
 #if defined(__arm__)
 	uintptr_t p;
 	__asm__("mrc	p15, 0, %[p], c13, c0, 3" : [p] "=&r" (p));
@@ -73,6 +89,7 @@ _os_cpu_number(void)
 #else
 #error _os_cpu_number not implemented on this architecture
 #endif
+#endif // !DARLING
 }
 
 #if defined(__i386__) || defined(__x86_64__)
