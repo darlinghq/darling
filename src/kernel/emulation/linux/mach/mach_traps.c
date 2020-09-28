@@ -449,8 +449,13 @@ kern_return_t _kernelrpc_mach_port_construct_trap_impl(
 				mach_port_name_t *name
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_construct_args args = {
+		.task_right_name = target,
+		.options = options,
+		.context = context,
+		.port_right_name_out = name,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_construct_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_destruct_trap_impl(
@@ -460,8 +465,13 @@ kern_return_t _kernelrpc_mach_port_destruct_trap_impl(
 				uint64_t guard
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_destruct_args args = {
+		.task_right_name = target,
+		.port_right_name = name,
+		.srdelta = srdelta,
+		.guard = guard,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_destruct_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_guard_trap_impl(
@@ -471,8 +481,13 @@ kern_return_t _kernelrpc_mach_port_guard_trap_impl(
 				boolean_t strict
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_guard_args args = {
+		.task_right_name = target,
+		.port_right_name = name,
+		.guard = guard,
+		.strict = strict,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_guard_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_unguard_trap_impl(
@@ -481,8 +496,12 @@ kern_return_t _kernelrpc_mach_port_unguard_trap_impl(
 				uint64_t guard
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_unguard_args args = {
+		.task_right_name = target,
+		.port_right_name = name,
+		.guard = guard,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_unguard_trap, &args);
 }
 
 kern_return_t thread_get_special_reply_port_impl(void)
