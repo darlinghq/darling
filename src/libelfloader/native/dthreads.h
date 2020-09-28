@@ -1,7 +1,8 @@
 #ifndef _ELFLOADER_DTHREADS_H_
 #define _ELFLOADER_DTHREADS_H_
 
-// Darwin + pthread = dthread ;)
+// Darwin + pthreads = dthreads ;)
+// also: "dwq" stands for "Darwin workqueue"
 
 #include <stdint.h>
 
@@ -66,6 +67,8 @@ struct darwin_sched_param {
 
 #define DTHREAD_DEFAULT_PRIORITY (1U << (DARWIN_THREAD_QOS_LEGACY - 1 + DTHREAD_PRIORITY_QOS_CLASS_SHIFT)) | ((uint8_t)-1 & DTHREAD_PRIORITY_PRIORITY_MASK)
 
+#define DWQ_FLAG_THREAD_TSD_BASE_SET  0x00200000
+
 // ***
 // KEEP IN SYNC WITH THE DEFINITION OF `struct _pthread` IN libpthread's `internal.h`
 // ***
@@ -124,4 +127,4 @@ typedef struct _dthread {
 	void* tsd[DARWIN_EXTERNAL_POSIX_THREAD_KEYS_MAX + DARWIN_INTERNAL_POSIX_THREAD_KEYS_MAX];
 }* dthread_t;
 
-#endif // _ELFLOADER_DARWIN_PTHREADS_H_
+#endif // _ELFLOADER_DTHREADS_H_

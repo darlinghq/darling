@@ -44,9 +44,9 @@ struct arg_struct
 {
 	thread_ep entry_point;
 	uintptr_t real_entry_point;
-	uintptr_t user_arg;
-	uintptr_t stack_addr;
-	uintptr_t flags;
+	uintptr_t arg1; // `user_arg` for normal threads; `keventlist` for workqueues
+	uintptr_t arg2; // `stack_addr` for normal threads; `flags` for workqueues
+	uintptr_t arg3; // `flags` for normal threads; `nkevents` for workqueues
 	union {
 		void* _backwards_compat; // kept around to avoid modifiying assembly
 		int port;
@@ -55,6 +55,8 @@ struct arg_struct
 	void* pth;
 	darling_thread_create_callbacks_t callbacks;
 	uintptr_t stack_bottom;
+	uintptr_t stack_addr;
+	bool is_workqueue;
 };
 
 static void* darling_thread_entry(void* p);
@@ -117,37 +119,52 @@ static dthread_t dthread_structure_allocate(size_t stack_size, size_t guard_size
 	// stack_addr points to the top of the stack (i.e. the highest address)
 	*stack_addr = ((char*)base_addr) + stack_size + guard_size;
 
-	dthread_t dthread = (dthread_t)*stack_addr;
-	memset(dthread, 0, sizeof(struct _dthread));
-
 	// the dthread sits above the stack
 	// (and by "above", i mean the lowest address of the dthread is the highest address of the stack)
+	dthread_t dthread = (dthread_t)*stack_addr;
+	// zero-out the entrire dthread structure
+	memset(dthread, 0, sizeof(struct _dthread));
+
 	return dthread_structure_init(dthread, guard_size, *stack_addr, stack_size, base_addr, total_size);
 };
 
 void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_size,
 				void* entry_point, uintptr_t real_entry_point,
-				uintptr_t user_arg, uintptr_t stack_addr, uintptr_t flags,
+				uintptr_t arg1, uintptr_t arg2, uintptr_t arg3,
 				darling_thread_create_callbacks_t callbacks, void* pth)
 {
-	struct arg_struct args = { (thread_ep) entry_point, real_entry_point,
-		user_arg, stack_addr, flags, (int)0, pth_obj_size, NULL, callbacks, (char*)stack_addr - stack_size };
+	struct arg_struct args = {
+		.entry_point      = (thread_ep)entry_point,
+		.real_entry_point = real_entry_point,
+		.arg1             = arg1,
+		.arg2             = arg2,
+		.arg3             = arg3,
+		.port             = 0,
+		.pth_obj_size     = pth_obj_size,
+		.pth              = NULL, // set later on
+		.callbacks        = callbacks,
+		.stack_addr       = NULL, // set later on
+		.is_workqueue     = real_entry_point == 0, // our `workq_kernreturn` sets `real_entry_point` to NULL; `bsdthread_create` actually passes a value
+	};
 	pthread_attr_t attr;
 	pthread_t nativeLibcThread;
 
 	pthread_attr_init(&attr);
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	// pthread_attr_setstacksize(&attr, stack_size);
-	
+
 	// in some cases, we're already given a pthread object, stack, and guard page;
 	// in those cases, just use what we're given (it also contains more information)
 	//
 	// otherwise, allocate them ourselves
-	if (pth == NULL) {
-		pth = dthread_structure_allocate(stack_size, DEFAULT_DTHREAD_GUARD_SIZE, &stack_addr);
-		args.stack_addr = stack_addr;
-		args.stack_bottom = stack_addr - stack_size;
+	if (pth == NULL || args.is_workqueue) {
+		pth = dthread_structure_allocate(stack_size, DEFAULT_DTHREAD_GUARD_SIZE, &args.stack_addr);
+	} else if (!args.is_workqueue) {
+		// `arg2` is `stack_addr` for normal threads
+		args.stack_addr = arg2;
 	}
+
+	args.stack_bottom = args.stack_addr - stack_size;
 	
 	// pthread_attr_setstack is buggy. The documentation states we should provide the lowest
 	// address of the stack, yet some versions regard it as the highest address instead.
@@ -179,11 +196,12 @@ static void* darling_thread_entry(void* p)
 	memcpy(&args, in_args, sizeof(args));
 
 	dthread_t dthread = args.pth;
+	uintptr_t* flags = args.is_workqueue ? &args.arg2 : &args.arg3;
 
 	// libpthread now expects the kernel to set the TSD
 	// so, since we're pretending to be the kernel handling threads...
 	args.callbacks->thread_set_tsd_base(&dthread->tsd[0]);
-	args.flags |= DTHREAD_START_TSD_BASE_SET;
+	*flags |= args.is_workqueue ? DWQ_FLAG_THREAD_TSD_BASE_SET : DTHREAD_START_TSD_BASE_SET;
 
 	args.port = dthread->tsd[DTHREAD_TSD_SLOT_MACH_THREAD_SELF] = args.callbacks->thread_self_trap();
 
@@ -200,7 +218,7 @@ static void* darling_thread_entry(void* p)
 #ifdef __x86_64__
 	__asm__ __volatile__ (
 	"movq %1, %%rdi\n"
-	"movq %%rdi, %%rsp\n"
+	"movq 80(%0), %%rsp\n"
 	"movq 40(%0), %%rsi\n"
 	"movq 8(%0), %%rdx\n"
 	"testq %%rdx, %%rdx\n"
@@ -220,7 +238,7 @@ static void* darling_thread_entry(void* p)
 #elif defined(__i386__) // args in eax, ebx, ecx, edx, edi, esi
 	__asm__ __volatile__ (
 	"movl (%0), %%eax\n"
-	"movl %1, %%esp\n"
+	"movl 40(%0), %%esp\n"
 	"pushl %%eax\n" // address to be jumped to
 	"movl %1, 28(%0)\n"
 	"movl %1, %%eax\n" // 1st arg
