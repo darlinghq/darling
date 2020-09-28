@@ -39,6 +39,9 @@ long sys_ulock_wake(uint32_t operation, void* addr, uint64_t wake_value)
 		ret = errno_linux_to_bsd(ret);
 		if (no_errno)
 			ret &= ~0x800;
+	} else {
+		// callers of ulock_wake expect it to return 0 on success
+		ret = 0;
 	}
 
 	return ret;
