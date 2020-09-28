@@ -45,6 +45,7 @@ include(InstallSymlink)
 include(MacroEnsureOutOfSourceBuild)
 include(dsym)
 include(xcproj)
+include(architecture)
 
 MACRO_ENSURE_OUT_OF_SOURCE_BUILD()
 
@@ -98,6 +99,8 @@ find_package(Setcap REQUIRED)
 
 # Missing CMakeLists.txt must trigger an error
 cmake_policy(SET CMP0014 NEW)
+
+generate_architecture()
 
 add_subdirectory(src)
 

@@ -70,11 +70,11 @@ add_definitions(
 	-DTARGET_OS_MAC=1
 )
 
-set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
-set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ranlib")
-#set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/as/x86_64-apple-darwin11-as")
+set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar")
+set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
+#set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/as/${APPLE_TARGET_TRIPLET_PRIMARY}-as")
 
-add_definitions(-target x86_64-apple-darwin11)
+add_definitions(-target ${APPLE_TARGET_TRIPLET_PRIMARY})
 include(darling_lib)
 include(darling_static_lib)
 

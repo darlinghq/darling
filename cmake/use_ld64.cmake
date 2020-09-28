@@ -1,11 +1,11 @@
 FUNCTION(use_ld64 target)
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
-		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/x86_64-apple-darwin11-ld ")
+		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/${APPLE_TARGET_TRIPLET_PRIMARY}-ld ")
 
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ \
 -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
--target x86_64-apple-darwin11 -Wl,-Z \
+-target ${APPLE_TARGET_TRIPLET_PRIMARY} -Wl,-Z \
 -Wl,-dylib_file,/usr/lib/system/libsystem_c.dylib:${CMAKE_BINARY_DIR}/src/libc/libsystem_c_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_darwin.dylib:${CMAKE_BINARY_DIR}/src/libc/libdarwin/libsystem_darwin.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_kernel.dylib:${CMAKE_BINARY_DIR}/src/kernel/libsystem_kernel_firstpass.dylib \
@@ -130,7 +130,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libnetwork.dylib:${CMAKE_BINARY_DIR}/src/external/libnetwork/libnetwork.dylib \
 -Wl,-dylib_file,/usr/lib/system/libcache.dylib:${CMAKE_BINARY_DIR}/src/libcache/libcache.dylib")
 
-	add_dependencies(${target} x86_64-apple-darwin11-ld)
+	add_dependencies(${target} ${APPLE_TARGET_TRIPLET_PRIMARY}-ld)
 
 ENDFUNCTION(use_ld64)
 

@@ -127,13 +127,13 @@ target_link_libraries(system_loader libc_static system_blocks_static
 	corecrypto_static
 )
 
-if (TARGET_i386)
+if (BUILD_TARGET_32BIT)
 	target_link_libraries(system_loader libc_static32 compiler_rt_static32 platform_static32)
-endif (TARGET_i386)
+endif (BUILD_TARGET_32BIT)
 
-if (TARGET_x86_64)
+if (BUILD_TARGET_64BIT)
 	target_link_libraries(system_loader libc_static64 compiler_rt_static64 platform_static64)
-endif (TARGET_x86_64)
+endif (BUILD_TARGET_64BIT)
 
 make_fat(system_loader)
 

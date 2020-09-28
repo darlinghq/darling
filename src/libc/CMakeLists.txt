@@ -241,11 +241,11 @@ add_darling_static_library(libc_static SOURCES
 	$<TARGET_OBJECTS:libc-os>
 	$<TARGET_OBJECTS:libc-stdio_extsn>
 	)
-add_dependencies(libc_static ranlib x86_64-apple-darwin11-ar)
+add_dependencies(libc_static ranlib ${APPLE_TARGET_TRIPLET_PRIMARY}-ar)
 set_target_properties(libc_static PROPERTIES COMPILE_FLAGS "-ffunction-sections")
 
 add_library(libc_static64 STATIC $<TARGET_OBJECTS:libc-x86_64>)
-add_dependencies(libc_static64 ranlib x86_64-apple-darwin11-ar)
+add_dependencies(libc_static64 ranlib ${APPLE_TARGET_TRIPLET_PRIMARY}-ar)
 add_library(libc_static32 STATIC $<TARGET_OBJECTS:libc-i386>)
-add_dependencies(libc_static32 ranlib x86_64-apple-darwin11-ar)
+add_dependencies(libc_static32 ranlib ${APPLE_TARGET_TRIPLET_PRIMARY}-ar)
 

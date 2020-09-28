@@ -18,7 +18,7 @@ set(xtrace_sources
 )
 
 if (TARGET_x86_64)
-	set(DARLING_LIB_x86_64_ONLY TRUE)
+	set(DARLING_LIB_64BIT_ONLY TRUE)
 	set(DYLIB_INSTALL_NAME "/usr/lib/darling/libxtrace.dylib")
 	add_darling_library(xtracelib SHARED ${xtrace_sources})
 	set_target_properties(xtracelib PROPERTIES OUTPUT_NAME "xtrace")
