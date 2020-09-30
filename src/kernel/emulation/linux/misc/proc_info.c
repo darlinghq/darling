@@ -80,13 +80,24 @@ long sys_proc_info(uint32_t callnum, int32_t pid, uint32_t flavor,
 	}
 }
 
-static bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, struct vnode_info_path* vip);
+static bool parse_smaps_firstline(
+	const char* line,
+	uint64_t* pri_address,
+	uint64_t* pri_size,
+	uint32_t* pri_protection,
+	uint32_t* pri_share_mode,
+	uint64_t* pri_offset,
+	uint32_t* vst_dev,
+	uint64_t* vst_ino,
+	char* vip_path
+);
 static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_pidthreadinfo(int32_t pid, uint64_t thread_handle, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_pathinfo(int32_t pid, void* buffer, int32_t bufsize);
+static long _proc_pidinfo_regionpath(int32_t pid, uint64_t arg, void* buffer, int32_t buffer_size);
 
 long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int32_t bufsize)
 {
@@ -119,6 +130,10 @@ long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int
 		case PROC_PIDPATHINFO:
 		{
 			return _proc_pidinfo_pathinfo(pid, buffer, bufsize);
+		}
+		case PROC_PIDREGIONPATH:
+		{
+			return _proc_pidinfo_regionpath(pid, arg, buffer, bufsize);
 		}
 		default:
 		{
@@ -338,12 +353,22 @@ reterr:
 	return -EINVAL;
 }
 
+static long _proc_pidinfo_regionpath_setup(int32_t pid, struct rdline_buffer* buf) {
+	char proc_path[50];
+	int fd;
+
+	__simple_sprintf(proc_path, "/proc/%d/smaps", pid);
+	fd = sys_open_nocancel(proc_path, BSD_O_RDONLY, 0);
+	if (fd < 0)
+		return fd;
+
+	_readline_init(buf);
+	return fd;
+};
+
 static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer, int32_t bufsize)
 {
-	union {
-		char proc_path[50];
-		struct rdline_buffer buf;
-	} vars; // to reduce stack usage
+	struct rdline_buffer buf;
 	int fd;
 	const char* line;
 	struct proc_regionwithpathinfo my_rpi;
@@ -354,21 +379,27 @@ static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer
 	if (bufsize < sizeof(my_rpi))
 		return -ENOSPC;
 
-	__simple_sprintf(vars.proc_path, "/proc/%d/smaps", pid);
-	fd = sys_open_nocancel(vars.proc_path, BSD_O_RDONLY, 0);
+	fd = _proc_pidinfo_regionpath_setup(pid, &buf);
 	if (fd < 0)
 		return fd;
 
-	_readline_init(&vars.buf);
-	memset(&my_rpi, 0, sizeof(my_rpi));
-
-	while ((line = _readline(fd, &vars.buf)) != NULL)
+	while ((line = _readline(fd, &buf)) != NULL)
 	{
 		if (!foundRegion)
 		{
 			// Searching for matching memory region.
 			// This call returns true if we see the start of another mapping.
-			if (parse_smaps_firstline(line, &my_rpi.prp_prinfo, &my_rpi.prp_vip))
+			if (parse_smaps_firstline(
+				line,
+				&my_rpi.prp_prinfo.pri_address,
+				&my_rpi.prp_prinfo.pri_size,
+				&my_rpi.prp_prinfo.pri_protection,
+				&my_rpi.prp_prinfo.pri_share_mode,
+				&my_rpi.prp_prinfo.pri_offset,
+				&my_rpi.prp_vip.vip_vi.vi_stat.vst_dev,
+				&my_rpi.prp_vip.vip_vi.vi_stat.vst_ino,
+				my_rpi.prp_vip.vip_path
+			))
 			{
 				if (arg >= my_rpi.prp_prinfo.pri_address && arg < (my_rpi.prp_prinfo.pri_address + my_rpi.prp_prinfo.pri_size))
 				{
@@ -392,12 +423,72 @@ static long _proc_pidinfo_regionpathinfo(int32_t pid, uint64_t arg, void* buffer
 	return foundRegion ? 1 : -ESRCH;
 }
 
+static long _proc_pidinfo_regionpath(int32_t pid, uint64_t arg, void* buffer, int32_t buffer_size) {
+	// `_proc_pidinfo_regionpathinfo` is a glutton for stack space, due to the size of `struct proc_regioninfo`
+	//
+	// so rather than calling it and extracting the necessary information, it's better to have most of the common code
+	// moved out and duplicate some minimal amounts of code for this function
+
+	struct proc_regionpath my_rp;
+	int fd;
+	struct rdline_buffer readline_buffer;
+	const char* line;
+	bool found = false;
+
+	if (!buffer)
+		return -EFAULT;
+	if (buffer_size < sizeof(my_rp))
+		return -ENOSPC;
+
+	fd = _proc_pidinfo_regionpath_setup(pid, &readline_buffer);
+	if (fd < 0)
+		return fd;
+
+	while ((line = _readline(fd, &readline_buffer)) != NULL) {
+		if (parse_smaps_firstline(
+			line,
+			&my_rp.prpo_addr,
+			&my_rp.prpo_regionlength,
+			NULL,
+			NULL,
+			NULL,
+			NULL,
+			NULL,
+			my_rp.prpo_path
+		)) {
+			if (arg >= my_rp.prpo_addr && arg < (my_rp.prpo_addr + my_rp.prpo_regionlength)) {
+				found = true;
+				break;
+			}
+		}
+	}
+
+	close_internal(fd);
+
+	memcpy(buffer, &my_rp, sizeof(my_rp));
+	return found ? 0 : -EINVAL;
+};
+
 // Parses line such as:
 // 5568e1914000-5568e1915000 r--p 00024000 08:01 4861625                    /usr/bin/less
-static bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, struct vnode_info_path* vip)
+static bool parse_smaps_firstline(
+	const char* line,
+	uint64_t* pri_address,
+	uint64_t* pri_size,
+	uint32_t* pri_protection,
+	uint32_t* pri_share_mode,
+	uint64_t* pri_offset,
+	uint32_t* vst_dev,
+	uint64_t* vst_ino,
+	char* vip_path
+)
 {
 	const char* p;
 	const char* minus = NULL;
+	uint64_t backup_variable;
+
+	if (!pri_address)
+		pri_address = &backup_variable;
 
 	// Read address range
 	p = line;
@@ -405,7 +496,7 @@ static bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, 
 	{
 		if (*p == '-')
 		{
-			ri->pri_address = __simple_atoi16(line, NULL);
+			*pri_address = __simple_atoi16(line, NULL);
 			minus = p;
 		}
 		p++;
@@ -413,26 +504,37 @@ static bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, 
 	if (!minus)
 		return false; // this is a different line
 
-	ri->pri_size = __simple_atoi16(minus+1, NULL) - ri->pri_address;
+	if (pri_size)
+		*pri_size = __simple_atoi16(minus+1, NULL) - *pri_address;
 	p++;
 
 	// Now read protection
-	ri->pri_protection = 0;
-	if (*p++ == 'r')
-		ri->pri_protection |= VM_PROT_READ;
-	if (*p++ == 'w')
-		ri->pri_protection |= VM_PROT_WRITE;
-	if (*p++ == 'x')
-		ri->pri_protection |= VM_PROT_EXECUTE;
+	if (pri_protection) {
+		*pri_protection = 0;
+		if (*p++ == 'r')
+			*pri_protection |= VM_PROT_READ;
+		if (*p++ == 'w')
+			*pri_protection |= VM_PROT_WRITE;
+		if (*p++ == 'x')
+			*pri_protection |= VM_PROT_EXECUTE;
+	} else {
+		p += 3;
+	}
 
-	if (*p++ == 'p') // COW/private
-		ri->pri_share_mode = SM_PRIVATE;
-	else
-		ri->pri_share_mode = SM_SHARED;
+	if (pri_share_mode) {
+		if (*p++ == 'p') // COW/private
+			*pri_share_mode = SM_PRIVATE;
+		else
+			*pri_share_mode = SM_SHARED;
+	} else {
+		p++;
+	}
 	p++; // space
 
 	// Read file offset
-	ri->pri_offset = __simple_atoi16(p, &p);
+	if (!pri_offset)
+		pri_offset = &backup_variable;
+	*pri_offset = __simple_atoi16(p, &p);
 	p++;
 
 	// Read device major:minor
@@ -441,16 +543,19 @@ static bool parse_smaps_firstline(const char* line, struct proc_regioninfo* ri, 
 	p++;
 	min = (int) __simple_atoi16(p, &p);
 	p++;
-	vip->vip_vi.vi_stat.vst_dev = (maj << 8) | min;
+	if (vst_dev)
+		*vst_dev = (maj << 8) | min;
 
 	// Read inode
-	vip->vip_vi.vi_stat.vst_ino = __simple_atoi(p, &p);
+	if (!vst_ino)
+		vst_ino = &backup_variable;
+	*vst_ino = __simple_atoi(p, &p);
 
 	// Read file name (may be empty)
 	while (*p == ' ')
 		p++;
-	if (*p) // Is file name present?
-		strcpy(vip->vip_path, p);
+	if (*p && vip_path) // Is file name present? (and the caller wants it)
+		strcpy(vip_path, p);
 
 	return true;
 }
