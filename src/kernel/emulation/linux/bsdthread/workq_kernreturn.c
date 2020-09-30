@@ -91,13 +91,6 @@ static int extract_wq_flags(int priority) {
 	int flags = 0;
 	int qos = _pthread_priority_thread_qos(priority);
 
-	// Apple has created a mess of QoS in libdispatch and sometimes libdispatch doesn't set QoS properly when building with configurations Apple (apparently) hasn't tested
-	//
-	// we only do this is a hack/workaround until we improve our workqueue/kqueue support to use libdispatch's new SPIs
-	if (qos == 0) {
-		qos = 4; // default libdispatch QoS
-	}
-
 	flags = WQ_FLAG_THREAD_NEWSPI | qos | WQ_FLAG_THREAD_PRIO_QOS;
 
 	if (priority & _PTHREAD_PRIORITY_OVERCOMMIT_FLAG) {
