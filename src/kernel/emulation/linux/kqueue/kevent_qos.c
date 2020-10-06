@@ -25,6 +25,7 @@ long sys_kevent_qos(int	kq, const struct kevent_qos_s *changelist, int nchanges,
 	struct kevent64_s* changelist64 = NULL;
 	struct kevent64_s* eventlist64 = NULL;
 	struct wq_kevent_data wq_kevent;
+	struct timespec polling_timeout = {};
 
 	if ((kq == -1) != !!(flags & KEVENT_FLAG_WORKQ))
 		return -EINVAL;
@@ -52,7 +53,7 @@ long sys_kevent_qos(int	kq, const struct kevent_qos_s *changelist, int nchanges,
 		eventlist64 = (struct kevent64_s*) __builtin_alloca(nevents * sizeof(struct kevent64_s));
 	}
 
-	rv = kevent64(default_kq, changelist64, nchanges, eventlist64, nevents, flags, NULL);
+	rv = kevent64(default_kq, changelist64, nchanges, eventlist64, nevents, flags, (flags & KEVENT_FLAG_IMMEDIATE) ? &polling_timeout : NULL);
 
 	if (rv > 0)
 	{
