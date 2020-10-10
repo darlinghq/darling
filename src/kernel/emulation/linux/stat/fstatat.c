@@ -11,8 +11,6 @@
 
 extern char* strcpy(char* dst, const char* src);
 
-#define AT_SYMLINK_NOFOLLOW 0x20
-
 long sys_fstatat(int fd, const char* path, struct stat* stat, int flag)
 {
 	int ret;
@@ -23,9 +21,9 @@ long sys_fstatat(int fd, const char* path, struct stat* stat, int flag)
 		return -EFAULT;
 
 	struct vchroot_expand_args vc;
-	vc.flags = (flag & AT_SYMLINK_NOFOLLOW) ? 0 : VCHROOT_FOLLOW;
+	vc.flags = (flag & BSD_AT_SYMLINK_NOFOLLOW) ? 0 : VCHROOT_FOLLOW;
 	vc.dfd = atfd(fd);
-	
+
 	strcpy(vc.path, path);
 	ret = vchroot_expand(&vc);
 	if (ret < 0)
@@ -57,9 +55,9 @@ long sys_fstatat64(int fd, const char* path, struct stat64* stat, int flag)
 		return -EFAULT;
 
 	struct vchroot_expand_args vc;
-	vc.flags = (flag & AT_SYMLINK_NOFOLLOW) ? 0 : VCHROOT_FOLLOW;
+	vc.flags = (flag & BSD_AT_SYMLINK_NOFOLLOW) ? 0 : VCHROOT_FOLLOW;
 	vc.dfd = atfd(fd);
-	
+
 	strcpy(vc.path, path);
 	ret = vchroot_expand(&vc);
 	if (ret < 0)
