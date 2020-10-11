@@ -70,7 +70,6 @@ add_circular(system_info FAT
 		xpc
 		compiler_rt
 		launch
-	DEPENDENCIES
 		resolv-darwin
 )
 #target_link_libraries(system_info PRIVATE system_c resolv-darwin system_dyld system_blocks libdispatch_shared system_notify platform)

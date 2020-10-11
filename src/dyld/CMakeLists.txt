@@ -13,7 +13,7 @@ add_definitions(-D_LIBCPP_NO_EXCEPTIONS=1)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wno-availability -include ${CMAKE_SOURCE_DIR}/src/duct/include/CrashReporterClient.h")
 set(CMAKE_SHARED_LINKER_FLAGS_SAVED "${CMAKE_SHARED_LINKER_FLAGS}")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load -Wl,-flat_namespace -Wl,-undefined,suppress")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 add_definitions(-DHAVE_STDINT_H=1)
 
@@ -60,7 +60,7 @@ add_circular(system_dyld FAT
 	dyld3/ClosureBuilder.cpp
 	dyld3/Closure.cpp
 	dyld3/ClosureFileSystemPhysical.cpp
-	dyld3/ClosurePrinter.cpp
+	#dyld3/ClosurePrinter.cpp
 	dyld3/ClosureWriter.cpp
 	dyld3/Diagnostics.cpp
 	dyld3/shared-cache/DyldSharedCache.cpp
@@ -74,9 +74,16 @@ add_circular(system_dyld FAT
 	dyld3/PathOverrides.cpp
 	dyld3/Tracing.cpp
 
-	SIBLINGS
-		system_c system_kernel compiler_rt platform
-	DEPENDENCIES
+	UPWARD
+		system_c
+		system_kernel
+		system_malloc
+		system_blocks
+		system_pthread
+		system_sandbox
+		libdispatch_shared
+		compiler_rt
+		platform
 		launch
 )
 set_target_properties(system_dyld PROPERTIES
