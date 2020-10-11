@@ -15,7 +15,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/dnsinfo)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -nostdinc -DUSE__RES_9")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 # Hide warnings
 add_definitions(
@@ -58,10 +58,22 @@ set(resolv_sources
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
 set(DYLIB_INSTALL_NAME "/usr/lib/libresolv.9.dylib")
-add_darling_library(resolv-darwin SHARED ${resolv_sources})
+
+add_circular(resolv-darwin FAT
+	SOURCES
+		${resolv_sources}
+	SIBLINGS
+		system_info
+	DEPENDENCIES
+		system_pthread
+		system_malloc
+		system_c
+		system_kernel
+		system_dnssd
+		system_notify
+		system_dyld
+)
 set_target_properties(resolv-darwin PROPERTIES OUTPUT_NAME "resolv.9")
-make_fat(resolv-darwin)
-#target_link_libraries(resolv-darwin PRIVATE system)
 
 InstallSymlink("libresolv.9.dylib" "${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/lib/libresolv.dylib")
 install(TARGETS resolv-darwin DESTINATION libexec/darling/usr/lib)

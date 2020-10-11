@@ -40,10 +40,11 @@ add_circular(system_malloc FAT
 		${libmalloc_sources}
 	SIBLINGS
 		system_kernel
-		system_c
 		platform
 		system_dyld
 		compiler_rt
+	UPWARD
+		system_c
 )
 
 install(TARGETS system_malloc DESTINATION libexec/darling/usr/lib/system)

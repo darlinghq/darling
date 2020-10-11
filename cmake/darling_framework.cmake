@@ -25,7 +25,7 @@ function(add_framework name)
 	else (FRAMEWORK_IOSSUPPORT)
 		set(sys_library_dir "System/Library")
 	endif (FRAMEWORK_IOSSUPPORT)
-	
+
 	if(DEFINED FRAMEWORK_PARENT)
 		if(NOT DEFINED FRAMEWORK_PARENT_VERSION)
 			# 99% of the time it's version A
@@ -57,7 +57,7 @@ function(add_framework name)
 		endif (FRAMEWORK_FAT)
 
 	endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
-	
+
 	set_property(TARGET ${my_name} PROPERTY DYLIB_INSTALL_NAME ${DYLIB_INSTALL_NAME})
 
 	if (FRAMEWORK_CURRENT_VERSION)

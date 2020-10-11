@@ -32,86 +32,62 @@ set(libsystem_sources
 )
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
-add_circular(system FAT
-	SOURCES
-		${libsystem_sources}
-	OBJECTS
-		$<TARGET_OBJECTS:kqueue>
-
-	SIBLINGS
-
-	system_malloc
+add_darling_library(system
+	${libsystem_sources}
+	$<TARGET_OBJECTS:kqueue>
 )
 
-target_link_libraries(system PRIVATE
-	sandbox
-	system_quarantine
-	removefile
-	system_copyfile
-	system_coreservices
-	system_coretls
-	system_malloc
-	system_c
-	system_kernel
-	system_trace
-	keymgr
-	system_m
-	system_info
-	system_notify
-	libdispatch_shared
-	launch
-	compiler_rt
-	unwind
-	system_dyld
-	macho
-	system_pthread
-	platform
-	system_asl
-	system_duct
-	system_blocks
-	xpc
-	corecrypto
-	commonCrypto
-	system_dnssd
-	system_networkextension
+function(libsystem_reexport)
+	while(ARGN)
+		list(GET ARGN 0 sublib)
+		list(GET ARGN 1 sublib_path)
+
+		add_dependencies(system ${sublib})
+		set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
+                " -Wl,-reexport_library -Wl,${CMAKE_BINARY_DIR}/${sublib_path} ")
+
+		list(REMOVE_AT ARGN 0 1)
+	endwhile(ARGN)
+endfunction(libsystem_reexport)
+
+libsystem_reexport(
+	system_sandbox src/sandbox/libsystem_sandbox.dylib
+	system_quarantine src/quarantine/libquarantine.dylib
+	removefile src/libremovefile/libremovefile.dylib
+	system_copyfile src/copyfile/libcopyfile.dylib
+	system_coreservices src/libsystem_coreservices/libsystem_coreservices.dylib
+	system_coretls src/external/coretls/libsystem_coretls.dylib
+	system_malloc src/libmalloc/libsystem_malloc.dylib
+	system_c src/libc/libsystem_c.dylib
+	system_kernel src/kernel/libsystem_kernel.dylib
+	system_trace src/external/libtrace/libsystem_trace.dylib
+	keymgr src/keymgr/libkeymgr.dylib
+	system_m src/libm/libsystem_m.dylib
+	system_info src/libinfo/libsystem_info.dylib
+	system_notify src/libnotify/libsystem_notify.dylib
+	libdispatch_shared src/external/libdispatch/libdispatch.dylib
+	launch src/launchd/liblaunch/liblaunch.dylib
+	compiler_rt src/external/compiler-rt/lib/builtins/libcompiler_rt.dylib
+	system_dyld src/dyld/libdyld.dylib
+	macho src/libmacho/libmacho.dylib
+	system_pthread src/external/libpthread/src/libsystem_pthread.dylib
+	platform src/external/libplatform/libsystem_platform.dylib
+	system_asl src/external/syslog/libsystem_asl.tproj/libsystem_asl.dylib
+	system_duct src/duct/src/libsystem_duct.dylib
+	system_blocks src/external/libclosure/libsystem_blocks.dylib
+	xpc src/external/libxpc/libxpc.dylib
+	corecrypto src/external/corecrypto/libcorecrypto.dylib
+	commonCrypto src/external/commoncrypto/libcommonCrypto.dylib
+	system_dnssd src/lib/system/dnssd/libsystem_dnssd.dylib
+	system_networkextension src/networkextension/libsystem_networkextension.dylib
+	unwind src/libunwind/libunwind.dylib
 )
 
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
 set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
-	" -sub_library libsystem_malloc \
-	-sub_library libsystem_c \
-	-sub_library libsystem_kernel \
-	-sub_library libkeymgr \
-	-sub_library libsystem_m \
-	-sub_library libsystem_info \
-	-sub_library libsystem_notify \
-	-sub_library libquarantine \
-	-sub_library libsystem_blocks \
-	-sub_library libsystem_duct \
-	-sub_library libsystem_pthread \
-	-sub_library libsystem_platform \
-	-sub_library libsystem_trace \
-	-sub_library libdispatch \
-	-sub_library liblaunch \
-	-sub_library libremovefile \
-	-sub_library libcopyfile \
-	-sub_library libunwind \
-	-sub_library libdyld \
-	-sub_library libcompiler_rt \
-	-sub_library libmacho \
-	-sub_library libcommonCrypto \
-	-sub_library libsystem_sandbox \
-	-sub_library libsystem_coreservices \
-	-sub_library libsystem_coretls \
-	-sub_library libsystem_asl \
-	-sub_library libxpc \
-	-sub_library libcorecrypto \
-	-sub_library libsystem_dnssd \
-	-sub_library libsystem_networkextension \
-	-Wl,-compatibility_version,1.0.0 \
-	-Wl,-current_version,1238.0.0")
+	"-Wl,-compatibility_version,1.0.0 -Wl,-current_version,1238.0.0")
 
-#make_fat(system)
+make_fat(system)
 
 install(TARGETS system DESTINATION libexec/darling/usr/lib)
 
