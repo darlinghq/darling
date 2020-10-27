@@ -16,15 +16,14 @@ long sys_close_nocancel(int fd)
 {
 	int ret;
 
+	struct closing_descriptor_args args = {
+		.fd = fd,
+	};
+	lkm_call(NR_closing_descriptor, &args);
+
 	ret = LINUX_SYSCALL1(__NR_close, fd);
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
-	else {
-		struct closing_descriptor_args args = {
-			.fd = fd,
-		};
-		lkm_call(NR_closing_descriptor, &args);
-	}
 
 	return ret;
 }
