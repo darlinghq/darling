@@ -64,6 +64,8 @@
 
 #ifdef DARLING
 #include <darling/lkm/api.h>
+
+extern int default_kq;
 #endif
 
 mach_port_t bootstrap_port = MACH_PORT_NULL;
@@ -139,6 +141,8 @@ int
 _mach_fork_child(void)
 {
 #ifdef DARLING
+	// we only have to reset to `-1`; the LKM takes care of closing it for us
+	default_kq = -1;
 	mach_init_doit(NULL);
 #else
 	mach_init_doit();

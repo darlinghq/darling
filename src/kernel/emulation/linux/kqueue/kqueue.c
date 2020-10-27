@@ -5,18 +5,11 @@
 #include <stddef.h>
 #include <sys/errno.h>
 #include "../simple.h"
-
-int __attribute__((weak)) __attribute__((visibility("default"))) kqueue_impl(void)
-{
-	__simple_printf("No kqueue implementation?!\n");
-	return -ENOSYS;
-}
+#include "../mach/lkm.h"
+#include <lkm/api.h>
 
 long sys_kqueue(void)
 {
-	int ret = kqueue_impl();
-	if (ret < 0)
-		ret = -errno;
-	return ret;
+	return lkm_call(NR_kqueue_create, NULL);
 }
 

@@ -1,5 +1,10 @@
 project(notifyd)
 
+add_compile_definitions(
+	SINGLE_THREADED_NOTIFY_STATE=1
+	MACH_NOTIFY_SEND_POSSIBLE_EXPECTED=1
+)
+
 mig(notify_ipc.defs)
 mig(notify.defs)
 

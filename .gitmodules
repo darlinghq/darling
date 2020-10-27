@@ -7,9 +7,6 @@
 [submodule "src/external/libcxxabi"]
 	path = src/external/libcxxabi
 	url = ../darling-libcxxabi.git
-[submodule "src/external/libkqueue"]
-	path = src/external/libkqueue
-	url = ../darling-libkqueue.git
 [submodule "src/external/zlib"]
 	path = src/external/zlib
 	url = ../darling-zlib.git

@@ -10,9 +10,16 @@
 #include "kqueue.h"
 #include "../bsdthread/workq_kernreturn.h"
 
-static int default_kq = -1;
+// not static because `mach_init.c` needs to reset it on fork
+// (but since we're using symbol visibility, no one else will be able to see it, so it's ok)
+// we can remove this once our LKM supports kqueue workqs and workloops (at that point, this syscall will turn into a simple trap into the LKM)
+int default_kq = -1;
 
 extern void* memmove(void* dst, const void* src, __SIZE_TYPE__ n);
+
+// we have an LKM trap for kevent_qos, but due to our LKM not supporting workqs and workloops yet,
+// it's easier to keep our old behavior and translate this into a kevent64 call and handle workq stuff ourselves.
+// TODO: support workqs and workloops in the LKM (requires in-kernel pthread operations)
 
 static void kevent_qos_to_64(const struct kevent_qos_s *ev, struct kevent64_s* ev64);
 static void kevent_64_to_qos(const struct kevent64_s* ev64, struct kevent_qos_s *ev);
@@ -33,7 +40,6 @@ long sys_kevent_qos(int	kq, const struct kevent_qos_s *changelist, int nchanges,
 	if (default_kq == -1)
 	{
 		default_kq = sys_kqueue();
-		sys_fcntl(default_kq, F_SETFD, FD_CLOEXEC);
 	}
 
 	if (changelist != NULL && nchanges > 0)

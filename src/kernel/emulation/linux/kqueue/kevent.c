@@ -4,16 +4,21 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <sys/errno.h>
-
-int __attribute__((weak)) __attribute__((visibility("default"))) kevent_impl(int kq, ...) { return -ENOSYS; }
+#include "../mach/lkm.h"
+#include <lkm/api.h>
 
 long sys_kevent(int	kq, const struct kevent	*changelist, int nchanges,
 			struct	kevent *eventlist, int nevents,
 			const struct timespec *timeout)
 {
-	int ret = kevent_impl(kq, changelist, nchanges, eventlist, nevents, timeout);
-	if (ret < 0)
-		ret = -errno;
-	return ret;
+	struct kevent_args args = {
+		.fd = kq,
+		.changelist = changelist,
+		.nchanges = nchanges,
+		.eventlist = eventlist,
+		.nevents = nevents,
+		.timeout = timeout,
+	};
+	return lkm_call(NR_kevent, &args);
 }
 

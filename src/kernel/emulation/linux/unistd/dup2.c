@@ -4,8 +4,6 @@
 #include <linux-syscalls/linux.h>
 #include "../duct_errno.h"
 
-extern void kqueue_dup(int oldfd, int newfd);
-
 long sys_dup2(int fd_from, int fd_to)
 {
 	int ret;
@@ -22,8 +20,6 @@ long sys_dup2(int fd_from, int fd_to)
 	#endif
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
-	else
-		kqueue_dup(fd_from, fd_to);
 
 	return ret;
 }

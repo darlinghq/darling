@@ -33,8 +33,6 @@ set(DYLIB_CURRENT_VERSION "1281.0.0")
 add_circular(system FAT
 	SOURCES
 		${libsystem_sources}
-	OBJECTS
-		$<TARGET_OBJECTS:kqueue>
 
 	SIBLINGS
 

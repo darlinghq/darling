@@ -48,7 +48,7 @@ static void state_to_kernel(struct linux_ucontext* ctxt, struct thread_state* ke
 
 #define DEBUG_SIGEXC
 #ifdef DEBUG_SIGEXC
-#define kern_printf(...) { char buf[128]; __simple_sprintf(buf, __VA_ARGS__); lkm_call(0x1028, buf); }
+#define kern_printf(...) __simple_kprintf(__VA_ARGS__)
 #else
 #define kern_printf(...)
 #endif
@@ -147,7 +147,7 @@ void darling_sigexc_self(void)
 {
 	am_i_ptraced = true;
 
-	lkm_call(0x1028, "darling_sigexc_self()\n");
+	__simple_kprintf("darling_sigexc_self()\n");
 	// Make sigexc_handler the handler for all signals in the process
 	for (int i = 1; i <= 31; i++)
 	{

@@ -116,7 +116,7 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		}
 		case PT_SIGEXC:
 		{
-			lkm_call(0x1028, "sigexc: self via ptrace\n");
+			__simple_kprintf("sigexc: self via ptrace\n");
 
 			struct ptrace_sigexc_args args;
 			args.pid = getpid();
@@ -169,7 +169,7 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		__simple_sprintf(buf, "ptrace() req=%s, ret=%d\n", cmd, ret);
 	else
 		__simple_sprintf(buf, "ptrace() req=%d\n", request);
-	lkm_call(0x1028, buf);
+	__simple_kprintf(buf);
 
 	return ret;
 }
