@@ -21,6 +21,7 @@
 #ifndef _Network_H_
 #define _Network_H_
 
+#ifdef __OBJC__
 #import <Foundation/Foundation.h>
 
 #import <Network/NSURLSessionDelegate.h>
@@ -119,8 +120,9 @@
 #import <Network/NWTCPListener.h>
 #import <Network/NWPathEvaluator.h>
 #import <Network/NWAWDLibnetcoreTCPECNStatsReport.h>
+#endif
 
-#import <nw/nw.h>
+#include <nw/nw.h>
 
 void* NWCreateDispatchDataFromNSData(void);
 void* NWCreateNSDataFromDispatchData(void);
