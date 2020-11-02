@@ -108,6 +108,7 @@ si_inet_config(uint32_t *inet4, uint32_t *inet6)
 
 	checkit = 1;
 
+#ifndef DARLING
 	if (net_config_token < 0)
 	{
 		status = notify_register_check(kNotifySCNetworkChange, &net_config_token);
@@ -119,6 +120,7 @@ si_inet_config(uint32_t *inet4, uint32_t *inet6)
 		status = notify_check(net_config_token, &checkit);
 		if (status != 0) checkit = 1;
 	}
+#endif
 
 	status = 0;
 

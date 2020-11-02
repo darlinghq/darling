@@ -88,6 +88,9 @@ si_mod_t *si_module_static_muser(void);
 si_mod_t *si_module_static_ds(void);
 #endif
 si_mod_t *si_module_static_mdns(void);
+#ifdef DARLING
+si_mod_t *si_module_static_darling(void);
+#endif
 
 static void *
 si_mod_dlsym(void *so, const char *name, const char *sym)
@@ -191,7 +194,11 @@ si_module_with_name(const char *name)
 #ifdef DS_AVAILABLE
 		{ "ds", si_module_static_ds, NULL },
 #endif
+#ifdef DARLING
+		{ "darling-resolver", si_module_static_darling, NULL },
+#else
 		{ "mdns", si_module_static_mdns, NULL },
+#endif
 		{ NULL, NULL },
 	};
 
