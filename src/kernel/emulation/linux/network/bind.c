@@ -3,6 +3,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include <sys/errno.h>
+#include <sys/socket.h>
 #include "duct.h"
 
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
@@ -18,7 +19,9 @@ long sys_bind(int fd, const void* name, int socklen)
 	if (socklen > 512)
 		return -EINVAL;
 
-	fixed = __builtin_alloca(socklen);
+	// if we're going to be fixing up the path for vchroot,
+	// we need to make sure we allocate the full structure so we have max path length
+	fixed = __builtin_alloca((((struct sockaddr_fixup*)name)->bsd_family == PF_LOCAL) ? sizeof(struct sockaddr_fixup) : socklen);
 	memcpy(fixed, name, socklen);
 
 	fixed->linux_family = sfamily_bsd_to_linux(fixed->bsd_family);
@@ -37,6 +40,7 @@ long sys_bind(int fd, const void* name, int socklen)
 
 		strncpy(fixed->sun_path, vc.path, sizeof(fixed->sun_path) - 1);
 		fixed->sun_path[sizeof(fixed->sun_path) - 1] = '\0';
+		socklen = sizeof(*fixed) - sizeof(fixed->sun_path) + strlen(fixed->sun_path);
 	}
 
 #ifdef __NR_socketcall
