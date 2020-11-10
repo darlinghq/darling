@@ -66,7 +66,6 @@ add_circular(system_info FAT
 		compiler_rt
 		launch
 		system_trace
-	DEPENDENCIES
 		resolv-darwin
 )
 

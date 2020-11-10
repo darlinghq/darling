@@ -563,7 +563,14 @@ void spawnShell(const char** argv)
 		"/sbin:"
 		"/usr/local/bin");
 
-	const char* login = getlogin();
+	const char* login = NULL;
+	struct passwd* pw = getpwuid(geteuid());
+
+	if (pw != NULL)
+		login = pw->pw_name;
+
+	if (!login)
+		login = getlogin();
 	if (!login)
 	{
 		fprintf(stderr, "Cannot determine your user name\n");

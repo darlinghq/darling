@@ -30,99 +30,63 @@ set_source_files_properties(init.c PROPERTIES
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
 set(DYLIB_CURRENT_VERSION "1281.0.0")
-add_circular(system FAT
-	SOURCES
-		${libsystem_sources}
-
-	SIBLINGS
-
-	system_malloc
+add_darling_library(system
+	${libsystem_sources}
 )
 
-target_link_libraries(system PRIVATE
-	sandbox
-	system_quarantine
-	removefile
-	system_copyfile
-	system_coreservices
-	system_coretls
-	system_c
-	system_kernel
-	system_trace
-	keymgr
+function(libsystem_reexport)
+	while(ARGN)
+		list(GET ARGN 0 sublib)
+		list(GET ARGN 1 sublib_path)
 
-	# workaround a CMake/ld link order bug
-	#
-	# for some reason, Apple's linker (which we build and use) decided that if system_malloc appears
-	# after system_m, it won't emit LC_REEXPORT_LIBRARY for system_malloc. instead, it emits LC_LOAD_LIBRARY,
-	# which kind of borks the System umbrella library and defeats the point of including it
-	#
-	# to add to that, CMake decided that, after adding system_darwin, it would no longer place system_malloc
-	# before system_m like we had specified here
-	#
-	# so, as a workaround, we add this order explicitly and then add dependencies on the targets
-	#
-	# the `-Wl,-warn_commons` is just to fool CMake into thinking this is a link flag
-	"-Wl,-warn_commons ../libmalloc/libsystem_malloc.dylib ../libm/libsystem_m.dylib"
+		add_dependencies(system ${sublib})
+		set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
+                " -Wl,-reexport_library -Wl,${CMAKE_BINARY_DIR}/${sublib_path} ")
 
-	system_info
-	system_notify
-	libdispatch_shared
-	launch
-	compiler_rt
-	unwind
-	system_dyld
-	macho
-	system_pthread
-	platform
-	system_asl
-	system_duct
-	system_blocks
-	xpc
-	corecrypto
-	commonCrypto
-	system_dnssd
-	system_networkextension
-	system_darwin
-	libcache
+		list(REMOVE_AT ARGN 0 1)
+	endwhile(ARGN)
+endfunction(libsystem_reexport)
+
+libsystem_reexport(
+	system_sandbox src/sandbox/libsystem_sandbox.dylib
+	system_quarantine src/quarantine/libquarantine.dylib
+	removefile src/libremovefile/libremovefile.dylib
+	system_copyfile src/copyfile/libcopyfile.dylib
+	system_coreservices src/libsystem_coreservices/libsystem_coreservices.dylib
+	system_coretls src/external/coretls/libsystem_coretls.dylib
+	system_malloc src/libmalloc/libsystem_malloc.dylib
+	system_c src/libc/libsystem_c.dylib
+	system_kernel src/kernel/libsystem_kernel.dylib
+	system_trace src/external/libtrace/libsystem_trace.dylib
+	keymgr src/keymgr/libkeymgr.dylib
+	system_m src/libm/libsystem_m.dylib
+	system_info src/libinfo/libsystem_info.dylib
+	system_notify src/libnotify/libsystem_notify.dylib
+	libdispatch_shared src/external/libdispatch/libdispatch.dylib
+	launch src/launchd/liblaunch/liblaunch.dylib
+	compiler_rt src/external/compiler-rt/lib/builtins/libcompiler_rt.dylib
+	system_dyld src/dyld/libdyld.dylib
+	macho src/external/cctools/libmacho/libmacho.dylib
+	system_pthread src/external/libpthread/src/libsystem_pthread.dylib
+	platform src/external/libplatform/libsystem_platform.dylib
+	system_asl src/external/syslog/libsystem_asl.tproj/libsystem_asl.dylib
+	system_duct src/duct/src/libsystem_duct.dylib
+	system_blocks src/external/libclosure/libsystem_blocks.dylib
+	xpc src/external/libxpc/libxpc.dylib
+	corecrypto src/external/corecrypto/libcorecrypto.dylib
+	commonCrypto src/external/commoncrypto/libcommonCrypto.dylib
+	system_dnssd src/lib/system/dnssd/libsystem_dnssd.dylib
+	system_networkextension src/networkextension/libsystem_networkextension.dylib
+	unwind src/libunwind/libunwind.dylib
+	system_darwin src/libc/libdarwin/libsystem_darwin.dylib
+	libcache src/libcache/libcache.dylib
 )
 
 add_dependencies(system system_malloc system_m)
 
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
-set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
-	" -sub_library libsystem_malloc \
-	-sub_library libsystem_c \
-	-sub_library libsystem_kernel \
-	-sub_library libkeymgr \
-	-sub_library libsystem_m \
-	-sub_library libsystem_info \
-	-sub_library libsystem_notify \
-	-sub_library libquarantine \
-	-sub_library libsystem_blocks \
-	-sub_library libsystem_duct \
-	-sub_library libsystem_pthread \
-	-sub_library libsystem_platform \
-	-sub_library libsystem_trace \
-	-sub_library libdispatch \
-	-sub_library liblaunch \
-	-sub_library libremovefile \
-	-sub_library libcopyfile \
-	-sub_library libunwind \
-	-sub_library libdyld \
-	-sub_library libcompiler_rt \
-	-sub_library libmacho \
-	-sub_library libcommonCrypto \
-	-sub_library libsystem_sandbox \
-	-sub_library libsystem_coreservices \
-	-sub_library libsystem_coretls \
-	-sub_library libsystem_asl \
-	-sub_library libxpc \
-	-sub_library libcorecrypto \
-	-sub_library libsystem_dnssd \
-	-sub_library libsystem_networkextension \
-	-sub_library libsystem_darwin \
-	-sub_library libcache")
+
+make_fat(system)
 
 install(TARGETS system DESTINATION libexec/darling/usr/lib)
 

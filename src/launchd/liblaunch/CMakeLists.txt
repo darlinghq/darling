@@ -10,7 +10,7 @@ include_directories(
 add_definitions(-w -nostdinc)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -include ${CMAKE_SOURCE_DIR}/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h -ggdb")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-flat_namespace -Wl,-undefined,suppress")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 mig(job.defs)
 mig(helper.defs)
@@ -30,6 +30,13 @@ add_circular(launch FAT
 	SIBLINGS
 		system_c
 		system_kernel
+		system_dyld
+	DEPENDENCIES
+		system_pthread
+		system_malloc
+		platform
+		libdispatch_shared
+		compiler_rt
 )
 
 install(TARGETS launch DESTINATION libexec/darling/usr/lib/system)
