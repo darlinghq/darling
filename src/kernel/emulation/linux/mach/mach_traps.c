@@ -696,8 +696,8 @@ kern_return_t bsdthread_terminate_trap_impl(
 	struct bsdthread_terminate_args args = {
 		.stackaddr = stackaddr,
 		.freesize = freesize,
-		.thread_right_name = thread,
-		.signal = sem
+		.port = thread,
+		.sem = sem
 	};
 
 	return lkm_call(NR_bsdthread_terminate_trap, &args);

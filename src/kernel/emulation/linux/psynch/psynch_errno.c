@@ -10,7 +10,7 @@ int psynch_errno(int rv)
 
 	rv = -rv;
 	top = rv & 0xffffff00;
-	rv = errno_linux_to_bsd(rv & 0xff);
+	rv = rv & 0xff;
 	rv |= top;
 
 	return -rv;
