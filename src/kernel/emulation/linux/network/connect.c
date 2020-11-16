@@ -27,7 +27,7 @@ long sys_connect_nocancel(int fd, const void* name, int socklen)
 	if (socklen > 512)
 		return -EINVAL;
 
-	fixed = __builtin_alloca(socklen+100);
+	fixed = __builtin_alloca((((struct sockaddr_fixup*)name)->bsd_family == PF_LOCAL) ? sizeof(struct sockaddr_fixup) : socklen);
 	memcpy(fixed, name, socklen);
 
 	fixed->linux_family = sfamily_bsd_to_linux(fixed->bsd_family);
@@ -46,6 +46,7 @@ long sys_connect_nocancel(int fd, const void* name, int socklen)
 
 		strncpy(fixed->sun_path, vc.path, sizeof(fixed->sun_path) - 1);
 		fixed->sun_path[sizeof(fixed->sun_path) - 1] = '\0';
+		socklen = sizeof(*fixed) - sizeof(fixed->sun_path) + strlen(fixed->sun_path);
 	}
 
 #ifdef __NR_socketcall
