@@ -8,6 +8,9 @@
 #include "../bsdthread/cancelable.h"
 
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
+extern __SIZE_TYPE__ strlen(const char* src);
+extern char* strcpy(char* dest, const char* src);
+extern char *strncpy(char *dest, const char *src, __SIZE_TYPE__ n);
 
 #include "../vchroot_expand.h"
 #include "../bsdthread/per_thread_wd.h"
