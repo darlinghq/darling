@@ -140,6 +140,11 @@ sysctl_handler(handle_boottime)
 		sys_gettimeofday(tv, NULL);
 
 		tv->tv_sec -= info.uptime;
+
+		// we don't want the microseconds to be constantly jumping around
+		// (that actually causes an infinite loop in `_mach_boottime_usec` in libc)
+		// but Linux doesn't give us microseconds, so just settle for 0
+		tv->tv_usec = 0;
 	}
 	*oldlen = sizeof(*tv);
 	
