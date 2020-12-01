@@ -3,26 +3,33 @@
 #include <sys/errno.h>
 #include "../common_at.h"
 #include "../vchroot_expand.h"
+#include "../dirent/getdirentries.h"
+#include "../unistd/dup.h"
+#include "../fcntl/open.h"
 #include <lkm/api.h>
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 
 #define ATTR_BIT_MAP_COUNT 5
 
-#define COMMON_SUPPORTED (ATTR_CMN_FNDRINFO)
+#define COMMON_SUPPORTED (ATTR_CMN_FNDRINFO | ATTR_CMN_OBJTAG)
 #define VOLUME_SUPPORTED 0
-#define DIR_SUPPORTED 0
+#define DIR_SUPPORTED (ATTR_DIR_ENTRYCOUNT)
 #define FILE_SUPPORTED (ATTR_FILE_RSRCLENGTH)
 #define FORK_SUPPORTED 0
 
 #define ATTR_CMN_FNDRINFO 0x4000
 #define ATTR_FILE_RSRCLENGTH 0x1000
+#define ATTR_CMN_OBJTAG 0x00000010
+#define ATTR_DIR_ENTRYCOUNT 0x00000002
 
 #define XATTR_FINDER_INFO "com.apple.FinderInfo"
 #define XATTR_RESOURCE_FORK "com.apple.ResourceFork"
 
 #define FSOPT_NOFOLLOW 1
 #define FSOPT_REPORT_FULLSIZE 4
+
+#define VT_HFS 16
 
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -79,6 +86,10 @@ struct attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, unsigne
 		spaceNeeded += 32;
 	if (alist->fileattr & ATTR_FILE_RSRCLENGTH)
 		spaceNeeded += 8; // off_t
+	if (alist->commonattr & ATTR_CMN_OBJTAG)
+		spaceNeeded += sizeof(uint32_t); // fsobj_tag_t
+	if (alist->dirattr & ATTR_DIR_ENTRYCOUNT)
+		spaceNeeded += sizeof(uint32_t);
 
 	ourBuffer = (char*) __builtin_alloca(spaceNeeded);
 	next = ourBuffer + 4;
@@ -105,6 +116,54 @@ struct attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, unsigne
 			*((uint32_t*) next) = 0;
 		else
 			*((uint32_t*) next) = rv;
+		next += 4;
+	}
+
+	if (alist->commonattr & ATTR_CMN_OBJTAG) {
+		// pretend we're always on HFS
+		*((uint32_t*)next) = VT_HFS;
+		next += 4;
+	}
+
+	if (alist->dirattr & ATTR_DIR_ENTRYCOUNT) {
+		char buf[1024]; // maybe this should be smaller?
+		int tmp_fd;
+
+		*((uint32_t*)next) = 0;
+
+#if HAS_PATH
+		tmp_fd = LINUX_SYSCALL(__NR_openat, vc.dfd, vc.path, LINUX_O_RDONLY | LINUX_O_DIRECTORY, 0);
+		if (tmp_fd < 0) {
+			rv = -EIO; // translate all errors into EIO (to avoid confusing our caller)
+			goto attr_dir_entrycount_out_no_fd;
+		}
+#else
+		// dupe it to avoid advancing the internal `getdents` position if our caller is using that
+		tmp_fd = sys_dup(fd);
+		if (tmp_fd < 0) {
+			rv = -EIO; // see above
+			goto attr_dir_entrycount_out_no_fd;
+		}
+#endif
+
+		while (1) {
+			// there's basically no other way to do this (at least none that either i or the internet know of)
+			rv = LINUX_SYSCALL(__NR_getdents64, tmp_fd, buf, sizeof(buf));
+			if (rv < 0) {
+				rv = -EIO; // same as before: avoid confusing our caller with unexepected errnos
+				goto attr_dir_entrycount_out;
+			} else if (rv == 0) {
+				break;
+			}
+
+			for (char* iter = buf; iter < buf + rv; iter += ((struct linux_dirent64*)iter)->d_reclen) {
+				++(*((uint32_t*)next));
+			}
+		}
+
+attr_dir_entrycount_out:
+		close_internal(tmp_fd);
+attr_dir_entrycount_out_no_fd:
 		next += 4;
 	}
 
