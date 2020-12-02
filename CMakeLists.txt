@@ -64,8 +64,20 @@ if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND NOT ${CMAKE_C_COMPILER_VERSION} 
 	SET(IGNORED_WARNINGS "${IGNORED_WARNINGS} -Wno-expansion-to-defined")
 endif (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS "3.9")
 
+if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_C_COMPILER_VERSION} VERSION_GREATER_EQUAL "11")
+	# newer Clang chokes on the idiomatic way to use CF_ENUM; e.g. like this:
+	#     typedef CF_ENUM(int, MyEnum) {
+	#       MY_ENUM_THING,
+	#       MY_ENUM_OTHER_THING,
+	#       # etc...
+	#     }
+	set(IGNORED_WARNINGS "${IGNORED_WARNINGS} -Wno-elaborated-enum-base -Wno-undef-prefix")
+	set(ASM_IGNORED_WARNINGS "${ASM_IGNORED_WARNINGS} -Wno-undef-prefix")
+endif()
+
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${IGNORED_WARNINGS}")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IGNORED_WARNINGS}")
+set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${ASM_IGNORED_WARNINGS}")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -ggdb")
 SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb")
 

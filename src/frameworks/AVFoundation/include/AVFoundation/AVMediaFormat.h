@@ -3,8 +3,8 @@
 typedef NSString *AVMediaType;
 typedef NSString *AVFileType;
 
-const AVMediaType AVMediaTypeAudio;
-const AVMediaType AVMediaTypeVideo;
+extern const AVMediaType AVMediaTypeAudio;
+extern const AVMediaType AVMediaTypeVideo;
 
-const AVFileType AVFileTypeMPEG4;
-const AVFileType AVFileTypeQuickTimeMovie;
+extern const AVFileType AVFileTypeMPEG4;
+extern const AVFileType AVFileTypeQuickTimeMovie;

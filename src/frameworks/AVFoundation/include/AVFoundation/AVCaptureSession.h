@@ -21,25 +21,25 @@
 
 typedef NSString *AVCaptureSessionPreset;
 
-NSString *const AVCaptureDeviceWasConnectedNotification;
-NSString *const AVCaptureDeviceWasDisconnectedNotification;
-NSString *const AVCaptureSessionDidStartRunningNotification;
-NSString *const AVCaptureSessionDidStopRunningNotification;
-NSString *const AVCaptureSessionErrorKey;
-NSString *const AVCaptureSessionRuntimeErrorNotification;
+extern NSString *const AVCaptureDeviceWasConnectedNotification;
+extern NSString *const AVCaptureDeviceWasDisconnectedNotification;
+extern NSString *const AVCaptureSessionDidStartRunningNotification;
+extern NSString *const AVCaptureSessionDidStopRunningNotification;
+extern NSString *const AVCaptureSessionErrorKey;
+extern NSString *const AVCaptureSessionRuntimeErrorNotification;
 
-const AVCaptureSessionPreset AVCaptureSessionPreset3840x2160;
-const AVCaptureSessionPreset AVCaptureSessionPreset1920x1080;
-const AVCaptureSessionPreset AVCaptureSessionPreset1280x720;
-const AVCaptureSessionPreset AVCaptureSessionPreset960x540;
-const AVCaptureSessionPreset AVCaptureSessionPreset640x480;
-const AVCaptureSessionPreset AVCaptureSessionPreset352x288;
-const AVCaptureSessionPreset AVCaptureSessionPreset320x240;
-const AVCaptureSessionPreset AVCaptureSessionPresetiFrame1280x720;
-const AVCaptureSessionPreset AVCaptureSessionPresetiFrame960x540;
-const AVCaptureSessionPreset AVCaptureSessionPresetHigh;
-const AVCaptureSessionPreset AVCaptureSessionPresetLow;
-const AVCaptureSessionPreset AVCaptureSessionPresetMedium;
+extern const AVCaptureSessionPreset AVCaptureSessionPreset3840x2160;
+extern const AVCaptureSessionPreset AVCaptureSessionPreset1920x1080;
+extern const AVCaptureSessionPreset AVCaptureSessionPreset1280x720;
+extern const AVCaptureSessionPreset AVCaptureSessionPreset960x540;
+extern const AVCaptureSessionPreset AVCaptureSessionPreset640x480;
+extern const AVCaptureSessionPreset AVCaptureSessionPreset352x288;
+extern const AVCaptureSessionPreset AVCaptureSessionPreset320x240;
+extern const AVCaptureSessionPreset AVCaptureSessionPresetiFrame1280x720;
+extern const AVCaptureSessionPreset AVCaptureSessionPresetiFrame960x540;
+extern const AVCaptureSessionPreset AVCaptureSessionPresetHigh;
+extern const AVCaptureSessionPreset AVCaptureSessionPresetLow;
+extern const AVCaptureSessionPreset AVCaptureSessionPresetMedium;
 
 @interface AVCaptureSession : NSObject
 

@@ -19,7 +19,7 @@
 
 #include <Foundation/Foundation.h>
 
-NSString *const AVURLAssetPreferPreciseDurationAndTimingKey;
+extern NSString *const AVURLAssetPreferPreciseDurationAndTimingKey;
 
 @interface AVAsset : NSObject
 

@@ -1,12 +1,12 @@
 #import <Foundation/Foundation.h>
 
-NSString *const AVVideoAverageBitRateKey;
-NSString *const AVVideoCodecAppleProRes422;
-NSString *const AVVideoCodecAppleProRes4444;
-NSString *const AVVideoCodecH264;
-NSString *const AVVideoCodecHEVC;
-NSString *const AVVideoCodecJPEG;
-NSString *const AVVideoCodecKey;
-NSString *const AVVideoCompressionPropertiesKey;
-NSString *const AVVideoHeightKey;
-NSString *const AVVideoWidthKey;
+extern NSString *const AVVideoAverageBitRateKey;
+extern NSString *const AVVideoCodecAppleProRes422;
+extern NSString *const AVVideoCodecAppleProRes4444;
+extern NSString *const AVVideoCodecH264;
+extern NSString *const AVVideoCodecHEVC;
+extern NSString *const AVVideoCodecJPEG;
+extern NSString *const AVVideoCodecKey;
+extern NSString *const AVVideoCompressionPropertiesKey;
+extern NSString *const AVVideoHeightKey;
+extern NSString *const AVVideoWidthKey;

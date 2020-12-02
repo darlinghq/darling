@@ -2,6 +2,6 @@
 
 typedef NSString *AVLayerVideoGravity;
 
-const AVLayerVideoGravity AVLayerVideoGravityResize;
-const AVLayerVideoGravity AVLayerVideoGravityResizeAspect;
-const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill;
+extern const AVLayerVideoGravity AVLayerVideoGravityResize;
+extern const AVLayerVideoGravity AVLayerVideoGravityResizeAspect;
+extern const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill;

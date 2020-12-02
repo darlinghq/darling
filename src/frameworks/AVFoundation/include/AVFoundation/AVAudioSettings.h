@@ -1,8 +1,8 @@
 #import <Foundation/Foundation.h>
 
-NSString *const AVChannelLayoutKey;
-NSString *const AVEncoderBitRateChannelKey;
-NSString *const AVFormatIDKey;
-NSString *const AVLinearPCMBitDepthKey;
-NSString *const AVNumberOfChannelsKey;
-NSString *const AVSampleRateKey;
+extern NSString *const AVChannelLayoutKey;
+extern NSString *const AVEncoderBitRateChannelKey;
+extern NSString *const AVFormatIDKey;
+extern NSString *const AVLinearPCMBitDepthKey;
+extern NSString *const AVNumberOfChannelsKey;
+extern NSString *const AVSampleRateKey;
