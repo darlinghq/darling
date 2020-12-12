@@ -34,7 +34,7 @@ void xtrace_lock_unlock(xtrace_lock_t* lock);
 //
 
 typedef struct xtrace_once {
-	uint8_t state;
+	uint32_t state;
 } xtrace_once_t;
 
 typedef void (*xtrace_once_callback)(void);
