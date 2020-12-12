@@ -15,6 +15,9 @@ set(xtrace_sources
 	mach_trace.cpp
 	bsd_trace.cpp
 	mig_trace.c
+	tls.c
+	malloc.c
+	lock.c
 )
 
 if (TARGET_x86_64)

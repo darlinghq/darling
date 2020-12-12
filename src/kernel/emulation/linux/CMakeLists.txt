@@ -263,6 +263,7 @@ set(emulation_sources
 	ext/mremap.c
 	ext/file_handle.c
 	ext/fanotify.c
+	ext/for-xtrace.c
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_terminate.c

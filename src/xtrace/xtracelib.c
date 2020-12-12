@@ -7,6 +7,7 @@
 #include "simple.h"
 #include "xtracelib.h"
 #include "mig_trace.h"
+#include "tls.h"
 
 // Defined in assembly
 extern void darling_mach_syscall_entry_trampoline(void);
@@ -152,7 +153,7 @@ static void print_call(const struct calldef* defs, const char* type, int nr, int
 }
 
 
-_Thread_local struct {
+struct nested_call_struct {
 	// We're inside this many calls. In other words, we have printed this many
 	// call entries without matching exits.
 	int current_level;
@@ -161,21 +162,23 @@ _Thread_local struct {
 	int previous_level;
 	// Call numbers, indexed by current level.
 	int nrs[64];
-} nested_call;
+};
+
+DEFINE_XTRACE_TLS_VAR(struct nested_call_struct, nested_call);
 
 void handle_generic_entry(const struct calldef* defs, const char* type, int nr, void* args[])
 {
 	if (xtrace_ignore)
 		return;
 
-	if (nested_call.previous_level < nested_call.current_level && !xtrace_split_entry_and_exit)
+	if (get_ptr_nested_call()->previous_level < get_ptr_nested_call()->current_level && !xtrace_split_entry_and_exit)
 	{
 		// We are after an earlier entry without an exit.
 		__simple_printf("\n");
 	}
 
-	int indent = 4 * nested_call.current_level;
-	nested_call.nrs[nested_call.current_level] = nr;
+	int indent = 4 * get_ptr_nested_call()->current_level;
+	get_ptr_nested_call()->nrs[get_ptr_nested_call()->current_level] = nr;
 
 	print_call(defs, type, nr, indent, 0);
 
@@ -194,7 +197,7 @@ void handle_generic_entry(const struct calldef* defs, const char* type, int nr, 
 	if (xtrace_split_entry_and_exit)
 		__simple_printf("\n");
 
-	nested_call.previous_level = nested_call.current_level++;
+	get_ptr_nested_call()->previous_level = get_ptr_nested_call()->current_level++;
 }
 
 
@@ -203,17 +206,17 @@ void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t
 	if (xtrace_ignore)
 		return;
 
-	if (nested_call.previous_level > nested_call.current_level)
+	if (get_ptr_nested_call()->previous_level > get_ptr_nested_call()->current_level)
 	{
 		// We are after an exit, so our call has been split up.
 		force_split = 1;
 	}
-	nested_call.previous_level = nested_call.current_level--;
-	int nr = nested_call.nrs[nested_call.current_level];
+	get_ptr_nested_call()->previous_level = get_ptr_nested_call()->current_level--;
+	int nr = get_ptr_nested_call()->nrs[get_ptr_nested_call()->current_level];
 
 	if (xtrace_split_entry_and_exit || force_split)
 	{
-		int indent = 4 * nested_call.current_level;
+		int indent = 4 * get_ptr_nested_call()->current_level;
 		print_call(defs, type, nr, indent, 1);
 		__simple_printf("()");
 	}

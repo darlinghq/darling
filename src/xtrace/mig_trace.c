@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <dlfcn.h>
+#include <stdbool.h>
 
 #include <mach/mach.h>
 
@@ -11,6 +12,7 @@
 #include "mach_trace.h"
 #include "bsd_trace.h"
 #include "xtrace/xtrace-mig-types.h"
+#include "tls.h"
 
 #define XTRACE_MIG_DIR_PATH "/usr/lib/darling/xtrace-mig"
 
@@ -74,10 +76,10 @@ void xtrace_setup_mig_tracing(void)
 	closedir(xtrace_mig_dir);
 }
 
-_Thread_local int is_first_arg;
+DEFINE_XTRACE_TLS_VAR(bool, is_first_arg);
 
-#define BEFORE if (!is_first_arg) __simple_printf(", ")
-#define AFTER is_first_arg = 0
+#define BEFORE if (!get_is_first_arg()) __simple_printf(", ")
+#define AFTER set_is_first_arg(false)
 
 static void add_raw_arg(const char* format, ...)
 {
@@ -349,7 +351,7 @@ void xtrace_print_mig_message(const mach_msg_header_t* message, mach_port_name_t
 		xtrace_reset_color();
 	}
 
-	is_first_arg = 1;
+	set_is_first_arg(true);
 	r->routine(message, is_reply, &callbacks);
 
 	if (!is_reply)
