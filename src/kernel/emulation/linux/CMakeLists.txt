@@ -293,6 +293,7 @@ set(emulation_sources
 	conf/pathconf.c
 	conf/fpathconf.c
 	mach/audit_session_self.c
+	audit/audit_addr.c
 	vchroot_userspace.c
 	syscalls-table.S
 	linux-syscall.S

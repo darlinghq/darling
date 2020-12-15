@@ -214,6 +214,7 @@
 #include "sysv_sem/semget.h"
 #include "sysv_sem/semop.h"
 #include "mach/audit_session_self.h"
+#include "audit/audit_addr.h"
 
 void* __bsd_syscall_table[600] = {
 	[0] = sys_syscall,
@@ -409,6 +410,8 @@ void* __bsd_syscall_table[600] = {
 	[347] = sys_getfsstat64,
 	[348] = sys_pthread_chdir,
 	[349] = sys_pthread_fchdir,
+	[357] = sys_getaudit_addr,
+	[358] = sys_setaudit_addr,
 	[360] = sys_bsdthread_create,
 	[361] = sys_bsdthread_terminate,
 	[362] = sys_kqueue,
