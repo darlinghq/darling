@@ -501,6 +501,34 @@ static void setupPtys(int fds[3], int* master)
 	}
 }
 
+// Replace each quote character (') with the sequence '\''
+// (copying the result to dest, if non-null)
+// and return the length of the result.
+static size_t escapeQuotes(char *dest, const char *src)
+{
+	size_t len = 0;
+
+	for (; *src != 0; src++)
+	{
+		if (*src == '\'')
+		{
+			if (dest)
+				memcpy(&dest[len], "'\\''", 4);
+			len += 4;
+		}
+		else
+		{
+			if (dest)
+				dest[len] = *src;
+			len++;
+		}
+	}
+	if (dest)
+		dest[len] = 0;
+
+	return len;
+}
+
 void spawnShell(const char** argv)
 {
 	size_t total_len = 0;
@@ -514,7 +542,7 @@ void spawnShell(const char** argv)
 	if (argv != NULL)
 	{
 		for (count = 0; argv[count] != NULL; count++)
-			total_len += strlen(argv[count]);
+			total_len += escapeQuotes(NULL, argv[count]);
 
 		buffer = malloc(total_len + count*3);
 
@@ -524,7 +552,7 @@ void spawnShell(const char** argv)
 			if (to != buffer)
 				to = stpcpy(to, " ");
 			to = stpcpy(to, "'");
-			to = stpcpy(to, argv[i]);
+			to += escapeQuotes(to, argv[i]);
 			to = stpcpy(to, "'");
 		}
 	}
