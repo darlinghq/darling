@@ -6,7 +6,7 @@
 #include "simple.h"
 
 #ifndef XTRACE_LOCK_DEBUG
-	#define XTRACE_LOCK_DEBUG 1
+	#define XTRACE_LOCK_DEBUG 0
 #endif
 
 #if XTRACE_LOCK_DEBUG
