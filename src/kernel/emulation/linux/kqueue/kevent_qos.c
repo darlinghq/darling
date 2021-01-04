@@ -9,6 +9,7 @@
 #include <sys/fcntl.h>
 #include "kqueue.h"
 #include "../bsdthread/workq_kernreturn.h"
+#include "kevent64.h"
 
 // not static because `mach_init.c` needs to reset it on fork
 // (but since we're using symbol visibility, no one else will be able to see it, so it's ok)
@@ -61,7 +62,7 @@ long sys_kevent_qos(int	kq, const struct kevent_qos_s *changelist, int nchanges,
 		eventlist64 = (struct kevent64_s*) __builtin_alloca(nevents * sizeof(struct kevent64_s));
 	}
 
-	rv = kevent64(kq, changelist64, nchanges, eventlist64, nevents, flags, (flags & KEVENT_FLAG_IMMEDIATE) ? &polling_timeout : NULL);
+	rv = sys_kevent64(kq, changelist64, nchanges, eventlist64, nevents, flags, (flags & KEVENT_FLAG_IMMEDIATE) ? &polling_timeout : NULL);
 
 	if (rv > 0)
 	{
