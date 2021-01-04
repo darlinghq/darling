@@ -1,6 +1,6 @@
 # Darling
 
-![Darling logo](http://darlinghq.org/img/darling250.png)
+![Darling logo](https://darlinghq.org/img/darling250.png)
 
 Darling is a runtime environment for macOS applications.
 
@@ -13,7 +13,7 @@ under [releases](https://github.com/darlinghq/darling/releases).
 
 ## Build Instructions
 
-For build instructions, visit [Darling Docs](http://docs.darlinghq.org/build-instructions.html).
+For build instructions, visit [Darling Docs](https://docs.darlinghq.org/build-instructions.html).
 
 ### Prefixes
 
