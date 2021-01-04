@@ -318,6 +318,7 @@ void* __bsd_syscall_table[600] = {
 	[158] = sys_fstatfs,
 	[159] = sys_unmount,
 	[169] = sys_csops,
+	[170] = sys_csops_audittoken,
 	[173] = sys_waitid,
 	[181] = sys_setgid,
 	[182] = sys_setegid,
