@@ -64,5 +64,21 @@ enum {
 #   define FD_CLOEXEC 1
 #endif
 
+struct bsd_flock {
+	long long l_start;
+	long long l_len;
+	int l_pid;
+	short l_type;
+	short l_whence;
+};
+
+struct linux_flock {
+	short int l_type;
+	short int l_whence;
+	long int l_start;
+	long int l_len;
+	int l_pid;
+};
+
 #endif
 
