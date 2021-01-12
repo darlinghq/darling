@@ -45,7 +45,7 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 		return 0;
 	}
 
-	if (nsa != NULL && linux_signum == LINUX_SIGCHLD)
+	if (nsa != NULL && (linux_signum == LINUX_SIGCHLD || linux_signum == LINUX_SIGTTOU))
 	{
 		sa_tramp = nsa->sa_tramp;
 		if (nsa->sa_sigaction != SIG_DFL && nsa->sa_sigaction != SIG_IGN
