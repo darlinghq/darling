@@ -46,6 +46,7 @@ include(MacroEnsureOutOfSourceBuild)
 include(dsym)
 include(xcproj)
 include(architecture)
+include(create_symlink)
 
 MACRO_ENSURE_OUT_OF_SOURCE_BUILD()
 
