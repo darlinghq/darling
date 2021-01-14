@@ -65,10 +65,9 @@ mig(mach/servers/netname.defs)
 list(APPEND syscall_mig_headers "${CMAKE_CURRENT_BINARY_DIR}/mach/servers/netname.h")
 
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/servers")
-file(CREATE_LINK
+create_symlink(
 	"${DARLING_ROOT_RELATIVE_TO_SDK}/../../../src/kernel/libsyscall/mach/servers/netname.h"
 	"${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/servers/netname.h"
-	SYMBOLIC
 )
 
 remove_definitions(-DLIBSYSCALL_INTERFACE=1)
@@ -86,10 +85,9 @@ foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIGS)
 	get_filename_component(MIG_HEADER_DIR ${MIG_FILENAME} DIRECTORY)
 
 	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/${MIG_HEADER_DIR}")
-	file(CREATE_LINK
+	create_symlink(
 		"${DARLING_ROOT_RELATIVE_TO_SDK}/../../../src/kernel/libsyscall/${MIG_FILENAME}.h"
 		"${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/${MIG_FILENAME}.h"
-		SYMBOLIC
 	)
 endforeach()
 
@@ -105,10 +103,9 @@ foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIGS_INTERNAL)
 	get_filename_component(MIG_HEADER_DIR ${MIG_FILENAME} DIRECTORY)
 
 	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/${MIG_HEADER_DIR}")
-	file(CREATE_LINK
+	create_symlink(
 		"${DARLING_ROOT_RELATIVE_TO_SDK}/../../../src/kernel/libsyscall/${MIG_FILENAME}_internal.h"
 		"${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/${MIG_FILENAME}_internal.h"
-		SYMBOLIC
 	)
 endforeach()
 
