@@ -10,6 +10,7 @@ long sys_exchangedata();
 long sys_searchfs();
 long sys_delete();
 long sys_copyfile();
+long sys_open_dprotected_np(const char* path, int flags, int class, int dpflags, int mode);
 
 #endif
 
