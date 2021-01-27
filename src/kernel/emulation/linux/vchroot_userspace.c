@@ -47,6 +47,7 @@ extern int strncmp(const char* str1, const char* str2, __SIZE_TYPE__ n);
 extern int strncasecmp(const char* str1, const char* str2, __SIZE_TYPE__ n);
 extern int strcasecmp(const char* str1, const char* str2);
 extern char* strcat(char* dest, const char* src);
+extern char *strchr(const char *s, int c);
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 extern void* memmove(void* dest, const void* src, __SIZE_TYPE__ n);
 extern int memcmp(const void* dest, const void* src, __SIZE_TYPE__ n);
@@ -391,6 +392,17 @@ done_getdents:
 
 							link[rv] = '\0';
 
+							// https://github.com/darlinghq/darling/issues/916
+							// Special procfs hack due to the presence of broken symlinks in /proc/xxx/fd/ used to
+							// point to sockets, pipes or anonymous inodes.
+							if (strncmp(ctxt->current_path, "/proc", 5) == 0)
+							{
+								if (strchr(link, ':') != 0)
+								{
+									goto ignore_symlink;
+								}
+							}
+
 							// Remove the last component (because it will be substituted with symlink contents)
 							if (link[0] != '/') // Only bother to do that if we know that the symlink is not absolute
 							{
@@ -414,6 +426,8 @@ done_getdents:
 						}
 					}
 				}
+
+ignore_symlink:
 
 				if (ctxt->current_root_len > 0 && ctxt->current_path_len - ctxt->current_root_len == sizeof(EXIT_PATH)-1)
 				{
