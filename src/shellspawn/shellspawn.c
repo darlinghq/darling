@@ -308,6 +308,10 @@ void spawnShell(int fd)
 
 		if (kevent(kq, NULL, 0, &ev, 1, NULL) <= 0)
 		{
+			if (errno == EINTR) {
+				if (DBG) puts("kevent call interrupted; continuing...");
+				continue;
+			}
 			if (DBG) puts("kevent fail");
 			goto err;
 		}
