@@ -27,7 +27,7 @@ long sys_kill(int pid, int signum, int posix)
 	}*/
 
 	linux_signum = signum_bsd_to_linux(signum);
-	if (!linux_signum)
+	if (signum && !linux_signum)
 		return -EINVAL;
 
 	ret = LINUX_SYSCALL(__NR_kill, pid, linux_signum);
