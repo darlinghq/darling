@@ -2,9 +2,13 @@
 %global __os_install_post %{nil}
 #Disable debug packages, since these are emulated files mostly
 %define debug_package %{nil}
+%define commit_date %{getenv:DARLING_COMMIT_DATE}
+%if "%{commit_date}" == ""
+  %define commit_date 20210129
+%endif
 
 Name:           darling
-Version:        0.1.20200331
+Version:        0.1.%{commit_date}%{!?commit_date:20210129}
 Release:        1%{?dist}
 Summary:        Darling
 
@@ -69,7 +73,8 @@ cp -dr --no-preserve=ownership build/src/external/lkm/osfmk %{?buildroot}/usr/sr
 # Copy rtsig.h
 cp -dr --no-preserve=ownership build/src/startup/rtsig.h %{?buildroot}/usr/src/%{name}-mach-%{version}/lkm/darling/
 
-%{__install} -m 644 %{SOURCE1} %{?buildroot}/usr/src/%{name}-mach-%{version}
+sed 's|^PACKAGE_VERSION=.*|PACKAGE_VERSION=%{version}|' %{SOURCE1} > dkms.conf
+%{__install} -m 644 dkms.conf %{?buildroot}/usr/src/%{name}-mach-%{version}
 
 # https://github.com/dell/dkms/issues/25
 %preun mach

@@ -10,5 +10,14 @@ else
   tar --transform "s|^\./|./darling/|" -cf /root/rpmbuild/SOURCES/darling.tar.gz -C /src --exclude=.git --exclude SOURCES --exclude SRPMS --exclude RPMS .
 fi
 ln -s /src/rpm/SOURCES/dkms.conf /root/rpmbuild/SOURCES/
+
+DARLING_COMMIT_DATE="$(cd /src; git show -s --format=%cs HEAD)"
+DARLING_COMMIT_DATE="${DARLING_COMMIT_DATE//-/}"
+
+if [ -z "${DARLING_COMMIT_DATE}" ]; then
+  DARLING_COMMIT_DATE="$(date +%Y%m%d)"
+fi
+export DARLING_COMMIT_DATE
+
 #spectool -g -R /src/rpm/SPECS/darling.spec
 rpmbuild -ba /src/rpm/SPECS/darling.spec
