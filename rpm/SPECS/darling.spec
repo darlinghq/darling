@@ -4,11 +4,11 @@
 %define debug_package %{nil}
 %define commit_date %{getenv:DARLING_COMMIT_DATE}
 %if "%{commit_date}" == ""
-  %define commit_date 20210129
+  %define commit_date 0
 %endif
 
 Name:           darling
-Version:        0.1.%{commit_date}%{!?commit_date:20210129}
+Version:        0.1.%{commit_date}
 Release:        1%{?dist}
 Summary:        Darling
 
