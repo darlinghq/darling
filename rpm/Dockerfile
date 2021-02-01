@@ -18,7 +18,7 @@ RUN dnf install -y bison cairo-devel clang cmake dkms flex fontconfig-devel.x86_
                    libbsd-devel ffmpeg-devel pulseaudio-libs-devel openssl-devel \
                    giflib-devel libXrandr-devel libXcursor-devel libxkbfile-devel \
                    dbus-devel mesa-libGLU-devel \
-                   # git - so I can determine the date of the last commit
+                   # git - so I can determine the describe of the last commit, not an rpm dependency
                    git; \
     dnf clean all
 
