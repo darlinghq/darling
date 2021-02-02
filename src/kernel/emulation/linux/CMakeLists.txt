@@ -266,6 +266,7 @@ set(emulation_sources
 	ext/for-xtrace.c
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
+	bsdthread/bsdthread_ctl.c
 	bsdthread/bsdthread_terminate.c
 	bsdthread/disable_threadsignal.c
 	bsdthread/workq_kernreturn.c

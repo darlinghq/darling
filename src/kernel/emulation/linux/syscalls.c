@@ -169,6 +169,7 @@
 #include "process/posix_spawn.h"
 #include "bsdthread/bsdthread_register.h"
 #include "bsdthread/bsdthread_create.h"
+#include "bsdthread/bsdthread_ctl.h"
 #include "bsdthread/bsdthread_terminate.h"
 #include "bsdthread/disable_threadsignal.h"
 #include "bsdthread/pthread_chdir.h"
@@ -473,6 +474,7 @@ void* __bsd_syscall_table[600] = {
 	[474] = sys_symlinkat,
 	[475] = sys_mkdirat,
 	[476] = sys_getattrlistat,
+	[478] = sys_bsdthread_ctl,
 	[483] = sys_csrctl,
 	[500] = sys_getentropy,
 	[515] = sys_ulock_wait,
