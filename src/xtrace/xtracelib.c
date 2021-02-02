@@ -64,11 +64,14 @@ static void xtrace_setup_options(void)
 
 static void setup_hook(struct hook* hook, void* fnptr)
 {
+	// this hook is (in GAS syntax):
+	//   movq $<fnptr value>, %r10
+	//   call *%r10
 	hook->movabs[0] = 0x49;
-	hook->movabs[1] = 0xbc;
+	hook->movabs[1] = 0xba;
 	hook->call[0] = 0x41;
 	hook->call[1] = 0xff;
-	hook->call[2] = 0xd4;
+	hook->call[2] = 0xd2;
 	hook->addr = (uintptr_t)fnptr;
 }
 
