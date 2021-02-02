@@ -54,6 +54,7 @@ static int cmd_bsd_to_linux(int bsd) {
 		case F_SETLK:  return LINUX_F_SETLK;
 		case F_SETLKW: return LINUX_F_SETLKW;
 		case F_GETLK:  return LINUX_F_GETLK;
+		case F_DUPFD_CLOEXEC: return LINUX_F_DUPFD_CLOEXEC;
 		default:       return -1;
 	};
 };
