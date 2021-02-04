@@ -6,6 +6,7 @@
 #include <sys/errno.h>
 #include "duct.h"
 #include "../bsdthread/cancelable.h"
+#include <stddef.h>
 
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 
@@ -21,16 +22,18 @@ long sys_sendto_nocancel(int fd, const void* buffer, unsigned long length,
 {
 	int ret, linux_flags;
 
-	struct sockaddr_fixup* fixed;
+	struct sockaddr_fixup* fixed = NULL;
 
 	if (socklen > 512)
 		return -EINVAL;
 
-	fixed = __builtin_alloca(socklen);
-	memcpy(fixed, sockaddr, socklen);
+	if (sockaddr != NULL) {
+		fixed = __builtin_alloca(sockaddr_fixup_size_from_bsd(sockaddr, socklen));
+		ret = socklen = sockaddr_fixup_from_bsd(fixed, sockaddr, socklen);
+		if (ret < 0)
+			return ret;
+	}
 
-	fixed->linux_family = sfamily_bsd_to_linux(fixed->bsd_family);
-	
 	linux_flags = msgflags_bsd_to_linux(flags);
 
 #ifdef __NR_socketcall

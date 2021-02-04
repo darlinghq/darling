@@ -28,22 +28,7 @@ long sys_getsockname(int fd, void* asa, int* socklen)
 	else
 	{
 		fixed = (struct sockaddr_fixup*) asa;
-		fixed->bsd_family = sfamily_linux_to_bsd(fixed->linux_family);
-
-		if (fixed->bsd_family == PF_LOCAL) {
-			struct vchroot_unexpand_args vc;
-			strcpy(vc.path, fixed->sun_path);
-
-			ret = vchroot_unexpand(&vc);
-			if (ret < 0)
-				return errno_linux_to_bsd(ret);
-
-			strncpy(fixed->sun_path, vc.path, sizeof(fixed->sun_path) - 1);
-			fixed->sun_path[sizeof(fixed->sun_path) - 1] = '\0';
-			*socklen = sizeof(*fixed) - sizeof(fixed->sun_path) + strlen(fixed->sun_path) + 1;
-		}
-
-		fixed->bsd_length = *socklen;
+		ret = *socklen = sockaddr_fixup_from_linux(fixed, asa, *socklen);
 	}
 
 	return ret;
