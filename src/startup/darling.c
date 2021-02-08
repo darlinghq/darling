@@ -562,6 +562,7 @@ void spawnShell(const char** argv)
 		"/usr/sbin:"
 		"/sbin:"
 		"/usr/local/bin");
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, "TMPDIR=/private/tmp");
 
 	const char* login = NULL;
 	struct passwd* pw = getpwuid(geteuid());
