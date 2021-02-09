@@ -37,7 +37,7 @@ LEAF(___syscall, 0)
 	pushl	%ecx
 	UNIX_SYSCALL_TRAP
 	movl	(%esp),%edx	// add one element to stack so
-	pushl	%ecx		// caller "pop" will work
+	pushl	%edx		// caller "pop" will work
 	jnb	2f
 	BRANCH_EXTERN(tramp_cerror)
 2:

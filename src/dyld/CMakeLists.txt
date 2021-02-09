@@ -97,6 +97,7 @@ set_property(TARGET system_dyld APPEND_STRING PROPERTY
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_SAVED} -nostdlib")
 
 add_executable(system_loader
+	src/dyldStartup.S
 	src/dyld2.cpp
 	src/dyldAPIs.cpp
 	src/dyld_debugger.cpp
@@ -110,7 +111,6 @@ add_executable(system_loader
 	src/ImageLoaderMegaDylib.cpp
 	src/dyldExceptions.c
 	src/glue.c
-	src/dyldStartup.S
 	src/stub_binding_helper.S
 	src/start_glue.S
 	hell.c
@@ -139,7 +139,7 @@ add_executable(system_loader
 use_ld64(system_loader)
 set_target_properties(system_loader PROPERTIES OUTPUT_NAME "dyld")
 set_property(TARGET system_loader APPEND_STRING PROPERTY
-	COMPILE_FLAGS " -DBUILDING_DYLD=1 -gfull -fno-pic")
+	COMPILE_FLAGS " -DBUILDING_DYLD=1 -gfull -fPIC -fno-stack-check")
 set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -Wl,-data_const -nostdlib -Wl,-e,__dyld_start -Wl,-fixup_chains -Wl,-image_base,0x1fe00000 -Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/src/dyld.exp")
 target_link_libraries(system_loader libc_static system_blocks_static
 	cxx_static
