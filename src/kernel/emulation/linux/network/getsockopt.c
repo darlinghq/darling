@@ -218,6 +218,8 @@ int sockopt_bsd_to_linux(int* level, int* optname, void** optval, void* optbuf)
 				*optname = LINUX_IPV6_2292DSTOPTS; break;
 			case BSD_IPV6_2292RTHDR:
 				*optname = LINUX_IPV6_2292RTHDR; break;
+			case BSD_IPV6_V6ONLY:
+				*optname = LINUX_IPV6_V6ONLY; break;
 			default:
 				return -ENOTSUP;
 		}
