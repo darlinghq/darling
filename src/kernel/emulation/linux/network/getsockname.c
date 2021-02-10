@@ -29,6 +29,8 @@ long sys_getsockname(int fd, void* asa, int* socklen)
 	{
 		fixed = (struct sockaddr_fixup*) asa;
 		ret = *socklen = sockaddr_fixup_from_linux(fixed, asa, *socklen);
+		if (ret > 0)
+			ret = 0;
 	}
 
 	return ret;
