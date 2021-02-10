@@ -10,6 +10,8 @@
 #include "../mman/mman.h"
 #include "../simple.h"
 #include "../elfcalls_wrapper.h"
+#include "../machdep/tls.h"
+#include "../mach/mach_traps.h"
 
 extern void *memset(void *s, int c, size_t n);
 
@@ -45,14 +47,9 @@ long sys_bsdthread_create(void* thread_start, void* arg,
 	ret = darling_thread_create((void**) stack, pthread_entry_point_wrapper, thread_start,
 			arg, stacksize, flags);
 #else
-	// Implemented in libdyld
-	extern int thread_self_trap(void);
-	// give it the exernal definition rather than `sys_thread_set_tsd_base` directly
-	extern void _thread_set_tsd_base(void *tsd_base);
-
 	struct darling_thread_create_callbacks callbacks = {
-		.thread_self_trap = &thread_self_trap,
-		.thread_set_tsd_base = &_thread_set_tsd_base,
+		.thread_self_trap = &thread_self_trap_impl,
+		.thread_set_tsd_base = &sys_thread_set_tsd_base,
 	};
 
 	return __darling_thread_create(((uintptr_t)stack), pthread_obj_size,

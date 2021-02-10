@@ -200,7 +200,7 @@ static void* darling_thread_entry(void* p)
 
 	// libpthread now expects the kernel to set the TSD
 	// so, since we're pretending to be the kernel handling threads...
-	args.callbacks->thread_set_tsd_base(&dthread->tsd[0]);
+	args.callbacks->thread_set_tsd_base(&dthread->tsd[0], 0);
 	*flags |= args.is_workqueue ? DWQ_FLAG_THREAD_TSD_BASE_SET : DTHREAD_START_TSD_BASE_SET;
 
 	args.port = dthread->tsd[DTHREAD_TSD_SLOT_MACH_THREAD_SELF] = args.callbacks->thread_self_trap();

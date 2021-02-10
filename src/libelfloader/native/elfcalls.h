@@ -5,7 +5,7 @@
 
 struct darling_thread_create_callbacks {
 	int (*thread_self_trap)(void);
-	void (*thread_set_tsd_base)(void*);
+	void (*thread_set_tsd_base)(void*, int);
 };
 
 typedef struct darling_thread_create_callbacks* darling_thread_create_callbacks_t;

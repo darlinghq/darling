@@ -12,6 +12,8 @@
 #include <sys/queue.h>
 #include <os/lock.h>
 #include <elfcalls/threads.h>
+#include "../machdep/tls.h"
+#include "../mach/mach_traps.h"
 
 #define __PTHREAD_EXPOSE_INTERNALS__ 1
 #include <pthread/priority_private.h>
@@ -282,8 +284,8 @@ resume_thread: // we want the thread to resume, but it might be just to die
 				wq_event_pending = wq_event;
 
 				struct darling_thread_create_callbacks callbacks = {
-					.thread_self_trap = &thread_self_trap,
-					.thread_set_tsd_base = &_thread_set_tsd_base,
+					.thread_self_trap = &thread_self_trap_impl,
+					.thread_set_tsd_base = &sys_thread_set_tsd_base,
 				};
 
 				__darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point_wrapper, 0,
