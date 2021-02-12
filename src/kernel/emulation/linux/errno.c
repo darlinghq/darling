@@ -1,6 +1,7 @@
 #include "errno.h"
 #include "base.h"
 #include "duct_errno.h"
+#include <stddef.h>
 
 static const int linux_to_darwin[512] = {
 
@@ -90,6 +91,7 @@ static const int linux_to_darwin[512] = {
 	[LINUX_ETIME] = ETIME,
 	[LINUX_EOPNOTSUPP] = EOPNOTSUPP,
 };
+const size_t length_of_translation_array = sizeof(linux_to_darwin)/sizeof(const int);
 
 int errno_linux_to_bsd(int err)
 {
@@ -97,7 +99,7 @@ int errno_linux_to_bsd(int err)
 	if (v < 0)
 		v = -v;
 
-	if (linux_to_darwin[v])
+	if ((v < length_of_translation_array) && (linux_to_darwin[v]))
 	{
 		v = linux_to_darwin[v];
 		return (err < 0) ? -v : v;
