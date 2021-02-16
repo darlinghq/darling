@@ -91,6 +91,9 @@ foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIGS)
 	)
 endforeach()
 
+# mach/exc also needs the server component
+list(APPEND syscall_mig_sources "${CMAKE_CURRENT_BINARY_DIR}/mach/excServer.c")
+
 set(MIG_USER_HEADER_SUFFIX "_internal.h")
 set(MIG_USER_SOURCE_SUFFIX "_unused_internal_user.c")
 set(MIG_SERVER_HEADER_SUFFIX "_unused_internal_server.h")
