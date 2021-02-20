@@ -14,6 +14,7 @@ extern char* strcpy(char* dst, const char* src);
 extern char* strcat(char* dst, const char* src);
 extern __SIZE_TYPE__ strlen(const char* str);
 extern int strcmp(const char* str1, const char* str2);
+extern int strlcpy(char* dst, const char* src, __SIZE_TYPE__ n);
 
 static sysctl_handler(handle_oid_to_name);
 static sysctl_handler(handle_name_to_oid);
@@ -72,8 +73,10 @@ sysctl_handler(handle_name_to_oid)
 	int oid_len = 0;
 	char* saveptr;
 	const char* token;
+	char _new_copy[128]; // the actual max for this is MAXPATHLEN
 
-	token = strtok_r((char*) _new, ".", &saveptr);
+	strlcpy(_new_copy, _new, sizeof(_new_copy));
+	token = strtok_r((char*) _new_copy, ".", &saveptr);
 
 	while (token != NULL)
 	{
