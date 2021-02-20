@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
 /*	$KAME: ip6opt.c,v 1.13 2003/06/06 10:08:20 suz Exp $	*/
 
 /*
@@ -31,6 +34,8 @@
  * $FreeBSD: src/lib/libc/net/ip6opt.c,v 1.8.10.2.2.1 2010/06/14 02:09:06 kensmith Exp $
  */
 
+#include "libinfo_common.h"
+
 /*
  * These routines support RFC 3542
  * __APPLE_USE_RFC_3542 selects the appropriate API in <netinet6/in6.h>
@@ -61,6 +66,7 @@ static void inet6_insert_padopt(u_char *p, int len);
  * beginning (the value y in the alignment term "xn + y"), the type
  * byte, the length byte, and the option data.
  */
+LIBINFO_EXPORT
 int
 inet6_option_space(int nbytes)
 {
@@ -73,6 +79,7 @@ inet6_option_space(int nbytes)
  * contain either Hop-by-Hop or Destination options.  It returns 0 on
  * success or -1 on an error.
  */
+LIBINFO_EXPORT
 int
 inet6_option_init(void *bp, struct cmsghdr **cmsgp, int type)
 {
@@ -100,6 +107,7 @@ inet6_option_init(void *bp, struct cmsghdr **cmsgp, int type)
  * plusy is the value y in the alignment term "xn + y" described
  * earlier.  It must have a value between 0 and 7, inclusive.
  */
+LIBINFO_EXPORT
 int
 inet6_option_append(struct cmsghdr *cmsg, const u_int8_t *typep, int multx,
     int plusy)
@@ -170,6 +178,7 @@ inet6_option_append(struct cmsghdr *cmsg, const u_int8_t *typep, int multx,
  * then be built by the caller.
  * 
  */
+LIBINFO_EXPORT
 u_int8_t *
 inet6_option_alloc(struct cmsghdr *cmsg, int datalen, int multx, int plusy)
 {
@@ -233,6 +242,7 @@ inet6_option_alloc(struct cmsghdr *cmsg, int datalen, int multx, int plusy)
  * error occurs, the return value is -1 and *tptrp is not NULL.
  * (RFC 2292, 6.3.5)
  */
+LIBINFO_EXPORT
 int
 inet6_option_next(const struct cmsghdr *cmsg, u_int8_t **tptrp)
 {
@@ -289,6 +299,7 @@ inet6_option_next(const struct cmsghdr *cmsg, u_int8_t **tptrp)
  * Note: RFC 2292 says the type of tptrp is u_int8_t *, but we think
  *       it's a typo. The variable should be type of u_int8_t **.
  */
+LIBINFO_EXPORT
 int
 inet6_option_find(const struct cmsghdr *cmsg, u_int8_t **tptrp, int type)
 {
@@ -383,6 +394,7 @@ inet6_insert_padopt(u_char *p, int len)
  * of RFC2292.
  */
 
+LIBINFO_EXPORT
 int
 inet6_opt_init(void *extbuf, socklen_t extlen)
 {
@@ -399,6 +411,7 @@ inet6_opt_init(void *extbuf, socklen_t extlen)
 	return(2);		/* sizeof the next and the length fields */
 }
 
+LIBINFO_EXPORT
 int
 inet6_opt_append(void *extbuf, socklen_t extlen, int offset, u_int8_t type, socklen_t len, u_int8_t align, void **databufp)
 {
@@ -464,6 +477,7 @@ inet6_opt_append(void *extbuf, socklen_t extlen, int offset, u_int8_t type, sock
 	return(currentlen);
 }
 
+LIBINFO_EXPORT
 int
 inet6_opt_finish(void *extbuf, socklen_t extlen, int offset)
 {
@@ -489,6 +503,7 @@ inet6_opt_finish(void *extbuf, socklen_t extlen, int offset)
 	return(updatelen);
 }
 
+LIBINFO_EXPORT
 int
 inet6_opt_set_val(void *databuf, int offset, void *val, socklen_t vallen)
 {
@@ -496,6 +511,7 @@ inet6_opt_set_val(void *databuf, int offset, void *val, socklen_t vallen)
 	return(offset + vallen);
 }
 
+LIBINFO_EXPORT
 int
 inet6_opt_next(void *extbuf, socklen_t extlen, int offset, u_int8_t *typep, socklen_t *lenp, void **databufp)
 {
@@ -544,6 +560,7 @@ inet6_opt_next(void *extbuf, socklen_t extlen, int offset, u_int8_t *typep, sock
 	return(-1);
 }
 
+LIBINFO_EXPORT
 int
 inet6_opt_find(void *extbuf, socklen_t extlen, int offset, u_int8_t type, socklen_t *lenp, void **databufp)
 {
@@ -585,6 +602,7 @@ inet6_opt_find(void *extbuf, socklen_t extlen, int offset, u_int8_t type, sockle
 	return(-1);
 }
 
+LIBINFO_EXPORT
 int
 inet6_opt_get_val(void *databuf, int offset, void *val, socklen_t vallen)
 {

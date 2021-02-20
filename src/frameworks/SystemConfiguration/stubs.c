@@ -20,6 +20,9 @@ const CFStringRef kSCConsoleSessionID			= CFSTR("kCGSSessionIDKey");			/* value 
 const CFStringRef kSCConsoleSessionSystemSafeBoot	= CFSTR("kCGSSessionSystemSafeBoot");		/* value is CFBoolean */
 const CFStringRef kSCConsoleSessionLoginwindowSafeLogin	= CFSTR("kCGSSessionLoginwindowSafeLogin");	/* value is CFBoolean */
 
+const CFStringRef kSCCompAnyRegex = CFSTR("[^/]+");
+const CFStringRef kSCEntNetDNS = CFSTR("DNS");
+
 CFStringRef SCDynamicStoreKeyCreateNetworkGlobalEntity(CFAllocatorRef allocator, CFStringRef domain, CFStringRef entity)
 {
 	STUB();
@@ -56,6 +59,26 @@ Boolean SCDynamicStoreSetNotificationKeys(SCDynamicStoreRef store, CFArrayRef __
 }
 
 CFStringRef SCDynamicStoreKeyCreateComputerName(CFAllocatorRef allocator) {
+	STUB();
+	return NULL;
+};
+
+Boolean SCPreferencesSetComputerName(SCPreferencesRef	prefs, CFStringRef __nullable	name, CFStringEncoding	nameEncoding) {
+	STUB();
+	return FALSE;
+};
+
+Boolean SCPreferencesSetLocalHostName(SCPreferencesRef	prefs, CFStringRef __nullable	name) {
+	STUB();
+	return FALSE;
+};
+
+CFStringRef SCDynamicStoreKeyCreateHostNames(CFAllocatorRef allocator) {
+	STUB();
+	return NULL;
+};
+
+CFStringRef SCDynamicStoreKeyCreateNetworkInterfaceEntity(CFAllocatorRef allocator, CFStringRef domain, CFStringRef ifname, CFStringRef entity) {
 	STUB();
 	return NULL;
 };

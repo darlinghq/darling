@@ -10,13 +10,10 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD
 	-DEMULATED_SYSNAME="Darwin"
-	-DEMULATED_RELEASE="16.0.0"
-	-DEMULATED_VERSION="Darwin Kernel Version 16.0.0"
-	-DEMULATED_OSVERSION="16D32"
+	-DEMULATED_RELEASE="19.6.0"
+	-DEMULATED_VERSION="Darwin Kernel Version 19.6.0"
+	-DEMULATED_OSVERSION="19G73"
 )
-
-
-include_directories(${CMAKE_SOURCE_DIR}/src/libelfloader/native)
 
 # include src/startup for rtsig.h
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
@@ -266,8 +263,10 @@ set(emulation_sources
 	ext/mremap.c
 	ext/file_handle.c
 	ext/fanotify.c
+	ext/for-xtrace.c
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
+	bsdthread/bsdthread_ctl.c
 	bsdthread/bsdthread_terminate.c
 	bsdthread/disable_threadsignal.c
 	bsdthread/workq_kernreturn.c
@@ -295,43 +294,20 @@ set(emulation_sources
 	conf/pathconf.c
 	conf/fpathconf.c
 	mach/audit_session_self.c
+	audit/audit_addr.c
 	vchroot_userspace.c
 	syscalls-table.S
 	linux-syscall.S
 )
-
-set_source_files_properties(mman/mman.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include")
-set_source_files_properties(bsdthread/bsdthread_create.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include")
-set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/src/libc/include -nostdinc")
-set_source_files_properties(network/socket.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
-set_source_files_properties(network/socketpair.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
-set_source_files_properties(network/duct.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
-set_source_files_properties(network/connect.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
-set_source_files_properties(dirent/getdirentries.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
-set_source_files_properties(stat/common.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
-set_source_files_properties(ext/timerfd_create.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
-set_source_files_properties(ext/timerfd_gettime.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
-set_source_files_properties(ext/timerfd_settime.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
-set_source_files_properties(misc/sysctl.c PROPERTIES COMPILE_FLAGS
-	"-I${DARLING_TOP_DIRECTORY}/platform-include -I${DARLING_TOP_DIRECTORY}/kernel-include")
+	
+set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS "-nostdinc")
 set_source_files_properties(signal/sigexc.c PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/signal/exc.h)
 
 add_darling_object_library(emulation ${emulation_sources})
 add_darling_object_library(emulation_dyld ${emulation_sources})
 set_target_properties(emulation_dyld PROPERTIES COMPILE_FLAGS "-ffunction-sections -DVARIANT_DYLD")
 add_dependencies(emulation rtsig_h)
+add_dependencies(emulation_dyld rtsig_h)
 
 make_fat(emulation)
 make_fat(emulation_dyld)

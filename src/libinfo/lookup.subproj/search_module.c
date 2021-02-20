@@ -62,7 +62,7 @@ extern char **_fsi_tokenize(char *data, const char *sep, int trailing_empty, int
 extern char *_fsi_get_line(FILE *fp);
 
 static void si_module_config_parse_line(search_si_private_t *pp, char *line);
-static void si_module_config_modules_for_category(search_si_private_t *pp, int cat, int ntokens, const char * const *tokens);
+static int si_module_config_modules_for_category(search_si_private_t *pp, int cat, int ntokens, const char * const *tokens);
 
 static si_mod_t *
 search_get_module(search_si_private_t *pp, int cat, int *n)
@@ -864,6 +864,8 @@ search_is_valid(si_mod_t *si, si_item_t *item)
 si_mod_t *
 si_module_static_search(void)
 {
+	static bool result = false;
+
 	static const struct si_mod_vtable_s search_vtable =
 	{
 		.sim_close = &search_close,
@@ -952,16 +954,31 @@ si_module_static_search(void)
 		{
 			"default", // CATEGORY_DEFAULT
 			"cache",
+#ifdef MUSER_AVAILABLE
+			"muser",
+#endif
 #ifdef DS_AVAILABLE
 			"ds",
 #endif
-			// "mdns",
+#ifdef DARLING
 			"darling-resolver",
+#else
+			"mdns",
+#endif
 			"file",
 		};
 
 		int count = sizeof(modules) / sizeof(char *);
-		si_module_config_modules_for_category(pp, CATEGORY_DEFAULT, count, modules);
+		if (si_module_config_modules_for_category(pp, CATEGORY_DEFAULT, count, modules) != 0)
+		{
+			free(si.name);
+			si.name = NULL;
+			free(pp);
+			si.private = NULL;
+			result = true;
+			return;
+		}
+
 		pp->cache = pp->search_list[CATEGORY_DEFAULT].module[0];
 
 		char *check = getenv("SYSINFO_CONF_ENABLE");
@@ -985,7 +1002,7 @@ si_module_static_search(void)
 		}
 	});
 
-	return &si;
+	return (!result) ? &si : NULL;
 }
 
 static void
@@ -1024,14 +1041,14 @@ si_module_config_parse_line(search_si_private_t *pp, char *line)
 	free(tokens);
 }
 
-static void
+static int
 si_module_config_modules_for_category(search_si_private_t *pp, int cat, int ntokens, const char * const *tokens)
 {
 	int count = ntokens - 1;
 	pp->search_list[cat].count = count;
 	if (count == 0)
 	{
-		return;
+		return -1;
 	}
 
 	pp->search_list[cat].module = (si_mod_t **)calloc(pp->search_list[cat].count, sizeof(si_mod_t *));
@@ -1040,7 +1057,7 @@ si_module_config_modules_for_category(search_si_private_t *pp, int cat, int ntok
 	{
 		free(pp->search_list[cat].module);
 		free(pp->search_list[cat].module_flags);
-		return;
+		return -1;
 	}
 
 	int i, j;
@@ -1058,4 +1075,5 @@ si_module_config_modules_for_category(search_si_private_t *pp, int cat, int ntok
 			}
 		}
 	}
+	return 0;
 }

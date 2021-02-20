@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2006, 2009-2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2006, 2009-2011, 2015, 2018, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -44,7 +44,6 @@
 #define	SNAPSHOT_PATH_STATE	_PATH_VARTMP "configd-state"
 #define	SNAPSHOT_PATH_STORE	_PATH_VARTMP "configd-store.plist"
 #define	SNAPSHOT_PATH_PATTERN	_PATH_VARTMP "configd-pattern.plist"
-#define	SNAPSHOT_PATH_SESSION	_PATH_VARTMP "configd-session.plist"
 
 
 #define N_QUICK	100
@@ -70,7 +69,7 @@ _expandStore(CFDictionaryRef storeData)
 			oValues = CFAllocatorAllocate(NULL, nElements * sizeof(CFTypeRef), 0);
 			nValues = CFAllocatorAllocate(NULL, nElements * sizeof(CFTypeRef), 0);
 		}
-		bzero(nValues, nElements * sizeof(CFTypeRef));
+		memset(nValues, 0, nElements * sizeof(CFTypeRef));
 
 		CFDictionaryGetKeysAndValues(storeData, keys, oValues);
 		for (i = 0; i < nElements; i++) {
@@ -82,7 +81,11 @@ _expandStore(CFDictionaryRef storeData)
 
 				nValues[i] = CFDictionaryCreateMutableCopy(NULL, 0, oValues[i]);
 
-				_SCUnserialize(&plist, data, NULL, 0);
+				if (!_SCUnserialize(&plist, data, NULL, 0)) {
+					SC_log(LOG_NOTICE, "_SCUnserialize() failed, key=%@", keys[i]);
+					continue;
+				}
+
 				CFDictionarySetValue((CFMutableDictionaryRef)nValues[i],
 						     kSCDData,
 						     plist);
@@ -122,6 +125,7 @@ __private_extern__
 int
 __SCDynamicStoreSnapshot(SCDynamicStoreRef store)
 {
+#pragma unused(store)
 	CFDictionaryRef			expandedStoreData;
 	FILE				*f;
 	int				fd;
@@ -159,7 +163,7 @@ __SCDynamicStoreSnapshot(SCDynamicStoreRef store)
 	xmlData = CFPropertyListCreateData(NULL, expandedStoreData, kCFPropertyListXMLFormat_v1_0, 0, NULL);
 	CFRelease(expandedStoreData);
 	if (xmlData == NULL) {
-		SCLog(TRUE, LOG_ERR, CFSTR("__SCDynamicStoreSnapshot CFPropertyListCreateData() failed"));
+		SC_log(LOG_NOTICE, "CFPropertyListCreateData() failed");
 		close(fd);
 		return kSCStatusFailed;
 	}
@@ -177,25 +181,7 @@ __SCDynamicStoreSnapshot(SCDynamicStoreRef store)
 
 	xmlData = CFPropertyListCreateData(NULL, patternData, kCFPropertyListXMLFormat_v1_0, 0, NULL);
 	if (xmlData == NULL) {
-		SCLog(TRUE, LOG_ERR, CFSTR("__SCDynamicStoreSnapshot CFPropertyListCreateData() failed"));
-		close(fd);
-		return kSCStatusFailed;
-	}
-	(void) write(fd, CFDataGetBytePtr(xmlData), CFDataGetLength(xmlData));
-	(void) close(fd);
-	CFRelease(xmlData);
-
-	/* Save a snapshot of the "session" data */
-
-	(void) unlink(SNAPSHOT_PATH_SESSION);
-	fd = open(SNAPSHOT_PATH_SESSION, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0644);
-	if (fd == -1) {
-		return kSCStatusFailed;
-	}
-
-	xmlData = CFPropertyListCreateData(NULL, sessionData, kCFPropertyListXMLFormat_v1_0, 0, NULL);
-	if (xmlData == NULL) {
-		SCLog(TRUE, LOG_ERR, CFSTR("__SCDynamicStoreSnapshot CFPropertyListCreateData() failed"));
+		SC_log(LOG_NOTICE, "CFPropertyListCreateData() failed");
 		close(fd);
 		return kSCStatusFailed;
 	}

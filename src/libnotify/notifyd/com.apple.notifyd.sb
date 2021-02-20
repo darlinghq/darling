@@ -1,0 +1,24 @@
+;; Copyright (c) 2015 Apple Inc.  All Rights reserved.
+;;
+;; WARNING: The sandbox rules in this file currently constitute
+;; Apple System Private Interface and are subject to change at any time and
+;; without notice.
+;;
+
+(version 1)
+(deny default)
+(import "system.sb")
+
+;; Allow files to be read
+(allow file-read*)
+
+;; Allow debug status files to be written
+(allow file-write*
+	(regex #"^/private/var/run/notifyd")
+)
+
+;; Allow UNIX signals
+(allow signal)
+
+;; Allow shared memory
+(allow ipc-posix-shm)

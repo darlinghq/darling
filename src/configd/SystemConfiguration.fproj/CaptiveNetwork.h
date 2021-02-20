@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2009-2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2009-2016, 2018, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,16 +17,19 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _CAPTIVENETWORK_H
 #define _CAPTIVENETWORK_H
 
-#include <Availability.h>
+#include <os/availability.h>
 #include <sys/cdefs.h>
 #include <CoreFoundation/CoreFoundation.h>
+
+CF_IMPLICIT_BRIDGING_ENABLED
+CF_ASSUME_NONNULL_BEGIN
 
 /*!
 	@header CaptiveNetwork
@@ -71,7 +74,10 @@ __BEGIN_DECLS
 	@result Returns TRUE if the operation succeeded, FALSE otherwise.
  */
 Boolean
-CNSetSupportedSSIDs	(CFArrayRef	ssidArray)		__OSX_AVAILABLE_STARTING(__MAC_10_8,__IPHONE_4_0);
+CNSetSupportedSSIDs	(CFArrayRef	ssidArray)
+    API_AVAILABLE(macos(10.8))
+    API_DEPRECATED_WITH_REPLACEMENT("Replaced by <NetworkExtension/NEHotspotHelper.h>", ios(4.0,9.0))
+    SPI_AVAILABLE(tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function CNMarkPortalOnline
@@ -83,7 +89,10 @@ CNSetSupportedSSIDs	(CFArrayRef	ssidArray)		__OSX_AVAILABLE_STARTING(__MAC_10_8,
 	@result Returns TRUE if the operation succeeded, FALSE otherwise.
  */
 Boolean
-CNMarkPortalOnline	(CFStringRef	interfaceName)		__OSX_AVAILABLE_STARTING(__MAC_10_8,__IPHONE_4_0);
+CNMarkPortalOnline	(CFStringRef	interfaceName)
+    API_AVAILABLE(macos(10.8))
+    API_DEPRECATED_WITH_REPLACEMENT("Replaced by <NetworkExtension/NEHotspotHelper.h>", ios(4.0,9.0))
+    SPI_AVAILABLE(tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function CNMarkPortalOffline
@@ -93,8 +102,10 @@ CNMarkPortalOnline	(CFStringRef	interfaceName)		__OSX_AVAILABLE_STARTING(__MAC_1
 	@result Returns TRUE if the operation succeeded, FALSE otherwise.
  */
 Boolean
-CNMarkPortalOffline	(CFStringRef	interfaceName)		__OSX_AVAILABLE_STARTING(__MAC_10_8,__IPHONE_4_0);
-
+CNMarkPortalOffline	(CFStringRef	interfaceName)
+    API_AVAILABLE(macos(10.8))
+    API_DEPRECATED_WITH_REPLACEMENT("Replaced by <NetworkExtension/NEHotspotHelper.h>", ios(4.0,9.0))
+    SPI_AVAILABLE(tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
  @function CNCopySupportedInterfaces
@@ -103,32 +114,48 @@ CNMarkPortalOffline	(CFStringRef	interfaceName)		__OSX_AVAILABLE_STARTING(__MAC_
 	 Returns NULL if an error was encountered.
 	 You MUST release the returned value.
  */
-CFArrayRef
-CNCopySupportedInterfaces	(void)				__OSX_AVAILABLE_STARTING(__MAC_10_8,__IPHONE_4_1);
+CFArrayRef __nullable
+CNCopySupportedInterfaces	(void)
+    API_AVAILABLE(macos(10.8), ios(4.1))
+    SPI_AVAILABLE(tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
  @constant kCNNetworkInfoKeySSIDData
  @discussion NetworkInfo Dictionary key for SSID in CFData format
  */
-extern const CFStringRef kCNNetworkInfoKeySSIDData		__OSX_AVAILABLE_STARTING(__MAC_NA,__IPHONE_4_1);
+extern const CFStringRef kCNNetworkInfoKeySSIDData
+    API_AVAILABLE(ios(4.1))
+    SPI_AVAILABLE(macos(10.6), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
  @constant kCNNetworkInfoKeySSID
  @discussion NetworkInfo Dictionary key for SSID in CFString format
  */
-extern const CFStringRef kCNNetworkInfoKeySSID			__OSX_AVAILABLE_STARTING(__MAC_NA,__IPHONE_4_1);
+extern const CFStringRef kCNNetworkInfoKeySSID
+    API_AVAILABLE(ios(4.1))
+    SPI_AVAILABLE(macos(10.6), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
  @constant kCNNetworkInfoKeyBSSID
  @discussion NetworkInfo Dictionary key for BSSID in CFString format
  */
-extern const CFStringRef kCNNetworkInfoKeyBSSID			__OSX_AVAILABLE_STARTING(__MAC_NA,__IPHONE_4_1);
+extern const CFStringRef kCNNetworkInfoKeyBSSID
+    API_AVAILABLE(ios(4.1))
+    SPI_AVAILABLE(macos(10.6), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
  @function CNCopyCurrentNetworkInfo
- @discussion Returns the Network Info for the specified interface.
-	For example, Network Info dictionary will contain the following
-	keys, and values:
+ @discussion Returns the network information for the specified interface when the requesting application meets one of following 3 requirements -.
+	1. application is using CoreLocation API and has user's authorization to access location.
+	2. application has used NEHotspotConfiguration API to configure the current Wi-Fi network.
+	3. application has active VPN configurations installed.
+
+	- An application that is linked against iOS 12.0 SDK and above must have the "com.apple.developer.networking.wifi-info" entitlement.
+	- An application will receive a pseudo network information if it is linked against an SDK before iOS 13.0, and if it fails to meet any of the
+	  above 3 requirements.
+	- An application will receive NULL if it is linked against iOS 13.0 SDK or above, and if it fails to meet any of the above 3 requirements..
+
+	Network Information dictionary will contain the following keys, and values:
 	<pre>
 	@textblock
 	Keys                      : Values
@@ -138,14 +165,21 @@ extern const CFStringRef kCNNetworkInfoKeyBSSID			__OSX_AVAILABLE_STARTING(__MAC
 	kCNNetworkInfoKeyBSSID    : CFStringRef
 	@/textblock
 	</pre>
+
+	Pseudo network information will contain "Wi-Fi" SSID and "00:00:00:00:00:00" BSSID. For China region, the SSID will be "WLAN".
  @param interfaceName Name of the interface you are interested in
- @result Network Info dictionary associated with the interface.
+ @result Network Information dictionary associated with the interface.
 	 Returns NULL if an error was encountered.
 	 You MUST release the returned value.
  */
-CFDictionaryRef
-CNCopyCurrentNetworkInfo	(CFStringRef interfaceName)	__OSX_AVAILABLE_STARTING(__MAC_NA,__IPHONE_4_1);
+CFDictionaryRef __nullable
+CNCopyCurrentNetworkInfo	(CFStringRef	interfaceName)
+    API_AVAILABLE(ios(4.1))
+    SPI_AVAILABLE(macos(10.6), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 __END_DECLS
+
+CF_ASSUME_NONNULL_END
+CF_IMPLICIT_BRIDGING_DISABLED
 
 #endif	/* _CAPTIVENETWORK_H */

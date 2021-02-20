@@ -19,6 +19,26 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFAccessPolicy : NSObject
+#define SFAccessPolicy _SFAccessPolicy
+
+typedef NS_ENUM(NSInteger, SFAccessible) {
+	SFAccessibleAfterFirstUnlock,
+};
+
+typedef NS_ENUM(NSInteger, SFSharingPolicy) {
+	SFSharingPolicyThisDeviceOnly,
+};
+
+// not sure what `accessibility` is
+// it's not a class, so i guess it's a structure?
+typedef struct SFAccessibilityStructure {
+	SFAccessible mode;
+} SFAccessibilityStructure;
+
+@interface SFAccessPolicy : NSObject
+
+@property (nonatomic) SFAccessibilityStructure accessibility;
+@property (nonatomic) SFSharingPolicy sharingPolicy;
+@property (copy, nonatomic) NSString* accessGroup;
 
 @end

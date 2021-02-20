@@ -23,6 +23,7 @@ enum {
 	LINUX_F_SETOWN_EX,
 	LINUX_F_GETOWN_EX,
 	LINUX_F_GETOWNER_UIDS,
+	LINUX_F_DUPFD_CLOEXEC = 1030,
 };
 
 enum {
@@ -45,6 +46,7 @@ enum {
 	F_RDAHEAD,
 	F_GETPATH = 50,
 	F_FULLFSYNC = 51,
+	F_DUPFD_CLOEXEC = 67,
 	F_CHECK_LV = 98,
 };
 
@@ -63,6 +65,22 @@ enum {
 #ifndef FD_CLOEXEC
 #   define FD_CLOEXEC 1
 #endif
+
+struct bsd_flock {
+	long long l_start;
+	long long l_len;
+	int l_pid;
+	short l_type;
+	short l_whence;
+};
+
+struct linux_flock {
+	short int l_type;
+	short int l_whence;
+	long int l_start;
+	long int l_len;
+	int l_pid;
+};
 
 #endif
 

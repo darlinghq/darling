@@ -30,7 +30,9 @@
  * See: <rdar://problem/8289209>, <rdar://problem/8351271>, <rdar://problem/8359348>
  */
 
-#if defined(__i386__) || defined(__x86_64__)
+#include <TargetConditionals.h>
+
+#if (defined(__i386__) || defined(__x86_64__)) && !TARGET_OS_DRIVERKIT
 
 #define SYM(sym) \
   __asm__(".globl R8289209$_" #sym "; R8289209$_" #sym ": jmp _" #sym)
@@ -62,5 +64,5 @@ SYM(time);
 SYM(unlink);
 SYM(write);
 
-#endif /* defined(__i386__) || defined(__x86_64__) */
+#endif /* (defined(__i386__) || defined(__x86_64__)) && !TARGET_OS_DRIVERKIT*/
 

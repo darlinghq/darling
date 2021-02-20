@@ -51,28 +51,10 @@ struct FTW {
 };
 
 __BEGIN_DECLS
-//Begin-Libc
-#ifndef LIBC_ALIAS_FTW
-//End-Libc
 int	ftw(const char *, int (*)(const char *, const struct stat *, int), int) 
 	__DARWIN_ALIAS_I(ftw);
-//Begin-Libc
-#else /* LIBC_ALIAS_FTW */
-int	ftw(const char *, int (*)(const char *, const struct stat *, int), int) 
-	LIBC_ALIAS_I(ftw);
-#endif /* !LIBC_ALIAS_FTW */
-//End-Libc
-//Begin-Libc
-#ifndef LIBC_ALIAS_NFTW
-//End-Libc
 int	nftw(const char *, int (*)(const char *, const struct stat *, int,
 	    struct FTW *), int, int) __DARWIN_ALIAS_I(nftw);
-//Begin-Libc
-#else /* LIBC_ALIAS_NFTW */
-int	nftw(const char *, int (*)(const char *, const struct stat *, int,
-	    struct FTW *), int, int) LIBC_ALIAS_I(nftw);
-#endif /* !LIBC_ALIAS_NFTW */
-//End-Libc
 __END_DECLS
 
 #endif	/* !_FTW_H */

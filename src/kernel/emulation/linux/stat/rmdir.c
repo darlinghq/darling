@@ -7,7 +7,7 @@
 #include "../vchroot_expand.h"
 #include <lkm/api.h>
 #include <mach/lkm.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 
 #define LINUX_AT_REMOVEDIR	0x200
 

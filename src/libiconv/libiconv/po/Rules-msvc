@@ -1,0 +1,14 @@
+# Special Makefile rules for generating a Makefile.msvc.
+
+DISTFILES.extra3 = Rules-msvc Makefile.msvc.sh Makefile.msvc
+
+dist distdir: $(srcdir)/Makefile.msvc
+
+# Makefile.msvc needs to be redone when LINGUAS has changed. When rebuilding
+# it, ensure that we use the updated value of CATALOGS.
+$(srcdir)/Makefile.msvc: LINGUAS
+	$(MAKE) Makefile
+	$(MAKE) -f Makefile Makefile.msvc-update
+
+Makefile.msvc-update:
+	$(SHELL) $(srcdir)/Makefile.msvc.sh $(DOMAIN) '$(GMOFILES)' > $(srcdir)/Makefile.msvc

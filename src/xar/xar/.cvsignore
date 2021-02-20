@@ -1,0 +1,7 @@
+Makefile
+autom4te.cache
+cfghdrs.stamp
+cfgoutputs.stamp
+configure
+config.log
+config.status

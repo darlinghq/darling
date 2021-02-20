@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Apple Inc.  All rights reserved.
+ * Copyright (c) 2008-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -20,6 +20,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
+#include "libinfo_common.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -79,11 +81,16 @@ static si_async_workunit_t *si_async_worklist = NULL;
 si_mod_t *si_module_static_search(void);
 si_mod_t *si_module_static_cache(void);
 si_mod_t *si_module_static_file(void);
+#ifdef MUSER_AVAILABLE
+si_mod_t *si_module_static_muser(void);
+#endif
 #ifdef DS_AVAILABLE
 si_mod_t *si_module_static_ds(void);
 #endif
 si_mod_t *si_module_static_mdns(void);
+#ifdef DARLING
 si_mod_t *si_module_static_darling(void);
+#endif
 
 static void *
 si_mod_dlsym(void *so, const char *name, const char *sym)
@@ -167,6 +174,7 @@ si_module_with_path(const char *path, const char *name)
 	return out;
 }
 
+LIBINFO_EXPORT
 si_mod_t *
 si_module_with_name(const char *name)
 {
@@ -180,11 +188,17 @@ si_module_with_name(const char *name)
 		{ "search", si_module_static_search, NULL },
 		{ "cache", si_module_static_cache, NULL },
 		{ "file", si_module_static_file, NULL },
+#ifdef MUSER_AVAILABLE
+		{ "muser", si_module_static_muser, NULL },
+#endif
 #ifdef DS_AVAILABLE
 		{ "ds", si_module_static_ds, NULL },
 #endif
-		// { "mdns", si_module_static_mdns, NULL },
+#ifdef DARLING
 		{ "darling-resolver", si_module_static_darling, NULL },
+#else
+		{ "mdns", si_module_static_mdns, NULL },
+#endif
 		{ NULL, NULL },
 	};
 
@@ -251,6 +265,7 @@ si_module_with_name(const char *name)
 	return si;
 }
 
+LIBINFO_EXPORT
 si_mod_t *
 si_module_retain(si_mod_t *si)
 {
@@ -262,6 +277,7 @@ si_module_retain(si_mod_t *si)
 	return si;
 }
 
+LIBINFO_EXPORT
 void
 si_module_release(si_mod_t *si)
 {
@@ -304,6 +320,7 @@ si_module_release(si_mod_t *si)
 	free(si);
 }
 
+LIBINFO_EXPORT
 const char *
 si_module_name(si_mod_t *si)
 {
@@ -312,6 +329,7 @@ si_module_name(si_mod_t *si)
 	return (const char *)si->name;
 }
 
+LIBINFO_EXPORT
 int
 si_module_vers(si_mod_t *si)
 {
@@ -320,6 +338,7 @@ si_module_vers(si_mod_t *si)
 	return si->vers;
 }
 
+LIBINFO_EXPORT
 int
 si_item_match(si_item_t *item, int cat, const void *name, uint32_t num, int which)
 {
@@ -492,6 +511,7 @@ si_item_match(si_item_t *item, int cat, const void *name, uint32_t num, int whic
 	return 0;
 }
 
+LIBINFO_EXPORT
 int
 si_item_is_valid(si_item_t *item)
 {
@@ -507,6 +527,7 @@ si_item_is_valid(si_item_t *item)
 	return si->vtable->sim_is_valid(si, item);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_user_byname(si_mod_t *si, const char *name)
 {
@@ -515,6 +536,7 @@ si_user_byname(si_mod_t *si, const char *name)
 	return si->vtable->sim_user_byname(si, name);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_user_byuid(si_mod_t *si, uid_t uid)
 {
@@ -523,6 +545,7 @@ si_user_byuid(si_mod_t *si, uid_t uid)
 	return si->vtable->sim_user_byuid(si, uid);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_user_byuuid(si_mod_t *si, uuid_t uuid)
 {
@@ -531,6 +554,7 @@ si_user_byuuid(si_mod_t *si, uuid_t uuid)
 	return si->vtable->sim_user_byuuid(si, uuid);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_user_all(si_mod_t *si)
 {
@@ -539,6 +563,7 @@ si_user_all(si_mod_t *si)
 	return si->vtable->sim_user_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_group_byname(si_mod_t *si, const char *name)
 {
@@ -547,6 +572,7 @@ si_group_byname(si_mod_t *si, const char *name)
 	return si->vtable->sim_group_byname(si, name);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_group_bygid(si_mod_t *si, gid_t gid)
 {
@@ -555,6 +581,7 @@ si_group_bygid(si_mod_t *si, gid_t gid)
 	return si->vtable->sim_group_bygid(si, gid);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_group_byuuid(si_mod_t *si, uuid_t uuid)
 {
@@ -563,6 +590,7 @@ si_group_byuuid(si_mod_t *si, uuid_t uuid)
 	return si->vtable->sim_group_byuuid(si, uuid);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_group_all(si_mod_t *si)
 {
@@ -571,6 +599,7 @@ si_group_all(si_mod_t *si)
 	return si->vtable->sim_group_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_grouplist(si_mod_t *si, const char *name, uint32_t count)
 {
@@ -579,6 +608,7 @@ si_grouplist(si_mod_t *si, const char *name, uint32_t count)
 	return si->vtable->sim_grouplist(si, name, count);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_netgroup_byname(struct si_mod_s *si, const char *name)
 {
@@ -587,6 +617,7 @@ si_netgroup_byname(struct si_mod_s *si, const char *name)
 	return si->vtable->sim_netgroup_byname(si, name);
 }
 
+LIBINFO_EXPORT
 int
 si_in_netgroup(struct si_mod_s *si, const char *name, const char *host, const char *user, const char *domain)
 {
@@ -595,6 +626,7 @@ si_in_netgroup(struct si_mod_s *si, const char *name, const char *host, const ch
 	return si->vtable->sim_in_netgroup(si, name, host, user, domain);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_alias_byname(si_mod_t *si, const char *name)
 {
@@ -603,6 +635,7 @@ si_alias_byname(si_mod_t *si, const char *name)
 	return si->vtable->sim_alias_byname(si, name);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_alias_all(si_mod_t *si)
 {
@@ -611,6 +644,7 @@ si_alias_all(si_mod_t *si)
 	return si->vtable->sim_alias_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_host_byname(si_mod_t *si, const char *name, int af, const char *interface, uint32_t *err)
 {
@@ -619,6 +653,7 @@ si_host_byname(si_mod_t *si, const char *name, int af, const char *interface, ui
 	return si->vtable->sim_host_byname(si, name, af, interface, err);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_host_byaddr(si_mod_t *si, const void *addr, int af, const char *interface, uint32_t *err)
 {
@@ -627,6 +662,7 @@ si_host_byaddr(si_mod_t *si, const void *addr, int af, const char *interface, ui
 	return si->vtable->sim_host_byaddr(si, addr, af, interface, err);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_host_all(si_mod_t *si)
 {
@@ -635,6 +671,7 @@ si_host_all(si_mod_t *si)
 	return si->vtable->sim_host_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_mac_byname(struct si_mod_s *si, const char *name)
 {
@@ -643,6 +680,7 @@ si_mac_byname(struct si_mod_s *si, const char *name)
 	return si->vtable->sim_mac_byname(si, name);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_mac_bymac(struct si_mod_s *si, const char *mac)
 {
@@ -651,6 +689,7 @@ si_mac_bymac(struct si_mod_s *si, const char *mac)
 	return si->vtable->sim_mac_bymac(si, mac);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_mac_all(si_mod_t *si)
 {
@@ -659,6 +698,7 @@ si_mac_all(si_mod_t *si)
 	return si->vtable->sim_mac_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_network_byname(si_mod_t *si, const char *name)
 {
@@ -667,6 +707,7 @@ si_network_byname(si_mod_t *si, const char *name)
 	return si->vtable->sim_network_byname(si, name);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_network_byaddr(si_mod_t *si, uint32_t addr)
 {
@@ -675,6 +716,7 @@ si_network_byaddr(si_mod_t *si, uint32_t addr)
 	return si->vtable->sim_network_byaddr(si, addr);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_network_all(si_mod_t *si)
 {
@@ -683,6 +725,7 @@ si_network_all(si_mod_t *si)
 	return si->vtable->sim_network_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_service_byname(si_mod_t *si, const char *name, const char *proto)
 {
@@ -691,6 +734,7 @@ si_service_byname(si_mod_t *si, const char *name, const char *proto)
 	return si->vtable->sim_service_byname(si, name, proto);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_service_byport(si_mod_t *si, int port, const char *proto)
 {
@@ -699,6 +743,7 @@ si_service_byport(si_mod_t *si, int port, const char *proto)
 	return si->vtable->sim_service_byport(si, port, proto);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_service_all(si_mod_t *si)
 {
@@ -707,6 +752,7 @@ si_service_all(si_mod_t *si)
 	return si->vtable->sim_service_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_protocol_byname(si_mod_t *si, const char *name)
 {
@@ -715,6 +761,7 @@ si_protocol_byname(si_mod_t *si, const char *name)
 	return si->vtable->sim_protocol_byname(si, name);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_protocol_bynumber(si_mod_t *si, uint32_t number)
 {
@@ -723,6 +770,7 @@ si_protocol_bynumber(si_mod_t *si, uint32_t number)
 	return si->vtable->sim_protocol_bynumber(si, number);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_protocol_all(si_mod_t *si)
 {
@@ -731,6 +779,7 @@ si_protocol_all(si_mod_t *si)
 	return si->vtable->sim_protocol_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_rpc_byname(si_mod_t *si, const char *name)
 {
@@ -739,6 +788,7 @@ si_rpc_byname(si_mod_t *si, const char *name)
 	return si->vtable->sim_rpc_byname(si, name);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_rpc_bynumber(si_mod_t *si, int number)
 {
@@ -747,6 +797,7 @@ si_rpc_bynumber(si_mod_t *si, int number)
 	return si->vtable->sim_rpc_bynumber(si, number);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_rpc_all(si_mod_t *si)
 {
@@ -755,6 +806,7 @@ si_rpc_all(si_mod_t *si)
 	return si->vtable->sim_rpc_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_fs_byspec(si_mod_t *si, const char *spec)
 {
@@ -763,6 +815,7 @@ si_fs_byspec(si_mod_t *si, const char *spec)
 	return si->vtable->sim_fs_byspec(si, spec);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_fs_byfile(si_mod_t *si, const char *file)
 {
@@ -771,6 +824,7 @@ si_fs_byfile(si_mod_t *si, const char *file)
 	return si->vtable->sim_fs_byfile(si, file);
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_fs_all(si_mod_t *si)
 {
@@ -779,6 +833,7 @@ si_fs_all(si_mod_t *si)
 	return si->vtable->sim_fs_all(si);
 }
 
+LIBINFO_EXPORT
 si_item_t *
 si_item_call(struct si_mod_s *si, int call, const char *str1, const char *str2, const char *str3, uint32_t num1, uint32_t num2, uint32_t *err)
 {
@@ -823,6 +878,7 @@ si_item_call(struct si_mod_s *si, int call, const char *str1, const char *str2, 
 	return NULL;
 }
 
+LIBINFO_EXPORT
 si_list_t *
 si_list_call(struct si_mod_s *si, int call, const char *str1, const char *str2, const char *str3, uint32_t num1, uint32_t num2, uint32_t num3, uint32_t num4, uint32_t *err)
 {
@@ -1063,7 +1119,7 @@ si_async_launchpad(si_async_workunit_t *r)
 	msg.header.msgh_id = r->call;
 
 	status = mach_msg(&(msg.header), MACH_SEND_MSG, msg.header.msgh_size, 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
-	if (status != MACH_MSG_SUCCESS)
+	if ((status == MACH_SEND_INVALID_DEST) || (status == MACH_SEND_TIMED_OUT))
 	{
 		/* receiver failed - clean up to avoid a port leak */
 		mach_msg_destroy(&(msg.header));
@@ -1084,6 +1140,7 @@ si_async_launchpad(si_async_workunit_t *r)
 #endif
 }
 
+LIBINFO_EXPORT
 mach_port_t
 si_async_call(struct si_mod_s *si, int call, const char *str1, const char *str2, const char *str3, uint32_t num1, uint32_t num2, uint32_t num3, uint32_t num4, void *callback, void *context)
 {
@@ -1110,6 +1167,7 @@ si_async_call(struct si_mod_s *si, int call, const char *str1, const char *str2,
 	return req->port;
 }
 
+LIBINFO_EXPORT
 void
 si_async_cancel(mach_port_t p)
 {
@@ -1149,6 +1207,7 @@ si_async_cancel(mach_port_t p)
 	si_async_workunit_release(r);
 }
 
+LIBINFO_EXPORT
 void
 si_async_handle_reply(mach_msg_header_t *msg)
 {
@@ -1193,6 +1252,7 @@ si_async_handle_reply(mach_msg_header_t *msg)
 	si_async_workunit_release(r);
 }
 
+LIBINFO_EXPORT
 char *
 si_standardize_mac_address(const char *addr)
 {

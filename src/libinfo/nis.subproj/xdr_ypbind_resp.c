@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -56,6 +56,8 @@
 static char *rcsid = "$OpenBSD: xdr_ypbind_resp.c,v 1.3 1996/08/19 08:35:01 tholo Exp $";
 #endif /* LIBC_SCCS and not lint */
 
+#include "libinfo_common.h"
+
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -68,6 +70,7 @@ static char *rcsid = "$OpenBSD: xdr_ypbind_resp.c,v 1.3 1996/08/19 08:35:01 thol
 #include <rpcsvc/yp.h>
 #include <rpcsvc/ypclnt.h>
 
+LIBINFO_EXPORT
 bool_t
 xdr_ypbind_resp(xdrs, objp)
 XDR *xdrs;

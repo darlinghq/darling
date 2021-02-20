@@ -27,6 +27,9 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)abort.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
@@ -45,11 +48,16 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/abort.c,v 1.11 2007/01/09 00:28:09 imp E
 
 #include "libc_private.h"
 
+#if __has_include(<CrashReporterClient.h>)
 #include <CrashReporterClient.h>
+#else
+#define CRGetCrashLogMessage() NULL
+#define CRSetCrashLogMessage(...)
+#endif
 #include "_simple.h"
 
 extern void (*__cleanup)();
-extern void __abort(void) __dead2;
+extern void __abort(void) __cold __dead2;
 
 #define TIMEOUT	10000	/* 10 milliseconds */
 
@@ -74,6 +82,17 @@ abort()
 	 * any errors -- ISO C doesn't allow abort to return anyway.
 	 */
 	sigdelset(&act.sa_mask, SIGABRT);
+
+	/*
+	 * Don't block SIGSEGV since we might trigger a segfault if the pthread
+	 * struct is corrupt. The end user behavior is that the program will
+	 * terminate with a SIGSEGV instead of a SIGABRT which is acceptable. If
+	 * the user registers a SIGSEGV handler, then they are responsible for
+	 * dealing with any corruption themselves and abort may not work.
+	 * rdar://48853131
+	 */
+	sigdelset(&act.sa_mask, SIGSEGV);
+	sigdelset(&act.sa_mask, SIGBUS);
 
 	/* <rdar://problem/7397932> abort() should call pthread_kill to deliver a signal to the aborting thread 
 	 * This helps gdb focus on the thread calling abort()
@@ -155,3 +174,4 @@ abort_report_np(const char *fmt, ...)
 		CRSetCrashLogMessage(fmt); /* the format string is better than nothing */
 	abort();
 }
+#pragma clang diagnostic pop

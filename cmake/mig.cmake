@@ -55,6 +55,7 @@ function(mig defFileName)
 			/bin/mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/${dirName} \;
 			${MIG_EXECUTABLE}
 			-arch ${MIG_ARCH}
+			-target ${MIG_ARCH}
 			-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
 			-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
 			-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}

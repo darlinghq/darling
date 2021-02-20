@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach-o/fat.h
+../../../../../../../../../src/external/cctools/include/mach-o/fat.h

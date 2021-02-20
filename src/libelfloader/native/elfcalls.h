@@ -1,6 +1,14 @@
 #ifndef _ELFCALLS_H_
 #define _ELFCALLS_H_
+
 #include <stdint.h>
+
+struct darling_thread_create_callbacks {
+	int (*thread_self_trap)(void);
+	void (*thread_set_tsd_base)(void*, int);
+};
+
+typedef struct darling_thread_create_callbacks* darling_thread_create_callbacks_t;
 
 struct elf_calls
 {
@@ -14,7 +22,7 @@ struct elf_calls
 	void* (*darling_thread_create)(unsigned long stack_size, unsigned long pthobj_size,
                 void* entry_point, uintptr_t arg3,
                 uintptr_t arg4, uintptr_t arg5, uintptr_t arg6,
-                int (*thread_self_trap)());
+                darling_thread_create_callbacks_t callbacks, void* dthread);
 	int (*darling_thread_terminate)(void* stackaddr,
 				unsigned long freesize, unsigned long pthobj_size);
 	void* (*darling_thread_get_stack)(void);

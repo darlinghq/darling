@@ -87,7 +87,7 @@ Balloc
 #ifdef GDTOA_TSD
 	Bigint **freelist;
 
-#ifndef VARIANT_DYLD
+#if !defined(DARLING) || !defined(VARIANT_DYLD)
 	if (gdtoa_tsd_key == (pthread_key_t)-1) {
 		pthread_mutex_lock(&gdtoa_tsd_lock);
 		if (gdtoa_tsd_key == (pthread_key_t)-1) {

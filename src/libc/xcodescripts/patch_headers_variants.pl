@@ -71,6 +71,9 @@ sub process {
 			my $sym;
 			if($n > 0) {
 				my($sym) = ($save[$n - 1] =~ /__DARWIN_(?:10\d+|ALIAS|EXTSN|INODE64)[^(]*\(([^)]*)\)/);
+				if($save[$n - 1] =~ /__DARWIN_ALIAS_STARTING/) {
+					undef $sym;
+				}
 				if(defined($sym)) {
 					if(defined($path)) {
 						print "  $path\n";

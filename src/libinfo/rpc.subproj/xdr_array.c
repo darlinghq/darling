@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -68,6 +68,8 @@ static char *sccsid = "@(#)xdr_array.c	2.1 88/07/29 4.0 RPCSRC";
  * arrays.  See xdr.h for more info on the interface to xdr.
  */
 
+#include "libinfo_common.h"
+
 #include <err.h>
 #include <limits.h>
 #include <stdio.h>
@@ -84,6 +86,7 @@ static char *sccsid = "@(#)xdr_array.c	2.1 88/07/29 4.0 RPCSRC";
  * elsize is the size (in bytes) of each element, and elproc is the
  * xdr procedure to call to handle each element of the array.
  */
+LIBINFO_EXPORT
 bool_t
 xdr_array(xdrs, addrp, sizep, maxsize, elsize, elproc)
 	XDR *xdrs;
@@ -162,6 +165,7 @@ xdr_array(xdrs, addrp, sizep, maxsize, elsize, elproc)
  * > elemsize: size of each element
  * > xdr_elem: routine to XDR each element
  */
+LIBINFO_EXPORT
 bool_t
 xdr_vector(xdrs, basep, nelem, elemsize, xdr_elem)
 	XDR *xdrs;

@@ -9,10 +9,18 @@
 #include <sys/fcntl.h>
 #include "kqueue.h"
 #include "../bsdthread/workq_kernreturn.h"
+#include "kevent64.h"
 
-static int default_kq = -1;
+// not static because `mach_init.c` needs to reset it on fork
+// (but since we're using symbol visibility, no one else will be able to see it, so it's ok)
+// we can remove this once our LKM supports kqueue workqs and workloops (at that point, this syscall will turn into a simple trap into the LKM)
+int default_kq = -1;
 
 extern void* memmove(void* dst, const void* src, __SIZE_TYPE__ n);
+
+// we have an LKM trap for kevent_qos, but due to our LKM not supporting workqs and workloops yet,
+// it's easier to keep our old behavior and translate this into a kevent64 call and handle workq stuff ourselves.
+// TODO: support workqs and workloops in the LKM (requires in-kernel pthread operations)
 
 static void kevent_qos_to_64(const struct kevent_qos_s *ev, struct kevent64_s* ev64);
 static void kevent_64_to_qos(const struct kevent64_s* ev64, struct kevent_qos_s *ev);
@@ -25,14 +33,16 @@ long sys_kevent_qos(int	kq, const struct kevent_qos_s *changelist, int nchanges,
 	struct kevent64_s* changelist64 = NULL;
 	struct kevent64_s* eventlist64 = NULL;
 	struct wq_kevent_data wq_kevent;
+	struct timespec polling_timeout = {};
 
 	if ((kq == -1) != !!(flags & KEVENT_FLAG_WORKQ))
 		return -EINVAL;
 
-	if (default_kq == -1)
-	{
-		default_kq = sys_kqueue();
-		sys_fcntl(default_kq, F_SETFD, FD_CLOEXEC);
+	if (kq < 0) {
+		if (default_kq == -1) {
+			default_kq = sys_kqueue();
+		}
+		kq = default_kq;
 	}
 
 	if (changelist != NULL && nchanges > 0)
@@ -52,7 +62,7 @@ long sys_kevent_qos(int	kq, const struct kevent_qos_s *changelist, int nchanges,
 		eventlist64 = (struct kevent64_s*) __builtin_alloca(nevents * sizeof(struct kevent64_s));
 	}
 
-	rv = kevent64(default_kq, changelist64, nchanges, eventlist64, nevents, flags, NULL);
+	rv = sys_kevent64(kq, changelist64, nchanges, eventlist64, nevents, flags, (flags & KEVENT_FLAG_IMMEDIATE) ? &polling_timeout : NULL);
 
 	if (rv > 0)
 	{

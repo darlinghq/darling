@@ -54,8 +54,6 @@
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/kern_memorystatus.h>
-#include <sys/spawn_internal.h>
-#include <sys/proc_info.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -78,6 +76,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <glob.h>
+#include <System/sys/spawn.h>
+#include <System/sys/spawn_internal.h>
 #include <spawn.h>
 #include <spawn_private.h>
 #include <time.h>
@@ -8092,8 +8092,11 @@ job_mig_log_forward(job_t j, vm_offset_t inval, mach_msg_type_number_t invalCnt)
 	if (!j) {
 		return BOOTSTRAP_NO_MEMORY;
 	}
-
+#ifdef DARLING
 	if (!job_assumes(j, j->per_user != 0)) {
+#else
+	if (!job_assumes(j, j->per_user)) {
+#endif
 		return BOOTSTRAP_NOT_PRIVILEGED;
 	}
 
@@ -8396,7 +8399,11 @@ job_mig_swap_integer(job_t j, vproc_gsk_t inkey, vproc_gsk_t outkey, int64_t inv
 		/* No-op. */
 		break;
 	case VPROC_GSK_WEIRD_BOOTSTRAP:
+#ifdef DARLING
 		if (job_assumes(j, j->weird_bootstrap != 0)) {
+#else
+		if (job_assumes(j, j->weird_bootstrap)) {
+#endif
 			job_log(j, LOG_DEBUG, "Unsetting weird bootstrap.");
 
 			mach_msg_size_t mxmsgsz = (typeof(mxmsgsz)) sizeof(union __RequestUnion__job_mig_job_subsystem);
@@ -8555,7 +8562,11 @@ job_mig_get_listener_port_rights(job_t j, mach_port_array_t *sports, mach_msg_ty
 	size_t cnt = 0;
 	struct machservice *msi = NULL;
 	SLIST_FOREACH(msi, &j->machservices, sle) {
+#ifdef DARLING
 		if (msi->upfront && job_assumes(j, msi->recv != 0)) {
+#else
+		if (msi->upfront && job_assumes(j, msi->recv)) {
+#endif
 			cnt++;
 		}
 	}

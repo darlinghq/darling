@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
+#define SFCredentialStore _SFCredentialStore
+
 @interface _SFCredentialStore : NSObject
 
 @end

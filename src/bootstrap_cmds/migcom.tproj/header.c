@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -103,6 +103,32 @@ WriteIncludes(FILE *file, boolean_t isuser, boolean_t isdef)
 
       fprintf(file, "\t\n/* END VOUCHER CODE */\n\n");
     }
+
+    fprintf(file, "\t\n/* BEGIN MIG_STRNCPY_ZEROFILL CODE */\n\n");
+    fprintf(file, "#if defined(__has_include)\n");
+    fprintf(file, "#if __has_include(<mach/mig_strncpy_zerofill_support.h>)\n");
+    fprintf(file, "#ifndef USING_MIG_STRNCPY_ZEROFILL\n");
+    fprintf(file, "#define USING_MIG_STRNCPY_ZEROFILL\n");
+    fprintf(file, "#endif\n");
+
+    fprintf(file, "#ifndef __MIG_STRNCPY_ZEROFILL_FORWARD_TYPE_DECLS__\n");
+    fprintf(file, "#define __MIG_STRNCPY_ZEROFILL_FORWARD_TYPE_DECLS__\n");
+
+    fprintf(file, "#ifdef __cplusplus\n");
+    fprintf(file, "extern \"C\" {\n");
+    fprintf(file, "#endif\n");
+
+    fprintf(file, "\textern int mig_strncpy_zerofill(char *dest, const char *src, int len) __attribute__((weak_import));\n");
+
+    fprintf(file, "#ifdef __cplusplus\n");
+    fprintf(file, "}\n");
+    fprintf(file, "#endif\n");
+
+    fprintf(file, "#endif /* __MIG_STRNCPY_ZEROFILL_FORWARD_TYPE_DECLS__ */\n");
+    fprintf(file, "#endif /* __has_include(<mach/mig_strncpy_zerofill_support.h>) */\n");
+    fprintf(file, "#endif /* __has_include */\n");
+    fprintf(file, "\t\n/* END MIG_STRNCPY_ZEROFILL CODE */\n\n");
+
     if (ShortCircuit)
       fprintf(file, "#include <mach/rpc.h>\n");
     if (isuser && IsKernelUser) {
@@ -117,7 +143,7 @@ WriteIncludes(FILE *file, boolean_t isuser, boolean_t isdef)
 static void
 WriteETAPDefines(FILE *file)
 {
-  register statement_t *stat;
+  statement_t *stat;
   int fnum;
   char *fname;
   int first = TRUE;
@@ -224,7 +250,7 @@ WriteUserRoutine(FILE *file, routine_t *rt)
 void
 WriteUserRequestUnion(FILE *file, statement_t *stats)
 {
-  register statement_t *stat;
+  statement_t *stat;
 
   fprintf(file, "/* union of all requests */\n\n");
   fprintf(file, "#ifndef __RequestUnion__%s%s_subsystem__defined\n", UserPrefix, SubsystemName);
@@ -232,7 +258,7 @@ WriteUserRequestUnion(FILE *file, statement_t *stats)
   fprintf(file, "union __RequestUnion__%s%s_subsystem {\n", UserPrefix, SubsystemName);
   for (stat = stats; stat != stNULL; stat = stat->stNext) {
     if (stat->stKind == skRoutine) {
-      register routine_t *rt;
+      routine_t *rt;
 
       rt = stat->stRoutine;
       fprintf(file, "\t__Request__%s_t Request_%s;\n", rt->rtName, rt->rtUserName);
@@ -245,7 +271,7 @@ WriteUserRequestUnion(FILE *file, statement_t *stats)
 void
 WriteUserReplyUnion(FILE *file, statement_t *stats)
 {
-  register statement_t *stat;
+  statement_t *stat;
 
   fprintf(file, "/* union of all replies */\n\n");
   fprintf(file, "#ifndef __ReplyUnion__%s%s_subsystem__defined\n", UserPrefix, SubsystemName);
@@ -253,7 +279,7 @@ WriteUserReplyUnion(FILE *file, statement_t *stats)
   fprintf(file, "union __ReplyUnion__%s%s_subsystem {\n", UserPrefix, SubsystemName);
   for (stat = stats; stat != stNULL; stat = stat->stNext) {
     if (stat->stKind == skRoutine) {
-      register routine_t *rt;
+      routine_t *rt;
 
       rt = stat->stRoutine;
       fprintf(file, "\t__Reply__%s_t Reply_%s;\n", rt->rtName, rt->rtUserName);
@@ -266,7 +292,7 @@ WriteUserReplyUnion(FILE *file, statement_t *stats)
 void
 WriteUserHeader(FILE *file, statement_t *stats)
 {
-  register statement_t *stat;
+  statement_t *stat;
   char *protect = strconcat(SubsystemName, "_user_");
 
   WriteProlog(file, protect, TRUE, TRUE);
@@ -327,7 +353,7 @@ WriteUserHeader(FILE *file, statement_t *stats)
 static void
 WriteDefinesRoutine(FILE *file, routine_t *rt)
 {
-  register char *up = (char *)malloc(strlen(rt->rtName)+1);
+  char *up = (char *)malloc(strlen(rt->rtName)+1);
 
   up = toupperstr(strcpy(up, rt->rtName));
   fprintf(file, "#define\tMACH_ID_%s\t\t%d\t/* %s() */\n", up, rt->rtNumber + SubsystemBase, rt->rtName);
@@ -342,7 +368,11 @@ WriteServerRoutine(FILE *file, routine_t *rt)
   fprintf(file, "\n");
   fprintf(file, "/* %s %s */\n", rtRoutineKindToStr(rt->rtKind), rt->rtName);
   WriteMigExternal(file);
-  fprintf(file, "%s %s\n", ReturnTypeStr(rt), rt->rtServerName);
+
+  // MIG_SERVER_ROUTINE can be defined by system headers to resolve to an attribute that
+  // tells the compiler that this is a MIG server routine. Useful for static analysis.
+  fprintf(file, "MIG_SERVER_ROUTINE\n%s %s\n", ReturnTypeStr(rt), rt->rtServerName);
+
   if (BeLint) {
     fprintf(file, "#if\t%s\n", LintLib);
     fprintf(file, "    (");
@@ -379,12 +409,12 @@ WriteServerRoutine(FILE *file, routine_t *rt)
 static void
 WriteDispatcher(FILE *file)
 {
-  register statement_t *stat;
+  statement_t *stat;
   int descr_count = 0;
 
   for (stat = stats; stat != stNULL; stat = stat->stNext)
     if (stat->stKind == skRoutine) {
-      register routine_t *rt = stat->stRoutine;
+      routine_t *rt = stat->stRoutine;
       descr_count += rtCountArgDescriptors(rt->rtArgs, (int *) 0);
     }
   fprintf(file, "\n");
@@ -427,9 +457,20 @@ WriteDispatcher(FILE *file)
 }
 
 void
+WriteBogusServerRoutineAnnotationDefine(FILE *file) {
+  // MIG_SERVER_ROUTINE can be defined by system headers to resolve to
+  // an attribute that tells the compiler that this is a MIG server routine.
+  // Useful for static analysis.
+  fprintf(file, "#ifndef MIG_SERVER_ROUTINE\n");
+  fprintf(file, "#define MIG_SERVER_ROUTINE\n");
+  fprintf(file, "#endif\n");
+  fprintf(file, "\n");
+}
+
+void
 WriteServerHeader(FILE *file, statement_t *stats)
 {
-  register statement_t *stat;
+  statement_t *stat;
   char *protect = strconcat(SubsystemName, "_server_");
 
   WriteProlog(file, protect, TRUE, FALSE);
@@ -454,6 +495,8 @@ WriteServerHeader(FILE *file, statement_t *stats)
   fprintf(file, "__BeforeMigServerHeader\n");
   fprintf(file, "#endif /* __BeforeMigServerHeader */\n\n");
 
+  WriteBogusServerRoutineAnnotationDefine(file);
+
   for (stat = stats; stat != stNULL; stat = stat->stNext) {
     if (stat->stKind == skRoutine)
       WriteServerRoutine(file, stat->stRoutine);
@@ -470,7 +513,7 @@ WriteServerHeader(FILE *file, statement_t *stats)
 }
 
 static void
-WriteInternalRedefine(FILE *file, register routine_t *rt)
+WriteInternalRedefine(FILE *file, routine_t *rt)
 {
   fprintf(file, "#define %s %s_external\n", rt->rtUserName, rt->rtUserName);
 }
@@ -478,7 +521,7 @@ WriteInternalRedefine(FILE *file, register routine_t *rt)
 void
 WriteInternalHeader(FILE *file, statement_t *stats)
 {
-  register statement_t *stat;
+  statement_t *stat;
 
   for (stat = stats; stat != stNULL; stat = stat->stNext)
     switch (stat->stKind) {
@@ -502,7 +545,7 @@ WriteInternalHeader(FILE *file, statement_t *stats)
 void
 WriteDefinesHeader(FILE *file, statement_t *stats)
 {
-  register statement_t *stat;
+  statement_t *stat;
   char *protect = strconcat(SubsystemName, "_defines");
 
   WriteProlog(file, protect, FALSE, FALSE);

@@ -2,7 +2,7 @@
 #include "filio.h"
 #include "../fcntl/fcntl.h"
 #include "../fcntl/open.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "../errno.h"
 #include "../unistd/readlink.h"
 #include "../fdpath.h"

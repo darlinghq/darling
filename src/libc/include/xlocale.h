@@ -30,9 +30,6 @@
 #define _USE_EXTENDED_LOCALES_
 #endif /* _USE_EXTENDED_LOCALES_ */
 
-struct _xlocale; /* forward reference */
-typedef struct _xlocale *		locale_t;
-
 #include <_locale.h>
 #include <_xlocale.h>
 
@@ -53,6 +50,7 @@ typedef struct _xlocale *		locale_t;
 #define _LC_LAST_MASK			(1 << (_LC_NUM_MASK - 1))
 
 #define LC_GLOBAL_LOCALE		((locale_t)-1)
+#define LC_C_LOCALE				((locale_t)NULL)
 
 #ifdef MB_CUR_MAX
 #undef MB_CUR_MAX
@@ -73,9 +71,6 @@ __const char *	querylocale(int, locale_t);
 locale_t	uselocale(locale_t);
 __END_DECLS
 
-//Begin-Libc
-#ifndef __DARWIN_XLOCALE_PRIVATE
-//End-Libc
 #ifdef _CTYPE_H_
 #include <xlocale/_ctype.h>
 #endif /* _CTYPE_H_ */
@@ -112,8 +107,5 @@ __END_DECLS
 #ifdef _WCTYPE_H_
 #include <xlocale/_wctype.h>
 #endif /* _WCTYPE_H_ */
-//Begin-Libc
-#endif /* __DARWIN_XLOCALE_PRIVATE */
-//End-Libc
 
 #endif /* _XLOCALE_H_ */

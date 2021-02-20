@@ -91,7 +91,7 @@ removefile_state_set(removefile_state_t state, uint32_t key, const void* value) 
 
 int
 removefile(const char* path, removefile_state_t state_param, removefile_flags_t flags) {
-	int res = 0;
+	int res = 0, error = 0;
 	char* paths[] = { NULL, NULL };
 	removefile_state_t state = state_param;
 
@@ -113,15 +113,20 @@ removefile(const char* path, removefile_state_t state_param, removefile_flags_t 
 	paths[0] = strdup(path);
 	if (paths[0]) {
 		res = __removefile_tree_walker(paths, state);
+		error = state->error_num;
 		free(paths[0]);
 	} else {
-		errno = ENOMEM;
+		error = ENOMEM;
 		res = -1;
 	}
 
 	// deallocate if allocated locally
 	if (state_param == NULL) {
 		removefile_state_free(state);
+	}
+
+	if (res) {
+		errno = error;
 	}
 
 	return res;

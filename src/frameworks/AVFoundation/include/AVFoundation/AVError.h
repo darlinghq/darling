@@ -1,14 +1,14 @@
 #import <Foundation/Foundation.h>
 
-const NSErrorDomain AVFoundationErrorDomain;
+extern const NSErrorDomain AVFoundationErrorDomain;
 
-NSString *const AVErrorDeviceKey;
-NSString *const AVErrorFileSizeKey;
-NSString *const AVErrorMediaSubTypeKey;
-NSString *const AVErrorMediaTypeKey;
-NSString *const AVErrorTimeKey;
-NSString *const AVErrorPIDKey;
-NSString *const AVErrorRecordingSuccessfullyFinishedKey;
-NSString *const AVErrorPresentationTimeStampKey;
-NSString *const AVErrorPersistentTrackIDKey;
-NSString *const AVErrorFileTypeKey;
+extern NSString *const AVErrorDeviceKey;
+extern NSString *const AVErrorFileSizeKey;
+extern NSString *const AVErrorMediaSubTypeKey;
+extern NSString *const AVErrorMediaTypeKey;
+extern NSString *const AVErrorTimeKey;
+extern NSString *const AVErrorPIDKey;
+extern NSString *const AVErrorRecordingSuccessfullyFinishedKey;
+extern NSString *const AVErrorPresentationTimeStampKey;
+extern NSString *const AVErrorPersistentTrackIDKey;
+extern NSString *const AVErrorFileTypeKey;

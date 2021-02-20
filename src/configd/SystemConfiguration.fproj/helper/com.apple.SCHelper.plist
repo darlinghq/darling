@@ -12,6 +12,6 @@
 		<true/>
 	</dict>
 	<key>POSIXSpawnType</key>
-	<string>Adaptive</string>
+	<string>Interactive</string>
 </dict>
 </plist>

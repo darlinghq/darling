@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2003, 2004, 2006, 2008, 2011, 2012, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003, 2004, 2006, 2008, 2011, 2012, 2014-2017, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -42,14 +42,10 @@ __SCDynamicStoreAddValue(SCDynamicStoreRef store, CFStringRef key, CFDataRef val
 	SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
 	CFDataRef			tempValue;
 
-	if (_configd_trace) {
-		SCTrace(TRUE, _configd_trace,
-			CFSTR("%s%s : %5d : %@\n"),
-			"add  ",
-			storePrivate->useSessionKeys ? "t " : "  ",
-			storePrivate->server,
-			key);
-	}
+	SC_trace("add  %s : %5d : %@",
+		 storePrivate->useSessionKeys ? "t " : "  ",
+		 storePrivate->server,
+		 key);
 
 	/*
 	 * Ensure that this is a new key.
@@ -68,7 +64,7 @@ __SCDynamicStoreAddValue(SCDynamicStoreRef store, CFStringRef key, CFDataRef val
 
 		default :
 #ifdef	DEBUG
-			SCLog(_configd_verbose, LOG_DEBUG, CFSTR("__SCDynamicStoreAddValue __SCDynamicStoreCopyValue(): %s"), SCErrorString(sc_status));
+			SC_log(LOG_DEBUG, "__SCDynamicStoreCopyValue() failed: %s", SCErrorString(sc_status));
 #endif	/* DEBUG */
 			goto done;
 	}
@@ -102,12 +98,12 @@ _configadd(mach_port_t 			server,
 	CFDataRef		data		= NULL;		/* data (un-serialized) */
 	serverSessionRef	mySession;
 
+	*newInstance = 0;
 	*sc_status = kSCStatusOK;
 
 	/* un-serialize the key */
 	if (!_SCUnserializeString(&key, NULL, (void *)keyRef, keyLen)) {
 		*sc_status = kSCStatusFailed;
-		goto done;
 	}
 
 	/* un-serialize the data */
@@ -134,15 +130,12 @@ _configadd(mach_port_t 			server,
 		}
 	}
 
-	if (!hasWriteAccess(mySession, key)) {
+	if (!hasWriteAccess(mySession, "add", key)) {
 		*sc_status = kSCStatusAccessError;
 		goto done;
 	}
 
 	*sc_status = __SCDynamicStoreAddValue(mySession->store, key, data);
-	if (*sc_status == kSCStatusOK) {
-		*newInstance = 0;
-	}
 
     done :
 
@@ -169,6 +162,7 @@ _configadd_s(mach_port_t 		server,
 	SCDynamicStorePrivateRef	storePrivate;
 	Boolean				useSessionKeys;
 
+	*newInstance = 0;
 	*sc_status = kSCStatusOK;
 
 	/* un-serialize the key */
@@ -197,7 +191,7 @@ _configadd_s(mach_port_t 		server,
 		goto done;
 	}
 
-	if (!hasWriteAccess(mySession, key)) {
+	if (!hasWriteAccess(mySession, "add (session)", key)) {
 		*sc_status = kSCStatusAccessError;
 		goto done;
 	}
@@ -208,9 +202,6 @@ _configadd_s(mach_port_t 		server,
 	storePrivate->useSessionKeys = TRUE;
 
 	*sc_status = __SCDynamicStoreAddValue(mySession->store, key, data);
-	if (*sc_status == kSCStatusOK) {
-		*newInstance = 0;
-	}
 
 	// restore "useSessionKeys"
 	storePrivate->useSessionKeys = useSessionKeys;

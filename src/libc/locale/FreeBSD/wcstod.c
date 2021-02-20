@@ -29,6 +29,7 @@ __FBSDID("$FreeBSD: src/lib/libc/locale/wcstod.c,v 1.4 2004/04/07 09:47:56 tjr E
 
 #include "xlocale_private.h"
 
+#include <string.h>
 #include <stdlib.h>
 #include <wchar.h>
 #include <wctype.h>

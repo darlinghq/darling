@@ -59,10 +59,13 @@
 #define _STDLIB_H_
 
 #include <Availability.h>
+#include <sys/cdefs.h>
 
 #include <_types.h>
 #if !defined(_ANSI_SOURCE)
+#ifndef UNIFDEF_DRIVERKIT
 #include <sys/wait.h>
+#endif /* UNIFDEF_DRIVERKIT */
 #if (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
 #include <alloca.h>
 #endif /* (!_POSIX_C_SOURCE || _DARWIN_C_SOURCE) */
@@ -98,8 +101,10 @@ typedef struct {
 
 #include <sys/_types/_null.h>
 
+#ifndef UNIFDEF_DRIVERKIT
 #define	EXIT_FAILURE	1
 #define	EXIT_SUCCESS	0
+#endif /* UNIFDEF_DRIVERKIT */
 
 #define	RAND_MAX	0x7fffffff
 
@@ -123,18 +128,17 @@ extern int __mb_cur_max;
     && defined(_USE_EXTENDED_LOCALES_) && !defined(MB_CUR_MAX_L)
 #define	MB_CUR_MAX_L(x)	(___mb_cur_max_l(x))
 #endif
-//Begin-Libc
-#ifdef BUILDING_LIBC
-#include "libc_private.h"
-/* f must be a literal string */
-#define LIBC_ABORT(f,...)	abort_report_np("%s:%s:%u: " f, __FILE__, __func__, __LINE__, ## __VA_ARGS__)
-#endif
-//End-Libc
+
+#ifndef UNIFDEF_DRIVERKIT
+#include <malloc/_malloc.h>
+#endif /* UNIFDEF_DRIVERKIT */
 
 __BEGIN_DECLS
-void	 abort(void) __dead2;
+void	 abort(void) __cold __dead2;
 int	 abs(int) __pure2;
+#ifndef UNIFDEF_DRIVERKIT
 int	 atexit(void (* _Nonnull)(void));
+#endif /* UNIFDEF_DRIVERKIT */
 double	 atof(const char *);
 int	 atoi(const char *);
 long	 atol(const char *);
@@ -144,11 +148,15 @@ long long
 #endif /* !__DARWIN_NO_LONG_LONG */
 void	*bsearch(const void *__key, const void *__base, size_t __nel,
 	    size_t __width, int (* _Nonnull __compar)(const void *, const void *));
-void	*calloc(size_t __count, size_t __size) __result_use_check;
+#ifndef UNIFDEF_DRIVERKIT
+/* calloc is now declared in _malloc.h */
+#endif /* UNIFDEF_DRIVERKIT */
 div_t	 div(int, int) __pure2;
+#ifndef UNIFDEF_DRIVERKIT
 void	 exit(int) __dead2;
-void	 free(void *);
+/* free is now declared in _malloc.h */
 char	*getenv(const char *);
+#endif /* UNIFDEF_DRIVERKIT */
 long	 labs(long) __pure2;
 ldiv_t	 ldiv(long, long) __pure2;
 #if !__DARWIN_NO_LONG_LONG
@@ -156,16 +164,22 @@ long long
 	 llabs(long long);
 lldiv_t	 lldiv(long long, long long);
 #endif /* !__DARWIN_NO_LONG_LONG */
-void	*malloc(size_t __size) __result_use_check;
+#ifndef UNIFDEF_DRIVERKIT
+/* malloc is now declared in _malloc.h */
+#endif /* UNIFDEF_DRIVERKIT */
 int	 mblen(const char *__s, size_t __n);
 size_t	 mbstowcs(wchar_t * __restrict , const char * __restrict, size_t);
 int	 mbtowc(wchar_t * __restrict, const char * __restrict, size_t);
-int 	 posix_memalign(void **__memptr, size_t __alignment, size_t __size) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0);
+#ifndef UNIFDEF_DRIVERKIT
+/* posix_memalign is now declared in _malloc.h */
+#endif /* UNIFDEF_DRIVERKIT */
 void	 qsort(void *__base, size_t __nel, size_t __width,
 	    int (* _Nonnull __compar)(const void *, const void *));
+#ifndef UNIFDEF_DRIVERKIT
 int	 rand(void) __swift_unavailable("Use arc4random instead.");
-void	*realloc(void *__ptr, size_t __size) __result_use_check;
+/* realloc is now declared in _malloc.h */
 void	 srand(unsigned) __swift_unavailable("Use arc4random instead.");
+#endif /* UNIFDEF_DRIVERKIT */
 double	 strtod(const char *, char **) __DARWIN_ALIAS(strtod);
 float	 strtof(const char *, char **) __DARWIN_ALIAS(strtof);
 long	 strtol(const char *__str, char **__endptr, int __base);
@@ -181,9 +195,7 @@ unsigned long
 unsigned long long
 	 strtoull(const char *__str, char **__endptr, int __base);
 #endif /* !__DARWIN_NO_LONG_LONG */
-//Begin-Libc
-#ifndef LIBC_ALIAS_SYSTEM
-//End-Libc
+#ifndef UNIFDEF_DRIVERKIT
 
 #if TARGET_OS_EMBEDDED
 #define __swift_unavailable_on(osx_msg, ios_msg) __swift_unavailable(ios_msg)
@@ -192,20 +204,17 @@ unsigned long long
 #endif
 
 __swift_unavailable_on("Use posix_spawn APIs or NSTask instead.", "Process spawning is unavailable")
-__OSX_AVAILABLE_BUT_DEPRECATED_MSG(__MAC_10_0,__MAC_NA,__IPHONE_2_0,__IPHONE_8_0, "Use posix_spawn APIs instead.")
+__API_AVAILABLE(macos(10.0)) __IOS_PROHIBITED
 __WATCHOS_PROHIBITED __TVOS_PROHIBITED
 int	 system(const char *) __DARWIN_ALIAS_C(system);
-//Begin-Libc
-#else /* LIBC_ALIAS_SYSTEM */
-int	 system(const char *) LIBC_ALIAS_C(system);
-#endif /* !LIBC_ALIAS_SYSTEM */
-//End-Libc
 
 #undef __swift_unavailable_on
+#endif /* UNIFDEF_DRIVERKIT */
 
 size_t	 wcstombs(char * __restrict, const wchar_t * __restrict, size_t);
 int	 wctomb(char *, wchar_t);
 
+#ifndef UNIFDEF_DRIVERKIT
 #ifndef _ANSI_SOURCE
 void	_Exit(int) __dead2;
 long	 a64l(const char *);
@@ -231,59 +240,24 @@ long	 mrand48(void) __swift_unavailable("Use arc4random instead.");
 long	 nrand48(unsigned short[3]) __swift_unavailable("Use arc4random instead.");
 int	 posix_openpt(int);
 char	*ptsname(int);
-//Begin-Libc
-#ifndef LIBC_ALIAS_PUTENV
-//End-Libc
+
+#if (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
+int ptsname_r(int fildes, char *buffer, size_t buflen) __API_AVAILABLE(macos(10.13.4), ios(11.3), tvos(11.3), watchos(4.3));
+#endif
+
 int	 putenv(char *) __DARWIN_ALIAS(putenv);
-//Begin-Libc
-#else /* LIBC_ALIAS_PUTENV */
-int	 putenv(char *) LIBC_ALIAS(putenv);
-#endif /* !LIBC_ALIAS_PUTENV */
-//End-Libc
 long	 random(void) __swift_unavailable("Use arc4random instead.");
 int	 rand_r(unsigned *) __swift_unavailable("Use arc4random instead.");
-//Begin-Libc
-#ifdef __LIBC__
-#ifndef LIBC_ALIAS_REALPATH
-char	*realpath(const char * __restrict, char * __restrict) __DARWIN_EXTSN(realpath);
-#else /* LIBC_ALIAS_REALPATH */
-#ifdef VARIANT_DARWINEXTSN
-char	*realpath(const char * __restrict, char * __restrict) LIBC_EXTSN(realpath);
-#else /* !VARIANT_DARWINEXTSN */
-char	*realpath(const char * __restrict, char * __restrict) LIBC_ALIAS(realpath);
-#endif /* VARIANT_DARWINEXTSN */
-#endif /* !LIBC_ALIAS_REALPATH */
-#else /* !__LIBC__ */
-//End-Libc
 #if (__DARWIN_UNIX03 && !defined(_POSIX_C_SOURCE)) || defined(_DARWIN_C_SOURCE) || defined(_DARWIN_BETTER_REALPATH)
 char	*realpath(const char * __restrict, char * __restrict) __DARWIN_EXTSN(realpath);
 #else /* (!__DARWIN_UNIX03 || _POSIX_C_SOURCE) && !_DARWIN_C_SOURCE && !_DARWIN_BETTER_REALPATH */
 char	*realpath(const char * __restrict, char * __restrict) __DARWIN_ALIAS(realpath);
 #endif /* (__DARWIN_UNIX03 && _POSIX_C_SOURCE) || _DARWIN_C_SOURCE || _DARWIN_BETTER_REALPATH */
-//Begin-Libc
-#endif /* __LIBC__ */
-//End-Libc
 unsigned short
 	*seed48(unsigned short[3]);
-//Begin-Libc
-#ifndef LIBC_ALIAS_SETENV
-//End-Libc
 int	 setenv(const char * __name, const char * __value, int __overwrite) __DARWIN_ALIAS(setenv);
-//Begin-Libc
-#else /* LIBC_ALIAS_SETENV */
-int	 setenv(const char * __name, const char * __value, int __overwrite) LIBC_ALIAS(setenv);
-#endif /* !LIBC_ALIAS_SETENV */
-//End-Libc
 #if __DARWIN_UNIX03
-//Begin-Libc
-#ifndef LIBC_ALIAS_SETKEY
-//End-Libc
 void	 setkey(const char *) __DARWIN_ALIAS(setkey);
-//Begin-Libc
-#else /* LIBC_ALIAS_SETKEY */
-void	 setkey(const char *) LIBC_ALIAS(setkey);
-#endif /* !LIBC_ALIAS_SETKEY */
-//End-Libc
 #else /* !__DARWIN_UNIX03 */
 int	 setkey(const char *);
 #endif /* __DARWIN_UNIX03 */
@@ -296,43 +270,42 @@ void	 srandom(unsigned long);
 #endif /* __DARWIN_UNIX03 */
 int	 unlockpt(int);
 #if __DARWIN_UNIX03
-//Begin-Libc
-#ifndef LIBC_ALIAS_UNSETENV
-//End-Libc
 int	 unsetenv(const char *) __DARWIN_ALIAS(unsetenv);
-//Begin-Libc
-#else /* LIBC_ALIAS_UNSETENV */
-int	 unsetenv(const char *) LIBC_ALIAS(unsetenv);
-#endif /* !LIBC_ALIAS_UNSETENV */
-//End-Libc
 #else /* !__DARWIN_UNIX03 */
 void	 unsetenv(const char *);
 #endif /* __DARWIN_UNIX03 */
 #endif	/* !_ANSI_SOURCE */
+#endif /* UNIFDEF_DRIVERKIT */
 
 #if !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
 #include <machine/types.h>
-
+#ifndef UNIFDEF_DRIVERKIT
 #include <sys/_types/_dev_t.h>
 #include <sys/_types/_mode_t.h>
+#endif /* UNIFDEF_DRIVERKIT */
 #include <_types/_uint32_t.h>
 
 uint32_t arc4random(void);
+#ifndef UNIFDEF_DRIVERKIT
 void	 arc4random_addrandom(unsigned char * /*dat*/, int /*datlen*/)
     __OSX_DEPRECATED(10.0, 10.12, "use arc4random_stir")
     __IOS_DEPRECATED(2.0, 10.0, "use arc4random_stir")
     __TVOS_DEPRECATED(2.0, 10.0, "use arc4random_stir")
     __WATCHOS_DEPRECATED(1.0, 3.0, "use arc4random_stir");
+#endif /* UNIFDEF_DRIVERKIT */
 void	 arc4random_buf(void * __buf, size_t __nbytes) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 void	 arc4random_stir(void);
 uint32_t
 	 arc4random_uniform(uint32_t __upper_bound) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 #ifdef __BLOCKS__
+#ifndef UNIFDEF_DRIVERKIT
 int	 atexit_b(void (^ _Nonnull)(void)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+#endif /* UNIFDEF_DRIVERKIT */
 void	*bsearch_b(const void *__key, const void *__base, size_t __nel,
 	    size_t __width, int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
 
+#ifndef UNIFDEF_DRIVERKIT
 	 /* getcap(3) functions */
 char	*cgetcap(char *, const char *, int);
 int	 cgetclose(void);
@@ -352,49 +325,72 @@ char	*getbsize(int *, long *);
 int	 getloadavg(double [], int);
 const char
 	*getprogname(void);
+void	 setprogname(const char *);
+#endif /* UNIFDEF_DRIVERKIT */
+
+#ifdef __BLOCKS__
+#if __has_attribute(noescape)
+#define __sort_noescape __attribute__((__noescape__))
+#else
+#define __sort_noescape
+#endif
+#endif /* __BLOCKS__ */
 
 int	 heapsort(void *__base, size_t __nel, size_t __width,
 	    int (* _Nonnull __compar)(const void *, const void *));
 #ifdef __BLOCKS__
 int	 heapsort_b(void *__base, size_t __nel, size_t __width,
-	    int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+	    int (^ _Nonnull __compar)(const void *, const void *) __sort_noescape)
+	    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
 int	 mergesort(void *__base, size_t __nel, size_t __width,
 	    int (* _Nonnull __compar)(const void *, const void *));
 #ifdef __BLOCKS__
 int	 mergesort_b(void *__base, size_t __nel, size_t __width,
-	    int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+	    int (^ _Nonnull __compar)(const void *, const void *) __sort_noescape)
+	    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
+#ifndef UNIFDEF_DRIVERKIT
 void	 psort(void *__base, size_t __nel, size_t __width,
-	    int (* _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+	    int (* _Nonnull __compar)(const void *, const void *))
+	    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #ifdef __BLOCKS__
 void	 psort_b(void *__base, size_t __nel, size_t __width,
-	    int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+	    int (^ _Nonnull __compar)(const void *, const void *) __sort_noescape)
+	    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
 void	 psort_r(void *__base, size_t __nel, size_t __width, void *,
-	    int (* _Nonnull __compar)(void *, const void *, const void *))  __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+	    int (* _Nonnull __compar)(void *, const void *, const void *))
+	    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+#endif /* UNIFDEF_DRIVERKIT */
 #ifdef __BLOCKS__
 void	 qsort_b(void *__base, size_t __nel, size_t __width,
-	    int (^ _Nonnull __compar)(const void *, const void *)) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
+	    int (^ _Nonnull __compar)(const void *, const void *) __sort_noescape)
+	    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_2);
 #endif /* __BLOCKS__ */
 void	 qsort_r(void *__base, size_t __nel, size_t __width, void *,
 	    int (* _Nonnull __compar)(void *, const void *, const void *));
 int	 radixsort(const unsigned char **__base, int __nel, const unsigned char *__table,
 	    unsigned __endbyte);
-void	 setprogname(const char *);
+int	rpmatch(const char *)
+	__API_AVAILABLE(macos(10.15), ios(13.0), tvos(13.0), watchos(6.0));
 int	 sradixsort(const unsigned char **__base, int __nel, const unsigned char *__table,
 	    unsigned __endbyte);
+#ifndef UNIFDEF_DRIVERKIT
 void	 sranddev(void);
 void	 srandomdev(void);
-void	*reallocf(void *__ptr, size_t __size);
+void	*reallocf(void *__ptr, size_t __size) __alloc_size(2);
+#endif /* UNIFDEF_DRIVERKIT */
 #if !__DARWIN_NO_LONG_LONG
 long long
 	 strtoq(const char *__str, char **__endptr, int __base);
 unsigned long long
 	 strtouq(const char *__str, char **__endptr, int __base);
 #endif /* !__DARWIN_NO_LONG_LONG */
+#ifndef UNIFDEF_DRIVERKIT
 extern char *suboptarg;		/* getsubopt(3) external variable */
-void	*valloc(size_t);
+/* valloc is now declared in _malloc.h */
+#endif /* UNIFDEF_DRIVERKIT */
 #endif	/* !_ANSI_SOURCE && !_POSIX_SOURCE */
 
 /* Poison the following routines if -fshort-wchar is set */

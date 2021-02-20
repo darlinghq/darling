@@ -431,6 +431,7 @@
 				INSTALL_PATH = /usr/lib/system;
 				INSTALL_PATH_PREFIX = "$(INSTALL_PATH_PREFIX_$(PLATFORM_NAME))";
 				INSTALL_PATH_PREFIX_iphonesimulator = "$(SDKROOT)";
+				IS_ZIPPERED = YES;
 				LIBSYSTEM_LIBS = "$(LIBSYSTEM_LIBS_$(PLATFORM_NAME))";
 				LIBSYSTEM_LIBS_iphoneos = "-lsystem_c -ldyld";
 				LIBSYSTEM_LIBS_iphonesimulator = "-lsystem_sim_c -ldyld_sim -Wl,-upward-lSystem";
@@ -475,6 +476,7 @@
 				INSTALL_PATH = "$(INSTALL_PATH_PREFIX)/usr/lib/system";
 				INSTALL_PATH_PREFIX = "$(INSTALL_PATH_PREFIX_$(PLATFORM_NAME))";
 				INSTALL_PATH_PREFIX_iphonesimulator = "$(SDKROOT)";
+				IS_ZIPPERED = YES;
 				LD_DYLIB_INSTALL_NAME = "/usr/lib/system/$(PRODUCT_NAME).dylib";
 				LIBSYSTEM_LIBS = "$(LIBSYSTEM_LIBS_$(PLATFORM_NAME))";
 				LIBSYSTEM_LIBS_iphoneos = "-lsystem_c -ldyld -Wl,-upward-lSystem";

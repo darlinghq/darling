@@ -4,7 +4,6 @@ cmake_minimum_required(VERSION 2.4.0)
 
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-DPRIVATE)
-add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc -D__DARWIN_UNIX03 -fPIC -w")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load")

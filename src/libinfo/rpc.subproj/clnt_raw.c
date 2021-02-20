@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -67,6 +67,8 @@ static char *rcsid = "$Id: clnt_raw.c,v 1.3 2002/02/19 20:36:22 epeyton Exp $";
  * any interference from the kernal.
  */
 
+#include "libinfo_common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <rpc/rpc.h>
@@ -107,6 +109,7 @@ void	svc_getreq();
 /*
  * Create a client handle for memory based rpc.
  */
+LIBINFO_EXPORT
 CLIENT *
 clntraw_create(prog, vers)
 #ifdef __LP64__

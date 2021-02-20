@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -57,6 +57,8 @@
 static char *rcsid = "$OpenBSD: yp_bind.c,v 1.9 1997/04/29 21:25:20 deraadt Exp $";
 #endif /* LIBC_SCCS and not lint */
 
+#include "libinfo_common.h"
+
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -82,6 +84,7 @@ char _yp_domain[MAXHOSTNAMELEN] = { '\0' };
 
 int _yplib_timeout = 10;
 
+LIBINFO_EXPORT
 int
 _yp_dobind(dom, ypdb)
 	const char     *dom;
@@ -294,6 +297,7 @@ _yp_unbind(ypb)
 	ypb->dom_socket = -1;
 }
 
+LIBINFO_EXPORT
 int
 yp_bind(dom)
 	const char     *dom;
@@ -301,6 +305,7 @@ yp_bind(dom)
 	return _yp_dobind(dom, NULL);
 }
 
+LIBINFO_EXPORT
 void
 yp_unbind(dom)
 	const char     *dom;

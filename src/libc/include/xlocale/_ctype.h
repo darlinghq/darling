@@ -24,6 +24,9 @@
 #ifndef _XLOCALE__CTYPE_H_
 #define _XLOCALE__CTYPE_H_
 
+#include <_ctype.h>
+#include <_xlocale.h>
+
 /*
  * Use inline functions if we are allowed to and the compiler supports them.
  */
@@ -37,27 +40,9 @@ __darwin_ct_rune_t	___tolower_l(__darwin_ct_rune_t, locale_t);
 __darwin_ct_rune_t	___toupper_l(__darwin_ct_rune_t, locale_t);
 __END_DECLS
 
-//Begin-Libc
-#ifdef __LIBC__
-__DARWIN_CTYPE_inline int
-__maskrune_l(__darwin_ct_rune_t _c, unsigned long _f, locale_t _l)
-{
-	/* _CurrentRuneLocale.__runetype is __uint32_t
-	 * _f is unsigned long
-	 * ___runetype_l(_c, _l) is unsigned long
-	 * retval is int
-	 */
-	return (int)((_c < 0 || _c >= _CACHED_RUNES) ? (__uint32_t)___runetype_l(_c, _l) :
-		__locale_ptr(_l)->__lc_ctype->_CurrentRuneLocale.__runetype[_c]) & (__uint32_t)_f;
-}
-#else /* !__LIBC__ */
-//End-Libc
 __BEGIN_DECLS
 int             	__maskrune_l(__darwin_ct_rune_t, unsigned long, locale_t);
 __END_DECLS
-//Begin-Libc
-#endif /* __LIBC__ */
-//End-Libc
 
 __DARWIN_CTYPE_inline int
 __istype_l(__darwin_ct_rune_t _c, unsigned long _f, locale_t _l)

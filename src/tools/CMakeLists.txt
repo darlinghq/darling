@@ -1,10 +1,5 @@
 project(tools)
 
-add_compile_options(
-    -Werror
-    -Wall
-)
-
 add_darling_executable(sw_vers sw_vers.c)
 add_darling_executable(sudo sudo.c)
 add_darling_executable(codesign codesign.c)

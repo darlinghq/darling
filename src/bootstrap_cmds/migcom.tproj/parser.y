@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -55,6 +55,8 @@
 %token	syKernelServer
 
 %token	syMsgOption
+%token	syUseSpecialReplyPort
+%token	syConsumeOnSendError
 %token	syMsgSeqno
 %token	syWaitTime
 %token	sySendTime
@@ -162,7 +164,7 @@
 #include "global.h"
 #include "error.h"
 
-static char *import_name();
+static char *import_name(statement_kind_t sk);
 extern int yylex(void);
 
 /* forward declaration */
@@ -201,8 +203,10 @@ Statement		:	Subsystem sySemi
 			|	WaitTime sySemi
 			|	SendTime sySemi
 			|	MsgOption sySemi
-                        |       UserTypeLimit sySemi
-                        |       OnStackLimit sySemi
+			|	UseSpecialReplyPort sySemi
+			|	ConsumeOnSendError sySemi
+			|	UserTypeLimit sySemi
+			|	OnStackLimit sySemi
 			|	Error sySemi
 			|	ServerPrefix sySemi
 			|	UserPrefix sySemi
@@ -210,7 +214,7 @@ Statement		:	Subsystem sySemi
 			|	TypeDecl sySemi
 			|	RoutineDecl sySemi
 {
-    register statement_t *st = stAlloc();
+    statement_t *st = stAlloc();
 
     st->stKind = skRoutine;
     st->stRoutine = $1;
@@ -293,6 +297,29 @@ MsgOption		:	LookString syMsgOption syString
 }
 			;
 
+UseSpecialReplyPort	:	syUseSpecialReplyPort syNumber
+{
+    UseSpecialReplyPort = ($2 != 0);
+    HasUseSpecialReplyPort |= UseSpecialReplyPort;
+}
+			;
+
+ConsumeOnSendError	:	LookString syConsumeOnSendError syString
+{
+    if (strcasecmp($3, "None") == 0) {
+        ConsumeOnSendError = ConsumeOnSendErrorNone;
+    } else if (strcasecmp($3, "Timeout") == 0) {
+        ConsumeOnSendError = ConsumeOnSendErrorTimeout;
+        HasConsumeOnSendError = TRUE;
+    } else if (strcasecmp($3, "Any") == 0) {
+        ConsumeOnSendError = ConsumeOnSendErrorAny;
+        HasConsumeOnSendError = TRUE;
+    } else {
+        error("syntax error");
+    }
+}
+			;
+
 UserTypeLimit           :       syUserTypeLimit syNumber
 				{UserTypeLimit = $2; }
                         ;
@@ -362,7 +389,7 @@ ServerDemux		:	syServerDemux syIdentifier
 
 Import			:	LookFileName ImportIndicant syFileName
 {
-    register statement_t *st = stAlloc();
+    statement_t *st = stAlloc();
     st->stKind = $2;
     st->stFileName = $3;
 
@@ -390,7 +417,7 @@ RCSDecl			:	LookQString syRCSId syQString
 
 TypeDecl		:	syType NamedTypeSpec
 {
-    register identifier_t name = $2->itName;
+    identifier_t name = $2->itName;
 
     if (itLookUp(name) != itNULL)
       warn("overriding previous definition of %s", name);

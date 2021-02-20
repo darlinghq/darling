@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2004-2006, 2009, 2011-2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2004-2006, 2009, 2011-2013, 2015-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,23 +17,23 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #include <stdlib.h>
 #include <strings.h>
 #include <mach/mach.h>
-#include <mach/mach_error.h>
 #include <mach/mach_time.h>
 #include <CommonCrypto/CommonDigest.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <SystemConfiguration/SCPrivate.h>
+#include "SCNetworkReachabilityInternal.h"
 
 #include "dnsinfo_create.h"
 #include "dnsinfo_private.h"
-#include "network_information_priv.h"
+#include "network_state_information_priv.h"
 
 #include "ip_plugin.h"
 
@@ -63,6 +63,7 @@ _dns_configuration_create()
 	_dns_config_buf_t	*config;
 
 	config = calloc(1, INITIAL_CONFIGURATION_BUF_SIZE);
+	config->config.version = DNSINFO_VERSION;
 	config->config.generation = mach_absolute_time();
 //	config->n_attribute = 0;
 //	config->n_padding = 0;
@@ -79,7 +80,6 @@ config_add_attribute(dns_create_config_t	*_config,
 {
 	_dns_config_buf_t	*config	= (_dns_config_buf_t *)*_config;
 	dns_attribute_t		*header;
-	int			i;
 	uint32_t		newLen;
 	uint32_t		newSize;
 	uint32_t		oldLen;
@@ -90,7 +90,7 @@ config_add_attribute(dns_create_config_t	*_config,
 	oldLen         = ntohl(config->n_attribute);
 	rounded_length = ROUNDUP(attribute_length, sizeof(uint32_t));
 	newLen         = sizeof(dns_attribute_t) + rounded_length;
-	newSize = sizeof(_dns_config_buf_t) + oldLen + newLen;
+	newSize        = sizeof(_dns_config_buf_t) + oldLen + newLen;
 	if (newSize > INITIAL_CONFIGURATION_BUF_SIZE) {
 		config = realloc(config, newSize);
 	}
@@ -108,8 +108,8 @@ config_add_attribute(dns_create_config_t	*_config,
 
 	// add attribute [data]
 
-	bcopy(attribute, &header->attribute[0], attribute_length);
-	for (i = attribute_length; i < rounded_length; i++) {
+	memcpy(&header->attribute[0], attribute, attribute_length);
+	for (uint32_t i = attribute_length; i < rounded_length; i++) {
 		header->attribute[i] = 0;
 	}
 
@@ -185,28 +185,28 @@ _dns_configuration_signature(dns_create_config_t	*_config,
 			     unsigned char		*signature,
 			     size_t			signature_len)
 {
-	bzero(signature, signature_len);
+	memset(signature, 0, signature_len);
 
 	if (_config != NULL) {
 		_dns_config_buf_t	*config	= (_dns_config_buf_t *)*_config;
 
 		if (config != NULL) {
-			CC_SHA1_CTX	ctx;
+			CC_SHA256_CTX	ctx;
 			uint64_t	generation_save;
-			unsigned char	*sha1;
-			unsigned char	sha1_buf[CC_SHA1_DIGEST_LENGTH];
+			unsigned char	*sha256;
+			unsigned char	sha256_buf[CC_SHA256_DIGEST_LENGTH];
 
 			generation_save = config->config.generation;
 			config->config.generation = 0;
 
-			sha1 = (signature_len >= CC_SHA1_DIGEST_LENGTH) ? signature : sha1_buf;
-			CC_SHA1_Init(&ctx);
-			CC_SHA1_Update(&ctx,
+			sha256 = (signature_len >= CC_SHA256_DIGEST_LENGTH) ? signature : sha256_buf;
+			CC_SHA256_Init(&ctx);
+			CC_SHA256_Update(&ctx,
 				       config,
 				       sizeof(_dns_config_buf_t) + ntohl(config->n_attribute));
-			CC_SHA1_Final(sha1, &ctx);
-			if (sha1 != signature) {
-				bcopy(sha1, signature, signature_len);
+			CC_SHA256_Final(sha256, &ctx);
+			if (sha256 != signature) {
+				memcpy(signature, sha256, signature_len);
 			}
 
 			config->config.generation = generation_save;
@@ -252,7 +252,6 @@ _dns_resolver_add_attribute(dns_create_resolver_t	*_resolver,
 			    void			*attribute)
 {
 	dns_attribute_t		*header;
-	int			i;
 	uint32_t		newLen;
 	uint32_t		newSize;
 	uint32_t		oldLen;
@@ -279,8 +278,8 @@ _dns_resolver_add_attribute(dns_create_resolver_t	*_resolver,
 
 	// add attribute [data]
 
-	bcopy(attribute, &header->attribute[0], attribute_length);
-	for (i = attribute_length; i < rounded_length; i++) {
+	memcpy(&header->attribute[0], attribute, attribute_length);
+	for (uint32_t i = attribute_length; i < rounded_length; i++) {
 		header->attribute[i] = 0;
 	}
 
@@ -352,6 +351,15 @@ _dns_resolver_add_sortaddr(dns_create_resolver_t *_resolver, dns_sortaddr_t *sor
 
 __private_extern__
 void
+_dns_resolver_set_configuration_identifier(dns_create_resolver_t *_resolver, const char *cid)
+{
+	_dns_resolver_add_attribute(_resolver, RESOLVER_ATTRIBUTE_CONFIGURATION_ID, (uint32_t)strlen(cid) + 1, (void *)cid);
+	return;
+}
+
+
+__private_extern__
+void
 _dns_resolver_set_domain(dns_create_resolver_t *_resolver, const char *domain)
 {
 	_dns_resolver_add_attribute(_resolver, RESOLVER_ATTRIBUTE_DOMAIN, (uint32_t)strlen(domain) + 1, (void *)domain);
@@ -372,11 +380,16 @@ _dns_resolver_set_flags(dns_create_resolver_t *_resolver, uint32_t flags)
 
 __private_extern__
 void
-_dns_resolver_set_if_index(dns_create_resolver_t *_resolver, uint32_t if_index)
+_dns_resolver_set_if_index(dns_create_resolver_t	*_resolver,
+			   uint32_t			if_index,
+			   const char			*if_name)
 {
 	_dns_resolver_buf_t	*resolver	= (_dns_resolver_buf_t *)*_resolver;
 
 	resolver->resolver.if_index = htonl(if_index);
+	if (if_name != NULL) {
+		_dns_resolver_add_attribute(_resolver, RESOLVER_ATTRIBUTE_INTERFACE_NAME, (uint32_t)strlen(if_name), (void *)if_name);
+	}
 	return;
 }
 
@@ -409,23 +422,6 @@ _dns_resolver_set_port(dns_create_resolver_t *_resolver, uint16_t port)
 
 	resolver->resolver.port = htons(port);
 	return;
-}
-
-
-/*
- * rankReachability()
- *   Not reachable       == 0
- *   Connection Required == 1
- *   Reachable           == 2
- */
-static int
-rankReachability(SCNetworkReachabilityFlags flags)
-{
-	int	rank = 0;
-
-	if (flags & kSCNetworkReachabilityFlagsReachable)		rank = 2;
-	if (flags & kSCNetworkReachabilityFlagsConnectionRequired)	rank = 1;
-	return rank;
 }
 
 
@@ -510,9 +506,13 @@ _dns_resolver_set_reach_flags(dns_create_resolver_t _resolver)
 				}
 
 				if ((n_nameserver++ == 0) ||
-				    (rankReachability(ns_flags) < rankReachability(flags))) {
-					/* return the first (and later, worst case) result */
+				    (__SCNetworkReachabilityRank(ns_flags) > __SCNetworkReachabilityRank(flags))) {
+					/* return the first (and later, best case) result */
 					flags = ns_flags;
+					if (__SCNetworkReachabilityRank(flags) == ReachabilityRankReachable) {
+						// Can't get any better than REACHABLE
+						break;
+					}
 				}
 			}
 

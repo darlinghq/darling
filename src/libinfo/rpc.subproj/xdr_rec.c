@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -52,6 +52,8 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  */
+
+#include "libinfo_common.h"
 
 #include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint) 
@@ -189,6 +191,7 @@ static bool_t	realloc_stream(RECSTREAM *, int);
  * write respectively.   They are like the system
  * calls expect that they take an opaque handle rather than an fd.
  */
+LIBINFO_EXPORT
 void
 xdrrec_create(xdrs, sendsize, recvsize, tcp_handle, readit, writeit)
 	XDR *xdrs;
@@ -490,6 +493,7 @@ xdrrec_destroy(xdrs)
  * Before reading (deserializing from the stream, one should always call
  * this procedure to guarantee proper record alignment.
  */
+LIBINFO_EXPORT
 bool_t
 xdrrec_skiprecord(xdrs)
 	XDR *xdrs;
@@ -526,6 +530,7 @@ xdrrec_skiprecord(xdrs)
  * Returns TRUE iff there is no more input in the buffer
  * after consuming the rest of the current record.
  */
+LIBINFO_EXPORT
 bool_t
 xdrrec_eof(xdrs)
 	XDR *xdrs;
@@ -550,6 +555,7 @@ xdrrec_eof(xdrs)
  * (output) tcp stream.  (This let's the package support batched or
  * pipelined procedure calls.)  TRUE => immmediate flush to tcp connection.
  */
+LIBINFO_EXPORT
 bool_t
 xdrrec_endofrecord(xdrs, sendnow)
 	XDR *xdrs;

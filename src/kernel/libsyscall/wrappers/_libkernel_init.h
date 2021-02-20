@@ -2,7 +2,7 @@
  * Copyright (c) 2010-2014 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
@@ -11,10 +11,10 @@
  * unlawful or unlicensed copies of an Apple operating system, or to
  * circumvent, violate, or enable the circumvention or violation of, any
  * terms of an Apple operating system software license agreement.
- * 
+ *
  * Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -22,7 +22,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
@@ -68,6 +68,28 @@ typedef const struct _libkernel_functions {
 	void (*dyld_func_lookup)(const char*,void**);
 } *_libkernel_functions_t;
 
+typedef const struct _libkernel_string_functions {
+	/* The following functions are included in version 1 of this structure */
+	unsigned long version;
+	void (*bzero)(void *s, size_t n);
+	void * (*memchr)(const void *s, int c, size_t n);
+	int (*memcmp)(const void *s1, const void *s2, size_t n);
+	void * (*memmove)(void *dst, const void *src, size_t n);
+	void * (*memccpy)(void *__restrict dst, const void *__restrict src, int c, size_t n);
+	void * (*memset)(void *b, int c, size_t len);
+	char * (*strchr)(const char *s, int c);
+	int (*strcmp)(const char *s1, const char *s2);
+	char * (*strcpy)(char * restrict dst, const char * restrict src);
+	size_t (*strlcat)(char * restrict dst, const char * restrict src, size_t maxlen);
+	size_t (*strlcpy)(char * restrict dst, const char * restrict src, size_t maxlen);
+	size_t (*strlen)(const char *str);
+	int (*strncmp)(const char *s1, const char *s2, size_t n);
+	char * (*strncpy)(char * restrict dst, const char * restrict src, size_t maxlen);
+	size_t (*strnlen)(const char *s, size_t maxlen);
+	char * (*strstr)(const char *s, const char *find);
+	/* Subsequent versions must only add pointers! */
+} *_libkernel_string_functions_t;
+
 typedef const struct _libkernel_voucher_functions {
 	/* The following functions are included in version 1 of this structure */
 	unsigned long version;
@@ -82,7 +104,9 @@ typedef const struct _libkernel_voucher_functions {
 struct ProgramVars; /* forward reference */
 
 void __libkernel_init(_libkernel_functions_t fns, const char *envp[],
-		const char *apple[], const struct ProgramVars *vars);
+    const char *apple[], const struct ProgramVars *vars);
+
+kern_return_t __libkernel_platform_init(_libkernel_string_functions_t fns);
 
 kern_return_t __libkernel_voucher_init(_libkernel_voucher_functions_t fns);
 

@@ -89,6 +89,7 @@ static const char * const err_codes_libkern_kext[] = {
 	"(libkern/kext) kext is in use or retained (cannot unload)",          /* 0x18 */
 	"(libkern/kext) kext request timed out",                              /* 0x19 */
 	"(libkern/kext) kext is stopping and cannot issue requests",          /* 0x1a */
+	"(libkern/kext) system policy prevents loading",                      /* 0x1b */
 };
 
 /* libkern is err_system(0x37) */

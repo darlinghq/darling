@@ -19,6 +19,24 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFAuthenticatedEncryptionOperation : NSObject
+#import <SecurityFoundation/SFEncryptionOperation.h>
+#import <SecurityFoundation/_SFAESKeySpecifier.h>
+#import <SecurityFoundation/_SFAuthenticatedCiphertext.h>
+#import <SecurityFoundation/_SFAESKey.h>
+
+#define SFAuthenticatedEncryptionOperation _SFAuthenticatedEncryptionOperation
+
+// i'm 90% sure this is AES-GCM
+
+@interface SFAuthenticatedEncryptionOperation : NSObject <SFEncryptionOperation>
+
+- (instancetype)initWithKeySpecifier:(SFAESKeySpecifier*)keySpecifier;
+
+- (SFAuthenticatedCiphertext*)encrypt:(NSData*)data withKey:(SFAESKey*)key error:(NSError**)error;
+- (SFAuthenticatedCiphertext*)encrypt:(NSData*)data withKey:(SFAESKey*)key additionalAuthenticatedData:(NSData*)aad error:(NSError**)error;
+
+// common sense tells me that the input parameter should be `SFAuthenticatedCiphertext*`,
+// but `SecDbKeychainItemV7.m` in Security says otherwise
+- (NSData*)decrypt:(NSData*)data withKey:(SFAESKey*)key error:(NSError**)error;
 
 @end

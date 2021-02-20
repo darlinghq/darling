@@ -16,7 +16,7 @@ FileName	({QString}|{AString})
 
 %{
 /*
- * Copyright (c) 1999, 2008 Apple, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -120,8 +120,8 @@ static int	oldYYBegin = 0;
 
 int lineno = 0;			/* Replaces lex yylineno */
 
-static void doSharp(); /* process body of # directives */
-extern void yyerror();
+static void doSharp(char *); /* process body of # directives */
+extern void yyerror(char *);
 %}
 
 %Start	Normal String FileName QString SkipToEOL
@@ -132,6 +132,8 @@ extern void yyerror();
 <Normal>[Ss][Ii][Mm][Pp][Ll][Ee][Rr][Oo][Uu][Tt][Ii][Nn][Ee] RETURN(sySimpleRoutine);
 <Normal>[Ss][Uu][Bb][Ss][Yy][Ss][Tt][Ee][Mm]	RETURN(sySubsystem);
 <Normal>[Mm][Ss][Gg][Oo][Pp][Tt][Ii][Oo][Nn]	RETURN(syMsgOption);
+<Normal>[Uu][Ss][Ee][Ss][Pp][Ee][Cc][Ii][Aa][Ll][Rr][Ee][Pp][Ll][Yy][Pp][Oo][Rr][Tt]    RETURN(syUseSpecialReplyPort);
+<Normal>[Cc][Oo][Nn][Ss][Uu][Mm][Ee][Oo][Nn][Ss][Ee][Nn][Dd][Ee][Rr][Rr][Oo][Rr]    RETURN(syConsumeOnSendError);
 <Normal>[Mm][Ss][Gg][Ss][Ee][Qq][Nn][Oo]	RETURN(syMsgSeqno);
 <Normal>[Ww][Aa][Ii][Tt][Tt][Ii][Mm][Ee]	RETURN(syWaitTime);
 <Normal>[Ss][Ee][Nn][Dd][Tt][Ii][Mm][Ee]	RETURN(sySendTime);
@@ -293,7 +295,7 @@ LookFileName()
 static void
 doSharp(char *body)
 {
-  register char *startName, *endName;
+  char *startName, *endName;
 
   lineno = atoi(body);
   startName = strchr(body, '"');

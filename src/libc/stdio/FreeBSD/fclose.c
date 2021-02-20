@@ -60,7 +60,7 @@ fclose(FILE *fp)
 		return (EOF);
 	}
 	FLOCKFILE(fp);
-	r = fp->_flags & __SWR ? __sflush(fp) : 0;
+	r = __sflush(fp);
 	if (fp->_close != NULL && (*fp->_close)(fp->_cookie) < 0)
 		r = EOF;
 	if (fp->_flags & __SMBF)

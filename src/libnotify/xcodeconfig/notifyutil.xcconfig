@@ -1,4 +1,4 @@
 #include "base.xcconfig"
 
-INSTALL_PATH_ACTUAL = /usr/bin
+INSTALL_PATH = /usr/bin
 

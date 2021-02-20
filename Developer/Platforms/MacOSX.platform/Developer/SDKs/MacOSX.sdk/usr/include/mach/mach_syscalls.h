@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/mach_syscalls.h
+../../../../../../../../../src/external/lkm/osfmk/mach/mach_syscalls.h

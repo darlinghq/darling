@@ -8,6 +8,8 @@
 #include "../../external/lkm/api.h"
 #include "lkm.h"
 #include "mach_traps.h"
+#include <mach/mach_init.h>
+#include "../ext/mremap.h"
 
 #define UNIMPLEMENTED_TRAP() { char msg[] = "Called unimplemented Mach trap: "; write(2, msg, sizeof(msg)-1); write(2, __FUNCTION__, sizeof(__FUNCTION__)-1); write(2, "\n", 1); }
 
@@ -279,7 +281,7 @@ kern_return_t _kernelrpc_mach_vm_map_trap_impl(
 	if (!(flags & VM_FLAGS_ANYWHERE))
 		posix_flags |= MAP_FIXED;
 	if ((flags >> 24) == VM_MEMORY_REALLOC)
-		addr = __linux_mremap(((char*)*address) - 0x1000, 0x1000, 0x1000 + size, 0);
+		addr = __linux_mremap(((char*)*address) - 0x1000, 0x1000, 0x1000 + size, 0, NULL);
 	else
 		addr = mmap(*address, size, prot, posix_flags, -1, 0);
 	
@@ -447,8 +449,13 @@ kern_return_t _kernelrpc_mach_port_construct_trap_impl(
 				mach_port_name_t *name
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_construct_args args = {
+		.task_right_name = target,
+		.options = options,
+		.context = context,
+		.port_right_name_out = name,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_construct_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_destruct_trap_impl(
@@ -458,8 +465,13 @@ kern_return_t _kernelrpc_mach_port_destruct_trap_impl(
 				uint64_t guard
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_destruct_args args = {
+		.task_right_name = target,
+		.port_right_name = name,
+		.srdelta = srdelta,
+		.guard = guard,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_destruct_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_guard_trap_impl(
@@ -469,8 +481,13 @@ kern_return_t _kernelrpc_mach_port_guard_trap_impl(
 				boolean_t strict
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_guard_args args = {
+		.task_right_name = target,
+		.port_right_name = name,
+		.guard = guard,
+		.strict = strict,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_guard_trap, &args);
 }
 
 kern_return_t _kernelrpc_mach_port_unguard_trap_impl(
@@ -479,9 +496,72 @@ kern_return_t _kernelrpc_mach_port_unguard_trap_impl(
 				uint64_t guard
 )
 {
-	UNIMPLEMENTED_TRAP();
-	return KERN_FAILURE;
+	struct mach_port_unguard_args args = {
+		.task_right_name = target,
+		.port_right_name = name,
+		.guard = guard,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_unguard_trap, &args);
 }
+
+kern_return_t thread_get_special_reply_port_impl(void)
+{
+	return lkm_call(NR_thread_get_special_reply_port, 0);
+};
+
+kern_return_t _kernelrpc_mach_port_request_notification_impl(
+	ipc_space_t task,
+	mach_port_name_t name,
+	mach_msg_id_t msgid,
+	mach_port_mscount_t sync,
+	mach_port_name_t notify,
+	mach_msg_type_name_t notifyPoly,
+	mach_port_name_t* previous
+)
+{
+	struct mach_port_request_notification_args args = {
+		.task_right_name = task,
+		.port_right_name = name,
+		.message_id = msgid,
+		.make_send_count = sync,
+		.notification_destination_port_name = notify,
+		.message_type = notifyPoly,
+		.previous_destination_port_name_out = previous,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_request_notification_trap, &args);
+};
+
+kern_return_t _kernelrpc_mach_port_get_attributes_impl(
+	mach_port_name_t target,
+	mach_port_name_t name,
+	mach_port_flavor_t flavor,
+	mach_port_info_t port_info_out,
+	mach_msg_type_number_t* port_info_outCnt
+)
+{
+	struct mach_port_get_attributes_args args = {
+		.task_right_name = target,
+		.port_right_name = name,
+		.flavor = flavor,
+		.info_out = port_info_out,
+		.count_out = port_info_outCnt,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_get_attributes_trap, &args);
+};
+
+kern_return_t _kernelrpc_mach_port_type_impl(
+	ipc_space_t task,
+	mach_port_name_t name,
+	mach_port_type_t* ptype
+)
+{
+	struct mach_port_type_args args = {
+		.task_right_name = task,
+		.port_right_name = name,
+		.port_type_out = ptype,
+	};
+	return lkm_call(NR__kernelrpc_mach_port_type_trap, &args);
+};
 
 kern_return_t macx_swapon_impl(
 				uint64_t filename,
@@ -616,8 +696,8 @@ kern_return_t bsdthread_terminate_trap_impl(
 	struct bsdthread_terminate_args args = {
 		.stackaddr = stackaddr,
 		.freesize = freesize,
-		.thread_right_name = thread,
-		.signal = sem
+		.port = thread,
+		.sem = sem
 	};
 
 	return lkm_call(NR_bsdthread_terminate_trap, &args);

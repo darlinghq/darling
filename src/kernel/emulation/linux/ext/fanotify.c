@@ -2,7 +2,7 @@
 #include "../errno.h"
 #include "../vchroot_expand.h"
 #include "../bsdthread/per_thread_wd.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <linux-syscalls/linux.h>
 
 extern long cerror(int __err);

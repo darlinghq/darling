@@ -79,7 +79,7 @@ vswprintf_l(wchar_t * __restrict s, size_t n, locale_t loc,
 		return (-1);
 	}
 	*f._p = '\0';
-	mbp = f._bf._base;
+	mbp = (char*)f._bf._base;
 	/*
 	 * XXX Undo the conversion from wide characters to multibyte that
 	 * fputwc() did in __vfwprintf().

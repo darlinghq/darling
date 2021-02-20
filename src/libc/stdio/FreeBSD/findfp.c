@@ -30,6 +30,9 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomma"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)findfp.c	8.2 (Berkeley) 1/4/94";
 #endif /* LIBC_SCCS and not lint */
@@ -119,18 +122,19 @@ static pthread_mutex_t filelist_lock = PTHREAD_MUTEX_INITIALIZER;
 #define FILELIST_UNLOCK()	do { pthread_mutex_unlock(&filelist_lock); } while(0)
 
 static struct glue *
-moreglue(n)
-	int n;
+moreglue(int n)
 {
 	struct glue *g;
 	FILE *p;
 	struct __sFILEX *fx;
+	size_t align;
 
-	g = (struct glue *)malloc(sizeof(*g) + ALIGNBYTES + n * sizeof(FILE) +
+	align = __alignof__( (struct { FILE f; struct __sFILEX s; }){} );
+	g = (struct glue *)malloc(sizeof(*g) + align + n * sizeof(FILE) +
 	    n * sizeof(struct __sFILEX));
 	if (g == NULL)
 		return (NULL);
-	p = (FILE *)ALIGN(g + 1);
+	p = (FILE *)roundup((uintptr_t)(g + 1), align);
 	fx = (struct __sFILEX *)&p[n];
 	g->next = NULL;
 	g->niobs = n;
@@ -158,13 +162,14 @@ __sfp(int count)
 	pthread_once(&__sdidinit, __sinit);
 
 	if (count) {
-		if (__scounted >= __stream_max) {
-			if (__scounted >= (__stream_max = sysconf(_SC_STREAM_MAX))){
+		int32_t new = OSAtomicIncrement32(&__scounted);
+		if (new > __stream_max) {
+			if (new > (__stream_max = sysconf(_SC_STREAM_MAX))){
+				OSAtomicDecrement32(&__scounted);
 				errno = EMFILE;
 				return NULL;
 			}
 		}
-		OSAtomicIncrement32(&__scounted);
 	}
 	/*
 	 * The list must be locked because a FILE may be updated.
@@ -261,7 +266,7 @@ f_prealloc(void)
  * The name `_cleanup' is, alas, fairly well known outside stdio.
  */
 void
-_cleanup()
+_cleanup(void)
 {
 	/* (void) _fwalk(fclose); */
 	(void) _fwalk(__sflush);		/* `cheating' */
@@ -271,7 +276,7 @@ _cleanup()
  * __sinit() is called whenever stdio's internal variables must be set up.
  */
 void
-__sinit()
+__sinit(void)
 {
 #if !TARGET_OS_EMBEDDED
 	int i;
@@ -290,3 +295,4 @@ __sinit()
 	}
 #endif
 }
+#pragma clang diagnostic pop

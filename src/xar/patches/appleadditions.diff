@@ -1,0 +1,1170 @@
+diff -urN xar.hash/include/xar.h.in xar.final/include/xar.h.in
+--- xar.hash/include/xar.h.in	2006-03-17 13:36:32.000000000 -0800
++++ xar.final/include/xar.h.in	2006-03-17 10:35:14.000000000 -0800
+@@ -101,8 +101,20 @@
+ xar_t xar_open(const char *file, int32_t flags);
+ int xar_close(xar_t x);
+ xar_file_t xar_add(xar_t x, const char *path);
++
++xar_file_t xar_add_frombuffer(xar_t x, xar_file_t parent, const char *name, char *buffer, size_t length);
++xar_file_t xar_add_folder(xar_t x, xar_file_t f, const char *name, struct stat *info);
++xar_file_t xar_add_frompath(xar_t x, xar_file_t parent, const char *name, const char *realpath);
++
++xar_file_t xar_add_from_archive(xar_t x, xar_file_t parent, const char *name, xar_t sourcearchive, xar_file_t sourcefile);
++
+ int32_t xar_extract(xar_t x, xar_file_t f);
+ int32_t xar_extract_tofile(xar_t x, xar_file_t f, const char *path);
++int32_t xar_extract_tobuffer(xar_t x, xar_file_t f, char **buffer);
++
++int32_t xar_verify(xar_t x, xar_file_t f);
++
++
+ const char *xar_opt_get(xar_t x, const char *option);
+ int32_t xar_opt_set(xar_t x, const char *option, const char *value);
+ 
+@@ -148,6 +160,7 @@
+ int32_t xar_err_callback(xar_t x, int32_t sev, int32_t err);
+ 
+ char *xar_get_path(xar_file_t f);
++off_t	xar_get_heap_offset(xar_t x);
+ uint64_t xar_ntoh64(uint64_t num);
+ 
+ #endif /* _XAR_H_ */
+diff -urN xar.hash/lib/archive.c xar.final/lib/archive.c
+--- xar.hash/lib/archive.c	2006-03-17 11:25:05.000000000 -0800
++++ xar.final/lib/archive.c	2006-03-17 10:35:14.000000000 -0800
+@@ -217,6 +217,7 @@
+ 		XAR(ret)->heap_len += 20;
+ 		
+ 		xar_opt_set(ret, XAR_OPT_COMPRESSION, XAR_OPT_VAL_GZIP);
++		xar_opt_set(ret, XAR_OPT_FILECKSUM, XAR_OPT_VAL_SHA1);
+ 	} else {
+ 		unsigned char toccksum[EVP_MAX_MD_SIZE];
+ 		unsigned char cval[EVP_MAX_MD_SIZE];
+@@ -455,6 +456,7 @@
+ 
+ 		if( XAR(x)->docksum ) {
+ 			unsigned int l = r;
++			
+ 			memset(chkstr, 0, sizeof(chkstr));
+ 			EVP_DigestFinal(&XAR(x)->toc_ctx, chkstr, &l);
+ 			r = l;
+@@ -588,19 +590,25 @@
+  * x: archive the file should belong to
+  * f: parent node, possibly NULL
+  * name: name of the node to add
++ * realpath: real path to item, this is used if the item being archived is to be located at a different location in the tree
++ * then it is on the real filesystem.
+  * Returns: newly allocated and populated node
+  * Summary: helper function which adds a child of f and populates
+  * its properties.  If f is NULL, the node will be added as a top
+  * level node of the archive, x.
+  */
+-static xar_file_t xar_add_node(xar_t x, xar_file_t f, const char *name, const char *prefix, int srcpath) {
++static xar_file_t xar_add_node(xar_t x, xar_file_t f, const char *name, const char *prefix, const char *realpath, int srcpath) {
+ 	xar_file_t ret;
+ 	const char *path; 
+ 	char *tmp;
+ 	char idstr[32];
+ 
+ 	if( !f ) {
+-		asprintf(&tmp, "%s%s%s", XAR(x)->path_prefix, prefix, name);
++		if( realpath )
++			asprintf(&tmp, "%s", realpath);
++		else
++			asprintf(&tmp, "%s%s%s", XAR(x)->path_prefix, prefix, name);
++
+ 		if( lstat(tmp, &XAR(x)->sbcache) != 0 ) {
+ 			free(tmp);
+ 			return NULL;
+@@ -631,7 +639,12 @@
+ 			}
+ 			
+ 		}
+-		asprintf(&tmp, "%s/%s%s", path, prefix, name);
++
++		if( realpath ){
++			asprintf(&tmp, "%s", realpath);
++		}else
++			asprintf(&tmp, "%s/%s%s", path, prefix, name);
++		
+ 		if( lstat(tmp, &XAR(x)->sbcache) != 0 ) {
+ 			free(tmp);
+ 			return NULL;
+@@ -648,7 +661,7 @@
+ 
+ 	xar_prop_set(ret, "name", name);
+ 
+-	if( xar_arcmod_archive(x, ret, XAR_FILE(ret)->fspath) < 0 ) {
++	if( xar_arcmod_archive(x, ret, XAR_FILE(ret)->fspath, NULL, 0) < 0 ) {
+ 		xar_file_t i;
+ 		if( f ) {
+ 			for( i = XAR_FILE(f)->children; i && (XAR_FILE(i)->next != ret); i = XAR_FILE(i)->next );
+@@ -736,9 +749,9 @@
+ 
+ 	/* tmp3 was not found in children of start, so we add it */
+ 	if( tmp2 ) {
+-		ret = xar_add_node(x, f, tmp3, prefix, 1);
++		ret = xar_add_node(x, f, tmp3, prefix, NULL,  1);
+ 	} else {
+-		ret = xar_add_node(x, f, tmp3, prefix, 0);
++		ret = xar_add_node(x, f, tmp3, prefix, NULL,  0);
+ 	}
+ 
+ 	if( !ret ) {
+@@ -783,18 +796,209 @@
+ 	return xar_add_r(x, NULL, path, "");
+ }
+ 
++/* xar_add_frombuffer
++* x: archive to add the file to
++* parent: parent node, possibly NULL
++* name: name of file
++* buffer: buffer for file contents
++* length: length of buffer
++* Returns: allocated an populated xar_file_t representing the 
++* specified file.
++* Summary: Use this to add chunks of named data to a xar without
++* using the filesystem.
++*/
++
++xar_file_t xar_add_frombuffer(xar_t x, xar_file_t parent, const char *name, char *buffer, size_t length) {
++	xar_file_t ret;
++	char *tmp;
++	char idstr[32];
++	
++	if( !parent ) {
++		ret = xar_file_new(NULL);
++		if( !ret )
++			return NULL;
++		memset(idstr, 0, sizeof(idstr));
++		snprintf(idstr, sizeof(idstr)-1, "%"PRIu64, ++XAR(x)->last_fileid);
++		xar_attr_set(ret, NULL, "id", idstr);
++		XAR_FILE(ret)->parent = NULL;
++		if( XAR(x)->files == NULL )
++			XAR(x)->files = ret;
++		else {
++			XAR_FILE(ret)->next = XAR(x)->files;
++			XAR(x)->files = ret;
++		}
++	} else {
++		ret = xar_file_new(parent);
++		if( !ret )
++			return NULL;
++		memset(idstr, 0, sizeof(idstr));
++		snprintf(idstr, sizeof(idstr)-1, "%"PRIu64, ++XAR(x)->last_fileid);
++		xar_attr_set(ret, NULL, "id", idstr);
++		XAR_FILE(ret)->fspath = tmp;
++	}
++	
++	xar_prop_set(ret, "name", name);
++		
++	//int32_t xar_arcmod_archive(xar_t x, xar_file_t f, const char *file, const char *buffer, size_t len) 
++	if( xar_arcmod_archive(x, ret, NULL , buffer , length) < 0 ) {
++		xar_file_t i;
++		if( parent ) {
++			for( i = XAR_FILE(parent)->children; i && (XAR_FILE(i)->next != ret); i = XAR_FILE(i)->next );
++		} else {
++			for( i = XAR(x)->files; i && (XAR_FILE(i)->next != ret); i = XAR_FILE(i)->next );
++		}
++		if( i )
++			XAR_FILE(i)->next = XAR_FILE(ret)->next;
++		xar_file_free(ret);
++		return NULL;
++	}
++	
++	return ret;
++}
++
++xar_file_t xar_add_folder(xar_t x, xar_file_t f, const char *name, struct stat *info)
++{
++	xar_file_t ret;
++	char idstr[32];
++
++	if( info )
++		memcpy(&XAR(x)->sbcache,info,sizeof(struct stat));
++	
++	ret = xar_file_new(f);
++	if( !ret )
++		return NULL;
++	
++	memset(idstr, 0, sizeof(idstr));
++	snprintf(idstr, sizeof(idstr)-1, "%"PRIu64, ++XAR(x)->last_fileid);
++	xar_attr_set(ret, NULL, "id", idstr);
++	XAR_FILE(ret)->fspath = NULL;
++	
++	if( !f ) {
++		XAR_FILE(ret)->parent = NULL;
++		
++		if( XAR(x)->files == NULL )
++			XAR(x)->files = ret;
++		else {
++			XAR_FILE(ret)->next = XAR(x)->files;
++			XAR(x)->files = ret;
++		}
++	}
++	
++	xar_prop_set(ret, "name", name);
++
++	if( xar_arcmod_archive(x, ret, XAR_FILE(ret)->fspath, NULL, 0) < 0 ) {
++		xar_file_t i;
++		if( f ) {
++			for( i = XAR_FILE(f)->children; i && (XAR_FILE(i)->next != ret); i = XAR_FILE(i)->next );
++		} else {
++			for( i = XAR(x)->files; i && (XAR_FILE(i)->next != ret); i = XAR_FILE(i)->next );
++		}
++		if( i )
++			XAR_FILE(i)->next = XAR_FILE(ret)->next;
++		xar_file_free(ret);
++		return NULL;
++	}
++	
++	return ret;	
++}
++
++xar_file_t xar_add_frompath(xar_t x, xar_file_t parent, const char *name, const char *realpath)
++{
++	return xar_add_node(x, parent, name , "" , realpath,  1);
++}
++
++xar_file_t xar_add_from_archive(xar_t x, xar_file_t parent, const char *name, xar_t sourcearchive, xar_file_t sourcefile)
++{
++	xar_file_t ret;
++	char idstr[32];
++		
++	ret = xar_file_replicate(sourcefile, parent);
++	
++	if( !ret )
++		return NULL;
++	
++	memset(idstr, 0, sizeof(idstr));
++	snprintf(idstr, sizeof(idstr)-1, "%"PRIu64, ++XAR(x)->last_fileid);
++	xar_attr_set(ret, NULL, "id", idstr);
++	XAR_FILE(ret)->fspath = NULL;
++	
++	if( !parent ) {
++		XAR_FILE(ret)->parent = NULL;
++		
++		if( XAR(x)->files == NULL )
++			XAR(x)->files = ret;
++		else {
++			XAR_FILE(ret)->next = XAR(x)->files;
++			XAR(x)->files = ret;
++		}
++	}
++		
++	xar_prop_set(ret, "name", name);
++		
++	/* iterate through all the properties, see if any of them have an offset */
++	xar_iter_t iter = xar_iter_new();
++	const char *attr = xar_prop_first(ret , iter);
++	char *tmpstr = NULL;
++
++	do{
++		asprintf(&tmpstr, "%s/offset", attr);
++		if(0 == xar_prop_get(ret, tmpstr, NULL) ){
++			if( 0 != xar_attrcopy_from_heap_to_heap(sourcearchive, sourcefile, attr, x, ret)){			
++				xar_file_free(ret);
++				ret = NULL;
++				break;
++			}
++		}
++		free(tmpstr);
++		
++	}while( (attr = xar_prop_next(iter)) );
++	
++	xar_iter_free(iter);
++	
++	return ret;	
++}
++
+ /* xar_extract_tofile
+- * x: archive to extract from
+- * f: file associated with x
+- * Returns 0 on success, -1 on failure
+- * Summary: This actually does the file extraction.
+- * No traversal is performed, it is assumed all directory paths
+- * leading up to f already exist.
+- */
++* x: archive to extract from
++* f: file associated with x
++* Returns 0 on success, -1 on failure
++* Summary: This actually does the file extraction.
++* No traversal is performed, it is assumed all directory paths
++* leading up to f already exist.
++*/
+ int32_t xar_extract_tofile(xar_t x, xar_file_t f, const char *path) {
+-	return xar_arcmod_extract(x, f, path);
++	return xar_arcmod_extract(x, f, path,NULL, 0);
+ }
+ 
++
++/* xar_extract_tobuffer
++* x: archive to extract from
++* buffer: buffer to extract to
++* Returns 0 on success, -1 on failure.
++* Summary: This is the entry point for extraction to a buffer.
++* On success, a buffer is allocated with the contents of the file
++* specified.  The caller is responsible for freeing the returend buffer.
++* Example: xar_extract_tobuffer(x, "foo/bar/blah",&buffer)
++*/
++int32_t xar_extract_tobuffer(xar_t x, xar_file_t f, char **buffer) {
++	size_t	size;
++	const char *sizestring = NULL;
++	
++	if(0 != xar_prop_get(f,"data/size",&sizestring)){
++		return -1;
++	}
++
++	size = strtoull(sizestring, (char **)NULL, 10);
++	*buffer = malloc(size);
++	
++	if(!(*buffer)){
++		return -1;
++	}
++	
++	return xar_arcmod_extract(x,f,NULL,*buffer,size);
++}
++
++
+ /* xar_extract
+  * x: archive to extract from
+  * path: path to file to extract
+@@ -828,6 +1032,18 @@
+ 	return xar_extract_tofile(x, f, XAR_FILE(f)->fspath);
+ }
+ 
++/* xar_extract
++* x: archive to extract from
++* f: file to verify
++* Returns 0 on success, -1 on failure.
++* Summary: This function allows for verification of
++* an entry without extraction.  If there is no checksum
++* the verification will pass.
++*/
++int32_t xar_verify(xar_t x, xar_file_t f) {
++	return xar_arcmod_verify(x,f);
++}
++
+ /* read_callback
+  * context: context passed through from the reader
+  * buffer: buffer to read into
+diff -urN xar.hash/lib/archive.h xar.final/lib/archive.h
+--- xar.hash/lib/archive.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/archive.h	2006-03-17 10:35:14.000000000 -0800
+@@ -55,28 +55,28 @@
+ 	const char *ns;
+ 	const char *filler1;
+ 	const char *filler2;
+-	xar_file_t files;      /* file forest */
+-	const char *filename;  /* name of the archive we are operating on */
+-	char *dirname;         /* directory of the archive, used in creation */
+-	int fd;                /* open file descriptor for the archive */
+-	int heap_fd;           /* fd for tmp heap archive, used in creation */
+-	off_t heap_offset;     /* current offset within the heap */
+-	off_t heap_len;        /* current length of the heap */
+-	xar_header_t header;   /* header of the xar archive */
+-	void *readbuf;         /* buffer for reading/writing compressed toc */
+-	size_t readbuf_len;    /* length of readbuf */
+-	size_t offset;         /* offset into readbuf for keeping track
+-	                        * between callbacks. */
+-	size_t toc_count;      /* current bytes read of the toc */
+-	z_stream zs;           /* gz state for compressing/decompressing toc */
+-	char *path_prefix;     /* used for distinguishing absolute paths */
+-	err_handler ercallback; /* callback for errors/warnings */
+-	struct errctx errctx;   /* error callback context */
+-	xar_subdoc_t subdocs;   /* linked list of subdocs */
+-	uint64_t last_fileid;   /* unique fileid's in the archive */
+-	xmlHashTablePtr ino_hash;/* Hash for looking up hardlinked files (add)*/
+-	xmlHashTablePtr link_hash;/* Hash for looking up hardlinked files (extract)*/
+-	xmlHashTablePtr csum_hash;/* Hash for looking up checksums of files */
++	xar_file_t files;			/* file forest */
++	const char *filename;		/* name of the archive we are operating on */
++	char *dirname;				/* directory of the archive, used in creation */
++	int fd;						/* open file descriptor for the archive */
++	int heap_fd;				/* fd for tmp heap archive, used in creation */
++	off_t heap_offset;			/* current offset within the heap */
++	off_t heap_len;				/* current length of the heap */
++	xar_header_t header;		/* header of the xar archive */
++	void *readbuf;				/* buffer for reading/writing compressed toc */
++	size_t readbuf_len;			/* length of readbuf */
++	size_t offset;				/* offset into readbuf for keeping track
++								* between callbacks. */
++	size_t toc_count;			/* current bytes read of the toc */
++	z_stream zs;				/* gz state for compressing/decompressing toc */
++	char *path_prefix;			/* used for distinguishing absolute paths */
++	err_handler ercallback;		/* callback for errors/warnings */
++	struct errctx errctx;		/* error callback context */
++	xar_subdoc_t subdocs;		/* linked list of subdocs */
++	uint64_t last_fileid;		/* unique fileid's in the archive */
++	xmlHashTablePtr ino_hash;	/* Hash for looking up hardlinked files (add)*/
++	xmlHashTablePtr link_hash;	/* Hash for looking up hardlinked files (extract)*/
++	xmlHashTablePtr csum_hash;	/* Hash for looking up checksums of files */
+ 	EVP_MD_CTX toc_ctx;
+ 	int docksum;
+ 	int skipwarn;
+diff -urN xar.hash/lib/arcmod.c xar.final/lib/arcmod.c
+--- xar.hash/lib/arcmod.c	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/arcmod.c	2006-03-17 10:35:14.000000000 -0800
+@@ -57,12 +57,12 @@
+  * Returns: 0 on success
+  * Summary: This is the entry point to actual file archival.
+  */
+-int32_t xar_arcmod_archive(xar_t x, xar_file_t f, const char *file) {
++int32_t xar_arcmod_archive(xar_t x, xar_file_t f, const char *file, const char *buffer, size_t len) {
+ 	int i;
+ 	int32_t ret;
+ 	for(i = 0; i < (sizeof(xar_arcmods)/sizeof(struct arcmod)); i++) {
+ 		if( xar_arcmods[i].archive ) {
+-			ret = xar_arcmods[i].archive(x, f, file);
++			ret = xar_arcmods[i].archive(x, f, file, buffer, len);
+ 			if( ret < 0 ) {
+ 				return ret;
+ 			}
+@@ -81,12 +81,12 @@
+  * Returns: 0 on success
+  * Summary: This is the entry point to actual file archival.
+  */
+-int32_t xar_arcmod_extract(xar_t x, xar_file_t f, const char *file) {
++int32_t xar_arcmod_extract(xar_t x, xar_file_t f, const char *file, char *buffer, size_t len) {
+ 	int i;
+ 	int32_t ret;
+ 	for(i = 0; i < (sizeof(xar_arcmods)/sizeof(struct arcmod)); i++) {
+ 		if( xar_arcmods[i].extract ) {
+-			ret = xar_arcmods[i].extract(x, f, file);
++			ret = xar_arcmods[i].extract(x, f, file, buffer, len);
+ 			if( ret < 0 ) {
+ 				return ret;
+ 			}
+@@ -97,3 +97,8 @@
+ 	}
+ 	return 0;
+ }
++
++
++int32_t xar_arcmod_verify(xar_t x, xar_file_t f){
++	return xar_data_verify(x,f);
++}
+diff -urN xar.hash/lib/arcmod.h xar.final/lib/arcmod.h
+--- xar.hash/lib/arcmod.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/arcmod.h	2006-03-17 10:35:14.000000000 -0800
+@@ -37,15 +37,17 @@
+ #include "filetree.h"
+ 
+ 
+-typedef int32_t (*arcmod_archive)(xar_t x, xar_file_t f, const char* file);
+-typedef int32_t (*arcmod_extract)(xar_t x, xar_file_t f, const char* file);
++typedef int32_t (*arcmod_archive)(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len);
++typedef int32_t (*arcmod_extract)(xar_t x, xar_file_t f, const char* file, char *buffer, size_t len);
+ 
+ struct arcmod {
+ 	arcmod_archive archive;
+ 	arcmod_extract extract;
+ };
+ 
+-int32_t xar_arcmod_archive(xar_t x, xar_file_t f, const char *file);
+-int32_t xar_arcmod_extract(xar_t x, xar_file_t f, const char *file);
++int32_t xar_arcmod_archive(xar_t x, xar_file_t f, const char *file, const char *buffer, size_t len);
++int32_t xar_arcmod_extract(xar_t x, xar_file_t f, const char *file, char *buffer, size_t len);
++
++int32_t xar_arcmod_verify(xar_t x, xar_file_t f);
+ 
+ #endif /* _XAR_ARCMOD_H_ */
+diff -urN xar.hash/lib/darwinattr.c xar.final/lib/darwinattr.c
+--- xar.hash/lib/darwinattr.c	2006-03-17 11:26:55.000000000 -0800
++++ xar.final/lib/darwinattr.c	2006-03-17 10:35:14.000000000 -0800
+@@ -554,19 +554,21 @@
+ 
+ 	DARWINATTR_CONTEXT(context)->fd = 0;
+ 
+-	xar_set_perm(x, f, underbarname );
++	xar_set_perm(x, f, underbarname, NULL, 0 );
+ 	
+ 	return 0;
+ }
+ 
+ 
+-int32_t xar_darwinattr_archive(xar_t x, xar_file_t f, const char* file)
++int32_t xar_darwinattr_archive(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len)
+ {
+ 	struct _darwinattr_context context;
+ 	
+ 	memset(&context,0,sizeof(struct _darwinattr_context));
+ 	
+ #if defined(__APPLE__)
++	if( len )
++		return 0;
+ #if defined(HAVE_GETXATTR)
+ 	if( ea_archive(x, f, file, (void *)&context) == 0 )
+ 		return 0;
+@@ -578,13 +580,15 @@
+ 	return 0;
+ }
+ 
+-int32_t xar_darwinattr_extract(xar_t x, xar_file_t f, const char* file)
++int32_t xar_darwinattr_extract(xar_t x, xar_file_t f, const char* file, char *buffer, size_t len)
+ {
+ 	struct _darwinattr_context context;
+ 	
+ 	memset(&context,0,sizeof(struct _darwinattr_context));
+ 	
+ #if defined(__APPLE__)
++	if( len )
++		return 0;
+ #if defined(HAVE_GETXATTR)
+ 	if( ea_extract(x, f, file, (void *)&context) == 0 )
+ 		return 0;
+diff -urN xar.hash/lib/darwinattr.h xar.final/lib/darwinattr.h
+--- xar.hash/lib/darwinattr.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/darwinattr.h	2006-03-17 10:35:14.000000000 -0800
+@@ -6,6 +6,6 @@
+ #ifndef _XAR_DARWINATTR_H_
+ #define _XAR_DARWINATTR_H_
+ int32_t xar_underbar_check(xar_t x, xar_file_t f, const char* file);
+-int32_t xar_darwinattr_archive(xar_t x, xar_file_t f, const char* file);
+-int32_t xar_darwinattr_extract(xar_t x, xar_file_t f, const char* file);
++int32_t xar_darwinattr_archive(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len);
++int32_t xar_darwinattr_extract(xar_t x, xar_file_t f, const char* file,	char *buffer, size_t len);
+ #endif /* _XAR_DARWINATTR_H_ */
+diff -urN xar.hash/lib/data.c xar.final/lib/data.c
+--- xar.hash/lib/data.c	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/data.c	2006-03-17 10:35:14.000000000 -0800
+@@ -99,7 +99,7 @@
+  * This is the arcmod archival entry point for archiving the file's
+  * data into the heap file.
+  */
+-int32_t xar_data_archive(xar_t x, xar_file_t f, const char *file) {
++int32_t xar_data_archive(xar_t x, xar_file_t f, const char *file, const char *buffer, size_t len) {
+ 	const char *opt;
+ 	int32_t retval = 0;
+ 	struct _data_context context;
+@@ -120,14 +120,20 @@
+ 			return 0;
+ 	}
+ 
+-	context.fd = open(file, O_RDONLY);
+-	if( context.fd < 0 ) {
+-		xar_err_new(x);
+-		xar_err_set_file(x, f);
+-		xar_err_set_string(x, "io: Could not open file");
+-		xar_err_callback(x, XAR_SEVERITY_NONFATAL, XAR_ERR_ARCHIVE_CREATION);
+-		return -1;
+-	}		
++	if( 0 == len ){
++		context.fd = open(file, O_RDONLY);
++		if( context.fd < 0 ) {
++			xar_err_new(x);
++			xar_err_set_file(x, f);
++			xar_err_set_string(x, "io: Could not open file");
++			xar_err_callback(x, XAR_SEVERITY_NONFATAL, XAR_ERR_ARCHIVE_CREATION);
++			return -1;
++		}		
++	}else{
++		context.buffer = (void *)buffer;
++		context.length = len;
++		context.offset = 0;
++	}
+ 
+ 	retval = xar_attrcopy_to_heap(x, f, "data", xar_data_read,(void *)(&context));
+ 
+@@ -137,7 +143,7 @@
+ 	return retval;
+ }
+ 
+-int32_t xar_data_extract(xar_t x, xar_file_t f, const char *file) {
++int32_t xar_data_extract(xar_t x, xar_file_t f, const char *file, char *buffer, size_t len) {
+ 	const char *opt;
+ 	struct _data_context context;
+ 	
+@@ -158,25 +164,32 @@
+ 			return 0;
+ 	}
+ 	
+-	/* mode 600 since other modules may need to operate on the file
+-	* prior to the real permissions being set.
+-	*/
++	if ( len ){
++		context.length = len;
++		context.buffer = buffer;
++		context.offset = 0;
++	}else{
++		/* mode 600 since other modules may need to operate on the file
++		* prior to the real permissions being set.
++		*/
+ TRYAGAIN:
+-	context.fd = open(file, O_RDWR|O_TRUNC|O_EXLOCK, 0600);
+-	if( context.fd < 0 ) {
+-		if( errno == ENOENT ) {
+-			xar_file_t parent = XAR_FILE(f)->parent;
+-			if( parent && (xar_extract(x, parent) == 0) )
+-				goto TRYAGAIN;
++		context.fd = open(file, O_RDWR|O_TRUNC|O_EXLOCK, 0600);
++		if( context.fd < 0 ) {
++			if( errno == ENOENT ) {
++				xar_file_t parent = XAR_FILE(f)->parent;
++				if( parent && (xar_extract(x, parent) == 0) )
++					goto TRYAGAIN;
++			}
++			
++			xar_err_new(x);
++			xar_err_set_file(x, f);
++			xar_err_set_string(x, "io: Could not create file");
++			xar_err_callback(x, XAR_SEVERITY_NONFATAL, XAR_ERR_ARCHIVE_EXTRACTION);
++			return -1;
+ 		}
+ 		
+-		xar_err_new(x);
+-		xar_err_set_file(x, f);
+-		xar_err_set_string(x, "io: Could not create file");
+-		xar_err_callback(x, XAR_SEVERITY_NONFATAL, XAR_ERR_ARCHIVE_EXTRACTION);
+-		return -1;
+ 	}
+-			
++	
+ 	xar_attrcopy_from_heap(x, f, "data", xar_data_write, (void *)(&context));
+ 	
+ 	if( context.fd > 0 )		
+@@ -185,3 +198,19 @@
+ 	return 0;
+ }
+ 
++int32_t xar_data_verify(xar_t x, xar_file_t f)
++{
++	const char *opt;
++	struct _data_context context;
++	
++	memset(&context,0,sizeof(struct _data_context));
++
++	/* Only regular files are copied in and out of the heap here */
++	xar_prop_get(f, "type", &opt);
++	if( !opt ) return 0;
++	if( strcmp(opt, "directory") == 0 ) {
++		return 0;
++	}
++	
++	return xar_attrcopy_from_heap(x, f, "data", NULL , (void *)(&context));
++}
+diff -urN xar.hash/lib/data.h xar.final/lib/data.h
+--- xar.hash/lib/data.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/data.h	2006-03-17 10:35:14.000000000 -0800
+@@ -5,6 +5,8 @@
+  */
+ #ifndef _XAR_DATA_H_
+ #define _XAR_DATA_H_
+-int32_t xar_data_archive(xar_t x, xar_file_t f, const char* file);
+-int32_t xar_data_extract(xar_t x, xar_file_t f, const char* file);
++int32_t xar_data_archive(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len);
++int32_t xar_data_extract(xar_t x, xar_file_t f, const char* file, char *buffer, size_t len);
++
++int32_t xar_data_verify(xar_t x, xar_file_t f);
+ #endif /* _XAR_DATA_H_ */
+diff -urN xar.hash/lib/ext2.c xar.final/lib/ext2.c
+--- xar.hash/lib/ext2.c	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/ext2.c	2006-03-17 10:35:14.000000000 -0800
+@@ -70,9 +70,14 @@
+ }
+ #endif
+ 
+-int xar_ext2attr_archive(xar_t x, xar_file_t f, const char* file)
++int xar_ext2attr_archive(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len)
+ {
+ 	int ret = 0;
++	
++	/* if archiving from a buffer, then there is no place to get extattr */
++	if ( len )
++		return 0;
++		
+ #if defined(HAVE_EXT2FS_EXT2_FS_H) || defined(HAVE_LINUX_EXT2_FS_H)
+ 	int fd, flags=0, version;
+ 	char *vstr;
+@@ -158,8 +163,12 @@
+ }
+ #endif
+ 
+-int xar_ext2attr_extract(xar_t x, xar_file_t f, const char* file)
++int xar_ext2attr_extract(xar_t x, xar_file_t f, const char* file, char *buffer, size_t len)
+ {
++	/* if extracting to a buffer, then there is no place to write extattr */
++	if ( len )
++		return 0;
++	
+ #if defined(HAVE_EXT2FS_EXT2_FS_H) || defined(HAVE_LINUX_EXT2_FS_H)
+ 	int fd = -1, version, flags = 0;
+ 	char *tmp;
+diff -urN xar.hash/lib/ext2.h xar.final/lib/ext2.h
+--- xar.hash/lib/ext2.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/ext2.h	2006-03-17 10:35:14.000000000 -0800
+@@ -6,6 +6,6 @@
+ #ifndef _XAR_EXT2_H_
+ #define _XAR_EXT2_H_
+ #define XAR_ATTR_FORK "attribute"
+-int xar_ext2attr_archive(xar_t x, xar_file_t f, const char* file);
+-int xar_ext2attr_extract(xar_t x, xar_file_t f, const char* file);
++int xar_ext2attr_archive(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len);
++int xar_ext2attr_extract(xar_t x, xar_file_t f, const char* file, char *buffer, size_t len);
+ #endif /* _XAR_EXT2_H_ */
+diff -urN xar.hash/lib/fbsdattr.c xar.final/lib/fbsdattr.c
+--- xar.hash/lib/fbsdattr.c	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/fbsdattr.c	2006-03-17 10:54:53.000000000 -0800
+@@ -99,7 +99,7 @@
+ }
+ #endif
+ 
+-int32_t xar_fbsdattr_archive(xar_t x, xar_file_t f, const char* file)
++int32_t xar_fbsdattr_archive(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len)
+ {
+ #ifdef HAVE_SYS_EXTATTR_H
+ 	char *buf = NULL;
+@@ -110,6 +110,11 @@
+ 	struct _fbsdattr_context context;
+ 	
+ 	memset(&context,0,sizeof(struct _fbsdattr_context));
++
++	/* no fbsdattr attributes for data to a buffer */
++	if(len){
++		return 0;
++	}
+ 	
+ TRYAGAIN:
+ 	/* extattr_list_link()'s man page does not define the return
+@@ -218,7 +223,12 @@
+ 	struct _fbsdattr_context context;
+ 	
+ 	memset(&context,0,sizeof(struct _fbsdattr_context));
+-		
++	
++	/* no fbsdattr attributes for data to a buffer */
++	if(len){
++		return 0;
++	}
++	
+ 	statfs(file, &sfs);
+ 	fsname = sfs.f_fstypename;
+ 
+diff -urN xar.hash/lib/fbsdattr.h xar.final/lib/fbsdattr.h
+--- xar.hash/lib/fbsdattr.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/fbsdattr.h	2006-03-17 10:35:14.000000000 -0800
+@@ -5,6 +5,6 @@
+  */
+ #ifndef _XAR_FBSDATTR_H_
+ #define _XAR_FBSDATTR_H_
+-int32_t xar_fbsdattr_archive(xar_t x, xar_file_t f, const char* file);
+-int32_t xar_fbsdattr_extract(xar_t x, xar_file_t f, const char* file);
++int32_t xar_fbsdattr_archive(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len);
++int32_t xar_fbsdattr_extract(xar_t x, xar_file_t f, const char* file, char *buffer, size_t len);
+ #endif /* _XAR_FBSDATTR_H_ */
+diff -urN xar.hash/lib/filetree.c xar.final/lib/filetree.c
+--- xar.hash/lib/filetree.c	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/filetree.c	2006-03-17 10:35:14.000000000 -0800
+@@ -545,6 +545,51 @@
+ 	return 0;
+ }
+ 
++/* xar_prop_replicate_r
++* f: file to attach property
++* p: property (list) to iterate and add
++* parent: parent property
++* Summary: Recursivley adds property list (p) to file (f) and parent (parent).
++*/
++
++void xar_prop_replicate_r(xar_file_t f, xar_prop_t p, xar_prop_t parent )
++{
++	xar_prop_t property = p;
++	
++	/* look through properties */
++	for( property = p; property; property = property->next ){
++		xar_prop_t	newprop = xar_prop_new( f, parent );
++		
++		/* copy the key value for the property */
++		XAR_PROP(newprop)->key = strdup(property->key);
++		if(property->value)
++			XAR_PROP(newprop)->value = strdup(property->value);
++		
++		/* loop through the attributes and copy them */
++		xar_attr_t a = NULL;
++		xar_attr_t last = NULL;
++		
++		/* copy attributes for file */
++		for(a = property->attrs; a; a = a->next) {			
++			if( NULL == newprop->attrs ){
++				last = xar_attr_new();
++				XAR_PROP(newprop)->attrs = last;				
++			}else{
++				XAR_ATTR(last)->next = xar_attr_new();
++				last = XAR_ATTR(last)->next;
++			}
++			
++			XAR_ATTR(last)->key = strdup(a->key);
++			if(a->value)
++				XAR_ATTR(last)->value = strdup(a->value);
++		}
++		
++		/* loop through the children properties and recursively add them */
++		xar_prop_replicate_r(f, property->children, newprop );		
++	}
++	
++}
++
+ /* xar_prop_free
+  * p: property to free
+  * Summary: frees the specified property and all its children.
+@@ -621,6 +666,26 @@
+ 	return ret;
+ }
+ 
++xar_file_t xar_file_replicate(xar_file_t original, xar_file_t newparent)
++{
++	xar_file_t ret = xar_file_new(newparent);	
++	xar_attr_t a;
++	
++	/* copy attributes for file */
++	for(a = XAR_FILE(original)->attrs; a; a = XAR_ATTR(a)->next) {
++		/* skip the id attribute */
++		if( 0 == strcmp(a->key, "id" ) )
++			continue;
++		
++		xar_attr_set(ret, NULL , a->key, a->value );
++	}
++		
++	/* recursively copy properties */
++	xar_prop_replicate_r(ret, XAR_FILE(original)->props, NULL);
++
++	return ret;
++}
++
+ /* xar_file_free
+  * f: file to free
+  * Summary: frees the specified file and all children,
+diff -urN xar.hash/lib/filetree.h xar.final/lib/filetree.h
+--- xar.hash/lib/filetree.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/filetree.h	2006-03-17 10:35:14.000000000 -0800
+@@ -82,6 +82,7 @@
+ xar_file_t xar_file_unserialize(xar_t x, xar_file_t parent, xmlTextReaderPtr reader);
+ xar_file_t xar_file_find(xar_file_t f, const char *path);
+ xar_file_t xar_file_new(xar_file_t f);
++xar_file_t xar_file_replicate(xar_file_t original, xar_file_t newparent);
+ void xar_file_free(xar_file_t f);
+ 
+ void xar_prop_serialize(xar_prop_t p, xmlTextWriterPtr writer);
+diff -urN xar.hash/lib/io.c xar.final/lib/io.c
+--- xar.hash/lib/io.c	2006-03-17 11:20:06.000000000 -0800
++++ xar.final/lib/io.c	2006-03-17 10:35:14.000000000 -0800
+@@ -415,6 +415,140 @@
+ 	return 0;
+ }
+ 
++/* xar_attrcopy_from_heap_to_heap
++* This does a simple copy of the heap data from one head (read-only) to another heap (write only). 
++* This does not set any properties or attributes of the file, so this should not be used alone.
++*/
++int32_t xar_attrcopy_from_heap_to_heap(xar_t xsource, xar_file_t fsource, const char *attr, xar_t xdest, xar_file_t fdest){
++	int r, off;
++	size_t bsize;
++	int64_t fsize, inc = 0, seekoff, writesize=0;
++	off_t orig_heap_offset = XAR(xdest)->heap_offset;
++	void *inbuf;
++	const char *opt;
++	char *tmpstr = NULL, *tmpstr2 = NULL;
++	
++	opt = xar_opt_get(xsource, "rsize");
++	if( !opt ) {
++		bsize = 4096;
++	} else {
++		bsize = strtol(opt, NULL, 0);
++		if( ((bsize == LONG_MAX) || (bsize == LONG_MIN)) && (errno == ERANGE) ) {
++			bsize = 4096;
++		}
++	}
++	
++	asprintf(&tmpstr, "%s/offset", attr);
++	xar_prop_get(fsource, tmpstr, &opt);
++	free(tmpstr);
++	
++	seekoff = strtoll(opt, NULL, 0);
++		
++	if( ((seekoff == LLONG_MAX) || (seekoff == LLONG_MIN)) && (errno == ERANGE) ) {
++		return -1;
++	}
++	
++	seekoff += XAR(xsource)->toc_count + sizeof(xar_header_t);
++	
++	if( XAR(xsource)->fd > 1 ) {
++		r = lseek(XAR(xsource)->fd, seekoff, SEEK_SET);
++		if( r == -1 ) {
++			if( errno == ESPIPE ) {
++				ssize_t rr;
++				char *buf;
++				unsigned int len;
++				
++				len = seekoff - XAR(xsource)->toc_count;
++				len -= sizeof(xar_header_t);
++				if( XAR(xsource)->heap_offset > len ) {
++					xar_err_new(xsource);
++					xar_err_set_file(xsource, fsource);
++					xar_err_set_string(xsource, "Unable to seek");
++					xar_err_callback(xsource, XAR_SEVERITY_NONFATAL, XAR_ERR_ARCHIVE_EXTRACTION);
++				} else {
++					len -= XAR(xsource)->heap_offset;
++					buf = malloc(len);
++					assert(buf);
++					rr = read(XAR(xsource)->fd, buf, len);
++					if( rr < len ) {
++						xar_err_new(xsource);
++						xar_err_set_file(xsource, fsource);
++						xar_err_set_string(xsource, "Unable to seek");
++						xar_err_callback(xsource, XAR_SEVERITY_NONFATAL, XAR_ERR_ARCHIVE_EXTRACTION);
++					}
++					free(buf);
++				}
++			} else {
++				xar_err_new(xsource);
++				xar_err_set_file(xsource, fsource);
++				xar_err_set_string(xsource, "Unable to seek");
++				xar_err_callback(xsource, XAR_SEVERITY_NONFATAL, XAR_ERR_ARCHIVE_EXTRACTION);
++			}
++		}
++	}
++	
++	asprintf(&tmpstr, "%s/length", attr);
++	xar_prop_get(fsource, tmpstr, &opt);
++	free(tmpstr);
++	if( !opt ) {
++		return 0;
++	} else {
++		fsize = strtoll(opt, NULL, 10);
++		if( ((fsize == LLONG_MAX) || (fsize == LLONG_MIN)) && (errno == ERANGE) ) {
++			return -1;
++		}
++	}
++	
++	inbuf = malloc(bsize);
++	if( !inbuf ) {
++		return -1;
++	}
++	
++	
++	while(1) {
++		/* Size has been reached */
++		if( fsize == inc )
++			break;
++		if( (fsize - inc) < bsize )
++			bsize = fsize - inc;
++		r = read(XAR(xsource)->fd, inbuf, bsize);
++		if( r == 0 )
++			break;
++		if( (r < 0) && (errno == EINTR) )
++			continue;
++		if( r < 0 ) {
++			free(inbuf);
++			return -1;
++		}
++		
++		XAR(xsource)->heap_offset += r;
++		inc += r;
++		bsize = r;
++		
++		off = 0;
++		
++		do {
++			r = write(XAR(xdest)->heap_fd, inbuf+off, r-off );
++			off += r;
++			writesize += r;
++		} while( off < r );
++		XAR(xdest)->heap_offset += off;
++		XAR(xdest)->heap_len += off;
++	}
++	
++	asprintf(&tmpstr, "%"PRIu64, (uint64_t)orig_heap_offset);
++	asprintf(&tmpstr2, "%s/offset", attr);
++	xar_prop_set(fdest, tmpstr2, tmpstr);
++	free(tmpstr);
++	free(tmpstr2);
++	
++	
++	free(inbuf);
++	
++	/* It is the caller's responsibility to copy the attributes of the file, etc, this only copies the data in the heap */
++	
++	return 0;
++}
+ /* xar_heap_to_archive
+  * x: archive to operate on
+  * Returns 0 on success, -1 on error
+diff -urN xar.hash/lib/io.h xar.final/lib/io.h
+--- xar.hash/lib/io.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/io.h	2006-03-17 10:35:14.000000000 -0800
+@@ -56,6 +56,7 @@
+ 
+ int32_t xar_attrcopy_to_heap(xar_t x, xar_file_t f, const char *attr, read_callback rcb, void *context);
+ int32_t xar_attrcopy_from_heap(xar_t x, xar_file_t f, const char *attr, write_callback wcb, void *context);
++int32_t xar_attrcopy_from_heap_to_heap(xar_t xsource, xar_file_t fsource, const char *attr, xar_t xdest, xar_file_t fdest);
+ int32_t xar_heap_to_archive(xar_t x);
+ 
+ #endif /* _XAR_IO_H_ */
+diff -urN xar.hash/lib/linuxattr.c xar.final/lib/linuxattr.c
+--- xar.hash/lib/linuxattr.c	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/linuxattr.c	2006-03-17 13:38:53.000000000 -0800
+@@ -128,7 +128,7 @@
+ }
+ #endif
+ 
+-int32_t xar_linuxattr_archive(xar_t x, xar_file_t f, const char* file)
++int32_t xar_linuxattr_archive(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len)
+ {
+ #if defined(HAVE_SYS_XATTR_H) && defined(HAVE_LGETXATTR) && !defined(__APPLE__)
+ 	char *i, *buf = NULL;
+@@ -139,6 +139,11 @@
+ 	
+ 	memset(&context,0,sizeof(struct _linuxattr_context));
+ 	
++	/* data from buffers don't have linuxattr */
++	if(len){
++		return 0;
++	}
++	
+ TRYAGAIN:
+ 	buf = malloc(bufsz);
+ 	if(!buf)
+@@ -188,7 +193,7 @@
+ 	return 0;
+ }
+ 
+-int32_t xar_linuxattr_extract(xar_t x, xar_file_t f, const char* file)
++int32_t xar_linuxattr_extract(xar_t x, xar_file_t f, const char* file, char *buffer, size_t len)
+ {
+ #if defined HAVE_SYS_XATTR_H && defined(HAVE_LSETXATTR) && !defined(__APPLE__)
+ 	const char *fsname = "bogus";
+@@ -200,6 +205,11 @@
+ 	
+ 	memset(&context,0,sizeof(struct _linuxattr_context));
+ 	
++	/* data buffers, can't store linux attrs */
++	if(len){
++		return 0;
++	}
++	
+ 	/* Check for EA extraction behavior */
+ 
+ 	memset(&sfs, 0, sizeof(sfs));
+diff -urN xar.hash/lib/linuxattr.h xar.final/lib/linuxattr.h
+--- xar.hash/lib/linuxattr.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/linuxattr.h	2006-03-17 13:38:55.000000000 -0800
+@@ -5,6 +5,6 @@
+  */
+ #ifndef _XAR_LINUXATTR_H_
+ #define _XAR_LINUXATTR_H_
+-int32_t xar_linuxattr_archive(xar_t x, xar_file_t f, const char* file);
+-int32_t xar_linuxattr_extract(xar_t x, xar_file_t f, const char* file);
++int32_t xar_linuxattr_archive(xar_t x, xar_file_t f, const char* file, const char *buffer, size_t len);
++int32_t xar_linuxattr_extract(xar_t x, xar_file_t f, const char* file, char *buffer, size_t len);
+ #endif /* _XAR_LINUXATTR_H_ */
+diff -urN xar.hash/lib/stat.c xar.final/lib/stat.c
+--- xar.hash/lib/stat.c	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/stat.c	2006-03-17 10:35:14.000000000 -0800
+@@ -214,7 +214,7 @@
+ 	return 0;
+ }
+ 
+-int32_t xar_stat_archive(xar_t x, xar_file_t f, const char *file) {
++int32_t xar_stat_archive(xar_t x, xar_file_t f, const char *file, const char *buffer, size_t len) {
+ 	char *tmpstr;
+ 	struct passwd *pw;
+ 	struct group *gr;
+@@ -222,6 +222,12 @@
+ 	struct tm t;
+ 	const char *type;
+ 
++	/* no stat attributes for data from a buffer, it is just a file */
++	if(len){
++		xar_prop_set(f, "type", "file");
++		return 0;
++	}
++	
+ 	if( S_ISREG(XAR(x)->sbcache.st_mode) && (XAR(x)->sbcache.st_nlink > 1) ) {
+ 		xar_file_t tmpf;
+ 		const char *id = xar_attr_get(f, NULL, "id");
+@@ -304,7 +310,7 @@
+ 	return 0;
+ }
+ 
+-int32_t xar_set_perm(xar_t x, xar_file_t f, const char *file) {
++int32_t xar_set_perm(xar_t x, xar_file_t f, const char *file, char *buffer, size_t len) {
+ 	const char *opt;
+ 	int32_t m=0, mset=0;
+ 	uid_t u;
+@@ -314,6 +320,10 @@
+ 	enum {ATIME=0, MTIME};
+ 	struct timeval tv[2];
+ 
++	/* when writing to a buffer, there are no permissions to set */
++	if ( len )
++		return 0;
++	
+ 	/* in case we don't find anything useful in the archive */
+ 	u = geteuid();
+ 	g = getegid();
+@@ -433,7 +443,7 @@
+ 	return 0;
+ }
+ 
+-int32_t xar_stat_extract(xar_t x, xar_file_t f, const char *file) {
++int32_t xar_stat_extract(xar_t x, xar_file_t f, const char *file, char *buffer, size_t len) {
+ 	const char *opt;
+ 	int ret, fd;
+ 
+diff -urN xar.hash/lib/stat.h xar.final/lib/stat.h
+--- xar.hash/lib/stat.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/stat.h	2006-03-17 10:35:14.000000000 -0800
+@@ -36,8 +36,8 @@
+ 
+ #include "xar.h"
+ 
+-int32_t xar_stat_archive(xar_t x, xar_file_t f, const char *file);
+-int32_t xar_stat_extract(xar_t x, xar_file_t f, const char *file);
+-int32_t xar_set_perm(xar_t x, xar_file_t f, const char *file);
++int32_t xar_stat_archive(xar_t x, xar_file_t f, const char *file, const char *buffer, size_t len);
++int32_t xar_stat_extract(xar_t x, xar_file_t f, const char *file, char *buffer, size_t len);
++int32_t xar_set_perm(xar_t x, xar_file_t f, const char *file, char *buffer, size_t len);
+ 
+ #endif /* _XAR_STAT_H_ */
+diff -urN xar.hash/lib/util.c xar.final/lib/util.c
+--- xar.hash/lib/util.c	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/util.c	2006-03-17 10:35:14.000000000 -0800
+@@ -30,6 +30,7 @@
+  * 03-Apr-2005
+  * DRI: Rob Braun <bbraun@opendarwin.org>
+  */
++
+ #include <stdio.h>
+ #include <stdint.h>
+ #include <sys/types.h>
+@@ -42,6 +43,7 @@
+ #include "asprintf.h"
+ #endif
+ #include "xar.h"
++#include "archive.h"
+ #include "filetree.h"
+ 
+ uint64_t xar_ntoh64(uint64_t num) {
+@@ -97,6 +99,10 @@
+ 	return ret;
+ }
+ 
++off_t	xar_get_heap_offset(xar_t x) {
++	return XAR(x)->toc_count + sizeof(xar_header_t);
++}
++
+ /* xar_read_fd
+  * Summary: Reads from a file descriptor a certain number of bytes to a specific
+  * buffer.  This simple wrapper just handles certain retryable error situations.
+diff -urN xar.hash/lib/util.h xar.final/lib/util.h
+--- xar.hash/lib/util.h	2006-03-17 11:19:16.000000000 -0800
++++ xar.final/lib/util.h	2006-03-17 10:35:14.000000000 -0800
+@@ -41,6 +41,7 @@
+ uint64_t xar_ntoh64(uint64_t num);
+ uint32_t xar_swap32(uint32_t num);
+ char *xar_get_path(xar_file_t f);
++off_t	xar_get_heap_offset(xar_t x);
+ ssize_t xar_read_fd(int fd, void * buffer, size_t nbytes);
+ ssize_t xar_write_fd(int fd, void * buffer, size_t nbytes);
+ 

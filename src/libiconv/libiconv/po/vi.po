@@ -1,0 +1,288 @@
+# Vietnamese Translation for Libiconv.
+# Copyright © 2006 Free Software Foundation, Inc.
+# Clytie Siddall <clytie@riverland.net.au>, 2005-2006.
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: libiconv-1.11-pre1\n"
+"Report-Msgid-Bugs-To: bug-gnu-libiconv@gnu.org\n"
+"POT-Creation-Date: 2006-07-19 21:16+0200\n"
+"PO-Revision-Date: 2006-06-23 16:38+0930\n"
+"Last-Translator: Clytie Siddall <clytie@riverland.net.au>\n"
+"Language-Team: Vietnamese <vi-VN@googlegroups.com> \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/iconv.c:107
+msgid "Usage: iconv [-c] [-s] [-f fromcode] [-t tocode] [file ...]"
+msgstr "Cách sử dụng: iconv [-c] [-s] [-f từ_mã] [-t đến_mã] [tập_tin ...]"
+
+#: src/iconv.c:109
+msgid "or:    iconv -l"
+msgstr "hay:    iconv -l"
+
+#: src/iconv.c:111
+#, c-format
+msgid "Try `%s --help' for more information.\n"
+msgstr "Hãy thử lệnh trợ giúp « %s --help » để xem thông tin thêm.\n"
+
+#: src/iconv.c:114
+#, c-format, no-wrap
+msgid "Usage: %s [OPTION...] [-f ENCODING] [-t ENCODING] [INPUTFILE...]\n"
+msgstr "Cách sử dụng: %s [TÙY_CHỌN...] [-f BẢNG_MÃ] [-t BẢNG_MÃ] [TẬP_TIN_NHẬP...]\n"
+
+#: src/iconv.c:118
+#, c-format, no-wrap
+msgid "or:    %s -l\n"
+msgstr "hay:    %s -l\n"
+
+#: src/iconv.c:123
+#, c-format, no-wrap
+msgid "Converts text from one encoding to another encoding.\n"
+msgstr "Chuyển đổi đoạn chữ từ bảng mã này sang bảng mã khác.\n"
+
+#: src/iconv.c:127
+#, c-format, no-wrap
+msgid "Options controlling the input and output format:\n"
+msgstr "Các tùy chọn điều khiển dạng thức nhập và xuất:\n"
+
+#: src/iconv.c:130
+#, c-format, no-wrap
+msgid ""
+"  -f ENCODING, --from-code=ENCODING\n"
+"                              the encoding of the input\n"
+msgstr ""
+"  -f BẢNG_MÃ, --from-code=BẢNG_MÃ\n"
+"                              bảng mã của dữ liệu nhập\n"
+
+#: src/iconv.c:134
+#, c-format, no-wrap
+msgid ""
+"  -t ENCODING, --to-code=ENCODING\n"
+"                              the encoding of the output\n"
+msgstr ""
+"  -t BẢNG_MÃ, --to-code=BẢNG_MÃ\n"
+"                              bảng mã của dữ liệu xuất\n"
+
+#: src/iconv.c:139
+#, c-format, no-wrap
+msgid "Options controlling conversion problems:\n"
+msgstr "Các tùy chọn điều khiển vấn đề chuyển đổi:\n"
+
+#: src/iconv.c:142
+#, c-format, no-wrap
+msgid "  -c                          discard unconvertible characters\n"
+msgstr "  -c                          hủy các ký tự không thể chuyển đổi\n"
+
+#: src/iconv.c:145
+#, c-format, no-wrap
+msgid ""
+"  --unicode-subst=FORMATSTRING\n"
+"                              substitution for unconvertible Unicode characters\n"
+msgstr ""
+"  --unicode-subst=CHUỖI_DẠNG_THỨC\n"
+"                              sự thay thế các ký tự Unicode không thể chuyển đổi\n"
+
+#: src/iconv.c:149
+#, c-format, no-wrap
+msgid "  --byte-subst=FORMATSTRING   substitution for unconvertible bytes\n"
+msgstr ""
+"  --byte-subst=CHUỖI_DẠNG_THỨC\n"
+"\t\t\t\t\t\tsư thay thế các byte không thể chuyển đổi\n"
+
+#: src/iconv.c:152
+#, c-format, no-wrap
+msgid ""
+"  --widechar-subst=FORMATSTRING\n"
+"                              substitution for unconvertible wide characters\n"
+msgstr ""
+"  --widechar-subst=CHUỖI_DẠNG_THỨC\n"
+"                             \t\tsự thay thế các ký tự rộng không thể chuyển đổi\n"
+
+#: src/iconv.c:157
+#, c-format, no-wrap
+msgid "Options controlling error output:\n"
+msgstr "Các tùy chọn điều khiển cách xuất lỗi:\n"
+
+#: src/iconv.c:160
+#, c-format, no-wrap
+msgid "  -s, --silent                suppress error messages about conversion problems\n"
+msgstr "  -s, --silent                thu hồi các thông điệp về vấn đề chuyển đổi\n"
+
+#: src/iconv.c:164
+#, c-format, no-wrap
+msgid "Informative output:\n"
+msgstr "Xuất thông tin:\n"
+
+#: src/iconv.c:167
+#, c-format, no-wrap
+msgid "  -l, --list                  list the supported encodings\n"
+msgstr "  -l, --list                  _liệt kê_ các bảng mã được hỗ trợ\n"
+
+#: src/iconv.c:170
+#, c-format, no-wrap
+msgid "  --help                      display this help and exit\n"
+msgstr "  --help                      hiển thị _trợ giúp_ này rồi thoát\n"
+
+#: src/iconv.c:173
+#, c-format, no-wrap
+msgid "  --version                   output version information and exit\n"
+msgstr "  --version                   hiển thị thông tin về _phiên bản_ rồi thoát\n"
+
+#: src/iconv.c:176
+msgid "Report bugs to <bug-gnu-libiconv@gnu.org>.\n"
+msgstr "Thông báo lỗi cho <bug-gnu-libiconv@gnu.org>.\n"
+
+#: src/iconv.c:186
+#, c-format
+msgid ""
+"This is free software; see the source for copying conditions.  There is NO\n"
+"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
+msgstr ""
+"Phần mềm này là tự do; hãy xem mã nguồn để tìm điều kiện sao chép.\n"
+"KHÔNG bảo đảm gì cả, dù khả năng bán hay khả năng làm việc dứt khoát.\n"
+
+#: src/iconv.c:189
+#, c-format
+msgid "Written by %s.\n"
+msgstr "Tác giả: %s.\n"
+
+#: src/iconv.c:280
+#, c-format
+msgid ""
+"%s argument: A format directive with a variable width is not allowed here."
+msgstr ""
+"Đối số %s: ở đây không cho phép chỉ thị dạng thức với độ rộng thay đổi."
+
+#: src/iconv.c:291
+#, c-format
+msgid ""
+"%s argument: A format directive with a variable precision is not allowed "
+"here."
+msgstr ""
+"Đối số %s: ở đây không cho phép chỉ thị dạng thức với độ chính xác thay đổi."
+
+#: src/iconv.c:303
+#, c-format
+msgid "%s argument: A format directive with a size is not allowed here."
+msgstr "Đối số %s: ở đây không cho phép chỉ thị dạng thức với kích cỡ."
+
+#: src/iconv.c:341
+#, c-format
+msgid "%s argument: The string ends in the middle of a directive."
+msgstr "Đối số %s: chuỗi kết thúc ở trong chỉ thị."
+
+#: src/iconv.c:343
+#, c-format
+msgid "%s argument: The character '%c' is not a valid conversion specifier."
+msgstr "Đối số %s: ký tự « %c » không phải là bộ xác định chuyển đổi hợp lệ."
+
+#: src/iconv.c:345
+#, c-format
+msgid ""
+"%s argument: The character that terminates the format directive is not a "
+"valid conversion specifier."
+msgstr ""
+"Đối số %s: ký tự kết thúc chỉ thị dạng thức không phải là bộ xác định chuyển "
+"đổi hợp lệ."
+
+#: src/iconv.c:356
+#, fuzzy, c-format
+msgid ""
+"%s argument: The format string consumes more than one argument: %u argument."
+msgid_plural ""
+"%s argument: The format string consumes more than one argument: %u arguments."
+msgstr[0] "Đối số %s: chuỗi dạng thức ăn nhiều đối số: %u đối số."
+msgstr[1] "Đối số %s: chuỗi dạng thức ăn nhiều đối số: %u đối số."
+
+#: src/iconv.c:411
+#, c-format
+msgid "cannot convert byte substitution to Unicode: %s"
+msgstr "không thể chuyển đổi sự thay thế byte sang Unicode: %s"
+
+#: src/iconv.c:447
+#, c-format
+msgid "cannot convert unicode substitution to target encoding: %s"
+msgstr "không thể chuyển đổi sự thay thế Unicode sang bảng mã đích: %s"
+
+#: src/iconv.c:484
+#, c-format
+msgid "cannot convert byte substitution to wide string: %s"
+msgstr "không thể chuyển đổi sự thay thế byte sang chuỗi rộng: %s"
+
+#: src/iconv.c:521
+#, fuzzy, c-format
+msgid "cannot convert widechar substitution to target encoding: %s"
+msgstr ""
+"iconv: không thể chuyển đổi sự thay thế ký tự rộng sang bảng mã đích: %s"
+
+#: src/iconv.c:558
+#, fuzzy, c-format
+msgid "cannot convert byte substitution to target encoding: %s"
+msgstr "iconv: không thể chuyển đổi sự thay thế byte sang bảng mã đích: %s"
+
+#: src/iconv.c:592 src/iconv.c:636 src/iconv.c:710
+#, c-format
+msgid "%s:%u:%u: incomplete character or shift sequence"
+msgstr "%s:%u:%u: dây kiểu ký tự hay dịch chưa hoàn toàn"
+
+#: src/iconv.c:625 src/iconv.c:700
+#, c-format
+msgid "%s:%u:%u: cannot convert"
+msgstr "%s:%u:%u: không thể chuyển đổi"
+
+# Variable: don't translate / Biến: đừng dịch
+#: src/iconv.c:667 src/iconv.c:730
+#, c-format
+msgid "%s:%u:%u"
+msgstr "%s:%u:%u"
+
+#: src/iconv.c:742
+#, c-format
+msgid "%s: I/O error"
+msgstr "%s: lỗi nhập/xuất"
+
+#: src/iconv.c:926
+#, c-format
+msgid "conversion from %s unsupported"
+msgstr "không hỗ trợ khả năng chuyển đổi từ %s"
+
+#: src/iconv.c:928
+#, c-format
+msgid "conversion to %s unsupported"
+msgstr "không hỗ trợ khả năng chuyển đổi sang %s"
+
+#: src/iconv.c:930
+#, c-format
+msgid "conversion from %s to %s unsupported"
+msgstr "không hỗ trợ khả năng chuyển đổi từ %s sang %s"
+
+#: src/iconv.c:931
+#, c-format
+msgid "try '%s -l' to get the list of supported encodings"
+msgstr "hãy thử lệnh « %s -l » để xem danh sách các bảng mã được hỗ trợ"
+
+#: src/iconv.c:985
+msgid "(stdin)"
+msgstr "(thiết bị nhập chuẩn)"
+
+# Variable: don't translate / Biến: đừng dịch
+#: src/iconv.c:993
+#, c-format
+msgid "%s"
+msgstr "%s"
+
+#: src/iconv.c:1004
+#, c-format
+msgid "I/O error"
+msgstr "Lỗi nhập/xuất"
+
+#~ msgid ""
+#~ "Usage: iconv [--binary] [-c] [-s] [-f fromcode] [-t tocode] [file ...]"
+#~ msgstr ""
+#~ "Cách sử dụng: iconv [--binary (nhị phân)] [-c] [-s] [-f từ_mã] [-t "
+#~ "đến_mã] [tập_tin ...]"
+
+#~ msgid "iconv: %s: "
+#~ msgstr "iconv: %s: "

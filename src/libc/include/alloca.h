@@ -28,9 +28,11 @@
 #include <_types.h>
 #include <sys/_types/_size_t.h>
 
+#ifndef UNIFDEF_DRIVERKIT
 __BEGIN_DECLS
 void	*alloca(size_t);		/* built-in for gcc */
 __END_DECLS
+#endif /* UNIFDEF_DRIVERKIT */
 
 #if defined(__GNUC__) && __GNUC__ >= 3
 /* built-in for gcc 3 */

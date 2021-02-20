@@ -56,6 +56,8 @@ add_subdirectory(buildtools)
 add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(startup)
 
+include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
+
 add_subdirectory(bootstrap_cmds)
 
 add_definitions(
@@ -68,116 +70,59 @@ add_definitions(
 	-DTARGET_OS_MAC=1
 )
 
-set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
-set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ranlib")
+set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar")
+set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
+#set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/as/${APPLE_TARGET_TRIPLET_PRIMARY}-as")
 
-add_definitions(-target x86_64-apple-darwin11)
+add_definitions(-target ${APPLE_TARGET_TRIPLET_PRIMARY})
 include(darling_lib)
 include(darling_static_lib)
 
+set(DARLING_SDK_RELATIVE_PATH "Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../..")
+
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include)
+
 include_directories(
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libplatform/include
-	${CMAKE_SOURCE_DIR}/platform-include
-	${CMAKE_SOURCE_DIR}/platform-include/pthread
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/derived
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/NetBSD
-	${CMAKE_CURRENT_SOURCE_DIR}/libc/include/FreeBSD
-	${CMAKE_CURRENT_SOURCE_DIR}/kernel/libsyscall/wrappers
-	${CMAKE_CURRENT_SOURCE_DIR}/kernel/include
-	${CMAKE_SOURCE_DIR}/kernel-include
-	${CMAKE_CURRENT_SOURCE_DIR}/duct/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libm/include
+	${CMAKE_SOURCE_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
+	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
+	${CMAKE_SOURCE_DIR}/framework-include
 )
 
 include_directories(AFTER
-	${CMAKE_CURRENT_SOURCE_DIR}/simd/include
-	${CMAKE_CURRENT_SOURCE_DIR}/CoreAudio/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/SmartCardServices/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser/include
-	${CMAKE_CURRENT_SOURCE_DIR}/launchd/liblaunch/include
-	${CMAKE_CURRENT_SOURCE_DIR}/sandbox/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/coretls/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libmalloc/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libinfo/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/syslog/libsystem_asl.tproj/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/openssl/src/include
-	${CMAKE_SOURCE_DIR}/kernel-include/iokit
-	${CMAKE_CURRENT_SOURCE_DIR}/external/IOKitUser
-	${CMAKE_CURRENT_SOURCE_DIR}/external/openpam/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/sqlite/include
-	${CMAKE_CURRENT_SOURCE_DIR}/OpenScripting/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libiconv/include
-	${CMAKE_CURRENT_SOURCE_DIR}/ncurses/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/corefoundation/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/foundation/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/syslog/libsystem_asl.tproj/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/objc4/runtime/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/corecrypto/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/security/include
-	${CMAKE_CURRENT_SOURCE_DIR}/xcselect/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libaks/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/icu/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libpthread/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libremovefile/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libdispatch/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libclosure/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cfnetwork/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cfnetwork/private_include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libxml2/include
-	${CMAKE_CURRENT_BINARY_DIR}/external/libxml2/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/expat/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libedit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/bzip2/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libnotify/include
-	${CMAKE_CURRENT_SOURCE_DIR}/opendirectory_internal/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/commoncrypto/include
-	${CMAKE_CURRENT_SOURCE_DIR}/quarantine/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libpmenergy/include
-	${CMAKE_CURRENT_SOURCE_DIR}/copyfile/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/include
-	${CMAKE_CURRENT_SOURCE_DIR}/xar/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/DirectoryService/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libresolv/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/AppKit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreText/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/QuartzCore/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreGraphics/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/Onyx2D/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/cocotron/CoreData/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/WTF/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/bmalloc/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libsysmon/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libcompression/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/dtrace/head
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libquit/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/SecurityTokend/include
-	${CMAKE_CURRENT_SOURCE_DIR}/external/lzfse/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libsandbox/include
-	${CMAKE_CURRENT_SOURCE_DIR}/OpenDirectory/include
 	${CMAKE_CURRENT_SOURCE_DIR}/frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/private-frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lib/include
+
+	# necessary because this is the expected behavior when using `xml2-config --cflags`
+	# it adds `$sdk_dir/libxml2` to the include path
+	${CMAKE_SOURCE_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/libxml2
+	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/libxml2
 )
 
-add_subdirectory(external/libkqueue)
+# needs to come before libplatform because it generates mig headers that libplatform needs
+add_subdirectory(kernel)
 
 add_subdirectory(external/libplatform)
 add_subdirectory(external/libpthread)
 add_subdirectory(external/libtrace)
-add_subdirectory(kernel)
 add_subdirectory(libc)
 add_subdirectory(vchroot)
 
 add_subdirectory(lib)
 
+# libstdc++ doesn't use the libc++ headers included below
+add_subdirectory(libstdcxx)
+
+include_directories(BEFORE
+	${CMAKE_SOURCE_DIR}/src/external/libcxx/include
+)
+
 add_definitions(-D_LIBC_NO_FEATURE_VERIFICATION)
 add_subdirectory(external/darling-dmg)
 add_subdirectory(libm)
-add_subdirectory(libmacho)
 add_subdirectory(libgcc)
 add_subdirectory(copyfile)
 add_subdirectory(libinfo)
@@ -192,6 +137,7 @@ add_subdirectory(libnotify)
 add_subdirectory(libremovefile)
 add_subdirectory(launchd)
 add_subdirectory(keymgr)
+add_subdirectory(libcache)
 add_subdirectory(ncurses)
 add_subdirectory(libiconv)
 add_subdirectory(libelfloader)
@@ -216,6 +162,15 @@ add_subdirectory(external/corefoundation)
 add_subdirectory(external/openssl/src)
 #add_subdirectory(external/configd/SystemConfiguration.fproj)
 add_subdirectory(external/foundation)
+add_subdirectory(external/nghttp2)
+add_subdirectory(external/libressl-2.2.9)
+add_subdirectory(external/libressl-2.5.5)
+add_subdirectory(external/libressl-2.6.5)
+add_subdirectory(external/libressl-2.8.3)
+add_subdirectory(external/passwordserver_sasl)
+add_subdirectory(external/OpenLDAP)
+#add_subdirectory(external/mDNSResponder)
+add_subdirectory(external/MITKerberosShim)
 add_subdirectory(external/curl)
 add_subdirectory(external/liblzma)
 add_subdirectory(external/cfnetwork/src)
@@ -224,6 +179,8 @@ add_subdirectory(external/sqlite)
 add_subdirectory(external/openpam)
 add_subdirectory(external/libtelnet)
 add_subdirectory(external/remote_cmds)
+add_subdirectory(external/energytrace)
+add_subdirectory(external/lkm/libkern/kxld)
 add_subdirectory(external/IOKitUser)
 add_subdirectory(external/IOKitTools)
 add_subdirectory(CoreAudio)
@@ -236,8 +193,8 @@ add_subdirectory(libpmenergy)
 add_subdirectory(external/libclosure)
 add_subdirectory(external/compiler-rt/lib/builtins)
 add_subdirectory(csu)
-add_subdirectory(external/python/2.6/Python-2.6.9)
-add_subdirectory(external/python/2.7/Python-2.7.10)
+add_subdirectory(external/BerkeleyDB)
+add_subdirectory(external/python/2.7/Python-2.7.16)
 add_subdirectory(external/ruby)
 add_subdirectory(external/expat)
 add_subdirectory(shellspawn)
@@ -258,7 +215,7 @@ add_subdirectory(external/shell_cmds)
 add_subdirectory(external/file_cmds)
 add_subdirectory(external/text_cmds)
 add_subdirectory(external/adv_cmds)
-#add_subdirectory(external/network_cmds)
+add_subdirectory(external/network_cmds)
 add_subdirectory(external/system_cmds)
 add_subdirectory(external/bash)
 add_subdirectory(external/tcsh)
@@ -277,7 +234,9 @@ add_subdirectory(external/zip/unzip/unzip-5.52)
 add_subdirectory(tools)
 add_subdirectory(external/installer)
 add_subdirectory(external/bind9)
+if(ADDITIONAL_PACKAGES)
 add_subdirectory(external/gnutar/gnutar)
+endif()
 add_subdirectory(external/gpatch)
 add_subdirectory(external/gnudiff)
 add_subdirectory(external/openssh)
@@ -308,6 +267,7 @@ add_subdirectory(OpenDirectory)
 add_subdirectory(opendirectory_internal)
 add_subdirectory(external/cups)
 # add_subdirectory(external/glut)
+add_subdirectory(external/libnetwork)
 
 add_subdirectory(clt)
 
@@ -342,14 +302,6 @@ add_subdirectory(external/swift)
 
 include_directories(BEFORE
 	${CMAKE_CURRENT_SOURCE_DIR}/external/libcxxabi/include
-)
-
-# libstdc++ doesn't use the headers included below
-add_subdirectory(libstdcxx)
-
-include_directories(BEFORE
-	${CMAKE_CURRENT_SOURCE_DIR}/external/libcxx/include
-	${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include
 )
 
 add_subdirectory(external/libcxxabi)

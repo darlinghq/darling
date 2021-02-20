@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Apple Inc.  All rights reserved.
+ * Copyright (c) 2008-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,6 +21,8 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include "libinfo_common.h"
+
 #include <si_module.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -35,6 +37,7 @@
 #include <dispatch/dispatch.h>
 
 /* GLOBAL */
+LIBINFO_EXPORT
 uint32_t gL1CacheEnabled = 1;
 
 #define CACHE_COUNT CATEGORY_COUNT

@@ -2,7 +2,14 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
+#include <sys/socket.h>
 #include "duct.h"
+
+#include "../vchroot_expand.h"
+
+extern __SIZE_TYPE__ strlen(const char* src);
+extern char* strcpy(char* dest, const char* src);
+extern char *strncpy(char *dest, const char *src, __SIZE_TYPE__ n);
 
 long sys_getsockname(int fd, void* asa, int* socklen)
 {
@@ -21,8 +28,9 @@ long sys_getsockname(int fd, void* asa, int* socklen)
 	else
 	{
 		fixed = (struct sockaddr_fixup*) asa;
-		fixed->bsd_family = sfamily_linux_to_bsd(fixed->linux_family);
-		fixed->bsd_length = *socklen;
+		ret = *socklen = sockaddr_fixup_from_linux(fixed, asa, *socklen);
+		if (ret > 0)
+			ret = 0;
 	}
 
 	return ret;

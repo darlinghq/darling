@@ -692,6 +692,11 @@ integer indicated by the
 .Vt "int *"
 (or variant) pointer argument.
 No argument is converted.
+The
+.Fa format
+argument must be in write-protected memory if this specifier is used; see
+.Sx SECURITY CONSIDERATIONS
+below.
 .It Cm %
 A
 .Ql %
@@ -931,6 +936,21 @@ This holds true even if the string was built using a function like
 as the resulting string may still contain user-supplied conversion specifiers
 for later interpolation by
 .Fn printf .
+For this reason, a
+.Fa format
+argument containing
+.Cm %n
+is assumed to be untrustworthy if located in writable memory (i.e. memory with
+protection PROT_WRITE; see
+.Xr mprotect 2 )
+and any attempt to use such an argument is fatal.
+Practically, this means that
+.Cm %n
+is permitted in literal
+.Fa format
+strings but disallowed in
+.Fa format
+strings located in normal stack- or heap-allocated memory.
 .Pp
 Always use the proper secure idiom:
 .Pp

@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/vm_prot.h
+../../../../../../../../../src/external/lkm/osfmk/mach/vm_prot.h

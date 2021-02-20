@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2013-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -51,5 +51,19 @@ IPMonitorControlSetInterfacePrimaryRank(IPMonitorControlRef control,
 SCNetworkServicePrimaryRank
 IPMonitorControlGetInterfacePrimaryRank(IPMonitorControlRef control,
 					CFStringRef ifname);
+
+Boolean
+IPMonitorControlSetInterfaceAdvisory(IPMonitorControlRef control,
+				     CFStringRef ifname,
+				     SCNetworkInterfaceAdvisory advisory,
+				     CFStringRef reason);
+Boolean
+IPMonitorControlInterfaceAdvisoryIsSet(IPMonitorControlRef control,
+				       CFStringRef ifname);
+Boolean
+IPMonitorControlAnyInterfaceAdvisoryIsSet(IPMonitorControlRef control);
+
+CFStringRef
+IPMonitorControlCopyInterfaceAdvisoryNotificationKey(CFStringRef ifname);
 
 #endif /* _IPMONITOR_CONTROL_H */

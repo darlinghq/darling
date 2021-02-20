@@ -58,6 +58,7 @@ defaultUnboxedPropertyTable[] = {
 	{ "com.apple.security.", "S", propFlagsPrefix },
 	{ XATTR_RESOURCEFORK_NAME, "PCS", 0 },	// Don't keep for safe save
 	{ XATTR_FINDERINFO_NAME, "PCS", 0 },	// Same as ResourceFork
+	{ "com.apple.root.installed", "PC", 0}, // Don't share or sync. Copyable by entitled callers
 	{ 0, 0, 0 },
 };
 
@@ -69,6 +70,7 @@ defaultSandboxedPropertyTable[] = {
     { "com.apple.security.", "N", propFlagsPrefix },
     { XATTR_RESOURCEFORK_NAME, "PCS", 0 },	// Don't keep for safe save
     { XATTR_FINDERINFO_NAME, "PCS", 0 },	// Same as ResourceFork
+	{ "com.apple.root.installed", "PC", 0}, // Don't share or sync. Copyable by entitled callers
     { 0, 0, 0 },
 };
 

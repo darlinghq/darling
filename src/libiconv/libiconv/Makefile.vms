@@ -1,0 +1,256 @@
+# -*- Makefile -*- for libiconv on VMS using the MMS utility
+
+#### Start of system configuration section. ####
+
+# Directories used by "make install":
+prefix = SYS$DATA:[
+exec_prefix = $(prefix)
+bindir = $(exec_prefix).bin
+libdir = $(exec_prefix).lib
+includedir = $(prefix).include
+datadir = $(prefix).share
+localedir = $(datadir).locale
+mandir = $(datadir).man
+docdir = $(datadir).doc.libiconv
+
+# Programs used by "make":
+LN = copy
+RM = delete
+
+# Programs used by "make install":
+INSTALL = copy
+INSTALL_PROGRAM = copy
+INSTALL_DATA = copy
+
+#### End of system configuration section. ####
+
+all : config.h
+	set default [.libcharset]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms all
+	set default [-]
+	$(LN) [.libcharset.include]localcharset.h [.lib]localcharset.h
+	$(LN) [.include]iconv.h_vms [.include]iconv.h
+	set default [.lib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms all
+	set default [-]
+	set default [.srclib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms all
+	set default [-]
+	set default [.src]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms all
+	set default [-]
+	set default [.po]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms all
+	set default [-]
+	set default [.man]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms all
+	set default [-]
+	set default [.tests]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms all
+	set default [-]
+
+config.h : config.h_vms
+	$(LN) config.h_vms config.h
+
+install : config.h
+	set default [.libcharset]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms install
+	set default [-]
+	set default [.lib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms install
+	set default [-]
+	set default [.srclib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms install
+	set default [-]
+	set default [.src]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms install
+	set default [-]
+	set default [.po]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms install
+	set default [-]
+	set default [.man]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms install
+	set default [-]
+	set default [.tests]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms install
+	set default [-]
+	create /directory $(prefix)]
+	create /directory $(includedir)]
+	$(INSTALL_DATA) [.include]iconv.h $(includedir)]iconv.h
+
+installdirs :
+	set default [.libcharset]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms installdirs
+	set default [-]
+	set default [.lib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms installdirs
+	set default [-]
+	set default [.srclib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms installdirs
+	set default [-]
+	set default [.src]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms installdirs
+	set default [-]
+	set default [.po]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms installdirs
+	set default [-]
+	set default [.man]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms installdirs
+	set default [-]
+	set default [.tests]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms installdirs
+	set default [-]
+	create /directory $(prefix)]
+	create /directory $(includedir)]
+
+uninstall :
+	set default [.libcharset]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms uninstall
+	set default [-]
+	set default [.lib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms uninstall
+	set default [-]
+	set default [.srclib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms uninstall
+	set default [-]
+	set default [.src]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms uninstall
+	set default [-]
+	set default [.po]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms uninstall
+	set default [-]
+	set default [.man]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms uninstall
+	set default [-]
+	set default [.tests]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms uninstall
+	set default [-]
+	$(RM) $(includedir)]iconv.h
+
+check : all
+	set default [.libcharset]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms check
+	set default [-]
+	set default [.lib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms check
+	set default [-]
+	set default [.srclib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms check
+	set default [-]
+	set default [.src]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms check
+	set default [-]
+	set default [.po]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms check
+	set default [-]
+	set default [.man]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms check
+	set default [-]
+	set default [.tests]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms check
+	set default [-]
+
+mostlyclean :
+	$(RM) config.h
+	set default [.libcharset]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms mostlyclean
+	set default [-]
+	$(RM) [.lib]localcharset.h
+	$(RM) [.include]iconv.h
+	set default [.lib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms mostlyclean
+	set default [-]
+	set default [.srclib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms mostlyclean
+	set default [-]
+	set default [.src]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms mostlyclean
+	set default [-]
+	set default [.po]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms mostlyclean
+	set default [-]
+	set default [.man]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms mostlyclean
+	set default [-]
+	set default [.tests]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms mostlyclean
+	set default [-]
+
+clean :
+	$(RM) config.h
+	set default [.libcharset]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms clean
+	set default [-]
+	$(RM) [.lib]localcharset.h
+	$(RM) [.include]iconv.h
+	set default [.lib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms clean
+	set default [-]
+	set default [.srclib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms clean
+	set default [-]
+	set default [.src]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms clean
+	set default [-]
+	set default [.po]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms clean
+	set default [-]
+	set default [.man]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms clean
+	set default [-]
+	set default [.tests]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms clean
+	set default [-]
+
+distclean :
+	$(RM) config.h
+	set default [.libcharset]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms distclean
+	set default [-]
+	$(RM) [.lib]localcharset.h
+	$(RM) [.include]iconv.h
+	set default [.lib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms distclean
+	set default [-]
+	set default [.srclib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms distclean
+	set default [-]
+	set default [.src]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms distclean
+	set default [-]
+	set default [.po]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms distclean
+	set default [-]
+	set default [.man]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms distclean
+	set default [-]
+	set default [.tests]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms distclean
+	set default [-]
+
+maintainer-clean :
+	$(RM) config.h
+	set default [.libcharset]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms maintainer-clean
+	set default [-]
+	$(RM) [.lib]localcharset.h
+	$(RM) [.include]iconv.h
+	set default [.lib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms maintainer-clean
+	set default [-]
+	set default [.srclib]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms maintainer-clean
+	set default [-]
+	set default [.src]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms maintainer-clean
+	set default [-]
+	set default [.po]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms maintainer-clean
+	set default [-]
+	set default [.man]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms maintainer-clean
+	set default [-]
+	set default [.tests]
+	$(MMS) $(MMSQUALIFIERS) /description=Makefile.vms maintainer-clean
+	set default [-]
+

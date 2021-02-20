@@ -30,6 +30,9 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)heapsort.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
@@ -179,3 +182,4 @@ heapsort(vbase, nmemb, size, compar)
 	free(k);
 	return (0);
 }
+#pragma clang diagnostic pop

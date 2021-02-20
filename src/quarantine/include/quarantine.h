@@ -65,12 +65,14 @@ typedef struct _qtn_proc_t* qtn_proc_t;
 qtn_proc_t qtn_proc_alloc(void);
 void qtn_proc_set_identifier(qtn_proc_t proc, const char* ident);
 void qtn_proc_set_flags(qtn_proc_t proc, unsigned int flags);
-void qtn_proc_apply_to_self(qtn_proc_t proc);
+int qtn_proc_apply_to_self(qtn_proc_t proc);
 void qtn_proc_free(qtn_proc_t proc);
 
 extern int qtn_file_init_with_mount_point(qtn_file_t a, char b[1024]);
 
 extern int qtn_file_apply_to_mount_point(qtn_file_t a, const char *b);
+
+int qtn_proc_init_with_data(qtn_proc_t proc, void* data, size_t data_len);
 
 #define QTN_SERIALIZED_DATA_MAX 4096
 

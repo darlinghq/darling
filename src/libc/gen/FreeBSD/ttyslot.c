@@ -31,7 +31,7 @@
 static char sccsid[] = "@(#)ttyslot.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/gen/ttyslot.c,v 1.6 2009/02/12 19:00:13 ed Exp $");
+__FBSDID("$FreeBSD$");
 
 #include <paths.h>
 #include <ttyent.h>
@@ -42,24 +42,6 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/ttyslot.c,v 1.6 2009/02/12 19:00:13 ed Exp 
 int
 ttyslot()
 {
-	struct ttyent *ttyp;
-	int slot;
-	int cnt;
-	char *name;
 
-	setttyent();
-	for (cnt = 0; cnt < 3; ++cnt)
-		if ( (name = ttyname(cnt)) ) {
-			if (strncmp(name, _PATH_DEV, sizeof _PATH_DEV - 1) != 0)
-				break;
-			name += sizeof _PATH_DEV - 1;
-			for (slot = 1; (ttyp = getttyent()); ++slot)
-				if (!strcmp(ttyp->ty_name, name)) {
-					endttyent();
-					return(slot);
-				}
-			break;
-		}
-	endttyent();
-	return(0);
+	return (0);
 }

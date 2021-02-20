@@ -1,0 +1,293 @@
+# Irish translations for libiconv 
+# Copyright (C) 2003 Free Software Foundation, Inc.
+# This file is distributed under the same license as the libiconv package.
+# Kevin Patrick Scannell <scannell@SLU.EDU>, 2003, 2006.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: libiconv 1.11-pre1\n"
+"Report-Msgid-Bugs-To: bug-gnu-libiconv@gnu.org\n"
+"POT-Creation-Date: 2006-07-19 21:16+0200\n"
+"PO-Revision-Date: 2006-07-16 14:58-0500\n"
+"Last-Translator: Kevin Patrick Scannell <scannell@SLU.EDU>\n"
+"Language-Team: Irish <gaeilge-gnulinux@lists.sourceforge.net>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ISO-8859-1\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/iconv.c:107
+msgid "Usage: iconv [-c] [-s] [-f fromcode] [-t tocode] [file ...]"
+msgstr "Úsáid: iconv [-c] [-s] [-f cód] [-t cód] [comhad ...]"
+
+#: src/iconv.c:109
+msgid "or:    iconv -l"
+msgstr "nó:    iconv -l"
+
+#: src/iconv.c:111
+#, c-format
+msgid "Try `%s --help' for more information.\n"
+msgstr "Bain triail as `%s --help' chun tuilleadh eolais a fháil.\n"
+
+#: src/iconv.c:114
+#, c-format, no-wrap
+msgid "Usage: %s [OPTION...] [-f ENCODING] [-t ENCODING] [INPUTFILE...]\n"
+msgstr "Úsáid: %s [ROGHA...] [-f IONCHÓDÚ] [-t IONCHÓDÚ] [INCHOMHAD...]\n"
+
+#: src/iconv.c:118
+#, c-format, no-wrap
+msgid "or:    %s -l\n"
+msgstr "nó:    %s -l\n"
+
+#: src/iconv.c:123
+#, c-format, no-wrap
+msgid "Converts text from one encoding to another encoding.\n"
+msgstr "Tiontaigh ó ionchódú go ceann eile.\n"
+
+#: src/iconv.c:127
+#, c-format, no-wrap
+msgid "Options controlling the input and output format:\n"
+msgstr "Roghanna a rialaíonn formáid ionchurtha/aschurtha:\n"
+
+#: src/iconv.c:130
+#, c-format, no-wrap
+msgid ""
+"  -f ENCODING, --from-code=ENCODING\n"
+"                              the encoding of the input\n"
+msgstr ""
+"  -f IONCHÓDÚ, --from-code=IONCHÓDÚ\n"
+"                              ionchódú an ionchuir\n"
+
+#: src/iconv.c:134
+#, c-format, no-wrap
+msgid ""
+"  -t ENCODING, --to-code=ENCODING\n"
+"                              the encoding of the output\n"
+msgstr ""
+"  -t IONCHÓDÚ, --to-code=IONCHÓDÚ\n"
+"                              ionchódú an aschuir\n"
+
+#: src/iconv.c:139
+#, c-format, no-wrap
+msgid "Options controlling conversion problems:\n"
+msgstr "Roghanna a rialaíonn fadhbanna tiontaithe:\n"
+
+#: src/iconv.c:142
+#, c-format, no-wrap
+msgid "  -c                          discard unconvertible characters\n"
+msgstr "  -c                        caith carachtair dhothiontaithe i dtraipisí\n"
+
+#: src/iconv.c:145
+#, c-format, no-wrap
+msgid ""
+"  --unicode-subst=FORMATSTRING\n"
+"                              substitution for unconvertible Unicode characters\n"
+msgstr ""
+"  --unicode-subst=TEAGHRÁN\n"
+"                              ionadaíocht do charachtair dhothiontaithe Unicode\n"
+
+#: src/iconv.c:149
+#, c-format, no-wrap
+msgid "  --byte-subst=FORMATSTRING   substitution for unconvertible bytes\n"
+msgstr "  --byte-subst=TEAGHRÁN       ionadaíocht do bhearta dothiontaithe\n"
+
+#: src/iconv.c:152
+#, c-format, no-wrap
+msgid ""
+"  --widechar-subst=FORMATSTRING\n"
+"                              substitution for unconvertible wide characters\n"
+msgstr ""
+"  --widechar-subst=TEAGHRÁN\n"
+"                             ionadaíocht do charachtair leathana dhothiontaithe\n"
+
+#: src/iconv.c:157
+#, c-format, no-wrap
+msgid "Options controlling error output:\n"
+msgstr "Roghanna a rialaíonn aschur d'earráidí:\n"
+
+#: src/iconv.c:160
+#, c-format, no-wrap
+msgid "  -s, --silent                suppress error messages about conversion problems\n"
+msgstr "  -s, --silent                ná taispeáin teachtaireachtaí faoi fhadhbanna tiontaithe\n"
+
+#: src/iconv.c:164
+#, c-format, no-wrap
+msgid "Informative output:\n"
+msgstr "Aschur faisnéiseach:\n"
+
+#: src/iconv.c:167
+#, c-format, no-wrap
+msgid "  -l, --list                  list the supported encodings\n"
+msgstr "  -l, --list                  taispeáin na hionchóduithe a dtacaítear leo\n"
+
+#: src/iconv.c:170
+#, c-format, no-wrap
+msgid "  --help                      display this help and exit\n"
+msgstr "  --help                      taispeáin an chabhair seo agus scoir\n"
+
+#: src/iconv.c:173
+#, c-format, no-wrap
+msgid "  --version                   output version information and exit\n"
+msgstr "  --version                   taispeáin eolas faoin leagan agus scoir\n"
+
+#: src/iconv.c:176
+msgid "Report bugs to <bug-gnu-libiconv@gnu.org>.\n"
+msgstr "Seol tuairiscí fabhtanna chuig <bug-gnu-libiconv@gnu.org>.\n"
+
+#: src/iconv.c:186
+#, c-format
+msgid ""
+"This is free software; see the source for copying conditions.  There is NO\n"
+"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
+msgstr ""
+"Is saorbhogearra an ríomhchlár seo; féach ar an bhunchód le haghaidh\n"
+"coinníollacha cóipeála.  Níl baránta ar bith ann; go fiú níl baránta ann\n"
+"d'INDÍOLTACHT nó FEILIÚNACHT D'FHEIDHM AR LEITH.\n"
+
+#: src/iconv.c:189
+#, c-format
+msgid "Written by %s.\n"
+msgstr "Le %s.\n"
+
+#: src/iconv.c:280
+#, c-format
+msgid ""
+"%s argument: A format directive with a variable width is not allowed here."
+msgstr ""
+"argóint %s: Ní cheadaítear treoir fhormáidithe le leithead athraitheach "
+"anseo."
+
+#: src/iconv.c:291
+#, c-format
+msgid ""
+"%s argument: A format directive with a variable precision is not allowed "
+"here."
+msgstr ""
+"argóint %s: Ní cheadaítear treoir fhormáidithe le beachtas athraitheach "
+"anseo."
+
+#: src/iconv.c:303
+#, c-format
+msgid "%s argument: A format directive with a size is not allowed here."
+msgstr "argóint %s: Ní cheadaítear treoir fhormáidithe le méid anseo."
+
+#: src/iconv.c:341
+#, c-format
+msgid "%s argument: The string ends in the middle of a directive."
+msgstr "argóint %s: Deireadh an teaghráin i lár treorach."
+
+#: src/iconv.c:343
+#, c-format
+msgid "%s argument: The character '%c' is not a valid conversion specifier."
+msgstr "argóint %s: Níl carachtar '%c' bailí mar shonraitheoir tiontaithe."
+
+#: src/iconv.c:345
+#, c-format
+msgid ""
+"%s argument: The character that terminates the format directive is not a "
+"valid conversion specifier."
+msgstr ""
+"argóint %s: An carachtar ag deireadh na treorach formáidithe, níl sé bailí "
+"mar shonraitheoir tiontaithe."
+
+#: src/iconv.c:356
+#, fuzzy, c-format
+msgid ""
+"%s argument: The format string consumes more than one argument: %u argument."
+msgid_plural ""
+"%s argument: The format string consumes more than one argument: %u arguments."
+msgstr[0] ""
+"argóint %s: Úsáideann an teaghrán formáidithe níos mó ná aon argóint amháin: "
+"%u argóint."
+msgstr[1] ""
+"argóint %s: Úsáideann an teaghrán formáidithe níos mó ná aon argóint amháin: "
+"%u argóint."
+
+#: src/iconv.c:411
+#, c-format
+msgid "cannot convert byte substitution to Unicode: %s"
+msgstr "ní féidir ionadaíocht bhirt a thiontú go Unicode: %s"
+
+#: src/iconv.c:447
+#, c-format
+msgid "cannot convert unicode substitution to target encoding: %s"
+msgstr "ní féidir ionadaíocht unicode a thiontú go dtí an sprioc-ionchódú: %s"
+
+#: src/iconv.c:484
+#, c-format
+msgid "cannot convert byte substitution to wide string: %s"
+msgstr "ní féidir ionadaíocht bhirt a thiontú go teaghrán leathan: %s"
+
+#: src/iconv.c:521
+#, fuzzy, c-format
+msgid "cannot convert widechar substitution to target encoding: %s"
+msgstr ""
+"iconv: ní féidir ionadaíocht widechar a thiontú go dtí an sprioc-ionchódú: %s"
+
+#: src/iconv.c:558
+#, fuzzy, c-format
+msgid "cannot convert byte substitution to target encoding: %s"
+msgstr ""
+"iconv: ní féidir ionadaíocht bhirt a thiontú go dtí an sprioc-ionchódú: %s"
+
+#: src/iconv.c:592 src/iconv.c:636 src/iconv.c:710
+#, c-format
+msgid "%s:%u:%u: incomplete character or shift sequence"
+msgstr "%s:%u:%u: carachtar nó seicheamh neamhiomlán"
+
+#: src/iconv.c:625 src/iconv.c:700
+#, c-format
+msgid "%s:%u:%u: cannot convert"
+msgstr "%s:%u:%u: ní féidir tiontú"
+
+#: src/iconv.c:667 src/iconv.c:730
+#, c-format
+msgid "%s:%u:%u"
+msgstr "%s:%u:%u"
+
+#: src/iconv.c:742
+#, c-format
+msgid "%s: I/O error"
+msgstr "%s: Earráid I/A"
+
+#: src/iconv.c:926
+#, c-format
+msgid "conversion from %s unsupported"
+msgstr "ní thacaítear le tiontú ó %s"
+
+#: src/iconv.c:928
+#, c-format
+msgid "conversion to %s unsupported"
+msgstr "ní thacaítear le tiontú go %s"
+
+#: src/iconv.c:930
+#, c-format
+msgid "conversion from %s to %s unsupported"
+msgstr "ní thacaítear le tiontú ó %s go %s"
+
+#: src/iconv.c:931
+#, c-format
+msgid "try '%s -l' to get the list of supported encodings"
+msgstr ""
+"bain triail as '%s -l' chun liosta de na hionchóduithe a dtacaítear leo a "
+"thaispeáint"
+
+#: src/iconv.c:985
+msgid "(stdin)"
+msgstr "(stdin)"
+
+#: src/iconv.c:993
+#, c-format
+msgid "%s"
+msgstr "%s"
+
+#: src/iconv.c:1004
+#, c-format
+msgid "I/O error"
+msgstr "Earráid I/A"
+
+#~ msgid ""
+#~ "Usage: iconv [--binary] [-c] [-s] [-f fromcode] [-t tocode] [file ...]"
+#~ msgstr "Úsáid: iconv [--binary] [-c] [-s] [-f cód] [-t cód] [comhad ...]"
+
+#~ msgid "iconv: %s: "
+#~ msgstr "iconv: %s: "

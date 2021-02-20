@@ -47,6 +47,31 @@ __get_cpu_capabilities:
 	movl	_COMM_PAGE_CPU_CAPABILITIES64+4, %edx
 	ret
 
+#elif defined(__arm__)
+
+	.text
+	.align 2
+	.globl __get_cpu_capabilities
+__get_cpu_capabilities:
+	mov	r0, #(_COMM_PAGE_CPU_CAPABILITIES & 0x000000ff)
+	orr	r0, r0, #(_COMM_PAGE_CPU_CAPABILITIES & 0x0000ff00)
+	orr	r0, r0, #(_COMM_PAGE_CPU_CAPABILITIES & 0x00ff0000)
+	orr	r0, r0, #(_COMM_PAGE_CPU_CAPABILITIES & 0xff000000)
+	ldr	r0, [r0]
+	bx	lr
+
+#elif defined(__arm64__)
+
+	.text
+	.align 2
+	.globl __get_cpu_capabilities
+__get_cpu_capabilities:
+	ldr x0, Lcommpage_cc_addr
+	ldr	w0, [x0]
+	ret
+Lcommpage_cc_addr:
+.quad _COMM_PAGE_CPU_CAPABILITIES
+
 #else
 #error Unsupported architecture
 #endif

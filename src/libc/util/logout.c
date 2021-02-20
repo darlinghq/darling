@@ -64,6 +64,9 @@
 #include <unistd.h>
 #include <string.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconstant-conversion"
+
 int
 logout(char *line)
 {
@@ -103,3 +106,4 @@ logout(char *line)
 	UTMPX_UNLOCK(def_utx);
 	return 1;
 }
+#pragma clang diagnostic pop

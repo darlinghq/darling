@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -52,6 +52,7 @@
 #define _ROUTINE_H
 
 #include "type.h"
+#include <stdio.h>
 #include <mach/message.h>
 #include <mach/boolean.h>
 #include <sys/types.h>
@@ -335,11 +336,11 @@ typedef struct argument
     ipc_type_t *argType;
     /* Kernel Processed Data */
     mach_msg_descriptor_type_t argKPD_Type;   /* KPD type: port, ool, port+ool */
-    void  (* argKPD_Template)();              /* KPD discipline for static templates */
-    void  (* argKPD_Init)();                  /* KPD discipline for initializing */
-    void  (* argKPD_Pack)();                  /* KPD discipline for packing */
-    void  (* argKPD_Extract)();               /* KPD discipline for extracting */
-    void  (* argKPD_TypeCheck)();             /* KPD discipline for type checking */
+    void  (* argKPD_Template)(FILE *file, struct argument *arg, boolean_t in);              /* KPD discipline for static templates */
+    void  (* argKPD_Init)(FILE *file, struct argument *arg);                  /* KPD discipline for initializing */
+    void  (* argKPD_Pack)(FILE *file, struct argument *ar);                  /* KPD discipline for packing */
+    void  (* argKPD_Extract)(FILE *file, struct argument *arg);               /* KPD discipline for extracting */
+    void  (* argKPD_TypeCheck)(FILE *file, struct argument *ar);             /* KPD discipline for type checking */
 
     string_t argVarName;  /* local variable and argument names */
     string_t argMsgField; /* message field's name */
@@ -406,6 +407,8 @@ typedef struct routine
 
     boolean_t rtSimpleRequest;
     boolean_t rtSimpleReply;
+    boolean_t rtUseSpecialReplyPort;
+    u_int rtConsumeOnSendError;
 
     u_int rtNumRequestVar;      /* number of variable/inline args in request */
     u_int rtNumReplyVar;        /* number of variable/inline args in reply */
@@ -486,33 +489,33 @@ typedef struct routine
 
 extern u_int rtNumber;
 /* rt->rtNumber will be initialized */
-extern routine_t *rtAlloc();
+extern routine_t *rtAlloc(void);
 /* skip a number */
-extern void rtSkip();
+extern void rtSkip(void);
 
-extern argument_t *argAlloc();
-
-extern boolean_t
-rtCheckMask(/* argument_t *args, u_int mask */);
+extern argument_t *argAlloc(void);
 
 extern boolean_t
-rtCheckMaskFunction(/* argument_t *args, u_int mask,
-                       boolean_t (*func)(argument_t *arg) */);
+rtCheckMask(argument_t *args, u_int mask);
+
+extern boolean_t
+rtCheckMaskFunction(argument_t *args, u_int mask,
+                       boolean_t (*func)(argument_t *arg));
 
 extern routine_t *
-rtMakeRoutine(/* identifier_t name, argument_t *args */);
+rtMakeRoutine(identifier_t name, argument_t *args);
 extern routine_t *
-rtMakeSimpleRoutine(/* identifier_t name, argument_t *args */);
+rtMakeSimpleRoutine(identifier_t name, argument_t *args);
 
-extern void rtPrintRoutine(/* routine_t *rt */);
-extern void rtCheckRoutine(/* routine_t *rt */);
+extern void rtPrintRoutine(routine_t *rt);
+extern void rtCheckRoutine(routine_t *rt);
 
-extern char *rtRoutineKindToStr(/* routine_kind_t rk */);
+extern char *rtRoutineKindToStr(routine_kind_t rk);
 
-extern int rtCountArgDescriptors(/* argument_t *args, int *argcount */);
+extern int rtCountArgDescriptors(argument_t *args, int *argcount);
 
-extern void rtMinRequestSize(/* FILE *file, routine_t *rt, char *str */);
-extern void rtMinReplySize(/* FILE *file, routine_t *rt, char *str */);
+extern void rtMinRequestSize(FILE *file, routine_t *rt, char *str);
+extern void rtMinReplySize(FILE *file, routine_t *rt, char *str);
 
 #define RPCUserStruct(arg)    (arg->argType->itStruct && arg->argType->itInLine)
 

@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/get_compat.h
+../../../../../../../../src/libc/gen/get_compat.h

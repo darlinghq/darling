@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2005, 2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2005, 2011, 2017, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -35,162 +35,11 @@
 
 #include "scutil.h"
 #include "cache.h"
+#include "SCDynamicStoreInternal.h"
 
 
 #pragma mark -
 #pragma mark SCDynamicStore "cache"
-
-
-static	Boolean			use_cache	= FALSE;
-
-static	CFMutableDictionaryRef	cached_keys	= NULL;
-static	CFMutableDictionaryRef	cached_set	= NULL;
-static	CFMutableArrayRef	cached_removals	= NULL;
-static	CFMutableArrayRef	cached_notifys	= NULL;
-
-
-static void
-cache_open(void)
-{
-	if (use_cache) {
-		// if we are already using the cache
-		cache_close();
-	}
-
-	cached_keys     = CFDictionaryCreateMutable(NULL,
-						    0,
-						    &kCFTypeDictionaryKeyCallBacks,
-						    &kCFTypeDictionaryValueCallBacks);
-	cached_set      = CFDictionaryCreateMutable(NULL,
-						    0,
-						    &kCFTypeDictionaryKeyCallBacks,
-						    &kCFTypeDictionaryValueCallBacks);
-	cached_removals = CFArrayCreateMutable(NULL,
-					       0,
-					       &kCFTypeArrayCallBacks);
-	cached_notifys  = CFArrayCreateMutable(NULL,
-					       0,
-					       &kCFTypeArrayCallBacks);
-
-	use_cache = TRUE;
-	return;
-}
-
-
-static CFPropertyListRef
-cache_SCDynamicStoreCopyValue(SCDynamicStoreRef store, CFStringRef key)
-{
-	CFPropertyListRef	value;
-
-	value = CFDictionaryGetValue(cached_set, key);
-	if (value) {
-		// if we have "set" a new value
-		return (CFRetain(value));
-	}
-
-	if (CFArrayContainsValue(cached_removals,
-				 CFRangeMake(0, CFArrayGetCount(cached_removals)),
-				 key)) {
-		// if we have "removed" the key
-		_SCErrorSet(kSCStatusNoKey);
-		return NULL;
-	}
-
-	value = CFDictionaryGetValue(cached_keys, key);
-	if (value) {
-		// if we have a cached value
-		return (CFRetain(value));
-	}
-
-	value = SCDynamicStoreCopyValue(store, key);
-	if (value) {
-		CFDictionarySetValue(cached_keys, key, value);
-	}
-
-	return value;
-}
-
-
-static void
-cache_SCDynamicStoreSetValue(SCDynamicStoreRef store, CFStringRef key, CFPropertyListRef value)
-{
-	CFIndex	i;
-
-	i = CFArrayGetFirstIndexOfValue(cached_removals,
-					CFRangeMake(0, CFArrayGetCount(cached_removals)),
-					key);
-	if (i != kCFNotFound) {
-		// if previously "removed"
-		CFArrayRemoveValueAtIndex(cached_removals, i);
-	}
-
-	CFDictionarySetValue(cached_set, key, value);
-
-	return;
-}
-
-static void
-cache_SCDynamicStoreRemoveValue(SCDynamicStoreRef store, CFStringRef key)
-{
-	CFDictionaryRemoveValue(cached_set, key);
-
-	if (!CFArrayContainsValue(cached_removals,
-				  CFRangeMake(0, CFArrayGetCount(cached_removals)),
-				  key)) {
-		CFArrayAppendValue(cached_removals, key);
-	}
-
-	return;
-}
-
-
-static void
-cache_SCDynamicStoreNotifyValue(SCDynamicStoreRef store, CFStringRef key)
-{
-	if (!CFArrayContainsValue(cached_notifys,
-				  CFRangeMake(0, CFArrayGetCount(cached_notifys)),
-				  key)) {
-		CFArrayAppendValue(cached_notifys, key);
-	}
-
-	return;
-}
-
-
-static void
-cache_write(SCDynamicStoreRef store)
-{
-	if ((CFDictionaryGetCount(cached_set) > 0) ||
-	    (CFArrayGetCount(cached_removals) > 0) ||
-	    (CFArrayGetCount(cached_notifys)  > 0)) {
-		if (!SCDynamicStoreSetMultiple(store,
-					       cached_set,
-					       cached_removals,
-					       cached_notifys)) {
-			SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
-		}
-	}
-
-	return;
-}
-
-
-__private_extern__
-void
-cache_close(void)
-{
-	if (!use_cache) {
-		return;
-	}
-
-	CFRelease(cached_keys);
-	CFRelease(cached_set);
-	CFRelease(cached_removals);
-	CFRelease(cached_notifys);
-
-	use_cache = FALSE;
-	return;
-}
 
 
 #pragma mark -
@@ -219,38 +68,43 @@ do_block(int argc, char **argv)
 			return;
 		}
 	} else {
-		enable = !use_cache;	// toggle
+		enable = !_SCDynamicStoreCacheIsActive(store);	// toggle
 	}
 
 	if (enable) {
 		// begin block of SCDynamicStore operations
-		if (use_cache) {
+		if (_SCDynamicStoreCacheIsActive(store)) {
 			SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(kSCStatusLocked));
 			return;
 		}
 
 		SCPrint(TRUE, stdout, CFSTR("Begin block of SCDynamicStore operations\n"));
 
-		cache_open();
+		_SCDynamicStoreCacheOpen(store);
 	} else {
-		CFIndex	n;
+		CFIndex				n		= 0;
+		SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
 
 		// end block of SCDynamicStore operations
-		if (!use_cache) {
+		if (!_SCDynamicStoreCacheIsActive(store)) {
 			SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(kSCStatusNeedLock));
 			return;
 		}
 
-		n = CFDictionaryGetCount(cached_keys) +
-		    CFArrayGetCount(cached_removals)  +
-		    CFArrayGetCount(cached_notifys);
+		n += (storePrivate->cached_set != NULL)
+			? CFDictionaryGetCount(storePrivate->cached_set) : 0;
+		n += (storePrivate->cached_removals != NULL)
+			? CFArrayGetCount(storePrivate->cached_removals) : 0;
+		n += (storePrivate->cached_notifys != NULL)
+			? CFArrayGetCount(storePrivate->cached_notifys) : 0;
+
 		SCPrint(TRUE, stdout,
 			CFSTR("End block of SCDynamicStore operations%s\n"),
 			(n > 0) ? ", posting changes" : "");
 		if (n > 0) {
-			cache_write(store);
+			_SCDynamicStoreCacheCommitChanges(store);
 		}
-		cache_close();
+		_SCDynamicStoreCacheClose(store);
 	}
 
 	return;
@@ -258,7 +112,9 @@ do_block(int argc, char **argv)
 
 
 static CFComparisonResult
-sort_keys(const void *p1, const void *p2, void *context) {
+sort_keys(const void *p1, const void *p2, void *context)
+{
+#pragma unused(context)
 	CFStringRef key1 = (CFStringRef)p1;
 	CFStringRef key2 = (CFStringRef)p2;
 	return CFStringCompare(key1, key2, 0);
@@ -272,11 +128,12 @@ __private_extern__
 void
 do_list(int argc, char **argv)
 {
-	int			i;
-	CFStringRef		pattern;
-	CFArrayRef		list;
-	CFIndex			listCnt;
-	CFMutableArrayRef	sortedList;
+	int				i;
+	CFStringRef			pattern;
+	CFArrayRef			list;
+	CFIndex				listCnt;
+	CFMutableArrayRef		sortedList;
+	SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
 
 	pattern = CFStringCreateWithCString(NULL,
 					    (argc >= 1) ? argv[0] : ".*",
@@ -289,13 +146,14 @@ do_list(int argc, char **argv)
 			SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
 			return;
 		} else {
-		    if (!use_cache) {
+		    if (!_SCDynamicStoreCacheIsActive(store)) {
 			SCPrint(TRUE, stdout, CFSTR("  no keys.\n"));
 			return;
 		    } else {
 			CFIndex	n;
 
-			n = CFDictionaryGetCount(cached_set);
+			n = (storePrivate->cached_set != NULL)
+				? CFDictionaryGetCount(storePrivate->cached_set) : 0;
 			if (n > 0) {
 				const void *	cachedKeys_q[N_QUICK];
 				const void **	cachedKeys	= cachedKeys_q;
@@ -303,7 +161,7 @@ do_list(int argc, char **argv)
 				if (n > (CFIndex)(sizeof(cachedKeys_q) / sizeof(CFStringRef))) {
 					cachedKeys = CFAllocatorAllocate(NULL, n * sizeof(CFStringRef), 0);
 				}
-				CFDictionaryGetKeysAndValues(cached_set, cachedKeys, NULL);
+				CFDictionaryGetKeysAndValues(storePrivate->cached_set, cachedKeys, NULL);
 				list = CFArrayCreate(NULL, cachedKeys, n, &kCFTypeArrayCallBacks);
 				if (cachedKeys != cachedKeys_q) {
 					CFAllocatorDeallocate(NULL, cachedKeys);
@@ -314,8 +172,11 @@ do_list(int argc, char **argv)
 			}
 		    }
 		}
-	} else if (use_cache &&
-		   ((CFDictionaryGetCount(cached_set) > 0) || (CFArrayGetCount(cached_removals) > 0))) {
+	} else if (_SCDynamicStoreCacheIsActive(store) &&
+		   (((storePrivate->cached_set != NULL) &&
+		     (CFDictionaryGetCount(storePrivate->cached_set) > 0)) ||
+		    ((storePrivate->cached_removals != NULL) &&
+		     (CFArrayGetCount(storePrivate->cached_removals) > 0)))) {
 		SCPrint(TRUE, stdout,
 			CFSTR("  Note: SCDynamicStore transactions in progress, key list (below) may be out of date.\n\n"));
 	}
@@ -354,41 +215,20 @@ do_add(int argc, char **argv)
 	key    = CFStringCreateWithCString(NULL, argv[0], kCFStringEncodingUTF8);
 
 	if (argc < 2) {
-		if (!use_cache) {
+		if (!_SCDynamicStoreCacheIsActive(store)) {
 			if (!SCDynamicStoreAddValue(store, key, value)) {
 				SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
 			}
 		} else {
-			CFTypeRef	val;
-
-			val = cache_SCDynamicStoreCopyValue(store, key);
-			if (val != NULL) {
-				CFRelease(val);
-				SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(kSCStatusKeyExists));
-			} else {
-				cache_SCDynamicStoreSetValue(store, key, value);
-			}
+			SCPrint(TRUE, stdout, CFSTR("  Cannot \"add\" with block\n"));
 		}
 	} else {
-		if (!use_cache) {
+		if (!_SCDynamicStoreCacheIsActive(store)) {
 			if (!SCDynamicStoreAddTemporaryValue(store, key, value)) {
 				SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
 			}
 		} else {
-			CFTypeRef	val;
-
-			val = cache_SCDynamicStoreCopyValue(store, key);
-			if (val != NULL) {
-				CFRelease(val);
-				SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(kSCStatusKeyExists));
-			} else {
-				if (!SCDynamicStoreAddTemporaryValue(store, key, value)) {
-					SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
-				} else {
-					// and save the temp value in the cache too!
-					cache_SCDynamicStoreSetValue(store, key, value);
-				}
-			}
+			SCPrint(TRUE, stdout, CFSTR("  Cannot \"add temporary\" with block\n"));
 		}
 	}
 
@@ -401,15 +241,12 @@ __private_extern__
 void
 do_get(int argc, char **argv)
 {
+#pragma unused(argc)
 	CFStringRef		key;
 	CFPropertyListRef	newValue;
 
 	key      = CFStringCreateWithCString(NULL, argv[0], kCFStringEncodingUTF8);
-	if (!use_cache) {
-		newValue = SCDynamicStoreCopyValue(store, key);
-	} else {
-		newValue = cache_SCDynamicStoreCopyValue(store, key);
-	}
+	newValue = SCDynamicStoreCopyValue(store, key);
 	CFRelease(key);
 	if (newValue == NULL) {
 		SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
@@ -429,15 +266,12 @@ __private_extern__
 void
 do_set(int argc, char **argv)
 {
+#pragma unused(argc)
 	CFStringRef	key;
 
 	key = CFStringCreateWithCString(NULL, argv[0], kCFStringEncodingUTF8);
-	if (!use_cache) {
-		if (!SCDynamicStoreSetValue(store, key, value)) {
-			SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
-		}
-	} else {
-		cache_SCDynamicStoreSetValue(store, key, value);
+	if (!SCDynamicStoreSetValue(store, key, value)) {
+		SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
 	}
 	CFRelease(key);
 	return;
@@ -454,20 +288,17 @@ do_show(int argc, char **argv)
 	key = CFStringCreateWithCString(NULL, argv[0], kCFStringEncodingUTF8);
 
 	if (argc == 1) {
-		if (!use_cache) {
-			newValue = SCDynamicStoreCopyValue(store, key);
-		} else {
-			newValue = cache_SCDynamicStoreCopyValue(store, key);
-		}
+		newValue = SCDynamicStoreCopyValue(store, key);
 	} else {
 		CFArrayRef	patterns;
 
 		patterns = CFArrayCreate(NULL, (const void **)&key, 1, &kCFTypeArrayCallBacks);
-		if (!use_cache) {
+		if (!_SCDynamicStoreCacheIsActive(store)) {
 			newValue = SCDynamicStoreCopyMultiple(store, NULL, patterns);
 		} else {
-			CFArrayRef		keys;
-			CFMutableDictionaryRef	newDict;
+			CFArrayRef			keys;
+			CFMutableDictionaryRef		newDict;
+			SCDynamicStorePrivateRef	storePrivate	= (SCDynamicStorePrivateRef)store;
 
 			newDict = CFDictionaryCreateMutable(NULL,
 							    0,
@@ -484,7 +315,7 @@ do_show(int argc, char **argv)
 					CFTypeRef	storeVal;
 
 					storeKey = CFArrayGetValueAtIndex(keys, i);
-					storeVal = cache_SCDynamicStoreCopyValue(store, storeKey);
+					storeVal = SCDynamicStoreCopyValue(store, storeKey);
 					if (storeVal != NULL) {
 						CFDictionarySetValue(newDict, storeKey, storeVal);
 						CFRelease(storeVal);
@@ -493,7 +324,10 @@ do_show(int argc, char **argv)
 				CFRelease(keys);
 			}
 
-			if ((CFDictionaryGetCount(cached_set) > 0) || (CFArrayGetCount(cached_removals) > 0)) {
+			if (((storePrivate->cached_set != NULL) &&
+			     (CFDictionaryGetCount(storePrivate->cached_set) > 0)) ||
+			    ((storePrivate->cached_removals != NULL) &&
+			     (CFArrayGetCount(storePrivate->cached_removals) > 0))) {
 				SCPrint(TRUE, stdout, CFSTR("  Note: SCDynamicStore locked, keys included (below) may be out of date.\n\n"));
 			}
 
@@ -518,15 +352,12 @@ __private_extern__
 void
 do_remove(int argc, char **argv)
 {
+#pragma unused(argc)
 	CFStringRef	key;
 
 	key = CFStringCreateWithCString(NULL, argv[0], kCFStringEncodingUTF8);
-	if (!use_cache) {
-		if (!SCDynamicStoreRemoveValue(store, key)) {
-			SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
-		}
-	} else {
-		cache_SCDynamicStoreRemoveValue(store, key);
+	if (!SCDynamicStoreRemoveValue(store, key)) {
+		SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
 	}
 	CFRelease(key);
 	return;
@@ -537,15 +368,12 @@ __private_extern__
 void
 do_notify(int argc, char **argv)
 {
+#pragma unused(argc)
 	CFStringRef	key;
 
 	key = CFStringCreateWithCString(NULL, argv[0], kCFStringEncodingUTF8);
-	if (!use_cache) {
-		if (!SCDynamicStoreNotifyValue(store, key)) {
-			SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
-		}
-	} else {
-		cache_SCDynamicStoreNotifyValue(store, key);
+	if (!SCDynamicStoreNotifyValue(store, key)) {
+		SCPrint(TRUE, stdout, CFSTR("  %s\n"), SCErrorString(SCError()));
 	}
 	CFRelease(key);
 	return;

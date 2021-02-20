@@ -28,6 +28,9 @@
 #include "xprintf_domain.h"
 #include "xprintf_private.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpointer-bool-conversion"
+
 /* These are flag characters and can never be used as conversion specifiers */
 static const char _printf_tbl_flags[] = "#$'*+,-.0123456789:;L_hjlqtvz";
 
@@ -243,3 +246,5 @@ register_printf_domain_render_std(printf_domain_t d, const char *specs)
     }
     return (0);
 }
+#pragma clang diagnostic pop
+

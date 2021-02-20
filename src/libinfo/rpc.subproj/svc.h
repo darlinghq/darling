@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -305,11 +305,13 @@ extern fd_set svc_fdset;
 extern int svc_fds;
 #endif /* def FD_SETSIZE */
 
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 /*
  * a small program implemented by the svc_rpc implementation itself;
  * also see clnt.h for protocol numbers.
  */
 extern void rpctest_service();
+#endif
 
 __BEGIN_DECLS
 extern void	svc_getreq	__P((int));

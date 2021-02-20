@@ -1,7 +1,7 @@
 #include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
-#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
 
-INSTALL_PATH[sdk=macosx*] = $(INSTALL_PATH_ACTUAL)
+// Architectures
+SDKROOT = macosx.internal
 
 ALWAYS_SEARCH_USER_PATHS = YES
 HEADER_SEARCH_PATHS = $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders $(PROJECT_DIR)
@@ -12,18 +12,22 @@ GCC_ENABLE_CPP_EXCEPTIONS = NO
 GCC_ENABLE_CPP_RTTI = NO
 GCC_ENABLE_OBJC_EXCEPTIONS = NO
 GCC_PREPROCESSOR_DEFINITIONS = __DARWIN_NON_CANCELABLE=1
-GCC_C_LANGUAGE_STANDARD = gnu99
+GCC_C_LANGUAGE_STANDARD = gnu11
 GCC_WARN_ABOUT_RETURN_TYPE = YES
 GCC_WARN_UNUSED_VARIABLE = YES
 //GCC_WARN_64_TO_32_BIT_CONVERSION = YES
 //GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES
 //GCC_WARN_ABOUT_RETURN_TYPE = YES
-OTHER_CFLAGS = -fno-exceptions
+OTHER_CFLAGS = -fno-exceptions -Weverything -Wno-reserved-id-macro -Wno-padded -Wno-sign-compare -Wno-used-but-marked-unused -Wno-undef -Wno-cast-qual -Wno-documentation -Wno-unused-macros -Wno-gnu
 OTHER_CFLAGS_debug = -O0
 CURRENT_PROJECT_VERSION = 
 CURRENT_PROJECT_VERSION = $(RC_ProjectSourceVersion)
 VERSION_INFO_PREFIX = __
 VERSIONING_SYSTEM = apple-generic
 PREBINDING = NO
+LLVM_LTO = YES
+
 NOTIFY_CONFIG = notify.conf.MacOSX
 NOTIFY_CONFIG[sdk=iphoneos*] = notify.conf.iPhone
+NOTIFY_CONFIG[sdk=tvos*] = notify.conf.iPhone
+NOTIFY_CONFIG[sdk=*simulator*] = notify.conf.iOSSimulator

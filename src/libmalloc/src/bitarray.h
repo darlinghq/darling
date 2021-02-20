@@ -30,28 +30,28 @@ typedef uint32_t index_t; // we limit the number of bits to be a 32-bit quantity
 /* A bitarray uses a summarization to be able to quickly say what's the first bit that is set to 1;
  All together each of the entry points will do a very small number of memory access (exact number depends on log_size) */
 
-extern size_t bitarray_size(unsigned log_size);
+MALLOC_NOEXPORT extern size_t bitarray_size(unsigned log_size);
     // For a bitarray with 1<<log_size bits, returns the number of bytes needed to contain the whole bitarray
 
-extern bitarray_t bitarray_create(unsigned log_size);
+MALLOC_NOEXPORT extern bitarray_t bitarray_create(unsigned log_size);
     // creates a bitarray with 1<<log_size bits, all initialized to 0.  
     // Use free() to free bitarray
 
-extern bool bitarray_get(bitarray_t bits, unsigned log_size, index_t index);
+MALLOC_NOEXPORT extern bool bitarray_get(bitarray_t bits, unsigned log_size, index_t index);
 
-extern bool bitarray_set(bitarray_t bits, unsigned log_size, index_t index);
+MALLOC_NOEXPORT extern bool bitarray_set(bitarray_t bits, unsigned log_size, index_t index);
     // Set a bit in bitarray
 
-extern bool bitarray_zap(bitarray_t bits, unsigned log_size, index_t index);
+MALLOC_NOEXPORT extern bool bitarray_zap(bitarray_t bits, unsigned log_size, index_t index);
     // Clears a bit in bitarray
 
-extern index_t bitarray_first_set(const bitarray_t bits, unsigned log_size);
+MALLOC_NOEXPORT extern index_t bitarray_first_set(const bitarray_t bits, unsigned log_size);
     // Returns the index first bit that's 1, plus 1, or 0 if all the bits are zero
 
-extern bool bitarray_zap_first_set(bitarray_t bits, unsigned log_size, index_t *index);
+MALLOC_NOEXPORT extern bool bitarray_zap_first_set(bitarray_t bits, unsigned log_size, index_t *index);
     // finds the first bit set, and if found, zaps it and sets index
 
-extern unsigned bitarray_zap_first_set_multiple(bitarray_t bits, unsigned log_size, unsigned max, index_t *indices);
+MALLOC_NOEXPORT extern unsigned bitarray_zap_first_set_multiple(bitarray_t bits, unsigned log_size, unsigned max, index_t *indices);
     // finds all the bits set, up to max, and zaps each and sets the index for each
     // returns number zapped
 

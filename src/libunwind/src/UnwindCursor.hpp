@@ -29,7 +29,6 @@
 #ifndef __UNWINDCURSOR_HPP__
 #define __UNWINDCURSOR_HPP__
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -413,8 +412,7 @@ template <typename A, typename R>
 UnwindCursor<A,R>::UnwindCursor(unw_context_t* context, A& as)
   : fRegisters(context), fAddressSpace(as), fUnwindInfoMissing(false), fIsSignalFrame(false)
 {
-	static_assert( sizeof(UnwindCursor<A,R>) < sizeof(unw_cursor_t),
-	"sizeof(UnwindCursor<A,R>) MUST be < sizeof(unw_cursor_t)" );
+	COMPILE_TIME_ASSERT( sizeof(UnwindCursor<A,R>) < sizeof(unw_cursor_t) );
 
 	bzero(&fInfo, sizeof(fInfo));
 }

@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/coalition.h
+../../../../../../../../../src/external/lkm/osfmk/mach/coalition.h

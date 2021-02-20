@@ -66,7 +66,7 @@ __setrunelocale(const char *encoding, locale_t loc)
 	static struct __xlocale_st_runelocale *CachedRuneLocale;
 	extern int __mb_cur_max;
 	extern int __mb_sb_limit;
-	static pthread_lock_t cache_lock = LOCK_INITIALIZER;
+	static os_unfair_lock cache_lock = OS_UNFAIR_LOCK_INIT;
 
 	/*
 	 * The "C" and "POSIX" locale are always here.
@@ -86,7 +86,7 @@ __setrunelocale(const char *encoding, locale_t loc)
 	/*
 	 * If the locale name is the same as our cache, use the cache.
 	 */
-	LOCK(cache_lock);
+	os_unfair_lock_lock(&cache_lock);
 	if (CachedRuneLocale != NULL &&
 	    strcmp(encoding, CachedRuneLocale->__ctype_encoding) == 0) {
 		XL_RELEASE(loc->__lc_ctype);
@@ -97,10 +97,10 @@ __setrunelocale(const char *encoding, locale_t loc)
 			__mb_cur_max = loc->__lc_ctype->__mb_cur_max;
 			__mb_sb_limit = loc->__lc_ctype->__mb_sb_limit;
 		}
-		UNLOCK(cache_lock);
+		os_unfair_lock_unlock(&cache_lock);
 		return (0);
 	}
-	UNLOCK(cache_lock);
+	os_unfair_lock_unlock(&cache_lock);
 
 	/*
 	 * Slurp the locale file into the cache.
@@ -169,11 +169,11 @@ __setrunelocale(const char *encoding, locale_t loc)
 			__mb_cur_max = loc->__lc_ctype->__mb_cur_max;
 			__mb_sb_limit = loc->__lc_ctype->__mb_sb_limit;
 		}
-		LOCK(cache_lock);
+		os_unfair_lock_lock(&cache_lock);
 		XL_RELEASE(CachedRuneLocale);
 		CachedRuneLocale = xrl;
 		XL_RETAIN(CachedRuneLocale);
-		UNLOCK(cache_lock);
+		os_unfair_lock_unlock(&cache_lock);
 	} else
 		XL_RELEASE(xrl);
 

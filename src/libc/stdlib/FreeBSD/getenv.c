@@ -83,21 +83,13 @@ static os_unfair_lock __environ_lock_obj = OS_UNFAIR_LOCK_INIT;
 __private_extern__ void
 __environ_lock(void)
 {
-#if TARGET_OS_IOS && !TARGET_OS_SIMULATOR
-	os_unfair_lock_lock_with_options_4Libc(
+	os_unfair_lock_lock_with_options(
 			&__environ_lock_obj, OS_UNFAIR_LOCK_DATA_SYNCHRONIZATION);
-#else // TARGET_OS_IOS && !TARGET_OS_SIMULATOR
-	os_unfair_lock_lock(&__environ_lock_obj);
-#endif // TARGET_OS_IOS && !TARGET_OS_SIMULATOR
 }
 __private_extern__ void
 __environ_unlock(void)
 {
-#if TARGET_OS_IOS && !TARGET_OS_SIMULATOR
-	os_unfair_lock_unlock_4Libc(&__environ_lock_obj);
-#else // TARGET_OS_IOS && !TARGET_OS_SIMULATOR
 	os_unfair_lock_unlock(&__environ_lock_obj);
-#endif // TARGET_OS_IOS && !TARGET_OS_SIMULATOR
 }
 __private_extern__ void
 __environ_lock_fork_child(void)

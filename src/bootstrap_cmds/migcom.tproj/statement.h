@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -90,7 +90,7 @@ typedef struct statement
 #define stNULL  ((statement_t *) 0)
 
 /* stNext will be initialized to put the statement in the list */
-extern statement_t *stAlloc();
+extern statement_t *stAlloc(void);
 
 /* list of statements, in order they occur in the .defs file */
 extern statement_t *stats;

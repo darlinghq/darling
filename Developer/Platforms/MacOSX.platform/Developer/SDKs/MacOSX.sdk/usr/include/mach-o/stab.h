@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach-o/stab.h
+../../../../../../../../../src/external/cctools/include/mach-o/stab.h

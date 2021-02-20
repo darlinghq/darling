@@ -26,6 +26,7 @@ set(CarbonCore_SRCS
 	UserBreak.cpp
 	Debugging.cpp
 	CoreServicesPriv.cpp
+	BackupCore.c
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.0")

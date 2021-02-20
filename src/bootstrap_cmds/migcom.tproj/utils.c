@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 1999-2002, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -61,7 +61,7 @@ void
 WriteIdentificationString(FILE *file)
 {
   extern char * GenerationDate;
-  
+
   fprintf(file, "/*\n");
   fprintf(file, " * IDENTIFICATION:\n");
   fprintf(file, " * stub generated %s", GenerationDate);
@@ -105,8 +105,8 @@ WriteImport(FILE *file, string_t filename)
 void
 WriteImplImports(FILE *file, statement_t *stats, boolean_t isuser)
 {
-  register statement_t *stat;
-  
+  statement_t *stat;
+
   for (stat = stats; stat != stNULL; stat = stat->stNext)
     switch (stat->stKind) {
 
@@ -151,7 +151,7 @@ static void
 WriteOneApplDefault(FILE *file, char *word1, char *word2, char *word3)
 {
   char buf[50];
-  
+
   sprintf(buf, "__%s%s%s", word1, word2, word3);
   fprintf(file, "#ifndef\t%s\n", buf);
   fprintf(file, "#define\t%s(_NUM_, _NAME_)\n", buf);
@@ -174,7 +174,7 @@ void
 WriteApplMacro(FILE *file, char *dir, char *when, routine_t *rt)
 {
   char *what = (rt->rtOneWay) ? "Simple" : "Rpc";
-  
+
   fprintf(file, "\t__%s%s%s(%d, \"%s\")\n", when, dir, what, SubsystemBase + rt->rtNumber, rt->rtName);
 }
 
@@ -186,42 +186,42 @@ WriteBogusDefines(FILE *file)
   fprintf(file, "#define\tmig_internal\tstatic __inline__\n");
   fprintf(file, "#endif\t/* mig_internal */\n");
   fprintf(file, "\n");
-  
+
   fprintf(file, "#ifndef\tmig_external\n");
   fprintf(file, "#define mig_external\n");
   fprintf(file, "#endif\t/* mig_external */\n");
   fprintf(file, "\n");
-  
+
   fprintf(file, "#if\t!defined(__MigTypeCheck) && defined(TypeCheck)\n");
   fprintf(file, "#define\t__MigTypeCheck\t\tTypeCheck\t/* Legacy setting */\n");
   fprintf(file, "#endif\t/* !defined(__MigTypeCheck) */\n");
   fprintf(file, "\n");
-  
+
   fprintf(file, "#if\t!defined(__MigKernelSpecificCode) && defined(_MIG_KERNEL_SPECIFIC_CODE_)\n");
   fprintf(file, "#define\t__MigKernelSpecificCode\t_MIG_KERNEL_SPECIFIC_CODE_\t/* Legacy setting */\n");
   fprintf(file, "#endif\t/* !defined(__MigKernelSpecificCode) */\n");
   fprintf(file, "\n");
-  
+
   fprintf(file, "#ifndef\tLimitCheck\n");
   fprintf(file, "#define\tLimitCheck 0\n");
   fprintf(file, "#endif\t/* LimitCheck */\n");
   fprintf(file, "\n");
-  
+
   fprintf(file, "#ifndef\tmin\n");
   fprintf(file, "#define\tmin(a,b)  ( ((a) < (b))? (a): (b) )\n");
   fprintf(file, "#endif\t/* min */\n");
   fprintf(file, "\n");
-  
+
   fprintf(file, "#if !defined(_WALIGN_)\n");
   fprintf(file, "#define _WALIGN_(x) (((x) + %d) & ~%d)\n", (int)(itWordAlign - 1), (int)(itWordAlign - 1));
   fprintf(file, "#endif /* !defined(_WALIGN_) */\n");
   fprintf(file, "\n");
-  
+
   fprintf(file, "#if !defined(_WALIGNSZ_)\n");
   fprintf(file, "#define _WALIGNSZ_(x) _WALIGN_(sizeof(x))\n");
   fprintf(file, "#endif /* !defined(_WALIGNSZ_) */\n");
   fprintf(file, "\n");
-  
+
   fprintf(file, "#ifndef\tUseStaticTemplates\n");
   if (BeAnsiC) {
     fprintf(file, "#define\tUseStaticTemplates\t0\n");
@@ -233,56 +233,57 @@ WriteBogusDefines(FILE *file)
   }
   fprintf(file, "#endif\t/* UseStaticTemplates */\n");
   fprintf(file, "\n");
-  
+
+  WriteBogusServerRoutineAnnotationDefine(file);
 }
 
 void
-WriteList(FILE *file, argument_t *args, void (*func)(), u_int mask, char *between, char *after)
+WriteList(FILE *file, argument_t *args, void (*func)(FILE *, argument_t *), u_int mask, char *between, char *after)
 {
-  register argument_t *arg;
-  register boolean_t sawone = FALSE;
-  
+  argument_t *arg;
+  boolean_t sawone = FALSE;
+
   for (arg = args; arg != argNULL; arg = arg->argNext)
     if (akCheckAll(arg->argKind, mask)) {
       if (sawone)
         fprintf(file, "%s", between);
       sawone = TRUE;
-      
+
       (*func)(file, arg);
     }
-  
+
   if (sawone)
     fprintf(file, "%s", after);
 }
 
 
 static boolean_t
-WriteReverseListPrim(FILE *file, register argument_t *arg, void (*func)(), u_int mask, char *between)
+WriteReverseListPrim(FILE *file, argument_t *arg, void (*func)(FILE *, argument_t *), u_int mask, char *between)
 {
   boolean_t sawone = FALSE;
-  
+
   if (arg != argNULL) {
     sawone = WriteReverseListPrim(file, arg->argNext, func, mask, between);
-    
+
     if (akCheckAll(arg->argKind, mask)) {
       if (sawone)
         fprintf(file, "%s", between);
       sawone = TRUE;
-      
+
       (*func)(file, arg);
     }
   }
-  
+
   return sawone;
 }
 
 void
-WriteReverseList(FILE *file, argument_t *args, void (*func)(), u_int mask, char *between, char *after)
+WriteReverseList(FILE *file, argument_t *args, void (*func)(FILE *file, argument_t *args), u_int mask, char *between, char *after)
 {
   boolean_t sawone;
-  
+
   sawone = WriteReverseListPrim(file, args, func, mask, between);
-  
+
   if (sawone)
     fprintf(file, "%s", after);
 }
@@ -301,7 +302,7 @@ WriteUserVarDecl(FILE *file, argument_t *arg)
   char *cnst = ((arg->argFlags & flConst) &&
                 (IS_VARIABLE_SIZED_UNTYPED(arg->argType) ||
                  arg->argType->itNoOptArray || arg->argType->itString)) ? "const " : "";
-  
+
   fprintf(file, "\t%s%s %s%s", cnst, arg->argType->itUserType, ref, arg->argVarName);
 }
 
@@ -313,7 +314,7 @@ WriteServerVarDecl(FILE *file, argument_t *arg)
   char *cnst = ((arg->argFlags & flConst) &&
                 (IS_VARIABLE_SIZED_UNTYPED(arg->argType) ||
                  arg->argType->itNoOptArray || arg->argType->itString)) ? "const " : "";
-  
+
   fprintf(file, "\t%s%s %s%s", cnst, arg->argType->itTransType, ref, arg->argVarName);
 }
 
@@ -351,14 +352,14 @@ WriteTrailerDecl(FILE *file, boolean_t trailer)
 }
 
 void
-WriteFieldDeclPrim(FILE *file, argument_t *arg, char *(*tfunc)())
+WriteFieldDeclPrim(FILE *file, argument_t *arg, char *(*tfunc)(ipc_type_t *it))
 {
-  register ipc_type_t *it = arg->argType;
-  
+  ipc_type_t *it = arg->argType;
+
   if (IS_VARIABLE_SIZED_UNTYPED(it) || it->itNoOptArray) {
-    register argument_t *count = arg->argCount;
-    register ipc_type_t *btype = it->itElement;
-    
+    argument_t *count = arg->argCount;
+    ipc_type_t *btype = it->itElement;
+
     /*
      * Build our own declaration for a varying array:
      * use the element type and maximum size specified.
@@ -371,7 +372,7 @@ WriteFieldDeclPrim(FILE *file, argument_t *arg, char *(*tfunc)())
      */
     if (it->itString)
       fprintf(file, "\t\t%s %sOffset; /* MiG doesn't use it */\n", (*tfunc)(count->argType), arg->argName);
-    
+
     if (!(arg->argFlags & flSameCount) && !it->itNoOptArray)
     /* in these cases we would have a count, which we don't want */
       fprintf(file, "\t\t%s %s;\n", (*tfunc)(count->argType), count->argMsgField);
@@ -390,7 +391,7 @@ WriteFieldDeclPrim(FILE *file, argument_t *arg, char *(*tfunc)())
     /* either simple KPD or simple in-line */
     fprintf(file, "\t\t%s %s;", (*tfunc)(it), arg->argMsgField);
   }
-  
+
   /* Kernel Processed Data has always PadSize = 0 */
   if (it->itPadSize != 0)
     fprintf(file, "\n\t\tchar %s[%d];", arg->argPadName, it->itPadSize);
@@ -408,17 +409,17 @@ WriteKPDFieldDecl(FILE *file, argument_t *arg)
 
 void
 WriteStructDecl(
-    FILE *file, 
-    argument_t *args, 
-    void (*func)(), 
-    u_int mask, 
-    char *name, 
-    boolean_t simple, 
-    boolean_t trailer, 
-    boolean_t trailer_t, 
+    FILE *file,
+    argument_t *args,
+    void (*func)(FILE *, argument_t *),
+    u_int mask,
+    char *name,
+    boolean_t simple,
+    boolean_t trailer,
+    boolean_t trailer_t,
     boolean_t template_only)
 {
-  fprintf(file, "\n#ifdef  __MigPackStructs\n#pragma pack(%lu)\n#endif\n",sizeof(natural_t));
+  fprintf(file, "\n#ifdef  __MigPackStructs\n#pragma pack(push, %lu)\n#endif\n",sizeof(natural_t));
   fprintf(file, "\ttypedef struct {\n");
   fprintf(file, "\t\tmach_msg_header_t Head;\n");
   if (simple == FALSE) {
@@ -433,24 +434,24 @@ WriteStructDecl(
   if (!template_only) {
     if (mask == akbRequest)
       WriteList(file, args, func, mask | akbSendBody, "\n", "\n");
-    
+
     else
       WriteList(file, args, func, mask | akbReturnBody, "\n", "\n");
     if (trailer)
       WriteTrailerDecl(file, trailer_t);
   }
-  fprintf(file, "\t} %s;\n", name);
-  fprintf(file, "#ifdef  __MigPackStructs\n#pragma pack()\n#endif\n");
+  fprintf(file, "\t} %s __attribute__((unused));\n", name);
+  fprintf(file, "#ifdef  __MigPackStructs\n#pragma pack(pop)\n#endif\n");
 }
 
 void
-WriteTemplateDeclIn(FILE *file, register argument_t *arg)
+WriteTemplateDeclIn(FILE *file, argument_t *arg)
 {
   (*arg->argKPD_Template)(file, arg, TRUE);
 }
 
 void
-WriteTemplateDeclOut(FILE *file, register argument_t *arg)
+WriteTemplateDeclOut(FILE *file, argument_t *arg)
 {
   (*arg->argKPD_Template)(file, arg, FALSE);
 }
@@ -458,17 +459,17 @@ WriteTemplateDeclOut(FILE *file, register argument_t *arg)
 void
 WriteTemplateKPD_port(FILE *file, argument_t *arg, boolean_t in)
 {
-  register ipc_type_t *it = arg->argType;
-  
+  ipc_type_t *it = arg->argType;
+
   fprintf(file, "#if\tUseStaticTemplates\n");
   fprintf(file, "\tconst static %s %s = {\n", it->itKPDType, arg->argTTName);
-  
+
   fprintf(file, "\t\t/* name = */\t\tMACH_PORT_NULL,\n");
   fprintf(file, "\t\t/* pad1 = */\t\t0,\n");
   fprintf(file, "\t\t/* pad2 = */\t\t0,\n");
   fprintf(file, "\t\t/* disp = */\t\t%s,\n", in ? it->itInNameStr: it->itOutNameStr);
   fprintf(file, "\t\t/* type = */\t\tMACH_MSG_PORT_DESCRIPTOR,\n");
-  
+
   fprintf(file, "\t};\n");
   fprintf(file, "#endif\t/* UseStaticTemplates */\n");
 }
@@ -476,14 +477,14 @@ WriteTemplateKPD_port(FILE *file, argument_t *arg, boolean_t in)
 void
 WriteTemplateKPD_ool(FILE *file, argument_t *arg, boolean_t in)
 {
-  register ipc_type_t *it = arg->argType;
-  
+  ipc_type_t *it = arg->argType;
+
   fprintf(file, "#if\tUseStaticTemplates\n");
   fprintf(file, "\tconst static %s %s = {\n", it->itKPDType, arg->argTTName);
-  
+
   if (IS_MULTIPLE_KPD(it))
     it = it->itElement;
-  
+
   fprintf(file, "\t\t/* addr = */\t\t(void *)0,\n");
   if (it->itVarArray)
     fprintf(file, "\t\t/* size = */\t\t0,\n");
@@ -495,7 +496,7 @@ WriteTemplateKPD_ool(FILE *file, argument_t *arg, boolean_t in)
   /* the PHYSICAL COPY flag has not been established yet */
   fprintf(file, "\t\t/* pad2 = */\t\t0,\n");
   fprintf(file, "\t\t/* type = */\t\tMACH_MSG_OOL_DESCRIPTOR,\n");
-  
+
   fprintf(file, "\t};\n");
   fprintf(file, "#endif\t/* UseStaticTemplates */\n");
 }
@@ -503,14 +504,14 @@ WriteTemplateKPD_ool(FILE *file, argument_t *arg, boolean_t in)
 void
 WriteTemplateKPD_oolport(FILE *file, argument_t *arg, boolean_t in)
 {
-  register ipc_type_t *it = arg->argType;
-  
+  ipc_type_t *it = arg->argType;
+
   fprintf(file, "#if\tUseStaticTemplates\n");
   fprintf(file, "\tconst static %s %s = {\n", it->itKPDType, arg->argTTName);
-  
+
   if (IS_MULTIPLE_KPD(it))
     it = it->itElement;
-  
+
   fprintf(file, "\t\t/* addr = */\t\t(void *)0,\n");
   if (!it->itVarArray)
     fprintf(file, "\t\t/* coun = */\t\t%d,\n", it->itNumber);
@@ -521,7 +522,7 @@ WriteTemplateKPD_oolport(FILE *file, argument_t *arg, boolean_t in)
   fprintf(file, "\t\t/* copy = */\t\tMACH_MSG_PHYSICAL_COPY,\n");
   fprintf(file, "\t\t/* disp = */\t\t%s,\n", in ? it->itInNameStr: it->itOutNameStr);
   fprintf(file, "\t\t/* type = */\t\tMACH_MSG_OOL_PORTS_DESCRIPTOR,\n");
-  
+
   fprintf(file, "\t};\n");
   fprintf(file, "#endif\t/* UseStaticTemplates */\n");
 }
@@ -529,16 +530,16 @@ WriteTemplateKPD_oolport(FILE *file, argument_t *arg, boolean_t in)
 void
 WriteReplyTypes(FILE *file, statement_t *stats)
 {
-  register statement_t *stat;
-  
+  statement_t *stat;
+
   fprintf(file, "/* typedefs for all replies */\n\n");
   fprintf(file, "#ifndef __Reply__%s_subsystem__defined\n", SubsystemName);
   fprintf(file, "#define __Reply__%s_subsystem__defined\n", SubsystemName);
   for (stat = stats; stat != stNULL; stat = stat->stNext) {
     if (stat->stKind == skRoutine) {
-      register routine_t *rt;
+      routine_t *rt;
       char str[MAX_STR_LEN];
-      
+
       rt = stat->stRoutine;
       sprintf(str, "__Reply__%s_t", rt->rtName);
       WriteStructDecl(file, rt->rtArgs, WriteKPDFieldDecl, akbReply, str, rt->rtSimpleReply, FALSE, FALSE, FALSE);
@@ -551,16 +552,16 @@ WriteReplyTypes(FILE *file, statement_t *stats)
 void
 WriteRequestTypes(FILE *file, statement_t *stats)
 {
-  register statement_t *stat;
-  
+  statement_t *stat;
+
   fprintf(file, "/* typedefs for all requests */\n\n");
   fprintf(file, "#ifndef __Request__%s_subsystem__defined\n", SubsystemName);
   fprintf(file, "#define __Request__%s_subsystem__defined\n", SubsystemName);
   for (stat = stats; stat != stNULL; stat = stat->stNext) {
     if (stat->stKind == skRoutine) {
-      register routine_t *rt;
+      routine_t *rt;
       char str[MAX_STR_LEN];
-      
+
       rt = stat->stRoutine;
       sprintf(str, "__Request__%s_t", rt->rtName);
       WriteStructDecl(file, rt->rtArgs, WriteKPDFieldDecl, akbRequest, str, rt->rtSimpleRequest, FALSE, FALSE, FALSE);
@@ -581,14 +582,14 @@ WriteNDRConvertArgDecl(FILE *file, argument_t *arg, char *convert, char *dir)
   ipc_type_t *btype;
   int multi, array;
   char domain[MAX_STR_LEN];
-  
+
   fprintf(file, "#ifndef __NDR_convert__%s__%s__%s_t__%s__defined\n#", convert, dir, rt->rtName, arg->argMsgField);
-  
+
   for (btype = ptype, multi = (!parent) ? arg->argMultiplier : 1, array = 0;
        btype;
        ptype = btype, array += ptype->itVarArray, btype = btype->itElement) {
     char *bttype;
-    
+
     if (btype->itNumber < ptype->itNumber && !ptype->itVarArray && !parent) {
       multi *= ptype->itNumber / btype->itNumber;
       if (!btype->itString)
@@ -598,7 +599,7 @@ WriteNDRConvertArgDecl(FILE *file, argument_t *arg, char *convert, char *dir)
       continue;
     if (btype != ptype)
       fprintf(file, "#el");
-    
+
     bttype = (multi > 1 && btype->itString) ? "string" : FetchServerType(btype);
     sprintf(domain, "__%s", SubsystemName);
     do {
@@ -625,7 +626,7 @@ WriteNDRConvertArgDecl(FILE *file, argument_t *arg, char *convert, char *dir)
       else if (!array)
         fprintf(file, "((%s *)(a), f%s", bttype, carg);
       fprintf(file, ")\n");
-    } while (strcmp(domain, "") && (domain[0] = '\0', fprintf(file, "#el")));
+    } while (strcmp(domain, "") && ((void)(domain[0] = '\0'), fprintf(file, "#el")));
   }
   fprintf(file, "#endif /* defined(__NDR_convert__*__defined) */\n");
   fprintf(file, "#endif /* __NDR_convert__%s__%s__%s_t__%s__defined */\n\n", convert, dir, rt->rtName, arg->argMsgField);
@@ -637,19 +638,19 @@ WriteNDRConvertArgDecl(FILE *file, argument_t *arg, char *convert, char *dir)
  * and %f are recognized.
  */
 void
-SkipVFPrintf(FILE *file, register char *fmt, va_list pvar)
+SkipVFPrintf(FILE *file, char *fmt, va_list pvar)
 {
   if (*fmt == 0)
     return; /* degenerate case */
-  
+
   if (fmt[0] == '/' && fmt[1] == '*') {
     /* Format string begins with C comment.  Scan format
        string until end-comment delimiter, skipping the
        items in pvar that the enclosed format items would
        print. */
-    
-    register int c;
-    
+
+    int c;
+
     fmt += 2;
     for (;;) {
       c = *fmt++;
@@ -691,13 +692,13 @@ SkipVFPrintf(FILE *file, register char *fmt, va_list pvar)
     if (*fmt == ' ')
       fmt++;
   }
-  
+
   /* Now format the string. */
   (void) vfprintf(file, fmt, pvar);
 }
 
 static void
-vWriteCopyType(FILE *file, ipc_type_t *it, char *left, char *right, va_list pvar)
+vWriteCopyType(FILE *file, ipc_type_t *it, boolean_t mig_allocated_buf, char *left, char *right, va_list pvar)
 {
   va_list pvar2;
   va_copy(pvar2, pvar);
@@ -711,11 +712,41 @@ vWriteCopyType(FILE *file, ipc_type_t *it, char *left, char *right, va_list pvar
     fprintf(file, ";\n");
   }
   else if (it->itString) {
+    va_list pvar3, pvar4;
+    va_copy(pvar3, pvar);
+    va_copy(pvar4, pvar);
+
+    if (mig_allocated_buf) {
+	/*
+	 * zero-fill MIG allocated buffers: we control the size so there's
+	 * no risk of buffer overrun, and we avoid leaking process/kernel
+	 * memory on the copy-out
+	 */
+        fprintf(file, "#ifdef USING_MIG_STRNCPY_ZEROFILL\n");
+        fprintf(file, "\tif (mig_strncpy_zerofill != NULL) {\n");
+        fprintf(file, "\t\t(void) mig_strncpy_zerofill(");
+        (void) SkipVFPrintf(file, left, pvar);
+        fprintf(file, ", ");
+        (void) SkipVFPrintf(file, right, pvar2);
+        fprintf(file, ", %d);\n", it->itTypeSize);
+        fprintf(file, "\t} else {\n");
+        fprintf(file, "#endif /* USING_MIG_STRNCPY_ZEROFILL */\n\t");
+    }
     fprintf(file, "\t(void) mig_strncpy(");
-    (void) SkipVFPrintf(file, left, pvar);
+
+    (void) SkipVFPrintf(file, left, pvar3);
     fprintf(file, ", ");
-    (void) SkipVFPrintf(file, right, pvar2);
+    (void) SkipVFPrintf(file, right, pvar4);
     fprintf(file, ", %d);\n", it->itTypeSize);
+
+    if (mig_allocated_buf) {
+        fprintf(file, "#ifdef USING_MIG_STRNCPY_ZEROFILL\n");
+        fprintf(file, "\t}\n");
+        fprintf(file, "#endif /* USING_MIG_STRNCPY_ZEROFILL */\n");
+    }
+
+    va_end(pvar3);
+    va_end(pvar4);
   }
   else {
     fprintf(file, "\t{   typedef struct { char data[%d]; } *sp;\n", it->itTypeSize);
@@ -733,13 +764,13 @@ vWriteCopyType(FILE *file, ipc_type_t *it, char *left, char *right, va_list pvar
 /*ARGSUSED*/
 /*VARARGS4*/
 void
-WriteCopyType(FILE *file, ipc_type_t *it, char *left, char *right, ...)
+WriteCopyType(FILE *file, ipc_type_t *it, boolean_t mig_allocated_buf, char *left, char *right, ...)
 {
   va_list pvar;
   va_start(pvar, right);
-  
-  vWriteCopyType(file, it, left, right, pvar);
-  
+
+  vWriteCopyType(file, it, mig_allocated_buf, left, right, pvar);
+
   va_end(pvar);
 }
 
@@ -747,11 +778,11 @@ WriteCopyType(FILE *file, ipc_type_t *it, char *left, char *right, ...)
 /*ARGSUSED*/
 /*VARARGS4*/
 void
-WriteCopyArg(FILE *file, argument_t *arg, char *left, char *right, ...)
+WriteCopyArg(FILE *file, argument_t *arg, boolean_t mig_allocated_buf, char *left, char *right, ...)
 {
   va_list pvar;
   va_start(pvar, right);
-  
+
   {
     ipc_type_t *it = arg->argType;
     if (it->itVarArray && !it->itString) {
@@ -764,9 +795,9 @@ WriteCopyArg(FILE *file, argument_t *arg, char *left, char *right, ...)
       fprintf(file, ", %s);\n", arg->argCount->argVarName);
     }
     else
-      vWriteCopyType(file, it, left, right, pvar);
+      vWriteCopyType(file, it, mig_allocated_buf, left, right, pvar);
   }
-  
+
   va_end(pvar);
 }
 
@@ -796,10 +827,10 @@ WriteStringDynArgs(argument_t *args, u_int mask, string_t InPOutP, string_t *str
   string_t tmp_str2 = "";
   int cnt, multiplier = 1;
   boolean_t test, complex = FALSE;
-  
+
   for (arg = args; arg != argNULL; arg = arg->argNext) {
     ipc_type_t *it = arg->argType;
-    
+
     if (IS_MULTIPLE_KPD(it)) {
       test = it->itVarArray || it->itElement->itVarArray;
       if (test) {
@@ -810,7 +841,7 @@ WriteStringDynArgs(argument_t *args, u_int mask, string_t InPOutP, string_t *str
     }
     else
       test = it->itVarArray;
-    
+
     cnt = multiplier;
     while (cnt) {
       if (complex)
@@ -843,7 +874,7 @@ WriteLogMsg(FILE *file, routine_t *rt, int where, int what)
   string_t StringOOL = strNULL;
   u_int ports, oolports, ool;
   string_t event;
-  
+
   fprintf(file, "\n#if  MIG_DEBUG\n");
   if (where == LOG_USER)
     fprintf(file, "\tLOG_TRACE(MACH_MSG_LOG_USER,\n");
@@ -932,18 +963,18 @@ WriteReturnMsgError(FILE *file, routine_t *rt, boolean_t isuser, argument_t *arg
 {
   char space[MAX_STR_LEN];
   string_t string = &space[0];
-  
+
   if (UseEventLogger && arg != argNULL)
     sprintf(string, "LOG_W_E(\"%s\"); ", arg->argVarName);
   else
     string = "";
-  
+
   fprintf(file, "\t\t{ ");
-  
+
   if (isuser) {
     if (! rtMessOnStack(rt))
       fprintf(file, "%s((char *) Mess, (mach_msg_size_t)sizeof(*Mess)); ", MessFreeRoutine);
-    
+
     fprintf(file, "%sreturn %s; }\n", string, error);
   }
   else
@@ -955,7 +986,7 @@ void
 WriteCheckTrailerHead(FILE *file, routine_t *rt, boolean_t isuser)
 {
   string_t who = (isuser) ? "Out0P" : "In0P";
-  
+
   fprintf(file, "\tTrailerP = (mach_msg_max_trailer_t *)((vm_offset_t)%s +\n", who);
   fprintf(file, "\t\tround_msg(%s->Head.msgh_size));\n", who);
   fprintf(file, "\tif (TrailerP->msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0)\n");
@@ -963,7 +994,7 @@ WriteCheckTrailerHead(FILE *file, routine_t *rt, boolean_t isuser)
     fprintf(file, "\t\t{ return MIG_TRAILER_ERROR ; }\n");
   else
     fprintf(file, "\t\t{ MIG_RETURN_ERROR(%s, MIG_TRAILER_ERROR); }\n", who);
-  
+
   fprintf(file, "#if\t__MigTypeCheck\n");
   fprintf(file, "\ttrailer_size = TrailerP->msgh_trailer_size -\n");
   fprintf(file, "\t\t(mach_msg_size_t)(sizeof(mach_msg_trailer_type_t) - sizeof(mach_msg_trailer_size_t));\n");
@@ -972,7 +1003,7 @@ WriteCheckTrailerHead(FILE *file, routine_t *rt, boolean_t isuser)
 
 /* executed iff elements are defined */
 void
-WriteCheckTrailerSize(FILE *file, boolean_t isuser, register argument_t *arg)
+WriteCheckTrailerSize(FILE *file, boolean_t isuser, argument_t *arg)
 {
   fprintf(file, "#if\t__MigTypeCheck\n");
   if (akIdent(arg->argKind) == akeMsgSeqno) {

@@ -3,7 +3,7 @@
 #include "bsdthread_create.h"
 #include "../base.h"
 #include "../errno.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <pthread/tsd_private.h>
@@ -11,6 +11,15 @@
 #include "../simple.h"
 #include <sys/queue.h>
 #include <os/lock.h>
+#include <elfcalls/threads.h>
+#include "../machdep/tls.h"
+#include "../mach/mach_traps.h"
+
+#define __PTHREAD_EXPOSE_INTERNALS__ 1
+#include <pthread/priority_private.h>
+
+// much easier to include than libpthread's `internal.h`
+#include "../../../../libelfloader/native/dthreads.h"
 
 #define WQ_MAX_THREADS	64
 
@@ -23,17 +32,27 @@
 #define WQOPS_QUEUE_REQTHREADS  0x20
 #define WQOPS_QUEUE_REQTHREADS2    0x30
 #define WQOPS_SET_EVENT_MANAGER_PRIORITY 0x80
+#define WQOPS_SETUP_DISPATCH 0x400
 
 // Flags for the newly spawned thread:
 // WQ_FLAG_THREAD_NEWSPI
 // WQ_FLAG_THREAD_REUSE (0 if thread is newly spawned)
 // item is unused in "new SPI"
 
-#define WQ_FLAG_THREAD_PRIOMASK         0x0000ffff
-#define WQ_FLAG_THREAD_OVERCOMMIT       0x00010000
-#define WQ_FLAG_THREAD_REUSE            0x00020000
-#define WQ_FLAG_THREAD_NEWSPI           0x00040000
-#define WQ_FLAG_THREAD_KEVENT           0x00080000 /* thread is response to kevent req */
+#define WQ_FLAG_THREAD_PRIO_SCHED    0x00008000
+#define WQ_FLAG_THREAD_PRIO_QOS      0x00004000
+#define WQ_FLAG_THREAD_PRIO_MASK     0x00000fff
+
+#define WQ_FLAG_THREAD_OVERCOMMIT    0x00010000
+#define WQ_FLAG_THREAD_REUSE         0x00020000
+#define WQ_FLAG_THREAD_NEWSPI        0x00040000
+#define WQ_FLAG_THREAD_KEVENT        0x00080000
+#define WQ_FLAG_THREAD_EVENT_MANAGER 0x00100000
+#define WQ_FLAG_THREAD_TSD_BASE_SET  0x00200000
+#define WQ_FLAG_THREAD_WORKLOOP      0x00400000
+#define WQ_FLAG_THREAD_OUTSIDEQOS    0x00800000
+
+#define WORKQ_EXIT_THREAD_NKEVENT (-1)
 
 static int workq_sem = WQ_MAX_THREADS; // max 64 threads in use
 static os_unfair_lock workq_parked_lock = OS_UNFAIR_LOCK_INIT;
@@ -49,8 +68,6 @@ struct parked_thread
 	struct wq_kevent_data* event;
 	TAILQ_ENTRY(parked_thread) entries;
 };
-
-extern void* pthread_get_stackaddr_np(void* pth);
 
 static void list_add(struct parked_thread* head, struct parked_thread* item);
 static void list_remove(struct parked_thread* head, struct parked_thread* item);
@@ -71,6 +88,19 @@ static int priority_to_class(int prio);
 
 // This is horrible, but it may work
 static struct wq_kevent_data* wq_event_pending = NULL;
+
+static int extract_wq_flags(int priority) {
+	int flags = 0;
+	int qos = _pthread_priority_thread_qos(priority);
+
+	flags = WQ_FLAG_THREAD_NEWSPI | qos | WQ_FLAG_THREAD_PRIO_QOS;
+
+	if (priority & _PTHREAD_PRIORITY_OVERCOMMIT_FLAG) {
+		flags |= WQ_FLAG_THREAD_OVERCOMMIT;
+	}
+
+	return flags;
+};
 
 long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 {
@@ -110,12 +140,21 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 
 			int thread_self;
 			struct parked_thread me;
-			void* pth;
+			dthread_t dthread;
+			bool terminating = false;
 
 			os_unfair_lock_lock(&workq_parked_lock);
 
 			// Semaphore locked state (wait for wakeup)
 			me.sem = 0;
+
+			// extract initial flags
+			// (in case we only get created and used once and then terminate; `_pthread_wqthread` requires a valid `flags` argument)
+			dthread = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
+			prio = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_QOS_CLASS);
+			// doesn't extract `WQ_FLAG_THREAD_KEVENT` if we had it set, but that shouldn't matter
+			// like i said before, the only case where we actually need these flags to be set here is when the thread is going to die immediately after creation
+			me.flags = extract_wq_flags(prio);
 
 			// Enqueue for future WQOPS_QUEUE_REQTHREADS
 			TAILQ_INSERT_HEAD(&workq_parked_head, &me, entries);
@@ -143,44 +182,45 @@ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
 
 				os_unfair_lock_unlock(&workq_parked_lock);
 
-				// Let the thread terminate (libc will call pthread_exit)
-				return 0;
-			}
-wakeup:
-			
-			// reset stack and call entry point again with WQ_FLAG_THREAD_REUSE
-			thread_self = thread_self_trap();
-			pth = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
+				terminating = true;
 
+				// resume the thread; it'll call `_pthread_wqthread_exit` and kill itself
+				goto resume_thread;
+			}
+
+wakeup: // we actually want to go back into the thread to do work
 			// __simple_printf("Thread %d woken up, prio=%d\n", thread_self, me.flags & WQ_FLAG_THREAD_PRIOMASK);
 
 			if (me.event)
 				wq_event_pending = me.event;
+
+resume_thread: // we want the thread to resume, but it might be just to die
+			// reset stack and call entry point again with WQ_FLAG_THREAD_REUSE
+			thread_self = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_MACH_THREAD_SELF);
+			dthread = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
+
 #ifdef __x86_64__
+			// arguments are in rdi, rsi, rdx, rcx, r8, r9
 			__asm__ __volatile__ (
 					// "int3\n"
-					"movq %%rbx, %%r8\n" // 5th argument
+					"movl %3, %%r8d\n" // 5th argument
 					"movl %5, %%r9d\n" // 6th argument
 					"movq %0, %%rsp\n"
-					"movq %%rsp, %%rdx\n" // 3rd argument
-					"xorq %%rcx, %%rcx\n" // 4th argument
 					"subq $32, %%rsp\n"
 					"jmpq *%2\n"
-					:: "D" (pth), "S" (thread_self), "a" (wqueue_entry_point),
-					"b" (me.flags | WQ_FLAG_THREAD_REUSE), "c" (me.event ? me.event->events : NULL),
-					"r" (me.event ? me.event->nevents : 0)
+					:: "D" (dthread), "S" (thread_self), "a" (wqueue_entry_point),
+					"r" (me.flags | WQ_FLAG_THREAD_REUSE), "c" ((!terminating && me.event) ? me.event->events : NULL),
+					"r" (terminating ? WORKQ_EXIT_THREAD_NKEVENT : (me.event ? me.event->nevents : 0)), "d" (dthread->stackbottom)
 			);
 #elif defined(__i386__)
 			// Arguments are in eax, ebx, ecx, edx, edi, esi
 			__asm__ __volatile__ (
 					"movl %0, %%esp\n"
-					"movl %0, %%ecx\n"
-					"xorl %%edx, %%edx\n"
 					"subl $32, %%esp\n"
 					"jmpl *%2\n"
-					:: "a" (pth), "b" (thread_self), "S" (wqueue_entry_point),
-					"D" (me.flags | WQ_FLAG_THREAD_REUSE), "d" (me.event ? me.event->events : NULL),
-					"S" (me.event ? me.event->nevents : 0)
+					:: "a" (dthread), "b" (thread_self), "S" (wqueue_entry_point),
+					"D" (me.flags | WQ_FLAG_THREAD_REUSE), "d" ((!terminating && me.event) ? me.event->events : NULL),
+					"S" (terminating ? WORKQ_EXIT_THREAD_NKEVENT : (me.event ? me.event->nevents : 0)), "c" (dthread->stackbottom)
 			);
 #else
 #	error Missing assembly!
@@ -202,10 +242,7 @@ wakeup:
 		{
 			// affinity contains thread count
 
-			int i, flags;
-
-			flags = WQ_FLAG_THREAD_NEWSPI;
-			flags |= prio & (WQ_FLAG_THREAD_PRIOMASK | WQ_FLAG_THREAD_OVERCOMMIT); //priority_to_class(prio);
+			int i, flags = extract_wq_flags(prio);
 
 			if (wq_event != NULL)
 				flags |= WQ_FLAG_THREAD_KEVENT;
@@ -246,10 +283,15 @@ wakeup:
 				// __simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
 				wq_event_pending = wq_event;
 
+				struct darling_thread_create_callbacks callbacks = {
+					.thread_self_trap = &thread_self_trap_impl,
+					.thread_set_tsd_base = &sys_thread_set_tsd_base,
+				};
+
 				__darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point_wrapper, 0,
 						(wq_event != NULL) ? wq_event->events : NULL, flags,
 						(wq_event != NULL) ? wq_event->nevents : 0,
-						thread_self_trap);
+						&callbacks, NULL);
 
 				/*if (ret < 0)
 				{
@@ -259,6 +301,19 @@ wakeup:
 			}
 			return 0;
 		}
+		case WQOPS_SETUP_DISPATCH: {
+			// TODO: actually do something with the info passed in
+			// XNU just tacks it onto the process its called for and uses it later when someone asks for it
+
+			/*
+			struct workq_dispatch_config cfg = {0};
+
+			// `affinity` contains the size of the config structure passed in
+			memcpy(&cfg, item, (affinity < sizeof(struct workq_dispatch_config)) ? affinity : sizeof(struct workq_dispatch_config));
+			*/
+
+			return 0;
+		} break;
 		default:
 			return -ENOTSUP;
 	}

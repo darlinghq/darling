@@ -54,7 +54,6 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -66,13 +65,17 @@
 #include <stdbool.h>
 #include <sys/vnode.h>
 #include <sys/attr.h>
+#include <os/assumes.h>
 
 #ifdef __BLOCKS__
 #include <Block.h>
 #endif /* __BLOCKS__ */
 #include <malloc_private.h>
 
-static FTSENT	*fts_alloc(FTS *, char *, int);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
+static FTSENT	*fts_alloc(FTS *, char *, ssize_t);
 static FTSENT	*fts_build(FTS *, int);
 static void	 fts_lfree(FTSENT *);
 static void	 fts_load(FTS *, FTSENT *);
@@ -141,7 +144,7 @@ __fts_open(char * const *argv, FTS *sp)
 	FTSENT *p, *root;
 	int nitems;
 	FTSENT *parent, *tmp;
-	int len;
+	ssize_t len;
 
 	/* Logical walks turn on NOCHDIR; symbolic links are too hard. */
 	if (ISSET(FTS_LOGICAL))
@@ -161,12 +164,7 @@ __fts_open(char * const *argv, FTS *sp)
 
 	/* Allocate/initialize root(s). */
 	for (root = NULL, nitems = 0; *argv; ++argv, ++nitems) {
-		/* Don't allow zero-length paths. */
-		if ((len = strlen(*argv)) == 0) {
-			errno = ENOENT;
-			goto mem3;
-		}
-
+		len = strlen(*argv);
 		if ((p = fts_alloc(sp, *argv, len)) == NULL)
 			goto mem3;
 		p->fts_level = FTS_ROOTLEVEL;
@@ -278,7 +276,7 @@ fts_open_b(char * const *argv, int options, int (^compar)(const FTSENT **, const
 static void
 fts_load(FTS *sp, FTSENT *p)
 {
-	int len;
+	ssize_t len;
 	char *cp;
 
 	/*
@@ -642,7 +640,7 @@ fts_children(FTS *sp, int instr)
 	return (sp->fts_child);
 }
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __attribute__((__aligned__(4))) {
 	uint32_t length;
 
 	/* common attributes */
@@ -717,7 +715,7 @@ advance_directory(dir_handle *handle)
 {
 	if (handle->done) return true;
 
-	assert(handle->dirfd != -1);
+	os_assert(handle->dirfd != -1);
 	handle->entry_count = getattrlistbulk(handle->dirfd, &handle->requested_attrs,
 			handle->attrbuf, ATTR_BUF_SIZE, FSOPT_PACK_INVAL_ATTRS);
 	if (handle->entry_count == -1) {
@@ -840,18 +838,26 @@ read_dirent(dir_handle *handle, dir_entry *entry)
 		curattr_stat = handle->curattr;
 		handle->cur_entry++;
 		handle->curattr = (attrListAttributes*)(((char*)curattr_stat) + curattr_stat->length);
+		os_assert((handle->cur_entry == handle->entry_count) ||
+				(void*)handle->curattr + handle->curattr->length <= (void*)handle->attrbuf + ATTR_BUF_SIZE);
 
+		os_assert(curattr_stat->name.attr_length > 0);
 		entry->d_name = ((char*)&curattr_stat->name) + curattr_stat->name.attr_dataoffset;
 		/* attr_length includes the null terminator, but readdir's d_namlen doesn't. */
 		entry->d_namlen = curattr_stat->name.attr_length - 1;
+		os_assert((void*)entry->d_name + curattr_stat->name.attr_length <= (void*)handle->attrbuf + ATTR_BUF_SIZE);
 	} else {
 		curattr_nostat = handle->curattr_nostat;
 		handle->cur_entry++;
 		handle->curattr_nostat = (attrListAttributes_nostat*)(((char*)curattr_nostat) + curattr_nostat->length);
+		os_assert((handle->cur_entry == handle->entry_count) ||
+				(void*)handle->curattr + handle->curattr->length <= (void*)handle->attrbuf + ATTR_BUF_SIZE);
 
+		os_assert(curattr_nostat->name.attr_length > 0);
 		entry->d_name = ((char*)&curattr_nostat->name) + curattr_nostat->name.attr_dataoffset;
 		/* attr_length includes the null terminator, but readdir's d_namlen doesn't. */
 		entry->d_namlen = curattr_nostat->name.attr_length - 1;
+		os_assert((void*)entry->d_name + curattr_nostat->name.attr_length <= (void*)handle->attrbuf + ATTR_BUF_SIZE);
 	}
 
 	int stat_type = 0;
@@ -905,6 +911,12 @@ read_dirent(dir_handle *handle, dir_entry *entry)
 			/* It's okay for ATTR_FILE_DEVTYPE to be missing if the entry isn't a block or character device. */
 			curattr_stat->st_rdev = 0;
 			requiredFile &= ~ATTR_FILE_DEVTYPE;
+		}
+
+		if ((curattr_stat->attrset.commonattr & ATTR_CMN_CRTIME) == 0) {
+			/* Many (most?) file systems don't support create time (see vn_stat_noauth in xnu) */
+			curattr_stat->st_birthtimespec.tv_sec = curattr_stat->st_birthtimespec.tv_nsec = 0;
+			requiredCommon &= ~ ATTR_CMN_CRTIME;
 		}
 
 		if ((curattr_stat->attrset.commonattr & requiredCommon) != requiredCommon ||
@@ -1410,7 +1422,7 @@ fts_sort(FTS *sp, FTSENT *head, int nitems)
 }
 
 static FTSENT *
-fts_alloc(FTS *sp, char *name, int namelen)
+fts_alloc(FTS *sp, char *name, ssize_t namelen)
 {
 	FTSENT *p;
 	size_t len;
@@ -1543,11 +1555,22 @@ fts_safe_changedir(FTS *sp, FTSENT *p, int fd, char *path)
 		ret = -1;
 		goto bail;
 	}
+	/*
+	 * On Darwin this check causes us to not correctly descend into automounts,
+	 * since the mount point and trigger will have a different devices and
+	 * inodes.  It would be preferable to find a way to use
+	 * ATTR_DIR_MOUNTSTATUS and DIR_MNTSTATUS_TRIGGER to detect these cases,
+	 * but plumbing that through will be challenging.  Instead, will just
+	 * disable it for now.
+	 */
+#if 0
 	if (p->fts_dev != sb.st_dev || p->fts_ino != sb.st_ino) {
 		errno = ENOENT;		/* disinformation */
 		ret = -1;
 		goto bail;
 	}
+#endif
+
 	ret = fchdir(newfd);
 bail:
 	oerrno = errno;
@@ -1556,3 +1579,4 @@ bail:
 	errno = oerrno;
 	return (ret);
 }
+#pragma clang diagnostic pop

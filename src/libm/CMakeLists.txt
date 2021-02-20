@@ -9,7 +9,7 @@ set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -DBUILDING_FOR_CARBONCORE_LEGACY")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../kernel-include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/darwin)
 add_definitions(-Dmovsxw=movswl -DPRIVATE)
 
@@ -175,7 +175,7 @@ add_circular(system_m FAT
 
 install(TARGETS system_m DESTINATION libexec/darling/usr/lib/system)
 
-set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ar")
-set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/x86_64-apple-darwin11-ranlib")
+set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar")
+set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
 add_darling_static_library(system_m_static SOURCES ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
 make_fat(system_m_static)

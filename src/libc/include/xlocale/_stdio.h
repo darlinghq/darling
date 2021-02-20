@@ -24,6 +24,9 @@
 #ifndef _XLOCALE__STDIO_H_
 #define _XLOCALE__STDIO_H_
 
+#include <_stdio.h>
+#include <_xlocale.h>
+
 __BEGIN_DECLS
 
 int	 fprintf_l(FILE * __restrict, locale_t __restrict, const char * __restrict, ...)

@@ -93,6 +93,12 @@ __removefile_rename_unlink(const char *path, removefile_state_t state) {
   if (lstat(path, &statbuf) == -1)
     return -1;
 
+#if __APPLE__
+  if (S_ISDIR(statbuf.st_mode) && (statbuf.st_flags & SF_DATALESS) != 0) {
+    return unlinkat(AT_FDCWD, path, AT_REMOVEDIR_DATALESS);
+  }
+#endif
+
   if (S_ISDIR(statbuf.st_mode) && (empty_directory(path) == -1)) {
       /* Directory isn't empty (e.g. because it contains an immutable file).
          Attempting to remove it will fail, so avoid renaming it. */

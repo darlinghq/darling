@@ -10,13 +10,6 @@ endif(COMMAND cmake_policy)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib -Wl,-bind_at_load")
 
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/fbsdcompat)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libpthread/private)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall)
-include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/dyld-apple/include)
-
 add_definitions(-DHAVE_STDINT_H=1 -DHAVE_SYSTEM_CORESERVICES)
 
 # Hide warnings
@@ -31,10 +24,14 @@ set(libsystem_sources
 	CompatibilityHacks.c
 )
 
+set_source_files_properties(init.c PROPERTIES
+	COMPILE_FLAGS " -DPRIVATE=1"
+)
+
 set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
+set(DYLIB_CURRENT_VERSION "1281.0.0")
 add_darling_library(system
 	${libsystem_sources}
-	$<TARGET_OBJECTS:kqueue>
 )
 
 function(libsystem_reexport)
@@ -69,7 +66,7 @@ libsystem_reexport(
 	launch src/launchd/liblaunch/liblaunch.dylib
 	compiler_rt src/external/compiler-rt/lib/builtins/libcompiler_rt.dylib
 	system_dyld src/dyld/libdyld.dylib
-	macho src/libmacho/libmacho.dylib
+	macho src/external/cctools/libmacho/libmacho.dylib
 	system_pthread src/external/libpthread/src/libsystem_pthread.dylib
 	platform src/external/libplatform/libsystem_platform.dylib
 	system_asl src/external/syslog/libsystem_asl.tproj/libsystem_asl.dylib
@@ -81,11 +78,13 @@ libsystem_reexport(
 	system_dnssd src/lib/system/dnssd/libsystem_dnssd.dylib
 	system_networkextension src/networkextension/libsystem_networkextension.dylib
 	unwind src/libunwind/libunwind.dylib
+	system_darwin src/libc/libdarwin/libsystem_darwin.dylib
+	libcache src/libcache/libcache.dylib
 )
 
+add_dependencies(system system_malloc system_m)
+
 set_target_properties(system PROPERTIES OUTPUT_NAME "System.B")
-set_property(TARGET system APPEND_STRING PROPERTY LINK_FLAGS
-	"-Wl,-compatibility_version,1.0.0 -Wl,-current_version,1238.0.0")
 
 make_fat(system)
 

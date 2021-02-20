@@ -1,4 +1,4 @@
-.\"     $NetBSD: rbtree.3,v 1.7 2012/08/19 19:31:13 wiz Exp $
+.\"     $NetBSD: rbtree.3,v 1.12 2016/08/30 05:12:00 dholland Exp $
 .\"
 .\" Copyright (c) 2010 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -29,11 +29,25 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd August 19, 2012
+.Dd August 29, 2016
 .Dt RBTREE 3
 .Os
 .Sh NAME
-.Nm rbtree
+.Nm rbtree ,
+.Nm rb_tree_init ,
+.Nm rb_tree_insert_node ,
+.Nm rb_tree_remove_node ,
+.Nm rb_tree_find_node ,
+.Nm rb_tree_find_node_geq ,
+.Nm rb_tree_find_node_leq ,
+.Nm rb_tree_iterate ,
+.Nm rb_tree_count ,
+.Nm RB_TREE_MIN ,
+.Nm RB_TREE_MAX ,
+.Nm RB_TREE_FOREACH ,
+.Nm RB_TREE_FOREACH_SAFE ,
+.Nm RB_TREE_FOREACH_REVERSE ,
+.Nm RB_TREE_FOREACH_REVERSE_SAFE
 .Nd red-black tree
 .Sh LIBRARY
 .Lb libc
@@ -55,6 +69,14 @@
 .Fn rb_tree_iterate "rb_tree_t *rbt" "void *rb" "const unsigned int direction"
 .Ft size_t
 .Fn rb_tree_count "rb_tree_t *rbt"
+.Ft void *
+.Fn RB_TREE_MIN "rb_tree_t *rbt"
+.Ft void *
+.Fn RB_TREE_MAX "rb_tree_t *rbt"
+.Fn RB_TREE_FOREACH "void *rb" "rb_tree_t *rbt"
+.Fn RB_TREE_FOREACH_SAFE "void *rb" "rb_tree_t *rbt" "void *tmp"
+.Fn RB_TREE_FOREACH_REVERSE "void *rb" "rb_tree_t *rbt"
+.Fn RB_TREE_FOREACH_REVERSE_SAFE "void *rb" "rb_tree_t *rbt" "void *tmp"
 .Sh DESCRIPTION
 .Nm
 provides red-black trees.
@@ -79,7 +101,7 @@ The maximum height of a red-black tree is 2lg (n+1).
 A red-black tree.
 .It Vt typedef signed int \
 (* rbto_compare_nodes_fn)(void *context, const void *node1, const void *node2);
-The node-comparison operator.
+The node-comparison function.
 Defines an ordering on nodes.
 Returns a negative value if the first node
 .Ar node1
@@ -96,7 +118,7 @@ and the second node
 are identical according to the ordering.
 .It Vt typedef signed int \
 (* rbto_compare_key_fn)(void *context, const void *node, const void *key);
-The node-key comparison operator.
+The node-key comparison function.
 Defines the order of nodes and keys.
 Returns a negative value if the node
 .Ar node
@@ -112,12 +134,12 @@ is identical to the key
 .Ar key
 according to the ordering.
 .It Vt rb_tree_ops_t
-Defines the operator for comparing two nodes in the same tree,
-the operator for comparing a node in the tree with a key,
+Defines the function for comparing two nodes in the same tree,
+the function for comparing a node in the tree with a key,
 the offset of member
 .Vt rb_node_t
-within a node,
-and the opaque context passed to the operators.
+within the node type,
+and the opaque context pointer passed to the comparison functions.
 Members of
 .Vt rb_tree_ops_t
 are
@@ -129,13 +151,22 @@ are
 .Ed
 .It Vt rb_node_t
 A node in a red-black tree has this structure as a member.
+The offset of the
+.Vt rb_node_t
+member in the caller's node structure should be provided as
+.Va rbto_node_offset .
+(None of the functions in the
+.Nm
+interface are meant to take pointers directly to the
+.Vt rb_node_t
+member.)
 .El
 .Sh FUNCTIONS
 .Bl -tag -width compact
 .It Fn rb_tree_init "rbt" "ops"
 Initialize the red-black tree
 .Fa rbt .
-Let the comparison operators given by
+Let the comparison functions given by
 .Fa ops
 define the order of nodes in the tree for
 the purposes of insertion, search, and iteration.
@@ -194,7 +225,7 @@ or, if
 .Fa rb
 is
 .Dv NULL ,
-return the last node in
+return the first node in
 .Fa rbt
 or, if the tree is empty, return
 .Dv NULL .
@@ -211,47 +242,81 @@ or, if
 .Fa rb
 is
 .Dv NULL ,
-return the first node in
+return the last node in
 .Fa rbt
 or, if the tree is empty, return
 .Dv NULL .
 .It Fn rb_tree_count "rbt"
 Return the number of nodes in the tree
 .Fa rbt .
-If 
+If
 .Fa rbt
 is
 .Dv NULL ,
 0 is returned.
+.It Fn RB_TREE_MIN "rbt"
+Return the first node in
+.Fa rbt ,
+i.e. the node with the least key, or
+.Dv NULL
+if
+.Fa rbt
+is empty.
+.It Fn RB_TREE_MAX "rbt"
+Return the last node in
+.Fa rbt ,
+i.e. the node with the greatest key, or
+.Dv NULL
+if
+.Fa rbt
+is empty.
+.It Fn RB_TREE_FOREACH "rb" "rbt"
+.Nm RB_TREE_FOREACH
+is a macro to be used in the place of a
+.Dv for
+header preceding a statement to traverse the nodes in
+.Fa rbt
+from least to greatest, assigning
+.Fa rb
+to each node in turn and executing the statement.
+.It Fn RB_TREE_FOREACH_SAFE "rb" "rbt" "tmp"
+.Nm RB_TREE_FOREACH_SAFE
+is a macro to be used like
+.Nm RB_TREE_FOREACH
+but which uses a temporary variable to permit safe modification or deletion of
+.Fa rb
+in the body of the loop.
+.It Fn RB_TREE_FOREACH_REVERSE "rb" "rbt"
+.Nm RB_TREE_FOREACH_REVERSE
+is a macro to be used in the place of a
+.Dv for
+header preceding a statement to traverse the nodes in
+.Fa rbt
+from greatest to least, assigning
+.Fa rb
+to each node in turn and executing the statement.
+.It Fn RB_TREE_FOREACH_REVERSE_SAFE "rb" "rbt" "tmp"
+.Nm RB_TREE_FOREACH_REVERSE_SAFE
+is a macro to be used like
+.Nm RB_TREE_FOREACH_REVERSE
+but which uses a temporary variable to permit safe modification or deletion of
+.Fa rb
+in the body of the loop.
 .El
-.Sh IMPLEMENTATION DETAILS
-.Nx 6.0
-included a version of this API that returned the wrong result when using
-.Fn rb_tree_iterate
-to find the first or last node.
-This implementation does not have this bug.
-If you wish to maintain portability with
-.Nx 6.0 , 
-it is recomended that you use the 
-.Fn RB_TREE_MIN
-and 
-.Fn RB_TREE_MAX
-macros rather than using
-.Fn rb_tree_iterate
-directly.
 .Sh SEE ALSO
-.Xr queue 3
+.Xr queue 3 ,
+.Xr tree 3
 .Sh HISTORY
 The
 .Nm
 interface first appeared in
 .Nx 6.0 .
 .Sh AUTHORS
-.An Matt Thomas Aq matt@NetBSD.org
+.An Matt Thomas Aq Mt matt@NetBSD.org
 wrote
 .Nm .
 .Pp
-.An Niels Provos Aq provos@citi.umich.edu
+.An Niels Provos Aq Mt provos@citi.umich.edu
 wrote the
 .Xr tree 3
 manual page.

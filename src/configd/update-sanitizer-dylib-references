@@ -1,0 +1,111 @@
+#!/bin/sh
+
+#
+# fix address-sanitizer library @rpath references
+#
+
+xsan_setup() {
+    XSAN_DIR="/usr/local/lib/sanitizers"
+    case "${PLATFORM_NAME}" in
+	macosx )
+	    ASAN_DYLIB="clang_rt.asan_osx_dynamic.dylib"
+	    TSAN_DYLIB="clang_rt.tsan_osx_dynamic.dylib"
+	    ;;
+       	iphoneos )
+	    ASAN_DYLIB="clang_rt.asan_ios_dynamic.dylib"
+	    TSAN_DYLIB="clang_rt.tsan_ios_dynamic.dylib"
+	    ;;
+       	iphonesimulator )
+	    ASAN_DYLIB="clang_rt.asan_iossim_dynamic.dylib"
+	    TSAN_DYLIB="clang_rt.tsan_iossim_dynamic.dylib"
+	    ;;
+       	tvos )
+	    ASAN_DYLIB="clang_rt.asan_tvos_dynamic.dylib"
+	    TSAN_DYLIB="clang_rt.tsan_tvos_dynamic.dylib"
+	    ;;
+       	tvsosimulator )
+	    ASAN_DYLIB="clang_rt.asan_tvossim_dynamic.dylib"
+	    TSAN_DYLIB="clang_rt.tsan_tvossim_dynamic.dylib"
+	    ;;
+       	watchos )
+	    ASAN_DYLIB="clang_rt.asan_watchos_dynamic.dylib"
+	    TSAN_DYLIB="clang_rt.tsan_watchos_dynamic.dylib"
+	    ;;
+       	watchsimulator )
+	    ASAN_DYLIB="clang_rt.asan_watchossim_dynamic.dylib"
+	    TSAN_DYLIB="clang_rt.tsan_watchossim_dynamic.dylib"
+	    ;;
+       	* )
+	    echo ""
+	    echo "*** Unexpected PLATFORM_NAME \"${PLATFORM_NAME}\", using \"$(RC_PROJECT_COMPILATION_PLATFORM)\""
+	    echo ""
+	    ASAN_DYLIB="clang_rt.asan_$(RC_PROJECT_COMPILATION_PLATFORM)_dynamic.dylib"
+	    TSAN_DYLIB="clang_rt.tsan_$(RC_PROJECT_COMPILATION_PLATFORM)_dynamic.dylib"
+	    ;;
+    esac
+}
+
+xsan_setup=0
+for VARIANT in ${BUILD_VARIANTS}
+do
+    case "${VARIANT}" in
+	"asan" )
+	    #
+	    # change address sanitizer @rpath reference
+	    #
+	    ASAN_FILE="${DSTROOT}${INSTALL_PATH}/"
+	    if [ -n "${EXECUTABLE_FOLDER_PATH}" ]; then
+		ASAN_FILE+="${EXECUTABLE_FOLDER_PATH}/"
+	    fi
+	    ASAN_FILE+="${EXECUTABLE_PREFIX}${PRODUCT_NAME}_asan${EXECUTABLE_SUFFIX}"
+
+	    if [ -x "${ASAN_FILE}" ]; then
+		if [ ${xsan_setup} -eq 0 ]; then
+		    xsan_setup
+		    xsan_setup=1
+		fi
+
+		install_name_tool			\
+		    -change				\
+		    "@rpath/lib${ASAN_DYLIB}"		\
+		    "${XSAN_DIR}/lib${ASAN_DYLIB}"	\
+		    "${ASAN_FILE}"
+		if [ $? -ne 0 ]; then
+		    echo "install_name_tool failed"
+		    printenv | sort
+		    exit 1
+		fi
+	    fi
+	    ;;
+	"tsan" )
+	    #
+	    # change thread sanitizer @rpath reference
+	    #
+	    TSAN_FILE="${DSTROOT}${INSTALL_PATH}/"
+	    if [ -n "${EXECUTABLE_FOLDER_PATH}" ]; then
+		TSAN_FILE+="${EXECUTABLE_FOLDER_PATH}/"
+	    fi
+	    TSAN_FILE+="${EXECUTABLE_PREFIX}${PRODUCT_NAME}_tsan${EXECUTABLE_SUFFIX}"
+
+	    if [ -x "${TSAN_FILE}" ]; then
+		if [ ${xsan_setup} -eq 0 ]; then
+		    xsan_setup
+		    xsan_setup=1
+		fi
+
+		install_name_tool			\
+		    -change				\
+		    "@rpath/lib${TSAN_DYLIB}"		\
+		    "${XSAN_DIR}/lib${TSAN_DYLIB}"	\
+		    "${TSAN_FILE}"
+		if [ $? -ne 0 ]; then
+		    echo "install_name_tool failed"
+		    printenv | sort
+		    exit 1
+		fi
+	    fi
+	    ;;
+	* )
+	    ;;
+    esac
+done

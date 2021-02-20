@@ -24,33 +24,18 @@
 #ifndef _XLOCALE__TIME_H_
 #define _XLOCALE__TIME_H_
 
+#include <sys/cdefs.h>
+#include <sys/_types/_size_t.h>
+#include <_types.h>
+#include <_xlocale.h>
+
 __BEGIN_DECLS
-//Begin-Libc
-#ifndef LIBC_ALIAS_STRFTIME_L
-//End-Libc
 size_t	 strftime_l(char * __restrict, size_t, const char * __restrict,
 		const struct tm * __restrict, locale_t)
 		__DARWIN_ALIAS(strftime_l) __strftimelike(3);
-//Begin-Libc
-#else /* LIBC_ALIAS_STRFTIME_L */
-size_t	 strftime_l(char * __restrict, size_t, const char * __restrict,
-		const struct tm * __restrict, locale_t)
-		LIBC_ALIAS(strftime_l) __strftimelike(3);
-#endif /* !LIBC_ALIAS_STRFTIME_L */
-//End-Libc
-//Begin-Libc
-#ifndef LIBC_ALIAS_STRPTIME_L
-//End-Libc
 char	*strptime_l(const char * __restrict, const char * __restrict,
 		struct tm * __restrict, locale_t) 
 		__DARWIN_ALIAS(strptime_l) __strftimelike(2);
-//Begin-Libc
-#else /* LIBC_ALIAS_STRPTIME_L */
-char	*strptime_l(const char * __restrict, const char * __restrict,
-		struct tm * __restrict, locale_t)
-		LIBC_ALIAS(strptime_l) __strftimelike(2);
-#endif /* !LIBC_ALIAS_STRPTIME_L */
-//End-Libc
 __END_DECLS
 
 #endif /* _XLOCALE__TIME_H_ */

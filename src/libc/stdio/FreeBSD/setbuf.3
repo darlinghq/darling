@@ -79,6 +79,24 @@ characters are saved up until a newline is output
 or input is read from any stream attached to a terminal device
 (typically
 .Dv stdin ) .
+.Pp
+The default buffer settings can be overwritten for stdout
+.Dv ( STDBUF1 )
+or for all descriptors
+.Dv ( STDBUF ) .
+The environment variable value is a letter followed by an optional numeric
+value indicating the size of the buffer.
+Valid sizes range from 0B to 64KB.
+Valid letters are:
+.Bl -tag -width X -indent
+.It Dv Li U
+Unbuffered.
+.It Dv Li L
+Line-buffered.
+.It Dv Li F
+Fully-buffered.
+.El
+.Pp
 The function
 .Xr fflush 3
 may be used to force the block out early.

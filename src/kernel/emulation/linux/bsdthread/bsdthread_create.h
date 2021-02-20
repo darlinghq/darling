@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-long sys_bsdthread_create(void* thread_start, void* arg, void** stack,
+long sys_bsdthread_create(void* thread_start, void* arg, void* stack,
 		void* pthread, uint32_t flags);
 
 int darling_thread_create(void** stack, void* entry_point, uintptr_t arg3,

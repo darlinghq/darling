@@ -2,14 +2,14 @@
  * Copyright (c) 2006, 2017 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -43,15 +43,15 @@ static struct timespec times_now[2] = {
  */
 static int
 prepare_times_array_and_attrs(struct timespec times_in[2],
-		struct timespec times_out[2], size_t *times_out_size)
+    struct timespec times_out[2], size_t *times_out_size)
 {
 	if (times_in[0].tv_nsec == UTIME_OMIT &&
-			times_in[1].tv_nsec == UTIME_OMIT) {
+	    times_in[1].tv_nsec == UTIME_OMIT) {
 		return 0;
 	}
 
 	if (times_in[0].tv_nsec == UTIME_NOW ||
-			times_in[1].tv_nsec == UTIME_NOW) {
+	    times_in[1].tv_nsec == UTIME_NOW) {
 		struct timespec now = {};
 		{
 			/*

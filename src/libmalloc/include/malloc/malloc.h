@@ -29,6 +29,35 @@
 #include <sys/cdefs.h>
 #include <Availability.h>
 
+#if __has_feature(ptrauth_calls)
+#include <ptrauth.h>
+
+// Zone function pointer, type-diversified but not address-diversified (because
+// the zone can be copied). Process-independent because the zone structure may
+// be in the shared library cache.
+#define MALLOC_ZONE_FN_PTR(fn) __ptrauth(ptrauth_key_process_independent_code, \
+		FALSE, ptrauth_string_discriminator("malloc_zone_fn." #fn)) fn
+
+// Introspection function pointer, address- and type-diversified.
+// Process-independent because the malloc_introspection_t structure that contains
+// these pointers may be in the shared library cache.
+#define MALLOC_INTROSPECT_FN_PTR(fn) __ptrauth(ptrauth_key_process_independent_code, \
+		TRUE, ptrauth_string_discriminator("malloc_introspect_fn." #fn)) fn
+
+// Pointer to the introspection pointer table, type-diversified but not
+// address-diversified (because the zone can be copied).
+// Process-independent because the table pointer may be in the shared library cache.
+#define MALLOC_INTROSPECT_TBL_PTR(ptr) __ptrauth(ptrauth_key_process_independent_data,\
+		FALSE, ptrauth_string_discriminator("malloc_introspect_tbl")) ptr
+
+#endif	// __has_feature(ptrauth_calls)
+
+#ifndef MALLOC_ZONE_FN_PTR
+#define MALLOC_ZONE_FN_PTR(fn) fn
+#define MALLOC_INTROSPECT_FN_PTR(fn) fn
+#define MALLOC_INTROSPECT_TBL_PTR(ptr) ptr
+#endif // MALLOC_ZONE_FN_PTR
+
 __BEGIN_DECLS
 /*********	Type definitions	************/
 
@@ -37,30 +66,37 @@ typedef struct _malloc_zone_t {
     Regular callers should use the access functions below */
     void	*reserved1;	/* RESERVED FOR CFAllocator DO NOT USE */
     void	*reserved2;	/* RESERVED FOR CFAllocator DO NOT USE */
-    size_t 	(*size)(struct _malloc_zone_t *zone, const void *ptr); /* returns the size of a block or 0 if not in this zone; must be fast, especially for negative answers */
-    void 	*(*malloc)(struct _malloc_zone_t *zone, size_t size);
-    void 	*(*calloc)(struct _malloc_zone_t *zone, size_t num_items, size_t size); /* same as malloc, but block returned is set to zero */
-    void 	*(*valloc)(struct _malloc_zone_t *zone, size_t size); /* same as malloc, but block returned is set to zero and is guaranteed to be page aligned */
-    void 	(*free)(struct _malloc_zone_t *zone, void *ptr);
-    void 	*(*realloc)(struct _malloc_zone_t *zone, void *ptr, size_t size);
-    void 	(*destroy)(struct _malloc_zone_t *zone); /* zone is destroyed and all memory reclaimed */
+    size_t 	(* MALLOC_ZONE_FN_PTR(size))(struct _malloc_zone_t *zone, const void *ptr); /* returns the size of a block or 0 if not in this zone; must be fast, especially for negative answers */
+    void 	*(* MALLOC_ZONE_FN_PTR(malloc))(struct _malloc_zone_t *zone, size_t size);
+    void 	*(* MALLOC_ZONE_FN_PTR(calloc))(struct _malloc_zone_t *zone, size_t num_items, size_t size); /* same as malloc, but block returned is set to zero */
+    void 	*(* MALLOC_ZONE_FN_PTR(valloc))(struct _malloc_zone_t *zone, size_t size); /* same as malloc, but block returned is set to zero and is guaranteed to be page aligned */
+    void 	(* MALLOC_ZONE_FN_PTR(free))(struct _malloc_zone_t *zone, void *ptr);
+    void 	*(* MALLOC_ZONE_FN_PTR(realloc))(struct _malloc_zone_t *zone, void *ptr, size_t size);
+    void 	(* MALLOC_ZONE_FN_PTR(destroy))(struct _malloc_zone_t *zone); /* zone is destroyed and all memory reclaimed */
     const char	*zone_name;
 
     /* Optional batch callbacks; these may be NULL */
-    unsigned	(*batch_malloc)(struct _malloc_zone_t *zone, size_t size, void **results, unsigned num_requested); /* given a size, returns pointers capable of holding that size; returns the number of pointers allocated (maybe 0 or less than num_requested) */
-    void	(*batch_free)(struct _malloc_zone_t *zone, void **to_be_freed, unsigned num_to_be_freed); /* frees all the pointers in to_be_freed; note that to_be_freed may be overwritten during the process */
+    unsigned	(* MALLOC_ZONE_FN_PTR(batch_malloc))(struct _malloc_zone_t *zone, size_t size, void **results, unsigned num_requested); /* given a size, returns pointers capable of holding that size; returns the number of pointers allocated (maybe 0 or less than num_requested) */
+    void	(* MALLOC_ZONE_FN_PTR(batch_free))(struct _malloc_zone_t *zone, void **to_be_freed, unsigned num_to_be_freed); /* frees all the pointers in to_be_freed; note that to_be_freed may be overwritten during the process */
 
-    struct malloc_introspection_t	*introspect;
+    struct malloc_introspection_t	* MALLOC_INTROSPECT_TBL_PTR(introspect);
     unsigned	version;
     	
     /* aligned memory allocation. The callback may be NULL. Present in version >= 5. */
-    void *(*memalign)(struct _malloc_zone_t *zone, size_t alignment, size_t size);
+    void *(* MALLOC_ZONE_FN_PTR(memalign))(struct _malloc_zone_t *zone, size_t alignment, size_t size);
     
     /* free a pointer known to be in zone and known to have the given size. The callback may be NULL. Present in version >= 6.*/
-    void (*free_definite_size)(struct _malloc_zone_t *zone, void *ptr, size_t size);
+    void (* MALLOC_ZONE_FN_PTR(free_definite_size))(struct _malloc_zone_t *zone, void *ptr, size_t size);
 
     /* Empty out caches in the face of memory pressure. The callback may be NULL. Present in version >= 8. */
-    size_t 	(*pressure_relief)(struct _malloc_zone_t *zone, size_t goal);
+    size_t 	(* MALLOC_ZONE_FN_PTR(pressure_relief))(struct _malloc_zone_t *zone, size_t goal);
+
+	/*
+	 * Checks whether an address might belong to the zone. May be NULL. Present in version >= 10.
+	 * False positives are allowed (e.g. the pointer was freed, or it's in zone space that has
+	 * not yet been allocated. False negatives are not allowed.
+	 */
+    boolean_t (* MALLOC_ZONE_FN_PTR(claimed_address))(struct _malloc_zone_t *zone, void *ptr);
 } malloc_zone_t;
 
 /*********	Creation and destruction	************/
@@ -76,19 +112,19 @@ extern void malloc_destroy_zone(malloc_zone_t *zone);
 
 /*********	Block creation and manipulation	************/
 
-extern void *malloc_zone_malloc(malloc_zone_t *zone, size_t size);
+extern void *malloc_zone_malloc(malloc_zone_t *zone, size_t size) __alloc_size(2);
     /* Allocates a new pointer of size size; zone must be non-NULL */
 
-extern void *malloc_zone_calloc(malloc_zone_t *zone, size_t num_items, size_t size);
+extern void *malloc_zone_calloc(malloc_zone_t *zone, size_t num_items, size_t size) __alloc_size(2,3);
     /* Allocates a new pointer of size num_items * size; block is cleared; zone must be non-NULL */
 
-extern void *malloc_zone_valloc(malloc_zone_t *zone, size_t size);
+extern void *malloc_zone_valloc(malloc_zone_t *zone, size_t size) __alloc_size(2);
     /* Allocates a new pointer of size size; zone must be non-NULL; Pointer is guaranteed to be page-aligned and block is cleared */
 
 extern void malloc_zone_free(malloc_zone_t *zone, void *ptr);
     /* Frees pointer in zone; zone must be non-NULL */
 
-extern void *malloc_zone_realloc(malloc_zone_t *zone, void *ptr, size_t size);
+extern void *malloc_zone_realloc(malloc_zone_t *zone, void *ptr, size_t size) __alloc_size(3);
     /* Enlarges block if necessary; zone must be non-NULL */
 
 extern malloc_zone_t *malloc_zone_from_ptr(const void *ptr);
@@ -101,7 +137,7 @@ extern size_t malloc_size(const void *ptr);
 extern size_t malloc_good_size(size_t size);
     /* Returns number of bytes greater than or equal to size that can be allocated without padding */
 
-extern void *malloc_zone_memalign(malloc_zone_t *zone, size_t alignment, size_t size) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0);
+extern void *malloc_zone_memalign(malloc_zone_t *zone, size_t alignment, size_t size) __alloc_size(3) __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0);
     /* 
      * Allocates a new pointer of size size whose address is an exact multiple of alignment.
      * alignment must be a power of two and at least as large as sizeof(void *).
@@ -179,28 +215,37 @@ local_memory: set to a contiguous chunk of memory; validity of local_memory is a
 typedef void vm_range_recorder_t(task_t, void *, unsigned type, vm_range_t *, unsigned);
     /* given a task and context, "records" the specified addresses */
 
+/* Print function for the print_task() operation. */
+typedef void print_task_printer_t(const char *fmt, ...);
+
 typedef struct malloc_introspection_t {
-    kern_return_t (*enumerator)(task_t task, void *, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder); /* enumerates all the malloc pointers in use */
-    size_t	(*good_size)(malloc_zone_t *zone, size_t size);
-    boolean_t 	(*check)(malloc_zone_t *zone); /* Consistency checker */
-    void 	(*print)(malloc_zone_t *zone, boolean_t verbose); /* Prints zone  */
-    void	(*log)(malloc_zone_t *zone, void *address); /* Enables logging of activity */
-    void	(*force_lock)(malloc_zone_t *zone); /* Forces locking zone */
-    void	(*force_unlock)(malloc_zone_t *zone); /* Forces unlocking zone */
-    void	(*statistics)(malloc_zone_t *zone, malloc_statistics_t *stats); /* Fills statistics */
-    boolean_t   (*zone_locked)(malloc_zone_t *zone); /* Are any zone locks held */
+	kern_return_t (* MALLOC_INTROSPECT_FN_PTR(enumerator))(task_t task, void *, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder); /* enumerates all the malloc pointers in use */
+	size_t	(* MALLOC_INTROSPECT_FN_PTR(good_size))(malloc_zone_t *zone, size_t size);
+	boolean_t 	(* MALLOC_INTROSPECT_FN_PTR(check))(malloc_zone_t *zone); /* Consistency checker */
+	void 	(* MALLOC_INTROSPECT_FN_PTR(print))(malloc_zone_t *zone, boolean_t verbose); /* Prints zone  */
+	void	(* MALLOC_INTROSPECT_FN_PTR(log))(malloc_zone_t *zone, void *address); /* Enables logging of activity */
+	void	(* MALLOC_INTROSPECT_FN_PTR(force_lock))(malloc_zone_t *zone); /* Forces locking zone */
+	void	(* MALLOC_INTROSPECT_FN_PTR(force_unlock))(malloc_zone_t *zone); /* Forces unlocking zone */
+	void	(* MALLOC_INTROSPECT_FN_PTR(statistics))(malloc_zone_t *zone, malloc_statistics_t *stats); /* Fills statistics */
+	boolean_t   (* MALLOC_INTROSPECT_FN_PTR(zone_locked))(malloc_zone_t *zone); /* Are any zone locks held */
 
     /* Discharge checking. Present in version >= 7. */
-    boolean_t	(*enable_discharge_checking)(malloc_zone_t *zone);
-    void	(*disable_discharge_checking)(malloc_zone_t *zone);
-    void	(*discharge)(malloc_zone_t *zone, void *memory);
+	boolean_t	(* MALLOC_INTROSPECT_FN_PTR(enable_discharge_checking))(malloc_zone_t *zone);
+	void	(* MALLOC_INTROSPECT_FN_PTR(disable_discharge_checking))(malloc_zone_t *zone);
+	void	(* MALLOC_INTROSPECT_FN_PTR(discharge))(malloc_zone_t *zone, void *memory);
 #ifdef __BLOCKS__
-    void        (*enumerate_discharged_pointers)(malloc_zone_t *zone, void (^report_discharged)(void *memory, void *info));
-#else
+	void     (* MALLOC_INTROSPECT_FN_PTR(enumerate_discharged_pointers))(malloc_zone_t *zone, void (^report_discharged)(void *memory, void *info));
+	#else
     void	*enumerate_unavailable_without_blocks;   
 #endif /* __BLOCKS__ */
-    void	(*reinit_lock)(malloc_zone_t *zone); /* Reinitialize zone locks, called only from atfork_child handler. Present in version >= 9. */
+	void	(* MALLOC_INTROSPECT_FN_PTR(reinit_lock))(malloc_zone_t *zone); /* Reinitialize zone locks, called only from atfork_child handler. Present in version >= 9. */
+	void	(* MALLOC_INTROSPECT_FN_PTR(print_task))(task_t task, unsigned level, vm_address_t zone_address, memory_reader_t reader, print_task_printer_t printer); /* debug print for another process. Present in version >= 11. */
+	void (* MALLOC_INTROSPECT_FN_PTR(task_statistics))(task_t task, vm_address_t zone_address, memory_reader_t reader, malloc_statistics_t *stats); /* Present in version >= 12 */
 } malloc_introspection_t;
+
+// The value of "level" when passed to print_task() that corresponds to
+// verbose passed to print()
+#define MALLOC_VERBOSE_PRINT_LEVEL	2
 
 extern void malloc_printf(const char *format, ...);
     /* Convenience for logging errors and warnings;

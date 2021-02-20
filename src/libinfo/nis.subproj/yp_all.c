@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -56,6 +56,8 @@
 static char *rcsid = "$OpenBSD: yp_all.c,v 1.5 1996/12/14 06:49:46 tholo Exp $";
 #endif /* LIBC_SCCS and not lint */
 
+#include "libinfo_common.h"
+
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -75,6 +77,7 @@ static char *rcsid = "$OpenBSD: yp_all.c,v 1.5 1996/12/14 06:49:46 tholo Exp $";
 int (*ypresp_allfn) __P((u_long, char *, int, char *, int, void *));
 void *ypresp_data;
 
+LIBINFO_EXPORT
 bool_t
 xdr_ypresp_all_seq(xdrs, objp)
 XDR *xdrs;
@@ -120,8 +123,11 @@ u_long *objp;
 			}
 			xdr_free((xdrproc_t)xdr_ypresp_all, (char *)&out);
 
-			if (key == NULL || val == NULL)
+			if (key == NULL || val == NULL) {
+				free(key);
+				free(val);
 				return FALSE;
+			}
 
 			r = (*ypresp_allfn)(status, key,
 			    out.ypresp_all_u.val.key.keydat_len, val,
@@ -143,6 +149,7 @@ u_long *objp;
 	}
 }
 
+LIBINFO_EXPORT
 int
 yp_all(indomain, inmap, incallback)
 	const char     *indomain;

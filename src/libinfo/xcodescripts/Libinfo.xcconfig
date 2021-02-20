@@ -1,50 +1,86 @@
-#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
+// Copyright (c) 2018 Apple Inc. All rights reserved.
 
+#include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
+
+HEADER_SEARCH_PATHS = /usr/local/include $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
 INSTALLHDRS_SCRIPT_PHASE = YES
+SDKROOT = macosx.internal
+SUPPORTED_PLATFORMS = macosx iphoneos iphonesimulator appletvos appletvsimulator watchos watchsimulator
 
 GCC_PREPROCESSOR_DEFINITIONS = __DARWIN_NON_CANCELABLE=1 __MigTypeCheck=1 INET6=1
-GCC_PREPROCESSOR_DEFINITIONS[sdk=iphone*] = CONFIG_IPHONE $(GCC_PREPROCESSOR_DEFINITIONS)
+GCC_PREPROCESSOR_DEFINITIONS[sdk=iphoneos*] = MUSER_AVAILABLE $(GCC_PREPROCESSOR_DEFINITIONS)
+GCC_PREPROCESSOR_DEFINITIONS[sdk=watchos*] = MUSER_AVAILABLE $(GCC_PREPROCESSOR_DEFINITIONS)
+GCC_PREPROCESSOR_DEFINITIONS[sdk=appletvos*] = MUSER_AVAILABLE $(GCC_PREPROCESSOR_DEFINITIONS)
 GCC_PREPROCESSOR_DEFINITIONS[sdk=macosx*] = CONFIG_MAC DS_AVAILABLE SYNTH_ROOTFS $(GCC_PREPROCESSOR_DEFINITIONS)
 
-INSTALL_PATH_ACTUAL = /usr/lib/system
-INSTALL_PATH[sdk=macosx*] = $(INSTALL_PATH_ACTUAL)
+BUILD_VARIANTS = normal profile debug
+
+INSTALL_PATH = /usr/lib/system
 
 EXECUTABLE_PREFIX = libsystem_
-EXECUTABLE_PREFIX[sdk=iphonesimulator*] = libsystem_sim_
 
 ORDER_FILE[sdk=macosx*] = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/libsystem_info.order
 ORDER_FILE[sdk=iphoneos*] = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/libsystem_info.order
+ORDER_FILE[sdk=watchos*] = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/libsystem_info.order
+ORDER_FILE[sdk=appletvos*] = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/libsystem_info.order
 
 LINK_WITH_STANDARD_LIBRARIES = NO
 
-LIBCOMPILER_RT_LDFLAGS = -lcompiler_rt
-LIBCOMPILER_RT_LDFLAGS[sdk=iphonesimulator*] = -lcompiler_rt_sim
-LIBMALLOC_LDFLAGS = -lsystem_malloc
-LIBMALLOC_LDFLAGS[sdk=iphonesimulator*] = -Wl,-upward-lSystem
-LIBPLATFORM_LDFLAGS = -lsystem_platform
-LIBPLATFORM_LDFLAGS[sdk=iphonesimulator*] = -Wl,-upward-lSystem
-LIBPTHREAD_LDFLAGS = -lsystem_pthread
-LIBPTHREAD_LDFLAGS[sdk=iphonesimulator*] = -Wl,-upward-lSystem
-LIBSYSCALL_LDFLAGS = -lsystem_kernel
-LIBSYSCALL_LDFLAGS[sdk=iphonesimulator*] = -Wl,-upward-lSystem
-LIBM_LDFLAGS = -lsystem_m
-LIBM_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_m
-LIBDYLD_LDFLAGS = -ldyld
-LIBDYLD_LDFLAGS[sdk=iphonesimulator*] = -ldyld_sim
-LIBC_LDFLAGS = -lsystem_c
-LIBC_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_c
-LIBDISPATCH_LDFLAGS = -ldispatch
-LIBLAUNCH_LDFLAGS = -llaunch
-LIBLAUNCH_LDFLAGS[sdk=iphonesimulator*] =
-LIBASL_LDFLAGS = -lsystem_asl
-LIBASL_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_asl
-LIBBLOCKS_LDFLAGS = -lsystem_blocks
-LIBBLOCKS_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_blocks
-LIBDNSD_LDFLAGS = -lsystem_dnssd
-LIBDNSD_LDFLAGS[sdk=iphonesimulator*] = -lsystem_sim_dnssd
-LIBNOTIFY_LDFLAGS = -lsystem_notify
-LIBNOTIFY_LDFLAGS[sdk=iphonesimulator*] = -lnotify_sim
-LIBXPC_LDFLAGS = -lxpc
-LIBNETWORK_LDFLAGS = -Wl,-upward-lsystem_network
+SIM_SUFFIX[sdk=*simulator*] = _sim
 
-OTHER_LDFLAGS = -all_load -umbrella System -L/usr/lib/system $(LIBCOMPILER_RT_LDFLAGS) $(LIBDYLD_LDFLAGS) $(LIBSYSCALL_LDFLAGS) $(LIBMALLOC_LDFLAGS) $(LIBPLATFORM_LDFLAGS) $(LIBPTHREAD_LDFLAGS) $(LIBC_LDFLAGS) $(LIBDISPATCH_LDFLAGS) $(LIBLAUNCH_LDFLAGS) $(LIBASL_LDFLAGS) $(LIBBLOCKS_LDFLAGS) $(LIBDNSD_LDFLAGS) $(LIBNOTIFY_LDFLAGS) $(LIBXPC_LDFLAGS) $(LIBNETWORK_LDFLAGS)
+LIBCOMPILER_RT_LDFLAGS = -lcompiler_rt
+LIBMALLOC_LDFLAGS = -lsystem_malloc
+LIBPLATFORM_LDFLAGS = -lsystem$(SIM_SUFFIX)_platform
+LIBPTHREAD_LDFLAGS = -lsystem$(SIM_SUFFIX)_pthread
+LIBSYSCALL_LDFLAGS = -lsystem$(SIM_SUFFIX)_kernel
+LIBM_LDFLAGS = -lsystem_m
+LIBDYLD_LDFLAGS = -ldyld
+LIBC_LDFLAGS = -lsystem_c
+LIBDISPATCH_LDFLAGS = -ldispatch
+LIBASL_LDFLAGS = -lsystem_asl
+LIBBLOCKS_LDFLAGS = -lsystem_blocks
+LIBDNSD_LDFLAGS = -lsystem_dnssd
+LIBNOTIFY_LDFLAGS = -lsystem_notify
+LIBXPC_LDFLAGS = -lxpc
+LIBTRACE_LDFLAGS = -lsystem_trace
+
+CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+CLANG_WARN_BOOL_CONVERSION = YES;
+CLANG_WARN_CONSTANT_CONVERSION = YES;
+CLANG_WARN_EMPTY_BODY = YES;
+CLANG_WARN_ENUM_CONVERSION = YES;
+CLANG_WARN_INFINITE_RECURSION = YES;
+CLANG_WARN_INT_CONVERSION = YES;
+CLANG_WARN_SUSPICIOUS_MOVE = YES;
+CLANG_WARN_UNREACHABLE_CODE = YES;
+CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+GCC_NO_COMMON_BLOCKS = YES;
+GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
+GCC_WARN_ABOUT_RETURN_TYPE = YES;
+GCC_WARN_UNDECLARED_SELECTOR = YES;
+GCC_WARN_UNINITIALIZED_AUTOS = YES;
+GCC_WARN_UNUSED_VARIABLE = YES;
+WARNING_LDFLAGS = -Wall
+WARNING_CFLAGS = -Wno-error=deprecated-declarations
+GCC_WARN_UNUSED_FUNCTION = YES
+
+GCC_C_LANGUAGE_STANDARD = gnu99;
+ENABLE_STRICT_OBJC_MSGSEND = YES;
+
+//:configuration = Debug
+GCC_OPTIMIZATION_LEVEL = 0
+OTHER_CFLAGS = -DDEBUG=1
+//:completeSettings = none
+
+DYLIB_COMPATIBILITY_VERSION = 1
+
+OTHER_LDFLAGS = -all_load -umbrella System -L/usr/lib/system $(LIBCOMPILER_RT_LDFLAGS) $(LIBDYLD_LDFLAGS) $(LIBSYSCALL_LDFLAGS) $(LIBMALLOC_LDFLAGS) $(LIBPLATFORM_LDFLAGS) $(LIBPTHREAD_LDFLAGS) $(LIBC_LDFLAGS) $(LIBDISPATCH_LDFLAGS) $(LIBASL_LDFLAGS) $(LIBBLOCKS_LDFLAGS) $(LIBDNSD_LDFLAGS) $(LIBNOTIFY_LDFLAGS) $(LIBXPC_LDFLAGS) $(LIBTRACE_LDFLAGS)
+
+// Text-Based API settings
+
+SUPPORTS_TEXT_BASED_API = YES
+TAPI_VERIFY_MODE = Pedantic
+OTHER_TAPI_FLAGS = -D LIBINFO_INSTALL_API=1 -extra-public-header $(SRCROOT)/Libinfo/pseudo_public.h -extra-public-header $(DSTROOT)/usr/include -extra-private-header $(DSTROOT)/usr/local/include -extra-private-header $(SRCROOT)/Libinfo/pseudo_private.h -umbrella System
+
+GCC_SYMBOLS_PRIVATE_EXTERN = YES

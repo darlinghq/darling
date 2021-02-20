@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -27,9 +27,10 @@
 #include <sys/cdefs.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <asl.h>
 #include <sys/syslog.h>
 #include <mach/message.h>
+#include <os/log.h>
+#include <os/variant_private.h>
 #include <sys/sysctl.h>
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -62,14 +63,12 @@
 
 
 /* "server" defines */
-#if	!TARGET_IPHONE_SIMULATOR
+#if	!TARGET_OS_SIMULATOR
 #define _SC_SERVER_PROG			"configd"
-#else	// !TARGET_IPHONE_SIMULATOR
+#else	// !TARGET_OS_SIMULATOR
 #define _SC_SERVER_PROG			"configd_sim"
-#endif	// !TARGET_IPHONE_SIMULATOR
+#endif	// !TARGET_OS_SIMULATOR
 
-#define INSTALL_ENVIRONMENT	"__OSINSTALL_ENVIRONMENT"
-#define INSTALL_FACILITY	"install"
 
 /* atomic operations */
 #define _SC_ATOMIC_CMPXCHG(p, o, n)	__sync_bool_compare_and_swap((p), (o), (n))
@@ -78,21 +77,41 @@
 #define _SC_ATOMIC_ZERO(p)		__sync_fetch_and_and((p), 0)		// old_n = n; n = 0; return(old_n);
 
 
+/* framework path */
+#if	!TARGET_OS_WATCH
+#define	SYSTEMCONFIGURATION_FRAMEWORK_PATH	"/System/Library/Frameworks/SystemConfiguration.framework"
+#else
+#define	SYSTEMCONFIGURATION_FRAMEWORK_PATH	"/System/Library/PrivateFrameworks/SystemConfiguration.framework"
+#endif
+
+
+/* get-network-info script path */
+#if	TARGET_OS_OSX
+#define SYSTEMCONFIGURATION_GET_NETWORK_INFO_PATH	SYSTEMCONFIGURATION_FRAMEWORK_PATH "/Resources/get-network-info"
+#else
+#define SYSTEMCONFIGURATION_GET_NETWORK_INFO_PATH	SYSTEMCONFIGURATION_FRAMEWORK_PATH "/get-network-info"
+#endif
+
+
+/* crash report(s) directory path */
+#if	TARGET_OS_OSX
+#define	_SC_CRASH_DIR	"/Library/Logs/DiagnosticReports"
+#else
+#define	_SC_CRASH_DIR	"/Library/Logs/CrashReporter"
+#endif
+
+
 /* framework variables */
 extern int	_sc_debug;	/* non-zero if debugging enabled */
 extern int	_sc_verbose;	/* non-zero if verbose logging enabled */
 extern int	_sc_log;	/* 0 if SC messages should be written to stdout/stderr,
-				   1 if SC messages should be logged w/asl(3),
+				   1 if SC messages should be logged w/os_log(3),
 				   2 if SC messages should be written to stdout/stderr AND logged */
+
 
 /* notify(3) keys */
 
-#if	!TARGET_IPHONE_SIMULATOR
-#define _SC_NOTIFY_PREFIX	"com.apple.system.config"
-#else	// !TARGET_IPHONE_SIMULATOR
-#define _SC_NOTIFY_PREFIX	"com.apple.iOS_Simulator.config"
-#endif	// !TARGET_IPHONE_SIMULATOR
-
+#define _SC_NOTIFY_PREFIX		"com.apple.system.config"
 #define _SC_NOTIFY_NETWORK_CHANGE	_SC_NOTIFY_PREFIX ".network_change"
 #define _SC_NOTIFY_NETWORK_CHANGE_DNS	_SC_NOTIFY_NETWORK_CHANGE ".dns"
 #define _SC_NOTIFY_NETWORK_CHANGE_NWI	_SC_NOTIFY_NETWORK_CHANGE ".nwi"
@@ -307,6 +326,19 @@ CFDictionaryRef	_SCUnserializeMultiple		(CFDictionaryRef	dict);
 
 
 #pragma mark -
+
+
+/*!
+	@function _SCCreatePropertyListFromResource
+	@discussion Reads a property list referenced by a file URL.
+	@param url The file URL.
+	@result The CFPropertyList content of the URL.
+ */
+CFPropertyListRef
+_SCCreatePropertyListFromResource		(CFURLRef		url);
+
+
+#pragma mark -
 #pragma mark String conversion
 
 
@@ -389,6 +421,24 @@ void		_SC_sendMachMessage		(mach_port_t		port,
 
 
 /*!
+	@function _SC_LOG_DEFAULT
+	@discussion A function returning a default os_log_t object to be
+		used for [SystemConfiguration] logging.
+	@result The os_log_t object
+ */
+os_log_t	_SC_LOG_DEFAULT			(void);
+
+
+/*!
+	@function _SC_syslog_os_log_mapping
+	@discussion Maps a syslog logging level to an os_log level.
+	@param level The syslog logging level
+	@result The os_log level
+ */
+os_log_type_t	_SC_syslog_os_log_mapping	(int			level);
+
+
+/*!
 	@function _SCCopyDescription
 	@discussion Returns a formatted textual description of a CF object.
 	@param cf The CFType object (a generic reference of type CFTypeRef) from
@@ -406,97 +456,99 @@ CFStringRef	_SCCopyDescription		(CFTypeRef		cf,
 	@param condition A boolean value indicating if the message should be logged
 	@param level A syslog(3) logging priority.
 	@param formatString The format string
-	@result The specified message will be written to the system message
-		logger (See syslogd(8)).
  */
 void		SCLog				(Boolean		condition,
 						 int			level,
 						 CFStringRef		formatString,
 						 ...)	CF_FORMAT_FUNCTION(3, 4);
 
-enum {
-	kSCLoggerFlagsNone		= 0x0,
-	kSCLoggerFlagsDefault	= 0x1,
-	kSCLoggerFlagsFile		= 0x2
-};
-typedef uint32_t	SCLoggerFlags;
 
-typedef struct SCLogger * SCLoggerRef;
+/*!
+	@function SC_log
+	@discussion Issue an os_log() message.
+
+	Note:	By default, the log messages will be associated with the
+		"com.apple.SystemConfiguration" subsystem.  This behavior
+		can be overwritten by #define'ing SC_LOG_HANDLE with the name
+		of an os_log_t global (or a function that returns an os_log_t)
+		*BEFORE* this header is #include'd. In that case, the noted
+		log handle will be used.
+
+		Also, by #define'ing SC_LOG_OR_PRINT, we will check the "_sc_log"
+		global to see if the messages should [also] be directed to stdout/stderr.
+
+	@param level The syslog(3 logging priority.
+	@param __string The format string
+	@result The specified message will be written to the unified logging system.
+ */
+#ifndef SC_log
+  #ifdef	SC_LOG_HANDLE
+    #ifndef	SC_LOG_HANDLE_TYPE
+    #define SC_LOG_HANDLE_TYPE
+    #endif	// SC_LOG_HANDLE_TYPE
+    SC_LOG_HANDLE_TYPE	os_log_t	SC_LOG_HANDLE(void);
+  #else	// SC_LOG_HANDLE
+    #define	SC_LOG_HANDLE	_SC_LOG_DEFAULT		// use [SC] default os_log handle
+    #ifndef	SC_LOG_OR_PRINT
+      #define	USE_SC_LOG_OR_PRINT	1		// and use '_sc_log' to control os_log, printf
+    #endif	// !SC_LOG_OR_PRINT
+  #endif	// !SC_LOG_HANDLE
+
+  #if	USE_SC_LOG_OR_PRINT
+    #define	SC_log(__level, __format, ...)						\
+	do {										\
+		os_log_t	__handle = SC_LOG_HANDLE();				\
+		os_log_type_t	__type   = _SC_syslog_os_log_mapping(__level);		\
+											\
+		if (((_sc_log != 1) && ((__level > LOG_DEBUG) || _sc_debug)) ||		\
+		    os_log_type_enabled(__handle, __type)) {				\
+			__SC_Log(__level,						\
+				 CFSTR( __format ),					\
+				 __handle,						\
+				 __type,						\
+				 __format,						\
+				 ## __VA_ARGS__);					\
+		}									\
+	} while (0)
+  #else	// USE_SC_LOG_OR_PRINT
+    #define	SC_log(__level, __format, ...)						\
+	do {										\
+		os_log_t	__handle = SC_LOG_HANDLE();				\
+		os_log_type_t	__type = _SC_syslog_os_log_mapping(__level);		\
+											\
+		os_log_with_type(__handle, __type, __format, ## __VA_ARGS__);		\
+	} while (0)
+  #endif	// USE_SC_LOG_OR_PRINT
+#endif	// !SC_log
 
 
 /*!
-	@function SCLoggerLog
-	@discussion Logs messages using SCLoggerRef
-	@param	logger A SCLoggerRef which keeps information about how logging
-		needs to be done. Passing NULL uses the default logger instance.
-	@param level An asl(3) logging priority. Passing the complement of a logging
-		priority (e.g. ~ASL_LEVEL_NOTICE) will result in log message lines
-		NOT being split by a "\n".
-	@param formatString The format string followed by format arguments
-	@result The specified message will be written to the system message
-		logger (See syslogd(8)). If logger is in verbose mode, the message
-		will be also written to a file specified in the ASL Module
+	@function __SC_Log
+	@discussion Issue a log message w/os_log(3) or printf(3).
+		The specified message will be written to the system message
+		logger.
+	@param level A syslog(3) logging priority. If less than 0, log message is multi-line
+	@param format_CF The format string (as a CFString for stdout/stderr)
+	@param log The os_log_t handle (for logging)
+	@param type The os_log_type_t type (for logging)
+	@param format The format string (for logging)
+ stream.
  */
-void		SCLoggerLog			(SCLoggerRef	logger,
-						 int		level,
-						 CFStringRef	formatString,
-						 ...)	CF_FORMAT_FUNCTION(3, 4)
-							__OSX_AVAILABLE_STARTING(__MAC_10_8,__IPHONE_6_0);
+void		__SC_Log			(int		level,
+						 CFStringRef	format_CF,
+						 os_log_t	log,
+						 os_log_type_t	type,
+						 const char	*format,
+						 ...)	CF_FORMAT_FUNCTION(2, 6) __attribute__((format(os_log, 5, 6)));
 
-/*!
-	@function SCLoggerVLog
-	@discussion Logs messages using SCLoggerRef
-	@param logger A SCLoggerRef which keeps information about how logging
-		needs to be done. Passing NULL uses the default logger instance.
-	@param level An asl(3) logging priority. Passing the complement of a logging
-		priority (e.g. ~ASL_LEVEL_NOTICE) will result in log message lines
-		NOT being split by a "\n".
-	@param formatString The format string
-	@param args The va_list representing the arguments
-	@result The specified message will be written to the system message
-		logger (See syslogd(8)). If logger is in verbose mode, the message
-		will be also written to a file specified in the ASL Module
- */
-void		SCLoggerVLog			(SCLoggerRef	logger,
-						 int		level,
-						 CFStringRef	formatString,
-						 va_list	args)	__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0);
-
-
-#ifdef	USE_NEW_SCLOG
-#define SCLOG(sclogger, level, __string, ...)	SCLoggerLog(sclogger, level, CFSTR(__string), ## __VA_ARGS__)	// temporary, remove once all "old" clients have migrated
-#else
-/*!
-	@function SCLOG
-	@discussion Issue a log message.
-	@param asl An asl client handle to be used for logging. If NULL, a shared
-		handle will be used.
-	@param msg An asl msg structure to be used for logging. If NULL, a default
-		asl msg will be used.
-	@param level A asl(3) logging priority. Passing the complement of a logging
-		priority (e.g. ~ASL_LEVEL_NOTICE) will result in log message lines
-		NOT being split by a "\n".
-	@param formatString The format string
-	@result The specified message will be written to the system message
-		logger (See syslogd(8)).
- */
-void		SCLOG				(asl_object_t		asl,
-						 asl_object_t		msg,
-						 int			level,
-						 CFStringRef		formatString,
-						 ...)	CF_FORMAT_FUNCTION(4, 5);
-
-
-#endif
 
 /*!
 	@function SCPrint
 	@discussion Conditionally issue a debug message.
+		The message will be written to the specified output stream.
 	@param condition A boolean value indicating if the message should be written
 	@param stream The output stream for the log message.
 	@param formatString The format string
-	@result The message will be written to the specified stream
-		stream.
  */
 void		SCPrint				(Boolean		condition,
 						 FILE			*stream,
@@ -504,57 +556,14 @@ void		SCPrint				(Boolean		condition,
 						 ...)	CF_FORMAT_FUNCTION(3, 4);
 
 
-
-/*!
-	@function SCTrace
-	@discussion Conditionally issue a debug message with a time stamp.
-	@param condition A boolean value indicating if the message should be written
-	@param stream The output stream for the log message.
-	@param formatString The format string
-	@result The message will be written to the specified stream
-		stream.
- */
-void		SCTrace				(Boolean		condition,
-						 FILE			*stream,
-						 CFStringRef		formatString,
-						 ...)	CF_FORMAT_FUNCTION(3, 4);
-
-/*!
-	@function SCLoggerCreate
-	@discussion Create a reference to logger which stores information like verbose mode or not, loggerID, etc.
-			loggerID and moduleName both need to be non NULL, or else the function returns NULL.
-			If the moduleName points to a module which doesn't exist, then SCLoggerCreate will fail and
-			return NULL;
-	@param loggerID CFStringRef which will be appended to the log message when in verbose mode. It will also be
-			used to identify the module where the rules are being defined.
- */
-SCLoggerRef
-SCLoggerCreate					(CFStringRef loggerID);
-
-/*!
-	@function SCLoggerGetFlags
-	@discussion Returns the log flags for the logging reference
-	@param	logger Reference which points to the logger information
- */
-SCLoggerFlags
-SCLoggerGetFlags				(SCLoggerRef logger);
-
-/*!
-	@function SCLoggerSetFlags
-	@discussion Sets the log flags for the logger reference
-	@param	logger A reference to the logger
-	@param	flags SCLoggerFlags value determining where the logs from the logger will be directed
- */
-void		SCLoggerSetFlags		(SCLoggerRef logger,
-						 SCLoggerFlags flags);
-
 #pragma mark -
 #pragma mark Proxies
 
 
 /*!
 	@function SCNetworkProxiesCopyMatching
-	@discussion
+	@discussion Return the proxy configurations matching a target host
+		and/or one associated with a specific network interface.
 	@param globalConfiguration the proxy dictionary currently returned
 		by SCDynamicStoreCopyProxies().
 	@param server A CFString specying the hostname of interest; NULL if
@@ -571,7 +580,7 @@ void		SCLoggerSetFlags		(SCLoggerRef logger,
 CFArrayRef
 SCNetworkProxiesCopyMatching			(CFDictionaryRef	globalConfiguration,
 						 CFStringRef		server,
-						 CFStringRef		interface)	__OSX_AVAILABLE_STARTING(__MAC_10_7,__IPHONE_5_0/*SPI*/);
+						 CFStringRef		interface)	API_AVAILABLE(macos(10.7)) SPI_AVAILABLE(ios(5.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 #define kSCProxiesMatchServer		CFSTR("Server")		/* CFString */
 #define kSCProxiesMatchInterface	CFSTR("Interface")	/* CFString */
@@ -579,7 +588,8 @@ SCNetworkProxiesCopyMatching			(CFDictionaryRef	globalConfiguration,
 
 /*!
 	@function SCNetworkProxiesCopyMatchingWithOptions
-	@discussion
+	@discussion Return the proxy configurations matching a target host
+		and/or one associated with a specific network interface.
 	@param globalConfiguration the proxy dictionary currently returned
 		by SCDynamicStoreCopyProxies().
 	@param options A dictionary containing any (or none) of the following:
@@ -595,22 +605,34 @@ SCNetworkProxiesCopyMatching			(CFDictionaryRef	globalConfiguration,
 		kSCProxiesMatchExecutableUUID	CFUUID		If present, specifies the Mach-O UUID of the executable
 								on whose behalf the match operation is being performed.
 								If kSCProxiesMatchInterface is present then this option
-							   	is ignored. If not present, then the Mach-O UUID of
-							   	the current process is used. The Mach-O UUID is used
-							   	to match application-specific proxy configurations
-							   	(i.e., if per-app VPN rules are in effect).
+								is ignored. If not present, then the Mach-O UUID of
+								the current process is used. The Mach-O UUID is used
+								to match application-specific proxy configurations
+								(i.e., if per-app VPN rules are in effect).
 	@result A CFArray containing the proxy configurations associated with the given options.
  */
 CFArrayRef
 SCNetworkProxiesCopyMatchingWithOptions		(CFDictionaryRef	globalConfiguration,
-						 CFDictionaryRef	options)	__OSX_AVAILABLE_STARTING(__MAC_10_10,__IPHONE_8_0/*SPI*/);
+						 CFDictionaryRef	options)	API_AVAILABLE(macos(10.10)) SPI_AVAILABLE(ios(8.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 extern const CFStringRef	kSCProxiesNoGlobal;
 
 /*!
- @function SCDynamicStoreCopyProxiesWithOptions
- @discussion
+	@function SCNetworkProxiesCreateProxyAgentData
+	@discussion Returns a serialized representation of a proxy configuration.
+	@param proxyConfig A dictionary representing a proxy configuration
+	@result returns a CFData representing a proxy configuration. This data is
+		readable by all "config-agents" (Agents with domain as "SystemConfig")
+		via config_agent_copy_proxy_information().
+		You must release the returned value.
+ */
+CFDataRef
+SCNetworkProxiesCreateProxyAgentData		(CFDictionaryRef	proxyConfig)	API_AVAILABLE(macos(10.12)) SPI_AVAILABLE(ios(10.0), tvos(10.0), watchos(3.0), bridgeos(3.0));
 
+/*!
+	@function SCDynamicStoreCopyProxiesWithOptions
+	@discussion Return the proxy configurations matching the provided
+		criteria.
 	@param	store An SCDynamicStoreRef representing the dynamic store
 		session that should be used for communication with the server.
 		If NULL, a temporary session will be used.
@@ -626,23 +648,12 @@ extern const CFStringRef	kSCProxiesNoGlobal;
 		You must release the returned value.
 */
 CFDictionaryRef
-SCDynamicStoreCopyProxiesWithOptions(SCDynamicStoreRef store, CFDictionaryRef options)	__OSX_AVAILABLE_STARTING(__MAC_10_9,__IPHONE_7_0/*SPI*/);
+SCDynamicStoreCopyProxiesWithOptions		(SCDynamicStoreRef	store,
+						 CFDictionaryRef	options)	API_AVAILABLE(macos(10.9)) SPI_AVAILABLE(ios(7.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 #pragma mark -
 #pragma mark Reachability
 
-
-/*!
-	@function SCNetworkReachabilityCopyOnDemandService
-	@discussion For target hosts that require an OnDemand connection, returns
-		the SCNetworkService associated with the connection and user
-		options to use with SCNetworkConnectionStart.
-	@result The SCNetworkService for the target; NULL if there is
-		no associated OnDemand service.
- */
-SCNetworkServiceRef
-SCNetworkReachabilityCopyOnDemandService	(SCNetworkReachabilityRef	target,
-						 CFDictionaryRef		*userOptions);
 
 /*!
 	@function SCNetworkReachabilityCopyResolvedAddress
@@ -753,37 +764,6 @@ _SC_dos_encoding_and_codepage			(CFStringEncoding	macEncoding,
 #endif	// !TARGET_OS_IPHONE
 
 #pragma mark -
-#pragma mark ScheduleWithRunLoop/UnscheduleFromRunLoop
-
-
-/*
- * object / CFRunLoop  management
- */
-void
-_SC_signalRunLoop				(CFTypeRef		obj,
-						 CFRunLoopSourceRef     rls,
-						 CFArrayRef		rlList);
-
-Boolean
-_SC_isScheduled					(CFTypeRef		obj,
-						 CFRunLoopRef		runLoop,
-						 CFStringRef		runLoopMode,
-						 CFMutableArrayRef      rlList);
-
-void
-_SC_schedule					(CFTypeRef		obj,
-						 CFRunLoopRef		runLoop,
-						 CFStringRef		runLoopMode,
-						 CFMutableArrayRef      rlList);
-
-Boolean
-_SC_unschedule					(CFTypeRef		obj,
-						 CFRunLoopRef		runLoop,
-						 CFStringRef		runLoopMode,
-						 CFMutableArrayRef      rlList,
-						 Boolean		all);
-
-#pragma mark -
 #pragma mark Bundle
 
 
@@ -830,23 +810,26 @@ _SC_CFEqual(CFTypeRef val1, CFTypeRef val2)
 static __inline__ Boolean
 _SC_isAppleInternal()
 {
-	static int isInternal	= 0;
+	static Boolean		isInternal;
+	static dispatch_once_t	once;
 
-	if (isInternal == 0) {
-		int		ret;
-		struct stat	statbuf;
+	dispatch_once(&once, ^{
+		isInternal = os_variant_has_internal_content("com.apple.SystemConfiguration");
+	});
 
-		ret = stat("/AppleInternal", &statbuf);
-		isInternal = (ret == 0) ? 1 : 2;
-	}
-
-	return (isInternal == 1);
+	return isInternal;
 }
+
+Boolean
+_SC_isInstallEnvironment			(void);
 
 #define	MODEL			CFSTR("Model")
 
 CFStringRef
 _SC_hw_model					(Boolean		trim);
+
+void *
+_SC_dlopen					(const char		*framework);
 
 /*
  * debugging
@@ -875,6 +858,18 @@ void
 _SC_crash					(const char		*crash_info,
 						 CFStringRef		notifyHeader,
 						 CFStringRef		notifyMessage);
+
+static __inline__ void
+_SC_crash_once					(const char		*crash_info,
+						 CFStringRef		notifyHeader,
+						 CFStringRef		notifyMessage)
+{
+	static dispatch_once_t	once;
+
+	_dispatch_once(&once, ^{
+		_SC_crash(crash_info, notifyHeader, notifyMessage);
+	});
+}
 
 Boolean
 _SC_getconninfo					(int				socket,

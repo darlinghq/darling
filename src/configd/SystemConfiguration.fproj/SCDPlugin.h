@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2004, 2006 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2000-2004, 2006, 2017 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -71,7 +71,7 @@
 	@param bundleVerbose A boolean value indicating whether verbose logging has
 		been enabled for this bundle.
  */
-typedef void	(*SCDynamicStoreBundleLoadFunction)	(CFBundleRef	bundle,
+typedef void	SCDynamicStoreBundleLoadFunction	(CFBundleRef	bundle,
 							 Boolean	bundleVerbose);
 
 /*!
@@ -84,7 +84,7 @@ typedef void	(*SCDynamicStoreBundleLoadFunction)	(CFBundleRef	bundle,
 	@param bundleName The name of the plug-in / bundle.
 	@param bundlePath The path name associated with the plug-in / bundle.
  */
-typedef void	(*SCDynamicStoreBundleStartFunction)	(const char	*bundleName,
+typedef void	SCDynamicStoreBundleStartFunction	(const char	*bundleName,
 							 const char	*bundlePath);
 
 /*!
@@ -95,7 +95,7 @@ typedef void	(*SCDynamicStoreBundleStartFunction)	(const char	*bundleName,
 		be used to initialize any configuration information and/or state
 		in the store.
  */
-typedef void	(*SCDynamicStoreBundlePrimeFunction)	(void);
+typedef void	SCDynamicStoreBundlePrimeFunction	(void);
 
 
 /*!
@@ -108,7 +108,7 @@ typedef void	(*SCDynamicStoreBundlePrimeFunction)	(void);
 	Note: a plugin can delay shut down of the daemon by no more than
 		30 seconds.
  */
-typedef void	(*SCDynamicStoreBundleStopFunction)	(CFRunLoopSourceRef	stopRls);
+typedef void	SCDynamicStoreBundleStopFunction	(CFRunLoopSourceRef	stopRls);
 
 
 /*!

@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/host_notify.h
+../../../../../../../../../src/external/lkm/osfmk/mach/host_notify.h

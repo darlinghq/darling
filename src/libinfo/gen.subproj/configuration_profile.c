@@ -44,7 +44,7 @@ configuration_profile_create_notification_key(const char *ident)
 		return out;
 	}
 
-#if TARGET_OS_EMBEDDED
+#if (TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
 	if (strchr(ident + 1, '/') != NULL) return NULL;
 	asprintf(&out, "%s%s/%s.plist", NOTIFY_PATH_SERVICE, CPROF_PATH, ident);
 #endif
@@ -68,7 +68,7 @@ configuration_profile_copy_property_list(const char *ident)
 	{
 		snprintf(path, sizeof(path), "%s", ident);
 	}
-#if TARGET_OS_EMBEDDED
+#if (TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
 	else
 	{
 		if (strchr(ident + 1, '/') != NULL) return NULL;
@@ -89,9 +89,13 @@ configuration_profile_copy_property_list(const char *ident)
 	}
 
 	data = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (data != NULL) out = xpc_create_from_plist(data, sb.st_size);
+	
+	if (data != MAP_FAILED)
+	{
+		out = xpc_create_from_plist(data, sb.st_size);
+		munmap(data, sb.st_size);
+	}
 
-	munmap(data, sb.st_size);
 	close(fd);
 
 	return out;

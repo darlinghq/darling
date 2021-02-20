@@ -5,10 +5,17 @@
 #error "SYS_readv not defined. The header files libsyscall is building against do not match syscalls.master."
 #endif
 
+#if defined(__arm64__)
+MI_ENTRY_POINT(_readv)
+SYSCALL_NONAME(readv, 3, cerror)
+ret
+#else
 #if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
 __SYSCALL2(_readv, readv, 3, cerror)
 #else
 __SYSCALL2(___readv, readv, 3, cerror)
+#endif
+
 #endif
 
 #if defined(__i386__)

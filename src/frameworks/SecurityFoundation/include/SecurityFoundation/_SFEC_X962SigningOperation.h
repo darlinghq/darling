@@ -19,6 +19,17 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFEC_X962SigningOperation : NSObject
+#import <SecurityFoundation/SFSigningOperation.h>
+#import <SecurityFoundation/_SFECKeySpecifier.h>
+#import <SecurityFoundation/_SFSignedData.h>
+#import <SecurityFoundation/_SFECKeyPair.h>
+
+#define SFEC_X962SigningOperation _SFEC_X962SigningOperation
+
+@interface SFEC_X962SigningOperation : NSObject <SFSigningOperation>
+
+- (instancetype)initWithKeySpecifier:(SFECKeySpecifier*)keySpecifier;
+
+- (SFSignedData*)sign:(NSData*)data withKey:(SFECKeyPair*)key error:(NSError**)error;
 
 @end

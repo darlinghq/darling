@@ -2,19 +2,12 @@ project(libnotify)
 
 cmake_minimum_required(VERSION 2.4.0)
 
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libdispatch/include)
-include_directories(${DARLING_TOP_DIRECTORY}/platform-include)
-include_directories(${DARLING_TOP_DIRECTORY}/src/launchd/liblaunch)
-include_directories(${DARLING_TOP_DIRECTORY}/src/libc/gen)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libclosure)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
 
 add_definitions(-nostdinc -w)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -include ${DARLING_TOP_DIRECTORY}/kernel-include/sys/fileport.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -include ${CMAKE_SOURCE_DIR}/src/external/lkm/bsd/sys/fileport.h")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 mig(notify_ipc.defs)
@@ -41,6 +34,7 @@ add_circular(system_notify FAT
 		system_pthread
 		platform
 		system_asl
+		xpc
 )
 #target_link_libraries(system_notify system_c system_kernel system_blocks libdispatch_shared launch system_dyld system_malloc system_pthread)
 

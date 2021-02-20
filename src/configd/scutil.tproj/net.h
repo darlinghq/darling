@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, 2006, 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2004, 2006, 2011, 2014, 2016 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -49,10 +49,11 @@ typedef enum {
 	isHelp,
 	isChooseOne,
 	isChooseMultiple,
-	isBoolean,
-	isNumber,
-	isString,
-	isStringArray
+	isBool,			// CFBoolean
+	isBoolean,		// CFNumber (0 or 1)
+	isNumber,		// CFNumber
+	isString,		// CFString
+	isStringArray		// CFArray[CFString]
 } optionType;
 
 typedef const struct {

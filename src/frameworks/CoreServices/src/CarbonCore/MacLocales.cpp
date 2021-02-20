@@ -29,6 +29,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <pthread.h>
 
+using namespace icu;
+
 static std::map<std::string,int> g_mapLocaleString;
 static std::map<int,std::string> g_mapLocaleStringRev;
 static pthread_mutex_t g_mapLocaleStringMutex = PTHREAD_MUTEX_INITIALIZER;

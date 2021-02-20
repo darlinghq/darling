@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2006, 2008, 2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2006, 2008, 2011. 2015, 2018-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -35,21 +35,24 @@
 #define _S_CONFIGD_SERVER_H
 
 #include <sys/cdefs.h>
+#include <sys/fileport.h>
 #include <mach/mach.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+#define DISPATCH_MACH_SPI 1
+#import <dispatch/private.h>
+
 __BEGIN_DECLS
 
-void		configdCallback	(CFMachPortRef		port,
-				 void			*msg,
-				 CFIndex		size,
-				 void			*info);
+void			server_mach_channel_handler
+					(void			*context,	// serverSessionRef
+					 dispatch_mach_reason_t	reason,
+					 dispatch_mach_msg_t	message,
+					 mach_error_t		error);
 
-void		server_init	(void);
+void			server_init	(void);
 
-int		server_shutdown	(void);
-
-void		server_loop	(void);
+dispatch_workloop_t	server_queue	(void);
 
 kern_return_t	_snapshot	(mach_port_t		server,
 				 int			*sc_status,
@@ -78,7 +81,7 @@ kern_return_t	_configadd	(mach_port_t 		server,
 				 mach_msg_type_number_t	keyLen,
 				 xmlData_t		dataRef,
 				 mach_msg_type_number_t	dataLen,
-				 int			*newInstance,
+				 int			*newInstance,		// no longer used
 				 int			*sc_status,
 				 audit_token_t		audit_token);
 
@@ -87,7 +90,7 @@ kern_return_t	_configadd_s	(mach_port_t 		server,
 				 mach_msg_type_number_t	keyLen,
 				 xmlData_t		dataRef,
 				 mach_msg_type_number_t	dataLen,
-				 int			*newInstance,
+				 int			*newInstance,		// no longer used
 				 int			*sc_status);
 
 kern_return_t	_configget	(mach_port_t		server,
@@ -95,7 +98,7 @@ kern_return_t	_configget	(mach_port_t		server,
 				 mach_msg_type_number_t	keyLen,
 				 xmlDataOut_t		*dataRef,
 				 mach_msg_type_number_t	*dataLen,
-				 int			*newInstance,
+				 int			*newInstance,		// no longer used
 				 int			*sc_status,
 				 audit_token_t		audit_token);
 
@@ -104,7 +107,7 @@ kern_return_t	_configset	(mach_port_t		server,
 				 mach_msg_type_number_t	keyLen,
 				 xmlData_t		dataRef,
 				 mach_msg_type_number_t	dataLen,
-				 int			*newInstance,
+				 int			*newInstance,		// no longer used
 				 int			*sc_status,
 				 audit_token_t		audit_token);
 
@@ -163,15 +166,8 @@ kern_return_t	_notifyviaport	(mach_port_t		server,
 				 int			*status);
 
 kern_return_t	_notifyviafd	(mach_port_t		server,
-				 xmlData_t		pathRef,
-				 mach_msg_type_number_t	pathLen,
+				 fileport_t		fileport,
 				 int			identifier,
-				 int			*status);
-
-kern_return_t	_notifyviasignal
-				(mach_port_t		server,
-				 task_t			task,
-				 int			signal,
 				 int			*status);
 
 kern_return_t	_notifycancel	(mach_port_t		server,
@@ -186,4 +182,4 @@ kern_return_t	_notifyset	(mach_port_t		server,
 
 __END_DECLS
 
-#endif /* !_S_CONFIGD_SERVER_H */
+#endif	/* !_S_CONFIGD_SERVER_H */

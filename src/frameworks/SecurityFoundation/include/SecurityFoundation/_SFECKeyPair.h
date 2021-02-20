@@ -19,6 +19,17 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFECKeyPair : NSObject
+#import <SecurityFoundation/_SFECKeySpecifier.h>
+#import <SecurityFoundation/_SFECPublicKey.h>
+#import <SecurityFoundation/_SFKeyPair.h>
+
+#define SFECKeyPair _SFECKeyPair
+
+@interface SFECKeyPair : SFKeyPair
+
+- (instancetype)initWithData:(NSData*)data specifier:(SFECKeySpecifier*)keySpecifier error:(NSError**)error;
+- (instancetype)initRandomKeyPairWithSpecifier:(SFECKeySpecifier*)specifier;
+
+@property (readonly, copy, nonatomic) SFECPublicKey* publicKey;
 
 @end

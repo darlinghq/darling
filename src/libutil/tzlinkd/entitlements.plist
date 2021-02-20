@@ -6,5 +6,7 @@
 	<array>
 		<string>com.apple.tzlinkd</string>
 	</array>
+	<key>com.apple.rootless.storage.timezone</key>
+	<true/>
 </dict>
 </plist>

@@ -32,3 +32,5 @@
 
 empty:
 	nop
+
+.subsections_via_symbols

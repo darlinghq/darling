@@ -12,5 +12,6 @@ add_framework(ColorSync
         src/ColorSync.c
 
     DEPENDENCIES
+        CoreFoundation
         system
 )

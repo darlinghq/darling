@@ -1,4 +1,4 @@
-.\" $OpenBSD: strlcpy.3,v 1.19 2007/05/31 19:19:32 jmc Exp $
+.\"	$OpenBSD: strlcpy.3,v 1.26 2013/09/30 12:02:35 millert Exp $
 .\"
 .\" Copyright (c) 1998, 2000 Todd C. Miller <Todd.Miller@courtesan.com>
 .\"
@@ -25,9 +25,9 @@
 .\" OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 .\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc/string/strlcpy.3,v 1.16 2009/04/07 13:42:53 trasz Exp $
+.\" $FreeBSD$
 .\"
-.Dd June 22, 1998
+.Dd February 26, 2016
 .Dt STRLCPY 3
 .Os
 .Sh NAME
@@ -39,80 +39,89 @@
 .Sh SYNOPSIS
 .In string.h
 .Ft size_t
-.Fn strlcpy "char * restrict dst" "const char * restrict src" "size_t size"
+.Fn strlcpy "char * restrict dst" "const char * restrict src" "size_t dstsize"
 .Ft size_t
-.Fn strlcat "char * restrict dst" "const char * restrict src" "size_t size"
+.Fn strlcat "char * restrict dst" "const char * restrict src" "size_t dstsize"
 .Sh DESCRIPTION
 The
 .Fn strlcpy
 and
 .Fn strlcat
-functions copy and concatenate strings respectively.
-They are designed
-to be safer, more consistent, and less error prone replacements for
+functions copy and concatenate strings with the
+same input parameters and output result as
+.Xr snprintf 3 .
+They are designed to be safer, more consistent, and less error
+prone replacements for the easily misused functions
 .Xr strncpy 3
 and
 .Xr strncat 3 .
-Unlike those functions,
-.Fn strlcpy
-and
-.Fn strlcat
-take the full size of the buffer (not just the length) and guarantee to
-NUL-terminate the result (as long as
-.Fa size
-is larger than 0 or, in the case of
-.Fn strlcat ,
-as long as there is at least one byte free in
-.Fa dst ) .
-Note that a byte for the NUL should be included in
-.Fa size .
-Also note that
-.Fn strlcpy
-and
-.Fn strlcat
-only operate on true
-.Dq C
-strings.
-This means that for
-.Fn strlcpy
-.Fa src
-must be NUL-terminated and for
-.Fn strlcat
-both
-.Fa src
-and
-.Fa dst
-must be NUL-terminated.
 .Pp
-The
 .Fn strlcpy
-function copies up to
-.Fa size
-- 1 characters from the NUL-terminated string
+and
+.Fn strlcat
+take the full size of the destination buffer and guarantee
+NUL-termination if there is room.
+Note that room for the NUL should be included in
+.Fa dstsize .
+.Pp
+.Fn strlcpy
+copies up to
+.Fa dstsize
+\- 1 characters from the string
 .Fa src
 to
 .Fa dst ,
-NUL-terminating the result.
+NUL-terminating the result if
+.Fa dstsize
+is not 0.
 .Pp
-The
 .Fn strlcat
-function appends the NUL-terminated string
+appends string
 .Fa src
 to the end of
 .Fa dst .
 It will append at most
-.Fa size
-- strlen(dst) - 1 bytes, NUL-terminating the result.
+.Fa dstsize
+\- strlen(dst) \- 1 characters.
+It will then NUL-terminate, unless
+.Fa dstsize
+is 0 or the original
+.Fa dst
+string was longer than
+.Fa dstsize
+(in practice this should not happen
+as it means that either
+.Fa dstsize
+is incorrect or that
+.Fa dst
+is not a proper string).
 .Pp
-The source and destination strings should not overlap, as the
-behavior is undefined.
+If the
+.Fa src
+and
+.Fa dst
+strings overlap, the behavior is undefined.
 .Sh RETURN VALUES
-The
+Besides quibbles over the return type
+.Pf ( Va size_t
+versus
+.Va int )
+and signal handler safety
+.Pf ( Xr snprintf 3
+is not entirely safe on some systems), the
+following two are equivalent:
+.Bd -literal -offset indent
+n = strlcpy(dst, src, len);
+n = snprintf(dst, len, "%s", src);
+.Ed
+.Pp
+Like
+.Xr snprintf 3 ,
+the
 .Fn strlcpy
 and
 .Fn strlcat
-functions return the total length of the string they tried to
-create.
+functions return the total length of the string they tried to create.
 For
 .Fn strlcpy
 that means the length of
@@ -124,29 +133,12 @@ that means the initial length of
 plus
 the length of
 .Fa src .
-While this may seem somewhat confusing, it was done to make
-truncation detection simple.
 .Pp
-Note however, that if
-.Fn strlcat
-traverses
-.Fa size
-characters without finding a NUL, the length of the string is considered
-to be
-.Fa size
-and the destination string will not be NUL-terminated (since there was
-no space for the NUL).
-This keeps
-.Fn strlcat
-from running off the end of a string.
-In practice this should not happen (as it means that either
-.Fa size
-is incorrect or that
-.Fa dst
-is not a proper
-.Dq C
-string).
-The check exists to prevent potential security problems in incorrect code.
+If the return value is
+.Cm >=
+.Va dstsize ,
+the output string has been truncated.
+It is the caller's responsibility to handle this.
 .Sh EXAMPLES
 The following code fragment illustrates the simple case:
 .Bd -literal -offset indent
@@ -172,7 +164,7 @@ if (strlcat(pname, file, sizeof(pname)) >= sizeof(pname))
 .Ed
 .Pp
 Since it is known how many characters were copied the first time, things
-can be sped up a bit by using a copy instead of an append
+can be sped up a bit by using a copy instead of an append:
 .Bd -literal -offset indent
 char *dir, *file, pname[MAXPATHLEN];
 size_t n;
@@ -204,5 +196,5 @@ and
 .Fn strlcat
 functions first appeared in
 .Ox 2.4 ,
-and made their appearance in
+and
 .Fx 3.3 .

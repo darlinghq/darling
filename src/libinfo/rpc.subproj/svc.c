@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -66,6 +66,8 @@ static char *rcsid = "$Id: svc.c,v 1.4 2002/02/19 20:36:24 epeyton Exp $";
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "libinfo_common.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <sys/errno.h>
@@ -108,6 +110,7 @@ extern int svc_maxfd;
 /*
  * Activate a transport handle.
  */
+LIBINFO_EXPORT
 void
 xprt_register(xprt)
 	SVCXPRT *xprt;
@@ -128,6 +131,7 @@ xprt_register(xprt)
 /*
  * De-activate a transport handle. 
  */
+LIBINFO_EXPORT
 void
 xprt_unregister(xprt) 
 	SVCXPRT *xprt;
@@ -153,6 +157,7 @@ xprt_unregister(xprt)
  * The dispatch routine will be called when a rpc request for this
  * program number comes in.
  */
+LIBINFO_EXPORT
 bool_t
 svc_register(xprt, prog, vers, dispatch, protocol)
 #ifdef __LP64__
@@ -197,6 +202,7 @@ pmap_it:
 /*
  * Remove a service program from the callout list.
  */
+LIBINFO_EXPORT
 void
 svc_unregister(prog, vers)
 #ifdef __LP64__
@@ -256,6 +262,7 @@ done:
 /*
  * Send a reply to an rpc request
  */
+LIBINFO_EXPORT
 bool_t
 svc_sendreply(xprt, xdr_results, xdr_location)
 	register SVCXPRT *xprt;
@@ -276,6 +283,7 @@ svc_sendreply(xprt, xdr_results, xdr_location)
 /*
  * No procedure error reply
  */
+LIBINFO_EXPORT
 void
 svcerr_noproc(xprt)
 	register SVCXPRT *xprt;
@@ -292,6 +300,7 @@ svcerr_noproc(xprt)
 /*
  * Can't decode args error reply
  */
+LIBINFO_EXPORT
 void
 svcerr_decode(xprt)
 	register SVCXPRT *xprt;
@@ -308,6 +317,7 @@ svcerr_decode(xprt)
 /*
  * Some system error
  */
+LIBINFO_EXPORT
 void
 svcerr_systemerr(xprt)
 	register SVCXPRT *xprt;
@@ -324,6 +334,7 @@ svcerr_systemerr(xprt)
 /*
  * Authentication error reply
  */
+LIBINFO_EXPORT
 void
 svcerr_auth(xprt, why)
 	SVCXPRT *xprt;
@@ -341,6 +352,7 @@ svcerr_auth(xprt, why)
 /*
  * Auth too weak error reply
  */
+LIBINFO_EXPORT
 void
 svcerr_weakauth(xprt)
 	SVCXPRT *xprt;
@@ -352,6 +364,7 @@ svcerr_weakauth(xprt)
 /*
  * Program unavailable error reply
  */
+LIBINFO_EXPORT
 void 
 svcerr_noprog(xprt)
 	register SVCXPRT *xprt;
@@ -368,6 +381,7 @@ svcerr_noprog(xprt)
 /*
  * Program version mismatch error reply
  */
+LIBINFO_EXPORT
 void  
 svcerr_progvers(xprt, low_vers, high_vers)
 #ifdef __LP64__
@@ -409,6 +423,7 @@ svcerr_progvers(xprt, low_vers, high_vers)
  * is mallocated in kernel land.
  */
 
+LIBINFO_EXPORT
 void
 svc_getreq(rdfds)
 	int rdfds;
@@ -420,6 +435,7 @@ svc_getreq(rdfds)
 	svc_getreqset(&readfds);
 }
 
+LIBINFO_EXPORT
 void
 svc_getreqset(readfds)
 	fd_set *readfds;

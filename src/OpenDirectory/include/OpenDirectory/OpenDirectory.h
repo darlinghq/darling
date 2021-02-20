@@ -1,54 +1,54 @@
 /*
- This file is part of Darling.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
+ *
+ * @APPLE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_LICENSE_HEADER_END@
+ */
 
- Copyright (C) 2019 Lubos Dolezel
-
- Darling is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- Darling is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with Darling.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-
-#ifndef _OpenDirectory_H_
-#define _OpenDirectory_H_
-
+#if __OBJC__
 #import <Foundation/Foundation.h>
+#endif /* __OBJC__ */
 
-typedef NSString *ODRecordType;
-typedef NSString *ODAttributeType;
+#include <CFOpenDirectory/CFOpenDirectory.h>
 
-extern const ODAttributeType kODAttributeTypeRecordName;
-extern const ODAttributeType kODAttributeTypeStandardOnly;
-extern const ODAttributeType kODAttributeTypeUserShell;
+#if __OBJC__
 
-extern const ODRecordType kODRecordTypeUsers;
+FOUNDATION_EXPORT NSString *const ODFrameworkErrorDomain NS_AVAILABLE(10_6, NA);
 
-#import <OpenDirectory/ODQueryDelegate.h>
-#import <OpenDirectory/NSODSession.h>
 #import <OpenDirectory/ODSession.h>
-#import <OpenDirectory/NSODNode.h>
-#import <OpenDirectory/ODNode.h>
-#import <OpenDirectory/NSODRecord.h>
 #import <OpenDirectory/ODRecord.h>
-#import <OpenDirectory/NSODQuery.h>
+#import <OpenDirectory/ODNode.h>
 #import <OpenDirectory/ODQuery.h>
-#import <OpenDirectory/NSODContext.h>
-#import <OpenDirectory/ODContext.h>
 #import <OpenDirectory/ODConfiguration.h>
-#import <OpenDirectory/ODModuleEntry.h>
 #import <OpenDirectory/ODMappings.h>
-#import <OpenDirectory/ODAttributeMap.h>
 #import <OpenDirectory/ODRecordMap.h>
+#import <OpenDirectory/ODAttributeMap.h>
+#import <OpenDirectory/ODModuleEntry.h>
 
-void* ODTrustInfoCopy(void);
+#ifdef DARLING
+#import <OpenDirectory/ODContext.h>
 
+#import <OpenDirectory/NSODContext.h>
+#import <OpenDirectory/NSODNode.h>
+#import <OpenDirectory/NSODQuery.h>
+#import <OpenDirectory/NSODRecord.h>
+#import <OpenDirectory/NSODSession.h>
 #endif
+
+#endif /* __OBJC__ */

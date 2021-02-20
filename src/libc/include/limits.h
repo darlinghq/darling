@@ -62,6 +62,7 @@
 
 #include <sys/cdefs.h>
 #include <machine/limits.h>
+#ifndef UNIFDEF_DRIVERKIT
 #include <sys/syslimits.h>
 
 #if __DARWIN_C_LEVEL > __DARWIN_C_ANSI
@@ -111,7 +112,7 @@
 
 #define PTHREAD_DESTRUCTOR_ITERATIONS 	4
 #define PTHREAD_KEYS_MAX 		512
-#if defined(__arm__) 
+#if defined(__arm__) || defined(__arm64__)
 #define PTHREAD_STACK_MIN 		16384
 #else
 #define PTHREAD_STACK_MIN 		8192
@@ -163,5 +164,6 @@
 #endif /* __DARWIN_C_LEVEL > __DARWIN_C_ANSI */
 
 /* NZERO to be defined here. TBD. See also sys/param.h  */
+#endif /* UNIFDEF_DRIVERKIT */
 
 #endif /* !_LIMITS_H_ */

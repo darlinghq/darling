@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2003-2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2003-2013, 2015-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -35,11 +35,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
 
-#include <SystemConfiguration/SystemConfiguration.h>
 #include "SCNetworkConfigurationInternal.h"
 #include "SCPreferencesInternal.h"
-#include <SystemConfiguration/SCValidation.h>
-#include <SystemConfiguration/SCPrivate.h>
 
 #include <ifaddrs.h>
 #include <pthread.h>
@@ -64,7 +61,7 @@ inet_dgram_socket()
 
 	s = socket(AF_INET, SOCK_DGRAM, 0);
 	if (s == -1) {
-		SCLog(TRUE, LOG_ERR, CFSTR("socket() failed: %s"), strerror(errno));
+		SC_log(LOG_ERR, "socket() failed: %s", strerror(errno));
 	}
 
 	return s;
@@ -221,12 +218,10 @@ SCVLANInterfaceCopyAll(SCPreferencesRef prefs)
 	CFDictionaryRef		dict;
 	SCPreferencesRef	ni_prefs;
 	CFStringRef		path;
-	
-	if ((prefs == NULL) ||
-	    (__SCPreferencesUsingDefaultPrefs(prefs) == TRUE)) {
+
+	if (__SCPreferencesUsingDefaultPrefs(prefs)) {
 		ni_prefs = NULL;
-	}
-	else {
+	} else {
 		ni_prefs = __SCPreferencesCreateNIPrefsFromPrefs(prefs);
 	}
 	context.vlans = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
@@ -284,7 +279,9 @@ CFArrayRef
 SCVLANInterfaceCopyAvailablePhysicalInterfaces()
 {
 	CFMutableArrayRef	available;
+#if	!TARGET_OS_IPHONE
 	CFArrayRef		bond_interfaces		= NULL;
+#endif	// !TARGET_OS_IPHONE
 	CFArrayRef		bridge_interfaces	= NULL;
 	CFMutableSetRef		excluded		= NULL;
 	CFArrayRef		interfaces;
@@ -314,17 +311,19 @@ SCVLANInterfaceCopyAvailablePhysicalInterfaces()
 	}
 
 	// add real interfaces that aren't part of a bond or bridge
-	interfaces = __SCNetworkInterfaceCopyAll_IONetworkInterface();
+	interfaces = __SCNetworkInterfaceCopyAll_IONetworkInterface(FALSE);
 	if (interfaces != NULL) {
 		addAvailableInterfaces(available, interfaces, excluded);
 		CFRelease(interfaces);
 	}
 
+#if	!TARGET_OS_IPHONE
 	// add bond interfaces
 	if (bond_interfaces != NULL) {
 		addAvailableInterfaces(available, bond_interfaces, NULL);
 		CFRelease(bond_interfaces);
 	}
+#endif	// !TARGET_OS_IPHONE
 
 	// add bridge interfaces
 	if (bridge_interfaces != NULL) {
@@ -349,7 +348,7 @@ _SCVLANInterfaceCopyActive(void)
 	CFMutableArrayRef	vlans	= NULL;
 
 	if (getifaddrs(&ifap) == -1) {
-		SCLog(TRUE, LOG_ERR, CFSTR("getifaddrs() failed: %s"), strerror(errno));
+		SC_log(LOG_NOTICE, "getifaddrs() failed: %s", strerror(errno));
 		_SCErrorSet(kSCStatusFailed);
 		return NULL;
 	}
@@ -381,13 +380,13 @@ _SCVLANInterfaceCopyActive(void)
 			continue;
 		}
 
-		bzero(&ifr, sizeof(ifr));
-		bzero(&vreq, sizeof(vreq));
+		memset(&ifr, 0, sizeof(ifr));
+		memset(&vreq, 0, sizeof(vreq));
 		strlcpy(ifr.ifr_name, ifp->ifa_name, sizeof(ifr.ifr_name));
 		ifr.ifr_data = (caddr_t)&vreq;
 
 		if (ioctl(s, SIOCGIFVLAN, (caddr_t)&ifr) == -1) {
-			SCLog(TRUE, LOG_ERR, CFSTR("ioctl(SIOCGIFVLAN) failed: %s"), strerror(errno));
+			SC_log(LOG_NOTICE, "ioctl(SIOCGIFVLAN) failed: %s", strerror(errno));
 			CFRelease(vlans);
 			vlans = NULL;
 			_SCErrorSet(kSCStatusFailed);
@@ -443,7 +442,7 @@ SCVLANInterfaceCreate(SCPreferencesRef prefs, SCNetworkInterfaceRef physical, CF
 		_SCErrorSet(kSCStatusInvalidArgument);
 		return NULL;
 	}
-	
+
 	if (!isA_SCNetworkInterface(physical)) {
 		_SCErrorSet(kSCStatusInvalidArgument);
 		return NULL;
@@ -451,10 +450,9 @@ SCVLANInterfaceCreate(SCPreferencesRef prefs, SCNetworkInterfaceRef physical, CF
 
 	interfacePrivate = (SCNetworkInterfacePrivateRef)physical;
 	if (!interfacePrivate->supportsVLAN) {
-		if (__SCPreferencesUsingDefaultPrefs(prefs) == FALSE) {
+		if (!__SCPreferencesUsingDefaultPrefs(prefs)) {
 			interfacePrivate->supportsVLAN = TRUE;
-		}
-		else {
+		} else {
 			_SCErrorSet(kSCStatusInvalidArgument);
 			return NULL;
 		}
@@ -616,7 +614,7 @@ SCVLANInterfaceSetPhysicalInterfaceAndTag(SCVLANInterfaceRef vlan, SCNetworkInte
 	SCNetworkInterfacePrivateRef	interfacePrivate;
 	Boolean				ok			= TRUE;
 	SCPreferencesRef		prefs;
-	
+
 	if (!isA_SCVLANInterface(vlan)) {
 		_SCErrorSet(kSCStatusInvalidArgument);
 		return FALSE;
@@ -629,12 +627,11 @@ SCVLANInterfaceSetPhysicalInterfaceAndTag(SCVLANInterfaceRef vlan, SCNetworkInte
 
 	interfacePrivate = (SCNetworkInterfacePrivateRef)physical;
 	prefs = interfacePrivate->prefs;
-	
+
 	if (!interfacePrivate->supportsVLAN) {
-		if (__SCPreferencesUsingDefaultPrefs(prefs) == FALSE) {
+		if (!__SCPreferencesUsingDefaultPrefs(prefs)) {
 			interfacePrivate->supportsVLAN = TRUE;
-		}
-		else {
+		} else {
 			_SCErrorSet(kSCStatusInvalidArgument);
 			return FALSE;
 		}
@@ -860,8 +857,8 @@ __vlan_set(int s, CFStringRef interface_if, CFStringRef physical_if, CFNumberRef
 	int		tag_val;
 	struct vlanreq	vreq;
 
-	bzero(&ifr, sizeof(ifr));
-	bzero(&vreq, sizeof(vreq));
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&vreq, 0, sizeof(vreq));
 
 	// interface
 	(void) _SC_cfstring_to_cstring(interface_if,
@@ -882,7 +879,7 @@ __vlan_set(int s, CFStringRef interface_if, CFStringRef physical_if, CFNumberRef
 
 	// update physical interface and tag
 	if (ioctl(s, SIOCSIFVLAN, (caddr_t)&ifr) == -1) {
-		SCLog(TRUE, LOG_ERR, CFSTR("ioctl(SIOCSIFVLAN) failed: %s"), strerror(errno));
+		SC_log(LOG_NOTICE, "ioctl(SIOCSIFVLAN) failed: %s", strerror(errno));
 		_SCErrorSet(kSCStatusFailed);
 		return FALSE;
 	}
@@ -897,8 +894,8 @@ __vlan_clear(int s, CFStringRef interface_if)
 	struct ifreq	ifr;
 	struct vlanreq	vreq;
 
-	bzero(&ifr, sizeof(ifr));
-	bzero(&vreq, sizeof(vreq));
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&vreq, 0, sizeof(vreq));
 
 	// interface
 	(void) _SC_cfstring_to_cstring(interface_if,
@@ -908,14 +905,14 @@ __vlan_clear(int s, CFStringRef interface_if)
 	ifr.ifr_data = (caddr_t)&vreq;
 
 	// clear physical interface
-	bzero(&vreq.vlr_parent, sizeof(vreq.vlr_parent));
+	memset(&vreq.vlr_parent, 0, sizeof(vreq.vlr_parent));
 
 	// clear tag
 	vreq.vlr_tag = 0;
 
 	// update physical interface and tag
 	if (ioctl(s, SIOCSIFVLAN, (caddr_t)&ifr) == -1) {
-		SCLog(TRUE, LOG_ERR, CFSTR("ioctl(SIOCSIFVLAN) failed: %s"), strerror(errno));
+		SC_log(LOG_NOTICE, "ioctl(SIOCSIFVLAN) failed: %s", strerror(errno));
 		_SCErrorSet(kSCStatusFailed);
 		return FALSE;
 	}

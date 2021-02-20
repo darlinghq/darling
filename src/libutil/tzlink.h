@@ -24,6 +24,8 @@
 #ifndef _TZLINK_H_
 #define _TZLINK_H_
 
+#include <errno.h>
+
 /*!
  * @function tzlink
  * Create the timezone link at TZDEFAULT

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2011, 2013, 2014, 2017, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -75,7 +75,7 @@ const cmdInfo commands_store[] = {
 		" d.show                        : show dictionary contents"			},
 
 	{ "d.add",	2,	101,	do_dictSetKey,		1,	0,
-		" d.add key [*#?] val [v2 ...]  : add information to dictionary\n"
+		" d.add key [*#?%] val [v2 ...]  : add information to dictionary\n"
 		"       (*=array, #=number, ?=boolean, %=hex data)"		                },
 
 	{ "d.remove",	1,	1,	do_dictRemoveKey,	1,	0,
@@ -131,17 +131,14 @@ const cmdInfo commands_store[] = {
 	{ "n.wait",	0,	0,	do_notify_wait,		5,	2,
 		" n.wait                        : wait for changes"				},
 
-	{ "n.signal",	1,	2,	do_notify_signal,	5,	2,
-		" n.signal sig [pid]            : signal changes"				},
-
 	{ "n.file",	0,	1,	do_notify_file,		5,	2,
 		" n.file [identifier]           : watch for changes via file"			},
 
 	{ "n.cancel",	0,	1,	do_notify_cancel,	5,	0,
 		" n.cancel                      : cancel notification requests"			},
 
-	{ "snapshot",	0,	0,	do_snapshot,		99,	2,
-		" snapshot                      : save snapshot of store and session data"	}
+	{ "snapshot",	0,	1,	do_snapshot,		99,	2,
+		" snapshot [file]               : save snapshot of store and session data"	}
 };
 __private_extern__
 const int nCommands_store = (sizeof(commands_store)/sizeof(cmdInfo));
@@ -266,7 +263,7 @@ const cmdInfo commands_prefs[] = {
 		" d.show                        : show dictionary contents"			},
 
 	{ "d.add",	2,	101,	do_dictSetKey,		1,	0,
-		" d.add key [*#?] val [v2 ...]  : add information to dictionary\n"
+		" d.add key [*#?%] val [v2 ...]  : add information to dictionary\n"
 		"       (*=array, #=number, ?=boolean, %=hex data)"		                },
 
 	{ "d.remove",	1,	1,	do_dictRemoveKey,	1,	0,
@@ -354,6 +351,8 @@ __private_extern__
 void
 do_help(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	int	g = -1;		/* current group */
 	int	i;
 
@@ -386,6 +385,7 @@ __private_extern__
 void
 do_readFile(int argc, char **argv)
 {
+#pragma unused(argc)
 	InputRef		src;
 
 	/* allocate command input stream */
@@ -424,6 +424,8 @@ __private_extern__
 void
 do_quit(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	termRequested = TRUE;
 	return;
 }

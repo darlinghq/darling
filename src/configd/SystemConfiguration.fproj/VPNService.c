@@ -1,9 +1,8 @@
 /*
- * Copyright (c) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2012, 2013, 2016, 2017 Apple Inc. All rights reserved.
  */
 
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCPrivate.h>
+#include "SCNetworkConfigurationInternal.h"
 #include "dy_framework.h"
 
 static CFStringRef g_apple_app_prefix = CFSTR("com.apple.");
@@ -39,7 +38,7 @@ static CFArrayRef
 copy_matching_services(SCPreferencesRef prefs, CFStringRef identifierDomain, CFStringRef identifier)
 {
 	CFMutableArrayRef	results		= NULL;
-	CFArrayRef			services;
+	CFArrayRef		services;
 
 	services = SCNetworkServiceCopyAll(prefs);
 	if (services != NULL) {
@@ -47,8 +46,8 @@ copy_matching_services(SCPreferencesRef prefs, CFStringRef identifierDomain, CFS
 		CFIndex	service_count = CFArrayGetCount(services);
 
 		for (idx = 0; idx < service_count; idx++) {
-			SCNetworkServiceRef		service = CFArrayGetValueAtIndex(services, idx);
-			Boolean					matches	= FALSE;
+			SCNetworkServiceRef	service = CFArrayGetValueAtIndex(services, idx);
+			Boolean			matches	= FALSE;
 
 			if (isA_VPNService(service)) {
 				if (isA_CFString(identifierDomain) && isA_CFString(identifier)) {
@@ -135,7 +134,7 @@ validate_app_rule(CFDictionaryRef ruleSettings, Boolean check_for_apple_apps)
 
 				if (check_for_apple_apps && CFStringHasPrefix(signingID, g_apple_app_prefix)) {
 					for (exception_idx = 0;
-					     exception_idx < sizeof(g_apple_app_exceptions) / sizeof(g_apple_app_exceptions[0]);
+					     exception_idx < (CFIndex)(sizeof(g_apple_app_exceptions) / sizeof(g_apple_app_exceptions[0]));
 					     exception_idx++)
 					{
 						if (CFStringCompare(signingID, g_apple_app_exceptions[exception_idx].signing_id, 0) == 0) {
@@ -263,16 +262,22 @@ VPNServiceCopyAll(SCPreferencesRef prefs)
 CFArrayRef
 VPNServiceCopyAppRuleIDs(VPNServiceRef service)
 {
-	CFMutableArrayRef		results		= NULL;
-	CFDictionaryRef			vpn_config;
+	SCNetworkInterfaceRef	interface;
+	CFMutableArrayRef	results		= NULL;
+	CFDictionaryRef		vpn_config;
 
 	if (!isA_VPNService(service)) {
 		_SCErrorSet(kSCStatusInvalidArgument);
 		return NULL;
 	}
 
-	vpn_config = SCNetworkInterfaceGetConfiguration(SCNetworkServiceGetInterface(service));
+	interface = SCNetworkServiceGetInterface(service);
+	if (interface == NULL) {
+		_SCErrorSet(kSCStatusInvalidArgument);
+		return NULL;
+	}
 
+	vpn_config = SCNetworkInterfaceGetConfiguration(interface);
 	if (isA_CFDictionary(vpn_config)) {
 		CFArrayRef	app_rules = CFDictionaryGetValue(vpn_config, kSCPropNetVPNAppRules);
 		if (isA_CFArray(app_rules)) {
@@ -306,15 +311,16 @@ VPNServiceCopyAppRuleIDs(VPNServiceRef service)
 Boolean
 VPNServiceSetAppRule(VPNServiceRef service, CFStringRef ruleIdentifier, CFDictionaryRef ruleSettings)
 {
-	CFArrayRef				accounts;
-	CFArrayRef				app_rules;
-	CFArrayRef				executables;
-	CFIndex					existing_idx		= -1;
-	CFArrayRef				match_domains;
-	CFMutableArrayRef		new_app_rules;
+	CFArrayRef		accounts;
+	CFArrayRef		app_rules;
+	CFArrayRef		executables;
+	CFIndex			existing_idx	= -1;
+	SCNetworkInterfaceRef	interface;
+	CFArrayRef		match_domains;
+	CFMutableArrayRef	new_app_rules;
 	CFMutableDictionaryRef	new_settings;
 	CFMutableDictionaryRef	new_vpn_config;
-	CFDictionaryRef			vpn_config;
+	CFDictionaryRef		vpn_config;
 
 	/* Basic parameter validation */
 
@@ -328,21 +334,27 @@ VPNServiceSetAppRule(VPNServiceRef service, CFStringRef ruleIdentifier, CFDictio
 		return FALSE;
 	}
 
+	interface = SCNetworkServiceGetInterface(service);
+	if (interface == NULL) {
+		_SCErrorSet(kSCStatusInvalidArgument);
+		return FALSE;
+	}
+
 	executables = CFDictionaryGetValue(ruleSettings, kSCValNetVPNAppRuleExecutableMatch);
 	match_domains = CFDictionaryGetValue(ruleSettings, kSCValNetVPNAppRuleDNSDomainMatch);
 	accounts = CFDictionaryGetValue(ruleSettings, kSCValNetVPNAppRuleAccountIdentifierMatch);
 
 	/* Set the new rule config, replacing any existing rule */
 
-	vpn_config = SCNetworkInterfaceGetConfiguration(SCNetworkServiceGetInterface(service));
+	vpn_config = SCNetworkInterfaceGetConfiguration(interface);
 	if (isA_CFDictionary(vpn_config)) {
 		existing_idx = find_app_rule(vpn_config, ruleIdentifier);
 		new_vpn_config = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, vpn_config);
 	} else {
 		new_vpn_config = CFDictionaryCreateMutable(kCFAllocatorDefault,
-												   0,
-												   &kCFTypeDictionaryKeyCallBacks,
-												   &kCFTypeDictionaryValueCallBacks);
+							   0,
+							   &kCFTypeDictionaryKeyCallBacks,
+							   &kCFTypeDictionaryValueCallBacks);
 	}
 
 	app_rules = CFDictionaryGetValue(new_vpn_config, kSCPropNetVPNAppRules);
@@ -350,14 +362,14 @@ VPNServiceSetAppRule(VPNServiceRef service, CFStringRef ruleIdentifier, CFDictio
 		new_app_rules = CFArrayCreateMutableCopy(kCFAllocatorDefault, 0, app_rules);
 	} else {
 		new_app_rules = CFArrayCreateMutable(kCFAllocatorDefault,
-										     0,
-										     &kCFTypeArrayCallBacks);
+						     0,
+						     &kCFTypeArrayCallBacks);
 	}
 
 	new_settings = CFDictionaryCreateMutable(kCFAllocatorDefault,
-											 0,
-											 &kCFTypeDictionaryKeyCallBacks,
-											 &kCFTypeDictionaryValueCallBacks);
+						 0,
+						 &kCFTypeDictionaryKeyCallBacks,
+						 &kCFTypeDictionaryValueCallBacks);
 
 	CFDictionarySetValue(new_settings, kSCValNetVPNAppRuleIdentifier, ruleIdentifier);
 	if (executables != NULL && CFArrayGetCount(executables) > 0) {
@@ -378,7 +390,7 @@ VPNServiceSetAppRule(VPNServiceRef service, CFStringRef ruleIdentifier, CFDictio
 
 	CFDictionarySetValue(new_vpn_config, kSCPropNetVPNAppRules, new_app_rules);
 
-	SCNetworkInterfaceSetConfiguration(SCNetworkServiceGetInterface(service), new_vpn_config);
+	SCNetworkInterfaceSetConfiguration(interface, new_vpn_config);
 
 	CFRelease(new_vpn_config);
 	CFRelease(new_app_rules);
@@ -391,14 +403,21 @@ VPNServiceSetAppRule(VPNServiceRef service, CFStringRef ruleIdentifier, CFDictio
 CFDictionaryRef
 VPNServiceCopyAppRule(VPNServiceRef service, CFStringRef ruleIdentifier)
 {
-	CFDictionaryRef	vpn_config;
+	SCNetworkInterfaceRef	interface;
+	CFDictionaryRef		vpn_config;
 
 	if (!isA_VPNService(service) || !isA_CFString(ruleIdentifier)) {
 		_SCErrorSet(kSCStatusInvalidArgument);
 		return NULL;
 	}
 
-	vpn_config = SCNetworkInterfaceGetConfiguration(SCNetworkServiceGetInterface(service));
+	interface = SCNetworkServiceGetInterface(service);
+	if (interface == NULL) {
+		_SCErrorSet(kSCStatusInvalidArgument);
+		return FALSE;
+	}
+
+	vpn_config = SCNetworkInterfaceGetConfiguration(interface);
 	if (isA_CFDictionary(vpn_config)) {
 		CFIndex	idx = find_app_rule(vpn_config, ruleIdentifier);
 		if (idx >= 0) {
@@ -424,14 +443,21 @@ VPNServiceCopyAppRule(VPNServiceRef service, CFStringRef ruleIdentifier)
 Boolean
 VPNServiceRemoveAppRule(VPNServiceRef service, CFStringRef ruleIdentifier)
 {
-	CFDictionaryRef	vpn_config;
+	SCNetworkInterfaceRef	interface;
+	CFDictionaryRef		vpn_config;
 
 	if (!isA_VPNService(service) || !isA_CFString(ruleIdentifier)) {
 		_SCErrorSet(kSCStatusInvalidArgument);
 		return FALSE;
 	}
 
-	vpn_config = SCNetworkInterfaceGetConfiguration(SCNetworkServiceGetInterface(service));
+	interface = SCNetworkServiceGetInterface(service);
+	if (interface == NULL) {
+		_SCErrorSet(kSCStatusInvalidArgument);
+		return FALSE;
+	}
+
+	vpn_config = SCNetworkInterfaceGetConfiguration(interface);
 	if (isA_CFDictionary(vpn_config)) {
 		CFIndex	idx = find_app_rule(vpn_config, ruleIdentifier);
 		if (idx >= 0) {
@@ -451,7 +477,7 @@ VPNServiceRemoveAppRule(VPNServiceRef service, CFStringRef ruleIdentifier)
 					CFDictionaryRemoveValue(new_vpn_config, kSCPropNetVPNAppRules);
 				}
 
-				SCNetworkInterfaceSetConfiguration(SCNetworkServiceGetInterface(service), new_vpn_config);
+				SCNetworkInterfaceSetConfiguration(interface, new_vpn_config);
 
 				CFRelease(new_vpn_config);
 				CFRelease(new_app_rules);

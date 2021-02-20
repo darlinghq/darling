@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -64,6 +64,8 @@ static char *rcsid = "$Id: svc_udp.c,v 1.5 2004/10/13 00:24:07 jkh Exp $";
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "libinfo_common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -125,6 +127,7 @@ struct svcudp_data {
  * see (svc.h, xprt_register).
  * The routines returns NULL if a problem occurred.
  */
+LIBINFO_EXPORT
 SVCXPRT *
 svcudp_bufcreate(sock, sendsz, recvsz)
 	register int sock;
@@ -162,11 +165,14 @@ svcudp_bufcreate(sock, sendsz, recvsz)
 	}
 	su = (struct svcudp_data *)mem_alloc(sizeof(*su));
 	if (su == NULL) {
+		mem_free(xprt, sizeof(SVCXPRT));
 		(void)fprintf(stderr, "svcudp_create: out of memory\n");
 		return (NULL);
 	}
 	su->su_iosz = ((MAX(sendsz, recvsz) + 3) / 4) * 4;
 	if ((rpc_buffer(xprt) = mem_alloc(su->su_iosz)) == NULL) {
+		mem_free(xprt, sizeof(SVCXPRT));
+		mem_free(su, sizeof(*su));
 		(void)fprintf(stderr, "svcudp_create: out of memory\n");
 		return (NULL);
 	}
@@ -182,6 +188,7 @@ svcudp_bufcreate(sock, sendsz, recvsz)
 	return (xprt);
 }
 
+LIBINFO_EXPORT
 SVCXPRT *
 svcudp_create(sock)
 	int sock;
@@ -429,12 +436,15 @@ svcudp_enablecache(transp, size)
 	uc->uc_nextvictim = 0;
 	uc->uc_entries = ALLOC(cache_ptr, size * SPARSENESS);
 	if (uc->uc_entries == NULL) {
+		mem_free(uc, sizeof(*uc));
 		CACHE_PERROR("enablecache: could not allocate cache data");
 		return(0);
 	}
 	BZERO(uc->uc_entries, cache_ptr, size * SPARSENESS);
 	uc->uc_fifo = ALLOC(cache_ptr, size);
 	if (uc->uc_fifo == NULL) {
+		mem_free(uc->uc_entries, sizeof(struct udp_cache)*size * SPARSENESS);
+		mem_free(uc, sizeof(struct udp_cache));
 		CACHE_PERROR("enablecache: could not allocate cache fifo");
 		return(0);
 	}
@@ -488,6 +498,7 @@ cache_set(xprt, replylen)
 		}
 		newbuf = mem_alloc(su->su_iosz);
 		if (newbuf == NULL) {
+			mem_free(victim, sizeof(*victim));
 			CACHE_PERROR("cache_set: could not allocate new rpc_buffer");
 			return;
 		}

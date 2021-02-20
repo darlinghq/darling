@@ -1,1 +1,1 @@
-../../../../../../../../../../platform-include/mach/machine/sdt_isa.h
+../../../../../../../../../../src/external/lkm/osfmk/mach/machine/sdt_isa.h

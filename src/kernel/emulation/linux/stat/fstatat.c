@@ -7,7 +7,7 @@
 #include <lkm/api.h>
 #include <mach/lkm.h>
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 
 extern char* strcpy(char* dst, const char* src);
 

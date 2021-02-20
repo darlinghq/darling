@@ -46,8 +46,11 @@ extern int strcmp(const char* str1, const char* str2);
 extern int strncmp(const char* str1, const char* str2, __SIZE_TYPE__ n);
 extern int strncasecmp(const char* str1, const char* str2, __SIZE_TYPE__ n);
 extern int strcasecmp(const char* str1, const char* str2);
+extern char* strcat(char* dest, const char* src);
 extern char *strchr(const char *s, int c);
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
+extern void* memmove(void* dest, const void* src, __SIZE_TYPE__ n);
+extern int memcmp(const void* dest, const void* src, __SIZE_TYPE__ n);
 
 #define LINUX_S_IFMT 00170000
 #define LINUX_S_IFLNK 0120000

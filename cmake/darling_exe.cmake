@@ -14,13 +14,13 @@ FUNCTION(add_darling_executable exe)
 	set_property(TARGET ${exe} APPEND_STRING PROPERTY
 		LINK_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -nostdlib ${CMAKE_BINARY_DIR}/src/csu/CMakeFiles/csu.dir/crt1.10.6.o ")
 
-	if (TARGET_x86_64)
-		target_compile_options(${exe} PRIVATE -arch x86_64)
-	elseif (TARGET_i386)
-		target_compile_options(${exe} PRIVATE -arch i386)
+	if (BUILD_TARGET_64BIT)
+		target_compile_options(${exe} PRIVATE -arch ${APPLE_ARCH_64BIT})
+	elseif (BUILD_TARGET_32BIT)
+		target_compile_options(${exe} PRIVATE -arch ${APPLE_ARCH_32BIT})
 		set_property(TARGET ${exe} APPEND_STRING PROPERTY
-			LINK_FLAGS " -arch i386")
-	endif (TARGET_x86_64)
+			LINK_FLAGS " -arch ${APPLE_ARCH_32BIT}")
+	endif (BUILD_TARGET_64BIT)
 
 	use_ld64(${exe})
 	target_link_libraries(${exe} system)

@@ -172,6 +172,12 @@
 #define		__wait				wait
 #define		__waitpid			waitpid
 
+/*
+ * The _GENERIC_DIRSIZ macro gives the minimum record length which will hold
+ * the directory entry.  This returns the amount of space in struct direct
+ * without the d_name field, plus enough space for the name with a terminating
+ * null byte (dp->d_namlen+1), rounded up to a 4 byte boundary.
+  */
 #define	_GENERIC_DIRSIZ(dp) \
     (((unsigned long)&((struct dirent *)0)->d_name + (dp)->d_namlen+1 + 3) & ~3)
 

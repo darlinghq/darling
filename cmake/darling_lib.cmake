@@ -44,14 +44,14 @@ FUNCTION(add_darling_library name)
 	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS  " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
 	add_dependencies(${name} lipo)
 
-	if (TARGET_x86_64 AND NOT DARLING_LIB_i386_ONLY)
-		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS  " -arch x86_64")
-		set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " -arch x86_64")
-	endif (TARGET_x86_64 AND NOT DARLING_LIB_i386_ONLY)
-	if (TARGET_i386 AND NOT DARLING_LIB_x86_64_ONLY)
-		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch i386")
-		set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " -arch i386")
-	endif (TARGET_i386 AND NOT DARLING_LIB_x86_64_ONLY)
+	if (BUILD_TARGET_64BIT AND NOT DARLING_LIB_32BIT_ONLY)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS  " -arch ${APPLE_ARCH_64BIT}")
+		set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " -arch ${APPLE_ARCH_64BIT}")
+	endif (BUILD_TARGET_64BIT AND NOT DARLING_LIB_32BIT_ONLY)
+	if (BUILD_TARGET_32BIT AND NOT DARLING_LIB_64BIT_ONLY)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch ${APPLE_ARCH_32BIT}")
+		set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " -arch ${APPLE_ARCH_32BIT}")
+	endif (BUILD_TARGET_32BIT AND NOT DARLING_LIB_64BIT_ONLY)
 
 	use_ld64(${name})
 
@@ -61,31 +61,31 @@ FUNCTION(add_darling_library name)
 ENDFUNCTION(add_darling_library)
 
 FUNCTION(make_fat)
-	if (TARGET_i386 AND TARGET_x86_64)
+	if (BUILD_TARGET_32BIT AND BUILD_TARGET_64BIT)
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch i386 -arch x86_64")
+			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch ${APPLE_ARCH_32BIT} -arch ${APPLE_ARCH_64BIT}")
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			LINK_FLAGS " -arch i386 -arch x86_64")
+			LINK_FLAGS " -arch ${APPLE_ARCH_32BIT} -arch ${APPLE_ARCH_64BIT}")
 		foreach(tgt ${ARGV})
 			add_dependencies(${tgt} lipo)
 		endforeach(tgt)
-	elseif (TARGET_i386)
+	elseif (BUILD_TARGET_32BIT)
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch i386")
+			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch ${APPLE_ARCH_32BIT}")
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			LINK_FLAGS " -arch i386")
+			LINK_FLAGS " -arch ${APPLE_ARCH_32BIT}")
 		foreach(tgt ${ARGV})
 			add_dependencies(${tgt} lipo)
 		endforeach(tgt)
-	elseif (TARGET_x86_64)
+	elseif (BUILD_TARGET_64BIT)
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch x86_64")
+			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch ${APPLE_ARCH_64BIT}")
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			LINK_FLAGS " -arch x86_64")
+			LINK_FLAGS " -arch ${APPLE_ARCH_64BIT}")
 		foreach(tgt ${ARGV})
 			add_dependencies(${tgt} lipo)
 		endforeach(tgt)
-	endif (TARGET_i386 AND TARGET_x86_64)
+	endif (BUILD_TARGET_32BIT AND BUILD_TARGET_64BIT)
 ENDFUNCTION(make_fat)
 
 # add_circular(name ...)
@@ -108,8 +108,13 @@ ENDFUNCTION(make_fat)
 #             loaded and initialized after the current library is fully loaded. This is needed to break
 #             certain dependency issues, esp. if a libSystem sublibrary depends on a library that depends on libSystem
 #             and has initializers. dyld bails out unless this dependency is upward.
+# * STRONG_DEPENDENCIES: Which regular dependencies we should link against in the firstpass.
+#             Just like STRONG_SIBLINGS, this should only be used in special cases. The intended use case is when
+#             another sibling depends on symbols linked into this sibling from dependencies (usually static libraries).
+#             Current use case is for Security to link to its static libraries in the firstpass,
+#             because coretls_cfhelpers depends on them.
 FUNCTION(add_circular name)
-	cmake_parse_arguments(CIRCULAR "FAT" "LINK_FLAGS" "SOURCES;OBJECTS;SIBLINGS;STRONG_SIBLINGS;DEPENDENCIES;UPWARD" ${ARGN})
+	cmake_parse_arguments(CIRCULAR "FAT" "LINK_FLAGS" "SOURCES;OBJECTS;SIBLINGS;STRONG_SIBLINGS;DEPENDENCIES;UPWARD;STRONG_DEPENDENCIES" ${ARGN})
 	#message(STATUS "${name} sources: ${CIRCULAR_SOURCES}")
 	#message(STATUS "${name} siblings ${CIRCULAR_SIBLINGS}")
 	#message(STATUS "${name} deps: ${CIRCULAR_DEPENDENCIES}")
@@ -132,6 +137,9 @@ FUNCTION(add_circular name)
 	foreach(dep ${CIRCULAR_STRONG_SIBLINGS})
 		target_link_libraries("${name}_firstpass" PRIVATE "${dep}_firstpass")
 	endforeach(dep)
+
+	# strong dependencies are linked in the firstpass
+	target_link_libraries("${name}_firstpass" PRIVATE ${CIRCULAR_STRONG_DEPENDENCIES})
 	
 	if (CIRCULAR_FAT)
 		make_fat("${name}_firstpass")
@@ -155,25 +163,28 @@ FUNCTION(add_circular name)
 
 	target_link_libraries("${name}" PRIVATE ${CIRCULAR_DEPENDENCIES})
 
+	# strong dependencies are linked again in the finalpass
+	target_link_libraries("${name}" PRIVATE ${CIRCULAR_STRONG_DEPENDENCIES})
+
 	if (CIRCULAR_FAT)
 		make_fat(${name})
 	endif (CIRCULAR_FAT)
 ENDFUNCTION(add_circular)
 
 function(add_darling_object_library name)
-	cmake_parse_arguments(OBJECT_LIB "i386_ONLY;x86_64_ONLY" "" "" ${ARGN})
-	foreach(f IN LISTS ARGN)
-                set(files ${files} ${f})
-        endforeach(f)
+	cmake_parse_arguments(OBJECT_LIB "32BIT_ONLY;64BIT_ONLY" "" "" ${ARGN})
+	foreach(f IN LISTS OBJECT_LIB_UNPARSED_ARGUMENTS)
+		set(files ${files} ${f})
+	endforeach(f)
 
 	add_library(${name} OBJECT ${files})
 	add_dependencies(${name} lipo)
 	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
 
-	if (TARGET_i386 AND NOT OBJECT_LIB_x86_64_ONLY)
-		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch i386")
-	endif (TARGET_i386 AND NOT OBJECT_LIB_x86_64_ONLY)
-	if (TARGET_x86_64 AND NOT OBJECT_LIB_i386_ONLY)
-		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch x86_64")
-	endif (TARGET_x86_64 AND NOT OBJECT_LIB_i386_ONLY)
+	if (BUILD_TARGET_32BIT AND NOT OBJECT_LIB_64BIT_ONLY)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch ${APPLE_ARCH_32BIT}")
+	endif (BUILD_TARGET_32BIT AND NOT OBJECT_LIB_64BIT_ONLY)
+	if (BUILD_TARGET_64BIT AND NOT OBJECT_LIB_32BIT_ONLY)
+		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch ${APPLE_ARCH_64BIT}")
+	endif (BUILD_TARGET_64BIT AND NOT OBJECT_LIB_32BIT_ONLY)
 endfunction(add_darling_object_library)

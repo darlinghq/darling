@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2004-2009, 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2004-2009, 2011, 2014, 2017, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -42,22 +42,6 @@
 
 
 /* -------------------- */
-
-
-__private_extern__
-CFComparisonResult
-_compare_protocols(const void *val1, const void *val2, void *context)
-{
-	SCNetworkProtocolRef	p1	= (SCNetworkProtocolRef)val1;
-	SCNetworkProtocolRef	p2	= (SCNetworkProtocolRef)val2;
-	CFStringRef		type1;
-	CFStringRef		type2;
-
-	type1 = SCNetworkProtocolGetProtocolType(p1);
-	type2 = SCNetworkProtocolGetProtocolType(p2);
-
-	return CFStringCompare(type1, type2, 0);
-}
 
 
 static CFStringRef
@@ -121,7 +105,7 @@ _find_protocol(char *match)
 			sorted = CFArrayCreateMutableCopy(NULL, 0, protocols);
 			CFArraySortValues(sorted,
 					  CFRangeMake(0, n),
-					  _compare_protocols,
+					  _SCNetworkProtocolCompare,
 					  NULL);
 			CFRelease(protocols);
 			protocols = sorted;
@@ -386,6 +370,7 @@ __private_extern__
 void
 select_protocol(int argc, char **argv)
 {
+#pragma unused(argc)
 	SCNetworkProtocolRef	protocol;
 
 	protocol = _find_protocol(argv[0]);
@@ -429,6 +414,8 @@ __cleanupDomainName(CFStringRef domain)
 static int
 __doDNSDomain(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	if (argc < 1) {
 		SCPrint(TRUE, stdout, CFSTR("DNS domain name not specified\n"));
 		return -1;
@@ -460,6 +447,8 @@ __doDNSDomain(CFStringRef key, const char *description, void *info, int argc, ch
 static int
 __doDNSDomainArray(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	CFMutableArrayRef	domains;
 
 	if (argc < 1) {
@@ -513,6 +502,8 @@ __doDNSDomainArray(CFStringRef key, const char *description, void *info, int arg
 static int
 __doDNSServerAddresses(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	CFMutableArrayRef	servers;
 
 	if (argc < 1) {
@@ -629,6 +620,10 @@ static selections ipv4ConfigMethods[] = {
 static int
 __doIPv4ConfigMethod(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
+#pragma unused(argc)
+#pragma unused(argv)
 	unsigned int	flags;
 	CFStringRef	method;
 	CFIndex		methodIndex;
@@ -660,6 +655,8 @@ __doIPv4ConfigMethod(CFStringRef key, const char *description, void *info, int a
 static int
 __doIPv4Addresses(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(argc)
 	Boolean	useArray	= (info == (void *)FALSE) ? FALSE : TRUE;
 
 	if (strlen(argv[0]) > 0) {
@@ -790,6 +787,10 @@ static selections ipv6ConfigMethods[] = {
 static int
 __doIPv6ConfigMethod(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
+#pragma unused(argc)
+#pragma unused(argv)
 	unsigned int	flags;
 	CFStringRef	method;
 	CFIndex		methodIndex;
@@ -818,6 +819,8 @@ __doIPv6ConfigMethod(CFStringRef key, const char *description, void *info, int a
 static int
 __doIPv6Addresses(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(argc)
 	Boolean	useArray	= (info == (void *)FALSE) ? FALSE : TRUE;
 
 	if (strlen(argv[0]) > 0) {
@@ -853,6 +856,7 @@ static options ipv6Options[] = {
 					 , isChooseOne, &kSCPropNetIPv6ConfigMethod, __doIPv6ConfigMethod, (void *)ipv6ConfigMethods },
 	{ "Addresses"   , "address"      , isOther    , &kSCPropNetIPv6Addresses   , __doIPv6Addresses   , (void *)TRUE              },
 	{   "address"   , "address"      , isOther    , &kSCPropNetIPv6Addresses   , __doIPv6Addresses   , (void *)TRUE              },
+	{ "EnableCGA"   , NULL           , isBoolean  , &kSCPropNetIPv6EnableCGA   , NULL                , NULL                      },
 	{ "PrefixLength", "prefix length", isNumber   , &kSCPropNetIPv6PrefixLength, NULL                , NULL                      },
 	{ "Router"      , "address"      , isOther    , &kSCPropNetIPv6Router      , __doIPv6Addresses   , (void *)FALSE             },
 
@@ -1011,6 +1015,9 @@ static options proxyOptions[] = {
 static int
 __doProxySelect(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(key)
+#pragma unused(description)
+#pragma unused(newConfiguration)
 	CFIndex	nextOption;
 
 	if (argc < 1) {
@@ -1034,6 +1041,10 @@ __doProxySelect(CFStringRef key, const char *description, void *info, int argc, 
 static int
 __doProxyEnable(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(key)
+#pragma unused(description)
+#pragma unused(argc)
+#pragma unused(argv)
 	Boolean	enabled	= (info == (void *)FALSE) ? FALSE : TRUE;
 
 	if (currentProxy == NULL) {
@@ -1095,6 +1106,9 @@ __proxy_enabled(CFDictionaryRef configuration, const CFStringRef *enableKey)
 static int
 __doProxyHost(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(key)
+#pragma unused(description)
+#pragma unused(info)
 	if (currentProxy == NULL) {
 		SCPrint(TRUE, stdout, CFSTR("proxy not specified\n"));
 		return -1;
@@ -1132,6 +1146,9 @@ __doProxyHost(CFStringRef key, const char *description, void *info, int argc, ch
 static int
 __doProxyPort(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(key)
+#pragma unused(description)
+#pragma unused(info)
 	if (currentProxy == NULL) {
 		SCPrint(TRUE, stdout, CFSTR("proxy not specified\n"));
 		return -1;
@@ -1178,6 +1195,9 @@ __doProxyPort(CFStringRef key, const char *description, void *info, int argc, ch
 static int
 __doProxyURL(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(key)
+#pragma unused(description)
+#pragma unused(info)
 	if (currentProxy == NULL) {
 		SCPrint(TRUE, stdout, CFSTR("proxy not specified\n"));
 		return -1;
@@ -1215,6 +1235,12 @@ __doProxyURL(CFStringRef key, const char *description, void *info, int argc, cha
 static int
 __doProxyFTPPassive(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(key)
+#pragma unused(description)
+#pragma unused(info)
+#pragma unused(argc)
+#pragma unused(argv)
+#pragma unused(newConfiguration)
 	if (currentProxy == NULL) {
 		SCPrint(TRUE, stdout, CFSTR("proxy not specified\n"));
 		return -1;
@@ -1265,6 +1291,8 @@ __cleanupName(CFStringRef name)
 static int
 __doSMBName(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	if (argc < 1) {
 		SCPrint(TRUE, stdout, CFSTR("NetBIOS name not specified\n"));
 		return -1;
@@ -1296,6 +1324,8 @@ __doSMBName(CFStringRef key, const char *description, void *info, int argc, char
 static int
 __doSMBWorkgroup(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	if (argc < 1) {
 		SCPrint(TRUE, stdout, CFSTR("Workgroup not specified\n"));
 		return -1;
@@ -1327,6 +1357,8 @@ __doSMBWorkgroup(CFStringRef key, const char *description, void *info, int argc,
 static int
 __doSMBWINSAddresses(CFStringRef key, const char *description, void *info, int argc, char **argv, CFMutableDictionaryRef newConfiguration)
 {
+#pragma unused(description)
+#pragma unused(info)
 	CFMutableArrayRef	servers;
 
 	if (argc < 1) {
@@ -1550,6 +1582,8 @@ __private_extern__
 void
 show_protocols(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	CFIndex	i;
 	CFIndex	n;
 
@@ -1577,7 +1611,7 @@ show_protocols(int argc, char **argv)
 		sorted = CFArrayCreateMutableCopy(NULL, 0, protocols);
 		CFArraySortValues(sorted,
 				  CFRangeMake(0, n),
-				  _compare_protocols,
+				  _SCNetworkProtocolCompare,
 				  NULL);
 		CFRelease(protocols);
 		protocols = sorted;
@@ -1594,7 +1628,7 @@ show_protocols(int argc, char **argv)
 			((net_protocol != NULL) && CFEqual(protocol, net_protocol)) ? '>' : ' ',
 			i + 1,
 			protocolType,
-			(int)(sizeof("AppleTalk") - CFStringGetLength(protocolType) - 1),
+			(int)(sizeof("Proxies") - CFStringGetLength(protocolType) - 1),
 			"");
 
 		if (SCNetworkProtocolGetEnabled(protocol)) {
@@ -1691,11 +1725,34 @@ _protocol_description(SCNetworkProtocolRef protocol, Boolean skipEmpty)
 						     CFArrayGetValueAtIndex(addresses, 0));
 			} else if (CFEqual(method, kSCValNetIPv4ConfigMethodManual) &&
 				   isA_CFArray(addresses)) {
+				CFArrayRef	masks;
+				CFStringRef	router;
+
 				CFStringAppendFormat(description,
 						     NULL,
 						     CFSTR("%@, address=%@"),
 						     method,
 						     CFArrayGetValueAtIndex(addresses, 0));
+
+				if (CFDictionaryGetValueIfPresent(configuration,
+								  kSCPropNetIPv4SubnetMasks,
+								  (const void **)&masks) &&
+				    isA_CFArray(masks)) {
+					CFStringAppendFormat(description,
+							     NULL,
+							     CFSTR(", mask=%@"),
+							     CFArrayGetValueAtIndex(masks, 0));
+				}
+
+				if (CFDictionaryGetValueIfPresent(configuration,
+								  kSCPropNetIPv4Router,
+								  (const void **)&router) &&
+				    isA_CFString(router)) {
+					CFStringAppendFormat(description,
+							     NULL,
+							     CFSTR(", router=%@"),
+							     router);
+				}
 			} else {
 				CFStringAppendFormat(description,
 						     NULL,
@@ -1714,11 +1771,10 @@ _protocol_description(SCNetworkProtocolRef protocol, Boolean skipEmpty)
 					     method);
 		}
 	} else if (CFEqual(protocolType, kSCNetworkProtocolTypeProxies)) {
-		CFIndex			i;
 		static proxyKeys	*keys[] = { &proxyKeys_FTP,	&proxyKeys_Gopher,	&proxyKeys_HTTP,	&proxyKeys_HTTPS,
 						    &proxyKeys_RTSP,	&proxyKeys_SOCKS,	&proxyKeys_PAC,		&proxyKeys_WPAD	};
 
-		for (i = 0; i < sizeof(keys)/sizeof(keys[0]); i++) {
+		for (size_t i = 0; i < sizeof(keys)/sizeof(keys[0]); i++) {
 			proxyKeys	*currentProxy	= keys[i];
 
 			if (!__proxy_enabled(configuration, currentProxy->keyEnable)) {

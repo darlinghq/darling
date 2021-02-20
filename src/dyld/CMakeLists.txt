@@ -17,22 +17,6 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
 add_definitions(-DHAVE_STDINT_H=1)
 
-include_directories(${CMAKE_SOURCE_DIR}/src/launchd/liblaunch)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/gen)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/locale/FreeBSD)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/stdtime/FreeBSD)
-include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/libproc)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/emulation/linux/misc)
-include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/sandbox)
-include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/external/libcxx/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/include)
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/external/libclosure
-	${CMAKE_SOURCE_DIR}/src/libutil
-)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/launch-cache)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -145,15 +129,18 @@ target_link_libraries(system_loader libc_static system_blocks_static
 	cxx_static
 	unwind_static system_kernel_static system_m_static cxxabi_static
 	keymgr_static system_duct_static
-	pthread_static macho_static)
+	pthread_static macho_static
+	system_trace_static
+	corecrypto_static
+)
 
-if (TARGET_i386)
+if (BUILD_TARGET_32BIT)
 	target_link_libraries(system_loader libc_static32 compiler_rt_static32 platform_static32)
-endif (TARGET_i386)
+endif (BUILD_TARGET_32BIT)
 
-if (TARGET_x86_64)
+if (BUILD_TARGET_64BIT)
 	target_link_libraries(system_loader libc_static64 compiler_rt_static64 platform_static64)
-endif (TARGET_x86_64)
+endif (BUILD_TARGET_64BIT)
 
 make_fat(system_loader)
 

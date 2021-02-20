@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>OpenSourceImportDate</key>
+		<string>2007-02-11</string>
+		<key>OpenSourceLicense</key>
+		<string>LGPL</string>
+		<key>OpenSourceLicenseFile</key>
+		<string>libiconv.txt</string>
+		<key>OpenSourceModifications</key>
+		<array>
+			<string>changes to build under XBS</string>
+			<string>4740335 - MacRoman with Euro</string>
+			<string>4468207 - convert apple icon</string>
+			<string>add macutf8</string>
+			<string>UNIX2003 changes</string>
+			<string>do not inline gperf lookup functions (12056452)</string>
+			<string>lib/loop_wchar.h: 2cf3ee65d04ac4e41e29aa7526361ec3f20f5e29</string>
+			<string>lib/loop_unicode.h: bb8f7987b00e303f690b59eb62c8eede974c2dd1, and supporting lib/converters.h changes. (23050414)
+		</array>	
+		<key>OpenSourceProject</key>
+		<string>libiconv</string>
+		<key>OpenSourceSHA1</key>
+		<string>df09c3ef43443ac15c0c2d49fd791aa73a64bf30</string>
+		<key>OpenSourceURL</key>
+		<string>http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.11.tar.gz</string>
+		<key>OpenSourceVersion</key>
+		<string>1.11</string>
+		<key>OpenSourceWebsiteURL</key>
+		<string>http://www.gnu.org/software/libiconv/</string>
+	</dict>
+</array>
+</plist>

@@ -1,4 +1,7 @@
 #!/bin/bash -e
+
+if [ "${DRIVERKIT}" = 1 ]; then exit 0; fi
+
 # install kdebug trace files based on the input file
 INPUT=${SCRIPT_INPUT_FILE_0}
 OUTPUT=${SCRIPT_OUTPUT_FILE_0}

@@ -27,6 +27,9 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)signal.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
@@ -89,3 +92,4 @@ _signal_nobind(s, a)
     return signal__(s, a, 0);
 }
 #endif /* __DYNAMIC__ */
+#pragma clang diagnostic pop

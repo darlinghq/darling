@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2004, 2006-2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2004, 2006-2013, 2015, 2016 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -35,9 +35,9 @@
 #include <SystemConfiguration/VPNAppLayerPrivate.h>
 
 #include <netdb.h>
-
-
-
+#if	!TARGET_OS_SIMULATOR
+#include <ne_session.h>
+#endif	// !TARGET_OS_SIMULATOR
 
 CFStringRef
 SCDynamicStoreKeyCreateProxies(CFAllocatorRef allocator)
@@ -75,7 +75,8 @@ validate_proxy_content(CFMutableDictionaryRef	proxies,
 			goto disable;		// if not enabled, remove provided key/value
 		}
 
-		if ((enabled != 0) && !isA_CFString(host)) {
+		if ((enabled != 0) &&
+		    (!isA_CFString(host) || (CFStringGetLength(host) == 0))) {
 			goto disable;		// if enabled, not provided (or not valid)
 		}
 	}
@@ -265,7 +266,7 @@ __SCNetworkProxiesCopyNormalized(CFDictionaryRef proxy)
 			CFStringRef	str;
 
 			str = CFArrayGetValueAtIndex(array, i);
-			if (!isA_CFString(str)) {
+			if (!isA_CFString(str) || (CFStringGetLength(str) == 0)) {
 				// if we don't like the array contents
 				n = 0;
 				break;
@@ -366,12 +367,12 @@ normalize_scoped_proxy(const void *key, const void *value, void *context)
 static void
 normalize_services_proxy(const void *key, const void *value, void *context)
 {
-	CFStringRef		serviceID	= (CFStringRef)key;
+	CFNumberRef		serviceIndex	= (CFNumberRef)key;
 	CFDictionaryRef		proxy		= (CFDictionaryRef)value;
 	CFMutableDictionaryRef	newServices	= (CFMutableDictionaryRef)context;
 
 	proxy = __SCNetworkProxiesCopyNormalized(proxy);
-	CFDictionarySetValue(newServices, serviceID, proxy);
+	CFDictionarySetValue(newServices, serviceIndex, proxy);
 	CFRelease(proxy);
 
 	return;
@@ -403,12 +404,12 @@ SCDynamicStoreCopyProxiesWithOptions(SCDynamicStoreRef store, CFDictionaryRef op
 {
 	Boolean			bypass	= FALSE;
 	CFStringRef		key;
-	CFDictionaryRef		proxies;
+	CFDictionaryRef		proxies	= NULL;
 
 	if (options != NULL) {
 		CFBooleanRef	bypassGlobalOption;
 
-		if (isA_CFDictionary(options) == NULL) {
+		if (!isA_CFDictionary(options)) {
 			_SCErrorSet(kSCStatusInvalidArgument);
 			return NULL;
 		}
@@ -426,6 +427,21 @@ SCDynamicStoreCopyProxiesWithOptions(SCDynamicStoreRef store, CFDictionaryRef op
 	proxies = SCDynamicStoreCopyValue(store, key);
 	CFRelease(key);
 
+	if (isA_CFDictionary(proxies) &&
+	    CFDictionaryContainsKey(proxies, kSCPropNetProxiesBypassAllowed)) {
+		CFMutableDictionaryRef	newProxies;
+
+		newProxies = CFDictionaryCreateMutableCopy(NULL, 0, proxies);
+		CFRelease(proxies);
+
+		/*
+		 * Remove kSCPropNetProxiesBypassAllowed property from network
+		 * service based configurations.
+		 */
+		CFDictionaryRemoveValue(newProxies, kSCPropNetProxiesBypassAllowed);
+		proxies = newProxies;
+	}
+
 
 	if (proxies != NULL) {
 		CFDictionaryRef	base	= proxies;
@@ -440,7 +456,6 @@ SCDynamicStoreCopyProxiesWithOptions(SCDynamicStoreRef store, CFDictionaryRef op
 					     &kCFTypeDictionaryKeyCallBacks,
 					     &kCFTypeDictionaryValueCallBacks);
 	}
-
 
 	return proxies;
 }
@@ -479,7 +494,6 @@ _SCNetworkProxiesCopyMatchingInternal(CFDictionaryRef	globalConfiguration,
 
 		euuid = CFDictionaryGetValue(options, kSCProxiesMatchExecutableUUID);
 		euuid = isA_CFType(euuid, CFUUIDGetTypeID());
-
 		if (euuid != NULL) {
 			CFUUIDBytes uuid_bytes = CFUUIDGetUUIDBytes(euuid);
 			uuid_copy(match_uuid, (const uint8_t *)&uuid_bytes);
@@ -497,6 +511,21 @@ _SCNetworkProxiesCopyMatchingInternal(CFDictionaryRef	globalConfiguration,
 
 		scoped = CFDictionaryGetValue(globalConfiguration, kSCPropNetProxiesScoped);
 		if (scoped == NULL) {
+#if	!TARGET_OS_SIMULATOR
+			if (CFDictionaryContainsKey(globalConfiguration, kSCPropNetProxiesBypassAllowed) &&
+			    ne_session_always_on_vpn_configs_present()) {
+				/*
+				 * The kSCPropNetProxiesBypassAllowed key will be present
+				 * for managed proxy configurations where bypassing is *not*
+				 * allowed.
+				 *
+				 * Also (for now), forcing the use of the managed proxy
+				 * configurations will only be done with AOVPN present.
+				 */
+				goto useDefault;
+			}
+#endif	// !TARGET_OS_SIMULATOR
+
 			// if no scoped proxy configurations
 			_SCErrorSet(kSCStatusOK);
 			return NULL;
@@ -620,6 +649,10 @@ _SCNetworkProxiesCopyMatchingInternal(CFDictionaryRef	globalConfiguration,
 
 	// no matches, return "global" proxy configuration
 
+#if	!TARGET_OS_SIMULATOR
+    useDefault :
+#endif	// !TARGET_OS_SIMULATOR
+
 	newProxy = CFDictionaryCreateMutableCopy(NULL, 0, globalConfiguration);
 	CFDictionaryRemoveValue(newProxy, kSCPropNetProxiesScoped);
 	CFDictionaryRemoveValue(newProxy, kSCPropNetProxiesServices);
@@ -630,15 +663,40 @@ _SCNetworkProxiesCopyMatchingInternal(CFDictionaryRef	globalConfiguration,
     done :
 
 	if (sc_status != kSCStatusOK) {
-		if (proxies != NULL) {
-			CFRelease(proxies);
-			proxies = NULL;
-		}
 		_SCErrorSet(sc_status);
+
+//		Note: if we are returning an error then we must
+//		      return w/proxies==NULL.  At present, there
+//		      is no code (above) that would get here with
+//		      proxies!=NULL so we don't need to take any
+//		      action but future coder's should beware :-)
+//		if (proxies != NULL) {
+//			CFRelease(proxies);
+//			proxies = NULL;
+//		}
 	}
 	if (trimmed != NULL) CFRelease(trimmed);
 
 	return proxies;
+}
+
+CFDataRef
+SCNetworkProxiesCreateProxyAgentData(CFDictionaryRef proxyConfig)
+{
+	CFDataRef result = NULL;
+	CFArrayRef newProxy = NULL;
+
+	if (!isA_CFDictionary(proxyConfig)) {
+		SC_log(LOG_ERR, "Invalid proxy configuration");
+		_SCErrorSet(kSCStatusInvalidArgument);
+		return NULL;
+	}
+
+	newProxy = CFArrayCreate(NULL, (const void **)&proxyConfig, 1, &kCFTypeArrayCallBacks);
+	(void)_SCSerialize(newProxy, &result, NULL, NULL);
+	CFRelease(newProxy);
+
+	return result;
 }
 
 CFArrayRef

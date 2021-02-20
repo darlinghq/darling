@@ -215,7 +215,7 @@
 139	AUE_FUTIMES	ALL	{ int futimes(int fd, struct timeval *tptr); } 
 140	AUE_ADJTIME	ALL	{ int adjtime(struct timeval *delta, struct timeval *olddelta); } 
 141	AUE_NULL	ALL	{ int nosys(void); }   { old getpeername }
-142	AUE_SYSCTL	ALL	{ int gethostuuid(unsigned char *uuid_buf, const struct timespec *timeoutp, int spi) NO_SYSCALL_STUB; }
+142	AUE_SYSCTL	ALL	{ int gethostuuid(unsigned char *uuid_buf, const struct timespec *timeoutp) NO_SYSCALL_STUB; }
 143	AUE_NULL	ALL	{ int nosys(void); }   { old sethostid 	}
 144	AUE_NULL	ALL	{ int nosys(void); }   { old getrlimit }
 145	AUE_NULL	ALL	{ int nosys(void); }   { old setrlimit }
@@ -314,7 +314,7 @@
 
 ; 216-> 219 used to be mkcomplex and {f,l}statv variants. They are gone now.
 216	AUE_NULL	ALL	{ int open_dprotected_np(user_addr_t path, int flags, int class, int dpflags, int mode) NO_SYSCALL_STUB; }
-217	AUE_NULL	ALL	{ int nosys(void); }	{ old statv }
+217	AUE_FSGETPATH_EXTENDED	ALL	{ user_ssize_t fsgetpath_ext(user_addr_t buf, size_t bufsize, user_addr_t fsid, uint64_t objid, uint32_t options); }
 218	AUE_NULL	ALL	{ int nosys(void); }	{ old lstatv }
 219	AUE_NULL	ALL	{ int nosys(void); }	{ old fstatv }
 220	AUE_GETATTRLIST	ALL	{ int getattrlist(const char *path, struct attrlist *alist, void *attributeBuffer, size_t bufferSize, u_long options) NO_SYSCALL_STUB; } 
@@ -414,7 +414,7 @@
 271	AUE_SEMWAIT	ALL	{ int sem_wait(sem_t *sem); } 
 272	AUE_SEMTRYWAIT	ALL	{ int sem_trywait(sem_t *sem); } 
 273	AUE_SEMPOST	ALL	{ int sem_post(sem_t *sem); } 
-274	AUE_SYSCTL	ALL 	{ int sysctlbyname(const char *name, size_t namelen, void *old, size_t *oldlenp, void *new, size_t newlen) NO_SYSCALL_STUB; }
+274	AUE_SYSCTL	ALL 	{ int sys_sysctlbyname(const char *name, size_t namelen, void *old, size_t *oldlenp, void *new, size_t newlen) NO_SYSCALL_STUB; }
 275	AUE_NULL	ALL	{ int enosys(void); } { old sem_init }
 276	AUE_NULL	ALL	{ int enosys(void); } { old sem_destroy }
 277	AUE_OPEN_EXTENDED_RWTC	ALL	{ int open_extended(user_addr_t path, int flags, uid_t uid, gid_t gid, int mode, user_addr_t xsecurity) NO_SYSCALL_STUB; } 
@@ -787,7 +787,7 @@
 493	AUE_NULL	ALL { int enosys(void); }
 #endif
 #if CONFIG_PERSONAS
-494	AUE_PERSONA	ALL	{ int persona(uint32_t operation, uint32_t flags, struct kpersona_info *info, uid_t *id, size_t *idlen) NO_SYSCALL_STUB; }
+494	AUE_PERSONA	ALL	{ int persona(uint32_t operation, uint32_t flags, struct kpersona_info *info, uid_t *id, size_t *idlen, char *path) NO_SYSCALL_STUB; }
 #else
 494	AUE_NULL	ALL	{ int enosys(void); }
 #endif
@@ -842,3 +842,10 @@
 530	AUE_NULL	ALL	{ int enosys(void); }
 #endif // CONFIG_WORKQUEUE
 531	AUE_NULL	ALL	{ uint64_t __mach_bridge_remote_time(uint64_t local_timestamp); }
+#if CONFIG_COALITIONS
+532 AUE_NULL  ALL { int coalition_ledger(uint32_t operation, uint64_t *cid, void *buffer, size_t *bufsize) NO_SYSCALL_STUB; }
+#else
+532   AUE_NULL    ALL { int enosys(void); }
+#endif // CONFIG_COALITIONS
+533     AUE_NULL        ALL     { int log_data(unsigned int tag, unsigned int flags, void *buffer, unsigned int size) NO_SYSCALL_STUB; }
+534 AUE_NULL	ALL	{ uint64_t memorystatus_available_memory(void) NO_SYSCALL_STUB; }

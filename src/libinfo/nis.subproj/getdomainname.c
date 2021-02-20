@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -25,9 +25,12 @@
  * cover for getdomainname()
  * Copyright (C) 1995 by NeXT Computer, Inc.
  */
+#include "libinfo_common.h"
+
 #include <mach/mach_types.h>
 #include <sys/sysctl.h>
 
+LIBINFO_EXPORT
 int
 getdomainname(char *val, int inlen)
 {

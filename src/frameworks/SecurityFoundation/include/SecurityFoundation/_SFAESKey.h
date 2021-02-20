@@ -19,6 +19,14 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFAESKey : NSObject
+#import <SecurityFoundation/_SFKey.h>
+#import <SecurityFoundation/_SFAESKeySpecifier.h>
+
+#define SFAESKey _SFAESKey
+
+@interface SFAESKey : SFKey
+
+- (instancetype)initRandomKeyWithSpecifier:(SFAESKeySpecifier*)specifier error:(NSError**)error;
+- (instancetype)initWithData:(NSData*)data specifier:(SFAESKeySpecifier*)specifier error:(NSError**)error;
 
 @end

@@ -26,18 +26,20 @@
 
 #define __OS_EXPOSE_INTERNALS__ 1
 
+// Toggles for fixes for specific Radars. If we get enough of these, we
+// probably should create a separate header file for them.
+#define RDAR_48993662 1
+
 #include <Availability.h>
 #include <TargetConditionals.h>
 #include <_simple.h>
 #include <platform/string.h>
-static size_t _platform_strlen(const char *s);
-static size_t _platform_strlcpy(char * restrict dst, const char * restrict src, size_t maxlen);
+#undef memcpy
 #define memcpy _platform_memmove
 #include <platform/compat.h>
 #include <assert.h>
 #include <crt_externs.h>
 #include <dirent.h>
-#include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libc.h>
@@ -49,6 +51,7 @@ static size_t _platform_strlcpy(char * restrict dst, const char * restrict src, 
 #include <mach/mach_init.h>
 #include <mach/mach_types.h>
 #include <mach/mach_vm.h>
+#include <mach/shared_region.h>
 #include <mach/thread_switch.h>
 #include <mach/vm_map.h>
 #include <mach/vm_page_size.h>
@@ -75,38 +78,44 @@ static size_t _platform_strlcpy(char * restrict dst, const char * restrict src, 
 #include <sys/random.h>
 #include <sys/types.h>
 #include <sys/vmparam.h>
+#include <thread_stack_pcs.h>
 #include <unistd.h>
 #include <xlocale.h>
 
-#include "magmallocProvider.h"
-
+#include "dtrace.h"
 #include "base.h"
 #include "trace.h"
 #include "platform.h"
 #include "debug.h"
 #include "locking.h"
 #include "bitarray.h"
-#include "malloc.h"
+#include "malloc/malloc.h"
 #include "printf.h"
 #include "frozen_malloc.h"
 #include "legacy_malloc.h"
 #include "magazine_malloc.h"
+#include "malloc_common.h"
+#include "nano_malloc_common.h"
 #include "nano_malloc.h"
+#include "nanov2_malloc.h"
 #include "purgeable_malloc.h"
 #include "malloc_private.h"
-#include "stack_logging.h"
-#include "stack_logging_internal.h"
 #include "thresholds.h"
-
+#include "vm.h"
+#include "magazine_rack.h"
 #include "magazine_zone.h"
+#include "nano_zone_common.h"
 #include "nano_zone.h"
-
+#include "nanov2_zone.h"
 #include "magazine_inline.h"
-
-extern uint64_t malloc_entropy[2];
+#include "stack_logging.h"
+#include "malloc_implementation.h"
 
 MALLOC_NOEXPORT
 extern boolean_t malloc_tracing_enabled;
+
+MALLOC_NOEXPORT
+extern unsigned malloc_debug_flags;
 
 MALLOC_NOEXPORT MALLOC_NOINLINE
 void
@@ -116,8 +125,16 @@ MALLOC_NOEXPORT MALLOC_NOINLINE MALLOC_USED
 int
 malloc_gdb_po_unsafe(void);
 
-MALLOC_NOEXPORT
-extern uint64_t max_lite_mallocs;
+/*
+  * Copies the malloc library's _malloc_msl_lite_hooks_t structure to a given
+  * location. Size is passed to allow the structure to  grow. Since this is
+  * a temporary arrangement, we don't need to worry about
+  * pointer authentication here or in the _malloc_msl_lite_hooks_t structure
+  * itself.
+  */
+struct _malloc_msl_lite_hooks_s;
+typedef void (*set_msl_lite_hooks_callout_t) (struct _malloc_msl_lite_hooks_s *hooksp, size_t size);
+void set_msl_lite_hooks(set_msl_lite_hooks_callout_t callout);
 
 
 #endif // __INTERNAL_H

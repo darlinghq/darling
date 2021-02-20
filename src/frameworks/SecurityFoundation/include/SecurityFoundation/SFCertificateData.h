@@ -18,7 +18,12 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <Security/SecCertificate.h>
 
 @interface SFCertificateData : NSObject
+
+- (instancetype)initWithCertificate:(SecCertificateRef)certificate;
+
+- (NSData*)tabDelimitedTextData;
 
 @end

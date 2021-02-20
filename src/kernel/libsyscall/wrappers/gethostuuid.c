@@ -29,7 +29,7 @@
 
 #include "gethostuuid_private.h"
 
-extern int __gethostuuid(uuid_t, const struct timespec *, int);
+extern int __gethostuuid(uuid_t, const struct timespec *);
 
 static volatile int (*_gethostuuid_callback)(uuid_t) = (void *)0;
 
@@ -37,8 +37,8 @@ int
 gethostuuid(uuid_t uuid, const struct timespec *timeout)
 {
 	int result;
-	
-	result = __gethostuuid(uuid, timeout, 0);
+
+	result = __gethostuuid(uuid, timeout);
 	if ((result == -1) && (errno == EPERM)) {
 		if (_gethostuuid_callback) {
 			result = _gethostuuid_callback(uuid);
@@ -47,21 +47,20 @@ gethostuuid(uuid_t uuid, const struct timespec *timeout)
 			memset(uuid, 0x00, sizeof(*uuid));
 		}
 	}
-	
+
 	return result;
 }
 
-/* SPI to call gethostuuid syscall directly, without fallback */
+/* SPI to call gethostuuid syscall directly, without fallback, need an entitlement */
 int
 _getprivatesystemidentifier(uuid_t uuid, const struct timespec *timeout)
 {
-	return __gethostuuid(uuid, timeout, 1);
+	return __gethostuuid(uuid, timeout);
 }
 
 int
 _register_gethostuuid_callback(int (*new_callback)(uuid_t))
 {
-
 	if (__sync_bool_compare_and_swap((void **)&_gethostuuid_callback, (void *)0, (void *)new_callback)) {
 		return 0;
 	} else {

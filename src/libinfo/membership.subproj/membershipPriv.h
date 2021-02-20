@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2004-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -25,6 +25,7 @@
 
 #include <uuid/uuid.h>
 #include <ntsid.h>
+#include <os/availability.h>
 
 #define MBR_UU_STRING_SIZE 37
 #define MBR_MAX_SID_STRING_SIZE 200
@@ -49,10 +50,10 @@ int mbr_check_membership_by_id(uuid_t user, gid_t group, int *ismember);
 int mbr_check_membership_refresh(const uuid_t user, uuid_t group, int *ismember);
 
 /* mbr_uuid_to_string should use uuid_unparse from uuid.h */
-int mbr_uuid_to_string(const uuid_t uu, char *string) __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_4, __MAC_10_8, __IPHONE_NA, __IPHONE_NA);
+int mbr_uuid_to_string(const uuid_t uu, char *string) API_DEPRECATED("No longer supported", macos(10.4, 10.8));
 
 /* mbr_string_to_uuid should use uuid_parse from uuid.h */
-int mbr_string_to_uuid(const char *string, uuid_t uu) __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_4, __MAC_10_8, __IPHONE_NA, __IPHONE_NA);
+int mbr_string_to_uuid(const char *string, uuid_t uu) API_DEPRECATED("No longer supported", macos(10.4, 10.8));
 
 int mbr_uuid_to_sid_type(const uuid_t uu, nt_sid_t *sid, int *id_type);
 int mbr_set_identifier_ttl(int id_type, const void *identifier, size_t identifier_size, unsigned int seconds);

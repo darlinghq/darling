@@ -29,7 +29,45 @@
 #include <sys/appleapiopts.h>
 #include <machine/cpu_capabilities.h>
 
-#if   defined(__i386__)
+#if defined(__arm__)
+
+	.text
+	.align	2
+	.globl	_mach_approximate_time
+_mach_approximate_time:
+
+	movw	r0, #((_COMM_PAGE_APPROX_TIME_SUPPORTED>>0)&0x0FFFF)
+	movt	r0, #((_COMM_PAGE_APPROX_TIME_SUPPORTED>>16)&0x0FFFF)
+	ldrb	r0, [r0]		// load COMM_PAGE_APPROX_TIME_SUPPORTED
+	cmp	r0, #1			// check if approx time is supported
+        
+        bne      _mach_absolute_time	// if not supported, fall through to
+					//   absolute_time
+
+	movw	r2, #((_COMM_PAGE_APPROX_TIME>>0)&0x0FFFF)
+	movt	r2, #((_COMM_PAGE_APPROX_TIME>>16)&0x0FFFF)
+
+        // at this point, r2->COMM_PAGE_APPROX_TIME, which is a 64-bit value.
+        // Since this is a 32-bit architecture, and the commpage is readonly,
+        // there is no "guaranteed" atomic way to read all 64-bits with
+        // hardware protection. Even the ldrd instruction is not guaranteed to
+        // complete atomically. The solution is to use a 32-bit high/low/high
+        // read with a consistency check on the high bits. To further
+        // complicate things, reading the same location in memory back to back
+        // could trigger a predictive read, which would defeat the purpose of
+        // doing the consistency check so we insert a data memory barrier to
+        // prevent this.
+_consistency_check:
+        ldr     r1, [r2,#4]		// load high
+        ldr     r0, [r2]		// load low
+        dsb				// avoid predictive reads that could
+					//   be invalid if interrupted
+        ldr     r3, [r2,#4]		// load high again
+        cmp     r1, r3			// check that high1 == high2
+	bne	_consistency_check	// try again if not
+        bx      lr
+
+#elif defined(__i386__)
 
 	.text
 	.align	4, 0x90

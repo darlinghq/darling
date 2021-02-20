@@ -17,12 +17,6 @@ FEATURE_LEGACY_UTMP_APIS = 1
 # OSThermalNotification APIs
 FEATURE_THERM_NOTIFICATION_APIS = 1
 
-# Move localtime to /var/db/timezone
-#FEATURE_MOVE_LOCALTIME = 1
-
-# Use TZDIR symlink in /var/db
-#FEATURE_TZDIR_SYMLINK = 1
-
 # No pre-1050 variants (should match sys/cdefs.h)
 #FEATURE_ONLY_1050_VARIANTS = 1
 
@@ -51,3 +45,6 @@ FEATURE_XPRINTF_PERF = 1
 
 # Disable registration of specific signals (<rdar://problem/21952708>)
 # FEATURE_SIGNAL_RESTRICTION = 0
+
+# Enable 32-bit compilation in unistd.h (<rdar://problem/51818745>)
+# FEATURE_POSIX_ILP32_ALLOW = 0

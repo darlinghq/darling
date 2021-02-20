@@ -1,1 +1,1 @@
-../../../../../../../../../src/duct/include/os/log_private.h
+../../../../../../../../../src/external/lkm/libkern/os/log_private.h

@@ -63,7 +63,9 @@ my @CFLAGS = (
 	"-x assembler-with-cpp",
 	"-c",
 	"-isysroot", $ENV{'SDKROOT'} || "/",
-	"-I".$ENV{"SDKROOT"}."/System/Library/Frameworks/System.framework/PrivateHeaders",
+	"-I".$ENV{"SDKROOT"}."/".$ENV{"SDK_INSTALL_HEADERS_ROOT"}."/usr/include",
+	"-I".$ENV{"SDKROOT"}."/".$ENV{"SDK_INSTALL_HEADERS_ROOT"}."/usr/local/include",
+	"-I".$ENV{"SDKROOT"}."/".$ENV{"SDK_INSTALL_HEADERS_ROOT"}."/System/Library/Frameworks/System.framework/PrivateHeaders",
 );
 
 chomp(my $LIBTOOL = `xcrun -sdk "$ENV{'SDKROOT'}" -find libtool`);

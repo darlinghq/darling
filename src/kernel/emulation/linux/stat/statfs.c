@@ -11,6 +11,8 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 
+#undef strlcpy
+
 extern char *strtok_r(char *str, const char *delim, char **saveptr);
 extern __SIZE_TYPE__ strlcpy(char* dst, const char* src, __SIZE_TYPE__ size);
 extern __SIZE_TYPE__ strlen(const char* str);

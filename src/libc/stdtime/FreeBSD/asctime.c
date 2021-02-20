@@ -10,6 +10,7 @@
 */
 
 #include <sys/cdefs.h>
+#include <xlocale.h>
 #ifndef lint
 #ifndef NOID
 static char	elsieid[] __unused = "@(#)asctime.c	8.2";
@@ -105,7 +106,7 @@ asctime_r(const struct tm * __restrict timeptr, char * __restrict buf)
 	** Assume that strftime is unaffected by other out-of-range members
 	** (e.g., timeptr->tm_mday) when processing "%Y".
 	*/
-	(void) strftime(year, sizeof year, "%Y", timeptr);
+	(void) strftime_l(year, sizeof(year), "%Y", timeptr, NULL);
 	/*
 	** We avoid using snprintf since it's not available on all systems.
 	*/

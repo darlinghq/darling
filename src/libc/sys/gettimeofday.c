@@ -47,9 +47,9 @@ int gettimeofday (struct timeval *tp, void *vtzp)
 	struct timeval atv;
 
 	if (tp == NULL) {
-	    if (tzp == NULL)
-		return	(0);
-	    tp = &atv;
+		if (tzp == NULL)
+			return	(0);
+		tp = &atv;
 	}
 
 	if (__commpage_gettimeofday(tp)) {		/* first try commpage */

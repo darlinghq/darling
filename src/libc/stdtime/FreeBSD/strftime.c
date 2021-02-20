@@ -15,15 +15,16 @@
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#ifndef lint
-#ifndef NOID
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunreachable-code"
+
+#if 0
 static const char	elsieid[] = "@(#)strftime.3	8.3";
 /*
 ** Based on the UCB version with the ID appearing below.
 ** This is ANSIish only when "multibyte character == plain character".
 */
-#endif /* !defined NOID */
-#endif /* !defined lint */
+#endif
 
 #include "xlocale_private.h"
 
@@ -53,7 +54,7 @@ __private_extern__ char *	_fmt(const char *, const struct tm *, char *, const ch
 			int *, struct lc_time_T *, locale_t);
 
 extern char *	tzname[];
-__private_extern__ long __darwin_altzone;		/* DST timezone offset */
+extern long __darwin_altzone;		/* DST timezone offset */
 #define altzone __darwin_altzone
 __private_extern__ long _st_get_timezone(void);
 
@@ -659,3 +660,4 @@ locale_t		loc;
 	return pt;
 }
 #endif /* !BUILDING_VARIANT */
+#pragma clang diagnostic pop

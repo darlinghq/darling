@@ -23,6 +23,8 @@
 #include <CoreServices/UnicodeUtilities.h>
 #include <CoreServices/TextCommon.h>
 #include <CoreServices/TextEncodingConverter.h>
+#include <CoreServices/MDItem.h>
+#include <CoreServices/MDQuery.h>
 
 #include <LaunchServices/LaunchServices.h>
 #include <AE/AE.h>

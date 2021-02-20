@@ -45,7 +45,7 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/fputs.c,v 1.12 2007/01/09 00:28:06 imp Ex
 #include "local.h"
 
 // 3340719: __puts_null__ is used if string is NULL.  Defined in puts.c
-__private_extern__ char const __puts_null__[];
+extern char const __puts_null__[];
 
 /*
  * Write the given string to the given file.

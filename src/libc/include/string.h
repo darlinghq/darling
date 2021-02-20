@@ -72,21 +72,17 @@ int	 memcmp(const void *__s1, const void *__s2, size_t __n);
 void	*memcpy(void *__dst, const void *__src, size_t __n);
 void	*memmove(void *__dst, const void *__src, size_t __len);
 void	*memset(void *__b, int __c, size_t __len);
+#ifndef UNIFDEF_DRIVERKIT
 char	*strcat(char *__s1, const char *__s2);
+#endif /* UNIFDEF_DRIVERKIT */
 char	*strchr(const char *__s, int __c);
 int	 strcmp(const char *__s1, const char *__s2);
 int	 strcoll(const char *__s1, const char *__s2);
+#ifndef UNIFDEF_DRIVERKIT
 char	*strcpy(char *__dst, const char *__src);
+#endif /* UNIFDEF_DRIVERKIT */
 size_t	 strcspn(const char *__s, const char *__charset);
-//Begin-Libc
-#ifndef LIBC_ALIAS_STRERROR
-//End-Libc
 char	*strerror(int __errnum) __DARWIN_ALIAS(strerror);
-//Begin-Libc
-#else /* LIBC_ALIAS_STRERROR */
-char	*strerror(int __errnum) LIBC_ALIAS(strerror);
-#endif /* !LIBC_ALIAS_STRERROR */
-//End-Libc
 size_t	 strlen(const char *__s);
 char	*strncat(char *__s1, const char *__s2, size_t __n);
 int	 strncmp(const char *__s1, const char *__s2, size_t __n);
@@ -135,7 +131,9 @@ __END_DECLS
 
 #if __DARWIN_C_LEVEL >= 200809L
 __BEGIN_DECLS
+#ifndef UNIFDEF_DRIVERKIT
 char	*stpcpy(char *__dst, const char *__src);
+#endif /* UNIFDEF_DRIVERKIT */
 char    *stpncpy(char *__dst, const char *__src, size_t __n) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 char	*strndup(const char *__s1, size_t __n) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 size_t   strnlen(const char *__s1, size_t __n) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
@@ -175,10 +173,8 @@ char	*strsep(char **__stringp, const char *__delim);
 /* SUS places swab() in unistd.h.  It is listed here for source compatibility */
 void	 swab(const void * __restrict, void * __restrict, ssize_t);
 
-#ifndef __CUDACC__
 __OSX_AVAILABLE(10.12.1) __IOS_AVAILABLE(10.1)
 __TVOS_AVAILABLE(10.0.1) __WATCHOS_AVAILABLE(3.1)
-#endif
 int	timingsafe_bcmp(const void *__b1, const void *__b2, size_t __len);
 __END_DECLS
 

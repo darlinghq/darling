@@ -61,97 +61,9 @@
 #ifndef	_STDIO_H_
 #define	_STDIO_H_
 
-#include <sys/cdefs.h>
-#include <Availability.h>
+#include <_stdio.h>
 
-#include <_types.h>
-
-/* DO NOT REMOVE THIS COMMENT: fixincludes needs to see:
- * __gnuc_va_list and include <stdarg.h> */
-#include <sys/_types/_va_list.h>
-#include <sys/_types/_size_t.h>
-#include <sys/_types/_null.h>
-
-#include <sys/stdio.h>
-
-typedef __darwin_off_t		fpos_t;
-
-#define	_FSTDIO			/* Define for new stdio with functions. */
-
-/*
- * NB: to fit things in six character monocase externals, the stdio
- * code uses the prefix `__s' for stdio objects, typically followed
- * by a three-character attempt at a mnemonic.
- */
-
-/* stdio buffers */
-struct __sbuf {
-	unsigned char	*_base;
-	int		_size;
-};
-
-/* hold a buncha junk that would grow the ABI */
-struct __sFILEX;
-
-/*
- * stdio state variables.
- *
- * The following always hold:
- *
- *	if (_flags&(__SLBF|__SWR)) == (__SLBF|__SWR),
- *		_lbfsize is -_bf._size, else _lbfsize is 0
- *	if _flags&__SRD, _w is 0
- *	if _flags&__SWR, _r is 0
- *
- * This ensures that the getc and putc macros (or inline functions) never
- * try to write or read from a file that is in `read' or `write' mode.
- * (Moreover, they can, and do, automatically switch from read mode to
- * write mode, and back, on "r+" and "w+" files.)
- *
- * _lbfsize is used only to make the inline line-buffered output stream
- * code as compact as possible.
- *
- * _ub, _up, and _ur are used when ungetc() pushes back more characters
- * than fit in the current _bf, or when ungetc() pushes back a character
- * that does not match the previous one in _bf.  When this happens,
- * _ub._base becomes non-nil (i.e., a stream has ungetc() data iff
- * _ub._base!=NULL) and _up and _ur save the current values of _p and _r.
- *
- * NB: see WARNING above before changing the layout of this structure!
- */
-typedef	struct __sFILE {
-	unsigned char *_p;	/* current position in (some) buffer */
-	int	_r;		/* read space left for getc() */
-	int	_w;		/* write space left for putc() */
-	short	_flags;		/* flags, below; this FILE is free if 0 */
-	short	_file;		/* fileno, if Unix descriptor, else -1 */
-	struct	__sbuf _bf;	/* the buffer (at least 1 byte, if !NULL) */
-	int	_lbfsize;	/* 0 or -_bf._size, for inline putc */
-
-	/* operations */
-	void	*_cookie;	/* cookie passed to io functions */
-	int	(* _Nullable _close)(void *);
-	int	(* _Nullable _read) (void *, char *, int);
-	fpos_t	(* _Nullable _seek) (void *, fpos_t, int);
-	int	(* _Nullable _write)(void *, const char *, int);
-
-	/* separate buffer for long sequences of ungetc() */
-	struct	__sbuf _ub;	/* ungetc buffer */
-	struct __sFILEX *_extra; /* additions to FILE to not break ABI */
-	int	_ur;		/* saved _r when _r is counting ungetc data */
-
-	/* tricks to meet minimum requirements even when malloc() fails */
-	unsigned char _ubuf[3];	/* guarantee an ungetc() buffer */
-	unsigned char _nbuf[1];	/* guarantee a getc() buffer */
-
-	/* separate buffer for fgetln() when line crosses buffer boundary */
-	struct	__sbuf _lb;	/* buffer for fgetln() */
-
-	/* Unix stdio files get aligned to block boundaries on fseek() */
-	int	_blksize;	/* stat.st_blksize (may be != _bf._size) */
-	fpos_t	_offset;	/* current lseek offset (see WARNING) */
-} FILE;
-
+#ifndef UNIFDEF_DRIVERKIT
 __BEGIN_DECLS
 extern FILE *__stdinp;
 extern FILE *__stdoutp;
@@ -239,56 +151,23 @@ char	*fgets(char * __restrict, int, FILE *);
 #if defined(_DARWIN_UNLIMITED_STREAMS) || defined(_DARWIN_C_SOURCE)
 FILE	*fopen(const char * __restrict __filename, const char * __restrict __mode) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_3_2, __DARWIN_EXTSN(fopen));
 #else /* !_DARWIN_UNLIMITED_STREAMS && !_DARWIN_C_SOURCE */
-//Begin-Libc
-#ifndef LIBC_ALIAS_FOPEN
-//End-Libc
 FILE	*fopen(const char * __restrict __filename, const char * __restrict __mode) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_2_0, __DARWIN_ALIAS(fopen));
-//Begin-Libc
-#else /* LIBC_ALIAS_FOPEN */
-FILE	*fopen(const char * __restrict __filename, const char * __restrict __mode) LIBC_ALIAS(fopen);
-#endif /* !LIBC_ALIAS_FOPEN */
-//End-Libc
 #endif /* (DARWIN_UNLIMITED_STREAMS || _DARWIN_C_SOURCE) */
 int	 fprintf(FILE * __restrict, const char * __restrict, ...) __printflike(2, 3);
 int	 fputc(int, FILE *);
-//Begin-Libc
-#ifndef LIBC_ALIAS_FPUTS
-//End-Libc
 int	 fputs(const char * __restrict, FILE * __restrict) __DARWIN_ALIAS(fputs);
-//Begin-Libc
-#else /* LIBC_ALIAS_FPUTS */
-int	 fputs(const char * __restrict, FILE * __restrict) LIBC_ALIAS(fputs);
-#endif /* !LIBC_ALIAS_FPUTS */
-//End-Libc
 size_t	 fread(void * __restrict __ptr, size_t __size, size_t __nitems, FILE * __restrict __stream);
-//Begin-Libc
-#ifndef LIBC_ALIAS_FREOPEN
-//End-Libc
 FILE	*freopen(const char * __restrict, const char * __restrict,
                  FILE * __restrict) __DARWIN_ALIAS(freopen);
-//Begin-Libc
-#else /* LIBC_ALIAS_FREOPEN */
-FILE	*freopen(const char * __restrict, const char * __restrict,
-                 FILE * __restrict) LIBC_ALIAS(freopen);
-#endif /* !LIBC_ALIAS_FREOPEN */
-//End-Libc
 int	 fscanf(FILE * __restrict, const char * __restrict, ...) __scanflike(2, 3);
 int	 fseek(FILE *, long, int);
 int	 fsetpos(FILE *, const fpos_t *);
 long	 ftell(FILE *);
-//Begin-Libc
-#ifndef LIBC_ALIAS_FWRITE
-//End-Libc
 size_t	 fwrite(const void * __restrict __ptr, size_t __size, size_t __nitems, FILE * __restrict __stream) __DARWIN_ALIAS(fwrite);
-//Begin-Libc
-#else /* LIBC_ALIAS_FWRITE */
-size_t	 fwrite(const void * __restrict __ptr, size_t __size, size_t __nitems, FILE * __restrict __stream) LIBC_ALIAS(fwrite);
-#endif /* !LIBC_ALIAS_FWRITE */
-//End-Libc
 int	 getc(FILE *);
 int	 getchar(void);
 char	*gets(char *);
-void	 perror(const char *);
+void	 perror(const char *) __cold;
 int	 printf(const char * __restrict, ...) __printflike(1, 2);
 int	 putc(int, FILE *);
 int	 putchar(int);
@@ -324,24 +203,12 @@ __END_DECLS
 #define	L_ctermid	1024	/* size for ctermid(); PATH_MAX */
 
 __BEGIN_DECLS
-#ifndef __CTERMID_DEFINED
-/* Multiply defined in stdio.h and unistd.h by SUS */
-#define __CTERMID_DEFINED 1
-char	*ctermid(char *);
-#endif
+#include <_ctermid.h>
 
 #if defined(_DARWIN_UNLIMITED_STREAMS) || defined(_DARWIN_C_SOURCE)
 FILE	*fdopen(int, const char *) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_3_2, __DARWIN_EXTSN(fdopen));
 #else /* !_DARWIN_UNLIMITED_STREAMS && !_DARWIN_C_SOURCE */
-//Begin-Libc
-#ifndef LIBC_ALIAS_FDOPEN
-//End-Libc
 FILE	*fdopen(int, const char *) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_2_0, __DARWIN_ALIAS(fdopen));
-//Begin-Libc
-#else /* LIBC_ALIAS_FDOPEN */
-FILE	*fdopen(int, const char *) LIBC_ALIAS(fdopen);
-#endif /* !LIBC_ALIAS_FDOPEN */
-//End-Libc
 #endif /* (DARWIN_UNLIMITED_STREAMS || _DARWIN_C_SOURCE) */
 int	 fileno(FILE *);
 __END_DECLS
@@ -363,15 +230,7 @@ int	 pclose(FILE *) __swift_unavailable_on("Use posix_spawn APIs or NSTask inste
 #if defined(_DARWIN_UNLIMITED_STREAMS) || defined(_DARWIN_C_SOURCE)
 FILE	*popen(const char *, const char *) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_3_2, __DARWIN_EXTSN(popen)) __swift_unavailable_on("Use posix_spawn APIs or NSTask instead.", "Process spawning is unavailable.");
 #else /* !_DARWIN_UNLIMITED_STREAMS && !_DARWIN_C_SOURCE */
-//Begin-Libc
-#ifndef LIBC_ALIAS_POPEN
-//End-Libc
 FILE	*popen(const char *, const char *) __DARWIN_ALIAS_STARTING(__MAC_10_6, __IPHONE_2_0, __DARWIN_ALIAS(popen)) __swift_unavailable_on("Use posix_spawn APIs or NSTask instead.", "Process spawning is unavailable.");
-//Begin-Libc
-#else /* LIBC_ALIAS_POPEN */
-FILE	*popen(const char *, const char *) LIBC_ALIAS(popen);
-#endif /* !LIBC_ALIAS_POPEN */
-//End-Libc
 #endif /* (DARWIN_UNLIMITED_STREAMS || _DARWIN_C_SOURCE) */
 __END_DECLS
 #endif /* __DARWIN_C_LEVEL >= 199209L */
@@ -443,15 +302,7 @@ __swift_unavailable("Use mkstemp(3) instead.")
 #if !defined(_POSIX_C_SOURCE)
 __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of tempnam(3), it is highly recommended that you use mkstemp(3) instead.")
 #endif
-//Begin-Libc
-#ifndef LIBC_ALIAS_TEMPNAM
-//End-Libc
 char	*tempnam(const char *__dir, const char *__prefix) __DARWIN_ALIAS(tempnam);
-//Begin-Libc
-#else /* LIBC_ALIAS_TEMPNAM */
-char	*tempnam(const char *__dir, const char *__prefix) LIBC_ALIAS(tempnam);
-#endif /* !LIBC_ALIAS_TEMPNAM */
-//End-Libc
 __END_DECLS
 
 #ifndef lint
@@ -503,6 +354,8 @@ int	dprintf(int, const char * __restrict, ...) __printflike(2, 3) __OSX_AVAILABL
 int	vdprintf(int, const char * __restrict, va_list) __printflike(2, 0) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 ssize_t getdelim(char ** __restrict __linep, size_t * __restrict __linecapp, int __delimiter, FILE * __restrict __stream) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 ssize_t getline(char ** __restrict __linep, size_t * __restrict __linecapp, FILE * __restrict __stream) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
+FILE *fmemopen(void * __restrict __buf, size_t __size, const char * __restrict __mode) __API_AVAILABLE(macos(10.13), ios(11.0), tvos(11.0), watchos(4.0));
+FILE *open_memstream(char **__bufp, size_t *__sizep) __API_AVAILABLE(macos(10.13), ios(11.0), tvos(11.0), watchos(4.0));
 __END_DECLS
 #endif /* __DARWIN_C_LEVEL >= 200809L */
 
@@ -545,6 +398,22 @@ __END_DECLS
 
 #endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
 
+#else /* UNIFDEF_DRIVERKIT */
+#define	EOF	(-1)
+
+__BEGIN_DECLS
+int	 sscanf(const char * __restrict, const char * __restrict, ...) __scanflike(2, 3);
+#if __DARWIN_C_LEVEL >= 200112L || defined(_C99_SOURCE) || defined(__cplusplus)
+int	 snprintf(char * __restrict __str, size_t __size, const char * __restrict __format, ...) __printflike(3, 4);
+int	 vsnprintf(char * __restrict __str, size_t __size, const char * __restrict __format, va_list) __printflike(3, 0);
+int	 vsscanf(const char * __restrict __str, const char * __restrict __format, va_list) __scanflike(2, 0);
+#endif /* __DARWIN_C_LEVEL >= 200112L || defined(_C99_SOURCE) || defined(__cplusplus) */
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+int	 asprintf(char ** __restrict, const char * __restrict, ...) __printflike(2, 3);
+int	 vasprintf(char ** __restrict, const char * __restrict, va_list) __printflike(2, 0);
+#endif /* __DARWIN_C_LEVEL >= __DARWIN_C_FULL */
+__END_DECLS
+#endif /* UNIFDEF_DRIVERKIT */
 
 #ifdef _USE_EXTENDED_LOCALES_
 #include <xlocale/_stdio.h>

@@ -143,6 +143,28 @@ kern_return_t _kernelrpc_mach_port_unguard_trap_impl(
 				mach_port_name_t name,
 				uint64_t guard
 );
+kern_return_t thread_get_special_reply_port_impl(void);
+kern_return_t _kernelrpc_mach_port_request_notification_impl(
+	ipc_space_t task,
+	mach_port_name_t name,
+	mach_msg_id_t msgid,
+	mach_port_mscount_t sync,
+	mach_port_name_t notify,
+	mach_msg_type_name_t notifyPoly,
+	mach_port_name_t* previous
+);
+kern_return_t _kernelrpc_mach_port_get_attributes_impl(
+	mach_port_name_t target,
+	mach_port_name_t name,
+	mach_port_flavor_t flavor,
+	mach_port_info_t port_info_out,
+	mach_msg_type_number_t* port_info_outCnt
+);
+kern_return_t _kernelrpc_mach_port_type_impl(
+	ipc_space_t task,
+	mach_port_name_t name,
+	mach_port_type_t* ptype
+);
 kern_return_t macx_swapon_impl(
 				uint64_t filename,
 				int flags,

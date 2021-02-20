@@ -1,0 +1,111 @@
+# -*- Makefile -*- for srclib on VMS using the MMS utility
+
+#### Start of system configuration section. ####
+
+# Directories used by "make install":
+prefix = SYS$DATA:[
+exec_prefix = $(prefix)
+libdir = $(exec_prefix).lib
+includedir = $(prefix).include
+
+# Programs used by "make":
+
+CC = cc
+
+# These flags affect binary compatibility. GNU gettext does not need them,
+# but other packages do, and we need to be binary compatible with them.
+ABIFLAGS = /name=(as_is,short) /float=ieee
+
+WARN_CFLAGS = /warning
+
+OPTIMFLAGS = /optimize
+
+CFLAGS = $(ABIFLAGS) $(WARN_CFLAGS) $(OPTIMFLAGS)
+DEFS = "VMS=1","HAVE_CONFIG_H=1","ENABLE_NLS=1","DEPENDS_ON_LIBICONV=1","DEPENDS_ON_LIBINTL=1"
+
+INCLUDES = /include=([],[-],$(includedir)])
+
+AR = library
+AR_FLAGS = /create
+
+LN = copy
+RM = delete
+
+# Programs used by "make install":
+INSTALL = copy
+INSTALL_PROGRAM = copy
+INSTALL_DATA = copy
+
+#### End of system configuration section. ####
+
+OBJECTS = \
+  allocsa.obj, \
+  error.obj, \
+  progname.obj, progreloc.obj, \
+  xmalloc.obj, xstrdup.obj, \
+  xreadlink.obj, \
+  \
+  canonicalize.obj, \
+  relocatable.obj
+
+all : icrt.olb
+	write sys$output "Nothing else to be done for 'all'."
+
+alloca.h : alloca_.h
+	$(LN) alloca_.h alloca.h
+
+allocsa.obj : allocsa.c,alloca.h
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) allocsa.c
+
+error.obj : error.c
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) error.c
+
+progname.obj : progname.c
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) progname.c
+
+progreloc.obj : progreloc.c
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) progreloc.c
+
+xmalloc.obj : xmalloc.c
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) xmalloc.c
+
+xstrdup.obj : xstrdup.c
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) xstrdup.c
+
+xreadlink.obj : xreadlink.c
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) xreadlink.c
+
+canonicalize.obj : canonicalize.c,alloca.h
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) canonicalize.c
+
+relocatable.obj : relocatable.c
+	$(CC) $(INCLUDES) $(CFLAGS) /define=($(DEFS)) relocatable.c
+
+icrt.olb : $(OBJECTS)
+	$(AR) $(AR_FLAGS) icrt.olb $(OBJECTS)
+
+install : all
+	write sys$output "Nothing else to be done for 'install'."
+
+installdirs :
+	write sys$output "Nothing to be done for 'installdirs'."
+
+uninstall :
+	write sys$output "Nothing to be done for 'uninstall'."
+
+check : all
+	write sys$output "Nothing else to be done for 'check'."
+
+mostlyclean : clean
+	write sys$output "Nothing else to be done for 'mostlyclean'."
+
+clean :
+	$(RM) alloca.h;*
+	$(RM) *.obj;*
+	$(RM) *.olb;*
+
+distclean : clean
+	write sys$output "Nothing else to be done for 'distclean'."
+
+maintainer-clean : distclean
+	write sys$output "Nothing else to be done for 'maintainer-clean'."

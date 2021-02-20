@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef lint
+#if 0
 static char rcsid[] = "$FreeBSD: /repoman/r/ncvs/src/lib/libcompat/4.1/ftime.c,v 1.5 1999/08/28 00:04:12 peter Exp $";
 #endif /* not lint */
 

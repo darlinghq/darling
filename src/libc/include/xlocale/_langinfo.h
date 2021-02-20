@@ -24,6 +24,10 @@
 #ifndef _XLOCALE__LANGINFO_H_
 #define _XLOCALE__LANGINFO_H_
 
+#include <sys/cdefs.h>
+#include <_types/_nl_item.h>
+#include <_xlocale.h>
+
 __BEGIN_DECLS
 char	*nl_langinfo_l(nl_item, locale_t);
 __END_DECLS

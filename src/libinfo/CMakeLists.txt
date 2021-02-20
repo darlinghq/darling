@@ -11,7 +11,6 @@ else(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 endif(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 
 add_definitions(-DHAVE_STDINT_H=1)
-add_definitions(-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1080)
 
 add_definitions(-DDS_AVAILABLE)
 
@@ -20,11 +19,7 @@ add_definitions(-w -nostdinc)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__DARWIN_UNIX03 -fPIC -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
 
-include_directories(${CMAKE_SOURCE_DIR}/src/libc/darwin)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers)
-include_directories(${CMAKE_SOURCE_DIR}/src/libmalloc/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/libdispatch/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/Libinfo")
 
 add_subdirectory(gen.subproj)
 add_subdirectory(util.subproj)
@@ -70,10 +65,9 @@ add_circular(system_info FAT
 		xpc
 		compiler_rt
 		launch
+		system_trace
 		resolv-darwin
 )
-#target_link_libraries(system_info PRIVATE system_c resolv-darwin system_dyld system_blocks libdispatch_shared system_notify platform)
-#make_fat(system_info)
 
 install(TARGETS system_info DESTINATION libexec/darling/usr/lib/system)
 install(FILES master.passwd DESTINATION libexec/darling/etc)

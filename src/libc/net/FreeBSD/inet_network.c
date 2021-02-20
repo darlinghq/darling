@@ -27,6 +27,9 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomma"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static const char sccsid[] = "@(#)inet_network.c	8.1 (Berkeley) 6/4/93";
 
@@ -112,4 +115,5 @@ again:
 #undef inet_network
 __weak_reference(__inet_network, inet_network);
 
+#pragma clang diagnostic pop
 /*! \file */

@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/machine.h
+../../../../../../../../../src/external/lkm/osfmk/mach/machine.h

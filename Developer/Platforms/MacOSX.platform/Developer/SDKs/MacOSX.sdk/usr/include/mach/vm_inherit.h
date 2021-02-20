@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/vm_inherit.h
+../../../../../../../../../src/external/lkm/osfmk/mach/vm_inherit.h

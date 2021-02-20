@@ -45,8 +45,10 @@ enum {
   NM_RECURSION_ILLEGAL = 2
 };
 	
+#if defined(__ppc__) || defined(__ppc64__)
 extern void * _keymgr_get_per_thread_data (unsigned int key);
 extern int _keymgr_set_per_thread_data (unsigned int key, void *keydata);
+#endif
 extern void *_keymgr_get_and_lock_processwide_ptr (unsigned int key);
 extern int _keymgr_get_and_lock_processwide_ptr_2 (unsigned int key, void **);
 extern int _keymgr_set_and_unlock_processwide_ptr (unsigned int key, 
@@ -56,6 +58,7 @@ extern int _keymgr_set_lockmode_processwide_ptr (unsigned int key,
 						 unsigned int mode);
 extern unsigned int _keymgr_get_lockmode_processwide_ptr (unsigned int key);
 extern int _keymgr_get_lock_count_processwide_ptr (unsigned int key);
+extern void __keymgr_dwarf2_register_sections (void);
 
 /*
  * Keys currently in use:
@@ -117,6 +120,15 @@ extern int _keymgr_get_lock_count_processwide_ptr (unsigned int key);
 #define KEYMGR_API_REV_MAJOR		5
 /* Minor revision number of the keymgr API.  */
 #define KEYMGR_API_REV_MINOR		0
+
+
+/* called by libSystem_initializer */
+extern void __keymgr_initializer(void);
+
+/* for inspecting keymgr version */
+extern const unsigned char keymgrVersionString[];
+extern const double keymgrVersionNumber;
+
 
 #ifdef __cplusplus
 }

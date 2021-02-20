@@ -136,14 +136,14 @@ stackshot_capture_with_config(stackshot_config_t *stackshot_config)
 	}
 
 	s_config = (stackshot_config_t *) stackshot_config;
-	if (s_config->sc_buffer != 0)  {
+	if (s_config->sc_buffer != 0) {
 		return EINVAL;
 	}
 
-	s_config->sc_out_buffer_addr = &s_config->sc_buffer;
-	s_config->sc_out_size_addr = &s_config->sc_size;
-	ret = __stack_snapshot_with_config(STACKSHOT_CONFIG_TYPE, s_config, sizeof(stackshot_config_t));
-	
+	s_config->sc_out_buffer_addr = (uintptr_t)&s_config->sc_buffer;
+	s_config->sc_out_size_addr = (uintptr_t)&s_config->sc_size;
+	ret = __stack_snapshot_with_config(STACKSHOT_CONFIG_TYPE, (uintptr_t)s_config, sizeof(stackshot_config_t));
+
 	if (ret != 0) {
 		ret = errno;
 		s_config->sc_buffer = 0;
@@ -171,7 +171,7 @@ stackshot_config_get_stackshot_buffer(stackshot_config_t *stackshot_config)
 	}
 	s_config = (stackshot_config_t *) stackshot_config;
 
-	return ((void *)s_config->sc_buffer);
+	return (void *)s_config->sc_buffer;
 }
 
 /*

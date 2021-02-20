@@ -10,7 +10,6 @@
 #define	dd_buf		__dd_buf
 #define	dd_len		__dd_len
 #define	dd_seek		__dd_seek
-#define	dd_rewind	__dd_rewind
 #define	dd_flags	__dd_flags
 #define	dd_lock		__dd_lock
 #define	dd_td		__dd_td

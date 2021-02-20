@@ -108,7 +108,9 @@ void* CI_xy_to_TempTint(void) {
     return NULL;
 }
 
-void* open_memstream(void) {
-    if (verbose) puts("STUB: open_memstream called");
+// seems to be the same as the `open_memstream` function in libc
+// not sure why CoreImage has its own copy
+FILE* open_memstream(char** buffer, size_t* size) {
+    if (verbose) puts("STUB: CoreImage's open_memstream called (why?)");
     return NULL;
 }

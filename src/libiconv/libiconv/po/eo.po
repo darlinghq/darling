@@ -1,0 +1,274 @@
+# Mesaĝoj por la biblioteko "libiconv".
+# Copyright © 2002 Free Software Foundation, Inc.
+# Edmund GRIMLEY EVANS <edmundo@rano.org>, 2002, 2006.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: libiconv 1.11-pre1\n"
+"Report-Msgid-Bugs-To: bug-gnu-libiconv@gnu.org\n"
+"POT-Creation-Date: 2006-07-19 21:16+0200\n"
+"PO-Revision-Date: 2006-07-02 10:42+0100\n"
+"Last-Translator: Edmund GRIMLEY EVANS <edmundo@rano.org>\n"
+"Language-Team: Esperanto <translation-team-eo@lists.sourceforge.net>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/iconv.c:107
+msgid "Usage: iconv [-c] [-s] [-f fromcode] [-t tocode] [file ...]"
+msgstr "Uzado: iconv [-c] [-s] [-f fontkodo] [-t celkodo] [dosiero ...]"
+
+#: src/iconv.c:109
+msgid "or:    iconv -l"
+msgstr "aŭ:    iconv -l"
+
+#: src/iconv.c:111
+#, c-format
+msgid "Try `%s --help' for more information.\n"
+msgstr "Provu '%s --help' por pli da informoj.\n"
+
+#: src/iconv.c:114
+#, c-format, no-wrap
+msgid "Usage: %s [OPTION...] [-f ENCODING] [-t ENCODING] [INPUTFILE...]\n"
+msgstr "Uzado: %s [OPCIO...] [-f KODO] [-t KODO] [ENIGDOSIERO...]\n"
+
+#: src/iconv.c:118
+#, c-format, no-wrap
+msgid "or:    %s -l\n"
+msgstr "aŭ:    %s -l\n"
+
+#: src/iconv.c:123
+#, c-format, no-wrap
+msgid "Converts text from one encoding to another encoding.\n"
+msgstr "Konvertas tekston de unu kodo al alia kodo.\n"
+
+#: src/iconv.c:127
+#, c-format, no-wrap
+msgid "Options controlling the input and output format:\n"
+msgstr "Opcioj, kiuj regas la formon de enigo kaj eligo:\n"
+
+#: src/iconv.c:130
+#, c-format, no-wrap
+msgid ""
+"  -f ENCODING, --from-code=ENCODING\n"
+"                              the encoding of the input\n"
+msgstr ""
+"  -f KODO, --from-code=KODO\n"
+"                              la kodo de la enigo\n"
+
+#: src/iconv.c:134
+#, c-format, no-wrap
+msgid ""
+"  -t ENCODING, --to-code=ENCODING\n"
+"                              the encoding of the output\n"
+msgstr ""
+"  -t KODO, --to-code=KODO\n"
+"                              la kodo de la eligo\n"
+
+#: src/iconv.c:139
+#, c-format, no-wrap
+msgid "Options controlling conversion problems:\n"
+msgstr "Opcioj, kiuj regas konvertoproblemojn:\n"
+
+#: src/iconv.c:142
+#, c-format, no-wrap
+msgid "  -c                          discard unconvertible characters\n"
+msgstr "  -c                          forĵeti nekonverteblajn signojn\n"
+
+#: src/iconv.c:145
+#, c-format, no-wrap
+msgid ""
+"  --unicode-subst=FORMATSTRING\n"
+"                              substitution for unconvertible Unicode characters\n"
+msgstr ""
+"  --unicode-subst=FORMATĈENO\n"
+"                              substituado de nekonverteblaj unikodaj signoj\n"
+
+#: src/iconv.c:149
+#, c-format, no-wrap
+msgid "  --byte-subst=FORMATSTRING   substitution for unconvertible bytes\n"
+msgstr "  --byte-subst=FORMATĈENO     substituado de nekonverteblaj bitokoj\n"
+
+#: src/iconv.c:152
+#, c-format, no-wrap
+msgid ""
+"  --widechar-subst=FORMATSTRING\n"
+"                              substitution for unconvertible wide characters\n"
+msgstr ""
+"  --widechar-subst=FORMATĈENO\n"
+"                              substituado de nekonverteblaj larĝaj signoj\n"
+
+#: src/iconv.c:157
+#, c-format, no-wrap
+msgid "Options controlling error output:\n"
+msgstr "Opcioj, kiuj regas eligon de eraroj:\n"
+
+#: src/iconv.c:160
+#, c-format, no-wrap
+msgid "  -s, --silent                suppress error messages about conversion problems\n"
+msgstr "  -s, --silent                subpremi eraromesaĝojn pri konvertoproblemoj\n"
+
+#: src/iconv.c:164
+#, c-format, no-wrap
+msgid "Informative output:\n"
+msgstr "Informa eligo:\n"
+
+#: src/iconv.c:167
+#, c-format, no-wrap
+msgid "  -l, --list                  list the supported encodings\n"
+msgstr "  -l, --list                  listigi la konatajn kodojn\n"
+
+#: src/iconv.c:170
+#, c-format, no-wrap
+msgid "  --help                      display this help and exit\n"
+msgstr "  --help                      montri ĉi tiun helpon kaj eliri\n"
+
+#: src/iconv.c:173
+#, c-format, no-wrap
+msgid "  --version                   output version information and exit\n"
+msgstr "  -version                    eligi informon pri la versio kaj eliri\n"
+
+#: src/iconv.c:176
+msgid "Report bugs to <bug-gnu-libiconv@gnu.org>.\n"
+msgstr "Raportu cimojn al <bug-gnu-libiconv@gnu.org>.\n"
+
+#: src/iconv.c:186
+#, c-format
+msgid ""
+"This is free software; see the source for copying conditions.  There is NO\n"
+"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
+msgstr ""
+"Ĉi tio estas libera programo; vidu la fonton por kopikondiĉoj. Estas NENIA\n"
+"garantio; eĉ ne por KOMERCA KVALITO aŭ ADEKVATECO POR DIFINITA CELO.\n"
+
+#: src/iconv.c:189
+#, c-format
+msgid "Written by %s.\n"
+msgstr "Verkita de %s.\n"
+
+#: src/iconv.c:280
+#, c-format
+msgid ""
+"%s argument: A format directive with a variable width is not allowed here."
+msgstr "%s argumento: Formatdirektivo kun variabla larĝo ne eblas ĉi tie."
+
+#: src/iconv.c:291
+#, c-format
+msgid ""
+"%s argument: A format directive with a variable precision is not allowed "
+"here."
+msgstr "%s argumento: Formatdirektivo kun variabla precizo ne eblas ĉi tie."
+
+#: src/iconv.c:303
+#, c-format
+msgid "%s argument: A format directive with a size is not allowed here."
+msgstr "%s argumento: Formatdirektivo kun grando ne eblas ĉi tie."
+
+#: src/iconv.c:341
+#, c-format
+msgid "%s argument: The string ends in the middle of a directive."
+msgstr "%s argumento: La signoĉeno finiĝas meze de direktivo."
+
+#: src/iconv.c:343
+#, c-format
+msgid "%s argument: The character '%c' is not a valid conversion specifier."
+msgstr "%s argumento: La signo '%c' ne estas valida konvertospecifo."
+
+#: src/iconv.c:345
+#, c-format
+msgid ""
+"%s argument: The character that terminates the format directive is not a "
+"valid conversion specifier."
+msgstr ""
+"%s argumento: La signo, kiu finas la formatdirektivon ne estas valida "
+"konvertospecifo."
+
+#: src/iconv.c:356
+#, fuzzy, c-format
+msgid ""
+"%s argument: The format string consumes more than one argument: %u argument."
+msgid_plural ""
+"%s argument: The format string consumes more than one argument: %u arguments."
+msgstr[0] ""
+"%s argumento: La formatoĉeno konsumas pli ol unu argumenton: %u argumentoj."
+msgstr[1] ""
+"%s argumento: La formatoĉeno konsumas pli ol unu argumenton: %u argumentoj."
+
+#: src/iconv.c:411
+#, c-format
+msgid "cannot convert byte substitution to Unicode: %s"
+msgstr "ne povas konverti bitoksubstituon al Unikodo: %s"
+
+#: src/iconv.c:447
+#, c-format
+msgid "cannot convert unicode substitution to target encoding: %s"
+msgstr "ne povas konverti unikodan substituon al celkodo: %s"
+
+#: src/iconv.c:484
+#, c-format
+msgid "cannot convert byte substitution to wide string: %s"
+msgstr "ne povas konverti bitoksubstituon al larĝa signoĉeno: %s"
+
+#: src/iconv.c:521
+#, fuzzy, c-format
+msgid "cannot convert widechar substitution to target encoding: %s"
+msgstr "iconv: ne povas konverti larĝasignan substituon al celkodo: %s"
+
+#: src/iconv.c:558
+#, fuzzy, c-format
+msgid "cannot convert byte substitution to target encoding: %s"
+msgstr "iconv: ne povas konverti bitoksubstituon al celkodo: %s"
+
+#: src/iconv.c:592 src/iconv.c:636 src/iconv.c:710
+#, c-format
+msgid "%s:%u:%u: incomplete character or shift sequence"
+msgstr "%s:%u:%u: malkompleta signo aŭ reĝimŝanĝa kodo"
+
+#: src/iconv.c:625 src/iconv.c:700
+#, c-format
+msgid "%s:%u:%u: cannot convert"
+msgstr "%s:%u:%u: ne povas konverti"
+
+#: src/iconv.c:667 src/iconv.c:730
+#, c-format
+msgid "%s:%u:%u"
+msgstr "%s:%u:%u"
+
+#: src/iconv.c:742
+#, c-format
+msgid "%s: I/O error"
+msgstr "%s: leg/skrib-eraro"
+
+#: src/iconv.c:926
+#, c-format
+msgid "conversion from %s unsupported"
+msgstr "konvertado de %s ne disponata"
+
+#: src/iconv.c:928
+#, c-format
+msgid "conversion to %s unsupported"
+msgstr "konvertado al %s ne disponata"
+
+#: src/iconv.c:930
+#, c-format
+msgid "conversion from %s to %s unsupported"
+msgstr "konvertado de %s al %s ne disponata"
+
+#: src/iconv.c:931
+#, c-format
+msgid "try '%s -l' to get the list of supported encodings"
+msgstr "provu '%s -l' por ricevi liston de konataj kodoj"
+
+#: src/iconv.c:985
+msgid "(stdin)"
+msgstr "(normala enigo)"
+
+#: src/iconv.c:993
+#, c-format
+msgid "%s"
+msgstr "%s"
+
+#: src/iconv.c:1004
+#, c-format
+msgid "I/O error"
+msgstr "leg/skrib-eraro"

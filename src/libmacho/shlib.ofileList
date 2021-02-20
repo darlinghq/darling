@@ -1,6 +1,0 @@
-arch.o
-getmachhead.o
-getsecbyname.o
-getsegbyname.o
-get_end.o
-swap.o

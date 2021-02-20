@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2006-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -49,30 +49,33 @@
 #include <CoreFoundation/CFStringDefaultEncoding.h>	// for __CFStringGetInstallationEncodingAndRegion()
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <SystemConfiguration/SCValidation.h>
-#include <SystemConfiguration/SCPrivate.h>		// for SCLog(), SCPrint()
+#include <SystemConfiguration/SCPrivate.h>
 
 #ifdef	MAIN
-#define my_log(__level, fmt, ...)	SCPrint(TRUE, stdout, CFSTR(fmt "\n"), ## __VA_ARGS__)
+#define	my_log(__level, __format, ...)	SCPrint(TRUE, stdout, CFSTR(__format "\n"), ## __VA_ARGS__)
 #else	// MAIN
 #include "ip_plugin.h"
 #endif	// MAIN
 
-#define	HW_MODEL_LEN		64			// Note: must be >= NETBIOS_NAME_LEN (below)
+#define	HW_MODEL_LEN			64			// Note: must be >= NETBIOS_NAME_LEN (below)
 
-#define	NETBIOS_NAME_LEN	16
+#define	NETBIOS_NAME_LEN		16
 
-#define	SMB_STARTUP_DELAY	60.0
-#define	SMB_DEBOUNCE_DELAY	5.0
+#define	SMB_STARTUP_DELAY		60.0
+#define	SMB_DEBOUNCE_DELAY		5.0
+#define SMB_CONFIGURATION_QUEUE		"com.apple.config.smb-configuration"
 
 static SCDynamicStoreRef	store		= NULL;
+static CFRunLoopRef		rl		= NULL;
 static CFRunLoopSourceRef	rls		= NULL;
+static dispatch_queue_t		queue		= NULL;
+
+static int			notify_token	= -1;
 
 static struct timeval		ptrQueryStart;
 static SCNetworkReachabilityRef	ptrTarget	= NULL;
 
 static CFRunLoopTimerRef	timer		= NULL;
-
-static Boolean			_verbose	= FALSE;
 
 
 static CFAbsoluteTime
@@ -103,7 +106,7 @@ static CFStringRef
 copy_default_name(void)
 {
 	CFStringRef		model;
-	size_t			n;
+	CFIndex			n;
 	CFMutableStringRef	str;
 
 	// get HW model name
@@ -450,8 +453,10 @@ ptr_query_stop()
 		return;
 	}
 
+	my_log(LOG_INFO, "NetBIOS name: ptr query stop");
+
 	SCNetworkReachabilitySetCallback(ptrTarget, NULL, NULL);
-	SCNetworkReachabilityUnscheduleFromRunLoop(ptrTarget, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+	SCNetworkReachabilityUnscheduleFromRunLoop(ptrTarget, rl, kCFRunLoopDefaultMode);
 	CFRelease(ptrTarget);
 	ptrTarget = NULL;
 
@@ -462,6 +467,7 @@ ptr_query_stop()
 static void
 ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info)
 {
+#pragma unused(info)
 	CFDictionaryRef		dict;
 	CFStringRef		name;
 	CFMutableDictionaryRef	newDict;
@@ -470,12 +476,10 @@ ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags f
 
 	(void) gettimeofday(&ptrQueryComplete, NULL);
 	timersub(&ptrQueryComplete, &ptrQueryStart, &ptrQueryElapsed);
-	if (_verbose) {
-		my_log(LOG_DEBUG, "ptr query complete%s (query time = %ld.%3.3d)",
-		       (flags & kSCNetworkReachabilityFlagsReachable) ? "" : ", host not found",
-		       ptrQueryElapsed.tv_sec,
-		       ptrQueryElapsed.tv_usec / 1000);
-	}
+	my_log(LOG_INFO, "NetBIOS name: ptr query complete%s (query time = %ld.%3.3d)",
+	       (flags & kSCNetworkReachabilityFlagsReachable) ? "" : ", host not found",
+	       ptrQueryElapsed.tv_sec,
+	       ptrQueryElapsed.tv_usec / 1000);
 
 	// get network configuration
 	dict = smb_copy_global_configuration(store);
@@ -483,7 +487,7 @@ ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags f
 	// use NetBIOS name from network configuration (if available)
 	name = CFDictionaryGetValue(dict, kSCPropNetSMBNetBIOSName);
 	if ((name != NULL) && _SC_CFStringIsValidNetBIOSName(name)) {
-		my_log(LOG_DEBUG, "NetBIOS name (network configuration) = %@", name);
+		my_log(LOG_INFO, "NetBIOS name (network configuration) = %@", name);
 		goto setDict;
 	}
 
@@ -522,7 +526,7 @@ ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags f
 	}
 	if (name != NULL) {
 		if (_SC_CFStringIsValidNetBIOSName(name)) {
-			my_log(LOG_DEBUG, "NetBIOS name (reverse DNS query) = %@", name);
+			my_log(LOG_INFO, "NetBIOS name (reverse DNS query) = %@", name);
 			goto setName;
 		}
 		CFRelease(name);
@@ -532,7 +536,7 @@ ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags f
 	name = SCDynamicStoreCopyLocalHostName(store);
 	if (name != NULL) {
 		if (_SC_CFStringIsValidNetBIOSName(name)) {
-			my_log(LOG_DEBUG, "NetBIOS name (multicast DNS) = %@", name);
+			my_log(LOG_INFO, "NetBIOS name (multicast DNS) = %@", name);
 			goto setName;
 		}
 		CFRelease(name);
@@ -541,7 +545,7 @@ ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags f
 	// use "default" name
 	name = copy_default_name();
 	if (name != NULL) {
-		my_log(LOG_DEBUG, "NetBIOS name (default) = %@", name);
+		my_log(LOG_INFO, "NetBIOS name (default) = %@", name);
 		goto setName;
 	}
 
@@ -564,7 +568,7 @@ ptr_query_callback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags f
 	ptr_query_stop();
 
 #ifdef	MAIN
-	CFRunLoopStop(CFRunLoopGetCurrent());
+	CFRunLoopStop(rl);
 #endif	// MAIN
 
 	return;
@@ -607,16 +611,20 @@ ptr_query_start(CFStringRef address)
 		return FALSE;
 	}
 
+	my_log(LOG_INFO, "NetBIOS name: ptr query start");
+
+	(void) gettimeofday(&ptrQueryStart, NULL);
 	(void) SCNetworkReachabilitySetCallback(ptrTarget, ptr_query_callback, NULL);
-	(void) SCNetworkReachabilityScheduleWithRunLoop(ptrTarget, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+	(void) SCNetworkReachabilityScheduleWithRunLoop(ptrTarget, rl, kCFRunLoopDefaultMode);
 
 	return TRUE;
 }
 
 
 static void
-smb_update_configuration(__unused CFRunLoopTimerRef _timer, void *info)
+smb_update_configuration(CFRunLoopTimerRef _timer, void *info)
 {
+#pragma unused(_timer)
 	CFStringRef		address		= NULL;
 	CFDictionaryRef		dict;
 	CFStringRef		name;
@@ -629,7 +637,7 @@ smb_update_configuration(__unused CFRunLoopTimerRef _timer, void *info)
 	// use NetBIOS name from network configuration (if available)
 	name = CFDictionaryGetValue(dict, kSCPropNetSMBNetBIOSName);
 	if ((name != NULL) && _SC_CFStringIsValidNetBIOSName(name)) {
-		my_log(LOG_DEBUG, "NetBIOS name (network configuration) = %@", name);
+		my_log(LOG_INFO, "NetBIOS name (network configuration) = %@", name);
 		goto set;
 	}
 
@@ -662,7 +670,7 @@ smb_update_configuration(__unused CFRunLoopTimerRef _timer, void *info)
 		if (_SC_CFStringIsValidNetBIOSName(name)) {
 			CFMutableDictionaryRef	newDict;
 
-			my_log(LOG_DEBUG, "NetBIOS name (multicast DNS) = %@", name);
+			my_log(LOG_INFO, "NetBIOS name (multicast DNS) = %@", name);
 			newDict = CFDictionaryCreateMutableCopy(NULL, 0, dict);
 			CFDictionarySetValue(newDict, kSCPropNetSMBNetBIOSName, name);
 			CFRelease(dict);
@@ -678,7 +686,7 @@ smb_update_configuration(__unused CFRunLoopTimerRef _timer, void *info)
 	if (name != NULL) {
 		CFMutableDictionaryRef	newDict;
 
-		my_log(LOG_DEBUG, "NetBIOS name (default) = %@", name);
+		my_log(LOG_INFO, "NetBIOS name (default) = %@", name);
 		newDict = CFDictionaryCreateMutableCopy(NULL, 0, dict);
 		CFDictionarySetValue(newDict, kSCPropNetSMBNetBIOSName, name);
 		CFRelease(dict);
@@ -710,6 +718,8 @@ smb_update_configuration(__unused CFRunLoopTimerRef _timer, void *info)
 static void
 configuration_changed(SCDynamicStoreRef store, CFArrayRef changedKeys, void *info)
 {
+#pragma unused(changedKeys)
+#pragma unused(info)
 	CFRunLoopTimerContext	context	= { 0, (void *)store, CFRetain, CFRelease, NULL };
 	CFAbsoluteTime		time_boot;
 	CFAbsoluteTime		time_now ;
@@ -738,7 +748,7 @@ configuration_changed(SCDynamicStoreRef store, CFArrayRef changedKeys, void *inf
 				     0,
 				     smb_update_configuration,
 				     &context);
-	CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
+	CFRunLoopAddTimer(rl, timer, kCFRunLoopDefaultMode);
 
 	return;
 }
@@ -748,15 +758,21 @@ __private_extern__
 void
 load_smb_configuration(Boolean verbose)
 {
+#pragma unused(verbose)
 	CFStringRef		key;
 	CFMutableArrayRef	keys		= NULL;
+	dispatch_block_t	notify_block;
+	Boolean			ok;
 	CFMutableArrayRef	patterns	= NULL;
-
-	if (verbose) {
-		_verbose = TRUE;
-	}
+	uint32_t		status;
 
 	/* initialize a few globals */
+	queue = dispatch_queue_create(SMB_CONFIGURATION_QUEUE, NULL);
+	if (queue == NULL) {
+		my_log(LOG_ERR,
+		       "dispatch_queue_create() failed");
+		goto error;
+	}
 
 	store = SCDynamicStoreCreate(NULL, CFSTR("smb-configuration"), configuration_changed, NULL);
 	if (store == NULL) {
@@ -770,20 +786,6 @@ load_smb_configuration(Boolean verbose)
 
 	keys     = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
 	patterns = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
-
-	/* ...watch for primary service / interface changes */
-	key = SCDynamicStoreKeyCreateNetworkGlobalEntity(NULL,
-							 kSCDynamicStoreDomainState,
-							 kSCEntNetIPv4);
-	CFArrayAppendValue(keys, key);
-	CFRelease(key);
-
-	/* ...watch for DNS configuration changes */
-	key = SCDynamicStoreKeyCreateNetworkGlobalEntity(NULL,
-							 kSCDynamicStoreDomainState,
-							 kSCEntNetDNS);
-	CFArrayAppendValue(keys, key);
-	CFRelease(key);
 
 	/* ...watch for SMB configuration changes */
 	key = SCDynamicStoreKeyCreateNetworkGlobalEntity(NULL,
@@ -803,31 +805,74 @@ load_smb_configuration(Boolean verbose)
 	CFRelease(key);
 
 	/* register the keys/patterns */
-	if (!SCDynamicStoreSetNotificationKeys(store, keys, patterns)) {
+	ok = SCDynamicStoreSetNotificationKeys(store, keys, patterns);
+	CFRelease(keys);
+	CFRelease(patterns);
+	if (!ok) {
 		my_log(LOG_ERR,
 		       "SCDynamicStoreSetNotificationKeys() failed: %s",
 		       SCErrorString(SCError()));
 		goto error;
 	}
 
+	rl = CFRunLoopGetCurrent();
 	rls = SCDynamicStoreCreateRunLoopSource(NULL, store, 0);
-	if (!rls) {
+	if (rls == NULL) {
 		my_log(LOG_ERR,
 		       "SCDynamicStoreCreateRunLoopSource() failed: %s",
 		       SCErrorString(SCError()));
 		goto error;
 	}
-	CFRunLoopAddSource(CFRunLoopGetCurrent(), rls, kCFRunLoopDefaultMode);
+	CFRunLoopAddSource(rl, rls, kCFRunLoopDefaultMode);
 
-	CFRelease(keys);
-	CFRelease(patterns);
+	/* ...watch for primary service/interface and DNS configuration changes */
+	notify_block = ^{
+		CFArrayRef      changes;
+		CFStringRef     key;
+
+		key = SCDynamicStoreKeyCreateNetworkGlobalEntity(NULL,
+								 kSCDynamicStoreDomainState,
+								 kSCEntNetDNS);
+		changes = CFArrayCreate(NULL, (const void **)&key, 1, &kCFTypeArrayCallBacks);
+		(*configuration_changed)(store, changes, NULL);
+		CFRelease(changes);
+		CFRelease(key);
+
+		return;
+	};
+	status = notify_register_dispatch(_SC_NOTIFY_NETWORK_CHANGE,
+					  &notify_token,
+					  queue,
+					  ^(int token){
+#pragma unused(token)
+						  CFRunLoopPerformBlock(rl,
+									kCFRunLoopDefaultMode,
+									notify_block);
+						  CFRunLoopWakeUp(rl);
+					  });
+	if (status != NOTIFY_STATUS_OK) {
+		my_log(LOG_ERR, "notify_register_dispatch() failed: %u", status);
+		goto error;
+	}
+
 	return;
 
     error :
 
-	if (keys != NULL)	CFRelease(keys);
-	if (patterns != NULL)	CFRelease(patterns);
-	if (store != NULL)	CFRelease(store);
+	if (rls != NULL) {
+		CFRunLoopRemoveSource(rl, rls, kCFRunLoopDefaultMode);
+		CFRelease(rls);
+		rls = NULL;
+	}
+	if (store != NULL) {
+		CFRelease(store);
+		store = NULL;
+	}
+	if (queue != NULL) {
+		dispatch_release(queue);
+		queue = NULL;
+	}
+
 	return;
 }
 
@@ -846,7 +891,6 @@ main(int argc, char **argv)
 	_sc_log = FALSE;
 	if ((argc > 1) && (strcmp(argv[1], "-d") == 0)) {
 		_sc_verbose = TRUE;
-		_verbose = TRUE;
 		argv++;
 		argc--;
 	}

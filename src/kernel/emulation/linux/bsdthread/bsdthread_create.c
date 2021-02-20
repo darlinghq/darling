@@ -5,11 +5,13 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "../../../../../platform-include/sys/mman.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/mman.h>
+#include <sys/errno.h>
 #include "../mman/mman.h"
 #include "../simple.h"
 #include "../elfcalls_wrapper.h"
+#include "../machdep/tls.h"
+#include "../mach/mach_traps.h"
 
 extern void *memset(void *s, int c, size_t n);
 
@@ -27,7 +29,7 @@ static bool _uses_threads = false;
 // http://www.tldp.org/FAQ/Threads-FAQ/clone.c
 
 long sys_bsdthread_create(void* thread_start, void* arg,
-		void** stack, void* pthread, uint32_t flags)
+		void* stack, void* pthread, uint32_t flags)
 {
 #ifndef VARIANT_DYLD // dyld doesn't create threads
 	int ret;
@@ -45,12 +47,14 @@ long sys_bsdthread_create(void* thread_start, void* arg,
 	ret = darling_thread_create((void**) stack, pthread_entry_point_wrapper, thread_start,
 			arg, stacksize, flags);
 #else
-	// Implemented in libdyld
-	extern int thread_self_trap(void);
+	struct darling_thread_create_callbacks callbacks = {
+		.thread_self_trap = &thread_self_trap_impl,
+		.thread_set_tsd_base = &sys_thread_set_tsd_base,
+	};
 
 	return __darling_thread_create(((uintptr_t)stack), pthread_obj_size,
 			pthread_entry_point_wrapper, thread_start, arg, (uintptr_t) stack, flags,
-			thread_self_trap);
+			&callbacks, pthread);
 #endif
 
 	if (ret < 0)

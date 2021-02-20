@@ -1,0 +1,5 @@
+See 'run-tests.sh' for how to run all the tests.
+
+basic-eh-app-tiger-4.0 was built with gcc-4009 on 8A278.
+basic-eh-app-10.4u-4.0 was built 3-way universal with gcc-5215 on 8C46,
+  using a slightly modified 10.4u SDK.

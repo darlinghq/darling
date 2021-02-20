@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2005-2007, 2009-2012, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2005-2007, 2009-2012, 2014, 2016-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -35,9 +35,11 @@
 #define _S_SESSION_H
 
 #include <sys/cdefs.h>
-#include <Availability.h>
+#include <os/availability.h>
 #include <TargetConditionals.h>
 
+#define DISPATCH_MACH_SPI 1
+#import <dispatch/private.h>
 
 /*
  * SCDynamicStore write access entitlement
@@ -64,14 +66,19 @@ typedef	enum { NO = 0, YES, UNKNOWN } lazyBoolean;
 /* Per client server state */
 typedef struct {
 
+	// base CFType information
+	CFRuntimeBase           cfBase;
+
 	/* mach port used as the key to this session */
 	mach_port_t		key;
 
-	/* mach port associated with this session */
-	CFMachPortRef		serverPort;
-	CFRunLoopSourceRef	serverRunLoopSource;
+	/* mach channel associated with this session */
+	dispatch_mach_t		serverChannel;
 
 	/* data associated with this "open" session */
+	CFMutableArrayRef	changedKeys;
+	CFStringRef		name;
+	CFMutableArrayRef	sessionKeys;
 	SCDynamicStoreRef	store;
 
 	/* credentials associated with this "open" session */
@@ -98,22 +105,31 @@ typedef struct {
 
 __BEGIN_DECLS
 
+serverSessionRef	addClient	(mach_port_t	server,
+					 audit_token_t	audit_token);
+
+serverSessionRef	addServer	(mach_port_t	server);
+
 serverSessionRef	getSession	(mach_port_t	server);
+
+serverSessionRef	getSessionNum	(CFNumberRef	serverKey);
+
+serverSessionRef	getSessionStr	(CFStringRef	serverKey);
 
 serverSessionRef	tempSession	(mach_port_t	server,
 					 CFStringRef	name,
 					 audit_token_t	auditToken);
 
-serverSessionRef	addSession	(mach_port_t	server,
-					 CFStringRef	(*copyDescription)(const void *info));
+void			cleanupSession	(serverSessionRef	session);
 
-void			cleanupSession	(mach_port_t	server);
+void			closeSession	(serverSessionRef	session);
 
 void			listSessions	(FILE		*f);
 
 Boolean			hasRootAccess	(serverSessionRef	session);
 
 Boolean			hasWriteAccess	(serverSessionRef	session,
+					 const char		*op,
 					 CFStringRef		key);
 
 Boolean			hasPathAccess	(serverSessionRef	session,
@@ -121,4 +137,4 @@ Boolean			hasPathAccess	(serverSessionRef	session,
 
 __END_DECLS
 
-#endif /* !_S_SESSION_H */
+#endif	/* !_S_SESSION_H */

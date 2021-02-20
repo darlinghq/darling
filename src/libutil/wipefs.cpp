@@ -30,17 +30,22 @@
 #include <sys/ioctl.h>
 #include <sys/disk.h>
 #include <sys/stat.h>
-#include <cstring>
-#include <strings.h>
+#include <sys/syslimits.h>
+#include <string.h>
+#include <spawn.h>
+#include <os/log.h>
 
 #include "ExtentManager.h"
 #include "wipefs.h"
 
-#define	roundup(x, y)	((((x)+((y)-1))/(y))*(y))
+#define	wipefs_roundup(x, y)	((((x)+((y)-1))/(y))*(y))
 
 struct __wipefs_ctx {
 	int fd;
 	class ExtentManager extMan;
+    
+	// xartutil information
+	char *diskname;
 };
 
 static void
@@ -129,6 +134,120 @@ AddExtentsForPartitions(class ExtentManager *extMan)
 	extMan->AddByteRangeExtent(extMan->totalBytes - 512 * 33, 512 * 33);
 }
 
+static void
+AddExtentsForCoreStorage(class ExtentManager *extMan)
+{
+	// the CoreStorage VolumeHeader structures reside in the first/last 512 bytes of each PV
+	extMan->AddByteRangeExtent(0, 512);
+	extMan->AddByteRangeExtent(extMan->totalBytes - 512, 512);
+}
+
+static char *
+query_disk_info(int fd) {
+	char disk_path[PATH_MAX];
+	char *disk_name;
+
+	// Fetch the path
+	if (fcntl(fd, F_GETPATH, disk_path) == -1) {
+		return (NULL);
+	}
+
+	// Find the last pathname component.
+	disk_name = strrchr(disk_path, '/');
+	if (disk_name == NULL) {
+		// Not that we expect this to happen...
+		disk_name = disk_path;
+	} else {
+		// Skip over the '/'.
+		disk_name++;
+	}
+
+	if (*disk_name == 'r') {
+		// Raw device; skip over leading 'r'.
+		disk_name++;
+	}
+
+	// ...and make sure it's really a disk.
+	if (strncmp(disk_name, "disk", strlen("disk")) != 0) {
+		return (NULL);
+	}
+
+	return (strdup(disk_name));
+}
+
+static
+int run_xartutil(char *const diskname)
+{
+	pid_t child_pid, wait_pid;
+	posix_spawn_file_actions_t fileActions;
+	bool haveFileActions = false;
+	int child_status = 0;
+	int result = 0;
+
+	char arg1[] = "xartutil";
+	char arg2[] = "--erase-disk";
+
+	char *const xartutil_argv[] = {arg1, arg2, diskname, NULL};
+
+	result = posix_spawn_file_actions_init(&fileActions);
+	if (result) {
+		os_log_error(OS_LOG_DEFAULT, "Warning, init xartutil file actions error: %d", result);
+		result = -1;
+		goto out;
+	}
+
+	haveFileActions = true;
+    
+	// Redirect stdout & stderr (results not critical, so we ignore return values).
+	posix_spawn_file_actions_addopen(&fileActions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0);
+	posix_spawn_file_actions_addopen(&fileActions, STDERR_FILENO, "/dev/null", O_WRONLY, 0);
+
+	result = posix_spawn(&child_pid, "/usr/sbin/xartutil", &fileActions, NULL, xartutil_argv, NULL);
+
+	if (result) {
+		os_log_error(OS_LOG_DEFAULT, "Warning, unable to start xartutil, spawn error: %d", result);
+		result = -1;
+		goto out;
+	}
+    
+	do {
+		wait_pid = waitpid(child_pid, &child_status, 0);
+	} while (wait_pid == -1 && errno == EINTR);
+
+	if (wait_pid == -1) {
+		os_log_error(OS_LOG_DEFAULT, "Warning, unable to start xartutil, waitpid error: %d", errno);
+		result = -1;
+		goto out;
+	}
+
+	if (WIFEXITED(child_status)) {
+		// xartutil terminated normally, get exit status
+		result = WEXITSTATUS(child_status);
+
+		if (result) {
+			os_log_error(OS_LOG_DEFAULT, "Warning, xartutil returned status %d", result);
+		}
+	} else {
+		result = -1;
+
+		if (WIFSIGNALED(child_status)) {
+			os_log_error(OS_LOG_DEFAULT, "Warning, xartutil terminated by signal: %u", WTERMSIG(child_status));
+		} else if (WIFSTOPPED(child_status)) {
+			os_log_error(OS_LOG_DEFAULT, "Warning, xartutil stopped by signal: %u", WSTOPSIG(child_status));
+		} else {
+			os_log_error(OS_LOG_DEFAULT, "Warning, xartutil terminated abnormally, status 0x%x", child_status);
+		}
+	}
+
+out:
+
+	if (haveFileActions) {
+		posix_spawn_file_actions_destroy(&fileActions);
+	}
+
+	return (result);
+}
+
 extern "C" int
 wipefs_alloc(int fd, size_t block_size, wipefs_ctx *handle)
 {
@@ -138,6 +257,7 @@ wipefs_alloc(int fd, size_t block_size, wipefs_ctx *handle)
 	off_t totalSizeInBytes = 0;
 	class ExtentManager *extMan = NULL;
 	struct stat sbuf = { 0 };
+	char *diskname = NULL;
 
 	*handle = NULL;
 	(void)fstat(fd, &sbuf);
@@ -153,6 +273,8 @@ wipefs_alloc(int fd, size_t block_size, wipefs_ctx *handle)
 			goto labelExit;
 		}
 		totalSizeInBytes = numBlocks * nativeBlockSize;
+
+		diskname = query_disk_info(fd);
 		break;
 	case S_IFREG:
 		nativeBlockSize = sbuf.st_blksize;
@@ -179,6 +301,7 @@ wipefs_alloc(int fd, size_t block_size, wipefs_ctx *handle)
 		}
 
 		(*handle)->fd = fd;
+		(*handle)->diskname = NULL;
 		extMan = &(*handle)->extMan;
 
 		extMan->Init(block_size, nativeBlockSize, totalSizeInBytes);
@@ -190,6 +313,9 @@ wipefs_alloc(int fd, size_t block_size, wipefs_ctx *handle)
 		AddExtentsForUFS(extMan);
 		AddExtentsForZFS(extMan);
 		AddExtentsForPartitions(extMan);
+		AddExtentsForCoreStorage(extMan);
+
+		(*handle)->diskname = diskname;
 	}
 	catch (bad_alloc &e) {
 		err = ENOMEM;
@@ -200,6 +326,8 @@ wipefs_alloc(int fd, size_t block_size, wipefs_ctx *handle)
 
   labelExit:
 	if (err != 0) {
+		if (diskname != NULL)
+			free(diskname);
 		wipefs_free(handle);
 	}
 	return err;
@@ -247,6 +375,11 @@ wipefs_wipe(wipefs_ctx handle)
 	dk_extent_t extent;
 	dk_unmap_t unmap;
 
+	if (handle->diskname != NULL) {
+		// Remove this disk's entry from the xART.
+		run_xartutil(handle->diskname);
+	}
+
 	memset(&extent, 0, sizeof(dk_extent_t));
 	extent.length = handle->extMan.totalBytes;
 
@@ -259,7 +392,6 @@ wipefs_wipe(wipefs_ctx handle)
 	// informational for the lower-level drivers.
 	//
 	ioctl(handle->fd, DKIOCUNMAP, (caddr_t)&unmap);
-	
 
 	bufSize = 128 * 1024; // issue large I/O to get better performance
 	if (handle->extMan.nativeBlockSize > bufSize) {
@@ -283,7 +415,7 @@ wipefs_wipe(wipefs_ctx handle)
 			size_t nativeBlockSize = handle->extMan.nativeBlockSize;
 			off_t newOffset, newEndOffset;
 			newOffset = byteOffset / nativeBlockSize * nativeBlockSize;
-			newEndOffset = roundup(byteOffset + numBytes, nativeBlockSize);
+			newEndOffset = wipefs_roundup(byteOffset + numBytes, nativeBlockSize);
 			byteOffset = newOffset;
 			numBytes = newEndOffset - newOffset;
 		}
@@ -299,11 +431,14 @@ wipefs_wipe(wipefs_ctx handle)
 			numBytes -= numBytesToWrite;
 			byteOffset += numBytesToWrite;
 		}
-	}	
+	}
 
   labelExit:
+
+	(void)ioctl(handle->fd, DKIOCSYNCHRONIZECACHE);
 	if (bufZero != NULL)
 		delete[] bufZero;
+
 	return err;
 } // wipefs_wipe
 
@@ -311,6 +446,10 @@ extern "C" void
 wipefs_free(wipefs_ctx *handle)
 {
 	if (*handle != NULL) {
+		char *diskname;
+
+		if ((diskname = (*handle)->diskname) != NULL)
+			free(diskname);
 		delete *handle;
 		*handle = NULL;
 	}

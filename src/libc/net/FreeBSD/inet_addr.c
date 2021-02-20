@@ -64,6 +64,9 @@
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomma"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static const char sccsid[] = "@(#)inet_addr.c	8.1 (Berkeley) 6/17/93";
 static const char rcsid[] = "$Id: inet_addr.c,v 1.4.18.1 2005/04/27 05:00:52 sra Exp $";
@@ -226,4 +229,5 @@ __weak_reference(__inet_addr, inet_addr);
 #undef inet_aton
 __weak_reference(__inet_aton, inet_aton);
 
+#pragma clang diagnostic pop
 /*! \file */

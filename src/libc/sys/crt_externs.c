@@ -33,7 +33,7 @@
         static type * var ## _pointer = 0
 #define DECLARE_PROGNAME(var, type)				\
         static type * var ## _pointer = 0;			\
-        static type _priv_ ## var = 0
+        __unused static type _priv_ ## var = 0
 #define USE_VAR(var) (var ## _pointer)
 #else
 #define DECLARE_VAR(var, type) extern type var

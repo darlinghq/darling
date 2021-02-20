@@ -9,11 +9,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -30,53 +26,34 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)ttyname.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/gen/ttyname.3,v 1.10 2002/12/18 13:33:02 ru Exp $
+.\" $FreeBSD$
 .\"
-.Dd June 4, 1993
+.Dd July 18, 2014
 .Dt TTYNAME 3
 .Os
 .Sh NAME
-.Nm isatty ,
 .Nm ttyname ,
-.Nm ttyslot
+.Nm ttyname_r ,
+.Nm isatty
 .Nd get name of associated terminal (tty) from file descriptor
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In unistd.h
-.Ft int
-.Fo isatty
-.Fa "int fildes"
-.Fc
 .Ft char *
-.Fo ttyname
-.Fa "int fildes"
-.Fc
+.Fn ttyname "int fd"
 .Ft int
-.Fo ttyslot
-.Fa void
-.Fc
+.Fn ttyname_r "int fd" "char *buf" "size_t len"
+.Ft int
+.Fn isatty "int fd"
 .Sh DESCRIPTION
-These functions operate on the system file descriptors for terminal
-type devices.
-These descriptors are not related to the standard
-.Tn I/O
-.Dv FILE
-typedef, but refer to the special device files found in
-.Pa /dev
-and named
-.Pa /dev/tty Ns Ar xx
-and for which an entry exists
-in the initialization file
-.Pa /etc/ttys .
-(See
-.Xr ttys 5 . )
+These functions operate on file descriptors for terminal type devices.
 .Pp
 The
 .Fn isatty
 function
 determines if the file descriptor
-.Fa fildes
+.Fa fd
 refers to a valid
 terminal type device.
 .Pp
@@ -89,47 +66,76 @@ a file descriptor for which
 is true.
 .Pp
 The
-.Fn ttyslot
+.Fn ttyname
 function
-fetches the current process' control terminal number from the
-.Xr ttys 5
-file entry.
+returns the name stored in a static buffer which will be overwritten
+on subsequent calls.
+The
+.Fn ttyname_r
+function
+takes a buffer and length as arguments to avoid this problem.
 .Sh RETURN VALUES
+The
+.Fn isatty
+function returns 1 if
+.Fa fd
+refers to a terminal type device;
+otherwise, it returns 0 and may set
+.Va errno
+to indicate the error.
 The
 .Fn ttyname
 function
 returns the null terminated name if the device is found and
 .Fn isatty
-is true; otherwise, a
+is true; otherwise
+a
 .Dv NULL
 pointer is returned.
-.Pp
 The
-.Fn ttyslot
-function returns the unit number of the device file if found;
-otherwise, the value zero is returned.
-.Sh FILES
-.Bl -tag -width /etc/ttys -compact
-.It Pa /dev/\(**
-.It Pa /etc/ttys
+.Fn ttyname_r
+function returns 0 if successful.
+Otherwise an error number is returned.
+.Sh ERRORS
+These functions may fail if:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa fd
+argument
+is not a valid file descriptor.
+.It Bq Er ENOTTY
+The file associated with
+.Fa fd
+is not a terminal.
+.El
+.Pp
+Additionally,
+.Fn ttyname_r
+may fail if:
+.Bl -tag -width Er
+.It Bq Er ERANGE
+The
+.Fa bufsize
+argument
+is smaller than the length of the string to be returned.
 .El
 .Sh SEE ALSO
 .Xr ioctl 2 ,
+.Xr ptsname 3 ,
+.Xr tcgetattr 3 ,
+.Xr tty 4 ,
 .Xr ttys 5
 .Sh HISTORY
-A
-.Fn isatty ,
-.Fn ttyname ,
+The
+.Fn isatty
 and
-.Fn ttyslot
-function
+.Fn ttyname
+functions
 appeared in
 .At v7 .
-.Sh BUGS
 The
-.Fn ttyname
-function leaves its result in an internal static object and returns
-a pointer to that object.
-Subsequent calls to
-.Fn ttyname
-will modify the same object.
+.Fn ttyname_r
+function
+appeared in
+.Fx 6.0 .

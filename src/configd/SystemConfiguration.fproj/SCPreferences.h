@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2004, 2005, 2007-2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2004, 2005, 2007-2010, 2015, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,17 +17,14 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SCPREFERENCES_H
-#ifdef	USE_SYSTEMCONFIGURATION_PRIVATE_HEADERS
-#include <SystemConfiguration/_SCPreferences.h>
-#else	/* USE_SYSTEMCONFIGURATION_PRIVATE_HEADERS */
 #define _SCPREFERENCES_H
 
-#include <Availability.h>
+#include <os/availability.h>
 #include <TargetConditionals.h>
 #include <sys/cdefs.h>
 #include <dispatch/dispatch.h>
@@ -40,6 +37,8 @@
 typedef const struct AuthorizationOpaqueRef *	AuthorizationRef;
 #endif	// !TARGET_OS_IPHONE
 
+CF_IMPLICIT_BRIDGING_ENABLED
+CF_ASSUME_NONNULL_BEGIN
 
 /*!
 	@header SCPreferences
@@ -71,7 +70,7 @@ typedef const struct AuthorizationOpaqueRef *	AuthorizationRef;
 	@discussion This is the handle to an open preferences session for
 		accessing system configuration preferences.
  */
-typedef const struct __SCPreferences *	SCPreferencesRef;
+typedef const struct CF_BRIDGED_TYPE(id) __SCPreferences *	SCPreferencesRef;
 
 /*!
 	@enum SCPreferencesNotification
@@ -83,12 +82,14 @@ typedef const struct __SCPreferences *	SCPreferencesRef;
 		request has been made to apply the currently saved
 		preferences to the active system configuration.
  */
-enum {
-	kSCPreferencesNotificationCommit	= 1<<0,	// __OSX_AVAILABLE_STARTING(__MAC_10_4,__IPHONE_2_0/*SPI*/)
-	kSCPreferencesNotificationApply		= 1<<1	// __OSX_AVAILABLE_STARTING(__MAC_10_4,__IPHONE_2_0/*SPI*/)
+typedef CF_OPTIONS(uint32_t, SCPreferencesNotification) {
+	kSCPreferencesNotificationCommit
+		API_AVAILABLE(macos(4.0))
+		SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0))	= 1<<0,
+	kSCPreferencesNotificationApply
+		API_AVAILABLE(macos(4.0))
+		SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0))	= 1<<1
 };
-
-typedef	uint32_t	SCPreferencesNotification;
 
 /*!
 	@typedef SCPreferencesContext
@@ -111,10 +112,10 @@ typedef	uint32_t	SCPreferencesNotification;
  */
 typedef struct {
 	CFIndex		version;
-	void *		info;
-	const void	*(*retain)(const void *info);
-	void		(*release)(const void *info);
-	CFStringRef	(*copyDescription)(const void *info);
+	void *		__nullable info;
+	const void	* __nonnull (* __nullable retain)(const void *info);
+	void		(* __nullable release)(const void *info);
+	CFStringRef	__nonnull (* __nullable copyDescription)(const void *info);
 } SCPreferencesContext;
 
 /*!
@@ -127,9 +128,9 @@ typedef struct {
 	@param info A C pointer to a user-specified block of data.
  */
 typedef void (*SCPreferencesCallBack)   (
-					SCPreferencesRef		prefs,
-					SCPreferencesNotification	notificationType,
-					void				*info
+					SCPreferencesRef				prefs,
+					SCPreferencesNotification			notificationType,
+					void			     *	__nullable	info
 					);
 
 
@@ -140,7 +141,7 @@ __BEGIN_DECLS
 	@discussion Returns the type identifier of all SCPreferences instances.
  */
 CFTypeID
-SCPreferencesGetTypeID			(void)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+SCPreferencesGetTypeID			(void)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesCreate
@@ -159,12 +160,12 @@ SCPreferencesGetTypeID			(void)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2
 	@result Returns a reference to the new SCPreferences.
 		You must release the returned value.
  */
-SCPreferencesRef
+SCPreferencesRef __nullable
 SCPreferencesCreate			(
-					CFAllocatorRef		allocator,
-					CFStringRef		name,
-					CFStringRef		prefsID
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					CFAllocatorRef		__nullable	allocator,
+					CFStringRef				name,
+					CFStringRef		__nullable	prefsID
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 
 /*!
@@ -187,13 +188,13 @@ SCPreferencesCreate			(
 	@result Returns a reference to the new SCPreferences.
 		You must release the returned value.
  */
-SCPreferencesRef
+SCPreferencesRef __nullable
 SCPreferencesCreateWithAuthorization	(
-					CFAllocatorRef		allocator,
-					CFStringRef		name,
-					CFStringRef		prefsID,
-					AuthorizationRef	authorization
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_5,__IPHONE_2_0/*SPI*/);
+					CFAllocatorRef		__nullable	allocator,
+					CFStringRef				name,
+					CFStringRef		__nullable	prefsID,
+					AuthorizationRef	__nullable	authorization
+					)			API_AVAILABLE(macos(10.5)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesLock
@@ -214,7 +215,7 @@ Boolean
 SCPreferencesLock			(
 					SCPreferencesRef	prefs,
 					Boolean			wait
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesCommitChanges
@@ -236,7 +237,7 @@ SCPreferencesLock			(
 Boolean
 SCPreferencesCommitChanges		(
 					SCPreferencesRef	prefs
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesApplyChanges
@@ -249,7 +250,7 @@ SCPreferencesCommitChanges		(
 Boolean
 SCPreferencesApplyChanges		(
 					SCPreferencesRef	prefs
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesUnlock
@@ -265,7 +266,7 @@ SCPreferencesApplyChanges		(
 Boolean
 SCPreferencesUnlock			(
 					SCPreferencesRef	prefs
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesGetSignature
@@ -275,10 +276,10 @@ SCPreferencesUnlock			(
 	@result Returns a CFDataRef that reflects the signature of the configuration
 		preferences at the time of the call to the SCPreferencesCreate function.
  */
-CFDataRef
+CFDataRef __nullable
 SCPreferencesGetSignature		(
 					SCPreferencesRef	prefs
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesCopyKeyList
@@ -287,10 +288,10 @@ SCPreferencesGetSignature		(
 	@result Returns the list of keys.
 		You must release the returned value.
  */
-CFArrayRef
+CFArrayRef __nullable
 SCPreferencesCopyKeyList		(
 					SCPreferencesRef	prefs
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesGetValue
@@ -306,11 +307,11 @@ SCPreferencesCopyKeyList		(
 	@result Returns the value associated with the specified preference key;
 		NULL if no value was located.
  */
-CFPropertyListRef
+CFPropertyListRef __nullable
 SCPreferencesGetValue			(
 					SCPreferencesRef	prefs,
 					CFStringRef		key
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesAddValue
@@ -332,7 +333,7 @@ SCPreferencesAddValue			(
 					SCPreferencesRef	prefs,
 					CFStringRef		key,
 					CFPropertyListRef	value
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesSetValue
@@ -353,7 +354,7 @@ SCPreferencesSetValue			(
 					SCPreferencesRef	prefs,
 					CFStringRef		key,
 					CFPropertyListRef	value
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesRemoveValue
@@ -371,7 +372,7 @@ Boolean
 SCPreferencesRemoveValue		(
 					SCPreferencesRef	prefs,
 					CFStringRef		key
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesSetCallback
@@ -388,10 +389,10 @@ SCPreferencesRemoveValue		(
  */
 Boolean
 SCPreferencesSetCallback		(
-					SCPreferencesRef	prefs,
-					SCPreferencesCallBack	callout,
-					SCPreferencesContext	*context
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_4,__IPHONE_2_0/*SPI*/);
+					SCPreferencesRef			prefs,
+					SCPreferencesCallBack	__nullable	callout,
+					SCPreferencesContext	* __nullable	context
+					)			API_AVAILABLE(macos(10.4)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesScheduleWithRunLoop
@@ -411,7 +412,7 @@ SCPreferencesScheduleWithRunLoop	(
 					SCPreferencesRef	prefs,
 					CFRunLoopRef		runLoop,
 					CFStringRef		runLoopMode
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_4,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.4)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesUnscheduleFromRunLoop
@@ -431,7 +432,7 @@ SCPreferencesUnscheduleFromRunLoop	(
 					SCPreferencesRef	prefs,
 					CFRunLoopRef		runLoop,
 					CFStringRef		runLoopMode
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_4,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.4)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesSetDispatchQueue
@@ -444,9 +445,9 @@ SCPreferencesUnscheduleFromRunLoop	(
  */
 Boolean
 SCPreferencesSetDispatchQueue		(
-					 SCPreferencesRef	prefs,
-					 dispatch_queue_t	queue
-					 )			__OSX_AVAILABLE_STARTING(__MAC_10_6,__IPHONE_4_0/*SPI*/);
+					 SCPreferencesRef			prefs,
+					 dispatch_queue_t	__nullable	queue
+					 )			API_AVAILABLE(macos(10.6)) SPI_AVAILABLE(ios(4.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCPreferencesSynchronize
@@ -462,9 +463,11 @@ SCPreferencesSetDispatchQueue		(
 void
 SCPreferencesSynchronize		(
 					SCPreferencesRef	prefs
-					)			__OSX_AVAILABLE_STARTING(__MAC_10_4,__IPHONE_2_0/*SPI*/);
+					)			API_AVAILABLE(macos(10.4)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 __END_DECLS
 
-#endif	/* USE_SYSTEMCONFIGURATION_PRIVATE_HEADERS */
-#endif /* _SCPREFERENCES_H */
+CF_ASSUME_NONNULL_END
+CF_IMPLICIT_BRIDGING_DISABLED
+
+#endif	/* _SCPREFERENCES_H */

@@ -33,6 +33,7 @@ static char sccsid[] = "@(#)mktemp.c	8.1 (Berkeley) 6/4/93";
 #include <sys/cdefs.h>
 
 #include "namespace.h"
+#include <assert.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -42,7 +43,6 @@ static char sccsid[] = "@(#)mktemp.c	8.1 (Berkeley) 6/4/93";
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <stdbool.h>
 #include "un-namespace.h"
 
 #define ALLOWED_MKOSTEMP_FLAGS (O_APPEND | O_SHLOCK | O_EXLOCK | O_CLOEXEC)
@@ -61,19 +61,19 @@ typedef enum {
  * Otherwise return FTPP_TRY_NEXT.
  */
 typedef find_temp_path_progress_t (*find_temp_path_action_t)(
-		char *path, void *ctx, void *result);
+		int dfd, char *path, void *ctx, void *result);
 
-static int find_temp_path(char *path, int slen, bool stat_base_dir,
+static int find_temp_path(int dfd, char *path, int slen, bool stat_base_dir,
 		find_temp_path_action_t action, void *action_ctx, void *action_result);
 
 static find_temp_path_progress_t _mkostemps_action(
-		char *path, void *ctx, void *result);
+		int dfd, char *path, void *ctx, void *result);
 static find_temp_path_progress_t _mktemp_action(
-		char *path, void *ctx, void *result);
+		int dfd, char *path, void *ctx, void *result);
 static find_temp_path_progress_t _mkdtemp_action(
-		char *path, void *ctx, void *result);
+		int dfd, char *path, void *ctx, void *result);
 static find_temp_path_progress_t _mkstemp_dprotected_np_action(
-		char *path, void *ctx, void *result);
+		int dfd, char *path, void *ctx, void *result);
 
 static const char padchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -86,7 +86,18 @@ mkostemps(char *path, int slen, int oflags)
 		errno = EINVAL;
 		return -1;
 	}
-	return (find_temp_path(path, slen, TRUE, _mkostemps_action, &oflags, &fd) ? fd : -1);
+	return (find_temp_path(AT_FDCWD, path, slen, TRUE, _mkostemps_action, &oflags, &fd) ? fd : -1);
+}
+
+int
+mkostempsat_np(int dfd, char *path, int slen, int oflags)
+{
+	int fd;
+	if (oflags & ~ALLOWED_MKOSTEMP_FLAGS) {
+		errno = EINVAL;
+		return -1;
+	}
+	return (find_temp_path(dfd, path, slen, TRUE, _mkostemps_action, &oflags, &fd) ? fd : -1);
 }
 
 int
@@ -94,7 +105,15 @@ mkstemps(char *path, int slen)
 {
 	int fd;
 
-	return (find_temp_path(path, slen, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
+	return (find_temp_path(AT_FDCWD, path, slen, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
+}
+
+int
+mkstempsat_np(int dfd, char *path, int slen)
+{
+	int fd;
+
+	return (find_temp_path(dfd, path, slen, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
 }
 
 int
@@ -105,7 +124,7 @@ mkostemp(char *path, int oflags)
 		errno = EINVAL;
 		return -1;
 	}
-	return (find_temp_path(path, 0, TRUE, _mkostemps_action, &oflags, &fd) ? fd : -1);
+	return (find_temp_path(AT_FDCWD, path, 0, TRUE, _mkostemps_action, &oflags, &fd) ? fd : -1);
 }
 
 int
@@ -113,20 +132,27 @@ mkstemp(char *path)
 {
 	int fd;
 
-	return (find_temp_path(path, 0, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
+	return (find_temp_path(AT_FDCWD, path, 0, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
 }
 
 char *
 mkdtemp(char *path)
 {
-	return (find_temp_path(path, 0, TRUE, _mkdtemp_action, NULL, NULL) ?
+	return (find_temp_path(AT_FDCWD, path, 0, TRUE, _mkdtemp_action, NULL, NULL) ?
+			path : (char *)NULL);
+}
+
+char *
+mkdtempat_np(int dfd, char *path)
+{
+	return (find_temp_path(dfd, path, 0, TRUE, _mkdtemp_action, NULL, NULL) ?
 			path : (char *)NULL);
 }
 
 char *
 _mktemp(char *path)
 {
-	return (find_temp_path(path, 0, FALSE, _mktemp_action, NULL, NULL) ?
+	return (find_temp_path(AT_FDCWD, path, 0, FALSE, _mktemp_action, NULL, NULL) ?
 			path : (char *)NULL);
 }
 
@@ -145,7 +171,7 @@ mkstemp_dprotected_np(char *path, int class, int dpflags)
 	int fd;
 	int ctx[2] = { class, dpflags };
 
-	return (find_temp_path(path, 0, TRUE, _mkstemp_dprotected_np_action, &ctx, &fd) ? fd : -1);
+	return (find_temp_path(AT_FDCWD, path, 0, TRUE, _mkstemp_dprotected_np_action, &ctx, &fd) ? fd : -1);
 }
 
 /* For every path matching a given template, invoke an action. Depending on
@@ -153,7 +179,7 @@ mkstemp_dprotected_np(char *path, int class, int dpflags)
  * Returns 1 if succeeds, 0 and sets errno if fails.
  */
 static int
-find_temp_path(char *path, int slen, bool stat_base_dir,
+find_temp_path(int dfd, char *path, int slen, bool stat_base_dir,
 		find_temp_path_action_t action, void *action_ctx, void *action_result)
 {
 	char *start, *trv, *suffp, *carryp;
@@ -199,7 +225,7 @@ find_temp_path(char *path, int slen, bool stat_base_dir,
 		for (; trv > path; --trv) {
 			if (*trv == '/') {
 				*trv = '\0';
-				rval = stat(path, &sbuf);
+				rval = fstatat(dfd, path, &sbuf, 0);
 				*trv = '/';
 				if (rval != 0)
 					return (0);
@@ -213,7 +239,7 @@ find_temp_path(char *path, int slen, bool stat_base_dir,
 	}
 
 	for (;;) {
-		switch (action(path, action_ctx, action_result)) {
+		switch (action(dfd, path, action_ctx, action_result)) {
 		case FTPP_DONE:
 			return (1);
 		case FTPP_ERROR:
@@ -253,10 +279,10 @@ find_temp_path(char *path, int slen, bool stat_base_dir,
 }
 
 static find_temp_path_progress_t
-_mkostemps_action(char *path, void *ctx, void *result)
+_mkostemps_action(int dfd, char *path, void *ctx, void *result)
 {
 	int oflags = (ctx != NULL) ? *((int *) ctx) : 0;
-	int fd = _open(path, O_CREAT|O_EXCL|O_RDWR|oflags, 0600);
+	int fd = openat(dfd, path, O_CREAT|O_EXCL|O_RDWR|oflags, 0600);
 	if (fd >= 0) {
 		*((int *) result) = fd;
 		return FTPP_DONE;
@@ -267,10 +293,10 @@ _mkostemps_action(char *path, void *ctx, void *result)
 }
 
 static find_temp_path_progress_t
-_mktemp_action(char *path, void *ctx __unused, void *result __unused)
+_mktemp_action(int dfd, char *path, void *ctx __unused, void *result __unused)
 {
 	struct stat sbuf;
-	if (lstat(path, &sbuf)) {
+	if (fstatat(dfd, path, &sbuf, AT_SYMLINK_NOFOLLOW)) {
 		// stat failed
 		return (errno == ENOENT) ?
 				FTPP_DONE : // path is vacant, done
@@ -280,9 +306,9 @@ _mktemp_action(char *path, void *ctx __unused, void *result __unused)
 }
 
 static find_temp_path_progress_t
-_mkdtemp_action(char *path, void *ctx __unused, void *result __unused)
+_mkdtemp_action(int dfd, char *path, void *ctx __unused, void *result __unused)
 {
-	if (mkdir(path, 0700) == 0)
+	if (mkdirat(dfd, path, 0700) == 0)
 		return FTPP_DONE;
 	return (errno == EEXIST) ?
 			FTPP_TRY_NEXT :
@@ -290,8 +316,10 @@ _mkdtemp_action(char *path, void *ctx __unused, void *result __unused)
 }
 
 static find_temp_path_progress_t
-_mkstemp_dprotected_np_action(char *path, void *ctx, void *result)
+_mkstemp_dprotected_np_action(int dfd, char *path, void *ctx, void *result)
 {
+	assert(dfd == AT_FDCWD);
+
 	int class = ((int *) ctx)[0];
 	int dpflags = ((int *) ctx)[1];
 	int fd = open_dprotected_np(path, O_CREAT|O_EXCL|O_RDWR, class, dpflags, 0600);

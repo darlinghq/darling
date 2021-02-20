@@ -19,6 +19,12 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFKeyPair : NSObject
+#import <SecurityFoundation/_SFKey.h>
+
+#define SFKeyPair _SFKeyPair
+
+@interface SFKeyPair : SFKey
 
 @end
+
+#import <SecurityFoundation/_SFECKeyPair.h>

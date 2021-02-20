@@ -27,6 +27,9 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)system.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
@@ -54,7 +57,9 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/system.c,v 1.11 2007/01/09 00:28:10 imp 
 #if __DARWIN_UNIX03
 #include <pthread.h>
 
+#if !(TARGET_OS_IPHONE && (TARGET_OS_SIMULATOR || !TARGET_OS_IOS))
 static pthread_mutex_t __systemfn_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 extern int __unix_conforming;
 #endif /* __DARWIN_UNIX03 */
 
@@ -154,3 +159,5 @@ __system(command)
 
 __weak_reference(__system, system);
 __weak_reference(__system, _system);
+
+#pragma clang diagnostic pop

@@ -24,25 +24,35 @@
 #ifndef _NOTIFY_DAEMON_H_
 #define _NOTIFY_DAEMON_H_
 
+#define DISPATCH_MACH_SPI 1
+
 #include <libnotify.h>
 #include <mach/mach.h>
 #include <launch.h>
 #include <dispatch/dispatch.h>
+#include <dispatch/private.h>
 
-#define NOTIFY_IPC_VERSION 2
+
+#define STATUS_REQUEST_SHORT 0
+#define STATUS_REQUEST_LONG 1
+
+#define NOTIFY_STATE_ENTITLEMENT "com.apple.private.libnotify.statecapture"
+
 
 struct global_s
 {
+	notify_state_t notify_state;
+	dispatch_mach_t mach_notifs_channel;
+	mach_port_t mach_notify_port;
 	mach_port_t server_port;
-	launch_data_t launch_dict;
-	notify_state_t *notify_state;
-	dispatch_queue_t work_q;
-	dispatch_source_t mach_src;
+	void **service_info_list;
+	dispatch_workloop_t workloop;
+	dispatch_mach_t mach_channel;
 	dispatch_source_t sig_usr1_src;
 	dispatch_source_t sig_usr2_src;
 	dispatch_source_t sig_winch_src;
-	uint32_t request_size;
-	uint32_t reply_size;
+	dispatch_source_t stat_reset_src;
+	time_t last_reset_time;
 	uint32_t nslots;
 	uint32_t slot_id;
 	uint32_t *shared_memory_base;
@@ -50,8 +60,11 @@ struct global_s
 	uint32_t *last_shm_base;
 	uint32_t log_cutoff;
 	uint32_t log_default;
+	uint16_t service_info_count;
 	char *log_path;
-} global;
+};
+
+extern struct global_s global;
 
 struct call_statistics_s
 {
@@ -80,22 +93,27 @@ struct call_statistics_s
 	uint64_t set_state_by_client;
 	uint64_t set_state_by_id;
 	uint64_t set_state_by_client_and_fetch_id;
-	uint64_t get_owner;
 	uint64_t set_owner;
-	uint64_t get_access;
 	uint64_t set_access;
 	uint64_t monitor_file;
 	uint64_t service_timer;
 	uint64_t service_path;
 	uint64_t cleanup;
 	uint64_t regenerate;
-} call_statistics;
+	uint64_t checkin;
+};
 
-extern void log_message(int priority, const char *str, ...);
+extern struct call_statistics_s call_statistics;
+
+extern void log_message(int priority, const char *str, ...) __printflike(2, 3);
 extern uint32_t daemon_post(const char *name, uint32_t u, uint32_t g);
 extern uint32_t daemon_post_nid(uint64_t nid, uint32_t u, uint32_t g);
 extern void daemon_post_client(uint64_t cid);
 extern void daemon_set_state(const char *name, uint64_t val);
-extern void dump_status(uint32_t level);
+extern void dump_status(uint32_t level, int fd);
+extern bool has_entitlement(audit_token_t audit, const char *entitlement);
+extern bool has_root_entitlement(audit_token_t audit);
+
+dispatch_queue_t get_notifyd_workloop(void);
 
 #endif /* _NOTIFY_DAEMON_H_ */

@@ -169,6 +169,7 @@
 #include "process/posix_spawn.h"
 #include "bsdthread/bsdthread_register.h"
 #include "bsdthread/bsdthread_create.h"
+#include "bsdthread/bsdthread_ctl.h"
 #include "bsdthread/bsdthread_terminate.h"
 #include "bsdthread/disable_threadsignal.h"
 #include "bsdthread/pthread_chdir.h"
@@ -214,6 +215,7 @@
 #include "sysv_sem/semget.h"
 #include "sysv_sem/semop.h"
 #include "mach/audit_session_self.h"
+#include "audit/audit_addr.h"
 
 void* __bsd_syscall_table[600] = {
 	[0] = sys_syscall,
@@ -317,6 +319,7 @@ void* __bsd_syscall_table[600] = {
 	[158] = sys_fstatfs,
 	[159] = sys_unmount,
 	[169] = sys_csops,
+	[170] = sys_csops_audittoken,
 	[173] = sys_waitid,
 	[181] = sys_setgid,
 	[182] = sys_setegid,
@@ -336,7 +339,7 @@ void* __bsd_syscall_table[600] = {
 	[200] = sys_truncate,
 	[201] = sys_ftruncate,
 	[202] = sys_sysctl,
-	[216] = sys_mkcomplex,
+	[216] = sys_open_dprotected_np,
 	[217] = sys_statv,
 	[218] = sys_lstatv,
 	[219] = sys_fstatv,
@@ -409,6 +412,8 @@ void* __bsd_syscall_table[600] = {
 	[347] = sys_getfsstat64,
 	[348] = sys_pthread_chdir,
 	[349] = sys_pthread_fchdir,
+	[357] = sys_getaudit_addr,
+	[358] = sys_setaudit_addr,
 	[360] = sys_bsdthread_create,
 	[361] = sys_bsdthread_terminate,
 	[362] = sys_kqueue,
@@ -469,6 +474,7 @@ void* __bsd_syscall_table[600] = {
 	[474] = sys_symlinkat,
 	[475] = sys_mkdirat,
 	[476] = sys_getattrlistat,
+	[478] = sys_bsdthread_ctl,
 	[483] = sys_csrctl,
 	[500] = sys_getentropy,
 	[515] = sys_ulock_wait,

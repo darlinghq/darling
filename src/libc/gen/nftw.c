@@ -150,6 +150,7 @@ both_ftw(const char *path,
 			break;
 		case FTS_F:
 		case FTS_DEFAULT:
+			SKIP_MOUNT;
 			fnflag = FTW_F;
 			break;
 		case FTS_NS:

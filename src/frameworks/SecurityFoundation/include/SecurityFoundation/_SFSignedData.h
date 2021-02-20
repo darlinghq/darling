@@ -22,3 +22,5 @@
 @interface _SFSignedData : NSObject
 
 @end
+
+#define SFSignedData _SFSignedData

@@ -1,11 +1,13 @@
 #ifndef _OD_ODIPC_H_
 #define _OD_ODIPC_H_
 
-#define kODMachMembershipPortNameDebug 	401
-#define kODMachMembershipPortName	400
+#warning "TODO: These are good guesses, but figure out the real values"
 
-#define kODMachLibinfoPortName 500
-#define kODMachLibinfoPortNameDebug 501
+#define kODMachMembershipPortNameDebug 	"com.apple.private.opendirectoryd.rpc"
+#define kODMachMembershipPortName	"com.apple.private.opendirectoryd.rpc"
+
+#define kODMachLibinfoPortName "com.apple.private.opendirectoryd.rpc"
+#define kODMachLibinfoPortNameDebug "com.apple.private.opendirectoryd.rpc"
 
 #define OD_RPC_NAME "rpc_name"
 #define OD_RPC_VERSION "rpc_version"

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CONFIGD_LAUNCHD_PLIST=${INSTALL_DIR}/../../System/Library/LaunchDaemons/${1}
+CONFIGD_LAUNCHD_PLIST=${DSTROOT}/System/Library/LaunchDaemons/${1}
 CONFIGD_PLUGINS=/tmp/plugins.$$
 EMBEDDED_PROJECTS=/tmp/projects.$$
 PLUGIN_MACHSERVICES=/tmp/plugin.$$
@@ -9,8 +9,8 @@ HAVE_CONFIGD_PLUGINS="MISSING"
 HAVE_IPCONFIGURATION="MISSING"
 
 cp /dev/null ${CONFIGD_PLUGINS}
-if [ -d ${INSTALL_DIR}/../../System/Library/SystemConfiguration ]; then
-	(cd ${INSTALL_DIR}/../../System/Library/SystemConfiguration ; ls -1d *.bundle >> ${CONFIGD_PLUGINS} 2>/dev/null )
+if [ -d ${DSTROOT}/System/Library/SystemConfiguration ]; then
+	(cd ${DSTROOT}/System/Library/SystemConfiguration ; ls -1d *.bundle >> ${CONFIGD_PLUGINS} 2>/dev/null )
 fi
 
 cp /dev/null ${EMBEDDED_PROJECTS}
@@ -41,14 +41,14 @@ do
 	PLUGIN_PLIST=""
 
 #	if [ -z "${PLUGIN_PLIST}" ]; then
-		PLUGIN_INF=${INSTALL_DIR}/../../System/Library/SystemConfiguration/${PLUGIN}/Contents/Info.plist
+		PLUGIN_INF=${DSTROOT}/System/Library/SystemConfiguration/${PLUGIN}/Contents/Info.plist
 		if [ -f ${PLUGIN_INF} ]; then
 			PLUGIN_PLIST=${PLUGIN_INF}
 		fi
 #	fi
 
 	if [ -z "${PLUGIN_PLIST}" ]; then
-		PLUGIN_INF=${INSTALL_DIR}/../../System/Library/SystemConfiguration/${PLUGIN}/Info.plist
+		PLUGIN_INF=${DSTROOT}/System/Library/SystemConfiguration/${PLUGIN}/Info.plist
 		if [ -f ${PLUGIN_INF} ]; then
 			PLUGIN_PLIST=${PLUGIN_INF}
 		fi
@@ -109,10 +109,10 @@ do
 	if [ $? -eq 0 ]; then
 		echo "Merging \"MachServices\" from: ${PLUGIN_INF}"
 		/usr/libexec/PlistBuddy -c "Merge ${PLUGIN_MACHSERVICES} :MachServices" ${CONFIGD_LAUNCHD_PLIST} 2>/dev/null
-		if [ -n "${IPHONEOS_DEPLOYMENT_TARGET}" ]; then
-			/usr/bin/plutil -convert binary1 ${CONFIGD_LAUNCHD_PLIST}
-		else
+		if [ -n "${MACOSX_DEPLOYMENT_TARGET}" ]; then
 			/usr/bin/plutil -convert xml1 ${CONFIGD_LAUNCHD_PLIST}
+		else
+			/usr/bin/plutil -convert binary1 ${CONFIGD_LAUNCHD_PLIST}
 		fi
 	fi
 
@@ -128,16 +128,31 @@ done
 
 rm -f ${PLUGIN_MACHSERVICES} ${CONFIGD_PLUGINS} ${EMBEDDED_PROJECTS}
 
+MISSING=""
 if [ "${HAVE_CONFIGD_PLUGINS}" != "OK" ]; then
-	echo ""
-	echo "**************************************************************************************"
-	echo "* THE BUILD ENVIRONMENT IS MISSING THE ROOT FOR AN ESSENTIAL PROJECT (configd_plugins)"
-	echo "**************************************************************************************"
-	exit 1
-elif [ "${HAVE_IPCONFIGURATION}" != "OK" -a "${PLATFORM_NAME}" != "iphonesimulator" ] ; then
-	echo ""
-	echo "****************************************************************************"
-	echo "* THE BUILD ENVIRONMENT IS MISSING THE ROOT FOR AN ESSENTIAL PROJECT (bootp)"
-	echo "****************************************************************************"
-	exit 1
+	MISSING="configd_plugins"
+elif [ "${HAVE_IPCONFIGURATION}" != "OK" ]; then
+	case "${PLATFORM_NAME}" in
+	    *simulator )
+		;;
+	    * )
+		MISSING="bootp"
+		;;
+	esac
 fi
+
+if [ -n "${MISSING}" ]; then
+	echo ""
+	echo "**************************************************************************************"
+	echo "* THE BUILD ENVIRONMENT IS MISSING THE ROOT FOR AN ESSENTIAL PROJECT (${MISSING})"
+	echo "**************************************************************************************"
+	if [ -z "${RC_RELEASE}" ]; then
+		echo "* REMOVING CONFIGD's LAUNCHD .plist FROM INSTALL ROOT"
+		echo "**************************************************************************************"
+		rm -f ${CONFIGD_LAUNCHD_PLIST}
+	else
+		# if B&I or "buildit", configd's launchd .plist is required (and must be viable)
+		exit 1
+	fi
+fi
+

@@ -134,9 +134,9 @@ void qtn_proc_set_flags(qtn_proc_t proc, unsigned int flags)
 {
 }
 
-void qtn_proc_apply_to_self(qtn_proc_t proc)
-{
-}
+int qtn_proc_apply_to_self(qtn_proc_t proc) {
+	return QTN_NOT_QUARANTINED;
+};
 
 void qtn_proc_free(qtn_proc_t proc)
 {
@@ -153,3 +153,6 @@ int qtn_file_init_with_mount_point(qtn_file_t a, char b[1024])
 	return 0;
 }
 
+int qtn_proc_init_with_data(qtn_proc_t proc, void* data, size_t data_len) {
+	return 0;
+};

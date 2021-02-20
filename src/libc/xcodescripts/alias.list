@@ -10,5 +10,13 @@ __platform_memset_pattern16 _memset_pattern16
 __platform_memset_pattern4 _memset_pattern4
 __platform_memset_pattern8 _memset_pattern8
 __platform_strchr _strchr
+__platform_strchr _index
 __platform_strcmp _strcmp
+__platform_strcpy _strcpy
+__platform_strlcat _strlcat
+__platform_strlcpy _strlcpy
+__platform_strlen _strlen
 __platform_strncmp _strncmp
+__platform_strncpy _strncpy
+__platform_strnlen _strnlen
+__platform_strstr _strstr

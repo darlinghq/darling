@@ -31,15 +31,16 @@
 static char sccsid[] = "@(#)readdir.c	8.3 (Berkeley) 9/29/94";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/gen/readdir.c,v 1.15 2008/05/05 14:05:23 kib Exp $");
+__FBSDID("$FreeBSD$");
 
 #include "namespace.h"
 #include <sys/param.h>
 #include <dirent.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "un-namespace.h"
 
 #include "libc_private.h"
@@ -49,29 +50,68 @@ __FBSDID("$FreeBSD: src/lib/libc/gen/readdir.c,v 1.15 2008/05/05 14:05:23 kib Ex
  * get next entry in a directory.
  */
 struct dirent *
-_readdir_unlocked(dirp, skip)
-	DIR *dirp;
-	int skip;
+_readdir_unlocked(DIR *dirp, int skip)
 {
 	struct dirent *dp;
+	long initial_seek;
+	long initial_loc = 0;
 
 	for (;;) {
 		if (dirp->dd_loc >= dirp->dd_size) {
-			if (dirp->dd_flags & __DTF_READALL)
+			if (dirp->dd_flags & (__DTF_READALL | __DTF_ATEND))
 				return (NULL);
+			initial_loc = dirp->dd_loc;
+			dirp->dd_flags &= ~__DTF_SKIPREAD;
 			dirp->dd_loc = 0;
 		}
-		if (dirp->dd_loc == 0 && !(dirp->dd_flags & __DTF_READALL)) {
+		if (dirp->dd_loc == 0 &&
+		    !(dirp->dd_flags & (__DTF_READALL | __DTF_ATEND | __DTF_SKIPREAD))) {
+			if (dirp->dd_len == READDIR_INITIAL_SIZE) {
+				/*
+				 * If we need to read more, and we still have the original size,
+				 * then grow the internal buffer to a large size to amortize
+				 * the cost of __getdirentries64 calls.
+				 */
+				int len = READDIR_LARGE_SIZE;
+				char *buf = malloc(len);
+				if (buf) {
+					free(dirp->dd_buf);
+					dirp->dd_buf = buf;
+					dirp->dd_len = len;
+				}
+			}
 #if __DARWIN_64_BIT_INO_T
-			dirp->dd_size = __getdirentries64(dirp->dd_fd,
+			/*
+			 * sufficiently recent kernels when the buffer is large enough,
+			 * will use the last bytes of the buffer to return status.
+			 *
+			 * To support older kernels:
+			 * - make sure it's 0 initialized
+			 * - make sure it's past `dd_size` before reading it
+			 */
+			getdirentries64_flags_t *gdeflags =
+			    (getdirentries64_flags_t *)(dirp->dd_buf + dirp->dd_len -
+			    sizeof(getdirentries64_flags_t));
+			*gdeflags = 0;
+			initial_seek = dirp->dd_td->seekoff;
+			dirp->dd_size = (long)__getdirentries64(dirp->dd_fd,
 			    dirp->dd_buf, dirp->dd_len, &dirp->dd_td->seekoff);
+			if (dirp->dd_size >= 0 &&
+			    dirp->dd_size <= dirp->dd_len - sizeof(getdirentries64_flags_t)) {
+				if (*gdeflags & GETDIRENTRIES64_EOF) {
+					dirp->dd_flags |= __DTF_ATEND;
+				}
+			}
 #else /* !__DARWIN_64_BIT_INO_T */
+			initial_seek = dirp->dd_seek;
 			dirp->dd_size = _getdirentries(dirp->dd_fd,
 			    dirp->dd_buf, dirp->dd_len, &dirp->dd_seek);
 #endif /* __DARWIN_64_BIT_INO_T */
 			if (dirp->dd_size <= 0)
 				return (NULL);
+			_fixtelldir(dirp, initial_seek, initial_loc);
 		}
+		dirp->dd_flags &= ~__DTF_SKIPREAD;
 		dp = (struct dirent *)(dirp->dd_buf + dirp->dd_loc);
 		if ((long)dp & 03L)	/* bogus pointer check */
 			return (NULL);
@@ -88,8 +128,7 @@ _readdir_unlocked(dirp, skip)
 }
 
 struct dirent *
-readdir(dirp)
-	DIR *dirp;
+readdir(DIR *dirp)
 {
 	struct dirent	*dp;
 
@@ -104,10 +143,7 @@ readdir(dirp)
 }
 
 int
-readdir_r(dirp, entry, result)
-	DIR *dirp;
-	struct dirent *entry;
-	struct dirent **result;
+readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result)
 {
 	struct dirent *dp;
 	int saved_errno;

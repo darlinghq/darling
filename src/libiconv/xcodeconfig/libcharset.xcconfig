@@ -1,0 +1,4 @@
+#include "lib.xcconfig"
+
+GCC_PREPROCESSOR_DEFINITIONS = $(LIB_GCC_PREPROCESSOR_DEFINITIONS) BUILDING_LIBCHARSET relocate=libcharset_relocate set_relocation_prefix=libcharset_set_relocation_prefix
+

@@ -1,8 +1,8 @@
 #import <opendirectory/odconstants.h>
 
-#warning "TODO: Figure out real values"
-const char *kODAPIPortNameDebug = "kODAPIPortNameDebug";
-const char *kODAPIPortName = "kODAPIPortName";
+#warning "TODO: These are good guesses, but figure out the real values"
+const char *kODAPIPortNameDebug = "com.apple.system.opendirectoryd.api";
+const char *kODAPIPortName = "com.apple.system.opendirectoryd.api";
 
 const char *kODXPCReplyClientID = "kODXPCReplyClientID";
 const char *kODXPCReplyData = "kODXPCReplyData";

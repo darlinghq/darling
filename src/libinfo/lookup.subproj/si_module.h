@@ -1,6 +1,5 @@
-// Modified by Lubos Dolezel for Darling
 /*
- * Copyright (c) 2008-2011 Apple Inc.  All rights reserved.
+ * Copyright (c) 2008-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -25,6 +24,7 @@
 #ifndef __SI_MODULE_H__
 #define __SI_MODULE_H__
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <netinet/in.h>
@@ -42,6 +42,8 @@
 #define forever for(;;)
 #define string_equal(A,B) (strcmp(A,B)==0)
 #define string_not_equal(A,B) (strcmp(A,B)!=0)
+
+#define SI_HAS_NAT64_SYNTHESIS	1
 
 #define SI_CALL_USER_BYNAME        0
 #define SI_CALL_USER_BYUID         1
@@ -368,6 +370,12 @@ si_list_t *si_addrinfo_list_from_hostent(si_mod_t *si, uint32_t flags, uint32_t 
 
 int _gai_serv_to_port(const char *serv, uint32_t proto, uint16_t *port);
 si_list_t *_gai_simple(si_mod_t *si, const void *nodeptr, const void *servptr, uint32_t family, uint32_t socktype, uint32_t proto, uint32_t flags, const char *interface, uint32_t *err);
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 int si_inet_config(uint32_t *inet4, uint32_t *inet6);
+#endif
+
+bool _gai_nat64_can_v4_address_be_synthesized(const struct in_addr *ipv4_addr);
+void si_set_nat64_v4_requires_synthesis(bool (*nat64_v4_requires_synthesis)(const struct in_addr *ipv4_addr));
+void si_set_nat64_v4_synthesize(int (*nat64_v4_synthesize)(uint32_t *index, const struct in_addr *ipv4, struct in6_addr **out_ipv6_addrs));
 
 #endif /* ! __SI_MODULE_H__ */

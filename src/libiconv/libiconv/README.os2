@@ -1,0 +1,46 @@
+Installation on OS/2:
+
+- Port done by Akira Hatakeyama <akira@sra.co.jp>, see
+  http://www.sra.co.jp/people/akira/os2/libiconv/index.html
+
+- Requires emx+gcc, recommend emx-0.9d with fix03 or newer.
+
+  Also requires a few GNU utilities to be installed: GNU fileutils (cp, mv,
+  rm, ...), GNU textutils (cat, cmp, uniq, ...), GNU sed, GNU make.
+
+- Cannot build in a separate directory.
+
+- Build instructions:
+
+  No configure script needs to be run. Just
+
+       make -f Makefile.os2 all
+
+  Checking it:
+
+       make -f Makefile.os2 check
+
+- Installation:
+
+       make -f Makefile.os2 install prefix="X:/emx"
+
+  The prefix option specifies where you have EMX installed and wish the
+  iconv library and headers to be installed.
+
+  This will install
+   * an include file                                  $(prefix)/include/iconv.h
+   * a DLL                                            $(prefix)/dll/iconv.dll
+   * an import library for .o (use without "-Zomf")   $(prefix)/lib/iconv.a
+   * an import library for .obj (use with "-Zomf")    $(prefix)/lib/iconv.lib
+   * a few manual pages                            $(prefix)/man/man3/iconv*.3
+
+- Use:
+
+  Your main program should include <iconv.h> when using the iconv* functions.
+
+  If you compile as .o (no "-Zomf"), link with iconv.a.
+  If you compile as .obj (with "-Zomf"), link with iconv.lib.
+
+  The DLL was built with "-Zmt -Zcrtdll" options. So your main program must
+  be built with "-Zmt -Zcrtdll" as well (or the shorthand "-Zmtd").
+

@@ -2,6 +2,7 @@
 #include <mach/kern_return.h>
 #include <errno.h>
 #include <sys/linux_time.h>
+#include "../time/gettimeofday.h"
 
 #ifndef NSEC_PER_SEC
 #	define NSEC_PER_SEC 1000000000ull
@@ -43,13 +44,4 @@ uint64_t mach_absolute_time(void)
 	out += ts.tv_sec * NSEC_PER_SEC;
 	
 	return out;
-}
-
-int __gettimeofday_with_mach(struct timeval *tv, struct timezone *tz, uint64_t *absolute)
-{
-	sys_gettimeofday(tv, tz);
-	if (absolute)
-		*absolute = mach_absolute_time();
-
-	return 0;
 }

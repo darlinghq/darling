@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, 2011 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2004, 2011, 2017 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -34,8 +34,6 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-
-CFComparisonResult	_compare_protocols	(const void *val1, const void *val2, void *context);
 
 CF_RETURNS_RETAINED
 CFStringRef		_protocol_description	(SCNetworkProtocolRef protocol, Boolean skipEmpty);

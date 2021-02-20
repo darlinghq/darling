@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include "../signal/duct_signals.h"
 #include "../signal/sigprocmask.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include "pthread_canceled.h"

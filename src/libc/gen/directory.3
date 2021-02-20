@@ -9,7 +9,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -28,7 +28,7 @@
 .\"     @(#)directory.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD$
 .\"
-.Dd April 16, 2008
+.Dd May 22, 2017
 .Dt DIRECTORY 3
 .Os
 .Sh NAME
@@ -65,6 +65,15 @@
 .Ft int
 .Fn dirfd "DIR *dirp"
 .Sh DESCRIPTION
+.Bf -symbolic
+The
+.Fn readdir_r
+interface is deprecated
+because it cannot be used correctly unless
+.Brq Va NAME_MAX
+is a fixed value.
+.Ef
+.Pp
 The
 .Fn opendir
 function
@@ -83,10 +92,7 @@ is returned if
 .Fa filename
 cannot be accessed, or if it cannot
 .Xr malloc 3
-enough memory to hold the whole thing,
-and sets the global variable
-.Va errno
-to indicate the error.
+enough memory to hold the whole thing.
 .Pp
 The
 .Fn fdopendir
@@ -122,14 +128,27 @@ The
 .Fn readdir
 function
 returns a pointer to the next directory entry.
-It returns
+The directory entry remains valid until the next call to
+.Fn readdir
+or
+.Fn closedir
+on the same
+.Em directory stream .
+The function returns
 .Dv NULL
 upon reaching the end of the directory or on error.
 In the event of an error,
 .Va errno
 may be set to any of the values documented for the
 .Xr getdirentries 2
-system call.
+system call.  Note that the order of the directory entries vended by
+.Fn readdir
+is not specified.
+Some filesystems may return entries in lexicographic sort order and others may not.
+Also note that not all filesystems will provide a value for
+.Va d_type
+and may instead set the field to
+.Dv DT_UNKNOWN .
 .Pp
 The
 .Fn readdir_r
@@ -139,6 +158,13 @@ provides the same functionality as
 but the caller must provide a directory
 .Fa entry
 buffer to store the results in.
+The buffer must be large enough for a
+.Vt struct dirent
+with a
+.Va d_name
+array with
+.Brq Va NAME_MAX
++ 1 elements.
 If the read succeeds,
 .Fa result
 is pointed at the
@@ -155,7 +181,7 @@ returns 0 on success or an error number to indicate failure.
 The
 .Fn telldir
 function
-returns the current location associated with the named
+returns a token representing the current location associated with the named
 .Em directory stream .
 Values returned by
 .Fn telldir
@@ -168,6 +194,10 @@ If the directory is closed and then
 reopened, prior values returned by
 .Fn telldir
 will no longer be valid.
+Values returned by
+.Fn telldir
+are also invalidated by a call to
+.Fn rewinddir .
 .Pp
 The
 .Fn seekdir
@@ -209,9 +239,6 @@ returns the integer file descriptor associated with the named
 .Em directory stream ,
 see
 .Xr open 2 .
-On failure, \-1 is returned and the global variable
-.Va errno
-is set to indicate the error.
 .Pp
 Sample code which searches a directory for entry ``name'' is:
 .Bd -literal -offset indent

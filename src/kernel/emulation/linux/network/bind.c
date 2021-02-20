@@ -2,10 +2,14 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
+#include <sys/socket.h>
 #include "duct.h"
 
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
+extern __SIZE_TYPE__ strlen(const char* src);
+extern char* strcpy(char* dest, const char* src);
+extern char *strncpy(char *dest, const char *src, __SIZE_TYPE__ n);
 
 #include "../vchroot_expand.h"
 #include "../bsdthread/per_thread_wd.h"
@@ -18,26 +22,10 @@ long sys_bind(int fd, const void* name, int socklen)
 	if (socklen > 512)
 		return -EINVAL;
 
-	fixed = __builtin_alloca(socklen);
-	memcpy(fixed, name, socklen);
-
-	fixed->linux_family = sfamily_bsd_to_linux(fixed->bsd_family);
-
-	if (fixed->linux_family == LINUX_PF_LOCAL)
-	{
-		struct vchroot_expand_args vc;
-		vc.flags = VCHROOT_FOLLOW;
-		vc.dfd = get_perthread_wd();
-
-		strcpy(vc.path, fixed->sun_path);
-
-		ret = vchroot_expand(&vc);
-		if (ret < 0)
-			return errno_linux_to_bsd(ret);
-
-		strncpy(fixed->sun_path, vc.path, sizeof(fixed->sun_path) - 1);
-		fixed->sun_path[sizeof(fixed->sun_path) - 1] = '\0';
-	}
+	fixed = __builtin_alloca(sockaddr_fixup_size_from_bsd(name, socklen));
+	ret = socklen = sockaddr_fixup_from_bsd(fixed, name, socklen);
+	if (ret < 0)
+		return ret;
 
 #ifdef __NR_socketcall
 	ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_BIND, ((long[6]) { fd, fixed, socklen }));

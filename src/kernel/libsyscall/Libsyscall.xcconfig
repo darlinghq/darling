@@ -1,38 +1,79 @@
 #include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
 
-#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
-// Set INSTALL_PATH[sdk=macosx*] when SimulatorSupport.xcconfig is unavailable
-INSTALL_PATH[sdk=macosx*] = $(INSTALL_PATH_ACTUAL)
-
 BUILD_VARIANTS = normal
-SUPPORTED_PLATFORMS = macosx iphoneos iphoneosnano
+SUPPORTED_PLATFORMS = macosx iphoneos iphoneosnano tvos appletvos watchos bridgeos
 ONLY_ACTIVE_ARCH = NO
 DEAD_CODE_STRIPPING = YES
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
-INSTALL_PATH_ACTUAL = /usr/lib/system
-PUBLIC_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/include
-PRIVATE_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/local/include
-OS_PRIVATE_HEADERS_FOLDER_PATH = $(INSTALL_PATH_PREFIX)/usr/local/include/os
+
+SDK_INSTALL_VARIANT = $(SDK_INSTALL_VARIANT_$(DRIVERKIT))
+SDK_INSTALL_VARIANT_1 = driverkit
+SDK_INSTALL_VARIANT_ = default
+SDK_INSTALL_ROOT = $(SDK_INSTALL_ROOT_$(SDK_INSTALL_VARIANT))
+SDK_INSTALL_ROOT_driverkit = $(DRIVERKITROOT)
+SDK_INSTALL_HEADERS_ROOT = $(SDK_INSTALL_HEADERS_ROOT_$(SDK_INSTALL_VARIANT))
+SDK_INSTALL_HEADERS_ROOT_driverkit = $(SDK_INSTALL_ROOT)/$(SDK_RUNTIME_HEADERS_PREFIX)
+SDK_RUNTIME_HEADERS_PREFIX = Runtime
+
+INSTALL_PATH = $(SDK_INSTALL_ROOT)/usr/lib/system
+PUBLIC_HEADERS_FOLDER_PATH = $(SDK_INSTALL_HEADERS_ROOT)/usr/include
+PRIVATE_HEADERS_FOLDER_PATH = $(SDK_INSTALL_HEADERS_ROOT)/usr/local/include
+OS_PRIVATE_HEADERS_FOLDER_PATH = $(SDK_INSTALL_HEADERS_ROOT)/usr/local/include/os
+OS_PUBLIC_HEADERS_FOLDER_PATH = $(SDK_INSTALL_HEADERS_ROOT)/usr/include/os
 EXECUTABLE_PREFIX = libsystem_
 PRODUCT_NAME = kernel
 ALWAYS_SEARCH_USER_PATHS = NO
 ORDER_FILE[sdk=iphoneos*] = $(SDKROOT)/$(APPLE_INTERNAL_DIR)/OrderFiles/libsystem_kernel.order
-OTHER_CFLAGS = -fdollars-in-identifiers -no-cpp-precomp -fno-common -fno-stack-protector -momit-leaf-frame-pointer -DLIBSYSCALL_INTERFACE -D__DARWIN_VERS_1050=1
-OTHER_CFLAGS[sdk=macosx*] = $(inherited) -DSYSCALL_PRE1050
-OTHER_CFLAGS[sdk=macosx*][arch=x86_64*] = $(inherited) -DNO_SYSCALL_LEGACY
-OTHER_CFLAGS[sdk=iphoneos*] = $(inherited) -DNO_SYSCALL_LEGACY
+OTHER_CFLAGS = -fdollars-in-identifiers -no-cpp-precomp -fno-common -fno-stack-protector -fno-stack-check -momit-leaf-frame-pointer -DLIBSYSCALL_INTERFACE -D__DARWIN_VERS_1050=1 -DNO_SYSCALL_LEGACY
+OTHER_CFLAGS[sdk=macosx*][arch=i386] = $(inherited) -UNO_SYSCALL_LEGACY -DSYSCALL_PRE1050
+OTHER_CFLAGS[sdk=macosx*][arch=x86_64*] = $(inherited) -DSYSCALL_PRE1050
 GCC_PREPROCESSOR_DEFINITIONS = CF_OPEN_SOURCE CF_EXCLUDE_CSTD_HEADERS DEBUG _FORTIFY_SOURCE=0
-HEADER_SEARCH_PATHS = $(PROJECT_DIR)/mach $(PROJECT_DIR)/os $(PROJECT_DIR)/wrappers $(PROJECT_DIR)/wrappers/string $(PROJECT_DIR)/wrappers/libproc $(PROJECT_DIR)/wrappers/libproc/spawn $(BUILT_PRODUCTS_DIR)/internal_hdr/include $(BUILT_PRODUCTS_DIR)/mig_hdr/local/include $(BUILT_PRODUCTS_DIR)/mig_hdr/include $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+
+HEADER_SEARCH_PATHS = $(PROJECT_DIR)/mach $(PROJECT_DIR)/os $(PROJECT_DIR)/wrappers $(PROJECT_DIR)/wrappers/string $(PROJECT_DIR)/wrappers/libproc $(PROJECT_DIR)/wrappers/libproc/spawn $(BUILT_PRODUCTS_DIR)/internal_hdr/include $(BUILT_PRODUCTS_DIR)/mig_hdr/local/include $(BUILT_PRODUCTS_DIR)/mig_hdr/include
+SYSTEM_HEADER_SEARCH_PATHS = $(SDKROOT)/$(SDK_INSTALL_HEADERS_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders $(SDKROOT)/$(SDK_INSTALL_HEADERS_ROOT)/usr/local/include $(SDKROOT)/$(SDK_INSTALL_HEADERS_ROOT)/usr/include
+SYSTEM_FRAMEWORK_SEARCH_PATHS = $(SDKROOT)/$(SDK_INSTALL_HEADERS_ROOT)/System/Library/Frameworks
+
+OTHER_MIGFLAGS = -novouchers -I$(SDKROOT)/$(SDK_INSTALL_HEADERS_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders -I$(SDKROOT)/$(SDK_INSTALL_HEADERS_ROOT)/usr/local/include -I$(SDKROOT)/$(SDK_INSTALL_HEADERS_ROOT)/usr/include
+
 WARNING_CFLAGS = -Wmost
 GCC_TREAT_WARNINGS_AS_ERRORS = YES
 GCC_WARN_ABOUT_MISSING_NEWLINE = YES
+GCC_NO_COMMON_BLOCKS = YES
+GCC_C_LANGUAGE_STANDARD = gnu11
+CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES
+CLANG_WARN_EMPTY_BODY = YES
+CLANG_WARN_BOOL_CONVERSION = YES
+CLANG_WARN_CONSTANT_CONVERSION = YES
+GCC_WARN_64_TO_32_BIT_CONVERSION = NO
+CLANG_WARN_ENUM_CONVERSION = YES
+CLANG_WARN_INT_CONVERSION = NO
+CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES
+CLANG_WARN_INFINITE_RECURSION = YES
+GCC_WARN_ABOUT_RETURN_TYPE = YES
+CLANG_WARN_STRICT_PROTOTYPES = YES
+CLANG_WARN_COMMA = YES
+GCC_WARN_UNINITIALIZED_AUTOS = YES
+CLANG_WARN_UNREACHABLE_CODE = YES
+GCC_WARN_UNUSED_FUNCTION = YES
+GCC_WARN_UNUSED_PARAMETER = YES
+GCC_WARN_UNUSED_VARIABLE = YES
+CLANG_WARN_RANGE_LOOP_ANALYSIS = YES
+CLANG_WARN_SUSPICIOUS_MOVE = YES
+
 CODE_SIGN_IDENTITY = -
 DYLIB_CURRENT_VERSION = $(RC_ProjectSourceVersion)
-DYLIB_LDFLAGS = -umbrella System -all_load -Wl,-alias_list,$(SRCROOT)/Libsyscall.aliases
+DYLIB_LDFLAGS = -umbrella System -all_load
 DYLIB_LDFLAGS[sdk=iphoneos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
-OTHER_LDFLAGS = 
+DYLIB_LDFLAGS[sdk=watchos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
+DYLIB_LDFLAGS[sdk=tvos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
+DYLIB_LDFLAGS[sdk=appletvos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
+DYLIB_LDFLAGS[sdk=bridgeos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
+OTHER_LDFLAGS = $(SIMULATOR_LDFLAGS)
+SIMULATOR_LDFLAGS =
+SIMULATOR_LDFLAGS[sdk=macosx*] = -Wl,-simulator_support
 INSTALLHDRS_SCRIPT_PHASE = YES
 INSTALLHDRS_COPY_PHASE = YES
 USE_HEADERMAP = NO
 LINK_WITH_STANDARD_LIBRARIES = NO
 ALWAYS_SEARCH_USER_PATHS = YES
+IS_ZIPPERED = YES

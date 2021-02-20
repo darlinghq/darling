@@ -19,6 +19,16 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFECKeySpecifier : NSObject
+#import <SecurityFoundation/_SFKeySpecifier.h>
+
+typedef NS_ENUM(NSInteger, SFEllipticCurve) {
+	SFEllipticCurveNistp384,
+};
+
+@interface _SFECKeySpecifier : _SFKeySpecifier
+
+- (instancetype)initWithCurve:(SFEllipticCurve)curve;
 
 @end
+
+#define SFECKeySpecifier _SFECKeySpecifier

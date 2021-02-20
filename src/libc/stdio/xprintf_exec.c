@@ -29,6 +29,9 @@
 #include <local.h>
 #include <xprintf_private.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpointer-bool-conversion"
+
 int
 asxprintf_exec(char ** __restrict ret,
     printf_comp_t __restrict pc, ...)
@@ -175,3 +178,4 @@ vxprintf_exec(printf_comp_t __restrict pc, va_list ap)
 
     return __xvprintf(pc, NULL, stdout, NULL, NULL, ap);
 }
+#pragma clang diagnostic pop

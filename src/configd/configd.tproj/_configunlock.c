@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2004, 2006, 2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2004, 2006, 2011, 2015, 2017, 2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -58,18 +58,15 @@ _notifyWatchers()
 	CFSetGetValues(changedKeys, keys);
 
 	while (--keyCnt >= 0) {
-		CFArrayRef		changes;
+		CFStringRef		changedKey	= (CFStringRef)keys[keyCnt];
 		CFDictionaryRef		dict;
-		CFDictionaryRef		info;
-		CFMutableDictionaryRef	newInfo;
-		CFMutableArrayRef	newChanges;
 		CFArrayRef		sessionsWatchingKey;
 		CFIndex			watcherCnt;
 		const void *		watchers_q[N_QUICK];
 		const void **		watchers	= watchers_q;
 
-		dict = CFDictionaryGetValue(storeData, (CFStringRef)keys[keyCnt]);
-		if ((dict == NULL) || (CFDictionaryContainsKey(dict, kSCDWatchers) == FALSE)) {
+		dict = CFDictionaryGetValue(storeData, changedKey);
+		if ((dict == NULL) || !CFDictionaryContainsKey(dict, kSCDWatchers)) {
 			/* key doesn't exist or nobody cares if it changed */
 			continue;
 		}
@@ -91,36 +88,18 @@ _notifyWatchers()
 		CFArrayGetValues(sessionsWatchingKey, CFRangeMake(0, watcherCnt), watchers);
 
 		while (--watcherCnt >= 0) {
-			CFStringRef	sessionKey;
+			serverSessionRef	session;
+			CFNumberRef		watchedSession	= watchers[watcherCnt];
 
-			sessionKey = CFStringCreateWithFormat(NULL, NULL, CFSTR("%@"), watchers[watcherCnt]);
-			info = CFDictionaryGetValue(sessionData, sessionKey);
-			if (info) {
-				newInfo = CFDictionaryCreateMutableCopy(NULL, 0, info);
-			} else {
-				newInfo = CFDictionaryCreateMutable(NULL,
-								    0,
-								    &kCFTypeDictionaryKeyCallBacks,
-								    &kCFTypeDictionaryValueCallBacks);
+			session = getSessionNum(watchedSession);
+			if (session->changedKeys == NULL) {
+				session->changedKeys = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
 			}
-
-			changes = CFDictionaryGetValue(newInfo, kSCDChangedKeys);
-			if (changes) {
-				newChanges = CFArrayCreateMutableCopy(NULL, 0, changes);
-			} else {
-				newChanges = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+			if (!CFArrayContainsValue(session->changedKeys,
+						  CFRangeMake(0, CFArrayGetCount(session->changedKeys)),
+						  changedKey)) {
+				CFArrayAppendValue(session->changedKeys, changedKey);
 			}
-
-			if (CFArrayContainsValue(newChanges,
-						 CFRangeMake(0, CFArrayGetCount(newChanges)),
-						 (CFStringRef)keys[keyCnt]) == FALSE) {
-				CFArrayAppendValue(newChanges, (CFStringRef)keys[keyCnt]);
-			}
-			CFDictionarySetValue(newInfo, kSCDChangedKeys, newChanges);
-			CFRelease(newChanges);
-			CFDictionarySetValue(sessionData, sessionKey, newInfo);
-			CFRelease(newInfo);
-			CFRelease(sessionKey);
 
 			/*
 			 * flag this session as needing a kick
@@ -129,7 +108,7 @@ _notifyWatchers()
 				needsNotification = CFSetCreateMutable(NULL,
 								       0,
 								       &kCFTypeSetCallBacks);
-			CFSetAddValue(needsNotification, watchers[watcherCnt]);
+			CFSetAddValue(needsNotification, watchedSession);
 		}
 
 		if (watchers != watchers_q) CFAllocatorDeallocate(NULL, watchers);
@@ -182,14 +161,13 @@ _processDeferredRemovals()
 static void
 _cleanupRemovedSessionKeys(const void *value, void *context)
 {
+#pragma unused(context)
 	CFStringRef		removedKey = (CFStringRef)value;
 	CFRange			dRange;
+	serverSessionRef	session;
 	CFStringRef		sessionKey;
 	CFStringRef		key;
-	CFDictionaryRef		sessionDict;
-	CFArrayRef		sessionKeys;
 	CFIndex			i;
-	CFMutableDictionaryRef	newSessionDict;
 
 	dRange     = CFStringFind(removedKey, CFSTR(":"), 0);
 	sessionKey = CFStringCreateWithSubstring(NULL,
@@ -200,44 +178,24 @@ _cleanupRemovedSessionKeys(const void *value, void *context)
 						 CFRangeMake(dRange.location+dRange.length,
 							     CFStringGetLength(removedKey)-dRange.location-dRange.length));
 
-	/*
-	 * remove the key from the session key list
-	 */
-	sessionDict = CFDictionaryGetValue(sessionData, sessionKey);
-	if (!sessionDict) {
+	session = getSessionStr(sessionKey);
+	if (session == NULL) {
 		/* if no session */
 		goto done;
 	}
 
-	sessionKeys = CFDictionaryGetValue(sessionDict, kSCDSessionKeys);
-	if (!sessionKeys) {
-		/* if no session keys */
-		goto done;
-	}
-
-	i = CFArrayGetFirstIndexOfValue(sessionKeys,
-					CFRangeMake(0, CFArrayGetCount(sessionKeys)),
+	i = CFArrayGetFirstIndexOfValue(session->sessionKeys,
+					CFRangeMake(0, CFArrayGetCount(session->sessionKeys)),
 					key);
 	if (i == kCFNotFound) {
 		/* if this session key has already been removed */
 		goto done;
 	}
-
-	newSessionDict = CFDictionaryCreateMutableCopy(NULL, 0, sessionDict);
-	if (CFArrayGetCount(sessionKeys) == 1) {
-		/* remove the last (session) key */
-		CFDictionaryRemoveValue(newSessionDict, kSCDSessionKeys);
-	} else {
-		CFMutableArrayRef	newSessionKeys;
-
-		/* remove the (session) key */
-		newSessionKeys = CFArrayCreateMutableCopy(NULL, 0, sessionKeys);
-		CFArrayRemoveValueAtIndex(newSessionKeys, i);
-		CFDictionarySetValue(newSessionDict, kSCDSessionKeys, newSessionKeys);
-		CFRelease(newSessionKeys);
+	CFArrayRemoveValueAtIndex(session->sessionKeys, i);
+	if (CFArrayGetCount(session->sessionKeys) == 0) {
+		CFRelease(session->sessionKeys);
+		session->sessionKeys = NULL;
 	}
-	CFDictionarySetValue(sessionData, sessionKey, newSessionDict);
-	CFRelease(newSessionDict);
 
     done:
 

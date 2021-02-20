@@ -24,11 +24,11 @@
 #ifndef __PLATFORM_H
 #define __PLATFORM_H
 
-#if TARGET_OS_EMBEDDED
+#if TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
 #define MALLOC_TARGET_IOS 1
-#else // MALLOC_TARGET_IOS
+#else // TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
 #define MALLOC_TARGET_IOS 0
-#endif // MALLOC_TARGET_IOS
+#endif // TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
 
 #ifdef __LP64__
 #define MALLOC_TARGET_64BIT 1
@@ -45,7 +45,7 @@
 
 // <rdar://problem/12596555>
 #if MALLOC_TARGET_IOS
-# define CONFIG_RECIRC_DEPOT 0
+# define CONFIG_RECIRC_DEPOT 1
 # define CONFIG_AGGRESSIVE_MADVISE 1
 #else // MALLOC_TARGET_IOS
 # define CONFIG_RECIRC_DEPOT 1
@@ -58,17 +58,8 @@
 // <rdar://problem/19818071>
 #define CONFIG_MADVISE_STYLE MADV_FREE_REUSABLE
 
-// <rdar://problem/13807682>
-#if TARGET_OS_SIMULATOR
-#define CONFIG_OS_LOCK_HANDOFF 1
-#elif MALLOC_TARGET_IOS
-#define CONFIG_OS_LOCK_UNFAIR 1
-#else // MALLOC_TARGET_IOS
-#define CONFIG_OS_LOCK_UNFAIR 1
-#endif // MALLOC_TARGET_IOS
-
 #if MALLOC_TARGET_64BIT
-#define CONFIG_NANOZONE 0 // disable, because it uses atomic queues, which require PFZ
+#define CONFIG_NANOZONE 1
 #define CONFIG_ASLR_INTERNAL 0
 #else // MALLOC_TARGET_64BIT
 #define CONFIG_NANOZONE 0
@@ -81,6 +72,18 @@
 // This governs a last-free cache of 1 that bypasses the free-list for each region size
 #define CONFIG_TINY_CACHE 1
 #define CONFIG_SMALL_CACHE 1
+#define CONFIG_MEDIUM_CACHE 1
+
+// medium allocator enabled or disabled
+#if MALLOC_TARGET_64BIT
+#if MALLOC_TARGET_IOS
+#define CONFIG_MEDIUM_ALLOCATOR 0
+#else // MALLOC_TARGET_IOS
+#define CONFIG_MEDIUM_ALLOCATOR 1
+#endif // MALLOC_TARGET_IOS
+#else // MALLOC_TARGET_64BIT
+#define CONFIG_MEDIUM_ALLOCATOR 0
+#endif // MALLOC_TARGET_64BIT
 
 // The large last-free cache (aka. death row cache)
 #if MALLOC_TARGET_IOS
@@ -89,12 +92,14 @@
 #define CONFIG_LARGE_CACHE 1
 #endif
 
-// <rdar://problem/26823590> compile-time MALLOC_SMALL cut-off size
 #if MALLOC_TARGET_IOS
-#define CONFIG_SMALL_CUTTOFF_127KB 0
+// The VM system on iOS forces malloc-tagged memory to never be marked as
+// copy-on-write, this would include calls we make to vm_copy. Given that the
+// kernel would just be doing a memcpy, we force it to happen in userpsace.
+#define CONFIG_REALLOC_CAN_USE_VMCOPY 0
 #else
-#define CONFIG_SMALL_CUTTOFF_127KB 1
-#endif // MALLOC_TARGET_IOS
+#define CONFIG_REALLOC_CAN_USE_VMCOPY 1
+#endif
 
 // memory resource exception handling
 #if MALLOC_TARGET_IOS || TARGET_OS_SIMULATOR
@@ -105,5 +110,13 @@
 
 // presence of commpage memsize
 #define CONFIG_HAS_COMMPAGE_MEMSIZE 1
+
+// presence of commpage number of cpu count
+#define CONFIG_HAS_COMMPAGE_NCPUS 1
+
+// Use of hyper-shift for magazine selection.
+#define CONFIG_NANO_USES_HYPER_SHIFT 0
+#define CONFIG_TINY_USES_HYPER_SHIFT 0
+#define CONFIG_SMALL_USES_HYPER_SHIFT 0
 
 #endif // __PLATFORM_H

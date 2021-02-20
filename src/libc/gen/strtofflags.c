@@ -56,7 +56,6 @@
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)stat_flags.c	8.1 (Berkeley) 5/31/93";
-#else
 static const char rcsid[] =
   "$FreeBSD: src/lib/libc/gen/strtofflags.c,v 1.18.2.1 2000/06/28 01:52:24 joe Exp $";
 #endif
@@ -95,6 +94,8 @@ static struct {
 	{ "noopaque",		UF_OPAQUE,	0 },
 	{ "nohidden",		UF_HIDDEN,	0 },
 	{ "nocompressed",	UF_COMPRESSED,	0 },
+	{ "nodatavault",	UF_DATAVAULT,	0 },
+	{ "nodataless",		SF_DATALESS,	0 },
 };
 #define longestflaglen	12
 #define nmappings	(sizeof(mapping) / sizeof(mapping[0]))

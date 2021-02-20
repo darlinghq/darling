@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2009-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2009-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -32,11 +32,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
 
-#include <SystemConfiguration/SystemConfiguration.h>
 #include "SCNetworkConfigurationInternal.h"
 #include "SCPreferencesInternal.h"
-#include <SystemConfiguration/SCValidation.h>
-#include <SystemConfiguration/SCPrivate.h>
 
 #include <ifaddrs.h>
 #include <pthread.h>
@@ -67,7 +64,7 @@ inet_dgram_socket()
 
 	s = socket(AF_INET, SOCK_DGRAM, 0);
 	if (s == -1) {
-		SCLog(TRUE, LOG_ERR, CFSTR("socket() failed: %s"), strerror(errno));
+		SC_log(LOG_ERR, "socket() failed: %s", strerror(errno));
 	}
 
 	return s;
@@ -83,14 +80,14 @@ ifbifconf_copy(int s, const char * ifname)
 	struct ifdrv		ifd;
 	uint32_t		len	= sizeof(struct ifbreq) * 16;
 
-	bzero(&ifd, sizeof(ifd));
-	strncpy(ifd.ifd_name, ifname, sizeof(ifd.ifd_name));
+	memset(&ifd, 0, sizeof(ifd));
+	strlcpy(ifd.ifd_name, ifname, sizeof(ifd.ifd_name));
 	ifd.ifd_cmd = BRDGGIFS;
 
 	buflen = sizeof(struct ifbifconf) + len;
 	buf = malloc(buflen);
 	while (buf != NULL) {
-		bzero(buf, buflen);
+		memset(buf, 0, buflen);
 		ibc_p = (struct ifbifconf *)buf;
 		ibc_p->ifbic_len = len;
 		ibc_p->ifbic_buf = buf + sizeof(*ibc_p);
@@ -139,7 +136,7 @@ add_interface(CFMutableArrayRef *interfaces, CFStringRef if_name, SCPreferencesR
 	}
 	if (interface == NULL) {
 		interface = _SCNetworkInterfaceCreateWithBSDName(NULL, if_name,
-							 kIncludeNoVirtualInterfaces);
+								 kIncludeNoVirtualInterfaces);
 	}
 
 	if (interface != NULL) {
@@ -249,17 +246,15 @@ SCBridgeInterfaceCopyAll(SCPreferencesRef prefs)
 	SCPreferencesRef	ni_prefs;
 	CFStringRef		path;
 
-	if ((prefs == NULL) ||
-	    (__SCPreferencesUsingDefaultPrefs(prefs) == TRUE)) {
+	if (__SCPreferencesUsingDefaultPrefs(prefs)) {
 		ni_prefs = NULL;
-	}
-	else {
+	} else {
 		ni_prefs = __SCPreferencesCreateNIPrefsFromPrefs(prefs);
 	}
 	context.bridges = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
 	context.prefs = prefs;
 	context.ni_prefs = ni_prefs;
-	
+
 	path = CFStringCreateWithFormat(NULL,
 					NULL,
 					CFSTR("/%@/%@"),
@@ -355,7 +350,7 @@ SCBridgeInterfaceCopyAvailableMemberInterfaces(SCPreferencesRef prefs)
 	}
 
 	// identify available interfaces
-	interfaces = __SCNetworkInterfaceCopyAll_IONetworkInterface();
+	interfaces = __SCNetworkInterfaceCopyAll_IONetworkInterface(FALSE);
 	if (interfaces != NULL) {
 		CFIndex	i;
 		CFIndex	n;
@@ -399,7 +394,7 @@ _SCBridgeInterfaceCopyActive(void)
 
 	if (getifaddrs(&ifap) == -1) {
 		_SCErrorSet(errno);
-		SCLog(TRUE, LOG_ERR, CFSTR("getifaddrs() failed: %s"), strerror(errno));
+		SC_log(LOG_NOTICE, "getifaddrs() failed: %s", strerror(errno));
 		return NULL;
 	}
 
@@ -444,10 +439,9 @@ _SCBridgeInterfaceCopyActive(void)
 				continue;
 			}
 			_SCErrorSet(errno);
-			SCLog(TRUE, LOG_ERR,
-			      CFSTR("ifbifconf_copy(%s) failed: %s"),
-			      ifp->ifa_name,
-			      strerror(errno));
+			SC_log(LOG_NOTICE, "ifbifconf_copy(%s) failed: %s",
+			       ifp->ifa_name,
+			       strerror(errno));
 			CFRelease(bridges);
 			bridges = NULL;
 			goto done;
@@ -460,10 +454,8 @@ _SCBridgeInterfaceCopyActive(void)
 
 		// add member interfaces
 		if (ibc_p->ifbic_len > 0) {
-			int 		i;
-
 			// iterate over each member interface
-			for (i = 0; i < ibc_p->ifbic_len / sizeof(struct ifbreq); i++) {
+			for (size_t i = 0; i < ibc_p->ifbic_len / sizeof(struct ifbreq); i++) {
 				struct ifbreq	*ibr_p;
 				CFStringRef	member;
 
@@ -711,15 +703,36 @@ SCBridgeInterfaceSetMemberInterfaces(SCBridgeInterfaceRef bridge, CFArrayRef mem
 		return FALSE;
 	}
 
-	if ((members != NULL) && !isA_CFArray(members)) {
-		_SCErrorSet(kSCStatusInvalidArgument);
-		return FALSE;
+	if (members != NULL) {
+		CFIndex		n_members;
+
+		if (!isA_CFArray(members)) {
+			_SCErrorSet(kSCStatusInvalidArgument);
+			return FALSE;
+		}
+
+		n_members = CFArrayGetCount(members);
+		for (CFIndex i = 0; i < n_members; i++) {
+			SCNetworkInterfaceRef	member;
+			CFStringRef		memberName;
+
+			member = CFArrayGetValueAtIndex(members, i);
+			if (!isA_SCNetworkInterface(member)) {
+				_SCErrorSet(kSCStatusInvalidArgument);
+				return FALSE;
+			}
+
+			memberName = SCNetworkInterfaceGetBSDName(member);
+			if (memberName == NULL) {
+				_SCErrorSet(kSCStatusInvalidArgument);
+				return FALSE;
+			}
+		}
 	}
 
 	if (interfacePrivate->prefs != NULL) {
 		CFArrayRef	available;
 		CFArrayRef	current;
-		CFIndex		i;
 		CFIndex		n_available;
 		CFIndex		n_current;
 		CFIndex		n_members;
@@ -732,7 +745,7 @@ SCBridgeInterfaceSetMemberInterfaces(SCBridgeInterfaceRef bridge, CFArrayRef mem
 		n_available = (available != NULL) ? CFArrayGetCount(available) : 0;
 
 		n_members = (members != NULL) ? CFArrayGetCount(members) : 0;
-		for (i = 0; i < n_members; i++) {
+		for (CFIndex i = 0; i < n_members; i++) {
 			SCNetworkInterfaceRef	member;
 
 			member = CFArrayGetValueAtIndex(members, i);
@@ -936,7 +949,7 @@ __bridge_add_interface(int s, CFStringRef bridge_if, CFStringRef interface_if)
 	struct ifdrv	ifd;
 
 	// bridge interface
-	bzero(&ifd, sizeof(ifd));
+	memset(&ifd, 0, sizeof(ifd));
 	(void) _SC_cfstring_to_cstring(bridge_if,
 				       ifd.ifd_name,
 				       sizeof(ifd.ifd_name),
@@ -946,7 +959,7 @@ __bridge_add_interface(int s, CFStringRef bridge_if, CFStringRef interface_if)
 	ifd.ifd_data = (caddr_t)&breq;
 
 	// new bridge member
-	bzero(&breq, sizeof(breq));
+	memset(&breq, 0, sizeof(breq));
 	(void) _SC_cfstring_to_cstring(interface_if,
 				       breq.ifbr_ifsname,
 				       sizeof(breq.ifbr_ifsname),
@@ -955,14 +968,14 @@ __bridge_add_interface(int s, CFStringRef bridge_if, CFStringRef interface_if)
 	// add new bridge member
 	if (ioctl(s, SIOCSDRVSPEC, (caddr_t)&ifd) == -1) {
 		_SCErrorSet(errno);
-		SCLog(TRUE, LOG_ERR,
-		      CFSTR("could not add interface \"%@\" to bridge \"%@\": %s"),
-		      interface_if,
-		      bridge_if,
-		      strerror(errno));
+		SC_log(LOG_ERR, "could not add interface \"%@\" to bridge \"%@\": %s",
+		       interface_if,
+		       bridge_if,
+		       strerror(errno));
 		return FALSE;
 	}
 
+	SC_log(LOG_INFO, "%@: added bridge member: %@", bridge_if, interface_if);
 	return TRUE;
 }
 
@@ -974,7 +987,7 @@ __bridge_remove_interface(int s, CFStringRef bridge_if, CFStringRef interface_if
 	struct ifdrv	ifd;
 
 	// bridge interface
-	bzero(&ifd, sizeof(ifd));
+	memset(&ifd, 0, sizeof(ifd));
 	(void) _SC_cfstring_to_cstring(bridge_if,
 				       ifd.ifd_name,
 				       sizeof(ifd.ifd_name),
@@ -984,7 +997,7 @@ __bridge_remove_interface(int s, CFStringRef bridge_if, CFStringRef interface_if
 	ifd.ifd_data = (caddr_t)&breq;
 
 	// bridge member to remove
-	bzero(&breq, sizeof(breq));
+	memset(&breq, 0, sizeof(breq));
 	(void) _SC_cfstring_to_cstring(interface_if,
 				       breq.ifbr_ifsname,
 				       sizeof(breq.ifbr_ifsname),
@@ -993,14 +1006,48 @@ __bridge_remove_interface(int s, CFStringRef bridge_if, CFStringRef interface_if
 	// remove bridge member
 	if (ioctl(s, SIOCSDRVSPEC, (caddr_t)&ifd) == -1) {
 		_SCErrorSet(errno);
-		SCLog(TRUE, LOG_ERR,
-		      CFSTR("could not add interface \"%@\" to bridge \"%@\": %s"),
-		      interface_if,
-		      bridge_if,
-		      strerror(errno));
+		SC_log(LOG_ERR, "could not remove interface \"%@\" from bridge \"%@\": %s",
+		       interface_if,
+		       bridge_if,
+		       strerror(errno));
 		return FALSE;
 	}
 
+	SC_log(LOG_INFO, "%@: removed bridge member: %@", bridge_if, interface_if);
+	return TRUE;
+}
+
+
+static Boolean
+__bridge_set_mac(int s, CFStringRef bridge_if, CFDataRef macAddr)
+{
+	struct ifreq	ifr;
+
+	memset(&ifr, 0, sizeof(ifr));
+	(void) _SC_cfstring_to_cstring(bridge_if,
+				       ifr.ifr_name,
+				       sizeof(ifr.ifr_name),
+				       kCFStringEncodingASCII);
+	ifr.ifr_addr.sa_len = CFDataGetLength(macAddr);
+	if (ifr.ifr_addr.sa_len > sizeof(ifr.ifr_addr.sa_data)) {
+		_SCErrorSet(kSCStatusInvalidArgument);
+		SC_log(LOG_ERR, "%@: maformed MAC address (%d > %lu)",
+		       bridge_if,
+		       ifr.ifr_addr.sa_len,
+		       sizeof(ifr.ifr_addr.sa_data));
+		return FALSE;
+	}
+	CFDataGetBytes(macAddr, CFRangeMake(0, ifr.ifr_addr.sa_len), (UInt8 *)ifr.ifr_addr.sa_data);
+
+	if (ioctl(s, SIOCSIFLLADDR, &ifr) == -1) {
+		_SCErrorSet(errno);
+		SC_log(LOG_ERR, "%@: could not set MAC address: %s",
+		       bridge_if,
+		       strerror(errno));
+		return FALSE;
+	}
+
+	SC_log(LOG_INFO, "%@: updated MAC address: %{ private }@", bridge_if, macAddr);
 	return TRUE;
 }
 #endif	// IFT_BRIDGE
@@ -1033,7 +1080,7 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 
 	/*
 	 * remove any no-longer-configured bridge interfaces and
-	 * any devices associated with a bridge that are no longer
+	 * any members associated with a bridge that are no longer
 	 * associated with a bridge.
 	 */
 	for (i = 0; i < nActive; i++) {
@@ -1075,7 +1122,7 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 								  CFRangeMake(0, c_count),
 								  a_interface)) {
 						/*
-						 * if this device is no longer part
+						 * if this member is no longer part
 						 * of the bridge.
 						 */
 						if (s == -1) {
@@ -1121,7 +1168,7 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 
 	/*
 	 * add any newly-configured bridge interfaces and add any
-	 * devices that should now be associated with the bridge.
+	 * members that should now be associated with the bridge.
 	 */
 	for (i = 0; i < nConfig; i++) {
 		SCBridgeInterfaceRef	c_bridge;
@@ -1130,6 +1177,7 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 		CFIndex			c_count;
 		Boolean			found		= FALSE;
 		CFIndex			j;
+		Boolean			setMAC		= FALSE;
 
 		c_bridge            = CFArrayGetValueAtIndex(config, i);
 		c_bridge_if         = SCNetworkInterfaceGetBSDName(c_bridge);
@@ -1149,16 +1197,13 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 
 			if (CFEqual(c_bridge_if, a_bridge_if)) {
 				CFIndex	c;
-				Boolean	if_list_change = FALSE;
 
 				found = TRUE;
 
-				if (!_SC_CFEqual(c_bridge_interfaces, a_bridge_interfaces)) {
-					if_list_change = TRUE;
-				}
-				if (!if_list_change) {
+				if (_SC_CFEqual(c_bridge_interfaces, a_bridge_interfaces)) {
 					break;	// if no change
 				}
+
 				if (s == -1) {
 					s = inet_dgram_socket();
 					if (s == -1) {
@@ -1167,13 +1212,10 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 						goto done;
 					}
 				}
-				if (!if_list_change) {
-					break; // no if list changes
-				}
 
 				/*
-				 * ensure that the first device of the bridge matches, if
-				 * not then we remove all current devices and add them
+				 * ensure that the first member of the bridge matches, if
+				 * not then we remove all current members and add them
 				 * back in the preferred order.
 				 */
 				if ((c_count > 0) &&
@@ -1199,11 +1241,15 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 						}
 					}
 
-					a_count = 0;	// all active devices have been removed
+					a_count = 0;	// all active members have been removed
+				}
+
+				if (a_count == 0) {
+					setMAC = TRUE;
 				}
 
 				/*
-				 * add any devices which are not currently associated
+				 * add any members which are not currently associated
 				 * with the bridge interface.
 				 */
 				for (c = 0; c < c_count; c++) {
@@ -1226,7 +1272,22 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 						}
 
 						/*
-						 * if this member interface is not currently part of the bridge.
+						 * if this is the first member interface, set the MAC address
+						 * of the bridge.
+						 */
+						if (setMAC) {
+							CFDataRef	macAddr;
+
+							macAddr = _SCNetworkInterfaceGetHardwareAddress(c_interface);
+							if (!__bridge_set_mac(s, c_bridge_if, macAddr)) {
+								// if bridge MAC could not be set
+								ok = FALSE;
+							}
+							setMAC = FALSE;
+						}
+
+						/*
+						 * add the member interface to the bridge.
 						 */
 						c_interface_if = SCNetworkInterfaceGetBSDName(c_interface);
 						if (!__bridge_add_interface(s, c_bridge_if, c_interface_if)) {
@@ -1261,6 +1322,8 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 				continue;
 			}
 
+			setMAC = TRUE;
+
 			/*
 			 * add the member interfaces
 			 */
@@ -1276,6 +1339,24 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 					continue;
 				}
 
+				/*
+				 * if this is the first member interface, set the MAC address
+				 * of the bridge.
+				 */
+				if (setMAC) {
+					CFDataRef	macAddr;
+
+					macAddr = _SCNetworkInterfaceGetHardwareAddress(c_interface);
+					if (!__bridge_set_mac(s, c_bridge_if, macAddr)) {
+						// if bridge MAC could not be set
+						ok = FALSE;
+					}
+					setMAC = FALSE;
+				}
+
+				/*
+				 * add the member interface to the bridge.
+				 */
 				c_interface_if = SCNetworkInterfaceGetBSDName(c_interface);
 				if (!__bridge_add_interface(s, c_bridge_if, c_interface_if)) {
 					// if member could not be added
@@ -1283,7 +1364,6 @@ _SCBridgeInterfaceUpdateConfiguration(SCPreferencesRef prefs)
 				}
 			}
 		}
-
 	}
 
     done :

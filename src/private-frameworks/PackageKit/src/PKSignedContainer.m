@@ -300,7 +300,9 @@ out:
         });
     });
 
+#if !__has_feature(objc_arc)
     dispatch_release(q);
+#endif
 }
 
 - (xar_stream*)_xarStream

@@ -88,13 +88,16 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#ifndef UNIFDEF_DRIVERKIT
 #include <time.h>
+#endif /* UNIFDEF_DRIVERKIT */
 #include <_wctype.h>
 
 
 /* Initially added in Issue 4 */
 __BEGIN_DECLS
 wint_t	btowc(int);
+#ifndef UNIFDEF_DRIVERKIT
 wint_t	fgetwc(FILE *);
 wchar_t	*fgetws(wchar_t * __restrict, int, FILE * __restrict);
 wint_t	fputwc(wchar_t, FILE *);
@@ -104,22 +107,29 @@ int	fwprintf(FILE * __restrict, const wchar_t * __restrict, ...);
 int	fwscanf(FILE * __restrict, const wchar_t * __restrict, ...);
 wint_t	getwc(FILE *);
 wint_t	getwchar(void);
+#endif /* UNIFDEF_DRIVERKIT */
 size_t	mbrlen(const char * __restrict, size_t, mbstate_t * __restrict);
 size_t	mbrtowc(wchar_t * __restrict, const char * __restrict, size_t,
 	    mbstate_t * __restrict);
 int	mbsinit(const mbstate_t *);
 size_t	mbsrtowcs(wchar_t * __restrict, const char ** __restrict, size_t,
 	    mbstate_t * __restrict);
+#ifndef UNIFDEF_DRIVERKIT
 wint_t	putwc(wchar_t, FILE *);
 wint_t	putwchar(wchar_t);
+#endif /* UNIFDEF_DRIVERKIT */
 int	swprintf(wchar_t * __restrict, size_t, const wchar_t * __restrict, ...);
 int	swscanf(const wchar_t * __restrict, const wchar_t * __restrict, ...);
+#ifndef UNIFDEF_DRIVERKIT
 wint_t	ungetwc(wint_t, FILE *);
 int	vfwprintf(FILE * __restrict, const wchar_t * __restrict,
 	    __darwin_va_list);
+#endif /* UNIFDEF_DRIVERKIT */
 int	vswprintf(wchar_t * __restrict, size_t, const wchar_t * __restrict,
 	    __darwin_va_list);
+#ifndef UNIFDEF_DRIVERKIT
 int	vwprintf(const wchar_t * __restrict, __darwin_va_list);
+#endif /* UNIFDEF_DRIVERKIT */
 size_t	wcrtomb(char * __restrict, wchar_t, mbstate_t * __restrict);
 wchar_t	*wcscat(wchar_t * __restrict, const wchar_t * __restrict);
 wchar_t	*wcschr(const wchar_t *, wchar_t);
@@ -127,17 +137,10 @@ int	wcscmp(const wchar_t *, const wchar_t *);
 int	wcscoll(const wchar_t *, const wchar_t *);
 wchar_t	*wcscpy(wchar_t * __restrict, const wchar_t * __restrict);
 size_t	wcscspn(const wchar_t *, const wchar_t *);
-//Begin-Libc
-#ifndef LIBC_ALIAS_WCSFTIME
-//End-Libc
+#ifndef UNIFDEF_DRIVERKIT
 size_t	wcsftime(wchar_t * __restrict, size_t, const wchar_t * __restrict,
 	    const struct tm * __restrict) __DARWIN_ALIAS(wcsftime);
-//Begin-Libc
-#else /* LIBC_ALIAS_WCSFTIME */
-size_t	wcsftime(wchar_t * __restrict, size_t, const wchar_t * __restrict,
-	    const struct tm * __restrict) LIBC_ALIAS(wcsftime);
-#endif /* !LIBC_ALIAS_WCSFTIME */
-//End-Libc
+#endif /* UNIFDEF_DRIVERKIT */
 size_t	wcslen(const wchar_t *);
 wchar_t	*wcsncat(wchar_t * __restrict, const wchar_t * __restrict, size_t);
 int	wcsncmp(const wchar_t *, const wchar_t *, size_t);
@@ -161,8 +164,10 @@ int	wmemcmp(const wchar_t *, const wchar_t *, size_t);
 wchar_t	*wmemcpy(wchar_t * __restrict, const wchar_t * __restrict, size_t);
 wchar_t	*wmemmove(wchar_t *, const wchar_t *, size_t);
 wchar_t	*wmemset(wchar_t *, wchar_t, size_t);
+#ifndef UNIFDEF_DRIVERKIT
 int	wprintf(const wchar_t * __restrict, ...);
 int	wscanf(const wchar_t * __restrict, ...);
+#endif /* UNIFDEF_DRIVERKIT */
 int	wcswidth(const wchar_t *, size_t);
 int	wcwidth(wchar_t);
 __END_DECLS
@@ -176,11 +181,15 @@ __END_DECLS
 
 #if __DARWIN_C_LEVEL >= 200112L || defined(_C99_SOURCE) || defined(__cplusplus)
 __BEGIN_DECLS
+#ifndef UNIFDEF_DRIVERKIT
 int	vfwscanf(FILE * __restrict, const wchar_t * __restrict,
 	    __darwin_va_list);
+#endif /* UNIFDEF_DRIVERKIT */
 int	vswscanf(const wchar_t * __restrict, const wchar_t * __restrict,
 	    __darwin_va_list);
+#ifndef UNIFDEF_DRIVERKIT
 int	vwscanf(const wchar_t * __restrict, __darwin_va_list);
+#endif /* UNIFDEF_DRIVERKIT */
 float	wcstof(const wchar_t * __restrict, wchar_t ** __restrict);
 long double
 	wcstold(const wchar_t * __restrict, wchar_t ** __restrict);
@@ -211,6 +220,9 @@ int     wcsncasecmp(const wchar_t *, const wchar_t *, size_t n) __OSX_AVAILABLE_
 size_t  wcsnlen(const wchar_t *, size_t) __pure __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
 size_t  wcsnrtombs(char * __restrict, const wchar_t ** __restrict, size_t,
             size_t, mbstate_t * __restrict);
+#ifndef UNIFDEF_DRIVERKIT
+FILE *open_wmemstream(wchar_t ** __bufp, size_t * __sizep) __API_AVAILABLE(macos(10.13), ios(11.0), tvos(11.0), watchos(4.0));
+#endif /* UNIFDEF_DRIVERKIT */
 __END_DECLS
 #endif /* __DARWIN_C_LEVEL >= 200809L */
 
@@ -220,7 +232,9 @@ __END_DECLS
 
 #if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
 __BEGIN_DECLS
+#ifndef UNIFDEF_DRIVERKIT
 wchar_t *fgetwln(FILE * __restrict, size_t *) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
+#endif /* UNIFDEF_DRIVERKIT */
 size_t	wcslcat(wchar_t *, const wchar_t *, size_t);
 size_t	wcslcpy(wchar_t *, const wchar_t *, size_t);
 __END_DECLS

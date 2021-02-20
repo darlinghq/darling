@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, 2005, 2009-2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2004, 2005, 2009-2011, 2013-2015, 2017 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -39,37 +39,6 @@
 /* -------------------- */
 
 
-static CFComparisonResult
-_compare_sets(const void *val1, const void *val2, void *context)
-{
-	CFStringRef	id1;
-	CFStringRef	id2;
-	CFStringRef	name1;
-	CFStringRef	name2;
-	SCNetworkSetRef	s1	= (SCNetworkSetRef)val1;
-	SCNetworkSetRef	s2	= (SCNetworkSetRef)val2;
-
-	name1 = SCNetworkSetGetName(s1);
-	name2 = SCNetworkSetGetName(s2);
-
-	if (name1 != NULL) {
-		if (name2 != NULL) {
-			return CFStringCompare(name1, name2, 0);
-		} else {
-			return kCFCompareLessThan;
-		}
-	}
-
-	if (name2 != NULL) {
-		return kCFCompareGreaterThan;
-	}
-
-	id1 = SCNetworkSetGetSetID(s1);
-	id2 = SCNetworkSetGetSetID(s2);
-	return CFStringCompare(id1, id2, 0);
-}
-
-
 static CFArrayRef
 _copy_sets()
 {
@@ -85,7 +54,7 @@ _copy_sets()
 	sorted = CFArrayCreateMutableCopy(NULL, 0, sets);
 	CFArraySortValues(sorted,
 			  CFRangeMake(0, CFArrayGetCount(sorted)),
-			  _compare_sets,
+			  _SCNetworkSetCompare,
 			  NULL);
 
 	CFRelease(sets);
@@ -372,6 +341,7 @@ __private_extern__
 void
 select_set(int argc, char **argv)
 {
+#pragma unused(argc)
 	SCNetworkSetRef	set;
 	CFStringRef	setName;
 
@@ -534,6 +504,10 @@ set_set(int argc, char **argv)
 		} else {
 			SCPrint(TRUE, stdout, CFSTR("set what?\n"));
 		}
+
+		if (net_set == NULL) {
+			break;
+		}
 	}
 
 	return;
@@ -645,7 +619,7 @@ show_set(int argc, char **argv)
 		n = CFArrayGetCount(interfaces);
 		for (i = 0; i < n; i++) {
 			interface = CFArrayGetValueAtIndex(interfaces, i);
-			SCPrint(TRUE, stdout, CFSTR(" %2ld: %@ \n"),
+			SCPrint(TRUE, stdout, CFSTR(" %2ld: %@\n"),
 				i + 1,
 				SCNetworkInterfaceGetLocalizedDisplayName(interface));
 		}
@@ -665,6 +639,8 @@ __private_extern__
 void
 show_sets(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	SCNetworkSetRef	current;
 	CFIndex		i;
 	CFIndex		n;

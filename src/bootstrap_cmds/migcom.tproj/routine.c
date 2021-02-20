@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -59,12 +59,12 @@
 
 u_int rtNumber = 0;
 
-static void rtSizeDelta();
+static void rtSizeDelta(FILE *file, u_int mask, routine_t *rt);
 
 routine_t *
 rtAlloc(void)
 {
-  register routine_t *new;
+  routine_t *new;
 
   new = (routine_t *) calloc(1, sizeof *new);
   if (new == rtNULL)
@@ -87,43 +87,44 @@ rtSkip(void)
 argument_t *
 argAlloc(void)
 {
-  extern void KPD_error();
+  extern void KPD_error(FILE *file, argument_t *arg);
 
   static argument_t prototype =
   {
-    strNULL,      /* identifier_t argName */
-    argNULL,      /* argument_t *argNext */
-    akNone,       /* arg_kind_t argKind */
-    itNULL,       /* ipc_type_t *argType */
-    argKPD_NULL,  /* mach_msg_descriptor_type_t argKPD_Type */
-    KPD_error,    /* KPD discipline for templates */
-    KPD_error,    /* KPD discipline for initializing */
-    KPD_error,    /* KPD discipline for packing */
-    KPD_error,    /* KPD discipline for extracting */
-    KPD_error,    /* KPD discipline for type checking */
-    strNULL,      /* string_t argVarName */
-    strNULL,      /* string_t argMsgField */
-    strNULL,      /* string_t argTTName */
-    strNULL,      /* string_t argPadName */
-    strNULL,      /* string_t argSuffix */
-    flNone,       /* ipc_flags_t argFlags */
-    d_NO,         /* dealloc_t argDeallocate */
-    FALSE,        /* boolean_t argCountInOut */
-    rtNULL,       /* routine_t *argRoutine */
-    argNULL,      /* argument_t *argCount */
-    argNULL,      /* argument_t *argSubCount */
-    argNULL,      /* argument_t *argCInOut */
-    argNULL,      /* argument_t *argPoly */
-    argNULL,      /* argument_t *argDealloc */
-    argNULL,      /* argument_t *argSameCount */
-    argNULL,      /* argument_t *argParent */
-    1,            /* int argMultiplier */
-    0,            /* int argRequestPos */
-    0,            /* int argReplyPos */
-    FALSE,        /* boolean_t argByReferenceUser */
-    FALSE         /* boolean_t argByReferenceServer */
+    .argName = strNULL,
+    .argNext = argNULL,
+    .argKind = akNone,
+    .argType = itNULL,
+    .argKPD_Type = argKPD_NULL,
+    .argKPD_Template = (void(*)(FILE *, argument_t *, boolean_t))KPD_error,
+    .argKPD_Init = KPD_error,
+    .argKPD_Pack = KPD_error,
+    .argKPD_Extract = KPD_error,
+    .argKPD_TypeCheck = KPD_error,
+    .argVarName = strNULL,
+    .argMsgField = strNULL,
+    .argTTName = strNULL,
+    .argPadName = strNULL,
+    .argSuffix = strNULL,
+    .argFlags = flNone,
+    .argDeallocate = d_NO,
+    .argCountInOut = FALSE,
+    .argRoutine = rtNULL,
+    .argCount = argNULL,
+    .argSubCount = argNULL,
+    .argCInOut = argNULL,
+    .argPoly = argNULL,
+    .argDealloc = argNULL,
+    .argSameCount = argNULL,
+    .argParent = argNULL,
+    .argMultiplier = 1,
+    .argRequestPos = 0,
+    .argReplyPos = 0,
+    .argByReferenceUser = FALSE,
+    .argByReferenceServer = FALSE,
+    .argTempOnStack = FALSE
   };
-  register argument_t *new;
+  argument_t *new;
 
   new = (argument_t *) malloc(sizeof *new);
   if (new == argNULL)
@@ -135,7 +136,7 @@ argAlloc(void)
 routine_t *
 rtMakeRoutine(identifier_t name, argument_t *args)
 {
-  register routine_t *rt = rtAlloc();
+  routine_t *rt = rtAlloc();
 
   rt->rtName = name;
   rt->rtKind = rkRoutine;
@@ -147,7 +148,7 @@ rtMakeRoutine(identifier_t name, argument_t *args)
 routine_t *
 rtMakeSimpleRoutine(identifier_t name, argument_t *args)
 {
-  register routine_t *rt = rtAlloc();
+  routine_t *rt = rtAlloc();
 
   rt->rtName = name;
   rt->rtKind = rkSimpleRoutine;
@@ -175,9 +176,9 @@ rtRoutineKindToStr(routine_kind_t rk)
 }
 
 static void
-rtPrintArg(register argument_t *arg)
+rtPrintArg(argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
+  ipc_type_t *it = arg->argType;
 
   if (!akCheck(arg->argKind, akbUserArg|akbServerArg) ||
       (akIdent(arg->argKind) == akeCount) ||
@@ -276,9 +277,9 @@ rtPrintArg(register argument_t *arg)
 }
 
 void
-rtPrintRoutine(register routine_t *rt)
+rtPrintRoutine(routine_t *rt)
 {
-  register argument_t *arg;
+  argument_t *arg;
 
   printf("%s (%d) %s(", rtRoutineKindToStr(rt->rtKind), rt->rtNumber, rt->rtName);
 
@@ -297,12 +298,12 @@ rtPrintRoutine(register routine_t *rt)
 static void
 rtCheckSimple(argument_t *args, u_int mask, boolean_t *simple)
 {
-  register argument_t *arg;
+  argument_t *arg;
   boolean_t MustBeComplex = FALSE;
 
   for (arg = args; arg != argNULL; arg = arg->argNext)
     if (akCheck(arg->argKind, mask)) {
-      register ipc_type_t *it = arg->argType;
+      ipc_type_t *it = arg->argType;
 
       if (IS_KERN_PROC_DATA(it))
         MustBeComplex = TRUE;
@@ -322,7 +323,7 @@ rtCheckFit(routine_t *rt, u_int mask, boolean_t *fitp, boolean_t *uselimp, u_int
     machine_alignment(size,sizeof(mach_msg_body_t));
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext)
     if (akCheck(arg->argKind, mask)) {
-      register ipc_type_t *it = arg->argType;
+      ipc_type_t *it = arg->argType;
 
       machine_alignment(size, it->itMinTypeSize);
       if (it->itNative)
@@ -362,12 +363,12 @@ rtCheckFit(routine_t *rt, u_int mask, boolean_t *fitp, boolean_t *uselimp, u_int
 static void
 rtFindHowMany(routine_t *rt)
 {
-  register argument_t *arg;
+  argument_t *arg;
   int multiplier = 1;
   boolean_t test;
 
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext) {
-    register ipc_type_t *it = arg->argType;
+    ipc_type_t *it = arg->argType;
 
     if (IS_MULTIPLE_KPD(it)) {
       if (!it->itVarArray)
@@ -409,7 +410,7 @@ rtFindHowMany(routine_t *rt)
 boolean_t
 rtCheckMask(argument_t *args, u_int mask)
 {
-  register argument_t *arg;
+  argument_t *arg;
 
   for (arg = args; arg != argNULL; arg = arg->argNext)
     if (akCheckAll(arg->argKind, mask))
@@ -418,9 +419,9 @@ rtCheckMask(argument_t *args, u_int mask)
 }
 
 boolean_t
-rtCheckMaskFunction(argument_t *args, u_int mask, boolean_t (*func)(/* argument_t *arg */))
+rtCheckMaskFunction(argument_t *args, u_int mask, boolean_t (*func)(argument_t *arg))
 {
-  register argument_t *arg;
+  argument_t *arg;
 
   for (arg = args; arg != argNULL; arg = arg->argNext)
     if (akCheckAll(arg->argKind, mask))
@@ -433,7 +434,7 @@ rtCheckMaskFunction(argument_t *args, u_int mask, boolean_t (*func)(/* argument_
 int
 rtCountKPDs(argument_t *args, u_int mask)
 {
-  register argument_t *arg;
+  argument_t *arg;
   int count = 0;
 
   for (arg = args; arg != argNULL; arg = arg->argNext)
@@ -445,7 +446,7 @@ rtCountKPDs(argument_t *args, u_int mask)
 int
 rtCountFlags(argument_t *args, u_int flag)
 {
-  register argument_t *arg;
+  argument_t *arg;
   int count = 0;
 
   for (arg = args; arg != argNULL; arg = arg->argNext)
@@ -457,7 +458,7 @@ rtCountFlags(argument_t *args, u_int flag)
 int
 rtCountArgDescriptors(argument_t *args, int *argcount)
 {
-  register argument_t *arg;
+  argument_t *arg;
   int count = 0;
 
   if (argcount)
@@ -488,7 +489,7 @@ rtCountArgDescriptors(argument_t *args, int *argcount)
 int
 rtCountMask(argument_t *args, u_int mask)
 {
-  register argument_t *arg;
+  argument_t *arg;
   int count = 0;
 
   for (arg = args; arg != argNULL; arg = arg->argNext)
@@ -517,7 +518,7 @@ rtDefaultArgKind(routine_t *rt, argument_t *arg)
  */
 
 static ipc_flags_t
-rtProcessDeallocFlag(register ipc_type_t *it, register ipc_flags_t flags, register arg_kind_t kind, dealloc_t *what, string_t name)
+rtProcessDeallocFlag(ipc_type_t *it, ipc_flags_t flags, arg_kind_t kind, dealloc_t *what, string_t name)
 {
 
   /* only one of flDealloc, flNotDealloc, flMaybeDealloc */
@@ -560,10 +561,10 @@ rtProcessDeallocFlag(register ipc_type_t *it, register ipc_flags_t flags, regist
 }
 
 static void
-rtProcessSameCountFlag(register argument_t *arg)
+rtProcessSameCountFlag(argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
-  register ipc_flags_t flags = arg->argFlags;
+  ipc_type_t *it = arg->argType;
+  ipc_flags_t flags = arg->argFlags;
   string_t name = arg->argVarName;
   static argument_t *old_arg;
 
@@ -598,7 +599,7 @@ rtProcessSameCountFlag(register argument_t *arg)
 }
 
 static ipc_flags_t
-rtProcessCountInOutFlag(register ipc_type_t *it, register ipc_flags_t flags, register arg_kind_t kind, boolean_t *what, string_t name)
+rtProcessCountInOutFlag(ipc_type_t *it, ipc_flags_t flags, arg_kind_t kind, boolean_t *what, string_t name)
 {
   if (flags & flCountInOut) {
     if (!akCheck(kind, akbReply)) {
@@ -616,7 +617,7 @@ rtProcessCountInOutFlag(register ipc_type_t *it, register ipc_flags_t flags, reg
 }
 
 static ipc_flags_t
-rtProcessPhysicalCopyFlag(register ipc_type_t *it, register ipc_flags_t flags, register arg_kind_t kind, string_t name)
+rtProcessPhysicalCopyFlag(ipc_type_t *it, ipc_flags_t flags, arg_kind_t kind, string_t name)
 {
   if (flags & flPhysicalCopy) {
     if (it->itInLine) {
@@ -632,10 +633,10 @@ rtProcessPhysicalCopyFlag(register ipc_type_t *it, register ipc_flags_t flags, r
 }
 
 static void
-rtProcessRetCodeFlag(register argument_t *thisarg)
+rtProcessRetCodeFlag(argument_t *thisarg)
 {
-  register ipc_type_t *it = thisarg->argType;
-  register ipc_flags_t flags = thisarg->argFlags;
+  ipc_type_t *it = thisarg->argType;
+  ipc_flags_t flags = thisarg->argFlags;
   string_t name = thisarg->argVarName;
   routine_t *thisrout = thisarg->argRoutine;
 
@@ -660,7 +661,7 @@ rtProcessRetCodeFlag(register argument_t *thisarg)
 }
 
 static ipc_flags_t
-rtProcessOverwriteFlag(register ipc_type_t *it, register ipc_flags_t flags, register arg_kind_t kind, string_t name)
+rtProcessOverwriteFlag(ipc_type_t *it, ipc_flags_t flags, arg_kind_t kind, string_t name)
 {
   if (flags & flOverwrite)
     if (it->itInLine || it->itMigInLine ||
@@ -675,7 +676,7 @@ rtProcessOverwriteFlag(register ipc_type_t *it, register ipc_flags_t flags, regi
 static void
 rtDetectKPDArg(argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
+  ipc_type_t *it = arg->argType;
   char *string;
 
   if  (IS_KERN_PROC_DATA(it)) {
@@ -706,7 +707,7 @@ rtDetectKPDArg(argument_t *arg)
 static void
 rtAugmentArgKind(argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
+  ipc_type_t *it = arg->argType;
 
   /* akbVariable means variable-sized inline */
 
@@ -751,10 +752,10 @@ rtAugmentArgKind(argument_t *arg)
  * it is used in InArgMsgField.
  */
 static void
-rtSuffixExtArg(register argument_t *args)
+rtSuffixExtArg(argument_t *args)
 {
-  register argument_t *arg;
-  register char *subindex;
+  argument_t *arg;
+  char *subindex;
   char string[MAX_STR_LEN];
 
   for (arg = args; arg != argNULL; arg = arg->argNext)  {
@@ -788,7 +789,7 @@ rtSuffixExtArg(register argument_t *args)
     }
     else if (akIdent(arg->argKind) == akePoly &&
                akCheck(arg->argParent->argKind, akbSendKPD | akbReturnKPD)) {
-      register argument_t *par_arg = arg->argParent;
+      argument_t *par_arg = arg->argParent;
 
       if (IS_MULTIPLE_KPD(par_arg->argType))
         subindex = "[0]";
@@ -808,7 +809,7 @@ rtSuffixExtArg(register argument_t *args)
     }
     else if (akIdent(arg->argKind) == akeDealloc &&
                akCheck(arg->argParent->argKind, akbSendKPD | akbReturnKPD)) {
-      register argument_t *par_arg = arg->argParent;
+      argument_t *par_arg = arg->argParent;
 
       if (IS_MULTIPLE_KPD(par_arg->argType))
         subindex = "[0]";
@@ -855,12 +856,14 @@ rtCheckRoutineArg(routine_t *rt, argument_t *arg)
       break;
 
     case akeSendTime:
-      if (rt->rtWaitTime != argNULL)
-	      if (akIdent(rt->rtWaitTime->argKind) == akeWaitTime) {
-		      warn("SendTime type argument after a WaitTime in %s; SendTime %s won't be used", rt->rtName, arg->argName);
-		      break;
-	      } else 
-		      warn("multiple SendTime type args in %s; %s won't be used", rt->rtName, rt->rtWaitTime->argName);
+      if (rt->rtWaitTime != argNULL) {
+        if (akIdent(rt->rtWaitTime->argKind) == akeWaitTime) {
+          warn("SendTime type argument after a WaitTime in %s; SendTime %s won't be used", rt->rtName, arg->argName);
+          break;
+        } else  {
+          warn("multiple SendTime type args in %s; %s won't be used", rt->rtName, rt->rtWaitTime->argName);
+        }
+      }
       rt->rtWaitTime = arg;
       break;
 
@@ -878,7 +881,7 @@ rtCheckRoutineArg(routine_t *rt, argument_t *arg)
 /* arg->argType may be NULL in this function */
 
 static void
-rtSetArgDefaults(routine_t *rt, register argument_t *arg)
+rtSetArgDefaults(routine_t *rt, argument_t *arg)
 {
   arg->argRoutine = rt;
   if (arg->argVarName == strNULL)
@@ -949,10 +952,10 @@ rtSetArgDefaults(routine_t *rt, register argument_t *arg)
 }
 
 static void
-rtAddCountArg(register argument_t *arg)
+rtAddCountArg(argument_t *arg)
 {
-  register argument_t *count, *master;
-  register ipc_type_t *it = arg->argType;
+  argument_t *count, *master;
+  ipc_type_t *it = arg->argType;
 
   count = argAlloc();
 
@@ -1005,9 +1008,9 @@ rtAddCountArg(register argument_t *arg)
 }
 
 static void
-rtAddCountInOutArg(register argument_t *arg)
+rtAddCountInOutArg(argument_t *arg)
 {
-  register argument_t *count;
+  argument_t *count;
 
   /*
    *  The user sees a single count variable.  However, to get the
@@ -1033,10 +1036,10 @@ rtAddCountInOutArg(register argument_t *arg)
 }
 
 static void
-rtAddPolyArg(register argument_t *arg)
+rtAddPolyArg(argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
-  register argument_t *poly;
+  ipc_type_t *it = arg->argType;
+  argument_t *poly;
   arg_kind_t akbsend, akbreturn;
 
   poly = argAlloc();
@@ -1079,9 +1082,9 @@ rtAddPolyArg(register argument_t *arg)
 }
 
 static void
-rtAddDeallocArg(register argument_t *arg)
+rtAddDeallocArg(argument_t *arg)
 {
-  register argument_t *dealloc;
+  argument_t *dealloc;
 
   dealloc = argAlloc();
   dealloc->argName = strconcat(arg->argName, "Dealloc");
@@ -1107,10 +1110,10 @@ rtAddDeallocArg(register argument_t *arg)
 static void
 rtCheckRoutineArgs(routine_t *rt)
 {
-  register argument_t *arg;
+  argument_t *arg;
 
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext) {
-    register ipc_type_t *it = arg->argType;
+    ipc_type_t *it = arg->argType;
 
     rtDefaultArgKind(rt, arg);
     rtCheckRoutineArg(rt, arg);
@@ -1152,7 +1155,7 @@ rtCheckRoutineArgs(routine_t *rt)
 }
 
 boolean_t
-rtCheckTrailerType(register argument_t *arg)
+rtCheckTrailerType(argument_t *arg)
 {
   if (akIdent(arg->argKind) == akeSecToken ||
       akIdent(arg->argKind) == akeAuditToken ||
@@ -1217,12 +1220,12 @@ rtCheckArgTypes(routine_t *rt)
 static void
 rtCheckArgTrans(routine_t *rt)
 {
-  register argument_t *arg;
+  argument_t *arg;
 
   /* the arg may not have a type (if there was some error in parsing it) */
 
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext) {
-    register ipc_type_t *it = arg->argType;
+    ipc_type_t *it = arg->argType;
 
     if ((it != itNULL) && !streql(it->itServerType, it->itTransType)) {
       if (akCheck(arg->argKind, akbSendRcv) && (it->itInTrans == strNULL))
@@ -1242,7 +1245,7 @@ rtCheckArgTrans(routine_t *rt)
 static void
 rtAddRetCode(routine_t *rt)
 {
-  register argument_t *arg = argAlloc();
+  argument_t *arg = argAlloc();
 
   arg->argName = "RetCode";
   arg->argType = itRetCodeType;
@@ -1263,14 +1266,14 @@ static void
 rtProcessRetCode(routine_t *rt)
 {
   if (!rt->rtOneWay && !rt->rtSimpleReply) {
-    register argument_t *arg = rt->rtRetCode;
+    argument_t *arg = rt->rtRetCode;
 
     arg->argKind = akRemFeature(arg->argKind, akbReply);
     /* we want the RetCode to be a local variable instead */
     arg->argKind = akAddFeature(arg->argKind, akbVarNeeded);
   }
   if (rt->rtRetCArg != argNULL && !rt->rtSimpleRequest) {
-    register argument_t *arg = rt->rtRetCArg;
+    argument_t *arg = rt->rtRetCArg;
 
     arg->argKind = akeRetCode|akbUserArg|akbServerArg|akbSendRcv;
   }
@@ -1284,7 +1287,7 @@ rtProcessRetCode(routine_t *rt)
 static void
 rtAddNdrCode(routine_t *rt)
 {
-  register argument_t *arg = argAlloc();
+  argument_t *arg = argAlloc();
 
   arg->argName = "NDR_record";
   arg->argType = itNdrCodeType;
@@ -1303,7 +1306,7 @@ rtAddNdrCode(routine_t *rt)
 static void
 rtProcessNdrCode(routine_t *rt)
 {
-  register argument_t *ndr = rt->rtNdrCode;
+  argument_t *ndr = rt->rtNdrCode;
   argument_t *arg;
   boolean_t found;
 
@@ -1350,7 +1353,7 @@ rtProcessNdrCode(routine_t *rt)
 static void
 rtAddWaitTime(routine_t *rt, identifier_t name, arg_kind_t kind)
 {
-  register argument_t *arg = argAlloc();
+  argument_t *arg = argAlloc();
   argument_t **loc;
 
   arg->argName = "dummy WaitTime arg";
@@ -1381,7 +1384,7 @@ rtAddWaitTime(routine_t *rt, identifier_t name, arg_kind_t kind)
 static void
 rtAddMsgOption(routine_t *rt, identifier_t name)
 {
-  register argument_t *arg = argAlloc();
+  argument_t *arg = argAlloc();
   argument_t **loc;
 
   arg->argName = "dummy MsgOption arg";
@@ -1408,8 +1411,8 @@ rtAddMsgOption(routine_t *rt, identifier_t name)
 static void
 rtProcessMsgOption(routine_t *rt)
 {
-  register argument_t *msgop = rt->rtMsgOption;
-  register argument_t *arg;
+  argument_t *msgop = rt->rtMsgOption;
+  argument_t *arg;
   boolean_t sectoken = FALSE;
   boolean_t audittoken = FALSE;
   boolean_t contexttoken = FALSE;
@@ -1433,6 +1436,15 @@ rtProcessMsgOption(routine_t *rt)
   /* other implicit data received by the user will be handled here */
 }
 
+static void
+rtProcessUseSpecialReplyPort(routine_t *rt)
+{
+  if (IsKernelUser || IsKernelServer) {
+    fatal("UseSpecialReplyPort option cannot be used with KernelUser / KernelServer\n");
+  }
+  rt->rtMsgOption->argVarName = strconcat(rt->rtMsgOption->argVarName, "|__MigSpecialReplyPortMsgOption");
+}
+
 /*
  *  Adds a dummy reply port argument to the function.
  */
@@ -1440,7 +1452,7 @@ rtProcessMsgOption(routine_t *rt)
 static void
 rtAddDummyReplyPort(routine_t *rt, ipc_type_t *type)
 {
-  register argument_t *arg = argAlloc();
+  argument_t *arg = argAlloc();
   argument_t **loc;
 
   arg->argName = "dummy ReplyPort arg";
@@ -1470,13 +1482,13 @@ rtAddDummyReplyPort(routine_t *rt, ipc_type_t *type)
  * fill a KPD entry in the message-template
  */
 static void
-rtCheckOverwrite(register routine_t *rt)
+rtCheckOverwrite(routine_t *rt)
 {
-  register argument_t *arg;
-  register int howmany = rt->rtOverwrite;
+  argument_t *arg;
+  int howmany = rt->rtOverwrite;
 
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext) {
-    register ipc_type_t *it = arg->argType;
+    ipc_type_t *it = arg->argType;
 
     if (akCheck(arg->argKind, akbReturnKPD) && !it->itInLine) {
       /* among OUT args, we want OOL, OOL ports and MigInLine */
@@ -1497,16 +1509,16 @@ rtCheckOverwrite(register routine_t *rt)
  * argRequestPos and argReplyPos get -1 if the value shouldn't be used.
  */
 static void
-rtCheckVariable(register routine_t *rt)
+rtCheckVariable(routine_t *rt)
 {
-  register argument_t *arg;
+  argument_t *arg;
   int NumRequestVar = 0;
   int NumReplyVar = 0;
   int MaxRequestPos = 0;
   int MaxReplyPos = 0;
 
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext) {
-    register argument_t *parent = arg->argParent;
+    argument_t *parent = arg->argParent;
 
     /*
      * We skip KPDs. We have to make sure that the KPDs count
@@ -1558,12 +1570,12 @@ rtCheckVariable(register routine_t *rt)
  */
 
 static void
-rtCheckDestroy(register routine_t *rt)
+rtCheckDestroy(routine_t *rt)
 {
-  register argument_t *arg;
+  argument_t *arg;
 
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext) {
-    register ipc_type_t *it = arg->argType;
+    ipc_type_t *it = arg->argType;
 
     if(akCheck(arg->argKind, akbSendRcv) &&
        !akCheck(arg->argKind, akbReturnSnd) &&
@@ -1582,12 +1594,12 @@ rtCheckDestroy(register routine_t *rt)
  */
 
 static void
-rtAddByReference(register routine_t *rt)
+rtAddByReference(routine_t *rt)
 {
-  register argument_t *arg;
+  argument_t *arg;
 
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext) {
-    register ipc_type_t *it = arg->argType;
+    ipc_type_t *it = arg->argType;
 
     if (akCheck(arg->argKind, akbReturnRcv) && it->itStruct) {
       arg->argByReferenceUser = TRUE;
@@ -1617,16 +1629,16 @@ rtAddByReference(register routine_t *rt)
  * might not be set yet - see rtCheckVariable)
  */
 void
-rtAddSameCount(register routine_t *rt)
+rtAddSameCount(routine_t *rt)
 {
-  register argument_t *arg;
+  argument_t *arg;
 
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext)
     if (arg->argFlags & flSameCount) {
-      register ipc_type_t *it = arg->argType;
-      register argument_t *tmp_count;
-      register argument_t *my_count = arg->argCount;
-      register argument_t *ref_count = arg->argSameCount->argCount;
+      ipc_type_t *it = arg->argType;
+      argument_t *tmp_count;
+      argument_t *my_count = arg->argCount;
+      argument_t *ref_count = arg->argSameCount->argCount;
 
       tmp_count = argAlloc();
       *tmp_count = *ref_count;
@@ -1653,7 +1665,7 @@ rtAddSameCount(register routine_t *rt)
 }
 
 void
-rtCheckRoutine(register routine_t *rt)
+rtCheckRoutine(routine_t *rt)
 {
   /* Initialize random fields. */
 
@@ -1661,6 +1673,8 @@ rtCheckRoutine(register routine_t *rt)
   rt->rtOneWay = (rt->rtKind == rkSimpleRoutine);
   rt->rtServerName = strconcat(ServerPrefix, rt->rtName);
   rt->rtUserName = strconcat(UserPrefix, rt->rtName);
+  rt->rtUseSpecialReplyPort = UseSpecialReplyPort && !rt->rtOneWay;
+  rt->rtConsumeOnSendError = ConsumeOnSendError;
 
   /* Add implicit arguments. */
 
@@ -1681,6 +1695,9 @@ rtCheckRoutine(register routine_t *rt)
       rtAddDummyReplyPort(rt, itZeroReplyPortType);
     else
       rtAddDummyReplyPort(rt, itRealReplyPortType);
+  } else if (akCheck(rt->rtReplyPort->argKind, akbUserArg)) {
+      /* If an explicit ReplyPort is used, we can't assume it will be the SRP */
+      rt->rtUseSpecialReplyPort = FALSE;
   }
   if (rt->rtMsgOption == argNULL) {
     if (MsgOption == strNULL)
@@ -1689,10 +1706,15 @@ rtCheckRoutine(register routine_t *rt)
       rtAddMsgOption(rt, MsgOption);
   }
   if (rt->rtWaitTime == argNULL) {
-	  if (WaitTime != strNULL)
-		  rtAddWaitTime(rt, WaitTime, akeWaitTime);
-	  else if (SendTime != strNULL)
-		  rtAddWaitTime(rt, SendTime, akeSendTime);
+    if (WaitTime != strNULL)
+      rtAddWaitTime(rt, WaitTime, akeWaitTime);
+    else if (SendTime != strNULL)
+      rtAddWaitTime(rt, SendTime, akeSendTime);
+  }
+  if (rt->rtWaitTime && rt->rtConsumeOnSendError == ConsumeOnSendErrorNone) {
+    warn("%s %s specifies a SendTime/WaitTime which may leak resources, "
+      "adopt \"ConsumeOnSendError Timeout\"",
+      rtRoutineKindToStr(rt->rtKind), rt->rtName);
   }
 
 
@@ -1751,6 +1773,8 @@ rtCheckRoutine(register routine_t *rt)
   rtProcessNdrCode(rt);
   if (rt->rtUserImpl)
     rtProcessMsgOption(rt);
+  if (rt->rtUseSpecialReplyPort)
+    rtProcessUseSpecialReplyPort(rt);
 
   rt->rtNoReplyArgs = !rtCheckMask(rt->rtArgs, akbReturnSnd);
 
@@ -1788,7 +1812,7 @@ rtSizeDelta(FILE *file, u_int mask, routine_t *rt)
   max_size = min_size;
   for (arg = rt->rtArgs; arg != argNULL; arg = arg->argNext)
     if (akCheck(arg->argKind, mask)) {
-      register ipc_type_t *it = arg->argType;
+      ipc_type_t *it = arg->argType;
 
       machine_alignment(min_size, it->itMinTypeSize);
       machine_alignment(max_size, it->itMinTypeSize);

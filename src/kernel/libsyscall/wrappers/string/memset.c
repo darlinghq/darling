@@ -33,25 +33,25 @@
 #include "strings.h"
 #include <sys/types.h>
 
-#define	wsize	sizeof(u_int)
-#define	wmask	(wsize - 1)
+#define wsize   sizeof(u_int)
+#define wmask   (wsize - 1)
 
 // n.b. this must be compiled with -fno-builtin or it might get optimized into
 // a recursive call to bzero.
 __attribute__((visibility("hidden")))
 void
-bzero(void *dst0, size_t length)
+_libkernel_bzero(void *dst0, size_t length)
 {
-    return (void)memset(dst0, 0, length);
+	return (void)_libkernel_memset(dst0, 0, length);
 }
 
-#define	RETURN	return (dst0)
-#define	VAL	c0
-#define	WIDEVAL	c
+#define RETURN  return (dst0)
+#define VAL     c0
+#define WIDEVAL c
 
 __attribute__((visibility("hidden")))
 void *
-memset(void *dst0, int c0, size_t length)
+_libkernel_memset(void *dst0, int c0, size_t length)
 {
 	size_t t;
 	u_int c;
@@ -79,13 +79,13 @@ memset(void *dst0, int c0, size_t length)
 		RETURN;
 	}
 
-	if ((c = (u_char)c0) != 0) {	/* Fill the word. */
-		c = (c << 8) | c;	/* u_int is 16 bits. */
+	if ((c = (u_char)c0) != 0) {    /* Fill the word. */
+		c = (c << 8) | c;       /* u_int is 16 bits. */
 #if UINT_MAX > 0xffff
-		c = (c << 16) | c;	/* u_int is 32 bits. */
+		c = (c << 16) | c;      /* u_int is 32 bits. */
 #endif
 #if UINT_MAX > 0xffffffff
-		c = (c << 32) | c;	/* u_int is 64 bits. */
+		c = (c << 32) | c;      /* u_int is 64 bits. */
 #endif
 	}
 	/* Align destination by filling in bytes. */
@@ -106,9 +106,10 @@ memset(void *dst0, int c0, size_t length)
 
 	/* Mop up trailing bytes, if any. */
 	t = length & wmask;
-	if (t != 0)
+	if (t != 0) {
 		do {
 			*dst++ = VAL;
 		} while (--t != 0);
+	}
 	RETURN;
 }

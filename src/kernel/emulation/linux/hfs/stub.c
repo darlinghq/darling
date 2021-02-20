@@ -2,7 +2,8 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
+#include "../fcntl/open.h"
 
 long sys_mkcomplex()
 {
@@ -49,4 +50,7 @@ long sys_copyfile()
 	return -ENOTSUP;
 }
 
-
+long sys_open_dprotected_np(const char* path, int flags, int class, int dpflags, int mode) {
+	// just defer to regular sys_open
+	return sys_open(path, flags, mode);
+};

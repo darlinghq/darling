@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2011-2013, 2016 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -29,7 +29,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 
 
-CFBooleanRef	G_supplemental_proxies_follow_dns;
+extern CFBooleanRef	G_supplemental_proxies_follow_dns;
 
 
 __BEGIN_DECLS

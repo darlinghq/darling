@@ -3,6 +3,7 @@
 #
 
 reserve com.apple.system. 0 0 rwr-r-
+reserve com.apple.system.clock_set 0 266 rwrwr-
 monitor com.apple.system.timezone /etc/localtime
 monitor com.apple.system.info:/etc/hosts /etc/hosts
 monitor com.apple.system.info:/etc/services /etc/services

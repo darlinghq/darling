@@ -23,26 +23,42 @@
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/work_interval.h>
+
+#include <mach/mach.h>
 #include <mach/mach_time.h>
+#include <mach/port.h>
+
 #include <sys/errno.h>
 #include <stdlib.h>
+#include <strings.h>
 
 struct work_interval {
 	uint64_t thread_id;
 	uint64_t work_interval_id;
+	uint32_t create_flags;
+	mach_port_t wi_port;
 };
 
 extern uint64_t __thread_selfid(void);
 
-/* Create a new work interval handle (currently for the current thread only). Flags is unused */
+/* Create a new work interval handle (currently for the current thread only). */
 int
-work_interval_create(work_interval_t *interval_handle, uint32_t flags __unused)
+work_interval_create(work_interval_t *interval_handle, uint32_t create_flags)
 {
 	int ret;
-	uint64_t work_interval_id;
 	work_interval_t handle;
 
-	ret = __work_interval_ctl(WORK_INTERVAL_OPERATION_CREATE, 0, &work_interval_id, sizeof(work_interval_id));
+	if (interval_handle == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	struct work_interval_create_params create_params = {
+		.wicp_create_flags = create_flags,
+	};
+
+	ret = __work_interval_ctl(WORK_INTERVAL_OPERATION_CREATE2, 0,
+	    &create_params, sizeof(create_params));
 	if (ret == -1) {
 		return ret;
 	}
@@ -54,14 +70,18 @@ work_interval_create(work_interval_t *interval_handle, uint32_t flags __unused)
 	}
 
 	handle->thread_id = __thread_selfid();
-	handle->work_interval_id = work_interval_id;
+	handle->work_interval_id = create_params.wicp_id;
+	handle->create_flags = create_params.wicp_create_flags;
+	handle->wi_port = create_params.wicp_port;
 
 	*interval_handle = handle;
 	return 0;
 }
 
 int
-work_interval_notify(work_interval_t interval_handle, uint64_t start, uint64_t finish, uint64_t deadline, uint64_t next_start, uint32_t flags)
+work_interval_notify(work_interval_t interval_handle, uint64_t start,
+    uint64_t finish, uint64_t deadline, uint64_t next_start,
+    uint32_t notify_flags)
 {
 	int ret;
 	uint64_t work_interval_id;
@@ -70,8 +90,7 @@ work_interval_notify(work_interval_t interval_handle, uint64_t start, uint64_t f
 		.finish = finish,
 		.deadline = deadline,
 		.next_start = next_start,
-		.flags = flags,
-		.unused1 = 0
+		.notify_flags = notify_flags
 	};
 
 	if (interval_handle == NULL) {
@@ -79,35 +98,153 @@ work_interval_notify(work_interval_t interval_handle, uint64_t start, uint64_t f
 		return -1;
 	}
 
+	notification.create_flags = interval_handle->create_flags;
 	work_interval_id = interval_handle->work_interval_id;
 
-	ret = __work_interval_ctl(WORK_INTERVAL_OPERATION_NOTIFY, work_interval_id, &notification, sizeof(notification));
+	ret = __work_interval_ctl(WORK_INTERVAL_OPERATION_NOTIFY, work_interval_id,
+	    &notification, sizeof(notification));
 	return ret;
 }
 
 int
-work_interval_notify_simple(work_interval_t interval_handle, uint64_t start, uint64_t deadline, uint64_t next_start)
+work_interval_notify_simple(work_interval_t interval_handle, uint64_t start,
+    uint64_t deadline, uint64_t next_start)
 {
-	return work_interval_notify(interval_handle, start, mach_absolute_time(), deadline, next_start, 0);
+	return work_interval_notify(interval_handle, start, mach_absolute_time(),
+	           deadline, next_start, 0);
 }
+
 
 int
 work_interval_destroy(work_interval_t interval_handle)
 {
-	int ret, saved_errno;
-	uint64_t work_interval_id;
-
 	if (interval_handle == NULL) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	work_interval_id = interval_handle->work_interval_id;
+	if (interval_handle->create_flags & WORK_INTERVAL_FLAG_JOINABLE) {
+		mach_port_t wi_port = interval_handle->wi_port;
 
-	ret = __work_interval_ctl(WORK_INTERVAL_OPERATION_DESTROY, work_interval_id, NULL, 0);
-	saved_errno = errno;
-	free(interval_handle);
-	errno = saved_errno;
+		/*
+		 * A joinable work interval's lifetime is tied to the port lifetime.
+		 * When the last port reference is destroyed, the work interval
+		 * is destroyed via no-senders notification.
+		 *
+		 * Note however that after destroy it can no longer be notified
+		 * because the userspace token is gone.
+		 *
+		 * Additionally, this function does not cause the thread to un-join
+		 * the interval.
+		 */
+		kern_return_t kr = mach_port_deallocate(mach_task_self(), wi_port);
 
-	return ret;
+		if (kr != KERN_SUCCESS) {
+			/*
+			 * If the deallocate fails, then someone got their port
+			 * lifecycle wrong and over-released a port right.
+			 *
+			 * Return an error so the client can assert on this,
+			 * and still find the port name in the interval handle.
+			 */
+			errno = EINVAL;
+			return -1;
+		}
+
+		interval_handle->wi_port = MACH_PORT_NULL;
+		interval_handle->work_interval_id = 0;
+
+		free(interval_handle);
+		return 0;
+	} else {
+		uint64_t work_interval_id = interval_handle->work_interval_id;
+
+		int ret = __work_interval_ctl(WORK_INTERVAL_OPERATION_DESTROY,
+		    work_interval_id, NULL, 0);
+
+		interval_handle->work_interval_id = 0;
+
+		int saved_errno = errno;
+		free(interval_handle);
+		errno = saved_errno;
+		return ret;
+	}
+}
+
+int
+work_interval_join(work_interval_t interval_handle)
+{
+	if (interval_handle == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((interval_handle->create_flags & WORK_INTERVAL_FLAG_JOINABLE) == 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	mach_port_t wi_port = interval_handle->wi_port;
+
+	if (!MACH_PORT_VALID(wi_port)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	return work_interval_join_port(wi_port);
+}
+
+int
+work_interval_join_port(mach_port_t port)
+{
+	if (port == MACH_PORT_NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	return __work_interval_ctl(WORK_INTERVAL_OPERATION_JOIN,
+	           (uint64_t)port, NULL, 0);
+}
+
+int
+work_interval_leave(void)
+{
+	return __work_interval_ctl(WORK_INTERVAL_OPERATION_JOIN,
+	           (uint64_t)MACH_PORT_NULL, NULL, 0);
+}
+
+int
+work_interval_copy_port(work_interval_t interval_handle, mach_port_t *port)
+{
+	if (port == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (interval_handle == NULL) {
+		*port = MACH_PORT_NULL;
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((interval_handle->create_flags & WORK_INTERVAL_FLAG_JOINABLE) == 0) {
+		*port = MACH_PORT_NULL;
+		errno = EINVAL;
+		return -1;
+	}
+
+	mach_port_t wi_port = interval_handle->wi_port;
+
+	kern_return_t kr = mach_port_mod_refs(mach_task_self(), wi_port,
+	    MACH_PORT_RIGHT_SEND, 1);
+
+	if (kr != KERN_SUCCESS) {
+		*port = MACH_PORT_NULL;
+		errno = EINVAL;
+		return -1;
+	}
+
+	*port = wi_port;
+
+	return 0;
 }

@@ -189,7 +189,7 @@ hexnan( CONST char **sp, CONST FPI *fpi, ULong *x0)
 	else {			/* long double */
 		union IEEEl2bits u;
 		u.e = nanl(cp);
-#if defined(__i386__) || defined(__x86_64__) || defined(__arm__) 
+#if defined(__i386__) || defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
 		x0[1] = (ULong)u.bits.manh;
 		x0[0] = (ULong)u.bits.manl;
 #else

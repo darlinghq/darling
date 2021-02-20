@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -214,28 +214,36 @@ typedef struct ipc_type
     identifier_t itDestructor;/* may be NULL */
     identifier_t itBadValue;   /* Excluded value for PointerToIfNot.  May
      be NULL. */
+    u_int itOOL_Number;
   } ipc_type_t;
+
+enum {
+  ConsumeOnSendErrorNone,
+  ConsumeOnSendErrorTimeout,
+  ConsumeOnSendErrorAny,
+};
+
 
 #define itNULL ((ipc_type_t *) 0)
 
 #define itWordAlign     sizeof(natural_t)
 
-extern ipc_type_t *itLookUp(/* identifier_t name */);
-extern void itInsert(/* identifier_t name, ipc_type_t *it */);
-extern void itTypeDecl(/* identifier_t name, ipc_type_t *it */);
+extern ipc_type_t *itLookUp(identifier_t name);
+extern void itInsert(identifier_t name, ipc_type_t *it);
+extern void itTypeDecl(identifier_t name, ipc_type_t *it);
 
-extern ipc_type_t *itShortDecl(/* u_int inname, string_t instr,
+extern ipc_type_t *itShortDecl(u_int inname, string_t instr,
                                   u_int outname, string_t outstr,
-                                  u_int dfault */);
-extern ipc_type_t *itPrevDecl(/* identifier_t name */);
-extern ipc_type_t *itResetType(/* ipc_type_t *it */);
-extern ipc_type_t *itVarArrayDecl(/* u_int number, ipc_type_t *it */);
-extern ipc_type_t *itArrayDecl(/* u_int number, ipc_type_t *it */);
-extern ipc_type_t *itPtrDecl(/* ipc_type_t *it */);
-extern ipc_type_t *itStructDecl(/* u_int number, ipc_type_t *it */);
-extern ipc_type_t *itCStringDecl(/* u_int number, boolean_t varying */);
-extern ipc_type_t *itNativeType(/* identifier_t CType, boolean_t pointer
-                                   identifier_t NotVal */);
+                                  u_int dfault);
+extern ipc_type_t *itPrevDecl(identifier_t name);
+extern ipc_type_t *itResetType(ipc_type_t *it);
+extern ipc_type_t *itVarArrayDecl(u_int number, ipc_type_t *it);
+extern ipc_type_t *itArrayDecl(u_int number, ipc_type_t *it);
+extern ipc_type_t *itPtrDecl(ipc_type_t *it);
+extern ipc_type_t *itStructDecl(u_int number, ipc_type_t *it);
+extern ipc_type_t *itCStringDecl(int count, boolean_t varying);
+extern ipc_type_t *itNativeType(identifier_t CType, boolean_t pointer,
+                                   identifier_t NotVal);
 
 extern ipc_type_t *itRetCodeType;
 extern ipc_type_t *itNdrCodeType;
@@ -246,17 +254,17 @@ extern ipc_type_t *itZeroReplyPortType;
 extern ipc_type_t *itRealReplyPortType;
 extern ipc_type_t *itWaitTimeType;
 extern ipc_type_t *itMsgOptionType;
-extern ipc_type_t *itMakeCountType();
-extern ipc_type_t *itMakeSubCountType();
-extern ipc_type_t *itMakePolyType();
-extern ipc_type_t *itMakeDeallocType();
+extern ipc_type_t *itMakeCountType(void);
+extern ipc_type_t *itMakeSubCountType(int count, boolean_t varying, string_t  name);
+extern ipc_type_t *itMakePolyType(void);
+extern ipc_type_t *itMakeDeallocType(void);
 
-extern void init_type();
+extern void init_type(void);
 
-extern void itCheckReturnType(/* identifier_t name, ipc_type_t *it */);
-extern void itCheckRequestPortType(/* identifier_t name, ipc_type_t *it */);
-extern void itCheckReplyPortType(/* identifier_t name, ipc_type_t *it */);
-extern void itCheckIntType(/* identifier_t name, ipc_type_t *it */);
-extern void itCheckTokenType(/* identifier_t name, ipc_type_t *it */);
+extern void itCheckReturnType(identifier_t name, ipc_type_t *it);
+extern void itCheckRequestPortType(identifier_t name, ipc_type_t *it);
+extern void itCheckReplyPortType(identifier_t name, ipc_type_t *it);
+extern void itCheckIntType(identifier_t name, ipc_type_t *it);
+extern void itCheckTokenType(identifier_t name, ipc_type_t *it);
 
 #endif /* _TYPE_H */

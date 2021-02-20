@@ -177,7 +177,7 @@ int mbr_identifier_to_uuid(int id_type, const void *identifier, size_t identifie
 				the type of ID (ID_TYPE_UID or ID_TYPE_GID).  Synthesized
 				UUID values will be directly translated to corresponding ID.
 				A UID will always be returned even if the UUID is not found.  
-				The returned ID is not persistant, but can be used to map back
+				The returned ID is not persistent, but can be used to map back
 				to the UUID during runtime.
 	@param		uu is the UUID to be resolved
 	@param		uid_or_gid is the UID or GID found for the UUID

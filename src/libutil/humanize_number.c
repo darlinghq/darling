@@ -1,7 +1,8 @@
-/*	$NetBSD: humanize_number.c,v 1.8 2004/07/27 01:56:24 enami Exp $	*/
+/*	$NetBSD: humanize_number.c,v 1.14 2008/04/28 20:22:59 martin Exp $	*/
 
 /*
  * Copyright (c) 1997, 1998, 1999, 2002 The NetBSD Foundation, Inc.
+ * Copyright 2013 John-Mark Gurney <jmg@FreeBSD.org>
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -16,13 +17,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *      This product includes software developed by the NetBSD
- *      Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -38,77 +32,92 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <sys/types.h>
 #include <assert.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <locale.h>
 #include <libutil.h>
-#include <stdint.h>
-#include <limits.h>
+
+static const int maxscale = 7;
 
 int
-humanize_number(char *buf, size_t len, int64_t bytes,
+humanize_number(char *buf, size_t len, int64_t quotient,
     const char *suffix, int scale, int flags)
 {
 	const char *prefixes, *sep;
-	int	b, i, r, maxscale, s1, s2, sign;
-	int64_t divisor, max;
-	// We multiply bytes by 100 to deal with rounding, so we need something
-	// big enough to hold LLONG_MAX * 100. On 64-bit we can use 128-bit wide
-	// integers with __int128_t, but on 32-bit we have to use long double.
-#ifdef __LP64__
-	__int128_t scalable = (__int128_t)bytes;
-#else
-	long double scalable = (long double)bytes;
-#endif
+	int	i, r, remainder, s1, s2, sign;
+	int	divisordeccut;
+	int64_t	divisor, max;
 	size_t	baselen;
 
-	assert(buf != NULL);
-	assert(suffix != NULL);
-	assert(scale >= 0);
-
-	if (flags & HN_DIVISOR_1000) {
-		/* SI for decimal multiplies */
-		divisor = 1000;
-		if (flags & HN_B)
-			prefixes = "B\0k\0M\0G\0T\0P\0E";
-		else
-			prefixes = "\0\0k\0M\0G\0T\0P\0E";
-	} else {
-		/*
-		 * binary multiplies
-		 * XXX IEC 60027-2 recommends Ki, Mi, Gi...
-		 */
-		divisor = 1024;
-		if (flags & HN_B)
-			prefixes = "B\0K\0M\0G\0T\0P\0E";
-		else
-			prefixes = "\0\0K\0M\0G\0T\0P\0E";
-	}
-
-#define	SCALE2PREFIX(scale)	(&prefixes[(scale) << 1])
-	maxscale = 7;
-
-	if (scale >= maxscale &&
-	    (scale & (HN_AUTOSCALE | HN_GETSCALE)) == 0)
-		return (-1);
-
-	if (buf == NULL || suffix == NULL)
-		return (-1);
-
+	/* Since so many callers don't check -1, NUL terminate the buffer */
 	if (len > 0)
 		buf[0] = '\0';
-	if (bytes < 0) {
+
+	/* validate args */
+	if (buf == NULL || suffix == NULL)
+		return (-1);
+	if (scale < 0)
+		return (-1);
+	else if (scale >= maxscale &&
+	    ((scale & ~(HN_AUTOSCALE|HN_GETSCALE)) != 0))
+		return (-1);
+	if ((flags & HN_DIVISOR_1000) && (flags & HN_IEC_PREFIXES))
+		return (-1);
+
+	/* setup parameters */
+	remainder = 0;
+
+	if (flags & HN_IEC_PREFIXES) {
+		baselen = 2;
+		/*
+		 * Use the prefixes for power of two recommended by
+		 * the International Electrotechnical Commission
+		 * (IEC) in IEC 80000-3 (i.e. Ki, Mi, Gi...).
+		 *
+		 * HN_IEC_PREFIXES implies a divisor of 1024 here
+		 * (use of HN_DIVISOR_1000 would have triggered
+		 * an assertion earlier).
+		 */
+		divisor = 1024;
+		divisordeccut = 973;	/* ceil(.95 * 1024) */
+		if (flags & HN_B)
+			prefixes = "B\0\0Ki\0Mi\0Gi\0Ti\0Pi\0Ei";
+		else
+			prefixes = "\0\0\0Ki\0Mi\0Gi\0Ti\0Pi\0Ei";
+	} else {
+		baselen = 1;
+		if (flags & HN_DIVISOR_1000) {
+			divisor = 1000;
+			divisordeccut = 950;
+			if (flags & HN_B)
+				prefixes = "B\0\0k\0\0M\0\0G\0\0T\0\0P\0\0E";
+			else
+				prefixes = "\0\0\0k\0\0M\0\0G\0\0T\0\0P\0\0E";
+		} else {
+			divisor = 1024;
+			divisordeccut = 973;	/* ceil(.95 * 1024) */
+			if (flags & HN_B)
+				prefixes = "B\0\0K\0\0M\0\0G\0\0T\0\0P\0\0E";
+			else
+				prefixes = "\0\0\0K\0\0M\0\0G\0\0T\0\0P\0\0E";
+		}
+	}
+
+#define	SCALE2PREFIX(scale)	(&prefixes[(scale) * 3])
+
+	if (quotient < 0) {
 		sign = -1;
-		scalable *= -100;
-		baselen = 3;		/* sign, digit, prefix */
+		quotient = -quotient;
+		baselen += 2;		/* sign, digit */
 	} else {
 		sign = 1;
-		scalable *= 100;
-		baselen = 2;		/* digit, prefix */
+		baselen += 1;		/* digit */
 	}
 	if (flags & HN_NOSPACE)
 		sep = "";
@@ -124,35 +133,46 @@ humanize_number(char *buf, size_t len, int64_t bytes,
 
 	if (scale & (HN_AUTOSCALE | HN_GETSCALE)) {
 		/* See if there is additional columns can be used. */
-		for (max = 100, i = len - baselen; i-- > 0;)
+		for (max = 1, i = len - baselen; i-- > 0 && max <= (INT64_MAX / 10);)
 			max *= 10;
 
-		for (i = 0; scalable >= max && i < maxscale; i++)
-			scalable /= divisor;
+		/*
+		 * Divide the number until it fits the given column.
+		 * If there will be an overflow by the rounding below,
+		 * divide once more.
+		 */
+		for (i = 0;
+		    (quotient >= max || (quotient == max - 1 &&
+		    remainder >= divisordeccut)) && i < maxscale; i++) {
+			remainder = quotient % divisor;
+			quotient /= divisor;
+		}
 
 		if (scale & HN_GETSCALE)
 			return (i);
-	} else
-		for (i = 0; i < scale && i < maxscale; i++)
-			scalable /= divisor;
+	} else {
+		for (i = 0; i < scale && i < maxscale; i++) {
+			remainder = quotient % divisor;
+			quotient /= divisor;
+		}
+	}
 
 	/* If a value <= 9.9 after rounding and ... */
-	if (scalable < 995 && i > 0 && flags & HN_DECIMAL) {
-		/* baselen + \0 + .N */
-		if (len < baselen + 1 + 2)
-			return (-1);
-		b = ((int)scalable + 5) / 10;
-		s1 = b / 10;
-		s2 = b % 10;
-		r = snprintf(buf, len, "%s%d%s%d%s%s%s",
-			((sign == -1) ? "-" : ""),
-		    s1, localeconv()->decimal_point, s2,
+	/*
+	 * XXX - should we make sure there is enough space for the decimal
+	 * place and if not, don't do HN_DECIMAL?
+	 */
+	if (((quotient == 9 && remainder < divisordeccut) || quotient < 9) &&
+	    i > 0 && flags & HN_DECIMAL) {
+		s1 = (int)quotient + ((remainder * 10 + divisor / 2) /
+		    divisor / 10);
+		s2 = ((remainder * 10 + divisor / 2) / divisor) % 10;
+		r = snprintf(buf, len, "%d%s%d%s%s%s",
+		    sign * s1, localeconv()->decimal_point, s2,
 		    sep, SCALE2PREFIX(i), suffix);
 	} else
-		r = snprintf(buf, len, "%s%lld%s%s%s",
-		    /* LONGLONG */
-			((sign == -1) ? "-" : ""),
-		    (long long)((scalable + 50) / 100),
+		r = snprintf(buf, len, "%" PRId64 "%s%s%s",
+		    sign * (quotient + (remainder + divisor / 2) / divisor),
 		    sep, SCALE2PREFIX(i), suffix);
 
 	return (r);

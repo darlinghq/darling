@@ -13,7 +13,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -30,9 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)atexit.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdlib/atexit.3,v 1.11 2007/01/09 00:28:09 imp Exp $
+.\" $FreeBSD$
 .\"
-.Dd May 20, 2008
+.Dd September 6, 2002
 .Dt ATEXIT 3
 .Os
 .Sh NAME
@@ -41,23 +41,32 @@
 .Sh SYNOPSIS
 .In stdlib.h
 .Ft int
-.Fn atexit "void (*func)(void)"
+.Fn atexit "void (*function)(void)"
 #ifdef UNIFDEF_BLOCKS
 .Ft int
-.Fn atexit_b "void (^block)(void)"
+.Fn atexit_b "void (^function)(void)"
 #endif
 .Sh DESCRIPTION
 The
 .Fn atexit
 function
-registers the function
-.Fa func
+registers the given
+.Fa function
 to be called at program exit, whether via
 .Xr exit 3
 or via return from the program's
 .Fn main .
 Functions so registered are called in reverse order;
 no arguments are passed.
+.Pp
+If the provided
+.Fa function
+is located in a library that has been dynamically loaded (e.g. by
+.Fn dlopen ) Ns ,
+it will be called when the library is unloaded (due to a call
+to
+.Fn dlclose )
+or at program exit.
 #ifdef UNIFDEF_BLOCKS
 .Pp
 The
@@ -77,18 +86,18 @@ block might go out of scope when the subroutine returns.
 .Ed
 #endif
 .Pp
-These callbacks must not call
+These functions must not call
 .Fn exit ;
 if it should be necessary to terminate the process while in such a
 function, the
 .Xr _exit 2
 function should be used.
-(Alternatively, the callbacks may cause abnormal
+(Alternatively, the function may cause abnormal
 process termination, for example by calling
 .Xr abort 3 . )
 .Pp
-At least 32 callbacks can always be registered;
-more are allowed as long as sufficient memory can be allocated.
+At least 32 functions can always be registered,
+and more are allowed as long as sufficient memory can be allocated.
 .\" XXX {ATEXIT_MAX} is not implemented yet
 .Sh RETURN VALUES
 #ifdef UNIFDEF_BLOCKS

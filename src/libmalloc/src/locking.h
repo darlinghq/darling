@@ -24,7 +24,14 @@
 #ifndef __LOCKING_H
 #define __LOCKING_H
 
-#if CONFIG_OS_LOCK_UNFAIR
+#if OS_UNFAIR_LOCK_INLINE
+#define os_unfair_lock_lock_with_options(lock, options) \
+		os_unfair_lock_lock_with_options_inline(lock, options)
+#define os_unfair_lock_trylock(lock) \
+		os_unfair_lock_trylock_inline(lock)
+#define os_unfair_lock_unlock(lock) \
+		os_unfair_lock_unlock_inline(lock)
+#endif // OS_UNFAIR_LOCK_INLINE
 
 typedef os_unfair_lock _malloc_lock_s;
 #define _MALLOC_LOCK_INIT OS_UNFAIR_LOCK_INIT
@@ -38,67 +45,26 @@ _malloc_lock_init(_malloc_lock_s *lock) {
 MALLOC_ALWAYS_INLINE
 static inline void
 _malloc_lock_lock(_malloc_lock_s *lock) {
-	os_unfair_lock_lock_with_options_inline(lock,
+	return os_unfair_lock_lock_with_options(lock, OS_UNFAIR_LOCK_ADAPTIVE_SPIN |
 			OS_UNFAIR_LOCK_DATA_SYNCHRONIZATION);
 }
 
 MALLOC_ALWAYS_INLINE
 static inline bool
 _malloc_lock_trylock(_malloc_lock_s *lock) {
-    return os_unfair_lock_trylock_inline(lock);
+    return os_unfair_lock_trylock(lock);
 }
 
 MALLOC_ALWAYS_INLINE
 static inline void
 _malloc_lock_unlock(_malloc_lock_s *lock) {
-    os_unfair_lock_unlock_inline(lock);
-}
-
-#else // CONFIG_OS_LOCK_UNFAIR
-#if CONFIG_OS_LOCK_HANDOFF
-
-typedef os_lock_handoff_s _malloc_lock_s;
-#define _MALLOC_LOCK_INIT OS_LOCK_HANDOFF_INIT
-
-__attribute__((always_inline))
-static inline void
-_malloc_lock_init(_malloc_lock_s *lock) {
-    const os_lock_handoff_s _os_lock_handoff_init = OS_LOCK_HANDOFF_INIT;
-    *lock = _os_lock_handoff_init;
-}
-
-#else //CONFIG_OS_LOCK_HANDOFF
-
-typedef os_lock_spin_s _malloc_lock_s;
-#define _MALLOC_LOCK_INIT OS_LOCK_SPIN_INIT
-
-MALLOC_ALWAYS_INLINE
-static inline void
-_malloc_lock_init(_malloc_lock_s *lock) {
-    const os_lock_spin_s _os_lock_spin_init = OS_LOCK_SPIN_INIT;
-    *lock = _os_lock_spin_init;
-}
-
-#endif
-
-MALLOC_ALWAYS_INLINE
-static inline void
-_malloc_lock_lock(_malloc_lock_s *lock) {
-    return os_lock_lock(lock);
-}
-
-MALLOC_ALWAYS_INLINE
-static inline bool
-_malloc_lock_trylock(_malloc_lock_s *lock) {
-    return os_lock_trylock(lock);
+    return os_unfair_lock_unlock(lock);
 }
 
 MALLOC_ALWAYS_INLINE
 static inline void
-_malloc_lock_unlock(_malloc_lock_s *lock) {
-    return os_lock_unlock(lock);
+_malloc_lock_assert_owner(_malloc_lock_s *lock) {
+	os_unfair_lock_assert_owner(lock);
 }
-
-#endif // !CONFIG_OS_LOCK_UNFAIR
 
 #endif // __LOCKING_H

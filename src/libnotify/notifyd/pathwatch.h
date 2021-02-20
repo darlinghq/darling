@@ -53,6 +53,8 @@ enum
 #define PATH_NODE_ALL 0x000003ff
 /* src is suspended */
 #define PATH_SRC_SUSPENDED 0x10000000
+/* the client is notifyd */
+#define PATH_NODE_CLIENT_NOTIFYD 0x20000000
 
 /* Path changes coalesce for 100 milliseconds */
 #define PNODE_COALESCE_TIME 100000000
@@ -64,21 +66,19 @@ typedef struct
 {
 	char *path;
 	size_t plen;
-	uid_t uid;
-	gid_t gid;
+	audit_token_t audit;
 	uint32_t pname_count;
 	char **pname;
 	uint32_t type;
 	uint32_t flags;
 	dispatch_source_t src;
-	dispatch_queue_t src_queue;
 	void *contextp;
 	uint32_t context32;
 	uint64_t context64;
 	uint32_t refcount;
 } path_node_t;
 
-path_node_t *path_node_create(const char *path, uid_t uid, gid_t gid, uint32_t mask, dispatch_queue_t queue);
+path_node_t *path_node_create(const char *path, audit_token_t audit, bool is_notifyd, uint32_t mask);
 void path_node_close(path_node_t *pnode);
 
 #endif /* _PATHWATCH_H_ */

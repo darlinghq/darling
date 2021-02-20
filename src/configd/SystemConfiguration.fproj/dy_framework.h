@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008, 2010-2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2002-2008, 2010-2015, 2017, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -25,7 +25,7 @@
 #ifndef _DY_FRAMEWORK_H
 #define _DY_FRAMEWORK_H
 
-#include <Availability.h>
+#include <os/availability.h>
 #include <TargetConditionals.h>
 #include <sys/cdefs.h>
 #include <mach/mach.h>
@@ -231,34 +231,34 @@ _IOServiceMatching			(
 
 #if	!TARGET_OS_IPHONE
 
-CFTypeRef _kSecAttrService();
+CFTypeRef _kSecAttrService(void);
 #define kSecAttrService _kSecAttrService()
 
-CFTypeRef _kSecClass();
+CFTypeRef _kSecClass(void);
 #define kSecClass _kSecClass()
 
-CFTypeRef _kSecClassGenericPassword();
+CFTypeRef _kSecClassGenericPassword(void);
 #define kSecClassGenericPassword _kSecClassGenericPassword()
 
-CFTypeRef _kSecMatchLimit();
+CFTypeRef _kSecMatchLimit(void);
 #define kSecMatchLimit _kSecMatchLimit()
 
-CFTypeRef _kSecMatchLimitAll();
+CFTypeRef _kSecMatchLimitAll(void);
 #define kSecMatchLimitAll _kSecMatchLimitAll()
 
-CFTypeRef _kSecMatchSearchList();
+CFTypeRef _kSecMatchSearchList(void);
 #define kSecMatchSearchList _kSecMatchSearchList()
 
-CFTypeRef _kSecReturnRef();
+CFTypeRef _kSecReturnRef(void);
 #define kSecReturnRef _kSecReturnRef()
 
-CFTypeRef _kSecGuestAttributePid();
+CFTypeRef _kSecGuestAttributePid(void);
 #define kSecGuestAttributePid _kSecGuestAttributePid()
 
-CFTypeRef _kSecCodeInfoIdentifier();
+CFTypeRef _kSecCodeInfoIdentifier(void);
 #define kSecCodeInfoIdentifier _kSecCodeInfoIdentifier()
 
-CFTypeRef _kSecCodeInfoUnique();
+CFTypeRef _kSecCodeInfoUnique(void);
 #define kSecCodeInfoUnique _kSecCodeInfoUnique()
 
 OSStatus
@@ -379,10 +379,10 @@ _SecTrustedApplicationCreateFromPath	(
 
 #else	// TARGET_OS_IPHONE
 
-CFStringRef _kSecPropertyKeyValue();
+CFStringRef _kSecPropertyKeyValue(void);
 #define kSecPropertyKeyValue _kSecPropertyKeyValue()
 
-CFStringRef _kSecPropertyKeyLabel();
+CFStringRef _kSecPropertyKeyLabel(void);
 #define kSecPropertyKeyLabel _kSecPropertyKeyLabel()
 
 CFArrayRef
@@ -399,7 +399,6 @@ _SecCertificateCreateWithData		(
 					CFDataRef			data
 					);
 #define SecCertificateCreateWithData _SecCertificateCreateWithData
-
 
 
 

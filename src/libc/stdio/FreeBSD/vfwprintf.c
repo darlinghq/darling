@@ -64,6 +64,9 @@ __FBSDID("$FreeBSD: src/lib/libc/stdio/vfwprintf.c,v 1.42 2009/11/25 04:27:55 wo
 #include <errno.h>
 #include "un-namespace.h"
 
+#include <os/assumes.h>
+#include <mach-o/dyld_priv.h>
+
 #include "libc_private.h"
 #include "local.h"
 #include "fvwrite.h"
@@ -373,6 +376,9 @@ vfwprintf(FILE * __restrict fp, const wchar_t * __restrict fmt0, va_list ap)
 	return vfwprintf_l(fp, __current_locale(), fmt0, ap);
 }
 
+// Defined in vfprintf.c
+bool __printf_is_memory_read_only(void *addr, size_t size);
+
 /*
  * The size of the buffer we use as scratch space for integer
  * conversions, among other things.  We need enough space to
@@ -392,14 +398,15 @@ __vfwprintf(FILE *fp, locale_t loc, const wchar_t *fmt0, va_list ap)
 {
 	wchar_t *fmt;		/* format string */
 	wchar_t ch;		/* character from fmt */
-	int n, n2;		/* handy integer (short term usage) */
+	ssize_t n, n2;		/* handy integer (short term usage) */
 	wchar_t *cp;		/* handy char pointer (short term usage) */
 	int flags;		/* flags as above */
-	int ret;		/* return value accumulator */
-	int width;		/* width from format (%8d), or 0 */
-	int prec;		/* precision from format; <0 for N/A */
+	ssize_t ret;		/* return value accumulator */
+	ssize_t width;		/* width from format (%8d), or 0 */
+	ssize_t prec;		/* precision from format; <0 for N/A */
 	wchar_t sign;		/* sign prefix (' ', '+', '-', or \0) */
 	struct grouping_state gs; /* thousands' grouping info */
+
 #ifndef NO_FLOATING_POINT
 	/*
 	 * We can decompose the printed representation of floating
@@ -438,9 +445,9 @@ __vfwprintf(FILE *fp, locale_t loc, const wchar_t *fmt0, va_list ap)
 	uintmax_t ujval;	/* %j, %ll, %q, %t, %z integers */
 	int base;		/* base for [diouxX] conversion */
 	int dprec;		/* a copy of prec if [diouxX], 0 otherwise */
-	int realsz;		/* field size expanded by dprec, sign, etc */
-	int size;		/* size of converted field or string */
-	int prsize;             /* max size of printed field */
+	ssize_t realsz;		/* field size expanded by dprec, sign, etc */
+	ssize_t size;		/* size of converted field or string */
+	ssize_t prsize;             /* max size of printed field */
 	const char *xdigs;	/* digits for [xX] conversion */
 	struct io_state io;	/* I/O buffering state */
 	wchar_t buf[BUF];	/* buffer with space for digits of uintmax_t */
@@ -561,8 +568,9 @@ __vfwprintf(FILE *fp, locale_t loc, const wchar_t *fmt0, va_list ap)
 		for (cp = fmt; (ch = *fmt) != '\0' && ch != '%'; fmt++)
 			/* void */;
 		if ((n = fmt - cp) != 0) {
-			if ((unsigned)ret + n > INT_MAX) {
+			if (ret + n > INT_MAX) {
 				ret = EOF;
+				errno = EOVERFLOW;
 				goto error;
 			}
 			PRINT(cp, n);
@@ -893,7 +901,8 @@ fp_common:
 			void *ptr = GETARG(void *);
 			if (ptr == NULL)
 				continue;
-			else if (flags & LLONGINT)
+
+			if (flags & LLONGINT)
 				*(long long *)ptr = ret;
 			else if (flags & SIZET)
 				*(ssize_t *)ptr = (ssize_t)ret;
@@ -970,6 +979,11 @@ fp_common:
 			size = (prec >= 0) ? wcsnlen(cp, prec) : wcslen(cp);
 #else
 			size = wcslen(cp);
+			if (size >= INT_MAX) {
+				ret = EOF;
+				errno = EOVERFLOW;
+				goto error;
+			}
 			if(prec >= 0 && prec < size)
 				size = prec;
 #endif
@@ -1044,7 +1058,7 @@ number:			if ((dprec = prec) >= 0)
 			}
 			size = buf + BUF - cp;
 			if (size > BUF)	/* should never happen */
-				LIBC_ABORT("size (%d) > BUF (%d)", size, BUF);
+				LIBC_ABORT("size (%zd) > BUF (%d)", size, BUF);
 			if ((flags & GROUPING) && size != 0)
 				size += grouping_init(&gs, size, loc);
 			break;
@@ -1367,8 +1381,9 @@ number:			if ((dprec = prec) >= 0)
 			realsz += 2;
 
 		prsize = width > realsz ? width : realsz;
-		if ((unsigned)ret + prsize > INT_MAX) {
+		if (ret + prsize > INT_MAX) {
 			ret = EOF;
+			errno = EOVERFLOW;
 			goto error;
 		}
 
@@ -1458,6 +1473,6 @@ error:
 		ret = EOF;
 	if ((argtable != NULL) && (argtable != statargtable))
 		free (argtable);
-	return (ret);
+	return (ret < 0 || ret >= INT_MAX) ? -1 : (int)ret;
 	/* NOTREACHED */
 }

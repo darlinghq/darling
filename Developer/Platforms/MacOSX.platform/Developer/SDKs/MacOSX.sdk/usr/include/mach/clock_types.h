@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/clock_types.h
+../../../../../../../../../src/external/lkm/osfmk/mach/clock_types.h

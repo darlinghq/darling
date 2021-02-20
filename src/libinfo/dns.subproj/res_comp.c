@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2018 Apple Inc. All rights reserved.
+ */
+/*
  * ++Copyright++ 1985, 1993
  * -
  * Copyright (c) 1985, 1993
@@ -58,6 +61,8 @@ static char sccsid[] = "@(#)res_comp.c	8.1 (Berkeley) 6/4/93";
 static char rcsid[] = "$Id: res_comp.c,v 1.4 2003/02/18 17:29:24 majka Exp $";
 #endif /* LIBC_SCCS and not lint */
 
+#include "libinfo_common.h"
+
 #include <sys/param.h>
 #include <netinet/in.h>
 
@@ -74,6 +79,7 @@ static char rcsid[] = "$Id: res_comp.c,v 1.4 2003/02/18 17:29:24 majka Exp $";
  * 'exp_dn' is a pointer to a buffer of size 'length' for the result.
  * Return size of compressed name or -1 if there was an error.
  */
+LIBINFO_EXPORT
 int
 dn_expand(const u_char *msg, const u_char *eomorig, const u_char *comp_dn, char *exp_dn, int length)
 {
@@ -147,6 +153,7 @@ dn_expand(const u_char *msg, const u_char *eomorig, const u_char *comp_dn, char 
 /*
  * Skip over a compressed domain name. Return the size or -1.
  */
+LIBINFO_EXPORT
 int
 __dn_skipname(const u_char *comp_dn, const u_char *eom)
 {
@@ -179,6 +186,7 @@ __dn_skipname(const u_char *comp_dn, const u_char *eom)
  * Routines to insert/extract short/long's.
  */
 
+LIBINFO_EXPORT
 u_int16_t
 _getshort(const u_char *msgp)
 {
@@ -187,6 +195,7 @@ _getshort(const u_char *msgp)
 	return u;
 }
 
+LIBINFO_EXPORT
 u_int32_t
 _getlong(const u_char *msgp)
 {

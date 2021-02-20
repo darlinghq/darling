@@ -43,7 +43,7 @@
 #   define CHECK_MAGAZINE_PTR_LOCKED(szone, mag_ptr, fun)				\
 	do {										\
 	    if (TRY_LOCK(mag_ptr->magazine_lock)) {					\
-		malloc_printf("*** magazine_lock was not set %p in %s\n",		\
+		malloc_report(ASL_LEVEL_ERR, "*** magazine_lock was not set %p in %s\n",		\
 		mag_ptr->magazine_lock, fun);						\
 	    }										\
 	} while (0)

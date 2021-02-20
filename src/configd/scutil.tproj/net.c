@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2007, 2009-2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2004-2007, 2009-2011, 2014, 2016, 2017 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -163,9 +163,14 @@ _process_options(optionsRef options, int nOptions, int argc, char **argv, CFMuta
 							return FALSE;
 					}
 
-					CFDictionarySetValue(newConfiguration,
-							     *(options[optionIndex].key),
-							     *(choices[i].key));
+					if (choices[i].key != NULL) {
+						CFDictionarySetValue(newConfiguration,
+								     *(options[optionIndex].key),
+								     *(choices[i].key));
+					} else {
+						CFDictionaryRemoveValue(newConfiguration,
+									*(options[optionIndex].key));
+					}
 				} else {
 					SCPrint(TRUE, stdout,
 						CFSTR("invalid %s\n"),
@@ -241,6 +246,34 @@ _process_options(optionsRef options, int nOptions, int argc, char **argv, CFMuta
 				argv++;
 				argc--;
 				break;
+			case isBool :
+				if (argc < 1) {
+					SCPrint(TRUE, stdout,
+						CFSTR("%s not specified\n"),
+						options[optionIndex].description != NULL ? options[optionIndex].description : "enable/disable");
+					return FALSE;
+				}
+
+				if        ((strcasecmp(argv[0], "disable") == 0) ||
+					   (strcasecmp(argv[0], "no"     ) == 0) ||
+					   (strcasecmp(argv[0], "off"    ) == 0) ||
+					   (strcasecmp(argv[0], "0"      ) == 0)) {
+					CFDictionarySetValue(newConfiguration, *(options[optionIndex].key), kCFBooleanFalse);
+				} else if ((strcasecmp(argv[0], "enable") == 0) ||
+					   (strcasecmp(argv[0], "yes"   ) == 0) ||
+					   (strcasecmp(argv[0], "on"   ) == 0) ||
+					   (strcasecmp(argv[0], "1"     ) == 0)) {
+					CFDictionarySetValue(newConfiguration, *(options[optionIndex].key), kCFBooleanTrue);
+				} else if (strcmp(argv[0], "") == 0) {
+					CFDictionaryRemoveValue(newConfiguration, *(options[optionIndex].key));
+				} else {
+					SCPrint(TRUE, stdout, CFSTR("invalid value\n"));
+					return FALSE;
+				}
+
+				argv++;
+				argc--;
+				break;
 			case isBoolean :
 				if (argc < 1) {
 					SCPrint(TRUE, stdout,
@@ -259,6 +292,8 @@ _process_options(optionsRef options, int nOptions, int argc, char **argv, CFMuta
 					   (strcasecmp(argv[0], "on"   ) == 0) ||
 					   (strcasecmp(argv[0], "1"     ) == 0)) {
 					CFDictionarySetValue(newConfiguration, *(options[optionIndex].key), CFNumberRef_1);
+				} else if (strcmp(argv[0], "") == 0) {
+					CFDictionaryRemoveValue(newConfiguration, *(options[optionIndex].key));
 				} else {
 					SCPrint(TRUE, stdout, CFSTR("invalid value\n"));
 					return FALSE;
@@ -553,6 +588,8 @@ __private_extern__
 void
 do_net_commit(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	if (!SCPreferencesCommitChanges(prefs)) {
 		SCPrint(TRUE, stdout, CFSTR("%s\n"), SCErrorString(SCError()));
 		return;
@@ -567,6 +604,8 @@ __private_extern__
 void
 do_net_apply(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	if (!SCPreferencesApplyChanges(prefs)) {
 		SCPrint(TRUE, stdout, CFSTR("%s\n"), SCErrorString(SCError()));
 	}
@@ -819,23 +858,24 @@ do_net_migrate_perform(int argc, char **argv)
 static void
 do_net_migrate_validate(int argc, char **argv)
 {
+#pragma unused(argc)
 	char *configuration = NULL;
 	CFURLRef configurationURL = NULL;
 	char *expectedConfiguration = NULL;
 	CFURLRef expectedConfigurationURL = NULL;
 	Boolean isValid = FALSE;
 	CFStringRef str = NULL;
-	
+
 	configuration = argv[0];
 	str = CFStringCreateWithCString(NULL, configuration, kCFStringEncodingUTF8);
 	configurationURL = CFURLCreateWithFileSystemPath(NULL, str, kCFURLPOSIXPathStyle, TRUE);
 	CFRelease(str);
-	
+
 	expectedConfiguration = argv[1];
 	str = CFStringCreateWithCString(NULL, expectedConfiguration, kCFStringEncodingUTF8);
 	expectedConfigurationURL = CFURLCreateWithFileSystemPath(NULL, str, kCFURLPOSIXPathStyle, TRUE);
 	CFRelease(str);
-	
+
 	isValid = _SCNetworkMigrationAreConfigurationsIdentical(configurationURL, expectedConfigurationURL);
 
 	SCPrint(TRUE, stdout, CFSTR("Configuration at location %s %s\n"), configuration, isValid ? "is valid" : "is NOT valid");
@@ -860,13 +900,11 @@ do_net_migrate(int argc, char **argv)
 	argv++;
 	argc--;
 
-	if (strncmp(key, "perform", strlen(key)) == 0) {
+	if (strcmp(key, "perform") == 0) {
 		do_net_migrate_perform(argc, argv);
-	}
-	else if (strncmp(key, "validate", strlen(key)) == 0) {
+	} else if (strcmp(key, "validate") == 0) {
 		do_net_migrate_validate(argc, argv);
-	}
-	else {
+	} else {
 		SCPrint(TRUE, stderr, CFSTR("migrate what?\n"));
 		return;
 	}
@@ -976,6 +1014,8 @@ __private_extern__
 void
 do_net_update(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	SCNetworkSetRef	set;
 	Boolean		setCreated	= FALSE;
 	Boolean		setUpdated	= FALSE;
@@ -990,67 +1030,25 @@ do_net_update(int argc, char **argv)
 	} else {
 		set = SCNetworkSetCopyCurrent(prefs);
 		if (set == NULL) {
-			CFBundleRef	bundle;
-			Boolean		ok;
-			CFArrayRef	sets;
-			CFStringRef	setName	= NULL;
-
-			sets = SCNetworkSetCopyAll(prefs);
-			if (sets != NULL) {
-				CFIndex	n;
-
-				n = CFArrayGetCount(sets);
-				CFRelease(sets);
-				sets = NULL;
-				if (n > 0) {
-					SCPrint(TRUE, stdout, CFSTR("no current set\n"));
-					return;
-				}
-			}
-
-			bundle = _SC_CFBundleGet();
-			if (bundle != NULL) {
-				setName = CFBundleCopyLocalizedString(bundle,
-								      CFSTR("DEFAULT_SET_NAME"),
-								      CFSTR("Automatic"),
-								      NULL);
-			}
-			if (setName == NULL) {
-				setName = CFSTR("Automatic");
-				CFRetain(setName);
-			}
-
-			set = SCNetworkSetCreate(prefs);
+			// if no "current" set, create a new/default ("Automatic") set
+			set = _SCNetworkSetCreateDefault(prefs);
 			if (set == NULL) {
 				SCPrint(TRUE, stdout,
-					CFSTR("could not initialize \"%@\": %s\n"),
-					setName,
+					CFSTR("could not initialize \"Automatic\" set: %s\n"),
 					SCErrorString(SCError()));
-				CFRelease(setName);
-				return;
-			}
-
-			(void) SCNetworkSetSetName(set, setName);
-
-			ok = SCNetworkSetSetCurrent(set);
-			if (!ok) {
-				SCPrint(TRUE, stdout,
-					CFSTR("could not initialize \"%@\": %s\n"),
-					setName,
-					SCErrorString(SCError()));
-				(void) SCNetworkSetRemove(set);
-				CFRelease(setName);
-				CFRelease(set);
 				return;
 			}
 
 			if (net_set != NULL) CFRelease(net_set);
 			net_set = set;
+			CFRetain(set);
 
 			setCreated = TRUE;
 
-			CFRelease(setName);
-			CFRetain(set);
+			if (sets != NULL) {
+				CFRelease(sets);
+				sets = NULL;
+			}
 		}
 	}
 
@@ -1087,6 +1085,8 @@ __private_extern__
 void
 do_net_snapshot(int argc, char **argv)
 {
+#pragma unused(argc)
+#pragma unused(argv)
 	if (prefs == NULL) {
 		SCPrint(TRUE, stdout, CFSTR("network configuration not open\n"));
 		return;

@@ -1,4 +1,4 @@
-.\" $FreeBSD: src/lib/libc/stdtime/tzfile.5,v 1.10 2001/07/10 13:41:23 ru Exp $
+.\" $FreeBSD: head/contrib/tzcode/stdtime/tzfile.5 259446 2013-12-16 01:58:12Z bjk $
 .Dd September 13, 1994
 .Dt TZFILE 5
 .Os
@@ -14,7 +14,9 @@ begin with the magic characters
 .Dq Li TZif
 to identify them as
 time zone information files,
-followed by sixteen bytes reserved for future use,
+followed by a character identifying the version of the file's format
+(as of 2005, either an ASCII NUL or a '2')
+followed by fifteen bytes containing zeroes reserved for future use,
 followed by four four-byte values
 written in a ``standard'' byte order
 (the high-order byte of the value is written first).
@@ -56,7 +58,9 @@ each one tells which of the different types of ``local time'' types
 described in the file is associated with the same-indexed transition time.
 These values serve as indices into an array of
 .Fa ttinfo
-structures that appears next in the file;
+structures (with
+.Fa tzh_typecnt
+entries) that appears next in the file;
 these structures are defined as follows:
 .Pp
 .Bd -literal -offset indent
@@ -129,10 +133,20 @@ if either
 .Li tzh_timecnt
 is zero or the time argument is less than the first transition time recorded
 in the file.
+.Pp
+For version-2-format time zone files,
+the above header and data is followed by a second header and data,
+identical in format except that eight bytes are used for each
+transition time or leap second time.
+After the second header and data comes a newline-enclosed,
+POSIX-TZ-environment-variable-style string for use in handling instants
+after the last transition time stored in the file
+(with nothing between the newlines if there is no POSIX representation for
+such instants).
 .Sh SEE ALSO
 .Xr ctime 3 ,
 .Xr time2posix 3 ,
 .Xr zic 8
-.\" @(#)tzfile.5	7.2
+.\" @(#)tzfile.5	8.3
 .\" This file is in the public domain, so clarified as of
-.\" 1996-06-05 by Arthur David Olson (arthur_david_olson@nih.gov).
+.\" 1996-06-05 by Arthur David Olson.

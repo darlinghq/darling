@@ -812,7 +812,12 @@ history_load(TYPE(History) *h, const char *fname)
 			ptr = nptr;
 		}
 		(void) _strnunvis(ptr, line, sz);
-		if (HENTER(h, &ev, ct_decode_string(ptr, &conv)) == -1) {
+		Char * decoded_str = ct_decode_string(ptr, &conv);
+		if (!decoded_str) {
+			i = -1;
+			goto oomem;
+		}
+		if (HENTER(h, &ev, decoded_str) == -1) {
 			i = -1;
 			goto oomem;
 		}

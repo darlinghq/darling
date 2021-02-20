@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -63,6 +63,8 @@ static char *rcsid = "$Id: pmap_prot2.c,v 1.3 2002/02/19 20:36:24 epeyton Exp $"
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "libinfo_common.h"
+
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 #include <rpc/pmap_prot.h>
@@ -106,6 +108,7 @@ static char *rcsid = "$Id: pmap_prot2.c,v 1.3 2002/02/19 20:36:24 epeyton Exp $"
  * the net, yet is the data that the pointer points to which is interesting;
  * this sounds like a job for xdr_reference!
  */
+LIBINFO_EXPORT
 bool_t
 xdr_pmaplist(xdrs, rp)
 	register XDR *xdrs;
@@ -121,7 +124,7 @@ xdr_pmaplist(xdrs, rp)
 	register struct pmaplist **next = NULL;
 
 	while (TRUE) {
-		more_elements = (bool_t)(*rp != NULL);
+		more_elements = (bool_t)(!(rp == NULL || *rp == NULL));
 		if (! xdr_bool(xdrs, &more_elements))
 			return (FALSE);
 		if (! more_elements)
@@ -132,7 +135,7 @@ xdr_pmaplist(xdrs, rp)
 		 * before we free the current object ...
 		 */
 		if (freeing)
-			next = &((*rp)->pml_next); 
+			next = &((*rp)->pml_next);
 		if (! xdr_reference(xdrs, (caddr_t *)rp, (u_int)sizeof(struct pmaplist), (xdrproc_t)xdr_pmap))
 			return (FALSE);
 		rp = (freeing) ? next : &((*rp)->pml_next);

@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2004-2010, 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2004-2010, 2013, 2015, 2016, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -31,13 +31,12 @@
  * - initial revision
  */
 
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCPrivate.h>
 #include "SCPreferencesInternal.h"
 #include "SCHelper_client.h"
 
 #include <unistd.h>
 #include <pthread.h>
+
 
 static Boolean
 __SCPreferencesUnlock_helper(SCPreferencesRef prefs)
@@ -66,7 +65,7 @@ __SCPreferencesUnlock_helper(SCPreferencesRef prefs)
 		goto error;
 	}
 
-	prefsPrivate->locked = FALSE;
+	__SCPreferencesUpdateLockedState(prefs, FALSE);
 	return TRUE;
 
     fail :
@@ -89,29 +88,14 @@ __SCPreferencesUnlock_helper(SCPreferencesRef prefs)
 static void
 reportDelay(SCPreferencesRef prefs, struct timeval *delay)
 {
-	asl_object_t		m;
 	SCPreferencesPrivateRef	prefsPrivate	= (SCPreferencesPrivateRef)prefs;
-	char			str[256];
 
-	m = asl_new(ASL_TYPE_MSG);
-	asl_set(m, "com.apple.message.domain", "com.apple.SystemConfiguration.SCPreferencesUnlock");
-	(void) _SC_cfstring_to_cstring(prefsPrivate->name, str, sizeof(str), kCFStringEncodingUTF8);
-	asl_set(m, "com.apple.message.signature", str);
-	(void) _SC_cfstring_to_cstring(prefsPrivate->prefsID, str, sizeof(str), kCFStringEncodingUTF8);
-	asl_set(m, "com.apple.message.signature2", str);
-	(void) snprintf(str, sizeof(str),
-			"%d.%3.3d",
-			(int)delay->tv_sec,
-			delay->tv_usec / 1000);
-	asl_set(m, "com.apple.message.value", str);
-	SCLOG(NULL, m, ASL_LEVEL_DEBUG,
-	      CFSTR("SCPreferences(%@:%@) lock held for %d.%3.3d seconds"),
-	      prefsPrivate->name,
-	      prefsPrivate->prefsID,
-	      (int)delay->tv_sec,
-	      delay->tv_usec / 1000);
-	asl_release(m);
-
+	SC_log(LOG_ERR,
+	       "SCPreferences(%@:%@) lock held for %d.%3.3d seconds",
+	       prefsPrivate->name,
+	       prefsPrivate->prefsID,
+	       (int)delay->tv_sec,
+	       delay->tv_usec / 1000);
 	return;
 }
 
@@ -141,9 +125,10 @@ SCPreferencesUnlock(SCPreferencesRef prefs)
 
 	pthread_mutex_lock(&prefsPrivate->lock);
 
-	if (prefsPrivate->sessionKeyLock != NULL) {
-		SCDynamicStoreRemoveValue(prefsPrivate->session,
-					  prefsPrivate->sessionKeyLock);
+	if (prefsPrivate->sessionNoO_EXLOCK != NULL) {
+		// Note: closing the session removes the temporary "lock" key
+		CFRelease(prefsPrivate->sessionNoO_EXLOCK);
+		prefsPrivate->sessionNoO_EXLOCK = NULL;
 	}
 
 	if (prefsPrivate->lockFD != -1)	{
@@ -161,7 +146,10 @@ SCPreferencesUnlock(SCPreferencesRef prefs)
 		reportDelay(prefs, &lockElapsed);
 	}
 
-	prefsPrivate->locked = FALSE;
+	SC_log(LOG_DEBUG, "SCPreferences() unlock: %s",
+	       prefsPrivate->newPath ? prefsPrivate->newPath : prefsPrivate->path);
+
+	__SCPreferencesUpdateLockedState(prefs, FALSE);
 
 	pthread_mutex_unlock(&prefsPrivate->lock);
 	return TRUE;

@@ -4,7 +4,7 @@ extern char* strcpy(char* dst, const char* src);
 
 #include "../base.h"
 #include "../errno.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "../vchroot_expand.h"
 #include "../bsdthread/per_thread_wd.h"
 #include <linux-syscalls/linux.h>

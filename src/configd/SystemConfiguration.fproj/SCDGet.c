@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2005, 2009-2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2005, 2009-2011, 2013, 2016-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -31,11 +31,6 @@
  * - initial revision
  */
 
-#include <mach/mach.h>
-#include <mach/mach_error.h>
-
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCPrivate.h>
 #include "SCDynamicStoreInternal.h"
 #include "config.h"		/* MiG generated file */
 
@@ -110,26 +105,28 @@ SCDynamicStoreCopyMultiple(SCDynamicStoreRef	store,
 		goto retry;
 	}
 
-	/* clean up */
-	if (xmlKeys != NULL)		CFRelease(xmlKeys);
-	if (xmlPatterns != NULL)	CFRelease(xmlPatterns);
-
 	if (sc_status != kSCStatusOK) {
 		if (xmlDictRef != NULL) {
 			(void) vm_deallocate(mach_task_self(), (vm_address_t)xmlDictRef, xmlDictLen);
 		}
 		_SCErrorSet(sc_status);
-		return NULL;
+		goto done;
 	}
 
 	/* un-serialize the dictionary */
 	if (!_SCUnserialize((CFPropertyListRef *)&dict, NULL, xmlDictRef, xmlDictLen)) {
 		_SCErrorSet(kSCStatusFailed);
-		return NULL;
+		goto done;
 	}
 
 	expDict = _SCUnserializeMultiple(dict);
 	CFRelease(dict);
+
+    done:
+
+	/* clean up */
+	if (xmlKeys != NULL)		CFRelease(xmlKeys);
+	if (xmlPatterns != NULL)	CFRelease(xmlPatterns);
 
 	return expDict;
 }
@@ -162,6 +159,29 @@ SCDynamicStoreCopyValue(SCDynamicStoreRef store, CFStringRef key)
 	if (storePrivate->server == MACH_PORT_NULL) {
 		_SCErrorSet(kSCStatusNoStoreServer);
 		return NULL;	/* you must have an open session to play */
+	}
+
+	if (storePrivate->cache_active) {
+		if ((storePrivate->cached_set != NULL) &&
+		    CFDictionaryGetValueIfPresent(storePrivate->cached_set, key, (const void **)&data)) {
+			// if we have "set" a new value
+			return (CFRetain(data));
+		}
+
+		if ((storePrivate->cached_removals != NULL) &&
+		    CFArrayContainsValue(storePrivate->cached_removals,
+					 CFRangeMake(0, CFArrayGetCount(storePrivate->cached_removals)),
+					 key)) {
+			// if we have "removed" the key
+			_SCErrorSet(kSCStatusNoKey);
+			return NULL;
+		}
+
+		if ((storePrivate->cached_keys != NULL) &&
+		    CFDictionaryGetValueIfPresent(storePrivate->cached_keys, key, (const void **)&data)) {
+			// if we have a cached value
+			return (CFRetain(data));
+		}
 	}
 
 	/* serialize the key */
@@ -203,6 +223,16 @@ SCDynamicStoreCopyValue(SCDynamicStoreRef store, CFStringRef key)
 	if (!_SCUnserialize(&data, NULL, xmlDataRef, xmlDataLen)) {
 		_SCErrorSet(kSCStatusFailed);
 		return NULL;
+	}
+
+	if (storePrivate->cache_active && (data != NULL)) {
+		if (storePrivate->cached_keys == NULL) {
+			storePrivate->cached_keys = CFDictionaryCreateMutable(NULL,
+									      0,
+									      &kCFTypeDictionaryKeyCallBacks,
+									      &kCFTypeDictionaryValueCallBacks);
+		}
+		CFDictionarySetValue(storePrivate->cached_keys, key, data);
 	}
 
 	return data;

@@ -1,0 +1,10 @@
+#include "libmalloc.xcconfig"
+
+SUPPORTED_PLATFORMS = iphoneos appletvos watchos
+PRODUCT_NAME = malloc_$(RESOLVED_VARIANT)
+OTHER_LDFLAGS =
+SKIP_INSTALL = YES
+VERSIONING_SYSTEM =
+EXCLUDED_SOURCE_FILE_NAMES = *
+
+

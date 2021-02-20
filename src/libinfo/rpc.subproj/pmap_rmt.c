@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -64,6 +64,8 @@ static char *rcsid = "$Id: pmap_rmt.c,v 1.6 2004/12/19 22:45:44 zarzycki Exp $";
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "libinfo_common.h"
+
 #include <string.h>
 #include <unistd.h>
 #include <rpc/rpc.h>
@@ -89,6 +91,7 @@ static struct timeval timeout = { 3, 0 };
  * remotely call that routine with the given parameters.  This allows
  * programs to do a lookup and call in one step.
 */
+LIBINFO_EXPORT
 enum clnt_stat
 pmap_rmtcall(addr, prog, vers, proc, xdrargs, argsp, xdrres, resp, tout, port_ptr)
 #ifdef __LP64__
@@ -139,6 +142,7 @@ pmap_rmtcall(addr, prog, vers, proc, xdrargs, argsp, xdrres, resp, tout, port_pt
  * XDR remote call arguments
  * written for XDR_ENCODE direction only
  */
+LIBINFO_EXPORT
 bool_t
 xdr_rmtcall_args(xdrs, cap)
 	register XDR *xdrs;
@@ -174,6 +178,7 @@ xdr_rmtcall_args(xdrs, cap)
  * XDR remote call results
  * written for XDR_DECODE direction only
  */
+LIBINFO_EXPORT
 bool_t
 xdr_rmtcallres(xdrs, crp)
 	register XDR *xdrs;
@@ -257,6 +262,7 @@ getbroadcastnets(addrs, sock, buf)
 
 typedef bool_t (*resultproc_t)();
 
+LIBINFO_EXPORT
 enum clnt_stat 
 clnt_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult)
 #ifdef __LP64__

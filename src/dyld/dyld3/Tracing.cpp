@@ -28,12 +28,12 @@
 #include <mach/mach.h>
 #include <kern/kcdata.h>
 #include <mach-o/dyld_priv.h>
+#include "Loading.h"
+#include "Tracing.h"
 #ifdef DARLING
 #define kdebug_trace(...)
 #define kdebug_is_enabled(...) false
 #endif
-#include "Loading.h"
-#include "Tracing.h"
 
 // Workaround for header issues in rdar://49073930
 // #include <System/os/reason_private.h>

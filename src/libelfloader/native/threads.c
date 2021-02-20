@@ -30,6 +30,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <setjmp.h>
 #include <sys/syscall.h>
 
+#include "dthreads.h"
+
 // The point of this file is build macOS threads on top of native libc's threads,
 // otherwise it would not be possible to make native calls from these threads.
 
@@ -41,17 +43,20 @@ typedef void (*thread_ep)(void**, int, ...);
 struct arg_struct
 {
 	thread_ep entry_point;
-	uintptr_t arg3;
-	uintptr_t arg4;
-	uintptr_t arg5;
-	uintptr_t arg6;
-	union
-	{
-		int (*thread_self_trap)();
+	uintptr_t real_entry_point;
+	uintptr_t arg1; // `user_arg` for normal threads; `keventlist` for workqueues
+	uintptr_t arg2; // `stack_addr` for normal threads; `flags` for workqueues
+	uintptr_t arg3; // `flags` for normal threads; `nkevents` for workqueues
+	union {
+		void* _backwards_compat; // kept around to avoid modifiying assembly
 		int port;
 	};
 	unsigned long pth_obj_size;
 	void* pth;
+	darling_thread_create_callbacks_t callbacks;
+	uintptr_t stack_bottom;
+	uintptr_t stack_addr;
+	bool is_workqueue;
 };
 
 static void* darling_thread_entry(void* p);
@@ -60,23 +65,106 @@ static void* darling_thread_entry(void* p);
 #	define PTHREAD_STACK_MIN 16384
 #endif
 
+#define DEFAULT_DTHREAD_GUARD_SIZE 0x1000
+
+static dthread_t dthread_structure_init(dthread_t dthread, size_t guard_size, void* stack_addr, size_t stack_size, void* base_addr, size_t total_size) {
+	// the pthread signature is the address of the pthread XORed with the "pointer munge" token passed in by the kernel
+	// since the LKM doesn't pass in a token, it's always zero, so the signature is equal to just the address
+	dthread->sig = dthread;
+
+	dthread->tsd[DTHREAD_TSD_SLOT_PTHREAD_SELF] = dthread;
+	dthread->tsd[DTHREAD_TSD_SLOT_ERRNO] = &dthread->err_no;
+	dthread->tsd[DTHREAD_TSD_SLOT_PTHREAD_QOS_CLASS] = DTHREAD_DEFAULT_PRIORITY;
+	dthread->tsd[DTHREAD_TSD_SLOT_PTR_MUNGE] = 0;
+	dthread->tl_has_custom_stack = 0;
+	dthread->lock = (darwin_os_unfair_lock){0};
+
+	dthread->stackaddr = stack_addr;
+	dthread->stackbottom = (char*)stack_addr - stack_size;
+	dthread->freeaddr = base_addr;
+	dthread->freesize = total_size;
+	dthread->guardsize = guard_size;
+
+	dthread->cancel_state = DTHREAD_CANCEL_ENABLE | DTHREAD_CANCEL_DEFERRED;
+
+	// technically, these next values are defaults; we don't have a way to get more info from the user
+	//
+	// it's not too important since the only cases where we initialize the dthread structure ourselves is when we're working with workqueues,
+	// and those initialize their own dthread structures when they get them
+
+	dthread->tl_joinable = 1;
+	dthread->inherit = DTHREAD_INHERIT_SCHED;
+	dthread->tl_policy = DARWIN_POLICY_TIMESHARE;
+
+	return dthread;
+};
+
+static dthread_t dthread_structure_allocate(size_t stack_size, size_t guard_size, void** stack_addr) {
+	size_t total_size = guard_size + stack_size + sizeof(struct _dthread);
+
+	// allocate our stack, guard page, and dthread structure
+	void* base_addr = mmap(NULL, total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+	// protect our guard page
+	mprotect(base_addr, guard_size, PROT_NONE);
+
+	/**
+	 * memory layout of newly allocated block:
+	 *
+	 * [base_addr]         [base_addr + total_size]
+	 * --------------------------------------------
+	 * | guard page |       stack       | dthread |
+	 */
+
+	// stack_addr points to the top of the stack (i.e. the highest address)
+	*stack_addr = ((char*)base_addr) + stack_size + guard_size;
+
+	// the dthread sits above the stack
+	// (and by "above", i mean the lowest address of the dthread is the highest address of the stack)
+	dthread_t dthread = (dthread_t)*stack_addr;
+	// zero-out the entrire dthread structure
+	memset(dthread, 0, sizeof(struct _dthread));
+
+	return dthread_structure_init(dthread, guard_size, *stack_addr, stack_size, base_addr, total_size);
+};
+
 void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_size,
-				void* entry_point, uintptr_t arg3,
-				uintptr_t arg4, uintptr_t arg5, uintptr_t arg6,
-				int (*thread_self_trap)())
+				void* entry_point, uintptr_t real_entry_point,
+				uintptr_t arg1, uintptr_t arg2, uintptr_t arg3,
+				darling_thread_create_callbacks_t callbacks, void* pth)
 {
-	struct arg_struct args = { (thread_ep) entry_point, arg3,
-		arg4, arg5, arg6, thread_self_trap, pth_obj_size, NULL };
+	struct arg_struct args = {
+		.entry_point      = (thread_ep)entry_point,
+		.real_entry_point = real_entry_point,
+		.arg1             = arg1,
+		.arg2             = arg2,
+		.arg3             = arg3,
+		.port             = 0,
+		.pth_obj_size     = pth_obj_size,
+		.pth              = NULL, // set later on
+		.callbacks        = callbacks,
+		.stack_addr       = NULL, // set later on
+		.is_workqueue     = real_entry_point == 0, // our `workq_kernreturn` sets `real_entry_point` to NULL; `bsdthread_create` actually passes a value
+	};
 	pthread_attr_t attr;
 	pthread_t nativeLibcThread;
-	void* pth;
 
 	pthread_attr_init(&attr);
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	// pthread_attr_setstacksize(&attr, stack_size);
-	
-	pth = mmap(NULL, stack_size + pth_obj_size + 0x1000, PROT_READ | PROT_WRITE,
-		MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+	// in some cases, we're already given a pthread object, stack, and guard page;
+	// in those cases, just use what we're given (it also contains more information)
+	//
+	// otherwise, allocate them ourselves
+	if (pth == NULL || args.is_workqueue) {
+		pth = dthread_structure_allocate(stack_size, DEFAULT_DTHREAD_GUARD_SIZE, &args.stack_addr);
+	} else if (!args.is_workqueue) {
+		// `arg2` is `stack_addr` for normal threads
+		args.stack_addr = arg2;
+	}
+
+	args.stack_bottom = args.stack_addr - stack_size;
 	
 	// pthread_attr_setstack is buggy. The documentation states we should provide the lowest
 	// address of the stack, yet some versions regard it as the highest address instead.
@@ -86,7 +174,6 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 
 	// std::cout << "Allocated stack at " << pth << ", size " << stack_size << std::endl;
 
-	pth = ((char*) pth) + stack_size + 0x1000;
 	pthread_attr_setstacksize(&attr, 4096);
 
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
@@ -108,10 +195,18 @@ static void* darling_thread_entry(void* p)
 	
 	memcpy(&args, in_args, sizeof(args));
 
-	args.port = args.thread_self_trap();
+	dthread_t dthread = args.pth;
+	uintptr_t* flags = args.is_workqueue ? &args.arg2 : &args.arg3;
+
+	// libpthread now expects the kernel to set the TSD
+	// so, since we're pretending to be the kernel handling threads...
+	args.callbacks->thread_set_tsd_base(&dthread->tsd[0], 0);
+	*flags |= args.is_workqueue ? DWQ_FLAG_THREAD_TSD_BASE_SET : DTHREAD_START_TSD_BASE_SET;
+
+	args.port = dthread->tsd[DTHREAD_TSD_SLOT_MACH_THREAD_SELF] = args.callbacks->thread_self_trap();
+
 	in_args->pth = NULL;
 
-	int freesize;
 	if (setjmp(t_jmpbuf))
 	{
 		// Terminate the Linux thread
@@ -123,12 +218,12 @@ static void* darling_thread_entry(void* p)
 #ifdef __x86_64__
 	__asm__ __volatile__ (
 	"movq %1, %%rdi\n"
-	"movq %%rdi, %%rsp\n"
+	"movq 80(%0), %%rsp\n"
 	"movq 40(%0), %%rsi\n"
 	"movq 8(%0), %%rdx\n"
 	"testq %%rdx, %%rdx\n"
 	"jnz 1f\n"
-	"movq %%rsp, %%rdx\n" // wqthread hack: if 3rd arg is null, we pass sp
+	"movq 72(%0), %%rdx\n" // wqthread hack: if 3rd arg is null, we pass the stack bottom
 	"1:\n"
 	"movq 16(%0), %%rcx\n"
 	"movq 24(%0), %%r8\n"
@@ -143,7 +238,7 @@ static void* darling_thread_entry(void* p)
 #elif defined(__i386__) // args in eax, ebx, ecx, edx, edi, esi
 	__asm__ __volatile__ (
 	"movl (%0), %%eax\n"
-	"movl %1, %%esp\n"
+	"movl 40(%0), %%esp\n"
 	"pushl %%eax\n" // address to be jumped to
 	"movl %1, 28(%0)\n"
 	"movl %1, %%eax\n" // 1st arg
@@ -154,7 +249,7 @@ static void* darling_thread_entry(void* p)
 	"movl 4(%0), %%ecx\n" // 3rd arg
 	"testl %%ecx, %%ecx\n" // FIXME: clobbered ecx!
 	"jnz 1f\n"
-	"movl %%esp, %%ecx\n"
+	"movl 36(%0), %%ecx\n" // if the 3rd argument is null, pass the stack bottom
 	"1:\n"
 	"ret\n" // Jump to the address pushed at the beginning
 	:: "c" (&args), "d" (args.pth));

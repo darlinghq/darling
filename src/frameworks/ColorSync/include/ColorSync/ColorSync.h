@@ -21,6 +21,12 @@
 #ifndef _ColorSync_H_
 #define _ColorSync_H_
 
+#include <CoreFoundation/CoreFoundation.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void* CGDisplayCreateUUIDFromDisplayID(void);
 void* CGDisplayGetDisplayIDFromUUID(void);
 void* CMProfileFromColorSyncProfile(void);
@@ -39,7 +45,6 @@ void* ColorSyncCreateInputPoppyProfile(void);
 void* ColorSyncCreateOutputPoppyProfile(void);
 void* ColorSyncCreateOutputPoppyProfileForRGBData(void);
 void* ColorSyncCreateSignatureFromFourCharCode(void);
-void* ColorSyncCreateUUIDFromUInt32(void);
 void* ColorSyncDataCanBeIgnoredOnSRGBDevice(void);
 void* ColorSyncDeviceCopyDeviceInfo(void);
 void* ColorSyncDeviceCopyDeviceRegistrationInfo(void);
@@ -106,7 +111,6 @@ void* ColorSyncProfileUninstall(void);
 void* ColorSyncProfileVerify(void);
 void* ColorSyncProfileWriteToFile(void);
 void* ColorSyncPureGammaOriginalTRC(void);
-void* ColorSyncRegisterDevice(void);
 void* ColorSyncSwapProfileHeader(void);
 void* ColorSyncTRCGetFunction(void);
 void* ColorSyncTRCGetGammaID(void);
@@ -122,11 +126,29 @@ void* ColorSyncTransformCreateWithName(void);
 void* ColorSyncTransformGetTypeID(void);
 void* ColorSyncTransformIterate(void);
 void* ColorSyncTransformSetProperty(void);
-void* ColorSyncUnregisterDevice(void);
 void* ColorSyncVerifyAdobeRGBData(void);
 void* ColorSyncVerifyDisplayP3Data(void);
 void* ColorSyncVerifyGenericGrayGamma2_2Data(void);
 void* ColorSyncVerifyGenericLabData(void);
 void* ColorSyncVerifySRGBData(void);
+
+// fixed-up declarations
+
+CFUUIDRef ColorSyncCreateUUIDFromUInt32(unsigned int uuid);
+bool ColorSyncRegisterDevice(CFStringRef deviceClass, CFUUIDRef uuid, CFDictionaryRef info);
+bool ColorSyncUnregisterDevice(CFStringRef deviceClass, CFUUIDRef uuid);
+
+extern CFStringRef kColorSyncDeviceProfileURL;
+extern CFStringRef kColorSyncDeviceModeDescriptions;
+extern CFStringRef kColorSyncDeviceDefaultProfileID;
+extern CFStringRef kColorSyncDeviceDescriptions;
+extern CFStringRef kColorSyncFactoryProfiles;
+extern CFStringRef kColorSyncDeviceUserScope;
+extern CFStringRef kColorSyncDeviceHostScope;
+extern CFStringRef kColorSyncPrinterDeviceClass;
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

@@ -63,7 +63,7 @@ _atexit_receipt(void);
 
 __IOS_AVAILABLE(9.0) __OSX_AVAILABLE(10.11)
 extern void
-abort_report_np(const char *, ...) __dead2 __printflike(1, 2);
+abort_report_np(const char *, ...) __dead2 __cold __printflike(1, 2);
 
 __END_DECLS
 

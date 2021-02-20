@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/resource.h>
-#include "../../libsyscall/wrappers/_libkernel_init.h"
+#include "../../../libsyscall/wrappers/_libkernel_init.h"
 #include "../simple.h"
 #include "../misc/ioctl.h"
 

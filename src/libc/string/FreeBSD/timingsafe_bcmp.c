@@ -24,9 +24,12 @@ int
 timingsafe_bcmp(const void *b1, const void *b2, size_t n)
 {
 	const unsigned char *p1 = b1, *p2 = b2;
-	int ret = 0;
+	unsigned char ret = 0;
 
-	for (; n > 0; n--)
+	for (; n > 0; n--) {
 		ret |= *p1++ ^ *p2++;
-	return ret;
+	}
+
+	/* map zero to zero and nonzero to one */
+	return (ret + 0xff) >> 8;
 }

@@ -21,9 +21,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#include <dispatch/dispatch.h>
 #include <libkern/OSThermalNotification.h>
-#include <notify.h>
 
 #include <TargetConditionals.h>
 
@@ -31,6 +29,10 @@
 const char * const kOSThermalNotificationPressureLevelName = OSThermalPressureLevelName;
 
 #if TARGET_OS_IPHONE
+
+#include <dispatch/dispatch.h>
+#include <notify.h>
+
 #define OSThermalAlert      "com.apple.system.thermalalert"
 #define OSThermalDecision   "com.apple.system.thermaldecision"
 #define OSThermalStatusName "com.apple.system.thermalstatus"

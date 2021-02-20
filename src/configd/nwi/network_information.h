@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2011-2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2011-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -25,6 +25,7 @@
 #ifndef _NETWORK_INFORMATION_H_
 #define _NETWORK_INFORMATION_H_
 
+#include <os/availability.h>
 #include <stdint.h>
 #include <sys/cdefs.h>
 
@@ -36,7 +37,8 @@ __BEGIN_DECLS
 /*
  * Function: nwi_state_copy
  * Purpose:
- *   Returns the current network state information.
+ *   Returns the current network state information; NULL if no state
+ *	information is currently available.
  *   Release after use by calling nwi_state_release().
  */
 nwi_state_t
@@ -130,6 +132,7 @@ nwi_ifstate_get_ifname(nwi_ifstate_t ifstate);
 #define NWI_IFSTATE_FLAGS_HAS_IPV4	0x1	/* has IPv4 connectivity */
 #define NWI_IFSTATE_FLAGS_HAS_IPV6	0x2	/* has IPv6 connectivity */
 #define NWI_IFSTATE_FLAGS_HAS_DNS	0x4	/* has DNS configured */
+#define NWI_IFSTATE_FLAGS_HAS_CLAT46	0x0040	/* has CLAT46 configured */
 
 typedef uint64_t nwi_ifstate_flags;
 /*
@@ -174,12 +177,12 @@ nwi_ifstate_compare_rank(nwi_ifstate_t ifstate1, nwi_ifstate_t ifstate2);
  */
 void
 _nwi_state_ack(nwi_state_t state, const char *bundle_id)
-	__OSX_AVAILABLE_STARTING(__MAC_10_8, __IPHONE_6_0);
+	API_AVAILABLE(macos(10.8), ios(6.0));
 
 /*
- * nwi_state_get_reachability_flags
- *
- * returns the global reachability flags for a given address family.
+ * Function: nwi_state_get_reachability_flags
+ * Purpose:
+ * Returns the global reachability flags for a given address family.
  * If no address family is passed in, it returns the global reachability
  * flags for either families.
  *
@@ -207,6 +210,32 @@ _nwi_state_ack(nwi_state_t state, const char *bundle_id)
  */
 uint32_t
 nwi_state_get_reachability_flags(nwi_state_t nwi_state, int af);
+
+/*
+ * Function: nwi_state_get_interface_names
+ * Purpose:
+ *   Returns the list of network interface names that have connectivity.
+ *   The list is sorted from highest priority to least, highest priority
+ *   appearing at index 0.
+ *
+ *   If 'names' is NULL or 'names_count' is zero, this function returns
+ *   the number of elements that 'names' must contain to get the complete
+ *   list of interface names.
+ *
+ *   If 'names' is not NULL and 'names_count' is not zero, fills 'names' with
+ *   the list of interface names not exceeding 'names_count'. Returns the
+ *   number of elements that were actually populated.
+ *
+ * Notes:
+ * 1. The connectivity that an interface in this list provides may not be for
+ *    general purpose use.
+ * 2. The string pointers remain valid only as long as 'state' remains
+ *    valid.
+ */
+unsigned int
+nwi_state_get_interface_names(nwi_state_t state,
+			      const char * names[],
+			      unsigned int names_count);
 
 /*
  * nwi_ifstate_get_vpn_server

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -62,6 +62,8 @@ static char *rcsid = "$Id: clnt_perror.c,v 1.4 2003/06/23 17:24:59 majka Exp $";
  * Copyright (C) 1984, Sun Microsystems, Inc.
  *
  */
+#include "libinfo_common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,6 +88,7 @@ _buf()
 /*
  * Print reply error info
  */
+LIBINFO_EXPORT
 char *
 clnt_sperror(rpch, s)
 	CLIENT *rpch;
@@ -175,6 +178,7 @@ clnt_sperror(rpch, s)
 	return(strstart) ;
 }
 
+LIBINFO_EXPORT
 void
 clnt_perror(rpch, s)
 	CLIENT *rpch;
@@ -232,6 +236,7 @@ static struct rpc_errtab  rpc_errlist[] = {
 /*
  * This interface for use by clntrpc
  */
+LIBINFO_EXPORT
 char *
 clnt_sperrno(stat)
 	enum clnt_stat stat;
@@ -246,6 +251,7 @@ clnt_sperrno(stat)
 	return ("RPC: (unknown error code)");
 }
 
+LIBINFO_EXPORT
 void
 clnt_perrno(num)
 	enum clnt_stat num;
@@ -254,6 +260,7 @@ clnt_perrno(num)
 }
 
 
+LIBINFO_EXPORT
 char *
 clnt_spcreateerror(s)
 	char *s;
@@ -287,6 +294,7 @@ clnt_spcreateerror(s)
 	return (str);
 }
 
+LIBINFO_EXPORT
 void
 clnt_pcreateerror(s)
 	char *s;

@@ -25,6 +25,7 @@
 #include <xpc/private.h>
 #include <notify.h>
 #include <tzfile.h>
+#include <os/log.h>
 
 #include "tzlink_internal.h"
 
@@ -39,7 +40,10 @@ main(void)
 	dispatch_queue_t queue;
 	xpc_connection_t listener;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 	xpc_track_activity();
+#pragma clang diagnostic pop
 
 	queue = dispatch_queue_create(TZLINK_SERVICE_NAME, NULL);
 
@@ -174,16 +178,19 @@ validate_source_path(const char *path)
 
 	/* ... a regular file. */
 	if (!S_ISREG(sb.st_mode)) {
+        os_log_fault(OS_LOG_DEFAULT, "tzlink failed; \"%{public}s\" is not a regular file", path);
 		return ENOENT;
 	}
 
 	/* ... owned by root:wheel */
 	if (sb.st_uid != 0 || sb.st_gid != 0) {
+        os_log_fault(OS_LOG_DEFAULT, "tzlink failed; \"%{public}s\" is owned by %d:%d", path, sb.st_uid, sb.st_gid);
 		return ENOENT;
 	}
 
 	/* ... 0644 perms */
 	if ((sb.st_mode & ACCESSPERMS) != 0644) {
+        os_log_fault(OS_LOG_DEFAULT, "tzlink failed; \"%{public}s\" has access permissions %o", path, sb.st_mode);
 		return ENOENT;
 	}
 

@@ -5,10 +5,19 @@
 #error "SYS_msgrcv not defined. The header files libsyscall is building against do not match syscalls.master."
 #endif
 
+#if defined(__arm64__)
+MI_ENTRY_POINT(_msgrcv)
+ZERO_EXTEND(2)
+SIGN_EXTEND(3)
+SYSCALL_NONAME(msgrcv, 5, cerror)
+ret
+#else
 #if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
 __SYSCALL2(_msgrcv, msgrcv, 5, cerror)
 #else
 __SYSCALL2(___msgrcv, msgrcv, 5, cerror)
+#endif
+
 #endif
 
 #if defined(__i386__)

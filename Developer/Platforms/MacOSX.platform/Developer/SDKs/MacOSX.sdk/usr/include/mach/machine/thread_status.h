@@ -1,1 +1,1 @@
-../../../../../../../../../../platform-include/mach/machine/thread_status.h
+../../../../../../../../../../src/external/lkm/osfmk/mach/machine/thread_status.h

@@ -84,8 +84,15 @@ int reexec_to_match_lp64ness(bool isLP64)
 		return 0;
 	}
 
-	kernarch = current_kernel_arch();
 	progarch = current_program_arch();
+
+	/* Check if the program is already the correct lp64ness */
+	if((!isLP64 && 0 == (progarch & CPU_ARCH_ABI64)) ||
+	   (isLP64 && 0 != (progarch & CPU_ARCH_ABI64))) {
+		return 0;
+	}
+
+	kernarch = current_kernel_arch();
 
 	if (kernarch == 0) {
 		/* could not determine kernel arch */

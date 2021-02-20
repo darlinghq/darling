@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -57,6 +57,8 @@
 static char *sccsid = "@(#)xdr_mem.c 1.19 87/08/11 Copyr 1984 Sun Micro";
 static char *sccsid = "@(#)xdr_mem.c	2.1 88/07/29 4.0 RPCSRC";
 #endif
+#include "libinfo_common.h"
+
 #include <sys/cdefs.h>
 
 /*
@@ -125,6 +127,7 @@ static const struct	xdr_ops xdrmem_ops_unaligned = {
  * The procedure xdrmem_create initializes a stream descriptor for a
  * memory buffer.
  */
+LIBINFO_EXPORT
 void
 xdrmem_create(xdrs, addr, size, op)
 	XDR *xdrs;

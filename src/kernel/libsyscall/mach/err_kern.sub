@@ -85,6 +85,11 @@ static const char * const err_codes_kern[] = {
 	"(os/kern) let orphan continue",	/* 45 */
 	"(os/kern) service not supported",
 	"(os/kern) remote node down",
+	"(os/kern) thread not waiting",
+	"(os/kern) operation timed out",
+	"(os/kern) code signing error",		/* 50 */
+	"(os/kern) policy is static",
+	"(os/kern) insufficient input buffer size",
 };
 
 static const char * const err_codes_unix[] = {

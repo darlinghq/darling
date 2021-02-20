@@ -34,7 +34,7 @@
 #include <TargetConditionals.h>
 #ifndef DARLING
 #include <IOKit/IOKitLib.h>
-#endif
+#endif // DARLING
 #include <NSSystemDirectories.h>
 #include <mach/mach.h>
 #include <mach-o/getsect.h>
@@ -2154,7 +2154,7 @@ do_single_user_mode2(void)
 #ifndef DARLING
 	mach_timespec_t wt = { 5, 0 };
 	IOKitWaitQuiet(kIOMasterPortDefault, &wt); /* This will hopefully return after all the kexts have shut up. */
-#endif
+#endif // DARLING
 
 	setenv("TERM", "vt100", 1);
 	if (runcom_fsck) {
@@ -2222,7 +2222,7 @@ do_crash_debug_mode2(void)
 #ifndef DARLING
 	mach_timespec_t wt = { 5, 0 };
 	IOKitWaitQuiet(kIOMasterPortDefault, &wt);
-#endif
+#endif // DARLING
 
 	setenv("TERM", "vt100", 1);
 	fprintf(stdout, "Entering boot-time debugging mode...\n");
@@ -2487,7 +2487,7 @@ system_specific_bootstrap(bool sflag)
 		mach_timespec_t w = { 5, 0 };
 		IOKitWaitQuiet(kIOMasterPortDefault, &w);
 	}
-#endif
+#endif // DARLING
 
 	do_BootCache_magic(BOOTCACHE_TAG);
 
@@ -4457,7 +4457,7 @@ do_application_firewall_magic(int sfd, launch_data_t thejob)
 			(void)os_assumes_zero(errno);
 		}
 	}
-#endif
+#endif // DARLING
 }
 
 
@@ -4536,7 +4536,7 @@ do_bootroot_magic(void)
 	if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == EX_OSFILE) {
 		(void)reboot(RB_AUTOBOOT);
 	}
-#endif
+#endif // DARLING
 }
 
 void

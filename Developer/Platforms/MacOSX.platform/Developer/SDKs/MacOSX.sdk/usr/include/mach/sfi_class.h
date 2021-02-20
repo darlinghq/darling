@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/sfi_class.h
+../../../../../../../../../src/external/lkm/osfmk/mach/sfi_class.h

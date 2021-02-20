@@ -3,7 +3,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 
 long sys_shared_region_check_np(void* addr)
 {

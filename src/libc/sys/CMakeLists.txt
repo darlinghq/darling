@@ -3,10 +3,6 @@ project(libc-sys)
 cmake_minimum_required(VERSION 2.4.0)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-include_directories(${CMAKE_SOURCE_DIR}/src/libnotify)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/spawn)
-include_directories(${CMAKE_SOURCE_DIR}/src/external/syslog/libsystem_asl.tproj/include)
-include_directories(${CMAKE_SOURCE_DIR}/src/kernel/libsyscall/wrappers/libproc)
 
 set(sys_sources
 	crt_externs.c
@@ -34,9 +30,14 @@ set(sys_sources
 #	set(sys_sources ${sys_sources} context-stubs.c)
 #endif()
 
-SET_SOURCE_FILES_PROPERTIES(msgctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
-SET_SOURCE_FILES_PROPERTIES(semctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SEMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
-SET_SOURCE_FILES_PROPERTIES(shmctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SEMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0")
+# flag explanations:
+#   - `-D_LIBC_NO_FEATURE_VERIFICATION` is needed because libc's `sys/cdefs.h` checks for correct features for the current platform/architecture
+#      however, it also includes the system `sys/cdefs.h`, which redefines `__DARWIN_ONLY_UNIX_CONFORMANCE` when `KERNEL` is defined (which it is here)
+#      so we need to set this flag to prevent the libc feature headers from generating an error on targets where `__DARWIN_ONLY_UNIX_CONFORMANCE` is expected to be enabled
+SET_SOURCE_FILES_PROPERTIES(msgctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_MSGCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -D_LIBC_NO_FEATURE_VERIFICATION=1")
+SET_SOURCE_FILES_PROPERTIES(semctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SEMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -D_LIBC_NO_FEATURE_VERIFICATION=1")
+SET_SOURCE_FILES_PROPERTIES(shmctl.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -DLIBC_ALIAS_SHMCTL -DKERNEL -U__DARWIN_UNIX03 -D__DARWIN_UNIX03=0 -D_LIBC_NO_FEATURE_VERIFICATION=1")
+
 SET_SOURCE_FILES_PROPERTIES(sigtramp.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE")
 SET_SOURCE_FILES_PROPERTIES(OpenBSD/stack_protector.c PROPERTIES COMPILE_FLAGS "${CMAKE_C_FLAGS} -fno-stack-protector")
 

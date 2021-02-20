@@ -19,6 +19,16 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _SFAESKeySpecifier : NSObject
+#import <SecurityFoundation/_SFKeySpecifier.h>
+
+#define SFAESKeySpecifier _SFAESKeySpecifier
+
+typedef NS_ENUM(NSInteger, SFAESKeyBitSize) {
+	SFAESKeyBitSize256,
+};
+
+@interface SFAESKeySpecifier : SFKeySpecifier
+
+- (instancetype)initWithBitSize:(SFAESKeyBitSize)bitSize;
 
 @end

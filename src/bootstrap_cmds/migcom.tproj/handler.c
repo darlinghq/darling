@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /********************************************************
@@ -42,7 +42,7 @@
 #include "utils.h"
 #include "global.h"
 
-void
+static void
 WriteIncludes(FILE *file)
 {
   fprintf(file, "#define EXPORT_BOOLEAN\n");
@@ -94,14 +94,14 @@ WriteProlog(FILE *file)
 
 
 static void
-WriteSymTabEntries(FILE *file, statement_t *stats)
+WriteSymTabEntries(FILE *file  statement_t *stats)
 {
-  register statement_t *stat;
-  register u_int current = 0;
+  statement_t *stat;
+  u_int current = 0;
 
   for (stat = stats; stat != stNULL; stat = stat->stNext)
     if (stat->stKind == skRoutine) {
-      register  num = stat->stRoutine->rtNumber;
+      int num = stat->stRoutine->rtNumber;
       char      *name = stat->stRoutine->rtName;
       while (++current <= num)
         fprintf(file,"\t\t\t{ \"\", 0, 0 },\n");
@@ -117,13 +117,13 @@ WriteSymTabEntries(FILE *file, statement_t *stats)
 static void
 WriteArrayEntries(FILE *file, statement_t *stats)
 {
-  register u_int current = 0;
-  register statement_t *stat;
+  u_int current = 0;
+  statement_t *stat;
 
   for (stat = stats; stat != stNULL; stat = stat->stNext)
     if (stat->stKind == skRoutine)
     {
-      register routine_t *rt = stat->stRoutine;
+      routine_t *rt = stat->stRoutine;
 
       while (current++ < rt->rtNumber)
         fprintf(file, "\t\t\t0,\n");
@@ -153,12 +153,12 @@ WriteEpilog(FILE *file, statement_t *stats)
 
   fprintf(file, "{\n");
   fprintf(file, "\tchar OutBuf[%d];\n", MaxReply);
-  fprintf(file, "\tregister msg_header_t *InP =  InHeadP;\n");
+  fprintf(file, "\tmsg_header_t *InP =  InHeadP;\n");
 
   if (IsCamelot)
-    fprintf(file, "\tregister camelot_death_pill_t *OutP = (camelot_death_pill_t *) OutBuf;\n");
+    fprintf(file, "\tcamelot_death_pill_t *OutP = (camelot_death_pill_t *) OutBuf;\n");
   else
-    fprintf(file, "\tregister death_pill_t *OutP = (death_pill_t *) OutBuf;\n");
+    fprintf(file, "\tdeath_pill_t *OutP = (death_pill_t *) OutBuf;\n");
 
   fprintf(file, "\n");
 
@@ -250,13 +250,13 @@ HandlerSideType(routine_t *rt)
 }
 
 static void
-WriteLocalVarDecl(FILE *file, register argument_t *arg)
+WriteLocalVarDecl(FILE *file, argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
+  ipc_type_t *it = arg->argType;
 
   if (it->itInLine && it->itVarArray)
   {
-    register ipc_type_t *btype = it->itElement;
+    ipc_type_t *btype = it->itElement;
 
     fprintf(file, "\t%s %s[%d]", btype->itTransType, arg->argVarName, it->itNumber/btype->itNumber);
   }
@@ -279,10 +279,10 @@ WriteVarDecls(FILE *file, routine_t *rt)
 {
   int i;
 
-  fprintf(file, "\tregister Request *In0P = (Request *) InHeadP;\n");
+  fprintf(file, "\tRequest *In0P = (Request *) InHeadP;\n");
   for (i = 1; i <= rt->rtMaxRequestPos; i++)
-    fprintf(file, "\tregister Request *In%dP;\n", i);
-  fprintf(file, "\tregister Reply *OutP = (Reply *) OutHeadP;\n");
+    fprintf(file, "\tRequest *In%dP;\n", i);
+  fprintf(file, "\tReply *OutP = (Reply *) OutHeadP;\n");
   fprintf(file, "\n");
 
   fprintf(file, "#if\t__MigTypeCheck\n");
@@ -300,7 +300,7 @@ WriteVarDecls(FILE *file, routine_t *rt)
 }
 
 static void
-WriteMsgError(FILE *file, register argument_t *arg, char *error)
+WriteMsgError(FILE *file, argument_t *arg, char *error)
 {
   if (arg == argNULL)
     fprintf(file, "\t\t{ OutP->RetCode = %s; return; }\n", error);
@@ -352,10 +352,10 @@ WriteCheckHead(FILE *file, routine_t *rt)
 }
 
 static void
-WriteTypeCheck(FILE *file, register argument_t *arg)
+WriteTypeCheck(FILE *file, argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
-  register routine_t *rt = arg->argRoutine;
+  ipc_type_t *it = arg->argType;
+  routine_t *rt = arg->argRoutine;
 
   fprintf(file, "#if\t__MigTypeCheck\n");
   if (akCheck(arg->argKind, akbQuickCheck))
@@ -384,10 +384,10 @@ WriteTypeCheck(FILE *file, register argument_t *arg)
 }
 
 static void
-WriteCheckMsgSize(FILE *file, register argument_t *arg)
+WriteCheckMsgSize(FILE *file, argument_t *arg)
 {
-  register routine_t *rt = arg->argRoutine;
-  register ipc_type_t *btype = arg->argType->itElement;
+  routine_t *rt = arg->argRoutine;
+  ipc_type_t *btype = arg->argType->itElement;
   argument_t *count = arg->argCount;
   boolean_t NoMoreArgs, LastVarArg;
 
@@ -436,24 +436,24 @@ WriteCheckMsgSize(FILE *file, register argument_t *arg)
 }
 
 static void
-WriteExtractArgValue(FILE *file,  register argument_t *arg)
+WriteExtractArgValue(FILE *file,  argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
+  ipc_type_t *it = arg->argType;
 
   if (arg->argMultiplier > 1)
-    WriteCopyType(file, it, "%s /* %d %s %d */", "/* %s */ In%dP->%s / %d", arg->argVarName, arg->argRequestPos, arg->argMsgField, arg->argMultiplier);
+    WriteCopyType(file, it, FALSE, "%s /* %d %s %d */", "/* %s */ In%dP->%s / %d", arg->argVarName, arg->argRequestPos, arg->argMsgField, arg->argMultiplier);
   else if (it->itInTrans != strNULL)
-    WriteCopyType(file, it, "%s /* %s %d %s */", "/* %s */ %s(In%dP->%s)", arg->argVarName, it->itInTrans, arg->argRequestPos, arg->argMsgField);
+    WriteCopyType(file, it, FALSE, "%s /* %s %d %s */", "/* %s */ %s(In%dP->%s)", arg->argVarName, it->itInTrans, arg->argRequestPos, arg->argMsgField);
   else
-    WriteCopyType(file, it, "%s /* %d %s */", "/* %s */ In%dP->%s", arg->argVarName, arg->argRequestPos, arg->argMsgField);
+    WriteCopyType(file, it, FALSE, "%s /* %d %s */", "/* %s */ In%dP->%s", arg->argVarName, arg->argRequestPos, arg->argMsgField);
   fprintf(file, "\n");
 }
 
 static void
-WriteInitializeCount(FILE *file,  register argument_t *arg)
+WriteInitializeCount(FILE *file, argument_t *arg)
 {
-  register ipc_type_t *ptype = arg->argParent->argType;
-  register ipc_type_t *btype = ptype->itElement;
+  ipc_type_t *ptype = arg->argParent->argType;
+  ipc_type_t *btype = ptype->itElement;
 
   /*
    *  Initialize 'count' argument for variable-length inline OUT parameter
@@ -465,7 +465,7 @@ WriteInitializeCount(FILE *file,  register argument_t *arg)
 }
 
 static void
-WriteExtractArg(FILE *file, register argument_t *arg)
+WriteExtractArg(FILE *file, argument_t *arg)
 {
   if (akCheck(arg->argKind, akbRequest))
     WriteTypeCheck(file, arg);
@@ -477,7 +477,7 @@ WriteExtractArg(FILE *file, register argument_t *arg)
     WriteExtractArgValue(file, arg);
 
   if ((akIdent(arg->argKind) == akeCount) && akCheck(arg->argKind, akbReturnSnd)) {
-    register ipc_type_t *ptype = arg->argParent->argType;
+    ipc_type_t *ptype = arg->argParent->argType;
 
     if (ptype->itInLine && ptype->itVarArray)
       WriteInitializeCount(file, arg);
@@ -488,7 +488,7 @@ WriteExtractArg(FILE *file, register argument_t *arg)
    arguments it may have. */
 
   if ((akIdent(arg->argKind) == akeCount) && akCheck(arg->argKind, akbSendRcv) && (arg->argRequestPos < arg->argRoutine->rtMaxRequestPos)) {
-    register ipc_type_t *ptype = arg->argParent->argType;
+    ipc_type_t *ptype = arg->argParent->argType;
 
     if (ptype->itInLine && ptype->itVarArray) {
       fprintf(file, "\tIn%dP = (Request *) ((char *) In%dP + msg_size_delta - %d);\n", arg->argRequestPos+1, arg->argRequestPos, ptype->itTypeSize + ptype->itPadSize);
@@ -498,7 +498,7 @@ WriteExtractArg(FILE *file, register argument_t *arg)
 }
 
 static void
-WriteHandlerCallArg(FILE *file, register argument_t *arg)
+WriteHandlerCallArg(FILE *file, argument_t *arg)
 {
   ipc_type_t *it = arg->argType;
   boolean_t NeedClose = FALSE;
@@ -526,9 +526,9 @@ WriteHandlerCallArg(FILE *file, register argument_t *arg)
 }
 
 static void
-WriteDestroyArg(FILE *file, register argument_t *arg)
+WriteDestroyArg(FILE *file, argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
+  ipc_type_t *it = arg->argType;
 
   fprintf(file, "#ifdef\tlabel_punt%d\n", arg->argPuntNum+1);
   fprintf(file, "#undef\tlabel_punt%d\n", arg->argPuntNum+1);
@@ -572,20 +572,20 @@ WriteHandlerCall(FILE *file, routine_t *rt)
 }
 
 static void
-WriteGetReturnValue(FILE *file, register routine_t *rt)
+WriteGetReturnValue(FILE *file, routine_t *rt)
 {
   fprintf(file, "\t" "OutP->%s = %s;\n", rt->rtRetCode->argMsgField, rt->rtOneWay ? "MIG_NO_REPLY" : "KERN_SUCCESS");
 }
 
 static void
-WriteCheckReturnValue(FILE *file, register routine_t *rt)
+WriteCheckReturnValue(FILE *file, routine_t *rt)
 {
   fprintf(file, "\tif (OutP->%s != KERN_SUCCESS)\n", rt->rtRetCode->argMsgField);
   fprintf(file, "\t\treturn;\n");
 }
 
 static void
-WritePackArgType(FILE *file, register argument_t *arg)
+WritePackArgType(FILE *file, argument_t *arg)
 {
   fprintf(file, "\n");
 
@@ -593,15 +593,15 @@ WritePackArgType(FILE *file, register argument_t *arg)
 }
 
 static void
-WritePackArgValue(FILE *file, register argument_t *arg)
+WritePackArgValue(FILE *file, argument_t *arg)
 {
-  register ipc_type_t *it = arg->argType;
+  ipc_type_t *it = arg->argType;
 
   fprintf(file, "\n");
 
   if (it->itInLine && it->itVarArray) {
-    register argument_t *count = arg->argCount;
-    register ipc_type_t *btype = it->itElement;
+    argument_t *count = arg->argCount;
+    ipc_type_t *btype = it->itElement;
 
     /* Note btype->itNumber == count->argMultiplier */
 
@@ -609,25 +609,25 @@ WritePackArgValue(FILE *file, register argument_t *arg)
     fprintf(file, "%d * %s);\n", btype->itTypeSize, count->argVarName);
   }
   else if (arg->argMultiplier > 1)
-    WriteCopyType(file, it, "OutP->%s /* %d %s */", "/* %s */ %d * %s", arg->argMsgField, arg->argMultiplier, arg->argVarName);
+    WriteCopyType(file, it, TRUE, "OutP->%s /* %d %s */", "/* %s */ %d * %s", arg->argMsgField, arg->argMultiplier, arg->argVarName);
   else if (it->itOutTrans != strNULL)
-    WriteCopyType(file, it, "OutP->%s /* %s %s */", "/* %s */ %s(%s)", arg->argMsgField, it->itOutTrans, arg->argVarName);
+    WriteCopyType(file, it, TRUE, "OutP->%s /* %s %s */", "/* %s */ %s(%s)", arg->argMsgField, it->itOutTrans, arg->argVarName);
   else
-    WriteCopyType(file, it, "OutP->%s /* %s */", "/* %s */ %s", arg->argMsgField, arg->argVarName);
+    WriteCopyType(file, it, TRUE, "OutP->%s /* %s */", "/* %s */ %s", arg->argMsgField, arg->argVarName);
 }
 
 static void
 WriteCopyArgValue(FILE *file, argument_t *arg)
 {
   fprintf(file, "\n");
-  WriteCopyType(file, arg->argType, "/* %d */ OutP->%s", "In%dP->%s", arg->argRequestPos, arg->argMsgField);
+  WriteCopyType(file, arg->argType, TRUE, "/* %d */ OutP->%s", "In%dP->%s", arg->argRequestPos, arg->argMsgField);
 }
 
 static void
-WriteAdjustMsgSize(FILE *file, register argument_t *arg)
+WriteAdjustMsgSize(FILE *file, argument_t *arg)
 {
-  register ipc_type_t *ptype = arg->argParent->argType;
-  register ipc_type_t *btype = ptype->itElement;
+  ipc_type_t *ptype = arg->argParent->argType;
+  ipc_type_t *btype = ptype->itElement;
 
   fprintf(file, "\n");
 
@@ -663,7 +663,7 @@ WritePackArg(FILE *file, argument_t *arg)
     WriteCopyArgValue(file, arg);
 
   if ((akIdent(arg->argKind) == akeCount) && akCheck(arg->argKind, akbReturnSnd)) {
-    register ipc_type_t *ptype = arg->argParent->argType;
+    ipc_type_t *ptype = arg->argParent->argType;
 
     if (ptype->itInLine && ptype->itVarArray)
       WriteAdjustMsgSize(file, arg);
@@ -728,7 +728,7 @@ WriteRoutine(FILE *file, routine_t *rt)
 void
 WriteHandler(FILE *file, statement_t *stats)
 {
-  register statement_t *stat;
+  statement_t *stat;
 
   WriteProlog(file);
   for (stat = stats; stat != stNULL; stat = stat->stNext)

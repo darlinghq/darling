@@ -48,3 +48,25 @@ __sprintf_chk (char *dest, int flags, size_t dstlen, const char *format, ...)
 
   return done;
 }
+
+int
+__sprintf_object_size_chk (char *dest, size_t dstlen, const char *format, ...)
+{
+    va_list arg;
+    int done;
+
+    va_start (arg, format);
+
+    if (__builtin_expect (dstlen > (size_t) INT_MAX, 0))
+        done = vsprintf (dest, format, arg);
+    else
+    {
+        done = vsnprintf (dest, dstlen, format, arg);
+        if (__builtin_expect(done >= 0 && (size_t) done >= dstlen, 0))
+            __chk_fail_overflow ();
+    }
+
+    va_end (arg);
+
+    return done;
+}

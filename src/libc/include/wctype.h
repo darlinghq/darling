@@ -35,20 +35,7 @@
 #include <_types.h>
 #include <_types/_wctrans_t.h>
 
-//Begin-Libc
-/*
- * _EXTERNALIZE_WCTYPE_INLINES_TOP_ is defined in locale/iswctype.c to tell us
- * to generate code for extern versions of all top-level inline functions.
- */
-#ifdef _EXTERNALIZE_WCTYPE_INLINES_TOP_
-#define _USE_CTYPE_INLINE_
-#define __DARWIN_WCTYPE_TOP_inline
-#else /* !_EXTERNALIZE_WCTYPE_INLINES_TOP_ */
-//End-Libc
 #define __DARWIN_WCTYPE_TOP_inline	__header_inline
-//Begin-Libc
-#endif /* _EXTERNALIZE_WCTYPE_INLINES_TOP_ */
-//End-Libc
 
 #include <_wctype.h>
 #include <ctype.h>

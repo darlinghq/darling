@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2011, 2013-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -54,16 +54,14 @@
 #include "configd.h"
 #include "configd_server.h"
 #include "plugin_support.h"
+#include "SCDynamicStoreInternal.h"
 
-#if	TARGET_OS_EMBEDDED && !defined(DO_NOT_INFORM)
+#if	TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR && !defined(DO_NOT_INFORM)
 #include <CoreFoundation/CFUserNotification.h>
-#endif	// TARGET_OS_EMBEDDED && !defined(DO_NOT_INFORM)
+#endif	// TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR && !defined(DO_NOT_INFORM)
 
 __private_extern__
 Boolean	_configd_verbose		= FALSE;	/* TRUE if verbose logging enabled */
-
-__private_extern__
-FILE	*_configd_trace			= NULL;		/* non-NULL if tracing enabled */
 
 __private_extern__
 CFMutableSetRef	_plugins_allowed	= NULL;		/* bundle identifiers to allow when loading */
@@ -108,6 +106,19 @@ usage(const char *prog)
 }
 
 
+__private_extern__ os_log_t
+__configd_SCDynamicStore()
+{
+	static os_log_t	log	= NULL;
+
+	if (log == NULL) {
+		log = os_log_create("com.apple.SystemConfiguration", "SCDynamicStore");
+	}
+
+	return log;
+}
+
+
 static void
 catcher(int signum)
 {
@@ -144,13 +155,16 @@ catcher(int signum)
 static void
 term(CFMachPortRef port, void *msg, CFIndex size, void *info)
 {
+#pragma unused(port)
+#pragma unused(msg)
+#pragma unused(size)
+#pragma unused(info)
 	int	status	= EX_OK;
 	Boolean	wait;
 
 	wait = plugin_term(&status);
 	if (!wait) {
 		// if we are not waiting on a plugin
-		status = server_shutdown();
 		exit (status);
 	}
 
@@ -161,6 +175,7 @@ term(CFMachPortRef port, void *msg, CFIndex size, void *info)
 static void
 parent_exit(int i)
 {
+#pragma unused(i)
 	_exit (0);
 }
 
@@ -195,23 +210,6 @@ init_fds()
 		if (fd > STDERR_FILENO) {
 			(void) close(fd);
 		}
-	}
-
-	SCTrace(TRUE, stdout, CFSTR("start\n"));
-	return;
-}
-
-
-static void
-set_trace()
-{
-	int	fd;
-
-	/* set _configd_trace */
-	fd = open("/var/log/configd.trace", O_WRONLY|O_APPEND, 0);
-	if (fd != -1) {
-		_configd_trace = fdopen(fd, "a");
-		SCTrace(TRUE, _configd_trace, CFSTR("start\n"));
 	}
 
 	return;
@@ -264,6 +262,7 @@ fork_child()
 static CFStringRef
 termMPCopyDescription(const void *info)
 {
+#pragma unused(info)
 	return CFStringCreateWithFormat(NULL, NULL, CFSTR("<SIGTERM MP>"));
 }
 
@@ -339,17 +338,17 @@ main(int argc, char * const argv[])
 //	argv += optind;
 
 	/* check credentials */
-#if	!TARGET_IPHONE_SIMULATOR
+#if	!TARGET_OS_SIMULATOR
 	if (getuid() != 0) {
 		fprintf(stderr, "%s: permission denied.\n", prog);
 		exit (EX_NOPERM);
 	}
-#endif	// !TARGET_IPHONE_SIMULATOR
+#endif	// !TARGET_OS_SIMULATOR
 
 	/* check if we have been started by launchd */
 	vproc_swap_integer(NULL, VPROC_GSK_IS_MANAGED, NULL, &is_launchd_job);
 
-#if	TARGET_OS_EMBEDDED && !defined(DO_NOT_INFORM)
+#if	TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR && !defined(DO_NOT_INFORM)
 	// if launchd job, check to see if we have been restarted
 	if (is_launchd_job) {
 		int64_t	status	= 0;
@@ -374,10 +373,10 @@ main(int argc, char * const argv[])
 			}
 		}
 	}
-#endif	// TARGET_OS_EMBEDDED && !defined(DO_NOT_INFORM)
+#endif	// TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR && !defined(DO_NOT_INFORM)
 
 	/* ensure that forked plugins behave */
-	if ((testBundle != NULL) && (getenv("__FORKED_PLUGIN__") != NULL)) {
+	if (testBundle != NULL) {
 		forcePlugin = TRUE;
 	}
 
@@ -390,7 +389,7 @@ main(int argc, char * const argv[])
 		 * daemonize ourself.
 		 */
 		if (fork_child() == -1) {
-			fprintf(stderr, "configd: fork() failed, %s\n", strerror(errno));
+			fprintf(stderr, "configd: fork() failed: %s\n", strerror(errno));
 			exit (1);
 		}
 
@@ -407,7 +406,6 @@ main(int argc, char * const argv[])
 	if (!forceForeground || forcePlugin) {
 		int		facility	= LOG_DAEMON;
 		int		logopt		= LOG_CONS|LOG_NDELAY|LOG_PID;
-		struct stat	statbuf;
 
 		if (!is_launchd_job && !forcePlugin) {
 			init_fds();
@@ -417,7 +415,7 @@ main(int argc, char * const argv[])
 			logopt |= LOG_CONS;
 		}
 
-		if (stat("/etc/rc.cdrom", &statbuf) == 0) {
+		if (_SC_isInstallEnvironment()) {
 			facility = LOG_INSTALL;
 		}
 
@@ -426,38 +424,27 @@ main(int argc, char * const argv[])
 		_sc_log = FALSE;	/* redirect SCLog() to stdout/stderr */
 	}
 
-	/* check/enable trace logging */
-	set_trace();
-
 	/* add signal handler to catch a SIGHUP */
 	nact.sa_handler = catcher;
 	sigemptyset(&nact.sa_mask);
 	nact.sa_flags = SA_RESTART;
 	if (sigaction(SIGHUP, &nact, NULL) == -1) {
-		SCLog(_configd_verbose, LOG_ERR,
-		       CFSTR("sigaction(SIGHUP, ...) failed: %s"),
-		       strerror(errno));
+		SC_log(LOG_ERR, "sigaction(SIGHUP, ...) failed: %s", strerror(errno));
 	}
 
 	/* add signal handler to catch a SIGPIPE */
 	if (sigaction(SIGPIPE, &nact, NULL) == -1) {
-		SCLog(_configd_verbose, LOG_ERR,
-		       CFSTR("sigaction(SIGPIPE, ...) failed: %s"),
-		       strerror(errno));
+		SC_log(LOG_ERR, "sigaction(SIGPIPE, ...) failed: %s", strerror(errno));
 	}
 
 	/* add signal handler to catch a SIGTERM */
 	if (sigaction(SIGTERM, &nact, NULL) == -1) {
-		SCLog(_configd_verbose, LOG_ERR,
-		      CFSTR("sigaction(SIGTERM, ...) failed: %s"),
-		      strerror(errno));
+		SC_log(LOG_ERR, "sigaction(SIGTERM, ...) failed: %s", strerror(errno));
 	}
 
 	/* add signal handler to catch a SIGINT */
 	if (sigaction(SIGINT, &nact, NULL) == -1) {
-		SCLog(_configd_verbose, LOG_ERR,
-		      CFSTR("sigaction(SIGINT, ...) failed: %s"),
-		      strerror(errno));
+		SC_log(LOG_ERR, "sigaction(SIGINT, ...) failed: %s", strerror(errno));
 	}
 
 	/* create the "shutdown requested" notification port */
@@ -480,6 +467,9 @@ main(int argc, char * const argv[])
 	CFRelease(rls);
 
 	if (testBundle == NULL) {
+		/* don't complain about having  lots of SCDynamicStore objects */
+		_SCDynamicStoreSetSessionWatchLimit(0);
+
 		/* initialize primary (store management) thread */
 		server_init();
 
@@ -494,8 +484,8 @@ main(int argc, char * const argv[])
 			plugin_init();
 		}
 
-		/* start primary (store management) thread */
-		server_loop();
+		/* start main thread */
+		CFRunLoopRun();
 	} else {
 		/* load/initialize/start specified plug-in */
 		plugin_exec((void *)testBundle);

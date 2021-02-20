@@ -20,12 +20,15 @@
 #ifndef _CoreAnalytics_H_
 #define _CoreAnalytics_H_
 
+#ifdef __cplusplus
 #include <string>
 #include <functional>
 #include <memory>
 #include <string_view>
 #include <AppleSauce/AppleSauce.h>
 #include <dispatch/dispatch.h>
+#endif
+
 #include <xpc/xpc.h>
 
 #import <Foundation/Foundation.h>

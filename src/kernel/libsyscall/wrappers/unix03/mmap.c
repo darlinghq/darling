@@ -2,14 +2,14 @@
  * Copyright (c) 2004 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -44,7 +44,7 @@ mmap(void *addr, size_t len, int prot, int flags, int fildes, off_t off)
 {
 	/*
 	 * Preemptory failures:
-	 * 
+	 *
 	 * o	off is not a multiple of the page size
 	 * o	flags does not contain either MAP_PRIVATE or MAP_SHARED
 	 * o	len is zero
@@ -52,14 +52,14 @@ mmap(void *addr, size_t len, int prot, int flags, int fildes, off_t off)
 	extern void cerror_nocancel(int);
 	if ((off & PAGE_MASK) ||
 	    (((flags & MAP_PRIVATE) != MAP_PRIVATE) &&
-	     ((flags & MAP_SHARED) != MAP_SHARED)) ||
+	    ((flags & MAP_SHARED) != MAP_SHARED)) ||
 	    (len == 0)) {
 		cerror_nocancel(EINVAL);
-		return(MAP_FAILED);
+		return MAP_FAILED;
 	}
 
 	void *ptr = __mmap(addr, len, prot, flags, fildes, off);
-    
+
 	if (__syscall_logger) {
 		int stackLoggingFlags = stack_logging_type_vm_allocate;
 		if (flags & MAP_ANON) {

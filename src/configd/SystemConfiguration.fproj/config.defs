@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000, 2001, 2003-2005, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2000, 2001, 2003-2005, 2011, 2012, 2015, 2018-2019 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -36,6 +36,7 @@
 
 subsystem config 20000;
 serverprefix _;
+UseSpecialReplyPort 1;
 
 import "config_types.h";
 
@@ -58,6 +59,21 @@ type xmlDataOut = ^ array [] of MACH_MSG_TYPE_BYTE
 type task_move_send_t = MACH_MSG_TYPE_MOVE_SEND
 	ctype: mach_port_t;
 */
+
+
+/*
+ * CAUTION CAUTION CAUTION CAUTION CAUTION CAUTION
+ *
+ * Be very careful when adding, removing, or changing any
+ * of the MiG routes below.  Everything tends to work fine
+ * when the SCDynamicStore client code (in the framework)
+ * and SCDynamicStore server code (in configd) are in sync.
+ * But, when the two are NOT in sync as is often the
+ * case when running the iOS Simulator, the conflict can
+ * be problematic.
+ *
+ * CAUTION CAUTION CAUTION CAUTION CAUTION CAUTION
+ */
 
 
 /*
@@ -94,14 +110,14 @@ routine configlist	(	server		: mach_port_t;
 routine configadd	(	server		: mach_port_t;
 				key		: xmlData;
 				data		: xmlData;
-			 out	newInstance	: int;
+			 out	newInstance	: int;		// no longer used
 			 out	status		: int;
 	    ServerAuditToken	audit_token	: audit_token_t);
 
 routine configget	(	server		: mach_port_t;
 				key		: xmlData;
 			 out	data		: xmlDataOut, dealloc;
-			 out	newInstance	: int;
+			 out	newInstance	: int;		// no longer used
 			 out	status		: int;
 	    ServerAuditToken	audit_token	: audit_token_t);
 
@@ -109,7 +125,7 @@ routine configset	(	server		: mach_port_t;
 				key		: xmlData;
 				data		: xmlData;
 				instance	: int;
-			 out	newInstance	: int;
+			 out	newInstance	: int;		// no longer used
 			 out	status		: int;
 	    ServerAuditToken	audit_token	: audit_token_t);
 
@@ -123,7 +139,7 @@ routine configremove	(	server		: mach_port_t;
 routine configadd_s	(	server		: mach_port_t;
 				key		: xmlData;
 				data		: xmlData;
-			 out	newInstance	: int;
+			 out	newInstance	: int;		// no longer used
 			 out	status		: int);
 
 routine confignotify	(	server		: mach_port_t;
@@ -165,18 +181,12 @@ routine notifychanges	(	server		: mach_port_t;
 
 routine notifyviaport	(	server		: mach_port_t;
 				port		: mach_port_move_send_t;
-				msgid           : mach_msg_id_t;
+				msgid           : mach_msg_id_t;	/* must be zero */
 			 out	status		: int);
 
-routine notifyviafd	(	server		: mach_port_t;
-				path		: xmlData;
-				identifier	: int;
-			 out	status		: int);
+	skip;	/* was notifyviafd (passing UNIX domain socket filename) */
 
-routine notifyviasignal	(	server		: mach_port_t;
-				task		: task_t /*task_move_send_t*/;
-				sig		: int;
-			 out	status		: int);
+	skip;	/* was notifyviasignal */
 
 routine notifycancel	(	server		: mach_port_t;
 			 out	status		: int);
@@ -186,7 +196,11 @@ routine notifyset	(	server		: mach_port_t;
 				patterns	: xmlData;
 			 out	status		: int);
 
-	skip;	/* reserved for future use */
+routine notifyviafd	(	server		: mach_port_t;
+				fileport	: mach_port_move_send_t;
+				identifier	: int;
+			 out	status		: int);
+
 	skip;	/* reserved for future use */
 	skip;	/* reserved for future use */
 

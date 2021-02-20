@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -105,17 +105,23 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 #include "error.h"
 #include "lexxer.h"
 #include "global.h"
 #include "write.h"
 
-extern int yyparse();
-static FILE *myfopen();
+extern int yyparse(void);
+static FILE *myfopen(const char *name, const char *mode);
 
 static void
 parseArgs(int argc,char *argv[])
 {
+  if (argc == 2 && streql(argv[1], "-version")) {
+    PrintVersion = TRUE;
+    return;
+  }
+
   while (--argc > 0)
     if ((++argv)[0][0] == '-') {
       switch (argv[0][1]) {
@@ -304,12 +310,15 @@ main(int argc, char *argv[])
   FILE *sheader = 0;
   FILE *dheader = 0;
   time_t loc;
-  extern time_t time();
-  extern string_t ctime();
   extern string_t GenerationDate;
 
   set_program_name("mig");
   parseArgs(argc, argv);
+  if (PrintVersion) {
+    printf("%s\n", MIG_VERSION);
+    fflush(stdout);
+    exit(0);
+  }
   init_global();
   init_type();
   loc = time((time_t *)0);
@@ -405,9 +414,9 @@ main(int argc, char *argv[])
 }
 
 static FILE *
-myfopen(char *name, char *mode)
+myfopen(const char *name, const char *mode)
 {
-  char *realname;
+  const char *realname;
   FILE *file;
 
   if (name == strNULL)

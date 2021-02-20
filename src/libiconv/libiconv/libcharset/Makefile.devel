@@ -1,0 +1,66 @@
+# This is the developer's makefile, not the user's makefile.
+# Don't use it unless you know exactly what you do!
+
+SHELL = /bin/sh
+MAKE = make
+AUTOCONF = autoconf-2.60
+AUTOHEADER = autoheader-2.60
+ACLOCAL = aclocal-1.9
+CP = cp
+RM = rm -f
+
+all : configures config.h_vms config.h.msvc include/libcharset.h.msvc-shared include/localcharset.h.build.in include/localcharset.h.msvc-shared
+
+autoconf/aclocal.m4 : $(wildcard m4/*.m4)
+	$(ACLOCAL) -I m4 --output=$@
+
+configures : configure config.h.in
+
+configure : configure.ac autoconf/aclocal.m4
+	$(AUTOCONF) --include autoconf
+
+config.h.in : configure.ac autoconf/aclocal.m4
+	$(AUTOHEADER) --include autoconf
+	touch config.h.in
+
+config.h_vms : config.h.in
+	sed -e 's/#undef HAVE_DLFCN_H$$/#define HAVE_DLFCN_H 1/' \
+	    -e 's/#undef HAVE_INTTYPES_H$$/#define HAVE_INTTYPES_H 1/' \
+	    -e 's/#undef HAVE_LANGINFO_CODESET$$/#define HAVE_LANGINFO_CODESET 1/' \
+	    -e 's/#undef HAVE_MEMORY_H$$/#define HAVE_MEMORY_H 1/' \
+	    -e 's/#undef HAVE_SETLOCALE$$/#define HAVE_SETLOCALE 1/' \
+	    -e 's/#undef HAVE_STDDEF_H$$/#define HAVE_STDDEF_H 1/' \
+	    -e 's/#undef HAVE_STDLIB_H$$/#define HAVE_STDLIB_H 1/' \
+	    -e 's/#undef HAVE_STRINGS_H$$/#define HAVE_STRINGS_H 1/' \
+	    -e 's/#undef HAVE_STRING_H$$/#define HAVE_STRING_H 1/' \
+	    -e 's/#undef HAVE_SYS_STAT_H$$/#define HAVE_SYS_STAT_H 1/' \
+	    -e 's/#undef HAVE_SYS_TYPES_H$$/#define HAVE_SYS_TYPES_H 1/' \
+	    -e 's/#undef HAVE_UNISTD_H$$/#define HAVE_UNISTD_H 1/' \
+	    -e 's/#undef STDC_HEADERS$$/#define STDC_HEADERS 1/' \
+	    -e '/#undef INSTALLPREFIX$$/d' \
+	  < $< > $@
+
+config.h.msvc : config.h.in
+	sed -e 's/#undef HAVE_SETLOCALE$$/#define HAVE_SETLOCALE 1/' \
+	    -e 's/#undef HAVE_STDDEF_H$$/#define HAVE_STDDEF_H 1/' \
+	    -e 's/#undef HAVE_STDLIB_H$$/#define HAVE_STDLIB_H 1/' \
+	    -e 's/#undef HAVE_STRING_H$$/#define HAVE_STRING_H 1/' \
+	    -e '/#undef INSTALLPREFIX$$/d' \
+	  < $< > $@
+
+include/libcharset.h.msvc-shared : include/libcharset.h.in windows/dllexport.h
+	sed -e 's/extern \([^"]\)/extern LIBCHARSET_DLL_EXPORTED \1/' \
+	    -e '/#define _LIBCHARSET_H/r windows/dllexport.h' \
+	  < $< > $@
+
+include/localcharset.h.build.in : include/localcharset.h.in include/export.h
+	sed -e 's/extern \([^"]\)/extern LIBCHARSET_DLL_EXPORTED \1/' \
+	    -e '/#define _LOCALCHARSET_H/r include/export.h' \
+	  < $< > $@
+
+include/localcharset.h.msvc-shared : include/localcharset.h.in windows/dllexport.h
+	sed -e 's/extern \([^"]\)/extern LIBCHARSET_DLL_EXPORTED \1/' \
+	    -e '/#define _LOCALCHARSET_H/r windows/dllexport.h' \
+	  < $< > $@
+
+force :

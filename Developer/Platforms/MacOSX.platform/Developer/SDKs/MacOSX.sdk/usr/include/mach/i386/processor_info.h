@@ -1,1 +1,1 @@
-../../../../../../../../../../platform-include/mach/i386/processor_info.h
+../../../../../../../../../../src/external/lkm/osfmk/mach/i386/processor_info.h

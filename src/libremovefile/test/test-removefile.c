@@ -1,10 +1,15 @@
 #include "removefile.h"
+
 #include <assert.h>
 #include <errno.h>
-#include <stdio.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
+
 
 static struct timeval tv;
 static void start_timer(const char* str) {
@@ -22,7 +27,7 @@ static void stop_timer() {
 	} else {
 		usec = tv2.tv_usec + (1000000 - tv.tv_usec);
 	}
-	fprintf(stderr, "%d.%03d\n", sec, usec);
+	fprintf(stderr, "%ld.%03ld\n", sec, usec);
 }
 
 
@@ -46,7 +51,7 @@ static int removefile_status_callback(removefile_state_t state, const char * pat
 }
 
 
-int mkdirs() {
+void mkdirs() {
 	start_timer("Creating directory structure");
 	assert(mkdir("/tmp/removefile-test", 0755) == 0);
 	assert(mkdir("/tmp/removefile-test/foo", 0755) == 0);
@@ -76,6 +81,15 @@ int main(int argc, char *argv[]) {
 	removefile_callback_t callback = NULL;
 	pthread_t thread = NULL;
 	int err = 0;
+
+    if (argc == 2) {
+        /* pass in a directory with a mountpoint under it to test REMOVEFILE_CROSS_MOUNT */
+		state = removefile_state_alloc();
+		removefile_state_set(state, REMOVEFILE_STATE_ERROR_CALLBACK, removefile_error_callback);
+		removefile_state_set(state, REMOVEFILE_STATE_ERROR_CONTEXT, (void*)4567);
+		err = removefile(argv[1], state,  REMOVEFILE_CROSS_MOUNT | REMOVEFILE_RECURSIVE);
+		return err;
+    }
 
 	mkdirs();
 	start_timer("removefile(NULL)");

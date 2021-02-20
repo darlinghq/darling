@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2002, 2004, 2005, 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2002, 2004, 2005, 2008, 2015, 2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,20 +17,19 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
 #ifndef _SCDYNAMICSTOREKEY_H
-#ifdef	USE_SYSTEMCONFIGURATION_PRIVATE_HEADERS
-#include <SystemConfiguration/_SCDynamicStoreKey.h>
-#else	/* USE_SYSTEMCONFIGURATION_PRIVATE_HEADERS */
 #define _SCDYNAMICSTOREKEY_H
 
-#include <Availability.h>
+#include <os/availability.h>
 #include <sys/cdefs.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+CF_IMPLICIT_BRIDGING_ENABLED
+CF_ASSUME_NONNULL_BEGIN
 
 /*!
 	@header SCDynamicStoreKey
@@ -62,10 +61,10 @@ __BEGIN_DECLS
  */
 CFStringRef
 SCDynamicStoreKeyCreate				(
-						CFAllocatorRef	allocator,
-						CFStringRef	fmt,
+						CFAllocatorRef	__nullable	allocator,
+						CFStringRef			fmt,
 						...
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+						)		API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCDynamicStoreKeyCreateNetworkGlobalEntity
@@ -87,10 +86,10 @@ SCDynamicStoreKeyCreate				(
  */
 CFStringRef
 SCDynamicStoreKeyCreateNetworkGlobalEntity	(
-						CFAllocatorRef	allocator,
-						CFStringRef	domain,
-						CFStringRef	entity
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+						CFAllocatorRef	__nullable	allocator,
+						CFStringRef			domain,
+						CFStringRef			entity
+						)		API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCDynamicStoreKeyCreateNetworkInterface
@@ -110,9 +109,9 @@ SCDynamicStoreKeyCreateNetworkGlobalEntity	(
  */
 CFStringRef
 SCDynamicStoreKeyCreateNetworkInterface		(
-						CFAllocatorRef	allocator,
-						CFStringRef	domain
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+						CFAllocatorRef	__nullable	allocator,
+						CFStringRef			domain
+						)		API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCDynamicStoreKeyCreateNetworkInterfaceEntity
@@ -136,11 +135,11 @@ SCDynamicStoreKeyCreateNetworkInterface		(
  */
 CFStringRef
 SCDynamicStoreKeyCreateNetworkInterfaceEntity	(
-						CFAllocatorRef	allocator,
-						CFStringRef	domain,
-						CFStringRef	ifname,
-						CFStringRef	entity
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+						CFAllocatorRef	__nullable	allocator,
+						CFStringRef			domain,
+						CFStringRef			ifname,
+						CFStringRef	__nullable	entity
+						)		API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCDynamicStoreKeyCreateNetworkServiceEntity
@@ -165,11 +164,11 @@ SCDynamicStoreKeyCreateNetworkInterfaceEntity	(
  */
 CFStringRef
 SCDynamicStoreKeyCreateNetworkServiceEntity	(
-						CFAllocatorRef	allocator,
-						CFStringRef	domain,
-						CFStringRef	serviceID,
-						CFStringRef	entity
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+						CFAllocatorRef	__nullable	allocator,
+						CFStringRef			domain,
+						CFStringRef			serviceID,
+						CFStringRef	__nullable	entity
+						)		API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCDynamicStoreKeyCreateComputerName
@@ -186,8 +185,8 @@ SCDynamicStoreKeyCreateNetworkServiceEntity	(
 */
 CFStringRef
 SCDynamicStoreKeyCreateComputerName		(
-						CFAllocatorRef		allocator
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+						CFAllocatorRef	__nullable	allocator
+						)		API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCDynamicStoreKeyCreateConsoleUser
@@ -203,8 +202,8 @@ SCDynamicStoreKeyCreateComputerName		(
 */
 CFStringRef
 SCDynamicStoreKeyCreateConsoleUser		(
-						CFAllocatorRef		allocator
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_NA);
+						CFAllocatorRef	__nullable	allocator
+						)		API_AVAILABLE(macos(10.1)) API_UNAVAILABLE(ios, tvos, watchos, bridgeos);
 
 /*!
 	@function SCDynamicStoreKeyCreateHostNames
@@ -221,8 +220,8 @@ SCDynamicStoreKeyCreateConsoleUser		(
 */
 CFStringRef
 SCDynamicStoreKeyCreateHostNames		(
-						CFAllocatorRef		allocator
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_2,__IPHONE_2_0/*SPI*/);
+						CFAllocatorRef	__nullable	allocator
+						)		API_AVAILABLE(macos(10.2)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCDynamicStoreKeyCreateLocation
@@ -239,8 +238,8 @@ SCDynamicStoreKeyCreateHostNames		(
 */
 CFStringRef
 SCDynamicStoreKeyCreateLocation			(
-						CFAllocatorRef		allocator
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_2,__IPHONE_2_0/*SPI*/);
+						CFAllocatorRef	__nullable	allocator
+						)		API_AVAILABLE(macos(10.2)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 /*!
 	@function SCDynamicStoreKeyCreateProxies
@@ -257,10 +256,12 @@ SCDynamicStoreKeyCreateLocation			(
 */
 CFStringRef
 SCDynamicStoreKeyCreateProxies			(
-						CFAllocatorRef		allocator
-						)		__OSX_AVAILABLE_STARTING(__MAC_10_1,__IPHONE_2_0/*SPI*/);
+						CFAllocatorRef	__nullable	allocator
+						)		API_AVAILABLE(macos(10.1)) SPI_AVAILABLE(ios(2.0), tvos(9.0), watchos(1.0), bridgeos(1.0));
 
 __END_DECLS
 
-#endif	/* USE_SYSTEMCONFIGURATION_PRIVATE_HEADERS */
+CF_ASSUME_NONNULL_END
+CF_IMPLICIT_BRIDGING_DISABLED
+
 #endif	/* _SCDYNAMICSTOREKEY_H */

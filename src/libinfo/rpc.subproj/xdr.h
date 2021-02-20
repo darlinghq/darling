@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -396,7 +396,9 @@ extern bool_t	xdr_u_char(XDR *, unsigned char *);
 extern bool_t	xdr_vector(XDR *, char *, unsigned int, unsigned int, xdrproc_t);
 extern bool_t	xdr_float(XDR *, float *);
 extern bool_t	xdr_double(XDR *, double *);
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 extern bool_t	xdr_quadruple(XDR *, long double *);
+#endif
 extern bool_t	xdr_reference(XDR *, char **, unsigned int, xdrproc_t);
 extern bool_t	xdr_pointer(XDR *, char **, unsigned int, xdrproc_t);
 extern bool_t	xdr_wrapstring(XDR *, char **);
@@ -445,7 +447,9 @@ extern bool_t xdrrec_skiprecord(XDR *);
 
 /* true if no more input */
 extern bool_t xdrrec_eof(XDR *);
+#if (!defined(LIBINFO_INSTALL_API) || !LIBINFO_INSTALL_API)
 extern unsigned int xdrrec_readbytes(XDR *, caddr_t, unsigned int);
+#endif
 __END_DECLS
 
 #endif /* !_RPC_XDR_H */

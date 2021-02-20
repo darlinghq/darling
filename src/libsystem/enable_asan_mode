@@ -1,0 +1,133 @@
+#!/bin/bash -e
+
+if [ $# -ne 1 ]; then
+    echo "Usage:" 1>&2
+    echo "  sudo $0 enable       ... enables ASanification of system libraries on your system" 1>&2
+    echo "  sudo $0 disable      ... reverts the changes and restores the system back to normal" 1>&2
+    echo "  $0 status            ... prints current mode" 1>&2
+    exit 1
+fi
+
+LIBSYSTEM_B="/usr/lib/libSystem.B.dylib"
+LIBSYSTEM_B_BACKUP="${LIBSYSTEM_B}-asan-mode-backup"
+LIBSYSTEM_B_ASAN="/usr/lib/libSystem.B_asan.dylib"
+
+# If this file is present on the system and we are using a development build
+# then the usual memory resource limits won't be applied.
+# rdar://problem/43520116
+DISABLE_MEM_LIMIT_COOKIE_FILE="/usr/local/share/launchd-disable-memory-limits"
+DISABLE_MEM_LIMIT_COOKIE_CONTENTS="kEnableAsanDisableMemLimit"
+
+function is_mac_os() {
+  if [ $(sw_vers -productName | grep -c '^Mac OS') -ne 0 ]; then
+      # Mac OS.
+      return 0
+  else
+      # Something else.
+      return 1
+  fi
+}
+
+function show_have_asan_mode_on_msg() {
+    echo "Looks like your system already has ASan mode enabled, or you have a custom ${LIBSYSTEM_B} file. Not activating." 1>&2
+}
+
+if ! is_mac_os; then
+    # Check assumption that ${LIBSYSTEM_B} is in the dyld shared cache.
+    if [ "$(dyld_shared_cache_util -list | grep -c "^${LIBSYSTEM_B}$")" -eq 0 ]; then
+        echo "Error: Non macOS platform detected but ${LIBSYSTEM_B} is not in your dyld shared cache." 1>&2
+        exit 1
+    fi
+fi
+
+case "$1" in
+  enable)
+      if [[ $(id -u) != 0 ]]; then echo "Must be run as root." 1>&2; exit 1; fi
+
+      if is_mac_os; then
+          if [ -f ${LIBSYSTEM_B_BACKUP} ]; then
+              if [ "`md5 -q ${LIBSYSTEM_B_BACKUP}`" != "`md5 -q ${LIBSYSTEM_B}`" ]; then
+                  show_have_asan_mode_on_msg
+                  exit 1
+              fi
+          fi
+          ditto ${LIBSYSTEM_B} ${LIBSYSTEM_B_BACKUP}
+      else
+          # libSystem.B.dylib does not exist on non-macos platforms because it
+          # lives in the dyld cache so we don't have a back up file. Instead
+          # the presence of `libSystem.B.dylib` indicates that we are using ASan mode.
+          if [ -f ${LIBSYSTEM_B} ]; then
+              show_have_asan_mode_on_msg
+              exit 1
+          fi
+          # Disable memory limits because ASan adds memory overhead.
+          echo "${DISABLE_MEM_LIMIT_COOKIE_CONTENTS}" > "${DISABLE_MEM_LIMIT_COOKIE_FILE}"
+      fi
+
+      ditto ${LIBSYSTEM_B_ASAN} ${LIBSYSTEM_B}
+      echo "ASan mode activated. You probably want to reboot now." 1>&2
+      exit 0
+  ;;
+  disable)
+      if [[ $(id -u) != 0 ]]; then echo "Must be run as root." 1>&2; exit 1; fi
+      if is_mac_os; then
+          ditto ${LIBSYSTEM_B_BACKUP} ${LIBSYSTEM_B}
+      else
+          if [ ! -f "${LIBSYSTEM_B}" ]; then
+              echo "ASan mode cannot be disabled if it is not already enabled" 2>&1
+              exit 1
+          fi
+          if [ "`md5 -q ${LIBSYSTEM_B_ASAN}`" != "`md5 -q ${LIBSYSTEM_B}`" ]; then
+              echo "You appear to have a custom ${LIBSYSTEM_B} file. Not deactivating." 1>&2
+              exit 1
+          fi
+          # Safe to do because we've checked this is the ASan version and the normal versions
+          # lives in the dyld shared cache.
+          rm -f ${LIBSYSTEM_B}
+          if [ ! -f "${DISABLE_MEM_LIMIT_COOKIE_FILE}" ] ; then
+              echo "Warning: Can't find \"${DISABLE_MEM_LIMIT_COOKIE_FILE}\" so skipping delete" 2>&1
+          else
+              # Check the contents of the cookie file and only delete if it matches.
+              # If it doesn't match we don't delete because we assume the user wants
+              # to keep the cookie file around.
+              if [ "$(grep -c "^${DISABLE_MEM_LIMIT_COOKIE_CONTENTS}$" "${DISABLE_MEM_LIMIT_COOKIE_FILE}")" -eq 1 ]; then
+                  rm -f "${DISABLE_MEM_LIMIT_COOKIE_FILE}"
+              else
+                  echo "Warning: Not removing \"${DISABLE_MEM_LIMIT_COOKIE_FILE}\" because it has been modified" 2>&1
+              fi
+          fi
+      fi
+      echo "ASan mode deactivated. You probably want to reboot now." 1>&2
+      exit 0
+  ;;
+  status)
+      if is_mac_os; then
+          if [ ! -f ${LIBSYSTEM_B_BACKUP} ]; then
+              echo "ASan mode is disabled." 1>&2
+              exit 0
+          fi
+
+          if [ "`md5 -q ${LIBSYSTEM_B_BACKUP}`" == "`md5 -q ${LIBSYSTEM_B}`" ]; then
+              echo "ASan mode is disabled." 1>&2
+              exit 0
+          fi
+      else
+          if [ ! -f ${LIBSYSTEM_B} ]; then
+              echo "ASan mode is disabled." 1>&2
+              exit 0
+          fi
+      fi
+
+      if [ "`md5 -q ${LIBSYSTEM_B_ASAN}`" == "`md5 -q ${LIBSYSTEM_B}`" ]; then
+          echo "ASan mode is enabled." 1>&2
+          exit 0
+      fi
+
+      echo "Cannot tell whether ASan mode is enabled or not. You seem to have a custom ${LIBSYSTEM_B} file." 1>&2
+      exit 1
+  ;;
+  *)
+      echo "Invalid argument. Run '$0' for usage instructions." 1>&2
+      exit 1
+  ;;
+esac

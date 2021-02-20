@@ -29,7 +29,7 @@
 
 #include <TargetConditionals.h>
 #include <IOKit/IOReturn.h>
-#if !TARGET_OS_EMBEDDED
+#if !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
 #include <IOKit/usb/USB.h>
 #include <IOKit/firewire/IOFireWireLib.h>
 #endif
@@ -97,7 +97,7 @@ static const char * const err_codes_iokit_common[] = {
     "(iokit/common) data was not found",				// 0x2f0
 };
 
-#if !TARGET_OS_EMBEDDED
+#if !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
 static const struct error_sparse_map err_codes_iokit_usb_map[] = {
     err_code_map_entry(kIOUSBCRCErr, kIOUSBDataToggleErr),
     err_code_map_entry(kIOUSBPIDCheckErr, kIOUSBWrongPIDErr),
@@ -203,7 +203,7 @@ static const char * const err_codes_iokit_bluetooth[] = {
     "(iokit/bluetooth) no HCI controller",				// 003
     "(iokit/bluetooth) changing power states is unsupported",		// 004
 };
-#endif /* !TARGET_OS_EMBEDDED */
+#endif /* !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR) */
 
 static const struct error_sparse_map err_iokit_sub_map[] = {
     err_sub_map_entry(sub_iokit_common,          sub_iokit_pmu),
@@ -220,7 +220,7 @@ static const struct error_subsystem err_iokit_sub[] =
 	err_codes_iokit_common_map,
 	errlib_count(err_codes_iokit_common_map),
     },
-#if !TARGET_OS_EMBEDDED
+#if !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
     /*  1 */ {
 	"(iokit/usb)",				// 0xe0004000
 	errlib_count(err_codes_iokit_usb),
@@ -235,20 +235,20 @@ static const struct error_subsystem err_iokit_sub[] =
 	err_codes_iokit_fw_map,
 	errlib_count(err_codes_iokit_fw_map),
     },
-#endif /* !TARGET_OS_EMBEDDED */
+#endif /* !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR) */
     /*  3 */ err_iokit_null_sub,		// 0xe000c000
     /*  4 */ { "(iokit/blkstorage)", 0 },	// 0xe0010000
     /*  5 */ { "(iokit/graphics)",   0 },	// 0xe0014000
     /*  6 */ err_iokit_null_sub,		// 0xe0018000
     /*  7 */ err_iokit_null_sub,		// 0xe001c000
-#if !TARGET_OS_EMBEDDED
+#if !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
     /*  8 */ {
 	"(iokit/bluetooth)",			// 0xe0020000
 	errlib_count(err_codes_iokit_bluetooth),
 	err_codes_iokit_bluetooth,
 	NULL, 0,
     },
-#endif /* !TARGET_OS_EMBEDDED */
+#endif /* !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR) */
     /*  9 */ { "(iokit/pmu)",        0 },	// 0xe0024000
     /* -2 */ { "(iokit/vendor)",     0 },	// 0xe0028000
     /* -1 */ { "(iokit/reserved)",   0 },	// 0xe002c000

@@ -37,10 +37,34 @@
  */
 __attribute__((visibility("hidden")))
 int
-strcmp(const char *s1, const char *s2)
+_libkernel_strcmp(const char *s1, const char *s2)
 {
-	while (*s1 == *s2++)
-		if (*s1++ == '\0')
-			return (0);
-	return (*(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1));
+	while (*s1 == *s2++) {
+		if (*s1++ == '\0') {
+			return 0;
+		}
+	}
+	return *(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1);
 }
+
+#ifdef DARLING
+__attribute__((visibility("hidden")))
+int _darling_libkernel_strncmp(const char* str1, const char* str2, size_t max) {
+	while (max > 0) {
+		if (*str1 == '\0') {
+			if (*str2 == '\0')
+				return 0;
+			return -1;
+		}
+		if (*str2 == '\0')
+			return 1;
+		if (*str1 != *str2) {
+			return *str1 - *str2;
+		}
+		++str1;
+		++str2;
+		--max;
+	}
+	return 0;
+};
+#endif

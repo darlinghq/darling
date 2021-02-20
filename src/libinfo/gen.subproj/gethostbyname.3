@@ -230,6 +230,17 @@ function returns a string which is the message text corresponding to the
 value of the
 .Fa err
 argument.
+.Pp
+Historically, passing a host's own hostname to
+.Fn gethostbyname
+or
+.Fn gethostbyname2
+has been a popular
+technique for determining that host's IP address(es), but this is fragile,
+and doesn't work reliably in all cases. The appropriate way for software to
+discover the IP address(es) of the host it is running on is to use
+.Xr getifaddrs 3 .
+.Pp
 .Sh FILES
 .Bl -tag -width /etc/nsswitch.conf -compact
 .It Pa /etc/hosts

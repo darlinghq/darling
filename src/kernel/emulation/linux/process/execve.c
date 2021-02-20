@@ -15,6 +15,9 @@
 #include <mach/lkm.h>
 #include "../vchroot_expand.h"
 #include "../bsdthread/per_thread_wd.h"
+#include "../simple.h"
+
+extern bool isspace(char c);
 
 static inline bool istext(char c)
 {

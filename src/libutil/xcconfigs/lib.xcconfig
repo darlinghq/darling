@@ -1,0 +1,3 @@
+PUBLIC_HEADERS_FOLDER_PATH = /usr/include
+PRIVATE_HEADERS_FOLDER_PATH = /usr/local/include
+IS_ZIPPERED = YES

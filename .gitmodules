@@ -7,9 +7,6 @@
 [submodule "src/external/libcxxabi"]
 	path = src/external/libcxxabi
 	url = ../darling-libcxxabi.git
-[submodule "src/external/libkqueue"]
-	path = src/external/libkqueue
-	url = ../darling-libkqueue.git
 [submodule "src/external/zlib"]
 	path = src/external/zlib
 	url = ../darling-zlib.git
@@ -199,7 +196,6 @@
 [submodule "src/external/zsh"]
 	path = src/external/zsh
 	url = ../darling-zsh.git
-
 [submodule "src/external/mail_cmds"]
 	path = src/external/mail_cmds
 	url = ../darling-mail_cmds.git
@@ -320,11 +316,11 @@
 	path = src/external/libffi
 	url = ../darling-libffi.git
 [submodule "src/external/dbuskit"]
-        path = src/external/dbuskit
-        url = ../darling-dbuskit.git
+	path = src/external/dbuskit
+	url = ../darling-dbuskit.git
 [submodule "src/external/IOKitTools"]
-        path = src/external/IOKitTools
-        url = ../darling-IOKitTools.git
+	path = src/external/IOKitTools
+	url = ../darling-IOKitTools.git
 [submodule "src/external/fmdb"]
 	path = src/external/fmdb
 	url = ../fmdb.git
@@ -333,4 +329,40 @@
 	url = ../darling-swift.git
 [submodule "src/external/glut"]
 	path = src/external/glut
-	url = ../darling-glut
+	url = ../darling-glut.git
+[submodule "src/external/energytrace"]
+	path = src/external/energytrace
+	url = ../darling-energytrace.git
+[submodule "src/external/nghttp2"]
+	path = src/external/nghttp2
+	url = ../darling-nghttp2.git
+[submodule "src/external/libressl-2.2.9"]
+	path = src/external/libressl-2.2.9
+	url = ../darling-libressl.git
+[submodule "src/external/libressl-2.5.5"]
+	path = src/external/libressl-2.5.5
+	url = ../darling-libressl.git
+[submodule "src/external/libressl-2.6.5"]
+	path = src/external/libressl-2.6.5
+	url = ../darling-libressl.git
+[submodule "src/external/libressl-2.8.3"]
+	path = src/external/libressl-2.8.3
+	url = ../darling-libressl.git
+[submodule "src/external/OpenLDAP"]
+	path = src/external/OpenLDAP
+	url = ../darling-openldap.git
+[submodule "src/external/passwordserver_sasl"]
+	path = src/external/passwordserver_sasl
+	url = ../darling-passwordserver_sasl.git
+[submodule "src/external/MITKerberosShim"]
+	path = src/external/MITKerberosShim
+	url = ../darling-MITKerberosShim.git
+[submodule "src/external/mDNSResponder"]
+	path = src/external/mDNSResponder
+	url = ../darling-mDNSResponder.git
+[submodule "src/external/BerkeleyDB"]
+	path = src/external/BerkeleyDB
+	url = ../darling-BerkeleyDB.git
+[submodule "src/external/libnetwork"]
+	path = src/external/libnetwork
+	url = ../darling-libnetwork.git

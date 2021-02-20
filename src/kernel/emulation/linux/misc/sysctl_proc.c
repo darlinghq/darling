@@ -10,6 +10,7 @@
 #include "../simple.h"
 #include "sysctl_proc.h"
 #include <lkm/api.h>
+#include "../mach/lkm.h"
 
 #ifndef isdigit
 #	define isdigit(c) (c >= '0' && c <= '9')

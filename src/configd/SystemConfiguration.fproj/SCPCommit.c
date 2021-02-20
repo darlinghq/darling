@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2000-2008, 2010-2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2000-2008, 2010-2013, 2015-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -32,8 +32,6 @@
  */
 
 #include <TargetConditionals.h>
-#include <SystemConfiguration/SystemConfiguration.h>
-#include <SystemConfiguration/SCPrivate.h>
 #include "SCPreferencesInternal.h"
 #include "SCHelper_client.h"
 
@@ -61,10 +59,8 @@ __SCPreferencesCommitChanges_helper(SCPreferencesRef prefs)
 		if (!ok) {
 			status = kSCStatusFailed;
 			if (_sc_verbose) {
-				SCLog(TRUE, LOG_ERR,
-				      CFSTR("SCPreferencesCommitChanges(-->helper) CFPropertyListCreateData() failed"));
-				SCLog(TRUE, LOG_ERR,
-				      CFSTR("  prefs = %s"),
+				SC_log(LOG_NOTICE, "_SCSerialize() failed");
+				SC_log(LOG_NOTICE, "  prefs = %s",
 				      prefsPrivate->newPath ? prefsPrivate->newPath : prefsPrivate->path);
 			}
 			goto error;
@@ -158,7 +154,7 @@ SCPreferencesCommitChanges(SCPreferencesRef prefs)
 	wasLocked = prefsPrivate->locked;
 	if (!wasLocked) {
 		if (!SCPreferencesLock(prefs, TRUE)) {
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("SCPreferencesCommitChanges SCPreferencesLock() failed"));
+			SC_log(LOG_INFO, "SCPreferencesLock() failed");
 			return FALSE;
 		}
 	}
@@ -201,16 +197,18 @@ SCPreferencesCommitChanges(SCPreferencesRef prefs)
 		int		fd;
 		CFDataRef	newPrefs;
 		CFIndex		pathLen;
+		CFStringRef	protectionClass;
 		char *		thePath;
 
 		if (stat(prefsPrivate->path, &statBuf) == -1) {
 			if (errno == ENOENT) {
-				bzero(&statBuf, sizeof(statBuf));
+				memset(&statBuf, 0, sizeof(statBuf));
 				statBuf.st_mode = 0644;
 				statBuf.st_uid  = geteuid();
 				statBuf.st_gid  = getegid();
 			} else {
-				SCLog(_sc_verbose, LOG_ERR, CFSTR("SCPreferencesCommitChanges stat() failed: %s"), strerror(errno));
+				_SCErrorSet(errno);
+				SC_log(LOG_INFO, "stat() failed: %s", strerror(errno));
 				goto done;
 			}
 		}
@@ -220,10 +218,31 @@ SCPreferencesCommitChanges(SCPreferencesRef prefs)
 		thePath = CFAllocatorAllocate(NULL, pathLen, 0);
 		snprintf(thePath, pathLen, "%s-new", path);
 
-		fd = open(thePath, O_WRONLY|O_CREAT, statBuf.st_mode);
+		if ((prefsPrivate->options != NULL) &&
+		    CFDictionaryGetValueIfPresent(prefsPrivate->options,
+						  kSCPreferencesOptionProtectionClass,
+						  (const void **)&protectionClass)) {
+			int		pc;
+			const char	*str;
+
+			if (!isA_CFString(protectionClass) ||
+			    (CFStringGetLength(protectionClass) != 1) ||
+			    ((str = CFStringGetCStringPtr(protectionClass, kCFStringEncodingASCII)) == NULL) ||
+			    (str[0] < 'A') || (str[0] > 'F')
+			    ) {
+				_SCErrorSet(kSCStatusInvalidArgument);
+				goto done;
+			}
+
+			pc = str[0] - 'A' + 1;	// PROTECTION_CLASS_[ABCDEF]
+			fd = open_dprotected_np(thePath, O_WRONLY|O_CREAT, pc, 0, statBuf.st_mode);
+		} else {
+			fd = open(thePath, O_WRONLY|O_CREAT, statBuf.st_mode);
+		}
+
 		if (fd == -1) {
 			_SCErrorSet(errno);
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("SCPreferencesCommitChanges open() failed: %s"), strerror(errno));
+			SC_log(LOG_NOTICE, "open() failed: %s", strerror(errno));
 			CFAllocatorDeallocate(NULL, thePath);
 			goto done;
 		}
@@ -244,16 +263,16 @@ SCPreferencesCommitChanges(SCPreferencesRef prefs)
 						    NULL);
 		if (!newPrefs) {
 			_SCErrorSet(kSCStatusFailed);
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("SCPreferencesCommitChanges CFPropertyListCreateData() failed"));
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("  prefs = %s"), path);
+			SC_log(LOG_INFO, "CFPropertyListCreateData() failed");
+			SC_log(LOG_INFO, "  prefs = %s", path);
 			CFAllocatorDeallocate(NULL, thePath);
 			(void) close(fd);
 			goto done;
 		}
 		if (writen(fd, (const void *)CFDataGetBytePtr(newPrefs), CFDataGetLength(newPrefs)) == -1) {
 			_SCErrorSet(errno);
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("SCPreferencesCommitChanges write() failed: %s"), strerror(errno));
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("  path = %s"), thePath);
+			SC_log(LOG_INFO, "writen() failed: %s", strerror(errno));
+			SC_log(LOG_INFO, "  path = %s", thePath);
 			(void) unlink(thePath);
 			CFAllocatorDeallocate(NULL, thePath);
 			(void) close(fd);
@@ -264,8 +283,8 @@ SCPreferencesCommitChanges(SCPreferencesRef prefs)
 		/* new preferences have been written */
 		if (close(fd) == -1) {
 			_SCErrorSet(errno);
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("SCPreferencesCommitChanges close() failed: %s"), strerror(errno));
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("  path = %s"), thePath);
+			SC_log(LOG_INFO, "close() failed: %s", strerror(errno));
+			SC_log(LOG_INFO, "  path = %s", thePath);
 			(void) unlink(thePath);
 			CFAllocatorDeallocate(NULL, thePath);
 			CFRelease(newPrefs);
@@ -276,8 +295,8 @@ SCPreferencesCommitChanges(SCPreferencesRef prefs)
 		/* rename new->old */
 		if (rename(thePath, path) == -1) {
 			_SCErrorSet(errno);
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("SCPreferencesCommitChanges rename() failed: %s"), strerror(errno));
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("  path = %s --> %s"), thePath, path);
+			SC_log(LOG_INFO, "rename() failed: %s", strerror(errno));
+			SC_log(LOG_INFO, "  path = %s --> %s", thePath, path);
 			CFAllocatorDeallocate(NULL, thePath);
 			goto done;
 		}
@@ -295,8 +314,8 @@ SCPreferencesCommitChanges(SCPreferencesRef prefs)
 		/* grab the new signature */
 		if (stat(path, &statBuf) == -1) {
 			_SCErrorSet(errno);
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("SCPreferencesCommitChanges stat() failed: %s"), strerror(errno));
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("  path = %s"), thePath);
+			SC_log(LOG_INFO, "stat() failed: %s", strerror(errno));
+			SC_log(LOG_INFO, "  path = %s", thePath);
 			goto done;
 		}
 	} else {
@@ -304,7 +323,7 @@ SCPreferencesCommitChanges(SCPreferencesRef prefs)
 		unlink(path);
 
 		/* init the new signature */
-		bzero(&statBuf, sizeof(statBuf));
+		memset(&statBuf, 0, sizeof(statBuf));
 	}
 
 	/* update signature */
@@ -313,16 +332,16 @@ SCPreferencesCommitChanges(SCPreferencesRef prefs)
 
     committed :
 
+	SC_log(LOG_INFO, "SCPreferences() commit: %s, size=%lld",
+	       prefsPrivate->newPath ? prefsPrivate->newPath : prefsPrivate->path,
+	       __SCPreferencesPrefsSize(prefs));
+
 	/* post notification */
-	if (prefsPrivate->session == NULL) {
-		ok = TRUE;
-	} else {
-		ok = SCDynamicStoreNotifyValue(prefsPrivate->session, prefsPrivate->sessionKeyCommit);
-		if (!ok) {
-			SCLog(_sc_verbose, LOG_ERR, CFSTR("SCPreferencesCommitChanges SCDynamicStoreNotifyValue() failed"));
-			_SCErrorSet(kSCStatusFailed);
-			goto done;
-		}
+	ok = SCDynamicStoreNotifyValue(NULL, prefsPrivate->sessionKeyCommit);
+	if (!ok) {
+		SC_log(LOG_INFO, "SCDynamicStoreNotifyValue() failed");
+		_SCErrorSet(kSCStatusFailed);
+		goto done;
 	}
 
 	prefsPrivate->changed = FALSE;

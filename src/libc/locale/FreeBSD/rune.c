@@ -34,6 +34,9 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+
 #ifndef RUNEOFF32
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)rune.c	8.1 (Berkeley) 6/4/93";
@@ -363,3 +366,4 @@ _Read_RuneMagi(fp)
 	return (data);
 }
 #endif /* !RUNEOFF32 */
+#pragma clang diagnostic pop

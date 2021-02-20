@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2015 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -101,6 +101,7 @@ callrpc(host, prognum, versnum, procnum, inproc, in, outproc, out)
 	}
 	if (crp->oldhost == NULL) {
 		crp->oldhost = malloc(256);
+		if (crp->oldhost == NULL) return -1;
 		crp->oldhost[0] = 0;
 		crp->socket = RPC_ANYSOCK;
 	}

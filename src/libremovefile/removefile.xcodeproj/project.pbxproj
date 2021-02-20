@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		FCCE179913592780002CEE6D /* checkint.h in Headers */ = {isa = PBXBuildFile; fileRef = FCCE179013592780002CEE6D /* checkint.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		FCCE179A13592780002CEE6D /* removefile_priv.h in Headers */ = {isa = PBXBuildFile; fileRef = FCCE179113592780002CEE6D /* removefile_priv.h */; settings = {ATTRIBUTES = (); }; };
+		FCCE179A13592780002CEE6D /* removefile_priv.h in Headers */ = {isa = PBXBuildFile; fileRef = FCCE179113592780002CEE6D /* removefile_priv.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FCCE179B13592780002CEE6D /* removefile_random.c in Sources */ = {isa = PBXBuildFile; fileRef = FCCE179213592780002CEE6D /* removefile_random.c */; };
 		FCCE179C13592780002CEE6D /* removefile_rename_unlink.c in Sources */ = {isa = PBXBuildFile; fileRef = FCCE179313592780002CEE6D /* removefile_rename_unlink.c */; };
 		FCCE179D13592780002CEE6D /* removefile_sunlink.c in Sources */ = {isa = PBXBuildFile; fileRef = FCCE179413592780002CEE6D /* removefile_sunlink.c */; };
@@ -203,6 +203,8 @@
 		FCCE1781135924CD002CEE6D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				SUPPORTS_TEXT_BASED_API = YES;
+				TAPI_VERIFY_MODE = Pedantic;
 			};
 			name = Release;
 		};
@@ -215,27 +217,20 @@
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = "__DARWIN_NON_CANCELABLE=1";
 				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				IS_ZIPPERED = YES;
 				LINK_WITH_STANDARD_LIBRARIES = NO;
 				OTHER_LDFLAGS = (
 					"-Wl,-umbrella,System",
 					"-L/usr/lib/system",
 					"-ldyld",
 					"-lcompiler_rt",
-					"-lsystem_kernel",
-					"-lsystem_platform",
+					"-lsystem$(SIM_SUFFIX)_kernel",
+					"-lsystem$(SIM_SUFFIX)_platform",
 					"-lsystem_malloc",
 					"-lsystem_c",
 				);
-				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = (
-					"-Wl,-umbrella,System",
-					"-L/usr/lib/system",
-					"-ldyld",
-					"-lcompiler_rt",
-					"-lsystem_sim_kernel",
-					"-lsystem_sim_platform",
-					"-lsystem_malloc",
-					"-lsystem_sim_c",
-				);
+				"SIM_SUFFIX[sdk=iphonesimulator*]" = _sim;
+				VERSION_INFO_PREFIX = "__attribute__((visibility(\"hidden\")))";
 				WARNING_CFLAGS = "-Wall";
 			};
 			name = Release;

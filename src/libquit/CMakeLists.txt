@@ -4,6 +4,8 @@ set(DYLIB_INSTALL_NAME "/usr/lib/libquit.dylib")
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 add_darling_library(quit SHARED
     src/quit.c
 )

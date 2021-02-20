@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2013 Apple Inc.  All rights reserved.
+ * Copyright (c) 2008-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,6 +21,8 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include "libinfo_common.h"
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -41,11 +43,14 @@
 #include "netdb_async.h"
 #include <dispatch/dispatch.h>
 #include <mach-o/dyld_priv.h>
+#include <sys/stat.h>
 
 #define SOCK_UNSPEC 0
 #define IPPROTO_UNSPEC 0
 #define IPV6_ADDR_LEN 16
 #define IPV4_ADDR_LEN 4
+
+#define SYSTEM_UID_LIMIT 500
 
 /* kernel syscalls */
 extern int __initgroups(u_int gidsetsize, gid_t *gidset, int gmuid);
@@ -76,6 +81,17 @@ typedef struct
 } si_context_t;
 
 si_mod_t *
+si_search_file(void)
+{
+	static si_mod_t *search = NULL;
+
+	if (search == NULL) search = si_module_with_name("file");
+
+	return search;
+}
+
+LIBINFO_EXPORT
+si_mod_t *
 si_search(void)
 {
 	static si_mod_t *search = NULL;
@@ -85,6 +101,7 @@ si_search(void)
 	return search;
 }
 
+LIBINFO_EXPORT
 void
 si_search_module_set_flags(const char *name, uint32_t flag)
 {
@@ -183,6 +200,7 @@ si_libinfo_general_callback(si_item_t *item, uint32_t status, void *ctx)
 
 /* USER */
 
+LIBINFO_EXPORT
 struct passwd *
 getpwnam(const char *name)
 {
@@ -191,8 +209,7 @@ getpwnam(const char *name)
 #ifdef CALL_TRACE
 	fprintf(stderr, "-> %s %s\n", __func__, name);
 #endif
-
-	item = si_user_byname(si_search(), name);
+    item = si_user_byname(si_search(), name);
 	LI_set_thread_item(CATEGORY_USER + 100, item);
 
 	if (item == NULL) return NULL;
@@ -229,16 +246,24 @@ getpwnam_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct passwd *
 getpwuid(uid_t uid)
 {
-	si_item_t *item;
-
+	si_item_t *item = NULL;
+    
 #ifdef CALL_TRACE
 	fprintf(stderr, "-> %s %d\n", __func__, uid);
 #endif
 
-	item = si_user_byuid(si_search(), uid);
+	// Search the file module first for all system uids
+	// (ie, uid value < 500) since they should all be
+	// in the /etc/*passwd file.
+	if (uid < SYSTEM_UID_LIMIT)
+		item = si_user_byuid(si_search_file(), uid);
+
+	if (item == NULL)
+		item = si_user_byuid(si_search(), uid);
 	LI_set_thread_item(CATEGORY_USER + 200, item);
 
 	if (item == NULL) return NULL;
@@ -262,6 +287,19 @@ getpwuid_async_call(uid_t uid, si_user_async_callback callback, void *context)
 	sictx->cat = CATEGORY_USER;
 	sictx->key_offset = 200;
 
+	// Search the file module first for all system uids
+	// (ie, uid value < 500) since they should all be
+	// in the /etc/*passwd file.
+	if (uid < SYSTEM_UID_LIMIT)
+	{
+		si_item_t *item = si_user_byuid(si_search_file(), uid);
+		if (item)
+		{
+			si_item_release(item);
+			return si_async_call(si_search_file(), SI_CALL_USER_BYUID, NULL, NULL, NULL, (uint32_t)uid, 0, 0, 0, (void *)si_libinfo_general_callback, sictx);
+		}
+	}
+
 	return si_async_call(si_search(), SI_CALL_USER_BYUID, NULL, NULL, NULL, (uint32_t)uid, 0, 0, 0, (void *)si_libinfo_general_callback, sictx);
 }
 
@@ -275,6 +313,7 @@ getpwuid_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct passwd *
 getpwuuid(uuid_t uuid)
 {
@@ -293,6 +332,7 @@ getpwuuid(uuid_t uuid)
 	return (struct passwd *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 setpwent(void)
 {
@@ -303,6 +343,7 @@ setpwent(void)
 	LI_set_thread_list(CATEGORY_USER, NULL);
 }
 
+LIBINFO_EXPORT
 struct passwd *
 getpwent(void)
 {
@@ -326,6 +367,7 @@ getpwent(void)
 	return (struct passwd *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 endpwent(void)
 {
@@ -336,6 +378,7 @@ endpwent(void)
 	LI_set_thread_list(CATEGORY_USER, NULL);
 }
 
+LIBINFO_EXPORT
 int
 setpassent(int ignored)
 {
@@ -354,6 +397,7 @@ setpassent(int ignored)
 
 /* GROUP */
 
+LIBINFO_EXPORT
 struct group *
 getgrnam(const char *name)
 {
@@ -400,6 +444,7 @@ getgrnam_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct group *
 getgrgid(gid_t gid)
 {
@@ -446,6 +491,7 @@ getgruid_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct group *
 getgruuid(uuid_t uuid)
 {
@@ -464,6 +510,7 @@ getgruuid(uuid_t uuid)
 	return (struct group *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 setgrent(void)
 {
@@ -474,6 +521,7 @@ setgrent(void)
 	LI_set_thread_list(CATEGORY_GROUP, NULL);
 }
 
+LIBINFO_EXPORT
 struct group *
 getgrent(void)
 {
@@ -497,6 +545,7 @@ getgrent(void)
 	return (struct group *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 endgrent(void)
 {
@@ -507,6 +556,7 @@ endgrent(void)
 	LI_set_thread_list(CATEGORY_GROUP, NULL);
 }
 
+LIBINFO_EXPORT
 int
 setgroupent(int ignored)
 {
@@ -524,6 +574,7 @@ setgroupent(int ignored)
 }
 
 /* NETGROUP */
+LIBINFO_EXPORT
 int 
 innetgr(const char *group, const char *host, const char *user, const char *domain)
 {
@@ -547,6 +598,7 @@ innetgr(const char *group, const char *host, const char *user, const char *domai
  * setnetgrent is really more like a getXXXbyname routine than a
  * setXXXent routine, since we are looking up a netgroup by name.
  */
+LIBINFO_EXPORT
 void
 setnetgrent(const char *name)
 {
@@ -562,6 +614,7 @@ setnetgrent(const char *name)
 
 /* N.B. there is no async getnetgrent */
 
+LIBINFO_EXPORT
 int
 getnetgrent(char **host, char **user, char **domain)
 {
@@ -586,6 +639,7 @@ getnetgrent(char **host, char **user, char **domain)
 	return 1;
 }
 
+LIBINFO_EXPORT
 void
 endnetgrent(void)
 {
@@ -610,6 +664,8 @@ _check_groups(const char *function, int32_t ngroups)
 	dispatch_once(&once, ^(void) {
 		const char *proc_name = getprogname();
 		if (strcmp(proc_name, "id") != 0 && strcmp(proc_name, "smbd") != 0 && strcmp(proc_name, "rpcsvchost") != 0) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 			aslmsg msg = asl_new(ASL_TYPE_MSG);
 			char buffer[256];
 
@@ -624,6 +680,7 @@ _check_groups(const char *function, int32_t ngroups)
 
 			asl_free(msg);
 		}
+#pragma clang diagnostic pop
 	});
 }
 #endif
@@ -658,7 +715,7 @@ getgrouplist_internal(const char *name, int basegid, gid_t *groups, uint32_t *ng
 	groups[0] = basegid;
 	*ngroups = 1;
 
-	item = si_grouplist(si_search(), name, max);
+	item = si_grouplist(si_search(), name, max+1);
 	LI_set_thread_item(CATEGORY_GROUPLIST, item);
 	if (item == NULL) return 0;
 
@@ -687,6 +744,7 @@ getgrouplist_internal(const char *name, int basegid, gid_t *groups, uint32_t *ng
 	return 0;
 }
 
+LIBINFO_EXPORT
 int
 getgrouplist(const char *name, int basegid, int *groups, int *ngroups)
 {
@@ -731,6 +789,7 @@ _getgrouplist_2_internal(const char *name, gid_t basegid, gid_t **groups)
 	 * we add one to the count that was found in case the basegid is not there
 	 */
 	gids = calloc(gl->gl_count + 1, sizeof(gid_t));
+	if (gids == NULL) return -1;
 
 	count = 0;
 	merge_gid(gids, basegid, &count);
@@ -745,6 +804,7 @@ _getgrouplist_2_internal(const char *name, gid_t basegid, gid_t **groups)
 	return count;
 }
 
+LIBINFO_EXPORT
 int32_t
 getgrouplist_2(const char *name, gid_t basegid, gid_t **groups)
 {
@@ -768,6 +828,7 @@ getgrouplist_2(const char *name, gid_t basegid, gid_t **groups)
 	return _getgrouplist_2_internal(name, basegid, groups);
 }
 
+LIBINFO_EXPORT
 int32_t
 getgroupcount(const char *name, gid_t basegid)
 {
@@ -791,6 +852,7 @@ getgroupcount(const char *name, gid_t basegid)
 
 /* XXX to do: async getgrouplist_2 */
 
+LIBINFO_EXPORT
 int
 initgroups(const char *name, int basegid)
 {
@@ -839,6 +901,7 @@ initgroups(const char *name, int basegid)
 
 /* ALIAS */
 
+LIBINFO_EXPORT
 struct aliasent *
 alias_getbyname(const char *name)
 {
@@ -885,6 +948,7 @@ alias_getbyname_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 void
 alias_setent(void)
 {
@@ -895,6 +959,7 @@ alias_setent(void)
 	LI_set_thread_list(CATEGORY_ALIAS, NULL);
 }
 
+LIBINFO_EXPORT
 struct aliasent *
 alias_getent(void)
 {
@@ -918,6 +983,7 @@ alias_getent(void)
 	return (struct aliasent *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 alias_endent(void)
 {
@@ -930,6 +996,7 @@ alias_endent(void)
 
 /* HOST */
 
+LIBINFO_EXPORT
 void
 freehostent(struct hostent *h)
 {
@@ -966,6 +1033,7 @@ gethostbynameerrno(const char *name, int *err)
 	return (struct hostent *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 struct hostent *
 gethostbyname(const char *name)
 {
@@ -1013,12 +1081,14 @@ gethostbyname_async_call(const char *name, si_host_async_callback callback, void
 	return si_async_call(si_search(), SI_CALL_HOST_BYNAME, name, NULL, NULL, AF_INET, 0, 0, 0, (void *)si_libinfo_general_callback, sictx);
 }
 
+LIBINFO_EXPORT
 mach_port_t
 gethostbyname_async_start(const char *name, si_host_async_callback callback, void *context)
 {
 	return gethostbyname_async_call(name, callback, context);
 }
 
+LIBINFO_EXPORT
 void
 gethostbyname_async_cancel(mach_port_t p)
 {
@@ -1044,6 +1114,7 @@ gethostbyname_async_handle_reply(void *param)
 }
 #endif
 
+LIBINFO_EXPORT
 void
 gethostbyname_async_handleReply(void *param)
 {
@@ -1057,6 +1128,7 @@ gethostbyname_async_handleReply(void *param)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct hostent *
 gethostbyname2(const char *name, int af)
 {
@@ -1133,6 +1205,7 @@ gethostbyname2_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct hostent *
 gethostbyaddr(const void *addr, socklen_t len, int type)
 {
@@ -1178,6 +1251,7 @@ gethostbyaddr_async_call(const void *addr, socklen_t len, int type, si_host_asyn
 	return si_async_call(si_search(), SI_CALL_HOST_BYADDR, addr, NULL, NULL, (uint32_t)type, 0, addrlen, 0, (void *)si_libinfo_general_callback, sictx);
 }
 
+LIBINFO_EXPORT
 mach_port_t
 gethostbyaddr_async_start(const char *addr, int len, int family, si_host_async_callback callback, void *context)
 {
@@ -1186,6 +1260,7 @@ gethostbyaddr_async_start(const char *addr, int len, int family, si_host_async_c
 	return gethostbyaddr_async_call(addr, slen, family, callback, context);
 }
 
+LIBINFO_EXPORT
 void
 gethostbyaddr_async_cancel(mach_port_t p)
 {
@@ -1212,6 +1287,7 @@ gethostbyaddr_async_handle_reply(void *param)
 }
 #endif
 
+LIBINFO_EXPORT
 void
 gethostbyaddr_async_handleReply(void *param)
 {
@@ -1225,6 +1301,7 @@ gethostbyaddr_async_handleReply(void *param)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct hostent *
 getipnodebyname(const char *name, int family, int flags, int *err)
 {
@@ -1357,6 +1434,7 @@ is_a4_compat(const char *s)
 	return 1;
 }
 
+LIBINFO_EXPORT
 struct hostent *
 getipnodebyaddr(const void *src, size_t len, int family, int *err)
 {
@@ -1480,6 +1558,7 @@ getipnodebyaddr_async_handleReply(mach_msg_header_t *msg)
 }
 #endif
 
+LIBINFO_EXPORT
 void
 sethostent(int ignored)
 {
@@ -1490,6 +1569,7 @@ sethostent(int ignored)
 	LI_set_thread_list(CATEGORY_HOST, NULL);
 }
 
+LIBINFO_EXPORT
 struct hostent *
 gethostent(void)
 {
@@ -1513,6 +1593,7 @@ gethostent(void)
 	return (struct hostent *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 endhostent(void)
 {
@@ -1525,6 +1606,7 @@ endhostent(void)
 
 /* MAC ADDRESS */
 
+LIBINFO_EXPORT
 int
 ether_hostton(const char *name, struct ether_addr *e)
 {
@@ -1555,6 +1637,7 @@ ether_hostton(const char *name, struct ether_addr *e)
 
 /* XXX to do? async ether_hostton */
 
+LIBINFO_EXPORT
 int
 ether_ntohost(char *name, const struct ether_addr *e)
 {
@@ -1587,6 +1670,7 @@ ether_ntohost(char *name, const struct ether_addr *e)
 
 /* NETWORK */
 
+LIBINFO_EXPORT
 struct netent *
 getnetbyname(const char *name)
 {
@@ -1633,6 +1717,7 @@ getnetbyname_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct netent *
 getnetbyaddr(uint32_t net, int type)
 {
@@ -1683,6 +1768,7 @@ getnetbyaddr_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 void
 setnetent(int ignored)
 {
@@ -1693,6 +1779,7 @@ setnetent(int ignored)
 	LI_set_thread_list(CATEGORY_NETWORK, NULL);
 }
 
+LIBINFO_EXPORT
 struct netent *
 getnetent(void)
 {
@@ -1716,6 +1803,7 @@ getnetent(void)
 	return (struct netent *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 endnetent(void)
 {
@@ -1728,6 +1816,7 @@ endnetent(void)
 
 /* SERVICE */
 
+LIBINFO_EXPORT
 struct servent *
 getservbyname(const char *name, const char *proto)
 {
@@ -1774,6 +1863,7 @@ getservbyname_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct servent *
 getservbyport(int port, const char *proto)
 {
@@ -1820,6 +1910,7 @@ getservbyport_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 void
 setservent(int ignored)
 {
@@ -1830,6 +1921,7 @@ setservent(int ignored)
 	LI_set_thread_list(CATEGORY_SERVICE, NULL);
 }
 
+LIBINFO_EXPORT
 struct servent *
 getservent(void)
 {
@@ -1853,6 +1945,7 @@ getservent(void)
 	return (struct servent *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 endservent(void)
 {
@@ -1865,6 +1958,7 @@ endservent(void)
 
 /* PROTOCOL */
 
+LIBINFO_EXPORT
 struct protoent *
 getprotobyname(const char *name)
 {
@@ -1911,6 +2005,7 @@ getprotobyname_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct protoent *
 getprotobynumber(int number)
 {
@@ -1957,6 +2052,7 @@ getprotobynumber_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 void
 setprotoent(int ignored)
 {
@@ -1967,6 +2063,7 @@ setprotoent(int ignored)
 	LI_set_thread_list(CATEGORY_PROTOCOL, NULL);
 }
 
+LIBINFO_EXPORT
 struct protoent *
 getprotoent(void)
 {
@@ -1990,6 +2087,7 @@ getprotoent(void)
 	return (struct protoent *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 endprotoent(void)
 {
@@ -2002,6 +2100,7 @@ endprotoent(void)
 
 /* RPC */
 
+LIBINFO_EXPORT
 struct rpcent *
 getrpcbyname(const char *name)
 {
@@ -2048,6 +2147,7 @@ getrpcbyname_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct rpcent *
 getrpcbynumber
 (
@@ -2101,6 +2201,7 @@ getrpcbynumber_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 void
 setrpcent(int ignored)
 {
@@ -2111,6 +2212,7 @@ setrpcent(int ignored)
 	LI_set_thread_list(CATEGORY_RPC, NULL);
 }
 
+LIBINFO_EXPORT
 struct rpcent *
 getrpcent(void)
 {
@@ -2134,6 +2236,7 @@ getrpcent(void)
 	return (struct rpcent *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 endrpcent(void)
 {
@@ -2146,6 +2249,7 @@ endrpcent(void)
 
 /* FS */
 
+LIBINFO_EXPORT
 struct fstab *
 getfsspec(const char *spec)
 {
@@ -2202,6 +2306,7 @@ getfsspec_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 struct fstab *
 getfsfile(const char *file)
 {
@@ -2248,6 +2353,7 @@ getfsfile_async_handle_reply(mach_msg_header_t *msg)
 	si_async_handle_reply(msg);
 }
 
+LIBINFO_EXPORT
 int
 setfsent(void)
 {
@@ -2259,6 +2365,7 @@ setfsent(void)
 	return 1;
 }
 
+LIBINFO_EXPORT
 struct fstab *
 getfsent(void)
 {
@@ -2282,6 +2389,7 @@ getfsent(void)
 	return (struct fstab *)((uintptr_t)item + sizeof(si_item_t));
 }
 
+LIBINFO_EXPORT
 void
 endfsent(void)
 {
@@ -2318,6 +2426,8 @@ _getaddrinfo_internal(const char *nodename, const char *servname, const struct a
 		flags = hints->ai_flags;
 	}
 
+	if (flags == 0) flags = AI_DEFAULT;
+
 #ifdef CALL_TRACE
 	fprintf(stderr, "-> %s %s %s %u %u %u 0x%08x %s\n", __func__, nodename, servname, family, socktype, protocol, flags, (interface == NULL) ? "" : interface);
 #endif
@@ -2351,6 +2461,7 @@ _getaddrinfo_internal(const char *nodename, const char *servname, const struct a
 	return status;
 }
 
+LIBINFO_EXPORT
 int
 getaddrinfo(const char *nodename, const char *servname, const struct addrinfo *hints, struct addrinfo **res)
 {
@@ -2576,6 +2687,7 @@ si_libinfo_addrinfo_callback(si_list_t *list, uint32_t status, void *ctx)
 }
 
 /* SPI */
+LIBINFO_EXPORT
 mach_port_t
 _getaddrinfo_interface_async_call(const char *nodename, const char *servname, const struct addrinfo *hints, const char *interface, si_addrinfo_async_callback callback, void *context)
 {
@@ -2594,6 +2706,8 @@ _getaddrinfo_interface_async_call(const char *nodename, const char *servname, co
 		protocol = hints->ai_protocol;
 		flags = hints->ai_flags;
 	}
+
+	if (flags == 0) flags = AI_DEFAULT;
 
 #ifdef CALL_TRACE
 	fprintf(stderr, ">> %s %s %s %u %u %u 0x%08x\n", __func__, nodename, servname, family, socktype, protocol, flags);
@@ -2616,6 +2730,7 @@ getaddrinfo_async_call(const char *nodename, const char *servname, const struct 
 	return _getaddrinfo_interface_async_call(nodename, servname, hints, NULL, callback, context);
 }
 
+LIBINFO_EXPORT
 int32_t
 getaddrinfo_async_start(mach_port_t *p, const char *nodename, const char *servname, const struct addrinfo *hints, si_addrinfo_async_callback callback, void *context)
 {
@@ -2627,12 +2742,14 @@ getaddrinfo_async_start(mach_port_t *p, const char *nodename, const char *servna
 	return 0;
 }
 
+LIBINFO_EXPORT
 int32_t
 getaddrinfo_async_send(mach_port_t *p, const char *nodename, const char *servname, const struct addrinfo *hints)
 {
 	return getaddrinfo_async_start(p, nodename, servname, hints, NULL, NULL);
 }
 
+LIBINFO_EXPORT
 int32_t
 getaddrinfo_async_receive(mach_port_t p, struct addrinfo **res)
 {
@@ -2640,6 +2757,7 @@ getaddrinfo_async_receive(mach_port_t p, struct addrinfo **res)
 	return EAI_SYSTEM;
 }
 
+LIBINFO_EXPORT
 void
 getaddrinfo_async_cancel(mach_port_t p)
 {
@@ -2650,6 +2768,7 @@ getaddrinfo_async_cancel(mach_port_t p)
 	si_async_cancel(p);
 }
 
+LIBINFO_EXPORT
 int32_t
 getaddrinfo_async_handle_reply(void *param)
 {
@@ -2737,6 +2856,7 @@ _getnameinfo_interface_internal(const struct sockaddr *sa, socklen_t salen, char
 	return 0;
 }
 
+LIBINFO_EXPORT
 int
 getnameinfo(const struct sockaddr *sa, socklen_t salen, char *node, socklen_t nodelen, char *service, socklen_t servicelen, int flags)
 {
@@ -2792,6 +2912,7 @@ si_libinfo_nameinfo_callback(si_item_t *item, uint32_t status, void *ctx)
 }
 
 /* SPI */
+LIBINFO_EXPORT
 mach_port_t
 _getnameinfo_interface_async_call(const struct sockaddr *sa, size_t len, int flags, const char *interface, si_nameinfo_async_callback callback, void *context)
 {
@@ -2821,6 +2942,7 @@ getnameinfo_async_call(const struct sockaddr *sa, size_t len, int flags, si_name
 	return _getnameinfo_interface_async_call(sa, len, flags, NULL, callback, context);
 }
 
+LIBINFO_EXPORT
 int32_t
 getnameinfo_async_start(mach_port_t *p, const struct sockaddr *sa, size_t salen, int flags, si_nameinfo_async_callback callback, void *context)
 {
@@ -2831,12 +2953,14 @@ getnameinfo_async_start(mach_port_t *p, const struct sockaddr *sa, size_t salen,
 	return 0;
 }
 
+LIBINFO_EXPORT
 int32_t
 getnameinfo_async_send(mach_port_t *p, const struct sockaddr *sa, size_t salen, int flags)
 {
 	return getnameinfo_async_start(p, sa, salen, flags, NULL, NULL);
 }
 
+LIBINFO_EXPORT
 void
 getnameinfo_async_cancel(mach_port_t p)
 {
@@ -2847,6 +2971,7 @@ getnameinfo_async_cancel(mach_port_t p)
 	si_async_cancel(p);
 }
 
+LIBINFO_EXPORT
 int32_t
 getnameinfo_async_handle_reply(void *param)
 {
@@ -3035,6 +3160,7 @@ copy_group_r(struct group *in, struct group *out, char *buffer, int buflen)
 	return 0;
 }
 
+LIBINFO_EXPORT
 int
 getgrnam_r(const char *name, struct group *grp, char *buffer, size_t bufsize, struct group **result)
 {
@@ -3064,6 +3190,7 @@ getgrnam_r(const char *name, struct group *grp, char *buffer, size_t bufsize, st
 	return 0;
 }
 
+LIBINFO_EXPORT
 int
 getgrgid_r(gid_t gid, struct group *grp, char *buffer, size_t bufsize, struct group **result)
 {
@@ -3093,6 +3220,7 @@ getgrgid_r(gid_t gid, struct group *grp, char *buffer, size_t bufsize, struct gr
 	return 0;
 }
 
+LIBINFO_EXPORT
 int
 getgruuid_r(uuid_t uuid, struct group *grp, char *buffer, size_t bufsize, struct group **result)
 {
@@ -3124,6 +3252,7 @@ getgruuid_r(uuid_t uuid, struct group *grp, char *buffer, size_t bufsize, struct
 	return 0;
 }
 
+LIBINFO_EXPORT
 int
 getpwnam_r(const char *name, struct passwd *pw, char *buffer, size_t bufsize, struct passwd **result)
 {
@@ -3138,7 +3267,7 @@ getpwnam_r(const char *name, struct passwd *pw, char *buffer, size_t bufsize, st
 	if (result != NULL) *result = NULL;
 
 	if ((pw == NULL) || (buffer == NULL) || (result == NULL) || (bufsize == 0)) return ERANGE;
-
+    
 	item = si_user_byname(si_search(), name);
 	if (item == NULL) return 0;
 
@@ -3153,10 +3282,11 @@ getpwnam_r(const char *name, struct passwd *pw, char *buffer, size_t bufsize, st
 	return 0;
 }
 
+LIBINFO_EXPORT
 int
 getpwuid_r(uid_t uid, struct passwd *pw, char *buffer, size_t bufsize, struct passwd **result)
 {
-	si_item_t *item;
+	si_item_t *item = NULL;
 	struct passwd *p;
 	int status;
 
@@ -3167,8 +3297,15 @@ getpwuid_r(uid_t uid, struct passwd *pw, char *buffer, size_t bufsize, struct pa
 	if (result != NULL) *result = NULL;
 
 	if ((pw == NULL) || (buffer == NULL) || (result == NULL) || (bufsize == 0)) return ERANGE;
+    
+	// Search the file module first for all system uids
+	// (ie, uid value < 500) since they should all be
+	// in the /etc/*passwd file.
+	if (uid < SYSTEM_UID_LIMIT)
+		item = si_user_byuid(si_search_file(), uid);
 
-	item = si_user_byuid(si_search(), uid);
+	if (item == NULL)
+		item = si_user_byuid(si_search(), uid);
 	if (item == NULL) return 0;
 
 	p = (struct passwd *)((uintptr_t)item + sizeof(si_item_t));
@@ -3182,6 +3319,7 @@ getpwuid_r(uid_t uid, struct passwd *pw, char *buffer, size_t bufsize, struct pa
 	return 0;
 }
 
+LIBINFO_EXPORT
 int
 getpwuuid_r(uuid_t uuid, struct passwd *pw, char *buffer, size_t bufsize, struct passwd **result)
 {
@@ -3215,6 +3353,7 @@ getpwuuid_r(uuid_t uuid, struct passwd *pw, char *buffer, size_t bufsize, struct
 
 /* misc */
 
+LIBINFO_EXPORT
 char *
 user_from_uid(uid_t uid, int nouser)
 {
@@ -3230,6 +3369,7 @@ user_from_uid(uid_t uid, int nouser)
 	return buf;
 }
 
+LIBINFO_EXPORT
 char *
 group_from_gid(gid_t gid, int nogroup)
 {
@@ -3247,6 +3387,7 @@ group_from_gid(gid_t gid, int nogroup)
 
 /* no longer supported */
 
+LIBINFO_EXPORT
 const prdb_ent *
 prdb_getbyname(const char *name)
 {
@@ -3256,6 +3397,7 @@ prdb_getbyname(const char *name)
 	return NULL;
 }
 
+LIBINFO_EXPORT
 const prdb_ent *
 prdb_get(void)
 {
@@ -3265,6 +3407,7 @@ prdb_get(void)
 	return NULL;
 }
 
+LIBINFO_EXPORT
 void
 prdb_set(const char *name)
 {
@@ -3273,6 +3416,7 @@ prdb_set(const char *name)
 #endif
 }
 
+LIBINFO_EXPORT
 void
 prdb_end(void)
 {
@@ -3281,6 +3425,7 @@ prdb_end(void)
 #endif
 }
 
+LIBINFO_EXPORT
 struct bootparamsent *
 bootparams_getbyname(const char *name)
 {
@@ -3290,6 +3435,7 @@ bootparams_getbyname(const char *name)
 	return NULL;
 }
 
+LIBINFO_EXPORT
 struct bootparamsent *
 bootparams_getent(void)
 {
@@ -3299,6 +3445,7 @@ bootparams_getent(void)
 	return NULL;
 }
 
+LIBINFO_EXPORT
 void
 bootparams_setent(void)
 {
@@ -3307,6 +3454,7 @@ bootparams_setent(void)
 #endif
 }
 
+LIBINFO_EXPORT
 void
 bootparams_endent(void)
 {

@@ -60,20 +60,20 @@
 #ifndef _SPINLOCK_H_
 #define _SPINLOCK_H_
 #ifdef __APPLE__
-#include <pthread_spinlock.h>
+#include <os/lock.h>
 
-typedef pthread_lock_t spinlock_t;
+typedef os_unfair_lock spinlock_t;
 
-#define	_SPINLOCK_INITIALIZER	LOCK_INITIALIZER
+#define	_SPINLOCK_INITIALIZER	OS_UNFAIR_LOCK_INIT
 
 #define	_SPINLOCK(_lck)							\
     do {								\
-	_DO_SPINLOCK_LOCK(_lck);					\
+	os_unfair_lock_lock(_lck);					\
     } while (0)
 
 #define _SPINUNLOCK(_lck)						\
     do {								\
-	_DO_SPINLOCK_UNLOCK(_lck);					\
+	os_unfair_lock_unlock(_lck);					\
     } while (0)
 
 #else /* ! __APPLE__ */

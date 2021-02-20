@@ -1,1 +1,1 @@
-../../../../../../../../../platform-include/mach/mig.h
+../../../../../../../../../src/external/lkm/osfmk/mach/mig.h

@@ -30,11 +30,18 @@
  * SUCH DAMAGE.
  */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-function-declaration"
+#pragma clang diagnostic ignored "-Wstrict-prototypes"
+#pragma clang diagnostic ignored "-Winvalid-pp-token"
+#pragma clang diagnostic ignored "-Wint-conversion"
+
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)atexit.c	8.2 (Berkeley) 7/3/94";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.8 2007/01/09 00:28:09 imp Exp $");
+#include <TargetConditionals.h>
 
 #include "namespace.h"
 #include <errno.h>
@@ -43,7 +50,7 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.8 2007/01/09 00:28:09 imp E
 #include <unistd.h>
 #include <assert.h>
 #include <pthread.h>
-#if defined(__DYNAMIC__) || defined (__BLOCKS__)
+#if (defined(__DYNAMIC__) || defined (__BLOCKS__)) && !TARGET_OS_DRIVERKIT
 #include <dlfcn.h>
 #endif /* defined(__DYNAMIC__) */
 #include "atexit.h"
@@ -55,8 +62,6 @@ __FBSDID("$FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.8 2007/01/09 00:28:09 imp E
 #endif /* __BLOCKS__ */
 #include "libc_private.h"
 #include <os/alloc_once_private.h>
-
-#include <TargetConditionals.h>
 
 #define	ATEXIT_FN_EMPTY	0
 #define	ATEXIT_FN_STD	1
@@ -148,7 +153,7 @@ atexit(void (*func)(void))
 	fn.fn_arg = NULL;
 	fn.fn_dso = NULL;
 
-#if defined(__DYNAMIC__) && !TARGET_OS_IPHONE
+#if defined(__DYNAMIC__) && !TARGET_OS_IPHONE && !TARGET_OS_DRIVERKIT
 	// <rdar://problem/14596032&15173956>
 	struct dl_info info;
 	if (dladdr(func, &info)) {
@@ -324,3 +329,4 @@ __cxa_thread_atexit(void(*f)(void*), void* arg)
     _tlv_atexit(f, arg);
 }
 #endif
+#pragma clang diagnostic pop

@@ -7,7 +7,7 @@
 #include <mach/lkm.h>
 #include "../vchroot_expand.h"
 #include "../bsdthread/per_thread_wd.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 
 long sys_lstat(const char* path, struct stat* stat)
 {

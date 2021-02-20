@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2018 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -60,6 +60,8 @@ static char *rcsid = "$Id: svc_run.c,v 1.3 2002/02/19 20:36:25 epeyton Exp $";
  * This is the rpc server side idle loop
  * Wait for input, call server program.
  */
+#include "libinfo_common.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <rpc/rpc.h>
@@ -67,6 +69,7 @@ static char *rcsid = "$Id: svc_run.c,v 1.3 2002/02/19 20:36:25 epeyton Exp $";
 
 extern int svc_maxfd;
 
+LIBINFO_EXPORT
 void
 svc_run()
 {

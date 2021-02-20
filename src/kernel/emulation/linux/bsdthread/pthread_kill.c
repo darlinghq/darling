@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../signal/duct_signals.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include <stddef.h>
 #include "../mach/lkm.h"
 #include "../../../../external/lkm/api.h"

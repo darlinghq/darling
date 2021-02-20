@@ -1,6 +1,6 @@
 #include "semwait_signal.h"
 #include "../base.h"
-#include "../../../../../platform-include/sys/errno.h"
+#include <sys/errno.h>
 #include "../time/gettimeofday.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>

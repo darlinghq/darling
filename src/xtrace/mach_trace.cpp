@@ -11,9 +11,11 @@
 #include "xtracelib.h"
 #include "mach_trace.h"
 #include "mig_trace.h"
+#include "tls.h"
 
-_Thread_local int mach_call_nr = -1;
-_Thread_local void* argument_ptr = NULL;
+DEFINE_XTRACE_TLS_VAR(int, mach_call_nr);
+DEFINE_XTRACE_TLS_VAR(void*, argument_ptr);
+DEFINE_XTRACE_TLS_VAR(mach_port_name_t, request_port);
 
 static void print_kern_return(char* buf, int nr, uintptr_t rv);
 static void print_port_return(char* buf, int nr, uintptr_t rv);
@@ -207,8 +209,8 @@ static const char* const bootstrap_errors[] = {
 extern "C"
 void darling_mach_syscall_entry_print(int nr, void* args[])
 {
-	mach_call_nr = nr;
-	handle_generic_entry(mach_defs, "mach", mach_call_nr, args);
+	set_mach_call_nr(nr);
+	handle_generic_entry(mach_defs, "mach", nr, args);
 	if (nr == 31 || nr == 32)
 		print_mach_msg_entry(args);
 }
@@ -216,11 +218,12 @@ void darling_mach_syscall_entry_print(int nr, void* args[])
 extern "C"
 void darling_mach_syscall_exit_print(uintptr_t retval)
 {
-	int is_msg = mach_call_nr == 31 || mach_call_nr == 32;
+	int nr = get_mach_call_nr();
+	int is_msg = nr == 31 || nr == 32;
 	handle_generic_exit(mach_defs, "mach", retval, is_msg);
 	if (retval == KERN_SUCCESS && is_msg)
 		print_mach_msg_exit();
-	mach_call_nr = -1;
+	set_mach_call_nr(-1);
 }
 
 int xtrace_kern_return_to_str(char* buf, kern_return_t kr)
@@ -264,16 +267,16 @@ static void print_port_ptr_return(char* buf, int nr, uintptr_t rv)
 	if (rv != KERN_SUCCESS)
 	{
 		print_kern_return(buf, nr, rv);
-		argument_ptr = NULL;
+		set_argument_ptr(NULL);
 		return;
 	}
-	if (argument_ptr == NULL)
+	if (get_argument_ptr() == NULL)
 	{
 		*buf = 0;
 		return;
 	}
-	__simple_sprintf(buf, "port right %d", *(mach_port_name_t*) argument_ptr);
-	argument_ptr = NULL;
+	__simple_sprintf(buf, "port right %d", *(mach_port_name_t*)get_argument_ptr());
+	set_argument_ptr(NULL);
 }
 
 
@@ -290,7 +293,7 @@ static void print_mach_port_allocate_args(char* buf, int nr, void* args[])
 {
 	mach_port_name_t target = (mach_port_name_t) (long) args[0];
 	mach_port_right_t right = (mach_port_right_t) (long) args[1];
-	argument_ptr = args[2];
+	set_argument_ptr(args[2]);
 
 	const char* right_name;
 	if (right > MACH_PORT_RIGHT_NUMBER)
@@ -342,8 +345,8 @@ static void print_mach_port_member_args(char* buf, int nr, void* args[])
 
 static void print_mach_timebase_info_args(char* buf, int nr, void* args[])
 {
-	argument_ptr = args[0];
-	if (argument_ptr == NULL)
+	set_argument_ptr(args[0]);
+	if (get_argument_ptr() == NULL)
 		__simple_sprintf(buf, "NULL");
 	else
 		*buf = 0;
@@ -354,25 +357,25 @@ static void print_mach_timebase_info_res(char* buf, int nr, uintptr_t rv)
 	if (rv != KERN_SUCCESS)
 	{
 		print_kern_return(buf, nr, rv);
-		argument_ptr = NULL;
+		set_argument_ptr(NULL);
 		return;
 	}
-	if (argument_ptr != NULL)
+	if (get_argument_ptr() != NULL)
 	{
-		mach_timebase_info_t timebase = (mach_timebase_info_t) argument_ptr;
+		mach_timebase_info_t timebase = (mach_timebase_info_t)get_argument_ptr();
 		__simple_sprintf(buf, "numer = %d, denom = %d", timebase->numer, timebase->denom);
 	}
 	else
 		*buf = 0;
 
-	argument_ptr = NULL;
+	set_argument_ptr(NULL);
 }
 
 static void print_task_for_pid_args(char* buf, int nr, void* args[])
 {
 	mach_port_name_t target = (mach_port_name_t) (long) args[0];
 	int pid = (int) (long) args[1];
-	argument_ptr = args[2];
+	set_argument_ptr(args[2]);
 
 	__simple_sprintf(buf, "task %d, pid %d", target, pid);
 }
@@ -380,7 +383,7 @@ static void print_task_for_pid_args(char* buf, int nr, void* args[])
 static void print_pid_for_task_args(char* buf, int nr, void* args[])
 {
 	mach_port_name_t task = (mach_port_name_t) (long) args[0];
-	argument_ptr = args[1];
+	set_argument_ptr(args[1]);
 
 	__simple_sprintf(buf, "task %d", task);
 }
@@ -390,15 +393,15 @@ static void print_pid_for_task_res(char* buf, int nr, uintptr_t rv)
 	if (rv != KERN_SUCCESS)
 	{
 		print_kern_return(buf, nr, rv);
-		argument_ptr = NULL;
+		set_argument_ptr(NULL);
 		return;
 	}
-	if (argument_ptr != NULL)
-		__simple_sprintf(buf, "pid %d", * (int*) argument_ptr);
+	if (get_argument_ptr() != NULL)
+		__simple_sprintf(buf, "pid %d", * (int*)get_argument_ptr());
 	else
 		*buf = 0;
 
-	argument_ptr = NULL;
+	set_argument_ptr(NULL);
 }
 
 const char* xtrace_msg_type_to_str(mach_msg_type_name_t type_name, int full)
@@ -480,8 +483,6 @@ static void print_mach_msg(const mach_msg_header_t* msg, mach_msg_size_t size)
 	__simple_printf(", %lu bytes of inline data\n", size - ((const char*) ptr - (const char*) msg));
 }
 
-_Thread_local mach_port_name_t request_port;
-
 static void print_mach_msg_entry(void* args[])
 {
 	const mach_msg_header_t* message = (const mach_msg_header_t*) args[0];
@@ -490,28 +491,28 @@ static void print_mach_msg_entry(void* args[])
 
 	if (options & MACH_SEND_MSG)
 	{
-		request_port = message->msgh_remote_port;
+		set_request_port(message->msgh_remote_port);
 		__simple_printf("\n");
 		xtrace_start_line(8);
 		print_mach_msg(message, send_size);
 		xtrace_start_line(8);
-		xtrace_print_mig_message(message, request_port);
+		xtrace_print_mig_message(message, get_request_port());
 		__simple_printf("\n");
 	}
 
 	if (options & MACH_RCV_MSG)
 	{
-		switch (mach_call_nr)
+		switch (get_mach_call_nr())
 		{
 			case 31:
 				// mach_msg_trap
-				argument_ptr = args[0];
+				set_argument_ptr(args[0]);
 				break;
 			case 32:
 				// mach_msg_overwrite_trap
-				argument_ptr = args[7];
-				if (argument_ptr == NULL)
-					argument_ptr = args[0];
+				set_argument_ptr(args[7]);
+				if (get_argument_ptr() == NULL)
+					set_argument_ptr(args[0]);
 				break;
 			default:
 				__simple_printf("Unexpected mach_call_nr");
@@ -522,17 +523,17 @@ static void print_mach_msg_entry(void* args[])
 
 static void print_mach_msg_exit()
 {
-	if (argument_ptr == NULL)
+	if (get_argument_ptr() == NULL)
 		return;
 
-	const mach_msg_header_t* message = (const mach_msg_header_t*) argument_ptr;
+	const mach_msg_header_t* message = (const mach_msg_header_t*)get_argument_ptr();
 	xtrace_start_line(8);
 	print_mach_msg(message, message->msgh_size);
 	xtrace_start_line(8);
-	xtrace_print_mig_message(message, request_port);
+	xtrace_print_mig_message(message, get_request_port());
 	__simple_printf("\n");
-	argument_ptr = NULL;
-	request_port = MACH_PORT_NULL;
+	set_argument_ptr(NULL);
+	set_request_port(MACH_PORT_NULL);
 }
 
 static void print_mach_msg_args(char* buf, int nr, void* args[])

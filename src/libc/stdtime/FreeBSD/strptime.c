@@ -93,6 +93,18 @@ first_wday_of(int year)
 		((year % 100) / 4) + (isleap(year) ? 6 : 0) + 1) % 7);
 }
 
+static inline bool is_plus(char c) {
+	return c == '+';
+}
+
+static inline bool is_minus(char c) {
+	return c == '-';
+}
+
+static inline bool is_zero(char c) {
+	return c == '0';
+}
+
 static char *
 _strptime0(const char *buf, const char *fmt, struct tm *tm, int *convp, locale_t locale, int flags, int week_number, enum week_kind week_kind)
 {
@@ -100,6 +112,7 @@ _strptime0(const char *buf, const char *fmt, struct tm *tm, int *convp, locale_t
 	const char *ptr;
 	int wday_offset;
 	int	i, len;
+	bool negative;
 	int Ealternative, Oalternative;
 	const struct lc_time_T *tptr = __get_current_time_locale(locale);
 	static int start_of_month[2][13] = {
@@ -109,6 +122,7 @@ _strptime0(const char *buf, const char *fmt, struct tm *tm, int *convp, locale_t
 
 	ptr = fmt;
 	while (*ptr != 0) {
+		int field_width = 0;
 		c = *ptr++;
 
 		if (c != '%') {
@@ -125,6 +139,29 @@ _strptime0(const char *buf, const char *fmt, struct tm *tm, int *convp, locale_t
 		Oalternative = 0;
 label:
 		c = *ptr++;
+		if (is_zero(c)) {
+			// Leading '0' is to be ignored.
+			c = *ptr++;
+		} else if (is_plus(c)) {
+			// POSIX sats leading '+' should be ignored, but FreeBSD interprets
+			// "%+" to mean locale-specific date format. Try to handle both by
+			// checking the next character.
+			char next = *ptr;
+			if (next != '\0' && next != '%' && !isspace_l(next, locale)) {
+				// Use POSIX interpretation.
+				c = *ptr++;
+			}
+		}
+
+		if (isdigit_l(c, locale)) {
+			// Field width
+			field_width = c - '0';
+			while (*ptr != '\0' && isdigit_l(*ptr, locale)) {
+				field_width *= 10;
+				field_width += *ptr++ - '0';
+			}
+			c = *ptr++;
+		}
 		switch (c) {
 		case '%':
 			if (*buf++ != '%')
@@ -139,19 +176,30 @@ label:
 			break;
 
 		case 'C':
-			if (!isdigit_l((unsigned char)*buf, locale))
+			if (!isdigit_l((unsigned char)*buf, locale) && !is_plus(*buf) && !is_minus(*buf))
 				return (NULL);
 
 			/* XXX This will break for 3-digit centuries. */
-			len = 2;
+			negative = false;
+			len = field_width ? field_width : 2;
+			if (is_plus(*buf)) {
+				len--;
+				buf++;
+			} else if (is_minus(*buf)) {
+				len--;
+				negative = true;
+				buf++;
+			}
 			for (i = 0; len && *buf != 0 &&
 			     isdigit_l((unsigned char)*buf, locale); buf++) {
 				i *= 10;
 				i += *buf - '0';
 				len--;
 			}
-			if (i < 19)
-				return (NULL);
+
+			if (negative) {
+				i = -i;
+			}
 
 			if (flags & FLAG_YEAR_IN_CENTURY) {
 				tm->tm_year = i * 100 + (tm->tm_year % 100) - TM_YEAR_BASE;
@@ -238,7 +286,7 @@ label:
 			if (!isdigit_l((unsigned char)*buf, locale))
 				return (NULL);
 
-			len = 3;
+			len = field_width ? field_width : 3;
 			for (i = 0; len && *buf != 0 &&
 			     isdigit_l((unsigned char)*buf, locale); buf++){
 				i *= 10;
@@ -262,7 +310,7 @@ label:
 			if (!isdigit_l((unsigned char)*buf, locale))
 				return (NULL);
 
-			len = 2;
+			len = field_width ? field_width : 2;
 			for (i = 0; len && *buf != 0 &&
 				isdigit_l((unsigned char)*buf, locale); buf++){
 				i *= 10;
@@ -297,7 +345,7 @@ label:
 			if (!isdigit_l((unsigned char)*buf, locale))
 				return (NULL);
 
-			len = 2;
+			len = field_width ? field_width : 2;
 			for (i = 0; len && *buf != 0 &&
 			     isdigit_l((unsigned char)*buf, locale); buf++) {
 				i *= 10;
@@ -319,20 +367,19 @@ label:
 			 * XXX This is bogus if parsed before hour-related
 			 * specifiers.
 			 */
-			len = strlen(tptr->am);
+			if (tm->tm_hour > 12)
+				return (NULL);
+
+			len = (int)strlen(tptr->am);
 			if (strncasecmp_l(buf, tptr->am, len, locale) == 0) {
-				if (tm->tm_hour > 12)
-					return (NULL);
 				if (tm->tm_hour == 12)
 					tm->tm_hour = 0;
 				buf += len;
 				break;
 			}
 
-			len = strlen(tptr->pm);
+			len = (int)strlen(tptr->pm);
 			if (strncasecmp_l(buf, tptr->pm, len, locale) == 0) {
-				if (tm->tm_hour > 12)
-					return (NULL);
 				if (tm->tm_hour != 12)
 					tm->tm_hour += 12;
 				buf += len;
@@ -344,11 +391,11 @@ label:
 		case 'A':
 		case 'a':
 			for (i = 0; i < asizeof(tptr->weekday); i++) {
-				len = strlen(tptr->weekday[i]);
+				len = (int)strlen(tptr->weekday[i]);
 				if (strncasecmp_l(buf, tptr->weekday[i],
 						len, locale) == 0)
 					break;
-				len = strlen(tptr->wday[i]);
+				len = (int)strlen(tptr->wday[i]);
 				if (strncasecmp_l(buf, tptr->wday[i],
 						len, locale) == 0)
 					break;
@@ -367,7 +414,7 @@ label:
 			if (!isdigit_l((unsigned char)*buf, locale))
 				return (NULL);
 
-			len = 2;
+			len = field_width ? field_width : 2;
 			for (i = 0; len && *buf != 0 &&
 			     isdigit_l((unsigned char)*buf, locale); buf++) {
 				i *= 10;
@@ -391,12 +438,11 @@ label:
 				return (NULL);
 
 			i = *buf - '0';
-			if (i > 6 + (c == 'u'))
+			if (i < 0 || i > 7 || (c == 'u' && i < 1) ||
+			    (c == 'w' && i > 6))
 				return (NULL);
-			if (i == 7)
-				i = 0;
 
-			tm->tm_wday = i;
+			tm->tm_wday = i % 7;
 			flags |= FLAG_WDAY;
 			buf++;
 
@@ -422,7 +468,7 @@ label:
 			 * digits if used incorrectly.
 			 */
 			/* Leading space is ok if date is single digit */
-			len = 2;
+			len = field_width ? field_width : 2;
 			if (isspace_l((unsigned char)buf[0], locale) &&
 				isdigit_l((unsigned char)buf[1], locale) &&
 				!isdigit_l((unsigned char)buf[2], locale)) {
@@ -452,14 +498,14 @@ label:
 			for (i = 0; i < asizeof(tptr->month); i++) {
 				if (Oalternative) {
 					if (c == 'B') {
-						len = strlen(tptr->alt_month[i]);
+						len = (int)strlen(tptr->alt_month[i]);
 						if (strncasecmp_l(buf,
 								tptr->alt_month[i],
 								len, locale) == 0)
 							break;
 					}
 				} else {
-					len = strlen(tptr->month[i]);
+					len = (int)strlen(tptr->month[i]);
 					if (strncasecmp_l(buf, tptr->month[i],
 							len, locale) == 0)
 						break;
@@ -471,7 +517,7 @@ label:
 			 */
 			if (i == asizeof(tptr->month) && !Oalternative) {
 				for (i = 0; i < asizeof(tptr->month); i++) {
-					len = strlen(tptr->mon[i]);
+					len = (int)strlen(tptr->mon[i]);
 					if (strncasecmp_l(buf, tptr->mon[i],
 							len, locale) == 0)
 						break;
@@ -490,7 +536,7 @@ label:
 			if (!isdigit_l((unsigned char)*buf, locale))
 				return (NULL);
 
-			len = 2;
+			len = field_width ? field_width : 2;
 			for (i = 0; len && *buf != 0 &&
 			     isdigit_l((unsigned char)*buf, locale); buf++) {
 				i *= 10;
@@ -536,78 +582,33 @@ label:
 			    isspace_l((unsigned char)*buf, locale))
 				break;
 
-			if (!isdigit_l((unsigned char)*buf, locale))
+			if (!isdigit_l((unsigned char)*buf, locale) && !is_plus(*buf)
+					&& !is_minus(*buf))
 				return (NULL);
 
-#if __DARWIN_UNIX03
-			if (c == 'Y') {
-				int savei = 0;
-				const char *savebuf = buf;
-				int64_t i64 = 0;
-				int overflow = 0;
-
-				for (len = 0; *buf != 0 && isdigit_l((unsigned char)*buf, locale); buf++) {
-					i64 *= 10;
-					i64 += *buf - '0';
-					if (++len <= 4) {
-						savei = i64;
-						savebuf = buf + 1;
-					}
-					if (i64 > INT_MAX) {
-						overflow++;
-						break;
-					}
-				}
-				/*
-				 * Conformance requires %Y to be more then 4
-				 * digits.  However, there are several cases
-				 * where %Y is immediately followed by other
-				 * digits values.  So we do the conformance
-				 * case first (as many digits as possible),
-				 * and if we fail, we backup and try just 4
-				 * digits for %Y.
-				 */
-				if (len > 4 && !overflow) {
-					struct tm savetm = *tm;
-					int saveconv = *convp;
-					const char *saveptr = ptr;
-					char *ret;
-
-					if (i64 < 1900)
-						return 0;
-
-					tm->tm_year = i64 - 1900;
-
-					if (*buf != 0 && isspace_l((unsigned char)*buf, locale))
-						while (*ptr != 0 && !isspace_l((unsigned char)*ptr, locale) && *ptr != '%')
-							ptr++;
-					ret = _strptime0(buf, ptr, tm, convp, locale, flags, week_number, week_kind);
-					if (ret) return ret;
-					/* Failed, so try 4-digit year */
-					*tm = savetm;
-					*convp = saveconv;
-					ptr = saveptr;
-				}
-				buf = savebuf;
-				i = savei;
-			} else {
-				len = 2;
-#else /* !__DARWIN_UNIX03 */
-				len = (c == 'Y') ? 4 : 2;
-#endif /* __DARWIN_UNIX03 */
-			
-				for (i = 0; len && *buf != 0 &&
-					 isdigit_l((unsigned char)*buf, locale); buf++) {
-					i *= 10;
-					i += *buf - '0';
-					len--;
-				}
-#if __DARWIN_UNIX03
+			len = field_width ? field_width : ((c == 'Y') ? 4 : 2);
+			negative = false;
+			if (is_plus(*buf)) {
+				len--;
+				buf++;
+			} else if (is_minus(*buf)) {
+				len--;
+				buf++;
+				negative = true;
 			}
-#endif /* __DARWIN_UNIX03 */
+			for (i = 0; len && *buf != 0 &&
+				 isdigit_l((unsigned char)*buf, locale); buf++) {
+				i *= 10;
+				i += *buf - '0';
+				len--;
+			}
 
 			if (i < 0)
 				return (NULL);
+
+			if (negative) {
+				i = -i;
+			}
 
 			if (c == 'Y'){
 				i -= TM_YEAR_BASE;
@@ -636,7 +637,7 @@ label:
 					 isupper_l((unsigned char)*cp, locale); ++cp) {
 					/*empty*/
 				}
-				len = cp - buf;
+				len = field_width ? field_width : cp - buf;
 				if (len == 3 && strncmp(buf, "GMT", 3) == 0) {
 					*convp = CONVERT_GMT;
 					buf += len;
@@ -698,35 +699,46 @@ label:
 			    TM_YEAR_BASE)][tm->tm_mon] + (tm->tm_mday - 1);
 			flags |= FLAG_YDAY;
 		} else if (flags & FLAG_WEEK){
+			int day_offset = week_kind == WEEK_U ? TM_SUNDAY : TM_MONDAY;
+			int fwo = first_wday_of(tm->tm_year + TM_YEAR_BASE);
+
+			/* No incomplete week (week 0). */
+			if (week_number == 0 && fwo == day_offset)
+				return (NULL);
+
 			if (!(flags & FLAG_WDAY)) {
-				tm->tm_wday = week_kind == WEEK_U ? TM_SUNDAY : TM_MONDAY;
+				/*
+				 * Set the date to the first Sunday (or Monday)
+				 * of the specified week of the year.
+				 */
+				tm->tm_wday = day_offset;
 				flags |= FLAG_WDAY;
 			}
 
-			struct tm t = {0};
-			t.tm_mday = week_kind == WEEK_V ? 4 : 1;
-			t.tm_hour = 12; /* avoid any DST effects */
-			t.tm_year = tm->tm_year;
-			if (timegm(&t) == (time_t)-1) return 0;
+			/*
+			 * Start our yday at the first day of the relevant week type.
+			 */
+			int tmpyday = (7 - fwo + day_offset) % 7;
 
-			int off = t.tm_wday;
-			int wday = tm->tm_wday;
-
-			if (week_kind != WEEK_U) {
-				off = (off + 6) % 7;
-				wday = (wday + 6) % 7;
+			/*
+			 * ISO Weeks start counting from the first week with at least
+			 * four days.  If our first week had that, subtract off a week.
+			 */
+			if (week_kind == WEEK_V && fwo > TM_MONDAY && fwo <= TM_THURSDAY) {
+				tmpyday -= 7;
 			}
+			/* Advance the relevant number of weeks */
+			tmpyday += (week_number - 1) * 7;
+			/* And go to the right day of week */
+			tmpyday += (tm->tm_wday - day_offset + 7) % 7;
 
-			if (week_kind == WEEK_V) {
-				t.tm_mday = 7 * week_number + wday - off - 3;
-			} else {
-				if(off == 0) off = 7;
-				t.tm_mday = 7 * week_number + wday - off + 1;
+			/* Impossible yday for incomplete week (week 0). */
+			if (tmpyday < 0) {
+				if (flags & FLAG_WDAY)
+					return (NULL);
+				tmpyday = 0;
 			}
-			if (timegm(&t) == (time_t)-1) return 0;
-
-			tm->tm_yday = t.tm_yday;
-
+			tm->tm_yday = tmpyday;
 			flags |= FLAG_YDAY;
 		}
 	}
@@ -755,13 +767,8 @@ label:
 			flags |= FLAG_MDAY;
 		}
 		if (!(flags & FLAG_WDAY)) {
-			i = 0;
-			wday_offset = first_wday_of(tm->tm_year);
-			while (i++ <= tm->tm_yday) {
-				if (wday_offset++ >= 6)
-					wday_offset = 0;
-			}
-			tm->tm_wday = wday_offset;
+			wday_offset = first_wday_of(tm->tm_year + TM_YEAR_BASE);
+			tm->tm_wday = (wday_offset + tm->tm_yday) % 7;
 			flags |= FLAG_WDAY;
 		}
 	}
