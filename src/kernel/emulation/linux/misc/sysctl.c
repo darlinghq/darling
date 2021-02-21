@@ -11,6 +11,7 @@
 #include "sysctl_kern.h"
 #include "sysctl_machdep.h"
 #include "sysctl_sysctl.h"
+#include "sysctl_net.h"
 
 extern char *strchr(const char *s, int c);
 extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
@@ -27,6 +28,7 @@ const struct known_sysctl sysctls_global[] = {
 	{ .oid = CTL_KERN, .type = CTLTYPE_NODE, .exttype = "", .name = "kern", .subctls = sysctls_kern },
 	{ .oid = CTL_MACHDEP, .type = CTLTYPE_NODE, .exttype = "", .name = "machdep", .subctls = sysctls_machdep },
 	{ .oid = _CTL_SYSCTL, .type = CTLTYPE_NODE, .exttype = "", .name = "sysctl", .subctls = sysctls_sysctl },
+	{ .oid = CTL_NET, .type = CTLTYPE_NODE, .exttype = "", .name = "net", .subctls = sysctls_net },
 	{ .oid = -1 }, /* terminating entry */
 };
 

@@ -161,6 +161,7 @@ set(emulation_sources
 	misc/sysctl_unspec.c
 	misc/sysctl_machdep.c
 	misc/sysctl_sysctl.c
+	misc/sysctl_net.c
 	misc/getrlimit.c
 	misc/setrlimit.c
 	misc/gethostuuid.c
