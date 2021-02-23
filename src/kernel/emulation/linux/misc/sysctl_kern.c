@@ -17,6 +17,8 @@
 
 enum {
 	_KERN_MSGBUF = 1000,
+	_KERN_OSPRODUCTVERSION,
+
 	_KERN_SEMMNS = 1000,
 };
 
@@ -37,6 +39,7 @@ static sysctl_handler(handle_safeboot);
 static sysctl_handler(handle_usrstack32);
 static sysctl_handler(handle_usrstack64);
 static sysctl_handler(handle_sysv_semmns);
+static sysctl_handler(handle_osproductversion);
 
 extern int _sysctl_proc(int what, int flag, struct kinfo_proc* out, unsigned long* buflen);
 extern int _sysctl_procargs(int pid, char* buf, unsigned long* buflen);
@@ -65,6 +68,7 @@ const struct known_sysctl sysctls_kern[] = {
 	{ .oid = KERN_OSVERSION, .type = CTLTYPE_STRING, .exttype = "S", .name = "osversion", .handler = handle_osversion },
 	{ .oid = KERN_USRSTACK32, .type = CTLTYPE_INT, .exttype = "I", .name = "usrstack", .handler = handle_usrstack32 },
 	{ .oid = KERN_USRSTACK64, .type = CTLTYPE_QUAD, .exttype = "Q", .name = "usrstack64", .handler = handle_usrstack64 },
+	{ .oid = _KERN_OSPRODUCTVERSION, .type = CTLTYPE_STRING, .exttype = "S", .name = "osproductversion", .handler = handle_osproductversion },
 	{ .oid = KERN_SYSV, .type = CTLTYPE_NODE, .exttype = "", .name = "sysv", .subctls = sysctls_kern_sysv },
 	{ .oid = -1 }
 };
@@ -328,3 +332,8 @@ sysctl_handler(handle_usrstack64)
 	*oldlen = sizeof(*ovalue);
 	return 0;
 }
+
+static sysctl_handler(handle_osproductversion) {
+	copyout_string(EMULATED_OSPRODUCTVERSION, (char*)old, oldlen);
+	return 0;
+};

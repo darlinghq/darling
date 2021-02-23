@@ -13,6 +13,7 @@ add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD
 	-DEMULATED_RELEASE="19.6.0"
 	-DEMULATED_VERSION="Darwin Kernel Version 19.6.0"
 	-DEMULATED_OSVERSION="19G73"
+	-DEMULATED_OSPRODUCTVERSION="10.15.2"
 )
 
 # include src/startup for rtsig.h
