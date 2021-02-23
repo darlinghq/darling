@@ -19,6 +19,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #import <Metal/Metal.h>
 
+// guessed value
+NSString* const MTLDeviceRemovalRequestedNotification = @"MTLDeviceRemovalRequestedNotification";
+NSString* const MTLDeviceWasAddedNotification = @"MTLDeviceWasAddedNotification";
+NSString* const MTLDeviceWasRemovedNotification = @"MTLDeviceWasRemovedNotification";
+
 @implementation _MTLDevice
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {

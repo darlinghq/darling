@@ -27,3 +27,4 @@ const CFStringRef kCGImagePropertyGIFDelayTime = CFSTR("DelayTime");
 const CFStringRef kCGImagePropertyGIFDictionary = CFSTR("{GIF}");
 const CFStringRef kCGImagePropertyGIFLoopCount = CFSTR("LoopCount");
 const CFStringRef kCGImagePropertyGIFUnclampedDelayTime = CFSTR("UnclampedDelayTime");
+const CFStringRef kCGImagePropertyProfileName = CFSTR("ProfileName"); // guessed value

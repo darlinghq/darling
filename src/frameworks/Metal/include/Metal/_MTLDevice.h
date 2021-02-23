@@ -17,6 +17,12 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <Foundation/NSString.h>
+
+extern NSString* const MTLDeviceRemovalRequestedNotification;
+extern NSString* const MTLDeviceWasAddedNotification;
+extern NSString* const MTLDeviceWasRemovedNotification;
+
 @interface _MTLDevice : NSObject
 
 @end

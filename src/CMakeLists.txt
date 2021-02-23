@@ -294,6 +294,8 @@ add_subdirectory(pboard)
 add_subdirectory(external/dbuskit)
 add_subdirectory(external/swift)
 
+add_subdirectory(libaccessibility)
+
 
 # /Applications
 #add_subdirectory(external/TextEdit)
