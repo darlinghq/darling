@@ -35,43 +35,50 @@ function(mig defFileName)
         get_filename_component(bareName "${relativeName}" NAME)
         get_filename_component(dirName "${relativeName}" DIRECTORY)
 
-        #if ((NOT BITS) OR (BITS EQUAL 64))
-        #if(NOT arch)
-        #	set(MIG_ARCH "x86-64")
-        #else (NOT arch)
-        #	set (MIG_ARCH "${arch}")
-        #endif(NOT arch)
-        if (NOT MIG_ARCH)
-            set(MIG_ARCH "i386")
-        endif (NOT MIG_ARCH)
+	if (NOT MIG_MULTIARCH)
+		set(MIG_MULTIARCH_NO_SUFFIX 1)
+		if (NOT MIG_ARCH)
+			set(MIG_MULTIARCH "i386")
+		else()
+			set(MIG_MULTIARCH "${MIG_ARCH}")
+		endif()
+	endif()
 
-	add_custom_command(OUTPUT
-		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
-		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
-		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
-		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
-		${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_XTRACE_SUFFIX}
-		COMMAND
-			/bin/mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/${dirName} \;
-			${MIG_EXECUTABLE}
-			-arch ${MIG_ARCH}
-			-target ${MIG_ARCH}
-			-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_SOURCE_SUFFIX}
-			-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_USER_HEADER_SUFFIX}
-			-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_SOURCE_SUFFIX}
-			-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_SERVER_HEADER_SUFFIX}
-			-xtracemig ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_XTRACE_SUFFIX}
-			${MIG_FLAGS}
-			${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
-		DEPENDS
-			migexe migcom
-	)
+	foreach(MIG_ARCH ${MIG_MULTIARCH})
+		if (MIG_MULTIARCH_NO_SUFFIX)
+			set(MIG_ARCH_SUFFIX "")
+		else()
+			set(MIG_ARCH_SUFFIX "-${MIG_ARCH}-")
+		endif()
 
-	if (NOT TARGET ${bareName}_xtrace_mig AND NOT MIG_NO_XTRACE)
-		add_darling_library(${bareName}_xtrace_mig ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_XTRACE_SUFFIX})
-		target_compile_options(${bareName}_xtrace_mig PRIVATE
-			"-I" "${CMAKE_SOURCE_DIR}/src/xtrace/include"
-			"-Wno-extern-initializer")
-		install(TARGETS ${bareName}_xtrace_mig DESTINATION "libexec/darling/usr/lib/darling/xtrace-mig/")
-	endif (NOT TARGET ${bareName}_xtrace_mig AND NOT MIG_NO_XTRACE)
+		add_custom_command(OUTPUT
+			${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_SOURCE_SUFFIX}
+			${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_HEADER_SUFFIX}
+			${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_SERVER_SOURCE_SUFFIX}
+			${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_SERVER_HEADER_SUFFIX}
+			${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_XTRACE_SUFFIX}
+			COMMAND
+				/bin/mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/${dirName} \;
+				${MIG_EXECUTABLE}
+				-arch ${MIG_ARCH}
+				-target ${MIG_ARCH}
+				-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_SOURCE_SUFFIX}
+				-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_HEADER_SUFFIX}
+				-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_SERVER_SOURCE_SUFFIX}
+				-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_SERVER_HEADER_SUFFIX}
+				-xtracemig ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_XTRACE_SUFFIX}
+				${MIG_FLAGS}
+				${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
+			DEPENDS
+				migexe migcom
+		)
+
+		if (NOT TARGET ${bareName}_xtrace_mig AND NOT MIG_NO_XTRACE)
+			add_darling_library(${bareName}_xtrace_mig ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_XTRACE_SUFFIX})
+			target_compile_options(${bareName}_xtrace_mig PRIVATE
+				"-I" "${CMAKE_SOURCE_DIR}/src/xtrace/include"
+				"-Wno-extern-initializer")
+			install(TARGETS ${bareName}_xtrace_mig DESTINATION "libexec/darling/usr/lib/darling/xtrace-mig/")
+		endif (NOT TARGET ${bareName}_xtrace_mig AND NOT MIG_NO_XTRACE)
+	endforeach()
 endfunction(mig)

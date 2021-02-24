@@ -48,6 +48,8 @@ set(LIBSYSCALL_MIGS_INTERNAL
 )
 
 set(syscall_mig_sources "")
+set(syscall_mig_sources_32 "")
+set(syscall_mig_sources_64 "")
 set(syscall_mig_headers "")
 set(syscall_mig_internal_headers "")
 
@@ -71,6 +73,7 @@ create_symlink(
 )
 
 remove_definitions(-DLIBSYSCALL_INTERFACE=1)
+set(MIG_MULTIARCH i386 x86_64)
 set(MIG_USER_HEADER_SUFFIX "_unused_user.h")
 set(MIG_USER_SOURCE_SUFFIX)
 set(MIG_SERVER_HEADER_SUFFIX)
@@ -80,7 +83,8 @@ set(MIG_NO_XTRACE)
 foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIGS)
 	mig("${MIG_FILENAME}.defs")
 
-	list(APPEND syscall_mig_sources "${CMAKE_CURRENT_BINARY_DIR}/${MIG_FILENAME}User.c")
+	list(APPEND syscall_mig_sources_32 "${CMAKE_CURRENT_BINARY_DIR}/${MIG_FILENAME}-i386-User.c")
+	list(APPEND syscall_mig_sources_64 "${CMAKE_CURRENT_BINARY_DIR}/${MIG_FILENAME}-x86_64-User.c")
 
 	get_filename_component(MIG_HEADER_DIR ${MIG_FILENAME} DIRECTORY)
 
@@ -92,8 +96,10 @@ foreach(MIG_FILENAME IN LISTS LIBSYSCALL_MIGS)
 endforeach()
 
 # mach/exc also needs the server component
-list(APPEND syscall_mig_sources "${CMAKE_CURRENT_BINARY_DIR}/mach/excServer.c")
+list(APPEND syscall_mig_sources_32 "${CMAKE_CURRENT_BINARY_DIR}/mach/exc-i386-Server.c")
+list(APPEND syscall_mig_sources_64 "${CMAKE_CURRENT_BINARY_DIR}/mach/exc-x86_64-Server.c")
 
+unset(MIG_MULTIARCH)
 set(MIG_USER_HEADER_SUFFIX "_internal.h")
 set(MIG_USER_SOURCE_SUFFIX "_unused_internal_user.c")
 set(MIG_SERVER_HEADER_SUFFIX "_unused_internal_server.h")
@@ -704,6 +710,18 @@ add_compile_options(
 	-fno-stack-protector
 	-fno-stack-check
 	-momit-leaf-frame-pointer
+)
+
+add_darling_object_library(libsyscall_32 32BIT_ONLY ${syscall_mig_sources_32})
+add_dependencies(libsyscall_32
+	libsyscall_generate_mig_headers
+	libsyscall_generate_mig_internal_headers
+)
+
+add_darling_object_library(libsyscall_64 64BIT_ONLY ${syscall_mig_sources_64})
+add_dependencies(libsyscall_64
+	libsyscall_generate_mig_headers
+	libsyscall_generate_mig_internal_headers
 )
 
 add_darling_object_library(libsyscall ${syscall_sources})

@@ -36,6 +36,8 @@ add_subdirectory(libsyscall)
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_kernel.dylib")
 add_circular(system_kernel FAT
 	OBJECTS
+		$<TARGET_OBJECTS:libsyscall_32>
+		$<TARGET_OBJECTS:libsyscall_64>
 		$<TARGET_OBJECTS:libsyscall>
 		$<TARGET_OBJECTS:libsyscall_dynamic>
 		#$<TARGET_OBJECTS:kqueue>
@@ -49,12 +51,19 @@ add_circular(system_kernel FAT
 #target_link_libraries(system_kernel system_duct platform_static32 platform_static64)
 make_fat(system_kernel)
 
-add_library(system_kernel_static STATIC
+add_library(system_kernel_static32 STATIC
+	$<TARGET_OBJECTS:libsyscall_32>
 	$<TARGET_OBJECTS:libsyscall>
-	#$<TARGET_OBJECTS:libsyscall_static>
-	#$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:emulation_dyld>
-	$<TARGET_OBJECTS:mach_server_client_dyld>)
+	$<TARGET_OBJECTS:mach_server_client_dyld>
+)
+
+add_library(system_kernel_static64 STATIC
+	$<TARGET_OBJECTS:libsyscall_64>
+	$<TARGET_OBJECTS:libsyscall>
+	$<TARGET_OBJECTS:emulation_dyld>
+	$<TARGET_OBJECTS:mach_server_client_dyld>
+)
 
 install(TARGETS system_kernel DESTINATION libexec/darling/usr/lib/system)
 

@@ -127,7 +127,7 @@ set_property(TARGET system_loader APPEND_STRING PROPERTY
 set_property(TARGET system_loader APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-dylinker -Wl,-dead_strip -Wl,-data_const -nostdlib -Wl,-e,__dyld_start -Wl,-fixup_chains -Wl,-image_base,0x1fe00000 -Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/src/dyld.exp")
 target_link_libraries(system_loader libc_static system_blocks_static
 	cxx_static
-	unwind_static system_kernel_static system_m_static cxxabi_static
+	unwind_static system_m_static cxxabi_static
 	keymgr_static system_duct_static
 	pthread_static macho_static
 	system_trace_static
@@ -135,11 +135,11 @@ target_link_libraries(system_loader libc_static system_blocks_static
 )
 
 if (BUILD_TARGET_32BIT)
-	target_link_libraries(system_loader libc_static32 compiler_rt_static32 platform_static32)
+	target_link_libraries(system_loader libc_static32 compiler_rt_static32 platform_static32 system_kernel_static32)
 endif (BUILD_TARGET_32BIT)
 
 if (BUILD_TARGET_64BIT)
-	target_link_libraries(system_loader libc_static64 compiler_rt_static64 platform_static64)
+	target_link_libraries(system_loader libc_static64 compiler_rt_static64 platform_static64 system_kernel_static64)
 endif (BUILD_TARGET_64BIT)
 
 make_fat(system_loader)
