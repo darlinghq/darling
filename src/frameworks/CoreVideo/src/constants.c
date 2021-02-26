@@ -7,3 +7,6 @@ const CFStringRef kCVPixelBufferIOSurfacePropertiesKey = CFSTR("IOSurfacePropert
 const CFStringRef kCVPixelBufferOpenGLCompatibilityKey = CFSTR("OpenGLCompatibility");
 const CFStringRef kCVPixelBufferPixelFormatTypeKey = CFSTR("PixelFormatType");
 const CFStringRef kCVPixelBufferMetalCompatibilityKey = CFSTR("MetalCompatibility");
+const CFStringRef kCVPixelBufferBytesPerRowAlignmentKey = CFSTR("BytesPerRowAlignment");
+const CFStringRef kCVPixelBufferHeightKey = CFSTR("Height");
+const CFStringRef kCVPixelBufferWidthKey = CFSTR("Width");

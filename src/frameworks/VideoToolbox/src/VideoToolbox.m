@@ -36,6 +36,7 @@ const CFStringRef kVTProfileLevel_H264_Baseline_AutoLevel = CFSTR("AutoLevel");
 const CFStringRef kVTProfileLevel_H264_Main_AutoLevel = CFSTR("AutoLevel");
 const CFStringRef kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder = CFSTR("EnableHardwareAcceleratedVideoDecoder");
 const CFStringRef kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder = CFSTR("EnableHardwareAcceleratedVideoEncoder");
+const CFStringRef kVTPixelTransferPropertyKey_RealTime = CFSTR("RealTime");
 
 static int verbose = 0;
 

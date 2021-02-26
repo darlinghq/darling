@@ -19,6 +19,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #import <AuthKit/AuthKit.h>
 
+// all of these key values are guessed
+NSString* AKAuthenticationAlternateDSIDKey = @"AKAuthenticationAlternateDSIDKey";
+NSString* AKAuthenticationIDMSTokenKey = @"AKAuthenticationIDMSTokenKey";
+NSString* AKAuthenticationUsernameKey = @"AKAuthenticationUsernameKey";
+
 @implementation AKAccountManager
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
