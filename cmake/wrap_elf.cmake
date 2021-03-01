@@ -9,6 +9,7 @@ function(wrap_elf name elfname)
 			${CMAKE_BINARY_DIR}/src/libelfloader/wrapgen/wrapgen
 				${elfname} 
 				${CMAKE_CURRENT_BINARY_DIR}/${name}.c
+				${CMAKE_CURRENT_BINARY_DIR}/${name}_vars.h
 		DEPENDS
 			wrapgen
 	)
