@@ -290,7 +290,7 @@ void generate_var_wrappers(std::ofstream& output, std::ofstream& outputHeader, c
 			"}\n\n";
 		
 		outputHeader << "extern __typeof(" << sym << ")* __elf_get_" << sym << "(void);\n"
-			"#define " << sym << "(*__elf_get_" << sym << "())\n\n";
+			"#define " << sym << " (*__elf_get_" << sym << "())\n\n";
 	}
 
 	outputHeader << "\n\n#ifdef __cplusplus\n"
