@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <sys/mman.h>
 #include <semaphore.h>
+#include <locale.h>
 #include "elfcalls.h"
 #include "threads.h"
 
@@ -89,6 +90,9 @@ int main(int argc, const char** argv)
 
 	calls = (struct elf_calls*) strtoul(argv[1], NULL, 16);
 	ret = (retfunc) strtoul(argv[2], NULL, 16);
+
+	// Enable locales
+	setlocale(LC_ALL, "");
 
 	// puts("before elfcalls_make");
 
