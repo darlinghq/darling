@@ -281,6 +281,41 @@ UTTypeCopyDeclaringBundleURL(CFStringRef inUTI)
 	return retval;
 }
 
+CFArrayRef
+UTTypeCopyParentIdentifiers(CFStringRef inUTI)
+{
+	FMDatabaseQueue* dq = getDatabaseQueue();
+	if (!dq)
+		return NULL;
+
+	__block CFArrayRef retval = NULL;
+	[dq inDatabase:^(FMDatabase* db) {
+		FMResultSet* rs = [db executeQuery:@"select id, description from uti where type_identifier = ?", inUTI];
+		if ([rs next])
+		{
+			NSNumber* utiId = [NSNumber numberWithInt: [rs intForColumn:@"id"]];
+			[rs close];
+
+			NSMutableArray* conformsTo = [[NSMutableArray alloc] init];
+			rs = [db executeQuery:@"select conforms_to from uti_conforms where uti = ?", utiId];
+
+			while ([rs next])
+				[conformsTo addObject: [rs stringForColumnIndex:0]];
+
+			[rs close];
+
+			retval = (CFArrayRef)[[NSArray alloc] initWithArray: conformsTo copyItems: YES];
+			[conformsTo release];
+		}
+		else
+		{
+			[rs close];
+		}
+	}];
+
+	return retval;
+}
+
 CFStringRef
 UTCreateStringForOSType(OSType inOSType)
 {
