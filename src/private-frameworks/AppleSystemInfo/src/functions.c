@@ -40,7 +40,6 @@ void* ASI_CopyHostUUID(void) { if (verbose) puts("STUB: ASI_CopyHostUUID called"
 void* ASI_CopyMachineConfigurationCode(void) { if (verbose) puts("STUB: ASI_CopyMachineConfigurationCode called"); return NULL; }
 void* ASI_CopyRAMDescription(void) { if (verbose) puts("STUB: ASI_CopyRAMDescription called"); return NULL; }
 void* ASI_IsPlatformFeatureEnabled(void) { if (verbose) puts("STUB: ASI_IsPlatformFeatureEnabled called"); return NULL; }
-void* ASI_NumberOfCPUs(void) { if (verbose) puts("STUB: ASI_NumberOfCPUs called"); return NULL; }
 void* ASI_PhysicalMemorySize(void) { if (verbose) puts("STUB: ASI_PhysicalMemorySize called"); return NULL; }
 void* CopyIOPlatformSerialNumberString(void) { if (verbose) puts("STUB: CopyIOPlatformSerialNumberString called"); return NULL; }
 void* CopyPropertyAsData(void) { if (verbose) puts("STUB: CopyPropertyAsData called"); return NULL; }
