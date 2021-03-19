@@ -11,8 +11,9 @@ add_framework(DiskImages
 	VERSION "A"
 	CURRENT_VERSION
 	SOURCES
-		functions.c
-		#DIHelperProxy.m
+		src/functions.c
+		#src/DIHelperProxy.m
+		src/NSDictionary+BetterAccessors.m
 	DEPENDENCIES
 		system
 		Foundation
