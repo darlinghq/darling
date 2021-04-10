@@ -24,7 +24,37 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <signal.h>
+#include <os/reason_private.h>
 #include <unistd.h>
+
+/* Crash simulation */
+
+extern int pthread_current_stack_contains_np(const void *, unsigned long);
+int
+__darwin_check_fd_set_overflow(int n, const void *fd_set, int unlimited_select)
+{
+	if (n < 0) {
+		os_fault_with_payload(OS_REASON_LIBSYSTEM, OS_REASON_LIBSYSTEM_CODE_FAULT,
+		    &n, sizeof(n), "FD_SET underflow", 0);
+		return 0;
+	}
+
+	if (n >= __DARWIN_FD_SETSIZE) {
+		if (pthread_current_stack_contains_np((const void *) fd_set, sizeof(struct fd_set))) {
+			if (!unlimited_select) {
+				os_fault_with_payload(OS_REASON_LIBSYSTEM, OS_REASON_LIBSYSTEM_CODE_FAULT,
+				    &n, sizeof(n), "FD_SET overflow", 0);
+				return 0;
+			} else {
+				return 1;
+			}
+		} else {
+			return 1;
+		}
+	}
+
+	return 1;
+}
 
 /* System call entry points */
 int __terminate_with_payload(int pid, uint32_t reason_namespace, uint64_t reason_code,

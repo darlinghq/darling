@@ -188,6 +188,8 @@ libSystem_initializer(int argc,
 		// V2 functions (removed)
 		// V3 functions
 		.pthread_clear_qos_tsd = _pthread_clear_qos_tsd,
+		// V4 functions
+		.pthread_current_stack_contains_np = pthread_current_stack_contains_np,
 #ifdef DARLING
 		.dyld_func_lookup = _dyld_func_lookup,
 #endif

@@ -87,6 +87,18 @@ _pthread_clear_qos_tsd(mach_port_t thread_port)
 	}
 }
 
+__attribute__((visibility("hidden")))
+int
+pthread_current_stack_contains_np(const void *addr, size_t len)
+{
+	if (_libkernel_functions->version >= 4 &&
+	    _libkernel_functions->pthread_current_stack_contains_np) {
+		return _libkernel_functions->pthread_current_stack_contains_np(addr, len);
+	}
+
+	return 0;
+}
+
 /*
  * Upcalls to optimized libplatform string functions
  */
