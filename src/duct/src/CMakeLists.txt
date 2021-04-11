@@ -1,6 +1,6 @@
 project(duct)
 
-cmake_minimum_required(VERSION 2.4.0)
+cmake_minimum_required(VERSION 3.10)
 
 add_definitions(-DHAVE_STDINT_H=1)
 add_definitions(-DPRIVATE)

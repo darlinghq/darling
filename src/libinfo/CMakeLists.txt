@@ -1,6 +1,6 @@
 project(libinfo)
 
-cmake_minimum_required(VERSION 2.4.0)
+cmake_minimum_required(VERSION 3.10)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 OR CMAKE_INSTALL_LIBDIR STREQUAL "lib32")
 	set(BITS 32)

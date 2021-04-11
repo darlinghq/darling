@@ -1,6 +1,6 @@
 project(libc-regex)
 
-cmake_minimum_required(VERSION 2.4.0)
+cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_C99_SOURCE -D_FORTIFY_SOURCE=0 -D__va_list=__builtin_va_list -DHAVE_CONFIG_H")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/TRE")

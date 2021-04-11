@@ -1,6 +1,6 @@
 project(libc-stdtime)
 
-cmake_minimum_required(VERSION 2.4.0)
+cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -include stdbool.h")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")

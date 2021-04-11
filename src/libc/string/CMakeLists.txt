@@ -1,6 +1,6 @@
 project(libc-string)
 
-cmake_minimum_required(VERSION 2.4.0)
+cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_SECURE__STRING_H_")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/../fbsdcompat/_fbsd_compat_.h")
