@@ -17,4 +17,4 @@ else
     ARG='-b'
 fi
 
-debuild -us -uc --no-lintian ${ARG}
+debuild --no-lintian -us -uc ${ARG}
