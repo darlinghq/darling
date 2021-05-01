@@ -1,0 +1,15 @@
+#!/bin/sh
+
+set -e
+
+PATH="$(pwd)/debbuild/src/buildtools:${PATH}"
+
+if ! LIBS="$(elfdep "$2" 2>&1)"; then
+    exit
+fi
+
+ARGS=''
+
+for lib in ${LIBS}; do
+    printf " -l:${lib}" >> "$1"
+done

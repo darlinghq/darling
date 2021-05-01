@@ -37,8 +37,7 @@ jobs:
           name: Build DSCs
           no_output_timeout: 30m
           command: |
-            export DEB_DISTRO=$(lsb_release -cs)
-            tools/makedeb --dsc
+            tools/debian/make-deb --dsc
       - run:
           name: Move DSCs
           command: mkdir source && mv ../*~$(lsb_release -cs).* source
@@ -46,8 +45,7 @@ jobs:
           name: Build DEBs
           no_output_timeout: 30m
           command: |
-            export DEB_DISTRO=$(lsb_release -cs)
-            tools/makedeb
+            tools/debian/make-deb
       - run:
           name: Move DEBs
           command: mkdir dist && mv ../*.deb dist
