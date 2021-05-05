@@ -13,10 +13,6 @@ jobs:
       run: |
         git submodule update --init --recursive --depth=1
 
-    - name: Post-checkout script
-      run: |
-        ./tools/post-checkout.sh
-
     - name: Install dependencies
       run: |
         sudo apt-get update && sudo apt-get install devscripts equivs debhelper
