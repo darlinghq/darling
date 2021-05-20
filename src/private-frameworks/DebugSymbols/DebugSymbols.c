@@ -38,7 +38,7 @@ CFURLRef DBGCopyFullDSYMURLForUUID(CFUUIDRef uuid, CFURLRef exec_url)
 			CFRelease(dsymPath);
 			return url;
 		}
-		fprintf(stderr, "Debug symbols not found at %s\n", CFStringGetCStringPtr(exec_path, kCFStringEncodingUTF8));
+		fprintf(stderr, "Debug symbols not found at %s\n", CFStringGetCStringPtr(dsymPath, kCFStringEncodingUTF8));
 
 		CFRelease(dsymPath);
 	}
