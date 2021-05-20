@@ -1,10 +1,18 @@
 #ifndef LINUX_POSIX_SPAWN_H
 #define LINUX_POSIX_SPAWN_H
+
+#include <sys/types.h>
+#include <limits.h>
+#include <mach/mach_port.h>
+
 typedef enum {
-        PSFA_OPEN = 0,
-        PSFA_CLOSE = 1,
-        PSFA_DUP2 = 2,
-        PSFA_INHERIT = 3
+	PSFA_OPEN = 0,
+	PSFA_CLOSE = 1,
+	PSFA_DUP2 = 2,
+	PSFA_INHERIT = 3,
+	PSFA_FILEPORT_DUP2 = 4,
+	PSFA_CHDIR = 5,
+	PSFA_FCHDIR = 6
 } psfa_t;
 
 struct _posix_spawnattr
@@ -22,13 +30,23 @@ struct _posix_spawnattr
 struct _psfa_action
 {
 	psfa_t psfaa_type;
-	int psfaa_filedes;
-	struct _psfaa_open
-	{
-		int psfao_oflag;
-		unsigned short psfao_mode;
-		char psfao_path[1024];
-	} psfaa_openargs;
+	union {
+		int psfaa_filedes;
+		mach_port_name_t psfaa_fileport;
+	};
+	union {
+		struct _psfaa_open {
+			int psfao_oflag;
+			mode_t psfao_mode;
+			char psfao_path[PATH_MAX];
+		} psfaa_openargs;
+		struct {
+			int psfad_newfiledes;
+		} psfaa_dup2args;
+		struct {
+			char psfac_path[PATH_MAX];
+		} psfaa_chdirargs;
+	};
 };
 
 struct _posix_spawn_file_actions

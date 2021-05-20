@@ -24,13 +24,20 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/spawn.h>
+#include "../unistd/chdir.h"
+#include "../unistd/fchdir.h"
+#include "../fcntl/fcntl.h"
+#include "../dirent/getdirentries.h"
+
+// for debugging only; remove before committing
+#include "../signal/kill.h"
+#include "../unistd/getpid.h"
 
 #ifndef _POSIX_SPAWN_DISABLE_ASLR
 #define _POSIX_SPAWN_DISABLE_ASLR 0x0100
 #endif
 
 #define LINUX_ADDR_NO_RANDOMIZE 0x40000
-
 
 long sys_posix_spawn(int* pid, const char* path, const struct _posix_spawn_args_desc* desc,
 		char** argvp, char** envp)
@@ -87,11 +94,70 @@ no_fork:
 				lkm_call(NR_stop_after_exec, NULL);
 			}
 
+			if (desc->attrp->psa_flags & POSIX_SPAWN_CLOEXEC_DEFAULT) {
+				// set O_CLOEXEC on everything
+				int dir = sys_open("/proc/self/fd", BSD_O_RDONLY, 0);
+				char buf[4096];
+				int len = 0;
+
+				//__simple_kprintf("asked for cloexec default\n");
+
+				if (dir < 0) {
+					ret = dir;
+					goto fail;
+				}
+
+				while ((len = LINUX_SYSCALL(__NR_getdents64, dir, buf, sizeof(buf))) > 0) {
+					struct linux_dirent64* dirent = (struct linux_dirent64*)&buf[0];
+					for (int i = 0; i < len; i += dirent->d_reclen, dirent = (struct linux_dirent64*)&buf[i]) {
+						int fd = -1;
+
+						//__simple_kprintf("dentry name: %s\n", dirent->d_name);
+						if (dirent->d_name[0] == '.') {
+							continue;
+						}
+
+						fd = __simple_atoi(dirent->d_name, NULL);
+
+						// FIXME: pretty sure this should not be hardcoded
+						if (fd == 1023) {
+							// special commpage fd
+							continue;
+						}
+
+						//__simple_kprintf("setting cloexec on %d\n", fd);
+
+						ret = sys_fcntl(fd, F_GETFD, 0);
+						if (ret < 0) {
+							close_internal(dir);
+							goto fail;
+						}
+
+						ret = sys_fcntl(fd, F_SETFD, ret | FD_CLOEXEC);
+						if (ret < 0) {
+							close_internal(dir);
+							goto fail;
+						}
+					}
+				}
+
+				close_internal(dir);
+
+				if (len < 0) {
+					ret = len;
+					goto fail;
+				}
+			}
+
 			// TODO: other attributes
 		}
 		if (desc && desc->factp)
 		{
 			int i;
+
+			//__simple_kprintf("act count: %d\n", desc->factp->psfa_act_count);
+
+			//sys_kill(sys_getpid(), SIGSTOP, 0);
 
 			for (i = 0; i < desc->factp->psfa_act_count; i++)
 			{
@@ -99,7 +165,9 @@ no_fork:
 
 				act = &desc->factp->psfa_act_acts[i];
 
-				if (act->psfaa_filedes == pipe[1])
+				//__simple_kprintf("act count (on iter %d): %d\n", i, desc->factp->psfa_act_count);
+
+				if (act->psfaa_filedes == pipe[1] || (act->psfaa_type == PSFA_DUP2 && act->psfaa_dup2args.psfad_newfiledes == pipe[1]))
 				{
 					ret = sys_dup(pipe[1]);
 					if (ret < 0)
@@ -112,17 +180,22 @@ no_fork:
 				switch (act->psfaa_type)
 				{
 					case PSFA_CLOSE:
+						//__simple_kprintf("closing %d\n", act->psfaa_filedes);
 						ret = close_internal(act->psfaa_filedes);
 						if (ret != 0)
 							goto fail;
 						break;
+
 					case PSFA_DUP2:
-						ret = sys_dup2(act->psfaa_filedes, act->psfaa_openargs.psfao_oflag);
+						//__simple_kprintf("duping %d to %d\n", act->psfaa_filedes, act->psfaa_dup2args.psfad_newfiledes);
+						ret = sys_dup2(act->psfaa_filedes, act->psfaa_dup2args.psfad_newfiledes);
 						if (ret < 0)
 							goto fail;
 						break;
+
 					case PSFA_OPEN:
 					{
+						//__simple_kprintf("opening %s to %d\n", act->psfaa_openargs.psfao_path, act->psfaa_filedes);
 						ret = sys_open(act->psfaa_openargs.psfao_path,
 								act->psfaa_openargs.psfao_oflag, act->psfaa_openargs.psfao_mode);
 						if (ret < 0)
@@ -141,10 +214,43 @@ no_fork:
 						}
 						break;
 					}
+
+					case PSFA_CHDIR: {
+						//__simple_kprintf("chdiring to %s\n", act->psfaa_chdirargs.psfac_path);
+						ret = sys_chdir(act->psfaa_chdirargs.psfac_path);
+						if (ret < 0) {
+							goto fail;
+						}
+					} break;
+
+					case PSFA_FCHDIR: {
+						//__simple_kprintf("fchdiring to %d\n", act->psfaa_filedes);
+						ret = sys_fchdir(act->psfaa_filedes);
+						if (ret < 0) {
+							goto fail;
+						}
+					} break;
+
+					// unset CLOEXEC on this fd
+					case PSFA_INHERIT: {
+						//__simple_kprintf("inheriting %d\n", act->psfaa_filedes);
+						ret = sys_fcntl(act->psfaa_filedes, F_GETFD, 0);
+						if (ret < 0) {
+							goto fail;
+						}
+						ret = sys_fcntl(act->psfaa_filedes, F_SETFD, ret & ~FD_CLOEXEC);
+						if (ret < 0) {
+							goto fail;
+						}
+					} break;
+
 					default:
+						//__simple_kprintf("unknown PSFA type %d\n", act->psfaa_type);
 						;
 				}
 			}
+
+			//__simple_kprintf("act count (on finish): %d\n", desc->factp->psfa_act_count);
 		}
 
 		char binprefs[64];
@@ -174,6 +280,7 @@ no_fork:
 
 		ret = sys_execve((char*) path, argvp, envp);
 fail:
+		//__simple_kprintf("posix_spawn is failing with %d\n", ret);
 		if (desc && desc->attrp && desc->attrp->psa_flags & POSIX_SPAWN_SETEXEC)
 		{
 			// no_fork case
