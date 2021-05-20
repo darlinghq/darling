@@ -9,14 +9,14 @@
 
 #include "malloc.h"
 #include "lock.h"
-#include "simple.h"
+#include <darling/emulation/simple.h>
 
 #ifndef XTRACE_MALLOC_DEBUG
 	#define XTRACE_MALLOC_DEBUG 0
 #endif
 
 #if XTRACE_MALLOC_DEBUG
-	#define xtrace_malloc_debug(x, ...) __simple_printf(x "\n", ## __VA_ARGS__)
+	#define xtrace_malloc_debug(x, ...) xtrace_printf(x "\n", ## __VA_ARGS__)
 	#undef XTRACE_INLINE
 	#define XTRACE_INLINE
 #else

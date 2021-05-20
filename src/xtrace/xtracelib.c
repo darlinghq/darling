@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
-#include "simple.h"
+#include <darling/emulation/simple.h>
 #include "xtracelib.h"
 #include "mig_trace.h"
 #include "tls.h"
@@ -52,6 +52,7 @@ void xtrace_setup()
 
 static int xtrace_split_entry_and_exit = 0;
 int xtrace_no_color = 0;
+int xtrace_kprintf = 0;
 
 static void xtrace_setup_options(void)
 {
@@ -59,6 +60,8 @@ static void xtrace_setup_options(void)
 		xtrace_split_entry_and_exit = 1;
 	if (getenv("XTRACE_NO_COLOR") != NULL)
 		xtrace_no_color = 1;
+	if (getenv("XTRACE_KPRINTF") != NULL)
+		xtrace_kprintf = 1;
 }
 
 
@@ -118,7 +121,7 @@ void xtrace_set_gray_color(void)
 	if (xtrace_no_color)
 		return;
 
-	__simple_printf("\033[37m");
+	xtrace_printf("\033[37m");
 }
 
 void xtrace_reset_color(void)
@@ -126,16 +129,16 @@ void xtrace_reset_color(void)
 	if (xtrace_no_color)
 		return;
 
-	__simple_printf("\033[0m");
+	xtrace_printf("\033[0m");
 }
 
 void xtrace_start_line(int indent)
 {
 	xtrace_set_gray_color();
 
-	__simple_printf("[%d]", sys_thread_selfid());
+	xtrace_printf("[%d]", sys_thread_selfid());
         for (int i = 0; i < indent + 1; i++)
-		__simple_printf(" ");
+		xtrace_printf(" ");
 
 	xtrace_reset_color();
 }
@@ -148,9 +151,9 @@ static void print_call(const struct calldef* defs, const char* type, int nr, int
 		xtrace_set_gray_color();
 
 	if (defs[nr].name != NULL)
-		__simple_printf("%s", defs[nr].name);
+		xtrace_printf("%s", defs[nr].name);
 	else
-		__simple_printf("%s %d", type, nr);
+		xtrace_printf("%s %d", type, nr);
 
 	// Leaves gray color on!
 }
@@ -177,7 +180,7 @@ void handle_generic_entry(const struct calldef* defs, const char* type, int nr, 
 	if (get_ptr_nested_call()->previous_level < get_ptr_nested_call()->current_level && !xtrace_split_entry_and_exit)
 	{
 		// We are after an earlier entry without an exit.
-		__simple_printf("\n");
+		xtrace_printf("\n");
 	}
 
 	int indent = 4 * get_ptr_nested_call()->current_level;
@@ -192,13 +195,13 @@ void handle_generic_entry(const struct calldef* defs, const char* type, int nr, 
 			defs[nr].print_args(args_buf, nr, args);
 		else
 			strcpy(args_buf, "...");
-		__simple_printf("(%s)", args_buf);
+		xtrace_printf("(%s)", args_buf);
 	}
 	else
-		__simple_printf("(...)");
+		xtrace_printf("(...)");
 
 	if (xtrace_split_entry_and_exit)
-		__simple_printf("\n");
+		xtrace_printf("\n");
 
 	get_ptr_nested_call()->previous_level = get_ptr_nested_call()->current_level++;
 }
@@ -221,11 +224,11 @@ void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t
 	{
 		int indent = 4 * get_ptr_nested_call()->current_level;
 		print_call(defs, type, nr, indent, 1);
-		__simple_printf("()");
+		xtrace_printf("()");
 	}
 
 	xtrace_set_gray_color();
-	__simple_printf(" -> ");
+	xtrace_printf(" -> ");
 	xtrace_reset_color();
 
 	if (defs[nr].name != NULL)
@@ -235,9 +238,9 @@ void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t
 			defs[nr].print_retval(args_buf, nr, retval);
 		else
 			__simple_sprintf(args_buf, "0x%lx\n", retval);
-		__simple_printf("%s\n", args_buf);
+		xtrace_printf("%s\n", args_buf);
 	}
 	else
-		__simple_printf("0x%lx\n", retval);
+		xtrace_printf("0x%lx\n", retval);
 }
 

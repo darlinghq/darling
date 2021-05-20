@@ -3,14 +3,14 @@
 #include <stdbool.h>
 
 #include "lock.h"
-#include "simple.h"
+#include <darling/emulation/simple.h>
 
 #ifndef XTRACE_LOCK_DEBUG
 	#define XTRACE_LOCK_DEBUG 0
 #endif
 
 #if XTRACE_LOCK_DEBUG
-	#define xtrace_lock_debug_internal(x, ...) __simple_printf(x "\n", ## __VA_ARGS__)
+	#define xtrace_lock_debug_internal(x, ...) xtrace_printf(x "\n", ## __VA_ARGS__)
 	#undef XTRACE_INLINE
 	#define XTRACE_INLINE
 #else

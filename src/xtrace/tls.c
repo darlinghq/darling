@@ -4,14 +4,14 @@
 #include "tls.h"
 #include "malloc.h"
 #include "lock.h"
-#include "simple.h"
+#include <darling/emulation/simple.h>
 
 #ifndef XTRACE_TLS_DEBUG
 	#define XTRACE_TLS_DEBUG 0
 #endif
 
 #if XTRACE_TLS_DEBUG
-	#define xtrace_tls_debug(x, ...) __simple_printf(x "\n", ## __VA_ARGS__)
+	#define xtrace_tls_debug(x, ...) xtrace_printf(x "\n", ## __VA_ARGS__)
 #else
 	#define xtrace_tls_debug(x, ...)
 #endif

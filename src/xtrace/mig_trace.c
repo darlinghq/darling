@@ -7,7 +7,7 @@
 
 #include <mach/mach.h>
 
-#include "simple.h"
+#include <darling/emulation/simple.h>
 #include "xtracelib.h"
 #include "mach_trace.h"
 #include "bsd_trace.h"
@@ -61,14 +61,14 @@ void xtrace_setup_mig_tracing(void)
 		void* dylib_handle = dlopen(path, RTLD_LOCAL);
 		if (dylib_handle == NULL)
 		{
-			fprintf(stderr, "xtrace: failed to dlopen %s: %s\n", path, dlerror());
+			xtrace_fprintf(fileno(stderr), "xtrace: failed to dlopen %s: %s\n", path, dlerror());
 			subsystems[i] = NULL;
 			continue;
 		}
 		subsystems[i] = (struct xtrace_mig_subsystem*) dlsym(dylib_handle, "xtrace_mig_subsystem");
 		if (subsystems[i] == NULL)
 		{
-			fprintf(stderr, "xtrace: failed to dlsym(%s, \"xtrace_mig_subsystem\"): %s\n", path, dlerror());
+			xtrace_fprintf(fileno(stderr), "xtrace: failed to dlsym(%s, \"xtrace_mig_subsystem\"): %s\n", path, dlerror());
 			// Leave NULL subsystem in place and continue.
 		}
 	}
@@ -78,7 +78,7 @@ void xtrace_setup_mig_tracing(void)
 
 DEFINE_XTRACE_TLS_VAR(bool, is_first_arg);
 
-#define BEFORE if (!get_is_first_arg()) __simple_printf(", ")
+#define BEFORE if (!get_is_first_arg()) xtrace_printf(", ")
 #define AFTER set_is_first_arg(false)
 
 static void add_raw_arg(const char* format, ...)
@@ -97,14 +97,14 @@ static void add_raw_arg(const char* format, ...)
 static void add_num_arg(unsigned long long n)
 {
 	BEFORE;
-	__simple_printf("%llu", n);
+	xtrace_printf("%llu", n);
 	AFTER;
 }
 
 static void add_ptr_arg(void* ptr)
 {
 	BEFORE;
-	__simple_printf("%p", ptr);
+	xtrace_printf("%p", ptr);
 	AFTER;
 }
 
@@ -113,7 +113,7 @@ static void add_string_arg(const char* s)
 	BEFORE;
 	char buf[1024];
 	xtrace_format_string_literal(buf, s);
-	__simple_printf("%s", buf);
+	xtrace_printf("%s", buf);
 	AFTER;
 }
 
@@ -121,9 +121,9 @@ static void add_bytes_arg(const void* bytes, unsigned long cnt)
 {
 	BEFORE;
 	const unsigned char* b = (const unsigned char*) bytes;
-	__simple_printf("bytes ");
+	xtrace_printf("bytes ");
 	for (int i = 0; i < cnt; i++)
-		__simple_printf("%x", b[i]);
+		xtrace_printf("%x", b[i]);
 	AFTER;
 }
 
@@ -132,28 +132,28 @@ static void add_return_code_arg(kern_return_t code)
 	BEFORE;
 	char buf[100];
 	xtrace_kern_return_to_str(buf, code);
-	__simple_printf("return %s", buf);
+	xtrace_printf("return %s", buf);
 	AFTER;
 }
 
 static void add_port_arg(mach_port_name_t port_name, mach_msg_type_name_t disposition)
 {
 	BEFORE;
-	__simple_printf("%s %u", xtrace_msg_type_to_str(disposition, 0), port_name);
+	xtrace_printf("%s %u", xtrace_msg_type_to_str(disposition, 0), port_name);
 	AFTER;
 }
 
 static void add_ool_mem_arg(const void* ptr, unsigned long size)
 {
 	BEFORE;
-	__simple_printf("mem [%p; %lu]", ptr, size);
+	xtrace_printf("mem [%p; %lu]", ptr, size);
 	AFTER;
 }
 
 static void add_ool_ports_arg(const void* ptr, unsigned long cnt, mach_msg_type_name_t disposition)
 {
 	BEFORE;
-	__simple_printf("%s [%p; x%lu]", xtrace_msg_type_to_str(disposition, 0), ptr, cnt);
+	xtrace_printf("%s [%p; x%lu]", xtrace_msg_type_to_str(disposition, 0), ptr, cnt);
 	AFTER;
 }
 
@@ -182,15 +182,15 @@ static void add_struct_arg(const void* ptr, unsigned long cnt, unsigned long ite
 {
 	BEFORE;
 	unsigned char* p = (unsigned char*) ptr;
-	__simple_printf("{");
+	xtrace_printf("{");
 	for (unsigned long i = 0; i < cnt; i++)
 	{
 		if (i != 0)
-			__simple_printf(", ");
-		__simple_printf("%llu", read_integer((void*) p, item_size));
+			xtrace_printf(", ");
+		xtrace_printf("%llu", read_integer((void*) p, item_size));
 		p += item_size;
 	}
-	__simple_printf("}");
+	xtrace_printf("}");
 	AFTER;
 }
 
@@ -198,15 +198,15 @@ static void add_array_arg(const void* ptr, unsigned long cnt, unsigned long item
 {
 	BEFORE;
 	unsigned char* p = (unsigned char*) ptr;
-	__simple_printf("[");
+	xtrace_printf("[");
 	for (unsigned long i = 0; i < cnt; i++)
 	{
 		if (i != 0)
-			__simple_printf(", ");
-		__simple_printf("%llu", read_integer((void*) p, item_size));
+			xtrace_printf(", ");
+		xtrace_printf("%llu", read_integer((void*) p, item_size));
 		p += item_size;
 	}
-	__simple_printf("]");
+	xtrace_printf("]");
 	AFTER;
 }
 
@@ -215,7 +215,7 @@ static void set_return_code(kern_return_t code)
 	BEFORE;
 	char buf[100];
 	xtrace_kern_return_to_str(buf, code);
-	__simple_printf("%s", buf);
+	xtrace_printf("%s", buf);
 	AFTER;
 }
 
@@ -343,11 +343,11 @@ void xtrace_print_mig_message(const mach_msg_header_t* message, mach_port_name_t
 		return;
 
 	if (!is_reply)
-		__simple_printf("%s::%s(", s->name, r->name);
+		xtrace_printf("%s::%s(", s->name, r->name);
 	else
 	{
 		xtrace_set_gray_color();
-		__simple_printf("%s::%s() -> ", s->name, r->name);
+		xtrace_printf("%s::%s() -> ", s->name, r->name);
 		xtrace_reset_color();
 	}
 
@@ -355,7 +355,7 @@ void xtrace_print_mig_message(const mach_msg_header_t* message, mach_port_name_t
 	r->routine(message, is_reply, &callbacks);
 
 	if (!is_reply)
-		__simple_printf(")");
+		xtrace_printf(")");
 	else
-		__simple_printf(" ");
+		xtrace_printf(" ");
 }

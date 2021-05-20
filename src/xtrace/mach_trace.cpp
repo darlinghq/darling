@@ -1,4 +1,4 @@
-#include "simple.h"
+#include <darling/emulation/simple.h>
 #include <unistd.h>
 #include <dlfcn.h>
 #include <mach/message.h>
@@ -427,23 +427,23 @@ const char* xtrace_msg_type_to_str(mach_msg_type_name_t type_name, int full)
 
 static void print_mach_msg(const mach_msg_header_t* msg, mach_msg_size_t size)
 {
-	__simple_printf("{");
+	xtrace_printf("{");
 
 	mach_msg_bits_t bits = msg->msgh_bits;
 	if (MACH_MSGH_BITS_HAS_REMOTE(bits))
-		__simple_printf("remote = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_REMOTE(bits), 0), msg->msgh_remote_port);
+		xtrace_printf("remote = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_REMOTE(bits), 0), msg->msgh_remote_port);
 	if (MACH_MSGH_BITS_HAS_LOCAL(bits))
-		__simple_printf("local = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_LOCAL(bits), 0), msg->msgh_local_port);
+		xtrace_printf("local = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_LOCAL(bits), 0), msg->msgh_local_port);
 	if (MACH_MSGH_BITS_HAS_VOUCHER(bits))
-		__simple_printf("voucher = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_VOUCHER(bits), 0), msg->msgh_voucher_port);
+		xtrace_printf("voucher = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_VOUCHER(bits), 0), msg->msgh_voucher_port);
 	if (MACH_MSGH_BITS_IS_COMPLEX(bits))
-		__simple_printf("complex, ");
+		xtrace_printf("complex, ");
 
-	__simple_printf("id = %d}", msg->msgh_id);
+	xtrace_printf("id = %d}", msg->msgh_id);
 
 	if (!MACH_MSGH_BITS_IS_COMPLEX(bits))
 	{
-		__simple_printf(", %lu bytes of inline data\n", size - sizeof(mach_msg_header_t));
+		xtrace_printf(", %lu bytes of inline data\n", size - sizeof(mach_msg_header_t));
 		return;
 	}
 
@@ -456,31 +456,31 @@ static void print_mach_msg(const mach_msg_header_t* msg, mach_msg_size_t size)
 		if (type == MACH_MSG_PORT_DESCRIPTOR)
 		{
 			mach_msg_port_descriptor_t* port = (mach_msg_port_descriptor_t*) ptr;
-			__simple_printf(", %s %u", xtrace_msg_type_to_str(port->disposition, 0), port->name);
+			xtrace_printf(", %s %u", xtrace_msg_type_to_str(port->disposition, 0), port->name);
 			ptr = (mach_msg_descriptor_t*) (port + 1);
 		}
 		else if (type == MACH_MSG_OOL_DESCRIPTOR || type == MACH_MSG_OOL_VOLATILE_DESCRIPTOR)
 		{
 			mach_msg_ool_descriptor_t* ool = (mach_msg_ool_descriptor_t*) ptr;
-			__simple_printf(", ool [%p; %u]", ool->address, ool->size);
+			xtrace_printf(", ool [%p; %u]", ool->address, ool->size);
 			ptr = (mach_msg_descriptor_t*) (ool + 1);
 		}
 		else if (type == MACH_MSG_OOL_PORTS_DESCRIPTOR)
 		{
 			mach_msg_ool_ports_descriptor_t* ool_ports = (mach_msg_ool_ports_descriptor_t*) ptr;
-			__simple_printf(", ool ports %s [%p; x%u]",
+			xtrace_printf(", ool ports %s [%p; x%u]",
 				xtrace_msg_type_to_str(ool_ports->disposition, 0),
 				ool_ports->address, ool_ports->count);
 			ptr = (mach_msg_descriptor_t*) (ool_ports + 1);
 		}
 		else
 		{
-			__simple_printf(", ???");
+			xtrace_printf(", ???");
 			ptr++;
 		}
 	}
 
-	__simple_printf(", %lu bytes of inline data\n", size - ((const char*) ptr - (const char*) msg));
+	xtrace_printf(", %lu bytes of inline data\n", size - ((const char*) ptr - (const char*) msg));
 }
 
 static void print_mach_msg_entry(void* args[])
@@ -492,12 +492,12 @@ static void print_mach_msg_entry(void* args[])
 	if (options & MACH_SEND_MSG)
 	{
 		set_request_port(message->msgh_remote_port);
-		__simple_printf("\n");
+		xtrace_printf("\n");
 		xtrace_start_line(8);
 		print_mach_msg(message, send_size);
 		xtrace_start_line(8);
 		xtrace_print_mig_message(message, get_request_port());
-		__simple_printf("\n");
+		xtrace_printf("\n");
 	}
 
 	if (options & MACH_RCV_MSG)
@@ -515,7 +515,7 @@ static void print_mach_msg_entry(void* args[])
 					set_argument_ptr(args[0]);
 				break;
 			default:
-				__simple_printf("Unexpected mach_call_nr");
+				xtrace_printf("Unexpected mach_call_nr");
 				return;
 		}
 	}
@@ -531,7 +531,7 @@ static void print_mach_msg_exit()
 	print_mach_msg(message, message->msgh_size);
 	xtrace_start_line(8);
 	xtrace_print_mig_message(message, get_request_port());
-	__simple_printf("\n");
+	xtrace_printf("\n");
 	set_argument_ptr(NULL);
 	set_request_port(MACH_PORT_NULL);
 }

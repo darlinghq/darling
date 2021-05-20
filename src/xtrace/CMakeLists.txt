@@ -10,7 +10,6 @@ include_directories(
 
 set(xtrace_sources
 	xtracelib.c
-	simple.c
 	trampoline.S
 	mach_trace.cpp
 	bsd_trace.cpp

@@ -1,4 +1,4 @@
-#include "simple.h"
+#include <darling/emulation/simple.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -1026,7 +1026,7 @@ void darling_bsd_syscall_entry_print(int nr, void* args[])
 	{
 		// For exit() or execve(), print an extra newline,
 		// as we're likely not going to see the return.
-		__simple_printf("\n");
+		xtrace_printf("\n");
 	}
 }
 
