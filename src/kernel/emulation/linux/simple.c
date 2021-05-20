@@ -4,10 +4,12 @@
 #include <stddef.h>
 #include <linux-syscalls/linux.h>
 #include <lkm/api.h>
+#include "mach/lkm.h"
 
-void __simple_vsprintf(char* buf, const char* format, va_list vl);
+int __simple_vsprintf(char* buf, const char* format, va_list vl);
 extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
 
+__attribute__ ((visibility ("default")))
 int __simple_strlen(const char* text)
 {
 	int len = 0;
@@ -21,8 +23,10 @@ static inline int abs(int n)
 	return (n < 0) ? -n : n;
 }
 
-void __simple_vsprintf(char* buf, const char* format, va_list vl)
+__attribute__ ((visibility ("default")))
+int __simple_vsprintf(char* buf, const char* format, va_list vl)
 {
+	char* initial_buf = buf;
 	while (*format)
 	{
 		if (*format == '%')
@@ -136,6 +140,7 @@ void __simple_vsprintf(char* buf, const char* format, va_list vl)
 	}
 
 	*buf = 0;
+	return buf - initial_buf;
 }
 
 __attribute__ ((visibility ("default")))
@@ -164,6 +169,7 @@ void __simple_kprintf(const char* format, ...)
 	lkm_call(NR_kernel_printk, buffer);
 }
 
+__attribute__ ((visibility ("default")))
 void __simple_fprintf(int fd, const char* format, ...)
 {
 	char buffer[512];
@@ -176,14 +182,16 @@ void __simple_fprintf(int fd, const char* format, ...)
 	LINUX_SYSCALL3(__NR_write, fd, buffer, __simple_strlen(buffer));
 }
 
-
-void __simple_sprintf(char *buffer, const char* format, ...)
+__attribute__ ((visibility ("default")))
+int __simple_sprintf(char *buffer, const char* format, ...)
 {
 	va_list vl;
 
 	va_start(vl, format);
-	__simple_vsprintf(buffer, format, vl);
+	int ret = __simple_vsprintf(buffer, format, vl);
 	va_end(vl);
+
+	return ret;
 }
 
 #ifdef isdigit
@@ -205,6 +213,7 @@ static int isdigit16(char c)
 	return 0;
 }
 
+__attribute__ ((visibility ("default")))
 unsigned long long __simple_atoi(const char* str, const char** endp)
 {
 	unsigned long long value = 0;
@@ -221,6 +230,7 @@ unsigned long long __simple_atoi(const char* str, const char** endp)
 	return value;
 }
 
+__attribute__ ((visibility ("default")))
 unsigned long long __simple_atoi16(const char* str, const char** endp)
 {
 	unsigned long long value = 0;
@@ -252,11 +262,13 @@ extern long sys_read(int fd, void* buf, __SIZE_TYPE__ n);
 #	define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
+__attribute__ ((visibility ("default")))
 void __simple_readline_init(struct simple_readline_buf* buf)
 {
 	buf->used = 0;
 }
 
+__attribute__ ((visibility ("default")))
 char* __simple_readline(int fd, struct simple_readline_buf* buf, char* out, int max_out)
 {
 	char* nl = NULL;

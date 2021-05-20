@@ -1,15 +1,20 @@
 #ifndef LINUX_DEBUG_H
 #define LINUX_DEBUG_H
 
+#include <stdarg.h>
+
+// everything in this header can be used outside of libsystem_kernel
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void __simple_printf(const char* format, ...);
-void __simple_kprintf(const char* format, ...);
-void __simple_fprintf(int fd, const char* format, ...);
-void __simple_sprintf(char *buffer, const char* format, ...);
+void __simple_printf(const char* format, ...) __attribute__((format(printf, 1, 2)));
+void __simple_kprintf(const char* format, ...) __attribute__((format(printf, 1, 2)));
+void __simple_fprintf(int fd, const char* format, ...) __attribute__((format(printf, 2, 3)));
+int __simple_sprintf(char *buffer, const char* format, ...) __attribute__((format(printf, 2, 3)));
 int __simple_strlen(const char* str);
+int __simple_vsprintf(char* buf, const char* format, va_list vl) __attribute__((format(printf, 2, 0)));
 
 unsigned long long __simple_atoi(const char* str, const char** endp);
 unsigned long long __simple_atoi16(const char* str, const char** endp);
