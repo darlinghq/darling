@@ -296,6 +296,7 @@ add_subdirectory(external/swift)
 
 add_subdirectory(libaccessibility)
 
+add_subdirectory(external/openjdk)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
