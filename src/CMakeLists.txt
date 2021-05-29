@@ -273,8 +273,8 @@ add_subdirectory(clt)
 
 add_subdirectory(diskutil)
 
-# Just a stub
-add_subdirectory(external/cocotron/CoreGraphics)
+add_subdirectory(external/cocotron)
+
 add_subdirectory(external/fmdb)
 
 add_subdirectory(frameworks)
@@ -283,12 +283,6 @@ add_subdirectory(external/usertemplate)
 
 add_subdirectory(external/lkm)
 
-add_subdirectory(external/cocotron/Onyx2D)
-add_subdirectory(external/cocotron/AppKit)
-add_subdirectory(external/cocotron/CoreText)
-add_subdirectory(external/cocotron/Cocoa)
-add_subdirectory(external/cocotron/CoreData)
-add_subdirectory(external/cocotron/QuartzCore)
 add_subdirectory(pboard)
 
 add_subdirectory(external/dbuskit)
