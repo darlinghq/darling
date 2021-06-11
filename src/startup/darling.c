@@ -803,7 +803,7 @@ pid_t spawnInitProcess(void)
 
 		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 100);
 
-		const char* opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir";
+		const char* opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir,index=off";
 
 		sprintf(opts, opts_fmt, LIBEXEC_PATH, prefix, prefix);
 
