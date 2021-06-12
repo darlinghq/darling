@@ -199,8 +199,13 @@ _os_ptr_munge(uintptr_t ptr)
 
 #if defined(__i386__) || defined(__x86_64__)
 
+#if defined(DARLING) && defined(__i386__) && !defined(__x86_64__)
+#define _OS_PTR_MUNGE(_reg) \
+	xor %fs:_OS_TSD_OFFSET(__TSD_PTR_MUNGE), _reg
+#else
 #define _OS_PTR_MUNGE(_reg) \
 	xor %gs:_OS_TSD_OFFSET(__TSD_PTR_MUNGE), _reg
+#endif
 
 #define _OS_PTR_UNMUNGE(_reg) \
 	_OS_PTR_MUNGE(_reg)
