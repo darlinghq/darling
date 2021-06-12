@@ -28,6 +28,7 @@
 #include <setjmp.h>
 #include <sys/random.h>
 #include <elf.h>
+#include <darling/emulation/ext/for-libelfloader.h>
 #include "auxvec.h"
 #include "loader.h"
 #include "native/elfcalls.h"
@@ -235,7 +236,8 @@ void load(const char* path, struct loader_context* lc, bool isInterp)
 	ElfW(Ehdr) elfHdr;
 	void* phdrs = NULL;
 
-	int fd = open(path, O_RDONLY);
+	// the interpreter path should be relative to the Linux root, not the Darling prefix
+	int fd = isInterp ? _open_for_libelfloader(path, O_RDONLY, 0) : open(path, O_RDONLY);
 	uintptr_t slide, base;
 
 	if (fd == -1)
@@ -389,18 +391,7 @@ void load(const char* path, struct loader_context* lc, bool isInterp)
 			interp[phdr->p_filesz] = '\0';
 
 			// Load interpreter
-			if (access(interp, F_OK) != 0)
-			{
-				char* prefixed = (char*) malloc(phdr->p_filesz + sizeof(SYSTEM_ROOT));
-
-				strcpy(prefixed, SYSTEM_ROOT);
-				strcat(prefixed, interp);
-
-				free(interp);
-				interp = prefixed;
-			}
-
-			if (access(interp, F_OK) != 0)
+			if (_access_for_libelfloader(interp, F_OK) != 0)
 			{
 				fprintf(stderr, "Cannot load interpreter at %s\n", interp);
 				free(interp);
