@@ -38,13 +38,20 @@ typedef struct stat stat_t;
 #	include "stat/common.h"
 #	include "dirent/getdirentries.h"
 #	include "common_at.h"
+#include <stddef.h>
+
 typedef struct linux_stat stat_t;
+
+struct _xlocale;
+typedef struct _xlocale* locale_t;
+
+#define LC_C_LOCALE ((locale_t)NULL)
 
 extern __SIZE_TYPE__ strlen(const char* s);
 extern char* strcpy(char* dest, const char* src);
 extern int strcmp(const char* str1, const char* str2);
 extern int strncmp(const char* str1, const char* str2, __SIZE_TYPE__ n);
-extern int strncasecmp(const char* str1, const char* str2, __SIZE_TYPE__ n);
+extern int strncasecmp_l(const char* str1, const char* str2, __SIZE_TYPE__ n, locale_t locale);
 extern int strcasecmp(const char* str1, const char* str2);
 extern char* strcat(char* dest, const char* src);
 extern char *strchr(const char *s, int c);
@@ -431,7 +438,7 @@ ignore_symlink:
 
 				if (ctxt->current_root_len > 0 && ctxt->current_path_len - ctxt->current_root_len == sizeof(EXIT_PATH)-1)
 				{
-					if (strncasecmp(ctxt->current_path + ctxt->current_root_len, EXIT_PATH, sizeof(EXIT_PATH) - 1) == 0)
+					if (strncasecmp_l(ctxt->current_path + ctxt->current_root_len, EXIT_PATH, sizeof(EXIT_PATH) - 1, LC_C_LOCALE) == 0)
 					{
 						// Switch to the real system root
 						ctxt->current_path[0] = '\0';
