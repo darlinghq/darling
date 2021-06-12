@@ -48,6 +48,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include <mach/message.h>
 #include "write.h"
