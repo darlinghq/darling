@@ -1,3 +1,4 @@
+
 #include <string>
 #include <iostream>
 #include <set>
@@ -11,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <fstream>
+#include <link.h>
 
 #ifndef PATH_MAX
 #	define PATH_MAX	4096
@@ -52,7 +54,7 @@ int main(int argc, const char** argv)
 			// It is simpler than parsing /etc/ld.so.conf.
 
 			void* handle = dlopen(elfLibrary.c_str(), RTLD_LAZY | RTLD_LOCAL);
-			char path[PATH_MAX];
+			struct link_map* lm = NULL;
 
 			if (!handle)
 			{
@@ -61,10 +63,9 @@ int main(int argc, const char** argv)
 				throw std::runtime_error(ss.str());
 			}
 
-			if (dlinfo(handle, RTLD_DI_ORIGIN, path) == 0)
+			if (dlinfo(handle, RTLD_DI_LINKMAP, &lm) == 0)
 			{
-				elfLibrary.insert(0, "/");
-				elfLibrary.insert(0, path);
+				elfLibrary = lm->l_name;
 			}
 			else
 			{
