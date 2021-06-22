@@ -2,6 +2,7 @@
 #define LINUX_DEBUG_H
 
 #include <stdarg.h>
+#include <stddef.h>
 
 // everything in this header can be used outside of libsystem_kernel
 
@@ -15,6 +16,8 @@ void __simple_fprintf(int fd, const char* format, ...) __attribute__((format(pri
 int __simple_sprintf(char *buffer, const char* format, ...) __attribute__((format(printf, 2, 3)));
 int __simple_strlen(const char* str);
 int __simple_vsprintf(char* buf, const char* format, va_list vl) __attribute__((format(printf, 2, 0)));
+int __simple_vsnprintf(char* buffer, size_t max_length, const char* format, va_list args) __attribute__((format(printf, 3, 0)));
+int __simple_snprintf(char* buffer, size_t max_length, const char* format, ...) __attribute__((format(printf, 3, 4)));
 
 unsigned long long __simple_atoi(const char* str, const char** endp);
 unsigned long long __simple_atoi16(const char* str, const char** endp);

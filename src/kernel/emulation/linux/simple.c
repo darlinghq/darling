@@ -6,7 +6,6 @@
 #include <lkm/api.h>
 #include "mach/lkm.h"
 
-int __simple_vsprintf(char* buf, const char* format, va_list vl);
 extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
 
 __attribute__ ((visibility ("default")))
@@ -24,9 +23,9 @@ static inline int abs(int n)
 }
 
 __attribute__ ((visibility ("default")))
-int __simple_vsprintf(char* buf, const char* format, va_list vl)
+int __simple_vsnprintf(char* buf, size_t max_length, const char* format, va_list vl)
 {
-	char* initial_buf = buf;
+	size_t offset = 0;
 	while (*format)
 	{
 		if (*format == '%')
@@ -40,7 +39,9 @@ int __simple_vsprintf(char* buf, const char* format, va_list vl)
 			switch (*format)
 			{
 				case '%':
-					*buf++ = '%';
+					if (offset < max_length)
+						buf[offset] = '%';
+					offset++;
 					break;
 				case 's':
 				{
@@ -50,7 +51,9 @@ int __simple_vsprintf(char* buf, const char* format, va_list vl)
 
 					while (*str)
 					{
-						*buf++ = *str;
+						if (offset < max_length)
+							buf[offset] = *str;
+						offset++;
 						str++;
 					}
 					break;
@@ -63,7 +66,9 @@ int __simple_vsprintf(char* buf, const char* format, va_list vl)
 
 					if (num < 0)
 					{
-						*buf++ = '-';
+						if (offset < max_length)
+							buf[offset] = '-';
+						offset++;
 						num = -num;
 					}
 
@@ -75,7 +80,11 @@ int __simple_vsprintf(char* buf, const char* format, va_list vl)
 					while (num > 0);
 					
 					while (count--)
-						*buf++ = temp[count];
+					{
+						if (offset < max_length)
+							buf[offset] = temp[count];
+						offset++;
+					}
 
 					break;
 				}
@@ -93,7 +102,11 @@ int __simple_vsprintf(char* buf, const char* format, va_list vl)
 					while (num > 0);
 					
 					while (count--)
-						*buf++ = temp[count];
+					{
+						if (offset < max_length)
+							buf[offset] = temp[count];
+						offset++;
+					}
 
 					break;
 				}
@@ -106,8 +119,12 @@ int __simple_vsprintf(char* buf, const char* format, va_list vl)
 
 					if (*format == 'p')
 					{
-						*buf++ = '0';
-						*buf++ = 'x';
+						if (offset < max_length)
+							buf[offset] = '0';
+						offset++;
+						if (offset < max_length)
+							buf[offset] = 'x';
+						offset++;
 					}
 
 					do
@@ -123,7 +140,11 @@ int __simple_vsprintf(char* buf, const char* format, va_list vl)
 					while (num > 0);
 					
 					while (count--)
-						*buf++ = temp[count];
+					{
+						if (offset < max_length)
+							buf[offset] = temp[count];
+						offset++;
+					}
 
 					break;
 
@@ -134,13 +155,29 @@ int __simple_vsprintf(char* buf, const char* format, va_list vl)
 		}
 		else
 		{
-			*buf++ = *format;
+			if (offset < max_length)
+				buf[offset] = *format;
+			offset++;
 			format++;
 		}
 	}
 
-	*buf = 0;
-	return buf - initial_buf;
+	if (offset < max_length)
+	{
+		buf[offset] = '\0';
+	}
+	else
+	{
+		buf[max_length - 1] = '\0';
+	}
+
+	return offset;
+}
+
+__attribute__ ((visibility ("default")))
+int __simple_vsprintf(char* buf, const char* format, va_list vl)
+{
+	return __simple_vsnprintf(buf, SIZE_MAX, format, vl);
 }
 
 __attribute__ ((visibility ("default")))
@@ -150,7 +187,7 @@ void __simple_printf(const char* format, ...)
 	va_list vl;
 
 	va_start(vl, format);
-	__simple_vsprintf(buffer, format, vl);
+	__simple_vsnprintf(buffer, sizeof(buffer), format, vl);
 	va_end(vl);
 
 	LINUX_SYSCALL3(__NR_write, 1, buffer, __simple_strlen(buffer));
@@ -163,7 +200,7 @@ void __simple_kprintf(const char* format, ...)
 	va_list vl;
 
 	va_start(vl, format);
-	__simple_vsprintf(buffer, format, vl);
+	__simple_vsnprintf(buffer, sizeof(buffer), format, vl);
 	va_end(vl);
 
 	lkm_call(NR_kernel_printk, buffer);
@@ -176,7 +213,7 @@ void __simple_fprintf(int fd, const char* format, ...)
 	va_list vl;
 
 	va_start(vl, format);
-	__simple_vsprintf(buffer, format, vl);
+	__simple_vsnprintf(buffer, sizeof(buffer), format, vl);
 	va_end(vl);
 
 	LINUX_SYSCALL3(__NR_write, fd, buffer, __simple_strlen(buffer));
@@ -190,6 +227,19 @@ int __simple_sprintf(char *buffer, const char* format, ...)
 	va_start(vl, format);
 	int ret = __simple_vsprintf(buffer, format, vl);
 	va_end(vl);
+
+	return ret;
+}
+
+__attribute__ ((visibility ("default")))
+int __simple_snprintf(char* buffer, size_t max_length, const char* format, ...)
+{
+	va_list args;
+	int ret;
+
+	va_start(args, format);
+	ret = __simple_vsnprintf(buffer, max_length, format, args);
+	va_end(args);
 
 	return ret;
 }

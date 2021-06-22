@@ -153,6 +153,8 @@ InstallSymlink(/Volumes/SystemRoot/etc/localtime ${CMAKE_INSTALL_PREFIX}/libexec
 
 InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
 
+install(DIRECTORY DESTINATION libexec/darling/Library/Preferences)
+
 if(NOT DEBIAN_PACKAGING)
 	install(CODE "execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh)")
 endif(NOT DEBIAN_PACKAGING)
