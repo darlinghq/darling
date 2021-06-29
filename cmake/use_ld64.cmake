@@ -128,7 +128,41 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libenergytrace.dylib:${CMAKE_BINARY_DIR}/src/external/energytrace/libenergytrace.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/CFOpenDirectory.framework/Versions/A/CFOpenDirectory:${CMAKE_BINARY_DIR}/src/frameworks/CFOpenDirectory/CFOpenDirectory \
 -Wl,-dylib_file,/usr/lib/libnetwork.dylib:${CMAKE_BINARY_DIR}/src/external/libnetwork/libnetwork.dylib \
--Wl,-dylib_file,/usr/lib/system/libcache.dylib:${CMAKE_BINARY_DIR}/src/libcache/libcache.dylib")
+-Wl,-dylib_file,/usr/lib/system/libcache.dylib:${CMAKE_BINARY_DIR}/src/libcache/libcache.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/CommonPanels.framework/Versions/A/CommonPanels:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/CommonPanels/CommonPanels \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Help.framework/Versions/A/Help:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/Help/Help \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/HIToolbox:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/HIToolbox/HIToolbox \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/ImageCapture.framework/Versions/A/ImageCapture:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/ImageCapture/ImageCapture \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Ink.framework/Versions/A/Ink:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/Ink/Ink \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/OpenScripting.framework/Versions/A/OpenScripting:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/OpenScripting/OpenScripting \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Print.framework/Versions/A/Print:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/Print/Print \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/SecurityHI.framework/Versions/A/SecurityHI:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/SecurityHI/SecurityHI \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/SpeechRecognition.framework/Versions/A/SpeechRecognition:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/SpeechRecognition/SpeechRecognition \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreData.framework/Versions/A/CoreData:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreData/CoreData \
+-Wl,-dylib_file,/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore:${CMAKE_BINARY_DIR}/src/external/cocotron/QuartzCore/QuartzCore \
+-Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL:${CMAKE_BINARY_DIR}/src/frameworks/OpenGL/OpenGL \
+-Wl,-dylib_file,/System/Library/PrivateFrameworks/Onyx2D.framework/Versions/A/Onyx2D:${CMAKE_BINARY_DIR}/src/external/cocotron/Onyx2D/Onyx2D \
+-Wl,-dylib_file,/usr/lib/darling/libelfloader.dylib:${CMAKE_BINARY_DIR}/src/libelfloader/libelfloader.dylib \
+-Wl,-dylib_file,/usr/lib/native/libavcodec.dylib:${CMAKE_BINARY_DIR}/src/native/libavcodec.dylib \
+-Wl,-dylib_file,/usr/lib/native/libavformat.dylib:${CMAKE_BINARY_DIR}/src/native/libavformat.dylib \
+-Wl,-dylib_file,/usr/lib/native/libavresample.dylib:${CMAKE_BINARY_DIR}/src/native/libavresample.dylib \
+-Wl,-dylib_file,/usr/lib/native/libavutil.dylib:${CMAKE_BINARY_DIR}/src/native/libavutil.dylib \
+-Wl,-dylib_file,/usr/lib/native/libcairo.dylib:${CMAKE_BINARY_DIR}/src/native/libcairo.dylib \
+-Wl,-dylib_file,/usr/lib/native/libdbus.dylib:${CMAKE_BINARY_DIR}/src/native/libdbus.dylib \
+-Wl,-dylib_file,/usr/lib/native/libEGL.dylib:${CMAKE_BINARY_DIR}/src/native/libEGL.dylib \
+-Wl,-dylib_file,/usr/lib/native/libfontconfig.dylib:${CMAKE_BINARY_DIR}/src/native/libfontconfig.dylib \
+-Wl,-dylib_file,/usr/lib/native/libFreeType.dylib:${CMAKE_BINARY_DIR}/src/native/libFreeType.dylib \
+-Wl,-dylib_file,/usr/lib/native/libfuse.dylib:${CMAKE_BINARY_DIR}/src/native/libfuse.dylib \
+-Wl,-dylib_file,/usr/lib/native/libgif.dylib:${CMAKE_BINARY_DIR}/src/native/libgif.dylib \
+-Wl,-dylib_file,/usr/lib/native/libjpeg.dylib:${CMAKE_BINARY_DIR}/src/native/libjpeg.dylib \
+-Wl,-dylib_file,/usr/lib/native/libpng.dylib:${CMAKE_BINARY_DIR}/src/native/libpng.dylib \
+-Wl,-dylib_file,/usr/lib/native/libpulse.dylib:${CMAKE_BINARY_DIR}/src/native/libpulse.dylib \
+-Wl,-dylib_file,/usr/lib/native/libtiff.dylib:${CMAKE_BINARY_DIR}/src/native/libtiff.dylib \
+-Wl,-dylib_file,/usr/lib/native/libX11.dylib:${CMAKE_BINARY_DIR}/src/native/libX11.dylib \
+-Wl,-dylib_file,/usr/lib/native/libXcursor.dylib:${CMAKE_BINARY_DIR}/src/native/libXcursor.dylib \
+-Wl,-dylib_file,/usr/lib/native/libXext.dylib:${CMAKE_BINARY_DIR}/src/native/libXext.dylib \
+-Wl,-dylib_file,/usr/lib/native/libxkbfile.dylib:${CMAKE_BINARY_DIR}/src/native/libxkbfile.dylib \
+-Wl,-dylib_file,/usr/lib/native/libXRandR.dylib:${CMAKE_BINARY_DIR}/src/native/libXRandR.dylib")
 
 	add_dependencies(${target} ${APPLE_TARGET_TRIPLET_PRIMARY}-ld)
 

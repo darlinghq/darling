@@ -369,3 +369,6 @@
 [submodule "src/external/openjdk"]
 	path = src/external/openjdk
 	url = ../openjdk.git
+[submodule "src/external/pyobjc"]
+	path = src/external/pyobjc
+	url = ../darling-pyobjc.git

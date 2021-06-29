@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 typedef struct OpaqueMenuRef* MenuRef;
+typedef MenuRef MenuHandle;
 typedef UInt16	MenuItemIndex;
 
 void ShowMenuBar(void);

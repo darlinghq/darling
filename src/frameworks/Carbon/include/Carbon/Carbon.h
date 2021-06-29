@@ -28,10 +28,14 @@
 #include <HIToolbox/CarbonEventsCore.h>
 #include <HIToolbox/CarbonEvents.h>
 #include <HIToolbox/Dialogs.h>
+#include <HIToolbox/Drag.h>
 #include <HIToolbox/Events.h>
+#include <HIToolbox/HIObject.h>
+#include <HIToolbox/Lists.h>
 #include <HIToolbox/Menus.h>
 #include <HIToolbox/Notification.h>
 #include <HIToolbox/Scrap.h>
+#include <HIToolbox/TextEdit.h>
 #include <HIToolbox/TextInputSources.h>
 #include <HIToolbox/TextServices.h>
 

@@ -5,6 +5,7 @@
 #include "CoreServices/MacErrors.h"
 #include "CoreServices/MacTypes.h"
 #include <stdint.h>
+#include <QD/QD.h>
 
 #pragma pack(2)
 
@@ -12,10 +13,8 @@
 extern "C" {
 #endif
 
-typedef int WindowRef; // mapped to X11 Window
 typedef WindowRef HIWindowRef;
 typedef int WindowGroupRef;
-typedef void* CGrafPtr;
 
 typedef uint32_t WindowClass;
 typedef OptionBits WindowAttributes;
@@ -26,10 +25,6 @@ typedef Rect HIRect;
 typedef void* TransitionWindowOptions;
 typedef uint32_t WindowTransitionAction;
 typedef uint32_t WindowTransitionEffect;
-
-typedef struct RGBColor {
-	uint16_t components[3];
-} RGBColor;
 
 OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rect, WindowRef* newWindow);
 void DisposeWindow(WindowRef wnd);

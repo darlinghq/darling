@@ -17,4 +17,6 @@
 #include <CarbonCore/BackupCore.h>
 #endif
 
+#include <CarbonCore/MixedMode.h>
+
 #endif

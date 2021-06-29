@@ -104,4 +104,20 @@ struct ColorTable {
 	CSpecArray ctTable;
 };
 
+typedef struct OpaqueWindowPtr* WindowPtr;
+typedef WindowPtr WindowRef;
+
+typedef struct OpaqueGrafPtr* GrafPtr;
+typedef GrafPtr CGrafPtr;
+typedef CGrafPtr GWorldPtr;
+
+struct BitMap {
+  Ptr baseAddr;
+  short rowBytes;
+  Rect bounds;
+};
+typedef struct BitMap BitMap;
+typedef BitMap* BitMapPtr;
+
+
 #endif

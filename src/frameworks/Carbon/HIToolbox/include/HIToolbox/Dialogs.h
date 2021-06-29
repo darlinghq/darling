@@ -7,6 +7,7 @@ extern "C" {
 
 typedef int16_t AlertType;
 typedef void* DialogRef;
+typedef DialogRef DialogPtr;
 typedef uint32_t AlertStdCFStringAlertParamRec;
 typedef void* AlertStdCFStringAlertParamPtr;
 

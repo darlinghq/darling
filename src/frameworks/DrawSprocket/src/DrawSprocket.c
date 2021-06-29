@@ -10,9 +10,7 @@
 
 #define FW_EXPORT __attribute__ ((visibility ("default")))
 
-
 typedef UInt32 DisplayIDType;
-typedef UInt32 EventRecord;
 
 typedef void* DSpContextReference;
 typedef const void* DSpContextReferenceConst;
@@ -22,20 +20,6 @@ typedef uint8_t DSpBufferKind;
 typedef uint8_t DSpContextState;
 
 typedef void* DSpCallbackUPP;
-
-// Older mac API defs
-typedef void* CGrafPtr;
-
-typedef struct RGBColor {
-  unsigned short components[3];
-} RGBColor;
-
-typedef struct ColorSpec {
- short value;
- RGBColor rgb;
-} ColorSpec;
-
-//
 
 static int verbose = 0;
 

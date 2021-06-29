@@ -139,6 +139,15 @@ enum {
   kVK_UpArrow                   = 0x7E
 };
 
+typedef UInt16 EventModifiers;
+
+typedef struct EventRecord {
+  EventKind what;
+  unsigned long message;
+  uint32_t when;
+  Point where;
+  EventModifiers modifiers;
+} EventRecord;
 
 #ifdef __cplusplus
 }

@@ -15,9 +15,7 @@ typedef void* GLMfunctions;
 typedef void* AGLRendererInfo;
 typedef void* AGLPixelFormat;
 typedef void* AGLPbuffer;
-typedef void* GDHandle;
 typedef void* HIViewRef;
-typedef void* WindowRef;
 typedef uint32_t AGLDevice;
 
 typedef void* AGLDrawable;

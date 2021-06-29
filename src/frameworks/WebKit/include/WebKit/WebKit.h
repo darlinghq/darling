@@ -192,6 +192,39 @@
 #import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWindowFeatures.h>
 
+@protocol DOMEventListener
+@end
+
+@protocol DOMEventTarget
+@end
+
+@protocol DOMNodeFilter
+@end
+
+@protocol DOMXPathNSResolver
+@end
+
+@protocol WebDocumentRepresentation
+@end
+
+@protocol WebDocumentSearching
+@end
+
+@protocol WebDocumentText
+@end
+
+@protocol WebDocumentView
+@end
+
+@protocol WebOpenPanelResultListener
+@end
+
+@protocol WebPlugInViewFactory
+@end
+
+@protocol WebPolicyDecisionListener
+@end
+
 void* DatabaseServiceInitializer(void);
 void* NetworkServiceInitializer(void);
 void* PluginServiceInitializer(void);

@@ -61,6 +61,9 @@
 #import <CoreLocation/_CLRangingPeer.h>
 #import <CoreLocation/_CLRangingPeerDistance.h>
 
+@protocol CLLocationManagerDelegate
+@end
+
 void* CLClientCreateIso6709Notation(void);
 void* CLClientCreateWithBundleIdentifierAndPath(void);
 void* CLClientCreateWithBundleIdentifierAndPathOnRunLoop(void);

@@ -585,6 +585,9 @@
 #import <AddressBook/ABCardCollectionTableViewController.h>
 #import <AddressBook/_ABPersonView.h>
 
+@protocol ABImageClient
+@end
+
 void* ABAddressBookLocalizedString(void);
 void* ABDeleteRecordsCommandNameForRecords(void);
 void* ABEmailCertificateCopyMatchingUnexpired(void);

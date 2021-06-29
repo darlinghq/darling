@@ -1,6 +1,11 @@
 #ifndef CVPIXELBUFFER_H
 #define CVPIXELBUFFER_H
 
+#include <sys/cdefs.h>
+#include <CoreVideo/CVImageBuffer.h>
+
+__BEGIN_DECLS
+
 enum
 {
 	kCVPixelFormatType_1Monochrome    = 0x00000001,
@@ -71,6 +76,11 @@ enum
 };
 
 extern const CFStringRef kCVPixelBufferMetalCompatibilityKey;
+
+typedef CVImageBufferRef CVPixelBufferRef;
+
 // TODO: This header file is incomplete
+
+__END_DECLS
 
 #endif
