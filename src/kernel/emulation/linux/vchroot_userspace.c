@@ -423,6 +423,12 @@ done_getdents:
 							ctxt->follow = true;
 							ctxt->symlink_depth++;
 
+							// resolve absolute symlinks within the prefix
+							if (link[0] == '/') {
+								ctxt->current_root = prefix_path;
+								ctxt->current_root_len = prefix_path_len;
+							}
+
 							rv = vchroot_run(link, ctxt);
 
 							ctxt->symlink_depth--;
