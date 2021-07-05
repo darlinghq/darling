@@ -5,6 +5,7 @@
 #include "../bsdthread/cancelable.h"
 #include "../mach/lkm.h"
 #include <lkm/api.h>
+#include "../simple.h"
 
 long sys_close(int fd)
 {
@@ -15,6 +16,11 @@ long sys_close(int fd)
 long sys_close_nocancel(int fd)
 {
 	int ret;
+
+	if (fd == mach_driver_get_fd()) {
+		__simple_kprintf("*** Someone tried to close the special LKM fd! ***");
+		return 0;
+	}
 
 	struct closing_descriptor_args args = {
 		.fd = fd,
