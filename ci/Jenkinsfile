@@ -1,0 +1,170 @@
+pipeline {
+	agent any
+
+	triggers {
+		githubPush()
+	}
+
+	environment {
+		DEB_DISTRO = sh(script: 'lsb_release -cs', returnStdout: true).trim()
+		ESCAPED_JOB_NAME = sh(script: 'echo "${JOB_NAME}" | sed \'s/\\//-/g\'', returnStdout: true).trim()
+		REAL_WORKSPACE = "/home/jenkins/workspace/${JOB_BASE_NAME}/${JOB_NAME}"
+	}
+
+	options {
+		skipDefaultCheckout()
+	}
+
+	stages {
+		stage('Start Job') {
+			steps {
+				dir("${REAL_WORKSPACE}") {
+					scmSkip(deleteBuild: true, skipPattern:'.*\\[ci skip\\].*')
+
+					dir('source') {
+						checkout scm
+					}
+
+					script {
+						def buildNumber = env.BUILD_NUMBER as int
+						if (buildNumber > 1) milestone(buildNumber - 1)
+						milestone(buildNumber)
+
+						while (fileExists('.job-running')) {
+							sleep 1
+						}
+					}
+
+					touch '.job-running'
+				}
+			}
+		}
+
+		stage('Workspace Setup') {
+			when {
+				not {
+					expression {
+						return fileExists("${REAL_WORKSPACE}/.workspace-setup")
+					}
+				}
+			}
+
+			steps {
+				dir("${REAL_WORKSPACE}") {
+					sh 'virt-clone --connect qemu:///system --original dtest-base --name dtest-${ESCAPED_JOB_NAME} --auto-clone --mac RANDOM'
+					touch '.vm-cloned'
+
+					sh 'virsh --connect qemu:///system snapshot-create-as --domain dtest-${ESCAPED_JOB_NAME} --name before-darling'
+					touch '.vm-snapshotted'
+
+					touch '.workspace-setup'
+				}
+			}
+		}
+
+		stage('Build') {
+			steps {
+				dir("${REAL_WORKSPACE}") {
+					dir('source') {
+						sh 'git submodule update --init --recursive'
+						sh 'cd src/external/swift && git lfs install && git lfs pull'
+						touch '../.submodules-cloned'
+
+						//sh 'tools/debian/make-deb --dsc'
+						sh 'tools/debian/make-deb'
+					}
+
+					sh 'rm -rf out'
+					sh 'mkdir out'
+
+					dir('out') {
+						sh 'mv ../*.deb ./'
+						sh 'rm ../*.*'
+					}
+
+					archiveArtifacts artifacts: 'out/**/*', fingerprint: true
+				}
+			}
+		}
+
+		stage('Test') {
+			steps {
+				dir("${REAL_WORKSPACE}") {
+					sh 'virsh --connect qemu:///system start dtest-${ESCAPED_JOB_NAME}'
+					touch '.vm-running'
+
+					script {
+						def vmIP = ""
+						waitUntil {
+							vmIP = sh(script: 'virtip dtest-${ESCAPED_JOB_NAME}', returnStdout: true)
+							return vmIP != ""
+						}
+						vmIP = vmIP.trim()
+
+						def remote = [:]
+						remote.name = 'dtest-box'
+						remote.host = vmIP
+						remote.user = 'dtest'
+						remote.password = 'dtest'
+						remote.allowAnyHosts = true
+						remote.retryCount = 5
+						remote.retryWaitSec = 2
+
+						sshPut remote: remote, from: 'out', into: '.'
+
+						sshCommand remote: remote, command: 'echo dtest | sudo -S apt install -y ./out/darling-dkms*.deb'
+						sshCommand remote: remote, command: 'echo dtest | sudo -S apt install -y ./out/darling_*.deb'
+
+						// the initial shell must be in a screen because the pty is handed to launchd and ssh will stay connected
+						// even after the shell exits because launchd is still using the pty.
+						//
+						// if the command fails, we'll know when we run our next command (if it did fail, that means Darling is failing to run
+						// so launchd won't be holding on to the pty)
+						sshCommand remote: remote, command: 'screen -d -m darling shell'
+						sleep 5 // give Darling some time to initialize
+
+						// if this doesn't report back within 3 minutes, something's definitely broken in Darling, so stop the testing early
+						timeout(time: 180, unit: 'SECONDS') {
+							sshCommand remote: remote, command: 'darling shell echo hi'
+						}
+					}
+				}
+			}
+		}
+	}
+
+	post {
+		cleanup {
+			dir("${REAL_WORKSPACE}") {
+				script {
+					if (fileExists('.vm-running')) {
+						// try to shut it down normally
+						sh 'virsh --connect qemu:///system shutdown dtest-${ESCAPED_JOB_NAME}'
+						try {
+							retry(5) {
+								sleep 1
+								def isRunning = sh(script: 'virsh --connect qemu:///system list --all | grep " dtest-${ESCAPED_JOB_NAME} " | awk \'{ print $3}\'', returnStdout: true).trim()
+								if (isRunning != "" && isRunning == "running") {
+									throw new Exception("VM not shutdown yet")
+								}
+							}
+						} catch (Exception e) {
+							// force shut it down
+							sh 'virsh --connect qemu:///system destroy dtest-${ESCAPED_JOB_NAME}'
+						}
+
+						sh 'virsh --connect qemu:///system snapshot-revert --domain dtest-${ESCAPED_JOB_NAME} --snapshotname before-darling'
+
+						sh 'rm .vm-running'
+					}
+
+					if (!fileExists('.submodules-cloned')) {
+						sh 'rm -rf source'
+					}
+				}
+
+				sh 'rm .job-running'
+			}
+		}
+	}
+}
