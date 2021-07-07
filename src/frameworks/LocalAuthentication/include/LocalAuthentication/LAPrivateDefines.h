@@ -11,6 +11,8 @@ CF_EXTERN_C_BEGIN
 #define kLAErrorParameter -2134234
 #define kLAErrorNotInteractive -598423
 #define kTKErrorCodeBadParameter -659833
+#define kLAPolicyContinuityUnlock 255
+#define kLAOptionUserId 255
 
 typedef void* (*LAFunctionCopyExternalizedContext)(void*);
 

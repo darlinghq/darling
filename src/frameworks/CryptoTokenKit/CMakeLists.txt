@@ -20,6 +20,7 @@ add_framework(CryptoTokenKit
 	SOURCES
 		src/ctkclient.c
 		src/ctkclient_test.c
+		src/ctkloginhelper.c
 
 	DEPENDENCIES
 		system

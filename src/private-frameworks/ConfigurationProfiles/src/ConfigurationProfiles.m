@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <ConfigurationProfiles/CPBootstrapToken.h>
+
 static int verbose = 0;
 
 __attribute__((constructor))
@@ -498,3 +500,12 @@ void* _CP_ALBHash(void) {
     if (verbose) puts("STUB: _CP_ALBHash called");
     return NULL;
 }
+
+BOOL CP_SupportsBootstrapToken(void) {
+    if (verbose) puts("STUB: CP_SupportsBootstrapToken called");
+    return NO;
+};
+
+NSString* CP_GetBootstrapToken(void* something) {
+    return nil;
+};
