@@ -2,8 +2,12 @@
 #include "simple.h"
 #include <sys/errno.h>
 #include <alloca.h>
+#include "../fcntl/open.h"
+#include "../readline.h"
+#include "../unistd/close.h"
 
 extern char *strncpy(char *dest, const char *src, __SIZE_TYPE__ n);
+extern int strncmp(const char* str1, const char* str2, __SIZE_TYPE__ n);;
 
 enum {
 	_MACHDEP_CPU = 1000,
@@ -17,6 +21,7 @@ enum {
 	_CPU_STEPPING,
 	_CPU_BRAND_STRING,
 	_CPU_FEATURES,
+	_CPU_CORE_COUNT,
 };
 
 static sysctl_handler(handle_vendor);
@@ -26,6 +31,7 @@ static sysctl_handler(handle_model);
 static sysctl_handler(handle_stepping);
 static sysctl_handler(handle_brand_string);
 static sysctl_handler(handle_features);
+static sysctl_handler(handle_core_count);
 
 const struct known_sysctl sysctls_machdep_cpu[] = {
     { .oid = _CPU_MAX_BASIC, .type = CTLTYPE_INT, .exttype = "I", .name = "max_basic", .handler = handle_max_basic },
@@ -35,6 +41,7 @@ const struct known_sysctl sysctls_machdep_cpu[] = {
 		{ .oid = _CPU_STEPPING, .type = CTLTYPE_INT, .exttype = "I", .name = "stepping", .handler = handle_stepping },
 		{ .oid = _CPU_BRAND_STRING, .type = CTLTYPE_STRING, .exttype = "S", .name = "vendor", .handler = handle_brand_string },
 		{ .oid = _CPU_FEATURES, .type = CTLTYPE_STRING, .exttype = "S", .name = "features", .handler = handle_features },
+		{ .oid = _CPU_CORE_COUNT, .type = CTLTYPE_INT, .exttype = "I", .name = "core_count", .handler = handle_core_count },
 	{ .oid = -1 }
 };
 
@@ -254,3 +261,58 @@ sysctl_handler(handle_features)
     return 0;
 
 }
+
+
+// TODO: i doubt core count is ever going to change.
+//       this is something that could be cached if we had some way of doing something only once in libsystem_kernel (i.e. a simple version of dispatch_once).
+sysctl_handler(handle_core_count) {
+	// it's easier to use /proc/cpuinfo for this.
+	// using cpuid directly is more difficult because AMD processors don't use the same method as Intel processors.
+
+	int infofd = sys_open_nocancel("/proc/cpuinfo", BSD_O_RDONLY, 0);
+	struct rdline_buffer rbuf;
+	const char* line;
+
+	// a reasonable default
+	size_t core_count = 1;
+
+	if (infofd < 0)
+		goto out;
+
+	_readline_init(&rbuf);
+
+	while ((line = _readline(infofd, &rbuf)) != NULL) {
+		if (strncmp(line, "cpu cores", 9) != 0) {
+			continue;
+		}
+
+		// great, we've got "cpu cores"
+		// now find the actual number
+		while (*line != ':' && *line != '\0')
+			++line;
+
+		// shouldn't happen, but just in case
+		if (*line == '\0')
+			continue;
+
+		++line; // skip the colon
+		if (*line == '\0')
+			continue;
+
+		++line; // skip the space
+		if (*line == '\0')
+			continue;
+
+		core_count = __simple_atoi(line, NULL);
+		break;
+	}
+
+out:
+	if (infofd >= 0)
+		close_internal(infofd);
+	if (old != NULL && oldlen && *oldlen >= sizeof(uint32_t))
+		*(uint32_t*)old = core_count;
+	if (oldlen)
+		*oldlen = sizeof(uint32_t);
+	return 0;
+};
