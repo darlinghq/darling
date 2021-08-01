@@ -25,9 +25,16 @@
 
 static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName);
 
+static int verbose = 0;
+
+__attribute__((constructor)) static void initme(void) {
+	verbose = getenv("STUB_VERBOSE") != NULL;
+}
+
 OSStatus LSRegisterURL(CFURLRef inURL, Boolean inUpdate)
 {
-	printf("STUB: LSRegisterURL\n");
+	if (verbose)
+		printf("STUB: LSRegisterURL\n");
 	return 0;
 }
 
