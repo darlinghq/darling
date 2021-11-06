@@ -117,6 +117,7 @@ enable_language(ASM-ATT)
 
 option(TARGET_i386 "Enable i386 slices" ON)
 option(TARGET_x86_64 "Enable x86_64 slices" ON)
+option(TARGET_ARM64 "Enable arm64 slices" OFF)
 option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)
