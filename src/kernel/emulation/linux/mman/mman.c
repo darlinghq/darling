@@ -89,3 +89,24 @@ long sys_mincore(void* addr, unsigned long len, unsigned char* vec)
 	return ret;
 }
 
+long sys_mlock(void* addr, unsigned long len)
+{
+	int ret;
+
+	ret = LINUX_SYSCALL2(__NR_mlock, addr, len);
+	if (ret < 0)
+		ret = errno_linux_to_bsd(ret);
+
+	return ret;
+}
+
+long sys_munlock(void* addr, unsigned long len)
+{
+	int ret;
+
+	ret = LINUX_SYSCALL2(__NR_munlock, addr, len);
+	if (ret < 0)
+		ret = errno_linux_to_bsd(ret);
+
+	return ret;
+}
