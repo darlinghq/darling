@@ -1,10 +1,10 @@
-#include <pthread/pthread.h>
 #include <stdlib.h>
 #include <darling/emulation/ext/for-xtrace.h>
 #include "tls.h"
 #include "malloc.h"
 #include "lock.h"
 #include <darling/emulation/simple.h>
+#include <pthread/tsd_private.h>
 
 #ifndef XTRACE_TLS_DEBUG
 	#define XTRACE_TLS_DEBUG 0
@@ -16,8 +16,8 @@
 	#define xtrace_tls_debug(x, ...)
 #endif
 
-// 100 TLS vars should be enough, right?
-#define TLS_TABLE_MAX_SIZE 100
+// 10 TLS vars should be enough, right?
+#define TLS_TABLE_MAX_SIZE 10
 
 typedef struct tls_table* tls_table_t;
 struct tls_table {
@@ -25,9 +25,19 @@ struct tls_table {
 	void* table[TLS_TABLE_MAX_SIZE][2];
 };
 
-static xtrace_once_t tls_key_initialized = XTRACE_ONCE_INITIALIZER;
-static pthread_key_t tls_key;
+// since we still need to handle some calls after pthread_terminate is called and libpthread unwinds its TLS right before calling pthread_terminate,
+// we have to use a slightly hackier technique: using one of the system's reserved but unused TLS keys.
+// key 200 seems like a good fit; it's in the reserved region but it's not currently listed in `pthread/tsd_private.h` as being in-use by anything.
 
+#define __PTK_XTRACE_TLS 200
+
+// unfortunately, this approach also means that we can't automatically free the TLS memory when the thread dies, since the TLS table needs to stay alive after pthread_terminate.
+// in order to clean up the memory without a pthread key destructor, we'd need to modify our libsystem_kernel to inform us (via a hook) in every case where the thread could die.
+//
+// leaking a bit of memory per-thread being xtrace'd shouldn't be a big problem, unless the tracee is creating and terminating threads very quickly.
+// but it'd be nice if this could eventually be fixed (probably by adding a death hook to libsystem_kernel, as described above).
+
+#if 0
 static void tls_table_destructor(void* _table) {
 	tls_table_t table = _table;
 	xtrace_tls_debug("destroying table %p", table);
@@ -38,19 +48,12 @@ static void tls_table_destructor(void* _table) {
 	xtrace_tls_debug("freeing table %p", table);
 	xtrace_free(table);
 };
-
-static void tls_key_initializer(void) {
-	xtrace_tls_debug("initializing tls key");
-	if (pthread_key_create(&tls_key, tls_table_destructor) != 0) {
-		_abort_with_payload_for_xtrace(0, 0, NULL, 0, "xtrace: failed pthread key creation", 0);
-	}
-};
+#endif
 
 void* xtrace_tls(void* key, size_t size) {
 	xtrace_tls_debug("looking up tls variable for key %p", key);
 
-	xtrace_once(&tls_key_initialized, tls_key_initializer);
-	tls_table_t table = pthread_getspecific(tls_key);
+	tls_table_t table = _pthread_getspecific_direct(__PTK_XTRACE_TLS);
 
 	xtrace_tls_debug("got %p as table pointer from pthread", table);
 
@@ -62,7 +65,7 @@ void* xtrace_tls(void* key, size_t size) {
 			_abort_with_payload_for_xtrace(0, 0, NULL, 0, "xtrace: failed TLS table memory allocation", 0);
 		}
 		table->size = 0;
-		pthread_setspecific(tls_key, table);
+		_pthread_setspecific_direct(__PTK_XTRACE_TLS, table);
 	}
 
 	// check if the key is already present

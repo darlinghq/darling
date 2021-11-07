@@ -4,6 +4,9 @@
 #include <sys/mman.h>
 #include <pthread.h>
 
+#define PRIVATE 1
+#include <spawn_private.h>
+
 #include "xtracelib.h"
 #include "bsd_trace.h"
 
@@ -430,6 +433,7 @@ static int print_arg_ptr(char* buf, void* arg)
 	return __simple_sprintf(buf, "%p", arg);
 }
 
+extern "C"
 int xtrace_format_string_literal(char* buf, const char* str)
 {
 	const char* initial_buf = buf;
@@ -551,7 +555,8 @@ static int print_mmap_flags(char* buf, void* arg)
 	return buf - initial_buf;
 }
 
-static int print_open_flags(char* buf, void* arg)
+extern "C"
+int print_open_flags(char* buf, void* arg)
 {
 	const char* initial_buf = buf;
 	int cnt = 0;
@@ -597,6 +602,35 @@ static int print_open_flags(char* buf, void* arg)
 
 	return buf - initial_buf;
 }
+
+extern "C" int print_arg_posix_spawn_args(char* buf, void* arg);
+
+static int print_arg_string_array(char* buf, void* arg) {
+	const char* initial_buf = buf;
+	const char* const* argv = (const char* const*)arg;
+	bool is_first = true;
+
+	*buf++ = '{';
+
+	for (const char* const* ptr = argv; *ptr != NULL; ++ptr) {
+		if (is_first) {
+			is_first = false;
+		} else {
+			*buf++ = ',';
+			*buf++ = ' ';
+		}
+
+		buf += xtrace_format_string_literal(buf, *ptr);
+	}
+
+	*buf++ = '}';
+
+	return buf - initial_buf;
+};
+
+// TODO: output more specific information for certain calls
+//       e.g. the kqueue family of syscalls would definitely be great candidates for this.
+//       that way, we can see what events have been returned and what the application might be processing now.
 
 static const struct {
 	int args_cnt;
@@ -765,7 +799,7 @@ static const struct {
 	[241] = { 4, { print_arg_int, print_arg_ptr, print_arg_int, print_arg_int } }, // flistxattr
 	[242] = { 4, { print_arg_str, print_arg_int, print_arg_ptr, print_arg_int } }, // fsctl
 	[243] = { 3, { print_arg_int, print_arg_ptr, print_arg_int } }, // initgroups
-	[244] = { 5, { print_arg_ptr, print_arg_str, print_arg_ptr, print_arg_ptr, print_arg_ptr } }, // posix_spawn
+	[244] = { 5, { print_arg_ptr, print_arg_str, print_arg_posix_spawn_args, print_arg_string_array, print_arg_string_array } }, // posix_spawn
 	[245] = { 4, { print_arg_int, print_arg_int, print_arg_ptr, print_arg_int } }, // ffsctl
 	[247] = { 2, { print_arg_int, print_arg_ptr } }, // nfsclnt
 	[248] = { 2, { print_arg_ptr, print_arg_int } }, // fhopen

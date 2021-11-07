@@ -17,6 +17,7 @@ set(xtrace_sources
 	tls.c
 	malloc.c
 	lock.c
+	posix_spawn_args.c
 )
 
 if (TARGET_x86_64)
