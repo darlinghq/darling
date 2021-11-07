@@ -214,6 +214,18 @@ kern_return_t _kernelrpc_mach_vm_deallocate_trap_impl(
 	}
 	else
 	{
+		// XNU returns KERN_INVALID_ARGUMENT for address overflow, 
+		// and allows NULL address if size is 0.
+		if (address + size < address)
+		{
+			return KERN_INVALID_ARGUMENT;
+		}
+
+		if (size == (mach_vm_offset_t)0)
+		{
+			return KERN_SUCCESS;
+		}
+
 		ret = munmap(address, size);
 
 		if (ret == -1)
