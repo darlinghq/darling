@@ -149,6 +149,29 @@ int __simple_vsnprintf(char* buf, size_t max_length, const char* format, va_list
 					break;
 
 				}
+
+				case 'o':
+				{
+					unsigned int num = va_arg(vl, unsigned int);
+					char temp[16];
+					int count = 0;
+
+					do
+					{
+						temp[count++] = '0' + (num % 8);
+						num /= 8;
+					}
+					while (num > 0);
+
+					while (count--)
+					{
+						if (offset < max_length)
+							buf[offset] = temp[count];
+						offset++;
+					}
+
+					break;
+				}
 			}
 
 			format++;

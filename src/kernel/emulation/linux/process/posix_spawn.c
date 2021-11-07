@@ -125,6 +125,42 @@ no_fork:
 							continue;
 						}
 
+						if (desc && desc->factp) {
+							// if this FD is one that we're creating, don't set O_CLOEXEC on it
+							for (size_t j = 0; j < desc->factp->psfa_act_count; j++) {
+								const struct _psfa_action* act = &desc->factp->psfa_act_acts[j];
+								int maybe_fd = act->psfaa_filedes;
+
+								switch (act->psfaa_type) {
+									case PSFA_DUP2:
+									case PSFA_FILEPORT_DUP2:
+										maybe_fd = act->psfaa_dup2args.psfad_newfiledes;
+										// fall through
+
+									case PSFA_OPEN:
+									case PSFA_INHERIT:
+										if (fd == maybe_fd) {
+											maybe_fd = -1;
+										}
+										break;
+
+									default:
+										break;
+								}
+
+								// maybe_fd was set to -1, indicating the descriptors matched
+								if (maybe_fd == -1) {
+									fd = -1;
+									break;
+								}
+							}
+						}
+
+						// fd was set to -1, indicating we should skip it
+						if (fd == -1) {
+							continue;
+						}
+
 						//__simple_kprintf("setting cloexec on %d\n", fd);
 
 						ret = sys_fcntl(fd, F_GETFD, 0);
