@@ -424,7 +424,11 @@ done_getdents:
 							ctxt->symlink_depth++;
 
 							// resolve absolute symlinks within the prefix
-							if (link[0] == '/') {
+							//
+							// however, DON'T resolve `/proc` symlinks within the prefix.
+							// anything under `/proc` is from Linux's `/proc` since we bind-mount it, so we can special-case them because we want those to be Linux-root relative.
+							// see https://github.com/darlinghq/darling/issues/1052 for the issue this works around.
+							if (link[0] == '/' && !(strncmp(link, "/proc/", 6) == 0 || (rv == 5 && strncmp(link, "/proc", 5) == 0))) {
 								ctxt->current_root = prefix_path;
 								ctxt->current_root_len = prefix_path_len;
 							}
