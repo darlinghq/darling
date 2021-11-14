@@ -2,7 +2,7 @@
 extern "C" {
 #endif
 
-extern int xtrace_format_string_literal(char* buf, const char* str);
+extern void xtrace_print_string_literal(const char* str);
 
 #ifdef __cplusplus
 }

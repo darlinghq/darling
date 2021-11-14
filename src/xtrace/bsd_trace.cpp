@@ -6,15 +6,26 @@
 
 #define PRIVATE 1
 #include <spawn_private.h>
+#include <sys/event.h>
 
 #include "xtracelib.h"
 #include "bsd_trace.h"
+#include "tls.h"
 
-static void print_errno(char* buf, int nr, uintptr_t rv);
-static void print_errno_num(char* buf, int nr, uintptr_t rv);
-static void print_errno_ptr(char* buf, int nr, uintptr_t rv);
+static void print_errno(int nr, uintptr_t rv);
+static void print_errno_num(int nr, uintptr_t rv);
+static void print_errno_ptr(int nr, uintptr_t rv);
 
-static void print_args(char* buf, int nr, void* args[]);
+static void print_args(int nr, void* args[]);
+
+static void print_kevent_return(int nr, uintptr_t rv);
+static void print_kevent_args(int nr, void* args[]);
+static void print_kevent64_return(int nr, uintptr_t rv);
+static void print_kevent64_args(int nr, void* args[]);
+static void print_kevent_qos_return(int nr, uintptr_t rv);
+static void print_kevent_qos_args(int nr, void* args[]);
+
+static void print_timespec(const struct timespec* timespec);
 
 // awk '/^[0-9]/ { if ($6 !~ "nosys") { split($6, a, "("); print "[" $1 "] = { \"" a[1] "\", print_args, print_errno }," } }'
 
@@ -289,17 +300,26 @@ static const struct calldef bsd_defs[600] = {
 	[360] = { "bsdthread_create", print_args, print_errno_num },
 	[361] = { "bsdthread_terminate", print_args, print_errno_num },
 	[362] = { "kqueue", print_args, print_errno_num },
-	[363] = { "kevent", print_args, print_errno_num },
+
+	// kevent is special
+	[363] = { "kevent", print_kevent_args, print_kevent_return },
+
 	[364] = { "lchown", print_args, print_errno_num },
 	[366] = { "bsdthread_register", print_args, print_errno_num },
 	[367] = { "workq_open", print_args, print_errno_num },
 	[368] = { "workq_kernreturn", print_args, print_errno_num },
-	[369] = { "kevent64", print_args, print_errno_num },
+
+	// kevent64 is special
+	[369] = { "kevent64", print_kevent64_args, print_kevent64_return },
+
 	[370] = { "__old_semwait_signal", print_args, print_errno_num },
 	[371] = { "__old_semwait_signal_nocancel", print_args, print_errno_num },
 	[372] = { "thread_selfid", print_args, print_errno_num },
 	[373] = { "ledger", print_args, print_errno_num },
-	[374] = { "kevent_qos", print_args, print_errno_num },
+
+	// kevent_qos is special
+	[374] = { "kevent_qos", print_kevent_qos_args, print_kevent_qos_return },
+
 	[380] = { "__mac_execve", print_args, print_errno_num },
 	[381] = { "__mac_syscall", print_args, print_errno_num },
 	[382] = { "__mac_get_file", print_args, print_errno_num },
@@ -421,105 +441,94 @@ static const struct calldef bsd_defs[600] = {
 	[521] = { "abort_with_payload", print_args, print_errno_num },
 };
 
-static int print_arg_int(char* buf, void* arg)
+static void print_arg_int(void* arg)
 {
-	return __simple_sprintf(buf, "%d", (int) (long) arg);
+	xtrace_log("%d", (int) (long) arg);
 }
 
-static int print_arg_ptr(char* buf, void* arg)
+static void print_arg_ptr(void* arg)
 {
 	if (arg == NULL)
-		return __simple_sprintf(buf, "NULL");
-	return __simple_sprintf(buf, "%p", arg);
+		xtrace_log("NULL");
+	else
+		xtrace_log("%p", arg);
 }
 
 extern "C"
-int xtrace_format_string_literal(char* buf, const char* str)
-{
-	const char* initial_buf = buf;
-
-	if (str == NULL)
-	{
-		return __simple_sprintf(buf, "NULL");
+void xtrace_print_string_literal(const char* str) {
+	if (str == NULL) {
+		xtrace_log("NULL");
+		return;
 	}
 
 	if (!xtrace_no_color)
-		buf += __simple_sprintf(buf, "\033[;1m"); // bold
+		xtrace_log("\033[;1m"); // bold
 
-	*buf++ = '"';
+	xtrace_log("\"");
 
 	for (; *str; str++)
 	{
 		switch (*str)
 		{
 			case '\\':
-				*buf++ = '\\';
-				*buf++ = '\\';
+			xtrace_log("\\\\");
 				break;
 			case '\n':
-				*buf++ = '\\';
-				*buf++ = 'n';
+			xtrace_log("\\n");
 				break;
 			case '\t':
-				*buf++ = '\\';
-				*buf++ = 't';
+			xtrace_log("\\t");
 				break;
 			default:
-				*buf++ = *str;
+			xtrace_log("%c", *str);
 				break;
 		}
 	}
 
-	*buf++ = '"';
+	xtrace_log("\"");
 
 	if (!xtrace_no_color)
-		buf += __simple_sprintf(buf, "\033[0m"); // reset
-
-	return buf - initial_buf;
+		xtrace_log("\033[0m"); // reset
 }
 
-static int print_arg_str(char* buf, void* arg)
+static void print_arg_str(void* arg)
 {
 	const char* str = (const char*) arg;
-	return xtrace_format_string_literal(buf, str);
+	xtrace_print_string_literal(str);
 }
 
-static int print_arg_prot(char* buf, void* arg)
+static void print_arg_prot(void* arg)
 {
-	const char* initial_buf = buf;
 	int cnt = 0;
-	int prot = (int) (long) arg;
+	int prot = (int)(long)arg;
 
 	if (prot & PROT_READ)
 	{
-		buf += __simple_sprintf(buf, "PROT_READ");
+		xtrace_log("PROT_READ");
 		cnt++;
 	}
 	if (prot & PROT_WRITE)
 	{
 		if (cnt > 0)
-			*buf++ = '|';
-		buf += __simple_sprintf(buf, "PROT_WRITE");
+			xtrace_log("|");
+		xtrace_log("PROT_WRITE");
 		cnt++;
 	}
 	if (prot & PROT_EXEC)
 	{
 		if (cnt > 0)
-			*buf++ = '|';
-		buf += __simple_sprintf(buf, "PROT_EXEC");
+			xtrace_log("|");
+		xtrace_log("PROT_EXEC");
 		cnt++;
 	}
 	if (cnt == 0)
 	{
-		buf += __simple_sprintf(buf, "PROT_NONE");
+		xtrace_log("PROT_NONE");
 	}
-
-	return buf - initial_buf;
 }
 
-static int print_mmap_flags(char* buf, void* arg)
+static void print_mmap_flags(void* arg)
 {
-	const char* initial_buf = buf;
 	int cnt = 0;
 	int flags = (int) (long) arg;
 
@@ -541,24 +550,21 @@ static int print_mmap_flags(char* buf, void* arg)
 		if (flags & all_flags[i].flag)
 		{
 			if (cnt > 0)
-				*buf++ = '|';
-			buf += __simple_sprintf(buf, "%s", all_flags[i].name);
+				xtrace_log("|");
+			xtrace_log("%s", all_flags[i].name);
 			cnt++;
 		}
 	}
 
 	if (cnt == 0)
 	{
-		buf += __simple_sprintf(buf, "MAP_FILE");
+		xtrace_log("MAP_FILE");
 	}
-
-	return buf - initial_buf;
 }
 
 extern "C"
-int print_open_flags(char* buf, void* arg)
+void print_open_flags(void* arg)
 {
-	const char* initial_buf = buf;
 	int cnt = 0;
 	int flags = (int) (long) arg;
 
@@ -589,43 +595,39 @@ int print_open_flags(char* buf, void* arg)
 		if (flags & all_flags[i].flag)
 		{
 			if (cnt > 0)
-				*buf++ = '|';
-			buf += __simple_sprintf(buf, "%s", all_flags[i].name);
+				xtrace_log("|");
+			xtrace_log("%s", all_flags[i].name);
 			cnt++;
 		}
 	}
 
 	if (cnt == 0)
 	{
-		buf += __simple_sprintf(buf, "O_RDONLY");
+		xtrace_log("O_RDONLY");
 	}
-
-	return buf - initial_buf;
 }
 
-extern "C" int print_arg_posix_spawn_args(char* buf, void* arg);
+extern "C" void print_arg_posix_spawn_args(void* arg);
 
-static int print_arg_string_array(char* buf, void* arg) {
-	const char* initial_buf = buf;
-	const char* const* argv = (const char* const*)arg;
+static void print_arg_string_array(void* arg) {
+	const char* const* array = (const char* const*)arg;
 	bool is_first = true;
 
-	*buf++ = '{';
+	xtrace_log("{");
 
-	for (const char* const* ptr = argv; *ptr != NULL; ++ptr) {
-		if (is_first) {
-			is_first = false;
-		} else {
-			*buf++ = ',';
-			*buf++ = ' ';
+	if (array) {
+		for (const char* const* ptr = array; *ptr != NULL; ++ptr) {
+			if (is_first) {
+				is_first = false;
+			} else {
+				xtrace_log(", ");
+			}
+
+			xtrace_print_string_literal(*ptr);
 		}
-
-		buf += xtrace_format_string_literal(buf, *ptr);
 	}
 
-	*buf++ = '}';
-
-	return buf - initial_buf;
+	xtrace_log("}");
 };
 
 // TODO: output more specific information for certain calls
@@ -634,7 +636,7 @@ static int print_arg_string_array(char* buf, void* arg) {
 
 static const struct {
 	int args_cnt;
-	int (*print_arg[8])(char* buf, void* arg);
+	void (*print_arg[8])(void* arg);
 } args_info[] = {
 	[1] = { 1, { print_arg_int } }, // exit
 	[2] = { 0, {  } }, // fork
@@ -906,17 +908,17 @@ static const struct {
 	[360] = { 5, { print_arg_ptr, print_arg_ptr, print_arg_ptr, print_arg_ptr, print_arg_int } }, // bsdthread_create
 	[361] = { 4, { print_arg_ptr, print_arg_int, print_arg_int, print_arg_int } }, // bsdthread_terminate
 	[362] = { 0, {  } }, // kqueue
-	[363] = { 6, { print_arg_int, print_arg_ptr, print_arg_int, print_arg_ptr, print_arg_int, print_arg_ptr } }, // kevent
+	// kevent is special
 	[364] = { 3, { print_arg_str, print_arg_int, print_arg_int } }, // lchown
 	[366] = { 7, { print_arg_ptr, print_arg_ptr, print_arg_int, print_arg_ptr, print_arg_ptr, print_arg_int, print_arg_int } }, // bsdthread_register
 	[367] = { 0, {  } }, // workq_open
 	[368] = { 4, { print_arg_int, print_arg_ptr, print_arg_int, print_arg_int } }, // workq_kernreturn
-	[369] = { 7, { print_arg_int, print_arg_ptr, print_arg_int, print_arg_ptr, print_arg_int, print_arg_int, print_arg_ptr } }, // kevent64
+	// kevent64 is special
 	[370] = { 5, { print_arg_int, print_arg_int, print_arg_int, print_arg_int, print_arg_ptr } }, // __old_semwait_signal
 	[371] = { 5, { print_arg_int, print_arg_int, print_arg_int, print_arg_int, print_arg_ptr } }, // __old_semwait_signal_nocancel
 	[372] = { 0, {  } }, // thread_selfid
 	[373] = { 4, { print_arg_int, print_arg_ptr, print_arg_ptr, print_arg_ptr } }, // ledger
-	[374] = { 8, { print_arg_int, print_arg_ptr, print_arg_int, print_arg_ptr, print_arg_int, print_arg_ptr, print_arg_ptr, print_arg_int } }, // kevent_qos
+	// kevent_qos is special
 	[380] = { 4, { print_arg_ptr, print_arg_ptr, print_arg_ptr, print_arg_ptr } }, // __mac_execve
 	[381] = { 3, { print_arg_ptr, print_arg_int, print_arg_ptr } }, // __mac_syscall
 	[382] = { 2, { print_arg_ptr, print_arg_ptr } }, // __mac_get_file
@@ -1038,16 +1040,15 @@ static const struct {
 	[521] = { 6, { print_arg_int, print_arg_int, print_arg_ptr, print_arg_int, print_arg_str, print_arg_int } }, // abort_with_payload
 };
 
-static void print_args(char* buf, int nr, void* args[])
+static void print_args(int nr, void* args[])
 {
 	int cnt = args_info[nr].args_cnt;
 	for (int i = 0; i < cnt; i++)
 	{
 		if (i > 0)
-			buf += __simple_sprintf(buf, ", ");
-		buf += (*args_info[nr].print_arg[i])(buf, args[i]);
+			xtrace_log(", ");
+		(*args_info[nr].print_arg[i])(args[i]);
 	}
-	*buf = 0;
 }
 
 
@@ -1060,7 +1061,7 @@ void darling_bsd_syscall_entry_print(int nr, void* args[])
 	{
 		// For exit() or execve(), print an extra newline,
 		// as we're likely not going to see the return.
-		xtrace_printf("\n");
+		xtrace_log("\n");
 	}
 }
 
@@ -1179,37 +1180,489 @@ const char* error_strings[128] = {
 	[106] = "EQFULL",
 };
 
-static void print_errno_num(char* buf, int nr, uintptr_t rv)
+static void print_errno_num(int nr, uintptr_t rv)
 {
 	intptr_t v = (intptr_t)rv;
 	if (v >= 0 || v < -4095)
 	{
-		__simple_sprintf(buf, "%ld", rv);
+		xtrace_log("%ld", rv);
 	}
 	else
-		print_errno(buf, nr, rv);
+		print_errno(nr, rv);
 }
 
-static void print_errno_ptr(char* buf, int nr, uintptr_t rv)
+static void print_errno_ptr(int nr, uintptr_t rv)
 {
 	intptr_t v = (intptr_t)rv;
 	if (v >= 0 || v < -4095)
 	{
-		__simple_sprintf(buf, "%p", (void*) rv);
+		xtrace_log("%p", (void*) rv);
 	}
 	else
-		print_errno(buf, nr, rv);
+		print_errno(nr, rv);
 }
 
-static void print_errno(char* buf, int nr, uintptr_t rv)
+static void print_errno(int nr, uintptr_t rv)
 {
 	const char* error = NULL;
 	intptr_t v = (intptr_t) rv;
 	if (-v < 128)
 		error = error_strings[-v];
 	if (error != NULL)
-		__simple_sprintf(buf, "%s", error);
+		xtrace_log("%s", error);
 	else
-		__simple_sprintf(buf, "%ld", v);
+		xtrace_log("%ld", v);
 }
 
+static const char* const filter_names[] = {
+	"EVFILT_READ",
+	"EVFILT_WRITE",
+	"EVFILT_AIO",
+	"EVFILT_VNODE",
+	"EVFILT_PROC",
+	"EVFILT_SIGNAL",
+	"EVFILT_TIMER",
+	"EVFILT_MACHPORT",
+	"EVFILT_FS",
+	"EVFILT_USER",
+	NULL,
+	"EVFILT_VM",
+	"EVFILT_SOCK",
+	"EVFILT_MEMORYSTATUS",
+	"EVFILT_EXCEPT",
+	NULL,
+	"EVFILT_WORKLOOP",
+};
+
+static const char* const signal_names[] = {
+	"SIGHUP",
+	"SIGINT",
+	"SIGQUIT",
+	"SIGILL",
+	"SIGTRAP",
+	"SIGABRT",
+	"SIGEMT",
+	"SIGFPE",
+	"SIGKILL",
+	"SIGBUS",
+	"SIGSEGV",
+	"SIGSYS",
+	"SIGPIPE",
+	"SIGALRM",
+	"SIGTERM",
+	"SIGURG",
+	"SIGSTOP",
+	"SIGTSTP",
+	"SIGCONT",
+	"SIGCHLD",
+	"SIGTTIN",
+	"SIGTTOU",
+	"SIGIO",
+	"SIGXCPU",
+	"SIGXFSZ",
+	"SIGVTALR",
+	"SIGPROF",
+	"SIGWINCH",
+	"SIGINFO",
+	"SIGUSR1",
+	"SIGUSR2",
+};
+
+static const struct {
+	uint16_t flag;
+	const char* name;
+} kevent_flag_names[] = {
+#define FLAG(_name) { _name, #_name }
+	FLAG(EV_ADD),
+	FLAG(EV_ENABLE),
+	FLAG(EV_DISABLE),
+	FLAG(EV_DELETE),
+	FLAG(EV_RECEIPT),
+	FLAG(EV_ONESHOT),
+	FLAG(EV_CLEAR),
+	FLAG(EV_DISPATCH),
+	FLAG(EV_UDATA_SPECIFIC),
+	FLAG(EV_FLAG0),
+	FLAG(EV_FLAG1),
+	FLAG(EV_EOF),
+	FLAG(EV_ERROR),
+#undef KEVENT_FLAG
+};
+
+static const struct {
+	uint32_t flag;
+	const char* name;
+} kevent_filter_flag_names[][16] = {
+#define FLAG(_name) { _name, #_name }
+	[~EVFILT_READ] = {
+		FLAG(NOTE_LOWAT),
+	},
+	[~EVFILT_EXCEPT] = {
+		FLAG(NOTE_OOB),
+	},
+	[~EVFILT_VNODE] = {
+		FLAG(NOTE_DELETE),
+		FLAG(NOTE_WRITE),
+		FLAG(NOTE_EXTEND),
+		FLAG(NOTE_ATTRIB),
+		FLAG(NOTE_LINK),
+		FLAG(NOTE_RENAME),
+		FLAG(NOTE_REVOKE),
+		FLAG(NOTE_NONE),
+		FLAG(NOTE_FUNLOCK),
+	},
+	[~EVFILT_PROC] = {
+		FLAG(NOTE_EXIT),
+		FLAG(NOTE_FORK),
+		FLAG(NOTE_EXEC),
+		FLAG(NOTE_REAP),
+		FLAG(NOTE_SIGNAL),
+		FLAG(NOTE_EXITSTATUS),
+		FLAG(NOTE_EXIT_DETAIL),
+	},
+	[~EVFILT_TIMER] = {
+		FLAG(NOTE_SECONDS),
+		FLAG(NOTE_USECONDS),
+		FLAG(NOTE_NSECONDS),
+		FLAG(NOTE_MACHTIME),
+		FLAG(NOTE_ABSOLUTE),
+		FLAG(NOTE_MACH_CONTINUOUS_TIME),
+		FLAG(NOTE_CRITICAL),
+		FLAG(NOTE_BACKGROUND),
+		FLAG(NOTE_LEEWAY),
+		FLAG(NOTE_TRACK),
+		FLAG(NOTE_TRACKERR),
+		FLAG(NOTE_CHILD),
+	},
+	[~EVFILT_SOCK] = {
+		FLAG(NOTE_CONNRESET),
+		FLAG(NOTE_READCLOSED),
+		FLAG(NOTE_WRITECLOSED),
+		FLAG(NOTE_TIMEOUT),
+		FLAG(NOTE_NOSRCADDR),
+		FLAG(NOTE_IFDENIED),
+		FLAG(NOTE_SUSPEND),
+		FLAG(NOTE_RESUME),
+		FLAG(NOTE_KEEPALIVE),
+		FLAG(NOTE_ADAPTIVE_WTIMO),
+		FLAG(NOTE_ADAPTIVE_RTIMO),
+		FLAG(NOTE_CONNECTED),
+		FLAG(NOTE_DISCONNECTED),
+		FLAG(NOTE_CONNINFO_UPDATED),
+		FLAG(NOTE_NOTIFY_ACK),
+	},
+	[~EVFILT_MACHPORT] = {
+		FLAG(MACH_RCV_MSG),
+	},
+#undef FLAG
+};
+
+static void print_kevent_common(int16_t filter, uintptr_t ident, uint16_t flags, uint32_t fflags, intptr_t data, void* udata) {
+	int filt_index = ~filter;
+	bool printed_something = false;
+
+	xtrace_log("%s { ident = ", (filt_index < 0 || filt_index >= sizeof(filter_names) / sizeof(*filter_names)) ? "EVFILT_UNKNOWN" : filter_names[filt_index]);
+
+	switch (filter) {
+		case EVFILT_READ:
+		case EVFILT_WRITE:
+		case EVFILT_EXCEPT:
+		case EVFILT_VNODE:
+		case EVFILT_SOCK:
+			xtrace_log("fd %lu", ident);
+			break;
+
+		case EVFILT_PROC:
+			xtrace_log("pid %lu", ident);
+			break;
+
+		case EVFILT_SIGNAL:
+			xtrace_log("signal %s (%lu)", (ident < sizeof(signal_names) / sizeof(*signal_names)) ? signal_names[ident] : "SIGUNKNOWN", ident);
+			break;
+
+		case EVFILT_TIMER:
+			xtrace_log("timer %lu", ident);
+			break;
+
+		case EVFILT_MACHPORT:
+			// officially, only portsets can be used with EVFILT_MACHPORT. however, Apple introduced support for single ports in 10.13 or something around that time.
+			xtrace_log("port/portset %lu", ident);
+			break;
+
+		case EVFILT_FS:
+		case EVFILT_USER:
+		case EVFILT_VM:
+		case EVFILT_MEMORYSTATUS:
+		case EVFILT_WORKLOOP:
+			// notes:
+			//   * EVFILT_VM is unsupported on macOS.
+			//   * do EVFILT_FS, EVFILT_MEMORYSTATUS, and EVFILT_WORKLOOP even use `ident`?
+			xtrace_log("%lu", ident);
+			break;
+
+		default:
+			xtrace_log("%lu", ident);
+			break;
+	}
+
+	xtrace_log(", flags = ");
+
+	for (size_t i = 0; i < sizeof(kevent_flag_names) / sizeof(*kevent_flag_names); ++i) {
+		if ((flags & kevent_flag_names[i].flag) == 0) {
+			continue;
+		}
+
+		if (!printed_something) {
+			printed_something = true;
+		} else {
+			xtrace_log("|");
+		}
+
+		xtrace_log("%s", kevent_flag_names[i].name);
+	}
+
+	xtrace_log("%s(0x%x), fflags = ", printed_something ? " " : "", flags);
+
+	printed_something = false;
+
+	if (filt_index < sizeof(kevent_filter_flag_names) / sizeof(*kevent_filter_flag_names)) {
+		for (size_t i = 0; i < sizeof(*kevent_filter_flag_names) / sizeof(**kevent_filter_flag_names); ++i) {
+			if (!kevent_filter_flag_names[filt_index][i].name) {
+				break;
+			}
+
+			if ((fflags & kevent_filter_flag_names[filt_index][i].flag) == 0) {
+				continue;
+			}
+
+			if (!printed_something) {
+				printed_something = true;
+			} else {
+				xtrace_log("|");
+			}
+
+			xtrace_log("%s", kevent_filter_flag_names[filt_index][i].name);
+		}
+	}
+
+	xtrace_log("%s(0x%x), udata = %p, data = 0x%lx", printed_something ? " " : "", fflags, udata, data);
+};
+
+static void print_kevent_structure(const struct kevent* event) {
+	print_kevent_common(event->filter, event->ident, event->flags, event->fflags, event->data, event->udata);
+	xtrace_log(" }");
+};
+
+static void print_kevent64_structure(const struct kevent64_s* event) {
+	print_kevent_common(event->filter, event->ident, event->flags, event->fflags, event->data, (void*)(uintptr_t)event->udata);
+	xtrace_log(", ext[0] = 0x%llx, ext[1] = 0x%llx }", event->ext[0], event->ext[1]);
+};
+
+static void print_kevent_qos_structure(const struct kevent_qos_s* event) {
+	print_kevent_common(event->filter, event->ident, event->flags, event->fflags, event->data, (void*)(uintptr_t)event->udata);
+	xtrace_log(", ext[0] = 0x%llx, ext[1] = 0x%llx, ext[2] = 0x%llx, ext[3] = 0x%llx, qos = %d, xflags = 0x%x }", event->ext[0], event->ext[1], event->ext[2], event->ext[3], event->qos, event->xflags);
+};
+
+DEFINE_XTRACE_TLS_VAR(void*, kevent_stored_list, NULL);
+
+enum class kevent_type {
+	kevent,
+	kevent64,
+	kevent_qos,
+};
+
+static void print_kevent_return_common(int nr, uintptr_t rv, kevent_type type) {
+	void* event_list = get_kevent_stored_list();
+	int ret = (intptr_t)rv;
+
+	set_kevent_stored_list(NULL);
+
+	if (ret < 0) {
+		print_errno(nr, rv);
+		return;
+	}
+
+	xtrace_log("%d events {", ret);
+
+	for (int i = 0; i < ret; ++i) {
+		if (i == 0) {
+			xtrace_log(" ");
+		} else {
+			xtrace_log(", ");
+		}
+
+		switch (type) {
+			case kevent_type::kevent:
+				print_kevent_structure(&((struct kevent*)event_list)[i]);
+				break;
+			case kevent_type::kevent64:
+				print_kevent64_structure(&((struct kevent64_s*)event_list)[i]);
+				break;
+			case kevent_type::kevent_qos:
+				print_kevent_qos_structure(&((struct kevent_qos_s*)event_list)[i]);
+				break;
+		}
+	}
+
+	xtrace_log("%s}", ret > 0 ? " " : "");
+};
+
+static void print_kevent_return(int nr, uintptr_t rv) {
+	print_kevent_return_common(nr, rv, kevent_type::kevent);
+};
+
+static void print_kevent_args(int nr, void* args[]) {
+	int kq = (intptr_t)args[0];
+	const struct kevent* change_list = (const struct kevent*)args[1];
+	int nchanges = (intptr_t)args[2];
+	struct kevent* event_list = (struct kevent*)args[3];
+	int nevents = (intptr_t)args[4];
+	const struct timespec* timeout = (const struct timespec*)args[5];
+
+	set_kevent_stored_list(event_list);
+
+	xtrace_log("%d, change_list = {", kq);
+
+	for (int i = 0; i < nchanges; ++i) {
+		if (i == 0) {
+			xtrace_log(" ");
+		} else {
+			xtrace_log(", ");
+		}
+		print_kevent_structure(&change_list[i]);
+	}
+
+	xtrace_log("%s}, nchanges = %d, event_list = %p, nevents = %d, timeout = ", nchanges > 0 ? " " : "", nchanges, event_list, nevents);
+
+	print_timespec(timeout);
+};
+
+static void print_kevent64_return(int nr, uintptr_t rv) {
+	print_kevent_return_common(nr, rv, kevent_type::kevent64);
+};
+
+static struct {
+	unsigned int flag;
+	const char* name;
+} kevent_call_flags[] = {
+#define FLAG(_name) { _name, #_name }
+	FLAG(KEVENT_FLAG_NONE),
+	FLAG(KEVENT_FLAG_IMMEDIATE),
+	FLAG(KEVENT_FLAG_ERROR_EVENTS),
+	FLAG(KEVENT_FLAG_STACK_DATA),
+	FLAG(KEVENT_FLAG_WORKQ),
+	FLAG(KEVENT_FLAG_WORKQ_MANAGER),
+	FLAG(KEVENT_FLAG_WORKLOOP),
+	FLAG(KEVENT_FLAG_PARKING),
+	FLAG(KEVENT_FLAG_WORKLOOP_SERVICER_ATTACH),
+	FLAG(KEVENT_FLAG_WORKLOOP_SERVICER_DETACH),
+	FLAG(KEVENT_FLAG_DYNAMIC_KQ_MUST_EXIST),
+	FLAG(KEVENT_FLAG_DYNAMIC_KQ_MUST_NOT_EXIST),
+	FLAG(KEVENT_FLAG_WORKLOOP_NO_WQ_THREAD),
+#undef FLAG
+};
+
+static void print_kevent64_args(int nr, void* args[]) {
+	int kq = (intptr_t)args[0];
+	const struct kevent64_s* change_list = (const struct kevent64_s*)args[1];
+	int nchanges = (intptr_t)args[2];
+	struct kevent64_s* event_list = (struct kevent64_s*)args[3];
+	int nevents = (intptr_t)args[4];
+	unsigned int flags = (uintptr_t)args[5];
+	const struct timespec* timeout = (const struct timespec*)args[6];
+	bool printed_something = false;
+
+	set_kevent_stored_list(event_list);
+
+	xtrace_log("%d, change_list = {", kq);
+
+	for (int i = 0; i < nchanges; ++i) {
+		if (i == 0) {
+			xtrace_log(" ");
+		} else {
+			xtrace_log(", ");
+		}
+		print_kevent64_structure(&change_list[i]);
+	}
+
+	xtrace_log("%s}, nchanges = %d, event_list = %p, nevents = %d, flags = ", nchanges > 0 ? " " : "", nchanges, event_list, nevents);
+
+	for (size_t i = 0; i < sizeof(kevent_call_flags) / sizeof(*kevent_call_flags); ++i) {
+		if ((flags & kevent_call_flags[i].flag) == 0) {
+			continue;
+		}
+
+		if (!printed_something) {
+			printed_something = true;
+		} else {
+			xtrace_log("|");
+		}
+
+		xtrace_log("%s", kevent_call_flags[i].name);
+	}
+
+	if (!printed_something) {
+		xtrace_log("0");
+	}
+
+	xtrace_log(", timeout = ");
+
+	print_timespec(timeout);
+};
+
+static void print_kevent_qos_return(int nr, uintptr_t rv) {
+	print_kevent_return_common(nr, rv, kevent_type::kevent_qos);
+};
+
+static void print_kevent_qos_args(int nr, void* args[]) {
+	int kq = (intptr_t)args[0];
+	const struct kevent_qos_s* change_list = (const struct kevent_qos_s*)args[1];
+	int nchanges = (intptr_t)args[2];
+	struct kevent_qos_s* event_list = (struct kevent_qos_s*)args[3];
+	int nevents = (intptr_t)args[4];
+	void* data_out = args[5];
+	size_t* data_available = (size_t*)args[6];
+	unsigned int flags = (uintptr_t)args[7];
+	bool printed_something = false;
+
+	set_kevent_stored_list(event_list);
+
+	xtrace_log("%d, change_list = {", kq);
+
+	for (int i = 0; i < nchanges; ++i) {
+		if (i == 0) {
+			xtrace_log(" ");
+		} else {
+			xtrace_log(", ");
+		}
+		print_kevent_qos_structure(&change_list[i]);
+	}
+
+	xtrace_log("%s}, nchanges = %d, event_list = %p, nevents = %d, data_out = %p, data_available = %p (%ld), flags = ", nchanges > 0 ? " " : "", nchanges, event_list, nevents, data_out, data_available, data_available ? *data_available : 0);
+
+	for (size_t i = 0; i < sizeof(kevent_call_flags) / sizeof(*kevent_call_flags); ++i) {
+		if ((flags & kevent_call_flags[i].flag) == 0) {
+			continue;
+		}
+
+		if (!printed_something) {
+			printed_something = true;
+		} else {
+			xtrace_log("|");
+		}
+
+		xtrace_log("%s", kevent_call_flags[i].name);
+	}
+
+	if (!printed_something) {
+		xtrace_log("0");
+	}
+};
+
+static void print_timespec(const struct timespec* timespec) {
+	if (timespec) {
+		xtrace_log("(%ld s, %ld ns)", timespec->tv_sec, timespec->tv_nsec);
+	} else {
+		xtrace_log("NULL");
+	}
+};

@@ -8,9 +8,11 @@
 #include <spawn_private.h>
 
 #include <darling/emulation/simple.h>
+#include "bsd_trace.h"
 
-extern int xtrace_format_string_literal(char* buf, const char* str);
-extern int print_open_flags(char* buf, void* arg);
+#include "xtracelib.h"
+
+extern void print_open_flags(void* arg);
 
 static struct {
 	unsigned short flag;
@@ -33,12 +35,11 @@ static struct {
 #undef POSIX_SPAWN_ATTR_ENTRY
 };
 
-int print_arg_posix_spawn_args(char* buf, void* arg) {
-	const char* initial_buf = buf;
+void print_arg_posix_spawn_args(void* arg) {
 	const struct _posix_spawn_args_desc* args = (const struct _posix_spawn_args_desc*)(arg);
 	bool is_first = true;
 
-	buf += __simple_sprintf(buf, "{ attributes = ");
+	xtrace_log("{ attributes = ");
 
 	if (args && args->attrp) {
 		for (size_t i = 0; all_posix_spawn_attrs[i].name != NULL; i++) {
@@ -46,75 +47,71 @@ int print_arg_posix_spawn_args(char* buf, void* arg) {
 				if (is_first) {
 					is_first = false;
 				} else {
-					*buf++ = '|';
+					xtrace_log("|");
 				}
 
-				buf += __simple_sprintf(buf, "%s", all_posix_spawn_attrs[i].name);
+				xtrace_log("%s", all_posix_spawn_attrs[i].name);
 			}
 		}
 	}
 
 	if (is_first) {
-		*buf++ = '0';
+		xtrace_log("0");
 	}
 
-	buf += __simple_sprintf(buf, ", file_actions = {");
+	xtrace_log(", file_actions = {");
 
 	if (args && args->file_actions) {
 		for (size_t i = 0; i < args->file_actions->psfa_act_count; ++i) {
 			const struct _psfa_action* action = &args->file_actions->psfa_act_acts[i];
 
 			if (i != 0) {
-				*buf++ = ',';
-				*buf++ = ' ';
+				xtrace_log(", ");
 			}
 
 			switch (action->psfaa_type) {
 				case PSFA_OPEN:
-					buf += __simple_sprintf(buf, "open(");
-					buf += xtrace_format_string_literal(buf, action->psfaa_openargs.psfao_path);
-					*buf++ = ',';
-					*buf++ = ' ';
-					buf += print_open_flags(buf, (void*)(intptr_t)(action->psfaa_openargs.psfao_oflag));
-					buf += __simple_sprintf(buf, ", 0%o) to %d", action->psfaa_openargs.psfao_mode, action->psfaa_filedes);
+					xtrace_log("open(");
+					xtrace_print_string_literal(action->psfaa_openargs.psfao_path);
+					xtrace_log(", ");
+					print_open_flags((void*)(intptr_t)(action->psfaa_openargs.psfao_oflag));
+					xtrace_log(", 0%o) to %d", action->psfaa_openargs.psfao_mode, action->psfaa_filedes);
 					break;
 
 				case PSFA_CLOSE:
-					buf += __simple_sprintf(buf, "close(%d)", action->psfaa_filedes);
+					xtrace_log("close(%d)", action->psfaa_filedes);
 					break;
 
 				case PSFA_DUP2:
-					buf += __simple_sprintf(buf, "dup2(%d, %d)", action->psfaa_filedes, action->psfaa_dup2args.psfad_newfiledes);
+					xtrace_log("dup2(%d, %d)", action->psfaa_filedes, action->psfaa_dup2args.psfad_newfiledes);
 					break;
 
 				case PSFA_INHERIT:
-					buf += __simple_sprintf(buf, "inherit(%d)", action->psfaa_filedes);
+					xtrace_log("inherit(%d)", action->psfaa_filedes);
 					break;
 
 				case PSFA_FILEPORT_DUP2:
 					// NOTE: if we see this in the output, that's an issue;
 					//       we don't have this implemented right now
-					buf += __simple_sprintf(buf, "dup2_fileport(port right %d, %d)", action->psfaa_fileport, action->psfaa_dup2args.psfad_newfiledes);
+					xtrace_log("dup2_fileport(port right %d, %d)", action->psfaa_fileport, action->psfaa_dup2args.psfad_newfiledes);
 					break;
 
 				case PSFA_CHDIR:
-					buf += __simple_sprintf(buf, "chdir(");
-					buf += xtrace_format_string_literal(buf, action->psfaa_chdirargs.psfac_path);
-					*buf++ = ')';
+					xtrace_log("chdir(");
+					xtrace_print_string_literal(action->psfaa_chdirargs.psfac_path);
+					xtrace_log(")");
 					break;
 
 				case PSFA_FCHDIR:
-					buf += __simple_sprintf(buf, "fchdir(%d)", action->psfaa_filedes);
+					xtrace_log("fchdir(%d)", action->psfaa_filedes);
 					break;
 
 				default:
-					buf += __simple_sprintf(buf, "???");
+					xtrace_log("???");
 					break;
 			}
 		}
 	}
 
-	buf += __simple_sprintf(buf, "} }");
-
-	return buf - initial_buf;
+	xtrace_log("} }");
 };

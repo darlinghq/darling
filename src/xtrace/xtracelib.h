@@ -6,8 +6,8 @@
 struct calldef
 {
 	const char* name;
-	void (*print_args)(char*, int nr, void* args[]);
-	void (*print_retval)(char*, int nr, uintptr_t rv);
+	void (*print_args)(int nr, void* args[]);
+	void (*print_retval)(int nr, uintptr_t rv);
 };
 
 #ifdef __cplusplus
@@ -18,29 +18,17 @@ void handle_generic_entry(const struct calldef* defs, const char* type, int nr, 
 void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t retval, int force_split);
 
 extern int xtrace_no_color;
-extern int xtrace_kprintf;
 void xtrace_set_gray_color(void);
 void xtrace_reset_color(void);
 
 void xtrace_start_line(int indent);
 
-// the kprintf output is prefixed with "xtrace: " for easy grepping on dmesg
+void xtrace_log(const char* format, ...) __attribute__((format(printf, 1, 2)));
+void xtrace_log_v(const char* format, va_list args) __attribute__((format(printf, 1, 0)));
+void xtrace_error(const char* format, ...) __attribute__((format(printf, 1, 2)));
+void xtrace_error_v(const char* format, va_list args) __attribute__((format(printf, 1, 0)));
 
-#define xtrace_printf(format, ...) ({ \
-		if (xtrace_kprintf) { \
-			__simple_kprintf("xtrace: " format, ##__VA_ARGS__); \
-		} else { \
-			__simple_printf(format, ##__VA_ARGS__); \
-		} \
-	})
-
-#define xtrace_fprintf(fd, format, ...) ({ \
-		if (xtrace_kprintf) { \
-			__simple_kprintf("xtrace: " format, ##__VA_ARGS__); \
-		} else { \
-			__simple_fprintf(fd, format, ##__VA_ARGS__); \
-		} \
-	})
+void xtrace_abort(const char* message) __attribute__((noreturn));
 
 #ifdef __cplusplus
 }

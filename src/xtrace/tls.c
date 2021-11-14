@@ -5,13 +5,14 @@
 #include "lock.h"
 #include <darling/emulation/simple.h>
 #include <pthread/tsd_private.h>
+#include "xtracelib.h"
 
 #ifndef XTRACE_TLS_DEBUG
 	#define XTRACE_TLS_DEBUG 0
 #endif
 
 #if XTRACE_TLS_DEBUG
-	#define xtrace_tls_debug(x, ...) xtrace_printf(x "\n", ## __VA_ARGS__)
+	#define xtrace_tls_debug(x, ...) xtrace_log(x "\n", ## __VA_ARGS__)
 #else
 	#define xtrace_tls_debug(x, ...)
 #endif
@@ -50,7 +51,7 @@ static void tls_table_destructor(void* _table) {
 };
 #endif
 
-void* xtrace_tls(void* key, size_t size) {
+void* xtrace_tls(void* key, size_t size, bool* created) {
 	xtrace_tls_debug("looking up tls variable for key %p", key);
 
 	tls_table_t table = _pthread_getspecific_direct(__PTK_XTRACE_TLS);
@@ -62,7 +63,7 @@ void* xtrace_tls(void* key, size_t size) {
 		xtrace_tls_debug("table is NULL, creating now...");
 		table = xtrace_malloc(sizeof(struct tls_table));
 		if (table == NULL) {
-			_abort_with_payload_for_xtrace(0, 0, NULL, 0, "xtrace: failed TLS table memory allocation", 0);
+			xtrace_abort("xtrace: failed TLS table memory allocation");
 		}
 		table->size = 0;
 		_pthread_setspecific_direct(__PTK_XTRACE_TLS, table);
@@ -72,6 +73,9 @@ void* xtrace_tls(void* key, size_t size) {
 	for (size_t i = 0; i < table->size; ++i) {
 		if (table->table[i][0] == key) {
 			xtrace_tls_debug("found entry in table for key %p with value %p", key, table->table[i][1]);
+			if (created) {
+				*created = false;
+			}
 			return table->table[i][1];
 		}
 	}
@@ -82,8 +86,11 @@ void* xtrace_tls(void* key, size_t size) {
 	table->table[index][0] = key;
 	table->table[index][1] = xtrace_malloc(size);
 	if (table->table[index][1] == NULL) {
-		_abort_with_payload_for_xtrace(0, 0, NULL, 0, "xtrace: failed TLS variable memory allocation", 0);
+		xtrace_abort("xtrace: failed TLS variable memory allocation");
 	}
 	xtrace_tls_debug("new table entry created for key %p with value %p", key, table->table[index][1]);
+	if (created) {
+		*created = true;
+	}
 	return table->table[index][1];
 };

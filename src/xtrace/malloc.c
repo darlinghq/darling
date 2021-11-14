@@ -16,7 +16,7 @@
 #endif
 
 #if XTRACE_MALLOC_DEBUG
-	#define xtrace_malloc_debug(x, ...) xtrace_printf(x "\n", ## __VA_ARGS__)
+	#define xtrace_malloc_debug(x, ...) xtrace_log(x "\n", ## __VA_ARGS__)
 	#undef XTRACE_INLINE
 	#define XTRACE_INLINE
 #else

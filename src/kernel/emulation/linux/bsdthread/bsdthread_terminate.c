@@ -14,7 +14,7 @@ int bsdthread_terminate_trap(
                 unsigned long freesize,
                 int thread,
                 int sem);
-int semaphore_signal_trap(int signal_name);
+int semaphore_signal_trap_impl(int signal_name);
 
 long sys_bsdthread_terminate(void* stackaddr, unsigned long freesize, int port,
 		int join_sem)
@@ -26,7 +26,7 @@ long sys_bsdthread_terminate(void* stackaddr, unsigned long freesize, int port,
 			unsigned long freesize, unsigned long pthobj_size);
 	extern int lkm_call(int, void*);
 
-	semaphore_signal_trap(join_sem);
+	semaphore_signal_trap_impl(join_sem);
 	lkm_call(NR_thread_death_announce, 0);
 
 	return __darling_thread_terminate(stackaddr, freesize, pthread_obj_size);

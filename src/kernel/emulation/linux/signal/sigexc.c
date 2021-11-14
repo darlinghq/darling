@@ -30,6 +30,7 @@ void darling_sigexc_uninstall(void);
 void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt);
 
 static char sigexc_altstack[8*1024];
+size_t default_sigaltstack_size = sizeof(sigexc_altstack);
 
 #if defined(__x86_64__)
 static void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state64_t* s);
@@ -73,7 +74,7 @@ static void dump_gregs(const struct linux_gregset* regs)
 	unsigned long long* p = (unsigned long long*) regs;
 	for (int i = 0; i < 23; i++)
 	{
-		kern_printf("sigexc:   gregs 0x%x\n", p[i]);
+		kern_printf("sigexc:   gregs 0x%llx\n", p[i]);
 	}
 }
 
@@ -226,7 +227,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	memcpy(&sigprocess.linux_siginfo, info, sizeof(*info));
 
 #ifdef __x86_64__
-	kern_printf("sigexc: have RIP 0x%x\n", ctxt->uc_mcontext.gregs.rip);
+	kern_printf("sigexc: have RIP 0x%llx\n", ctxt->uc_mcontext.gregs.rip);
 #endif
 
 	thread_t thread = mach_thread_self();
@@ -302,7 +303,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	kern_printf("sigexc: handler (%d) returning\n", linux_signum);
 }
 
-#define DUMPREG(regname) kern_printf("sigexc:   " #regname ": 0x%x\n", regs->regname);
+#define DUMPREG(regname) kern_printf("sigexc:   " #regname ": 0x%llx\n", regs->regname);
 
 #if defined(__x86_64__)
 void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state64_t* s)
@@ -493,12 +494,19 @@ void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx)
 void sigexc_thread_setup(void)
 {
 	struct bsd_stack newstack = {
-		.ss_size = sizeof(sigexc_altstack),
+		.ss_size = default_sigaltstack_size,
 		.ss_flags = 0
 	};
 
-	newstack.ss_sp = (void*) sys_mmap(NULL, sizeof(sigexc_altstack), PROT_READ | PROT_WRITE,
+#if SIGALTSTACK_GUARD
+	newstack.ss_sp = (void*) sys_mmap(NULL, newstack.ss_size + 4096, PROT_READ | PROT_WRITE,
 			MAP_ANON | MAP_PRIVATE, -1, 0);
+	sys_mprotect(newstack.ss_sp, 4096, PROT_NONE);
+	newstack.ss_sp = (char*)newstack.ss_sp + 4096;
+#else
+	newstack.ss_sp = (void*) sys_mmap(NULL, newstack.ss_size, PROT_READ | PROT_WRITE,
+			MAP_ANON | MAP_PRIVATE, -1, 0);
+#endif
 	sys_sigaltstack(&newstack, NULL);
 }
 
@@ -507,6 +515,10 @@ void sigexc_thread_exit(void)
 	struct bsd_stack oldstack;
 	sys_sigaltstack(NULL, &oldstack);
 
-	sys_munmap(oldstack.ss_sp, oldstack.ss_flags);
+#if SIGALTSTACK_GUARD
+	sys_munmap((char*)oldstack.ss_sp - 4096, oldstack.ss_size + 4096);
+#else
+	sys_munmap(oldstack.ss_sp, oldstack.ss_size);
+#endif
 }
 

@@ -18,6 +18,9 @@ int __simple_strlen(const char* str);
 int __simple_vsprintf(char* buf, const char* format, va_list vl) __attribute__((format(printf, 2, 0)));
 int __simple_vsnprintf(char* buffer, size_t max_length, const char* format, va_list args) __attribute__((format(printf, 3, 0)));
 int __simple_snprintf(char* buffer, size_t max_length, const char* format, ...) __attribute__((format(printf, 3, 4)));
+void __simple_vprintf(const char* format, va_list args) __attribute__((format(printf, 1, 0)));
+void __simple_vkprintf(const char* format, va_list args) __attribute__((format(printf, 1, 0)));
+void __simple_vfprintf(int fd, const char* format, va_list args) __attribute__((format(printf, 2, 0)));
 
 unsigned long long __simple_atoi(const char* str, const char** endp);
 unsigned long long __simple_atoi16(const char* str, const char** endp);

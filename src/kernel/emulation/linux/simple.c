@@ -30,12 +30,60 @@ int __simple_vsnprintf(char* buf, size_t max_length, const char* format, va_list
 	{
 		if (*format == '%')
 		{
+			enum format_size {
+				format_size_default,
+				format_size_short_short,
+				format_size_short,
+				format_size_long,
+				format_size_long_long,
+				format_size_max,
+				format_size_size_type,
+				format_size_ptrdiff,
+			};
+
+			enum format_size format_size = format_size_default;
+
 			format++;
 			if (!*format)
 				break;
-			if (*format == 'l')
-				format++;
-			
+
+			switch (*format) {
+				case 'l':
+					format++;
+					if (*format == 'l') {
+						format++;
+						format_size = format_size_long_long;
+					} else {
+						format_size = format_size_long;
+					}
+					break;
+
+				case 'h':
+					format++;
+					if (*format == 'h') {
+						format++;
+						format_size = format_size_short;
+					} else {
+						format_size = format_size_short_short;
+					}
+					break;
+
+				case 'j':
+					format++;
+					format_size = format_size_max;
+					break;
+
+				case 'z':
+					format++;
+					format_size = format_size_size_type;
+					break;
+
+				case 't':
+					format++;
+					format_size = format_size_ptrdiff;
+					break;
+			}
+
 			switch (*format)
 			{
 				case '%':
@@ -60,9 +108,32 @@ int __simple_vsnprintf(char* buf, size_t max_length, const char* format, va_list
 				}
 				case 'd':
 				{
-					int num = va_arg(vl, int);
-					char temp[16];
+					intmax_t num = 0;
+					char temp[20];
 					int count = 0;
+
+					switch (format_size) {
+						case format_size_short:
+						case format_size_short_short:
+						case format_size_default:
+							num = va_arg(vl, int);
+							break;
+						case format_size_long:
+							num = va_arg(vl, long int);
+							break;
+						case format_size_long_long:
+							num = va_arg(vl, long long int);
+							break;
+						case format_size_max:
+							num = va_arg(vl, intmax_t);
+							break;
+						case format_size_size_type:
+							num = va_arg(vl, size_t);
+							break;
+						case format_size_ptrdiff:
+							num = va_arg(vl, ptrdiff_t);
+							break;
+					}
 
 					if (num < 0)
 					{
@@ -90,9 +161,32 @@ int __simple_vsnprintf(char* buf, size_t max_length, const char* format, va_list
 				}
 				case 'u':
 				{
-					unsigned int num = va_arg(vl, unsigned int);
-					char temp[16];
+					uintmax_t num = 0;
+					char temp[20];
 					int count = 0;
+
+					switch (format_size) {
+						case format_size_short:
+						case format_size_short_short:
+						case format_size_default:
+							num = va_arg(vl, unsigned int);
+							break;
+						case format_size_long:
+							num = va_arg(vl, unsigned long int);
+							break;
+						case format_size_long_long:
+							num = va_arg(vl, unsigned long long int);
+							break;
+						case format_size_max:
+							num = va_arg(vl, uintmax_t);
+							break;
+						case format_size_size_type:
+							num = va_arg(vl, size_t);
+							break;
+						case format_size_ptrdiff:
+							num = va_arg(vl, ptrdiff_t);
+							break;
+					}
 
 					do
 					{
@@ -113,9 +207,36 @@ int __simple_vsnprintf(char* buf, size_t max_length, const char* format, va_list
 				case 'p':
 				case 'x':
 				{
-					unsigned long num = va_arg(vl, unsigned long);
+					uintmax_t num = 0;
 					char temp[40];
 					int count = 0;
+
+					if (*format == 'p') {
+						num = va_arg(vl, void*);
+					} else {
+						switch (format_size) {
+							case format_size_short:
+							case format_size_short_short:
+							case format_size_default:
+								num = va_arg(vl, unsigned int);
+								break;
+							case format_size_long:
+								num = va_arg(vl, unsigned long int);
+								break;
+							case format_size_long_long:
+								num = va_arg(vl, unsigned long long int);
+								break;
+							case format_size_max:
+								num = va_arg(vl, uintmax_t);
+								break;
+							case format_size_size_type:
+								num = va_arg(vl, size_t);
+								break;
+							case format_size_ptrdiff:
+								num = va_arg(vl, ptrdiff_t);
+								break;
+						}
+					}
 
 					if (*format == 'p')
 					{
@@ -152,9 +273,32 @@ int __simple_vsnprintf(char* buf, size_t max_length, const char* format, va_list
 
 				case 'o':
 				{
-					unsigned int num = va_arg(vl, unsigned int);
+					uintmax_t num = 0;
 					char temp[16];
 					int count = 0;
+
+					switch (format_size) {
+						case format_size_short:
+						case format_size_short_short:
+						case format_size_default:
+							num = va_arg(vl, unsigned int);
+							break;
+						case format_size_long:
+							num = va_arg(vl, unsigned long int);
+							break;
+						case format_size_long_long:
+							num = va_arg(vl, unsigned long long int);
+							break;
+						case format_size_max:
+							num = va_arg(vl, uintmax_t);
+							break;
+						case format_size_size_type:
+							num = va_arg(vl, size_t);
+							break;
+						case format_size_ptrdiff:
+							num = va_arg(vl, ptrdiff_t);
+							break;
+					}
 
 					do
 					{
@@ -170,6 +314,15 @@ int __simple_vsnprintf(char* buf, size_t max_length, const char* format, va_list
 						offset++;
 					}
 
+					break;
+				}
+
+				case 'c':
+				{
+					int num = va_arg(vl, int);
+					if (offset < max_length)
+						buf[offset] = (char)num;
+					offset++;
 					break;
 				}
 			}
@@ -239,6 +392,30 @@ void __simple_fprintf(int fd, const char* format, ...)
 	__simple_vsnprintf(buffer, sizeof(buffer), format, vl);
 	va_end(vl);
 
+	LINUX_SYSCALL3(__NR_write, fd, buffer, __simple_strlen(buffer));
+}
+
+__attribute__ ((visibility ("default")))
+void __simple_vprintf(const char* format, va_list args)
+{
+	char buffer[512];
+	__simple_vsnprintf(buffer, sizeof(buffer), format, args);
+	LINUX_SYSCALL3(__NR_write, 1, buffer, __simple_strlen(buffer));
+}
+
+__attribute__ ((visibility ("default")))
+void __simple_vkprintf(const char* format, va_list args)
+{
+	char buffer[512];
+	__simple_vsnprintf(buffer, sizeof(buffer), format, args);
+	lkm_call(NR_kernel_printk, buffer);
+}
+
+__attribute__ ((visibility ("default")))
+void __simple_vfprintf(int fd, const char* format, va_list args)
+{
+	char buffer[512];
+	__simple_vsnprintf(buffer, sizeof(buffer), format, args);
 	LINUX_SYSCALL3(__NR_write, fd, buffer, __simple_strlen(buffer));
 }
 

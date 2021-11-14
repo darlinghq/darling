@@ -13,29 +13,29 @@
 #include "mig_trace.h"
 #include "tls.h"
 
-DEFINE_XTRACE_TLS_VAR(int, mach_call_nr);
-DEFINE_XTRACE_TLS_VAR(void*, argument_ptr);
-DEFINE_XTRACE_TLS_VAR(mach_port_name_t, request_port);
+DEFINE_XTRACE_TLS_VAR(int, mach_call_nr, -1);
+DEFINE_XTRACE_TLS_VAR(void*, argument_ptr, NULL);
+DEFINE_XTRACE_TLS_VAR(mach_port_name_t, request_port, MACH_PORT_NULL);
 
-static void print_kern_return(char* buf, int nr, uintptr_t rv);
-static void print_port_return(char* buf, int nr, uintptr_t rv);
-static void print_int_return(char* buf, int nr, uintptr_t rv);
-static void print_empty(char* buf, int nr, void* args[]);
-static void print_port_ptr_return(char* buf, int nr, uintptr_t rv);
+static void print_kern_return(int nr, uintptr_t rv);
+static void print_port_return(int nr, uintptr_t rv);
+static void print_int_return(int nr, uintptr_t rv);
+static void print_empty(int nr, void* args[]);
+static void print_port_ptr_return(int nr, uintptr_t rv);
 
-static void print_mach_msg_args(char* buf, int nr, void* args[]);
-static void print_mach_port_insert_right_args(char* buf, int nr, void* args[]);
+static void print_mach_msg_args(int nr, void* args[]);
+static void print_mach_port_insert_right_args(int nr, void* args[]);
 
-static void print_mach_port_member_args(char* buf, int nr, void* args[]);
+static void print_mach_port_member_args(int nr, void* args[]);
 
-static void print_mach_timebase_info_args(char* buf, int nr, void* args[]);
-static void print_mach_timebase_info_res(char* buf, int nr, uintptr_t rv);
+static void print_mach_timebase_info_args(int nr, void* args[]);
+static void print_mach_timebase_info_res(int nr, uintptr_t rv);
 
-static void print_mach_port_allocate_args(char* buf, int nr, void* args[]);
-static void print_task_for_pid_args(char* buf, int nr, void* args[]);
+static void print_mach_port_allocate_args(int nr, void* args[]);
+static void print_task_for_pid_args(int nr, void* args[]);
 
-static void print_pid_for_task_args(char* buf, int nr, void* args[]);
-static void print_pid_for_task_res(char* buf, int nr, uintptr_t rv);
+static void print_pid_for_task_args(int nr, void* args[]);
+static void print_pid_for_task_res(int nr, uintptr_t rv);
 
 static void print_mach_msg_entry(void* args[]);
 static void print_mach_msg_exit(void);
@@ -47,7 +47,7 @@ static const struct calldef mach_defs[128] = {
 	[15] = { "_kernelrpc_mach_vm_map_trap", NULL, print_kern_return },
 	[16] = { "_kernelrpc_mach_port_allocate_trap", print_mach_port_allocate_args, print_port_ptr_return },
 	[17] = { "_kernelrpc_mach_port_destroy_trap", NULL, print_kern_return },
-	[18] = { "_kernelrpc_mach_port_deallocate_trap", [](char* buf, int nr, void* args[]) { __simple_sprintf(buf, "task %u, port name %u", (unsigned int) (unsigned long) args[0], (unsigned int) (unsigned long) args[1]); }, print_kern_return },
+	[18] = { "_kernelrpc_mach_port_deallocate_trap", [](int nr, void* args[]) { xtrace_log("task %u, port name %u", (unsigned int) (unsigned long) args[0], (unsigned int) (unsigned long) args[1]); }, print_kern_return },
 	[19] = { "_kernelrpc_mach_port_mod_refs_trap", NULL, print_kern_return },
 	[20] = { "_kernelrpc_mach_port_move_member_trap", print_mach_port_member_args, print_kern_return },
 	[21] = { "_kernelrpc_mach_port_insert_right_trap", print_mach_port_insert_right_args, print_kern_return },
@@ -226,56 +226,55 @@ void darling_mach_syscall_exit_print(uintptr_t retval)
 	set_mach_call_nr(-1);
 }
 
-int xtrace_kern_return_to_str(char* buf, kern_return_t kr)
+void xtrace_print_kern_return(kern_return_t kr)
 {
 	if (kr >= MACH_RCV_IN_PROGRESS && kr <= MACH_RCV_INVALID_TRAILER)
-		return __simple_sprintf(buf, "%s", mach_rcv_errors[kr - MACH_RCV_IN_PROGRESS]);
+		xtrace_log("%s", mach_rcv_errors[kr - MACH_RCV_IN_PROGRESS]);
 	else if (kr >= MACH_SEND_IN_PROGRESS && kr <= MACH_SEND_INVALID_TRAILER)
-		return __simple_sprintf(buf, "%s", mach_send_errors[kr - MACH_SEND_IN_PROGRESS]);
+		xtrace_log("%s", mach_send_errors[kr - MACH_SEND_IN_PROGRESS]);
 	else if (kr >= KERN_SUCCESS && kr <= KERN_INSUFFICIENT_BUFFER_SIZE)
-		return __simple_sprintf(buf, "%s", kern_return_values[kr]);
+		xtrace_log("%s", kern_return_values[kr]);
 	else if (kr >= BOOTSTRAP_NOT_PRIVILEGED && kr <= BOOTSTRAP_NO_CHILDREN)
-		return __simple_sprintf(buf, "%s", bootstrap_errors[kr - BOOTSTRAP_NOT_PRIVILEGED]);
+		xtrace_log("%s", bootstrap_errors[kr - BOOTSTRAP_NOT_PRIVILEGED]);
 	else if (kr <= MIG_TYPE_ERROR && kr >= MIG_TRAILER_ERROR)
-		return __simple_sprintf(buf, "%s", mig_errors[MIG_TYPE_ERROR - kr]);
+		xtrace_log("%s", mig_errors[MIG_TYPE_ERROR - kr]);
 	else
-		return __simple_sprintf(buf, "(kern_return_t) %x", kr);
+		xtrace_log("(kern_return_t) %x", kr);
 }
 
-static void print_kern_return(char* buf, int nr, uintptr_t rv)
+static void print_kern_return(int nr, uintptr_t rv)
 {
-	xtrace_kern_return_to_str(buf, (kern_return_t) rv);
+	xtrace_print_kern_return((kern_return_t) rv);
 }
 
-static void print_port_return(char* buf, int nr, uintptr_t rv)
+static void print_port_return(int nr, uintptr_t rv)
 {
-	__simple_sprintf(buf, "port right %d", (unsigned int) (unsigned long) rv);
+	xtrace_log("port right %d", (unsigned int) (unsigned long) rv);
 }
 
 static void print_int_return(char* buf, int nr, uintptr_t rv)
 {
-	__simple_sprintf(buf, "%d", (int) (long) rv);
+	xtrace_log("%d", (int) (long) rv);
 }
 
-static void print_empty(char* buf, int nr, void* args[])
+static void print_empty(int nr, void* args[])
 {
-	*buf = 0;
+
 }
 
-static void print_port_ptr_return(char* buf, int nr, uintptr_t rv)
+static void print_port_ptr_return(int nr, uintptr_t rv)
 {
 	if (rv != KERN_SUCCESS)
 	{
-		print_kern_return(buf, nr, rv);
+		print_kern_return(nr, rv);
 		set_argument_ptr(NULL);
 		return;
 	}
 	if (get_argument_ptr() == NULL)
 	{
-		*buf = 0;
 		return;
 	}
-	__simple_sprintf(buf, "port right %d", *(mach_port_name_t*)get_argument_ptr());
+	xtrace_log("port right %d", *(mach_port_name_t*)get_argument_ptr());
 	set_argument_ptr(NULL);
 }
 
@@ -289,7 +288,7 @@ static const char* const port_right_names[] = {
 	"MACH_PORT_RIGHT_NUMBER"
 };
 
-static void print_mach_port_allocate_args(char* buf, int nr, void* args[])
+static void print_mach_port_allocate_args(int nr, void* args[])
 {
 	mach_port_name_t target = (mach_port_name_t) (long) args[0];
 	mach_port_right_t right = (mach_port_right_t) (long) args[1];
@@ -301,7 +300,7 @@ static void print_mach_port_allocate_args(char* buf, int nr, void* args[])
 	else
 		right_name = port_right_names[right];
 
-	__simple_sprintf(buf, "task %d, %s", target, right_name);
+	xtrace_log("task %d, %s", target, right_name);
 }
 
 static const char* const port_dispositions[] = {
@@ -318,7 +317,7 @@ static const char* const port_dispositions[] = {
 	"MACH_MSG_TYPE_DISPOSE_SEND_ONCE"
 };
 
-static void print_mach_port_insert_right_args(char* buf, int nr, void* args[])
+static void print_mach_port_insert_right_args(int nr, void* args[])
 {
 	mach_port_name_t target = (mach_port_name_t) (long) args[0];
 	mach_port_name_t name = (mach_port_name_t) (long) args[1];
@@ -331,75 +330,69 @@ static void print_mach_port_insert_right_args(char* buf, int nr, void* args[])
 	else
 		disp = port_dispositions[disposition - MACH_MSG_TYPE_PORT_NAME];
 
-	__simple_sprintf(buf, "task %d, new name %d, port right %d, %s", target, name, right, disp);
+	xtrace_log("task %d, new name %d, port right %d, %s", target, name, right, disp);
 }
 
-static void print_mach_port_member_args(char* buf, int nr, void* args[])
+static void print_mach_port_member_args(int nr, void* args[])
 {
 	mach_port_name_t target = (mach_port_name_t) (long) args[0];
 	mach_port_name_t name = (mach_port_name_t) (long) args[1];
 	mach_port_name_t pset = (mach_port_name_t) (long) args[2];
 
-	__simple_sprintf(buf, "task %d, port right %d, port set %d", target, name, pset);
+	xtrace_log("task %d, port right %d, port set %d", target, name, pset);
 }
 
-static void print_mach_timebase_info_args(char* buf, int nr, void* args[])
+static void print_mach_timebase_info_args(int nr, void* args[])
 {
 	set_argument_ptr(args[0]);
 	if (get_argument_ptr() == NULL)
-		__simple_sprintf(buf, "NULL");
-	else
-		*buf = 0;
+		xtrace_log("NULL");
 }
 
-static void print_mach_timebase_info_res(char* buf, int nr, uintptr_t rv)
+static void print_mach_timebase_info_res(int nr, uintptr_t rv)
 {
 	if (rv != KERN_SUCCESS)
 	{
-		print_kern_return(buf, nr, rv);
+		print_kern_return(nr, rv);
 		set_argument_ptr(NULL);
 		return;
 	}
 	if (get_argument_ptr() != NULL)
 	{
 		mach_timebase_info_t timebase = (mach_timebase_info_t)get_argument_ptr();
-		__simple_sprintf(buf, "numer = %d, denom = %d", timebase->numer, timebase->denom);
+		xtrace_log("numer = %d, denom = %d", timebase->numer, timebase->denom);
 	}
-	else
-		*buf = 0;
 
 	set_argument_ptr(NULL);
 }
 
-static void print_task_for_pid_args(char* buf, int nr, void* args[])
+static void print_task_for_pid_args(int nr, void* args[])
 {
 	mach_port_name_t target = (mach_port_name_t) (long) args[0];
 	int pid = (int) (long) args[1];
 	set_argument_ptr(args[2]);
 
-	__simple_sprintf(buf, "task %d, pid %d", target, pid);
+	xtrace_log("task %d, pid %d", target, pid);
 }
 
-static void print_pid_for_task_args(char* buf, int nr, void* args[])
+static void print_pid_for_task_args(int nr, void* args[])
 {
 	mach_port_name_t task = (mach_port_name_t) (long) args[0];
 	set_argument_ptr(args[1]);
 
-	__simple_sprintf(buf, "task %d", task);
+	xtrace_log("task %d", task);
 }
 
-static void print_pid_for_task_res(char* buf, int nr, uintptr_t rv)
+static void print_pid_for_task_res(int nr, uintptr_t rv)
 {
 	if (rv != KERN_SUCCESS)
 	{
-		print_kern_return(buf, nr, rv);
+		print_kern_return(nr, rv);
 		set_argument_ptr(NULL);
 		return;
 	}
 	if (get_argument_ptr() != NULL)
-		__simple_sprintf(buf, "pid %d", * (int*)get_argument_ptr());
-	else
-		*buf = 0;
+		xtrace_log("pid %d", * (int*)get_argument_ptr());
 
 	set_argument_ptr(NULL);
 }
@@ -427,23 +420,23 @@ const char* xtrace_msg_type_to_str(mach_msg_type_name_t type_name, int full)
 
 static void print_mach_msg(const mach_msg_header_t* msg, mach_msg_size_t size)
 {
-	xtrace_printf("{");
+	xtrace_log("{");
 
 	mach_msg_bits_t bits = msg->msgh_bits;
 	if (MACH_MSGH_BITS_HAS_REMOTE(bits))
-		xtrace_printf("remote = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_REMOTE(bits), 0), msg->msgh_remote_port);
+		xtrace_log("remote = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_REMOTE(bits), 0), msg->msgh_remote_port);
 	if (MACH_MSGH_BITS_HAS_LOCAL(bits))
-		xtrace_printf("local = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_LOCAL(bits), 0), msg->msgh_local_port);
+		xtrace_log("local = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_LOCAL(bits), 0), msg->msgh_local_port);
 	if (MACH_MSGH_BITS_HAS_VOUCHER(bits))
-		xtrace_printf("voucher = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_VOUCHER(bits), 0), msg->msgh_voucher_port);
+		xtrace_log("voucher = %s %u, ", xtrace_msg_type_to_str(MACH_MSGH_BITS_VOUCHER(bits), 0), msg->msgh_voucher_port);
 	if (MACH_MSGH_BITS_IS_COMPLEX(bits))
-		xtrace_printf("complex, ");
+		xtrace_log("complex, ");
 
-	xtrace_printf("id = %d}", msg->msgh_id);
+	xtrace_log("id = %d}", msg->msgh_id);
 
 	if (!MACH_MSGH_BITS_IS_COMPLEX(bits))
 	{
-		xtrace_printf(", %lu bytes of inline data\n", size - sizeof(mach_msg_header_t));
+		xtrace_log(", %lu bytes of inline data\n", size - sizeof(mach_msg_header_t));
 		return;
 	}
 
@@ -456,31 +449,31 @@ static void print_mach_msg(const mach_msg_header_t* msg, mach_msg_size_t size)
 		if (type == MACH_MSG_PORT_DESCRIPTOR)
 		{
 			mach_msg_port_descriptor_t* port = (mach_msg_port_descriptor_t*) ptr;
-			xtrace_printf(", %s %u", xtrace_msg_type_to_str(port->disposition, 0), port->name);
+			xtrace_log(", %s %u", xtrace_msg_type_to_str(port->disposition, 0), port->name);
 			ptr = (mach_msg_descriptor_t*) (port + 1);
 		}
 		else if (type == MACH_MSG_OOL_DESCRIPTOR || type == MACH_MSG_OOL_VOLATILE_DESCRIPTOR)
 		{
 			mach_msg_ool_descriptor_t* ool = (mach_msg_ool_descriptor_t*) ptr;
-			xtrace_printf(", ool [%p; %u]", ool->address, ool->size);
+			xtrace_log(", ool [%p; %u]", ool->address, ool->size);
 			ptr = (mach_msg_descriptor_t*) (ool + 1);
 		}
 		else if (type == MACH_MSG_OOL_PORTS_DESCRIPTOR)
 		{
 			mach_msg_ool_ports_descriptor_t* ool_ports = (mach_msg_ool_ports_descriptor_t*) ptr;
-			xtrace_printf(", ool ports %s [%p; x%u]",
+			xtrace_log(", ool ports %s [%p; x%u]",
 				xtrace_msg_type_to_str(ool_ports->disposition, 0),
 				ool_ports->address, ool_ports->count);
 			ptr = (mach_msg_descriptor_t*) (ool_ports + 1);
 		}
 		else
 		{
-			xtrace_printf(", ???");
+			xtrace_log(", ???");
 			ptr++;
 		}
 	}
 
-	xtrace_printf(", %lu bytes of inline data\n", size - ((const char*) ptr - (const char*) msg));
+	xtrace_log(", %lu bytes of inline data\n", size - ((const char*) ptr - (const char*) msg));
 }
 
 static void print_mach_msg_entry(void* args[])
@@ -492,12 +485,12 @@ static void print_mach_msg_entry(void* args[])
 	if (options & MACH_SEND_MSG)
 	{
 		set_request_port(message->msgh_remote_port);
-		xtrace_printf("\n");
+		xtrace_log("\n");
 		xtrace_start_line(8);
 		print_mach_msg(message, send_size);
 		xtrace_start_line(8);
 		xtrace_print_mig_message(message, get_request_port());
-		xtrace_printf("\n");
+		xtrace_log("\n");
 	}
 
 	if (options & MACH_RCV_MSG)
@@ -515,7 +508,7 @@ static void print_mach_msg_entry(void* args[])
 					set_argument_ptr(args[0]);
 				break;
 			default:
-				xtrace_printf("Unexpected mach_call_nr");
+				xtrace_log("Unexpected mach_call_nr");
 				return;
 		}
 	}
@@ -531,12 +524,12 @@ static void print_mach_msg_exit()
 	print_mach_msg(message, message->msgh_size);
 	xtrace_start_line(8);
 	xtrace_print_mig_message(message, get_request_port());
-	xtrace_printf("\n");
+	xtrace_log("\n");
 	set_argument_ptr(NULL);
 	set_request_port(MACH_PORT_NULL);
 }
 
-static void print_mach_msg_args(char* buf, int nr, void* args[])
+static void print_mach_msg_args(int nr, void* args[])
 {
 	mach_msg_header_t* msg = (mach_msg_header_t*) args[0];
 	mach_msg_option_t options = (mach_msg_option_t) (unsigned long) args[1];
@@ -546,15 +539,15 @@ static void print_mach_msg_args(char* buf, int nr, void* args[])
 	mach_msg_timeout_t timeout = (mach_msg_timeout_t) (unsigned long) args[5];
 	mach_port_name_t notify = (mach_port_name_t) (unsigned long) args[6];
 
-	buf += __simple_sprintf(buf, "%p, ", msg);
+	xtrace_log("%p, ", msg);
 
 	int options_cnt = 0;
 
 #define OPTION(OPT) if (options & OPT) \
 	{ \
 		if (options_cnt > 0) \
-			*buf++ = '|'; \
-		buf += __simple_sprintf(buf, #OPT); \
+			xtrace_log("|"); \
+		xtrace_log(#OPT); \
 		options_cnt++; \
 	}
 
@@ -579,7 +572,7 @@ static void print_mach_msg_args(char* buf, int nr, void* args[])
 #undef OPTION
 
 	if (options_cnt == 0)
-		buf += __simple_sprintf(buf, "MACH_MSG_OPTION_NONE");
+		xtrace_log("MACH_MSG_OPTION_NONE");
 
-	__simple_sprintf(buf, ", %d, %d, port %d, %d, port %d", send_size, rcv_size, rcv_name, timeout, notify);
+	xtrace_log(", %d, %d, port %d, %d, port %d", send_size, rcv_size, rcv_name, timeout, notify);
 }

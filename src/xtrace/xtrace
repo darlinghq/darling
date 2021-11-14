@@ -1,5 +1,25 @@
 #!/bin/sh
 
+if [ "$#" -eq 0 ]; then
+	cat <<-'EOF'
+		Usage: xtrace <command-to-trace> [arguments]...
+
+		Useful environment variables:
+
+			XTRACE_SPLIT_ENTRY_AND_EXIT - boolean - Used to print function entry (e.g. arguments) separately from function exit (e.g. return value). The normal format is "foo(arg1, arg2, etc) -> return_value". With this option, calls are formatted instead as "foo(arg1, arg2)" and then later (when they return) "foo() -> return_value".
+
+			XTRACE_NO_COLOR - boolean - By default, xtrace produces colored output using ANSI escape codes; this option disables that.
+
+			XTRACE_KPRINTF - boolean - xtrace normally prints to the standard console output. However, sometimes you would like to trace background processes, ones that don't have a console output. In that case, you can use XTRACE_KPRINTF to tell xtrace to print to the kernel console instead. All of xtrace's messages will be prefixed with `xtrace: `; that way, you can easily search for them in the kernel log.
+
+			XTRACE_LOG_FILE - string (path) - This option serves the same purpose as XTRACE_KPRINTF: to log messages for background processes. However, instead of logging to the kernel console, it instead logs to the file at the path specified by this variable. NOTE: this option may affect program behavior, as a descriptor must be kept in-use for the logfile. It may also fail to log (and therefore abort) if the process is using all of its descriptors. There is a chance that it will affect program behavior if another thread sees the descriptor or tries to open a new one that would exceed the limit of descriptors only when the logfile is open.
+
+			XTRACE_LOG_FILE_PER_THREAD - boolean - By default, xtrace outputs all of its messages into a single log stream (whether that's the standard console output, kernel console, or a log file). However, when this option is given and XTRACE_LOG_FILE is also specified, each thread will have a separate log file, each one named like "${XTRACE_LOG_FILE}.${THREAD_ID}". Note that without XTRACE_LOG_FILE, this option has no effect.
+	EOF
+
+	exit 0
+fi
+
 export DYLD_INSERT_LIBRARIES="/usr/lib/darling/libxtrace.dylib"
 exec "$@"
 
