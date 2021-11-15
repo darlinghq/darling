@@ -6,6 +6,7 @@
 #include <sys/errno.h>
 #include <sys/proc_info.h>
 #include <mach/vm_prot.h>
+#include "../dirent/getdirentries.h"
 #include "../ext/syslog.h"
 #include "../fcntl/open.h"
 #include "../unistd/close.h"
@@ -22,6 +23,8 @@
 #include <lkm/api.h>
 #include "../mach/lkm.h"
 #include "sysctl_proc.h"
+#include <stddef.h>
+#include "../elfcalls_wrapper.h"
 
 #define LINUX_PR_SET_NAME 15
 
@@ -32,6 +35,8 @@ extern void *memset(void *s, int c, __SIZE_TYPE__ n);
 extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
 extern char *strcpy(char *dest, const char *src);
 extern char *strncpy(char *dest, const char *src, __SIZE_TYPE__ n);
+extern int strncmp (const char * str1, const char * str2, __SIZE_TYPE__ num);
+extern char *strchr(char *str, int character);
 
 long sys_proc_info(uint32_t callnum, int32_t pid, uint32_t flavor,
 		uint64_t arg, void* buffer, int32_t bufsize)
@@ -98,6 +103,9 @@ static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_pidthreadinfo(int32_t pid, uint64_t thread_handle, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_pathinfo(int32_t pid, void* buffer, int32_t bufsize);
 static long _proc_pidinfo_regionpath(int32_t pid, uint64_t arg, void* buffer, int32_t buffer_size);
+static long _proc_pidinfo_taskinfo(int32_t pid, void* buffer, int32_t bufsize);
+static long _proc_pidinfo_taskallinfo(int32_t pid, void* buffer, int32_t bufsize);
+static long _proc_pidinfo_listthreads(int32_t pid, void* buffer, int32_t bufsize);
 
 long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int32_t bufsize)
 {
@@ -134,6 +142,18 @@ long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int
 		case PROC_PIDREGIONPATH:
 		{
 			return _proc_pidinfo_regionpath(pid, arg, buffer, bufsize);
+		}
+		case PROC_PIDTASKINFO:
+		{
+			return _proc_pidinfo_taskinfo(pid, buffer, bufsize);
+		}
+		case PROC_PIDTASKALLINFO:
+		{
+			return _proc_pidinfo_taskallinfo(pid, buffer, bufsize);
+		}
+		case PROC_PIDLISTTHREADS:
+		{
+			return _proc_pidinfo_listthreads(pid, buffer, bufsize);
 		}
 		default:
 		{
@@ -215,6 +235,9 @@ static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize)
 	return 1;
 }
 
+// glibc bits/confname.h
+#define _SC_CLK_TCK 2
+
 static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize)
 {
 	struct proc_bsdinfo* info = (struct proc_bsdinfo*) buffer;
@@ -241,12 +264,63 @@ static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize)
 	info->pbi_svuid = shortinfo.pbsi_svuid;
 	info->pbi_svgid = shortinfo.pbsi_svgid;
 	info->pbi_pgid = shortinfo.pbsi_pgid;
-	// info->pbi_nice
-	// info->pbi_start
+
+	char path[64], stat[4096];
+	char *statptr;
+	const char* elem;
+
+	__simple_sprintf(path, "/proc/%d/stat", pid);
+	if (!read_string(path, stat, sizeof(stat)))
+		return -ESRCH;
+
+#define READELEM() elem = next_stat_elem(&statptr); if (!elem) goto reterr
+
+	statptr = stat;
+	skip_stat_elems(&statptr, 18); // skip until ppid
+
+	READELEM();
+	info->pbi_nice = elem[0] == '-' ? -__simple_atoi(elem + 1, NULL) : __simple_atoi(elem, NULL);
+
+	skip_stat_elems(&statptr, 2); // skip until starttime
+	READELEM();
+
+	uint64_t starttime = __simple_atoi(elem, NULL);
+
+	if (!read_string("/proc/stat", stat, sizeof(stat)))
+		return -ESRCH;
+	
+	statptr = stat;
+
+	uint64_t btime;
+
+	while (statptr < stat + sizeof(stat))
+	{
+		if (strncmp(statptr, "btime ", 6) == 0)
+		{
+			statptr += 6;
+			btime = __simple_atoi(statptr, NULL);
+			break;
+		}
+
+		char* next = strchr(statptr, '\n');
+		if (!next)
+			return -ESRCH;
+		
+		statptr = next + 1;
+	}
+
+	long ticks_per_sec = native_sysconf(_SC_CLK_TCK);
+	uint64_t starttime_secs = starttime / ticks_per_sec;
+	uint64_t starttime_usecs = (starttime % ticks_per_sec) * 1000000 / ticks_per_sec;
+
+	info->pbi_start_tvsec = btime + starttime_secs;
+	info->pbi_start_tvusec = starttime_usecs;
 
 	memcpy(info->pbi_comm, shortinfo.pbsi_comm, sizeof(info->pbi_comm));
 
-	return err;
+	return sizeof(struct proc_bsdinfo);
+reterr:
+	return -EINVAL;
 }
 
 static long _proc_pidinfo_pidthreadinfo(int32_t pid, uint64_t thread_handle, void* buffer, int32_t bufsize)
@@ -582,4 +656,158 @@ static long _proc_pidinfo_pathinfo(int32_t pid, void* buffer, int32_t bufsize)
 
 	strncpy(buffer, args.path, bufsize);
 	return strlen(args.path);
+}
+
+static long _proc_pidinfo_taskinfo(int32_t pid, void* buffer, int32_t bufsize)
+{
+	if (!buffer)
+		return -EFAULT;
+	if (bufsize < sizeof(struct proc_taskinfo))
+		return -ENOSPC;
+
+	char path[64], stat[1024];
+	char *statptr;
+	const char* elem;
+
+	memset(buffer, 0, bufsize);
+	struct proc_taskinfo* ti = (struct proc_taskinfo*) buffer;
+
+	__simple_sprintf(path, "/proc/%d/stat", pid);
+	if (!read_string(path, stat, sizeof(stat)))
+		return -ESRCH;
+
+#define READELEM() elem = next_stat_elem(&statptr); if (!elem) goto reterr
+
+	statptr = stat;
+	skip_stat_elems(&statptr, 9); // skip until minflt
+	READELEM();
+	int32_t minflt = __simple_atoi(elem, NULL);
+
+	skip_stat_elems(&statptr, 1); // skip until majflt
+	READELEM();
+	int32_t majflt = __simple_atoi(elem, NULL);
+
+	skip_stat_elems(&statptr, 1); // skip until utime
+	READELEM();
+	uint64_t utime = __simple_atoi(elem, NULL);
+
+	READELEM();
+	uint64_t stime = __simple_atoi(elem, NULL);
+
+	skip_stat_elems(&statptr, 2); // skip until priority
+	READELEM();
+	// Can be negative, according to docs.
+	int32_t priority = (elem[0] == '-') ? -__simple_atoi(elem + 1, NULL) : __simple_atoi(elem, NULL);
+
+	skip_stat_elems(&statptr, 1); // skip until num_threads
+	READELEM();
+	int32_t num_threads = __simple_atoi(elem, NULL);
+
+	skip_stat_elems(&statptr, 2); // skip until vsize
+	READELEM();
+	uint64_t vsize = __simple_atoi(elem, NULL);
+
+	READELEM();
+	uint64_t rss = __simple_atoi(elem, NULL);
+
+	ti->pti_virtual_size = vsize;
+	ti->pti_resident_size = rss;
+	ti->pti_total_user = utime;
+	ti->pti_total_system = stime;
+	// ti->pti_threads_user
+	// ti->pti_threads_system
+	// ti->pti_policy
+	ti->pti_faults = minflt + majflt;
+	// ti->pti_pageins
+	// ti->pti_cow_faults
+	// ti->pti_messages_sent
+	// ti->pti_messages_received
+	// ti->pti_syscalls_mach
+	// ti->pti_syscalls_unix
+	// ti->pti_csw
+	ti->pti_threadnum = num_threads;
+	// ti->pti_numrunning
+	ti->pti_priority = priority;
+
+	return sizeof(struct proc_taskinfo);
+reterr:
+	return -EINVAL;
+}
+
+static long _proc_pidinfo_taskallinfo(int32_t pid, void* buffer, int32_t bufsize)
+{
+	if (!buffer)
+		return -EFAULT;
+	if (bufsize < sizeof(struct proc_taskallinfo))
+		return -ENOSPC;
+	
+	long err = _proc_pidinfo_tbsdinfo(pid, buffer + offsetof(struct proc_taskallinfo, pbsd), sizeof(struct proc_bsdinfo));
+	
+	if (err < 0)
+		return err;
+
+	err = _proc_pidinfo_taskinfo(pid, buffer + offsetof(struct proc_taskallinfo, ptinfo), sizeof(struct proc_taskinfo));
+
+	if (err < 0)
+		return err;
+	
+	return sizeof(struct proc_taskallinfo);
+}
+
+#ifndef isdigit
+#	define isdigit(c) (c >= '0' && c <= '9')
+#endif
+#ifndef DT_DIR
+#	define DT_DIR	4
+#endif
+
+static long _proc_pidinfo_listthreads(int32_t pid, void* buffer, int32_t bufsize)
+{
+	if (!buffer)
+		return -EFAULT;
+	
+	uint64_t* threads = (uint64_t*)buffer;
+	int32_t maxCount = bufsize / sizeof(uint64_t);
+	int32_t count = 0;
+	int fd, ret;
+	long basep = 0;
+	char dents[256];
+	char path[64];
+
+	__simple_sprintf(path, "/proc/%d/task", pid);
+
+	fd = sys_open_nocancel(path, BSD_O_RDONLY | BSD_O_DIRECTORY, 0);
+	if (fd < 0)
+		return -ESRCH;
+
+	while ((ret = sys_getdirentries(fd, (char*) dents, sizeof(dents), &basep)) > 0)
+	{
+		int pos = 0;
+		
+		while (pos < ret)
+		{
+			struct bsd_dirent* dent = (struct bsd_dirent*) &dents[pos];
+
+			if (dent->d_type != DT_DIR || !isdigit(dent->d_name[0]))
+			{
+				pos += dent->d_reclen;
+				continue;
+			}
+
+			threads[count] = __simple_atoi(dent->d_name, NULL);
+			++count;
+
+			if (count >= maxCount)
+			{
+				goto bail;
+				return -ENOSPC;
+			}
+
+			pos += dent->d_reclen;
+		}
+	}
+
+bail:
+	close_internal(fd);
+	return count * sizeof(uint64_t);
 }
