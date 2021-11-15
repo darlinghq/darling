@@ -46,6 +46,9 @@ struct elf_calls
 	int (*shm_unlink)(const char* name);
 
 	void (*exit)(int ec);
+
+	// POSIX sysconf
+	long (*sysconf)(int name);
 };
 
 #endif

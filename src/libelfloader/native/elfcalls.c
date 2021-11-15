@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <semaphore.h>
 #include <locale.h>
+#include <unistd.h>
 #include "elfcalls.h"
 #include "threads.h"
 
@@ -67,6 +68,9 @@ void elfcalls_make(struct elf_calls* calls)
 
 	calls->get_errno = get_errno;
 	calls->exit = exit;
+
+	calls->sysconf = sysconf;
+
 	*((void**)&calls->sem_open) = sem_open;
 	*((void**)&calls->sem_wait) = sem_wait;
 	*((void**)&calls->sem_trywait) = sem_trywait;
