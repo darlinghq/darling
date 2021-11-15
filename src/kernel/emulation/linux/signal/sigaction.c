@@ -19,7 +19,6 @@ extern void* memset(void* dest, int v, __SIZE_TYPE__ len);
 void (*sa_tramp)(void*, int, int, struct bsd_siginfo*, void*) = 0;
 bsd_sig_handler* sig_handlers[32] = {
 	[LINUX_SIGWINCH] = (bsd_sig_handler*) SIG_IGN,
-	[LINUX_SIGCHLD] = (bsd_sig_handler*) SIG_IGN,
 	[LINUX_SIGURG] = (bsd_sig_handler*) SIG_IGN,
 };
 int sig_flags[32];
