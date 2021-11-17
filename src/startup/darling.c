@@ -375,7 +375,7 @@ static void shellLoop(int sockfd, int master)
 
 	if (master != -1)
 		fcntl(master, F_SETFL, O_NONBLOCK);
-	fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
+	//fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
 	while (1)
@@ -405,14 +405,23 @@ static void shellLoop(int sockfd, int master)
 
 		if (pfds[1].revents & POLLIN)
 		{
-			int rd;
+			int rd = 0;
 			do
 			{
-				rd = read(STDIN_FILENO, buf, sizeof(buf));
+				if (ioctl(STDIN_FILENO, FIONREAD, &rd) < 0) {
+					perror("ioctl");
+					exit(1);
+				}
+				if (rd > sizeof(buf)) {
+					rd = sizeof(buf);
+				}
+				rd = read(STDIN_FILENO, buf, rd);
 				if (rd > 0)
 					write(master, buf, rd);
-				else
+				else {
+					perror("read");
 					exit(1);
+				}
 			}
 			while (rd == sizeof(buf));
 		}
