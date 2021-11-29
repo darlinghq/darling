@@ -1092,6 +1092,8 @@ void setupPrefix()
 {
 	char path[4096];
 	size_t plen;
+	FILE* file;
+	struct passwd* passwd_entry;
 	
 	const char* dirs[] = {
 		"/Volumes",
@@ -1103,6 +1105,7 @@ void setupPrefix()
 		"/private/var",
 		"/private/var/log",
 		"/private/var/db",
+		"/private/etc",
 		"/var",
 		"/var/run",
 		"/var/tmp",
@@ -1125,6 +1128,68 @@ void setupPrefix()
 		strcat(path, dirs[i]);
 		createDir(path);
 	}
+
+	// create passwd, master.passwd, and group
+
+	passwd_entry = getpwuid(g_originalUid);
+	if (!passwd_entry) {
+		fprintf(stderr, "Failed to find Linux /etc/passwd entry for current user\n");
+		exit(1);
+	}
+
+	path[plen] = '\0';
+	strcat(path, "/private/etc/passwd");
+	file = fopen(path, "w");
+	if (!file) {
+		fprintf(stderr, "Failed to open /private/etc/passwd within the prefix\n");
+		exit(1);
+	}
+
+	fprintf(file,
+		"root:*:0:0:System Administrator:/var/root:/bin/sh\n"
+		"%s:*:%d:%d:Darling User:/Users/%s:/bin/bash\n",
+		passwd_entry->pw_name,
+		passwd_entry->pw_uid,
+		passwd_entry->pw_gid,
+		passwd_entry->pw_name
+	);
+	fclose(file);
+
+	path[plen] = '\0';
+	strcat(path, "/private/etc/master.passwd");
+	file = fopen(path, "w");
+	if (!file) {
+		fprintf(stderr, "Failed to open /private/etc/master.passwd within the prefix\n");
+		exit(1);
+	}
+
+	fprintf(file,
+		"root:*:0:0::0:0:System Administrator:/var/root:/bin/sh\n"
+		"%s:*:%d:%d::0:0:Darling User:/Users/%s:/bin/bash\n",
+		passwd_entry->pw_name,
+		passwd_entry->pw_uid,
+		passwd_entry->pw_gid,
+		passwd_entry->pw_name
+	);
+	fclose(file);
+
+	path[plen] = '\0';
+	strcat(path, "/private/etc/group");
+	file = fopen(path, "w");
+	if (!file) {
+		fprintf(stderr, "Failed to open /private/etc/group within the prefix\n");
+		exit(1);
+	}
+
+	fprintf(file,
+		"wheel:*:0:root,%s\n"
+		"%s:*:%d:%s\n",
+		passwd_entry->pw_name,
+		passwd_entry->pw_name,
+		passwd_entry->pw_gid,
+		passwd_entry->pw_name
+	);
+	fclose(file);
 	
 	seteuid(0);
 	setegid(0);

@@ -70,5 +70,5 @@ add_circular(system_info FAT
 )
 
 install(TARGETS system_info DESTINATION libexec/darling/usr/lib/system)
-install(FILES master.passwd DESTINATION libexec/darling/etc)
+#install(FILES master.passwd DESTINATION libexec/darling/etc)
 
