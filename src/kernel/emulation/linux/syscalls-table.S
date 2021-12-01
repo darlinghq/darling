@@ -96,6 +96,58 @@ __darling_bsd_syscall_exit:
 
 .subsections_via_symbols
 
+
+#elif defined(__arm64__)
+// For i386/x64, the `syscall_sw.h` file has the BSD and Mach syscall defined
+// between two different macros (`UNIX_SYSCALL_TRAP` and `kernel_trap`). This 
+// is not the case for ARM.
+
+// For ARM64, there is only one syscall that is used for either BSD and Mach.
+// If the syscall number is less then zero, it will do a Mach syscall; otherwise,
+// it will do a BSD syscall.
+
+// Because of the above, I decided to have the both the BSD and Mach syscall be
+// handled by the __darling_bsd_syscall.
+
+// Notes:
+// https://stackoverflow.com/a/56993314/5988706
+// xnu/osfmk/arm64/sleh.c - handle_svc function
+
+__darling_bsd_syscall:
+	; Push temporary registers (syscalls don't modify temp register)
+	sub sp,sp,#16
+	stp x9,x10,[sp]
+	
+	; if (x16 / *syscall number */ < 0)
+	cmp x16,#0
+	blt .get_mach_table
+
+	; Get &___bsd_syscall_table (function pointer)
+	adrp x9, ___bsd_syscall_table@PAGE
+	add x9, x9, ___bsd_syscall_table@PAGEOFF
+	mov x10,x16
+	b .calc_offset
+
+.get_mach_table:
+	; Get &___mach_syscall_table (function pointer)
+	adrp x9, ___mach_syscall_table@PAGE
+	add x9, x9, ___mach_syscall_table@PAGEOFF
+	neg x10,x16
+
+.calc_offset:
+	; &syscall_table + x10 * sizeof(void*) 
+	lsl x10,x10,3
+	add x9,x9,x10
+
+	; Call ___bsd_syscall_table method
+	blr x9
+
+	; Restore original temp register values
+	ldp x9,x10,[sp]
+	add sp,sp,#16
+	ret
+
+#warning "Heed to improve __darling_bsd_syscall ARM64 implementation"
 #else
 #	error Missing assembly
 #endif

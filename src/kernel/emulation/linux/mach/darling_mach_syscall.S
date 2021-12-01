@@ -106,6 +106,10 @@ __darling_mach_syscall_exit:
 
 .subsections_via_symbols
 
+#elif defined(__arm64__)
+// To keep things simple, __darling_bsd_syscall will handle the
+// Mach Syscall. See syscalls-table.S for more details.
+
 #else
 #	error Missing assembly
 #endif

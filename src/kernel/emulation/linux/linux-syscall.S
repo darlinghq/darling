@@ -69,6 +69,11 @@ _linux_syscall:
 	pop %ebp
 	ret
 
+#elif __arm64__
+	mov w8,w6
+	svc #0
+	ret
+
 #else
 
 #	error Missing assembly!
