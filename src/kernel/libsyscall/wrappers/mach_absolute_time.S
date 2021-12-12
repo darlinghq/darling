@@ -262,7 +262,11 @@ L_mach_absolute_time_user:
 	.globl _mach_absolute_time_kernel
 _mach_absolute_time_kernel:
 	mov	w16, #-3			// Load the magic MAT number
+#ifdef DARLING
+	bl __darling_bsd_syscall
+#else
 	svc	#SWI_SYSCALL
+#endif
 	ret
 
 	.text
@@ -270,7 +274,11 @@ _mach_absolute_time_kernel:
 	.globl _mach_continuous_time_kernel
 _mach_continuous_time_kernel:
 	mov	w16, #-4			// Load the magic MCT number
+#ifdef DARLING
+	bl __darling_bsd_syscall
+#else
 	svc	#SWI_SYSCALL
+#endif
 	ret
 
 #else
