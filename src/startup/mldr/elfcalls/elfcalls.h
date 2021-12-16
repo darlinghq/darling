@@ -49,6 +49,9 @@ struct elf_calls
 
 	// POSIX sysconf
 	long (*sysconf)(int name);
+
+	// darlingserver RPC info
+	const void* (*dserver_socket_address)(void);
 };
 
 #endif

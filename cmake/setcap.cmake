@@ -4,7 +4,7 @@ function(setcap file caps)
 install(CODE "execute_process(
 		COMMAND
 				${SETCAP_EXECUTABLE}
-				cap_sys_rawio+ep
+				${caps}
 				${CMAKE_INSTALL_PREFIX}/${file}
 		RESULT_VARIABLE
 				_SETCAP_RESULT

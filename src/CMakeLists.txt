@@ -10,7 +10,6 @@ include(mig)
 include(pyc)
 
 #add_subdirectory(external/xcbuild)
-add_subdirectory(libelfloader/native)
 add_subdirectory(bsdln)
 
 add_definitions(
@@ -44,6 +43,9 @@ include_directories(SYSTEM ${COMPILER_INC_PATH})
 find_package(BISON)
 find_package(FLEX)
 
+set(DARLING_SDK_RELATIVE_PATH "Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../..")
+
 add_subdirectory(external/cctools-port/cctools/ld64/src)
 add_subdirectory(external/cctools-port/cctools/ar)
 #add_subdirectory(external/cctools-port/cctools/as)
@@ -55,6 +57,7 @@ add_subdirectory(external/cctools-port/cctools/misc)
 add_subdirectory(buildtools)
 add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(startup)
+add_subdirectory(darlingserver)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 
@@ -77,9 +80,6 @@ set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APP
 add_definitions(-target ${APPLE_TARGET_TRIPLET_PRIMARY})
 include(darling_lib)
 include(darling_static_lib)
-
-set(DARLING_SDK_RELATIVE_PATH "Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
-set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../..")
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include)
 
@@ -140,7 +140,6 @@ add_subdirectory(keymgr)
 add_subdirectory(libcache)
 add_subdirectory(ncurses)
 add_subdirectory(libiconv)
-add_subdirectory(libelfloader)
 add_subdirectory(duct/src)
 add_subdirectory(libresolv)
 add_subdirectory(external/corecrypto)

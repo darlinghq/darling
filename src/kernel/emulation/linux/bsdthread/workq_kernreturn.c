@@ -19,7 +19,7 @@
 #include <pthread/priority_private.h>
 
 // much easier to include than libpthread's `internal.h`
-#include "../../../../libelfloader/native/dthreads.h"
+#include "../../../../startup/mldr/elfcalls/dthreads.h"
 
 #define WQ_MAX_THREADS	64
 

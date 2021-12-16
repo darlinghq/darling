@@ -9,6 +9,7 @@
 #include "../../../libsyscall/wrappers/_libkernel_init.h"
 #include "../simple.h"
 #include "../misc/ioctl.h"
+#include <elfcalls.h>
 
 extern int sys_open(const char*, int, int);
 extern int close_internal(int);
@@ -22,8 +23,15 @@ extern _libkernel_functions_t _libkernel_functions;
 
 static int driver_fd = -1;
 
+VISIBLE
+struct elf_calls* _elfcalls;
+
 void mach_driver_init(const char** applep)
 {
+	// DARLINGSERVER/MLDR TESTING
+	__simple_printf("We're being initialized...\n");
+	__builtin_unreachable();
+
 #ifdef VARIANT_DYLD
 	if (applep != NULL)
 	{
@@ -33,7 +41,11 @@ void mach_driver_init(const char** applep)
 			if (strncmp(applep[i], "kernfd=", 7) == 0)
 			{
 				driver_fd = __simple_atoi(applep[i] + 7, NULL);
-				break;
+			}
+			if (strncmp(applep[i], "elf_calls=", 10) == 0)
+			{
+				uintptr_t table = (uintptr_t) __simple_atoi16(applep[i] + 10, NULL);
+				_elfcalls = (struct elf_calls*) table;
 			}
 		}
 	}

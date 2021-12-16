@@ -1,0 +1,3 @@
+:Mach-O-64-bit:M::\xcf\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/mldr:P
+:Mach-O-32-bit:M::\xce\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/mldr32:P
+:Fat-Mach-O:M::\xca\xfe\xba\xbe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/mldr:P

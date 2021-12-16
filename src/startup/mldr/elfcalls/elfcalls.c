@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "elfcalls.h"
 #include "threads.h"
+#include <sys/un.h>
 
 static void* dlopen_simple(const char* name)
 {
@@ -51,6 +52,12 @@ static int get_errno(void)
 	return errno;
 }
 
+extern struct sockaddr_un __dserver_socket_address_data[];
+
+static const void* __dserver_socket_address(void) {
+	return &__dserver_socket_address_data;
+};
+
 void elfcalls_make(struct elf_calls* calls)
 {
 	calls->dlopen = dlopen_simple;
@@ -80,31 +87,6 @@ void elfcalls_make(struct elf_calls* calls)
 
 	*((void**)&calls->shm_open) = shm_open;
 	*((void**)&calls->shm_unlink) = shm_unlink;
+
+	calls->dserver_socket_address = __dserver_socket_address;
 }
-
-int main(int argc, const char** argv)
-{
-	typedef void (*retfunc)(void);
-
-	struct elf_calls* calls;
-	retfunc ret;
-
-	// for (int i = 0; i < argc; i++)
-	// 	printf("arg %d: %s\n", i, argv[i]);
-
-	calls = (struct elf_calls*) strtoul(argv[1], NULL, 16);
-	ret = (retfunc) strtoul(argv[2], NULL, 16);
-
-	// Enable locales
-	setlocale(LC_ALL, "");
-
-	// puts("before elfcalls_make");
-
-	elfcalls_make(calls);
-	// puts("after elfcalls_make");
-	// printf("Will call %p\n", ret);
-	ret();
-
-	__builtin_unreachable();
-}
-

@@ -5,6 +5,8 @@
 #include <linux-syscalls/linux.h>
 #include <lkm/api.h>
 #include "mach/lkm.h"
+#include "signal/kill.h"
+#include <sys/signal.h>
 
 extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
 
@@ -569,3 +571,8 @@ have_nl:
 	return out;
 }
 
+__attribute__ ((visibility ("default")))
+void __simple_abort(void) {
+	sys_kill(0, SIGABRT, 1);
+	__builtin_unreachable();
+};

@@ -1,0 +1,58 @@
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+#define dserver_rpc_hooks_msghdr_t struct msghdr
+#define dserver_rpc_hooks_iovec_t struct iovec
+#define dserver_rpc_hooks_cmsghdr_t struct cmsghdr
+#define DSERVER_RPC_HOOKS_CMSG_SPACE CMSG_SPACE
+#define DSERVER_RPC_HOOKS_CMSG_FIRSTHDR CMSG_FIRSTHDR
+#define DSERVER_RPC_HOOKS_SOL_SOCKET SOL_SOCKET
+#define DSERVER_RPC_HOOKS_SCM_RIGHTS SCM_RIGHTS
+#define DSERVER_RPC_HOOKS_CMSG_LEN CMSG_LEN
+#define DSERVER_RPC_HOOKS_CMSG_DATA CMSG_DATA
+#define DSERVER_RPC_HOOKS_ATTRIBUTE static
+
+#define dserver_rpc_hooks_get_pid getpid
+
+#define dserver_rpc_hooks_get_tid() ((pid_t)syscall(SYS_gettid))
+
+extern struct sockaddr_un __dserver_socket_address_data;
+
+#define dserver_rpc_hooks_get_server_address() ((void*)&__dserver_socket_address_data)
+
+#define dserver_rpc_hooks_get_server_address_length() sizeof(__dserver_socket_address_data)
+
+#define dserver_rpc_hooks_memcpy memcpy
+
+static long int dserver_rpc_hooks_send_message(int socket, const dserver_rpc_hooks_msghdr_t* message) {
+	ssize_t ret = sendmsg(socket, message, 0);
+	if (ret < 0) {
+		return -errno;
+	}
+	return ret;
+};
+
+static long int dserver_rpc_hooks_receive_message(int socket, dserver_rpc_hooks_msghdr_t* out_message) {
+	ssize_t ret = recvmsg(socket, out_message, 0);
+	if (ret < 0) {
+		return -errno;
+	}
+	return ret;
+};
+
+#define dserver_rpc_hooks_get_bad_message_status() EBADMSG
+
+#define dserver_rpc_hooks_get_communication_error_status() ECOMM
+
+#define dserver_rpc_hooks_get_broken_pipe_status() EPIPE
+
+#define dserver_rpc_hooks_close_fd close
+
+extern int __dserver_main_thread_socket_fd;
+
+#define dserver_rpc_hooks_get_socket() __dserver_main_thread_socket_fd

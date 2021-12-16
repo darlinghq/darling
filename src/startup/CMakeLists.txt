@@ -18,7 +18,7 @@ add_executable(darling darling.c)
 
 target_link_libraries(darling -lutil)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/src/darlingserver/include)
 
 install(TARGETS darling DESTINATION bin
     PERMISSIONS
@@ -27,14 +27,8 @@ install(TARGETS darling DESTINATION bin
     WORLD_READ WORLD_EXECUTE
     SETUID)
 
-
-# This tool is useful for packaging to detect ELF dependencies inside Mach-O libraries,
-# which standard distro tools cannot do.
-if (DEFINED WITH_PRINT_WRAPPED_ELF)
-	add_executable(print_wrapped_elf wrapgen/print_wrapped_elf.cpp)
-endif (DEFINED WITH_PRINT_WRAPPED_ELF)
-
 add_executable(rtsig rtsig.c)
 add_custom_command(OUTPUT rtsig.h DEPENDS rtsig COMMAND ${CMAKE_CURRENT_BINARY_DIR}/rtsig rtsig.h COMMENT "Determining available RT signals")
 add_custom_target(rtsig_h DEPENDS rtsig.h)
 
+add_subdirectory(mldr)

@@ -34,6 +34,9 @@ struct simple_readline_buf
 void __simple_readline_init(struct simple_readline_buf* buf);
 char* __simple_readline(int fd, struct simple_readline_buf* buf, char* out, int max_out);
 
+__attribute__((noreturn))
+void __simple_abort(void);
+
 #ifdef __cplusplus
 };
 #endif

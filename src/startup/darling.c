@@ -88,9 +88,6 @@ int main(int argc, char ** argv, char ** envp)
 	setuid(0);
 	setgid(0);
 
-	if (!isModuleLoaded())
-		loadKernelModule();
-
 	prefix = getenv("DPREFIX");
 	if (!prefix)
 		prefix = defaultPrefixPath();
@@ -688,39 +685,6 @@ void missingSetuidRoot(void)
 	fprintf(stderr, "Darling needs this in order to create mount and PID namespaces and to perform mounts.\n");
 }
 
-void fixDirectoryPermissions(const char* path)
-{
-	DIR* dir;
-	struct dirent* ent;
-
-	dir = opendir(path);
-	if (!dir)
-		return;
-
-	while ((ent = readdir(dir)) != NULL)
-	{
-		if (ent->d_type == DT_DIR)
-		{
-			char* subdir;
-
-			if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
-				continue;
-
-			subdir = (char*) malloc(strlen(path) + 2 + strlen(ent->d_name));
-			sprintf(subdir, "%s/%s", path, ent->d_name);
-
-			fixDirectoryPermissions(subdir);
-
-			if (chown(subdir, g_originalUid, g_originalGid) == -1)
-				fprintf(stderr, "Cannot chown %s: %s\n", subdir, strerror(errno));
-
-			free(subdir);
-		}
-	}
-
-	closedir(dir);
-}
-
 static uint32_t linux_release(void)
 {
 	struct utsname uts;
@@ -763,9 +727,9 @@ pid_t spawnInitProcess(void)
 		exit(1);
 	}
 
-	if (unshare(CLONE_NEWPID | CLONE_NEWUTS | CLONE_NEWIPC) != 0)
+	if (unshare(CLONE_NEWUTS | CLONE_NEWIPC) != 0)
 	{
-		fprintf(stderr, "Cannot unshare PID, UTS and IPC namespaces to create darling-init: %s\n", strerror(errno));
+		fprintf(stderr, "Cannot unshare UTS and IPC namespaces to create darling-init: %s\n", strerror(errno));
 		exit(1);
 	}
 
@@ -781,96 +745,20 @@ pid_t spawnInitProcess(void)
 	{
 		// The child
 
-		char *opts;
-		char putOld[4096];
-		char *p;
+		char uid_str[21];
+		char gid_str[21];
+		char pipefd_str[21];
+
+		snprintf(uid_str, sizeof(uid_str), "%d", g_originalUid);
+		snprintf(gid_str, sizeof(gid_str), "%d", g_originalGid);
+		snprintf(pipefd_str, sizeof(pipefd_str), "%d", pipefd[1]);
 
 		close(pipefd[0]);
 
-		// Since overlay cannot be mounted inside user namespaces, we have to setup a new mount namespace
-		// and do the mount while we can be root
-		if (unshare(CLONE_NEWNS) != 0)
-		{
-			fprintf(stderr, "Cannot unshare mount namespace: %s\n", strerror(errno));
-			exit(1);
-		}
+		execl(INSTALL_PREFIX "/bin/darlingserver", "darlingserver", prefix, uid_str, gid_str, pipefd_str, g_fixPermissions ? "1" : "0", NULL);
 
-		// Because systemd marks / as MS_SHARED and we would inherit this into the overlay mount,
-		// causing it not to be unmounted once the init process dies.
-		if (mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL) != 0)
-		{
-			fprintf(stderr, "Cannot remount / as slave: %s\n", strerror(errno));
-			exit(1);
-		}
-
-		umount("/dev/shm");
-		if (mount("tmpfs", "/dev/shm", "tmpfs", MS_NOSUID | MS_NOEXEC | MS_NODEV, NULL) != 0)
-		{
-			fprintf(stderr, "Cannot mount new /dev/shm: %s\n", strerror(errno));
-			exit(1);
-		}
-
-		opts = (char*) malloc(strlen(prefix)*2 + sizeof(LIBEXEC_PATH) + 100);
-
-		const char* opts_fmt = "lowerdir=%s,upperdir=%s,workdir=%s.workdir,index=off";
-
-		sprintf(opts, opts_fmt, LIBEXEC_PATH, prefix, prefix);
-
-		// Mount overlay onto our prefix
-		if (mount("overlay", prefix, "overlay", 0, opts) != 0)
-		{
-			fprintf(stderr, "Cannot mount overlay: %s\n", strerror(errno));
-			exit(1);
-		}
-
-		free(opts);
-
-		// This is executed once at prefix creation
-		if (g_fixPermissions)
-			fixDirectoryPermissions(prefix);
-
-		snprintf(putOld, sizeof(putOld), "%s/proc", prefix);
-
-		// mount procfs for our new PID namespace
-		if (mount("proc", putOld, "proc", 0, "") != 0)
-		{
-			fprintf(stderr, "Cannot mount procfs: %s\n", strerror(errno));
-			exit(1);
-		}
-
-		// Drop the privileges. It's important to drop GID first, because
-		// non-root users can't change their GID.
-		setresgid(g_originalGid, g_originalGid, g_originalGid);
-		setresuid(g_originalUid, g_originalUid, g_originalUid);
-		prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
-
-		setupUserHome();
-		setupCoredumpPattern();
-
-		// Set name to darling-init
-		prctl(PR_SET_NAME, DARLING_INIT_COMM, 0, 0);
-		p = stpcpy(g_argv[0], DARLING_INIT_COMM);
-		memset(p, 0, g_envp[0] - p);
-
-		/*
-		if (unshare(CLONE_NEWUSER) != 0)
-		{
-			fprintf(stderr, "Cannot unshare user namespace: %s\n", strerror(errno));
-			exit(1);
-		}
-		*/
-
-		// Tell the parent we're ready
-		write(pipefd[1], buffer, 1);
-		close(pipefd[1]);
-
-		// Here's where we wait for the parent to set up UID/GID mapping
-		// if we enable user namespaces
-
-		darlingPreInit();
-		spawnLaunchd();
-
-		// Never returns
+		fprintf(stderr, "Failed to start darlingserver\n");
+		exit(1);
 	}
 
 	// Wait for the child to drop UID/GIDs and unshare stuff
@@ -937,67 +825,6 @@ void putInitPid(pid_t pidInit)
 	}
 	fprintf(fp, "%d", (int) pidInit);
 	fclose(fp);
-}
-
-void spawnLaunchd(void)
-{
-	puts("Bootstrapping the container with launchd...");
-	
-	// putenv("KQUEUE_DEBUG=1");
-
-	setenv("DYLD_ROOT_PATH", LIBEXEC_PATH, 1);
-	execl(LIBEXEC_PATH "/usr/libexec/darling/vchroot", "vchroot", prefix, "/sbin/launchd", NULL);
-
-	fprintf(stderr, "Failed to exec launchd: %s\n", strerror(errno));
-	abort();
-}
-
-static void wipeDir(const char* dirpath)
-{
-	char path[4096];
-	struct dirent* ent;
-	DIR* dir = opendir(dirpath);
-
-	if (!dir)
-		return;
-
-	while ((ent = readdir(dir)) != NULL)
-	{
-		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
-			continue;
-
-		snprintf(path, sizeof(path), "%s/%s", dirpath, ent->d_name);
-
-		if (ent->d_type == DT_DIR)
-		{
-			wipeDir(path);
-			rmdir(path);
-		}
-		else
-			unlink(path);
-	}
-
-	closedir(dir);
-}
-
-void darlingPreInit(void)
-{
-	// TODO: Run /usr/libexec/makewhatis
-	const char* dirs[] = {
-		"/var/tmp",
-		"/var/run"
-	};
-
-	char fullpath[4096];
-	strcpy(fullpath, prefix);
-	const size_t prefixLen = strlen(fullpath);
-
-	for (size_t i = 0; i < sizeof(dirs)/sizeof(dirs[0]); i++)
-	{
-		fullpath[prefixLen] = 0;
-		strcat(fullpath, dirs[i]);
-		wipeDir(fullpath);
-	}
 }
 
 char* defaultPrefixPath(void)
@@ -1318,170 +1145,5 @@ void checkPrefixOwner()
 	{
 		fprintf(stderr, "You do not own the prefix directory.\n");
 		exit(1);
-	}
-}
-
-int isModuleLoaded()
-{
-	size_t len = 0;
-	ssize_t read = 0;
-	char * line = NULL;
-	FILE *fp = NULL;
-
-	if ((fp = fopen("/proc/modules", "r")) == NULL)
-	{
-		fprintf(stderr, "Failure opening /proc/modules: %s\n", strerror(errno));
-		fclose(fp);
-		return 0;
-	}
-
-	while (!feof(fp))
-	{
-		read = getline(&line, &len, fp);
-		if (read > 0 && strstr(line, "darling_mach") != NULL)
-		{
-			fclose(fp);
-			return 1;
-		}
-	}
-
-	fclose(fp);
-	return 0;
-}
-
-void loadKernelModule()
-{
-	int status;
-	FILE *fp = popen("/sbin/modprobe darling-mach", "w");
-
-	if (fp == NULL)
-	{
-		fprintf(stderr, "Failed to run modprobe: %s\n", strerror(errno));
-		exit(1);
-	}
-
-	status = pclose(fp);
-	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-	{
-		fprintf(stderr, "Loaded the kernel module\n");
-		return;
-	}
-	else
-	{
-		fprintf(stderr, "Failed to load the kernel module\n");
-		exit(1);
-	}
-}
-
-void setupCoredumpPattern(void)
-{
-	FILE* f = fopen("/proc/sys/kernel/core_pattern", "w");
-	if (f != NULL)
-	{
-		// This is how macOS saves core dumps
-		fputs("/cores/core.%p\n", f);
-		fclose(f);
-	}
-}
-
-const char* xdgDirectory(const char* name)
-{
-	static char dir[4096];
-	char* cmd = (char*) malloc(16 + strlen(name));
-
-	sprintf(cmd, "xdg-user-dir %s", name);
-
-	FILE* proc = popen(cmd, "r");
-
-	free(cmd);
-
-	if (!proc)
-		return NULL;
-
-	fgets(dir, sizeof(dir)-1, proc);
-
-	pclose(proc);
-
-	size_t len = strlen(dir);
-	if (len <= 1)
-		return NULL;
-
-	if (dir[len-1] == '\n')
-		dir[len-1] = '\0';
-	return dir;
-}
-
-void setupUserHome(void)
-{
-	char buf[4096], buf2[4096];
-
-	snprintf(buf, sizeof(buf), "%s/Users", prefix);
-
-	// Remove the old /Users symlink that may exist
-	unlink(buf);
-
-	// mkdir /Users
-	mkdir(buf, 0777);
-
-	// mkdir /Users/Shared
-	strcat(buf, "/Shared");
-	mkdir(buf, 0777);
-
-	const char* home = getenv("HOME");
-
-	const char* login = NULL;
-	struct passwd* pw = getpwuid(getuid());
-
-	if (pw != NULL)
-		login = pw->pw_name;
-
-	if (!login)
-		login = getlogin();
-
-	if (!login)
-	{
-		fprintf(stderr, "Cannot determine your user name\n");
-		exit(1);
-	}
-	if (!home)
-	{
-		fprintf(stderr, "Cannot determine your home directory\n");
-		exit(1);
-	}
-
-	snprintf(buf, sizeof(buf), "%s/Users/%s", prefix, login);
-
-	// mkdir /Users/$LOGIN
-	mkdir(buf, 0755);
-
-	snprintf(buf2, sizeof(buf2), "/Volumes/SystemRoot%s", home);
-
-	strcat(buf, "/LinuxHome");
-	unlink(buf);
-
-	// symlink /Users/$LOGIN/LinuxHome -> $HOME
-	symlink(buf2, buf);
-
-	static const char* xdgmap[][2] = {
-		{ "DESKTOP", "Desktop" },
-		{ "DOWNLOAD", "Downloads" },
-		{ "PUBLICSHARE", "Public" },
-		{ "DOCUMENTS", "Documents" },
-		{ "MUSIC", "Music" },
-		{ "PICTURES", "Pictures" },
-		{ "VIDEOS", "Movies" },
-	};
-
-	for (int i = 0; i < sizeof(xdgmap) / sizeof(xdgmap[0]); i++)
-	{
-		const char* dir = xdgDirectory(xdgmap[i][0]);
-		if (!dir)
-			continue;
-		
-		snprintf(buf2, sizeof(buf2), "/Volumes/SystemRoot%s", dir);
-		snprintf(buf, sizeof(buf), "%s/Users/%s/%s", prefix, login, xdgmap[i][1]);
-
-		unlink(buf);
-		symlink(buf2, buf);
 	}
 }
