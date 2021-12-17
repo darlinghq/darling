@@ -4,6 +4,10 @@ cmake_minimum_required(VERSION 3.10)
 
 include_directories(include)
 
+set_source_files_properties(${CMAKE_BINARY_DIR}/src/darlingserver/src/rpc.c PROPERTIES
+	GENERATED TRUE
+)
+
 add_library(mldr_dserver_rpc ${CMAKE_BINARY_DIR}/src/darlingserver/src/rpc.c)
 add_library(mldr32_dserver_rpc ${CMAKE_BINARY_DIR}/src/darlingserver/src/rpc.c)
 

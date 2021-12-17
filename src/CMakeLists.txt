@@ -56,8 +56,8 @@ add_subdirectory(external/cctools-port/cctools/misc)
 #add_subdirectory(libdyld)
 add_subdirectory(buildtools)
 add_subdirectory(libelfloader/wrapgen)
-add_subdirectory(startup)
 add_subdirectory(darlingserver)
+add_subdirectory(startup)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 

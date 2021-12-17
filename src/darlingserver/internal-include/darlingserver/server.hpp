@@ -40,6 +40,9 @@ namespace DarlingServer {
 		MessageQueue _inbox;
 		MessageQueue _outbox;
 		WorkQueue<Message> _workQueue;
+		bool _canRead = false;
+		bool _canWrite = true;
+		int _wakeupFD;
 
 		void _worker(DarlingServer::Message message);
 

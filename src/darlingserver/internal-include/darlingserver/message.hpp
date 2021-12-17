@@ -27,6 +27,7 @@
 #include <deque>
 #include <mutex>
 #include <optional>
+#include <functional>
 
 namespace DarlingServer {
 	class Address {
@@ -157,13 +158,16 @@ namespace DarlingServer {
 	private:
 		std::deque<Message> _messages;
 		std::mutex _lock;
+		std::function<void()> _messageArrivalNotificationCallback = nullptr;
 
 	public:
+		void setMessageArrivalNotificationCallback(std::function<void()> messageArrivalNotificationCallback);
+
 		void push(Message&& message);
 		std::optional<Message> pop();
 
-		void sendMany(int socket);
-		void receiveMany(int socket);
+		bool sendMany(int socket);
+		bool receiveMany(int socket);
 	};
 };
 

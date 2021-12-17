@@ -30,6 +30,7 @@
 #include <thread>
 #include <array>
 #include <darlingserver/registry.hpp>
+#include <sys/eventfd.h>
 
 static DarlingServer::Server* sharedInstancePointer = nullptr;
 
@@ -63,6 +64,11 @@ DarlingServer::Server::Server(std::string prefix):
 		throw std::system_error(errno, std::generic_category(), "Failed to bind socket");
 	}
 
+	_wakeupFD = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+	if (_wakeupFD < 0) {
+		throw std::system_error(errno, std::generic_category(), "Failed to create eventfd for on-demand epoll wakeups");
+	}
+
 	_epollFD = epoll_create1(EPOLL_CLOEXEC);
 	if (_epollFD < 0) {
 		throw std::system_error(errno, std::generic_category(), "Failed to create epoll context");
@@ -70,21 +76,61 @@ DarlingServer::Server::Server(std::string prefix):
 
 	struct epoll_event settings;
 	settings.data.ptr = this;
-	settings.events = EPOLLIN | EPOLLOUT;
+	settings.events = EPOLLIN | EPOLLOUT | EPOLLET;
 
 	if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, _listenerSocket, &settings) < 0) {
 		throw std::system_error(errno, std::generic_category(), "Failed to add listener socket to epoll context");
 	}
+
+	settings.data.ptr = &_wakeupFD;
+	settings.events = EPOLLIN | EPOLLONESHOT;
+
+	if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, _wakeupFD, &settings) < 0) {
+		throw std::system_error(errno, std::generic_category(), "Failed to add eventfd to epoll context");
+	}
+
+	_outbox.setMessageArrivalNotificationCallback([this]() {
+		// we don't really have to worry about the eventfd overflowing;
+		// if it does, that means the main loop has been waiting a LONG time for the listener socket to become writable again.
+		// in that case, we don't really care if the eventfd is being incremented; we can't send anything anyways.
+		// once the socket becomes writable again, the eventfd will be monitored again.
+		eventfd_write(_wakeupFD, 1);
+	});
 };
 
 DarlingServer::Server::~Server() {
 	close(_epollFD);
+	close(_wakeupFD);
 	close(_listenerSocket);
 	unlink(_socketPath.c_str());
 };
 
 void DarlingServer::Server::start() {
 	while (true) {
+		if (_canRead) {
+			_canRead = _inbox.receiveMany(_listenerSocket);
+
+			// TODO: receive messages directly onto the work queue
+			while (auto msg = _inbox.pop()) {
+				_workQueue.push(std::move(msg.value()));
+			}
+		}
+
+		if (_canWrite) {
+			// reset the eventfd by reading from it
+			eventfd_t value;
+			eventfd_read(_wakeupFD, &value);
+			_canWrite = _outbox.sendMany(_listenerSocket);
+		}
+
+		struct epoll_event settings;
+		settings.data.ptr = &_wakeupFD;
+		settings.events = (_canWrite) ? (EPOLLIN | EPOLLONESHOT) : 0;
+
+		if (epoll_ctl(_epollFD, EPOLL_CTL_MOD, _wakeupFD, &settings) < 0) {
+			throw std::system_error(errno, std::generic_category(), "Failed to modify eventfd in epoll context");
+		}
+
 		struct epoll_event events[16];
 		int ret = epoll_wait(_epollFD, events, 16, -1);
 
@@ -101,17 +147,15 @@ void DarlingServer::Server::start() {
 
 			if (event->data.ptr == this) {
 				if (event->events & EPOLLIN) {
-					_inbox.receiveMany(_listenerSocket);
-
-					// TODO: receive messages directly onto the work queue
-					while (auto msg = _inbox.pop()) {
-						_workQueue.push(std::move(msg.value()));
-					}
+					_canRead = true;
 				}
 
 				if (event->events & EPOLLOUT) {
-					_outbox.sendMany(_listenerSocket);
+					_canWrite = true;
 				}
+			} else if (event->data.ptr == &_wakeupFD) {
+				// we allow the loop to go back to the top and try to send some messages
+				// (if _canWrite is true, the eventfd will be reset; otherwise, there's no point in resetting it)
 			} else if (event->events & EPOLLIN) {
 				std::shared_ptr<Process>& process = *reinterpret_cast<std::shared_ptr<Process>*>(event->data.ptr);
 

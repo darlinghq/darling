@@ -453,8 +453,16 @@ void DarlingServer::Message::setGID(gid_t gid) {
 };
 
 void DarlingServer::MessageQueue::push(Message&& message) {
-	std::scoped_lock lock(_lock);
+	std::unique_lock lock(_lock);
 	_messages.push_back(std::move(message));
+
+	if (_messages.size() > 0) {
+		auto callback = _messageArrivalNotificationCallback;
+		lock.unlock();
+		if (callback) {
+			callback();
+		}
+	}
 };
 
 std::optional<DarlingServer::Message> DarlingServer::MessageQueue::pop() {
@@ -468,7 +476,8 @@ std::optional<DarlingServer::Message> DarlingServer::MessageQueue::pop() {
 	}
 };
 
-void DarlingServer::MessageQueue::sendMany(int socket) {
+bool DarlingServer::MessageQueue::sendMany(int socket) {
+	bool canSendMore = true;
 	std::scoped_lock lock(_lock);
 	struct mmsghdr mmsgs[16];
 	size_t len = 0;
@@ -490,6 +499,7 @@ void DarlingServer::MessageQueue::sendMany(int socket) {
 
 		if (ret < 0) {
 			if (errno == EAGAIN) {
+				canSendMore = false;
 				break;
 			} else if (errno == EINTR) {
 				ret = 0;
@@ -502,10 +512,13 @@ void DarlingServer::MessageQueue::sendMany(int socket) {
 			_messages.pop_front();
 		}
 	}
+
+	return canSendMore;
 };
 
-void DarlingServer::MessageQueue::receiveMany(int socket) {
-	std::scoped_lock lock(_lock);
+bool DarlingServer::MessageQueue::receiveMany(int socket) {
+	bool canReadMore = true;
+	std::unique_lock lock(_lock);
 	struct mmsghdr mmsgs[16];
 	int ret = 0;
 
@@ -521,6 +534,7 @@ void DarlingServer::MessageQueue::receiveMany(int socket) {
 
 		if (ret < 0) {
 			if (errno == EAGAIN) {
+				canReadMore = false;
 				break;
 			} else if (errno == EINTR) {
 				ret = 0;
@@ -536,4 +550,19 @@ void DarlingServer::MessageQueue::receiveMany(int socket) {
 			_messages.push_back(std::move(messages[i]));
 		}
 	}
+
+	if (_messages.size() > 0) {
+		auto callback = _messageArrivalNotificationCallback;
+		lock.unlock();
+		if (callback) {
+			callback();
+		}
+	}
+
+	return canReadMore;
+};
+
+void DarlingServer::MessageQueue::setMessageArrivalNotificationCallback(std::function<void()> messageArrivalNotificationCallback) {
+	std::unique_lock lock(_lock);
+	_messageArrivalNotificationCallback = messageArrivalNotificationCallback;
 };

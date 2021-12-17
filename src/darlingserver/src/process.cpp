@@ -41,13 +41,14 @@ DarlingServer::Process::~Process() {
 void DarlingServer::Process::_unregisterThreads() {
 	std::unique_lock lock(_rwlock);
 	while (!_threads.empty()) {
-		auto thread = _threads.front().lock();
+		auto thread = _threads.back().lock();
 		lock.unlock();
 		if (thread) {
 			thread->_process = std::weak_ptr<Process>();
 			threadRegistry().unregisterEntry(thread);
 		}
 		lock.lock();
+		_threads.pop_back();
 	}
 };
 
