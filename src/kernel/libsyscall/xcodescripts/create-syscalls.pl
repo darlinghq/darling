@@ -50,7 +50,9 @@ use IO::File;
 
 my $MyName = File::Basename::basename($0);
 
-my @CustomSrc = qw(custom.s);
+# DARLING - Fix case sensivity
+#my @CustomSrc = qw(custom.s);
+my @CustomSrc = qw(custom.S);
 
 my @Architectures = split /\s/, $ENV{"ARCHS"};
 my @Copy = (qw(SYS.h), @CustomSrc);
@@ -246,7 +248,9 @@ sub checkForCustomStubs {
     
     my ($c_sym_name, $sym);
     while (($c_sym_name, $sym) = each %Symbols) {
-        my $source = "__".$$sym{c_sym}.".s";
+        # DARLING - Fix case sensivity
+        #my $source = "__".$$sym{c_sym}.".s";
+        my $source = "__".$$sym{c_sym}.".S";
         my $custom = File::Spec->join($dir, $source);
         next unless -f $custom;
 
@@ -458,7 +462,9 @@ my @src;
 my($k, $sym);
 while (($k, $sym) = each %Symbols)
 {
-	my $srcname = $$sym{asm_sym} . ".s";
+	# DARLING - Fix case sensivity
+    #my $srcname = $$sym{asm_sym} . ".s";
+    my $srcname = $$sym{asm_sym} . ".S";
 	my $outpath = File::Spec->join($OutDir, $srcname);
 
 	if ($$sym{is_custom}) {
