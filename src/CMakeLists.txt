@@ -74,6 +74,7 @@ add_definitions(
 	-D_POSIX_C_SOURCE
 	-DDARWIN
 	-DTARGET_OS_MAC=1
+	-DPLATFORM_MacOSX
 )
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar")
