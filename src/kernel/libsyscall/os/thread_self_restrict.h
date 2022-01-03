@@ -28,4 +28,11 @@
 
 #ifndef OS_THREAD_SELF_RESTRICT_H
 #define OS_THREAD_SELF_RESTRICT_H
+
+#ifdef DARLING
+#define os_thread_self_restrict_rwx_is_supported() false
+#define os_thread_self_restrict_rwx_to_rw()
+#define os_thread_self_restrict_rwx_to_rx()
+#endif
+
 #endif /* OS_THREAD_SELF_RESTRICT_H */
