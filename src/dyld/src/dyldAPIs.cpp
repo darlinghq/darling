@@ -124,7 +124,8 @@ static int sLastErrorNo;
 #endif
 
 #ifdef DARLING
-extern "C" int mach_driver_get_fd(void);
+extern "C" int mach_driver_get_dyld_fd(void);
+extern "C" void* elfcalls_get_pointer(void);
 #endif
 
 // In 10.3.x and earlier all the NSObjectFileImage API's were implemeneted in libSystem.dylib
@@ -259,7 +260,8 @@ static const struct dyld_func dyld_funcs[] = {
     {"__dyld_link_module",							(void*)_dyld_link_module },
 #endif
 #ifdef DARLING
-	{"__dyld_get_mach_driver_fd", (void*)mach_driver_get_fd },
+	{"__dyld_get_mach_driver_fd", (void*)mach_driver_get_dyld_fd },
+	{"__dyld_get_elfcalls", (void*)elfcalls_get_pointer },
 #endif
 #pragma clang diagnostic pop
 #endif //DEPRECATED_APIS_SUPPORTED
@@ -1283,7 +1285,7 @@ bool _dyld_launched_prebound()
 	if ( dyld::gLogAPIs )
 		dyld::log("%s()\n", __func__);
 		
-	// ¥¥¥Êif we deprecate prebinding, we may want to consider always returning true or false here
+	// ï¿½ï¿½ï¿½ï¿½if we deprecate prebinding, we may want to consider always returning true or false here
 	return dyld::mainExecutablePrebound();
 }
 

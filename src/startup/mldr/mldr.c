@@ -480,15 +480,19 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	}
 
 	static char vchroot_buffer[4096];
-	size_t vchroot_path_length = 0;
+	uint64_t vchroot_path_length = 0;
 
-	if (dserver_rpc_vchroot_path(vchroot_buffer, sizeof(vchroot_buffer), &vchroot_path_length) < 0) {
-		fprintf(stderr, "Failed to retrieve vchroot path from darlingserver\n");
+	int code = dserver_rpc_vchroot_path(vchroot_buffer, sizeof(vchroot_buffer), &vchroot_path_length);
+	if (code < 0) {
+		fprintf(stderr, "Failed to retrieve vchroot path from darlingserver: %d\n", code);
 		exit(1);
 	}
 
 	if (vchroot_path_length > 0) {
 		lr->root_path = vchroot_buffer;
+	} else if (vchroot_path_length >= sizeof(vchroot_buffer)) {
+		fprintf(stderr, "Vchroot path is too large for buffer\n");
+		exit(1);
 	}
 };
 

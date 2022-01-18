@@ -28,6 +28,7 @@ int __darling_thread_terminate(void* stackaddr,
 
 void* __darling_thread_get_stack(void);
 
+const void* __dserver_socket_address(void);
 
 #ifdef __cplusplus
 }

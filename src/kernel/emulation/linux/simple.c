@@ -7,6 +7,7 @@
 #include "mach/lkm.h"
 #include "signal/kill.h"
 #include <sys/signal.h>
+#include <darlingserver/rpc.h>
 
 extern char* memchr(char* buf, int c, __SIZE_TYPE__ n);
 
@@ -374,14 +375,10 @@ void __simple_printf(const char* format, ...)
 __attribute__ ((visibility ("default")))
 void __simple_kprintf(const char* format, ...)
 {
-	char buffer[512];
 	va_list vl;
-
 	va_start(vl, format);
-	__simple_vsnprintf(buffer, sizeof(buffer), format, vl);
+	__simple_vkprintf(format, vl);
 	va_end(vl);
-
-	lkm_call(NR_kernel_printk, buffer);
 }
 
 __attribute__ ((visibility ("default")))
@@ -410,7 +407,7 @@ void __simple_vkprintf(const char* format, va_list args)
 {
 	char buffer[512];
 	__simple_vsnprintf(buffer, sizeof(buffer), format, args);
-	lkm_call(NR_kernel_printk, buffer);
+	dserver_rpc_kprintf(buffer, __simple_strlen(buffer));
 }
 
 __attribute__ ((visibility ("default")))

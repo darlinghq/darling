@@ -18,7 +18,7 @@ add_executable(darling darling.c)
 
 target_link_libraries(darling -lutil)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/src/darlingserver/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/src/external/darlingserver/include)
 
 install(TARGETS darling DESTINATION bin
     PERMISSIONS

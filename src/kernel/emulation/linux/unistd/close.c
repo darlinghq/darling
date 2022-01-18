@@ -17,7 +17,7 @@ long sys_close_nocancel(int fd)
 {
 	int ret;
 
-	if (fd == mach_driver_get_fd()) {
+	if (fd == mach_driver_get_dyld_fd()) {
 		__simple_kprintf("*** Someone tried to close the special LKM fd! ***");
 		return 0;
 	}

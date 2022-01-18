@@ -164,6 +164,11 @@ int _mach_fork_parent(void) {
 #endif
 #endif
 
+#ifdef DARLING
+extern void mach_driver_init(const char** applep);
+extern void mach_driver_init_pthread(void);
+#endif
+
 void
 #ifdef DARLING
 mach_init_doit(const char** applep)
@@ -205,4 +210,8 @@ mach_init_doit(void)
 
 	_init_cpu_capabilities();
 	_pthread_set_self(0);
+
+#ifdef DARLING
+	mach_driver_init_pthread();
+#endif
 }

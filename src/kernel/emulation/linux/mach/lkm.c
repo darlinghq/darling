@@ -26,12 +26,10 @@ static int driver_fd = -1;
 VISIBLE
 struct elf_calls* _elfcalls;
 
+static bool use_per_thread_driver_fd = false;
+
 void mach_driver_init(const char** applep)
 {
-	// DARLINGSERVER/MLDR TESTING
-	__simple_printf("We're being initialized...\n");
-	__builtin_unreachable();
-
 #ifdef VARIANT_DYLD
 	if (applep != NULL)
 	{
@@ -55,8 +53,15 @@ void mach_driver_init(const char** applep)
 	_libkernel_functions->dyld_func_lookup("__dyld_get_mach_driver_fd", (void**) &p);
 
 	driver_fd = (*p)();
+
+	// ask for elfcalls already set up by dyld
+	void* (*p2)(void);
+	_libkernel_functions->dyld_func_lookup("__dyld_get_elfcalls", (void**)&p2);
+
+	_elfcalls = p2();
 #endif
 
+#if 0
 	// If mach_driver_init() is being called in the fork child, the LKM will now
 	// swap out driver_fd for a new one.
 	if (__real_ioctl(driver_fd, NR_get_api_version, 0) != DARLING_MACH_API_VERSION)
@@ -65,11 +70,17 @@ void mach_driver_init(const char** applep)
 		sys_write(2, msg, strlen(msg));
 		sys_kill(0, 6);
 	}
+#endif
 
 	// mach_driver_init() gets called at several points in application's lifetime:
 	// 1) When dyld loads
 	// 2) When libc initializes
 	// 3) After forking
+
+	// this was previously done when the LKM was in-use.
+	// now with per-thread dserver FDs, this is more complicated to do.
+	// TODO: find a suitable way of doing this.
+#if 0
 #ifdef VARIANT_DYLD
 	struct rlimit lim;
 	if (sys_getrlimit(RLIMIT_NOFILE, &lim) == 0 && driver_fd != lim.rlim_cur)
@@ -84,23 +95,45 @@ void mach_driver_init(const char** applep)
 		driver_fd = d;
 	}
 #endif
+#endif
 }
+
+void mach_driver_init_pthread(void) {
+	_os_tsd_set_direct(__TSD_DSERVER_RPC_FD, (void*)(intptr_t)driver_fd);
+	use_per_thread_driver_fd = true;
+};
 
 __attribute__((visibility("default")))
 int lkm_call(int call_nr, void* arg)
 {
-       return __real_ioctl(driver_fd, call_nr, arg);
+	__simple_printf("Something called the old LKM API (nr = %d)\n", call_nr);
+	__builtin_unreachable();
 }
 
 __attribute__((visibility("default")))
 int lkm_call_raw(int call_nr, void* arg)
 {
-       return __real_ioctl_raw(driver_fd, call_nr, arg);
+	__simple_printf("Something called the old LKM API (nr = %d)\n", call_nr);
+	__builtin_unreachable();
 }
 
 __attribute__((visibility("default")))
-int mach_driver_get_fd(void)
+int mach_driver_get_dyld_fd(void)
 {
 	return driver_fd;
 }
+
+VISIBLE
+int mach_driver_get_fd(void) {
+	if (use_per_thread_driver_fd) {
+		return (int)(intptr_t)_os_tsd_get_direct(__TSD_DSERVER_RPC_FD);
+	} else {
+		return driver_fd;
+	}
+};
+
+VISIBLE
+void* elfcalls_get_pointer(void) {
+	return _elfcalls;
+};
 

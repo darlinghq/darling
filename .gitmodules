@@ -372,3 +372,6 @@
 [submodule "src/external/pyobjc"]
 	path = src/external/pyobjc
 	url = ../darling-pyobjc.git
+[submodule "src/external/darlingserver"]
+	path = src/external/darlingserver
+	url = ../darlingserver.git

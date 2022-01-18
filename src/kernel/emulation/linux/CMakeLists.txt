@@ -21,6 +21,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_BINARY_DIR}/src/startup
 	${CMAKE_BINARY_DIR}/src/kernel/libsyscall
 	${CMAKE_CURRENT_BINARY_DIR}
+	${CMAKE_BINARY_DIR}/src/external/darlingserver/include
 )
 
 mig(signal/mach_exc.defs)
@@ -301,16 +302,22 @@ set(emulation_sources
 	vchroot_userspace.c
 	syscalls-table.S
 	linux-syscall.S
+
+	${CMAKE_BINARY_DIR}/src/external/darlingserver/src/rpc.c
 )
 	
 set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS "-nostdinc")
 set_source_files_properties(signal/sigexc.c PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/signal/exc.h)
+set_source_files_properties(${CMAKE_BINARY_DIR}/src/external/darlingserver/src/rpc.c PROPERTIES
+	GENERATED TRUE
+	COMPILE_FLAGS "-include ${CMAKE_CURRENT_SOURCE_DIR}/resources/dserver-rpc-defs.h"
+)
 
 add_darling_object_library(emulation ${emulation_sources})
 add_darling_object_library(emulation_dyld ${emulation_sources})
 set_target_properties(emulation_dyld PROPERTIES COMPILE_FLAGS "-ffunction-sections -DVARIANT_DYLD")
-add_dependencies(emulation rtsig_h)
-add_dependencies(emulation_dyld rtsig_h)
+add_dependencies(emulation rtsig_h generate_dserver_rpc_wrappers)
+add_dependencies(emulation_dyld rtsig_h generate_dserver_rpc_wrappers)
 
 make_fat(emulation)
 make_fat(emulation_dyld)

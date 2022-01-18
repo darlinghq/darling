@@ -68,7 +68,10 @@ function(mig defFileName)
 				-sheader ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_SERVER_HEADER_SUFFIX}
 				-xtracemig ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_XTRACE_SUFFIX}
 				${MIG_FLAGS}
-				${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
+				${CMAKE_CURRENT_SOURCE_DIR}/${defFileName} \;
+				# this is so that the xtrace file is always produced so that the command is not constantly re-run
+				# for MIG definitions that produce no xtrace files
+				touch ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_XTRACE_SUFFIX}
 			DEPENDS
 				migexe migcom
 		)

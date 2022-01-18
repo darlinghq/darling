@@ -3,7 +3,6 @@
 #include <stdbool.h>
 
 #include "lock.h"
-#include <darling/emulation/simple.h>
 
 #ifndef XTRACE_LOCK_DEBUG
 	#define XTRACE_LOCK_DEBUG 0

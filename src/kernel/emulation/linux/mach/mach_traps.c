@@ -10,12 +10,22 @@
 #include "mach_traps.h"
 #include <mach/mach_init.h>
 #include "../ext/mremap.h"
+#include <darlingserver/rpc.h>
+#include "../simple.h"
 
 #define UNIMPLEMENTED_TRAP() { char msg[] = "Called unimplemented Mach trap: "; write(2, msg, sizeof(msg)-1); write(2, __FUNCTION__, sizeof(__FUNCTION__)-1); write(2, "\n", 1); }
 
 mach_port_name_t mach_reply_port_impl(void)
 {
-	return lkm_call(NR_mach_reply_port, 0);
+	__simple_printf("Got to mach_reply_port_impl\n");
+	unsigned int port_name;
+	if (dserver_rpc_mach_reply_port(&port_name) != 0) {
+		__simple_printf("mach_reply_port_impl RPC failed\n");
+		port_name = MACH_PORT_NULL;
+	}
+	__simple_printf("Returning from mach_reply_port_impl: %d\n", port_name);
+	//__simple_abort();
+	return port_name;
 }
 
 mach_port_name_t thread_self_trap_impl(void)
@@ -649,7 +659,15 @@ kern_return_t syscall_thread_switch_impl(
 
 mach_port_name_t task_self_trap_impl(void)
 {
-	return lkm_call(NR_task_self_trap, 0);
+	__simple_printf("Got to task_self_trap_impl\n");
+	unsigned int port_name;
+	if (dserver_rpc_task_self_trap(&port_name) != 0) {
+		__simple_printf("task_self_trap_impl RPC failed\n");
+		port_name = MACH_PORT_NULL;
+	}
+	__simple_printf("Returning from task_self_trap_impl: %d\n", port_name);
+	//__simple_abort();
+	return port_name;
 }
 
 /*
