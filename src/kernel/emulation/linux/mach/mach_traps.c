@@ -30,12 +30,28 @@ mach_port_name_t mach_reply_port_impl(void)
 
 mach_port_name_t thread_self_trap_impl(void)
 {
-	return lkm_call(NR_thread_self_trap, 0);
+	__simple_printf("Got to thread_self_trap_impl\n");
+	unsigned int port_name;
+	if (dserver_rpc_thread_self_trap(&port_name) != 0) {
+		__simple_printf("thread_self_trap_impl RPC failed\n");
+		port_name = MACH_PORT_NULL;
+	}
+	__simple_printf("Returning from thread_self_trap_impl: %d\n", port_name);
+	//__simple_abort();
+	return port_name;
 }
 
 mach_port_name_t host_self_trap_impl(void)
 {
-	return lkm_call(NR_host_self_trap, 0);
+	__simple_printf("Got to host_self_trap_impl\n");
+	unsigned int port_name;
+	if (dserver_rpc_host_self_trap(&port_name) != 0) {
+		__simple_printf("host_self_trap_impl RPC failed\n");
+		port_name = MACH_PORT_NULL;
+	}
+	__simple_printf("Returning from host_self_trap_impl: %d\n", port_name);
+	//__simple_abort();
+	return port_name;
 }
 
 mach_msg_return_t mach_msg_trap_impl(
@@ -64,20 +80,14 @@ mach_msg_return_t mach_msg_overwrite_trap_impl(
 				mach_msg_header_t *rcv_msg,
 				mach_msg_size_t rcv_limit)
 {
-	struct mach_msg_overwrite_args args = {
-		.msg = msg,
-		.option = option,
-		.send_size = send_size,
-		.recv_size = rcv_size,
-		.rcv_name = rcv_name,
-		.timeout = timeout,
-		.notify = notify,
-		.rcv_msg = rcv_msg,
-		.rcv_limit = rcv_limit
-	};
+	int code = dserver_rpc_mach_msg_overwrite(msg, option, send_size, rcv_size, rcv_name, timeout, notify, rcv_msg, rcv_limit);
 
-	return lkm_call(NR_mach_msg_overwrite_trap,
-			&args);
+	if (code < 0) {
+		__simple_printf("mach_msg_overwrite failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t semaphore_signal_trap_impl(

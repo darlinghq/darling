@@ -40,6 +40,8 @@ typedef struct stat stat_t;
 #	include "common_at.h"
 #include <stddef.h>
 
+#include <darlingserver/rpc.h>
+
 typedef struct linux_stat stat_t;
 
 struct _xlocale;
@@ -150,20 +152,14 @@ int __darling_vchroot_expand(const char* path, char* out)
 
 static void init_vchroot_path(void)
 {
-	struct vchroot_expand_args a = {
-		.path = "/",
-		.dfd = -100,
-		.flags = 0
-	};
+	uint64_t tmp_len;
+	int code = dserver_rpc_vchroot_path(prefix_path, sizeof(prefix_path), &tmp_len);
+	if (code < 0) {
+		__simple_printf("Failed to get vchroot path: %d\n", code);
+		__simple_abort();
+	}
 
-	lkm_call(NR_vchroot_expand, &a);
-	
-	int len = strlen(a.path);
-	if (len > 0 && a.path[len-1] == '/')
-		a.path[--len] = '\0';
-	
-	strcpy(prefix_path, a.path);
-	prefix_path_len = len;
+	prefix_path_len = (int)tmp_len;
 
 #ifndef TEST
 	__simple_printf("init_vchroot_path: %s\n", prefix_path);

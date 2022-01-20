@@ -14,6 +14,8 @@
 #include "kill.h"
 #include "../simple.h"
 
+#include <darlingserver/rpc.h>
+
 // Support for Darwin debugging.
 // Unlike other Unix-like systems, macOS doesn't use wait() to handle events in the debugged process.
 // wait() only receives termination events.
@@ -102,17 +104,29 @@ void sigexc_setup(void)
 	darling_sigexc_self();
 	sigexc_setup1();
 	sigexc_setup2();
+
 #ifdef VARIANT_DYLD
-	if (lkm_call(NR_started_suspended, 0))
-	{
+	bool started_suspended;
+	int code = dserver_rpc_started_suspended(&started_suspended);
+	if (code < 0) {
+		__simple_printf("Failed to get started_suspended status: %d\n", code);
+		__simple_abort();
+	}
+	if (started_suspended) {
 		kern_printf("sigexc: start_suspended -> suspending (ret to %p)\n", __builtin_return_address(0));
 		task_suspend(mach_task_self());
 		kern_printf("sigexc: start_suspended -> wokenup (ret to %p)\n", __builtin_return_address(0));
-	}
-	else if (lkm_call(NR_get_tracer, NULL) != 0)
-	{
-		kern_printf("sigexc: already traced -> SIGTRAP\n");
-		sys_kill(0, SIGTRAP, 0);
+	} else {
+		uint32_t tracer;
+		code = dserver_rpc_get_tracer(&tracer);
+		if (code < 0) {
+			__simple_printf("Failed to get tracer status: %d\n", code);
+			__simple_abort();
+		}
+		if (tracer != 0) {
+			kern_printf("sigexc: already traced -> SIGTRAP\n");
+			sys_kill(0, SIGTRAP, 0);
+		}
 	}
 #else
 	

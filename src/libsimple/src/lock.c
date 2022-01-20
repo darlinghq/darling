@@ -141,7 +141,7 @@ enum libsimple_once_state {
 	libsimple_once_state_completed = 3,
 };
 
-void libsimple_once(libsimple_once_t* _once, libsimple_once_callback callback) {
+void libsimple_once(libsimple_once_t* _once, libsimple_once_callback callback, void* context) {
 	libsimple_once_internal_t* once = (libsimple_once_internal_t*)_once;
 
 	libsimple_once_debug("evaluating...");
@@ -155,7 +155,7 @@ void libsimple_once(libsimple_once_t* _once, libsimple_once_callback callback) {
 		libsimple_once_debug("performing callback...");
 
 		// we had `libsimple_once_state_untriggered` and now we have `libsimple_once_state_triggered_uncontended`, so let's do the callback
-		callback();
+		callback(context);
 
 		libsimple_once_debug("callback done; updating state...");
 

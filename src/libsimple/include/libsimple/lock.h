@@ -33,7 +33,7 @@ typedef struct libsimple_once {
 	uint32_t state;
 } libsimple_once_t;
 
-typedef void (*libsimple_once_callback)(void);
+typedef void (*libsimple_once_callback)(void* context);
 
 #define LIBSIMPLE_ONCE_INITIALIZER {0}
 
@@ -42,7 +42,7 @@ static void libsimple_once_init(libsimple_once_t* once) {
 	once->state = 0;
 };
 
-void libsimple_once(libsimple_once_t* once, libsimple_once_callback callback);
+void libsimple_once(libsimple_once_t* once, libsimple_once_callback callback, void* context);
 
 LIBSIMPLE_DECLARATIONS_END;
 
