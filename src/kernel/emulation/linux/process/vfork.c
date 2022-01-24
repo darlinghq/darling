@@ -4,18 +4,12 @@
 #include "../signal/duct_signals.h"
 #include <linux-syscalls/linux.h>
 
+#include "fork.h"
+
 long sys_vfork(void)
 {
-	int ret;
-
-#ifdef SYS_fork
-	ret = LINUX_SYSCALL(__NR_fork);
-#else
-	ret = LINUX_SYSCALL(__NR_clone, LINUX_SIGCHLD, 0);
-#endif
-	if (ret < 0)
-		ret = errno_linux_to_bsd(ret);
-
-	return ret;
+	// this used to be a separate implementation, but it did everything exactly the same as sys_fork,
+	// so now it just calls sys_fork to avoid duplicating code
+	return sys_fork();
 }
 

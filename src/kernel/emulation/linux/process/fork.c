@@ -6,6 +6,9 @@
 #include "../unistd/fchdir.h"
 #include <linux-syscalls/linux.h>
 
+#include <darlingserver/rpc.h>
+#include "../simple.h"
+
 long sys_fork(void)
 {
 	int ret;
@@ -20,6 +23,12 @@ long sys_fork(void)
 		ret = errno_linux_to_bsd(ret);
 	else if (ret == 0)
 	{
+		// in the child
+		if (dserver_rpc_checkin(true) < 0) {
+			// we can't do ANYTHING if darlingserver fails to acknowledge us
+			__simple_printf("Failed to checkin with darlingserver after fork\n");
+			__simple_abort();
+		}
 		if (wdfd >= 0)
 			sys_fchdir(wdfd);
 	}

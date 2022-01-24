@@ -390,13 +390,14 @@ kern_return_t _kernelrpc_mach_port_deallocate_trap_impl(
 				mach_port_name_t name
 )
 {
-	struct mach_port_deallocate_args args = {
-		.task_right_name = target,
-		.port_right_name = name
-	};
+	int code = dserver_rpc_mach_port_deallocate(target, name);
 
-	return lkm_call(NR__kernelrpc_mach_port_deallocate,
-			&args);
+	if (code < 0) {
+		__simple_printf("mach_port_deallocate failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_mod_refs_trap_impl(

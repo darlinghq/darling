@@ -79,9 +79,10 @@ static void setup_stack32(const char* filepath, struct load_results* lr);
 // UUID of the main executable
 uint8_t exe_uuid[16];
 
-// Data for TASK_DYLD_INFO
-uintptr_t dyld_all_image_location;
-size_t dyld_all_image_size;
+// globally visible for debugging/core-dumping purposes
+// however, this should not be relied on; a pointer to this should passed around to whoever needs the load_results structure
+__attribute__((used))
+struct load_results mldr_load_results = {0};
 
 static uint32_t stack_size = 0;
 
@@ -90,16 +91,15 @@ int main(int argc, char** argv, char** envp)
 	void** sp;
 	int pushCount = 0;
 	char *filename, *p = NULL;
-	struct load_results lr = {0};
 
-	lr.kernfd = -1;
-	lr.argc = argc;
-	lr.argv = argv;
+	mldr_load_results.kernfd = -1;
+	mldr_load_results.argc = argc;
+	mldr_load_results.argv = argv;
 
-	while (envp[lr.envc] != NULL) {
-		++lr.envc;
+	while (envp[mldr_load_results.envc] != NULL) {
+		++mldr_load_results.envc;
 	}
-	lr.envp = envp;
+	mldr_load_results.envp = envp;
 
 	// sys_execve() passes the original file path appended to the mldr path in argv[0].
 	if (argc > 0)
@@ -129,9 +129,9 @@ int main(int argc, char** argv, char** envp)
 	}
 
 #ifdef __i386__
-	load(filename, CPU_TYPE_X86, false, argv, &lr); // accept i386 only
+	load(filename, CPU_TYPE_X86, false, argv, &mldr_load_results); // accept i386 only
 #else
-	load(filename, 0, false, argv, &lr);
+	load(filename, 0, false, argv, &mldr_load_results);
 #endif
 
 	// this was previously necessary when we were loading the binary from the LKM
@@ -139,34 +139,34 @@ int main(int argc, char** argv, char** envp)
 	// but this shouldn't be necessary for loading Mach-O's from userspace (the heap space should already be set up properly).
 	// see https://github.com/darlinghq/darling/issues/469 for the issue this originally fixed in the LKM
 #if 0
-	if (prctl(PR_SET_MM, PR_SET_MM_BRK, PAGE_ALIGN(lr.vm_addr_max), 0, 0) < 0) {
+	if (prctl(PR_SET_MM, PR_SET_MM_BRK, PAGE_ALIGN(mldr_load_results.vm_addr_max), 0, 0) < 0) {
 		fprintf(stderr, "Failed to set BRK value\n");
 		return 1;
 	}
 
-	if (prctl(PR_SET_MM, PR_SET_MM_START_BRK, PAGE_ALIGN(lr.vm_addr_max), 0, 0) < 0) {
+	if (prctl(PR_SET_MM, PR_SET_MM_START_BRK, PAGE_ALIGN(mldr_load_results.vm_addr_max), 0, 0) < 0) {
 		fprintf(stderr, "Failed to set BRK start\n");
 		return 1;
 	}
 #endif
 
-	if (prctl(PR_SET_MM, PR_SET_MM_START_STACK, lr.stack_top, 0, 0) < 0) {
+	if (prctl(PR_SET_MM, PR_SET_MM_START_STACK, mldr_load_results.stack_top, 0, 0) < 0) {
 		fprintf(stderr, "Failed to set stack start\n");
 		return 1;
 	}
 
 	// adjust argv (remove mldr's argv[0])
-	--lr.argc;
-	for (size_t i = 0; i < lr.argc; ++i) {
-		lr.argv[i] = lr.argv[i + 1];
+	--mldr_load_results.argc;
+	for (size_t i = 0; i < mldr_load_results.argc; ++i) {
+		mldr_load_results.argv[i] = mldr_load_results.argv[i + 1];
 	}
-	lr.argv[lr.argc] = NULL;
+	mldr_load_results.argv[mldr_load_results.argc] = NULL;
 
-	if (lr._32on64)
-		setup_stack32(filename, &lr);
+	if (mldr_load_results._32on64)
+		setup_stack32(filename, &mldr_load_results);
 	else
 #ifdef __x86_64__
-		setup_stack64(filename, &lr);
+		setup_stack64(filename, &mldr_load_results);
 #elif __aarch64__
 	#error TODO: aarch64
 #else
@@ -175,7 +175,7 @@ int main(int argc, char** argv, char** envp)
 
 	// TODO: tell darlingserver about our dyld info
 
-	start_thread(&lr);
+	start_thread(&mldr_load_results);
 
 	__builtin_unreachable();
 }
@@ -453,7 +453,7 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 		size = limit.rlim_cur;
 	}
 
-	if (mmap((void*)lr->stack_top, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_GROWSDOWN, -1, 0) == MAP_FAILED) {
+	if (mmap((void*)(lr->stack_top - size), size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE | MAP_GROWSDOWN, -1, 0) == MAP_FAILED) {
 		fprintf(stderr, "Failed to allocate stack of %lu bytes: %d (%s)\n", size, errno, strerror(errno));
 		exit(1);
 	}
@@ -474,7 +474,7 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 
 	__dserver_main_thread_socket_fd = lr->kernfd;
 
-	if (dserver_rpc_checkin() < 0) {
+	if (dserver_rpc_checkin(false) < 0) {
 		fprintf(stderr, "Failed to checkin with darlingserver\n");
 		exit(1);
 	}

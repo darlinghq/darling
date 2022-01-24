@@ -10,13 +10,6 @@ long sys_dup2(int fd_from, int fd_to)
 {
 	int ret;
 
-	if (fd_from != fd_to) {
-		struct closing_descriptor_args args = {
-			.fd = fd_to,
-		};
-		lkm_call(NR_closing_descriptor, &args);
-	}
-
 	#if defined(__NR_dup2)
 		ret = LINUX_SYSCALL2(__NR_dup2, fd_from, fd_to);
 	#else		

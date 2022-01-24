@@ -112,7 +112,7 @@ int __darling_vchroot(int dfd)
 	int rv;
 
 #ifndef TEST
-	rv = lkm_call(NR_vchroot, dfd);
+	rv = errno_linux_to_bsd(dserver_rpc_vchroot(dfd));
 	if (rv != 0)
 		return rv;
 #endif

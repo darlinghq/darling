@@ -3,11 +3,11 @@
 #include "../errno.h"
 #include <sys/errno.h>
 #include "../signal/sigexc.h"
-#include "../mach/lkm.h"
-#include "../../../../external/lkm/api.h"
+#include <darlingserver/rpc.h>
 #include <stdint.h>
 #include <pthread/tsd_private.h>
 #include <linux-syscalls/linux.h>
+#include "../simple.h"
 
 int pthread_obj_size;
 bsdthread_entry_t pthread_entry_point;
@@ -40,11 +40,11 @@ long sys_bsdthread_register(void* thread_start, void* wqthread, int pthsize,
 	wqueue_entry_point = (bsdwqthread_entry_t) wqthread;
 	g_pth_regdata = *pth_regdata;
 
-	struct set_thread_handles_args args;
-	args.pthread_handle = (unsigned long) _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
-	args.dispatch_qaddr = args.pthread_handle + g_pth_regdata.tsd_offset + g_pth_regdata.dispatch_queue_offset;
-
-	lkm_call(NR_set_thread_handles, &args);
+	uintptr_t pthread_handle = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
+	uintptr_t dispatch_qaddr = pthread_handle + g_pth_regdata.tsd_offset + g_pth_regdata.dispatch_queue_offset;
+	if (dserver_rpc_set_thread_handles(pthread_handle, dispatch_qaddr) < 0) {
+		__simple_abort();
+	}
 
 	return /* WORKQ_FEATURE_KEVENT | WORKQ_FEATURE_FINEPRIO | PTHREAD_FEATURE_QOS_MAINTENANCE 
 		| PTHREAD_FEATURE_DISPATCHFUNC | PTHREAD_FEATURE_QOS_DEFAULT */ 0;
@@ -55,11 +55,12 @@ void pthread_entry_point_wrapper(void* self, int thread_port, void* funptr,
 {
 	sigexc_thread_setup();
 
-	struct set_thread_handles_args args;
-	args.pthread_handle = (unsigned long) self;
-	args.dispatch_qaddr = args.pthread_handle + g_pth_regdata.tsd_offset + g_pth_regdata.dispatch_queue_offset;
+	uintptr_t pthread_handle = (unsigned long) self;
+	uintptr_t dispatch_qaddr = pthread_handle + g_pth_regdata.tsd_offset + g_pth_regdata.dispatch_queue_offset;
+	if (dserver_rpc_set_thread_handles(pthread_handle, dispatch_qaddr) < 0) {
+		__simple_abort();
+	}
 
-	lkm_call(NR_set_thread_handles, &args);
 	pthread_entry_point(self, thread_port, funptr, funarg, stack_addr, flags);
 }
 

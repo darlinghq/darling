@@ -1,15 +1,11 @@
 #include "setegid.h"
 #include "../base.h"
-#include "../mach/lkm.h"
-#include "../../../../external/lkm/api.h"
+#include <darlingserver/rpc.h>
+#include "../errno.h"
+#include <stddef.h>
 
 long sys_setegid(int egid)
 {
-	struct uidgid ug = {
-		.uid = -1,
-		.gid = egid
-	};
-
-	return lkm_call(NR_setuidgid, &ug);
+	return errno_linux_to_bsd(dserver_rpc_uidgid(-1, egid, NULL, NULL));
 }
 

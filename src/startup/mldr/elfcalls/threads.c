@@ -32,6 +32,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "dthreads.h"
 
+#include <darlingserver/rpc.h>
+
 // The point of this file is build macOS threads on top of native libc's threads,
 // otherwise it would not be possible to make native calls from these threads.
 
@@ -198,12 +200,20 @@ static void* darling_thread_entry(void* p)
 	dthread_t dthread = args.pth;
 	uintptr_t* flags = args.is_workqueue ? &args.arg2 : &args.arg3;
 
+	// checkin with darlingserver on this new thread
+	if (dserver_rpc_checkin(false) < 0) {
+		// we can't do ANYTHING if darlingserver doesn't acknowledge us successfully
+		abort();
+	}
+
 	// libpthread now expects the kernel to set the TSD
 	// so, since we're pretending to be the kernel handling threads...
 	args.callbacks->thread_set_tsd_base(&dthread->tsd[0], 0);
 	*flags |= args.is_workqueue ? DWQ_FLAG_THREAD_TSD_BASE_SET : DTHREAD_START_TSD_BASE_SET;
 
-	args.port = dthread->tsd[DTHREAD_TSD_SLOT_MACH_THREAD_SELF] = args.callbacks->thread_self_trap();
+	int thread_self_port = args.callbacks->thread_self_trap();
+	dthread->tsd[DTHREAD_TSD_SLOT_MACH_THREAD_SELF] = (void*)(intptr_t)thread_self_port;
+	args.port = thread_self_port;
 
 	in_args->pth = NULL;
 
@@ -253,6 +263,8 @@ static void* darling_thread_entry(void* p)
 	"1:\n"
 	"ret\n" // Jump to the address pushed at the beginning
 	:: "c" (&args), "d" (args.pth));
+#else
+#error Not implemented
 #endif
 	__builtin_unreachable();
 }
@@ -270,6 +282,15 @@ int __darling_thread_terminate(void* stackaddr,
 		
 		while (1)
 			sigsuspend(&mask);
+	}
+
+	// only threads that aren't the main thread should checkout
+	// the main thread will automatically checkout when the process dies
+	if (dserver_rpc_checkout(-1, false) < 0) {
+		// failing to checkout is not fatal.
+		// it's not ideal, but it's not fatal.
+		#define CHECKOUT_FAILURE_MESSAGE "Failed to checkout"
+		dserver_rpc_kprintf(CHECKOUT_FAILURE_MESSAGE, sizeof(CHECKOUT_FAILURE_MESSAGE) - 1);
 	}
 
 	t_freeaddr = stackaddr;
