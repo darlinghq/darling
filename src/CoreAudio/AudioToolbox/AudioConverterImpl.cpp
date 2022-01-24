@@ -197,7 +197,7 @@ AudioConverter::~AudioConverter()
 	if (m_audioFrame)
 		av_free(m_audioFrame);
 	if (m_resampler)
-		avresample_free(&m_resampler);
+		swr_free(&m_resampler);
 }
 
 template <typename T> OSStatus setPropertyT(UInt32 inPropertyDataSize, T* localProperty, const void* propertySource)
@@ -316,7 +316,7 @@ void AudioConverter::setupResampler(const AVFrame* frame)
 	if (m_resampler != nullptr)
 		throw std::logic_error("Resampler already created");
 	
-	m_resampler = avresample_alloc_context();
+	m_resampler = swr_alloc();
 	m_targetFormat = CACodecSampleFormat(&m_destinationFormat);
 	
 	av_opt_set_int(m_resampler, "in_channel_layout", CAChannelCountToLayout(m_sourceFormat.mChannelsPerFrame), 0);
@@ -340,9 +340,9 @@ void AudioConverter::setupResampler(const AVFrame* frame)
 	m_encoderOutput.open("/tmp/encoder.out.raw", std::ios_base::binary | std::ios_base::out);
 #endif
 	
-	err = avresample_open(m_resampler);
+	err = swr_init(m_resampler);
 	if (err < 0)
-		throwFFMPEGError(err, "avresample_open()");
+		throwFFMPEGError(err, "swr_init()");
 }
 
 OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc, void* opaque,
@@ -468,9 +468,9 @@ bool AudioConverter::feedDecoder(AudioConverterComplexInputDataProc dataProc, vo
 #endif
 			
 			// Resample PCM
-			err = avresample_convert(m_resampler, nullptr, 0, 0, srcaudio->data, 0, srcaudio->nb_samples);
+			err = swr_convert(m_resampler, nullptr, 0, (const uint8_t**)&srcaudio->data[0], srcaudio->nb_samples);
 			if (err < 0)
-				throwFFMPEGError(err, "avresample_convert()");
+				throwFFMPEGError(err, "swr_convert()");
 		}
 	}
 	while (!gotFrame);
@@ -497,15 +497,15 @@ bool AudioConverter::feedEncoder()
 	const size_t bytesPerFrame = m_destinationFormat.mChannelsPerFrame * bytesPerSample;
 	const size_t requiredBytes = bytesPerFrame * ENCODER_FRAME_SAMPLES;
 
-	while (m_audioFramePrebuf.size() < requiredBytes && (avail = avresample_available(m_resampler)) > 0)
+	while (m_audioFramePrebuf.size() < requiredBytes && (avail = swr_get_out_samples(m_resampler, 0)) > 0)
 	{
 		av_samples_alloc(&output, &out_linesize, m_destinationFormat.mChannelsPerFrame,
 			avail, m_encoder->sample_fmt, 0);
 
-		if (avresample_read(m_resampler, &output, avail) != avail)
+		if ((avail = swr_convert(m_resampler, &output, avail, nullptr, 0)) < 0)
 		{
 			av_freep(&output);
-			throwFFMPEGError(err, "avresample_read()");
+			throwFFMPEGError(err, "swr_convert()");
 		}
 
 #ifdef DEBUG_AUDIOCONVERTER

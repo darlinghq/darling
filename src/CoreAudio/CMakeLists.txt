@@ -12,7 +12,7 @@ include_directories(
 )
 add_definitions(-DHAVE_AV_FRAME_ALLOC=1)
 
-wrap_elf(avresample libavresample.so)
+wrap_elf(swresample libswresample.so)
 wrap_elf(avcodec libavcodec.so)
 wrap_elf(avformat libavformat.so)
 wrap_elf(avutil libavutil.so)
