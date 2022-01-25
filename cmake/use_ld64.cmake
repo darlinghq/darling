@@ -146,7 +146,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/darling/libelfloader.dylib:${CMAKE_BINARY_DIR}/src/libelfloader/libelfloader.dylib \
 -Wl,-dylib_file,/usr/lib/native/libavcodec.dylib:${CMAKE_BINARY_DIR}/src/native/libavcodec.dylib \
 -Wl,-dylib_file,/usr/lib/native/libavformat.dylib:${CMAKE_BINARY_DIR}/src/native/libavformat.dylib \
--Wl,-dylib_file,/usr/lib/native/libavresample.dylib:${CMAKE_BINARY_DIR}/src/native/libavresample.dylib \
+-Wl,-dylib_file,/usr/lib/native/libswresample.dylib:${CMAKE_BINARY_DIR}/src/native/libswresample.dylib \
 -Wl,-dylib_file,/usr/lib/native/libavutil.dylib:${CMAKE_BINARY_DIR}/src/native/libavutil.dylib \
 -Wl,-dylib_file,/usr/lib/native/libcairo.dylib:${CMAKE_BINARY_DIR}/src/native/libcairo.dylib \
 -Wl,-dylib_file,/usr/lib/native/libdbus.dylib:${CMAKE_BINARY_DIR}/src/native/libdbus.dylib \

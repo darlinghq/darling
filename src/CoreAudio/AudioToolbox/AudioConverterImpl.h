@@ -6,7 +6,7 @@
 #include <fstream>
 
 extern "C" {
-#include <libavresample/avresample.h>
+#include <libswresample/swresample.h>
 #include <libavcodec/avcodec.h>
 }
 
@@ -53,7 +53,7 @@ private:
 	AVFrame* m_audioFrame = nullptr;
 	ConsumableBuffer m_audioFramePrebuf;
 
-	AVAudioResampleContext* m_resampler = nullptr;
+	SwrContext* m_resampler = nullptr;
 	UInt32 m_outBitRate = 128000;
 	bool m_encoderInitialized = false;
 	AVCodec* m_codecIn = nullptr;

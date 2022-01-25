@@ -43,7 +43,7 @@ add_framework(AudioToolbox
 		CoreServices
 		objc
 		avformat
-		avresample
+		swresample
 		avcodec
 		avutil
 )
