@@ -109,6 +109,8 @@ include_directories(AFTER
 	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/libxml2
 )
 
+add_subdirectory(external/libkqueue)
+
 # needs to come before libplatform because it generates mig headers that libplatform needs
 add_subdirectory(kernel)
 

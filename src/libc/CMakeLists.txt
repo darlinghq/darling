@@ -183,6 +183,7 @@ add_circular(system_c FAT OBJECTS
 	$<TARGET_OBJECTS:libc-locale>
 	$<TARGET_OBJECTS:libc-i386>
 	$<TARGET_OBJECTS:libc-x86_64>
+	$<TARGET_OBJECTS:kqueue>
 	$<TARGET_OBJECTS:libc-darwin>
 	$<TARGET_OBJECTS:libc-stdio_legacy>
 	$<TARGET_OBJECTS:libc-compat_legacy>

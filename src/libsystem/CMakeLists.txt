@@ -30,8 +30,15 @@ set_source_files_properties(init.c PROPERTIES
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libSystem.B.dylib")
 set(DYLIB_CURRENT_VERSION "1281.0.0")
-add_darling_library(system
-	${libsystem_sources}
+add_circular(system FAT
+	SOURCES
+		${libsystem_sources}
+	OBJECTS
+		$<TARGET_OBJECTS:kqueue>
+
+	SIBLINGS
+
+	system_malloc
 )
 
 function(libsystem_reexport)

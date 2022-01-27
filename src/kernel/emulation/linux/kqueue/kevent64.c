@@ -4,22 +4,16 @@
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <sys/errno.h>
-#include "../mach/lkm.h"
-#include <lkm/api.h>
+
+int __attribute__((weak)) __attribute__((visibility("default"))) kevent64_impl(int kq, ...) { return -ENOSYS; }
 
 long sys_kevent64(int kq, const struct kevent64_s *changelist, int nchanges,
 			struct kevent64_s *eventlist, int nevents, unsigned int flags,
 			const struct timespec *timeout)
 {
-	struct kevent64_args args = {
-		.fd = kq,
-		.changelist = changelist,
-		.nchanges = nchanges,
-		.eventlist = eventlist,
-		.nevents = nevents,
-		.flags = flags,
-		.timeout = timeout,
-	};
-	return lkm_call(NR_kevent64, &args);
+	int ret = kevent64_impl(kq, changelist, nchanges, eventlist, nevents, flags, timeout);
+	if (ret < 0)
+		ret = -errno;
+	return ret;
 }
 
