@@ -5,8 +5,6 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include "../../external/lkm/api.h"
-#include "lkm.h"
 #include "mach_traps.h"
 #include <mach/mach_init.h>
 #include "../ext/mremap.h"
@@ -17,40 +15,28 @@
 
 mach_port_name_t mach_reply_port_impl(void)
 {
-	__simple_printf("Got to mach_reply_port_impl\n");
 	unsigned int port_name;
 	if (dserver_rpc_mach_reply_port(&port_name) != 0) {
-		__simple_printf("mach_reply_port_impl RPC failed\n");
 		port_name = MACH_PORT_NULL;
 	}
-	__simple_printf("Returning from mach_reply_port_impl: %d\n", port_name);
-	//__simple_abort();
 	return port_name;
 }
 
 mach_port_name_t thread_self_trap_impl(void)
 {
-	__simple_printf("Got to thread_self_trap_impl\n");
 	unsigned int port_name;
 	if (dserver_rpc_thread_self_trap(&port_name) != 0) {
-		__simple_printf("thread_self_trap_impl RPC failed\n");
 		port_name = MACH_PORT_NULL;
 	}
-	__simple_printf("Returning from thread_self_trap_impl: %d\n", port_name);
-	//__simple_abort();
 	return port_name;
 }
 
 mach_port_name_t host_self_trap_impl(void)
 {
-	__simple_printf("Got to host_self_trap_impl\n");
 	unsigned int port_name;
 	if (dserver_rpc_host_self_trap(&port_name) != 0) {
-		__simple_printf("host_self_trap_impl RPC failed\n");
 		port_name = MACH_PORT_NULL;
 	}
-	__simple_printf("Returning from host_self_trap_impl: %d\n", port_name);
-	//__simple_abort();
 	return port_name;
 }
 
@@ -80,7 +66,7 @@ mach_msg_return_t mach_msg_overwrite_trap_impl(
 				mach_msg_header_t *rcv_msg,
 				mach_msg_size_t rcv_limit)
 {
-	int code = dserver_rpc_mach_msg_overwrite(msg, option, send_size, rcv_size, rcv_name, timeout, notify, rcv_msg, rcv_limit);
+	int code = dserver_rpc_mach_msg_overwrite(msg, option, send_size, rcv_size, rcv_name, timeout, notify, rcv_msg);
 
 	if (code < 0) {
 		__simple_printf("mach_msg_overwrite failed (internally): %d\n", code);
@@ -93,22 +79,27 @@ mach_msg_return_t mach_msg_overwrite_trap_impl(
 kern_return_t semaphore_signal_trap_impl(
 				mach_port_name_t signal_name)
 {
-	struct semaphore_signal_args args = {
-		.signal = signal_name
-	};
+	int code = dserver_rpc_semaphore_signal(signal_name);
 
-	return lkm_call(NR_semaphore_signal_trap, &args);
+	if (code < 0) {
+		__simple_printf("semaphore_signal failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 					      
 kern_return_t semaphore_signal_all_trap_impl(
 				mach_port_name_t signal_name)
 {
-	struct semaphore_signal_all_args args = {
-		.signal = signal_name
-	};
+	int code = dserver_rpc_semaphore_signal_all(signal_name);
 
-	return lkm_call(NR_semaphore_signal_all_trap,
-			&args);
+	if (code < 0) {
+		__simple_printf("semaphore_signal_all failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t semaphore_signal_thread_trap_impl(
@@ -122,24 +113,28 @@ kern_return_t semaphore_signal_thread_trap_impl(
 kern_return_t semaphore_wait_trap_impl(
 				mach_port_name_t wait_name)
 {
-	struct semaphore_wait_args args = {
-		.signal = wait_name
-	};
+	int code = dserver_rpc_semaphore_wait(wait_name);
 
-	return lkm_call(NR_semaphore_wait_trap, &args);
+	if (code < 0) {
+		__simple_printf("semaphore_wait failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t semaphore_wait_signal_trap_impl(
 				mach_port_name_t wait_name,
 				mach_port_name_t signal_name)
 {
-	struct semaphore_wait_signal_args args = {
-		.signal = signal_name,
-		.wait = wait_name
-	};
+	int code = dserver_rpc_semaphore_wait_signal(wait_name, signal_name);
 
-	return lkm_call(NR_semaphore_wait_signal_trap,
-			&args);
+	if (code < 0) {
+		__simple_printf("semaphore_wait_signal failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t semaphore_timedwait_trap_impl(
@@ -147,14 +142,14 @@ kern_return_t semaphore_timedwait_trap_impl(
 				unsigned int sec,
 				clock_res_t nsec)
 {
-	struct semaphore_timedwait_args args = {
-		.wait = wait_name,
-		.sec = sec,
-		.nsec = nsec
-	};
+	int code = dserver_rpc_semaphore_timedwait(wait_name, sec, nsec);
 
-	return lkm_call(NR_semaphore_timedwait_trap,
-			&args);
+	if (code < 0) {
+		__simple_printf("semaphore_timedwait failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t semaphore_timedwait_signal_trap_impl(
@@ -163,15 +158,14 @@ kern_return_t semaphore_timedwait_signal_trap_impl(
 				unsigned int sec,
 				clock_res_t nsec)
 {
-	struct semaphore_timedwait_signal_args args = {
-		.wait = wait_name,
-		.signal = signal_name,
-		.sec = sec,
-		.nsec = nsec
-	};
+	int code = dserver_rpc_semaphore_timedwait_signal(wait_name, signal_name, sec, nsec);
 
-	return lkm_call(NR_semaphore_timedwait_signal_trap,
-			&args);
+	if (code < 0) {
+		__simple_printf("semaphore_timedwait_signal failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t clock_sleep_trap_impl(
@@ -193,19 +187,14 @@ kern_return_t _kernelrpc_mach_vm_allocate_trap_impl(
 {
 	if (target != 0 && target != mach_task_self())
 	{
-		struct mach_vm_allocate_args args = {
-			.target = target,
-			.address = (uint64_t) *addr,
-			.size = size,
-			.flags = flags
-		};
+		int code = dserver_rpc_mach_vm_allocate(target, addr, size, flags);
 
-		int rv = lkm_call(NR__kernelrpc_mach_vm_allocate_trap, &args);
+		if (code < 0) {
+			__simple_printf("mach_vm_allocate failed (internally): %d\n", code);
+			__simple_abort();
+		}
 
-		if (rv == KERN_SUCCESS)
-			*addr = args.address;
-
-		return rv;
+		return code;
 	}
 	else
 	{
@@ -224,13 +213,14 @@ kern_return_t _kernelrpc_mach_vm_deallocate_trap_impl(
 
 	if (target != 0 && target != mach_task_self())
 	{
-		struct mach_vm_deallocate_args args = {
-			.target = target,
-			.address = (uint64_t) address,
-			.size = size,
-		};
+		int code = dserver_rpc_mach_vm_deallocate(target, address, size);
 
-		return lkm_call(NR__kernelrpc_mach_vm_deallocate_trap, &args);
+		if (code < 0) {
+			__simple_printf("mach_vm_deallocate failed (internally): %d\n", code);
+			__simple_abort();
+		}
+
+		return code;
 	}
 	else
 	{
@@ -246,7 +236,7 @@ kern_return_t _kernelrpc_mach_vm_deallocate_trap_impl(
 			return KERN_SUCCESS;
 		}
 
-		ret = munmap(address, size);
+		ret = munmap((void*)address, size);
 
 		if (ret == -1)
 			return KERN_FAILURE;
@@ -279,7 +269,7 @@ kern_return_t _kernelrpc_mach_vm_protect_trap_impl(
 	if (new_protection & VM_PROT_EXECUTE)
 		prot |= PROT_EXEC;
 
-	ret = mprotect(address, size, prot);
+	ret = mprotect((void*)address, size, prot);
 	if (ret == -1)
 		return KERN_FAILURE;
 
@@ -313,9 +303,9 @@ kern_return_t _kernelrpc_mach_vm_map_trap_impl(
 	if (!(flags & VM_FLAGS_ANYWHERE))
 		posix_flags |= MAP_FIXED;
 	if ((flags >> 24) == VM_MEMORY_REALLOC)
-		addr = __linux_mremap(((char*)*address) - 0x1000, 0x1000, 0x1000 + size, 0, NULL);
+		addr = (void*)__linux_mremap(((char*)*address) - 0x1000, 0x1000, 0x1000 + size, 0, NULL);
 	else
-		addr = mmap(*address, size, prot, posix_flags, -1, 0);
+		addr = mmap((void*)*address, size, prot, posix_flags, -1, 0);
 	
 	if (addr == MAP_FAILED)
 	{
@@ -332,7 +322,7 @@ kern_return_t _kernelrpc_mach_vm_map_trap_impl(
 		// This may not work for some crazy masks. Consider using __builtin_clz().
 		boundary = mask + 1;
 		
-		iaddr = mmap(*address, size + boundary, prot, posix_flags, -1, 0);
+		iaddr = (uintptr_t)mmap((void*)*address, size + boundary, prot, posix_flags, -1, 0);
 		if (iaddr == (uintptr_t) MAP_FAILED)
 			return KERN_FAILURE;
 		
@@ -340,14 +330,14 @@ kern_return_t _kernelrpc_mach_vm_map_trap_impl(
 		diff = q - iaddr;
 		
 		if (diff > 0)
-			munmap(iaddr, diff);
+			munmap((void*)iaddr, diff);
 		if (boundary - diff > 0)
 			munmap((void*) (q + size), boundary - diff);
 		
 		addr = (void*) q;
 	}
 
-	*address = addr;
+	*address = (uintptr_t)addr;
 	return KERN_SUCCESS;
 }
 
@@ -357,17 +347,14 @@ kern_return_t _kernelrpc_mach_port_allocate_trap_impl(
 				mach_port_name_t *name
 )
 {
-	kern_return_t ret;
+	int code = dserver_rpc_mach_port_allocate(target, right, name);
 
-	struct mach_port_allocate_args args = {
-		.task_right_name = target,
-		.right_type = right,
-		.out_right_name = name
-	};
+	if (code < 0) {
+		__simple_printf("mach_port_allocate failed (internally): %d\n", code);
+		__simple_abort();
+	}
 
-	ret = lkm_call(NR__kernelrpc_mach_port_allocate,
-			&args);
-	return ret;
+	return code;
 }
 
 
@@ -376,13 +363,14 @@ kern_return_t _kernelrpc_mach_port_destroy_trap_impl(
 				mach_port_name_t name
 )
 {
-	struct mach_port_destroy_args args = {
-		.task_right_name = target,
-		.port_right_name = name
-	};
+	int code = dserver_rpc_mach_port_destruct(target, name, 0, 0);
 
-	return lkm_call(NR__kernelrpc_mach_port_destroy,
-			&args);
+	if (code < 0) {
+		__simple_printf("mach_port_destroy failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_deallocate_trap_impl(
@@ -407,14 +395,14 @@ kern_return_t _kernelrpc_mach_port_mod_refs_trap_impl(
 				mach_port_delta_t delta
 )
 {
-	struct mach_port_mod_refs_args args = {
-		.task_right_name = target,
-		.port_right_name = name,
-		.right_type = right,
-		.delta = delta
-	};
+	int code = dserver_rpc_mach_port_mod_refs(target, name, right, delta);
 
-	return lkm_call(NR__kernelrpc_mach_port_mod_refs, &args);
+	if (code < 0) {
+		__simple_printf("mach_port_deallocate failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_move_member_trap_impl(
@@ -423,12 +411,14 @@ kern_return_t _kernelrpc_mach_port_move_member_trap_impl(
 				mach_port_name_t after
 )
 {
-	struct mach_port_move_member_args args = {
-		.task_right_name = target,
-		.port_right_name = member,
-		.pset_right_name = after
-	};
-	return lkm_call(NR__kernelrpc_mach_port_move_member_trap, &args);
+	int code = dserver_rpc_mach_port_move_member(target, member, after);
+
+	if (code < 0) {
+		__simple_printf("mach_port_move_member failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_insert_right_trap_impl(
@@ -438,13 +428,14 @@ kern_return_t _kernelrpc_mach_port_insert_right_trap_impl(
 				mach_msg_type_name_t polyPoly
 )
 {
-	struct mach_port_insert_right_args args = {
-		.task_right_name = target,
-		.port_name = name,
-		.right_name = poly,
-		.right_type = polyPoly
-	};
-	return lkm_call(NR__kernelrpc_mach_port_insert_right_trap, &args);
+	int code = dserver_rpc_mach_port_insert_right(target, name, poly, polyPoly);
+
+	if (code < 0) {
+		__simple_printf("mach_port_insert_right failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_insert_member_trap_impl(
@@ -453,12 +444,14 @@ kern_return_t _kernelrpc_mach_port_insert_member_trap_impl(
 				mach_port_name_t pset
 )
 {
-	struct mach_port_insert_member_args args = {
-		.task_right_name = target,
-		.port_right_name = name,
-		.pset_right_name = pset
-	};
-	return lkm_call(NR__kernelrpc_mach_port_insert_member_trap, &args);
+	int code = dserver_rpc_mach_port_insert_member(target, name, pset);
+
+	if (code < 0) {
+		__simple_printf("mach_port_insert_member failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_extract_member_trap_impl(
@@ -467,12 +460,14 @@ kern_return_t _kernelrpc_mach_port_extract_member_trap_impl(
 				mach_port_name_t pset
 )
 {
-	struct mach_port_extract_member_args args = {
-		.task_right_name = target,
-		.port_right_name = name,
-		.pset_right_name = pset
-	};
-	return lkm_call(NR__kernelrpc_mach_port_extract_member_trap, &args);
+	int code = dserver_rpc_mach_port_extract_member(target, name, pset);
+
+	if (code < 0) {
+		__simple_printf("mach_port_extract_member failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_construct_trap_impl(
@@ -482,13 +477,14 @@ kern_return_t _kernelrpc_mach_port_construct_trap_impl(
 				mach_port_name_t *name
 )
 {
-	struct mach_port_construct_args args = {
-		.task_right_name = target,
-		.options = options,
-		.context = context,
-		.port_right_name_out = name,
-	};
-	return lkm_call(NR__kernelrpc_mach_port_construct_trap, &args);
+	int code = dserver_rpc_mach_port_construct(target, options, context, name);
+
+	if (code < 0) {
+		__simple_printf("mach_port_construct failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_destruct_trap_impl(
@@ -498,13 +494,14 @@ kern_return_t _kernelrpc_mach_port_destruct_trap_impl(
 				uint64_t guard
 )
 {
-	struct mach_port_destruct_args args = {
-		.task_right_name = target,
-		.port_right_name = name,
-		.srdelta = srdelta,
-		.guard = guard,
-	};
-	return lkm_call(NR__kernelrpc_mach_port_destruct_trap, &args);
+	int code = dserver_rpc_mach_port_destruct(target, name, srdelta, guard);
+
+	if (code < 0) {
+		__simple_printf("mach_port_destruct failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_guard_trap_impl(
@@ -514,13 +511,14 @@ kern_return_t _kernelrpc_mach_port_guard_trap_impl(
 				boolean_t strict
 )
 {
-	struct mach_port_guard_args args = {
-		.task_right_name = target,
-		.port_right_name = name,
-		.guard = guard,
-		.strict = strict,
-	};
-	return lkm_call(NR__kernelrpc_mach_port_guard_trap, &args);
+	int code = dserver_rpc_mach_port_guard(target, name, guard, strict);
+
+	if (code < 0) {
+		__simple_printf("mach_port_guard failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t _kernelrpc_mach_port_unguard_trap_impl(
@@ -529,17 +527,23 @@ kern_return_t _kernelrpc_mach_port_unguard_trap_impl(
 				uint64_t guard
 )
 {
-	struct mach_port_unguard_args args = {
-		.task_right_name = target,
-		.port_right_name = name,
-		.guard = guard,
-	};
-	return lkm_call(NR__kernelrpc_mach_port_unguard_trap, &args);
+	int code = dserver_rpc_mach_port_unguard(target, name, guard);
+
+	if (code < 0) {
+		__simple_printf("mach_port_unguard failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t thread_get_special_reply_port_impl(void)
 {
-	return lkm_call(NR_thread_get_special_reply_port, 0);
+	unsigned int port_name;
+	if (dserver_rpc_thread_get_special_reply_port(&port_name) != 0) {
+		port_name = MACH_PORT_NULL;
+	}
+	return port_name;
 };
 
 kern_return_t _kernelrpc_mach_port_request_notification_impl(
@@ -552,16 +556,14 @@ kern_return_t _kernelrpc_mach_port_request_notification_impl(
 	mach_port_name_t* previous
 )
 {
-	struct mach_port_request_notification_args args = {
-		.task_right_name = task,
-		.port_right_name = name,
-		.message_id = msgid,
-		.make_send_count = sync,
-		.notification_destination_port_name = notify,
-		.message_type = notifyPoly,
-		.previous_destination_port_name_out = previous,
-	};
-	return lkm_call(NR__kernelrpc_mach_port_request_notification_trap, &args);
+	int code = dserver_rpc_mach_port_request_notification(task, name, msgid, sync, notify, notifyPoly, previous);
+
+	if (code < 0) {
+		__simple_printf("mach_port_request_notification failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 };
 
 kern_return_t _kernelrpc_mach_port_get_attributes_impl(
@@ -572,14 +574,14 @@ kern_return_t _kernelrpc_mach_port_get_attributes_impl(
 	mach_msg_type_number_t* port_info_outCnt
 )
 {
-	struct mach_port_get_attributes_args args = {
-		.task_right_name = target,
-		.port_right_name = name,
-		.flavor = flavor,
-		.info_out = port_info_out,
-		.count_out = port_info_outCnt,
-	};
-	return lkm_call(NR__kernelrpc_mach_port_get_attributes_trap, &args);
+	int code = dserver_rpc_mach_port_get_attributes(target, name, flavor, port_info_out, port_info_outCnt);
+
+	if (code < 0) {
+		__simple_printf("mach_port_get_attributes failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 };
 
 kern_return_t _kernelrpc_mach_port_type_impl(
@@ -588,12 +590,14 @@ kern_return_t _kernelrpc_mach_port_type_impl(
 	mach_port_type_t* ptype
 )
 {
-	struct mach_port_type_args args = {
-		.task_right_name = task,
-		.port_right_name = name,
-		.port_type_out = ptype,
-	};
-	return lkm_call(NR__kernelrpc_mach_port_type_trap, &args);
+	int code = dserver_rpc_mach_port_type(task, name, ptype);
+
+	if (code < 0) {
+		__simple_printf("mach_port_type failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 };
 
 kern_return_t macx_swapon_impl(
@@ -670,14 +674,10 @@ kern_return_t syscall_thread_switch_impl(
 
 mach_port_name_t task_self_trap_impl(void)
 {
-	__simple_printf("Got to task_self_trap_impl\n");
 	unsigned int port_name;
 	if (dserver_rpc_task_self_trap(&port_name) != 0) {
-		__simple_printf("task_self_trap_impl RPC failed\n");
 		port_name = MACH_PORT_NULL;
 	}
-	__simple_printf("Returning from task_self_trap_impl: %d\n", port_name);
-	//__simple_abort();
 	return port_name;
 }
 
@@ -690,12 +690,14 @@ kern_return_t task_for_pid_impl(
 				int pid,
 				mach_port_name_t *t)
 {
-	struct task_for_pid args = {
-		.pid = pid,
-		.task_port = t,
-	};
+	int code = dserver_rpc_task_for_pid(target_tport, pid, t);
 
-	return lkm_call(NR_task_for_pid_trap, &args);
+	if (code < 0) {
+		__simple_printf("task_for_pid failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t task_name_for_pid_impl(
@@ -703,29 +705,28 @@ kern_return_t task_name_for_pid_impl(
 				int pid,
 				mach_port_name_t *tn)
 {
-	kern_return_t rv;
-	struct task_name_for_pid args = {
-		.task_port = target_tport,
-		.pid = pid
-	};
+	int code = dserver_rpc_task_name_for_pid(target_tport, pid, tn);
 
-	rv = lkm_call(NR_task_name_for_pid_trap, &args);
-	if (rv == KERN_SUCCESS)
-		*tn = args.name_out;
+	if (code < 0) {
+		__simple_printf("task_name_for_pid failed (internally): %d\n", code);
+		__simple_abort();
+	}
 
-	return rv;
+	return code;
 }
 
 kern_return_t pid_for_task_impl(
 				mach_port_name_t t,
 				int *x)
 {
-	struct pid_for_task args = {
-		.task_port = t,
-		.pid = x,
-	};
+	int code = dserver_rpc_pid_for_task(t, x);
 
-	return lkm_call(NR_pid_for_task_trap, &args);
+	if (code < 0) {
+		__simple_printf("pid_for_task failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t bsdthread_terminate_trap_impl(
@@ -734,14 +735,8 @@ kern_return_t bsdthread_terminate_trap_impl(
 				mach_port_name_t thread,
 				mach_port_name_t sem)
 {
-	struct bsdthread_terminate_args args = {
-		.stackaddr = stackaddr,
-		.freesize = freesize,
-		.port = thread,
-		.sem = sem
-	};
-
-	return lkm_call(NR_bsdthread_terminate_trap, &args);
+	UNIMPLEMENTED_TRAP();
+	return KERN_FAILURE;
 }
 
 
@@ -770,35 +765,46 @@ kern_return_t mach_generate_activity_id_impl(mach_port_name_t task, int i, uint6
 
 mach_port_name_t mk_timer_create_impl(void)
 {
-	return lkm_call(NR_mk_timer_create_trap, NULL);
+	unsigned int port_name;
+	if (dserver_rpc_mk_timer_create(&port_name) < 0) {
+		port_name = MACH_PORT_NULL;
+	}
+	return port_name;
 }
 
 kern_return_t mk_timer_destroy_impl(mach_port_name_t name)
 {
-	struct mk_timer_destroy_args args = {
-		.timer_port = name
-	};
+	int code = dserver_rpc_mk_timer_destroy(name);
 
-	return lkm_call(NR_mk_timer_destroy_trap, &args);
+	if (code < 0) {
+		__simple_printf("mk_timer_destroy failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t mk_timer_arm_impl(mach_port_name_t name, uint64_t expire_time)
 {
-	struct mk_timer_arm_args args = {
-		.timer_port = name,
-		.expire_time = expire_time,
-	};
+	int code = dserver_rpc_mk_timer_arm(name, expire_time);
 
-	return lkm_call(NR_mk_timer_arm_trap, &args);
+	if (code < 0) {
+		__simple_printf("mk_timer_arm failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 
 kern_return_t mk_timer_cancel_impl(mach_port_name_t name, uint64_t *result_time)
 {
-	struct mk_timer_cancel_args args = {
-		.timer_port = name,
-		.result_time = result_time,
-	};
+	int code = dserver_rpc_mk_timer_cancel(name, result_time);
 
-	return lkm_call(NR_mk_timer_cancel_trap, &args);
+	if (code < 0) {
+		__simple_printf("mk_timer_cancel failed (internally): %d\n", code);
+		__simple_abort();
+	}
+
+	return code;
 }
 

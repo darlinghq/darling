@@ -50,6 +50,9 @@ struct darwin_sched_param {
 #define DTHREAD_TSD_SLOT_PTR_MUNGE          7
 #define DTHREAD_TSD_SLOT_MACH_SPECIAL_REPLY 8
 
+// see src/kernel/emulation/linux/mach/lkm.h
+#define DTHREAD_TSD_SLOT_DSERVER_RPC_FD     11
+
 #define DTHREAD_START_TSD_BASE_SET 0x10000000
 
 #define DTHREAD_CANCEL_ENABLE   0x01

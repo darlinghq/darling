@@ -466,6 +466,16 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 		exit(1);
 	}
 
+	int fd_flags = fcntl(lr->kernfd, F_GETFD);
+	if (fd_flags < 0) {
+		fprintf(stderr, "Failed to read socket FD flags\n");
+		exit(1);
+	}
+	if (fcntl(lr->kernfd, F_SETFD, fd_flags | FD_CLOEXEC) < 0) {
+		fprintf(stderr, "Failed to set close-on-exec flag on socket FD\n");
+		exit(1);
+	}
+
 	sa_family_t family = AF_UNIX;
 	if (bind(lr->kernfd, (const struct sockaddr*)&family, sizeof(family)) < 0) {
 		fprintf(stderr, "Failed to autobind socket\n");

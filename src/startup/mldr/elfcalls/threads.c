@@ -29,6 +29,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/syscall.h>
 #include <setjmp.h>
 #include <sys/syscall.h>
+#include <sys/socket.h>
+#include <stdio.h>
+#include <fcntl.h>
 
 #include "dthreads.h"
 
@@ -72,12 +75,13 @@ static void* darling_thread_entry(void* p);
 static dthread_t dthread_structure_init(dthread_t dthread, size_t guard_size, void* stack_addr, size_t stack_size, void* base_addr, size_t total_size) {
 	// the pthread signature is the address of the pthread XORed with the "pointer munge" token passed in by the kernel
 	// since the LKM doesn't pass in a token, it's always zero, so the signature is equal to just the address
-	dthread->sig = dthread;
+	dthread->sig = (uintptr_t)dthread;
 
 	dthread->tsd[DTHREAD_TSD_SLOT_PTHREAD_SELF] = dthread;
 	dthread->tsd[DTHREAD_TSD_SLOT_ERRNO] = &dthread->err_no;
-	dthread->tsd[DTHREAD_TSD_SLOT_PTHREAD_QOS_CLASS] = DTHREAD_DEFAULT_PRIORITY;
+	dthread->tsd[DTHREAD_TSD_SLOT_PTHREAD_QOS_CLASS] = (void*)(uintptr_t)(DTHREAD_DEFAULT_PRIORITY);
 	dthread->tsd[DTHREAD_TSD_SLOT_PTR_MUNGE] = 0;
+	dthread->tsd[DTHREAD_TSD_SLOT_DSERVER_RPC_FD] = (void*)(intptr_t)-1;
 	dthread->tl_has_custom_stack = 0;
 	dthread->lock = (darwin_os_unfair_lock){0};
 
@@ -145,7 +149,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 		.pth_obj_size     = pth_obj_size,
 		.pth              = NULL, // set later on
 		.callbacks        = callbacks,
-		.stack_addr       = NULL, // set later on
+		.stack_addr       = 0, // set later on
 		.is_workqueue     = real_entry_point == 0, // our `workq_kernreturn` sets `real_entry_point` to NULL; `bsdthread_create` actually passes a value
 	};
 	pthread_attr_t attr;
@@ -160,7 +164,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	//
 	// otherwise, allocate them ourselves
 	if (pth == NULL || args.is_workqueue) {
-		pth = dthread_structure_allocate(stack_size, DEFAULT_DTHREAD_GUARD_SIZE, &args.stack_addr);
+		pth = dthread_structure_allocate(stack_size, DEFAULT_DTHREAD_GUARD_SIZE, (void**)&args.stack_addr);
 	} else if (!args.is_workqueue) {
 		// `arg2` is `stack_addr` for normal threads
 		args.stack_addr = arg2;
@@ -199,6 +203,35 @@ static void* darling_thread_entry(void* p)
 
 	dthread_t dthread = args.pth;
 	uintptr_t* flags = args.is_workqueue ? &args.arg2 : &args.arg3;
+
+	// create a new dserver RPC socket
+	int new_rpc_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+	if (new_rpc_fd < 0) {
+		// we can't do anything if we don't get our own separate connection to darlingserver
+		fprintf(stderr, "Failed to create socket\n");
+		abort();
+	}
+
+	// make it close-on-exec
+	int fd_flags = fcntl(new_rpc_fd, F_GETFD);
+	if (fd_flags < 0) {
+		fprintf(stderr, "Failed to read socket FD flags\n");
+		exit(1);
+	}
+	if (fcntl(new_rpc_fd, F_SETFD, fd_flags | FD_CLOEXEC) < 0) {
+		fprintf(stderr, "Failed to set close-on-exec flag on socket FD\n");
+		exit(1);
+	}
+
+	// auto-bind it
+	sa_family_t family = AF_UNIX;
+	if (bind(new_rpc_fd, (const struct sockaddr*)&family, sizeof(family)) < 0) {
+		fprintf(stderr, "Failed to autobind socket\n");
+		exit(1);
+	}
+
+	// the socket is ready; assign it now
+	dthread->tsd[DTHREAD_TSD_SLOT_DSERVER_RPC_FD] = (void*)(intptr_t)new_rpc_fd;
 
 	// checkin with darlingserver on this new thread
 	if (dserver_rpc_checkin(false) < 0) {
