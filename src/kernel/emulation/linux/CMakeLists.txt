@@ -268,6 +268,7 @@ set(emulation_sources
 	ext/fanotify.c
 	ext/for-xtrace.c
 	ext/for-libelfloader.c
+	ext/for-libkqueue.c
 	bsdthread/bsdthread_register.c
 	bsdthread/bsdthread_create.c
 	bsdthread/bsdthread_ctl.c

@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <pwd.h>
 
 #include <mach-o/loader.h>
 #include <elf.h>
@@ -25,6 +26,7 @@
 
 struct vm_area {
 	const char* filename;
+	size_t filename_length;
 	uintptr_t memory_address;
 	size_t memory_size;
 	size_t file_offset;
@@ -83,9 +85,12 @@ struct coredump_params {
 	struct thread_info* thread_infos;
 	size_t thread_info_count;
 	size_t written;
+	const char* prefix;
+	size_t prefix_length;
 };
 
 static char default_output_name[4096];
+static char default_prefix[4096];
 
 static uint64_t round_up_pow2(uint64_t number, uint64_t multiple) {
 	return (number + (multiple - 1)) & -multiple;
@@ -121,7 +126,29 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	const char* homedir = NULL;
+
+	if (getenv("HOME")) {
+		homedir = getenv("HOME");
+	} else {
+		struct passwd* pwd = getpwuid(getuid());
+		homedir = pwd->pw_dir;
+	}
+
+	if (snprintf(default_prefix, sizeof(default_prefix), "%s/.darling", homedir) < 0) {
+		perror("snprintf");
+		return 1;
+	}
+
 	struct coredump_params cprm = {0};
+
+	cprm.prefix = getenv("DPREFIX");
+
+	if (!cprm.prefix) {
+		cprm.prefix = default_prefix;
+	}
+
+	cprm.prefix_length = strlen(cprm.prefix);
 
 	cprm.input_corefile = open(argv[1], O_RDONLY);
 	if (cprm.input_corefile < 0) {
@@ -308,6 +335,7 @@ int main(int argc, char** argv) {
 					}
 
 					vm_area->filename = filename;
+					vm_area->filename_length = strlen(vm_area->filename);
 					vm_area->file_offset = entry->offset * cprm.nt_file->page_size;
 					vm_area->file_size = entry->end - entry->start;
 
@@ -324,6 +352,7 @@ int main(int argc, char** argv) {
 			} else {
 				// contents contained within this corefile
 				vm_area->filename = NULL;
+				vm_area->filename_length = 0;
 				vm_area->file_size = program_header->p_filesz;
 			}
 
@@ -360,6 +389,7 @@ int main(int argc, char** argv) {
 		struct vm_area* vm_area = &cprm.vm_areas[vm_area_index++];
 
 		vm_area->filename = filename;
+		vm_area->filename_length = strlen(vm_area->filename);
 		vm_area->memory_address = entry->start;
 		vm_area->memory_size = entry->end - entry->start;
 		vm_area->file_size = vm_area->memory_size;
@@ -689,7 +719,14 @@ void macho_coredump(struct coredump_params* cprm)
 				exit(EXIT_FAILURE);
 		} else {
 			if (vma->filename) {
-				int fd = open(vma->filename, O_RDONLY);
+				int fd = -1;
+				fd = open(vma->filename, O_RDONLY);
+				if (fd < 0 && vma->filename_length >= cprm->prefix_length && strncmp(vma->filename, cprm->prefix, cprm->prefix_length) == 0) {
+					char* filename = malloc(sizeof("/usr/local/libexec/darling/") + (vma->filename_length - cprm->prefix_length));
+					sprintf(filename, "%s/%s", "/usr/local/libexec/darling", &vma->filename[cprm->prefix_length]);
+					fd = open(filename, O_RDONLY);
+					free(filename);
+				}
 				if (fd < 0) {
 					fprintf(stderr, "Failed to open %s: %d (%s)\n", vma->filename, errno, strerror(errno));
 					exit(EXIT_FAILURE);
