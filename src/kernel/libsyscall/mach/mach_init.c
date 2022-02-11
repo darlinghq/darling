@@ -63,7 +63,7 @@
 #include "externs.h"
 
 #ifdef DARLING
-#include <darling/lkm/api.h>
+#include <darlingserver/rpc.h>
 #endif
 
 mach_port_t bootstrap_port = MACH_PORT_NULL;
@@ -99,10 +99,6 @@ static void mach_init_doit(void);
 
 extern void _pthread_set_self(void *);
 extern void _init_cpu_capabilities(void);
-
-#ifdef DARLING
-extern void lkm_call(int nr, void* arg);
-#endif
 
 kern_return_t
 host_page_size(__unused host_t host, vm_size_t *out_page_size)
@@ -148,7 +144,9 @@ _mach_fork_child(void)
 
 #ifdef DARLING
 int _mach_fork_parent(void) {
-	lkm_call(NR_fork_wait_for_child, NULL);
+	if (dserver_rpc_fork_wait_for_child() < 0) {
+		__builtin_unreachable();
+	}
 	return 0;
 };
 #endif

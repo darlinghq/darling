@@ -9,6 +9,8 @@
 #include "elfcalls.h"
 #include "threads.h"
 #include <sys/un.h>
+#include <sys/socket.h>
+#include <fcntl.h>
 
 static void* dlopen_simple(const char* name)
 {
@@ -58,6 +60,33 @@ static const void* __dserver_socket_address(void) {
 	return &__dserver_socket_address_data;
 };
 
+static int __dserver_new_socket(void) {
+	int new_rpc_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+	if (new_rpc_fd < 0) {
+		return -1;
+	}
+
+	// make it close-on-exec
+	int fd_flags = fcntl(new_rpc_fd, F_GETFD);
+	if (fd_flags < 0) {
+		close(new_rpc_fd);
+		return -1;
+	}
+	if (fcntl(new_rpc_fd, F_SETFD, fd_flags | FD_CLOEXEC) < 0) {
+		close(new_rpc_fd);
+		return -1;
+	}
+
+	// auto-bind it
+	sa_family_t family = AF_UNIX;
+	if (bind(new_rpc_fd, (const struct sockaddr*)&family, sizeof(family)) < 0) {
+		close(new_rpc_fd);
+		return -1;
+	}
+
+	return new_rpc_fd;
+};
+
 void elfcalls_make(struct elf_calls* calls)
 {
 	calls->dlopen = dlopen_simple;
@@ -89,4 +118,5 @@ void elfcalls_make(struct elf_calls* calls)
 	*((void**)&calls->shm_unlink) = shm_unlink;
 
 	calls->dserver_socket_address = __dserver_socket_address;
+	calls->dserver_new_socket = __dserver_new_socket;
 }

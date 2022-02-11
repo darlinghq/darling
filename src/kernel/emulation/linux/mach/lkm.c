@@ -21,7 +21,7 @@ extern int sys_fcntl(int, int, int);
 extern _libkernel_functions_t _libkernel_functions;
 
 
-static int driver_fd = -1;
+int driver_fd = -1;
 
 VISIBLE
 struct elf_calls* _elfcalls;
@@ -122,6 +122,11 @@ int mach_driver_get_dyld_fd(void)
 {
 	return driver_fd;
 }
+
+__attribute__((visibility("default")))
+void mach_driver_set_dyld_fd(int fd) {
+	driver_fd = fd;
+};
 
 VISIBLE
 int mach_driver_get_fd(void) {

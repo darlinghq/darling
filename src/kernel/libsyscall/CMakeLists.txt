@@ -20,6 +20,10 @@ add_definitions(-DIOKIT_ALL_IPC=1 -DIOKIT=1)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/external/lkm/osfmk)
 
+include_directories(
+	"${CMAKE_BINARY_DIR}/src/external/darlingserver/include"
+)
+
 set(LIBSYSCALL_MIGS
 	mach/clock
 	mach/clock_priv

@@ -126,6 +126,7 @@ static int sLastErrorNo;
 #ifdef DARLING
 extern "C" int mach_driver_get_dyld_fd(void);
 extern "C" void* elfcalls_get_pointer(void);
+extern "C" void mach_driver_set_dyld_fd(int fd);
 #endif
 
 // In 10.3.x and earlier all the NSObjectFileImage API's were implemeneted in libSystem.dylib
@@ -262,6 +263,7 @@ static const struct dyld_func dyld_funcs[] = {
 #ifdef DARLING
 	{"__dyld_get_mach_driver_fd", (void*)mach_driver_get_dyld_fd },
 	{"__dyld_get_elfcalls", (void*)elfcalls_get_pointer },
+	{"__dyld_set_mach_driver_fd", (void*)mach_driver_set_dyld_fd },
 #endif
 #pragma clang diagnostic pop
 #endif //DEPRECATED_APIS_SUPPORTED

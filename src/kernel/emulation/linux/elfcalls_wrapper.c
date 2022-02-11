@@ -79,3 +79,7 @@ int native_dlclose(void* module)
 const void* __dserver_socket_address(void) {
 	return elfcalls()->dserver_socket_address();
 };
+
+int __dserver_new_socket(void) {
+	return elfcalls()->dserver_new_socket();
+};

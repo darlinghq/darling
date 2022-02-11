@@ -52,6 +52,7 @@ struct elf_calls
 
 	// darlingserver RPC info
 	const void* (*dserver_socket_address)(void);
+	int (*dserver_new_socket)(void);
 };
 
 #endif
