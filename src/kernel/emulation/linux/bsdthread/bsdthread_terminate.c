@@ -3,7 +3,6 @@
 #include "../base.h"
 #include "../errno.h"
 #include <sys/errno.h>
-#include "../../../../external/lkm/api.h"
 #include <linux-syscalls/linux.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -24,10 +23,8 @@ long sys_bsdthread_terminate(void* stackaddr, unsigned long freesize, int port,
 	// Implemented in libdyld
 	extern int __darling_thread_terminate(void* stackaddr,
 			unsigned long freesize, unsigned long pthobj_size);
-	extern int lkm_call(int, void*);
 
 	semaphore_signal_trap_impl(join_sem);
-	lkm_call(NR_thread_death_announce, 0);
 
 	return __darling_thread_terminate(stackaddr, freesize, pthread_obj_size);
 #else

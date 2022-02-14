@@ -305,6 +305,13 @@ static void* darling_thread_entry(void* p)
 int __darling_thread_terminate(void* stackaddr,
 				unsigned long freesize, unsigned long pthobj_size)
 {
+	if (dserver_rpc_checkout(-1, false) < 0) {
+		// failing to checkout is not fatal.
+		// it's not ideal, but it's not fatal.
+		#define CHECKOUT_FAILURE_MESSAGE "Failed to checkout"
+		dserver_rpc_kprintf(CHECKOUT_FAILURE_MESSAGE, sizeof(CHECKOUT_FAILURE_MESSAGE) - 1);
+	}
+
 	if (getpid() == syscall(SYS_gettid))
 	{
 		// dispatch_main() calls pthread_exit(NULL) on the main thread,
@@ -315,15 +322,6 @@ int __darling_thread_terminate(void* stackaddr,
 		
 		while (1)
 			sigsuspend(&mask);
-	}
-
-	// only threads that aren't the main thread should checkout
-	// the main thread will automatically checkout when the process dies
-	if (dserver_rpc_checkout(-1, false) < 0) {
-		// failing to checkout is not fatal.
-		// it's not ideal, but it's not fatal.
-		#define CHECKOUT_FAILURE_MESSAGE "Failed to checkout"
-		dserver_rpc_kprintf(CHECKOUT_FAILURE_MESSAGE, sizeof(CHECKOUT_FAILURE_MESSAGE) - 1);
 	}
 
 	t_freeaddr = stackaddr;

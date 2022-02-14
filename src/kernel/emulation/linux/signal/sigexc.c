@@ -235,11 +235,6 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 		return;
 	}
 
-	struct sigprocess_args sigprocess;
-	sigprocess.signum = bsd_signum;
-
-	memcpy(&sigprocess.linux_siginfo, info, sizeof(*info));
-
 #ifdef __x86_64__
 	kern_printf("sigexc: have RIP 0x%llx\n", ctxt->uc_mcontext.gregs.rip);
 #endif
@@ -254,20 +249,26 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	x86_float_state32_t fstate;
 #endif
 
-	sigprocess.state.tstate = &tstate;
-	sigprocess.state.fstate = &fstate;
+	struct thread_state state = {
+		.tstate = &tstate,
+		.fstate = &fstate,
+	};
 
-	state_to_kernel(ctxt, &sigprocess.state);
-	lkm_call(NR_sigprocess, &sigprocess);
-	state_from_kernel(ctxt, &sigprocess.state);
+	state_to_kernel(ctxt, &state);
+	int ret = dserver_rpc_sigprocess(bsd_signum, linux_signum, info->si_pid, info->si_code, info->si_addr, &tstate, &fstate, &bsd_signum);
+	if (ret < 0) {
+		__simple_printf("sigprocess failed internally: %d", ret);
+		__simple_abort();
+	}
+	state_from_kernel(ctxt, &state);
 
-	if (!sigprocess.signum)
+	if (!bsd_signum)
 	{
 		kern_printf("sigexc: drop signal\n");
 		return;
 	}
 
-	linux_signum = signum_bsd_to_linux(sigprocess.signum);
+	linux_signum = signum_bsd_to_linux(bsd_signum);
 
 	if (sig_handlers[linux_signum] != SIG_IGN)
 	{
@@ -289,7 +290,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 		}
 		else
 		{
-			if (sigprocess.signum == SIGTSTP || sigprocess.signum == SIGSTOP)
+			if (bsd_signum == SIGTSTP || bsd_signum == SIGSTOP)
 			{
 				kern_printf("sigexc: emulating SIGTSTP/SIGSTOP\n");
 				LINUX_SYSCALL(__NR_kill, 0, LINUX_SIGSTOP);

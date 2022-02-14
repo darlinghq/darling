@@ -34,6 +34,17 @@ struct linux_sockaddr_un {
 
 #define dserver_rpc_hooks_get_tid() ((pid_t)LINUX_SYSCALL(__NR_gettid))
 
+#if __x86_64__
+	#define dserver_rpc_hooks_get_architecture() dserver_rpc_architecture_x86_64
+#elif __i386__
+	#define dserver_rpc_hooks_get_architecture() dserver_rpc_architecture_i386
+#elif __aarch64__
+	#define dserver_rpc_hooks_get_architecture() dserver_rpc_architecture_arm64
+#elif __arm__
+	#define dserver_rpc_hooks_get_architecture() dserver_rpc_architecture_arm32
+#else
+	#define dserver_rpc_hooks_get_architecture() dserver_rpc_architecture_invalid
+#endif
 
 #define dserver_rpc_hooks_get_server_address() ((void*)__dserver_socket_address())
 
@@ -57,11 +68,11 @@ static long int dserver_rpc_hooks_receive_message(int socket, dserver_rpc_hooks_
 #endif
 };
 
-#define dserver_rpc_hooks_get_bad_message_status() LINUX_EBADMSG
+#define dserver_rpc_hooks_get_bad_message_status() (-LINUX_EBADMSG)
 
-#define dserver_rpc_hooks_get_communication_error_status() LINUX_ECOMM
+#define dserver_rpc_hooks_get_communication_error_status() (-LINUX_ECOMM)
 
-#define dserver_rpc_hooks_get_broken_pipe_status() LINUX_EPIPE
+#define dserver_rpc_hooks_get_broken_pipe_status() (-LINUX_EPIPE)
 
 #define dserver_rpc_hooks_close_fd(fd) ((int)LINUX_SYSCALL1(__NR_close, fd))
 
