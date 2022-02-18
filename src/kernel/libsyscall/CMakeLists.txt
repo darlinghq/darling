@@ -22,6 +22,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/external/lkm/osfmk)
 
 include_directories(
 	"${CMAKE_BINARY_DIR}/src/external/darlingserver/include"
+	"${CMAKE_SOURCE_DIR}/src/external/darlingserver/include"
 )
 
 set(LIBSYSCALL_MIGS

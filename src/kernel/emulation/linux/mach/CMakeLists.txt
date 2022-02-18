@@ -9,6 +9,7 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/src/startup
 	${CMAKE_BINARY_DIR}/src/startup
 	${CMAKE_BINARY_DIR}/src/external/darlingserver/include
+	${CMAKE_SOURCE_DIR}/src/external/darlingserver/include
 )
 
 set(mach_server_client_sources

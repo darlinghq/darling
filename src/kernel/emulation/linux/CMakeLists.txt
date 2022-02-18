@@ -22,6 +22,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_BINARY_DIR}/src/kernel/libsyscall
 	${CMAKE_CURRENT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}/src/external/darlingserver/include
+	${CMAKE_SOURCE_DIR}/src/external/darlingserver/include
 )
 
 mig(signal/mach_exc.defs)

@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
+
+#include <darlingserver/rpc-supplement.h>
 
 #define dserver_rpc_hooks_msghdr_t struct msghdr
 #define dserver_rpc_hooks_iovec_t struct iovec
@@ -54,6 +57,17 @@ static long int dserver_rpc_hooks_receive_message(int socket, dserver_rpc_hooks_
 	if (ret < 0) {
 		return -errno;
 	}
+
+	if (ret >= sizeof(dserver_s2c_callhdr_t)) {
+		dserver_s2c_callhdr_t* callhdr = out_message->msg_iov->iov_base;
+		if (callhdr->call_number == 0x52cca11) {
+			// this is an S2C call
+			// mldr shouldn't need to be doing S2C calls
+			fprintf(stderr, "mldr darlingserver RPC hooks received S2C call\n");
+			abort();
+		}
+	}
+
 	return ret;
 };
 
