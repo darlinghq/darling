@@ -9,8 +9,7 @@
 #include "../fcntl/open.h"
 #include "../simple.h"
 #include "sysctl_proc.h"
-#include <lkm/api.h>
-#include "../mach/lkm.h"
+#include <darlingserver/rpc.h>
 
 #ifndef isdigit
 #	define isdigit(c) (c >= '0' && c <= '9')
@@ -193,7 +192,12 @@ static struct kinfo_proc_chain* load_proc(const char* name, int what, int flag)
 	memset(kinfo, 0, sizeof(*kinfo));
 
 	kinfo->kinfo.kp_proc.p_pid = __simple_atoi(name, NULL);
-	if (lkm_call(NR_task_64bit, (void*)(long)kinfo->kinfo.kp_proc.p_pid) > 0)
+
+	bool is_64_bit;
+	if (dserver_rpc_task_is_64_bit(kinfo->kinfo.kp_proc.p_pid, &is_64_bit) < 0) {
+		is_64_bit = false;
+	}
+	if (is_64_bit)
 		kinfo->kinfo.kp_proc.p_flag |= P_LP64;
 
 	if (!read_string(path, stat, sizeof(stat)))

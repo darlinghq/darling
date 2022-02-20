@@ -20,11 +20,10 @@
 #include "../vchroot_expand.h"
 #include <stdbool.h>
 #include <sys/proc.h>
-#include <lkm/api.h>
-#include "../mach/lkm.h"
 #include "sysctl_proc.h"
 #include <stddef.h>
 #include "../elfcalls_wrapper.h"
+#include <darlingserver/rpc.h>
 
 #define LINUX_PR_SET_NAME 15
 
@@ -419,7 +418,11 @@ static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsiz
 	info->pbsi_gid = info->pbsi_rgid = info->pbsi_svgid = gid;
 
 	// 32/64 bit detection
-	if (lkm_call(NR_task_64bit, (void*)(long)pid) > 0)
+	bool is_64_bit;
+	if (dserver_rpc_task_is_64_bit(pid, &is_64_bit) < 0) {
+		is_64_bit = false;
+	}
+	if (is_64_bit)
 		info->pbsi_flags |= P_LP64;
 
 	return 1;
