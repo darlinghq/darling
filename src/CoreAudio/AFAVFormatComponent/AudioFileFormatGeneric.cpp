@@ -81,7 +81,7 @@ void AudioFileFormatGeneric::GetFileTypeName(CFStringRef *outName)
 
 UncertainResult AudioFileFormatGeneric::FileDataIsThisFormat(UInt32 inDataByteSize, const void* inData)
 {
-	AVInputFormat* fmt = av_find_input_format(m_avformatShortName);
+	const AVInputFormat* fmt = av_find_input_format(m_avformatShortName);
 	if (!fmt)
 		return false;
 	

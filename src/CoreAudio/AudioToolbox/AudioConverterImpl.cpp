@@ -28,6 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 extern "C" {
 #include <libavcodec/avcodec.h>
+#include <libavcodec/codec.h>
 #include <libavutil/opt.h>
 #include <libavutil/mem.h>
 }
@@ -35,11 +36,6 @@ extern "C" {
 static constexpr int ENCODER_FRAME_SAMPLES = 1024;
 
 // http://blinkingblip.wordpress.com/
-
-__attribute__((constructor)) static void init_avcodec()
-{
-	avcodec_register_all();
-}
 
 static void throwFFMPEGError(int errnum, const char* function)
 {
@@ -75,7 +71,7 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 	
 	// TODO: non-interleaved audio
 
-	AVCodec *codecIn, *codecOut;
+	const AVCodec *codecIn, *codecOut;
 	AVCodecContext *cIn;
 	AVCodecContext *cOut;
 	enum AVCodecID idIn, idOut;
@@ -385,7 +381,7 @@ OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc
 					if (m_avpktOutUsed >= m_avpktOut.size)
 					{
 						m_avpktOutUsed = 0;
-						av_free_packet(&m_avpktOut);
+						av_packet_unref(&m_avpktOut);
 					}
 				}
 				else
@@ -450,12 +446,47 @@ bool AudioConverter::feedDecoder(AudioConverterComplexInputDataProc dataProc, vo
 				return false;
 		}
 
+#if 0
 		err = avcodec_decode_audio4(m_decoder, srcaudio, &gotFrame, &m_avpkt);
 		if (err < 0)
 			throwFFMPEGError(err, "avcodec_decode_audio4()");
 
 		m_avpkt.size -= err;
 		m_avpkt.data += err;
+#else
+		#warning TODO: test this new avcodec decoder code
+		err = avcodec_send_packet(m_decoder, &m_avpkt);
+
+		if (err < 0) {
+			if (err == AVERROR(EAGAIN)) {
+				// we need to consume frames before sending more packets
+				err = 0;
+			}
+			if (err < 0) {
+				throwFFMPEGError(err, "avcodec_send_packet()");
+			}
+		} else {
+			// on success, the data packet has been consumed entirely
+			m_avpkt.data += m_avpkt.size;
+			m_avpkt.size = 0;
+		}
+
+		err = avcodec_receive_frame(m_decoder, srcaudio);
+
+		if (err < 0) {
+			gotFrame = false;
+			if (err == AVERROR(EAGAIN)) {
+				// we need to send more packets before consuming a frame
+				err = 0;
+			}
+			if (err < 0) {
+				throwFFMPEGError(err, "avcodec_receive_frame()");
+			}
+		} else {
+			// on success, we have a valid frame
+			gotFrame = true;
+		}
+#endif
 
 		if (gotFrame)
 		{
@@ -532,9 +563,40 @@ bool AudioConverter::feedEncoder()
 			if (err < 0)
 				throwFFMPEGError(err, "avcodec_fill_audio_frame()");
 
+#if 0
 			err = avcodec_encode_audio2(m_encoder, &m_avpktOut, m_audioFrame, &gotFrame);
 			if (err < 0)
 				throwFFMPEGError(err, "avcodec_encode_audio2()");
+#else
+			#warning TODO: test this new avcodec encoder code
+			err = avcodec_send_frame(m_encoder, m_audioFrame);
+
+			if (err < 0) {
+				if (err == AVERROR(EAGAIN)) {
+					// we need to consume more packets before sending
+					// TODO: handle this case properly.
+					//       for now, we just proceed to throw an error to avoid dropping a frame
+				}
+				if (err < 0) {
+					throwFFMPEGError(err, "avcodec_send_frame()");
+				}
+			}
+
+			err = avcodec_receive_packet(m_encoder, &m_avpkt);
+
+			if (err < 0) {
+				gotFrame = false;
+				if (err == AVERROR(EAGAIN)) {
+					// we need to send more frames before consuming a packet
+					err = 0;
+				}
+				if (err < 0) {
+					throwFFMPEGError(err, "avcodec_receive_packet()");
+				}
+			} else {
+				gotFrame = true;
+			}
+#endif
 
 			m_audioFramePrebuf.consume(requiredBytes);
 

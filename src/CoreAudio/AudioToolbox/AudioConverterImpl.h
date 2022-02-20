@@ -56,8 +56,8 @@ private:
 	SwrContext* m_resampler = nullptr;
 	UInt32 m_outBitRate = 128000;
 	bool m_encoderInitialized = false;
-	AVCodec* m_codecIn = nullptr;
-	AVCodec* m_codecOut = nullptr;
+	const AVCodec* m_codecIn = nullptr;
+	const AVCodec* m_codecOut = nullptr;
 
 #ifdef DEBUG_AUDIOCONVERTER
 	std::ofstream m_resamplerInput, m_resamplerOutput, m_encoderOutput;
