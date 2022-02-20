@@ -345,7 +345,7 @@ int main(int argc, char** argv) {
 				if (!vm_area->filename) {
 					// ignore it if starts at 0; that's most likely the __PAGEZERO segment
 					if (vm_area->memory_address != 0) {
-						printf("warning: missing NT_FILE entry for zero-sized memory region\n");
+						printf("warning: missing NT_FILE entry for zero-sized memory region 0x%zx-%zx (%lu bytes)\n", vm_area->memory_address, vm_area->memory_address + vm_area->memory_size, vm_area->memory_size);
 					}
 					vm_area->valid = false;
 				}
@@ -728,8 +728,13 @@ void macho_coredump(struct coredump_params* cprm)
 					free(filename);
 				}
 				if (fd < 0) {
-					fprintf(stderr, "Failed to open %s: %d (%s)\n", vma->filename, errno, strerror(errno));
-					exit(EXIT_FAILURE);
+					fprintf(stderr, "Warning: failed to open %s: %d (%s)\n", vma->filename, errno, strerror(errno));
+					//exit(EXIT_FAILURE);
+					// just zero it out
+					if (!dump_skip(cprm, vma->file_size)) {
+						exit(EXIT_FAILURE);
+					}
+					continue;
 				}
 
 				uintptr_t aligned_offset = round_down_pow2(vma->file_offset, sysconf(_SC_PAGESIZE));
