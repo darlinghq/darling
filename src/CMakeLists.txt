@@ -97,6 +97,7 @@ include_directories(
 include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libMobileGestalt/include
 	${CMAKE_CURRENT_SOURCE_DIR}/frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/private-frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lib/include
@@ -128,6 +129,7 @@ include_directories(BEFORE
 add_definitions(-D_LIBC_NO_FEATURE_VERIFICATION)
 add_subdirectory(external/darling-dmg)
 add_subdirectory(libm)
+add_subdirectory(libMobileGestalt)
 add_subdirectory(libgcc)
 add_subdirectory(copyfile)
 add_subdirectory(libinfo)
