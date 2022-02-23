@@ -282,7 +282,6 @@ set(emulation_sources
 	bsdthread/pthread_fchdir.c
 	bsdthread/pthread_markcancel.c
 	bsdthread/pthread_canceled.c
-	psynch/psynch_errno.c
 	psynch/psynch_rw_rdlock.c
 	psynch/psynch_rw_wrlock.c
 	psynch/psynch_rw_unlock.c

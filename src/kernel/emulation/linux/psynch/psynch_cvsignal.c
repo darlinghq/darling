@@ -1,28 +1,20 @@
 #include "psynch_cvsignal.h"
 #include "../base.h"
-#include "psynch_errno.h"
 #include <linux-syscalls/linux.h>
-#include "../mach/lkm.h"
-#include "../../../../external/lkm/api.h"
+#include <darlingserver/rpc.h>
 #include "../simple.h"
 
 long sys_psynch_cvsignal(void* cv, uint32_t cvlsgen, uint32_t cvugen, int thread_port, void* mutex, uint32_t mugen,
 		uint64_t tid, uint32_t flags)
 {
-	struct psynch_cvsignal_args args = {
-		.cv = cv,
-		.cvlsgen = cvlsgen,
-		.cvugen = cvugen,
-		.mutex = mutex,
-		.mugen = mugen,
-		.tid = tid,
-		.thread_port = thread_port,
-		.flags = flags,
-	};
+	uint32_t retval;
+	int ret = dserver_rpc_psynch_cvsignal(cv, cvlsgen, cvugen, thread_port, mutex, mugen, tid, flags, &retval);
 
-	// __simple_printf("sys_psynch_mutexwait(mutex=%p, mgen=%x)\n", mutex, mgen);
+	if (ret < 0) {
+		__simple_printf("psynch_cvsignal failed internally: %d", ret);
+		__simple_abort();
+	}
 
-	int rv = lkm_call_raw(NR_psynch_cvsignal_trap, &args);
-	return psynch_errno(rv);
+	return (ret) ? ret : retval;
 }
 

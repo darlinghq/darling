@@ -1,24 +1,19 @@
 #include "psynch_mutexwait.h"
 #include "../base.h"
-#include "psynch_errno.h"
 #include <linux-syscalls/linux.h>
-#include "../mach/lkm.h"
-#include "../../../../external/lkm/api.h"
+#include <darlingserver/rpc.h>
 #include "../simple.h"
 
 long sys_psynch_mutexwait(void* mutex, uint32_t mgen, uint32_t ugen, uint64_t tid, uint32_t flags)
 {
-	struct psynch_mutexwait_args args = {
-		.mutex = (unsigned long) mutex,
-		.mgen = mgen,
-		.ugen = ugen,
-		.tid = tid,
-		.flags = flags
-	};
+	uint32_t retval;
+	int ret = dserver_rpc_psynch_mutexwait(mutex, mgen, ugen, tid, flags, &retval);
 
-	// __simple_printf("sys_psynch_mutexwait(mutex=%p, mgen=%x)\n", mutex, mgen);
+	if (ret < 0) {
+		__simple_printf("psynch_mutexwait failed internally: %d", ret);
+		__simple_abort();
+	}
 
-	int rv = lkm_call_raw(NR_psynch_mutexwait_trap, &args);
-	return psynch_errno(rv);
+	return (ret) ? ret : retval;
 }
 

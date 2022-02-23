@@ -1,22 +1,19 @@
 #include "psynch_rw_rdlock.h"
 #include "../base.h"
-#include "psynch_errno.h"
 #include <linux-syscalls/linux.h>
-#include "../mach/lkm.h"
-#include "../../../../external/lkm/api.h"
+#include <darlingserver/rpc.h>
 #include "../simple.h"
 
 long sys_psynch_rw_rdlock(void* rwlock, uint32_t lgenval, uint32_t ugenval, uint32_t rw_wc, int flags)
 {
-	struct psynch_rw_rdlock_args args = {
-		.rwlock = rwlock,
-		.lgenval = lgenval,
-		.ugenval = ugenval,
-		.rw_wc = rw_wc,
-		.flags = flags
-	};
+	uint32_t retval;
+	int ret = dserver_rpc_psynch_rw_rdlock(rwlock, lgenval, ugenval, rw_wc, flags, &retval);
 
-	int rv = lkm_call_raw(NR_psynch_rw_rdlock, &args);
-	return psynch_errno(rv);
+	if (ret < 0) {
+		__simple_printf("psynch_rw_rdlock failed internally: %d", ret);
+		__simple_abort();
+	}
+
+	return (ret) ? ret : retval;
 }
 
