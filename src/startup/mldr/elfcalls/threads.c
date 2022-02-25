@@ -43,6 +43,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 static __thread jmp_buf t_jmpbuf;
 static __thread void* t_freeaddr;
 static __thread size_t t_freesize;
+static __thread darling_thread_create_callbacks_t t_callbacks = NULL;
 
 typedef void (*thread_ep)(void**, int, ...);
 struct arg_struct
@@ -233,18 +234,21 @@ static void* darling_thread_entry(void* p)
 	// the socket is ready; assign it now
 	dthread->tsd[DTHREAD_TSD_SLOT_DSERVER_RPC_FD] = (void*)(intptr_t)new_rpc_fd;
 
-	// checkin with darlingserver on this new thread
-	if (dserver_rpc_checkin(false) < 0) {
+	t_callbacks = args.callbacks;
+
+	// libpthread now expects the kernel to set the TSD
+	// so, since we're pretending to be the kernel handling threads...
+	t_callbacks->thread_set_tsd_base(&dthread->tsd[0], 0);
+	*flags |= args.is_workqueue ? DWQ_FLAG_THREAD_TSD_BASE_SET : DTHREAD_START_TSD_BASE_SET;
+
+	// now that we've set the TSD, darlingserver RPC can now use our per-thread socket;
+	// let's check-in with darlingserver on this new thread
+	if (t_callbacks->dserver_rpc_checkin(false) < 0) {
 		// we can't do ANYTHING if darlingserver doesn't acknowledge us successfully
 		abort();
 	}
 
-	// libpthread now expects the kernel to set the TSD
-	// so, since we're pretending to be the kernel handling threads...
-	args.callbacks->thread_set_tsd_base(&dthread->tsd[0], 0);
-	*flags |= args.is_workqueue ? DWQ_FLAG_THREAD_TSD_BASE_SET : DTHREAD_START_TSD_BASE_SET;
-
-	int thread_self_port = args.callbacks->thread_self_trap();
+	int thread_self_port = t_callbacks->thread_self_trap();
 	dthread->tsd[DTHREAD_TSD_SLOT_MACH_THREAD_SELF] = (void*)(intptr_t)thread_self_port;
 	args.port = thread_self_port;
 
@@ -305,11 +309,15 @@ static void* darling_thread_entry(void* p)
 int __darling_thread_terminate(void* stackaddr,
 				unsigned long freesize, unsigned long pthobj_size)
 {
-	if (dserver_rpc_checkout(-1, false) < 0) {
-		// failing to checkout is not fatal.
+	if ((t_callbacks ? t_callbacks->dserver_rpc_checkout : dserver_rpc_checkout)(-1, false) < 0) {
+		// failing to check-out is not fatal.
 		// it's not ideal, but it's not fatal.
 		#define CHECKOUT_FAILURE_MESSAGE "Failed to checkout"
-		dserver_rpc_kprintf(CHECKOUT_FAILURE_MESSAGE, sizeof(CHECKOUT_FAILURE_MESSAGE) - 1);
+		if (t_callbacks) {
+			t_callbacks->kprintf(CHECKOUT_FAILURE_MESSAGE);
+		} else {
+			dserver_rpc_kprintf(CHECKOUT_FAILURE_MESSAGE, sizeof(CHECKOUT_FAILURE_MESSAGE) - 1);
+		}
 	}
 
 	if (getpid() == syscall(SYS_gettid))

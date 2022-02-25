@@ -13,6 +13,8 @@
 #include "../machdep/tls.h"
 #include "../mach/mach_traps.h"
 
+#include <darlingserver/rpc.h>
+
 extern void *memset(void *s, int c, size_t n);
 
 #define PTHREAD_START_CUSTOM    0x01000000
@@ -27,6 +29,14 @@ extern void *memset(void *s, int c, size_t n);
 static bool _uses_threads = false;
 
 // http://www.tldp.org/FAQ/Threads-FAQ/clone.c
+
+static const struct darling_thread_create_callbacks callbacks = {
+	.thread_self_trap = &thread_self_trap_impl,
+	.thread_set_tsd_base = &sys_thread_set_tsd_base,
+	.dserver_rpc_checkin = &dserver_rpc_checkin,
+	.dserver_rpc_checkout = &dserver_rpc_checkout,
+	.kprintf = &__simple_kprintf,
+};
 
 long sys_bsdthread_create(void* thread_start, void* arg,
 		void* stack, void* pthread, uint32_t flags)
@@ -47,11 +57,6 @@ long sys_bsdthread_create(void* thread_start, void* arg,
 	ret = darling_thread_create((void**) stack, pthread_entry_point_wrapper, thread_start,
 			arg, stacksize, flags);
 #else
-	struct darling_thread_create_callbacks callbacks = {
-		.thread_self_trap = &thread_self_trap_impl,
-		.thread_set_tsd_base = &sys_thread_set_tsd_base,
-	};
-
 	return __darling_thread_create(((uintptr_t)stack), pthread_obj_size,
 			pthread_entry_point_wrapper, thread_start, arg, (uintptr_t) stack, flags,
 			&callbacks, pthread);

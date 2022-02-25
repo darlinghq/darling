@@ -21,6 +21,8 @@
 // much easier to include than libpthread's `internal.h`
 #include "../../../../startup/mldr/elfcalls/dthreads.h"
 
+#include <darlingserver/rpc.h>
+
 #define WQ_MAX_THREADS	64
 
 #define WQOPS_QUEUE_ADD 1
@@ -88,6 +90,14 @@ static int priority_to_class(int prio);
 
 // This is horrible, but it may work
 static struct wq_kevent_data* wq_event_pending = NULL;
+
+static const struct darling_thread_create_callbacks callbacks = {
+	.thread_self_trap = &thread_self_trap_impl,
+	.thread_set_tsd_base = &sys_thread_set_tsd_base,
+	.dserver_rpc_checkin = &dserver_rpc_checkin,
+	.dserver_rpc_checkout = &dserver_rpc_checkout,
+	.kprintf = &__simple_kprintf,
+};
 
 static int extract_wq_flags(int priority) {
 	int flags = 0;
@@ -282,11 +292,6 @@ resume_thread: // we want the thread to resume, but it might be just to die
 
 				// __simple_printf("Spawning a new thread, nevents=%d\n", (wq_event != NULL) ? wq_event->nevents : -1);
 				wq_event_pending = wq_event;
-
-				struct darling_thread_create_callbacks callbacks = {
-					.thread_self_trap = &thread_self_trap_impl,
-					.thread_set_tsd_base = &sys_thread_set_tsd_base,
-				};
 
 				__darling_thread_create(512*1024, pthread_obj_size, wqueue_entry_point_wrapper, 0,
 						(wq_event != NULL) ? wq_event->events : NULL, flags,
