@@ -160,6 +160,22 @@ int main(int argc, char ** argv, char ** envp)
 		// TODO: when we have a working launchd,
 		// this is where we ask it to shut down nicely
 
+		char path_buf[128];
+		char read_buf[128];
+		FILE* file;
+		pid_t launchd_pid;
+		snprintf(path_buf, sizeof(path_buf), "/proc/%d/task/%d/children", pidInit, pidInit);
+		file = fopen(path_buf, "r");
+		if (!file || fscanf(file, "%d", &launchd_pid) != 1) {
+			fprintf(stderr, "Failed to shutdown Darling container\n");
+			if (file) {
+				fclose(file);
+			}
+			return 1;
+		}
+		fclose(file);
+
+		kill(launchd_pid, SIGKILL);
 		kill(pidInit, SIGKILL);
 		return 0;
 	}
@@ -1074,7 +1090,7 @@ pid_t getInitProcess()
 	}
 	fclose(fp);
 
-	if (strcmp(exeBuf, "launchd") != 0)
+	if (strcmp(exeBuf, "darlingserver") != 0)
 	{
 		unlink(pidPath);
 		return 0;
