@@ -28,7 +28,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 extern "C" {
 #include <libavcodec/avcodec.h>
-#include <libavcodec/codec.h>
 #include <libavutil/opt.h>
 #include <libavutil/mem.h>
 }
