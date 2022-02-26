@@ -128,7 +128,7 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
 			
 			i = 0;
 			modargvp[i++] = mldr_path;
-			modargvp[i++] = interp;
+			modargvp[i++] = vc.path; // expanded later
 			if (arg != NULL)
 				modargvp[i++] = arg;
 			modargvp[i] = fname;
