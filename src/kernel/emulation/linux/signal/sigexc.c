@@ -222,17 +222,19 @@ static void state_from_kernel(struct linux_ucontext* ctxt, const struct thread_s
 
 void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
+	dserver_rpc_sigexc_enter();
+
 	kern_printf("sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
 
 	
 	if (linux_signum == LINUX_SIGCONT)
-		return;
+		goto out;
 
 	int bsd_signum = signum_linux_to_bsd(linux_signum);
 	if (bsd_signum <= 0)
 	{
 		kern_printf("sigexc: Unmapped signal!\n");
-		return;
+		goto out;
 	}
 
 #ifdef __x86_64__
@@ -265,7 +267,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	if (!bsd_signum)
 	{
 		kern_printf("sigexc: drop signal\n");
-		return;
+		goto out;
 	}
 
 	linux_signum = signum_bsd_to_linux(bsd_signum);
@@ -316,6 +318,9 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	}
 	
 	kern_printf("sigexc: handler (%d) returning\n", linux_signum);
+
+out:
+	dserver_rpc_sigexc_exit();
 }
 
 #define DUMPREG(regname) kern_printf("sigexc:   " #regname ": 0x%llx\n", regs->regname);
