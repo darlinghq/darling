@@ -167,18 +167,24 @@ no_slide:
 							addr += slide;
 
 						// Some segments' filesize != vmsize, thus this mprotect().
-						rv = mmap((void*)addr, seg->vmsize, useprot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+						rv = mmap((void*)addr, seg->vmsize, useprot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
 						if (rv == (void*)MAP_FAILED)
 						{
-							fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
-							exit(1);
+							if (addr == 0 && useprot == 0) {
+								// this is the PAGEZERO segment;
+								// if we can't map it, assume everything is fine and the system has already made that area inaccessible
+								rv = 0;
+							} else {
+								fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
+								exit(1);
+							}
 						}
 					}
 					else
 					{
 						size_t size = seg->vmsize - seg->filesize;
 						rv = mmap((void*) PAGE_ALIGN(seg->vmaddr + seg->vmsize - size), PAGE_ROUNDUP(size), useprot,
-								MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+								MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
 						if (rv == (void*)MAP_FAILED)
 						{
 							fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
@@ -191,7 +197,7 @@ no_slide:
 				{
 					unsigned long addr = seg->vmaddr + slide;
 					rv = mmap((void*)addr, seg->filesize, useprot,
-							MAP_FIXED | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
+							MAP_FIXED_NOREPLACE | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
 					if (rv == (void*)MAP_FAILED)
 					{
 						fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
