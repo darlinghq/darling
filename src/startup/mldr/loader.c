@@ -174,7 +174,7 @@ no_slide:
 						rv = mmap((void*)addr, seg->vmsize, useprot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
 						if (rv == (void*)MAP_FAILED)
 						{
-							if (addr == 0 && useprot == 0) {
+							if (seg->vmaddr == 0 && useprot == 0) {
 								// this is the PAGEZERO segment;
 								// if we can't map it, assume everything is fine and the system has already made that area inaccessible
 								rv = 0;
@@ -191,8 +191,14 @@ no_slide:
 								MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
 						if (rv == (void*)MAP_FAILED)
 						{
-							fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
-							exit(1);
+							if (seg->vmaddr == 0 && useprot == 0) {
+								// this is the PAGEZERO segment;
+								// if we can't map it, assume everything is fine and the system has already made that area inaccessible
+								rv = 0;
+							} else {
+								fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
+								exit(1);
+							}
 						}
 					}
 				}
@@ -208,8 +214,14 @@ no_slide:
 							flag | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
 					if (rv == (void*)MAP_FAILED)
 					{
-						fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
-						exit(1);
+						if (seg->vmaddr == 0 && useprot == 0) {
+							// this is the PAGEZERO segment;
+							// if we can't map it, assume everything is fine and the system has already made that area inaccessible
+							rv = 0;
+						} else {
+							fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
+							exit(1);
+						}
 					}
 				
 					if (seg->fileoff == 0)
