@@ -112,7 +112,6 @@ pipeline {
 
 						sshPut remote: remote, from: 'out', into: '.'
 
-						sshCommand remote: remote, command: 'echo dtest | sudo -S apt install -y ./out/darling-dkms*.deb'
 						sshCommand remote: remote, command: 'echo dtest | sudo -S apt install -y ./out/darling_*.deb'
 
 						// the initial shell must be in a screen because the pty is handed to launchd and ssh will stay connected
