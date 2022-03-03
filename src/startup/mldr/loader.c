@@ -123,6 +123,10 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 			exit(1);
 		}
 
+		// unmap it so we can map the actual segments later using MAP_FIXED_NOREPLACE;
+		// we're the only thread running, so there's no chance this memory range will become occupied from now until then
+		munmap((void*)slide, mmapSize);
+
 		if (slide + mmapSize > lr->vm_addr_max)
 			lr->vm_addr_max = lr->base = slide + mmapSize;
 		slide -= base;
@@ -196,8 +200,12 @@ no_slide:
 				if (seg->filesize > 0)
 				{
 					unsigned long addr = seg->vmaddr + slide;
+					int flag = MAP_FIXED_NOREPLACE;
+					if (seg->filesize < seg->vmsize) {
+						flag = MAP_FIXED;
+					}
 					rv = mmap((void*)addr, seg->filesize, useprot,
-							MAP_FIXED_NOREPLACE | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
+							flag | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
 					if (rv == (void*)MAP_FAILED)
 					{
 						fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
