@@ -117,6 +117,19 @@ void libsimple_lock_unlock(libsimple_lock_t* _lock) {
 	}
 };
 
+bool libsimple_lock_try_lock(libsimple_lock_t* _lock) {
+	libsimple_lock_internal_t* lock = (libsimple_lock_internal_t*)_lock;
+	uint32_t prev = cmpxchg_wrapper_u32(&lock->state, libsimple_lock_state_unlocked, libsimple_lock_state_locked_uncontended);
+
+	if (prev == libsimple_lock_state_unlocked) {
+		libsimple_lock_debug("(try) lock acquired");
+	} else {
+		libsimple_lock_debug("(try) lock not acquired");
+	}
+
+	return prev == libsimple_lock_state_unlocked;
+};
+
 //
 // libsimple_once
 //

@@ -2,6 +2,7 @@
 #define _LIBSIMPLE_LOCK_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "base.h"
 
@@ -24,6 +25,7 @@ static void libsimple_lock_init(libsimple_lock_t* lock) {
 
 void libsimple_lock_lock(libsimple_lock_t* lock);
 void libsimple_lock_unlock(libsimple_lock_t* lock);
+bool libsimple_lock_try_lock(libsimple_lock_t* lock);
 
 //
 // once
