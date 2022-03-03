@@ -1,5 +1,7 @@
 project(hosttools)
 
+set(DARLING_COREDUMP_SANITIZE OFF)
+
 add_executable(darling-coredump
 	src/coredump/main.c
 )
@@ -13,3 +15,17 @@ target_include_directories(darling-coredump PRIVATE
 )
 
 install(TARGETS darling-coredump DESTINATION bin)
+
+if (DARLING_COREDUMP_SANITIZE)
+	target_compile_options(darling-coredump PRIVATE
+		-fsanitize=address,undefined
+		-fsanitize-recover=all
+		-fno-omit-frame-pointer
+		-g
+		-Og
+	)
+	target_link_options(darling-coredump PRIVATE
+		-fsanitize=address,undefined
+		-fsanitize-recover=all
+	)
+endif()

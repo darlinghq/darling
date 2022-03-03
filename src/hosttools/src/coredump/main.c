@@ -33,6 +33,7 @@ struct vm_area {
 	size_t file_size;
 	uint8_t protection;
 	bool valid;
+	uint64_t expected_offset;
 };
 
 struct nt_file_header {
@@ -65,7 +66,7 @@ struct nt_prstatus {
 };
 
 struct thread_info {
-	const struct nt_prstatus* prstatus;
+	struct nt_prstatus* prstatus;
 };
 
 struct coredump_params {
@@ -80,13 +81,15 @@ struct coredump_params {
 	size_t input_notes_size;
 	struct vm_area* vm_areas;
 	size_t vm_area_count;
-	const struct nt_file_header* nt_file;
+	struct nt_file_header* nt_file;
 	const char** nt_file_filenames;
 	struct thread_info* thread_infos;
 	size_t thread_info_count;
 	size_t written;
 	const char* prefix;
 	size_t prefix_length;
+	const char* main_executable_path;
+	size_t main_executable_path_length;
 };
 
 static char default_output_name[4096];
@@ -223,7 +226,13 @@ int main(int argc, char** argv) {
 
 	for (const Elf64_Nhdr* note_header = cprm.input_notes; note_header < (const Elf64_Nhdr*)((const char*)cprm.input_notes + cprm.input_notes_size); note_header = find_next_note(note_header)) {
 		if (note_header->n_type == NT_FILE) {
-			cprm.nt_file = note_data(note_header);
+			// allocate a copy for alignment purposes
+			cprm.nt_file = malloc(note_header->n_descsz);
+			if (!cprm.nt_file) {
+				perror("malloc");
+				return 1;
+			}
+			memcpy(cprm.nt_file, note_data(note_header), note_header->n_descsz);
 
 			cprm.nt_file_filenames = malloc(cprm.nt_file->count * sizeof(const char*));
 			if (!cprm.nt_file_filenames) {
@@ -257,17 +266,46 @@ int main(int argc, char** argv) {
 	size_t thread_info_index = 0;
 	for (const Elf64_Nhdr* note_header = cprm.input_notes; note_header < (const Elf64_Nhdr*)((const char*)cprm.input_notes + cprm.input_notes_size); note_header = find_next_note(note_header)) {
 		if (note_header->n_type == NT_PRSTATUS) {
-			cprm.thread_infos[thread_info_index++].prstatus = note_data(note_header);
+			// allocate a copy for alignment purposes
+			struct nt_prstatus* prstatus = malloc(note_header->n_descsz);
+			if (!prstatus) {
+				perror("malloc");
+				return 1;
+			}
+			cprm.thread_infos[thread_info_index++].prstatus = prstatus;
+			memcpy(prstatus, note_data(note_header), note_header->n_descsz);
 		} else {
 			continue;
 		}
 	}
 
 	// determine if we have extra mappings in NT_FILE that aren't present in the program headers (gcore tends to do this)
+	// also try to determine which file is our main executable
 	for (size_t i = 0; i < cprm.nt_file->count; ++i) {
 		const struct nt_file_entry* entry = &((const struct nt_file_entry*)((const char*)cprm.nt_file + sizeof(struct nt_file_header)))[i];
 		const char* filename = cprm.nt_file_filenames[i];
 		bool found = false;
+
+		// try to determine if this is the main executable file
+		if (strncmp(filename, "/dev/", sizeof("/dev/") - 1) != 0) {
+			int tmpfd = open(filename, O_RDONLY);
+			if (tmpfd >= 0) {
+				struct mach_header_64 mh;
+				if (read(tmpfd, &mh, sizeof(mh)) == sizeof(mh) && mh.filetype == MH_EXECUTE) {
+					if (cprm.main_executable_path) {
+						if (strcmp(cprm.main_executable_path, filename) != 0) {
+							printf("Already had main executable (\"%s\") but found another? (\"%s\")\n", cprm.main_executable_path, filename);
+							exit(EXIT_FAILURE);
+						}
+					} else {
+						cprm.main_executable_path = filename;
+						cprm.main_executable_path_length = strlen(cprm.main_executable_path);
+						printf("Found main executable: %s\n", cprm.main_executable_path);
+					}
+				}
+				close(tmpfd);
+			}
+		}
 
 		for (const Elf64_Phdr* program_header = cprm.input_program_headers; program_header < cprm.input_program_headers_end; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header->e_phentsize)) {
 			if (program_header->p_type != PT_LOAD) {
@@ -296,6 +334,8 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	memset(cprm.vm_areas, 0, sizeof(*cprm.vm_areas) * cprm.vm_area_count);
+
 	// now load up the VM area array
 	size_t vm_area_index = 0;
 	for (const Elf64_Phdr* program_header = cprm.input_program_headers; program_header < cprm.input_program_headers_end; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header->e_phentsize)) {
@@ -306,6 +346,14 @@ int main(int argc, char** argv) {
 			vm_area->memory_address = program_header->p_vaddr;
 			vm_area->memory_size = program_header->p_memsz;
 			vm_area->file_offset = program_header->p_offset;
+
+			if (!cprm.main_executable_path && vm_area->memory_address == 0) {
+				// if this is PAGEZERO and we don't yet have a main executable registered,
+				// the file containing this segment is most likely the main executable
+				cprm.main_executable_path = vm_area->filename;
+				cprm.main_executable_path_length = vm_area->filename_length;
+				printf("Found main executable (maybe): %s\n", cprm.main_executable_path);
+			}
 
 			vm_area->protection = 0;
 			if (program_header->p_flags & PF_R) {
@@ -343,10 +391,17 @@ int main(int argc, char** argv) {
 				}
 
 				if (!vm_area->filename) {
-					// ignore it if starts at 0; that's most likely the __PAGEZERO segment
-					if (vm_area->memory_address != 0) {
-						printf("warning: missing NT_FILE entry for zero-sized memory region 0x%zx-%zx (%lu bytes)\n", vm_area->memory_address, vm_area->memory_address + vm_area->memory_size, vm_area->memory_size);
+					if (vm_area->protection == 0) {
+						// if the area has no protection flags, it most likely wasn't included anywhere.
+						// no need to warn.
+					} else if (vm_area->memory_address == 0) {
+						// ignore it if starts at 0; that's most likely the __PAGEZERO segment.
+						// no need to warn.
+					} else {
+						// otherwise, warn.
+						printf("warning: missing NT_FILE entry for memory region 0x%zx-%zx (%lu bytes)\n", vm_area->memory_address, vm_area->memory_address + vm_area->memory_size, vm_area->memory_size);
 					}
+					vm_area->file_size = 0;
 					vm_area->valid = false;
 				}
 			} else {
@@ -402,7 +457,16 @@ int main(int argc, char** argv) {
 
 	macho_coredump(&cprm);
 
-	#warning TODO: cleanup
+	// now let's clean-up
+
+	for (size_t i = 0; i < cprm.thread_info_count; ++i) {
+		free(cprm.thread_infos[i].prstatus);
+	}
+
+	free(cprm.thread_infos);
+	free(cprm.vm_areas);
+	free(cprm.nt_file_filenames);
+	free(cprm.nt_file);
 
 	return 0;
 };
@@ -429,6 +493,10 @@ static bool dump_skip(struct coredump_params* cprm, size_t size) {
 		return false;
 #endif
 	return true;
+};
+
+static uint64_t dump_offset_get(struct coredump_params* cprm) {
+	return lseek(cprm->output_corefile, 0, SEEK_CUR);
 };
 
 // the following coredump code has been imported from the LKM and adapted for use in userspace
@@ -607,16 +675,30 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 
 	const int statesize = sizeof(x86_thread_state64_t) + sizeof(x86_float_state64_t) + sizeof(struct thread_flavor) * 2;
 	mh.sizeofcmds = segs * sizeof(struct segment_command_64) + threads * (sizeof(struct thread_command) + statesize);
+	mh.flags = 0;
 	mh.reserved = 0;
+
+	if (cprm->main_executable_path) {
+		int tmpfd = open(cprm->main_executable_path, O_RDONLY);
+		if (tmpfd >= 0) {
+			struct mach_header_64 that_mh;
+			if (read(tmpfd, &that_mh, sizeof(that_mh)) == sizeof(that_mh)) {
+				mh.flags = that_mh.flags;
+			}
+			close(tmpfd);
+		}
+	} else {
+		fprintf(stderr, "No main executable detected?\n");
+	}
 
 	if (!dump_emit(cprm, &mh, sizeof(mh)))
 		goto fail;
 
 	struct vm_area_struct* vma;
-	uint32_t file_offset = mh.sizeofcmds + sizeof(mh);
+	uint64_t file_offset = mh.sizeofcmds + sizeof(mh);
 
 	for (size_t i = 0; i < cprm->vm_area_count; ++i) {
-		const struct vm_area* vma = &cprm->vm_areas[i];
+		struct vm_area* vma = &cprm->vm_areas[i];
 		struct segment_command_64 sc;
 
 		sc.cmd = LC_SEGMENT_64;
@@ -628,7 +710,9 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 		sc.vmsize = vma->memory_size;
 		sc.fileoff = file_offset;
 
-		if (sc.vmaddr > 0) // avoid dumping the __PAGEZERO segment which may be really large
+		vma->expected_offset = sc.fileoff;
+
+		if (vma->valid) // avoid dumping the __PAGEZERO segment which may be really large
 			sc.filesize = vma->file_size;
 		else
 			sc.filesize = 0;
@@ -711,14 +795,25 @@ void macho_coredump(struct coredump_params* cprm)
 		const struct vm_area* vma = &cprm->vm_areas[i];
 		unsigned long addr;
 
-		if (vma->memory_address == 0)
-			continue; // skip __PAGEZERO dumping
+		uint64_t curr = dump_offset_get(cprm);
+		if (curr != vma->expected_offset) {
+			fprintf(stderr, "Expected offset %lx, got offset %lx\n", vma->expected_offset, curr);
+			exit(EXIT_FAILURE);
+		}
 
 		if (!vma->valid) {
 			if (!dump_skip(cprm, vma->file_size))
 				exit(EXIT_FAILURE);
 		} else {
 			if (vma->filename) {
+				if (strncmp(vma->filename, "/dev/", sizeof("/dev/") - 1) == 0) {
+					printf("Warning: skipping device \"%s\"\n", vma->filename);
+					if (!dump_skip(cprm, vma->file_size)) {
+						exit(EXIT_FAILURE);
+					}
+					continue;
+				}
+
 				int fd = -1;
 				fd = open(vma->filename, O_RDONLY);
 				if (fd < 0 && vma->filename_length >= cprm->prefix_length && strncmp(vma->filename, cprm->prefix, cprm->prefix_length) == 0) {
@@ -738,7 +833,7 @@ void macho_coredump(struct coredump_params* cprm)
 				}
 
 				uintptr_t aligned_offset = round_down_pow2(vma->file_offset, sysconf(_SC_PAGESIZE));
-				size_t aligned_size = round_up_pow2(vma->file_size, _SC_PAGESIZE);
+				size_t aligned_size = round_up_pow2(vma->file_size, sysconf(_SC_PAGESIZE));
 				void* mapping = mmap(NULL, aligned_size, PROT_READ, MAP_PRIVATE, fd, aligned_offset);
 				if (mapping == MAP_FAILED) {
 					perror("mmap");
