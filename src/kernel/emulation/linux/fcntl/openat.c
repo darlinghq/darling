@@ -3,13 +3,13 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include <lkm/api.h>
-#include <mach/lkm.h>
 #include "../../../../libc/include/fcntl.h"
 #include "../common_at.h"
 #include "../simple.h"
 #include "../vchroot_expand.h"
 #include "../bsdthread/cancelable.h"
+
+#include <darlingserver/rpc.h>
 
 #ifndef O_NOFOLLOW
 #	define O_NOFOLLOW 0x0100
@@ -49,6 +49,18 @@ long sys_openat_nocancel(int fd, const char* filename, int flags, unsigned int m
 	// Expected by launchd and CF
 	else if (strcmp(filename, "/dev/autofs_nowait") == 0)
 		filename = "/dev/null";
+	else if (strcmp(filename, "/dev/console") == 0) {
+		// redirect console output to darlingserver
+		int err = dserver_rpc_console_open(&ret);
+		if (err < 0) {
+			__simple_printf("dserver_rpc_console_open failed internally: %d", err);
+			__simple_abort();
+		}
+		if (err > 0) {
+			ret = errno_linux_to_bsd(-err);
+		}
+		return ret;
+	}
 
 	struct vchroot_expand_args vc;
 	vc.flags = (flags & BSD_O_SYMLINK || flags & BSD_O_NOFOLLOW) ? 0 : VCHROOT_FOLLOW;
