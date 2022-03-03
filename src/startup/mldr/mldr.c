@@ -428,6 +428,7 @@ static void process_special_env(struct load_results* lr) {
 		strncpy(root_path, str, sizeof(root_path) - 1);
 		root_path[sizeof(root_path) - 1] = '\0';
 		lr->root_path = root_path;
+		lr->root_path_length = strlen(lr->root_path);
 	}
 };
 
@@ -489,20 +490,23 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 		exit(1);
 	}
 
-	static char vchroot_buffer[4096];
-	uint64_t vchroot_path_length = 0;
+	if (!lr->root_path) {
+		static char vchroot_buffer[4096];
+		uint64_t vchroot_path_length = 0;
 
-	int code = dserver_rpc_vchroot_path(vchroot_buffer, sizeof(vchroot_buffer), &vchroot_path_length);
-	if (code < 0) {
-		fprintf(stderr, "Failed to retrieve vchroot path from darlingserver: %d\n", code);
-		exit(1);
-	}
+		int code = dserver_rpc_vchroot_path(vchroot_buffer, sizeof(vchroot_buffer), &vchroot_path_length);
+		if (code < 0) {
+			fprintf(stderr, "Failed to retrieve vchroot path from darlingserver: %d\n", code);
+			exit(1);
+		}
 
-	if (vchroot_path_length > 0) {
-		lr->root_path = vchroot_buffer;
-	} else if (vchroot_path_length >= sizeof(vchroot_buffer)) {
-		fprintf(stderr, "Vchroot path is too large for buffer\n");
-		exit(1);
+		if (vchroot_path_length >= sizeof(vchroot_buffer)) {
+			fprintf(stderr, "Vchroot path is too large for buffer\n");
+			exit(1);
+		} else if (vchroot_path_length > 0) {
+			lr->root_path = vchroot_buffer;
+			lr->root_path_length = vchroot_path_length;
+		}
 	}
 };
 

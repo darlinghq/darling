@@ -18,6 +18,7 @@ struct load_results {
 	unsigned long base;
 	uint32_t bprefs[4];
 	char* root_path;
+	size_t root_path_length;
 	unsigned long stack_top;
 	char* socket_path;
 	int kernfd;

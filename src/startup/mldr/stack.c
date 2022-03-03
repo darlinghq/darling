@@ -71,7 +71,6 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 	char __user* elfcalls_user;
 	char elfcalls[27];
 	char __user* applep_contents[4];
-	char* vchroot_path = NULL;
 
 #define user_long_count(_val) (((_val) + (sizeof(user_long_t) - 1)) / sizeof(user_long_t))
 
@@ -88,19 +87,17 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 
 	executable_path = executable_buf;
 
-	// TODO: ask darlingserver for our vchroot path
-
-	if (vchroot_path != NULL)
+	if (lr->root_path)
 	{
-		const size_t vchroot_len = strlen(vchroot_path);
 		exepath_len = strlen(executable_path);
 
-		if (strncmp(executable_path, vchroot_path, vchroot_len) == 0)
+		if (strncmp(executable_path, lr->root_path, lr->root_path_length) == 0)
 		{
-			memmove(executable_buf, executable_path + vchroot_len, exepath_len - vchroot_len + 1);
+			memmove(executable_buf, executable_path + lr->root_path_length, exepath_len - lr->root_path_length + 1);
 		}
 		else
 		{
+			// FIXME: potential buffer overflow
 			memcpy(executable_buf, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1);
 			memmove(executable_buf + sizeof(SYSTEM_ROOT) - 1, executable_path, exepath_len + 1);
 		}
