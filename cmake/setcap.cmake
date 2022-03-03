@@ -5,7 +5,7 @@ install(CODE "execute_process(
 		COMMAND
 				${SETCAP_EXECUTABLE}
 				${caps}
-				${CMAKE_INSTALL_PREFIX}/${file}
+				\$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}/${file}
 		RESULT_VARIABLE
 				_SETCAP_RESULT
 		)
