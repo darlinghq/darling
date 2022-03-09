@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <pthread.h>
+#include <limits.h>
 
 #define PRIVATE 1
 #include <spawn_private.h>
@@ -24,6 +25,9 @@ static void print_kevent64_return(int nr, uintptr_t rv);
 static void print_kevent64_args(int nr, void* args[]);
 static void print_kevent_qos_return(int nr, uintptr_t rv);
 static void print_kevent_qos_args(int nr, void* args[]);
+
+static void print_select_return(int nr, uintptr_t rv);
+static void print_select_args(int nr, void* args[]);
 
 static void print_timespec(const struct timespec* timespec);
 
@@ -97,7 +101,7 @@ static const struct calldef bsd_defs[600] = {
 	[89] = { "getdtablesize", print_args, print_errno_num },
 	[90] = { "dup2", print_args, print_errno_num },
 	[92] = { "fcntl", print_args, print_errno_num },
-	[93] = { "select", print_args, print_errno_num },
+	[93] = { "select", print_select_args, print_select_return },
 	[95] = { "fsync", print_args, print_errno_num },
 	[96] = { "setpriority", print_args, print_errno_num },
 	[97] = { "socket", print_args, print_errno_num },
@@ -705,7 +709,7 @@ static const struct {
 	[89] = { 0, {  } }, // getdtablesize
 	[90] = { 2, { print_arg_int, print_arg_int } }, // dup2
 	[92] = { 3, { print_arg_int, print_arg_int, print_arg_int } }, // fcntl
-	[93] = { 5, { print_arg_int, print_arg_ptr, print_arg_ptr, print_arg_ptr, print_arg_ptr } }, // select
+	// select is special
 	[95] = { 1, { print_arg_int } }, // fsync
 	[96] = { 3, { print_arg_int, print_arg_int, print_arg_int } }, // setpriority
 	[97] = { 3, { print_arg_int, print_arg_int, print_arg_int } }, // socket
@@ -1464,6 +1468,8 @@ static void print_kevent_qos_structure(const struct kevent_qos_s* event) {
 };
 
 DEFINE_XTRACE_TLS_VAR(void*, kevent_stored_list, NULL);
+DEFINE_XTRACE_TLS_VAR(void*, kevent64_stored_list, NULL);
+DEFINE_XTRACE_TLS_VAR(void*, kevent_qos_stored_list, NULL);
 
 enum class kevent_type {
 	kevent,
@@ -1472,10 +1478,23 @@ enum class kevent_type {
 };
 
 static void print_kevent_return_common(int nr, uintptr_t rv, kevent_type type) {
-	void* event_list = get_kevent_stored_list();
+	void* event_list;
 	int ret = (intptr_t)rv;
 
-	set_kevent_stored_list(NULL);
+	switch (type) {
+		case kevent_type::kevent:
+			event_list = get_kevent_stored_list();
+			set_kevent_stored_list(NULL);
+			break;
+		case kevent_type::kevent64:
+			event_list = get_kevent64_stored_list();
+			set_kevent64_stored_list(NULL);
+			break;
+		case kevent_type::kevent_qos:
+			event_list = get_kevent_qos_stored_list();
+			set_kevent_qos_stored_list(NULL);
+			break;
+	}
 
 	if (ret < 0) {
 		print_errno(nr, rv);
@@ -1572,7 +1591,7 @@ static void print_kevent64_args(int nr, void* args[]) {
 	const struct timespec* timeout = (const struct timespec*)args[6];
 	bool printed_something = false;
 
-	set_kevent_stored_list(event_list);
+	set_kevent64_stored_list(event_list);
 
 	xtrace_log("%d, change_list = {", kq);
 
@@ -1625,7 +1644,7 @@ static void print_kevent_qos_args(int nr, void* args[]) {
 	unsigned int flags = (uintptr_t)args[7];
 	bool printed_something = false;
 
-	set_kevent_stored_list(event_list);
+	set_kevent_qos_stored_list(event_list);
 
 	xtrace_log("%d, change_list = {", kq);
 
@@ -1665,4 +1684,125 @@ static void print_timespec(const struct timespec* timespec) {
 	} else {
 		xtrace_log("NULL");
 	}
+};
+
+static void print_timeval(const struct timeval* timeval) {
+	if (timeval) {
+		xtrace_log("(%ld s, %d ns)", timeval->tv_sec, timeval->tv_usec);
+	} else {
+		xtrace_log("NULL");
+	}
+};
+
+struct select_fdsets {
+	fd_set* readfds;
+	fd_set* writefds;
+	fd_set* exceptfds;
+	int max_fd;
+};
+
+DEFINE_XTRACE_TLS_VAR(select_fdsets, stored_select_fdsets, ((struct select_fdsets){NULL, NULL, NULL, -1}));
+
+static void print_fdset(const fd_set* set, int max_fd) {
+	bool isFirst = true;
+	xtrace_log("{");
+	if (set) {
+		for (size_t index = 0; index < sizeof(set->fds_bits) / sizeof(*set->fds_bits); ++index) {
+			bool shouldBreak = false;
+			for (size_t bit = 0; bit < sizeof(*set->fds_bits) * 8; ++bit) {
+				int fd = (index * sizeof(*set->fds_bits) * 8) + bit;
+				if (fd >= max_fd) {
+					shouldBreak = true;
+					break;
+				}
+				if ((set->fds_bits[index] & (1U << bit)) != 0) {
+					if (isFirst) {
+						isFirst = false;
+						xtrace_log(" ");
+					} else {
+						xtrace_log(", ");
+					}
+					xtrace_log("%d", fd);
+				}
+			}
+			if (shouldBreak) {
+				break;
+			}
+		}
+	}
+	if (!isFirst) {
+		xtrace_log(" ");
+	}
+	xtrace_log("}");
+};
+
+static void print_select_return(int nr, uintptr_t rv) {
+	auto stored = get_ptr_stored_select_fdsets();
+	int ret = (int)rv;
+	bool isFirst = true;
+
+	if (ret < 0) {
+		print_errno(nr, rv);
+	} else {
+		xtrace_log("%d descriptors: ", ret);
+
+		if (stored->readfds) {
+			if (isFirst) {
+				isFirst = false;
+			} else {
+				xtrace_log(", ");
+			}
+			xtrace_log("read ");
+			print_fdset(stored->readfds, stored->max_fd);
+		}
+
+		if (stored->writefds) {
+			if (isFirst) {
+				isFirst = false;
+			} else {
+				xtrace_log(", ");
+			}
+			xtrace_log("write ");
+			print_fdset(stored->writefds, stored->max_fd);
+		}
+
+		if (stored->exceptfds) {
+			if (isFirst) {
+				isFirst = false;
+			} else {
+				xtrace_log(", ");
+			}
+			xtrace_log("except ");
+			print_fdset(stored->exceptfds, stored->max_fd);
+		}
+	}
+
+	stored->readfds = NULL;
+	stored->writefds = NULL;
+	stored->exceptfds = NULL;
+	stored->max_fd = -1;
+};
+
+static void print_select_args(int nr, void* args[]) {
+	auto stored = get_ptr_stored_select_fdsets();
+
+	int nfds = (intptr_t)args[0];
+	fd_set* readfds = (fd_set*)args[1];
+	fd_set* writefds = (fd_set*)args[2];
+	fd_set* exceptfds = (fd_set*)args[3];
+	struct timeval* timeout = (struct timeval*)args[4];
+
+	xtrace_log("nfds = %d, readfds = ", nfds);
+	print_fdset(readfds, nfds);
+	xtrace_log(", writefds = ");
+	print_fdset(writefds, nfds);
+	xtrace_log(", exceptfds = ");
+	print_fdset(exceptfds, nfds);
+	xtrace_log(", timeout = ");
+	print_timeval(timeout);
+
+	stored->readfds = readfds;
+	stored->writefds = writefds;
+	stored->exceptfds = exceptfds;
+	stored->max_fd = nfds;
 };
