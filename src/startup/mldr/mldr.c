@@ -128,6 +128,8 @@ int main(int argc, char** argv, char** envp)
 		strcpy(filename, argv[1]);
 	}
 
+	process_special_env(&mldr_load_results);
+
 #ifdef __i386__
 	load(filename, CPU_TYPE_X86, false, argv, &mldr_load_results); // accept i386 only
 #else
@@ -405,7 +407,6 @@ static void process_special_env(struct load_results* lr) {
 
 	if (str != NULL) {
 		sscanf(str, "%x,%x,%x,%x", &lr->bprefs[0], &lr->bprefs[1], &lr->bprefs[2], &lr->bprefs[3]);
-		unsetenv("__mldr_bprefs");
 	}
 
 	str = getenv("__mldr_sockpath");
@@ -417,7 +418,6 @@ static void process_special_env(struct load_results* lr) {
 		}
 		strncpy(__dserver_socket_address_data.sun_path, str, sizeof(__dserver_socket_address_data.sun_path) - 1);
 		__dserver_socket_address_data.sun_path[sizeof(__dserver_socket_address_data.sun_path) - 1] = '\0';
-		unsetenv("__mldr_sockpath");
 
 		lr->socket_path = __dserver_socket_address_data.sun_path;
 	}
@@ -430,6 +430,11 @@ static void process_special_env(struct load_results* lr) {
 		lr->root_path = root_path;
 		lr->root_path_length = strlen(lr->root_path);
 	}
+};
+
+static void unset_special_env() {
+	unsetenv("__mldr_bprefs");
+	unsetenv("__mldr_sockpath");
 };
 
 static void setup_space(struct load_results* lr, bool is_64_bit) {
@@ -459,7 +464,7 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 		exit(1);
 	}
 
-	process_special_env(lr);
+	unset_special_env();
 
 	lr->kernfd = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (lr->kernfd < 0) {
