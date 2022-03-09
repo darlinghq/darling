@@ -98,8 +98,8 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 		else
 		{
 			// FIXME: potential buffer overflow
-			memcpy(executable_buf, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1);
 			memmove(executable_buf + sizeof(SYSTEM_ROOT) - 1, executable_path, exepath_len + 1);
+			memcpy(executable_buf, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1);
 		}
 		executable_path = executable_buf;
 	}
