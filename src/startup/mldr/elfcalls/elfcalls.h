@@ -7,9 +7,6 @@
 struct darling_thread_create_callbacks {
 	int (*thread_self_trap)(void);
 	void (*thread_set_tsd_base)(void*, int);
-	int (*dserver_rpc_checkin)(bool is_fork);
-	int (*dserver_rpc_checkout)(int exec_listener_pipe, bool executing_macho);
-	void (*kprintf)(const char* format, ...);
 };
 
 typedef const struct darling_thread_create_callbacks* darling_thread_create_callbacks_t;

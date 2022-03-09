@@ -94,9 +94,6 @@ static struct wq_kevent_data* wq_event_pending = NULL;
 static const struct darling_thread_create_callbacks callbacks = {
 	.thread_self_trap = &thread_self_trap_impl,
 	.thread_set_tsd_base = &sys_thread_set_tsd_base,
-	.dserver_rpc_checkin = &dserver_rpc_checkin,
-	.dserver_rpc_checkout = &dserver_rpc_checkout,
-	.kprintf = &__simple_kprintf,
 };
 
 static int extract_wq_flags(int priority) {
