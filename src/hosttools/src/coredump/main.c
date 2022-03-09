@@ -108,11 +108,11 @@ static const char* note_name(const Elf64_Nhdr* note) {
 };
 
 static const void* note_data(const Elf64_Nhdr* note) {
-	return note_name(note) + round_up_pow2(note->n_namesz, 8);
+	return note_name(note) + round_up_pow2(note->n_namesz, 4);
 };
 
 static const Elf64_Nhdr* find_next_note(const Elf64_Nhdr* note) {
-	uint64_t length = sizeof(*note) + round_up_pow2(note->n_namesz, 8) + round_up_pow2(note->n_descsz, 8);
+	uint64_t length = sizeof(*note) + round_up_pow2(note->n_namesz, 4) + round_up_pow2(note->n_descsz, 4);
 	return (Elf64_Nhdr*)((char*)note + length);
 };
 
@@ -378,13 +378,13 @@ int main(int argc, char** argv) {
 					const struct nt_file_entry* entry = &entries[i];
 					const char* filename = cprm.nt_file_filenames[i];
 
-					if (entry->start != vm_area->memory_address) {
+					if (entry->start > vm_area->memory_address || entry->end < vm_area->memory_address + vm_area->memory_size) {
 						continue;
 					}
 
 					vm_area->filename = filename;
 					vm_area->filename_length = strlen(vm_area->filename);
-					vm_area->file_offset = entry->offset * cprm.nt_file->page_size;
+					vm_area->file_offset = (entry->offset * cprm.nt_file->page_size) + (vm_area->memory_address - entry->start);
 					vm_area->file_size = entry->end - entry->start;
 
 					break;
