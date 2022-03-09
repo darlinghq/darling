@@ -377,6 +377,11 @@ libSystem_atfork_child(void)
 
 	// second call client parent handlers registered with pthread_atfork()
 	_pthread_atfork_child_handlers();
+
+#ifdef DARLING
+	extern void kqueue_atfork(void);
+	kqueue_atfork();
+#endif
 }
 
 #if CURRENT_VARIANT_asan

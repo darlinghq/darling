@@ -24,6 +24,8 @@ int oflags_linux_to_bsd(int flags);
 extern int sprintf(char *str, const char *format, ...);
 long sys_readlink(const char* path, char* buf, unsigned long bsize);
 
+extern void kqueue_dup(int oldfd, int newfd);
+
 static short int flock_type_linux_to_bsd(short int linux) {
 	switch (linux) {
 		case LINUX_F_RDLCK: return F_RDLCK;
@@ -140,6 +142,10 @@ long sys_fcntl_nocancel(int fd, int cmd, long arg)
 			bsd_struct->l_len = linux_struct->l_len;
 			bsd_struct->l_pid = linux_struct->l_pid;
 		} break;
+		case F_DUPFD:
+		case F_DUPFD_CLOEXEC:
+			kqueue_dup(fd, ret);
+			break;
 	}
 
 	return ret;
