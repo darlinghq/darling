@@ -5,12 +5,6 @@ unset(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
 
 cmake_policy(SET CMP0005 NEW)
 
-if(FLATPAK_BUILD)
-	# For some reason, some of the header files are not included in the 
-	# `/usr/include` directory.
-	include_directories("/usr/lib/x86_64-linux-gnu/include")
-endif(FLATPAK_BUILD)
-
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(mig)
 include(pyc)
