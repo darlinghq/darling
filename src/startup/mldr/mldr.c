@@ -76,6 +76,9 @@ static void setup_stack64(const char* filepath, struct load_results* lr);
 #endif
 static void setup_stack32(const char* filepath, struct load_results* lr);
 
+// this is called when argv[0] specifies an interpreter and we need to "unexpand" it (i.e. convert it from a Linux path to a vchrooted path)
+static void vchroot_unexpand_interpreter(struct load_results* lr);
+
 // UUID of the main executable
 uint8_t exe_uuid[16];
 
@@ -163,6 +166,10 @@ int main(int argc, char** argv, char** envp)
 		mldr_load_results.argv[i] = mldr_load_results.argv[i + 1];
 	}
 	mldr_load_results.argv[mldr_load_results.argc] = NULL;
+
+	if (p == NULL) {
+		vchroot_unexpand_interpreter(&mldr_load_results);
+	}
 
 	if (mldr_load_results._32on64)
 		setup_stack32(filename, &mldr_load_results);
@@ -546,4 +553,23 @@ static void start_thread(struct load_results* lr) {
 #else 
 #       error Unsupported platform!
 #endif
+};
+
+static void vchroot_unexpand_interpreter(struct load_results* lr) {
+	static char unexpanded[4096];
+	size_t length;
+
+	if (lr->root_path) {
+		length = strlen(lr->argv[0]);
+
+		if (strncmp(lr->argv[0], lr->root_path, lr->root_path_length) == 0) {
+			memmove(unexpanded, lr->argv[0] + lr->root_path_length, length - lr->root_path_length + 1);
+		} else {
+			// FIXME: potential buffer overflow
+			memmove(unexpanded + sizeof(SYSTEM_ROOT) - 1, lr->argv[0], length + 1);
+			memcpy(unexpanded, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1);
+		}
+
+		lr->argv[0] = unexpanded;
+	}
 };
