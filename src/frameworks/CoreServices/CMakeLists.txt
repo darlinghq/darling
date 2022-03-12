@@ -1,5 +1,11 @@
 project(CoreServices)
 
+if(FLATPAK_BUILD)
+	# For some reason, some of the header files are not included in the 
+	# `/usr/include` directory.
+	include_directories("/usr/lib/x86_64-linux-gnu/include")
+endif(FLATPAK_BUILD)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 include_directories(
