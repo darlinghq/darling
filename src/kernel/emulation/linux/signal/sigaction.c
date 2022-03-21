@@ -7,6 +7,8 @@
 #include "sigexc.h"
 #include <sys/errno.h>
 
+#include <darlingserver/rpc.h>
+
 static int sigflags_bsd_to_linux(int flags);
 static int sigflags_linux_to_bsd(int flags);
 extern void sig_restorer(void);
@@ -14,6 +16,7 @@ extern void sig_restorer(void);
 extern void* memcpy(void* dest, const void* src, __SIZE_TYPE__ len);
 extern void* memset(void* dest, int v, __SIZE_TYPE__ len);
 
+static void handler_linux_to_bsd_wrapper(int linux_signum, struct linux_siginfo* info, void* ctxt);
 
 // Libc uses only one trampoline
 void (*sa_tramp)(void*, int, int, struct bsd_siginfo*, void*) = 0;
@@ -50,7 +53,7 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 		if (nsa->sa_sigaction != SIG_DFL && nsa->sa_sigaction != SIG_IGN
 				&& nsa->sa_sigaction != SIG_ERR)
 		{
-			sa.sa_sigaction = &handler_linux_to_bsd;
+			sa.sa_sigaction = &handler_linux_to_bsd_wrapper;
 		}
 		else
 			sa.sa_sigaction = (linux_sig_handler*) nsa->sa_sigaction;
@@ -68,7 +71,7 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
 
 		if (osa != NULL)
 		{
-			if (olsa.sa_sigaction == handler_linux_to_bsd)
+			if (olsa.sa_sigaction == handler_linux_to_bsd_wrapper)
 				osa->sa_sigaction = sig_handlers[linux_signum];
 			else // values such as SIG_DFL
 				osa->sa_sigaction = (bsd_sig_handler*) olsa.sa_sigaction;
@@ -231,6 +234,12 @@ static void mcontext_bsd_to_linux(const struct bsd_mcontext* bm, struct linux_mc
 #endif
 
 }
+
+static void handler_linux_to_bsd_wrapper(int linux_signum, struct linux_siginfo* info, void* ctxt) {
+	dserver_rpc_interrupt_enter();
+	handler_linux_to_bsd(linux_signum, info, ctxt);
+	dserver_rpc_interrupt_exit();
+};
 
 void handler_linux_to_bsd(int linux_signum, struct linux_siginfo* info, void* ctxt)
 {

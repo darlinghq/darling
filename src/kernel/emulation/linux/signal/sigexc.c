@@ -135,6 +135,8 @@ void sigexc_setup(void)
 
 void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 {
+	dserver_rpc_interrupt_enter();
+
 #if defined(__x86_64__)
 	x86_thread_state64_t tstate;
 	x86_float_state64_t fstate;
@@ -155,6 +157,8 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 	lkm_call(NR_thread_suspended, &args);
 
 	state_from_kernel(ctxt, &args.state);
+
+	dserver_rpc_interrupt_exit();
 }
 
 
@@ -222,7 +226,7 @@ static void state_from_kernel(struct linux_ucontext* ctxt, const struct thread_s
 
 void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
-	dserver_rpc_sigexc_enter();
+	dserver_rpc_interrupt_enter();
 
 	kern_printf("sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
 
@@ -259,7 +263,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	state_to_kernel(ctxt, &state);
 	int ret = dserver_rpc_sigprocess(bsd_signum, linux_signum, info->si_pid, info->si_code, info->si_addr, &tstate, &fstate, &bsd_signum);
 	if (ret < 0) {
-		__simple_printf("sigprocess failed internally: %d", ret);
+		__simple_printf("sigprocess failed internally while processing Linux signal %d: %d", linux_signum, ret);
 		__simple_abort();
 	}
 	state_from_kernel(ctxt, &state);
@@ -320,7 +324,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	kern_printf("sigexc: handler (%d) returning\n", linux_signum);
 
 out:
-	dserver_rpc_sigexc_exit();
+	dserver_rpc_interrupt_exit();
 }
 
 #define DUMPREG(regname) kern_printf("sigexc:   " #regname ": 0x%llx\n", regs->regname);
