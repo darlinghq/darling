@@ -634,9 +634,7 @@ static void print_arg_string_array(void* arg) {
 	xtrace_log("}");
 };
 
-// TODO: output more specific information for certain calls
-//       e.g. the kqueue family of syscalls would definitely be great candidates for this.
-//       that way, we can see what events have been returned and what the application might be processing now.
+// TODO: output more specific information for more calls
 
 static const struct {
 	int args_cnt;
@@ -690,7 +688,7 @@ static const struct {
 	[56] = { 1, { print_arg_str } }, // revoke
 	[57] = { 2, { print_arg_str, print_arg_str } }, // symlink
 	[58] = { 3, { print_arg_str, print_arg_ptr, print_arg_int } }, // readlink
-	[59] = { 3, { print_arg_str, print_arg_ptr, print_arg_ptr } }, // execve
+	[59] = { 3, { print_arg_str, print_arg_string_array, print_arg_string_array } }, // execve
 	[60] = { 1, { print_arg_int } }, // umask
 	[61] = { 1, { print_arg_str } }, // chroot
 	[65] = { 3, { print_arg_ptr, print_arg_int, print_arg_int } }, // msync
