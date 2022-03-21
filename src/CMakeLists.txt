@@ -57,7 +57,8 @@ add_subdirectory(external/cctools-port/cctools/misc)
 add_subdirectory(buildtools)
 add_subdirectory(hosttools)
 add_subdirectory(libelfloader/wrapgen)
-add_subdirectory(libsimple)
+# add the Linux build of libsimple now
+add_subdirectory(libsimple "${CMAKE_CURRENT_BINARY_DIR}/libsimple-linux")
 add_subdirectory(external/darlingserver)
 add_subdirectory(startup)
 
@@ -108,6 +109,9 @@ include_directories(AFTER
 	${CMAKE_SOURCE_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/libxml2
 	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/libxml2
 )
+
+# add the Mach-O build of libsimple now
+add_subdirectory(libsimple "${CMAKE_CURRENT_BINARY_DIR}/libsimple-darling")
 
 add_subdirectory(external/libkqueue)
 

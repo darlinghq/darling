@@ -27,8 +27,13 @@ struct timespec;
 #if LIBSIMPLE_LINUX
 	#include <sys/syscall.h>
 	#include <unistd.h>
+#elif LIBSIMPLE_DARLING
+	extern int __linux_futex(int* uaddr, int op, int val, const struct timespec* timeout, int* uaddr2, int val3);
 #endif
 
+#if LIBSIMPLE_DARLING
+	#define linux_futex __linux_futex
+#else // !LIBSIMPLE_DARLING
 static int linux_futex(int* uaddr, int op, int val, const struct timespec* timeout, int* uaddr2, int val3) {
 #if LIBSIMPLE_LINUX
 	return syscall(SYS_futex, uaddr, op, val, timeout, uaddr2, val3);
@@ -36,6 +41,7 @@ static int linux_futex(int* uaddr, int op, int val, const struct timespec* timeo
 	#error linux_futex not implemented for this platform
 #endif
 };
+#endif // !LIBSIMPLE_DARLING
 
 //
 // libsimple_lock

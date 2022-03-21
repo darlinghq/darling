@@ -49,6 +49,7 @@ set(emulation_sources
 	guarded/guarded_open_np.c
 	guarded/guarded_close_np.c
 	guarded/guarded_kqueue_np.c
+	guarded/table.c
 	machdep/machdeps.c
 	machdep/machdep-table.S
 	machdep/tls.c
@@ -313,6 +314,10 @@ set_source_files_properties(signal/sigexc.c PROPERTIES OBJECT_DEPENDS ${CMAKE_CU
 set_source_files_properties(${CMAKE_BINARY_DIR}/src/external/darlingserver/src/rpc.c PROPERTIES
 	GENERATED TRUE
 	COMPILE_FLAGS "-include ${CMAKE_CURRENT_SOURCE_DIR}/resources/dserver-rpc-defs.h"
+)
+
+include_directories(
+	../../../libsimple/include
 )
 
 add_darling_object_library(emulation ${emulation_sources})

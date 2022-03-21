@@ -47,6 +47,8 @@ add_circular(system_kernel FAT
 		system_c
 		compiler_rt
 		system_dyld
+	DEPENDENCIES
+		libsimple_darling
 )
 #target_link_libraries(system_kernel system_duct platform_static32 platform_static64)
 make_fat(system_kernel)

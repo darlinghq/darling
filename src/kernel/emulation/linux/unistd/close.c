@@ -6,6 +6,7 @@
 #include "../mach/lkm.h"
 #include <lkm/api.h>
 #include "../simple.h"
+#include "../guarded/table.h"
 
 __attribute__((weak))
 __attribute__((visibility("default")))
@@ -21,8 +22,10 @@ long sys_close_nocancel(int fd)
 {
 	int ret;
 
-	if (fd == mach_driver_get_dyld_fd()) {
-		__simple_kprintf("*** Someone tried to close the special LKM fd! ***");
+	if (guard_table_check(fd, guard_flag_prevent_close)) {
+		// we should crash, actually.
+		// for now, let's silently (as far as the caller is concerned) ignore it.
+		__simple_kprintf("*** Someone tried to close a guarded FD (%d) via close! ***", fd);
 		return 0;
 	}
 

@@ -5,12 +5,19 @@
 #include "../duct_errno.h"
 #include "../mach/lkm.h"
 #include <lkm/api.h>
+#include "../simple.h"
+#include "../guarded/table.h"
 
 extern void kqueue_dup(int oldfd, int newfd);
 
 long sys_dup2(int fd_from, int fd_to)
 {
 	int ret;
+
+	if (guard_table_check(fd_to, guard_flag_prevent_close)) {
+		__simple_kprintf("*** Someone tried to close a guarded FD (%d) via dup2! ***", fd_to);
+		__simple_abort();
+	}
 
 	#if defined(__NR_dup2)
 		ret = LINUX_SYSCALL2(__NR_dup2, fd_from, fd_to);
