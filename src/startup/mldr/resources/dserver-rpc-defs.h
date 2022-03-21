@@ -6,6 +6,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include <signal.h>
 
 #include <darlingserver/rpc-supplement.h>
 
@@ -82,3 +83,24 @@ static long int dserver_rpc_hooks_receive_message(int socket, dserver_rpc_hooks_
 extern int __dserver_main_thread_socket_fd;
 
 #define dserver_rpc_hooks_get_socket() __dserver_main_thread_socket_fd
+
+#define dserver_rpc_hooks_printf(...) fprintf(stderr, ## __VA_ARGS__)
+
+#define dserver_rpc_hooks_atomic_save_t sigset_t
+
+static void dserver_rpc_hooks_atomic_begin(dserver_rpc_hooks_atomic_save_t* atomic_save) {
+	sigset_t set;
+	sigfillset(&set);
+	pthread_sigmask(SIG_BLOCK, &set, atomic_save);
+};
+
+static void dserver_rpc_hooks_atomic_end(dserver_rpc_hooks_atomic_save_t* atomic_save) {
+	pthread_sigmask(SIG_SETMASK, atomic_save, NULL);
+};
+
+#define dserver_rpc_hooks_get_interrupt_status() (-EINTR)
+
+static void dserver_rpc_hooks_push_reply(int socket, const dserver_rpc_hooks_msghdr_t* reply, size_t size) {
+	// we shouldn't need to push any replies in mldr
+	abort();
+};

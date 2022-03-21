@@ -10,6 +10,7 @@
 #include "../mach/lkm.h"
 #include "../elfcalls_wrapper.h"
 #include "../simple.h"
+#include "../signal/sigprocmask.h"
 
 #include <darlingserver/rpc-supplement.h>
 
@@ -189,3 +190,22 @@ retry:
 #define dserver_rpc_hooks_close_fd(fd) ((int)LINUX_SYSCALL1(__NR_close, fd))
 
 #define dserver_rpc_hooks_get_socket mach_driver_get_fd
+
+#define dserver_rpc_hooks_printf __simple_printf
+
+#define dserver_rpc_hooks_atomic_save_t sigset_t
+
+static void dserver_rpc_hooks_atomic_begin(dserver_rpc_hooks_atomic_save_t* atomic_save) {
+	// see sys_disable_threadsignal()
+	sigset_t set = ~0;
+	sys_sigprocmask(SIG_BLOCK, &set, atomic_save);
+};
+
+static void dserver_rpc_hooks_atomic_end(dserver_rpc_hooks_atomic_save_t* atomic_save) {
+	sys_sigprocmask(SIG_SETMASK, atomic_save, NULL);
+};
+
+#define dserver_rpc_hooks_get_interrupt_status() (-LINUX_EINTR)
+
+extern void __dserver_rpc_hooks_push_reply(int socket, const dserver_rpc_hooks_msghdr_t* reply, size_t size);
+#define dserver_rpc_hooks_push_reply __dserver_rpc_hooks_push_reply

@@ -307,6 +307,7 @@ set(emulation_sources
 	xtrace-hooks.S
 
 	${CMAKE_BINARY_DIR}/src/external/darlingserver/src/rpc.c
+	resources/dserver-rpc-defs.c
 )
 	
 set_source_files_properties(signal/duct_signals.c PROPERTIES COMPILE_FLAGS "-nostdinc")
