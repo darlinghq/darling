@@ -24,6 +24,7 @@
 #include <stddef.h>
 #include "../elfcalls_wrapper.h"
 #include <darlingserver/rpc.h>
+#include "../readline.h"
 
 #define LINUX_PR_SET_NAME 15
 
@@ -285,27 +286,32 @@ static long _proc_pidinfo_tbsdinfo(int32_t pid, void* buffer, int32_t bufsize)
 
 	uint64_t starttime = __simple_atoi(elem, NULL);
 
-	if (!read_string("/proc/stat", stat, sizeof(stat)))
+	struct rdline_buffer rbuf;
+	int statfd = sys_open("/proc/stat", BSD_O_RDONLY, 0);
+
+	if (statfd < 0)
 		return -ESRCH;
-	
-	statptr = stat;
+
+	_readline_init(&rbuf);
 
 	uint64_t btime;
+	const char* line = NULL;
 
-	while (statptr < stat + sizeof(stat))
+	while ((line = _readline(statfd, &rbuf)) != NULL)
 	{
-		if (strncmp(statptr, "btime ", 6) == 0)
+		if (strncmp(line, "btime ", 6) == 0)
 		{
-			statptr += 6;
-			btime = __simple_atoi(statptr, NULL);
+			line += 6;
+			btime = __simple_atoi(line, NULL);
 			break;
 		}
+	}
 
-		char* next = strchr(statptr, '\n');
-		if (!next)
-			return -ESRCH;
-		
-		statptr = next + 1;
+	close_internal(statfd);
+
+	// if we see `line == NULL`, we didn't break out early, so we didn't see "btime"
+	if (line == NULL) {
+		return -ESRCH;
 	}
 
 	long ticks_per_sec = native_sysconf(_SC_CLK_TCK);
