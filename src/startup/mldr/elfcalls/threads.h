@@ -33,6 +33,8 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pthobj_siz
 int __darling_thread_terminate(void* stackaddr,
 				unsigned long freesize, unsigned long pthobj_size);
 void* __darling_thread_get_stack(void);
+int __darling_thread_rpc_socket(void);
+void __darling_thread_rpc_socket_refresh(void);
 
 #ifdef __cplusplus
 }

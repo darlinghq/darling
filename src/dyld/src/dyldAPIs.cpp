@@ -261,9 +261,7 @@ static const struct dyld_func dyld_funcs[] = {
     {"__dyld_link_module",							(void*)_dyld_link_module },
 #endif
 #ifdef DARLING
-	{"__dyld_get_mach_driver_fd", (void*)mach_driver_get_dyld_fd },
 	{"__dyld_get_elfcalls", (void*)elfcalls_get_pointer },
-	{"__dyld_set_mach_driver_fd", (void*)mach_driver_set_dyld_fd },
 #endif
 #pragma clang diagnostic pop
 #endif //DEPRECATED_APIS_SUPPORTED

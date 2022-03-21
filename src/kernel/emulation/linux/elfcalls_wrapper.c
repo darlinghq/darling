@@ -80,6 +80,10 @@ const void* __dserver_socket_address(void) {
 	return elfcalls()->dserver_socket_address();
 };
 
-int __dserver_new_socket(void) {
-	return elfcalls()->dserver_new_socket();
+int __dserver_per_thread_socket(void) {
+	return elfcalls()->dserver_per_thread_socket();
+};
+
+void __dserver_per_thread_socket_refresh(void) {
+	return elfcalls()->dserver_per_thread_socket_refresh();
 };

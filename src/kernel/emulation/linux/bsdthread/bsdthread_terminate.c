@@ -7,6 +7,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "../elfcalls_wrapper.h"
+#include "../guarded/table.h"
+#include "../mach/lkm.h"
 
 int bsdthread_terminate_trap(
                 uintptr_t stackaddr,
@@ -30,6 +32,9 @@ long sys_bsdthread_terminate(void* stackaddr, unsigned long freesize, int port,
 
 	// point of no return; let xtrace know
 	_xtrace_thread_exit();
+
+	// we can also unguard the RPC FD for this thread now
+	guard_table_remove(mach_driver_get_fd());
 
 	return __darling_thread_terminate(stackaddr, freesize, pthread_obj_size);
 #else

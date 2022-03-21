@@ -3,10 +3,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 struct darling_thread_create_callbacks {
 	int (*thread_self_trap)(void);
 	void (*thread_set_tsd_base)(void*, int);
+	void (*rpc_guard)(int);
+	void (*rpc_unguard)(int);
 };
 
 typedef const struct darling_thread_create_callbacks* darling_thread_create_callbacks_t;
@@ -53,7 +56,8 @@ struct elf_calls
 
 	// darlingserver RPC info
 	const void* (*dserver_socket_address)(void);
-	int (*dserver_new_socket)(void);
+	int (*dserver_per_thread_socket)(void);
+	void (*dserver_per_thread_socket_refresh)(void);
 };
 
 #endif

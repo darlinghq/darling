@@ -204,8 +204,4 @@ mach_init_doit(void)
 
 	_init_cpu_capabilities();
 	_pthread_set_self(0);
-
-#ifdef DARLING
-	mach_driver_init_pthread();
-#endif
 }

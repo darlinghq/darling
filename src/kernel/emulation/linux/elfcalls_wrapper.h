@@ -29,7 +29,8 @@ int __darling_thread_terminate(void* stackaddr,
 void* __darling_thread_get_stack(void);
 
 const void* __dserver_socket_address(void);
-int __dserver_new_socket(void);
+int __dserver_per_thread_socket(void);
+void __dserver_per_thread_socket_refresh(void);
 
 #ifdef __cplusplus
 }

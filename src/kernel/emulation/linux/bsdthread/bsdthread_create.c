@@ -14,6 +14,7 @@
 #include "../mach/mach_traps.h"
 
 #include <darlingserver/rpc.h>
+#include "../guarded/table.h"
 
 extern void *memset(void *s, int c, size_t n);
 
@@ -30,9 +31,19 @@ static bool _uses_threads = false;
 
 // http://www.tldp.org/FAQ/Threads-FAQ/clone.c
 
+static void rpc_guard(int fd) {
+	guard_table_add(fd, guard_flag_prevent_close | guard_flag_close_on_fork);
+};
+
+static void rpc_unguard(int fd) {
+	guard_table_remove(fd);
+};
+
 static const struct darling_thread_create_callbacks callbacks = {
 	.thread_self_trap = &thread_self_trap_impl,
 	.thread_set_tsd_base = &sys_thread_set_tsd_base,
+	.rpc_guard = rpc_guard,
+	.rpc_unguard = rpc_unguard,
 };
 
 long sys_bsdthread_create(void* thread_start, void* arg,

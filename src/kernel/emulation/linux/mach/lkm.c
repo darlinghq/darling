@@ -10,6 +10,8 @@
 #include "../simple.h"
 #include "../misc/ioctl.h"
 #include <elfcalls.h>
+#include "../guarded/table.h"
+#include "../elfcalls_wrapper.h"
 
 extern int sys_open(const char*, int, int);
 extern int close_internal(int);
@@ -19,9 +21,6 @@ extern int sys_getrlimit(int, struct rlimit*);
 extern int sys_dup2(int, int);
 extern int sys_fcntl(int, int, int);
 extern _libkernel_functions_t _libkernel_functions;
-
-
-int driver_fd = -1;
 
 VISIBLE
 struct elf_calls* _elfcalls;
@@ -38,10 +37,6 @@ void mach_driver_init(const char** applep)
 		int i;
 		for (i = 0; applep[i] != NULL; i++)
 		{
-			if (strncmp(applep[i], "kernfd=", 7) == 0)
-			{
-				driver_fd = __simple_atoi(applep[i] + 7, NULL);
-			}
 			if (strncmp(applep[i], "elf_calls=", 10) == 0)
 			{
 				uintptr_t table = (uintptr_t) __simple_atoi16(applep[i] + 10, NULL);
@@ -50,27 +45,16 @@ void mach_driver_init(const char** applep)
 		}
 	}
 #else
-	// Ask for fd already set up by dyld
-	int (*p)(void);
-	_libkernel_functions->dyld_func_lookup("__dyld_get_mach_driver_fd", (void**) &p);
-
-	driver_fd = (*p)();
-
 	// ask for elfcalls already set up by dyld
 	void* (*p2)(void);
 	_libkernel_functions->dyld_func_lookup("__dyld_get_elfcalls", (void**)&p2);
 
 	_elfcalls = p2();
-#endif
 
-#if 0
-	// If mach_driver_init() is being called in the fork child, the LKM will now
-	// swap out driver_fd for a new one.
-	if (__real_ioctl(driver_fd, NR_get_api_version, 0) != DARLING_MACH_API_VERSION)
-	{
-		const char* msg = "Darling Mach kernel module reports different API level. Aborting.\n";
-		sys_write(2, msg, strlen(msg));
-		sys_kill(0, 6);
+	if (applep) {
+		// this is not a fork; guard the main thread's RPC FD we get from mldr
+		// (in the child after a fork, sys_fork already takes care of this)
+		guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork);
 	}
 #endif
 
@@ -105,11 +89,6 @@ void mach_driver_init(const char** applep)
 	}
 }
 
-void mach_driver_init_pthread(void) {
-	_os_tsd_set_direct(__TSD_DSERVER_RPC_FD, (void*)(intptr_t)driver_fd);
-	use_per_thread_driver_fd = true;
-};
-
 __attribute__((visibility("default")))
 int lkm_call(int call_nr, void* arg)
 {
@@ -124,24 +103,9 @@ int lkm_call_raw(int call_nr, void* arg)
 	__builtin_unreachable();
 }
 
-__attribute__((visibility("default")))
-int mach_driver_get_dyld_fd(void)
-{
-	return driver_fd;
-}
-
-__attribute__((visibility("default")))
-void mach_driver_set_dyld_fd(int fd) {
-	driver_fd = fd;
-};
-
 VISIBLE
 int mach_driver_get_fd(void) {
-	if (use_per_thread_driver_fd) {
-		return (int)(intptr_t)_os_tsd_get_direct(__TSD_DSERVER_RPC_FD);
-	} else {
-		return driver_fd;
-	}
+	return __dserver_per_thread_socket();
 };
 
 VISIBLE

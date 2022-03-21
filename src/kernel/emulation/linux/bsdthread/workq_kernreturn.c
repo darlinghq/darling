@@ -22,6 +22,7 @@
 #include "../../../../startup/mldr/elfcalls/dthreads.h"
 
 #include <darlingserver/rpc.h>
+#include "../guarded/table.h"
 
 #define WQ_MAX_THREADS	64
 
@@ -91,9 +92,19 @@ static int priority_to_class(int prio);
 // This is horrible, but it may work
 static struct wq_kevent_data* wq_event_pending = NULL;
 
+static void rpc_guard(int fd) {
+	guard_table_add(fd, guard_flag_prevent_close | guard_flag_close_on_fork);
+};
+
+static void rpc_unguard(int fd) {
+	guard_table_remove(fd);
+};
+
 static const struct darling_thread_create_callbacks callbacks = {
 	.thread_self_trap = &thread_self_trap_impl,
 	.thread_set_tsd_base = &sys_thread_set_tsd_base,
+	.rpc_guard = rpc_guard,
+	.rpc_unguard = rpc_unguard,
 };
 
 static int extract_wq_flags(int priority) {

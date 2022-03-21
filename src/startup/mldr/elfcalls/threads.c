@@ -44,6 +44,7 @@ static __thread jmp_buf t_jmpbuf;
 static __thread void* t_freeaddr;
 static __thread size_t t_freesize;
 static __thread int t_server_socket = -1;
+static __thread darling_thread_create_callbacks_t t_callbacks = NULL;
 
 typedef void (*thread_ep)(void**, int, ...);
 struct arg_struct
@@ -82,7 +83,6 @@ static dthread_t dthread_structure_init(dthread_t dthread, size_t guard_size, vo
 	dthread->tsd[DTHREAD_TSD_SLOT_ERRNO] = &dthread->err_no;
 	dthread->tsd[DTHREAD_TSD_SLOT_PTHREAD_QOS_CLASS] = (void*)(uintptr_t)(DTHREAD_DEFAULT_PRIORITY);
 	dthread->tsd[DTHREAD_TSD_SLOT_PTR_MUNGE] = 0;
-	dthread->tsd[DTHREAD_TSD_SLOT_DSERVER_RPC_FD] = (void*)(intptr_t)-1;
 	dthread->tl_has_custom_stack = 0;
 	dthread->lock = (darwin_os_unfair_lock){0};
 
@@ -231,17 +231,18 @@ static void* darling_thread_entry(void* p)
 		exit(1);
 	}
 
-	// the socket is ready; assign it now
-	dthread->tsd[DTHREAD_TSD_SLOT_DSERVER_RPC_FD] = (void*)(intptr_t)new_rpc_fd;
+	// guard the new RPC FD
+	args.callbacks->rpc_guard(new_rpc_fd);
 
+	// the socket is ready; assign it now
 	t_server_socket = new_rpc_fd;
+	t_callbacks = args.callbacks;
 
 	// libpthread now expects the kernel to set the TSD
 	// so, since we're pretending to be the kernel handling threads...
 	args.callbacks->thread_set_tsd_base(&dthread->tsd[0], 0);
 	*flags |= args.is_workqueue ? DWQ_FLAG_THREAD_TSD_BASE_SET : DTHREAD_START_TSD_BASE_SET;
 
-	// now that we've set the TSD, darlingserver RPC can now use our per-thread socket;
 	// let's check-in with darlingserver on this new thread
 	if (dserver_rpc_explicit_checkin(t_server_socket, false) < 0) {
 		// we can't do ANYTHING if darlingserver doesn't acknowledge us successfully
@@ -328,6 +329,12 @@ int __darling_thread_terminate(void* stackaddr,
 		}
 	}
 
+	// close the RPC FD (if necessary)
+	// it should already have been unguarded by our caller
+	if (t_server_socket != -1) {
+		close(t_server_socket);
+	}
+
 	if (getpid() == syscall(SYS_gettid))
 	{
 		// dispatch_main() calls pthread_exit(NULL) on the main thread,
@@ -359,3 +366,47 @@ void* __darling_thread_get_stack(void)
 
 	return ((char*)stackaddr) + stacksize - 0x2000;
 }
+
+extern int __dserver_main_thread_socket_fd;
+
+int __darling_thread_rpc_socket(void) {
+	if (t_server_socket == -1) {
+		if (getpid() == syscall(SYS_gettid)) {
+			// this is the main thread
+			t_server_socket = __dserver_main_thread_socket_fd;
+		} else {
+			// threads should already have a per-thread socket assigned when they're created
+			abort();
+		}
+	}
+	return t_server_socket;
+};
+
+void __darling_thread_rpc_socket_refresh(void) {
+	int new_rpc_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+	if (new_rpc_fd < 0) {
+		abort();
+	}
+
+	// make it close-on-exec
+	int fd_flags = fcntl(new_rpc_fd, F_GETFD);
+	if (fd_flags < 0) {
+		abort();
+	}
+	if (fcntl(new_rpc_fd, F_SETFD, fd_flags | FD_CLOEXEC) < 0) {
+		abort();
+	}
+
+	// auto-bind it
+	sa_family_t family = AF_UNIX;
+	if (bind(new_rpc_fd, (const struct sockaddr*)&family, sizeof(family)) < 0) {
+		abort();
+	}
+
+	t_server_socket = new_rpc_fd;
+
+	// if this is the main thread, also update the socket used by mldr
+	if (getpid() == syscall(SYS_gettid)) {
+		__dserver_main_thread_socket_fd = t_server_socket;
+	}
+};
