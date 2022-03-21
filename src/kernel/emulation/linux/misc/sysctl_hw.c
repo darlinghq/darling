@@ -7,6 +7,7 @@
 #include "sysctl_proc.h"
 #include "../ext/sys/utsname.h"
 #include "../simple.h"
+#include "../string.h"
 
 extern kern_return_t mach_port_deallocate(ipc_space_t task, mach_port_name_t name);
 extern kern_return_t host_info(mach_port_name_t host, int itype, void* hinfo, mach_msg_type_number_t* count);
@@ -46,7 +47,7 @@ const struct known_sysctl sysctls_hw[] = {
 	{ .oid = _HW_LOGICAL_CPU, .type = CTLTYPE_INT, .exttype = "", .name = "logicalcpu", .handler = handle_logicalcpu },
 	{ .oid = _HW_LOGICAL_CPU_MAX, .type = CTLTYPE_INT, .exttype = "", .name = "logicalcpu_max", .handler = handle_logicalcpu_max },
 	{ .oid = HW_MEMSIZE, .type = CTLTYPE_QUAD, .exttype = "U", .name = "memsize", .handler = handle_memsize },
-	{ .oid = HW_PAGESIZE, .type = CTLTYPE_INT, .exttype = "", .name = "pagesize", .handler = handle_pagesize },
+	{ .oid = HW_PAGESIZE, .type = CTLTYPE_INT, .exttype = "I", .name = "pagesize", .handler = handle_pagesize },
 	{ .oid = _HW_CPUTYPE, .type = CTLTYPE_INT, .exttype = "", .name = "cputype", .handler = handle_cputype },
 	{ .oid = _HW_CPUSUBTYPE, .type = CTLTYPE_INT, .exttype = "", .name = "cpusubtype", .handler = handle_cpusubtype },
 	{ .oid = _HW_CPUTHREADTYPE, .type = CTLTYPE_INT, .exttype = "", .name = "cputhreadtype", .handler = handle_cputhreadtype },
@@ -118,20 +119,28 @@ sysctl_handler(handle_memsize)
 
 sysctl_handler(handle_pagesize)
 {
-	//sysctl_handle_size(sizeof(int));
-	// TODO: maybe should be int64_t (long long) all the time, keeping compatability with int for now
 	if (old == NULL)
 	{
 		*oldlen = sizeof(int);
 		return 0;
 	}
-	else if (*oldlen == sizeof(long long))
+	else if (*oldlen < sizeof(int))
 	{
-		*((long long*) old) = 4096; // true on all Darling platforms
+		return -EINVAL;
 	}
 	else
 	{
 		*((int*) old) = 4096; // true on all Darling platforms
+
+		// libc's sysconf passes in a `long` for the argument.
+		// Apple's code is actually wrong there because it doesn't check the returned size.
+		// to deal with this (since apparently it works on real macOS), what we do is zero out
+		// the rest of the buffer so the upper half won't be garbage.
+		//
+		// note that this only works on little endian systems,
+		// but that's okay; that's what all Darling platforms are.
+		memset((char*)old + sizeof(int), 0, *oldlen - sizeof(int));
+
 		*oldlen = sizeof(int);
 	}
 	return 0;
