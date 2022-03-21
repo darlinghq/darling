@@ -76,7 +76,7 @@ void xtrace_setup_mig_tracing(void)
 	closedir(xtrace_mig_dir);
 }
 
-DEFINE_XTRACE_TLS_VAR(bool, is_first_arg, false);
+DEFINE_XTRACE_TLS_VAR(bool, is_first_arg, false, NULL);
 
 #define BEFORE if (!get_is_first_arg()) xtrace_log(", ")
 #define AFTER set_is_first_arg(false)

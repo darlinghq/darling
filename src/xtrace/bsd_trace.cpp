@@ -1465,9 +1465,9 @@ static void print_kevent_qos_structure(const struct kevent_qos_s* event) {
 	xtrace_log(", ext[0] = 0x%llx, ext[1] = 0x%llx, ext[2] = 0x%llx, ext[3] = 0x%llx, qos = %d, xflags = 0x%x }", event->ext[0], event->ext[1], event->ext[2], event->ext[3], event->qos, event->xflags);
 };
 
-DEFINE_XTRACE_TLS_VAR(void*, kevent_stored_list, NULL);
-DEFINE_XTRACE_TLS_VAR(void*, kevent64_stored_list, NULL);
-DEFINE_XTRACE_TLS_VAR(void*, kevent_qos_stored_list, NULL);
+DEFINE_XTRACE_TLS_VAR(void*, kevent_stored_list, NULL, NULL);
+DEFINE_XTRACE_TLS_VAR(void*, kevent64_stored_list, NULL, NULL);
+DEFINE_XTRACE_TLS_VAR(void*, kevent_qos_stored_list, NULL, NULL);
 
 enum class kevent_type {
 	kevent,
@@ -1699,7 +1699,7 @@ struct select_fdsets {
 	int max_fd;
 };
 
-DEFINE_XTRACE_TLS_VAR(select_fdsets, stored_select_fdsets, ((struct select_fdsets){NULL, NULL, NULL, -1}));
+DEFINE_XTRACE_TLS_VAR(select_fdsets, stored_select_fdsets, ((struct select_fdsets){NULL, NULL, NULL, -1}), NULL);
 
 static void print_fdset(const fd_set* set, int max_fd) {
 	bool isFirst = true;

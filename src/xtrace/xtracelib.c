@@ -101,7 +101,13 @@ static char xtrace_logfile_base[PATH_MAX] = {0};
 static xtrace_once_t xtrace_common_logfile_once = XTRACE_ONCE_INITIALIZER;
 int xtrace_common_logfile = -1;
 
-DEFINE_XTRACE_TLS_VAR(int, xtrace_per_thread_logfile, -1);
+static void xtrace_per_thread_logfile_destroy(int* ptr) {
+	if (xtrace_use_per_thread_logfile && ptr && *ptr >= 0) {
+		_close_for_xtrace(*ptr);
+	}
+};
+
+DEFINE_XTRACE_TLS_VAR(int, xtrace_per_thread_logfile, -1, xtrace_per_thread_logfile_destroy);
 
 static void xtrace_setup_options(void)
 {
@@ -229,7 +235,7 @@ struct nested_call_struct {
 	int nrs[64];
 };
 
-DEFINE_XTRACE_TLS_VAR(struct nested_call_struct, nested_call, (struct nested_call_struct) {0});
+DEFINE_XTRACE_TLS_VAR(struct nested_call_struct, nested_call, (struct nested_call_struct) {0}, NULL);
 
 void handle_generic_entry(const struct calldef* defs, const char* type, int nr, void* args[])
 {

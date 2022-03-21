@@ -13,9 +13,9 @@
 #include "mig_trace.h"
 #include "tls.h"
 
-DEFINE_XTRACE_TLS_VAR(int, mach_call_nr, -1);
-DEFINE_XTRACE_TLS_VAR(void*, argument_ptr, NULL);
-DEFINE_XTRACE_TLS_VAR(mach_port_name_t, request_port, MACH_PORT_NULL);
+DEFINE_XTRACE_TLS_VAR(int, mach_call_nr, -1, NULL);
+DEFINE_XTRACE_TLS_VAR(void*, argument_ptr, NULL, NULL);
+DEFINE_XTRACE_TLS_VAR(mach_port_name_t, request_port, MACH_PORT_NULL, NULL);
 
 static void print_kern_return(int nr, uintptr_t rv);
 static void print_port_return(int nr, uintptr_t rv);

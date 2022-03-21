@@ -17,13 +17,13 @@
 	#define xtrace_tls_debug(x, ...)
 #endif
 
-// 10 TLS vars should be enough, right?
-#define TLS_TABLE_MAX_SIZE 10
+// 32 TLS vars should be enough, right?
+#define TLS_TABLE_MAX_SIZE 32
 
 typedef struct tls_table* tls_table_t;
 struct tls_table {
 	size_t size;
-	void* table[TLS_TABLE_MAX_SIZE][2];
+	void* table[TLS_TABLE_MAX_SIZE][3];
 };
 
 // since we still need to handle some calls after pthread_terminate is called and libpthread unwinds its TLS right before calling pthread_terminate,
@@ -32,26 +32,28 @@ struct tls_table {
 
 #define __PTK_XTRACE_TLS 200
 
-// unfortunately, this approach also means that we can't automatically free the TLS memory when the thread dies, since the TLS table needs to stay alive after pthread_terminate.
-// in order to clean up the memory without a pthread key destructor, we'd need to modify our libsystem_kernel to inform us (via a hook) in every case where the thread could die.
-//
-// leaking a bit of memory per-thread being xtrace'd shouldn't be a big problem, unless the tracee is creating and terminating threads very quickly.
-// but it'd be nice if this could eventually be fixed (probably by adding a death hook to libsystem_kernel, as described above).
+// TODO: also perform TLS cleanup for other threads when doing a fork
 
-#if 0
-static void tls_table_destructor(void* _table) {
-	tls_table_t table = _table;
+void xtrace_tls_thread_cleanup(void) {
+	tls_table_t table = _pthread_getspecific_direct(__PTK_XTRACE_TLS);
+	if (!table) {
+		xtrace_tls_debug("no table to cleanup for this thread");
+		return;
+	}
 	xtrace_tls_debug("destroying table %p", table);
 	for (size_t i = 0; i < table->size; ++i) {
+		if (table->table[i][2]) {
+			xtrace_tls_debug("destroying value %p for key %p", table->table[i][1], table->table[i][0]);
+			((xtrace_tls_destructor_f)table->table[i][2])(table->table[1]);
+		}
 		xtrace_tls_debug("freeing value %p for key %p", table->table[i][1], table->table[i][0]);
 		xtrace_free(table->table[i][1]);
 	}
 	xtrace_tls_debug("freeing table %p", table);
 	xtrace_free(table);
 };
-#endif
 
-void* xtrace_tls(void* key, size_t size, bool* created) {
+void* xtrace_tls(void* key, size_t size, bool* created, xtrace_tls_destructor_f destructor) {
 	xtrace_tls_debug("looking up tls variable for key %p", key);
 
 	tls_table_t table = _pthread_getspecific_direct(__PTK_XTRACE_TLS);
@@ -83,8 +85,12 @@ void* xtrace_tls(void* key, size_t size, bool* created) {
 	// otherwise, create it
 	xtrace_tls_debug("creating new entry in table for key %p", key);
 	size_t index = table->size++;
+	if (index >= TLS_TABLE_MAX_SIZE) {
+		xtrace_abort("xtrace: too many TLS variables");
+	}
 	table->table[index][0] = key;
 	table->table[index][1] = xtrace_malloc(size);
+	table->table[index][2] = destructor;
 	if (table->table[index][1] == NULL) {
 		xtrace_abort("xtrace: failed TLS variable memory allocation");
 	}
