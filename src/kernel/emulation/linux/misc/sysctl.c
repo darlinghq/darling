@@ -12,6 +12,7 @@
 #include "sysctl_machdep.h"
 #include "sysctl_sysctl.h"
 #include "sysctl_net.h"
+#include "sysctl_vm.h"
 
 extern char *strchr(const char *s, int c);
 extern int strncmp(const char *s1, const char *s2, __SIZE_TYPE__ n);
@@ -29,6 +30,7 @@ const struct known_sysctl sysctls_global[] = {
 	{ .oid = CTL_MACHDEP, .type = CTLTYPE_NODE, .exttype = "", .name = "machdep", .subctls = sysctls_machdep },
 	{ .oid = _CTL_SYSCTL, .type = CTLTYPE_NODE, .exttype = "", .name = "sysctl", .subctls = sysctls_sysctl },
 	{ .oid = CTL_NET, .type = CTLTYPE_NODE, .exttype = "", .name = "net", .subctls = sysctls_net },
+	{ .oid = CTL_VM, .type = CTLTYPE_NODE, .exttype = "", .name = "vm", .subctls = sysctls_vm },
 	{ .oid = -1 }, /* terminating entry */
 };
 
