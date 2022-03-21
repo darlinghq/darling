@@ -303,6 +303,7 @@ set(emulation_sources
 	vchroot_userspace.c
 	syscalls-table.S
 	linux-syscall.S
+	xtrace-hooks.S
 
 	${CMAKE_BINARY_DIR}/src/external/darlingserver/src/rpc.c
 )

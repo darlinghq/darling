@@ -9,6 +9,7 @@
 #include "mig_trace.h"
 #include "tls.h"
 #include "lock.h"
+#include "malloc.h"
 #include <limits.h>
 
 #include <darling/emulation/ext/for-xtrace.h>
@@ -21,6 +22,10 @@ extern void darling_mach_syscall_exit_trampoline(void);
 extern void darling_bsd_syscall_entry_trampoline(void);
 extern void darling_bsd_syscall_exit_trampoline(void);
 extern int sys_thread_selfid(void);
+
+static void xtrace_thread_exit_hook(void);
+static void xtrace_execve_inject_hook(const char*** envp_ptr);
+static void xtrace_postfork_child_hook(void);
 
 #ifdef __x86_64__
 struct hook
@@ -38,10 +43,15 @@ extern struct hook* _darling_mach_syscall_exit;
 extern struct hook* _darling_bsd_syscall_entry;
 extern struct hook* _darling_bsd_syscall_exit;
 
+extern void _xtrace_thread_exit(void);
+extern void _xtrace_execve_inject(const char*** envp_ptr);
+extern void _xtrace_postfork_child(void);
+
 static void xtrace_setup_mach(void);
 static void xtrace_setup_bsd(void);
-static void setup_hook(struct hook* hook, void* fnptr);
+static void setup_hook(struct hook* hook, void* fnptr, bool jump);
 static void xtrace_setup_options(void);
+static void xtrace_setup_misc_hooks(void);
 
 static int xtrace_ignore = 1;
 
@@ -56,6 +66,7 @@ void xtrace_setup()
 	xtrace_setup_mig_tracing();
 	xtrace_setup_mach();
 	xtrace_setup_bsd();
+	xtrace_setup_misc_hooks();
 
 	// override the default sigaltstack used by libsystem_kernel for the main thread
 	// (we need more than the default 8KiB; testing has shown that 16KiB seems to be enough)
@@ -109,37 +120,37 @@ static void xtrace_per_thread_logfile_destroy(int* ptr) {
 
 DEFINE_XTRACE_TLS_VAR(int, xtrace_per_thread_logfile, -1, xtrace_per_thread_logfile_destroy);
 
+static bool string_is_truthy(const char* string) {
+	return string && (string[0] == '1' || string[0] == 'T' || string[0] == 't' || string[0] == 'Y' || string[0] == 'y');
+};
+
 static void xtrace_setup_options(void)
 {
 	const char* xtrace_log_file = getenv("XTRACE_LOG_FILE");
 
-	if (getenv("XTRACE_SPLIT_ENTRY_AND_EXIT") != NULL)
-		xtrace_split_entry_and_exit = 1;
-	if (getenv("XTRACE_NO_COLOR") != NULL)
-		xtrace_no_color = 1;
-	if (getenv("XTRACE_KPRINTF") != NULL)
-		xtrace_kprintf = 1;
+	xtrace_split_entry_and_exit = string_is_truthy(getenv("XTRACE_SPLIT_ENTRY_AND_EXIT"));
+	xtrace_no_color = string_is_truthy(getenv("XTRACE_NO_COLOR"));
+	xtrace_kprintf = string_is_truthy(getenv("XTRACE_KPRINTF"));
+	xtrace_use_per_thread_logfile = string_is_truthy(getenv("XTRACE_LOG_FILE_PER_THREAD"));
 
-	if (getenv("XTRACE_LOG_FILE_PER_THREAD") != NULL)
-		xtrace_use_per_thread_logfile = 1;
-
-	if (xtrace_log_file != NULL) {
+	if (xtrace_log_file != NULL && xtrace_log_file[0] != '\0') {
 		xtrace_use_logfile = 1;
 		strlcpy(xtrace_logfile_base, xtrace_log_file, sizeof(xtrace_logfile_base));
 	}
 }
 
 
-static void setup_hook(struct hook* hook, void* fnptr)
+static void setup_hook(struct hook* hook, void* fnptr, bool jump)
 {
 	// this hook is (in GAS syntax):
 	//   movq $<fnptr value>, %r10
 	//   call *%r10
+	// the call turns to a jump if `jump` is true
 	hook->movabs[0] = 0x49;
 	hook->movabs[1] = 0xba;
 	hook->call[0] = 0x41;
 	hook->call[1] = 0xff;
-	hook->call[2] = 0xd2;
+	hook->call[2] = jump ? 0xe2 : 0xd2;
 	hook->addr = (uintptr_t)fnptr;
 }
 
@@ -156,8 +167,8 @@ static void xtrace_setup_mach(void)
 
 	mprotect((void*) area, bytes, PROT_READ | PROT_WRITE | PROT_EXEC);
 
-	setup_hook(_darling_mach_syscall_entry, darling_mach_syscall_entry_trampoline);
-	setup_hook(_darling_mach_syscall_exit, darling_mach_syscall_exit_trampoline);
+	setup_hook(_darling_mach_syscall_entry, darling_mach_syscall_entry_trampoline, false);
+	setup_hook(_darling_mach_syscall_exit, darling_mach_syscall_exit_trampoline, false);
 
 	mprotect((void*) area, bytes, PROT_READ | PROT_EXEC);
 }
@@ -175,11 +186,35 @@ static void xtrace_setup_bsd(void)
 
 	mprotect((void*) area, bytes, PROT_READ | PROT_WRITE | PROT_EXEC);
 
-	setup_hook(_darling_bsd_syscall_entry, darling_bsd_syscall_entry_trampoline);
-	setup_hook(_darling_bsd_syscall_exit, darling_bsd_syscall_exit_trampoline);
+	setup_hook(_darling_bsd_syscall_entry, darling_bsd_syscall_entry_trampoline, false);
+	setup_hook(_darling_bsd_syscall_exit, darling_bsd_syscall_exit_trampoline, false);
 
 	mprotect((void*) area, bytes, PROT_READ | PROT_EXEC);
 }
+
+// like setup_hook, but also takes care of making memory writable for the hook setup and restoring it afterwards
+static void setup_hook_with_perms(struct hook* hook, void* fnptr, bool jump) {
+	uintptr_t area = (uintptr_t)hook;
+	uintptr_t areaEnd = ((uintptr_t)hook) + sizeof(struct hook);
+
+	// __asm__("int3");
+	area &= ~(4096-1);
+	areaEnd &= ~(4096-1);
+
+	uintptr_t bytes = 4096 + (areaEnd-area);
+
+	mprotect((void*) area, bytes, PROT_READ | PROT_WRITE | PROT_EXEC);
+
+	setup_hook(hook, fnptr, jump);
+
+	mprotect((void*) area, bytes, PROT_READ | PROT_EXEC);
+};
+
+static void xtrace_setup_misc_hooks(void) {
+	setup_hook_with_perms((void*)&_xtrace_thread_exit, xtrace_thread_exit_hook, true);
+	setup_hook_with_perms((void*)&_xtrace_execve_inject, xtrace_execve_inject_hook, true);
+	setup_hook_with_perms((void*)&_xtrace_postfork_child, xtrace_postfork_child_hook, true);
+};
 
 void xtrace_set_gray_color(void)
 {
@@ -390,4 +425,136 @@ void xtrace_error_v(const char* format, va_list args) {
 void xtrace_abort(const char* message) {
 	_abort_with_payload_for_xtrace(0, 0, NULL, 0, message, 0);
 	__builtin_unreachable();
+};
+
+static void xtrace_thread_exit_hook(void) {
+	xtrace_tls_thread_cleanup();
+};
+
+static size_t envp_count(const char** envp) {
+	size_t count = 0;
+	for (const char** ptr = envp; *ptr != NULL; ++ptr) {
+		++count;
+	}
+	return count;
+};
+
+static const char** envp_find(const char** envp, const char* key) {
+	size_t key_length = strlen(key);
+
+	for (const char** ptr = envp; *ptr != NULL; ++ptr) {
+		const char* entry_key = *ptr;
+		const char* entry_key_end = strchr(entry_key, '=');
+		size_t entry_key_length = entry_key_end - entry_key;
+
+		if (entry_key_length != key_length) {
+			continue;
+		}
+
+		if (strncmp(key, entry_key, key_length) != 0) {
+			continue;
+		}
+
+		return ptr;
+	}
+
+	return NULL;
+};
+
+static const char* envp_make_entry(const char* key, const char* value) {
+	size_t key_length = strlen(key);
+	size_t value_length = strlen(value);
+	char* entry = xtrace_malloc(key_length + value_length + 2);
+	memcpy(entry, key, key_length);
+	entry[key_length] = '=';
+	memcpy(&entry[key_length + 1], value, value_length);
+	entry[key_length + value_length + 2] = '\0';
+	return entry;
+};
+
+static void envp_set(const char*** envp_ptr, const char* key, const char* value, bool* allocated) {
+	const char** envp = *envp_ptr;
+
+	if (!envp) {
+		*envp_ptr = envp = xtrace_malloc(sizeof(const char*) * 2);
+		envp[0] = envp_make_entry(key, value);
+		envp[1] = NULL;
+		*allocated = true;
+	} else {
+		const char** entry_ptr = envp_find(envp, key);
+
+		if (entry_ptr) {
+			*entry_ptr = envp_make_entry(key, value);
+		} else {
+			size_t count = envp_count(envp);
+			const char** new_envp = xtrace_malloc(sizeof(const char*) * (count + 2));
+
+			memcpy(new_envp, envp, sizeof(const char*) * count);
+
+			if (*allocated) {
+				xtrace_free(envp);
+			}
+
+			new_envp[count] = envp_make_entry(key, value);
+			new_envp[count + 1] = NULL;
+			*allocated = true;
+			*envp_ptr = new_envp;
+		}
+	}
+};
+
+static const char* envp_get(const char** envp, const char* key) {
+	const char** entry = envp_find(envp, key);
+
+	if (!entry) {
+		return NULL;
+	}
+
+	return strchr(*entry, '=') + 1;
+};
+
+#define LIBRARY_PATH "/usr/lib/darling/libxtrace.dylib"
+#define LIBRARY_PATH_LENGTH (sizeof(LIBRARY_PATH) - 1)
+
+static void xtrace_execve_inject_hook(const char*** envp_ptr) {
+	bool allocated = false;
+
+	envp_set(envp_ptr, "XTRACE_SPLIT_ENTRY_AND_EXIT", xtrace_split_entry_and_exit   ? "1" : "0", &allocated);
+	envp_set(envp_ptr, "XTRACE_NO_COLOR",             xtrace_no_color               ? "1" : "0", &allocated);
+	envp_set(envp_ptr, "XTRACE_KPRINTF",              xtrace_kprintf                ? "1" : "0", &allocated);
+	envp_set(envp_ptr, "XTRACE_LOG_FILE_PER_THREAD",  xtrace_use_per_thread_logfile ? "1" : "0", &allocated);
+	envp_set(envp_ptr, "XTRACE_LOG_FILE",             xtrace_use_logfile            ? xtrace_logfile_base : "", &allocated);
+
+	const char* insert_libraries = envp_get(*envp_ptr, "DYLD_INSERT_LIBRARIES");
+	size_t insert_libraries_length = insert_libraries ? strlen(insert_libraries) : 0;
+	char* new_value = xtrace_malloc(insert_libraries_length + (insert_libraries_length == 0 ? 0 : 1) + LIBRARY_PATH_LENGTH + 1);
+	size_t offset = 0;
+
+	if (insert_libraries && insert_libraries_length > 0) {
+		memcpy(&new_value[offset], insert_libraries, insert_libraries_length);
+		offset += insert_libraries_length;
+
+		new_value[offset] = ':';
+		++offset;
+	}
+
+	memcpy(&new_value[offset], LIBRARY_PATH, LIBRARY_PATH_LENGTH);
+	offset += LIBRARY_PATH_LENGTH;
+
+	new_value[offset] = '\0';
+
+	envp_set(envp_ptr, "DYLD_INSERT_LIBRARIES", new_value, &allocated);
+};
+
+static void xtrace_postfork_child_hook(void) {
+	// TODO: cleanup TLS
+
+	// reset the per-thread logfile (if necessary)
+	if (xtrace_use_per_thread_logfile) {
+		int fd = get_xtrace_per_thread_logfile();
+		if (fd >= 0) {
+			_close_for_xtrace(fd);
+		}
+		set_xtrace_per_thread_logfile(-1);
+	}
 };

@@ -15,6 +15,8 @@ int bsdthread_terminate_trap(
                 int sem);
 int semaphore_signal_trap_impl(int signal_name);
 
+extern void _xtrace_thread_exit(void);
+
 long sys_bsdthread_terminate(void* stackaddr, unsigned long freesize, int port,
 		int join_sem)
 {
@@ -25,6 +27,9 @@ long sys_bsdthread_terminate(void* stackaddr, unsigned long freesize, int port,
 			unsigned long freesize, unsigned long pthobj_size);
 
 	semaphore_signal_trap_impl(join_sem);
+
+	// point of no return; let xtrace know
+	_xtrace_thread_exit();
 
 	return __darling_thread_terminate(stackaddr, freesize, pthread_obj_size);
 #else

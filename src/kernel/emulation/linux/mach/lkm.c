@@ -28,6 +28,8 @@ struct elf_calls* _elfcalls;
 
 static bool use_per_thread_driver_fd = false;
 
+extern void _xtrace_postfork_child(void);
+
 void mach_driver_init(const char** applep)
 {
 #ifdef VARIANT_DYLD
@@ -96,6 +98,11 @@ void mach_driver_init(const char** applep)
 	}
 #endif
 #endif
+
+	if (!applep) {
+		// we're being called in the child after a fork; let xtrace know about it
+		_xtrace_postfork_child();
+	}
 }
 
 void mach_driver_init_pthread(void) {

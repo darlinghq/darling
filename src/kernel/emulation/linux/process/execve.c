@@ -26,6 +26,8 @@
 #include "../resources/dserver-rpc-defs.h"
 extern bool isspace(char c);
 
+extern void _xtrace_execve_inject(const char*** envp_ptr);
+
 static inline bool istext(char c)
 {
 	return c >= 0x20 && c < 0x7F;
@@ -227,6 +229,9 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
 
 	LINUX_SYSCALL(__NR_rt_sigprocmask, 0 /* LINUX_SIG_BLOCK */,
 			&set, NULL, sizeof(linux_sigset_t));
+
+	// let xtrace inject itself into the execve, if necessary
+	_xtrace_execve_inject(&envp);
 
 	ret = LINUX_SYSCALL(__NR_execve, path_to_exec, argvp, envp);
 	if (ret < 0)
