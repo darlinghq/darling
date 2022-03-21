@@ -10,6 +10,7 @@
 #include "../ext/mremap.h"
 #include <darlingserver/rpc.h>
 #include "../simple.h"
+#include "../duct_errno.h"
 
 #define UNIMPLEMENTED_TRAP() { char msg[] = "Called unimplemented Mach trap: "; write(2, msg, sizeof(msg)-1); write(2, __FUNCTION__, sizeof(__FUNCTION__)-1); write(2, "\n", 1); }
 
@@ -66,9 +67,27 @@ mach_msg_return_t mach_msg_overwrite_trap_impl(
 				mach_msg_header_t *rcv_msg,
 				mach_msg_size_t rcv_limit)
 {
-	int code = dserver_rpc_mach_msg_overwrite(msg, option, send_size, rcv_size, rcv_name, timeout, notify, rcv_msg);
+	int code;
+
+retry:
+	code = dserver_rpc_mach_msg_overwrite(msg, option, send_size, rcv_size, rcv_name, timeout, notify, rcv_msg);
 
 	if (code < 0) {
+		if (code == -LINUX_EINTR) {
+			// when the RPC call returns EINTR, it means we didn't manage to send the RPC message to the server;
+			// when the RPC receive operation receives EINTR, it retries the call, meaning we should never see EINTR from an RPC receive.
+			// therefore, if we wanted to both send and receive a message, this means the send (which is performed first) was interrupted.
+			//
+			// we also need to check if the caller wants to know about interrupts. if they want send interrupts, we tell them.
+			// if they want receive interrupts, we tell them. otherwise, we retry the call.
+			if ((option & MACH_SEND_MSG) != 0 && (option & MACH_SEND_INTERRUPT) != 0) {
+				return MACH_SEND_INTERRUPTED;
+			} else if ((option & MACH_RCV_MSG) != 0 && (option & MACH_RCV_INTERRUPT) != 0) {
+				return MACH_RCV_INTERRUPTED;
+			} else {
+				goto retry;
+			}
+		}
 		__simple_printf("mach_msg_overwrite failed (internally): %d\n", code);
 		__simple_abort();
 	}
@@ -116,6 +135,9 @@ kern_return_t semaphore_wait_trap_impl(
 	int code = dserver_rpc_semaphore_wait(wait_name);
 
 	if (code < 0) {
+		if (code == -LINUX_EINTR) {
+			return KERN_ABORTED;
+		}
 		__simple_printf("semaphore_wait failed (internally): %d\n", code);
 		__simple_abort();
 	}
@@ -130,6 +152,9 @@ kern_return_t semaphore_wait_signal_trap_impl(
 	int code = dserver_rpc_semaphore_wait_signal(wait_name, signal_name);
 
 	if (code < 0) {
+		if (code == -LINUX_EINTR) {
+			return KERN_ABORTED;
+		}
 		__simple_printf("semaphore_wait_signal failed (internally): %d\n", code);
 		__simple_abort();
 	}
@@ -145,6 +170,9 @@ kern_return_t semaphore_timedwait_trap_impl(
 	int code = dserver_rpc_semaphore_timedwait(wait_name, sec, nsec);
 
 	if (code < 0) {
+		if (code == -LINUX_EINTR) {
+			return KERN_ABORTED;
+		}
 		__simple_printf("semaphore_timedwait failed (internally): %d\n", code);
 		__simple_abort();
 	}
@@ -161,6 +189,9 @@ kern_return_t semaphore_timedwait_signal_trap_impl(
 	int code = dserver_rpc_semaphore_timedwait_signal(wait_name, signal_name, sec, nsec);
 
 	if (code < 0) {
+		if (code == -LINUX_EINTR) {
+			return KERN_ABORTED;
+		}
 		__simple_printf("semaphore_timedwait_signal failed (internally): %d\n", code);
 		__simple_abort();
 	}

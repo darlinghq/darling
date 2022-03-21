@@ -64,6 +64,7 @@
 
 #ifdef DARLING
 #include <darlingserver/rpc.h>
+#include "../../emulation/linux/duct_errno.h"
 #endif
 
 mach_port_t bootstrap_port = MACH_PORT_NULL;
@@ -144,7 +145,14 @@ _mach_fork_child(void)
 
 #ifdef DARLING
 int _mach_fork_parent(void) {
-	if (dserver_rpc_fork_wait_for_child() < 0) {
+	int result;
+
+retry:
+	result = dserver_rpc_fork_wait_for_child();
+	if (result < 0) {
+		if (result == -LINUX_EINTR) {
+			goto retry;
+		}
 		__builtin_unreachable();
 	}
 	return 0;
