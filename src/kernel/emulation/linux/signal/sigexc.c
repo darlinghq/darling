@@ -7,7 +7,6 @@
 #include <linux-syscalls/linux.h>
 #include "sigaltstack.h"
 #include "../mach/lkm.h"
-#include "../../../../external/lkm/api.h"
 #include "../../../libsyscall/wrappers/_libkernel_init.h"
 #include <sys/mman.h>
 #include "../mman/mman.h"
@@ -46,8 +45,8 @@ static void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux
 static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx);
 #endif
 
-static void state_from_kernel(struct linux_ucontext* ctxt, const struct thread_state* kernel_state);
-static void state_to_kernel(struct linux_ucontext* ctxt, struct thread_state* kernel_state);
+static void state_from_kernel(struct linux_ucontext* ctxt, const void* tstate, const void* fstate);
+static void state_to_kernel(struct linux_ucontext* ctxt, void* tstate, void* fstate);
 
 #define DEBUG_SIGEXC
 #ifdef DEBUG_SIGEXC
@@ -117,7 +116,7 @@ void sigexc_setup(void)
 		task_suspend(mach_task_self());
 		kern_printf("sigexc: start_suspended -> wokenup (ret to %p)\n", __builtin_return_address(0));
 	} else {
-		uint32_t tracer;
+		int32_t tracer;
 		code = dserver_rpc_get_tracer(&tracer);
 		if (code < 0) {
 			__simple_printf("Failed to get tracer status: %d\n", code);
@@ -145,18 +144,18 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 	x86_float_state32_t fstate;
 #endif
 
-	struct thread_suspended_args args;
-	args.state.tstate = &tstate;
-	args.state.fstate = &fstate;
-
 	kern_printf("sigexc: sigrt_handler SUSPEND\n");
 	
 	thread_t thread = mach_thread_self();
-	state_to_kernel(ctxt, &args.state);
+	state_to_kernel(ctxt, &tstate, &fstate);
 
-	lkm_call(NR_thread_suspended, &args);
+	int ret = dserver_rpc_thread_suspended(&tstate, &fstate);
+	if (ret < 0) {
+		__simple_printf("dserver_rpc_thread_suspended failed internally: %d", ret);
+		__simple_abort();
+	}
 
-	state_from_kernel(ctxt, &args.state);
+	state_from_kernel(ctxt, &tstate, &fstate);
 
 	dserver_rpc_interrupt_exit();
 }
@@ -194,33 +193,33 @@ void darling_sigexc_self(void)
 }
 
 
-static void state_to_kernel(struct linux_ucontext* ctxt, struct thread_state* kernel_state)
+static void state_to_kernel(struct linux_ucontext* ctxt, void* tstate, void* fstate)
 {
 #if defined(__x86_64__)
 
 	dump_gregs(&ctxt->uc_mcontext.gregs);
-	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state64_t*) kernel_state->tstate);
-	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state64_t*) kernel_state->fstate);
+	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state64_t*) tstate);
+	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state64_t*) fstate);
 
 #elif defined(__i386__)
-	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state32_t*) kernel_state->tstate);
-	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state32_t*) kernel_state->fstate);
+	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state32_t*) tstate);
+	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state32_t*) fstate);
 #endif
 
 }
 
-static void state_from_kernel(struct linux_ucontext* ctxt, const struct thread_state* kernel_state)
+static void state_from_kernel(struct linux_ucontext* ctxt, const void* tstate, const void* fstate)
 {
 #if defined(__x86_64__)
 
-	thread_state_to_mcontext((x86_thread_state64_t*) kernel_state->tstate, &ctxt->uc_mcontext.gregs);
-	float_state_to_mcontext((x86_float_state64_t*) kernel_state->fstate, ctxt->uc_mcontext.fpregs);
+	thread_state_to_mcontext((const x86_thread_state64_t*) tstate, &ctxt->uc_mcontext.gregs);
+	float_state_to_mcontext((const x86_float_state64_t*) fstate, ctxt->uc_mcontext.fpregs);
 
 	dump_gregs(&ctxt->uc_mcontext.gregs);
 	
 #elif defined(__i386__)
-	thread_state_to_mcontext((x86_thread_state32_t*) kernel_state->tstate, &ctxt->uc_mcontext.gregs);
-	float_state_to_mcontext((x86_float_state32_t*) kernel_state->fstate, ctxt->uc_mcontext.fpregs);
+	thread_state_to_mcontext((const x86_thread_state32_t*) tstate, &ctxt->uc_mcontext.gregs);
+	float_state_to_mcontext((const x86_float_state32_t*) fstate, ctxt->uc_mcontext.fpregs);
 #endif
 }
 
@@ -255,18 +254,13 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	x86_float_state32_t fstate;
 #endif
 
-	struct thread_state state = {
-		.tstate = &tstate,
-		.fstate = &fstate,
-	};
-
-	state_to_kernel(ctxt, &state);
+	state_to_kernel(ctxt, &tstate, &fstate);
 	int ret = dserver_rpc_sigprocess(bsd_signum, linux_signum, info->si_pid, info->si_code, info->si_addr, &tstate, &fstate, &bsd_signum);
 	if (ret < 0) {
 		__simple_printf("sigprocess failed internally while processing Linux signal %d: %d", linux_signum, ret);
 		__simple_abort();
 	}
-	state_from_kernel(ctxt, &state);
+	state_from_kernel(ctxt, &tstate, &fstate);
 
 	if (!bsd_signum)
 	{
