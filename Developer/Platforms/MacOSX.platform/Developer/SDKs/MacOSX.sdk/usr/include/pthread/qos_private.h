@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libpthread/private/qos_private.h
+../../../../../../../../../src/external/libpthread/private/pthread/qos_private.h
