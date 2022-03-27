@@ -28,10 +28,21 @@ extern int getpid(void);
 extern _libkernel_functions_t _libkernel_functions;
 
 void darling_sigexc_uninstall(void);
-void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt);
+void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext* ctxt);
 
-static char sigexc_altstack[8*1024];
-size_t default_sigaltstack_size = sizeof(sigexc_altstack);
+#define SIGEXC_STACK_SIZE (16ULL * 1024ULL)
+
+#ifndef SIGALTSTACK_GUARD
+	#define SIGALTSTACK_GUARD 1
+#endif
+
+#if SIGALTSTACK_GUARD
+// align it on a page boundary so mprotect works properly
+static char sigexc_altstack[SIGEXC_STACK_SIZE + 4096ULL] __attribute__((aligned(4096)));
+#else
+static char sigexc_altstack[SIGEXC_STACK_SIZE];
+#endif
+size_t default_sigaltstack_size = SIGEXC_STACK_SIZE;
 
 #if defined(__x86_64__)
 static void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state64_t* s);
@@ -84,7 +95,7 @@ static void handle_rt_signal(int signum)
 	int rv;
 	struct linux_sigaction sa;
 
-	sa.sa_sigaction = sigrt_handler;
+	sa.sa_sigaction = (linux_sig_handler*)sigrt_handler;
 	sa.sa_mask = (1ull << (SIGNAL_SIGEXC_SUSPEND-1));
 	sa.sa_flags = LINUX_SA_RESTORER | LINUX_SA_SIGINFO | LINUX_SA_RESTART | LINUX_SA_ONSTACK;
 	sa.sa_restorer = sig_restorer;
@@ -132,7 +143,7 @@ void sigexc_setup(void)
 #endif
 }
 
-void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
+void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
 	dserver_rpc_interrupt_enter();
 
@@ -184,9 +195,17 @@ void darling_sigexc_self(void)
 				sizeof(sa.sa_mask));
 	}
 
+#if SIGALTSTACK_GUARD
+	sys_mprotect(sigexc_altstack, 4096, PROT_NONE);
+#endif
+
 	struct bsd_stack newstack = {
+#if SIGALTSTACK_GUARD
+		.ss_sp = sigexc_altstack + 4096,
+#else
 		.ss_sp = sigexc_altstack,
-		.ss_size = sizeof(sigexc_altstack),
+#endif
+		.ss_size = SIGEXC_STACK_SIZE,
 		.ss_flags = 0
 	};
 	sys_sigaltstack(&newstack, NULL);
