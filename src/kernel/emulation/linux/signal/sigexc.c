@@ -69,13 +69,14 @@ static void state_to_kernel(struct linux_ucontext* ctxt, void* tstate, void* fst
 void sigexc_setup1(void)
 {
 	handle_rt_signal(SIGNAL_SIGEXC_SUSPEND);
+	handle_rt_signal(SIGNAL_S2C);
 }
 
 void sigexc_setup2(void)
 {
 	linux_sigset_t set;
 	set = (1ull << (SIGNAL_SIGEXC_SUSPEND-1));
-	//set |= (1ull << (SIGNAL_SIGEXC_THUPDATE-1));
+	set |= (1ull << (SIGNAL_S2C-1));
 
 	LINUX_SYSCALL(__NR_rt_sigprocmask, 1 /* LINUX_SIG_UNBLOCK */,
 		&set, NULL, sizeof(linux_sigset_t));
@@ -96,7 +97,7 @@ static void handle_rt_signal(int signum)
 	struct linux_sigaction sa;
 
 	sa.sa_sigaction = (linux_sig_handler*)sigrt_handler;
-	sa.sa_mask = (1ull << (SIGNAL_SIGEXC_SUSPEND-1));
+	sa.sa_mask = (1ull << (SIGNAL_SIGEXC_SUSPEND-1)) | (1ull << (signum-1));
 	sa.sa_flags = LINUX_SA_RESTORER | LINUX_SA_SIGINFO | LINUX_SA_RESTART | LINUX_SA_ONSTACK;
 	sa.sa_restorer = sig_restorer;
 
@@ -147,6 +148,7 @@ void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext
 {
 	dserver_rpc_interrupt_enter();
 
+	if (signum == SIGNAL_SIGEXC_SUSPEND) {
 #if defined(__x86_64__)
 	x86_thread_state64_t tstate;
 	x86_float_state64_t fstate;
@@ -167,6 +169,17 @@ void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext
 	}
 
 	state_from_kernel(ctxt, &tstate, &fstate);
+	} else if (signum == SIGNAL_S2C) {
+		__simple_kprintf("sigexc: sigrt_handler S2C");
+
+		int ret = dserver_rpc_s2c_perform();
+		if (ret < 0) {
+			__simple_printf("dserver_rpc_s2c_perform failed internally: %d", ret);
+			__simple_abort();
+		}
+	} else {
+		__simple_printf("Unknown/unrecognized real-time signal: %d", signum);
+	}
 
 	dserver_rpc_interrupt_exit();
 }

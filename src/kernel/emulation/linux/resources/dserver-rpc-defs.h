@@ -11,8 +11,11 @@
 #include "../elfcalls_wrapper.h"
 #include "../simple.h"
 #include "../signal/sigprocmask.h"
+#include "../unistd/close.h"
 
 #include <darlingserver/rpc-supplement.h>
+
+#include <rtsig.h>
 
 #ifndef DSERVER_RPC_HOOKS_ARCHITECTURE
 #define DSERVER_RPC_HOOKS_ARCHITECTURE 1
@@ -111,11 +114,27 @@ retry:
 						.errno_result = 0,
 					};
 
+					if (mmap_call->fd == 0) {
+						dserver_rpc_hooks_cmsghdr_t* reply_cmsg = DSERVER_RPC_HOOKS_CMSG_FIRSTHDR(out_message);
+						if (!reply_cmsg || reply_cmsg->cmsg_level != DSERVER_RPC_HOOKS_SOL_SOCKET || reply_cmsg->cmsg_type != DSERVER_RPC_HOOKS_SCM_RIGHTS || reply_cmsg->cmsg_len != DSERVER_RPC_HOOKS_CMSG_LEN(sizeof(int))) {
+							__simple_printf("Bad S2C call: no FD, but expected one");
+							__simple_abort();
+						}
+						dserver_rpc_hooks_memcpy(&mmap_call->fd, DSERVER_RPC_HOOKS_CMSG_DATA(reply_cmsg), sizeof(int));
+					} else if (mmap_call->fd != -1) {
+						__simple_printf("Bad S2C call: invalid FD number");
+						__simple_abort();
+					}
+
 #ifdef __NR_mmap2
 					call_ret = (void*)LINUX_SYSCALL(__NR_mmap2, mmap_call->address, mmap_call->length, mmap_call->protection, mmap_call->flags, mmap_call->fd, mmap_call->offset / 4096);
 #else
 					call_ret = (void*)LINUX_SYSCALL(__NR_mmap, mmap_call->address, mmap_call->length, mmap_call->protection, mmap_call->flags, mmap_call->fd, mmap_call->offset);
 #endif
+
+					if (mmap_call->fd >= 0) {
+						close_internal(mmap_call->fd);
+					}
 
 					if ((unsigned long)call_ret > (unsigned long)-4096) {
 						// this is actually an errno
@@ -167,6 +186,38 @@ retry:
 					}
 				} break;
 
+				case dserver_s2c_msgnum_mprotect: {
+					dserver_s2c_call_mprotect_t* mprotect_call = out_message->msg_iov->iov_base;
+					int call_ret;
+					dserver_s2c_reply_mprotect_t reply = {
+						.header.call_number = 0x52cca11,
+						.header.pid = dserver_rpc_hooks_get_pid(),
+						.header.tid = dserver_rpc_hooks_get_tid(),
+						.header.architecture = dserver_rpc_hooks_get_architecture(),
+						.header.s2c_number = dserver_s2c_msgnum_mprotect,
+						.return_value = 0,
+						.errno_result = 0,
+					};
+
+					call_ret = LINUX_SYSCALL3(__NR_mprotect, mprotect_call->address, mprotect_call->length, mprotect_call->protection);
+
+					if (call_ret < 0) {
+						reply.return_value = -1;
+						reply.errno_result = -call_ret;
+					} else {
+						reply.return_value = call_ret;
+					}
+
+#ifdef __NR_socketcall
+					ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_SENDTO, ((long[6]) { socket, &reply, sizeof(reply), 0, dserver_rpc_hooks_get_server_address(), dserver_rpc_hooks_get_server_address_length() }));
+#else
+					ret = LINUX_SYSCALL(__NR_sendto, socket, &reply, sizeof(reply), 0, dserver_rpc_hooks_get_server_address(), dserver_rpc_hooks_get_server_address_length());
+#endif
+					if (ret < 0) {
+						return ret;
+					}
+				} break;
+
 				default:
 					__simple_printf("Invalid S2C call number: %d", callhdr->s2c_number);
 					__simple_abort();
@@ -196,8 +247,8 @@ retry:
 #define dserver_rpc_hooks_atomic_save_t sigset_t
 
 static void dserver_rpc_hooks_atomic_begin(dserver_rpc_hooks_atomic_save_t* atomic_save) {
-	// see sys_disable_threadsignal()
-	sigset_t set = ~0;
+	// block standard unix signals (not real-time signals, though)
+	sigset_t set = 0x7fffffff;
 	sys_sigprocmask(SIG_BLOCK, &set, atomic_save);
 };
 

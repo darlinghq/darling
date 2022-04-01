@@ -7,6 +7,7 @@
 // NOTE: Keep these definitions up to date with lkm/darling/binfmt.c!
 // Uses one of the below magic values to toggle the debugging state
 #define SIGNAL_SIGEXC_SUSPEND	LINUX_SIGRTMIN
+#define SIGNAL_S2C (LINUX_SIGRTMIN + 1)
 
 void sigexc_setup(void);
 
