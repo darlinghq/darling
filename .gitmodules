@@ -372,3 +372,6 @@
 [submodule "src/external/pyobjc"]
 	path = src/external/pyobjc
 	url = ../darling-pyobjc.git
+[submodule "src/external/libmalloc"]
+	path = src/external/libmalloc
+	url = https://github.com/darlinghq/darling-libmalloc.git
