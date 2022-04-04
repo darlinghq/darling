@@ -19,7 +19,6 @@
 #include "../signal/sigprocmask.h"
 #include "../mach/lkm.h"
 #include "../simple.h"
-#include "lkm/api.h"
 #include "fork.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -32,6 +31,8 @@
 // for debugging only; remove before committing
 #include "../signal/kill.h"
 #include "../unistd/getpid.h"
+
+#include <darlingserver/rpc.h>
 
 #ifndef _POSIX_SPAWN_DISABLE_ASLR
 #define _POSIX_SPAWN_DISABLE_ASLR 0x0100
@@ -91,7 +92,11 @@ no_fork:
 			}
 			if (desc->attrp->psa_flags & POSIX_SPAWN_START_SUSPENDED)
 			{
-				lkm_call(NR_stop_after_exec, NULL);
+				int status = dserver_rpc_stop_after_exec();
+				if (status < 0) {
+					__simple_printf("Failed to tell darlingserver to stop us after exec: %d", status);
+					__simple_abort();
+				}
 			}
 
 			if (desc->attrp->psa_flags & POSIX_SPAWN_CLOEXEC_DEFAULT) {

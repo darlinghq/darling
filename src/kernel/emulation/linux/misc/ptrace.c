@@ -10,9 +10,9 @@
 #include "../signal/duct_signals.h"
 #include "../signal/sigexc.h"
 #include "../process/wait4.h"
-#include "../mach/lkm.h"
-#include "../../../../external/lkm/api.h"
 #include "../unistd/getppid.h"
+
+#include <darlingserver/rpc.h>
 
 // faster than sys_getpid(), because it caches the PID
 extern int getpid(void);
@@ -31,14 +31,13 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 			// if (ret < 0)
 			// 	ret = errno_linux_to_bsd(ret);
 
-			// Use LKM mechanisms to set a tracing task (->disallow anyone else to attach)
-			struct set_tracer_args args = {
-				.target = 0,
-				.tracer = sys_getppid()
-			};
-			ret = lkm_call(NR_set_tracer, &args);
-			if (ret < 0)
-				ret = errno_linux_to_bsd(ret);
+			// Use darlingserver mechanisms to set a tracing task (->disallow anyone else to attach)
+			ret = dserver_rpc_set_tracer(0, sys_getppid());
+			if (ret < 0) {
+				__simple_printf("dserver_rpc_set_tracer failed internally: %d", ret);
+				__simple_abort();
+			}
+			ret = errno_linux_to_bsd(-ret);
 			
 			//return ret;
 			cmd = "PT_PTRACE_ME"; break;
@@ -55,22 +54,22 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		}
 		case PT_ATTACHEXC:
 		{
-			// Use LKM mechanisms to set a tracing task (->disallow anyone else to attach)
-			struct set_tracer_args args = {
-				.target = pid,
-				.tracer = getpid()
-			};
-			ret = lkm_call(NR_set_tracer, &args);
-			if (ret < 0)
-				ret = errno_linux_to_bsd(ret);
+			// Use darlingserver mechanisms to set a tracing task (->disallow anyone else to attach)
+			ret = dserver_rpc_set_tracer(pid, getpid());
+			if (ret < 0) {
+				__simple_printf("dserver_rpc_set_tracer failed internally: %d", ret);
+				__simple_abort();
+			}
+			ret = errno_linux_to_bsd(-ret);
 
 			sys_kill(pid, SIGSTOP, 1);
 
-			struct ptrace_sigexc_args args2;
-			args2.pid = pid;
-			args2.sigexc = 1;
-
-			ret = lkm_call(NR_ptrace_sigexc, &args2);
+			ret = dserver_rpc_ptrace_sigexc(pid, true);
+			if (ret < 0) {
+				__simple_printf("dserver_rpc_ptrace_sigexc failed internally: %d", ret);
+				__simple_abort();
+			}
+			ret = errno_linux_to_bsd(-ret);
 
 			cmd = "PT_ATTACHEXC";
 			break;
@@ -102,11 +101,13 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 			//linux_sigqueue(pid, SIGNAL_SIGEXC_TOGGLE, SIGRT_MAGIC_DISABLE_SIGEXC);
 
 			//ret = 0; //LINUX_SYSCALL(__NR_ptrace, LINUX_PTRACE_DETACH, pid, addr, data);
-			struct ptrace_sigexc_args args;
-			args.pid = pid;
-			args.sigexc = 0;
 
-			ret = lkm_call(NR_ptrace_sigexc, &args);
+			ret = dserver_rpc_ptrace_sigexc(pid, false);
+			if (ret < 0) {
+				__simple_printf("dserver_rpc_ptrace_sigexc failed internally: %d", ret);
+				__simple_abort();
+			}
+			ret = errno_linux_to_bsd(-ret);
 			
 			// if (ret < 0)
 			// 	ret = errno_linux_to_bsd(ret);
@@ -118,11 +119,12 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		{
 			__simple_kprintf("sigexc: self via ptrace\n");
 
-			struct ptrace_sigexc_args args;
-			args.pid = getpid();
-			args.sigexc = 1;
-
-			ret = lkm_call(NR_ptrace_sigexc, &args);
+			ret = dserver_rpc_ptrace_sigexc(getpid(), true);
+			if (ret < 0) {
+				__simple_printf("dserver_rpc_ptrace_sigexc failed internally: %d", ret);
+				__simple_abort();
+			}
+			ret = errno_linux_to_bsd(-ret);
 
 			// return ret;
 			cmd = "PT_SIGEXC"; break;
@@ -147,29 +149,32 @@ long sys_ptrace(int request, int pid, void* addr, int data)
 		case PT_THUPDATE:
 		{
 			// Convert thread_t to process ID
-			int tid = lkm_call(NR_tid_for_thread, addr);
-			if (tid < 0)
-				return -ESRCH;
+			int tid = -1;
+			ret = dserver_rpc_tid_for_thread(addr, &tid);
+			if (ret < 0) {
+				__simple_printf("dserver_rpc_tid_for_thread failed internally: %d", ret);
+				__simple_abort();
+			} else if (ret > 0) {
+				ret = errno_linux_to_bsd(-ret);
+				return ret;
+			}
 
-			struct ptrace_thupdate_args args;
-			args.tid = tid;
-			args.signum = data;
-
-			ret = lkm_call(NR_ptrace_thupdate, &args);
-			if (ret < 0)
-				ret = errno_linux_to_bsd(ret);
+			ret = dserver_rpc_ptrace_thupdate(tid, data);
+			if (ret < 0) {
+				__simple_printf("dserver_rpc_ptrace_thupdate failed internally: %d", ret);
+				__simple_abort();
+			}
+			ret = errno_linux_to_bsd(-ret);
 
 			// return ret;
 			cmd = "PT_THUPDATE"; break;
 		}
 	}
 
-	char buf[128];
 	if (cmd != NULL)
-		__simple_sprintf(buf, "ptrace() req=%s, ret=%d\n", cmd, ret);
+		__simple_kprintf("ptrace() req=%s, ret=%d\n", cmd, ret);
 	else
-		__simple_sprintf(buf, "ptrace() req=%d\n", request);
-	__simple_kprintf(buf);
+		__simple_kprintf("ptrace() req=%d\n", request);
 
 	return ret;
 }

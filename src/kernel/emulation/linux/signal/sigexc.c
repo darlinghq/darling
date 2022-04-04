@@ -7,7 +7,6 @@
 #include <linux-syscalls/linux.h>
 #include "sigaltstack.h"
 #include "../mach/lkm.h"
-#include "../../../../external/lkm/api.h"
 #include "../../../libsyscall/wrappers/_libkernel_init.h"
 #include <sys/mman.h>
 #include "../mman/mman.h"
@@ -29,10 +28,21 @@ extern int getpid(void);
 extern _libkernel_functions_t _libkernel_functions;
 
 void darling_sigexc_uninstall(void);
-void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt);
+void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext* ctxt);
 
-static char sigexc_altstack[8*1024];
-size_t default_sigaltstack_size = sizeof(sigexc_altstack);
+#define SIGEXC_STACK_SIZE (16ULL * 1024ULL)
+
+#ifndef SIGALTSTACK_GUARD
+	#define SIGALTSTACK_GUARD 1
+#endif
+
+#if SIGALTSTACK_GUARD
+// align it on a page boundary so mprotect works properly
+static char sigexc_altstack[SIGEXC_STACK_SIZE + 4096ULL] __attribute__((aligned(4096)));
+#else
+static char sigexc_altstack[SIGEXC_STACK_SIZE];
+#endif
+size_t default_sigaltstack_size = SIGEXC_STACK_SIZE;
 
 #if defined(__x86_64__)
 static void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state64_t* s);
@@ -46,8 +56,8 @@ static void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux
 static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx);
 #endif
 
-static void state_from_kernel(struct linux_ucontext* ctxt, const struct thread_state* kernel_state);
-static void state_to_kernel(struct linux_ucontext* ctxt, struct thread_state* kernel_state);
+static void state_from_kernel(struct linux_ucontext* ctxt, const void* tstate, const void* fstate);
+static void state_to_kernel(struct linux_ucontext* ctxt, void* tstate, void* fstate);
 
 #define DEBUG_SIGEXC
 #ifdef DEBUG_SIGEXC
@@ -59,13 +69,14 @@ static void state_to_kernel(struct linux_ucontext* ctxt, struct thread_state* ke
 void sigexc_setup1(void)
 {
 	handle_rt_signal(SIGNAL_SIGEXC_SUSPEND);
+	handle_rt_signal(SIGNAL_S2C);
 }
 
 void sigexc_setup2(void)
 {
 	linux_sigset_t set;
 	set = (1ull << (SIGNAL_SIGEXC_SUSPEND-1));
-	//set |= (1ull << (SIGNAL_SIGEXC_THUPDATE-1));
+	set |= (1ull << (SIGNAL_S2C-1));
 
 	LINUX_SYSCALL(__NR_rt_sigprocmask, 1 /* LINUX_SIG_UNBLOCK */,
 		&set, NULL, sizeof(linux_sigset_t));
@@ -85,8 +96,8 @@ static void handle_rt_signal(int signum)
 	int rv;
 	struct linux_sigaction sa;
 
-	sa.sa_sigaction = sigrt_handler;
-	sa.sa_mask = (1ull << (SIGNAL_SIGEXC_SUSPEND-1));
+	sa.sa_sigaction = (linux_sig_handler*)sigrt_handler;
+	sa.sa_mask = (1ull << (SIGNAL_SIGEXC_SUSPEND-1)) | (1ull << (signum-1));
 	sa.sa_flags = LINUX_SA_RESTORER | LINUX_SA_SIGINFO | LINUX_SA_RESTART | LINUX_SA_ONSTACK;
 	sa.sa_restorer = sig_restorer;
 
@@ -117,7 +128,7 @@ void sigexc_setup(void)
 		task_suspend(mach_task_self());
 		kern_printf("sigexc: start_suspended -> wokenup (ret to %p)\n", __builtin_return_address(0));
 	} else {
-		uint32_t tracer;
+		int32_t tracer;
 		code = dserver_rpc_get_tracer(&tracer);
 		if (code < 0) {
 			__simple_printf("Failed to get tracer status: %d\n", code);
@@ -133,10 +144,11 @@ void sigexc_setup(void)
 #endif
 }
 
-void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
+void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
 	dserver_rpc_interrupt_enter();
 
+	if (signum == SIGNAL_SIGEXC_SUSPEND) {
 #if defined(__x86_64__)
 	x86_thread_state64_t tstate;
 	x86_float_state64_t fstate;
@@ -145,18 +157,29 @@ void sigrt_handler(int signum, struct linux_siginfo* info, void* ctxt)
 	x86_float_state32_t fstate;
 #endif
 
-	struct thread_suspended_args args;
-	args.state.tstate = &tstate;
-	args.state.fstate = &fstate;
-
 	kern_printf("sigexc: sigrt_handler SUSPEND\n");
 	
 	thread_t thread = mach_thread_self();
-	state_to_kernel(ctxt, &args.state);
+	state_to_kernel(ctxt, &tstate, &fstate);
 
-	lkm_call(NR_thread_suspended, &args);
+	int ret = dserver_rpc_thread_suspended(&tstate, &fstate);
+	if (ret < 0) {
+		__simple_printf("dserver_rpc_thread_suspended failed internally: %d", ret);
+		__simple_abort();
+	}
 
-	state_from_kernel(ctxt, &args.state);
+	state_from_kernel(ctxt, &tstate, &fstate);
+	} else if (signum == SIGNAL_S2C) {
+		__simple_kprintf("sigexc: sigrt_handler S2C");
+
+		int ret = dserver_rpc_s2c_perform();
+		if (ret < 0) {
+			__simple_printf("dserver_rpc_s2c_perform failed internally: %d", ret);
+			__simple_abort();
+		}
+	} else {
+		__simple_printf("Unknown/unrecognized real-time signal: %d", signum);
+	}
 
 	dserver_rpc_interrupt_exit();
 }
@@ -185,42 +208,50 @@ void darling_sigexc_self(void)
 				sizeof(sa.sa_mask));
 	}
 
+#if SIGALTSTACK_GUARD
+	sys_mprotect(sigexc_altstack, 4096, PROT_NONE);
+#endif
+
 	struct bsd_stack newstack = {
+#if SIGALTSTACK_GUARD
+		.ss_sp = sigexc_altstack + 4096,
+#else
 		.ss_sp = sigexc_altstack,
-		.ss_size = sizeof(sigexc_altstack),
+#endif
+		.ss_size = SIGEXC_STACK_SIZE,
 		.ss_flags = 0
 	};
 	sys_sigaltstack(&newstack, NULL);
 }
 
 
-static void state_to_kernel(struct linux_ucontext* ctxt, struct thread_state* kernel_state)
+static void state_to_kernel(struct linux_ucontext* ctxt, void* tstate, void* fstate)
 {
 #if defined(__x86_64__)
 
 	dump_gregs(&ctxt->uc_mcontext.gregs);
-	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state64_t*) kernel_state->tstate);
-	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state64_t*) kernel_state->fstate);
+	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state64_t*) tstate);
+	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state64_t*) fstate);
 
 #elif defined(__i386__)
-	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state32_t*) kernel_state->tstate);
-	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state32_t*) kernel_state->fstate);
+	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state32_t*) tstate);
+	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state32_t*) fstate);
 #endif
 
 }
 
-static void state_from_kernel(struct linux_ucontext* ctxt, const struct thread_state* kernel_state)
+static void state_from_kernel(struct linux_ucontext* ctxt, const void* tstate, const void* fstate)
 {
 #if defined(__x86_64__)
 
-	thread_state_to_mcontext((x86_thread_state64_t*) kernel_state->tstate, &ctxt->uc_mcontext.gregs);
-	float_state_to_mcontext((x86_float_state64_t*) kernel_state->fstate, ctxt->uc_mcontext.fpregs);
+	thread_state_to_mcontext((const x86_thread_state64_t*) tstate, &ctxt->uc_mcontext.gregs);
+	float_state_to_mcontext((const x86_float_state64_t*) fstate, ctxt->uc_mcontext.fpregs);
 
 	dump_gregs(&ctxt->uc_mcontext.gregs);
 	
 #elif defined(__i386__)
-	thread_state_to_mcontext((x86_thread_state32_t*) kernel_state->tstate, &ctxt->uc_mcontext.gregs);
-	float_state_to_mcontext((x86_float_state32_t*) kernel_state->fstate, ctxt->uc_mcontext.fpregs);
+	thread_state_to_mcontext((const x86_thread_state32_t*) tstate, &ctxt->uc_mcontext.gregs);
+	float_state_to_mcontext((const x86_float_state32_t*) fstate, ctxt->uc_mcontext.fpregs);
 #endif
 }
 
@@ -255,18 +286,13 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	x86_float_state32_t fstate;
 #endif
 
-	struct thread_state state = {
-		.tstate = &tstate,
-		.fstate = &fstate,
-	};
-
-	state_to_kernel(ctxt, &state);
+	state_to_kernel(ctxt, &tstate, &fstate);
 	int ret = dserver_rpc_sigprocess(bsd_signum, linux_signum, info->si_pid, info->si_code, info->si_addr, &tstate, &fstate, &bsd_signum);
 	if (ret < 0) {
 		__simple_printf("sigprocess failed internally while processing Linux signal %d: %d", linux_signum, ret);
 		__simple_abort();
 	}
-	state_from_kernel(ctxt, &state);
+	state_from_kernel(ctxt, &tstate, &fstate);
 
 	if (!bsd_signum)
 	{

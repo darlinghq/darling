@@ -182,7 +182,11 @@ int main(int argc, char** argv, char** envp)
 		abort();
 #endif
 
-	// TODO: tell darlingserver about our dyld info
+	int status = dserver_rpc_set_dyld_info(mldr_load_results.dyld_all_image_location, mldr_load_results.dyld_all_image_size);
+	if (status < 0) {
+		fprintf(stderr, "Failed to tell darlingserver about our dyld info\n");
+		exit(1);
+	}
 
 	start_thread(&mldr_load_results);
 
