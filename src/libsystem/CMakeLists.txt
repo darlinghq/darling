@@ -54,7 +54,7 @@ libsystem_reexport(
 	system_copyfile src/copyfile/libcopyfile.dylib
 	system_coreservices src/libsystem_coreservices/libsystem_coreservices.dylib
 	system_coretls src/external/coretls/libsystem_coretls.dylib
-	system_malloc src/libmalloc/libsystem_malloc.dylib
+	system_malloc src/external/libmalloc/libsystem_malloc.dylib
 	system_c src/libc/libsystem_c.dylib
 	system_kernel src/kernel/libsystem_kernel.dylib
 	system_trace src/external/libtrace/libsystem_trace.dylib
