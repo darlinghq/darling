@@ -44,10 +44,18 @@ const CFStringRef _kLSApplicationUIElementTypeKey = CFSTR("UIElement");
 const CFStringRef _kLSPreviousASNKey = CFSTR("LSOtherASN");
 const CFStringRef _kLSBundlePathDeviceIDKey = CFSTR("LSBundlePathDeviceIDKey");
 const CFStringRef _kLSBundlePathINodeKey = CFSTR("LSBundlePatINodeKey");
+
+const CFStringRef kLSQuarantineAgentBundleIdentifierKey = CFSTR("LSQuarantineAgentBundleIdentifier");
 const CFStringRef kLSQuarantineAgentNameKey = CFSTR("LSQuarantineAgentName");
+const CFStringRef kLSQuarantineDataURLKey = CFSTR("LSQuarantineDataURL");
 const CFStringRef kLSQuarantineOriginURLKey = CFSTR("LSQuarantineOriginURL");
 const CFStringRef kLSQuarantineTimeStampKey = CFSTR("LSQuarantineTimeStamp");
+const CFStringRef kLSQuarantineTypeKey = CFSTR("LSQuarantineType");
+const CFStringRef kLSQuarantineTypeOtherDownload = CFSTR("LSQuarantineTypeOtherDownload");
 
 const CFStringRef kMDItemDisplayName = CFSTR("kMDItemDisplayName");
 const CFStringRef kMDItemLastUsedDate = CFSTR("kMDItemLastUsedDate");
 const CFStringRef kMDItemFinderComment = CFSTR("kMDItemFinderComment");
+
+const CFStringRef kFSOperationBytesCompleteKey = CFSTR("kFSOperationBytesDoneKey");
+const CFStringRef kFSOperationTotalBytesKey = CFSTR("kFSOperationTotalBytesKey");
