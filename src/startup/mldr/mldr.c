@@ -188,8 +188,11 @@ int main(int argc, char** argv, char** envp)
 		exit(1);
 	}
 
-	dserver_rpc_set_executable_path(filename, strlen(filename));
-
+	if (dserver_rpc_set_executable_path(filename, strlen(filename)) < 0) {
+		fprintf(stderr, "Failed to tell darlingserver about our executable path\n");
+		exit(1);
+	}
+	
 	start_thread(&mldr_load_results);
 
 	__builtin_unreachable();
