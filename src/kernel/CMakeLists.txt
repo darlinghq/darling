@@ -67,6 +67,14 @@ add_library(system_kernel_static64 STATIC
 	$<TARGET_OBJECTS:mach_server_client_dyld>
 )
 
+target_link_libraries(system_kernel_static32 PRIVATE
+	libsimple_darling
+)
+
+target_link_libraries(system_kernel_static64 PRIVATE
+	libsimple_darling
+)
+
 install(TARGETS system_kernel DESTINATION libexec/darling/usr/lib/system)
 
 add_dependencies(system_kernel migcom)

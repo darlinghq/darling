@@ -3,9 +3,10 @@
 #include <darlingserver/rpc.h>
 #include "../errno.h"
 #include <stddef.h>
+#include "getuid.h"
 
 long sys_setgid(int gid)
 {
-	return errno_linux_to_bsd(dserver_rpc_uidgid(-1, gid, NULL, NULL));
+	return __setuidgid(-1, gid);
 }
 
