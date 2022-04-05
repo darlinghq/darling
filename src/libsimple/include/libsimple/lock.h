@@ -46,6 +46,29 @@ static void libsimple_once_init(libsimple_once_t* once) {
 
 void libsimple_once(libsimple_once_t* once, libsimple_once_callback callback, void* context);
 
+//
+// rwlock
+//
+
+typedef struct libsimple_rwlock {
+	uint32_t state;
+} libsimple_rwlock_t;
+
+#define LIBSIMPLE_RWLOCK_INITIALIZER {0}
+
+LIBSIMPLE_INLINE
+static void libsimple_rwlock_init(libsimple_rwlock_t* rwlock) {
+	rwlock->state = 0;
+};
+
+void libsimple_rwlock_lock_read(libsimple_rwlock_t* rwlock);
+bool libsimple_rwlock_try_lock_read(libsimple_rwlock_t* rwlock);
+void libsimple_rwlock_unlock_read(libsimple_rwlock_t* rwlock);
+
+void libsimple_rwlock_lock_write(libsimple_rwlock_t* rwlock);
+bool libsimple_rwlock_try_lock_write(libsimple_rwlock_t* rwlock);
+void libsimple_rwlock_unlock_write(libsimple_rwlock_t* rwlock);
+
 LIBSIMPLE_DECLARATIONS_END;
 
 #endif // _LIBSIMPLE_LOCK_H_
