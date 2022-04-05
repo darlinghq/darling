@@ -645,20 +645,21 @@ static bool parse_smaps_firstline(
 
 static long _proc_pidinfo_pathinfo(int32_t pid, void* buffer, int32_t bufsize)
 {
-	char path[64];
 	struct vchroot_unexpand_args args;
+	uint64_t fullLength;
 
-	__simple_sprintf(path, "/proc/%d/exe", pid);
+	int rv = dserver_rpc_get_executable_path(pid, args.path, sizeof(args.path), &fullLength);
 
-	memset(buffer, 0, bufsize);
-	int rv = sys_readlink(path, buffer, bufsize - 1);
+	if (rv < 0) 
+	{
+		__simple_printf("dserver_rpc_get_executable_path failed internally: %d\n", rv);
+		__simple_abort();
+	}
+	else if (rv > 0) 
+	{
+		return -rv;
+	}
 
-	if (rv < 0)
-		return rv;
-
-	((char*)buffer)[rv] = 0;
-
-	strcpy(args.path, buffer);
 	rv = vchroot_unexpand(&args);
 	if (rv != 0)
 		return rv;
