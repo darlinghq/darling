@@ -188,6 +188,8 @@ int main(int argc, char** argv, char** envp)
 		exit(1);
 	}
 
+	dserver_rpc_set_executable_path(filename, strlen(filename));
+
 	start_thread(&mldr_load_results);
 
 	__builtin_unreachable();
