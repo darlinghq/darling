@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/inttypes.h
+../../../../../../../../src/external/libc/include/inttypes.h

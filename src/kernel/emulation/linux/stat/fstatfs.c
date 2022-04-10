@@ -3,7 +3,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include "../simple.h"
-#include "../../../../libc/include/fcntl.h"
+#include "../../../../external/libc/include/fcntl.h"
 #include "../fcntl/open.h"
 #include "../unistd/close.h"
 #include "../unistd/readlink.h"

@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/getopt.h
+../../../../../../../../src/external/libc/include/getopt.h

@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/dirent.h
+../../../../../../../../src/external/libc/include/dirent.h

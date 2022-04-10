@@ -113,7 +113,7 @@ add_subdirectory(kernel)
 add_subdirectory(external/libplatform)
 add_subdirectory(external/libpthread)
 add_subdirectory(external/libtrace)
-add_subdirectory(libc)
+add_subdirectory(external/libc)
 add_subdirectory(vchroot)
 
 add_subdirectory(lib)

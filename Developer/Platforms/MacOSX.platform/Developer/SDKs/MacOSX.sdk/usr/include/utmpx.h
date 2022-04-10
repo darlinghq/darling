@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/NetBSD/utmpx.h
+../../../../../../../../src/external/libc/include/NetBSD/utmpx.h

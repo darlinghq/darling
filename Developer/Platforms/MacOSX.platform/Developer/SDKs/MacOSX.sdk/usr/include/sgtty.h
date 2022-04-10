@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/sgtty.h
+../../../../../../../../src/external/libc/include/sgtty.h
