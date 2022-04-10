@@ -1,1 +1,1 @@
-../../../../../../../../../src/libc/os/debug_private.h
+../../../../../../../../../src/external/libc/os/debug_private.h

@@ -55,7 +55,7 @@ libsystem_reexport(
 	system_coreservices src/libsystem_coreservices/libsystem_coreservices.dylib
 	system_coretls src/external/coretls/libsystem_coretls.dylib
 	system_malloc src/external/libmalloc/libsystem_malloc.dylib
-	system_c src/libc/libsystem_c.dylib
+	system_c src/external/libc/libsystem_c.dylib
 	system_kernel src/kernel/libsystem_kernel.dylib
 	system_trace src/external/libtrace/libsystem_trace.dylib
 	keymgr src/keymgr/libkeymgr.dylib
@@ -78,7 +78,7 @@ libsystem_reexport(
 	system_dnssd src/lib/system/dnssd/libsystem_dnssd.dylib
 	system_networkextension src/networkextension/libsystem_networkextension.dylib
 	unwind src/libunwind/libunwind.dylib
-	system_darwin src/libc/libdarwin/libsystem_darwin.dylib
+	system_darwin src/external/libc/libdarwin/libsystem_darwin.dylib
 	libcache src/libcache/libcache.dylib
 )
 

@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/errno.h
+../../../../../../../../src/external/libc/include/errno.h

@@ -4,7 +4,7 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 //#include "../../../../platform-include/sys/fcntl.h"
-#include "../../../../libc/include/fcntl.h"
+#include "../../../../external/libc/include/fcntl.h"
 #include "../bsdthread/per_thread_wd.h"
 #include "../bsdthread/cancelable.h"
 

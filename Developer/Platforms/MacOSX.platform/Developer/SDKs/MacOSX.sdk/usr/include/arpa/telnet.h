@@ -1,1 +1,1 @@
-../../../../../../../../../src/libc/include/arpa/telnet.h
+../../../../../../../../../src/external/libc/include/arpa/telnet.h

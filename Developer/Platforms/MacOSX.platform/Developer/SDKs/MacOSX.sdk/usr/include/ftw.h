@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/ftw.h
+../../../../../../../../src/external/libc/include/ftw.h

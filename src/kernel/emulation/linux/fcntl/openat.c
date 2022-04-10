@@ -5,7 +5,7 @@
 #include <linux-syscalls/linux.h>
 #include <lkm/api.h>
 #include <mach/lkm.h>
-#include "../../../../libc/include/fcntl.h"
+#include "../../../../external/libc/include/fcntl.h"
 #include "../common_at.h"
 #include "../simple.h"
 #include "../vchroot_expand.h"
