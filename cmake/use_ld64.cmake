@@ -45,7 +45,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libicucore.A.dylib:${CMAKE_BINARY_DIR}/src/external/icu/icuSources/libicucore.A.dylib \
 -Wl,-dylib_file,/usr/lib/libncurses.5.4.dylib:${CMAKE_BINARY_DIR}/src/ncurses/ncurses/libncurses.5.4.dylib \
 -Wl,-dylib_file,/usr/lib/libDiagnosticMessagesClient.dylib:${CMAKE_BINARY_DIR}/src/libDiagnosticMessagesClient/libDiagnosticMessagesClient.dylib \
--Wl,-dylib_file,/usr/lib/libSystem.B.dylib:${CMAKE_BINARY_DIR}/src/libsystem/libSystem.B.dylib \
+-Wl,-dylib_file,/usr/lib/libSystem.B.dylib:${CMAKE_BINARY_DIR}/src/external/libsystem/libSystem.B.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Python.framework/Versions/2.7/Python:${CMAKE_BINARY_DIR}/src/external/python/2.7/Python-2.7.16/Python \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation:${CMAKE_BINARY_DIR}/src/external/corefoundation/CoreFoundation \
 -Wl,-dylib_file,/System/Library/Frameworks/Ruby.framework/Versions/2.0/Ruby:${CMAKE_BINARY_DIR}/src/external/ruby/Ruby \

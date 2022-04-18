@@ -378,3 +378,6 @@
 [submodule "src/external/libc"]
 	path = src/external/libc
 	url = ../darling-Libc.git
+[submodule "src/external/libsystem"]
+	path = src/external/libsystem
+	url = ../darling-Libsystem.git
