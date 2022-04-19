@@ -381,3 +381,6 @@
 [submodule "src/external/libsystem"]
 	path = src/external/libsystem
 	url = ../darling-Libsystem.git
+[submodule "src/external/dyld"]
+	path = src/external/dyld
+	url = ../darling-dyld.git
