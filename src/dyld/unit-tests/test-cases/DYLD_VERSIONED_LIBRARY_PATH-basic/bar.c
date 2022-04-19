@@ -1,5 +1,0 @@
-
-int bar()
-{
-	return RESULT;
-}
