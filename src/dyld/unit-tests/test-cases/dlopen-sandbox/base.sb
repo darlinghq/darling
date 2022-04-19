@@ -1,9 +1,0 @@
-
-(version 1)
-(allow default)
-(debug deny)
-
-(deny FILTER
-    (literal "DIR/libfoo.dylib"))
-
-
