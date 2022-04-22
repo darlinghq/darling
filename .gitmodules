@@ -384,3 +384,6 @@
 [submodule "src/external/dyld"]
 	path = src/external/dyld
 	url = ../darling-dyld.git
+[submodule "src/external/AvailabilityVersions"]
+	path = src/external/AvailabilityVersions
+	url = ../darling-AvailabilityVersions
