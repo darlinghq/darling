@@ -387,3 +387,6 @@
 [submodule "src/external/AvailabilityVersions"]
 	path = src/external/AvailabilityVersions
 	url = ../darling-AvailabilityVersions
+[submodule "src/external/libnotify"]
+	path = src/external/libnotify
+	url = ../darling-Libnotify.git
