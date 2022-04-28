@@ -17,9 +17,6 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-@interface OS_object
-
-@end
 
 @interface OS_sysmon_object : OS_object
 
