@@ -1,1 +1,1 @@
-../../../../../../../../../src/libc/include/_types/_uintmax_t.h
+../../../../../../../../../src/external/libc/include/_types/_uintmax_t.h

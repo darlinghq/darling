@@ -378,3 +378,21 @@
 [submodule "src/external/darlingserver"]
 	path = src/external/darlingserver
 	url = ../darlingserver.git
+[submodule "src/external/libmalloc"]
+	path = src/external/libmalloc
+	url = ../darling-libmalloc.git
+[submodule "src/external/libc"]
+	path = src/external/libc
+	url = ../darling-Libc.git
+[submodule "src/external/libsystem"]
+	path = src/external/libsystem
+	url = ../darling-Libsystem.git
+[submodule "src/external/dyld"]
+	path = src/external/dyld
+	url = ../darling-dyld.git
+[submodule "src/external/AvailabilityVersions"]
+	path = src/external/AvailabilityVersions
+	url = ../darling-AvailabilityVersions
+[submodule "src/external/libnotify"]
+	path = src/external/libnotify
+	url = ../darling-Libnotify.git

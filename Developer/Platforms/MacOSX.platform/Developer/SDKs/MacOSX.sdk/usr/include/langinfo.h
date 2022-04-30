@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/langinfo.h
+../../../../../../../../src/external/libc/include/langinfo.h

@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/semaphore.h
+../../../../../../../../src/external/libc/include/semaphore.h
