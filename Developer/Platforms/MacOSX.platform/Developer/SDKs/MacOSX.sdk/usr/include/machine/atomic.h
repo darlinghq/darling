@@ -1,1 +1,1 @@
-../../../../../../../../../src/libc/fbsdcompat/machine/atomic.h
+../../../../../../../../../src/external/libc/fbsdcompat/machine/atomic.h

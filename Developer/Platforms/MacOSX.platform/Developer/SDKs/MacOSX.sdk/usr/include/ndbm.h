@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/ndbm.h
+../../../../../../../../src/external/libc/include/ndbm.h

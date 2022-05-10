@@ -1,5 +1,0 @@
-
-int foo()
-{
-	return RESULT;
-}

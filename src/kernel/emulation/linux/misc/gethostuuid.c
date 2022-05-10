@@ -2,7 +2,7 @@
 #include "../base.h"
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
-#include "../../../../libc/include/fcntl.h"
+#include "../../../../external/libc/include/fcntl.h"
 #include <sys/errno.h>
 #include "../fcntl/open.h"
 #include "../unistd/close.h"

@@ -1,1 +1,1 @@
-../../../../../../../../../src/libc/include/xlocale/_inttypes.h
+../../../../../../../../../src/external/libc/include/xlocale/_inttypes.h

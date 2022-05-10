@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/syslog.h
+../../../../../../../../src/external/libc/include/syslog.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/libc/libdarwin/h/stdio.h
+../../../../../../../../../src/external/libc/libdarwin/h/stdio.h

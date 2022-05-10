@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/gen/thread_stack_pcs.h
+../../../../../../../../src/external/libc/gen/thread_stack_pcs.h

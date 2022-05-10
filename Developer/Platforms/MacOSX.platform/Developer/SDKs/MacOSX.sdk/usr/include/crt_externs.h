@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/crt_externs.h
+../../../../../../../../src/external/libc/include/crt_externs.h

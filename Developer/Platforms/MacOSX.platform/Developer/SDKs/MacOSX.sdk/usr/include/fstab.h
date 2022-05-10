@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/fstab.h
+../../../../../../../../src/external/libc/include/fstab.h

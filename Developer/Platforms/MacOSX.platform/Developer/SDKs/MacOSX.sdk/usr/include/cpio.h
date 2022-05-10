@@ -1,1 +1,1 @@
-../../../../../../../../src/libc/include/cpio.h
+../../../../../../../../src/external/libc/include/cpio.h
