@@ -39,6 +39,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <darlingserver/rpc.h>
+#include <sys/ptrace.h>
 
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
@@ -89,11 +90,19 @@ struct load_results mldr_load_results = {0};
 
 static uint32_t stack_size = 0;
 
+static const char* const skip_env_vars[] = {
+	"__mldr_bprefs=",
+	"__mldr_sockpath=",
+};
+
 int main(int argc, char** argv, char** envp)
 {
 	void** sp;
 	int pushCount = 0;
 	char *filename, *p = NULL;
+	size_t arg_strings_total_size_after = 0;
+	size_t orig_argv0_len = 0;
+	const char* orig_argv1 = NULL;
 
 	mldr_load_results.kernfd = -1;
 	mldr_load_results.argc = argc;
@@ -131,6 +140,11 @@ int main(int argc, char** argv, char** envp)
 		strcpy(filename, argv[1]);
 	}
 
+	// allow any process to ptrace us
+	// the only process we really care about being able to do this is the server,
+	// but we can't just use the server's PID, since it lies outside our PID namespace.
+	ptrace(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
+
 	process_special_env(&mldr_load_results);
 
 #ifdef __i386__
@@ -155,20 +169,67 @@ int main(int argc, char** argv, char** envp)
 	}
 #endif
 
-	if (prctl(PR_SET_MM, PR_SET_MM_START_STACK, mldr_load_results.stack_top, 0, 0) < 0) {
-		fprintf(stderr, "Failed to set stack start\n");
-		return 1;
-	}
-
 	// adjust argv (remove mldr's argv[0])
+	// NOTE: this code assumes that the current argv array points to contiguous strings.
+	//       this is not necessarily true, although AFAIK this is always true on Linux.
+	// also note: we do it this way (moving the string contents in addition to the pointers)
+	//            so that Linux sees our modified argv array without having to use PR_SET_MM_ARG_START
+	//            and PR_SET_MM_ARG_END (since those require CAP_SYS_RESOURCE)
+
 	--mldr_load_results.argc;
+
+	orig_argv0_len = strlen(mldr_load_results.argv[0]) + 1;
+	orig_argv1 = mldr_load_results.argv[1];
+
 	for (size_t i = 0; i < mldr_load_results.argc; ++i) {
-		mldr_load_results.argv[i] = mldr_load_results.argv[i + 1];
+		mldr_load_results.argv[i] = mldr_load_results.argv[0] + arg_strings_total_size_after;
+		arg_strings_total_size_after += strlen(mldr_load_results.argv[i + 1]) + 1;
 	}
 	mldr_load_results.argv[mldr_load_results.argc] = NULL;
 
+	memmove(mldr_load_results.argv[0], orig_argv1, arg_strings_total_size_after);
+	memset(mldr_load_results.argv[0] + arg_strings_total_size_after, 0, orig_argv0_len);
+
 	if (p == NULL) {
 		vchroot_unexpand_interpreter(&mldr_load_results);
+	}
+
+	// adjust envp (remove special mldr variables)
+	// NOTE: same as for argv; here we assume the envp strings are contiguous
+	for (size_t i = 0; i < mldr_load_results.envc; ++i) {
+		if (!mldr_load_results.envp[i]) {
+			mldr_load_results.envc = i;
+			break;
+		}
+
+		size_t len = strlen(mldr_load_results.envp[i]) + 1;
+
+		// Don't pass these special env vars down to userland
+		#define SKIP_VAR(_name) \
+			(len > sizeof(_name) - 1 && strncmp(mldr_load_results.envp[i], _name, sizeof(_name) - 1) == 0)
+
+		if (
+			SKIP_VAR("__mldr_bprefs=")   ||
+			SKIP_VAR("__mldr_sockpath=")
+		) {
+			size_t len_after = 0;
+			const char* orig_envp_i_plus_one = mldr_load_results.envp[i + 1];
+
+			--mldr_load_results.envc;
+
+			for (size_t j = i; j < mldr_load_results.envc; ++j) {
+				mldr_load_results.envp[j] = mldr_load_results.envp[i] + len_after;
+				len_after += strlen(mldr_load_results.envp[j + 1]) + 1;
+			}
+			mldr_load_results.envp[mldr_load_results.envc] = NULL;
+
+			memmove(mldr_load_results.envp[i], orig_envp_i_plus_one, len_after);
+			memset(mldr_load_results.envp[i] + len_after, 0, len);
+
+			// we have to check this index again because it now points to a different string
+			--i;
+			continue;
+		}
 	}
 
 	if (mldr_load_results._32on64)

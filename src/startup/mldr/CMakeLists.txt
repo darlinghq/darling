@@ -30,10 +30,7 @@ target_link_options(mldr PRIVATE -pthread)
 
 target_link_libraries(mldr PRIVATE -lrt -ldl mldr_dserver_rpc)
 
-include(setcap)
-
 install(TARGETS mldr DESTINATION libexec/darling/usr/libexec/darling)
-setcap(libexec/darling/usr/libexec/darling/mldr cap_sys_rawio,cap_sys_resource+ep)
 
 configure_file(darling.conf.in darling.conf @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/darling.conf" DESTINATION lib/binfmt.d)
@@ -55,5 +52,4 @@ if (BUILD_TARGET_32BIT)
 	target_link_libraries(mldr32 PRIVATE -lrt -ldl mldr32_dserver_rpc)
 
 	install(TARGETS mldr32 DESTINATION libexec/darling/usr/libexec/darling)
-	setcap(libexec/darling/usr/libexec/darling/mldr32 cap_sys_rawio,cap_sys_resource+ep)
 endif()

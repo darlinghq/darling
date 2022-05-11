@@ -28,7 +28,6 @@
 #include "loader.h"
 #include <darling-config.h>
 #include "elfcalls/elfcalls.h"
-#include <sys/prctl.h>
 
 #if defined(GEN_64BIT)
 #define FUNCTION_NAME setup_stack64
@@ -154,22 +153,7 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 	}
 
 	// Fill in argv pointers
-	// NOTE: the prctl code assumes that the current argv array points to contiguous strings.
-	//       this is not necessarily true, although AFAIK this is always true on Linux.
-	//       nonetheless, we should probably not assume this.
 	argv = sp;
-	uintptr_t arg_space_ptr = lr->argv[0];
-	if (prctl(PR_SET_MM, PR_SET_MM_ARG_START, arg_space_ptr, 0, 0) < 0) {
-		// maybe arg_end was behind arg_start; try moving it first
-		if (prctl(PR_SET_MM, PR_SET_MM_ARG_END, arg_space_ptr, 0, 0) < 0) {
-			fprintf(stderr, "Failed to set arg end\n");
-			exit(1);
-		}
-		if (prctl(PR_SET_MM, PR_SET_MM_ARG_START, arg_space_ptr, 0, 0) < 0) {
-			fprintf(stderr, "Failed to set arg start\n");
-			exit(1);
-		}
-	}
 	for (int i = 0; i < lr->argc; ++i)
 	{
 		if (!lr->argv[i]) {
@@ -181,33 +165,15 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 			fprintf(stderr, "Failed to copy an argument pointer to stack\n");
 			exit(1);
 		}
-		arg_space_ptr += strlen(lr->argv[i]) + 1;
 	}
 	if (__put_user((user_long_t) 0, argv++))
 	{
 		fprintf(stderr, "Failed to null-terminate the argument pointer array\n");
 		exit(1);
 	}
-	if (prctl(PR_SET_MM, PR_SET_MM_ARG_END, arg_space_ptr, 0, 0) < 0) {
-		fprintf(stderr, "Failed to set arg end\n");
-		exit(1);
-	}
 
 	// Fill in envp pointers
-	// NOTE: same as for argv; here we assume the envp strings are contiguous
 	envp = argv;
-	uintptr_t env_space_ptr = lr->envp[0];
-	if (prctl(PR_SET_MM, PR_SET_MM_ENV_START, env_space_ptr, 0, 0) < 0) {
-		// maybe env_end was behind env_start; try moving it first
-		if (prctl(PR_SET_MM, PR_SET_MM_ENV_END, env_space_ptr, 0, 0) < 0) {
-			fprintf(stderr, "Failed to set env end\n");
-			exit(1);
-		}
-		if (prctl(PR_SET_MM, PR_SET_MM_ENV_START, env_space_ptr, 0, 0) < 0) {
-			fprintf(stderr, "Failed to set env start\n");
-			exit(1);
-		}
-	}
 	for (int i = 0; i < lr->envc; ++i)
 	{
 		if (!lr->envp[i]) {
@@ -215,34 +181,15 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 			break;
 		}
 
-		size_t len = strlen((void __user*) lr->envp[i]) + 1;
-
-		// Don't pass these special env vars down to userland
-		#define SKIP_VAR(_name) \
-			if (len > sizeof(_name) - 1 && strncmp(lr->envp[i], _name, sizeof(_name) - 1) == 0) { \
-				env_space_ptr += strlen(lr->envp[i]) + 1; \
-				continue; \
-			}
-
-		SKIP_VAR("__mldr_bprefs=");
-		SKIP_VAR("__mldr_sockpath=");
-
 		if (__put_user((user_long_t) lr->envp[i], envp++))
 		{
 			fprintf(stderr, "Failed to copy an environment variable pointer to stack\n");
 			exit(1);
 		}
-
-		env_space_ptr += strlen(lr->envp[i]) + 1;
 	}
 	if (__put_user((user_long_t) 0, envp++))
 	{
 		fprintf(stderr, "Failed to null-terminate the environment variable pointer array\n");
-		exit(1);
-	}
-	// FIXME: this might include variables that we've skipped
-	if (prctl(PR_SET_MM, PR_SET_MM_ENV_END, env_space_ptr, 0, 0) < 0) {
-		fprintf(stderr, "Failed to set env end\n");
 		exit(1);
 	}
 
