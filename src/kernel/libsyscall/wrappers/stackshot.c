@@ -53,6 +53,7 @@ stackshot_config_create(void)
 	s_config->sc_delta_timestamp = 0;
 	s_config->sc_buffer = 0;
 	s_config->sc_size = 0;
+	s_config->sc_pagetable_mask = 0;
 
 	return s_config;
 }
@@ -91,7 +92,7 @@ stackshot_config_set_pid(stackshot_config_t *stackshot_config, int pid)
  *				0 on success
  */
 int
-stackshot_config_set_flags(stackshot_config_t *stackshot_config, uint32_t flags)
+stackshot_config_set_flags(stackshot_config_t *stackshot_config, uint64_t flags)
 {
 	stackshot_config_t *s_config;
 
@@ -232,6 +233,35 @@ stackshot_config_set_delta_timestamp(stackshot_config_t *stackshot_config, uint6
 	}
 
 	stackshot_config->sc_delta_timestamp = delta_timestamp;
+
+	return 0;
+}
+
+/*
+ * stackshot_config_set_pagetable_mask: set the level mask for pagetable dumping
+ *
+ * Each bit of the mask corresponds to a level in the paging structure. Bit 0
+ * corresponds to Level 0, bit 1 to level 1, and so on. It is undefined what
+ * happens when a bit is set that's higher than the current maximum level of
+ * pagetable structures.
+ *
+ * When using this setter, you must also pass STACKSHOT_PAGE_TABLES as a flag
+ * before invoking stackshot, otherwise this setter is a no-operation.
+ *
+ * Inputs:  stackshot_config - a pointer to a stackshot_config_t
+ *          level_mask - the pagetable level mask, as described above
+ *
+ * Outputs:  -1  if the passed stackshot config is NULL or there is existing stackshot buffer set.
+ *           0 on success
+ */
+int
+stackshot_config_set_pagetable_mask(stackshot_config_t *stackshot_config, uint32_t pagetable_mask)
+{
+	if (stackshot_config == NULL || (void *)stackshot_config->sc_buffer != NULL) {
+		return -1;
+	}
+
+	stackshot_config->sc_pagetable_mask = pagetable_mask;
 
 	return 0;
 }

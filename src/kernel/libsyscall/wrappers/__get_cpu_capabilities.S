@@ -67,10 +67,10 @@ __get_cpu_capabilities:
 	.globl __get_cpu_capabilities
 __get_cpu_capabilities:
 	ldr x0, Lcommpage_cc_addr
-	ldr	w0, [x0]
+	ldr	x0, [x0]
 	ret
 Lcommpage_cc_addr:
-.quad _COMM_PAGE_CPU_CAPABILITIES
+.quad _COMM_PAGE_CPU_CAPABILITIES64
 
 #else
 #error Unsupported architecture

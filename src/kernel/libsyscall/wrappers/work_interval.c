@@ -79,6 +79,26 @@ work_interval_create(work_interval_t *interval_handle, uint32_t create_flags)
 }
 
 int
+work_interval_get_flags_from_port(mach_port_t port, uint32_t *flags)
+{
+	if (!MACH_PORT_VALID(port) || flags == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	struct work_interval_create_params create_params = { 0 };
+
+	int ret = __work_interval_ctl(WORK_INTERVAL_OPERATION_GET_FLAGS, port,
+	    &create_params, sizeof(create_params));
+	if (ret == -1) {
+		return ret;
+	}
+
+	*flags = create_params.wicp_create_flags;
+	return 0;
+}
+
+int
 work_interval_notify(work_interval_t interval_handle, uint64_t start,
     uint64_t finish, uint64_t deadline, uint64_t next_start,
     uint32_t notify_flags)
@@ -96,6 +116,10 @@ work_interval_notify(work_interval_t interval_handle, uint64_t start,
 	if (interval_handle == NULL) {
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (interval_handle->create_flags & WORK_INTERVAL_FLAG_IGNORED) {
+		return 0;
 	}
 
 	notification.create_flags = interval_handle->create_flags;

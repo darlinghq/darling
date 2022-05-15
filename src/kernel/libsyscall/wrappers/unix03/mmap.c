@@ -46,19 +46,21 @@ mmap(void *addr, size_t len, int prot, int flags, int fildes, off_t off)
 	 * Preemptory failures:
 	 *
 	 * o	off is not a multiple of the page size
+	 *      [ This is enforced by the kernel with MAP_UNIX03 ]
 	 * o	flags does not contain either MAP_PRIVATE or MAP_SHARED
 	 * o	len is zero
+	 *
+	 * Now enforced by the kernel when the MAP_UNIX03 flag is provided.
 	 */
 	extern void cerror_nocancel(int);
-	if ((off & PAGE_MASK) ||
-	    (((flags & MAP_PRIVATE) != MAP_PRIVATE) &&
+	if ((((flags & MAP_PRIVATE) != MAP_PRIVATE) &&
 	    ((flags & MAP_SHARED) != MAP_SHARED)) ||
 	    (len == 0)) {
 		cerror_nocancel(EINVAL);
 		return MAP_FAILED;
 	}
 
-	void *ptr = __mmap(addr, len, prot, flags, fildes, off);
+	void *ptr = __mmap(addr, len, prot, flags | MAP_UNIX03, fildes, off);
 
 	if (__syscall_logger) {
 		int stackLoggingFlags = stack_logging_type_vm_allocate;

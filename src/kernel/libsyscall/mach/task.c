@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020 Apple Inc. All rights reserved.
+ * Copyright (c) 2020 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  *
@@ -26,3 +26,22 @@
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
+#undef _task_user_
+#include <mach/task_internal.h>
+
+extern mach_port_t      mach_task_self_;
+
+boolean_t
+mach_task_is_self(task_name_t task)
+{
+	boolean_t is_self;
+	kern_return_t kr;
+
+	if (task == mach_task_self_) {
+		return TRUE;
+	}
+
+	kr = _kernelrpc_mach_task_is_self(task, &is_self);
+
+	return kr == KERN_SUCCESS && is_self;
+}

@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <mach/host_special_ports.h>
 #include <mach/task_special_ports.h>
+#include <mach/thread_special_ports.h>
 #include <mach/port_descriptions.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -71,8 +72,9 @@ mach_host_special_port_description(int port)
 		[HOST_SYSPOLICYD_PORT] = "syspolicyd",
 		[HOST_FILECOORDINATIOND_PORT] = "filecoordinationd",
 		[HOST_FAIRPLAYD_PORT] = "fairplayd",
+		[HOST_IOCOMPRESSIONSTATS_PORT] = "I/O compression stats",
 	};
-	_Static_assert(HOST_FAIRPLAYD_PORT == HOST_MAX_SPECIAL_PORT,
+	_Static_assert(HOST_IOCOMPRESSIONSTATS_PORT == HOST_MAX_SPECIAL_PORT,
 	    "all host special ports must have descriptions");
 
 	return hsp_descs[port_index];
@@ -92,6 +94,8 @@ mach_task_special_port_description(int port)
 		[TASK_HOST_PORT] = "host",
 		[TASK_NAME_PORT] = "name",
 		[TASK_BOOTSTRAP_PORT] = "bootstrap",
+		[TASK_INSPECT_PORT] = "inspect",
+		[TASK_READ_PORT] = "read",
 		[TASK_SEATBELT_PORT] = "seatbelt",
 		[TASK_ACCESS_PORT] = "access",
 		[TASK_DEBUG_CONTROL_PORT] = "debug control",
@@ -99,6 +103,26 @@ mach_task_special_port_description(int port)
 	};
 	_Static_assert(TASK_RESOURCE_NOTIFY_PORT == TASK_MAX_SPECIAL_PORT,
 	    "all task special ports must have descriptions");
+
+	return tsp_descs[port_index];
+}
+
+const char *
+mach_thread_special_port_description(int port)
+{
+	int port_index = (int)port;
+
+	if (port_index < 0 || port_index > THREAD_MAX_SPECIAL_PORT) {
+		return NULL;
+	}
+
+	static const char *tsp_descs[] = {
+		[THREAD_KERNEL_PORT] = "kernel",
+		[THREAD_INSPECT_PORT] = "inspect",
+		[THREAD_READ_PORT] = "read",
+	};
+	_Static_assert(THREAD_READ_PORT == THREAD_MAX_SPECIAL_PORT,
+	    "all thread special ports must have descriptions");
 
 	return tsp_descs[port_index];
 }
@@ -166,10 +190,25 @@ mach_task_special_port_for_id(const char *id)
 		SP_ENTRY(TASK_HOST_PORT),
 		SP_ENTRY(TASK_NAME_PORT),
 		SP_ENTRY(TASK_BOOTSTRAP_PORT),
+		SP_ENTRY(TASK_INSPECT_PORT),
+		SP_ENTRY(TASK_READ_PORT),
 		SP_ENTRY(TASK_SEATBELT_PORT),
 		SP_ENTRY(TASK_ACCESS_PORT),
 		SP_ENTRY(TASK_DEBUG_CONTROL_PORT),
 		SP_ENTRY(TASK_RESOURCE_NOTIFY_PORT),
+	};
+
+	return port_for_id_internal(id, tsp_ids,
+	           sizeof(tsp_ids) / sizeof(tsp_ids[0]));
+}
+
+int
+mach_thread_special_port_for_id(const char *id)
+{
+	static const char *tsp_ids[] = {
+		SP_ENTRY(THREAD_KERNEL_PORT),
+		SP_ENTRY(THREAD_INSPECT_PORT),
+		SP_ENTRY(THREAD_READ_PORT),
 #undef SP_ENTRY
 	};
 
