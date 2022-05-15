@@ -63,11 +63,6 @@ CLANG_WARN_SUSPICIOUS_MOVE = YES
 CODE_SIGN_IDENTITY = -
 DYLIB_CURRENT_VERSION = $(RC_ProjectSourceVersion)
 DYLIB_LDFLAGS = -umbrella System -all_load
-DYLIB_LDFLAGS[sdk=iphoneos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
-DYLIB_LDFLAGS[sdk=watchos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
-DYLIB_LDFLAGS[sdk=tvos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
-DYLIB_LDFLAGS[sdk=appletvos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
-DYLIB_LDFLAGS[sdk=bridgeos*] = $(inherited) -Wl,-sectalign,__DATA,__data,1000
 OTHER_LDFLAGS = $(SIMULATOR_LDFLAGS)
 SIMULATOR_LDFLAGS =
 SIMULATOR_LDFLAGS[sdk=macosx*] = -Wl,-simulator_support

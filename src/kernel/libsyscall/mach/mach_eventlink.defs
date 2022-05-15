@@ -1,0 +1,96 @@
+/*
+ * Copyright (c) 2019 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
+ *
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. The rights granted to you under the License
+ * may not be used to create, or enable the creation or redistribution of,
+ * unlawful or unlicensed copies of an Apple operating system, or to
+ * circumvent, violate, or enable the circumvention or violation of, any
+ * terms of an Apple operating system software license agreement.
+ *
+ * Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this file.
+ *
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ *
+ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+ */
+
+import <mach/mach_eventlink_types.h>;
+
+/*
+ * Libsyscall mach_eventlink.defs should include mach/mach_eventlink.defs exported by
+ * kernel, putting a copy of the file instead to avoid the build failure due to
+ * ordering issues. Once the mach/mach_eventlink.defs is in build, replace the content
+ * on defs file with #inlude <mach/mach_eventlink.defs>.
+ */
+subsystem
+#if	KERNEL_SERVER
+	KernelServer
+#endif	/* KERNEL_SERVER */
+			mach_eventlink 716200;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+#include <mach/clock_types.defs>
+
+#ifndef _MACH_MACH_EVENTLINK_TYPE_DEFS
+#define _MACH_MACH_EVENTLINK_TYPE_DEFS
+
+type eventlink_t = mach_port_t
+		ctype: mach_port_t
+#if	KERNEL_SERVER
+		intran: ipc_eventlink_t convert_port_to_eventlink(mach_port_t)
+		destructor: ipc_eventlink_deallocate(ipc_eventlink_t)
+#endif	/* KERNEL_SERVER */
+		;
+
+type eventlink_consume_ref_t = mach_port_move_send_t
+		ctype: mach_port_t
+#if	KERNEL_SERVER
+		intran: ipc_eventlink_t convert_port_to_eventlink(mach_port_t)
+		destructor: ipc_eventlink_deallocate(ipc_eventlink_t)
+#endif	/* KERNEL_SERVER */
+		;
+
+type eventlink_port_pair_t = array[2] of mach_port_t;
+type mach_eventlink_create_option_t = uint32_t;
+type mach_eventlink_associate_option_t = uint32_t;
+type mach_eventlink_disassociate_option_t = uint32_t;
+type mach_eventlink_signal_wait_option_t = uint32_t;
+
+#endif /* _MACH_MACH_EVENTLINK_TYPE_DEFS */
+
+routine mach_eventlink_create(
+		task             : task_t;
+		option           : mach_eventlink_create_option_t;
+	out     eventlink_pair   : eventlink_port_pair_t);
+
+routine mach_eventlink_destroy(
+		eventlink        : eventlink_consume_ref_t);
+
+
+routine mach_eventlink_associate(
+		eventlink            : eventlink_t;
+		thread               : thread_t;
+		copyin_addr_wait     : mach_vm_address_t;
+		copyin_mask_wait     : uint64_t;
+		copyin_addr_signal   : mach_vm_address_t;
+		copyin_mask_signal   : uint64_t;
+		option               : mach_eventlink_associate_option_t);
+
+routine mach_eventlink_disassociate(
+		eventlink        : eventlink_t;
+		option           : mach_eventlink_disassociate_option_t);
+
+ /* vim: set ft=c : */

@@ -64,12 +64,7 @@ mach_get_times(uint64_t* absolute_time, uint64_t* cont_time, struct timespec *tp
 			if (__gettimeofday_with_mach(&tv, NULL, &tbr) < 0) {
 				return KERN_FAILURE;
 			} else if (tbr == 0) {
-#if !(TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
-				// On an old kernel, likely chroot'ed. (remove next year)
-				tbr = mach_absolute_time();
-#else
 				__builtin_trap();
-#endif
 			}
 		}
 

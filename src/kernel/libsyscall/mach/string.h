@@ -42,8 +42,11 @@
 int _mach_snprintf(char *buffer, int length, const char *fmt, ...) __printflike(3, 4);
 int _mach_vsnprintf(char *buffer, int length, const char *fmt, va_list ap) __printflike(3, 0);
 
-// Actually in memcpy.c but MIG likes to include string.h
+// These declarations are just for MIG, other users should include string/strings.h
+// These symbols are defined in _libc_funcptr.c
 
 void *memcpy(void *dst0, const void *src0, size_t length);
+void *memset(void *dst0, int c0, size_t length);
+void bzero(void *dst0, size_t length);
 
 #endif /* _STRING_H_ */

@@ -90,6 +90,11 @@ static const char * const err_codes_libkern_kext[] = {
 	"(libkern/kext) kext request timed out",                              /* 0x19 */
 	"(libkern/kext) kext is stopping and cannot issue requests",          /* 0x1a */
 	"(libkern/kext) system policy prevents loading",                      /* 0x1b */
+
+	"(libkern/kext) loading/mapping of a kext collection failed",         /* 0x1c */
+	"(libkern/kext) mapping of the SystemKC failed",                      /* 0x1d */
+	"(libkern/kext) loading/mapping of the AuxiliaryKC failed",           /* 0x1e */
+	"(libkern/kext) loading of both Auxiliary and System KCs failed",     /* 0x1f */
 };
 
 /* libkern is err_system(0x37) */
@@ -115,3 +120,6 @@ static const struct error_subsystem err_libkern_sub[] = {
         err_codes_libkern_kext,
 	},
 };
+
+
+/* vim: set ft=c ts=8 sw=4: */

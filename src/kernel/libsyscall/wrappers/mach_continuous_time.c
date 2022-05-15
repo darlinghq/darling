@@ -62,8 +62,9 @@ _mach_continuous_hwclock(uint64_t *cont_time __unused)
 #define ISB_SY          0xf
 	uint8_t cont_hwclock = *((uint8_t*)_COMM_PAGE_CONT_HWCLOCK);
 	if (cont_hwclock) {
+		volatile uint64_t *base_ptr = (volatile uint64_t*)_COMM_PAGE_CONT_HW_TIMEBASE;
 		__builtin_arm_isb(ISB_SY);
-		*cont_time = __builtin_arm_rsr64("CNTPCT_EL0");
+		*cont_time = __builtin_arm_rsr64("CNTVCT_EL0") + *base_ptr;
 		return KERN_SUCCESS;
 	}
 #endif

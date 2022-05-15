@@ -40,7 +40,7 @@ _init_cpu_capabilities( void )
 
 #elif defined(__arm__) || defined(__arm64__)
 
-extern int _get_cpu_capabilities(void);
+extern uint64_t _get_cpu_capabilities(void);
 
 int _cpu_capabilities = 0;
 int _cpu_has_altivec = 0;               // DEPRECATED: use _cpu_capabilities instead

@@ -30,9 +30,8 @@ extern uint64_t mach_absolute_time(void);
 uint64_t
 mach_approximate_time(void)
 {
-	uint8_t supported = *((uint8_t *)_COMM_PAGE_APPROX_TIME_SUPPORTED);
-	if (supported) {
-		return *((uint64_t *)_COMM_PAGE_APPROX_TIME);
+	if (COMM_PAGE_READ(uint8_t, APPROX_TIME_SUPPORTED)) {
+		return COMM_PAGE_READ(uint64_t, APPROX_TIME);
 	}
 	return mach_absolute_time();
 }
