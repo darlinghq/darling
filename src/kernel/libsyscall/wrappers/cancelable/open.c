@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Apple Inc. All rights reserved.
+ * Copyright (c) 2020 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -21,16 +21,6 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#include <sys/types.h>
-#include <stdint.h>
-#include <os/availability.h>
-#include <TargetConditionals.h>
-#include <os/proc.h>
+#define VARIANT_CANCELABLE
 
-extern uint64_t __memorystatus_available_memory(void);
-
-size_t
-os_proc_available_memory(void)
-{
-	return (size_t)__memorystatus_available_memory();
-}
+#include "../open-base.c"

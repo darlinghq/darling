@@ -45,6 +45,12 @@ const char *mach_host_special_port_description(int offset);
 const char *mach_task_special_port_description(int offset);
 
 /*
+ * Returns a string describing the thread special port offset provided, or NULL if
+ * the provided offset is not a thread special port offset.
+ */
+const char *mach_thread_special_port_description(int offset);
+
+/*
  * Returns the port for the given identifier of a host special port.  For
  * instance, passing "HOST_PRIV_PORT" would return 1.
  *
@@ -58,6 +64,13 @@ int mach_host_special_port_for_id(const char *id);
  * Returns -1 on error.
  */
 int mach_task_special_port_for_id(const char *id);
+
+/*
+ * Returns the port for the given identifier of a thread special port.
+ *
+ * Returns -1 on error.
+ */
+int mach_thread_special_port_for_id(const char *id);
 
 __END_DECLS
 

@@ -38,6 +38,7 @@ _msgsnd$UNIX2003	___msgsnd
 _msgsys	___msgsys
 _msync$NOCANCEL$UNIX2003	___msync_nocancel
 _msync$UNIX2003	___msync
+_open	___open
 _open$NOCANCEL$UNIX2003	___open_nocancel
 _open$UNIX2003	___open
 _openat$NOCANCEL	___openat_nocancel
@@ -48,9 +49,13 @@ _poll$UNIX2003	___poll
 _pread	___pread_nocancel
 _pread$NOCANCEL$UNIX2003	___pread_nocancel
 _pread$UNIX2003	___pread
+_preadv	___preadv_nocancel
+_preadv$NOCANCEL	___preadv_nocancel
 _pwrite	___pwrite_nocancel
 _pwrite$NOCANCEL$UNIX2003	___pwrite_nocancel
 _pwrite$UNIX2003	___pwrite
+_pwritev	___pwritev_nocancel
+_pwritev$NOCANCEL	___pwritev_nocancel
 _read	___read_nocancel
 _read$NOCANCEL$UNIX2003	___read_nocancel
 _read$UNIX2003	___read

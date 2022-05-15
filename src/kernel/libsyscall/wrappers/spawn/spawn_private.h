@@ -30,6 +30,8 @@
 #include <Availability.h>
 #include <TargetConditionals.h>
 
+__BEGIN_DECLS
+
 int     posix_spawnattr_getpcontrol_np(const posix_spawnattr_t * __restrict, int * __restrict) __API_AVAILABLE(macos(10.6), ios(3.2));
 int     posix_spawnattr_setpcontrol_np(posix_spawnattr_t *, const int) __API_AVAILABLE(macos(10.6), ios(3.2));
 
@@ -60,6 +62,10 @@ int     posix_spawnattr_set_importancewatch_port_np(posix_spawnattr_t * __restri
 
 int     posix_spawnattr_set_registered_ports_np(posix_spawnattr_t * __restrict attr, mach_port_t portarray[], uint32_t count) __API_AVAILABLE(macos(10.15), ios(13.0), tvos(13.0), watchos(6.0));
 
+int
+posix_spawnattr_set_ptrauth_task_port_np(posix_spawnattr_t * __restrict attr,
+    mach_port_t port) __API_AVAILABLE(macos(10.16), ios(14.0), tvos(14.0), watchos(7.0));
+
 #define POSIX_SPAWN_MACPOLICYINFO_WITHSIZE 1
 int     posix_spawnattr_getmacpolicyinfo_np(const posix_spawnattr_t * __restrict, const char *, void **, size_t *) __API_AVAILABLE(macos(10.9), ios(7.0));
 int     posix_spawnattr_setmacpolicyinfo_np(posix_spawnattr_t * __restrict, const char *, void *, size_t) __API_AVAILABLE(macos(10.9), ios(7.0));
@@ -84,6 +90,14 @@ int     posix_spawnattr_set_gid_np(const posix_spawnattr_t * __restrict, gid_t) 
 int     posix_spawnattr_set_groups_np(const posix_spawnattr_t * __restrict, int, gid_t * __restrict, uid_t) __API_AVAILABLE(macos(10.15), ios(13.0), tvos(13.0), watchos(6.0));
 int     posix_spawnattr_set_login_np(const posix_spawnattr_t * __restrict, const char * __restrict) __API_AVAILABLE(macos(10.15), ios(13.0), tvos(13.0), watchos(6.0));
 
+int     posix_spawnattr_set_subsystem_root_path_np(posix_spawnattr_t *attr, char *path); __API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), watchos(7.0));
+
+int     posix_spawnattr_set_platform_np(posix_spawnattr_t *attr, int platform, uint32_t flags); __API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), watchos(7.0));
+
+int     posix_spawnattr_disable_ptr_auth_a_keys_np(posix_spawnattr_t *attr, uint32_t flags); __API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), watchos(7.0));
+
 int     posix_spawn_file_actions_add_fileportdup2_np(posix_spawn_file_actions_t * __restrict, mach_port_t, int) __API_AVAILABLE(macos(10.15), ios(13.0), tvos(13.0), watchos(6.0));
+
+__END_DECLS
 
 #endif /* !defined _SPAWN_PRIVATE_H_*/

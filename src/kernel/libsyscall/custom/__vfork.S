@@ -105,18 +105,11 @@ LEAF(___vfork, 0)
 	lock
 	cmpxchgl	%ecx, (%rdx)
 	jne		0b
-#ifdef DARLING
-	movl	$ SYS_vfork, %eax
-	call	__darling_bsd_syscall
-	cmpq	$0, %rax
-	jnb L1
-#else
 	popq		%rdi			// return address in %rdi
 	movq		$ SYSCALL_CONSTRUCT_UNIX(SYS_vfork), %rax	// code for vfork -> rax
 	UNIX_SYSCALL_TRAP			// do the system call
 	jnb		L1			// jump if CF==0
 	pushq		%rdi			// put return address back on stack for cerror
-#endif
 	movq		__current_pid@GOTPCREL(%rip), %rcx
 	lock
 	addl		$1, (%rcx)
@@ -124,29 +117,16 @@ LEAF(___vfork, 0)
 	BRANCH_EXTERN(_cerror)
 
 L1:
-#ifdef DARLING
-	testl		%eax, %eax
-	jnz		L2
-#else
 	testl		%edx, %edx		// CF=OF=0,  ZF set if zero result
 	jz		L2			// parent, since r1 == 0 in parent, 1 in child
-#endif
 	xorq		%rax, %rax		// zero rax
-#ifdef DARLING
-	ret
-#else
 	jmp		*%rdi
-#endif
 
 L2:
 	movq		__current_pid@GOTPCREL(%rip), %rdx
 	lock
 	addl		$1, (%rdx)
-#ifdef DARLING
-	ret
-#else
 	jmp		*%rdi
-#endif
 
 #elif defined(__arm__)
 
@@ -187,10 +167,12 @@ L0:
 	bx	lr					// return
 
 Lbotch:
+	stmfd	sp!, {lr}
 	MI_CALL_EXTERNAL(_cerror)			// jump here on error
 	mov	r0,#-1					// set the error
 	// reload values clobbered by cerror (so we can treat them as live in Lparent)
 	MI_GET_ADDRESS(r3, __current_pid)		// get address of __current_pid
+	ldmfd   sp!, {lr}
 #ifndef _ARM_ARCH_6
 	mov	r2, #0x80000000			// load "looking" value
 #endif
@@ -216,6 +198,7 @@ Lparent:
 #elif defined(__arm64__)
 
 	MI_ENTRY_POINT(___vfork)
+	ARM64_STACK_PROLOG
 
 	MI_GET_ADDRESS(x9, __current_pid)
 Ltry_set_vfork:
@@ -234,20 +217,22 @@ Ltry_set_vfork:
 
 	// Child
 	mov		w0, #0
-	ret
+	ARM64_STACK_EPILOG
 
 	// Error case
 Lbotch:
+	PUSH_FRAME
 	bl 		_cerror				// Update errno
 	mov		w0, #-1				// Set return value
 	MI_GET_ADDRESS(x9, __current_pid) // Reload current pid address
+	POP_FRAME
 	// Fall through	
 Lparent:
 	ldxr	w10, [x9]			// Exclusive load current pid value
 	add		w10, w10, #1		// Increment (i.e. decrement vfork count)
 	stxr	w11, w10, [x9]		// Attempt exclusive store of updated vfork count
 	cbnz	w11, Lparent		// If exclusive store failed, retry
-	ret							// Done, return
+	ARM64_STACK_EPILOG		// Done, return
 
 #else
 #error Unsupported architecture

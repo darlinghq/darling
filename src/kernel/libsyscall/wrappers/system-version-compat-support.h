@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020 Apple Inc. All rights reserved.
+ * Copyright (c) 2020 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  *
@@ -25,4 +25,13 @@
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
+#ifndef __SYSTEM_VERSION_COMPAT_SUPPORT_H
+#define __SYSTEM_VERSION_COMPAT_SUPPORT_H
 
+typedef enum system_version_compat_mode {
+	SYSTEM_VERSION_COMPAT_MODE_DISABLED = 0,
+	SYSTEM_VERSION_COMPAT_MODE_MACOSX = 1,
+	SYSTEM_VERSION_COMPAT_MODE_IOS = 2,
+} system_version_compat_mode_t;
+
+#endif /* __SYSTEM_VERSION_COMPAT_SUPPORT_H */

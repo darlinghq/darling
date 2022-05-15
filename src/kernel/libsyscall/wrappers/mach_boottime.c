@@ -25,5 +25,5 @@
 uint64_t
 mach_boottime_usec(void)
 {
-	return *(uint64_t*)_COMM_PAGE_BOOTTIME_USEC;
+	return COMM_PAGE_READ(uint64_t, BOOTTIME_USEC);
 }

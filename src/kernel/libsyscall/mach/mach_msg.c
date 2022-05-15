@@ -769,3 +769,38 @@ mach_voucher_deallocate(
 {
 	return mach_port_deallocate(mach_task_self(), voucher);
 }
+
+#undef mach_msg_priority_is_pthread_priority
+int
+mach_msg_priority_is_pthread_priority(mach_msg_priority_t pri)
+{
+	return mach_msg_priority_is_pthread_priority_inline(pri);
+}
+
+#undef mach_msg_priority_encode
+mach_msg_priority_t
+mach_msg_priority_encode(mach_msg_qos_t override_qos, mach_msg_qos_t qos, int relpri)
+{
+	return mach_msg_priority_encode_inline(override_qos, qos, relpri);
+}
+
+#undef mach_msg_priority_overide_qos
+mach_msg_qos_t
+mach_msg_priority_overide_qos(mach_msg_priority_t pri)
+{
+	return mach_msg_priority_overide_qos_inline(pri);
+}
+
+#undef mach_msg_priority_qos
+mach_msg_qos_t
+mach_msg_priority_qos(mach_msg_priority_t pri)
+{
+	return mach_msg_priority_qos_inline(pri);
+}
+
+#undef mach_msg_priority_relpri
+int
+mach_msg_priority_relpri(mach_msg_priority_t pri)
+{
+	return mach_msg_priority_relpri_inline(pri);
+}

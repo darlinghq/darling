@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020 Apple Inc. All rights reserved.
+ * Copyright (c) 2020 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  *
@@ -25,4 +25,30 @@
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
+#include <TargetConditionals.h>
 
+#if TARGET_OS_OSX && !defined(__i386__)
+
+/*
+ * Support for the open compatibilty shim for macOS. These NULL
+ * function pointers need to be built into libsyscall_static. They
+ * are hooked up to the actual functions from libsyscall_dynamic
+ * if/when they are used (generally only for older binaries where we
+ * need to shim the version information).
+ */
+
+#include "system-version-compat-support.h"
+#include <stdbool.h>
+#include <sys/param.h>
+#include <sys/types.h>
+
+__attribute__((visibility("hidden")))
+bool (*system_version_compat_check_path_suffix)(const char *orig_path) = NULL;
+system_version_compat_mode_t system_version_compat_mode = SYSTEM_VERSION_COMPAT_MODE_DISABLED;
+
+__attribute__((visibility("hidden")))
+int (*system_version_compat_open_shim)(int opened_fd, int openat_fd, const char *orig_path, int oflag, mode_t mode,
+    int (*close_syscall)(int), int (*open_syscall)(const char *, int, mode_t),
+    int (*openat_syscall)(int, const char *, int, mode_t),
+    int (*fcntl_syscall)(int, int, long)) = NULL;
+#endif /* TARGET_OS_OSX && && !defined(__i386__) */

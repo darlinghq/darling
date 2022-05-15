@@ -133,7 +133,7 @@ my @Cancelable = qw/
 	link linkat lseek lstat
 	msgrcv msgsnd msync
 	open openat
-	pathconf peeloff poll posix_spawn pread pselect pwrite
+	pathconf peeloff poll posix_spawn pread preadv pselect pwrite pwritev
 	read readv recvfrom recvmsg rename renameat
 	rename_ext
 	__semwait_signal __sigwait
@@ -165,17 +165,24 @@ sub readMaster {
     die "$MyName: $file: $!\n" unless defined($f);
     my $line = 0;
     my $skip = 0;
+    my $allow_missing = 0;
     while(<$f>) {
         $line++;
         if(/^#\s*endif/) {
             $skip = 0;
+            $allow_missing = 0;
             next;
         }
         if(/^#\s*else/) {
             $skip = -$skip;
+            $allow_missing = 0;
             next;
         }
         chomp;
+        if(/^#\s*ifndef\s+(RC_HIDE\S+)$/) {
+            $skip = 1;
+            $allow_missing = 1;
+        }
         if(/^#\s*if\s+(\S+)$/) {
             $skip = ($1 eq 'COMPAT_GETFSSTAT') ? -1 : 1;
             next;
@@ -229,6 +236,7 @@ sub readMaster {
             aliases => {},
             mismatch_args => \%mismatch_args, # Arguments that might need to be zero/sign-extended
             except => [],
+            allow_missing => $allow_missing,
         };
     }
 }
@@ -324,7 +332,7 @@ sub readAliases {
 ##########################################################################
 sub writeStubForSymbol {
     my ($f, $symbol) = @_;
-    
+
     my @conditions;
     my $has_arm64 = 0;
     for my $subarch (@Architectures) {
@@ -343,6 +351,9 @@ sub writeStubForSymbol {
 
     print $f "#define __SYSCALL_32BIT_ARG_BYTES $$symbol{bytes}\n";
     print $f "#include \"SYS.h\"\n\n";
+    if ($$symbol{allow_missing}) {
+        printf $f "#ifdef SYS_%s\n", $$symbol{syscall};
+    }
 
     if (scalar(@conditions)) {
         printf $f "#ifndef SYS_%s\n", $$symbol{syscall};
@@ -379,6 +390,10 @@ sub writeStubForSymbol {
         # override it we need to honour that.
     }
 
+    if ($$symbol{allow_missing}) {
+        printf $f "#endif\n";
+    }
+
     if($has_arm64) {
         printf $f "#endif\n\n";
     }
@@ -386,7 +401,11 @@ sub writeStubForSymbol {
 
 sub writeAliasesForSymbol {
     my ($f, $symbol) = @_;
-    
+
+    if ($$symbol{allow_missing}) {
+        printf $f "#ifdef SYS_%s\n", $$symbol{syscall};
+    }
+
     foreach my $subarch (@Architectures) {
         (my $arch = $subarch) =~ s/arm(v.*)/arm/;
         $arch =~ s/x86_64(.*)/x86_64/;
@@ -402,6 +421,9 @@ sub writeAliasesForSymbol {
 						printf $f "\t.set\t$alias_sym, $sym\n";
         }
 				printf $f "#endif\n\n";
+    }
+    if ($$symbol{allow_missing}) {
+        printf $f "#endif\n";
     }
 }
 

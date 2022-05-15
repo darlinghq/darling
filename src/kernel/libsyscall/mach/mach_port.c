@@ -117,11 +117,7 @@ mach_port_destroy(
 {
 	kern_return_t rv;
 
-	rv = _kernelrpc_mach_port_destroy_trap(task, name);
-
-	if (rv == MACH_SEND_INVALID_DEST) {
-		rv = _kernelrpc_mach_port_destroy(task, name);
-	}
+	rv = _kernelrpc_mach_port_destroy(task, name);
 
 	return rv;
 }
@@ -443,7 +439,7 @@ mach_port_space_basic_info(
 }
 
 static inline mach_port_t
-_tsd_get_special_reply_port()
+_tsd_get_special_reply_port(void)
 {
 	return (mach_port_t)(uintptr_t)_os_tsd_get_direct(__TSD_MACH_SPECIAL_REPLY);
 }
@@ -634,6 +630,21 @@ mach_port_kobject(
 	kern_return_t rv;
 
 	rv = _kernelrpc_mach_port_kobject(task, name, object_type, object_addr);
+
+	return rv;
+}
+
+kern_return_t
+mach_port_kobject_description(
+	ipc_space_t task,
+	mach_port_name_t name,
+	natural_t *object_type,
+	mach_vm_address_t *object_addr,
+	kobject_description_t desc)
+{
+	kern_return_t rv;
+
+	rv = _kernelrpc_mach_port_kobject_description(task, name, object_type, object_addr, desc);
 
 	return rv;
 }
