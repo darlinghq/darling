@@ -8,6 +8,7 @@ struct timespec;
 
 int __linux_futex (int *uaddr, int op, int val, const struct timespec *timeout,
 		                 int *uaddr2, int val3);
+int __linux_futex_reterr(int *uaddr, int op, int val, const struct timespec *timeout, int *uaddr2, int val3);
 
 #endif
 

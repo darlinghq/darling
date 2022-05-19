@@ -70,7 +70,7 @@ void xtrace_lock_lock(xtrace_lock_t* _lock) {
 				xtrace_lock_debug("going to wait");
 				// do the actual sleeping
 				// we expect `xtrace_lock_state_locked_contended` because we don't want to sleep if it's not contended
-				__linux_futex(&lock->state, FUTEX_WAIT, xtrace_lock_state_locked_contended, NULL, 0, 0);
+				__linux_futex_reterr(&lock->state, FUTEX_WAIT, xtrace_lock_state_locked_contended, NULL, 0, 0);
 				xtrace_lock_debug("awoken");
 			}
 
@@ -95,7 +95,7 @@ void xtrace_lock_unlock(xtrace_lock_t* _lock) {
 	// if it was previously contended, then we need to wake someone up
 	if (prev == xtrace_lock_state_locked_contended) {
 		xtrace_lock_debug("waking someone up");
-		__linux_futex(&lock->state, FUTEX_WAKE, 1, NULL, 0, 0);
+		__linux_futex_reterr(&lock->state, FUTEX_WAKE, 1, NULL, 0, 0);
 	}
 };
 
@@ -152,7 +152,7 @@ void xtrace_once(xtrace_once_t* _once, xtrace_once_callback callback) {
 			case xtrace_once_state_triggered_contended: {
 				xtrace_once_debug("waking up all waiters...");
 				// otherwise, we have to wake someone up
-				__linux_futex(&once->state, FUTEX_WAKE, INT_MAX, NULL, 0, 0);
+				__linux_futex_reterr(&once->state, FUTEX_WAKE, INT_MAX, NULL, 0, 0);
 			} break;
 		}
 
@@ -184,7 +184,7 @@ void xtrace_once(xtrace_once_t* _once, xtrace_once_callback callback) {
 				// somebody is already performing the callback and there are already waiters;
 				// let's wait
 				xtrace_once_debug("someone is already performing the callback with waiters; going to wait...");
-				__linux_futex(&once->state, FUTEX_WAIT, prev, NULL, 0, 0);
+				__linux_futex_reterr(&once->state, FUTEX_WAIT, prev, NULL, 0, 0);
 
 				xtrace_once_debug("woken up");
 
