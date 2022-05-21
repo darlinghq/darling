@@ -33,7 +33,12 @@
 #include <mach/vm_page_size.h>
 #include "_libkernel_init.h"
 
+#ifdef DARLING
+extern int mach_init(const char** applep);
+extern void sigexc_setup(void);
+#else
 extern int mach_init(void);
+#endif
 
 #if TARGET_OS_OSX
 
@@ -81,7 +86,13 @@ __libkernel_init(_libkernel_functions_t fns,
 	if (fns->dlsym) {
 		_dlsym = fns->dlsym;
 	}
+
+#ifdef DARLING
+	mach_init(apple);
+	sigexc_setup();
+#else
 	mach_init();
+#endif
 #if TARGET_OS_OSX
 	for (size_t i = 0; envp[i]; i++) {
 

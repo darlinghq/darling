@@ -52,8 +52,14 @@ LEAF(___fork, 0)
 	subl  $28, %esp   // Align the stack, with 16 bytes of extra padding that we'll need
 
 	movl 	$ SYS_fork,%eax; 	// code for fork -> eax
+#ifdef DARLING
+	call	__darling_bsd_syscall
+	cmpl	$0, %eax
+	jnb L1
+#else
 	UNIX_SYSCALL_TRAP		// do the system call
 	jnc	L1			// jump if CF==0
+#endif
 
 	CALL_EXTERN(tramp_cerror)
 	movl	$-1,%eax
@@ -77,9 +83,16 @@ L2:
 LEAF(___fork, 0)
 	subq  $24, %rsp   // Align the stack, plus room for local storage
 
+#ifdef DARLING
+	movl	$ SYS_fork, %eax
+	call	__darling_bsd_syscall
+	cmpq	$0, %rax
+	jnb L1
+#else
 	movl 	$ SYSCALL_CONSTRUCT_UNIX(SYS_fork),%eax; // code for fork -> rax
 	UNIX_SYSCALL_TRAP		// do the system call
 	jnc	L1			// jump if CF==0
+#endif
 
 	movq	%rax, %rdi
 	CALL_EXTERN(_cerror)
@@ -88,9 +101,14 @@ LEAF(___fork, 0)
 	ret
 	
 L1:
+#ifdef DARLING
+	testl	%eax, %eax
+	jnz	L2
+#else
 	orl	%edx,%edx	// CF=OF=0,  ZF set if zero result	
 	jz	L2		// parent, since r1 == 0 in parent, 1 in child
-	
+#endif
+
 	//child here...
 	xorq	%rax, %rax
 	PICIFY(__current_pid)
