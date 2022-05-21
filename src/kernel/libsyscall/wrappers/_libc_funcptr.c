@@ -113,6 +113,9 @@ static const struct _libkernel_string_functions
 	.strcpy = _libkernel_strcpy,
 	.strlcpy = _libkernel_strlcpy,
 	.strlen = _libkernel_strlen,
+#ifdef DARLING
+	.strncmp = _darling_libkernel_strncmp,
+#endif
 };
 static _libkernel_string_functions_t _libkernel_string_functions =
     &_libkernel_generic_string_functions;
@@ -273,6 +276,7 @@ __libkernel_voucher_init(_libkernel_voucher_functions_t fns)
 	return KERN_SUCCESS;
 }
 
+#ifndef DARLING
 boolean_t
 voucher_mach_msg_set(mach_msg_header_t *msg)
 {
@@ -306,3 +310,4 @@ voucher_mach_msg_revert(voucher_mach_msg_state_t state)
 		return _libkernel_voucher_functions->voucher_mach_msg_revert(state);
 	}
 }
+#endif
