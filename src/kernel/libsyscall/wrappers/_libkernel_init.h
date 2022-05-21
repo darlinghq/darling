@@ -69,6 +69,9 @@ typedef const struct _libkernel_functions {
 	int (*pthread_current_stack_contains_np)(const void *, size_t);
 
 	/* Subsequent versions must only add pointers! */
+#ifdef DARLING
+	void (*dyld_func_lookup)(const char*,void**);
+#endif
 } *_libkernel_functions_t;
 
 typedef const struct _libkernel_string_functions {

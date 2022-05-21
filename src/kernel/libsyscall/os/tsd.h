@@ -52,12 +52,28 @@
 #include <arm/arch.h>
 #endif
 
+#ifdef DARLING
+#include <darling/emulation/linux-syscalls.h>
+#endif
+
 extern void _thread_set_tsd_base(void *tsd_base);
 
 __attribute__((always_inline))
 static __inline__ unsigned int
 _os_cpu_number(void)
 {
+#ifdef DARLING
+	extern int __linux_syscall(int nr, ...);
+
+	unsigned int cpu_num = 0;
+	int status = __linux_syscall(__NR_getcpu, &cpu_num, 0, 0, 0, 0, 0);
+	// should we even check? i don't think it's possible for it to fail with these arguments
+	if (status < 0) {
+		return 0; // i guess?
+	}
+
+	return cpu_num;
+#else // !DARLING
 #if defined(__arm__)
 	uintptr_t p;
 	__asm__("mrc	p15, 0, %[p], c13, c0, 3" : [p] "=&r" (p));
@@ -73,6 +89,7 @@ _os_cpu_number(void)
 #else
 #error _os_cpu_number not implemented on this architecture
 #endif
+#endif // !DARLING
 }
 
 #if defined(__i386__) || defined(__x86_64__)
@@ -80,6 +97,12 @@ _os_cpu_number(void)
 #if defined(__has_attribute)
 #if __has_attribute(address_space)
 #define OS_GS_RELATIVE  __attribute__((address_space(256)))
+
+#if defined(DARLING) && defined(__i386__) && !defined(__x86_64__)
+#undef OS_GS_RELATIVE
+#define OS_GS_RELATIVE  __attribute__((address_space(257)))
+#endif
+
 #endif
 #endif
 
@@ -176,8 +199,13 @@ _os_ptr_munge(uintptr_t ptr)
 
 #if defined(__i386__) || defined(__x86_64__)
 
+#if defined(DARLING) && defined(__i386__) && !defined(__x86_64__)
+#define _OS_PTR_MUNGE(_reg) \
+	xor %fs:_OS_TSD_OFFSET(__TSD_PTR_MUNGE), _reg
+#else
 #define _OS_PTR_MUNGE(_reg) \
 	xor %gs:_OS_TSD_OFFSET(__TSD_PTR_MUNGE), _reg
+#endif
 
 #define _OS_PTR_UNMUNGE(_reg) \
 	_OS_PTR_MUNGE(_reg)
