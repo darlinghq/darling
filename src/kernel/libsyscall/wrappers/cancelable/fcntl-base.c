@@ -21,6 +21,9 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 #include <stdarg.h>
+#ifdef DARLING
+#include <sys/fcntl.h>
+#endif
 
 int __FCNTL(int, int, void *);
 
