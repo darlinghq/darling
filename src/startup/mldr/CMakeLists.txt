@@ -28,7 +28,7 @@ add_executable(mldr ${mldr_sources})
 target_compile_options(mldr PRIVATE -pthread)
 target_link_options(mldr PRIVATE -pthread)
 
-target_link_libraries(mldr PRIVATE -lrt -ldl mldr_dserver_rpc)
+target_link_libraries(mldr PRIVATE -lrt -ldl mldr_dserver_rpc -lm)
 
 install(TARGETS mldr DESTINATION libexec/darling/usr/libexec/darling)
 
@@ -49,7 +49,7 @@ if (BUILD_TARGET_32BIT)
 	target_link_options(mldr32 PRIVATE -m32)
 	target_compile_options(mldr32 PRIVATE -pthread)
 	target_link_options(mldr32 PRIVATE -pthread)
-	target_link_libraries(mldr32 PRIVATE -lrt -ldl mldr32_dserver_rpc)
+	target_link_libraries(mldr32 PRIVATE -lrt -ldl mldr32_dserver_rpc -lm)
 
 	install(TARGETS mldr32 DESTINATION libexec/darling/usr/libexec/darling)
 endif()
