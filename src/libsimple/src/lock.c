@@ -21,6 +21,7 @@
 
 #define FUTEX_WAIT 0
 #define FUTEX_WAKE 1
+#define FUTEX_REQUEUE 3
 #define FUTEX_WAIT_BITSET 9
 #define FUTEX_WAKE_BITSET 10
 #define FUTEX_PRIVATE_FLAG 128
@@ -37,9 +38,9 @@ struct timespec;
 #if LIBSIMPLE_DARLING
 	#define linux_futex __linux_futex_reterr
 #else // !LIBSIMPLE_DARLING
-static void linux_futex(int* uaddr, int op, int val, const struct timespec* timeout, int* uaddr2, int val3) {
+static int linux_futex(int* uaddr, int op, int val, const struct timespec* timeout, int* uaddr2, int val3) {
 #if LIBSIMPLE_LINUX
-	syscall(SYS_futex, uaddr, op, val, timeout, uaddr2, val3);
+	return syscall(SYS_futex, uaddr, op, val, timeout, uaddr2, val3);
 #else
 	#error linux_futex not implemented for this platform
 #endif
@@ -108,6 +109,22 @@ void libsimple_lock_lock(libsimple_lock_t* _lock) {
 	}
 
 	libsimple_lock_debug("lock acquired");
+};
+
+// based on Mutex::lock_pessimistic from https://github.com/bugaevc/lets-write-sync-primitives/blob/master/src/mutex.cpp
+//
+// this is used by condvars for locking the lock after waking up
+static void libsimple_lock_lock_slow(libsimple_lock_t* _lock) {
+	libsimple_lock_internal_t* lock = (libsimple_lock_internal_t*)_lock;
+
+	// this path assumes that the lock is contended
+
+	uint32_t prev = atomic_exchange_explicit(&lock->state, libsimple_lock_state_locked_contended, memory_order_acquire);
+
+	while (prev != libsimple_lock_state_unlocked) {
+		linux_futex((int*)&lock->state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, libsimple_lock_state_locked_contended, NULL, 0, 0);
+		prev = atomic_exchange_explicit(&lock->state, libsimple_lock_state_locked_contended, memory_order_acquire);
+	}
 };
 
 void libsimple_lock_unlock(libsimple_lock_t* _lock) {
@@ -371,4 +388,64 @@ void libsimple_rwlock_unlock_write(libsimple_rwlock_t* _rwlock) {
 		linux_futex((int*)&rwlock->state, FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG, INT_MAX, NULL, NULL, libsimple_rwlock_bit_reader);
 		linux_futex((int*)&rwlock->state, FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG, 1, NULL, NULL, libsimple_rwlock_bit_writer);
 	}
+};
+
+//
+// libsimple_condvar
+//
+// based on https://github.com/bugaevc/lets-write-sync-primitives/blob/master/src/condvar.cpp
+//
+
+typedef struct libsimple_condvar_internal {
+	_Atomic uint32_t state;
+} libsimple_condvar_internal_t;
+
+enum libsimple_condvar_bits {
+	libsimple_condvar_bit_need_to_wake_one = 1 << 0,
+	libsimple_condvar_bit_need_to_wake_all = 1 << 1,
+	libsimple_condvar_bit_increment        = 1 << 2,
+};
+
+void libsimple_condvar_wait(libsimple_condvar_t* _condvar, libsimple_lock_t* lock) {
+	libsimple_condvar_internal_t* condvar = (void*)_condvar;
+	uint32_t state2 = atomic_fetch_or_explicit(&condvar->state, libsimple_condvar_bit_need_to_wake_all | libsimple_condvar_bit_need_to_wake_one, memory_order_relaxed) | libsimple_condvar_bit_need_to_wake_all | libsimple_condvar_bit_need_to_wake_one;
+	libsimple_lock_unlock(lock);
+	linux_futex((int*)&condvar->state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, state2, NULL, NULL, 0);
+	libsimple_lock_lock_slow(lock);
+};
+
+void libsimple_condvar_notify_one(libsimple_condvar_t* _condvar, libsimple_lock_t* lock) {
+	libsimple_condvar_internal_t* condvar = (void*)_condvar;
+	uint32_t state2 = atomic_fetch_add_explicit(&condvar->state, libsimple_condvar_bit_increment, memory_order_relaxed) + libsimple_condvar_bit_increment;
+	int woken;
+
+	if ((state2 & libsimple_condvar_bit_need_to_wake_one) == 0) {
+		return;
+	}
+
+	state2 = atomic_fetch_and_explicit(&condvar->state, ~libsimple_condvar_bit_need_to_wake_one, memory_order_relaxed);
+
+	if ((state2 & libsimple_condvar_bit_need_to_wake_one) == 0) {
+		return;
+	}
+
+	woken = linux_futex((int*)&condvar->state, FUTEX_WAKE | FUTEX_PRIVATE_FLAG, 1, NULL, NULL, 0);
+
+	if (woken > 0) {
+		atomic_fetch_or_explicit(&condvar->state, libsimple_condvar_bit_need_to_wake_one, memory_order_relaxed);
+	}
+};
+
+void libsimple_condvar_notify_all(libsimple_condvar_t* _condvar, libsimple_lock_t* _lock) {
+	libsimple_condvar_internal_t* condvar = (void*)_condvar;
+	libsimple_lock_internal_t* lock = (void*)_lock;
+	uint32_t state2 = atomic_fetch_add_explicit(&condvar->state, libsimple_condvar_bit_increment, memory_order_relaxed) + libsimple_condvar_bit_increment;
+
+	if ((state2 & libsimple_condvar_bit_need_to_wake_all) == 0) {
+		return;
+	}
+
+	atomic_fetch_and_explicit(&condvar->state, ~(libsimple_condvar_bit_need_to_wake_all | libsimple_condvar_bit_need_to_wake_one), memory_order_relaxed);
+
+	linux_futex((int*)&condvar->state, FUTEX_REQUEUE | FUTEX_PRIVATE_FLAG, 1, /* actually `uint32_t val2`, not timeout */ (void*)INT_MAX, (int*)&lock->state, 0);
 };

@@ -69,6 +69,29 @@ void libsimple_rwlock_lock_write(libsimple_rwlock_t* rwlock);
 bool libsimple_rwlock_try_lock_write(libsimple_rwlock_t* rwlock);
 void libsimple_rwlock_unlock_write(libsimple_rwlock_t* rwlock);
 
+//
+// condvar
+//
+
+typedef struct libsimple_condvar {
+	uint32_t state;
+} libsimple_condvar_t;
+
+#define LIBSIMPLE_CONDVAR_INITIALIZER {0}
+
+LIBSIMPLE_INLINE
+static void libsimple_condvar_init(libsimple_condvar_t* condvar) {
+	condvar->state = 0;
+};
+
+// NOTE: the same lock must be used for all operations with a condvar.
+//       the only reason we don't just store a pointer to the lock in the condvar
+//       is so that condvars can be initialized statically.
+
+void libsimple_condvar_wait(libsimple_condvar_t* condvar, libsimple_lock_t* lock);
+void libsimple_condvar_notify_one(libsimple_condvar_t* condvar, libsimple_lock_t* lock);
+void libsimple_condvar_notify_all(libsimple_condvar_t* condvar, libsimple_lock_t* lock);
+
 LIBSIMPLE_DECLARATIONS_END;
 
 #endif // _LIBSIMPLE_LOCK_H_
