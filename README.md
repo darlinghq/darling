@@ -30,11 +30,11 @@ $ darling shell echo Hello world
 Hello world
 ````
 
-Congratulations, you have printed Hello world through Darling's OS X system call emulation and runtime libraries.
+Congratulations, you have printed Hello world through Darling's macOS system call emulation and runtime libraries.
 
 ### Installing software
 
-You can install `.pkg` packages with the installer tool available inside shell. It is a somewhat limited cousin of OS X's installer:
+You can install `.pkg` packages with the installer tool available inside shell. It is a somewhat limited cousin of macOS's installer:
 
 ````
 $ darling shell
