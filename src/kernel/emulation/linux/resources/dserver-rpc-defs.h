@@ -218,6 +218,38 @@ retry:
 					}
 				} break;
 
+				case dserver_s2c_msgnum_msync: {
+					dserver_s2c_call_msync_t* msync_call = out_message->msg_iov->iov_base;
+					int call_ret;
+					dserver_s2c_reply_msync_t reply = {
+						.header.call_number = 0x52cca11,
+						.header.pid = dserver_rpc_hooks_get_pid(),
+						.header.tid = dserver_rpc_hooks_get_tid(),
+						.header.architecture = dserver_rpc_hooks_get_architecture(),
+						.header.s2c_number = dserver_s2c_msgnum_msync,
+						.return_value = 0,
+						.errno_result = 0,
+					};
+
+					call_ret = LINUX_SYSCALL3(__NR_msync, msync_call->address, msync_call->size, msync_call->sync_flags);
+
+					if (call_ret < 0) {
+						reply.return_value = -1;
+						reply.errno_result = -call_ret;
+					} else {
+						reply.return_value = call_ret;
+					}
+
+#ifdef __NR_socketcall
+					ret = LINUX_SYSCALL(__NR_socketcall, LINUX_SYS_SENDTO, ((long[6]) { socket, &reply, sizeof(reply), 0, dserver_rpc_hooks_get_server_address(), dserver_rpc_hooks_get_server_address_length() }));
+#else
+					ret = LINUX_SYSCALL(__NR_sendto, socket, &reply, sizeof(reply), 0, dserver_rpc_hooks_get_server_address(), dserver_rpc_hooks_get_server_address_length());
+#endif
+					if (ret < 0) {
+						return ret;
+					}
+				} break;
+
 				default:
 					__simple_printf("Invalid S2C call number: %d", callhdr->s2c_number);
 					__simple_abort();
