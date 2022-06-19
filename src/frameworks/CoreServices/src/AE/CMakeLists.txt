@@ -6,6 +6,7 @@ VERSION "A"
 PARENT "CoreServices"
 SOURCES
 	empty.c
+	stub.c
 DEPENDENCIES
 	CoreFoundation
 	system

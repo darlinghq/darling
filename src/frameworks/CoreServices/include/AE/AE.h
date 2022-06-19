@@ -3,4 +3,7 @@
 
 #include <AE/AEDataModel.h>
 
+OSErr AECreateDesc(DescType typeCode, const void *dataPtr, Size dataSize, AEDesc *result);
+OSErr AEDisposeDesc(AEDesc *theAEDesc);
+
 #endif
