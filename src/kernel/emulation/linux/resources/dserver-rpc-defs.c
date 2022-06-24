@@ -59,8 +59,6 @@ void __dserver_rpc_hooks_push_reply(int socket, const dserver_rpc_hooks_msghdr_t
 	// give the write end to the server and keep the read end
 	fds[fd_count] = pipe_ends[1];
 
-	dserver_rpc_hooks_printf("*** pushing reply for call #%d with code %d (size = %llu); pointer = %p\n", ((dserver_rpc_replyhdr_t*)call.reply)->number, ((dserver_rpc_replyhdr_t*)call.reply)->code, call.reply_size, (void*)call.reply);
-
 	long_status = dserver_rpc_hooks_send_message(socket, &callmsg);
 
 	if (long_status < 0) {
