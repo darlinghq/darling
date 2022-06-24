@@ -274,7 +274,9 @@ retry:
 
 #define dserver_rpc_hooks_get_socket mach_driver_get_fd
 
-#define dserver_rpc_hooks_printf __simple_printf
+__attribute__((format(printf, 1, 2)))
+void __dserver_rpc_hooks_printf(const char* format, ...);
+#define dserver_rpc_hooks_printf __dserver_rpc_hooks_printf
 
 #define dserver_rpc_hooks_atomic_save_t sigset_t
 
