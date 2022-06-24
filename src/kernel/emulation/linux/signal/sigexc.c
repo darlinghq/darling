@@ -146,7 +146,12 @@ void sigexc_setup(void)
 
 void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
-	dserver_rpc_interrupt_enter();
+	int status = dserver_rpc_interrupt_enter();
+
+	if (status != 0) {
+		__simple_printf("*** dserver_rpc_interrupt_enter failed with code %d ***\n", status);
+		__simple_abort();
+	}
 
 	if (signum == SIGNAL_SIGEXC_SUSPEND) {
 #if defined(__x86_64__)
@@ -181,7 +186,12 @@ void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext
 		__simple_printf("Unknown/unrecognized real-time signal: %d", signum);
 	}
 
-	dserver_rpc_interrupt_exit();
+	status = dserver_rpc_interrupt_exit();
+
+	if (status != 0) {
+		__simple_printf("*** dserver_rpc_interrupt_exit failed with code %d ***\n", status);
+		__simple_abort();
+	}
 }
 
 
@@ -257,7 +267,12 @@ static void state_from_kernel(struct linux_ucontext* ctxt, const void* tstate, c
 
 void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
 {
-	dserver_rpc_interrupt_enter();
+	int status = dserver_rpc_interrupt_enter();
+
+	if (status != 0) {
+		__simple_printf("*** dserver_rpc_interrupt_enter failed with code %d ***\n", status);
+		__simple_abort();
+	}
 
 	kern_printf("sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
 
@@ -350,7 +365,12 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 	kern_printf("sigexc: handler (%d) returning\n", linux_signum);
 
 out:
-	dserver_rpc_interrupt_exit();
+	status = dserver_rpc_interrupt_exit();
+
+	if (status != 0) {
+		__simple_printf("*** dserver_rpc_interrupt_exit failed with code %d ***\n", status);
+		__simple_abort();
+	}
 }
 
 #define DUMPREG(regname) kern_printf("sigexc:   " #regname ": 0x%llx\n", regs->regname);
