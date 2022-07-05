@@ -294,8 +294,8 @@ int main(int argc, char** argv) {
 				if (read(tmpfd, &mh, sizeof(mh)) == sizeof(mh) && mh.filetype == MH_EXECUTE) {
 					if (cprm.main_executable_path) {
 						if (strcmp(cprm.main_executable_path, filename) != 0) {
-							printf("Already had main executable (\"%s\") but found another? (\"%s\")\n", cprm.main_executable_path, filename);
-							exit(EXIT_FAILURE);
+							printf("Already had main executable (\"%s\") but found another? (\"%s\"). Continuing anyways...\n", cprm.main_executable_path, filename);
+							//exit(EXIT_FAILURE);
 						}
 					} else {
 						cprm.main_executable_path = filename;
