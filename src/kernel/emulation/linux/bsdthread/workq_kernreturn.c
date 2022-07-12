@@ -23,6 +23,7 @@
 
 #include <darlingserver/rpc.h>
 #include "../guarded/table.h"
+#include "../elfcalls_wrapper.h"
 
 #define WQ_MAX_THREADS	64
 
@@ -93,7 +94,9 @@ static int priority_to_class(int prio);
 static struct wq_kevent_data* wq_event_pending = NULL;
 
 static void rpc_guard(int fd) {
-	guard_table_add(fd, guard_flag_prevent_close | guard_flag_close_on_fork);
+	guard_entry_options_t options;
+	options.close = __dserver_close_socket;
+	guard_table_add(fd, guard_flag_prevent_close | guard_flag_close_on_fork, &options);
 };
 
 static void rpc_unguard(int fd) {

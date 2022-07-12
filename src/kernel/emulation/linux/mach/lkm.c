@@ -54,7 +54,9 @@ void mach_driver_init(const char** applep)
 	if (applep) {
 		// this is not a fork; guard the main thread's RPC FD we get from mldr
 		// (in the child after a fork, sys_fork already takes care of this)
-		guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork);
+		guard_entry_options_t options;
+		options.close = _elfcalls->dserver_close_socket;
+		guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
 	}
 #endif
 

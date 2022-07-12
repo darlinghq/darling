@@ -40,6 +40,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/un.h>
 #include <darlingserver/rpc.h>
 #include <sys/ptrace.h>
+#include <pthread.h>
 
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
@@ -94,6 +95,8 @@ static const char* const skip_env_vars[] = {
 	"__mldr_bprefs=",
 	"__mldr_sockpath=",
 };
+
+void* __mldr_main_stack_top = NULL;
 
 int main(int argc, char** argv, char** envp)
 {
@@ -253,6 +256,8 @@ int main(int argc, char** argv, char** envp)
 		fprintf(stderr, "Failed to tell darlingserver about our executable path\n");
 		exit(1);
 	}
+
+	__mldr_main_stack_top = (void*)mldr_load_results.stack_top;
 	
 	start_thread(&mldr_load_results);
 
@@ -514,6 +519,221 @@ static void unset_special_env() {
 	unsetenv("__mldr_sockpath");
 };
 
+typedef struct socket_bitmap {
+	pthread_mutex_t mutex;
+	/**
+	 * This is always next lowest available index.
+	 * If this is equal to #bit_length, then the bitmap is full.
+	 */
+	size_t next_index;
+	uint8_t* bits;
+	size_t bit_length;
+	int highest;
+} socket_bitmap_t;
+
+static socket_bitmap_t socket_bitmap = {
+	.mutex = PTHREAD_MUTEX_INITIALIZER,
+	.next_index = 0,
+	.bits = NULL,
+	.bit_length = 0,
+	.highest = -1,
+};
+
+static int socket_bitmap_get(socket_bitmap_t* bitmap) {
+	int fd = -1;
+	bool updated = false;
+
+	pthread_mutex_lock(&bitmap->mutex);
+
+	if (bitmap->highest == -1) {
+		// we need to initialize this bitmap
+		struct rlimit limit;
+
+		if (getrlimit(RLIMIT_NOFILE, &limit) < 0) {
+			goto out;
+		}
+
+		if (limit.rlim_cur == RLIM_INFINITY) {
+			// just default to 1024
+			limit.rlim_cur = 1024;
+		}
+
+		bitmap->highest = limit.rlim_cur - 1;
+	}
+
+	if (bitmap->next_index >= bitmap->bit_length) {
+		// we need to grow the bitmap
+
+		if ((bitmap->bit_length % 8) == 0) {
+			// we need to allocate an additional byte
+
+			void* ptr = realloc(bitmap->bits, (bitmap->bit_length / 8) + 1);
+			if (!ptr) {
+				goto out;
+			}
+
+			bitmap->bits = ptr;
+
+			bitmap->bits[bitmap->bit_length / 8] = 0;
+		} else {
+			// we just need to increment the bit length
+		}
+
+		++bitmap->bit_length;
+	}
+
+	fd = bitmap->highest - bitmap->next_index;
+
+	bitmap->bits[bitmap->next_index / 8] |= 1 << (bitmap->next_index % 8);
+
+	// update the next available index
+	for (size_t i = bitmap->next_index + 1; i < bitmap->bit_length; ++i) {
+		size_t byte = i / 8;
+		uint8_t bit = i % 8;
+
+		if (bit == 0) {
+			// check the entire byte at once so we can avoid unnecessary iteration
+			if (bitmap->bits[byte] == 0xff) {
+				// this byte is full, skip it
+				i += 7;
+				continue;
+			}
+		}
+
+		if ((bitmap->bits[byte] & (1 << bit)) == 0) {
+			// this index is unused
+			bitmap->next_index = i;
+			updated = true;
+			break;
+		}
+	}
+
+	if (!updated) {
+		// all of our entries are currently in-use
+		bitmap->next_index = bitmap->bit_length;
+	}
+
+out:
+	pthread_mutex_unlock(&bitmap->mutex);
+
+	return fd;
+};
+
+static void socket_bitmap_put(socket_bitmap_t* bitmap, int socket) {
+	size_t index;
+
+	pthread_mutex_lock(&bitmap->mutex);
+
+	index = bitmap->highest - socket;
+
+	bitmap->bits[index / 8] &= ~(1 << (index % 8));
+
+	if (index < bitmap->next_index) {
+		bitmap->next_index = index;
+	}
+
+	if (index == bitmap->bit_length - 1) {
+		// we can shrink the bitmap
+		size_t old_byte_size = (bitmap->bit_length + 7) / 8;
+		size_t new_byte_size = old_byte_size;
+
+		while (bitmap->bit_length > 0) {
+			size_t index = bitmap->bit_length - 1;
+
+			if ((bitmap->bit_length % 8) == 0) {
+				// check the entire byte at once to avoid unnecessary iteration
+				if (bitmap->bits[(bitmap->bit_length / 8) - 1] == 0) {
+					// remove this entire byte
+					bitmap->bit_length -= 8;
+					continue;
+				}
+			}
+
+			if ((bitmap->bits[index / 8] & (1 << (index % 8))) == 0) {
+				// this bit is in-use, so we can't shrink any further
+				break;
+			}
+
+			--bitmap->bit_length;
+		}
+
+		new_byte_size = (bitmap->bit_length + 7) / 8;
+
+		if (old_byte_size != new_byte_size) {
+			// we can free one or more bytes from the bitmap
+			void* ptr = realloc(bitmap->bits, new_byte_size);
+			if (!ptr) {
+				goto out;
+			}
+
+			bitmap->bits = ptr;
+		}
+	}
+
+out:
+	pthread_mutex_unlock(&bitmap->mutex);
+};
+
+int __mldr_create_rpc_socket(void) {
+	int pre_fd = -1;
+	int fd = -1;
+
+	pre_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+	if (pre_fd < 0) {
+		goto err_out;
+	}
+
+	fd = socket_bitmap_get(&socket_bitmap);
+	if (fd < 0) {
+		goto err_out;
+	}
+
+	if (dup2(pre_fd, fd) < 0) {
+		// we have to put it away ourselves here because `fd` is not yet valid, so we can't close() it in the error handler
+		socket_bitmap_put(&socket_bitmap, fd);
+		fd = -1;
+		goto err_out;
+	}
+
+	close(pre_fd);
+	pre_fd = -1;
+
+	// `fd` now contains the socket with the desired FD number returned by `socket_bitmap_get`
+
+	int fd_flags = fcntl(fd, F_GETFD);
+	if (fd_flags < 0) {
+		goto err_out;
+	}
+	if (fcntl(fd, F_SETFD, fd_flags | FD_CLOEXEC) < 0) {
+		goto err_out;
+	}
+
+	sa_family_t family = AF_UNIX;
+	if (bind(fd, (const struct sockaddr*)&family, sizeof(family)) < 0) {
+		goto err_out;
+	}
+
+out:
+	return fd;
+
+err_out:
+	if (fd >= 0) {
+		socket_bitmap_put(&socket_bitmap, fd);
+		close(fd);
+	}
+
+	if (pre_fd >= 0) {
+		close(pre_fd);
+	}
+
+	return -1;
+};
+
+void __mldr_close_rpc_socket(int socket) {
+	close(socket);
+	socket_bitmap_put(&socket_bitmap, socket);
+};
+
 static void setup_space(struct load_results* lr, bool is_64_bit) {
 	commpage_setup(is_64_bit);
 
@@ -543,25 +763,9 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 
 	unset_special_env();
 
-	lr->kernfd = socket(AF_UNIX, SOCK_DGRAM, 0);
+	lr->kernfd = __mldr_create_rpc_socket();
 	if (lr->kernfd < 0) {
 		fprintf(stderr, "Failed to create socket\n");
-		exit(1);
-	}
-
-	int fd_flags = fcntl(lr->kernfd, F_GETFD);
-	if (fd_flags < 0) {
-		fprintf(stderr, "Failed to read socket FD flags\n");
-		exit(1);
-	}
-	if (fcntl(lr->kernfd, F_SETFD, fd_flags | FD_CLOEXEC) < 0) {
-		fprintf(stderr, "Failed to set close-on-exec flag on socket FD\n");
-		exit(1);
-	}
-
-	sa_family_t family = AF_UNIX;
-	if (bind(lr->kernfd, (const struct sockaddr*)&family, sizeof(family)) < 0) {
-		fprintf(stderr, "Failed to autobind socket\n");
 		exit(1);
 	}
 

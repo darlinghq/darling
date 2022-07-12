@@ -12,7 +12,11 @@
 typedef struct guard_entry {
 	int fd;
 	guard_flags_t flags;
+	guard_entry_options_t options;
 } guard_entry_t;
+
+extern void* memcpy(void* dest, const void* src, size_t n);
+extern void* memset(void* dest, int val, size_t n);
 
 // this is a linearly-probed, open-addressed hash table;
 // the hash is the FD number itself.
@@ -95,7 +99,7 @@ static guard_entry_t* guard_table_find_available_locked(int fd) {
 	return NULL;
 };
 
-int guard_table_add(int fd, guard_flags_t flags) {
+int guard_table_add(int fd, guard_flags_t flags, guard_entry_options_t* options) {
 #ifdef VARIANT_DYLD
 	return -ENOSYS;
 #else
@@ -111,6 +115,11 @@ int guard_table_add(int fd, guard_flags_t flags) {
 		if (entry) {
 			entry->fd = fd;
 			entry->flags = flags;
+			if (options) {
+				memcpy(&entry->options, options, sizeof(entry->options));
+			} else {
+				memset(&entry->options, 0, sizeof(entry->options));
+			}
 		} else {
 			result = -ENOMEM;
 		}
@@ -122,7 +131,7 @@ int guard_table_add(int fd, guard_flags_t flags) {
 #endif
 };
 
-int guard_table_modify(int fd, guard_flags_t flags) {
+int guard_table_modify(int fd, guard_flags_t flags, guard_entry_options_t* options) {
 #ifdef VARIANT_DYLD
 	return -ENOSYS;
 #else
@@ -133,6 +142,11 @@ int guard_table_modify(int fd, guard_flags_t flags) {
 	guard_entry_t* entry = guard_table_find_locked(fd);
 	if (entry) {
 		entry->flags = flags;
+		if (options) {
+			memcpy(&entry->options, options, sizeof(entry->options));
+		} else {
+			memset(&entry->options, 0, sizeof(entry->options));
+		}
 	} else {
 		result = -ENOENT;
 	}
@@ -188,7 +202,11 @@ void guard_table_postfork_child(void) {
 		guard_entry_t* entry = &guard_table[i];
 		if (entry->fd >= 0 && (entry->flags & guard_flag_close_on_fork) != 0) {
 			// FIXME: if the FD is in a kqueue, this won't notify the kqueue
-			close_internal(entry->fd);
+			if (entry->options.close) {
+				entry->options.close(entry->fd);
+			} else {
+				close_internal(entry->fd);
+			}
 			entry->fd = GUARD_ENTRY_DELETED_FD;
 			entry->flags = guard_flag_none;
 		}

@@ -41,7 +41,9 @@ long sys_fork(void)
 		__dserver_per_thread_socket_refresh();
 
 		// guard it
-		guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork);
+		guard_entry_options_t options;
+		options.close = __dserver_close_socket;
+		guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
 
 		if (dserver_rpc_checkin(true) < 0) {
 			// we can't do ANYTHING if darlingserver fails to acknowledge us

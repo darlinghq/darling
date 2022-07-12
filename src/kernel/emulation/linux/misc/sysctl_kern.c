@@ -14,6 +14,7 @@
 #include "../unistd/read.h"
 #include "../unistd/close.h"
 #include <sys/errno.h>
+#include "../elfcalls_wrapper.h"
 
 enum {
 	_KERN_MSGBUF = 1000,
@@ -301,25 +302,11 @@ sysctl_handler(handle_sysv_semmns)
 	return 0;
 }
 
-static void* mystack(void)
-{
-	char buf[400];
-	char* ptr = buf;
-
-	if (!read_string("/proc/self/stat", buf, sizeof(buf)))
-		return NULL;
-
-	skip_stat_elems(&ptr, 27);
-
-	const char* stack = next_stat_elem(&ptr);
-	return (void*) __simple_atoi(stack, NULL);
-}
-
 sysctl_handler(handle_usrstack32)
 {
 	unsigned int* ovalue = (unsigned int*) old;
 	if (ovalue)
-		*ovalue = mystack();
+		*ovalue = __darling_thread_get_stack();
 	*oldlen = sizeof(*ovalue);
 	return 0;
 }
@@ -328,7 +315,7 @@ sysctl_handler(handle_usrstack64)
 {
 	unsigned long long* ovalue = (unsigned long long*) old;
 	if (ovalue)
-		*ovalue = mystack();
+		*ovalue = __darling_thread_get_stack();
 	*oldlen = sizeof(*ovalue);
 	return 0;
 }

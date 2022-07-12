@@ -62,6 +62,8 @@ static const void* __dserver_socket_address(void) {
 	return &__dserver_socket_address_data;
 };
 
+extern void __mldr_close_rpc_socket(int socket);
+
 void elfcalls_make(struct elf_calls* calls)
 {
 	calls->dlopen = dlopen_simple;
@@ -95,4 +97,5 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->dserver_socket_address = __dserver_socket_address;
 	calls->dserver_per_thread_socket = __darling_thread_rpc_socket;
 	calls->dserver_per_thread_socket_refresh = __darling_thread_rpc_socket_refresh;
+	calls->dserver_close_socket = __mldr_close_rpc_socket;
 }

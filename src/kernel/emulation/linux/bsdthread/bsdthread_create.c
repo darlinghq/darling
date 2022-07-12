@@ -32,7 +32,9 @@ static bool _uses_threads = false;
 // http://www.tldp.org/FAQ/Threads-FAQ/clone.c
 
 static void rpc_guard(int fd) {
-	guard_table_add(fd, guard_flag_prevent_close | guard_flag_close_on_fork);
+	guard_entry_options_t options;
+	options.close = __dserver_close_socket;
+	guard_table_add(fd, guard_flag_prevent_close | guard_flag_close_on_fork, &options);
 };
 
 static void rpc_unguard(int fd) {

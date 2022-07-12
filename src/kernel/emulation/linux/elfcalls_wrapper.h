@@ -31,6 +31,7 @@ void* __darling_thread_get_stack(void);
 const void* __dserver_socket_address(void);
 int __dserver_per_thread_socket(void);
 void __dserver_per_thread_socket_refresh(void);
+void __dserver_close_socket(int socket);
 
 #ifdef __cplusplus
 }

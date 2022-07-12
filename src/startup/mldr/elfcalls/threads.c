@@ -37,6 +37,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <darlingserver/rpc.h>
 
+extern int __mldr_create_rpc_socket(void);
+extern void __mldr_close_rpc_socket(int socket);
+
 // The point of this file is build macOS threads on top of native libc's threads,
 // otherwise it would not be possible to make native calls from these threads.
 
@@ -206,29 +209,11 @@ static void* darling_thread_entry(void* p)
 	uintptr_t* flags = args.is_workqueue ? &args.arg2 : &args.arg3;
 
 	// create a new dserver RPC socket
-	int new_rpc_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+	int new_rpc_fd = __mldr_create_rpc_socket();
 	if (new_rpc_fd < 0) {
 		// we can't do anything if we don't get our own separate connection to darlingserver
 		fprintf(stderr, "Failed to create socket\n");
 		abort();
-	}
-
-	// make it close-on-exec
-	int fd_flags = fcntl(new_rpc_fd, F_GETFD);
-	if (fd_flags < 0) {
-		fprintf(stderr, "Failed to read socket FD flags\n");
-		exit(1);
-	}
-	if (fcntl(new_rpc_fd, F_SETFD, fd_flags | FD_CLOEXEC) < 0) {
-		fprintf(stderr, "Failed to set close-on-exec flag on socket FD\n");
-		exit(1);
-	}
-
-	// auto-bind it
-	sa_family_t family = AF_UNIX;
-	if (bind(new_rpc_fd, (const struct sockaddr*)&family, sizeof(family)) < 0) {
-		fprintf(stderr, "Failed to autobind socket\n");
-		exit(1);
 	}
 
 	// guard the new RPC FD
@@ -332,7 +317,7 @@ int __darling_thread_terminate(void* stackaddr,
 	// close the RPC FD (if necessary)
 	// it should already have been unguarded by our caller
 	if (t_server_socket != -1) {
-		close(t_server_socket);
+		__mldr_close_rpc_socket(t_server_socket);
 	}
 
 	if (getpid() == syscall(SYS_gettid))
@@ -355,16 +340,11 @@ int __darling_thread_terminate(void* stackaddr,
 	__builtin_unreachable();
 }
 
+extern void* __mldr_main_stack_top;
+
 void* __darling_thread_get_stack(void)
 {
-	pthread_attr_t attr;
-	void* stackaddr;
-	size_t stacksize;
-
-	pthread_getattr_np(pthread_self(), &attr);
-	pthread_attr_getstack(&attr, &stackaddr, &stacksize);
-
-	return ((char*)stackaddr) + stacksize - 0x2000;
+	return __mldr_main_stack_top;
 }
 
 extern int __dserver_main_thread_socket_fd;
@@ -383,23 +363,8 @@ int __darling_thread_rpc_socket(void) {
 };
 
 void __darling_thread_rpc_socket_refresh(void) {
-	int new_rpc_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+	int new_rpc_fd = __mldr_create_rpc_socket();
 	if (new_rpc_fd < 0) {
-		abort();
-	}
-
-	// make it close-on-exec
-	int fd_flags = fcntl(new_rpc_fd, F_GETFD);
-	if (fd_flags < 0) {
-		abort();
-	}
-	if (fcntl(new_rpc_fd, F_SETFD, fd_flags | FD_CLOEXEC) < 0) {
-		abort();
-	}
-
-	// auto-bind it
-	sa_family_t family = AF_UNIX;
-	if (bind(new_rpc_fd, (const struct sockaddr*)&family, sizeof(family)) < 0) {
 		abort();
 	}
 

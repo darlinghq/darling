@@ -29,6 +29,8 @@ struct elf_calls
                 darling_thread_create_callbacks_t callbacks, void* dthread);
 	int (*darling_thread_terminate)(void* stackaddr,
 				unsigned long freesize, unsigned long pthobj_size);
+
+	// this returns the address of the main thread's stack
 	void* (*darling_thread_get_stack)(void);
 
 	// The same as above, except they abort() in case of failure
@@ -58,6 +60,7 @@ struct elf_calls
 	const void* (*dserver_socket_address)(void);
 	int (*dserver_per_thread_socket)(void);
 	void (*dserver_per_thread_socket_refresh)(void);
+	void (*dserver_close_socket)(int socket);
 };
 
 #endif
