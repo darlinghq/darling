@@ -11,6 +11,13 @@ static TISInputSourceRef g_lastKeyboardLayout = NULL;
 const CFStringRef kTISPropertyInputSourceLanguages = CFSTR("TISPropertyInputSourceLanguages");
 const CFStringRef kTISPropertyLocalizedName = CFSTR("TISPropertyLocalizedName");
 
+static int verbose = 0;
+
+__attribute__((constructor))
+static void initme(void) {
+    verbose = getenv("STUB_VERBOSE") != NULL;
+}
+
 TISInputSourceRef TISCopyCurrentKeyboardInputSource(void)
 {
 	return TISCopyCurrentKeyboardLayoutInputSource();
@@ -70,3 +77,11 @@ void* TISGetInputSourceProperty(TISInputSourceRef inputSourceRef, CFStringRef ke
 	return (void*) CFDictionaryGetValue((CFDictionaryRef)inputSourceRef, key);
 }
 
+TISInputSourceRef TISCopyCurrentASCIICapableKeyboardLayoutInputSource(void)
+{
+    if (verbose) {
+        puts("STUB: TISCopyCurrentASCIICapableKeyboardLayoutInputSource");
+    }
+
+    return NULL;
+}
