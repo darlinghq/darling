@@ -19,6 +19,13 @@
 
 #import <CoreImage/CIDetector.h>
 
+NSString *const CIDetectorAccuracy = @"CIDetectorAccuracy";
+NSString *const CIDetectorAccuracyHigh = @"CIDetectorAccuracyHigh";
+NSString *const CIDetectorAccuracyLow = @"CIDetectorAccuracyLow";
+NSString *const CIDetectorTypeFace = @"CIDetectorTypeFace";
+NSString *const CIDetectorTypeQRCode = @"CIDetectorTypeQRCode";
+NSString *const CIDetectorTypeText = @"CIDetectorTypeText";
+
 @implementation CIDetector
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {

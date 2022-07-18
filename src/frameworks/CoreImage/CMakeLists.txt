@@ -429,6 +429,7 @@ add_framework(CoreImage
         src/CILensModelKernel.m
         src/CIToneCurve.m
         src/CIEnhancementCalculation.m
+        src/constants.m
 
     DEPENDENCIES
         system
