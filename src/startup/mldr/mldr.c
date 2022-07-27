@@ -102,10 +102,10 @@ int main(int argc, char** argv, char** envp)
 {
 	void** sp;
 	int pushCount = 0;
-	char *filename, *p = NULL;
+	char *filename;
 	size_t arg_strings_total_size_after = 0;
-	size_t orig_argv0_len = 0;
-	const char* orig_argv1 = NULL;
+	size_t orig_argv_removed_len = 0;
+	const char* orig_argv2 = NULL;
 
 	mldr_load_results.kernfd = -1;
 	mldr_load_results.argc = argc;
@@ -116,32 +116,14 @@ int main(int argc, char** argv, char** envp)
 	}
 	mldr_load_results.envp = envp;
 
-	// sys_execve() passes the original file path appended to the mldr path in argv[0].
-	if (argc > 0)
-		p = strchr(argv[0], '!');
-
-	if (argc <= 1)
+	if (argc <= 2)
 	{
-		if (p == NULL) {
-			fprintf(stderr, "mldr is part of Darling. It is not to be executed directly.\n");
-			return 1;
-		}
-		else
-		{
-			fprintf(stderr, "mldr: warning: Executing with no argv[0]. Continuing anyway, but this is probably a bug.\n");
-		}
+		fprintf(stderr, "mldr is part of Darling. It is not to be executed directly.\n");
+		return 1;
 	}
 
-	if (p != NULL)
-	{
-		filename = (char*) __builtin_alloca(strlen(argv[0])+1);
-		strcpy(filename, p + 1);
-	}
-	else
-	{
-		filename = (char*) __builtin_alloca(strlen(argv[1])+1);
-		strcpy(filename, argv[1]);
-	}
+	filename = (char*) __builtin_alloca(strlen(argv[1])+1);
+	strcpy(filename, argv[1]);
 
 	// allow any process to ptrace us
 	// the only process we really care about being able to do this is the server,
@@ -172,17 +154,20 @@ int main(int argc, char** argv, char** envp)
 	}
 #endif
 
-	// adjust argv (remove mldr's argv[0])
+	// adjust argv (remove mldr's argv[0] and target filename)
 	// NOTE: this code assumes that the current argv array points to contiguous strings.
 	//       this is not necessarily true, although AFAIK this is always true on Linux.
 	// also note: we do it this way (moving the string contents in addition to the pointers)
 	//            so that Linux sees our modified argv array without having to use PR_SET_MM_ARG_START
 	//            and PR_SET_MM_ARG_END (since those require CAP_SYS_RESOURCE)
 
-	--mldr_load_results.argc;
+	mldr_load_results.argc -= 2;
 
-	orig_argv0_len = strlen(mldr_load_results.argv[0]) + 1;
-	orig_argv1 = mldr_load_results.argv[1];
+	for (size_t i = 0; i < 2; ++i) {
+		orig_argv_removed_len += strlen(mldr_load_results.argv[i]) + 1;
+	}
+
+	orig_argv2 = mldr_load_results.argv[2];
 
 	for (size_t i = 0; i < mldr_load_results.argc; ++i) {
 		mldr_load_results.argv[i] = mldr_load_results.argv[0] + arg_strings_total_size_after;
@@ -190,12 +175,8 @@ int main(int argc, char** argv, char** envp)
 	}
 	mldr_load_results.argv[mldr_load_results.argc] = NULL;
 
-	memmove(mldr_load_results.argv[0], orig_argv1, arg_strings_total_size_after);
-	memset(mldr_load_results.argv[0] + arg_strings_total_size_after, 0, orig_argv0_len);
-
-	if (p == NULL) {
-		vchroot_unexpand_interpreter(&mldr_load_results);
-	}
+	memmove(mldr_load_results.argv[0], orig_argv2, arg_strings_total_size_after);
+	memset(mldr_load_results.argv[0] + arg_strings_total_size_after, 0, orig_argv_removed_len);
 
 	// adjust envp (remove special mldr variables)
 	// NOTE: same as for argv; here we assume the envp strings are contiguous

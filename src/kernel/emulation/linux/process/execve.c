@@ -126,11 +126,12 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
 			while (argvp[len++]);
 			
 			// Allocate a new argvp
-			modargvp = (const char**) __builtin_alloca(sizeof(void*) * (len+3));
+			modargvp = (const char**) __builtin_alloca(sizeof(void*) * (len+4));
 			
 			i = 0;
 			modargvp[i++] = mldr_path;
 			modargvp[i++] = vc.path; // expanded later
+			modargvp[i++] = interp;
 			if (arg != NULL)
 				modargvp[i++] = arg;
 			modargvp[i] = fname;
@@ -149,21 +150,17 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
 			path_to_exec = mldr_path;
 	} else if (is_macho) {
 		const char** modargvp;
-		char *buf;
 		int len = 0;
 
 		// count original arguments
 		while (argvp[len++]);
 
 		// allocate a new argvp and argv0
-		modargvp = (const char**) __builtin_alloca(sizeof(void*) * (len+1));
-		buf = __builtin_alloca(strlen(mldr_path) + 2 + strlen(vc.path));
+		modargvp = (const char**) __builtin_alloca(sizeof(void*) * (len+2));
 
-		// set up the new argv0 (mldr path + "!" + executable path)
-		strcpy(buf, mldr_path);
-		strcat(buf, "!");
-		strcat(buf, vc.path);
-		modargvp[0] = buf;
+		// set up the new argv0 and file path
+		modargvp[0] = mldr_path;
+		modargvp[1] = vc.path;
 
 		// append original arguments
 		for (int i = 1; i < len+1; i++)
