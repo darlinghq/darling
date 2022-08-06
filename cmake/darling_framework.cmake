@@ -1,5 +1,6 @@
 include(CMakeParseArguments)
 include(darling_lib)
+include(darling_open_source_sdk)
 include(InstallSymlink)
 
 define_property(TARGET PROPERTY DYLIB_INSTALL_NAME BRIEF_DOCS "Stores the DYLIB_INSTALL_NAME of the framework's main binary"

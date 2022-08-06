@@ -106,6 +106,7 @@ option(TARGET_i386 "Enable i386 slices" ON)
 option(TARGET_x86_64 "Enable x86_64 slices" ON)
 option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
+option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)
 option(ADDITIONAL_PACKAGES "Include additional pacakges not included by default in a standard macOS installation" OFF)
 
 FindDsymutil()
