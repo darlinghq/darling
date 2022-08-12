@@ -1,12 +1,21 @@
 project(CloudKit)
 
+remove_sdk_framework(CloudKit)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "867.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(CloudKit
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/CloudKit"
+)
 
 add_framework(CloudKit
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/CloudKit.m

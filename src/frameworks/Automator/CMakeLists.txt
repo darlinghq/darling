@@ -1,12 +1,21 @@
 project(Automator)
 
+remove_sdk_framework(Automator)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "0.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(Automator
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/Automator"
+)
 
 add_framework(Automator
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/Automator.m

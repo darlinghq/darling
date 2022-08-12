@@ -1,12 +1,21 @@
 project(ModelIO)
 
+remove_sdk_framework(ModelIO)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "217.43.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(ModelIO
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/ModelIO"
+)
 
 add_framework(ModelIO
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/ModelIO.m

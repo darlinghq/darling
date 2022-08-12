@@ -1,5 +1,7 @@
 project(ApplicationServices)
 
+remove_sdk_framework(ApplicationServices)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "48.0.0")
 
@@ -11,13 +13,25 @@ add_subdirectory(LangAnalysis)
 add_subdirectory(PrintCore)
 add_subdirectory(SpeechSynthesis)
 
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(ApplicationServices
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/ApplicationServices"
+)
+
 add_framework(ApplicationServices
-	FAT CURRENT_VERSION
-	VERSION "A"
+	FAT 
+	CURRENT_VERSION
+	VERSION ${FRAMEWORK_VERSION}
+
 	SOURCES
 		ApplicationServices.c
+	
 	DEPENDENCIES
-	system CoreServices CoreFoundation
+		system
+		CoreServices
+		CoreFoundation
 )
 
 set(CoreGraphics_BUILD ${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/CoreGraphics)

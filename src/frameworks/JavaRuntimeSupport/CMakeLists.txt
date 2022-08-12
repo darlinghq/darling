@@ -1,13 +1,22 @@
 project(JavaRuntimeSupport)
 
+remove_sdk_framework(JavaRuntimeSupport)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(JavaRuntimeSupport
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/JavaRuntimeSupport"
+)
 
 add_framework(JavaRuntimeSupport
 	FAT
 	CURRENT_VERSION
 	PARENT "JavaVM"
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
 		src/JavaRuntimeSupport.m

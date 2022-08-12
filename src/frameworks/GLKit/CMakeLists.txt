@@ -1,12 +1,21 @@
 project(GLKit)
 
+remove_sdk_framework(GLKit)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "118.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(GLKit
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/GLKit"
+)
 
 add_framework(GLKit
 	FAT
 	CURRENT_VERSION
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
 		src/GLKit.m

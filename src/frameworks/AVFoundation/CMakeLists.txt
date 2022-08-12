@@ -1,12 +1,21 @@
 project(AVFoundation)
 
+remove_sdk_framework(AVFoundation)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "2.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(AVFoundation
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/AVFoundation"
+)
 
 add_framework(AVFoundation
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/AVFoundation.m

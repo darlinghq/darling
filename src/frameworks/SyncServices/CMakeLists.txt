@@ -1,12 +1,21 @@
 project(SyncServices)
 
+remove_sdk_framework(SyncServices)
+
 set(DYLIB_COMPAT_VERSION "48.0.0")
 set(DYLIB_CURRENT_VERSION "727.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(SyncServices
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/SyncServices"
+)
 
 add_framework(SyncServices
 	FAT
 	CURRENT_VERSION
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
 		src/SyncServices.m

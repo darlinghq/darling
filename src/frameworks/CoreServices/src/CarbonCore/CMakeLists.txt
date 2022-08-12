@@ -31,12 +31,24 @@ set(CarbonCore_SRCS
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "945.0.0")
+
+set(SUBFRAMEWORK_VERSION "A")
+
+generate_sdk_subframework(CarbonCore
+	BASE_PATH ${coreservices_sdk_path}
+	VERSION ${SUBFRAMEWORK_VERSION}
+	HEADER "../../include/CarbonCore"
+)
+
 add_framework(CarbonCore
 	FAT
 	CURRENT_VERSION
-	VERSION "A"
+	VERSION ${SUBFRAMEWORK_VERSION}
 	PARENT "CoreServices"
-	SOURCES ${CarbonCore_SRCS}
+
+	SOURCES 
+		${CarbonCore_SRCS}
+	
 	DEPENDENCIES
 		CoreFoundation
 		Foundation

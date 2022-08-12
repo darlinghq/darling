@@ -1,12 +1,21 @@
 project(SecurityFoundation)
 
+remove_sdk_framework(SecurityFoundation)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "55185.200.14")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(SecurityFoundation
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/SecurityFoundation"
+)
 
 add_framework(SecurityFoundation
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/SecurityFoundation.m

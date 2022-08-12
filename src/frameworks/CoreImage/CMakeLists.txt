@@ -1,12 +1,21 @@
 project(CoreImage)
 
+remove_sdk_framework(CoreImage)
+
 set(DYLIB_COMPAT_VERSION "1.0.1")
 set(DYLIB_CURRENT_VERSION "5.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(CoreImage
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/CoreImage"
+)
 
 add_framework(CoreImage
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/CoreImage.m

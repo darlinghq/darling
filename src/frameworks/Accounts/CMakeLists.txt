@@ -1,12 +1,21 @@
 project(Accounts)
 
+remove_sdk_framework(Accounts)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(Accounts
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/Accounts"
+)
 
 add_framework(Accounts
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/Accounts.m

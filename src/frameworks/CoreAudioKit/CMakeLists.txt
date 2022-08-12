@@ -1,12 +1,21 @@
 project(CoreAudioKit)
 
+remove_sdk_framework(CoreAudioKit)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(CoreAudioKit
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/CoreAudioKit"
+)
 
 add_framework(CoreAudioKit
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/CoreAudioKit.m
