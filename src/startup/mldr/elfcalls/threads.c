@@ -175,7 +175,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	}
 
 	args.stack_bottom = args.stack_addr - stack_size;
-	
+
 	// pthread_attr_setstack is buggy. The documentation states we should provide the lowest
 	// address of the stack, yet some versions regard it as the highest address instead.
 	// Therefore it's better to just make the pthread stack as small as possible and then switch
@@ -191,7 +191,7 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	args.pth = pth;
 	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
 	pthread_attr_destroy(&attr);
-	
+
 	while (args.pth != NULL)
 		sched_yield();
 
@@ -202,7 +202,7 @@ static void* darling_thread_entry(void* p)
 {
 	struct arg_struct* in_args = (struct arg_struct*) p;
 	struct arg_struct args;
-	
+
 	memcpy(&args, in_args, sizeof(args));
 
 	dthread_t dthread = args.pth;
@@ -229,7 +229,9 @@ static void* darling_thread_entry(void* p)
 	*flags |= args.is_workqueue ? DWQ_FLAG_THREAD_TSD_BASE_SET : DTHREAD_START_TSD_BASE_SET;
 
 	// let's check-in with darlingserver on this new thread
-	if (dserver_rpc_explicit_checkin(t_server_socket, false) < 0) {
+	int dummy_stack_variable;
+	// the lifetime pipe fd is ignored as the proces should already have been registered
+	if (dserver_rpc_explicit_checkin(t_server_socket, false, &dummy_stack_variable, -1) < 0) {
 		// we can't do ANYTHING if darlingserver doesn't acknowledge us successfully
 		abort();
 	}
@@ -327,7 +329,7 @@ int __darling_thread_terminate(void* stackaddr,
 		// Let's just hang around forever.
 		sigset_t mask;
 		memset(&mask, 0, sizeof(mask));
-		
+
 		while (1)
 			sigsuspend(&mask);
 	}

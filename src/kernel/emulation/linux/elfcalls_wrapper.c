@@ -91,3 +91,15 @@ void __dserver_per_thread_socket_refresh(void) {
 void __dserver_close_socket(int socket) {
 	return elfcalls()->dserver_close_socket(socket);
 };
+
+int __dserver_get_process_lifetime_pipe() {
+	return elfcalls()->dserver_get_process_lifetime_pipe();
+}
+
+int __dserver_process_lifetime_pipe_refresh(void) {
+	return elfcalls()->dserver_process_lifetime_pipe_refresh();
+};
+
+void __dserver_close_process_lifetime_pipe(int* fds) {
+	return elfcalls()->dserver_close_process_lifetime_pipe(fds);
+};

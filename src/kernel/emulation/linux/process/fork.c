@@ -39,19 +39,24 @@ long sys_fork(void)
 
 		// create a new dserver RPC socket
 		__dserver_per_thread_socket_refresh();
+		int newReadFd = __dserver_process_lifetime_pipe_refresh();
 
 		// guard it
 		guard_entry_options_t options;
 		options.close = __dserver_close_socket;
 		guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
 
-		if (dserver_rpc_checkin(true) < 0) {
+		int dummy_stack_variable;
+		if (dserver_rpc_checkin(true, &dummy_stack_variable, newReadFd) < 0) {
 			// we can't do ANYTHING if darlingserver fails to acknowledge us
 			__simple_printf("Failed to checkin with darlingserver after fork\n");
 			__simple_abort();
 		}
 		if (wdfd >= 0)
 			sys_fchdir(wdfd);
+
+		int pipe[2] = { newReadFd, -1 };
+		__dserver_close_process_lifetime_pipe(pipe);
 	}
 
 	return ret;

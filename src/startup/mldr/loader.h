@@ -22,6 +22,7 @@ struct load_results {
 	unsigned long stack_top;
 	char* socket_path;
 	int kernfd;
+	int lifetime_pipe;
 
 	size_t argc;
 	size_t envc;

@@ -64,6 +64,28 @@ static const void* __dserver_socket_address(void) {
 
 extern void __mldr_close_rpc_socket(int socket);
 
+extern int __mldr_create_process_lifetime_pipe(int* fds);
+extern void __mldr_close_process_lifetime_pipe(int* fds);
+extern int __dserver_process_lifetime_pipe_fd;
+
+static int __dserver_get_process_lifetime_pipe() {
+	return __dserver_process_lifetime_pipe_fd;
+}
+
+static int __dserver_process_lifetime_pipe_refresh() {
+	// the read end has already been closed.
+	int pipe[2] = { -1, __dserver_process_lifetime_pipe_fd };
+	__mldr_close_process_lifetime_pipe(pipe);
+
+	if (__mldr_create_process_lifetime_pipe(pipe) == -1) {
+		fprintf(stderr, "Failed to create process lifetime pipe: %d (%s)\n", errno, strerror(errno));
+		abort();
+	}
+
+	__dserver_process_lifetime_pipe_fd = pipe[1];
+	return pipe[0];
+}
+
 void elfcalls_make(struct elf_calls* calls)
 {
 	calls->dlopen = dlopen_simple;
@@ -98,4 +120,8 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->dserver_per_thread_socket = __darling_thread_rpc_socket;
 	calls->dserver_per_thread_socket_refresh = __darling_thread_rpc_socket_refresh;
 	calls->dserver_close_socket = __mldr_close_rpc_socket;
+
+	calls->dserver_get_process_lifetime_pipe = __dserver_get_process_lifetime_pipe;
+	calls->dserver_process_lifetime_pipe_refresh = __dserver_process_lifetime_pipe_refresh;
+	calls->dserver_close_process_lifetime_pipe = __mldr_close_process_lifetime_pipe;
 }

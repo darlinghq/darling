@@ -14,6 +14,7 @@
 static int native_prot(int prot);
 static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr);
 static void setup_space(struct load_results* lr, bool is_64_bit);
+static void* compatible_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
@@ -171,7 +172,7 @@ no_slide:
 							addr += slide;
 
 						// Some segments' filesize != vmsize, thus this mprotect().
-						rv = mmap((void*)addr, seg->vmsize, useprot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
+						rv = compatible_mmap((void*)addr, seg->vmsize, useprot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
 						if (rv == (void*)MAP_FAILED)
 						{
 							if (seg->vmaddr == 0 && useprot == 0) {
@@ -187,7 +188,7 @@ no_slide:
 					else
 					{
 						size_t size = seg->vmsize - seg->filesize;
-						rv = mmap((void*) PAGE_ALIGN(seg->vmaddr + seg->vmsize - size), PAGE_ROUNDUP(size), useprot,
+						rv = compatible_mmap((void*) PAGE_ALIGN(seg->vmaddr + seg->vmsize - size), PAGE_ROUNDUP(size), useprot,
 								MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
 						if (rv == (void*)MAP_FAILED)
 						{
@@ -210,7 +211,7 @@ no_slide:
 					if (seg->filesize < seg->vmsize) {
 						flag = MAP_FIXED;
 					}
-					rv = mmap((void*)addr, seg->filesize, useprot,
+					rv = compatible_mmap((void*)addr, seg->filesize, useprot,
 							flag | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
 					if (rv == (void*)MAP_FAILED)
 					{
@@ -223,7 +224,7 @@ no_slide:
 							exit(1);
 						}
 					}
-				
+
 					if (seg->fileoff == 0)
 						mappedHeader = (struct MACH_HEADER_STRUCT*) (seg->vmaddr + slide);
 				}
