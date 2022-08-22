@@ -41,6 +41,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <darlingserver/rpc.h>
 #include <sys/ptrace.h>
 #include <pthread.h>
+#include <sys/utsname.h>
 
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
@@ -55,6 +56,7 @@ struct sockaddr_un __dserver_socket_address_data = {
 };
 
 int __dserver_main_thread_socket_fd = -1;
+int __dserver_process_lifetime_pipe_fd = -1;
 
 // The idea of mldr is to load dyld_path into memory and set up the stack
 // as described in dyldStartup.S.
@@ -73,6 +75,8 @@ static int native_prot(int prot);
 static void setup_space(struct load_results* lr, bool is_64_bit);
 static void process_special_env(struct load_results* lr);
 static void start_thread(struct load_results* lr);
+static bool is_kernel_at_least(int major, int minor);
+static void* compatible_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 #ifdef __x86_64__
 static void setup_stack64(const char* filepath, struct load_results* lr);
 #endif
@@ -94,9 +98,13 @@ static uint32_t stack_size = 0;
 static const char* const skip_env_vars[] = {
 	"__mldr_bprefs=",
 	"__mldr_sockpath=",
+	"__mldr_lifetime_pipe",
 };
 
 void* __mldr_main_stack_top = NULL;
+
+static int kernel_major = -1;
+static int kernel_minor = -1;
 
 int main(int argc, char** argv, char** envp)
 {
@@ -258,7 +266,7 @@ int main(int argc, char** argv, char** envp)
 	}
 
 	__mldr_main_stack_top = (void*)mldr_load_results.stack_top;
-	
+
 	start_thread(&mldr_load_results);
 
 	__builtin_unreachable();
@@ -504,6 +512,13 @@ static void process_special_env(struct load_results* lr) {
 		lr->socket_path = __dserver_socket_address_data.sun_path;
 	}
 
+	lr->lifetime_pipe = -1;
+	str = getenv("__mldr_lifetime_pipe");
+
+	if (str != NULL) {
+		sscanf(str, "%i", &lr->lifetime_pipe);
+	}
+
 	str = getenv("DYLD_ROOT_PATH");
 
 	if (str != NULL && lr->root_path == NULL) {
@@ -517,6 +532,7 @@ static void process_special_env(struct load_results* lr) {
 static void unset_special_env() {
 	unsetenv("__mldr_bprefs");
 	unsetenv("__mldr_sockpath");
+	unsetenv("__mldr_lifetime_pipe");
 };
 
 typedef struct socket_bitmap {
@@ -734,6 +750,61 @@ void __mldr_close_rpc_socket(int socket) {
 	socket_bitmap_put(&socket_bitmap, socket);
 };
 
+int __mldr_create_process_lifetime_pipe(int* fds) {
+	// These pipes are not required for Linux 5.3 or newer,
+	// we already have pidfd_open.
+	if (is_kernel_at_least(5, 3)) {
+		fds[0] = fds[1] = -1;
+		return 0;
+	}
+
+	int pre_fds[2];
+	if (pipe(pre_fds) == -1) {
+		goto err_out;
+	}
+
+	for (int i = 0; i < 2; ++i) {
+		fds[i] = socket_bitmap_get(&socket_bitmap);
+		if (fds[i] < 0) {
+			goto err_out;
+		}
+
+		if (dup2(pre_fds[i], fds[i]) < 0) {
+			socket_bitmap_put(&socket_bitmap, fds[i]);
+			fds[i] = -1;
+			goto err_out;
+		}
+
+		close(pre_fds[i]);
+		pre_fds[i] = -1;
+	}
+
+	return 0;
+
+err_out:
+	for (int i = 0; i < 2; ++i) {
+		if (fds[i] >= 0) {
+			socket_bitmap_put(&socket_bitmap, fds[i]);
+			close(fds[i]);
+		}
+
+		if (pre_fds[i] >= 0) {
+			close(pre_fds[i]);
+		}
+	}
+
+	return -1;
+}
+
+void __mldr_close_process_lifetime_pipe(int* fds) {
+	for (int i = 0; i < 2; ++i) {
+		if (fds[i] != -1) {
+			close(fds[i]);
+			socket_bitmap_put(&socket_bitmap, fds[i]);
+		}
+	}
+}
+
 static void setup_space(struct load_results* lr, bool is_64_bit) {
 	commpage_setup(is_64_bit);
 
@@ -756,7 +827,7 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 		size = limit.rlim_cur;
 	}
 
-	if (mmap((void*)(lr->stack_top - size), size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE | MAP_GROWSDOWN, -1, 0) == MAP_FAILED) {
+	if (compatible_mmap((void*)(lr->stack_top - size), size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE | MAP_GROWSDOWN, -1, 0) == MAP_FAILED) {
 		fprintf(stderr, "Failed to allocate stack of %lu bytes: %d (%s)\n", size, errno, strerror(errno));
 		exit(1);
 	}
@@ -771,10 +842,47 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 
 	__dserver_main_thread_socket_fd = lr->kernfd;
 
-	if (dserver_rpc_checkin(false) < 0) {
+	int lifetime_pipe[2];
+
+	// this process is created using exec from another Darling process.
+	// darlingserver should already have the read pipe, so we don't need
+	// to check that in.
+	if (lr->lifetime_pipe != -1) {
+		lifetime_pipe[1] = socket_bitmap_get(&socket_bitmap);
+
+		if (lr->lifetime_pipe != lifetime_pipe[1]) {
+			// move the existing pipe to a higher fd number, and invalidate
+			// the old fd to prevent interfering with fds provided by
+			// socket_bitmap_get
+			if (dup2(lr->lifetime_pipe, lifetime_pipe[1]) == -1) {
+				fprintf(stderr, "Failed to dup process lifetime pipe: %d (%s)\n", errno, strerror(errno));
+				exit(1);
+			}
+			close(lr->lifetime_pipe);
+		}
+
+		lifetime_pipe[0] = -1;
+	} else {
+		if (__mldr_create_process_lifetime_pipe(lifetime_pipe) == -1) {
+			fprintf(stderr, "Failed to create process lifetime pipe: %d (%s)\n", errno, strerror(errno));
+			exit(1);
+		}
+	}
+
+	lr->lifetime_pipe = lifetime_pipe[1];
+
+	// store the write end of the pipe; the read end is sent to darlingserver.
+	__dserver_process_lifetime_pipe_fd = lifetime_pipe[1];
+
+	int dummy_stack_variable;
+	if (dserver_rpc_checkin(false, &dummy_stack_variable, lifetime_pipe[0]) < 0) {
 		fprintf(stderr, "Failed to checkin with darlingserver\n");
 		exit(1);
 	}
+
+	// keep our write end while closing the unused read end.
+	lifetime_pipe[1] = -1;
+	__mldr_close_process_lifetime_pipe(lifetime_pipe);
 
 	if (!lr->root_path) {
 		static char vchroot_buffer[4096];
@@ -824,10 +932,59 @@ static void start_thread(struct load_results* lr) {
 		"r"(lr->stack_top)
 		:
 	);
-#else 
+#else
 #       error Unsupported platform!
 #endif
 };
+
+static bool is_kernel_at_least(int major, int minor) {
+	if (kernel_major == -1) {
+		struct utsname uname_info;
+		if (uname(&uname_info) == -1) {
+			return false;
+		}
+		kernel_major = 0;
+		kernel_minor = 0;
+		size_t pos = 0;
+		while (uname_info.release[pos] != '\0' && uname_info.release[pos] != '.') {
+			kernel_major = kernel_major * 10 + uname_info.release[pos] - '0';
+			++pos;
+		}
+		++pos;
+		while (uname_info.release[pos] != '\0' && uname_info.release[pos] != '.') {
+			kernel_minor = kernel_minor * 10 + uname_info.release[pos] - '0';
+			++pos;
+		}
+	}
+
+	if (major != kernel_major) {
+		return kernel_major > major;
+	}
+
+	return kernel_minor >= minor;
+}
+
+void* compatible_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+	// MAP_FIXED_NOREPLACE is not supported on WSL1 (Linux < 4.17).
+	bool fixed_noreplace_hack = false;
+	if ((flags & MAP_FIXED_NOREPLACE) && !is_kernel_at_least(4, 17)) {
+		flags &= ~MAP_FIXED_NOREPLACE;
+		fixed_noreplace_hack = true;
+	}
+	void* result = mmap(addr, length, prot, flags, fd, offset);
+	// MAP_GROWSDOWN is not supported on WSL1. See https://github.com/microsoft/WSL/issues/8095.
+	if ((result == (void*)MAP_FAILED) && (flags & MAP_GROWSDOWN) && (errno == EOPNOTSUPP)) {
+		result = mmap(addr, length, prot, (flags & ~MAP_GROWSDOWN), fd, offset);
+	}
+	if (fixed_noreplace_hack) {
+		if (result != addr && result != (void*)MAP_FAILED) {
+			errno = ESRCH;
+			munmap(addr, length);
+			return MAP_FAILED;
+		}
+	}
+	return result;
+}
 
 static void vchroot_unexpand_interpreter(struct load_results* lr) {
 	static char unexpanded[4096];

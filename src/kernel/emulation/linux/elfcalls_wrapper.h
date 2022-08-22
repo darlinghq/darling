@@ -33,6 +33,10 @@ int __dserver_per_thread_socket(void);
 void __dserver_per_thread_socket_refresh(void);
 void __dserver_close_socket(int socket);
 
+int __dserver_get_process_lifetime_pipe(void);
+int __dserver_process_lifetime_pipe_refresh(void);
+void __dserver_close_process_lifetime_pipe(int* fds);
+
 #ifdef __cplusplus
 }
 #endif

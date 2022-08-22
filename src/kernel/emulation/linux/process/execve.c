@@ -18,6 +18,7 @@
 #include "../simple.h"
 
 #include <darlingserver/rpc.h>
+#include "../elfcalls_wrapper.h"
 #include "../unistd/write.h"
 #include <mach-o/loader.h>
 #include <mach-o/fat.h>
@@ -48,7 +49,7 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
 
 	vc.flags = VCHROOT_FOLLOW;
 	vc.dfd = get_perthread_wd();
-	
+
 	strcpy(vc.path, fname);
 
 	ret = vchroot_expand(&vc);
@@ -60,7 +61,7 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
 	int fd = sys_open(fname, BSD_O_RDONLY, 0);
 	if (fd < 0)
 		return fd;
-	
+
 	ret = sys_read(fd, shebang, sizeof(shebang));
 	if (ret < 0)
 		return ret;
@@ -99,19 +100,19 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
 		nl = memchr(shebang, '\n', ret);
 		if (!nl)
 			return -ENOEXEC;
-		
+
 		*nl = '\0';
 		for (i = 2; isspace(shebang[i]); i++);
-			
+
 			interp = &shebang[i];
-			
+
 			for (i = 0; !isspace(interp[i]) && interp[i]; i++);
-			
+
 			if (interp[i] == '\0')
 				arg = NULL;
 			else
 				arg = &interp[i];
-			
+
 			if (arg != NULL)
 			{
 				*arg = '\0'; // terminate interp
@@ -121,24 +122,24 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
 				if (*arg == '\0')
 					arg = NULL; // no argument, just whitespace
 			}
-			
+
 			// Count original arguments
 			while (argvp[len++]);
-			
+
 			// Allocate a new argvp
 			modargvp = (const char**) __builtin_alloca(sizeof(void*) * (len+3));
-			
+
 			i = 0;
 			modargvp[i++] = mldr_path;
 			modargvp[i++] = vc.path; // expanded later
 			if (arg != NULL)
 				modargvp[i++] = arg;
 			modargvp[i] = fname;
-			
+
 			// Append original arguments
 			for (j = 1; j < len+1; j++)
 				modargvp[i+j] = argvp[j];
-			
+
 			argvp = modargvp;
 			strcpy(vc.path, interp);
 
@@ -181,21 +182,27 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
 		struct linux_sockaddr_un* server_socket_address = dserver_rpc_hooks_get_server_address();
 		const char* server_socket_path = server_socket_address->sun_path;
 
+		char mldr_lifetime_pipe_env[32] = { '\0' };
+		__simple_snprintf(mldr_lifetime_pipe_env, sizeof(mldr_lifetime_pipe_env) - 1, "__mldr_lifetime_pipe=%d", __dserver_get_process_lifetime_pipe());
+
 		// count original env vars
 		while (envp[len++]);
 
-		// allocate a new envp and env0
-		modenvp = (const char**)__builtin_alloca(sizeof(void*) * (len + 1));
+		const int new_env_count = 2;
+
+		// allocate a new envp and env0, env1
+		modenvp = (const char**)__builtin_alloca(sizeof(void*) * (len + new_env_count));
 		buf = __builtin_alloca(strlen(server_socket_path) + sizeof("__mldr_sockpath="));
 
 		// set up the new env0
 		strcpy(buf, "__mldr_sockpath=");
 		strcat(buf, server_socket_path);
 		modenvp[0] = buf;
+		modenvp[1] = mldr_lifetime_pipe_env;
 
 		// append original env vars
-		for (int i = 1; i < len+1; i++)
-			modenvp[i] = envp[i-1];
+		for (int i = new_env_count; i < len + new_env_count; i++)
+			modenvp[i] = envp[i-new_env_count];
 
 		envp = modenvp;
 	}

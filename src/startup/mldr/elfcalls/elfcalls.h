@@ -61,6 +61,11 @@ struct elf_calls
 	int (*dserver_per_thread_socket)(void);
 	void (*dserver_per_thread_socket_refresh)(void);
 	void (*dserver_close_socket)(int socket);
+
+	// darlingserver process lifetime pipe info
+	int (*dserver_get_process_lifetime_pipe)(void);
+	int (*dserver_process_lifetime_pipe_refresh)(void);
+	void (*dserver_close_process_lifetime_pipe)(int* fds);
 };
 
 #endif
