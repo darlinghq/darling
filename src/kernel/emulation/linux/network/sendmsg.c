@@ -30,6 +30,10 @@ long sys_sendmsg_nocancel(int socket, const struct bsd_msghdr* msg, int flags)
 		saddr->linux_family = sfamily_bsd_to_linux(saddr->bsd_family);
 		lmsg.msg_name = saddr;
 	}
+	else if (msg->msg_namelen == 0)
+	{
+		lmsg.msg_name = NULL;
+	}
 
 	lmsg.msg_namelen = msg->msg_namelen;
 	lmsg.msg_iov = msg->msg_iov;
