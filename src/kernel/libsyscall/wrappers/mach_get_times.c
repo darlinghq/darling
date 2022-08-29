@@ -64,7 +64,16 @@ mach_get_times(uint64_t* absolute_time, uint64_t* cont_time, struct timespec *tp
 			if (__gettimeofday_with_mach(&tv, NULL, &tbr) < 0) {
 				return KERN_FAILURE;
 			} else if (tbr == 0) {
+#ifdef DARLING
+				// In the past, Apple had a fallback solution if the tbr is still 0. However,
+				// they removed this in their recent code. In the long run, it might be a good
+				// idea to figure out why tbr returns 0 for notifyd.
+				
+				// Apple's Comment: On an old kernel, likely chroot'ed. (remove next year)
+				tbr = mach_absolute_time();
+#else
 				__builtin_trap();
+#endif
 			}
 		}
 
