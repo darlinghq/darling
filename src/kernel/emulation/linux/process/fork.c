@@ -46,6 +46,13 @@ long sys_fork(void)
 		options.close = __dserver_close_socket;
 		guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
 
+		// only guard the lifetime pipe if it's used.
+		if (newReadFd != -1)
+		{
+			options.close = __dserver_close_process_lifetime_pipe;
+			guard_table_add(__dserver_get_process_lifetime_pipe(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
+		}
+
 		int dummy_stack_variable;
 		if (dserver_rpc_checkin(true, &dummy_stack_variable, newReadFd) < 0) {
 			// we can't do ANYTHING if darlingserver fails to acknowledge us
@@ -55,8 +62,7 @@ long sys_fork(void)
 		if (wdfd >= 0)
 			sys_fchdir(wdfd);
 
-		int pipe[2] = { newReadFd, -1 };
-		__dserver_close_process_lifetime_pipe(pipe);
+		__dserver_close_process_lifetime_pipe(newReadFd);
 	}
 
 	return ret;

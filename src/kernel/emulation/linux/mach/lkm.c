@@ -57,6 +57,11 @@ void mach_driver_init(const char** applep)
 		guard_entry_options_t options;
 		options.close = _elfcalls->dserver_close_socket;
 		guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
+		int lifetime_pipe = __dserver_get_process_lifetime_pipe();
+		if (lifetime_pipe != -1) {
+			options.close = _elfcalls->dserver_close_process_lifetime_pipe;
+			guard_table_add(lifetime_pipe, guard_flag_prevent_close | guard_flag_close_on_fork, &options);
+		}
 	}
 #endif
 

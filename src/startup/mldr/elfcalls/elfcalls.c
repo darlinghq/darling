@@ -65,7 +65,7 @@ static const void* __dserver_socket_address(void) {
 extern void __mldr_close_rpc_socket(int socket);
 
 extern int __mldr_create_process_lifetime_pipe(int* fds);
-extern void __mldr_close_process_lifetime_pipe(int* fds);
+extern void __mldr_close_process_lifetime_pipe(int fd);
 extern int __dserver_process_lifetime_pipe_fd;
 
 static int __dserver_get_process_lifetime_pipe() {
@@ -73,9 +73,7 @@ static int __dserver_get_process_lifetime_pipe() {
 }
 
 static int __dserver_process_lifetime_pipe_refresh() {
-	// the read end has already been closed.
-	int pipe[2] = { -1, __dserver_process_lifetime_pipe_fd };
-	__mldr_close_process_lifetime_pipe(pipe);
+	int pipe[2];
 
 	if (__mldr_create_process_lifetime_pipe(pipe) == -1) {
 		fprintf(stderr, "Failed to create process lifetime pipe: %d (%s)\n", errno, strerror(errno));
