@@ -3,6 +3,8 @@
 #include "../errno.h"
 #include <linux-syscalls/linux.h>
 
+void __attribute__((weak)) __attribute__((visibility("default"))) __darling_kqueue_register_listen(int fd) { }
+
 long sys_listen(int fd, int backlog)
 {
 	int ret;
@@ -16,6 +18,8 @@ long sys_listen(int fd, int backlog)
 
 	if (ret < 0)
 		ret = errno_linux_to_bsd(ret);
+	else
+		__darling_kqueue_register_listen(fd);
 
 	return ret;
 }

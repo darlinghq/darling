@@ -100,6 +100,6 @@ int __dserver_process_lifetime_pipe_refresh(void) {
 	return elfcalls()->dserver_process_lifetime_pipe_refresh();
 };
 
-void __dserver_close_process_lifetime_pipe(int* fds) {
-	return elfcalls()->dserver_close_process_lifetime_pipe(fds);
+void __dserver_close_process_lifetime_pipe(int fd) {
+	return elfcalls()->dserver_close_process_lifetime_pipe(fd);
 };

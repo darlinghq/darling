@@ -140,7 +140,7 @@ void sigexc_setup(void)
 		}
 	}
 #else
-	
+
 #endif
 }
 
@@ -163,7 +163,7 @@ void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext
 #endif
 
 	kern_printf("sigexc: sigrt_handler SUSPEND\n");
-	
+
 	thread_t thread = mach_thread_self();
 	state_to_kernel(ctxt, &tstate, &fstate);
 
@@ -258,7 +258,7 @@ static void state_from_kernel(struct linux_ucontext* ctxt, const void* tstate, c
 	float_state_to_mcontext((const x86_float_state64_t*) fstate, ctxt->uc_mcontext.fpregs);
 
 	dump_gregs(&ctxt->uc_mcontext.gregs);
-	
+
 #elif defined(__i386__)
 	thread_state_to_mcontext((const x86_thread_state32_t*) tstate, &ctxt->uc_mcontext.gregs);
 	float_state_to_mcontext((const x86_float_state32_t*) fstate, ctxt->uc_mcontext.fpregs);
@@ -276,7 +276,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 
 	kern_printf("sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
 
-	
+
 	if (linux_signum == LINUX_SIGCONT)
 		goto out;
 
@@ -361,7 +361,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 			}
 		}
 	}
-	
+
 	kern_printf("sigexc: handler (%d) returning\n", linux_signum);
 
 out:
@@ -415,6 +415,13 @@ void mcontext_to_thread_state(const struct linux_gregset* regs, x86_thread_state
 
 void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state64_t* s)
 {
+	// fpregs is NULL on WSL1. See https://github.com/microsoft/WSL/issues/2555.
+	if (fx == NULL)
+	{
+		memset(s, 0, sizeof(x86_float_state64_t));
+		return;
+	}
+
 	kern_printf("sigexc: fcw out: 0x%x", fx->cwd);
 	kern_printf("sigexc: xmm0 out: 0x%x", fx->_xmm[0].element[0]);
 	*((uint16_t*)&s->__fpu_fcw) = fx->cwd;
@@ -471,6 +478,11 @@ void thread_state_to_mcontext(const x86_thread_state64_t* s, struct linux_gregse
 
 void float_state_to_mcontext(const x86_float_state64_t* s, linux_fpregset_t fx)
 {
+	if (fx == NULL)
+	{
+		return;
+	}
+
 	fx->cwd = *((uint16_t*)&s->__fpu_fcw);
 	fx->swd = *((uint16_t*)&s->__fpu_fsw);
 	fx->ftw = s->__fpu_ftw;

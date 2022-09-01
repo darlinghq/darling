@@ -796,12 +796,10 @@ err_out:
 	return -1;
 }
 
-void __mldr_close_process_lifetime_pipe(int* fds) {
-	for (int i = 0; i < 2; ++i) {
-		if (fds[i] != -1) {
-			close(fds[i]);
-			socket_bitmap_put(&socket_bitmap, fds[i]);
-		}
+void __mldr_close_process_lifetime_pipe(int fd) {
+	if (fd != -1) {
+		close(fd);
+		socket_bitmap_put(&socket_bitmap, fd);
 	}
 }
 
@@ -881,8 +879,7 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	}
 
 	// keep our write end while closing the unused read end.
-	lifetime_pipe[1] = -1;
-	__mldr_close_process_lifetime_pipe(lifetime_pipe);
+	__mldr_close_process_lifetime_pipe(lifetime_pipe[0]);
 
 	if (!lr->root_path) {
 		static char vchroot_buffer[4096];
