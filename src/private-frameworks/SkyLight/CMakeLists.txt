@@ -1,13 +1,25 @@
 project(SkyLight)
 
+remove_sdk_framework(SkyLight
+	PRIVATE
+)
+
 set(DYLIB_COMPAT_VERSION "64.0.0")
 set(DYLIB_CURRENT_VERSION "600.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(SkyLight
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/SkyLight"
+	PRIVATE
+)
 
 add_framework(SkyLight
 	FAT
 	CURRENT_VERSION
 	PRIVATE
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
 		src/SkyLight.m

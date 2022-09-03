@@ -1,5 +1,9 @@
 project(PlugInKit)
 
+remove_sdk_framework(PlugInKit
+	PRIVATE
+)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
 
@@ -21,11 +25,19 @@ set(PK_OBJC
     src/PKXPCObject.m
 )
 
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(PlugInKit
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/PlugInKit"
+	PRIVATE
+)
+
 add_framework(PlugInKit
 	FAT
 	CURRENT_VERSION
 	PRIVATE
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
 		${PK_C}

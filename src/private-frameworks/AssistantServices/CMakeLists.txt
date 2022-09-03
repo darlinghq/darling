@@ -1,13 +1,25 @@
 project(AssistantServices)
 
+remove_sdk_framework(AssistantServices
+	PRIVATE
+)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(AssistantServices
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/AssistantServices"
+	PRIVATE
+)
 
 add_framework(AssistantServices
 	FAT
 	CURRENT_VERSION
 	PRIVATE
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
 		src/AssistantServices.m
