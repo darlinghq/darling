@@ -30,7 +30,7 @@ set(audiotoolbox_sources
 add_framework(AudioToolbox
 	FAT
 	CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_AUDIOTOOLBOX_VERSION}
 
     SOURCES
         ${audiotoolbox_sources}
@@ -51,7 +51,7 @@ add_framework(AudioToolbox
 add_framework(AudioUnit
 	FAT
 	CURRENT_VERSION
-	VERSION "A"
+	VERSION ${FRAMEWORK_AUDIOUNIT_VERSION}
 
 	SOURCES
 		empty.c
