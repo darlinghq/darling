@@ -1,12 +1,23 @@
 project(OpenDirectory)
 
+remove_sdk_framework(OpenDirectory)
+
+add_subdirectory(CFOpenDirectory)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
+
+set(FRAMEWORK_OPENDIRECTORY_VERSION "A")
+
+generate_sdk_framework(OpenDirectory
+    VERSION ${FRAMEWORK_OPENDIRECTORY_VERSION}
+    HEADER "include/OpenDirectory"
+)
 
 add_framework(OpenDirectory
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_OPENDIRECTORY_VERSION}
 
     SOURCES
         src/OpenDirectory.m
