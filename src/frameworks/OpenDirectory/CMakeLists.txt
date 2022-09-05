@@ -43,4 +43,4 @@ add_framework(OpenDirectory
         Foundation
 )
 
-reexport(OpenDirectory CFOpenDirectory ${CMAKE_BINARY_DIR}/src/frameworks/CFOpenDirectory/CFOpenDirectory)
+reexport(OpenDirectory CFOpenDirectory ${CMAKE_BINARY_DIR}/src/frameworks/OpenDirectory/CFOpenDirectory/CFOpenDirectory)
