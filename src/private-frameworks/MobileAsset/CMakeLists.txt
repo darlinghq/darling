@@ -1,13 +1,25 @@
 project(MobileAsset)
 
+remove_sdk_framework(MobileAsset
+	PRIVATE
+)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(MobileAsset
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/MobileAsset"
+	PRIVATE
+)
 
 add_framework(MobileAsset
     FAT
     CURRENT_VERSION
     PRIVATE
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/MobileAsset.m

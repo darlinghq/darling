@@ -1,13 +1,25 @@
 project(DataDetectorsCore)
 
+remove_sdk_framework(DataDetectorsCore
+	PRIVATE
+)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "590.3.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(DataDetectorsCore
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/DataDetectorsCore"
+	PRIVATE
+)
 
 add_framework(DataDetectorsCore
     FAT
     CURRENT_VERSION
     PRIVATE
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/DataDetectorsCore.m

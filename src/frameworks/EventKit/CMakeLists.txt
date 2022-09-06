@@ -1,12 +1,21 @@
 project(EventKit)
 
+remove_sdk_framework(EventKit)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "809.4.2")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(EventKit
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/EventKit"
+)
 
 add_framework(EventKit
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/EventKit.m

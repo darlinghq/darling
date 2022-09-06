@@ -1,1 +1,0 @@
-../../../../../../../../../../../../../src/external/configd/SystemConfiguration.fproj/config_types.h

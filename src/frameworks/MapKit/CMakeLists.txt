@@ -1,12 +1,21 @@
 project(MapKit)
 
+remove_sdk_framework(MapKit)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "0.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(MapKit
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/MapKit"
+)
 
 add_framework(MapKit
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/MapKit.m

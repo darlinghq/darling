@@ -1,12 +1,21 @@
 project(DiscRecording)
 
+remove_sdk_framework(DiscRecording)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(DiscRecording
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/DiscRecording"
+)
 
 add_framework(DiscRecording
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/DiscRecording.m

@@ -1,13 +1,25 @@
 project(CoreUI)
 
+remove_sdk_framework(CoreUI
+	PRIVATE
+)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "608.3.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(CoreUI
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/CoreUI"
+	PRIVATE
+)
 
 add_framework(CoreUI
     FAT
     CURRENT_VERSION
     PRIVATE
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/CoreUI.m

@@ -1,5 +1,9 @@
 project(PackageKit)
 
+remove_sdk_framework(PackageKit
+	PRIVATE
+)
+
 add_definitions(-fobjc-arc)
 
 set(pk_sources
@@ -128,9 +132,17 @@ set(pk_sources
 	src/XARDirectoryEnumerator.m
 )
 
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(PackageKit
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/PackageKit"
+	PRIVATE
+)
+
 add_framework(PackageKit
 	PRIVATE
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 	CURRENT_VERSION
 	SOURCES
 		${pk_sources}

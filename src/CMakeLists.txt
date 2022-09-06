@@ -95,6 +95,7 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
 	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
 	${CMAKE_SOURCE_DIR}/framework-include
+	${CMAKE_SOURCE_DIR}/framework-private-include
 )
 
 include_directories(AFTER
@@ -278,7 +279,6 @@ add_subdirectory(libDiagnosticMessagesClient)
 add_subdirectory(libquit)
 add_subdirectory(external/lzfse)
 add_subdirectory(libsandbox)
-add_subdirectory(OpenDirectory)
 add_subdirectory(opendirectory_internal)
 add_subdirectory(external/cups)
 # add_subdirectory(external/glut)

@@ -1,15 +1,24 @@
 project(Metal)
 
+remove_sdk_framework(Metal)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
 
 file(GLOB MTL_C src/*.c)
 file(GLOB MTL_OBJC src/*.m)
 
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(Metal
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/Metal"
+)
+
 add_framework(Metal
 	FAT
 	CURRENT_VERSION
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
 		src/_MTLCommandBuffer.m

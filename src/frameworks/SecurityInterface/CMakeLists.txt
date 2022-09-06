@@ -1,12 +1,21 @@
 project(SecurityInterface)
 
+remove_sdk_framework(SecurityInterface)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "55109.30.2")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(SecurityInterface
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/SecurityInterface"
+)
 
 add_framework(SecurityInterface
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/SecurityInterface.m

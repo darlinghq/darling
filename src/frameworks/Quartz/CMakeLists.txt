@@ -1,5 +1,7 @@
 project(Quartz)
 
+remove_sdk_framework(Quartz)
+
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/QuickLookUI/include
 )
@@ -7,15 +9,22 @@ include_directories(
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
 
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(Quartz
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/Quartz"
+)
+
 add_framework(Quartz
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/Quartz.c
-	QuickLookUI/src/QLPreviewPanel.m
-	QuickLookUI/src/QLPreviewView.m
+	    QuickLookUI/src/QLPreviewPanel.m
+	    QuickLookUI/src/QLPreviewView.m
 
     DEPENDENCIES
         system

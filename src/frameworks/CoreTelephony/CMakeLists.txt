@@ -1,12 +1,21 @@
 project(CoreTelephony)
 
+remove_sdk_framework(CoreTelephony)
+
+set(FRAMEWORK_VERSION "A")
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "0.0.0")
+
+generate_sdk_framework(CoreTelephony
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/CoreTelephony"
+)
 
 add_framework(CoreTelephony
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/CoreTelephony.m

@@ -1,12 +1,21 @@
 project(Contacts)
 
+remove_sdk_framework(Contacts)
+
 set(DYLIB_COMPAT_VERSION "0.0.0")
 set(DYLIB_CURRENT_VERSION "0.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(Contacts
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/Contacts"
+)
 
 add_framework(Contacts
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/Contacts.m

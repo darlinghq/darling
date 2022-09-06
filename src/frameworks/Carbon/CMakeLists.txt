@@ -1,5 +1,14 @@
 project(Carbon)
 
+set(FRAMEWORK_VERSION "A")
+
+remove_sdk_framework(Carbon)
+
+get_path_preframework(carbon_sdk_path)
+append_path_sdk_subframework(${carbon_sdk_path} carbon_sdk_path Carbon
+    VERSION ${FRAMEWORK_VERSION}
+)
+
 add_subdirectory(CommonPanels)
 add_subdirectory(Help)
 add_subdirectory(HIToolbox)
@@ -13,10 +22,15 @@ add_subdirectory(SpeechRecognition)
 set(DYLIB_COMPAT_VERSION "2.0.0")
 set(DYLIB_CURRENT_VERSION "158.0.0")
 
+generate_sdk_framework(Carbon
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/Carbon"
+)
+
 add_framework(Carbon
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/Carbon.c

@@ -1,12 +1,21 @@
 project(InstantMessage)
 
+remove_sdk_framework(InstantMessage)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "800.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(InstantMessage
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/InstantMessage"
+)
 
 add_framework(InstantMessage
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/InstantMessage.m

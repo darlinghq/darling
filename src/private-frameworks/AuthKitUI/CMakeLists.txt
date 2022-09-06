@@ -1,13 +1,25 @@
 project(AuthKitUI)
 
+remove_sdk_framework(AuthKitUI
+    PRIVATE
+)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(AuthKitUI
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/AuthKitUI"
+	PRIVATE
+)
 
 add_framework(AuthKitUI
 	FAT
 	CURRENT_VERSION
 	PRIVATE
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
 		src/AuthKitUI.m

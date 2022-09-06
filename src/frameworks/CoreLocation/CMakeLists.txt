@@ -1,12 +1,21 @@
 project(CoreLocation)
 
+remove_sdk_framework(CoreLocation)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "2245.16.14")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(CoreLocation
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/CoreLocation"
+)
 
 add_framework(CoreLocation
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/CoreLocation.m

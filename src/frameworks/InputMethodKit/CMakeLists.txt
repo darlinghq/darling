@@ -1,12 +1,21 @@
 project(InputMethodKit)
 
+remove_sdk_framework(InputMethodKit)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "429.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(InputMethodKit
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/InputMethodKit"
+)
 
 add_framework(InputMethodKit
 	FAT
 	CURRENT_VERSION
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
 		src/InputMethodKit.m

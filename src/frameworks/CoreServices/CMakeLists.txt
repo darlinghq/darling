@@ -1,5 +1,7 @@
 project(CoreServices)
 
+remove_sdk_framework(CoreServices)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 include_directories(
@@ -8,6 +10,13 @@ include_directories(
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1239.200.12")
+
+set(FRAMEWORK_VERSION "A")
+
+get_path_preframework(coreservices_sdk_path)
+append_path_sdk_subframework(${coreservices_sdk_path} coreservices_sdk_path CoreServices
+    VERSION ${FRAMEWORK_VERSION}
+)
 
 add_subdirectory(src/AE)
 add_subdirectory(src/CarbonCore)
@@ -19,12 +28,19 @@ add_subdirectory(src/OSServices)
 add_subdirectory(src/SearchKit)
 add_subdirectory(src/SharedFileList)
 
+generate_sdk_framework(CoreServices
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/CoreServices"
+)
+
 add_framework(CoreServices
 	FAT
 	CURRENT_VERSION
-	VERSION "A"
+	VERSION ${FRAMEWORK_VERSION}
+
 	SOURCES
 		constants.m
+
 	DEPENDENCIES
 		FSEvents
 		LaunchServices
@@ -38,6 +54,7 @@ add_framework(CoreServices
 		system
 		CoreFoundation
 		${EXTRA_LIBS}
+
 	RESOURCES
 		Info.plist Info.plist
 )
