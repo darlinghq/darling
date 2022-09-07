@@ -186,7 +186,8 @@ compat, current = get_versions.search(version_line).groups()
 if library:
     cmake.write("set(DYLIB_INSTALL_NAME \"%s\")\n" % full_path)
 cmake.write("set(DYLIB_COMPAT_VERSION \"%s\")\n" % compat)
-cmake.write("set(DYLIB_CURRENT_VERSION \"%s\")\n\n" % current)
+cmake.write("set(DYLIB_CURRENT_VERSION \"%s\")\n" % current)
+cmake.write("set(FRAMEWORK_VERSION \"A\")\n\n")
 
 c_header.write("\n#ifndef _%s_H_\n#define _%s_H_\n\n" % (target_name, target_name))
 
@@ -267,13 +268,23 @@ if library:
     cmake.write("target_link_libraries(%s %s)\n" % (target_name, libraries))
     cmake.write("install(TARGETS %s DESTINATION libexec/darling/usr/lib)\n" % target_name)
 else:
+    cmake.write("remove_sdk_framework(%s\n" % target_name)
+    if private_framework:
+        cmake.write("    PRIVATE\n")
+    cmake.write(")\n\n")
+    cmake.write("generate_sdk_framework(%s\n" % target_name)
+    cmake.write("    VERSION $\{FRAMEWORK_VERSION\}\n")
+    cmake.write("    HEADER \"include/%s\"\n" % target_name)
+    if private_framework:
+        cmake.write("    PRIVATE\n")
+    cmake.write(")\n\n")
     cmake.write("add_framework(%s\n" % target_name)
     cmake.write("    FAT\n    CURRENT_VERSION\n")
     if iossupport_system:
         cmake.write("    IOSSUPPORT\n")
     if private_framework:
         cmake.write("    PRIVATE\n")
-    cmake.write("    VERSION \"A\"\n\n")
+    cmake.write("    VERSION $\{FRAMEWORK_VERSION\}\n\n")
     cmake.write("    SOURCES\n")
     cmake.write("        src/%s." % target_name + ("m" if uses_objc else "c") + "\n")
     if uses_objc:
