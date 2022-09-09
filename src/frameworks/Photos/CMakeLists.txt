@@ -2,11 +2,20 @@ project(Photos)
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "161.0.120")
+set(FRAMEWORK_VERSION "A")
+
+remove_sdk_framework(Photos
+)
+
+generate_sdk_framework(Photos
+    VERSION ${FRAMEWORK_VERSION}
+    HEADER "include/Photos"
+)
 
 add_framework(Photos
     FAT
     CURRENT_VERSION
-    VERSION "A"
+    VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
         src/Photos.m
