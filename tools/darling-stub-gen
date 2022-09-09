@@ -273,7 +273,7 @@ else:
         cmake.write("    PRIVATE\n")
     cmake.write(")\n\n")
     cmake.write("generate_sdk_framework(%s\n" % target_name)
-    cmake.write("    VERSION $\{FRAMEWORK_VERSION\}\n")
+    cmake.write("    VERSION ${FRAMEWORK_VERSION}\n")
     cmake.write("    HEADER \"include/%s\"\n" % target_name)
     if private_framework:
         cmake.write("    PRIVATE\n")
@@ -284,7 +284,7 @@ else:
         cmake.write("    IOSSUPPORT\n")
     if private_framework:
         cmake.write("    PRIVATE\n")
-    cmake.write("    VERSION $\{FRAMEWORK_VERSION\}\n\n")
+    cmake.write("    VERSION ${FRAMEWORK_VERSION}\n\n")
     cmake.write("    SOURCES\n")
     cmake.write("        src/%s." % target_name + ("m" if uses_objc else "c") + "\n")
     if uses_objc:
