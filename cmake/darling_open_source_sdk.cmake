@@ -177,20 +177,22 @@ function(generate_sdk_subframework name)
         ${ARGN}
     )
 
-    if (SDK_PRIVATE)
-        set(PRIVATE "PRIVATE")
-    else (SDK_PRIVATE)
-        set(PRIVATE "")
-    endif (SDK_PRIVATE)
+    if (REGENERATE_SDK)
+        if (SDK_PRIVATE)
+            set(PRIVATE "PRIVATE")
+        else (SDK_PRIVATE)
+            set(PRIVATE "")
+        endif (SDK_PRIVATE)
 
-    internal_generate_developer_framework(${name}
-        "${SDK_BASE_PATH}"
-        VERSION ${SDK_VERSION}
-        HEADER ${SDK_HEADER}
-    )
+        internal_generate_developer_framework(${name}
+            "${SDK_BASE_PATH}"
+            VERSION ${SDK_VERSION}
+            HEADER ${SDK_HEADER}
+        )
 
-    internal_generate_framework_include(${name}
-        "${SDK_BASE_PATH}"
-        ${PRIVATE}
-    )
+        internal_generate_framework_include(${name}
+            "${SDK_BASE_PATH}"
+            ${PRIVATE}
+        )
+    endif (REGENERATE_SDK)
 endfunction(generate_sdk_subframework)
