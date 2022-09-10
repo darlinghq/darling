@@ -102,8 +102,6 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/external/lkm/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libMobileGestalt/include
-	${CMAKE_CURRENT_SOURCE_DIR}/frameworks/include
-	${CMAKE_CURRENT_SOURCE_DIR}/private-frameworks/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lib/include
 
 	# necessary because this is the expected behavior when using `xml2-config --cflags`
