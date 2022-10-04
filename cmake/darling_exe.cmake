@@ -12,7 +12,7 @@ FUNCTION(add_darling_executable exe)
 
 	add_executable(${exe} ${files})
 	set_property(TARGET ${exe} APPEND_STRING PROPERTY
-		LINK_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -nostdlib ${CMAKE_BINARY_DIR}/src/csu/CMakeFiles/csu.dir/crt1.10.6.o ")
+		LINK_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -nostdlib ${CMAKE_BINARY_DIR}/src/external/csu/CMakeFiles/csu.dir/crt1.10.6.o ")
 
 	if (BUILD_TARGET_64BIT)
 		target_compile_options(${exe} PRIVATE -arch ${APPLE_ARCH_64BIT})

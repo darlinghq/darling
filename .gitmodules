@@ -396,3 +396,6 @@
 [submodule "src/external/libnotify"]
 	path = src/external/libnotify
 	url = ../darling-Libnotify.git
+[submodule "src/external/csu"]
+	path = src/external/csu
+	url = ../darling-Csu.git
