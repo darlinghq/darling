@@ -43,7 +43,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "The version of macOS we're s
 
 project(darling)
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 enable_language(ASM)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
