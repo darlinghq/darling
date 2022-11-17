@@ -20,6 +20,8 @@
 #error Not implemented
 #endif
 
+#include <darling-config.h>
+
 // interestingly enough, there are no existing tools that can perform this conversion (ELF coredump to Mach-O coredump).
 // neither objcopy nor llvm-objcopy support Mach-O conversion like that, nor does objconv (it considers coredumps to be executables and refuses to operate on them).
 // porting our existing code from the LKM is simple enough, so that's what we do here.
@@ -114,6 +116,25 @@ static const void* note_data(const Elf64_Nhdr* note) {
 static const Elf64_Nhdr* find_next_note(const Elf64_Nhdr* note) {
 	uint64_t length = sizeof(*note) + round_up_pow2(note->n_namesz, 4) + round_up_pow2(note->n_descsz, 4);
 	return (Elf64_Nhdr*)((char*)note + length);
+};
+
+// first tries to open the file directly, then tries to open the file in the lower layer of the overlay
+// (because if we're outside the container, the overlay won't be mounted, but the core dump paths would refer to it)
+static int open_file(struct coredump_params* cprm, const char* filename, size_t filename_length) {
+	int fd = -1;
+
+	// try to open it directly first
+	fd = open(filename, O_RDONLY);
+
+	// if that fails, try to see if it refers to the mounted prefix; if it does, try the lower layer
+	if (fd < 0 && filename_length >= cprm->prefix_length && strncmp(filename, cprm->prefix, cprm->prefix_length) == 0) {
+		char* temp_filename = malloc(sizeof(LIBEXEC_PATH "/") + (filename_length - cprm->prefix_length));
+		sprintf(temp_filename, "%s/%s", LIBEXEC_PATH, &filename[cprm->prefix_length]);
+		fd = open(temp_filename, O_RDONLY);
+		free(temp_filename);
+	}
+
+	return fd;
 };
 
 void macho_coredump(struct coredump_params* cprm);
@@ -288,7 +309,7 @@ int main(int argc, char** argv) {
 
 		// try to determine if this is the main executable file
 		if (strncmp(filename, "/dev/", sizeof("/dev/") - 1) != 0) {
-			int tmpfd = open(filename, O_RDONLY);
+			int tmpfd = open_file(&cprm, filename, strlen(filename));
 			if (tmpfd >= 0) {
 				struct mach_header_64 mh;
 				if (read(tmpfd, &mh, sizeof(mh)) == sizeof(mh) && mh.filetype == MH_EXECUTE) {
@@ -393,29 +414,22 @@ int main(int argc, char** argv) {
 				if (!vm_area->filename) {
 					if (vm_area->protection == 0) {
 						// if the area has no protection flags, it most likely wasn't included anywhere.
-						// no need to warn.
-					} else if (vm_area->memory_address == 0) {
-						// ignore it if starts at 0; that's most likely the __PAGEZERO segment.
-						// no need to warn.
-					} else {
-						// otherwise, warn.
-						printf("warning: missing NT_FILE entry for memory region 0x%zx-%zx (%lu bytes)\n", vm_area->memory_address, vm_area->memory_address + vm_area->memory_size, vm_area->memory_size);
+						// no need to include it in the core dump. this also handles the case of __PAGEZERO.
+						vm_area->valid = false;
 					}
+
+					// otherwise, it's valid, just not present anywhere.
+					// this can occur for pages that are allocated but never accessed, so there would be no reason to include them in the core dump.
+					// in this case, the program header literally indicates that the region's file size is 0, since it's unnecessary to include anywhere,
+					// not necessarily that it resides in a file.
+
 					vm_area->file_size = 0;
-					vm_area->valid = false;
 				}
 			} else {
 				// contents contained within this corefile
 				vm_area->filename = NULL;
 				vm_area->filename_length = 0;
 				vm_area->file_size = program_header->p_filesz;
-			}
-
-			if (vm_area->memory_address == 0) {
-				// overrides for the __PAGEZERO segment
-				vm_area->valid = false;
-				vm_area->file_size = 0;
-				vm_area->protection = 0;
 			}
 		}
 	}
@@ -564,6 +578,15 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 	unsigned int segs = cprm->vm_area_count;
 	unsigned int threads = cprm->thread_info_count;
 
+	for (size_t i = 0; i < cprm->vm_area_count; ++i) {
+		struct vm_area* vma = &cprm->vm_areas[i];
+
+		if (!vma->valid) {
+			// we don't dump inaccessible/invalid regions, so remove them from the count
+			--segs;
+		}
+	}
+
 	struct mach_header mh;
 
 	mh.magic = MH_MAGIC;
@@ -585,9 +608,16 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 
 	uint32_t file_offset = mh.sizeofcmds + sizeof(mh);
 
+	// TODO: maybe align the initial offset to 0x1000
+
 	for (size_t i = 0; i < cprm->vm_area_count; ++i) {
 		const struct vm_area* vma = &cprm->vm_areas[i];
 		struct segment_command sc;
+
+		if (!vma->valid) {
+			// ignore inaccessible/invalid regions (like the __PAGEZERO segment, which may be really large)
+			continue;
+		}
 
 		sc.cmd = LC_SEGMENT;
 		sc.cmdsize = sizeof(sc);
@@ -598,10 +628,7 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 		sc.vmsize = vma->memory_size;
 		sc.fileoff = file_offset;
 
-		if (sc.vmaddr > 0) // avoid dumping the __PAGEZERO segment which may be really large
-			sc.filesize = vma->file_size;
-		else
-			sc.filesize = 0;
+		sc.filesize = (vma->file_size == 0) ? vma->memory_size : vma->file_size;
 		sc.initprot = 0;
 
 		if (vma->protection & PROT_READ)
@@ -663,6 +690,15 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 	unsigned int threads = cprm->thread_info_count;
 	struct mach_header_64 mh;
 
+	for (size_t i = 0; i < cprm->vm_area_count; ++i) {
+		struct vm_area* vma = &cprm->vm_areas[i];
+
+		if (!vma->valid) {
+			// we don't dump inaccessible/invalid regions, so remove them from the count
+			--segs;
+		}
+	}
+
 	mh.magic = MH_MAGIC_64;
 #ifdef __x86_64__
 	mh.cputype = CPU_TYPE_X86_64;
@@ -679,7 +715,7 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 	mh.reserved = 0;
 
 	if (cprm->main_executable_path) {
-		int tmpfd = open(cprm->main_executable_path, O_RDONLY);
+		int tmpfd = open_file(cprm, cprm->main_executable_path, cprm->main_executable_path_length);
 		if (tmpfd >= 0) {
 			struct mach_header_64 that_mh;
 			if (read(tmpfd, &that_mh, sizeof(that_mh)) == sizeof(that_mh)) {
@@ -701,6 +737,11 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 		struct vm_area* vma = &cprm->vm_areas[i];
 		struct segment_command_64 sc;
 
+		if (!vma->valid) {
+			// ignore inaccessible/invalid regions (like the __PAGEZERO segment, which may be really large)
+			continue;
+		}
+
 		sc.cmd = LC_SEGMENT_64;
 		sc.cmdsize = sizeof(sc);
 		sc.segname[0] = 0;
@@ -712,10 +753,7 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 
 		vma->expected_offset = sc.fileoff;
 
-		if (vma->valid) // avoid dumping the __PAGEZERO segment which may be really large
-			sc.filesize = vma->file_size;
-		else
-			sc.filesize = 0;
+		sc.filesize = (vma->file_size == 0) ? vma->memory_size : vma->file_size;
 		sc.initprot = 0;
 
 		if (vma->protection & PROT_READ)
@@ -795,65 +833,67 @@ void macho_coredump(struct coredump_params* cprm)
 		const struct vm_area* vma = &cprm->vm_areas[i];
 		unsigned long addr;
 
+		if (!vma->valid) {
+			continue;
+		}
+
 		uint64_t curr = dump_offset_get(cprm);
 		if (curr != vma->expected_offset) {
 			fprintf(stderr, "Expected offset %lx, got offset %lx\n", vma->expected_offset, curr);
 			exit(EXIT_FAILURE);
 		}
 
-		if (!vma->valid) {
-			if (!dump_skip(cprm, vma->file_size))
+		if (vma->file_size == 0) {
+			// this region needs to be zeroed out
+			//
+			// it's likely a region that was allocated with mmap but never accessed,
+			// so it remained zero-filled and there was no need to include it in the ELF core file.
+			if (!dump_skip(cprm, vma->memory_size))
 				exit(EXIT_FAILURE);
-		} else {
-			if (vma->filename) {
-				if (strncmp(vma->filename, "/dev/", sizeof("/dev/") - 1) == 0) {
-					printf("Warning: skipping device \"%s\"\n", vma->filename);
-					if (!dump_skip(cprm, vma->file_size)) {
-						exit(EXIT_FAILURE);
-					}
-					continue;
-				}
+			continue;
+		}
 
-				int fd = -1;
-				fd = open(vma->filename, O_RDONLY);
-				if (fd < 0 && vma->filename_length >= cprm->prefix_length && strncmp(vma->filename, cprm->prefix, cprm->prefix_length) == 0) {
-					char* filename = malloc(sizeof("/usr/local/libexec/darling/") + (vma->filename_length - cprm->prefix_length));
-					sprintf(filename, "%s/%s", "/usr/local/libexec/darling", &vma->filename[cprm->prefix_length]);
-					fd = open(filename, O_RDONLY);
-					free(filename);
-				}
-				if (fd < 0) {
-					fprintf(stderr, "Warning: failed to open %s: %d (%s)\n", vma->filename, errno, strerror(errno));
-					//exit(EXIT_FAILURE);
-					// just zero it out
-					if (!dump_skip(cprm, vma->file_size)) {
-						exit(EXIT_FAILURE);
-					}
-					continue;
-				}
-
-				uintptr_t aligned_offset = round_down_pow2(vma->file_offset, sysconf(_SC_PAGESIZE));
-				size_t aligned_size = round_up_pow2(vma->file_size, sysconf(_SC_PAGESIZE));
-				void* mapping = mmap(NULL, aligned_size, PROT_READ, MAP_PRIVATE, fd, aligned_offset);
-				if (mapping == MAP_FAILED) {
-					perror("mmap");
+		if (vma->filename) {
+			if (strncmp(vma->filename, "/dev/", sizeof("/dev/") - 1) == 0) {
+				printf("Warning: skipping device \"%s\"\n", vma->filename);
+				if (!dump_skip(cprm, vma->file_size)) {
 					exit(EXIT_FAILURE);
 				}
-				const void* start = (const char*)mapping + (vma->file_offset - aligned_offset);
-
-				if (!dump_emit(cprm, start, vma->file_size))
-					exit(EXIT_FAILURE);
-
-				if (munmap(mapping, aligned_size) < 0) {
-					perror("munmap");
-					exit(EXIT_FAILURE);
-				}
-
-				close(fd);
-			} else {
-				if (!dump_emit(cprm, (const char*)cprm->input_corefile_mapping + vma->file_offset, vma->file_size))
-					exit(EXIT_FAILURE);
+				continue;
 			}
+
+			int fd = open_file(cprm, vma->filename, vma->filename_length);
+			if (fd < 0) {
+				fprintf(stderr, "Warning: failed to open %s: %d (%s)\n", vma->filename, errno, strerror(errno));
+				//exit(EXIT_FAILURE);
+				// just zero it out
+				if (!dump_skip(cprm, vma->file_size)) {
+					exit(EXIT_FAILURE);
+				}
+				continue;
+			}
+
+			uintptr_t aligned_offset = round_down_pow2(vma->file_offset, sysconf(_SC_PAGESIZE));
+			size_t aligned_size = round_up_pow2(vma->file_size + (vma->file_offset - aligned_offset), sysconf(_SC_PAGESIZE));
+			void* mapping = mmap(NULL, aligned_size, PROT_READ, MAP_PRIVATE, fd, aligned_offset);
+			if (mapping == MAP_FAILED) {
+				perror("mmap");
+				exit(EXIT_FAILURE);
+			}
+			const void* start = (const char*)mapping + (vma->file_offset - aligned_offset);
+
+			if (!dump_emit(cprm, start, vma->file_size))
+				exit(EXIT_FAILURE);
+
+			if (munmap(mapping, aligned_size) < 0) {
+				perror("munmap");
+				exit(EXIT_FAILURE);
+			}
+
+			close(fd);
+		} else {
+			if (!dump_emit(cprm, (const char*)cprm->input_corefile_mapping + vma->file_offset, vma->file_size))
+				exit(EXIT_FAILURE);
 		}
 	}
 }

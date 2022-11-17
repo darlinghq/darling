@@ -1,6 +1,6 @@
 project(hosttools)
 
-set(DARLING_COREDUMP_SANITIZE OFF)
+option(DARLING_COREDUMP_SANITIZE "Enable/disable ASAN and UBSAN in darling-coredump" OFF)
 
 add_executable(darling-coredump
 	src/coredump/main.c
