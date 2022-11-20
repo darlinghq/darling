@@ -100,6 +100,16 @@ extern FSEventStreamRef FSEventStreamCreate(
 		CFTimeInterval latency,
 		FSEventStreamCreateFlags flags);
 
+extern FSEventStreamRef FSEventStreamCreateRelativeToDevice(
+		CFAllocatorRef allocator,
+		FSEventStreamCallback callback,
+		FSEventStreamContext *context,
+		dev_t deviceToWatch,
+		CFArrayRef pathsToWatchRelativeToDevice,
+		FSEventStreamEventId sinceWhen,
+		CFTimeInterval latency,
+		FSEventStreamCreateFlags flags);
+
 extern CF_RETURNS_RETAINED CFArrayRef FSEventStreamCopyPathsBeingWatched(ConstFSEventStreamRef streamRef);
 
 extern FSEventStreamEventId FSEventStreamGetLatestEventId(ConstFSEventStreamRef streamRef);

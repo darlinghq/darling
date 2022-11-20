@@ -106,6 +106,9 @@ typedef enum _generation_option_enum generation_option_t;
 
 kern_return_t aks_generation(keybag_handle_t handle, generation_option_t option, uint32_t* current);
 
+const uint8_t * aks_ref_key_get_blob(aks_ref_key_t refkey, size_t *out_blob_len);
+const uint8_t * aks_ref_key_get_external_data(aks_ref_key_t refkey, size_t *out_external_data_len);
+
 #ifdef __cplusplus
 }
 #endif

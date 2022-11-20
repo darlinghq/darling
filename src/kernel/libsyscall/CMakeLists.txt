@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.10)
 
 enable_language(C ASM)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -nostdinc -include ${CMAKE_CURRENT_SOURCE_DIR}/nolegacy.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -nostdinc -include ${CMAKE_CURRENT_SOURCE_DIR}/nolegacy.h -Wno-error=int-conversion")
 include_directories(BEFORE
 	"${CMAKE_CURRENT_SOURCE_DIR}/wrappers"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mach"

@@ -25,7 +25,7 @@
 // `OTATrustUtilities.m` only imports that on iOS, but still expects this to be
 // defined on macOS (i figure it's probably an error in Apple's code,
 // because even `SecAKSWrappers.c` uses a different constant on macOS)
-#define kMobileKeyBagLockStatusNotificationID (-1)
+#define kMobileKeyBagLockStatusNotificationID "kMobileKeyBagLockStatusNotificationID"
 
 // seem to be implicitly depended on by `OTATrustUtilities.m` in Security
 #import <MobileAsset/ASAsset.h>

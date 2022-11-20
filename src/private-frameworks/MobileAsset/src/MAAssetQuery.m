@@ -21,6 +21,11 @@
 
 @implementation MAAssetQuery
 
+- (MAQueryResult)queryMetaDataSync {
+    NSLog(@"Stub called: queryMetaDataSync in %@", [self class]);
+    return MAQuerySuccessful;
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];

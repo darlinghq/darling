@@ -6,7 +6,7 @@
 
 void _darling_initialize_commpage(void)
 {
-	mmap(_COMM_PAGE_START_ADDRESS, _COMM_PAGE_AREA_LENGTH, PROT_READ|PROT_WRITE,
+	mmap((void*)_COMM_PAGE_START_ADDRESS, _COMM_PAGE_AREA_LENGTH, PROT_READ|PROT_WRITE,
 		MAP_ANON | MAP_PRIVATE, -1, 0);
 
 	*((uint8_t*)_COMM_PAGE_NCPUS) = 1;

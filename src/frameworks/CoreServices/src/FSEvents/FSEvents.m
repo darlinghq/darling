@@ -37,6 +37,20 @@ FSEventStreamRef FSEventStreamCreate(
 									callback: callback];
 }
 
+extern FSEventStreamRef FSEventStreamCreateRelativeToDevice(
+		CFAllocatorRef allocator,
+		FSEventStreamCallback callback,
+		FSEventStreamContext *context,
+		dev_t deviceToWatch,
+		CFArrayRef pathsToWatchRelativeToDevice,
+		FSEventStreamEventId sinceWhen,
+		CFTimeInterval latency,
+		FSEventStreamCreateFlags flags)
+{
+	printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return nil;
+}
+
 CFArrayRef FSEventStreamCopyPathsBeingWatched(ConstFSEventStreamRef streamRef)
 {
 	FSEventsImpl* impl = (FSEventsImpl*) streamRef;

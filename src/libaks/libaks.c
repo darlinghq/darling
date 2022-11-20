@@ -83,3 +83,13 @@ kern_return_t aks_load_bag(const void* data, int length, keybag_handle_t* handle
     printf("STUB %s\n", __PRETTY_FUNCTION__);
 	return KERN_FAILURE;
 };
+
+const uint8_t * aks_ref_key_get_blob(aks_ref_key_t refkey, size_t *out_blob_len) {
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+	return NULL;
+}
+
+const uint8_t * aks_ref_key_get_external_data(aks_ref_key_t refkey, size_t *out_external_data_len) {
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+	return NULL;
+}

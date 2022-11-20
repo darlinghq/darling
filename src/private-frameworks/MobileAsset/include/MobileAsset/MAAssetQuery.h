@@ -31,6 +31,8 @@ typedef NS_ENUM(NSInteger, MAQueryResult) {
 
 @interface MAAssetQuery : NSObject
 
+- (MAQueryResult) queryMetaDataSync;
+
 // guessing it's readonly, since it wouldn't really make sense for clients to be able to
 // write results to a query
 @property (readonly) NSArray<MAAsset*>* results;
