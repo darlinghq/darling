@@ -21,4 +21,6 @@
 
 @interface NSLocale (InternationalSupportExtensions)
 
++ (nonnull NSArray<NSString *> *)minimizedLanguagesFromLanguages:(nonnull NSArray<NSString *> *)languages;
+
 @end

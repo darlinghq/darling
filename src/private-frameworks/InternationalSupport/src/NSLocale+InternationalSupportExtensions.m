@@ -21,4 +21,9 @@
 
 @implementation NSLocale (InternationalSupportExtensions)
 
++ (nonnull NSArray<NSString *> *)minimizedLanguagesFromLanguages:(nonnull NSArray<NSString *> *)languages {
+    NSLog(@"Stub called: minimizedLanguagesFromLanguages in NSLocale (InternationalSupportExtensions)");
+    return languages;
+}
+
 @end
