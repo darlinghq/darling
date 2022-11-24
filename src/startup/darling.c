@@ -25,24 +25,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <alloca.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <dirent.h>
 #include <sys/stat.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <sched.h>
-#include <sys/mount.h>
-#include <sys/wait.h>
-#include <sys/prctl.h>
-#include <sys/utsname.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
-#include <sys/inotify.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <getopt.h>
 #include <termios.h>
-#include <ctype.h>
 #include <pty.h>
 #include <pwd.h>
 #include "../shellspawn/shellspawn.h"
@@ -55,26 +46,20 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // (dunno which one is really responsible for this).
 #define USE_LINUX_4_11_HACK 1
 
-const char* DARLING_INIT_COMM = "darling-init";
 char *prefix;
 uid_t g_originalUid, g_originalGid;
 bool g_fixPermissions = false;
-char **g_argv, **g_envp;
 char g_workingDirectory[4096];
 
-int main(int argc, char ** argv, char ** envp)
+int main(int argc, char ** argv)
 {
 	pid_t pidInit;
-	int wstatus;
 
 	if (argc <= 1)
 	{
 		showHelp(argv[0]);
 		return 1;
 	}
-
-	g_argv = argv;
-	g_envp = envp;
 
 	if (geteuid() != 0)
 	{
@@ -161,7 +146,6 @@ int main(int argc, char ** argv, char ** envp)
 		// this is where we ask it to shut down nicely
 
 		char path_buf[128];
-		char read_buf[128];
 		FILE* file;
 		pid_t launchd_pid;
 		snprintf(path_buf, sizeof(path_buf), "/proc/%d/task/%d/children", pidInit, pidInit);
@@ -180,7 +164,6 @@ int main(int argc, char ** argv, char ** envp)
 		return 0;
 	}
 
-start_init:
 	// If prefix's init is not running, start it up
 	if (pidInit == 0)
 	{
@@ -220,7 +203,6 @@ start_init:
 	else
 	{
 		char *fullPath;
-		char** child_argv;
 		char *path = realpath(argv[1], NULL);
 
 		if (path == NULL)
@@ -318,7 +300,6 @@ static void pushShellspawnCommandFDs(int sockfd, shellspawn_cmd_type_t type, con
 	msg.msg_iovlen = 1;
 
 	cmptr = CMSG_FIRSTHDR(&msg);
-
 	cmptr->cmsg_len = CMSG_LEN(sizeof(int) * 3);
 	cmptr->cmsg_level = SOL_SOCKET;
 	cmptr->cmsg_type = SCM_RIGHTS;
@@ -555,7 +536,6 @@ void spawnShell(const char** argv)
 {
 	size_t total_len = 0;
 	int count;
-	char buffer1[4096];
 	char buffer2[4096];
 	int sockfd;
 	struct sockaddr_un addr;
@@ -657,7 +637,7 @@ void spawnShell(const char** argv)
 		fds[1] = STDOUT_FILENO;
 	if (master == -1 || !isatty(STDERR_FILENO))
 		fds[2] = STDERR_FILENO;
-	
+
 	pushShellspawnCommandFDs(sockfd, SHELLSPAWN_GO, fds);
 	close(fds[0]);
 
@@ -701,41 +681,11 @@ void missingSetuidRoot(void)
 	fprintf(stderr, "Darling needs this in order to create mount and PID namespaces and to perform mounts.\n");
 }
 
-static uint32_t linux_release(void)
-{
-	struct utsname uts;
-	if (uname(&uts) == 0)
-	{
-		char* p = uts.release;
-		uint32_t version = 0;
-		int digits = 0;
-
-		while (*p && digits < 3)
-		{
-			if (isdigit(*p))
-			{
-				version <<= 8;
-				version |= strtol(p, &p, 10);
-				digits++;
-			}
-			else
-				p++;
-		}
-
-		return version;
-	}
-	return 0;
-}
-
-#define LINUX_RELEASE(a,b,c) ((a << 16) | (b << 8) | (c))
-
 pid_t spawnInitProcess(void)
 {
 	pid_t pid;
 	int pipefd[2];
-	char path[1024];
 	char buffer[1];
-	FILE *file;
 
 	if (pipe(pipefd) == -1)
 	{
