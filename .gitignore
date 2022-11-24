@@ -49,3 +49,6 @@ debian/darling.substvars
 debian/darling/
 debian/debhelper-build-stamp
 debian/tmp/
+
+.idea
+cmake-build-*
