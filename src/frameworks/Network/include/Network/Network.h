@@ -24,7 +24,6 @@
 #ifdef __OBJC__
 #import <Foundation/Foundation.h>
 
-#import <Network/NSURLSessionDelegate.h>
 #import <Network/NWPrettyDescription.h>
 #import <Network/NWTCPListenerDelegate.h>
 #import <Network/NWAWDLibnetcoreMPTCPStatsReport.h>

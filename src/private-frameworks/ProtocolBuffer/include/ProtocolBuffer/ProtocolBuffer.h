@@ -23,8 +23,6 @@
 
 #import <Foundation/Foundation.h>
 
-#import <ProtocolBuffer/NSURLSessionDataDelegate.h>
-#import <ProtocolBuffer/NSURLSessionDelegate.h>
 #import <ProtocolBuffer/PBDataReader.h>
 #import <ProtocolBuffer/PBTextWriter.h>
 #import <ProtocolBuffer/PBMutableData.h>

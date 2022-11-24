@@ -25,8 +25,6 @@
 
 #import <MediaToolbox/CALayerDelegate.h>
 #import <MediaToolbox/FigPiPableLayer.h>
-#import <MediaToolbox/NSURLSessionDataDelegate.h>
-#import <MediaToolbox/NSURLSessionDelegate.h>
 #import <MediaToolbox/FigCaptionLayerPrivate.h>
 #import <MediaToolbox/FigCaptionLayer.h>
 #import <MediaToolbox/FigCaptionRowLayer.h>

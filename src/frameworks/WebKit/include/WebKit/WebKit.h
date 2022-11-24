@@ -36,9 +36,6 @@
 #import <WebKit/NSTouchBarProvider.h>
 #import <WebKit/NSURLAuthenticationChallengeSender.h>
 #import <WebKit/NSURLConnectionDelegate.h>
-#import <WebKit/NSURLSessionDataDelegate.h>
-#import <WebKit/NSURLSessionDelegate.h>
-#import <WebKit/NSURLSessionTaskDelegate.h>
 #import <WebKit/NSUserInterfaceValidations.h>
 #import <WebKit/NSWindowDelegate.h>
 #import <WebKit/PDFLayerControllerDelegate.h>
