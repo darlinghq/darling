@@ -19,6 +19,9 @@
 #define SOFT_LINK_NSSTRINGIFY(x) @ SOFT_LINK_STRINGIFY_INTERNAL1(x)
 #define SOFT_LINK_CFSTRINGIFY(x) CFSTR(SOFT_LINK_STRINGIFY_INTERNAL1(x))
 
+// STUB/HACK: For now just redirect to SOFT_LINK_FRAMEWORK
+#define SOFT_LINK_OPTIONAL_FRAMEWORK(_location, _name) SOFT_LINK_FRAMEWORK(_location,_name)
+
 #define SOFT_LINK_FRAMEWORK(_location, _name) \
 	static CFBundleRef softlink_get_cfbundle_ ## _name () { \
 		static CFBundleRef bundle = NULL; \
