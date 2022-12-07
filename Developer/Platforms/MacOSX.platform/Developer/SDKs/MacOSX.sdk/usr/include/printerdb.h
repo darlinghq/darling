@@ -1,1 +1,1 @@
-../../../../../../../../src/libinfo/lookup.subproj/printerdb.h
+../../../../../../../../src/external/Libinfo/lookup.subproj/printerdb.h

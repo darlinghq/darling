@@ -1,1 +1,1 @@
-../../../../../../../../src/libinfo/lookup.subproj/pwd.h
+../../../../../../../../src/external/Libinfo/lookup.subproj/pwd.h

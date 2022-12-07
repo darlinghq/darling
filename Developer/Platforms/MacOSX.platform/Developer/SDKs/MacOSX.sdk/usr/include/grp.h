@@ -1,1 +1,1 @@
-../../../../../../../../src/libinfo/lookup.subproj/grp.h
+../../../../../../../../src/external/Libinfo/lookup.subproj/grp.h
