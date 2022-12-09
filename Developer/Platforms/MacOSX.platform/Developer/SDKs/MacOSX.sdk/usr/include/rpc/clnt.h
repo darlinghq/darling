@@ -1,1 +1,1 @@
-../../../../../../../../../src/libinfo/rpc.subproj/clnt.h
+../../../../../../../../../src/external/Libinfo/rpc.subproj/clnt.h

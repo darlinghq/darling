@@ -1,1 +1,1 @@
-../../../../../../../../../src/libinfo/nis.subproj/yp_prot.h
+../../../../../../../../../src/external/Libinfo/nis.subproj/yp_prot.h
