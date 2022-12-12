@@ -509,3 +509,8 @@ BOOL CP_SupportsBootstrapToken(void) {
 NSString* CP_GetBootstrapToken(void* something) {
     return nil;
 };
+
+NSString* CP_GetBootstrapTokenWithOptions(NSDictionary<NSString*,NSNumber*> *token, void* unknown) {
+    if (verbose) puts("STUB: CP_GetBootstrapTokenWithOptions called");
+    return nil;
+}

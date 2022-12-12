@@ -24,5 +24,6 @@
 
 BOOL CP_SupportsBootstrapToken(void);
 NSString* CP_GetBootstrapToken(void* something);
+NSString* CP_GetBootstrapTokenWithOptions(NSDictionary<NSString*,NSNumber*> *token, void* unknown);
 
 #endif // _CONFIGURATIONPROFILES_CPBOOTSTRAPTOKEN_H_
