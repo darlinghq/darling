@@ -329,6 +329,7 @@ add_subdirectory(external/libauto)
 add_subdirectory(external/WTF)
 add_subdirectory(external/bmalloc)
 add_subdirectory(external/dtrace)
+add_subdirectory(external/metal)
 
 if(FULL_BUILD)
 add_subdirectory(external/JavaScriptCore)
