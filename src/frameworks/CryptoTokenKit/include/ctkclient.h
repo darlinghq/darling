@@ -68,6 +68,9 @@ CFDictionaryRef TKTokenControl(TKTokenRef token, CFDictionaryRef attributes, CFE
 CF_EXPORT
 CFArrayRef TKTokenCopyIdentities(TKTokenRef token, int usage, CFErrorRef *error);
 
+CF_EXPORT
+void TKBindUserAm(CFStringRef cf_user, CFDataRef pub_key_hash, void *unknown);
+
 CF_EXTERN_C_END
 CF_IMPLICIT_BRIDGING_DISABLED
 
