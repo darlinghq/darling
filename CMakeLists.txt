@@ -110,6 +110,25 @@ option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)
 option(ADDITIONAL_PACKAGES "Include additional pacakges not included by default in a standard macOS installation" OFF)
 
+set(ENABLE_METAL AUTO CACHE STRING "Build Darling with Metal support")
+set_property(CACHE ENABLE_METAL PROPERTY STRINGS AUTO ON OFF)
+
+string(TOLOWER "${ENABLE_METAL}" BUILD_METAL)
+
+if(BUILD_METAL STREQUAL "auto")
+	# check if Vulkan and LLVM are available
+	find_program(LLVM_CONFIG_PROGRAM llvm-config)
+	find_package(Vulkan)
+
+	if(LLVM_CONFIG_PROGRAM AND Vulkan_FOUND)
+		set(BUILD_METAL ON)
+		message("Found required libraries; building with Metal support")
+	else()
+		set(BUILD_METAL OFF)
+		message("Did not find required libraries (Vulkan and LLVM); building without Metal support")
+	endif()
+endif()
+
 FindDsymutil()
 find_package(Setcap REQUIRED)
 
