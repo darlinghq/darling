@@ -125,4 +125,5 @@ add_framework(AuthenticationServices
 		system
 		objc
 		Foundation
+		AppKit
 )
