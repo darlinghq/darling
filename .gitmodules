@@ -402,3 +402,6 @@
 [submodule "src/external/Libinfo"]
 	path = src/external/Libinfo
 	url = ../darling-Libinfo.git
+[submodule "src/external/librpcsvc"]
+	path = src/external/librpcsvc
+	url = ../darling-librpcsvc.git
