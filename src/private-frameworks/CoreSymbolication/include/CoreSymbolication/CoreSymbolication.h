@@ -318,7 +318,7 @@ CSSymbolOwnerRef CSSymbolicatorGetSymbolOwnerWithUUIDAtTime(CSSymbolicatorRef sy
 CSSymbolRef CSSymbolicatorGetSymbolWithAddressAtTime(CSSymbolicatorRef symbolicator, mach_vm_address_t addr, time_t time);
 void* CSSymbolicatorGetSymbolWithMangledNameAtTime(void);
 void* CSSymbolicatorGetSymbolWithMangledNameFromSymbolOwnerWithNameAtTime(void);
-void* CSSymbolicatorGetSymbolWithNameAtTime(void);
+CSSymbolRef CSSymbolicatorGetSymbolWithNameAtTime(CSSymbolicatorRef symbolicator, char* name, void* unknown);
 void* CSSymbolicatorGetSymbolWithNameFromSymbolOwnerWithNameAtTime(void);
 task_t CSSymbolicatorGetTask(CSSymbolicatorRef symbolicator);
 Boolean CSSymbolicatorIsKernelSymbolicator(CSSymbolicatorRef);
