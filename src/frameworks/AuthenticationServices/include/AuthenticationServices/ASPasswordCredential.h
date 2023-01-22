@@ -20,5 +20,6 @@
 #include <Foundation/Foundation.h>
 
 @interface ASPasswordCredential : NSObject
-
+@property(nonatomic, copy, readonly) NSString *user;
+@property(nonatomic, copy, readonly) NSString *password;
 @end

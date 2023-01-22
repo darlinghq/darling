@@ -18,7 +18,33 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <AppKit/NSWindow.h>
 
-@interface ASAuthorizationController : NSObject
+#include <AuthenticationServices/ASAuthorizationControllerDelegate.h>
+#include <AuthenticationServices/ASAuthorizationControllerPresentationContextProviding.h>
+#include <AuthenticationServices/ASAuthorizationRequest.h>
+
+#ifdef TARGET_OS_OSX
+typedef NSWindow *ASPresentationAnchor;
+#else // TARGET_OS_IPHONE
+typedef UIWindow *ASPresentationAnchor;
+#endif
+
+
+@interface ASAuthorizationController : NSObject {
+    id<ASAuthorizationControllerDelegate> _delegate;
+    id<ASAuthorizationControllerPresentationContextProviding> _presentationContextProvider;
+}
+
+#ifndef DARLING
+@property(nonatomic, weak, nullable) id<ASAuthorizationControllerDelegate> delegate;
+@property(nonatomic, weak, nullable) id<ASAuthorizationControllerPresentationContextProviding> presentationContextProvider;
+#else
+@property(nonatomic, assign, nullable) id<ASAuthorizationControllerDelegate> delegate;
+@property(nonatomic, assign, nullable) id<ASAuthorizationControllerPresentationContextProviding> presentationContextProvider;
+#endif
+
+- (instancetype)initWithAuthorizationRequests:(NSArray<ASAuthorizationRequest *> *)authorizationRequests;
+- (void)performRequests;
 
 @end

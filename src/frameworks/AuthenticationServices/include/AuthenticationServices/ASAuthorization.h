@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
-@interface ASAuthorization : NSObject
+#include <AuthenticationServices/ASAuthorizationCredential.h>
 
+@interface ASAuthorization : NSObject
+@property(nonatomic, readonly, strong) id<ASAuthorizationCredential> credential;
 @end

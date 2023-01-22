@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
-@interface ASAuthorizationPasswordProvider : NSObject
+#include <AuthenticationServices/ASAuthorizationPasswordRequest.h>
 
+@interface ASAuthorizationPasswordProvider : NSObject
+- (ASAuthorizationPasswordRequest *)createRequest;
 @end
