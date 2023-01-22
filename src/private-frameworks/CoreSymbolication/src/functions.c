@@ -268,7 +268,7 @@ CSSymbolOwnerRef CSSymbolicatorGetSymbolOwnerWithUUIDAtTime(CSSymbolicatorRef sy
 CSSymbolRef CSSymbolicatorGetSymbolWithAddressAtTime(CSSymbolicatorRef symbolicator, mach_vm_address_t addr, time_t time) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolWithAddressAtTime called"); return NULL; }
 void* CSSymbolicatorGetSymbolWithMangledNameAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolWithMangledNameAtTime called"); return NULL; }
 void* CSSymbolicatorGetSymbolWithMangledNameFromSymbolOwnerWithNameAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolWithMangledNameFromSymbolOwnerWithNameAtTime called"); return NULL; }
-void* CSSymbolicatorGetSymbolWithNameAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolWithNameAtTime called"); return NULL; }
+CSSymbolRef CSSymbolicatorGetSymbolWithNameAtTime(CSSymbolicatorRef symbolicator, char* name, void* unknown) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolWithNameAtTime called"); return NULL; }
 void* CSSymbolicatorGetSymbolWithNameFromSymbolOwnerWithNameAtTime(void) { if (verbose) puts("STUB: CSSymbolicatorGetSymbolWithNameFromSymbolOwnerWithNameAtTime called"); return NULL; }
 task_t CSSymbolicatorGetTask(CSSymbolicatorRef symbolicator) { if (verbose) puts("STUB: CSSymbolicatorGetTask called"); return 0; }
 Boolean CSSymbolicatorIsKernelSymbolicator(CSSymbolicatorRef symbolicator) { if (verbose) puts("STUB: CSSymbolicatorIsKernelSymbolicator called"); return 0; }
