@@ -121,6 +121,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/system/libkxld.dylib:${CMAKE_BINARY_DIR}/src/external/lkm/libkern/kxld/libkxld.dylib \
 -Wl,-dylib_file,/usr/lib/libcrypto.44.dylib:${CMAKE_BINARY_DIR}/src/external/libressl-2.8.3/libcrypto.44.dylib \
 -Wl,-dylib_file,/usr/lib/libssl.46.dylib:${CMAKE_BINARY_DIR}/src/external/libressl-2.8.3/libssl.46.dylib \
+-Wl,-dylib_file,/usr/lib/libMobileGestalt.dylib:${CMAKE_BINARY_DIR}/src/libMobileGestalt/libMobileGestalt.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Security.framework/Versions/A/Security:${CMAKE_BINARY_DIR}/src/external/security/OSX/Security \
 -Wl,-dylib_file,/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation:${CMAKE_BINARY_DIR}/src/external/foundation/Foundation \
 -Wl,-dylib_file,/usr/lib/libz.1.dylib:${CMAKE_BINARY_DIR}/src/external/zlib/libz.1.dylib \
