@@ -35,10 +35,10 @@ void* MGCancelNotifications(void)
     return NULL;
 }
 
-void* MGCopyAnswer(void)
+CFStringRef MGCopyAnswer(CFStringRef key, void* unknown)
 {
     if (verbose) puts("STUB: MGCopyAnswer called");
-    return NULL;
+    return nil;
 }
 
 void* MGCopyAnswerWithError(void)

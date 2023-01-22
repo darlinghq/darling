@@ -21,8 +21,13 @@
 #ifndef _MobileGestalt_H_
 #define _MobileGestalt_H_
 
+#include <CoreFoundation/CoreFoundation.h>
+
+// I don't know what the actual keys values are...
+CFStringRef kMGQReleaseType = CFSTR("kMGQReleaseType");
+
 void* MGCancelNotifications(void);
-void* MGCopyAnswer(void);
+CFStringRef MGCopyAnswer(CFStringRef key, void* unknown);
 void* MGCopyAnswerWithError(void);
 void* MGCopyMultipleAnswers(void);
 void* MGGetBoolAnswer(void);
