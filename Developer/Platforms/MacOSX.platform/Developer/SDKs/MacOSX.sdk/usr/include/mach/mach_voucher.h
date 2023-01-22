@@ -156,7 +156,7 @@ extern
 #endif	/* mig_external */
 kern_return_t mach_voucher_debug_info
 (
-	ipc_space_t task,
+	ipc_space_read_t task,
 	mach_port_name_t voucher_name,
 	mach_voucher_attr_raw_recipe_array_t recipes,
 	mach_msg_type_number_t *recipesCnt
