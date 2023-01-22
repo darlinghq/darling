@@ -26,6 +26,7 @@
 #include <sys/cdefs.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <mach/message.h>
 
 __BEGIN_DECLS
 /*
@@ -138,6 +139,7 @@ enum sandbox_filter_type {
 	SANDBOX_FILTER_LOCAL_NAME,
 	SANDBOX_FILTER_APPLEEVENT_DESTINATION,
 	SANDBOX_FILTER_RIGHT_NAME,
+	SANDBOX_FILTER_DESCRIPTOR,
 };
 
 extern const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT __attribute__((weak_import));
@@ -152,6 +154,7 @@ enum sandbox_extension_flags {
 };
 
 int sandbox_check(pid_t pid, const char *operation, enum sandbox_filter_type type, ...);
+int sandbox_check_by_audit_token(audit_token_t tok, const char* operation, enum sandbox_filter_type filt, ...);
 
 int sandbox_note(const char *note);
 
@@ -172,6 +175,8 @@ int sandbox_release_fs_extension(const char *ext_token);
 int sandbox_container_path_for_pid(pid_t pid, char *buffer, size_t bufsize);
 
 int sandbox_wakeup_daemon(char **errorbuf);
+
+int sandbox_query_approval_policy_for_path(const char* query, const char* path, char **approval);
 
 const char *_amkrtemp(const char *);
 
