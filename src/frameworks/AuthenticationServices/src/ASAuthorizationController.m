@@ -31,4 +31,12 @@
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
 }
 
+- (instancetype)initWithAuthorizationRequests:(NSArray<ASAuthorizationRequest *> *)authorizationRequests {
+    return [[ASAuthorizationController alloc] init];
+}
+
+- (void)performRequests {
+    
+}
+
 @end
