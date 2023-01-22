@@ -30,7 +30,7 @@ CF_EXTERN_C_BEGIN
 #define kTKTokenControlAttribLifetimeType "TKTokenControlAttribLifetimeType"
 
 #define kTKTokenCreateAttributeAuxParams "TKTokenCreateAttributeAuxParams"
-
+#define kTKTokenCreateAttributeTestMode "kTKTokenCreateAttributeTestMode"
 #define TKTokenKeyUsageAny 1
 
 typedef const struct CF_BRIDGED_TYPE(id) __TKToken * TKTokenRef;
