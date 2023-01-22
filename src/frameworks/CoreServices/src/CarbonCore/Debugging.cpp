@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <CoreServices/Debugging.h>
+#include <CarbonCore/Debugging.h>
 #include <iostream>
 #include <sstream>
 #include <algorithm>

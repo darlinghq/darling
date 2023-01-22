@@ -16,8 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <CoreServices/Files.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/Files.h>
+#include <CarbonCore/MacErrors.h>
 
 OSErr FSGetDataForkName(HFSUniStr255* dataForkName)
 {

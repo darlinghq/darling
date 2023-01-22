@@ -21,7 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <typeinfo>
 #include <iostream>
 #include <cstring>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 AudioHardwareImpl::AudioHardwareImpl(AudioObjectID myId)
 : m_myId(myId)

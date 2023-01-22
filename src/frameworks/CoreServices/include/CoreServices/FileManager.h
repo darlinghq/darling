@@ -22,9 +22,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define FILEMANAGER_H
 #include <stdint.h>
 #include <dirent.h>
-#include "MacErrors.h"
-#include "DateTimeUtils.h"
+
 #include "MacTypes.h"
+#include <CarbonCore/DateTimeUtils.h>
+#include <CarbonCore/MacErrors.h>
 #include <CoreFoundation/CFURL.h>
 
 #ifdef __cplusplus

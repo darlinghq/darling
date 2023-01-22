@@ -18,7 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <HIServices/Processes.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>

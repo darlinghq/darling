@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/Resources.h>
+#include <CarbonCore/Resources.h>
 #include <unordered_map>
 #include <mutex>
 #include <limits>

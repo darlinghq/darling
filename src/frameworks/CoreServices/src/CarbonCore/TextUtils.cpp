@@ -18,7 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-#include <CoreServices/TextUtils.h>
+#include <CarbonCore/TextUtils.h>
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>

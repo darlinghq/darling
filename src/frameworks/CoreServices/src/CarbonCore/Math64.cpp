@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/Math64.h>
+#include <CarbonCore/Math64.h>
 #include <limits>
 
 int64_t S64Max()

@@ -56,7 +56,7 @@
 	#include <AudioUnit/AudioUnit.h>
 
 	#if !CA_USE_AUDIO_PLUGIN_ONLY
-		#include <CoreServices/Components.h>
+		#include <CarbonCore/Components.h>
 	
 		#if	(MAC_OS_X_VERSION_MAX_ALLOWED <= MAC_OS_X_VERSION_10_5)
 			#define AudioComponentInstance			ComponentInstance

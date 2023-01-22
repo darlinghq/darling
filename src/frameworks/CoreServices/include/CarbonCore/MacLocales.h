@@ -19,8 +19,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef MACLOCALES_H
 #define MACLOCALES_H
-#include "MacErrors.h"
 #include <stdint.h>
+#include <CarbonCore/MacErrors.h>
 
 typedef int16_t RegionCode;
 typedef int16_t LangCode;

@@ -17,11 +17,11 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 #include <cstring>
 #include <cstdio>
 #include <sys/sysctl.h>
-#include <CoreServices/Gestalt.h>
+#include <CarbonCore/Gestalt.h>
 
 OSStatus Gestalt(uint32_t type, int* value)
 {

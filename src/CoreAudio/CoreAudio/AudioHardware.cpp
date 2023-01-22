@@ -22,7 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "pulse/AudioHardwareImplPA.h"
 #include "pulse/AudioHardwareImplPAOutput.h"
 #include "pulse/AudioHardwareImplPAInput.h"
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 #include <dispatch/dispatch.h>
 #include <memory>
 #include <unordered_map>

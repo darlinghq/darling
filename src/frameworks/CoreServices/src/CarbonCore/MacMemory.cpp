@@ -17,8 +17,8 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/MacMemory.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacMemory.h>
+#include <CarbonCore/MacErrors.h>
 #include <cstring>
 #include <stdint.h>
 #include <cstdlib>

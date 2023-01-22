@@ -17,11 +17,11 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/Endian.h>
+#include <CarbonCore/Endian.h>
 #include <stdint.h>
 #include <map>
 #include <TargetConditionals.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 #include <mutex>
 
 static std::map<

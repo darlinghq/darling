@@ -17,10 +17,10 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/TextEncodingConverter.h>
+#include <CarbonCore/TextEncodingConverter.h>
 #include <unicode/ucnv.h>
 #include <unicode/normalizer2.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 struct OpaqueTECObjectRef
 {

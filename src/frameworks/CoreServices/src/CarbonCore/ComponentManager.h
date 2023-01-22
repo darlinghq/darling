@@ -19,7 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef _CS_COMPONENT_MANAGER_H
 #define _CS_COMPONENT_MANAGER_H
-#include <CoreServices/Components.h>
+#include <CarbonCore/Components.h>
 #include <unordered_map>
 #include <mutex>
 #include <memory>

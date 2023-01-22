@@ -18,7 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "AudioFileFormatGeneric.h"
 #include <cstring>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 extern "C" {
 #include <libavformat/avformat.h>

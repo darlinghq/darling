@@ -17,8 +17,8 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/MacLocales.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacLocales.h>
+#include <CarbonCore/MacErrors.h>
 #include <unicode/locid.h>
 #include <unicode/coll.h>
 #include <cstring>
