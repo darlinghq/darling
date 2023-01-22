@@ -22,8 +22,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define UTCUTILS_H
 #include <stdint.h>
 #include <time.h>
+#include <CarbonCore/MacErrors.h>
 #include <CoreFoundation/CFDate.h>
-#include "MacErrors.h"
 
 #define UNIX_OFFSET 2082844800ll // 1970 - 1904
 #define CF_OFFSET 3061152000ll // 2001 - 1904: "Seconds" is since 2001+

@@ -1,6 +1,6 @@
 #include "AudioQueueBase.h"
 #include "stub.h"
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 AudioQueue::AudioQueue(const AudioStreamBasicDescription* format, void* userData,
 			CFRunLoopRef runloop, CFStringRef runloopMode, UInt32 flags)

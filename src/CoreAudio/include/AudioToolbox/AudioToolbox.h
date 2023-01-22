@@ -14,7 +14,7 @@
 
 // CA helper classes expect this
 #include <CoreServices/FileManager.h>
-#include <CoreServices/Components.h>
+#include <CarbonCore/Components.h>
 
 // OpenAL expects this
 #include <stdlib.h>

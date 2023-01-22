@@ -20,8 +20,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef _CS_RESOURCES_H
 #define _CS_RESOURCES_H
+#include <CarbonCore/Files.h>
 #include <CoreServices/MacTypes.h>
-#include <CoreServices/Files.h>
 #include <CoreServices/FileManager.h>
 
 #ifdef __cplusplus

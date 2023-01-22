@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <AudioToolbox/AudioFormat.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 OSStatus AudioFormatGetPropertyInfo( AudioFormatPropertyID inPropertyID,
        UInt32 inSpecifierSize,

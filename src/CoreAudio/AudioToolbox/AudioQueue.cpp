@@ -1,6 +1,6 @@
 #include "AudioQueue.h"
 #include "AudioQueueOutput.h"
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 OSStatus AudioQueueStart(AudioQueueRef inAQ, const AudioTimeStamp *inStartTime)
 {

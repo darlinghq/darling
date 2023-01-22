@@ -19,8 +19,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef _CS_RESOURCES_IMPL_H
 #define _CS_RESOURCES_IMPL_H
-#include <CoreServices/Resources.h>
-#include <CoreServices/MacMemory.h>
+#include <CarbonCore/Resources.h>
+#include <CarbonCore/MacMemory.h>
 #include <string>
 #include <stdint.h>
 #include <vector>

@@ -1,6 +1,6 @@
 #include "AudioQueueOutput.h"
 #include "stub.h"
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 AudioQueueOutput::AudioQueueOutput(const AudioStreamBasicDescription *inFormat,
 		AudioQueueOutputCallback inCallbackProc,

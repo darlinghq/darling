@@ -20,7 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef COMPONENTS_H
 #define COMPONENTS_H
 #include <MacTypes.h>
-#include <CoreServices/Resources.h>
+#include <CarbonCore/Resources.h>
 
 struct ComponentDescription;
 typedef struct ComponentDescription ComponentDescription;

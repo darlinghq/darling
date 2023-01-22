@@ -20,7 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef _COMPONENT_DISPATCH_H
 #define _COMPONENT_DISPATCH_H
 #include "AudioComponentManager.h"
-#include <CoreServices/Components.h>
+#include <CarbonCore/Components.h>
 
 template <typename First, typename... Rest>
 void assignParams(ComponentParameters* cp, size_t totalArgs, size_t argumentIndex, First arg, Rest... rest)

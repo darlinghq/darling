@@ -20,7 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <AudioToolbox/AUComponent.h>
 #include <AudioToolbox/AudioOutputUnit.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 #include "ComponentDispatch.h"
 
 const CFStringRef kAudioComponentRegistrationsChangedNotification = CFSTR("AudioComponentRegistrationsChangedNotification");

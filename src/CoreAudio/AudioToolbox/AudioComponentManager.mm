@@ -19,7 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioComponentManager.h"
 #include <cstdlib>
 #include <CoreFoundation/CoreFoundation.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 AudioComponentManager::AudioComponentManager()
 {

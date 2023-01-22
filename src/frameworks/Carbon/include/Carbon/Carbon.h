@@ -21,7 +21,7 @@
 #ifndef _Carbon_H_
 #define _Carbon_H_
 
-#include "CoreServices/MacErrors.h"
+#include <CarbonCore/MacErrors.h>
 #include "CoreServices/MacTypes.h"
 #include "CoreServices/FileManager.h"
 

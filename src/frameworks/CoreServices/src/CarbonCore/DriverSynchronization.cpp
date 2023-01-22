@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/DriverSynchronization.h>
+#include <CarbonCore/DriverSynchronization.h>
 
 
 Boolean CompareAndSwap(UInt32 old, UInt32 _new, UInt32* ptr)

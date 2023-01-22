@@ -22,7 +22,7 @@
 
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFURL.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 #ifdef __cplusplus
 extern "C" {

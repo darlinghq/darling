@@ -18,14 +18,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-#include <CoreServices/UnicodeUtilities.h>
+#include <CarbonCore/UnicodeUtilities.h>
 #include <unicode/coll.h>
 #include <unicode/sortkey.h>
 #include <string>
 #include <cstring>
 #include <iostream>
 #include <CoreServices/UniChar.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 using namespace icu;
 

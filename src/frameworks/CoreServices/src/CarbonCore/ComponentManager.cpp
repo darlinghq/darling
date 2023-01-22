@@ -18,9 +18,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ComponentManager.h"
-#include <CoreServices/MacErrors.h>
-#include <CoreServices/Resources.h>
-#include <CoreServices/MacMemory.h>
+#include <CarbonCore/MacErrors.h>
+#include <CarbonCore/Resources.h>
+#include <CarbonCore/MacMemory.h>
 #include <dirent.h>
 #include <cstdlib>
 #include <CoreFoundation/CFBundle.h>

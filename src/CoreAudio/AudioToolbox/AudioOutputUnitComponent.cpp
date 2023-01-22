@@ -1,5 +1,5 @@
 #include "AudioOutputUnitComponent.h"
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 #include <cstring>
 
 AudioOutputUnitComponent::AudioOutputUnitComponent()
