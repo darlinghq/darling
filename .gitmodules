@@ -405,3 +405,6 @@
 [submodule "src/external/librpcsvc"]
 	path = src/external/librpcsvc
 	url = ../darling-librpcsvc.git
+[submodule "src/external/architecture"]
+	path = src/external/architecture
+	url = ../darling-architecture
