@@ -408,3 +408,6 @@
 [submodule "src/external/architecture"]
 	path = src/external/architecture
 	url = ../darling-architecture
+[submodule "src/external/bootstrap_cmds"]
+	path = src/external/bootstrap_cmds
+	url = ../darling-bootstrap_cmds.git

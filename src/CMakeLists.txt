@@ -64,7 +64,7 @@ add_subdirectory(startup)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 
-add_subdirectory(bootstrap_cmds)
+add_subdirectory(external/bootstrap_cmds)
 
 add_definitions(
 	-D__APPLE__
