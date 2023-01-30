@@ -411,3 +411,6 @@
 [submodule "src/external/bootstrap_cmds"]
 	path = src/external/bootstrap_cmds
 	url = ../darling-bootstrap_cmds.git
+[submodule "src/external/copyfile"]
+	path = src/external/copyfile
+	url = ../darling-copyfile.git
