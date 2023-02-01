@@ -414,3 +414,6 @@
 [submodule "src/external/copyfile"]
 	path = src/external/copyfile
 	url = ../darling-copyfile.git
+[submodule "src/external/keymgr"]
+	path = src/external/keymgr
+	url = ../darling-keymgr.git
