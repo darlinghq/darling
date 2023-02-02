@@ -417,3 +417,6 @@
 [submodule "src/external/keymgr"]
 	path = src/external/keymgr
 	url = ../darling-keymgr.git
+[submodule "src/external/libedit"]
+	path = src/external/libedit
+	url = ../darling-libedit.git
