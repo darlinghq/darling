@@ -1,1 +1,1 @@
-../../../../../../../../src/libresolv/include/dns.h
+../../../../../../../../src/external/libresolv/darling/include/dns.h

@@ -1,1 +1,1 @@
-../../../../../../../../src/libresolv/nameser.h
+../../../../../../../../src/external/libresolv/darling/include/nameser.h
