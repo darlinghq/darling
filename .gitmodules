@@ -423,3 +423,6 @@
 [submodule "src/external/libiconv"]
 	path = src/external/libiconv
 	url = ../darling-libiconv.git
+[submodule "src/external/libresolv"]
+	path = src/external/libresolv
+	url = ../darling-libresolv.git

@@ -1,1 +1,1 @@
-../../../../../../../../src/libresolv/resolv.h
+../../../../../../../../src/external/libresolv/darling/include/resolv.h
