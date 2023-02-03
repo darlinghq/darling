@@ -420,3 +420,6 @@
 [submodule "src/external/libedit"]
 	path = src/external/libedit
 	url = ../darling-libedit.git
+[submodule "src/external/libiconv"]
+	path = src/external/libiconv
+	url = ../darling-libiconv.git
