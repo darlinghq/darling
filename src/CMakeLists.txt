@@ -127,7 +127,7 @@ add_subdirectory(vchroot)
 add_subdirectory(lib)
 
 # libstdc++ doesn't use the libc++ headers included below
-add_subdirectory(libstdcxx)
+add_subdirectory(external/libstdcxx)
 
 include_directories(BEFORE
 	${CMAKE_SOURCE_DIR}/src/external/libcxx/include
