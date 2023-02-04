@@ -426,3 +426,6 @@
 [submodule "src/external/libresolv"]
 	path = src/external/libresolv
 	url = ../darling-libresolv.git
+[submodule "src/external/libstdcxx"]
+	path = src/external/libstdcxx
+	url = ../darling-libstdcxx.git

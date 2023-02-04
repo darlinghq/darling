@@ -1,5 +1,0 @@
-#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/SimulatorSupport.xcconfig"
-
-// Set INSTALL_PATH[sdk=macosx*] when SimulatorSupport.xcconfig is unavailable
-INSTALL_PATH[sdk=macosx*] = $(INSTALL_PATH_ACTUAL)
-
