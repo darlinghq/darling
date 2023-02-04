@@ -173,7 +173,7 @@ add_subdirectory(external/commoncrypto)
 add_subdirectory(external/corefoundation)
 
 add_subdirectory(external/openssl/src)
-#add_subdirectory(external/configd/SystemConfiguration.fproj)
+add_subdirectory(external/configd)
 add_subdirectory(external/foundation)
 add_subdirectory(external/nghttp2)
 add_subdirectory(external/libressl-2.2.9)
