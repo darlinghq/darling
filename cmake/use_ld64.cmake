@@ -41,6 +41,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/system/libxpc.dylib:${CMAKE_BINARY_DIR}/src/external/libxpc/libxpc_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/libc++.1.dylib:${CMAKE_BINARY_DIR}/src/external/libcxx/libc++.1.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_malloc.dylib:${CMAKE_BINARY_DIR}/src/external/libmalloc/libsystem_malloc_firstpass.dylib \
+-Wl,-dylib_file,/usr/lib/system/libsystem_configuration.dylib:${CMAKE_BINARY_DIR}/src/external/configd/libsystem_configuration.dylib \
 -Wl,-dylib_file,/usr/lib/libobjc.A.dylib:${CMAKE_BINARY_DIR}/src/external/objc4/runtime/libobjc.A.dylib \
 -Wl,-dylib_file,/usr/lib/libicucore.A.dylib:${CMAKE_BINARY_DIR}/src/external/icu/icuSources/libicucore.A.dylib \
 -Wl,-dylib_file,/usr/lib/libncurses.5.4.dylib:${CMAKE_BINARY_DIR}/src/ncurses/ncurses/libncurses.5.4.dylib \
