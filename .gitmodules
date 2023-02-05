@@ -432,3 +432,6 @@
 [submodule "src/external/libunwind"]
 	path = src/external/libunwind
 	url = ../darling-libunwind.git
+[submodule "src/external/libutil"]
+	path = src/external/libutil
+	url = ../darling-libutil.git
