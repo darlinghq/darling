@@ -30,6 +30,7 @@ endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
 option(DARLING_NO_CCACHE "Disable ccache usage" OFF)
 
+find_package(Python2 REQUIRED COMPONENTS Interpreter)
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM AND NOT DARLING_NO_CCACHE)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
