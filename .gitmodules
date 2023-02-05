@@ -429,3 +429,6 @@
 [submodule "src/external/libstdcxx"]
 	path = src/external/libstdcxx
 	url = ../darling-libstdcxx.git
+[submodule "src/external/libunwind"]
+	path = src/external/libunwind
+	url = ../darling-libunwind.git
