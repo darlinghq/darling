@@ -435,3 +435,6 @@
 [submodule "src/external/libutil"]
 	path = src/external/libutil
 	url = ../darling-libutil.git
+[submodule "src/external/ncurses"]
+	path = src/external/ncurses
+	url = ../darling-ncurses.git
