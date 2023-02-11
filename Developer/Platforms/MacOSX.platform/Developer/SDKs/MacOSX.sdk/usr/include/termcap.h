@@ -1,1 +1,1 @@
-../../../../../../../../src/ncurses/include/termcap.h
+../../../../../../../../src/external/ncurses/darling/include/termcap.h
