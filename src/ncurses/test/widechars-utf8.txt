@@ -1,7 +1,0 @@
-ＡＰＰＬＥ     -- It's an ＡＰＰＬＥ.
-ＤＯＧ         -- No, that's not my ＤＯＧ.
-ＯＲＡＮＧＥ   -- Yeah, that's ＪＵＩＣＹ.
-ＣＨＩＣＫＥＮ -- Normally not a ＰＥＴ.
-ＣＡＴ         -- No, never put a ＤＯＧ and a ＣＡＴ together!
-ＦＩＳＨ       -- Cats like ＦＩＳＨ.
-ＬＥＭＯＮ     -- You ＫＮＯＷ how it ＴＡＳＴＥＳ.
