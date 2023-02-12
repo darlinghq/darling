@@ -18,6 +18,8 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <UniformTypeIdentifiers/UTType.h>
+#import <Foundation/NSItemProvider.h>
 
 @interface NSItemProvider (UTType)
 

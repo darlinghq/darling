@@ -18,6 +18,7 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 @interface UTType (SHShazamAdditions)
 

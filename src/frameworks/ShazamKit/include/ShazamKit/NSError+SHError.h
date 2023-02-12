@@ -18,6 +18,7 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <ShazamKit/SHError.h>
 
 @interface NSError (SHError)
 

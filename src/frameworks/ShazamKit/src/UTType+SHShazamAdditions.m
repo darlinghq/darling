@@ -18,7 +18,6 @@
 */
 
 #import <ShazamKit/UTType+SHShazamAdditions.h>
-#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 @implementation UTType (SHShazamAdditions)
 
