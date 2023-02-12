@@ -438,3 +438,6 @@
 [submodule "src/external/ncurses"]
 	path = src/external/ncurses
 	url = ../darling-ncurses.git
+[submodule "src/external/netcat"]
+	path = src/external/netcat
+	url = ../darling-netcat.git
