@@ -441,3 +441,6 @@
 [submodule "src/external/netcat"]
 	path = src/external/netcat
 	url = ../darling-netcat.git
+[submodule "src/external/removefile"]
+	path = src/external/removefile
+	url = ../darling-removefile.git
