@@ -26,8 +26,14 @@
  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
  */
 
+#ifdef DARLING
+// Temporary workaround until I can figure out where 
+// task_internal.h comes from.
+#include <mach/task.h>
+#else
 #undef _task_user_
 #include <mach/task_internal.h>
+#endif
 
 extern mach_port_t      mach_task_self_;
 
