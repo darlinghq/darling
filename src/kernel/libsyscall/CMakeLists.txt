@@ -290,7 +290,7 @@ set(syscall_sources
 	mach/semaphore.c
 	mach/slot_name.c
 	mach/string.c
-	# mach/task.c
+	mach/task.c
 	mach/thread_act.c
 
 	bsdsyscalls/___abort_with_payload.S
