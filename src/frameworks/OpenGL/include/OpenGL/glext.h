@@ -53,7 +53,11 @@ extern "C" {
 
 #define GL_GLEXT_VERSION 20190911
 
+#ifdef __APPLE__ // __DARLING__
+#include <OpenGL/internal/khrplatform.h>
+#else
 #include <KHR/khrplatform.h>
+#endif
 
 /* Generated C header for:
  * API: gl

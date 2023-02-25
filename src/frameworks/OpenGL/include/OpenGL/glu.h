@@ -31,7 +31,11 @@
 #ifndef __glu_h__
 #define __glu_h__
 
+#ifdef __APPLE__ // __DARLING__
+#include <OpenGL/gl.h>
+#else
 #include <GL/gl.h>
+#endif
 
 #ifndef GLAPIENTRY
 #if defined(_MSC_VER) || defined(__MINGW32__)

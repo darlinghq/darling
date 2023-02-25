@@ -58,7 +58,11 @@ extern "C" {
 
 #ifndef GL_ES_VERSION_2_0
 #define GL_ES_VERSION_2_0 1
+#ifdef __APPLE__ // __DARLING__
+#include <OpenGL/internal/khrplatform.h>
+#else
 #include <KHR/khrplatform.h>
+#endif
 typedef khronos_int8_t GLbyte;
 typedef khronos_float_t GLclampf;
 typedef khronos_int32_t GLfixed;
