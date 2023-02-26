@@ -1,7 +1,11 @@
 #ifndef _OPENGL_H_
 #define _OPENGL_H_
 
+#ifdef __APPLE__ // __DARLING__
+#include <OpenGL/gl.h>
+#else
 #include <GL/gl.h>
+#endif
 
 #include <OpenGL/CGLTypes.h>
 
