@@ -444,3 +444,6 @@
 [submodule "src/external/removefile"]
 	path = src/external/removefile
 	url = ../darling-removefile.git
+[submodule "src/external/xar"]
+	path = src/external/xar
+	url = ../darling-xar.git
