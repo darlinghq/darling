@@ -39,7 +39,7 @@ SET(CMAKE_SKIP_RPATH TRUE)
 
 # technically ignored by CMake when building on non-Apple platforms, but it's already a standard variable for the
 # SDK deployment target, so we'll just use it and then add it to the compiler flags manually
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "The version of macOS we're simulating")
+set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0 CACHE STRING "The version of macOS we're simulating")
 
 project(darling)
 
