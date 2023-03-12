@@ -141,11 +141,6 @@ no_slide:
 		struct load_command* lc;
 
 		lc = (struct load_command*) &cmds[p];
-		if (lc->cmdsize > PAGE_SIZE)
-		{
-			fprintf(stderr, "Broken Mach-O file, cmdsize = %d\n", lc->cmdsize);
-			exit(1);
-		}
 
 		switch (lc->cmd)
 		{
