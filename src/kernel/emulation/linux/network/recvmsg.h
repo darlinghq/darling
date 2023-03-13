@@ -1,6 +1,9 @@
 #ifndef LINUX_RECVMSG_H
 #define LINUX_RECVMSG_H
 #include <stdint.h>
+#include <stddef.h>
+
+typedef uint32_t linux_socklen_t;
 
 struct iovec;
 struct bsd_msghdr
@@ -17,11 +20,11 @@ struct bsd_msghdr
 struct linux_msghdr
 {
 	void* msg_name;
-	uint32_t msg_namelen;
+	linux_socklen_t msg_namelen;
 	struct iovec* msg_iov;
-	unsigned long msg_iovlen;
+	size_t msg_iovlen;
 	void* msg_control;
-	unsigned long msg_controllen;
+	size_t msg_controllen;
 	int msg_flags;
 };
 
@@ -35,7 +38,7 @@ struct bsd_cmsghdr
 
 struct linux_cmsghdr
 {
-	unsigned long cmsg_len;
+	size_t cmsg_len;
 	int cmsg_level;
 	int cmsg_type;
 	unsigned char cmsg_data[];
@@ -53,7 +56,7 @@ int socket_level_linux_to_bsd(int level);
 #define BSD_CMSG_SPACE(len) (BSD_CMSG_ALIGN(sizeof(struct bsd_cmsghdr)) + BSD_CMSG_ALIGN(len))
 #define BSD_CMSG_LEN(len) (BSD_CMSG_ALIGN(sizeof(struct bsd_cmsghdr)) + (len))
 
-#define LINUX_CMSG_ALIGN(len) (((len) + sizeof(unsigned long) - 1) & (size_t)~(sizeof(unsigned long) - 1))
+#define LINUX_CMSG_ALIGN(len) (((len) + sizeof(size_t) - 1) & (size_t)~(sizeof(size_t) - 1))
 #define LINUX_CMSG_SPACE(len) (LINUX_CMSG_ALIGN(sizeof(struct linux_cmsghdr)) + LINUX_CMSG_ALIGN(len))
 #define LINUX_CMSG_LEN(len) (LINUX_CMSG_ALIGN(sizeof(struct linux_cmsghdr)) + (len))
 
