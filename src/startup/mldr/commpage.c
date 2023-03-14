@@ -62,9 +62,11 @@ void commpage_setup(bool _64bit)
 
 	// I'm not sure if Linux has seperate page sizes for kernel and user space.
 	// Apple's code uses left shift logical (1 << user_page_shift) to get the page size value.
+	// Since it's very unlikely that the page size won't be a power of 2, we can use __builtin_ctzl()
+	// as a substitute for log2().
 	user_page_shift = (uint8_t*)CGET(_64bit ? _COMM_PAGE_USER_PAGE_SHIFT_64 : _COMM_PAGE_USER_PAGE_SHIFT_32);
 	kernel_page_shift = (uint8_t*)CGET(_COMM_PAGE_KERNEL_PAGE_SHIFT);
-	*kernel_page_shift = *user_page_shift = log2(sysconf(_SC_PAGESIZE));
+	*kernel_page_shift = *user_page_shift = (uint8_t)__builtin_ctzl(sysconf(_SC_PAGESIZE));
 
 	my_caps = get_cpu_caps();
 	if (*ncpus == 1)
