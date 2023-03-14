@@ -43,7 +43,7 @@ __darling_bsd_syscall_exit:
 
 __darling_bsd_syscall:
 Lentry_hook:
-	.space 6, 0x90
+	.space 7, 0x90
 	calll	1f
 1:
 	popl	%ecx
@@ -73,7 +73,7 @@ Lentry_hook:
 	addl	$56, %esp
 .std_ret:
 Lexit_hook:
-	.space 6, 0x90
+	.space 7, 0x90
 	ret
 .no_sys:
 	pushl	%ecx

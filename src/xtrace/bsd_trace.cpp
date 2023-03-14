@@ -1057,6 +1057,11 @@ static void print_args(int nr, void* args[])
 extern "C"
 void darling_bsd_syscall_entry_print(int nr, void* args[])
 {
+#if __i386__
+	// get rid of some info in the upper bytes that we don't need
+	nr = (int)((unsigned int)nr & 0xffff);
+#endif
+
 	handle_generic_entry(bsd_defs, "bsd", nr, args);
 
 	if (nr == 1 || nr == 59)

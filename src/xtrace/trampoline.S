@@ -1,3 +1,5 @@
+#if defined(__x86_64__)
+
 .macro trampoline_enter
 pushq %rbp
 movq %rsp, %rbp
@@ -40,6 +42,54 @@ popq %r9
 leave
 ret
 .endmacro
+
+#elif defined(__i386__)
+
+.macro trampoline_enter
+pushl %ebp
+movl %esp, %ebp
+
+# align the stack
+andl $$~15, %esp
+
+#define copy_arg(off) \
+	movl 16+off(%ebp), %ecx ;\
+	movl %ecx, -56+off(%esp)
+
+// copy the arguments (same as in syscalls-table.S and darling_mach_syscall.S)
+copy_arg(0)
+copy_arg(4)
+copy_arg(8)
+copy_arg(12)
+copy_arg(16)
+copy_arg(20)
+copy_arg(24)
+copy_arg(28)
+copy_arg(32)
+copy_arg(36)
+copy_arg(40)
+copy_arg(44)
+copy_arg(48)
+copy_arg(52)
+
+# make space on the stack now for the arguments we just copied
+subl $$56, %esp
+
+# push the address of the argument area as the second argument
+pushl %esp
+
+# push the call number or return value as the first argument
+pushl %eax
+.endmacro
+
+.macro trampoline_leave
+# restore eax (i.e. the call number or return value)
+popl %eax
+leave
+ret
+.endmacro
+
+#endif
 
 .private_extern _darling_mach_syscall_entry_trampoline
 _darling_mach_syscall_entry_trampoline:

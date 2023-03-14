@@ -35,6 +35,12 @@ struct hook
 	uint8_t call[3];
 }
 __attribute__((packed));
+#elif defined(__i386__)
+struct hook {
+	uint8_t mov;
+	uint32_t addr;
+	uint8_t call[2];
+} __attribute__((packed));
 #endif
 
 // Defined in libsystem_kernel
@@ -142,6 +148,7 @@ static void xtrace_setup_options(void)
 
 static void setup_hook(struct hook* hook, void* fnptr, bool jump)
 {
+#if defined(__x86_64__)
 	// this hook is (in GAS syntax):
 	//   movq $<fnptr value>, %r10
 	//   call *%r10
@@ -152,6 +159,16 @@ static void setup_hook(struct hook* hook, void* fnptr, bool jump)
 	hook->call[1] = 0xff;
 	hook->call[2] = jump ? 0xe2 : 0xd2;
 	hook->addr = (uintptr_t)fnptr;
+#elif defined(__i386__)
+	// this hook is (in GAS syntax):
+	//   mov $<fnptr value>, %ecx
+	//   call *%ecx
+	// the call turns into a jump if `jump` is true
+	hook->mov = 0xb9;
+	hook->addr = (uintptr_t)fnptr;
+	hook->call[0] = 0xff;
+	hook->call[1] = jump ? 0xe1 : 0xd1;
+#endif
 }
 
 static void xtrace_setup_mach(void)

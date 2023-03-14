@@ -209,6 +209,11 @@ static const char* const bootstrap_errors[] = {
 extern "C"
 void darling_mach_syscall_entry_print(int nr, void* args[])
 {
+#if __i386__
+	// get rid of some info in the upper bytes that we don't need
+	nr = (int)((unsigned int)nr & 0xffff);
+#endif
+
 	set_mach_call_nr(nr);
 	handle_generic_entry(mach_defs, "mach", nr, args);
 	if (nr == 31 || nr == 32)
