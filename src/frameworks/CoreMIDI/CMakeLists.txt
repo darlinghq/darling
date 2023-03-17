@@ -26,6 +26,7 @@ add_framework(CoreMIDI
         src/MIDINetworkSession.m
         src/MIDINetworkHost.m
         src/MIDINetworkConnection.m
+        src/MIDIServices.m
 
     DEPENDENCIES
         system

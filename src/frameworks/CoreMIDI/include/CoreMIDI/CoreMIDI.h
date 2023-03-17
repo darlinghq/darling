@@ -23,6 +23,7 @@
 
 #import <Foundation/Foundation.h>
 
+#import <CoreMIDI/MIDIServices.h>
 #import <CoreMIDI/MIDICIProfile.h>
 #import <CoreMIDI/MIDICIProfileState.h>
 #import <CoreMIDI/MIDICISession.h>
