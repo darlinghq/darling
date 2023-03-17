@@ -5,6 +5,7 @@ set(CarbonCore_SRCS
 	MacMemory.cpp
 	MacLocales.cpp
 	UnicodeUtilities.cpp
+	UnicodeConverter.cpp
 	Gestalt.cpp
 	FileManager.cpp
 	DateTimeUtils.cpp
