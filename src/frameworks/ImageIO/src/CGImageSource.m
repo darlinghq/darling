@@ -34,3 +34,9 @@ CFStringRef CGImageSourceGetType(CGImageSourceRef self)
 {
     return [self type];
 }
+
+CGImageSourceRef CGImageSourceCreateWithDataProvider(CGDataProviderRef provider, CFDictionaryRef options)
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return nil;
+}
