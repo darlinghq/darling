@@ -7,6 +7,8 @@ add_executable(darling-coredump
 )
 
 target_include_directories(darling-coredump PRIVATE
+	include
+
 	# TEMPORARY
 	# this set of includes should probably be moved out because we probably want to be able to use Mach-O headers
 	# in non-Darling compilation environments more often. by non-Darling, i mean when compiling directly for Linux

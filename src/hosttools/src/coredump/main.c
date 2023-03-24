@@ -15,7 +15,7 @@
 #include <linux/time_types.h>
 
 #if __x86_64__
-#include "x86_64.h"
+#include <coredump/x86_64.h>
 #else
 #error Not implemented
 #endif
@@ -71,15 +71,38 @@ struct thread_info {
 	struct nt_prstatus* prstatus;
 };
 
+struct elf_universal_header {
+	unsigned char e_ident[EI_NIDENT];	/* Magic number and other info */
+	/* Elf32_Half/Elf64_Half -> uint16_t */
+	uint16_t e_type;			/* Object file type */
+	/* Elf32_Half/Elf64_Half -> uint16_t */
+	uint16_t e_machine;		/* Architecture */
+	/* Elf32_Word/Elf64_Word ->  uint32_t */
+	uint32_t e_version;		/* Object file version */
+};
+
 struct coredump_params {
 	int input_corefile;
 	int output_corefile;
 	size_t input_corefile_size;
 	const void* input_corefile_mapping;
-	const Elf64_Ehdr* input_header;
-	const Elf64_Phdr* input_program_headers;
-	const Elf64_Phdr* input_program_headers_end;
-	const Elf64_Nhdr* input_notes;
+	struct elf_universal_header *universal_header;
+	union {
+		const Elf32_Ehdr* elf32;
+		const Elf64_Ehdr* elf64;
+	} input_header;
+	union {
+		const Elf32_Phdr* elf32;
+		const Elf64_Phdr* elf64;
+	} input_program_headers;
+	union {
+		const Elf32_Phdr* elf32;
+		const Elf64_Phdr* elf64;
+	} input_program_headers_end;
+	union {
+		const Elf32_Nhdr* elf32;
+		const Elf64_Nhdr* elf64;
+	} input_notes;
 	size_t input_notes_size;
 	struct vm_area* vm_areas;
 	size_t vm_area_count;
@@ -194,58 +217,56 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	cprm.input_header = cprm.input_corefile_mapping;
+	cprm.universal_header = cprm.input_corefile_mapping;
 
 	if (
-		cprm.input_header->e_ident[EI_MAG0] != ELFMAG0 ||
-		cprm.input_header->e_ident[EI_MAG1] != ELFMAG1 ||
-		cprm.input_header->e_ident[EI_MAG2] != ELFMAG2 ||
-		cprm.input_header->e_ident[EI_MAG3] != ELFMAG3 ||
-		cprm.input_header->e_ident[EI_CLASS] != ELFCLASS64 ||
-		cprm.input_header->e_ident[EI_VERSION] != EV_CURRENT ||
-		cprm.input_header->e_version != EV_CURRENT ||
-		cprm.input_header->e_type != ET_CORE
+		cprm.universal_header->e_ident[EI_MAG0] != ELFMAG0 ||
+		cprm.universal_header->e_ident[EI_MAG1] != ELFMAG1 ||
+		cprm.universal_header->e_ident[EI_MAG2] != ELFMAG2 ||
+		cprm.universal_header->e_ident[EI_MAG3] != ELFMAG3 ||
+		cprm.universal_header->e_ident[EI_CLASS] != ELFCLASS64 ||
+		cprm.universal_header->e_ident[EI_VERSION] != EV_CURRENT ||
+		cprm.universal_header->e_version != EV_CURRENT ||
+		cprm.universal_header->e_type != ET_CORE
 	) {
 		fprintf(stderr, "Input file is not a valid corefile\n");
 		return 1;
 	}
 
-#if __x86_64__
-	if (cprm.input_header->e_machine != EM_X86_64) {
-		fprintf(stderr, "Input file is not a valid x86_64 corefile\n");
+	if (cprm.universal_header->e_machine == EM_X86_64) {
+		
+	} else {
+		fprintf(stderr, "Unexpected e_machine (%d) detected, aborting.\n", cprm.universal_header->e_machine);
 		return 1;
 	}
-#else
-	#error Not implemented!
-#endif
 
-	cprm.input_program_headers = (const void*)((const char*)cprm.input_corefile_mapping + cprm.input_header->e_phoff);
-	cprm.input_program_headers_end = (const Elf64_Phdr*)((const char*)cprm.input_program_headers + (cprm.input_header->e_phentsize * cprm.input_header->e_phnum));
+	cprm.input_program_headers.elf64 = (const void*)((const char*)cprm.input_corefile_mapping + cprm.input_header.elf64->e_phoff);
+	cprm.input_program_headers_end.elf64 = (const Elf64_Phdr*)((const char*)cprm.input_program_headers.elf64 + (cprm.input_header.elf64->e_phentsize * cprm.input_header.elf64->e_phnum));
 
 	// first, count how many VM areas we have
-	for (const Elf64_Phdr* program_header = cprm.input_program_headers; program_header < cprm.input_program_headers_end; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header->e_phentsize)) {
+	for (const Elf64_Phdr* program_header = cprm.input_program_headers.elf64; program_header < cprm.input_program_headers_end.elf64; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header.elf64->e_phentsize)) {
 		if (program_header->p_type == PT_LOAD) {
 			++cprm.vm_area_count;
 		} else if (program_header->p_type == PT_NOTE) {
 			// while we're at it, also load the NOTE segment
 
 			// XXX: ignoring it is probably not the best choice
-			if (cprm.input_notes) {
+			if (cprm.input_notes.elf64) {
 				printf("warning: ignoring extra PT_NOTE segment\n");
 				continue;
 			}
 
-			cprm.input_notes = (const void*)((const char*)cprm.input_corefile_mapping + program_header->p_offset); 
+			cprm.input_notes.elf64 = (const void*)((const char*)cprm.input_corefile_mapping + program_header->p_offset); 
 			cprm.input_notes_size = program_header->p_filesz;
 		}
 	}
 
-	if (!cprm.input_notes) {
+	if (!cprm.input_notes.elf64) {
 		fprintf(stderr, "Input corefile does not contain PT_NOTE segment\n");
 		return 1;
 	}
 
-	for (const Elf64_Nhdr* note_header = cprm.input_notes; note_header < (const Elf64_Nhdr*)((const char*)cprm.input_notes + cprm.input_notes_size); note_header = find_next_note(note_header)) {
+	for (const Elf64_Nhdr* note_header = cprm.input_notes.elf64; note_header < (const Elf64_Nhdr*)((const char*)cprm.input_notes.elf64 + cprm.input_notes_size); note_header = find_next_note(note_header)) {
 		if (note_header->n_type == NT_FILE) {
 			// allocate a copy for alignment purposes
 			cprm.nt_file = malloc(note_header->n_descsz);
@@ -285,7 +306,7 @@ int main(int argc, char** argv) {
 	}
 
 	size_t thread_info_index = 0;
-	for (const Elf64_Nhdr* note_header = cprm.input_notes; note_header < (const Elf64_Nhdr*)((const char*)cprm.input_notes + cprm.input_notes_size); note_header = find_next_note(note_header)) {
+	for (const Elf64_Nhdr* note_header = cprm.input_notes.elf64; note_header < (const Elf64_Nhdr*)((const char*)cprm.input_notes.elf64 + cprm.input_notes_size); note_header = find_next_note(note_header)) {
 		if (note_header->n_type == NT_PRSTATUS) {
 			// allocate a copy for alignment purposes
 			struct nt_prstatus* prstatus = malloc(note_header->n_descsz);
@@ -328,7 +349,7 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		for (const Elf64_Phdr* program_header = cprm.input_program_headers; program_header < cprm.input_program_headers_end; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header->e_phentsize)) {
+		for (const Elf64_Phdr* program_header = cprm.input_program_headers.elf64; program_header < cprm.input_program_headers_end.elf64; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header.elf64->e_phentsize)) {
 			if (program_header->p_type != PT_LOAD) {
 				continue;
 			}
@@ -359,7 +380,7 @@ int main(int argc, char** argv) {
 
 	// now load up the VM area array
 	size_t vm_area_index = 0;
-	for (const Elf64_Phdr* program_header = cprm.input_program_headers; program_header < cprm.input_program_headers_end; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header->e_phentsize)) {
+	for (const Elf64_Phdr* program_header = cprm.input_program_headers.elf64; program_header < cprm.input_program_headers_end.elf64; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header.elf64->e_phentsize)) {
 		if (program_header->p_type == PT_LOAD) {
 			struct vm_area* vm_area = &cprm.vm_areas[vm_area_index++];
 
@@ -440,7 +461,7 @@ int main(int argc, char** argv) {
 		const char* filename = cprm.nt_file_filenames[i];
 		bool found = false;
 
-		for (const Elf64_Phdr* program_header = cprm.input_program_headers; program_header < cprm.input_program_headers_end; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header->e_phentsize)) {
+		for (const Elf64_Phdr* program_header = cprm.input_program_headers.elf64; program_header < cprm.input_program_headers_end.elf64; program_header = (const Elf64_Phdr*)((const char*)program_header + cprm.input_header.elf64->e_phentsize)) {
 			if (program_header->p_type != PT_LOAD) {
 				continue;
 			}
