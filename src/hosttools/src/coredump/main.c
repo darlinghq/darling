@@ -234,7 +234,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (cprm.universal_header->e_machine == EM_X86_64) {
-		
+		cprm.input_header.elf64 = cprm.input_corefile_mapping;
 	} else {
 		fprintf(stderr, "Unexpected e_machine (%d) detected, aborting.\n", cprm.universal_header->e_machine);
 		return 1;
