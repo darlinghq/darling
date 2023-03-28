@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <libgen.h>
 
 #include <mach-o/loader.h>
 #include <elf.h>
@@ -168,10 +169,14 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	if (snprintf(default_output_name, sizeof(default_output_name), "darlingcore-%s", argv[1]) < 0) {
+	char *tmp_output_dirname = strdup(argv[1]);
+	char *tmp_output_basename = strdup(argv[1]);
+	if (snprintf(default_output_name, sizeof(default_output_name), "%s/darlingcore-%s", dirname(tmp_output_dirname), basename(tmp_output_basename)) < 0) {
 		perror("snprintf");
 		return 1;
 	}
+	free(tmp_output_dirname); tmp_output_dirname = NULL;
+	free(tmp_output_basename); tmp_output_basename = NULL;
 
 	const char* homedir = NULL;
 
