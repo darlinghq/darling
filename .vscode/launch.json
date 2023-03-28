@@ -9,8 +9,31 @@
             "request": "launch",
             "name": "Debug darling-coredump",
             "program": "${workspaceFolder}/build/src/hosttools/darling-coredump",
-            "args": ["core_dump"],
+            "args": ["${input:linuxCoreDumpFileName}"],
             "cwd": "${workspaceFolder}"
+        },
+        // Based on https://stackoverflow.com/a/57848966
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "Open Darling Core Dump",
+            "initCommands": [
+                "target create -c ${input:convertedCoreDumpFileName}"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "linuxCoreDumpFileName",
+            "type": "promptString",
+            "description": "Enter the path to the core dump that needs to be converted",
+            "default": ""
+        },
+        {
+            "id": "convertedCoreDumpFileName",
+            "type": "promptString",
+            "description": "Enter the path to the Darling core dump",
+            "default": ""
         }
     ]
 }
