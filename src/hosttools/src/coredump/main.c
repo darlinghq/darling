@@ -71,12 +71,43 @@ union nt_file_entry {
 	struct elf64_nt_file_entry elf64;
 };
 
-union nt_prstatus_registers {
+union elf32_nt_prstatus_registers {
 	struct nt_prstatus_registers_i386 i386;
+};
+
+union elf64_nt_prstatus_registers {
 	struct nt_prstatus_registers_x86_64 x86_64;
 };
 
-struct nt_prstatus {
+struct elf32_kernel_old_timeval {
+	int tv_sec;
+	int tv_usec;
+};
+
+struct elf64_kernel_old_timeval {
+	long tv_sec;
+	long tv_usec;
+};
+
+struct elf32_nt_prstatus {
+	int signal_number;
+	int signal_code;
+	int signal_errno;
+	short current_signal;
+	unsigned int pending_signals;
+	unsigned int held_signals;
+	pid_t pid;
+	pid_t ppid;
+	pid_t pgrp;
+	pid_t sid;
+	struct elf32_kernel_old_timeval user_time;
+	struct elf32_kernel_old_timeval system_time;
+	struct elf32_kernel_old_timeval cumulative_user_time;
+	struct elf32_kernel_old_timeval cumulative_system_time;
+	union elf32_nt_prstatus_registers general_registers;
+};
+
+struct elf64_nt_prstatus {
 	int signal_number;
 	int signal_code;
 	int signal_errno;
@@ -87,15 +118,20 @@ struct nt_prstatus {
 	pid_t ppid;
 	pid_t pgrp;
 	pid_t sid;
-	struct __kernel_old_timeval user_time;
-	struct __kernel_old_timeval system_time;
-	struct __kernel_old_timeval cumulative_user_time;
-	struct __kernel_old_timeval cumulative_system_time;
-	union nt_prstatus_registers general_registers;
+	struct elf64_kernel_old_timeval user_time;
+	struct elf64_kernel_old_timeval system_time;
+	struct elf64_kernel_old_timeval cumulative_user_time;
+	struct elf64_kernel_old_timeval cumulative_system_time;
+	union elf64_nt_prstatus_registers general_registers;
+};
+
+union nt_prstatus {
+	struct elf32_nt_prstatus elf32;
+	struct elf64_nt_prstatus elf64;
 };
 
 struct thread_info {
-	struct nt_prstatus* prstatus;
+	union nt_prstatus* prstatus;
 };
 
 struct elf_universal_header {
@@ -373,7 +409,7 @@ int main(int argc, char** argv) {
 	for (const union Elf_Nhdr* note_header = cprm.input_notes; note_header < (const union Elf_Nhdr*)((const char*)cprm.input_notes + cprm.input_notes_size); note_header = find_next_note(&cprm, note_header)) {
 		if (cprm_elf(cprm.is_64_bit, note_header, n_type) == NT_PRSTATUS) {
 			// allocate a copy for alignment purposes
-			struct nt_prstatus* prstatus = malloc(cprm_elf(cprm.is_64_bit, note_header, n_descsz));
+			union nt_prstatus* prstatus = malloc(cprm_elf(cprm.is_64_bit, note_header, n_descsz));
 			if (!prstatus) {
 				perror("malloc");
 				return 1;
@@ -611,22 +647,22 @@ struct thread_flavor
 static
 void fill_thread_state32(x86_thread_state32_t* state, const struct thread_info* info)
 {
-	state->eax    = info->prstatus->general_registers.i386.eax;
-	state->ebx    = info->prstatus->general_registers.i386.ebx;
-	state->ecx    = info->prstatus->general_registers.i386.ecx;
-	state->edx    = info->prstatus->general_registers.i386.edx;
-	state->edi    = info->prstatus->general_registers.i386.edi;
-	state->esi    = info->prstatus->general_registers.i386.esi;
-	state->ebp    = info->prstatus->general_registers.i386.ebp;
-	state->esp    = info->prstatus->general_registers.i386.esp;
-	state->ss     = info->prstatus->general_registers.i386.ss;
-	state->eflags = info->prstatus->general_registers.i386.eflags;
-	state->eip    = info->prstatus->general_registers.i386.eip;
-	state->cs     = info->prstatus->general_registers.i386.cs;
-	state->ds     = info->prstatus->general_registers.i386.ds;
-	state->es     = info->prstatus->general_registers.i386.es;
-	state->fs     = info->prstatus->general_registers.i386.fs;
-	state->gs     = info->prstatus->general_registers.i386.gs;
+	state->eax    = info->prstatus->elf32.general_registers.i386.eax;
+	state->ebx    = info->prstatus->elf32.general_registers.i386.ebx;
+	state->ecx    = info->prstatus->elf32.general_registers.i386.ecx;
+	state->edx    = info->prstatus->elf32.general_registers.i386.edx;
+	state->edi    = info->prstatus->elf32.general_registers.i386.edi;
+	state->esi    = info->prstatus->elf32.general_registers.i386.esi;
+	state->ebp    = info->prstatus->elf32.general_registers.i386.ebp;
+	state->esp    = info->prstatus->elf32.general_registers.i386.esp;
+	state->ss     = info->prstatus->elf32.general_registers.i386.ss;
+	state->eflags = info->prstatus->elf32.general_registers.i386.eflags;
+	state->eip    = info->prstatus->elf32.general_registers.i386.eip;
+	state->cs     = info->prstatus->elf32.general_registers.i386.cs;
+	state->ds     = info->prstatus->elf32.general_registers.i386.ds;
+	state->es     = info->prstatus->elf32.general_registers.i386.es;
+	state->fs     = info->prstatus->elf32.general_registers.i386.fs;
+	state->gs     = info->prstatus->elf32.general_registers.i386.gs;
 }
 
 static
@@ -639,27 +675,27 @@ void fill_float_state32(x86_float_state32_t* state, const struct thread_info* in
 static
 void fill_thread_state64(x86_thread_state64_t* state, const struct thread_info* info)
 {
-	state->rax    = info->prstatus->general_registers.x86_64.ax;
-	state->rbx    = info->prstatus->general_registers.x86_64.bx;
-	state->rcx    = info->prstatus->general_registers.x86_64.cx;
-	state->rdx    = info->prstatus->general_registers.x86_64.dx;
-	state->rdi    = info->prstatus->general_registers.x86_64.di;
-	state->rsi    = info->prstatus->general_registers.x86_64.si;
-	state->rbp    = info->prstatus->general_registers.x86_64.bp;
-	state->rsp    = info->prstatus->general_registers.x86_64.sp;
-	state->r8     = info->prstatus->general_registers.x86_64.r8;
-	state->r9     = info->prstatus->general_registers.x86_64.r9;
-	state->r10    = info->prstatus->general_registers.x86_64.r10;
-	state->r11    = info->prstatus->general_registers.x86_64.r11;
-	state->r12    = info->prstatus->general_registers.x86_64.r12;
-	state->r13    = info->prstatus->general_registers.x86_64.r13;
-	state->r14    = info->prstatus->general_registers.x86_64.r14;
-	state->r15    = info->prstatus->general_registers.x86_64.r15;
-	state->rip    = info->prstatus->general_registers.x86_64.ip;
-	state->rflags = info->prstatus->general_registers.x86_64.flags;
-	state->cs     = info->prstatus->general_registers.x86_64.cs;
-	state->fs     = info->prstatus->general_registers.x86_64.fs;
-	state->gs     = info->prstatus->general_registers.x86_64.gs;
+	state->rax    = info->prstatus->elf64.general_registers.x86_64.ax;
+	state->rbx    = info->prstatus->elf64.general_registers.x86_64.bx;
+	state->rcx    = info->prstatus->elf64.general_registers.x86_64.cx;
+	state->rdx    = info->prstatus->elf64.general_registers.x86_64.dx;
+	state->rdi    = info->prstatus->elf64.general_registers.x86_64.di;
+	state->rsi    = info->prstatus->elf64.general_registers.x86_64.si;
+	state->rbp    = info->prstatus->elf64.general_registers.x86_64.bp;
+	state->rsp    = info->prstatus->elf64.general_registers.x86_64.sp;
+	state->r8     = info->prstatus->elf64.general_registers.x86_64.r8;
+	state->r9     = info->prstatus->elf64.general_registers.x86_64.r9;
+	state->r10    = info->prstatus->elf64.general_registers.x86_64.r10;
+	state->r11    = info->prstatus->elf64.general_registers.x86_64.r11;
+	state->r12    = info->prstatus->elf64.general_registers.x86_64.r12;
+	state->r13    = info->prstatus->elf64.general_registers.x86_64.r13;
+	state->r14    = info->prstatus->elf64.general_registers.x86_64.r14;
+	state->r15    = info->prstatus->elf64.general_registers.x86_64.r15;
+	state->rip    = info->prstatus->elf64.general_registers.x86_64.ip;
+	state->rflags = info->prstatus->elf64.general_registers.x86_64.flags;
+	state->cs     = info->prstatus->elf64.general_registers.x86_64.cs;
+	state->fs     = info->prstatus->elf64.general_registers.x86_64.fs;
+	state->gs     = info->prstatus->elf64.general_registers.x86_64.gs;
 }
 
 static
