@@ -3,7 +3,33 @@
 
 #include <stdint.h>
 
-struct nt_prstatus_registers {
+struct nt_prstatus_registers_i386 {
+	uint32_t ebx;
+	uint32_t ecx;
+	uint32_t edx;
+	uint32_t esi;
+	uint32_t edi;
+	uint32_t ebp;
+	uint32_t eax;
+	uint16_t ds;
+	uint16_t ds_padding;
+	uint16_t es;
+	uint16_t es_padding;
+	uint16_t fs;
+	uint16_t fs_padding;
+	uint16_t gs;
+	uint16_t gs_padding;
+	uint32_t orig_eax;
+	uint32_t eip;
+	uint16_t cs;
+	uint16_t cs_padding;
+	uint32_t eflags;
+	uint32_t esp;
+	uint16_t ss;
+	uint16_t ss_padding;
+};
+
+struct nt_prstatus_registers_x86_64 {
 	unsigned long r15;
 	unsigned long r14;
 	unsigned long r13;
