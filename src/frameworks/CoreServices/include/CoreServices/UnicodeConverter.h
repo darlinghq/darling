@@ -2,7 +2,7 @@
 #define _UNICODECONVERTER_H
 
 #include <CoreServices/MacTypes.h>
-#include <CoreServices/TextCommon.h>
+#include <CarbonCore/TextCommon.h>
 #include <CarbonCore/MixedMode.h>
 
 #ifdef __cplusplus

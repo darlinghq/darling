@@ -1,4 +1,4 @@
-#include <CoreServices/Components.h>
+#include <CarbonCore/Components.h>
 #include <CoreAudio/AudioHardware.h>
 
 extern "C"{
