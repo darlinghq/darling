@@ -23,6 +23,18 @@
 
 #include <darling-config.h>
 
+#ifndef DUMP_FLOAT_STATE
+	#define DUMP_FLOAT_STATE 1
+#endif
+
+#ifndef ALIGN_REGIONS
+	#define ALIGN_REGIONS 0
+#endif
+
+#ifndef INVALIDATE_DEVICES
+	#define INVALIDATE_DEVICES 0
+#endif
+
 // interestingly enough, there are no existing tools that can perform this conversion (ELF coredump to Mach-O coredump).
 // neither objcopy nor llvm-objcopy support Mach-O conversion like that, nor does objconv (it considers coredumps to be executables and refuses to operate on them).
 // porting our existing code from the LKM is simple enough, so that's what we do here.
@@ -508,6 +520,12 @@ int main(int argc, char** argv) {
 				vm_area->protection |= PROT_EXEC;
 			}
 
+			if (vm_area->protection == 0) {
+				// if the area has no protection flags, it most likely wasn't included anywhere.
+				// no need to include it in the core dump. this also handles the case of __PAGEZERO.
+				vm_area->valid = false;
+			}
+
 			if (cprm_elf(cprm.is_64_bit, program_header, p_filesz) == 0) {
 				// contents contained within original file
 
@@ -532,19 +550,18 @@ int main(int argc, char** argv) {
 				}
 
 				if (!vm_area->filename) {
-					if (vm_area->protection == 0) {
-						// if the area has no protection flags, it most likely wasn't included anywhere.
-						// no need to include it in the core dump. this also handles the case of __PAGEZERO.
-						vm_area->valid = false;
-					}
-
-					// otherwise, it's valid, just not present anywhere.
 					// this can occur for pages that are allocated but never accessed, so there would be no reason to include them in the core dump.
 					// in this case, the program header literally indicates that the region's file size is 0, since it's unnecessary to include anywhere,
 					// not necessarily that it resides in a file.
 
 					vm_area->file_size = 0;
 				}
+
+#if INVALIDATE_DEVICES
+				if (vm_area->filename_length >= 4 && strncmp(vm_area->filename, "/dev", 4) == 0) {
+					vm_area->valid = false;
+				}
+#endif
 			} else {
 				// contents contained within this corefile
 				vm_area->filename = NULL;
@@ -606,7 +623,20 @@ int main(int argc, char** argv) {
 };
 
 static bool dump_emit(struct coredump_params* cprm, const void* buffer, size_t buffer_size) {
-	return write(cprm->output_corefile, buffer, buffer_size) == buffer_size;
+	while (buffer_size > 0) {
+		ssize_t written = write(cprm->output_corefile, buffer, buffer_size);
+		if (written < 0) {
+			if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+				continue;
+			} else {
+				return false;
+			}
+		} else {
+			buffer_size -= written;
+			buffer = (const char*)buffer + written;
+		}
+	}
+	return true;
 };
 
 static bool dump_skip(struct coredump_params* cprm, size_t size) {
@@ -631,6 +661,12 @@ static bool dump_skip(struct coredump_params* cprm, size_t size) {
 
 static uint64_t dump_offset_get(struct coredump_params* cprm) {
 	return lseek(cprm->output_corefile, 0, SEEK_CUR);
+};
+
+static bool dump_align(struct coredump_params* cprm, size_t alignment) {
+	uint64_t offset = dump_offset_get(cprm);
+	uint64_t aligned = round_up_pow2(offset, alignment);
+	return dump_skip(cprm, aligned - offset);
 };
 
 // the following coredump code has been imported from the LKM and adapted for use in userspace
@@ -712,6 +748,7 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 	unsigned int segs = cprm->vm_area_count;
 	unsigned int threads = cprm->thread_info_count;
 	struct mach_header mh;
+	const uint32_t align_page_size = ALIGN_REGIONS ? sysconf(_SC_PAGE_SIZE) : 1;
 
 	for (size_t i = 0; i < cprm->vm_area_count; ++i) {
 		struct vm_area* vma = &cprm->vm_areas[i];
@@ -732,7 +769,7 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 	mh.filetype = MH_CORE;
 	mh.ncmds = segs + threads;
 
-	const int statesize = sizeof(x86_thread_state32_t) + sizeof(x86_float_state32_t) + sizeof(struct thread_flavor) * 2;
+	const int statesize = sizeof(x86_thread_state32_t) + (DUMP_FLOAT_STATE ? sizeof(x86_float_state32_t) : 0) + sizeof(struct thread_flavor) * (DUMP_FLOAT_STATE ? 2 : 1);
 	mh.sizeofcmds = segs * sizeof(struct segment_command) + threads * (sizeof(struct thread_command) + statesize);
 	mh.flags = 0;
 
@@ -752,7 +789,7 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 	if (!dump_emit(cprm, &mh, sizeof(mh)))
 		goto fail;
 
-	uint32_t file_offset = mh.sizeofcmds + sizeof(mh);
+	uint32_t file_offset = round_up_pow2(mh.sizeofcmds + sizeof(mh), align_page_size);
 
 	// TODO: maybe align the initial offset to 0x1000
 
@@ -776,7 +813,8 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 
 		vma->expected_offset = sc.fileoff;
 
-		sc.filesize = (vma->file_size == 0) ? vma->memory_size : vma->file_size;
+		// see explanation in `macho_coredump` for why we always use the memory size
+		sc.filesize = /*(vma->file_size == 0) ?*/ vma->memory_size /*: vma->file_size*/;
 		sc.initprot = 0;
 
 		if (vma->protection & PROT_READ)
@@ -790,7 +828,7 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 		if (!dump_emit(cprm, &sc, sizeof(sc)))
 			goto fail;
 
-		file_offset += sc.filesize;
+		file_offset += round_up_pow2(sc.filesize, align_page_size);
 	}
 
 	const int memsize = sizeof(struct thread_command) + statesize;
@@ -810,12 +848,14 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 
 		fill_thread_state32((x86_thread_state32_t*)tf->state, thread_info);
 
+#if DUMP_FLOAT_STATE
 		// Float registers
 		tf = (struct thread_flavor*) (tf->state + sizeof(x86_thread_state32_t));
 		tf->flavor = x86_FLOAT_STATE32;
 		tf->count = x86_FLOAT_STATE32_COUNT;
 
 		fill_float_state32((x86_float_state32_t*)tf->state, thread_info);
+#endif
 
 		if (!dump_emit(cprm, buffer, memsize))
 		{
@@ -837,6 +877,7 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 	unsigned int segs = cprm->vm_area_count;
 	unsigned int threads = cprm->thread_info_count;
 	struct mach_header_64 mh;
+	const uint64_t align_page_size = ALIGN_REGIONS ? sysconf(_SC_PAGE_SIZE) : 1;
 
 	for (size_t i = 0; i < cprm->vm_area_count; ++i) {
 		struct vm_area* vma = &cprm->vm_areas[i];
@@ -857,7 +898,7 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 	mh.filetype = MH_CORE;
 	mh.ncmds = segs + threads;
 
-	const int statesize = sizeof(x86_thread_state64_t) + sizeof(x86_float_state64_t) + sizeof(struct thread_flavor) * 2;
+	const int statesize = sizeof(x86_thread_state64_t) + (DUMP_FLOAT_STATE ? sizeof(x86_float_state64_t) : 0) + sizeof(struct thread_flavor) * (DUMP_FLOAT_STATE ? 2 : 1);
 	mh.sizeofcmds = segs * sizeof(struct segment_command_64) + threads * (sizeof(struct thread_command) + statesize);
 	mh.flags = 0;
 	mh.reserved = 0;
@@ -878,7 +919,7 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 	if (!dump_emit(cprm, &mh, sizeof(mh)))
 		goto fail;
 
-	uint64_t file_offset = mh.sizeofcmds + sizeof(mh);
+	uint64_t file_offset = round_up_pow2(mh.sizeofcmds + sizeof(mh), align_page_size);
 
 	for (size_t i = 0; i < cprm->vm_area_count; ++i) {
 		struct vm_area* vma = &cprm->vm_areas[i];
@@ -900,7 +941,8 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 
 		vma->expected_offset = sc.fileoff;
 
-		sc.filesize = (vma->file_size == 0) ? vma->memory_size : vma->file_size;
+		// see explanation in `macho_coredump` for why we always use the memory size
+		sc.filesize = /*(vma->file_size == 0) ?*/ vma->memory_size /*: vma->file_size*/;
 		sc.initprot = 0;
 
 		if (vma->protection & PROT_READ)
@@ -914,7 +956,7 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 		if (!dump_emit(cprm, &sc, sizeof(sc)))
 			goto fail;
 
-		file_offset += sc.filesize;
+		file_offset += round_up_pow2(sc.filesize, align_page_size);
 	}
 
 	const int memsize = sizeof(struct thread_command) + statesize;
@@ -934,12 +976,14 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 
 		fill_thread_state64((x86_thread_state64_t*)tf->state, thread_info);
 
+#if DUMP_FLOAT_STATE
 		// Float registers
 		tf = (struct thread_flavor*) (tf->state + sizeof(x86_thread_state64_t));
 		tf->flavor = x86_FLOAT_STATE64;
 		tf->count = x86_FLOAT_STATE64_COUNT;
 
 		fill_float_state64((x86_float_state64_t*)tf->state, thread_info);
+#endif
 
 		if (!dump_emit(cprm, buffer, memsize))
 		{
@@ -972,6 +1016,11 @@ void macho_coredump(struct coredump_params* cprm)
 
 	// Dump memory contents
 
+	uint64_t align_page_size = ALIGN_REGIONS ? sysconf(_SC_PAGESIZE) : 1;
+
+	if (!dump_align(cprm, align_page_size))
+		exit(EXIT_FAILURE);
+
 	// Inspired by elf_core_dump()
 	for (size_t i = 0; i < cprm->vm_area_count; ++i) {
 		const struct vm_area* vma = &cprm->vm_areas[i];
@@ -998,7 +1047,7 @@ void macho_coredump(struct coredump_params* cprm)
 		}
 
 		if (vma->filename) {
-			if (strncmp(vma->filename, "/dev/", sizeof("/dev/") - 1) == 0) {
+			if (vma->filename_length >= sizeof("/dev/") - 1 && strncmp(vma->filename, "/dev/", sizeof("/dev/") - 1) == 0) {
 				printf("Warning: skipping device \"%s\"\n", vma->filename);
 				if (!dump_skip(cprm, vma->file_size)) {
 					exit(EXIT_FAILURE);
@@ -1039,5 +1088,15 @@ void macho_coredump(struct coredump_params* cprm)
 			if (!dump_emit(cprm, (const char*)cprm->input_corefile_mapping + vma->file_offset, vma->file_size))
 				exit(EXIT_FAILURE);
 		}
+
+		// LLDB assumes that contiguous memory regions are written to the file as contiguous memory regions, even if they're written as separate segments,
+		// and (notably) even if their file sizes differ from their memory sizes (which would mean they're not actually fully contiguous in the file).
+		// this is a fairly reasonable assumption, but this means that, in cases where the memory size is greater than the file size, we have to manually
+		// zero-out the extra region space so LLDB will read them properly.
+		if (!dump_skip(cprm, vma->memory_size - vma->file_size))
+			exit(EXIT_FAILURE);
+
+		if (!dump_align(cprm, align_page_size))
+			exit(EXIT_FAILURE);
 	}
 }
