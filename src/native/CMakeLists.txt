@@ -18,12 +18,3 @@ wrap_elf(fontconfig libfontconfig.so)
 wrap_elf(dbus libdbus-1.so)
 wrap_elf(GL libGL.so "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries")
 wrap_elf(GLU libGLU.so "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries")
-wrap_elf(Vulkan libvulkan.so)
-
-execute_process(
-	COMMAND llvm-config --link-shared --libfiles
-	OUTPUT_VARIABLE HOST_LLVM_PATH
-	OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-wrap_elf(host_LLVM "${HOST_LLVM_PATH}")
