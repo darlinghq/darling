@@ -26,6 +26,7 @@
 void parse_elf(const char* elf, std::string& soname_out, std::set<std::string>& functions_out, std::set<std::string>& vars_out);
 void generate_wrapper(std::ofstream& output, const char* soname, const std::set<std::string>& symbols);
 void generate_var_wrappers(std::ofstream& output, std::ofstream& outputHeader, const std::set<std::string>& vars);
+Elf64_Off vaddr_to_offset(const Elf64_Ehdr* ehdr, Elf64_Addr vaddr);
 
 int main(int argc, const char** argv)
 {
@@ -168,10 +169,10 @@ void parse_elf(const char* elf, std::string& soname, std::set<std::string>& symb
 				switch (dyn->d_tag)
 				{
 					case DT_STRTAB:
-						off_strtab = dyn->d_un.d_val;
+						off_strtab = vaddr_to_offset(ehdr, dyn->d_un.d_val);
 						break;
 					case DT_SONAME:
-						off_soname = dyn->d_un.d_val;
+						off_soname = vaddr_to_offset(ehdr, dyn->d_un.d_val);
 						break;
 					case DT_NULL:
 						goto end_dyn;
@@ -297,4 +298,22 @@ void generate_var_wrappers(std::ofstream& output, std::ofstream& outputHeader, c
 	outputHeader << "\n\n#ifdef __cplusplus\n"
 		"}\n"
 		"#endif\n\n";
+}
+
+Elf64_Off vaddr_to_offset(const Elf64_Ehdr* ehdr, Elf64_Xword vaddr)
+{
+	for (int i = 0; i < ehdr->e_phnum; i++)
+	{
+		const Elf64_Phdr* phdr;
+		Elf64_Addr vstart, vend;
+
+		phdr = (const Elf64_Phdr*) (((char*) ehdr) + ehdr->e_phoff + (i * ehdr->e_phentsize));
+		vstart = phdr->p_vaddr;
+		vend = phdr->p_vaddr + phdr->p_memsz;
+		if (vstart <= vaddr && vaddr < vend) {
+			return phdr->p_offset + vaddr - vstart;
+		}
+	}
+
+	return 0;
 }
