@@ -30,7 +30,6 @@ endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
 option(DARLING_NO_CCACHE "Disable ccache usage" OFF)
 
-find_package(Python2 REQUIRED COMPONENTS Interpreter)
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM AND NOT DARLING_NO_CCACHE)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
@@ -109,6 +108,27 @@ option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)
 option(ADDITIONAL_PACKAGES "Include additional pacakges not included by default in a standard macOS installation" OFF)
+
+set(COMPILE_PY2_BYTECODE AUTO CACHE STRING "Pre-compile bytecode for Python 2 packages")
+set_property(CACHE COMPILE_PY2_BYTECODE PROPERTY STRINGS AUTO ON OFF)
+
+string(TOLOWER "${COMPILE_PY2_BYTECODE}" COMPILE_PY2_BYTECODE)
+
+if (COMPILE_PY2_BYTECODE STREQUAL "auto")
+	find_package(Python2 QUIET COMPONENTS Interpreter)
+
+	if (Python2_Interpreter_FOUND)
+		set(COMPILE_PY2_BYTECODE ON)
+		message("Found Python 2; enabling pre-compilation of Python bytecode")
+	else()
+		set(COMPILE_PY2_BYTECODE OFF)
+		message("Python 2 not available; bytecode compilation is disabled")
+	endif (Python2_Interpreter_FOUND)
+endif (COMPILE_PY2_BYTECODE STREQUAL "auto")
+
+if (COMPILE_PY2_BYTECODE)
+	find_package(Python2 REQUIRED COMPONENTS Interpreter)
+endif (COMPILE_PY2_BYTECODE)
 
 set(ENABLE_METAL AUTO CACHE STRING "Build Darling with Metal support")
 set_property(CACHE ENABLE_METAL PROPERTY STRINGS AUTO ON OFF)
