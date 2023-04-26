@@ -4,6 +4,7 @@ function(pyc target_name)
 	cmake_parse_arguments(PYC "" "DESTINATION" "SOURCES" ${ARGN})
 	set(generated_files "")
 
+if (COMPILE_PY2_BYTECODE)
 	foreach(pyfile ${PYC_SOURCES})
 		STRING(REGEX REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}" "" pyfile_rel ${pyfile})
 		
@@ -23,5 +24,7 @@ function(pyc target_name)
 	endforeach(pyfile)
 
 	add_custom_target("${target_name}" ALL DEPENDS ${generated_files})
+
+endif (COMPILE_PY2_BYTECODE)
 endfunction(pyc)
 
