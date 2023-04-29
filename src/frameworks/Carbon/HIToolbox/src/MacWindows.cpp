@@ -1,10 +1,12 @@
 #include "MacWindows.h"
-#include <X11/Xlib.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 #define NO_X11 
 
+#ifndef NO_X11
+#include <X11/Xlib.h>
+#endif
 
 static int verbose = 0;
 
@@ -14,7 +16,9 @@ static void initme(void) {
 }
 
 
+#ifndef NO_X11
 static Display* g_display = nullptr;
+#endif
 static void closeDisplay() __attribute__((destructor));
 
 namespace Darling
@@ -23,9 +27,9 @@ namespace Darling
 namespace Carbon
 {
 
+#ifndef NO_X11
 Display* getDisplay()
 {
-#ifndef NO_X11
 	if (g_display)
 		return g_display;
 
@@ -39,9 +43,9 @@ Display* getDisplay()
 		abort();
 	}
 
-#endif
 	return g_display;
 }
+#endif
 
 void closeDisplay()
 {
