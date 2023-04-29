@@ -40,7 +40,14 @@ int checkPrefixDir(void);
 // Creates the given directory, exit()ing if not possible
 void createDir(const char* path);
 
+int connectToShellspawn(void);
+void setupShellspawnEnv(int shellspawnFD);
+void setupWorkingDir(int shellspawnFD);
+void setupIDs(int shellspawnFD);
+void setupFDs(int fds[3], int* master);
+void spawnGo(int shellspawnFD, int fds[3], int master);
 void spawnShell(const char** argv);
+void spawnBinary(const char* binary, const char** argv);
 
 // Set up some environment variables
 // As well as the working directory
