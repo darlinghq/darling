@@ -2,6 +2,14 @@ FUNCTION(use_ld64 target)
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/${APPLE_TARGET_TRIPLET_PRIMARY}-ld ")
 
+	if (COMPONENT_gui)
+		set(COCOTRON_FW_PATH "${CMAKE_BINARY_DIR}/src/external/cocotron")
+		set(IMAGE_IO_PATH "${CMAKE_BINARY_DIR}/src/frameworks/ImageIO/ImageIO")
+	else()
+		set(COCOTRON_FW_PATH "${CMAKE_BINARY_DIR}/src/frameworks/dev-stubs")
+		set(IMAGE_IO_PATH "${CMAKE_BINARY_DIR}/src/frameworks/dev-stubs/ImageIO/ImageIO")
+	endif()
+
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ \
 -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
@@ -112,9 +120,9 @@ FUNCTION(use_ld64 target)
 :${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/SpeechSynthesis/SpeechSynthesis \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices:${CMAKE_BINARY_DIR}/src/frameworks/CoreServices/CoreServices \
 -Wl,-dylib_file,/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices:${CMAKE_BINARY_DIR}/src/frameworks/ApplicationServices/ApplicationServices \
--Wl,-dylib_file,/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/CoreGraphics \
--Wl,-dylib_file,/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreText/CoreText \
--Wl,-dylib_file,/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO:${CMAKE_BINARY_DIR}/src/frameworks/ImageIO/ImageIO \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics:${COCOTRON_FW_PATH}/CoreGraphics/CoreGraphics \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText:${COCOTRON_FW_PATH}/CoreText/CoreText \
+-Wl,-dylib_file,/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO:${IMAGE_IO_PATH} \
 -Wl,-dylib_file,/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication:${CMAKE_BINARY_DIR}/src/frameworks/LocalAuthentication/LocalAuthentication \
 -Wl,-dylib_file,/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo:${CMAKE_BINARY_DIR}/src/frameworks/CoreVideo/CoreVideo \
 -Wl,-dylib_file,/System/Library/PrivateFrameworks/FMDB.framework/Versions/A/FMDB:${CMAKE_BINARY_DIR}/src/external/fmdb/FMDB \
@@ -141,8 +149,8 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Print.framework/Versions/A/Print:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/Print/Print \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/SecurityHI.framework/Versions/A/SecurityHI:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/SecurityHI/SecurityHI \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/SpeechRecognition.framework/Versions/A/SpeechRecognition:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/SpeechRecognition/SpeechRecognition \
--Wl,-dylib_file,/System/Library/Frameworks/CoreData.framework/Versions/A/CoreData:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreData/CoreData \
--Wl,-dylib_file,/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore:${CMAKE_BINARY_DIR}/src/external/cocotron/QuartzCore/QuartzCore \
+-Wl,-dylib_file,/System/Library/Frameworks/CoreData.framework/Versions/A/CoreData:${COCOTRON_FW_PATH}/CoreData/CoreData \
+-Wl,-dylib_file,/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore:${COCOTRON_FW_PATH}/QuartzCore/QuartzCore \
 -Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL:${CMAKE_BINARY_DIR}/src/frameworks/OpenGL/OpenGL \
 -Wl,-dylib_file,/System/Library/PrivateFrameworks/Onyx2D.framework/Versions/A/Onyx2D:${CMAKE_BINARY_DIR}/src/external/cocotron/Onyx2D/Onyx2D \
 -Wl,-dylib_file,/usr/lib/darling/libelfloader.dylib:${CMAKE_BINARY_DIR}/src/libelfloader/libelfloader.dylib \

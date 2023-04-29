@@ -101,13 +101,15 @@ endif(CMAKE_POSITION_INDEPENDENT_CODE)
 
 enable_language(ASM-ATT)
 
-option(FULL_BUILD "Include large items in the build" ON)
 option(TARGET_i386 "Enable i386 slices" ON)
 option(TARGET_x86_64 "Enable x86_64 slices" ON)
 option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)
-option(ADDITIONAL_PACKAGES "Include additional pacakges not included by default in a standard macOS installation" OFF)
+
+set(COMPONENTS "stock" CACHE STRING "Choose which components of Darling to build")
+include(darling_parse_components)
+darling_parse_components("${COMPONENTS}")
 
 set(COMPILE_PY2_BYTECODE AUTO CACHE STRING "Pre-compile bytecode for Python 2 packages")
 set_property(CACHE COMPILE_PY2_BYTECODE PROPERTY STRINGS AUTO ON OFF)
