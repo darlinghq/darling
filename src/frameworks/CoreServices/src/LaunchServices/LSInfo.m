@@ -28,11 +28,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 __attribute__((visibility("hidden")))
 FMDatabaseQueue* getDatabaseQueue(void)
 {
-	static FMDatabaseQueue* db = nil;
-	if (!db)
-	{
+	static dispatch_once_t pred;
+	static FMDatabaseQueue* db;
+	dispatch_once(&pred, ^{
 		db = [[FMDatabaseQueue databaseQueueWithPath: @"/private/var/db/launchservices.db" flags:SQLITE_OPEN_READONLY] retain];
-	}
+	});
 	return db;
 }
 
