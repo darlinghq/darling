@@ -25,6 +25,8 @@ include(pyc)
 # these projects are always built
 #
 
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+
 #add_subdirectory(external/xcbuild)
 add_subdirectory(bsdln)
 
@@ -203,6 +205,8 @@ add_subdirectory(external/ncurses)
 #
 
 if (COMPONENT_system)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "system")
+
 	add_subdirectory(external/libiconv)
 	add_subdirectory(external/bzip2)
 	add_subdirectory(external/libressl-2.8.3)
@@ -219,6 +223,8 @@ if (COMPONENT_system)
 endif()
 
 if (COMPONENT_cli)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli")
+
 	add_subdirectory(external/darling-dmg)
 	add_subdirectory(external/libutil)
 	add_subdirectory(xtrace)
@@ -280,14 +286,18 @@ if (COMPONENT_cli)
 endif()
 
 if (COMPONENT_python OR COMPONENT_ruby)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "ffi")
 	add_subdirectory(external/libffi)
 endif()
 
 if (COMPONENT_cli_dev)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev")
 	add_subdirectory(libgmalloc)
 endif()
 
 if (COMPONENT_cli OR COMPONENT_dev_gui_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
+
 	add_subdirectory(external/libxml2)
 	add_subdirectory(external/foundation)
 	add_subdirectory(external/cfnetwork/src)
@@ -313,19 +323,26 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 endif()
 
 if (COMPONENT_iokitd)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME iokitd)
 	add_subdirectory(external/iokitd)
 endif()
 
 if (COMPONENT_dev_gui_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_common")
+
 	add_subdirectory(libaccessibility)
 	add_subdirectory(external/openjdk) # *should* be in `cli` component, but requires AppKit
 endif()
 
 if (COMPONENT_cli_extra)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_extra")
+
 	add_subdirectory(external/gnutar/gnutar)
 endif()
 
 if (COMPONENT_gui)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui")
+
 	add_subdirectory(external/cocotron)
 
 	add_subdirectory(CoreAudio)
@@ -337,26 +354,36 @@ if (COMPONENT_gui)
 endif()
 
 if (COMPONENT_python)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "python")
+
 	add_subdirectory(external/python_modules)
 	add_subdirectory(external/python/2.7/Python-2.7.16)
 endif()
 
 if (COMPONENT_cli OR COMPONENT_python)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_python_common")
+
 	add_subdirectory(external/BerkeleyDB)
 	add_subdirectory(external/expat)
 endif()
 
 if (COMPONENT_gui_frameworks AND COMPONENT_gui_stubs AND COMPONENT_python)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "pyobjc")
+
 	# TODO: pyobjc should only build individual modules if the respective components are enabled.
 	#       right now, it's all-or-nothing.
 	add_subdirectory(external/pyobjc)
 endif()
 
 if (COMPONENT_ruby)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "ruby")
+
 	add_subdirectory(external/ruby)
 endif()
 
 if (COMPONENT_perl)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "perl")
+
 	add_subdirectory(external/perl)
 endif()
 
@@ -395,6 +422,8 @@ include_directories(BEFORE
 # start core components with C++
 #
 
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+
 add_subdirectory(external/libcxxabi)
 add_subdirectory(external/libcxx)
 
@@ -406,26 +435,36 @@ add_subdirectory(external/cctools)
 #
 
 if (COMPONENT_cli OR COMPONENT_dev_gui_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
+
 	add_subdirectory(external/SmartCardServices)
 	add_subdirectory(external/security)
 	add_subdirectory(external/SecurityTokend)
 endif()
 
 if (COMPONENT_cli)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli")
+
 	add_subdirectory(external/dtrace)
 	add_subdirectory(external/libauto)
 endif()
 
 if (COMPONENT_dev_gui_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_common")
+
 	add_subdirectory(external/metal)
 endif()
 
 if (COMPONENT_jsc OR COMPONENT_webkit)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "jsc_webkit_common")
+
 	add_subdirectory(external/WTF)
 	add_subdirectory(external/bmalloc)
 endif()
 
 if (COMPONENT_jsc)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "jsc")
+
 	add_subdirectory(external/JavaScriptCore)
 endif()
 

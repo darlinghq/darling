@@ -1,6 +1,8 @@
 project(tools)
 
 if (COMPONENT_cli)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli")
+
 	add_darling_executable(sw_vers sw_vers.c)
 	add_darling_executable(sudo sudo.c)
 	add_darling_executable(codesign codesign.c)
@@ -15,6 +17,8 @@ if (COMPONENT_cli)
 endif()
 
 if (COMPONENT_gui)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui")
+
 	add_darling_executable(open open.m)
 	target_link_libraries(open CoreServices Foundation AppKit)
 	install(TARGETS open DESTINATION libexec/darling/usr/bin)

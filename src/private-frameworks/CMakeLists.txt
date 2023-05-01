@@ -3,6 +3,8 @@ project(private-frameworks)
 # this is mainly for frameworks that are required for Security,
 # since Security is built for both CLI and GUI
 if (COMPONENT_cli OR COMPONENT_dev_gui_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
+
 	# these are also stubs, but they're needed for Security
 	add_subdirectory(AppleFSCompression)
 	add_subdirectory(AppleSystemInfo)
@@ -20,11 +22,15 @@ endif()
 
 # this is mainly for anything that Xcode requires to run on the CLI
 if (COMPONENT_dev_gui_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_common")
+
 	add_subdirectory(DebugSymbols)
 endif()
 
 # same here, except this is for stubs that Xcode needs
 if (COMPONENT_dev_gui_stubs_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_stubs_common")
+
 	add_subdirectory(AppleSauce)
 	add_subdirectory(AssetCacheServices)
 	add_subdirectory(AssistantServices)
@@ -54,6 +60,8 @@ endif()
 
 # this is for all the other stubbed frameworks
 if (COMPONENT_gui_stubs)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui_stubs")
+
 	add_subdirectory(AssertionServices)
 	add_subdirectory(Bom)
 	add_subdirectory(CoreUtils)

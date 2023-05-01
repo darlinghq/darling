@@ -1,6 +1,8 @@
 project(frameworks)
 
 if (COMPONENT_system)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "system")
+
 	# for memberd
 	add_subdirectory(DirectoryServices)
 endif()
@@ -8,6 +10,8 @@ endif()
 # this is mainly for frameworks that are required for Security,
 # since Security is built for both CLI and GUI
 if (COMPONENT_cli OR COMPONENT_dev_gui_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
+
 	add_subdirectory(CoreServices)
 
 	# these are also stubs, but they're needed for Security
@@ -27,12 +31,16 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 endif()
 
 if (COMPONENT_iokitd OR COMPONENT_dev_gui_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "iokitd_cli_dev_gui_common")
+
 	# this is for iokitd (and Xcode)
 	add_subdirectory(IOSurface)
 endif()
 
 # this is mainly for anything that Xcode requires to run on the CLI
 if (COMPONENT_dev_gui_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_common")
+
 	add_subdirectory(ApplicationServices)
 	add_subdirectory(ColorSync)
 	add_subdirectory(Carbon)
@@ -44,6 +52,8 @@ endif()
 
 # same here, except this is for stubs that Xcode needs
 if (COMPONENT_dev_gui_stubs_common)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_stubs_common")
+
 	add_subdirectory(Accelerate)
 	add_subdirectory(AVFoundation)
 	add_subdirectory(Contacts)
@@ -61,12 +71,16 @@ endif()
 
 # this is for core GUI frameworks with actual implementations
 if (COMPONENT_gui)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui")
+
 	add_subdirectory(OpenGL)
 	add_subdirectory(ImageIO)
 endif()
 
 # this is for all the other stubbed frameworks
 if (COMPONENT_gui_stubs)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui_stubs")
+
 	add_subdirectory(AddressBook)
 	add_subdirectory(AGL)
 	add_subdirectory(AuthenticationServices)
@@ -121,6 +135,8 @@ endif()
 
 #if (COMPONENT_dev_gui_common AND NOT COMPONENT_webkit)
 if (COMPONENT_dev_gui_common OR COMPONENT_webkit)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_common")
+
 	# stub
 	add_subdirectory(WebKit)
 endif()
@@ -130,6 +146,8 @@ endif()
 # Darling packages; we need to build a package that has these stubs available to be able to install Darling for CLI development
 # without GUI dependencies like X11.
 if ((COMPONENT_cli_dev AND NOT COMPONENT_gui) OR COMPONENT_cli_dev_gui_stubs)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev")
+
 	# if we're building the GUI components (i.e. Cocotron), don't install these stubs
 	if (COMPONENT_gui)
 		set(NO_INSTALL_ARG NO_INSTALL)

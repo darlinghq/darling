@@ -46,6 +46,8 @@ project(darling)
 cmake_minimum_required(VERSION 3.10)
 enable_language(ASM)
 
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(InstallSymlink)
 include(MacroEnsureOutOfSourceBuild)
@@ -107,7 +109,13 @@ option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)
 
-set(COMPONENTS "stock" CACHE STRING "Choose which components of Darling to build")
+if (DEBIAN_PACKAGING)
+	set(COMPONENTS_DEFAULT "all")
+else()
+	set(COMPONENTS_DEFAULT "stock")
+endif()
+
+set(COMPONENTS "${COMPONENTS_DEFAULT}" CACHE STRING "Choose which components of Darling to build")
 include(darling_parse_components)
 darling_parse_components("${COMPONENTS}")
 

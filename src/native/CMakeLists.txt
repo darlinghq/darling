@@ -3,6 +3,8 @@ project(native)
 include(wrap_elf)
 
 if (COMPONENT_gui)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui")
+
 	wrap_elf(FreeType libfreetype.so)
 	wrap_elf(jpeg libjpeg.so)
 	wrap_elf(png libpng.so)
