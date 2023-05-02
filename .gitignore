@@ -38,6 +38,7 @@ build
 rpm/SOURCES
 rpm/RPMS
 rpm/SRPMS
+rpm/BUILD
 
 debbuild
 debian/changelog

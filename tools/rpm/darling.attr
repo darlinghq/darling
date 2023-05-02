@@ -1,0 +1,2 @@
+%__darling_magic      ^Mach-O.*$
+%__darling_requires   %{_rpmconfigdir}/darling-deps.req %{_builddir}/darling/build/src/buildtools/elfdep
