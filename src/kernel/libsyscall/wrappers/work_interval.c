@@ -272,3 +272,43 @@ work_interval_copy_port(work_interval_t interval_handle, mach_port_t *port)
 
 	return 0;
 }
+
+work_interval_instance_t work_interval_instance_alloc(work_interval_t wi) {
+    puts("STUB: work_interval_instance_alloc called");
+    return (work_interval_instance_t)0;
+}
+
+void work_interval_instance_clear(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_clear called");
+}
+
+int work_interval_instance_finish(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_finish called");
+    return 0;
+}
+
+void work_interval_instance_free(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_free called");
+}
+
+void work_interval_instance_set_deadline(work_interval_instance_t wii, uint64_t deadline) {
+    puts("STUB: work_interval_instance_set_deadline called");
+}
+
+void work_interval_instance_set_finish(work_interval_instance_t wii, uint64_t current_finish) {
+    puts("STUB: work_interval_instance_set_finish called");
+}
+
+void work_interval_instance_set_start(work_interval_instance_t wii, uint64_t start) {
+    puts("STUB: work_interval_instance_set_start called");
+}
+
+int work_interval_instance_start(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_start called");
+    return 0;
+}
+
+int work_interval_instance_update(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_update called");
+    return 0;
+}
