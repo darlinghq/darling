@@ -1,5 +1,5 @@
 # this Dockerfile must be built using the following command:
-#     docker build -f ../ci/Dockerfile .
+#     docker build -f ../ci/Debian.Dockerfile .
 # this command must be run while in the `debian` directory in the root of the repo.
 FROM ubuntu:jammy
 LABEL name=darling-build-image version=0.1.0
@@ -14,4 +14,8 @@ RUN apt-get -y install devscripts equivs debhelper && apt clean -y
 COPY control /control
 RUN mk-build-deps -i -r -t "apt-get --no-install-recommends -y" /control && apt clean -y
 RUN rm /control
+RUN apt-get -y install ccache && apt clean -y
+RUN mkdir -p /ccache
+RUN mkdir -p /src/mnt
+RUN chown -R ci:ci /src
 USER ci

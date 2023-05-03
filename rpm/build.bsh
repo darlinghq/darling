@@ -2,18 +2,19 @@
 
 set -eu
 
-yum-builddep -y /src/rpm/SPECS/darling.spec
+mkdir -p $HOME/rpmbuild/SOURCES
+
 if [ -e "/src/rpm/SOURCES/darling.tar.gz" ]; then
-  ln -sf /src/rpm/SOURCES/darling.tar.gz /root/rpmbuild/SOURCES/
+  ln -sf /src/rpm/SOURCES/darling.tar.gz $HOME/rpmbuild/SOURCES/
 else
   # Preparing tarball
-  tar --transform "s|^\./|./darling/|" -cf /root/rpmbuild/SOURCES/darling.tar.gz -C /src --exclude=.git --exclude SOURCES --exclude SRPMS --exclude RPMS --exclude BUILD .
+  tar --transform "s|^\./|./darling/|" -cf $HOME/rpmbuild/SOURCES/darling.tar.gz -C /src --exclude=.git --exclude SOURCES --exclude SRPMS --exclude RPMS --exclude BUILD .
 fi
 
 if [ -e "/src/rpm/SOURCES/darling-macho-deps.tar.gz" ]; then
-  ln -sf /src/rpm/SOURCES/darling-macho-deps.tar.gz /root/rpmbuild/SOURCES/
+  ln -sf /src/rpm/SOURCES/darling-macho-deps.tar.gz $HOME/rpmbuild/SOURCES/
 else
-  tar --transform "s|^\./|darling-macho-deps/|" -cf /root/rpmbuild/SOURCES/darling-macho-deps.tar.gz -C /src/tools/rpm .
+  tar --transform "s|^\./|darling-macho-deps/|" -cf $HOME/rpmbuild/SOURCES/darling-macho-deps.tar.gz -C /src/tools/rpm .
 fi
 
 if (cd /src && git describe --tags HEAD); then
@@ -25,7 +26,7 @@ else
 fi
 
 rpmbuild -ba /src/rpm/SPECS/darling-macho-deps.spec
-rpm -U --force /root/rpmbuild/RPMS/x86_64/darling-macho-deps*.rpm
+sudo rpm -U --force $HOME/rpmbuild/RPMS/x86_64/darling-macho-deps*.rpm
 
 #spectool -g -R /src/rpm/SPECS/darling.spec
 rpmbuild -ba /src/rpm/SPECS/darling.spec
