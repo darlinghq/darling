@@ -25,9 +25,9 @@ else
   export DARLING_COMMIT_DATE="$(printf '%(%Y%m%d)T\n' -1)"
 fi
 
-rpmbuild -ba /src/rpm/SPECS/darling-macho-deps.spec
+rpmbuild -bb /src/rpm/SPECS/darling-macho-deps.spec
 sudo rpm -U --force $HOME/rpmbuild/RPMS/x86_64/darling-macho-deps*.rpm
 
 #spectool -g -R /src/rpm/SPECS/darling.spec
-rpmbuild -ba /src/rpm/SPECS/darling.spec
-rpmbuild -ba /src/rpm/SPECS/darling-cli-devenv.spec
+rpmbuild -bb /src/rpm/SPECS/darling.spec
+rpmbuild -bb /src/rpm/SPECS/darling-cli-devenv.spec
