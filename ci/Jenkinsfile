@@ -11,7 +11,7 @@ pipeline {
 
 	parameters {
 		booleanParam(name: 'DEB', defaultValue: true, description: 'If true, build Debian packages.')
-		booleanParam(name: 'RPM', defaultValue: false, description: 'If true, build RPM packages.')
+		booleanParam(name: 'RPM', defaultValue: true, description: 'If true, build RPM packages.')
 	}
 
 	triggers {
