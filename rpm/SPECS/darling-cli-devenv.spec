@@ -25,7 +25,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  bash
 
-Requires:       darling-cli darling-python darling-ruby darling-perl darling-cli-devenv-gui-common darling-cli-devenv-gui-stubs-common darling-iokitd-cli-devenv-gui-common
+Requires:       darling-cli darling-python2 darling-ruby darling-perl darling-cli-devenv-gui-common darling-cli-devenv-gui-stubs-common darling-iosurface
 Conflicts:      darling-gui darling-gui-stubs
 
 %description
