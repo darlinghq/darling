@@ -20,7 +20,7 @@ DARLING_COMPONENTS = \
 	perl \
 	jsc_webkit_common \
 	jsc \
-	iokitd_cli_dev_gui_common \
+	iosurface \
 	cli_dev_gui_stubs_common \
 	gui_stubs
 
@@ -35,14 +35,14 @@ PACKAGE_SUFFIXES = \
 	cli-devenv-gui-common \
 	cli-extra \
 	gui \
-	python \
-	cli-python-common \
+	python2 \
+	cli-python2-common \
 	pyobjc \
 	ruby \
 	perl \
 	jsc-webkit-common \
 	jsc \
-	iokitd-cli-devenv-gui-common \
+	iosurface \
 	cli-devenv-gui-stubs-common \
 	gui-stubs
 

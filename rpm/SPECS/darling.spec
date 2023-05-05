@@ -40,10 +40,10 @@ BuildRequires:  ffmpeg-devel pulseaudio-libs-devel openssl-devel giflib-devel
 BuildRequires:  libXrandr-devel libXcursor-devel libxkbfile-devel dbus-devel mesa-libGLU-devel
 BuildRequires:  vulkan-headers llvm-devel libcap-devel bash vulkan-loader-devel
 
-Requires: darling-cli darling-python darling-ruby darling-perl darling-gui darling-gui-stubs darling-pyobjc
+Requires: darling-cli darling-python2 darling-ruby darling-perl darling-gui darling-gui-stubs darling-pyobjc
 
 %description
-macOS emulation layer for Linux
+Translation layer for running macOS software on Linux
 
 %package extra
 Summary:       Extra components for Darling
@@ -72,7 +72,7 @@ System components of Darling
 %package cli
 Summary:    Darling CLI components
 Group:      Utility
-Requires:   darling-system darling-cli-gui-common darling-cli-python-common
+Requires:   darling-system darling-cli-gui-common darling-cli-python2-common
 
 %description cli
 CLI components of Darling
@@ -96,7 +96,7 @@ Components of Darling that are shared between the CLI and GUI components
 %package iokitd
 Summary:    Darling IOKit daemon
 Group:      Utility
-Requires:   darling-system darling-iokitd-cli-devenv-gui-common
+Requires:   darling-system darling-iosurface
 
 %description iokitd
 IOKit daemon for Darling
@@ -120,31 +120,31 @@ Non-standard CLI components of Darling
 %package gui
 Summary:    Darling GUI components
 Group:      Utility
-Requires:   darling-system darling-cli-devenv-gui-common darling-iokitd darling-cli-gui-common darling-iokitd-cli-devenv-gui-common
+Requires:   darling-system darling-cli-devenv-gui-common darling-iokitd darling-cli-gui-common darling-iosurface
 
 %description gui
 GUI components of Darling
 
-%package python
-Summary:    Python for Darling
+%package python2
+Summary:    Python 2 for Darling
 Group:      Utility
-Requires:   darling-core darling-cli-python-common darling-ffi
+Requires:   darling-core darling-cli-python2-common darling-ffi
 
-%description python
-Python (and associated programs) built for use within Darling
+%description python2
+Python 2 (and associated programs) built for use within Darling
 
-%package cli-python-common
-Summary:    Darling CLI and Python common components
+%package cli-python2-common
+Summary:    Darling CLI and Python 2 common components
 Group:      Utility
 Requires:   darling-core
 
-%description cli-python-common
-Components of Darling that are shared between the CLI and Python components
+%description cli-python2-common
+Components of Darling that are shared between the CLI and Python 2 components
 
 %package pyobjc
 Summary:    PyObjC for Darling
 Group:      Utility
-Requires:   darling-gui-stubs darling-python
+Requires:   darling-gui-stubs darling-python2
 
 %description pyobjc
 PyObjC built for use within Darling
@@ -181,13 +181,13 @@ Requires:   darling-system darling-jsc-webkit-common
 %description jsc
 JavaScriptCore built for use within Darling
 
-%package iokitd-cli-devenv-gui-common
-Summary:    Darling IOKit daemon, developer environment, and GUI common components
+%package iosurface
+Summary:    IOSurface framework for Darling
 Group:      Utility
 Requires:   darling-system
 
-%description iokitd-cli-devenv-gui-common
-Components of Darling that are shared between the IOKit daemon, developer environment, and GUI components
+%description iosurface
+IOSurface framework built for use within Darling
 
 %package cli-devenv-gui-stubs-common
 Summary:    Darling developer environment and GUI stubs common components
@@ -241,7 +241,7 @@ DARLING_COMPONENTS=(
 	perl
 	jsc_webkit_common
 	jsc
-	iokitd_cli_dev_gui_common
+	iosurface
 	cli_dev_gui_stubs_common
 	gui_stubs
 )
@@ -255,14 +255,14 @@ PACKAGE_SUFFIXES=(
 	cli-devenv-gui-common
 	cli-extra
 	gui
-	python
-	cli-python-common
+	python2
+	cli-python2-common
 	pyobjc
 	ruby
 	perl
 	jsc-webkit-common
 	jsc
-	iokitd-cli-devenv-gui-common
+	iosurface
 	cli-devenv-gui-stubs-common
 	gui-stubs
 )
@@ -296,14 +296,14 @@ popd
 %files cli-devenv-gui-common -f build/files.cli-devenv-gui-common.txt
 %files cli-extra -f build/files.cli-extra.txt
 %files gui -f build/files.gui.txt
-%files python -f build/files.python.txt
-%files cli-python-common -f build/files.cli-python-common.txt
+%files python2 -f build/files.python2.txt
+%files cli-python2-common -f build/files.cli-python2-common.txt
 %files pyobjc -f build/files.pyobjc.txt
 %files ruby -f build/files.ruby.txt
 %files perl -f build/files.perl.txt
 %files jsc-webkit-common -f build/files.jsc-webkit-common.txt
 %files jsc -f build/files.jsc.txt
-%files iokitd-cli-devenv-gui-common -f build/files.iokitd-cli-devenv-gui-common.txt
+%files iosurface -f build/files.iosurface.txt
 %files cli-devenv-gui-stubs-common -f build/files.cli-devenv-gui-stubs-common.txt
 %files gui-stubs -f build/files.gui-stubs.txt
 

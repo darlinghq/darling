@@ -7,9 +7,9 @@ Build-Depends: cmake, clang | clang-9, bison, flex, libfuse-dev, libudev-dev, pk
 
 Package: darling
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, darling-cli, darling-python, darling-ruby, darling-perl, darling-gui, darling-gui-stubs, darling-pyobjc
+Depends: ${shlibs:Depends}, ${misc:Depends}, darling-cli, darling-python2, darling-ruby, darling-perl, darling-gui, darling-gui-stubs, darling-pyobjc
 Description: Darling
- macOS emulation layer for Linux
+ Translation layer for running macOS software on Linux
 
 Package: darling-extra
 Architecture: amd64
@@ -31,7 +31,7 @@ Description: Darling system components
 
 Package: darling-cli
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-system, darling-cli-gui-common, darling-cli-python-common
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-system, darling-cli-gui-common, darling-cli-python2-common
 Description: Darling CLI components
  CLI components of Darling
 
@@ -43,7 +43,7 @@ Description: libffi for Darling
 
 Package: darling-cli-devenv
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-cli, darling-python, darling-ruby, darling-perl, darling-cli-devenv-gui-common, darling-cli-devenv-gui-stubs-common, darling-iokitd-cli-devenv-gui-common
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-cli, darling-python2, darling-ruby, darling-perl, darling-cli-devenv-gui-common, darling-cli-devenv-gui-stubs-common, darling-iosurface
 Description: Darling developer environment
  A Darling environment for CLI-only programs for building and developing using the command line developer tools
 Conflicts: darling-gui, darling-gui-stubs
@@ -56,7 +56,7 @@ Description: Darling CLI and GUI common components
 
 Package: darling-iokitd
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-system, darling-iokitd-cli-devenv-gui-common
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-system, darling-iosurface
 Description: Darling IOKit daemon
  IOKit daemon for Darling
 
@@ -74,25 +74,25 @@ Description: Extra Darling CLI components
 
 Package: darling-gui
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-system, darling-cli-devenv-gui-common, darling-iokitd, darling-cli-gui-common, darling-iokitd-cli-devenv-gui-common
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-system, darling-cli-devenv-gui-common, darling-iokitd, darling-cli-gui-common, darling-iosurface
 Description: Darling GUI components
  GUI components of Darling
 
-Package: darling-python
+Package: darling-python2
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-core, darling-cli-python-common, darling-ffi
-Description: Python for Darling
- Python (and associated programs) built for use within Darling
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-core, darling-cli-python2-common, darling-ffi
+Description: Python 2 for Darling
+ Python 2 (and associated programs) built for use within Darling
 
-Package: darling-cli-python-common
+Package: darling-cli-python2-common
 Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-core
-Description: Darling CLI and Python common components
- Components of Darling that are shared between the CLI and Python components
+Description: Darling CLI and Python 2 common components
+ Components of Darling that are shared between the CLI and Python 2 components
 
 Package: darling-pyobjc
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-gui-stubs, darling-python
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-gui-stubs, darling-python2
 Description: PyObjC for Darling
  PyObjC built for use within Darling
 
@@ -120,11 +120,11 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-system, d
 Description: JavaScriptCore for Darling
  JavaScriptCore built for use within Darling
 
-Package: darling-iokitd-cli-devenv-gui-common
+Package: darling-iosurface
 Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-system
-Description: Darling IOKit daemon, developer environment, and GUI common components
- Components of Darling that are shared between the IOKit daemon, developer environment, and GUI components
+Description: IOSurface framework for Darling
+ IOSurface framework built for use within Darling
 
 Package: darling-cli-devenv-gui-stubs-common
 Architecture: amd64

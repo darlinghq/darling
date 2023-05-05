@@ -31,7 +31,7 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 endif()
 
 if (COMPONENT_iokitd OR COMPONENT_dev_gui_common)
-	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "iokitd_cli_dev_gui_common")
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "iosurface")
 
 	# this is for iokitd (and Xcode)
 	add_subdirectory(IOSurface)
