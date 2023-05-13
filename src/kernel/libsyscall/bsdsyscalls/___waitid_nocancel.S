@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___waitid_nocancel)
 SYSCALL_NONAME(waitid_nocancel, 4, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___waitid_nocancel, waitid_nocancel, 4, cerror_nocancel)
 #endif
 
@@ -33,11 +33,6 @@ __SYSCALL2(___waitid_nocancel, waitid_nocancel, 4, cerror_nocancel)
 	.set	_waitid, ___waitid_nocancel
 	.globl	_waitid$NOCANCEL$UNIX2003
 	.set	_waitid$NOCANCEL$UNIX2003, ___waitid_nocancel
-#endif
-
-#if defined(__arm__)
-	.globl	_waitid$NOCANCEL
-	.set	_waitid$NOCANCEL, ___waitid_nocancel
 #endif
 
 #if defined(__arm64__)

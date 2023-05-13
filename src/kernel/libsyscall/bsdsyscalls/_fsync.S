@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_fsync)
 SYSCALL_NONAME(fsync, 1, cerror)
 ret
 #else
-#if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
+#if defined(__x86_64__) || defined(__arm64__)
 __SYSCALL2(_fsync, fsync, 1, cerror)
 #else
 __SYSCALL2(___fsync, fsync, 1, cerror)

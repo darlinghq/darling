@@ -1,7 +1,7 @@
 /*
 This file is part of Darling.
 
-Copyright (C) 2016-2020 Lubos Dolezel
+Copyright (C) 2016-2023 Lubos Dolezel
 
 Darling is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -202,12 +202,21 @@ int main(int argc, char ** argv)
 	}
 	else
 	{
+		bool doExec = strcmp(argv[1], "exec") == 0;
+		int argvIndex = doExec ? 2 : 1;
+
+		if (doExec && argc <= 2)
+		{
+			printf("'exec' subcommand requires a binary to execute.\n");
+			return 1;
+		}
+
 		char *fullPath;
-		char *path = realpath(argv[1], NULL);
+		char *path = realpath(argv[argvIndex], NULL);
 
 		if (path == NULL)
 		{
-			printf("'%s' is not a supported command or a file.\n", argv[1]);
+			printf("'%s' is not a supported command or a file.\n", argv[argvIndex]);
 			return 1;
 		}
 
@@ -216,8 +225,12 @@ int main(int argc, char ** argv)
 		strcat(fullPath, path);
 		free(path);
 
-		argv[1] = fullPath;
-		spawnShell((const char**) &argv[1]);
+		argv[argvIndex] = fullPath;
+
+		if (doExec)
+			spawnBinary(argv[argvIndex], (const char**) &argv[argvIndex]);
+		else
+			spawnShell((const char**) &argv[argvIndex]);
 	}
 
 	return 0;
@@ -532,34 +545,10 @@ static size_t escapeQuotes(char *dest, const char *src)
 	return len;
 }
 
-void spawnShell(const char** argv)
+int connectToShellspawn(void)
 {
-	size_t total_len = 0;
-	int count;
-	char buffer2[4096];
-	int sockfd;
 	struct sockaddr_un addr;
-	char* buffer;
-
-	if (argv != NULL)
-	{
-		for (count = 0; argv[count] != NULL; count++)
-			total_len += escapeQuotes(NULL, argv[count]);
-
-		buffer = malloc(total_len + count*3);
-
-		char *to = buffer;
-		for (int i = 0; argv[i] != NULL; i++)
-		{
-			if (to != buffer)
-				to = stpcpy(to, " ");
-			to = stpcpy(to, "'");
-			to += escapeQuotes(to, argv[i]);
-			to = stpcpy(to, "'");
-		}
-	}
-	else
-		buffer = NULL;
+	int sockfd;
 
 	// Connect to the shellspawn daemon in the container
 	addr.sun_family = AF_UNIX;
@@ -584,6 +573,13 @@ void spawnShell(const char** argv)
 		fprintf(stderr, "Error connecting to shellspawn in the container (%s): %s\n", addr.sun_path, strerror(errno));
 		exit(1);
 	}
+
+	return sockfd;
+}
+
+void setupShellspawnEnv(int sockfd)
+{
+	char buffer2[4096];
 
 	// Push environment variables
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, 
@@ -610,34 +606,38 @@ void spawnShell(const char** argv)
 
 	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", login);
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
+}
 
-	// Push shell arguments
-	if (buffer != NULL)
-	{
-		pushShellspawnCommand(sockfd, SHELLSPAWN_ADDARG, "-c");
-		pushShellspawnCommand(sockfd, SHELLSPAWN_ADDARG, buffer);
-
-		free(buffer);
-	}
-
+void setupWorkingDir(int sockfd)
+{
+	char buffer2[4096];
 	snprintf(buffer2, sizeof(buffer2), SYSTEM_ROOT "%s", g_workingDirectory);
 	pushShellspawnCommand(sockfd, SHELLSPAWN_CHDIR, buffer2);
+}
 
+void setupIDs(int sockfd)
+{
 	int ids[2] = { g_originalUid, g_originalGid };
 	pushShellspawnCommandData(sockfd, SHELLSPAWN_SETUIDGID, ids, sizeof(ids));
+}
 
-	int fds[3], master = -1;
-	
+void setupFDs(int fds[3], int* master)
+{
+	*master = -1;
+
 	if (isatty(STDIN_FILENO))
-		setupPtys(fds, &master);
+		setupPtys(fds, master);
 	else
-		fds[0] = dup(STDIN_FILENO); // dup() because we close() a few lines below
+		fds[0] = dup(STDIN_FILENO); // dup() because we close() after spawning
 	
-	if (master == -1 || !isatty(STDOUT_FILENO))
+	if (*master == -1 || !isatty(STDOUT_FILENO))
 		fds[1] = STDOUT_FILENO;
-	if (master == -1 || !isatty(STDERR_FILENO))
+	if (*master == -1 || !isatty(STDERR_FILENO))
 		fds[2] = STDERR_FILENO;
+}
 
+void spawnGo(int sockfd, int fds[3], int master)
+{
 	pushShellspawnCommandFDs(sockfd, SHELLSPAWN_GO, fds);
 	close(fds[0]);
 
@@ -648,14 +648,82 @@ void spawnShell(const char** argv)
 	close(sockfd);
 }
 
+void spawnShell(const char** argv)
+{
+	size_t total_len = 0;
+	int count;
+	int sockfd;
+	char* buffer;
+	int fds[3], master;
+
+	if (argv != NULL)
+	{
+		for (count = 0; argv[count] != NULL; count++)
+			total_len += escapeQuotes(NULL, argv[count]);
+
+		buffer = malloc(total_len + count*3);
+
+		char *to = buffer;
+		for (int i = 0; argv[i] != NULL; i++)
+		{
+			if (to != buffer)
+				to = stpcpy(to, " ");
+			to = stpcpy(to, "'");
+			to += escapeQuotes(to, argv[i]);
+			to = stpcpy(to, "'");
+		}
+	}
+	else
+		buffer = NULL;
+
+	sockfd = connectToShellspawn();
+
+	setupShellspawnEnv(sockfd);
+
+	// Push shell arguments
+	if (buffer != NULL)
+	{
+		pushShellspawnCommand(sockfd, SHELLSPAWN_ADDARG, "-c");
+		pushShellspawnCommand(sockfd, SHELLSPAWN_ADDARG, buffer);
+
+		free(buffer);
+	}
+
+	setupWorkingDir(sockfd);
+	setupIDs(sockfd);
+	setupFDs(fds, &master);
+	spawnGo(sockfd, fds, master);
+}
+
+void spawnBinary(const char* binary, const char** argv)
+{
+	int fds[3], master;
+	int sockfd;
+
+	sockfd = connectToShellspawn();
+	setupShellspawnEnv(sockfd);
+
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETEXEC, binary);
+
+	for (; *argv != NULL; ++argv)
+		pushShellspawnCommand(sockfd, SHELLSPAWN_ADDARG, *argv);
+
+	setupWorkingDir(sockfd);
+	setupIDs(sockfd);
+	setupFDs(fds, &master);
+	spawnGo(sockfd, fds, master);
+}
+
 void showHelp(const char* argv0)
 {
 	fprintf(stderr, "This is Darling, translation layer for macOS software.\n\n");
-	fprintf(stderr, "Copyright (C) 2012-2020 Lubos Dolezel\n\n");
+	fprintf(stderr, "Copyright (C) 2012-2023 Lubos Dolezel\n\n");
 
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "\t%s program-path [arguments...]\n", argv0);
+	fprintf(stderr, "\t%s <program-path> [arguments...]\n", argv0);
 	fprintf(stderr, "\t%s shell [arguments...]\n", argv0);
+	fprintf(stderr, "\t%s exec <program-path> [arguments...]\n", argv0);
+	fprintf(stderr, "\t%s shutdown\n", argv0);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Environment variables:\n"
 		"DPREFIX - specifies the location of Darling prefix, defaults to ~/.darling\n");
@@ -663,7 +731,7 @@ void showHelp(const char* argv0)
 
 void showVersion(const char* argv0) {
 	fprintf(stderr, "%s " GIT_BRANCH " @ " GIT_COMMIT_HASH "\n", argv0);
-	fprintf(stderr, "Copyright (C) 2012-2020 Lubos Dolezel\n");
+	fprintf(stderr, "Copyright (C) 2012-2023 Lubos Dolezel\n");
 }
 
 void missingSetuidRoot(void)

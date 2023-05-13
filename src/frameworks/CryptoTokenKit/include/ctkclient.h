@@ -30,7 +30,7 @@ CF_EXTERN_C_BEGIN
 #define kTKTokenControlAttribLifetimeType "TKTokenControlAttribLifetimeType"
 
 #define kTKTokenCreateAttributeAuxParams "TKTokenCreateAttributeAuxParams"
-
+#define kTKTokenCreateAttributeTestMode "kTKTokenCreateAttributeTestMode"
 #define TKTokenKeyUsageAny 1
 
 typedef const struct CF_BRIDGED_TYPE(id) __TKToken * TKTokenRef;
@@ -67,6 +67,9 @@ CFDictionaryRef TKTokenControl(TKTokenRef token, CFDictionaryRef attributes, CFE
 
 CF_EXPORT
 CFArrayRef TKTokenCopyIdentities(TKTokenRef token, int usage, CFErrorRef *error);
+
+CF_EXPORT
+void TKBindUserAm(CFStringRef cf_user, CFDataRef pub_key_hash, void *unknown);
 
 CF_EXTERN_C_END
 CF_IMPLICIT_BRIDGING_DISABLED

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 Apple Inc. All rights reserved.
+ * Copyright (c) 2015-2020 Apple Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
  *

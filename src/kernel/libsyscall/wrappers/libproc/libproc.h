@@ -31,10 +31,12 @@
 #include <sys/resource.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <mach/message.h> /* for audit_token_t */
 
 #include <sys/proc_info.h>
 
 #include <Availability.h>
+#include <os/availability.h>
 
 /*
  * This header file contains private interfaces to obtain process information.
@@ -98,6 +100,7 @@ int proc_name(int pid, void * buffer, uint32_t buffersize) __OSX_AVAILABLE_START
 int proc_regionfilename(int pid, uint64_t address, void * buffer, uint32_t buffersize) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
 int proc_kmsgbuf(void * buffer, uint32_t buffersize) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
 int proc_pidpath(int pid, void * buffer, uint32_t  buffersize) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
+int proc_pidpath_audittoken(audit_token_t *audittoken, void * buffer, uint32_t  buffersize) API_AVAILABLE(macos(10.16), ios(14.0), watchos(7.0), tvos(14.0));
 int proc_libversion(int *major, int * minor) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
 
 /*
@@ -125,6 +128,38 @@ int proc_get_dirty(pid_t pid, uint32_t *flags);
 int proc_clear_dirty(pid_t pid, uint32_t flags);
 
 int proc_terminate(pid_t pid, int *sig);
+
+/*
+ * NO_SMT means that on an SMT CPU, this thread must be scheduled alone,
+ * with the paired CPU idle.
+ *
+ * Set NO_SMT on the current proc (all existing and future threads)
+ * This attribute is inherited on fork and exec
+ */
+int proc_set_no_smt(void) __API_AVAILABLE(macos(10.16));
+
+/* Set NO_SMT on the current thread */
+int proc_setthread_no_smt(void) __API_AVAILABLE(macos(10.16));
+
+/*
+ * CPU Security Mitigation APIs
+ *
+ * Set CPU security mitigation on the current proc (all existing and future threads)
+ * This attribute is inherited on fork and exec
+ */
+int proc_set_csm(uint32_t flags) __API_AVAILABLE(macos(10.16));
+
+/* Set CPU security mitigation on the current thread */
+int proc_setthread_csm(uint32_t flags) __API_AVAILABLE(macos(10.16));
+
+/*
+ * flags for CPU Security Mitigation APIs
+ * PROC_CSM_ALL should be used in most cases,
+ * the individual flags are provided only for performance evaluation etc
+ */
+#define PROC_CSM_ALL         0x0001  /* Set all available mitigations */
+#define PROC_CSM_NOSMT       0x0002  /* Set NO_SMT - see above */
+#define PROC_CSM_TECS        0x0004  /* Execute VERW on every return to user mode */
 
 #ifdef PRIVATE
 #include <sys/event.h>

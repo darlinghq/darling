@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___mac_execve)
 SYSCALL_NONAME(__mac_execve, 4, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___mac_execve, __mac_execve, 4, cerror_nocancel)
 #endif
 
@@ -27,11 +27,6 @@ __SYSCALL2(___mac_execve, __mac_execve, 4, cerror_nocancel)
 #endif
 
 #if defined(__ppc__)
-	.globl	___sandbox_me
-	.set	___sandbox_me, ___mac_execve
-#endif
-
-#if defined(__arm__)
 	.globl	___sandbox_me
 	.set	___sandbox_me, ___mac_execve
 #endif

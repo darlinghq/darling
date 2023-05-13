@@ -243,6 +243,8 @@ extern void DARegisterDiskDisappearedCallback( DASessionRef               sessio
  * @param      disk      The disk object.
  * @param      dissenter A dissenter object on failure or NULL on success.
  * @param      context   The user-defined context parameter given to the mount function.
+ * @discussion
+ * If the disk is already mounted, then status code in the dissenter object will be set to kDAReturnBusy
  */
 
 typedef void ( *DADiskMountCallback )( DADiskRef disk, DADissenterRef __nullable dissenter, void * __nullable context );
@@ -279,7 +281,7 @@ extern void DADiskMountWithArguments( DADiskRef                      disk,
                                       DADiskMountOptions             options,
                                       DADiskMountCallback __nullable callback,
                                       void * __nullable              context,
-                                      CFStringRef                    arguments[] );
+                                      CFStringRef __nullable         arguments[_Nullable] );
 
 /*!
  * @typedef    DADiskMountApprovalCallback

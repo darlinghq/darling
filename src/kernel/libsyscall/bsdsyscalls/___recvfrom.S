@@ -11,7 +11,7 @@ ZERO_EXTEND(2)
 SYSCALL_NONAME(recvfrom, 6, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___recvfrom, recvfrom, 6, cerror)
 #endif
 
@@ -30,11 +30,6 @@ __SYSCALL2(___recvfrom, recvfrom, 6, cerror)
 #if defined(__ppc__)
 	.globl	_recvfrom$UNIX2003
 	.set	_recvfrom$UNIX2003, ___recvfrom
-#endif
-
-#if defined(__arm__)
-	.globl	_recvfrom
-	.set	_recvfrom, ___recvfrom
 #endif
 
 #if defined(__arm64__)

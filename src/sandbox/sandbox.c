@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
-#include <mach/message.h>
 
 // DUMMY implementation
 const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT = SANDBOX_FILTER_NONE;
@@ -171,3 +170,7 @@ int rootless_check_datavault_flag(const char* path, const char* storage_class) {
 	// not quite sure what a "data vault" is here, but its usage in `JSScript.mm` in JavaScriptCore seems to indicate that we should return `0`
 	return 0;
 };
+
+int sandbox_query_approval_policy_for_path(const char* query, const char* path, char **approval) {
+	return -1;
+}

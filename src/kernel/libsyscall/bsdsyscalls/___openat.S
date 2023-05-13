@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___openat)
 SYSCALL_NONAME(openat, 4, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___openat, openat, 4, cerror)
 #endif
 
@@ -21,17 +21,7 @@ __SYSCALL2(___openat, openat, 4, cerror)
 	.set	_openat, ___openat
 #endif
 
-#if defined(__x86_64__)
-	.globl	_openat
-	.set	_openat, ___openat
-#endif
-
 #if defined(__ppc__)
-	.globl	_openat
-	.set	_openat, ___openat
-#endif
-
-#if defined(__arm__)
 	.globl	_openat
 	.set	_openat, ___openat
 #endif

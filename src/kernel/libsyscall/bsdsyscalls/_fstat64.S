@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_fstat64)
 SYSCALL_NONAME(fstat64, 2, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(_fstat64, fstat64, 2, cerror_nocancel)
 #endif
 
@@ -29,11 +29,6 @@ __SYSCALL2(_fstat64, fstat64, 2, cerror_nocancel)
 #if defined(__ppc__)
 	.globl	_fstat$INODE64
 	.set	_fstat$INODE64, _fstat64
-#endif
-
-#if defined(__arm__)
-	.globl	_fstat
-	.set	_fstat, _fstat64
 #endif
 
 #if defined(__arm64__)

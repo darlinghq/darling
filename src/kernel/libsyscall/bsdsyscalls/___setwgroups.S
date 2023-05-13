@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___setwgroups)
 SYSCALL_NONAME(setwgroups, 2, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___setwgroups, setwgroups, 2, cerror_nocancel)
 #endif
 
@@ -27,11 +27,6 @@ __SYSCALL2(___setwgroups, setwgroups, 2, cerror_nocancel)
 #endif
 
 #if defined(__ppc__)
-	.globl	_setwgroups_np
-	.set	_setwgroups_np, ___setwgroups
-#endif
-
-#if defined(__arm__)
 	.globl	_setwgroups_np
 	.set	_setwgroups_np, ___setwgroups
 #endif

@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_pid_hibernate)
 SYSCALL_NONAME(pid_hibernate, 1, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(_pid_hibernate, pid_hibernate, 1, cerror_nocancel)
 #endif
 

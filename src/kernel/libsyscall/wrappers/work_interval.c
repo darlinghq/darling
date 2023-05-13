@@ -79,6 +79,26 @@ work_interval_create(work_interval_t *interval_handle, uint32_t create_flags)
 }
 
 int
+work_interval_get_flags_from_port(mach_port_t port, uint32_t *flags)
+{
+	if (!MACH_PORT_VALID(port) || flags == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	struct work_interval_create_params create_params = { 0 };
+
+	int ret = __work_interval_ctl(WORK_INTERVAL_OPERATION_GET_FLAGS, port,
+	    &create_params, sizeof(create_params));
+	if (ret == -1) {
+		return ret;
+	}
+
+	*flags = create_params.wicp_create_flags;
+	return 0;
+}
+
+int
 work_interval_notify(work_interval_t interval_handle, uint64_t start,
     uint64_t finish, uint64_t deadline, uint64_t next_start,
     uint32_t notify_flags)
@@ -96,6 +116,10 @@ work_interval_notify(work_interval_t interval_handle, uint64_t start,
 	if (interval_handle == NULL) {
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (interval_handle->create_flags & WORK_INTERVAL_FLAG_IGNORED) {
+		return 0;
 	}
 
 	notification.create_flags = interval_handle->create_flags;
@@ -247,4 +271,44 @@ work_interval_copy_port(work_interval_t interval_handle, mach_port_t *port)
 	*port = wi_port;
 
 	return 0;
+}
+
+work_interval_instance_t work_interval_instance_alloc(work_interval_t wi) {
+    puts("STUB: work_interval_instance_alloc called");
+    return (work_interval_instance_t)0;
+}
+
+void work_interval_instance_clear(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_clear called");
+}
+
+int work_interval_instance_finish(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_finish called");
+    return 0;
+}
+
+void work_interval_instance_free(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_free called");
+}
+
+void work_interval_instance_set_deadline(work_interval_instance_t wii, uint64_t deadline) {
+    puts("STUB: work_interval_instance_set_deadline called");
+}
+
+void work_interval_instance_set_finish(work_interval_instance_t wii, uint64_t current_finish) {
+    puts("STUB: work_interval_instance_set_finish called");
+}
+
+void work_interval_instance_set_start(work_interval_instance_t wii, uint64_t start) {
+    puts("STUB: work_interval_instance_set_start called");
+}
+
+int work_interval_instance_start(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_start called");
+    return 0;
+}
+
+int work_interval_instance_update(work_interval_instance_t wii) {
+    puts("STUB: work_interval_instance_update called");
+    return 0;
 }

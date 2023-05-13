@@ -50,7 +50,8 @@ mach_bridge_remote_time(__unused uint64_t local_time)
 	uint64_t now = 0;
 	struct bt_params params = {};
 
-	volatile struct bt_params *commpage_bt_params_p = (struct bt_params *)_COMM_PAGE_REMOTETIME_PARAMS;
+	COMM_PAGE_SLOT_TYPE(struct bt_params) commpage_bt_params_p =
+	    COMM_PAGE_SLOT(struct bt_params, REMOTETIME_PARAMS);
 	volatile uint64_t *base_local_ts_p = &commpage_bt_params_p->base_local_ts;
 	volatile uint64_t *base_remote_ts_p = &commpage_bt_params_p->base_remote_ts;
 	volatile double *rate_p = &commpage_bt_params_p->rate;

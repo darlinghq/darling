@@ -34,6 +34,8 @@ CONST_STRING_DECL(kDADiskDescriptionMediaTypeKey, "kDADiskDescriptionMediaTypeKe
 CONST_STRING_DECL(kDADiskDescriptionMediaUUIDKey, "kDADiskDescriptionMediaUUIDKey");
 CONST_STRING_DECL(kDADiskDescriptionMediaWholeKey, "kDADiskDescriptionMediaWholeKey");
 CONST_STRING_DECL(kDADiskDescriptionMediaWritableKey, "kDADiskDescriptionMediaWritableKey");
+CONST_STRING_DECL(kDADiskDescriptionMediaEncryptedKey, "kDADiskDescriptionMediaEncryptedKey");
+CONST_STRING_DECL(kDADiskDescriptionMediaEncryptionDetailKey, "kDADiskDescriptionMediaEncryptionDetailKey");
 
 CONST_STRING_DECL(kDADiskDescriptionDeviceGUIDKey, "kDADiskDescriptionDeviceGUIDKey");
 CONST_STRING_DECL(kDADiskDescriptionDeviceInternalKey, "kDADiskDescriptionDeviceInternalKey");
@@ -43,7 +45,8 @@ CONST_STRING_DECL(kDADiskDescriptionDeviceProtocolKey, "kDADiskDescriptionDevice
 CONST_STRING_DECL(kDADiskDescriptionDeviceRevisionKey, "kDADiskDescriptionDeviceRevisionKey");                                                                                                                                              
 CONST_STRING_DECL(kDADiskDescriptionDeviceUnitKey, "kDADiskDescriptionDeviceUnitKey");                                                                                                                                                      
 CONST_STRING_DECL(kDADiskDescriptionDeviceVendorKey, "kDADiskDescriptionDeviceVendorKey");                                                                                                                                                  
-                                                                                                                                                                                                                                            
+CONST_STRING_DECL(kDADiskDescriptionDeviceTDMLockedKey, "kDADiskDescriptionDeviceTDMLockedKey");
+
 CONST_STRING_DECL(kDADiskDescriptionBusNameKey, "kDADiskDescriptionBusNameKey");                                                                                                                                                            
 CONST_STRING_DECL(kDADiskDescriptionBusPathKey, "kDADiskDescriptionBusPathKey");                                                                                                                                                            
 

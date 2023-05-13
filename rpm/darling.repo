@@ -1,0 +1,5 @@
+[darling]
+name=Darling
+baseurl=file:///data/git/darling-update/rpm/RPMS/x86_64
+enabled=1
+gpgcheck=0

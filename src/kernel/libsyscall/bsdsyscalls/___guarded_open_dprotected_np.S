@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___guarded_open_dprotected_np)
 SYSCALL_NONAME(guarded_open_dprotected_np, 7, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___guarded_open_dprotected_np, guarded_open_dprotected_np, 7, cerror_nocancel)
 #endif
 

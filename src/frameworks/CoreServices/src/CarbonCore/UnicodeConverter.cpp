@@ -1,5 +1,5 @@
 #include <CoreServices/UnicodeConverter.h>
-#include <CoreServices/TextCommon.h>
+#include <CarbonCore/TextCommon.h>
 #include <cstdio>
 
 OSStatus CreateTextToUnicodeInfo(ConstUnicodeMappingPtr iUnicodeMapping, TextToUnicodeInfo *oTextToUnicodeInfo)

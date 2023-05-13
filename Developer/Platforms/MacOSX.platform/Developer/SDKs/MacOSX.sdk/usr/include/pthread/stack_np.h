@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libpthread/pthread/stack_np.h
+../../../../../../../../../src/external/libpthread/include/pthread/stack_np.h

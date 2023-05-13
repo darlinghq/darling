@@ -1,6 +1,6 @@
 #include <LaunchServices/LaunchServices.h>
 #include <LaunchServices/LaunchServicesPriv.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 #include <unistd.h>
 #include <string>
 #include <memory>

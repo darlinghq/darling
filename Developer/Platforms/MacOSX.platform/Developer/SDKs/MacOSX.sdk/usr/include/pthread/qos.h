@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libpthread/pthread/qos.h
+../../../../../../../../../src/external/libpthread/include/pthread/qos.h

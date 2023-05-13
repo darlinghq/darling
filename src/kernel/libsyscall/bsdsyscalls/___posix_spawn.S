@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___posix_spawn)
 SYSCALL_NONAME(posix_spawn, 5, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___posix_spawn, posix_spawn, 5, cerror)
 #endif
 

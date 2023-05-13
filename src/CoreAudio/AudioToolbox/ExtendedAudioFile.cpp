@@ -19,7 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <AudioToolbox/ExtendedAudioFile.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 // TODO: Implement with the help of CAAudioFile?
 

@@ -12,7 +12,7 @@ FUNCTION(add_darling_executable exe)
 
 	add_executable(${exe} ${files})
 	set_property(TARGET ${exe} APPEND_STRING PROPERTY
-		LINK_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -nostdlib ${CMAKE_BINARY_DIR}/src/external/csu/CMakeFiles/csu.dir/crt1.10.6.o ")
+		LINK_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -nostdlib ${CMAKE_BINARY_DIR}/src/external/csu/CMakeFiles/crt1.10.6.dir/start.S.o ")
 
 	if (BUILD_TARGET_64BIT)
 		target_compile_options(${exe} PRIVATE -arch ${APPLE_ARCH_64BIT})
@@ -24,7 +24,7 @@ FUNCTION(add_darling_executable exe)
 
 	use_ld64(${exe})
 	target_link_libraries(${exe} system)
-	add_dependencies(${exe} csu)
+	add_dependencies(${exe} crt1.10.6)
 
 	if ((NOT NO_DSYM) AND (NOT ${exe}_NO_DSYM))
 		dsym(${exe})

@@ -12,13 +12,13 @@ _msgrcv$NOCANCEL	___msgrcv_nocancel
 _msgsnd$NOCANCEL	___msgsnd_nocancel
 _msgsys		___msgsys
 _msync$NOCANCEL	___msync_nocancel
-_open$NOCANCEL	___open_nocancel
-_openat$NOCANCEL	___openat_nocancel
 _poll$NOCANCEL	___poll_nocancel
 _pread$NOCANCEL	___pread_nocancel
 _pwrite$NOCANCEL	___pwrite_nocancel
+_pwritev$NOCANCEL	___pwritev_nocancel
 _read$NOCANCEL	___read_nocancel
 _readv$NOCANCEL	___readv_nocancel
+_preadv$NOCANCEL	___preadv_nocancel
 _recvfrom$NOCANCEL	___recvfrom_nocancel
 _recvmsg$NOCANCEL	___recvmsg_nocancel
 _select$DARWIN_EXTSN	___select
@@ -44,8 +44,6 @@ _listen	___listen
 _mprotect	___mprotect
 _msgctl	___msgctl
 _msync	___msync
-_open	___open
-_openat	___openat
 _recvfrom	___recvfrom
 _recvmsg	___recvmsg
 _semctl	___semctl

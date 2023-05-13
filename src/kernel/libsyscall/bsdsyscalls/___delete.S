@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___delete)
 SYSCALL_NONAME(delete, 1, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___delete, delete, 1, cerror_nocancel)
 #endif
 

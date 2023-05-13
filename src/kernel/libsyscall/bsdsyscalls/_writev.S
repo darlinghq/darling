@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_writev)
 SYSCALL_NONAME(writev, 3, cerror)
 ret
 #else
-#if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
+#if defined(__x86_64__) || defined(__arm64__)
 __SYSCALL2(_writev, writev, 3, cerror)
 #else
 __SYSCALL2(___writev, writev, 3, cerror)

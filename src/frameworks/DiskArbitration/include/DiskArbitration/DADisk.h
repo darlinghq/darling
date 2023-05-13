@@ -62,6 +62,8 @@ extern const CFStringRef kDADiskDescriptionMediaTypeKey;       /* ( CFString    
 extern const CFStringRef kDADiskDescriptionMediaUUIDKey;       /* ( CFUUID       ) */
 extern const CFStringRef kDADiskDescriptionMediaWholeKey;      /* ( CFBoolean    ) */
 extern const CFStringRef kDADiskDescriptionMediaWritableKey;   /* ( CFBoolean    ) */
+extern const CFStringRef kDADiskDescriptionMediaEncryptedKey;  /* ( CFBoolean    ) */
+extern const CFStringRef kDADiskDescriptionMediaEncryptionDetailKey; /* ( CFNumber ) */
 
 extern const CFStringRef kDADiskDescriptionDeviceGUIDKey;      /* ( CFData       ) */
 extern const CFStringRef kDADiskDescriptionDeviceInternalKey;  /* ( CFBoolean    ) */
@@ -71,6 +73,7 @@ extern const CFStringRef kDADiskDescriptionDeviceProtocolKey;  /* ( CFString    
 extern const CFStringRef kDADiskDescriptionDeviceRevisionKey;  /* ( CFString     ) */
 extern const CFStringRef kDADiskDescriptionDeviceUnitKey;      /* ( CFNumber     ) */
 extern const CFStringRef kDADiskDescriptionDeviceVendorKey;    /* ( CFString     ) */
+extern const CFStringRef kDADiskDescriptionDeviceTDMLockedKey; /* ( CFBoolean    ) */
 
 extern const CFStringRef kDADiskDescriptionBusNameKey;         /* ( CFString     ) */
 extern const CFStringRef kDADiskDescriptionBusPathKey;         /* ( CFString     ) */

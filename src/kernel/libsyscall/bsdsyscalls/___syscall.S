@@ -37,7 +37,13 @@ LEAF(___syscall, 0)
 	pushl	%ecx
 	UNIX_SYSCALL_TRAP
 	movl	(%esp),%edx	// add one element to stack so
-	pushl	%edx		// caller "pop" will work
+#ifdef DARLING
+	// Pushing ecx will cause a i386 process
+	// that calls syscall(...) to crash.
+	pushl	%edx
+#else
+	pushl	%ecx		// caller "pop" will work
+#endif
 	jnb	2f
 	BRANCH_EXTERN(tramp_cerror)
 2:
@@ -82,11 +88,6 @@ MI_ENTRY_POINT(___syscall)
 #endif
 
 #if defined(__ppc__)
-	.globl	_syscall
-	.set	_syscall, ___syscall
-#endif
-
-#if defined(__arm__)
 	.globl	_syscall
 	.set	_syscall, ___syscall
 #endif

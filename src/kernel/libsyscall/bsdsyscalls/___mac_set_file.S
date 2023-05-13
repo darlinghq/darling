@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___mac_set_file)
 SYSCALL_NONAME(__mac_set_file, 2, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___mac_set_file, __mac_set_file, 2, cerror_nocancel)
 #endif
 

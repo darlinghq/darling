@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/DriverServices.h>
+#include <CarbonCore/DriverServices.h>
 #include "time.h"
 #include <sys/sysctl.h>
 #include <sys/time.h>

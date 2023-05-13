@@ -14,15 +14,29 @@
 #   _sympath: absolute path of the installed symlink
 
 macro(InstallSymlink _filepath _sympath)
+    cmake_parse_arguments(INSTALL_SYMLINK "EXCLUDE_FROM_ALL" "COMPONENT" "" ${ARGN})
+
     get_filename_component(_symname ${_sympath} NAME)
     get_filename_component(_installdir ${_sympath} PATH)
+
+    if (INSTALL_SYMLINK_EXCLUDE_FROM_ALL)
+        set(EXCLUDE_FROM_ALL_ARG "EXCLUDE_FROM_ALL")
+    else()
+        set(EXCLUDE_FROM_ALL_ARG "")
+    endif()
+
+    if (DEFINED INSTALL_SYMLINK_COMPONENT)
+        set(COMPONENT_ARG COMPONENT "${INSTALL_SYMLINK_COMPONENT}")
+    else()
+        set(COMPONENT_ARG "")
+    endif()
 
     if (BINARY_PACKAGING_MODE)
         execute_process(COMMAND "${CMAKE_COMMAND}" -E create_symlink
                         ${_filepath}
                         ${CMAKE_CURRENT_BINARY_DIR}/${_symname})
         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${_symname}
-                DESTINATION ${_installdir})
+                DESTINATION ${_installdir} ${EXCLUDE_FROM_ALL_ARG} ${COMPONENT_ARG})
     else ()
         # scripting the symlink installation at install time should work
         # for CMake 2.6.x and 2.8.x
@@ -38,6 +52,6 @@ macro(InstallSymlink _filepath _sympath)
                                 ${_filepath}
                                 \$ENV{DESTDIR}/${_installdir}/${_symname})
             endif ()
-        ")
+        " ${EXCLUDE_FROM_ALL_ARG} ${COMPONENT_ARG})
     endif ()
 endmacro(InstallSymlink)

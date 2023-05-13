@@ -87,11 +87,6 @@ MI_ENTRY_POINT(___ptrace)
 	.set	_ptrace, ___ptrace
 #endif
 
-#if defined(__arm__)
-	.globl	_ptrace
-	.set	_ptrace, ___ptrace
-#endif
-
 #if defined(__arm64__)
 	.globl	_ptrace
 	.set	_ptrace, ___ptrace

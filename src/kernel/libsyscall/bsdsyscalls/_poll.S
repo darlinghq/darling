@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_poll)
 SYSCALL_NONAME(poll, 3, cerror)
 ret
 #else
-#if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
+#if defined(__x86_64__) || defined(__arm64__)
 __SYSCALL2(_poll, poll, 3, cerror)
 #else
 __SYSCALL2(___poll, poll, 3, cerror)

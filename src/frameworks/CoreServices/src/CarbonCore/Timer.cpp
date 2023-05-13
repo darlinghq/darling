@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/Timer.h>
+#include <CarbonCore/Timer.h>
 #include <mach/mach_time.h>
 #include <stdint.h>
 

@@ -24,7 +24,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreFoundation/CFPriv.h>
 #include <CoreFoundation/CFBundlePriv.h>
 #include <CoreFoundation/CFDate.h>
-#include <CoreServices/MacErrors.h>
+#include <CoreFoundation/CFXPCBridge.h>
+#include <CarbonCore/MacErrors.h>
 #include <dispatch/dispatch.h>
 #include <stdlib.h>
 #include <stdio.h>

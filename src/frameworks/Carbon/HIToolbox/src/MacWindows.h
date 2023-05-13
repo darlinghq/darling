@@ -1,8 +1,8 @@
 #ifndef MACWINDOWS_H
 #define MACWINDOWS_H
 
-#include <X11/Xlib.h>
-#include "CoreServices/MacErrors.h"
+//#include <X11/Xlib.h>
+#include <CarbonCore/MacErrors.h>
 #include "CoreServices/MacTypes.h"
 #include <stdint.h>
 #include <QD/QD.h>

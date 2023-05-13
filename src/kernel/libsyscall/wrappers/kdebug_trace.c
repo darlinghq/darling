@@ -84,7 +84,7 @@ kdebug_typefilter(void)
 bool
 kdebug_is_enabled(uint32_t debugid)
 {
-	uint32_t state = *((volatile uint32_t *)(uintptr_t)(_COMM_PAGE_KDEBUG_ENABLE));
+	uint32_t state = COMM_PAGE_READ(uint32_t, KDEBUG_ENABLE);
 
 	if (state == 0) {
 		return FALSE;
@@ -119,7 +119,7 @@ kdebug_is_enabled(uint32_t debugid)
 bool
 kdebug_using_continuous_time(void)
 {
-	uint32_t state = *((volatile uint32_t *)(uintptr_t)(_COMM_PAGE_KDEBUG_ENABLE));
+	uint32_t state = COMM_PAGE_READ(uint32_t, KDEBUG_ENABLE);
 	return state & KDEBUG_ENABLE_CONT_TIME;
 }
 

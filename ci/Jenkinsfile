@@ -1,12 +1,17 @@
 pipeline {
 	agent {
 		docker {
-			image 'registry.git.facekapow.dev/darling-build-image:latest'
+			image 'registry.git.facekapow.dev/darling-build-image-top:latest'
 			registryUrl 'https://registry.git.facekapow.dev'
 			alwaysPull true
-			args '-u ci:ci'
+			args '-u ci:ci -v /var/run/docker.sock:/var/run/docker.sock --group-add docker'
 			label 'darling'
 		}
+	}
+
+	parameters {
+		booleanParam(name: 'DEB', defaultValue: true, description: 'If true, build Debian packages.')
+		booleanParam(name: 'RPM', defaultValue: true, description: 'If true, build RPM packages.')
 	}
 
 	triggers {
@@ -14,8 +19,8 @@ pipeline {
 	}
 
 	environment {
-		DEB_DISTRO = sh(script: 'lsb_release -cs', returnStdout: true).trim()
 		ESCAPED_JOB_NAME = sh(script: 'echo "${JOB_NAME}" | sed \'s/\\//-/g\'', returnStdout: true).trim()
+		CCACHE_DIR = credentials('darling-ccache-dir')
 	}
 
 	options {
@@ -34,26 +39,79 @@ pipeline {
 			}
 		}
 
-		stage('Build') {
+		stage('Prepare') {
 			steps {
 				dir('source') {
 					sh 'git submodule update --init --recursive'
 					sh 'cd src/external/swift && git lfs install && git lfs pull'
 					touch '../.submodules-cloned'
+				}
+			}
+		}
 
-					//sh 'tools/debian/make-deb --dsc'
-					sh 'tools/debian/make-deb'
+		stage('Build Debian') {
+			when { expression { params.DEB } }
+			agent {
+				docker {
+					image 'registry.git.facekapow.dev/darling-build-image:latest'
+					registryUrl 'https://registry.git.facekapow.dev'
+					alwaysPull true
+					args '-u ci:ci -v ${WORKSPACE}/source:/src/mnt:rw -v ${CCACHE_DIR}:/ccache:rw'
+					label 'darling'
+					reuseNode true
+				}
+			}
+			environment {
+				DEB_DISTRO = sh(script: 'lsb_release -cs', returnStdout: true).trim()
+				CCACHE_DIR = '/ccache'
+				CCACHE_BASEDIR = '/src/mnt'
+			}
+			steps {
+				//sh 'tools/debian/make-deb --dsc'
+				sh '''#!/bin/bash
+					pushd /src/mnt
+						tools/debian/make-deb
+					popd
+				'''
+
+				sh 'rm -rf out-deb'
+				sh 'mkdir out-deb'
+
+				dir('out-deb') {
+					sh 'mv /src/*.deb ./'
 				}
 
-				sh 'rm -rf out'
-				sh 'mkdir out'
+				archiveArtifacts artifacts: 'out-deb/**/*', fingerprint: true
+			}
+		}
 
-				dir('out') {
-					sh 'mv ../*.deb ./'
-					sh 'rm ../*.*'
+		stage('Build RPM') {
+			when { expression { params.RPM } }
+			agent {
+				docker {
+					image 'registry.git.facekapow.dev/darling-build-image-fedora:latest'
+					registryUrl 'https://registry.git.facekapow.dev'
+					alwaysPull true
+					args '-v ${WORKSPACE}/source:/src:ro -v ${CCACHE_DIR}:/ccache:rw'
+					label 'darling'
+					reuseNode true
+				}
+			}
+			environment {
+				CCACHE_DIR = '/ccache'
+				CCACHE_BASEDIR = '/home/ci/rpmbuild/BUILD/darling'
+			}
+			steps {
+				sh 'bash -xv /src/rpm/build.bsh'
+
+				sh 'rm -rf out-rpm'
+				sh 'mkdir out-rpm'
+
+				dir('out-rpm') {
+					sh 'mv ${HOME}/rpmbuild/RPMS/x86_64/*.rpm ./'
 				}
 
-				archiveArtifacts artifacts: 'out/**/*', fingerprint: true
+				archiveArtifacts artifacts: 'out-rpm/**/*', fingerprint: true
 			}
 		}
 	}

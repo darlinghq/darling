@@ -7,13 +7,22 @@ define_property(TARGET PROPERTY DYLIB_INSTALL_NAME BRIEF_DOCS "Stores the DYLIB_
 	FULL_DOCS "Used to make reexporting child frameworks less painful.")
 
 function(add_framework name)
-	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE;IOSSUPPORT;CIRCULAR" "VERSION;LINK_FLAGS;PARENT;PARENT_VERSION"
+	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE;IOSSUPPORT;CIRCULAR;NO_INSTALL" "VERSION;LINK_FLAGS;PARENT;PARENT_VERSION;TARGET_NAME;PARENT_COMPONENT"
 		"SOURCES;DEPENDENCIES;CIRCULAR_DEPENDENCIES;RESOURCES;UPWARD_DEPENDENCIES;OBJECTS;STRONG_DEPENDENCIES" ${ARGN})
-	if (FRAMEWORK_CURRENT_VERSION)
+
+	if (FRAMEWORK_NO_INSTALL)
+		set(EXCLUDE_FROM_ALL_ARG "EXCLUDE_FROM_ALL")
+	else()
+		set(EXCLUDE_FROM_ALL_ARG "")
+	endif()
+
+	if (DEFINED FRAMEWORK_TARGET_NAME)
+		set(my_name "${FRAMEWORK_TARGET_NAME}")
+	elseif (FRAMEWORK_CURRENT_VERSION)
 		set(my_name "${name}")
-	else (FRAMEWORK_CURRENT_VERSION)
+	else()
 		set(my_name "${name}_${FRAMEWORK_VERSION}")
-	endif (FRAMEWORK_CURRENT_VERSION)
+	endif()
 
 	if (FRAMEWORK_PRIVATE)
 		set(dir_name "PrivateFrameworks")
@@ -32,8 +41,14 @@ function(add_framework name)
 			# 99% of the time it's version A
 			set(FRAMEWORK_PARENT_VERSION "A")
 		endif(NOT DEFINED FRAMEWORK_PARENT_VERSION)
+		if (DEFINED FRAMEWORK_PARENT_COMPONENT)
+			set(COMPONENT_ARG COMPONENT "${FRAMEWORK_PARENT_COMPONENT}")
+		else()
+			set(COMPONENT_ARG "")
+		endif()
 		InstallSymlink(Versions/Current/Frameworks
-			"${CMAKE_INSTALL_PREFIX}/libexec/darling/${sys_library_dir}/${dir_name}/${FRAMEWORK_PARENT}.framework/Frameworks")
+			"${CMAKE_INSTALL_PREFIX}/libexec/darling/${sys_library_dir}/${dir_name}/${FRAMEWORK_PARENT}.framework/Frameworks"
+			${EXCLUDE_FROM_ALL_ARG} ${COMPONENT_ARG})
 		set(dir_name "${dir_name}/${FRAMEWORK_PARENT}.framework/Versions/${FRAMEWORK_PARENT_VERSION}/Frameworks")
 	endif(DEFINED FRAMEWORK_PARENT)
 
@@ -66,9 +81,9 @@ function(add_framework name)
 	
 	set_property(TARGET ${my_name} PROPERTY DYLIB_INSTALL_NAME ${DYLIB_INSTALL_NAME})
 
-	if (FRAMEWORK_CURRENT_VERSION)
+	if (FRAMEWORK_CURRENT_VERSION AND NOT DEFINED FRAMEWORK_TARGET_NAME)
 		add_library("${name}_${FRAMEWORK_VERSION}" ALIAS "${name}")
-	endif (FRAMEWORK_CURRENT_VERSION)
+	endif()
 
 	set_target_properties(${my_name} PROPERTIES
 				OUTPUT_NAME "${name}"
@@ -83,11 +98,11 @@ function(add_framework name)
 		set_property(TARGET ${my_name} APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 	endif (FRAMEWORK_LINK_FLAGS)
 
-	install(TARGETS ${my_name} DESTINATION "libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/")
+	install(TARGETS ${my_name} DESTINATION "libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/" ${EXCLUDE_FROM_ALL_ARG})
 
 	if (FRAMEWORK_RESOURCES)
 		if (FRAMEWORK_CURRENT_VERSION)
-			InstallSymlink("Versions/Current/Resources" "${CMAKE_INSTALL_PREFIX}/libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/Resources")
+			InstallSymlink("Versions/Current/Resources" "${CMAKE_INSTALL_PREFIX}/libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/Resources" ${EXCLUDE_FROM_ALL_ARG})
 		endif (FRAMEWORK_CURRENT_VERSION)
 		while (FRAMEWORK_RESOURCES)
 			list(GET FRAMEWORK_RESOURCES 0 res_install_path)
@@ -96,15 +111,15 @@ function(add_framework name)
 			get_filename_component(res_install_name ${res_install_path} NAME)
 			install(FILES ${res_source_path}
 				DESTINATION libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/Resources/${res_install_dir}
-				RENAME ${res_install_name})
+				RENAME ${res_install_name} ${EXCLUDE_FROM_ALL_ARG})
 			list(REMOVE_AT FRAMEWORK_RESOURCES 0 1)
 		endwhile (FRAMEWORK_RESOURCES)
-	endif (FRAMEWORK_RESOURCES)
+	endif()
 
 	if (FRAMEWORK_CURRENT_VERSION)
-		InstallSymlink(${FRAMEWORK_VERSION} "${CMAKE_INSTALL_PREFIX}/libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/Versions/Current")
-		InstallSymlink("Versions/Current/${name}" "${CMAKE_INSTALL_PREFIX}/libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/${name}")
-	endif (FRAMEWORK_CURRENT_VERSION)
+		InstallSymlink(${FRAMEWORK_VERSION} "${CMAKE_INSTALL_PREFIX}/libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/Versions/Current" ${EXCLUDE_FROM_ALL_ARG})
+		InstallSymlink("Versions/Current/${name}" "${CMAKE_INSTALL_PREFIX}/libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/${name}" ${EXCLUDE_FROM_ALL_ARG})
+	endif()
 endfunction(add_framework)
 
 function(add_separated_framework name)

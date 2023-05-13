@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___select)
 SYSCALL_NONAME(select, 5, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___select, select, 5, cerror)
 #endif
 
@@ -27,11 +27,6 @@ __SYSCALL2(___select, select, 5, cerror)
 #endif
 
 #if defined(__ppc__)
-	.globl	_select$DARWIN_EXTSN
-	.set	_select$DARWIN_EXTSN, ___select
-#endif
-
-#if defined(__arm__)
 	.globl	_select$DARWIN_EXTSN
 	.set	_select$DARWIN_EXTSN, ___select
 #endif

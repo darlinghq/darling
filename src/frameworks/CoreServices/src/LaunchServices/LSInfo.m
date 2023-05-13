@@ -19,7 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <LaunchServices/LaunchServices.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 #include <stdio.h>
 #include <sqlite3.h>
 #import <Foundation/NSString.h>

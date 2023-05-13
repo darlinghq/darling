@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___semsys)
 SYSCALL_NONAME(semsys, 5, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___semsys, semsys, 5, cerror_nocancel)
 #endif
 
@@ -27,11 +27,6 @@ __SYSCALL2(___semsys, semsys, 5, cerror_nocancel)
 #endif
 
 #if defined(__ppc__)
-	.globl	_semsys
-	.set	_semsys, ___semsys
-#endif
-
-#if defined(__arm__)
 	.globl	_semsys
 	.set	_semsys, ___semsys
 #endif

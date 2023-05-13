@@ -11,7 +11,7 @@ ZERO_EXTEND(2)
 SYSCALL_NONAME(msgsnd, 4, cerror)
 ret
 #else
-#if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
+#if defined(__x86_64__) || defined(__arm64__)
 __SYSCALL2(_msgsnd, msgsnd, 4, cerror)
 #else
 __SYSCALL2(___msgsnd, msgsnd, 4, cerror)

@@ -53,7 +53,11 @@
 #include "CAAUParameter.h"
 #include "CAAUMIDIMap.h"
 
+#ifdef DARLING
+#include <CarbonCore/MacErrors.h>
+#else
 #include <CoreServices/../Frameworks/CarbonCore.framework/Headers/MacErrors.h>
+#endif
 
 #pragma mark __CAStreamBasicDescription
 

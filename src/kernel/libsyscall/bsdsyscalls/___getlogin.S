@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___getlogin)
 SYSCALL_NONAME(getlogin, 2, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___getlogin, getlogin, 2, cerror)
 #endif
 

@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_aio_suspend)
 SYSCALL_NONAME(aio_suspend, 3, cerror)
 ret
 #else
-#if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
+#if defined(__x86_64__) || defined(__arm64__)
 __SYSCALL2(_aio_suspend, aio_suspend, 3, cerror)
 #else
 __SYSCALL2(___aio_suspend, aio_suspend, 3, cerror)

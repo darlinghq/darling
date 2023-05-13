@@ -155,28 +155,28 @@ LEAF(pseudo, 0)					;\
 		BRANCH_EXTERN(_##cerror)						;\
 	2:
 #else
-	#define UNIX_SYSCALL_SYSCALL	\
-		movq	%rcx, %r10		;\
-		syscall
+#define UNIX_SYSCALL_SYSCALL	\
+	movq	%rcx, %r10		;\
+	syscall
 
-	#define UNIX_SYSCALL(name, nargs)						 \
-		.globl	cerror								;\
-	LEAF(_##name, 0)								;\
-		movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
-		UNIX_SYSCALL_SYSCALL							;\
-		jnb		2f							;\
-		movq	%rax, %rdi							;\
-		BRANCH_EXTERN(_cerror)							;\
-	2:
+#define UNIX_SYSCALL(name, nargs)						 \
+	.globl	cerror								;\
+LEAF(_##name, 0)								;\
+	movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
+	UNIX_SYSCALL_SYSCALL							;\
+	jnb		2f							;\
+	movq	%rax, %rdi							;\
+	BRANCH_EXTERN(_cerror)							;\
+2:
 
-	#define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
-		.globl	cerror								;\
-		movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
-		UNIX_SYSCALL_SYSCALL							;\
-		jnb		2f							;\
-		movq	%rax, %rdi							;\
-		BRANCH_EXTERN(_##cerror)						;\
-	2:
+#define UNIX_SYSCALL_NONAME(name, nargs, cerror)		 \
+	.globl	cerror								;\
+	movl	$ SYSCALL_CONSTRUCT_UNIX(SYS_##name), %eax			;\
+	UNIX_SYSCALL_SYSCALL							;\
+	jnb		2f							;\
+	movq	%rax, %rdi							;\
+	BRANCH_EXTERN(_##cerror)						;\
+2:
 #endif
 
 #define PSEUDO(pseudo, name, nargs, cerror)			\
@@ -363,6 +363,9 @@ name:
 #elif __SYSCALL_32BIT_ARG_BYTES == 36 
 #define SYSCALL(name, nargs, cerror)		SYSCALL_8(name, cerror)
 #define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_8(name, cerror)
+#elif __SYSCALL_32BIT_ARG_BYTES == 40 
+#define SYSCALL(name, nargs, cerror)		SYSCALL_8(name, cerror)
+#define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_8(name, cerror)
 #elif __SYSCALL_32BIT_ARG_BYTES == 44 
 #define SYSCALL(name, nargs, cerror)		SYSCALL_8(name, cerror)
 #define SYSCALL_NONAME(name, nargs, cerror)	SYSCALL_NONAME_8(name, cerror)
@@ -472,15 +475,16 @@ pseudo:									;\
  * TBD
  */
 
-#define DO_SYSCALL(num, cerror)	\
-   mov   x16, #(num)    %%\
-   svc   #SWI_SYSCALL	%%\
-   b.cc  2f             %%\
-   PUSH_FRAME			%%\
-   bl    _##cerror		%%\
-   POP_FRAME			%%\
-   ret					%%\
-2:			
+#define DO_SYSCALL(num, cerror)                 \
+	mov   x16, #(num)                     %%\
+	svc   #SWI_SYSCALL                    %%\
+	b.cc  2f                              %%\
+	ARM64_STACK_PROLOG                    %%\
+	PUSH_FRAME                            %%\
+	bl    _##cerror                       %%\
+	POP_FRAME                             %%\
+	ARM64_STACK_EPILOG                    %%\
+2:
 
 #define MI_GET_ADDRESS(reg,var)  \
    adrp	reg, var@page      %%\

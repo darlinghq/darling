@@ -32,9 +32,10 @@ enum {
 	SHELLSPAWN_ADDARG = 1, // add shell argument
 	SHELLSPAWN_SETENV, // add env variable string
 	SHELLSPAWN_CHDIR,
-	SHELLSPAWN_GO, // execute the shell now, must also contain file descriptors
+	SHELLSPAWN_GO, // execute the shell/executable now, must also contain file descriptors
 	SHELLSPAWN_SIGNAL, // pass a signal from client
 	SHELLSPAWN_SETUIDGID, // set virtual uid and gid
+	SHELLSPAWN_SETEXEC, // set the executable to spawn (instead of a shell). must be given before any ADDARG commands.
 };
 
 struct __attribute__((packed)) shellspawn_cmd

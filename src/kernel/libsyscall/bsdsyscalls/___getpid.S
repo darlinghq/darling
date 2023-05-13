@@ -186,11 +186,6 @@ L_done:
 	.set	_getpid, ___getpid
 #endif
 
-#if defined(__arm__)
-	.globl	_getpid
-	.set	_getpid, ___getpid
-#endif
-
 #if defined(__arm64__)
 	.globl	_getpid
 	.set	_getpid, ___getpid

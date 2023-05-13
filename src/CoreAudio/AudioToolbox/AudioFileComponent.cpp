@@ -18,7 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <AudioToolbox/AudioFileComponent.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 #include "ComponentDispatch.h"
 
 OSStatus

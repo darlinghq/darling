@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_sem_wait)
 SYSCALL_NONAME(sem_wait, 1, cerror)
 ret
 #else
-#if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
+#if defined(__x86_64__) || defined(__arm64__)
 __SYSCALL2(_sem_wait, sem_wait, 1, cerror)
 #else
 __SYSCALL2(___sem_wait, sem_wait, 1, cerror)

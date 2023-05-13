@@ -11,7 +11,7 @@ ZERO_EXTEND(2)
 SYSCALL_NONAME(read, 3, cerror)
 ret
 #else
-#if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
+#if defined(__x86_64__) || defined(__arm64__)
 __SYSCALL2(_read, read, 3, cerror)
 #else
 __SYSCALL2(___read, read, 3, cerror)

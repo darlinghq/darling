@@ -166,6 +166,12 @@ retry:
 #endif
 #endif
 
+#if defined(__x86_64__) || defined(__i386__)
+#define COMM_PAGE_KERNEL_PAGE_SHIFT_MIN_VERSION 14
+#else
+#define COMM_PAGE_KERNEL_PAGE_SHIFT_MIN_VERSION 3
+#endif
+
 #ifdef DARLING
 extern void mach_driver_init(const char** applep);
 extern void mach_driver_init_pthread(void);
@@ -187,24 +193,30 @@ mach_init_doit(void)
 	_task_reply_port = mach_reply_port();
 
 	if (vm_kernel_page_shift == 0) {
-#ifdef  _COMM_PAGE_KERNEL_PAGE_SHIFT
-		vm_kernel_page_shift = *(uint8_t*) _COMM_PAGE_KERNEL_PAGE_SHIFT;
+#if defined(__x86_64__) || defined(__i386__)
+		if (COMM_PAGE_READ(uint16_t, VERSION) >= COMM_PAGE_KERNEL_PAGE_SHIFT_MIN_VERSION) {
+			vm_kernel_page_shift = COMM_PAGE_READ(uint8_t, KERNEL_PAGE_SHIFT);
+		} else {
+			vm_kernel_page_shift = I386_PGSHIFT;
+		}
+#else
+		vm_kernel_page_shift = COMM_PAGE_READ(uint8_t, KERNEL_PAGE_SHIFT);
+#endif
 		vm_kernel_page_size = 1 << vm_kernel_page_shift;
 		vm_kernel_page_mask = vm_kernel_page_size - 1;
-#else
-		vm_kernel_page_size = PAGE_SIZE;
-		vm_kernel_page_mask = PAGE_MASK;
-		vm_kernel_page_shift = PAGE_SHIFT;
-#endif /* _COMM_PAGE_KERNEL_PAGE_SHIFT */
 	}
 
 	if (vm_page_shift == 0) {
 #if defined(__arm64__)
-		vm_page_shift = *(uint8_t*) _COMM_PAGE_USER_PAGE_SHIFT_64;
+		vm_page_shift = COMM_PAGE_READ(uint8_t, USER_PAGE_SHIFT_64);
 #elif defined(__arm__)
-		vm_page_shift = *(uint8_t*) _COMM_PAGE_USER_PAGE_SHIFT_32;
+		vm_page_shift = COMM_PAGE_READ(uint8_t, USER_PAGE_SHIFT_32);
 #else
-		vm_page_shift = vm_kernel_page_shift;
+		if (COMM_PAGE_READ(uint16_t, VERSION) >= COMM_PAGE_KERNEL_PAGE_SHIFT_MIN_VERSION) {
+			vm_page_shift = COMM_PAGE_READ(uint8_t, USER_PAGE_SHIFT_64);
+		} else {
+			vm_page_shift = vm_kernel_page_shift;
+		}
 #endif
 		vm_page_size = 1 << vm_page_shift;
 		vm_page_mask = vm_page_size - 1;

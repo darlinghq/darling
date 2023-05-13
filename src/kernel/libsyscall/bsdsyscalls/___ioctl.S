@@ -11,7 +11,7 @@ ZERO_EXTEND(1)
 SYSCALL_NONAME(ioctl, 3, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___ioctl, ioctl, 3, cerror)
 #endif
 

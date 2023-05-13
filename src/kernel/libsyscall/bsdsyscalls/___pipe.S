@@ -83,11 +83,6 @@ MI_ENTRY_POINT(___pipe)
 	.set	_pipe, ___pipe
 #endif
 
-#if defined(__arm__)
-	.globl	_pipe
-	.set	_pipe, ___pipe
-#endif
-
 #if defined(__arm64__)
 	.globl	_pipe
 	.set	_pipe, ___pipe

@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_peeloff)
 SYSCALL_NONAME(peeloff, 2, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(_peeloff, peeloff, 2, cerror)
 #endif
 

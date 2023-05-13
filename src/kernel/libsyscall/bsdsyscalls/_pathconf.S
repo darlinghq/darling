@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_pathconf)
 SYSCALL_NONAME(pathconf, 2, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(_pathconf, pathconf, 2, cerror)
 #endif
 

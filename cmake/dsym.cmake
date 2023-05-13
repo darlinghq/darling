@@ -1,6 +1,14 @@
 
 function(dsym target)
+	cmake_parse_arguments(DSYM "EXCLUDE_FROM_ALL" "" "" ${ARGN})
 	string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type)
+
+	if (DSYM_EXCLUDE_FROM_ALL)
+		set(EXCLUDE_FROM_ALL_ARG "EXCLUDE_FROM_ALL")
+	else()
+		set(EXCLUDE_FROM_ALL_ARG "")
+	endif()
+
 	if (DSYMUTIL_EXE AND build_type MATCHES debug)
 
 		add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" DEPENDS "${target}" COMMAND ${CMAKE_COMMAND} -E env
@@ -9,8 +17,8 @@ function(dsym target)
 
 		add_custom_target("${target}-dSYM" ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" getuuid lipo)
 
-		install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/files")
-		install(DIRECTORY DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/uuid")
+		install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/files" ${EXCLUDE_FROM_ALL_ARG})
+		install(DIRECTORY DESTINATION "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/uuid" ${EXCLUDE_FROM_ALL_ARG})
 
 		install(CODE "execute_process(COMMAND \"${CMAKE_BINARY_DIR}/src/buildtools/getuuid\" \"${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM\" RESULT_VARIABLE getuuid_result OUTPUT_VARIABLE macho_uuid)
 
@@ -26,7 +34,7 @@ function(dsym target)
 						\$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Caches/dsym/uuid/\${uuid}.dSYM)
 				endforeach (uuid)
 			endif()
-		")
+		" ${EXCLUDE_FROM_ALL_ARG})
 	endif ()
 
 endfunction(dsym)

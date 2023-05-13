@@ -5,12 +5,14 @@
 	<key>ProductBuildVersion</key>
 	<string>Darling</string>
 	<key>ProductCopyright</key>
-	<string>2012-2021 Lubos Dolezel</string>
+	<string>2012-2023 Lubos Dolezel</string>
 	<key>ProductName</key>
-	<string>Mac OS X</string>
+	<string>macOS</string>
 	<key>ProductUserVisibleVersion</key>
-	<string>10.15</string>
+	<string>11.7.4</string>
 	<key>ProductVersion</key>
-	<string>10.15</string>
+	<string>11.7.4</string>
+	<key>iOSSupportVersion</key>
+	<string>14.7</string>
 </dict>
 </plist>

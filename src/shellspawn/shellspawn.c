@@ -48,7 +48,10 @@ void reapAll(void);
 
 int main(int argc, const char** argv)
 {
-	setupSigchild();
+	// in order to read the exit status of the process,
+	// we have to allow it to become a zombie, which is prevented
+	// when we set the SIGCHLD signal to SA_NOCLDWAIT
+	//setupSigchild();
 	setupSocket();
 	listenForConnections();
 
@@ -133,6 +136,8 @@ void spawnShell(int fd)
 	argv = (char**) malloc(sizeof(char*) * 3);
 	argv[0] = "/bin/bash";
 	argv[1] = "--login";
+
+	char* alloc_exec = NULL;
 
 	// Read commands from client
 	while (read_cmds)
@@ -238,6 +243,14 @@ void spawnShell(int fd)
 
 				break;
 			}
+			case SHELLSPAWN_SETEXEC:
+			{
+				argc = 0;
+				argv = realloc(argv, 0);
+				alloc_exec = param;
+				if (DBG) printf("setexec: %s\n", param);
+				break;
+			}
 		}
 	}
 
@@ -270,13 +283,19 @@ void spawnShell(int fd)
 
 		// In future, we may support spawning something else than Bash
 		// and check the provided shell against /etc/shells
-		execv("/bin/bash", argv);
+		execv(alloc_exec ? alloc_exec : "/bin/bash", argv);
 
 		rv = errno;
 		write(pipefd[1], &rv, sizeof(rv));
 		close(pipefd[1]);
 
 		exit(EXIT_FAILURE);
+	}
+
+	if (alloc_exec)
+	{
+		free(alloc_exec);
+		alloc_exec = NULL;
 	}
 
 	// Check that exec succeeded
@@ -379,7 +398,8 @@ void spawnShell(int fd)
 
 	// Reap the child
 	int wstatus;
-	waitpid(shell_pid, &wstatus, WEXITED);
+	if (waitpid(shell_pid, &wstatus, 0) != shell_pid)
+		perror("waitpid");
 	wstatus = WEXITSTATUS(wstatus);
 	
 	// Report exit code back to the client

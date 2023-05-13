@@ -36,7 +36,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <regex.h>
 #include <fcntl.h>
 #include <vector>
-#include <CoreServices/DateTimeUtils.h>
+#include <CarbonCore/DateTimeUtils.h>
 #include <errno.h>
 #include <ext/file_handle.h>
 

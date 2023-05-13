@@ -11,7 +11,7 @@ ZERO_EXTEND(1)
 SYSCALL_NONAME(netagent_trigger, 2, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(_netagent_trigger, netagent_trigger, 2, cerror_nocancel)
 #endif
 

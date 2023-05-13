@@ -11,7 +11,7 @@ SIGN_EXTEND(2)
 SYSCALL_NONAME(fcntl, 3, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___fcntl, fcntl, 3, cerror)
 #endif
 

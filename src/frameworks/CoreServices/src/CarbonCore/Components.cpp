@@ -17,9 +17,9 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/Components.h>
-#include <CoreServices/MacErrors.h>
-#include <CoreServices/MacMemory.h>
+#include <CarbonCore/Components.h>
+#include <CarbonCore/MacErrors.h>
+#include <CarbonCore/MacMemory.h>
 #include "ComponentManager.h"
 
 Component FindNextComponent(Component prev, ComponentDescription* desc)

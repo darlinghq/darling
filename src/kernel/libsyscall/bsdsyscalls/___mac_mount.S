@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___mac_mount)
 SYSCALL_NONAME(__mac_mount, 5, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___mac_mount, __mac_mount, 5, cerror_nocancel)
 #endif
 
@@ -27,11 +27,6 @@ __SYSCALL2(___mac_mount, __mac_mount, 5, cerror_nocancel)
 #endif
 
 #if defined(__ppc__)
-	.globl	___sandbox_mm
-	.set	___sandbox_mm, ___mac_mount
-#endif
-
-#if defined(__arm__)
 	.globl	___sandbox_mm
 	.set	___sandbox_mm, ___mac_mount
 #endif

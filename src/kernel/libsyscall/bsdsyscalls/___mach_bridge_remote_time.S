@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___mach_bridge_remote_time)
 SYSCALL_NONAME(__mach_bridge_remote_time, 1, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___mach_bridge_remote_time, __mach_bridge_remote_time, 1, cerror_nocancel)
 #endif
 

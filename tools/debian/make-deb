@@ -17,4 +17,4 @@ else
     ARG='-b'
 fi
 
-debuild --no-lintian -us -uc ${ARG}
+debuild --preserve-envvar 'CCACHE_*' --no-lintian -us -uc ${ARG}

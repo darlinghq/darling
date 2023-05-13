@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/ToolUtils.h>
+#include <CarbonCore/ToolUtils.h>
 
 
 int BitTst(const void* bytePtr, long bitNum)

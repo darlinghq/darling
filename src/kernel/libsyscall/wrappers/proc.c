@@ -27,7 +27,6 @@
 #include <TargetConditionals.h>
 #include <os/proc.h>
 
-#if !TARGET_OS_OSX
 extern uint64_t __memorystatus_available_memory(void);
 
 size_t
@@ -35,4 +34,3 @@ os_proc_available_memory(void)
 {
 	return (size_t)__memorystatus_available_memory();
 }
-#endif

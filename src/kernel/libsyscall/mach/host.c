@@ -37,8 +37,7 @@ kern_return_t
 host_get_atm_diagnostic_flag(host_t host __unused,
     uint32_t *diagnostic_flag)
 {
-	volatile uint32_t *diagnostic_flag_address = (volatile uint32_t *)(uintptr_t)(_COMM_PAGE_ATM_DIAGNOSTIC_CONFIG);
-	*diagnostic_flag = *diagnostic_flag_address;
+	*diagnostic_flag = COMM_PAGE_READ(uint32_t, ATM_DIAGNOSTIC_CONFIG);
 	return KERN_SUCCESS;
 }
 
@@ -47,8 +46,7 @@ host_get_multiuser_config_flags(host_t host __unused,
     uint32_t *multiuser_flags)
 {
 #if (TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
-	volatile uint32_t *multiuser_flag_address = (volatile uint32_t *)(uintptr_t)(_COMM_PAGE_MULTIUSER_CONFIG);
-	*multiuser_flags = *multiuser_flag_address;
+	*multiuser_flags = COMM_PAGE_READ(uint32_t, MULTIUSER_CONFIG);
 	return KERN_SUCCESS;
 #else
 	(void)multiuser_flags;

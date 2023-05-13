@@ -1,17 +1,71 @@
 #!/usr/bin/make -f
+
+INDICES = 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+
+DARLING_COMPONENTS = \
+	core \
+	system \
+	cli \
+	ffi \
+	cli_dev \
+	cli_gui_common \
+	iokitd \
+	cli_dev_gui_common \
+	cli_extra \
+	gui \
+	python \
+	cli_python_common \
+	pyobjc \
+	ruby \
+	perl \
+	jsc_webkit_common \
+	jsc \
+	iosurface \
+	cli_dev_gui_stubs_common \
+	gui_stubs
+
+PACKAGE_SUFFIXES = \
+	core \
+	system \
+	cli \
+	ffi \
+	cli-devenv \
+	cli-gui-common \
+	iokitd \
+	cli-devenv-gui-common \
+	cli-extra \
+	gui \
+	python2 \
+	cli-python2-common \
+	pyobjc \
+	ruby \
+	perl \
+	jsc-webkit-common \
+	jsc \
+	iosurface \
+	cli-devenv-gui-stubs-common \
+	gui-stubs
+
 %:
 	dh $@ --builddirectory=debbuild
 
 override_dh_auto_configure:
-	mkdir debbuild
-	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DDEBIAN_PACKAGING=ON
+	mkdir debbuild -p
+	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DDEBIAN_PACKAGING=ON -DJSC_UNIFIED_BUILD=ON
 
 override_dh_auto_build:
 	cd debbuild && $(MAKE) -j$(shell nproc)
 
+override_dh_auto_install:
+	cd debbuild; $(foreach INDEX,$(INDICES), \
+		DESTDIR=../debian/tmp/$(word $(INDEX),$(PACKAGE_SUFFIXES)) cmake -DCOMPONENT=$(word $(INDEX),$(DARLING_COMPONENTS)) -P cmake_install.cmake ; \
+	)
+
 override_dh_makeshlibs:
 	dh_makeshlibs
-	tools/debian/make-shlibdeps
+	$(foreach INDEX,$(INDICES), \
+		tools/debian/make-shlibdeps $(word $(INDEX),$(PACKAGE_SUFFIXES)) ; \
+	)
 
 override_dh_clean:
 	dh_clean -X.orig -X.bak -X~

@@ -43,7 +43,7 @@
 #include "AFToolsCommon.h"
 #include "CAAudioFileFormats.h"
 #include <ctype.h>
-#include <CoreServices/Endian.h>
+#include <CarbonCore/Endian.h>
 
 
 /*

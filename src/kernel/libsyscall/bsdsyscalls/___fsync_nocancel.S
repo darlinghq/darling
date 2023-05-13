@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___fsync_nocancel)
 SYSCALL_NONAME(fsync_nocancel, 1, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___fsync_nocancel, fsync_nocancel, 1, cerror_nocancel)
 #endif
 
@@ -33,11 +33,6 @@ __SYSCALL2(___fsync_nocancel, fsync_nocancel, 1, cerror_nocancel)
 	.set	_fsync, ___fsync_nocancel
 	.globl	_fsync$NOCANCEL$UNIX2003
 	.set	_fsync$NOCANCEL$UNIX2003, ___fsync_nocancel
-#endif
-
-#if defined(__arm__)
-	.globl	_fsync$NOCANCEL
-	.set	_fsync$NOCANCEL, ___fsync_nocancel
 #endif
 
 #if defined(__arm64__)

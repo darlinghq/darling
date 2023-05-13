@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_close)
 SYSCALL_NONAME(close, 1, cerror)
 ret
 #else
-#if defined(__x86_64__) || defined(__arm__) || defined(__arm64__)
+#if defined(__x86_64__) || defined(__arm64__)
 __SYSCALL2(_close, close, 1, cerror)
 #else
 __SYSCALL2(___close, close, 1, cerror)

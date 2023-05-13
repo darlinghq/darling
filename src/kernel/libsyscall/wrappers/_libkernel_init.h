@@ -29,6 +29,7 @@
 #ifndef __LIBKERNEL_INIT_H
 #define __LIBKERNEL_INIT_H
 
+#include <stdbool.h>
 #include <sys/types.h>
 #include <mach/mach.h>
 #include <mach/message.h>
@@ -68,7 +69,9 @@ typedef const struct _libkernel_functions {
 	int (*pthread_current_stack_contains_np)(const void *, size_t);
 
 	/* Subsequent versions must only add pointers! */
+#ifdef DARLING
 	void (*dyld_func_lookup)(const char*,void**);
+#endif
 } *_libkernel_functions_t;
 
 typedef const struct _libkernel_string_functions {
@@ -104,6 +107,12 @@ typedef const struct _libkernel_voucher_functions {
 	/* Subsequent versions must only add pointers! */
 } *_libkernel_voucher_functions_t;
 
+typedef struct _libkernel_late_init_config {
+	unsigned long version;
+	bool enable_system_version_compat;
+	bool enable_ios_version_compat;
+} *_libkernel_late_init_config_t;
+
 struct ProgramVars; /* forward reference */
 
 void __libkernel_init(_libkernel_functions_t fns, const char *envp[],
@@ -112,5 +121,7 @@ void __libkernel_init(_libkernel_functions_t fns, const char *envp[],
 kern_return_t __libkernel_platform_init(_libkernel_string_functions_t fns);
 
 kern_return_t __libkernel_voucher_init(_libkernel_voucher_functions_t fns);
+
+void __libkernel_init_late(_libkernel_late_init_config_t config);
 
 #endif // __LIBKERNEL_INIT_H

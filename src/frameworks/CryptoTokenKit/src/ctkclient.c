@@ -1,5 +1,12 @@
 #include <ctkclient.h>
 
+static int verbose = 0;
+
+__attribute__((constructor))
+static void initme(void) {
+    verbose = getenv("STUB_VERBOSE") != NULL;
+}
+
 CFDataRef TKTokenCopyObjectAccessControl(TKTokenRef token, CFDataRef object_id, CFErrorRef *error) {
 	return NULL;
 }
@@ -45,4 +52,10 @@ CFArrayRef TKTokenCopyIdentities(TKTokenRef token, int usage, CFErrorRef *error)
 CFDataRef TKTokenCopyOperationResult(TKTokenRef token, CFDataRef objectID, int operation, CFArrayRef algorithms, int other, CFTypeRef in1, CFTypeRef in2, CFErrorRef *error)
 {
 	return NULL;
+}
+
+CF_EXPORT
+void TKBindUserAm(CFStringRef cf_user, CFDataRef pub_key_hash, void *unknown) {
+    if (verbose) puts("STUB: TKBindUserAm called");
+	return;
 }

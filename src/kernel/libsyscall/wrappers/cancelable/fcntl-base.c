@@ -21,6 +21,9 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 #include <stdarg.h>
+#ifdef DARLING
+#include <sys/fcntl.h>
+#endif
 
 int __FCNTL(int, int, void *);
 
@@ -64,11 +67,14 @@ fcntl(int fd, int cmd, ...)
 	case F_ADDFILESIGS:
 	case F_ADDFILESIGS_FOR_DYLD_SIM:
 	case F_ADDFILESIGS_RETURN:
+	case F_ADDFILESIGS_INFO:
+	case F_ADDFILESUPPL:
 	case F_FINDSIGS:
 	case F_TRANSCODEKEY:
 	case F_TRIM_ACTIVE_FILE:
 	case F_SPECULATIVE_READ:
 	case F_CHECK_LV:
+	case F_GETSIGSINFO:
 		arg = va_arg(ap, void *);
 		break;
 	default:

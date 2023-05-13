@@ -7,8 +7,6 @@ remove_sdk_framework(CoreSymbolication
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "62046.0.0")
 
-file(GLOB CS_C src/*.c)
-
 set(FRAMEWORK_VERSION "A")
 
 generate_sdk_framework(CoreSymbolication
@@ -24,8 +22,24 @@ add_framework(CoreSymbolication
 	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
-		${CS_C}
+		src/functions.c
 
 	DEPENDENCIES
 		system
+)
+
+add_darling_executable(coresymbolicationd src/daemon.c)
+
+install(
+	TARGETS
+		coresymbolicationd
+	DESTINATION
+		libexec/darling/usr/libexec
+)
+
+install(
+	FILES
+		resources/com.apple.coresymbolicationd.plist
+	DESTINATION
+		libexec/darling/System/Library/LaunchDaemons
 )

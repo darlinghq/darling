@@ -10,7 +10,7 @@ MI_ENTRY_POINT(_____old_semwait_signal_nocancel)
 SYSCALL_NONAME(__old_semwait_signal_nocancel, 5, cerror_nocancel)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(_____old_semwait_signal_nocancel, __old_semwait_signal_nocancel, 5, cerror_nocancel)
 #endif
 

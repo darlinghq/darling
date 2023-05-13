@@ -28,7 +28,7 @@ add_executable(mldr ${mldr_sources})
 target_compile_options(mldr PRIVATE -pthread)
 target_link_options(mldr PRIVATE -pthread)
 
-target_link_libraries(mldr PRIVATE -lrt -ldl mldr_dserver_rpc)
+target_link_libraries(mldr PRIVATE -lrt -ldl mldr_dserver_rpc -lm)
 
 install(TARGETS mldr DESTINATION libexec/darling/usr/libexec/darling)
 

@@ -10,7 +10,7 @@ MI_ENTRY_POINT(___accept)
 SYSCALL_NONAME(accept, 3, cerror)
 ret
 #else
-#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm__) || defined(__arm64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || defined(__arm64__)
 __SYSCALL2(___accept, accept, 3, cerror)
 #endif
 
@@ -29,11 +29,6 @@ __SYSCALL2(___accept, accept, 3, cerror)
 #if defined(__ppc__)
 	.globl	_accept$UNIX2003
 	.set	_accept$UNIX2003, ___accept
-#endif
-
-#if defined(__arm__)
-	.globl	_accept
-	.set	_accept, ___accept
 #endif
 
 #if defined(__arm64__)

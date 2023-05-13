@@ -18,10 +18,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <AudioToolbox/AudioComponent.h>
-#include <CoreServices/Components.h>
-#include <CoreServices/Resources.h>
-#include <CoreServices/MacErrors.h>
-#include <CoreServices/MacMemory.h>
+#include <CarbonCore/Components.h>
+#include <CarbonCore/Resources.h>
+#include <CarbonCore/MacErrors.h>
+#include <CarbonCore/MacMemory.h>
 #include "AudioComponentManager.h"
 #include <iostream>
 

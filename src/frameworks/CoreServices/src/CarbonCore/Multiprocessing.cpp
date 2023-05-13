@@ -17,11 +17,11 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <CoreServices/Multiprocessing.h>
+#include <CarbonCore/Multiprocessing.h>
 #include <unistd.h>
 #include <ctime>
 #include <pthread.h>
-#include <CoreServices/MacErrors.h>
+#include <CarbonCore/MacErrors.h>
 
 Boolean _MPIsFullyInitialized()
 {

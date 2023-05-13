@@ -135,6 +135,13 @@ bzero(void *s, size_t n)
 }
 
 __attribute__((visibility("hidden")))
+void
+__bzero(void *s, size_t n)
+{
+	return _libkernel_string_functions->bzero(s, n);
+}
+
+__attribute__((visibility("hidden")))
 void *
 memchr(const void *s, int c, size_t n)
 {

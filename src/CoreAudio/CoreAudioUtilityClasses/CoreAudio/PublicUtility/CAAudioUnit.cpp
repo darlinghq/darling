@@ -48,7 +48,7 @@
 
 #if !TARGET_OS_IPHONE
 #if !defined(__COREAUDIO_USE_FLAT_INCLUDES__)
-	#include <CoreServices/Components.h>
+	#include <CarbonCore/Components.h>
 	#include <dlfcn.h>
 #else
 	#include <Components.h>
