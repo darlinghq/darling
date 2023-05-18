@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/sched_prim.h
+../../../../../../../../../src/external/xnu/osfmk/kern/sched_prim.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/sys/protosw.h
+../../../../../../../../../src/external/xnu/bsd/sys/protosw.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/sys/pthread_internal.h
+../../../../../../../../../src/external/xnu/bsd/sys/pthread_internal.h

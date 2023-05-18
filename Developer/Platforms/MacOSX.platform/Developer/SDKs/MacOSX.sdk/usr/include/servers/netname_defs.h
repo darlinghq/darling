@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/libsyscall/mach/servers/netname_defs.h
+../../../../../../../../../src/external/xnu/libsyscall/mach/servers/netname_defs.h

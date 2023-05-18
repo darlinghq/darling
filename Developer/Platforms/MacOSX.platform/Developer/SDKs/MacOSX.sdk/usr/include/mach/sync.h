@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/libsyscall/mach/mach/sync.h
+../../../../../../../../../src/external/xnu/libsyscall/mach/mach/sync.h

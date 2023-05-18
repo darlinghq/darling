@@ -1,1 +1,1 @@
-../../../../../../../../src/kernel/libsyscall/wrappers/spawn/spawn_private.h
+../../../../../../../../src/external/xnu/libsyscall/wrappers/spawn/spawn_private.h

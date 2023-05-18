@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/syscall_sw.h
+../../../../../../../../../src/external/xnu/osfmk/kern/syscall_sw.h

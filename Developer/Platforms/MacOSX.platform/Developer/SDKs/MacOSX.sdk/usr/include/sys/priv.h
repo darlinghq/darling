@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/sys/priv.h
+../../../../../../../../../src/external/xnu/bsd/sys/priv.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/sync_lock.h
+../../../../../../../../../src/external/xnu/osfmk/kern/sync_lock.h

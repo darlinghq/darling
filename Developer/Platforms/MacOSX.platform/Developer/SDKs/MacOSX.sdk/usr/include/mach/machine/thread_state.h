@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/lkm/osfmk/mach/machine/thread_state.h
+../../../../../../../../../../src/external/xnu/osfmk/mach/machine/thread_state.h

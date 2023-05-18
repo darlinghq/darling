@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/sys/ttycom.h
+../../../../../../../../../src/external/xnu/bsd/sys/ttycom.h

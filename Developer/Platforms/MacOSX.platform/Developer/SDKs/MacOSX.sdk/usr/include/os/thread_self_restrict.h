@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/libsyscall/os/thread_self_restrict.h
+../../../../../../../../../src/external/xnu/libsyscall/os/thread_self_restrict.h

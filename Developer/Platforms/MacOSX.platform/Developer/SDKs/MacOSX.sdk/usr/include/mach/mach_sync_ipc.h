@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/libsyscall/mach/mach/mach_sync_ipc.h
+../../../../../../../../../src/external/xnu/libsyscall/mach/mach/mach_sync_ipc.h

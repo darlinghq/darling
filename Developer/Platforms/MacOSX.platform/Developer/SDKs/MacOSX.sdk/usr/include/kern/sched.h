@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/sched.h
+../../../../../../../../../src/external/xnu/osfmk/kern/sched.h

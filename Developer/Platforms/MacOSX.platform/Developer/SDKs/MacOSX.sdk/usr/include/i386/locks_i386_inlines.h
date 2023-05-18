@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/i386/locks_i386_inlines.h
+../../../../../../../../../src/external/xnu/osfmk/i386/locks_i386_inlines.h

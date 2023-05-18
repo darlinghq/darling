@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/lkm/osfmk/mach/i386/thread_status.h
+../../../../../../../../../../src/external/xnu/osfmk/mach/i386/thread_status.h

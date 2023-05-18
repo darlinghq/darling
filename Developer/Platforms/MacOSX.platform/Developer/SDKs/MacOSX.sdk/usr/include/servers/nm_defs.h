@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/libsyscall/mach/servers/nm_defs.h
+../../../../../../../../../src/external/xnu/libsyscall/mach/servers/nm_defs.h

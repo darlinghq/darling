@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/i386/simple_lock.h
+../../../../../../../../../src/external/xnu/osfmk/i386/simple_lock.h

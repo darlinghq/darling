@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/machine/reg.h
+../../../../../../../../../src/external/xnu/bsd/machine/reg.h

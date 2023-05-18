@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/mach/thread_special_ports.h
+../../../../../../../../../src/external/xnu/osfmk/mach/thread_special_ports.h

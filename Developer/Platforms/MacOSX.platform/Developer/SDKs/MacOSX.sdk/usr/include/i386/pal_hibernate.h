@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/i386/pal_hibernate.h
+../../../../../../../../../src/external/xnu/osfmk/i386/pal_hibernate.h
