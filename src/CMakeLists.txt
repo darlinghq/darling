@@ -136,7 +136,7 @@ add_subdirectory(libsimple "${CMAKE_CURRENT_BINARY_DIR}/libsimple-darling")
 add_subdirectory(external/libkqueue)
 
 # needs to come before libplatform because it generates mig headers that libplatform needs
-add_subdirectory(kernel)
+add_subdirectory(external/xnu/darling/src/libsystem_kernel)
 
 add_subdirectory(external/libplatform)
 add_subdirectory(external/libpthread)
@@ -304,7 +304,7 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	add_subdirectory(external/sqlite)
 	add_subdirectory(external/openpam)
 	add_subdirectory(external/energytrace)
-	add_subdirectory(external/lkm/libkern/kxld)
+	add_subdirectory(external/xnu/libkern/kxld)
 	add_subdirectory(external/IOKitUser)
 	add_subdirectory(external/xar)
 	add_subdirectory(libpmenergy)
@@ -405,9 +405,6 @@ add_subdirectory(tools)
 # these have their own component checks on a per-framework basis
 add_subdirectory(frameworks)
 add_subdirectory(private-frameworks)
-
-# TODO: get rid of this; we really only need its headers right now
-add_subdirectory(external/lkm)
 
 # /Applications
 #add_subdirectory(external/TextEdit)
