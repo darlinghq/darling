@@ -447,3 +447,6 @@
 [submodule "src/external/metal"]
 	path = src/external/metal
 	url = ../darling-metal.git
+[submodule "src/external/xnu"]
+	path = src/external/xnu
+	url = ../darling-xnu.git
