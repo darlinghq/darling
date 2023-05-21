@@ -1,1 +1,0 @@
-../../libsyscall/os/tsd.h

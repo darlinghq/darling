@@ -1,1 +1,0 @@
-../libsyscall/wrappers/spawn/spawn.h

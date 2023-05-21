@@ -1,3 +1,0 @@
-This directory allows access to system calls not available on OS X (e.g.
-epoll), which are used internally by Darling's components.
-
