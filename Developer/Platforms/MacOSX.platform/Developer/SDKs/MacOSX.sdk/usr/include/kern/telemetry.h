@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/telemetry.h
+../../../../../../../../../src/external/xnu/osfmk/kern/telemetry.h

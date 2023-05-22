@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/misc_protos.h
+../../../../../../../../../src/external/xnu/osfmk/kern/misc_protos.h

@@ -1,1 +1,1 @@
-../../../../../../../../src/kernel/libsyscall/wrappers/_errno.h
+../../../../../../../../src/external/xnu/libsyscall/wrappers/_errno.h

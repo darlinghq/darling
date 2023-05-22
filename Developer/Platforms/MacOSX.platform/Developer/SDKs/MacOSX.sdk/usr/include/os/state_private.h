@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/include/os/state_private.h
+../../../../../../../../../src/external/xnu/darling/src/libsystem_kernel/include/os/state_private.h

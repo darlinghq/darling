@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/libsyscall/mach/mach/mach_right.h
+../../../../../../../../../src/external/xnu/libsyscall/mach/mach/mach_right.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/libsyscall/mach/servers/ls_defs.h
+../../../../../../../../../src/external/xnu/libsyscall/mach/servers/ls_defs.h

@@ -14,7 +14,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../liblaunch/)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fblocks -include ${CMAKE_SOURCE_DIR}/src/external/lkm/bsd/sys/fileport.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fblocks -include ${CMAKE_SOURCE_DIR}/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h")
 
 add_definitions(-DPRIVATE)
 

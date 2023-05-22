@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/ipc_sync.h
+../../../../../../../../../src/external/xnu/osfmk/kern/ipc_sync.h

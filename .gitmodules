@@ -208,9 +208,6 @@
 [submodule "src/external/doc_cmds"]
 	path = src/external/doc_cmds
 	url = ../darling-doc_cmds.git
-[submodule "src/external/lkm"]
-	path = src/external/lkm
-	url = ../darling-newlkm.git
 [submodule "src/external/basic_cmds"]
 	path = src/external/basic_cmds
 	url = ../darling-basic_cmds.git
@@ -450,3 +447,6 @@
 [submodule "src/external/metal"]
 	path = src/external/metal
 	url = ../darling-metal.git
+[submodule "src/external/xnu"]
+	path = src/external/xnu
+	url = ../darling-xnu.git

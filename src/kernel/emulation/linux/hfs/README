@@ -1,4 +1,0 @@
-This directory contains system calls specified as "calls to support HFS/HFS Plus file system semantics".
-
-We cannot ignore these syscalls, because users don't expect the ENOSYS error. Instead, we return ENOTSUP indicating the filesystem doesn't support this operation.
-

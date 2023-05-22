@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/thread_kernel_state.h
+../../../../../../../../../src/external/xnu/osfmk/kern/thread_kernel_state.h

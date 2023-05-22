@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <lkm/api.h>
 
 extern int lkm_call(int nr, ...);
 extern int __darling_vchroot(int dfd);

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/waitq.h
+../../../../../../../../../src/external/xnu/osfmk/kern/waitq.h

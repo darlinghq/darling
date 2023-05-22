@@ -5,7 +5,7 @@ remove_sdk_framework(CoreServices)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 include_directories(
-	${CMAKE_SOURCE_DIR}/src/kernel/emulation/linux
+	${CMAKE_SOURCE_DIR}/src/external/xnu/darling/src/libsystem_kernel/emulation/linux
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.0")

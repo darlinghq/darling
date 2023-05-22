@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/machine/dis_tables.h
+../../../../../../../../../src/external/xnu/bsd/machine/dis_tables.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/netinet6/ip6protosw.h
+../../../../../../../../../src/external/xnu/bsd/netinet6/ip6protosw.h

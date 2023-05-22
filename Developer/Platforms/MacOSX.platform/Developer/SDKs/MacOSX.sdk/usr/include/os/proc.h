@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/libsyscall/os/proc.h
+../../../../../../../../../src/external/xnu/libsyscall/os/proc.h

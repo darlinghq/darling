@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/sys/ttydefaults.h
+../../../../../../../../../src/external/xnu/bsd/sys/ttydefaults.h

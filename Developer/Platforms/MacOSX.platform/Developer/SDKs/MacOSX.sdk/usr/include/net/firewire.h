@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/net/firewire.h
+../../../../../../../../../src/external/xnu/bsd/net/firewire.h

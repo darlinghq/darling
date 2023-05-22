@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/machine/smp.h
+../../../../../../../../../src/external/xnu/bsd/machine/smp.h

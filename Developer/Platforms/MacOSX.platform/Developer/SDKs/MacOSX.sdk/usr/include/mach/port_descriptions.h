@@ -1,1 +1,1 @@
-../../../../../../../../../src/kernel/libsyscall/mach/mach/port_descriptions.h
+../../../../../../../../../src/external/xnu/libsyscall/mach/mach/port_descriptions.h

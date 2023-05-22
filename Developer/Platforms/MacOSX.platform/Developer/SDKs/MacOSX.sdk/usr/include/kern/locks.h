@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/osfmk/kern/locks.h
+../../../../../../../../../src/external/xnu/osfmk/kern/locks.h

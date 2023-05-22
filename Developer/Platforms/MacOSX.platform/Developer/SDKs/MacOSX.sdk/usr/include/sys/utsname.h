@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lkm/bsd/sys/utsname.h
+../../../../../../../../../src/external/xnu/bsd/sys/utsname.h
