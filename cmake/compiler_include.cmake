@@ -1,7 +1,7 @@
 # Detect the location of compiler-specific header files
 # such as stdbool.h or xmmintrin.h
 function(GetCompilerInclude OutputVar)
-	file(WRITE "${CMAKE_BINARY_DIR}/cinctest.c" "#include <cpuid.h>")
+	file(WRITE "${CMAKE_BINARY_DIR}/cinctest.c" "#include <omp-tools.h>")
 	execute_process(COMMAND "${CMAKE_C_COMPILER}" -M "${CMAKE_BINARY_DIR}/cinctest.c"
 		RESULT_VARIABLE BuildResult
 		OUTPUT_VARIABLE BuildOutput
@@ -17,10 +17,10 @@ function(GetCompilerInclude OutputVar)
 		string(REGEX REPLACE "\n$" "" str "${str}")
 		# message(STATUS "Output: ${str}")
 
-		if (str MATCHES "cpuid.h$")
+		if (str MATCHES "omp-tools.h$")
 			# message(STATUS "Str matched: ${str}")
-			string(REGEX REPLACE "cpuid\\.h" "" IncPath "${str}")
-		endif (str MATCHES "cpuid.h$")
+			string(REGEX REPLACE "omp-tools\\.h" "" IncPath "${str}")
+		endif (str MATCHES "omp-tools.h$")
 	endforeach (str)
 
 	if (NOT IncPath)
