@@ -579,6 +579,12 @@ int connectToShellspawn(void)
 
 void setupShellspawnEnv(int sockfd)
 {
+	static const char* skip_vars[] = {
+		"PATH",
+		"TMPDIR",
+		"HOME",
+	};
+
 	char buffer2[4096];
 
 	// Push environment variables
@@ -606,6 +612,26 @@ void setupShellspawnEnv(int sockfd)
 
 	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", login);
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
+
+	for (char** var_ptr = environ; *var_ptr != NULL; ++var_ptr) {
+		const char* var = *var_ptr;
+		const char* equal = strchr(var, '=');
+		size_t name_len = (equal != NULL) ? (size_t)(equal - var) : strlen(var);
+		bool skip_it = false;
+
+		for (size_t i = 0; i < sizeof(skip_vars) / sizeof(*skip_vars); ++i) {
+			if (strlen(skip_vars[i]) == name_len && strncmp(var, skip_vars[i], name_len) == 0) {
+				skip_it = true;
+				break;
+			}
+		}
+
+		if (skip_it) {
+			continue;
+		}
+
+		pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, var);
+	}
 }
 
 void setupWorkingDir(int sockfd)
