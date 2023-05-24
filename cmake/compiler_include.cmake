@@ -2,7 +2,7 @@
 # such as stdbool.h or xmmintrin.h
 function(GetCompilerInclude OutputVar)
 	if (TARGET_x86_64 OR TARGET_i386)
-		set(COMPILER_INCLUDE_HEADER_NAME "cupid")
+		set(COMPILER_INCLUDE_HEADER_NAME "cpuid")
 	else()
 		set(COMPILER_INCLUDE_HEADER_NAME "stdbool")
 	endif ()
