@@ -1,3 +1,8 @@
+#ifdef __aarch64__
+// Apple uses the __arm64__ macro instead of __aarch64__
+#define __arm64__
+#endif
+
 #include <filesystem>
 
 #include <stdio.h>
