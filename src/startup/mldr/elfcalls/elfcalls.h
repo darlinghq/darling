@@ -6,7 +6,7 @@
 #include <stddef.h>
 
 struct darling_thread_create_callbacks {
-	int (*thread_self_trap)(void);
+	unsigned int (*thread_self_trap)(void);
 	void (*thread_set_tsd_base)(void*, int);
 	void (*rpc_guard)(int);
 	void (*rpc_unguard)(int);

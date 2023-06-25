@@ -1,9 +1,10 @@
 #include <stddef.h>
+#include <LocalAuthentication/LAPrivateDefines.h>
 
-void* LAEvaluatePolicy() {
-	return NULL;
+bool LAEvaluatePolicy(CFTypeRef context, int policy, CFMutableDictionaryRef options, CFErrorRef *error) {
+	return false;
 };
 
-void* LAVerifySEP() {
-	return NULL;
+bool LAVerifySEP(uid_t pw_uid, CFErrorRef *error) {
+	return false;
 };

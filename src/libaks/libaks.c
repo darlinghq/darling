@@ -1,3 +1,5 @@
+#include <uuid/uuid.h>
+
 #include "libaks.h"
 #include "libaks_smartcard.h"
 

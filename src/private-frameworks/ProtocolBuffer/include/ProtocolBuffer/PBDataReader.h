@@ -44,6 +44,14 @@ static inline BOOL PBReaderReadBOOL(PBDataReader* reader) {
 	return FALSE;
 };
 
+static inline uint32_t PBReaderReadUint32(PBDataReader *reader) {
+	return 0;
+}
+
+static inline int32_t PBReaderReadInt32(PBDataReader* reader) {
+	return 0;
+}
+
 static inline uint64_t PBReaderReadUint64(PBDataReader* reader) {
 	return 0;
 };

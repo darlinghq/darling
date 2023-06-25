@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <dlfcn.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include <mach/mach.h>
 

@@ -184,6 +184,9 @@ typedef enum {
 	LAUNCH_DATA_MACHPORT,
 } launch_data_type_t;
 
+int
+launch_activate_socket(const char* key, int** fds, size_t* count);
+
 __ld_allocator
 launch_data_t
 launch_data_alloc(launch_data_type_t);
