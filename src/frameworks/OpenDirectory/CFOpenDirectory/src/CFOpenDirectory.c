@@ -19,6 +19,7 @@
 
 
 #include "../include/generated-stubs.h"
+#include <CFOpenDirectory/CFOpenDirectoryPriv.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -29,55 +30,55 @@ static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
-void* ODContextGetTypeID(void)
+CFTypeID ODContextGetTypeID(void)
 {
     if (verbose) puts("STUB: ODContextGetTypeID called");
-    return NULL;
+    return 0;
 }
 
-void* ODConvertToLegacyErrorCode(void)
+tDirStatus ODConvertToLegacyErrorCode(CFIndex code)
 {
     if (verbose) puts("STUB: ODConvertToLegacyErrorCode called");
-    return NULL;
+    return eNotYetImplemented;
 }
 
-void* ODNodeAddAccountPolicy(void)
+bool ODNodeAddAccountPolicy(ODNodeRef node, CFDictionaryRef policy, ODPolicyCategoryType category, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeAddAccountPolicy called");
-    return NULL;
+    return false;
 }
 
-void* ODNodeCopyAccountPolicies(void)
+CFDictionaryRef ODNodeCopyAccountPolicies(ODNodeRef node, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopyAccountPolicies called");
     return NULL;
 }
 
-void* ODNodeCopyCredentials(void)
+bool ODNodeCopyCredentials(ODNodeRef node, ODRecordType *recordType, CFStringRef *username, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopyCredentials called");
-    return NULL;
+    return false;
 }
 
-void* ODNodeCopyDetails(void)
+CFDictionaryRef ODNodeCopyDetails(ODNodeRef node, CFArrayRef keys, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopyDetails called");
     return NULL;
 }
 
-void* ODNodeCopyPolicies(void)
+CFDictionaryRef ODNodeCopyPolicies(ODNodeRef node, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopyPolicies called");
     return NULL;
 }
 
-void* ODNodeCopyRecord(void)
+ODRecordRef ODNodeCopyRecord(ODNodeRef node, ODRecordType recordType, CFStringRef recordName, CFTypeRef attributes, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopyRecord called");
     return NULL;
 }
 
-void* ODNodeCopyRecordAuthenticationData(void)
+ODRecordRef ODNodeCopyRecordAuthenticationData(ODNodeRef node, ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopyRecordAuthenticationData called");
     return NULL;
@@ -89,55 +90,55 @@ void* ODNodeCopySession(void)
     return NULL;
 }
 
-void* ODNodeCopySubnodeNames(void)
+CFArrayRef ODNodeCopySubnodeNames(ODNodeRef node, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopySubnodeNames called");
     return NULL;
 }
 
-void* ODNodeCopySupportedAttributes(void)
+CFArrayRef ODNodeCopySupportedAttributes(ODNodeRef node, ODRecordType recordType, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopySupportedAttributes called");
     return NULL;
 }
 
-void* ODNodeCopySupportedPolicies(void)
+CFDictionaryRef ODNodeCopySupportedPolicies(ODNodeRef node, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopySupportedPolicies called");
     return NULL;
 }
 
-void* ODNodeCopySupportedRecordTypes(void)
+CFArrayRef ODNodeCopySupportedRecordTypes(ODNodeRef node, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopySupportedRecordTypes called");
     return NULL;
 }
 
-void* ODNodeCopyUnreachableSubnodeNames(void)
+CFArrayRef ODNodeCopyUnreachableSubnodeNames(ODNodeRef node, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopyUnreachableSubnodeNames called");
     return NULL;
 }
 
-void* ODNodeCreateCopy(void)
+ODNodeRef ODNodeCreateCopy(CFAllocatorRef allocator, ODNodeRef node, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCreateCopy called");
     return NULL;
 }
 
-void* ODNodeCreateRecord(void)
+ODRecordRef ODNodeCreateRecord(ODNodeRef node, ODRecordType recordType, CFStringRef recordName, CFDictionaryRef attributeDict, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCreateRecord called");
     return NULL;
 }
 
-void* ODNodeCreateWithDSRef(void)
+ODNodeRef ODNodeCreateWithDSRef(CFAllocatorRef inAllocator, tDirReference inDirRef, tDirNodeReference inNodeRef, bool inCloseOnRelease)
 {
     if (verbose) puts("STUB: ODNodeCreateWithDSRef called");
     return NULL;
 }
 
-void* ODNodeCreateWithName(void)
+ODNodeRef ODNodeCreateWithName(CFAllocatorRef allocator, ODSessionRef session, CFStringRef nodeName, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCreateWithName called");
     return NULL;
@@ -149,31 +150,31 @@ void* ODNodeCreateWithNameAndOptions(void)
     return NULL;
 }
 
-void* ODNodeCreateWithNodeType(void)
+ODNodeRef ODNodeCreateWithNodeType(CFAllocatorRef allocator, ODSessionRef session, ODNodeType nodeType, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCreateWithNodeType called");
     return NULL;
 }
 
-void* ODNodeCustomCall(void)
+CFDataRef ODNodeCustomCall(ODNodeRef node, CFIndex customCode, CFDataRef data, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCustomCall called");
     return NULL;
 }
 
-void* ODNodeCustomFunction(void)
+CFTypeRef ODNodeCustomFunction(ODNodeRef node, CFStringRef function, CFTypeRef payload, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCustomFunction called");
     return NULL;
 }
 
-void* ODNodeGetDSRef(void)
+tDirNodeReference ODNodeGetDSRef(ODNodeRef inNodeRef)
 {
     if (verbose) puts("STUB: ODNodeGetDSRef called");
-    return NULL;
+    return 0;
 }
 
-void* ODNodeGetName(void)
+CFStringRef ODNodeGetName(ODNodeRef node)
 {
     if (verbose) puts("STUB: ODNodeGetName called");
     return NULL;
@@ -185,25 +186,25 @@ void* ODNodeGetSecureTokenRecoveryType(void)
     return NULL;
 }
 
-void* ODNodeGetTypeID(void)
+CFTypeID ODNodeGetTypeID(void)
 {
     if (verbose) puts("STUB: ODNodeGetTypeID called");
-    return NULL;
+    return 0;
 }
 
-void* ODNodePasswordContentCheck(void)
+bool ODNodePasswordContentCheck(ODNodeRef node, CFStringRef password, CFStringRef recordName, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodePasswordContentCheck called");
-    return NULL;
+    return false;
 }
 
-void* ODNodeRemoveAccountPolicy(void)
+bool ODNodeRemoveAccountPolicy(ODNodeRef node, CFDictionaryRef policy, ODPolicyCategoryType category, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeRemoveAccountPolicy called");
-    return NULL;
+    return false;
 }
 
-void* ODNodeRemovePolicy(void)
+bool ODNodeRemovePolicy(ODNodeRef node, ODPolicyType policyType, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeRemovePolicy called");
     return NULL;
@@ -215,28 +216,28 @@ void* ODNodeReplaceUserRecord(void)
     return NULL;
 }
 
-void* ODNodeSetAccountPolicies(void)
+bool ODNodeSetAccountPolicies(ODNodeRef node, CFDictionaryRef policies, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeSetAccountPolicies called");
     return NULL;
 }
 
-void* ODNodeSetCredentials(void)
+bool ODNodeSetCredentials(ODNodeRef node, ODRecordType recordType, CFStringRef recordName, CFStringRef password, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeSetCredentials called");
     return NULL;
 }
 
-void* ODNodeSetCredentialsExtended(void)
+bool ODNodeSetCredentialsExtended(ODNodeRef node, ODRecordType recordType, ODAuthenticationType authType, CFArrayRef authItems, CFArrayRef *outAuthItems, ODContextRef *outContext, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeSetCredentialsExtended called");
     return NULL;
 }
 
-void* ODNodeSetCredentialsUsingKerberosCache(void)
+bool ODNodeSetCredentialsUsingKerberosCache(ODNodeRef node, CFStringRef cacheName, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeSetCredentialsUsingKerberosCache called");
-    return NULL;
+    return false;
 }
 
 void* ODNodeSetCredentialsWithBootstrapToken(void)
@@ -245,16 +246,16 @@ void* ODNodeSetCredentialsWithBootstrapToken(void)
     return NULL;
 }
 
-void* ODNodeSetPolicies(void)
+bool ODNodeSetPolicies(ODNodeRef node, CFDictionaryRef policies, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeSetPolicies called");
-    return NULL;
+    return false;
 }
 
-void* ODNodeSetPolicy(void)
+bool ODNodeSetPolicy(ODNodeRef node, ODPolicyType policyType, CFTypeRef value, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeSetPolicy called");
-    return NULL;
+    return false;
 }
 
 void* ODNodeSetSecureTokenRecoveryCloud(void)
@@ -287,121 +288,116 @@ void* ODNodeSetSecureTokenRecoveryPersonalUsingKey(void)
     return NULL;
 }
 
-void* ODNodeVerifyCredentialsExtended(void)
+bool ODNodeVerifyCredentialsExtended(ODNodeRef node, ODRecordType recordType, ODAuthenticationType authType, CFArrayRef authItems, CFArrayRef *authItemsOut, ODContextRef *context, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeVerifyCredentialsExtended called");
-    return NULL;
+    return false;
 }
 
-void* ODQueryCopyResults(void)
+CFArrayRef ODQueryCopyResults(ODQueryRef query, bool allowPartialResults, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODQueryCopyResults called");
     return NULL;
 }
 
-void* ODQueryCreateWithNode(void)
+ODQueryRef ODQueryCreateWithNode(CFAllocatorRef allocator, ODNodeRef node, CFTypeRef recordTypeOrList, ODAttributeType attribute, ODMatchType matchType, CFTypeRef queryValueOrList, CFTypeRef returnAttributeOrList, CFIndex maxResults, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODQueryCreateWithNode called");
     return NULL;
 }
 
-void* ODQueryCreateWithNodeType(void)
+ODQueryRef ODQueryCreateWithNodeType(CFAllocatorRef allocator, ODNodeType nodeType, CFTypeRef recordTypeOrList, ODAttributeType attribute, ODMatchType matchType, CFTypeRef queryValueOrList, CFTypeRef returnAttributeOrList, CFIndex maxResults, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODQueryCreateWithNodeType called");
     return NULL;
 }
 
-void* ODQueryGetTypeID(void)
+CFTypeID ODQueryGetTypeID(void)
 {
     if (verbose) puts("STUB: ODQueryGetTypeID called");
-    return NULL;
+    return 0;
 }
 
-void* ODQueryScheduleWithRunLoop(void)
+void ODQueryScheduleWithRunLoop(ODQueryRef query, CFRunLoopRef runLoop, CFStringRef runLoopMode)
 {
     if (verbose) puts("STUB: ODQueryScheduleWithRunLoop called");
-    return NULL;
 }
 
-void* ODQuerySetCallback(void)
+void ODQuerySetCallback(ODQueryRef query, ODQueryCallback callback, void *userInfo)
 {
     if (verbose) puts("STUB: ODQuerySetCallback called");
-    return NULL;
 }
 
-void* ODQuerySetDispatchQueue(void)
+void ODQuerySetDispatchQueue(ODQueryRef query, dispatch_queue_t queue)
 {
     if (verbose) puts("STUB: ODQuerySetDispatchQueue called");
-    return NULL;
 }
 
-void* ODQuerySynchronize(void)
+void ODQuerySynchronize(ODQueryRef query)
 {
     if (verbose) puts("STUB: ODQuerySynchronize called");
-    return NULL;
 }
 
-void* ODQueryUnscheduleFromRunLoop(void)
+void ODQueryUnscheduleFromRunLoop(ODQueryRef query, CFRunLoopRef runLoop, CFStringRef runLoopMode)
 {
     if (verbose) puts("STUB: ODQueryUnscheduleFromRunLoop called");
-    return NULL;
 }
 
-void* ODRecordAddAccountPolicy(void)
+bool ODRecordAddAccountPolicy(ODRecordRef record, CFDictionaryRef policy, ODPolicyCategoryType category, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordAddAccountPolicy called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordAddMember(void)
+bool ODRecordAddMember(ODRecordRef group, ODRecordRef member, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordAddMember called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordAddValue(void)
+bool ODRecordAddValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef value, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordAddValue called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordAuthenticationAllowed(void)
+bool ODRecordAuthenticationAllowed(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordAuthenticationAllowed called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordChangePassword(void)
+bool ODRecordChangePassword(ODRecordRef record, CFStringRef oldPassword, CFStringRef newPassword, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordChangePassword called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordContainsMember(void)
+bool ODRecordContainsMember(ODRecordRef group, ODRecordRef member, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordContainsMember called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordContainsMemberRefresh(void)
+bool ODRecordContainsMemberRefresh(ODRecordRef inGroupRef, ODRecordRef inMemberRef, CFErrorRef *outError)
 {
     if (verbose) puts("STUB: ODRecordContainsMemberRefresh called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordCopyAccountPolicies(void)
+CFDictionaryRef ODRecordCopyAccountPolicies(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordCopyAccountPolicies called");
     return NULL;
 }
 
-void* ODRecordCopyDetails(void)
+CFDictionaryRef ODRecordCopyDetails(ODRecordRef record, CFArrayRef attributes, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordCopyDetails called");
     return NULL;
 }
 
-void* ODRecordCopyEffectivePolicies(void)
+CFDictionaryRef ODRecordCopyEffectivePolicies(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordCopyEffectivePolicies called");
     return NULL;
@@ -413,34 +409,34 @@ void* ODRecordCopyPasswordContentSummary(void)
     return NULL;
 }
 
-void* ODRecordCopyPasswordPolicy(void)
+CFDictionaryRef ODRecordCopyPasswordPolicy(CFAllocatorRef allocator, ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordCopyPasswordPolicy called");
     return NULL;
 }
 
-void* ODRecordCopyPolicies(void)
+CFDictionaryRef ODRecordCopyPolicies(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordCopyPolicies called");
     return NULL;
 }
 
-void* ODRecordCopySupportedPolicies(void)
+CFDictionaryRef ODRecordCopySupportedPolicies(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordCopySupportedPolicies called");
     return NULL;
 }
 
-void* ODRecordCopyValues(void)
+CFArrayRef ODRecordCopyValues(ODRecordRef record, ODAttributeType attribute, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordCopyValues called");
     return NULL;
 }
 
-void* ODRecordDelete(void)
+bool ODRecordDelete(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordDelete called");
-    return NULL;
+    return false;
 }
 
 void* ODRecordEnumerateMembers(void)
@@ -455,145 +451,144 @@ void* ODRecordEnumerateMembership(void)
     return NULL;
 }
 
-void* ODRecordGetRecordName(void)
+CFStringRef ODRecordGetRecordName(ODRecordRef record)
 {
     if (verbose) puts("STUB: ODRecordGetRecordName called");
     return NULL;
 }
 
-void* ODRecordGetRecordType(void)
+CFStringRef ODRecordGetRecordType(ODRecordRef record)
 {
     if (verbose) puts("STUB: ODRecordGetRecordType called");
     return NULL;
 }
 
-void* ODRecordGetTypeID(void)
+CFTypeID ODRecordGetTypeID(void)
 {
     if (verbose) puts("STUB: ODRecordGetTypeID called");
-    return NULL;
+    return 0;
 }
 
-void* ODRecordPasswordChangeAllowed(void)
+bool ODRecordPasswordChangeAllowed(ODRecordRef record, CFStringRef newPassword, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordPasswordChangeAllowed called");
-    return NULL;
+    return false;
 }
-
-void* ODRecordRemoveAccountPolicy(void)
+bool ODRecordRemoveAccountPolicy(ODRecordRef record, CFDictionaryRef policy, ODPolicyCategoryType category, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordRemoveAccountPolicy called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordRemoveMember(void)
+bool ODRecordRemoveMember(ODRecordRef group, ODRecordRef member, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordRemoveMember called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordRemovePolicy(void)
+bool ODRecordRemovePolicy(ODRecordRef record, ODPolicyType policy, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordRemovePolicy called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordRemoveValue(void)
+bool ODRecordRemoveValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef value, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordRemoveValue called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordSecondsUntilAuthenticationsExpire(void)
+int64_t ODRecordSecondsUntilAuthenticationsExpire(ODRecordRef record)
 {
     if (verbose) puts("STUB: ODRecordSecondsUntilAuthenticationsExpire called");
-    return NULL;
+    return 0;
 }
 
-void* ODRecordSecondsUntilPasswordExpires(void)
+int64_t ODRecordSecondsUntilPasswordExpires(ODRecordRef record)
 {
     if (verbose) puts("STUB: ODRecordSecondsUntilPasswordExpires called");
-    return NULL;
+    return 0;
 }
 
-void* ODRecordSetAccountPolicies(void)
+bool ODRecordSetAccountPolicies(ODRecordRef record, CFDictionaryRef policies, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetAccountPolicies called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordSetNodeCredentials(void)
+bool ODRecordSetNodeCredentials(ODRecordRef record, CFStringRef username, CFStringRef password, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetNodeCredentials called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordSetNodeCredentialsExtended(void)
+bool ODRecordSetNodeCredentialsExtended(ODRecordRef record, ODRecordType recordType, ODAuthenticationType authType, CFArrayRef authItems, CFArrayRef *outAuthItems, ODContextRef *outContext, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetNodeCredentialsExtended called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordSetNodeCredentialsUsingKerberosCache(void)
+bool ODRecordSetNodeCredentialsUsingKerberosCache(ODRecordRef record, CFStringRef cacheName, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetNodeCredentialsUsingKerberosCache called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordSetNodeCredentialsWithBootstrapToken(void)
+bool ODRecordSetNodeCredentialsWithBootstrapToken(ODRecordRef cfRecord, CFStringRef token, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetNodeCredentialsWithBootstrapToken called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordSetPolicies(void)
+bool ODRecordSetPolicies(ODRecordRef record, CFDictionaryRef policies, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetPolicies called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordSetPolicy(void)
+bool ODRecordSetPolicy(ODRecordRef record, ODPolicyType policy, CFTypeRef value, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetPolicy called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordSetValue(void)
+bool ODRecordSetValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef valueOrValues, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetValue called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordSynchronize(void)
+bool ODRecordSynchronize(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSynchronize called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordVerifyPassword(void)
+bool ODRecordVerifyPassword(ODRecordRef record, CFStringRef password, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordVerifyPassword called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordVerifyPasswordExtended(void)
+bool ODRecordVerifyPasswordExtended(ODRecordRef record, ODAuthenticationType authType, CFArrayRef authItems, CFArrayRef *outAuthItems, ODContextRef *outContext, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordVerifyPasswordExtended called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordWillAuthenticationsExpire(void)
+bool ODRecordWillAuthenticationsExpire(ODRecordRef record, uint64_t willExpireIn)
 {
     if (verbose) puts("STUB: ODRecordWillAuthenticationsExpire called");
-    return NULL;
+    return false;
 }
 
-void* ODRecordWillPasswordExpire(void)
+bool ODRecordWillPasswordExpire(ODRecordRef record, uint64_t willExpireIn)
 {
     if (verbose) puts("STUB: ODRecordWillPasswordExpire called");
-    return NULL;
+    return false;
 }
 
-void* ODSessionCopyNodeNames(void)
+CFArrayRef ODSessionCopyNodeNames(CFAllocatorRef allocator, ODSessionRef session, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODSessionCopyNodeNames called");
     return NULL;
@@ -605,28 +600,28 @@ void* ODSessionCopySessionKeySupport(void)
     return NULL;
 }
 
-void* ODSessionCreate(void)
+ODSessionRef ODSessionCreate(CFAllocatorRef allocator, CFDictionaryRef options, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODSessionCreate called");
     return NULL;
 }
 
-void* ODSessionCreateWithDSRef(void)
+ODSessionRef ODSessionCreateWithDSRef(CFAllocatorRef inAllocator, tDirReference inDirRef, bool inCloseOnRelease)
 {
     if (verbose) puts("STUB: ODSessionCreateWithDSRef called");
     return NULL;
 }
 
-void* ODSessionGetDSRef(void)
+tDirReference ODSessionGetDSRef(ODSessionRef inSessionRef) 
 {
     if (verbose) puts("STUB: ODSessionGetDSRef called");
-    return NULL;
+    return 0;
 }
 
-void* ODSessionGetTypeID(void)
+CFTypeID ODSessionGetTypeID(void)
 {
     if (verbose) puts("STUB: ODSessionGetTypeID called");
-    return NULL;
+    return 0;
 }
 
 void* ODSessionIsProxy(void)
@@ -635,10 +630,10 @@ void* ODSessionIsProxy(void)
     return NULL;
 }
 
-void* ODSessionNodeNameIsLocal(void)
+bool ODSessionNodeNameIsLocal(ODSessionRef session, CFStringRef nodename)
 {
     if (verbose) puts("STUB: ODSessionNodeNameIsLocal called");
-    return NULL;
+    return false;
 }
 
 void* ODSessionProxyAuthorizationForm(void)
@@ -647,40 +642,43 @@ void* ODSessionProxyAuthorizationForm(void)
     return NULL;
 }
 
-void* ODTriggerCancel(void)
+void ODTriggerCancel(ODTriggerRef trigger)
 {
     if (verbose) puts("STUB: ODTriggerCancel called");
-    return NULL;
 }
 
-void* ODTriggerCreateForNodes(void)
+ODTriggerRef ODTriggerCreateForNodes(CFAllocatorRef allocator, ODTriggerEventFlags events, CFTypeRef nodenames,
+	dispatch_queue_t queue, void (^block)(ODTriggerRef trigger, CFStringRef node))
 {
     if (verbose) puts("STUB: ODTriggerCreateForNodes called");
     return NULL;
 }
 
-void* ODTriggerCreateForRecordAttributes(void)
+ODTriggerRef ODTriggerCreateForRecordAttributes(CFAllocatorRef allocator, CFTypeRef nodenames, CFTypeRef recordtypes, CFTypeRef recordnames, CFTypeRef attributes,
+	dispatch_queue_t queue, void (^block)(ODTriggerRef trigger, CFStringRef node, CFStringRef type, CFStringRef rec, CFStringRef attr))
 {
     if (verbose) puts("STUB: ODTriggerCreateForRecordAttributes called");
     return NULL;
 }
 
-void* ODTriggerCreateForRecords(void)
+ODTriggerRef ODTriggerCreateForRecords(CFAllocatorRef allocator, ODTriggerEventFlags events, CFTypeRef nodenames, CFTypeRef recordtypes, CFTypeRef recordnames,
+	dispatch_queue_t queue, void (^block)(ODTriggerRef trigger, CFStringRef node, CFStringRef type, CFStringRef name))
 {
     if (verbose) puts("STUB: ODTriggerCreateForRecords called");
     return NULL;
 }
 
-void* ODTriggerCreateForSearch(void)
+ODTriggerRef ODTriggerCreateForSearch(CFAllocatorRef allocator, ODTriggerEventFlags events, CFTypeRef nodenames,
+	dispatch_queue_t queue, void (^block)(ODTriggerRef trigger, CFStringRef node))
 {
     if (verbose) puts("STUB: ODTriggerCreateForSearch called");
     return NULL;
 }
 
-void* ODTriggerGetTypeID(void)
+CFTypeID ODTriggerGetTypeID(void)
 {
     if (verbose) puts("STUB: ODTriggerGetTypeID called");
-    return NULL;
+    return 0;
 }
 
 void* _NodeGetNodeTypeName(void)
@@ -761,4 +759,4 @@ void* _ODSessionInit(void)
     return NULL;
 }
 
-void* kODSessionDefault = NULL;
+ODSessionRef kODSessionDefault = NULL;

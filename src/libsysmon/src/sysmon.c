@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
+#include <stdio.h>
 #include <stdlib.h>
 static int verbose = 0;
 __attribute__((constructor)) static void initme(void) {

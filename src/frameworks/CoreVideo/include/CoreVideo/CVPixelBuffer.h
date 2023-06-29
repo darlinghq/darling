@@ -3,6 +3,7 @@
 
 #include <sys/cdefs.h>
 #include <CoreVideo/CVImageBuffer.h>
+#include <CoreVideo/CVReturn.h>
 
 __BEGIN_DECLS
 
@@ -78,8 +79,10 @@ enum
 extern const CFStringRef kCVPixelBufferMetalCompatibilityKey;
 
 typedef CVImageBufferRef CVPixelBufferRef;
+typedef void (*CVPixelBufferReleaseBytesCallback)(void *releaseRefCon, const void *baseAddress);
 
 // TODO: This header file is incomplete
+CVReturn CVPixelBufferCreateWithBytes(CFAllocatorRef allocator, size_t width, size_t height, OSType pixelFormatType, void *baseAddress, size_t bytesPerRow, CVPixelBufferReleaseBytesCallback releaseCallback, void *releaseRefCon, CFDictionaryRef pixelBufferAttributes, CVPixelBufferRef  _Nullable *pixelBufferOut);
 
 __END_DECLS
 
