@@ -9,7 +9,7 @@
 #include "mig_trace.h"
 #include "tls.h"
 #include "lock.h"
-#include "malloc.h"
+#include "memory.h"
 #include <limits.h>
 
 #include <darling/emulation/ext/for-xtrace.h>
