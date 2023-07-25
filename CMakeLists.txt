@@ -12,6 +12,9 @@ if (NOT DEFINED CMAKE_C_COMPILER)
 		"clang-10"
 		"clang-11"
 		"clang-12"
+		"clang-13"
+		"clang-14"
+		"clang-15"
 )
 endif(NOT DEFINED CMAKE_C_COMPILER)
 
@@ -25,6 +28,9 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 		"clang++-10"
 		"clang++-11"
 		"clang++-12"
+		"clang++-13"
+		"clang++-14"
+		"clang++-15"
 )
 endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
