@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.13)
+
 SET(CMAKE_SYSTEM_NAME Linux)
 SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
 
@@ -43,7 +45,6 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0 CACHE STRING "The version of macOS we're si
 
 project(darling)
 
-cmake_minimum_required(VERSION 3.10)
 enable_language(ASM)
 
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
