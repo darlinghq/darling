@@ -47,7 +47,7 @@ You can uninstall and list packages with the `uninstaller` command.
 
 ### Working with DMG images
 
-DMG images can be attached and deattached from inside `darling shell` with `hdiutil`. This is how you can install Xcode along with its toolchain and SDKs (note that Xcode itself doesn't run yet):
+DMG images can be attached and detached from inside `darling shell` with `hdiutil`. This is how you can install Xcode along with its toolchain and SDKs (note that Xcode itself doesn't run yet):
 
 ````
 Darling [~]$ hdiutil attach Xcode_7.2.dmg

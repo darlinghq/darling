@@ -60,7 +60,7 @@ void commpage_setup(bool _64bit)
 	logcpus = (uint8_t*)CGET(_COMM_PAGE_LOGICAL_CPUS);
 	*physcpus = *logcpus = *ncpus;
 
-	// I'm not sure if Linux has seperate page sizes for kernel and user space.
+	// I'm not sure if Linux has separate page sizes for kernel and user space.
 	// Apple's code uses left shift logical (1 << user_page_shift) to get the page size value.
 	// Since it's very unlikely that the page size won't be a power of 2, we can use __builtin_ctzl()
 	// as a substitute for log2().

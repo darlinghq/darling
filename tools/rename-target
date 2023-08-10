@@ -4,7 +4,7 @@ import argparse
 import os
 import re
 
-parser = argparse.ArgumentParser(description="Rename a CMake target. Opperates on the current directory.")
+parser = argparse.ArgumentParser(description="Rename a CMake target. Operates on the current directory.")
 
 parser.add_argument("old", help="the target to rename", type=str)
 parser.add_argument("new", help="the new target name", type=str)
