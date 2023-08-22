@@ -18,6 +18,7 @@
 */
 
 #include <Foundation/Foundation.h>
+
 #import <UniformTypeIdentifiers/_UTCoreType.h>
 
 @interface _UTCoreType (UTRefCounting)

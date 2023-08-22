@@ -19,6 +19,6 @@
 
 #include <Foundation/Foundation.h>
 
-@interface _TtC12ShazamEvents21LiveMusicEventFetcher : NSObject
+@interface _TtC12ShazamEvents19ShazamEventsService : NSObject
 
 @end

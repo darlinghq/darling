@@ -22,27 +22,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static int verbose = 0;
 __attribute__((constructor))
 static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
 
-extern const void* ShazamInsightsVersionString = (void*)0;
-extern const void* ShazamInsightsVersionNumber = (void*)0;
-
-void *sh_columnToText(void) {
-    if (verbose) puts("STUB: sh_columnToText called");
-    return NULL;
-)
-
-void *sh_databaseErrorToNSError(void) {
-    if (verbose) puts("STUB: sh_databaseErrorToNSError called");
-    return NULL;
-)
-
-void *sh_CaseDiacriticInsensitiveCollation(void) {
-    if (verbose) puts("STUB: sh_CaseDiacriticInsensitiveCollation called");
-    return NULL;
-)
+extern void* const SHInsightsErrorDomain = (void*)0;
 

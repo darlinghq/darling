@@ -20,28 +20,33 @@ add_framework(ShazamKit
 
 	SOURCES
 		src/SHCustomCatalog.m
+		src/SHAudioConverter.m
 		src/SHSessionDriverSignatureSlot.m
 		src/SHStreamingSessionDriver.m
 		src/SHMatch.m
 		src/SHShazamKey.m
+		src/SHCustomCatalogMatcherResultBuilder.m
 		src/SHCustomCatalogMemoryStorage.m
 		src/SHMediaLibraryTrackBuilder.m
 		src/SHMediaLibrary.m
 		src/SHMediaLibraryTrack.m
 		src/SigCrop.m
+		src/SHContinuityTracker.m
 		src/SHCustomCatalogMatcher.m
 		src/SHReferenceSignature.m
 		src/SHMutableSignature.m
 		src/MRE.m
+		src/SignatureAlignmentTracker.m
 		src/SHEventSignaller.m
+		src/SHManagedSessionDriverDaemonDelegate.m
 		src/SHAudioUtilities.m
 		src/SHMediaItem.m
-		src/SHMediaLibraryContext.m
 		src/SHShazamKitUIServiceInterfaces.m
 		src/SHCatalog.m
 		src/SHSyncedLyrics.m
 		src/SHAttribution.m
 		src/SHSignatureDataRepresentationValidator.m
+		src/SHMediaItemPresentationSettings.m
 		src/SHLyricLine.m
 		src/SHMediaLibraryTrackUpdate.m
 		src/SHShazamKitServiceConnection.m
@@ -50,12 +55,15 @@ add_framework(ShazamKit
 		src/SHMediaItemPropertyUtilities.m
 		src/SHSignatureBuffer.m
 		src/SHError.m
+		src/SHShazamKitServiceConnectionClient.m
 		src/SHMediaTimelineCustomCatalogMatcher.m
 		src/SHShazamKitServiceInterfaces.m
 		src/SigSonify.m
 		src/SHMediaLibraryItemMetadata.m
+		src/SHCustomCatalogTracker.m
 		src/SHMediaItemSerialization.m
 		src/SHMediaLibraryGroup.m
+		src/SHManagedSessionDriver.m
 		src/SHCustomCatalogContainer.m
 		src/SHSignature.m
 		src/SHManagedSession.m
@@ -63,17 +71,22 @@ add_framework(ShazamKit
 		src/SHMediaTimeline.m
 		src/SHTrackMO.m
 		src/SHMediaLibraryLabel.m
+		src/SHSignatureChunker.m
 		src/SHRotatingInstallationID.m
-		src/SHManagedShazamCatalog.m
 		src/SHSignatureGenerator.m
 		src/SHSignatureMetrics.m
+		src/SHMediaLibraryRequest.m
 		src/SHMediaLibrarySnapshot.m
 		src/SHSession.m
 		src/SHRange.m
+		src/SignatureAlignmentTrackerResult.m
 		src/SHGroupMO.m
+		src/SHCatalogConfiguration.m
+		src/SHContinuityTrackerResult.m
 		src/SHShazamKitServiceConnectionProvider.m
 		src/MRESignature.m
 		src/SHMetadataMO.m
+		src/SHCustomCatalogConfiguration.m
 		src/SHMatcherResponse.m
 		src/SHMediaLibraryInfo.m
 		src/SHShazamCatalog.m

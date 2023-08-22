@@ -48,23 +48,8 @@
 #import <ShazamKitUI/_TtCV11ShazamKitUI29ListeningLayerPlatformWrapper15ListeningNSView.h>
 
 
-void *__swift_memcpy16_8(void);
-void *__swift_noop_void_return(void);
-void *__swift_instantiateConcreteTypeFromMangledNameAbstract(void);
-void *__swift_instantiateConcreteTypeFromMangledName(void);
-void *__swift_memcpy17_8(void);
-void *__swift_memcpy40_8(void);
-void *__swift_memcpy24_8(void);
-void *__chkstk_darwin(void);
-void *__chkstk_darwin_llvm_probe(void);
-void *__swift_project_boxed_opaque_existential_1(void);
-void *__swift_destroy_boxed_opaque_existential_1(void);
-void *__swift_memcpy74_8(void);
 
 
-extern extern const void* ShazamKitUIVersionString;
-extern extern const void* ShazamKitUIVersionNumber;
-extern extern const void* __swift_reflection_version;
 
 #endif
 

@@ -58,13 +58,9 @@
 #import <ShazamInsights/SHTimeAndPlaceServerResponseParser.h>
 
 
-void *sh_columnToText(void);
-void *sh_databaseErrorToNSError(void);
-void *sh_CaseDiacriticInsensitiveCollation(void);
 
 
-extern extern const void* ShazamInsightsVersionString;
-extern extern const void* ShazamInsightsVersionNumber;
+extern void* const SHInsightsErrorDomain;
 
 #endif
 

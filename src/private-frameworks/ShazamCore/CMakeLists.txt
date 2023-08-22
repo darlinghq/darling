@@ -5,7 +5,7 @@ remove_sdk_framework(ShazamCore
 )
 
 set(DYLIB_COMPAT_VERSION "0.0.0")
-set(DYLIB_CURRENT_VERSION "195.12.0")
+set(DYLIB_CURRENT_VERSION "207.9.0")
 
 set(FRAMEWORK_VERSION "A")
 
@@ -27,6 +27,7 @@ add_framework(ShazamCore
 		src/SHCampaignTokens.m
 		src/SHJSONLFileReader.m
 		src/SHCompression.m
+		src/SHOffersNetworkRequester.m
 		src/SHDefaultConfigurationValues.m
 		src/SHRemoteConfiguration.m
 		src/SHDataStreamOutput.m
@@ -36,12 +37,12 @@ add_framework(ShazamCore
 		src/SHLocalization.m
 		src/SHEndpoints.m
 		src/SHAnalytics.m
-		src/SHService.m
 		src/SHMusicSubscriptionStatus.m
 		src/SHEntitlements.m
 		src/SHFeatureFlags.m
 		src/SHDataStreamInput.m
 		src/SHCoreError.m
+		src/SHOffers.m
 		src/SHDataCompression.m
 		src/SHBagContract.m
 		src/SHStorefront.m

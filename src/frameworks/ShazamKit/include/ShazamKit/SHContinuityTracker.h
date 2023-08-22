@@ -17,18 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <ShazamKit/SHManagedShazamCatalog.h>
+#include <Foundation/Foundation.h>
 
-@implementation SHManagedShazamCatalog
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
-}
-
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
-}
+@interface SHContinuityTracker : NSObject
 
 @end

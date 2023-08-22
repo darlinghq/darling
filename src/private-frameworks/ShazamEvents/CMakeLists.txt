@@ -23,9 +23,12 @@ add_framework(ShazamEvents
 	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
-		src/_TtC12ShazamEvents21LiveMusicEventFetcher.m
 		src/SHShazamEventsServiceInterfaces.m
 		src/_TtC12ShazamEvents24LiveMusicEventConnection.m
+		src/_TtC12ShazamEvents19ShazamEventsService.m
+		src/_TtC12ShazamEvents31LiveMusicEventXPCValueContainer.m
+		src/_TtC12ShazamEvents34LiveMusicScheduleXPCValueContainer.m
+		src/_TtC12ShazamEvents39LiveMusicVenueScheduleXPCValueContainer.m
 		src/ShazamEvents.m
 
 	DEPENDENCIES

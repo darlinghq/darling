@@ -17,26 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <Foundation/Foundation.h>
 
-#include <ShazamEvents/ShazamEvents.h>
-#include <stdlib.h>
-#include <stdio.h>
+@interface _TtC12ShazamEvents31LiveMusicEventXPCValueContainer : NSObject
 
-static int verbose = 0;
-__attribute__((constructor))
-static void initme(void) {
-    verbose = getenv("STUB_VERBOSE") != NULL;
-}
-
-
-
-void *SHShazamEventsClientInterface(void) {
-    if (verbose) puts("STUB: SHShazamEventsClientInterface called");
-    return NULL;
-}
-
-void *SHShazamEventsServiceInterface(void) {
-    if (verbose) puts("STUB: SHShazamEventsServiceInterface called");
-    return NULL;
-}
-
+@end

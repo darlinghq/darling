@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
+#import <ShazamKit/SHMediaItem.h>
+
 @interface SHMediaItem (Presentation)
 
 @end

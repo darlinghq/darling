@@ -17,26 +17,18 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <ShazamKit/SHContinuityTracker.h>
 
-#include <ShazamEvents/ShazamEvents.h>
-#include <stdlib.h>
-#include <stdio.h>
+@implementation SHContinuityTracker
 
-static int verbose = 0;
-__attribute__((constructor))
-static void initme(void) {
-    verbose = getenv("STUB_VERBOSE") != NULL;
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }
 
-
-
-void *SHShazamEventsClientInterface(void) {
-    if (verbose) puts("STUB: SHShazamEventsClientInterface called");
-    return NULL;
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
 }
 
-void *SHShazamEventsServiceInterface(void) {
-    if (verbose) puts("STUB: SHShazamEventsServiceInterface called");
-    return NULL;
-}
-
+@end

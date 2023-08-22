@@ -17,9 +17,9 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <ShazamEvents/_TtC12ShazamEvents21LiveMusicEventFetcher.h>
+#import <ShazamEvents/_TtC12ShazamEvents19ShazamEventsService.h>
 
-@implementation _TtC12ShazamEvents21LiveMusicEventFetcher
+@implementation _TtC12ShazamEvents19ShazamEventsService
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

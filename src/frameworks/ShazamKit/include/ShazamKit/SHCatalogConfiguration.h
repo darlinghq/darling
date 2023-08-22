@@ -17,18 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <ShazamKit/SHMediaLibraryContext.h>
+#include <Foundation/Foundation.h>
 
-@implementation SHMediaLibraryContext
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
-}
-
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
-}
+@interface SHCatalogConfiguration : NSObject
 
 @end

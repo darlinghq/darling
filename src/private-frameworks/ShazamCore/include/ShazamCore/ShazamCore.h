@@ -43,15 +43,42 @@
 #import <ShazamCore/SHJSONLFileWriter.h>
 #import <ShazamCore/SHLocalization.h>
 #import <ShazamCore/SHMusicSubscriptionStatus.h>
+#import <ShazamCore/SHOffers.h>
+#import <ShazamCore/SHOffersNetworkRequester.h>
 #import <ShazamCore/SHRemoteConfiguration.h>
-#import <ShazamCore/SHService.h>
-#import <ShazamCore/SHService.h>
 #import <ShazamCore/SHStorefront.h>
 #import <ShazamCore/SHTokenizedURL.h>
 
 
-extern extern const void* ShazamCoreVersionString;
-extern extern const void* ShazamCoreVersionNumber;
+void *sh_log_object(void);
+
+
+extern void* const SHAnalyticsActionAppleMusic;
+extern void* const SHAnalyticsActionNotificationTap;
+extern void* const SHAnalyticsEventMusicRecognitionAlert;
+extern void* const SHAnalyticsEventMusicRecognitionEnabled;
+extern void* const SHAnalyticsEventMusicRecognitionHistory;
+extern void* const SHAnalyticsEventMusicRecognitionList;
+extern void* const SHAnalyticsEventMusicRecognitionResult;
+extern void* const SHAnalyticsEventMusicRecognitionResultAction;
+extern void* const SHAnalyticsEventMusicRecognitionResultExpanded;
+extern void* const SHAnalyticsPayloadActionKey;
+extern void* const SHAnalyticsPayloadEnabledKey;
+extern void* const SHAnalyticsPayloadErrorCodeKey;
+extern void* const SHAnalyticsPayloadMatchKey;
+extern void* const SHAnalyticsPayloadNumberShazamsKey;
+extern void* const SHAnalyticsPayloadSecureAccountKey;
+extern void* const SHAnalyticsPayloadSourceKey;
+extern void* const SHCampaignTokenDefaultCampaignValue;
+extern void* const SHCoreErrorDomain;
+extern void* const SHDefaultWorkerTimeout;
+extern void* const SHRecordingIntermissionDefaultValue;
+extern void* const SHShazamKitExternalAudioRecordingEntitlement;
+extern void* const SHShazamKitInternalAudioRecordingEntitlement;
+extern void* const SHShazamKitInternalClientEntitlement;
+extern void* const SHShazamKitTCCEntitlement;
+extern void* const SHShazamKitTCCEntitlementMediaLibrary;
+extern void* const SHShazamKitTCCEntitlementMicrophone;
 
 #endif
 

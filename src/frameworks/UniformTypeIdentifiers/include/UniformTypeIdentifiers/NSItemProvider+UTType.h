@@ -18,9 +18,12 @@
 */
 
 #include <Foundation/Foundation.h>
-#import <UniformTypeIdentifiers/UTType.h>
 #import <Foundation/NSItemProvider.h>
+
+#if __OBJC2__
 
 @interface NSItemProvider (UTType)
 
 @end
+
+#endif

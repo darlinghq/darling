@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
+#import <CoreLocation/CLLocation.h>
+
 @interface CLLocation (Geohash)
 
 @end

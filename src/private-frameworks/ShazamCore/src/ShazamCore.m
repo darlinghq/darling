@@ -22,11 +22,42 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static int verbose = 0;
 __attribute__((constructor))
 static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
 
-extern const void* ShazamCoreVersionString = (void*)0;
-extern const void* ShazamCoreVersionNumber = (void*)0;
+extern void* const SHAnalyticsActionAppleMusic = (void*)0;
+extern void* const SHAnalyticsActionNotificationTap = (void*)0;
+extern void* const SHAnalyticsEventMusicRecognitionAlert = (void*)0;
+extern void* const SHAnalyticsEventMusicRecognitionEnabled = (void*)0;
+extern void* const SHAnalyticsEventMusicRecognitionHistory = (void*)0;
+extern void* const SHAnalyticsEventMusicRecognitionList = (void*)0;
+extern void* const SHAnalyticsEventMusicRecognitionResult = (void*)0;
+extern void* const SHAnalyticsEventMusicRecognitionResultAction = (void*)0;
+extern void* const SHAnalyticsEventMusicRecognitionResultExpanded = (void*)0;
+extern void* const SHAnalyticsPayloadActionKey = (void*)0;
+extern void* const SHAnalyticsPayloadEnabledKey = (void*)0;
+extern void* const SHAnalyticsPayloadErrorCodeKey = (void*)0;
+extern void* const SHAnalyticsPayloadMatchKey = (void*)0;
+extern void* const SHAnalyticsPayloadNumberShazamsKey = (void*)0;
+extern void* const SHAnalyticsPayloadSecureAccountKey = (void*)0;
+extern void* const SHAnalyticsPayloadSourceKey = (void*)0;
+extern void* const SHCampaignTokenDefaultCampaignValue = (void*)0;
+extern void* const SHCoreErrorDomain = (void*)0;
+extern void* const SHDefaultWorkerTimeout = (void*)0;
+extern void* const SHRecordingIntermissionDefaultValue = (void*)0;
+extern void* const SHShazamKitExternalAudioRecordingEntitlement = (void*)0;
+extern void* const SHShazamKitInternalAudioRecordingEntitlement = (void*)0;
+extern void* const SHShazamKitInternalClientEntitlement = (void*)0;
+extern void* const SHShazamKitTCCEntitlement = (void*)0;
+extern void* const SHShazamKitTCCEntitlementMediaLibrary = (void*)0;
+extern void* const SHShazamKitTCCEntitlementMicrophone = (void*)0;
+
+void *sh_log_object(void) {
+    if (verbose) puts("STUB: sh_log_object called");
+    return NULL;
+}
+

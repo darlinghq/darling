@@ -19,6 +19,10 @@
 
 #import <UniformTypeIdentifiers/NSItemProvider+UTType.h>
 
+#if __OBJC2__
+
 @implementation NSItemProvider (UTType)
 
 @end
+
+#endif

@@ -5,7 +5,7 @@ remove_sdk_framework(ShazamInsights
 )
 
 set(DYLIB_COMPAT_VERSION "0.0.0")
-set(DYLIB_CURRENT_VERSION "195.12.0")
+set(DYLIB_CURRENT_VERSION "207.9.0")
 
 set(FRAMEWORK_VERSION "A")
 
