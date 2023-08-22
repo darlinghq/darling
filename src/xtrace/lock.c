@@ -169,7 +169,7 @@ void xtrace_once(xtrace_once_t* _once, xtrace_once_callback callback) {
 				return;
 			}; // not reached
 			case xtrace_once_state_triggered_uncontended: {
-				// somebody is already perfoming the callback;
+				// somebody is already performing the callback;
 				// now we're waiting, so let's update the state for that
 				xtrace_once_debug("someone is already performing the callback with no waiters; becoming first waiter...");
 				exchanged = atomic_compare_exchange_strong_explicit(&once->state, &prev, xtrace_once_state_triggered_contended, memory_order_acq_rel, memory_order_acquire);

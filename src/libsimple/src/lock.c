@@ -226,7 +226,7 @@ void libsimple_once(libsimple_once_t* _once, libsimple_once_callback callback, v
 				return;
 			}; // not reached
 			case libsimple_once_state_triggered_uncontended: {
-				// somebody is already perfoming the callback;
+				// somebody is already performing the callback;
 				// now we're waiting, so let's update the state for that
 				libsimple_once_debug("someone is already performing the callback with no waiters; becoming first waiter...");
 				exchanged = atomic_compare_exchange_strong_explicit(&once->state, &prev, libsimple_once_state_triggered_contended, memory_order_acq_rel, memory_order_acquire);

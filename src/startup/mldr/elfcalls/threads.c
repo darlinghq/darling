@@ -58,7 +58,7 @@ struct arg_struct
 	uintptr_t arg2; // `stack_addr` for normal threads; `flags` for workqueues
 	uintptr_t arg3; // `flags` for normal threads; `nkevents` for workqueues
 	union {
-		void* _backwards_compat; // kept around to avoid modifiying assembly
+		void* _backwards_compat; // kept around to avoid modifying assembly
 		int port;
 	};
 	unsigned long pth_obj_size;
@@ -230,7 +230,7 @@ static void* darling_thread_entry(void* p)
 
 	// let's check-in with darlingserver on this new thread
 	int dummy_stack_variable;
-	// the lifetime pipe fd is ignored as the proces should already have been registered
+	// the lifetime pipe fd is ignored as the process should already have been registered
 	if (dserver_rpc_explicit_checkin(t_server_socket, false, &dummy_stack_variable, -1) < 0) {
 		// we can't do ANYTHING if darlingserver doesn't acknowledge us successfully
 		abort();

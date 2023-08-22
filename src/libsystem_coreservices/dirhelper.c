@@ -82,6 +82,6 @@ int _set_user_dir_suffix(const char* suffix) {
 	pthread_mutex_lock(&dir_suffix_lock);
 	dir_suffix = suffix;
 	pthread_mutex_unlock(&dir_suffix_lock);
-	return 1; // weird, it's suppossed to return non-zero on success (maybe it's actually a bool?)
+	return 1; // weird, it's supposed to return non-zero on success (maybe it's actually a bool?)
 };
 
