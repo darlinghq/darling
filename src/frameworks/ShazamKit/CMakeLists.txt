@@ -102,4 +102,5 @@ add_framework(ShazamKit
 		system
 		objc
 		Foundation
+		UniformTypeIdentifiers
 )
