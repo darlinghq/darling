@@ -56,12 +56,17 @@ enable_language(ASM)
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include(clang_version_check)
 include(InstallSymlink)
 include(MacroEnsureOutOfSourceBuild)
 include(dsym)
 include(xcproj)
 include(architecture)
 include(create_symlink)
+
+set(CLANG_RECOMMENDED_MINIMUM_VERSION 11)
+clang_version_check(${CMAKE_C_COMPILER} c ${CLANG_RECOMMENDED_MINIMUM_VERSION})
+clang_version_check(${CMAKE_CXX_COMPILER} cpp ${CLANG_RECOMMENDED_MINIMUM_VERSION})
 
 MACRO_ENSURE_OUT_OF_SOURCE_BUILD()
 
