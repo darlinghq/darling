@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <darling/emulation/simple.h>
 
+#include "base.h"
+
 struct calldef
 {
 	const char* name;
@@ -10,9 +12,7 @@ struct calldef
 	void (*print_retval)(int nr, uintptr_t rv);
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+XTRACE_DECLARATIONS_C_BEGIN
 
 void handle_generic_entry(const struct calldef* defs, const char* type, int nr, void* args[]);
 void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t retval, int force_split);
@@ -30,9 +30,7 @@ void xtrace_error_v(const char* format, va_list args) __attribute__((format(prin
 
 void xtrace_abort(const char* message) __attribute__((noreturn));
 
-#ifdef __cplusplus
-}
-#endif
+XTRACE_DECLARATIONS_C_END
 
 #endif
 

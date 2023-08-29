@@ -22,6 +22,7 @@ static struct xtrace_mig_subsystem** subsystems = NULL;
 
 static mach_port_name_t host_port;
 
+extern "C"
 void xtrace_setup_mig_tracing(void)
 {
 	// This runs before the syscall tracing is enabled, so we can
@@ -37,7 +38,7 @@ void xtrace_setup_mig_tracing(void)
 	}
 	// Count the number of files, and allocate this many subsystem pointers;
 	for (struct dirent* dirent; (dirent = readdir(xtrace_mig_dir)) != NULL; subsystems_cnt++);
-	subsystems = malloc(subsystems_cnt * sizeof(struct xtrace_mig_subsystem*));
+	subsystems = (xtrace_mig_subsystem**)malloc(subsystems_cnt * sizeof(struct xtrace_mig_subsystem*));
 
 	rewinddir(xtrace_mig_dir);
 	for (size_t i = 0; i < subsystems_cnt; i++)
@@ -322,6 +323,7 @@ static int find_subsystem(
 	return 0;
 }
 
+extern "C"
 void xtrace_print_mig_message(const mach_msg_header_t* message, mach_port_name_t request_port)
 {
 	if (message == NULL)
