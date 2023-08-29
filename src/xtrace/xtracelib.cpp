@@ -17,30 +17,30 @@
 #include <signal.h>
 
 // Defined in assembly
-extern void darling_mach_syscall_entry_trampoline(void);
-extern void darling_mach_syscall_exit_trampoline(void);
-extern void darling_bsd_syscall_entry_trampoline(void);
-extern void darling_bsd_syscall_exit_trampoline(void);
-extern int sys_thread_selfid(void);
+extern "C" void darling_mach_syscall_entry_trampoline(void);
+extern "C" void darling_mach_syscall_exit_trampoline(void);
+extern "C" void darling_bsd_syscall_entry_trampoline(void);
+extern "C" void darling_bsd_syscall_exit_trampoline(void);
+extern "C" int sys_thread_selfid(void);
 
 static void xtrace_thread_exit_hook(void);
 static void xtrace_execve_inject_hook(const char*** envp_ptr);
 static void xtrace_postfork_child_hook(void);
 
 #ifdef __x86_64__
-struct hook
-{
+struct hook {
 	uint8_t movabs[2];
 	uint64_t addr;
 	uint8_t call[3];
-}
-__attribute__((packed));
+} __attribute__((packed));
 #elif defined(__i386__)
 struct hook {
 	uint8_t mov;
 	uint32_t addr;
 	uint8_t call[2];
 } __attribute__((packed));
+#else
+#error "Missing hook struct for arch"
 #endif
 
 // Defined in libsystem_kernel
@@ -49,9 +49,9 @@ extern struct hook* _darling_mach_syscall_exit;
 extern struct hook* _darling_bsd_syscall_entry;
 extern struct hook* _darling_bsd_syscall_exit;
 
-extern void _xtrace_thread_exit(void);
-extern void _xtrace_execve_inject(const char*** envp_ptr);
-extern void _xtrace_postfork_child(void);
+extern "C" void _xtrace_thread_exit(void);
+extern "C" void _xtrace_execve_inject(const char*** envp_ptr);
+extern "C" void _xtrace_postfork_child(void);
 
 static void xtrace_setup_mach(void);
 static void xtrace_setup_bsd(void);
@@ -66,6 +66,7 @@ static int xtrace_ignore = 1;
 #define SIGALTSTACK_GUARD 1
 
 __attribute__((constructor))
+extern "C"
 void xtrace_setup()
 {
 	xtrace_setup_options();
@@ -168,6 +169,8 @@ static void setup_hook(struct hook* hook, void* fnptr, bool jump)
 	hook->addr = (uintptr_t)fnptr;
 	hook->call[0] = 0xff;
 	hook->call[1] = jump ? 0xe1 : 0xd1;
+#else
+#error "Missing hook implementation for arch
 #endif
 }
 
@@ -184,8 +187,8 @@ static void xtrace_setup_mach(void)
 
 	mprotect((void*) area, bytes, PROT_READ | PROT_WRITE | PROT_EXEC);
 
-	setup_hook(_darling_mach_syscall_entry, darling_mach_syscall_entry_trampoline, false);
-	setup_hook(_darling_mach_syscall_exit, darling_mach_syscall_exit_trampoline, false);
+	setup_hook(_darling_mach_syscall_entry, (void*)darling_mach_syscall_entry_trampoline, false);
+	setup_hook(_darling_mach_syscall_exit, (void*)darling_mach_syscall_exit_trampoline, false);
 
 	mprotect((void*) area, bytes, PROT_READ | PROT_EXEC);
 }
@@ -203,8 +206,8 @@ static void xtrace_setup_bsd(void)
 
 	mprotect((void*) area, bytes, PROT_READ | PROT_WRITE | PROT_EXEC);
 
-	setup_hook(_darling_bsd_syscall_entry, darling_bsd_syscall_entry_trampoline, false);
-	setup_hook(_darling_bsd_syscall_exit, darling_bsd_syscall_exit_trampoline, false);
+	setup_hook(_darling_bsd_syscall_entry, (void*)darling_bsd_syscall_entry_trampoline, false);
+	setup_hook(_darling_bsd_syscall_exit, (void*)darling_bsd_syscall_exit_trampoline, false);
 
 	mprotect((void*) area, bytes, PROT_READ | PROT_EXEC);
 }
@@ -228,11 +231,12 @@ static void setup_hook_with_perms(struct hook* hook, void* fnptr, bool jump) {
 };
 
 static void xtrace_setup_misc_hooks(void) {
-	setup_hook_with_perms((void*)&_xtrace_thread_exit, xtrace_thread_exit_hook, true);
-	setup_hook_with_perms((void*)&_xtrace_execve_inject, xtrace_execve_inject_hook, true);
-	setup_hook_with_perms((void*)&_xtrace_postfork_child, xtrace_postfork_child_hook, true);
+	setup_hook_with_perms((hook*)&_xtrace_thread_exit, (void*)xtrace_thread_exit_hook, true);
+	setup_hook_with_perms((hook*)&_xtrace_execve_inject, (void*)xtrace_execve_inject_hook, true);
+	setup_hook_with_perms((hook*)&_xtrace_postfork_child, (void*)xtrace_postfork_child_hook, true);
 };
 
+extern "C"
 void xtrace_set_gray_color(void)
 {
 	if (xtrace_no_color)
@@ -241,6 +245,7 @@ void xtrace_set_gray_color(void)
 	xtrace_log("\033[37m");
 }
 
+extern "C"
 void xtrace_reset_color(void)
 {
 	if (xtrace_no_color)
@@ -249,6 +254,7 @@ void xtrace_reset_color(void)
 	xtrace_log("\033[0m");
 }
 
+extern "C"
 void xtrace_start_line(int indent)
 {
 	xtrace_set_gray_color();
@@ -289,6 +295,7 @@ struct nested_call_struct {
 
 DEFINE_XTRACE_TLS_VAR(struct nested_call_struct, nested_call, (struct nested_call_struct) {0}, NULL);
 
+extern "C"
 void handle_generic_entry(const struct calldef* defs, const char* type, int nr, void* args[])
 {
 	if (xtrace_ignore)
@@ -320,7 +327,7 @@ void handle_generic_entry(const struct calldef* defs, const char* type, int nr, 
 	get_ptr_nested_call()->previous_level = get_ptr_nested_call()->current_level++;
 }
 
-
+extern "C"
 void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t retval, int force_split)
 {
 	if (xtrace_ignore)
@@ -354,6 +361,7 @@ void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t
 		xtrace_log("0x%lx\n", retval);
 }
 
+extern "C"
 void xtrace_log(const char* format, ...) {
 	va_list args;
 	va_start(args, format);
@@ -402,6 +410,7 @@ static void ensure_logfile(void) {
 	set_xtrace_per_thread_logfile(fd);
 };
 
+extern "C"
 void xtrace_log_v(const char* format, va_list args) {
 	if (xtrace_kprintf) {
 		char real_format[512] = "xtrace: ";
@@ -417,6 +426,7 @@ void xtrace_log_v(const char* format, va_list args) {
 	}
 };
 
+extern "C"
 void xtrace_error(const char* format, ...) {
 	va_list args;
 	va_start(args, format);
@@ -424,6 +434,7 @@ void xtrace_error(const char* format, ...) {
 	va_end(args);
 };
 
+extern "C"
 void xtrace_error_v(const char* format, va_list args) {
 	if (xtrace_kprintf) {
 		char real_format[512] = "xtrace: ";
@@ -439,6 +450,7 @@ void xtrace_error_v(const char* format, va_list args) {
 	}
 };
 
+extern "C"
 void xtrace_abort(const char* message) {
 	_abort_with_payload_for_xtrace(0, 0, NULL, 0, message, 0);
 	__builtin_unreachable();
@@ -481,7 +493,7 @@ static const char** envp_find(const char** envp, const char* key) {
 static const char* envp_make_entry(const char* key, const char* value) {
 	size_t key_length = strlen(key);
 	size_t value_length = strlen(value);
-	char* entry = xtrace_malloc(key_length + value_length + 2);
+	char* entry = (char*)xtrace_malloc(key_length + value_length + 2);
 	memcpy(entry, key, key_length);
 	entry[key_length] = '=';
 	memcpy(&entry[key_length + 1], value, value_length);
@@ -493,7 +505,7 @@ static void envp_set(const char*** envp_ptr, const char* key, const char* value,
 	const char** envp = *envp_ptr;
 
 	if (!envp) {
-		*envp_ptr = envp = xtrace_malloc(sizeof(const char*) * 2);
+		*envp_ptr = envp = (const char**)xtrace_malloc(sizeof(const char*) * 2);
 		envp[0] = envp_make_entry(key, value);
 		envp[1] = NULL;
 		*allocated = true;
@@ -504,7 +516,7 @@ static void envp_set(const char*** envp_ptr, const char* key, const char* value,
 			*entry_ptr = envp_make_entry(key, value);
 		} else {
 			size_t count = envp_count(envp);
-			const char** new_envp = xtrace_malloc(sizeof(const char*) * (count + 2));
+			const char** new_envp = (const char**)xtrace_malloc(sizeof(const char*) * (count + 2));
 
 			memcpy(new_envp, envp, sizeof(const char*) * count);
 
@@ -544,7 +556,7 @@ static void xtrace_execve_inject_hook(const char*** envp_ptr) {
 
 	const char* insert_libraries = envp_get(*envp_ptr, "DYLD_INSERT_LIBRARIES");
 	size_t insert_libraries_length = insert_libraries ? strlen(insert_libraries) : 0;
-	char* new_value = xtrace_malloc(insert_libraries_length + (insert_libraries_length == 0 ? 0 : 1) + LIBRARY_PATH_LENGTH + 1);
+	char* new_value = (char*)xtrace_malloc(insert_libraries_length + (insert_libraries_length == 0 ? 0 : 1) + LIBRARY_PATH_LENGTH + 1);
 	size_t offset = 0;
 
 	if (insert_libraries && insert_libraries_length > 0) {

@@ -9,7 +9,7 @@
 // we also have to implement our own locks, because we can't rely on libplatform's or libpthread's locks
 // so we implement our own on top of Linux futexes
 
-XTRACE_DECLARATIONS_BEGIN;
+XTRACE_DECLARATIONS_C_BEGIN
 
 //
 // lock
@@ -48,6 +48,6 @@ void xtrace_once_init(xtrace_once_t* once) {
 
 void xtrace_once(xtrace_once_t* once, xtrace_once_callback callback);
 
-XTRACE_DECLARATIONS_END;
+XTRACE_DECLARATIONS_C_END
 
 #endif // _XTRACE_LOCK_H_

@@ -6,7 +6,7 @@
 #include <mach/port.h>
 #include "base.h"
 
-XTRACE_DECLARATIONS_BEGIN;
+XTRACE_DECLARATIONS_C_BEGIN
 
 typedef void (*xtrace_tls_destructor_f)(void* value);
 
@@ -47,6 +47,6 @@ typedef void (*xtrace_tls_destructor_f)(void* value);
 void* xtrace_tls(void* key, size_t size, bool* created, xtrace_tls_destructor_f destructor);
 void xtrace_tls_thread_cleanup(void);
 
-XTRACE_DECLARATIONS_END;
+XTRACE_DECLARATIONS_C_END
 
 #endif // _XTRACE_TLS_H_

@@ -34,8 +34,9 @@ struct tls_table {
 
 // TODO: also perform TLS cleanup for other threads when doing a fork
 
+extern "C"
 void xtrace_tls_thread_cleanup(void) {
-	tls_table_t table = _pthread_getspecific_direct(__PTK_XTRACE_TLS);
+	tls_table_t table = (tls_table_t)_pthread_getspecific_direct(__PTK_XTRACE_TLS);
 	if (!table) {
 		xtrace_tls_debug("no table to cleanup for this thread");
 		return;
@@ -53,17 +54,18 @@ void xtrace_tls_thread_cleanup(void) {
 	xtrace_free(table);
 };
 
+extern "C"
 void* xtrace_tls(void* key, size_t size, bool* created, xtrace_tls_destructor_f destructor) {
 	xtrace_tls_debug("looking up tls variable for key %p", key);
 
-	tls_table_t table = _pthread_getspecific_direct(__PTK_XTRACE_TLS);
+	tls_table_t table = (tls_table_t)_pthread_getspecific_direct(__PTK_XTRACE_TLS);
 
 	xtrace_tls_debug("got %p as table pointer from pthread", table);
 
 	// if the table doesn't exist yet, create it
 	if (table == NULL) {
 		xtrace_tls_debug("table is NULL, creating now...");
-		table = xtrace_malloc(sizeof(struct tls_table));
+		table = (tls_table_t)xtrace_malloc(sizeof(struct tls_table));
 		if (table == NULL) {
 			xtrace_abort("xtrace: failed TLS table memory allocation");
 		}
@@ -90,7 +92,7 @@ void* xtrace_tls(void* key, size_t size, bool* created, xtrace_tls_destructor_f 
 	}
 	table->table[index][0] = key;
 	table->table[index][1] = xtrace_malloc(size);
-	table->table[index][2] = destructor;
+	table->table[index][2] = (void*)destructor;
 	if (table->table[index][1] == NULL) {
 		xtrace_abort("xtrace: failed TLS variable memory allocation");
 	}

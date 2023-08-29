@@ -6,15 +6,16 @@
 #define XTRACE_INLINE static __attribute__((always_inline))
 
 #ifdef __cplusplus
-	#define XTRACE_DECLARATIONS_BEGIN extern "C" {
+	#define XTRACE_DECLARATIONS_C_BEGIN extern "C" {
+	#define XTRACE_CPP __cplusplus
 #else
-	#define XTRACE_DECLARATIONS_BEGIN
+	#define XTRACE_DECLARATIONS_C_BEGIN
 #endif
 
 #ifdef __cplusplus
-	#define XTRACE_DECLARATIONS_END }
+	#define XTRACE_DECLARATIONS_C_END }
 #else
-	#define XTRACE_DECLARATIONS_END
+	#define XTRACE_DECLARATIONS_C_END
 #endif
 
 #endif // _XTRACE_BASE_H_

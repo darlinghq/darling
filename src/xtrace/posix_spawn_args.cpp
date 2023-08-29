@@ -12,7 +12,7 @@
 
 #include "xtracelib.h"
 
-extern void print_open_flags(void* arg);
+extern "C" void print_open_flags(void* arg);
 
 static struct {
 	unsigned short flag;
@@ -35,6 +35,7 @@ static struct {
 #undef POSIX_SPAWN_ATTR_ENTRY
 };
 
+extern "C"
 void print_arg_posix_spawn_args(void* arg) {
 	const struct _posix_spawn_args_desc* args = (const struct _posix_spawn_args_desc*)(arg);
 	bool is_first = true;

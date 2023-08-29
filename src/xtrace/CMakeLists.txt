@@ -9,15 +9,15 @@ include_directories(
 )
 
 set(xtrace_sources
-	xtracelib.c
+	xtracelib.cpp
 	trampoline.S
 	mach_trace.cpp
 	bsd_trace.cpp
-	mig_trace.c
-	tls.c
-	malloc.c
-	lock.c
-	posix_spawn_args.c
+	mig_trace.cpp
+	tls.cpp
+	malloc.cpp
+	lock.cpp
+	posix_spawn_args.cpp
 )
 
 if (TARGET_x86_64)

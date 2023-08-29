@@ -186,7 +186,7 @@ static xtrace_memory_fragment_t allocate_fragment(size_t required_size) {
 	if (viable_fragment == NULL) {
 		// ...allocate some memory
 		size_t allocation_size = round_up(required_size, BLOCK_SIZE_MULTIPLE);
-		xtrace_memory_block_t block = _mmap_for_xtrace(NULL, allocation_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+		xtrace_memory_block_t block = (xtrace_memory_block_t)_mmap_for_xtrace(NULL, allocation_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 
 		xtrace_malloc_debug("mmap for %llu bytes returned %p", allocation_size, block);
 
@@ -414,6 +414,7 @@ static bool expand_fragment(xtrace_memory_fragment_t fragment, size_t new_size) 
 // api functions
 //
 
+extern "C"
 void* xtrace_malloc(size_t size) {
 	if (size == 0) {
 		return NULL;
@@ -425,16 +426,18 @@ void* xtrace_malloc(size_t size) {
 	return fragment->memory;
 };
 
+extern "C"
 void xtrace_free(void* pointer) {
 	if (pointer == NULL) {
 		return;
 	}
-	xtrace_memory_fragment_t fragment = __container_of(pointer, struct xtrace_memory_fragment, memory);
+	xtrace_memory_fragment_t fragment = __container_of((const char (*)[])pointer, struct xtrace_memory_fragment, memory);
 	release_fragment(fragment);
 };
 
+extern "C"
 void* xtrace_realloc(void* old_pointer, size_t new_size) {
-	xtrace_memory_fragment_t fragment = __container_of(old_pointer, struct xtrace_memory_fragment, memory);
+	xtrace_memory_fragment_t fragment = __container_of((const char (*)[])old_pointer, struct xtrace_memory_fragment, memory);
 	size_t old_size = xtrace_memory_fragment_size(fragment);
 
 	xtrace_lock_lock(&free_lock);

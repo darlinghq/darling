@@ -1,4 +1,11 @@
+#ifndef XTRACE_XTRACE_MIG_TYPES
+#define XTRACE_XTRACE_MIG_TYPES
+
 #include <mach/message.h>
+
+#include "../base.h"
+
+XTRACE_DECLARATIONS_C_BEGIN
 
 struct xtrace_mig_callbacks {
     void (*add_raw_arg)(const char *format, ...) __attribute__((format(printf, 1, 2)));
@@ -35,3 +42,7 @@ struct xtrace_mig_subsystem {
     unsigned long routine_cnt;
     const struct xtrace_mig_routine_desc *routines;
 };
+
+XTRACE_DECLARATIONS_C_END
+
+#endif // XTRACE_XTRACE_MIG_TYPES
