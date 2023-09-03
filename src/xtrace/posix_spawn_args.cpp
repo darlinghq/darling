@@ -12,8 +12,6 @@
 
 #include "xtracelib.h"
 
-extern "C" void print_open_flags(void* arg);
-
 static struct {
 	unsigned short flag;
 	const char* name;
@@ -35,12 +33,11 @@ static struct {
 #undef POSIX_SPAWN_ATTR_ENTRY
 };
 
-extern "C"
-void print_arg_posix_spawn_args(void* arg) {
+void print_arg_posix_spawn_args(xtrace::String* log, void* arg) {
 	const struct _posix_spawn_args_desc* args = (const struct _posix_spawn_args_desc*)(arg);
 	bool is_first = true;
 
-	xtrace_log("{ attributes = ");
+	log->append("{ attributes = ");
 
 	if (args && args->attrp) {
 		for (size_t i = 0; all_posix_spawn_attrs[i].name != NULL; i++) {
@@ -48,71 +45,71 @@ void print_arg_posix_spawn_args(void* arg) {
 				if (is_first) {
 					is_first = false;
 				} else {
-					xtrace_log("|");
+					log->append("|");
 				}
 
-				xtrace_log("%s", all_posix_spawn_attrs[i].name);
+				log->append_format("%s", all_posix_spawn_attrs[i].name);
 			}
 		}
 	}
 
 	if (is_first) {
-		xtrace_log("0");
+		log->append("0");
 	}
 
-	xtrace_log(", file_actions = {");
+	log->append(", file_actions = {");
 
 	if (args && args->file_actions) {
 		for (size_t i = 0; i < args->file_actions->psfa_act_count; ++i) {
 			const struct _psfa_action* action = &args->file_actions->psfa_act_acts[i];
 
 			if (i != 0) {
-				xtrace_log(", ");
+				log->append(", ");
 			}
 
 			switch (action->psfaa_type) {
 				case PSFA_OPEN:
-					xtrace_log("open(");
-					xtrace_print_string_literal(action->psfaa_openargs.psfao_path);
-					xtrace_log(", ");
-					print_open_flags((void*)(intptr_t)(action->psfaa_openargs.psfao_oflag));
-					xtrace_log(", 0%o) to %d", action->psfaa_openargs.psfao_mode, action->psfaa_filedes);
+					log->append("open(");
+					xtrace_print_string_literal(log, action->psfaa_openargs.psfao_path);
+					log->append(", ");
+					print_open_flags(log, (void*)(intptr_t)(action->psfaa_openargs.psfao_oflag));
+					log->append_format(", 0%o) to %d", action->psfaa_openargs.psfao_mode, action->psfaa_filedes);
 					break;
 
 				case PSFA_CLOSE:
-					xtrace_log("close(%d)", action->psfaa_filedes);
+					log->append_format("close(%d)", action->psfaa_filedes);
 					break;
 
 				case PSFA_DUP2:
-					xtrace_log("dup2(%d, %d)", action->psfaa_filedes, action->psfaa_dup2args.psfad_newfiledes);
+					log->append_format("dup2(%d, %d)", action->psfaa_filedes, action->psfaa_dup2args.psfad_newfiledes);
 					break;
 
 				case PSFA_INHERIT:
-					xtrace_log("inherit(%d)", action->psfaa_filedes);
+					log->append_format("inherit(%d)", action->psfaa_filedes);
 					break;
 
 				case PSFA_FILEPORT_DUP2:
 					// NOTE: if we see this in the output, that's an issue;
 					//       we don't have this implemented right now
-					xtrace_log("dup2_fileport(port right %d, %d)", action->psfaa_fileport, action->psfaa_dup2args.psfad_newfiledes);
+					log->append_format("dup2_fileport(port right %d, %d)", action->psfaa_fileport, action->psfaa_dup2args.psfad_newfiledes);
 					break;
 
 				case PSFA_CHDIR:
-					xtrace_log("chdir(");
-					xtrace_print_string_literal(action->psfaa_chdirargs.psfac_path);
-					xtrace_log(")");
+					log->append("chdir(");
+					xtrace_print_string_literal(log, action->psfaa_chdirargs.psfac_path);
+					log->append(")");
 					break;
 
 				case PSFA_FCHDIR:
-					xtrace_log("fchdir(%d)", action->psfaa_filedes);
+					log->append_format("fchdir(%d)", action->psfaa_filedes);
 					break;
 
 				default:
-					xtrace_log("???");
+					log->append("???");
 					break;
 			}
 		}
 	}
 
-	xtrace_log("} }");
+	log->append("} }");
 };

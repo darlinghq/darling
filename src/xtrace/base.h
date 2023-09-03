@@ -4,6 +4,7 @@
 // common utilities for xtrace code
 
 #define XTRACE_INLINE static __attribute__((always_inline))
+#define XTRACE_HIDDEN __attribute__((visibility("hidden")))
 
 #ifdef __cplusplus
 	#define XTRACE_DECLARATIONS_C_BEGIN extern "C" {

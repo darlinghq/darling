@@ -102,6 +102,10 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->get_errno = get_errno;
 	calls->exit = exit;
 
+	calls->malloc = malloc;
+	calls->free = free;
+	calls->realloc = realloc;
+
 	calls->sysconf = sysconf;
 
 	*((void**)&calls->sem_open) = sem_open;

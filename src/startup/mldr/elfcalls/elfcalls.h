@@ -53,6 +53,11 @@ struct elf_calls
 
 	void (*exit)(int ec);
 
+	// Memory allocation
+	void* (*malloc)(size_t size);
+	void (*free)(void *ptr);
+	void* (*realloc)(void *ptr, size_t size);
+
 	// POSIX sysconf
 	long (*sysconf)(int name);
 

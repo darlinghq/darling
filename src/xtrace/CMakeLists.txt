@@ -15,9 +15,10 @@ set(xtrace_sources
 	bsd_trace.cpp
 	mig_trace.cpp
 	tls.cpp
-	malloc.cpp
+	memory.cpp
 	lock.cpp
 	posix_spawn_args.cpp
+	string.cpp
 )
 
 if (TARGET_x86_64)

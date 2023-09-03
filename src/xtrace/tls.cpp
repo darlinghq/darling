@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <darling/emulation/ext/for-xtrace.h>
 #include "tls.h"
-#include "malloc.h"
+#include "memory.h"
 #include "lock.h"
 #include <darling/emulation/simple.h>
 #include <pthread/tsd_private.h>

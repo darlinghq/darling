@@ -9,7 +9,7 @@
 #include "mig_trace.h"
 #include "tls.h"
 #include "lock.h"
-#include "malloc.h"
+#include "memory.h"
 #include <limits.h>
 
 #include <darling/emulation/ext/for-xtrace.h>
@@ -236,47 +236,44 @@ static void xtrace_setup_misc_hooks(void) {
 	setup_hook_with_perms((hook*)&_xtrace_postfork_child, (void*)xtrace_postfork_child_hook, true);
 };
 
-extern "C"
-void xtrace_set_gray_color(void)
+void xtrace_set_gray_color(xtrace::String* log)
 {
 	if (xtrace_no_color)
 		return;
 
-	xtrace_log("\033[37m");
+	log->append("\033[37m");
 }
 
-extern "C"
-void xtrace_reset_color(void)
+void xtrace_reset_color(xtrace::String* log)
 {
 	if (xtrace_no_color)
 		return;
 
-	xtrace_log("\033[0m");
+	log->append("\033[0m");
 }
 
-extern "C"
-void xtrace_start_line(int indent)
+void xtrace_start_line(xtrace::String* log, int indent)
 {
-	xtrace_set_gray_color();
+	xtrace_set_gray_color(log);
 
-	xtrace_log("[%d]", sys_thread_selfid());
+	log->append_format("[%d]", sys_thread_selfid());
         for (int i = 0; i < indent + 1; i++)
-		xtrace_log(" ");
+		log->append(" ");
 
-	xtrace_reset_color();
+	xtrace_reset_color(log);
 }
 
-static void print_call(const struct calldef* defs, const char* type, int nr, int indent, int gray_name)
+static void print_call(xtrace::String* log, const struct calldef* defs, const char* type, int nr, int indent, int gray_name)
 {
-	xtrace_start_line(indent);
+	xtrace_start_line(log, indent);
 
 	if (gray_name)
-		xtrace_set_gray_color();
+		xtrace_set_gray_color(log);
 
 	if (defs[nr].name != NULL)
-		xtrace_log("%s", defs[nr].name);
+		log->append_format("%s", defs[nr].name);
 	else
-		xtrace_log("%s %d", type, nr);
+		log->append_format("%s %d", type, nr);
 
 	// Leaves gray color on!
 }
@@ -295,8 +292,7 @@ struct nested_call_struct {
 
 DEFINE_XTRACE_TLS_VAR(struct nested_call_struct, nested_call, (struct nested_call_struct) {0}, NULL);
 
-extern "C"
-void handle_generic_entry(const struct calldef* defs, const char* type, int nr, void* args[])
+void handle_generic_entry(xtrace::String* log, const struct calldef* defs, const char* type, int nr, void* args[])
 {
 	if (xtrace_ignore)
 		return;
@@ -304,31 +300,33 @@ void handle_generic_entry(const struct calldef* defs, const char* type, int nr, 
 	if (get_ptr_nested_call()->previous_level < get_ptr_nested_call()->current_level && !xtrace_split_entry_and_exit)
 	{
 		// We are after an earlier entry without an exit.
-		xtrace_log("\n");
+		xtrace_log("%s\n", log->c_str());
+		log->clear();
 	}
 
 	int indent = 4 * get_ptr_nested_call()->current_level;
 	get_ptr_nested_call()->nrs[get_ptr_nested_call()->current_level] = nr;
 
-	print_call(defs, type, nr, indent, 0);
+	print_call(log, defs, type, nr, indent, 0);
 
 	if (defs[nr].name != NULL && defs[nr].print_args != NULL)
 	{
-		xtrace_log("(");
-		defs[nr].print_args(nr, args);
-		xtrace_log(")");
+		log->append("(");
+		defs[nr].print_args(log, nr, args);
+		log->append(")");
 	}
 	else
-		xtrace_log("(...)");
+		log->append("(...)");
 
-	if (xtrace_split_entry_and_exit)
-		xtrace_log("\n");
+	if (xtrace_split_entry_and_exit) {
+		xtrace_log("%s\n", log->c_str());
+		log->clear();
+	}
 
 	get_ptr_nested_call()->previous_level = get_ptr_nested_call()->current_level++;
 }
 
-extern "C"
-void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t retval, int force_split)
+void handle_generic_exit(xtrace::String* log, const struct calldef* defs, const char* type, uintptr_t retval, int force_split)
 {
 	if (xtrace_ignore)
 		return;
@@ -344,21 +342,21 @@ void handle_generic_exit(const struct calldef* defs, const char* type, uintptr_t
 	if (xtrace_split_entry_and_exit || force_split)
 	{
 		int indent = 4 * get_ptr_nested_call()->current_level;
-		print_call(defs, type, nr, indent, 1);
-		xtrace_log("()");
+		print_call(log, defs, type, nr, indent, 1);
+		log->append("()");
 	}
 
-	xtrace_set_gray_color();
-	xtrace_log(" -> ");
-	xtrace_reset_color();
+	xtrace_set_gray_color(log);
+	log->append(" -> ");
+	xtrace_reset_color(log);
 
 	if (defs[nr].name != NULL && defs[nr].print_retval != NULL)
-	{
-		defs[nr].print_retval(nr, retval);
-		xtrace_log("\n");
-	}
+		defs[nr].print_retval(log, nr, retval);
 	else
-		xtrace_log("0x%lx\n", retval);
+		log->append_format("0x%lx", retval);
+
+	xtrace_log("%s\n", log->c_str());
+	log->clear();
 }
 
 extern "C"

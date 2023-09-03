@@ -14,6 +14,7 @@
 #include "bsd_trace.h"
 #include "xtrace/xtrace-mig-types.h"
 #include "tls.h"
+#include "string.h"
 
 #define XTRACE_MIG_DIR_PATH "/usr/lib/darling/xtrace-mig"
 
@@ -80,78 +81,86 @@ void xtrace_setup_mig_tracing(void)
 
 DEFINE_XTRACE_TLS_VAR(bool, is_first_arg, false, NULL);
 
-#define BEFORE if (!get_is_first_arg()) xtrace_log(", ")
+#define BEFORE if (!get_is_first_arg()) xtrace_string_append_c_string(log, ", ")
 #define AFTER set_is_first_arg(false)
 
-static void add_raw_arg(const char* format, ...)
+XTRACE_HIDDEN extern "C"
+void add_raw_arg(xtrace_string_t log, const char* format, ...)
 {
 	va_list vl;
 	va_start(vl, format);
 
 	BEFORE;
-	char buf[100];
-	__simple_vsprintf(buf, format, vl);
+	xtrace_string_append_format_valist(log, format, vl);
 	AFTER;
 
 	va_end(vl);
 }
 
-static void add_num_arg(unsigned long long n)
+XTRACE_HIDDEN extern "C"
+void add_num_arg(xtrace_string_t log, unsigned long long n)
 {
 	BEFORE;
-	xtrace_log("%llu", n);
+	xtrace_string_append_format(log, "%llu", n);
 	AFTER;
 }
 
-static void add_ptr_arg(void* ptr)
+XTRACE_HIDDEN extern "C"
+void add_ptr_arg(xtrace_string_t log, void* ptr)
 {
 	BEFORE;
-	xtrace_log("%p", ptr);
+	xtrace_string_append_format(log, "%p", ptr);
 	AFTER;
 }
 
-static void add_string_arg(const char* s)
+XTRACE_HIDDEN extern "C"
+void add_string_arg(xtrace_string_t log, const char* s)
 {
 	BEFORE;
-	xtrace_print_string_literal(s);
+	xtrace_print_string_literal(xtrace::String::to_cxx_ptr(log), s);
 	AFTER;
 }
 
-static void add_bytes_arg(const void* bytes, unsigned long cnt)
+XTRACE_HIDDEN extern "C"
+void add_bytes_arg(xtrace_string_t log, const void* bytes, unsigned long cnt)
 {
 	BEFORE;
 	const unsigned char* b = (const unsigned char*) bytes;
-	xtrace_log("bytes ");
+	xtrace_string_append_c_string(log, "bytes ");
 	for (int i = 0; i < cnt; i++)
-		xtrace_log("%x", b[i]);
+		xtrace_string_append_format(log, "%x", b[i]);
 	AFTER;
 }
 
-static void add_return_code_arg(kern_return_t code)
+XTRACE_HIDDEN extern "C"
+void add_return_code_arg(xtrace_string_t log, kern_return_t code)
 {
 	BEFORE;
-	xtrace_print_kern_return(code);
+	xtrace_print_kern_return(xtrace::String::to_cxx_ptr(log), code);
 	AFTER;
 }
 
-static void add_port_arg(mach_port_name_t port_name, mach_msg_type_name_t disposition)
+XTRACE_HIDDEN extern "C"
+void add_port_arg(xtrace_string_t log, mach_port_name_t port_name, mach_msg_type_name_t disposition)
 {
 	BEFORE;
-	xtrace_log("%s %u", xtrace_msg_type_to_str(disposition, 0), port_name);
+	xtrace_string_append_format(log, "%s %u", xtrace_msg_type_to_str(disposition, 0), port_name);
 	AFTER;
 }
 
-static void add_ool_mem_arg(const void* ptr, unsigned long size)
+XTRACE_HIDDEN extern "C"
+void add_ool_mem_arg(xtrace_string_t log, const void* ptr, unsigned long size)
 {
 	BEFORE;
-	xtrace_log("mem [%p; %lu]", ptr, size);
+	xtrace_string_append_format(log, "mem [%p; %lu]", ptr, size);
 	AFTER;
 }
 
-static void add_ool_ports_arg(const void* ptr, unsigned long cnt, mach_msg_type_name_t disposition)
+XTRACE_HIDDEN extern "C"
+void add_ool_ports_arg(xtrace_string_t log, const void* ptr, unsigned long cnt, mach_msg_type_name_t disposition)
 {
 	BEFORE;
-	xtrace_log("%s [%p; x%lu]", xtrace_msg_type_to_str(disposition, 0), ptr, cnt);
+	xtrace_string_append_format(log, "%s [%p; x%lu]", xtrace_msg_type_to_str(disposition, 0), ptr, cnt);
 	AFTER;
 }
 
@@ -176,49 +185,53 @@ static unsigned long long read_integer(const void* ptr, unsigned int size)
 	}
 }
 
-static void add_struct_arg(const void* ptr, unsigned long cnt, unsigned long item_size)
+XTRACE_HIDDEN extern "C"
+void add_struct_arg(xtrace_string_t log, const void* ptr, unsigned long cnt, unsigned long item_size)
 {
 	BEFORE;
 	unsigned char* p = (unsigned char*) ptr;
-	xtrace_log("{");
+	xtrace_string_append_c_string(log, "{");
 	for (unsigned long i = 0; i < cnt; i++)
 	{
 		if (i != 0)
-			xtrace_log(", ");
-		xtrace_log("%llu", read_integer((void*) p, item_size));
+			xtrace_string_append_c_string(log, ", ");
+		xtrace_string_append_format(log, "%llu", read_integer((void*) p, item_size));
 		p += item_size;
 	}
-	xtrace_log("}");
+	xtrace_string_append_c_string(log, "}");
 	AFTER;
 }
 
-static void add_array_arg(const void* ptr, unsigned long cnt, unsigned long item_size)
+XTRACE_HIDDEN extern "C"
+void add_array_arg(xtrace_string_t log, const void* ptr, unsigned long cnt, unsigned long item_size)
 {
 	BEFORE;
 	unsigned char* p = (unsigned char*) ptr;
-	xtrace_log("[");
+	xtrace_string_append_c_string(log, "[");
 	for (unsigned long i = 0; i < cnt; i++)
 	{
 		if (i != 0)
-			xtrace_log(", ");
-		xtrace_log("%llu", read_integer((void*) p, item_size));
+			xtrace_string_append_c_string(log, ", ");
+		xtrace_string_append_format(log, "%llu", read_integer((void*) p, item_size));
 		p += item_size;
 	}
-	xtrace_log("]");
+	xtrace_string_append_c_string(log, "]");
 	AFTER;
 }
 
-static void set_return_code(kern_return_t code)
+XTRACE_HIDDEN extern "C"
+void set_return_code(xtrace_string_t log, kern_return_t code)
 {
 	BEFORE;
-	xtrace_print_kern_return(code);
+	xtrace_print_kern_return(xtrace::String::to_cxx_ptr(log), code);
 	AFTER;
 }
 
 #undef BEFORE
 #undef AFTER
 
-static const struct xtrace_mig_callbacks callbacks = {
+XTRACE_HIDDEN extern "C"
+const struct xtrace_mig_callbacks callbacks = {
 	.add_raw_arg = add_raw_arg,
 	.add_num_arg = add_num_arg,
 	.add_ptr_arg = add_ptr_arg,
@@ -230,7 +243,14 @@ static const struct xtrace_mig_callbacks callbacks = {
 	.add_ool_ports_arg = add_ool_ports_arg,
 	.add_struct_arg = add_struct_arg,
 	.add_array_arg = add_array_arg,
-	.set_return_code = set_return_code
+	.set_return_code = set_return_code,
+	// String Functions
+	.xtrace_string_construct = xtrace_string_construct,
+	.xtrace_string_destruct = xtrace_string_destruct,
+	.xtrace_string_clear = xtrace_string_clear,
+	.xtrace_string_c_str = xtrace_string_c_str,
+	// Logging Functions
+	.xtrace_log = xtrace_log
 };
 
 static const struct xtrace_mig_routine_desc* find_routine(mach_msg_id_t id, const struct xtrace_mig_subsystem* s, int* out_is_reply)
@@ -323,8 +343,7 @@ static int find_subsystem(
 	return 0;
 }
 
-extern "C"
-void xtrace_print_mig_message(const mach_msg_header_t* message, mach_port_name_t request_port)
+void xtrace_print_mig_message(xtrace::String* log, const mach_msg_header_t* message, mach_port_name_t request_port)
 {
 	if (message == NULL)
 		return;
@@ -340,19 +359,19 @@ void xtrace_print_mig_message(const mach_msg_header_t* message, mach_port_name_t
 		return;
 
 	if (!is_reply)
-		xtrace_log("%s::%s(", s->name, r->name);
+		log->append_format("%s::%s(", s->name, r->name);
 	else
 	{
-		xtrace_set_gray_color();
-		xtrace_log("%s::%s() -> ", s->name, r->name);
-		xtrace_reset_color();
+		xtrace_set_gray_color(log);
+		log->append_format("%s::%s() -> ", s->name, r->name);
+		xtrace_reset_color(log);
 	}
 
 	set_is_first_arg(true);
 	r->routine(message, is_reply, &callbacks);
 
 	if (!is_reply)
-		xtrace_log(")");
+		log->append(")");
 	else
-		xtrace_log(" ");
+		log->append(" ");
 }
