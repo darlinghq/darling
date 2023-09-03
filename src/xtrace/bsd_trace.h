@@ -2,11 +2,11 @@
 #define XTRACE_BSD_TRACE
 
 #include "base.h"
+#include "string.h"
 
-XTRACE_DECLARATIONS_C_BEGIN
-
-extern void xtrace_print_string_literal(const char* str);
-
-XTRACE_DECLARATIONS_C_END
+#ifdef XTRACE_CPP
+extern void print_open_flags(xtrace::String* log, void* arg);
+extern void xtrace_print_string_literal(xtrace::String* log, const char* str);
+#endif
 
 #endif // XTRACE_BSD_TRACE

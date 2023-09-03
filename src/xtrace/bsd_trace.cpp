@@ -13,23 +13,23 @@
 #include "bsd_trace.h"
 #include "tls.h"
 
-static void print_errno(int nr, uintptr_t rv);
-static void print_errno_num(int nr, uintptr_t rv);
-static void print_errno_ptr(int nr, uintptr_t rv);
+static void print_errno(xtrace::String* log, int nr, uintptr_t rv);
+static void print_errno_num(xtrace::String* log, int nr, uintptr_t rv);
+static void print_errno_ptr(xtrace::String* log, int nr, uintptr_t rv);
 
-static void print_args(int nr, void* args[]);
+static void print_args(xtrace::String* log, int nr, void* args[]);
 
-static void print_kevent_return(int nr, uintptr_t rv);
-static void print_kevent_args(int nr, void* args[]);
-static void print_kevent64_return(int nr, uintptr_t rv);
-static void print_kevent64_args(int nr, void* args[]);
-static void print_kevent_qos_return(int nr, uintptr_t rv);
-static void print_kevent_qos_args(int nr, void* args[]);
+static void print_kevent_return(xtrace::String* log, int nr, uintptr_t rv);
+static void print_kevent_args(xtrace::String* log, int nr, void* args[]);
+static void print_kevent64_return(xtrace::String* log, int nr, uintptr_t rv);
+static void print_kevent64_args(xtrace::String* log, int nr, void* args[]);
+static void print_kevent_qos_return(xtrace::String* log, int nr, uintptr_t rv);
+static void print_kevent_qos_args(xtrace::String* log, int nr, void* args[]);
 
-static void print_select_return(int nr, uintptr_t rv);
-static void print_select_args(int nr, void* args[]);
+static void print_select_return(xtrace::String* log, int nr, uintptr_t rv);
+static void print_select_args(xtrace::String* log, int nr, void* args[]);
 
-static void print_timespec(const struct timespec* timespec);
+static void print_timespec(xtrace::String* log, const struct timespec* timespec);
 
 // awk '/^[0-9]/ { if ($6 !~ "nosys") { split($6, a, "("); print "[" $1 "] = { \"" a[1] "\", print_args, print_errno }," } }'
 
@@ -445,93 +445,92 @@ static const struct calldef bsd_defs[600] = {
 	[521] = { "abort_with_payload", print_args, print_errno_num },
 };
 
-static void print_arg_int(void* arg)
+static void print_arg_int(xtrace::String* log, void* arg)
 {
-	xtrace_log("%d", (int) (long) arg);
+	log->append_format("%d", (int) (long) arg);
 }
 
-static void print_arg_ptr(void* arg)
+static void print_arg_ptr(xtrace::String* log, void* arg)
 {
 	if (arg == NULL)
-		xtrace_log("NULL");
+		log->append("NULL");
 	else
-		xtrace_log("%p", arg);
+		log->append_format("%p", arg);
 }
 
-extern "C"
-void xtrace_print_string_literal(const char* str) {
+void xtrace_print_string_literal(xtrace::String* log, const char* str) {
 	if (str == NULL) {
-		xtrace_log("NULL");
+		log->append("NULL");
 		return;
 	}
 
 	if (!xtrace_no_color)
-		xtrace_log("\033[;1m"); // bold
+		log->append("\033[;1m"); // bold
 
-	xtrace_log("\"");
+	log->append("\"");
 
 	for (; *str; str++)
 	{
 		switch (*str)
 		{
 			case '\\':
-			xtrace_log("\\\\");
+				log->append("\\\\");
 				break;
 			case '\n':
-			xtrace_log("\\n");
+				log->append("\\n");
 				break;
 			case '\t':
-			xtrace_log("\\t");
+				log->append("\\t");
 				break;
 			default:
-			xtrace_log("%c", *str);
+				log->append_format("%c", *str);
 				break;
 		}
 	}
 
-	xtrace_log("\"");
+	log->append("\"");
 
 	if (!xtrace_no_color)
-		xtrace_log("\033[0m"); // reset
+		log->append("\033[0m"); // reset
 }
 
-static void print_arg_str(void* arg)
+static void print_arg_str(xtrace::String* log, void* arg)
 {
 	const char* str = (const char*) arg;
-	xtrace_print_string_literal(str);
+	xtrace_print_string_literal(log, str);
 }
 
-static void print_arg_prot(void* arg)
+static void print_arg_prot(xtrace::String* log, void* arg)
 {
 	int cnt = 0;
 	int prot = (int)(long)arg;
 
 	if (prot & PROT_READ)
 	{
-		xtrace_log("PROT_READ");
+		log->append("PROT_READ");
 		cnt++;
 	}
 	if (prot & PROT_WRITE)
 	{
 		if (cnt > 0)
-			xtrace_log("|");
-		xtrace_log("PROT_WRITE");
+			log->append("|");
+		log->append("PROT_WRITE");
 		cnt++;
 	}
 	if (prot & PROT_EXEC)
 	{
 		if (cnt > 0)
-			xtrace_log("|");
-		xtrace_log("PROT_EXEC");
+			log->append("|");
+		log->append("PROT_EXEC");
 		cnt++;
 	}
 	if (cnt == 0)
 	{
-		xtrace_log("PROT_NONE");
+		log->append("PROT_NONE");
 	}
 }
 
-static void print_mmap_flags(void* arg)
+static void print_mmap_flags(xtrace::String* log, void* arg)
 {
 	int cnt = 0;
 	int flags = (int) (long) arg;
@@ -554,20 +553,19 @@ static void print_mmap_flags(void* arg)
 		if (flags & all_flags[i].flag)
 		{
 			if (cnt > 0)
-				xtrace_log("|");
-			xtrace_log("%s", all_flags[i].name);
+				log->append("|");
+			log->append_format("%s", all_flags[i].name);
 			cnt++;
 		}
 	}
 
 	if (cnt == 0)
 	{
-		xtrace_log("MAP_FILE");
+		log->append("MAP_FILE");
 	}
 }
 
-extern "C"
-void print_open_flags(void* arg)
+void print_open_flags(xtrace::String* log, void* arg)
 {
 	int cnt = 0;
 	int flags = (int) (long) arg;
@@ -599,46 +597,46 @@ void print_open_flags(void* arg)
 		if (flags & all_flags[i].flag)
 		{
 			if (cnt > 0)
-				xtrace_log("|");
-			xtrace_log("%s", all_flags[i].name);
+				log->append("|");
+			log->append_format("%s", all_flags[i].name);
 			cnt++;
 		}
 	}
 
 	if (cnt == 0)
 	{
-		xtrace_log("O_RDONLY");
+		log->append("O_RDONLY");
 	}
 }
 
-extern "C" void print_arg_posix_spawn_args(void* arg);
+extern void print_arg_posix_spawn_args(xtrace::String* log, void* arg);
 
-static void print_arg_string_array(void* arg) {
+static void print_arg_string_array(xtrace::String* log, void* arg) {
 	const char* const* array = (const char* const*)arg;
 	bool is_first = true;
 
-	xtrace_log("{");
+	log->append("{");
 
 	if (array) {
 		for (const char* const* ptr = array; *ptr != NULL; ++ptr) {
 			if (is_first) {
 				is_first = false;
 			} else {
-				xtrace_log(", ");
+				log->append(", ");
 			}
 
-			xtrace_print_string_literal(*ptr);
+			xtrace_print_string_literal(log, *ptr);
 		}
 	}
 
-	xtrace_log("}");
+	log->append("}");
 };
 
 // TODO: output more specific information for more calls
 
 static const struct {
 	int args_cnt;
-	void (*print_arg[8])(void* arg);
+	void (*print_arg[8])(xtrace::String* log, void* arg);
 } args_info[] = {
 	[1] = { 1, { print_arg_int } }, // exit
 	[2] = { 0, {  } }, // fork
@@ -1042,14 +1040,14 @@ static const struct {
 	[521] = { 6, { print_arg_int, print_arg_int, print_arg_ptr, print_arg_int, print_arg_str, print_arg_int } }, // abort_with_payload
 };
 
-static void print_args(int nr, void* args[])
+static void print_args(xtrace::String* log, int nr, void* args[])
 {
 	int cnt = args_info[nr].args_cnt;
 	for (int i = 0; i < cnt; i++)
 	{
 		if (i > 0)
-			xtrace_log(", ");
-		(*args_info[nr].print_arg[i])(args[i]);
+			log->append(", ");
+		(*args_info[nr].print_arg[i])(log, args[i]);
 	}
 }
 
@@ -1057,25 +1055,37 @@ static void print_args(int nr, void* args[])
 extern "C"
 void darling_bsd_syscall_entry_print(int nr, void* args[])
 {
+	xtrace::String log;
 #if __i386__
 	// get rid of some info in the upper bytes that we don't need
 	nr = (int)((unsigned int)nr & 0xffff);
 #endif
 
-	handle_generic_entry(bsd_defs, "bsd", nr, args);
+	handle_generic_entry(&log, bsd_defs, "bsd", nr, args);
 
 	if (nr == 1 || nr == 59)
 	{
 		// For exit() or execve(), print an extra newline,
 		// as we're likely not going to see the return.
-		xtrace_log("\n");
+		log.append("\n");
+	}
+
+	if (log.size() > 0) {
+		xtrace_log("%s", log.c_str());
+		log.clear();
 	}
 }
 
 extern "C"
 void darling_bsd_syscall_exit_print(uintptr_t retval)
 {
-	handle_generic_exit(bsd_defs, "bsd", retval, 0);
+	xtrace::String log;
+	handle_generic_exit(&log, bsd_defs, "bsd", retval, 0);
+
+	if (log.size() > 0) {
+		xtrace_log("%s", log.c_str());
+		log.clear();
+	}
 }
 
 const char* error_strings[128] = {
@@ -1187,38 +1197,38 @@ const char* error_strings[128] = {
 	[106] = "EQFULL",
 };
 
-static void print_errno_num(int nr, uintptr_t rv)
+static void print_errno_num(xtrace::String* log, int nr, uintptr_t rv)
 {
 	intptr_t v = (intptr_t)rv;
 	if (v >= 0 || v < -4095)
 	{
-		xtrace_log("%ld", rv);
+		log->append_format("%ld", rv);
 	}
 	else
-		print_errno(nr, rv);
+		print_errno(log, nr, rv);
 }
 
-static void print_errno_ptr(int nr, uintptr_t rv)
+static void print_errno_ptr(xtrace::String* log, int nr, uintptr_t rv)
 {
 	intptr_t v = (intptr_t)rv;
 	if (v >= 0 || v < -4095)
 	{
-		xtrace_log("%p", (void*) rv);
+		log->append_format("%p", (void*) rv);
 	}
 	else
-		print_errno(nr, rv);
+		print_errno(log, nr, rv);
 }
 
-static void print_errno(int nr, uintptr_t rv)
+static void print_errno(xtrace::String* log, int nr, uintptr_t rv)
 {
 	const char* error = NULL;
 	intptr_t v = (intptr_t) rv;
 	if (-v < 128)
 		error = error_strings[-v];
 	if (error != NULL)
-		xtrace_log("%s", error);
+		log->append_format("%s", error);
 	else
-		xtrace_log("%ld", v);
+		log->append_format("%ld", v);
 }
 
 static const char* const filter_names[] = {
@@ -1364,11 +1374,11 @@ static const struct {
 #undef FLAG
 };
 
-static void print_kevent_common(int16_t filter, uintptr_t ident, uint16_t flags, uint32_t fflags, intptr_t data, void* udata) {
+static void print_kevent_common(xtrace::String* log, int16_t filter, uintptr_t ident, uint16_t flags, uint32_t fflags, intptr_t data, void* udata) {
 	int filt_index = ~filter;
 	bool printed_something = false;
 
-	xtrace_log("%s { ident = ", (filt_index < 0 || filt_index >= sizeof(filter_names) / sizeof(*filter_names)) ? "EVFILT_UNKNOWN" : filter_names[filt_index]);
+	log->append_format("%s { ident = ", (filt_index < 0 || filt_index >= sizeof(filter_names) / sizeof(*filter_names)) ? "EVFILT_UNKNOWN" : filter_names[filt_index]);
 
 	switch (filter) {
 		case EVFILT_READ:
@@ -1376,24 +1386,24 @@ static void print_kevent_common(int16_t filter, uintptr_t ident, uint16_t flags,
 		case EVFILT_EXCEPT:
 		case EVFILT_VNODE:
 		case EVFILT_SOCK:
-			xtrace_log("fd %lu", ident);
+			log->append_format("fd %lu", ident);
 			break;
 
 		case EVFILT_PROC:
-			xtrace_log("pid %lu", ident);
+			log->append_format("pid %lu", ident);
 			break;
 
 		case EVFILT_SIGNAL:
-			xtrace_log("signal %s (%lu)", (ident < sizeof(signal_names) / sizeof(*signal_names)) ? signal_names[ident] : "SIGUNKNOWN", ident);
+			log->append_format("signal %s (%lu)", (ident < sizeof(signal_names) / sizeof(*signal_names)) ? signal_names[ident] : "SIGUNKNOWN", ident);
 			break;
 
 		case EVFILT_TIMER:
-			xtrace_log("timer %lu", ident);
+			log->append_format("timer %lu", ident);
 			break;
 
 		case EVFILT_MACHPORT:
 			// officially, only portsets can be used with EVFILT_MACHPORT. however, Apple introduced support for single ports in 10.13 or something around that time.
-			xtrace_log("port/portset %lu", ident);
+			log->append_format("port/portset %lu", ident);
 			break;
 
 		case EVFILT_FS:
@@ -1404,15 +1414,15 @@ static void print_kevent_common(int16_t filter, uintptr_t ident, uint16_t flags,
 			// notes:
 			//   * EVFILT_VM is unsupported on macOS.
 			//   * do EVFILT_FS, EVFILT_MEMORYSTATUS, and EVFILT_WORKLOOP even use `ident`?
-			xtrace_log("%lu", ident);
+			log->append_format("%lu", ident);
 			break;
 
 		default:
-			xtrace_log("%lu", ident);
+			log->append_format("%lu", ident);
 			break;
 	}
 
-	xtrace_log(", flags = ");
+	log->append(", flags = ");
 
 	for (size_t i = 0; i < sizeof(kevent_flag_names) / sizeof(*kevent_flag_names); ++i) {
 		if ((flags & kevent_flag_names[i].flag) == 0) {
@@ -1422,13 +1432,13 @@ static void print_kevent_common(int16_t filter, uintptr_t ident, uint16_t flags,
 		if (!printed_something) {
 			printed_something = true;
 		} else {
-			xtrace_log("|");
+			log->append("|");
 		}
 
-		xtrace_log("%s", kevent_flag_names[i].name);
+		log->append_format("%s", kevent_flag_names[i].name);
 	}
 
-	xtrace_log("%s(0x%x), fflags = ", printed_something ? " " : "", flags);
+	log->append_format("%s(0x%x), fflags = ", printed_something ? " " : "", flags);
 
 	printed_something = false;
 
@@ -1445,29 +1455,29 @@ static void print_kevent_common(int16_t filter, uintptr_t ident, uint16_t flags,
 			if (!printed_something) {
 				printed_something = true;
 			} else {
-				xtrace_log("|");
+				log->append("|");
 			}
 
-			xtrace_log("%s", kevent_filter_flag_names[filt_index][i].name);
+			log->append_format("%s", kevent_filter_flag_names[filt_index][i].name);
 		}
 	}
 
-	xtrace_log("%s(0x%x), udata = %p, data = 0x%lx", printed_something ? " " : "", fflags, udata, data);
+	log->append_format("%s(0x%x), udata = %p, data = 0x%lx", printed_something ? " " : "", fflags, udata, data);
 };
 
-static void print_kevent_structure(const struct kevent* event) {
-	print_kevent_common(event->filter, event->ident, event->flags, event->fflags, event->data, event->udata);
-	xtrace_log(" }");
+static void print_kevent_structure(xtrace::String* log, const struct kevent* event) {
+	print_kevent_common(log, event->filter, event->ident, event->flags, event->fflags, event->data, event->udata);
+	log->append(" }");
 };
 
-static void print_kevent64_structure(const struct kevent64_s* event) {
-	print_kevent_common(event->filter, event->ident, event->flags, event->fflags, event->data, (void*)(uintptr_t)event->udata);
-	xtrace_log(", ext[0] = 0x%llx, ext[1] = 0x%llx }", event->ext[0], event->ext[1]);
+static void print_kevent64_structure(xtrace::String* log, const struct kevent64_s* event) {
+	print_kevent_common(log, event->filter, event->ident, event->flags, event->fflags, event->data, (void*)(uintptr_t)event->udata);
+	log->append_format(", ext[0] = 0x%llx, ext[1] = 0x%llx }", event->ext[0], event->ext[1]);
 };
 
-static void print_kevent_qos_structure(const struct kevent_qos_s* event) {
-	print_kevent_common(event->filter, event->ident, event->flags, event->fflags, event->data, (void*)(uintptr_t)event->udata);
-	xtrace_log(", ext[0] = 0x%llx, ext[1] = 0x%llx, ext[2] = 0x%llx, ext[3] = 0x%llx, qos = %d, xflags = 0x%x }", event->ext[0], event->ext[1], event->ext[2], event->ext[3], event->qos, event->xflags);
+static void print_kevent_qos_structure(xtrace::String* log, const struct kevent_qos_s* event) {
+	print_kevent_common(log, event->filter, event->ident, event->flags, event->fflags, event->data, (void*)(uintptr_t)event->udata);
+	log->append_format(", ext[0] = 0x%llx, ext[1] = 0x%llx, ext[2] = 0x%llx, ext[3] = 0x%llx, qos = %d, xflags = 0x%x }", event->ext[0], event->ext[1], event->ext[2], event->ext[3], event->qos, event->xflags);
 };
 
 DEFINE_XTRACE_TLS_VAR(void*, kevent_stored_list, NULL, NULL);
@@ -1480,7 +1490,7 @@ enum class kevent_type {
 	kevent_qos,
 };
 
-static void print_kevent_return_common(int nr, uintptr_t rv, kevent_type type) {
+static void print_kevent_return_common(xtrace::String* log, int nr, uintptr_t rv, kevent_type type) {
 	void* event_list;
 	int ret = (intptr_t)rv;
 
@@ -1500,40 +1510,40 @@ static void print_kevent_return_common(int nr, uintptr_t rv, kevent_type type) {
 	}
 
 	if (ret < 0) {
-		print_errno(nr, rv);
+		print_errno(log, nr, rv);
 		return;
 	}
 
-	xtrace_log("%d events {", ret);
+	log->append_format("%d events {", ret);
 
 	for (int i = 0; i < ret; ++i) {
 		if (i == 0) {
-			xtrace_log(" ");
+			log->append(" ");
 		} else {
-			xtrace_log(", ");
+			log->append(", ");
 		}
 
 		switch (type) {
 			case kevent_type::kevent:
-				print_kevent_structure(&((struct kevent*)event_list)[i]);
+				print_kevent_structure(log, &((struct kevent*)event_list)[i]);
 				break;
 			case kevent_type::kevent64:
-				print_kevent64_structure(&((struct kevent64_s*)event_list)[i]);
+				print_kevent64_structure(log, &((struct kevent64_s*)event_list)[i]);
 				break;
 			case kevent_type::kevent_qos:
-				print_kevent_qos_structure(&((struct kevent_qos_s*)event_list)[i]);
+				print_kevent_qos_structure(log, &((struct kevent_qos_s*)event_list)[i]);
 				break;
 		}
 	}
 
-	xtrace_log("%s}", ret > 0 ? " " : "");
+	log->append_format("%s}", ret > 0 ? " " : "");
 };
 
-static void print_kevent_return(int nr, uintptr_t rv) {
-	print_kevent_return_common(nr, rv, kevent_type::kevent);
+static void print_kevent_return(xtrace::String* log, int nr, uintptr_t rv) {
+	print_kevent_return_common(log, nr, rv, kevent_type::kevent);
 };
 
-static void print_kevent_args(int nr, void* args[]) {
+static void print_kevent_args(xtrace::String* log, int nr, void* args[]) {
 	int kq = (intptr_t)args[0];
 	const struct kevent* change_list = (const struct kevent*)args[1];
 	int nchanges = (intptr_t)args[2];
@@ -1543,24 +1553,24 @@ static void print_kevent_args(int nr, void* args[]) {
 
 	set_kevent_stored_list(event_list);
 
-	xtrace_log("%d, change_list = {", kq);
+	log->append_format("%d, change_list = {", kq);
 
 	for (int i = 0; i < nchanges; ++i) {
 		if (i == 0) {
-			xtrace_log(" ");
+			log->append(" ");
 		} else {
-			xtrace_log(", ");
+			log->append(", ");
 		}
-		print_kevent_structure(&change_list[i]);
+		print_kevent_structure(log, &change_list[i]);
 	}
 
-	xtrace_log("%s}, nchanges = %d, event_list = %p, nevents = %d, timeout = ", nchanges > 0 ? " " : "", nchanges, event_list, nevents);
+	log->append_format("%s}, nchanges = %d, event_list = %p, nevents = %d, timeout = ", nchanges > 0 ? " " : "", nchanges, event_list, nevents);
 
-	print_timespec(timeout);
+	print_timespec(log, timeout);
 };
 
-static void print_kevent64_return(int nr, uintptr_t rv) {
-	print_kevent_return_common(nr, rv, kevent_type::kevent64);
+static void print_kevent64_return(xtrace::String* log, int nr, uintptr_t rv) {
+	print_kevent_return_common(log, nr, rv, kevent_type::kevent64);
 };
 
 static struct {
@@ -1584,7 +1594,7 @@ static struct {
 #undef FLAG
 };
 
-static void print_kevent64_args(int nr, void* args[]) {
+static void print_kevent64_args(xtrace::String* log, int nr, void* args[]) {
 	int kq = (intptr_t)args[0];
 	const struct kevent64_s* change_list = (const struct kevent64_s*)args[1];
 	int nchanges = (intptr_t)args[2];
@@ -1596,18 +1606,18 @@ static void print_kevent64_args(int nr, void* args[]) {
 
 	set_kevent64_stored_list(event_list);
 
-	xtrace_log("%d, change_list = {", kq);
+	log->append_format("%d, change_list = {", kq);
 
 	for (int i = 0; i < nchanges; ++i) {
 		if (i == 0) {
-			xtrace_log(" ");
+			log->append(" ");
 		} else {
-			xtrace_log(", ");
+			log->append(", ");
 		}
-		print_kevent64_structure(&change_list[i]);
+		print_kevent64_structure(log, &change_list[i]);
 	}
 
-	xtrace_log("%s}, nchanges = %d, event_list = %p, nevents = %d, flags = ", nchanges > 0 ? " " : "", nchanges, event_list, nevents);
+	log->append_format("%s}, nchanges = %d, event_list = %p, nevents = %d, flags = ", nchanges > 0 ? " " : "", nchanges, event_list, nevents);
 
 	for (size_t i = 0; i < sizeof(kevent_call_flags) / sizeof(*kevent_call_flags); ++i) {
 		if ((flags & kevent_call_flags[i].flag) == 0) {
@@ -1617,26 +1627,26 @@ static void print_kevent64_args(int nr, void* args[]) {
 		if (!printed_something) {
 			printed_something = true;
 		} else {
-			xtrace_log("|");
+			log->append("|");
 		}
 
-		xtrace_log("%s", kevent_call_flags[i].name);
+		log->append_format("%s", kevent_call_flags[i].name);
 	}
 
 	if (!printed_something) {
-		xtrace_log("0");
+		log->append("0");
 	}
 
-	xtrace_log(", timeout = ");
+	log->append(", timeout = ");
 
-	print_timespec(timeout);
+	print_timespec(log, timeout);
 };
 
-static void print_kevent_qos_return(int nr, uintptr_t rv) {
-	print_kevent_return_common(nr, rv, kevent_type::kevent_qos);
+static void print_kevent_qos_return(xtrace::String* log, int nr, uintptr_t rv) {
+	print_kevent_return_common(log, nr, rv, kevent_type::kevent_qos);
 };
 
-static void print_kevent_qos_args(int nr, void* args[]) {
+static void print_kevent_qos_args(xtrace::String* log, int nr, void* args[]) {
 	int kq = (intptr_t)args[0];
 	const struct kevent_qos_s* change_list = (const struct kevent_qos_s*)args[1];
 	int nchanges = (intptr_t)args[2];
@@ -1649,18 +1659,18 @@ static void print_kevent_qos_args(int nr, void* args[]) {
 
 	set_kevent_qos_stored_list(event_list);
 
-	xtrace_log("%d, change_list = {", kq);
+	log->append_format("%d, change_list = {", kq);
 
 	for (int i = 0; i < nchanges; ++i) {
 		if (i == 0) {
-			xtrace_log(" ");
+			log->append(" ");
 		} else {
-			xtrace_log(", ");
+			log->append(", ");
 		}
-		print_kevent_qos_structure(&change_list[i]);
+		print_kevent_qos_structure(log, &change_list[i]);
 	}
 
-	xtrace_log("%s}, nchanges = %d, event_list = %p, nevents = %d, data_out = %p, data_available = %p (%ld), flags = ", nchanges > 0 ? " " : "", nchanges, event_list, nevents, data_out, data_available, data_available ? *data_available : 0);
+	log->append_format("%s}, nchanges = %d, event_list = %p, nevents = %d, data_out = %p, data_available = %p (%ld), flags = ", nchanges > 0 ? " " : "", nchanges, event_list, nevents, data_out, data_available, data_available ? *data_available : 0);
 
 	for (size_t i = 0; i < sizeof(kevent_call_flags) / sizeof(*kevent_call_flags); ++i) {
 		if ((flags & kevent_call_flags[i].flag) == 0) {
@@ -1670,30 +1680,30 @@ static void print_kevent_qos_args(int nr, void* args[]) {
 		if (!printed_something) {
 			printed_something = true;
 		} else {
-			xtrace_log("|");
+			log->append("|");
 		}
 
-		xtrace_log("%s", kevent_call_flags[i].name);
+		log->append_format("%s", kevent_call_flags[i].name);
 	}
 
 	if (!printed_something) {
-		xtrace_log("0");
+		log->append("0");
 	}
 };
 
-static void print_timespec(const struct timespec* timespec) {
+static void print_timespec(xtrace::String* log, const struct timespec* timespec) {
 	if (timespec) {
-		xtrace_log("(%ld s, %ld ns)", timespec->tv_sec, timespec->tv_nsec);
+		log->append_format("(%ld s, %ld ns)", timespec->tv_sec, timespec->tv_nsec);
 	} else {
-		xtrace_log("NULL");
+		log->append("NULL");
 	}
 };
 
-static void print_timeval(const struct timeval* timeval) {
+static void print_timeval(xtrace::String* log, struct timeval* timeval) {
 	if (timeval) {
-		xtrace_log("(%ld s, %d ns)", timeval->tv_sec, timeval->tv_usec);
+		log->append_format("(%ld s, %d ns)", timeval->tv_sec, timeval->tv_usec);
 	} else {
-		xtrace_log("NULL");
+		log->append("NULL");
 	}
 };
 
@@ -1706,9 +1716,9 @@ struct select_fdsets {
 
 DEFINE_XTRACE_TLS_VAR(select_fdsets, stored_select_fdsets, ((struct select_fdsets){NULL, NULL, NULL, -1}), NULL);
 
-static void print_fdset(const fd_set* set, int max_fd) {
+static void print_fdset(xtrace::String* log, const fd_set* set, int max_fd) {
 	bool isFirst = true;
-	xtrace_log("{");
+	log->append("{");
 	if (set) {
 		for (size_t index = 0; index < sizeof(set->fds_bits) / sizeof(*set->fds_bits); ++index) {
 			bool shouldBreak = false;
@@ -1721,11 +1731,11 @@ static void print_fdset(const fd_set* set, int max_fd) {
 				if ((set->fds_bits[index] & (1U << bit)) != 0) {
 					if (isFirst) {
 						isFirst = false;
-						xtrace_log(" ");
+						log->append(" ");
 					} else {
-						xtrace_log(", ");
+						log->append(", ");
 					}
-					xtrace_log("%d", fd);
+					log->append_format("%d", fd);
 				}
 			}
 			if (shouldBreak) {
@@ -1734,49 +1744,49 @@ static void print_fdset(const fd_set* set, int max_fd) {
 		}
 	}
 	if (!isFirst) {
-		xtrace_log(" ");
+		log->append(" ");
 	}
-	xtrace_log("}");
+	log->append("}");
 };
 
-static void print_select_return(int nr, uintptr_t rv) {
+static void print_select_return(xtrace::String* log, int nr, uintptr_t rv) {
 	auto stored = get_ptr_stored_select_fdsets();
 	int ret = (int)rv;
 	bool isFirst = true;
 
 	if (ret < 0) {
-		print_errno(nr, rv);
+		print_errno(log, nr, rv);
 	} else {
-		xtrace_log("%d descriptors: ", ret);
+		log->append_format("%d descriptors: ", ret);
 
 		if (stored->readfds) {
 			if (isFirst) {
 				isFirst = false;
 			} else {
-				xtrace_log(", ");
+				log->append(", ");
 			}
-			xtrace_log("read ");
-			print_fdset(stored->readfds, stored->max_fd);
+			log->append("read ");
+			print_fdset(log, stored->readfds, stored->max_fd);
 		}
 
 		if (stored->writefds) {
 			if (isFirst) {
 				isFirst = false;
 			} else {
-				xtrace_log(", ");
+				log->append(", ");
 			}
-			xtrace_log("write ");
-			print_fdset(stored->writefds, stored->max_fd);
+			log->append("write ");
+			print_fdset(log, stored->writefds, stored->max_fd);
 		}
 
 		if (stored->exceptfds) {
 			if (isFirst) {
 				isFirst = false;
 			} else {
-				xtrace_log(", ");
+				log->append(", ");
 			}
-			xtrace_log("except ");
-			print_fdset(stored->exceptfds, stored->max_fd);
+			log->append("except ");
+			print_fdset(log, stored->exceptfds, stored->max_fd);
 		}
 	}
 
@@ -1786,7 +1796,7 @@ static void print_select_return(int nr, uintptr_t rv) {
 	stored->max_fd = -1;
 };
 
-static void print_select_args(int nr, void* args[]) {
+static void print_select_args(xtrace::String* log, int nr, void* args[]) {
 	auto stored = get_ptr_stored_select_fdsets();
 
 	int nfds = (intptr_t)args[0];
@@ -1795,14 +1805,14 @@ static void print_select_args(int nr, void* args[]) {
 	fd_set* exceptfds = (fd_set*)args[3];
 	struct timeval* timeout = (struct timeval*)args[4];
 
-	xtrace_log("nfds = %d, readfds = ", nfds);
-	print_fdset(readfds, nfds);
-	xtrace_log(", writefds = ");
-	print_fdset(writefds, nfds);
-	xtrace_log(", exceptfds = ");
-	print_fdset(exceptfds, nfds);
-	xtrace_log(", timeout = ");
-	print_timeval(timeout);
+	log->append_format("nfds = %d, readfds = ", nfds);
+	print_fdset(log, readfds, nfds);
+	log->append(", writefds = ");
+	print_fdset(log, writefds, nfds);
+	log->append(", exceptfds = ");
+	print_fdset(log, exceptfds, nfds);
+	log->append(", timeout = ");
+	print_timeval(log, timeout);
 
 	stored->readfds = readfds;
 	stored->writefds = writefds;
