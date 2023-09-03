@@ -18,6 +18,7 @@ set(xtrace_sources
 	memory.cpp
 	lock.cpp
 	posix_spawn_args.cpp
+	string.cpp
 )
 
 if (TARGET_x86_64)
