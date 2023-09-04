@@ -195,15 +195,15 @@ void xtrace_string_clear(xtrace_string_t obj) {
 
 extern "C"
 const char* xtrace_string_c_str(xtrace_string_t obj) {
-    xtrace::String::to_cxx_ptr(obj)->c_str();
+    return xtrace::String::to_cxx_ptr(obj)->c_str();
 }
 
 extern "C"
 size_t xtrace_string_size(xtrace_string_t obj) {
-    xtrace::String::to_cxx_ptr(obj)->size();
+    return xtrace::String::to_cxx_ptr(obj)->size();
 }
 
 extern "C"
 size_t xtrace_string_capacity(xtrace_string_t obj) {
-    xtrace::String::to_cxx_ptr(obj)->capacity();
+    return xtrace::String::to_cxx_ptr(obj)->capacity();
 }
