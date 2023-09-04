@@ -48,4 +48,5 @@ add_framework(ShazamKitUI
 		system
 		objc
 		Foundation
+		ShazamKit
 )

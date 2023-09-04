@@ -59,4 +59,5 @@ add_framework(ShazamInsights
 		system
 		objc
 		Foundation
+		CoreLocation
 )
