@@ -3,12 +3,14 @@
 # this command must be run while in the `rpm` directory in the root of the repo.
 FROM fedora:37
 LABEL name=darling-build-image-fedora version=0.1.0
+ARG CI_UID=1111
+ARG CI_GID=1111
 RUN dnf install -y rpm-build dnf-utils rpmdevtools git; \
     source /etc/os-release; \
     dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-${VERSION_ID}.noarch.rpm; \
     dnf clean all
-RUN groupadd -g 1001 ci
-RUN useradd -u 1001 -g 1001 -m ci
+RUN groupadd -g "${CI_GID}" ci
+RUN useradd -u "${CI_UID}" -g "${CI_GID}" -m ci
 COPY SPECS/darling.spec /darling.spec
 RUN yum-builddep -y /darling.spec; \
     dnf clean all
