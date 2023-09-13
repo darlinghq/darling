@@ -55,6 +55,7 @@ if (COMPONENT_dev_gui_stubs_common)
 	add_subdirectory(SkyLight)
 	add_subdirectory(SpotlightIndex)
 	add_subdirectory(StreamingZip)
+	add_subdirectory(TCC)
 	add_subdirectory(ViewBridge)
 endif()
 
