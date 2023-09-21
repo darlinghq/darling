@@ -6,6 +6,7 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
 
 	# these are also stubs, but they're needed for Security
+	add_subdirectory(AppleAccount)
 	add_subdirectory(AppleFSCompression)
 	add_subdirectory(AppleSystemInfo)
 	add_subdirectory(AuthKit)
