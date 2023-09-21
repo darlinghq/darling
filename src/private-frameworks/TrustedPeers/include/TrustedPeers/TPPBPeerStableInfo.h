@@ -19,6 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
+@class TPPBPeerStableInfo;
+
+extern TPPBPeerStableInfo* const TPPBPeerStableInfo_UserControllableViewStatus_UNKNOWN;
+
 @interface TPPBPeerStableInfo : NSObject
 
 @end

@@ -7,6 +7,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <dispatch/dispatch.h>
+#include <dlfcn.h>
 
 // certain aspects of this file (such as framework, function, and constant loading)
 // can be implemented in plain C, but because it can also load Objective-C classes,
@@ -67,12 +68,12 @@
 
 #define SOFT_LINK_CONSTANT(_framework, _name, _type) \
 	static _type get ## _name () { \
-		static _type* constant = NULL; \
+		static _type const* constant = NULL; \
 		static dispatch_once_t once_handle; \
 		dispatch_once(&once_handle, ^{ \
 			CFBundleRef bundle = softlink_get_cfbundle_ ## _framework (); \
 			if (bundle) \
-				constant = CFBundleGetDataPointerForName(bundle, SOFT_LINK_CFSTRINGIFY(_name)); \
+				constant = (_type const*)CFBundleGetDataPointerForName(bundle, SOFT_LINK_CFSTRINGIFY(_name)); \
 		}); \
 		/*
 		i'm not sure what to do if the symbol can't be found since

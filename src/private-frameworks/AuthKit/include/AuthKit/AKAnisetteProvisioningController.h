@@ -17,6 +17,12 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <Foundation/Foundation.h>
+
+#import <AuthKit/AKAnisetteData.h>
+
 @interface AKAnisetteProvisioningController : NSObject
+
+- (AKAnisetteData*)anisetteDataWithError: (NSError**)error;
 
 @end

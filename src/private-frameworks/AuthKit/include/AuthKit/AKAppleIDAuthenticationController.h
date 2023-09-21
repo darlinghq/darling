@@ -17,6 +17,13 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <Foundation/Foundation.h>
+
+#import <AuthKit/AKDeviceListRequestContext.h>
+#import <AuthKit/AKRemoteDevice.h>
+
 @interface AKAppleIDAuthenticationController : NSObject
+
+- (void)fetchDeviceListWithContext: (AKDeviceListRequestContext*)context completion: (void(^)(NSArray<AKRemoteDevice*>*, NSError*))handler;
 
 @end

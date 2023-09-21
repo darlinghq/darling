@@ -21,4 +21,6 @@
 
 @interface CKContainer : NSObject
 
++ (instancetype)containerWithIdentifier: (NSString*)identifier;
+
 @end

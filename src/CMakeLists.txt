@@ -320,6 +320,7 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	add_subdirectory(external/libnetwork)
 	add_subdirectory(libMobileGestalt)
 	add_subdirectory(external/MITKerberosShim)
+	add_subdirectory(MobileKeyBag)
 endif()
 
 if (COMPONENT_iokitd)

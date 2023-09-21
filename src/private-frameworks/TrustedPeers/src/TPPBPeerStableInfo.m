@@ -19,6 +19,8 @@
 
 #import <TrustedPeers/TPPBPeerStableInfo.h>
 
+TPPBPeerStableInfo* const TPPBPeerStableInfo_UserControllableViewStatus_UNKNOWN = nil;
+
 @implementation TPPBPeerStableInfo
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

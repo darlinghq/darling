@@ -17,6 +17,10 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <Foundation/Foundation.h>
+
 @interface AKAnisetteData : NSObject
+
+@property(readonly) NSString* machineID;
 
 @end

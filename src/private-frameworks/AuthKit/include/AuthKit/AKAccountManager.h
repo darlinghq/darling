@@ -17,6 +17,18 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <Foundation/Foundation.h>
+
+#import <Accounts/ACAccount.h>
+
+typedef NS_ENUM(NSUInteger, AKAppleIDSecurityLevel) {
+	AKAppleIDSecurityLevelHSA2,
+};
+
 @interface AKAccountManager : NSObject
+
+- (NSString*)altDSIDForAccount: (ACAccount*)account;
+- (ACAccount*)authKitAccountWithAltDSID: (NSString*)altDSID;
+- (AKAppleIDSecurityLevel)securityLevelForAccount: (ACAccount*)account;
 
 @end

@@ -49,3 +49,5 @@ void* _AKTrafficLogSubsystem(void);
 #import <AuthKit/AKAppleIDAuthenticationContext.h>
 #import <AuthKit/AKAccountManager.h>
 #import <AuthKit/AKAppleIDAuthenticationDaemonInterface.h>
+#import <AuthKit/AKDeviceListRequestContext.h>
+#import <AuthKit/AKRemoteDevice.h>

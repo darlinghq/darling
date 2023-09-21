@@ -19,6 +19,12 @@
 
 #include <Foundation/Foundation.h>
 
+#import <TrustedPeers/TPPolicy.h>
+
 @interface TPPolicyDocument : NSObject
+
++ (instancetype)policyDocWithHash: (NSString*)hash data: (NSData*)data;
+
+- (TPPolicy*)policyWithSecrets: (NSDictionary*)secrets decrypter: (id)decrypter error: (NSError**)error;
 
 @end

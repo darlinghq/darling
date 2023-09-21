@@ -19,6 +19,18 @@
 
 #include <Foundation/Foundation.h>
 
+#import <TrustedPeers/TPPBPeerStableInfo.h>
+
+@class TPSyncingPolicy;
+
 @interface TPPolicy : NSObject
+
+- (TPSyncingPolicy*)syncingPolicyForModel: (NSString*)model syncUserControllableViews: (TPPBPeerStableInfo*)stableInfo error: (NSError**)error;
+
+@end
+
+@interface TPSyncingPolicy : TPPolicy
+
+- (NSString*)mapDictionaryToView: (NSDictionary*)dictionary;
 
 @end

@@ -19,6 +19,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <login/login.h>
 
+// arbitrary guess
+const char* kSA_SessionStateChangedNotification = "SA_SessionStateChangedNotification";
+
 void CFXPCRelease(void) { }
 void CreateArgumentsForFunction(void) { }
 void GetSessionAgentClient(void) { }
