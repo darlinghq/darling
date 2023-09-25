@@ -11,7 +11,7 @@ macro(clang_version_check compiler source_type clang_minimum_version)
 
     file(WRITE "${CMAKE_BINARY_DIR}/clang_major.${source_type}"  "#include <stdio.h>\n" 
     "#if !__clang__\n" "#error \"Not running on a clang compiler!\"\n" "#endif\n" "int main() { printf(\"%d\", __clang_major__); }")
-    execute_process(COMMAND "${compiler}" "${CMAKE_BINARY_DIR}/clang_major.${source_type}" "-o" "clang_${source_type}_major"
+    execute_process(COMMAND "${compiler}" "${CMAKE_BINARY_DIR}/clang_major.${source_type}" "-o" "${CMAKE_BINARY_DIR}/clang_${source_type}_major"
     	RESULT_VARIABLE BUILD_CLANG_TEST_RESULT
     	OUTPUT_VARIABLE BUILD_CLANG_TEST_OUTPUT
 		COMMAND_ECHO NONE
