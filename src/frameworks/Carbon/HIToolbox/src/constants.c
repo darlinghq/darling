@@ -11,3 +11,5 @@ const CFStringRef kTISCategoryKeyboardInputSource = CFSTR("TISCategoryKeyboardIn
 const CFStringRef kTISPropertyInputSourceCategory = CFSTR("TISPropertyInputSourceCategory");
 const CFStringRef kTISPropertyInputSourceType = CFSTR("TISPropertyInputSourceType");
 const CFStringRef kTISTypeKeyboardLayout = CFSTR("TISTypeKeyboardLayout");
+
+const float kHIToolboxVersionNumber = 1163.0;
