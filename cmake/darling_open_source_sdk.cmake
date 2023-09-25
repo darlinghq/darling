@@ -3,7 +3,7 @@ include(create_symlink)
 function(remove_sdk_framework name)
     cmake_parse_arguments(SDK
         "PRIVATE;IOSSUPPORT"
-        ""
+        "PARENT_DIR"
         ""
         ${ARGN}
     )
@@ -28,6 +28,11 @@ function(remove_sdk_framework name)
 
         set(developer_sdk_path "Developer/Platforms/${developer_platform}/Developer/SDKs/${developer_sdk}")
         set(developer_framework_path "${DARLING_TOP_DIRECTORY}/${developer_sdk_path}/${developer_sys_library_dir}/${developer_framework_dir}/${name}.framework")
+
+        if (SDK_PARENT_DIR)
+            set(developer_framework_path "${DARLING_TOP_DIRECTORY}/${developer_sdk_path}/${SDK_PARENT_DIR}/${name}.framework")
+        endif()
+
         set(header_framework_include_path "${DARLING_TOP_DIRECTORY}/${header_framework_include}/${name}")
 
         # Remove file from 'Developer' folder
@@ -35,14 +40,14 @@ function(remove_sdk_framework name)
         # Also remove the the header folder from the framework/framework-private-include header
         file(REMOVE_RECURSE ${header_framework_include_path})
 
-        message("Deleted SDK framework ${developer_sdk_path}")
+        message("Deleted SDK framework ${developer_framework_path}")
     endif (REGENERATE_SDK)
 endfunction(remove_sdk_framework)
 
 function(get_path_preframework result)
     cmake_parse_arguments(SDK
         "PRIVATE;IOSSUPPORT"
-        ""
+        "PARENT_DIR"
         ""
         ${ARGN}
     )
@@ -63,7 +68,13 @@ function(get_path_preframework result)
         set(developer_framework_dir "Frameworks")
     endif (SDK_PRIVATE)
 
-    set("${result}" "${DARLING_TOP_DIRECTORY}/${developer_sdk_path}/${developer_sys_library_dir}/${developer_framework_dir}" PARENT_SCOPE)
+    set(developer_framework_path "${DARLING_TOP_DIRECTORY}/${developer_sdk_path}/${developer_sys_library_dir}/${developer_framework_dir}")
+
+    if (SDK_PARENT_DIR)
+        set(developer_framework_path "${DARLING_TOP_DIRECTORY}/${developer_sdk_path}/${SDK_PARENT_DIR}")
+    endif()
+
+    set("${result}" "${developer_framework_path}" PARENT_SCOPE)
 endfunction(get_path_preframework)
 
 function(append_path_sdk_subframework input_path output_path name)
@@ -80,7 +91,7 @@ endfunction(append_path_sdk_subframework)
 function(internal_generate_developer_framework name path)
     cmake_parse_arguments(SDK
         ""
-        "VERSION;HEADER"
+        "VERSION;HEADER;PARENT_DIR"
         ""
         ${ARGN}
     )
@@ -133,7 +144,7 @@ endfunction(internal_generate_framework_include)
 function(generate_sdk_framework name)
     cmake_parse_arguments(SDK
         "PRIVATE;IOSSUPPORT"
-        "VERSION;HEADER"
+        "VERSION;HEADER;PARENT_DIR"
         ""
         ${ARGN}
     )
@@ -154,6 +165,7 @@ function(generate_sdk_framework name)
         get_path_preframework(sdk_path
             ${PRIVATE}
             ${IOSSUPPORT}
+            PARENT_DIR "${SDK_PARENT_DIR}"
         )
 
         internal_generate_developer_framework(${name}
