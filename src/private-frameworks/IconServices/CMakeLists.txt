@@ -1,0 +1,175 @@
+project(IconServices)
+
+remove_sdk_framework(IconServices
+	PRIVATE
+)
+
+set(DYLIB_COMPAT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "552.0.0")
+
+set(FRAMEWORK_VERSION "A")
+
+generate_sdk_framework(IconServices
+	PRIVATE
+	VERSION ${FRAMEWORK_VERSION}
+	HEADER "include/IconServices"
+)
+
+add_framework(IconServices
+	PRIVATE
+	FAT
+	CURRENT_VERSION
+	VERSION ${FRAMEWORK_VERSION}
+
+	SOURCES
+		src/ISBundleResourceProvider.m
+		src/ISCircle.m
+		src/ISContinuousRoundedRect.m
+		src/ISImageBag.m
+		src/ISIconFactory.m
+		src/ISTintEffect.m
+		src/ISAppNotificationBadgeRecipe.m
+		src/ISGenericDocumentIcon.m
+		src/ISHintedValue.m
+		src/ISDecoratedIcon.m
+		src/_IFColor.m
+		src/ISGenericRecipe.m
+		src/ISGraphicIconConfiguration.m
+		src/ISIconResourceLocator.m
+		src/ISResourceMetaData.m
+		src/ISMultipleFilesRecipe.m
+		src/ISVectorVariantResource.m
+		src/ISIcns.m
+		src/ISTagIcon.m
+		src/ISAssetCatalogResource.m
+		src/ISiOSMacAppRecipe.m
+		src/ISRecordResourceProvider.m
+		src/ISURLResourcePropertySpecification.m
+		src/ISIconTypeResourceLocator.m
+		src/ISGenericFolderIcon.m
+		src/ISBundleIcon.m
+		src/ISCompositorElement.m
+		src/ISDimmedDarkEffect.m
+		src/ISBundleIdentifierIcon.m
+		src/ISShapeCompositorResource.m
+		src/ISCurrentDeviceIcon.m
+		src/ISRuntimeCompositorResourceLayer.m
+		src/ISSymbolLayer.m
+		src/ISCompositVariantResourceLayer.m
+		src/ISHintedSize.m
+		src/ISImageStyleDescriptor.m
+		src/ISCompositorResourceAdapter.m
+		src/ISBlurEffect.m
+		src/ISDefaults.m
+		src/ISImageSpecification.m
+		src/ISiosDocumentRecipe.m
+		src/ISIconset.m
+		src/ISClippingRecipe.m
+		src/ISTemplateEffect.m
+		src/ISImageCache.m
+		src/ISOverlayEmbossRecipe.m
+		src/ISMessagesAppRecipe.m
+		src/ISGraphicSymbolResource.m
+		src/ISwatchOSAppRecipe.m
+		src/ISSymbol.m
+		src/ISLeadingStatusBadgeRecipe.m
+		src/ISIconManager.m
+		src/ISDimmedEffect.m
+		src/ISCustomIconManager.m
+		src/ISIconLayer.m
+		src/ISDeviceInfo.m
+		src/ISImageSetVariantResource.m
+		src/ISResourceFile.m
+		src/ISTextLayer.m
+		src/ISCustomRecipe.m
+		src/ISTransparentIcon.m
+		src/ISContentLayer.m
+		src/_ISCompositorElement.m
+		src/_ISImage.m
+		src/ISBorderEffect.m
+		src/ISmacosDocumentRecipe1016.m
+		src/ISEmbossedEffect.m
+		src/ISImageBagIcon.m
+		src/ISCenterBadgeRecipe.m
+		src/ISCompositor.m
+		src/ISGenerationResponse.m
+		src/ISResourceProvider.m
+		src/ISUnknownIcon.m
+		src/ISStoreIndex.m
+		src/ISIconSpecification.m
+		src/ISEmbossedSmartFolder.m
+		src/ISVolumeIcon.m
+		src/ISAliasIcon.m
+		src/ISIconDecoration.m
+		src/ISHintedRect.m
+		src/ISHintedFloat.m
+		src/ISPrefsCache.m
+		src/ISCustomIcon.m
+		src/ISIconDecorationResource.m
+		src/ISCenterEmbossRecipe.m
+		src/ISVariant.m
+		src/ISEmbossedFolder.m
+		src/ISIconCacheConfiguration.m
+		src/ISLayer.m
+		src/ISImageSetVariantResourceImage.m
+		src/ISStore.m
+		src/ISTrailingStatusBadgeRecipe.m
+		src/ISGenericApplicationIcon.m
+		src/ISDropShaddowEffect.m
+		src/ISSymbolIcon.m
+		src/ISStoreUnit.m
+		src/ISMutableStoreIndex.m
+		src/ISGraphicSymbolDescriptor.m
+		src/ISStoreMapTable.m
+		src/ISCompositorResourceProviderKey.m
+		src/ISTypeIcon.m
+		src/ISConcreteIcon.m
+		src/ISmacosDocumentRecipe.m
+		src/ISiosmacDocumentRecipe.m
+		src/ISSymbolImageDescriptor.m
+		src/ISImageDescriptor.m
+		src/ISIcnsIcon.m
+		src/ISIcon.m
+		src/ISIconCache.m
+		src/ISiOSAppRecipe.m
+		src/ISGenerationRequest.m
+		src/ISiOSAppClipRecipe.m
+		src/ISCompositVariantResource.m
+		src/ISBindableIcon.m
+		src/ISIconObserver.m
+		src/ISMutableIcns.m
+		src/ISOverlayEmbossedFolder.m
+		src/ISLegibilityEffect.m
+		src/NSArray+ISStackedCompositorResource.m
+		src/NSLocale+IconServicesAdditions.m
+		#src/LSClaimBindingConfiguration+IconServicesAdditions.m
+		src/NSDictionary+ISCompositorResourceProvider.m
+		src/NSError+Iconset.m
+		#src/UTTypeRecord+IconServicesAdditions.m
+		#src/IFImage+ISScalableCompositorResource.m
+		src/NSXPCInterface+ISIconCacheServiceProtocol.m
+		#src/LSExtensionPointRecord+IconServicesAdditions.m
+		#src/IFImageBag+ISScalableCompositorResource.m
+		src/NSURL+UTIAdditions.m
+		src/NSString+ISCompositorResource.m
+		#src/LSApplicationExtensionRecord+IconServicesAdditions.m
+		#src/IFSymbol+ISScalableCompositorResource.m
+		#src/LSRecord+IconServices.m
+		src/NSUUID+IconServices.m
+		src/CIContext+IconServicesAdditions.m
+		#src/LSBundleRecord+IconServicesAdditions.m
+		src/NSData+ISStoreIndex.m
+		src/CUICatalog+IconServicesAdditions.m
+		#src/LSClaimRecord+IconServicesAdditions.m
+		src/NSBundle+IconServicesAdditions.m
+		src/NSXPCConnection+ISStore.m
+		src/IconServices.m
+
+	DEPENDENCIES
+		system
+		objc
+		Foundation
+		QuartzCore
+		CoreUI
+		LaunchServices
+)
