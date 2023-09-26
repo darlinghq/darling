@@ -64,8 +64,9 @@ void setupSocket(void)
 {
 	struct sockaddr_un addr = {
 		.sun_family = AF_UNIX,
-		.sun_path = SHELLSPAWN_SOCKPATH
 	};
+
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s.%d", SHELLSPAWN_SOCKPATH, getuid());
 
 	g_serverSocket = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (g_serverSocket == -1)
@@ -75,7 +76,7 @@ void setupSocket(void)
 	}
 
 	fcntl(g_serverSocket, F_SETFD, FD_CLOEXEC);
-	unlink(SHELLSPAWN_SOCKPATH);
+	unlink(addr.sun_path);
 
 	if (bind(g_serverSocket, (struct sockaddr*) &addr, sizeof(addr)) == -1)
 	{

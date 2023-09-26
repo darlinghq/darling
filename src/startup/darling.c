@@ -37,6 +37,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <pty.h>
 #include <pwd.h>
 #include "../shellspawn/shellspawn.h"
+#include "../shellspawn/shellsession.h"
 #include "darling.h"
 #include "darling-config.h"
 
@@ -169,7 +170,7 @@ int main(int argc, char ** argv)
 	{
 		char socketPath[4096];
 		
-		snprintf(socketPath, sizeof(socketPath), "%s"  SHELLSPAWN_SOCKPATH, prefix);
+		snprintf(socketPath, sizeof(socketPath), "%s" SHELLSESSION_SOCKPATH, prefix);
 		
 		unlink(socketPath);
 		
@@ -545,20 +546,20 @@ static size_t escapeQuotes(char *dest, const char *src)
 	return len;
 }
 
-int connectToShellspawn(void)
+int connectToShellsession(void)
 {
 	struct sockaddr_un addr;
 	int sockfd;
 
-	// Connect to the shellspawn daemon in the container
+	// Connect to the shellsession daemon in the container
 	addr.sun_family = AF_UNIX;
 #if USE_LINUX_4_11_HACK
 	addr.sun_path[0] = '\0';
 	
 	strcpy(addr.sun_path, prefix);
-	strcat(addr.sun_path, SHELLSPAWN_SOCKPATH);
+	strcat(addr.sun_path, SHELLSESSION_SOCKPATH);
 #else
-	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s"  SHELLSPAWN_SOCKPATH, prefix);
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s" SHELLSESSION_SOCKPATH, prefix);
 #endif
 
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -575,6 +576,66 @@ int connectToShellspawn(void)
 	}
 
 	return sockfd;
+}
+
+static int startShellspawnSession(int sockfd)
+{
+	shellsession_cmd_t cmd;
+
+	cmd.uid = g_originalGid;
+	cmd.gid = g_originalGid;
+
+	if (write(sockfd, &cmd, sizeof(cmd)) != sizeof(cmd))
+	{
+		fprintf(stderr, "Error sending command to shellsession: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	char dummy = '\0';
+	char cmsgbuf[CMSG_SPACE(sizeof(int))];
+	struct msghdr msg;
+	struct iovec iov;
+	struct cmsghdr *cmptr;
+	int sessionFD;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_control = cmsgbuf;
+	msg.msg_controllen = sizeof(cmsgbuf);
+
+	iov.iov_base = &dummy;
+	iov.iov_len = sizeof(dummy);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	if (recvmsg(sockfd, &msg, 0) != sizeof(dummy))
+	{
+		fprintf(stderr, "Error receiving reply from shellsession: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	cmptr = CMSG_FIRSTHDR(&msg);
+
+	if (cmptr == NULL || cmptr->cmsg_level != SOL_SOCKET || cmptr->cmsg_type != SCM_RIGHTS)
+	{
+		fprintf(stderr, "Invalid reply from shellsession: no attached FD\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (cmptr->cmsg_len != CMSG_LEN(sizeof(int)))
+	{
+		fprintf(stderr, "Invalid reply from shellsession: invalid CMSG length %lu (expected %lu)\n", cmptr->cmsg_len, sizeof(int));
+		exit(EXIT_FAILURE);
+	}
+
+	memcpy(&sessionFD, CMSG_DATA(cmptr), sizeof(int));
+
+	if (sessionFD < 0)
+	{
+		fprintf(stderr, "Invalid reply from shellsession: invalid FD %d\n", sessionFD);
+		exit(EXIT_FAILURE);
+	}
+
+	return sessionFD;
 }
 
 void setupShellspawnEnv(int sockfd)
@@ -702,7 +763,8 @@ void spawnShell(const char** argv)
 	else
 		buffer = NULL;
 
-	sockfd = connectToShellspawn();
+	sockfd = connectToShellsession();
+	sockfd = startShellspawnSession(sockfd);
 
 	setupShellspawnEnv(sockfd);
 
@@ -726,7 +788,9 @@ void spawnBinary(const char* binary, const char** argv)
 	int fds[3], master;
 	int sockfd;
 
-	sockfd = connectToShellspawn();
+	sockfd = connectToShellsession();
+	sockfd = startShellspawnSession(sockfd);
+
 	setupShellspawnEnv(sockfd);
 
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETEXEC, binary);
