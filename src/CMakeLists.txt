@@ -277,6 +277,7 @@ if (COMPONENT_cli)
 	add_subdirectory(external/lzfse)
 	add_subdirectory(clt)
 	add_subdirectory(diskutil)
+	add_subdirectory(ditto)
 
 	# these aren't used by anything we build (they're just included because they're also present in macOS)
 	# TODO: maybe we should introduce another component (e.g. `lib_stock`) for libraries we don't need but are expected in a stock macOS installation.

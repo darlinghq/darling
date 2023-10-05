@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+#
+# FIXME: implement an actual version of ditto
+#
+# This is just a stub that works well enough for xcodebuild.
+#
+
+if [ "$#" -lt 3 ]; then
+	>&2 cat <<- 'EOF'
+		ditto command stub
+
+		Only supports "ditto -rsrc <source> <dest>"
+	EOF
+	exit 1
+fi
+
+if [ "$1" != "--rsrc" ] && [ "$1" != "-rsrc" ]; then
+	>&2 echo "Bad argument #1; expected -rsrc or --rsrc"
+	exit 1
+fi
+
+cp -a "$2" "$3"
