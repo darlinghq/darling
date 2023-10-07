@@ -18,6 +18,7 @@
 */
 
 #import <ImageKit/IKImageBrowserView.h>
+#import <Foundation/NSRaise.h>
 
 @implementation IKImageBrowserView
 
@@ -29,6 +30,22 @@
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    NSUnimplementedMethod();
+    return self;
+}
+
+- (void)setDelegate:(id)delegate
+{
+    NSUnimplementedMethod();
+}
+
+- (void)setDraggingDestinationDelegate:(id)draggingDestinationDelegate
+{
+    NSUnimplementedMethod();
 }
 
 @end

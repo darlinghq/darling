@@ -186,4 +186,5 @@ add_framework(PDFKit
         system
         objc
         Foundation
+        AppKit
 )

@@ -18,6 +18,8 @@
 */
 
 #import <PDFKit/PDFThumbnailView.h>
+#import <Foundation/NSRaise.h>
+#import <AppKit/NSColor.h>
 
 @implementation PDFThumbnailView
 
@@ -29,6 +31,11 @@
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+- (void)setBackgroundColor:(NSColor *)color
+{
+    NSUnimplementedMethod();
 }
 
 @end

@@ -18,6 +18,7 @@
 */
 
 #import <PDFKit/PDFView.h>
+#import <Foundation/NSRaise.h>
 
 @implementation PDFView
 
@@ -29,6 +30,12 @@
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    NSUnimplementedMethod();
+    return self;
 }
 
 @end
