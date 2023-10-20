@@ -8,7 +8,7 @@ set_source_files_properties(${CMAKE_BINARY_DIR}/src/external/darlingserver/src/r
 	GENERATED TRUE
 )
 
-add_library(mldr_dserver_rpc ${CMAKE_BINARY_DIR}/src/external/darlingserver/src/rpc.c)
+add_library(mldr_dserver_rpc STATIC ${CMAKE_BINARY_DIR}/src/external/darlingserver/src/rpc.c)
 
 add_dependencies(mldr_dserver_rpc generate_dserver_rpc_wrappers)
 
@@ -36,7 +36,7 @@ configure_file(darling.conf.in darling.conf @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/darling.conf" DESTINATION lib/binfmt.d)
 
 if (BUILD_TARGET_32BIT)
-	add_library(mldr32_dserver_rpc ${CMAKE_BINARY_DIR}/src/external/darlingserver/src/rpc.c)
+	add_library(mldr32_dserver_rpc STATIC ${CMAKE_BINARY_DIR}/src/external/darlingserver/src/rpc.c)
 	add_dependencies(mldr32_dserver_rpc generate_dserver_rpc_wrappers)
 	target_compile_options(mldr32_dserver_rpc PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/resources/dserver-rpc-defs.h)
 	target_compile_options(mldr32_dserver_rpc PRIVATE -m32)
