@@ -25,7 +25,7 @@ URL:            https://www.darlinghq.org/
 # Source0:        https://github.com/darlinghq/darling/archive/%%{version}/%%{name}-%%{version}.tar.gz
 Source0:        %{name}.tar.gz
 
-BuildRequires:  cmake clang bison flex python2 glibc-devel(x86-64) glibc-devel(x86-32)
+BuildRequires:  cmake clang bison flex glibc-devel(x86-64) glibc-devel(x86-32)
 BuildRequires:  fuse-devel systemd-devel
 BuildRequires:  cairo-devel freetype-devel(x86-64) fontconfig-devel(x86-64)
 BuildRequires:  freetype-devel(x86-32) fontconfig-devel(x86-32) make
@@ -308,6 +308,7 @@ export DESTDIR=tmp/cli-devenv
 - Use appropriate RPM macros
 - Make regular copy instead of hard links to avoid filesystem issues
 - Use standard POSIX shell and utilities instead of Bash
+- Remove Python 2 build dependency
 
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Update to latest version and Fedora 37

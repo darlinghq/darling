@@ -11,7 +11,11 @@ RUN dnf install -y rpm-build dnf-utils rpmdevtools git; \
 COPY SPECS/darling.spec /darling.spec
 
 # Bootstrap
-RUN yum-builddep -y /darling.spec; \
+RUN . /etc/os-release; \
+    if [ "${VERSION_ID}" -le 38 ]; then \
+      dnf install python2; \
+    fi; \
+    yum-builddep -y /darling.spec; \
     dnf clean all
 
 RUN rm /darling.spec
