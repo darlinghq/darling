@@ -1,8 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 set -euxv
 
-CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)"
+CWD="$(cd -- "$(dirname -- "$(command -v -- "${0}")")"; pwd -P)"
+mkdir "${CWD}/SOURCES"
 if [ -e "${CWD}/SOURCES/darling.tar.gz" ]; then
   rm "${CWD}/SOURCES/darling.tar.gz"
 fi

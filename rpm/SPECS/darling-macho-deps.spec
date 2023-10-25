@@ -4,7 +4,6 @@
 %if "%{commit_date}" == ""
 	%define commit_date 0
 %endif
-%global _buildshell /bin/bash
 
 Name:           darling-macho-deps
 Version:        0.1.%{commit_date}
@@ -17,8 +16,6 @@ URL:            https://www.darlinghq.org/
 # Use this line for Source0 if there are ever official versions.
 # Source0:        https://github.com/darlinghq/darling/archive/%%{version}/%%{name}-%%{version}.tar.gz
 Source0:        %{name}.tar.gz
-
-BuildRequires:  bash
 
 %description
 An RPM dependency generator for Mach-O files, used by Darling to generate ELF dependencies for the library it builds
