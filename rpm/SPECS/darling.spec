@@ -273,7 +273,7 @@ pushd build
 		%{__rm} -rf tmp/${PACKAGE_SUFFIXES[index]}
 		DESTDIR=tmp/${PACKAGE_SUFFIXES[index]} %{__cmake} -DCOMPONENT=${DARLING_COMPONENTS[index]} -P cmake_install.cmake
 		find tmp/${PACKAGE_SUFFIXES[index]} \( ! -type d -o -type d -empty \) -printf '"/%%P"\n' > files.${PACKAGE_SUFFIXES[index]}.txt
-		%{__cp} -rla tmp/${PACKAGE_SUFFIXES[index]}/. %{?buildroot}/
+		%{__cp} -PRp tmp/${PACKAGE_SUFFIXES[index]}/. %{?buildroot}/
 	done
 
 	# pack up a "source" (actually binary) tarball for `darling-cli-devenv`
@@ -317,6 +317,7 @@ popd
 - Honor tar compression according to file extension
 - Move license file to the core package
 - Use appropriate RPM macros
+- Make regular copy instead of hard links to avoid filesystem issues
 
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Update to latest version and Fedora 37

@@ -42,7 +42,7 @@ true
 %{__mkdir_p} "%{dirname:%{buildroot}}"
 %endif
 
-%{__cp} -rla . %{?buildroot}/
+%{__cp} -PRp . %{?buildroot}/
 
 %files
 %{_libexecdir}/darling
@@ -51,6 +51,7 @@ true
 * Wed Oct 25 2023 Benjamin Gaillard <git@benjamin.gaillard.name> - 0.1.20231025-1
 - Use default build root
 - Use appropriate RPM macros
+- Make regular copy instead of hard links to avoid filesystem issues
 
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Initial version working for Fedora 37
