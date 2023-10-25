@@ -17,8 +17,7 @@ else
   tar --transform "s|^\.|darling-macho-deps|S" -caf $HOME/rpmbuild/SOURCES/darling-macho-deps.tar.gz -C /src/tools/rpm .
 fi
 
-if (cd /src && git describe --tags HEAD); then
-  DARLING_COMMIT_DATE="$(cd /src; git describe --tags HEAD)"
+if DARLING_COMMIT_DATE="$(git -C /src log -1 --pretty=format:%cs HEAD)"; then
   export DARLING_COMMIT_DATE="${DARLING_COMMIT_DATE//-/}"
 else
   # default to the current date
