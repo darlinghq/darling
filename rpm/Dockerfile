@@ -36,6 +36,6 @@ RUN . /etc/os-release; \
 
 RUN rm /darling.spec
 
-RUN mkdir -p /root/rpmbuild/SOURCES
+VOLUME /src /root/rpmbuild
 
 CMD /src/rpm/build.sh
