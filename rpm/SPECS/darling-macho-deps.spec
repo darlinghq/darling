@@ -30,10 +30,14 @@ An RPM dependency generator for Mach-O files, used by Darling to generate ELF de
 true
 
 %install
-[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
+%if "%{?buildroot}" != "" && "%{?buildroot}" != "/"
+%{__rm} -Rf "%{buildroot}"
+%{__mkdir_p} "%{dirname:%{buildroot}}"
+%endif
+
 %{__mkdir_p} %{?buildroot}/usr/lib/rpm/fileattrs
-cp darling.attr %{?buildroot}/usr/lib/rpm/fileattrs/
-cp darling-deps.req %{?buildroot}/usr/lib/rpm/
+%{__cp} -p darling.attr %{?buildroot}/usr/lib/rpm/fileattrs/
+%{__cp} -p darling-deps.req %{?buildroot}/usr/lib/rpm/
 
 %files
 /usr/lib/rpm/fileattrs/darling.attr
@@ -42,6 +46,7 @@ cp darling-deps.req %{?buildroot}/usr/lib/rpm/
 %changelog
 * Wed Oct 25 2023 Benjamin Gaillard <git@benjamin.gaillard.name> - 0.1.20231025-1
 - Use default build root
+- Use appropriate RPM macros
 
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Initial version working for Fedora 37

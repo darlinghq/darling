@@ -222,7 +222,10 @@ pushd build
 popd
 
 %install
-[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
+%if "%{?buildroot}" != "" && "%{?buildroot}" != "/"
+%{__rm} -Rf "%{buildroot}"
+%{__mkdir_p} "%{dirname:%{buildroot}}"
+%endif
 DARLING_COMPONENTS=(
 	core
 	system
@@ -267,17 +270,17 @@ PACKAGE_SUFFIXES=(
 )
 pushd build
 	for index in {0..18}; do
-		rm -rf tmp/${PACKAGE_SUFFIXES[index]}
+		%{__rm} -rf tmp/${PACKAGE_SUFFIXES[index]}
 		DESTDIR=tmp/${PACKAGE_SUFFIXES[index]} %{__cmake} -DCOMPONENT=${DARLING_COMPONENTS[index]} -P cmake_install.cmake
 		find tmp/${PACKAGE_SUFFIXES[index]} \( ! -type d -o -type d -empty \) -printf '"/%%P"\n' > files.${PACKAGE_SUFFIXES[index]}.txt
-		cp -rla tmp/${PACKAGE_SUFFIXES[index]}/. %{?buildroot}/
+		%{__cp} -rla tmp/${PACKAGE_SUFFIXES[index]}/. %{?buildroot}/
 	done
 
 	# pack up a "source" (actually binary) tarball for `darling-cli-devenv`
 	# NOTE: this is probably not the best approach. fix this if something better comes up.
-	rm -rf tmp/cli-devenv
+	%{__rm} -rf tmp/cli-devenv
 	DESTDIR=tmp/cli-devenv %{__cmake} -DCOMPONENT=cli_dev -P cmake_install.cmake
-	rm -f %{_sourcedir}/darling-cli-devenv.tar.gz
+	%{__rm} -f %{_sourcedir}/darling-cli-devenv.tar.gz
 	tar --transform "s|^\.|darling-cli-devenv|S" -caf %{_sourcedir}/darling-cli-devenv.tar.gz -C tmp/cli-devenv .
 popd
 
@@ -313,6 +316,7 @@ popd
 - Use default build root
 - Honor tar compression according to file extension
 - Move license file to the core package
+- Use appropriate RPM macros
 
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Update to latest version and Fedora 37

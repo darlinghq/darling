@@ -37,8 +37,12 @@ A Darling environment for CLI-only programs for building and developing using th
 true
 
 %install
-[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
-cp -rla . %{?buildroot}/
+%if "%{?buildroot}" != "" && "%{?buildroot}" != "/"
+%{__rm} -Rf "%{buildroot}"
+%{__mkdir_p} "%{dirname:%{buildroot}}"
+%endif
+
+%{__cp} -rla . %{?buildroot}/
 
 %files
 %{_libexecdir}/darling
@@ -46,6 +50,7 @@ cp -rla . %{?buildroot}/
 %changelog
 * Wed Oct 25 2023 Benjamin Gaillard <git@benjamin.gaillard.name> - 0.1.20231025-1
 - Use default build root
+- Use appropriate RPM macros
 
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Initial version working for Fedora 37
