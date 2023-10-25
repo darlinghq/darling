@@ -282,11 +282,13 @@ pushd build
 popd
 
 %files
-%doc LICENSE
 
 %files extra
 
 %files core -f build/files.core.txt
+%attr(-, root, root)
+%license LICENSE
+
 %files system -f build/files.system.txt
 %files cli -f build/files.cli.txt
 %files ffi -f build/files.ffi.txt
@@ -310,6 +312,7 @@ popd
 * Wed Oct 25 2023 Benjamin Gaillard <git@benjamin.gaillard.name> - 0.1.20231025-1
 - Use default build root
 - Honor tar compression according to file extension
+- Move license file to the core package
 
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Update to latest version and Fedora 37
