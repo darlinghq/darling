@@ -25,7 +25,6 @@ URL:            https://www.darlinghq.org/
 # Use this line for Source0 if there are ever official versions.
 # Source0:        https://github.com/darlinghq/darling/archive/%%{version}/%%{name}-%%{version}.tar.gz
 Source0:        %{name}.tar.gz
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  cmake clang bison flex python2 glibc-devel(x86-64) glibc-devel(x86-32)
 BuildRequires:  fuse-devel systemd-devel
@@ -308,6 +307,9 @@ popd
 %files gui-stubs -f build/files.gui-stubs.txt
 
 %changelog
+* Wed Oct 25 2023 Benjamin Gaillard <git@benjamin.gaillard.name> - 0.1.20231025-1
+- Use default build root
+
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Update to latest version and Fedora 37
 - Split package into multiple packages (one for each component of Darling)

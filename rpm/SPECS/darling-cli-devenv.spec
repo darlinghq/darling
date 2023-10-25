@@ -21,7 +21,6 @@ URL:            https://www.darlinghq.org/
 # Use this line for Source0 if there are ever official versions.
 # Source0:        https://github.com/darlinghq/darling/archive/%%{version}/%%{name}-%%{version}.tar.gz
 Source0:        %{name}.tar.gz
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  bash
 
@@ -45,6 +44,9 @@ cp -rla . %{?buildroot}/
 %{_libexecdir}/darling
 
 %changelog
+* Wed Oct 25 2023 Benjamin Gaillard <git@benjamin.gaillard.name> - 0.1.20231025-1
+- Use default build root
+
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Initial version working for Fedora 37
 - Split package off from `darling` package
