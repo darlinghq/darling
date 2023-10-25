@@ -278,7 +278,7 @@ pushd build
 	rm -rf tmp/cli-devenv
 	DESTDIR=tmp/cli-devenv %{__cmake} -DCOMPONENT=cli_dev -P cmake_install.cmake
 	rm -f %{_sourcedir}/darling-cli-devenv.tar.gz
-	tar --transform "s|^\./|darling-cli-devenv/|" -cf %{_sourcedir}/darling-cli-devenv.tar.gz -C tmp/cli-devenv .
+	tar --transform "s|^\.|darling-cli-devenv|S" -caf %{_sourcedir}/darling-cli-devenv.tar.gz -C tmp/cli-devenv .
 popd
 
 %files
@@ -309,6 +309,7 @@ popd
 %changelog
 * Wed Oct 25 2023 Benjamin Gaillard <git@benjamin.gaillard.name> - 0.1.20231025-1
 - Use default build root
+- Honor tar compression according to file extension
 
 * Tue May 02 2023 Ariel Abreu <facekapow@outlook.com> - 0.1.20230502-1
 - Update to latest version and Fedora 37

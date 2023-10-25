@@ -8,13 +8,13 @@ if [ -e "/src/rpm/SOURCES/darling.tar.gz" ]; then
   ln -sf /src/rpm/SOURCES/darling.tar.gz $HOME/rpmbuild/SOURCES/
 else
   # Preparing tarball
-  tar --transform "s|^\./|./darling/|" -cf $HOME/rpmbuild/SOURCES/darling.tar.gz -C /src --exclude=.git --exclude SOURCES --exclude SRPMS --exclude RPMS --exclude BUILD .
+  tar --transform "s|^\.|darling|S" -caf $HOME/rpmbuild/SOURCES/darling.tar.gz -C /src --exclude=.git --exclude SOURCES --exclude SRPMS --exclude RPMS --exclude BUILD .
 fi
 
 if [ -e "/src/rpm/SOURCES/darling-macho-deps.tar.gz" ]; then
   ln -sf /src/rpm/SOURCES/darling-macho-deps.tar.gz $HOME/rpmbuild/SOURCES/
 else
-  tar --transform "s|^\./|darling-macho-deps/|" -cf $HOME/rpmbuild/SOURCES/darling-macho-deps.tar.gz -C /src/tools/rpm .
+  tar --transform "s|^\.|darling-macho-deps|S" -caf $HOME/rpmbuild/SOURCES/darling-macho-deps.tar.gz -C /src/tools/rpm .
 fi
 
 if (cd /src && git describe --tags HEAD); then
