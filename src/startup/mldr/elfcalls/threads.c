@@ -77,6 +77,10 @@ static void* darling_thread_entry(void* p);
 
 #define DEFAULT_DTHREAD_GUARD_SIZE 0x1000
 
+static inline void *align_16(uintptr_t ptr) {
+	return (void *) ((uintptr_t) ptr & ~(uintptr_t) 15);
+}
+
 static dthread_t dthread_structure_init(dthread_t dthread, size_t guard_size, void* stack_addr, size_t stack_size, void* base_addr, size_t total_size) {
 	// the pthread signature is the address of the pthread XORed with the "pointer munge" token passed in by the kernel
 	// since the LKM doesn't pass in a token, it's always zero, so the signature is equal to just the address
@@ -250,46 +254,72 @@ static void* darling_thread_entry(void* p)
 		return NULL;
 	}
 
+	void *stack_ptr = align_16(args.stack_addr);
+
+	// No additional function calls should occur beyond this point. Otherwise, we will risk our
+	// registers being call-clobbered. I recommend reading the following doc for more details:
+	// https://gcc.gnu.org/onlinedocs/gcc/Local-Register-Variables.html
+#if __x86_64__
+	register void*     arg1 asm("rdi") = args.pth;
+	register int       arg2 asm("esi") = args.port;
+	register uintptr_t arg3 asm("rdx") = args.real_entry_point;
+	register uintptr_t arg4 asm("rcx") = args.arg1;
+	register uintptr_t arg5 asm("r8")  = args.arg2;
+	register uintptr_t arg6 asm("r9")  = args.arg3;
+#elif __i386__
+	uintptr_t arg3 = args.real_entry_point;
+#endif
+
+	if (arg3 == 0) {
+		arg3 = (long) args.stack_bottom;
+	}
+
 #ifdef __x86_64__
-	__asm__ __volatile__ (
-	"movq %1, %%rdi\n"
-	"movq 80(%0), %%rsp\n"
-	"movq 40(%0), %%rsi\n"
-	"movq 8(%0), %%rdx\n"
-	"testq %%rdx, %%rdx\n"
-	"jnz 1f\n"
-	"movq 72(%0), %%rdx\n" // wqthread hack: if 3rd arg is null, we pass the stack bottom
-	"1:\n"
-	"movq 16(%0), %%rcx\n"
-	"movq 24(%0), %%r8\n"
-	"movq 32(%0), %%r9\n"
-	"movq %%rdi, 56(%0)\n"
-	"movq (%0), %%rax\n"
-	"andq $-0x10, %%rsp\n"
-	"pushq $0\n"
-	"pushq $0\n"
-	"jmpq *%%rax\n"
-	:: "a" (&args), "di" (args.pth));
+	asm volatile(
+		// Zero out the frame base register.
+		"xorq %%rbp, %%rbp\n"
+		// Switch to the new stack.
+		"movq %[stack_ptr], %%rsp\n"
+		// Push a fake return address.
+		"pushq $0\n"
+		// Jump to the entry point.
+		"jmp *%[entry_point]" ::
+		
+		// Function arguments
+		"r"(arg1),"r"(arg2),"r"(arg3),"r"(arg4),"r"(arg5),"r"(arg6),
+		
+		[entry_point] "r"(args.entry_point),
+		[stack_ptr] "r"(stack_ptr)
+	);
 #elif defined(__i386__) // args in eax, ebx, ecx, edx, edi, esi
 	__asm__ __volatile__ (
-	"movl (%0), %%eax\n"
-	"movl 40(%0), %%esp\n"
-	"pushl %%eax\n" // address to be jumped to
-	"movl %1, 28(%0)\n"
-	"movl %1, %%eax\n" // 1st arg
-	"movl 20(%0), %%ebx\n" // 2nd arg
-	"movl 8(%0), %%edx\n" // 4th arg
-	"movl 12(%0), %%edi\n" // 5th arg
-	"movl 16(%0), %%esi\n" // 6th arg
-	"movl 4(%0), %%ecx\n" // 3rd arg
-	"testl %%ecx, %%ecx\n" // FIXME: clobbered ecx!
-	"jnz 1f\n"
-	"movl 36(%0), %%ecx\n" // if the 3rd argument is null, pass the stack bottom
-	"1:\n"
-	"ret\n" // Jump to the address pushed at the beginning
-	:: "c" (&args), "d" (args.pth));
+		// Zero out the frame base register.
+		"xorl %%ebp, %%ebp\n"
+		// Switch to the new stack.
+		"movl %[stack_ptr], %%esp\n"
+		// Make sure stack is 16 aligned (before we push the fake return address)
+		"sub $8, %%esp\n"
+		// Unlike x86_64, all function arguments must be stored in the stack
+		"pushl   16(%[args])\n"		// 6th argument | args.arg3
+		"pushl   12(%[args])\n"		// 5th argument | args.arg2
+		"pushl   8(%[args])\n"		// 4th argument | args.arg1
+		"pushl   %[arg3]\n"			// 3rd argument | args3
+		"pushl   20(%[args])\n"		// 2nd argument | args.port
+		"pushl   28(%[args])\n"		// 1st argument | args.pth
+		// Push a fake return address.
+		"pushl $0\n"
+		// Jump to the entry point.
+		"jmp *%[entry_point]" ::
+		
+		// Function arguments to push to the stack.
+		[args] "r"(&args), [arg3]"r"(arg3),
+
+		[entry_point] "r"(args.entry_point),
+		[stack_ptr] "r"(stack_ptr)
+	);
 #else
-#error Not implemented
+	#error Not implemented
+	// args.entry_point(args.pth, args.port, args.real_entry_point, args.arg1, args.arg2, args.arg3);
 #endif
 	__builtin_unreachable();
 }
