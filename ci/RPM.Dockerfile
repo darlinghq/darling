@@ -1,7 +1,8 @@
 # this Dockerfile must be built using the following command:
 #     docker build -f ../ci/RPM.Dockerfile .
 # this command must be run while in the `rpm` directory in the root of the repo.
-FROM fedora:37
+ARG BASE_IMAGE=fedora:37
+FROM $BASE_IMAGE
 LABEL name=darling-build-image-fedora version=0.1.0
 ARG CI_UID=1111
 ARG CI_GID=1111

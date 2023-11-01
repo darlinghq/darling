@@ -32,7 +32,7 @@ BuildRequires:  fuse-devel systemd-devel
 BuildRequires:  cairo-devel freetype-devel(x86-64) fontconfig-devel(x86-64)
 BuildRequires:  freetype-devel(x86-32) fontconfig-devel(x86-32) make
 BuildRequires:  libjpeg-turbo-devel(x86-64) libtiff-devel(x86-64)
-BuildRequires:  libjpeg-turbo-devel(x86-32) libtiff-devel(x86-32)
+BuildRequires:  libjpeg-turbo-devel(x86-32)
 BuildRequires:  libglvnd-devel mesa-libGL-devel mesa-libEGL-devel
 BuildRequires:  libxml2-devel elfutils-libelf-devel
 BuildRequires:  libbsd-devel
