@@ -59,7 +59,7 @@ struct hook {
 	uint8_t call[2];
 } __attribute__((packed));
 #else
-#error "Missing hook struct for arch"
+#error "Hook struct is not defined for architecture"
 #endif
 
 // Defined in libsystem_kernel
@@ -189,7 +189,7 @@ static void setup_hook(struct hook* hook, void* fnptr, bool jump)
 	hook->call[0] = 0xff;
 	hook->call[1] = jump ? 0xe1 : 0xd1;
 #else
-#error "Missing hook implementation for arch
+#error "Missing Hook Assembly For Architecture"
 #endif
 }
 
