@@ -58,6 +58,11 @@ struct hook {
 	uint32_t addr;
 	uint8_t call[2];
 } __attribute__((packed));
+#elif defined(__arm64__)
+struct hook {
+	uint32_t movk[4];
+	uint32_t blr;
+} __attribute__((packed));
 #else
 #error "Hook struct is not defined for architecture"
 #endif
@@ -188,6 +193,29 @@ static void setup_hook(struct hook* hook, void* fnptr, bool jump)
 	hook->addr = (uintptr_t)fnptr;
 	hook->call[0] = 0xff;
 	hook->call[1] = jump ? 0xe1 : 0xd1;
+#elif defined(__arm64__)
+    #define movk(reg,imm,lsl) \
+        (uint32_t)(0b111100101 << 23 | (0xF & lsl) << 21 | (0xFFFF & (uintptr_t)imm) << 5 | 0x1F & reg)
+    #define blr(reg) \
+        (uint32_t)(0b1101011000111111000000 << 10 | (0x1F & reg) << 5)
+
+	#define lsl_0  0
+    #define lsl_16 1
+    #define lsl_32 2
+    #define lsl_48 3
+
+	hook->movk[0] = movk(9, (uintptr_t)fnptr      , lsl_0 );
+	hook->movk[1] = movk(9, (uintptr_t)fnptr >> 16, lsl_16);
+	hook->movk[2] = movk(9, (uintptr_t)fnptr >> 32, lsl_32);
+	hook->movk[3] = movk(9, (uintptr_t)fnptr >> 48, lsl_48);
+	hook->blk = blr(9);
+	
+	#undef movk
+	#undef blr
+	#undef lsl_0
+	#undef lsl_16
+	#undef lsl_32
+	#undef lsl_48
 #else
 #error "Missing Hook Assembly For Architecture"
 #endif
