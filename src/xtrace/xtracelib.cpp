@@ -27,6 +27,25 @@ static void xtrace_thread_exit_hook(void);
 static void xtrace_execve_inject_hook(const char*** envp_ptr);
 static void xtrace_postfork_child_hook(void);
 
+/*
+ * In order to trace an XNU syscalls, we need to reserve enough space
+ * in our Darling syscall implmentations for xtrace to overwrite.
+ *
+ * For example:
+ * ```
+ * Lentry_hook:
+ * 	.space 13, 0x90
+ * 
+ * // --- Additional ASM Code ---
+ * 
+ * Lexit_hook:
+ * 	.space 13, 0x90
+ * ```
+ * 
+ * If xtrace isn't used, the default behavior is to have the reserve space
+ * execute a NOP (no operaton) instruction.
+ */
+
 #ifdef __x86_64__
 struct hook {
 	uint8_t movabs[2];
