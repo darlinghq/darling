@@ -6448,7 +6448,7 @@ job_setup_exception_port(job_t j, task_t target_task)
 	f = PPC_THREAD_STATE64;
 #elif defined(__i386__) || defined(__x86_64__)
 	f = x86_THREAD_STATE;
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__arm64__)
 	f = ARM_THREAD_STATE;
 #else
 #error "unknown architecture"
