@@ -15,11 +15,7 @@
 
 #include <linux/time_types.h>
 
-#if __x86_64__
 #include <coredump/x86_64.h>
-#else
-#error Not implemented
-#endif
 
 #include <darling-config.h>
 
@@ -238,6 +234,10 @@ static const union nt_file_entry* nt_file_get_entry(const struct coredump_params
 	return (const union nt_file_entry*)((const char*)header + nt_file_header_size(cprm) + (nt_file_entry_size(cprm) * index));
 };
 
+static uint16_t get_elf_machine_type(const struct coredump_params* cprm) {
+	return cprm->universal_header->e_machine;
+}
+
 // first tries to open the file directly, then tries to open the file in the lower layer of the overlay
 // (because if we're outside the container, the overlay won't be mounted, but the core dump paths would refer to it)
 static int open_file(struct coredump_params* cprm, const char* filename, size_t filename_length) {
@@ -342,7 +342,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	switch (cprm.universal_header->e_machine) {
+	switch (get_elf_machine_type(&cprm)) {
 		case EM_X86_64:
 		case EM_386:
 			cprm.input_header = cprm.input_corefile_mapping;
@@ -681,7 +681,7 @@ struct thread_flavor
 };
 
 static
-void fill_thread_state32(x86_thread_state32_t* state, const struct thread_info* info)
+void fill_x86_thread_state32(x86_thread_state32_t* state, const struct thread_info* info)
 {
 	state->eax    = info->prstatus->elf32.general_registers.i386.eax;
 	state->ebx    = info->prstatus->elf32.general_registers.i386.ebx;
@@ -702,14 +702,14 @@ void fill_thread_state32(x86_thread_state32_t* state, const struct thread_info* 
 }
 
 static
-void fill_float_state32(x86_float_state32_t* state, const struct thread_info* info)
+void fill_x86_float_state32(x86_float_state32_t* state, const struct thread_info* info)
 {
 	// TODO
 	memset(state, 0, sizeof(*state));
 }
 
 static
-void fill_thread_state64(x86_thread_state64_t* state, const struct thread_info* info)
+void fill_x86_thread_state64(x86_thread_state64_t* state, const struct thread_info* info)
 {
 	state->rax    = info->prstatus->elf64.general_registers.x86_64.ax;
 	state->rbx    = info->prstatus->elf64.general_registers.x86_64.bx;
@@ -735,7 +735,7 @@ void fill_thread_state64(x86_thread_state64_t* state, const struct thread_info* 
 }
 
 static
-void fill_float_state64(x86_float_state64_t* state, const struct thread_info* info)
+void fill_x86_float_state64(x86_float_state64_t* state, const struct thread_info* info)
 {
 	// TODO
 	memset(state, 0, sizeof(*state));
@@ -744,6 +744,8 @@ void fill_float_state64(x86_float_state64_t* state, const struct thread_info* in
 static
 bool macho_dump_headers32(struct coredump_params* cprm)
 {
+	uint16_t machine_type = get_elf_machine_type(cprm);
+
 	// Count memory segments and threads
 	unsigned int segs = cprm->vm_area_count;
 	unsigned int threads = cprm->thread_info_count;
@@ -760,16 +762,25 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 	}
 
 	mh.magic = MH_MAGIC;
-#ifdef __x86_64__
-	mh.cputype = CPU_TYPE_X86;
-	mh.cpusubtype = CPU_SUBTYPE_X86_ALL;
-#else
-#warning Missing code for this arch
-#endif
 	mh.filetype = MH_CORE;
 	mh.ncmds = segs + threads;
 
-	const int statesize = sizeof(x86_thread_state32_t) + (DUMP_FLOAT_STATE ? sizeof(x86_float_state32_t) : 0) + sizeof(struct thread_flavor) * (DUMP_FLOAT_STATE ? 2 : 1);
+	int statesize;
+	switch (machine_type)
+	{		
+	case EM_386:
+		mh.cputype = CPU_TYPE_X86;
+		mh.cpusubtype = CPU_SUBTYPE_X86_ALL;
+
+		statesize = sizeof(struct thread_flavor) + sizeof(x86_thread_state32_t);
+		statesize += (DUMP_FLOAT_STATE ? sizeof(struct thread_flavor) + sizeof(x86_float_state32_t) : 0);
+		break;
+
+	default:
+		// Missing code for this arch
+		abort();
+	}
+
 	mh.sizeofcmds = segs * sizeof(struct segment_command) + threads * (sizeof(struct thread_command) + statesize);
 	mh.flags = 0;
 
@@ -837,25 +848,34 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 	for (size_t i = 0; i < cprm->thread_info_count; ++i) {
 		const struct thread_info* thread_info = &cprm->thread_infos[i];
 		struct thread_command* tc = (struct thread_command*) buffer;
-		struct thread_flavor* tf = (struct thread_flavor*)(tc+1);
+		struct thread_flavor* tf;
 
 		tc->cmd = LC_THREAD;
 		tc->cmdsize = memsize;
 
-		// General registers
-		tf->flavor = x86_THREAD_STATE32;
-		tf->count = x86_THREAD_STATE32_COUNT;
+		switch (machine_type)
+		{		
+		case EM_386:
+			// General registers
+			tf = (struct thread_flavor*)(tc+1);
+			tf->flavor = x86_THREAD_STATE32;
+			tf->count = x86_THREAD_STATE32_COUNT;
+			fill_x86_thread_state32((x86_thread_state32_t*)tf->state, thread_info);
 
-		fill_thread_state32((x86_thread_state32_t*)tf->state, thread_info);
+			// Float registers
+			if (DUMP_FLOAT_STATE) {
+				tf = (struct thread_flavor*) (tf->state + sizeof(x86_thread_state32_t));
+				tf->flavor = x86_FLOAT_STATE32;
+				tf->count = x86_FLOAT_STATE32_COUNT;
+				fill_x86_float_state32((x86_float_state32_t*)tf->state, thread_info);
+			}
 
-#if DUMP_FLOAT_STATE
-		// Float registers
-		tf = (struct thread_flavor*) (tf->state + sizeof(x86_thread_state32_t));
-		tf->flavor = x86_FLOAT_STATE32;
-		tf->count = x86_FLOAT_STATE32_COUNT;
+			break;
 
-		fill_float_state32((x86_float_state32_t*)tf->state, thread_info);
-#endif
+		default:
+			// Missing code for this arch
+			abort();
+		}
 
 		if (!dump_emit(cprm, buffer, memsize))
 		{
@@ -873,6 +893,8 @@ fail:
 static
 bool macho_dump_headers64(struct coredump_params* cprm)
 {
+	uint16_t machine_type = get_elf_machine_type(cprm);
+	
 	// Count memory segments and threads
 	unsigned int segs = cprm->vm_area_count;
 	unsigned int threads = cprm->thread_info_count;
@@ -889,16 +911,25 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 	}
 
 	mh.magic = MH_MAGIC_64;
-#ifdef __x86_64__
-	mh.cputype = CPU_TYPE_X86_64;
-	mh.cpusubtype = CPU_SUBTYPE_X86_64_ALL;
-#else
-#warning Missing code for this arch
-#endif
 	mh.filetype = MH_CORE;
 	mh.ncmds = segs + threads;
 
-	const int statesize = sizeof(x86_thread_state64_t) + (DUMP_FLOAT_STATE ? sizeof(x86_float_state64_t) : 0) + sizeof(struct thread_flavor) * (DUMP_FLOAT_STATE ? 2 : 1);
+	int statesize;
+	switch (machine_type)
+	{
+	case EM_X86_64:
+		mh.cputype = CPU_TYPE_X86_64;
+		mh.cpusubtype = CPU_SUBTYPE_X86_64_ALL;
+
+		statesize = sizeof(struct thread_flavor) + sizeof(x86_thread_state64_t);
+		statesize += (DUMP_FLOAT_STATE ? sizeof(struct thread_flavor) + sizeof(x86_float_state64_t) : 0);
+		break;
+	
+	default:
+		// Missing code for this arch
+		abort();
+	}
+
 	mh.sizeofcmds = segs * sizeof(struct segment_command_64) + threads * (sizeof(struct thread_command) + statesize);
 	mh.flags = 0;
 	mh.reserved = 0;
@@ -965,25 +996,34 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 	for (size_t i = 0; i < cprm->thread_info_count; ++i) {
 		const struct thread_info* thread_info = &cprm->thread_infos[i];
 		struct thread_command* tc = (struct thread_command*) buffer;
-		struct thread_flavor* tf = (struct thread_flavor*)(tc+1);
+		struct thread_flavor* tf;
 
 		tc->cmd = LC_THREAD;
 		tc->cmdsize = memsize;
 
-		// General registers
-		tf->flavor = x86_THREAD_STATE64;
-		tf->count = x86_THREAD_STATE64_COUNT;
+		switch (machine_type)
+		{
+		case EM_X86_64:
+			// General registers
+			tf = (struct thread_flavor*)(tc+1);
+			tf->flavor = x86_THREAD_STATE64;
+			tf->count = x86_THREAD_STATE64_COUNT;
+			fill_x86_thread_state64((x86_thread_state64_t*)tf->state, thread_info);
 
-		fill_thread_state64((x86_thread_state64_t*)tf->state, thread_info);
+			// Float registers
+			if (DUMP_FLOAT_STATE) {
+				tf = (struct thread_flavor*) (tf->state + sizeof(x86_thread_state64_t));
+				tf->flavor = x86_FLOAT_STATE64;
+				tf->count = x86_FLOAT_STATE64_COUNT;
+				fill_x86_float_state64((x86_float_state64_t*)tf->state, thread_info);
+			}
 
-#if DUMP_FLOAT_STATE
-		// Float registers
-		tf = (struct thread_flavor*) (tf->state + sizeof(x86_thread_state64_t));
-		tf->flavor = x86_FLOAT_STATE64;
-		tf->count = x86_FLOAT_STATE64_COUNT;
-
-		fill_float_state64((x86_float_state64_t*)tf->state, thread_info);
-#endif
+			break;
+		
+		default:
+			// Missing code for this arch
+			abort();
+		}
 
 		if (!dump_emit(cprm, buffer, memsize))
 		{
