@@ -248,11 +248,14 @@ no_slide:
 			}
 			case LC_UNIXTHREAD:
 			{
-#ifdef GEN_64BIT
+#if defined(__x86_64__)
+				// Grab rip from x86_thread_state64
 				entryPoint = ((uint64_t*) lc)[18];
-#endif
-#ifdef GEN_32BIT
+#elif defined(__i386__)
+				// Grab eip from i386_thread_state
 				entryPoint = ((uint32_t*) lc)[14];
+#else
+#error "Missing entryPoint assignment from thread state"
 #endif
 				entryPoint += slide;
 				break;
