@@ -254,6 +254,9 @@ no_slide:
 #elif defined(__i386__)
 				// Grab eip from i386_thread_state
 				entryPoint = ((uint32_t*) lc)[14];
+#elif defined(__aarch64__)
+				// Grab pc from arm_thread_state64
+				entryPoint = ((uint64_t*) lc)[34];
 #else
 #error "Missing entryPoint assignment from thread state"
 #endif
