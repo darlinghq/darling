@@ -23,6 +23,7 @@
 #include <linux/time_types.h>
 
 #include <coredump/x86_64.h>
+#include <coredump/arm64.h>
 
 #include <darling-config.h>
 
@@ -92,6 +93,7 @@ union elf32_nt_prstatus_registers {
 
 union elf64_nt_prstatus_registers {
 	struct nt_prstatus_registers_x86_64 x86_64;
+	struct nt_prstatus_registers_aarch64 aarch64;
 };
 
 struct elf32_kernel_old_timeval {
@@ -365,6 +367,7 @@ int main(int argc, char** argv) {
 	switch (get_elf_machine_type(&cprm)) {
 		case EM_X86_64:
 		case EM_386:
+		case EM_AARCH64:
 			cprm.input_header = (const union Elf_Ehdr*)cprm.input_corefile_mapping;
 			break;
 		default:
@@ -762,6 +765,28 @@ void fill_x86_float_state64(x86_float_state64_t* state, const struct thread_info
 }
 
 static
+void fill_arm_thread_state64(arm_thread_state64_t* state, const struct thread_info* info)
+{
+	for (int i = 0; i < sizeof(state->x); i++) {
+		state->x[i] = info->prstatus->elf64.general_registers.aarch64.regs[i];
+	}
+
+	state->fp = info->prstatus->elf64.general_registers.aarch64.regs[29];
+	state->lr = info->prstatus->elf64.general_registers.aarch64.regs[30];
+	state->sp = info->prstatus->elf64.general_registers.aarch64.sp;
+	state->pc = info->prstatus->elf64.general_registers.aarch64.pc;
+
+	state->cpsr = info->prstatus->elf64.general_registers.aarch64.pstate & 0xFFFFFFFF;
+	state->__pad = (info->prstatus->elf64.general_registers.aarch64.pstate & 0xFFFFFFFF00000000) >> 32;
+}
+
+static
+void fill_arm_exception_state64(arm_exception_state64_t* state, const struct thread_info* info) {
+	// TODO: Need to figure out where the exception state lives on an ELF ARM64 coredump
+	memset(state, 0, sizeof(arm_exception_state64_t));
+}
+
+static
 bool macho_dump_headers32(struct coredump_params* cprm)
 {
 	uint16_t machine_type = get_elf_machine_type(cprm);
@@ -943,6 +968,14 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 		statesize += (DUMP_FLOAT_STATE ? sizeof(struct thread_flavor) + sizeof(x86_float_state64_t) : 0);
 		break;
 	
+	case EM_AARCH64:
+		mh.cputype = CPU_TYPE_ARM64;
+		mh.cpusubtype = CPU_SUBTYPE_ARM64_ALL;
+
+		statesize = sizeof(struct thread_flavor) + sizeof(arm_thread_state64_t);
+		statesize += sizeof(struct thread_flavor) + sizeof(arm_exception_state64_t);
+		break;
+
 	default:
 		// Missing code for this arch
 		abort();
@@ -1038,6 +1071,22 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 
 			break;
 		
+		case EM_AARCH64:
+			tf = (struct thread_flavor*)(tc+1);
+			tf->flavor = ARM_THREAD_STATE64;
+			tf->count = ARM_THREAD_STATE64_COUNT;
+			fill_arm_thread_state64((arm_thread_state64_t*)tf->state, thread_info);
+
+			// DUMP_FLOAT_STATE
+			// For ARM64, the float state doesn't exist in LC_THREAD
+
+			tf = (struct thread_flavor*) (tf->state + sizeof(arm_thread_state64_t));
+			tf->flavor = ARM_EXCEPTION_STATE64;
+			tf->count = ARM_EXCEPTION_STATE64_COUNT;
+			fill_arm_exception_state64((arm_exception_state64_t*)tf->state, thread_info);
+
+			break;
+
 		default:
 			// Missing code for this arch
 			abort();
