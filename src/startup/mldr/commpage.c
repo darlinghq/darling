@@ -5,7 +5,9 @@
 #include <tgmath.h>
 #include <string.h>
 #include <stdlib.h>
+#if defined(__i386__) || defined(__x86_64__)
 #include <cpuid.h>
+#endif
 #include <unistd.h>
 #include <sys/sysinfo.h>
 
