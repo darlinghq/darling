@@ -13,7 +13,8 @@
 
 // Include commpage definitions
 #define PRIVATE
-#include <i386/cpu_capabilities.h>
+#define KERNEL_PRIVATE 1
+#include <machine/cpu_capabilities.h>
 
 static const char* SIGNATURE32 = "commpage 32-bit";
 static const char* SIGNATURE64 = "commpage 64-bit";
@@ -88,6 +89,7 @@ uint64_t get_cpu_caps(void)
 {
 	uint64_t caps = 0;
 
+#if defined(__i386__) || defined(__x86_64__)
 	{
 		union cpu_flags1 eax;
 		union cpu_flags2 ecx;
@@ -152,6 +154,9 @@ uint64_t get_cpu_caps(void)
 		if (ebx.sgx)
 			caps |= kHasSGX;
 	}
+#else
+#warning "Missing get_cpu_caps implementation"
+#endif
 
 	return caps;
 }
