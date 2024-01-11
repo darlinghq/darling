@@ -467,6 +467,7 @@ int native_prot(int prot)
 
 static void reexec32(char** argv)
 {
+#if defined(__x86_64__)
 	char selfpath[1024];
 	ssize_t len;
 
@@ -481,6 +482,7 @@ static void reexec32(char** argv)
 	strcat(selfpath, "32");
 
 	execv(selfpath, argv);
+#endif
 
 	perror("Cannot re-execute as 32-bit process");
 	abort();
