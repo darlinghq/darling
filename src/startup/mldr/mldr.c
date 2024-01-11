@@ -383,7 +383,8 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 				if (arch.cputype == CPU_TYPE_X86)
 					best_arch = arch;
 #elif defined (__aarch64__)
-	#error TODO: arm
+				if (arch.cputype == CPU_TYPE_ARM64)
+					best_arch = arch;
 #else
 	#error Unsupported CPU architecture
 #endif
@@ -420,7 +421,7 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 	}
 };
 
-#ifdef __x86_64__
+#if defined(__x86_64__ ) || defined(__aarch64__)
 #define GEN_64BIT
 #include "loader.c"
 #include "stack.c"
@@ -816,9 +817,9 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	// Using the default stack top would cause the stack to be placed just above the commpage
 	// and would collide with it eventually.
 	// Instead, we manually allocate a new stack below the commpage.
-#if __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 	lr->stack_top = commpage_address(true);
-#elif __i386__
+#elif defined(__i386__)
 	lr->stack_top = commpage_address(false);
 #else
 	#error Unsupported architecture
@@ -931,6 +932,15 @@ static void start_thread(struct load_results* lr) {
 	__asm__ volatile(
 		"mov sp, %1\n"
 		"bx %0"
+		::
+		"r"(lr->entry_point),
+		"r"(lr->stack_top)
+		:
+	);
+#elif defined(__aarch64__)
+	__asm__ volatile(
+		"mov sp, %1\n"
+		"br %0"
 		::
 		"r"(lr->entry_point),
 		"r"(lr->stack_top)
