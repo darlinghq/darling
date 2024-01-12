@@ -767,7 +767,7 @@ void fill_x86_float_state64(x86_float_state64_t* state, const struct thread_info
 static
 void fill_arm_thread_state64(arm_thread_state64_t* state, const struct thread_info* info)
 {
-	for (int i = 0; i < sizeof(state->x); i++) {
+	for (int i = 0; i < sizeof(state->x) / sizeof(state->x[0]); i++) {
 		state->x[i] = info->prstatus->elf64.general_registers.aarch64.regs[i];
 	}
 
