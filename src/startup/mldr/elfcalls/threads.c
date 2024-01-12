@@ -329,7 +329,7 @@ static void* darling_thread_entry(void* p)
 		// Zero out the frame base register.
 		"mov fp, #0\n"
 		// Switch to the new stack.
-		"mov %[stack_ptr], sp\n"
+		"mov sp, %[stack_ptr]\n"
 		// Push a fake return address.
 		"mov lr, #0\n"
 		// Jump to the entry point.
