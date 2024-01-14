@@ -339,15 +339,19 @@
 [submodule "src/external/libressl-2.2.9"]
 	path = src/external/libressl-2.2.9
 	url = ../darling-libressl.git
+	branch = v2.2.9
 [submodule "src/external/libressl-2.5.5"]
 	path = src/external/libressl-2.5.5
 	url = ../darling-libressl.git
+	branch = v2.5.5
 [submodule "src/external/libressl-2.6.5"]
 	path = src/external/libressl-2.6.5
 	url = ../darling-libressl.git
+	branch = v2.6.5
 [submodule "src/external/libressl-2.8.3"]
 	path = src/external/libressl-2.8.3
 	url = ../darling-libressl.git
+	branch = v2.8.3
 [submodule "src/external/OpenLDAP"]
 	path = src/external/OpenLDAP
 	url = ../darling-openldap.git
