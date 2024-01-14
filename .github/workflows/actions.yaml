@@ -6,7 +6,7 @@ jobs:
   build-deb:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Checkout submodules
       shell: bash
@@ -32,7 +32,7 @@ jobs:
         mkdir dist && mv ../*.deb dist
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4.1.0
       with:
         name: 'debs'
         path: dist/
@@ -40,7 +40,7 @@ jobs:
   build-dsc:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Checkout submodules
       shell: bash
@@ -60,7 +60,7 @@ jobs:
         mkdir source && mv ../*~$(lsb_release -cs).* source
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4.1.0
       with:
         name: 'source'
         path: source/
