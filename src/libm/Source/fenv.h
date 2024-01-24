@@ -26,7 +26,7 @@
 #include "architecture/ppc/fenv.h"
 #elif (defined (__i386__) || defined( __x86_64__ ))
 #include "architecture/i386/fenv.h"
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__arm64__)
 #include "architecture/arm/fenv.h"
 #else
 #error Unknown architecture
