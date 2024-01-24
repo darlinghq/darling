@@ -35,6 +35,8 @@ int __darling_thread_terminate(void* stackaddr,
 void* __darling_thread_get_stack(void);
 int __darling_thread_rpc_socket(void);
 void __darling_thread_rpc_socket_refresh(void);
+void* __darling_thread_get_tsd();
+void __darling_thread_set_tsd(void* value);
 
 #ifdef __cplusplus
 }

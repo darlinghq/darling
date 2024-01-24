@@ -47,6 +47,7 @@ static __thread jmp_buf t_jmpbuf;
 static __thread void* t_freeaddr;
 static __thread size_t t_freesize;
 static __thread int t_server_socket = -1;
+static __thread void* tsd;
 static __thread darling_thread_create_callbacks_t t_callbacks = NULL;
 
 typedef void (*thread_ep)(void**, int, ...);
@@ -430,3 +431,11 @@ void __darling_thread_rpc_socket_refresh(void) {
 		__dserver_main_thread_socket_fd = t_server_socket;
 	}
 };
+
+void* __darling_thread_get_tsd() {
+	return tsd;
+}
+
+void __darling_thread_set_tsd(void* value) {
+	tsd = value;
+}

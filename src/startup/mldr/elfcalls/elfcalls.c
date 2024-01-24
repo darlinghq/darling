@@ -123,6 +123,9 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->dserver_per_thread_socket_refresh = __darling_thread_rpc_socket_refresh;
 	calls->dserver_close_socket = __mldr_close_rpc_socket;
 
+	calls->get_tsd = __darling_thread_get_tsd;
+	calls->set_tsd = __darling_thread_set_tsd;
+
 	calls->dserver_get_process_lifetime_pipe = __dserver_get_process_lifetime_pipe;
 	calls->dserver_process_lifetime_pipe_refresh = __dserver_process_lifetime_pipe_refresh;
 	calls->dserver_close_process_lifetime_pipe = __mldr_close_process_lifetime_pipe;
