@@ -46,7 +46,7 @@ int main(int argc, const char** argv)
 	close(dfd);
 
 	// This is only needed for this binary and shouldn't be passed down
-	unsetenv("DYLD_ROOT_PATH");
+	unsetenv("DARLING_DYLD_ROOT_PATH");
 
 	// printf("Will execv %s\n", argv[2]);
 	execv(argv[2], (char * const *) argv+2);
