@@ -519,7 +519,7 @@ static void process_special_env(struct load_results* lr) {
 		sscanf(str, "%i", &lr->lifetime_pipe);
 	}
 
-	str = getenv("DYLD_ROOT_PATH");
+	str = getenv("DARLING_DYLD_ROOT_PATH");
 
 	if (str != NULL && lr->root_path == NULL) {
 		strncpy(root_path, str, sizeof(root_path) - 1);
