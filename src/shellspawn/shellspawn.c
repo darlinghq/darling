@@ -85,7 +85,7 @@ void setupSocket(void)
 
 	chmod(addr.sun_path, 0600);
 
-	if (listen(g_serverSocket, 1) == -1)
+	if (listen(g_serverSocket, 16384) == -1)
 	{
 		perror("Listening on unix socket");
 		exit(EXIT_FAILURE);
