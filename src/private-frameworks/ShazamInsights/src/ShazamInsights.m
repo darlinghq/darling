@@ -29,5 +29,5 @@ static void initme(void) {
 }
 
 
-extern void* const SHInsightsErrorDomain = (void*)0;
+void* const SHInsightsErrorDomain = (void*)0;
 
