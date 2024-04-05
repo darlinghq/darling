@@ -20,5 +20,7 @@ then
 	rmdir --ignore-fail-on-non-empty "${INSTALL_PREFIX}/libexec"
 fi
 rm -f "${INSTALL_PREFIX}/bin/darling"
+rm -f "${INSTALL_PREFIX}/bin/darlingserver"
+rm -f "${INSTALL_PREFIX}/bin/darling-coredump"
 find /lib/modules -name darling-mach.ko -delete
 echo "Uninstall complete"
