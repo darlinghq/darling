@@ -38,11 +38,14 @@ function(mig defFileName)
 	if (NOT MIG_MULTIARCH)
 		set(MIG_MULTIARCH_NO_SUFFIX 1)
 		if (NOT MIG_ARCH)
-			set(MIG_MULTIARCH "i386")
+			set(MIG_MULTIARCH "${APPLE_ARCH_PRIMARY}")
 		else()
 			set(MIG_MULTIARCH "${MIG_ARCH}")
 		endif()
 	endif()
+
+	# TODO: Add support for multi-triplet targets
+	set(MIG_TARGET_TRIPLET_PRIMARY "${APPLE_TARGET_TRIPLET_PRIMARY}")
 
 	foreach(MIG_ARCH ${MIG_MULTIARCH})
 		if (MIG_MULTIARCH_NO_SUFFIX)
@@ -61,7 +64,7 @@ function(mig defFileName)
 				/bin/mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/${dirName} \;
 				${MIG_EXECUTABLE}
 				-arch ${MIG_ARCH}
-				-target ${MIG_ARCH}
+				-target ${MIG_TARGET_TRIPLET_PRIMARY}
 				-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_SOURCE_SUFFIX}
 				-header ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_HEADER_SUFFIX}
 				-server ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_SERVER_SOURCE_SUFFIX}
