@@ -53,14 +53,16 @@ debian/tmp/
 debian/darling-core/
 debian/darling-system/
 debian/darling-cli/
+debian/darling-cli-python2-common/
 debian/darling-ffi/
 debian/darling-cli-devenv/
 debian/darling-cli-gui-common/
 debian/darling-iokitd/
+debian/darling-iosurface/
 debian/darling-cli-devenv-gui-common/
 debian/darling-cli-extra/
 debian/darling-gui/
-debian/darling-python/
+debian/darling-python2/
 debian/darling-cli-python-common/
 debian/darling-pyobjc/
 debian/darling-ruby/
