@@ -93,4 +93,5 @@ add_framework(CoreSimulator
 		system
 		objc
 		Foundation
+		AppKit
 )

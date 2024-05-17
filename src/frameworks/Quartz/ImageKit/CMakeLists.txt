@@ -453,4 +453,5 @@ add_framework(ImageKit
 		Foundation
 		AppKit
 		QuartzCore
+		ImageCaptureCore
 )
