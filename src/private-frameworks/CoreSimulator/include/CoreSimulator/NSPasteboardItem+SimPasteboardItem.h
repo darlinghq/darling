@@ -18,7 +18,7 @@
 */
 
 #include <Foundation/Foundation.h>
-#import <AppKit/AppKit.h>
+#import <AppKit/NSPasteboardItem.h>
 
 @interface NSPasteboardItem (SimPasteboardItem)
 

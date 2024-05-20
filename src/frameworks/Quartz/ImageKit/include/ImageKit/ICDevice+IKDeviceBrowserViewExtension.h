@@ -18,7 +18,7 @@
 */
 
 #include <Foundation/Foundation.h>
-#import <ImageCaptureCore/ImageCaptureCore.h>
+#import <ImageCaptureCore/ICDevice.h>
 
 @interface ICDevice (IKDeviceBrowserViewExtension)
 
