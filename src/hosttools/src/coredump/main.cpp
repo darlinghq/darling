@@ -1,3 +1,5 @@
+#include <filesystem>
+
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -248,10 +250,8 @@ static int open_file(struct coredump_params* cprm, const char* filename, size_t 
 
 	// if that fails, try to see if it refers to the mounted prefix; if it does, try the lower layer
 	if (fd < 0 && filename_length >= cprm->prefix_length && strncmp(filename, cprm->prefix, cprm->prefix_length) == 0) {
-		char* temp_filename = malloc(sizeof(LIBEXEC_PATH "/") + (filename_length - cprm->prefix_length));
-		sprintf(temp_filename, "%s/%s", LIBEXEC_PATH, &filename[cprm->prefix_length]);
-		fd = open(temp_filename, O_RDONLY);
-		free(temp_filename);
+		std::filesystem::path temp_filename = std::filesystem::path() / LIBEXEC_PATH / &filename[cprm->prefix_length];
+		fd = open(temp_filename.c_str(), O_RDONLY);
 	}
 
 	return fd;
@@ -318,7 +318,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	cprm.universal_header = cprm.input_corefile_mapping;
+	cprm.universal_header = (const struct elf_universal_header*)cprm.input_corefile_mapping;
 
 	if (
 		cprm.universal_header->e_ident[EI_MAG0] != ELFMAG0 ||
@@ -345,18 +345,18 @@ int main(int argc, char** argv) {
 	switch (get_elf_machine_type(&cprm)) {
 		case EM_X86_64:
 		case EM_386:
-			cprm.input_header = cprm.input_corefile_mapping;
+			cprm.input_header = (const union Elf_Ehdr*)cprm.input_corefile_mapping;
 			break;
 		default:
 			fprintf(stderr, "Unexpected e_machine (%d) detected, aborting.\n", cprm.universal_header->e_machine);
 			return 1;
 	}
 
-	cprm.input_program_headers = (const void*)((const char*)cprm.input_corefile_mapping + cprm_elf(cprm.is_64_bit, cprm.input_header, e_phoff));
-	cprm.input_program_headers_end = (const void*)((const char*)cprm.input_program_headers + (cprm_elf(cprm.is_64_bit, cprm.input_header, e_phentsize) * cprm_elf(cprm.is_64_bit, cprm.input_header, e_phnum)));
+	cprm.input_program_headers = (const union Elf_Phdr*)((const char*)cprm.input_corefile_mapping + cprm_elf(cprm.is_64_bit, cprm.input_header, e_phoff));
+	cprm.input_program_headers_end = (const union Elf_Phdr*)((const char*)cprm.input_program_headers + (cprm_elf(cprm.is_64_bit, cprm.input_header, e_phentsize) * cprm_elf(cprm.is_64_bit, cprm.input_header, e_phnum)));
 
 	// first, count how many VM areas we have
-	for (const union Elf_Phdr* program_header = cprm.input_program_headers; program_header < cprm.input_program_headers_end; program_header = (const void*)((const char*)program_header + cprm_elf(cprm.is_64_bit, cprm.input_header, e_phentsize))) {
+	for (const union Elf_Phdr* program_header = cprm.input_program_headers; program_header < cprm.input_program_headers_end; program_header = (const union Elf_Phdr*)((const char*)program_header + cprm_elf(cprm.is_64_bit, cprm.input_header, e_phentsize))) {
 		if (cprm_elf(cprm.is_64_bit, program_header, p_type) == PT_LOAD) {
 			++cprm.vm_area_count;
 		} else if (cprm_elf(cprm.is_64_bit, program_header, p_type) == PT_NOTE) {
@@ -368,7 +368,7 @@ int main(int argc, char** argv) {
 				continue;
 			}
 
-			cprm.input_notes = (const void*)((const char*)cprm.input_corefile_mapping + cprm_elf(cprm.is_64_bit, program_header, p_offset)); 
+			cprm.input_notes = (const union Elf_Nhdr*)((const char*)cprm.input_corefile_mapping + cprm_elf(cprm.is_64_bit, program_header, p_offset)); 
 			cprm.input_notes_size = cprm_elf(cprm.is_64_bit, program_header, p_filesz);
 		}
 	}
@@ -381,14 +381,14 @@ int main(int argc, char** argv) {
 	for (const union Elf_Nhdr* note_header = cprm.input_notes; note_header < (const union Elf_Nhdr*)((const char*)cprm.input_notes + cprm.input_notes_size); note_header = find_next_note(&cprm, note_header)) {
 		if (cprm_elf(cprm.is_64_bit, note_header, n_type) == NT_FILE) {
 			// allocate a copy for alignment purposes
-			cprm.nt_file = malloc(cprm_elf(cprm.is_64_bit, note_header, n_descsz));
+			cprm.nt_file = (union nt_file_header*)malloc(cprm_elf(cprm.is_64_bit, note_header, n_descsz));
 			if (!cprm.nt_file) {
 				perror("malloc");
 				return 1;
 			}
 			memcpy(cprm.nt_file, note_data(&cprm, note_header), cprm_elf(cprm.is_64_bit, note_header, n_descsz));
 
-			cprm.nt_file_filenames = malloc(cprm_elf(cprm.is_64_bit, cprm.nt_file, count) * sizeof(const char*));
+			cprm.nt_file_filenames = (const char**)malloc(cprm_elf(cprm.is_64_bit, cprm.nt_file, count) * sizeof(const char*));
 			if (!cprm.nt_file_filenames) {
 				perror("malloc");
 				return 1;
@@ -411,7 +411,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	cprm.thread_infos = malloc(sizeof(struct thread_info) * cprm.thread_info_count);
+	cprm.thread_infos = (struct thread_info*)malloc(sizeof(struct thread_info) * cprm.thread_info_count);
 	if (!cprm.thread_infos) {
 		perror("malloc");
 		return 1;
@@ -421,7 +421,7 @@ int main(int argc, char** argv) {
 	for (const union Elf_Nhdr* note_header = cprm.input_notes; note_header < (const union Elf_Nhdr*)((const char*)cprm.input_notes + cprm.input_notes_size); note_header = find_next_note(&cprm, note_header)) {
 		if (cprm_elf(cprm.is_64_bit, note_header, n_type) == NT_PRSTATUS) {
 			// allocate a copy for alignment purposes
-			union nt_prstatus* prstatus = malloc(cprm_elf(cprm.is_64_bit, note_header, n_descsz));
+			union nt_prstatus* prstatus = (union nt_prstatus*)malloc(cprm_elf(cprm.is_64_bit, note_header, n_descsz));
 			if (!prstatus) {
 				perror("malloc");
 				return 1;
@@ -482,7 +482,7 @@ int main(int argc, char** argv) {
 	}
 
 	// now allocate the VM area array
-	cprm.vm_areas = malloc(sizeof(*cprm.vm_areas) * cprm.vm_area_count);
+	cprm.vm_areas = (struct vm_area*)malloc(sizeof(*cprm.vm_areas) * cprm.vm_area_count);
 	if (!cprm.vm_areas) {
 		perror("malloc");
 		return 1;
@@ -798,7 +798,7 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 	}
 
 	if (!dump_emit(cprm, &mh, sizeof(mh)))
-		goto fail;
+		return false;
 
 	uint32_t file_offset = round_up_pow2(mh.sizeofcmds + sizeof(mh), align_page_size);
 
@@ -837,13 +837,13 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 		sc.maxprot = sc.initprot;
 
 		if (!dump_emit(cprm, &sc, sizeof(sc)))
-			goto fail;
+			return false;
 
 		file_offset += round_up_pow2(sc.filesize, align_page_size);
 	}
 
 	const int memsize = sizeof(struct thread_command) + statesize;
-	uint8_t* buffer = malloc(memsize);
+	uint8_t* buffer = (uint8_t*)malloc(memsize);
 
 	for (size_t i = 0; i < cprm->thread_info_count; ++i) {
 		const struct thread_info* thread_info = &cprm->thread_infos[i];
@@ -880,14 +880,12 @@ bool macho_dump_headers32(struct coredump_params* cprm)
 		if (!dump_emit(cprm, buffer, memsize))
 		{
 			free(buffer);
-			goto fail;
+			return false;
 		}
 	}
 	free(buffer);
 
 	return true;
-fail:
-	return false;
 }
 
 static
@@ -948,7 +946,7 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 	}
 
 	if (!dump_emit(cprm, &mh, sizeof(mh)))
-		goto fail;
+		return false;
 
 	uint64_t file_offset = round_up_pow2(mh.sizeofcmds + sizeof(mh), align_page_size);
 
@@ -985,13 +983,13 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 		sc.maxprot = sc.initprot;
 
 		if (!dump_emit(cprm, &sc, sizeof(sc)))
-			goto fail;
+			return false;
 
 		file_offset += round_up_pow2(sc.filesize, align_page_size);
 	}
 
 	const int memsize = sizeof(struct thread_command) + statesize;
-	uint8_t* buffer = malloc(memsize);
+	uint8_t* buffer = (uint8_t*)malloc(memsize);
 
 	for (size_t i = 0; i < cprm->thread_info_count; ++i) {
 		const struct thread_info* thread_info = &cprm->thread_infos[i];
@@ -1028,14 +1026,12 @@ bool macho_dump_headers64(struct coredump_params* cprm)
 		if (!dump_emit(cprm, buffer, memsize))
 		{
 			free(buffer);
-			goto fail;
+			return false;
 		}
 	}
 	free(buffer);
 
 	return true;
-fail:
-	return false;
 }
 
 void macho_coredump(struct coredump_params* cprm)

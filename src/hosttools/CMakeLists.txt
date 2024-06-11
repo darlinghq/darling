@@ -3,7 +3,11 @@ project(hosttools)
 option(DARLING_COREDUMP_SANITIZE "Enable/disable ASAN and UBSAN in darling-coredump" OFF)
 
 add_executable(darling-coredump
-	src/coredump/main.c
+	src/coredump/main.cpp
+)
+
+target_compile_options(darling-coredump PRIVATE
+	-std=c++17
 )
 
 target_include_directories(darling-coredump PRIVATE
