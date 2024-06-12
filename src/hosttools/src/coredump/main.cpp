@@ -252,6 +252,21 @@ static int open_file(struct coredump_params* cprm, const char* filename, size_t 
 	if (fd < 0 && filename_length >= cprm->prefix_length && strncmp(filename, cprm->prefix, cprm->prefix_length) == 0) {
 		std::filesystem::path temp_filename = std::filesystem::path() / LIBEXEC_PATH / &filename[cprm->prefix_length];
 		fd = open(temp_filename.c_str(), O_RDONLY);
+	
+	// Sometimes the absolute path may actually be the macOS path
+	} else if (fd < 0 && filename[0] == '/') {
+		const char* relative_macos_path = &filename[1]; // Convert the absolute path into a relative path
+		std::filesystem::path temp_filename;
+
+		// Let's see if the file exists in the upper layer
+		temp_filename = std::filesystem::path(cprm->prefix) / relative_macos_path;
+		fd = open(temp_filename.c_str(), O_RDONLY);
+
+		// Otherwise, check the lower layer
+		if (fd < 0) {
+			temp_filename = std::filesystem::path(LIBEXEC_PATH) / relative_macos_path;
+			fd = open(temp_filename.c_str(), O_RDONLY);
+		}
 	}
 
 	return fd;
