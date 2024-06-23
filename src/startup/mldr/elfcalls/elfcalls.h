@@ -67,6 +67,10 @@ struct elf_calls
 	void (*dserver_per_thread_socket_refresh)(void);
 	void (*dserver_close_socket)(int socket);
 
+	// TSD (ex: TPIDRRO_EL0)
+	void* (*get_tsd)(void);
+	void (*set_tsd)(void* value);
+
 	// darlingserver process lifetime pipe info
 	int (*dserver_get_process_lifetime_pipe)(void);
 	int (*dserver_process_lifetime_pipe_refresh)(void);

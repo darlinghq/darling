@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/cctools/include/mach/arm/_structs.h
+../../../../../../../../../../src/external/xnu/osfmk/mach/arm/_structs.h
