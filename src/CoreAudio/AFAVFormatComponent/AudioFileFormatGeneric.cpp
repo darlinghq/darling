@@ -81,10 +81,6 @@ void AudioFileFormatGeneric::GetFileTypeName(CFStringRef *outName)
 
 UncertainResult AudioFileFormatGeneric::FileDataIsThisFormat(UInt32 inDataByteSize, const void* inData)
 {
-	const AVInputFormat* fmt = av_find_input_format(m_avformatShortName);
-	if (!fmt)
-		return false;
-	
 	std::vector<uint8_t> buf;
 	AVProbeData probeData;
 
@@ -96,7 +92,15 @@ UncertainResult AudioFileFormatGeneric::FileDataIsThisFormat(UInt32 inDataByteSi
 	probeData.buf = buf.data();
 	probeData.buf_size = inDataByteSize;
 
+#warning "TODO: Remove old `read_probe` call once we no longer support older distros" 
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+	return av_probe_input_format(&probeData, false) != nullptr ? kTrue : kFalse;
+#else
+	const AVInputFormat* fmt = av_find_input_format(m_avformatShortName);
+	if (!fmt)
+		return false;
 	return fmt->read_probe(&probeData) ? kTrue : kFalse;
+#endif
 }
 
 AudioFileObject* AudioFileFormatGeneric::New()

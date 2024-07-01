@@ -100,10 +100,19 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 	
 	if (inSourceFormat->mFormatID == kAudioFormatLinearPCM)
 	{
+#warning "TODO: Remove deprecated 'channels' once we no longer support older distros" 
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+		cIn->ch_layout.nb_channels = inSourceFormat->mChannelsPerFrame;
+#else
 		cIn->channels = inSourceFormat->mChannelsPerFrame;
+#endif
 		cIn->sample_rate = inSourceFormat->mSampleRate;
-		
+
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+		std::cout << "Converting from PCM with " << cIn->ch_layout.nb_channels << " channels at " << cIn->sample_rate << " Hz\n";
+#else
 		std::cout << "Converting from PCM with " << cIn->channels << " channels at " << cIn->sample_rate << " Hz\n";
+#endif
 	}
 	
 	if (avcodec_open2((*out)->m_decoder, codecIn, nullptr) < 0)
@@ -131,9 +140,15 @@ void AudioConverter::initEncoder()
 	
 	m_encoder->codec_type = AVMEDIA_TYPE_AUDIO;
 	m_encoder->bit_rate = m_outBitRate;
+#warning "TODO: Remove deprecated 'channels' once we no longer support older distros" 
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+	m_encoder->ch_layout.order = AV_CHANNEL_ORDER_UNSPEC;
+	m_encoder->ch_layout.nb_channels = m_destinationFormat.mChannelsPerFrame;
+#else
 	m_encoder->channels = m_destinationFormat.mChannelsPerFrame;
-	m_encoder->sample_rate = m_destinationFormat.mSampleRate;
 	m_encoder->channel_layout = CAChannelCountToLayout(m_destinationFormat.mChannelsPerFrame);
+#endif
+	m_encoder->sample_rate = m_destinationFormat.mSampleRate;
 	m_encoder->sample_fmt = CACodecSampleFormat(&m_destinationFormat);
 
 #ifdef DEBUG_AUDIOCONVERTER
@@ -161,10 +176,16 @@ void AudioConverter::allocateBuffers()
 	
 	m_audioFrame->nb_samples = ENCODER_FRAME_SAMPLES;
 	m_audioFrame->format = m_encoder->sample_fmt;
-	m_audioFrame->channel_layout = m_encoder->channel_layout;
 
-	
+#warning "TODO: Remove deprecated 'channels' once we no longer support older distros" 
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+	m_audioFrame->ch_layout.order = m_encoder->ch_layout.order;
+	m_audioFrame->ch_layout.nb_channels = m_encoder->ch_layout.nb_channels;
+	int audioSampleBuffer_size = av_samples_get_buffer_size(nullptr, m_encoder->ch_layout.nb_channels, m_audioFrame->nb_samples, m_encoder->sample_fmt, 0);
+#else
+	m_audioFrame->channel_layout = m_encoder->channel_layout;
 	int audioSampleBuffer_size = av_samples_get_buffer_size(nullptr, m_encoder->channels, m_audioFrame->nb_samples, m_encoder->sample_fmt, 0);
+#endif
 	void* audioSampleBuffer = (uint8_t*) av_malloc(audioSampleBuffer_size);
 
 	if (!audioSampleBuffer)
@@ -174,8 +195,13 @@ void AudioConverter::allocateBuffers()
 	}
 
 	// Setup the data pointers in the AVFrame
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+	if (int err = avcodec_fill_audio_frame(m_audioFrame, m_encoder->ch_layout.nb_channels, m_encoder->sample_fmt,
+		(const uint8_t*) audioSampleBuffer, audioSampleBuffer_size, 0 ); err < 0)
+#else
 	if (int err = avcodec_fill_audio_frame(m_audioFrame, m_encoder->channels, m_encoder->sample_fmt,
 		(const uint8_t*) audioSampleBuffer, audioSampleBuffer_size, 0 ); err < 0)
+#endif
 	{
 		std::cerr << "AudioConverter::allocateBuffers(): Could not set up audio frame\n";
 		throw std::runtime_error("AudioConverter::allocateBuffers(): Could not set up audio frame");
