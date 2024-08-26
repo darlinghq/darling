@@ -36,7 +36,7 @@ extern const CFStringRef kMIDIPropertyUniqueID                    API_AVAILABLE(
 // extern const CFStringRef kMIDIPropertyReceivesMTC                 API_AVAILABLE(macos(10.2));
 // extern const CFStringRef kMIDIPropertyTransmitsClock              API_AVAILABLE(macos(10.2));
 // extern const CFStringRef kMIDIPropertyReceivesClock               API_AVAILABLE(macos(10.2));
-// extern const CFStringRef kMIDIPropertyAdvanceScheduleTimeMuSec    API_AVAILABLE(macos(10.0));
+extern const CFStringRef kMIDIPropertyAdvanceScheduleTimeMuSec    API_AVAILABLE(macos(10.0));
 
 /* Roles */
 // extern const CFStringRef kMIDIPropertyIsMixer                     API_AVAILABLE(macos(10.2));
