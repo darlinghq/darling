@@ -280,6 +280,8 @@ static void pushShellspawnCommandData(int sockfd, shellspawn_cmd_type_t type, co
 		fprintf(stderr, "Error sending command to shellspawn: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+
+	free(cmd);
 }
 
 static void pushShellspawnCommand(int sockfd, shellspawn_cmd_type_t type, const char* value)
