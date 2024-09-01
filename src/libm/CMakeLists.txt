@@ -151,6 +151,14 @@ if (TARGET_i386 OR TARGET_x86_64)
 		Source/Intel/truncl.S
 		Source/Intel/trunc.S
 	)
+elseif (TARGET_ARM64)
+	set(libm_sources ${libm_sources}
+		Source/ARM/nan.c
+		Source/ARM/fpclassify.c
+		Source/ARM/logb.c
+		Source/ARM/logbf.c
+		Source/ARM/stub.c
+	)
 endif ()
 
 # Gross hack to rename symbols in $fenv_access_off variants
@@ -164,6 +172,10 @@ else ()
 endif ()
 make_fat(system_m_extra)
 
+if (TARGET_i386 OR TARGET_x86_64)
+	set (LIBM_ALIAS_LIST "-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
+endif ()
+
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_m.dylib")
 add_circular(system_m FAT
 	SOURCES
@@ -174,7 +186,7 @@ add_circular(system_m FAT
 		system_c
 		system_dyld
 	LINK_FLAGS
-		"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias"
+		"${LIBM_ALIAS_LIST}"
 )
 #set_property(TARGET system_m APPEND_STRING PROPERTY LINK_FLAGS
 #	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")

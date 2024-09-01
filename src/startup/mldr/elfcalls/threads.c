@@ -47,6 +47,7 @@ static __thread jmp_buf t_jmpbuf;
 static __thread void* t_freeaddr;
 static __thread size_t t_freesize;
 static __thread int t_server_socket = -1;
+static __thread void* tsd;
 static __thread darling_thread_create_callbacks_t t_callbacks = NULL;
 
 typedef void (*thread_ep)(void**, int, ...);
@@ -268,6 +269,13 @@ static void* darling_thread_entry(void* p)
 	register uintptr_t arg6 asm("r9")  = args.arg3;
 #elif __i386__
 	uintptr_t arg3 = args.real_entry_point;
+#elif __aarch64__
+	register void*     arg1 asm("x0") = args.pth;
+	register int       arg2 asm("w1") = args.port;
+	register uintptr_t arg3 asm("x2") = args.real_entry_point;
+	register uintptr_t arg4 asm("x3") = args.arg1;
+	register uintptr_t arg5 asm("x4") = args.arg2;
+	register uintptr_t arg6 asm("x5") = args.arg3;
 #endif
 
 	if (arg3 == 0) {
@@ -314,6 +322,22 @@ static void* darling_thread_entry(void* p)
 		// Function arguments to push to the stack.
 		[args] "r"(&args), [arg3]"r"(arg3),
 
+		[entry_point] "r"(args.entry_point),
+		[stack_ptr] "r"(stack_ptr)
+	);
+#elif defined(__aarch64__)
+	asm volatile(
+		// Zero out the frame base register.
+		"mov fp, #0\n"
+		// Switch to the new stack.
+		"mov sp, %[stack_ptr]\n"
+		// Push a fake return address.
+		"mov lr, #0\n"
+		// Jump to the entry point.
+		"br %[entry_point]" ::
+		// Function arguments
+		"r"(arg1),"r"(arg2),"r"(arg3),"r"(arg4),"r"(arg5),"r"(arg6),
+		
 		[entry_point] "r"(args.entry_point),
 		[stack_ptr] "r"(stack_ptr)
 	);
@@ -407,3 +431,11 @@ void __darling_thread_rpc_socket_refresh(void) {
 		__dserver_main_thread_socket_fd = t_server_socket;
 	}
 };
+
+void* __darling_thread_get_tsd() {
+	return tsd;
+}
+
+void __darling_thread_set_tsd(void* value) {
+	tsd = value;
+}

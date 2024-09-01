@@ -5,18 +5,23 @@
 #include <tgmath.h>
 #include <string.h>
 #include <stdlib.h>
+#if defined(__i386__) || defined(__x86_64__)
 #include <cpuid.h>
+#endif
 #include <unistd.h>
 #include <sys/sysinfo.h>
 
 // Include commpage definitions
 #define PRIVATE
-#include <i386/cpu_capabilities.h>
+#define KERNEL_PRIVATE 1
+#include <machine/cpu_capabilities.h>
 
 static const char* SIGNATURE32 = "commpage 32-bit";
 static const char* SIGNATURE64 = "commpage 64-bit";
 
 static uint64_t get_cpu_caps(void);
+
+int PAGE_SIZE;
 
 #define CGET(p) (commpage + ((p)-_COMM_PAGE_START_ADDRESS))
 
@@ -32,6 +37,8 @@ void commpage_setup(bool _64bit)
 	uint8_t *physcpus, *logcpus;
 	uint8_t *user_page_shift, *kernel_page_shift;
 	struct sysinfo si;
+
+	PAGE_SIZE = sysconf(_SC_PAGESIZE);
 
 	commpage = (uint8_t*) mmap((void*)(_64bit ? _COMM_PAGE64_BASE_ADDRESS : _COMM_PAGE32_BASE_ADDRESS),
 			_64bit ? _COMM_PAGE64_AREA_LENGTH : _COMM_PAGE32_AREA_LENGTH, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
@@ -66,7 +73,7 @@ void commpage_setup(bool _64bit)
 	// as a substitute for log2().
 	user_page_shift = (uint8_t*)CGET(_64bit ? _COMM_PAGE_USER_PAGE_SHIFT_64 : _COMM_PAGE_USER_PAGE_SHIFT_32);
 	kernel_page_shift = (uint8_t*)CGET(_COMM_PAGE_KERNEL_PAGE_SHIFT);
-	*kernel_page_shift = *user_page_shift = (uint8_t)__builtin_ctzl(sysconf(_SC_PAGESIZE));
+	*kernel_page_shift = *user_page_shift = (uint8_t)__builtin_ctzl(PAGE_SIZE);
 
 	my_caps = get_cpu_caps();
 	if (*ncpus == 1)
@@ -86,6 +93,7 @@ uint64_t get_cpu_caps(void)
 {
 	uint64_t caps = 0;
 
+#if defined(__i386__) || defined(__x86_64__)
 	{
 		union cpu_flags1 eax;
 		union cpu_flags2 ecx;
@@ -150,6 +158,9 @@ uint64_t get_cpu_caps(void)
 		if (ebx.sgx)
 			caps |= kHasSGX;
 	}
+#else
+#warning "Missing get_cpu_caps implementation"
+#endif
 
 	return caps;
 }
@@ -159,3 +170,9 @@ unsigned long commpage_address(bool _64bit)
 	return _64bit ? _COMM_PAGE64_BASE_ADDRESS : _COMM_PAGE32_BASE_ADDRESS;
 }
 
+#ifdef __aarch64__
+vm_address_t _get_commpage_priv_address(void) {
+	// Not sure if this is correct...
+	return _COMM_PAGE64_BASE_ADDRESS;
+}
+#endif

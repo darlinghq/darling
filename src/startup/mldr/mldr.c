@@ -64,11 +64,12 @@ int __dserver_process_lifetime_pipe_fd = -1;
 //
 // Additionally, mldr providers access to native platforms libdl.so APIs (ELF loader).
 
-#ifdef __x86_64__
 static void load64(int fd, bool expect_dylinker, struct load_results* lr);
+static void setup_stack64(const char* filepath, struct load_results* lr);
 static void reexec32(char** argv);
-#endif
 static void load32(int fd, bool expect_dylinker, struct load_results* lr);
+static void setup_stack32(const char* filepath, struct load_results* lr);
+
 static void load_fat(int fd, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr);
 static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr);
 static int native_prot(int prot);
@@ -77,10 +78,6 @@ static void process_special_env(struct load_results* lr);
 static void start_thread(struct load_results* lr);
 static bool is_kernel_at_least(int major, int minor);
 static void* compatible_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
-#ifdef __x86_64__
-static void setup_stack64(const char* filepath, struct load_results* lr);
-#endif
-static void setup_stack32(const char* filepath, struct load_results* lr);
 
 // this is called when argv[0] specifies an interpreter and we need to "unexpand" it (i.e. convert it from a Linux path to a vchrooted path)
 static void vchroot_unexpand_interpreter(struct load_results* lr);
@@ -246,13 +243,7 @@ int main(int argc, char** argv, char** envp)
 	if (mldr_load_results._32on64)
 		setup_stack32(filename, &mldr_load_results);
 	else
-#ifdef __x86_64__
 		setup_stack64(filename, &mldr_load_results);
-#elif __aarch64__
-	#error TODO: aarch64
-#else
-		abort();
-#endif
 
 	int status = dserver_rpc_set_dyld_info(mldr_load_results.dyld_all_image_location, mldr_load_results.dyld_all_image_size);
 	if (status < 0) {
@@ -298,16 +289,12 @@ void load(const char* path, cpu_type_t forced_arch, bool expect_dylinker, char**
 
 	if (magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
 	{
-#ifdef __x86_64__
 		lseek(fd, 0, SEEK_SET);
 		load64(fd, expect_dylinker, lr);
-#else
-		abort();
-#endif
 	}
 	else if (magic == MH_MAGIC || magic == MH_CIGAM)
 	{
-#if !__x86_64__
+#if defined(__i386__)
 		lseek(fd, 0, SEEK_SET);
 		load32(fd, expect_dylinker, lr);
 #else
@@ -396,7 +383,8 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 				if (arch.cputype == CPU_TYPE_X86)
 					best_arch = arch;
 #elif defined (__aarch64__)
-	#error TODO: arm
+				if (arch.cputype == CPU_TYPE_ARM64)
+					best_arch = arch;
 #else
 	#error Unsupported CPU architecture
 #endif
@@ -422,15 +410,9 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 	}
 
 	if (best_arch.cputype & CPU_ARCH_ABI64) {
-#ifdef __x86_64__
 		load64(fd, expect_dylinker, lr);
-#elif __aarch64__
-	#error TODO: aarch64
-#else
-		abort();
-#endif
 	} else {
-#if !__x86_64__
+#if defined(__i386__)
 		load32(fd, expect_dylinker, lr);
 #else
 		// Re-run self as mldr32
@@ -439,17 +421,41 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 	}
 };
 
-#ifdef __x86_64__
+#if defined(__x86_64__ ) || defined(__aarch64__)
 #define GEN_64BIT
 #include "loader.c"
 #include "stack.c"
 #undef GEN_64BIT
+
+#else
+static void load64(int fd, bool expect_dylinker, struct load_results* lr) {
+	perror("Unexpected entry to load64, aborting...");
+	abort();
+}
+
+static void setup_stack64(const char* filepath, struct load_results* lr) {
+	perror("Unexpected entry to setup_stack64, aborting...");
+	abort();
+}
 #endif
 
+#if defined(__i386__)
 #define GEN_32BIT
 #include "loader.c"
 #include "stack.c"
 #undef GEN_32BIT
+
+#else
+static void load32(int fd, bool expect_dylinker, struct load_results* lr) {
+	perror("Unexpected entry to load32, aborting...");
+	abort();
+}
+
+static void setup_stack32(const char* filepath, struct load_results* lr) {
+	perror("Unexpected entry to setup_stack32, aborting...");
+	abort();
+}
+#endif
 
 int native_prot(int prot)
 {
@@ -467,6 +473,7 @@ int native_prot(int prot)
 
 static void reexec32(char** argv)
 {
+#if defined(__x86_64__)
 	char selfpath[1024];
 	ssize_t len;
 
@@ -481,6 +488,7 @@ static void reexec32(char** argv)
 	strcat(selfpath, "32");
 
 	execv(selfpath, argv);
+#endif
 
 	perror("Cannot re-execute as 32-bit process");
 	abort();
@@ -809,9 +817,9 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	// Using the default stack top would cause the stack to be placed just above the commpage
 	// and would collide with it eventually.
 	// Instead, we manually allocate a new stack below the commpage.
-#if __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 	lr->stack_top = commpage_address(true);
-#elif __i386__
+#elif defined(__i386__)
 	lr->stack_top = commpage_address(false);
 #else
 	#error Unsupported architecture
@@ -924,6 +932,15 @@ static void start_thread(struct load_results* lr) {
 	__asm__ volatile(
 		"mov sp, %1\n"
 		"bx %0"
+		::
+		"r"(lr->entry_point),
+		"r"(lr->stack_top)
+		:
+	);
+#elif defined(__aarch64__)
+	__asm__ volatile(
+		"mov sp, %1\n"
+		"br %0"
 		::
 		"r"(lr->entry_point),
 		"r"(lr->stack_top)
