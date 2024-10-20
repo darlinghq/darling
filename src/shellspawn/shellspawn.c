@@ -113,6 +113,7 @@ void listenForConnections(void)
 		else
 		{
 			close(sock);
+ 			reapAll();
 		}
 	}
 }
