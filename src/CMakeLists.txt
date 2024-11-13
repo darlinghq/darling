@@ -10,6 +10,7 @@ include(mig)
 include(pyc)
 
 # Force linker settings to match 3.30.5 behavior
+# Apple's ld64 in cctools does not support the `--dependency-file` flag
 set(CMAKE_CXX_LINKER_DEPFILE_SUPPORTED FALSE)
 set(CMAKE_C_LINKER_DEPFILE_SUPPORTED FALSE)
 set(CMAKE_CXX_LINK_DEPENDS_USE_LINKER FALSE)
