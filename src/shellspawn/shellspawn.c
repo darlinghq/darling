@@ -39,19 +39,22 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define DBG 0
 
 int g_serverSocket = -1;
+struct sigaction sigchld_oldaction;
 
 void setupSocket(void);
 void listenForConnections(void);
 void spawnShell(int fd);
 void setupSigchild(void);
+void restoreSigchild(void);
 void reapAll(void);
 
 int main(int argc, const char** argv)
 {
-	// in order to read the exit status of the process,
-	// we have to allow it to become a zombie, which is prevented
-	// when we set the SIGCHLD signal to SA_NOCLDWAIT
-	//setupSigchild();
+	// shellspawn (daemon) --fork()--> shellspawn (child) --fork()--> exec /bin/bash
+	// in order to read the exit status of the shell process,
+	// we have to allow it to become a zombie, therefore we need to
+	// restore the sigaction of SIGCHLD of the child shellspawn
+	setupSigchild();
 	setupSocket();
 	listenForConnections();
 
@@ -106,6 +109,7 @@ void listenForConnections(void)
 
 		if (fork() == 0)
 		{
+			restoreSigchild();
 			fcntl(sock, F_SETFD, FD_CLOEXEC);
 			spawnShell(sock);
 			exit(EXIT_SUCCESS);
@@ -113,7 +117,6 @@ void listenForConnections(void)
 		else
 		{
 			close(sock);
- 			reapAll();
 		}
 	}
 }
@@ -433,7 +436,12 @@ void setupSigchild(void)
 		.sa_handler = SIG_DFL,
 		.sa_flags = SA_NOCLDWAIT
 	};
-	sigaction(SIGCHLD, &sigchld_action, NULL);
+	sigaction(SIGCHLD, &sigchld_action, &sigchld_oldaction);
+}
+
+void restoreSigchild(void)
+{
+	sigaction(SIGCHLD, &sigchld_oldaction, NULL);
 }
 
 void reapAll(void)
