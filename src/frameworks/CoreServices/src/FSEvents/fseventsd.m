@@ -22,8 +22,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <ext/fanotify.h>
-#include <ext/file_handle.h>
+#include <darling/emulation/legacy_path/ext/fanotify.h>
+#include <darling/emulation/legacy_path/ext/file_handle.h>
 #include "./linux/fanotify.h"
 #include <dispatch/dispatch.h>
 #include <CoreServices/FileManager.h>
