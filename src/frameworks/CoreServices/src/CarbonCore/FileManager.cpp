@@ -38,7 +38,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <CarbonCore/DateTimeUtils.h>
 #include <errno.h>
-#include <ext/file_handle.h>
+#include <darling/emulation/legacy_path/ext/file_handle.h>
 
 #define STUB() // TODO
 
