@@ -102,6 +102,15 @@ LSFindApplicationForInfo(
 	return retval;
 }
 
+// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
+// WARN: Deprecated.
+CFArrayRef LSCopyAllHandlersForURLScheme(CFStringRef inURLScheme)
+{
+	puts("LSCopyAllHandlersForURLScheme STUB");
+	// NULL is a safe assumption to fall back on in the stub, since it means none were found.
+	return NULL;
+}
+
 CFArrayRef LSCopyApplicationURLsForBundleIdentifier(CFStringRef inBundleIdentifier, CFErrorRef  _Nullable *outError)
 {
 	if (!inBundleIdentifier)

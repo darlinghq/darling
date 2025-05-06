@@ -117,6 +117,12 @@ LSGetApplicationForInfo(
   FSRef * outAppRef,
   CFURLRef * outAppURL);
 
+// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
+// WARN: Deprecated.
+extern CFArrayRef
+LSCopyAllHandlersForURLScheme(
+  CFStringRef inURLScheme);
+
 extern OSStatus
 LSCopyApplicationForMIMEType(
   CFStringRef inMIMEType,
