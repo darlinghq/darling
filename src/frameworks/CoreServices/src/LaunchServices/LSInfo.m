@@ -102,15 +102,6 @@ LSFindApplicationForInfo(
 	return retval;
 }
 
-// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
-// WARN: Deprecated.
-CFArrayRef LSCopyAllHandlersForURLScheme(CFStringRef inURLScheme)
-{
-	puts("LSCopyAllHandlersForURLScheme STUB");
-	// NULL is a safe assumption to fall back on in the stub, since it means none were found.
-	return NULL;
-}
-
 CFArrayRef LSCopyApplicationURLsForBundleIdentifier(CFStringRef inBundleIdentifier, CFErrorRef  _Nullable *outError)
 {
 	if (!inBundleIdentifier)
@@ -317,4 +308,31 @@ OSStatus LSGetApplicationForURL(CFURLRef inURL, LSRolesMask inRoleMask, FSRef *o
 {
 	NSString* extension = [(NSURL*) inURL pathExtension];
 	return LSGetApplicationForInfo(kLSUnknownType, kLSUnknownCreator, (CFStringRef) extension, inRoleMask, outAppRef, outAppURL);
+}
+
+// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
+// WARN: Deprecated.
+CFArrayRef LSCopyAllHandlersForURLScheme(CFStringRef inURLScheme)
+{
+	puts("LSCopyAllHandlersForURLScheme STUB");
+	// NULL is a safe assumption to fall back on in the stub, since it means none were found.
+	return NULL;
+}
+
+// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
+// WARN: Deprecated.
+CFArrayRef LSCopyAllRoleHandlersForContentType(CFStringRef inContentType, LSRolesMask inRole)
+{
+	puts("LSCopyAllRoleHandlersForContentType STUB");
+	// NULL is a safe assumption to fall back on in the stub, since it means none were found.
+	return NULL;
+}
+
+// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
+// WARN: Deprecated.
+CFStringRef LSCopyDefaultHandlerForURLScheme(CFStringRef inURLScheme)
+{
+	puts("LSCopyDefaultHandlerForURLScheme STUB");
+	// "no string"? (could also return "" I guess)
+	return NULL;
 }
