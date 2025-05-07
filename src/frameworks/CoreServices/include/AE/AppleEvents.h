@@ -18,4 +18,6 @@ enum : DescType {
     kCoreEventClass = 'aevt',
 };
 
+OSErr AEInstallEventHandler(AEEventClass theAEEventClass, AEEventID theAEEventID, AEEventHandlerUPP handler, SRefCon handlerRefcon, Boolean isSysHandler);
+
 #endif
