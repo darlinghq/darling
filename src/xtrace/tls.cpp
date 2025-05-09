@@ -1,9 +1,9 @@
 #include <stdlib.h>
-#include <darling/emulation/legacy_path/ext/for-xtrace.h>
+#include <darling/emulation/linux_premigration/ext/for-xtrace.h>
 #include "tls.h"
 #include "memory.h"
 #include "lock.h"
-#include <darling/emulation/legacy_path/simple.h>
+#include <darling/emulation/common/simple.h>
 #include <pthread/tsd_private.h>
 #include "xtracelib.h"
 
@@ -30,7 +30,7 @@ struct tls_table {
 // we have to use a slightly hackier technique: using one of the system's reserved but unused TLS keys; we use one from the range we currently reserve
 // for Darling.
 
-#include <darling/emulation/legacy_path/tsd.h>
+#include <darling/emulation/common/tsd.h>
 
 // TODO: also perform TLS cleanup for other threads when doing a fork
 

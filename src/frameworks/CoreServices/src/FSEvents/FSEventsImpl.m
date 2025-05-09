@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <darling/emulation/legacy_path/ext/sys/inotify.h>
+#include <darling/emulation/linux_premigration/ext/sys/inotify.h>
 
 static dispatch_queue_t g_fsEventsQueue = NULL;
 
