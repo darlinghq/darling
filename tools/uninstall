@@ -8,7 +8,10 @@ then
 	exit
 fi
 
-$(dirname "$0")/shutdown-user.sh
+if command -v darling
+then
+	$(dirname "$0")/shutdown-user.sh
+fi
 
 INSTALL_PREFIX="$(dirname "$(dirname "$(which darling)")")"
 if [ -d "${INSTALL_PREFIX}/libexec" ]
