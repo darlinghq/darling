@@ -47,4 +47,11 @@ typedef FourCharCode                    AEEventClass;
 typedef FourCharCode                    AEEventID;
 typedef SInt8                           AEArrayType;
 
+typedef OSErr (*AEEventHandlerProcPtr)(
+	const AppleEvent* theAppleEvent,
+	AppleEvent* reply,
+	SRefCon handlerRefcon
+);
+typedef AEEventHandlerProcPtr           AEEventHandlerUPP;
+
 #endif
