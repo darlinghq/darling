@@ -196,6 +196,18 @@ LSSetHandlerOptionsForContentType(
   CFStringRef inContentType,
   LSHandlerOptions inOptions);
 
+extern CFArrayRef
+LSCopyAllHandlersForURLScheme(
+  CFStringRef inURLScheme);
+
+extern CFArrayRef
+LSCopyAllRoleHandlersForContentType(
+  CFStringRef inContentType,
+  LSRolesMask inRole);
+
+extern CFStringRef
+LSCopyDefaultHandlerForURLScheme(
+  CFStringRef inURLScheme);
 
 
 #pragma pack(pop)
