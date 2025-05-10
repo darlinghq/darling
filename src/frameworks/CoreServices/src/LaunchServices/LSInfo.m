@@ -310,8 +310,6 @@ OSStatus LSGetApplicationForURL(CFURLRef inURL, LSRolesMask inRoleMask, FSRef *o
 	return LSGetApplicationForInfo(kLSUnknownType, kLSUnknownCreator, (CFStringRef) extension, inRoleMask, outAppRef, outAppURL);
 }
 
-// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
-// WARN: Deprecated.
 CFArrayRef LSCopyAllHandlersForURLScheme(CFStringRef inURLScheme)
 {
 	puts("LSCopyAllHandlersForURLScheme STUB");
@@ -319,8 +317,6 @@ CFArrayRef LSCopyAllHandlersForURLScheme(CFStringRef inURLScheme)
 	return NULL;
 }
 
-// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
-// WARN: Deprecated.
 CFArrayRef LSCopyAllRoleHandlersForContentType(CFStringRef inContentType, LSRolesMask inRole)
 {
 	puts("LSCopyAllRoleHandlersForContentType STUB");
@@ -328,11 +324,8 @@ CFArrayRef LSCopyAllRoleHandlersForContentType(CFStringRef inContentType, LSRole
 	return NULL;
 }
 
-// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
-// WARN: Deprecated.
 CFStringRef LSCopyDefaultHandlerForURLScheme(CFStringRef inURLScheme)
 {
 	puts("LSCopyDefaultHandlerForURLScheme STUB");
-	// "no string"? (could also return "" I guess)
-	return NULL;
+	return NULL; // (could also return "" I guess)
 }

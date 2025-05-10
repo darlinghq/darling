@@ -196,18 +196,15 @@ LSSetHandlerOptionsForContentType(
   CFStringRef inContentType,
   LSHandlerOptions inOptions);
 
-// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
 extern CFArrayRef
 LSCopyAllHandlersForURLScheme(
   CFStringRef inURLScheme);
 
-// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
 extern CFArrayRef
 LSCopyAllRoleHandlersForContentType(
   CFStringRef inContentType,
   LSRolesMask inRole);
 
-// Expected in: /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
 extern CFStringRef
 LSCopyDefaultHandlerForURLScheme(
   CFStringRef inURLScheme);
