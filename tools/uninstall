@@ -4,16 +4,15 @@ set +e
 if [ "$(whoami)" != "root" ]
 then
 	echo "Uninstall must be run as root, invoking sudo"
-	sudo su -c "$0"
-	exit
+	exec sudo su -c "$0" "$@"
 fi
-
-INSTALL_PREFIX="$(dirname "$(dirname "$(which darling)")")"
 
 if command -v darling
 then
-	darling shutdown
+	$(dirname "$0")/shutdown-user.sh
 fi
+
+INSTALL_PREFIX="$(dirname "$(dirname "$(which darling)")")"
 if [ -d "${INSTALL_PREFIX}/libexec" ]
 then
 	rm -rf "${INSTALL_PREFIX}/libexec/darling"
