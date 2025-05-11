@@ -14,3 +14,14 @@ OSErr AEDisposeDesc(AEDesc *theAEDesc) {
     if (verbose) puts("STUB: AEDisposeDesc called");
     return noErr;
 }
+
+OSErr AEInstallEventHandler(
+  AEEventClass theAEEventClass,
+  AEEventID theAEEventID,
+  AEEventHandlerUPP handler,
+  SRefCon handlerRefcon,
+  Boolean isSysHandler
+) {
+    if (verbose) puts("STUB: AEInstallEventHandler called");
+    return noErr;
+}
