@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
-#include <darling/emulation/legacy_path/simple.h>
+#include <darling/emulation/common/simple.h>
 #include "xtracelib.h"
 #include "mig_trace.h"
 #include "tls.h"
@@ -12,7 +12,7 @@
 #include "memory.h"
 #include <limits.h>
 
-#include <darling/emulation/legacy_path/ext/for-xtrace.h>
+#include <darling/emulation/linux_premigration/ext/for-xtrace.h>
 #include <fcntl.h>
 #include <signal.h>
 

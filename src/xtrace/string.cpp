@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <cstring>
 
-#include <darling/emulation/legacy_path/simple.h>
+#include <darling/emulation/common/simple.h>
 
 //
 // Helper Functions
