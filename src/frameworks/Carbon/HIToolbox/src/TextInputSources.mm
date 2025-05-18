@@ -1,4 +1,4 @@
-#include "TextInputSources.h"
+#include <HIToolbox/TextInputSources.h>
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CFData.h>
 #include <os/lock.h>
