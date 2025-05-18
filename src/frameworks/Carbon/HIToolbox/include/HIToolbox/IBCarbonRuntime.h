@@ -5,7 +5,7 @@
 #include <CarbonCore/MacErrors.h>
 #include <CoreFoundation/CFBase.h>
 #include <HIToolbox/Menus.h>
-#include "../../src/MacWindows.h" // TODO: put WindowRef where it actually goes
+#include <HIToolbox/MacWindows.h>
 
 #ifdef __cplusplus
 extern "C" {
