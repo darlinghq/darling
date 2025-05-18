@@ -573,6 +573,7 @@
 #import <AVFoundation/AVCameraCalibrationData.h>
 #import <AVFoundation/AVCaptionOutputSettings.h>
 #import <AVFoundation/AVError.h>
+#import <AVFoundation/AVFAudio.h>
 #import <AVFoundation/AVMediaFormat.h>
 #import <AVFoundation/AVAudioSettings.h>
 #import <AVFoundation/AVAnimation.h>
