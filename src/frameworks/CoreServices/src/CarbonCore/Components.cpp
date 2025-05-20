@@ -22,6 +22,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/MacMemory.h>
 #include "ComponentManager.h"
 
+static int verbose = 0;
+__attribute__((constructor)) static void initme(void) {
+    verbose = getenv("STUB_VERBOSE") != NULL;
+}
+
 Component FindNextComponent(Component prev, ComponentDescription* desc)
 {
 	std::vector<Component> components = ComponentManager::instance()->findMatching(desc);
@@ -82,6 +87,12 @@ ComponentInstance OpenComponent(Component comp)
 	ComponentInstance rv;
 	if (ComponentManager::instance()->instantiate(comp, &rv) == noErr)
 		return rv;
+	return nullptr;
+}
+
+ComponentInstance OpenDefaultComponent(OSType componentType, OSType componentSubType)
+{
+    if (verbose) puts("STUB: OpenDefaultComponent called");
 	return nullptr;
 }
 
