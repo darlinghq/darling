@@ -138,6 +138,8 @@ long CountComponents(ComponentDescription* desc);
 
 OSErr OpenAComponent(Component comp, ComponentInstance* out);
 ComponentInstance OpenComponent(Component comp);
+ComponentInstance OpenDefaultComponent(OSType componentType, OSType componentSubType);
+
 OSErr CloseComponent(ComponentInstance inst);
 
 Component RegisterComponent(ComponentDescription *cd, ComponentRoutineUPP componentEntryPoint, SInt16 global,
