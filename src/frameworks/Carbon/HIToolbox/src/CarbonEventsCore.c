@@ -35,13 +35,13 @@ OSStatus CallNextEventHandler(EventHandlerCallRef a, EventRef b)
 	return 0;
 }
 
-OSStatus CreateEvent(CFAllocatorRef a, UInt32 b, UInt32 c, EventTime d, EventAttributes e, EventRef * f)
+OSStatus CreateEvent(CFAllocatorRef a, OSType b, UInt32 c, EventTime d, EventAttributes e, EventRef* f)
 {
     if (verbose) puts("STUB: CreateEvent called");
 	return 0;
 }
 
-UInt32 GetEventClass(EventRef a)
+OSType GetEventClass(EventRef a)
 {
     if (verbose) puts("STUB: GetEventClass called");
 	return 0;
@@ -53,19 +53,19 @@ UInt32 GetEventKind(EventRef a)
 	return 0;
 }
 
-OSStatus GetEventParameter(EventRef a, EventParamName b, EventParamType c, EventParamType * d, UInt32 e, UInt32 * f, void * g)
+OSStatus GetEventParameter(EventRef a, EventParamName b, EventParamType c, EventParamType* d, ByteCount e, ByteCount* f, void* g)
 {
     if (verbose) puts("STUB: GetEventParameter called");
 	return 0;
 }
 
-OSStatus GetMainEventQueue()
+EventQueueRef GetMainEventQueue()
 {
     if (verbose) puts("STUB: GetMainEventQueue called");
 	return 0;
 }
 
-OSStatus InstallEventHandler(EventTargetRef a, EventHandlerUPP b, UInt32 c, const EventTypeSpec * d, void * e, EventHandlerRef * f)
+OSStatus InstallEventHandler(EventTargetRef a, EventHandlerUPP b, ItemCount c, const EventTypeSpec* d, void* e, EventHandlerRef* f)
 {
     if (verbose) puts("STUB: InstallEventHandler called");
 	return 0;
@@ -83,16 +83,15 @@ OSStatus PostEventToQueue(EventQueueRef a, EventRef b, EventPriority c)
 	return 0;
 }
 
-OSStatus ReceiveNextEvent(UInt32 a, const EventTypeSpec * b, EventTimeout c, Boolean d, EventRef * e)
+OSStatus ReceiveNextEvent(ItemCount a, const EventTypeSpec* b, EventTimeout c, Boolean d, EventRef* e)
 {
     if (verbose) puts("STUB: ReceiveNextEvent called");
 	return 0;
 }
 
-OSStatus ReleaseEvent(EventRef a)
+void ReleaseEvent(EventRef a)
 {
     if (verbose) puts("STUB: ReleaseEvent called");
-	return 0;
 }
 
 OSStatus RemoveEventHandler(EventHandlerRef a)
