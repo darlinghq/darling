@@ -40,21 +40,21 @@ typedef UInt32 KeyMap[4];
 
 
 OSStatus CallNextEventHandler(EventHandlerCallRef a, EventRef b);
-OSStatus CreateEvent(CFAllocatorRef a, UInt32 b, UInt32 c, EventTime d, EventAttributes e, EventRef * f);
-UInt32 GetEventClass(EventRef a);
+OSStatus CreateEvent(CFAllocatorRef a, OSType b, UInt32 c, EventTime d, EventAttributes e, EventRef* f);
+OSType GetEventClass(EventRef a);
 UInt32 GetEventKind(EventRef a);
-OSStatus GetEventParameter(EventRef a, EventParamName b, EventParamType c, EventParamType * d, UInt32 e, UInt32 * f, void * g);
+OSStatus GetEventParameter(EventRef a, EventParamName b, EventParamType c, EventParamType* d, ByteCount e, ByteCount* f, void* g);
 
-OSStatus GetMainEventQueue();
-OSStatus InstallEventHandler(EventTargetRef a, EventHandlerUPP b, UInt32 c, const EventTypeSpec * d, void * e, EventHandlerRef * f);
+EventQueueRef GetMainEventQueue();
+OSStatus InstallEventHandler(EventTargetRef a, EventHandlerUPP b, ItemCount c, const EventTypeSpec* d, void* e, EventHandlerRef* f);
 
 
-EventHandlerUPP NewEventHandlerUPP(EventHandlerProcPtr a); 
+EventHandlerUPP NewEventHandlerUPP(EventHandlerProcPtr a);
 OSStatus PostEventToQueue(EventQueueRef a, EventRef b, EventPriority c);
 
-OSStatus ReceiveNextEvent(UInt32 a, const EventTypeSpec * b, EventTimeout c, Boolean d, EventRef * e);
+OSStatus ReceiveNextEvent(ItemCount a, const EventTypeSpec* b, EventTimeout c, Boolean d, EventRef* e);
 
-OSStatus ReleaseEvent(EventRef a);
+void ReleaseEvent(EventRef a);
 OSStatus RemoveEventHandler(EventHandlerRef a);
 
 OSStatus SendEventToEventTarget(EventRef a, EventTargetRef b);
