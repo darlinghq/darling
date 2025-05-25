@@ -1,33 +1,31 @@
 #include <SystemConfiguration/SCSchemaDefinitions.h>
 #include <CoreFoundation/CFString.h>
 
-#ifndef CONST_STRING_DECL
-#	define CONST_STRING_DECL(name, value) const CFStringRef name = CFSTR(value)
-#endif
-
-CONST_STRING_DECL(kSCPropNetProxiesExceptionsList, "ExceptionsList");
-CONST_STRING_DECL(kSCPropNetProxiesExcludeSimpleHostnames, "ExcludeSimpleHostnames");
-CONST_STRING_DECL(kSCPropNetProxiesFTPEnable, "FTPEnable");
-CONST_STRING_DECL(kSCPropNetProxiesFTPPassive, "FTPPassive");
-CONST_STRING_DECL(kSCPropNetProxiesFTPPort, "FTPPort");
-CONST_STRING_DECL(kSCPropNetProxiesFTPProxy, "FTPProxy");
-CONST_STRING_DECL(kSCPropNetProxiesGopherEnable, "GopherEnable");
-CONST_STRING_DECL(kSCPropNetProxiesGopherPort, "GopherPort");
-CONST_STRING_DECL(kSCPropNetProxiesGopherProxy, "GopherProxy");
-CONST_STRING_DECL(kSCPropNetProxiesHTTPEnable, "HTTPEnable");
-CONST_STRING_DECL(kSCPropNetProxiesHTTPPort, "HTTPPort");
-CONST_STRING_DECL(kSCPropNetProxiesHTTPProxy, "HTTPProxy");
-CONST_STRING_DECL(kSCPropNetProxiesHTTPSEnable, "HTTPSEnable");
-CONST_STRING_DECL(kSCPropNetProxiesHTTPSPort, "HTTPSPort");
-CONST_STRING_DECL(kSCPropNetProxiesHTTPSProxy, "HTTPSProxy");
-CONST_STRING_DECL(kSCPropNetProxiesRTSPEnable, "RTSPEnable");
-CONST_STRING_DECL(kSCPropNetProxiesRTSPPort, "RTSPPort");
-CONST_STRING_DECL(kSCPropNetProxiesRTSPProxy, "RTSPProxy");
-CONST_STRING_DECL(kSCPropNetProxiesSOCKSEnable, "SOCKSEnable");
-CONST_STRING_DECL(kSCPropNetProxiesSOCKSPort, "SOCKSPort");
-CONST_STRING_DECL(kSCPropNetProxiesSOCKSProxy, "SOCKSProxy");
-CONST_STRING_DECL(kSCPropNetProxiesProxyAutoConfigEnable, "ProxyAutoConfigEnable");
-CONST_STRING_DECL(kSCPropNetProxiesProxyAutoConfigJavaScript, "ProxyAutoConfigJavaScript");
-CONST_STRING_DECL(kSCPropNetProxiesProxyAutoConfigURLString, "ProxyAutoConfigURLString");
-CONST_STRING_DECL(kSCPropNetProxiesProxyAutoDiscoveryEnable, "ProxyAutoDiscoveryEnable");
-
+const CFStringRef kSCPropNetIPv4Addresses = CFSTR("Addresses");
+const CFStringRef kSCPropNetIPv4SubnetMasks = CFSTR("SubnetMasks");
+const CFStringRef kSCPropNetProxiesExceptionsList = CFSTR("ExceptionsList");
+const CFStringRef kSCPropNetProxiesExcludeSimpleHostnames = CFSTR("ExcludeSimpleHostnames");
+const CFStringRef kSCPropNetProxiesFTPEnable = CFSTR("FTPEnable");
+const CFStringRef kSCPropNetProxiesFTPPassive = CFSTR("FTPPassive");
+const CFStringRef kSCPropNetProxiesFTPPort = CFSTR("FTPPort");
+const CFStringRef kSCPropNetProxiesFTPProxy = CFSTR("FTPProxy");
+const CFStringRef kSCPropNetProxiesGopherEnable = CFSTR("GopherEnable");
+const CFStringRef kSCPropNetProxiesGopherPort = CFSTR("GopherPort");
+const CFStringRef kSCPropNetProxiesGopherProxy = CFSTR("GopherProxy");
+const CFStringRef kSCPropNetProxiesHTTPEnable = CFSTR("HTTPEnable");
+const CFStringRef kSCPropNetProxiesHTTPPort = CFSTR("HTTPPort");
+const CFStringRef kSCPropNetProxiesHTTPProxy = CFSTR("HTTPProxy");
+const CFStringRef kSCPropNetProxiesHTTPSEnable = CFSTR("HTTPSEnable");
+const CFStringRef kSCPropNetProxiesHTTPSPort = CFSTR("HTTPSPort");
+const CFStringRef kSCPropNetProxiesHTTPSProxy = CFSTR("HTTPSProxy");
+const CFStringRef kSCPropNetProxiesRTSPEnable = CFSTR("RTSPEnable");
+const CFStringRef kSCPropNetProxiesRTSPPort = CFSTR("RTSPPort");
+const CFStringRef kSCPropNetProxiesRTSPProxy = CFSTR("RTSPProxy");
+const CFStringRef kSCPropNetProxiesSOCKSEnable = CFSTR("SOCKSEnable");
+const CFStringRef kSCPropNetProxiesSOCKSPort = CFSTR("SOCKSPort");
+const CFStringRef kSCPropNetProxiesSOCKSProxy = CFSTR("SOCKSProxy");
+const CFStringRef kSCPropNetProxiesProxyAutoConfigEnable = CFSTR("ProxyAutoConfigEnable");
+const CFStringRef kSCPropNetProxiesProxyAutoConfigJavaScript = CFSTR("ProxyAutoConfigJavaScript");
+const CFStringRef kSCPropNetProxiesProxyAutoConfigURLString = CFSTR("ProxyAutoConfigURLString");
+const CFStringRef kSCPropNetProxiesProxyAutoDiscoveryEnable = CFSTR("ProxyAutoDiscoveryEnable");
+const CFStringRef kSCDynamicStorePropNetPrimaryInterface = CFSTR("PrimaryInterface");
