@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
+extern NSString *const PSFeedRefreshingNotification;
+
 @interface PSFeed : NSObject
 
 @end
