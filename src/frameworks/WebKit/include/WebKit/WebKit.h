@@ -188,6 +188,7 @@
 #import <WebKit/WKWebView.h>
 #import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWindowFeatures.h>
+#import <WebKit/WebView.h>
 
 @protocol DOMEventListener
 @end

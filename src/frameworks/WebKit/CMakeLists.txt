@@ -47,6 +47,7 @@ add_framework(WebKit
         src/_WKWebsiteDataStore.m
         src/_WKWebsiteDataStoreConfiguration.m
         src/_WKWebsitePolicies.m
+        src/WebView.m
         src/WKCustomProtocolLoader.m
         src/WKCustomProtocol.m
         src/WKNetworkSessionDelegate.m
