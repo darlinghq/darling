@@ -469,6 +469,7 @@
 #import <AddressBook/ABPeoplePickerView.h>
 #import <AddressBook/ABPeriodicTask.h>
 #import <AddressBook/ABPeriodicUITask.h>
+#import <AddressBook/ABPerson.h>
 #import <AddressBook/ABPersonContactConverter.h>
 #import <AddressBook/ABPersonEntriesFetcher.h>
 #import <AddressBook/ABPersonEntriesList.h>
@@ -515,6 +516,7 @@
 #import <AddressBook/ABRenameGroupCommand.h>
 #import <AddressBook/ABRolloverButton.h>
 #import <AddressBook/ABMapsLaunchRequest.h>
+#import <AddressBook/ABSearchElement.h>
 #import <AddressBook/ABSearchElementOrderManager.h>
 #import <AddressBook/ABSearchElementSetView.h>
 #import <AddressBook/ABSearchElementUIController.h>
