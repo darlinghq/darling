@@ -29,6 +29,7 @@ NSString * const kCIInputContrastKey = @"inputContrast";
 NSString * const kCIInputExtentKey = @"inputExtent";
 NSString * const kCIInputImageKey = @"inputImage";
 NSString * const kCIInputSaturationKey = @"inputSaturation";
+NSString *const kCIInputRadiusKey = @"inputRadius";
 NSString * const kCIOutputImageKey = @"outputImage";
 NSString * const kCIApplyOptionDefinition = @"definition";
 

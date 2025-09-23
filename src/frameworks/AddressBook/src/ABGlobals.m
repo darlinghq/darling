@@ -38,6 +38,7 @@ NSString *const kABOtherDatesProperty=@"ABOtherDatesProperty";
 NSString *const kABPhoneProperty=@"ABPhoneProperty";
 NSString *const kABTitleProperty=@"ABTitleProperty";
 NSString *const kABURLsProperty=@"ABURLsProperty";
+NSString *const kABSuffixProperty = @"Suffix";
 
 NSString *const kABPersonFlags=@"ABPersonFlags";
 

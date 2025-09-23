@@ -13,7 +13,7 @@ add_framework(SearchKit
 	PARENT "CoreServices"
 
 	SOURCES
-		empty.c
+		Analysis.m
 
 	DEPENDENCIES
 		CoreFoundation

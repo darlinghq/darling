@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2025 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,19 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/NSURLDownload.h>
+#import <AppKit/NSWindow.h>
 
-extern NSString *const kABDatabaseChangedNotification;
-extern NSString *const kABDatabaseChangedExternallyNotification;
-
-extern NSString *const kABEmailProperty;
-extern NSString *const kABFirstNameProperty;
-extern NSString *const kABLastNameProperty;
-extern NSString *const kABNicknameProperty;
-extern NSString *const kABOrganizationProperty;
-extern NSString *const kABPersonFlags;
-extern NSString *const kABSuffixProperty;
-
-extern NSString *const kABDeletedRecords;
-extern NSString *const kABInsertedRecords;
-extern NSString *const kABUpdatedRecords;
+@interface WebDownload : NSURLDownload
+@end

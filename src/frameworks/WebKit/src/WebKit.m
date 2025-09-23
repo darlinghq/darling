@@ -52,6 +52,8 @@
 
 @end
 
+NSString *WebKitErrorDomain = @"WebKitErrorDomain";
+
 static int verbose = 0;
 
 __attribute__((constructor))

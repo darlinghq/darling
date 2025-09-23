@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
+extern NSString *const kCIInputRadiusKey;
+
 @interface CIFilter : NSObject
 
 @end

@@ -378,6 +378,7 @@ add_framework(AddressBook
         src/ABPeoplePickerView.m
         src/ABPeriodicTask.m
         src/ABPeriodicUITask.m
+        src/ABPerson.m
         src/ABPersonContactConverter.m
         src/ABPersonEntriesFetcher.m
         src/ABPersonEntriesList.m
@@ -424,6 +425,7 @@ add_framework(AddressBook
         src/ABRenameGroupCommand.m
         src/ABRolloverButton.m
         src/ABMapsLaunchRequest.m
+        src/ABSearchElement.m
         src/ABSearchElementOrderManager.m
         src/ABSearchElementSetView.m
         src/ABSearchElementUIController.m

@@ -13,6 +13,6 @@
 #include <CarbonCore/CarbonCore.h>
 #include <FSEvents/FSEvents.h>
 #include <LaunchServices/LaunchServices.h>
+#include <SearchKit/SearchKit.h>
 
 #endif
-
