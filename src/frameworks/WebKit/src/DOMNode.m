@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2025 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,19 +17,20 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <WebKit/DOMNode.h>
+#import <Foundation/NSMethodSignature.h>
+#import <Foundation/NSInvocation.h>
 
-extern NSString *const kABDatabaseChangedNotification;
-extern NSString *const kABDatabaseChangedExternallyNotification;
+@implementation DOMNode
 
-extern NSString *const kABEmailProperty;
-extern NSString *const kABFirstNameProperty;
-extern NSString *const kABLastNameProperty;
-extern NSString *const kABNicknameProperty;
-extern NSString *const kABOrganizationProperty;
-extern NSString *const kABPersonFlags;
-extern NSString *const kABSuffixProperty;
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+}
 
-extern NSString *const kABDeletedRecords;
-extern NSString *const kABInsertedRecords;
-extern NSString *const kABUpdatedRecords;
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+@end

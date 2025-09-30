@@ -19,6 +19,11 @@
 
 #import <PDFKit/PDFDocument.h>
 
+PDFDocumentAttribute const PDFDocumentAuthorAttribute = @"Author";
+PDFDocumentAttribute const PDFDocumentCreationDateAttribute = @"CreationDate";
+PDFDocumentAttribute const PDFDocumentKeywordsAttribute = @"Keywords";
+PDFDocumentAttribute const PDFDocumentTitleAttribute = @"Title";
+
 @implementation PDFDocument
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

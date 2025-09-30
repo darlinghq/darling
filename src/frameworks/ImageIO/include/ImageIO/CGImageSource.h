@@ -15,6 +15,8 @@ typedef struct CF_BRIDGED_TYPE(id) O2ImageSource *CGImageSourceRef;
 #import <CoreGraphics/CGImage.h>
 #import <CoreGraphics/CGDataProvider.h>
 
+IMAGEIO_EXTERN const CFStringRef kCGImageSourceShouldAllowFloat;
+
 IMAGEIO_EXTERN CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data, CFDictionaryRef options);
 IMAGEIO_EXTERN CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url, CFDictionaryRef options);
 

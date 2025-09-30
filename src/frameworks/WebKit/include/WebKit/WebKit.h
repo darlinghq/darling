@@ -190,6 +190,8 @@
 #import <WebKit/WKWindowFeatures.h>
 #import <WebKit/WebView.h>
 
+extern NSString *WebKitErrorDomain;
+
 @protocol DOMEventListener
 @end
 

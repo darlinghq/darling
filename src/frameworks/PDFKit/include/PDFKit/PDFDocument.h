@@ -17,7 +17,15 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <PDFKit/PDFKitExport.h>
+#import <Foundation/Foundation.h>
+
+typedef NSString *PDFDocumentAttribute;
+
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentAuthorAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentCreationDateAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentKeywordsAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentTitleAttribute;
 
 @interface PDFDocument : NSObject
 

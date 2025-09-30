@@ -47,7 +47,12 @@ add_framework(WebKit
         src/_WKWebsiteDataStore.m
         src/_WKWebsiteDataStoreConfiguration.m
         src/_WKWebsitePolicies.m
+        src/DOMNode.m
+        src/DOMObject.m
         src/WebView.m
+        src/WebDownload.m
+        src/WebHistory.m
+        src/WebScriptObject.m
         src/WKCustomProtocolLoader.m
         src/WKCustomProtocol.m
         src/WKNetworkSessionDelegate.m
@@ -160,4 +165,5 @@ add_framework(WebKit
         system
         objc
         Foundation
+        CFNetwork
 )
