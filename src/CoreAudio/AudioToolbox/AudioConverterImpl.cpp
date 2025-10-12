@@ -212,9 +212,9 @@ AudioConverter::~AudioConverter()
 {
 	TRACE();
 	if (m_decoder)
-		avcodec_close(m_decoder);
+		avcodec_free_context(&m_decoder);
 	if (m_encoder)
-		avcodec_close(m_encoder);
+		avcodec_free_context(&m_encoder);
 	if (m_audioFrame)
 		av_free(m_audioFrame);
 	if (m_resampler)
