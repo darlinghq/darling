@@ -153,6 +153,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore:${COCOTRON_FW_PATH}/QuartzCore/QuartzCore \
 -Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL:${CMAKE_BINARY_DIR}/src/frameworks/OpenGL/OpenGL \
 -Wl,-dylib_file,/System/Library/PrivateFrameworks/Onyx2D.framework/Versions/A/Onyx2D:${CMAKE_BINARY_DIR}/src/external/cocotron/Onyx2D/Onyx2D \
+-Wl,-dylib_file,/System/Library/PrivateFrameworks/UIFoundation.framework/Versions/A/UIFoundation:${CMAKE_BINARY_DIR}/src/private-frameworks/UIFoundation/UIFoundation \
 -Wl,-dylib_file,/usr/lib/darling/libelfloader.dylib:${CMAKE_BINARY_DIR}/src/libelfloader/libelfloader.dylib \
 -Wl,-dylib_file,/usr/lib/native/libavcodec.dylib:${CMAKE_BINARY_DIR}/src/native/libavcodec.dylib \
 -Wl,-dylib_file,/usr/lib/native/libavformat.dylib:${CMAKE_BINARY_DIR}/src/native/libavformat.dylib \
