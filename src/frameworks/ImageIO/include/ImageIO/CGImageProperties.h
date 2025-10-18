@@ -21,3 +21,5 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifDictionary;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFXResolution;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFYResolution;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFOrientation;
+
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyHasAlpha;
