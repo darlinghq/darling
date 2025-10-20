@@ -12,7 +12,7 @@ function(dsym target)
 	if (DSYMUTIL_EXE AND build_type MATCHES debug)
 
 		add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" DEPENDS "${target}" COMMAND ${CMAKE_COMMAND} -E env
-			"PATH=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc:$ENV{PATH}"
+			"PATH='${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc:$ENV{PATH}'"
 			"${DSYMUTIL_EXE}" "-flat" "-o" "${target}.dSYM" "$<TARGET_FILE:${target}>")
 
 		add_custom_target("${target}-dSYM" ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${target}.dSYM" getuuid lipo)
