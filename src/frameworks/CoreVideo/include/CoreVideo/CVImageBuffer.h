@@ -6,4 +6,25 @@
 
 typedef CVBufferRef CVImageBufferRef;
 
+extern const CFStringRef kCVImageBufferColorPrimaries_EBU_3213;
+extern const CFStringRef kCVImageBufferColorPrimaries_ITU_R_2020;
+extern const CFStringRef kCVImageBufferColorPrimaries_ITU_R_709_2;
+extern const CFStringRef kCVImageBufferColorPrimaries_SMPTE_C;
+extern const CFStringRef kCVImageBufferColorPrimariesKey;
+extern const CFStringRef kCVImageBufferGammaLevelKey;
+extern const CFStringRef kCVImageBufferTransferFunction_ITU_R_2020;
+extern const CFStringRef kCVImageBufferTransferFunction_ITU_R_2100_HLG;
+extern const CFStringRef kCVImageBufferTransferFunction_ITU_R_709_2;
+extern const CFStringRef kCVImageBufferTransferFunction_SMPTE_240M_1995;
+extern const CFStringRef kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ;
+extern const CFStringRef kCVImageBufferTransferFunction_SMPTE_ST_428_1;
+extern const CFStringRef kCVImageBufferTransferFunction_UseGamma;
+extern const CFStringRef kCVImageBufferTransferFunctionKey;
+extern const CFStringRef kCVImageBufferTransferFunction_sRGB;
+extern const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_2020;
+extern const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_601_4;
+extern const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_709_2;
+extern const CFStringRef kCVImageBufferYCbCrMatrix_SMPTE_240M_1995;
+extern const CFStringRef kCVImageBufferYCbCrMatrixKey;
+
 #endif // _COREVIDEO_CVIMAGEBUFFER_H_
