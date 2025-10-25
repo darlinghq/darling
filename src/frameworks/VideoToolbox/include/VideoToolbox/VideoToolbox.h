@@ -22,8 +22,16 @@
 #define _VideoToolbox_H_
 
 #import <Foundation/Foundation.h>
-
+#import <CoreFoundation/CFBase.h>
 #import <VideoToolbox/FigMetalTransferHelper.h>
+
+extern const CFStringRef kVTCompressionPropertyKey_DataRateLimits;
+extern const CFStringRef kVTCompressionPropertyKey_ExpectedFrameRate;
+extern const CFStringRef kVTCompressionPropertyKey_MaxFrameDelayCount;
+extern const CFStringRef kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration;
+extern const CFStringRef kVTProfileLevel_H264_High_AutoLevel;
+extern const CFStringRef kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder;
+extern const CFStringRef kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder;
 
 void* COLOR_Y2R24(void);
 void* COLOR_Y2R32(void);

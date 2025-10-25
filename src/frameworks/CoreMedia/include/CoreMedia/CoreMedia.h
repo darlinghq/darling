@@ -23,6 +23,22 @@
 
 
 #include <CoreMedia/CMTime.h>
+#include <CoreFoundation/CFBase.h>
+
+extern const CFStringRef kCMFormatDescriptionColorPrimaries_ITU_R_2020;
+extern const CFStringRef kCMFormatDescriptionColorPrimaries_DCI_P3;
+extern const CFStringRef kCMFormatDescriptionColorPrimaries_P3_D65;
+extern const CFStringRef kCMFormatDescriptionExtension_ContentLightLevelInfo;
+extern const CFStringRef kCMFormatDescriptionExtension_Depth;
+extern const CFStringRef kCMFormatDescriptionExtension_FormatName;
+extern const CFStringRef kCMFormatDescriptionExtension_FullRangeVideo;
+extern const CFStringRef kCMFormatDescriptionExtension_MasteringDisplayColorVolume;
+extern const CFStringRef kCMFormatDescriptionTransferFunction_ITU_R_2020;
+extern const CFStringRef kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG;
+extern const CFStringRef kCMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ;
+extern const CFStringRef kCMFormatDescriptionTransferFunction_SMPTE_ST_428_1;
+extern const CFStringRef kCMFormatDescriptionYCbCrMatrix_ITU_R_2020;
+extern const CFStringRef kCMSampleAttachmentKey_IsDependedOnByOthers;
 
 void* AudioToolbox_AudioConverterDispose(void);
 void* AudioToolbox_AudioConverterGetProperty(void);

@@ -23,8 +23,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+const CFStringRef kCMFormatDescriptionColorPrimaries_ITU_R_2020 = CFSTR("CMFormatDescriptionColorPrimaries_ITU_R_2020");
+const CFStringRef kCMFormatDescriptionColorPrimaries_DCI_P3 = CFSTR("CMFormatDescriptionColorPrimaries_DCI_P3");
+const CFStringRef kCMFormatDescriptionColorPrimaries_P3_D65 = CFSTR("CMFormatDescriptionColorPrimaries_P3_D65");
+const CFStringRef kCMFormatDescriptionExtension_ContentLightLevelInfo = CFSTR("CMFormatDescriptionExtension_ContentLightLevelInfo");
+const CFStringRef kCMFormatDescriptionExtension_Depth = CFSTR("CMFormatDescriptionExtension_Depth");
+const CFStringRef kCMFormatDescriptionExtension_FormatName = CFSTR("CMFormatDescriptionExtension_FormatName");
+const CFStringRef kCMFormatDescriptionExtension_FullRangeVideo = CFSTR("CMFormatDescriptionExtension_FullRangeVideo");
 const CFStringRef kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms = CFSTR("SampleDescriptionExtensionAtoms");
+const CFStringRef kCMFormatDescriptionExtension_MasteringDisplayColorVolume = CFSTR("CMFormatDescriptionExtension_MasteringDisplayColorVolume");
+const CFStringRef kCMFormatDescriptionTransferFunction_ITU_R_2020 = CFSTR("CMFormatDescriptionTransferFunction_ITU_R_2020");
+const CFStringRef kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG = CFSTR("CMFormatDescriptionTransferFunction_ITU_R_2100_HLG");
+const CFStringRef kCMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ = CFSTR("CMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ");
+const CFStringRef kCMFormatDescriptionTransferFunction_SMPTE_ST_428_1 = CFSTR("CMFormatDescriptionTransferFunction_SMPTE_ST_428_1");
+const CFStringRef kCMFormatDescriptionYCbCrMatrix_ITU_R_2020 = CFSTR("CMFormatDescriptionYCbCrMatrix_ITU_R_2020");
 const CFStringRef kCMSampleAttachmentKey_NotSync = CFSTR("NotSync");
+const CFStringRef kCMSampleAttachmentKey_IsDependedOnByOthers = CFSTR("IsDependedOnByOthers");
 
 static int verbose = 0;
 
