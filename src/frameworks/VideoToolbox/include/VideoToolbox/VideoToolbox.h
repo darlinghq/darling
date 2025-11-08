@@ -24,6 +24,7 @@
 #import <Foundation/Foundation.h>
 
 #import <VideoToolbox/FigMetalTransferHelper.h>
+#import <VideoToolbox/VTCompressionProperties.h>
 
 void* COLOR_Y2R24(void);
 void* COLOR_Y2R32(void);
