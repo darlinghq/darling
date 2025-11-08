@@ -19,6 +19,8 @@
 
 #import <CoreBluetooth/CBCentralManager.h>
 
+NSString *const CBCentralManagerScanOptionAllowDuplicatesKey = @"kCBScanOptionAllowDuplicates";
+
 @implementation CBCentralManager
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

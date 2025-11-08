@@ -6,4 +6,23 @@
 
 typedef CVBufferRef CVImageBufferRef;
 
+extern const CFStringRef kCVImageBufferPixelAspectRatioKey;
+extern const CFStringRef kCVImageBufferGammaLevelKey;
+extern const CFStringRef kCVImageBufferYCbCrMatrixKey;
+extern const CFStringRef kCVImageBufferColorPrimariesKey;
+extern const CFStringRef kCVImageBufferTransferFunctionKey;
+
+extern CFStringRef const kCVImageBufferPixelAspectRatioHorizontalSpacingKey;
+extern CFStringRef const kCVImageBufferPixelAspectRatioVerticalSpacingKey;
+
+extern CFStringRef const kCVImageBufferYCbCrMatrix_ITU_R_709_2;
+extern CFStringRef const kCVImageBufferYCbCrMatrix_ITU_R_601_4;
+extern CFStringRef const kCVImageBufferYCbCrMatrix_SMPTE_240M_1995;
+extern CFStringRef const kCVImageBufferColorPrimaries_ITU_R_709_2;
+extern CFStringRef const kCVImageBufferColorPrimaries_EBU_3213;
+extern CFStringRef const kCVImageBufferColorPrimaries_SMPTE_C;
+extern CFStringRef const kCVImageBufferTransferFunction_ITU_R_709_2;
+extern CFStringRef const kCVImageBufferTransferFunction_SMPTE_240M_1995;
+extern CFStringRef const kCVImageBufferTransferFunction_UseGamma;
+
 #endif // _COREVIDEO_CVIMAGEBUFFER_H_

@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2025 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,21 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
-#import <CoreBluetooth/CBCentralManagerConstants.h>
+#ifndef _VTCOMPRESSIONPROPERTIES_H_
+#define _VTCOMPRESSIONPROPERTIES_H_
 
-@interface CBCentralManager : NSObject
+#include <CoreFoundation/CoreFoundation.h>
 
-@end
+extern CFStringRef const kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration;
+
+extern CFStringRef const kVTCompressionPropertyKey_DataRateLimits;
+
+extern CFStringRef const kVTProfileLevel_H264_High_AutoLevel;
+
+extern CFStringRef const kVTCompressionPropertyKey_MaxFrameDelayCount;
+
+extern CFStringRef const kVTCompressionPropertyKey_ExpectedFrameRate;
+
+extern CFStringRef const kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder;
+
+#endif
