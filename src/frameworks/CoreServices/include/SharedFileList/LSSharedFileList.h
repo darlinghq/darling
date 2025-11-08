@@ -17,4 +17,13 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SharedFileList/LSSharedFileList.h>
+#ifndef _CORESERVICES_LSSHAREDFILELIST_H_
+#define _CORESERVICES_LSSHAREDFILELIST_H_
+
+#include <CoreFoundation/CoreFoundation.h>
+
+typedef struct OpaqueLSSharedFileListItemRef *LSSharedFileListItemRef;
+
+extern LSSharedFileListItemRef kLSSharedFileListItemLast;
+
+#endif

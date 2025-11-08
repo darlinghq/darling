@@ -17,4 +17,6 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SharedFileList/LSSharedFileList.h>
+#include <Foundation/Foundation.h>
+
+extern NSString *const CBCentralManagerScanOptionAllowDuplicatesKey;

@@ -19,6 +19,7 @@ add_framework(VideoToolbox
 
     SOURCES
         src/VideoToolbox.m
+        src/VTCompressionProperties.c
         src/FigMetalTransferHelper.m
 
     DEPENDENCIES

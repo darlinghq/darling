@@ -43,6 +43,7 @@ add_framework(CoreBluetooth
         src/CBManager.m
         src/CBATTRequest.m
         src/CBPairingAgent.m
+        src/CBError.m
 
     DEPENDENCIES
         system

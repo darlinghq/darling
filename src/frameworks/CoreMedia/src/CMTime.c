@@ -19,8 +19,37 @@
 
 #include <CoreMedia/CMTime.h>
 
-const CMTime kCMTimeInvalid;
-const CMTime kCMTimeIndefinite;
-const CMTime kCMTimePositiveInfinity;
-const CMTime kCMTimeNegativeInfinity;
-const CMTime kCMTimeZero;
+const CMTime kCMTimeInvalid = {
+    .value = 0,
+    .timescale = 0,
+    .flags = 0,
+    .epoch = 0
+};
+
+const CMTime kCMTimeIndefinite = {
+    .value = 0,
+    .timescale = 0,
+    .flags = kCMTimeFlags_Valid | kCMTimeFlags_Indefinite,
+    .epoch = 0
+};
+
+const CMTime kCMTimePositiveInfinity = {
+    .value = 0,
+    .timescale = 0,
+    .flags = kCMTimeFlags_Valid | kCMTimeFlags_PositiveInfinity,
+    .epoch = 0
+};
+
+const CMTime kCMTimeNegativeInfinity = {
+    .value = 0,
+    .timescale = 0,
+    .flags = kCMTimeFlags_Valid | kCMTimeFlags_NegativeInfinity,
+    .epoch = 0
+};
+
+const CMTime kCMTimeZero = {
+    .value = 0,
+    .timescale = 1,
+    .flags = kCMTimeFlags_Valid,
+    .epoch = 0
+};

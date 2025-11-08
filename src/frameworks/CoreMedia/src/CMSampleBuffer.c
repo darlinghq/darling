@@ -17,4 +17,6 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SharedFileList/LSSharedFileList.h>
+#include <CoreMedia/CMSampleBuffer.h>
+
+const CFStringRef kCMSampleAttachmentKey_DisplayImmediately = CFSTR("DisplayImmediately");

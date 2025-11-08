@@ -6,7 +6,7 @@
 /* Identification */
 extern const CFStringRef kMIDIPropertyName                        API_AVAILABLE(macos(10.0));
 // extern const CFStringRef kMIDIPropertyModel                       API_AVAILABLE(macos(10.0));
-// extern const CFStringRef kMIDIPropertyManufacturer                API_AVAILABLE(macos(10.0));
+extern const CFStringRef kMIDIPropertyManufacturer                API_AVAILABLE(macos(10.0));
 extern const CFStringRef kMIDIPropertyUniqueID                    API_AVAILABLE(macos(10.0));
 // extern const CFStringRef kMIDIPropertyDeviceID                    API_AVAILABLE(macos(10.0));
 
@@ -23,7 +23,7 @@ extern const CFStringRef kMIDIPropertyUniqueID                    API_AVAILABLE(
 
 /* Presentation */
 // extern const CFStringRef kMIDIPropertyImage                       API_AVAILABLE(macos(10.2));
-// extern const CFStringRef kMIDIPropertyDisplayName                 API_AVAILABLE(macos(10.4));
+extern const CFStringRef kMIDIPropertyDisplayName                 API_AVAILABLE(macos(10.4));
 
 /* Audio */
 // extern const CFStringRef kMIDIPropertyPanDisruptsStereo           API_AVAILABLE(macos(10.2));
@@ -50,7 +50,7 @@ extern const CFStringRef kMIDIPropertyAdvanceScheduleTimeMuSec    API_AVAILABLE(
 
 /* Drivers */
 // extern const CFStringRef kMIDIPropertyDriverOwner                 API_AVAILABLE(macos(10.1));
-// extern const CFStringRef kMIDIPropertyDriverVersion               API_AVAILABLE(macos(10.2));
+extern const CFStringRef kMIDIPropertyDriverVersion               API_AVAILABLE(macos(10.2));
 
 /* Connections */
 // extern const CFStringRef kMIDIPropertyCanRoute                    API_AVAILABLE(macos(10.0));

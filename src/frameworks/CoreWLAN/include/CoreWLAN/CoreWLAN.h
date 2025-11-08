@@ -23,6 +23,7 @@
 
 #import <Foundation/Foundation.h>
 
+#import <CoreWLAN/CoreWLANConstants.h>
 #import <CoreWLAN/CWEventDelegate.h>
 #import <CoreWLAN/CWInternalEventDelegate.h>
 #import <CoreWLAN/CWKeychainProxy.h>

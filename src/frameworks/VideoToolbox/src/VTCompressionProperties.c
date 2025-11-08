@@ -17,4 +17,16 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SharedFileList/LSSharedFileList.h>
+#include <VideoToolbox/VTCompressionProperties.h>
+
+const CFStringRef kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration = CFSTR("MaxKeyFrameIntervalDuration");
+
+const CFStringRef kVTCompressionPropertyKey_DataRateLimits = CFSTR("DataRateLimits");
+
+const CFStringRef kVTProfileLevel_H264_High_AutoLevel = CFSTR("H264_High_AutoLevel");
+
+const CFStringRef kVTCompressionPropertyKey_MaxFrameDelayCount = CFSTR("MaxFrameDelayCount");
+
+const CFStringRef kVTCompressionPropertyKey_ExpectedFrameRate = CFSTR("ExpectedFrameRate");
+
+const CFStringRef kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder = CFSTR("RequireHardwareAcceleratedVideoEncoder");
