@@ -2,6 +2,8 @@
 #include <HIToolbox/TextInputSources.h>
 
 /* HIToolbox.framework */
+const CFStringRef kTISNotifySelectedKeyboardInputSourceChanged = CFSTR("com.apple.Carbon.TISNotifySelectedKeyboardInputSourceChanged");
+
 const CFStringRef kTISPropertyInputSourceID = CFSTR("TISPropertyInputSourceID");
 const CFStringRef kTISPropertyInputSourceIsFromSystem = CFSTR("TISPropertyInputSourceIsFromSystem");
 const CFStringRef kTISPropertyInputSourceIsASCIICapable = CFSTR("TISPropertyInputSourceIsASCIICapable");

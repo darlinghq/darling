@@ -6,6 +6,8 @@
 extern "C" {
 #endif
 
+extern const CFStringRef kTISNotifySelectedKeyboardInputSourceChanged;
+
 extern const CFStringRef kTISPropertyInputSourceID;
 extern const CFStringRef kTISPropertyUnicodeKeyLayoutData;
 extern const CFStringRef kTISCategoryKeyboardInputSource;
